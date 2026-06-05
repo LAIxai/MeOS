@@ -1,0 +1,12503 @@
+// {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.730: ★文字喰い恒久対策。グローバル `type` 横取りを撤去(俊克の診断: Enter1個のために全打鍵を関所に
+//   通していた)。実は keyboard Enter は laiMembrane.enterAtCloseRightEdge キーバインドが先に処理しており、
+//   type横取りの \n 分岐はキーボードでは死んでいた=横取りは『全打鍵を async default:type で再ディスパッチ』
+//   するだけ→速い入力/IME確定で稀に1文字取りこぼし。撤去で通常/Raw とも入力が100%ネイティブ。
+//   かかか/kakaka は onDidChangeTextDocument 側なので引き続き動作。handleRenderedMembraneEnter は未使用化(残置)。
+// - v0.9.729: 俊克『resumeは誤記、正しくは Remove』。v728で追加した resume項目を撤去。本来の要望=満杯(3個)時に
+//   Remove を最下段(ボタンに最も近い)へ。flex order(.bm-pop.full #bm-remove{order:2})で Remove/insert を入替。
+//   未満杯=Remove上/insert下(従来) / 満杯=insert上(無効)/Remove下。
+// - v0.9.728: 栞メニューに resume(巡回ジャンプ=保存場所に戻る)を追加(俊克)。満杯(3個)時は insert不可なので
+//   resume を最下段(ボタンに最も近い)に、未満杯時は従来どおり insert を最下段に。flex order で出し分け(.bm-pop.full)。
+//   resume は0個時disabled。クリックは bookmarkCycle(🔖ボタンと同じ)。
+// - v0.9.727: 『かかか』生き返りバグ修正(俊克 v726 NG#2: 切替後に続けて打つと かかか が復活し再トグル=かかかい)。
+//   真因=v726がIMEのマーク(未確定)テキストを確定前に削除→IME内部に残り次入力で復元。判定を2系統に分離:
+//   (A)非ASCII(かかか)=カーソル位置(IME確定後に発火=v724挙動に復帰) / (B)ASCII(kakaka)=変更の末尾位置(マーク無し=安全)。
+// - v0.9.726: kakaka検知バグ修正(俊克NG報告)。原因=ed.selection.active が1文字ずつの入力では更新が遅れ、6文字目で
+//   pos=5のまま→5>=6偽で取りこぼし(かかかはIME1確定=1変更で位置確定のため動作)。修正=各contentChangeの『挿入後の末尾位置』
+//   (c.range.start.character + c.text.length)で判定。改行不要でインライン検知。
+// - v0.9.725: 『かかか』に加え ローマ字 kakaka でもRawトグル可に(俊克・ジョーク終了→万能化)。RAW_TRIGGERを配列
+//   RAW_TRIGGERS=['かかか','kakaka'] にし、末尾n文字がいずれかに一致したらそのn文字を消してトグル。IMEオフ/欧米人でも撃てる。
+// - v0.9.724: ★『かかか』奇襲(俊克「トラ・トラ・トラ⇒かかか」)。RAW_TRIGGER='かかか' を打つと、その3文字を消して
+//   Rawモードを自動トグル。ボタン/メニュー/ショートカット不要に。onDidChangeTextDocumentでrawガードの前に検知(両モードで効く)。
+//   末尾文字が入った変更のみ精査＋_rawTriggerBusy/deferRefreshCountで再入防止。未テスト。
+// - v0.9.723: ★Raw(MeOS休眠)トグル(俊克: 日本語入力が死ぬほど使い難い→無効化状態に切替たい)。ボタン＋コマンド両対応。
+//   ON=全装飾OFF(clearForRaw)＋編集/選択/scrolldriven refresh と mSTAT編集を抑止＋type横取りもパススルー→プレーンエディタ化で
+//   IMEが普通に打てる。生データ表示(mCN=2503)も兼ねる。Me Dockに[👁 Raw]トグル＋コマンド lai-membrane.toggleRaw
+//   (package.json contributes.commands登録=キーバインド/コマンドパレット可)。栞は休眠中も維持(IME無害)。未テスト。
+// - v0.9.722: 栞メニューの順番を逆に(俊克 am01:22)。Remove上/Insert下=ポップは上に開くのでInsertがボタンに最も近く即挿入しやすい。
+// - v0.9.721: バグ修正(俊克 pm11:16)。折返し行(2視覚行)に🔖を付けるとガターアイコンが2個出た。原因=v720で
+//   ホバー当たり判定を行全体レンジにした際、同じ装飾でガターアイコンも行全体に→折返し各行に描画。修正: ガターアイコンは
+//   点レンジ(ln,0,ln,0)で1個、ホバーは行全体レンジの別装飾(bookmarkHoverDecoration・アイコン無し)に分離。
+// - v0.9.720: 🔖ホバー改善(俊克 pm07:53「離れ過ぎ・近づくと消える」)。①当たり判定をしおり行全体に拡大
+//   (行を辿って近づけるので消えにくい)。②アクションをH-TOCメニューに無いものに集約: Remove this(ホバー中のしおりを
+//   カーソル位置に関係なく削除)＋Clear all(全消去=メニューに無い俊克案)。Jump to nextは外す(ボタンと重複)。
+// - v0.9.719: 🔖をインタラクティブに(俊克 pm07:29「クリックしたくなる」)。直接クリックはVSCode制約で不可なので、
+//   🔖ホバーにクリック可能なコマンドリンク[🔖 Jump to next][Remove this 🔖]を表示(MarkdownString isTrusted+command:)。
+//   コマンド lai-membrane.bookmarkCycle / bookmarkRemoveAt(行指定)登録。bookmarkRemoveを行引数受け取り可に拡張。
+// - v0.9.718: 🔖ボタン微調整2 — 数字を右上に大きく＋黒状態の▼を白抜き(俊克 pm07:17)。
+// - v0.9.717: 🔖ボタン微調整(俊克 pm07:02)。①個数バッジを白文字に(濃いボタン背景でくっきり)。②しおり0個の時は
+//   背景を黒(#0a0a0a)に=「闇の中のゼロ感」(従来は薄いamberで見づらかった)。1個以上で濃amberに戻る。初期HTMLにzeroクラス。
+//   ※質問: gutterアイコンは行番号と別レーン(グリフマージン)なので行番号が桁増しても被らない。
+// - v0.9.716: 🔖 仕上げ(俊克 pm06:25)。①H-TOCの[🔖▾]ボタンの背景を濃い色(ダークアンバー#7a4f00/明文字)に。
+//   ②エディタの🔖を行頭(before装飾・本文がズレる)→左のガター(行番号の左)にアイコン表示に変更(bookmark.svg・本文非ズレ)。
+//   gutterIconPath使用(extensionContext.extensionUri、makeDecorationsはactivate後呼出なので可)。SVG同梱(.vscodeignore無し)。
+// - v0.9.715: 🔖ワンブックマーク実装(俊克「本当に欲しい」仕様合意)。最大3個の「場所のしおり」を装飾🔖のみで
+//   表示(ソース非汚染)＋globalState(URIキー)永続＋編集の行ズレ追従。H-TOC下端に[🔖▾]分割ボタン: 左=次のしおりへ
+//   巡回ジャンプ(行番号順)、右▾=insert(カーソル行に追加・3個満杯/重複は無視)/Remove(カーソル行のしおりだけ削除)。
+//   ★戻る(cycle)と消す(remove)を分離=最後に居た大事な場所が勝手に消えない。スクロールバーにも印。ロジック検証済/UI未テスト。
+// - v0.9.714: 書式ボタン押下後にエディタへフォーカス移動(俊克 am11:15「即書き込みたい」)。insertFormatTemplate
+//   末尾で showTextDocument(preserveFocus:false, selection:本文範囲) を呼び、エディタにフォーカス＋本文(プレースホルダ)
+//   を選択状態に。即タイプで上書きできる。focusMeDockTargetEditorは選択を1点に潰すため不使用。
+// - v0.9.713: tip位置の自動回避(俊克 am10:48)。左伸ばしすると左端で見切れる場合(左端の幅の小さいボタン)は、
+//   tipを要素の上に逃がして右方向に伸ばす。tip幅(offsetWidth)を測り、左端 < 4px なら右伸ばし＋上配置に切替。
+//   通常(見切れない)は従来どおりカーソル6文字左から左伸ばし。
+// - v0.9.712: 全tip統一(俊克 am10:34「すべてのtipをdata-tip左伸ばしに」)。webview全体で mousemove を拾う
+//   全体リスナ1本に集約し、要素の native title を hover 時に data-tip へ遅延移行(showTocTip内)。これで
+//   HTML title=38箇所・JS .title=7箇所を一切編集せず、全ボタン(nav/toc-tools/Me操作/Time Machine等)が
+//   共通の左伸ばしtip(カーソル6文字左)に。動的に変わる title も次のhoverで反映。エディタ内💬はVSCode制御で対象外。
+// - v0.9.711: tip改善(俊克 am09:53)。①書式ボタン(==/~~/##)のtipを英語化＋H-TOCと同じ左伸ばしtip(data-tip)に。
+//   ②全tipの左伸ばし基準をカーソルの12px左→約6文字左(TIP_GAP_PX=44)に(ポインターに隠れて見えないストレス解消)。
+//   showTocTipを汎用化(data-tipを持つ最近接要素から取得)。※エディタ内の💬ホバーはVSCode制御で位置変更不可。
+//   webviewの他ボタン(nav/toc-tools等)は今もnative title=(要望あればdata-tipに移行)。
+// - v0.9.710: 死に機能の削除(俊克 am09:41)。素の ~~本文~~ の末尾 (日時//コメント) を tip 化する旧機能を撤去
+//   (v0.9.658実装だが俊克自身も忘れる＝ゴミ。コメントは {} 付き ~~{本文//tip}~~ に一本化済み)。素の取消線は
+//   純粋なトグル(赤線だけ・末尾の()は本文の一部)に。「素=プレーン/{}=リッチ」を徹底。
+// - v0.9.709: 重大バグ修正(俊克 am08:40「使い物にならない」)。v705の複数行取消線が単独 ~~ から遠くの ~~ まで
+//   行をまたいで巻き込み暴走→説明文等を大量に誤爆。→ 複数行取消線は ~~{…}~~ (波括弧つき) だけに限定。単独 ~~ /
+//   ~~…~~ は単一行のみ(行をまたがない)。起動条件も「複数行に開いた ~~{ がある行」に厳格化。standaloneで誤爆ゼロ確認。
+//   ※入れ子 ~~{…~~{…}~~…}~~ は非対応(正規表現は同記号の入れ子を解析不可=内側の }~~ を先に閉じと拾う)。暴走はしない。
+// - v0.9.708: 書式ボタンの配置修正(俊克 am05:13 スクショ)。v707はH-TOC直下に置いたが、俊克が指したのは
+//   Edit欄の上にあった「A∨」の非機能スタブ行。そこを3ボタン(書式: == / ~~ / ##)に置換(.row のボックス流用)。
+// - v0.9.707: Me Dock に書式ボタン3つ追加(俊克 最終課題)。H-TOC下に小さい == / ~~ / ## ボタン。選択を記法で
+//   包んで初期値付き挿入＋本文を選択状態に。== →=={本文(赤/黄)//tip}== / ~~ →~~{本文(赤/)//tip}~~(薄ピンク自動) /
+//   ## →現在行を ##[本文(白/緑)//tip]## (白文字×緑背景=俊克の選択「目立つ方」)。併せて取消線の淡背景ルールを
+//   「背景色を明示しない {} 取消線すべて」に緩和(線色/コメント付きでも薄ピンク=ボタンの赤線+薄ピンク+tipが成立)。
+// - v0.9.706: 微調整(俊克 am03:08)。コンパクト取消線の淡ピンク背景を薄く(STRIKE_FAINT_BG 0.15→0.10)。
+//   ※「取消線の字が赤い」のはバックティック(インラインコード)のテーマ色が原因で、取消線は文字色を触っていない
+//   (複数行取消線は黒のまま)。見出しデフォルト色(H1赤/H2緑/H3青)の見直しは俊克と相談中。
+// - v0.9.705: 機能追加(俊克 改良1)。複数行(改行をまたぐ)取消線。行単位パスは単一行のみなので、~~が奇数個の行が
+//   ある時だけ全文を走査し、改行を含む ~~{…}~~ / ~~…~~ を本文=複数行レンジで一括装飾(線色/背景/コメント/淡ハイライト
+//   も適用)。性能ガード=奇数~~行が無ければgetText/正規表現を省略。暴走防止=50行超は無視。未テスト。
+// - v0.9.704: 取消線の仕上げ(俊克 am02:32)。①従来形の「文字を薄くグレーに」をやめ通常色で線だけ引く
+//   (取消内容も読めるべき=主流。Markdown/Word/Docsも薄くしない)。②従来形 ~~本文~~ は伝統的にハイライト
+//   なし(線だけ)に。淡いハイライトは新コンパクト形 ~~{本文}~~ だけに付ける住み分け。
+// - v0.9.703: 機能追加(俊克 am02:09)。コンパクト形の取消線(色指定なし・コメントなしの ~~{本文}~~ /
+//   ~~本文~~)に「弱いハイライト」=淡い赤背景を自動付与。取消線は線だけだと地味で見落としやすいため。
+//   普通の文章用の最もシンプルなコンパクト記法。色やコメントを指定した取消線には付かない。淡色は STRIKE_FAINT_BG で調整可。
+// - v0.9.702: バグ修正(俊克 am01:31)。ハイライトの {} 判定の不整合。取消線は素 ~~本文~~ だと色/コメントを
+//   解釈しない(tipなし)のに、ハイライトは素 ==本文== でも (色)//コメント を解釈してtipを出していた。
+//   →リッチ解釈は {} 付き =={…}== だけに限定。素の ==本文== は黄ハイライトのみ(色/コメントは本文表示)。
+//   ※取消線直後の「改行」は word wrap(折り返し80桁・隠し文字も桁数に計上)で確定。バグではない(俊克も同意)。
+// - v0.9.701: バグ修正(俊克 pm11:55 NG②)。見出し内インラインのtipに見出しtipも二重表示されていた。
+//   →見出しコメントtipを「インライン(=={…}==/~~{…}~~)以外の素テキスト部分」にだけ付ける(色/サイズ/背景は
+//   従来どおり本文全体)。インライン部分は自前tipのみ表示。※NG①(取消線直後の改行)はVSCodeのword wrapが
+//   font-size:0の隠しマーカーを全幅で数える制約の疑い(長い見出し+インライン+コメントで顕在化)。要確認。
+// - v0.9.700: バグ修正(俊克 pm09:48 NG)。見出し本文中のインライン =={…//tip}== / ~~{…//tip}~~ に
+//   //コメントを入れると、見出しのparseColorSpecが最初の // (=インラインのtip)を見出しコメントと誤認し
+//   本文が途中で切れて壊れた。→ maskInlineTokens() でインライン記号を同長伏字にマスクした版で // と (色)
+//   の位置を検出(値は元文字列から取得、位置は同長なので一致)。見出し内インライン+コメントが正常動作。
+// - v0.9.699: 記法の一貫性 — 見出し・取消線を ハイライト と同じ (文字色/背景色)//コメント に統一。
+//   ① 共通パーサ parseColorSpec() に3者集約(無効な末尾(…)は本文として残す=関数foo(x)を食わない)。
+//   ② 見出し ##[本文(文字色/背景色)//コメント]## — 背景色対応＋暗背景auto白文字。1色=文字色。旧//色//は廃止(後方互換不要)。
+//   ③ 取消線 新形 ~~{本文(線色/背景色)//コメント}~~ — 線色別line-through＋背景色＋暗背景auto白文字。
+//      旧 ~~本文~~ / ~~本文(日時//コメント)~~ は温存。見出し文字色に黒/白/灰追加。未テスト。
+// - v0.9.698: 背景色を「本物の色」に(俊克 pm08:12「薄い赤=ピンク・薄い紺=紫に見える」)。色科学上、
+//   黒文字が読める明るさにすると暗色は淡くなり色相がズレる(赤→桃/紺→藤)。→ 赤/緑/青/紺/ワインを
+//   濃い本物色にし、文字色未指定の暗背景には自動で白文字(DARK_BG_KEYS + auto-contrast)。黄/橙/桃/紫は維持。
+// - v0.9.696: 色パレット拡張(俊克 pm07:29)。+3色: 紺navy(#000080)・水色aqua(#00BFFF)・ワインmaroon(#800000)。
+//   maroonは名前で迷わせないため maroon/wine/ワイン/栗/臙脂/マルーン を全て別名化(CSS標準=maroon,推し=wine/ワイン)。
+//   金色は黄と差が無いので不採用(俊克)。茶は日欧差があるので不採用→maroonに。色装飾はマップ駆動で自動生成
+//   (HIGHLIGHT_COLORS背景/HIGHLIGHT_FG_COLORS文字/HEADING_TEXT_COLORS見出し+ALIASES)なのでキー追加のみで安全。
+//   既にハイライト(v695)で `(紺/水色)` 等が使用可。次: 見出し(背景色)+取消線(線色)に統一記法展開(新形のみ)。未テスト。
+// - v0.9.695: 記法一貫化(俊克 pm05:59〜pm06:41) — まずハイライトを統一記法に。新形
+//   `=={本文(文字色/背景色)//コメント}==`(開き`=={`/閉じ`}==`で曖昧性解消・将来の複数行/見出し内入れ子の
+//   布石)。色は `/` 区切り(文字色/背景色)に対応(俊克の「(紫/黄)で紫が効かない」バグの真因=旧は`+`のみ)、
+//   `+` も互換。`//`以降はコメント(編集者⇄作家の通信。括弧の外。日時も自由記述)→ホバー💬。旧 `==本文(色)==`
+//   は後方互換で温存(1色=背景色)。次: 同パターンを見出し`##[…(色/色)//コメント]##`(背景色対応)と取消線
+//   `~~{…(線色/背景色)//コメント}~~`に展開。ツール使用時の日時自動挿入は将来(ツール未実装)。未テスト。
+// - v0.9.694: 統合 Phase 2c — 裏のフラグ書込みを完全停止(汚染ゼロ保証)(俊克 pm00:44「全てクリーンに」)。
+//   ①jumpToWorkingTocItem 冒頭で citeN=null を強制→H-TOCクリックは全項目が標準の片方向⇒ジャンプに
+//   (引用の双方向🔴経路は到達不能の死分岐に)。②全🔴フラグ書込み関数を no-op化: setSourceRjfFlag /
+//   setTargetRjfFlag / showSingleRedJumpPair は先頭で return(何も書かない)。これで Add to H-TOC の引用
+//   パスも自動的にクリーン化(マーカー未書込→citeN=null→通常⇒項目)。⇒ どの経路からも sRJF/tRJF を
+//   一切書かない=ユーザーのソースは100%非汚染。死コードの物理削除(関数本体除去)は参照漏れ риск回避の
+//   ため neuter(無害化)に留め、デビュー後の安全な housekeeping とする。未テスト。
+// - v0.9.693: 統合 Phase 2b — 本文🔴の撤去(俊克 pm00:12)。🔴を Current Me に統合し本文から消す。①隠し:
+//   sourceRjfHideRanges を🔴込みの完全隠しに / jumpFlagRangesInText に `🔴?` を追加し膜行・本文行の
+//   `[tRJF=v]🔴`/`[sRJF=v]🔴` を🔴込みで隠す(🟢は無影響)。②🔴ボタン装飾(sourceRjf/activeRedTarget)を
+//   空に+赤tip除去。③文字列選択での🔴 arming廃止(clearRedJumpMarkersのみ)=参照元非汚染。装飾のみの操作
+//   でデータ破損なし。残: Phase 2c=H-TOC citation(citeN)の片方向⇒化+sRJF/tRJF書込み停止+死コード掃除。未テスト。
+// - v0.9.692: 改良1 — H-TOCチェックボックスに「チェック/解除の全履歴」を記録(俊克 am11:54)。誤チェック・
+//   意図的な解除・再チェックを追跡可能に。toggleTocCheck で item.checkLog[] に {at,checked,label} を追加
+//   (label: 初回=Checked/解除=Unchecked/再=Rechecked、上限20で暴走防止)。スナップショットitemに checkLog
+//   を載せ、tip は Created＋全履歴を行ごと表示(v691の改行表示と相乗)。旧item(checkLog無し)は checkedAt
+//   フォールバック。データは mHTOC永続化(v677)で file と共に随伴。残: Phase 2b=本文🔴撤去。未テスト。
+// - v0.9.691: 改良1 — チェック済み等の複数情報tip(Created/Checked/Cite)を行ごとに改行表示(俊克 am11:38)。
+//   従来は ` | ` 区切りで max-width 折返し時に途中で割れて見づらかった。showTocTip で ` | ` を改行
+//   (String.fromCharCode(10)=テンプレートリテラル回避)に置換し、CSS を white-space:pre-line に変更
+//   (改行保持＋長行は折返し)。Pin の長文tip(` | `無し)は不変。残: Phase 2b=本文🔴撤去。未テスト。
+// - v0.9.690: バグ1=Navigate Me の Bi-direction バー撤去漏れを修正(俊克 am11:25)。v0.9.689で撤去したのは
+//   H-TOC側の bidiJumpBarHtml だけで、Navigate Me セクションの静的HTML(:10420 nav-anchor🟢/nav-bidi🔴/
+//   nav-clear)が残っていた→divごと撤去(参照JSはif(...)ガード済で安全)。改良1=tipの上端をホバー項目の
+//   上端に合わせる(プルダウン風)。showTocTipで closest('.fixed-toc-item,.toc-pin') の getBoundingClientRect().top
+//   +1 にtop配置(従来はカーソル縦中央)。残: Phase 2b=本文🔴(sRJF/tRJF)撤去。未テスト。
+// - v0.9.689: 統合 Phase 2a(撤去・低リスク分)(俊克 am10:54)。①Me Dock Bi-direction Jump バーを撤去
+//   (renderFixedToc から bidiJumpBarHtml を除去。handlerは死コード化=Phase3で掃除)。②本文の閉じ膜🟢を
+//   撤去し開始膜だけに表示(activeGreenButtonItems のメモリ描画で kind!=='open' をスキップ)。Current Me
+//   統合により 🟢は選択膜の開始膜マーカー1つで足りる。残: Phase 2b=本文🔴撤去(sRJF本文/tRJF膜の実体🔴を
+//   両方隠す+ボタン装飾を空に+新規arming停止)、文字列選択→選択膜セット化。未テスト。
+// - v0.9.688: tip改良 — 項目に"重ねて"表示(俊克 am10:54 逆転の発想)。tipが左へ伸びる=マウスが向かう
+//   項目を覆わないので、下に逃がさず、カーソル行に縦中央で重ねる方が「この項目のtip」と分かりやすい
+//   (右伸ばし時代は重なると読めないから下に逃がしていた)。showTocTip: 描画後 offsetHeight を測り
+//   top=clientY-h/2 にクランプ配置。全H-TOC tipに適用。Phase2(🔴/Bi-link撤去)は次commit。未テスト。
+// - v0.9.687: bug1真因=Current Me Pinがスクロールアップ(消失ではなかった)を根治(俊克 am10:14)。bidiバーは
+//   `.fixed-toc-body .bidi-jump-bar{position:sticky;top:0}` で固定だが Pin は非sticky→スクロールで上へ流れ
+//   消えたように見えた。修正: Pin+bidiバーを1つの `.toc-sticky-head`(position:sticky;top:0;solid bg)で包み
+//   一体固定(行折返し/ズームでもズレない堅牢方式)。包んだ中の bidiバーは position:static に。クリック/tip
+//   判定は closest 経由で不変。👍: From Out To↔🟢 間隔OK / tip左伸ばし(Me Dock右端で見切れ回避)＋折返しは
+//   showTocTip 共通化済で全H-TOC tipに既定適用(項目を隠さない利点)。v684防御の no-editor skip は据置。未テスト。
+// - v0.9.686: Current Me Pin tip 3改善(俊克 am04:21)。①tipを英語化＋分かりやすい説明に(俊克の文面準拠:
+//   Current Me=現在膜を示す+クリックで開始/閉じ/カーソルの3点ジャンプ／✓=カーソル位置と選択膜の開始/閉じ
+//   の3点ジャンプ・主に選択膜以外の膜にいる時用)。「最内」等の難語は排除。②tipをマウスの"左"へ伸ばす
+//   (Me Dockは画面右端で右伸ばしは見切れる)＋2行折返し可(white-space:normal/max-width260/right基準配置)。
+//   ③『From Out To』と🟢をさらに接近(padding-left 2px→0)。未テスト。
+// - v0.9.685: Current Me Pin微調整2件(俊克 am03:48)。①『From Out To』と🟢の間隔を詰める(toc-pin-jump
+//   の padding-left 5px→2px)。②Current Me(title/name/Ln)と『From Out To 🟢』(label/checkbox/🟢)に
+//   tip説明を追加。真因: tip表示の mousemove ハンドラの matches() に Pin系クラスが無く、data-tipが
+//   あっても出ていなかった→ .toc-pin-title/name/ln/mode/check/jump をセレクタに追加し、各要素にdata-tip付与。
+//   v0.9.684の3点ジャンプ(✓無=現在膜内/✓有=選択膜と往来)は実践テストで両方OK。未テスト。
+// - v0.9.684: 統合 Phase 1改良 — Current Me Pinに「From Out To 🟢」チェックボックス追加(俊克 am03:05 改善1)。
+//   v0.9.683はarmedで自動的に選択膜へ飛んだが、明示opt-inに変更=事故防止。①✓OFF(既定)=現在膜の
+//   開始/閉じ/カーソルを3点ジャンプ。②選択膜ありでも✓OFFなら同上。③選択膜あり&✓ONで 現在位置⇄選択膜
+//   (開始/閉じ)の3点ジャンプ。選択膜が無いとき(🟢半透明)はチェックボックスをdisabled+半透明化。
+//   pinJumpToSelected 状態をextに保持しwebviewと同期。cycleCurrentMembraneの判定を pinJumpToSelected
+//   ゲートに変更。【bug1防御】Current Meが操作中に消える件: editorが一瞬nullのとき postFixedWorkingToc
+//   Snapshot を skip(クリアしない)→Pin瞬間消失を防止(再現条件は要確認)。未テスト。
+// - v0.9.683: 「Current Me」統合 Phase 1(追加のみ)(俊克 pm09:23/pm10:07 設計)。🟢/🔴/Bi-directionを
+//   Current Me 1つに統合する構想の第一歩。①cycleCurrentMembrane を一般化: target = 選択膜(activeGreenJump
+//   =膜名クリックで armed)があればそれ、無ければ現在膜(findCurrentPair)。3点サイクル[target開始,閉じ,
+//   カーソル]。②Current Me Pin の右端に統合🟢ボタンを追加(選択膜ありで濃く/無しで半透明)。クリックで上記
+//   3点ジャンプ。旧🟢(開閉)/🔴(Bi)/Me Dock Bi-barは"まだ残す"(Phase 2で撤去)。設計確定事項: H-TOCクリックは
+//   片方向⇒のみで選択膜セットしない／H-TOCの⇄参照元登録は廃止／相互参照は脚注†1(プレーンテキスト+grep)で
+//   行い参照元にフラグ/ボタンを置かない(データ非汚染)。Phase 2=閉じ膜🟢・本文🔴・Bi-bar撤去予定。未テスト。
+// - v0.9.682: Pin微調整2件(俊克 pm07:17)。①差分を総数の後ろに括弧で `(Ln 829-1016=188[Δ+30])`
+//   (188の内訳が+30、と読める)。deltaText を `[Δ+N]` 形式に変更しステータスバー・Pin両方に反映。
+//   ②Pinの📍を青『Current Me』バッジの"外(左)"に出す(バッジ上だと📍の細い脚のコントラストが弱い→
+//   toc-pin-emoji を独立span化)。配色good評価(水色背景に白字)。未テスト。
+// - v0.9.681: Pin/ステータスバーの2改善(俊克 pm06:45)。①Pin行に『📍 Current Me』タイトルを付与(初見でも
+//   分かりやすく)。②行範囲に差分Δを追加 `(Ln 829-1016 Δ+30=188)` — Δ=その膜に"入った時点"の行数からの
+//   増減(コピペで+N/削除で-N、別の膜に移ると基準リセット)。共通ヘルパー currentMembraneInfo(pinBaseline
+//   で基準管理)を新設し、ステータスバー(対策1)とPin(対策2)の両方で同じΔ計算を使用=常に同期。Δは0のとき
+//   非表示。`829-1016=188`が式として変なのは承知の上で開始膜-閉じ膜の順を採用(俊克了承)。未テスト。
+// - v0.9.680: 対策2 — H-TOC先頭に「現在の膜」Pin行を追加(俊克 pm05:31 案)。`📍 膜名 (Ln 開始-閉じ=総行)`
+//   をfixedTocBody先頭に表示し、カーソルが居る最内膜をリアルタイム反映(getWorkingTocSnapshotに
+//   currentMembrane追加=findCurrentPairで軽量取得、更新は既存の軽い選択パスpostFixedWorkingTocSnapshot)。
+//   クリック(シングル)→ pinCycle → cycleCurrentMembrane が 開始膜→閉じ膜→カーソル位置 を3点サイクル
+//   reveal(navCenterMeDoubleClickと同型・v0.9.673のfocus先/InCenter修正込み・reveal専用でカーソル不動)。
+//   🟢で苦しんだダブルクリック判定は付けず単純化。膜外ではPin非表示。未テスト。
+// - v0.9.679: 改善1 — ステータスバーの膜表示に総行数 `=N` を追加(俊克 pm06:05)。`▼ 膜名 (Ln 829-931=103)`
+//   = N は開始膜〜閉じ膜が占める行数(開始・閉じ込み, end-start+1)。空膜(開始+閉じのみ)は =2。
+//   (対策1 v0.9.678 は👍3点OK: 表示・改行リアルタイム更新・深度-2/-3も正しく範囲表示)。未テスト。
+// - v0.9.678: 対策1 — 現在カーソルがある膜をウィンドウ下端ステータスバーに明示(俊克 2026.06.02 pm05:31:
+//   「膜の中にいるとき、どの膜にいるか分からない」)。`▼ 膜名 (Ln 81-110)` を表示。既存 findCurrentPair
+//   (カーソル行を含む最内ペアを version キャッシュ済構造から取得=軽量)を流用し、StatusBarItem を新設。
+//   更新は"軽い選択パス"(onDidChangeTextEditorSelectionの軽量リスナ)+アクティブエディタ切替時のみで、
+//   重い refresh には絶対乗せない([[project_meos_freeze_pattern]]の鉄則遵守=Enter増分の手動最適化は不要)。
+//   膜外ではhide。入れ子は最内を表示。次段=対策2(H-TOC先頭にcurrent膜Pin+open→close→cursorサイクル)。未テスト。
+// - v0.9.677: H-TOC「別セクター」永続化(俊克 2026.06.01 am09:13 指摘の保存先問題を根治)。旧来 H-TOC
+//   データ(tabs/items/check状態/引用/コメント)は globalState を **絶対パス(URI)キー**で保管→別フォルダ
+//   移動/リネーム/別マシン/git/クラウドで消失していた。修正: データを**ユーザー本文に一切干渉しない
+//   完全不可視の1行 `<!-- mHTOC1 <hex> -->` としてファイル末尾に埋め込み**(=俊克の「別セクター」案)、
+//   そこを真実の保管に。hexエンコードで //, ==, ~~, --> 等のパーサ干渉文字を完全排除。editor上は
+//   mdWrapperHideDecoration(opacity:0/font-size:0)で不可視、markdown previewでもHTMLコメントとして不可視。
+//   getHyperTocData=source優先読み(version単位キャッシュ+末尾走査でO(1)/freeze回避)、setHyperTocData=
+//   source書込み(deferRefreshCount+undoStop:false で連鎖抑止)+globalStateはキャッシュ/移行元に降格。
+//   移行: 既存globalStateのH-TOCは初回操作(setHyperTocData)時に自動でファイルへ書出し(冪等)。書込みは
+//   H-TOC操作時のみ(開くだけでは本文不変)。これでH-TOCがファイルと共に旅する。未テスト。
+// - v0.9.676: 「スクロール→クリックでLine認識が最優先にならない」真犯人を特定して根治(俊克 pm01:21)。
+//   v0.9.675 はクリックの refresh を後回しにしたが、スクロールの refresh を放置していた。真因は
+//   onDidChangeTextEditorVisibleRanges ハンドラ(11425)が、スクロール中に連続発火する各イベントで
+//   重い refresh を"同期"実行していたこと。1スクロールで数十回の重いrefresh→ext host飽和→直後の
+//   クリックのLine更新がその後ろに積まれ最優先にならない。修正: スクロールの refresh を 100ms
+//   デバウンス(スクロール=1回のrefreshに合体)。🟢/🔴可視状態の post は軽量なので即時のまま。
+//   meDockModeForEditor(Line更新)は全行スキャン無しの軽量と確認済→スレッドが空けば即反映。未テスト。
+// - v0.9.675: 【全遅延の共通根治】俊克の決定的洞察(2026.06.02 pm01:01): 見出しクリックで生データ10秒・
+//   コピー→クリック→Cmd+Vでペースト10秒・離れた膜クリックで🟢が10秒——全部"1つの問題"。真因は
+//   マウスクリックの選択ハンドラが重い refresh(applyPrettyLabels全行走査＋全デコレーション計算)を
+//   "同期"実行し拡張ホストのメインスレッドを塞ぐこと。その間、クリックがqueueした全描画更新
+//   (Line欄/🟢/生データ/ペースト完了)がスレッド解放待ちで一斉に止まる。だから新機能でrefreshが
+//   重くなるたび全症状が復活していた。俊克の処方:「クリック行の認識(Line表示)を最優先・重い処理は後回し」。
+//   修正: マウス選択ブランチの即時処理(カーソル/Wクリック判定+🟢描画/auto-unfold)はそのまま、重い
+//   refresh だけ 50ms デバウンスで後回しに(handlerは即returnしext hostが即解放→queue分が即描画)。
+//   バースト(連打/ペースト)はrefreshを1回に合体。キーボードは既に150msデバウンス済(v0.9.457)で対称。
+//   ※単発refresh自体が巨大ファイルで遅い場合の最適化は次段(cursor依存と文書依存の分離)。未テスト。
+// - v0.9.674: 🟢アクティブ後にLine欄(Me Dock)が~10秒切り替わらない回帰を修正(俊克 2026.06.02 pm00:27)。
+//   native Ln(レンダラー)は即時更新なのにMe Dock Line(拡張ホスト)だけ遅延=拡張ホストのメイン
+//   スレッドが約10秒飽和。真因: v0.9.672 が renderActiveGreenMarkers を refresh 末尾に置いたため、
+//   🟢アクティブ時は毎refresh(クリック/スクロール/mSTAT churnの各反復)で緑再描画(reconcile+複数
+//   setDecorations+全行スキャン×数)が走り、大きいファイルで累積飽和。修正: refresh からは撤去し、
+//   バグ2(中身追加で🟢ズレ)に必要な再解決+再描画を onDidChangeTextDocument の構造編集ブランチ
+//   (=行が増減した時のみ)へ移動。通常のクリック/スクロールのrefreshは緑処理ゼロに戻り、Line欄は
+//   即時更新。バグ2(行ズレ追従)も維持。未テスト。
+// - v0.9.673: 画面外Me Dock🟢ジャンプが「1クリックで反応せず~20回でじわじわ到達」を根治
+//   (俊克 2026.06.02 pm00:04: 「位置は分かっているのに見えないだけでジャンプできない、理解不能」)。
+//   真因: navCenterMeDoubleClick が revealRange(Default=最小スクロール) を実行した直後に
+//   focusMeDockTargetEditorPreservingView の showTextDocument がフォーカス転送のため editor を
+//   (動いていない)カーソル位置へスクロールし戻し、revealをほぼ打ち消していた。差し引き1クリック
+//   数行ずつしか進まず、画面外ターゲットに届くのに約20回。修正: フォーカス転送を先に行い reveal を
+//   最後に・InCenterIfOutsideViewport で実行→1クリックで画面外も中央に確定着地。🔴(navCenterBidi
+//   DoubleClick)も同型パターンのため同修正。バグ3完了見込み。未テスト。
+// - v0.9.672: 仮想🟢の更なる2バグ修正(俊克 2026.06.02 am11:26 テスト)。
+//   【バグ1 膜名中の🟢で名前崩壊】MEMBRANE_NAME_CHARS=[^\r\n]*? は🟢を許すのに cleanMembraneName
+//   の /\s*[🟢🔴].*$/ が「最初の🟢以降を全削除」→ 例「膜名に🟢があるとき」が「膜名に」に切詰め、
+//   切詰め位置に装飾🟢が出て🟢🟢に。修正: 末尾の🟢/🔴クラスタのみ除去 /\s*[🟢🔴]+\s*$/ に変更。
+//   中間の🟢は正当なユーザーテキストとして保持(装飾era はボタンを名前ゾーンに書かないので安全)。
+//   【バグ2 中身追加で閉じ膜🟢が前行へズレ削除不可】装飾🟢は activeGreenJump にクリック時の絶対
+//   レンジを保持するが、中身追加で膜行が下にずれてもメモリ側は不変(実体文字なら自動追従していた)。
+//   修正: activeGreenJump に膜id+開き行hintを保持し、renderActiveGreenMarkers 冒頭で
+//   reconcileActiveGreenJump が文書構造から現在位置を再解決(id一致ペアをhint最近で選択)。さらに
+//   refresh 末尾で renderActiveGreenMarkers を必ず呼び、編集後も🟢が現在の開き/閉じ行に追従。未テスト。
+// - v0.9.671: v0.9.670(仮想🟢)の操作系バグ2件を修正。俊克の「Sクリックが動くのにWだけ不可なはず
+//   がない」「W=Sクリック2回と同じ動作」の指摘で真因確定(私の"仮想だから無理"は誤り・撤回)。
+//   【バグ1 Wクリック不可】実体🟢時代は2クリック目が🟢絵文字を単語選択し非空ブランチの緑判定で
+//   RAWになっていた。仮想🟢には実文字が無いので2クリック目は膜"名"を単語選択→緑判定(ゼロ幅name-end
+//   アンカー)を外し膜名ジャンプ経路へ落ち、かつ1クリック目のS-clickタイマーも発火=ジャンプ2連発
+//   ="W=S2回"。修正: 非空ブランチの緑判定の前に「pendingBodyGreenClickTimerが生きている(=直前に
+//   🟢をS-clickした)＋選択行が緑アクティブ行」ならダブルクリックのW半分と判定→タイマー取消+RAW。
+//   通常の膜名Wクリック(名前途中をクリック=タイマー未発生)は影響なし。
+//   【バグ2 tip消失】hoverMessageはゼロ幅レンジに付かない(v0.9.481既知)。tipを膜名末尾1文字の
+//   非空レンジでホストするよう変更。【バグ3 画面外Me Dockジャンプ】要再テスト(静的には activeGreenJump
+//   はスクロール/クリックで消えないはず。ソースフラグ撤去で復元バックアップが消えた線も含め次段で診断)。
+// - v0.9.670: 膜クリックで🟢が10秒出ない固着の根治(俊克 2026.06.02 am05:20 報告 + am06:02 設計案)。
+//   真因: 膜名クリック → activateMembranePairMarkers → showJumpMarkers → setGreenJumpFlags が
+//   毎回 editor.edit() で [oGJF=v]🟢 をソースに書込み → document.version 更新で構造キャッシュ
+//   (v0.9.450)無効化 → onDidChangeTextDocument → refresh() → applyPrettyLabels の全行走査 +
+//   見出し font-size 再レイアウト(v0.9.669復活分)、の連鎖を毎クリック誘発。7000行クラスで固着。
+//   加えて 🟢 は非ASCIIゆえ書込み単一行編集が onDidChangeTextDocument の IME判定 /[^\x00-\x7F]/ に
+//   誤ヒットし compose-mode 全行 walk も誘発。修正(俊克案そのまま):「ボタンは書き込まず、そこに
+//   見せるだけ」= showJumpMarkers から setGreenJumpFlags 呼び出しを撤去し、🟢を in-memory の
+//   activeGreenJump から after-content 装飾で描画(activeGreenButtonItems を書き換え)。編集ゼロ=
+//   refresh連鎖ゼロ=即時表示。クリック判定は既存の「膜名末尾zero-width+2文字許容」フォールバック
+//   (v0.9.473)が描画位置と一致するので流用。旧ファイルの残存 [oGJF=v]🟢 は後方互換で引き続き描画。
+//   永続化は意図的に省略(「だいたいの位置にジャンプできればいい」)＝再読込で🟢消、再クリックで復活。
+//   🔴(setTargetRjfFlag/setSourceRjfFlag)も同方式に出来るが今回は単一クリックの🟢のみ(別経路)。未テスト。
+// - v0.9.669: 見出しの font-size(H1=1.3/H2=1.2/H3=1.1em 太字)を復活。v0.9.666で10秒固着の切り分けの
+//   ため外したが、固着の真因は見出し記法の誤マッチ(v0.9.668で ##[本文]## 化し根治済)＝font-size は
+//   無実と確定したため元に戻す。コメント部分(##[本文//色//コメント]##のコメント)は俊克の意向で通常は
+//   非表示のまま(作家の修正意図/編集者の指示用、ホバー💬で確認)＝現状維持で正しい。俊克 06.01 am04:55。
+// - v0.9.668: 見出し記法を #本文# → ##[本文]## の鏡像対称形に変更(俊克 06.01 am04:15 指定)。
+//   真因: 旧 /^(\s*)(#{1,3})([^#\n]+?)\2/ は「## 文中に「##[ ]##」と書いた」行で、行頭##と文中の
+//   ##の間を見出しと誤マッチ→意図しない緑装飾とLoading遅延(俊克 am04:10 が問題行で実証=Claudeの
+//   前回「正規表現は無実」検証は1行1組しか試さず文中再出現を見落とした3度目のミス)。新記法
+//   /^(\s*)(#{1,3})\[([^\]\n]*)\]\2/ は開き#{1,3}[と閉じ]#{1,3}(同数)で囲み、中身は]を含まない。
+//   本文中に ##[ ]## と書いても行頭でなければ無反応=誤マッチ消滅。色/コメントは中身末尾 //色//コメント
+//   (例 ##[新題//紫//旧題はABC]##)。範囲計算を数値検証済。#[大]#=H1赤/##[中]##=H2緑/###[小]###=H3青。
+// - v0.9.667: 残っていた膜行系の全行スキャンを事前フィルタで高速化(俊克 06.01 am03:51「膜選択の
+//   無限ループを直したとき、まだ全行スキャンが残ると言っていた。それを先に直すべき」)。refresh が
+//   カーソル移動毎に呼ぶ膜行ループ4関数(membraneNameRightVirtualSpaceRanges/
+//   membraneRightEdgeVirtualSpaceRanges/renderedMembraneRightEdgeSpaceRanges/computeLineDecorationsの
+//   _isStructural)が、本文行も含め全行で重い asRealMembraneSource×正規表現(parseOpenLine/
+//   parseCloseLine/membraneLineParts)を呼んでいた。膜行は必ず '{' を含むので各ループ先頭に
+//   `if(text.indexOf('{')<0) continue;`(または _isStructural を '{' 条件でガード)を追加。
+//   実測: 実日記5585行中 '{' を含むのは43行(0.8%)=99.2%の重いparseをスキップ。ロジック不変(膜行以外は
+//   元々非該当)・回帰リスク0。見出し行クリックでの累積固着の有力な一因。※見出し10秒固着が完治するかは
+//   実機確認待ち(完治しなければ scheduleMstatsSync の edit→refresh連鎖を診断ログで追う)。
+// - v0.9.666: ① 膜操作ボタンの tip/トースト/警告を英語化(俊克要望)。② 見出し行クリックで生データが
+//   10秒出ず全体が固まる問題の切り分け: 見出しの font-size 拡大(1.3/1.2/1.1em)を一旦外して
+//   標準サイズ(太字のみ)に。これで直れば font-size 装飾の付け外しによるMonaco行再レイアウトが原因と
+//   確定、直らなければ別の犯人(俊克「文字サイズだけでこんなに固まるか」も至当→様子見)。サイズ差は後で
+//   行高に影響しない方法を検討。※v0.9.665のCopy分岐(Me✓+Contents✓=膜全体/Contentsのみ=中身)も継続。
+//   注: 前回テストは v0.9.664 のままで v0.9.665 を入れ直していなかった(tipが旧=中身コピーのまま)。
+// - v0.9.665: ① Copyボタンの意味を Me✓ の有無で分岐(俊克 pm11:05)。Me✓+Contents✓ → 膜全体
+//   コピー(複製と同じ内容、別所で cmd+V 用)=copyMe / Contents✓のみ → 中身だけ=copyMyContents。
+//   webview で meCheck/contentsCheck を見て送り分け、onMessage に copyMe ハンドラ追加、title更新。
+//   ② 別の無反応(見出し記法クリックで生データが10秒出ない)を俊克が発見。原因調査中: refresh が
+//   呼ぶ全行ループ8個はカーソル移動毎に走るが膜選択は速い→見出し特有=font-sizeサイズ装飾(1.3em等)
+//   の付け外しでMonacoが行を再レイアウトする説が最有力。切り分けテスト待ち(見出し以外の行クリックは
+//   速いか)。未修正。
+// - v0.9.664: v0.9.663が動かなかった真因を修正。Me Dock下部の Copy/Select/Duplicate ボタンは
+//   type:'noop'(無反応)で送っていた。実配線: opCopy→copyMyContents/opSelect→selectMyContents/
+//   opDuplicate→duplicateMe を postMessage、onMessage で getMeDockTargetEditor()(activeでなく
+//   Me Dock対象)を渡して実行。各関数を editor 引数対応に。ボタンに説明 title、操作結果を画面下部
+//   トースト(showMeDockToast)＋ステータスバーに表示(俊克要望)。残デビュー項目はZoomのみ。未テスト。
+// - v0.9.663: 膜操作4機能を実装(従来スタブ)。currentMembranePairForRename で取得した
+//   pair.start(開始膜行)/pair.end(閉じ膜行)を使う。①Copy Me=膜全体をクリップボードへ
+//   ②Copy My contents=中身(膜行除く)をコピー ③Select My contents=中身を選択 ④Duplicate Me=
+//   膜全体を閉じ膜直後に挿入。selectMyContents/duplicateMe は新規コマンド登録＋package.json
+//   メニュー追加(group番号整理、aliasMe@7→@9で重複解消)。残はZoomのみ。User 6/4デビュー前。未テスト。
+// - v0.9.662: 大規模ファイルで膜選択時に固まる問題の軽減(俊克 2026.05.31 pm09:43「遅延の原因は
+//   膜の検索。🟢ボタン表示ルーチンが非効率」)。真因=setGreenJumpFlags/setTargetRjfFlag/各種
+//   ジャンプフラグ走査が文書全行(7021行)を毎回スキャンし、各行で正規表現を回していた。jump
+//   フラグ(oGJF/cGJF/GJF/tRJF/sRJF)を持つ行は通常ごく少数なので、各全行ループ先頭に
+//   `if(text.indexOf('JF')<0) continue;` の安価な事前フィルタを8箇所追加。フラグ無し行で
+//   正規表現を回さずスキップ。ロジック不変(スキップ対象は元々マッチしない行のみ)=回帰リスク0。
+//   ※editによるrefresh連鎖が残る場合は次段で対処(まずこの低リスク策の効果を実測)。
+// - v0.9.661: 作家支援4機能目 — 文字色(ハイライトに統合)。==語(文字色+背景色//コメント)==。
+//   + で文字色と背景色を両方指定し重ねがけ(俊克 pm07:39「文字色+背景色の順」)。(赤+黄)=赤文字
+//   +黄背景。(赤+)=赤文字のみ / (+青)=青背景のみ。1色(+なし)は後方互換で背景色。文字色は7色+
+//   黒白灰(文筆頻出)。文字色レイヤー(highlightFgByColor)を背景レイヤーに重ねる。//コメントも併用可。
+//   俊克「個人的にこれが一番欲しい。ツールパネルで色指定なんて馬鹿げてる」。未テスト。
+// - v0.9.660: 文筆家3点セット完成 — ①ハイライト/取消線に //コメント (==text(色//コメント)== /
+//   ~~text~~(日時//コメント))。(…)内の // 以降がコメントで、隠す＋ホバー表示。文筆家⇄編集者の
+//   指示用。②見出し #text# /##text## /###text### = H1/H2/H3、規定色 赤/緑/青、サイズ
+//   1.3/1.2/1.1em 太字。末尾 (色//コメント) で色変更(7色)・コメント(改題理由や旧題保存)。# と (…) は隠す。
+//   膜行は除外、カーソル行は生データ表示。レベル別サイズ装飾×3＋色別文字色装飾×7を重ねる。User案 pm05:04。
+// - v0.9.659: ハイライト/取消線のカーソル行を生データ表示（編集可能化）。カーソルがある行は
+//   ==(色)== / ~~(日時)~~ の装飾を抑制し、記号を生で見せる→クリックで直接編集できる。膜ラベルの
+//   isEditingLine(v0.9.618)と同思想。docCursorLine をループ前に計算し、両検出を line!==docCursorLine
+//   でガード。選択変更で refresh が走るので行を離れると再装飾。User pm02:00「クリックで生データが
+//   見えるので取消線のtipは無くてもいい/タイムスタンプは手動書換でいい」。未テスト。
+// - v0.9.658: 取消線 ~~text~~ + 史上初のタイムスタンプ付き ~~text~~(日時)。本体に赤い
+//   line-through、~~ と末尾(日時)は隠す。(日時)があればホバーで「🕐 …に取消」を表示。
+//   いつ取り消したかがプレーンテキストとして残り grep 可・往復で壊れない。ハイライトと同じ
+//   5箇所配線。検出は /~~([^~\n]+?)~~/g、内側末尾の /\(([^()]{2,40})\)$/ で(日時)を分離。
+//   User ひらめき(6/4デビュー前)。未テスト。
+// - v0.9.657: ハイライト色指定 ==text(色)==。7色(赤橙黄緑青紫桃)、日英両対応(赤もredもOK)。
+//   色は内側末尾の (色) で指定、(色)と == は表示時に隠す。色省略 ==text== は従来通り黄。
+//   色ごとに装飾型を生成(VS Codeは型ごとにスタイル固定)、HIGHLIGHT_COLORS/ALIASES/
+//   normalizeHighlightColor() を新設。検出は内側末尾の /\(([^()]{1,8})\)$/ で (色) を分離。
+//   User 6/4デビュー前「黄色以外に変えたいのは万人の望み」。未テスト。
+// - v0.9.656: 文筆家向け仕上げ機能 第1弾 — ハイライト ==text==。内側 text に黄色半透明
+//   背景、`==` マーカーは font-size:0 で隠す(膜マーカーと同手法)。膜行・本文行どちらでも、
+//   1行内に複数可。既存 annotationColorDecoration を手本に5箇所(宣言/dispose/型生成/range
+//   検出/setDecoCached適用)へ配線。描画は applyPrettyLabels のループ先頭で正規表現
+//   /==([^=\n]+?)==/g により検出。低リスク(既存パイプラインに追加するだけ)。User 6/4デビュー前。
+// - v0.9.655: FIX the membrane lane breaking off partway down a wrapped Japanese line.
+//   estimateWrappedVisualRows counted String.length (every char = 1), under-counting CJK
+//   prose by ~half, so the lane was too short. Now it counts DISPLAY COLUMNS (full-width /
+//   kana / kanji / emoji = 2, half-width = 1) via new displayColumns()/isWideCodePoint(),
+//   and reads the actual editor.wordWrap MODE: 'off' → always 1 row (no over-tall lanes);
+//   'wordWrapColumn'/'bounded' → wrap at the configured column (exact for fixed-column
+//   manuscript writing, e.g. 80 cols = 40 zenkaku = genkoyoshi width); 'on' → approx 80.
+//   Row cap raised 6→40 so long paragraphs follow all the way down. Legacy lane renderer
+//   (col-0 before box) is kept; this just feeds it a correct height. User 2026.05.31.
+// - v0.9.653: REVERT the v0.9.652 experiment — mechanism A is CONFIRMED NECESSARY. Testing
+//   (user 2026.05.30 pm00:49) showed that with A disabled the old line-head symptoms came
+//   straight back: the thin lane wedges between caret and kana, and confirming a conversion
+//   fired an unwanted newline. A and B are complementary, not redundant — B stops the
+//   setDecorations interrupt (no more ")"-eating on the macro path), A hides the lane so it
+//   can't visually wedge/reflow the composing line. Both restored to v0.9.651 behavior.
+//   KNOWN REMAINING (separate, pre-existing): (1) ordinary conversion still occasionally
+//   eats the previous char; (2) Enter sometimes does nothing for ~10s then commits after
+//   4-5 presses. Both predate this work ("これは前もあった") — to be investigated next; likely
+//   extension-host main-thread saturation via the `type` command override + refresh churn.
+// - v0.9.652 (EXPERIMENT): test whether mechanism A (hide the membrane lane during kana
+//   composition, v0.9.638〜647) is still needed now that v0.9.650 (mechanism B) fixed the
+//   ")"-eating at its real source (the selection handler's non-Mouse setDecorations
+//   interrupt). User insight 2026.05.30 pm00:04: both A and B share one root — setDecorations
+//   disturbs the IME — so killing B's interrupt may make A's lane-hiding redundant. This
+//   build DISABLES A: the lane stays visible while composing (computeLineDecorations no
+//   longer skips composingLine; the doc-handler no longer fires the hide-repaint).
+//   composingLine is still SET so repaint-freezing during composition is unchanged. IF kana
+//   input stays visually clean (no 縦線分断 / no 行頭枠飛び / no flicker), A is removed for
+//   good and the entire v0.9.638〜647 flicker/restore complexity is deleted. IF problems
+//   return, A is confirmed necessary and we revert to v0.9.651.
+// - v0.9.651: REMOVE the v0.9.648 [cc] / v0.9.650 [sel] diagnostics now that v0.9.650 is
+//   confirmed fixing the ")"-eating (user 2026.05.30 am11:42: fast 「きょう」→date→「いま」
+//   →time entry is clean). The compose-freeze guard in the selection handler's non-Mouse
+//   branch STAYS (that's the fix); only the meosDbg log lines are gone.
+// - v0.9.650: FIX the ")"-eating (data loss) — ROOT CAUSE FOUND. It was NOT the IME: the
+//   onDidChangeTextEditorSelection "immediate" branch ran refresh()→setDecorations on
+//   non-keyboard selection changes (kind === Command / undefined). Kawasemi 4's きょう→date
+//   / いま→time macro commits fire exactly that kind, so a setDecorations interrupted the
+//   IME BETWEEN the two conversions, shifting its marked-text anchor → the next composition
+//   overwrote the last char (the ")"). Same path re-positioned the caret 1-inside after
+//   Undo. Disabling the plugin removed both (user 2026.05.30 am11:13). FIX: only a genuine
+//   MOUSE click is immediate; Command/undefined kinds now obey the compose-freeze (no
+//   repaint mid-composition). [sel] diagnostic added to confirm the freeze fires.
+// - v0.9.649: FIX v0.9.648's runaway diagnostic. The "MeOS Debug" OutputChannel is a
+//   TextDocument, so each meosDbg appendLine re-fired onDidChangeTextDocument; the
+//   unguarded [cc] log logged its OWN output → an infinite self-amplifying loop (logs
+//   streamed with no input, paused, re-fired on any edit; user 2026.05.30 am10:25). Now
+//   the [cc] log only fires for changes to activeEditor.document — keeps MeOS's own
+//   deferRefreshCount>0 edits (the actual investigation target) while breaking the loop.
+// - v0.9.648: investigate the residual char-eating (data loss). User 2026.05.30 am09:47:
+//   fast 「きょう」→date 「いま」→time entry sometimes eats the ")" after the weekday —
+//   the next composition's "い" lands on top of it. Long-standing; worse with thumb-shift
+//   (NICOLA) input (near-simultaneous keys → tighter timing). TWO changes: (1) HARDENING
+//   — defer the compose-mode lane-hide repaint via setTimeout(0) so the heavy
+//   computeLineDecorations no longer blocks the main thread on the synchronous keystroke
+//   (a likely contributor to dropped chars mid-IME). (2) DIAGNOSTIC — log every
+//   contentChange (incl. MeOS's own edits, before the deferRefreshCount guard) to
+//   "MeOS Debug" so we can see whether the ")" is removed by a MeOS edit (defer/sync set)
+//   or overwritten by the IME (cursor mis-position). Read the data, then fix precisely.
+// - v0.9.647: REVERT v0.9.646's sync refresh (didn't fix the line-head blink + cost a
+//   per-keystroke refresh). User 2026.05.30 am06:44: a SPACE at the line head blinks
+//   too — proving the blink is Monaco re-laying-out the lane's column-0 before-
+//   decoration on ANY col-0 insert, not our hide/refresh logic; our refresh runs after
+//   that blink so it can't stop it. Accepted as a minor cosmetic edge (first char at a
+//   line head only; text always correct). Considered + REJECTED the user's space-
+//   scaffold hack (insert space, type ASCII, delete space) — programmatically rewriting
+//   live input races the IME / pollutes undo / risks worse bugs for a 1-frame blink.
+//   FUTURE: render the membrane lane as an isWholeLine left border (no col-0 anchor) to
+//   remove the blink at the source. ASCII/deletion path back to plain freeze.
+// - v0.9.646: FIX the line-head ASCII flicker — for real this time, from the v0.9.645
+//   log data. The log showed `{"t":"a","code":97} composingLine=-1`: the ASCII char was
+//   NOT entering compose-mode (composingLine -1). So the flicker was never the lane-hide
+//   — it was a RENDER artifact: the v0.9.642 freeze (`return` without repaint) left line
+//   Decoration stale after the edit, so the lane briefly vanished at the line head and a
+//   later refresh restored it; v0.9.644 froze the restore too → stuck hidden. FIX: on a
+//   NON-IME insertion (ASCII), refresh synchronously in the same tick (no vanish frame;
+//   safe — no IME widget). Pure deletion still freezes (never flickered). Removed the
+//   v0.9.645 diagnostic log. Kana path (compose-mode hide + restore on line-change)
+//   unchanged.
+// - v0.9.645: REVERT v0.9.644 (its same-line repaint-skip stopped ASCII from restoring
+//   too → lane stuck hidden = "kana と全く同じ", a regression). Back to v0.9.643
+//   behavior. ADDED a diagnostic log in onDidChangeTextDocument (text + first char code
+//   + start line + composingLine → "MeOS Debug" output) because the v0.9.644 evidence
+//   proves the user's "ASCII" line-head input IS entering compose-mode (composingLine
+//   gets set), which contradicts the v0.9.642 ASCII gate — so the actual contentChange
+//   must differ from my assumption. Stop guessing; read the data next test.
+// - v0.9.644: kill the line-head ASCII flicker (v0.9.643 fixed kana; ASCII remained).
+//   User 2026.05.30 am03:51: typing ONE ASCII char at a line head briefly dropped the
+//   lane then snapped it back; kana was fine. Cause: ASCII never enters compose-mode
+//   (v0.9.642), so composingLine stays -1 and the keyboard selection handler's 150ms
+//   debounced refresh runs — re-applying lineDecoration at the line head reflows the
+//   lane → flicker. FIX: in that handler, if a doc change happened < 250ms ago AND the
+//   caret is still on the same line (prevLineBeforeSelectionChange === active line),
+//   skip the repaint entirely — same-line typing needs no repaint. A genuine line-
+//   change still repaints (and restores a hidden lane). Covers ASCII and kana alike.
+// - v0.9.643: kill the line-head first-char flicker. User 2026.05.30 am03:41: at a line
+//   head the first kana briefly entered no-lane mode then the lane snapped back. Cause:
+//   when composition STARTS at column 0 the IME fires a transient selection change whose
+//   caret momentarily reads off the composing line, so the keyboard selection handler
+//   treated it as a line-change and restored the lane — then the next event re-hid it.
+//   FIX: suppress the restore when a document change happened < 300ms ago (composition
+//   still active) — a transient caret move mid-composition no longer restores; only a
+//   real line-change AFTER composition settles does. This only SUPPRESSES a restore (no
+//   timer / no periodic repaint), so it can't reintroduce the v0.9.638 auto-restore
+//   flicker. Hopefully the genuine final piece.
+// - v0.9.642: enter compose-mode (hide the lane) ONLY for non-ASCII (IME / kana-kanji)
+//   insertion. User 2026.05.30 am03:29: ASCII typing has no composition, so the
+//   membrane lane should stay visible — going to no-lane mode mid-line on ASCII input
+//   is especially bad. v0.9.641 hid the lane on ANY insertion (incl. ASCII). FIX: the
+//   compose-mode gate is now `contentChanges.some(c => c.text.length>0 && /[^\x00-\x7F]/
+//   .test(c.text))` — only kana/kanji/full-width (the input that actually detaches the
+//   caret) hides the lane; pure-ASCII insertion and deletion leave it as-is. Likely the
+//   true final piece: lane hides only for Japanese IME composition, stays for everything
+//   else.
+// - v0.9.641: enter compose-mode (hide the lane) only on INSERTION, never on a pure
+//   deletion. User 2026.05.30 am03:03: line-change restore is great 👍, but every
+//   Backspace flashed the lane off and back ("うざい"). Cause: v0.9.640 treated ANY
+//   single-line change as compose input, so each Backspace hid the lane, then a
+//   doc-change/selection-change ordering race momentarily restored it → flicker. The
+//   caret-detachment problem only exists while INSERTING (IME composition); deletion
+//   never needs the lane hidden. FIX: `isInsertion = contentChanges.some(c => c.text
+//   .length > 0)`; on a pure deletion, return early and leave the lane untouched (when
+//   composing it's already hidden; when not, it stays visible — no backspace flicker).
+//   Likely the final piece of the line-head IME work.
+// - v0.9.640: restore the membrane lane ONLY on caret line-change (not on a timer,
+//   newline, backspace, or same-line arrow). User 2026.05.30 am02:49 reported v0.9.639:
+//   (1) pressing Enter to restore inserts a real newline — bad mid-line; (2) backspace
+//   restored the lane; (3) arrows "sometimes" restored it, timing unclear. Root cause
+//   of (2)(3): the 4s expiry window in the keyboard selection guard let same-line edits
+//   restore once 4s elapsed. FIX: drop the `< 4000ms` window — the lane stays hidden as
+//   long as the caret is on the composing line and restores the moment it moves to a
+//   DIFFERENT line (arrow ↑↓, click, or a newline that naturally moves down). The user
+//   never has to press Enter just to restore, so no unwanted newline (1). Backspace /
+//   in-line arrows keep the lane hidden (2)(3). Predictable: same line = hidden, other
+//   line = restored.
+// - v0.9.639: drop v0.9.638's 350ms auto-restore — it fired between kana / candidate
+//   keystrokes and flickered the membrane lane in and out repeatedly ("うざい"). User
+//   2026.05.30 am02:27: 「改行を最後に意図して打ったときに膜線を戻すようにした方が
+//   スマート」. Now the lane (thin vertical line + indent) hides on the composing line
+//   and STAYS hidden until the user intentionally presses Enter (structural change →
+//   restore) or moves the caret off the line; no timer-driven restore. Also reset
+//   composingLine on active-editor switch so a hidden lane can't leak to another file.
+// - v0.9.638: actually HIDE the membrane lane on the composing line (+ auto-restore
+//   without a newline). User 2026.05.30 am02:12 (screenshot): while composing, the
+//   composing text sat at column 0 while the thin membrane line + indent pushed the
+//   CARET to the right — text and caret split by the line, "文字カーソルの場所に入力
+//   している気がしない". And the only way v0.9.637 restored the lane was a newline,
+//   which also moved the caret down ("最後の改行で次行に行くのが要らない"). v0.9.637
+//   only FROZE decorations (lane stayed visible). Now: (1) computeLineDecorations skips
+//   `composingLine`, so the thin lane + indent vanish on that line and the kana sits at
+//   the caret; (2) on the first char of a compose-line, lineDecoration is repainted once
+//   to drop the lane, then frozen; (3) when composition SETTLES (no doc change for
+//   COMPOSE_RESTORE_MS = 350ms) the lane auto-restores — no newline required; (4) a
+//   newline, line-join, caret line-change, or mouse/command move also restores it.
+//   composeRestoreTimer drives the settle-restore; cleared on caret-leave / structural.
+// - v0.9.637: "compose mode" — the right architecture for the line-head IME flicker,
+//   per the user's insight 2026.05.29 am01:48: 「ひらがな入力を検知したら、その行の
+//   膜線表示を止めて、改行で整える」 (stop touching the membrane rendering while
+//   composing on a line; restore on newline). Trying to keep decorations live during
+//   composition always either flickers (v0.9.636) or mis-positions text (v0.9.635).
+//   So MeOS now FREEZES decoration repaints during single-line character / kana input
+//   and only repaints on a STRUCTURAL change (newline / line-join / multi-line edit)
+//   or when the caret leaves the line. Implementation: onDidChangeTextDocument
+//   classifies the change — `contentChanges.some(c => c.text has '\n' || spans lines)`
+//   = structural → repaint (60ms); otherwise it's char/kana input → set composingLine
+//   and RETURN without scheduling any repaint (decorations stay exactly as rendered,
+//   so the line never reflows mid-IME). The keyboard selection handler skips its
+//   repaint while the caret is still on composingLine (< 4s since last change); any
+//   mouse/command move or line change clears composingLine and repaints. No
+//   setDecorations fire during composition → the kana input box is left undisturbed,
+//   AND no caching means no mis-positioning (v0.9.635's bug). v0.9.635/636's
+//   setDecoCached stays a pass-through. NOTE: word-wrap vertical-line cutoff (2nd user
+//   request) is deferred to a separate fix.
+// - v0.9.636: REVERT v0.9.635's decoration caching — it regressed rendering. User
+//   2026.05.29 pm10:59: typing at a line head put the char to the LEFT of the thin
+//   membrane vertical line (the membrane indent / left-margin decoration was skipped
+//   by the cache), snapping right only after a structural refresh (e.g. a newline).
+//   Correct rendering matters more than the cosmetic line-head IME flicker, so the
+//   cache is disabled via a one-line `if (false && …)` in setDecoCached — it now
+//   always calls setDecorations (= pre-635 behavior). The routing + cache scaffolding
+//   are kept so a SAFER selective re-enable is possible later (cache only the prefix-
+//   hide decos, NEVER the indent/line decoration). The v0.9.633-completion fix (main-
+//   path scheduleMstatMetadata) is retained. NET: line-head IME flicker is back to a
+//   known cosmetic issue (text always correct); the regression is gone.
+// - v0.9.635: REAL fix for the line-head IME-box flicker (v0.9.634 missed it).
+//   User 2026.05.29 pm10:30: flicker happens ONLY when membrane lines are present
+//   (an empty line at file top is fine) — so it's decoration reflow, not a caret
+//   move (v0.9.634 guessed wrong). ROOT CAUSE: refresh() / applyPrettyLabels()
+//   re-applied the font-size:0 prefix-hide decorations (openLineHideDecoration /
+//   closeLineHideDecoration that collapse `// {* ▼mCN=`, plus mdWrapperHide /
+//   lineDecoration) on EVERY change. Re-applying identical ranges is a visual no-op,
+//   but during IME composition even a no-op setDecorations forces a line re-layout
+//   that flickers the kana input box out to column 0 and back. FIX: new
+//   setDecoCached(editor, deco, tag, ranges) caches the last-applied range+content
+//   signature per (document, decoration) and SKIPS setDecorations when unchanged.
+//   Body typing never changes membrane-line decorations, so zero setDecorations
+//   fire during composition → the IME widget is left undisturbed. Routed ALL
+//   set/clear sites of the reflow-prone decorations (openLineHide/Label,
+//   closeLineHide/Label, lineDecoration, mdWrapperHide, fixedTocHide, nameRight,
+//   annotationColor) through the cache to stay coherent. Also completed the v0.9.633
+//   fix: the main-path `setTimeout(ensureMembraneMstatMetadata,260)` (2-space indent)
+//   was missed by that build's replace_all (4-space) — now scheduleMstatMetadata.
+// - v0.9.634: FIX line-head IME-box flicker (old bug). User 2026.05.29 pm10:15:
+//   typing the first kana at a line head made the kana input box jump out to column
+//   0 (right of the line number) with the char, then snap back. CAUSE: maybe
+//   SkipHiddenPrefixOnKeyboard — the ARROW-KEY hidden-prefix skip — runs on every
+//   keyboard selection change and reassigns editor.selection to skip the hidden
+//   `// {* ▼mCN=` prefix zone. During IME composition the transient caret lands in
+//   that zone, so the skip yanked the selection to col 0 / idStart mid-composition,
+//   flickering the IME widget. FIX: bail out of the skip when a document change
+//   happened < TYPING_REFRESH_DEBOUNCE_MS (220ms) ago — i.e. the user is typing /
+//   composing (arrow keys never change the document, so genuine arrow navigation
+//   still skips hidden zones normally). Reuses the v0.9.633 lastDocChangeAt clock.
+// - v0.9.633: FIX Japanese-IME race that deleted the in-flight composition char
+//   during fast typing. User 2026.05.29 pm09:32 (via Gemini diagnosis): MeOS's
+//   onDidChangeTextDocument handler conflicted with uncommitted IME text. ROOT
+//   CAUSE: the handler ran refresh() synchronously on EVERY change (incl. every
+//   IME composition update) with no debounce; refresh() then scheduled editor.edit()s
+//   — scheduleMstatsSync (120ms) and, worse, `setTimeout(ensureMembraneMstatMetadata,
+//   260)` which was a FRESH un-cleared timer per keystroke, so a burst of typing
+//   queued a stream of badge-sync edits firing 260ms behind the cursor, landing
+//   inside the uncommitted composition and overwriting the previous character.
+//   FIX (debounce + defer-until-commit, per the Gemini-suggested approach):
+//   (1) onDidChangeTextDocument now coalesces changes — each change cancels any
+//   pending mSTAT edit (mstatMetaTimer + mstatsSyncTimer) and re-arms a single
+//   refresh timer; refresh runs only after typing pauses TYPING_REFRESH_DEBOUNCE_MS
+//   (220ms), by which point the IME has committed. (2) New scheduleMstatMetadata()
+//   replaces the two un-cleared setTimeout(ensureMembraneMstatMetadata,260) calls in
+//   refresh() with ONE cleared timer that also bails if a change happened <220ms ago.
+//   Net: zero document edits fire while the user is actively typing/composing.
+//   The extension's own batch edits still bypass the debounce via deferRefreshCount.
+// - v0.9.632: Add the [Clear] button to the H-TOC sticky Bi-direction Jump bar
+//   too (mirrors the Navigate-Me one from v0.9.631). User 2026.05.29 pm08:11:
+//   「H-TOCの方にも、同じボタンを付けよう」. bidiJumpBarHtml now emits a
+//   `bidi-clear` span; the fixedTocBody delegated click handler gains a
+//   bidi-clear branch → posts the existing `clearAllJumps` message. Both bars
+//   (Navigate-Me + H-TOC) now reset all 🟢/🔴 flags identically.
+// - v0.9.631: Add Me Dock [Clear] button — wipes ALL 🟢/🔴 jump flags from the
+//   active file and resets active state + decorations. User 2026.05.29 pm07:24:
+//   「デバッグを含めて、🟢/🔴を初期化する[Clear]ボタンをMe Dockに付けたい」.
+//   New clearAllJumpFlags(editor): scans every line, deletes green pair flags
+//   ([oGJF/cGJF/GJF=*]🟢), target red flags ([tRJF=*]🔴) and source red markers
+//   (// {* [sRJF=*] *}) — eating one leading space each (the three patterns are
+//   disjoint so spans abut at most, safe in one editor.edit) — then nulls
+//   activeGreenJump / activeRedJump, clears decorations, refreshes, and re-posts
+//   Me Dock state so the bar dims. Applied as ONE undo unit (Cmd+Z restores).
+//   New `Clear` span in the Navigate-Me Bi-direction Jump bar (reddish, distinct
+//   from the 🟢/🔴 buttons), webview `clearAllJumps` message → handler.
+//   NOTE: this is the debug/reset aid; the v0.9.630 red logic is still NG (h-demote
+//   was wrong — 🔴 has no h-type; all marks should be visible & numbered 🔴1/🔴2/
+//   🔴3). The red rework (multi-visible, no h, numbered, alias rendering) follows.
+// - v0.9.630: Cap sRJF citation/jump markers at MAX_RED_PAIRS (=3); evict the
+//   OLDEST (smallest-n) instead of demoting-and-keeping forever. Phase 1 of the
+//   "max-3 🔴 pairs" redesign (design session 2026.05.29 am10:08–pm00:13). User:
+//   「従来のはhとして残しておけば、いつか選択し直したときにvにできるというだけ。
+//   だから、hゴミが増殖しないためにも、従来方式を修正して、最大3ペア方式にすれ
+//   ばいい」. ROOT CAUSE of h-growth: setSourceRjfFlag demoted every prior
+//   `[sRJF=v<n>]` → `[sRJF=h<n>]` and kept them indefinitely, so dormant h flags
+//   accumulated one-per-citation without bound. Rewrote setSourceRjfFlag as a
+//   two-pass routine: PASS 1 collects all numbered markers (legacy spans /
+//   unnumbered transient v still deleted on sight); the active n is the source
+//   line's existing n (reactivation of dormant h→v) or a fresh nextCitationN;
+//   keep-set = {active} ∪ the (MAX_RED_PAIRS-1) newest others (largest n); PASS 2
+//   promotes the active to v<n>🔴, demotes other survivors to dormant h<n>, and
+//   PHYSICALLY DELETES the oldest surplus (no h residue). Still single-visible-v
+//   for now (only the active source shows 🔴) — multiple simultaneous 🔴1/🔴2/🔴3,
+//   the `[sRJF=v<n>/<N>-<active>]` self-describing format, the 3-point (src⇄tgt⇄
+//   cursor) click, and the Me Dock `🔴n▾` group selector arrive in 631–635.
+//   CONSEQUENCE (accepted by user): the Hyper TOC citation list is now effectively
+//   capped at 3; citations older than the 3 most-recent are dropped on the next
+//   activation (stale H-TOC items just fail to jump until cleaned up in 635).
+// - v0.9.629: Move 🟢 / 🔴 insertion position from "trailing after the badge"
+//   to "in front of the badge" on membrane header lines, AND auto-migrate
+//   existing files on the next activation. User 2026.05.29 am05:12: 「現状は
+//   (📊...) [oGJF=v]🟢 *} で、表示領域が狭いとボタンが2行目に表示される
+//   ことがある。[oGJF=v]🟢 (📊...) *} の位置に挿入しよう」. The badge is the
+//   widest right-most chunk of a header; on narrow viewports it pushes the
+//   jump buttons onto a second visible row, separating them from the name
+//   they belong to. New canonical layout (open line example):
+//     // {* ▼mCN=foo // comment [oGJF=v]🟢  [tRJF=v]🔴 (📊⊕2+0) *}
+//   Three coordinated changes: (A) tRjfInsertionCharacter (also used as
+//   gJfInsertionCharacter) now consults parseMstatBadgeFromText first, and
+//   returns badge.start (or badge.start-1 when the preceding char is already
+//   a space) when a badge is present. Falls back to the legacy `before *}`
+//   slot for newly-created membranes that have not been badge-tagged yet.
+//   (B) setGreenJumpFlags main loop: when an existing oGJF / cGJF lives on
+//   a visible (open / close) line AT THE OLD slot, the kept-in-place branch
+//   now deletes it instead and flips an openLineRelocate / closeLineRelocate
+//   override so the bottom addFlag re-inserts at the new pre-badge slot in
+//   the same edit batch. Hidden flags on other lines stay untouched (no
+//   visible churn). (C) setTargetRjfFlag main loop: same relocate logic for
+//   [tRJF=v]🔴 on the target line; the post-loop fallback insert gate now
+//   reads `!tRjfFlagRangeInLine(...) || targetLineRelocate` so a relocated
+//   target also re-inserts. Both writers still run the v0.9.498 ensureGreen
+//   RedSpacing second pass, which sees the new pre-badge layout and applies
+//   the same `🟢  [tRJF=v]🔴` 2-space rule. Existing files self-migrate as
+//   soon as the user re-activates the bi-link on a given pair — no manual
+//   off/on toggle required.
+// - v0.9.628: Skip Bi-direction Jump text search when the selection sits ON an
+//   open/close membrane line. User 2026.05.29 am02:28: 「文字を選択したときの
+//   双方向ジャンプ検索を開始膜,閉じ膜の中では行わないようにして下さい。直接
+//   膜名の一部をコピーしたいようなケースで,開始膜から閉じ膜にジャンプしたり
+//   すると言う変な動きの原因になっているかもしれない」. Until now,
+//   handleMembraneNameSelection ran the alias / membrane-name-pair / plaintext-
+//   name search on every non-empty selection regardless of where the caret sat,
+//   so selecting any substring of a name on the header/footer line teleported
+//   the cursor to the paired membrane. Fix: after the body 🟢 / 🔴 button-hit
+//   branches (which still need to fire on those lines if the button decoration
+//   lands there), early-return when membraneLineParts(text, 'open' | 'close')
+//   matches the selection's start line. Plain copy of the name now works; body
+//   text selections away from membrane lines still arm 🔴 as before.
+// - v0.9.588: Revert ONLY the H-TOC bar's label to v0.9.586's `(Jump only /
+//   S-click)`; Navigate Me bar keeps `(S-click: jump / W-click: raw)`. User
+//   v0.9.587_pm11:08 clarification: 「H-TOCの🟢/🔴の説明は、v0.9.586のままで
+//   いいんですよ。共通と言ったのは、説明を除いた外見だけです」. The two bars
+//   share the SAME visual style (HTML/CSS, dim-state, S/W semantics) but
+//   carry slightly DIFFERENT labels because their context differs:
+//     - H-TOC bar sits ABOVE editable items (where S-click can mean edit or
+//       jump depending on where you click). `(Jump only / S-click)` then
+//       reads "this row is jump-only, unlike the items below".
+//     - Navigate Me bar sits in a panel of compound action buttons with no
+//       editable lists nearby; documenting both S/W modes is more useful.
+//   v0.9.587 mistakenly applied replace_all across both — corrected here.
+// - v0.9.587: Bi-direction Jump bar label now documents BOTH interaction
+//   modes — was `(Jump only / S-click)`, now `(S-click: jump / W-click: raw)`.
+//   User v0.9.586_pm10:52: 「also W-click raw と書いた方が分かりやすい」.
+//   The original `(Jump only)` text from v0.9.583 was meant to contrast
+//   against Navigate Me's compound actions, but it understated MeOS's
+//   click semantics by hiding the W-click raw-data interaction. Symmetric
+//   two-action labelling makes the bar self-documenting in both H-TOC and
+//   Navigate Me locations.
+// - v0.9.586: Unify Navigate Me 🟢/🔴 visual with the H-TOC Bi-direction
+//   Jump bar. User v0.9.585_pm10:35: 「Navigate Meの🟢/🔴の形をH-TOCのそれ
+//   と全く同じにしましょう。…重複しているけど、Navigate Meのその他の操作
+//   をしているときに、このボタンが直ぐ近くにあることが便利」. Replaced the
+//   `<button>` elements (id=nav-anchor / nav-bidi) with `<span>` elements
+//   sharing the same `.bidi-jump-bar` styling as the H-TOC sticky bar:
+//   `Bi-direction Jump:  🟢   /  🔴   (S-click: jump / W-click: raw)`. Same dim-when-
+//   inactive opacity, same S-click=jump / W-click=raw semantics. CSS gained
+//   a `.fixed-toc-body .bidi-jump-bar` selector for the sticky positioning
+//   (now scoped to the H-TOC variant only) and a `.bidi-jump-bar-nav`
+//   modifier that flips the border to top (so the Navigate-Me variant
+//   visually separates from the row above instead of below). The
+//   renderAnchorButton / renderBidiButton DOM updaters now toggle the
+//   `.inactive` class instead of mutating the `.disabled` property (the
+//   element is no longer a <button>); click handlers check the class
+//   instead. The hidden #nav-anchor-label span is retained so existing JS
+//   that touches its `.textContent` keeps working — it just doesn't render.
+// - v0.9.585: Body 🟢 S-click jump regression from v0.9.584 fixed. The
+//   v0.9.584 swap left a `restoreCursorInsideMembraneName(capturedEditor,
+//   capturedAnchor)` call inside the body-green timer branch. Under the old
+//   S-click=raw scheme that call correctly placed the cursor back inside the
+//   membrane name after the raw toggle (so the user stayed anchored near
+//   the button). After the swap, the timer branch is now S-click=JUMP —
+//   `navCenterMeDoubleClick` moves the cursor to the OPPOSITE end of the
+//   pair, and the lingering `restoreCursorInsideMembraneName` immediately
+//   teleported it BACK to the source button, making the jump look like a
+//   no-op. The 🔴 branch never had this call so it was unaffected; W-click
+//   on 🟢 → raw toggle was also unaffected (different branch). User
+//   v0.9.584_pm10:24 bug 1: 「本文 🟢ボタンだけ、Sクリックでジャンプしない」.
+//   Fix: drop the `restoreCursorInsideMembraneName` call from the timer
+//   branch. Jump now lands correctly on the close (or open) membrane.
+// - v0.9.584: Two unifications in response to user v0.9.583_pm07:47.
+//   (A) Unified click semantics across the whole UI:
+//         S-click (single click) = JUMP   (the common-case action)
+//         W-click (double click) = RAW    (mSkeletonMode toggle — power use)
+//       Was the reverse on body 🟢/🔴 and Me Dock 🟢/🔴 since v0.9.474/475
+//       ("W-click jumps like Me Dock" was the OLD goal). User's new principle:
+//       「生データを見たい人は限られているので、操作しにくいWクリックの方が
+//       いい」 — the cheaper interaction goes to the common operation. Touches:
+//       body 🟢 / 🔴 click-detector branches in handleMembraneNameSelection
+//       (both empty-selection timer-disambiguated paths AND non-empty W-click
+//       paths); Me Dock navAnchor 🟢 and navBidi 🔴 click handlers (added a
+//       220ms timer to navBidi to mirror navAnchor's pattern). H-TOC items
+//       and the Bi-direction Jump bar were already S-click=jump, no change.
+//   (B) The Bi-direction Jump bar's 🟢 / 🔴 dim to 40% opacity when no
+//       active pair is armed (mirrors the Me Dock Navigate Me buttons'
+//       disabled appearance). User v0.9.583_pm07:47: 「Navigate Meの🟢/🔴
+//       ボタンと同様に、対象が無いときは、半透明化しよう」. Implementation:
+//       getWorkingTocSnapshot exposes `greenActive` / `redActive` derived
+//       from activeGreenJump / activeRedJump; bidiJumpBarHtml(toc) reads
+//       them and adds the `inactive` class to the corresponding button. The
+//       click handler bails when the button is `.inactive`. State-mutation
+//       sites (showSingleRedJumpPair / showJumpMarkers / clearRedJumpMarkers
+//       / clearJumpMarkers / restoreActive{Red,Green}JumpFromJumpFlags) now
+//       call postFixedWorkingTocSnapshot() so the bar updates immediately.
+//   Tooltips also now say "S-click: ..." explicitly, and the bar label ends
+//   with "(S-click: jump / W-click: raw)" to make the interaction model self-
+//   documenting. User: 「S-clickとtipに書いた方がいいかもね」.
+// - v0.9.583: Phase 2 of the mTC narrative-layer redesign — sticky Bi-
+//   direction Jump bar. A single-line header now sits at the top of every
+//   H-TOC tab's items area with `position: sticky; top: 0` so it stays
+//   visible while items scroll. Layout: `Bi-direction Jump:  🟢   /  🔴
+//   (Jump only)`. No checkbox (these are stateless action triggers, not
+//   tracking items). Single-click 🟢 dispatches to navCenterMeDoubleClick
+//   (open ↔ close pair jump on the currently selected membrane); single-
+//   click 🔴 dispatches to navCenterBidiDoubleClick (source ↔ target jump
+//   on the active 🔴 pair). User v0.9.580_pm05:16: 「H-TOCで操作できない
+//   のは、🟢ボタンの開始膜⇄閉じ膜の双方向ジャンプ…『🟢 Bi-direction Jump』
+//   と『🔴 Bi-direction Jump』をデフォルトで表示しておくことにしよう」.
+//   pm05:25: 「1行にまとめよう」「(Jump only)と書いておくと良いかも」.
+//   With this, a writer-class user who never opens the source can perform
+//   every bidirectional navigation MeOS offers — select citation text /
+//   membrane name in body → H-TOC click → done. Body 🟢/🔴 remain as
+//   power-user shortcuts. New webview message types: `jumpBiGreen`,
+//   `jumpBiRed`. Tooltip mousemove gained `.bidi-btn` to the matcher so
+//   each button's purpose surfaces on hover.
+// - v0.9.582: Drop `Me` from the v0.9.581 `Me⇒{X}` prefix — new canonical
+//   form is just `⇒{X}`. User v0.9.581_pm07:00: 「H-TOCに追加するときの表記
+//   は、『Me⇒』のMeは不要だね。並べて見たときに、⇄と⇒が上下に揃っていた方が
+//   分かりやすいからだ」. With both prefixes now single-glyph (⇒ / ⇄), the
+//   left edge of every link entry aligns vertically — far easier to scan a
+//   long list at a glance. The `Me` was always an implicit subject (each
+//   TOC item IS the Me); explicit chain forms like `{A}⇒{X}` (AI annotation
+//   "from A to X") keep the chain semantics without the `Me` literal. Touches
+//   the writer (`'Me⇒'` → `'⇒'`), tocKeyFromValue / tocKeyFromInputValue
+//   (added `⇒{X}` / `{A}⇒{X}` patterns, kept `Me⇒` / `{A}⇒Me⇒{X}` for the
+//   one-version legacy), and getHyperTocData's lazy migration (rewrites
+//   any persisted v0.9.581 value strings carrying `Me⇒` → `⇒`).
+// - v0.9.581: Phase 1 of the mTC narrative-layer redesign. (1) New H-TOC item
+//   fields `kind: 'link'|'action'` and `linkKind: 'MeArrow'|'Bidirectional'`,
+//   making the type of link explicit in the data model rather than inferred
+//   from `citeN`. Phase 2 will add `kind: 'action'` items (the sticky 🟢/🔴
+//   bi-direction jump bar). (2) Lazy migration in getHyperTocData: legacy
+//   items (no kind/linkKind) get the fields populated on read — citeN !== null
+//   → Bidirectional, else → MeArrow. Persistence on the next write (no forced
+//   re-save). (3) Add to H-TOC writes the new default `Me⇒{X}` wrapper for
+//   definition entries and `⇄{X}` for citation entries; the bare/legacy
+//   formats remain readable for backward compat. tocKeyFromValue and the
+//   webview-side tocKeyFromInputValue both peel `{A}⇒Me⇒{X}` / `Me⇒{X}` /
+//   `⇄{X}` wrappers before applying the `// `-split key extraction. (4)
+//   seedHyperTocFromSource (first-load source-derived items) populates kind /
+//   linkKind for migrated items. User v0.9.580_pm04:46: 「Me⇒{X} を新デフォルト
+//   にしよう」, pm05:16: 「⇄/Meのどっちかをフラグとして持てば、そのデータを
+//   見れば、処理が決る」.
+// - v0.9.580: Drop the dual-position backward-compat regex introduced in
+//   v0.9.579. User v0.9.579_pm04:19: 「[sRJF=v<n>]は切り替えるとファイル内で
+//   唯一なので、旧形式の処理は残す必要はないよ。そうでしょ?」 — correct: the
+//   v0.9.555 unified scheme guarantees exactly ONE [sRJF=v<n>] in the file at
+//   any time, so the old form is overwritten on the next activation regardless.
+//   Backward compat for the read path is therefore unnecessary. Regexes
+//   simplified from `\[sRJF=v\d*\](?:🔴)?\s*\*\}(?:🔴)?` (two optional 🔴
+//   positions) to `\[sRJF=v\d*\]🔴?\s*\*\}` (single optional 🔴 before `*}`).
+//   Five sites updated. The indexOf-based hide-range + button-range
+//   computation in v0.9.579 remains correct for the single-position case.
+// - v0.9.579: Move the sRJF 🔴 button INSIDE its wrapper. Was:
+//   `// {* [sRJF=v<n>] *}🔴` (🔴 trailing the wrapper, "sticking out").
+//   Now:  `// {* [sRJF=v<n>]🔴 *}` (🔴 between `]` and `*}`, mirroring
+//   `[oGJF=v]🟢` and `[tRJF=v]🔴`). User v0.9.578_pm03:52: 「[sRJF=v<n>]の
+//   🔴ボタンの挿入位置」 — wrapper is now a fully self-contained closure.
+//   Touches: (1) SOURCE_RJF_MARKER_RE — accepts both 🔴 positions for
+//   backward-compat read; (2) setSourceRjfFlag write templates (promote +
+//   new-insert) emit only the new canonical form; (3) sourceRjfHideRanges
+//   — locates 🔴 via indexOf and emits TWO hide ranges around it, so the
+//   wrapper text vanishes while the literal 🔴 stays visible regardless
+//   of which side of the bracket it sits on; (4) membraneButtonItems —
+//   switched from `endsWith(emoji)` to `indexOf(emoji)` for the visible-
+//   button range computation (other flags still resolve the same way
+//   since 🟢/🔴 also occurs once in their match); (5) sourceRjfVisible
+//   ButtonRangeAfterTextRange + extractMembraneTocEntryFromLine + seed
+//   HyperTocFromSource regexes — accept both positions. Existing files
+//   render correctly; the next sRJF activation rewrites to the new form.
+// - v0.9.578: Reverse v0.9.577 Bug 2 fix — direction was wrong. User v0.9.577
+//   _1153 clarification: 「元々の仕様は、折畳んだ膜は、折畳んだままにしておく
+//   ことだった。…tRJFの膜が折畳んだ状態のとき、その🔴ボタンをWクリックすると、
+//   その膜が展開してしまうことなんだ」. The intended behaviour is: a folded
+//   membrane STAYS FOLDED across jumps — clicking its 🔴 should move the
+//   marker / jump to the partner without auto-unfolding. v0.9.577 instead
+//   explicitly unfolded and synced the badge, which is the opposite of what
+//   the user wants. Fix: drop the ensureDestPairUnfolded helper and arm
+//   `suppressAutoUnfoldUntil = Date.now() + 700` inside every body 🟢 / 🔴
+//   hit branch in handleMembraneNameSelection (empty-selection 1st-click, 2nd-
+//   click of W-click, and non-empty selection W-click on both green and red).
+//   Also armed inside navCenterBidiDoubleClick and the jumpToWorkingTocItem
+//   definition branch as belt-and-suspenders for the subsequent programmatic
+//   selection event. With the suppressor armed BEFORE the same event-tick's
+//   maybeAutoUnfoldOnSelection call, the auto-unfold bails on its leading
+//   `if (Date.now() < suppressAutoUnfoldUntil) return;` check. Result:
+//   folded tRJF/sRJF membranes stay folded on jump. The arrow-state desync
+//   from v0.9.577's premise is now moot because we never unfold in the first
+//   place. Bug 1 (lane overflow on alias open lines) from v0.9.577 retained.
+// - v0.9.577: Two visual fixes from user v0.9.576_1132 test. Bug 1 (alias
+//   membrane's left thick lane bleeds into the next line): computeLine
+//   Decorations was calling estimateWrappedVisualRows on the RAW line text,
+//   which on an alias-bearing open membrane line easily exceeds 120 chars
+//   (badge body + flags) even though most of it is hidden by decorations.
+//   The function returned 2+ visual rows, and laneHeight became `2 × 1.50em`,
+//   visually spilling the thick terminal lane into the blank line below. Fix:
+//   when the current line is a structural membrane open/close (parseOpenLine
+//   || parseCloseLine), pin visualRows to 1 — the visible glyph is always
+//   short. Bug 2 (jumping to a folded membrane expands content but leaves
+//   the ▼▲ folded-state arrow on the open line): the jump paths (navCenter
+//   BidiDoubleClick / jumpToWorkingTocItem definition branch) reveal a
+//   destination range; VSCode's reveal logic auto-unfolds the surrounding
+//   fold to make the line visible, but it doesn't touch our mSTAT badge or
+//   foldStateByPairKey, so isPairFolded still returns true and the arrow
+//   stays `▼▲`. Fix: new ensureDestPairUnfolded(editor, destLine) helper
+//   that locates the pair containing destLine and, if isPairFolded, calls
+//   setPairFoldStateAndMstat(editor, pair, false) — which both performs the
+//   unfold command AND syncs the badge ⊖→⊕. Both jump paths invoke it
+//   before the reveal, guaranteeing the rendered arrow matches the actual
+//   fold state.
+// - v0.9.576: ROOT-CAUSE FIX. The diagnostic logs from v0.9.575 caught the
+//   exception inside the edit batch: `needsTrailingSpace is not defined` —
+//   a ReferenceError thrown by setTargetRjfFlag. The variable was used at two
+//   insertion-branch templates but never declared in either local scope (only
+//   in a different function at line ~4275). The bug had been latent since
+//   v0.9.492: it only fires when setTargetRjfFlag has to INSERT a new
+//   [tRJF=v]🔴 onto a line that carries no prior tRJF flag. Normal-name jumps
+//   from the body usually landed on definitions that already had a flag from
+//   an earlier activation (taking the in-loop `keptInside` branch instead),
+//   masking the error. The alias-citation path always targets a fresh
+//   definition line, so it tripped the bug every time. Fix: declare
+//   `const needsTrailingSpace = insertAt < text.length && text[insertAt] !== ' ';`
+//   in both insertion branches, mirroring the v0.9.275 setSourceRjfFlag
+//   pattern. With this, body alias selection arms 🔴 on both sides as
+//   intended, and Add-to-H-TOC for alias citations works end-to-end. Also
+//   removed the v0.9.574/575 diagnostic logs now that the cause is found.
+// - v0.9.575: DEEPER DIAGNOSTIC. v0.9.574 confirmed the flow reaches show
+//   SingleRedJumpPair with correct source/target ranges, yet 🔴 never appears
+//   on either line. v0.9.575 instruments showSingleRedJumpPair itself: logs
+//   entry, return values from setTargetRjfFlag / setSourceRjfFlag, the actual
+//   text of the source and target lines AFTER each edit (so we can see if the
+//   document write took effect), any exception thrown during edits, and the
+//   final render/refresh dispatch. This isolates whether the failure is at
+//   the document-edit layer, the decoration layer, or somewhere between.
+// - v0.9.574: DIAGNOSTIC BUILD. v0.9.573 still failed to arm 🔴 on either side
+//   when body alias text was selected. Added meosDbg logging at three points in
+//   the selection arm path: (a) non-empty selection branch entry — logs the
+//   selectionKind, line/col range, and the selected text; (b) selectedPlainText
+//   Info return — logs what text/range survived the leading-`//` strip + the
+//   reject filters; (c) findOpeningMembraneByName / findOpeningMembraneByAlias
+//   results — logs whether either lookup returned a target line and id; (d)
+//   showSingleRedJumpPair invocation — logs source/target lines if a target
+//   was found, or notes that markers are being cleared. The user can open the
+//   MeOS Debug output channel (View > Output > MeOS Debug) and reproduce the
+//   selection to capture the trace.
+// - v0.9.573: Arm BOTH sides of the bi-link at Add-to-H-TOC time for alias /
+//   citation entries — the v0.9.572 fix only wrote [sRJF=v<n>] on the source
+//   line; the target [tRJF=v]🔴 on the membrane definition was deferred until
+//   the user W-clicked the H-TOC entry. User v0.9.572_0938 bug: 「136行には
+//   表示されない。…双方向ジャンプができない」. Fix: addCurrentMembraneTo
+//   WorkingToc now calls findOpeningMembraneByName on the resolved key (alias
+//   or direct) and, when a target is findable, calls showSingleRedJumpPair —
+//   the same routine the H-TOC W-click uses — so [tRJF=v]🔴 is written on the
+//   definition immediately and activeRedJump state is set. The W-click path
+//   becomes a refresher rather than the first-time setup. When no target
+//   exists in the document, falls back to source-only setSourceRjfFlag.
+//   Also: selectedPlainTextInfo strips a leading `//` (with optional
+//   whitespace) before the `//`-content rejection check — body lines with a
+//   comment prefix (`//↑1 参照の例3`) previously failed the check and never
+//   reached the alias-lookup arm path. The range passed to showSingleRedJump
+//   Pair still covers the full selection, so the [sRJF=v<n>] marker is
+//   appended to the same line.
+// - v0.9.572: Three fixes targeting alias↔H-TOC interaction (user v0.9.571_0701
+//   test report). (1) extractMembraneTocEntryFromLine now distinguishes mTC=
+//   from mCN= in its returned `kind`. Previously the regex matched both shapes
+//   but hard-coded kind='mCN', which let the nearby-line fallback in
+//   addCurrentMembraneToWorkingToc pick up an mTC= TOC anchor as if it were a
+//   real membrane definition. Symptom: 「メニューで、H-TOCに追加すると、なぜか
+//   その上にあるmTC膜が誤って入ってしまう」. (2) selectedPlainTextInfo no longer
+//   rejects strings containing whitespace — multi-word alias selections
+//   ("↑1 参照の例3") now reach the 🔴 arm path. The arm path also tries
+//   findOpeningMembraneByAlias when the name lookup fails, so alias text
+//   resolves to the underlying membrane's definition. Symptom: 「エイリアス名と
+//   同じ文字列を選択しても、🔴が出ない」. (3) When the open mCN= line carries an
+//   alias in its badge, extractMembraneTocEntryFromLine surfaces it as `note`
+//   AND as a new `alias` field; addCurrentMembraneToWorkingToc uses the alias
+//   to format the H-TOC value as `realName // aliasName`. The key remains the
+//   real name so jumps resolve. User improvement: 「エイリアスを選択して、H-TOC
+//   に追加するとき、『膜名 // エイリアス名』として追加しよう」. The citation
+//   `// citation` suffix is suppressed when an alias is already the annotation
+//   (alias IS the informative label).
+// - v0.9.559: Always move the 🔴 marker on H-TOC citation W-click, even when the
+//   referenced membrane has no `▼mCN=name` definition in the document. User report
+//   v0.9.558_0812 bug 1: 「15行と16行は、🔴ボタンが移動しない。これは15行目と16行目
+//   が同じ膜名だからなのか?」. Investigation via screenshot showed the actual cause:
+//   the citation key `name_2230` had no membrane definition anywhere in source, so
+//   findOpeningMembraneByName returned null and the v0.9.558 else-branch only moved
+//   the caret — skipping setSourceRjfFlag, which is the routine that promotes
+//   `[sRJF=h<n>]` to `[sRJF=v<n>]🔴` (and demotes other v<m> to h<m>).
+//   Fix: the no-target branch now calls `await setSourceRjfFlag(ed, sourceRange)`
+//   before the caret move. The full bidirectional jump (showSingleRedJumpPair +
+//   navCenterBidiDoubleClick) still runs when a target IS available. Effect:
+//   H-TOC W-click on a citation whose membrane is missing still relocates the 🔴
+//   to the citation site, keeping the marker scheme consistent. Subsequent body
+//   W-click on the moved 🔴 won't traverse a pair (no target exists), but the
+//   user can navigate from the citation context manually — and once the membrane
+//   IS defined later, the next H-TOC W-click activates the full pair.
+// - v0.9.558: H-TOC citation W-click delegates to navCenterBidiDoubleClick — the
+//   canonical Me Dock 🔴 W-click handler — instead of running a bespoke caret-move.
+//   User directive 2026-05-21 pm07:55: 「H-TOC Wクリックは、先ず赤ボタンを移動し、
+//   h→vに切り替えて、後は、Me Dockの🔴ボタンをWクリックしたときの処理を実行すればいい。
+//   特別な処理を用意する必要はない」.
+//   Refactor in jumpToWorkingTocItem's citeN branch:
+//     1. showSingleRedJumpPair(ed, sourceRange, target.idRange, key) — promotes the
+//        citation marker `[sRJF=h<n>] → [sRJF=v<n>]🔴` (demotes any other v<m>),
+//        writes `[tRJF=v]🔴` at the membrane definition, and primes activeRedJump.
+//     2. nameJumpSuppressUntil set to Date.now() + 700 so the subsequent selection
+//        change inside navCenterBidiDoubleClick doesn't fire handleMembraneNameSelection
+//        and clear activeRedJump before the jump logic uses it.
+//     3. await navCenterBidiDoubleClick(ed) — uses activeRedJump and the current
+//        cursor position to decide the destination. With the cursor not on source or
+//        target lines, dest = target (the membrane definition), so the H-TOC click
+//        lands the user on the open membrane — exactly the round-trip the user
+//        wanted in v0.9.556_0746 bug 1: 「Wクリックしても、開始膜にはジャンプしない」.
+//     4. Fallback path (no membrane definition for the citation key): keep the old
+//        caret-only behaviour so the user still lands on the citation line.
+// - v0.9.557: Preserve activeRedJump after H-TOC citation jump. User v0.9.556_0746
+//   bug 1: 「さらに、Wクリックしても、開始膜にはジャンプしない」. Cause: after
+//   showSingleRedJumpPair sets activeRedJump in v0.9.556's H-TOC citation flow, the
+//   subsequent `ed.selection = ...` cursor move fires onDidChangeTextEditorSelection
+//   → handleMembraneNameSelection. With the new (empty) selection, that handler
+//   reaches the `selected = selectedPlainTextInfo(editor)` branch — returns null — and
+//   the else-arm calls `clearRedJumpMarkers(editor)`, which wipes activeRedJump.
+//   restoreActiveRedJumpFromJumpFlags should rebuild it from source markers on the
+//   next W-click, but the visible-button range it computes via visibleSourceRjfTextRange
+//   targets the BiperLink token derived from the line — for a citation line that name
+//   isn't always present in the expected pattern, so the restore fails silently and
+//   the W-click sees no active pair.
+//   Fix: bump `nameJumpSuppressUntil` to `Date.now() + 700` AFTER showSingleRedJumpPair
+//   completes but BEFORE assigning the new cursor selection. handleMembraneNameSelection
+//   bails out at its `now < nameJumpSuppressUntil` early-return, so the cursor change
+//   no longer triggers clearRedJumpMarkers. activeRedJump stays intact for the user's
+//   follow-up W-click on either side of the pair.
+// - v0.9.556: H-TOC citation W-click now activates the full bidirectional jump pair.
+//   User v0.9.555_0729 bug 1: 「h→vに変更し、🔴ボタンをそこに移動する必要がある。
+//   つまり、H-TOCでWクリックすることは、その膜名文字列を選択したことと等価」.
+//   bug 2: 「現在は、さらにWクリックしても、開始膜に飛ばない」.
+//   Cause: jumpToWorkingTocItem's citeN branch only moved the caret to the citation
+//   line — it did NOT promote `[sRJF=h<n>] → [sRJF=v<n>]` on that line, did NOT write
+//   `[tRJF=v]` at the definition, and did NOT update activeRedJump. Without those
+//   three side effects, the standard bi-link infrastructure had no pair to operate
+//   on, so the return jump from citation to definition silently no-ops.
+//   Fix: when citeN is set, find the membrane definition via findOpeningMembraneByName,
+//   then await showSingleRedJumpPair(editor, sourceRange, target.idRange, key) BEFORE
+//   moving the caret. showSingleRedJumpPair runs the canonical activation: setSource
+//   RjfFlag promotes the citation marker to v<n> (and demotes any other v<m>),
+//   setTargetRjfFlag writes [tRJF=v] at the definition, removeAllRealRedButtons +
+//   ensureGreenRedSpacing normalise the line, and activeRedJump captures the pair.
+//   Result: a single H-TOC W-click now reproduces the exact state the user would get
+//   by selecting the membrane name text in the citation line — including a working
+//   return W-click from the citation site (or from the definition) to the other end.
+//   If the membrane definition cannot be found (deleted, renamed, etc.), the caret
+//   still moves to the citation line, but no bi-link pair is established.
+// - v0.9.555: Unified numbered-marker scheme for ALL sRJF writes — single active
+//   v form per file, previous v demoted to h with number preserved. User design
+//   2026-05-21 pm06:31:
+//     16行目『なし』        → {* [sRJF=v2] *}🔴
+//     17行目『{* [sRJF=v1] *}🔴』 → {* [sRJF=h1] *}
+//     「一旦付いたマーカは、少なくともh形式で残す。v形式は1ファイルに唯一」.
+//   Refactor: setSourceRjfFlag now sweeps the document for existing sRJF markers and
+//   produces a single coherent edit set:
+//     - The source-line marker (if numbered) is promoted/kept as `[sRJF=v<n>]🔴`
+//       (n reused); otherwise a fresh n is allocated via nextCitationN and a brand-
+//       new `[sRJF=v<n>] *}🔴` marker is inserted at line end.
+//     - All other numbered `[sRJF=v<m>]` markers are demoted to `[sRJF=h<m>]` (n
+//       preserved, trailing 🔴 dropped).
+//     - Legacy unnumbered `[sRJF=v]` is deleted (transient, no history).
+//     - Existing `[sRJF=h<m>]` on non-source lines is preserved as-is (the H-TOC
+//       citation anchors stay intact).
+//     - Legacy HTML `<span class="sRJF=*">` form is migrated by deletion.
+//   The function returns the assigned `n` so the H-TOC citation flow can attach the
+//   same number as the item's `citeN`. addCurrentMembraneToWorkingToc no longer
+//   writes the citation marker directly — it delegates to setSourceRjfFlag, then
+//   reads the returned n (or falls back to scanning the line for `[sRJF=v(\d+)]`).
+//   Effect for the user's workflow: selecting names in sequence (line 17 → line 16)
+//   yields exactly the document state in the spec.
+// - v0.9.554: Phase D-1 follow-up — citation marker is now VISIBLE numbered
+//   (`[sRJF=v<n>]`) instead of hidden (`[sRJF=h<n>]`). User v0.9.553_0614 bug 1:
+//   「まだ選択した文字列に、[sRJF=v<n>]ではなく[sRJF=v]が付いてしまう」. The expected
+//   citation marker is visible (state=v) with a number suffix; the user wants the 🔴
+//   button to appear at the citation site immediately. addCurrentMembraneToWorkingToc
+//   now emits `// {* [sRJF=v<n>] *}🔴` instead of `// {* [sRJF=h<n>] *}`. The numbered
+//   form survives the v0.9.553 single-active-pair sweep guard, so the citation anchor
+//   stays put even when other transient bidirectional jumps activate. Sweeping the
+//   transient unnumbered `[sRJF=v]` still works as before. Bug 2 (🔴 position outside
+//   `*}` causing visual stretch) is a deeper marker-format refactor — deferred.
+// - v0.9.553: Phase D-1 follow-up — fix three regressions from v0.9.552 testing
+//   (v0.9.552_0511 user report).
+//   (Bug 1) New H-TOC entries appended to the bottom instead of prepending to the
+//   top. addCurrentMembraneToWorkingToc and addEmptyWorkingTocItem switched from
+//   `at.tab.items.push(...)` to `at.tab.items.unshift(...)` so the latest add is
+//   always visible at the head of the list.
+//   (Bug 2) Citation marker `[sRJF=h<n>]` was not being written; body markers
+//   stayed in the legacy unnumbered format. Cause: isOnDefinitionLine treated
+//   `extractMembraneTocEntryFromLine`'s 'mT' (compact form) match as a membrane
+//   definition. The compact match fires on ANY non-empty line, so every body line
+//   was misclassified as a definition and the citation branch never ran. Fix:
+//   restrict isOnDefinitionLine, the candidate-validation loop, and the fallback
+//   nearby-line search to `kind === 'mCN'` only. Real membrane definitions are
+//   the only valid "definition" sources; everything else routes through the
+//   citation branch.
+//   (Bug 3) setSourceRjfFlag's existing single-active-pair sweep deleted ALL
+//   sRJF markers across the document — including the numbered citation anchors
+//   placed by Phase D-1. Once any other bidirectional jump activated, citation
+//   markers disappeared and H-TOC items could no longer find their targets.
+//   Fix: NUMBERED_SRJF_RE guard in the sweep skips any match whose text carries
+//   `[sRJF=[hv]\d+]`. Citation anchors survive every transient bidirectional
+//   jump activation. The numberless form (`[sRJF=v]` / `[sRJF=h]`) still gets
+//   swept as before.
+//   (Bug 4 deferred) Backward jump from body citation site back to the H-TOC
+//   item is a Phase D-2 candidate; v0.9.553 only fixes the forward path so the
+//   citation marker is correctly persisted and the H-TOC item jumps to it.
+// - v0.9.552: Hyper TOC tab feature — Phase D-1: citation tracking with numbered
+//   sRJF markers. User design 2026-05-21 pm02:40: 「[sRJF=h] 引用マーカを、
+//   [sRJF=hn](n=1,2,...) と言う形に変更しよう」. New flow: when the user runs Add to
+//   Hyper TOC while the cursor sits on a NON-membrane-definition line containing a
+//   known membrane name, the entry is added as a CITATION instead of a definition
+//   link. (1) Marker regex extended: SOURCE_RJF_MARKER_RE now matches
+//   `\[sRJF=(?:v|h)\d*\]` — the digit suffix is optional, so legacy unnumbered
+//   markers used by the transient Me Dock bidirectional jump still parse. The same
+//   `\d*` relaxation is applied to all sRJF strip patterns. (2) New helpers:
+//   nextCitationN(doc) scans the document for max `[sRJF=[hv]\d+]` and returns
+//   max+1 — globally unique, gaps not reused (preserves history). findCitationLine(doc, n)
+//   locates the line carrying `[sRJF=[hv]<n>]`. (3) addCurrentMembraneToWorkingToc:
+//   when on a non-definition line, derives the candidate name from the selection
+//   or cursor word, verifies it matches an existing membrane in the document,
+//   allocates next n, writes ` // {* [sRJF=h<n>] *}` to the end of the cursor line,
+//   and appends an H-TOC item carrying `citeN: n`. Multiple citations of the same
+//   name (different n) are intentionally NOT deduplicated. (4) jumpToWorkingTocItem
+//   gained a `citeN` parameter — when set, the jump targets the citation line
+//   (located via findCitationLine) rather than the membrane definition. The
+//   informational error message switches to `Citation marker [sRJF=h<n>] not found`
+//   when the marker has been deleted from source. (5) Frontend / Me Dock UI: TOC
+//   item HTML now carries `data-cite-n` when applicable; click and dblclick
+//   handlers pass `citeN` through the `jumpToTocItem` postMessage. Hover tip on a
+//   citation item shows `Cite #<n>` alongside Created/Checked timestamps. The
+//   citation source-side button (visible 🔴) is intentionally NOT rendered yet —
+//   citations stay hidden by default. Bidirectional jump from body marker back to
+//   H-TOC item is a separate Phase D-2 candidate.
+// - v0.9.551: Emergency syntax fix for v0.9.550. The v0.9.550 IME-Enter guard comment
+//   was inserted INSIDE the meDockHtml() template literal at line ~7504. The comment
+//   contained backticks around identifier names (e.g. `fixedTocName.blur()`), which
+//   closed the surrounding template literal mid-payload. JavaScript then tried to
+//   parse `fixedTocName.blur()` as a bare expression following the (now-closed)
+//   string and threw `SyntaxError: Unexpected identifier 'fixedTocName'` at module
+//   load — the whole extension failed to activate, so the editor stopped rendering
+//   any membrane decorations and the document appeared as raw text. User v0.9.550_0241
+//   report: 「本文が生データのままで、膜化しなくなってしまった」. Fix: replace the
+//   in-script comment block with a one-liner pointer to the existing file-header
+//   changelog entry. Backticks survive in the file-header comments because those
+//   sit at module scope, outside any template literal. v0.9.550's runtime fix
+//   (compositionstart/end handlers, isComposing/keyCode 229 guard, blur de-dup) is
+//   otherwise unchanged.
+// - v0.9.550: Fix the tab-name "kana → Enter" duplication bug introduced in Phase C-1.
+//   User report v0.9.549_0227: 「Hyper TOCの名前で、かなをそのままリターンで確定すると、
+//   なぜか2つに増殖する。目次項目の入力ボックスでは、こんな変な現象はない」.
+//   Root cause: the tab-name keydown handler had no IME composition guard. With IME
+//   active, pressing Enter to commit kana fires keydown TWICE — once with keyCode 229
+//   (composition-end synthesised event) and once with the real Enter after the input
+//   has been finalised. The first firing executed `fixedTocName.blur()` which shifted
+//   focus to the next focusable element — the tab-bar's `[+]` (toc-tab-add) button.
+//   The second Enter event then hit that focused button and the browser converted it
+//   into a synthetic click → `duplicateHyperTocTab` fired → a new "(copyN)" tab was
+//   created on every kana commit. The Hyper TOC item value inputs already guarded
+//   this case via the existing `tocImeComposing` flag, so they were unaffected.
+//   Fixes: (1) add compositionstart / compositionend listeners on fixedTocName that
+//   set `_tabNameComposing`; (2) keydown handler bails out when `ev.isComposing` is
+//   true, `ev.keyCode === 229`, or `_tabNameComposing` is true; (3) de-dup the
+//   blur-side rename — when Enter already triggered the rename, the blur handler
+//   skips re-sending the same message (flag `_tabNameRenameViaEnter`). Net effect:
+//   one user-intent → exactly one renameWorkingToc message, no stray button click,
+//   no tab duplication. Kana-only commits behave identically to kanji-converted
+//   commits now.
+// - v0.9.549: Hyper TOC tab feature — Phase C-1: full metadata-backed Hyper TOC with
+//   multi-tab UI. User discovery 2026-05-20 pm10:16: 「本文のTOC膜の中身に、さっきの
+//   「を書き換えた」が書き込まれていたよ。これが駄目で、これをメタデータに書き込むべき」.
+//   Major refactor — items, comments, tabs, check states, created timestamps are now
+//   persisted in extension globalState (`hyperTocData:${uri}` key); source mTC=
+//   membrane is reduced to an anchor / first-load seed source. (1) New data layer:
+//   getHyperTocData / setHyperTocData / seedHyperTocFromSource / ensureHyperTocData /
+//   activeHyperTocTab. Data shape:
+//     { tabs: [{ id, name, items: [{ id, key, value, stateKey, checkedAt, createdAt }, ...] }], activeIdx }.
+//   (2) getWorkingTocSnapshot: reads from metadata; if missing, auto-seeds from
+//   existing source TOC items and persists. Returns `tabs[]` + `activeIdx` for the
+//   Me Dock tab bar. `line0` is now an INDEX into the active tab's items array, not
+//   a document line number. (3) Edit path refactor — updateWorkingTocItemAtLine /
+//   deleteWorkingTocItemAtLine / moveWorkingTocItemAtLine / addEmptyWorkingTocItem /
+//   duplicateWorkingTocItemAtLine / renameWorkingTocMembrane / toggleWorkingTocItemCheck
+//   all mutate metadata only. Source mTC= region is created (empty) on first add only;
+//   never written to thereafter. (4) addCurrentMembraneToWorkingToc: inserts the new
+//   item into the active tab's metadata items; the source mTC= anchor is auto-created
+//   when missing. (5) Tab operations — new functions switchHyperTocTab /
+//   duplicateHyperTocTab / deleteHyperTocTab + message handlers
+//   `switchHyperTocTab` / `duplicateHyperTocTab` / `deleteHyperTocTab`. (6) Me Dock UI
+//   — new `toc-tab-row` tab bar with click-to-switch, [+] / [−] buttons, and an
+//   inline `toc-tab-confirm` panel for delete confirmation. CSS: pill-style tabs with
+//   active highlight matching the Hyper TOC orange palette. renderHyperTocTabs renders
+//   tabs from the snapshot every refresh. (7) Backward compat: existing files with
+//   source-side `// ⇄ ...` items get auto-migrated to metadata on first load. After
+//   migration, source items can stay stale (harmless) or the user can manually clean
+//   them up — they no longer drive Me Dock.
+// - v0.9.548: Revert v0.9.547's source-side 🟢/🔴 suppression on TOC (mTC=) lines.
+//   User pm08:47: 「ソース上のTOC膜に🟢ボタンは表示しても良いんだよ」 — the bug was
+//   only the `[oGJF=v]` literal leaking into the Me Dock tab-name input. The source
+//   editor's pair buttons on the TOC anchor are useful and should remain. Kept: the
+//   v0.9.547 sanitisation of `note` inside extractMembraneTocEntryFromLine (strips
+//   JF flag literals and button emojis from the display string the Me Dock uses as
+//   the tab name).
+// - v0.9.547: Two fixes off v0.9.546_0842. (1) Suppress all 🟢 / 🔴 pair buttons on
+//   TOC open / close lines (mTC=). User: 「[oGJF=v]🟢は、表示しなくていいね。タブ名
+//   としては要らない」. membraneButtonItems now early-continues on any line whose
+//   normalized form matches `[▼▽▲△]\s*mTC\s*=`. Affects all four button placements
+//   (oGJF, cGJF, tRJF, sRJF), but in practice only the green / red target buttons
+//   would appear on the TOC anchor line; sRJF lives on item rows (`// {* [sRJF=v] *}`)
+//   which are NOT mTC= lines, so individual TOC entries retain their 🔴 source-side
+//   buttons untouched. (2) Strip jump-flag literals and button emojis from the note
+//   captured by extractMembraneTocEntryFromLine. The note is used as the Me Dock tab
+//   name; v0.9.546 leaked the raw `[oGJF=v]` text into the input field. The flags
+//   remain in source — only the display-bound `note` is sanitised.
+// - v0.9.546: Hyper TOC tab feature — Phase B: Me Dock tab name = open-line COMMENT
+//   of the mTC= membrane (alias-like display). User design 2026-05-20 pm08:19: 「Hyper
+//   TOCのタブ名としては、エイリアス化がベストチョイスだね」. Changes:
+//   (1) workingTocWrapperId: `hT_` prefix → `Index_` (the name is hidden from Me Dock
+//   anyway; the new prefix makes raw-source inspection clearer).
+//   (2) workingTocOpenLine / workingTocCloseLine: emit `▼mTC=…` / `▲mTC=…` instead of
+//   `mCN=` so new TOC anchors use the dedicated grammar from Phase A.
+//   (3) findWorkingTocMarkerLine / findWorkingTocRegion: locate TOC open/close lines
+//   by the `mTC=` literal instead of the legacy `hT_` name prefix.
+//   (4) extractMembraneTocEntryFromLine: accept both mCN= and mTC=; surface the
+//   trailing comment as `note` on the returned entry.
+//   (5) getWorkingTocSnapshot: tocName is now openEntry.note (the comment) instead of
+//   openEntry.key (the underlying membrane name).
+//   (6) renameWorkingTocMembrane: the Me Dock tab-name input now edits the OPEN-line
+//   COMMENT, leaving the membrane identity (the `Index_TIMESTAMP` name) intact. Empty
+//   input falls back to the default `Hyper TOC` so the tab always has a label.
+//   Phases C〜F (multi-tab UI, duplicate/delete, alias-aware items, name-edit error
+//   checking) will build on this foundation.
+// - v0.9.545: mTC= recognition extended to membraneLineParts. User v0.9.544_0742:
+//   「まだ膜として認識しないよ。なぜ?」. Cause: v0.9.543 updated OPEN_RE / CLOSE_RE /
+//   asRealMembraneSource / isWorkingTocMembranePair to accept mTC=, but
+//   membraneLineParts — the parser that drives idStart/idEnd/suffixStart for ALL
+//   open/close-line decoration rendering — was still hardcoded to `mCN[ \t]*=`. mTC=
+//   lines therefore matched the lower-level pair collector but produced no parts
+//   object, so no ▼/▲ label, no hide ranges, no TOC styling fired. Fix: replace
+//   `mCN` with `(?:mCN|mTC|mNT)` in both the code-style regex (line ~1874) and the
+//   Markdown-hidden-comment regex (line ~1895). With membraneLineParts now treating
+//   the two grammars symmetrically, the rendering pipeline picks up mTC= membranes
+//   the same way it does mCN=, and isWorkingTocMembranePair's downstream visual
+//   markers (the four-corner orange TOC label) come along automatically.
+// - v0.9.544: Fix mTC= TOC detection on proto-form (`// {* ▼mTC=name *}`) lines.
+//   User v0.9.543_0736 report: 「mTCが膜として認識されていない。従来のような四隅に
+//   橙色のTOCという文字の装飾が出ない」. Cause: v0.9.543's isWorkingTocMembranePair
+//   tested MTC_LINE_RE against the RAW document line, but MTC_LINE_RE expects the
+//   canonical `// {▼mTC=...}` shape — proto lines with the `{*...*}` markers (the
+//   form used everywhere in MeOS source) failed the test. Fix: route the open line
+//   through asRealMembraneSource first (which calls normalizeProtoMembraneLineText
+//   to strip the `*` markers); then test MTC_LINE_RE on the normalized result. Same
+//   approach OPEN_RE / CLOSE_RE already use via parseOpenLine / parseCloseLine.
+// - v0.9.543: Hyper TOC tab feature — Phase A: introduce `mTC=` as the dedicated TOC
+//   membrane grammar, replacing the legacy `hT_` name-prefix convention. User design
+//   2026-05-20 pm07:14: 「通常膜は、mCN=などと書くが、TOC膜は、mTC=にしよう。…
+//   現状は、hT_194615.511という膜名でTOCと認識しているのかな? それを今後は、
+//   mTC=という部分で判定するようにする、ということだね。先ずは、そこから実装しよう。
+//   従来型は廃止していいよ」. Changes: (1) OPEN_RE / CLOSE_RE switch the literal `mCN`
+//   to a non-capturing alternation `(?:mCN|mTC|mNT)` so both grammars match — m[1]
+//   still captures the membrane name (backward compatible with every existing
+//   caller). (2) asRealMembraneSource's accept-as-membrane predicate updated the
+//   same way, so mTC= lines flow through the canonical source pipeline without
+//   normalisation. (3) New MTC_LINE_RE matches the open/close line literal for fast
+//   isWorkingTocMembranePair detection. (4) isWorkingTocMembranePair now reads the
+//   open line and tests MTC_LINE_RE instead of checking the legacy `hT_` name prefix
+//   on pair.id. Effect: pre-existing membranes named like `mCN=hT_xxx` are no longer
+//   recognised as Hyper TOC anchors (they become regular membranes) — accepted per
+//   user directive. Subsequent phases (B〜F) will add the "Add to Hyper TOC" creation
+//   path, Me Dock tab UI, duplicate/delete actions, alias-aware item rendering, and
+//   name-edit error checking.
+// - v0.9.542: Activate the 🟢 pair markers on alias single-click, matching the name
+//   single-click behaviour. User v0.9.541_0317 report: 「エイリアスをクリックした
+//   ときに、通常の膜名をクリックしたときのように、🟢ボタンが出ない。なぜか、Wクリック
+//   すると、🟢ボタンが表示される」. Cause: activeMembraneNameInfo treats the caret as
+//   "on the membrane name" only when sel.active.character is in [idStart, idEnd] —
+//   the alias source span sits past idEnd inside the badge, so single clicks there
+//   returned null and the activateMembranePairMarkers branch never fired. Fix: when
+//   the open-line badge carries a non-empty alias, also accept caret positions in
+//   [aliasSrcStart, aliasSrcEnd] as "on the membrane name". W-click already worked
+//   because the v0.9.541 alias-jump path runs showJumpMarkers explicitly; this fix
+//   makes single click do the same activation pass without the close-line jump.
+// - v0.9.541: Alias W-click jumps to the close pair, mirroring the membrane-name
+//   W-click behaviour. User v0.9.540_0309 request: 「膜名のWクリックと同様に、エイリアス
+//   のWクリックで、閉じ膜にジャンプするようにしてほしい」. New helper
+//   selectedAliasJumpInfo(editor) returns the open-line membrane info when the current
+//   selection overlaps the alias source span (computed via
+//   badgeText.indexOf(badge.alias)). In handleMembraneNameSelection, when
+//   isMouseSelection is true and selectedAliasJumpInfo returns a hit, the standard
+//   name-jump path runs against the close pair — same showJumpMarkers, same
+//   pushMeDockLineHistory, same nameJumpSuppressUntil, same revealRange. The lastJump
+//   debounce key is suffixed with `::alias` to keep it distinct from the name-jump
+//   debounce. Keyboard Shift+→ selections inside the alias still fall through to the
+//   normal editing path because they don't satisfy isMouseSelection (and v0.9.540's
+//   bail-out in tryActivateSelectedNameJump catches them on the fallback if reached).
+//   The close line itself continues to render with the real membrane name (no alias
+//   substitution) — user agrees this is fine for now per their note 「閉じ膜は、通常
+//   の膜として見えるのは、どう思う。私はこれで良いと思う」.
+// - v0.9.540: Suppress the name-jump fallback when the selection sits inside the
+//   alias source span. User v0.9.539_0300 report: 「開始膜のエイリアスの一部を
+//   Shift+→キーで選択して変更しようとすると、なぜか、膜名Wクリックのように、閉じ膜に
+//   ジャンプしてしまう」. Cause: handleMembraneNameSelection's selectedMembraneNameInfo
+//   path correctly returns null for alias selections (they're outside the name span),
+//   but the v0.9.285 fallback `tryActivateSelectedNameJump(editor)` doesn't inspect
+//   the selection at all — it just sees a membrane open line, calls
+//   selectMembraneNameOnLine (overwriting the user's alias selection), and jumps to
+//   the close pair. Fix: tryActivateSelectedNameJump now checks whether the caret OR
+//   selection anchor is inside the alias source span (aliasSrcStart..aliasSrcEnd
+//   computed from badgeText.indexOf(badge.alias)) and bails out with false in that
+//   case. The dotted-name fallback path (v0.9.285's original intent) still fires for
+//   selections on the name span itself.
+// - v0.9.539: Skip auto-unfold when click lands on the exposed alias source span.
+//   User v0.9.538_0043 report: 「閉じた状態で、エイリアス部分をクリックすると、なぜか
+//   展開されてしまうし、ボタンが▼▲のまま残ってしまう。なぜ?」. Cause:
+//   maybeAutoUnfoldOnSelection auto-unfolds whenever the caret lands on `pair.start`
+//   of a folded pair via a non-keyboard selection. Clicking the alias chars on a
+//   folded membrane's open line satisfied that condition, triggering an unfold that
+//   the user did not request; the stale ▼▲ glyph remained because MeOS's mSTAT state
+//   was racing the unfold (it sync's via syncPairMstatFromFoldState in a 120ms
+//   timeout, but the badge wasn't refreshing in this path). Fix: in
+//   maybeAutoUnfoldOnSelection, detect when caret.character is inside the alias
+//   source span (aliasSrcStart..aliasSrcEnd computed from
+//   badgeText.indexOf(badge.alias)) and bail out before the unfold call. Result:
+//   alias clicks on a folded membrane place the caret for editing while leaving the
+//   fold (and the ▼▲ glyph) intact; the ▼ button click still toggles fold normally.
+// - v0.9.538: Render alias as plain source text instead of a `before:` decoration
+//   overlay. User insight v0.9.537_0023: 「従来、膜名とコメントを表示していたよね。
+//   その時、コメントは編集可能だった。それと同様の処理にすれば良いだけだと思うんだけど、
+//   違うかな?」. The alias literal `参照の例` already lives in source inside the badge
+//   (`(📊...N1=参照の例 📊)`); we just need to leave THAT part visible while hiding
+//   everything else around it. Implementation in applyPrettyLabels: when hasAlias,
+//   compute aliasSrcStart / aliasSrcEnd from `badgeText.indexOf(badge.alias)` relative
+//   to badge.start. The standard name+comment hide range (idStart..badge.start) is
+//   still applied so the membrane name itself stays invisible. The 📊0 (badge hidden)
+//   path is split: when alias is present, hide badge in TWO pieces — badge.start..
+//   aliasSrcStart and aliasSrcEnd..badge.end — leaving the alias chars exposed as
+//   plain source. With 📊0 + N1=alias, the user sees `▼ 参照の例` where 参照の例 is
+//   a live source span: click → caret in source → type → edits the alias literal in
+//   the badge directly. All the v0.9.529〜0.9.537 hacks (combined decoration, split
+//   anchors, CSS overrides, cursor-redirect handler, alias-mode hover restriction,
+//   alias-mode click hit zone) are removed — none are needed once the alias is real
+//   source text. v0.9.511 Sth0/Sth1 flag remains preserved untouched.
+// - v0.9.537: Two fixes off v0.9.536_0015. (Bug 1) Alias click did not enter the alias
+//   text for editing — caret landed at idStart inside the hidden name span. Fix:
+//   handleMembraneNameSelection now detects mouse selection at caret === idStart on an
+//   open line whose badge carries a non-empty alias and redirects the caret to the
+//   alias literal's actual source position inside the badge (computed via
+//   badgeText.indexOf(badge.alias) → real-source column). The alias is selected as a
+//   range (start..end) so the user can immediately retype to replace, or arrow-key to
+//   refine. nameJumpSuppressUntil prevents downstream jump handlers from firing.
+//   (Bug 2) "Toggle Me!" hover tip showed across the entire ▼ + alias decoration.
+//   Cause: membraneArrowHoverMessage returned the tip on either idStart or idStart-1,
+//   and VSCode maps every position inside the combined decoration to one of those two
+//   columns (left half → idStart-1, right half → idStart). Fix: in alias mode, return
+//   the tip only when position.character < info.idStart (the ▼ side); the right half
+//   (alias) returns null so no tip shows.
+// - v0.9.536: Back to v0.9.532's single combined `▼ alias` before-decoration at idStart
+//   (alias renders cleanly there — visible) and differentiate the ▼-vs-alias click in
+//   membraneArrowToggleHitInfo instead. Root cause of the v0.9.533〜0.9.535 visibility
+//   failures: any before-decoration whose anchor sits INSIDE the openLineHide span
+//   inherits `opacity: 0` from the source char's element, and per CSS spec opacity
+//   creates a stacking context that a child cannot override (textDecoration override
+//   attempted in v0.9.535 had no effect). With both decorations at idStart, VSCode's
+//   click-to-caret mapping splits the combined label into left/right halves —
+//   left-half (▼) clicks snap the caret to a column < idStart (typically idStart-1
+//   after the hidden prefix collapses), right-half (alias) clicks snap to idStart.
+//   Click handler updated to fold only on caret < idStart when alias is present, and
+//   to suppress the standard `=== idStart` fold trigger in that mode. Result: ▼ click
+//   folds; alias click leaves the caret at idStart for editing.
+// - v0.9.535: Back to v0.9.533's idStart+1 split anchor for alias, with explicit CSS
+//   override to defeat the openLineHide inheritance. User v0.9.534_am1159 NG report:
+//   「エイリアスは表示する。ただし、エイリアス部分をクリックしても文字カーソルは表示し
+//   ないし、なぜか、Me Dockがちらつく」— v0.9.534's badge.start anchor put alias clicks
+//   inside the 📊 icon's Me Dock hit-zone tolerance, triggering toggleMeDock flicker;
+//   also caret placement on the badge area was being absorbed by mstatBadgeIconHitInfo
+//   instead of leaving a normal cursor. User directive: 「v0.9.533をベースにした方が
+//   良さそうだよ」. v0.9.533 had ▼ click → fold ✓, alias click → caret ✓ (cursor visible),
+//   ONLY problem: alias text was invisible because openLineHideDecoration's CSS
+//   `opacity: 0; font-size: 0px;` cascaded onto the before-content. Fix: add explicit
+//   `textDecoration: 'none; font-size: 1em; opacity: 1;'` to the alias decoration's
+//   before block. VSCode passes textDecoration through as raw CSS, so the override
+//   restores normal rendering on the alias glyph while the surrounding hidden source
+//   keeps its invisibility. ▼ decoration is unchanged (sits at the visible side of the
+//   hide span, never inherited the 0-opacity).
+// - v0.9.534: Move alias decoration anchor from idStart+1 to badge.start for reliable
+//   click separation from ▼. User v0.9.532_am1145 clarification: 「ボタンの上で反応
+//   しない。エイリアス上をクリックで開閉してしまう。つまり、エイリアスを編集できない」
+//   — confirming that the v0.9.531/532 combined-decoration's right-half cursor snap
+//   captured alias clicks at idStart (folding) while the left half (▼) snapped to a
+//   different column (no fold). v0.9.533 split at idStart+1 was likely too close —
+//   the two anchors were separated only by a single hidden source char so VSCode's
+//   click-to-caret mapping could merge them. v0.9.534 anchors the alias decoration at
+//   `openBadge.start`, which sits well past the entire hidden name+comment span. The
+//   ▼ decoration remains a single-char standalone at idStart. Visually identical
+//   (`▼ alias` with the source between the two anchors collapsed via font-size:0).
+//   Caret mapping: ▼ click → idStart (fold); alias click → badge.start or badge.start-1
+//   (neither equals idStart → no fold, ready for editing).
+// - v0.9.533: Split ▼ label and alias into two decorations at different anchor columns
+//   so the caret-from-click mapping can tell them apart. User report v0.9.532_am1143:
+//   「前バージョンと全く変わらない。なぜ?」 — narrowing the hit check to `=== idStart`
+//   alone was not enough because both ▼ and alias clicks landed at idStart (the single
+//   `before:` decoration was anchored at one source position, so VSCode mapped every
+//   click on the rendered text back to the same caret column). Fix: emit two label
+//   decorations when alias is present. (a) ▼ glyph at idStart (the standard fold
+//   anchor); (b) ` <alias>` at idStart+1. The source character at idStart is inside
+//   the v0.9.526 hide range, so the two decorations render visually adjacent (▼ space
+//   alias) with no source gap. Click on ▼ → caret at idStart → fold; click on alias →
+//   caret at idStart+1 → no fold, allowing direct editing of the alias text in source.
+//   Guard: alias-decoration only emitted when idEnd > idStart (membrane name has at
+//   least one char), ensuring idStart+1 is a valid source column on the line.
+// - v0.9.532: Revert the v0.9.530/531 expanded arrow-toggle hit zone. User directive
+//   v0.9.531_am1137 「エイリアスをクリックして直接編集できるように、通常膜と同様に、
+//   開閉は▼ボタンの所だけにして下さい」. With the v0.9.531 half-width space between ▼
+//   and the alias, clicks on the ▼ glyph land cleanly at idStart and trigger fold via
+//   the original strict-equality check. Clicks on the alias text now place the caret
+//   inside the source span (where the alias literal lives in the badge or near it),
+//   allowing direct editing — matching standard membrane click semantics. Removed the
+//   N0/alias-specific permissive branch from membraneArrowToggleHitInfo.
+// - v0.9.531: Two fixes off v0.9.530_am1105 user report. (1) ▼ / leftmost-alias-char
+//   click now folds. v0.9.530's "> idStart && ≤ cutEnd" only caught right-half clicks
+//   on the rendered alias (right of "照" in 参照の例); left-half clicks (▼, 参) landed
+//   somewhere in (some pos, idStart] which neither check accepted. Relaxed the alias/N0
+//   branch to `sel.active.character < cutEnd` — the entire hidden span becomes one
+//   fold-toggle zone. (2) Half-width space inserted between the ▼ label glyph and the
+//   alias text per user request: `▼ 参照の例` (was `▼参照の例`). labelText computation
+//   in applyPrettyLabels concatenates baseLabel + ' ' + alias when alias is present.
+// - v0.9.530: Fix ▼ click-to-fold when N0 or alias hides the name+comment span. User
+//   report v0.9.529_1045: 「エイリアス表示にした開始膜の▼ボタンをクリックしても折畳まな
+//   くなってしまった。tipは表示するんだけどね」. Cause: membraneArrowToggleHitInfo
+//   required `sel.active.character === info.idStart` (strict equality). With the name +
+//   comment span hidden via font-size:0 and the ▼/alias rendered inside a single `before:`
+//   decoration, VSCode may place the caret anywhere within the hidden source range when
+//   the user clicks the rendered glyph area, not necessarily exactly at idStart. Fix:
+//   accept any caret position in (idStart, cutEnd] as an arrow hit when the open-line
+//   badge has nameDisplay=false OR a non-empty alias. cutEnd = badge.start when the badge
+//   sits right of the name, else text.length. Close-line behaviour unchanged. Me Dock's
+//   Toggle button was unaffected because it dispatches via command, not caret hit.
+// - v0.9.529: New badge format Phase 2 — alias text. User v0.9.528_1024: 「いい感じだね。
+//   これでエイリアス表示ができれば、ステルス機プロトタイプの完成だね」. Syntax:
+//   `(📊1⊕0+0D0WN1=参照先A 📊)` → display the ▼ label followed by the literal `参照先A`
+//   in place of the membrane name. The actual membrane name in source is unchanged, so
+//   search / Hyper TOC / bi-link jump still resolve via the real name. Parser
+//   (parseMstatBadgeFromText): first strips the trailing ` 📊` delimiter from rest into
+//   `restCore`; then matches the N tail with optional `=alias` via `N([01])(=(.*))?\s*$`.
+//   Alias is trimmed of leading/trailing whitespace. `N1=` (empty alias) and `N1` both
+//   produce alias=''. Returned badge object gains an `alias` field. Formatter
+//   (formatMstatBadge): when alias is non-empty, emits `N1=alias` and forces new format.
+//   Rendering (applyPrettyLabels): when alias is present, the name + trailing comment hide
+//   range (same as N0) is applied AND the ▼ label's contentText is concatenated with the
+//   alias text (`▼参照先A`). Color/weight inherited from existing label rendering.
+//   Stealth-prototype use case: `(📊0⊕0+0D0WN1=参照先A 📊)` → badge text invisible,
+//   membrane name + comment hidden, only `▼参照先A` shown — reads as inline normal text
+//   while remaining a real membrane (foldable, jumpable, searchable).
+// - v0.9.528: Revert v0.9.527 close-line N0 hiding. User v0.9.527 directive:
+//   「閉じ膜は消さなくていいよ。単に、膜を折畳めばいいだけだよ」. The close-line
+//   name + trailing comment hide added in v0.9.527 is removed — N0 now affects only
+//   the OPEN line. Visibility of the close line is governed by the standard fold
+//   state: when the membrane is folded, the close line is hidden naturally; when
+//   unfolded, the close line shows its full content (including the name) as usual.
+//   Rationale: the typical N0 use case (stealth-like display) folds the membrane
+//   anyway, so close-line hiding was redundant work that risked layout surprises.
+// - v0.9.527: N0 extended to hide the trailing comment as well. User v0.9.526_1009
+//   confirmation: 「N0/N1は、コメントを含めての非表示/表示だね」. v0.9.526 hid only
+//   the `idStart..idEnd` membrane-name span; the ` // comment1 ` between the name and
+//   the badge stayed visible. Updated applyPrettyLabels: when nameDisplay=false, extend
+//   the open-line hide range from `idStart` to `badge.start` (if a badge is present
+//   right of the name) or to `suffixStart` otherwise. Close-line hide runs `idStart`
+//   to `suffixStart` (no badge on close lines). Net effect with N0: only the rendered
+//   ▼/▲ label remains visible from the name/comment area — the membrane appears as a
+//   pure structural marker. Source content is untouched, so search / Hyper TOC / bi-link
+//   jump still resolve via the membrane name.
+// - v0.9.526: New badge format Phase 1 — `(📊1...N1 📊)` / `(📊0...N0 📊)` with explicit
+//   badge-display flag (📊0/📊1) and membrane-name-display flag (N0/N1). User design
+//   2026-05-20 09:00〜: replace dedicated "stealth membrane" concept with display-control
+//   flags on the normal badge. N1 (default, may be omitted in legacy) = show membrane name;
+//   N0 = hide the name visually while keeping it intact in source for search/bi-link/jump.
+//   📊1 = show badge; 📊0 = hide the badge text entirely. The trailing ` 📊` (space + 📊)
+//   before `)` is the new format's badge-end delimiter (reserved for Phase 2 alias text).
+//   Parser (parseMstatBadgeFromText): MSTAT_BADGE_RE updated to `📊[01]?` leading icon and
+//   non-greedy rest match; extracts nameDisplay (default true), badgeDisplay (default true),
+//   newFormat flag (true when source uses 📊0/📊1 prefix or trailing ` 📊`). Color match
+//   now strips Sth/N/D and trailing 📊 before testing. Formatter (formatMstatBadge): writes
+//   new format `(📊X...N? 📊)` when any non-default state is set OR when parsed source was
+//   already in new format; otherwise keeps legacy `(📊...)` for round-trip cleanliness on
+//   untouched files. Rendering (applyPrettyLabels): N0 adds a hide range covering the
+//   membrane name on both open and close lines; 📊0 adds a hide range over the whole
+//   badge text. v0.9.511 Sth0/Sth1 flag preserved untouched as a separate field (may be
+//   reused later for the dedicated stealth button per user 2026-05-20 09:13 directive).
+// - v0.9.525: full-stealth container — true row collapse via display:none. User v0.9.524_1003 report: "なぜ、通常膜のように後ろの空間が閉じないのか?". v0.9.524 used font-size:0 for the container's content/close rows, which only zeroed the chars but Monaco still rendered minimum-height row strips. Added new `stealthFullHideDecoration` with `textDecoration: 'none; display: none;'` — the row is completely removed from layout. Applied selectively in applyStealthDecorations: container's CLOSE line + content rows → fullHide (rows gone); container's OPEN line stays on font-size:0 shellHide (row preserved for the ◤◢ markers); nested full-stealth (inside container) → everything fullHide (no row leaks through). Pure half-stealth unchanged — keeps font-size:0 for both shell rows so the ◤ and ◢ markers stay visible at top/bottom of the visible lane. Note: display:none on a parent hides its before-content too, so we cannot use it on the container's open line where the markers must render — hence the two-decoration split.
+// - v0.9.524: full-stealth CONTAINER mode (= half-stealth membrane containing another half-stealth). User report v0.9.523_0949: 「半ステルス膜の中に半ステルス膜があるとき、つまり、完全ステルスモードが実装してない」. Implementation: (1) New helper isFullStealthContainer(pair, allPairs, doc) — true iff pair is Sth1 AND strictly encloses another Sth1. (2) New decoration types stealthContainerOpenDecoration / stealthContainerCloseDecoration without the per-marker vertical offsets (the half-stealth ◤'s top:+8 and ◢'s top:-13 would push them apart on a single shared row; container markers share the open line so we need them on the same baseline). (3) applyStealthDecorations branches on three states: (a) container — hide all content lines from open to close, render ◤ AND ◢ both on the open line via the new container decorations (visual square via the v0.9.520 same-size convention); (b) nested (full-stealth inside a container) — hide content for safety, no labels (they'd be on rows the outer is already hiding); (c) pure half-stealth (no nesting either direction) — existing ◤ open + ◢ close + thin lane behaviour preserved. The outer container "closes" via decoration-based collapse (font-size:0 on all content rows) — VSCode's native fold is not used.
+// - v0.9.523: ◤ left margin 13px → 10px (-3px back left) per user v0.9.522_0934.
+// - v0.9.522: ◤ left margin 8px → 13px (+5px right shift) per user v0.9.521_0927.
+// - v0.9.521: ◤ open marker shifted DOWN +8px to close gap above the lane. User v0.9.520_0923: 開始膜の下マージンを+8ピクセル下に移動. Implemented via `position: relative; top: 8px` (positive top moves down). Both markers now use the inline-positioning trick (◤: top +8, ◢: top -13). Visually ◤◢ approach the lane endpoints from above/below respectively.
+// - v0.9.520: ステルス markers reset to default font-size (per user v0.9.519_0916 concern that enlarged size — 1.8em — might prevent ◤◢ from forming a clean square when they touch in full-stealth mode). Both markers now render at the editor default font-size, kept identical. Position tweaks retained: ◤ left margin 8px (lane x-alignment); ◢ top: -13px (= v0.9.518's -5 + this version's additional -8px shift up per user request) to pull close marker up to touch lane endpoint.
+// - v0.9.519: ◢ vertical shift via position:relative;top:-5px (not margin). User v0.9.518_0809: 全く変化なし. v0.9.518's negative top margin (`-5px 2px 0 0`) had no visible effect because the `before` decoration content renders as INLINE — vertical margins are ignored on inline elements per CSS spec. Switched to `textDecoration: 'none; font-size: 1.8em; line-height: 1; position: relative; top: -5px;'` — `position: relative; top` works on inline without changing layout flow, shifting the rendered glyph upward by the requested 5px.
+// - v0.9.518: ◢ close marker negative top margin (-5px) to pull it up against the lane endpoint. User v0.9.517_0802: ◤ now connects to the lane below but ◢ still has a gap above. Negative top margin (-5px in the `margin: '-5px 2px 0 0'` shorthand) shifts the close marker upward into the inter-line space, closing the gap.
+// - v0.9.517: stealth marker height bumped again per user v0.9.516_0755 — 1.4em → 1.8em (≈ +5px more vertical). Both ◤ and ◢ enlarged so the gap between marker tip and the lane endpoint closes further.
+// - v0.9.516: stealth marker fine-tuning per user feedback v0.9.515_0744. ◤ open marker gains left margin 8px so it aligns horizontally with the thin content-lane (which sits a few px right of the line edge). Both ◤ and ◢ glyph size enlarged to 1.4em (≈ +5px vertical height) so the marker bottoms/tops touch the lane endpoints, producing a single continuous visual element from ◤ through the thin lane down to ◢. line-height: 1 keeps the line of the marker row from growing arbitrarily.
+// - v0.9.515: stealth lane — ◤◢ markers REPLACE the lane at open/close (not coexist with thin lane). User clarification v0.9.514_0731: 「従来の太い縦線の代わりに、ステルス膜マークを使用する」 — the stealth marker is meant to BE the visual element at the open/close position, supplanting the lane terminal entirely. v0.9.513-514 made the lane thin but kept it, which still showed a small lane segment next to ◤/◢. Now: when isStealth && isTerminal (the pair is stealth AND we're on its open or close line), the lane render is `continue`d entirely. Content lines still render thin lane (already lineWidth, not terminalLineWidth, because isTerminal=false), so ◤ at top and ◢ at bottom visually connect through the thin lane in the middle without any thick segment at the ends.
+// - v0.9.514: fix v0.9.513 stealth lane thinning that was actually a no-op. User report v0.9.513_0724: "全く変化なし". Root cause: v0.9.513 used `Map<pair object, boolean>` (isPairStealth) keyed by the original pair object reference, but the per-line render code clones each pair via `pairs.filter(...).map(p => ({ ...p, warningKind: 'normal' }))`. The clone is a different object reference, so `isPairStealth.get(p)` was always undefined → isStealth always false → useTerminalWidth always true → no width change ever applied. Fix: switched to `Map<start line, boolean>` (isStealthByStartLine) — the `start` property survives the clone, so lookup by `p.start` works. Same logic, working key. Lane is now actually thin for stealth pairs (terminal width override skipped for them).
+// - v0.9.513: Stealth membrane lane thinning. User report v0.9.512_0716: "太い縦線を非表示にして、ステルス膜マークが細い縦線につながるようにしたい" — the open/close lines of stealth membranes were rendering the lane with the wide terminalLineWidth (default 3px), making the ◤◢ markers visually disconnected from the thin content-line lane. Fix: precompute a per-pair stealth flag map in computeLineDecorations (isPairStealth via isStealthMembrane), and override the isTerminal width selection to use lineWidth (thin) for stealth pairs even on their open/close terminals. Result: the lane is uniformly thin from ◤ at the top through the content to ◢ at the bottom — visually one continuous element. Lane colour unchanged (still membrane's depth-based or badge-color); only width affected.
+// - v0.9.512: Stealth membrane rendering layer. New section mCN=0610_STEALTH_RENDER. Three additions: (1) isStealthMembrane(pair, doc) — reads the open line's mSTAT badge, returns true if `Sth1`. (2) isFullStealth(pair, allPairs, doc) — true iff pair is stealth AND at least one strictly-enclosing pair is also stealth. (3) applyStealthDecorations(editor) — iterates all pairs, applies hide + ◤/◢ markers per the half/full rules. Decoration types added: stealthShellHideDecoration (font-size:0 opacity:0 — hides shell lines), stealthContentHideDecoration (same — hides full-stealth content), stealthOpenLabelDecoration (◤ before content, rgba(34,200,220,0.75) lighter cyan), stealthCloseLabelDecoration (◢ before content, rgba(8,145,178,0.95) darker cyan). The 2-tone cyan gradient between ◤ and ◢ keeps them distinguishable when they touch in full-stealth (= visual diagonal-split square per user's spec-v3 design). applyPrettyLabels modified to SKIP stealth pairs (no ▼/▲ rendering for them; only ◤/◢ from stealth path). applyStealthDecorations called from the main refresh path right after applyPrettyLabels. Decorations registered in context.subscriptions + dispose path for cleanup. NOTE: Sth1 lines still occupy a row in the editor (font-size:0 collapses chars, not the line itself) — for full-stealth the ◤◢ will appear on adjacent collapsed rows; true touching-square needs line-height collapse which is a separate v0.9.513 candidate. Create UX (Me Dock Me Stealth scope) is v0.9.514.
+// - v0.9.511: Stealth membrane spec v3, step 1 — Sth1/Sth0 badge field parser + formatter. User design (2026-05-19 18:20): replace dedicated mSHADOW notation with a stealth FLAG that can be added to ANY membrane type (mCN/mH1/mH2/mLi etc.) via the mSTAT badge. Badge field order: depth → stealth → color (e.g. `(📊⊕9+1D-1Sth1W)`). Omitting Sth = Sth0 = normal membrane (backward compatible with all existing files). Only Sth1 is ever written to source for round-trip cleanliness. Parser: parseMstatBadgeFromText extracts `Sth([01])` from the rest-of-badge string, adds `stealth: boolean` to the returned badge object; the stealth pattern is stripped from colorRest before color code matching to avoid false positives. Formatter: formatMstatBadge inserts `Sth1` between depthText and colorCode when stealth=true; omits the field when stealth=false. All existing callers preserve stealth automatically via the `{ ...badge, ... }` spread pattern used in setMstatBadgeColorInText / ensureMembraneMstatMetadata / renameMeWithName. Next: v0.9.512 implements the rendering layer (Sth1 membrane → shell hidden, nested Sth1 → content also hidden, ◤◢ cyan markers at boundaries).
+// - v0.9.510: Shed Me backend implemented (Me scope only). User design from 2026-05-19 afternoon: the metamorphic counterpart to deletion — 脱皮 — removes only the membrane shell while preserving the content within. Frontend: opRemove click handler now dispatches `{type:'shedMe'}` for Me scope (Me all / Me Shadow still send `noop` pending future implementation). Backend: new `shedCurrentMembrane(editor)` resolves the enclosing membrane pair via `currentMembranePairForRename`, then deletes the open and close lines via two `edit.delete` calls. Edit ordering: close line first (higher index) so open line position is unaffected. Edge case: when the close line is the last line of the document, the range is extended backward to consume the preceding line's newline (otherwise the document would end with a stray empty line). Edge case: refuses to operate on single-line membranes (where open == close). Edge case: refuses to operate when cursor is not inside a membrane (shows informational message). Refresh + mstat metadata sync scheduled 80ms post-edit. Next: v0.9.511 begins the Stealth membrane spec v3 implementation (Sth1/Sth0 badge field).
+// - v0.9.509: Remove button renamed to "Shed Me" with tooltip "Shed the membrane shell — contents stay intact (脱皮: 殻だけ外し、中身は残る)". Branding shift agreed in 2026-05-19 brunch discussion: "Remove" reads as deletion of essence; "Shed" reads as metamorphic shedding of outer shell while the soul/content remains. Aligns with MeOS's emergent biological metaphor system (蛹→蝶 metamorphosis, DNA-like Shadow membranes for preserved-but-invisible memory, etc.). User design vision: MeOS becomes "Edit fearlessly. Nothing is ever truly lost" — Shed for shell-only removal, Shadow for in-place version preservation, Save Me for cross-file write-back. v0.9.509 is the cosmetic rename only; v0.9.510 will implement the actual Shed Me backend handler (currently sends type:'noop'). v0.9.511+ adds Me Shadow scope (Create/Reveal/Revive/Forget) for in-place version preservation via invisible mSHADOW membranes anchored at the modification site, with ◢ shadow indicator reusing the v0.9.488 unified button routine.
+// - v0.9.508: cosmetic — Toggle button text "Toggle ∨" → "Toggle" (drop trailing caret). User v0.9.507_am1054 directive: "Toggleボタンの右端のカレットみたいな文字は削除してください。これは当初、ここにプルダウンメニューをつけようとしていた名残です". Fixed in BOTH the initial HTML render (line 6120) and the renderMembraneTargetPanel JS re-render (line 6146). For reference, user explained the bottom panel design contract: (a) Me checkbox = target the membrane shell; Contents checkbox = target the content; (b) when only Me is checked, ops are Add to Hyper TOC / Toggle / Remove (membrane-only ops, content stays — Remove deletes shell, not body); (c) when Contents is added, ops switch to Copy / Duplicate (deletion of content is prevented by design for safety); (d) scope selector Me / Me all / Me Shadow — Me Shadow = display body without membrane shells (not yet implemented).
+// - v0.9.507: membrane colour change finally works visually — fixed dead GPT-era variable references in renameMeWithName's post-edit block. User report v0.9.506_am1019: clicked purple swatch in Me Dock colour tool, body membrane colour did NOT change. Root cause: the `if (ok)` block at line 6029-6036 referenced `hasSelection`, `startLine`, `indent`, `doc` — variables that belong to a DIFFERENT function (newMembrane insertion) and are undefined in renameMeWithName's scope. The `edit.replace` for the colour-coded badge DID apply (source colour code went W → P), but the next statement (`!hasSelection && ...`) threw ReferenceError, aborting the setTimeout that scheduled refresh(editor). With refresh never running, the lane decoration kept rendering the OLD colour even though the underlying source had the new colour code. Fix: strip the dead block, keep only `setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); }, 80)`. The cursor doesn't need forcible relocation on a colour-only rename. v0.9.508 candidate: extend handler to apply colour when cursor is NOT on a membrane line (current handler still gated on `mode === 'rename'`).
+// - v0.9.506: deep-depth palette simplified from 5-step dark-gray→black gradient to a SINGLE gray. User directive (v0.9.505_0959): "深度で色分けするのは止めよう" — the gradation didn't add information; "深くなると暗黒でその差はないと考えればいい". The colourful palette (D-0〜D-7, user-configurable) remains the "everyday working zone" signal; the single gray for D-8〜D-11 doubles as "deep zone" indicator AND aligns with the existing default-color-gray convention. DEEP_DEPTH_PALETTE array replaced with a single DEEP_DEPTH_COLOR = 'rgba(150, 150, 150, 0.92)' constant; colorForDepth() depth >= 8 branch now returns the single colour. User clarification: maxDepth = 12 means 12 lanes render (D-0〜D-11) since depth is 0-origin — D-12 itself doesn't render. NOTE: membrane color change handler is the next priority per user's "先ずは､膜色の変更を実装して下さい" — current `applyColorNow` handler only runs in 'rename' mode and `Remove` button sends `type:'noop'` with no backend handler. Both addressed in v0.9.507.
+// - v0.9.505: deep-depth lanes D-8〜D-12 restored with dark-gray → black gradient palette. v0.9.504 removed the `·· D-8〜D-12` proxy collapse but left deep depths visually invisible (since maxDepth default was still 8 and no palette colour was defined past 7). User directive (v0.9.504_3323): "膜のデフォルト色(やや明るめのグレー)より暗いグレー〜黒の間で配色しよう" — give D-8〜D-12 their own lanes, but distinguish them from the colourful D-0〜D-7 "normal working zone" by using a monochrome dark-gray → black band. Rationale: rare-but-real deep structures get a visual indicator (you can SEE the depth without consulting badge / Me Dock), but the saturated palette stays reserved for the everyday 0-7 range. New constants: DEEP_DEPTH_THRESHOLD (=8) and DEEP_DEPTH_PALETTE (5 colours: rgba(90,90,90,0.92) → rgba(0,0,0,0.92) in 4 steps). colorForDepth() branches at depth >= 8 to use DEEP_DEPTH_PALETTE; depth < 8 keeps the existing user-configurable depthColors palette. maxDepth default bumped 8 → 12 in both code and package.json so the new lanes render out of the box.
+// - v0.9.504: D-8+ depth compression proxy REMOVED (the `·· D-8〜D-12` placeholder + opacity:0 hide of deep islands). User v0.9.503_1024 directive: this v0.9.422-426 era hack is obsolete now that Zoom Me! partial-load (v0.9.433+) provides a proper user-selectable membrane-unit subset editor. Auto-hiding by raw depth is heavy-handed and confusing — Zoom Me is precise and on-demand. Removed: DEPTH_COMPRESSION_START_DEPTH / DEPTH_COMPRESSION_COLOR constants, depthCompressionBlocks() / depthCompressionLabelForBlock() / computeDepthProxyDecorations() / scheduleDepthCompressionFolds() functions, depthProxyHideDecoration / depthProxyLabelDecoration / depthProxyFoldTimer vars + their dispose calls + makeDecorations creation + refresh apply, lane-render synth of `depthCompressionProxy` warningKind, and the `>=DEPTH_COMPRESSION_START_DEPTH continue` filters in open/close label render loops. Net effect: every depth (0 through configured maxDepth) now renders its lane + ▼/▲ label normally. Zoom Me! handles the "I only want to see a slice" use case explicitly.
+// - v0.9.503: Zoom scope indicator now per-token coloured. User v0.9.502_0759 refinement: not just the "Zoom :" prefix but also FIXED elements (keywords `TOC` / `Me` / `Line`, separators `+` / `〜` / spaces) should be orange; ONLY VARIABLE values (numbers, names like `name_025623.514`, `EOF`) should flip to editor-fg (theme-aware black/white). v0.9.502 painted the whole value black including the fixed words and separators. Fix: renderZoomScopeIndicator now tokenises the value into alphanumeric chunks (matched by `[A-Za-z0-9_.]+`) vs everything else, then keyword-filters: alphanumerics matching `^(TOC|Me|Line)$` → orange (zoom-scope-label class); other alphanumerics (numbers, names, EOF) → black (zoom-scope-value class); non-alphanumerics (spaces, +, 〜) → orange (zoom-scope-label class). Initial HTML render simplified to all-orange (JS re-render on init replaces it within the same tick). Result: `Zoom :` orange / `1` black / `〜` orange / `EOF` black; `Zoom :` orange / `TOC` orange / `+ ` orange / `Me` orange / `name_025623.514` black / ` +` orange / `1` black.
+// - v0.9.502: Me Dock Zoom scope indicator color split — "Zoom :" prefix stays orange (#d18400), value (everything after) now uses editor-foreground (theme-aware black/white). User v0.9.501_0747 report: this color change is what GPT couldn't solve and made the user move away from GPT ("ここの文字色を黒にしたいんだよね ... ここだけ文字色を黒にしようとして、できなかったんだよ"). Root cause of GPT's failure: renderZoomScopeIndicator only handled the "TOC+ Me <name> +N" pattern via a regex matching one specific form — when matched it wrapped the name part in `.zoom-scope-name` (editor-fg), but for any OTHER label ("1〜EOF", "Line 1〜100") the function fell through to `textContent=text` which set plain text. Plain text inherited the PARENT `.zoom-scope-indicator` color which was hard-coded to `#d18400`, leaving all-orange. Fix: (1) CSS — move the editor-fg color to the parent `.zoom-scope-indicator`, add `.zoom-scope-label` class for the "Zoom :" prefix keeping orange. (2) HTML — initial render now uses `<span class="zoom-scope-label">Zoom : </span><span class="zoom-scope-value">VALUE</span>`. (3) renderZoomScopeIndicator — unconditional split into label+value spans regardless of value form. Every Zoom scope label form now renders as: orange "Zoom :" + theme-fg value.
+// - v0.9.501: branding — VSCm naming convention introduced. User insight (2026.05.18 18:36): VSCodium → VSCm = "VSCodium folded" — the middle 'odiu' collapses (just as MeOS folds membrane content) leaving the final 'm', which is the same 'm' that begins 'membrane'. The host editor renamed by its own guest notation. Self-referential, compact (4 chars), and symbolic of the membrane-fold metaphor at the meta level. README.md, package.json displayName + description + keywords updated: "MeOS for VSCodium" → "MeOS for VSCm". Casual short form remains μOS (read mu-OS / mi-OS / me-OS). User expects: "MeOS for VSCmの普及とともに、VSCmという呼び方も定着するだろう".
+// - v0.9.500: tip range widened from 1-char to FULL 2-char emoji range, matching cursor range. User v0.9.499_0616 feedback ("生データが統一された。Wクリック、シングルクリックとも、動作も完璧"; remaining issue: "ボタンの左半分にだけ、tipが出る"): with v0.9.499's stable canonical form (no more activation-order divergence), the tip behaviour is now consistent — and its 1-char hit zone (v0.9.494 narrowing for invasion avoidance) covers only the LEFT HALF of the visible emoji glyph because Monaco's hit zone width tracks source-col count while the emoji renders ~2 char widths wide. Widening the tip range to the same [emojiStart, endCol) 2-char span as the cursor range lets the tip fire across the full visible glyph. The neighbouring-button invasion that originally drove the v0.9.490+ narrowing is no longer a concern because v0.9.492's source-level 2-space separator now sits between visible 🟢 and visible 🔴, providing a 2-char visual buffer that absorbs whatever hit-zone overshoot Monaco produces. Legacy before-content fallback path mirrored: tip range = same 2-char anchor as cursor. v0.9.500 milestone — Me Dock + body button operation parity achieved per user "これで、Me Docの操作感とシームレスになった".
+// - v0.9.499: REAL cause of v0.9.498's case-B failure pinpointed. v0.9.498_0532 user observation: case A normalised to canonical `[oGJF=v]🟢  [tRJF=v]🔴` but case B still showed legacy `[oGJF=v]🟢 🔴 [tRJF=v]` (🔴 between, no trailing 🔴) AND raw form differed between the two cases. Investigation: after setTargetRjfFlag's 2-pass write produced the canonical form, showSingleRedJumpPair calls `removeAllRealRedButtons` (line 3097) which scans for ALL literal 🔴 outside sRJF spans and deletes them — INCLUDING the freshly-written `[tRJF=v]🔴` trailing 🔴. Source ended up as `[oGJF=v]🟢  [tRJF=v]` (no 🔴), with the 🔴 visible only via decoration before-content fallback. Combined with pre-existing legacy stray 🔴 between 🟢 and [tRJF=v] that earlier writes didn't always clean up, the raw form looked inconsistent and case-dependent. Two coordinated fixes: (a) realRedButtonRangesInDocument now scans for `[tRJF=v]🔴` literal pairs and EXEMPTS the trailing 🔴 from the "stray literal" list — that 🔴 IS the canonical target button decoration anchor, not legacy noise; only true strays are removed. (b) showSingleRedJumpPair gains a FINAL normalisation pass via ensureGreenRedSpacing AFTER removeAllRealRedButtons — guarantees the post-cleanup state is the canonical `[oGJF=v]🟢  [tRJF=v]🔴` regardless of whatever stray legacy data was on the line before. The raw source form is now activation-order-independent.
+// - v0.9.498: 2-pass edit apply in setGreenJumpFlags AND setTargetRjfFlag. v0.9.497_0109 user report: case A (🔴 first, then 🟢 added) is now normalised correctly, but case B (🟢 first, then 🔴 added) still has wrong layout. Root cause: ensureGreenRedSpacing scans ORIGINAL document text but for case B the [tRJF=v] flag is being inserted by the writer's insertion branch BELOW the main loop — it doesn't exist in original text yet, so the normaliser's `/\[tRJF=v\]/u.exec(text)` returns null and the normaliser early-returns. Similarly for case B' (🔴 first, then 🟢 added via setGreenJumpFlags): the inserted `[oGJF=v]🟢` isn't visible in original text. Fix: refactor both writers to do TWO awaited edit passes — (1) main loop edits + addFlag insertions (the writer's primary job); (2) re-run ensureGreenRedSpacing on the freshly updated `editor.document` after the first pass commits, so the normaliser sees both flags whether they were pre-existing or just inserted, and can enforce the canonical `[oGJF=v]🟢  [tRJF=v]🔴` form. The single-edit early return is replaced with `(edits.length + normEdits.length) > 0` so either pass producing edits returns truthy. Minor cost: 2 editor.edit calls instead of 1 (each triggers a document-change event), but the second is no-op when normalisation isn't needed.
+// - v0.9.497: full normalisation of the [oGJF=v]🟢…[tRJF=v]🔴 group. v0.9.496_0054 user discovery (via raw-mode screenshot): the actual source was `[oGJF=v]🟢 🔴 [tRJF=v] *}` — the 🔴 literal sitting BETWEEN the green flag and the tRJF flag (legacy from a pre-v0.9.483 era when the red button was a separate literal at a different position). The v0.9.496 helper only checked the in-between substring for 0 or 1 plain space — pattern `🟢[tRJF=v]` or `🟢 [tRJF=v]` — and skipped this hybrid state where a 🔴 emoji sits in the gap. Replaced ensureGreenRedSpacing with a structural normaliser that finds the first `[oGJF=v]🟢` and first `[tRJF=v]` on the line and forces the layout to canonical `[oGJF=v]🟢  [tRJF=v]🔴`: (a) replaces the entire `between` substring (greenEnd → tRjfStart) with exactly 2 spaces, deleting any stray 🔴 or other legacy glyphs that drifted into the gap, AND (b) inserts `🔴` immediately after [tRJF=v] when the next 2 chars aren't already `🔴`. Both edits are non-overlapping so VSCode applies them together. Limited to the FIRST pair per line — multiple [oGJF=v] / [tRJF=v] on one line is not a supported topology. Called from both setGreenJumpFlags and setTargetRjfFlag as before.
+// - v0.9.496: dedicated ensureGreenRedSpacing helper called from BOTH setGreenJumpFlags AND setTargetRjfFlag, so the 2-space separation between visible 🟢 and visible 🔴 gets enforced in EVERY activation direction. v0.9.495_0038 user report: 🟢🔴 still visually adjacent in both 🟢→🔴 and 🔴→🟢 activation orders ("最初に🔴があって、後から🟢が入るケースと、その逆もある"). Root cause of why v0.9.495's inline migration missed: (a) it lived in setTargetRjfFlag's keptInside branch which is skipped when the flag body already matches `desired` (no body edit needed); the migration edit was queued but apparently dropped or conflicted with other edits at the same column. (b) The 🔴→🟢 direction goes through setGreenJumpFlags which had NO migration logic at all. (c) v0.9.492's insert-path prevIsGreenEmoji check (text.slice(insertAt-2, insertAt) === '🟢') misses when a 1-space gap already exists between 🟢 and insertAt (slice returns ` [` instead of `🟢`). New helper ensureGreenRedSpacing(document, edits) scans the document for `🟢[tRJF=v]` (0 spaces → insert 2) and `🟢 [tRJF=v]` (1 space → insert 1) patterns and pushes migration edits. Called by both writers after their main loops complete, before edits.sort + apply. The 2-space form `🟢  [tRJF=v]🔴` is now enforced regardless of activation direction or starting state.
+// - v0.9.495: migration for the v0.9.492 source-spacing change. User v0.9.494 test (v0.9.494_0031): 🟢 W-click jump now works, but 🟢🔴 are still visually adjacent on existing files (the 1-char visible separator never appeared), so 🔴's W-click hit zone is still ~1 char right of visible 🔴. Root cause: v0.9.492's setTargetRjfFlag insert-path was only adding the second leading space when INSERTING a new flag from scratch. For existing flags where the body is already correct (`m.text === desired`), the source-edit branch was skipped entirely — leaving the legacy single-space `🟢 [tRJF=v]🔴` in place. Migration added to setTargetRjfFlag's keptInside branch: when an existing flag matches `desired`, ALSO inspect the 3 source chars immediately before m.index; if they equal `🟢 ` (emoji + 1 space), insert an additional space at m.index to upgrade to the v0.9.492 double-space form. This runs every time the user re-activates the bi-link, so existing files get auto-migrated on the next activation. New files written by v0.9.492+ already emit the double-space form via the insert-path.
+// - v0.9.494: v0.9.492 base (full 2-char emoji cursor + 1-char tip + visible source spacing between adjacent 🟢🔴) + positionHitsGreenButtonRange end-check restored to INCLUSIVE (`<=`). User v0.9.493 test (v0.9.493_am0012): v0.9.490 base inadequate (standalone 🟢 had text cursor, no W-click jump); v0.9.491 and v0.9.492 best, both visually correct BUT 🟢 W-click "jumps briefly then displays raw data" while 🔴 W-click works correctly. User's discerning question: "ところが不思議なことに、🔴ボタンは正しくジャンプするんだよ。なぜ?". Asymmetry root cause: positionHitsRedRange uses INCLUSIVE end (`<=`) while v0.9.486 changed positionHitsGreenButtonRange to STRICT (`<`) for a now-obsolete hover-routing race. With strict end exclusion, VSCode's word-select on the literal 🟢 emoji (selection.active landing AT col = emojiEnd) is REJECTED by the green hit test. The hover-fallback (selectionHitsRecentGreenHover) had been pre-nulled by the same handler that scheduled the single-click timer (line 4434 `lastGreenHoverHit = null`), so the 2nd click's selectionHitsActiveGreen returns false → non-empty path's timer-cancel branch is skipped → timer fires single-click action = navCenterMeSingleClick = M-skeleton Mode toggle = raw data shown. The "jump" the user observes is the cursor placement from the W-click selection itself; the "raw data" is the toggle firing afterwards. v0.9.486's hover-routing motivation no longer applies (decoration-attached hoverMessage since v0.9.488 sidesteps provideHover ordering); v0.9.492's visible source space between 🟢 and `[tRJF=v]🔴` provides the boundary separation that strict exclusion was originally meant to handle, so claiming the boundary col is no longer harmful. Reverting to inclusive end restores W-click jump symmetry with 🔴. Recommended base going forward: v0.9.492 (visible spacing) over v0.9.491 (arithmetic offset) — spacing is simpler, robust against Monaco internals, and source-format-visible.
+// - v0.9.493: revert to v0.9.490's 1-char range for BOTH cursor and tip, keeping v0.9.492's visible space separator. User's full insight (v0.9.490_1057 + 11:48): "つまり、v0.9.490ベースにして、間を空ければ、手の形のままうまく行くはず". The 1-char "1 button wide" recognition is conceptually correct — v0.9.490's text-cursor + invasion symptoms weren't caused by the narrowing per se, but by the visual ADJACENCY of 🟢🔴 (separated only by hidden flags, so they sat visually next to each other). With a 1-char visible source space inserted between them (the setTargetRjfFlag v0.9.492 change is kept), the two 1-char hit zones no longer collide and the cursor:pointer should render correctly on each visible glyph. v0.9.492's full-2-char cursor range is reverted — the symmetric 1-char-for-both approach matches the user's "ボタン1つ分の範囲" mental model exactly.
+// - v0.9.492: visible separator between adjacent 🟢🔴 buttons — user's elegant alternative to v0.9.491's arithmetic offset compensation. User insight (v0.9.490 follow-up, 11:44): "それなら1文字分空けて、2つのボタンを配置すればいいんじゃない?" — instead of fighting Monaco's hit-zone quirks with computed offsets, just space the buttons out visually so they don't sit adjacent in the first place. With a 1-char visible gap between visible 🟢 and visible 🔴, even Monaco's slightly-off hit zone for the red button ends up landing on (or near) the visible 🔴 instead of past it. Two changes: (1) setTargetRjfFlag's inserted-string logic detects when the preceding visible char is the green emoji 🟢 and inserts 2 leading spaces instead of 1. Result: visible source layout becomes `🟢  🔴` (1-char visible separator). (2) Reverted v0.9.491's emoji-count-based tip offset shift — tip range is now back to plain [emojiStart, emojiStart+1) with no compensation. Cursor range stays the full 2-char [emojiStart, endCol) emoji span (Monaco requires the full surrogate pair for cursor:pointer rendering). The literalEmojisBefore helper is kept (no caller now) in case the offset trick is needed elsewhere. Existing lines with the old 1-space format will keep 1 space until the user re-activates the bi-link (re-activation calls setTargetRjfFlag which now writes the 2-space form).
+// - v0.9.491: split cursor and tip ranges per Monaco's two distinct hit-zone behaviours. v0.9.490 test feedback (v0.9.490_1057): with the 1-char [emojiStart, emojiStart+1) range used for both, the pointer turned into a TEXT cursor on standalone 🟢 and 🔴 buttons (no hand), AND when 🟢🔴 are adjacent the red tip disappears from the visible 🔴 and reappears 1 button-width to the RIGHT, while green tip still fires correctly on visible 🟢. Two coordinated fixes: (1) CURSOR range reverts to FULL 2-char emoji span [emojiStart, endCol) — Monaco refuses to render cursor:pointer on a partial-emoji surrogate range, so covering both UTF-16 units is required for the hand cursor. The wide-cursor risk is mitigated by font-size:0 elsewhere taking 0 DOM width — only the visible emoji glyph receives the cursor:pointer visual. (2) TIP range stays 1-char but is now SHIFTED LEFT by the count of literal 🟢/🔴 emojis appearing earlier on the same line. Monaco allocates hoverMessage hit zones using ONE-CHAR-WIDTH-PER-UTF-16-UNIT semantics; each preceding emoji (2 UTF-16 units, ~1 visual char wide) over-allocates by 1 char-width and that surplus accumulates in pixel-x of every later col. Counter-shifting the tip range left by (literalEmojisBefore) col-counts lands the visual hit zone on the visible glyph instead of N char-widths past it. For 🟢 (the first emoji on the line) offset is 0 — matches v0.9.490's "green tip fires correctly" observation. For 🔴 on the same opening line as 🟢, offset is -1, putting the visual hit zone on visible 🔴 instead of 1 button to its right. New helper: literalEmojisBefore(text, pos) walks the text counting 🟢/🔴 code points before pos. The split also applies to the legacy before-content fallback path: cursor uses 2-char anchor, tip uses 1-char anchor with the same shift. NOTE: the W-click misroute (cursor-position-based positionHits checks) is still on the v0.9.492 candidate list — independent from this hover/cursor fix.
+// - v0.9.490: narrow membraneButtonItems decoration range from 2 source chars to 1 source char ("1 button wide"). User's empirical observation in v0.9.489_1057: "共通ルーチンが🟢ボタンで見れば、ボタン2つ分の認識範囲を持つ。だから、🟢🔴のようにくっついていると、🔴ボタンの認識範囲が右側のボタン1つ分の範囲になる ... 認識範囲をボタン1つ分にすれば良いんだよ。そうでしょ?". Yes. Monaco evidently allocates a decoration's interactive hit zone using ONE-CHAR-PER-SOURCE-COL semantics (not graphemes): a 2-source-col range covering an emoji UTF-16 surrogate pair (2 cols) gets a 2-char-wide hit zone, which visually equals ~2 emoji widths. With 🟢🔴 adjacent on opening membranes (the 8-char `[tRJF=v]` between them collapsed to 0 width via font-size:0), green's 2-char hit zone reaches visually past its own emoji and overlaps where 🔴 is rendered — exactly the encroachment pattern the user reported in v0.9.488_0955 and v0.9.489_1057. Fix: narrow each button's decoration range to 1 source col (just the high surrogate of the emoji on canonical lines, just the first char of the flag on legacy before-content lines). 1-char range = 1-char hit zone ≈ 1 emoji width — each button claims exactly its own visible glyph. The literal emoji still renders fully because the source still carries the full UTF-16 pair; only the decoration scope is narrowed. Click detection (positionHitsGreenButtonRange / positionHitsRedRange) is unchanged for now — if W-click misroute persists, narrowing those positionHits checks to the same 1-char range is the next step.
+// - v0.9.489: kill the legacy WIDE cursor:pointer decorations that v0.9.488's narrow-tip fix could not overcome. v0.9.488_0955 user report: "🟢は🔴を完全に侵食している ... この範囲でtipも手のポインターも出るが、クリックが有効なのは🟢ボタンの上のみ". User's astute follow-up: "もしかして、古いコードが残っているからなのか?" — exactly right. After v0.9.476 (activeGreenButtonDecoration) and v0.9.471 (activeRedTargetButtonDecoration / sourceRjfButtonDecoration) took over the visible button rendering, the OLD jumpActiveDecoration / redJumpDecoration / redJumpHoverDecoration were never retired. They are still applied — to the WIDE `[oGJF=v]🟢` / [tRJF=v]🔴 / sRJF marker ranges — by renderActiveGreenMarkers and renderRedJumpMarkers whenever active{Green,Red}Jump is set. Each carries `cursor: pointer; font-weight: 700;` as a textDecoration on the wide range. Even though they carry no hoverMessage, their wide CSS scope evidently expands Monaco's interactive area: cursor:pointer applied to font-size:0 chars apparently keeps the DOM hit zone "live" across the whole natural-width span, which in turn drags the membraneButtonTipDecoration tip along with it (tip+cursor appear over the WIDE area). Two coordinated fixes: (a) narrow membraneButtonItems' cursorItems range to MATCH tipItems range (both = 2-char emoji on canonical lines; both = 2-char anchor at flag start on legacy lines), so the new common routine is the sole authority on the narrow contract; (b) replace the legacy decoration setDecorations calls in renderActiveGreenMarkers and renderRedJumpMarkers with empty arrays — clears any prior wide application and stops them from being re-painted. The new per-button decorations (activeGreenButtonDecoration, activeRedTargetButtonDecoration, sourceRjfButtonDecoration) now hold the canonical narrow cursor:pointer; membraneButtonTipDecoration holds the canonical narrow hoverMessage; click detection (positionHitsGreenButtonRange / positionHitsRedRange) still uses the wider greenButtonAnchorRange / redJumpButtonAnchorRange and is a separate v0.9.490 candidate. NOTE: jumpActiveDecoration's font-weight:700 on the active 🟢 emoji is lost as a side-effect — minor visual.
+// - v0.9.488: user-requested unification ("双方向ジャンプボタンの共通ルーチン化") of all 4 membrane jump button placements: (1) [oGJF=v]🟢 on opening membranes, (2) [cGJF=v]🟢 on closing membranes, (3) [tRJF=v]🔴 on opening membranes (target side of source⇄target), (4) [sRJF=v]🔴 on body link sources (source side). New common routine membraneButtonItems(editor, opts) parameterised by matchFn / emoji / tipFn / includeLeftSpace. The 3 existing per-placement functions (sourceRjfButtonRanges / activeRedTargetButtonRanges / activeGreenButtonAnchorRanges) are now thin wrappers around the common routine for backward compatibility with existing callers. Also fixes v0.9.487's GREEN-INVADES-RED bug (reported in v0.9.487_0904 — "🟢は🔴を完全に侵食している"): Monaco allocates a decoration-attached hoverMessage's hit zone using the SOURCE-COL NATURAL widths, not the on-screen visual widths. The v0.9.487 wide `[oGJF=v]🟢` range (10 source chars, 8 of which are font-size:0 and visually 0-width) produced a 10ch-wide natural-width hit zone that extended past the visible 🟢 emoji and covered the neighbouring `[tRJF=v]🔴` area completely — green's tip + cursor:pointer fired everywhere up to ~10 chars right of the visible 🟢. Fix: SPLIT the decoration into two layers: (a) per-button decorations (sourceRjfButtonDecoration / activeRedTargetButtonDecoration / activeGreenButtonDecoration) keep the WIDE source-col range with cursor:pointer — chars at font-size:0 take 0 screen pixels so the visible hand cursor stays localised on the emoji; (b) NEW shared membraneButtonTipDecoration (no visual styling — only hoverMessage host) gets a NARROW 2-char range covering just the visible emoji char. Natural width 2ch ≈ visual width 1ch, so the hit zone matches the glyph. Tip items from all 4 placements are aggregated via allMembraneButtonTipItems(editor) and set in one batch by refreshSourceRjfSpanHiding and renderActiveGreenMarkers. Legacy lines without the literal emoji (where the emoji is drawn via before-content) still use the wide range for both layers — there is no separate emoji char in source to narrow to, and the user must re-activate the bi-link to migrate to the canonical literal-emoji form. NOTE: W-click misroute (clicking visible 🔴 triggers green's action because Monaco places the cursor at a source col within green's range) is still pending — that needs a separate fix to positionHitsGreenButtonRange / positionHitsRedRange that mirrors the same narrow-hit-zone approach.
+// - v0.9.487: tooltip ownership move from position-based provideHover to decoration-attached hoverMessage. v0.9.486 user feedback: cursor is now correctly hand-shaped on both buttons, BUT (a) the red tip appears ~1 char to the right of the visible 🔴 (in empty space), and (b) hovering ON the visible 🔴 shows the GREEN tip; W-click on visible 🔴 fires green's action (jump open ⇄ close). User insight: "tip説明通りに動作している" — the buttons are logically correct, only their VISUAL anchor is wrong. Root cause: when `[oGJF=v]🟢` and `[tRJF=v]🔴` sit on the same opening membrane line with the intervening `[tRJF=v]` (8 chars) collapsed to 0 width via font-size:0, Monaco's mouse→source-column mapping does NOT cleanly map "visible 🔴 area" to red's source-col range. The literal 🔴 chars (cols 19-20 of the flag block) get visually rendered next to 🟢, but Monaco may map that visual area to green's source cols. provideHover positional checks therefore claim the wrong button. Fix: stop relying on position-based hover for button tips entirely. Attach `hoverMessage` directly to each DecorationOptions item in activeRedTargetButtonRanges, activeGreenButtonAnchorRanges, and sourceRjfButtonRanges — Monaco fires those tips when the mouse is over the visually-rendered decoration area, no source-column intermediary. provideHover.activeGreenHoverMessage and provideHover.redJumpHoverMessage no longer return MarkdownStrings for the button area (they still call rememberGreenHover / rememberRedHover so the W-click recovery path keeps working); the membrane-name-area tip in activeGreenHoverMessage is preserved. The double-tip problem from v0.9.480 (which originally drove us to remove decoration tips in v0.9.484) is avoided because only ONE side now returns text. NOTE: W-click misroute (clicking the visible 🔴 triggers green action because cursor lands in green's source-col range) is NOT yet fixed by this change — that needs the user-requested common-routine refactor (🔴と🟢ボタンはやっていることは同じ), planned for v0.9.488.
+// - v0.9.486: cursor / tooltip ownership at the [oGJF=v]🟢 ↔ [tRJF=v]🔴 boundary on opening membranes. v0.9.485 W-click jump worked but the visible 🔴 still showed text cursor and the GREEN tooltip leaked onto it. Root cause: when 🟢 and 🔴 sit side-by-side with the 8-char `[tRJF=v]` (font-size:0) collapsed between them, Monaco's mouse→document position mapping for mouse-on-visible-🔴 lands on a column the user perceives as "on 🔴" but which technically equals green's end column. positionHitsGreenButtonRange used an inclusive `<=` end check, so col-10 (the space between the two flags) hit green and its hover provider — running before red in provideHover — won. Three coordinated fixes: (a) positionHitsGreenButtonRange now uses STRICT `<` end check so green only owns chars strictly inside its range, not the boundary col; (b) activeTargetRjfFlagRangeOnLine + activeRedTargetButtonRanges extend leftward by 1 char to absorb the preceding space, so positionHitsRedRange catches whichever boundary col Monaco resolves to; (c) provideHover order reversed (red FIRST, green second) so that when both happen to claim a position the visible glyph the user is hovering wins. The before-content fallback paths (for legacy flag forms without the literal emoji) also gained `cursor: pointer` directly on the before object so the virtual glyph carries the hand cursor too. User-stated principle for future refactor (deferred to a single common routine): 🔴 と 🟢 ボタンはやっていることは同じ — only the line pair differs, which can be a parameter.
+// - v0.9.485: opening-membrane tRJF 🔴 button alignment with green algorithm (user-stated reference: 開始膜の🟢ボタンと同じアルゴリズム). v0.9.484 user report: only the opening membrane's tRJF 🔴 had text cursor instead of hand cursor, W-click failed, and the tooltip only fired in a narrow 1-2px area ~2 chars right of the visible 🔴. Root cause: activeRedTargetButtonRanges (and activeGreenButtonAnchorRanges, with the same asymmetry latent) returned a 2-char range covering just the literal 🔴 emoji tail of `[tRJF=v]🔴`. The preceding 8 chars `[tRJF=v]` are hidden via openLineHideDecoration (font-size:0), collapsing visually to 0 width. The mouse→document position mapping at the boundary between the 0-width zone and the 2-UTF16 emoji was unstable: cursor:pointer dropped, and the hover hit-zone shrank to a tiny edge band. For the green button this latent issue was masked by jumpActiveDecoration, which renderActiveGreenMarkers paints with cursor:pointer over the WIDE 10-char `[oGJF=v]🟢` range whenever activeGreenJump is set — that wide layer kept the visible 🟢 reliably pointer-cursored. The analogous redJumpDecoration only fires from renderRedJumpMarkers, which requires activeRedJump to be restored, so red lacked the wide-range safety net on fresh document loads. Fix: widen both activeRedTargetButtonRanges and activeGreenButtonAnchorRanges to return the full `[XX=v]🔴/🟢` range (still 10 UTF-16 units, still hidden+visible mix, but cursor:pointer now applies as a single contiguous span). The decoration is set via refreshSourceRjfSpanHiding on every refresh — no dependence on active state restoration timing. Visible 🔴 / 🟢 stays exactly where it was; the only change is that cursor:pointer and hover hit detection now extend across the hidden flag area too, eliminating the edge instability.
+// - v0.9.484: two fixes on top of v0.9.483 literal-emoji buttons. Bug 1 (sRJF double tooltip): the new decorations carried hoverMessage AND the existing provideHover (redJumpHoverMessage) ran on the same hover — both returned text, so two tips stacked. Remove hoverMessage from sourceRjfButtonRanges / activeRedTargetButtonRanges / activeGreenButtonAnchorRanges; provideHover is the single source of truth for body button tips. Bug 2 (tRJF 🔴 invisible on legacy flags): v0.9.483's strict regex only matched `[tRJF=v]🔴` — files written before v0.9.483 still have `[tRJF=v]` alone and showed no button. Use a relaxed regex `[tRJF=v]🔴?` and, when the emoji is absent, attach a per-instance `renderOptions.before` with `contentText: '🔴'` as a visual fallback. Re-activating the bi-link writes the literal emoji and the fallback gives way to the canonical literal-glyph rendering.
+// - v0.9.483: 🟢/🔴 body buttons become literal characters in source (▼/▲ approach). Writers (setGreenJumpFlags, setTargetRjfFlag, setSourceRjfFlag) now append a literal "🟢" / "🔴" after the active JF flag or marker. The decoration system targets the literal emoji's 2-UTF16-unit range with cursor:pointer + hoverMessage applied directly. Tooltips fire because the hover surface is a real document range (not a CSS pseudo-element). All match regexes updated to allow optional trailing 🟢/🔴 so legacy lines still parse, but the visible button only renders when the literal is present (re-activation rewrites the line and adds the emoji). Hide ranges trim the trailing emoji so it stays visible.
+// - v0.9.481: button decoration ranges expanded from zero-width to the FULL flag/marker range so setDecorations' hoverMessage can fire. User's astute observation after v0.9.480: "maybe cursor:pointer disables tooltips? Notice the fold-toggle ▼/▲ shows tooltips because its cursor stays as text." Closer: the Monaco/VSCode hoverMessage on DecorationOptions doesn't fire reliably when the range is empty (zero-width) — there's no "text" to hover over from the engine's perspective, even though the before-content is rendered. Expand each button's range to the full flag/marker length (still hidden by font-size:0, so the visible 🟢/🔴 stays in the same place), and the tooltip now has an 8-17 char wide hit area to attach to.
+// - v0.9.480: attach hoverMessage directly to the new button decorations (sRJF source 🔴, tRJF target 🔴, GJF 🟢). User report after v0.9.479: tooltips on the body 🟢/🔴 are unreliable — green tip never shows, red tip only when adjacent, "mouse on 🟢 shows 🔴 tooltip". Root cause: provideHover's position arg can map to positions OUTSIDE the underlying flag range when the flag chars have font-size:0 and the rendered glyph is before-content; positionHitsRedRange / positionHitsGreenButtonRange therefore returned false even when visually on the button. Fix: return DecorationOptions (range + hoverMessage) from the *ButtonRanges functions instead of plain Range[]. VSCode now shows the tip whenever the cursor is over the decoration itself — no provideHover involvement, no position-mapping ambiguity.
+// - v0.9.479: open/closeLineHideDecoration switched from "display: none" to "opacity:0; font-size:0" (matching mdWrapperHideDecoration). User's incisive question: why does W-click on body 🟢 work in raw display mode (mSkeletonMode=true) but not in membrane display mode? clearMembraneVisualDecorations clears openLineHideDecoration in raw mode, exposing the chars to normal layout — and W-click works. In membrane mode the same chars are display:none → removed from layout → VSCode can't map hover/click positions on the new before-content button glyphs to document coordinates → tooltips disappear, click hit tests fail. font-size:0 collapses width to ~0 while keeping chars in layout, so position lookups behave normally in both modes.
+// - v0.9.478: W-click double-click timer widened 320 → 500ms for both 🔴 and 🟢. User report: in membrane (normal) display mode, body 🟢 W-click was misrecognized as a single click (toggle), while in raw display mode (mSkeletonMode=true) the same W-click correctly jumped. Likely cause: VSCode treats word-selection on hidden flag text differently than on visible text — in normal mode the second click of a fast W-click might fire >320ms after the first because the decoration system absorbs some processing time. 500ms gives slower clickers and slower render paths room to be detected as a double-click. Also added restoreActiveGreenJumpFromJumpFlags to the non-empty selection green check so the hit test survives any state loss between selection events.
+// - v0.9.477: render-path fix for v0.9.476 — clicking a membrane name to activate the pair (showJumpMarkers → setGreenJumpFlags → renderActiveGreenMarkers) didn't repaint the new activeGreenButtonDecoration, so 🟢 disappeared from the body. Cause: refreshSourceRjfSpanHiding (the natural refresh hook for the new decoration) is on the document-edit chain via onDidChangeTextDocument, but it doesn't fire promptly enough for the activation path that wants the 🟢 painted as soon as the flags are written. Fix: call setDecorations for activeGreenButtonDecoration and activeRedTargetButtonDecoration directly inside renderActiveGreenMarkers so any time green state changes, the new decoration is refreshed in the same tick.
+// - v0.9.476: 🟢 button decoration parity with 🔴 (cursor: pointer + reliable click). The old jumpActiveDecoration drew 🟢 as after-content with no cursor: pointer inside the after object (it was only on the range textDecoration, which didn't apply to the virtual after content). Hover therefore showed the text caret instead of a hand cursor, and W-clicks past the after content fell outside the flag-range hit window. Fix: introduce dedicated activeGreenButtonDecoration with before-content '🟢' and cursor: pointer baked into the before object — mirrors activeRedTargetButtonDecoration exactly. Remove the after '🟢' from jumpActiveDecoration to avoid double rendering; keep its range cursor: pointer for hovering the membrane-name area. The body 🟢 W-click jump path from v0.9.475 should now fire because the cursor lands at the flag-start position (inside the green button hit range).
+// - v0.9.475: body 🟢 click parallels v0.9.474's 🔴 treatment. Single click → 320ms timer → navCenterMeSingleClick (toggle mSkeletonMode or return to selected Me, same as Me Dock 🟢 single click). Two clicks within 320ms on same button OR non-empty selection W-click landing on the green button → cancel timer and navCenterMeDoubleClick (jump open ⇄ close, same as Me Dock 🟢 W-click). User-stated goal: "body 🟢 should also W-click jump between open and close membranes, to be seamless with Me Dock." Body 🟢 now behaves identically to Me Dock 🟢.
+// - v0.9.474: body 🔴 click dispatch rewritten to mirror Me Dock exactly. Per user's repeated request, dispatch through navCenterBidiClick / navCenterBidiDoubleClick (the same handlers the Me Dock 🔴 uses). Implementation: replace the 520ms key-match scheme in handleMembraneNameSelection with a 320ms timer-based double-click detector. First click on a body 🔴 starts a timer that runs navCenterBidiClick (toggle mSkeletonMode) when it fires; a second click on the same button before the timer fires cancels it and runs navCenterBidiDoubleClick (jump Source ⇄ Target). Non-empty selection W-click path also dispatches to navCenterBidiDoubleClick and cancels any pending timer. This eliminates the v0.9.473 tRJF anomaly where W-click was being processed as a single click.
+// - v0.9.473: Bug 2 fix from v0.9.472 — tRJF 🔴 W-click was being captured by the 🟢 hit test. Cause: positionHitsGreenButtonRange used an 8-char tolerance window from the green anchor, which overflowed into the adjacent [tRJF=v] flag on lines that had both [oGJF=v] [tRJF=v]. The click on 🔴 landed inside the green tolerance window first, so handleMembraneNameSelection routed it to the green path (mSkeletonMode toggle = "raw data"). Fix: greenButtonAnchorRange now returns the FULL [oGJF=v] flag range (not zero-width); positionHitsGreenButtonRange uses strict containment within that range. The zero-width legacy fallback path keeps the small 2-char tolerance for non-flag membranes.
+// - v0.9.472: Bug 1 fix from v0.9.471 — renderRedJumpMarkers was still calling ensureRealRedButtons every render, re-writing literal 🔴 emojis next to the membrane name even though showSingleRedJumpPair was no longer writing them. Result: TWO 🔴 buttons visible (literal at name-end + decoration at flag position). Remove the ensureRealRedButtons call from renderRedJumpMarkers; the activeRedTargetButtonDecoration at [tRJF=v] flag is now the sole target button. This likely also resolves Bug 2 (W-click not recognized): the click was landing on the literal 🔴 at name-end, but redJumpButtonAnchorRange was returning the flag-position range, so positionHitsRedRange returned false.
+// - v0.9.471: GJF and tRJF buttons relocated to flag positions. 🟢 (oGJF/cGJF) anchor moves from end-of-name to the [oGJF=v]/[cGJF=v] flag position via greenButtonAnchorRange; existing jumpActiveDecoration follows. 🔴 target (tRJF) gains a dedicated activeRedTargetButtonDecoration that paints at the [tRJF=v] flag position; the literal "🔴" emoji write in showSingleRedJumpPair is removed (legacy literals still get cleaned up via removeAllRealRedButtons). Effect: 🟢 and 🔴 are no longer adjacent to the membrane name and no longer to each other, eliminating v0.9.470 W-click interference. Both buttons now have hand cursor (cursor: pointer) and are independent click targets at the right side of the membrane line.
+// - v0.9.470: sRJF migration — replace inline HTML span "<span class=\"sRJF=v\">🔴</span>" with end-of-line comment marker "// {* [sRJF=v] *}". Unifies the JF flag family ([oGJF/cGJF/tRJF/sRJF] all use [XX=v] comment form), is language-independent (no HTML semantics needed), and avoids HTML-meaningful contexts (Markdown rendering previously could eat the span). Visual: marker text hidden via mdWrapperHideDecoration; 🔴 button rendered at marker position via new sourceRjfButtonDecoration (before content). Read path detects BOTH legacy span and new marker for backward compatibility; write path emits only new marker, auto-migrating any old spans on every setSourceRjfFlag call. Click detection (sourceRjfVisibleButtonRangeAfterTextRange) now finds new marker anywhere on the source line. TOC entry extraction (v0.9.455 Bug 1 fix) extended to strip both representations.
+// - v0.9.465: README + LICENSE — extend trademark assertion to defensive name variants in the MeOS™ family. Latin/Greek (MeOS, μOS), Chinese semantic (微OS = micro-OS, 膜OS = membrane-OS), Chinese phonetic (美OS, 妙OS, 米OS ≈ "mee-OS"), Japanese (ミーオス, ミューオス, メオス), Korean (미OS). Pre-emptive prior-art declaration against bad-faith squatting in first-to-file jurisdictions, particularly China where squatters target Japanese-origin tech brands (Apple, Tesla, Muji historical precedents).
+// - v0.9.464: README — add "License & Trademark" section codifying the strategy: (1) notation = public domain, (2) software = MIT License, (3) brand = common-law ™ (unregistered, no formal registration pursued, defensive only if needed), (4) acknowledgments — conceptual lineage to Päun, Yamanaka, Jobs. Add LICENSE file with MIT + notation public-domain + trademark notice. Mirrors iPS / JSON / Markdown model: open term, free implementation, identifiable brand.
+// - v0.9.463: brand restructure to two-tier — "MeOS for anywhere"™ as the parent universal notation (legally registrable, distinctive), with "μOS" as the abbreviation / stylized form. Web search revealed μ-prefixed conflicts (μC/OS by Silicon Labs, μOS++, multiple MuOS projects), making bare "μOS" risky for trademark registration. "MeOS" has no prior art found in my searches and is uniquely fabricated. Revert displayName to "MeOS for VSCodium", "MeOS:" command prefix, "MeOS" category, "MeOS - Membrane" submenu. μOS retained throughout README as abbreviation explanation + as folded form prefix (μVSCodium, μMac, μPhone). The μέμβρανα etymology stays valid (still explains why μ is a meaningful abbreviation).
+// - v0.9.462: README — surface the 4-layer μ symbolism. Add the title-level tagline "μOS reads as micro-OS — a small, shadow-like presence. Unfold μ, and it is membraneOS." Add μέμβρανα (Greek for "membrane") to the etymology section: μ literally begins the Greek word membrana, so the glyph structurally encodes its own meaning. μOS is micro-OS on the surface, membraneOS at its root.
+// - v0.9.461: rename brand "MeOS" → "μOS". displayName, description, README title + body, Core Formulas, command titles ("μOS:" prefix), command categories, submenu label, and keywords (μOS first, MeOS retained for search compatibility). UI action words "Me Dock / Edit Me / New Me / Navigate Me! / etc." are intentionally preserved — these refer to the membrane unit, not the brand. The brand μOS folds μ+OS into the most compact possible form; can be read as Mu-OS / Mi-OS / Me-OS depending on speaker. μOS for OS := μOS — the brand folds into itself when applied to the OS layer.
+// - v0.9.460: README — clarify that μ IS the Greek letter corresponding to English m (both descend from Phoenician mem 𐤌 "water"). The shift m → μ is not a substitution to a foreign symbol; it is the same letter traced back to its foundational form. This strengthens the naming story for the 6/4 debut.
+// - v0.9.459: README — introduce μ (mu/mi/me) naming convention. MeOS for VSCodium := μVSCodium. The Greek letter is the folded brand-carrier, the spoken word ("mu" / "mi" / "me") is the unfolded form, and the meaning is 「私の」 (mine, one with me). Successor to Apple's "i" prefix: where i pointed outward at the individual customer, μ points inward at the self that has folded into the device.
+// - v0.9.458: rename displayName "MeOS" → "MeOS for VSCodium" to signal that MeOS is the editor-independent notation and this VSIX is one implementation; opens room for "MeOS for Joplin", "MeOS for Cursor", etc.
+// - v0.9.457: Bug B1 (Shift+Arrow rapid selection 1-3s freeze) — every intermediate selection state was firing handleMembraneNameSelection + restoreActiveRedJumpFromJumpFlags + tryActivateSelectedNameJump + refresh, queueing far faster than the chain could process. Debounce keyboard selection events by 150ms in onDidChangeTextEditorSelection; mouse (W-click) and command selections stay immediate so instant responsiveness is preserved. Caret tracking + hidden-prefix skip remain immediate (lightweight UX).
+// - v0.9.456: Bug A1 (TOC select latency 2-6s) — showSingleRedJumpPair ran 4 sequential edit→refresh chains; introduce deferRefreshCount so onDidChangeTextDocument skips its auto-refresh during the batch, then run one consolidated refresh at the end. Bug A2 (cursor stops at old 🔴 site on arrow keys) — setSourceRjfFlag was leaving a 28-char invisible "<span class="sRJF=h"></span>" placeholder behind; now delete the stale span (and its leading space) entirely. Authoritative bi-link state lives in [tRJF=v] on the target so no state is lost.
+// - v0.9.455: Bug 1 real fix — span stripping must happen INSIDE extractMembraneTocEntryFromLine BEFORE cleanMembraneName runs (which only chops 🔴 and the trailing </span> off, leaving the orphan opening <span> attached to the id). Also re-attach a bare 🔴 to the label when the source line had a visible sRJF marker, so Hyper TOC entries with active bi-links show "name 🔴 // comment" as expected.
+// - v0.9.454: Bug 2 deeper fix — true W-click on body 🔴 selects the emoji making selection.isEmpty FALSE, which made the v0.9.453 empty-selection path unreachable. Add a new red-button-hit branch inside the non-empty-selection block of handleMembraneNameSelection so W-click jumps Source ⇄ Target.
+// - v0.9.453: Bug 1 (Hyper TOC raw <span class="sRJF=v">🔴</span> showed as literal text in webview input — strip to bare 🔴). Bug 2 (body W-click on source span did not jump — call restoreActiveRedJumpFromJumpFlags inside selectionHitsActiveRed so the hit check works without prior Me Dock interaction).
+// - v0.9.452: bump past abandoned GPT-side v0.9.451 install so VSCodium picks this build.
+// - v0.9.451: (skipped — leftover folder in ~/.vscode-oss/extensions from GPT experimental install, content same as v0.9.449)
+// - v0.9.450: collectMembraneStructure cache (WeakMap by document.version); cuts ~50 redundant scans per W-click to 1.
+// - v0.9.447: v0.9.445 base; Zoom Me defaults changed to 1〜EOF only.
+// - v0.9.445: v0.9.442 base, make Navigate Line input Tab return to Zoom Me start.
+// - v0.9.442: v0.9.438 base, fix Zoom Me Tab order only.
+// - v0.9.438: Zoom Me stability: tab order, mode value persistence, scope status merge, D0-root +N Me zoom.
+// - v0.9.436: Zoom Me! 2-way mode: Line range zoom + Me membrane/count zoom.
+// - v0.9.435: Zoom Me! always reloads from the original source editor, not from the generated Me Lens document.
+// - v0.9.434: Zoom Me! keeps loaded range values/status and always includes the Hyper TOC membrane in Me Lens loads.
+// - v0.9.433: Wire Zoom Me! Load Me to open selected line range in an editable Me Lens document.
+// - v0.9.426: SAFE Depth Proxy: hide D-8+ by decorations only; never edit source and never native-fold raw data.
+// - v0.9.424: Short Depth Proxy Membrane hides D-8+ blocks and labels them as D-8〜D-n.
+// - v0.9.422: Add Depth Compression proxy lane: D-8+ membranes are represented by a dark navy surrogate line.
+// - v0.9.406: Time Machine Me histories survive Warp/Submarine mode changes; Clear aligns to world-line box bottom.
+// - v0.9.376: Auto-show Me Dock when a file/editor is displayed; refresh by disposing old Dock on file change.
+// - v0.9.374: Time Machine Me insertion scar supports multiple independent insertion runs; keep half-width ﾚ.
+// - v0.9.373: Time Machine Me insertion mark uses half-width ﾚ; restore mark height; harden insertion-style line history.
+// - v0.9.372: Time Machine Me insertion mark uses thin katakana レ and records only the first insertion scar per history run.
+// - v0.9.371: Fix membrane-name W-click bounce; Time Machine Me insertion mark lowered and changed to sharp lowercase v.
+// - v0.9.391: After Me Dock Create, keep editor/Webview Line on current+1 opener line.
+// - v0.9.389: After creating a membrane, locate the actual opener by id after edit; fixes blank-line insertion drift.
+// - v0.9.387: After creating a membrane, move cursor to the actual new opener line (blank-line +1 compensation).
+// - v0.9.397: Fix Warp forecast colors while cursor is inside deeper Submarine layers.
+// - v0.9.396: Fix Submarine cruise forecast colors and improve deep Submarine switch readability.
+// - v0.9.395: Make Submarine cruise traverse all membrane boundary events across depths; Warp remains D0-only.
+// - v0.9.386: Use compact mSTAT depth notation (D-n before color) and sync Submarine depth display.
+// - v0.9.385: Add D-n membrane depth notation and default W color metadata.
+// - v0.9.384: Separate Line history per Warp/Submarine world; fix cockpit ↑=TOP/← and ↓=EOF/+ direction.
+// - v0.9.384: Implement Warp/Submarine Me cruise: two navigation worlds, plus ↑/↓ keyboard shortcuts for +/- when the cockpit is focused.
+// - v0.9.382: Add Warp/Submarine mode switch skeleton; depth-window UI and cruise buttons only.
+// - v0.9.380: Predict Me Flip colors for child membranes while inside a parent membrane.
+// - v0.9.379: Predict Me Flip -/+ colors from enclosing/neighbor membrane positions.
+// - v0.9.378: Raise Me Flip buttons 3px and tint -/+ with predicted Me color.
+// - v0.9.377: Move Me Flip buttons directly above Me and shrink button frame.
+// - v0.9.370: Navigate Me! rename; Time Machine Me shows red V insertion marks above the slider; current/Me tint follows Edit Me Me color.
+// - v0.9.369: Navigation Center adds TOP/TOC --- current --- EOF axis; EOF/TOP/TOC jump processing connected.
+// - v0.9.366: Replace pre History with one current-life toggle button: Real ⇄ REinc skeleton.
+// - v0.9.365: Add REinc ⇄ Real skeleton to Time Machine Me; REinc = another world, Real = current world.
+// - v0.9.364: Add pre History / Clear controls to Time Machine Me; one-step history restore.
+// - v0.9.363: Add Time Machine Me history slider in Navigation Center; (n/total) opens slider + numeric jump.
+// - v0.9.362: Navigation Center compact action row; keep recent history inside 0000_HISTORY.
+// - v0.9.361: Add Navigation Center skeleton: TOC / create TOC / Line / Anchor / Bi-direction Jump.
+// - v0.9.360: Real button zone is canonical: [name] [🟢/🔴/🟢🔴] [comment]; replace-only, no button duplication.
+// - v0.9.359: Use real comment-text buttons {[membrane name 🟢] 🔴}; hover/click ranges are the actual emoji characters.
+// - v0.9.358: Display order changed to {[membrane name 🟢] 🔴}; green remains name-pair control, red is external link jump.
+// - v0.9.352: Prioritize 🟢 active-marker hover/click over adjacent 🔴 link-jump markers.
+// - v0.9.393: DATA-SAFE green active markers. No text replace/delete for 🟢; render as virtual decorations only.
+// - v0.9.351: Hyper TOC visual marker only for hT_ membranes; target sections stay normal membranes; close comment shortened.
+// - v0.9.350: Keep 🚧 markers only inside the source Hyper TOC; remove NOW marks from target membranes.
+// - v0.9.348: Add-to-Hyper-TOC now creates hT_ Hyper TOC membranes/comments.
+// - v0.9.347: Add source Hyper TOC membrane for navigating extension.js formal membranes.
+// - v0.9.344: Full formal source membrane sweep; no old // {▼mCN=...} / // {▲mCN=...} markers remain.
+// - v0.9.343: Fix folding range end to stop at matching close membrane, not the next line.
+// - v0.9.342: Formalized source membranes to current markMup syntax with badges.
+// - v0.9.329: On-site Restore returns from split view to the normal left document + right Me Dock layout.
+// - v0.9.328: On-site TOC now restores/reveals Me Dock automatically after editor split.
+// - v0.9.327: Me Dock TOC renamed to Hyper TOC in UI labels and user-facing messages.
+// - v0.9.332: Add framed style to Me scope dropdown.
+// - v0.9.331: Add Me Shadow to Edit Me target-scope dropdown (skeleton only).
+// - v0.9.340: Me Toggle opens via MeOS membrane-arrow path; unfold targets the visible start line.
+// - v0.9.339: Me / Me all Toggle now routes through MeOS membrane pair toggling; folded close-labels are hidden.
+// - v0.9.338: Standards toggle uses CSS-drawn horizontal switch instead of glyph marker.
+// - v0.9.337: Standards toggle initial skin shows ON marker (▬) by default.
+// - v0.9.335: Standards > v settings fallback to Global when no workspace is open.
+// - v0.9.334: Added Me Dock title Standards > v switch for native disclosure/folding controls.
+// - v0.9.333: Me all Toggle real processing: vertical toggle, horizontal close-only policy, ⊖f/⊕f fixed states.
+// - v0.9.330: Edit Me target scope skeleton: Me / Me all dropdown; Me all hides name box.
+// - v0.9.326: On-site TOC skeleton button toggles editor two-row view; color choice applies immediately; Contents text stays neutral.
+// - v0.9.325: Edit Me action buttons normalized to Reset/Set style; color palette opens upward from lower Me color button.
+// - v0.9.324: Edit Me panel rounded frame, color button returned beside lower Me label, title sizing tuned.
+// - v0.9.312: Me Dock TOC comment-edit highlight prefix width shortened by additional 5px (v0.9.310 +10px -> +2px).
+// 2026.05.07(木) pm07:xx.xx v0.9.271
+// - Fixed Hyper TOC panel v0.9.277: compact title removed, common Fold/↑/↓/+ controls, empty item deletes.
+// 2026.04.29(水) pm10:59.57 v0.9.216
+// - Keep 🟢 active markers lit on both start and close membranes for the active pair.
+// - Single-clicking an mCN name activates the pair; double-clicking still jumps and activates.
+// 2026.04.29(水) pm10:43.58 v0.9.216
+// - Add membrane-name jump: selecting/double-clicking an mCN name jumps between matching open/close membranes.
+// - Show temporary 🟢 active markers on the jump source and target.
+// 2026.04.29(水) pm06:10.36 v0.9.216
+// - Fix warning display selection: choose the max-2 warnings globally before drawing.
+// - Draw and hover only those selected warnings; hidden 3rd+ warnings no longer leak into hover.
+// - Give each selected warning its own lane so the 2nd warning does not start from another warning's origin.
+// 2026.04.29(水) pm05:50.01 v0.9.216
+// - Add hover warnings to unmatched membrane arrow-lines.
+// - Unclosed start membranes show a 'missing close membrane' warning.
+// - Orphan close membranes show a 'missing start membrane' warning.
+// 2026.04.29(水) pm05:42.55 v0.9.216
+// - Limit unmatched membrane warning arrow-lines to at most 2 total.
+// - Keep scanning all lines after the warning display limit so parsing cannot stall or loop.
+// - Version constant synchronized to v0.9.216.
+// ▼mCN=0001_INDEX // 目次（{}なし・非膜化）
+// - 0100_CORE_STATE       // require / VERSION / shared state
+// - 0200_DECORATIONS      // decoration lifecycle and style setup
+// - 0300_MSTATS           // mSTATS badge parser / formatter / sync / restore
+// - 0400_PARSE_PAIRS      // membrane source parser and pair collector
+// - 0500_VISUAL_LINES     // lane depth rendering / folding-state helpers
+// - 0600_PRETTY_LABELS    // hide raw source prefix/suffix and draw labels
+// - 0700_COMMANDS         // refresh / fold / unfold / auto-unfold commands
+// ▶◀︎ NOTE [V=0.9.308] TOC input first click must be select-only; prevent default focus unless selected+paused re-click.
+// - 0800_ADD_MEMBRANE     // Add Membrane command
+// - 0900_PROVIDER_ACTIVATE // folding provider / activate / deactivate
+// ▲mCN=0001_INDEX //
+
+// {* ▲mCN=0000_HISTORY // end [cGJF=h] *}
+
+// {* ▼mCN=hT_122105.511 // Hyper TOC ★source index for extension.js 🚧(0):v0.9.407 [oGJF=h] [tRJF=h] *}
+// ⇄ 0100_CORE_STATE // require / VERSION / shared state
+// ⇄ 0200_DECORATIONS // decoration lifecycle and style setup
+// ⇄ 0300_MSTATS // mSTATS badge parser / formatter / sync / restore
+// ⇄ 0400_PARSE_PAIRS // membrane source parser and pair collector
+// ⇄ 0500_VISUAL_LINES // lane depth rendering / folding-state helpers
+// ⇄ 0600_PRETTY_LABELS // hide raw source prefix/suffix and draw labels
+// ⇄ 0700_COMMANDS // refresh / fold / unfold / auto-unfold commands
+// ⇄ 0710_HYPER_TOC_PIPELINE // 🚧(0) hT-only Hyper TOC parsing / insert / snapshot / Me Dock render
+// ⇄ 0850_CONTROL_ME // Control Me! floating QuickPick prototype v0.9.221
+// ⇄ 0810_MEMBRANE_SPACING // v0.9.223 add blank-line spacing and close-line Enter helper
+// ⇄ 0800_ADD_MEMBRANE // Add Membrane command
+// ⇄ 0868_SELECT_FULL_MEMBRANE_NAME // v0.9.259 full membrane-name selection
+// ⇄ 0860_MEOS_MENU_STUBS // v0.9.228 context menu skeleton commands
+// ⇄ 0865_RENAME_ME // v0.9.235 Rename Me safe implementation
+// ⇄ 0867_ME_DOCK_CURRENT_LINE_MARKER // v0.9.253 Me Dock current line marker
+// ⇄ 0866_INLINE_NEW_RENAME // v0.9.242 inline Me Dock New/Rename helpers
+// ⇄ 0869_LINE_HISTORY // Real/REinc histories persist across Warp/Submarine
+// ⇄ 0870_ME_DOCK // 🚧(1) v0.9.421 Warp/Submarine opens Time Machine Me
+// ⇄ 0900_PROVIDER_ACTIVATE // folding provider / activate / deactivate
+// {* ▲mCN=hT_122105.511 // end [cGJF=h] *}
+// {* ▼mCN=0100_CORE_STATE // require / VERSION / shared state (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+const vscode = require('vscode');
+
+const VERSION = "0.9.669";
+
+let lineDecoration;
+let openLineHideDecoration;
+let openLineLabelDecoration;
+let closeLineHideDecoration;
+let closeLineLabelDecoration;
+// v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
+// the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
+let warningArrowDecoration;
+let jumpActiveDecoration;
+let jumpNameHoverDecoration;
+let redJumpDecoration;
+let redJumpHoverDecoration;
+let rightEdgeSpaceDecoration;
+let nameRightVirtualSpaceDecoration;
+let mdWrapperHideDecoration;
+// v0.9.615: †† 注釈領域 — コメントとバッジの間。
+// MD の HTML コメント構文色（緑）を editor.foreground で上書きし、
+// 注釈が通常テキスト色で表示されるようにする。
+let annotationColorDecoration;
+// v0.9.656: 文筆家向けハイライト ==text== → 黄背景。`==` マーカーは font-size:0 で隠す
+// (膜マーカー隠しと同じ手法)。本体(黄背景)とマーカー隠しの2装飾。
+// v0.9.657: 7色対応 ==text(色)==。色名は日英両対応。色ごとに装飾型を持つ
+// (VS Codeは装飾型ごとにスタイル固定のため)。highlightBodyByColor: Map<色キー,装飾型>。
+let highlightBodyDecoration;        // 後方互換: 黄(=yellow)を指す
+let highlightMarkerDecoration;
+let highlightBodyByColor = null;    // Map<'red'|'orange'|...|'yellow', decorationType> (背景)
+let highlightFgByColor = null;      // v0.9.661: Map<色キー, decorationType> (文字色レイヤー)
+// 色キー → 背景色。v0.9.698: 「本物の色に見える」濃さにする(俊克: 薄い赤=ピンク・薄い紺=紫で駄目)。
+// 明るい暗色は色相がズレるので濃い(高alpha)本物色にし、暗い背景は自動で白文字を当てて可読化
+// (DARK_BG_KEYS + highlight parse の auto-contrast)。元々OKの 黄/橙/桃/紫 は明るいまま維持。
+const HIGHLIGHT_COLORS = {
+  red:    'rgba(225, 55, 55, 0.90)',   // 本物の赤(濃)→白文字
+  orange: 'rgba(255, 160, 40, 0.55)',
+  yellow: 'rgba(255, 230, 0, 0.55)',
+  green:  'rgba(55, 165, 70, 0.88)',   // 本物の緑(濃)→白文字
+  blue:   'rgba(60, 125, 235, 0.90)',  // 本物の青(濃)→白文字
+  purple: 'rgba(190, 130, 245, 0.50)',
+  pink:   'rgba(255, 130, 200, 0.50)',
+  navy:   'rgba(25, 35, 135, 0.95)',   // 本物の紺(濃)→白文字
+  aqua:   'rgba(45, 190, 240, 0.70)',  // 水色
+  maroon: 'rgba(150, 35, 45, 0.92)'    // 本物のワイン(濃)→白文字
+};
+// v0.9.698: 暗い背景色。文字色未指定なら自動で白文字にして可読化する(auto-contrast)。
+const DARK_BG_KEYS = new Set(['red', 'green', 'blue', 'navy', 'maroon']);
+// v0.9.661: 文字色(前景)用の色。==語(文字色+背景色)== の文字色側。背景7色＋
+// 文筆で頻出の黒/白/グレー。不透明寄りで文字としてくっきり。
+const HIGHLIGHT_FG_COLORS = {
+  red:    'rgba(210, 40, 40, 1)',
+  orange: 'rgba(215, 120, 20, 1)',
+  yellow: 'rgba(180, 150, 0, 1)',
+  green:  'rgba(40, 150, 60, 1)',
+  blue:   'rgba(40, 110, 210, 1)',
+  purple: 'rgba(150, 70, 210, 1)',
+  pink:   'rgba(210, 60, 150, 1)',
+  black:  'rgba(20, 20, 20, 1)',
+  white:  'rgba(245, 245, 245, 1)',
+  gray:   'rgba(130, 130, 130, 1)',
+  navy:   'rgba(0, 0, 128, 1)',     // v0.9.696 紺 #000080
+  aqua:   'rgba(0, 191, 255, 1)',   // v0.9.696 水色 #00BFFF
+  maroon: 'rgba(128, 0, 0, 1)'      // v0.9.696 ワイン #800000
+};
+// 日本語・英語の別名 → 正規キー。未知/省略は yellow。
+const HIGHLIGHT_COLOR_ALIASES = {
+  '赤': 'red', 'red': 'red',
+  '橙': 'orange', 'orange': 'orange', 'オレンジ': 'orange',
+  '黄': 'yellow', 'yellow': 'yellow', '黄色': 'yellow',
+  '緑': 'green', 'green': 'green',
+  '青': 'blue', 'blue': 'blue',
+  '紫': 'purple', 'purple': 'purple',
+  '桃': 'pink', 'pink': 'pink', 'ピンク': 'pink', '桃色': 'pink',
+  // v0.9.661: 文字色用の無彩色。背景には使わない(文字色専用キー)。
+  '黒': 'black', 'black': 'black',
+  '白': 'white', 'white': 'white',
+  '灰': 'gray', 'gray': 'gray', 'grey': 'gray', '灰色': 'gray',
+  // v0.9.696: 追加3色。
+  '紺': 'navy', '紺色': 'navy', 'navy': 'navy',
+  '水': 'aqua', '水色': 'aqua', 'aqua': 'aqua',
+  // #800000 は maroon / wine / ワイン / 栗 どれでも指定可(俊克: 名前で迷わせない)。
+  'maroon': 'maroon', 'マルーン': 'maroon', 'wine': 'maroon', 'ワイン': 'maroon', '栗': 'maroon', '臙脂': 'maroon'
+};
+function normalizeHighlightColor(name) {
+  if (!name) return 'yellow';
+  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()];
+  return key || 'yellow';
+}
+// v0.9.661: 文字色キーの正規化（空はnull=指定なし）。エイリアス表は共用。
+function normalizeFgColor(name) {
+  if (!name || !name.trim()) return null;
+  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()];
+  return (key && HIGHLIGHT_FG_COLORS[key]) ? key : null;
+}
+// v0.9.661: 背景色キーの正規化（空はnull=指定なし）。背景は無彩色を持たない→7色のみ。
+function normalizeBgColor(name) {
+  if (!name || !name.trim()) return null;
+  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()];
+  return (key && HIGHLIGHT_COLORS[key]) ? key : null;
+}
+// v0.9.700: 見出し本文中のインライン記号(=={…}==・==…==・~~{…}~~・~~…~~)を、同じ長さの
+// 伏字('X')に置換した文字列を返す。見出しの色/コメント判定で、インラインの中の // や () を
+// 見出し自身のものと誤検出しないために使う(置換後も長さが同じなので位置が一致する)。
+function maskInlineTokens(s) {
+  return s.replace(/=={[^\n]*?}==|==(?!\{)[^=\n]+?==|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/g, function (m) { return 'X'.repeat(m.length); });
+}
+// v0.9.699: ハイライト/見出し/取消線で共通の色指定パーサ。記法の一貫性のため1関数に集約。
+// content 末尾の `(文字色/背景色)` と `//コメント` を分離して返す。
+//   bodyText : 本文（色指定とコメントを除いた部分）
+//   bodyLen  : 本文の文字数（装飾範囲の算出に使う）
+//   fgKey    : 文字色キー（線色・見出し文字色）。未指定は null
+//   bgKey    : 背景色キー。未指定は null
+//   comment  : `//` 以降のコメント（トリム済み）
+// single: '/' が無く色が1つだけの時、それを 'fg'(見出し・取消線=文字/線色) か
+//         'bg'(ハイライト=背景色) のどちらに割り当てるか。
+// scan(省略可): `//` と `(色)` の位置検出に使う文字列。見出しのように本文中へインライン
+//   記号(=={…}==・~~{…}~~)を入れられる場合は、その中身の // や () を誤検出しないよう、
+//   maskInlineTokens() でインライントークンを同長の伏字に置換した版を渡す。値(コメント/色)は
+//   元の content から取り出す(scan は content と同じ長さなので位置が一致する)。
+function parseColorSpec(content, single, scan) {
+  scan = scan || content;
+  const ci = scan.indexOf('//');
+  const beforeComment = ci >= 0 ? content.slice(0, ci) : content;
+  const comment = ci >= 0 ? content.slice(ci + 2).trim() : '';
+  const scanBefore = ci >= 0 ? scan.slice(0, ci) : scan;
+  let fgKey = null, bgKey = null;
+  let bodyText = beforeComment;
+  const cm = scanBefore.match(/\(([^()]{1,80})\)\s*$/);
+  if (cm) {
+    const spec = cm[1].trim();
+    const sep = spec.indexOf('/') >= 0 ? '/' : (spec.indexOf('+') >= 0 ? '+' : '');
+    let fg = null, bg = null;
+    if (sep) { const sp = spec.split(sep); fg = normalizeFgColor(sp[0]); bg = normalizeBgColor(sp[1]); }
+    else if (spec) { if (single === 'fg') fg = normalizeFgColor(spec); else bg = normalizeBgColor(spec); }
+    // 有効な色が1つでも取れた時だけ (…) を色指定として本文から切り離す。
+    // 無効(例 (x)・関数foo()) なら本文の一部として残す＝勝手に隠さない。
+    if (fg || bg) { fgKey = fg; bgKey = bg; bodyText = beforeComment.slice(0, beforeComment.length - cm[0].length); }
+  }
+  return { bodyText: bodyText, bodyLen: bodyText.length, fgKey: fgKey, bgKey: bgKey, comment: comment };
+}
+// v0.9.658: 文筆家向け取消線 ~~text~~ → 赤い取消線。`~~` マーカーは隠す。
+// 史上初: ~~text~~(日時) で「いつ取り消したか」のタイムスタンプ付き。日時はホバーで表示、
+// 記号として隠す。タイムスタンプはプレーンテキストとして残る(grep可・往復で壊れない)。
+let strikeBodyDecoration;     // 旧形 ~~text~~ 用: 赤い取消線(line-through)
+let strikeMarkerDecoration;   // ~~ と (日時) と { } を隠す
+// v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ 用。線色別の line-through 装飾。
+// 背景色は highlightBodyByColor を、暗背景の白文字は highlightFgByColor['white'] を再利用。
+let strikeColorByKey = null;  // Map<色キー, 装飾型(指定色の line-through)>。既定線色=red。
+// v0.9.703: コンパクト形取消線(色指定なし・コメントなし)用の弱いハイライト背景。淡い赤(削除＝赤の連想)。
+// v0.9.706: もう少し薄く(俊克 am03:08)。0.15→0.10。
+const STRIKE_FAINT_BG = 'rgba(255, 105, 105, 0.10)';
+let strikeFaintBgDecoration;  // 弱いハイライト背景。色指定/コメントの無い取消線にだけ付ける。
+// v0.9.660: 見出し #text# /##text## /###text### → H1/H2/H3。規定色 赤/緑/青、
+// サイズ 1.3/1.2/1.1倍 太字。(色//コメント) で色変更・コメント付与。# と (…) は隠す。
+// レベル別サイズ装飾(3) と 色別文字色装飾(7) を重ねる。
+let headingSizeByLevel = null;   // Map<1|2|3, 装飾型(font-size+bold)>
+let headingColorByKey = null;    // Map<'red'|...|, 装飾型(文字色)>
+let headingMarkerDecoration;     // # と (色//コメント) を隠す
+const HEADING_DEFAULT_COLOR = { 1: 'red', 2: 'green', 3: 'blue' };
+const HEADING_SIZE = { 1: '1.3em', 2: '1.2em', 3: '1.1em' };
+// 見出し文字色(不透明寄り)。ハイライト背景より濃いめにして文字として読める。
+const HEADING_TEXT_COLORS = {
+  red:    'rgba(200, 40, 40, 1)',
+  orange: 'rgba(210, 120, 20, 1)',
+  yellow: 'rgba(180, 150, 0, 1)',
+  green:  'rgba(40, 150, 60, 1)',
+  blue:   'rgba(40, 110, 210, 1)',
+  purple: 'rgba(150, 70, 210, 1)',
+  pink:   'rgba(210, 60, 150, 1)',
+  navy:   'rgba(0, 0, 128, 1)',     // v0.9.696 紺
+  aqua:   'rgba(0, 191, 255, 1)',   // v0.9.696 水色
+  maroon: 'rgba(128, 0, 0, 1)',     // v0.9.696 ワイン
+  // v0.9.699: 見出しでも文字色に黒/白/灰を指定可。白は暗背景のauto-contrastでも使う。
+  black:  'rgba(20, 20, 20, 1)',
+  white:  'rgba(245, 245, 245, 1)',
+  gray:   'rgba(130, 130, 130, 1)'
+};
+// v0.9.512: Stealth membrane rendering (Sth1 badge field). Half-stealth =
+// shell hidden, content visible. Full-stealth (Sth1 nested in another
+// Sth1) = shell + content both hidden. ◤ marker at open (lighter cyan)
+// + ◢ marker at close (darker cyan) — chosen so that when content
+// collapses to zero, the two triangles visually merge into a square
+// with a 2-tone diagonal.
+// v0.9.524: full-stealth CONTAINER (Sth1 with a nested Sth1 inside) now
+// collapses ALL content to invisible rows; both ◤ and ◢ render on the
+// SAME (outer open) line as a touching square. Two new decoration types
+// without the v0.9.521+ position-offsets so the markers stay on one
+// row instead of being pushed up/down.
+let stealthShellHideDecoration;
+let stealthContentHideDecoration;
+let stealthOpenLabelDecoration;
+let stealthCloseLabelDecoration;
+let stealthContainerOpenDecoration;
+let stealthContainerCloseDecoration;
+// v0.9.525: display:none variant — for rows that should be COMPLETELY
+// removed (not just chars hidden). Used by full-stealth containers for
+// their close line + content lines + nested stealth's everything. The
+// open line of a container keeps the lighter font-size:0 hide so the
+// row stays for the ◤◢ markers.
+let stealthFullHideDecoration;
+// v0.9.470: renders the 🔴 button at the position of a // {* [sRJF=v] *}
+// marker. The marker text itself is hidden via mdWrapperHideDecoration;
+// this decoration draws the 🔴 there instead.
+let sourceRjfButtonDecoration;
+// v0.9.471: renders the active 🔴 target button at [tRJF=v] flag position.
+// Replaces the previous literal "🔴" text written next to the membrane name
+// by ensureRealRedButtons, which caused W-click interference with the
+// adjacent 🟢 button.
+let activeRedTargetButtonDecoration;
+// v0.9.476: dedicated 🟢 button decoration with before-content + hand cursor.
+// Replaces the old jumpActiveDecoration's after-content '🟢' which had no
+// cursor: pointer on the after object — hover showed a text caret, and
+// clicks past the after content fell outside the button's hit range.
+// Mirrors the activeRedTargetButtonDecoration pattern exactly so 🟢 behaves
+// identically to 🔴 (hand cursor on hover, single click toggles, W-click
+// jumps open ⇄ close via Me Dock dispatch).
+let activeGreenButtonDecoration;
+// v0.9.488: shared narrow hover-only decoration for all 4 membrane jump
+// button placements. See its createTextEditorDecorationType call for the
+// design rationale (Monaco hover hit zones use source-col natural widths).
+let membraneButtonTipDecoration;
+let workingTocLineDecoration;
+let workingTocItemDecoration;
+let fixedTocHideDecoration;
+let mstatIconDoorDecoration;
+let membraneBadgeColorDecorations = new Map();
+let activeEditor;
+let meDockPanel;
+let meDockTargetEditor;
+let meDockAutoLastUri = '';
+let meDockAutoTimer = null;
+let meDockCurrentLineDecoration;
+let meDockCurrentLineMarkerActive = false;
+let meDockLineHistoryByUri = new Map();
+let meDockPreviousLineHistoryByUri = new Map();
+let meDockSuppressHistory = false;
+let meDockLineHistoryWorldKey = 'warp';
+let meDockLineHistoryLifeKey = 'real';
+let meDockNavMode = 'warp';
+let fixedWorkingTocEnabled = false;
+let fixedWorkingTocHideEditor = true;
+let extensionContext = null;
+// v0.9.678 (対策1): window-bottom status bar showing the membrane the cursor is inside.
+let membraneStatusBarItem = null;
+// v0.9.681 (改善2): baseline line-count of the membrane the cursor entered, so the Pin /
+// status bar can show Δ = current total − count-when-entered (paste = +N, delete = −N).
+// Resets whenever the cursor moves to a DIFFERENT membrane (id change) or leaves all membranes.
+let pinBaseline = { id: null, total: 0 };
+// v0.9.684 (改善1): Current Me jump MODE. false (default) = 3-point cycle WITHIN the current
+// membrane (open/close/cursor). true = jump between the cursor and the SELECTED 🟢 membrane
+// ("From Out To 🟢"); only meaningful when a selected membrane exists. Toggled by the Pin checkbox.
+let pinJumpToSelected = false;
+// v0.9.561: dedicated OutputChannel so debug logs are visible without enabling
+// extension-host verbose logging. Open via View > Output, then select "MeOS Debug".
+let meosDebugChannel = null;
+function meosDbg(msg) {
+  if (!meosDebugChannel) {
+    try { meosDebugChannel = vscode.window.createOutputChannel('MeOS Debug'); } catch (_) {}
+  }
+  if (meosDebugChannel) {
+    try { meosDebugChannel.appendLine(`[${new Date().toLocaleTimeString('ja-JP')}] ${msg}`); } catch (_) {}
+  }
+}
+let suppressAutoUnfoldUntil = 0;
+let disposables = [];
+let mstatsSyncing = false;
+let mstatsRestoreDone = new Set();
+let mstatsSyncTimer = null;
+// v0.9.633: single debounced timer for the mSTAT badge metadata edit (was an
+// un-cleared setTimeout per refresh → stacked edits firing 260ms behind every
+// keystroke, landing mid-IME-composition and deleting the in-flight character).
+let mstatMetaTimer = null;
+// v0.9.633: debounce typing-driven refresh. onDidChangeTextDocument fires on every
+// keystroke INCLUDING each IME composition update; running refresh() (heavy parse +
+// scheduled editor.edit) per change races the Japanese IME. We coalesce changes and
+// only refresh after typing settles (~220ms), which is also after the IME commits.
+let typingRefreshTimer = null;
+let lastDocChangeAt = 0;
+const TYPING_REFRESH_DEBOUNCE_MS = 220;
+// v0.9.637: "compose mode". The line currently receiving single-line character /
+// kana input. While the caret is on it and a change just happened, MeOS freezes
+// decoration repaints (no refresh) so it never reflows the line mid-IME-composition
+// — the line-head flicker. A structural change (newline / line-join) or moving the
+// caret to another line lifts the freeze and repaints ("改行で整う"). -1 = none.
+let composingLine = -1;
+// v0.9.638: after composition SETTLES (no change for COMPOSE_RESTORE_MS) the membrane
+// lane is restored automatically — no forced newline needed. User 2026.05.30 am02:12:
+// 「最後の改行キーで次の行に改行してしまうのだけが要らない」.
+let composeRestoreTimer = null;
+const COMPOSE_RESTORE_MS = 350;
+// v0.9.456 Bug A1 fix: counter that suppresses the per-edit refresh chain
+// during batched 🔴 source/target moves. While > 0, onDidChangeTextDocument
+// skips its automatic refresh call. The batch site does ONE refresh at the
+// end. Counter is incremented/decremented in pairs (try/finally) and works
+// safely if multiple batches stack.
+let deferRefreshCount = 0;
+// v0.9.457: debounce the expensive name-jump / red-arm / refresh chain for
+// rapid Shift+Arrow selection growth. Each keystroke would otherwise fire the
+// full handleMembraneNameSelection pipeline on every intermediate selection
+// state, taking 1-3 seconds on extension.js when the user expands quickly.
+// Mouse selections (W-click) remain immediate to preserve responsiveness.
+let keySelectionDebounceTimer = null;
+const KEY_SELECTION_DEBOUNCE_MS = 150;
+// v0.9.675: mouse-click selection now DEFERS the heavy full refresh (decoration recompute)
+// so it never blocks the extension-host main thread synchronously on the click. The click's
+// own immediate effects (cursor recognition / Me Dock Line update / W-click button hit-test +
+// 🟢 render) all run first and their renderer messages flush as soon as the handler returns;
+// the heavy refresh fires shortly after, debounced so rapid clicks/pastes coalesce. Root-cause
+// per 俊克 2026.06.02 pm01:01: a synchronous refresh on a big file blocked the ext host ~10s,
+// which delayed EVERYTHING queued behind it (Line field, paste completion, raw-data, distant
+// 🟢) — and adding any new feature to refresh kept reviving it. "Line認識を最優先・重い処理は後回し".
+let mouseSelectionRefreshTimer = null;
+const MOUSE_SELECTION_REFRESH_DEBOUNCE_MS = 50;
+// v0.9.676: scrolling fires onDidChangeTextEditorVisibleRanges continuously; the heavy refresh
+// it triggered ran synchronously on every tick and saturated the ext host. Debounce it so a
+// scroll = one refresh after it settles, leaving the thread free for the click that follows.
+let scrollRefreshTimer = null;
+const SCROLL_REFRESH_DEBOUNCE_MS = 100;
+// v0.9.216: fold state must never be inferred from viewport/visibleRanges.
+// This remembers state changes made through the extension and uses mSTAT/source symbols as truth.
+const foldStateByPairKey = new Map();
+let nameJumpSuppressUntil = 0;
+let lastNameJumpKey = '';
+let lastNameJumpAt = 0;
+let mSkeletonMode = false;
+let activeGreenJump = null;
+let lastGreenHoverHit = null;
+let lastGreenClickKey = '';
+let lastGreenClickAt = 0;
+let activeRedJump = null;
+let lastRedHoverHit = null;
+let lastRedClickKey = '';
+let lastRedClickAt = 0;
+// v0.9.474: body 🔴 button double-click detection timer.
+// User feedback after v0.9.473: "just reference the Me Dock 🔴 processing
+// — single click → toggle (navCenterBidiClick), W-click → jump
+// (navCenterBidiDoubleClick)." The earlier 520ms key-match scheme failed
+// for tRJF target clicks (the W-click was being processed as a single
+// click for reasons that didn't reproduce reliably). Replace it with a
+// proper "wait for second click" timer: first click on a body 🔴 starts
+// a 320ms timer to run navCenterBidiClick; a second click on the same
+// button before the timer fires cancels it and runs navCenterBidiDouble
+// Click instead. This mirrors how OS-level double-click detection works.
+let pendingBodyRedClickTimer = null;
+let pendingBodyRedClickKey = '';
+// v0.9.478: widen from 320 → 500ms. Some macOS users double-click slightly
+// slower; 320ms missed the second click and the timer fired first, running
+// the single-click toggle. 500ms is the upper end of the OS double-click
+// range and still well below the threshold at which two clicks feel
+// intentional.
+const BODY_RED_DOUBLE_CLICK_MS = 500;
+// v0.9.475: same timer pattern for body 🟢 button. First click on a body
+// 🟢 starts a 320ms timer that runs navCenterMeSingleClick (toggle
+// mSkeletonMode / return-to-Me); a second click on the same button before
+// the timer fires cancels it and runs navCenterMeDoubleClick (jump
+// open ⇄ close). User request: "body 🟢 should also W-click jump for
+// open ⇄ close, to be seamless with Me Dock."
+let pendingBodyGreenClickTimer = null;
+let pendingBodyGreenClickKey = '';
+// v0.9.478: 500ms for the same reason as the red timer.
+const BODY_GREEN_DOUBLE_CLICK_MS = 500;
+const RED_BUTTON_RIGHT_EXTRA = 0;
+const GREEN_BUTTON_LEFT_CHARS = 1;
+const GREEN_BUTTON_RIGHT_EXTRA = 2;
+const lastCaretByEditorKey = new Map();
+// v0.9.625: 直前のカーソル行を追跡。エイリアス/注釈膜で
+// 「初回クリック→編集 / 2回目クリック→toggle」を区別するため。
+let prevLineBeforeSelectionChange = -1;
+let caretSkipSuppressUntil = 0;
+
+// Real membrane lines only.
+// v0.9.216: Markdown hidden-comment membranes are normalized internally to
+// the existing canonical code-style source. All old // {* ▼mCN=...} flows stay unchanged.
+//   Markdown save/display form: [//]: # "▼name_0923 // comment1 (📊⊕0+0)"
+//   Canonical IR form:         // {* ▼mCN=name_0923 // comment1 (📊⊕0+0) *}
+// v0.9.222: Unicode / spaced membrane names.
+// The fixed grammar is mCN=, not name_ nor ASCII.
+// Rule: name starts immediately after mCN= and ends before ` //`, final `*}`/`}`, quote, or line end.
+// v0.9.543: mTC= introduced as the dedicated TOC-membrane grammar. The parser treats
+// mCN and mTC interchangeably for matching; the only difference is what
+// isWorkingTocMembranePair returns for the resulting pair. Non-capturing alternation
+// keeps m[1] = name (backward compatible with all callers).
+const MEMBRANE_NAME_CHARS = '[^\r\n]*?';
+const OPEN_RE = new RegExp('^\\s*\\/\\/[ \\t]*\\{[ \\t]*[▼▽][ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)');
+const CLOSE_RE = new RegExp('^\\s*\\/\\/[ \\t]*\\{[ \\t]*[▲△][ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)');
+// v0.9.543: Cheap predicate — does this line use mTC= specifically?
+const MTC_LINE_RE = /^\s*\/\/[ \t]*\{[ \t]*[▼▽▲△][ \t]*mTC[ \t]*=/;
+const MD_MEMBRANE_QUOTED_RE = new RegExp('^\\s*\\[\\/\\/\\]:[ \\t]*#[ \\t]*\"[ \\t]*([▼▽▲△])[ \\t]*(?:mCN[ \\t]*=[ \\t]*)?(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\"\\s*$)([\\s\\S]*?)\\s*\"\\s*$');
+const MD_MEMBRANE_PAREN_RE = new RegExp('^\\s*\\[\\/\\/\\]:[ \\t]*#[ \\t]*\\([ \\t]*([▼▽▲△])[ \\t]*(?:mCN[ \\t]*=[ \\t]*)?(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\)\\s*$)([\\s\\S]*?)\\s*\\)\\s*$');
+// v0.9.216: tolerate manually edited/broken Markdown membrane rows too:
+//   [//]: # ▼name // comment
+const MD_MEMBRANE_BARE_RE = new RegExp('^\\s*\\[\\/\\/\\]:[ \\t]*#[ \\t]*([▼▽▲△])[ \\t]*(?:mCN[ \\t]*=[ \\t]*)?(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|$)([\\s\\S]*?)\\s*$');
+function cleanMembraneName(id) {
+  // v0.9.360: membrane name is [name] only. Real button zone lives after it:
+  //   [name] [🟢/🔴/🟢🔴] [comment]
+  // Never let real buttons become part of mCN, parser keys, or pair matching.
+  // v0.9.603: mNT membranes carry a trailing ` #xxxxxxxx` hex hash (SoT identity) on
+  // the open line. Strip it so open/close pair matching ignores the hash and only the
+  // membrane name (= `ファイル名_TS`) participates in identity comparison.
+  return String(id || '')
+    .replace(/\s+#[0-9a-fA-F]+\s*$/, '')
+    // v0.9.672 (bug1): only strip a TRAILING 🟢/🔴 cluster (legacy literal button that
+    // pre-v0.9.483 wrote right after the name) — NOT a 🟢/🔴 embedded mid-name. The old
+    // `/\s*[🟢🔴].*$/` deleted everything from the FIRST emoji onward, so a membrane named
+    // e.g. "膜名に🟢があるとき" got truncated to "膜名に" (俊克 2026.06.02 am11:26). Since the
+    // decoration-only era (v0.9.670) never writes the button into the name zone, a mid-name
+    // emoji is always legitimate user text and must be preserved.
+    .replace(/\s*[🟢🔴]+\s*$/u, '')
+    .trim();
+}
+
+// v0.9.276: Hyper TOC display values may contain `// memo`.
+// The jump/check key is always only the membrane name before `//`.
+function tocKeyFromValue(value) {
+  let s = String(value || '').trim();
+  // v0.9.581/582: peel mTC narrative-layer wrappers. Recognised forms
+  // (parsed in priority order — most specific first; first match wins):
+  //   1. `{A}⇒{X}`    — v0.9.582+ AI-annotated chain (from A to X)
+  //   2. `⇒{X}`       — v0.9.582+ default for Add to H-TOC (one-way)
+  //   3. `⇄{X}`       — explicit bidirectional link (with active 🔴 pair)
+  //   4. `{A}⇒Me⇒{X}` — v0.9.581 transient chain (kept for compat)
+  //   5. `Me⇒{X}`     — v0.9.581 transient one-way (kept for compat)
+  //   6. Legacy `⇄ X` (no braces) — pre-v0.9.581 wLink form
+  //   7. Bare `X`     — pre-v0.9.581 default (still readable)
+  // For 1-5, the key is the contents of the LAST `{...}` group. For 6-7,
+  // fall back to the legacy `// `-split logic.
+  let m = s.match(/^\{[^}]*\}\s*⇒\s*\{([^}]*)\}\s*$/);
+  if (!m) m = s.match(/^⇒\s*\{([^}]*)\}\s*$/);
+  if (!m) m = s.match(/^⇄\s*\{([^}]*)\}\s*$/);
+  if (!m) m = s.match(/^\{[^}]*\}\s*⇒\s*Me\s*⇒\s*\{([^}]*)\}\s*$/);
+  if (!m) m = s.match(/^Me\s*⇒\s*\{([^}]*)\}\s*$/);
+  if (m) {
+    s = m[1].trim();
+  } else {
+    // Legacy bare/⇄-prefixed form.
+    s = s.replace(/^⇄\s*/, '').trim();
+  }
+  // Strip the `//` comment suffix — this is the canonical annotation delimiter
+  // (cf. v0.9.566's `${name} // citation` default for citation entries).
+  const idx = s.indexOf('//');
+  if (idx >= 0) s = s.slice(0, idx).trim();
+  // v0.9.571: reverted the v0.9.563 whitespace-split rule. Membrane names ARE
+  // allowed to contain spaces by design (MEMBRANE_NAME_CHARS = `[^\r\n]*?`),
+  // and the v0.9.563 fix corrupted multi-word names like "Watashi wa Shingo_…"
+  // into just "Watashi". User v0.9.569_0513 bug 2: 「rawKey="Watashi wa
+  // Shingo_182432.505" → cleaned key="Watashi" 」. The `// ` delimiter is the
+  // canonical separator; users adding annotation without `// ` is an edge case
+  // we accept (and v0.9.566 already auto-inserts `// citation` for citations).
+  return cleanMembraneName(s);
+}
+function tocLabelWithComment(id, note) {
+  id = cleanMembraneName(id);
+  note = String(note || '').trim();
+  return note ? `${id} // ${note}` : id;
+}
+
+function markdownMembraneMatch(raw) {
+  const text = String(raw || '');
+  return text.match(MD_MEMBRANE_QUOTED_RE) || text.match(MD_MEMBRANE_PAREN_RE) || text.match(MD_MEMBRANE_BARE_RE);
+}
+
+
+function normalizeProtoMembraneLineText(text) {
+  const raw = text || "";
+  const makeLegacy = (indent, body) => {
+    let b = (body || "").trim();
+    const proto = b.match(/^\{\*\s*([\s\S]*?)\s*\*\}$/);
+    if (proto) b = proto[1].trim();
+    const legacy = b.match(/^\{\s*([\s\S]*?)\s*\}$/);
+    if (legacy) b = legacy[1].trim();
+    return `${indent || ""}// {${b}}`;
+  };
+  let m = raw.match(/^(\s*)\/\/\s*(\{\*[\s\S]*?\*\}|\{[\s\S]*?\})\s*$/);
+  if (m) return makeLegacy(m[1], m[2]);
+  // v0.9.612: tolerate trailing content after `-->`. In MD files with Word Wrap,
+  // users may accidentally type on the visual second line of a wrapped membrane,
+  // appending chars after `-->`. The `$` anchor is removed so the membrane is
+  // still recognized. The trailing text is hidden via suffixStart in membraneLineParts.
+  m = raw.match(/^(\s*)<!--\s*(\{\*[\s\S]*?\*\}|\{[\s\S]*?\})\s*-->/);
+  if (m) return makeLegacy(m[1], m[2]);
+  m = raw.match(/^(\s*)\[\/\/\]:\s*#\s*\((\{\*[\s\S]*?\*\}|\{[\s\S]*?\})\)\s*$/);
+  if (m) return makeLegacy(m[1], m[2]);
+  return raw;
+}
+
+function asRealMembraneSource(text) {
+  // v0.9.216:
+  // Pair collection enters here, so proto core must be normalized here,
+  // not only in the visual parser.
+  const raw = normalizeProtoMembraneLineText(String(text || ''));
+
+  // Existing canonical source: // {▼mCN=name // comment}
+  // This branch is deliberately unchanged for TypeScript / JavaScript / C-like files.
+  // v0.9.543: also accept mTC= (TOC membrane).
+  if (/^\s*\/\/[ \t]*\{[ \t]*[▼▽▲△][ \t]*(?:mCN|mTC|mNT)[ \t]*=/.test(raw)) {
+    // Do not treat documented examples such as `// // {* ▼mCN=...}` as membranes.
+    if (/^\s*\/\/[ \t]*(?:\/\/|#|--|;)/.test(raw)) return null;
+    return raw;
+  }
+
+  // v0.9.392: tolerate old/pretty hT wrapper lines that lost the literal `mCN=`.
+  // Example: // {* ▼hT_194615.511 // Hyper TOC *}
+  const htBare = raw.match(/^\s*\/\/[ \t]*\{[ \t]*([▼▽▲△])[ \t]*(hT_[^\r\n\s/}]+)([\s\S]*)$/i);
+  if (htBare) {
+    const arrow = htBare[1];
+    const id = cleanMembraneName(htBare[2]);
+    const tail = htBare[3] || '';
+    return `// {${arrow}mCN=${id}${tail}}`;
+  }
+
+  // Markdown hidden-comment source. Normalize to canonical source internally.
+  const md = markdownMembraneMatch(raw);
+  if (md) {
+    const arrow = md[1];
+    const id = cleanMembraneName(md[2]);
+    const tail = md[3] || '';
+    return `// {${arrow}mCN=${id}${tail}}`;
+  }
+
+  return null;
+}
+
+// {* ▲mCN=0100_CORE_STATE // end [cGJF=h] *}
+
+// {* ▼mCN=0200_DECORATIONS // decoration lifecycle and style setup (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function disposeDecorations() {
+  if (lineDecoration) lineDecoration.dispose();
+  lineDecoration = undefined;
+  if (openLineHideDecoration) openLineHideDecoration.dispose();
+  if (openLineLabelDecoration) openLineLabelDecoration.dispose();
+  if (closeLineHideDecoration) closeLineHideDecoration.dispose();
+  if (closeLineLabelDecoration) closeLineLabelDecoration.dispose();
+  if (stealthShellHideDecoration) stealthShellHideDecoration.dispose();
+  if (stealthContentHideDecoration) stealthContentHideDecoration.dispose();
+  if (stealthOpenLabelDecoration) stealthOpenLabelDecoration.dispose();
+  if (stealthCloseLabelDecoration) stealthCloseLabelDecoration.dispose();
+  if (stealthContainerOpenDecoration) stealthContainerOpenDecoration.dispose();
+  if (stealthContainerCloseDecoration) stealthContainerCloseDecoration.dispose();
+  if (stealthFullHideDecoration) stealthFullHideDecoration.dispose();
+  if (warningArrowDecoration) warningArrowDecoration.dispose();
+  if (jumpActiveDecoration) jumpActiveDecoration.dispose();
+  if (jumpNameHoverDecoration) jumpNameHoverDecoration.dispose();
+  if (redJumpDecoration) redJumpDecoration.dispose();
+  if (redJumpHoverDecoration) redJumpHoverDecoration.dispose();
+  if (workingTocLineDecoration) workingTocLineDecoration.dispose();
+  if (workingTocItemDecoration) workingTocItemDecoration.dispose();
+  if (fixedTocHideDecoration) fixedTocHideDecoration.dispose();
+  if (mstatIconDoorDecoration) mstatIconDoorDecoration.dispose();
+  if (annotationColorDecoration) annotationColorDecoration.dispose();
+  annotationColorDecoration = undefined;
+  if (highlightBodyByColor) {
+    for (const deco of highlightBodyByColor.values()) { try { deco.dispose(); } catch (_) {} }
+    highlightBodyByColor = null;
+  }
+  if (highlightFgByColor) {
+    for (const deco of highlightFgByColor.values()) { try { deco.dispose(); } catch (_) {} }
+    highlightFgByColor = null;
+  }
+  highlightBodyDecoration = undefined;
+  if (highlightMarkerDecoration) highlightMarkerDecoration.dispose();
+  highlightMarkerDecoration = undefined;
+  if (strikeBodyDecoration) strikeBodyDecoration.dispose();
+  strikeBodyDecoration = undefined;
+  if (strikeMarkerDecoration) strikeMarkerDecoration.dispose();
+  strikeMarkerDecoration = undefined;
+  if (strikeColorByKey) {
+    for (const d of strikeColorByKey.values()) { try { d.dispose(); } catch (_) {} }
+    strikeColorByKey = null;
+  }
+  if (strikeFaintBgDecoration) { strikeFaintBgDecoration.dispose(); strikeFaintBgDecoration = undefined; }
+  if (bookmarkDecoration) { bookmarkDecoration.dispose(); bookmarkDecoration = undefined; }
+  if (bookmarkHoverDecoration) { bookmarkHoverDecoration.dispose(); bookmarkHoverDecoration = undefined; }
+  if (headingSizeByLevel) {
+    for (const d of headingSizeByLevel.values()) { try { d.dispose(); } catch (_) {} }
+    headingSizeByLevel = null;
+  }
+  if (headingColorByKey) {
+    for (const d of headingColorByKey.values()) { try { d.dispose(); } catch (_) {} }
+    headingColorByKey = null;
+  }
+  if (headingMarkerDecoration) headingMarkerDecoration.dispose();
+  headingMarkerDecoration = undefined;
+  openLineHideDecoration = undefined;
+  openLineLabelDecoration = undefined;
+  closeLineHideDecoration = undefined;
+  closeLineLabelDecoration = undefined;
+  stealthShellHideDecoration = undefined;
+  stealthContentHideDecoration = undefined;
+  stealthOpenLabelDecoration = undefined;
+  stealthCloseLabelDecoration = undefined;
+  stealthContainerOpenDecoration = undefined;
+  stealthContainerCloseDecoration = undefined;
+  stealthFullHideDecoration = undefined;
+  warningArrowDecoration = undefined;
+  jumpActiveDecoration = undefined;
+  jumpNameHoverDecoration = undefined;
+  redJumpDecoration = undefined;
+  redJumpHoverDecoration = undefined;
+  workingTocLineDecoration = undefined;
+  workingTocItemDecoration = undefined;
+  fixedTocHideDecoration = undefined;
+  mstatIconDoorDecoration = undefined;
+  if (membraneBadgeColorDecorations) {
+    for (const d of membraneBadgeColorDecorations.values()) { try { d.dispose(); } catch (_) {} }
+    membraneBadgeColorDecorations.clear();
+  }
+  activeGreenJump = null;
+  lastGreenHoverHit = null;
+  activeRedJump = null;
+  lastRedHoverHit = null;
+  mSkeletonMode = false;
+  if (nameRightVirtualSpaceDecoration) nameRightVirtualSpaceDecoration.dispose();
+  nameRightVirtualSpaceDecoration = null;
+
+  if (rightEdgeSpaceDecoration) rightEdgeSpaceDecoration.dispose();
+  rightEdgeSpaceDecoration = null;
+
+}
+
+function getDepthColors(cfg) {
+  const fallback = cfg.get('lineColor', 'rgba(150, 64, 120, 0.9)');
+  const colors = cfg.get('depthColors', []);
+  const cleaned = Array.isArray(colors) ? colors.filter(c => typeof c === 'string' && c.trim()) : [];
+  return cleaned.length ? cleaned : [fallback];
+}
+
+// v0.9.506: deep-depth palette simplified to SINGLE gray. v0.9.505_0959
+// user directive: "深度で色分けするのは止めよう" — drop the 5-step
+// dark-gray → black gradient. User rationale: the colourful palette
+// (red/orange/etc.) is the everyday working zone; "gray" within the
+// palette doubles as both the default colour AND the deep-zone signal,
+// which is intuitive. "深くなると暗黒でその差はないと考えればいい" —
+// once you're deep, all darkness is the same darkness; per-step
+// gradation adds no information.
+//
+// Net: lanes 0-7 use the user-configurable colour palette; lanes 8-11
+// all use one neutral gray. Default maxDepth = 12 means 12 lanes
+// (D-0 〜 D-11) render; depth ≥ 12 stops rendering.
+const DEEP_DEPTH_THRESHOLD = 8;
+const DEEP_DEPTH_COLOR = 'rgba(150, 150, 150, 0.92)';
+
+function colorForDepth(depth, cfg) {
+  const d = Math.max(0, depth);
+  if (d >= DEEP_DEPTH_THRESHOLD) return DEEP_DEPTH_COLOR;
+  const colors = getDepthColors(cfg);
+  return colors[d % colors.length];
+}
+
+// v0.9.504: Depth Compression (D-8+ proxy `·· D-8〜D-12` placeholder)
+// REMOVED. The visual-suppression of deep membranes was a v0.9.422-426 era
+// hack to keep D0-D7 readable on huge files. Now superseded by Zoom Me!
+// partial-load (v0.9.433+) which selects ANY membrane subset for editing —
+// no longer need to auto-hide based on raw depth. All depths render their
+// lanes / labels normally. Functions, decorations, variables, dispose
+// calls, lane synth, and label filters all stripped.
+const MEMBRANE_BADGE_COLOR_MAP = {
+  R: 'rgba(220, 38, 38, 0.98)',
+  O: 'rgba(234, 88, 12, 0.98)',
+  Y: 'rgba(202, 138, 4, 0.98)',
+  G: 'rgba(22, 163, 74, 0.98)',
+  B: 'rgba(37, 99, 235, 0.98)',
+  P: 'rgba(147, 51, 234, 0.98)',
+  N: 'rgba(120, 83, 45, 0.98)',
+  K: 'rgba(39, 39, 42, 0.98)',
+  W: 'rgba(120, 120, 120, 0.98)',
+  C: 'rgba(8, 145, 178, 0.98)'
+};
+function normalizeMembraneColorCode(code) {
+  const c = String(code || '').trim().toUpperCase();
+  return Object.prototype.hasOwnProperty.call(MEMBRANE_BADGE_COLOR_MAP, c) ? c : '';
+}
+function membraneCssColorForCode(code) {
+  return MEMBRANE_BADGE_COLOR_MAP[normalizeMembraneColorCode(code)] || '';
+}
+function membraneColorCodeFromText(text) {
+  const b = parseMstatBadgeFromText(text);
+  return b ? normalizeMembraneColorCode(b.colorCode) : '';
+}
+function membraneColorForOpenLineText(text, fallbackColor) {
+  const c = membraneCssColorForCode(membraneColorCodeFromText(text));
+  return c || fallbackColor;
+}
+function ensureMembraneBadgeColorDecoration(code) {
+  const c = normalizeMembraneColorCode(code);
+  if (!c) return null;
+  if (!membraneBadgeColorDecorations.has(c)) {
+    membraneBadgeColorDecorations.set(c, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      color: MEMBRANE_BADGE_COLOR_MAP[c],
+      fontWeight: '700'
+    }));
+  }
+  return membraneBadgeColorDecorations.get(c);
+}
+function makeDecorations() {
+  disposeDecorations();
+  rightEdgeSpaceDecoration = vscode.window.createTextEditorDecorationType({
+    after: {
+      contentText: ' ',
+      margin: '0 0 0 0',
+      color: 'transparent'
+    },
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen
+  });
+  nameRightVirtualSpaceDecoration = vscode.window.createTextEditorDecorationType({
+    after: {
+      contentText: ' ',
+      margin: '0 0 0 0.25ch'
+    },
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen
+  });
+  lineDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: false,
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { contentText: ' ', color: 'transparent' }
+  });
+
+  // v0.9.504: depthProxyHideDecoration / depthProxyLabelDecoration removed
+  // (D-8+ proxy hiding deleted — superseded by Zoom Me partial-load).
+
+  // v0.9.479: hide ranges use `opacity:0; font-size:0` (no display:none)
+  // to match mdWrapperHideDecoration. The previous `display: none` removed
+  // the hidden chars (including [oGJF=v] / [tRJF=v] flags) from the layout
+  // entirely, which made VSCode unable to map hover/click positions on
+  // the new activeGreenButtonDecoration / activeRedTargetButtonDecoration
+  // before-content glyphs to their underlying document coordinates. As a
+  // result, tooltips stopped appearing on body 🟢/🔴, and W-click handlers
+  // never fired because the click landed on a "non-position" between the
+  // visible glyph and the next visible char. With font-size:0 the chars
+  // are invisible AND collapse to ~0 width, but they remain in the
+  // layout so position lookups behave normally.
+  openLineHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; opacity: 0; font-size: 0px;'
+  });
+  openLineLabelDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { margin: '0 0 0 0', fontWeight: '600' }
+  });
+  closeLineHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; opacity: 0; font-size: 0px;'
+  });
+  closeLineLabelDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { margin: '0 0 0 0', fontWeight: '600' }
+  });
+  // v0.9.606: mNT rendering goes through the standard mCN openLineLabel / closeLineLabel
+  // pipeline. The only mNT-specific touch is the 📒 marker appended to the ▼/▲ glyph.
+  // v0.9.512: Stealth membrane decorations.
+  stealthShellHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; opacity: 0; font-size: 0px;'
+  });
+  stealthContentHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; opacity: 0; font-size: 0px;'
+  });
+  // v0.9.520: stealth markers — reset to default font-size (both same)
+  // per user concern that enlarged size would prevent ◤◢ from forming a
+  // clean square when they touch in full-stealth mode. Keep position
+  // tweaks: ◤ left margin 8px to align with lane x; ◢ top: -13px
+  // (= v0.9.518's -5 + v0.9.520's additional -8) to pull close marker
+  // up against the lane endpoint.
+  stealthOpenLabelDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: {
+      contentText: '◤',
+      color: 'rgba(34, 200, 220, 0.75)',
+      fontWeight: '700',
+      // v0.9.523: -3px back left (final 10px) per user v0.9.522_0934.
+      margin: '0 2px 0 10px',
+      // v0.9.521: shift ◤ DOWN by 8px (positive top in position:relative)
+      // to close the gap between marker bottom and lane top below
+      // (user v0.9.520_0923).
+      textDecoration: 'none; position: relative; top: 8px;'
+    }
+  });
+  stealthCloseLabelDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: {
+      contentText: '◢',
+      color: 'rgba(8, 145, 178, 0.95)',
+      fontWeight: '700',
+      margin: '0 2px 0 0',
+      textDecoration: 'none; position: relative; top: -13px;'
+    }
+  });
+  // v0.9.524: full-stealth container markers — both rendered on the SAME
+  // line (the outer open line) so ◤ and ◢ touch as a single square
+  // figure. NO position offsets (the half-stealth ◤'s top:+8 and ◢'s
+  // top:-13 would push them apart vertically; here we want them aligned
+  // on the same baseline).
+  stealthContainerOpenDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: {
+      contentText: '◤',
+      color: 'rgba(34, 200, 220, 0.75)',
+      fontWeight: '700',
+      margin: '0 0 0 10px'
+    }
+  });
+  stealthContainerCloseDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: {
+      contentText: '◢',
+      color: 'rgba(8, 145, 178, 0.95)',
+      fontWeight: '700',
+      margin: '0 2px 0 0'
+    }
+  });
+  // v0.9.525: truly-gone row decoration via display:none. Used for
+  // container's close line + content lines + nested full-stealth's
+  // entire range. NOT used on container's open line (which must keep
+  // its row for the ◤◢ markers — uses font-size:0 stealthShellHide
+  // instead).
+  stealthFullHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; display: none;'
+  });
+  warningArrowDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { fontWeight: '900' }
+  });
+  jumpActiveDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    // v0.9.476: the visible 🟢 glyph is now drawn by activeGreenButton
+    // Decoration as a before-content at the [oGJF=v]/[cGJF=v] flag
+    // position, with cursor: pointer baked into the before object.
+    // This decoration is kept for the underlying range styling (cursor
+    // pointer on the membrane-name range so hovering the name still
+    // shows the affordance), but the after '🟢' is gone to avoid drawing
+    // the button twice.
+    textDecoration: 'cursor: pointer; font-weight: 700;'
+  });
+  jumpNameHoverDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none'
+  });
+  redJumpDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'cursor: pointer; font-weight: 700;'
+  });
+  redJumpHoverDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none'
+  });
+  mstatIconDoorDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'cursor: pointer;',
+    fontWeight: '700'
+  });
+
+  mdWrapperHideDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  // v0.9.627: †† 注釈領域を赤色で表示。注釈として目立たせる。
+  annotationColorDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    color: 'rgba(220, 60, 60, 0.95)'
+  });
+  // v0.9.656/657: ハイライト ==text(色)== の本体に色別の半透明背景（蛍光ペン風）。
+  // 色ごとに装飾型を生成して Map に保持。highlightBodyDecoration は後方互換で yellow を指す。
+  highlightBodyByColor = new Map();
+  for (const key of Object.keys(HIGHLIGHT_COLORS)) {
+    highlightBodyByColor.set(key, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      backgroundColor: HIGHLIGHT_COLORS[key],
+      borderRadius: '2px'
+    }));
+  }
+  highlightBodyDecoration = highlightBodyByColor.get('yellow');
+  // v0.9.661: 文字色レイヤー（==語(文字色+背景色)== の文字色側）。背景レイヤーと重ねる。
+  highlightFgByColor = new Map();
+  for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) {
+    highlightFgByColor.set(key, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      color: HIGHLIGHT_FG_COLORS[key]
+    }));
+  }
+  // v0.9.656: ハイライトの `==` と `(色)` 指定を font-size:0 で隠す（膜マーカーと同手法）。
+  highlightMarkerDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  // v0.9.658: 取消線 ~~text~~ の本体に赤い line-through。色は注釈赤と揃える。
+  // v0.9.704: 文字を薄く(グレー)するのをやめ、通常色のまま線だけ引く(俊克: 取消内容も読めるべき=主流)。
+  strikeBodyDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'line-through; text-decoration-color: rgba(220,60,60,0.95); text-decoration-thickness: 2px;'
+  });
+  // v0.9.658: 取消線の `~~` と `(日時)` と `{ }` を font-size:0 で隠す。
+  strikeMarkerDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  // v0.9.699: 新形取消線 ~~{本文(線色/背景色)}~~ の線色別 line-through。文字色は付けず
+  // (本文を読めるように)、線だけ指定色にする。太さ2px。背景色は別レイヤーで重ねる。
+  strikeColorByKey = new Map();
+  for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) {
+    strikeColorByKey.set(key, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      textDecoration: 'line-through; text-decoration-color: ' + HIGHLIGHT_FG_COLORS[key] + '; text-decoration-thickness: 2px;'
+    }));
+  }
+  // v0.9.703: コンパクト形の取消線(色指定なし・コメントなしの ~~{本文}~~ / ~~本文~~)に付ける
+  // 「弱いハイライト」。取消線は線だけだと地味で見落としやすいので淡い背景で目立たせる(俊克 am02:09)。
+  strikeFaintBgDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    backgroundColor: STRIKE_FAINT_BG,
+    borderRadius: '2px'
+  });
+  // v0.9.715/716: 🔖 ブックマーク。v716: 本文をずらさないよう、左のガター(行番号の左)にアイコン表示
+  // (俊克 改良2「少し左に」)＋スクロールバー(overview ruler)に印。ソースには一切書かない。
+  const _bmOpts = {
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    overviewRulerColor: 'rgba(245,158,11,0.95)',
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+    gutterIconSize: 'contain'
+  };
+  try { if (extensionContext && extensionContext.extensionUri) _bmOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark.svg'); } catch (_) {}
+  if (!_bmOpts.gutterIconPath) _bmOpts.before = { contentText: '🔖', margin: '0 3px 0 0' }; // 念のためのフォールバック
+  bookmarkDecoration = vscode.window.createTextEditorDecorationType(_bmOpts);
+  bookmarkHoverDecoration = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v0.9.721: ホバー専用
+  // v0.9.660: 見出し — レベル別サイズ(太字)装飾 ×3。font-size は em で控えめに。
+  // v0.9.669: font-size を復活(H1=1.3 / H2=1.2 / H3=1.1em 太字)。v0.9.666で10秒固着の切り分けの
+  // ため一旦外したが、固着の真因は見出し記法の誤マッチ(旧 #本文# が文中の#と誤マッチ)であり、
+  // v0.9.668の ##[本文]## 記法化で根治済み。font-size は無実と確定したので元に戻す。俊克 06.01 am04:43。
+  headingSizeByLevel = new Map();
+  for (const lv of [1, 2, 3]) {
+    headingSizeByLevel.set(lv, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      textDecoration: 'none; font-weight: 700; font-size: ' + HEADING_SIZE[lv] + ';'
+    }));
+  }
+  // v0.9.660: 見出し — 色別文字色装飾 ×7（レベルの規定色 or ユーザー指定色）。
+  headingColorByKey = new Map();
+  for (const key of Object.keys(HEADING_TEXT_COLORS)) {
+    headingColorByKey.set(key, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      color: HEADING_TEXT_COLORS[key]
+    }));
+  }
+  // v0.9.660: 見出しの `#`/`##`/`###` と `(色//コメント)` を font-size:0 で隠す。
+  headingMarkerDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+
+  // v0.9.483: button decorations now style the LITERAL 🔴/🟢 chars written
+  // alongside the JF flags (▼/▲ approach). No before-content needed — the
+  // emoji IS the visible glyph. cursor:pointer + hoverMessage at the
+  // decoration-type level apply to the 2-UTF16 emoji range cleanly.
+  sourceRjfButtonDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; cursor: pointer;'
+  });
+  activeRedTargetButtonDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; cursor: pointer;'
+  });
+  activeGreenButtonDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; cursor: pointer;'
+  });
+
+  // v0.9.488: shared "tip" decoration for ALL 4 membrane jump button
+  // placements (oGJF / cGJF / tRJF / sRJF). Has NO visual styling — only
+  // hosts hoverMessage on a NARROW per-item range covering just the
+  // visible emoji char. The cursor:pointer + visible-glyph layer is
+  // provided by the existing per-button decorations above (which paint
+  // the WIDE `[XX=v]🔴/🟢` range so the hand cursor covers the
+  // contiguous span). Splitting tip and cursor lets each use the range
+  // that matches its mental model:
+  //   - cursor:pointer = source-col contiguous span (wide is fine
+  //     because font-size:0 chars take 0 screen width)
+  //   - hoverMessage   = visible glyph only (narrow because Monaco
+  //     allocates the hover hit zone using SOURCE-COL natural widths,
+  //     not visual widths — a 10ch range produces a 10ch hit zone that
+  //     extends past the visible emoji into neighbouring buttons)
+  membraneButtonTipDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+  });
+
+  workingTocLineDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    backgroundColor: 'rgba(255, 220, 0, 0.13)',
+    border: '1px solid rgba(255, 190, 0, 0.45)',
+    borderRadius: '3px',
+    after: { contentText: '  TOC', color: 'rgba(210, 140, 0, 0.95)', fontWeight: '800', margin: '0 0 0 4px' }
+  });
+
+  workingTocItemDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    backgroundColor: 'rgba(255, 220, 0, 0.07)',
+    border: '0 0 0 2px solid rgba(255, 190, 0, 0.35)'
+  });
+  fixedTocHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+  });
+}
+
+
+function isIndexMembrane(id) {
+  return /(^|_)0001_INDEX$/i.test(id) || /^0001_INDEX$/i.test(id);
+}
+function cleanTail(tail) {
+  return (tail || '').replace(/[}\]]\s*$/g, '').replace(/^\s+/, ' ').trimEnd();
+}
+
+// {* ▲mCN=0200_DECORATIONS // end [cGJF=h] *}
+
+// {* ▼mCN=0300_MSTATS // mSTATS badge parser / formatter / sync / restore (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// mSTATS ver0: Counter Badge / membrane Status Tags System.
+// v0.9.386: compact depth metadata is written before the color code:
+//   (📊⊕f0+2D-2O)
+// Backward-compatible parser also accepts the previous spaced form:
+//   (📊⊕f0+2O D-2)
+// The D value is the submarine depth: outer/root = D0, deeper membranes = D-1, D-2...
+// v0.9.526: Accept both legacy `(📊...)` and new `(📊1... 📊)` / `(📊0... 📊)` formats.
+// v0.9.626: 番号付き注釈パーサー ——————————————————————————————
+// 対応形式:
+//   ††[01]? text       — 旧形式（番号なし）
+//   †n†[01]? text      — 番号付き（n = 注釈番号）
+//   †n/N†[01]? text    — 番号付き＋総数（マスター注釈、N = 総数）
+// 表示: †n → 可視、/N†1 → 非表示。旧形式は †† → 可視、1 → 非表示。
+const DAGGER_ANNOT_RE = /†(\d+(?:\/(\d+))?)?†/;
+function findDaggerAnnotation(text, searchStart, searchEnd) {
+  if (searchStart == null) searchStart = 0;
+  if (searchEnd == null) searchEnd = text.length;
+  const area = text.slice(searchStart, searchEnd);
+  const m = area.match(DAGGER_ANNOT_RE);
+  if (!m) return null;
+  const idx = searchStart + m.index;
+  const fullMatch = m[0];
+  let annotNum = null, totalCount = null, numStr = '', totalStr = '';
+  if (m[1]) {
+    if (m[2]) {
+      const slashPos = m[1].indexOf('/');
+      numStr = m[1].slice(0, slashPos);
+      totalStr = m[2];
+      annotNum = parseInt(numStr, 10);
+      totalCount = parseInt(totalStr, 10);
+    } else {
+      numStr = m[1];
+      annotNum = parseInt(numStr, 10);
+    }
+  }
+  const afterIdx = idx + fullMatch.length;
+  const afterChar = text[afterIdx];
+  let visible = true;
+  let headerLen = fullMatch.length;
+  if (afterChar === '0') { visible = false; headerLen++; }
+  else if (afterChar === '1') { visible = true; headerLen++; }
+  const visiblePrefixLen = annotNum !== null ? (1 + numStr.length) : 2;
+  const displayPrefix = annotNum !== null ? ('†' + numStr) : '††';
+  return { idx, annotNum, totalCount, visible, headerLen, numStr, totalStr,
+           visiblePrefixLen, displayPrefix, fullMatch };
+}
+function hasDaggerAnnotation(text) { return DAGGER_ANNOT_RE.test(text); }
+
+// The leading icon may be `📊`, `📊0` (badge hidden), or `📊1` (badge shown).
+// Trailing ` 📊` before the closing `)` is the new format's badge-end delimiter.
+const MSTAT_BADGE_RE = /\((📊[01]?)?([⊖⊕∞])(!{0,3})(\?{0,3})(f?)(w?\d+(?:\+\d+)?)([^)]*?)\)/u;
+function parseMstatBadgeFromText(text) {
+  const m = String(text || '').match(MSTAT_BADGE_RE);
+  if (!m) return null;
+  const value = m[6] || '0+0';
+  const rest = String(m[7] || '');
+  const isWeight = value.startsWith('w');
+  let n = 0, pow = 0, weight = null;
+  if (isWeight) { weight = Number(value.slice(1)) || 0; }
+  else { const parts = value.split('+'); n = Math.max(0, Number(parts[0]) || 0); pow = Math.max(0, Number(parts[1]) || 0); }
+  // v0.9.529: Strip the trailing ` 📊` new-format delimiter from rest first, so the
+  // alias text (which may contain anything before that delimiter) parses cleanly.
+  let restCore = rest;
+  let hasTrailDelim = false;
+  const trailDelim = restCore.match(/\s+📊\s*$/);
+  if (trailDelim) {
+    restCore = restCore.slice(0, trailDelim.index);
+    hasTrailDelim = true;
+  }
+  // v0.9.529: Pull off the N(=alias) tail. N must appear LAST among badge fields
+  // (after depth/stealth/color). Alias = everything after `=` up to the (already
+  // stripped) ` 📊` delimiter. `N1=` (empty alias) and `N1` both => no alias.
+  const nTailMatch = restCore.match(/N([01])(=([\s\S]*))?\s*$/);
+  let nameDisplay = true;
+  let alias = '';
+  if (nTailMatch) {
+    nameDisplay = nTailMatch[1] === '1';
+    alias = (nTailMatch[3] || '').trim();
+    restCore = restCore.slice(0, nTailMatch.index);
+  }
+  const depthMatch = restCore.match(/D-?\d+/);
+  const depthText = depthMatch ? depthMatch[0] : '';
+  const depth = depthText ? Number(depthText.slice(1)) : null;
+  // v0.9.511: Stealth flag `Sth0` / `Sth1` between depth and color.
+  // Omitting the field = Sth0 (= normal membrane). Only present in
+  // source when explicitly stealth (Sth1). Spec v3 confirmed by user
+  // 2026-05-19 18:20.
+  const sthMatch = restCore.match(/Sth([01])/);
+  const stealth = sthMatch ? sthMatch[1] === '1' : false;
+  // v0.9.526: leading 📊0 = badge hidden, 📊1 / 📊 / omitted = badge shown.
+  const iconText = m[1] || '';
+  const badgeDisplay = iconText === '📊0' ? false : true;
+  // v0.9.526: new format flag — true when source already uses 📊X prefix or trailing 📊.
+  const newFormat = iconText === '📊0' || iconText === '📊1' || hasTrailDelim;
+  const colorRest = restCore
+    .replace(/D-?\d+/g, '')
+    .replace(/Sth[01]/g, '')
+    .replace(/\s+/g, '');
+  const colorMatch = colorRest.match(/[ROYGBPNKWC]/i);
+  const colorCode = normalizeMembraneColorCode(colorMatch ? colorMatch[0] : '');
+  return {
+    start: m.index, end: m.index + m[0].length, raw: m[0],
+    hasIcon: iconText.length > 0,
+    symbol: m[2], importance: m[3] || '', uncertainty: m[4] || '', fixed: !!m[5],
+    isWeight, n, pow, weight, colorCode,
+    depthText, depth: Number.isFinite(depth) ? depth : null,
+    stealth, nameDisplay, badgeDisplay, newFormat, alias
+  };
+}
+function formatMstatBadge(b) {
+  const symbol = b.symbol || '⊕';
+  const importance = b.importance || '';
+  const uncertainty = b.uncertainty || '';
+  const fixed = b.fixed ? 'f' : '';
+  const value = b.isWeight ? ('w' + (Number(b.weight) || 0)) : ((Number(b.n) || 0) + '+' + (Number(b.pow) || 0));
+  const depthText = (typeof b.depth === 'number' && Number.isFinite(b.depth)) ? ('D' + String(Math.trunc(b.depth))) : (b.depthText || '');
+  // v0.9.511: stealth field written only when true. Sth0 stays omitted
+  // for round-trip cleanliness.
+  const stealthText = b.stealth ? 'Sth1' : '';
+  const colorCode = normalizeMembraneColorCode(b.colorCode || '');
+  // v0.9.526: Write new format `(📊X...N? 📊)` when (a) the parsed source was already
+  // in new format, OR (b) any new-format-only state is set (badge hidden, name hidden,
+  // or alias present). Otherwise keep legacy `(📊...)` for round-trip cleanliness.
+  const aliasText = (typeof b.alias === 'string' && b.alias.length > 0) ? b.alias : '';
+  const useNewFormat = b.badgeDisplay === false || b.nameDisplay === false || aliasText.length > 0 || b.newFormat === true;
+  if (useNewFormat) {
+    const iconPrefix = '📊' + (b.badgeDisplay === false ? '0' : '1');
+    const nameText = (b.nameDisplay === false) ? 'N0' : 'N1';
+    const aliasSuffix = aliasText ? ('=' + aliasText) : '';
+    return `(${iconPrefix}${symbol}${importance}${uncertainty}${fixed}${value}${depthText}${stealthText}${colorCode}${nameText}${aliasSuffix} 📊)`;
+  }
+  return `(📊${symbol}${importance}${uncertainty}${fixed}${value}${depthText}${stealthText}${colorCode})`;
+}
+
+// v0.9.602 mNT helpers: weekday char, timestamp decoration, alias auto-fill, line info.
+// Weekday 1-char rule (project memory 2011): S-M-T-W-t-F-s — first occurrence of S/T is
+// capital, second is lowercase. Sun→S Mon→M Tue→T Wed→W Thu→t Fri→F Sat→s.
+const MNT_WEEKDAY_CHARS = ['S', 'M', 'T', 'W', 't', 'F', 's'];
+function mntWeekdayCharFromYYYYMMDD(yyyymmdd) {
+  if (!/^\d{8}$/.test(yyyymmdd)) return '';
+  const y = Number(yyyymmdd.slice(0, 4));
+  const m = Number(yyyymmdd.slice(4, 6)) - 1;
+  const d = Number(yyyymmdd.slice(6, 8));
+  const date = new Date(y, m, d);
+  if (Number.isNaN(date.getTime()) || date.getFullYear() !== y) return '';
+  return MNT_WEEKDAY_CHARS[date.getDay()];
+}
+function mntDecorateNameWithWeekday(name) {
+  // Insert weekday char after _YYYYMMDD if it is not already followed by a letter.
+  return String(name || '').replace(/(_)(\d{8})(?![A-Za-z])/g, (_m, sep, ymd) => {
+    const w = mntWeekdayCharFromYYYYMMDD(ymd);
+    return w ? (sep + ymd + w) : (sep + ymd);
+  });
+}
+function mntDeriveAliasFromName(name) {
+  if (!name) return '';
+  return String(name)
+    .replace(/_\d{8}[A-Za-z]?_\d{6}(?:\.\d+)?$/, '') // _20260527W_140415.123
+    .replace(/_\d{6}\.\d+$/, '');                    // legacy _140415.123 form
+}
+function mntDisplayInfoFromLine(text) {
+  // Returns null if the line is not an mNT open/close membrane.
+  // v0.9.608: normalize first so <!-- {* ▼mNT=... *} --> and // {* ▼mNT=... *} both match.
+  const normalized = normalizeProtoMembraneLineText(String(text || ''));
+  if (!/^\s*\/\/[ \t]*\{[ \t]*[▼▽▲△][ \t]*mNT[ \t]*=/.test(normalized)) return null;
+  const isOpen = !!parseOpenLine(text);
+  const isClose = !!parseCloseLine(text);
+  if (!isOpen && !isClose) return null;
+  const id = (isOpen ? parseOpenLine(text).id : parseCloseLine(text).id) || '';
+  let alias = '';
+  if (isOpen) {
+    const badge = parseMstatBadgeFromText(text);
+    alias = (badge && typeof badge.alias === 'string') ? badge.alias.trim() : '';
+  }
+  if (!alias) alias = mntDeriveAliasFromName(id) || '(unnamed)';
+  let comment = '';
+  if (isClose) {
+    const m = normalized.match(/[▲△][ \t]*mNT[ \t]*=[^\r\n]*?[ \t]+\/\/[ \t]*([^}\r\n]*?)\s*\*?\}/);
+    if (m && m[1]) comment = m[1].trim();
+  }
+  return { kind: isOpen ? 'open' : 'close', alias, membraneName: mntDecorateNameWithWeekday(id), comment };
+}
+function setMstatBadgeColorInText(text, colorCode) {
+  const badge = parseMstatBadgeFromText(text);
+  if (!badge) return String(text || '');
+  const next = formatMstatBadge({ ...badge, colorCode: normalizeMembraneColorCode(colorCode || '') });
+  return String(text || '').slice(0, badge.start) + next + String(text || '').slice(badge.end);
+}
+
+function mstatDepthForPair(pair) {
+  const d = -Math.max(0, Number(pair && pair.depth) || 0);
+  return Number.isFinite(d) ? d : 0;
+}
+function countEnclosingMembranesAtLine(document, line) {
+  // v0.9.604: mNT pairs are depth-transparent (do not count as enclosure).
+  const pairs = collectPairs(document, { excludeIndex: false });
+  return pairs.filter(p => !p.isMnt && p.start < line && line < p.end).length;
+}
+function newMembraneDepthForInsertion(document, line) {
+  return -Math.max(0, countEnclosingMembranesAtLine(document, line));
+}
+async function ensureMembraneMstatMetadata(editor) {
+  if (!editor || mstatsSyncing) return false;
+  const doc = editor.document;
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  const edits = [];
+  for (const pair of pairs) {
+    const text = doc.lineAt(pair.start).text;
+    const badge = parseMstatBadgeFromText(text);
+    if (!badge) continue;
+    const nextColor = normalizeMembraneColorCode(badge.colorCode || '') || 'W';
+    const nextDepth = (typeof badge.depth === 'number' && Number.isFinite(badge.depth)) ? badge.depth : mstatDepthForPair(pair);
+    if (nextColor === badge.colorCode && nextDepth === badge.depth) continue;
+    const formatted = formatMstatBadge({ ...badge, colorCode: nextColor, depth: nextDepth });
+    edits.push({ range: new vscode.Range(pair.start, badge.start, pair.start, badge.end), text: formatted });
+  }
+  if (!edits.length) return false;
+  mstatsSyncing = true;
+  try {
+    return await editor.edit(edit => { for (const e of edits) edit.replace(e.range, e.text); }, { undoStopBefore: false, undoStopAfter: false });
+  } finally {
+    mstatsSyncing = false;
+  }
+}
+function incrementMstatCounter(b) {
+  if (!b || b.symbol === '∞' || b.isWeight) return b;
+  let n = (Number(b.n) || 0) + 1;
+  let pow = Number(b.pow) || 0;
+  if (n >= 10) { n = 0; pow += 1; }
+  return { ...b, n, pow };
+}
+function desiredMstatForFoldState(openLineText, folded) {
+  const badge = parseMstatBadgeFromText(openLineText);
+  if (!badge) return null;
+  let next = { ...badge, hasIcon: true };
+  if (badge.symbol !== '∞') {
+    const wasClosed = badge.symbol === '⊖';
+    const isOpening = !folded && wasClosed;
+    next.symbol = folded ? '⊖' : '⊕';
+    if (isOpening) next = incrementMstatCounter(next);
+  }
+  const formatted = formatMstatBadge(next);
+  if (formatted === badge.raw) return null;
+  return { badge, formatted };
+}
+async function replaceOpenLineMstat(editor, pair, formatted, badge) {
+  if (!editor || mstatsSyncing || !pair || !badge) return false;
+  const lineText = editor.document.lineAt(pair.start).text;
+  if (lineText.slice(badge.start, badge.end) !== badge.raw) return false;
+  mstatsSyncing = true;
+  try {
+    return await editor.edit(editBuilder => {
+      editBuilder.replace(new vscode.Range(pair.start, badge.start, pair.start, badge.end), formatted);
+    }, { undoStopBefore: false, undoStopAfter: false });
+  } finally {
+    mstatsSyncing = false;
+  }
+}
+async function syncPairMstatFromFoldState(editor, pair) {
+  if (!editor || !pair || mstatsSyncing) return false;
+  const lineText = editor.document.lineAt(pair.start).text;
+  const desired = desiredMstatForFoldState(lineText, isPairFolded(editor, pair));
+  if (!desired) return false;
+  return replaceOpenLineMstat(editor, pair, desired.formatted, desired.badge);
+}
+function scheduleMstatsSync(editor) {
+  if (!editor || mstatsSyncing) return;
+  if (mstatsSyncTimer) clearTimeout(mstatsSyncTimer);
+  mstatsSyncTimer = setTimeout(async () => {
+    if (!editor || editor !== vscode.window.activeTextEditor || mstatsSyncing) return;
+    const pairs = collectPairs(editor.document, { excludeIndex: false });
+    for (const pair of pairs) {
+      const changed = await syncPairMstatFromFoldState(editor, pair);
+      if (changed) break;
+    }
+  }, 120);
+}
+// v0.9.633: schedule the mSTAT metadata edit through ONE cleared timer (not a
+// fresh un-cleared setTimeout per refresh). Any new document change cancels the
+// pending edit (see onDidChangeTextDocument), so the editor.edit() can never land
+// while the user is still typing / composing with the IME.
+function scheduleMstatMetadata(editor) {
+  if (mstatMetaTimer) clearTimeout(mstatMetaTimer);
+  mstatMetaTimer = setTimeout(() => {
+    mstatMetaTimer = null;
+    // Extra guard: skip if a change happened very recently (still typing).
+    if (Date.now() - lastDocChangeAt < TYPING_REFRESH_DEBOUNCE_MS) return;
+    ensureMembraneMstatMetadata(editor);
+  }, 260);
+}
+async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
+  if (!editor || !pair) return;
+  // v0.9.345:
+  // This function used to refresh 3 times and sync mSTAT via delayed timers for
+  // every single membrane. On a real, membraneized extension.js that made Me all
+  // visibly close one membrane at a time. Keep this path as the single-membrane
+  // route, but allow callers to suppress redraw/sync and batch them once.
+  const suppressRefresh = !!options.suppressRefresh;
+  const suppressMstat = !!options.suppressMstat;
+  const key = pairStateKey(editor, pair);
+  foldStateByPairKey.set(key, !!folded);
+  suppressAutoUnfoldUntil = Date.now() + (suppressRefresh ? 1500 : 500);
+  editor.selection = new vscode.Selection(pair.start, 0, pair.start, 0);
+
+  // Use the membrane start line for both fold and unfold. The registered
+  // FoldingRangeProvider owns the range, so the start line is the stable handle.
+  await vscode.commands.executeCommand(folded ? 'editor.fold' : 'editor.unfold', { selectionLines: [pair.start] });
+
+  foldStateByPairKey.set(key, !!folded);
+
+  if (!suppressMstat) {
+    await syncPairMstatFromFoldState(editor, pair);
+  }
+
+  if (!suppressRefresh) {
+    refresh(editor);
+    scheduleMstatsSync(editor);
+    updateMeDockMode();
+  }
+}
+
+async function syncManyMstatsFromTargetStates(editor, items) {
+  if (!editor || !items || !items.length || mstatsSyncing) return false;
+  const doc = editor.document;
+  const edits = [];
+  for (const item of items) {
+    if (!item || !item.pair) continue;
+    // Make isPairFolded() answer from the target map while computing desired badge.
+    foldStateByPairKey.set(item.key || pairStateKey(editor, item.pair), !!item.folded);
+    const lineText = doc.lineAt(item.pair.start).text;
+    const desired = desiredMstatForFoldState(lineText, !!item.folded);
+    if (!desired) continue;
+    if (lineText.slice(desired.badge.start, desired.badge.end) !== desired.badge.raw) continue;
+    edits.push({
+      range: new vscode.Range(item.pair.start, desired.badge.start, item.pair.start, desired.badge.end),
+      text: desired.formatted
+    });
+  }
+  if (!edits.length) return false;
+  mstatsSyncing = true;
+  try {
+    return await editor.edit(editBuilder => {
+      for (const e of edits) editBuilder.replace(e.range, e.text);
+    }, { undoStopBefore: false, undoStopAfter: false });
+  } finally {
+    mstatsSyncing = false;
+  }
+}
+
+function isMstatFixed(pair, document) {
+  const b = parseMstatBadgeFromText(document.lineAt(pair.start).text);
+  return !!(b && b.fixed);
+}
+async function restoreMstatsForEditor(editor) {
+  if (!editor) return;
+  const key = String(editor.document.uri);
+  if (mstatsRestoreDone.has(key)) return;
+  mstatsRestoreDone.add(key);
+  const pairs = collectPairs(editor.document, { excludeIndex: false });
+  const foldStarts = [];
+  const unfoldStarts = [];
+  for (const p of pairs) {
+    const b = parseMstatBadgeFromText(editor.document.lineAt(p.start).text);
+    if (!b || b.symbol === '∞') continue;
+    if (b.symbol === '⊖') foldStarts.push(p.start);
+    if (b.symbol === '⊕') unfoldStarts.push(p.start);
+  }
+  if (foldStarts.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: foldStarts });
+  if (unfoldStarts.length) await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldStarts });
+  setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
+}
+
+// {* ▲mCN=0300_MSTATS // end [cGJF=h] *}
+
+// {* ▼mCN=0400_PARSE_PAIRS // membrane source parser and pair collector (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function parseOpenLine(text) {
+  const src = asRealMembraneSource(text);
+  if (!src) return null;
+  const m = src.match(OPEN_RE);
+  if (!m) return null;
+  const id = cleanMembraneName(m[1]);
+  const idEnd = m.index + m[0].length;
+  return { id, tail: cleanTail(src.slice(idEnd)) };
+}
+
+function parseCloseLine(text) {
+  const src = asRealMembraneSource(text);
+  if (!src) return null;
+  const m = src.match(CLOSE_RE);
+  return m ? { id: cleanMembraneName(m[1]) } : null;
+}
+function membraneLineInfo(document, line) {
+  if (!document || line < 0 || line >= document.lineCount) return null;
+  const text = document.lineAt(line).text;
+  const src = asRealMembraneSource(text);
+  if (!src) return null;
+  let m = src.match(OPEN_RE);
+  let kind = 'open';
+  if (!m) { m = src.match(CLOSE_RE); kind = 'close'; }
+  if (!m) return null;
+  const id = cleanMembraneName(m[1]);
+  const idStart = text.indexOf(id, Math.max(0, m.index));
+  if (idStart < 0) return null;
+  const idEnd = idStart + id.length;
+  return { kind, id, line, idStart, idEnd, idRange: new vscode.Range(line, idStart, line, idEnd) };
+}
+
+// v0.9.450: structure cache keyed on document.version.
+// Before this, collectMembraneStructure was called ~50 times per W-click
+// (refresh fans out to ~17 decoration computers, each scanning all lines).
+// On a 6000-line file that meant a multi-second wait. The cache reduces
+// the effective work to one full scan per document edit.
+//
+// Invalidation is automatic:
+//   - document.version increments on every edit (VSCode contract)
+//   - WeakMap entry is freed when the document is closed/garbage-collected
+//
+// Callers MUST treat the returned arrays as read-only (no push/splice/sort
+// in place). Existing call sites all iterate read-only.
+const _membraneStructureCache = new WeakMap();
+
+function collectMembraneStructure(document, options = {}) {
+  const excludeIndex = !!options.excludeIndex;
+  const cacheKey = `${document.version}::${excludeIndex ? 1 : 0}`;
+  const cached = _membraneStructureCache.get(document);
+  if (cached && cached.key === cacheKey) return cached.value;
+
+  const stack = [];
+  const pairs = [];
+  const orphanCloses = [];
+  // v0.9.604: mNT is "depth-transparent" — it does NOT contribute to nesting depth
+  // for inner membranes. A member directly inside an mNT therefore reports depth 0
+  // and draws its lane at the leftmost lane X, visually serving as the cell envelope.
+  const MNT_OPEN = /^\s*\/\/[ \t]*\{[ \t]*[▼▽][ \t]*mNT[ \t]*=/;
+  const isMntOpenText = (t) => MNT_OPEN.test(t);
+  for (let i = 0; i < document.lineCount; i++) {
+    const text = document.lineAt(i).text;
+    const open = parseOpenLine(text);
+    const close = parseCloseLine(text);
+    if (open) {
+      if (!(excludeIndex && isIndexMembrane(open.id))) {
+        const isMnt = isMntOpenText(normalizeProtoMembraneLineText(text));
+        const depth = stack.filter(s => !s.isMnt).length;
+        stack.push({ id: open.id, line: i, tail: open.tail, depth, isMnt });
+      }
+    }
+    if (close) {
+      if (excludeIndex && isIndexMembrane(close.id)) continue;
+      let found = -1;
+      for (let s = stack.length - 1; s >= 0; s--) {
+        if (stack[s].id === close.id) { found = s; break; }
+      }
+      if (found >= 0) {
+        const start = stack[found];
+        stack.splice(found, 1);
+        pairs.push({ id: start.id, start: start.line, end: i, tail: start.tail, depth: start.depth || 0, isMnt: !!start.isMnt });
+      } else {
+        orphanCloses.push({ id: close.id, line: i, depth: stack.filter(s => !s.isMnt).length });
+      }
+    }
+  }
+  const unclosedOpens = stack.map(s => ({ id: s.id, start: s.line, tail: s.tail, depth: s.depth || 0, isMnt: !!s.isMnt }));
+  const value = {
+    pairs: pairs.sort((a, b) => a.start - b.start || b.end - a.end),
+    unclosedOpens: unclosedOpens.sort((a, b) => a.start - b.start),
+    orphanCloses: orphanCloses.sort((a, b) => a.line - b.line)
+  };
+  _membraneStructureCache.set(document, { key: cacheKey, value });
+  return value;
+}
+
+function collectPairs(document, options = {}) {
+  return collectMembraneStructure(document, options).pairs;
+}
+
+// {* ▲mCN=0400_PARSE_PAIRS // end [cGJF=h] *}
+
+// {* ▼mCN=0500_VISUAL_LINES // lane depth rendering / folding-state helpers (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function displayColumns(text) {
+  // v0.9.655: count DISPLAY COLUMNS, not character count. A wide (CJK / full-width /
+  // emoji) glyph occupies 2 columns on screen, a half-width one occupies 1. The old
+  // code used String.length (every char = 1), which under-counted Japanese prose by
+  // ~half → membrane lanes were estimated too short and the vertical line broke off
+  // partway down a wrapped line (user 2026.05.31 am01:51). Tabs count as 2 (the editor
+  // renders a soft-tab as 2 spaces here). This is a width heuristic, not a font metric,
+  // but for fixed-column wrap (wordWrapColumn) it is essentially exact for CJK text.
+  let cols = 0;
+  for (const ch of (text || '')) {
+    if (ch === '\t') { cols += 2; continue; }
+    const cp = ch.codePointAt(0);
+    cols += isWideCodePoint(cp) ? 2 : 1;
+  }
+  return cols;
+}
+
+function isWideCodePoint(cp) {
+  // East-Asian Wide / Fullwidth ranges + common emoji. Conservative but covers the
+  // glyphs that actually appear in Japanese manuscripts and MeOS membrane text.
+  return (
+    (cp >= 0x1100 && cp <= 0x115F) ||   // Hangul Jamo
+    (cp >= 0x2E80 && cp <= 0x303E) ||   // CJK radicals, Kangxi, CJK symbols/punct (、。「」 etc.)
+    (cp >= 0x3041 && cp <= 0x33FF) ||   // Hiragana, Katakana, CJK symbols, enclosed
+    (cp >= 0x3400 && cp <= 0x4DBF) ||   // CJK Ext A
+    (cp >= 0x4E00 && cp <= 0x9FFF) ||   // CJK Unified Ideographs (kanji)
+    (cp >= 0xA000 && cp <= 0xA4CF) ||   // Yi
+    (cp >= 0xAC00 && cp <= 0xD7A3) ||   // Hangul syllables
+    (cp >= 0xF900 && cp <= 0xFAFF) ||   // CJK compatibility ideographs
+    (cp >= 0xFE30 && cp <= 0xFE4F) ||   // CJK compatibility forms
+    (cp >= 0xFF00 && cp <= 0xFF60) ||   // Fullwidth forms (full-width ASCII, （）！ etc.)
+    (cp >= 0xFFE0 && cp <= 0xFFE6) ||   // Fullwidth signs
+    (cp >= 0x1F000 && cp <= 0x1FAFF) || // emoji & pictographs (🟢🔴📊💥▼ etc. in this plane)
+    (cp >= 0x20000 && cp <= 0x3FFFD)    // CJK Ext B+ (rare kanji)
+  );
+}
+
+function estimateWrappedVisualRows(text) {
+  // v0.9.216: VS Code's `before` decoration is attached to the first visual row only.
+  // For long soft-wrapped logical lines, make the membrane lane taller so the vertical
+  // background line continues through wrapped continuation rows.
+  // v0.9.655: two fixes so the lane no longer breaks off on wrapped Japanese lines —
+  //   (1) measure DISPLAY COLUMNS (full-width = 2) instead of String.length, and
+  //   (2) read the actual wordWrap MODE: 'off' never wraps → always 1 row (no over-
+  //       tall lanes); 'wordWrapColumn'/'bounded' wrap at the configured column (exact
+  //       for fixed-column manuscript writing); 'on' wraps at the viewport edge, which
+  //       the extension API cannot read precisely, so we approximate with 80 columns.
+  const wrapCfg = vscode.workspace.getConfiguration('editor');
+  const wrapMode = wrapCfg.get('wordWrap', 'off');
+  if (wrapMode === 'off') return 1; // no soft wrap → exactly one visual row.
+  const wrapColumn = (wrapMode === 'on')
+    ? 80
+    : Math.max(20, Math.min(300, Number(wrapCfg.get('wordWrapColumn', 80)) || 80));
+  const cols = displayColumns(text);
+  // Cap higher than the old 6 — long prose paragraphs can wrap to many rows and the
+  // lane must follow all the way down; 40 is a safe ceiling for a single logical line.
+  return Math.max(1, Math.min(40, Math.ceil(cols / wrapColumn)));
+}
+
+function warningArrowSvg(direction) {
+  const points = direction === 'up' ? '5,0 10,10 0,10' : '0,0 10,0 5,10';
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><polygon points='${points}' fill='rgb(255,64,64)' fill-opacity='0.98'/></svg>`;
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+}
+function warningSegmentLayout(kind, line, startLine, endLine) {
+  // v0.9.216: slightly shorten warning line terminals so long arrows do not
+  // crash into the editor/file edge or the arrowhead. Middle rows remain continuous.
+  const topGap = 3;
+  const arrowGap = 8;
+  if (kind === 'unclosed') {
+    if (line === startLine) return { size: `calc(100% - ${topGap}px)`, y: 'bottom' };
+    if (line === endLine) return { size: `calc(100% - ${arrowGap}px)`, y: 'top' };
+    return { size: '100%', y: 'center' };
+  }
+  if (kind === 'orphan') {
+    if (line === 0) return { size: `calc(100% - ${arrowGap}px)`, y: 'bottom' };
+    if (line === endLine) return { size: `calc(100% - ${topGap}px)`, y: 'top' };
+    return { size: '100%', y: 'center' };
+  }
+  return { size: '100%', y: 'center' };
+}
+
+
+function warningHoverMessage(warnings) {
+  if (!warnings || !warnings.length) return undefined;
+  const lines = [];
+  for (const w of warnings) {
+    if (w.warningKind === 'unclosed') {
+      lines.push(`⚠️ 閉じ膜がありません: ${w.id}`);
+    } else if (w.warningKind === 'orphan') {
+      lines.push(`⚠️ 対応する開始膜がありません: ${w.id}`);
+    }
+  }
+  if (!lines.length) return undefined;
+  const md = new vscode.MarkdownString(lines.join('\n\n'));
+  md.isTrusted = false;
+  return md;
+}
+
+function selectDisplayedWarnings(structure) {
+  // Choose the two visible diagnostics once for the whole document.
+  // This prevents hidden 3rd+ warnings from leaking into hover text and keeps
+  // every displayed lane anchored to its own warning source line.
+  const unclosed = (structure.unclosedOpens || []).map(p => ({
+    ...p,
+    warningKind: 'unclosed',
+    sourceLine: p.start,
+    startLine: p.start,
+    endLine: undefined
+  }));
+  const orphans = (structure.orphanCloses || []).map(p => ({
+    id: p.id,
+    depth: p.depth || 0,
+    warningKind: 'orphan',
+    sourceLine: p.line,
+    startLine: 0,
+    endLine: p.line,
+    start: p.line,
+    end: p.line
+  }));
+  return unclosed.concat(orphans)
+    .sort((a, b) => (a.sourceLine || 0) - (b.sourceLine || 0) || (a.depth || 0) - (b.depth || 0))
+    .slice(0, 2)
+    .map((w, laneIndex) => ({ ...w, laneIndex }));
+}
+
+function warningLaneX(w) {
+  if (!w) return 10;
+  return w.laneIndex === 0 ? 10 : 3;
+}
+
+function warningArrowX(w, direction) {
+  const x = warningLaneX(w);
+  return x - (direction === 'up' ? 3 : 4);
+}
+
+
+function computeLineDecorations(document) {
+  const cfg = vscode.workspace.getConfiguration('laiMembrane');
+  const excludeIndex = cfg.get('excludeIndexMembrane', false);
+  const lineWidth = Math.max(1, Math.min(4, Number(cfg.get('lineWidth', 1)) || 1));
+  // v0.9.216: open the text margin by +3px from the v0.9.216 baseline.
+  // Use +3 even if VS Code has cached the old default setting.
+  const textMargin = Math.max(0, Math.min(16, (Number(cfg.get('textMargin', 2)) || 2) + 3));
+  const terminalLineWidth = Math.max(lineWidth, Math.min(6, Number(cfg.get('terminalLineWidth', 3)) || 3));
+  const depthGap = Math.max(0, Math.min(24, Number(cfg.get('depthGap', 5)) || 0));
+  // v0.9.505: default maxDepth bumped 8 → 12 so D-8〜D-12 lanes render
+  // out of the box (with the new DEEP_DEPTH_PALETTE colours).
+  const maxDepth = Math.max(1, Math.min(24, Number(cfg.get('maxDepth', 12)) || 12));
+  const structure = collectMembraneStructure(document, { excludeIndex });
+  const pairs = structure.pairs;
+  // v0.9.513 (fixed in v0.9.514): precompute stealth flag per pair so
+  // the per-line render loop can avoid badge re-parses. Stealth pairs
+  // get a thin lineWidth lane (never terminalLineWidth) so the ◤◢
+  // markers visually connect via a continuous thin line. User report
+  // v0.9.512_0716. v0.9.513 used `Map<pair object, boolean>` but the
+  // per-line render code clones each pair via `{ ...p, warningKind:'normal' }`
+  // — the clone is a different object reference so Map.get(p) was always
+  // undefined → isStealth always false → fix did nothing. Switched to
+  // `Map<start line, boolean>` since the start line survives the clone.
+  const isStealthByStartLine = new Map();
+  for (const p of pairs) {
+    if (isStealthMembrane(p, document)) isStealthByStartLine.set(p.start, true);
+  }
+  const displayedWarnings = selectDisplayedWarnings(structure);
+  const warningColor = 'rgba(255, 64, 64, 0.96)';
+  const warningWidth = 3;
+  // v0.9.216: shift the raw-text baseline 10px to the right and use the
+  // newly opened left 10px area as a stable warning lane. This avoids fighting
+  // VSCode's left-edge decoration constraints with negative margins.
+  const warningLanePx = 10;
+  const orphanWarningX = 3;
+  const unclosedWarningX = 10;
+  const minLanePx = Math.max(warningLanePx + terminalLineWidth + 2, unclosedWarningX + warningWidth + 1);
+  const options = [];
+
+  // v0.9.504: Depth Compression removed — all depths render normally.
+
+  // v0.9.216: one row = one drawing object.
+  // This prevents child membrane pseudo-elements from cutting parent lanes.
+  // v0.9.216: unmatched membranes are also visualized as red warning lanes.
+  for (let line = 0; line < document.lineCount; line++) {
+    // v0.9.638: hide the membrane lane (thin vertical line + indent) on the line
+    // being IME-composed, so the composing text sits at the caret instead of having
+    // the line wedged between caret and text. Restored when composition settles / on
+    // newline (see onDidChangeTextDocument). User 2026.05.30 am02:12.
+    // v0.9.653: mechanism A RESTORED. The v0.9.652 experiment (disable A, rely on B alone)
+    // FAILED in testing (user 2026.05.30 pm00:49): with the lane shown during composition,
+    // the old line-head symptoms returned — the thin lane wedges between caret and kana, and
+    // confirming a conversion triggered an unwanted newline. A and B are NOT redundant: B
+    // (v0.9.650) stops the setDecorations INTERRUPT that ate the ")", while A hides the lane
+    // so it can't visually wedge / reflow the composing line. Both are needed; keep the skip.
+    if (line === composingLine) continue;
+    const activeNormal = pairs
+      .filter(p => p.start <= line && line <= p.end)
+      .map(p => ({ ...p, warningKind: 'normal' }));
+    const activeWarnings = displayedWarnings.filter(w => {
+      if (w.warningKind === 'unclosed') return w.start <= line;
+      if (w.warningKind === 'orphan') return line <= w.endLine;
+      return false;
+    });
+    const hoverMessage = warningHoverMessage(activeWarnings);
+    const sortedNormal = activeNormal
+      .sort((a, b) => (a.depth || 0) - (b.depth || 0) || (a.start || 0) - (b.start || 0));
+    // v0.9.504: render all depths (no D-8+ proxy synthesis).
+    const active = sortedNormal
+      .slice(0, maxDepth)
+      .concat(activeWarnings);
+    if (!active.length) continue;
+
+    const layers = [];
+    const sizes = [];
+    const positions = [];
+    let maxIndentCh = 0;
+    let maxPx = minLanePx;
+
+    for (const p of active) {
+      const startText = document.lineAt(p.start).text;
+      const visualIndent = indentToCh(makeIndent(startText));
+      const depth = Math.max(0, p.depth || 0);
+      const isWarning = p.warningKind === 'unclosed' || p.warningKind === 'orphan';
+      // v0.9.504: depthCompressionProxy branch removed.
+      const color = isWarning
+        ? warningColor
+        : membraneColorForOpenLineText(document.lineAt(p.start).text, colorForDepth(depth, cfg));
+      const isTerminal = p.warningKind === 'normal' && (line === p.start || line === p.end);
+      // v0.9.515: for stealth pairs at open/close lines, skip lane
+      // rendering entirely — the ◤◢ markers take the lane's place
+      // (per user clarification v0.9.514_0731: 「従来の太い縦線の代わり
+      // に、ステルス膜マークを使用する」). Content lines (line strictly
+      // between p.start and p.end) still render the thin lane, so ◤
+      // and ◢ visually connect via that lane.
+      const isStealth = !!isStealthByStartLine.get(p.start);
+      if (isStealth && isTerminal) continue;
+      // v0.9.606: mNT lane draws normally. With the v0.9.604 depth-transparency
+      // (mNT is excluded from the enclosing-pair count for inner members) all mNTs
+      // and their inner depth-0 members align at the leftmost X — so nested mNT
+      // envelopes share a single continuous vertical bar.
+      const width = isWarning ? warningWidth : (isTerminal ? terminalLineWidth : lineWidth);
+      let x;
+
+      if (p.warningKind === 'unclosed') {
+        // Downward warning lane: start membrane has no close; draw from start to EOF.
+        // v0.9.216: the arrowhead belongs at the expected close side, i.e. EOF.
+        x = `${warningLaneX(p)}px`;
+        const seg = warningSegmentLayout('unclosed', line, p.start, document.lineCount - 1);
+        layers.push(`linear-gradient(${color}, ${color})`);
+        sizes.push(`${width}px ${seg.size}`);
+        positions.push(`${x} ${seg.y}`);
+        if (line === document.lineCount - 1) {
+          layers.push(warningArrowSvg('down'));
+          sizes.push('10px 10px');
+          positions.push(`${warningArrowX(p, 'down')}px bottom`);
+        }
+        continue;
+      }
+
+      if (p.warningKind === 'orphan') {
+        // Upward warning lane: close membrane has no start; draw from BOF to close.
+        // v0.9.216: the arrowhead belongs at the expected open side, i.e. BOF.
+        x = `${warningLaneX(p)}px`;
+        const seg = warningSegmentLayout('orphan', line, 0, p.start);
+        layers.push(`linear-gradient(${color}, ${color})`);
+        sizes.push(`${width}px ${seg.size}`);
+        positions.push(`${x} ${seg.y}`);
+        if (line === 0) {
+          layers.push(warningArrowSvg('up'));
+          sizes.push('10px 10px');
+          positions.push(`${warningArrowX(p, 'up')}px top`);
+        }
+        continue;
+      }
+
+      const depthShift = depth * depthGap;
+      // v0.9.216: the whole drawing box is shifted left by warningLeftShiftPx,
+      // so normal membrane lanes are offset back right by the same amount.
+      x = depthShift ? `calc(${visualIndent}ch + ${warningLanePx + depthShift}px)` : `calc(${visualIndent}ch + ${warningLanePx}px)`;
+      layers.push(`linear-gradient(${color}, ${color})`);
+      sizes.push(`${width}px 100%`);
+      positions.push(`${x} center`);
+      maxIndentCh = Math.max(maxIndentCh, visualIndent);
+      maxPx = Math.max(maxPx, depthShift + width + 2);
+    }
+
+    const laneWidth = `calc(${maxIndentCh}ch + ${maxPx + warningLanePx}px)`;
+    // v0.9.577: membrane open/close lines hide most of their raw source via
+    // decorations (// { ▼mCN= prefix, badge body, [XJF=v] flags, closing
+    // brace). Measuring raw length on such lines mis-predicts wrap rows —
+    // an alias-bearing line easily exceeds 120 chars in source but renders as
+    // a single short visible row (e.g. `▼↑1 参照の例3 🟢 🔴`). The
+    // resulting 2-row lane height spilled visibly into the line below
+    // (user v0.9.576_1132 bug 1: 「エイリアス膜の左端の太い膜線が次の行まで
+    // 延びていることです」). Treat structural membrane lines as single-row
+    // unconditionally; only true body lines use the wrap estimate.
+    // v0.9.611: structural lines use explicit 1.50em instead of '100%'.
+    // In MD files with Word Wrap ON, the raw source (e.g. 95-char
+    // `<!-- {* ▼mNT=... *} -->`) wraps to 2+ visual rows in layout even
+    // though font-size:0 decorations hide most chars. CSS `height: 100%`
+    // resolves to the full wrapped-line height (2 rows), so the lane
+    // spills below the visible 1-row label. Fixed height 1.50em caps the
+    // lane at exactly 1 visual row regardless of word-wrap state.
+    const _lineText = document.lineAt(line).text;
+    // v0.9.667: 膜の開始/閉じ行は必ず '{' を含む。'{' が無い本文行で重い
+    // parseOpenLine/parseCloseLine(asRealMembraneSource×正規表現)を呼ばない事前フィルタ。
+    const _isStructural = _lineText.indexOf('{') >= 0 && !!(parseOpenLine(_lineText) || parseCloseLine(_lineText));
+    const visualRows = _isStructural ? 1 : estimateWrappedVisualRows(_lineText);
+    const laneHeight = _isStructural ? '1.50em' : (visualRows > 1 ? `calc(${visualRows} * 1.50em)` : '100%');
+    const option = {
+      range: new vscode.Range(line, 0, line, 0),
+      renderOptions: {
+        before: {
+          contentText: ' ',
+          color: 'transparent',
+          margin: `0 ${textMargin}px 0 0`,
+          width: laneWidth,
+          height: laneHeight,
+          textDecoration: [
+            'none',
+            'display: inline-block',
+            'vertical-align: top',
+            'box-sizing: border-box',
+            `width: ${laneWidth}`,
+            `height: ${laneHeight}`,
+            `min-height: ${laneHeight}`,
+            `background-image: ${layers.join(', ')}`,
+            `background-size: ${sizes.join(', ')}`,
+            `background-position: ${positions.join(', ')}`,
+            'background-repeat: no-repeat'
+          ].join('; ') + ';'
+        }
+      }
+    };
+    if (hoverMessage) option.hoverMessage = hoverMessage;
+    options.push(option);
+  }
+  return options;
+}
+function computeWarningArrowDecorations(document) {
+  // v0.9.216: arrowheads are drawn inside computeLineDecorations as warning-lane SVG backgrounds,
+  // so they never push raw text or membrane labels to the right.
+  return [];
+}
+
+function lineVisible(editor, line) {
+  return !!editor && line >= 0 && line < editor.document.lineCount && editor.visibleRanges.some(r => r.start.line <= line && line <= r.end.line);
+}
+function foldRangeEnd(document, pair) {
+  // v0.9.343:
+  // VS Code FoldingRange.end is already the last line included in the fold.
+  // Returning pair.end + 1 accidentally folds the next membrane's start line
+  // when formal membranes are adjacent, e.g. ▲0000_HISTORY then ▼0100_CORE_STATE.
+  // The range must terminate exactly at the matching close membrane line.
+  return Math.min(document.lineCount - 1, pair.end);
+}
+function pairStateKey(editor, pair) {
+  if (!editor || !pair) return '';
+  return `${String(editor.document.uri)}::${pair.start}::${pair.end}::${pair.id}`;
+}
+function rawLineText(document, line) {
+  if (!document || typeof line !== 'number' || line < 0 || line >= document.lineCount) return '';
+  return document.lineAt(line).text || '';
+}
+function isPairFolded(editor, pair) {
+  // v0.9.216: viewport/visibleRanges must never decide membrane state.
+  // Viewport is drawing-only. Folded/open state is judged from source symbols,
+  // mSTAT, and the extension's own command-state memory.
+  if (!editor || !pair) return false;
+
+  const document = editor.document;
+  const startText = rawLineText(document, pair.start);
+  const endText = rawLineText(document, pair.end);
+  const startSource = asRealMembraneSource(startText) || startText;
+  const endSource = asRealMembraneSource(endText) || endText;
+
+  // Horizontal closed membrane: ▶◀
+  if (/▶\s*◀/.test(startSource) || /▶\s*◀/.test(endSource)) return true;
+
+  // Horizontal expanded membrane: ▶ ... ◀
+  if (/▶/.test(startSource) && /◀/.test(endSource)) return false;
+
+  // v0.9.216:
+  // Internal command-state is the strongest live state.
+  // It must override stale source/mSTAT/pretty symbols immediately after fold/unfold.
+  const remembered = foldStateByPairKey.get(pairStateKey(editor, pair));
+  if (typeof remembered === 'boolean') return remembered;
+
+  // Existing closed vertical pretty form, if materialized in source.
+  // This is symbol-state fallback only; it is not viewport-derived.
+  if (/▼\s*▲/.test(startSource)) return true;
+
+  // mSTAT is source-level state. ⊖ means closed; ⊕ means open.
+  const badge = parseMstatBadgeFromText(startText);
+  if (badge && badge.symbol === '⊖') return true;
+  if (badge && badge.symbol === '⊕') return false;
+
+  // Default: ordinary ▼ ... ▲ vertical membrane is open.
+  return false;
+}
+function makePrettyLabel(pair, folded) {
+  const rawTail = folded ? pair.tail.replace(/⊕/g, '⊖') : pair.tail.replace(/⊖/g, '⊕');
+  return `${folded ? '▼▲' : '▼'}${pair.id}${rawTail || ''}`;
+}
+function makePrettyCloseLabel(pair) {
+  return `▲${pair.id}`;
+}
+function makeIndent(text) {
+  const m = text.match(/^\s*/);
+  return m ? m[0] : '';
+}
+function indentToCh(indent) {
+  // Approximate tabs as 2ch to match common markdown display in this workflow.
+  return (indent || '').replace(/\t/g, '  ').length;
+}
+function labelTextCss(folded) {
+  const cfg = vscode.workspace.getConfiguration('laiMembrane');
+  const lineWidth = Math.max(1, Math.min(6, Number(cfg.get('terminalLineWidth', cfg.get('lineWidth', 1))) || 1));
+  const labelGap = Math.max(0, Math.min(8, Number(cfg.get('labelGap', 2)) || 2));
+  const bg = folded ? ' background-color: rgba(130, 190, 220, 0.18); border-radius: 2px;' : '';
+  return `none; padding-left: ${lineWidth + labelGap}px;${bg}`;
+}
+// {* ▲mCN=0500_VISUAL_LINES // end [cGJF=h] *}
+
+// {* ▼mCN=0600_PRETTY_LABELS // hide raw source prefix/suffix and draw labels (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+
+function isMarkdownDocument(doc) {
+  const lang = (doc && doc.languageId || '').toLowerCase();
+  const file = String(doc && doc.uri && doc.uri.fsPath || '').toLowerCase();
+  return lang === 'markdown' || file.endsWith('.md') || file.endsWith('.markdown');
+}
+
+function commentSyntaxForDocument(doc) {
+  return isMarkdownDocument(doc) ? 'markdown' : 'slash';
+}
+
+function unwrapMembraneCommentText(text) {
+  // Returns the inner membrane payload while keeping indexes mappable enough
+  // for existing rendering logic. For slash comments, this is identity.
+  // HTML comment wrapper (new canonical MD format):
+  //   <!-- {* ▼mCN=name // comment (📊⊕0+0) *} -->
+  //   <!-- {* ▲mCN=name // comment2 *} -->
+  const htmlCmt = text.match(/^(\s*)<!--\s*(.*?)\s*-->\s*$/);
+  if (htmlCmt) {
+    return {
+      syntax: 'markdown',
+      indent: htmlCmt[1] || '',
+      inner: (htmlCmt[1] || '') + (htmlCmt[2] || ''),
+      innerOffset: text.indexOf(htmlCmt[2] || '')
+    };
+  }
+  // Legacy Markdown reference-link format (backward compat):
+  //   [//]: # ({▼mCN=name // comment (📊⊕0+0) *})
+  const mdRef = text.match(/^(\s*)\[\/\/\]:\s*#\s*\((.*)\)\s*$/);
+  if (mdRef) {
+    return {
+      syntax: 'markdown',
+      indent: mdRef[1] || '',
+      inner: (mdRef[1] || '') + (mdRef[2] || ''),
+      innerOffset: text.indexOf(mdRef[2] || '')
+    };
+  }
+  return { syntax: 'slash', indent: (text.match(/^\s*/) || [''])[0], inner: text, innerOffset: 0 };
+}
+
+function wrapMembraneCommentText(inner, doc) {
+  const syntax = commentSyntaxForDocument(doc);
+  if (syntax === 'markdown') {
+    const indent = (inner.match(/^\s*/) || [''])[0];
+    const body = inner.slice(indent.length);
+    return `${indent}<!-- ${body} -->`;
+  }
+  return inner;
+}
+
+
+function buildMembraneOpenLine(doc, indent, name, comment, mstat) {
+  const syntax = commentSyntaxForDocument(doc);
+  const body = `▼mCN=${name}${comment ? ' // ' + comment : ''} ${mstat || '(📊⊕0+0)'}`;
+  if (syntax === 'markdown') {
+    return `${indent || ''}<!-- {* ${body} *} -->`;
+  }
+  return `${indent || ''}// {* ${body} *}`;
+}
+function buildMembraneCloseLine(doc, indent, name, comment) {
+  const syntax = commentSyntaxForDocument(doc);
+  const body = `▲mCN=${name}${comment ? ' // ' + comment : ''}`;
+  if (syntax === 'markdown') {
+    return `${indent || ''}<!-- {* ${body} *} -->`;
+  }
+  return `${indent || ''}// {* ${body} *}`;
+}
+
+function membraneLineParts(text, kind) {
+  const rawLine = String(text || "");
+
+  function remapPartsToRawSource(parts) {
+    if (!parts || !parts.id) return parts;
+
+    // If the parser used normalized proto text, rawLine still contains `{* ... *}`.
+    // Decoration ranges must be based on rawLine, not the normalized internal line.
+    const rawIdStart = rawLine.indexOf(parts.id);
+    if (rawIdStart >= 0) {
+      parts.idStart = rawIdStart;
+      parts.idEnd = rawIdStart + parts.id.length;
+
+      // Keep prefix hidden up to the real id start.
+      // This preserves the rendered ▼/▲ button, because the button is injected at idStart.
+      parts.prefixStart = 0;
+
+      // Hide the real proto/comment suffix.
+      // Prefer hiding from the space before `*}` so the UI does not show wrapper residue.
+      // v0.9.612: removed `$` anchor so trailing content after `-->` is also hidden.
+      const protoTail = rawLine.search(/\s*\*}\s*(?:-->)?/);
+      if (protoTail >= 0 && protoTail >= parts.idEnd) {
+        // v0.9.216:
+        // Hide from the actual `*}` marker, not from the preceding whitespace.
+        // The preceding real space becomes a visible caret footing at the right edge.
+        const starTail = rawLine.indexOf('*}', protoTail);
+        parts.suffixStart = starTail >= 0 ? starTail : protoTail;
+      } else {
+        const legacyTail = rawLine.lastIndexOf('}');
+        if (legacyTail >= 0 && legacyTail >= parts.idEnd) {
+          parts.suffixStart = legacyTail;
+        }
+      }
+    }
+    return parts;
+  }
+
+  text = normalizeProtoMembraneLineText(rawLine);
+  const __unwrap = unwrapMembraneCommentText(text || "");
+  text = __unwrap.inner;
+
+  // Return editable/display ranges for the real source line.
+  // We hide only the structural prefix/wrapper and the final wrapper suffix.
+  // The membrane name and comment stay as real text, so search/highlight/editing remain natural.
+  const arrow = kind === 'open' ? '[▼▽]' : '[▲△]';
+
+  // Canonical code-style source: // {* ▼mCN=name // comment}
+  // v0.9.545: also accept mTC= (TOC membrane).
+  let re = new RegExp('^(\\s*)(//[ \\t]*\\{[ \\t]*' + arrow + '[ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)(.*)$');
+  let m = text.match(re);
+  if (m && !/^\s*\/\/[ \t]*(?:\/\/|#|--|;)/.test(text)) {
+    const indentLen = m[1].length;
+    const prefixStart = indentLen;
+    const idStart = indentLen + m[2].length;
+    const idText = cleanMembraneName(m[3]);
+    const idEnd = idStart + idText.length;
+    let suffixStart = -1;
+    for (let i = text.length - 1; i >= idEnd; i--) {
+      const ch = text[i];
+      if (ch === '}' || ch === ']') { suffixStart = i; break; }
+      if (!/\s/.test(ch)) break;
+    }
+    return remapPartsToRawSource({ sourceOffset: __unwrap.innerOffset, prefixStart, idStart, idEnd, suffixStart, id: idText });
+  }
+
+  // Markdown hidden-comment source:
+  //   [//]: # "▼name // comment"   (preferred)
+  //   [//]: # (▼name // comment)   (legacy-compatible)
+  //   [//]: # ▼name // comment     (bare/manual-tolerant)
+  // v0.9.545: also accept mTC= alongside mCN=.
+  re = new RegExp('^(\\s*)(\\[\\/\\/\\]:[ \\t]*#[ \\t]*(?:(?:\\"|\\()[ \\t]*)?' + arrow + '[ \\t]*(?:(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*)?)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*[\\")]|$)(.*)$');
+  m = text.match(re);
+  if (m) {
+    const indentLen = m[1].length;
+    const prefixStart = indentLen;
+    const idStart = indentLen + m[2].length;
+    const idText = cleanMembraneName(m[3]);
+    const idEnd = idStart + idText.length;
+    let suffixStart = -1;
+    for (let i = text.length - 1; i >= idEnd; i--) {
+      const ch = text[i];
+      if (ch === '"' || ch === ')') { suffixStart = i; break; }
+      if (!/\s/.test(ch)) break;
+    }
+    return remapPartsToRawSource({ sourceType: 'markdown', prefixStart, idStart, idEnd, suffixStart, id: idText });
+  }
+
+
+  // v0.9.216: Hyper TOC bidirectional link item:
+  //   // {* ⇄ name_111937_503 // comment1 *}
+  const biRaw = rawLine.match(/^\s*(?:\/\/\s*)?\{\*\s*⇄\s*([^\r\n]*?)(?:\s+\/\/\s*([\s\S]*?))?\s*\*\}\s*(?:-->)?\s*$/);
+  if (biRaw) {
+    const id = cleanMembraneName(biRaw[1]);
+    if (!id) return null;
+    const idStart = rawLine.indexOf(id);
+    const idEnd = idStart + id.length;
+    const arrowStart = rawLine.indexOf('⇄');
+    const suffixStart = rawLine.search(/\s*\*}\s*(?:-->)?\s*$/);
+    return {
+      sourceOffset: 0,
+      prefixStart: arrowStart >= 0 ? arrowStart : idStart,
+      idStart,
+      idEnd,
+      suffixStart: suffixStart >= 0 ? suffixStart : rawLine.length,
+      id,
+      workingTocBiLinkItem: true,
+      arrowStart: arrowStart >= 0 ? arrowStart : idStart,
+      comment: (biRaw[2] || '').trim()
+    };
+  }
+
+  return null;
+}
+
+
+function membraneNameRightVirtualSpaceRanges(editor) {
+  const ranges = [];
+  if (!editor) return ranges;
+  const doc = editor.document;
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || "";
+    if (text.indexOf('{') < 0) continue; // v0.9.667: 膜行は必ず '{' を含む。非膜行で重い asRealMembraneSource/membraneLineParts を呼ばない事前フィルタ。
+    const open = parseOpenLine(text);
+    const close = parseCloseLine(text);
+    if (!open && !close) continue;
+    const parts = membraneLineParts(text, open ? 'open' : 'close');
+    if (!parts || typeof parts.idStart !== 'number' || typeof parts.idEnd !== 'number') continue;
+    if (parts.idEnd <= parts.idStart) continue;
+    ranges.push(new vscode.Range(line, parts.idStart, line, parts.idEnd));
+  }
+  return ranges;
+}
+
+
+function membraneRightEdgeVirtualSpaceRanges(editor) {
+  // v0.9.216:
+  // Attach an `after` decoration to the visible membrane line range.
+  // The end of that visible range is parts.suffixStart, i.e. just before hidden ` *}`.
+  const ranges = [];
+  if (!editor) return ranges;
+
+  const doc = editor.document;
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || "";
+    if (text.indexOf('{') < 0) continue; // v0.9.667: 膜行は必ず '{' を含む(事前フィルタ)。
+    const open = parseOpenLine(text);
+    const close = parseCloseLine(text);
+    if (!open && !close) continue;
+
+    const parts = membraneLineParts(text, open ? 'open' : 'close');
+    if (!parts || typeof parts.idStart !== 'number') continue;
+
+    const visibleEnd = (typeof parts.suffixStart === 'number' && parts.suffixStart >= 0)
+      ? parts.suffixStart
+      : text.length;
+
+    if (visibleEnd <= parts.idStart) continue;
+    ranges.push(new vscode.Range(line, parts.idStart, line, visibleEnd));
+  }
+
+  return ranges;
+}
+
+
+function isWorkingTocMembranePair(pair, document) {
+  if (!pair || !document) return false;
+  // v0.9.543: TOC is identified by the `mTC=` grammar instead of the legacy `hT_`
+  // name prefix. User directive 2026-05-20 pm07:14: 「mTC=という部分で判定するように
+  // する … 従来型は廃止していい」.
+  // v0.9.544 fix: the raw open line may use the proto form `// {* ▼mTC=name *}`
+  // (with `*` markers), so we must normalize via asRealMembraneSource before testing
+  // MTC_LINE_RE — which matches the canonical `// {▼mTC=...}` shape. v0.9.543_0736
+  // user report: 「mTCが膜として認識されていない。従来のような四隅に橙色のTOCという
+  // 文字の装飾が出ない」.
+  if (pair.start < 0 || pair.start >= document.lineCount) return false;
+  const text = document.lineAt(pair.start).text || '';
+  const src = asRealMembraneSource(text);
+  if (!src) return false;
+  return MTC_LINE_RE.test(src);
+}
+
+function workingTocHighlightRanges(editor) {
+  const lineRanges = [];
+  const itemRanges = [];
+  if (!editor) return { lineRanges, itemRanges };
+  const doc = editor.document;
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  for (const p of pairs) {
+    if (!isWorkingTocMembranePair(p, doc)) continue;
+    for (const line of [p.start, p.end]) {
+      const text = doc.lineAt(line).text || '';
+      const parts = membraneLineParts(text, line === p.start ? 'open' : 'close');
+      if (!parts) continue;
+      const start = Math.max(0, parts.idStart);
+      const end = Math.max(parts.idEnd, parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+      lineRanges.push(new vscode.Range(line, start, line, end));
+    }
+  }
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    const parts = membraneLineParts(text, 'open');
+    if (!parts || !parts.workingTocBiLinkItem) continue;
+    const start = Math.max(0, parts.arrowStart || parts.idStart || 0);
+    const end = Math.max(start + 1, parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+    itemRanges.push(new vscode.Range(line, start, line, end));
+  }
+  return { lineRanges, itemRanges };
+}
+
+function applyPrettyLabels(editor) {
+  if (!editor || !openLineHideDecoration || !openLineLabelDecoration || !closeLineHideDecoration || !closeLineLabelDecoration) return;
+  const openHide = [];
+  const openLabels = [];
+  const closeHide = [];
+  const closeLabels = [];
+  const linkHide = [];
+  // v0.9.615: †† 注釈の色上書き範囲（MD の緑 → editor.foreground）
+  const annotationColorRanges = [];
+  // v0.9.656/657: ハイライト ==text(色)== の本体範囲（色別）とマーカー範囲（==・(色)を隠す）
+  const highlightBodyRangesByColor = {}; // 背景色別 { red:[Range...], yellow:[...], ... }
+  for (const key of Object.keys(HIGHLIGHT_COLORS)) highlightBodyRangesByColor[key] = [];
+  // v0.9.661: 文字色別の範囲。==語(文字色+背景色)== の文字色レイヤー。
+  const highlightFgRangesByColor = {};   // 文字色別 { red:[...], black:[...], ... }
+  for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) highlightFgRangesByColor[key] = [];
+  const highlightMarkerRanges = [];
+  // v0.9.658: 取消線 ~~text~~(日時) の本体範囲（赤線）とマーカー範囲（~~・(日時)を隠す）。
+  // 本体はホバーで日時を出すため DecorationOptions({range, hoverMessage}) で push。
+  const strikeBodyItems = [];
+  const strikeMarkerRanges = [];
+  // v0.9.699: 新形取消線 ~~{本文(線色/背景色)//コメント}~~ の線色別範囲。
+  const strikeColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
+  for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) strikeColorItemsByKey[key] = [];
+  // v0.9.703: コンパクト形取消線(色指定/コメント無し)の弱いハイライト背景の範囲。
+  const strikeFaintBgRanges = [];
+  // v0.9.660: 見出し — レベル別サイズ範囲・色別文字色範囲・マーカー(#と(…))隠し範囲。
+  const headingSizeRangesByLevel = { 1: [], 2: [], 3: [] };
+  const headingColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
+  for (const key of Object.keys(HEADING_TEXT_COLORS)) headingColorItemsByKey[key] = [];
+  const headingMarkerRanges = [];
+
+  const pairs = collectPairs(editor.document, { excludeIndex: false });
+  const byStart = new Map(pairs.map(p => [p.start, p]));
+  const byEnd = new Map(pairs.map(p => [p.end, p]));
+  // v0.9.659: カーソルがある行ではハイライト/取消線の装飾を抑制し、生データ
+  // (== ~~ (色) (日時)) を見せて編集可能にする。膜ラベルの isEditingLine(v0.9.618)と
+  // 同じ思想。行を離れたら refresh で再適用。ホバーtip不要(クリックで日時が直接見える)。
+  const docCursorLine = editor.selection ? editor.selection.active.line : -1;
+  // v0.9.709: 複数行取消線は ~~{…}~~ (波括弧つき) だけに限定し、単独の ~~ では行をまたがない
+  // (v705で単独 ~~ が遠くの ~~ まで巻き込んで暴走→誤爆。俊克 am08:40「使い物にならない」)。
+  // 起動条件=「~~{ が同一行で }~~ で閉じていない(=複数行に開いた)行」がある時だけ全文走査(性能温存)。
+  let hasMlBracedStrike = false;
+
+  for (let line = 0; line < editor.document.lineCount; line++) {
+    const text = editor.document.lineAt(line).text;
+    if (text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
+    const jfHideRanges = jumpFlagRangesInText(line, text);
+    // v0.9.656/657: ハイライト ==text(色)== を検出（膜行・本文行どちらでも効く）。
+    // 同一行に複数可。`==`マーカーは隠す。内側末尾に (色) があればその色の背景にし、
+    // (色)部分も隠す。色省略 ==text== は yellow。色名は日英両対応(赤/red等)。
+    // v0.9.659: カーソル行は生データを見せる（装飾しない）ので検出ごとスキップ。
+    if (line !== docCursorLine) {
+      // v0.9.695: 統一記法。新形 =={本文(文字色/背景色)//コメント}== — 開き `=={`・閉じ `}==` で
+      // 曖昧性なし(従来 ==…== は開閉同記号で曖昧)。旧形 ==本文(色)== も後方互換で温存。色は `/` 区切り
+      // (文字色/背景色)、`+` も互換。`//` 以降はコメント(編集者⇄作家の通信、ホバー💬表示。日時も自由記述)。
+      const reHi = /=={([^\n]*?)}==|==(?!\{)([^=\n]+?)==/g;
+      let mHi;
+      while ((mHi = reHi.exec(text)) !== null) {
+        const braced = mHi[1] !== undefined;
+        const content = braced ? mHi[1] : mHi[2];   // 中身(本文+(色)+//コメント)
+        const openLen = braced ? 3 : 2;             // '=={' or '=='
+        const closeLen = braced ? 3 : 2;            // '}==' or '=='
+        const openStart = mHi.index;
+        const innerStart = openStart + openLen;
+        const closeEnd = innerStart + content.length + closeLen;
+        // v0.9.702: リッチ(色/背景/コメント)解釈は {} 付き =={…}== だけ。旧 ==本文== は素の黄ハイライトに
+        // 限定し、(色)や//コメントは解釈せず本文の一部として表示する(取消線の素 ~~本文~~ と挙動を統一)。
+        // 俊克 NG: 取消線は{}を外すとtipが消えるのに、ハイライトは{}を外しても色/コメントを解釈していた不整合。
+        let bgKey, fgKey, hiComment, bodyLen;
+        if (braced) {
+          // content = 本文 (文字色/背景色) //コメント。共通パーサに集約(見出し/取消線と同一)。1色=背景色。
+          const hi = parseColorSpec(content, 'bg');
+          bgKey = hi.bgKey; fgKey = hi.fgKey; hiComment = hi.comment; bodyLen = hi.bodyLen;
+          if (!bgKey && !fgKey) bgKey = 'yellow'; // 色未指定は黄背景
+          // v0.9.698: 暗い背景色で文字色未指定なら自動で白文字(auto-contrast)。黒文字では読めないため。
+          if (bgKey && !fgKey && DARK_BG_KEYS.has(bgKey)) fgKey = 'white';
+        } else {
+          bgKey = 'yellow'; fgKey = null; hiComment = ''; bodyLen = content.length;
+        }
+        const bodyEnd = innerStart + bodyLen;
+        highlightMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+        if (bodyEnd > innerStart) {
+          const r = new vscode.Range(line, innerStart, line, bodyEnd);
+          let hover = null;
+          if (hiComment) { hover = new vscode.MarkdownString('💬 ' + hiComment); hover.isTrusted = false; }
+          if (bgKey) {
+            const item = hover ? { range: r, hoverMessage: hover } : { range: r };
+            (highlightBodyRangesByColor[bgKey] || highlightBodyRangesByColor.yellow).push(item);
+          }
+          if (fgKey) {
+            const item = (hover && !bgKey) ? { range: r, hoverMessage: hover } : { range: r };
+            (highlightFgRangesByColor[fgKey] || []).push(item);
+          }
+        }
+        highlightMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+      }
+    }
+    // v0.9.658: 取消線 ~~text~~ / ~~text~~(日時) を検出（膜行・本文行どちらでも）。
+    // 本体に赤い line-through。~~ と末尾(日時)は隠す。(日時)があればホバーで「いつ取り消したか」
+    // を表示(史上初のタイムスタンプ付き取消線)。タイムスタンプはプレーンテキストとして残る。
+    // v0.9.659: カーソル行は生データを見せる（装飾しない）ので検出ごとスキップ。
+    if (line !== docCursorLine) {
+      // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ と 旧形 ~~本文~~ / ~~本文(日時//コメント)~~ の両方。
+      // ハイライト(=={…}==)と鏡像の記法統一: 開き `~~{`・閉じ `}~~`。線色=fg側(既定 red)、背景色=bg側。
+      const reSt = /~~\{([^\n]*?)\}~~|~~(?!\{)([^~\n]+?)~~/g;
+      let mSt;
+      while ((mSt = reSt.exec(text)) !== null) {
+        const stBraced = mSt[1] !== undefined;
+        const openStart = mSt.index;
+        const innerStart = openStart + (stBraced ? 3 : 2);  // '~~{' or '~~'
+        const inner = stBraced ? mSt[1] : mSt[2];
+        const closeEnd = innerStart + inner.length + (stBraced ? 3 : 2); // '}~~' or '~~'
+        if (stBraced) {
+          // 新形: (線色/背景色)//コメント。暗い背景色なら本文を自動で白文字に(auto-contrast)。
+          const sp = parseColorSpec(inner, 'fg');
+          const lineKey = sp.fgKey || 'red';
+          const bgKey = sp.bgKey;
+          const bodyEnd = innerStart + sp.bodyLen;
+          strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+          if (bodyEnd > innerStart) {
+            const r = new vscode.Range(line, innerStart, line, bodyEnd);
+            let hover = null;
+            if (sp.comment) { hover = new vscode.MarkdownString('💬 ' + sp.comment); hover.isTrusted = false; }
+            const item = hover ? { range: r, hoverMessage: hover } : { range: r };
+            (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(item);
+            if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
+            if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
+            // v0.9.707: 背景色を明示しない {} 取消線は弱いハイライト背景で目立たせる(線色やコメントの有無は不問)。
+            // これで「赤線＋薄ピンク＋tip」(~~{…(赤/)//tip}~~)も成立。明示bgがある時だけ素地のまま。
+            if (!sp.bgKey) strikeFaintBgRanges.push({ range: r });
+          }
+          strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+        } else {
+          // v0.9.710: 旧形 ~~本文~~ は純粋なトグル取消線(赤線だけ)。末尾 (日時//コメント) を tip 化する旧機能は
+          // 削除(俊克: 実装しても忘れる＝ゴミ。コメントは {} 付き ~~{本文//tip}~~ に一本化)。末尾の () は本文の一部。
+          // ※従来形はハイライトなし(住み分け)。淡ハイライトは新コンパクト形 ~~{本文}~~ だけ。
+          const bodyEnd = innerStart + inner.length;
+          strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+          if (bodyEnd > innerStart) {
+            strikeBodyItems.push({ range: new vscode.Range(line, innerStart, line, bodyEnd) });
+          }
+          strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+        }
+      }
+    }
+    // v0.9.668: 見出し記法を ##[本文]## 形式に変更（旧 #本文# は文中に同じ # が再出現すると
+    // 誤マッチ→遅延の原因だった。俊克 06.01 am04:10 が問題行で実証）。開き #{1,3}[ と
+    // 閉じ ]#{1,3}(同数) で囲む鏡像対称。中身は ] を含まない。本文中に ##[ ]## と書いても
+    // 行頭でなければ無反応＝誤マッチしない。
+    //   #[大見出し]#  → H1(規定色 赤)   ##[中見出し]## → H2(緑)   ###[小見出し]### → H3(青)
+    //   v0.9.699: 色/コメントを (文字色/背景色)//コメント に統一(ハイライト/取消線と同記法)。
+    //     例 ##[見出し(青/黄)//旧題はABC]##  ##[題(/紺)]##(暗背景は白文字auto)  ##[題(紫)]##(文字紫)
+    //   #{1,3}[ と ]#{1,3}(と末尾の(色/色)//コメント) は隠す。行頭のみ(空白可)。カーソル行は生データ表示。
+    if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && text.indexOf('[') >= 0) {
+      // 行頭(空白可) #{1,3} [ 中身 ] #{1,3}(\2で開き#数と一致)。中身は ] / 改行を含まない。
+      const reHead = /^(\s*)(#{1,3})\[([^\]\n]*)\]\2/;
+      const mH = reHead.exec(text);
+      if (mH) {
+        const level = mH[2].length;                 // 1|2|3
+        const hashLen = level;
+        const openStart = mH[1].length;             // 最初の # の位置
+        const innerStart = openStart + hashLen + 1; // #{1,3}[ の直後 = 中身(本文)開始
+        const inner = mH[3];                        // [ と ] の間
+        const closeStart = innerStart + inner.length; // ] の位置
+        const closeEnd = closeStart + 1 + hashLen;  // ]#{1,3} の終端
+        // v0.9.699: 中身末尾の (文字色/背景色) と //コメント を分離(統一記法)。1色のみ=文字色。
+        // v0.9.700: 見出しは本文中にインライン(=={…}==/~~{…}~~)を持てるので、その中の //・() を
+        // 見出し自身のものと誤認しないよう maskInlineTokens でマスクした版で位置検出する。
+        const sp = parseColorSpec(inner, 'fg', maskInlineTokens(inner));
+        const bodyEnd = innerStart + sp.bodyLen;     // 本文の終端
+        let colorKey = sp.fgKey || HEADING_DEFAULT_COLOR[level]; // 文字色: 指定 or レベル規定色
+        const bgKey = sp.bgKey;
+        const headComment = sp.comment;
+        // auto-contrast: 暗い背景色 + 文字色未指定 → レベル規定色でなく白文字にして可読化
+        if (bgKey && !sp.fgKey && DARK_BG_KEYS.has(bgKey)) colorKey = 'white';
+        // 前の #{1,3}[ を隠す
+        headingMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+        if (bodyEnd > innerStart) {
+          const r = new vscode.Range(line, innerStart, line, bodyEnd);
+          // サイズ装飾・背景色は本文全体に適用
+          headingSizeRangesByLevel[level].push(r);
+          if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
+          // v0.9.701: 文字色は本文全体に適用するが、見出しコメントtipは「インライン(=={…}==/~~{…}~~)
+          // 以外の素のテキスト部分」にだけ付ける。インライン部分は自前のtipを持つので、見出しtipと
+          // 二重表示しないようにする(俊克 NG: ハイライト/取消線のtipに見出しtipも出る)。
+          const headColorArr = headingColorItemsByKey[colorKey] || headingColorItemsByKey[HEADING_DEFAULT_COLOR[level]];
+          const mkHeadItem = (s, e, plain) => {
+            if (e <= s) return;
+            const it = { range: new vscode.Range(line, innerStart + s, line, innerStart + e) };
+            if (plain && headComment) {
+              const md = new vscode.MarkdownString('💬 ' + headComment);
+              md.isTrusted = false;
+              it.hoverMessage = md;
+            }
+            headColorArr.push(it);
+          };
+          const tokenRe = /=={[^\n]*?}==|==(?!\{)[^=\n]+?==|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/g;
+          const spans = [];
+          let tk;
+          while ((tk = tokenRe.exec(sp.bodyText)) !== null) spans.push([tk.index, tk.index + tk[0].length]);
+          if (spans.length === 0) {
+            mkHeadItem(0, sp.bodyLen, true);
+          } else {
+            let pos = 0;
+            for (const span of spans) {
+              if (span[0] > pos) mkHeadItem(pos, span[0], true); // 素テキスト(前)
+              mkHeadItem(span[0], span[1], false);                // インライン(色のみ・見出しtipなし)
+              pos = span[1];
+            }
+            if (pos < sp.bodyLen) mkHeadItem(pos, sp.bodyLen, true); // 素テキスト(後)
+          }
+        }
+        // 後ろの ((色/色)//コメント) ]#{1,3} を隠す
+        headingMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+      }
+    }
+    const open = parseOpenLine(text);
+    const close = parseCloseLine(text);
+    // v0.9.606: mNT goes through the standard mCN pipeline below. The pair's `isMnt`
+    // flag (from collectPairs) is used inside the openLabels/closeLabels push to swap
+    // the ▼/▲ glyph for ▼📒/▲📒. Folding behavior, hover tooltip, click-to-toggle,
+    // alias rendering, and lane drawing all come for free via the shared pipeline.
+
+    if (open) {
+      const parts = membraneLineParts(text, 'open');
+      if (!parts) continue;
+      const pair = byStart.get(line);
+      // v0.9.512: Stealth membranes (Sth1 badge) skip the normal ▼ label
+      // path — applyStealthDecorations handles them with ◤◢ markers.
+      if (pair && isStealthMembrane(pair, editor.document)) continue;
+      // v0.9.504: depth-compression filter removed; all depths render labels.
+      const folded = pair ? isPairFolded(editor, pair) : false;
+      const fallbackColor = colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'));
+      const color = membraneColorForOpenLineText(text, fallbackColor);
+      openHide.push({ range: new vscode.Range(line, parts.prefixStart, line, parts.idStart) });
+      // v0.9.526/529/538: N0 → hide the membrane name and trailing comment up to the
+      // badge (search / Hyper TOC / bi-link jump still resolve via the real name in
+      // source). Alias mode (N1=alias) gets special treatment in v0.9.538: instead of
+      // rendering the alias via a `before:` decoration overlay (which forced caret to
+      // a non-editable virtual position — v0.9.529〜0.9.537), we keep the alias as
+      // plain source text inside the badge and hide everything ELSE around it. The
+      // alias chars (`参照の例`) become a visible plain-text span — clickable, caret-
+      // landable, editable exactly the same way the comment used to be. User insight
+      // v0.9.537_0023: 「従来、膜名とコメントを表示していたよね。その時、コメントは
+      // 編集可能だった。それと同様の処理にすれば良いだけだと思うんだけど、違うかな?」
+      const openBadge = parseMstatBadgeFromText(text);
+      const hasAlias = !!(openBadge && typeof openBadge.alias === 'string' && openBadge.alias.length > 0);
+      // v0.9.622: N0/N1 は ††0/††1 と同じトグルパターン。
+      //   N1=alias → エイリアスON（膜名非表示、エイリアス表示）
+      //   N0=alias → エイリアスOFF（膜名表示、エイリアスは格納のみ）
+      //   N0（alias なし）→ 膜名非表示（▼ だけ）
+      const hideName = !!(openBadge && (
+        (hasAlias && openBadge.nameDisplay !== false) ||  // N1+alias → エイリアスモード
+        (!hasAlias && openBadge.nameDisplay === false)    // N0（alias なし）→ 膜名非表示
+      ));
+      const hideBadgeFlag = !!(openBadge && openBadge.badgeDisplay === false);
+      let aliasSrcStart = -1, aliasSrcEnd = -1;
+      if (hasAlias) {
+        const badgeText = text.slice(openBadge.start, openBadge.end);
+        const aliasRelStart = badgeText.indexOf(openBadge.alias);
+        if (aliasRelStart > 0) {
+          aliasSrcStart = openBadge.start + aliasRelStart;
+          aliasSrcEnd = aliasSrcStart + openBadge.alias.length;
+        }
+      }
+      // v0.9.615: ††X 注釈領域 — コメントとバッジの間。
+      // 書式: {* ▼mCN=name // comment ††1 注釈 (📊badge📊) [flags] *}
+      //   ††0 注釈 → 注釈があっても非表示（トグルで一時隠し）
+      //   ††1 注釈 → 「†† 注釈」として表示（1 は非表示）
+      //   ††  注釈 → ††1 と同等（数字省略＝表示）
+      //   †† なし  → 従来通り badgeStart まで非表示
+      // 色上書き: MD の HTML コメント緑 → editor.foreground。
+      // v0.9.626: 番号付き注釈対応（findDaggerAnnotation で統一パース）
+      const badgeStartPos = openBadge ? openBadge.start : -1;
+      const annotSearchEnd = badgeStartPos > parts.idStart ? badgeStartPos : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+      const daggerInfo = findDaggerAnnotation(text, parts.idStart, annotSearchEnd);
+      const daggerIdx = daggerInfo ? daggerInfo.idx : -1;
+      const annotDisplay = daggerInfo ? daggerInfo.visible : true;
+      const annotHeaderLen = daggerInfo ? daggerInfo.headerLen : 0;
+      const annotDisplayPrefix = daggerInfo ? daggerInfo.displayPrefix : '††';
+      let annotationText = '';
+      let annotationRangeEnd = -1;
+      if (daggerIdx >= 0) {
+        annotationRangeEnd = badgeStartPos > daggerIdx ? badgeStartPos : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+        annotationText = text.slice(daggerIdx + annotHeaderLen, annotationRangeEnd).trim();
+      }
+      // 注釈あり+表示 → 色上書き
+      if (daggerIdx >= 0 && annotDisplay && annotationText.length > 0 && annotationRangeEnd > daggerIdx) {
+        annotationColorRanges.push(new vscode.Range(line, daggerIdx, line, annotationRangeEnd));
+      }
+      // ヘッダー内の非表示部分: †n を見せ、残り（/N†1 等）を隠す
+      if (daggerIdx >= 0 && annotDisplay && annotationText.length > 0 && daggerInfo && daggerInfo.visiblePrefixLen < annotHeaderLen) {
+        openHide.push({ range: new vscode.Range(line, daggerIdx + daggerInfo.visiblePrefixLen, line, daggerIdx + annotHeaderLen) });
+      }
+      // 非表示(†0) or 注釈空 → 丸ごと非表示
+      if (daggerIdx >= 0 && (!annotDisplay || annotationText.length === 0)) {
+        const daggerEnd = annotationRangeEnd > daggerIdx ? annotationRangeEnd : (daggerIdx + annotHeaderLen);
+        openHide.push({ range: new vscode.Range(line, daggerIdx, line, daggerEnd) });
+      }
+      if (hideName && parts.idStart >= 0) {
+        if (daggerIdx >= 0 && annotDisplay && annotationText.length > 0) {
+          // idStart→†† を非表示（「†† 注釈」は表示のまま）
+          if (daggerIdx > parts.idStart) {
+            openHide.push({ range: new vscode.Range(line, parts.idStart, line, daggerIdx) });
+          }
+        } else {
+          // †† なし or ††0 or 注釈空 — 従来動作（idStart→badge まで非表示）
+          const cutEnd = (badgeStartPos > parts.idStart)
+            ? badgeStartPos
+            : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+          if (cutEnd > parts.idStart) {
+            openHide.push({ range: new vscode.Range(line, parts.idStart, line, cutEnd) });
+          }
+        }
+      }
+      // 📊0 → hide the entire badge text — EXCEPT when an alias literal lives inside
+      // the badge: keep the alias chars visible as plain source for editing.
+      if (hideBadgeFlag) {
+        if (hasAlias && aliasSrcStart > 0) {
+          openHide.push({ range: new vscode.Range(line, openBadge.start, line, aliasSrcStart) });
+          if (aliasSrcEnd < openBadge.end) {
+            openHide.push({ range: new vscode.Range(line, aliasSrcEnd, line, openBadge.end) });
+          }
+        } else {
+          openHide.push({ range: new vscode.Range(line, openBadge.start, line, openBadge.end) });
+        }
+      }
+      for (const range of jfHideRanges) openHide.push({ range });
+      if (parts.suffixStart >= 0) openHide.push({ range: new vscode.Range(line, parts.suffixStart, line, text.length) });
+      const isToc = pair && isWorkingTocMembranePair(pair, editor.document);
+      // v0.9.538: alias is now a plain-source-text span inside the badge (see hide
+      // logic above). The ▼ label decoration drops back to its original single-glyph
+      // form — no `before:` alias overlay needed. Editing works because the alias
+      // chars sit in real source columns.
+      const labelColor = isToc ? 'rgba(210, 140, 0, 0.98)' : color;
+      const labelWeight = isToc ? '900' : '700';
+      // v0.9.606: mNT envelope marker — append 📒 after the standard ▼/▼▲ glyph.
+      const isMnt = !!(pair && pair.isMnt);
+      const baseOpenGlyph = isToc ? (folded ? '▼▲TOC' : '▼TOC') : (folded ? '▼▲' : '▼');
+      // v0.9.609: MD files use word-wrap, so alias as source text wraps to a second
+      // visual row (font-size:0 chars still count as columns). For MD files with mNT
+      // alias, render alias inside the decoration label and hide the source alias too.
+      const isMd = isMarkdownDocument(editor.document);
+      // v0.9.618: カーソル行ではラベル埋め込みをスキップし、ソーステキストを
+      // そのまま表示して編集可能にする。行を離れたら refresh で再適用。
+      const cursorLine = editor.selection ? editor.selection.active.line : -1;
+      const isEditingLine = (isMd && line === cursorLine);
+      // v0.9.621: MD ではエイリアスをラベルに埋め込む（mNT に限らず通常膜も）。
+      // Word Wrap で押し出されないようにする。
+      const aliasInLabel = (hasAlias && isMd && !isEditingLine) ? (' ' + openBadge.alias) : '';
+      if (aliasInLabel && aliasSrcStart > 0) {
+        // ソースのエイリアスも非表示（デコレーションで表示するため）
+        openHide.push({ range: new vscode.Range(line, aliasSrcStart, line, aliasSrcEnd) });
+      }
+      // v0.9.617→623: MD + エイリアスありの場合のみ注釈をラベルに埋め込む。
+      // エイリアスなしの場合は注釈をソーステキストのまま残す。
+      // ソース上の位置がコメントの後なので「▼ 膜名 // コメント †† 注釈」と自然に表示。
+      // v0.9.618: カーソル行ではスキップして編集可能にする。
+      let annotInLabel = '';
+      if (isMd && !isEditingLine && aliasInLabel && daggerIdx >= 0 && annotDisplay && annotationText.length > 0) {
+        annotInLabel = ' ' + annotDisplayPrefix + ' ' + annotationText;
+        // ソース上の †† 注釈テキストを非表示（デコレーションで表示するため）
+        openHide.push({ range: new vscode.Range(line, daggerIdx, line, annotationRangeEnd) });
+      }
+      const openGlyph = isMnt
+        ? (baseOpenGlyph + '📒' + aliasInLabel + annotInLabel)
+        : (baseOpenGlyph + aliasInLabel + annotInLabel);
+      openLabels.push({
+        range: new vscode.Range(line, parts.idStart, line, parts.idStart),
+        renderOptions: { before: { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
+      });
+    } else if (close) {
+      const parts = membraneLineParts(text, 'close');
+      if (!parts) continue;
+      const pair = byEnd.get(line);
+      // v0.9.512: stealth close lines skip ▲ label too.
+      if (pair && isStealthMembrane(pair, editor.document)) continue;
+      closeHide.push({ range: new vscode.Range(line, parts.prefixStart, line, parts.idStart) });
+      // v0.9.527_1014: N0 does NOT alter close-line rendering — the standard fold
+      // hides the close line naturally. Per user directive: 「閉じ膜は消さなくていいよ。
+      // 単に、膜を折畳めばいいだけだよ」.
+      for (const range of jfHideRanges) closeHide.push({ range });
+      if (parts.suffixStart >= 0) closeHide.push({ range: new vscode.Range(line, parts.suffixStart, line, text.length) });
+      // v0.9.504: depth-compression filter removed; all depths render labels.
+      const folded = pair ? isPairFolded(editor, pair) : false;
+      const isToc = pair && isWorkingTocMembranePair(pair, editor.document);
+      // If MeOS regards this membrane as folded, native folding may still leave
+      // the closing membrane line exposed. Suppress its rendered ▲ label too.
+      if (!folded) {
+        // v0.9.606: mNT envelope marker on close — ▲ → ▲📒.
+        const isMntClose = !!(pair && pair.isMnt);
+        const baseCloseGlyph = isToc ? '▲TOC' : '▲';
+        const closeGlyph = isMntClose ? (baseCloseGlyph + '📒') : baseCloseGlyph;
+        closeLabels.push({
+          range: new vscode.Range(line, parts.idStart, line, parts.idStart),
+          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : membraneColorForOpenLineText(pair ? editor.document.lineAt(pair.start).text : text, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
+        });
+      }
+    } else {
+      // v0.9.216: render single-line Hyper TOC bidirectional links:
+      //   source: // {* ⇄ name_xxx // comment *}
+      //   UI:     ⇄ name_xxx // comment
+      const parts = membraneLineParts(text, 'open');
+      if (parts && parts.workingTocBiLinkItem) {
+        if (parts.arrowStart > 0) {
+          linkHide.push({ range: new vscode.Range(line, 0, line, parts.arrowStart) });
+        }
+        for (const range of jfHideRanges) linkHide.push({ range });
+        if (parts.suffixStart >= 0) {
+          linkHide.push({ range: new vscode.Range(line, parts.suffixStart, line, text.length) });
+        }
+      }
+    }
+  }
+
+  // v0.9.705/709: 複数行(改行をまたぐ)取消線(俊克 改良1)。v709で暴走対策: 対象を ~~{…}~~ (波括弧つき)
+  // だけに限定。単独の ~~ / ~~…~~ は単一行(行単位パス)のみで、行をまたがない(遠くの ~~ を巻き込まない)。
+  // 起動は「複数行に開いた ~~{ がある」時だけ。改行を含む ~~{…}~~ を本文=複数行レンジで一括装飾。
+  if (hasMlBracedStrike) {
+    const fullText = editor.document.getText();
+    const reML = /~~\{([\s\S]*?)\}~~/g;                       // ★波括弧つきのみ(単独 ~~ は対象外)
+    let mML;
+    while ((mML = reML.exec(fullText)) !== null) {
+      const inner = mML[1];
+      if (inner.indexOf('\n') < 0) continue;                 // 単一行は行単位パスが担当済み
+      const matchStart = mML.index;
+      const matchEnd = matchStart + mML[0].length;
+      const innerStartOff = matchStart + 3;                  // '~~{'
+      const startPos = editor.document.positionAt(matchStart);
+      const endPos = editor.document.positionAt(matchEnd);
+      if (endPos.line - startPos.line > 50) continue;        // 暴走防止(巨大化)
+      if (docCursorLine >= startPos.line && docCursorLine <= endPos.line) continue; // 範囲内は編集中→生表示
+      const sp = parseColorSpec(inner, 'fg');
+      const lineKey = sp.fgKey || 'red';
+      const bgKey = sp.bgKey;
+      const faint = !sp.bgKey; // 背景色を明示しない {} 取消線は弱いハイライト
+      const bodyEndOff = innerStartOff + sp.bodyLen;
+      strikeMarkerRanges.push({ range: new vscode.Range(startPos, editor.document.positionAt(innerStartOff)) });
+      if (bodyEndOff > innerStartOff) {
+        const r = new vscode.Range(editor.document.positionAt(innerStartOff), editor.document.positionAt(bodyEndOff));
+        let hover = null;
+        if (sp.comment) { hover = new vscode.MarkdownString('💬 ' + sp.comment); hover.isTrusted = false; }
+        const item = hover ? { range: r, hoverMessage: hover } : { range: r };
+        (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(item);
+        if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
+        if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
+        if (faint) strikeFaintBgRanges.push({ range: r });
+      }
+      strikeMarkerRanges.push({ range: new vscode.Range(editor.document.positionAt(bodyEndOff), endPos) });
+    }
+  }
+
+  // v0.9.635: route through setDecoCached so identical re-applies are skipped —
+  // these font-size:0 prefix-hide + label decorations are the membrane-line
+  // reflow-causers that flickered the IME box on line-head input.
+  setDecoCached(editor, openLineHideDecoration, 'openHide', openHide.concat(linkHide));
+  setDecoCached(editor, openLineLabelDecoration, 'openLabel', openLabels);
+  setDecoCached(editor, closeLineHideDecoration, 'closeHide', closeHide);
+  setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', closeLabels);
+  // v0.9.615: †† 注釈領域の色上書き適用
+  if (annotationColorDecoration) {
+    setDecoCached(editor, annotationColorDecoration, 'annotColor', annotationColorRanges);
+  }
+  // v0.9.656/657: ハイライト ==text(色)== 適用（色ごとの本体背景＋マーカー==/(色)隠し）
+  if (highlightBodyByColor) {
+    for (const key of Object.keys(HIGHLIGHT_COLORS)) {
+      const deco = highlightBodyByColor.get(key);
+      if (deco) setDecoCached(editor, deco, 'hiBody_' + key, highlightBodyRangesByColor[key] || []);
+    }
+  }
+  // v0.9.661: 文字色レイヤー適用（==語(文字色+背景色)== の文字色側）。
+  if (highlightFgByColor) {
+    for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) {
+      const deco = highlightFgByColor.get(key);
+      if (deco) setDecoCached(editor, deco, 'hiFg_' + key, highlightFgRangesByColor[key] || []);
+    }
+  }
+  if (highlightMarkerDecoration) {
+    setDecoCached(editor, highlightMarkerDecoration, 'hiMarker', highlightMarkerRanges);
+  }
+  // v0.9.658: 取消線 ~~text~~(日時) 適用（本体=赤線+日時ホバー、マーカー~~/(日時)/{ }を隠す）
+  if (strikeBodyDecoration) {
+    setDecoCached(editor, strikeBodyDecoration, 'stBody', strikeBodyItems);
+  }
+  // v0.9.699: 新形取消線の線色別 line-through を適用。
+  if (strikeColorByKey) {
+    for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) {
+      const deco = strikeColorByKey.get(key);
+      if (deco) setDecoCached(editor, deco, 'stColor_' + key, strikeColorItemsByKey[key] || []);
+    }
+  }
+  // v0.9.703: コンパクト形取消線の弱いハイライト背景を適用。
+  if (strikeFaintBgDecoration) {
+    setDecoCached(editor, strikeFaintBgDecoration, 'stFaintBg', strikeFaintBgRanges);
+  }
+  // v0.9.715: 🔖 ブックマークを再描画(行ズレ追従)。
+  refreshBookmarkDecoration(editor);
+  if (strikeMarkerDecoration) {
+    setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
+  }
+  // v0.9.660: 見出し適用（レベル別サイズ＋色別文字色＋マーカー#/(…)隠し）
+  if (headingSizeByLevel) {
+    for (const lv of [1, 2, 3]) {
+      const deco = headingSizeByLevel.get(lv);
+      if (deco) setDecoCached(editor, deco, 'hSize_' + lv, headingSizeRangesByLevel[lv] || []);
+    }
+  }
+  if (headingColorByKey) {
+    for (const key of Object.keys(HEADING_TEXT_COLORS)) {
+      const deco = headingColorByKey.get(key);
+      if (deco) setDecoCached(editor, deco, 'hColor_' + key, headingColorItemsByKey[key] || []);
+    }
+  }
+  if (headingMarkerDecoration) {
+    setDecoCached(editor, headingMarkerDecoration, 'hMarker', headingMarkerRanges);
+  }
+}
+
+
+
+// {* ▲mCN=0600_PRETTY_LABELS // end [cGJF=h] *}
+
+// {* ▼mCN=0610_STEALTH_RENDER // v0.9.512 Sth1 membrane visual layer (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// Stealth membranes are normal mCN/mH1/etc. membranes whose mSTAT badge
+// carries the `Sth1` flag (v0.9.511 parser). Rendering rules:
+//   - Half-stealth (Sth1, not nested inside another Sth1):
+//     - shell (open + close lines) hidden via font-size:0
+//     - content visible
+//     - ◤ at open line, ◢ at close line
+//   - Full-stealth (Sth1 nested inside another Sth1):
+//     - shell hidden AND content hidden
+//     - ◤ at open line, ◢ at close line — appear on adjacent
+//       (collapsed) rows so visually merge into a 2-tone cyan square
+// applyPrettyLabels SKIPS stealth pairs so they don't get the ▼/▲
+// labels — only ◤/◢ are rendered.
+
+function isStealthMembrane(pair, document) {
+  if (!pair || !document) return false;
+  if (pair.start < 0 || pair.start >= document.lineCount) return false;
+  const badge = parseMstatBadgeFromText(document.lineAt(pair.start).text);
+  return !!(badge && badge.stealth);
+}
+
+function isFullStealth(pair, allPairs, document) {
+  if (!isStealthMembrane(pair, document)) return false;
+  // Full-stealth (nested) iff at least one strictly-enclosing pair is Sth1.
+  for (const parent of allPairs) {
+    if (parent === pair) continue;
+    if (parent.start < pair.start && parent.end > pair.end && isStealthMembrane(parent, document)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// v0.9.524: full-stealth CONTAINER = a Sth1 pair that strictly encloses
+// another Sth1 pair. Per user design: when this happens, the outer
+// container collapses every line from open to close, and renders both
+// ◤ and ◢ on the SAME (open) line as a single square figure.
+function isFullStealthContainer(pair, allPairs, document) {
+  if (!isStealthMembrane(pair, document)) return false;
+  for (const child of allPairs) {
+    if (child === pair) continue;
+    if (pair.start < child.start && pair.end > child.end && isStealthMembrane(child, document)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function applyStealthDecorations(editor) {
+  if (!editor || !stealthShellHideDecoration || !stealthOpenLabelDecoration) return;
+  const doc = editor.document;
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  const shellHide = [];          // font-size:0 — row stays for markers
+  const contentHide = [];        // font-size:0 — row stays (half-stealth content)
+  const fullHide = [];           // display:none — row truly removed
+  const openLabels = [];
+  const closeLabels = [];
+  const containerOpenLabels = [];
+  const containerCloseLabels = [];
+  for (const pair of pairs) {
+    if (!isStealthMembrane(pair, doc)) continue;
+    const isContainer = isFullStealthContainer(pair, pairs, doc);
+    const isInsideStealth = isFullStealth(pair, pairs, doc);
+    const openText = doc.lineAt(pair.start).text;
+    const closeText = doc.lineAt(pair.end).text;
+    if (isContainer) {
+      // v0.9.525 FULL-STEALTH OUTER:
+      //   Open line: shellHide (font-size:0 — keeps row for ◤◢ markers).
+      //   Close line + all content rows: fullHide (display:none — rows
+      //   COMPLETELY removed from layout). Result: the container looks
+      //   like a normally-folded membrane that's collapsed to a single
+      //   row, with ◤◢ touching as the visible square figure.
+      shellHide.push({ range: new vscode.Range(pair.start, 0, pair.start, openText.length) });
+      fullHide.push({ range: new vscode.Range(pair.end, 0, pair.end, closeText.length) });
+      for (let line = pair.start + 1; line < pair.end; line++) {
+        const text = doc.lineAt(line).text;
+        fullHide.push({ range: new vscode.Range(line, 0, line, text.length) });
+      }
+      containerOpenLabels.push({ range: new vscode.Range(pair.start, 0, pair.start, 0) });
+      containerCloseLabels.push({ range: new vscode.Range(pair.start, 0, pair.start, 0) });
+    } else if (isInsideStealth) {
+      // v0.9.525 NESTED full-stealth inside a container:
+      //   Everything (shell + content) → fullHide (display:none).
+      //   No labels — outer container has the visible square.
+      fullHide.push({ range: new vscode.Range(pair.start, 0, pair.start, openText.length) });
+      fullHide.push({ range: new vscode.Range(pair.end, 0, pair.end, closeText.length) });
+      for (let line = pair.start + 1; line < pair.end; line++) {
+        const text = doc.lineAt(line).text;
+        fullHide.push({ range: new vscode.Range(line, 0, line, text.length) });
+      }
+    } else {
+      // Pure half-stealth — current behaviour unchanged:
+      //   Shell open + close: font-size:0 (rows stay for ◤ ◢ markers).
+      //   Content: visible (no hide). Thin lane through content rows.
+      shellHide.push({ range: new vscode.Range(pair.start, 0, pair.start, openText.length) });
+      shellHide.push({ range: new vscode.Range(pair.end, 0, pair.end, closeText.length) });
+      openLabels.push({ range: new vscode.Range(pair.start, 0, pair.start, 0) });
+      closeLabels.push({ range: new vscode.Range(pair.end, 0, pair.end, 0) });
+    }
+  }
+  editor.setDecorations(stealthShellHideDecoration, shellHide);
+  editor.setDecorations(stealthContentHideDecoration, contentHide);
+  editor.setDecorations(stealthFullHideDecoration, fullHide);
+  editor.setDecorations(stealthOpenLabelDecoration, openLabels);
+  editor.setDecorations(stealthCloseLabelDecoration, closeLabels);
+  editor.setDecorations(stealthContainerOpenDecoration, containerOpenLabels);
+  editor.setDecorations(stealthContainerCloseDecoration, containerCloseLabels);
+}
+// {* ▲mCN=0610_STEALTH_RENDER // end [cGJF=h] *}
+
+// {* ▼mCN=0700_COMMANDS // refresh / fold / unfold / auto-unfold commands (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+
+function workingTocWrapperId() {
+  // v0.9.546: TOC membranes use the dedicated `mTC=` grammar (Phase A), so the
+  // legacy `hT_` name prefix is no longer needed for type discrimination. New TOC
+  // wrappers use `Index_` to label the underlying identity (the source name is
+  // hidden in Me Dock anyway — it becomes alias-like with the comment serving as
+  // the visible tab name).
+  const raw = getDefaultMembraneName().replace(/^name_/, "");
+  return "Index_" + raw;
+}
+
+function commentPrefixForDocument(document) {
+  const lang = (document.languageId || "").toLowerCase();
+  const path = String(document.uri.fsPath || "").toLowerCase();
+  if (lang === "markdown" || path.endsWith(".md") || lang === "html" || lang === "xml") {
+    return { open: "<!-- ", close: " -->" };
+  }
+  return { open: "// ", close: "" };
+}
+
+function wrapWorkingTocComment(document, inner) {
+  const c = commentPrefixForDocument(document);
+  return `${c.open}{* ${inner} *}${c.close}`;
+}
+
+function workingTocOpenLine(document, liveId) {
+  // v0.9.546: dedicated mTC= grammar. The comment ("Hyper TOC") is the user-facing
+  // tab name shown in Me Dock — fully renameable via the Me Dock tab-name input.
+  return wrapWorkingTocComment(document, `▼mTC=${liveId} // Hyper TOC`) + "\n";
+}
+
+function workingTocCloseLine(document, liveId) {
+  return wrapWorkingTocComment(document, `▲mTC=${liveId} // end`) + "\n";
+}
+
+// {* ▼mCN=0710_HYPER_TOC_PIPELINE // hT-only Hyper TOC parser / insertion / snapshot / Me Dock sync (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function extractMembraneTocEntryFromLine(text) {
+  const raw = String(text || "");
+  let inner = raw.trim();
+
+  inner = inner.replace(/^\/\/\s*/, "");
+
+  const html = inner.match(/^<!--\s*([\s\S]*?)\s*-->\s*$/);
+  if (html) inner = html[1].trim();
+
+  const md = inner.match(/^\[\/\/\]:\s*#\s*\(([\s\S]*?)\)\s*$/);
+  if (md) inner = md[1].trim();
+
+  const proto = inner.match(/^\{\*\s*([\s\S]*?)\s*\*\}$/);
+  if (proto) inner = proto[1].trim();
+
+  const legacy = inner.match(/^\{\s*([\s\S]*?)\s*\}$/);
+  if (legacy) inner = legacy[1].trim();
+
+  // v0.9.455 + v0.9.470: strip sRJF markup BEFORE any downstream parsing
+  // and cleanMembraneName(). Both representations need to be removed:
+  //   legacy:  <span class="sRJF=v">🔴</span>      inline HTML
+  //   current: // {* [sRJF=v] *}                  end-of-line marker
+  //
+  // cleanMembraneName's regex (/\s*[🟢🔴].*$/) would otherwise chop only
+  // "🔴</span>" off the legacy tail and leave the orphan opening span
+  // attached to the id, displaying as "name <span class=" in the Me Dock
+  // input. For the new marker we simply drop it; whether the original line
+  // had a visible bi-link is remembered in `hadVisibleSRJF` so the label
+  // can re-attach a bare 🔴 below.
+  // v0.9.483: marker may now carry a trailing literal 🔴 button. Strip it
+  // together with the marker, then re-attach a single 🔴 to the label
+  // below via the hadVisibleSRJF flag (same flow as before — the label
+  // should show one 🔴, not two).
+  // v0.9.580: 🔴 always inside the wrapper (`[sRJF=v]🔴 *}`); no more dual-form.
+  const hadVisibleSRJF =
+    /<span\s+class="sRJF=v">🔴<\/span>/u.test(inner) ||
+    /\/\/\s*\{\*\s*\[sRJF=v\d*\]🔴\s*\*\}/u.test(inner);
+  inner = inner
+    .replace(/<span\s+class="sRJF=v">🔴<\/span>/gu, '🔴')
+    .replace(/<span\s+class="sRJF=h">[^<]*<\/span>/gu, '')
+    .replace(/\/\/\s*\{\*\s*\[sRJF=v\d*\]🔴?\s*\*\}/gu, '')
+    .replace(/\/\/\s*\{\*\s*\[sRJF=h\d*\]\s*\*\}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Raw Hyper TOC link item:
+  //   // ⇄ name_xxx // comment
+  let rawBilink = inner.match(/^⇄\s*([^\r\n]*?)(?:\s+\/\/\s*(.*))?$/);
+  if (rawBilink) {
+    const id = cleanMembraneName(rawBilink[1]);
+    const note = (rawBilink[2] || "").trim();
+    // v0.9.455: when the source had a visible 🔴 marker, decorate the label.
+    const idWithMarker = hadVisibleSRJF ? `${id} 🔴` : id;
+    const label = note ? `${idWithMarker} // ${note}` : idWithMarker;
+    return { key: id, label, kind: "wLink" };
+  }
+
+  // Existing bidirectional Hyper TOC item:
+  let bilink = inner.match(/^⇄\s*([^\r\n]*?)(?:\s+\/\/\s*(.*))?$/);
+  if (bilink) {
+    const id = cleanMembraneName(bilink[1]);
+    const note = (bilink[2] || "").trim();
+    const idWithMarker = hadVisibleSRJF ? `${id} 🔴` : id;
+    const label = note ? `${idWithMarker} // ${note}` : idWithMarker;
+    return { key: id, label, kind: "wLink" };
+  }
+
+  // Existing compact Hyper TOC item:
+  let titem = inner.match(/^([^\r\n]*?)(?:\s+\/\/\s*(.*))?$/);
+  if (titem && cleanMembraneName(titem[1]) && !/^[▼▽▲△▶◀⇄]/.test(cleanMembraneName(titem[1]))) {
+    const id = cleanMembraneName(titem[1]);
+    const note = (titem[2] || "").trim();
+    return { key: id, label: tocLabelWithComment(id, note), kind: "mT" };
+  }
+
+  // Block membrane:
+  // v0.9.546: accept both mCN= and mTC=. Expose `note` (the trailing comment) so
+  // callers can use it as the TOC tab name (alias-like display).
+  // v0.9.547: strip jump-flag literals (`[oGJF=v]`, `[tRJF=v]`, etc.) and button
+  // emojis from the note before returning — otherwise they leak into the Me Dock
+  // tab-name input as visible text. User v0.9.546_0842: tab name field showed
+  // `Hyper TOC [oGJF=v]`. The flags remain in the source line (so Phase A's
+  // parser still sees them); only the display-bound `note` is sanitised.
+  // v0.9.572: distinguish mTC= from mCN= in the returned `kind`. Previously both
+  // were collapsed into `kind: "mCN"`, which let the nearby-line fallback in
+  // addCurrentMembraneToWorkingToc pick up an mTC= TOC anchor as if it were an
+  // ordinary membrane definition — adding the TOC anchor itself into the H-TOC.
+  // User v0.9.571_0701 bug: 「メニューで、H-TOCに追加すると、なぜかその上にあるmTC膜が
+  // 誤って入ってしまう」.
+  // Also: when the open line carries an alias in its badge, prefer the alias as
+  // the note over the raw source comment, so H-TOC entries display
+  // `realName // aliasName`. User v0.9.571_0701 improvement: 「エイリアスを選択
+  // して、H-TOCに追加するとき、『膜名 // エイリアス名』として追加しよう」.
+  let m = inner.match(/([▼▲])\s*(mCN|mTC|mNT)\s*=\s*([^\r\n]*?)(?:\s+\/\/\s*([^()]*?))?(?:\s*\(|\s*$)/);
+  if (m) {
+    const arrow = m[1];
+    const kindTag = m[2] === 'mTC' ? 'mTC' : 'mCN';
+    const id = cleanMembraneName(m[3]);
+    let note = (m[4] || "")
+      .replace(/\[(?:oGJF|cGJF|tRJF|sRJF|GJF)=[hv]\]/g, '')
+      .replace(/🟢|🔴/g, '')
+      // v0.9.626: 番号付き注釈対応 — †n/N†0→空, †n†1→†n, ††0→空, ††1→††
+      .replace(/†\d+(?:\/\d+)?†0\s*[^(]*/g, '')  // †n†0, †n/N†0 → 丸ごと除去
+      .replace(/††0\s*[^(]*/g, '')                 // ††0 → 旧形式、丸ごと除去
+      .replace(/†(\d+)(?:\/\d+)?†[1]?/g, '†$1')   // †n/N†1 → †n, †n†1 → †n
+      .replace(/††1/g, '††')                       // ††1 → ††（旧形式）
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Prefer alias as note when present on the OPEN line.
+    // v0.9.626: 注釈部分を分離（†n or ††）
+    let alias = '';
+    let annotPart = '';
+    const daggerTocMatch = note.match(/†\d+\s|††/);
+    const daggerSplit = daggerTocMatch ? note.indexOf(daggerTocMatch[0]) : -1;
+    if (daggerSplit >= 0) {
+      annotPart = note.slice(daggerSplit).trim();
+      note = note.slice(0, daggerSplit).trim();
+    }
+    if (arrow === '▼') {
+      const badge = parseMstatBadgeFromText(raw);
+      if (badge && typeof badge.alias === 'string' && badge.alias.length > 0) {
+        alias = badge.alias.trim();
+        if (alias) note = alias;
+      }
+    }
+    // 注釈を note に再結合
+    if (annotPart) {
+      note = note ? (note + ' ' + annotPart) : annotPart;
+    }
+    return { key: id, label: tocLabelWithComment(id, note), kind: kindTag, note, alias };
+  }
+
+  // Inline color / annotation membrane:
+  m = inner.match(/[▶◀]\s*mC\s*\(\s*([rogbp])\s*\)\s*=\s*([^\r\n]*?)(?:\s+\/\/\s*(.*))?$/);
+  if (m) {
+    const color = m[1];
+    const id = cleanMembraneName(m[2]);
+    const note = (m[3] || "").trim();
+    const colorMark = { r: "🟥", o: "🟧", g: "🟩", b: "🟦", p: "🟪" }[color] || "";
+    return { key: id, label: note ? `${colorMark}${id} // ${note}` : `${colorMark}${id}`, kind: "mC" };
+  }
+
+  // Bare timestamp fallback.
+  m = inner.match(/\b([0-9]{6}\.[JFM A5678SOND0-9][0-9]{2})\b/);
+  if (m) return { key: m[1], label: m[1], kind: "timestamp" };
+
+  return null;
+}
+
+function findWorkingTocMarkerLine(document) {
+  const max = Math.min(document.lineCount, 200);
+  for (let i = 0; i < max; i++) {
+    const t = document.lineAt(i).text.trim();
+    // v0.9.546: TOC open line uses mTC= grammar (replaces legacy hT_ name prefix).
+    if (/[▼]/.test(t) && /mTC\s*=/.test(t)) return i;
+    if (/^(Hyper TOC|Hyper-TOC)$/i.test(t) ||
+        /^#{1,6}\s*(Hyper TOC|Hyper-TOC)\s*$/i.test(t) ||
+        /^<!--\s*(Hyper TOC|Hyper-TOC)\s*-->$/i.test(t)) return i;
+  }
+  return -1;
+}
+
+function findWorkingTocRegion(document) {
+  const markerLine = findWorkingTocMarkerLine(document);
+  if (markerLine < 0) return null;
+
+  const startLine = markerLine + 1;
+  let endLine = document.lineCount;
+  for (let i = startLine; i < document.lineCount; i++) {
+    const trimmed = document.lineAt(i).text.trim();
+
+    // v0.9.546: TOC close line uses mTC= grammar.
+    if (/[▲]/.test(trimmed) && /mTC\s*=/.test(trimmed)) {
+      endLine = i;
+      break;
+    }
+
+    if (i > startLine && trimmed === "") {
+      endLine = i;
+      break;
+    }
+  }
+  return { markerLine, startLine, endLine };
+}
+
+function documentContainsWorkingTocKey(document, key) {
+  if (!key) return false;
+  const region = findWorkingTocRegion(document);
+  if (!region) return false;
+  for (let i = region.startLine; i < region.endLine; i++) {
+    if ((document.lineAt(i).text || "").includes(String(key))) return true;
+  }
+  return false;
+}
+
+function workingTocLineForDocument(document, entry) {
+  const key = tocKeyFromValue(entry && entry.key ? entry.key : '');
+  let label = String((entry && (entry.label || entry.key)) || '').replace(/\r?\n/g, ' ').trim();
+  if (!label) label = key;
+  // Preserve `// memo` exactly in the raw Hyper TOC line.
+  // If label already includes the key, use it as-is; otherwise append it as a memo.
+  let payload = label;
+  if (key && !tocKeyFromValue(label)) payload = key;
+  if (key && tocKeyFromValue(label) !== key) {
+    const memo = label.replace(/^\/\/\s*/, '').trim();
+    payload = memo ? `${key} // ${memo}` : key;
+  }
+  return `// ⇄ ${payload}\n`;
+}
+
+
+
+function fixedTocHiddenRanges(editor) {
+  // v0.9.276: Fixed TOC no longer hides raw editor lines with decorations.
+  // The editor-side TOC is simply folded/unfolded by the Fold TOC button.
+  return [];
+}
+
+function tocStateKey(document, key) {
+  return 'workingTocCheck:' + (document && document.uri ? document.uri.toString() : 'unknown') + ':' + String(key || '');
+}
+function tocItemStateKeyFromRaw(raw, line0) {
+  const s = String(raw || '').trim();
+  // Per-TOC-line state: comment differences are separate tasks even when the membrane name is the same.
+  // Empty lines fall back to line number.
+  return s || ('line:' + String(line0));
+}
+function getTocCheckedAt(document, key) {
+  try { return extensionContext && extensionContext.globalState.get(tocStateKey(document, key)); } catch (_) { return ''; }
+}
+async function setTocCheckedAt(document, key, checked) {
+  if (!extensionContext || !document || !key) return;
+  const k = tocStateKey(document, key);
+  await extensionContext.globalState.update(k, checked ? new Date().toLocaleString('ja-JP') : undefined);
+}
+
+function tocCreatedStateKey(document, key) {
+  return 'workingTocCreated:' + (document && document.uri ? document.uri.toString() : 'unknown') + ':' + String(key || '');
+}
+function getTocCreatedAt(document, key) {
+  try { return extensionContext && extensionContext.globalState.get(tocCreatedStateKey(document, key)); } catch (_) { return ''; }
+}
+async function setTocCreatedAt(document, key, value) {
+  if (!extensionContext || !document || !key) return;
+  await extensionContext.globalState.update(tocCreatedStateKey(document, key), value || new Date().toLocaleString('ja-JP'));
+}
+
+// v0.9.549 Phase C-1: Hyper TOC data layer — all per-tab items live in metadata
+// (extension globalState), keyed by document URI. The source mTC= membrane is just
+// the anchor / initial seed source; once metadata exists for a file, the metadata
+// is the sole source of truth for items. User design 2026-05-20 pm10:16:
+// 「Hyper TOCのメタデータがなければ、本文のTOC膜のデータからメタデータを生成、保存する
+// ということでしょ」.
+//
+// Data shape:
+//   hyperTocData:${uri} = {
+//     tabs: [
+//       { id, name, items: [{ id, key, value, stateKey, checkedAt, createdAt }, ...] },
+//       ...
+//     ],
+//     activeIdx: <number>
+//   }
+function hyperTocDataKey(document) {
+  return 'hyperTocData:' + (document && document.uri ? document.uri.toString() : 'unknown');
+}
+// v0.9.677: H-TOC「別セクター」永続化。H-TOCデータ(tabs/items/check状態/引用)を、ユーザー本文とは
+// 干渉しない完全不可視の1行 `<!-- mHTOC1 <hex> -->` としてファイル"末尾"に埋め込む。これでファイルを
+// 別フォルダ/別マシン/クラウド/git に移しても H-TOC が随伴する(旧: globalState の絶対パスキー=移動で
+// 消失=俊克 2026.06.01 am09:13 指摘)。hexエンコードなので //, ==, ~~, --> 等のパーサ干渉文字を一切
+// 含まず安全。editor 上では装飾(mdWrapperHideDecoration)で非表示、markdown preview でも HTMLコメント
+// として非表示。globalState は移行フォールバック/キャッシュに降格。
+const HTOC_MARKER_RE = /<!--\s*mHTOC1\s+([0-9a-fA-F]*)\s*-->/;
+const _htocSourceCache = new WeakMap(); // document -> { version, markerLine, data }
+function encodeHyperTocLine(data) {
+  try { return '<!-- mHTOC1 ' + Buffer.from(JSON.stringify(data), 'utf8').toString('hex') + ' -->'; }
+  catch (_) { return null; }
+}
+function decodeHyperTocLineText(text) {
+  if (!text) return null;
+  const m = HTOC_MARKER_RE.exec(text);
+  if (!m || !m[1]) return null;
+  try {
+    const data = JSON.parse(Buffer.from(m[1], 'hex').toString('utf8'));
+    if (data && typeof data === 'object' && Array.isArray(data.tabs)) return data;
+  } catch (_) {}
+  return null;
+}
+function _scanHyperTocSource(document) {
+  // Scan from the END (the marker is normally the last line) → typically O(1). Cached per version.
+  const cached = _htocSourceCache.get(document);
+  if (cached && cached.version === document.version) return cached;
+  let markerLine = -1, data = null;
+  for (let i = document.lineCount - 1; i >= 0; i--) {
+    const t = document.lineAt(i).text || '';
+    if (HTOC_MARKER_RE.test(t)) { markerLine = i; data = decodeHyperTocLineText(t); break; }
+  }
+  const entry = { version: document.version, markerLine, data };
+  _htocSourceCache.set(document, entry);
+  return entry;
+}
+function readHyperTocFromSource(document) {
+  if (!document) return null;
+  return _scanHyperTocSource(document).data;
+}
+function findHyperTocMarkerLine(document) {
+  if (!document) return -1;
+  return _scanHyperTocSource(document).markerLine;
+}
+function hyperTocStorageHideRanges(editor) {
+  // Hide the entire mHTOC storage line in the editor (font-size:0 via mdWrapperHideDecoration).
+  const ranges = [];
+  if (!editor || !editor.document) return ranges;
+  const ln = findHyperTocMarkerLine(editor.document);
+  if (ln >= 0) ranges.push(new vscode.Range(ln, 0, ln, (editor.document.lineAt(ln).text || '').length));
+  return ranges;
+}
+async function writeHyperTocToSource(document, data) {
+  if (!document) return false;
+  const editor = vscode.window.visibleTextEditors.find(e => e.document === document)
+    || ((vscode.window.activeTextEditor && vscode.window.activeTextEditor.document === document) ? vscode.window.activeTextEditor : null);
+  if (!editor) return false; // doc not open as an editor → globalState keeps it until next open
+  const line = encodeHyperTocLine(data);
+  if (!line) return false;
+  const existing = findHyperTocMarkerLine(document);
+  if (existing >= 0 && (document.lineAt(existing).text || '') === line) return true; // no change
+  deferRefreshCount++;
+  let ok = true;
+  try {
+    await editor.edit(eb => {
+      if (existing >= 0) {
+        eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), line);
+      } else {
+        const last = document.lineCount - 1;
+        const lastText = document.lineAt(last).text || '';
+        // Trailing-newline case (last line empty): drop the marker into it directly (no extra
+        // blank line). Otherwise put it on a fresh line after the last content line.
+        eb.insert(new vscode.Position(last, lastText.length), (lastText.length === 0 ? '' : '\n') + line);
+      }
+    }, { undoStopBefore: false, undoStopAfter: false });
+  } catch (_) { ok = false; } finally {
+    deferRefreshCount = Math.max(0, deferRefreshCount - 1);
+  }
+  // v0.9.677: apply the hide decoration so the freshly-written marker line is invisible.
+  // Deferred + visibility-gated so it never blocks (H-TOC writes are low-frequency anyway).
+  if (ok) setTimeout(() => { try { if (editor === vscode.window.activeTextEditor) refresh(editor); } catch (_) {} }, 0);
+  return ok;
+}
+function getHyperTocData(document) {
+  if (!document) return null;
+  // v0.9.677: the in-file "別セクター" is the source of truth — read it first; fall back to
+  // globalState (legacy absolute-path key) only when the file has no marker yet (= migration src).
+  let data = readHyperTocFromSource(document);
+  if (!data && extensionContext) {
+    try { data = extensionContext.globalState.get(hyperTocDataKey(document)); } catch (_) { data = null; }
+  }
+  try {
+    if (data && typeof data === 'object' && Array.isArray(data.tabs) && data.tabs.length > 0) {
+      // v0.9.581: lazy migration. Items added before v0.9.581 have no `kind`
+      // or `linkKind` fields — derive them from `citeN` so downstream code can
+      // discriminate without re-parsing the value text. citeN !== null implies
+      // the entry was created via the citation path (showSingleRedJumpPair
+      // armed both sides → bidirectional ⇄). citeN === null implies a
+      // definition entry → one-way ⇒. Persistence happens on the next
+      // setHyperTocData call (any edit / re-add) — no forced write here.
+      // v0.9.582: rewrite transient v0.9.581 `Me⇒{X}` / `{A}⇒Me⇒{X}` value
+      // strings to the new `⇒{X}` / `{A}⇒{X}` form so the H-TOC display
+      // aligns (`⇒` is now single-glyph, matching `⇄` height for vertical
+      // scan). The `Me` part survived just one version (v0.9.581 → 582).
+      for (const tab of data.tabs) {
+        if (!Array.isArray(tab.items)) continue;
+        for (const item of tab.items) {
+          if (!item || typeof item !== 'object') continue;
+          if (!item.kind) item.kind = 'link';
+          if (!item.linkKind) {
+            item.linkKind = (item.citeN !== null && item.citeN !== undefined)
+              ? 'Bidirectional'
+              : 'MeArrow';
+          }
+          if (typeof item.value === 'string' && /Me\s*⇒/.test(item.value)) {
+            item.value = item.value
+              .replace(/\{([^}]*)\}\s*⇒\s*Me\s*⇒\s*\{/g, '{$1}⇒{')
+              .replace(/^\s*Me\s*⇒\s*\{/, '⇒{');
+          }
+        }
+      }
+      return data;
+    }
+  } catch (_) {}
+  return null;
+}
+async function setHyperTocData(document, data) {
+  if (!document) return;
+  // v0.9.677: persist to the in-file "別セクター" (source of truth, travels with the file).
+  // Keep globalState as a fast cache / fallback for when the doc isn't open as an editor.
+  if (extensionContext) { try { await extensionContext.globalState.update(hyperTocDataKey(document), data); } catch (_) {} }
+  await writeHyperTocToSource(document, data);
+}
+let __hyperTocIdCounter = 0;
+function makeHyperTocId(prefix) {
+  __hyperTocIdCounter++;
+  return prefix + '_' + Date.now() + '_' + __hyperTocIdCounter;
+}
+function seedHyperTocFromSource(document) {
+  // First-load migration: when no metadata exists, build the initial tab from any
+  // `// ⇄ name // comment` items currently sitting inside the source mTC= region.
+  const region = findWorkingTocRegion(document);
+  if (!region) return null;
+  const openText = document.lineAt(region.markerLine).text || '';
+  const openEntry = extractMembraneTocEntryFromLine(openText);
+  const tabName = (openEntry && openEntry.note) || 'Hyper TOC';
+  const items = [];
+  for (let i = region.startLine; i < region.endLine; i++) {
+    const raw = document.lineAt(i).text || '';
+    const isRawTocLine = /⇄/.test(raw);
+    const entry = extractMembraneTocEntryFromLine(raw);
+    if (!isRawTocLine && (!entry || !entry.key)) continue;
+    if (entry && /^hT_/i.test(entry.key)) continue;
+    let value = entry && (entry.label || entry.key) ? (entry.label || entry.key) : '';
+    value = value
+      .replace(/<span\s+class="sRJF=v">🔴<\/span>/gu, '🔴')
+      .replace(/<span\s+class="sRJF=v">/gu, '🔴')
+      .replace(/<span\s+class="sRJF=h">[^<]*<\/span>/gu, '')
+      .replace(/<span\s+class="sRJF=h">/gu, '')
+      .replace(/<\/span>/gu, '')
+      // v0.9.580: 🔴 always inside the wrapper.
+      .replace(/\/\/\s*\{\*\s*\[sRJF=v\d*\]🔴?\s*\*\}/gu, '')
+      .replace(/\/\/\s*\{\*\s*\[sRJF=h\d*\]\s*\*\}/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const key = entry && entry.key ? tocKeyFromValue(entry.key) : tocKeyFromValue(value);
+    const legacyStateKey = tocItemStateKeyFromRaw(raw, i);
+    // v0.9.581: source-seeded items have no citeN, so default to MeArrow.
+    // Lines that explicitly carried `⇄` in source are classified as
+    // Bidirectional. Either way kind='link'.
+    const seededLinkKind = isRawTocLine ? 'Bidirectional' : 'MeArrow';
+    items.push({
+      id: makeHyperTocId('item'),
+      kind: 'link',
+      linkKind: seededLinkKind,
+      key,
+      value,
+      stateKey: legacyStateKey || makeHyperTocId('skey'),
+      checkedAt: legacyStateKey ? (getTocCheckedAt(document, legacyStateKey) || '') : '',
+      createdAt: legacyStateKey ? (getTocCreatedAt(document, legacyStateKey) || '') : ''
+    });
+  }
+  return { tabs: [{ id: makeHyperTocId('tab'), name: tabName, items }], activeIdx: 0 };
+}
+async function ensureHyperTocData(document) {
+  let data = getHyperTocData(document);
+  if (data) {
+    // v0.9.677: data came from globalState (legacy, no in-file marker yet) → migrate it into
+    // the file once so it starts travelling with the file. Idempotent (writeHyperTocToSource
+    // no-ops if the line already matches).
+    if (findHyperTocMarkerLine(document) < 0) await writeHyperTocToSource(document, data);
+    return data;
+  }
+  data = seedHyperTocFromSource(document);
+  if (!data) {
+    data = { tabs: [{ id: makeHyperTocId('tab'), name: 'Hyper TOC', items: [] }], activeIdx: 0 };
+  }
+  await setHyperTocData(document, data);
+  return data;
+}
+function activeHyperTocTab(data) {
+  if (!data || !Array.isArray(data.tabs) || data.tabs.length === 0) return null;
+  const idx = Math.min(Math.max(0, Number(data.activeIdx) || 0), data.tabs.length - 1);
+  return { tab: data.tabs[idx], idx };
+}
+
+// v0.9.552 Phase D-1: globally unique citation number across the document. Each
+// `[sRJF=h<n>]` marker becomes a stable anchor that any H-TOC item can reference.
+// Allocation strategy: continue from max+1 (gaps left by deletions are not reused
+// — this preserves history for grep / debugging). User design 2026-05-21 pm02:51:
+// 「[sRJF=h] 引用マーカを、[sRJF=hn](n=1,2,...) と言う形に変更しよう」.
+function nextCitationN(document) {
+  if (!document) return 1;
+  let maxN = 0;
+  const re = /\[sRJF=[hv](\d+)\]/g;
+  for (let i = 0; i < document.lineCount; i++) {
+    const text = document.lineAt(i).text || '';
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (Number.isFinite(n) && n > maxN) maxN = n;
+    }
+  }
+  return maxN + 1;
+}
+
+// Find the line containing `[sRJF=h<n>]` or `[sRJF=v<n>]` in source. Returns the
+// 0-based line index or -1 if not found. Used to jump from an H-TOC citation item
+// to the actual citation location in the document.
+function findCitationLine(document, n) {
+  if (!document || !Number.isFinite(n)) return -1;
+  const re = new RegExp('\\[sRJF=[hv]' + n + '\\]');
+  for (let i = 0; i < document.lineCount; i++) {
+    const text = document.lineAt(i).text || '';
+    if (re.test(text)) return i;
+  }
+  return -1;
+}
+
+function stripTocCopySuffix(note) {
+  return String(note || '').replace(/\s*\(copy\s+\d+\)\s*$/i, '').trim();
+}
+function splitTocValueForCopy(value) {
+  const v = String(value || '').replace(/^⇄\s*/, '').trim();
+  const idx = v.indexOf('//');
+  if (idx < 0) return { head: v.trim(), note: '' };
+  return { head: v.slice(0, idx).trim(), note: v.slice(idx + 2).trim() };
+}
+function nextTocCopyValue(value, document, region) {
+  const base = splitTocValueForCopy(value);
+  const baseNote = stripTocCopySuffix(base.note);
+  let maxCopy = 0;
+  try {
+    if (document && region) {
+      for (let i = region.startLine; i < region.endLine; i++) {
+        const e = extractMembraneTocEntryFromLine(document.lineAt(i).text || '');
+        const label = e && (e.label || e.key) ? String(e.label || e.key) : '';
+        const sp = splitTocValueForCopy(label);
+        if (sp.head !== base.head) continue;
+        if (stripTocCopySuffix(sp.note) !== baseNote) continue;
+        const m = String(sp.note || '').match(/\(copy\s+(\d+)\)\s*$/i);
+        if (m) maxCopy = Math.max(maxCopy, Number(m[1]) || 0);
+      }
+    }
+  } catch (_) {}
+  const n = maxCopy + 1;
+  const note = baseNote ? `${baseNote}(copy ${n})` : `(copy ${n})`;
+  return `${base.head} // ${note}`.trim();
+}
+
+async function renameWorkingTocMembrane(newComment) {
+  // v0.9.549 Phase C-1: this routine now ONLY renames the active tab in metadata.
+  // The source mTC= membrane comment is left untouched (it remains the initial-seed
+  // tab name from when the metadata was first created).
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const doc = editor.document;
+  const clean = String(newComment || '').replace(/\r?\n/g, ' ').trim() || 'Hyper TOC';
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  at.tab.name = clean;
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+// v0.9.549 Phase C-1: tab operations (switch / duplicate / delete).
+async function switchHyperTocTab(idx) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  if (typeof idx !== 'number' || idx < 0 || idx >= data.tabs.length) return false;
+  data.activeIdx = idx;
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+async function duplicateHyperTocTab() {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  // Compute unique "(copy N)" suffix.
+  const baseName = String(at.tab.name || 'Hyper TOC').replace(/\s*\(copy\d+\)$/, '');
+  let copyN = 1;
+  const names = data.tabs.map(t => t.name || '');
+  while (names.includes(`${baseName}(copy${copyN})`)) copyN++;
+  const newTab = {
+    id: makeHyperTocId('tab'),
+    name: `${baseName}(copy${copyN})`,
+    items: (at.tab.items || []).map(it => ({
+      id: makeHyperTocId('item'),
+      key: it.key,
+      value: it.value,
+      stateKey: makeHyperTocId('skey'),
+      checkedAt: '',
+      createdAt: new Date().toLocaleString('ja-JP')
+    }))
+  };
+  data.tabs.splice(at.idx + 1, 0, newTab);
+  data.activeIdx = at.idx + 1;
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+async function deleteHyperTocTab() {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  if (!data || data.tabs.length <= 1) {
+    vscode.window.showInformationMessage('At least one Hyper TOC tab must remain.');
+    return false;
+  }
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  data.tabs.splice(at.idx, 1);
+  data.activeIdx = Math.max(0, at.idx - 1);
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+
+async function foldWorkingTocRegion(editor) {
+  if (!editor) return;
+  const region = findWorkingTocRegion(editor.document);
+  if (!region) return;
+  try {
+    await vscode.window.showTextDocument(editor.document, editor.viewColumn || vscode.ViewColumn.One, false);
+    await vscode.commands.executeCommand('editor.fold', { selectionLines: [region.markerLine] });
+  } catch (_) {}
+}
+
+// v0.9.549 Phase C-1: all edit operations now mutate metadata only — source is
+// never touched. line0 is an INDEX into the active tab's items, not a document line.
+async function updateWorkingTocItemAtLine(line0, value) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor || typeof line0 !== 'number') return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  if (line0 < 0 || line0 >= at.tab.items.length) return false;
+  const clean = String(value || '').replace(/\r?\n/g, ' ').trim();
+  if (!clean) {
+    at.tab.items.splice(line0, 1);
+  } else {
+    at.tab.items[line0].value = clean;
+    at.tab.items[line0].key = tocKeyFromValue(clean) || at.tab.items[line0].key;
+  }
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+async function deleteWorkingTocItemAtLine(line0) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor || typeof line0 !== 'number') return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  if (line0 < 0 || line0 >= at.tab.items.length) return false;
+  at.tab.items.splice(line0, 1);
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+async function moveWorkingTocItemAtLine(line0, delta) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor || typeof line0 !== 'number' || !delta) return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  const target = line0 + (delta < 0 ? -1 : 1);
+  if (line0 < 0 || line0 >= at.tab.items.length || target < 0 || target >= at.tab.items.length) return false;
+  const tmp = at.tab.items[line0];
+  at.tab.items[line0] = at.tab.items[target];
+  at.tab.items[target] = tmp;
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+async function addEmptyWorkingTocItem() {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const doc = editor.document;
+  // Ensure source has the mTC= anchor (created without items — items are in metadata).
+  let region = findWorkingTocRegion(doc);
+  if (!region) {
+    const id = workingTocWrapperId();
+    await editor.edit(edit => edit.insert(new vscode.Position(0, 0), workingTocOpenLine(doc, id) + workingTocCloseLine(doc, id) + '\n'));
+  }
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  // v0.9.553: unshift — see addCurrentMembraneToWorkingToc comment.
+  at.tab.items.unshift({
+    id: makeHyperTocId('item'),
+    key: '',
+    value: '',
+    stateKey: makeHyperTocId('skey'),
+    checkedAt: '',
+    createdAt: new Date().toLocaleString('ja-JP')
+  });
+  await setHyperTocData(doc, data);
+  setTimeout(() => { refresh(editor); postFixedWorkingTocSnapshot(); }, 50);
+  return true;
+}
+
+async function duplicateWorkingTocItemAtLine(line0) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor || typeof line0 !== 'number') return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return false;
+  if (line0 < 0 || line0 >= at.tab.items.length) return false;
+  const orig = at.tab.items[line0];
+  // Compute copy suffix `(copy N)` against existing values in this tab.
+  const existingValues = at.tab.items.map(it => it.value || '');
+  let copyN = 1;
+  const base = String(orig.value || '').replace(/\s*\(copy\s+\d+\)\s*$/i, '').trim();
+  while (existingValues.includes(`${base} (copy ${copyN})`)) copyN++;
+  const newValue = `${base} (copy ${copyN})`;
+  const newItem = {
+    id: makeHyperTocId('item'),
+    key: tocKeyFromValue(newValue) || orig.key,
+    value: newValue,
+    stateKey: makeHyperTocId('skey'),
+    checkedAt: '',
+    createdAt: new Date().toLocaleString('ja-JP')
+  };
+  at.tab.items.splice(line0 + 1, 0, newItem);
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+async function toggleFixedTocEditorVisibility() {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const region = findWorkingTocRegion(editor.document);
+  if (!region) return;
+  const pair = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === region.markerLine && p.end === region.endLine) ||
+    collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === region.markerLine);
+  if (!pair) return;
+  await vscode.window.showTextDocument(editor.document, editor.viewColumn || vscode.ViewColumn.One, false);
+  await setPairFoldStateAndMstat(editor, pair, !isPairFolded(editor, pair));
+  setTimeout(() => { refresh(editor); postFixedWorkingTocSnapshot(); }, 120);
+}
+
+async function toggleWorkingTocItemCheck(key, checked) {
+  // v0.9.549 Phase C-1: checkedAt is now stored directly inside the metadata item
+  // for the active tab. The legacy globalState path (setTocCheckedAt) is kept in
+  // sync for backward compat with any code still reading via the old key, but the
+  // metadata is the authoritative source.
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor || !key) return;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (at) {
+    const item = at.tab.items.find(it => (it.stateKey || it.key) === key || it.key === key);
+    if (item) {
+      const now = new Date().toLocaleString('ja-JP');
+      item.checkedAt = checked ? now : '';
+      // v0.9.692 (改良1 俊克 am11:54): record the FULL check/uncheck history so mistaken or
+      // intentional toggles are traceable. label: 初回=Checked / 解除=Unchecked / 再チェック=
+      // Rechecked。やり直しは稀(1〜2回)なので短く保たれるが、上限20で暴走防止。
+      if (!Array.isArray(item.checkLog)) item.checkLog = [];
+      const label = checked ? (item.checkLog.some(e => e && e.checked) ? 'Rechecked' : 'Checked') : 'Unchecked';
+      item.checkLog.push({ at: now, checked: !!checked, label });
+      if (item.checkLog.length > 20) item.checkLog = item.checkLog.slice(-20);
+      await setHyperTocData(doc, data);
+    }
+  }
+  await setTocCheckedAt(doc, key, !!checked);
+  postFixedWorkingTocSnapshot();
+}
+
+function getWorkingTocSnapshot(editor) {
+  // v0.9.549 Phase C-1: items now come from metadata (workspace state), not from
+  // source. The source mTC= region serves only as an anchor + initial seed source.
+  // v0.9.584: greenActive / redActive expose the current jump-pair state to the
+  // webview so the H-TOC Bi-direction Jump bar can dim 🟢 / 🔴 when nothing is
+  // armed (mirroring the Me Dock Navigate Me buttons' disabled appearance).
+  const uri = editor ? editor.document.uri.toString() : '';
+  const greenActive = !!(activeGreenJump && activeGreenJump.uri === uri && Array.isArray(activeGreenJump.ranges) && activeGreenJump.ranges.length > 0);
+  const redActive = !!(activeRedJump && activeRedJump.uri === uri && activeRedJump.sourceRange && activeRedJump.targetRange);
+  if (!editor) return { enabled: fixedWorkingTocEnabled, hideEditor: fixedWorkingTocHideEditor, hasToc: false, open: '', close: '', items: [], tabs: [], activeIdx: 0, tocName: '', greenActive: false, redActive: false, currentMembrane: null };
+  const doc = editor.document;
+  // v0.9.680 (対策2)/v0.9.681 (改善2): the membrane the cursor is inside (innermost) +Δ, to Pin
+  // at the H-TOC top. Shared helper (= same as the status bar 対策1). Cheap (cached structure);
+  // computed on the same light snapshot path that already runs on selection change.
+  const currentMembrane = currentMembraneInfo(editor);
+  if (currentMembrane) currentMembrane.pinToSelected = pinJumpToSelected; // v0.9.684: checkbox state
+  const region = findWorkingTocRegion(doc);
+  let data = getHyperTocData(doc);
+  if (!data && region) {
+    // First-load auto-seed: build metadata from existing source TOC items.
+    data = seedHyperTocFromSource(doc);
+    if (data) setHyperTocData(doc, data);
+  }
+  if (!data) {
+    return { enabled: fixedWorkingTocEnabled, hideEditor: fixedWorkingTocHideEditor, hasToc: false, open: '', close: '', items: [], tabs: [], activeIdx: 0, tocName: '', greenActive, redActive, currentMembrane };
+  }
+  const at = activeHyperTocTab(data);
+  if (!at) {
+    return { enabled: fixedWorkingTocEnabled, hideEditor: fixedWorkingTocHideEditor, hasToc: false, open: '', close: '', items: [], tabs: [], activeIdx: 0, tocName: '', greenActive, redActive, currentMembrane };
+  }
+  const items = at.tab.items.map((it, idx) => ({
+    line: idx + 1,
+    line0: idx, // line0 is now an INDEX into the active tab's items, not a doc line
+    key: it.key || tocKeyFromValue(it.value || ''),
+    stateKey: it.stateKey || it.id || it.key,
+    label: it.value || '',
+    value: it.value || '',
+    checkedAt: it.checkedAt || '',
+    createdAt: it.createdAt || '',
+    checkLog: Array.isArray(it.checkLog) ? it.checkLog : [], // v0.9.692: check/uncheck history
+    citeN: (it.citeN === null || it.citeN === undefined) ? null : Number(it.citeN)
+  }));
+  const tabs = data.tabs.map((t, i) => ({ id: t.id, name: t.name || 'Hyper TOC', idx: i, active: i === at.idx, itemCount: (t.items || []).length }));
+  return {
+    enabled: fixedWorkingTocEnabled,
+    hideEditor: fixedWorkingTocHideEditor,
+    hasToc: true,
+    tocName: at.tab.name || 'Hyper TOC',
+    open: '',
+    close: '',
+    items,
+    tabs,
+    activeIdx: at.idx,
+    greenActive,
+    redActive,
+    currentMembrane
+  };
+}
+
+function postFixedWorkingTocSnapshot() {
+  if (!meDockPanel) return;
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  // v0.9.684 (bug1 defensive): if there is transiently NO editor (e.g. focus on the Me Dock
+  // webview mid-operation), SKIP posting rather than clearing the panel — this prevents the
+  // Current Me Pin from momentarily vanishing (俊克 2026.06.03 am03:05). The next snapshot with
+  // a live editor refreshes it. (Cursor genuinely leaving all membranes still hides the Pin.)
+  if (!editor) return;
+  try { meDockPanel.webview.postMessage({ type: 'fixedToc', toc: getWorkingTocSnapshot(editor) }); } catch (_) {}
+  postBookmarkState(editor); // v0.9.715: 🔖 ボタン状態(個数/満杯)も同期
+}
+
+function jumpToWorkingTocItem(rawKey, citeN) {
+  // v0.9.694 (Phase 2c 俊克 pm00:44): H-TOC click is ALWAYS a one-way ⇒ jump now — the
+  // citation(citeN) bidirectional 🔴 path is abolished (Current Me 統合). Force citeN=null so
+  // every item falls through to the standard one-way definition jump (no arming, no flags).
+  citeN = null;
+  // v0.9.563: defensively re-clean the key on entry. Historical H-TOC items may
+  // have stored a key that includes whitespace annotations (e.g., "name_2230 :15行")
+  // due to the v0.9.562 tocKeyFromValue bug. Re-running tocKeyFromValue here yields
+  // the bare membrane name, restoring findOpeningMembraneByName matching.
+  const key = tocKeyFromValue(rawKey);
+  vscode.window.setStatusBarMessage(`[DEBUG] jumpToWorkingTocItem rawKey="${rawKey}" → key="${key}" citeN=${citeN}`, 4000);
+  meosDbg(`[jumpToWorkingTocItem] rawKey="${rawKey}" → cleaned key="${key}", citeN=${citeN} (type=${typeof citeN})`);
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor || !key) { meosDbg(`  bail: no editor or no key`); return false; }
+  const doc = editor.document;
+  // v0.9.552 Phase D-1: citation jump — when citeN is provided, the H-TOC item points
+  // to a `[sRJF=*<n>]` marker location (the citation site).
+  // v0.9.556: clicking an H-TOC citation item is equivalent to selecting the
+  // membrane-name text at the citation site — it activates the full bidirectional
+  // jump pair (source=citation, target=membrane definition) via showSingleRedJumpPair.
+  // This promotes [sRJF=h<n>] → [sRJF=v<n>] (others demote v→h), writes [tRJF=v] at
+  // the definition, and primes the activeRedJump state so a subsequent W-click on
+  // either side completes the round trip. User v0.9.555_0729 bug 1: 「h→vに変更し、
+  // 🔴ボタンをそこに移動する必要がある」; bug 2: 「再度Wクリックしても開始膜に飛ばない」.
+  if (citeN !== null && citeN !== undefined && Number.isFinite(Number(citeN))) {
+    const n = Number(citeN);
+    meosDbg(`  citation branch entered with n=${n}`);
+    const line = findCitationLine(doc, n);
+    meosDbg(`  findCitationLine(${n}) returned ${line}`);
+    if (line >= 0) {
+      const target = findOpeningMembraneByName(doc, key, new Set([line]));
+      meosDbg(`  findOpeningMembraneByName("${key}") returned: ${target ? `line ${target.line} idRange ${JSON.stringify(target.idRange)}` : 'null'}`);
+      const lineText = doc.lineAt(line).text || '';
+      const sourceRange = new vscode.Range(line, 0, line, lineText.length);
+      // v0.9.559: ALWAYS call setSourceRjfFlag for the citation line so the 🔴 moves
+      // there regardless of whether the membrane definition (target) exists. Without
+      // this, citations referencing a non-existent / future-defined membrane couldn't
+      // get their 🔴 highlighted on H-TOC W-click. User v0.9.558_0812 bug 1:
+      // 「15行と16行は、🔴ボタンが移動しない。これは15行目と16行目が同じ膜名だから
+      // なのか?」 — the actual cause is that those references' membrane name has no
+      // `▼mCN=name` definition anywhere in the source, so findOpeningMembraneByName
+      // returns null and the no-target fallback skipped the marker promotion.
+      vscode.window.showTextDocument(editor.document, editor.viewColumn || vscode.ViewColumn.One, false).then(async ed => {
+        meosDbg(`  showTextDocument resolved, ed.document === editor.document: ${ed.document === editor.document}`);
+        if (target && target.idRange) {
+          meosDbg(`  → calling showSingleRedJumpPair (target found)`);
+          // Full bidirectional jump available — set up both sides and delegate to the
+          // canonical Me Dock 🔴 W-click handler.
+          await showSingleRedJumpPair(ed, sourceRange, target.idRange, key);
+          meosDbg(`  showSingleRedJumpPair completed`);
+          nameJumpSuppressUntil = Date.now() + 700;
+          await navCenterBidiDoubleClick(ed);
+          meosDbg(`  navCenterBidiDoubleClick completed`);
+        } else {
+          meosDbg(`  → no target, calling setSourceRjfFlag only`);
+          // No membrane definition in source — still move the 🔴 marker to the citation
+          // site via setSourceRjfFlag (promotes h<n> → v<n>, demotes any other v<m> →
+          // h<m>). Then place the caret on the citation line for context.
+          await setSourceRjfFlag(ed, sourceRange);
+          nameJumpSuppressUntil = Date.now() + 700;
+          const t = ed.document.lineAt(line).text || '';
+          const pos = new vscode.Position(line, 0);
+          ed.selection = new vscode.Selection(pos, pos);
+          ed.revealRange(new vscode.Range(line, 0, line, Math.max(1, t.length)), vscode.TextEditorRevealType.InCenter);
+          refresh(ed);
+        }
+      });
+      return true;
+    }
+    vscode.window.showInformationMessage(`Citation marker [sRJF=h${n}] not found in source.`);
+    return false;
+  }
+  // Standard definition jump — find the opening membrane line by key.
+  for (let i = 0; i < doc.lineCount; i++) {
+    const text = doc.lineAt(i).text || '';
+    const open = parseOpenLine(text);
+    if (open && open.id === key) {
+      const r = membraneNameRangeOnLine(editor, i) || new vscode.Range(i, 0, i, Math.min(text.length, 1));
+      // Me Dock TOC navigation is always a one-way jump to the opening membrane.
+      // Keep the editor selection collapsed; selecting the full membrane name would
+      // re-enter the editor-side W-click/pair-jump fallback and bounce to the close.
+      vscode.window.showTextDocument(editor.document, editor.viewColumn || vscode.ViewColumn.One, false).then(ed => {
+        // v0.9.578: keep folded targets folded — suppress maybeAutoUnfold's
+        // open-on-selection. See navCenterBidiDoubleClick comment.
+        suppressAutoUnfoldUntil = Date.now() + 700;
+        ed.selection = new vscode.Selection(r.start, r.start);
+        ed.revealRange(new vscode.Range(i, 0, i, Math.max(1, text.length)), vscode.TextEditorRevealType.InCenter);
+        refresh(ed);
+      });
+      return true;
+    }
+  }
+  vscode.window.showInformationMessage('Hyper TOC target not found: ' + key);
+  return false;
+}
+
+function toggleFixedWorkingToc() {
+  fixedWorkingTocEnabled = !fixedWorkingTocEnabled;
+  if (!meDockPanel) toggleMeDock();
+  updateMeDockMode();
+  postFixedWorkingTocSnapshot();
+  const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (fixedWorkingTocEnabled && fixedWorkingTocHideEditor) foldWorkingTocRegion(ed);
+  refresh(ed);
+  vscode.window.setStatusBarMessage('Hyper TOC fixed view: ' + (fixedWorkingTocEnabled ? 'ON' : 'OFF'), 1600);
+}
+
+async function addCurrentMembraneToWorkingToc() {
+  // v0.9.549 Phase C-1: source no longer holds items. Add to Hyper TOC inserts the
+  // entry into the ACTIVE tab's metadata items. The source mTC= anchor is created
+  // on first call (empty) so the visual lane / TOC styling still applies.
+  // v0.9.552 Phase D-1: when the cursor is on a NON-membrane-definition line, treat
+  // the selection / cursor word as a CITATION of a known membrane: allocate the next
+  // `[sRJF=h<n>]` number, append the marker to that line, and add the H-TOC item
+  // with `citeN: n` so the item jumps back to that citation site (not the definition).
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : vscode.window.activeTextEditor);
+  if (!editor) return;
+
+  const doc = editor.document;
+  const pos = editor.selection.active;
+  const currentLineText = doc.lineAt(pos.line).text || "";
+  const currentLineEntry = extractMembraneTocEntryFromLine(currentLineText);
+  // v0.9.553: restrict to actual membrane definitions (kind='mCN'). The legacy
+  // 'mT' (compact form) matches ANY non-empty line and would mis-route ordinary
+  // body text into the definition path. User v0.9.552_0511 bug 2 — citation flow
+  // wasn't entering because every body line was treated as a definition.
+  const isOnDefinitionLine = !!(currentLineEntry && currentLineEntry.key && currentLineEntry.kind === 'mCN');
+
+  let entry = null;
+  let citeN = null;
+  let citationLine = -1;
+
+  if (isOnDefinitionLine) {
+    // Existing path — adding the membrane definition to H-TOC (no citation marker).
+    entry = currentLineEntry;
+  } else {
+    // Citation path: discover a membrane name from the current selection (or cursor word)
+    // and verify it actually exists as a membrane elsewhere in the document.
+    let candidate = '';
+    if (!editor.selection.isEmpty) {
+      candidate = String(doc.getText(editor.selection) || '').trim();
+    }
+    if (!candidate) {
+      const wr = doc.getWordRangeAtPosition(pos, /[A-Za-z0-9_぀-ヿ㐀-鿿.]+/u);
+      if (wr) candidate = String(doc.getText(wr) || '').trim();
+    }
+    candidate = candidate.replace(/^[\s,;:.]+|[\s,;:.]+$/g, '');
+    if (candidate) {
+      // Confirm the candidate matches an existing membrane name anywhere in the doc.
+      // v0.9.553: restrict to kind='mCN' to avoid false positives against the 'mT'
+      // compact-form match (which fires on ANY non-empty line).
+      // v0.9.572: also try alias match — a selected alias should resolve to the
+      // underlying real-name membrane for citation purposes.
+      let matched = false;
+      let aliasResolvedKey = null;
+      for (let i = 0; i < doc.lineCount; i++) {
+        const t = doc.lineAt(i).text || '';
+        const e = extractMembraneTocEntryFromLine(t);
+        if (e && e.kind === 'mCN' && e.key === candidate) { matched = true; break; }
+      }
+      if (!matched) {
+        const aliasHit = findOpeningMembraneByAlias(doc, candidate, new Set([pos.line]));
+        if (aliasHit && aliasHit.id) {
+          matched = true;
+          aliasResolvedKey = aliasHit.id;
+        }
+      }
+      if (matched) {
+        // v0.9.573: when the target membrane definition is locatable in source,
+        // arm BOTH sides of the bi-link immediately via showSingleRedJumpPair so
+        // 🔴 appears on the citation site AND on the membrane definition at Add
+        // time (not delayed until H-TOC W-click). Also sets activeRedJump so a
+        // subsequent W-click anywhere completes the round trip. Falls back to
+        // the previous source-only setSourceRjfFlag path when no definition is
+        // findable (e.g. citation referencing a not-yet-defined membrane).
+        // User v0.9.572_0938 bug: 「136行には表示されない。ここがバグ。…双方向
+        // ジャンプができない」.
+        const sourceRangeForCitation = new vscode.Range(pos.line, 0, pos.line, currentLineText.length);
+        const resolvedKey = aliasResolvedKey || candidate;
+        const targetInfo = findOpeningMembraneByName(doc, resolvedKey, new Set([pos.line]));
+        if (targetInfo && targetInfo.idRange) {
+          await showSingleRedJumpPair(editor, sourceRangeForCitation, targetInfo.idRange, resolvedKey);
+        } else {
+          // No target membrane in this document — keep the source-only marker.
+          await setSourceRjfFlag(editor, sourceRangeForCitation);
+        }
+        // Recover the allocated n from the freshly-written marker on the source line.
+        const updatedText = doc.lineAt(pos.line).text || '';
+        const nm = updatedText.match(/\[sRJF=v(\d+)\]/);
+        citeN = nm ? parseInt(nm[1], 10) : null;
+        citationLine = pos.line;
+        // v0.9.572: when matched via alias, the H-TOC key must be the real
+        // membrane name (so jumps resolve) and the displayed note should be
+        // the alias text (the familiar label the user selected).
+        if (aliasResolvedKey) {
+          entry = { key: aliasResolvedKey, label: aliasResolvedKey, kind: 'mCN', note: '', alias: candidate };
+        } else {
+          entry = { key: candidate, label: candidate, kind: 'mCN', note: '' };
+        }
+      }
+    }
+    // Fallback to legacy nearby-line search — only accept real membrane definitions
+    // (kind='mCN'). Without this restriction the 'mT' compact match snared any
+    // non-empty body line as if it were a definition.
+    // v0.9.572: explicitly reject kind='mTC' too — previously mTC= was returned
+    // with kind='mCN' which silently mis-routed TOC anchors into H-TOC.
+    if (!entry) {
+      const from = Math.max(0, pos.line - 3);
+      const to = Math.min(doc.lineCount - 1, pos.line + 3);
+      for (let i = from; i <= to && !entry; i++) {
+        const e = extractMembraneTocEntryFromLine(doc.lineAt(i).text || "");
+        if (e && e.kind === 'mCN') entry = e;
+      }
+    }
+    if (!entry && !editor.selection.isEmpty) {
+      const e = extractMembraneTocEntryFromLine(doc.getText(editor.selection));
+      if (e && e.kind === 'mCN') entry = e;
+    }
+  }
+
+  if (!entry) {
+    vscode.window.showInformationMessage("No membrane ID found. Run Add to Hyper TOC on a membrane name, color membrane, or timestamp.");
+    return;
+  }
+
+  // Create the source mTC= anchor if missing (anchor only — items live in metadata).
+  const markerLine = findWorkingTocMarkerLine(doc);
+  if (markerLine < 0) {
+    const liveId = workingTocWrapperId();
+    await editor.edit(edit => edit.insert(new vscode.Position(0, 0), workingTocOpenLine(doc, liveId) + workingTocCloseLine(doc, liveId) + "\n"));
+  }
+
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return;
+  // Citation entries are NEVER deduplicated by key — multiple citations of the same
+  // name (different `citeN`) are exactly what the user wants to track. Definition
+  // entries (citeN === null) still guard against duplicates within the active tab.
+  if (citeN === null && at.tab.items.some(it => it.key === entry.key && (it.citeN == null || it.citeN === undefined))) {
+    vscode.window.showInformationMessage(`Hyper TOC already contains ${entry.key} in this tab.`);
+    return;
+  }
+  // v0.9.572: when entry has an alias, prefer `realName // aliasName` so the
+  // user's familiar label is what shows in H-TOC. Falls back to entry.label
+  // (which already has the source comment baked in for mCN= definitions).
+  const aliasNote = (entry && typeof entry.alias === 'string') ? entry.alias.trim() : '';
+  const baseValue = aliasNote
+    ? `${entry.key} // ${aliasNote}`
+    : String(entry.label || entry.key || '').trim();
+  // v0.9.564/566: append ` // citation` as a default annotation for citation
+  // entries, making them visually distinct from definition links at a glance.
+  // User v0.9.565_0350: 「引用のケースでは、H-TOCに追加するとき、「引用膜名 //
+  // citation」と表示するようにした方が分かり易いかもね」. v0.9.572: when alias
+  // already serves as annotation, skip ` // citation` (alias IS the label).
+  const innerWithAnnotation = (citeN !== null && !aliasNote) ? `${baseValue} // citation` : baseValue;
+  // v0.9.581: wrap the visible value in mTC narrative-layer notation.
+  // Citation entries (citeN !== null) are inherently bidirectional from the
+  // moment they're added — `showSingleRedJumpPair` armed both sides — so they
+  // get `⇄{X}`. Definition entries get `⇒{X}` (one-way). The displayed key
+  // for jump resolution remains the bare membrane name in the `key` field;
+  // tocKeyFromValue / tocKeyFromInputValue peel the wrapper at W-click.
+  // v0.9.582: dropped `Me` from the prefix per user v0.9.581_pm07:00 — single
+  // glyph `⇒` aligns vertically with `⇄` for cleaner H-TOC scanning. The
+  // `Me` part is now an implicit subject (each TOC item IS the Me); explicit
+  // chain forms like `{A}⇒{X}` (AI annotation: "from A to X") still parse.
+  // The `linkKind` flag still persists the kind in metadata so action
+  // dispatch never needs to re-parse the value text.
+  const linkKind = (citeN !== null) ? 'Bidirectional' : 'MeArrow';
+  const wrapper = (linkKind === 'Bidirectional') ? '⇄' : '⇒';
+  const value = `${wrapper}{${innerWithAnnotation}}`;
+  // v0.9.553: new entries prepend to the top of the tab — user expects the latest
+  // additions to be visible without scrolling. Was push (append) in v0.9.549〜0.9.552.
+  at.tab.items.unshift({
+    id: makeHyperTocId('item'),
+    kind: 'link',
+    linkKind,
+    key: entry.key,
+    value,
+    stateKey: makeHyperTocId('skey'),
+    checkedAt: '',
+    createdAt: new Date().toLocaleString('ja-JP'),
+    citeN: citeN,
+    citationLine: citationLine >= 0 ? citationLine : null
+  });
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  const label = citeN !== null ? `${entry.key} (cite #${citeN})` : entry.key;
+  vscode.window.showInformationMessage(`Added to ${at.tab.name || 'Hyper TOC'}: ${label}`);
+}
+// {* ▲mCN=0710_HYPER_TOC_PIPELINE // end [cGJF=h] *}
+
+
+
+
+
+// {* ▼mCN=0850_CONTROL_ME // Control Me! floating QuickPick prototype v0.9.221 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function currentMembraneNameForControlMe(editor) {
+  if (!editor) return '';
+  const doc = editor.document;
+  const posLine = editor.selection.active.line;
+
+  const info = membraneLineInfo(doc, posLine);
+  if (info && info.id) return info.id;
+
+  const pair = findCurrentPair(editor);
+  if (pair && pair.id) return pair.id;
+
+  const from = Math.max(0, posLine - 3);
+  const to = Math.min(doc.lineCount - 1, posLine + 3);
+  for (let i = from; i <= to; i++) {
+    const nearby = membraneLineInfo(doc, i);
+    if (nearby && nearby.id) return nearby.id;
+  }
+  return '';
+}
+
+async function controlMePanel() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+
+  const name = currentMembraneNameForControlMe(editor) || '';
+  const qp = vscode.window.createQuickPick();
+
+  qp.title = 'Control Me!';
+  qp.placeholder = 'name';
+  qp.value = name;
+
+  // v0.9.221: floating UI skeleton only.
+  // Name is placed in the input box.
+  // Watch Me uses the native QuickPick checkbox.
+  // Set / Cancel are title-bar buttons; no edit routine is executed yet.
+  qp.canSelectMany = true;
+  qp.matchOnDescription = false;
+  qp.matchOnDetail = false;
+  qp.ignoreFocusOut = false;
+
+  const setButton = { iconPath: new vscode.ThemeIcon('check'), tooltip: 'Set' };
+  const cancelButton = { iconPath: new vscode.ThemeIcon('close'), tooltip: 'Cancel' };
+  qp.buttons = [setButton, cancelButton];
+
+  const unwrapItem = { label: 'Unwrap Me', alwaysShow: true };
+  const watchItem = { label: '🟢 Watch Me', picked: false, alwaysShow: true };
+
+  qp.items = [unwrapItem, watchItem];
+  qp.selectedItems = [];
+
+  qp.onDidTriggerButton(() => {
+    // Skeleton only.
+    qp.hide();
+  });
+
+  qp.onDidAccept(() => {
+    // Skeleton only: no command routine is executed yet.
+    qp.hide();
+  });
+
+  qp.onDidHide(() => qp.dispose());
+  qp.show();
+}
+// {* ▲mCN=0850_CONTROL_ME // end [cGJF=h] *}
+
+let meosRawMode = false; // v0.9.723: Raw(MeOS休眠)モード — 全装飾OFF＋編集/refresh抑止でプレーンエディタ化(日本語入力対策)
+function clearForRaw(editor) {
+  if (!editor) return;
+  clear(editor); // 膜/line/jump系
+  const z = (d) => { if (d) { try { editor.setDecorations(d, []); } catch (_) {} } };
+  if (highlightBodyByColor) for (const d of highlightBodyByColor.values()) z(d);
+  if (highlightFgByColor) for (const d of highlightFgByColor.values()) z(d);
+  z(highlightMarkerDecoration);
+  z(strikeBodyDecoration); z(strikeMarkerDecoration); z(strikeFaintBgDecoration);
+  if (strikeColorByKey) for (const d of strikeColorByKey.values()) z(d);
+  if (headingSizeByLevel) for (const d of headingSizeByLevel.values()) z(d);
+  if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
+  z(headingMarkerDecoration); z(annotationColorDecoration);
+  // bookmark は残す(IMEに無害・ナビ有用)
+}
+async function toggleRawMode() {
+  meosRawMode = !meosRawMode;
+  const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (ed) refresh(ed);
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'rawState', on: meosRawMode }); } catch (_) {}
+  vscode.window.setStatusBarMessage('MeOS: Raw view ' + (meosRawMode ? 'ON (rendering off — plain editor)' : 'OFF'), 1800);
+}
+const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
+let _rawTriggerBusy = false;
+function _fireRawTrigger(ed, line, endChar, n) {
+  _rawTriggerBusy = true; deferRefreshCount++;
+  const delRange = new vscode.Range(line, endChar - n, line, endChar);
+  ed.edit(eb => eb.delete(delRange), { undoStopBefore: false, undoStopAfter: false }).then(
+    () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; toggleRawMode(); },
+    () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; }
+  );
+  return true;
+}
+function maybeHandleRawTrigger(e) {
+  if (_rawTriggerBusy || !e || !e.contentChanges || !e.contentChanges.length) return false;
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || ed.document !== e.document) return false;
+  // v0.9.727: トリガーを2系統で判定。
+  // (A) かな等(非ASCII=かかか): カーソル位置で判定。IMEのマーク(未確定)中は発火せず確定後に動く。
+  //     → v0.9.726で起きた「マークテキストを削除→次の入力で『かかか』が生き返り再トグル(かかかい)」を回避(v0.9.724の挙動に復帰)。
+  const sel = ed.selection.active;
+  const selLine = ed.document.lineAt(sel.line).text;
+  for (const t of RAW_TRIGGERS) {
+    if (t.charCodeAt(0) < 128) continue; // ASCIIは(B)で扱う
+    if (sel.character >= t.length && selLine.slice(sel.character - t.length, sel.character) === t)
+      return _fireRawTrigger(ed, sel.line, sel.character, t.length);
+  }
+  // (B) ローマ字(ASCII=kakaka): 変更の末尾位置で判定(1文字ずつの入力でも正確)。IMEのマークが無いので削除は安全。
+  for (const c of e.contentChanges) {
+    if (!c.text || c.text.indexOf(String.fromCharCode(10)) >= 0) continue; // 改行を含む変更はスキップ
+    const line = c.range.start.line;
+    const endChar = c.range.start.character + c.text.length; // 挿入後の末尾位置
+    const lineText = ed.document.lineAt(line).text;
+    for (const t of RAW_TRIGGERS) {
+      if (t.charCodeAt(0) >= 128) continue; // 非ASCIIは(A)で扱う
+      if (endChar >= t.length && lineText.slice(endChar - t.length, endChar) === t)
+        return _fireRawTrigger(ed, line, endChar, t.length);
+    }
+  }
+  return false;
+}
+function clear(editor) {
+  if (!editor) return;
+  if (lineDecoration) setDecoCached(editor, lineDecoration, 'line', []);
+  if (openLineHideDecoration) setDecoCached(editor, openLineHideDecoration, 'openHide', []);
+  if (openLineLabelDecoration) setDecoCached(editor, openLineLabelDecoration, 'openLabel', []);
+  if (closeLineHideDecoration) setDecoCached(editor, closeLineHideDecoration, 'closeHide', []);
+  if (closeLineLabelDecoration) setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', []);
+  if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, []);
+  if (jumpActiveDecoration) editor.setDecorations(jumpActiveDecoration, []);
+  if (jumpNameHoverDecoration) editor.setDecorations(jumpNameHoverDecoration, []);
+  if (redJumpDecoration) editor.setDecorations(redJumpDecoration, []);
+  if (redJumpHoverDecoration) editor.setDecorations(redJumpHoverDecoration, []);
+  if (workingTocLineDecoration) editor.setDecorations(workingTocLineDecoration, []);
+  if (workingTocItemDecoration) editor.setDecorations(workingTocItemDecoration, []);
+  clearMembraneBadgeColorDecorations(editor);
+}
+function clearMembraneVisualDecorations(editor) {
+  if (!editor) return;
+  if (lineDecoration) setDecoCached(editor, lineDecoration, 'line', []);
+  if (openLineHideDecoration) setDecoCached(editor, openLineHideDecoration, 'openHide', []);
+  if (openLineLabelDecoration) setDecoCached(editor, openLineLabelDecoration, 'openLabel', []);
+  if (closeLineHideDecoration) setDecoCached(editor, closeLineHideDecoration, 'closeHide', []);
+  if (closeLineLabelDecoration) setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', []);
+  if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, []);
+}
+
+
+const REAL_GREEN_BUTTON = '🟢';
+const REAL_RED_BUTTON = '🔴';
+const REAL_BUTTON_RE = /[🟢🔴]/gu;
+// v0.9.470: sRJF marker migrated from inline HTML span to end-of-line comment.
+//
+// Legacy form (still recognized for reading / auto-migration):
+//   <span class="sRJF=v">🔴</span>      inline, between name and trailing //
+//   <span class="sRJF=h"></span>        hidden placeholder (deleted in v0.9.456)
+//
+// New form (canonical, written by setSourceRjfFlag):
+//   // {* [sRJF=v] *}                   end-of-line, mirrors [oGJF=v]/[cGJF=v]/[tRJF=v]
+//
+// Rationale: HTML span was the odd one out among the JF flag family. Comment
+// form is universal (works in any language whose comments start with //),
+// avoids HTML-meaningful contexts (Markdown rendering would consume the span),
+// and aligns with the user's stated goal of ISO-standardizing // {* *} as a
+// universal comment-based metadata carrier.
+//
+// Visual presentation: the marker text itself is hidden via mdWrapperHideDecoration;
+// a 🔴 button is rendered at its position via sourceRjfButtonDecoration (before).
+const SOURCE_RJF_VISIBLE_SPAN = '<span class="sRJF=v">🔴</span>';
+const SOURCE_RJF_HIDDEN_SPAN = '<span class="sRJF=h"></span>';
+const SOURCE_RJF_SPAN_RE = /<span\s+class="sRJF=(?:v|h)">(?:🔴)?<\/span>/gu;
+// v0.9.483: visible marker carries a literal 🔴 button at its tail. The
+// 🔴 char is the actual hover/click target (▼/▲ approach — the button is
+// a real character in source, not a decoration before-content). Tooltips
+// and cursor:pointer attach to its 2-char surrogate-pair range cleanly
+// via standard text decoration.
+// v0.9.579: 🔴 moved INSIDE the wrapper — `// {* [sRJF=v]🔴 *}` —
+// unifying with `[oGJF=v]🟢` / `[tRJF=v]🔴` (flag-bracket directly
+// followed by emoji). The wrapper `// {* … *}` is now a fully self-
+// contained closure, making hide-decoration ranges simpler and matching
+// the user's mental model. Legacy form `// {* [sRJF=v] *}🔴` (emoji
+// AFTER the wrapper) remains readable for backward compatibility; only
+// new writes emit the canonical position.
+const SOURCE_RJF_VISIBLE_MARKER = '// {* [sRJF=v]🔴 *}';
+// v0.9.552 Phase D-1: numbered sRJF markers `[sRJF=h<n>]` for citation tracking.
+// Number suffix is optional — legacy unnumbered form remains valid for the
+// transient Me Dock bidirectional jump pair (single active pair, no number).
+// v0.9.580: 🔴 always sits INSIDE the wrapper for v-state; h-state has no 🔴.
+// Backward-compat for v0.9.579's dual-form regex dropped (user 2026-05-23 pm04:19:
+// 「[sRJF=v<n>]は切り替えるとファイル内で唯一なので、旧形式の処理は残す必要はない」).
+// The v0.9.555 unified scheme guarantees exactly one [sRJF=v<n>] in the file at any
+// time — old-form v from earlier versions is overwritten on the next activation,
+// so a single transient (?:🔴)? after the bracket is the only optionality we need.
+const SOURCE_RJF_MARKER_RE = /\/\/\s*\{\*\s*\[sRJF=(?:v|h)\d*\](?:🔴)?\s*\*\}/gu;
+// Combined matcher used by all readers; tags each hit with type='span'|'marker'.
+const SOURCE_RJF_ANY_RE = new RegExp(
+  '(?:' + SOURCE_RJF_SPAN_RE.source + ')|(?:' + SOURCE_RJF_MARKER_RE.source + ')',
+  'gu'
+);
+
+function firstCommentDelimiterAfter(text, from) {
+  const raw = String(text || '');
+  const slash = raw.indexOf('//', Math.max(0, from || 0));
+  const endMark = raw.indexOf('*}', Math.max(0, from || 0));
+  if (slash < 0) return endMark;
+  if (endMark < 0) return slash;
+  return Math.min(slash, endMark);
+}
+
+function realButtonZoneForRange(document, range) {
+  if (!document || !range || range.end.line < 0 || range.end.line >= document.lineCount) return null;
+  const line = range.end.line;
+  const text = document.lineAt(line).text || '';
+  const start = Math.max(0, range.end.character);
+  const limit0 = firstCommentDelimiterAfter(text, start);
+  const limit = limit0 >= 0 ? limit0 : text.length;
+  const slice = text.slice(start, limit);
+  const m = slice.match(/^\s*(?:(?:🟢|🔴)\s*)*/u);
+  const zoneEnd = start + (m ? m[0].length : 0);
+  const zoneText = text.slice(start, zoneEnd);
+  return { line, text, start, end: zoneEnd, limit, zoneText };
+}
+
+function realButtonsInZone(zone) {
+  const found = new Set();
+  if (!zone) return found;
+  for (const m of String(zone.zoneText || '').matchAll(REAL_BUTTON_RE)) found.add(m[0]);
+  return found;
+}
+
+function formatRealButtonZone(buttons) {
+  const out = [];
+  if (buttons.has(REAL_GREEN_BUTTON)) out.push(REAL_GREEN_BUTTON);
+  if (buttons.has(REAL_RED_BUTTON)) out.push(REAL_RED_BUTTON);
+  return out.length ? ' ' + out.join(' ') : '';
+}
+
+function realButtonRangeAfterTextRange(document, range, emoji) {
+  const zone = realButtonZoneForRange(document, range);
+  if (!zone) return null;
+  const idx = zone.text.indexOf(emoji, zone.start);
+  if (idx < 0 || idx >= zone.end) return null;
+  return new vscode.Range(zone.line, idx, zone.line, idx + emoji.length);
+}
+
+function setRealButtonsForRange(editor, range, nextButtons) {
+  if (!editor || !range || !nextButtons) return;
+  const zone = realButtonZoneForRange(editor.document, range);
+  if (!zone) return;
+  const nextText = formatRealButtonZone(nextButtons);
+  if (zone.text.slice(zone.start, zone.end) === nextText) return;
+  const replaceRange = new vscode.Range(zone.line, zone.start, zone.line, zone.end);
+  editor.edit(edit => {
+    edit.replace(replaceRange, nextText);
+  }, { undoStopBefore: false, undoStopAfter: false }).then(() => {
+    setTimeout(() => {
+      renderActiveGreenMarkers(editor);
+      renderRedJumpMarkers(editor);
+    }, 20);
+  });
+}
+
+function ensureRealButtonAfterRange(editor, range, emoji) {
+  if (!editor || !range || !emoji) return;
+  const zone = realButtonZoneForRange(editor.document, range);
+  if (!zone) return;
+  const buttons = realButtonsInZone(zone);
+  if (buttons.has(emoji)) return;
+  buttons.add(emoji);
+  setRealButtonsForRange(editor, range, buttons);
+}
+
+function ensureRealGreenButtons(editor, ranges) {
+  for (const range of ranges || []) ensureRealButtonAfterRange(editor, range, REAL_GREEN_BUTTON);
+}
+
+function ensureRealRedButtons(editor, ranges) {
+  for (const range of ranges || []) ensureRealButtonAfterRange(editor, range, REAL_RED_BUTTON);
+}
+
+function clearRedJumpMarkers(editor = vscode.window.activeTextEditor) {
+  if (!editor) return;
+  if (redJumpDecoration) editor.setDecorations(redJumpDecoration, []);
+  if (redJumpHoverDecoration) editor.setDecorations(redJumpHoverDecoration, []);
+  if (workingTocLineDecoration) editor.setDecorations(workingTocLineDecoration, []);
+  if (workingTocItemDecoration) editor.setDecorations(workingTocItemDecoration, []);
+  clearMembraneBadgeColorDecorations(editor);
+  activeRedJump = null;
+  postMeDockBidiState(editor);
+  // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🔴 dims.
+  postFixedWorkingTocSnapshot();
+}
+
+// v0.9.631 (2026.05.29 pm07:24): [Clear] — wipe ALL 🟢/🔴 jump flags from the
+// document and reset active jump state + decorations. Debug / reset aid requested
+// by user (Me Dock button). Removes green pair flags ([oGJF/cGJF/GJF=*]🟢),
+// target red flags ([tRJF=*]🔴), and source red markers (// {* [sRJF=*] *}).
+// Applied as ONE undo unit so Cmd+Z restores everything.
+async function clearAllJumpFlags(editor = getMeDockTargetEditor() || vscode.window.activeTextEditor) {
+  if (!editor || !editor.document) return;
+  const document = editor.document;
+  const edits = [];
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    const spans = []; // [startChar, endChar]
+    for (const m of gJfFlagMatchesInLine(text)) spans.push([m.index, m.index + m.text.length]);
+    for (const m of tRjfFlagMatchesInLine(text)) spans.push([m.index, m.index + m.text.length]);
+    for (const m of sourceRjfSpanMatchesInLine(text)) spans.push([m.index, m.index + m.text.length]);
+    if (!spans.length) continue;
+    // Eat one leading space per flag when present. The three flag patterns are
+    // mutually disjoint, so adjusted spans abut at most (never overlap) → safe in
+    // a single editor.edit batch.
+    for (const s of spans) { if (s[0] > 0 && text[s[0] - 1] === ' ') s[0] -= 1; }
+    for (const s of spans) edits.push({ range: new vscode.Range(line, s[0], line, s[1]), text: '' });
+  }
+  if (edits.length) {
+    edits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    await editor.edit(edit => { for (const e of edits) edit.replace(e.range, e.text); }, { undoStopBefore: true, undoStopAfter: true });
+  }
+  // Reset all active jump state + decorations.
+  activeGreenJump = null;
+  activeRedJump = null;
+  mSkeletonMode = false;
+  clearRedJumpMarkers(editor);
+  if (jumpActiveDecoration) editor.setDecorations(jumpActiveDecoration, []);
+  if (jumpNameHoverDecoration) editor.setDecorations(jumpNameHoverDecoration, []);
+  refreshSourceRjfSpanHiding(editor);
+  refresh(editor);
+  postMeDockAnchorState(editor);
+  postFixedWorkingTocSnapshot();
+  vscode.window.showInformationMessage(`MeOS: 🟢/🔴 ジャンプフラグを全消去しました（${edits.length}個）。Cmd+Z で復元可。`);
+}
+
+// v0.9.410: A file may have only one real 🔴 pair.
+// Before arming a new Bi-direction Jump pair, remove stale real 🔴 buttons
+// from the source text, then write exactly the current reference/opening pair.
+function sourceRjfSpanMatchesInLine(text) {
+  // v0.9.470: detects BOTH legacy HTML span and new // {* [sRJF=v] *} marker.
+  // Each match is tagged with type so callers can branch on representation.
+  // Keeping the function name "Span" for backward compatibility with the many
+  // call sites; semantically it now means "any sRJF marker".
+  const matches = [];
+  const re = new RegExp(SOURCE_RJF_ANY_RE.source, 'gu');
+  let m;
+  while ((m = re.exec(text || '')) !== null) {
+    const isMarker = m[0].startsWith('//');
+    matches.push({
+      index: m.index,
+      text: m[0],
+      state: m[0].includes('sRJF=v') ? 'v' : 'h',
+      type: isMarker ? 'marker' : 'span'
+    });
+  }
+  return matches;
+}
+
+function sourceRjfSpanRangeAfterTextRange(document, range) {
+  if (!document || !range || range.end.line < 0 || range.end.line >= document.lineCount) return null;
+  const line = range.end.line;
+  const text = document.lineAt(line).text || '';
+  const start = Math.max(0, range.end.character);
+  const slice = text.slice(start, Math.min(text.length, start + SOURCE_RJF_VISIBLE_SPAN.length + 16));
+  const m = slice.match(/^\s*(<span\s+class="sRJF=(?:v|h)">(?:🔴)?<\/span>)/u);
+  if (!m) return null;
+  const lead = m[0].indexOf('<span');
+  const spanStart = start + lead;
+  return new vscode.Range(line, spanStart, line, spanStart + m[1].length);
+}
+
+function sourceRjfVisibleButtonRangeAfterTextRange(document, range) {
+  // v0.9.470/483: return the clickable range of the 🔴 source button.
+  // The marker now ends with a literal 🔴 char (v0.9.483); the range
+  // includes that 🔴 so clicks on the visible glyph land inside this range.
+  if (!document || !range || range.end.line < 0 || range.end.line >= document.lineCount) return null;
+  const line = range.end.line;
+  const text = document.lineAt(line).text || '';
+  // v0.9.580: 🔴 always inside the wrapper.
+  const markerRe = /\/\/\s*\{\*\s*\[sRJF=v\d*\]🔴?\s*\*\}/u;
+  const mm = markerRe.exec(text);
+  if (mm) {
+    return new vscode.Range(line, mm.index, line, mm.index + mm[0].length);
+  }
+  // Legacy <span> fallback.
+  const spanRange = sourceRjfSpanRangeAfterTextRange(document, range);
+  if (!spanRange) return null;
+  const raw = text.slice(spanRange.start.character, spanRange.end.character);
+  if (!raw.includes('sRJF=v')) return null;
+  const local = raw.indexOf(REAL_RED_BUTTON);
+  if (local < 0) return null;
+  const start = spanRange.start.character + local;
+  return new vscode.Range(spanRange.start.line, start, spanRange.start.line, start + REAL_RED_BUTTON.length);
+}
+
+// v0.9.570: tail-fallback helper — when no token-level source range can be derived
+// (citation lines have no `⇄ name` BiperLink and no formal membrane line info), use
+// the whole line as the source range. positionHitsRedRange / redJumpButtonAnchor
+// Range only inspect `range.end.line` to locate the visible 🔴, so any range on
+// the right line suffices for click-detection. User v0.9.569_0513 bug 1: after
+// extension reload, citation 🔴 buttons don't respond because activeRedJump fails
+// to restore via the missing source-line fallback.
+function _visibleSourceRjfTextRange_lineFallback(text, line) {
+  return new vscode.Range(line, 0, line, Math.max(0, text.length));
+}
+function visibleSourceRjfTextRange(document) {
+  // v0.9.470: handles both legacy HTML span and new // {* [sRJF=v] *} marker.
+  // For the legacy span the "source name" is whatever non-whitespace token
+  // sits immediately before the span. For the new marker (placed at end of
+  // line), the source name is derived from the BiperLink ⇄ NAME pattern
+  // earlier in the line, or from the membrane id if the marker happens to
+  // sit on a formal membrane line.
+  if (!document) return null;
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    const matches = sourceRjfSpanMatchesInLine(text);
+    const active = matches.find(m => m.state === 'v');
+    if (!active) continue;
+
+    if (active.type === 'span') {
+      // Legacy behaviour preserved: last token immediately before the span.
+      const before = text.slice(0, active.index).replace(/\s+$/u, '');
+      if (!before) continue;
+      const token = /\S+$/u.exec(before);
+      if (!token) continue;
+      let start = token.index;
+      let end = before.length;
+      if (text.slice(start, start + 2) === '//') start += 2;
+      if (start >= end) continue;
+      return new vscode.Range(line, start, line, end);
+    }
+
+    // New marker form. Try BiperLink pattern first: "// ⇄ NAME ...".
+    const bm = /⇄\s+([^\s/][^\s]*)/u.exec(text);
+    if (bm) {
+      const nameStart = bm.index + bm[0].indexOf(bm[1]);
+      const nameEnd = nameStart + bm[1].length;
+      return new vscode.Range(line, nameStart, line, nameEnd);
+    }
+    // Fallback: if the line is a formal membrane, use its id range.
+    const info = membraneLineInfo(document, line);
+    if (info && info.idRange) return info.idRange;
+    // v0.9.570: final fallback — citation lines (`//name_xxx ... [sRJF=v<n>]🔴`)
+    // are neither BiperLink items nor formal membranes. Use the line range so
+    // activeRedJump can still be reconstructed for click handling.
+    return _visibleSourceRjfTextRange_lineFallback(text, line);
+  }
+  return null;
+}
+
+function visibleTargetRjfTextRange(document) {
+  if (!document) return null;
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
+    if (!/\[tRJF=v\]/u.test(text)) continue;
+    const info = membraneLineInfo(document, line);
+    if (info && info.kind === 'open') return info.idRange;
+  }
+  return null;
+}
+
+function restoreActiveRedJumpFromJumpFlags(editor = vscode.window.activeTextEditor) {
+  if (!editor || !editor.document) return false;
+  if (activeRedJump && activeRedJump.uri === editor.document.uri.toString() && activeRedJump.sourceRange && activeRedJump.targetRange) return true;
+  const sourceRange = visibleSourceRjfTextRange(editor.document);
+  const targetRange = visibleTargetRjfTextRange(editor.document);
+  if (!sourceRange || !targetRange) return false;
+  activeRedJump = {
+    uri: editor.document.uri.toString(),
+    sourceRange,
+    targetRange,
+    name: editor.document.getText(sourceRange).trim(),
+    hideSource: false,
+    hideTarget: false
+  };
+  // The target real 🔴 may already exist.  If not, recreate only the UI button;
+  // sRJF/tRJF flags remain the source of truth.
+  renderRedJumpMarkers(editor);
+  // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🔴
+  // reflects the restored state on file open / activation.
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+function sourceRjfHideRanges(editor) {
+  // v0.9.470/483: hide the marker prefix `// {* [sRJF=…] *}` while keeping
+  // the trailing literal 🔴 visible. With v0.9.483 the marker carries a 🔴
+  // literal — the actual button — so hiding it would erase the visible
+  // glyph the user clicks.
+  //
+  // Legacy <span> form: visible (=v) keeps inner 🔴 visible, hides only the
+  // surrounding HTML tags. Hidden (=h) hides the whole tag.
+  const ranges = [];
+  if (!editor || !editor.document) return ranges;
+  const doc = editor.document;
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
+    for (const m of sourceRjfSpanMatchesInLine(text)) {
+      // v0.9.693 (Phase 2b): 🔴 統合廃止により、sRJF マーカーは🔴込みで"全体"を隠す
+      // (従来は実体🔴をボタンとして残していた)。本文🔴は Current Me に統合され不要。
+      const fullStart = m.index;
+      const fullEnd = m.index + m.text.length;
+      if (fullEnd > fullStart) ranges.push(new vscode.Range(line, fullStart, line, fullEnd));
+    }
+  }
+  return ranges;
+}
+
+function realRedButtonRangesInDocument(document) {
+  // v0.9.499: ALSO exclude 🔴 that immediately follows `[tRJF=v]` —
+  // that's the canonical target-button literal written by setTargetRjf
+  // Flag (v0.9.483+), not a stray legacy literal. Without this
+  // exclusion removeAllRealRedButtons (called after every red-pair
+  // activation in showSingleRedJumpPair) was wiping out the
+  // freshly-written `[tRJF=v]🔴` 🔴 every time, leaving source as
+  // `[tRJF=v]` and forcing the decoration to fall back to before-
+  // content rendering. The fallback worked visually but coexisted
+  // confusingly with legacy stray 🔴 that might still sit between
+  // 🟢 and [tRJF=v] from pre-v0.9.471 source, producing the
+  // user-reported `[oGJF=v]🟢 🔴 [tRJF=v] *}` raw form.
+  const ranges = [];
+  if (!document) return ranges;
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
+    const spanRanges = sourceRjfSpanMatchesInLine(text).map(m => [m.index, m.index + m.text.length]);
+    // Find `[tRJF=v]🔴` literal pairs so we can exempt the trailing 🔴.
+    const tRjfButtonRanges = [];
+    const tRjfRe = /\[tRJF=v\]🔴/gu;
+    let tm;
+    while ((tm = tRjfRe.exec(text)) !== null) {
+      // The literal 🔴 starts at tm.index + 8 (after `[tRJF=v]`).
+      tRjfButtonRanges.push([tm.index + 8, tm.index + 8 + REAL_RED_BUTTON.length]);
+    }
+    let idx = text.indexOf(REAL_RED_BUTTON);
+    while (idx >= 0) {
+      const inSourceSpan = spanRanges.some(([a, b]) => idx >= a && idx < b);
+      const isTRjfButton = tRjfButtonRanges.some(([a, b]) => idx >= a && idx < b);
+      if (!inSourceSpan && !isTRjfButton) {
+        ranges.push(new vscode.Range(line, idx, line, idx + REAL_RED_BUTTON.length));
+      }
+      idx = text.indexOf(REAL_RED_BUTTON, idx + REAL_RED_BUTTON.length);
+    }
+  }
+  return ranges;
+}
+
+async function removeAllRealRedButtons(editor) {
+  if (!editor || !editor.document) return false;
+  const ranges = realRedButtonRangesInDocument(editor.document);
+  if (!ranges.length) return false;
+  // Delete bottom-to-top / right-to-left so earlier ranges do not move.
+  ranges.sort((a, b) => (b.start.line - a.start.line) || (b.start.character - a.start.character));
+  await editor.edit(edit => {
+    for (const range of ranges) edit.delete(range);
+  }, { undoStopBefore: false, undoStopAfter: false });
+  return true;
+}
+
+function tRjfFlagMatchesInLine(text) {
+  // v0.9.483: include optional trailing 🔴 button literal in the match so
+  // setTargetRjfFlag's replace handles `[tRJF=v]🔴` → `[tRJF=h]` cleanly
+  // (drops the emoji). Legacy `[tRJF=v]` without 🔴 still matches because
+  // the suffix is optional.
+  const matches = [];
+  const re = /\[tRJF=(?:v|h)?\]🔴?/gu;
+  let m;
+  while ((m = re.exec(text || '')) !== null) matches.push({ index: m.index, text: m[0] });
+  return matches;
+}
+
+function tRjfFlagRangeInLine(document, line) {
+  if (!document || line < 0 || line >= document.lineCount) return null;
+  const text = document.lineAt(line).text || '';
+  const match = /\[tRJF=(?:v|h)?\]/u.exec(text);
+  if (!match) return null;
+  return new vscode.Range(line, match.index, line, match.index + match[0].length);
+}
+
+function jumpFlagRangesInText(line, text) {
+  const ranges = [];
+  // v0.9.693 (Phase 2b): include an optional trailing 🔴 so the body/membrane red button
+  // (`[tRJF=v]🔴`, bare `[sRJF=v]🔴`) is hidden ENTIRELY — 🔴 is abolished (Current Me 統合)。
+  // 🟢 は付かない(オプショナルな🔴のみ)ので開始膜🟢の装飾には無影響。
+  const re = /\[(?:GJF|oGJF|cGJF|sRJF|tRJF)=(?:v|h)?\]🔴?/gu;
+  let m;
+  while ((m = re.exec(text || '')) !== null) {
+    ranges.push(new vscode.Range(line, m.index, line, m.index + m[0].length));
+  }
+  return ranges;
+}
+
+async function ensureRealButtonAfterRangeImmediate(editor, range, emoji) {
+  if (!editor || !range || !emoji) return false;
+  const zone = realButtonZoneForRange(editor.document, range);
+  if (!zone) return false;
+  const buttons = realButtonsInZone(zone);
+  if (buttons.has(emoji)) return false;
+  buttons.add(emoji);
+  const nextText = formatRealButtonZone(buttons);
+  if (zone.text.slice(zone.start, zone.end) === nextText) return false;
+  const replaceRange = new vscode.Range(zone.line, zone.start, zone.line, zone.end);
+  await editor.edit(edit => {
+    edit.replace(replaceRange, nextText);
+  }, { undoStopBefore: false, undoStopAfter: false });
+  return true;
+}
+
+async function ensureRealRedButtonsImmediate(editor, ranges) {
+  let changed = false;
+  for (const range of ranges || []) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await ensureRealButtonAfterRangeImmediate(editor, range, REAL_RED_BUTTON)) changed = true;
+  }
+  return changed;
+}
+
+function membraneCommentCloseIndexForRjf(text) {
+  // The flag must live inside the membrane comment block:
+  //   // {* ▼mCN=... [tRJF=v] *}
+  // not after it:
+  //   // {* ▼mCN=... *} [tRJF=v]
+  // Use the last '*}' on the line so inline comments before it do not confuse us.
+  if (!text) return -1;
+  return text.lastIndexOf('*}');
+}
+
+function tRjfInsertionCharacter(text) {
+  // v0.9.629 (2026.05.29 am05:12): Insert visible jump flags BEFORE the
+  // (📊…📊) mSTAT badge instead of trailing after it. The badge is the
+  // widest right-most chunk of a membrane header; on narrow viewports it
+  // pushes 🟢/🔴 onto a second visible row, separating the buttons from
+  // the membrane name they belong to. Putting the flags ahead of the badge
+  // keeps the click target adjacent to `name + comment`, which is the
+  // first thing the eye lands on. Falls back to the legacy `before *}` slot
+  // when no badge is present (newly created membranes before any badge tag).
+  //
+  // User 2026.05.29 am05:12: 「現状は (📊...) [oGJF=v]🟢 *} のようになって
+  // いて、実際には、ボタンが2行目に表示されることがある。表示領域の幅に
+  // よって。そこで [oGJF=v]🟢 (📊...) *} のような位置に挿入しよう」.
+  const badge = parseMstatBadgeFromText(text);
+  if (badge && badge.start >= 0) {
+    return badge.start > 0 && text[badge.start - 1] === ' ' ? badge.start - 1 : badge.start;
+  }
+  const close = membraneCommentCloseIndexForRjf(text);
+  if (close >= 0) {
+    // Keep one separating space before *}; avoid double spaces when the line already has one.
+    return close > 0 && text[close - 1] === ' ' ? close - 1 : close;
+  }
+  return text.length;
+}
+
+
+function gJfFlagMatchesInLine(text) {
+  // v0.9.483: include optional trailing 🟢 button literal in the match.
+  const matches = [];
+  const re = /\[(?:oGJF|cGJF|GJF)=(?:v|h)?\]🟢?/gu;
+  let m;
+  while ((m = re.exec(text || '')) !== null) matches.push({ index: m.index, text: m[0] });
+  return matches;
+}
+
+function gJfFlagRangeInLine(document, line, role = null) {
+  if (!document || line < 0 || line >= document.lineCount) return null;
+  const text = document.lineAt(line).text || '';
+  const re = role === 'open' ? /\[(?:oGJF|GJF)=(?:v|h)?\]/u : role === 'close' ? /\[cGJF=(?:v|h)?\]/u : /\[(?:oGJF|cGJF|GJF)=(?:v|h)?\]/u;
+  const match = re.exec(text);
+  if (!match) return null;
+  return new vscode.Range(line, match.index, line, match.index + match[0].length);
+}
+
+function gJfInsertionCharacter(text) {
+  return tRjfInsertionCharacter(text);
+}
+
+function greenRolesFromRanges(editor, ranges) {
+  const out = { open: null, close: null };
+  if (!editor || !Array.isArray(ranges)) return out;
+  for (const r of ranges) {
+    const info = membraneLineInfo(editor.document, r.start.line);
+    if (info && info.kind === 'open') out.open = r;
+    else if (info && info.kind === 'close') out.close = r;
+  }
+  if (!out.open && ranges[0]) out.open = ranges.slice().sort((a,b)=>a.start.line-b.start.line)[0];
+  if (!out.close && ranges[1]) out.close = ranges.slice().sort((a,b)=>b.start.line-a.start.line)[0];
+  if (!out.close) out.close = out.open;
+  return out;
+}
+
+// v0.9.496: ensure 2-space visible separation between visible 🟢 and the
+// following `[tRJF=v]` flag (= visible 🔴 anchor). User's reported NG in
+// v0.9.495_0038: existing files weren't getting upgraded because the
+// migration only ran in setTargetRjfFlag's keptInside branch, which is
+// skipped when the flag body already matches `desired`. Additionally
+// the v0.9.492 insert-path's prevIsGreenEmoji check (text.slice(insertAt
+// -2, insertAt) === '🟢') misses when there is already a 1-space gap
+// between 🟢 and insertAt (the slice returns ` [` or similar). Also the
+// reverse direction — 🔴 first, then 🟢 added via setGreenJumpFlags —
+// never had any spacing migration at all.
+//
+// This helper scans the document for `🟢[tRJF=v]` (0 spaces) and `🟢
+// [tRJF=v]` (1 space) and pushes edits to upgrade to the canonical
+// `🟢  [tRJF=v]` (2 spaces) form. Called by BOTH setGreenJumpFlags and
+// setTargetRjfFlag after their own edits are queued, so every
+// activation in either direction triggers the upgrade.
+function ensureGreenRedSpacing(document, edits) {
+  // v0.9.497: full normalisation of the [oGJF=v]🟢…[tRJF=v]🔴 group.
+  // v0.9.496_0054 user discovery (via raw-mode screenshot): the actual
+  // source can be `[oGJF=v]🟢 🔴 [tRJF=v] *}` — i.e. the 🔴 literal
+  // sitting BETWEEN the green flag and the tRJF flag (legacy from a
+  // pre-v0.9.483 era when the red button was a separate literal). The
+  // v0.9.496 helper only checked the `🟢…[tRJF=v]` interior for 0 or
+  // 1 plain space and missed this hybrid state. New approach: find the
+  // first `[oGJF=v]🟢` and the first `[tRJF=v]` on the line, and force
+  // the structure between/around them to be exactly:
+  //     [oGJF=v]🟢  [tRJF=v]🔴
+  // by (a) replacing the `between` substring (greenEnd → tRjfStart)
+  // with `  ` — deleting any stray 🔴 or other glyphs that landed
+  // there from legacy writers, and (b) inserting `🔴` immediately
+  // after [tRJF=v] when the next 2 chars aren't already `🔴`. Both
+  // edits are independent (non-overlapping ranges), so VSCode applies
+  // them together cleanly. Limit to the FIRST pair per line — multiple
+  // [oGJF=v] / [tRJF=v] on one line is not a supported topology.
+  if (!document) return;
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
+    const greenMatch = /\[oGJF=v\]🟢/u.exec(text);
+    if (!greenMatch) continue;
+    const greenEnd = greenMatch.index + greenMatch[0].length;
+    const tRjfMatch = /\[tRJF=v\]/u.exec(text);
+    if (!tRjfMatch || tRjfMatch.index < greenEnd) continue;
+    const tRjfStart = tRjfMatch.index;
+    const tRjfEnd = tRjfStart + tRjfMatch[0].length;
+    // (a) Normalise the in-between region to exactly 2 spaces.
+    const between = text.slice(greenEnd, tRjfStart);
+    if (between !== '  ') {
+      edits.push({
+        range: new vscode.Range(line, greenEnd, line, tRjfStart),
+        text: '  ',
+      });
+    }
+    // (b) Ensure 🔴 immediately follows [tRJF=v].
+    const afterTRjf = text.slice(tRjfEnd, tRjfEnd + 2);
+    if (afterTRjf !== '🔴') {
+      edits.push({
+        range: new vscode.Range(line, tRjfEnd, line, tRjfEnd),
+        text: '🔴',
+      });
+    }
+  }
+}
+
+async function setGreenJumpFlags(editor, ranges) {
+  if (!editor || !editor.document) return false;
+  const roles = greenRolesFromRanges(editor, ranges || []);
+  const openLine = roles.open ? roles.open.start.line : -1;
+  const closeLine = roles.close ? roles.close.start.line : -1;
+  const document = editor.document;
+  const edits = [];
+  const hasOpen = openLine >= 0 && !!gJfFlagRangeInLine(document, openLine, 'open');
+  const hasClose = closeLine >= 0 && !!gJfFlagRangeInLine(document, closeLine, 'close');
+  // v0.9.629: track when an existing visible flag was deleted because it sat
+  // at the OLD trailing-after-badge slot. These overrides force addFlag below
+  // to re-insert at the new pre-badge slot so existing files self-migrate
+  // on the next activation rather than waiting for an off/on toggle cycle.
+  let openLineRelocate = false;
+  let closeLineRelocate = false;
+
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    // v0.9.662: 安価な事前フィルタ。GJFフラグを含む行は通常ごく少数(前回の可視ペア程度)
+    // なので、'GJF' を含まない大多数の行で正規表現 gJfFlagMatchesInLine を回さずスキップ。
+    // 7021行クラスで膜選択時の全行スキャンが体感固まりの主因だった(俊克 2026.05.31 pm09:43)。
+    if (text.indexOf('GJF') < 0) continue;
+    const matches = gJfFlagMatchesInLine(text);
+    if (!matches.length) continue;
+    const close = membraneCommentCloseIndexForRjf(text);
+    // v0.9.629: pre-compute the canonical insertion column for this line so
+    // existing flags can be tested against it.
+    const correctInsertAt = gJfInsertionCharacter(text);
+    let keptInside = false;
+    for (const m of matches) {
+      const range = new vscode.Range(line, m.index, line, m.index + m.text.length);
+      const isInsideMembraneComment = close >= 0 && m.index < close;
+      // v0.9.483: visible green flags carry a literal 🟢 button suffix;
+      // hidden flags drop it. The 🟢 char is the real hover/click target.
+      let desired = '[GJF=h]';
+      if (line === openLine) desired = '[oGJF=v]🟢';
+      else if (line === closeLine) desired = '[cGJF=v]🟢';
+      else if (/^\[oGJF=/u.test(m.text)) desired = '[oGJF=h]';
+      else if (/^\[cGJF=/u.test(m.text)) desired = '[cGJF=h]';
+      else desired = '[GJF=h]';
+      if (!keptInside && isInsideMembraneComment) {
+        // v0.9.629: position check. A flag is "at the canonical slot" when it
+        // sits exactly at correctInsertAt, or at correctInsertAt+1 (when the
+        // canonical slot has a single leading space the insertion logic
+        // collapses into). For visible lines (openLine / closeLine), a flag
+        // outside that window gets deleted here so addFlag below re-inserts
+        // at the new pre-badge position. Hidden flags on other lines are not
+        // user-visible, so leaving them in place avoids needless churn.
+        const isAtCorrectPosition = (m.index === correctInsertAt) || (m.index === correctInsertAt + 1);
+        const isVisibleLine = (line === openLine || line === closeLine);
+        if (isVisibleLine && !isAtCorrectPosition) {
+          const start = Math.max(0, m.index - 1);
+          const hasLeadingSpace = text[start] === ' ';
+          const deleteRange = hasLeadingSpace
+            ? new vscode.Range(line, start, line, m.index + m.text.length)
+            : range;
+          edits.push({ range: deleteRange, text: '' });
+          if (line === openLine) openLineRelocate = true;
+          if (line === closeLine) closeLineRelocate = true;
+          continue; // leave keptInside=false so addFlag fires for this line
+        }
+        keptInside = true;
+        if (m.text !== desired) edits.push({ range, text: desired });
+      } else {
+        const start = Math.max(0, m.index - 1);
+        const hasLeadingSpace = text[start] === ' ';
+        const deleteRange = hasLeadingSpace
+          ? new vscode.Range(line, start, line, m.index + m.text.length)
+          : range;
+        edits.push({ range: deleteRange, text: '' });
+      }
+    }
+  }
+
+  const addFlag = (line, desired) => {
+    if (line < 0 || line >= document.lineCount) return;
+    const text = document.lineAt(line).text || '';
+    const insertAt = gJfInsertionCharacter(text);
+    const needsLeadingSpace = insertAt > 0 && text[insertAt - 1] !== ' ';
+    const needsTrailingSpace = text[insertAt] !== ' ';
+    const inserted = `${needsLeadingSpace ? ' ' : ''}${desired}${needsTrailingSpace ? ' ' : ''}`;
+    edits.push({ range: new vscode.Range(line, insertAt, line, insertAt), text: inserted });
+  };
+  // v0.9.629: hasOpen / hasClose were computed against the ORIGINAL document
+  // before the relocate-deletion was queued. Override them when a relocate
+  // delete was scheduled so addFlag fires to re-insert at the new slot.
+  const effectiveHasOpen = hasOpen && !openLineRelocate;
+  const effectiveHasClose = hasClose && !closeLineRelocate;
+  if (openLine >= 0 && !effectiveHasOpen) addFlag(openLine, '[oGJF=v]🟢');
+  if (closeLine >= 0 && closeLine !== openLine && !effectiveHasClose) addFlag(closeLine, '[cGJF=v]🟢');
+
+  // v0.9.498: ensureGreenRedSpacing CANNOT run here on the original
+  // text — for the case where the line had only `[oGJF=v]🟢` and the
+  // tRJF flag is being inserted by setTargetRjfFlag separately (case
+  // A: 🔴 first then 🟢) the normaliser needs to see BOTH flags. For
+  // the case where the line had `[tRJF=v]🔴` and we're inserting
+  // [oGJF=v]🟢 here (case B: 🟢 first then 🔴, but encountered the
+  // other way — pre-existing red, then green added), the inserted
+  // text isn't visible to the normaliser yet on the original. Run
+  // the normaliser as a SECOND edit pass below after the main pass
+  // is applied and the document reflects the new flags.
+
+  if (edits.length) {
+    edits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    await editor.edit(edit => {
+      for (const e of edits) edit.replace(e.range, e.text);
+    }, { undoStopBefore: false, undoStopAfter: false });
+  }
+
+  // v0.9.498: SECOND pass — normalise spacing on the freshly updated
+  // document so we see both flags whether they were pre-existing or
+  // just inserted by the main pass above.
+  const normEdits = [];
+  ensureGreenRedSpacing(editor.document, normEdits);
+  if (normEdits.length) {
+    normEdits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    await editor.edit(edit => {
+      for (const e of normEdits) edit.replace(e.range, e.text);
+    }, { undoStopBefore: false, undoStopAfter: false });
+  }
+  return (edits.length + normEdits.length) > 0;
+}
+
+function visibleGreenJumpRangesFromFlags(document) {
+  const ranges = [];
+  if (!document) return ranges;
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
+    if (!/\[(?:oGJF|cGJF|GJF)=v\]/u.test(text)) continue;
+    const info = membraneLineInfo(document, line);
+    if (info) ranges.push(info.idRange);
+  }
+  return ranges;
+}
+
+function restoreActiveGreenJumpFromJumpFlags(editor = vscode.window.activeTextEditor) {
+  if (!editor || !editor.document) return false;
+  if (activeGreenJump && activeGreenJump.uri === editor.document.uri.toString() && Array.isArray(activeGreenJump.ranges) && activeGreenJump.ranges.length) return true;
+  const ranges = visibleGreenJumpRangesFromFlags(editor.document);
+  if (!ranges.length) return false;
+  activeGreenJump = { uri: editor.document.uri.toString(), ranges };
+  renderActiveGreenMarkers(editor);
+  // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🟢
+  // reflects the restored state on file open / activation.
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+
+
+// v0.9.630 (2026.05.29 pm00:13): maximum number of simultaneous sRJF citation/jump
+// pairs the file may hold. Beyond this, the OLDEST (smallest-n) marker is physically
+// deleted instead of demoted-and-kept, so dormant `h` flags can never grow without
+// bound. User: 「従来のはhとして残しておけば、いつか選択し直したときにvにできる
+// というだけ。だから、hゴミが増殖しないためにも、最大3ペア方式にすればいい」.
+const MAX_RED_PAIRS = 3;
+
+async function setSourceRjfFlag(editor, sourceRange) {
+  return false; // v0.9.694 (Phase 2c): 🔴 abolished (Current Me 統合) — never write sRJF flags (= source 非汚染を保証).
+  if (!editor || !editor.document || !sourceRange) return false;
+  const document = editor.document;
+  const sourceLine = sourceRange.start.line;
+  const edits = [];
+  // v0.9.561 DEBUG: trace setSourceRjfFlag execution via OutputChannel.
+  const _dbg = (msg) => meosDbg(`[setSourceRjfFlag] ${msg}`);
+  _dbg(`called for sourceLine=${sourceLine}`);
+
+  // v0.9.555: unified numbered-marker scheme. User design 2026-05-21 pm06:31:
+  //   16: (nothing)        → {* [sRJF=v2] *}🔴   (new active)
+  //   17: {* [sRJF=v1] *}🔴 → {* [sRJF=h1] *}    (demoted, n preserved)
+  // Rules:
+  //   - Exactly ONE [sRJF=v<n>] in the file at a time (currently active).
+  //   - All other [sRJF=v<m>] are demoted to [sRJF=h<m>] (n preserved, 🔴 removed).
+  //   - The active source line either reuses its existing n (if it carried [sRJF=h<n>]
+  //     before — promote back to v<n>) or gets a fresh n via nextCitationN.
+  //   - Legacy unnumbered [sRJF=v] is treated as a transient one-shot and deleted
+  //     (it carries no history value); legacy unnumbered [sRJF=h] is preserved as
+  //     legacy data but not promoted.
+  //   - Legacy <span class="sRJF=*"> form is deleted entirely (migration).
+  let targetN = null;
+  let sourceLineHasNumberedMarker = false;
+
+  // v0.9.630: PASS 1 — collect every sRJF marker. Legacy forms (HTML spans,
+  // unnumbered transient v) are deleted on sight; numbered markers are gathered
+  // so PASS 2 can apply the max-3 cap. The OLD scheme demoted every prior v→h
+  // and kept them forever (unbounded h growth); the new scheme physically deletes
+  // the oldest surplus instead.
+  const numbered = []; // {line, index, text, state, n, numStr}
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    const matches = sourceRjfSpanMatchesInLine(text);
+    for (const m of matches) {
+      if (m.type === 'span') {
+        // Legacy HTML span — migrate by deletion.
+        let dr = new vscode.Range(line, m.index, line, m.index + m.text.length);
+        if (m.index > 0 && text[m.index - 1] === ' ') dr = new vscode.Range(line, m.index - 1, line, m.index + m.text.length);
+        edits.push({ range: dr, text: '' });
+        continue;
+      }
+      // m.type === 'marker'
+      const numMatch = m.text.match(/\[sRJF=([hv])(\d*)\]/);
+      if (!numMatch) continue;
+      const state = numMatch[1];
+      const numStr = numMatch[2];
+      if (numStr.length === 0) {
+        // Legacy unnumbered: transient v deleted (no history value); unnumbered h
+        // left untouched (legacy data, not promoted).
+        if (state === 'v') {
+          let dr = new vscode.Range(line, m.index, line, m.index + m.text.length);
+          if (m.index > 0 && text[m.index - 1] === ' ') dr = new vscode.Range(line, m.index - 1, line, m.index + m.text.length);
+          edits.push({ range: dr, text: '' });
+        }
+        continue;
+      }
+      numbered.push({ line, index: m.index, text: m.text, state, n: parseInt(numStr, 10), numStr });
+    }
+  }
+
+  // Determine the active number: reuse the source line's existing n (reactivation
+  // of a dormant h<n> → v<n>), else allocate a fresh n.
+  const sourceMarker = numbered.find(mk => mk.line === sourceLine);
+  if (sourceMarker) { targetN = sourceMarker.n; sourceLineHasNumberedMarker = true; }
+  else { targetN = nextCitationN(document); }
+
+  // v0.9.630: keep set = {active} ∪ the (MAX_RED_PAIRS-1) most-recent OTHERS
+  // (largest n = newest). Everything else is evicted oldest-first. When the source
+  // is brand new, the about-to-be-inserted active counts as 1 of the cap, so we keep
+  // MAX_RED_PAIRS-1 others.
+  const otherNs = [...new Set(numbered.filter(mk => mk.n !== targetN).map(mk => mk.n))].sort((a, b) => b - a);
+  const keep = new Set([targetN, ...otherNs.slice(0, Math.max(0, MAX_RED_PAIRS - 1))]);
+
+  // PASS 2 — build edits for each numbered marker.
+  for (const mk of numbered) {
+    const range = new vscode.Range(mk.line, mk.index, mk.line, mk.index + mk.text.length);
+    if (!keep.has(mk.n)) {
+      // EVICT oldest surplus — physically delete (no dormant h residue left behind).
+      const lineText = document.lineAt(mk.line).text || '';
+      let dr = range;
+      if (mk.index > 0 && lineText[mk.index - 1] === ' ') dr = new vscode.Range(mk.line, mk.index - 1, mk.line, mk.index + mk.text.length);
+      edits.push({ range: dr, text: '' });
+    } else if (mk.line === sourceLine) {
+      // Promote / keep the active marker as v<n> (with trailing 🔴 inside wrapper).
+      const desired = `// {* [sRJF=v${mk.numStr}]🔴 *}`;
+      if (mk.text !== desired) edits.push({ range, text: desired });
+    } else if (mk.state === 'v') {
+      // Demote a previously-active marker to dormant h<n> (re-selectable later → v).
+      edits.push({ range, text: `// {* [sRJF=h${mk.numStr}] *}` });
+    }
+    // kept dormant h<n>: preserve as-is (no edit).
+  }
+
+  // If the source line had no numbered marker, allocate a fresh one and insert.
+  if (!sourceLineHasNumberedMarker) {
+    const sourceLineText = document.lineAt(sourceLine).text || '';
+    const insertAt = sourceLineText.length;
+    const leadIn = (insertAt > 0 && sourceLineText[insertAt - 1] !== ' ') ? ' ' : '';
+    edits.push({
+      range: new vscode.Range(sourceLine, insertAt, sourceLine, insertAt),
+      // v0.9.579: 🔴 inside the wrapper. See sibling comment above.
+      text: leadIn + `// {* [sRJF=v${targetN}]🔴 *}`,
+    });
+  }
+
+  _dbg(`edits.length=${edits.length}, targetN=${targetN}, sourceLineHasNumberedMarker=${sourceLineHasNumberedMarker}`);
+  if (!edits.length) return targetN || false;
+  edits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+  _dbg(`applying ${edits.length} edits...`);
+  const editOk = await editor.edit(edit => {
+    for (const e of edits) edit.replace(e.range, e.text);
+  }, { undoStopBefore: false, undoStopAfter: false });
+  _dbg(`editor.edit returned ${editOk}`);
+  refreshSourceRjfSpanHiding(editor);
+  setTimeout(() => refreshSourceRjfSpanHiding(editor), 30);
+  // v0.9.555: return the allocated n (truthy as number) so callers like the H-TOC
+  // citation path can attach the same n to the new H-TOC item. Existing callers that
+  // only check truthy/falsy remain compatible (any non-zero n is truthy).
+  return targetN || true;
+}
+
+async function setTargetRjfFlag(editor, targetRange) {
+  return false; // v0.9.694 (Phase 2c): 🔴 abolished (Current Me 統合) — never write tRJF flags (= source 非汚染を保証).
+  if (!editor || !editor.document || !targetRange) return false;
+  const document = editor.document;
+  const targetLine = targetRange.start.line;
+  const edits = [];
+  // v0.9.629: track when the existing [tRJF=v]🔴 on the target line was sitting
+  // at the OLD trailing-after-badge slot. When relocated, the post-loop fallback
+  // insert (below) must fire even though tRjfFlagRangeInLine still sees the
+  // pre-edit document.
+  let targetLineRelocate = false;
+
+  // v0.9.483: when writing a visible target flag, append a literal 🔴 button
+  // char so it can carry tooltip / cursor:pointer via standard text decoration.
+  // Hidden flags drop any trailing 🔴. tRjfFlagMatchesInLine's regex must allow
+  // the optional 🔴 suffix so we recognise the new form when reading back.
+  for (let line = 0; line < document.lineCount; line++) {
+    const text = document.lineAt(line).text || '';
+    if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
+    const desired = line === targetLine ? '[tRJF=v]🔴' : '[tRJF=h]';
+    const matches = tRjfFlagMatchesInLine(text);
+    if (!matches.length) continue;
+
+    const close = membraneCommentCloseIndexForRjf(text);
+    // v0.9.629: pre-compute canonical insertion slot to detect old-position
+    // [tRJF=v]🔴 on the target line.
+    const correctInsertAt = tRjfInsertionCharacter(text);
+    let keptInside = false;
+
+    for (const m of matches) {
+      const range = new vscode.Range(line, m.index, line, m.index + m.text.length);
+      const isInsideMembraneComment = close >= 0 && m.index < close;
+
+      if (!keptInside && isInsideMembraneComment) {
+        // v0.9.629: relocate misplaced visible [tRJF=v]🔴. Hidden flags on
+        // other lines are not user-visible, so leaving them in place avoids
+        // needless churn (matches the setGreenJumpFlags policy).
+        const isAtCorrectPosition = (m.index === correctInsertAt) || (m.index === correctInsertAt + 1);
+        if (line === targetLine && !isAtCorrectPosition) {
+          const start = Math.max(0, m.index - 1);
+          const hasLeadingSpace = text[start] === ' ';
+          const deleteRange = hasLeadingSpace
+            ? new vscode.Range(line, start, line, m.index + m.text.length)
+            : range;
+          edits.push({ range: deleteRange, text: '' });
+          targetLineRelocate = true;
+          continue; // keep keptInside=false so the addFlag insert below fires
+        }
+        keptInside = true;
+        if (m.text !== desired) edits.push({ range, text: desired });
+        // v0.9.496: spacing migration moved to ensureGreenRedSpacing
+        // helper, called at the end of this function AND of set
+        // GreenJumpFlags, so both activation directions (🟢→🔴 add
+        // and 🔴→🟢 add) trigger the upgrade.
+      } else {
+        const start = Math.max(0, m.index - 1);
+        const hasLeadingSpace = text[start] === ' ';
+        const deleteRange = hasLeadingSpace
+          ? new vscode.Range(line, start, line, m.index + m.text.length)
+          : range;
+        edits.push({ range: deleteRange, text: '' });
+      }
+    }
+
+    if (!keptInside && close >= 0) {
+      const insertAt = tRjfInsertionCharacter(text);
+      const needsLeadingSpace = insertAt > 0 && text[insertAt - 1] !== ' ';
+      // v0.9.492: if the preceding visible char (skipping any current
+      // space) is the green emoji 🟢, insert 2 leading spaces instead
+      // of 1 so the visible `🟢🔴` pair doesn't sit adjacent. User's
+      // insight (v0.9.490 follow-up): rather than fight Monaco's hit-
+      // zone arithmetic, just space the buttons out visually.
+      const prevEmojiSlice = text.slice(Math.max(0, insertAt - 2), insertAt);
+      const prevIsGreenEmoji = prevEmojiSlice === '🟢';
+      const leadingSpaces = needsLeadingSpace ? (prevIsGreenEmoji ? '  ' : ' ') : '';
+      // v0.9.576: `needsTrailingSpace` was referenced here but never declared
+      // in this scope, throwing ReferenceError whenever this branch fired
+      // (i.e. when a new [tRJF=v]🔴 was being inserted on a line that had no
+      // prior flag — the exact alias-citation scenario). The normal-name jump
+      // path appeared to work only because such lines usually already carried
+      // a [tRJF=*] from a previous activation, taking the `keptInside`
+      // branch above instead. Mirror the v0.9.275 setSourceRjfFlag pattern.
+      const needsTrailingSpace = insertAt < text.length && text[insertAt] !== ' ';
+      const inserted = `${leadingSpaces}${desired}${needsTrailingSpace ? ' ' : ''}`;
+      edits.push({ range: new vscode.Range(line, insertAt, line, insertAt), text: inserted });
+    }
+  }
+
+  // v0.9.629: include targetLineRelocate in the gate so the relocated flag
+  // gets re-inserted at the new pre-badge slot (tRjfFlagRangeInLine still sees
+  // the pre-edit document, so without this override the insert would be skipped).
+  if (!tRjfFlagRangeInLine(document, targetLine) || targetLineRelocate) {
+    const text = document.lineAt(targetLine).text || '';
+    const insertAt = tRjfInsertionCharacter(text);
+    const desired = '[tRJF=v]🔴';
+    const needsLeadingSpace = insertAt > 0 && text[insertAt - 1] !== ' ';
+    // v0.9.492: 2-space separation when preceding is 🟢 (see above).
+    const prevEmojiSlice = text.slice(Math.max(0, insertAt - 2), insertAt);
+    const prevIsGreenEmoji = prevEmojiSlice === '🟢';
+    const leadingSpaces = needsLeadingSpace ? (prevIsGreenEmoji ? '  ' : ' ') : '';
+    // v0.9.576: see comment above — declare needsTrailingSpace locally.
+    const needsTrailingSpace = insertAt < text.length && text[insertAt] !== ' ';
+    const inserted = `${leadingSpaces}${desired}${needsTrailingSpace ? ' ' : ''}`;
+    edits.push({ range: new vscode.Range(targetLine, insertAt, targetLine, insertAt), text: inserted });
+  }
+
+  // v0.9.498: same 2-pass apply pattern as setGreenJumpFlags above —
+  // first apply the main edits (which may insert `[tRJF=v]🔴` where
+  // the line previously had only `[oGJF=v]🟢`), then re-run the
+  // normaliser on the fresh document so it can see both flags and
+  // enforce the 2-space separator. This fixes case B (🟢 first then
+  // 🔴 added) where the original-text normaliser couldn't see the
+  // about-to-be-inserted [tRJF=v] yet.
+
+  if (edits.length) {
+    edits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    await editor.edit(edit => {
+      for (const e of edits) edit.replace(e.range, e.text);
+    }, { undoStopBefore: false, undoStopAfter: false });
+  }
+
+  const normEdits = [];
+  ensureGreenRedSpacing(editor.document, normEdits);
+  if (normEdits.length) {
+    normEdits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    await editor.edit(edit => {
+      for (const e of normEdits) edit.replace(e.range, e.text);
+    }, { undoStopBefore: false, undoStopAfter: false });
+  }
+  return (edits.length + normEdits.length) > 0;
+}
+
+async function showSingleRedJumpPair(editor, sourceRange, targetRange, name, options = {}) {
+  return; // v0.9.694 (Phase 2c): 🔴 双方向ジャンプ廃止(Current Me 統合) — arm 何もしない(no flags, no activeRedJump).
+  if (!editor || !sourceRange || !targetRange) return;
+  // v0.9.456 Bug A1 fix: batch source/target/red-button edits without firing
+  // the per-edit refresh chain. Each await above was triggering its own
+  // onDidChangeTextDocument → refresh() → 17 decoration calls. Four edits in
+  // sequence meant ~4 full refreshes plus cache invalidations, taking 2-6s
+  // on extension.js. Defer the auto-refresh, run the batch, then refresh
+  // exactly once at the end.
+  deferRefreshCount++;
+  try {
+    await setTargetRjfFlag(editor, targetRange);
+    await setSourceRjfFlag(editor, sourceRange);
+    // v0.9.471: still clean up any legacy literal 🔴 emojis written near
+    // membrane names by older versions of this extension, but DO NOT
+    // write a new literal — the target 🔴 button is now rendered by
+    // activeRedTargetButtonDecoration at the [tRJF=v] flag position.
+    // This separates 🔴 from 🟢 (which also relocated to its flag),
+    // eliminating the v0.9.470-era W-click interference between them
+    // and giving the buttons a real hand-cursor click affordance.
+    // v0.9.499: realRedButtonRangesInDocument now exempts the `[tRJF=v]🔴`
+    // trailing 🔴, so this cleanup no longer wipes the canonical target
+    // button — only stray legacy literals are removed.
+    await removeAllRealRedButtons(editor);
+    // v0.9.499: final normalisation pass — re-run ensureGreenRedSpacing
+    // AFTER removeAllRealRedButtons so any stray 🔴 it left behind in
+    // the [oGJF=v]🟢...[tRJF=v] gap, OR any missing trailing 🔴 after
+    // [tRJF=v], gets fixed up in one final batch. This is the canonical
+    // last step before activeRedJump state is set and decorations
+    // render — source is guaranteed to be `[oGJF=v]🟢  [tRJF=v]🔴`.
+    const finalEdits = [];
+    ensureGreenRedSpacing(editor.document, finalEdits);
+    if (finalEdits.length) {
+      finalEdits.sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+      await editor.edit(edit => {
+        for (const e of finalEdits) edit.replace(e.range, e.text);
+      }, { undoStopBefore: false, undoStopAfter: false });
+    }
+  } finally {
+    deferRefreshCount--;
+  }
+  activeRedJump = {
+    uri: editor.document.uri.toString(),
+    sourceRange,
+    targetRange,
+    name,
+    hideSource: !!options.hideSource,
+    hideTarget: !!options.hideTarget
+  };
+  renderRedJumpMarkers(editor);
+  // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🔴 lights up.
+  postFixedWorkingTocSnapshot();
+  // Single refresh consolidating all the deferred document changes above.
+  refresh(editor);
+}
+// v0.9.488: COMMON ROUTINE for all 4 membrane jump button placements.
+// User-requested unification ("双方向ジャンプボタンの共通ルーチン化"):
+//   1. [oGJF=v]🟢 on opening membrane  → open ⇄ close
+//   2. [cGJF=v]🟢 on closing membrane  → open ⇄ close
+//   3. [tRJF=v]🔴 on opening membrane  → source ⇄ target (target side)
+//   4. [sRJF=v]🔴 on body link source  → source ⇄ target (source side)
+//
+// All 4 share the same visual contract: hand cursor over the visible
+// emoji + hover tip + W-click triggers a jump to the paired line.
+// Differences (regex, emoji char, tip text, jump kind) are passed as
+// `opts`. Returns { cursorItems, tipItems } as separate item arrays
+// because Monaco's decoration-attached hoverMessage allocates the
+// hover hit zone using SOURCE-COL natural widths (not visual widths).
+// A wide range `[XX=v]🔴/🟢` (10 chars, of which 8 are font-size:0
+// hidden) produces a 10ch-wide hit zone that visually extends past
+// the emoji into neighbouring buttons — v0.9.487's bug. So:
+//   - cursorItems: WIDE range — cursor:pointer over `[XX=v]🔴/🟢`
+//     (using each button's own per-button decoration type; chars at
+//     font-size:0 take 0 screen pixels so the visible hand cursor is
+//     correctly localised on the emoji)
+//   - tipItems:    NARROW range — hoverMessage over JUST the 2-char
+//     emoji (~1 visual char wide; natural width 2ch ≈ visual width).
+//     Hosted by the shared membraneButtonTipDecoration.
+//
+// Each opts.matchFn must return an array of { text, index } objects
+// (regex-match-like). For legacy lines with no literal emoji, the
+// fallback path renders the emoji via `before.contentText` on the
+// wide range and uses the same wide range for the tip (since there
+// is no separate emoji char in source to narrow to).
+function membraneButtonItems(editor, opts) {
+  const { matchFn, emoji, tipFn, includeLeftSpace } = opts;
+  const cursorItems = [];
+  const tipItems = [];
+  if (!editor || !editor.document) return { cursorItems, tipItems };
+  const doc = editor.document;
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    // v0.9.662: 安価な事前フィルタ。全 jump フラグ(oGJF/cGJF/GJF/tRJF/sRJF)は "JF" を含む。
+    // ジャンプフラグを持つ行は通常ごく少数なので、'JF' を含まない大多数の行で matchFn
+    // (正規表現)を回さずスキップ。膜選択時の全行スキャンによる体感固まりを軽減(俊克 pm09:43)。
+    if (text.indexOf('JF') < 0) continue;
+    // v0.9.548: revert v0.9.547's mTC= line skip — user clarified that source-side
+    // 🟢/🔴 buttons on the TOC anchor are fine. The cleanup belongs solely to the
+    // Me Dock tab-name display (where `[oGJF=v]` literal was leaking as text). User
+    // 2026-05-20 pm08:47: 「ソース上のTOC膜に🟢ボタンは表示しても良いんだよ」.
+    const matches = matchFn(text) || [];
+    for (const m of matches) {
+      const matchText = m.text;
+      const matchIndex = m.index;
+      const matchLen = matchText.length;
+      const startCol = (includeLeftSpace && matchIndex > 0 && text[matchIndex - 1] === ' ')
+        ? matchIndex - 1
+        : matchIndex;
+      const endCol = matchIndex + matchLen;
+      // v0.9.579: locate the emoji by indexOf rather than endsWith. The new
+      // canonical sRJF marker `// {* [sRJF=v]🔴 *}` carries 🔴 in the middle
+      // of the match (not the tail). Other flags (`[oGJF=v]🟢`, `[tRJF=v]🔴`)
+      // still end with the emoji, so indexOf finds the same position
+      // endsWith used to. Falls back to legacy before-content rendering
+      // when the literal emoji is absent from source.
+      const emojiIdxInMatch = matchText.indexOf(emoji);
+      const hasEmoji = emojiIdxInMatch >= 0;
+      const tip = tipFn();
+      if (hasEmoji) {
+        // v0.9.500: tip range widened from 1-char to FULL 2-char
+        // emoji range, matching the cursor range. User v0.9.499_0616
+        // feedback: with v0.9.499's now-stable canonical form, tip
+        // fires only on the LEFT HALF of the visible emoji because
+        // Monaco's hit zone for a 1-char range covers ~1 char width
+        // and the emoji renders ~2 char widths wide. Widening to
+        // [emojiStart, emojiStart+2) lets the tip cover the full
+        // visible glyph. The neighbouring-button invasion that
+        // previously plagued wide ranges is no longer a concern
+        // because v0.9.492's source-level 2-space separator now sits
+        // between visible 🟢 and visible 🔴, absorbing whatever
+        // hit-zone overshoot Monaco produces.
+        const emojiStart = matchIndex + emojiIdxInMatch;
+        const emojiEnd = emojiStart + 2;
+        const cursorRange = new vscode.Range(line, emojiStart, line, emojiEnd);
+        cursorItems.push({ range: cursorRange });
+        tipItems.push({ range: cursorRange, hoverMessage: tip });
+      } else {
+        // Legacy: no literal emoji. Render emoji via before-content
+        // on a 2-char range at the START of the flag. v0.9.500: tip
+        // uses the SAME 2-char range as cursor (was narrowed to
+        // 1-char in v0.9.494; widened to match canonical path).
+        const fallbackEnd = Math.min(startCol + 2, endCol);
+        const cursorRange = new vscode.Range(line, startCol, line, fallbackEnd);
+        cursorItems.push({
+          range: cursorRange,
+          renderOptions: { before: { contentText: emoji, margin: '0 2px 0 0', textDecoration: 'none; cursor: pointer;' } },
+        });
+        tipItems.push({ range: cursorRange, hoverMessage: tip });
+      }
+    }
+  }
+  return { cursorItems, tipItems };
+}
+
+// v0.9.491: count literal 🟢/🔴 emoji code points in `text` strictly
+// before col `pos`. Used by membraneButtonItems to compensate for
+// Monaco's hoverMessage hit-zone over-allocation: each emoji surrogate
+// pair is counted as 2 char-widths in the hit-zone metric, but renders
+// as ~1 visual char width. The 1-width-per-emoji surplus accumulates
+// in the pixel-x of every subsequent col, so a tip range placed at col
+// X gets a hit zone visually shifted right by (emojis-before-X) char-
+// widths. We counter-shift the tip range LEFT by the same count so the
+// resulting visual hit zone lands on the visible emoji glyph.
+function literalEmojisBefore(text, pos) {
+  if (!text) return 0;
+  const limit = Math.min(pos, text.length);
+  let count = 0;
+  let i = 0;
+  while (i < limit) {
+    const cp = text.codePointAt(i);
+    if (cp === 0x1F7E2 || cp === 0x1F534) count++; // 🟢 or 🔴
+    i += (cp > 0xFFFF ? 2 : 1);
+  }
+  return count;
+}
+
+// v0.9.488: cached tip messages — created once per refresh so all items
+// for one button share the same MarkdownString instance (no per-line
+// allocation overhead).
+function makeRedTargetTip() {
+  return new vscode.MarkdownString('🔴 Link — click to view raw / double-click to jump Source ⇄ Target');
+}
+function makeRedSourceTip() {
+  return new vscode.MarkdownString('🔴 Link — click to view raw / double-click to jump to the opening membrane');
+}
+function makeGreenTip() {
+  return new vscode.MarkdownString(mSkeletonMode
+    ? '🟢 M-skeleton Mode OFF — return to normal membrane view'
+    : '🟢 M-skeleton Mode ON — show raw source with green membrane anchors');
+}
+
+// v0.9.488: per-placement wrappers around the common membraneButtonItems
+// routine. Each returns { cursorItems, tipItems }. The old single-array
+// API (activeRedTargetButtonRanges / activeGreenButtonAnchorRanges /
+// sourceRjfButtonRanges) is preserved below for backward compatibility
+// with existing callers — those wrappers just return `.cursorItems`.
+
+// v0.9.470: ranges where the 🔴 button decoration should paint. For each
+// visible // {* [sRJF=v] *} marker we use a zero-width range AT the marker
+// start; the decoration's `before.contentText: '🔴'` renders the button
+// glyph there. Legacy spans are skipped here — their 🔴 is already inside
+// the span text and is shown by the existing span path.
+function sourceRjfButtonItems(editor) {
+  // v0.9.488: unified via membraneButtonItems. Source-side 🔴 (button #4
+  // in the 4-placement family — body link sources). Tip jumps from the
+  // sRJF marker on the body line to the opening membrane carrying tRJF.
+  const tip = makeRedSourceTip();
+  return membraneButtonItems(editor, {
+    matchFn: (text) => {
+      const out = [];
+      for (const m of sourceRjfSpanMatchesInLine(text)) {
+        if (m.type !== 'marker' || m.state !== 'v') continue;
+        out.push({ text: m.text, index: m.index });
+      }
+      return out;
+    },
+    emoji: '🔴',
+    tipFn: () => tip,
+  });
+}
+function sourceRjfButtonRanges(editor) {
+  return sourceRjfButtonItems(editor).cursorItems;
+}
+
+// v0.9.471 + v0.9.480: anchor ranges for the active 🔴 target button.
+// Returns DecorationOptions (range + hoverMessage) so the tooltip is
+// baked into the decoration itself. provideHover was unreliable with
+// font-size:0 hidden chars under the rendered before-content glyph —
+// hover positions sometimes mapped outside the flag range and the
+// provideHover-based tooltip never fired. setDecorations with
+// hoverMessage hangs the tip directly on the decoration, so any hover
+// over the rendered 🔴 shows it.
+// v0.9.488: unified via membraneButtonItems. Target-side 🔴 (button #3 in
+// the 4-placement family — opening membranes carrying tRJF). `includeLeft
+// Space: true` absorbs the boundary space between `[oGJF=v]🟢` and
+// `[tRJF=v]🔴` on opening lines, preserved from the v0.9.486 widening so
+// the cursor:pointer span is contiguous across the gap between the two
+// adjacent buttons.
+function activeRedTargetButtonItems(editor) {
+  const tip = makeRedTargetTip();
+  return membraneButtonItems(editor, {
+    matchFn: (text) => {
+      const out = [];
+      const re = /\[tRJF=v\]🔴?/gu;
+      let m;
+      re.lastIndex = 0;
+      while ((m = re.exec(text)) !== null) {
+        out.push({ text: m[0], index: m.index });
+      }
+      return out;
+    },
+    emoji: '🔴',
+    tipFn: () => tip,
+    includeLeftSpace: true,
+  });
+}
+function activeRedTargetButtonRanges(editor) {
+  return activeRedTargetButtonItems(editor).cursorItems;
+}
+
+// v0.9.488: unified via membraneButtonItems. Green button (placements
+// #1 and #2: opening membranes carrying oGJF and closing membranes
+// carrying cGJF; legacy `GJF` form also matched). Same wide cursor
+// range as v0.9.485+, but tip is now hosted by the narrow tip
+// decoration (see membraneButtonItems comment).
+function activeGreenButtonItems(editor) {
+  // v0.9.670: 🟢 is drawn from the IN-MEMORY active pair (activeGreenJump) as
+  // after-content at the membrane name end — no source flag required, no document
+  // edit on click (see showJumpMarkers for why). The legacy source-flag scan is kept
+  // ONLY to keep rendering any residual [oGJF=v]🟢 left in pre-v0.9.670 files until the
+  // user cleans them; new activations never create them.
+  const cursorItems = [];
+  const tipItems = [];
+  if (!editor || !editor.document) return { cursorItems, tipItems };
+  const linesWithSourceFlag = new Set();
+  // Legacy residue: render any literal [oGJF=v]🟢 / [cGJF=v]🟢 flags still in source.
+  const legacy = membraneButtonItems(editor, {
+    matchFn: (text) => {
+      const out = [];
+      const re = /\[(?:oGJF|cGJF|GJF)=v\]🟢?/gu;
+      let m;
+      re.lastIndex = 0;
+      while ((m = re.exec(text)) !== null) {
+        out.push({ text: m[0], index: m.index });
+      }
+      return out;
+    },
+    emoji: '🟢',
+    tipFn: () => makeGreenTip(),
+  });
+  for (const it of legacy.cursorItems) {
+    cursorItems.push(it);
+    if (it.range) linesWithSourceFlag.add(it.range.start.line);
+  }
+  for (const it of legacy.tipItems) tipItems.push(it);
+  // In-memory active pair → after-content 🟢 at the name end (skip a line that already
+  // carries a literal source flag so we never paint a double glyph).
+  if (activeGreenJump && activeGreenJump.uri === editor.document.uri.toString()) {
+    const tip = makeGreenTip();
+    for (const range of (activeGreenJump.ranges || [])) {
+      if (!range) continue;
+      const line = range.end.line;
+      if (line < 0 || line >= editor.document.lineCount) continue;
+      if (linesWithSourceFlag.has(line)) continue;
+      // v0.9.689 (Phase 2): 統合により 🟢 は開始膜だけに表示する(俊克 pm09:23)。閉じ膜行はスキップ。
+      const li = membraneLineInfo(editor.document, line);
+      if (!li || li.kind !== 'open') continue;
+      const lineLen = (editor.document.lineAt(line).text || '').length;
+      const at = Math.min(range.end.character, lineLen);
+      const r = new vscode.Range(line, at, line, at);
+      cursorItems.push({
+        range: r,
+        renderOptions: { after: { contentText: '🟢', margin: '0 0 0 2px', textDecoration: 'none; cursor: pointer;' } },
+      });
+      // v0.9.671 (bug2): a hoverMessage does NOT fire on a zero-width range (v0.9.481) —
+      // that is why the body 🟢 lost its tip in v0.9.670. Host the tip on a NON-EMPTY range
+      // over the membrane name's last char (real text, immediately left of the after-content
+      // 🟢) so hovering the glyph still shows the tip.
+      const tipStart = Math.max(0, at - 1);
+      const tipRange = tipStart < at ? new vscode.Range(line, tipStart, line, at) : r;
+      tipItems.push({ range: tipRange, hoverMessage: tip });
+    }
+  }
+  return { cursorItems, tipItems };
+}
+function activeGreenButtonAnchorRanges(editor) {
+  return activeGreenButtonItems(editor).cursorItems;
+}
+
+// v0.9.488: aggregator — combines tipItems from all 4 button placements
+// into one DecorationOptions array for the shared membraneButtonTip
+// Decoration. Called by both refreshSourceRjfSpanHiding and renderActive
+// GreenMarkers so the tip layer always tracks whichever set of buttons
+// is currently rendered.
+function allMembraneButtonTipItems(editor) {
+  const items = [];
+  if (!editor) return items;
+  // v0.9.693 (Phase 2b): body 🔴 abolished — drop the sRJF / tRJF red tips. 🟢 tip only.
+  items.push(...activeGreenButtonItems(editor).tipItems);
+  return items;
+}
+
+function refreshSourceRjfSpanHiding(editor) {
+  if (!editor) return;
+  if (mdWrapperHideDecoration) {
+    setDecoCached(editor, mdWrapperHideDecoration, 'mdHide', markdownWrapperHideRanges(editor).concat(sourceRjfHideRanges(editor)).concat(hyperTocStorageHideRanges(editor)));
+  }
+  // v0.9.693 (Phase 2b): body 🔴 buttons abolished (unified into Current Me) — clear them.
+  if (sourceRjfButtonDecoration) editor.setDecorations(sourceRjfButtonDecoration, []);
+  if (activeRedTargetButtonDecoration) editor.setDecorations(activeRedTargetButtonDecoration, []);
+  if (activeGreenButtonDecoration) {
+    editor.setDecorations(activeGreenButtonDecoration, activeGreenButtonAnchorRanges(editor));
+  }
+  // v0.9.488: shared narrow-tip layer for all 4 button placements.
+  // Keeps hoverMessage's natural-width hit zone constrained to the
+  // visible emoji, avoiding the v0.9.487 invasion bug where the wide
+  // `[oGJF=v]🟢` range allocated a 10ch-wide hit zone that covered
+  // the neighbouring 🔴 too.
+  if (membraneButtonTipDecoration) {
+    editor.setDecorations(membraneButtonTipDecoration, allMembraneButtonTipItems(editor));
+  }
+}
+
+function renderRedJumpMarkers(editor) {
+  if (!editor || !activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return;
+  const visibleRanges = [];
+
+  // Source-side 🔴 is owned by the sRJF marker (v0.9.470).
+  // v0.9.471: Target-side 🔴 is now owned by activeRedTargetButtonDecoration
+  // at the [tRJF=v] flag position. No literal 🔴 is written for target either.
+  // The earlier ensureRealRedButtons call was the source of the duplicate
+  // 🔴 user-reported in v0.9.471 (one at name-end literal, one at flag-pos
+  // decoration). Removing the literal write leaves only the flag-position
+  // decoration, which is the canonical button.
+  if (activeRedJump.sourceRange && !activeRedJump.hideSource) visibleRanges.push(activeRedJump.sourceRange);
+  if (activeRedJump.targetRange && !activeRedJump.hideTarget) {
+    visibleRanges.push(activeRedJump.targetRange);
+  }
+
+  refreshSourceRjfSpanHiding(editor);
+  // v0.9.489: legacy redJumpDecoration / redJumpHoverDecoration
+  // applications disabled — they applied `cursor: pointer; font-
+  // weight: 700;` to the wide [tRJF=v]🔴 / sRJF marker ranges,
+  // redundant with the new activeRedTargetButtonDecoration /
+  // sourceRjfButtonDecoration (set via refreshSourceRjfSpanHiding).
+  // The legacy wide cursor was contributing to the v0.9.488_0955
+  // invasion bug. Pass an empty array to CLEAR any prior decoration.
+  if (redJumpDecoration) editor.setDecorations(redJumpDecoration, []);
+  if (redJumpHoverDecoration) editor.setDecorations(redJumpHoverDecoration, []);
+  postMeDockBidiState(editor);
+}
+function showRedJumpMarkers(editor, sourceRange, targetRange, name, options = {}) {
+  if (!editor || !sourceRange || !targetRange) return;
+  activeRedJump = {
+    uri: editor.document.uri.toString(),
+    sourceRange,
+    targetRange,
+    name,
+    hideSource: !!options.hideSource,
+    hideTarget: !!options.hideTarget
+  };
+  renderRedJumpMarkers(editor);
+}
+function findOpeningMembraneByName(document, name, excludeLines = new Set()) {
+  if (!document || !name) return null;
+  const needle = String(name).trim();
+  if (!needle) return null;
+  for (let i = 0; i < document.lineCount; i++) {
+    if (excludeLines && excludeLines.has(i)) continue;
+    const info = membraneLineInfo(document, i);
+    if (info && info.kind === 'open' && info.id === needle) return info;
+  }
+  return null;
+}
+// v0.9.572: alias-aware lookup. Scans open mCN= lines and returns the membrane
+// whose badge alias matches `aliasText` (exact, trimmed). Used by both the body
+// 🔴 arm path (selectedPlainTextInfo) and Add to Hyper TOC citation path so
+// alias selections behave like a name selection for the underlying membrane.
+function findOpeningMembraneByAlias(document, aliasText, excludeLines = new Set()) {
+  if (!document || !aliasText) return null;
+  const needle = String(aliasText).trim();
+  if (!needle) return null;
+  for (let i = 0; i < document.lineCount; i++) {
+    if (excludeLines && excludeLines.has(i)) continue;
+    const info = membraneLineInfo(document, i);
+    if (!info || info.kind !== 'open') continue;
+    const t = document.lineAt(i).text || '';
+    const b = parseMstatBadgeFromText(t);
+    if (b && typeof b.alias === 'string' && b.alias.trim() === needle) return info;
+  }
+  return null;
+}
+function selectedPlainTextInfo(editor) {
+  if (!editor) return null;
+  const sel = editor.selection;
+  if (sel.isEmpty || sel.start.line !== sel.end.line) return null;
+  let text = editor.document.getText(sel).trim();
+  if (!text) return null;
+  // v0.9.573: strip a leading `//` (with optional whitespace) — body line
+  // citation selections often start at column 0 and include the comment
+  // prefix. Previously any text containing `//` was rejected, which masked
+  // alias citations like "//↑1 参照の例3". After stripping, the remaining
+  // text is verified against existing membranes / aliases by the caller.
+  text = text.replace(/^\/\/\s*/, '').trim();
+  if (!text) return null;
+  if (/\/\/|\*\}/.test(text)) return null;
+  // v0.9.572: allow multi-word selections (whitespace permitted) so alias-like
+  // strings ("↑1 参照の例3") can arm 🔴. The downstream caller verifies the
+  // text actually resolves to a membrane (by name OR alias) before activating.
+  // Without this, selectedPlainTextInfo rejected any string with whitespace,
+  // making alias citations unusable. User v0.9.571_0701 bug:
+  // 「エイリアス名と同じ文字列を選択しても、🔴が出ない」.
+  return { text, range: new vscode.Range(sel.start.line, sel.start.character, sel.end.line, sel.end.character) };
+}
+function selectedMembranePairExcludeLines(editor, selected) {
+  if (!editor || !selected) return new Set();
+  const info = membraneLineInfo(editor.document, selected.range.start.line);
+  if (!info || info.id !== selected.text) return new Set();
+  if (selected.range.start.character < info.idStart || selected.range.end.character > info.idEnd) return new Set();
+  const matched = pairedMembraneForLine(editor.document, info.line);
+  if (!matched || !matched.pair) return new Set([info.line]);
+  return new Set([matched.pair.start, matched.pair.end]);
+}
+// v0.9.471: prefer source sRJF marker, then target [tRJF=v] flag, then
+// the legacy literal 🔴 emoji as a last-resort fallback. The flag-position
+// path is what makes clicks on the new flag-anchored 🔴 button (rendered
+// by activeRedTargetButtonDecoration) register as a button hit.
+function activeTargetRjfFlagRangeOnLine(document, line) {
+  // v0.9.486: include preceding space (when present) so positionHits
+  // RedRange catches mouse positions that Monaco maps to the boundary
+  // col between adjacent `[oGJF=v]🟢` and `[tRJF=v]🔴` on opening
+  // membranes. Paired with green's strict end-exclusion + the reversed
+  // hover-provider order (red-first) in v0.9.486, this makes
+  // mouse-on-visible-🔴 always resolve to red regardless of which side
+  // of the boundary Monaco's mapping lands on.
+  //
+  // v0.9.483: include the literal 🔴 button at the flag tail so clicks on
+  // the visible 🔴 land inside this range.
+  if (!document || line < 0 || line >= document.lineCount) return null;
+  const text = document.lineAt(line).text || '';
+  const match = /\[tRJF=v\]🔴?/u.exec(text);
+  if (!match) return null;
+  const start = (match.index > 0 && text[match.index - 1] === ' ') ? match.index - 1 : match.index;
+  return new vscode.Range(line, start, line, match.index + match[0].length);
+}
+function redJumpButtonAnchorRange(editor, range) {
+  if (!editor || !range) return null;
+  const sourceBtn = sourceRjfVisibleButtonRangeAfterTextRange(editor.document, range);
+  if (sourceBtn) return sourceBtn;
+  const targetBtn = activeTargetRjfFlagRangeOnLine(editor.document, range.end.line);
+  if (targetBtn) return targetBtn;
+  return realButtonRangeAfterTextRange(editor.document, range, REAL_RED_BUTTON);
+}
+function positionHitsRedRange(editor, range, position) {
+  if (!range || !position) return false;
+  const buttonRange = redJumpButtonAnchorRange(editor, range);
+  return !!buttonRange && position.line === buttonRange.start.line &&
+    position.character >= buttonRange.start.character && position.character <= buttonRange.end.character;
+}
+function selectionHitsActiveRed(editor) {
+  if (!editor) return false;
+  // v0.9.453 Bug 2 fix: opportunistically restore activeRedJump from source
+  // flags so a fresh W-click on a body <span class="sRJF=v">🔴</span> works
+  // even when the user has not yet touched the Me Dock 🔴 button.
+  // restoreActiveRedJumpFromJumpFlags is idempotent (early-returns if state
+  // already matches the document) and uses the cached pair structure, so
+  // calling it from this hot path is cheap.
+  if (!activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) {
+    restoreActiveRedJumpFromJumpFlags(editor);
+  }
+  if (!activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return false;
+  const pos = editor.selection.active;
+  if (!activeRedJump.hideSource && positionHitsRedRange(editor, activeRedJump.sourceRange, pos)) return true;
+  if (!activeRedJump.hideTarget && positionHitsRedRange(editor, activeRedJump.targetRange, pos)) return true;
+  return selectionHitsRecentRedHover(editor);
+}
+function activeRedHitKindAndButtonRange(editor) {
+  if (!editor || !activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return null;
+  const pos = editor.selection && editor.selection.active;
+  if (!pos) return null;
+  if (!activeRedJump.hideSource) {
+    const r = redJumpButtonAnchorRange(editor, activeRedJump.sourceRange);
+    if (r && pos.line === r.start.line && pos.character >= r.start.character && pos.character <= r.end.character) return { kind: 'source', range: r };
+  }
+  if (!activeRedJump.hideTarget) {
+    const r = redJumpButtonAnchorRange(editor, activeRedJump.targetRange);
+    if (r && pos.line === r.start.line && pos.character >= r.start.character && pos.character <= r.end.character) return { kind: 'target', range: r };
+  }
+  if (selectionHitsRecentRedHover(editor) && lastRedHoverHit) {
+    return {
+      kind: lastRedHoverHit.kind,
+      range: new vscode.Range(lastRedHoverHit.line, lastRedHoverHit.start, lastRedHoverHit.line, lastRedHoverHit.end)
+    };
+  }
+  return null;
+}
+function activeRedOtherRange(editor) {
+  if (!editor || !activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return null;
+  const pos = editor.selection.active;
+  if (!activeRedJump.hideSource && positionHitsRedRange(editor, activeRedJump.sourceRange, pos)) return activeRedJump.targetRange;
+  if (!activeRedJump.hideTarget && positionHitsRedRange(editor, activeRedJump.targetRange, pos)) return activeRedJump.sourceRange;
+  if (selectionHitsRecentRedHover(editor) && lastRedHoverHit) {
+    return lastRedHoverHit.kind === 'source' ? activeRedJump.targetRange : activeRedJump.sourceRange;
+  }
+  return null;
+}
+function rememberRedHover(editor, range, kind) {
+  if (!editor || !range) return;
+  const anchorRange = redJumpButtonAnchorRange(editor, range) || range;
+  lastRedHoverHit = {
+    uri: editor.document.uri.toString(),
+    line: anchorRange.start.line,
+    start: anchorRange.start.character,
+    end: anchorRange.end.character,
+    kind,
+    expiresAt: Date.now() + 1600
+  };
+}
+function selectionHitsRecentRedHover(editor) {
+  // v0.9.357: Hover is the click-validity contract.  The remembered
+  // 🔴 click range is exactly the same single-column hitbox as the hover.
+  // This keeps the 🔴/🟢 boundary at the midpoint.
+  if (!editor || !lastRedHoverHit || lastRedHoverHit.uri !== editor.document.uri.toString()) return false;
+  if (Date.now() > lastRedHoverHit.expiresAt) return false;
+  const pos = editor.selection.active;
+  return pos.line === lastRedHoverHit.line && pos.character >= lastRedHoverHit.start && pos.character <= lastRedHoverHit.end;
+}
+function redJumpHoverMessage(editor, position) {
+  // v0.9.487: button-area tip is now attached directly to active
+  // RedTargetButtonDecoration / sourceRjfButtonDecoration items.
+  // This provider still remembers the hover for the W-click recovery
+  // path but no longer returns a MarkdownString — the decoration
+  // carries the tip. Sidesteps position-mapping ambiguity at the
+  // 🟢↔🔴 boundary on opening membranes.
+  if (!editor || !activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return null;
+  if (!activeRedJump.hideSource && positionHitsRedRange(editor, activeRedJump.sourceRange, position)) {
+    rememberRedHover(editor, activeRedJump.sourceRange, 'source');
+    return null;
+  }
+  if (!activeRedJump.hideTarget && positionHitsRedRange(editor, activeRedJump.targetRange, position)) {
+    rememberRedHover(editor, activeRedJump.targetRange, 'target');
+    return null;
+  }
+  return null;
+}
+function tryActivateSelectedNameJump(editor) {
+  if (!editor) return false;
+
+  const fromLine = editor.selection.active.line;
+  pushMeDockLineHistory(editor, fromLine);
+  if (fromLine < 0 || fromLine >= editor.document.lineCount) return false;
+
+  const lineText = editor.document.lineAt(fromLine).text || "";
+  const openInfo = parseOpenLine(lineText);
+  const closeInfo = parseCloseLine(lineText);
+  const info = openInfo || closeInfo;
+
+  // v0.9.260: Do not depend on macOS/VSCode word selection.
+  // Parse the whole physical line, then select the complete membrane name.
+  if (!info || !info.id) return false;
+
+  // v0.9.540: If the caret / selection sits inside the alias source span (the alias
+  // literal exposed as plain text inside the badge — v0.9.538 rendering), suppress
+  // the name-jump fallback. User v0.9.539_0300 report: 「開始膜のエイリアスの一部を
+  // Shift+→キーで選択して変更しようとすると、なぜか、膜名Wクリックのように、閉じ膜に
+  // ジャンプしてしまう」. selectedMembraneNameInfo correctly returns null for alias
+  // selections (they aren't on the name span), so the flow falls through to this
+  // fallback which then overwrites the selection and jumps. Detect-and-skip here.
+  const aliasBadge = parseMstatBadgeFromText(lineText);
+  if (aliasBadge && typeof aliasBadge.alias === 'string' && aliasBadge.alias.length > 0) {
+    const badgeText = lineText.slice(aliasBadge.start, aliasBadge.end);
+    const aliasRelStart = badgeText.indexOf(aliasBadge.alias);
+    if (aliasRelStart > 0) {
+      const aliasSrcStart = aliasBadge.start + aliasRelStart;
+      const aliasSrcEnd = aliasSrcStart + aliasBadge.alias.length;
+      const sel = editor.selection;
+      const within = (col) => col >= aliasSrcStart && col <= aliasSrcEnd;
+      if (within(sel.active.character) || within(sel.anchor.character)) return false;
+    }
+  }
+
+  const id = info.id;
+  selectMembraneNameOnLine(editor, fromLine);
+
+  let targetLine = -1;
+  if (openInfo) {
+    for (let i = fromLine + 1; i < editor.document.lineCount; i++) {
+      const p = parseCloseLine(editor.document.lineAt(i).text || "");
+      if (p && p.id === id) {
+        targetLine = i;
+        break;
+      }
+    }
+  } else {
+    for (let i = fromLine - 1; i >= 0; i--) {
+      const p = parseOpenLine(editor.document.lineAt(i).text || "");
+      if (p && p.id === id) {
+        targetLine = i;
+        break;
+      }
+    }
+  }
+
+  if (targetLine < 0) {
+    vscode.window.showWarningMessage('Paired membrane not found: ' + id);
+    return true;
+  }
+
+  const targetRange = membraneNameRangeOnLine(editor, targetLine);
+  if (targetRange) {
+    editor.selection = new vscode.Selection(targetRange.start, targetRange.end);
+    editor.revealRange(targetRange, vscode.TextEditorRevealType.InCenter);
+    pushMeDockLineHistory(editor, targetLine);
+  } else {
+    const pos = new vscode.Position(targetLine, 0);
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    pushMeDockLineHistory(editor, targetLine);
+  }
+
+  try {
+    showJumpMarkers(editor, id);
+  } catch (e) {
+    // marker is nice-to-have; jump must not fail because of marker code
+  }
+
+  return true;
+}
+
+function splitNameButtonRanges(range) {
+  if (!range) return null;
+  const line = range.start.line;
+  const start = range.start.character;
+  const end = range.end.character;
+  const nameLen = Math.max(1, end - start);
+  // v0.9.216: keep the in-name green zone narrow (rightmost 1 char)
+  // so hover changes feel symmetric, while the virtual after-text area remains
+  // forgiving through GREEN_BUTTON_RIGHT_EXTRA.
+  const buttonStart = Math.max(start, end - Math.min(GREEN_BUTTON_LEFT_CHARS, nameLen));
+  return {
+    nameRange: new vscode.Range(line, start, line, buttonStart),
+    buttonRange: new vscode.Range(line, buttonStart, line, end),
+    idEnd: end
+  };
+}
+function greenButtonAnchorRange(editor, range) {
+  // v0.9.483: anchor on the [oGJF=v]🟢 (or [cGJF=v]🟢) span, INCLUDING the
+  // literal 🟢 emoji at the tail. Click on the visible 🟢 lands cursor inside
+  // the emoji range, which is what positionHitsGreenButtonRange now expects.
+  // Falls back to a flag-only match (legacy lines without the emoji) so
+  // existing tests don't regress before re-activation rewrites the line.
+  if (!editor || !range) return null;
+  const text = editor.document.lineAt(range.end.line).text || '';
+  const m = /\[(?:oGJF|cGJF|GJF)=v\]🟢?/u.exec(text);
+  if (m) {
+    return new vscode.Range(range.end.line, m.index, range.end.line, m.index + m[0].length);
+  }
+  return new vscode.Range(range.end.line, range.end.character, range.end.line, range.end.character);
+}
+function positionHitsGreenButtonRange(editor, range, position) {
+  const buttonRange = greenButtonAnchorRange(editor, range);
+  if (!buttonRange || !position) return false;
+  if (position.line !== buttonRange.start.line) return false;
+  // v0.9.494: restored INCLUSIVE end check (`<=`) matching positionHits
+  // RedRange. v0.9.486 introduced strict exclusion (`<`) to fix a HOVER
+  // routing race where Monaco mapped mouse-on-visible-🔴 to the boundary
+  // col and both green and red provideHover providers claimed it (green
+  // won because it ran first). v0.9.488+ moved tip ownership to
+  // decoration-attached hoverMessage (no provideHover involvement for
+  // button tips), so the strict exclusion's hover-routing purpose is
+  // gone. Meanwhile strict exclusion BROKE W-click on 🟢: VSCode's
+  // word-select on the literal 🟢 emoji places selection.active at
+  // col = emojiEnd, and `< emojiEnd` rejected it. The hover-fallback
+  // (selectionHitsRecentGreenHover) had been nulled by the same handler
+  // that scheduled the single-click timer, so selectionHitsActiveGreen
+  // returned false → cancel path skipped → timer fired single-click =
+  // M-skeleton toggle = "🟢 W-click jumps briefly then shows raw data"
+  // (v0.9.491/492/493 test report). Reverting to inclusive end fixes
+  // this. v0.9.492's visible source space between 🟢 and `[tRJF=v]🔴`
+  // now provides the boundary separation that strict exclusion was
+  // originally meant to handle, so green claiming the boundary col is
+  // no longer a problem.
+  //
+  // v0.9.473: legacy zero-width fallback retains a 2-char tolerance
+  // so the at-name-end anchor still catches before-decoration clicks.
+  if (buttonRange.isEmpty) {
+    return position.character >= buttonRange.start.character &&
+      position.character <= buttonRange.start.character + 2;
+  }
+  return position.character >= buttonRange.start.character &&
+    position.character <= buttonRange.end.character;
+}
+function rememberGreenHover(editor, range) {
+  if (!editor || !range) return;
+  const anchorRange = greenButtonAnchorRange(editor, range) || range;
+  lastGreenHoverHit = {
+    uri: editor.document.uri.toString(),
+    line: anchorRange.start.line,
+    start: anchorRange.start.character,
+    end: anchorRange.end.character,
+    expiresAt: Date.now() + 1600
+  };
+}
+function selectionHitsRecentGreenHover(editor) {
+  // v0.9.356: Hover is the click-validity contract. Keep the recent-hover
+  // click box aligned to the green hover box so it does not steal 🔴 clicks.
+  if (!editor || !lastGreenHoverHit || lastGreenHoverHit.uri !== editor.document.uri.toString()) return false;
+  if (Date.now() > lastGreenHoverHit.expiresAt) return false;
+  const pos = editor.selection.active;
+  return pos.line === lastGreenHoverHit.line && pos.character >= lastGreenHoverHit.start && pos.character <= lastGreenHoverHit.end;
+}
+// v0.9.672 (bug2): re-resolve the active 🟢 pair's CURRENT name ranges from the live
+// document structure. The decoration-only 🟢 (v0.9.670) keeps absolute ranges in
+// activeGreenJump; when the user adds/removes content the membrane lines shift but the
+// stored ranges do NOT (a literal source char would have moved with the text — a memory
+// range does not), so the close 🟢 drifted onto the previous line and could not be removed
+// (俊克 2026.06.02 am11:26). Re-find the pair by its membrane id (nearest the stored
+// open-line hint, to disambiguate duplicate ids) and rewrite ranges to current positions.
+function reconcileActiveGreenJump(editor) {
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return;
+  if (!activeGreenJump.id) return; // legacy / source-flag restore: literal chars auto-track
+  const pairs = collectPairs(editor.document, { excludeIndex: false }).filter(p => p.id === activeGreenJump.id);
+  if (!pairs.length) return; // membrane removed/renamed — keep last known ranges
+  const hint = typeof activeGreenJump.openLine === 'number' ? activeGreenJump.openLine : pairs[0].start;
+  let best = pairs[0];
+  let bestDist = Math.abs(pairs[0].start - hint);
+  for (const p of pairs) {
+    const d = Math.abs(p.start - hint);
+    if (d < bestDist) { best = p; bestDist = d; }
+  }
+  const openInfo = membraneLineInfo(editor.document, best.start);
+  const closeInfo = membraneLineInfo(editor.document, best.end);
+  if (openInfo && closeInfo) {
+    activeGreenJump.ranges = [openInfo.idRange, closeInfo.idRange];
+    activeGreenJump.openLine = best.start;
+  }
+}
+function renderActiveGreenMarkers(editor) {
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return;
+  reconcileActiveGreenJump(editor); // v0.9.672: keep ranges current through edits (bug2)
+  // v0.9.393: Data-safe mode. Do not insert 🟢 into the document.
+  const nameHover = [];
+  const greenButtons = [];
+  for (const range of activeGreenJump.ranges || []) {
+    const split = splitNameButtonRanges(range);
+    if (!split) continue;
+    if (!split.nameRange.isEmpty) nameHover.push({ range: split.nameRange });
+    const greenRange = greenButtonAnchorRange(editor, range);
+    if (greenRange) greenButtons.push({ range: greenRange });
+  }
+  if (jumpNameHoverDecoration) editor.setDecorations(jumpNameHoverDecoration, nameHover);
+  // v0.9.489: legacy jumpActiveDecoration application disabled. Its
+  // wide `[oGJF=v]🟢` range carries `cursor: pointer; font-weight:
+  // 700;`, redundant with the new activeGreenButtonDecoration set
+  // below (v0.9.476) which has its own cursor:pointer. The legacy
+  // wide cursor was contributing to the v0.9.488_0955 invasion bug
+  // by keeping the visual hand-cursor zone wide even after the new
+  // common routine narrowed its own ranges. Pass an empty array to
+  // CLEAR any prior wide decoration (not just stop applying), so a
+  // freshly loaded session sees the narrow contract immediately.
+  if (jumpActiveDecoration) editor.setDecorations(jumpActiveDecoration, []);
+  // v0.9.477: re-render the dedicated activeGreenButtonDecoration too. Without
+  // this, activating a pair (which writes [oGJF=v]/[cGJF=v] flags via setGreenJump
+  // Flags) failed to display 🟢 in the body — the visible glyph is now drawn by
+  // activeGreenButtonDecoration, and the green-activation path didn't trigger
+  // its refresh hook (refreshSourceRjfSpanHiding is on the document-edit chain,
+  // not on the activeGreen state-change chain). Refresh both decorations here.
+  if (activeGreenButtonDecoration) {
+    editor.setDecorations(activeGreenButtonDecoration, activeGreenButtonAnchorRanges(editor));
+  }
+  // v0.9.693 (Phase 2b): body 🔴 abolished (Current Me 統合) — keep it cleared.
+  if (activeRedTargetButtonDecoration) editor.setDecorations(activeRedTargetButtonDecoration, []);
+  // v0.9.488: refresh shared tip layer when green state changes too.
+  if (membraneButtonTipDecoration) {
+    editor.setDecorations(membraneButtonTipDecoration, allMembraneButtonTipItems(editor));
+  }
+}
+function restoreActiveGreenMarkers(editor) {
+  renderActiveGreenMarkers(editor);
+  postMeDockAnchorState(editor);
+}
+function rangeContainsPosition(range, pos, extraRight = 0) {
+  if (!range || !pos) return false;
+  return pos.line === range.start.line && pos.character >= range.start.character && pos.character <= range.end.character + extraRight;
+}
+function selectionHitsActiveGreen(editor) {
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return false;
+  const pos = editor.selection.active;
+  return activeGreenJump.ranges.some(r => positionHitsGreenButtonRange(editor, r, pos)) || selectionHitsRecentGreenHover(editor);
+}
+function greenToggleAnchorRange(editor) {
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return null;
+  const pos = editor.selection.active;
+  const direct = (activeGreenJump.ranges || []).find(r => positionHitsGreenButtonRange(editor, r, pos));
+  if (direct) return direct;
+  if (selectionHitsRecentGreenHover(editor) && lastGreenHoverHit) {
+    return (activeGreenJump.ranges || []).find(r => {
+      const a = greenButtonAnchorRange(editor, r);
+      return a && a.start.line === lastGreenHoverHit.line && a.start.character === lastGreenHoverHit.start;
+    }) || null;
+  }
+  return null;
+}
+function restoreCursorInsideMembraneName(editor, range) {
+  if (!editor || !range) return;
+  const len = Math.max(1, range.end.character - range.start.character);
+  const safeOffset = len <= 2 ? 0 : Math.min(2, len - 2);
+  const pos = new vscode.Position(range.start.line, range.start.character + safeOffset);
+  nameJumpSuppressUntil = Date.now() + 250;
+  editor.selection = new vscode.Selection(pos, pos);
+  editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+}
+function activeGreenHoverMessage(editor, position) {
+  // v0.9.487: button-area tip is now attached directly to active
+  // GreenButtonDecoration items (so Monaco fires it on visual
+  // decoration hover, sidestepping position-mapping ambiguity at the
+  // 🟢↔🔴 boundary). This provider only returns the NAME-area tip
+  // now, plus it still calls rememberGreenHover when the position
+  // hits the button range so the W-click recovery path still works.
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return null;
+  for (const r of activeGreenJump.ranges || []) {
+    const split = splitNameButtonRanges(r);
+    if (!split) continue;
+    if (positionHitsGreenButtonRange(editor, r, position)) {
+      rememberGreenHover(editor, r);
+      return null; // tip comes from the decoration itself in v0.9.487
+    }
+    if (position.line === r.start.line && position.character >= r.start.character && position.character < r.end.character) {
+      return new vscode.MarkdownString('Membrane name area — click to select the pair / double-click to jump between the opening and closing membrane');
+    }
+  }
+  return null;
+}
+function enterMSkeletonMode(editor) {
+  if (!editor || !activeGreenJump) return false;
+  mSkeletonMode = true;
+  clearMembraneVisualDecorations(editor);
+  restoreActiveGreenMarkers(editor);
+  return true;
+}
+function exitMSkeletonMode(editor) {
+  mSkeletonMode = false;
+  setTimeout(() => refresh(editor), 20);
+}
+
+
+
+function previousRenderedMembraneRightEdge(editor, line) {
+  // v0.9.216:
+  // From the beginning of the line after a membrane header/footer,
+  // ← should return to the visible right edge ")|" of the previous membrane line,
+  // not to the virtual space / hidden brace.
+  if (!editor || mSkeletonMode) return null;
+  const prevLine = line - 1;
+  if (prevLine < 0) return null;
+  const text = editor.document.lineAt(prevLine).text || "";
+  const parts = membraneLineParts(text, 'open') || membraneLineParts(text, 'close');
+  if (!parts) return null;
+  const closeBrace = text.lastIndexOf('}');
+  if (closeBrace < 0) return null;
+  return new vscode.Position(prevLine, closeBrace);
+}
+
+
+
+function markdownWrapperInfoForLine(text) {
+  // v0.9.216:
+  // For a markdown membrane line:
+  //   [//]: # ({▼mCN=name ...})
+  // return wrapper boundaries in real source coordinates.
+  const m = (text || "").match(/^(\s*)\[\/\/\]:\s*#\s*\((.*)\)\s*$/);
+  if (!m) return null;
+  const inner = m[2] || "";
+  const innerStart = text.indexOf(inner);
+  const finalParen = text.lastIndexOf(")");
+  if (innerStart < 0 || finalParen < 0) return null;
+  return {
+    indentStart: 0,
+    wrapperStart: (m[1] || "").length,
+    innerStart,
+    innerEnd: finalParen,
+    finalParen
+  };
+}
+
+function markdownWrapperHideRanges(editor) {
+  // v0.9.216:
+  // Hide only the Markdown comment wrapper:
+  //   [//]: # ( ... )
+  // and the final wrapper ")".
+  // The inner payload remains visible and is handled by the existing membrane renderer.
+  const ranges = [];
+  if (!editor || !isMarkdownDocument(editor.document)) return ranges;
+  const doc = editor.document;
+
+  for (let i = 0; i < doc.lineCount; i++) {
+    const text = doc.lineAt(i).text || "";
+    const m = text.match(/^(\s*)\[\/\/\]:\s*#\s*\((.*)\)\s*$/);
+    if (!m) continue;
+
+    const inner = m[2] || "";
+    const innerStart = text.indexOf(inner);
+    const finalParen = text.lastIndexOf(")");
+
+    if (innerStart > 0) {
+      ranges.push(new vscode.Range(
+        new vscode.Position(i, m[1].length),
+        new vscode.Position(i, innerStart)
+      ));
+    }
+
+    if (finalParen >= 0) {
+      ranges.push(new vscode.Range(
+        new vscode.Position(i, finalParen),
+        new vscode.Position(i, finalParen + 1)
+      ));
+    }
+  }
+  return ranges;
+}
+
+function pushMembraneColorRange(byCode, code, range) {
+  const c = normalizeMembraneColorCode(code);
+  if (!c || !range) return;
+  if (!byCode.has(c)) byCode.set(c, []);
+  byCode.get(c).push(range);
+}
+
+function computeMembraneBadgeColorRanges(editor) {
+  // v0.9.288:
+  // Color only the semantic membrane markers, not the editable name/comment text.
+  // - `//` before the comment follows the membrane color.
+  // - In an mSTAT badge, only the parentheses and final color code letter are colored.
+  const byCode = new Map();
+  if (!editor) return byCode;
+  const doc = editor.document;
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  const pairByStart = new Map(pairs.map(p => [p.start, p]));
+  const pairByEnd = new Map(pairs.map(p => [p.end, p]));
+
+  function colorCodeForLine(line, text, open, close) {
+    if (open) return membraneColorCodeFromText(text);
+    if (close) {
+      const pair = pairByEnd.get(line);
+      if (pair && pair.start >= 0 && pair.start < doc.lineCount) {
+        return membraneColorCodeFromText(doc.lineAt(pair.start).text || '');
+      }
+    }
+    return '';
+  }
+
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    const open = parseOpenLine(text);
+    const close = parseCloseLine(text);
+    if (!open && !close) continue;
+    const parts = membraneLineParts(text, open ? 'open' : 'close');
+    const code = colorCodeForLine(line, text, open, close);
+    if (!code) continue;
+
+    if (parts && parts.idEnd >= 0) {
+      const commentSlash = text.indexOf('//', parts.idEnd);
+      const badge = parseMstatBadgeFromText(text);
+      const slashBeforeBadge = badge ? commentSlash >= 0 && commentSlash < badge.start : commentSlash >= 0;
+      if (slashBeforeBadge) {
+        pushMembraneColorRange(byCode, code, new vscode.Range(line, commentSlash, line, commentSlash + 2));
+      }
+    }
+
+    const badge = parseMstatBadgeFromText(text);
+    if (badge && normalizeMembraneColorCode(badge.colorCode) === code) {
+      pushMembraneColorRange(byCode, code, new vscode.Range(line, badge.start, line, badge.start + 1));
+      pushMembraneColorRange(byCode, code, new vscode.Range(line, badge.end - 1, line, badge.end));
+      const colorChar = text.lastIndexOf(code, badge.end - 1);
+      if (colorChar >= badge.start && colorChar < badge.end) {
+        pushMembraneColorRange(byCode, code, new vscode.Range(line, colorChar, line, colorChar + 1));
+      }
+    }
+  }
+  return byCode;
+}
+
+function clearMembraneBadgeColorDecorations(editor) {
+  if (!editor || !membraneBadgeColorDecorations) return;
+  for (const deco of membraneBadgeColorDecorations.values()) {
+    editor.setDecorations(deco, []);
+  }
+}
+
+function renderedMembraneRightEdgeSpaceRanges(editor) {
+  // v0.9.216:
+  // Render a tiny virtual space after the visible membrane line.
+  // This does not alter source; it only prevents the right edge from feeling visually clipped.
+  const ranges = [];
+  if (!editor || mSkeletonMode) return ranges;
+  const doc = editor.document;
+  for (let i = 0; i < doc.lineCount; i++) {
+    const text = doc.lineAt(i).text || "";
+    if (text.indexOf('{') < 0) continue; // v0.9.667: 膜行は必ず '{' を含む(事前フィルタ)。
+    const parts = membraneLineParts(text, 'open') || membraneLineParts(text, 'close');
+    if (!parts) continue;
+    const closeBrace = text.lastIndexOf('}');
+    if (closeBrace < 0) continue;
+    const pos = new vscode.Position(i, closeBrace);
+    ranges.push(new vscode.Range(pos, pos));
+  }
+  return ranges;
+}
+
+// v0.9.635: cache the ranges last applied per (document, decoration tag) so we can
+// SKIP redundant setDecorations calls. Re-applying identical decoration ranges is a
+// visual no-op — BUT during IME composition even a no-op setDecorations triggers a
+// line re-layout that flickers the kana input box (worst on membrane lines whose
+// hidden prefix `// {* ▼mCN=` is collapsed via font-size:0). When the user types in
+// the body, membrane-line decoration ranges don't change, so skipping the redundant
+// setDecorations leaves the IME widget undisturbed. User 2026.05.29 pm10:30:
+// 行頭で1文字かな→入力枠が行番号右へ飛んで戻る（膜線がある時だけ）。ALL set/clear
+// sites of a cached decoration must route through this helper to stay coherent.
+const _decoSigCache = new Map();
+function _decoRangesSig(ranges) {
+  // Signature captures ranges AND dynamic before/after content + hover so caching
+  // never skips a real change (e.g. a membrane label whose glyph/badge text changed
+  // while its range stayed put). Style itself lives in the decoration TYPE, not here.
+  let s = '';
+  for (const r of (ranges || [])) {
+    const rng = (r && r.range) ? r.range : r;
+    if (!rng || !rng.start) { s += '?;'; continue; }
+    s += rng.start.line + ',' + rng.start.character + ',' + rng.end.line + ',' + rng.end.character;
+    if (r && r.renderOptions) {
+      const ro = r.renderOptions;
+      const b = ro.before && ro.before.contentText;
+      const a = ro.after && ro.after.contentText;
+      const bc = ro.before && ro.before.color;
+      const ac = ro.after && ro.after.color;
+      if (b != null) s += '|b:' + b;
+      if (a != null) s += '|a:' + a;
+      if (bc != null) s += '|bc:' + bc;
+      if (ac != null) s += '|ac:' + ac;
+    }
+    if (r && r.hoverMessage) {
+      const hm = r.hoverMessage;
+      s += '|h:' + (typeof hm === 'string' ? hm : (hm && hm.value) ? hm.value : '');
+    }
+    s += ';';
+  }
+  return s;
+}
+function setDecoCached(editor, deco, tag, ranges) {
+  if (!editor || !deco) return;
+  const key = editor.document.uri.toString() + ' ' + tag;
+  const sig = _decoRangesSig(ranges);
+  // v0.9.636: caching DISABLED. v0.9.635's skip-when-unchanged regressed rendering —
+  // typing at a line head put the char LEFT of the membrane vertical line (the indent
+  // decoration was skipped), fixed only by a structural refresh (newline). User pm10:59.
+  // Always apply for now; routing kept for a safer selective re-enable later.
+  if (false && _decoSigCache.get(key) === sig) return; // unchanged → skip (no IME-disrupting no-op)
+  _decoSigCache.set(key, sig);
+  editor.setDecorations(deco, ranges);
+}
+
+function refresh(editor = vscode.window.activeTextEditor) {
+  activeEditor = editor;
+  if (!editor || !lineDecoration) return;
+  restoreActiveGreenJumpFromJumpFlags(editor);
+  const cfg = vscode.workspace.getConfiguration('laiMembrane');
+  if (!cfg.get('enabled', true)) { clear(editor); return; }
+  if (meosRawMode) { clearForRaw(editor); return; } // v0.9.723: Raw=MeOS休眠
+  if (mSkeletonMode && activeGreenJump && activeGreenJump.uri === editor.document.uri.toString()) {
+    // M-skeleton Mode: show the real raw source for every membrane line,
+    // while keeping only the selected open/close pair marked with 🟢.
+    clearMembraneVisualDecorations(editor);
+    restoreActiveGreenMarkers(editor);
+    scheduleMstatsSync(editor);
+    scheduleMstatMetadata(editor);
+    return;
+  }
+  setDecoCached(editor, lineDecoration, 'line', computeLineDecorations(editor.document));
+  if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, computeWarningArrowDecorations(editor.document));
+  applyPrettyLabels(editor);
+  // v0.9.512: Stealth rendering — hide Sth1 shells, render ◤◢ markers,
+  // and for full-stealth (nested Sth1) hide content too.
+  applyStealthDecorations(editor);
+  // v0.9.504: depthProxy apply removed.
+  clearMembraneBadgeColorDecorations(editor);
+  const badgeColorRanges = computeMembraneBadgeColorRanges(editor);
+  for (const [code, ranges] of badgeColorRanges.entries()) {
+    const deco = ensureMembraneBadgeColorDecoration(code);
+    if (deco) editor.setDecorations(deco, ranges);
+  }
+  if (mstatIconDoorDecoration) {
+    editor.setDecorations(mstatIconDoorDecoration, mstatBadgeIconDoorRanges(editor));
+  }
+  if (workingTocLineDecoration || workingTocItemDecoration) {
+    const tocRanges = workingTocHighlightRanges(editor);
+    if (workingTocLineDecoration) editor.setDecorations(workingTocLineDecoration, tocRanges.lineRanges);
+    if (workingTocItemDecoration) editor.setDecorations(workingTocItemDecoration, fixedWorkingTocEnabled ? [] : tocRanges.itemRanges);
+  }
+  if (fixedTocHideDecoration) setDecoCached(editor, fixedTocHideDecoration, 'tocHide', fixedTocHiddenRanges(editor));
+  if (rightEdgeSpaceDecoration) {
+    editor.setDecorations(rightEdgeSpaceDecoration, membraneRightEdgeVirtualSpaceRanges(editor));
+  }
+  if (nameRightVirtualSpaceDecoration) {
+    setDecoCached(editor, nameRightVirtualSpaceDecoration, 'nameRight', membraneNameRightVirtualSpaceRanges(editor));
+  }
+  if (rightEdgeSpaceDecoration) {
+    editor.setDecorations(rightEdgeSpaceDecoration, renderedMembraneRightEdgeSpaceRanges(editor));
+  }
+  if (mdWrapperHideDecoration) {
+    setDecoCached(editor, mdWrapperHideDecoration, 'mdHide', markdownWrapperHideRanges(editor).concat(sourceRjfHideRanges(editor)).concat(hyperTocStorageHideRanges(editor)));
+  }
+  scheduleMstatsSync(editor);
+  scheduleMstatMetadata(editor); // v0.9.635: was a missed setTimeout(...,260) in v0.9.633's replace_all (2-space indent).
+  // v0.9.674: green re-render was REMOVED from here. v0.9.672 called renderActiveGreenMarkers
+  // on EVERY refresh (incl. plain clicks / scrolls / the mSTAT churn) whenever a 🟢 was active,
+  // which loaded the extension host enough that the Me Dock Line field lagged ~10s after a 🟢
+  // appeared (俊克 2026.06.02 pm00:27 — native Ln was instant, so the renderer was fine; only
+  // the ext-host-driven panel lagged). The 🟢 only needs RE-resolving when the membrane LINES
+  // shift = a STRUCTURAL edit, so the repaint now lives in the onDidChangeTextDocument
+  // structural branch instead. Plain selection-change refreshes stay free.
+  postFixedWorkingTocSnapshot();
+}
+function findCurrentPair(editor) {
+  if (!editor) return null;
+  const line = editor.selection.active.line;
+  return collectPairs(editor.document, { excludeIndex: false })
+    .filter(p => p.start <= line && line <= p.end)
+    .sort((a, b) => (a.end - a.start) - (b.end - b.start))[0] || null;
+}
+// v0.9.678 (対策1)/v0.9.681 (改善2): shared info about the membrane the cursor is inside —
+// the INNERMOST enclosing pair (findCurrentPair) + total line count + Δ (line-count change
+// since the cursor ENTERED this membrane; resets on moving to a different membrane). Reads
+// the version-cached structure → cheap. MUST be called only on the lightweight selection /
+// active-editor path, never inside the heavy refresh, per [[project_meos_freeze_pattern]].
+// Used by BOTH the status bar (対策1) and the H-TOC "Current Me" Pin (対策2) so they stay in sync.
+function currentMembraneInfo(editor) {
+  if (!editor) return null;
+  let cur = null;
+  try { cur = findCurrentPair(editor); } catch (_) { cur = null; }
+  if (!cur) { pinBaseline.id = null; return null; }
+  const total = cur.end - cur.start + 1;
+  const id = String(cur.id || '').trim();
+  if (pinBaseline.id !== id) { pinBaseline.id = id; pinBaseline.total = total; } // entered a new membrane → reset Δ baseline
+  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total };
+}
+// v0.9.682 (改善1): 差分は総数の後ろに `[Δ+30]` 形式で（188の内訳が+30、と読める）。0なら非表示。
+function deltaText(delta) { return delta ? `[Δ${delta > 0 ? '+' : ''}${delta}]` : ''; }
+function updateMembraneStatusBar(editor) {
+  if (!membraneStatusBarItem) return;
+  const info = (editor && editor.document) ? currentMembraneInfo(editor) : null;
+  if (!info) { membraneStatusBarItem.hide(); return; }
+  const shown = info.name.length > 40 ? info.name.slice(0, 39) + '…' : info.name;
+  // v0.9.679: 総行数 `=N`(開始・閉じ込み)。v0.9.682: 入ってからの増減 `=N[Δ+M]`(コピペ行数把握用)。
+  membraneStatusBarItem.text = `$(layers) ${shown} (Ln ${info.start}-${info.end}=${info.total}${deltaText(info.delta)})`;
+  membraneStatusBarItem.tooltip = `現在カーソルがある膜 (Current Me)\n名前: ${info.name}\n開始膜 Ln ${info.start} / 閉じ膜 Ln ${info.end}\n総行数 ${info.total}行(開始・閉じ込み)${info.delta ? `\nΔ ${info.delta > 0 ? '+' : ''}${info.delta}行 (この膜に入ってからの増減)` : ''}`;
+  membraneStatusBarItem.show();
+}
+// v0.9.680 (対策2)/v0.9.683 (統合 Phase 1): the Current Me 🟢 button cycles open → close →
+// cursor, revealing whichever is off-screen. TARGET = the SELECTED membrane (activeGreenJump,
+// armed by clicking a membrane NAME) if one exists, else the membrane the cursor is currently
+// inside (findCurrentPair). This unifies 🟢(open⇔close) + 🔴(bi-direction) + Current Me into a
+// single 3-point jump (俊克 2026.06.02 pm09:23/pm10:07). Reveal-only (cursor not moved, no fold
+// change); incl. the v0.9.673 focus-first + InCenterIfOutsideViewport fix.
+async function cycleCurrentMembrane(editor = getMeDockTargetEditor() || vscode.window.activeTextEditor) {
+  if (!editor) return false;
+  // v0.9.684: target the SELECTED 🟢 membrane ONLY when the "From Out To 🟢" checkbox is ON
+  // (pinJumpToSelected) AND one is armed. Otherwise (default) cycle the CURRENT membrane.
+  let openLine = -1, closeLine = -1;
+  if (pinJumpToSelected && activeGreenJump && activeGreenJump.uri === editor.document.uri.toString()
+      && Array.isArray(activeGreenJump.ranges) && activeGreenJump.ranges.length) {
+    const oc = activeGreenOpenCloseRanges(editor); // selected membrane's open/close ranges
+    if (oc.open && oc.close) { openLine = oc.open.start.line; closeLine = oc.close.start.line; }
+  }
+  if (openLine < 0) {
+    const cur = findCurrentPair(editor); // default → the membrane the cursor is in
+    if (!cur) return false;
+    openLine = cur.start; closeLine = cur.end;
+  }
+  const cursorLine = editor.selection && editor.selection.active ? editor.selection.active.line : openLine;
+  const positions = [];
+  const seen = new Set();
+  for (const p of [openLine, closeLine, cursorLine]) { if (!seen.has(p)) { positions.push(p); seen.add(p); } }
+  const visibleRanges = editor.visibleRanges || [];
+  const inView = (ln) => visibleRanges.some(r => ln >= r.start.line && ln <= r.end.line);
+  let baseIdx = -1;
+  for (let i = 0; i < positions.length; i++) { if (inView(positions[i])) { baseIdx = i; break; } }
+  const total = positions.length;
+  let revealIdx = (baseIdx + 1) % total;
+  for (let step = 1; step <= total; step++) { const t = (baseIdx + step) % total; if (!inView(positions[t])) { revealIdx = t; break; } }
+  const revealRange = new vscode.Range(positions[revealIdx], 0, positions[revealIdx], 0);
+  try { await vscode.window.showTextDocument(editor.document, editor.viewColumn, false); } catch (_) {}
+  editor.revealRange(revealRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  return true;
+}
+async function foldCurrent() {
+  const editor = vscode.window.activeTextEditor;
+  const pair = findCurrentPair(editor);
+  if (!editor || !pair) return;
+  await setPairFoldStateAndMstat(editor, pair, true);
+}
+async function toggleCurrent() {
+  const editor = vscode.window.activeTextEditor;
+  const pair = findCurrentPair(editor);
+  if (!editor || !pair) return;
+  await setPairFoldStateAndMstat(editor, pair, !isPairFolded(editor, pair));
+}
+async function unfoldCurrent() {
+  const editor = vscode.window.activeTextEditor;
+  const pair = findCurrentPair(editor);
+  if (!editor || !pair) return;
+  await setPairFoldStateAndMstat(editor, pair, false);
+}
+function pairForMeDockLine(editor, oneBasedLine) {
+  if (!editor || !editor.document) return null;
+  const doc = editor.document;
+  const n = Number.parseInt(String(oneBasedLine ?? ''), 10);
+  const line = Number.isFinite(n) ? Math.max(0, Math.min(doc.lineCount - 1, n - 1)) : editor.selection.active.line;
+
+  // v0.9.346: The Me Dock Line field is the source of truth for the right-pane
+  // Toggle button. Re-detect the pair from that line every time, rather than
+  // relying on stale panel state or the editor's current selection.
+  const info = membraneLineInfo(doc, line);
+  if (info) {
+    const matched = pairedMembraneForLine(doc, info.line);
+    if (matched && matched.pair) return matched.pair;
+  }
+
+  return collectPairs(doc, { excludeIndex: false })
+    .filter(p => p.start <= line && line <= p.end)
+    .sort((a, b) => (a.end - a.start) - (b.end - b.start))[0] || null;
+}
+
+async function toggleMeDockCurrentMembrane(oneBasedLine) {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor) return;
+
+  const pair = pairForMeDockLine(editor, oneBasedLine) || currentMembranePairForRename(editor) || findCurrentPair(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage('Toggle Me: put the cursor inside a membrane or on its name.');
+    return;
+  }
+
+  await vscode.window.showTextDocument(editor.document, editor.viewColumn, false);
+  await setPairFoldStateAndMstat(editor, pair, !isPairFolded(editor, pair));
+  nameJumpSuppressUntil = Date.now() + 250;
+  updateMeDockMode();
+}
+async function foldAll() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const starts = collectPairs(editor.document, { excludeIndex: false })
+    .filter(p => !isMstatFixed(p, editor.document))
+    .map(p => p.start);
+  if (starts.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: starts });
+  setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
+}
+async function unfoldAll() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const starts = collectPairs(editor.document, { excludeIndex: false })
+    .filter(p => !isMstatFixed(p, editor.document))
+    .map(p => p.start);
+  if (starts.length) await vscode.commands.executeCommand('editor.unfold', { selectionLines: starts });
+  setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
+}
+
+function fixedMstatFoldTarget(pair, document) {
+  if (!pair || !document) return null;
+  const badge = parseMstatBadgeFromText(document.lineAt(pair.start).text);
+  if (!badge || !badge.fixed) return null;
+  if (badge.symbol === '⊖') return true;   // ⊖f: always folded
+  if (badge.symbol === '⊕') return false;  // ⊕f: always unfolded
+  return null;
+}
+
+function isHorizontalMembranePair(editor, pair) {
+  if (!editor || !pair) return false;
+  const doc = editor.document;
+  const startSource = asRealMembraneSource(rawLineText(doc, pair.start)) || rawLineText(doc, pair.start);
+  const endSource = asRealMembraneSource(rawLineText(doc, pair.end)) || rawLineText(doc, pair.end);
+  // Defensive hook for future horizontal pair parsing.
+  // Current collectPairs() mainly returns vertical mCN pairs, but Me all already
+  // follows the horizontal rule if such a pair reaches this function.
+  return /[▶◀]/.test(startSource) || /[▶◀]/.test(endSource);
+}
+
+async function toggleMeAllMembranes() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  if (!pairs.length) return;
+
+  const originalSelection = editor.selection;
+  const rememberedTargets = [];
+  const foldLines = [];
+  const unfoldLines = [];
+
+  // v0.9.345: decide all target states first, then call native fold/unfold in
+  // two bulk commands. Do not call setPairFoldStateAndMstat() per pair, because
+  // that function used to refresh/redraw the whole file repeatedly.
+  for (const pair of pairs) {
+    let targetFolded = fixedMstatFoldTarget(pair, doc);
+
+    if (targetFolded === null) {
+      const folded = isPairFolded(editor, pair);
+      if (isHorizontalMembranePair(editor, pair)) {
+        // 横膜: open -> close, closed -> stay closed.
+        targetFolded = true;
+      } else {
+        // 縦膜: folded <-> unfolded.
+        targetFolded = !folded;
+      }
+    }
+
+    const item = { pair, folded: !!targetFolded, key: pairStateKey(editor, pair) };
+    rememberedTargets.push(item);
+    foldStateByPairKey.set(item.key, item.folded);
+    (item.folded ? foldLines : unfoldLines).push(pair.start);
+  }
+
+  suppressAutoUnfoldUntil = Date.now() + 2000;
+
+  // Unfold first, then fold. This avoids a parent fold hiding children before an
+  // unfold command can reach them. Both commands are bulk operations.
+  if (unfoldLines.length) {
+    await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldLines });
+  }
+  if (foldLines.length) {
+    await vscode.commands.executeCommand('editor.fold', { selectionLines: foldLines });
+  }
+
+  for (const item of rememberedTargets) {
+    foldStateByPairKey.set(item.key, item.folded);
+  }
+
+  await syncManyMstatsFromTargetStates(editor, rememberedTargets);
+
+  if (originalSelection && editor.document === doc) editor.selection = originalSelection;
+  refresh(editor);
+  scheduleMstatsSync(editor);
+  updateMeDockMode();
+}
+
+
+function pairedMembraneForLine(document, line) {
+  const info = membraneLineInfo(document, line);
+  if (!info) return null;
+  const pair = collectPairs(document, { excludeIndex: false }).find(p => {
+    if (info.kind === 'open') return p.start === info.line && p.id === info.id;
+    return p.end === info.line && p.id === info.id;
+  });
+  if (!pair) return null;
+  const targetLine = info.kind === 'open' ? pair.end : pair.start;
+  const targetInfo = membraneLineInfo(document, targetLine);
+  if (!targetInfo || targetInfo.id !== info.id) return null;
+  return { info, targetInfo, pair };
+}
+function selectedMembraneNameInfo(editor) {
+  if (!editor) return null;
+  const sel = editor.selection;
+  if (sel.isEmpty || sel.start.line !== sel.end.line) return null;
+  const info = membraneLineInfo(editor.document, sel.start.line);
+  if (!info) return null;
+  const containsSelection = sel.start.character >= info.idStart && sel.end.character <= info.idEnd && sel.end.character > sel.start.character;
+  if (!containsSelection) return null;
+  const selectedText = editor.document.getText(sel).trim();
+  if (selectedText !== info.id) return null;
+  return info;
+}
+// v0.9.541: Return open-line membrane info when the current selection overlaps the
+// alias source span. Used to trigger a close-line jump on W-click of the alias,
+// mirroring the membrane-name W-click behaviour. User v0.9.540_0309 request:
+// 「膜名のWクリックと同様に、エイリアスのWクリックで、閉じ膜にジャンプするようにして
+// ほしい」.
+function selectedAliasJumpInfo(editor) {
+  if (!editor) return null;
+  const sel = editor.selection;
+  if (sel.isEmpty || sel.start.line !== sel.end.line) return null;
+  const info = membraneLineInfo(editor.document, sel.start.line);
+  if (!info || info.kind !== 'open') return null;
+  const lineText = editor.document.lineAt(sel.start.line).text || '';
+  const badge = parseMstatBadgeFromText(lineText);
+  if (!badge || typeof badge.alias !== 'string' || badge.alias.length === 0) return null;
+  const badgeText = lineText.slice(badge.start, badge.end);
+  const aliasRelStart = badgeText.indexOf(badge.alias);
+  if (aliasRelStart <= 0) return null;
+  const aliasSrcStart = badge.start + aliasRelStart;
+  const aliasSrcEnd = aliasSrcStart + badge.alias.length;
+  // Selection must overlap the alias span
+  if (sel.end.character <= aliasSrcStart || sel.start.character >= aliasSrcEnd) return null;
+  return info;
+}
+function removeAllRealGreenButtons(editor) {
+  // v0.9.393: Safety guard. Never delete/replace source text while managing 🟢.
+  // Existing real 🟢, if any, are left untouched rather than risking membrane data loss.
+  return Promise.resolve(false);
+}
+
+
+function clearJumpMarkers(editor = vscode.window.activeTextEditor) {
+  if (!editor || !jumpActiveDecoration) return;
+  editor.setDecorations(jumpActiveDecoration, []);
+  if (jumpNameHoverDecoration) editor.setDecorations(jumpNameHoverDecoration, []);
+  activeGreenJump = null;
+  mSkeletonMode = false;
+  postMeDockAnchorState(editor);
+  // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🟢 dims.
+  postFixedWorkingTocSnapshot();
+  removeAllRealGreenButtons(editor).then(() => {});
+}
+function showJumpMarkers(editor, ranges) {
+  if (!editor || !jumpActiveDecoration) return;
+  const safeRanges = Array.isArray(ranges) ? ranges : [];
+  // v0.9.672: store the membrane id + open-line hint so reconcileActiveGreenJump can
+  // re-resolve the pair's CURRENT positions after edits (the decoration-only 🟢 stores
+  // absolute ranges that do not track text shifts — bug2). id is shared by open & close.
+  const clickedInfo = safeRanges[0] ? membraneLineInfo(editor.document, safeRanges[0].start.line) : null;
+  activeGreenJump = {
+    uri: editor.document.uri.toString(),
+    ranges: safeRanges,
+    id: clickedInfo ? clickedInfo.id : null,
+    openLine: safeRanges[0] ? safeRanges[0].start.line : -1,
+  };
+  // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🟢 lights up.
+  postFixedWorkingTocSnapshot();
+  // v0.9.670 (2026.06.02 am05:20 俊克): STOP writing [oGJF=v]/[cGJF=v]🟢 flags into the
+  // source on click. The active pair now lives ONLY in memory (activeGreenJump) and the
+  // 🟢 glyph is drawn purely as an after-content decoration (activeGreenButtonItems).
+  //   なぜ: setGreenJumpFlags は膜クリックのたびに editor.edit() でソースを書き換え、
+  //   document.version を進めて構造キャッシュ(v0.9.450)を無効化 → onDidChangeTextDocument →
+  //   refresh() → applyPrettyLabels の全行走査 + 見出し font-size 再レイアウト、という連鎖を
+  //   毎クリック誘発していた。7000行クラスで「クリックしても🟢が10秒出ない」固着の主因。
+  //   さらに 🟢 は非ASCIIなので、その書込み単一行編集が onDidChangeTextDocument の
+  //   IME入力判定 /[^\x00-\x7F]/ に誤ヒットし compose-mode 全行 walk も誘発していた。
+  //   俊克案「ボタンは書き込まず、そこに見せるだけにする」をそのまま実装＝編集ゼロ＝連鎖ゼロ。
+  //   永続化は意図的に省略(「だいたいの位置にジャンプできればいい」)。再読込で🟢は消え、
+  //   再クリックで復活する。必要なら後で badge メタデータに行番号を持たせて復元可能。
+  editor.setDecorations(jumpActiveDecoration, []);
+  if (jumpNameHoverDecoration) editor.setDecorations(jumpNameHoverDecoration, []);
+  renderActiveGreenMarkers(editor);
+  postMeDockAnchorState(editor);
+}
+function activeMembraneNameInfo(editor) {
+  if (!editor) return null;
+  const sel = editor.selection;
+  if (sel.start.line !== sel.end.line) return null;
+  const info = membraneLineInfo(editor.document, sel.active.line);
+  if (!info) return null;
+
+  if (sel.isEmpty) {
+    const ch = sel.active.character;
+    if (ch >= info.idStart && ch <= info.idEnd) return info;
+    // v0.9.542: caret inside the alias source span counts as "inside the membrane
+    // name" for the purposes of activating the 🟢/🔴 pair markers. User v0.9.541_0317:
+    // 「エイリアスをクリックしたときに、通常の膜名をクリックしたときのように、🟢ボタンが
+    // 出ない」.
+    if (info.kind === 'open') {
+      const lineText = editor.document.lineAt(sel.active.line).text || '';
+      const badge = parseMstatBadgeFromText(lineText);
+      if (badge && typeof badge.alias === 'string' && badge.alias.length > 0) {
+        const badgeText = lineText.slice(badge.start, badge.end);
+        const aliasRelStart = badgeText.indexOf(badge.alias);
+        if (aliasRelStart > 0) {
+          const aliasSrcStart = badge.start + aliasRelStart;
+          const aliasSrcEnd = aliasSrcStart + badge.alias.length;
+          if (ch >= aliasSrcStart && ch <= aliasSrcEnd) return info;
+        }
+      }
+    }
+    return null;
+  }
+
+  return selectedMembraneNameInfo(editor);
+}
+function activateMembranePairMarkers(editor, info) {
+  if (!editor || !info) return false;
+  const matched = pairedMembraneForLine(editor.document, info.line);
+  if (!matched) {
+    clearJumpMarkers(editor);
+    return false;
+  }
+  showJumpMarkers(editor, [matched.info.idRange, matched.targetInfo.idRange]);
+  return true;
+}
+
+function activeGreenMeState(editor = getMeDockTargetEditor()) {
+  if (editor && (!activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString())) {
+    restoreActiveGreenJumpFromJumpFlags(editor);
+  }
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) {
+    return { has: false, visible: false, label: 'Me', title: 'No selected Me membrane yet' };
+  }
+  const ranges = Array.isArray(activeGreenJump.ranges) ? activeGreenJump.ranges.filter(Boolean) : [];
+  if (!ranges.length) return { has: false, visible: false, label: 'Me', title: 'No selected Me membrane yet' };
+  const visible = ranges.some(r => editor.visibleRanges.some(v => v.start.line <= r.end.line && v.end.line >= r.start.line));
+  return {
+    has: true,
+    visible,
+    label: 'Me',
+    title: visible ? 'Selected Me membrane is visible' : 'Jump back to selected Me membrane'
+  };
+}
+function postMeDockAnchorState(editor = getMeDockTargetEditor()) {
+  if (!meDockPanel) return;
+  try { meDockPanel.webview.postMessage({ type: 'anchorState', anchor: activeGreenMeState(editor), bidi: activeRedBidiState(editor) }); } catch (_) {}
+}
+function activeRedBidiRanges(editor = getMeDockTargetEditor()) {
+  if (!editor) return { source: null, target: null };
+  if (!activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) {
+    restoreActiveRedJumpFromJumpFlags(editor);
+  }
+  if (!activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return { source: null, target: null };
+  return {
+    source: activeRedJump.hideSource ? null : activeRedJump.sourceRange,
+    target: activeRedJump.hideTarget ? null : activeRedJump.targetRange
+  };
+}
+function rangeVisibleInEditor(editor, range) {
+  if (!editor || !range) return false;
+  return editor.visibleRanges.some(v => v.start.line <= range.end.line && v.end.line >= range.start.line);
+}
+function activeRedBidiState(editor = getMeDockTargetEditor()) {
+  const pair = activeRedBidiRanges(editor);
+  const has = !!(pair.source && pair.target);
+  if (!has) return { has: false, title: 'No active 🔴 pair yet' };
+  return {
+    has: true,
+    sourceVisible: rangeVisibleInEditor(editor, pair.source),
+    targetVisible: rangeVisibleInEditor(editor, pair.target),
+    title: 'Bi-direction Jump: reference 🔴 ⇄ opening membrane 🔴'
+  };
+}
+function postMeDockBidiState(editor = getMeDockTargetEditor()) {
+  if (!meDockPanel) return;
+  try { meDockPanel.webview.postMessage({ type: 'bidiState', bidi: activeRedBidiState(editor) }); } catch (_) {}
+}
+async function navCenterBidiClick(editor = getMeDockTargetEditor()) {
+  if (!editor) return false;
+  if (mSkeletonMode) exitMSkeletonMode(editor);
+  else enterMSkeletonMode(editor);
+  setTimeout(() => { renderRedJumpMarkers(editor); postMeDockBidiState(editor); updateMeDockMode(); }, 80);
+  return true;
+}
+async function navCenterBidiDoubleClick(editor = getMeDockTargetEditor()) {
+  // v0.9.598: reveal-only mirroring v0.9.597 🟢 behavior — no cursor move, no fold change,
+  // no scroll if the cross-reference partner is already in view. Focus transfers to the
+  // editor so arrow keys can scroll back to the original cursor (scrollbar-like UX).
+  if (!editor || !activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) {
+    restoreActiveRedJumpFromJumpFlags(editor);
+  }
+  if (!editor || !activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) return false;
+  const pair = activeRedBidiRanges(editor);
+  if (!pair.source || !pair.target) return false;
+  const sourceVisible = rangeVisibleInEditor(editor, pair.source);
+  const targetVisible = rangeVisibleInEditor(editor, pair.target);
+  // Pick whichever end is currently off-screen as the reveal target.
+  // If both are off-screen, prefer the target (forward navigation feel).
+  // If both are visible, total no-op.
+  let dest = null;
+  if (!sourceVisible && !targetVisible) dest = pair.target;
+  else if (sourceVisible && !targetVisible) dest = pair.target;
+  else if (!sourceVisible && targetVisible) dest = pair.source;
+  // else: both visible → no scroll needed
+  if (dest) {
+    // v0.9.673 (bug3): same fix as navCenterMeDoubleClick — focus FIRST, reveal LAST with
+    // InCenterIfOutsideViewport, so the focus transfer can't scroll back and undo an
+    // off-screen reveal (the "~20 clicks to inch in" symptom). 🔴 shared the same pattern.
+    try { await vscode.window.showTextDocument(editor.document, editor.viewColumn, false); } catch (_) {}
+    editor.revealRange(new vscode.Range(dest.start.line, 0, dest.start.line, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  } else {
+    focusMeDockTargetEditorPreservingView(editor);
+  }
+  setTimeout(() => { renderRedJumpMarkers(editor); postMeDockBidiState(editor); updateMeDockMode(); }, 80);
+  return true;
+}
+async function jumpBackToActiveGreenMe(editor = getMeDockTargetEditor()) {
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return false;
+  const ranges = Array.isArray(activeGreenJump.ranges) ? activeGreenJump.ranges.filter(Boolean) : [];
+  if (!ranges.length) return false;
+  const currentLine = editor.selection && editor.selection.active ? editor.selection.active.line : -1;
+  let target = ranges.find(r => r.start.line === currentLine) || ranges[0];
+  const pos = target.start;
+  editor.selection = new vscode.Selection(target.start, target.end);
+  editor.revealRange(target, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  enterMSkeletonMode(editor);
+  pushMeDockLineHistory(editor, pos.line);
+  setTimeout(() => { renderActiveGreenMarkers(editor); postMeDockAnchorState(editor); updateMeDockMode(); }, 80);
+  return true;
+}
+
+function activeGreenMeRanges(editor = getMeDockTargetEditor()) {
+  if (editor && (!activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString())) {
+    restoreActiveGreenJumpFromJumpFlags(editor);
+  }
+  if (!editor || !activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) return [];
+  return (Array.isArray(activeGreenJump.ranges) ? activeGreenJump.ranges : []).filter(Boolean);
+}
+function activeGreenOpenCloseRanges(editor = getMeDockTargetEditor()) {
+  const ranges = activeGreenMeRanges(editor);
+  if (!editor || !ranges.length) return { open: ranges[0] || null, close: ranges[1] || ranges[0] || null, ranges };
+  let open = null, close = null;
+  for (const r of ranges) {
+    const info = membraneLineInfo(editor.document, r.start.line);
+    if (info && info.kind === 'open') open = r;
+    else if (info && info.kind === 'close') close = r;
+  }
+  if (!open) open = ranges.slice().sort((a,b)=>a.start.line-b.start.line)[0] || null;
+  if (!close) close = ranges.slice().sort((a,b)=>b.start.line-a.start.line)[0] || open;
+  return { open, close, ranges };
+}
+function currentLineHitsActiveGreenName(editor = getMeDockTargetEditor()) {
+  if (!editor || !editor.selection) return false;
+  const line = editor.selection.active.line;
+  return activeGreenMeRanges(editor).some(r => r.start.line === line);
+}
+async function revealActiveGreenRange(editor, range, rawMode = null) {
+  if (!editor || !range) return false;
+  if (rawMode === true) enterMSkeletonMode(editor);
+  if (rawMode === false && mSkeletonMode) exitMSkeletonMode(editor);
+  nameJumpSuppressUntil = Date.now() + 250;
+  editor.selection = new vscode.Selection(range.start, range.end);
+  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  pushMeDockLineHistory(editor, range.start.line);
+  setTimeout(() => { renderActiveGreenMarkers(editor); postMeDockAnchorState(editor); updateMeDockMode(); }, 80);
+  return true;
+}
+async function navCenterMeSingleClick(editor = getMeDockTargetEditor()) {
+  const pair = activeGreenOpenCloseRanges(editor);
+  if (!editor || !pair.open) return false;
+  // If the structural cursor is already on the selected Me membrane, single-click toggles raw/source view.
+  if (currentLineHitsActiveGreenName(editor)) {
+    if (mSkeletonMode) exitMSkeletonMode(editor);
+    else enterMSkeletonMode(editor);
+    setTimeout(() => { renderActiveGreenMarkers(editor); postMeDockAnchorState(editor); updateMeDockMode(); }, 80);
+    return true;
+  }
+  // Otherwise it behaves like the editor cursor-return gesture: go back to the opening Me.
+  return revealActiveGreenRange(editor, pair.open, false);
+}
+// v0.9.598: focus transfer that does NOT scroll or move cursor — used by 🟢/🔴 S-click
+// so arrow keys after the click can scroll back to the original cursor (=scrollbar-like UX).
+function focusMeDockTargetEditorPreservingView(editor) {
+  if (!editor) return;
+  try {
+    // The document is already shown in this viewColumn — showTextDocument here just
+    // transfers focus from the Me Dock webview back to the editor. We intentionally
+    // omit the `selection` option so VSCode does not re-reveal the cursor and scroll.
+    vscode.window.showTextDocument(editor.document, editor.viewColumn, false);
+  } catch (_) {}
+}
+async function navCenterMeDoubleClick(editor = getMeDockTargetEditor()) {
+  // v0.9.601 stateless 3-position cycle — open → close → cursor → open → ...
+  // v0.9.607 fix: when the "next in cycle" is already visible (e.g. open AND close both
+  // on screen → next=close was visible → loop stuck never reached cursor), keep stepping
+  // around the cycle until a non-visible position is found. Only falls back to a wasted
+  // scroll when every position is visible.
+  // Never moves cursor, never changes fold state. Focus transfers to editor.
+  const pair = activeGreenOpenCloseRanges(editor);
+  if (!editor || !pair.open) return false;
+  const openLine = pair.open.start.line;
+  const closeLine = pair.close ? pair.close.start.line : openLine;
+  const cursorLine = editor.selection && editor.selection.active ? editor.selection.active.line : openLine;
+  // Dedupe while preserving cycle order open → close → cursor.
+  const positions = [];
+  const seen = new Set();
+  for (const p of [openLine, closeLine, cursorLine]) {
+    if (!seen.has(p)) { positions.push(p); seen.add(p); }
+  }
+  const visibleRanges = editor.visibleRanges || [];
+  const inView = (ln) => visibleRanges.some(r => ln >= r.start.line && ln <= r.end.line);
+  let currentIdx = -1;
+  for (let i = 0; i < positions.length; i++) {
+    if (inView(positions[i])) { currentIdx = i; break; }
+  }
+  const total = positions.length;
+  const baseIdx = currentIdx === -1 ? -1 : currentIdx;
+  let revealIdx = (baseIdx + 1) % total;
+  // Skip past positions that are already in view — keep advancing until we land on
+  // a non-visible position. If every position is visible, the loop falls through and
+  // we use the original (baseIdx + 1) — a small wasted scroll, accepted by spec.
+  for (let step = 1; step <= total; step++) {
+    const tryIdx = (baseIdx + step) % total;
+    if (!inView(positions[tryIdx])) { revealIdx = tryIdx; break; }
+  }
+  const revealLine = positions[revealIdx];
+  const revealRange = new vscode.Range(revealLine, 0, revealLine, 0);
+  // v0.9.673 (bug3): focus the editor FIRST, then reveal. Previously revealRange(Default)
+  // ran, THEN focusMeDockTargetEditorPreservingView's showTextDocument transferred focus and
+  // scrolled the editor back toward its (unmoved) cursor — undoing most of the reveal. With
+  // Default (minimal scroll) the net was only a few lines per click, so an off-screen 🟢
+  // needed ~20 clicks to inch into view (俊克 2026.06.02 pm00:04: 「位置は分かっているのに
+  // 見えないだけでジャンプできない」). Reveal LAST + InCenterIfOutsideViewport = one click
+  // lands an off-screen target decisively.
+  try { await vscode.window.showTextDocument(editor.document, editor.viewColumn, false); } catch (_) {}
+  editor.revealRange(revealRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  return true;
+}
+function membraneArrowToggleHitInfo(editor) {
+  if (!editor) return null;
+  const sel = editor.selection;
+  if (!sel.isEmpty || sel.start.line !== sel.end.line) return null;
+  const info = membraneLineInfo(editor.document, sel.active.line);
+  if (!info) return null;
+  // The rendered ▼/▲ is a decoration placed immediately before the membrane name.
+  // In VSCode/VSCodium, clicking that virtual glyph lands the cursor at idStart.
+  // Keep membrane-name W-click/jump unchanged: non-empty name selection still follows
+  // the existing double-click path below.
+  // v0.9.538: With alias now rendered as plain source text (see applyPrettyLabels),
+  // the ▼ click landing point is back to the standard idStart — no alias-mode special
+  // case needed. The alias source span lives at real columns past the hide range, so
+  // alias clicks land on those columns naturally and never on idStart.
+  if (sel.active.character === info.idStart) {
+    // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
+    // before:contentText 全体のクリックが idStart に落ちるため、
+    // ▼ だけのクリックと区別できない。
+    // → 初回クリック（他の行から来た）= toggle 抑制（編集モード進入）
+    // → 2回目クリック（既にその行にいた）= toggle 許可（▼ のみ表示状態）
+    const isMd = isMarkdownDocument(editor.document);
+    if (isMd) {
+      const lineText = editor.document.lineAt(info.line).text || '';
+      const badge = parseMstatBadgeFromText(lineText);
+      const hasActiveAlias = badge && typeof badge.alias === 'string' && badge.alias.length > 0 && badge.nameDisplay !== false;
+      const hasDagger = hasDaggerAnnotation(lineText);
+      if (hasActiveAlias || hasDagger) {
+        // カーソルが既にこの行にいた → 編集モード中 → toggle 許可
+        if (prevLineBeforeSelectionChange === info.line) return info;
+        return null;
+      }
+    }
+    return info;
+  }
+  return null;
+}
+async function toggleMembraneFromArrowHit(editor, info) {
+  if (!editor || !info) return false;
+  const matched = pairedMembraneForLine(editor.document, info.line);
+  if (!matched || !matched.pair) return false;
+  await setPairFoldStateAndMstat(editor, matched.pair, !isPairFolded(editor, matched.pair));
+  nameJumpSuppressUntil = Date.now() + 250;
+  return true;
+}
+
+function mstatBadgeIconHitInfo(editor) {
+  // v0.9.289:
+  // Treat the 📊 part of an mSTAT badge as a small "Open/Close Me Dock" door.
+  // VSCode decorations are not directly clickable, so we detect the mouse caret
+  // landing on/near the raw icon span in the source line.
+  if (!editor || !editor.selection || !editor.selection.isEmpty) return null;
+  const pos = editor.selection.active;
+  if (pos.line < 0 || pos.line >= editor.document.lineCount) return null;
+  const text = editor.document.lineAt(pos.line).text || '';
+  const badge = parseMstatBadgeFromText(text);
+  if (!badge || !badge.hasIcon) return null;
+  const iconStart = text.indexOf('📊', badge.start);
+  if (iconStart < 0 || iconStart >= badge.end) return null;
+  const iconEnd = iconStart + '📊'.length; // UTF-16 length (2)
+  const ch = pos.character;
+  // Clicking a decorated/emoji glyph may place the caret just before or just after it.
+  if (ch >= iconStart - 1 && ch <= iconEnd + 1) {
+    return { line: pos.line, badge, iconRange: new vscode.Range(pos.line, iconStart, pos.line, iconEnd) };
+  }
+  return null;
+}
+
+function mstatBadgeIconRangeAt(document, position) {
+  if (!document || !position || position.line < 0 || position.line >= document.lineCount) return null;
+  const text = document.lineAt(position.line).text || '';
+  const badge = parseMstatBadgeFromText(text);
+  if (!badge || !badge.hasIcon) return null;
+  const iconStart = text.indexOf('📊', badge.start);
+  if (iconStart < 0 || iconStart >= badge.end) return null;
+  const iconEnd = iconStart + '📊'.length;
+  if (position.character >= iconStart && position.character <= iconEnd) {
+    return new vscode.Range(position.line, iconStart, position.line, iconEnd);
+  }
+  return null;
+}
+function mstatBadgeIconHoverMessage(document, position) {
+  return mstatBadgeIconRangeAt(document, position) ? 'Toggle Me Dock' : null;
+}
+function mstatBadgeIconDoorRanges(editor) {
+  const ranges = [];
+  if (!editor || !editor.document) return ranges;
+  const doc = editor.document;
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    const badge = parseMstatBadgeFromText(text);
+    if (!badge || !badge.hasIcon) continue;
+    const iconStart = text.indexOf('📊', badge.start);
+    if (iconStart < 0 || iconStart >= badge.end) continue;
+    const iconEnd = iconStart + '📊'.length;
+    ranges.push(new vscode.Range(line, iconStart, line, iconEnd));
+  }
+  return ranges;
+}
+
+async function handleMembraneNameSelection(editor, selectionKind) {
+  if (!editor) return;
+  const now = Date.now();
+  if (now < nameJumpSuppressUntil) return;
+
+  // v0.9.216:
+  // Keyboard cursor movement must never trigger virtual button actions.
+  // The ▼/▲, 🟢, and 🔴 behaviors are mouse-button behaviors only.
+  const isMouseSelection = selectionKind === vscode.TextEditorSelectionChangeKind.Mouse;
+
+  // v0.9.538: Alias click redirect removed — alias is now plain source text, so the
+  // caret lands on the real alias chars automatically with no special handling.
+
+  // v0.9.289: the 📊 badge icon is a Me Dock door. Click toggles Open/Close.
+  const mstatIconHit = isMouseSelection ? mstatBadgeIconHitInfo(editor) : null;
+  if (mstatIconHit) {
+    nameJumpSuppressUntil = now + 250;
+    toggleMeDock();
+    return;
+  }
+
+  // v0.9.216: the rendered ▼/▲ glyph is an arrow-only fold toggle.
+  // v0.9.216: only mouse selection may toggle it.
+  const arrowHit = isMouseSelection ? membraneArrowToggleHitInfo(editor) : null;
+  if (arrowHit) {
+    await toggleMembraneFromArrowHit(editor, arrowHit);
+    return;
+  }
+
+  // 🟢 M-skeleton button: single-click toggles raw/membrane view;
+  // v0.9.584: unified click semantics across the whole system —
+  //   S-click (single click) = JUMP  (navCenterMeDoubleClick: open ⇔ close)
+  //   W-click (double click) = RAW   (navCenterMeSingleClick: mSkeletonMode toggle)
+  // Was reversed (S-click=raw / W-click=jump) since v0.9.474 to match the
+  // earlier "W-click jumps like Me Dock W-click" design. User v0.9.583_pm07:47
+  // request: 「いっそのこと、全体で、S-clickをジャンプ、Wクリックを生データ
+  // 表示に統一しよう。生データを見たい人は限られているので、操作しにくいW
+  // クリックの方がいい」. Most users only navigate; raw data is power-user
+  // territory, so navigation gets the cheaper interaction.
+  if (isMouseSelection && editor.selection.isEmpty && selectionHitsActiveGreen(editor)) {
+    // v0.9.578: clicks on the body 🟢/🔴 buttons must never trigger
+    // maybeAutoUnfoldOnSelection — even when the click happens to land on a
+    // folded pair's open line. Original MeOS spec is "folded stays folded
+    // across jumps" (user v0.9.577_1153).
+    suppressAutoUnfoldUntil = Date.now() + 700;
+    const anchorRange = greenToggleAnchorRange(editor);
+    const greenKey = anchorRange ? `${editor.document.uri.toString()}::${anchorRange.start.line}::${anchorRange.start.character}` : '';
+    if (pendingBodyGreenClickTimer && pendingBodyGreenClickKey === greenKey) {
+      // v0.9.584: 2nd click within timer = W-click → RAW toggle.
+      clearTimeout(pendingBodyGreenClickTimer);
+      pendingBodyGreenClickTimer = null;
+      pendingBodyGreenClickKey = '';
+      lastGreenHoverHit = null;
+      navCenterMeSingleClick(editor);
+      return;
+    }
+    if (pendingBodyGreenClickTimer) {
+      clearTimeout(pendingBodyGreenClickTimer);
+      pendingBodyGreenClickTimer = null;
+    }
+    pendingBodyGreenClickKey = greenKey;
+    const capturedEditor = editor;
+    pendingBodyGreenClickTimer = setTimeout(() => {
+      // v0.9.584: timer fires (no 2nd click) = S-click → JUMP.
+      // v0.9.585: do NOT call restoreCursorInsideMembraneName after the jump.
+      // Under the old S-click=raw scheme, that call put the cursor back on
+      // the name after a raw-toggle (correct then). After the v0.9.584 swap,
+      // the timer branch is now S-click=JUMP — navCenterMeDoubleClick has
+      // already moved the cursor to the OTHER end of the pair, and the
+      // restoreCursor call would teleport it BACK to the source button,
+      // making the jump look like it never happened. User v0.9.584_pm10:24
+      // bug 1: 「本文 🟢ボタンだけ、Sクリックでジャンプしない」.
+      pendingBodyGreenClickTimer = null;
+      pendingBodyGreenClickKey = '';
+      navCenterMeDoubleClick(capturedEditor);
+    }, BODY_GREEN_DOUBLE_CLICK_MS);
+    lastGreenHoverHit = null;
+    return;
+  }
+
+  // v0.9.584: see green-branch comment above — same S-click=JUMP /
+  // W-click=RAW unification applies to 🔴 too.
+  if (isMouseSelection && editor.selection.isEmpty && selectionHitsActiveRed(editor)) {
+    // v0.9.578: see green-branch comment above — same auto-unfold suppression.
+    suppressAutoUnfoldUntil = Date.now() + 700;
+    const hit = activeRedHitKindAndButtonRange(editor);
+    const redKey = hit ? `${editor.document.uri.toString()}::${hit.kind}::${hit.range.start.line}::${hit.range.start.character}` : '';
+    if (pendingBodyRedClickTimer && pendingBodyRedClickKey === redKey) {
+      // v0.9.584: 2nd click within timer = W-click → RAW toggle.
+      clearTimeout(pendingBodyRedClickTimer);
+      pendingBodyRedClickTimer = null;
+      pendingBodyRedClickKey = '';
+      lastRedHoverHit = null;
+      navCenterBidiClick(editor);
+      return;
+    }
+    if (pendingBodyRedClickTimer) {
+      clearTimeout(pendingBodyRedClickTimer);
+      pendingBodyRedClickTimer = null;
+    }
+    pendingBodyRedClickKey = redKey;
+    const capturedEditor = editor;
+    pendingBodyRedClickTimer = setTimeout(() => {
+      // v0.9.584: timer fires (no 2nd click) = S-click → JUMP.
+      pendingBodyRedClickTimer = null;
+      pendingBodyRedClickKey = '';
+      navCenterBidiDoubleClick(capturedEditor);
+    }, BODY_RED_DOUBLE_CLICK_MS);
+    lastRedHoverHit = null;
+    return;
+  }
+
+  // Non-empty selection.
+  // 1) If the selected text is a membrane name, this is the normal W-click path:
+  //    activate 🟢 on the pair, also arm external 🔴 if a TOC/link target exists,
+  //    then jump to the opposite membrane.
+  // 2) Otherwise, selected text is a normal link-like word: arm 🔴 only, no automatic jump.
+  if (!editor.selection.isEmpty) {
+    // v0.9.475: W-click on body 🟢 — if VSCode happened to word-select the
+    // hidden [oGJF=v]/[cGJF=v] flag text under the rendered 🟢 (e.g. the
+    // alphanumeric "oGJF" or "cGJF" inside the brackets), the selStart lands
+    // inside the green button range. Cancel any pending single-click timer
+    // and dispatch to the same handler Me Dock W-click uses.
+    // v0.9.478: restore activeGreenJump first (idempotent) so the hit test
+    // sees the active pair even if state was lost between events.
+    if (isMouseSelection) {
+      if (!activeGreenJump || activeGreenJump.uri !== editor.document.uri.toString()) {
+        restoreActiveGreenJumpFromJumpFlags(editor);
+      }
+    }
+    // v0.9.671 (bug1): virtual 🟢 W-click (double-click) recovery. The decoration-only
+    // 🟢 (v0.9.670) has NO literal char, so the 2nd click of a double-click cannot
+    // word-select the emoji — it word-selects the membrane NAME instead. That non-empty
+    // selection misses selectionHitsActiveGreen (whose zero-width name-end anchor the
+    // word-select active position doesn't land on), so it used to fall through to the
+    // name-jump path below WHILE click-1's pending S-click timer ALSO fired → "W-click =
+    // two S-clicks / two jumps" (俊克 2026.06.02 am06:56). A pending green S-click timer
+    // means click-1 just hit the 🟢; if click-2's selection sits on a green-active line,
+    // it is the W half of that double-click → cancel the queued JUMP and do the RAW toggle.
+    if (isMouseSelection && pendingBodyGreenClickTimer && activeGreenJump &&
+        activeGreenJump.uri === editor.document.uri.toString() &&
+        (activeGreenJump.ranges || []).some(r => r && r.start.line === editor.selection.active.line)) {
+      suppressAutoUnfoldUntil = Date.now() + 700;
+      clearTimeout(pendingBodyGreenClickTimer);
+      pendingBodyGreenClickTimer = null;
+      pendingBodyGreenClickKey = '';
+      lastGreenHoverHit = null;
+      navCenterMeSingleClick(editor);
+      return;
+    }
+    if (isMouseSelection && selectionHitsActiveGreen(editor)) {
+      // v0.9.578: see empty-selection green-branch comment — same suppression.
+      suppressAutoUnfoldUntil = Date.now() + 700;
+      if (pendingBodyGreenClickTimer) {
+        clearTimeout(pendingBodyGreenClickTimer);
+        pendingBodyGreenClickTimer = null;
+        pendingBodyGreenClickKey = '';
+      }
+      lastGreenHoverHit = null;
+      // v0.9.584: this branch fires on W-click that selected the 🟢 emoji
+      // itself (non-empty selection). Under the unified S=JUMP / W=RAW scheme,
+      // W-click → RAW toggle.
+      navCenterMeSingleClick(editor);
+      return;
+    }
+    // v0.9.454 Bug 2 fix: W-click on body <span class="sRJF=v">🔴</span> selects
+    // the 🔴 emoji, so selection.isEmpty is FALSE and the empty-selection 🔴
+    // handler above is skipped. Detect the selection landing on the source or
+    // target red button here and jump immediately.
+    // restoreActiveRedJumpFromJumpFlags is idempotent + cache-backed, so calling
+    // it on every non-empty mouse selection is cheap.
+    if (isMouseSelection) {
+      if (!activeRedJump || activeRedJump.uri !== editor.document.uri.toString()) {
+        restoreActiveRedJumpFromJumpFlags(editor);
+      }
+      if (activeRedJump && activeRedJump.uri === editor.document.uri.toString()) {
+        const selStart = editor.selection.start;
+        const hitSource = !activeRedJump.hideSource && positionHitsRedRange(editor, activeRedJump.sourceRange, selStart);
+        const hitTarget = !activeRedJump.hideTarget && positionHitsRedRange(editor, activeRedJump.targetRange, selStart);
+        if (hitSource || hitTarget) {
+          // v0.9.578: see empty-selection red-branch comment — same suppression.
+          suppressAutoUnfoldUntil = Date.now() + 700;
+          if (pendingBodyRedClickTimer) {
+            clearTimeout(pendingBodyRedClickTimer);
+            pendingBodyRedClickTimer = null;
+            pendingBodyRedClickKey = '';
+          }
+          lastRedHoverHit = null;
+          // v0.9.584: this branch fires on W-click that selected the 🔴 emoji
+          // itself (non-empty selection). Under the unified S=JUMP / W=RAW
+          // scheme, W-click → RAW toggle.
+          navCenterBidiClick(editor);
+          return;
+        }
+      }
+    }
+    // v0.9.628 (2026.05.29 am02:28): suppress all text-driven Bi-direction jump
+    // search when the selection sits ON an open / close membrane line itself.
+    // User: 「文字を選択したときの双方向ジャンプ検索を開始膜,閉じ膜の中では行わ
+    // ないようにして下さい。直接膜名の一部をコピーしたいようなケースで,開始膜
+    // から閉じ膜にジャンプしたりすると言う変な動きの原因になっているかもしれな
+    // い」. Body 🟢 / 🔴 button branches above already returned, so this bail-out
+    // only affects the auto-search paths below (alias jump, membrane-name pair
+    // jump, plaintext name search → 🔴 arm). Selecting part of a membrane name
+    // to copy it now stays put.
+    {
+      const selStartLineText = editor.document.lineAt(editor.selection.start.line).text || '';
+      const onMembraneLine = !!(membraneLineParts(selStartLineText, 'open') || membraneLineParts(selStartLineText, 'close'));
+      if (onMembraneLine) {
+        return;
+      }
+    }
+    // v0.9.541: W-click on alias source span → jump to close pair (mirrors name jump).
+    // Mouse-kind selections only; keyboard Shift+→ selections fall through to the
+    // standard editing path (the v0.9.540 alias bail-out in tryActivateSelectedNameJump
+    // still protects keyboard selections from the name-jump fallback).
+    if (isMouseSelection) {
+      const aliasJump = selectedAliasJumpInfo(editor);
+      if (aliasJump) {
+        const aliasKey = `${editor.document.uri.toString()}::${aliasJump.line}::${aliasJump.id}::alias`;
+        if (aliasKey === lastNameJumpKey && now - lastNameJumpAt < 700) return;
+        lastNameJumpKey = aliasKey;
+        lastNameJumpAt = now;
+        const aliasMatched = pairedMembraneForLine(editor.document, aliasJump.line);
+        if (aliasMatched) {
+          showJumpMarkers(editor, [aliasMatched.info.idRange, aliasMatched.targetInfo.idRange]);
+          pushMeDockLineHistory(editor, aliasJump.line);
+          nameJumpSuppressUntil = now + 700;
+          const aliasTarget = aliasMatched.targetInfo;
+          editor.selection = new vscode.Selection(
+            new vscode.Position(aliasTarget.line, aliasTarget.idStart),
+            new vscode.Position(aliasTarget.line, aliasTarget.idEnd)
+          );
+          editor.revealRange(aliasTarget.idRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+          pushMeDockLineHistory(editor, aliasTarget.line);
+          setTimeout(() => {
+            showJumpMarkers(editor, [aliasMatched.info.idRange, aliasTarget.idRange]);
+            renderRedJumpMarkers(editor);
+            refresh(editor);
+          }, 80);
+          return;
+        }
+      }
+    }
+    const membraneInfo = selectedMembraneNameInfo(editor);
+    if (membraneInfo) {
+      const key = `${editor.document.uri.toString()}::${membraneInfo.line}::${membraneInfo.id}::${membraneInfo.kind}`;
+      if (key === lastNameJumpKey && now - lastNameJumpAt < 700) return;
+      lastNameJumpKey = key;
+      lastNameJumpAt = now;
+
+      const matched = pairedMembraneForLine(editor.document, membraneInfo.line);
+      if (!matched) {
+        clearJumpMarkers(editor);
+        tryActivateSelectedNameJump(editor);
+        return;
+      }
+
+      showJumpMarkers(editor, [matched.info.idRange, matched.targetInfo.idRange]);
+
+      // v0.9.371: do not call tryActivateSelectedNameJump() here.
+      // That helper performs its own jump before the suppression window is armed,
+      // which can make a start-name W-click jump to the closing membrane and then
+      // immediately bounce back to the opening membrane via the next selection event.
+      // This path already has the matched target, so jump exactly once under suppression.
+      pushMeDockLineHistory(editor, membraneInfo.line);
+      nameJumpSuppressUntil = now + 700;
+      const target = matched.targetInfo;
+      const pos = new vscode.Position(target.line, target.idStart);
+      editor.selection = new vscode.Selection(pos, new vscode.Position(target.line, target.idEnd));
+      editor.revealRange(target.idRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+      pushMeDockLineHistory(editor, target.line);
+      setTimeout(() => {
+        showJumpMarkers(editor, [matched.info.idRange, target.idRange]);
+        renderRedJumpMarkers(editor);
+        refresh(editor);
+      }, 80);
+      return;
+    }
+
+    // v0.9.285: restore the v0.9.260 editor-body fallback for dotted membrane names.
+    // This is editor-only; Me Dock TOC double-click uses its own webview handler.
+    if (tryActivateSelectedNameJump(editor)) return;
+
+    const selected = selectedPlainTextInfo(editor);
+    if (selected) {
+      // v0.9.693 (Phase 2b): 文字列選択での 🔴 arming を廃止。本文🔴は Current Me に統合され、
+      // 相互参照は脚注†1(プレーンテキスト+grep)＋参照先膜を選択(膜名クリック)で行う方針(俊克)。
+      // 参照元にフラグ/ボタンを書かない=データ非汚染。よってここでは🔴を張らず、既存🔴を消すだけ。
+      clearRedJumpMarkers(editor);
+    } else {
+      clearRedJumpMarkers(editor);
+    }
+    return;
+  }
+
+  // 🟢 button behavior / M-skeleton Mode:
+  if (isMouseSelection && selectionHitsActiveGreen(editor)) {
+    const anchorRange = greenToggleAnchorRange(editor);
+    if (mSkeletonMode) exitMSkeletonMode(editor);
+    else enterMSkeletonMode(editor);
+    lastGreenHoverHit = null;
+    restoreCursorInsideMembraneName(editor, anchorRange);
+    return;
+  }
+
+  // Single click inside a membrane name only activates the pair.
+  // It must not trigger 🔴 jumping.
+  const clickedInfo = isMouseSelection ? activeMembraneNameInfo(editor) : null;
+  if (clickedInfo) {
+    activateMembranePairMarkers(editor, clickedInfo);
+    return;
+  }
+}
+
+
+
+async function handleRenderedMembraneEnter(editor) {
+  // v0.9.216:
+  // In rendered membrane view, raw braces are hidden by decorations.
+  // Pressing Enter on a rendered membrane header/footer line can push the hidden "}"
+  // to the next line and corrupt the membrane.
+  // Therefore, Enter is disabled on rendered membrane lines.
+  // M-skeleton/raw virtual source view keeps normal Enter behavior.
+  if (!editor || !editor.selection || !editor.selection.isEmpty) return false;
+  if (mSkeletonMode) return false;
+
+  const pos = editor.selection.active;
+  const text = editor.document.lineAt(pos.line).text || "";
+  const parts = membraneLineParts(text, 'open') || membraneLineParts(text, 'close');
+  if (!parts) return false;
+
+  // Consume Enter. IME composition confirmation is handled above the extension layer
+  // in normal VSCode text input, so this only blocks the actual newline command.
+  return true;
+}
+
+
+
+function caretKeyForEditor(editor) {
+  return editor ? String(editor.document.uri) : '';
+}
+function updateLastCaretForEditor(editor) {
+  if (!editor || !editor.selection || !editor.selection.isEmpty) return;
+  const p = editor.selection.active;
+  lastCaretByEditorKey.set(caretKeyForEditor(editor), { line: p.line, character: p.character });
+}
+function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
+  // v0.9.216:
+  // In rendered membrane view, both the raw prefix "// {* ▼mCN="
+  // and the final raw suffix "}" are hidden/virtual.
+  // Keyboard caret movement must not enter those invisible zones.
+  // In M-skeleton/raw source view, do nothing.
+  if (!editor || selectionKind !== vscode.TextEditorSelectionChangeKind.Keyboard) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+  if (!editor.selection || !editor.selection.isEmpty) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+  if (mSkeletonMode) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+  if (Date.now() < caretSkipSuppressUntil) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+  // v0.9.634: never move the caret while the user is actively typing / composing.
+  // This hidden-prefix skip exists for ARROW-KEY navigation, which does NOT change
+  // the document — so a recent document change means typing / IME composition.
+  // Reassigning editor.selection mid-composition makes the kana input box flicker
+  // out to column 0 (right of the line number) and snap back, especially when
+  // typing the first char at a membrane line head. Arrow navigation (no recent
+  // doc change) is unaffected. User 2026.05.29 pm10:15.
+  if (Date.now() - lastDocChangeAt < TYPING_REFRESH_DEBOUNCE_MS) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+
+  const key = caretKeyForEditor(editor);
+  const prev = lastCaretByEditorKey.get(key);
+  const pos = editor.selection.active;
+  const text = editor.document.lineAt(pos.line).text || "";
+
+  // v0.9.216:
+  // Markdown wrapper hidden-prefix skip.
+  // When `[//]: # (` is hidden, the visible membrane starts at the inner payload.
+  // Keyboard movement must not crawl through the invisible wrapper one column at a time.
+  const mdWrapInfo = isMarkdownDocument(editor.document) ? markdownWrapperInfoForLine(text) : null;
+  if (mdWrapInfo && !mSkeletonMode) {
+    // Left: from visible inner payload into hidden wrapper -> line start / previous line.
+    if (pos.character > mdWrapInfo.wrapperStart && pos.character < mdWrapInfo.innerStart) {
+      let target;
+      if (prev && prev.line === pos.line && prev.character >= mdWrapInfo.innerStart) {
+        target = new vscode.Position(pos.line, mdWrapInfo.wrapperStart);
+      } else if (prev && prev.line === pos.line && prev.character <= mdWrapInfo.wrapperStart) {
+        target = new vscode.Position(pos.line, mdWrapInfo.innerStart);
+      } else {
+        target = new vscode.Position(pos.line, mdWrapInfo.wrapperStart);
+      }
+      caretSkipSuppressUntil = Date.now() + 25;
+      editor.selection = new vscode.Selection(target, target);
+      lastCaretByEditorKey.set(key, { line: target.line, character: target.character });
+      return true;
+    }
+
+    // If ← from visible start lands at wrapperStart, let VSCode's next ← go to previous line.
+    // If → from wrapperStart, jump directly to innerStart.
+    if (pos.character === mdWrapInfo.wrapperStart && prev && prev.line === pos.line && prev.character < mdWrapInfo.wrapperStart) {
+      const target = new vscode.Position(pos.line, mdWrapInfo.innerStart);
+      caretSkipSuppressUntil = Date.now() + 25;
+      editor.selection = new vscode.Selection(target, target);
+      lastCaretByEditorKey.set(key, { line: target.line, character: target.character });
+      return true;
+    }
+  }
+
+
+
+  const openParts = membraneLineParts(text, 'open');
+  const closeParts = membraneLineParts(text, 'close');
+  const parts = openParts || closeParts;
+
+  if (!parts) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+
+  // v0.9.216:
+  // If ← from next line Col1 lands on this membrane line at/after the hidden brace,
+  // snap to the visible right-edge landing point.
+  let thisRightEdgeForBack = (parts.suffixStart >= 0) ? parts.suffixStart : text.length;
+  if (thisRightEdgeForBack > 0 && /\s/.test(text.charAt(thisRightEdgeForBack - 1))) {
+    thisRightEdgeForBack = thisRightEdgeForBack - 1;
+  }
+  if (
+    thisRightEdgeForBack >= 0 &&
+    prev &&
+    prev.line === pos.line + 1 &&
+    prev.character === 0 &&
+    pos.character >= thisRightEdgeForBack
+  ) {
+    const p = new vscode.Position(pos.line, thisRightEdgeForBack);
+    caretSkipSuppressUntil = Date.now() + 25;
+    editor.selection = new vscode.Selection(p, p);
+    lastCaretByEditorKey.set(key, { line: p.line, character: p.character });
+    return true;
+  }
+
+  const hiddenPrefixStart = Math.max(0, parts.prefixStart || 0);
+  const hiddenPrefixEnd = Math.max(hiddenPrefixStart, parts.idStart || 0);
+
+  // Right boundary:
+  // In the real source a rendered membrane line ends with "}".
+  // The visible membrane text effectively ends immediately before that raw closing brace.
+  // v0.9.216: keep one stable visible landing point at the right edge,
+  // so the caret can appear as ")|" instead of disappearing into the hidden suffix.
+  // v0.9.216:
+  // Use the beginning of the hidden suffix as the visible right edge.
+  // For proto membrane lines this is before ` *}`, not necessarily the final raw `}`.
+  // v0.9.216:
+  // v0.9.216 leaves the real space before `*}` visible as a caret footing.
+  // The visible stop is the position before that footing-space; beyond it should jump next line.
+  let rightEdge = (parts.suffixStart >= 0) ? parts.suffixStart : text.length;
+  if (rightEdge > 0 && /\s/.test(text.charAt(rightEdge - 1))) {
+    rightEdge = rightEdge - 1;
+  }
+  const visibleRightLanding = rightEdge;
+
+  let targetChar = null;
+
+  // Left hidden raw-prefix zone.
+  if (pos.character > hiddenPrefixStart && pos.character < hiddenPrefixEnd) {
+    if (prev && prev.line === pos.line && prev.character >= hiddenPrefixEnd) {
+      targetChar = hiddenPrefixStart;
+    } else if (prev && prev.line === pos.line && prev.character <= hiddenPrefixStart) {
+      targetChar = hiddenPrefixEnd;
+    } else {
+      targetChar = (pos.character - hiddenPrefixStart) <= (hiddenPrefixEnd - pos.character)
+        ? hiddenPrefixStart
+        : hiddenPrefixEnd;
+    }
+  }
+
+  // Right hidden raw-suffix zone.
+  // v0.9.216:
+  // Do not consume right-edge keyboard movement.
+  // Enter is disabled on rendered membrane lines, so the hidden final brace is protected.
+  // Let VSCode move normally to the next line when the user presses → past the edge.
+
+  // v0.9.216:
+  // Skip the virtual space after the visible right edge.
+  // v0.9.216 adds a virtual display space so the caret can appear as ")|".
+  // The next → must not stop at that virtual space; it should move to next line head.
+  // v0.9.216:
+  // Right edge one-beat behavior.
+  // Allow `pos.character === rightEdge` to remain visible as `TOC|`.
+  // Only when the caret goes beyond that edge should it move to next line Col1.
+  if (targetChar === null && rightEdge >= 0) {
+    const prevAtRightEdge = prev && prev.line === pos.line && prev.character === rightEdge;
+    const nowBeyondRightEdge = pos.character > rightEdge;
+    if (prevAtRightEdge && nowBeyondRightEdge) {
+const nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
+      const p = new vscode.Position(nextLine, 0);
+      caretSkipSuppressUntil = Date.now() + 25;
+      editor.selection = new vscode.Selection(p, p);
+      lastCaretByEditorKey.set(key, { line: p.line, character: p.character });
+      return true;
+    }
+  }
+
+  if (targetChar === null) {
+    updateLastCaretForEditor(editor);
+    return false;
+  }
+
+  const p = new vscode.Position(pos.line, targetChar);
+  caretSkipSuppressUntil = Date.now() + 35;
+  editor.selection = new vscode.Selection(p, p);
+  lastCaretByEditorKey.set(key, { line: p.line, character: p.character });
+  return true;
+}
+
+// v0.9.614→615: redirect mouse-clicks on a membrane line's word-wrapped visual
+// 2nd line. In MD files with Word Wrap ON, the raw membrane source (~95 chars)
+// wraps past the viewport edge. The visual 2nd line contains only font-size:0
+// hidden characters. Clicking there puts the caret deep inside the hidden
+// badge/suffix zone. Typed text silently vanishes — or worse, corrupts the badge.
+//
+// Detection: cursor column >= wrapColumn on a membrane line that is long enough
+// to wrap. The 1st visual line (where the ▼📒 label renders) always fits within
+// the wrap column, so clicks there are unaffected.
+//
+// v0.9.615: †† 注釈領域があればその直後へリダイレクト。なければ次行先頭へ。
+function maybeRedirectClickFromHiddenSuffix(editor) {
+  if (!editor || mSkeletonMode) return;
+  const sel = editor.selection;
+  if (!sel || !sel.isEmpty) return;
+  const pos = sel.active;
+  const text = editor.document.lineAt(pos.line).text || '';
+
+  // Only act on membrane open lines (close lines are short, rarely wrap).
+  const parts = membraneLineParts(text, 'open');
+  if (!parts) return;
+
+  // Only act when the line is long enough to word-wrap.
+  const wrapCfg = vscode.workspace.getConfiguration('editor');
+  const wrapMode = wrapCfg.get('wordWrap', 'off');
+  if (wrapMode === 'off') return;
+  // For 'wordWrapColumn' / 'bounded': use configured column.
+  // For 'on': wrap at viewport edge — approximate with 80 (conservative).
+  const wrapColumn = (wrapMode === 'on')
+    ? 80
+    : Math.max(40, Math.min(300, Number(wrapCfg.get('wordWrapColumn', 80)) || 80));
+  const lineLen = text.replace(/\t/g, '  ').length;
+  if (lineLen <= wrapColumn) return; // Line doesn't wrap — no visual 2nd line.
+
+  // If cursor is past the wrap column, it's on the visual 2nd line.
+  if (pos.character < wrapColumn) return;
+
+  // v0.9.626: 番号付き注釈対応 — 注釈領域があればその直後へカーソル移動
+  const openBadge = parseMstatBadgeFromText(text);
+  const badgeStartPos = openBadge ? openBadge.start : -1;
+  const searchEnd = badgeStartPos > parts.idStart ? badgeStartPos : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+  const redirectDagger = findDaggerAnnotation(text, parts.idStart, searchEnd);
+  if (redirectDagger && redirectDagger.visible) {
+    const p = new vscode.Position(pos.line, redirectDagger.idx + redirectDagger.headerLen);
+    editor.selection = new vscode.Selection(p, p);
+    return;
+  }
+
+  // No annotation area — move cursor to the beginning of the next line.
+  const nextLine = pos.line + 1;
+  if (nextLine < editor.document.lineCount) {
+    const p = new vscode.Position(nextLine, 0);
+    editor.selection = new vscode.Selection(p, p);
+  } else {
+    // At end of file — insert a new line and move there.
+    editor.edit(edit => {
+      edit.insert(new vscode.Position(pos.line, text.length), '\n');
+    }, { undoStopBefore: false, undoStopAfter: false }).then(() => {
+      const p = new vscode.Position(nextLine, 0);
+      editor.selection = new vscode.Selection(p, p);
+    });
+  }
+}
+
+async function maybeAutoUnfoldOnSelection(editor, selectionKind) {
+  if (!editor) return;
+  // v0.9.216:
+  // Do not auto-unfold/fold in response to ←/→ keyboard caret movement.
+  if (selectionKind === vscode.TextEditorSelectionChangeKind.Keyboard) return;
+  const cfg = vscode.workspace.getConfiguration('laiMembrane');
+  if (!cfg.get('autoUnfoldOnFoldedStartSelection', true)) return;
+  if (Date.now() < suppressAutoUnfoldUntil) return;
+  const line = editor.selection.active.line;
+  const pair = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === line);
+  if (!pair || !isPairFolded(editor, pair)) return;
+  // v0.9.539: When the open line has an alias literal exposed as plain source
+  // (v0.9.538 rendering), clicking that source span should leave the caret on the
+  // alias for editing — NOT auto-unfold the membrane. Detect this case and skip the
+  // auto-unfold. User report v0.9.538_0043: 「閉じた状態で、エイリアス部分をクリック
+  // すると、なぜか展開されてしまう」.
+  const lineText = editor.document.lineAt(line).text || '';
+  const badge = parseMstatBadgeFromText(lineText);
+  // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている膜は、
+  // 初回クリック = 編集モード進入（unfold 抑制）。
+  // 2回目クリック（既にその行にいた）= unfold 許可。
+  const isMd = isMarkdownDocument(editor.document);
+  if (isMd) {
+    const hasAlias = badge && typeof badge.alias === 'string' && badge.alias.length > 0 && badge.nameDisplay !== false;
+    const hasDagger = hasDaggerAnnotation(lineText);
+    if ((hasAlias || hasDagger) && prevLineBeforeSelectionChange !== line) return;
+  }
+  if (badge && typeof badge.alias === 'string' && badge.alias.length > 0) {
+    const badgeText = lineText.slice(badge.start, badge.end);
+    const aliasRelStart = badgeText.indexOf(badge.alias);
+    if (aliasRelStart > 0) {
+      const aliasSrcStart = badge.start + aliasRelStart;
+      const aliasSrcEnd = aliasSrcStart + badge.alias.length;
+      const ch = editor.selection.active.character;
+      if (ch >= aliasSrcStart && ch <= aliasSrcEnd) return;
+    }
+  }
+  suppressAutoUnfoldUntil = Date.now() + 400;
+  await vscode.commands.executeCommand('editor.unfold', { selectionLines: [pair.start] });
+  setTimeout(() => { syncPairMstatFromFoldState(editor, pair); refresh(editor); }, 120);
+}
+
+// {* ▲mCN=0700_COMMANDS // end [cGJF=h] *}
+
+
+// {* ▼mCN=0810_MEMBRANE_SPACING // v0.9.223 add blank-line spacing and close-line Enter helper (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function isBlankDocumentLine(document, line) {
+  if (!document || line < 0 || line >= document.lineCount) return true;
+  return (document.lineAt(line).text || "").trim() === "";
+}
+
+function wrapInsertedMembraneBlock(document, startLine, endLine, blockText) {
+  // v0.9.223:
+  // Keep one blank line before and after a newly inserted membrane block.
+  // This prevents adjacent membrane scope lines from visually joining.
+  const needBefore = startLine > 0 && !isBlankDocumentLine(document, startLine - 1);
+  const needAfter = endLine < document.lineCount - 1 && !isBlankDocumentLine(document, endLine + 1);
+  return `${needBefore ? "\n" : ""}${blockText}${needAfter ? "\n" : ""}`;
+}
+
+function findNewMembraneOpenerLineAfterInsert(document, id, nearLine) {
+  // v0.9.391:
+  // Do not guess with +1 only. wrapInsertedMembraneBlock may add a leading blank,
+  // and insertion on an existing blank line can still shift the actual opener.
+  // After the edit, search near the insertion point for the opener carrying the new id.
+  if (!document || !id) return Math.max(0, nearLine || 0);
+  const start = Math.max(0, (nearLine || 0) - 2);
+  const end = Math.min(document.lineCount - 1, (nearLine || 0) + 12);
+  for (let i = start; i <= end; i++) {
+    const text = document.lineAt(i).text || '';
+    const info = parseOpenLine(text);
+    if (info && info.id === id) return i;
+  }
+  // Fallback: rare, but useful when the insertion template/language wrapper adds extra lines.
+  for (let i = 0; i < document.lineCount; i++) {
+    const text = document.lineAt(i).text || '';
+    const info = parseOpenLine(text);
+    if (info && info.id === id) return i;
+  }
+  return Math.max(0, Math.min(document.lineCount - 1, nearLine || 0));
+}
+
+function isCaretAtRenderedMembraneLineRightEdge(editor, kind) {
+  if (!editor || !editor.selection || !editor.selection.isEmpty) return false;
+  const pos = editor.selection.active;
+  const text = editor.document.lineAt(pos.line).text || "";
+  const parts = membraneLineParts(text, kind);
+  if (!parts) return false;
+  let rightEdge = (parts.suffixStart >= 0) ? parts.suffixStart : text.length;
+  if (rightEdge > 0 && /\s/.test(text.charAt(rightEdge - 1))) {
+    rightEdge = rightEdge - 1;
+  }
+  return pos.character >= rightEdge;
+}
+
+function isCaretAtRenderedOpenLineRightEdge(editor) {
+  return isCaretAtRenderedMembraneLineRightEdge(editor, 'open');
+}
+
+function isCaretAtRenderedCloseLineRightEdge(editor) {
+  return isCaretAtRenderedMembraneLineRightEdge(editor, 'close');
+}
+
+async function insertBlankLineAfterMembraneRightEdgeIfNeeded(editor) {
+  // v0.9.225:
+  // Enter at rendered right edge of either an opening or closing membrane line
+  // creates a real blank line after that membrane line, without pushing hidden ` *}`.
+  if (!editor || !editor.selection || !editor.selection.isEmpty) return false;
+  const pos = editor.selection.active;
+  const isOpenEdge = isCaretAtRenderedOpenLineRightEdge(editor);
+  const isCloseEdge = isCaretAtRenderedCloseLineRightEdge(editor);
+  if (!isOpenEdge && !isCloseEdge) return false;
+
+  const line = pos.line;
+
+  // If the next line is already blank, just move there.
+  if (line + 1 < editor.document.lineCount && isBlankDocumentLine(editor.document, line + 1)) {
+    const p = new vscode.Position(line + 1, 0);
+    editor.selection = new vscode.Selection(p, p);
+    return true;
+  }
+
+  await editor.edit(edit => {
+    edit.insert(new vscode.Position(line + 1, 0), "\n");
+  }, { undoStopBefore: true, undoStopAfter: true });
+  const p = new vscode.Position(line + 1, 0);
+  editor.selection = new vscode.Selection(p, p);
+  setTimeout(() => refresh(editor), 30);
+  return true;
+}async function handleEnterAtMembraneRightEdge() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor && await insertBlankLineAfterMembraneRightEdgeIfNeeded(editor)) return;
+  await vscode.commands.executeCommand('default:type', { text: '\n' });
+}
+
+// {* ▲mCN=0810_MEMBRANE_SPACING // end [cGJF=h] *}
+
+// {* ▼mCN=0800_ADD_MEMBRANE // Add Membrane command (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function normalizeMembraneId(input) {
+  let raw = String(input || '').trim();
+  if (!raw) return getDefaultMembraneName();
+  raw = raw.replace(/^mCN\s*=\s*/i, '').trim();
+  // Membrane names may contain Unicode and internal spaces.
+  // Reserved delimiters are normalized to avoid breaking the markMup line grammar.
+  raw = raw.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+  raw = raw.replace(/\s+\/\/[\s\S]*$/g, '').replace(/\*\}/g, '').replace(/[{}]/g, '').trim();
+  return raw || getDefaultMembraneName();
+}
+function getDefaultMembraneName() {
+  // v0.9.216: Human-readable short ID: HHMMSS.MDD
+  // Month code: J F M A 5 6 7 8 S O N D
+  const now = new Date();
+  const monthCodes = ['J', 'F', 'M', 'A', '5', '6', '7', '8', 'S', 'O', 'N', 'D'];
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const hh = pad2(now.getHours());
+  const mm = pad2(now.getMinutes());
+  const ss = pad2(now.getSeconds());
+  const mc = monthCodes[now.getMonth()] || String(now.getMonth() + 1);
+  const dd = pad2(now.getDate());
+  return 'name_' + hh + mm + ss + '.' + mc + dd;
+}
+
+function refreshTrailingTimestamp(name) {
+  const raw = String(name || '').trim();
+  const fresh = getDefaultMembraneName().replace(/^name_/, '');
+  if (!raw) return 'name_' + fresh;
+
+  // Remove existing trailing timestamps before appending the fresh one.
+  // Supported examples:
+  //   Base_185142.503
+  //   Base_185142_503
+  //   Base_185142_J07
+  //   Base_185142.507_031303.507  -> Base_031303.507
+  const suffixRe = /(?:_+\d{6}(?:[._][A-Z0-9]\d{2})?)+$/;
+  const base = raw.replace(suffixRe, '').replace(/_+$/, '');
+  return (base || 'name') + '_' + fresh;
+}
+
+function lineIndent(document, line) {
+  if (!document || line < 0 || line >= document.lineCount) return '';
+  const m = document.lineAt(line).text.match(/^\s*/);
+  return m ? m[0] : '';
+}
+function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = '', depthValue = 0) {
+  const lang = String(languageId || '').toLowerCase();
+
+  // Markdown / MDX: HTML comment wrapper with identical {* ... *} core as TS format.
+  // Inner body matches the slash-comment format so the parser pipeline stays common.
+  if (lang === 'markdown' || lang === 'mdx') {
+    return {
+      open: `${indent}<!-- {* ▼mCN=${id} // comment1 (📊⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *} -->`,
+      close: `${indent}<!-- {* ▲mCN=${id} // comment2 *} -->`,
+      markdown: true
+    };
+  }
+
+  // Default: existing code-oriented canonical markMup source.
+  return {
+    open: `${indent}// {* ▼mCN=${id} // comment1 (📊⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *}`,
+    close: `${indent}// {* ▲mCN=${id} // comment2 *}`
+  };
+}
+
+
+
+// {* ▼mCN=0868_SELECT_FULL_MEMBRANE_NAME // v0.9.259 full membrane-name selection (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function membraneNameRangeOnLine(editor, lineNo) {
+  if (!editor || lineNo < 0 || lineNo >= editor.document.lineCount) return undefined;
+  const text = editor.document.lineAt(lineNo).text || "";
+  const parsed = parseOpenLine(text) || parseCloseLine(text);
+  if (!parsed || !parsed.id) return undefined;
+
+  // Prefer exact parsed id location.
+  let startCh = text.indexOf(parsed.id);
+  if (startCh < 0) {
+    // Fallback: locate after the first membrane marker.
+    const markerIndex = Math.max(text.indexOf('▼'), text.indexOf('▲'));
+    startCh = markerIndex >= 0 ? markerIndex + 1 : 0;
+  }
+  const endCh = startCh + parsed.id.length;
+  return new vscode.Range(new vscode.Position(lineNo, startCh), new vscode.Position(lineNo, endCh));
+}
+
+function selectMembraneNameOnLine(editor, lineNo) {
+  const range = membraneNameRangeOnLine(editor, lineNo);
+  if (!range) return false;
+  editor.selection = new vscode.Selection(range.start, range.end);
+  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  return true;
+}
+
+function currentLineMembraneId(editor) {
+  if (!editor) return undefined;
+  const lineNo = editor.selection.active.line;
+  if (lineNo < 0 || lineNo >= editor.document.lineCount) return undefined;
+  const text = editor.document.lineAt(lineNo).text || "";
+  const parsed = parseOpenLine(text) || parseCloseLine(text);
+  return parsed && parsed.id ? parsed.id : undefined;
+}
+// {* ▲mCN=0868_SELECT_FULL_MEMBRANE_NAME // end [cGJF=h] *}
+
+function isCursorOnMembraneLine(editor) {
+  if (!editor) return false;
+  const pos = editor.selection.active;
+  if (pos.line < 0 || pos.line >= editor.document.lineCount) return false;
+  const text = editor.document.lineAt(pos.line).text || "";
+
+  // Strict physical-line detection:
+  // Only the line that actually contains a membrane marker is treated as Rename Me.
+  // This intentionally includes Col 1 / left side of ▼/▲ on that same line.
+  return /[▼▲]/.test(text) && !!(parseOpenLine(text) || parseCloseLine(text));
+}
+
+function isCursorInsideMembraneName(editor) {
+  if (!editor) return false;
+  const pos = editor.selection.active;
+  const text = editor.document.lineAt(pos.line).text || "";
+  const open = parseOpenLine(text);
+  const close = parseCloseLine(text);
+  if (!open && !close) return false;
+  const parts = membraneLineParts(text, open ? 'open' : 'close');
+  if (!parts || typeof parts.idStart !== 'number' || typeof parts.idEnd !== 'number') return false;
+  return pos.character >= parts.idStart && pos.character <= parts.idEnd;
+}
+
+async function addMembrane() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  if (isCursorOnMembraneLine(editor) || isCursorInsideMembraneName(editor)) {
+    vscode.window.showWarningMessage('New Me cannot be inserted on a membrane line. Use Rename Me instead.');
+    return;
+  }
+  const idInput = await vscode.window.showInputBox({
+    title: 'Fold Membrane: Add Membrane',
+    prompt: 'Membrane name / mCN id',
+    value: getDefaultMembraneName(),
+    placeHolder: 'Example: My First Me_105844.503 / 私 第一膜_105844.503'
+  });
+  if (idInput === undefined) return;
+  const id = normalizeMembraneId(idInput);
+  const sel = editor.selection;
+  const doc = editor.document;
+  const hasSelection = !sel.isEmpty;
+  const startLine = sel.start.line;
+  const endLine = hasSelection && sel.end.character === 0 ? Math.max(sel.start.line, sel.end.line - 1) : sel.end.line;
+  const indent = lineIndent(doc, startLine);
+  const tpl = membraneCommentTemplateForLanguage(doc.languageId, id, indent, 'W', newMembraneDepthForInsertion(doc, startLine));
+  const open = tpl.open;
+  const close = tpl.close;
+  const ok = await editor.edit(editBuilder => {
+    if (hasSelection) {
+      const block = tpl.markdown
+        ? `${open}\n\n`
+        : `${open}\n`;
+      const tail = tpl.markdown
+        ? `\n\n${close}`
+        : `\n${close}`;
+      editBuilder.insert(new vscode.Position(startLine, 0), wrapInsertedMembraneBlock(doc, startLine, startLine, block));
+      editBuilder.insert(new vscode.Position(endLine + 1, 0), wrapInsertedMembraneBlock(doc, endLine + 1, endLine + 1, tail));
+    } else {
+      const block = tpl.markdown
+        ? `${open}\n\n${indent}\n\n${close}`
+        : `${open}\n${indent}\n${close}`;
+      editBuilder.insert(sel.active, wrapInsertedMembraneBlock(doc, startLine, startLine, block));
+    }
+  }, { undoStopBefore: true, undoStopAfter: true });
+  if (ok) {
+    // v0.9.391: no-search correction.
+    // Empty insertion always creates a blank line at the original cursor line,
+    // so the new opener is displayed on current line + 1.
+    const targetLineNo = hasSelection ? startLine : Math.min(startLine + 1, editor.document.lineCount - 1);
+    editor.selection = new vscode.Selection(targetLineNo, indent.length, targetLineNo, indent.length);
+    editor.revealRange(new vscode.Range(targetLineNo, 0, targetLineNo, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); }, 80);
+  }
+}
+// {* ▲mCN=0800_ADD_MEMBRANE // end [cGJF=h] *}
+
+
+// {* ▼mCN=0860_MEOS_MENU_STUBS // v0.9.228 context menu skeleton commands (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+async function newOrRenameMe() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  if (isCursorOnMembraneLine(editor) || isCursorInsideMembraneName(editor)) {
+    await renameMe();
+  } else {
+    await addMembrane();
+  }
+}
+
+async function meosCommandNotImplementedYet(label) {
+  vscode.window.showInformationMessage(`${label}: UI skeleton only in v0.9.228.`);
+}
+
+async function deleteMeKeepContents() {
+  return meosCommandNotImplementedYet('Delete Me (excluding Contents)');
+}
+
+// v0.9.663: 膜操作4機能。カーソル位置の膜ペア(pair.start=開始膜行, pair.end=閉じ膜行)を
+// currentMembranePairForRename で取得して処理する。クリップボードは vscode.env.clipboard。
+function meosCurrentPairOrWarn(editor, label) {
+  if (!editor) return null;
+  const pair = currentMembranePairForRename(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage(label + ': Place the cursor on a membrane line or inside a membrane.');
+    return null;
+  }
+  return pair;
+}
+
+// v0.9.664: 結果をMe Dock(webview)のトーストとステータスバー両方に出す。
+function meosOpFeedback(msg) {
+  vscode.window.setStatusBarMessage('MeOS: ' + msg, 2200);
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'opResult', text: msg }); } catch (_) {}
+}
+
+// 膜のCopy — 膜全体(開始膜行〜閉じ膜行を含む)をクリップボードへ。
+// v0.9.664: editor 引数対応(Me Dock からは getMeDockTargetEditor() を渡す)。
+async function copyMe(editor) {
+  editor = editor || vscode.window.activeTextEditor;
+  const pair = meosCurrentPairOrWarn(editor, 'Copy Me');
+  if (!pair) return;
+  const doc = editor.document;
+  const endLine = Math.min(pair.end, doc.lineCount - 1);
+  const lines = [];
+  for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
+  await vscode.env.clipboard.writeText(lines.join('\n'));
+  meosOpFeedback('Copied membrane (' + (endLine - pair.start + 1) + ' lines)');
+}
+
+// 膜の中身のCopy — 開始膜行と閉じ膜行を除いた中身だけをクリップボードへ。
+async function copyMyContents(editor) {
+  editor = editor || vscode.window.activeTextEditor;
+  const pair = meosCurrentPairOrWarn(editor, 'Copy My contents');
+  if (!pair) return;
+  const doc = editor.document;
+  const first = pair.start + 1;
+  const last = Math.min(pair.end - 1, doc.lineCount - 1);
+  if (first > last) {
+    await vscode.env.clipboard.writeText('');
+    meosOpFeedback('Membrane has no contents');
+    return;
+  }
+  const lines = [];
+  for (let i = first; i <= last; i++) lines.push(doc.lineAt(i).text);
+  await vscode.env.clipboard.writeText(lines.join('\n'));
+  meosOpFeedback('Copied membrane contents (' + (last - first + 1) + ' lines)');
+}
+
+// 膜の中身の全選択 — 開始膜行と閉じ膜行を除いた中身を選択状態にする。
+async function selectMyContents(editor) {
+  editor = editor || vscode.window.activeTextEditor;
+  const pair = meosCurrentPairOrWarn(editor, 'Select My contents');
+  if (!pair) return;
+  const doc = editor.document;
+  const first = pair.start + 1;
+  const last = Math.min(pair.end - 1, doc.lineCount - 1);
+  if (first > last) {
+    meosOpFeedback('Membrane has no contents');
+    return;
+  }
+  const endCh = doc.lineAt(last).text.length;
+  editor.selection = new vscode.Selection(first, 0, last, endCh);
+  editor.revealRange(new vscode.Range(first, 0, last, endCh));
+  // 対象エディタにフォーカスを移して選択を見えるようにする。
+  try { await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false }); } catch (_) {}
+  meosOpFeedback('Selected membrane contents (' + (last - first + 1) + ' lines)');
+}
+
+// 膜の複製 — 膜全体(開始膜行〜閉じ膜行)を閉じ膜行の直後に挿入する。
+async function duplicateMe(editor) {
+  editor = editor || vscode.window.activeTextEditor;
+  const pair = meosCurrentPairOrWarn(editor, 'Duplicate Me');
+  if (!pair) return;
+  const doc = editor.document;
+  const endLine = Math.min(pair.end, doc.lineCount - 1);
+  const lines = [];
+  for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
+  const block = lines.join('\n');
+  // 閉じ膜行の末尾に改行＋ブロックを挿入。末尾行(EOFに改行なし)でも安全に動くよう
+  // 行末位置に '\n' + block を入れる。
+  const insertPos = new vscode.Position(endLine, doc.lineAt(endLine).text.length);
+  await editor.edit(edit => {
+    edit.insert(insertPos, '\n' + block);
+  });
+  meosOpFeedback('Duplicated membrane (' + lines.length + ' lines)');
+}
+// {* ▲mCN=0860_MEOS_MENU_STUBS // end [cGJF=h] *}
+
+// {* ▼mCN=0861_ANNOTATE_ALIAS // v0.9.619 Annotate Me / Alias Me (📊⊕0+0D0W) [oGJF=h] *}
+
+// v0.9.619: Annotate Me… — 現在の膜行に †† 注釈を挿入/変更する。
+// コメントとバッジの間に ††1 注釈テキスト を配置する。
+async function annotateMe() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const pair = currentMembranePairForRename(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage('Annotate Me: カーソルを膜行または膜の中に置いてください。');
+    return;
+  }
+  const openLineText = editor.document.lineAt(pair.start).text;
+  const badge = parseMstatBadgeFromText(openLineText);
+  if (!badge) {
+    vscode.window.showWarningMessage('Annotate Me: バッジが見つかりません。');
+    return;
+  }
+  // v0.9.626: findDaggerAnnotation で統一パース
+  const existingDagger = findDaggerAnnotation(openLineText, 0, badge.start);
+  let currentAnnotation = '';
+  let daggerStart = -1;
+  let daggerEnd = -1;
+  let existingNum = null;
+  if (existingDagger) {
+    daggerStart = existingDagger.idx;
+    daggerEnd = badge.start;
+    currentAnnotation = openLineText.slice(daggerStart + existingDagger.headerLen, daggerEnd).trim();
+    existingNum = existingDagger.annotNum;
+  }
+
+  const input = await vscode.window.showInputBox({
+    title: 'Annotate Me †',
+    prompt: '膜の注釈を入力（空欄で注釈を削除）',
+    value: currentAnnotation,
+    placeHolder: '注釈テキスト'
+  });
+  if (input === undefined) return; // キャンセル
+
+  const annotText = input.trim();
+
+  // ファイル内の全番号付き注釈をスキャン
+  const doc = editor.document;
+  const allAnnotations = [];
+  for (let i = 0; i < doc.lineCount; i++) {
+    if (i === pair.start) continue;
+    const lt = doc.lineAt(i).text;
+    if (!parseOpenLine(lt)) continue;
+    const b = parseMstatBadgeFromText(lt);
+    const d = findDaggerAnnotation(lt, 0, b ? b.start : lt.length);
+    if (d) allAnnotations.push({ line: i, dagger: d });
+  }
+  const usedNums = allAnnotations.filter(a => a.dagger.annotNum !== null).map(a => a.dagger.annotNum);
+
+  if (daggerStart >= 0) {
+    if (annotText.length > 0) {
+      // 既存の注釈を番号付きで更新
+      const myNum = existingNum !== null ? existingNum : ((usedNums.length > 0 ? Math.max(...usedNums) : 0) + 1);
+      const totalAnnots = allAnnotations.length + 1;
+      const firstAnnotLine = allAnnotations.length > 0 ? Math.min(...allAnnotations.map(a => a.line)) : Infinity;
+      const isMaster = pair.start <= firstAnnotLine;
+      const header = isMaster ? ('†' + myNum + '/' + totalAnnots + '†1 ') : ('†' + myNum + '†1 ');
+      const replacement = header + annotText + ' ';
+      await editor.edit(edit => {
+        edit.replace(new vscode.Range(pair.start, daggerStart, pair.start, daggerEnd), replacement);
+      }, { undoStopBefore: true, undoStopAfter: true });
+      if (!isMaster) await updateMasterAnnotationTotal(editor, totalAnnots, pair.start);
+    } else {
+      // 注釈削除
+      await editor.edit(edit => {
+        edit.replace(new vscode.Range(pair.start, daggerStart, pair.start, daggerEnd), '');
+      }, { undoStopBefore: true, undoStopAfter: true });
+      if (allAnnotations.length > 0) await updateMasterAnnotationTotal(editor, allAnnotations.length, -1);
+    }
+  } else if (annotText.length > 0) {
+    // 新規挿入 — 次の番号を割り当て
+    const myNum = (usedNums.length > 0 ? Math.max(...usedNums) : 0) + 1;
+    const totalAnnots = allAnnotations.length + 1;
+    const firstAnnotLine = allAnnotations.length > 0 ? Math.min(...allAnnotations.map(a => a.line)) : Infinity;
+    const isMaster = pair.start <= firstAnnotLine;
+    const header = isMaster ? ('†' + myNum + '/' + totalAnnots + '†1 ') : ('†' + myNum + '†1 ');
+    const insertion = header + annotText + ' ';
+    await editor.edit(edit => {
+      edit.insert(new vscode.Position(pair.start, badge.start), insertion);
+    }, { undoStopBefore: true, undoStopAfter: true });
+    if (!isMaster) await updateMasterAnnotationTotal(editor, totalAnnots, pair.start);
+  }
+  setTimeout(() => refresh(editor), 80);
+}
+
+// v0.9.626: マスター注釈（†n/N†）の総数 N を更新する。
+async function updateMasterAnnotationTotal(editor, newTotal, excludeLine) {
+  const doc = editor.document;
+  for (let i = 0; i < doc.lineCount; i++) {
+    if (i === excludeLine) continue;
+    const lt = doc.lineAt(i).text;
+    if (!parseOpenLine(lt)) continue;
+    const b = parseMstatBadgeFromText(lt);
+    const d = findDaggerAnnotation(lt, 0, b ? b.start : lt.length);
+    if (d && d.totalCount !== null && d.totalCount !== newTotal) {
+      const newHeader = '†' + d.numStr + '/' + newTotal + '†' + (d.visible ? '1' : '0');
+      await editor.edit(edit => {
+        edit.replace(new vscode.Range(i, d.idx, i, d.idx + d.headerLen), newHeader);
+      }, { undoStopBefore: false, undoStopAfter: false });
+      return;
+    }
+  }
+  // マスターなし → ファイル内最初の番号付き注釈を昇格
+  for (let i = 0; i < doc.lineCount; i++) {
+    if (i === excludeLine) continue;
+    const lt = doc.lineAt(i).text;
+    if (!parseOpenLine(lt)) continue;
+    const b = parseMstatBadgeFromText(lt);
+    const d = findDaggerAnnotation(lt, 0, b ? b.start : lt.length);
+    if (d && d.annotNum !== null && d.totalCount === null) {
+      const newHeader = '†' + d.numStr + '/' + newTotal + '†' + (d.visible ? '1' : '0');
+      await editor.edit(edit => {
+        edit.replace(new vscode.Range(i, d.idx, i, d.idx + d.headerLen), newHeader);
+      }, { undoStopBefore: false, undoStopAfter: false });
+      return;
+    }
+  }
+}
+
+// v0.9.619: Alias Me… — 現在の膜にエイリアスを設定/変更する。
+// バッジ内の N1=aliasText を書き換える。
+async function aliasMe() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const pair = currentMembranePairForRename(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage('Alias Me: カーソルを膜行または膜の中に置いてください。');
+    return;
+  }
+  const openLineText = editor.document.lineAt(pair.start).text;
+  const badge = parseMstatBadgeFromText(openLineText);
+  if (!badge) {
+    vscode.window.showWarningMessage('Alias Me: バッジが見つかりません。');
+    return;
+  }
+  const currentAlias = (badge.alias || '').trim();
+
+  const input = await vscode.window.showInputBox({
+    title: 'Alias Me',
+    prompt: '膜のエイリアス名を入力（空欄でエイリアスを削除）',
+    value: currentAlias,
+    placeHolder: 'エイリアス名'
+  });
+  if (input === undefined) return; // キャンセル
+
+  const aliasText = input.trim();
+  // バッジを再構築
+  const next = { ...badge };
+  if (aliasText.length > 0) {
+    next.alias = aliasText;
+    next.nameDisplay = true;   // N1（エイリアスON — 膜名の代わりにエイリアス表示）
+    next.badgeDisplay = false; // 📊0（バッジ非表示）
+    next.newFormat = true;
+  } else {
+    next.alias = '';
+    next.nameDisplay = true;   // N1（通常の膜名表示）
+    next.badgeDisplay = true;  // 📊1（バッジ表示に戻す）
+  }
+  const formatted = formatMstatBadge(next);
+  if (formatted === badge.raw) return; // 変更なし
+  await editor.edit(edit => {
+    edit.replace(new vscode.Range(pair.start, badge.start, pair.start, badge.end), formatted);
+  }, { undoStopBefore: true, undoStopAfter: true });
+  setTimeout(() => refresh(editor), 80);
+}
+
+// {* ▲mCN=0861_ANNOTATE_ALIAS // end [cGJF=h] *}
+
+
+// {* ▼mCN=0865_RENAME_ME // v0.9.235 Rename Me safe implementation (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function membraneNameRangeForRenameOnLine(document, line, expectedKind, expectedId) {
+  if (!document || line < 0 || line >= document.lineCount) return null;
+  const rawLine = document.lineAt(line).text || "";
+  const raw = normalizeProtoMembraneLineText(rawLine);
+  const unwrapped = unwrapMembraneCommentText(raw || "");
+  const text = unwrapped.inner || raw;
+  const arrow = expectedKind === 'open' ? '[▼▽]' : '[▲△]';
+  const key = '(?:mCN|CN|H1|H2|H3)';
+
+  // Code / proto source:
+  //   // {* ▼mCN=name // comment *}
+  //   // {* ▼H1=name // comment *}
+  let re = new RegExp('^(\\s*)(//[ \\t]*\\{[ \\t]*' + arrow + '[ \\t]*' + key + '[ \\t]*=[ \\t]*)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)(.*)$');
+  let m = text.match(re);
+
+  // Markdown hidden comments:
+  //   [//]: # (▼name // comment)
+  //   [//]: # (▼mCN=name // comment)
+  //   [//]: # (▼H1=name // comment)
+  if (!m) {
+    re = new RegExp('^(\\s*)(\\[\\/\\/\\]:[ \\t]*#[ \\t]*(?:(?:\\"|\\()[ \\t]*)?' + arrow + '[ \\t]*(?:' + key + '[ \\t]*=[ \\t]*)?)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*[\\")]|$)(.*)$');
+    m = text.match(re);
+  }
+
+  if (!m) return null;
+
+  const idText = cleanMembraneName(m[3]);
+  if (!idText) return null;
+  if (expectedId !== undefined && idText !== expectedId) return null;
+
+  let idStart = m[1].length + m[2].length;
+  let idEnd = idStart + idText.length;
+
+  // Map back to the raw source line if proto normalization changed positions.
+  const rawIdStart = rawLine.indexOf(idText);
+  if (rawIdStart >= 0) {
+    idStart = rawIdStart;
+    idEnd = rawIdStart + idText.length;
+  }
+
+  return {
+    id: idText,
+    range: new vscode.Range(line, idStart, line, idEnd)
+  };
+}
+
+function currentMembranePairForRename(editor) {
+  if (!editor) return null;
+  const doc = editor.document;
+  const line = editor.selection.active.line;
+
+  const info = membraneLineInfo(doc, line);
+  if (info) {
+    const pair = collectPairs(doc, { excludeIndex: false }).find(p => {
+      if (info.kind === 'open') return p.start === info.line && p.id === info.id;
+      return p.end === info.line && p.id === info.id;
+    });
+    if (pair) return pair;
+  }
+
+  return findCurrentPair(editor);
+}
+
+async function renameMe() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+
+  const pair = currentMembranePairForRename(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage('Rename Me: put the cursor inside a membrane or on its name.');
+    return;
+  }
+
+  const openName = membraneNameRangeForRenameOnLine(editor.document, pair.start, 'open', pair.id);
+  const closeName = membraneNameRangeForRenameOnLine(editor.document, pair.end, 'close', pair.id);
+  if (!openName || !closeName) {
+    vscode.window.showWarningMessage('Rename Me: matching start/end membrane name range was not found.');
+    return;
+  }
+
+  const nextNameInput = await vscode.window.showInputBox({
+    title: 'Rename Me',
+    prompt: 'Rename this Me. Start and end membrane names will be updated together.',
+    value: pair.id,
+    placeHolder: 'Example: My First Me_105844.503 / 私 第一膜_105844.503'
+  });
+  if (nextNameInput === undefined) return;
+
+  const nextName = normalizeMembraneId(nextNameInput);
+  if (!nextName) {
+    vscode.window.showWarningMessage('Rename Me: membrane name cannot be empty.');
+    return;
+  }
+  if (nextName === pair.id) return;
+
+  const ok = await editor.edit(edit => {
+    edit.replace(closeName.range, nextName);
+    edit.replace(openName.range, nextName);
+  }, { undoStopBefore: true, undoStopAfter: true });
+
+  if (ok) {
+    // v0.9.387: put the cursor on the actual newly-created opener line.
+    const insertedLeadingBlank = !hasSelection && startLine > 0 && !isBlankDocumentLine(doc, startLine - 1);
+    const openerLineNo = hasSelection ? startLine : startLine + (insertedLeadingBlank ? 1 : 0);
+    editor.selection = new vscode.Selection(openerLineNo, indent.length, openerLineNo, indent.length);
+    editor.revealRange(new vscode.Range(openerLineNo, 0, openerLineNo, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(openerLineNo + 1) });
+    setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(openerLineNo + 1) }); }, 80);
+  }
+}
+// {* ▲mCN=0865_RENAME_ME // end [cGJF=h] *}
+
+
+
+// {* ▼mCN=0867_ME_DOCK_CURRENT_LINE_MARKER // v0.9.253 Me Dock current line marker (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function ensureMeDockCurrentLineDecoration() {
+  if (meDockCurrentLineDecoration) return meDockCurrentLineDecoration;
+  meDockCurrentLineDecoration = vscode.window.createTextEditorDecorationType({
+    overviewRulerColor: 'rgba(255, 170, 0, 0.95)',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+    after: {
+      contentText: ' ⇦',
+      color: 'rgba(255, 120, 0, 1)',
+      fontWeight: 'bold',
+      margin: '0 0 0 6px'
+    }
+  });
+  return meDockCurrentLineDecoration;
+}
+
+function updateMeDockCurrentLineMarker() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!meDockPanel || !editor || !meDockCurrentLineMarkerActive) {
+    clearMeDockCurrentLineMarker();
+    return;
+  }
+  const pos = editor.selection.active;
+  if (!pos || pos.line < 0 || pos.line >= editor.document.lineCount) {
+    clearMeDockCurrentLineMarker();
+    return;
+  }
+  const range = editor.document.lineAt(pos.line).range;
+  editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
+}
+
+function clearMeDockCurrentLineMarker() {
+  if (!meDockCurrentLineDecoration) return;
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (editor) editor.setDecorations(meDockCurrentLineDecoration, []);
+}
+// {* ▲mCN=0867_ME_DOCK_CURRENT_LINE_MARKER // end [cGJF=h] *}
+
+// {* ▼mCN=0866_INLINE_NEW_RENAME // v0.9.242 inline Me Dock New/Rename helpers (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function getMeDockTargetEditor() {
+  return meDockTargetEditor || vscode.window.activeTextEditor;
+}
+
+// v0.9.707: Me Dock の書式ボタン挿入。選択テキストを記法で包んで初期値付きで挿入し、本文を選択状態にする
+// (プレースホルダを即上書きできる)。kind: 'highlight' | 'strike' | 'heading'。
+//   highlight → =={本文(赤/黄)//tip}==      (文字色赤・背景黄・コメントtip)
+//   strike    → ~~{本文(赤/)//tip}~~       (線色赤・背景は薄ピンク自動・コメントtip)
+//   heading   → ##[本文(白/緑)//tip]##      (H2・白文字・緑背景・コメントtip。行頭でないと効かないため現在行を包む)
+async function insertFormatTemplate(kind, editor) {
+  if (!editor) return;
+  const doc = editor.document;
+  const sel = editor.selection;
+  const selText = sel.isEmpty ? '' : doc.getText(sel);
+  let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
+  if (kind === 'heading') {
+    // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
+    const ln = sel.active.line;
+    const lineText = doc.lineAt(ln).text;
+    const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || '見出し');
+    const newText = '##[' + body + '(白/緑)//tip]##';
+    await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
+    bodySel = new vscode.Selection(new vscode.Position(ln, 3), new vscode.Position(ln, 3 + body.length)); // '##[' の直後〜本文末
+  } else {
+    let prefix, suffix, defBody;
+    if (kind === 'highlight') { prefix = '=={'; suffix = '(赤/黄)//tip}=='; defBody = 'ハイライト'; }
+    else if (kind === 'strike') { prefix = '~~{'; suffix = '(赤/)//tip}~~'; defBody = '取消線'; }
+    else return;
+    const body = selText || defBody;
+    const startOff = doc.offsetAt(sel.start);
+    await editor.edit(eb => eb.replace(sel, prefix + body + suffix));
+    bodySel = new vscode.Selection(doc.positionAt(startOff + prefix.length), doc.positionAt(startOff + prefix.length + body.length));
+  }
+  // v0.9.714: 挿入後、エディタにフォーカスを移し、本文(プレースホルダ)を選択状態にする(即上書きで書き込めるように)。
+  // 俊克 am11:15「ボタンを押した後エディタにフォーカスを移して」。focusMeDockTargetEditorは選択を1点に潰すので使わない。
+  editor.selection = bodySel;
+  await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: bodySel });
+}
+
+// {* ▼mCN=0867_BOOKMARK // 🔖 ワンブックマーク(最大3個・安全装置) v0.9.715 *}
+// 「場所の記憶」。最大3個のしおりを装飾🔖のみで表示(ソースに1mmも書かない)。globalStateにURIキーで永続。
+// ★戻る(cycle)と消す(remove)を分離: cycleは大事な場所へ巡回ジャンプ／removeはカーソル行のしおりだけ消す
+// (最後に居た大事な場所が勝手に消えない)。満杯時の挿入は無効(自動削除しない)。編集の行ズレは分かる範囲で追従。
+let bookmarkDecoration = null;
+let bookmarkHoverDecoration = null;  // v0.9.721: ホバー専用(ガターアイコン無し・行全体)            // 🔖 をしおり行に表示
+const _bookmarkMem = new Map();           // uriString -> { marks:[line0...], cycleIdx:int }
+function bookmarkStateKey(document) { return document ? ('meosBookmarks:' + document.uri.toString()) : ''; }
+function getBookmarks(document) {
+  if (!document) return { marks: [], cycleIdx: -1 };
+  const k = document.uri.toString();
+  if (_bookmarkMem.has(k)) return _bookmarkMem.get(k);
+  let data = { marks: [], cycleIdx: -1 };
+  try {
+    const saved = extensionContext && extensionContext.globalState.get(bookmarkStateKey(document));
+    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1) };
+  } catch (_) {}
+  _bookmarkMem.set(k, data);
+  return data;
+}
+async function saveBookmarks(document, data) {
+  if (!document) return;
+  _bookmarkMem.set(document.uri.toString(), data);
+  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx }); } catch (_) {}
+}
+function refreshBookmarkDecoration(editor) {
+  if (!bookmarkDecoration || !editor) return;
+  const doc = editor.document;
+  const data = getBookmarks(doc);
+  const iconItems = [];  // v0.9.721: ガターアイコンは点レンジ(ln,0,ln,0)=折返し行でも1個だけ。
+  const hoverItems = []; // ホバーは行全体レンジ(別装飾・ガターアイコン無し)。
+  for (const ln of data.marks) {
+    if (ln < 0 || ln >= doc.lineCount) continue;
+    iconItems.push({ range: new vscode.Range(ln, 0, ln, 0) });
+    const eol = doc.lineAt(ln).text.length;
+    const md = new vscode.MarkdownString('🔖 (Ln ' + (ln + 1) + ')   [Remove this 🔖](command:lai-membrane.bookmarkRemoveAt?' + encodeURIComponent(JSON.stringify([ln])) + ')   [Clear all 🔖](command:lai-membrane.bookmarkClearAll)');
+    md.isTrusted = { enabledCommands: ['lai-membrane.bookmarkRemoveAt', 'lai-membrane.bookmarkClearAll'] };
+    hoverItems.push({ range: new vscode.Range(ln, 0, ln, eol), hoverMessage: md });
+  }
+  try { editor.setDecorations(bookmarkDecoration, iconItems); } catch (_) {}
+  try { if (bookmarkHoverDecoration) editor.setDecorations(bookmarkHoverDecoration, hoverItems); } catch (_) {}
+}
+async function bookmarkClearAll(editor) { // 全しおり消去(H-TOCメニューに無いユニーク機能)。
+  if (!editor) return;
+  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1 });
+  refreshBookmarkDecoration(editor); postBookmarkState(editor);
+}
+function postBookmarkState(editor) {
+  if (!meDockPanel) return;
+  const data = getBookmarks(editor ? editor.document : null);
+  try { meDockPanel.webview.postMessage({ type: 'bookmarkState', count: data.marks.length, full: data.marks.length >= 3 }); } catch (_) {}
+}
+async function bookmarkInsert(editor) { // カーソル行に追加(3個未満・重複なし)。満杯は何もしない。
+  if (!editor) return;
+  const doc = editor.document, line = editor.selection.active.line, data = getBookmarks(doc);
+  if (data.marks.indexOf(line) >= 0 || data.marks.length >= 3) { postBookmarkState(editor); return; }
+  data.marks.push(line); data.marks.sort((a, b) => a - b);
+  await saveBookmarks(doc, data);
+  refreshBookmarkDecoration(editor); postBookmarkState(editor);
+}
+async function bookmarkRemove(editor, line) { // カーソル行(or 指定行)のしおりだけ消す(意図的)。大事な場所は勝手に消えない。
+  if (!editor) return;
+  const doc = editor.document, data = getBookmarks(doc);
+  const ln = (typeof line === 'number') ? line : editor.selection.active.line;
+  const idx = data.marks.indexOf(ln);
+  if (idx < 0) { postBookmarkState(editor); return; }
+  data.marks.splice(idx, 1);
+  if (data.cycleIdx >= data.marks.length) data.cycleIdx = data.marks.length - 1;
+  await saveBookmarks(doc, data);
+  refreshBookmarkDecoration(editor); postBookmarkState(editor);
+}
+async function bookmarkCycle(editor) { // 次のしおりへ巡回ジャンプ(行番号順・末尾→先頭)。
+  if (!editor) return;
+  const doc = editor.document, data = getBookmarks(doc);
+  if (!data.marks.length) { postBookmarkState(editor); return; }
+  data.cycleIdx = (data.cycleIdx + 1) % data.marks.length;
+  const line = Math.min(Math.max(0, data.marks[data.cycleIdx]), doc.lineCount - 1);
+  await saveBookmarks(doc, data);
+  const pos = new vscode.Position(line, 0);
+  await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) });
+  editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+  postBookmarkState(editor);
+}
+function adjustBookmarksForChange(e) { // 編集による行ズレを分かる範囲で追従。
+  if (!e || !e.document) return;
+  const k = e.document.uri.toString();
+  if (!_bookmarkMem.has(k)) return;
+  const data = _bookmarkMem.get(k);
+  if (!data.marks.length) return;
+  let changed = false;
+  for (const c of e.contentChanges) {
+    const startLine = c.range.start.line;
+    const delta = ((c.text.match(/\n/g) || []).length) - (c.range.end.line - c.range.start.line);
+    if (!delta) continue;
+    for (let i = 0; i < data.marks.length; i++) {
+      if (data.marks[i] > startLine) { data.marks[i] = Math.max(startLine, data.marks[i] + delta); changed = true; }
+    }
+  }
+  if (changed) { data.marks = data.marks.filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b); saveBookmarks(e.document, data); }
+}
+// {* ▲mCN=0867_BOOKMARK // *}
+
+function setMeDockTargetEditor(editor) {
+  if (editor && isZoomMeLensDocument(editor)) {
+    updateMeDockCurrentLineMarker();
+    return;
+  }
+  if (editor) {
+    meDockTargetEditor = editor;
+    zoomMeSourceEditor = editor;
+    ensureMeDockLineHistoryCurrent(editor);
+  }
+  updateMeDockCurrentLineMarker();
+}
+
+
+function focusMeDockTargetEditor() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor) return;
+  vscode.window.showTextDocument(editor.document, editor.viewColumn, false).then((shown) => {
+    const pos = editor.selection.active;
+    shown.selection = new vscode.Selection(pos, pos);
+    shown.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  });
+}
+
+function meDockCurrentLineNumber(editor) {
+  if (!editor) return '';
+  const pos = editor.selection.active;
+  if (!pos) return '';
+  return String(pos.line + 1);
+}
+
+
+
+
+// {* ▼mCN=0869_LINE_HISTORY // v0.9.261 per-file Line history (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function meDockHistoryKeyForLife(editor, lifeKey) {
+  const uri = editor && editor.document && editor.document.uri ? editor.document.uri.toString() : '';
+  if (!uri) return '';
+  // v0.9.406: Time Machine Me world-lines are Real/REinc only.
+  // Warp/Submarine is navigation mode, not a separate Time Machine history storage key.
+  // This prevents Real history from resetting to 1/1 when switching to Submarine and back.
+  const life = lifeKey === 'reinc' ? 'reinc' : 'real';
+  return uri + '::TmLife=' + life;
+}
+function meDockHistoryKey(editor) {
+  return meDockHistoryKeyForLife(editor, meDockLineHistoryLifeKey || 'real');
+}
+function setMeDockLineHistoryLife(lifeKey) {
+  meDockLineHistoryLifeKey = lifeKey === 'reinc' ? 'reinc' : 'real';
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  // v0.9.405: switching world lines is display/operation selection first; do not rewrite an existing line's history.
+  // If the target line is empty, seed it with the current editor line so the UI has a valid first point.
+  if (editor) {
+    const h = meDockHistoryForEditor(editor);
+    if (h && (!Array.isArray(h.stack) || h.stack.length === 0)) ensureMeDockLineHistoryCurrent(editor);
+  }
+  updateMeDockMode();
+}
+function meDockHistoryForKey(key) {
+  if (!key) return undefined;
+  if (!meDockLineHistoryByUri.has(key)) meDockLineHistoryByUri.set(key, { stack: [], index: -1 });
+  return meDockLineHistoryByUri.get(key);
+}
+function meDockHistoryPeekForKey(key) {
+  if (!key) return undefined;
+  return meDockLineHistoryByUri.get(key);
+}
+function setMeDockLineHistoryWorld(mode = 'warp', depthValue = 0) {
+  const rawDepth = parseInt(String(depthValue || 0), 10);
+  const depth = Math.max(0, Math.min(99, Number.isFinite(rawDepth) ? rawDepth : 0));
+  meDockNavMode = mode === 'submarine' ? 'submarine' : 'warp';
+  meDockLineHistoryWorldKey = meDockNavMode === 'submarine' ? ('submarine-' + depth) : 'warp';
+  // v0.9.406: do not create/switch Time Machine storage here.
+  // Nav mode changes must not reset Real/REinc histories.
+  updateMeDockMode();
+}
+function meDockHistoryForEditor(editor) {
+  return meDockHistoryForKey(meDockHistoryKey(editor));
+}
+function meDockCurrentLineIndex(editor) {
+  return editor && editor.selection ? editor.selection.active.line : -1;
+}
+function pushMeDockLineHistory(editor, lineNo0) {
+  if (meDockSuppressHistory) return;
+  if (!editor || typeof lineNo0 !== 'number' || lineNo0 < 0) return;
+  const h = meDockHistoryForEditor(editor);
+  if (!h) return;
+
+  // v0.9.265 insertion-style history:
+  // Do NOT destroy forward history when jumping from the middle.
+  // Insert the new point immediately after the current index.
+  if (h.index >= 0 && h.stack[h.index] === lineNo0) return;
+
+  const insertAt = Math.max(0, h.index + 1);
+
+  // Branchless insertion rule:
+  // Even when a future item has the same line number, do not consume it as a forward jump.
+  // A movement from an older point is a new history fact, so insert it and preserve the old future.
+
+  if (!Array.isArray(h.insertions)) h.insertions = [];
+  const insertedIntoMiddle = insertAt < h.stack.length;
+  if (insertedIntoMiddle) {
+    h.insertions = h.insertions
+      .map((p) => Number(p))
+      .filter((p) => Number.isFinite(p) && p >= 1)
+      .map((p) => p >= insertAt + 1 ? p + 1 : p);
+  }
+
+  h.stack.splice(insertAt, 0, lineNo0);
+  h.index = insertAt;
+
+  // Red ﾚ mark: this is not a branch; it is the first scar of the current insertion run.
+  // Consecutive new jumps after the same return point are one run, so only the first is marked.
+  // After navigating back/forward through history, the next middle insertion starts a new run and gets a new ﾚ.
+  if (insertedIntoMiddle && !h.activeInsertionRun) {
+    h.insertions.push(insertAt + 1);
+    h.activeInsertionRun = true;
+  } else if (!insertedIntoMiddle) {
+    h.activeInsertionRun = false;
+  }
+
+  // Keep the list bounded without breaking the current index.
+  while (h.stack.length > 100) {
+    if (h.index > 0) {
+      h.stack.shift();
+      h.index -= 1;
+      if (Array.isArray(h.insertions)) h.insertions = h.insertions.map((p) => Number(p) - 1).filter((p) => p >= 1);
+    } else {
+      h.stack.pop();
+      if (Array.isArray(h.insertions)) h.insertions = h.insertions.filter((p) => Number(p) <= h.stack.length);
+    }
+  }
+}
+function ensureMeDockLineHistoryCurrent(editor) {
+  if (!editor) return;
+  pushMeDockLineHistory(editor, meDockCurrentLineIndex(editor));
+}
+function meDockLineHistorySnapshotForKey(key, createIfMissing = false) {
+  const h = createIfMissing ? meDockHistoryForKey(key) : meDockHistoryPeekForKey(key);
+  const pre = key ? meDockPreviousLineHistoryByUri.get(key) : null;
+  const preTotal = pre && Array.isArray(pre.stack) ? pre.stack.length : 0;
+  if (!h) return { canBack: false, canForward: false, index: 0, total: 0, meter: '(0/0)', insertions: [], canPreHistory: preTotal > 0 };
+  const total = Array.isArray(h.stack) ? h.stack.length : 0;
+  const index = total > 0 && h.index >= 0 ? Math.min(h.index + 1, total) : 0;
+  const insertions = Array.isArray(h.insertions)
+    ? Array.from(new Set(h.insertions.map((p) => Number(p)).filter((p) => Number.isFinite(p) && p >= 1 && p <= total))).sort((a,b)=>a-b)
+    : [];
+  return {
+    canBack: h.index > 0,
+    canForward: h.index >= 0 && h.index < total - 1,
+    index,
+    total,
+    meter: '(' + index + '/' + total + ')',
+    insertions,
+    canPreHistory: preTotal > 0
+  };
+}
+function meDockLineHistoryState(editor) {
+  const activeLife = meDockLineHistoryLifeKey === 'reinc' ? 'reinc' : 'real';
+  const realKey = meDockHistoryKeyForLife(editor, 'real');
+  const reincKey = meDockHistoryKeyForLife(editor, 'reinc');
+  const activeKey = activeLife === 'reinc' ? reincKey : realKey;
+  const active = meDockLineHistorySnapshotForKey(activeKey, true);
+  return Object.assign({}, active, {
+    life: activeLife,
+    worlds: {
+      real: meDockLineHistorySnapshotForKey(realKey, activeLife === 'real'),
+      reinc: meDockLineHistorySnapshotForKey(reincKey, activeLife === 'reinc')
+    }
+  });
+}
+function goMeDockLineHistory(delta) {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  const h = meDockHistoryForEditor(editor);
+  if (!editor || !h) return false;
+  const next = h.index + delta;
+  if (next < 0 || next >= h.stack.length) return false;
+  h.index = next;
+  h.activeInsertionRun = false;
+  const line = Math.min(Math.max(h.stack[h.index], 0), editor.document.lineCount - 1);
+  const pos = new vscode.Position(line, 0);
+  meDockSuppressHistory = true;
+  try {
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    setMeDockTargetEditor(editor);
+    updateMeDockCurrentLineMarker();
+    updateMeDockMode();
+  } finally {
+    meDockSuppressHistory = false;
+  }
+  return true;
+}
+
+function goMeDockLineHistoryTo(index1) {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  const h = meDockHistoryForEditor(editor);
+  if (!editor || !h || !Array.isArray(h.stack) || !h.stack.length) return false;
+  const raw = parseInt(String(index1 || '').trim(), 10);
+  if (!Number.isFinite(raw)) return false;
+  const next = Math.min(Math.max(raw, 1), h.stack.length) - 1;
+  if (next < 0 || next >= h.stack.length) return false;
+  h.index = next;
+  h.activeInsertionRun = false;
+  const line = Math.min(Math.max(h.stack[h.index], 0), editor.document.lineCount - 1);
+  const pos = new vscode.Position(line, 0);
+  meDockSuppressHistory = true;
+  try {
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    setMeDockTargetEditor(editor);
+    updateMeDockCurrentLineMarker();
+    updateMeDockMode();
+  } finally {
+    meDockSuppressHistory = false;
+  }
+  return true;
+}
+function clearMeDockLineHistory() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  const key = meDockHistoryKey(editor);
+  const h = meDockHistoryForEditor(editor);
+  if (!editor || !key || !h) return false;
+  meDockPreviousLineHistoryByUri.set(key, { stack: Array.isArray(h.stack) ? h.stack.slice() : [], index: h.index });
+  h.stack = [];
+  h.index = -1;
+  h.insertions = [];
+  h.activeInsertionRun = false;
+  ensureMeDockLineHistoryCurrent(editor);
+  updateMeDockMode();
+  return true;
+}
+function restorePreMeDockLineHistory() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  const key = meDockHistoryKey(editor);
+  if (!editor || !key) return false;
+  const pre = meDockPreviousLineHistoryByUri.get(key);
+  if (!pre || !Array.isArray(pre.stack) || !pre.stack.length) return false;
+  const h = meDockHistoryForEditor(editor);
+  if (!h) return false;
+  h.stack = pre.stack.slice();
+  h.index = Math.min(Math.max(pre.index, 0), h.stack.length - 1);
+  updateMeDockMode();
+  return true;
+}
+// {* ▲mCN=0869_LINE_HISTORY // end [cGJF=h] *}
+
+function meDockLineInputEqualsCurrent(lineInput) {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor || !editor.selection) return false;
+  const n = parseInt(String(lineInput || '').trim(), 10);
+  if (!Number.isFinite(n)) return false;
+  return n === editor.selection.active.line + 1;
+}
+
+function jumpMeDockTargetLine(lineInput, quiet = true) {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const raw = String(lineInput || '').trim();
+  if (!raw) return false;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    if (!quiet) vscode.window.showWarningMessage('Line number must be 1 or greater.');
+    return false;
+  }
+  const targetLine = Math.min(Math.max(n, 1), editor.document.lineCount) - 1;
+  const fromLine = editor.selection.active.line;
+  if (targetLine === editor.selection.active.line) {
+    ensureMeDockLineHistoryCurrent(editor);
+    updateMeDockCurrentLineMarker();
+    return true;
+  }
+  pushMeDockLineHistory(editor, fromLine);
+  const pos = new vscode.Position(targetLine, 0);
+  editor.selection = new vscode.Selection(pos, pos);
+  editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  setMeDockTargetEditor(editor);
+  pushMeDockLineHistory(editor, targetLine);
+  updateMeDockMode();
+  updateMeDockCurrentLineMarker();
+  return true;
+}
+
+function jumpMeDockTopOfFile() {
+  return jumpMeDockTargetLine('1');
+}
+
+function jumpMeDockEndOfFile() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor || !editor.document) return false;
+  return jumpMeDockTargetLine(String(Math.max(1, editor.document.lineCount)));
+}
+
+function jumpMeDockTocOrTop() {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor || !editor.document) return false;
+  const region = findWorkingTocRegion(editor.document);
+  if (region && typeof region.markerLine === 'number') return jumpMeDockTargetLine(String(region.markerLine + 1));
+  return jumpMeDockTopOfFile();
+}
+
+
+// {* ▼mCN=0871_WARP_SUBMARINE_ME_CRUISE // v0.9.384 Warp/Submarine Me two-world cruise navigation [oGJF=h] [tRJF=h] *}
+function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue = 0) {
+  const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (!editor || !editor.document || !editor.selection) return false;
+  const doc = editor.document;
+  const line = Math.max(0, Math.min(editor.selection.active.line, doc.lineCount - 1));
+  const pairs = (collectMembraneStructure(doc).pairs || []).slice().sort((a, b) => (a.start - b.start) || (a.end - b.end));
+  if (!pairs.length) return false;
+
+  const dir = direction === 'minus' ? 'minus' : 'plus';
+  const mode = navMode === 'submarine' ? 'submarine' : 'warp';
+
+  const jumpToLine0 = (line0) => {
+    if (typeof line0 !== 'number' || line0 < 0 || line0 >= doc.lineCount) return false;
+    return jumpMeDockTargetLine(String(line0 + 1));
+  };
+
+  // v0.9.395:
+  // Warp = D0/root-layer cruise only.
+  // Submarine = all membrane boundary events, regardless of depth:
+  //   open D0 -> open D-1 -> open D-2 -> close D-2 -> close D-1 -> close D0 ...
+  // This is the actual "dive and surface" navigation line.
+  if (mode === 'submarine') {
+    const events = [];
+    for (const p of pairs) {
+      if (typeof p.start === 'number') events.push({ line: p.start, kind: 'open', depth: p.depth || 0, pair: p });
+      if (typeof p.end === 'number') events.push({ line: p.end, kind: 'close', depth: p.depth || 0, pair: p });
+    }
+    events.sort((a, b) => (a.line - b.line) || (a.kind === 'open' ? -1 : 1) || ((a.depth || 0) - (b.depth || 0)));
+    if (!events.length) return false;
+
+    if (dir === 'plus') {
+      const next = events.find(e => e.line > line);
+      return next ? jumpToLine0(next.line) : false;
+    }
+    const prev = events.filter(e => e.line < line).sort((a, b) => b.line - a.line)[0];
+    return prev ? jumpToLine0(prev.line) : false;
+  }
+
+  // Warp world = outer/root layer only.
+  const layer = pairs.filter(p => (p.depth || 0) === 0);
+  if (!layer.length) return false;
+
+  const onOpen = layer.find(p => p.start === line);
+  const onClose = layer.find(p => p.end === line);
+  const enclosingAtLayer = layer.filter(p => p.start < line && line < p.end).sort((a, b) => (b.start - a.start) || (a.end - b.end))[0] || null;
+
+  if (dir === 'plus') {
+    if (onOpen) return jumpToLine0(onOpen.end);
+    if (enclosingAtLayer) return jumpToLine0(enclosingAtLayer.end);
+    const next = layer.find(p => p.start > line);
+    return next ? jumpToLine0(next.start) : false;
+  }
+
+  if (onClose) return jumpToLine0(onClose.start);
+  if (enclosingAtLayer) return jumpToLine0(enclosingAtLayer.start);
+  if (onOpen) {
+    const prev = layer.filter(p => p.start < line).sort((a, b) => b.start - a.start)[0];
+    return prev ? jumpToLine0(prev.start) : false;
+  }
+  const prev = layer.filter(p => p.end < line).sort((a, b) => b.end - a.end)[0]
+    || layer.filter(p => p.start < line).sort((a, b) => b.start - a.start)[0];
+  return prev ? jumpToLine0(prev.start) : false;
+}
+// {* ▲mCN=0871_WARP_SUBMARINE_ME_CRUISE // end [cGJF=h] *}
+
+
+function submarineDepthDisplayForEditor(editor) {
+  if (!editor || !editor.document || !editor.selection) return 0;
+  const doc = editor.document;
+  const line = Math.max(0, Math.min(editor.selection.active.line, doc.lineCount - 1));
+  const pairs = collectPairs(doc, { excludeIndex: false }) || [];
+  const readDepth = (pair) => {
+    if (!pair || typeof pair.start !== 'number' || pair.start < 0 || pair.start >= doc.lineCount) return null;
+    const badge = parseMstatBadgeFromText(doc.lineAt(pair.start).text);
+    if (badge && typeof badge.depth === 'number' && Number.isFinite(badge.depth)) return Math.abs(Math.trunc(badge.depth));
+    return Math.max(0, Number(pair.depth) || 0);
+  };
+  const info = membraneLineInfo(doc, line);
+  let pair = null;
+  if (info && info.kind === 'open') pair = pairs.find(p => p.start === line && p.id === info.id) || pairs.find(p => p.start === line) || null;
+  else if (info && info.kind === 'close') pair = pairs.find(p => p.end === line && p.id === info.id) || pairs.find(p => p.end === line) || null;
+  else pair = pairs.filter(p => p.start < line && line < p.end).sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null;
+  const d = readDepth(pair);
+  return Number.isFinite(d) ? Math.max(0, Math.min(99, d)) : 0;
+}
+
+function meDockModeForEditor(editor) {
+  if (!editor) return { mode: 'new', label: 'New Me…', value: getDefaultMembraneName(), line: meDockCurrentLineNumber(editor), navDepth: 0 };
+  const flip = meDockFlipColorStateForEditor(editor);
+  if (isCursorOnMembraneLine(editor) || isCursorInsideMembraneName(editor)) {
+    const pair = currentMembranePairForRename(editor);
+    const ownColor = pair ? membraneColorCodeFromText(editor.document.lineAt(pair.start).text) : '';
+    return { mode: 'rename', label: 'Rename Me…', value: pair ? pair.id : '', line: meDockCurrentLineNumber(editor), color: ownColor, flipMinusColor: flip.minusColor || ownColor, flipPlusColor: flip.plusColor || ownColor, navDepth: submarineDepthDisplayForEditor(editor) };
+  }
+  return { mode: 'new', label: 'New Me…', value: getDefaultMembraneName(), line: meDockCurrentLineNumber(editor), color: flip.currentColor || '', flipMinusColor: flip.minusColor || '', flipPlusColor: flip.plusColor || '', navDepth: submarineDepthDisplayForEditor(editor) };
+}
+
+function lineColorCodeFromOpenLine(document, line) {
+  try {
+    if (!document || line < 0 || line >= document.lineCount) return '';
+    return membraneColorCodeFromText(document.lineAt(line).text) || '';
+  } catch (_) { return ''; }
+}
+
+function meDockSubmarineCruiseForecastForEditor(editor, pairs, line) {
+  const fallback = { currentColor: '', minusColor: '', plusColor: '' };
+  if (!editor || !editor.document || !Array.isArray(pairs) || !pairs.length) return fallback;
+  const doc = editor.document;
+  const colorOf = (pair) => pair ? lineColorCodeFromOpenLine(doc, pair.start) : '';
+  const events = [];
+  for (const p of pairs) {
+    if (typeof p.start === 'number') events.push({ line: p.start, kind: 'open', depth: p.depth || 0, pair: p });
+    if (typeof p.end === 'number') events.push({ line: p.end, kind: 'close', depth: p.depth || 0, pair: p });
+  }
+  events.sort((a, b) => (a.line - b.line) || (a.kind === 'open' ? -1 : 1) || ((a.depth || 0) - (b.depth || 0)));
+  if (!events.length) return fallback;
+  const at = events.find(e => e.line === line) || null;
+  const prev = events.filter(e => e.line < line).sort((a, b) => b.line - a.line)[0] || null;
+  const next = events.find(e => e.line > line) || null;
+  const enclosing = pairs
+    .filter(p => p.start <= line && line <= p.end)
+    .sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null;
+  const currentColor = at ? colorOf(at.pair) : colorOf(enclosing);
+  return {
+    currentColor,
+    minusColor: prev ? colorOf(prev.pair) : currentColor,
+    plusColor: next ? colorOf(next.pair) : currentColor
+  };
+}
+
+function meDockFlipColorStateForEditor(editor) {
+  const fallback = { currentColor: '', minusColor: '', plusColor: '' };
+  if (!editor || !editor.document || !editor.selection) return fallback;
+  const doc = editor.document;
+  const line = Math.max(0, Math.min(editor.selection.active.line, doc.lineCount - 1));
+  const pairs = collectMembraneStructure(doc).pairs || [];
+  if (!pairs.length) return fallback;
+  if (meDockNavMode === 'submarine') return meDockSubmarineCruiseForecastForEditor(editor, pairs, line);
+
+  const colorOf = (pair) => pair ? lineColorCodeFromOpenLine(doc, pair.start) : '';
+
+  // v0.9.397: Warp forecast must preview the same world line as Warp cruise.
+  // Even when the cursor is inside D-1/D-2/... membranes, Warp +/- moves along
+  // D0/root membranes only, so the preview color must be the target D0 membrane,
+  // not the deepest enclosing local membrane.
+  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
+  if (rootLayer.length) {
+    const rootOnOpen = rootLayer.find(p => p.start === line) || null;
+    const rootOnClose = rootLayer.find(p => p.end === line) || null;
+    const rootEnclosing = rootLayer.filter(p => p.start < line && line < p.end).sort((a,b)=>(b.start-a.start)||(a.end-b.end))[0] || null;
+    let minusPair = null;
+    let plusPair = null;
+    let currentPair = rootOnOpen || rootOnClose || rootEnclosing || null;
+
+    if (rootOnOpen) {
+      // On a D0 opener: + goes to its closer, - goes to previous D0 opener if any.
+      plusPair = rootOnOpen;
+      minusPair = rootLayer.filter(p => p.start < line).sort((a,b)=>b.start-a.start)[0] || rootOnOpen;
+    } else if (rootOnClose) {
+      // On a D0 closer: - goes to its opener, + goes to next D0 opener.
+      minusPair = rootOnClose;
+      plusPair = rootLayer.find(p => p.start > line) || rootOnClose;
+    } else if (rootEnclosing) {
+      // Anywhere inside a D0 membrane, Warp +/- returns to the D0 boundaries.
+      minusPair = rootEnclosing;
+      plusPair = rootEnclosing;
+    } else {
+      // Outside D0 membranes: preview previous close and next open.
+      minusPair = rootLayer.filter(p => p.end < line).sort((a,b)=>b.end-a.end)[0] || null;
+      plusPair = rootLayer.find(p => p.start > line) || null;
+    }
+
+    return {
+      currentColor: colorOf(currentPair),
+      minusColor: colorOf(minusPair),
+      plusColor: colorOf(plusPair)
+    };
+  }
+
+  const parentOf = (pair) => {
+    if (!pair) return null;
+    return pairs
+      .filter(p => p !== pair && p.start < pair.start && pair.end < p.end)
+      .sort((a, b) => (b.start - a.start) || (a.end - b.end))[0] || null;
+  };
+  const sameParent = (a, b) => parentOf(a) === parentOf(b);
+  const directChildrenOf = (parent) => pairs.filter(p => parentOf(p) === parent);
+
+  const info = membraneLineInfo(doc, line);
+  if (info && info.kind === 'open') {
+    const current = pairs.find(p => p.start === line && p.id === info.id) || pairs.find(p => p.start === line);
+    const own = colorOf(current);
+    // Global/local navigation forecast:
+    // On an opening membrane, +/- first means this membrane's own phase.
+    return { currentColor: own, minusColor: own, plusColor: own };
+  }
+
+  if (info && info.kind === 'close') {
+    const current = pairs.find(p => p.end === line && p.id === info.id) || pairs.find(p => p.end === line);
+    const own = colorOf(current);
+    const nextSiblingOpen = current
+      ? pairs.filter(p => p.start > line && sameParent(p, current)).sort((a,b)=>a.start-b.start)[0]
+      : pairs.filter(p => p.start > line).sort((a,b)=>a.start-b.start)[0];
+    return {
+      currentColor: own,
+      minusColor: own,
+      plusColor: nextSiblingOpen ? colorOf(nextSiblingOpen) : own
+    };
+  }
+
+  const enclosing = pairs
+    .filter(p => p.start < line && line < p.end)
+    .sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0];
+
+  if (enclosing) {
+    const own = colorOf(enclosing);
+    // Local navigation: while inside a membrane, look only at direct children of that membrane.
+    // Grandchildren become targets only after entering the child membrane.
+    const children = directChildrenOf(enclosing);
+    const prevChildClose = children.filter(p => p.end < line).sort((a,b)=>b.end-a.end)[0];
+    const nextChildOpen = children.filter(p => p.start > line).sort((a,b)=>a.start-b.start)[0];
+    return {
+      currentColor: own,
+      minusColor: prevChildClose ? colorOf(prevChildClose) : own,
+      plusColor: nextChildOpen ? colorOf(nextChildOpen) : own
+    };
+  }
+
+  // Global navigation outside membranes: travel only top-level membranes.
+  const topLevel = pairs.filter(p => parentOf(p) === null);
+  const prevTopClose = topLevel.filter(p => p.end < line).sort((a,b)=>b.end-a.end)[0];
+  const nextTopOpen = topLevel.filter(p => p.start > line).sort((a,b)=>a.start-b.start)[0];
+  return {
+    currentColor: '',
+    minusColor: prevTopClose ? colorOf(prevTopClose) : '',
+    plusColor: nextTopOpen ? colorOf(nextTopOpen) : ''
+  };
+}
+
+async function addMembraneWithName(nameInput, colorCode = '') {
+  const editor = getMeDockTargetEditor();
+  if (!editor) return;
+  if (isCursorInsideMembraneName(editor)) {
+    vscode.window.showWarningMessage('New Me cannot be inserted inside a membrane name. Use Rename Me instead.');
+    return;
+  }
+  const name = normalizeMembraneId(nameInput || getDefaultMembraneName());
+  if (!name) {
+    vscode.window.showWarningMessage('New Me: membrane name cannot be empty.');
+    return;
+  }
+  const doc = editor.document;
+  const selection = editor.selection;
+  const hasSelection = !selection.isEmpty;
+  const startLine = selection.start.line;
+  const endLine = hasSelection && selection.end.character === 0 ? Math.max(selection.start.line, selection.end.line - 1) : selection.end.line;
+  const indent = lineIndent(doc, startLine);
+  const template = membraneCommentTemplateForLanguage(doc.languageId, name, indent, colorCode || 'W', newMembraneDepthForInsertion(doc, startLine));
+  const openLine = template.open;
+  const closeLine = template.close;
+  const ok = await editor.edit(edit => {
+    if (hasSelection) {
+      const selectedText = doc.getText(selection);
+      const wrapped = template.markdown
+        ? `${openLine}\n\n${selectedText}\n\n${closeLine}`
+        : `${openLine}\n${selectedText}\n${closeLine}`;
+      edit.replace(selection, wrapped);
+    } else {
+      const block = template.markdown
+        ? `${openLine}\n\n${indent}\n\n${closeLine}`
+        : `${openLine}\n${indent}\n${closeLine}`;
+      edit.insert(selection.active, wrapInsertedMembraneBlock(doc, startLine, startLine, block));
+    }
+  }, { undoStopBefore: true, undoStopAfter: true });
+  if (ok) {
+    // v0.9.391: no-search correction.
+    // Empty insertion always creates a blank line at the original cursor line,
+    // so the new opener is displayed on current line + 1.
+    const openerLineNo = hasSelection ? startLine : Math.min(startLine + 1, editor.document.lineCount - 1);
+    editor.selection = new vscode.Selection(openerLineNo, indent.length, openerLineNo, indent.length);
+    editor.revealRange(new vscode.Range(openerLineNo, 0, openerLineNo, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(openerLineNo + 1) });
+    setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(openerLineNo + 1) }); }, 80);
+  }
+}
+
+async function renameMeWithName(nameInput, colorCode = undefined) {
+  const editor = getMeDockTargetEditor();
+  if (!editor) return;
+  const pair = currentMembranePairForRename(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage('Rename Me: put the cursor inside a membrane name.');
+    return;
+  }
+  const openName = membraneNameRangeForRenameOnLine(editor.document, pair.start, 'open', pair.id);
+  const closeName = membraneNameRangeForRenameOnLine(editor.document, pair.end, 'close', pair.id);
+  if (!openName || !closeName) {
+    vscode.window.showWarningMessage('Rename Me: matching start/end membrane name range was not found.');
+    return;
+  }
+  const nextName = normalizeMembraneId(nameInput || '');
+  if (!nextName) {
+    vscode.window.showWarningMessage('Rename Me: membrane name cannot be empty.');
+    return;
+  }
+  const normalizedColor = colorCode === undefined ? undefined : normalizeMembraneColorCode(colorCode || '');
+  const openLineText = editor.document.lineAt(pair.start).text;
+
+  // Build the updated opening line in one pass. Do not submit overlapping edits
+  // for the opening membrane name and the whole opening line; VSCode rejects or
+  // drops overlapping ranges, which made Set unable to apply color-only changes.
+  let nextOpenLineText = openLineText;
+  if (nextName !== pair.id) {
+    nextOpenLineText = nextOpenLineText.slice(0, openName.range.start.character) + nextName + nextOpenLineText.slice(openName.range.end.character);
+  }
+  if (normalizedColor !== undefined) {
+    nextOpenLineText = setMstatBadgeColorInText(nextOpenLineText, normalizedColor);
+  }
+
+  const closeLineNeedsName = nextName !== pair.id;
+  const openLineNeedsReplace = nextOpenLineText !== openLineText;
+  if (!closeLineNeedsName && !openLineNeedsReplace) return;
+
+  const ok = await editor.edit(edit => {
+    if (closeLineNeedsName) edit.replace(closeName.range, nextName);
+    if (openLineNeedsReplace) {
+      edit.replace(new vscode.Range(pair.start, 0, pair.start, openLineText.length), nextOpenLineText);
+    }
+  }, { undoStopBefore: true, undoStopAfter: true });
+  if (ok) {
+    // v0.9.507: post-edit block stripped of dead GPT-era references to
+    // `hasSelection`, `startLine`, `indent`, `doc` — those vars belonged
+    // to a different function (newMembrane insertion) and threw a Reference
+    // Error here, aborting the setTimeout refresh call. Result: the badge
+    // edit DID apply (source colour code went W → P) but the lane render
+    // never refreshed, so the visual stayed in the old colour. User report
+    // v0.9.506_am1019: "紫色を指定したが、本文中の膜色が変更されない".
+    // Simply scheduling the refresh is enough — the cursor doesn't need
+    // forcible relocation on a colour-only rename.
+    setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); }, 80);
+  }
+}
+
+// v0.9.510: Shed Me — delete the membrane shell (open + close lines)
+// while preserving the content between them. The MeOS biological
+// metaphor counterpart to deletion: 脱皮(molting). Cursor must be on
+// or inside a membrane; currentMembranePairForRename resolves the
+// enclosing pair from cursor context.
+async function shedCurrentMembrane(editor) {
+  if (!editor || !editor.document) return false;
+  const pair = currentMembranePairForRename(editor);
+  if (!pair) {
+    vscode.window.showInformationMessage('Shed Me: put the cursor inside a membrane to shed its shell.');
+    return false;
+  }
+  const doc = editor.document;
+  const openLine = pair.start;
+  const closeLine = pair.end;
+  if (openLine === closeLine) {
+    vscode.window.showWarningMessage('Shed Me: cannot shed a single-line membrane.');
+    return false;
+  }
+  if (openLine < 0 || closeLine >= doc.lineCount) {
+    vscode.window.showWarningMessage('Shed Me: membrane pair lines out of range.');
+    return false;
+  }
+  // Delete close line first (higher line number, so open-line position
+  // is unaffected by the edit ordering). When deleting the LAST line of
+  // the document, there is no trailing newline to consume — instead, eat
+  // the preceding line's terminator by extending the range backward.
+  const ok = await editor.edit(edit => {
+    if (closeLine + 1 < doc.lineCount) {
+      edit.delete(new vscode.Range(closeLine, 0, closeLine + 1, 0));
+    } else {
+      const prevText = doc.lineAt(closeLine - 1).text;
+      edit.delete(new vscode.Range(closeLine - 1, prevText.length, closeLine, doc.lineAt(closeLine).text.length));
+    }
+    // Open line is never the last (it has a close line after it).
+    edit.delete(new vscode.Range(openLine, 0, openLine + 1, 0));
+  }, { undoStopBefore: true, undoStopAfter: true });
+  if (ok) {
+    setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); }, 80);
+  }
+  return ok;
+}
+
+function updateMeDockMode() {
+  if (!meDockPanel) return;
+  const editor = getMeDockTargetEditor();
+  const state = meDockModeForEditor(editor);
+  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor) });
+  postFixedWorkingTocSnapshot();
+  updateMeDockCurrentLineMarker();
+  postMeDockAnchorState(editor);
+}
+// {* ▲mCN=0866_INLINE_NEW_RENAME // end [cGJF=h] *}
+
+// v0.9.335 Standards > v: workspace setting when possible, Global fallback for loose/single-file use.
+async function setNativeStandardsDisclosureControls(enabled) {
+  try {
+    const config = vscode.workspace.getConfiguration('editor');
+    // ON returns to VS Code/VSCodium default-like behavior; OFF hides native gutter disclosure triangles.
+    const hasWorkspace = Array.isArray(vscode.workspace.workspaceFolders) && vscode.workspace.workspaceFolders.length > 0;
+    const target = hasWorkspace ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    await config.update('showFoldingControls', enabled ? 'mouseover' : 'never', target);
+    const scopeLabel = hasWorkspace ? 'Workspace' : 'Global';
+    vscode.window.setStatusBarMessage('MeOS Standards > v: ' + (enabled ? 'ON' : 'OFF') + ' (' + scopeLabel + ')', 1800);
+  } catch (e) {
+    try { vscode.window.showWarningMessage('MeOS Standards > v setting failed: ' + String(e && e.message ? e.message : e)); } catch (_) {}
+  }
+}
+
+// {* ▼mCN=0870_ME_DOCK // v0.9.229 Me Dock prototype (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+function meDockHtml() {
+  const initial = meDockModeForEditor(vscode.window.activeTextEditor);
+  const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+<style>
+:root{color-scheme:light dark}body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--vscode-editor-background);color:var(--vscode-editor-foreground)}
+.dock{border:1px solid var(--vscode-panel-border);border-radius:10px;overflow:visible;box-shadow:0 8px 24px rgba(0,0,0,.20);background:var(--vscode-sideBar-background)}
+.title{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;font-size:14px;font-weight:800;letter-spacing:.02em;border-bottom:1px solid var(--vscode-panel-border)}
+.title-left{display:flex;align-items:center;gap:8px;min-width:0}.title-actions{display:flex;align-items:center;gap:7px}.standards-toggle{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:pointer}.standards-toggle .standards-switch{width:30px;height:14px;border-radius:999px;background:var(--vscode-input-background);border:1px solid var(--vscode-panel-border);position:relative;box-sizing:border-box;display:inline-block;flex:0 0 auto;transition:background .12s ease,border-color .12s ease}.standards-toggle .standards-knob{width:10px;height:10px;border-radius:50%;background:var(--vscode-editor-foreground);opacity:.78;position:absolute;top:1px;left:1px;transition:left .12s ease,background .12s ease,opacity .12s ease}.standards-toggle.on{color:#d18400;border-color:rgba(210,132,0,.55);background:rgba(255,213,92,.12)}.standards-toggle.on .standards-switch{background:rgba(210,132,0,.42);border-color:rgba(210,132,0,.75)}.standards-toggle.on .standards-knob{left:17px;background:#fff;opacity:1}.standards-toggle.off{opacity:.72}.standards-toggle.off .standards-switch{background:rgba(128,128,128,.22)}.close{border:0;background:transparent;color:var(--vscode-editor-foreground);font-size:16px;cursor:pointer;padding:0 4px;opacity:.75}.close:hover{opacity:1}
+.body{padding:10px;display:grid;gap:8px}.row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;padding:8px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:var(--vscode-editor-background);font-size:13px;user-select:none}
+.row:hover{background:var(--vscode-list-hoverBackground)}
+.a{font-weight:800;font-size:16px;text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px;text-decoration-color:#4ade80}.chev{opacity:.8;font-size:12px}
+.inline-panel{padding:8px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:var(--vscode-editor-background);display:grid;gap:8px}
+.inline-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}.inline-title{font-size:14px;font-weight:900;color:var(--vscode-editor-foreground);display:flex;align-items:center;gap:5px;min-width:0}.edit-mode-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:13px;font-weight:900;padding:2px 20px 2px 7px;outline:none;cursor:pointer;min-height:25px}.edit-mode-select:hover{filter:brightness(1.04)}.zoom-scope-indicator{margin-left:auto;flex:1;min-width:0;text-align:right;font-size:11px;font-weight:900;color:var(--vscode-editor-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}.zoom-scope-indicator .zoom-scope-label{color:#d18400;font-weight:900}.zoom-scope-indicator .zoom-scope-value{color:var(--vscode-editor-foreground);font-weight:900}.zoom-scope-indicator .zoom-scope-name{color:var(--vscode-editor-foreground);font-weight:900}.inline-title .me-word{font-weight:900}.inline-title .me-word.pending{color:#b8bcc2}.me-name-wrap.hidden,.zoom-me-panel.hidden{display:none}.zoom-me-panel{display:grid;gap:4px}.zoom-me-row{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px}.zoom-me-title{font-size:13px;font-weight:900;color:#d18400;letter-spacing:.01em}.zoom-me-input{width:42px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;padding:4px 5px}.zoom-me-input.me-mode-name{width:116px;text-align:left;font-variant-numeric:normal}.zoom-me-input.me-mode-count{width:34px}.zoom-me-sep{font-size:13px;font-weight:900;color:var(--vscode-descriptionForeground)}.zoom-me-mode{min-height:24px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:900;line-height:1.2;padding:3px 7px}.zoom-me-mode:hover{filter:brightness(1.06)}.zoom-me-load{min-height:26px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;line-height:1.2;padding:4px 8px}.zoom-me-load:hover{filter:brightness(1.06)}.zoom-me-status{display:none}.zoom-me-status .loaded-label{color:#d18400;font-weight:900}.zoom-me-status .loaded-range{color:var(--vscode-editor-foreground);font-weight:900}
+.top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:8px}.top-buttons.hidden{display:none}.membrane-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:4px}.membrane-panel.hidden{display:none}.membrane-visual{position:relative;min-height:76px}.me-choice{display:flex;align-items:center;gap:5px;font-weight:900;font-size:14px;line-height:1;margin-bottom:4px}.me-choice input,.contents-choice input{width:17px;height:17px;margin:0;accent-color:currentColor}.me-scope-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:currentColor;font:inherit;font-weight:900;padding:2px 20px 2px 8px;outline:none;cursor:pointer;min-height:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}.me-scope-select:hover{filter:brightness(1.04)}.me-scope-select:focus{outline:1.5px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.me-scope-select option{color:var(--vscode-editor-foreground);background:var(--vscode-dropdown-background,var(--vscode-editor-background))}.contents-box{border:2px solid currentColor;background:rgba(128,128,128,.10);min-height:56px;margin-left:23px;display:grid;place-items:center}.contents-choice{display:flex;align-items:center;gap:5px;font-size:14px;line-height:1}.membrane-actions{display:grid;gap:5px;min-width:92px;align-content:end}.big-action{min-height:28px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;line-height:1.2;padding:4px 8px}.big-action:hover{filter:brightness(1.06)}.big-action .toc-word{color:#d18400}.big-action.remove{font-size:12px}.big-action.hidden{display:none}
+input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff);background:var(--vscode-input-background);color:var(--vscode-input-foreground);border-radius:5px;padding:5px 6px;font-size:12px;outline:1px solid rgba(55,148,255,.18)}input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
+.name-input{width:100%}.line-row{display:flex;align-items:center;gap:6px}.line-meter{font-size:11px;line-height:1;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;user-select:none}.time-machine-trigger{min-width:48px;text-align:center;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums;padding-left:5px;padding-right:5px}.nav-btn{min-width:28px;padding-left:7px;padding-right:7px}.nav-btn:disabled{opacity:.35;cursor:default}.line-btn{min-width:44px}.line-btn.on{color:#d97706;font-weight:800;border-color:#f59e0b}.line-input{width:100%;font-variant-numeric:tabular-nums}.time-machine-panel{display:none;position:relative;gap:8px;margin-top:6px;padding:12px 10px 10px;border:1px solid #e8bd72;border-radius:16px;background:#fff6e6;box-shadow:0 1px 3px rgba(0,0,0,.14)}.time-machine-panel.on{display:block}.time-machine-panel.on::before{content:"";position:absolute;top:-13px;left:54px;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:13px solid #e8bd72}.time-machine-panel.on::after{content:"";position:absolute;top:-11px;left:56px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:11px solid #fff6e6}.time-machine-title{font-size:12px;font-weight:900;color:#d18400;letter-spacing:.02em;line-height:1.25;padding-top:2px;margin-bottom:8px}.time-machine-main{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:8px;align-items:stretch}.tm-world-box{border:1px solid #ebcd92;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.22)}.tm-world-row{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:8px;min-height:43px;padding:7px 10px;cursor:pointer}.tm-world-row+.tm-world-row{border-top:1px solid #ebcd92}.tm-world-label{font-size:11px;font-weight:900;text-align:right}.tm-world-row.real .tm-world-label{color:#22c55e}.tm-world-row.reinc .tm-world-label{color:#d18400}.tm-world-row:not(.active){opacity:.46}.tm-world-row.active{opacity:1}.time-machine-slider-wrap{position:relative;min-width:120px;padding-top:10px}.time-machine-slider{width:100%;min-width:120px}.tm-insertion-marks{position:absolute;left:8px;right:8px;top:0;height:12px;pointer-events:none}.tm-insertion-mark{position:absolute;top:0;transform:translateX(-50%);color:#ff3333;font-size:14px;font-weight:400;font-style:normal;line-height:1;text-shadow:0 1px 0 rgba(255,255,255,.75)}.time-machine-side{display:grid;grid-template-columns:auto auto;grid-template-rows:auto 1fr auto;gap:6px;align-items:center;align-self:stretch;min-height:100%}.time-machine-index{width:54px;text-align:center;font-variant-numeric:tabular-nums}.time-machine-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end}.time-machine-actions button{font-size:11px;padding:3px 7px}.time-machine-pre{font-weight:800}.time-machine-clear{font-weight:800;color:#b45309;grid-column:1 / span 2;grid-row:3;justify-self:center;align-self:end}.time-machine-clear.disabled{opacity:.45}
+.nav-center{display:grid;gap:6px;padding:7px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:rgba(128,128,128,.06);margin-top:2px}.nav-center-title{font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:none;color:var(--vscode-descriptionForeground)}.nav-center-title .nav-me-word,.toc-axis.current{color:#d18400}.nav-center-row{display:flex;align-items:center;gap:6px;min-height:28px}.toc-nav-row{gap:5px;white-space:nowrap;position:relative;padding-top:0}.me-axis-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}.me-flip-row{display:inline-flex;align-items:stretch;gap:4px;margin:0 2px}.me-nav-switch{display:inline-flex;align-items:stretch;border:1px solid var(--vscode-panel-border);border-radius:7px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);height:22px}.me-nav-mode{border:0;border-right:1px solid var(--vscode-panel-border);border-radius:0;min-height:22px;padding:0 7px;font-size:10.5px;line-height:1;font-weight:900;letter-spacing:.01em;background:rgba(128,128,128,.28);color:var(--vscode-button-secondaryForeground);opacity:.72}.me-nav-mode:last-child{border-right:0}.me-nav-mode.warp.on{background:#f8fafc;color:#111827;opacity:1}.me-nav-mode.warp.off{background:rgba(20,20,24,.48);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.off{background:rgba(128,128,128,.24);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.on{background:var(--submarine-bg,#8fe9ff);color:#082f49;opacity:1}.depth-window{display:inline-block;margin-left:2px;padding:1px 4px;border-radius:4px;background:#fff;color:#111;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(0,0,0,.16)}.me-flip-btn{min-width:18px;min-height:22px;padding:0 5px;border-radius:5px;font-size:12px;line-height:1;font-weight:900;color:#d18400}.toc-axis{font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.62;letter-spacing:.02em}.toc-axis.current{opacity:.86}.nav-center-row.line-row{padding-top:1px}.nav-center-row.anchor-bidi-row{justify-content:flex-start;gap:6px;white-space:nowrap}.nav-jump-label{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground)}.nav-center-label{font-size:12px;font-weight:800;color:var(--vscode-descriptionForeground)}.nav-center-divider{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.7}.nav-center .line-input{flex:1}.nav-center-btn{min-height:25px;font-weight:800}.nav-center-btn.disabled{opacity:.35;cursor:default;filter:grayscale(.4)}.toc-create-btn{color:#d18400;font-weight:900}.toc-create-btn.hidden{display:none}.toc-btn.top-mode{color:var(--vscode-button-secondaryForeground)}.toc-btn.toc-mode{color:#d18400}.eof-btn{min-width:42px}.anchor-btn,.bidi-btn{width:30px;min-width:30px;max-width:30px;font-size:14px;line-height:1;text-align:center;padding-left:0;padding-right:0}.anchor-btn{font-size:14px;font-weight:900;color:#16a34a}.anchor-btn.back{color:#16a34a;box-shadow:inset 0 0 0 1px rgba(22,163,74,.18)}
+.color-row{display:inline-flex;align-items:center;justify-content:flex-start;gap:6px;margin:0}.color-row.hidden{display:none}.me-choice .color-row{margin-left:4px}.color-btn{min-width:48px;font-weight:800;padding:2px 7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);border-color:var(--vscode-panel-border)}.color-pop{display:none;position:fixed;z-index:50;padding:5px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.24);gap:3px;flex-direction:column}.color-pop.on{display:flex}.swatch{width:25px;height:25px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;font-size:14px;padding:0;line-height:1}.swatch.active::after{content:'✓';position:absolute;font-weight:900;color:#111;text-shadow:0 0 2px #fff,0 0 2px #fff}.swatch-wrap{position:relative;display:grid;place-items:center}.swatch-label{font-size:18px;line-height:1}
+.edit-actions{display:grid;gap:6px;margin-top:2px}.edit-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px;padding:6px 7px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);font-size:12px;user-select:none}.edit-row:hover{background:var(--vscode-list-hoverBackground)}.edit-row.hidden{display:none}.buttons{display:flex;justify-content:flex-end;gap:6px}button{border:1px solid var(--vscode-button-border,transparent);border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer}.cancel{background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground)}.set{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}
+.hint{padding:2px 2px 0 2px;font-size:11px;opacity:.65;line-height:1.35}
+.fixed-toc{display:none;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden}
+.fixed-toc.on{display:block}.toc-name-row{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,213,92,.13);border-bottom:1px solid rgba(210,140,0,.25)}.toc-title{font-size:12px;font-weight:900;color:#d18400}.toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
+.toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
+.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.toc-tab:hover{background:rgba(255,213,92,.18)}
+.toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
+.toc-tab-ops{margin-left:auto;display:inline-flex;gap:2px;align-items:center;padding-bottom:2px}
+.toc-tab-btn{font-size:13px;line-height:1;padding:2px 7px;border:1px solid rgba(210,140,0,.35);border-radius:4px;background:rgba(255,213,92,.10);color:var(--vscode-foreground);cursor:pointer}
+.toc-tab-btn:hover{background:rgba(255,213,92,.25)}
+.toc-tab-confirm{display:none;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,80,80,.10);border-bottom:1px solid rgba(255,80,80,.40);font-size:12px}
+.toc-tab-confirm.on{display:flex}
+.toc-tab-confirm-msg{flex:1;color:#b91c1c}
+.toc-tab-confirm-btn{font-size:11px;padding:3px 8px;border:1px solid rgba(0,0,0,.20);border-radius:4px;cursor:pointer}
+.toc-tab-confirm-yes{background:#b91c1c;color:#fff;border-color:#b91c1c}
+.toc-tab-confirm-no{background:var(--vscode-input-background);color:var(--vscode-foreground)}
+.fixed-toc-body{height:144px;overflow-y:scroll;border-top:1px solid rgba(210,140,0,.20);border-bottom:1px solid rgba(210,140,0,.20)}
+.bidi-jump-bar{background:var(--vscode-sideBar-background,var(--vscode-editor-background));border-bottom:1px solid rgba(210,140,0,.20);padding:5px 8px;font-size:12px;line-height:1.3;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.fixed-toc-body .bidi-jump-bar{position:sticky;top:0;z-index:2}.fixed-toc-body .toc-sticky-head{position:sticky;top:0;z-index:3;background:var(--vscode-sideBar-background,var(--vscode-editor-background))}.fixed-toc-body .toc-sticky-head .bidi-jump-bar{position:static}
+.bidi-jump-bar-nav{border-bottom:none;border-top:1px solid rgba(210,140,0,.20);margin-top:4px}
+.bidi-jump-bar .bidi-label{opacity:.85;font-weight:500}
+.bidi-jump-bar .bidi-btn{cursor:pointer;user-select:none;padding:1px 4px;border-radius:3px}
+.bidi-jump-bar .bidi-btn:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.15))}
+.bidi-jump-bar .bidi-btn.inactive{opacity:.4;cursor:default}
+.bidi-jump-bar .bidi-btn.inactive:hover{background:transparent}
+.bidi-jump-bar .bidi-sep{opacity:.45}
+.bidi-jump-bar .bidi-jumponly{opacity:.55;font-size:11px;margin-left:auto}
+.bidi-jump-bar .bidi-clear{cursor:pointer;user-select:none;font-size:11px;padding:1px 6px;margin-left:6px;border:1px solid rgba(200,60,60,.5);border-radius:3px;color:var(--vscode-errorForeground,#c33)}
+.bidi-jump-bar .bidi-clear:hover{background:rgba(200,60,60,.12)}
+.bidi-jump-bar .nav-jump-label.hidden{display:none}
+.toc-tools{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid rgba(210,140,0,.20);background:rgba(255,213,92,.08)}.toc-tools button{font-size:11px;padding:3px 6px}.toc-tools .toc-move{font-size:18px;line-height:1;padding:1px 7px}.toc-tools .toc-add{font-size:22px;line-height:1;color:#d18400;padding:0 8px}.toc-tools .toc-onsite{font-weight:800;color:#d18400}.toc-tools .toc-onsite.on{background:rgba(210,132,0,.22);border-color:#d18400}
+.format-tools .fmt-label{font-size:11px;font-weight:800;color:#d18400;opacity:.85}.format-tools .fmt-btns{display:flex;gap:6px}.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}.fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-btn:active{background:rgba(210,132,0,.30)}.fmt-btn.raw-toggle{margin-left:8px;font-family:inherit;font-weight:700;font-size:11px}.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
+.toc-tools .bm-split{margin-left:auto;display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-remove{order:0}.bm-pop #bm-insert{order:1}.bm-pop.full #bm-remove{order:2}
+.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-del{color:#b91c1c}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:var(--vscode-editorHoverWidget-background,#f3f3f3);color:var(--vscode-editorHoverWidget-foreground,#333);border:1px solid var(--vscode-editorHoverWidget-border,#c8c8c8);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
+</style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button><button class="close" title="Close">×</button></span></header><main class="body">
+<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-tools"><button class="cancel" id="toggle-editor-toc" title="Fold / unfold raw TOC in editor">Fold TOC</button><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">−</button><button class="cancel toc-onsite" id="toc-onsite" title="On-site TOC: split editor and keep raw TOC above">On-site</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | Cycle-jump to your next 🔖 — return to your saved places">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | insert / remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove the bookmark</button><button class="bm-pop-item" id="bm-insert" data-tip="Drop a 🔖 at the current cursor line (up to 3)">insert a bookmark</button></div>
+<div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | wraps the selection: =={ text (red/yellow) //tip }==">==</button><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | wraps the selection: ~~{ text (red/) //tip }~~ (faint pink background)">~~</button><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | turns the current line into: ##[ text (white/green) //tip ]##">##</button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button></span></div>
+<div class="inline-panel" id="new-rename-panel">
+  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div></div>
+  <div class="me-name-wrap" id="me-name-wrap"><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
+  <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
+  <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
+  <div class="nav-center" id="nav-center">
+    <div class="nav-center-title">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></div>
+    <div class="nav-center-row toc-nav-row"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" title="TOP — jump to top of file">TOP</button><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" title="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" title="Warp/Submarine Me! skeleton"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" title="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" title="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel nav-center-btn me-flip-btn" id="nav-me-minus" title="Me Flip − skeleton: previous membrane cruise">−</button><button class="cancel nav-center-btn me-flip-btn" id="nav-me-plus" title="Me Flip + skeleton: next membrane cruise">+</button></span><span class="toc-axis">---</span><button class="cancel nav-center-btn eof-btn" id="nav-eof" title="EOF — jump to end of file">EOF</button></div>
+    <div class="nav-center-row line-row"><button class="cancel nav-btn" id="hist-back" title="Back">←</button><button class="cancel time-machine-trigger" id="time-machine-trigger" title="Time Machine Me">(0/0)</button><button class="cancel nav-btn" id="hist-forward" title="Forward">→</button><button class="cancel line-btn ${meDockCurrentLineMarkerActive?'on':''}" id="line-btn" title="Toggle line marker">Line</button><input class="line-input" id="line-input" value="${esc(initial.line || '')}" inputmode="numeric"/></div>
+    <div class="time-machine-panel" id="time-machine-panel"><div class="time-machine-title">Time Machine Me</div><div class="time-machine-main"><div class="tm-world-box"><div class="tm-world-row real active" id="tm-world-real" title="Real world line"><div class="tm-world-label">Real</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-real"></div><input class="time-machine-slider" id="time-machine-slider-real" type="range" min="1" max="1" value="1"/></div></div><div class="tm-world-row reinc" id="tm-world-reinc" title="REinc world line"><div class="tm-world-label">REinc</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-reinc"></div><input class="time-machine-slider" id="time-machine-slider-reinc" type="range" min="1" max="1" value="1"/></div></div></div><div class="time-machine-side"><input class="time-machine-index" id="time-machine-index" type="number" min="1" value="1"/><span class="line-meter" id="time-machine-total">/ 0</span><button class="cancel time-machine-clear" id="time-machine-clear" title="Clear current Line history">Clear</button></div></div></div>
+    <!-- v0.9.690: Navigate Me の Bi-direction Jump バー(nav-anchor🟢/nav-bidi🔴/nav-clear)を撤去 — Current Me に統合(俊克 am11:25)。参照JSは全て if(...) ガード済みなので要素削除で安全。 -->
+  </div>
+  <div class="membrane-panel" id="membrane-panel">
+    <div class="membrane-visual" id="membrane-visual">
+      <label class="me-choice" id="me-choice"><input type="checkbox" id="me-check" checked/><select class="me-scope-select" id="me-scope-select" title="Target scope"><option value="me">Me</option><option value="all">Me all</option><option value="shadow">Me Shadow</option></select><span class="color-row hidden" id="color-row"><button class="color-btn" id="color-btn" title="Membrane color">🟩(G)</button><div class="color-pop" id="color-pop"></div></span></label>
+      <div class="contents-box" id="contents-box"><label class="contents-choice"><input type="checkbox" id="contents-check"/><span>Contents</span></label></div>
+    </div>
+    <div class="membrane-actions" id="membrane-actions">
+      <button class="big-action" id="op-add-toc">Add to <span class="toc-word">Hyper TOC</span></button>
+      <button class="big-action" id="op-toggle">Toggle</button>
+      <button class="big-action remove" id="op-remove" title="Shed the membrane shell — contents stay intact (脱皮: 殻だけ外し、中身は残る)">Shed Me</button>
+      <button class="big-action hidden" id="op-copy" title="Copy to clipboard. Me+Contents = whole membrane (paste elsewhere with Cmd+V) / Contents only = inner contents">Copy</button>
+      <button class="big-action hidden" id="op-select" title="Select the membrane contents (excluding the open/close lines) in the editor">Select</button>
+      <button class="big-action hidden" id="op-duplicate" title="Duplicate the whole membrane (open line through close line) right below itself">Duplicate</button>
+    </div>
+  </div>
+</div>
+<div class="hint">←/→ or Cmd+G / Shift+Cmd+G move Line history (left/right pane). Line value live-jumps.</div>
+</main></section><script>
+const vscode=acquireVsCodeApi();let currentMode=${JSON.stringify(initial.mode)};let currentValue=${JSON.stringify(initial.value)};let draftName=currentValue||'';let draftDirty=false;let currentLine=${JSON.stringify(initial.line || '')};let markerOn=${JSON.stringify(!!meDockCurrentLineMarkerActive)};let historyState={canBack:false,canForward:false};let currentColor='';let draftColor='';let flipMinusColor='';let flipPlusColor='';let meScope='me';
+const closeButton=document.querySelector('.close'),standardsToggle=document.getElementById('standards-toggle'),title=document.getElementById('inline-title'),editModeSelect=document.getElementById('edit-mode-select'),zoomScopeIndicator=document.getElementById('zoom-scope-indicator'),zoomMePanel=document.getElementById('zoom-me-panel'),topButtons=document.getElementById('top-buttons'),colorRow=document.getElementById('color-row'),nameWrap=document.getElementById('me-name-wrap'),input=document.getElementById('me-name-input'),lineBtn=document.getElementById('line-btn'),lineMeter=document.getElementById('time-machine-trigger'),timeMachineTrigger=document.getElementById('time-machine-trigger'),timeMachinePanel=document.getElementById('time-machine-panel'),timeMachineSliderReal=document.getElementById('time-machine-slider-real'),timeMachineSliderReinc=document.getElementById('time-machine-slider-reinc'),tmWorldReal=document.getElementById('tm-world-real'),tmWorldReinc=document.getElementById('tm-world-reinc'),timeMachineIndex=document.getElementById('time-machine-index'),timeMachineTotal=document.getElementById('time-machine-total'),timeMachineMarksReal=document.getElementById('tm-insertion-marks-real'),timeMachineMarksReinc=document.getElementById('tm-insertion-marks-reinc'),timeMachinePre=document.getElementById('time-machine-pre'),timeMachineClear=document.getElementById('time-machine-clear'),histBack=document.getElementById('hist-back'),histForward=document.getElementById('hist-forward'),lineInput=document.getElementById('line-input'),refreshBtn=document.getElementById('refresh-btn'),resetBtn=document.getElementById('reset-btn'),setBtn=document.getElementById('set-btn'),fixedToc=document.getElementById('fixed-toc'),fixedTocName=document.getElementById('fixed-toc-name'),fixedTocBody=document.getElementById('fixed-toc-body'),tocTabRow=document.getElementById('toc-tab-row'),tocTabConfirm=document.getElementById('toc-tab-confirm'),tocTabConfirmMsg=document.getElementById('toc-tab-confirm-msg'),tocTabConfirmYes=document.getElementById('toc-tab-confirm-yes'),tocTabConfirmNo=document.getElementById('toc-tab-confirm-no'),toggleEditorToc=document.getElementById('toggle-editor-toc'),tocMoveUp=document.getElementById('toc-move-up'),tocMoveDown=document.getElementById('toc-move-down'),tocAdd=document.getElementById('toc-add'),tocDelItem=document.getElementById('toc-del-item'),tocOnsite=document.getElementById('toc-onsite'),tocTooltip=document.getElementById('toc-tooltip'),navToc=document.getElementById('nav-toc'),navMeWord=document.getElementById('nav-me-word'),navCurrentWord=document.getElementById('nav-current-word'),navCreateToc=document.getElementById('nav-create-toc'),navMeWarp=document.getElementById('nav-me-warp'),navMeSubmarine=document.getElementById('nav-me-submarine'),navMeDepth=document.getElementById('nav-me-depth'),navMeMinus=document.getElementById('nav-me-minus'),navMePlus=document.getElementById('nav-me-plus'),navEof=document.getElementById('nav-eof'),navAnchor=document.getElementById('nav-anchor'),navAnchorLabel=document.getElementById('nav-anchor-label'),navBidi=document.getElementById('nav-bidi'),colorBtn=document.getElementById('color-btn'),colorPop=document.getElementById('color-pop'),meTitleWord=document.getElementById('me-title-word'),membranePanel=document.getElementById('membrane-panel'),membraneVisual=document.getElementById('membrane-visual'),meChoice=document.getElementById('me-choice'),meScopeSelect=document.getElementById('me-scope-select'),contentsBox=document.getElementById('contents-box'),meCheck=document.getElementById('me-check'),contentsCheck=document.getElementById('contents-check'),opAddToc=document.getElementById('op-add-toc'),opToggle=document.getElementById('op-toggle'),opRemove=document.getElementById('op-remove'),opCopy=document.getElementById('op-copy'),opSelect=document.getElementById('op-select'),opDuplicate=document.getElementById('op-duplicate');
+const colorChoices=[['R','🟥','Red'],['O','🟧','Orange'],['Y','🟨','Yellow'],['G','🟩','Green'],['B','🟦','Blue'],['P','🟪','Purple'],['N','🟫','Brown'],['W','⬜','White']];
+function colorHex(code){const c=(code||'G').toUpperCase();return ({R:'#dc2626',O:'#f97316',Y:'#d97706',G:'#16a34a',B:'#2563eb',P:'#a855f7',N:'#8b5e3c',W:'#9ca3af'}[c]||'#16a34a');}
+function colorEmoji(code){const c=(code||'G').toUpperCase();const hit=colorChoices.find(x=>x[0]===c);return hit?hit[1]:'🟩';}
+function colorLabel(code){const c=(code||'G').toUpperCase();return colorEmoji(c)+'('+c+')';}
+function submarineColor(depth){const d=Math.max(0,Math.min(12,Number(depth)||0));const palette=['#8fe9ff','#7de3fb','#6bdcf7','#58d4f2','#46cbed','#34c2e8','#22b8e0','#149fd0','#0d86bd','#0a6fa8','#075985','#0b4168','#102a43'];return palette[d];}
+function submarineTextColor(depth){return (Number(depth)||0)>=7?'#ffffff':'#082f49';}
+let navMeMode='warp';let navMeDepthValue=0;
+function renderMeNavMode(){if(navMeWarp){navMeWarp.classList.toggle('on',navMeMode==='warp');navMeWarp.classList.toggle('off',navMeMode!=='warp');}if(navMeSubmarine){navMeSubmarine.classList.toggle('on',navMeMode==='submarine');navMeSubmarine.classList.toggle('off',navMeMode!=='submarine');navMeSubmarine.style.setProperty('--submarine-bg',submarineColor(navMeDepthValue));if(navMeMode==='submarine')navMeSubmarine.style.color=submarineTextColor(navMeDepthValue);else navMeSubmarine.style.color='';}if(navMeDepth)navMeDepth.textContent='-'+String(navMeDepthValue);}
+function revealTimeMachineFromNavMode(){
+  if(timeMachinePanel) timeMachinePanel.classList.add('on');
+}
+function renderColorButton(){const meAccent=colorHex(draftColor||currentColor||'G');if(colorBtn)colorBtn.textContent=colorLabel(draftColor||currentColor||'G');if(navMeWord)navMeWord.style.color=meAccent;if(navCurrentWord)navCurrentWord.style.color=meAccent;if(navMeMinus)navMeMinus.style.color=colorHex(flipMinusColor||draftColor||currentColor||'G');if(navMePlus)navMePlus.style.color=colorHex(flipPlusColor||draftColor||currentColor||'G');renderMeNavMode();if(membraneVisual){membraneVisual.style.color=meAccent;}if(meTitleWord){const r=currentMode==='rename';meTitleWord.classList.toggle('pending',!r);meTitleWord.style.color=r?colorHex(draftColor||currentColor||'G'):'';}if(colorPop){colorPop.innerHTML=colorChoices.map(([code,emoji,name])=>'<button class="swatch" data-code="'+code+'" title="'+name+'"><span class="swatch-wrap"><span class="swatch-label">'+emoji+'</span></span></button>').join('');colorPop.querySelectorAll('.swatch').forEach(btn=>{btn.classList.toggle('active',btn.getAttribute('data-code')===(draftColor||currentColor||'G'));});}}
+function renderAnchorButton(anchor){anchor=anchor||{};const has=!!anchor.has;if(navAnchorLabel)navAnchorLabel.textContent='Me';if(navAnchor){navAnchor.classList.toggle('inactive',!has);const tip=has?'S-click: jump open ⇔ close of active 🟢 pair':'No active 🟢 pair (select a membrane name in body to arm)';navAnchor.title=anchor.title||tip;}}
+function renderBidiButton(bidi){bidi=bidi||{};const has=!!bidi.has;if(navBidi){navBidi.classList.toggle('inactive',!has);const tip=has?'S-click: jump source ⇔ target of active 🔴 pair':'No active 🔴 pair (select citation text or click an H-TOC entry to arm)';navBidi.title=bidi.title||tip;}}
+function renderMembraneTargetPanel(){const code=(draftColor||currentColor||'G');const c=colorHex(code);meScope=(meScopeSelect&&['all','shadow'].includes(meScopeSelect.value))?meScopeSelect.value:'me';if(meChoice)meChoice.style.color=c;if(nameWrap)nameWrap.classList.toggle('hidden',meScope==='all'||meScope==='shadow');if(input)input.disabled=(meScope==='all'||meScope==='shadow');if(resetBtn)resetBtn.parentElement&&resetBtn.parentElement.classList.toggle('hidden',meScope==='all'||meScope==='shadow');if(contentsBox){contentsBox.style.color='var(--vscode-editor-foreground)';contentsBox.style.borderColor=c;}const me=!!(meCheck&&meCheck.checked),contents=!!(contentsCheck&&contentsCheck.checked);if(!me&&!contents&&meCheck){meCheck.checked=true;}const me2=!!(meCheck&&meCheck.checked),contents2=!!(contentsCheck&&contentsCheck.checked);const show=(el,on)=>{if(el)el.classList.toggle('hidden',!on);};show(opAddToc,me2&&!contents2&&meScope==='me');show(opToggle,me2&&!contents2);show(opRemove,me2&&!contents2);show(opCopy,contents2);show(opSelect,!me2&&contents2);show(opDuplicate,me2&&contents2);if(opToggle)opToggle.textContent='Toggle';if(opRemove){opRemove.textContent='Shed Me';opRemove.title='Shed the membrane shell — contents stay intact (脱皮: 殻だけ外し、中身は残る)';}if(typeof renderEditPanelMode==='function')renderEditPanelMode();}
+
+let editPanelMode='edit';
+function renderEditPanelMode(){
+  const zooming=editPanelMode==='zoom';
+  if(editModeSelect)editModeSelect.value=zooming?'zoom':'edit';
+  if(zoomMePanel)zoomMePanel.classList.toggle('hidden',!zooming);
+  if(nameWrap)nameWrap.classList.toggle('hidden',zooming || meScope==='all'||meScope==='shadow');
+  if(input)input.disabled=zooming || (meScope==='all'||meScope==='shadow');
+  if(topButtons)topButtons.classList.toggle('hidden',zooming || meScope==='all'||meScope==='shadow');
+  const r=currentMode==='rename';
+  if(membranePanel)membranePanel.classList.toggle('hidden',zooming || !r);
+  if(colorRow)colorRow.classList.toggle('hidden',zooming || !r);
+}
+// v0.9.664: 膜操作(Copy/Select/Duplicate)の結果を画面下部に一時トースト表示。
+let meDockToastTimer=null;
+function showMeDockToast(text){
+  let el=document.getElementById('meos-op-toast');
+  if(!el){el=document.createElement('div');el.id='meos-op-toast';el.style.cssText='position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(40,40,40,0.92);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;z-index:9999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:opacity .2s;';document.body.appendChild(el);}
+  el.textContent='✅ '+text;el.style.opacity='1';
+  if(meDockToastTimer)clearTimeout(meDockToastTimer);
+  meDockToastTimer=setTimeout(()=>{if(el)el.style.opacity='0';},2000);
+}
+function zoomScopeLabel(label){return 'Zoom : '+(label||'1〜EOF');}
+function renderZoomScopeIndicator(label){
+  if(!zoomScopeIndicator)return;
+  const raw=label||'1〜EOF';
+  const text=zoomScopeLabel(raw);
+  zoomScopeIndicator.title=text;
+  // v0.9.503: per-token colouring. User v0.9.502_0759 refinement: not just
+  // the prefix but also fixed keywords (TOC, Me, Line) and separators (+,
+  // 〜, spaces) stay orange — ONLY variable values (numbers, names like
+  // name_025623.514, EOF) flip to editor-fg (black in light theme). Token-
+  // ize the value into alphanumeric chunks vs everything else, then keyword-
+  // filter the alphanumerics: keywords → orange, other alphanumerics →
+  // black, non-alphanumerics → orange.
+  const ZOOM_KEYWORDS=/^(TOC|Me|Line)$/;
+  const tokens=String(raw).match(/[A-Za-z0-9_.]+|[^A-Za-z0-9_.]+/g)||[];
+  const body=tokens.map(tok=>{
+    if(/^[A-Za-z0-9_.]+$/.test(tok)){
+      if(ZOOM_KEYWORDS.test(tok)){
+        return '<span class="zoom-scope-label">'+escText(tok)+'</span>';
+      }
+      return '<span class="zoom-scope-value">'+escText(tok)+'</span>';
+    }
+    return '<span class="zoom-scope-label">'+escText(tok)+'</span>';
+  }).join('');
+  zoomScopeIndicator.innerHTML='<span class="zoom-scope-label">Zoom : </span>'+body;
+}
+
+
+function historySnapshotForLife(life){
+  const worlds=(historyState&&historyState.worlds)||{};
+  return worlds[life]||{index:0,total:0,insertions:[]};
+}
+function renderMarksFor(el, snap){
+  if(!el)return;
+  const total=snap&&typeof snap.total==='number'?snap.total:0;
+  const marks=snap&&Array.isArray(snap.insertions)?snap.insertions:[];
+  if(total<=1||!marks.length){el.innerHTML='';return;}
+  el.innerHTML=marks.map(p=>{
+    const n=Math.max(1,Math.min(total,Number(p)||1));
+    const left=total<=1?0:((n-1)/(total-1))*100;
+    return '<span class="tm-insertion-mark" style="left:'+left.toFixed(3)+'%" title="Insertion point '+n+'">ﾚ</span>';
+  }).join('');
+}
+function applySliderSnapshot(slider, snap, active){
+  if(!slider)return;
+  const n=snap&&typeof snap.index==='number'?snap.index:0;
+  const total=snap&&typeof snap.total==='number'?snap.total:0;
+  slider.max=String(Math.max(total,1));
+  slider.value=String(Math.max(n,1));
+  // v0.9.405: keep inactive/one-point sliders clickable so a click can switch world lines.
+  slider.disabled=false;
+  slider.classList.toggle('active',!!active);
+  slider.classList.toggle('empty',total<=1);
+}
+function renderTimeMachineWorldLines(){
+  const life=(historyState&&historyState.life)==='reinc'?'reinc':'real';
+  const real=historySnapshotForLife('real');
+  const reinc=historySnapshotForLife('reinc');
+  if(tmWorldReal)tmWorldReal.classList.toggle('active',life==='real');
+  if(tmWorldReinc)tmWorldReinc.classList.toggle('active',life==='reinc');
+  applySliderSnapshot(timeMachineSliderReal,real,life==='real');
+  applySliderSnapshot(timeMachineSliderReinc,reinc,life==='reinc');
+  renderMarksFor(timeMachineMarksReal,real);
+  renderMarksFor(timeMachineMarksReinc,reinc);
+}
+function renderTimeMachineInsertionMarks(){renderTimeMachineWorldLines();}
+function applyMode(mode,value,force,line,nextMarkerOn,nextHistory,nextColor,nextFlipMinusColor,nextFlipPlusColor,nextNavDepth,nextAnchor){const nextMode=mode||'new';const nextValue=value||'';const modeChanged=nextMode!==currentMode;currentMode=nextMode;currentValue=nextValue;currentLine=line||'';if(typeof nextMarkerOn==='boolean')markerOn=nextMarkerOn;if(nextHistory)historyState=nextHistory;if(force||modeChanged||!draftDirty){currentColor=(nextColor||'');draftColor=currentColor;}flipMinusColor=nextFlipMinusColor||'';flipPlusColor=nextFlipPlusColor||'';if(typeof nextNavDepth==='number'&&Number.isFinite(nextNavDepth)){navMeDepthValue=Math.max(0,Math.min(99,Math.trunc(nextNavDepth)));}renderColorButton();renderAnchorButton(nextAnchor);const r=currentMode==='rename';if(meTitleWord){meTitleWord.classList.toggle('pending',!r);meTitleWord.style.color=r?colorHex(draftColor||currentColor||'G'):'';}if(membranePanel)membranePanel.classList.toggle('hidden',!r);if(colorRow)colorRow.classList.toggle('hidden',!r);renderMembraneTargetPanel();if(setBtn)setBtn.textContent=r?'Set':'Create';lineBtn.classList.toggle('on',markerOn);const n=historyState&&typeof historyState.index==='number'?historyState.index:0;const total=historyState&&typeof historyState.total==='number'?historyState.total:0;if(lineMeter){lineMeter.textContent='('+n+'/'+total+')';lineMeter.title='Time Machine Me: Line history '+n+' / '+total;}renderTimeMachineWorldLines();if(timeMachineIndex){timeMachineIndex.max=String(Math.max(total,1));timeMachineIndex.value=String(Math.max(n,1));timeMachineIndex.disabled=total<=0;}if(timeMachineTotal){timeMachineTotal.textContent='/ '+total;}if(timeMachineClear){timeMachineClear.disabled=total<=0;timeMachineClear.classList.toggle('disabled',timeMachineClear.disabled);}if(histBack)histBack.disabled=!historyState.canBack;if(histForward)histForward.disabled=!historyState.canForward;if(force||modeChanged||!draftDirty){draftName=currentValue||'';draftDirty=false;if(document.activeElement!==input||force||modeChanged)input.value=draftName;}else if(document.activeElement!==input){input.value=draftName;}if(force||document.activeElement!==lineInput)lineInput.value=currentLine||'';if(typeof renderEditPanelMode==='function')renderEditPanelMode();}
+function escText(s){return String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function tocKeyFromInputValue(v){let s=String(v||'').trim();let m=s.match(/^\{[^}]*\}\s*⇒\s*\{([^}]*)\}\s*$/);if(!m)m=s.match(/^⇒\s*\{([^}]*)\}\s*$/);if(!m)m=s.match(/^⇄\s*\{([^}]*)\}\s*$/);if(!m)m=s.match(/^\{[^}]*\}\s*⇒\s*Me\s*⇒\s*\{([^}]*)\}\s*$/);if(!m)m=s.match(/^Me\s*⇒\s*\{([^}]*)\}\s*$/);if(m){s=m[1].trim();}else{s=s.replace(/^⇄\s*/,'').trim();}const i=s.indexOf('//');if(i>=0)s=s.slice(0,i).trim();return s;}
+let selectedTocLine0=null;
+let tocLastSelectLine0=null;
+let tocLastSelectAt=0;
+let tocAllowCommentAutoselect=false;
+let tocImeComposing=false;
+let _tabNameComposing=false;
+function ensureSelectedTocVisible(){const sel=document.querySelector('.fixed-toc-item.selected');if(sel&&typeof sel.scrollIntoView==='function'){sel.scrollIntoView({block:'nearest',inline:'nearest'});}}
+function selectTocItem(item){if(!item)return;selectedTocLine0=Number(item.getAttribute('data-line0'));tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));item.classList.add('selected');ensureSelectedTocVisible();}function moveSelectedToc(delta){if(selectedTocLine0===null)return;const current=document.querySelector('.fixed-toc-item.selected');if(!current)return;const next=delta<0?current.previousElementSibling:current.nextElementSibling;if(!(next&&next.classList&&next.classList.contains('fixed-toc-item'))){return;}const fromLine0=Number(current.getAttribute('data-line0'));const toLine0=Number(next.getAttribute('data-line0'));selectedTocLine0=toLine0;tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));next.classList.add('selected');ensureSelectedTocVisible();vscode.postMessage({type:'moveTocItem',line0:fromLine0,delta});}
+function renderNavTocState(hasToc){if(navToc){navToc.textContent=hasToc?'TOC':'TOP';navToc.title=hasToc?'TOC — jump to Hyper TOC membrane':'TOP — jump to top of file';navToc.classList.toggle('toc-mode',!!hasToc);navToc.classList.toggle('top-mode',!hasToc);navToc.disabled=false;navToc.classList.remove('disabled');}if(navCreateToc){navCreateToc.classList.toggle('hidden',!!hasToc);navCreateToc.disabled=!!hasToc;}}
+function renderHyperTocTabs(toc){
+  if(!tocTabRow)return;
+  const tabs=(toc&&Array.isArray(toc.tabs))?toc.tabs:[];
+  if(!tabs.length){tocTabRow.innerHTML='';return;}
+  const tabsHtml=tabs.map(t=>{
+    const active=t.active?' active':'';
+    const name=escText(t.name||'Hyper TOC');
+    const count=Number(t.itemCount||0);
+    return '<div class="toc-tab'+active+'" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items)">'+name+'</div>';
+  }).join('');
+  const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
+  tocTabRow.innerHTML=tabsHtml+opsHtml;
+}
+function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const armed=!!(toc&&toc.greenActive);const checked=armed&&!!cm.pinToSelected;const jCls='toc-pin-jump'+(armed?'':' dim');const mCls='toc-pin-mode'+(armed?'':' dim');const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const modeTip=escText('When checked, jumps among 3 points: cursor position, the selected membrane open, close. Use it mainly when you are in a membrane other than the selected one.');return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><label class="'+mCls+'" data-tip="'+modeTip+'"><input type="checkbox" class="toc-pin-check" data-tip="'+modeTip+'"'+(checked?' checked':'')+(armed?'':' disabled')+'/>From Out To</label><span class="'+jCls+'" data-tip="'+modeTip+'">🟢</span></div>';}
+function bidiJumpBarHtml(toc){const greenActive=!!(toc&&toc.greenActive);const redActive=!!(toc&&toc.redActive);const gCls='bidi-btn bidi-green'+(greenActive?'':' inactive');const rCls='bidi-btn bidi-red'+(redActive?'':' inactive');const gTip=greenActive?'S-click: jump open ⇔ close of active 🟢 pair':'No active 🟢 pair (select a membrane name in body to arm)';const rTip=redActive?'S-click: jump source ⇔ target of active 🔴 pair':'No active 🔴 pair (select citation text or click an H-TOC entry to arm)';return '<div class="bidi-jump-bar"><span class="bidi-label">Bi-direction Jump:</span><span class="'+gCls+'" data-tip="'+escText(gTip)+'">🟢</span><span class="bidi-sep">/</span><span class="'+rCls+'" data-tip="'+escText(rTip)+'">🔴</span><span class="bidi-btn bidi-clear" data-tip="このファイルの 🟢/🔴 ジャンプフラグを全消去（初期化／デバッグ用・Cmd+Zで復元）">Clear</span><span class="bidi-jumponly">(Jump only / S-click)</span></div>';}
+function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.hasToc));fixedToc.classList.toggle('on',!!(toc&&toc.enabled));if(!toc||!toc.enabled)return;renderHyperTocTabs(toc);if(fixedTocName&&document.activeElement!==fixedTocName)fixedTocName.value=toc.tocName||'';const items=(toc.items||[]);if(!items.length){fixedTocBody.innerHTML='<div class="toc-sticky-head">'+pinRowHtml(toc)+'</div>'+'<div class="fixed-toc-empty">Hyper TOC is empty. Press ＋ to add one.</div>';selectedTocLine0=null;return;}fixedTocBody.innerHTML='<div class="toc-sticky-head">'+pinRowHtml(toc)+'</div>'+items.map(it=>{const checked=it.checkedAt?' checked':'';const parts=[];if(it.createdAt)parts.push('Created: '+escText(it.createdAt));if(Array.isArray(it.checkLog)&&it.checkLog.length){it.checkLog.forEach(e=>{if(e&&e.at)parts.push((e.label||(e.checked?'Checked':'Unchecked'))+': '+escText(e.at));});}else if(it.checkedAt){parts.push('Checked: '+escText(it.checkedAt));}if(it.citeN!==null&&it.citeN!==undefined)parts.push('Cite #'+escText(String(it.citeN)));const tip=parts.length?parts.join(' | '):('Line '+it.line);const val=escText(it.value||it.label||it.key||'');const sel=(selectedTocLine0!==null&&Number(it.line0)===selectedTocLine0)?' selected':'';const citeAttr=(it.citeN!==null&&it.citeN!==undefined)?(' data-cite-n="'+escText(String(it.citeN))+'"'):'';return '<div class="fixed-toc-item'+sel+'" data-key="'+escText(it.key||'')+'" data-state-key="'+escText(it.stateKey||it.key||'')+'" data-line0="'+String(it.line0)+'"'+citeAttr+' data-tip="'+tip+'"><input class="toc-check" type="checkbox"'+checked+' data-tip="CheckTimeBox(CTB)"/><input class="toc-value" value="'+val+'" data-tip="'+tip+'"/></div>'}).join('');setTimeout(ensureSelectedTocVisible,0);}
+let standardsOn=true;
+function renderStandardsToggle(){if(!standardsToggle)return;standardsToggle.classList.toggle('on',standardsOn);standardsToggle.classList.toggle('off',!standardsOn);const lab=standardsToggle.querySelector('.standards-label');if(lab)lab.textContent='Standards > v';standardsToggle.title=standardsOn?'Standards ON (default): native > / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control.':'Standards OFF: native > / v folding controls are hidden. MeOS membrane controls are prioritized.';}
+if(standardsToggle)standardsToggle.addEventListener('click',()=>{standardsOn=!standardsOn;renderStandardsToggle();vscode.postMessage({type:'toggleStandards',enabled:standardsOn});});
+if(timeMachineTrigger)timeMachineTrigger.addEventListener('click',()=>{if(timeMachinePanel)timeMachinePanel.classList.toggle('on');});
+let timeMachineJumpTimer=null;
+function jumpTimeMachineIndex(value){const n=parseInt(String(value||''),10);if(!Number.isFinite(n))return;clearTimeout(timeMachineJumpTimer);timeMachineJumpTimer=setTimeout(()=>vscode.postMessage({type:'lineHistoryJumpIndex',index:n}),120);}
+function activeTmLife(){return (historyState&&historyState.life)==='reinc'?'reinc':'real';}
+function switchTmLife(life){vscode.postMessage({type:'timeMachineLifeSwitch',life:life==='reinc'?'reinc':'real'});}
+function handleWorldSliderInput(life,slider){if(activeTmLife()!==life){switchTmLife(life);return;}if(timeMachineIndex)timeMachineIndex.value=slider.value;jumpTimeMachineIndex(slider.value);}
+function primeTmLifeSwitch(life,ev){
+  if(activeTmLife()===life)return false;
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  switchTmLife(life);
+  return true;
+}
+if(timeMachineSliderReal)timeMachineSliderReal.addEventListener('pointerdown',ev=>primeTmLifeSwitch('real',ev),true);
+if(timeMachineSliderReinc)timeMachineSliderReinc.addEventListener('pointerdown',ev=>primeTmLifeSwitch('reinc',ev),true);
+if(timeMachineSliderReal)timeMachineSliderReal.addEventListener('input',()=>handleWorldSliderInput('real',timeMachineSliderReal));
+if(timeMachineSliderReinc)timeMachineSliderReinc.addEventListener('input',()=>handleWorldSliderInput('reinc',timeMachineSliderReinc));
+if(tmWorldReal)tmWorldReal.addEventListener('pointerdown',ev=>primeTmLifeSwitch('real',ev),true);
+if(tmWorldReinc)tmWorldReinc.addEventListener('pointerdown',ev=>primeTmLifeSwitch('reinc',ev),true);
+if(tmWorldReal)tmWorldReal.addEventListener('click',ev=>{if(activeTmLife()!=='real'){ev.preventDefault();switchTmLife('real');}});
+if(tmWorldReinc)tmWorldReinc.addEventListener('click',ev=>{if(activeTmLife()!=='reinc'){ev.preventDefault();switchTmLife('reinc');}});
+if(timeMachineIndex)timeMachineIndex.addEventListener('change',()=>jumpTimeMachineIndex(timeMachineIndex.value));
+if(timeMachineIndex)timeMachineIndex.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();jumpTimeMachineIndex(timeMachineIndex.value);}});
+if(timeMachineClear)timeMachineClear.addEventListener('click',()=>{if(timeMachineClear.disabled)return;vscode.postMessage({type:'lineHistoryClear'});});
+if(navToc)navToc.addEventListener('click',()=>{if(navToc.disabled)return;vscode.postMessage({type:'navCenterTocOrTop'});});
+if(navCreateToc)navCreateToc.addEventListener('click',()=>{if(navCreateToc.disabled)return;vscode.postMessage({type:'navCenterCreateToc'});});
+if(navMeWarp)navMeWarp.addEventListener('click',()=>{navMeMode='warp';navMeDepthValue=0;renderMeNavMode();revealTimeMachineFromNavMode();vscode.postMessage({type:'navMeWorldChanged',mode:navMeMode,depth:navMeDepthValue});});
+if(navMeSubmarine)navMeSubmarine.addEventListener('click',()=>{navMeMode='submarine';navMeDepthValue=Math.min(9,navMeDepthValue+1);renderMeNavMode();revealTimeMachineFromNavMode();vscode.postMessage({type:'navMeWorldChanged',mode:navMeMode,depth:navMeDepthValue});});
+if(navMeMinus)navMeMinus.addEventListener('click',()=>vscode.postMessage({type:'navMeFlipMinus',mode:navMeMode,depth:navMeDepthValue}));
+if(navMePlus)navMePlus.addEventListener('click',()=>vscode.postMessage({type:'navMeFlipPlus',mode:navMeMode,depth:navMeDepthValue}));
+function meCockpitKeyCruise(ev){const t=ev&&ev.target;if(!t)return;const cockpit=t.closest&&t.closest('#me-nav-switch,.me-flip-row');if(!cockpit)return;if(ev.key==='ArrowUp'){ev.preventDefault();if(navMeMinus)navMeMinus.click();}else if(ev.key==='ArrowDown'){ev.preventDefault();if(navMePlus)navMePlus.click();}}
+document.addEventListener('keydown',meCockpitKeyCruise,true);
+if(navEof)navEof.addEventListener('click',()=>vscode.postMessage({type:'navCenterEof'}));
+if(navAnchor){
+  // v0.9.584: unified S-click=JUMP / W-click=RAW. S-click → navCenterMeDouble
+  // (open ⇔ close jump). W-click → navCenterMeSingle (mSkeletonMode toggle).
+  // Timer disambiguates click vs dblclick. v0.9.586: navAnchor is now a span
+  // with .inactive class (was a <button> with .disabled). Check the class
+  // instead of the disabled property.
+  let navAnchorClickTimer=0;
+  navAnchor.addEventListener('click',()=>{
+    if(navAnchor.classList.contains('inactive'))return;
+    clearTimeout(navAnchorClickTimer);
+    navAnchorClickTimer=setTimeout(()=>vscode.postMessage({type:'navCenterMeDouble'}),220);
+  });
+  navAnchor.addEventListener('dblclick',ev=>{
+    if(navAnchor.classList.contains('inactive'))return;
+    ev.preventDefault();
+    clearTimeout(navAnchorClickTimer);
+    vscode.postMessage({type:'navCenterMeSingle'});
+  });
+}
+
+// v0.9.584: same swap on Me Dock 🔴 (navBidi). S-click → navCenterBidiDouble
+// (source ⇔ target jump). W-click → navCenterBidi (raw toggle).
+// v0.9.586: span+class form, same as navAnchor.
+if(navBidi){let navBidiClickTimer=0;navBidi.addEventListener('click',()=>{if(navBidi.classList.contains('inactive'))return;clearTimeout(navBidiClickTimer);navBidiClickTimer=setTimeout(()=>vscode.postMessage({type:'navCenterBidiDouble'}),220);});navBidi.addEventListener('dblclick',ev=>{ev.preventDefault();if(navBidi.classList.contains('inactive'))return;clearTimeout(navBidiClickTimer);vscode.postMessage({type:'navCenterBidi'});});}
+// v0.9.631: [Clear] — wipe all 🟢/🔴 jump flags in the active file (reset/debug).
+const navClear=document.getElementById('nav-clear');
+if(navClear){navClear.addEventListener('click',()=>{vscode.postMessage({type:'clearAllJumps'});});}
+renderStandardsToggle();
+const zoomMeLoad=document.getElementById('zoom-me-load'),zoomMeStatus=document.getElementById('zoom-me-status'),zoomMeModeBtn=document.getElementById('zoom-me-mode');
+let zoomMeMode='${zoomMeMode}';
+let zoomLineStartValue='${esc(zoomMeLastStartValue)}',zoomLineEndValue='${esc(zoomMeLastEndValue)}',zoomMembraneNameValue='${esc(zoomMeLastMeName)}',zoomMembraneCountValue='${esc(zoomMeLastMeCount)}';
+function saveZoomMeCurrentValues(){const zs=document.getElementById('zoom-me-start'),ze=document.getElementById('zoom-me-end');if(!zs||!ze)return;if(zoomMeMode==='me'){zoomMembraneNameValue=zs.value;zoomMembraneCountValue=ze.value;}else{zoomLineStartValue=zs.value;zoomLineEndValue=ze.value;}}
+function renderZoomMeLoaded(label){if(zoomMeStatus)zoomMeStatus.innerHTML='';renderZoomScopeIndicator(label||'1〜EOF');}
+function applyZoomMeMode(mode,keepValues){if(!keepValues)saveZoomMeCurrentValues();zoomMeMode=mode==='me'?'me':'line';const zs=document.getElementById('zoom-me-start'),ze=document.getElementById('zoom-me-end'),sep=document.getElementById('zoom-me-sep');if(zoomMeModeBtn)zoomMeModeBtn.textContent=zoomMeMode==='me'?'Me':'Line';if(zs){zs.classList.toggle('me-mode-name',zoomMeMode==='me');zs.inputMode=zoomMeMode==='me'?'text':'numeric';zs.value=zoomMeMode==='me'?zoomMembraneNameValue:zoomLineStartValue;}if(ze){ze.classList.toggle('me-mode-count',zoomMeMode==='me');ze.inputMode='numeric';ze.value=zoomMeMode==='me'?zoomMembraneCountValue:zoomLineEndValue;}if(sep)sep.textContent=zoomMeMode==='me'?'+':'〜';}
+applyZoomMeMode(zoomMeMode,true);renderZoomScopeIndicator('${esc(zoomMeLastLoadedLabel || '1〜EOF')}');renderEditPanelMode();
+if(editModeSelect)editModeSelect.addEventListener('change',()=>{editPanelMode=editModeSelect.value==='zoom'?'zoom':'edit';renderEditPanelMode();});
+if(zoomMeModeBtn)zoomMeModeBtn.addEventListener('click',()=>{applyZoomMeMode(zoomMeMode==='me'?'line':'me',false);});
+['zoom-me-start','zoom-me-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',saveZoomMeCurrentValues);});
+if(zoomMeLoad)zoomMeLoad.addEventListener('click',()=>{saveZoomMeCurrentValues();vscode.postMessage({type:'zoomMeLoad',mode:zoomMeMode,start:document.getElementById('zoom-me-start')?document.getElementById('zoom-me-start').value:'1',end:document.getElementById('zoom-me-end')?document.getElementById('zoom-me-end').value:'EOF'});});
+closeButton.addEventListener('click',()=>vscode.postMessage({type:'close'}));
+/* v0.9.707: 書式ボタン(== ハイライト / ~~ 取消線 / ## 見出し)。選択を記法で包む。 */
+const fmtHighlight=document.getElementById('fmt-highlight'),fmtStrike=document.getElementById('fmt-strike'),fmtHeading=document.getElementById('fmt-heading');
+if(fmtHighlight)fmtHighlight.addEventListener('click',()=>vscode.postMessage({type:'insertFormat',kind:'highlight'}));
+if(fmtStrike)fmtStrike.addEventListener('click',()=>vscode.postMessage({type:'insertFormat',kind:'strike'}));
+if(fmtHeading)fmtHeading.addEventListener('click',()=>vscode.postMessage({type:'insertFormat',kind:'heading'}));
+const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.addEventListener('click',()=>vscode.postMessage({type:'toggleRaw'}));
+/* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
+const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmInsert=document.getElementById('bm-insert'),bmRemove=document.getElementById('bm-remove');
+function closeBmPop(){if(bmPop)bmPop.classList.remove('on');}
+if(bmCycle)bmCycle.addEventListener('click',()=>{if(bmCycle.classList.contains('zero'))return;vscode.postMessage({type:'bookmarkCycle'});});
+if(bmMenuBtn)bmMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!bmPop.classList.contains('on');bmPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=bmMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=bmPop.offsetHeight||60,w=bmPop.offsetWidth||140;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;bmPop.style.left=left+'px';bmPop.style.top=Math.max(6,r.top-h-6)+'px';});});
+if(bmInsert)bmInsert.addEventListener('click',()=>{if(bmInsert.classList.contains('disabled'))return;vscode.postMessage({type:'bookmarkInsert'});closeBmPop();});
+if(bmRemove)bmRemove.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkRemove'});closeBmPop();});
+document.addEventListener('click',ev=>{if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();},true);
+function renderBookmarkState(count,full){if(bmCycle)bmCycle.classList.toggle('zero',!count);if(bmMenuBtn)bmMenuBtn.classList.toggle('zero',!count);if(bmCycle){const c=bmCycle.querySelector('.bm-cnt');if(count){if(c)c.textContent=count;else bmCycle.insertAdjacentHTML('beforeend','<span class="bm-cnt">'+count+'</span>');}else if(c)c.remove();}if(bmInsert)bmInsert.classList.toggle('disabled',!!full);if(bmPop)bmPop.classList.toggle('full',!!full);}
+if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
+if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='all')vscode.postMessage({type:'toggleMeAll'});else if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
+if(opRemove)opRemove.addEventListener('click',()=>{if(meScope==='me'){vscode.postMessage({type:'shedMe'});}else{vscode.postMessage({type:'noop',name:(meScope==='shadow'?'removeMeShadowSkeleton':'removeMeAllSkeleton')});}});
+if(opCopy)opCopy.addEventListener('click',()=>{const me=!!(meCheck&&meCheck.checked),contents=!!(contentsCheck&&contentsCheck.checked);vscode.postMessage({type:(me&&contents)?'copyMe':'copyMyContents'});});
+if(opSelect)opSelect.addEventListener('click',()=>vscode.postMessage({type:'selectMyContents'}));
+if(opDuplicate)opDuplicate.addEventListener('click',()=>vscode.postMessage({type:'duplicateMe'}));
+if(meScopeSelect)meScopeSelect.addEventListener('change',renderMembraneTargetPanel);
+if(meCheck)meCheck.addEventListener('change',renderMembraneTargetPanel);
+if(contentsCheck)contentsCheck.addEventListener('change',renderMembraneTargetPanel);
+if(fixedTocBody)fixedTocBody.addEventListener('mousedown',ev=>{const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;tocAllowCommentAutoselect=false;if(!item)return;const line0=Number(item.getAttribute('data-line0'));const isValue=ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value');const alreadySelected=(selectedTocLine0!==null&&line0===selectedTocLine0);const enoughPause=(Date.now()-tocLastSelectAt)>450;if(isValue&&alreadySelected&&enoughPause){tocAllowCommentAutoselect=true;return;}if(isValue){ev.preventDefault();}},true);
+if(fixedTocBody)fixedTocBody.addEventListener('compositionstart',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value'))tocImeComposing=true;},true);
+if(fixedTocBody)fixedTocBody.addEventListener('compositionend',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value'))setTimeout(()=>{tocImeComposing=false;},0);},true);
+if(fixedTocBody)fixedTocBody.addEventListener('click',ev=>{const bidiGreen=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-green'):null;if(bidiGreen){if(!bidiGreen.classList.contains('inactive'))vscode.postMessage({type:'jumpBiGreen'});return;}const bidiRed=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-red'):null;if(bidiRed){if(!bidiRed.classList.contains('inactive'))vscode.postMessage({type:'jumpBiRed'});return;}const bidiClear=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-clear'):null;if(bidiClear){vscode.postMessage({type:'clearAllJumps'});return;}const pin=ev.target&&ev.target.closest?ev.target.closest('.toc-pin'):null;if(pin){if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-check')){vscode.postMessage({type:'pinJumpMode',toSelected:!!ev.target.checked});return;}if(ev.target&&ev.target.closest&&ev.target.closest('.toc-pin-mode')){return;}vscode.postMessage({type:'pinCycle'});return;}const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const cls=ev.target&&ev.target.classList;if(cls&&cls.contains('toc-check')){const checked=!!ev.target.checked;const tip=checked?('Checked: '+new Date().toLocaleString('ja-JP')):('Line '+((Number(item.getAttribute('data-line0'))||0)+1));item.setAttribute('data-tip',tip);ev.target.setAttribute('data-tip',tip);const valueEl=item.querySelector('.toc-value');if(valueEl)valueEl.setAttribute('data-tip',tip);showTocTip(ev);vscode.postMessage({type:'toggleTocCheck',key:item.getAttribute('data-state-key')||item.getAttribute('data-key'),checked});return;}if(cls&&cls.contains('toc-value'))return;const key=item.getAttribute('data-key');const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
+if(fixedTocBody)fixedTocBody.addEventListener('dblclick',ev=>{const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const inputEl=item.querySelector('.toc-value');const key=tocKeyFromInputValue(inputEl?inputEl.value:item.getAttribute('data-key'));const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
+function tocTextWidth(el,text){
+  try{
+    const cs=getComputedStyle(el);
+    const canvas=tocTextWidth._c||(tocTextWidth._c=document.createElement('canvas'));
+    const ctx=canvas.getContext('2d');
+    ctx.font=[cs.fontStyle,cs.fontVariant,cs.fontWeight,cs.fontSize,cs.fontFamily].join(' ');
+    return Math.max(0, Math.ceil(ctx.measureText(text).width)+2);
+  }catch(_){return Math.max(0,String(text||'').length*7+5);}
+}
+function clearTocEditingComment(){
+  document.querySelectorAll('.fixed-toc-item.editing-comment').forEach(el=>{el.classList.remove('editing-comment');el.style.removeProperty('--toc-prefix-w');});
+}
+function selectTocCommentPart(el){
+  if(tocImeComposing||!tocAllowCommentAutoselect)return;
+  tocAllowCommentAutoselect=false;
+  if(!el||!el.classList||!el.classList.contains('toc-value'))return;
+  const item=el.closest('.fixed-toc-item');
+  if(item){item.classList.add('editing-comment');}
+  const v=String(el.value||'');
+  const idx=v.indexOf('//');
+  if(idx<0){if(item)item.style.setProperty('--toc-prefix-w','0px');return;}
+  // v0.9.320: keep the highlight boundary and comment-selection boundary separate.
+  // prefixEnd: dark-orange prefix highlight ends at the two slashes: //
+  // commentStart: editable comment selection starts after the required single space: //␠
+  const prefixEnd=idx+2;
+  const commentStart=(v.charAt(prefixEnd)===' ')?idx+3:idx+2;
+  const prefix=v.slice(0,prefixEnd);
+  if(item)item.style.setProperty('--toc-prefix-w',tocTextWidth(el,prefix)+'px');
+  try{el.setSelectionRange(commentStart,v.length);}catch(_){ }
+}
+if(fixedTocBody)fixedTocBody.addEventListener('focusin',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value')){clearTocEditingComment();setTimeout(()=>selectTocCommentPart(ev.target),0);}});
+if(fixedTocBody)fixedTocBody.addEventListener('keydown',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value')&&ev.key==='Enter'){if(tocImeComposing)return;ev.preventDefault();const item=ev.target.closest('.fixed-toc-item');vscode.postMessage({type:'updateTocItem',line0:Number(item.getAttribute('data-line0')),value:ev.target.value});ev.target.blur();}});
+if(fixedTocBody)fixedTocBody.addEventListener('focusout',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value')){const item=ev.target.closest('.fixed-toc-item');if(!tocImeComposing)vscode.postMessage({type:'updateTocItem',line0:Number(item.getAttribute('data-line0')),value:ev.target.value});setTimeout(clearTocEditingComment,0);}});
+/* v0.9.711: 全tip共通。tipの右端をカーソルの約6文字左に置く間隔(px)。俊克 am09:53「ポインターより6文字くらい離す・見えないとストレス」。 */
+const TIP_GAP_PX=44;
+function showTocTip(ev){if(!tocTooltip)return;const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;/* v0.9.712: native title を data-tip に遅延移行(ネイティブtipを抑止し共通の左伸ばしtipに一本化)。JSが.titleを再設定しても次のhoverで反映。 */if(el&&el.hasAttribute('title')){const tt=el.getAttribute('title');if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));/* v0.9.686: grow the tip LEFT from the cursor (Me Dock sits at the screen's right edge, so a right-growing tip clips); wrap to 2+ lines. Anchor the tip's RIGHT edge ~12px left of the cursor. */tocTooltip.style.display='block';const rowEl=(el.closest&&el.closest('.fixed-toc-item,.toc-pin'))||el;const rect=(rowEl&&rowEl.getBoundingClientRect)?rowEl.getBoundingClientRect():null;const tw=tocTooltip.offsetWidth||120;const h=tocTooltip.offsetHeight||20;if(ev.clientX-TIP_GAP_PX-tw<4){/* v0.9.713: 左伸ばしだと左端で見切れる(左端の細いボタン)→上に逃がして右方向に伸ばす(俊克 am10:48)。 */tocTooltip.style.right='auto';let left=(rect?rect.left:ev.clientX);if(left+tw>window.innerWidth-2)left=window.innerWidth-tw-2;if(left<2)left=2;tocTooltip.style.left=left+'px';let top=(rect?rect.top:ev.clientY)-h-4;if(top<2)top=(rect?rect.bottom:ev.clientY)+4;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;tocTooltip.style.top=top+'px';}else{/* 通常: カーソル6文字左から左伸ばし・行の上端に合わせる(プルダウン風)。 */tocTooltip.style.left='auto';tocTooltip.style.right=(window.innerWidth-ev.clientX+TIP_GAP_PX)+'px';let top=(rect?rect.top:ev.clientY)+1;if(top<2)top=2;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;tocTooltip.style.top=top+'px';}}
+function hideTocTip(){if(tocTooltip)tocTooltip.style.display='none';}
+/* v0.9.712: 全tip統一。webview全体で mousemove を拾い、data-tip / native title を持つ最近接要素に
+   共通の左伸ばしtipを出す(showTocTip内で title→data-tip 遅延移行)。個別リスナ(fixedTocBody/format-tools)は廃止し1本化。 */
+document.addEventListener('mousemove',showTocTip);
+document.addEventListener('mouseleave',hideTocTip);
+
+if(toggleEditorToc)toggleEditorToc.addEventListener('click',()=>vscode.postMessage({type:'toggleEditorToc'}));
+if(tocMoveUp)tocMoveUp.addEventListener('click',()=>moveSelectedToc(-1));
+if(tocMoveDown)tocMoveDown.addEventListener('click',()=>moveSelectedToc(1));
+if(tocAdd)tocAdd.addEventListener('click',()=>vscode.postMessage({type:'duplicateTocItem',line0:selectedTocLine0}));
+// v0.9.565: delete-selected-item button. User v0.9.564_0338 request:
+// 「選択した目次項目を削除する[-]ボタンを追加して下さい」.
+if(tocDelItem)tocDelItem.addEventListener('click',()=>{
+  if(selectedTocLine0===null||selectedTocLine0===undefined){return;}
+  vscode.postMessage({type:'deleteTocItem',line0:selectedTocLine0});
+});
+// v0.9.549 Phase C-1: Hyper TOC tab bar interactions (delegated via tocTabRow because
+// inner content is re-rendered every snapshot).
+if(tocTabRow){
+  tocTabRow.addEventListener('click',ev=>{
+    const target=ev.target;
+    if(!target)return;
+    if(target.id==='toc-tab-add'){vscode.postMessage({type:'duplicateHyperTocTab'});return;}
+    if(target.id==='toc-tab-del'){
+      // Show confirm panel; the actual delete fires on yes click.
+      if(tocTabConfirm){tocTabConfirm.classList.add('on');if(tocTabConfirmMsg){const activeTab=tocTabRow.querySelector('.toc-tab.active');tocTabConfirmMsg.textContent='Delete tab "'+((activeTab?activeTab.textContent:'')||'Hyper TOC')+'"?';}}
+      return;
+    }
+    const tab=target.closest&&target.closest('.toc-tab');
+    if(tab){const idx=Number(tab.getAttribute('data-tab-idx'));if(!isNaN(idx))vscode.postMessage({type:'switchHyperTocTab',idx});}
+  });
+}
+if(tocTabConfirmYes)tocTabConfirmYes.addEventListener('click',()=>{vscode.postMessage({type:'deleteHyperTocTab'});if(tocTabConfirm)tocTabConfirm.classList.remove('on');});
+if(tocTabConfirmNo)tocTabConfirmNo.addEventListener('click',()=>{if(tocTabConfirm)tocTabConfirm.classList.remove('on');});
+if(tocOnsite)tocOnsite.addEventListener('click',()=>{tocOnsite.classList.toggle('on');vscode.postMessage({type:'toggleOnsiteToc'});});
+// v0.9.550: IME-safe Enter for the tab-name input. See history comment in mCN=0000.
+let _tabNameRenameViaEnter=false;
+if(fixedTocName){
+  fixedTocName.addEventListener('compositionstart',()=>{_tabNameComposing=true;});
+  fixedTocName.addEventListener('compositionend',()=>{setTimeout(()=>{_tabNameComposing=false;},0);});
+  fixedTocName.addEventListener('keydown',ev=>{
+    if(ev.key!=='Enter')return;
+    if(ev.isComposing||ev.keyCode===229||_tabNameComposing)return;
+    ev.preventDefault();
+    _tabNameRenameViaEnter=true;
+    vscode.postMessage({type:'renameWorkingToc',value:fixedTocName.value});
+    fixedTocName.blur();
+  });
+  fixedTocName.addEventListener('blur',()=>{
+    if(_tabNameRenameViaEnter){_tabNameRenameViaEnter=false;return;}
+    vscode.postMessage({type:'renameWorkingToc',value:fixedTocName.value});
+  });
+}
+if(colorBtn)colorBtn.addEventListener('click',ev=>{ev.preventDefault();renderColorButton();const willOpen=!colorPop.classList.contains('on');colorPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=colorBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=colorPop.offsetHeight||220;const w=colorPop.offsetWidth||38;const left=Math.min(Math.max(6,r.left),window.innerWidth-w-6);colorPop.style.left=left+'px';colorPop.style.top=Math.max(6,r.top-h-6)+'px';});});
+if(colorPop)colorPop.addEventListener('click',ev=>{const b=ev.target&&ev.target.closest?ev.target.closest('.swatch'):null;if(!b)return;draftColor=b.getAttribute('data-code')||'G';draftDirty=true;colorPop.classList.remove('on');renderColorButton();renderMembraneTargetPanel();vscode.postMessage({type:'applyColorNow',color:draftColor,mode:currentMode,value:input.value,line:lineInput.value});input.focus();});
+document.addEventListener('click',ev=>{if(colorPop&&colorBtn&&colorPop.classList.contains('on')&&!colorPop.contains(ev.target)&&ev.target!==colorBtn)colorPop.classList.remove('on');},true);
+histBack.addEventListener('click',()=>vscode.postMessage({type:'lineHistoryBack'}));
+histForward.addEventListener('click',()=>vscode.postMessage({type:'lineHistoryForward'}));
+lineBtn.addEventListener('click',()=>vscode.postMessage({type:'toggleLineMarker'}));
+refreshBtn.addEventListener('click',()=>{vscode.postMessage({type:'refreshTimestamp',mode:currentMode,value:input.value});input.focus();input.select()});
+resetBtn.addEventListener('click',()=>{draftName=currentValue||'';draftDirty=false;draftColor=currentColor||'';input.value=draftName;lineInput.value=currentLine||'';renderColorButton();vscode.postMessage({type:'resetPanel'});});
+function focusNameInput(selectText=true){
+  setTimeout(()=>{
+    if(!input)return;
+    input.focus();
+    if(selectText && typeof input.select==='function')input.select();
+  },30);
+}
+function newRenameTabTargets(){
+  const zoomStart=document.getElementById('zoom-me-start');
+  const zoomEnd=document.getElementById('zoom-me-end');
+  const zoomMode=document.getElementById('zoom-me-mode');
+  const zoomLoad=document.getElementById('zoom-me-load');
+  const zoomVisible=zoomMePanel && !zoomMePanel.classList.contains('hidden');
+  if(zoomVisible){
+    return [editModeSelect,zoomStart,zoomEnd,zoomMode,zoomLoad,histBack,histForward,lineBtn,lineInput,colorBtn,meCheck,meScopeSelect,contentsCheck,opAddToc,opToggle,opRemove,opCopy,opSelect,opDuplicate,refreshBtn,resetBtn,setBtn].filter(el=>el && !el.disabled && el.offsetParent!==null);
+  }
+  return [editModeSelect,input,histBack,histForward,lineBtn,lineInput,colorBtn,meCheck,meScopeSelect,contentsCheck,opAddToc,opToggle,opRemove,opCopy,opSelect,opDuplicate,refreshBtn,resetBtn,setBtn].filter(el=>el && !el.disabled && el.offsetParent!==null);
+}
+function cycleNewRenameFocus(ev){
+  if(ev.key!=='Tab')return;
+  const panel=document.getElementById('new-rename-panel');
+  if(!panel || !panel.contains(document.activeElement))return;
+  const targets=newRenameTabTargets();
+  if(!targets.length)return;
+  ev.preventDefault();
+  const current=document.activeElement;
+  const zoomStart=document.getElementById('zoom-me-start');
+  const zoomVisible=zoomMePanel && !zoomMePanel.classList.contains('hidden');
+  let next=null;
+  // v0.9.445: keep the proven v0.9.442 order, but close the loop:
+  // Navigate Line input -> Zoom Me start.  Shift+Tab from Zoom Me start -> Navigate Line input.
+  if(zoomVisible && !ev.shiftKey && current===lineInput && zoomStart && !zoomStart.disabled && zoomStart.offsetParent!==null){
+    next=zoomStart;
+  }else if(zoomVisible && ev.shiftKey && current===zoomStart && lineInput && !lineInput.disabled && lineInput.offsetParent!==null){
+    next=lineInput;
+  }else{
+    let idx=targets.indexOf(current);
+    if(idx<0)idx=ev.shiftKey?0:-1;
+    next=targets[(idx+(ev.shiftKey?-1:1)+targets.length)%targets.length];
+  }
+  if(!next)return;
+  next.focus();
+  if(next===input || next===lineInput || next===zoomStart){try{next.select();}catch(_){}}
+}
+document.getElementById('new-rename-panel').addEventListener('keydown',cycleNewRenameFocus,true);
+setBtn.addEventListener('click',()=>{draftName=input.value;draftDirty=false;vscode.postMessage({type:'runInlineNewRename',mode:currentMode,value:draftName,line:lineInput.value,color:draftColor||currentColor||''});});
+input.addEventListener('input',()=>{draftName=input.value;draftDirty=true;});
+input.addEventListener('focus',()=>vscode.postMessage({type:'requestMode'}));
+lineInput.addEventListener('focus',()=>vscode.postMessage({type:'requestMode'}));
+function handleMeDockHistoryHotkeys(ev){
+if((ev.metaKey||ev.ctrlKey)&&ev.key&&ev.key.toLowerCase()==='g'){
+ev.preventDefault();
+if(document.activeElement&&typeof document.activeElement.blur==='function')document.activeElement.blur();
+if(ev.shiftKey){vscode.postMessage({type:'lineHistoryBack'});}
+else{vscode.postMessage({type:'lineHistoryForward'});}
+setTimeout(()=>vscode.postMessage({type:'requestMode'}),60);
+}}
+document.addEventListener('keydown',handleMeDockHistoryHotkeys,true);
+histBack.disabled=true;histForward.disabled=true;applyMode(currentMode,currentValue,true,currentLine,markerOn,historyState,currentColor,flipMinusColor,flipPlusColor);
+input.addEventListener('keydown',ev=>{if(ev.key==='Escape'){input.value=currentValue||'';input.blur()}});
+let lineJumpTimer=0;
+function scheduleLineJump(){clearTimeout(lineJumpTimer);lineJumpTimer=setTimeout(()=>{vscode.postMessage({type:'jumpLine',line:lineInput.value})},180)}
+lineInput.addEventListener('input',()=>scheduleLineJump());
+lineInput.addEventListener('keydown',ev=>{
+  if(ev.key==='ArrowUp'||ev.key==='ArrowDown'){
+    ev.preventDefault();
+    clearTimeout(lineJumpTimer);
+    let n=parseInt(String(lineInput.value||'1').trim(),10);
+    if(!Number.isFinite(n)||Number.isNaN(n))n=1;
+    n+=ev.key==='ArrowUp'?-1:1;
+    if(n<1)n=1;
+    lineInput.value=String(n);
+    vscode.postMessage({type:'jumpLine',line:lineInput.value});
+    try{lineInput.select();}catch(_){}
+    return;
+  }
+  if(ev.key==='Enter'){ev.preventDefault();clearTimeout(lineJumpTimer);vscode.postMessage({type:'jumpLine',line:lineInput.value});return;}
+  if(ev.key==='Escape'){lineInput.value=currentLine||'';lineInput.blur();return;}
+});
+window.addEventListener('message',event=>{const m=event.data;if(m&&m.type==='opResult'){showMeDockToast(m.text);return;}if(m&&m.type==='bookmarkState'){renderBookmarkState(m.count||0,!!m.full);return;}if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);return;}if(m&&m.type==='mode')applyMode(m.mode,m.value,!!m.force,m.line,m.markerOn,m.history,m.color,m.flipMinusColor,m.flipPlusColor,m.navDepth,m.anchor);if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='zoomMeLoaded'){renderZoomMeLoaded(m.label||'');if(m.mode==='me'){zoomMembraneNameValue=m.start!==undefined?String(m.start):zoomMembraneNameValue;zoomMembraneCountValue=m.end!==undefined?String(m.end):zoomMembraneCountValue;}else{zoomLineStartValue=m.start!==undefined?String(m.start):zoomLineStartValue;zoomLineEndValue=m.end!==undefined?String(m.end):zoomLineEndValue;}if(m.mode){applyZoomMeMode(m.mode,true);}}if(m&&m.type==='focusName')focusNameInput(m.select!==false);});
+</script></body></html>`;
+}
+
+
+let onsiteTocActive = false;
+let onsiteMainUriString = '';
+let onsiteMainSelection = null;
+let onsiteMainVisibleRange = null;
+
+function captureTextEditorViewState(editor) {
+  if (!editor) return;
+  try { onsiteMainUriString = editor.document.uri.toString(); } catch (_) {}
+  try { onsiteMainSelection = editor.selection; } catch (_) { onsiteMainSelection = null; }
+  try { onsiteMainVisibleRange = editor.visibleRanges && editor.visibleRanges.length ? editor.visibleRanges[0] : null; } catch (_) { onsiteMainVisibleRange = null; }
+}
+
+async function showOnsiteMainEditorInColumn(column) {
+  let editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  try {
+    if (onsiteMainUriString) {
+      const uri = vscode.Uri.parse(onsiteMainUriString);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      editor = await vscode.window.showTextDocument(doc, { viewColumn: column, preserveFocus: false, preview: false });
+    } else if (editor) {
+      editor = await vscode.window.showTextDocument(editor.document, { viewColumn: column, preserveFocus: false, preview: false });
+    }
+    if (editor) {
+      if (onsiteMainSelection) editor.selection = onsiteMainSelection;
+      if (onsiteMainVisibleRange) editor.revealRange(onsiteMainVisibleRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+      setMeDockTargetEditor(editor);
+    }
+  } catch (_) {}
+  return editor;
+}
+
+async function revealMeDockAfterOnsiteSplit() {
+  // On-site changes the editor grid; depending on the user's layout VSCode can hide the webview.
+  // Re-show Me Dock beside the active/bottom editor so the final layout becomes:
+  // top = raw TOC, bottom-left = document, bottom-right = Me Dock / Hyper TOC.
+  try { await new Promise(resolve => setTimeout(resolve, 80)); } catch (_) {}
+  const target = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (target) setMeDockTargetEditor(target);
+  if (!meDockPanel) {
+    toggleMeDock();
+    return;
+  }
+  try { meDockPanel.reveal(vscode.ViewColumn.Beside, false); } catch (_) {}
+  try { updateMeDockMode(); } catch (_) {}
+  try { postFixedWorkingTocSnapshot(); } catch (_) {}
+  try { updateMeDockCurrentLineMarker(); } catch (_) {}
+}
+
+async function enableOnsiteTocView() {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const originalSelection = editor.selection;
+  const originalVisible = editor.visibleRanges && editor.visibleRanges.length ? editor.visibleRanges[0] : null;
+  captureTextEditorViewState(editor);
+  const region = findWorkingTocRegion(doc);
+  const tocLine = region ? Math.max(0, region.markerLine) : 0;
+
+  try {
+    // Prefer VSCode's grid-layout command because it can express the intended 20/80 two-row shape.
+    await vscode.commands.executeCommand('vscode.setEditorLayout', {
+      orientation: 1,
+      groups: [{ size: 0.2 }, { size: 0.8 }]
+    });
+  } catch (_) {
+    try { await vscode.commands.executeCommand('workbench.action.splitEditorDown'); } catch (_) {}
+  }
+
+  let topEditor = null;
+  let bottomEditor = null;
+  try {
+    topEditor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: false, preview: false });
+    const p = new vscode.Position(tocLine, 0);
+    topEditor.selection = new vscode.Selection(p, p);
+    topEditor.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.AtTop);
+  } catch (_) {}
+
+  try {
+    bottomEditor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Two, preserveFocus: false, preview: false });
+    bottomEditor.selection = originalSelection;
+    if (originalVisible) bottomEditor.revealRange(originalVisible, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  } catch (_) {}
+
+  if (bottomEditor) setMeDockTargetEditor(bottomEditor);
+  onsiteTocActive = true;
+  await revealMeDockAfterOnsiteSplit();
+  vscode.window.setStatusBarMessage('On-site TOC: ON + Me Dock', 1200);
+}
+
+async function disableOnsiteTocView() {
+  // On-site Restore:
+  // Do not use joinAllGroups here. It merges the upper TOC editor, lower main editor,
+  // and Me Dock into one tab strip, which leaves a stray Me Dock tab on the far left.
+  // Instead, rebuild the intended normal layout explicitly:
+  //   left  = main text editor
+  //   right = Me Dock / Hyper TOC
+  try {
+    await vscode.commands.executeCommand('vscode.setEditorLayout', {
+      orientation: 0,
+      groups: [{ size: 0.62 }, { size: 0.38 }]
+    });
+  } catch (_) {
+    try { await vscode.commands.executeCommand('workbench.action.joinAllGroups'); } catch (_) {}
+  }
+
+  const mainEditor = await showOnsiteMainEditorInColumn(vscode.ViewColumn.One);
+  if (mainEditor) setMeDockTargetEditor(mainEditor);
+
+  try { await new Promise(resolve => setTimeout(resolve, 80)); } catch (_) {}
+
+  if (!meDockPanel) {
+    // Create it from the left/main editor so it opens beside the document.
+    if (mainEditor) setMeDockTargetEditor(mainEditor);
+    toggleMeDock();
+  } else {
+    try { meDockPanel.reveal(vscode.ViewColumn.Two, false); } catch (_) {
+      try { meDockPanel.reveal(vscode.ViewColumn.Beside, false); } catch (_) {}
+    }
+    try { updateMeDockMode(); } catch (_) {}
+    try { postFixedWorkingTocSnapshot(); } catch (_) {}
+    try { updateMeDockCurrentLineMarker(); } catch (_) {}
+  }
+
+  // Return focus to the document after the Dock is placed, so the surviving editor is clearly the main one.
+  try {
+    if (mainEditor) await vscode.window.showTextDocument(mainEditor.document, { viewColumn: vscode.ViewColumn.One, preserveFocus: false, preview: false });
+  } catch (_) {}
+
+  onsiteTocActive = false;
+  vscode.window.setStatusBarMessage('On-site TOC: OFF + Restore', 1200);
+}
+
+async function toggleOnsiteTocView() {
+  if (onsiteTocActive) await disableOnsiteTocView();
+  else await enableOnsiteTocView();
+}
+
+
+function disposeMeDockPanelForAutoShow() {
+  if (!meDockPanel) return;
+  try {
+    meDockCurrentLineMarkerActive = false;
+    clearMeDockCurrentLineMarker();
+    const panel = meDockPanel;
+    meDockPanel = undefined;
+    panel.dispose();
+  } catch (_) {
+    meDockPanel = undefined;
+  }
+}
+
+function autoShowMeDockForEditor(editor) {
+  if (!editor || !editor.document || !editor.document.uri) return;
+  if (isZoomMeLensDocument(editor)) return;
+  const uri = editor.document.uri.toString();
+  if (!uri || editor.document.uri.scheme === 'output') return;
+
+  // Same document: keep the existing Dock and only refresh its target/state.
+  if (meDockPanel && uri === meDockAutoLastUri) {
+    setMeDockTargetEditor(editor);
+    updateMeDockMode();
+    return;
+  }
+
+  meDockAutoLastUri = uri;
+  setMeDockTargetEditor(editor);
+
+  // Different document: discard the stale Dock first, then create a fresh one.
+  disposeMeDockPanelForAutoShow();
+
+  if (meDockAutoTimer) clearTimeout(meDockAutoTimer);
+  meDockAutoTimer = setTimeout(() => {
+    meDockAutoTimer = null;
+    if (!editor || !editor.document) return;
+    setMeDockTargetEditor(editor);
+    if (!meDockPanel) toggleMeDock(editor);
+  }, 80);
+}
+
+
+// {* ▼mCN=0868_ZOOM_ME_LOAD // v0.9.434 Me Lens line range loader (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+let zoomMeMode = 'line';
+let zoomMeLastStartValue = '1';
+let zoomMeLastEndValue = 'EOF';
+let zoomMeLastMeName = '';
+let zoomMeLastMeCount = '1';
+let zoomMeLastLoadedLabel = '';
+let zoomMeSourceEditor = null;
+const zoomMeLensDocumentUris = new Set();
+
+function isZoomMeLensDocument(docOrEditor) {
+  const doc = docOrEditor && docOrEditor.document ? docOrEditor.document : docOrEditor;
+  return !!(doc && doc.uri && zoomMeLensDocumentUris.has(doc.uri.toString()));
+}
+
+function getZoomMeSourceEditor() {
+  if (zoomMeSourceEditor && zoomMeSourceEditor.document && !isZoomMeLensDocument(zoomMeSourceEditor)) return zoomMeSourceEditor;
+  const target = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+  if (target && target.document && !isZoomMeLensDocument(target)) {
+    zoomMeSourceEditor = target;
+    return target;
+  }
+  const active = vscode.window.activeTextEditor;
+  if (active && active.document && !isZoomMeLensDocument(active)) {
+    zoomMeSourceEditor = active;
+    return active;
+  }
+  return null;
+}
+
+function parseZoomMeLineValue(value, lineCount, fallback, isEnd) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return fallback;
+  if (/^(∞|inf|infinity|eof|end|last)$/i.test(raw)) return lineCount;
+  const n = parseInt(raw.replace(/[,\s]/g, ''), 10);
+  if (!Number.isFinite(n)) return fallback;
+  // UI uses 0 as the friendly "start of file" value.
+  if (n <= 0) return isEnd ? lineCount : 1;
+  return Math.max(1, Math.min(lineCount, n));
+}
+
+
+function parseZoomMeCount(value, fallback) {
+  const raw = String(value == null ? '' : value).trim();
+  const n = parseInt(raw.replace(/[,\s]/g, ''), 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.max(1, Math.min(999, n));
+}
+
+function parseZoomMeAdditionalCount(value, fallback) {
+  const raw = String(value == null ? '' : value).trim();
+  const n = parseInt(raw.replace(/[,\s]/g, ''), 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.max(0, Math.min(999, n));
+}
+
+function collectOpenMembraneEntries(document) {
+  const entries = [];
+  for (let i = 0; i < document.lineCount; i++) {
+    const open = parseOpenLine(document.lineAt(i).text);
+    if (open && !isIndexMembrane(open.id)) entries.push({ id: open.id, start: i, end: i, depth: 0 });
+  }
+  const pairs = collectPairs(document, { excludeIndex: true });
+  const byStart = new Map(pairs.map(p => [p.start, p]));
+  return entries.map(e => {
+    const p = byStart.get(e.start);
+    return p ? { id: p.id, start: p.start, end: p.end, depth: p.depth || 0 } : e;
+  });
+}
+
+function findZoomMeMembraneStart(document, name) {
+  const key = cleanMembraneName(name);
+  if (!key) return null;
+  const entries = collectOpenMembraneEntries(document);
+  return entries.find(e => e.id === key) || entries.find(e => e.id.includes(key)) || null;
+}
+
+function collectZoomMeRootMembranes(document) {
+  return collectOpenMembraneEntries(document)
+    .filter(e => (e.depth || 0) === 0)
+    .sort((a, b) => a.start - b.start || (a.end || a.start) - (b.end || b.start));
+}
+
+function findZoomMeContainingRoot(document, entry) {
+  if (!entry) return null;
+  const roots = collectZoomMeRootMembranes(document);
+  let best = null;
+  for (const root of roots) {
+    const rootEnd = typeof root.end === 'number' ? root.end : root.start;
+    if (root.start <= entry.start && entry.start <= rootEnd) best = root;
+  }
+  if (best) return { root: best, roots };
+  const exact = roots.find(r => r.start === entry.start);
+  if (exact) return { root: exact, roots };
+  const prev = roots.filter(r => r.start <= entry.start).pop();
+  return { root: prev || entry, roots };
+}
+
+async function loadZoomMeMembraneRange(nameValue, countValue) {
+  const sourceEditor = getZoomMeSourceEditor();
+  if (!sourceEditor || !sourceEditor.document) {
+    vscode.window.showWarningMessage('Zoom Me!: no source editor is active.');
+    return;
+  }
+  const doc = sourceEditor.document;
+  const additionalCount = parseZoomMeAdditionalCount(countValue, 1);
+  let name = cleanMembraneName(nameValue);
+  if (!name) {
+    const info = membraneLineInfo(doc, sourceEditor.selection && sourceEditor.selection.active ? sourceEditor.selection.active.line : -1);
+    if (info && info.id) name = info.id;
+  }
+  const startEntry = findZoomMeMembraneStart(doc, name);
+  if (!startEntry) {
+    vscode.window.showWarningMessage('Zoom Me!: membrane not found: ' + (name || '(empty)'));
+    return;
+  }
+  const rootInfo = findZoomMeContainingRoot(doc, startEntry);
+  const rootEntry = rootInfo && rootInfo.root ? rootInfo.root : startEntry;
+  const roots = rootInfo && rootInfo.roots && rootInfo.roots.length ? rootInfo.roots : [rootEntry];
+  const rootIndex = Math.max(0, roots.findIndex(e => e.start === rootEntry.start));
+  const totalRootCount = 1 + additionalCount;
+  let selected = roots.slice(rootIndex, rootIndex + totalRootCount);
+  if (!selected.length) selected = [rootEntry];
+  const startLine1 = selected[0].start + 1;
+  const endLine1 = Math.max(...selected.map(e => (typeof e.end === 'number' ? e.end : e.start))) + 1;
+  zoomMeMode = 'me';
+  zoomMeLastMeName = name;
+  zoomMeLastMeCount = String(countValue == null ? additionalCount : countValue).trim() || String(additionalCount);
+  await loadZoomMeRangeCore(sourceEditor, startLine1, endLine1, { mode: 'me', loadedPrefix: `TOC+ Me ${name} +${additionalCount}`, startValue: zoomMeLastMeName, endValue: zoomMeLastMeCount });
+}
+
+async function loadZoomMeRangeCore(sourceEditor, startLine1, endLine1, meta = {}) {
+  const doc = sourceEditor.document;
+  const lineCount = doc.lineCount;
+  if (endLine1 < startLine1) {
+    const t = startLine1;
+    startLine1 = endLine1;
+    endLine1 = t;
+  }
+  startLine1 = Math.max(1, Math.min(lineCount, startLine1));
+  endLine1 = Math.max(1, Math.min(lineCount, endLine1));
+  const start0 = Math.max(0, startLine1 - 1);
+  const end0 = Math.min(lineCount - 1, endLine1 - 1);
+
+  const blocks = [];
+  const tocRegion = findWorkingTocRegion(doc);
+  let tocIncluded = false;
+  if (tocRegion && tocRegion.markerLine >= 0) {
+    const tocStart0 = Math.max(0, tocRegion.markerLine);
+    const tocEnd0 = Math.min(lineCount - 1, tocRegion.endLine);
+    const rangeAlreadyContainsToc = !(tocEnd0 < start0 || tocStart0 > end0);
+    tocIncluded = true;
+    if (!rangeAlreadyContainsToc) {
+      blocks.push({ kind: 'toc', start0: tocStart0, end0: tocEnd0 });
+      blocks.push({ kind: 'sep' });
+    }
+  }
+  blocks.push({ kind: 'range', start0, end0 });
+
+  const lines = [];
+  for (const block of blocks) {
+    if (block.kind === 'sep') { lines.push(''); continue; }
+    for (let i = block.start0; i <= block.end0; i++) lines.push(doc.lineAt(i).text);
+  }
+  const content = lines.join('\n');
+  const language = doc.languageId && doc.languageId !== 'plaintext' ? doc.languageId : undefined;
+  const lensDoc = await vscode.workspace.openTextDocument(language ? { content, language } : { content });
+  zoomMeLensDocumentUris.add(lensDoc.uri.toString());
+  const col = sourceEditor.viewColumn || vscode.ViewColumn.One;
+  const shown = await vscode.window.showTextDocument(lensDoc, { viewColumn: col, preview: false, preserveFocus: false });
+  if (shown) {
+    const pos = new vscode.Position(0, 0);
+    shown.selection = new vscode.Selection(pos, pos);
+    shown.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.AtTop);
+  }
+  meDockTargetEditor = sourceEditor;
+  zoomMeSourceEditor = sourceEditor;
+
+  const label = meta.loadedPrefix || `${tocIncluded ? 'TOC+ ' : ''}Line ${startLine1}〜${endLine1}`;
+  zoomMeLastLoadedLabel = label.startsWith('TOC+') ? label : `${tocIncluded ? 'TOC+ ' : ''}${label}`;
+  if (meDockPanel) {
+    meDockPanel.webview.postMessage({ type: 'zoomMeLoaded', mode: meta.mode || zoomMeMode || 'line', label: zoomMeLastLoadedLabel, start: meta.startValue, end: meta.endValue });
+  }
+  vscode.window.showInformationMessage(`Zoom Me!: loaded ${zoomMeLastLoadedLabel} into Me Lens Editor.`);
+}
+
+async function loadZoomMeLineRange(startValue, endValue) {
+  const sourceEditor = getZoomMeSourceEditor();
+  if (!sourceEditor || !sourceEditor.document) {
+    vscode.window.showWarningMessage('Zoom Me!: no source editor is active.');
+    return;
+  }
+  const doc = sourceEditor.document;
+  const lineCount = doc.lineCount;
+  if (!lineCount) return;
+  let startLine1 = parseZoomMeLineValue(startValue, lineCount, 1, false);
+  let endLine1 = parseZoomMeLineValue(endValue, lineCount, lineCount, true);
+  zoomMeMode = 'line';
+  zoomMeLastStartValue = String(startValue == null ? startLine1 : startValue).trim() || String(startLine1);
+  zoomMeLastEndValue = String(endValue == null ? endLine1 : endValue).trim() || String(endLine1);
+  await loadZoomMeRangeCore(sourceEditor, startLine1, endLine1, { mode: 'line', startValue: zoomMeLastStartValue, endValue: zoomMeLastEndValue });
+}
+
+// {* ▲mCN=0868_ZOOM_ME_LOAD // end [cGJF=h] *}
+
+function toggleMeDock(editorOverride) {
+  setMeDockTargetEditor(editorOverride || vscode.window.activeTextEditor);
+  if (meDockPanel) {
+    meDockCurrentLineMarkerActive = false;
+    clearMeDockCurrentLineMarker();
+    meDockPanel.dispose();
+    meDockCurrentLineMarkerActive = false;
+    clearMeDockCurrentLineMarker();
+    meDockPanel = undefined;
+    return;
+  }
+
+  fixedWorkingTocEnabled = true;
+
+  meDockPanel = vscode.window.createWebviewPanel(
+    'meDock',
+    'Me Dock',
+    vscode.ViewColumn.Beside,
+    { enableScripts: true, retainContextWhenHidden: true }
+  );
+
+  meDockPanel.webview.html = meDockHtml();
+  setTimeout(() => postFixedWorkingTocSnapshot(), 80);
+  meDockCurrentLineMarkerActive = true;
+  updateMeDockCurrentLineMarker();
+  setTimeout(() => { updateMeDockMode(); updateMeDockCurrentLineMarker(); }, 80);
+
+  meDockPanel.webview.onDidReceiveMessage(async (message) => {
+    if (message && message.type === 'close' && meDockPanel) {
+      meDockPanel.dispose();
+      meDockPanel = undefined;
+      return;
+    }
+    if (message && message.type === 'toggleStandards') {
+      await setNativeStandardsDisclosureControls(!!message.enabled);
+      return;
+    }
+    if (message && message.type === 'lineHistoryBack') {
+      goMeDockLineHistory(-1);
+      return;
+    }
+    if (message && message.type === 'toggleOnsiteToc') {
+      await toggleOnsiteTocView();
+      return;
+    }
+    if (message && message.type === 'applyColorNow') {
+      const editorForColor = getMeDockTargetEditor();
+      const stateForColor = meDockModeForEditor(editorForColor);
+      if (stateForColor.mode === 'rename') {
+        await renameMeWithName(message.value || stateForColor.value, message.color);
+        updateMeDockMode();
+      }
+      return;
+    }
+    if (message && message.type === 'shedMe') {
+      // v0.9.510: Shed Me — remove the membrane shell (open + close lines)
+      // while keeping the content between them intact. The metamorphic
+      // counterpart to deletion: 脱皮. Cursor must be on or inside a
+      // membrane (currentMembranePairForRename finds the enclosing pair).
+      await shedCurrentMembrane(getMeDockTargetEditor());
+      updateMeDockMode();
+      return;
+    }
+    // v0.9.664: Me Dock の Copy/Select/Duplicate ボタン。対象は getMeDockTargetEditor()
+    // (Me Dock がフォーカスを持つため activeTextEditor ではない)。
+    if (message && message.type === 'copyMe') {
+      await copyMe(getMeDockTargetEditor());
+      return;
+    }
+    if (message && message.type === 'copyMyContents') {
+      await copyMyContents(getMeDockTargetEditor());
+      return;
+    }
+    if (message && message.type === 'selectMyContents') {
+      await selectMyContents(getMeDockTargetEditor());
+      return;
+    }
+    if (message && message.type === 'duplicateMe') {
+      await duplicateMe(getMeDockTargetEditor());
+      updateMeDockMode();
+      return;
+    }
+    // v0.9.707: Me Dock の書式ボタン(== ハイライト / ~~ 取消線 / ## 見出し)。選択を記法で包んで挿入。
+    if (message && message.type === 'insertFormat') {
+      await insertFormatTemplate(message.kind, getMeDockTargetEditor() || vscode.window.activeTextEditor);
+      return;
+    }
+    // v0.9.715: 🔖 ブックマーク。cycle=巡回ジャンプ / insert=カーソル行に追加 / remove=カーソル行を削除。
+    if (message && message.type === 'bookmarkCycle') { await bookmarkCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
+    if (message && message.type === 'bookmarkInsert') { await bookmarkInsert(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
+    if (message && message.type === 'bookmarkRemove') { await bookmarkRemove(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
+    if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
+    if (message && message.type === 'addToWorkingToc') {
+      await addCurrentMembraneToWorkingToc();
+      updateMeDockMode();
+      if (meDockPanel) {
+        setTimeout(() => meDockPanel && meDockPanel.webview.postMessage({ type: 'focusName', select: true }), 70);
+      }
+      return;
+    }
+    if (message && message.type === 'toggleMeAll') {
+      await toggleMeAllMembranes();
+      return;
+    }
+    if (message && message.type === 'toggleMeOne') {
+      await toggleMeDockCurrentMembrane(message.line);
+      return;
+    }
+    if (message && message.type === 'lineHistoryForward') {
+      goMeDockLineHistory(1);
+      return;
+    }
+    if (message && message.type === 'lineHistoryJumpIndex') {
+      goMeDockLineHistoryTo(message.index);
+      return;
+    }
+    if (message && message.type === 'lineHistoryClear') {
+      clearMeDockLineHistory();
+      return;
+    }
+    if (message && message.type === 'timeMachineLifeSwitch') {
+      setMeDockLineHistoryLife(message.life);
+      return;
+    }
+    if (message && message.type === 'lineHistoryRestorePre') {
+      restorePreMeDockLineHistory();
+      return;
+    }
+    if (message && message.type === 'jumpToTocItem') {
+      jumpToWorkingTocItem(message.key, message.citeN);
+      return;
+    }
+    // v0.9.583 Phase 2: sticky Bi-direction Jump bar — 🟢 and 🔴 buttons in
+    // the H-TOC header dispatch to the same Me Dock W-click handlers a body
+    // 🟢/🔴 would. Lets writer-class users (who never look at the source)
+    // perform both kinds of bidirectional jump from the H-TOC alone.
+    if (message && message.type === 'jumpBiGreen') {
+      const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      if (ed) await navCenterMeDoubleClick(ed);
+      return;
+    }
+    if (message && message.type === 'jumpBiRed') {
+      const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      if (ed) await navCenterBidiDoubleClick(ed);
+      return;
+    }
+    if (message && message.type === 'clearAllJumps') {
+      const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      if (ed) await clearAllJumpFlags(ed);
+      return;
+    }
+    if (message && message.type === 'toggleTocCheck') {
+      await toggleWorkingTocItemCheck(message.key, message.checked);
+      return;
+    }
+    if (message && message.type === 'updateTocItem') {
+      await updateWorkingTocItemAtLine(message.line0, message.value);
+      return;
+    }
+    if (message && message.type === 'deleteTocItem') {
+      await deleteWorkingTocItemAtLine(message.line0);
+      return;
+    }
+    if (message && message.type === 'moveTocItem') {
+      await moveWorkingTocItemAtLine(message.line0, message.delta);
+      return;
+    }
+    if (message && message.type === 'addEmptyTocItem') {
+      await addEmptyWorkingTocItem();
+      return;
+    }
+    if (message && message.type === 'duplicateTocItem') {
+      await duplicateWorkingTocItemAtLine(message.line0);
+      return;
+    }
+    if (message && message.type === 'toggleEditorToc') {
+      toggleFixedTocEditorVisibility();
+      return;
+    }
+    // v0.9.549 Phase C-1: Hyper TOC tab operations.
+    if (message && message.type === 'switchHyperTocTab') {
+      await switchHyperTocTab(Number(message.idx));
+      return;
+    }
+    if (message && message.type === 'duplicateHyperTocTab') {
+      await duplicateHyperTocTab();
+      return;
+    }
+    if (message && message.type === 'deleteHyperTocTab') {
+      await deleteHyperTocTab();
+      return;
+    }
+    if (message && message.type === 'renameWorkingToc') {
+      await renameWorkingTocMembrane(message.value);
+      return;
+    }
+    if (message && message.type === 'toggleLineMarker') {
+      meDockCurrentLineMarkerActive = !meDockCurrentLineMarkerActive;
+      if (meDockCurrentLineMarkerActive) updateMeDockCurrentLineMarker();
+      else clearMeDockCurrentLineMarker();
+      updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'navCenterTocOrTop') {
+      jumpMeDockTocOrTop();
+      return;
+    }
+    if (message && message.type === 'navCenterEof') {
+      jumpMeDockEndOfFile();
+      return;
+    }
+    if (message && message.type === 'navCenterCreateToc') {
+      await addEmptyWorkingTocItem();
+      updateMeDockMode();
+      postFixedWorkingTocSnapshot();
+      return;
+    }
+    if (message && (message.type === 'navCenterBackToMe' || message.type === 'navCenterMeSingle')) {
+      await navCenterMeSingleClick(getMeDockTargetEditor());
+      updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'navCenterMeDouble') {
+      await navCenterMeDoubleClick(getMeDockTargetEditor());
+      updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'pinCycle') {
+      // v0.9.680 (対策2): H-TOC "現在の膜" Pin click → cycle open → close → cursor.
+      await cycleCurrentMembrane(getMeDockTargetEditor());
+      return;
+    }
+    if (message && message.type === 'pinJumpMode') {
+      // v0.9.684 (改善1): "From Out To 🟢" checkbox → toggle the Current Me jump target
+      // (false=current membrane / true=selected 🟢 membrane).
+      pinJumpToSelected = !!message.toSelected;
+      postFixedWorkingTocSnapshot();
+      return;
+    }
+    if (message && message.type === 'navCenterBidiDouble') {
+      await navCenterBidiDoubleClick(getMeDockTargetEditor());
+      updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'navCenterBidi') {
+      await navCenterBidiClick(getMeDockTargetEditor());
+      updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'jumpLine') {
+      jumpMeDockTargetLine(message.line);
+      return;
+    }
+    if (message && message.type === 'navMeWorldChanged') {
+      setMeDockLineHistoryWorld(message.mode, message.depth);
+      return;
+    }
+    if (message && (message.type === 'navMeFlipMinus' || message.type === 'navMeFlipPlus')) {
+      setMeDockLineHistoryWorld(message.mode, message.depth);
+      jumpMeDockWarpSubmarineCruise(message.type === 'navMeFlipMinus' ? 'minus' : 'plus', message.mode, message.depth);
+      return;
+    }
+    if (message && message.type === 'zoomMeLoad') {
+      if (message.mode === 'me') await loadZoomMeMembraneRange(message.start, message.end);
+      else await loadZoomMeLineRange(message.start, message.end);
+      return;
+    }
+    if (message && message.type === 'resetPanel') {
+      updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'requestMode') {
+      updateMeDockMode();
+      updateMeDockCurrentLineMarker();
+      return;
+    }
+    if (message && (message.type === 'refreshNewName' || message.type === 'refreshTimestamp')) {
+      const editor = getMeDockTargetEditor();
+      const state = meDockModeForEditor(editor);
+      if (!meDockPanel) return;
+      if (message.type === 'refreshTimestamp' && message.mode === 'rename') {
+        meDockPanel.webview.postMessage({ type: 'mode', mode: 'rename', label: 'Rename Me…', value: refreshTrailingTimestamp(message.value || state.value), line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', force: true });
+      } else {
+        meDockPanel.webview.postMessage({ type: 'mode', mode: 'new', label: 'New Me…', value: getDefaultMembraneName(), line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', force: true });
+      }
+      return;
+    }
+    if (message && message.type === 'runInlineNewRename') {
+      const editorBefore = getMeDockTargetEditor();
+      const sameLine = message.line ? meDockLineInputEqualsCurrent(message.line) : true;
+      if (message.line && !sameLine) jumpMeDockTargetLine(message.line, false);
+
+      const editorForRun = getMeDockTargetEditor();
+      const targetLineBeforeRun = editorForRun && editorForRun.selection ? editorForRun.selection.active.line : undefined;
+
+      const stateAfterJump = meDockModeForEditor(editorForRun);
+      const modeToRun = stateAfterJump.mode || message.mode;
+      if (modeToRun === 'rename') {
+        await renameMeWithName(message.value, message.color);
+      } else {
+        await addMembraneWithName(message.value, message.color);
+      }
+
+      // v0.9.391: Create inserts a blank at the original line and the opener at current+1.
+      // Do not restore the pre-create line; update the real editor cursor and Webview Line value together.
+      const editorAfter = getMeDockTargetEditor() || editorBefore;
+      if (editorAfter && modeToRun !== 'rename' && typeof targetLineBeforeRun === 'number') {
+        const targetLine = Math.min(targetLineBeforeRun + 1, Math.max(0, editorAfter.document.lineCount - 1));
+        const pos = new vscode.Position(targetLine, 0);
+        editorAfter.selection = new vscode.Selection(pos, pos);
+        editorAfter.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(targetLine + 1) });
+      } else if (editorAfter && modeToRun === 'rename' && typeof targetLineBeforeRun === 'number' && targetLineBeforeRun >= 0 && targetLineBeforeRun < editorAfter.document.lineCount) {
+        const pos = new vscode.Position(targetLineBeforeRun, 0);
+        editorAfter.selection = new vscode.Selection(pos, pos);
+        editorAfter.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+      }
+
+      updateMeDockMode();
+      if (meDockPanel) {
+        setTimeout(() => meDockPanel && meDockPanel.webview.postMessage({ type: 'focusName', select: true }), 70);
+      }
+      return;
+    }
+    if (message && message.type === 'newOrRenameMe') {
+      await newOrRenameMe();
+      return;
+    }
+    if (message && message.type === 'newMe') {
+      await addMembrane();
+      return;
+    }
+    if (message && message.type === 'renameMe') {
+      await renameMe();
+      return;
+    }
+  });
+
+  meDockPanel.onDidDispose(() => {
+    meDockPanel = undefined;
+    // v0.9.376: manual close should not permanently block auto-show for this URI.
+    meDockAutoLastUri = '';
+  });
+}
+// {* ▲mCN=0870_ME_DOCK // end [cGJF=h] *}
+
+// {* ▼mCN=0900_PROVIDER_ACTIVATE // folding provider / activate / deactivate (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+class MembraneFoldingProvider {
+  provideFoldingRanges(document) {
+    const cfg = vscode.workspace.getConfiguration('laiMembrane');
+    if (!cfg.get('enabled', true)) return [];
+    return collectPairs(document, { excludeIndex: false })
+      .filter(p => p.end > p.start)
+      .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region));
+  }
+}
+function membraneArrowHoverMessage(editor, position) {
+  if (!editor || !position) return null;
+  const info = membraneLineInfo(editor.document, position.line);
+  if (!info) return null;
+  // v0.9.538: alias-mode hover restriction removed — alias is now plain source text
+  // sitting at real columns past the hide range, so hover positions on alias never
+  // collide with idStart and never trigger the Toggle Me tip.
+  if (position.character === info.idStart || position.character === Math.max(0, info.idStart - 1)) {
+    // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
+    // before:contentText 全域がこの位置にマップされるため、ラベル全体に
+    // "Toggle Me!" ホーバーが出てしまう。カーソルがその行にいるとき
+    // （＝編集モード＝▼のみ表示）のみ Toggle Me! を表示する。
+    const isMd = isMarkdownDocument(editor.document);
+    if (isMd) {
+      const lineText = editor.document.lineAt(position.line).text || '';
+      const badge = parseMstatBadgeFromText(lineText);
+      const hasActiveAlias = badge && typeof badge.alias === 'string' && badge.alias.length > 0 && badge.nameDisplay !== false;
+      const hasDagger = hasDaggerAnnotation(lineText);
+      if (hasActiveAlias || hasDagger) {
+        const cursorLine = editor.selection ? editor.selection.active.line : -1;
+        if (cursorLine !== position.line) return null;
+      }
+    }
+    return 'Toggle Me!';
+  }
+  return null;
+}
+
+
+async function jumpToPairedMembraneFromCursor() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return;
+  const fromLine = editor.selection.active.line;
+  const text = editor.document.lineAt(fromLine).text || "";
+  const parsed = parseOpenLine(text) || parseCloseLine(text);
+  if (!parsed || !parsed.id) {
+    vscode.window.showInformationMessage('No membrane name on this line.');
+    return;
+  }
+
+  // Select full membrane name on the current side first.
+  selectMembraneNameOnLine(editor, fromLine);
+
+  const id = parsed.id;
+  const isOpen = !!parseOpenLine(text);
+  let targetLine = -1;
+
+  if (isOpen) {
+    for (let i = fromLine + 1; i < editor.document.lineCount; i++) {
+      const p = parseCloseLine(editor.document.lineAt(i).text || "");
+      if (p && p.id === id) { targetLine = i; break; }
+    }
+  } else {
+    for (let i = fromLine - 1; i >= 0; i--) {
+      const p = parseOpenLine(editor.document.lineAt(i).text || "");
+      if (p && p.id === id) { targetLine = i; break; }
+    }
+  }
+
+  if (targetLine < 0) {
+    vscode.window.showWarningMessage('Paired membrane not found: ' + id);
+    return;
+  }
+
+  const targetRange = membraneNameRangeOnLine(editor, targetLine);
+  if (!targetRange) return;
+  editor.selection = new vscode.Selection(targetRange.start, targetRange.end);
+  editor.revealRange(targetRange, vscode.TextEditorRevealType.InCenter);
+}
+
+function activate(context) {
+  extensionContext = context;
+  // v0.9.678 (対策1): window-bottom status bar item showing the cursor's current membrane.
+  membraneStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  membraneStatusBarItem.name = 'MeOS Current Membrane';
+  context.subscriptions.push(membraneStatusBarItem);
+  setTimeout(() => { try { updateMembraneStatusBar(vscode.window.activeTextEditor); } catch (_) {} }, 300);
+  // v0.9.562: create the MeOS Debug output channel EAGERLY at activation so it's
+  // visible in the View > Output dropdown immediately, before any function-level
+  // log call. Previous lazy creation left the channel invisible until the first
+  // meosDbg() invocation, which never happened if the diagnostic code path itself
+  // wasn't reached.
+  try {
+    if (!meosDebugChannel) meosDebugChannel = vscode.window.createOutputChannel('MeOS Debug');
+    meosDebugChannel.appendLine(`[${new Date().toLocaleTimeString('ja-JP')}] MeOS Debug channel ready (v${VERSION})`);
+  } catch (_) {}
+
+  // v0.9.570: rebuild activeRedJump from source-resident sRJF/tRJF markers right
+  // after activation. Without this restore, body 🔴 buttons left over from a
+  // previous session show their tooltip but don't respond to clicks (the click
+  // handler checks activeRedJump which is null until something restores it).
+  // User v0.9.569_0513 bug 1: 「拡張機能を無効化し、そして、有効化すると、本文中の
+  // 🔴ボタンは表示し、tipも表示する。しかし、このボタンが動作しない」.
+  setTimeout(() => {
+    const ed = vscode.window.activeTextEditor;
+    if (ed) {
+      try { restoreActiveRedJumpFromJumpFlags(ed); } catch (_) {}
+    }
+  }, 400);
+
+  // v0.9.719: 🔖 ホバーのコマンドリンク用。次へ巡回 / 指定行のしおり削除。
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemoveAt', (line) => bookmarkRemove(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkClearAll', () => bookmarkClearAll(vscode.window.activeTextEditor || getMeDockTargetEditor())));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.lineHistoryForward', async () => {
+    const ok = goMeDockLineHistory(1);
+    if (!ok) vscode.window.setStatusBarMessage('Me Dock: No forward Line history', 1200);
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.lineHistoryBack', async () => {
+    const ok = goMeDockLineHistory(-1);
+    if (!ok) vscode.window.setStatusBarMessage('Me Dock: No back Line history', 1200);
+  }));
+makeDecorations();
+  refresh();
+  setTimeout(() => restoreMstatsForEditor(vscode.window.activeTextEditor), 250);
+  setTimeout(() => autoShowMeDockForEditor(vscode.window.activeTextEditor), 320);
+  const foldingSelector = [
+    { scheme: 'file', language: 'markdown' },
+    { scheme: 'file', language: 'plaintext' },
+    { scheme: 'file', language: 'typescript' },
+    { scheme: 'file', language: 'javascript' },
+    { scheme: 'untitled' },
+    { scheme: 'file' }
+  ];
+  disposables = [
+    vscode.languages.registerFoldingRangeProvider(foldingSelector, new MembraneFoldingProvider()),
+    vscode.languages.registerHoverProvider(foldingSelector, {
+      provideHover(document, position) {
+        const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+        // v0.9.486: try RED first. On an opening membrane both `[oGJF=v]🟢`
+        // and `[tRJF=v]🔴` live on the same line and visually sit side-by-
+        // side (the 8-char `[tRJF=v]` between them collapses to 0 width
+        // via font-size:0). Monaco can map mouse-on-visible-🔴 to a col
+        // that's ambiguous between the two ranges; red getting first dibs
+        // (combined with green's strict end-exclusion in v0.9.486) keeps
+        // the tooltip aligned with the visible glyph the user is hovering.
+        // v0.9.353: 🔴 and 🟢 have separated hitboxes; no priority stealing.
+        const redMsg = redJumpHoverMessage(editor, position);
+        if (redMsg) return new vscode.Hover(redMsg);
+        const greenMsg = activeGreenHoverMessage(editor, position);
+        if (greenMsg) return new vscode.Hover(greenMsg);
+        const mstatMsg = mstatBadgeIconHoverMessage(document, position);
+        if (mstatMsg) return new vscode.Hover(mstatMsg);
+        const arrowMsg = membraneArrowHoverMessage(editor, position);
+        if (arrowMsg) return new vscode.Hover(arrowMsg);
+        return undefined;
+      }
+    }),
+    vscode.window.onDidChangeActiveTextEditor(e => { composingLine = -1; if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; } updateLastCaretForEditor(e); refresh(e); updateMembraneStatusBar(e); setTimeout(() => restoreMstatsForEditor(e), 250); autoShowMeDockForEditor(e); }),
+    vscode.window.onDidChangeTextEditorVisibleRanges(e => {
+      // v0.9.676: DEBOUNCE the scroll-driven refresh. onDidChangeTextEditorVisibleRanges fires
+      // continuously through a scroll gesture; the old code ran the heavy refresh SYNCHRONOUSLY
+      // on every tick, saturating the ext-host main thread for seconds. A click right after
+      // scrolling then had its Line recognition queued behind dozens of scroll refreshes — the
+      // real reason "scroll → click → Line表示最優先" never held (俊克 2026.06.02 pm01:21). The
+      // 🟢/🔴 visible-state posts are lightweight and stay immediate; only refresh is coalesced
+      // into one pass after scrolling settles.
+      if (e.textEditor === getMeDockTargetEditor()) { postMeDockAnchorState(e.textEditor); postMeDockBidiState(e.textEditor); }
+      if (e.textEditor === activeEditor) {
+        if (scrollRefreshTimer) clearTimeout(scrollRefreshTimer);
+        const _ed = e.textEditor;
+        scrollRefreshTimer = setTimeout(() => {
+          scrollRefreshTimer = null;
+          if (_ed === vscode.window.activeTextEditor) refresh(_ed);
+        }, SCROLL_REFRESH_DEBOUNCE_MS);
+      }
+    }),
+        // v0.9.730: グローバル `type` 横取りを撤去(俊克の指摘=恒久対策)。全打鍵を async default:type で
+    //   再ディスパッチしていたため、速い入力/IME確定で稀に1文字を取りこぼしていた。キーボードのEnterは
+    //   既に laiMembrane.enterAtCloseRightEdge キーバインドが処理済みで、本横取りの改行分岐はキーボードでは
+    //   実質死んでいた。撤去により通常/Raw とも入力が100%ネイティブに(文字喰い解消・IME軽量化)。
+    vscode.window.onDidChangeTextEditorSelection(e => {
+      if (e.textEditor !== activeEditor) return;
+      if (meosRawMode) return; // v0.9.723: Raw中は選択driven refreshを抑止
+      // v0.9.625: 前の行を記録（updateLastCaret が上書きする前に）。
+      const _prevKey = caretKeyForEditor(e.textEditor);
+      const _prevCaret = lastCaretByEditorKey.get(_prevKey);
+      prevLineBeforeSelectionChange = _prevCaret ? _prevCaret.line : -1;
+      // Cursor-snap over hidden ranges must stay immediate so arrow-key navigation
+      // moves naturally through decoration-hidden source bytes.
+      if (maybeSkipHiddenPrefixOnKeyboard(e.textEditor, e.kind)) { refresh(e.textEditor); return; }
+      // Caret tracking is lightweight; always update so other features see
+      // the live position even while the heavy handler is debounced.
+      updateLastCaretForEditor(e.textEditor);
+      const isKeyboard = e.kind === vscode.TextEditorSelectionChangeKind.Keyboard;
+      if (isKeyboard) {
+        // v0.9.457: defer name-jump / red-arm / refresh until rapid Shift+Arrow
+        // expansion settles. Coalesces N selection events into 1 handler run.
+        if (keySelectionDebounceTimer) clearTimeout(keySelectionDebounceTimer);
+        keySelectionDebounceTimer = setTimeout(() => {
+          keySelectionDebounceTimer = null;
+          const ed = vscode.window.activeTextEditor;
+          if (!ed || ed !== activeEditor) return;
+          // v0.9.645: v0.9.644's same-line repaint-skip REVERTED — it stopped the lane
+          // from restoring for ASCII too (stuck hidden = "kana と全く同じ"). Back to the
+          // v0.9.643 behavior; the line-head ASCII first-char flicker needs runtime
+          // diagnosis (composingLine value + contentChange text), not more guessing.
+          // v0.9.637: while composing on a line, skip repaint as long as the caret
+          // stays on it (freeze) — avoids reflowing the line mid-IME. Moving the
+          // caret to another line lifts the freeze and repaints ("改行で整う").
+          // v0.9.640: keep the lane hidden as long as the caret stays on the composing
+          // line; restore ONLY when it moves to a DIFFERENT line. No time-based expiry
+          // (v0.9.639's 4s window made arrows "sometimes" restore unpredictably) and no
+          // backspace/newline dependence — the user moves off the line to restore, so
+          // they're never forced to press Enter (which would insert an unwanted newline,
+          // esp. mid-line). User 2026.05.30 am02:49.
+          if (composingLine >= 0 && ed.selection && ed.selection.active.line === composingLine) {
+            return;
+          }
+          // v0.9.643: do NOT restore while composition is still active (a doc change in
+          // the last 300ms). At a LINE HEAD the IME emits a transient selection change
+          // whose caret momentarily reads off the composing line; restoring then flicks
+          // the lane off-and-on (the last line-head bug). Genuine navigation happens
+          // AFTER composition settles (no recent change), so line-change restore is
+          // unaffected. This SUPPRESSES a restore (no timer, no periodic repaint), unlike
+          // the v0.9.638 auto-restore that caused flicker. User 2026.05.30 am03:41.
+          if (composingLine >= 0 && (Date.now() - lastDocChangeAt) < 300) {
+            return;
+          }
+          if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+          composingLine = -1;
+          handleMembraneNameSelection(ed, vscode.TextEditorSelectionChangeKind.Keyboard);
+          maybeAutoUnfoldOnSelection(ed, vscode.TextEditorSelectionChangeKind.Keyboard);
+          refresh(ed);
+        }, KEY_SELECTION_DEBOUNCE_MS);
+        return;
+      }
+      // Mouse / Command selections: process immediately to keep W-click instant.
+      // v0.9.613: redirect clicks that land in hidden suffix (word-wrap 2nd visual line).
+      // v0.9.650: BUT honour the compose-freeze for non-Mouse kinds. An IME conversion
+      // commit (Kawasemi 4's きょう→date / いま→time macros insert via a special edit, NOT a
+      // keystroke) fires a selection change with kind === Command / undefined — which used to
+      // fall straight through here, lift the freeze (composingLine=-1) and run
+      // refresh()→setDecorations BETWEEN the two conversions. That setDecorations disturbs
+      // Kawasemi's marked-text anchor so the NEXT composition lands one column short and
+      // overwrites the last char — the ")"-eating in 「きょう」→date→「いま」→time. The same
+      // immediate refresh also re-positioned the caret 1-inside after Undo. Disabling the
+      // whole plugin removed both symptoms (user 2026.05.30 am11:13), proving it was MeOS's
+      // refresh, not the IME. So: a genuine MOUSE click is still immediate (a click must
+      // win), but Command/undefined changes get the SAME compose-freeze as the keyboard
+      // branch — no repaint while a composition is in flight on the line.
+      if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) {
+        // v0.9.651: [sel] diagnostic removed (confirmed firing in v0.9.650 testing).
+        if (composingLine >= 0 && e.textEditor.selection && e.textEditor.selection.active.line === composingLine) {
+          return;
+        }
+        if (composingLine >= 0 && (Date.now() - lastDocChangeAt) < 300) {
+          return;
+        }
+      }
+      if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+      composingLine = -1; // a mouse move (or a settled non-keyboard change) lifts the freeze.
+      // v0.9.675: IMMEDIATE click actions only (lightweight): cursor-redirect, W-click button
+      // hit-test + jump + 🟢 render, auto-unfold. These queue their renderer updates and the
+      // handler returns at once so the ext host yields — Line field / 🟢 / paste paint now.
+      maybeRedirectClickFromHiddenSuffix(e.textEditor);
+      handleMembraneNameSelection(e.textEditor, e.kind);
+      maybeAutoUnfoldOnSelection(e.textEditor, e.kind);
+      // v0.9.675: DEFER the heavy full refresh (applyPrettyLabels + all decoration computers)
+      // off the synchronous click path so it can't block the main thread (~10s on a big file)
+      // and stall everything queued behind it. Debounced so a burst of clicks/pastes coalesces
+      // into one repaint instead of N synchronous refreshes.
+      if (mouseSelectionRefreshTimer) clearTimeout(mouseSelectionRefreshTimer);
+      {
+        const _ed = e.textEditor;
+        mouseSelectionRefreshTimer = setTimeout(() => {
+          mouseSelectionRefreshTimer = null;
+          if (_ed === vscode.window.activeTextEditor) refresh(_ed);
+        }, MOUSE_SELECTION_REFRESH_DEBOUNCE_MS);
+      }
+    }),
+    vscode.workspace.onDidChangeTextDocument(e => {
+      // v0.9.715: 🔖 ブックマークの行ズレを追従(gate前に全変更で実行)。
+      adjustBookmarksForChange(e);
+      if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
+      if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
+      // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
+      // active-doc gate) is removed — it did its job: it proved the ")"-eating was a
+      // refresh()→setDecorations interrupt fired from the selection handler's immediate
+      // (non-keyboard) branch on Kawasemi's macro-commit, NOT an IME bug. Fixed in v0.9.650.
+      if (deferRefreshCount > 0) return;
+      if (!activeEditor || e.document !== activeEditor.document) return;
+      // v0.9.633: debounce typing-driven refresh to stop MeOS edits racing the
+      // Japanese IME. onDidChangeTextDocument fires on every keystroke AND on every
+      // IME composition update; the old code ran refresh() synchronously each time,
+      // and refresh() scheduled editor.edit()s (mSTAT badge sync) 120–260ms later.
+      // During fast kana-kanji input those edits landed inside the uncommitted
+      // composition and deleted the in-flight character. Now: every change CANCELS
+      // any pending mSTAT edit and re-arms a single refresh timer; refresh (and its
+      // edits) only run after typing pauses ~220ms — by which point the IME has
+      // committed. The extension's own batch edits still bypass via deferRefreshCount.
+      lastDocChangeAt = Date.now();
+      // Cancel any pending repaint / edit so nothing fires mid-composition.
+      if (mstatMetaTimer) { clearTimeout(mstatMetaTimer); mstatMetaTimer = null; }
+      if (mstatsSyncTimer) { clearTimeout(mstatsSyncTimer); mstatsSyncTimer = null; }
+      if (typingRefreshTimer) { clearTimeout(typingRefreshTimer); typingRefreshTimer = null; }
+      // v0.9.637: structural change (newline / line-join / any multi-line edit) →
+      // repaint to restore membrane rendering. Single-line char / kana input →
+      // FREEZE (no repaint) so the line never reflows mid-IME-composition. This is
+      // the user's "ひらがな入力中は膜線を止め、改行で整える" model.
+      const ed = activeEditor;
+      const structural = e.contentChanges.some(c =>
+        c.text.indexOf('\n') >= 0 || c.range.start.line !== c.range.end.line);
+      if (structural) {
+        // newline / line-join / multi-line edit → restore the membrane lane + repaint.
+        composingLine = -1;
+        if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+        typingRefreshTimer = setTimeout(() => {
+          typingRefreshTimer = null;
+          if (ed === vscode.window.activeTextEditor) {
+            refresh(ed);
+            // v0.9.674 (bug2): a structural edit shifts membrane lines, so the decoration-only
+            // 🟢 must be re-resolved + repainted here (reconcileActiveGreenJump runs inside).
+            // This replaces v0.9.672's per-refresh repaint — it now fires ONLY on real
+            // line-count changes, not on every click/scroll (which caused the 10s Line lag).
+            renderActiveGreenMarkers(ed);
+          }
+        }, 60);
+        return;
+      }
+      // v0.9.638: single-line char / kana input. Hide the membrane lane on THIS line so
+      // the composing text sits at the caret. On the first char of a new compose-line,
+      // repaint lineDecoration once to drop the lane; subsequent chars freeze. When
+      // composition settles (no change for COMPOSE_RESTORE_MS) the lane is restored —
+      // NO forced newline. Caret leaving the line also restores (selection handler).
+      // v0.9.642: enter compose-mode (hide the lane) ONLY for NON-ASCII insertion
+      // (kana / kanji / full-width — i.e. the IME composition that actually detaches
+      // the caret from the text). Plain ASCII typing (English / code / digits) has no
+      // composition and no detachment, so the membrane lane must stay visible — even
+      // mid-line. User 2026.05.30 am03:29: 「ASCII文字を打ったときは膜線をそのままでいい。
+      // 行の途中でも膜線なしモードになるのが特に良くない」. v0.9.641: also leave the lane
+      // on pure deletion (Backspace/Delete) so it doesn't flicker. Both → return as-is.
+      const hasImeInsertion = e.contentChanges.some(c => c.text.length > 0 && /[^\x00-\x7F]/u.test(c.text));
+      if (!hasImeInsertion) {
+        // v0.9.647: ASCII insertion / deletion → leave the lane as-is (no compose-mode).
+        // The line-head col-0 first-char blink is a MONACO re-layout of the lane's
+        // before-decoration (lineDecoration is anchored at column 0) when inserting AT
+        // column 0 — a SPACE blinks too (user 2026.05.30 am06:44), confirming it's the
+        // col-0 insert itself, not the character. v0.9.646's sync refresh runs AFTER
+        // Monaco's own layout blink, so it can't prevent it (and cost a per-keystroke
+        // refresh) → reverted. Accepted as a minor cosmetic blink (text always correct);
+        // a future fix may draw the lane as an isWholeLine left border (no col-0 anchor).
+        composingLine = -1;
+        if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+        return;
+      }
+      const line = e.contentChanges.length ? e.contentChanges[0].range.start.line : -1;
+      if (composingLine !== line) {
+        composingLine = line;
+        // v0.9.648: defer the (heavy) lane-hide repaint OFF the synchronous keystroke
+        // path. computeLineDecorations walks every line; running it inline on the first
+        // kana of a compose-line blocked the main thread mid-IME and could drop the next
+        // character (the ")" -eating during fast 「きょう」「いま」 entry, esp. with
+        // thumb-shift's near-simultaneous keys). One tick's delay is imperceptible.
+        // v0.9.653: RESTORED (the v0.9.652 removal failed — see the lane-skip note above).
+        setTimeout(() => {
+          try { if (activeEditor && lineDecoration) activeEditor.setDecorations(lineDecoration, computeLineDecorations(activeEditor.document)); } catch (_) {}
+        }, 0);
+      }
+      // v0.9.639: NO auto-restore. The lane stays hidden until the user intentionally
+      // presses Enter (structural → restore) or moves the caret off the line. The
+      // v0.9.638 settle-restore (350ms) fired between kana / candidate keystrokes and
+      // flickered the lane in and out repeatedly ("うざい"). User 2026.05.30 am02:27:
+      // 「改行を最後に意図して打ったときに膜線を戻すようにした方がスマート」.
+      if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+    }),
+    vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); refresh(); } }),
+    vscode.commands.registerCommand('laiMembrane.refresh', () => refresh()),
+    vscode.commands.registerCommand('laiMembrane.addMembrane', addMembrane),
+    vscode.commands.registerCommand('laiMembrane.toggleMeDock', toggleMeDock),
+    vscode.commands.registerCommand('laiMembrane.renameMe', renameMe),
+    vscode.commands.registerCommand('laiMembrane.newOrRenameMe', newOrRenameMe),
+    vscode.commands.registerCommand('laiMembrane.deleteMeKeepContents', deleteMeKeepContents),
+    vscode.commands.registerCommand('laiMembrane.copyMe', copyMe),
+    vscode.commands.registerCommand('laiMembrane.copyMyContents', copyMyContents),
+    vscode.commands.registerCommand('laiMembrane.selectMyContents', selectMyContents),
+    vscode.commands.registerCommand('laiMembrane.duplicateMe', duplicateMe),
+    vscode.commands.registerCommand('laiMembrane.annotateMe', annotateMe),
+    vscode.commands.registerCommand('laiMembrane.aliasMe', aliasMe),
+    vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
+    vscode.commands.registerCommand('laiMembrane.toggleCurrent', toggleCurrent),
+    vscode.commands.registerCommand('laiMembrane.foldCurrent', foldCurrent),
+    vscode.commands.registerCommand('laiMembrane.unfoldCurrent', unfoldCurrent),
+    vscode.commands.registerCommand('laiMembrane.foldAll', foldAll),
+    vscode.commands.registerCommand('laiMembrane.unfoldAll', unfoldAll)
+  ];
+  const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
+  const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
+context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
+    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); }),
+    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
+}
+function deactivate() {
+  disposeDecorations();
+  for (const d of disposables) d.dispose();
+}
+module.exports = { activate, deactivate };
+// {* ▲mCN=0900_PROVIDER_ACTIVATE // end [cGJF=h] *}

@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+
+# Backups (Git replaces local snapshot files)
+*.bak
+extension.js.pre*
+
+# Handover snapshots (zip archives of past versions)
+引継時のextension/
+
+# Build artifacts
+*.vsix
+node_modules/
+out/

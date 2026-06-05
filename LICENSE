@@ -1,0 +1,52 @@
+MIT License
+
+Copyright (c) 2026 川嶋俊克 (Toshikatsu Kawashima)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Notation License (separate from the above)
+
+The MeOS notation specification itself — membrane syntax, BiperLink, Me
+notation, badge format, depth markers, and related conventions described in
+this project — is dedicated to the public domain. Anyone may implement,
+document, teach, fork, or extend the MeOS notation in any system, without
+permission, attribution, or fee.
+
+---
+
+Trademark Notice (separate from the above)
+
+"MeOS" and "μOS" are unregistered common-law trademarks asserted by 川嶋俊克
+(Toshikatsu Kawashima) as of 2026.05.16, alongside the following defensive
+name variants in the MeOS(TM) family:
+
+  Latin / Greek:        MeOS, μOS
+  Chinese (semantic):   微OS, 膜OS
+  Chinese (phonetic):   美OS, 妙OS, 米OS
+  Japanese:             ミーオス, ミューオス, メオス
+  Korean:               미OS
+
+These variants are publicly claimed here primarily as prior-art evidence
+against third-party squatting in first-to-file jurisdictions (notably China).
+
+See README.md "License & Trademark" section for the full trademark policy.
+Trademark assertion does not restrict the MIT-licensed software above or
+the public-domain notation specification.
