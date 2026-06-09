@@ -1,4 +1,57 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.758: ▼⇄▼▲ ボタンの tip 誤記修正(俊克 am07:28)。"outside the membrane"→"inside the membrane"。
+//   このボタンの価値は膜の内部にカーソルがあっても正しく折畳めること(従来は内部から畳むと##へ飛んだ)。
+// - v0.9.757: 🟢システムを引退(俊克 am07:04「栞があるので🟢ボタンはその役割を終えた」)。①膜本文の🟢表示を
+//   撤去(activeGreenButtonItems が空返し=active/legacy literal 両方とも描画しない)。②Current Me Pin の
+//   「□ From Out To 🟢」を撤去(pinRowHtml から checkbox+label+🟢 span を削除、Pin は title/name/Ln + ▼⇄▼▲ のみ)。
+//   ③膜名/エイリアスの W クリックによる開始膜⇔閉じ膜ジャンプを廃止(handleMembraneNameSelection に neuter ガード追加。
+//   ダブルクリックは膜名テキストを選択するだけ=コピー用途)。後継は Current Me Pin クリック(開始/閉じ/カーソルの3点循環)。
+// - v0.9.756: maybeAutoUnfoldOnSelection を完全に無効化(冒頭で return)。膜名クリックで折畳み膜が
+//   勝手に展開され mSTAT バッジ(▼▲)と内容表示が不一致になる件を根治。v0.9.755 の cfg.get 既定値変更が
+//   効かなかった真因 = package.json が default:true を宣言しており、インラインの第2引数 false を上書き
+//   していたため。関数自体を neuter することで settings.json で明示 true でも発火しない。
+//   package.json の既定も false + Deprecated 注記に変更。折畳み操作は Current Me Pin の ▼⇄▼▲ に一本化。
+// - v0.9.755: ①suppressAutoUnfoldUntil を 500ms wait 後(fold コマンド直前)に設定→1200ms に延長。
+//   これで fold 後に cursor が pair.start に来ても auto-unfold が発火しない(2-3回押し問題解消)。
+//   ②autoUnfoldOnFoldedStartSelection のデフォルトを true→false に変更。
+//   ▼⇄▼▲ ボタンで明示的に開閉できるので、クリックで勝手に展開する必要がなくなった。
+// - v0.9.754: activate() 末尾で Standards > V 状態を読んで setNativeStandardsDisclosureControls を
+//   自動実行(600ms 後)。これで毎起動時に defaultFoldingRangeProvider が正しく設定され、拡張機能の
+//   再起動なしで膜の折畳みが動くようになる。ユーザーが手動で Standards > V を押す必要がなくなる。
+// - v0.9.753: ①defaultFoldingRangeProvider の値を { id:... } オブジェクト→文字列 'lai.lai-membrane' に修正
+//   (VSCode 1.88 ドキュメント: 値は extension ID 文字列)。②notifyRangesChanged + 500ms wait を fold 前に追加
+//   (120ms では VSCode が provideFoldingRanges を呼びキャッシュするまで間に合わない可能性)。
+// - v0.9.752: Standards > V OFF 時に editor.defaultFoldingRangeProvider='lai.lai-membrane' を設定。
+//   これで Markdown の ## 見出し fold provider を完全に排除し、MeOS 膜範囲だけが editor.fold の
+//   対象になる(VSCode 1.88+)。ON 時は undefined に戻す(全プロバイダー復活)。
+// - v0.9.751: MembraneFoldingProvider に onDidChangeFoldingRanges emitter を追加。
+//   editor.fold 前に notifyRangesChanged() + 120ms wait → VSCode が provideFoldingRanges を
+//   呼んで MeOS 膜範囲をキャッシュ → cursor at pair.start で editor.fold が ## でなく膜を折る。
+//   ボタンラベル ▼⇄▲ → ▼⇄▼▲。
+// - v0.9.750: FOLD時のカーソル復元を廃止(真因)。折畳み後の savedSel は膜内の非表示行を指す。
+//   そこへ editor.selection を戻すと VSCode が revealRange で ## 付近へジャンプしていた。
+//   FOLD後はカーソルを pair.start に留める。UNFOLD後のみ savedSel へ復元(元の位置に戻る)。
+// - v0.9.749: Current Me Pin の右端に Toggle ボタン(▼⇄▲)を追加。
+//   カーソルが膜の外にあっても Current Me に表示されている膜を折畳み/展開できる。
+//   クリック → fixedTocBody click handler → toggleMeOne(line=cm.start) → toggleMeDockCurrentMembrane。
+// - v0.9.748: foldingStrategy操作を Standards > V から完全撤去。
+//   foldingStrategy:indentation は MeOS の FoldingRangeProvider も無効化するため、
+//   col-0 フラットな Markdown ではインデント折畳み範囲がゼロ → editor.fold が何もしない
+//   → バッジだけ変わって視覚折畳みが起きない(v0.9.746/747 の根本的誤り)。
+//   正解: foldingStrategy:auto のまま(MeOS範囲が生きている)＋ cursor を pair.start に置いて
+//   editor.fold → VSCode は「cursor行から始まる最内側範囲」= MeOS膜範囲を選ぶ。
+//   ## 見出し範囲は pair.start より前から始まる外側範囲なので選ばれない。
+//   Standards > V toggle 時に v0.9.746/747 で書き込まれた stale な indentation 設定を auto にリセット。
+// - v0.9.747: v0.9.746の修正が効いていなかった真因を特定・修正。
+//   getConfiguration('[markdown]') は誤り('[markdown]'というセクションは存在しない)。
+//   正解: getConfiguration('editor', { languageId: 'markdown' }) + update(..., target, true)
+//   (overrideInLanguage=true で [markdown] キー下に書き込まれる)。
+//   これで foldingStrategy:indentation が実際に適用される。
+// - v0.9.746: ①Standards > V ボタンが [markdown].editor.foldingStrategy も制御するように
+//   (OFF=indentation で##見出しプロバイダー無効化、ON=auto で元に戻す)。
+//   ②setPairFoldStateAndMstat の FOLD カーソルを pair.end → pair.start に戻す
+//   (pair.end だと親膜に飛ぶ=v0.9.745 NG の真因。indentation 戦略では pair.start が
+//   その膜のインデント折畳み開始行となるので正しい膜が折り畳まれる)。
 // - v0.9.730: ★文字喰い恒久対策。グローバル `type` 横取りを撤去(俊克の診断: Enter1個のために全打鍵を関所に
 //   通していた)。実は keyboard Enter は laiMembrane.enterAtCloseRightEdge キーバインドが先に処理しており、
 //   type横取りの \n 分岐はキーボードでは死んでいた=横取りは『全打鍵を async default:type で再ディスパッチ』
@@ -2962,12 +3015,21 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   const suppressMstat = !!options.suppressMstat;
   const key = pairStateKey(editor, pair);
   foldStateByPairKey.set(key, !!folded);
-  suppressAutoUnfoldUntil = Date.now() + (suppressRefresh ? 1500 : 500);
-  editor.selection = new vscode.Selection(pair.start, 0, pair.start, 0);
 
-  // Use the membrane start line for both fold and unfold. The registered
-  // FoldingRangeProvider owns the range, so the start line is the stable handle.
-  await vscode.commands.executeCommand(folded ? 'editor.fold' : 'editor.unfold', { selectionLines: [pair.start] });
+  // FOLD: warm up MeOS fold ranges so editor.fold picks MeOS range (not enclosing ##).
+  if (folded && membraneFoldingProviderInstance) {
+    membraneFoldingProviderInstance.notifyRangesChanged();
+    await new Promise(r => setTimeout(r, 500));
+  }
+  // Suppress auto-unfold AFTER the wait so it covers the cursor-move to pair.start.
+  suppressAutoUnfoldUntil = Date.now() + (suppressRefresh ? 2000 : 1200);
+  const savedSel = editor.selection;
+  editor.selection = new vscode.Selection(pair.start, 0, pair.start, 0);
+  await vscode.commands.executeCommand(folded ? 'editor.fold' : 'editor.unfold');
+  if (!folded) {
+    try { editor.selection = savedSel; } catch (_) {}
+    try { editor.revealRange(new vscode.Range(savedSel.active, savedSel.active), vscode.TextEditorRevealType.Default); } catch (_) {}
+  }
 
   foldStateByPairKey.set(key, !!folded);
 
@@ -3020,16 +3082,22 @@ async function restoreMstatsForEditor(editor) {
   if (mstatsRestoreDone.has(key)) return;
   mstatsRestoreDone.add(key);
   const pairs = collectPairs(editor.document, { excludeIndex: false });
-  const foldStarts = [];
-  const unfoldStarts = [];
+  const foldPairs = [];
+  const unfoldPairs = [];
   for (const p of pairs) {
     const b = parseMstatBadgeFromText(editor.document.lineAt(p.start).text);
     if (!b || b.symbol === '∞') continue;
-    if (b.symbol === '⊖') foldStarts.push(p.start);
-    if (b.symbol === '⊕') unfoldStarts.push(p.start);
+    if (b.symbol === '⊖') foldPairs.push(p);
+    if (b.symbol === '⊕') unfoldPairs.push(p);
   }
-  if (foldStarts.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: foldStarts });
-  if (unfoldStarts.length) await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldStarts });
+  if (foldPairs.length) {
+    await vscode.commands.executeCommand('editor.fold', { selectionLines: foldPairs.map(p => p.start) });
+    for (const p of foldPairs) foldStateByPairKey.set(pairStateKey(editor, p), true);
+  }
+  if (unfoldPairs.length) {
+    await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldPairs.map(p => p.start) });
+    for (const p of unfoldPairs) foldStateByPairKey.set(pairStateKey(editor, p), false);
+  }
   setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
 }
 
@@ -7083,11 +7151,13 @@ function activeRedTargetButtonRanges(editor) {
 // range as v0.9.485+, but tip is now hosted by the narrow tip
 // decoration (see membraneButtonItems comment).
 function activeGreenButtonItems(editor) {
-  // v0.9.670: 🟢 is drawn from the IN-MEMORY active pair (activeGreenJump) as
-  // after-content at the membrane name end — no source flag required, no document
-  // edit on click (see showJumpMarkers for why). The legacy source-flag scan is kept
-  // ONLY to keep rendering any residual [oGJF=v]🟢 left in pre-v0.9.670 files until the
-  // user cleans them; new activations never create them.
+  // v0.9.757: 🟢 body button RETIRED (俊克 am07:04). The bookmark (栞) now covers the
+  // "mark a place / return to it" need, so the membrane 🟢 became visual clutter (目障り).
+  // Return no items → the membrane name no longer carries a 🟢 after-glyph (active or
+  // legacy literal). The activeGreenJump state still exists for any remaining callers but
+  // is no longer painted in the body.
+  return { cursorItems: [], tipItems: [] };
+  // eslint-disable-next-line no-unreachable
   const cursorItems = [];
   const tipItems = [];
   if (!editor || !editor.document) return { cursorItems, tipItems };
@@ -8865,6 +8935,14 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         return;
       }
     }
+    // v0.9.757: membrane open⇔close W-click jump RETIRED (俊克 am07:04). The Current Me Pin
+    // click (3-point cycle: open / close / cursor) is its successor. Double-clicking a
+    // membrane name or its alias now just selects the text (e.g. to copy) with NO teleport
+    // to the other end. Both the alias-jump and name-pair-jump branches below are bypassed.
+    if (isMouseSelection && (selectedAliasJumpInfo(editor) || selectedMembraneNameInfo(editor))) {
+      clearJumpMarkers(editor);
+      return;
+    }
     // v0.9.541: W-click on alias source span → jump to close pair (mirrors name jump).
     // Mouse-kind selections only; keyboard Shift+→ selections fall through to the
     // standard editing path (the v0.9.540 alias bail-out in tryActivateSelectedNameJump
@@ -9243,12 +9321,21 @@ function maybeRedirectClickFromHiddenSuffix(editor) {
 }
 
 async function maybeAutoUnfoldOnSelection(editor, selectionKind) {
+  // v0.9.756: NEUTERED. Auto-unfold-on-click is abolished — the ▼⇄▼▲ Toggle button on
+  // the Current Me Pin is now the single, explicit way to fold/unfold. Clicking a folded
+  // membrane's name used to call editor.unfold here WITHOUT updating the mSTAT badge,
+  // leaving the content expanded while the badge still read ▼▲ (folded) — a mismatch the
+  // user reported as みっともない. A neuter (not a config-default change) is required because
+  // package.json declares autoUnfoldOnFoldedStartSelection default:true, which overrides any
+  // inline cfg.get fallback even when the inline default is false.
+  return;
+  // eslint-disable-next-line no-unreachable
   if (!editor) return;
   // v0.9.216:
   // Do not auto-unfold/fold in response to ←/→ keyboard caret movement.
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Keyboard) return;
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
-  if (!cfg.get('autoUnfoldOnFoldedStartSelection', true)) return;
+  if (!cfg.get('autoUnfoldOnFoldedStartSelection', false)) return;
   if (Date.now() < suppressAutoUnfoldUntil) return;
   const line = editor.selection.active.line;
   const pair = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === line);
@@ -10840,14 +10927,29 @@ function updateMeDockMode() {
 }
 // {* ▲mCN=0866_INLINE_NEW_RENAME // end [cGJF=h] *}
 
-// v0.9.335 Standards > v: workspace setting when possible, Global fallback for loose/single-file use.
+// v0.9.335 Standards > v
+// v0.9.752: Use editor.defaultFoldingRangeProvider (VSCode 1.88+) to make MeOS the sole
+// fold provider when Standards > V is OFF. This eliminates ## heading interference completely.
+// OFF: defaultFoldingRangeProvider = { id: 'lai.lai-membrane' } → only MeOS ranges → editor.fold
+//      targets MeOS membrane range, not the enclosing ## section.
+// ON:  defaultFoldingRangeProvider = undefined → all providers (Markdown + MeOS) are used.
 async function setNativeStandardsDisclosureControls(enabled) {
   try {
     const config = vscode.workspace.getConfiguration('editor');
-    // ON returns to VS Code/VSCodium default-like behavior; OFF hides native gutter disclosure triangles.
     const hasWorkspace = Array.isArray(vscode.workspace.workspaceFolders) && vscode.workspace.workspaceFolders.length > 0;
     const target = hasWorkspace ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     await config.update('showFoldingControls', enabled ? 'mouseover' : 'never', target);
+    // OFF = MeOS-only mode: set MeOS as the sole fold provider (suppresses ## heading ranges).
+    // ON  = restore default (all providers active).
+    try {
+      // Value is the extension ID string (publisher.name), not an object.
+      await config.update('defaultFoldingRangeProvider', enabled ? undefined : 'lai.lai-membrane', target);
+    } catch (_) {}
+    // Reset any stale foldingStrategy:indentation left by v0.9.746/747.
+    try {
+      const mdCfg = vscode.workspace.getConfiguration('editor', { languageId: 'markdown' });
+      await mdCfg.update('foldingStrategy', 'auto', target, true);
+    } catch (_) {}
     const scopeLabel = hasWorkspace ? 'Workspace' : 'Global';
     vscode.window.setStatusBarMessage('MeOS Standards > v: ' + (enabled ? 'ON' : 'OFF') + ' (' + scopeLabel + ')', 1800);
   } catch (e) {
@@ -10910,7 +11012,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .toc-tools{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid rgba(210,140,0,.20);background:rgba(255,213,92,.08)}.toc-tools button{font-size:11px;padding:3px 6px}.toc-tools .toc-move{font-size:18px;line-height:1;padding:1px 7px}.toc-tools .toc-add{font-size:22px;line-height:1;color:#d18400;padding:0 8px}.toc-tools .toc-onsite{font-weight:800;color:#d18400}.toc-tools .toc-onsite.on{background:rgba(210,132,0,.22);border-color:#d18400}
 .format-tools .fmt-label{font-size:11px;font-weight:800;color:#d18400;opacity:.85}.format-tools .fmt-btns{display:flex;gap:6px}.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}.fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-btn:active{background:rgba(210,132,0,.30)}.fmt-btn.raw-toggle{margin-left:8px;font-family:inherit;font-weight:700;font-size:11px}.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
 .toc-tools .bm-split{margin-left:auto;display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-remove{order:0}.bm-pop #bm-insert{order:1}.bm-pop.full #bm-remove{order:2}
-.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-del{color:#b91c1c}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:var(--vscode-editorHoverWidget-background,#f3f3f3);color:var(--vscode-editorHoverWidget-foreground,#333);border:1px solid var(--vscode-editorHoverWidget-border,#c8c8c8);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
+.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-del{color:#b91c1c}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:800;padding:1px 5px;margin-left:2px;border:1px solid rgba(56,148,255,.5);border-radius:4px;background:rgba(56,148,255,.12);color:var(--vscode-foreground);line-height:1.4}.toc-pin-toggle:hover{background:rgba(56,148,255,.30);border-color:#3794ff}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:var(--vscode-editorHoverWidget-background,#f3f3f3);color:var(--vscode-editorHoverWidget-foreground,#333);border:1px solid var(--vscode-editorHoverWidget-border,#c8c8c8);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
 </style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button><button class="close" title="Close">×</button></span></header><main class="body">
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-tools"><button class="cancel" id="toggle-editor-toc" title="Fold / unfold raw TOC in editor">Fold TOC</button><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">−</button><button class="cancel toc-onsite" id="toc-onsite" title="On-site TOC: split editor and keep raw TOC above">On-site</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | Cycle-jump to your next 🔖 — return to your saved places">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | insert / remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove the bookmark</button><button class="bm-pop-item" id="bm-insert" data-tip="Drop a 🔖 at the current cursor line (up to 3)">insert a bookmark</button></div>
 <div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | wraps the selection: =={ text (red/yellow) //tip }==">==</button><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | wraps the selection: ~~{ text (red/) //tip }~~ (faint pink background)">~~</button><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | turns the current line into: ##[ text (white/green) //tip ]##">##</button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button></span></div>
@@ -11073,7 +11175,10 @@ function renderHyperTocTabs(toc){
   const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
   tocTabRow.innerHTML=tabsHtml+opsHtml;
 }
-function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const armed=!!(toc&&toc.greenActive);const checked=armed&&!!cm.pinToSelected;const jCls='toc-pin-jump'+(armed?'':' dim');const mCls='toc-pin-mode'+(armed?'':' dim');const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const modeTip=escText('When checked, jumps among 3 points: cursor position, the selected membrane open, close. Use it mainly when you are in a membrane other than the selected one.');return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><label class="'+mCls+'" data-tip="'+modeTip+'"><input type="checkbox" class="toc-pin-check" data-tip="'+modeTip+'"'+(checked?' checked':'')+(armed?'':' disabled')+'/>From Out To</label><span class="'+jCls+'" data-tip="'+modeTip+'">🟢</span></div>';}
+function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const toggleTip=escText('Toggle fold/unfold this membrane (▼⇄▼▲). Works even when the cursor is inside the membrane.');
+  // v0.9.757: "From Out To 🟢" checkbox+glyph removed (俊克 am07:04) — the 🟢 jump system is
+  // retired in favour of the bookmark (栞) and the ▼⇄▼▲ toggle. Pin keeps title/name/Ln + toggle.
+  return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><button class="toc-pin-toggle" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>';}
 function bidiJumpBarHtml(toc){const greenActive=!!(toc&&toc.greenActive);const redActive=!!(toc&&toc.redActive);const gCls='bidi-btn bidi-green'+(greenActive?'':' inactive');const rCls='bidi-btn bidi-red'+(redActive?'':' inactive');const gTip=greenActive?'S-click: jump open ⇔ close of active 🟢 pair':'No active 🟢 pair (select a membrane name in body to arm)';const rTip=redActive?'S-click: jump source ⇔ target of active 🔴 pair':'No active 🔴 pair (select citation text or click an H-TOC entry to arm)';return '<div class="bidi-jump-bar"><span class="bidi-label">Bi-direction Jump:</span><span class="'+gCls+'" data-tip="'+escText(gTip)+'">🟢</span><span class="bidi-sep">/</span><span class="'+rCls+'" data-tip="'+escText(rTip)+'">🔴</span><span class="bidi-btn bidi-clear" data-tip="このファイルの 🟢/🔴 ジャンプフラグを全消去（初期化／デバッグ用・Cmd+Zで復元）">Clear</span><span class="bidi-jumponly">(Jump only / S-click)</span></div>';}
 function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.hasToc));fixedToc.classList.toggle('on',!!(toc&&toc.enabled));if(!toc||!toc.enabled)return;renderHyperTocTabs(toc);if(fixedTocName&&document.activeElement!==fixedTocName)fixedTocName.value=toc.tocName||'';const items=(toc.items||[]);if(!items.length){fixedTocBody.innerHTML='<div class="toc-sticky-head">'+pinRowHtml(toc)+'</div>'+'<div class="fixed-toc-empty">Hyper TOC is empty. Press ＋ to add one.</div>';selectedTocLine0=null;return;}fixedTocBody.innerHTML='<div class="toc-sticky-head">'+pinRowHtml(toc)+'</div>'+items.map(it=>{const checked=it.checkedAt?' checked':'';const parts=[];if(it.createdAt)parts.push('Created: '+escText(it.createdAt));if(Array.isArray(it.checkLog)&&it.checkLog.length){it.checkLog.forEach(e=>{if(e&&e.at)parts.push((e.label||(e.checked?'Checked':'Unchecked'))+': '+escText(e.at));});}else if(it.checkedAt){parts.push('Checked: '+escText(it.checkedAt));}if(it.citeN!==null&&it.citeN!==undefined)parts.push('Cite #'+escText(String(it.citeN)));const tip=parts.length?parts.join(' | '):('Line '+it.line);const val=escText(it.value||it.label||it.key||'');const sel=(selectedTocLine0!==null&&Number(it.line0)===selectedTocLine0)?' selected':'';const citeAttr=(it.citeN!==null&&it.citeN!==undefined)?(' data-cite-n="'+escText(String(it.citeN))+'"'):'';return '<div class="fixed-toc-item'+sel+'" data-key="'+escText(it.key||'')+'" data-state-key="'+escText(it.stateKey||it.key||'')+'" data-line0="'+String(it.line0)+'"'+citeAttr+' data-tip="'+tip+'"><input class="toc-check" type="checkbox"'+checked+' data-tip="CheckTimeBox(CTB)"/><input class="toc-value" value="'+val+'" data-tip="'+tip+'"/></div>'}).join('');setTimeout(ensureSelectedTocVisible,0);}
 let standardsOn=true;
@@ -11178,7 +11283,7 @@ if(contentsCheck)contentsCheck.addEventListener('change',renderMembraneTargetPan
 if(fixedTocBody)fixedTocBody.addEventListener('mousedown',ev=>{const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;tocAllowCommentAutoselect=false;if(!item)return;const line0=Number(item.getAttribute('data-line0'));const isValue=ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value');const alreadySelected=(selectedTocLine0!==null&&line0===selectedTocLine0);const enoughPause=(Date.now()-tocLastSelectAt)>450;if(isValue&&alreadySelected&&enoughPause){tocAllowCommentAutoselect=true;return;}if(isValue){ev.preventDefault();}},true);
 if(fixedTocBody)fixedTocBody.addEventListener('compositionstart',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value'))tocImeComposing=true;},true);
 if(fixedTocBody)fixedTocBody.addEventListener('compositionend',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value'))setTimeout(()=>{tocImeComposing=false;},0);},true);
-if(fixedTocBody)fixedTocBody.addEventListener('click',ev=>{const bidiGreen=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-green'):null;if(bidiGreen){if(!bidiGreen.classList.contains('inactive'))vscode.postMessage({type:'jumpBiGreen'});return;}const bidiRed=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-red'):null;if(bidiRed){if(!bidiRed.classList.contains('inactive'))vscode.postMessage({type:'jumpBiRed'});return;}const bidiClear=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-clear'):null;if(bidiClear){vscode.postMessage({type:'clearAllJumps'});return;}const pin=ev.target&&ev.target.closest?ev.target.closest('.toc-pin'):null;if(pin){if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-check')){vscode.postMessage({type:'pinJumpMode',toSelected:!!ev.target.checked});return;}if(ev.target&&ev.target.closest&&ev.target.closest('.toc-pin-mode')){return;}vscode.postMessage({type:'pinCycle'});return;}const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const cls=ev.target&&ev.target.classList;if(cls&&cls.contains('toc-check')){const checked=!!ev.target.checked;const tip=checked?('Checked: '+new Date().toLocaleString('ja-JP')):('Line '+((Number(item.getAttribute('data-line0'))||0)+1));item.setAttribute('data-tip',tip);ev.target.setAttribute('data-tip',tip);const valueEl=item.querySelector('.toc-value');if(valueEl)valueEl.setAttribute('data-tip',tip);showTocTip(ev);vscode.postMessage({type:'toggleTocCheck',key:item.getAttribute('data-state-key')||item.getAttribute('data-key'),checked});return;}if(cls&&cls.contains('toc-value'))return;const key=item.getAttribute('data-key');const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
+if(fixedTocBody)fixedTocBody.addEventListener('click',ev=>{const bidiGreen=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-green'):null;if(bidiGreen){if(!bidiGreen.classList.contains('inactive'))vscode.postMessage({type:'jumpBiGreen'});return;}const bidiRed=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-red'):null;if(bidiRed){if(!bidiRed.classList.contains('inactive'))vscode.postMessage({type:'jumpBiRed'});return;}const bidiClear=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-clear'):null;if(bidiClear){vscode.postMessage({type:'clearAllJumps'});return;}const pin=ev.target&&ev.target.closest?ev.target.closest('.toc-pin'):null;if(pin){if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-check')){vscode.postMessage({type:'pinJumpMode',toSelected:!!ev.target.checked});return;}if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-toggle')){vscode.postMessage({type:'toggleMeOne',line:ev.target.getAttribute('data-line')});return;}if(ev.target&&ev.target.closest&&ev.target.closest('.toc-pin-mode')){return;}vscode.postMessage({type:'pinCycle'});return;}const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const cls=ev.target&&ev.target.classList;if(cls&&cls.contains('toc-check')){const checked=!!ev.target.checked;const tip=checked?('Checked: '+new Date().toLocaleString('ja-JP')):('Line '+((Number(item.getAttribute('data-line0'))||0)+1));item.setAttribute('data-tip',tip);ev.target.setAttribute('data-tip',tip);const valueEl=item.querySelector('.toc-value');if(valueEl)valueEl.setAttribute('data-tip',tip);showTocTip(ev);vscode.postMessage({type:'toggleTocCheck',key:item.getAttribute('data-state-key')||item.getAttribute('data-key'),checked});return;}if(cls&&cls.contains('toc-value'))return;const key=item.getAttribute('data-key');const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
 if(fixedTocBody)fixedTocBody.addEventListener('dblclick',ev=>{const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const inputEl=item.querySelector('.toc-value');const key=tocKeyFromInputValue(inputEl?inputEl.value:item.getAttribute('data-key'));const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
 function tocTextWidth(el,text){
   try{
@@ -12094,6 +12199,10 @@ function toggleMeDock(editorOverride) {
 
 // {* ▼mCN=0900_PROVIDER_ACTIVATE // folding provider / activate / deactivate (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 class MembraneFoldingProvider {
+  constructor() {
+    this._emitter = new vscode.EventEmitter();
+    this.onDidChangeFoldingRanges = this._emitter.event;
+  }
   provideFoldingRanges(document) {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
     if (!cfg.get('enabled', true)) return [];
@@ -12101,7 +12210,10 @@ class MembraneFoldingProvider {
       .filter(p => p.end > p.start)
       .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region));
   }
+  // Call before editor.fold to force VSCode to re-request ranges from this provider.
+  notifyRangesChanged() { try { this._emitter.fire(); } catch(_) {} }
 }
+let membraneFoldingProviderInstance = null;
 function membraneArrowHoverMessage(editor, position) {
   if (!editor || !position) return null;
   const info = membraneLineInfo(editor.document, position.line);
@@ -12228,7 +12340,7 @@ makeDecorations();
     { scheme: 'file' }
   ];
   disposables = [
-    vscode.languages.registerFoldingRangeProvider(foldingSelector, new MembraneFoldingProvider()),
+    vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
     vscode.languages.registerHoverProvider(foldingSelector, {
       provideHover(document, position) {
         const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
@@ -12494,6 +12606,18 @@ makeDecorations();
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); }),
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
+  // v0.9.754: On activation, re-apply Standards > V state (writes defaultFoldingRangeProvider)
+  // so MeOS fold ranges are in VSCode's cache before the first editor.fold call.
+  // Without this, the user would need to manually toggle Standards > V or disable/re-enable
+  // the extension every session for membrane folding to work correctly.
+  setTimeout(() => {
+    try {
+      const edCfg = vscode.workspace.getConfiguration('editor');
+      const showFolding = edCfg.get('showFoldingControls', 'mouseover');
+      const standardsOn = showFolding !== 'never';
+      setNativeStandardsDisclosureControls(standardsOn).catch(() => {});
+    } catch (_) {}
+  }, 600);
 }
 function deactivate() {
   disposeDecorations();

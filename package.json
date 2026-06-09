@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣 / MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). A membrane is a comment — so it leaves your original data as it is. Comments (semantic metadata) create structure. MeOS notation itself is editor-independent; this extension is one of multiple possible implementations.",
-  "version": "0.9.730",
+  "version": "0.9.758",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -184,8 +184,8 @@
         },
         "laiMembrane.autoUnfoldOnFoldedStartSelection": {
           "type": "boolean",
-          "default": true,
-          "description": "When a folded membrane start line is selected, unfold it. This makes clicking the visible membrane label/line expand the block."
+          "default": false,
+          "description": "Deprecated (v0.9.756): clicking a folded membrane's label no longer auto-unfolds it. Use the ▼⇄▼▲ Toggle button on the Current Me Pin instead. This setting is now a no-op."
         },
         "laiMembrane.labelGap": {
           "type": "number",
