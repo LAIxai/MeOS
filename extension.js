@@ -1,4 +1,9 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.767: H-TOC タブ毎に選択状態を記憶(俊克 pm10:06,10:16・課題2/7)。各タブの選択アイテムを key で
+//   ★右脳膜(ファイル mHTOC)に保存。俊克案: クリックは in-memory更新のみ(無書込→undo無汚染)、ファイル書込の
+//   たび(タブ切替=既にファイルを書く操作 等)に flushHtocSelIntoData で tab.sel に同梱して mHTOC へ。選択が
+//   ファイルと共に旅をする(別PC/再読込でも復元)。snapshot selKey= live優先→なければ tab.sel(file)。
+//   renderFixedTocがkey照合で復元/selectTocItemが setTocSelection 送信。globalStateは不使用。
 // - v0.9.765: ハイライト/取消線/見出しの tip 区切り `//` の誤爆を根治(俊克 pm07:16・課題4/7)。真因=
 //   parseColorSpec が「最初の //」を区切りにしていた→本文中の https:// 等のURLを tip区切りと誤認して破綻。
 //   修正=「末尾の有効な (色) の直後の //tip だけ」を区切りと認識(末尾側優先・無効な(…)は本文温存)。本文の
@@ -4889,6 +4894,37 @@ async function setTocCreatedAt(document, key, value) {
 function hyperTocDataKey(document) {
   return 'hyperTocData:' + (document && document.uri ? document.uri.toString() : 'unknown');
 }
+// v0.9.766: per-tab "selected item" memory, stored in the right-brain membrane (in-file mHTOC).
+// 俊克 design: a TOC click only updates an in-memory map (NO file write → no undo pollution);
+// the selection is flushed into the mHTOC whenever the file is next written (tab switch and any
+// other H-TOC save — see flushHtocSelIntoData in setHyperTocData). So selection travels with the
+// file (restored on reload / another PC) without writing on every click.
+const _htocSelMem = new Map(); // uriString -> { tabId: selKey }  (live, session-side)
+function getHtocSelMap(document) {
+  if (!document) return {};
+  const k = document.uri.toString();
+  if (_htocSelMem.has(k)) return _htocSelMem.get(k);
+  const map = {};
+  _htocSelMem.set(k, map);
+  return map;
+}
+// Merge the live selection map into the tab data so it gets serialized into the mHTOC line.
+function flushHtocSelIntoData(document, data) {
+  if (!document || !data || !Array.isArray(data.tabs)) return;
+  const map = _htocSelMem.get(document.uri.toString());
+  if (!map) return;
+  for (const t of data.tabs) { if (t && map[t.id] !== undefined) t.sel = map[t.id]; }
+}
+async function setHtocSelForActiveTab(key) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  const at = activeHyperTocTab(data);
+  if (!at) return;
+  const map = getHtocSelMap(doc);
+  map[at.tab.id] = (typeof key === 'string') ? key : ''; // live only — no file write here
+}
 // v0.9.677: H-TOC「別セクター」永続化。H-TOCデータ(tabs/items/check状態/引用)を、ユーザー本文とは
 // 干渉しない完全不可視の1行 `<!-- mHTOC1 <hex> -->` としてファイル"末尾"に埋め込む。これでファイルを
 // 別フォルダ/別マシン/クラウド/git に移しても H-TOC が随伴する(旧: globalState の絶対パスキー=移動で
@@ -5016,6 +5052,8 @@ function getHyperTocData(document) {
 }
 async function setHyperTocData(document, data) {
   if (!document) return;
+  // v0.9.766: ride the live per-tab selection into the mHTOC on every save (tab switch etc.).
+  flushHtocSelIntoData(document, data);
   // v0.9.677: persist to the in-file "別セクター" (source of truth, travels with the file).
   // Keep globalState as a fast cache / fallback for when the doc isn't open as an editor.
   if (extensionContext) { try { await extensionContext.globalState.update(hyperTocDataKey(document), data); } catch (_) {} }
@@ -5440,6 +5478,9 @@ function getWorkingTocSnapshot(editor) {
     citeN: (it.citeN === null || it.citeN === undefined) ? null : Number(it.citeN)
   }));
   const tabs = data.tabs.map((t, i) => ({ id: t.id, name: t.name || 'Hyper TOC', idx: i, active: i === at.idx, itemCount: (t.items || []).length }));
+  // v0.9.766: live session selection wins; else the value persisted in the mHTOC (file).
+  const _liveSel = getHtocSelMap(editor.document)[at.tab.id];
+  const selKey = ((_liveSel !== undefined ? _liveSel : (at.tab.sel || '')) || '');
   return {
     enabled: fixedWorkingTocEnabled,
     hideEditor: fixedWorkingTocHideEditor,
@@ -5450,6 +5491,7 @@ function getWorkingTocSnapshot(editor) {
     items,
     tabs,
     activeIdx: at.idx,
+    selKey,
     greenActive,
     redActive,
     currentMembrane
@@ -11270,7 +11312,7 @@ let tocAllowCommentAutoselect=false;
 let tocImeComposing=false;
 let _tabNameComposing=false;
 function ensureSelectedTocVisible(){const sel=document.querySelector('.fixed-toc-item.selected');if(sel&&typeof sel.scrollIntoView==='function'){sel.scrollIntoView({block:'nearest',inline:'nearest'});}}
-function selectTocItem(item){if(!item)return;selectedTocLine0=Number(item.getAttribute('data-line0'));tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));item.classList.add('selected');ensureSelectedTocVisible();}function moveSelectedToc(delta){if(selectedTocLine0===null)return;const current=document.querySelector('.fixed-toc-item.selected');if(!current)return;const next=delta<0?current.previousElementSibling:current.nextElementSibling;if(!(next&&next.classList&&next.classList.contains('fixed-toc-item'))){return;}const fromLine0=Number(current.getAttribute('data-line0'));const toLine0=Number(next.getAttribute('data-line0'));selectedTocLine0=toLine0;tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));next.classList.add('selected');ensureSelectedTocVisible();vscode.postMessage({type:'moveTocItem',line0:fromLine0,delta});}
+function selectTocItem(item){if(!item)return;selectedTocLine0=Number(item.getAttribute('data-line0'));tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));item.classList.add('selected');ensureSelectedTocVisible();/* v0.9.766: このタブの選択をkeyで永続(globalState)。タブを切り替えて戻っても選択が残る。 */vscode.postMessage({type:'setTocSelection',key:item.getAttribute('data-key')||''});}function moveSelectedToc(delta){if(selectedTocLine0===null)return;const current=document.querySelector('.fixed-toc-item.selected');if(!current)return;const next=delta<0?current.previousElementSibling:current.nextElementSibling;if(!(next&&next.classList&&next.classList.contains('fixed-toc-item'))){return;}const fromLine0=Number(current.getAttribute('data-line0'));const toLine0=Number(next.getAttribute('data-line0'));selectedTocLine0=toLine0;tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));next.classList.add('selected');ensureSelectedTocVisible();vscode.postMessage({type:'moveTocItem',line0:fromLine0,delta});}
 function renderNavTocState(hasToc){if(navToc){navToc.textContent=hasToc?'TOC':'TOP';navToc.title=hasToc?'TOC — jump to Hyper TOC membrane':'TOP — jump to top of file';navToc.classList.toggle('toc-mode',!!hasToc);navToc.classList.toggle('top-mode',!hasToc);navToc.disabled=false;navToc.classList.remove('disabled');}if(navCreateToc){navCreateToc.classList.toggle('hidden',!!hasToc);navCreateToc.disabled=!!hasToc;}}
 function renderHyperTocTabs(toc){
   if(!tocTabRow)return;
@@ -11290,7 +11332,7 @@ function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';cons
   // retired in favour of the bookmark (栞) and the ▼⇄▼▲ toggle. Pin keeps title/name/Ln + toggle.
   return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><button class="toc-pin-toggle" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>';}
 function bidiJumpBarHtml(toc){const greenActive=!!(toc&&toc.greenActive);const redActive=!!(toc&&toc.redActive);const gCls='bidi-btn bidi-green'+(greenActive?'':' inactive');const rCls='bidi-btn bidi-red'+(redActive?'':' inactive');const gTip=greenActive?'S-click: jump open ⇔ close of active 🟢 pair':'No active 🟢 pair (select a membrane name in body to arm)';const rTip=redActive?'S-click: jump source ⇔ target of active 🔴 pair':'No active 🔴 pair (select citation text or click an H-TOC entry to arm)';return '<div class="bidi-jump-bar"><span class="bidi-label">Bi-direction Jump:</span><span class="'+gCls+'" data-tip="'+escText(gTip)+'">🟢</span><span class="bidi-sep">/</span><span class="'+rCls+'" data-tip="'+escText(rTip)+'">🔴</span><span class="bidi-btn bidi-clear" data-tip="このファイルの 🟢/🔴 ジャンプフラグを全消去（初期化／デバッグ用・Cmd+Zで復元）">Clear</span><span class="bidi-jumponly">(Jump only / S-click)</span></div>';}
-function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.hasToc));fixedToc.classList.toggle('on',!!(toc&&toc.enabled));if(!toc||!toc.enabled)return;renderHyperTocTabs(toc);if(fixedTocName&&document.activeElement!==fixedTocName)fixedTocName.value=toc.tocName||'';const items=(toc.items||[]);if(tocPinBar)tocPinBar.innerHTML=pinRowHtml(toc);if(!items.length){fixedTocBody.innerHTML='<div class="fixed-toc-empty">Hyper TOC is empty. Press ＋ to add one.</div>';selectedTocLine0=null;return;}fixedTocBody.innerHTML=items.map(it=>{const checked=it.checkedAt?' checked':'';const parts=[];if(it.createdAt)parts.push('Created: '+escText(it.createdAt));if(Array.isArray(it.checkLog)&&it.checkLog.length){it.checkLog.forEach(e=>{if(e&&e.at)parts.push((e.label||(e.checked?'Checked':'Unchecked'))+': '+escText(e.at));});}else if(it.checkedAt){parts.push('Checked: '+escText(it.checkedAt));}if(it.citeN!==null&&it.citeN!==undefined)parts.push('Cite #'+escText(String(it.citeN)));const tip=parts.length?parts.join(' | '):('Line '+it.line);const val=escText(it.value||it.label||it.key||'');const sel=(selectedTocLine0!==null&&Number(it.line0)===selectedTocLine0)?' selected':'';const citeAttr=(it.citeN!==null&&it.citeN!==undefined)?(' data-cite-n="'+escText(String(it.citeN))+'"'):'';return '<div class="fixed-toc-item'+sel+'" data-key="'+escText(it.key||'')+'" data-state-key="'+escText(it.stateKey||it.key||'')+'" data-line0="'+String(it.line0)+'"'+citeAttr+' data-tip="'+tip+'"><input class="toc-check" type="checkbox"'+checked+' data-tip="CheckTimeBox(CTB)"/><input class="toc-value" value="'+val+'" data-tip="'+tip+'"/></div>'}).join('');setTimeout(ensureSelectedTocVisible,0);}
+function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.hasToc));fixedToc.classList.toggle('on',!!(toc&&toc.enabled));if(!toc||!toc.enabled)return;renderHyperTocTabs(toc);if(fixedTocName&&document.activeElement!==fixedTocName)fixedTocName.value=toc.tocName||'';const items=(toc.items||[]);if(tocPinBar)tocPinBar.innerHTML=pinRowHtml(toc);/* v0.9.766: このタブの保存済み選択(selKey)をkeyで照合して復元。タブ切替時もそのタブの選択が戻る。 */if(toc.selKey){const _f=items.find(it=>String(it.key)===String(toc.selKey));selectedTocLine0=_f?Number(_f.line0):null;}else{selectedTocLine0=null;}if(!items.length){fixedTocBody.innerHTML='<div class="fixed-toc-empty">Hyper TOC is empty. Press ＋ to add one.</div>';selectedTocLine0=null;return;}fixedTocBody.innerHTML=items.map(it=>{const checked=it.checkedAt?' checked':'';const parts=[];if(it.createdAt)parts.push('Created: '+escText(it.createdAt));if(Array.isArray(it.checkLog)&&it.checkLog.length){it.checkLog.forEach(e=>{if(e&&e.at)parts.push((e.label||(e.checked?'Checked':'Unchecked'))+': '+escText(e.at));});}else if(it.checkedAt){parts.push('Checked: '+escText(it.checkedAt));}if(it.citeN!==null&&it.citeN!==undefined)parts.push('Cite #'+escText(String(it.citeN)));const tip=parts.length?parts.join(' | '):('Line '+it.line);const val=escText(it.value||it.label||it.key||'');const sel=(selectedTocLine0!==null&&Number(it.line0)===selectedTocLine0)?' selected':'';const citeAttr=(it.citeN!==null&&it.citeN!==undefined)?(' data-cite-n="'+escText(String(it.citeN))+'"'):'';return '<div class="fixed-toc-item'+sel+'" data-key="'+escText(it.key||'')+'" data-state-key="'+escText(it.stateKey||it.key||'')+'" data-line0="'+String(it.line0)+'"'+citeAttr+' data-tip="'+tip+'"><input class="toc-check" type="checkbox"'+checked+' data-tip="CheckTimeBox(CTB)"/><input class="toc-value" value="'+val+'" data-tip="'+tip+'"/></div>'}).join('');setTimeout(ensureSelectedTocVisible,0);}
 let standardsOn=true;
 function renderStandardsToggle(){if(!standardsToggle)return;standardsToggle.classList.toggle('on',standardsOn);standardsToggle.classList.toggle('off',!standardsOn);const lab=standardsToggle.querySelector('.standards-label');if(lab)lab.textContent='Standards > v';standardsToggle.title=standardsOn?'Standards ON (default): native > / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control.':'Standards OFF: native > / v folding controls are hidden. MeOS membrane controls are prioritized.';}
 if(standardsToggle)standardsToggle.addEventListener('click',()=>{standardsOn=!standardsOn;renderStandardsToggle();vscode.postMessage({type:'toggleStandards',enabled:standardsOn});});
@@ -12129,6 +12171,10 @@ function toggleMeDock(editorOverride) {
     }
     if (message && message.type === 'moveTocItem') {
       await moveWorkingTocItemAtLine(message.line0, message.delta);
+      return;
+    }
+    if (message && message.type === 'setTocSelection') {
+      await setHtocSelForActiveTab(message.key); // v0.9.766: persist this tab's selection (globalState, no file write)
       return;
     }
     if (message && message.type === 'addEmptyTocItem') {
