@@ -11511,6 +11511,8 @@ function hideTocTip(){if(tocTooltip)tocTooltip.style.display='none';}
    共通の左伸ばしtipを出す(showTocTip内で title→data-tip 遅延移行)。個別リスナ(fixedTocBody/format-tools)は廃止し1本化。 */
 document.addEventListener('mousemove',showTocTip);
 document.addEventListener('mouseleave',hideTocTip);
+/* v0.9.774: H-TOCスクロール中はtipを隠す(タブD&Dと同じ発想・俊克 am04:20)。スクロール後にマウスを動かせば再表示。 */
+if(fixedTocBody)fixedTocBody.addEventListener('scroll',hideTocTip,{passive:true});
 
 if(toggleEditorToc)toggleEditorToc.addEventListener('click',()=>vscode.postMessage({type:'toggleEditorToc'}));
 if(tocMoveUp)tocMoveUp.addEventListener('click',()=>moveSelectedToc(-1));
