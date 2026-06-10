@@ -1,4 +1,15 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.771: タブD// - v0.9.770: タブD&D バグ修正(俊克 am03:20)。D 左端ドロップ修正(俊克 am03:31)。右はopsボタンが行き過ぎを拾うが左はタブ左に要素無く tocTabRow外で
+//   dragover不発→左端へ移動不可だった。dragover/dropの受け口を H-TOCパネル全体(fixedToc)に拡張し左右対称に。
+// - v0.9.770: タブD// - v0.9.770: タブD&D バグ修正(俊克 am03:20)。D バグ修正(俊克 am03:20)。右端タブの太線より右(opsボタン/余白)にポインタが入ると、その下に
+//   .toc-tab が無く dragover/drop が空振り→末尾へ移動できなかった。_resolveDropTab でポインタX座標から最寄りの
+//   タブを解決(右端超えたら最後のタブ/左端未満なら先頭)→直接タブ上でなくてもドロップ可能に。
+// - v0.9.769: タブD&D 2点修正(俊克 am03:02)。①バグ1: ドロップ先インジケータを方向で出し分け(右へ移動=対象の
+//   右側に太線/左へ移動=左側。drop-left/drop-right。実際の挿入位置と一致)。右端へ移動時に左側へ線が出る誤りを修正。
+//   ②改良1: タブのtipを常に"上空"に表示+ドラッグ開始でtip非表示→ドロップ位置がtipで隠れない。
+// - v0.9.768: H-TOCタブのドラッグ並べ替え(俊克 pm10:43・課題5/7)。タブに draggable+HTML5 DnD(dragstart/over/
+//   drop/end をtocTabRowにイベント委譲)。ドロップで reorderHyperTocTab(from,to)→data.tabs並べ替え・activeタブは
+//   id追跡で維持・setHyperTocDataで右脳膜に永続。ドラッグ中は半透明、ドロップ先に橙インジケータ。
 // - v0.9.767: H-TOC タブ毎に選択状態を記憶(俊克 pm10:06,10:16・課題2/7)。各タブの選択アイテムを key で
 //   ★右脳膜(ファイル mHTOC)に保存。俊克案: クリックは in-memory更新のみ(無書込→undo無汚染)、ファイル書込の
 //   たび(タブ切替=既にファイルを書く操作 等)に flushHtocSelIntoData で tab.sel に同梱して mHTOC へ。選択が
@@ -5221,6 +5232,26 @@ async function switchHyperTocTab(idx) {
   const data = await ensureHyperTocData(doc);
   if (typeof idx !== 'number' || idx < 0 || idx >= data.tabs.length) return false;
   data.activeIdx = idx;
+  await setHyperTocData(doc, data);
+  postFixedWorkingTocSnapshot();
+  return true;
+}
+// v0.9.768: drag-reorder tabs. Move tab from→to and keep the same tab active (track by id).
+async function reorderHyperTocTab(from, to) {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) return false;
+  const doc = editor.document;
+  const data = await ensureHyperTocData(doc);
+  if (!data || !Array.isArray(data.tabs)) return false;
+  const n = data.tabs.length;
+  from = Number(from); to = Number(to);
+  if (!Number.isInteger(from) || !Number.isInteger(to)) return false;
+  if (from < 0 || from >= n || to < 0 || to >= n || from === to) return false;
+  const activeId = (data.tabs[data.activeIdx] || {}).id; // keep the active tab active after the move
+  const [moved] = data.tabs.splice(from, 1);
+  data.tabs.splice(to, 0, moved);
+  const ni = data.tabs.findIndex(t => t && t.id === activeId);
+  data.activeIdx = ni >= 0 ? ni : Math.min(Math.max(0, data.activeIdx), data.tabs.length - 1);
   await setHyperTocData(doc, data);
   postFixedWorkingTocSnapshot();
   return true;
@@ -11135,7 +11166,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .fixed-toc{display:none;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden}
 .fixed-toc.on{display:block}.toc-name-row{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,213,92,.13);border-bottom:1px solid rgba(210,140,0,.25)}.toc-title{font-size:12px;font-weight:900;color:#d18400}.toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}.toc-tab.dragging{opacity:.4}.toc-tab.drop-left{box-shadow:inset 3px 0 0 #d18400;background:rgba(210,132,0,.18)}.toc-tab.drop-right{box-shadow:inset -3px 0 0 #d18400;background:rgba(210,132,0,.18)}
 .toc-tab:hover{background:rgba(255,213,92,.18)}
 .toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
 .toc-tab-ops{margin-left:auto;display:inline-flex;gap:2px;align-items:center;padding-bottom:2px}
@@ -11322,7 +11353,7 @@ function renderHyperTocTabs(toc){
     const active=t.active?' active':'';
     const name=escText(t.name||'Hyper TOC');
     const count=Number(t.itemCount||0);
-    return '<div class="toc-tab'+active+'" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items)">'+name+'</div>';
+    return '<div class="toc-tab'+active+'" draggable="true" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items) — drag to reorder">'+name+'</div>';
   }).join('');
   const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
   tocTabRow.innerHTML=tabsHtml+opsHtml;
@@ -11474,7 +11505,7 @@ if(fixedTocBody)fixedTocBody.addEventListener('keydown',ev=>{if(ev.target&&ev.ta
 if(fixedTocBody)fixedTocBody.addEventListener('focusout',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value')){const item=ev.target.closest('.fixed-toc-item');if(!tocImeComposing)vscode.postMessage({type:'updateTocItem',line0:Number(item.getAttribute('data-line0')),value:ev.target.value});setTimeout(clearTocEditingComment,0);}});
 /* v0.9.711: 全tip共通。tipの右端をカーソルの約6文字左に置く間隔(px)。俊克 am09:53「ポインターより6文字くらい離す・見えないとストレス」。 */
 const TIP_GAP_PX=44;
-function showTocTip(ev){if(!tocTooltip)return;const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;/* v0.9.712: native title を data-tip に遅延移行(ネイティブtipを抑止し共通の左伸ばしtipに一本化)。JSが.titleを再設定しても次のhoverで反映。 */if(el&&el.hasAttribute('title')){const tt=el.getAttribute('title');if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));/* v0.9.686: grow the tip LEFT from the cursor (Me Dock sits at the screen's right edge, so a right-growing tip clips); wrap to 2+ lines. Anchor the tip's RIGHT edge ~12px left of the cursor. */tocTooltip.style.display='block';const rowEl=(el.closest&&el.closest('.fixed-toc-item,.toc-pin'))||el;const rect=(rowEl&&rowEl.getBoundingClientRect)?rowEl.getBoundingClientRect():null;const tw=tocTooltip.offsetWidth||120;const h=tocTooltip.offsetHeight||20;if(ev.clientX-TIP_GAP_PX-tw<4){/* v0.9.713: 左伸ばしだと左端で見切れる(左端の細いボタン)→上に逃がして右方向に伸ばす(俊克 am10:48)。 */tocTooltip.style.right='auto';let left=(rect?rect.left:ev.clientX);if(left+tw>window.innerWidth-2)left=window.innerWidth-tw-2;if(left<2)left=2;tocTooltip.style.left=left+'px';let top=(rect?rect.top:ev.clientY)-h-4;if(top<2)top=(rect?rect.bottom:ev.clientY)+4;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;tocTooltip.style.top=top+'px';}else{/* 通常: カーソル6文字左から左伸ばし・行の上端に合わせる(プルダウン風)。 */tocTooltip.style.left='auto';tocTooltip.style.right=(window.innerWidth-ev.clientX+TIP_GAP_PX)+'px';let top=(rect?rect.top:ev.clientY)+1;if(top<2)top=2;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;tocTooltip.style.top=top+'px';}}
+function showTocTip(ev){if(!tocTooltip)return;const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;/* v0.9.712: native title を data-tip に遅延移行(ネイティブtipを抑止し共通の左伸ばしtipに一本化)。JSが.titleを再設定しても次のhoverで反映。 */if(el&&el.hasAttribute('title')){const tt=el.getAttribute('title');if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));/* v0.9.686: grow the tip LEFT from the cursor (Me Dock sits at the screen's right edge, so a right-growing tip clips); wrap to 2+ lines. Anchor the tip's RIGHT edge ~12px left of the cursor. */tocTooltip.style.display='block';/* v0.9.769: タブのtipは常に"上空"に出す(ドラッグ中にドロップ位置を隠さないため)。タブ左に揃え、上に余地が無ければ下。 */const _tabEl=el.closest&&el.closest('.toc-tab');if(_tabEl){const r=_tabEl.getBoundingClientRect();const tw=tocTooltip.offsetWidth||120,h=tocTooltip.offsetHeight||20;tocTooltip.style.right='auto';let left=r.left;if(left+tw>window.innerWidth-2)left=window.innerWidth-tw-2;if(left<2)left=2;tocTooltip.style.left=left+'px';let top=r.top-h-6;if(top<2)top=r.bottom+6;tocTooltip.style.top=top+'px';return;}const rowEl=(el.closest&&el.closest('.fixed-toc-item,.toc-pin'))||el;const rect=(rowEl&&rowEl.getBoundingClientRect)?rowEl.getBoundingClientRect():null;const tw=tocTooltip.offsetWidth||120;const h=tocTooltip.offsetHeight||20;if(ev.clientX-TIP_GAP_PX-tw<4){/* v0.9.713: 左伸ばしだと左端で見切れる(左端の細いボタン)→上に逃がして右方向に伸ばす(俊克 am10:48)。 */tocTooltip.style.right='auto';let left=(rect?rect.left:ev.clientX);if(left+tw>window.innerWidth-2)left=window.innerWidth-tw-2;if(left<2)left=2;tocTooltip.style.left=left+'px';let top=(rect?rect.top:ev.clientY)-h-4;if(top<2)top=(rect?rect.bottom:ev.clientY)+4;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;tocTooltip.style.top=top+'px';}else{/* 通常: カーソル6文字左から左伸ばし・行の上端に合わせる(プルダウン風)。 */tocTooltip.style.left='auto';tocTooltip.style.right=(window.innerWidth-ev.clientX+TIP_GAP_PX)+'px';let top=(rect?rect.top:ev.clientY)+1;if(top<2)top=2;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;tocTooltip.style.top=top+'px';}}
 function hideTocTip(){if(tocTooltip)tocTooltip.style.display='none';}
 /* v0.9.712: 全tip統一。webview全体で mousemove を拾い、data-tip / native title を持つ最近接要素に
    共通の左伸ばしtipを出す(showTocTip内で title→data-tip 遅延移行)。個別リスナ(fixedTocBody/format-tools)は廃止し1本化。 */
@@ -11506,6 +11537,23 @@ if(tocTabRow){
     const tab=target.closest&&target.closest('.toc-tab');
     if(tab){const idx=Number(tab.getAttribute('data-tab-idx'));if(!isNaN(idx))vscode.postMessage({type:'switchHyperTocTab',idx});}
   });
+  // v0.9.768: タブのドラッグ並べ替え(HTML5 DnD・イベント委譲。innerHTML再生成されてもtocTabRowは残る)。
+  let _dragTabIdx=null;
+  let _pendingTo=null;       /* v0.9.772: dragoverで「今表示している挿入線」の対象idx。 */
+  let _dropHandled=false;    /* v0.9.773: dropが発火したか。 */
+  function _clearDropMarks(){tocTabRow.querySelectorAll('.toc-tab.dragging,.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('dragging','drop-left','drop-right'));}
+  /* v0.9.773: 「見えている挿入線(_pendingTo)」に入れる。dropはパネル外で離すと発火しないので、必ず発火するdragendでも確定する(=どこで離しても線が出ていれば移動)。 */
+  function _commitTabReorder(){if(_dragTabIdx!==null&&_pendingTo!==null&&!isNaN(_dragTabIdx)&&!isNaN(_pendingTo)&&_dragTabIdx!==_pendingTo){vscode.postMessage({type:'reorderHyperTocTab',from:_dragTabIdx,to:_pendingTo});}}
+  /* v0.9.770: ポインタが直接タブ上に無くてもX座標で最寄りのタブを解決(右端を越えたら最後のタブ=末尾へ移動可能に)。 */
+  function _resolveDropTab(ev){const direct=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(direct)return direct;const tabs=tocTabRow.querySelectorAll('.toc-tab');if(!tabs.length)return null;const x=ev.clientX,first=tabs[0],last=tabs[tabs.length-1];if(x>=last.getBoundingClientRect().right)return last;if(x<=first.getBoundingClientRect().left)return first;let best=first;for(const t of tabs){if(x>=t.getBoundingClientRect().left)best=t;}return best;}
+  tocTabRow.addEventListener('dragstart',ev=>{const tab=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(!tab){return;}_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;_dropHandled=false;if(ev.dataTransfer){ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',String(_dragTabIdx));}catch(_){}}tab.classList.add('dragging');if(typeof hideTocTip==='function')hideTocTip();/* v0.9.769: ドラッグ中はtipを隠してドロップ位置を見えるように。 */});
+  /* v0.9.770: dragover/drop は H-TOCパネル全体(fixedToc)で受ける。右はopsボタンが行き過ぎを拾うが左はタブ左に
+     要素が無く tocTabRow の外に出て発火しなかった非対称を解消。_resolveDropTab がX座標で先頭/末尾/最寄りに解決。 */
+  const _dropZone=(typeof fixedToc!=='undefined'&&fixedToc)?fixedToc:tocTabRow;
+  _dropZone.addEventListener('dragover',ev=>{if(_dragTabIdx===null)return;const tab=_resolveDropTab(ev);if(!tab)return;ev.preventDefault();if(ev.dataTransfer)ev.dataTransfer.dropEffect='move';tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_pendingTo=overIdx;}else{_pendingTo=null;}});
+  _dropZone.addEventListener('drop',ev=>{if(_dragTabIdx===null)return;ev.preventDefault();_dropHandled=true;_commitTabReorder();_dragTabIdx=null;_pendingTo=null;_clearDropMarks();});
+  /* v0.9.773: dropがパネル外で発火しなくても、必ず発火するdragendで「見えていた線」に確定する。 */
+  tocTabRow.addEventListener('dragend',()=>{if(!_dropHandled)_commitTabReorder();_dragTabIdx=null;_pendingTo=null;_dropHandled=false;_clearDropMarks();});
 }
 if(tocTabConfirmYes)tocTabConfirmYes.addEventListener('click',()=>{vscode.postMessage({type:'deleteHyperTocTab'});if(tocTabConfirm)tocTabConfirm.classList.remove('on');});
 if(tocTabConfirmNo)tocTabConfirmNo.addEventListener('click',()=>{if(tocTabConfirm)tocTabConfirm.classList.remove('on');});
@@ -12192,6 +12240,10 @@ function toggleMeDock(editorOverride) {
     // v0.9.549 Phase C-1: Hyper TOC tab operations.
     if (message && message.type === 'switchHyperTocTab') {
       await switchHyperTocTab(Number(message.idx));
+      return;
+    }
+    if (message && message.type === 'reorderHyperTocTab') {
+      await reorderHyperTocTab(message.from, message.to);
       return;
     }
     if (message && message.type === 'duplicateHyperTocTab') {
