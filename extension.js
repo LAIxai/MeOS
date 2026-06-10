@@ -1,4 +1,7 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.762: 「色=深さ」仕様を廃止(俊克 pm03:17「深度で色分けは初期発想・実情に合わない」)。colorForDepth は
+//   既定で単一ベース色(lineColor)を返し、各膜のユーザー指定色を本筋に。旧来の深さ別カラーは laiMembrane.colorByDepth
+//   =true(既定false)で復活可。ヒーロー静止画は写す膜に好きな色を付けて"七色の地層"を作れる(意味は崩れない)。
 // - v0.9.761: Front Anchor 巡回ロジック修正(俊克 pm01:23)。v760は「最前線以外→必ず最前線」で、栞#1に居ると
 //   次クリックで最前線へ戻り#2へ届かなかった。修正=「栞の上に居れば現在位置の次の栞へ巡回／栞以外(執筆中)に
 //   居れば最前線へ直行」。これで 最前線→#1→#2→最前線 と全栞巡回でき、執筆中はワンクリックで最前線復帰。
@@ -2354,6 +2357,11 @@ const DEEP_DEPTH_THRESHOLD = 8;
 const DEEP_DEPTH_COLOR = 'rgba(150, 150, 150, 0.92)';
 
 function colorForDepth(depth, cfg) {
+  // v0.9.762(俊克 pm03:17): 「色=深さ」は初期発想で実情に合わない(現実にそんなに深くならない)。
+  // 本筋は「各膜に、自分にとって分かりやすい色を付ける」=ユーザー指定の個別色。色未指定の膜は
+  // 単一のベース色(lineColor)になる。深さ別カラーが好きな人は laiMembrane.colorByDepth=true で復活。
+  const base = cfg.get('lineColor', 'rgba(150, 64, 120, 0.9)');
+  if (!cfg.get('colorByDepth', false)) return base;
   const d = Math.max(0, depth);
   if (d >= DEEP_DEPTH_THRESHOLD) return DEEP_DEPTH_COLOR;
   const colors = getDepthColors(cfg);
