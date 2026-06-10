@@ -1,4 +1,12 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.761: Front Anchor 巡回ロジック修正(俊克 pm01:23)。v760は「最前線以外→必ず最前線」で、栞#1に居ると
+//   次クリックで最前線へ戻り#2へ届かなかった。修正=「栞の上に居れば現在位置の次の栞へ巡回／栞以外(執筆中)に
+//   居れば最前線へ直行」。これで 最前線→#1→#2→最前線 と全栞巡回でき、執筆中はワンクリックで最前線復帰。
+// - v0.9.760: 🔖栞の改良=Front Anchor(最前線栞)導入(俊克 pm01:04・課題1/7)。①栞ボタン1クリックで必ず
+//   最前線へ直行(3回クリック不要)・既に最前線に居れば次の栞へ巡回。②最後に追加した栞が自動で最前線に。
+//   ③メニュー最下部に「Update it to Front Anchor」=カーソル行を最前線化(栞が無い場所でも実行可=その場で
+//   栞作成、満杯時は旧最前線を退避)。④ガターアイコンを赤地・白Fの専用SVG(bookmark-front.svg)で区別。
+//   データに front(行番号)追加=globalState永続・編集追従・ホバー/コマンド(bookmarkSetFront/At)対応。
 // - v0.9.759: Standards > V ボタンの状態がファイル切替で実態とズレるバグ修正(俊克 am11:20)。
 //   webview の standardsOn が default:true ハードコード→再描画のたびに ON に戻っていた(エディタ設定は
 //   workspace に残るのでボタン表示と不一致)。修正=currentStandardsOn()(showFoldingControls!=='never')を
@@ -2274,6 +2282,7 @@ function disposeDecorations() {
   }
   if (strikeFaintBgDecoration) { strikeFaintBgDecoration.dispose(); strikeFaintBgDecoration = undefined; }
   if (bookmarkDecoration) { bookmarkDecoration.dispose(); bookmarkDecoration = undefined; }
+  if (bookmarkFrontDecoration) { bookmarkFrontDecoration.dispose(); bookmarkFrontDecoration = undefined; }
   if (bookmarkHoverDecoration) { bookmarkHoverDecoration.dispose(); bookmarkHoverDecoration = undefined; }
   if (headingSizeByLevel) {
     for (const d of headingSizeByLevel.values()) { try { d.dispose(); } catch (_) {} }
@@ -2627,6 +2636,16 @@ function makeDecorations() {
   try { if (extensionContext && extensionContext.extensionUri) _bmOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark.svg'); } catch (_) {}
   if (!_bmOpts.gutterIconPath) _bmOpts.before = { contentText: '🔖', margin: '0 3px 0 0' }; // 念のためのフォールバック
   bookmarkDecoration = vscode.window.createTextEditorDecorationType(_bmOpts);
+  // v0.9.760: Front Anchor(最前線栞)=赤地・白F の別アイコン。栞ボタン1クリックで必ずここへ飛ぶ。
+  const _bmFrontOpts = {
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    overviewRulerColor: 'rgba(220,38,38,0.98)',
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+    gutterIconSize: 'contain'
+  };
+  try { if (extensionContext && extensionContext.extensionUri) _bmFrontOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark-front.svg'); } catch (_) {}
+  if (!_bmFrontOpts.gutterIconPath) _bmFrontOpts.before = { contentText: '🚩', margin: '0 3px 0 0' };
+  bookmarkFrontDecoration = vscode.window.createTextEditorDecorationType(_bmFrontOpts);
   bookmarkHoverDecoration = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v0.9.721: ホバー専用
   // v0.9.660: 見出し — レベル別サイズ(太字)装飾 ×3。font-size は em で控えめに。
   // v0.9.669: font-size を復活(H1=1.3 / H2=1.2 / H3=1.1em 太字)。v0.9.666で10秒固着の切り分けの
@@ -10134,46 +10153,53 @@ async function insertFormatTemplate(kind, editor) {
 // ★戻る(cycle)と消す(remove)を分離: cycleは大事な場所へ巡回ジャンプ／removeはカーソル行のしおりだけ消す
 // (最後に居た大事な場所が勝手に消えない)。満杯時の挿入は無効(自動削除しない)。編集の行ズレは分かる範囲で追従。
 let bookmarkDecoration = null;
+let bookmarkFrontDecoration = null;  // v0.9.760: Front Anchor(最前線栞)専用=赤地・白F のガターアイコン
 let bookmarkHoverDecoration = null;  // v0.9.721: ホバー専用(ガターアイコン無し・行全体)            // 🔖 をしおり行に表示
 const _bookmarkMem = new Map();           // uriString -> { marks:[line0...], cycleIdx:int }
 function bookmarkStateKey(document) { return document ? ('meosBookmarks:' + document.uri.toString()) : ''; }
 function getBookmarks(document) {
-  if (!document) return { marks: [], cycleIdx: -1 };
+  if (!document) return { marks: [], cycleIdx: -1, front: -1 };
   const k = document.uri.toString();
   if (_bookmarkMem.has(k)) return _bookmarkMem.get(k);
-  let data = { marks: [], cycleIdx: -1 };
+  let data = { marks: [], cycleIdx: -1, front: -1 };
   try {
     const saved = extensionContext && extensionContext.globalState.get(bookmarkStateKey(document));
-    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1) };
+    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1), front: (typeof saved.front === 'number' ? saved.front : -1) };
   } catch (_) {}
+  // v0.9.760: front must be one of the current marks; otherwise drop it.
+  if (data.front >= 0 && data.marks.indexOf(data.front) < 0) data.front = -1;
   _bookmarkMem.set(k, data);
   return data;
 }
 async function saveBookmarks(document, data) {
   if (!document) return;
   _bookmarkMem.set(document.uri.toString(), data);
-  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx }); } catch (_) {}
+  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1) }); } catch (_) {}
 }
 function refreshBookmarkDecoration(editor) {
   if (!bookmarkDecoration || !editor) return;
   const doc = editor.document;
   const data = getBookmarks(doc);
-  const iconItems = [];  // v0.9.721: ガターアイコンは点レンジ(ln,0,ln,0)=折返し行でも1個だけ。
-  const hoverItems = []; // ホバーは行全体レンジ(別装飾・ガターアイコン無し)。
+  const iconItems = [];      // v0.9.721: 通常栞アイコン(点レンジ=折返し行でも1個)。
+  const frontIconItems = []; // v0.9.760: Front Anchor(赤地・白F)アイコン。
+  const hoverItems = [];     // ホバーは行全体レンジ(別装飾・ガターアイコン無し)。
   for (const ln of data.marks) {
     if (ln < 0 || ln >= doc.lineCount) continue;
-    iconItems.push({ range: new vscode.Range(ln, 0, ln, 0) });
+    const isFront = (ln === data.front);
+    (isFront ? frontIconItems : iconItems).push({ range: new vscode.Range(ln, 0, ln, 0) });
     const eol = doc.lineAt(ln).text.length;
-    const md = new vscode.MarkdownString('🔖 (Ln ' + (ln + 1) + ')   [Remove this 🔖](command:lai-membrane.bookmarkRemoveAt?' + encodeURIComponent(JSON.stringify([ln])) + ')   [Clear all 🔖](command:lai-membrane.bookmarkClearAll)');
-    md.isTrusted = { enabledCommands: ['lai-membrane.bookmarkRemoveAt', 'lai-membrane.bookmarkClearAll'] };
+    const tag = isFront ? '🚩 Front Anchor (最前線栞)' : '🔖';
+    const md = new vscode.MarkdownString(tag + ' (Ln ' + (ln + 1) + ')   [Remove this 🔖](command:lai-membrane.bookmarkRemoveAt?' + encodeURIComponent(JSON.stringify([ln])) + ')   [Set as Front Anchor](command:lai-membrane.bookmarkSetFrontAt?' + encodeURIComponent(JSON.stringify([ln])) + ')   [Clear all 🔖](command:lai-membrane.bookmarkClearAll)');
+    md.isTrusted = { enabledCommands: ['lai-membrane.bookmarkRemoveAt', 'lai-membrane.bookmarkSetFrontAt', 'lai-membrane.bookmarkClearAll'] };
     hoverItems.push({ range: new vscode.Range(ln, 0, ln, eol), hoverMessage: md });
   }
   try { editor.setDecorations(bookmarkDecoration, iconItems); } catch (_) {}
+  try { if (bookmarkFrontDecoration) editor.setDecorations(bookmarkFrontDecoration, frontIconItems); } catch (_) {}
   try { if (bookmarkHoverDecoration) editor.setDecorations(bookmarkHoverDecoration, hoverItems); } catch (_) {}
 }
 async function bookmarkClearAll(editor) { // 全しおり消去(H-TOCメニューに無いユニーク機能)。
   if (!editor) return;
-  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1 });
+  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1, front: -1 });
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
 }
 function postBookmarkState(editor) {
@@ -10186,6 +10212,7 @@ async function bookmarkInsert(editor) { // カーソル行に追加(3個未満�
   const doc = editor.document, line = editor.selection.active.line, data = getBookmarks(doc);
   if (data.marks.indexOf(line) >= 0 || data.marks.length >= 3) { postBookmarkState(editor); return; }
   data.marks.push(line); data.marks.sort((a, b) => a - b);
+  data.front = line; // v0.9.760: 最後に追加した栞が最前線(Front Anchor)になる。
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
 }
@@ -10197,14 +10224,52 @@ async function bookmarkRemove(editor, line) { // カーソル行(or 指定行)�
   if (idx < 0) { postBookmarkState(editor); return; }
   data.marks.splice(idx, 1);
   if (data.cycleIdx >= data.marks.length) data.cycleIdx = data.marks.length - 1;
+  // v0.9.760: 最前線を消したら front は解除(残った栞には自動昇格しない)。
+  if (data.front === ln) data.front = -1;
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
 }
-async function bookmarkCycle(editor) { // 次のしおりへ巡回ジャンプ(行番号順・末尾→先頭)。
+// v0.9.760: 「Update it to Front Anchor」= カーソル行を最前線栞にする。栞が無い場所でも実行可
+// (その場で栞を作って最前線化)。既存栞の行で実行すれば、それが最前線になる。
+async function bookmarkSetFront(editor, line) {
+  if (!editor) return;
+  const doc = editor.document, data = getBookmarks(doc);
+  const ln = (typeof line === 'number') ? line : editor.selection.active.line;
+  if (ln < 0 || ln >= doc.lineCount) { postBookmarkState(editor); return; }
+  if (data.marks.indexOf(ln) < 0) {
+    // 新しい行 → 栞として追加。満杯なら現在の最前線(無ければ先頭の栞)を退避して空ける。
+    if (data.marks.length >= 3) {
+      const evict = (data.front >= 0 && data.marks.indexOf(data.front) >= 0) ? data.front : data.marks[0];
+      const ei = data.marks.indexOf(evict);
+      if (ei >= 0) data.marks.splice(ei, 1);
+    }
+    data.marks.push(ln); data.marks.sort((a, b) => a - b);
+  }
+  data.front = ln;
+  data.cycleIdx = data.marks.indexOf(ln);
+  await saveBookmarks(doc, data);
+  refreshBookmarkDecoration(editor); postBookmarkState(editor);
+  vscode.window.setStatusBarMessage('🚩 Front Anchor set (Ln ' + (ln + 1) + ')', 1500);
+}
+async function bookmarkCycle(editor) { // v0.9.760: 1クリックで必ず最前線(Front Anchor)へ。既に最前線にいれば次の栞へ巡回。
   if (!editor) return;
   const doc = editor.document, data = getBookmarks(doc);
   if (!data.marks.length) { postBookmarkState(editor); return; }
-  data.cycleIdx = (data.cycleIdx + 1) % data.marks.length;
+  // v0.9.761(俊克 pm01:23): 栞の上に居れば「次の栞へ巡回」(現在位置基準)、栞以外に居れば「最前線へ直行」。
+  // これで 最前線→#1→#2→最前線 と全栞を巡回でき、かつ執筆中(栞以外)はワンクリックで必ず最前線へ戻れる。
+  const curLine = editor.selection.active.line;
+  const onMarkIdx = data.marks.indexOf(curLine);
+  const frontIdx = (data.front >= 0) ? data.marks.indexOf(data.front) : -1;
+  if (onMarkIdx >= 0) {
+    // いずれかの栞の上に居る → 現在位置の次の栞へ巡回(末尾→先頭)。
+    data.cycleIdx = (onMarkIdx + 1) % data.marks.length;
+  } else if (frontIdx >= 0) {
+    // 栞以外(執筆中)に居る → 必ず最前線へ直行。
+    data.cycleIdx = frontIdx;
+  } else {
+    // 最前線未設定 かつ 栞以外 → 従来の巡回。
+    data.cycleIdx = (data.cycleIdx + 1) % data.marks.length;
+  }
   const line = Math.min(Math.max(0, data.marks[data.cycleIdx]), doc.lineCount - 1);
   await saveBookmarks(doc, data);
   const pos = new vscode.Position(line, 0);
@@ -10226,8 +10291,14 @@ function adjustBookmarksForChange(e) { // 編集による行ズレを分かる�
     for (let i = 0; i < data.marks.length; i++) {
       if (data.marks[i] > startLine) { data.marks[i] = Math.max(startLine, data.marks[i] + delta); changed = true; }
     }
+    // v0.9.760: Front Anchor の行も同じ規則でずらす。
+    if (data.front > startLine) { data.front = Math.max(startLine, data.front + delta); changed = true; }
   }
-  if (changed) { data.marks = data.marks.filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b); saveBookmarks(e.document, data); }
+  if (changed) {
+    data.marks = data.marks.filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
+    if (data.front >= 0 && data.marks.indexOf(data.front) < 0) data.front = -1;
+    saveBookmarks(e.document, data);
+  }
 }
 // {* ▲mCN=0867_BOOKMARK // *}
 
@@ -11025,10 +11096,10 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .bidi-jump-bar .nav-jump-label.hidden{display:none}
 .toc-tools{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid rgba(210,140,0,.20);background:rgba(255,213,92,.08)}.toc-tools button{font-size:11px;padding:3px 6px}.toc-tools .toc-move{font-size:18px;line-height:1;padding:1px 7px}.toc-tools .toc-add{font-size:22px;line-height:1;color:#d18400;padding:0 8px}.toc-tools .toc-onsite{font-weight:800;color:#d18400}.toc-tools .toc-onsite.on{background:rgba(210,132,0,.22);border-color:#d18400}
 .format-tools .fmt-label{font-size:11px;font-weight:800;color:#d18400;opacity:.85}.format-tools .fmt-btns{display:flex;gap:6px}.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}.fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-btn:active{background:rgba(210,132,0,.30)}.fmt-btn.raw-toggle{margin-left:8px;font-family:inherit;font-weight:700;font-size:11px}.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
-.toc-tools .bm-split{margin-left:auto;display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-remove{order:0}.bm-pop #bm-insert{order:1}.bm-pop.full #bm-remove{order:2}
+.toc-tools .bm-split{margin-left:auto;display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-remove{order:0}.bm-pop #bm-insert{order:1}.bm-pop.full #bm-remove{order:2}.bm-pop #bm-front{order:3;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:#dc2626;font-weight:700}.bm-pop #bm-front:hover{background:rgba(220,38,38,.14)}
 .fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-del{color:#b91c1c}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:800;padding:1px 5px;margin-left:2px;border:1px solid rgba(56,148,255,.5);border-radius:4px;background:rgba(56,148,255,.12);color:var(--vscode-foreground);line-height:1.4}.toc-pin-toggle:hover{background:rgba(56,148,255,.30);border-color:#3794ff}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:var(--vscode-editorHoverWidget-background,#f3f3f3);color:var(--vscode-editorHoverWidget-foreground,#333);border:1px solid var(--vscode-editorHoverWidget-border,#c8c8c8);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
 </style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button><button class="close" title="Close">×</button></span></header><main class="body">
-<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-tools"><button class="cancel" id="toggle-editor-toc" title="Fold / unfold raw TOC in editor">Fold TOC</button><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">−</button><button class="cancel toc-onsite" id="toc-onsite" title="On-site TOC: split editor and keep raw TOC above">On-site</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | Cycle-jump to your next 🔖 — return to your saved places">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | insert / remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove the bookmark</button><button class="bm-pop-item" id="bm-insert" data-tip="Drop a 🔖 at the current cursor line (up to 3)">insert a bookmark</button></div>
+<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-tools"><button class="cancel" id="toggle-editor-toc" title="Fold / unfold raw TOC in editor">Fold TOC</button><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">−</button><button class="cancel toc-onsite" id="toc-onsite" title="On-site TOC: split editor and keep raw TOC above">On-site</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | insert / remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove the bookmark</button><button class="bm-pop-item" id="bm-insert" data-tip="Drop a 🔖 at the current cursor line (up to 3)">insert a bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩). One click of 🔖 always jumps here. Works even with no bookmark here.">Update it to Front Anchor</button></div>
 <div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | wraps the selection: =={ text (red/yellow) //tip }==">==</button><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | wraps the selection: ~~{ text (red/) //tip }~~ (faint pink background)">~~</button><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | turns the current line into: ##[ text (white/green) //tip ]##">##</button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button></span></div>
 <div class="inline-panel" id="new-rename-panel">
   <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div></div>
@@ -11277,12 +11348,13 @@ if(fmtStrike)fmtStrike.addEventListener('click',()=>vscode.postMessage({type:'in
 if(fmtHeading)fmtHeading.addEventListener('click',()=>vscode.postMessage({type:'insertFormat',kind:'heading'}));
 const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.addEventListener('click',()=>vscode.postMessage({type:'toggleRaw'}));
 /* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
-const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmInsert=document.getElementById('bm-insert'),bmRemove=document.getElementById('bm-remove');
+const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmInsert=document.getElementById('bm-insert'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front');
 function closeBmPop(){if(bmPop)bmPop.classList.remove('on');}
 if(bmCycle)bmCycle.addEventListener('click',()=>{if(bmCycle.classList.contains('zero'))return;vscode.postMessage({type:'bookmarkCycle'});});
 if(bmMenuBtn)bmMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!bmPop.classList.contains('on');bmPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=bmMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=bmPop.offsetHeight||60,w=bmPop.offsetWidth||140;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;bmPop.style.left=left+'px';bmPop.style.top=Math.max(6,r.top-h-6)+'px';});});
 if(bmInsert)bmInsert.addEventListener('click',()=>{if(bmInsert.classList.contains('disabled'))return;vscode.postMessage({type:'bookmarkInsert'});closeBmPop();});
 if(bmRemove)bmRemove.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkRemove'});closeBmPop();});
+if(bmFront)bmFront.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkSetFront'});closeBmPop();});
 document.addEventListener('click',ev=>{if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();},true);
 function renderBookmarkState(count,full){if(bmCycle)bmCycle.classList.toggle('zero',!count);if(bmMenuBtn)bmMenuBtn.classList.toggle('zero',!count);if(bmCycle){const c=bmCycle.querySelector('.bm-cnt');if(count){if(c)c.textContent=count;else bmCycle.insertAdjacentHTML('beforeend','<span class="bm-cnt">'+count+'</span>');}else if(c)c.remove();}if(bmInsert)bmInsert.classList.toggle('disabled',!!full);if(bmPop)bmPop.classList.toggle('full',!!full);}
 if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
@@ -11956,6 +12028,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'bookmarkCycle') { await bookmarkCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkInsert') { await bookmarkInsert(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkRemove') { await bookmarkRemove(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
+    if (message && message.type === 'bookmarkSetFront') { await bookmarkSetFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'addToWorkingToc') {
       await addCurrentMembraneToWorkingToc();
@@ -12332,6 +12405,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemoveAt', (line) => bookmarkRemove(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkClearAll', () => bookmarkClearAll(vscode.window.activeTextEditor || getMeDockTargetEditor())));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFront', () => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFrontAt', (line) => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.lineHistoryForward', async () => {
     const ok = goMeDockLineHistory(1);
