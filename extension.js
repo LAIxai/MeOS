@@ -1,4 +1,8 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.759: Standards > V ボタンの状態がファイル切替で実態とズレるバグ修正(俊克 am11:20)。
+//   webview の standardsOn が default:true ハードコード→再描画のたびに ON に戻っていた(エディタ設定は
+//   workspace に残るのでボタン表示と不一致)。修正=currentStandardsOn()(showFoldingControls!=='never')を
+//   mode メッセージに同梱し、webview が受信時に standardsOn を実値へ同期して renderStandardsToggle。
 // - v0.9.758: ▼⇄▼▲ ボタンの tip 誤記修正(俊克 am07:28)。"outside the membrane"→"inside the membrane"。
 //   このボタンの価値は膜の内部にカーソルがあっても正しく折畳めること(従来は内部から畳むと##へ飛んだ)。
 // - v0.9.757: 🟢システムを引退(俊克 am07:04「栞があるので🟢ボタンはその役割を終えた」)。①膜本文の🟢表示を
@@ -10916,11 +10920,21 @@ async function shedCurrentMembrane(editor) {
   return ok;
 }
 
+// v0.9.759: read the ACTUAL Standards > V state from the live editor setting so the
+// Me Dock toggle reflects reality (showFoldingControls 'never' === OFF). Without this the
+// webview's standardsOn default (true) made the button snap back to ON on every file switch
+// even while the editor stayed OFF (俊克 am11:20).
+function currentStandardsOn() {
+  try {
+    const showFolding = vscode.workspace.getConfiguration('editor').get('showFoldingControls', 'mouseover');
+    return showFolding !== 'never';
+  } catch (_) { return true; }
+}
 function updateMeDockMode() {
   if (!meDockPanel) return;
   const editor = getMeDockTargetEditor();
   const state = meDockModeForEditor(editor);
-  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor) });
+  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn() });
   postFixedWorkingTocSnapshot();
   updateMeDockCurrentLineMarker();
   postMeDockAnchorState(editor);
@@ -11461,7 +11475,7 @@ lineInput.addEventListener('keydown',ev=>{
   if(ev.key==='Enter'){ev.preventDefault();clearTimeout(lineJumpTimer);vscode.postMessage({type:'jumpLine',line:lineInput.value});return;}
   if(ev.key==='Escape'){lineInput.value=currentLine||'';lineInput.blur();return;}
 });
-window.addEventListener('message',event=>{const m=event.data;if(m&&m.type==='opResult'){showMeDockToast(m.text);return;}if(m&&m.type==='bookmarkState'){renderBookmarkState(m.count||0,!!m.full);return;}if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);return;}if(m&&m.type==='mode')applyMode(m.mode,m.value,!!m.force,m.line,m.markerOn,m.history,m.color,m.flipMinusColor,m.flipPlusColor,m.navDepth,m.anchor);if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='zoomMeLoaded'){renderZoomMeLoaded(m.label||'');if(m.mode==='me'){zoomMembraneNameValue=m.start!==undefined?String(m.start):zoomMembraneNameValue;zoomMembraneCountValue=m.end!==undefined?String(m.end):zoomMembraneCountValue;}else{zoomLineStartValue=m.start!==undefined?String(m.start):zoomLineStartValue;zoomLineEndValue=m.end!==undefined?String(m.end):zoomLineEndValue;}if(m.mode){applyZoomMeMode(m.mode,true);}}if(m&&m.type==='focusName')focusNameInput(m.select!==false);});
+window.addEventListener('message',event=>{const m=event.data;if(m&&m.type==='opResult'){showMeDockToast(m.text);return;}if(m&&m.type==='bookmarkState'){renderBookmarkState(m.count||0,!!m.full);return;}if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);return;}if(m&&m.type==='mode'){applyMode(m.mode,m.value,!!m.force,m.line,m.markerOn,m.history,m.color,m.flipMinusColor,m.flipPlusColor,m.navDepth,m.anchor);if(typeof m.standardsOn==='boolean'&&m.standardsOn!==standardsOn){standardsOn=m.standardsOn;renderStandardsToggle();}}if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='zoomMeLoaded'){renderZoomMeLoaded(m.label||'');if(m.mode==='me'){zoomMembraneNameValue=m.start!==undefined?String(m.start):zoomMembraneNameValue;zoomMembraneCountValue=m.end!==undefined?String(m.end):zoomMembraneCountValue;}else{zoomLineStartValue=m.start!==undefined?String(m.start):zoomLineStartValue;zoomLineEndValue=m.end!==undefined?String(m.end):zoomLineEndValue;}if(m.mode){applyZoomMeMode(m.mode,true);}}if(m&&m.type==='focusName')focusNameInput(m.select!==false);});
 </script></body></html>`;
 }
 
