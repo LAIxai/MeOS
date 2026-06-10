@@ -1,4 +1,8 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.765: ハイライト/取消線/見出しの tip 区切り `//` の誤爆を根治(俊克 pm07:16・課題4/7)。真因=
+//   parseColorSpec が「最初の //」を区切りにしていた→本文中の https:// 等のURLを tip区切りと誤認して破綻。
+//   修正=「末尾の有効な (色) の直後の //tip だけ」を区切りと認識(末尾側優先・無効な(…)は本文温存)。本文の
+//   // や () は温存され、既存ファイルも無傷(後方互換)。区切り記号自体は `//` のまま変更不要。膜名の()問題は別タスク。
 // - v0.9.764: Current Me ピンの ▼⇄▼▲ トグルボタンを右端寄せ(俊克 pm05:13)。.toc-pin-toggle の
 //   margin-left:2px → auto。名前/Ln は左、トグルは右端で押しやすく。
 // - v0.9.763: Current Me ピンを H-TOC 最下部=栞ツールバーの"直上"へ移動(俊克 pm04:59)。これで
@@ -1841,23 +1845,30 @@ function maskInlineTokens(s) {
 //   元の content から取り出す(scan は content と同じ長さなので位置が一致する)。
 function parseColorSpec(content, single, scan) {
   scan = scan || content;
-  const ci = scan.indexOf('//');
-  const beforeComment = ci >= 0 ? content.slice(0, ci) : content;
-  const comment = ci >= 0 ? content.slice(ci + 2).trim() : '';
-  const scanBefore = ci >= 0 ? scan.slice(0, ci) : scan;
-  let fgKey = null, bgKey = null;
-  let bodyText = beforeComment;
-  const cm = scanBefore.match(/\(([^()]{1,80})\)\s*$/);
-  if (cm) {
-    const spec = cm[1].trim();
+  // v0.9.765(俊克 pm07:16): 区切り `//tip` は「末尾の有効な (色) の直後」にある時だけ認識する。
+  // 旧実装は最初の `//` を区切りにしていたため、本文中の `//`(例: https:// のURL)を tip 区切りと
+  // 誤認して壊れていた。新方式は末尾側から有効な (色) を探し、その後ろが「行末」または「//tip→行末」の
+  // 時だけ色/tipとして切り出す。→ 本文の // や () は温存され、既存ファイルも壊れない(後方互換)。
+  // scan は maskInlineTokens 済み(見出し用)。長さは content と一致するので index をそのまま流用できる。
+  let fgKey = null, bgKey = null, bodyText = content, comment = '';
+  const re = /\(([^()]{1,80})\)/g;
+  let m, chosen = null;
+  while ((m = re.exec(scan)) !== null) {
+    const spec = m[1].trim();
     const sep = spec.indexOf('/') >= 0 ? '/' : (spec.indexOf('+') >= 0 ? '+' : '');
     let fg = null, bg = null;
     if (sep) { const sp = spec.split(sep); fg = normalizeFgColor(sp[0]); bg = normalizeBgColor(sp[1]); }
     else if (spec) { if (single === 'fg') fg = normalizeFgColor(spec); else bg = normalizeBgColor(spec); }
-    // 有効な色が1つでも取れた時だけ (…) を色指定として本文から切り離す。
-    // 無効(例 (x)・関数foo()) なら本文の一部として残す＝勝手に隠さない。
-    if (fg || bg) { fgKey = fg; bgKey = bg; bodyText = beforeComment.slice(0, beforeComment.length - cm[0].length); }
+    if (!(fg || bg)) continue; // 無効な (…) (例 (x)・関数foo()) は本文の一部として温存
+    const afterIdx = m.index + m[0].length;
+    const after = scan.slice(afterIdx);
+    const tipM = after.match(/^\s*\/\/([^\n]*)$/); // (色) の直後が //tip→行末
+    const isEnd = /^\s*$/.test(after);             // (色) が行末
+    if (!tipM && !isEnd) continue;                 // 末尾metadataでない → 本文中の色名扱いはしない
+    // 末尾側を優先(後から見つかった有効colorで上書き)。tip は実テキスト(content)側から切り出す。
+    chosen = { index: m.index, fg, bg, tip: tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '').trim() : '' };
   }
+  if (chosen) { fgKey = chosen.fg; bgKey = chosen.bg; bodyText = content.slice(0, chosen.index); comment = chosen.tip; }
   return { bodyText: bodyText, bodyLen: bodyText.length, fgKey: fgKey, bgKey: bgKey, comment: comment };
 }
 // v0.9.658: 文筆家向け取消線 ~~text~~ → 赤い取消線。`~~` マーカーは隠す。
