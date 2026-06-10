@@ -12,3 +12,6 @@ extension.js.pre*
 *.vsix
 node_modules/
 out/
+
+# Editor/workspace-local settings (developer's own work site — never ship to clones)
+.vscode/
