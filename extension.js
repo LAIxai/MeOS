@@ -1,4 +1,10 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.792: 矢印ボタン(↑↓←→ 円形)の矢印を太字化(俊克 pm01:18)。記号グリフはfont-weightが効きにくいので-webkit-text-stroke:.6px currentColorで縁取りして太く。
+// - v0.9.791: ①Warp ↑/↓ボタンの矢印色をジャンプ先の開始膜色に統一(俊克 pm01:01 改良1)。色予測(meDockFlipColorStateForEditor)のWarp分岐を開始膜クルーズに合わせ書換+mNT除外→従来↓が自分の閉じ膜色を出していた件を解消。②Submarineも閉じ膜を辿らず開始膜のみ(全深度)に変更(改良2)。cruise/forecast両方。
+// - v0.9.790: Warp ↑/↓ を開始膜のみのクルーズに統一(俊克 pm00:41 疑問1)。従来は↓が開始→閉じ→次開始(開始+閉じ両方)・↑はほぼ開始のみで非対称だった。Current Meが開始/閉じ/カーソルを担うのでWarpは開始膜だけで必要十分・↑=前の開始/↓=次の開始で対称。Submarineは従来通り全イベント潜航。
+// - v0.9.789: Warp/Submarine ↑/↓ も端で循環(俊克 pm00:26)。cruiseのdead-end(return false)をwrapJumpに=Warpは最後の核膜→先頭/先頭→最後、Submarineは末尾イベント⇄先頭イベント。↻回転矢印もheadWrapで表示。
+// - v0.9.788: ①Warp/Submarine囲み内の↑/↓を円形化(他のナビボタンと統一)。Warp+Submarineを内側.me-nav-segピルに包み、外枠me-nav-switchを角丸枠+円形↑↓に。②Warp対象からmNT除外(俊克 pm00:07): layerに!p.isMnt追加=Warpは最外核膜のみ巡回・mNTはCurrent Meで。深度番号は不変(透過のまま=mstat/レーン/Submarineに影響させない)。
+// - v0.9.787: Me flip -/+ を Warp/Submarine囲みの右端に↑/↓として統合(俊克 am11:21)。nav-me-minus/plusをme-nav-switch内へ移動・-→↑/+→↓・左仕切り線付きセグメント化。膜の前後巡回がスイッチと一体に。
 // - v0.9.786: 見出しジャンプボタンを [- ## +]→[↑ ## ↓] に変更(俊克 am11:03)。前の見出し=上(↑)/次の見出し=下(↓)＝実際に見出しがある方向を指すので直感的。
 // - v0.9.785: タイムマシン履歴←/→の太枠(俊克 am10:49)。端(canBack/canForward=false)かつ2件以上のとき、巡回する側の円形ボタン縁を太く(wrap-edge)。見出し[-##+]と挙動統一。
 // - v0.9.784: タイムマシン履歴←/→も巡回(俊克 am10:42・追加課題)。端まで行ったら先頭⇄末尾にwrap-around+↻回転矢印(headWrap再利用)。履歴2件以上で有効(applyModeの無効化をtotal<2基準に変更=端でも押せる)。
@@ -10791,6 +10797,8 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
     if (typeof line0 !== 'number' || line0 < 0 || line0 >= doc.lineCount) return false;
     return jumpMeDockTargetLine(String(line0 + 1));
   };
+  // v0.9.789: wrap-around at the ends (like the heading [↑ ## ↓] and history cruises) + ↻ spin.
+  const wrapJump = (line0) => { if (meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} } return jumpToLine0(line0); };
 
   // v0.9.395:
   // Warp = D0/root-layer cruise only.
@@ -10798,46 +10806,35 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
   //   open D0 -> open D-1 -> open D-2 -> close D-2 -> close D-1 -> close D0 ...
   // This is the actual "dive and surface" navigation line.
   if (mode === 'submarine') {
-    const events = [];
-    for (const p of pairs) {
-      if (typeof p.start === 'number') events.push({ line: p.start, kind: 'open', depth: p.depth || 0, pair: p });
-      if (typeof p.end === 'number') events.push({ line: p.end, kind: 'close', depth: p.depth || 0, pair: p });
-    }
-    events.sort((a, b) => (a.line - b.line) || (a.kind === 'open' ? -1 : 1) || ((a.depth || 0) - (b.depth || 0)));
-    if (!events.length) return false;
-
+    // v0.9.791: Submarine cruises OPEN lines only (all depths), no close jumps — Current Me covers
+    // a membrane's close. (Warp = depth-0 cores only; Submarine = all depths.) 俊克 pm01:01.
+    const opens = pairs.map(p => p.start).filter(n => typeof n === 'number').sort((a, b) => a - b);
+    if (!opens.length) return false;
     if (dir === 'plus') {
-      const next = events.find(e => e.line > line);
-      return next ? jumpToLine0(next.line) : false;
+      const next = opens.find(st => st > line);
+      return next !== undefined ? jumpToLine0(next) : wrapJump(opens[0]);
     }
-    const prev = events.filter(e => e.line < line).sort((a, b) => b.line - a.line)[0];
-    return prev ? jumpToLine0(prev.line) : false;
+    const prevs = opens.filter(st => st < line);
+    return prevs.length ? jumpToLine0(prevs[prevs.length - 1]) : wrapJump(opens[opens.length - 1]);
   }
 
   // Warp world = outer/root layer only.
-  const layer = pairs.filter(p => (p.depth || 0) === 0);
+  // v0.9.788: Warp jumps the outermost CORE membranes only — exclude mNT envelopes
+  // (notebooks). mNT is depth-transparent already, so its inner core members stay depth 0
+  // and remain Warp targets; mNT itself is navigated via the Current Me click instead.
+  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt);
   if (!layer.length) return false;
 
-  const onOpen = layer.find(p => p.start === line);
-  const onClose = layer.find(p => p.end === line);
-  const enclosingAtLayer = layer.filter(p => p.start < line && line < p.end).sort((a, b) => (b.start - a.start) || (a.end - b.end))[0] || null;
-
+  // v0.9.790: Warp cruises ONLY the open lines of core membranes (俊克 pm00:41). The Current Me
+  // click already covers the open / close / cursor trio inside a membrane, so Warp staying on the
+  // starts is necessary and sufficient — and symmetric (↑ = previous open, ↓ = next open).
+  const starts = layer.map(p => p.start).sort((a, b) => a - b);
   if (dir === 'plus') {
-    if (onOpen) return jumpToLine0(onOpen.end);
-    if (enclosingAtLayer) return jumpToLine0(enclosingAtLayer.end);
-    const next = layer.find(p => p.start > line);
-    return next ? jumpToLine0(next.start) : false;
+    const next = starts.find(st => st > line);
+    return next !== undefined ? jumpToLine0(next) : wrapJump(starts[0]);
   }
-
-  if (onClose) return jumpToLine0(onClose.start);
-  if (enclosingAtLayer) return jumpToLine0(enclosingAtLayer.start);
-  if (onOpen) {
-    const prev = layer.filter(p => p.start < line).sort((a, b) => b.start - a.start)[0];
-    return prev ? jumpToLine0(prev.start) : false;
-  }
-  const prev = layer.filter(p => p.end < line).sort((a, b) => b.end - a.end)[0]
-    || layer.filter(p => p.start < line).sort((a, b) => b.start - a.start)[0];
-  return prev ? jumpToLine0(prev.start) : false;
+  const prevs = starts.filter(st => st < line);
+  return prevs.length ? jumpToLine0(prevs[prevs.length - 1]) : wrapJump(starts[starts.length - 1]);
 }
 // {* ▲mCN=0871_WARP_SUBMARINE_ME_CRUISE // end [cGJF=h] *}
 
@@ -10885,25 +10882,15 @@ function meDockSubmarineCruiseForecastForEditor(editor, pairs, line) {
   if (!editor || !editor.document || !Array.isArray(pairs) || !pairs.length) return fallback;
   const doc = editor.document;
   const colorOf = (pair) => pair ? lineColorCodeFromOpenLine(doc, pair.start) : '';
-  const events = [];
-  for (const p of pairs) {
-    if (typeof p.start === 'number') events.push({ line: p.start, kind: 'open', depth: p.depth || 0, pair: p });
-    if (typeof p.end === 'number') events.push({ line: p.end, kind: 'close', depth: p.depth || 0, pair: p });
-  }
-  events.sort((a, b) => (a.line - b.line) || (a.kind === 'open' ? -1 : 1) || ((a.depth || 0) - (b.depth || 0)));
-  if (!events.length) return fallback;
-  const at = events.find(e => e.line === line) || null;
-  const prev = events.filter(e => e.line < line).sort((a, b) => b.line - a.line)[0] || null;
-  const next = events.find(e => e.line > line) || null;
-  const enclosing = pairs
-    .filter(p => p.start <= line && line <= p.end)
-    .sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null;
-  const currentColor = at ? colorOf(at.pair) : colorOf(enclosing);
-  return {
-    currentColor,
-    minusColor: prev ? colorOf(prev.pair) : currentColor,
-    plusColor: next ? colorOf(next.pair) : currentColor
-  };
+  // v0.9.791: open-only preview (all depths). minus = previous open, plus = next open (wrap).
+  const opensSorted = pairs.slice().filter(p => typeof p.start === 'number').sort((a, b) => a.start - b.start);
+  if (!opensSorted.length) return fallback;
+  const enclosing = pairs.filter(p => p.start <= line && line <= p.end).sort((a,b)=>(b.start-a.start)||(a.end-b.end))[0] || null;
+  const at = opensSorted.find(p => p.start === line) || null;
+  const prevPair = opensSorted.filter(p => p.start < line).sort((a,b)=>b.start-a.start)[0] || opensSorted[opensSorted.length - 1];
+  const nextPair = opensSorted.find(p => p.start > line) || opensSorted[0];
+  const currentColor = colorOf(at || enclosing);
+  return { currentColor, minusColor: colorOf(prevPair), plusColor: colorOf(nextPair) };
 }
 
 function meDockFlipColorStateForEditor(editor) {
@@ -10921,38 +10908,19 @@ function meDockFlipColorStateForEditor(editor) {
   // Even when the cursor is inside D-1/D-2/... membranes, Warp +/- moves along
   // D0/root membranes only, so the preview color must be the target D0 membrane,
   // not the deepest enclosing local membrane.
-  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
+  // v0.9.791: preview must match the Warp cruise = open lines of depth-0 CORE membranes only
+  // (exclude mNT). minus = previous open, plus = next open, with wrap. So both arrows show the
+  // destination OPEN membrane's colour (no more "own close" colour on +). 俊克 pm01:01.
+  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
   if (rootLayer.length) {
-    const rootOnOpen = rootLayer.find(p => p.start === line) || null;
-    const rootOnClose = rootLayer.find(p => p.end === line) || null;
-    const rootEnclosing = rootLayer.filter(p => p.start < line && line < p.end).sort((a,b)=>(b.start-a.start)||(a.end-b.end))[0] || null;
-    let minusPair = null;
-    let plusPair = null;
-    let currentPair = rootOnOpen || rootOnClose || rootEnclosing || null;
-
-    if (rootOnOpen) {
-      // On a D0 opener: + goes to its closer, - goes to previous D0 opener if any.
-      plusPair = rootOnOpen;
-      minusPair = rootLayer.filter(p => p.start < line).sort((a,b)=>b.start-a.start)[0] || rootOnOpen;
-    } else if (rootOnClose) {
-      // On a D0 closer: - goes to its opener, + goes to next D0 opener.
-      minusPair = rootOnClose;
-      plusPair = rootLayer.find(p => p.start > line) || rootOnClose;
-    } else if (rootEnclosing) {
-      // Anywhere inside a D0 membrane, Warp +/- returns to the D0 boundaries.
-      minusPair = rootEnclosing;
-      plusPair = rootEnclosing;
-    } else {
-      // Outside D0 membranes: preview previous close and next open.
-      minusPair = rootLayer.filter(p => p.end < line).sort((a,b)=>b.end-a.end)[0] || null;
-      plusPair = rootLayer.find(p => p.start > line) || null;
-    }
-
-    return {
-      currentColor: colorOf(currentPair),
-      minusColor: colorOf(minusPair),
-      plusColor: colorOf(plusPair)
-    };
+    const starts = rootLayer.map(p => p.start).sort((a,b)=>a-b);
+    let plusStart = starts.find(st => st > line); if (plusStart === undefined) plusStart = starts[0];
+    const prevStarts = starts.filter(st => st < line);
+    const minusStart = prevStarts.length ? prevStarts[prevStarts.length - 1] : starts[starts.length - 1];
+    const plusPair = rootLayer.find(p => p.start === plusStart) || null;
+    const minusPair = rootLayer.find(p => p.start === minusStart) || null;
+    const currentPair = rootLayer.find(p => p.start === line) || rootLayer.filter(p => p.start <= line && line <= p.end).sort((a,b)=>(b.start-a.start))[0] || null;
+    return { currentColor: colorOf(currentPair), minusColor: colorOf(minusPair), plusColor: colorOf(plusPair) };
   }
 
   const parentOf = (pair) => {
@@ -11232,7 +11200,7 @@ function meDockHtml() {
 .top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:8px}.top-buttons.hidden{display:none}.membrane-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:4px}.membrane-panel.hidden{display:none}.membrane-visual{position:relative;min-height:76px}.me-choice{display:flex;align-items:center;gap:5px;font-weight:900;font-size:14px;line-height:1;margin-bottom:4px}.me-choice input,.contents-choice input{width:17px;height:17px;margin:0;accent-color:currentColor}.me-scope-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:currentColor;font:inherit;font-weight:900;padding:2px 20px 2px 8px;outline:none;cursor:pointer;min-height:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}.me-scope-select:hover{filter:brightness(1.04)}.me-scope-select:focus{outline:1.5px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.me-scope-select option{color:var(--vscode-editor-foreground);background:var(--vscode-dropdown-background,var(--vscode-editor-background))}.contents-box{border:2px solid currentColor;background:rgba(128,128,128,.10);min-height:56px;margin-left:23px;display:grid;place-items:center}.contents-choice{display:flex;align-items:center;gap:5px;font-size:14px;line-height:1}.membrane-actions{display:grid;gap:5px;min-width:92px;align-content:end}.big-action{min-height:28px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;line-height:1.2;padding:4px 8px}.big-action:hover{filter:brightness(1.06)}.big-action .toc-word{color:#d18400}.big-action.remove{font-size:12px}.big-action.hidden{display:none}
 input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff);background:var(--vscode-input-background);color:var(--vscode-input-foreground);border-radius:5px;padding:5px 6px;font-size:12px;outline:1px solid rgba(55,148,255,.18)}input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .name-input{width:100%}.line-row{display:flex;align-items:center;gap:6px}.line-meter{font-size:11px;line-height:1;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;user-select:none}.time-machine-trigger{min-width:48px;text-align:center;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums;padding-left:5px;padding-right:5px}.nav-btn{min-width:28px;padding-left:7px;padding-right:7px}.nav-btn:disabled{opacity:.35;cursor:default}.line-btn{min-width:44px}.line-btn.on{color:#d97706;font-weight:800;border-color:#f59e0b}.line-input{width:100%;font-variant-numeric:tabular-nums}.time-machine-panel{display:none;position:relative;gap:8px;margin-top:6px;padding:12px 10px 10px;border:1px solid #e8bd72;border-radius:16px;background:#fff6e6;box-shadow:0 1px 3px rgba(0,0,0,.14)}.time-machine-panel.on{display:block}.time-machine-panel.on::before{content:"";position:absolute;top:-13px;left:54px;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:13px solid #e8bd72}.time-machine-panel.on::after{content:"";position:absolute;top:-11px;left:56px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:11px solid #fff6e6}.time-machine-title{font-size:12px;font-weight:900;color:#d18400;letter-spacing:.02em;line-height:1.25;padding-top:2px;margin-bottom:8px}.time-machine-main{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:8px;align-items:stretch}.tm-world-box{border:1px solid #ebcd92;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.22)}.tm-world-row{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:8px;min-height:43px;padding:7px 10px;cursor:pointer}.tm-world-row+.tm-world-row{border-top:1px solid #ebcd92}.tm-world-label{font-size:11px;font-weight:900;text-align:right}.tm-world-row.real .tm-world-label{color:#22c55e}.tm-world-row.reinc .tm-world-label{color:#d18400}.tm-world-row:not(.active){opacity:.46}.tm-world-row.active{opacity:1}.time-machine-slider-wrap{position:relative;min-width:120px;padding-top:10px}.time-machine-slider{width:100%;min-width:120px}.tm-insertion-marks{position:absolute;left:8px;right:8px;top:0;height:12px;pointer-events:none}.tm-insertion-mark{position:absolute;top:0;transform:translateX(-50%);color:#ff3333;font-size:14px;font-weight:400;font-style:normal;line-height:1;text-shadow:0 1px 0 rgba(255,255,255,.75)}.time-machine-side{display:grid;grid-template-columns:auto auto;grid-template-rows:auto 1fr auto;gap:6px;align-items:center;align-self:stretch;min-height:100%}.time-machine-index{width:54px;text-align:center;font-variant-numeric:tabular-nums}.time-machine-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end}.time-machine-actions button{font-size:11px;padding:3px 7px}.time-machine-pre{font-weight:800}.time-machine-clear{font-weight:800;color:#b45309;grid-column:1 / span 2;grid-row:3;justify-self:center;align-self:end}.time-machine-clear.disabled{opacity:.45}
-.nav-center{position:relative;display:grid;gap:6px;padding:7px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:rgba(128,128,128,.06);margin-top:2px}.nav-center-title{font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:none;color:var(--vscode-descriptionForeground)}.nav-center-title .nav-me-word,.toc-axis.current{color:#d18400}.nav-center-row{display:flex;align-items:center;gap:6px;min-height:28px}.toc-nav-row{gap:5px;white-space:nowrap;position:relative;padding-top:0}.me-axis-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}.me-flip-row{display:inline-flex;align-items:stretch;gap:4px;margin:0 2px}.me-nav-switch{display:inline-flex;align-items:stretch;border:1px solid var(--vscode-panel-border);border-radius:7px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);height:22px}.me-nav-mode{border:0;border-right:1px solid var(--vscode-panel-border);border-radius:0;min-height:22px;padding:0 7px;font-size:10.5px;line-height:1;font-weight:900;letter-spacing:.01em;background:rgba(128,128,128,.28);color:var(--vscode-button-secondaryForeground);opacity:.72}.me-nav-mode:last-child{border-right:0}.me-nav-mode.warp.on{background:#f8fafc;color:#111827;opacity:1}.me-nav-mode.warp.off{background:rgba(20,20,24,.48);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.off{background:rgba(128,128,128,.24);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.on{background:var(--submarine-bg,#8fe9ff);color:#082f49;opacity:1}.depth-window{display:inline-block;margin-left:2px;padding:1px 4px;border-radius:4px;background:#fff;color:#111;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(0,0,0,.16)}.me-flip-btn{min-width:18px;min-height:22px;padding:0 5px;border-radius:5px;font-size:12px;line-height:1;font-weight:900;color:#d18400}.toc-axis{font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.62;letter-spacing:.02em}.toc-axis.current{opacity:.86}.nav-center-row.line-row{padding-top:1px}.nav-center-row.anchor-bidi-row{justify-content:flex-start;gap:6px;white-space:nowrap}.nav-jump-label{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground)}.nav-center-label{font-size:12px;font-weight:800;color:var(--vscode-descriptionForeground)}.nav-center-divider{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.7}.nav-center .line-input{flex:1}.nav-center-btn{min-height:25px;font-weight:800}.nav-center-btn.disabled{opacity:.35;cursor:default;filter:grayscale(.4)}.toc-create-btn{color:#d18400;font-weight:900}.toc-create-btn.hidden{display:none}.toc-btn.top-mode{color:var(--vscode-button-secondaryForeground)}.toc-btn.toc-mode{color:#d18400}.eof-btn{min-width:42px}.head-nav{display:inline-flex;align-items:center;gap:4px;margin-left:14px;padding:1px 5px;border:1.5px solid var(--vscode-panel-border);border-radius:9px;background:rgba(128,128,128,.07)}.head-nav .head-nav-btn{box-sizing:border-box;width:17px;min-width:17px;height:17px;min-height:17px;padding:0;border:1.5px solid #d18400;border-radius:50%;font-size:11px;line-height:1;font-weight:900;color:#d18400;background:rgba(210,132,0,.08);display:inline-flex;align-items:center;justify-content:center}.head-nav .head-nav-btn:hover{background:rgba(210,132,0,.20)}.nav-center-btn:not(.me-nav-mode):not(.head-nav-btn){border:1px solid var(--vscode-panel-border)}.head-nav-label{font-size:11px;font-weight:900;min-width:16px;text-align:center}.head-wrap-overlay{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:36px;font-weight:900;color:#d18400;opacity:0;pointer-events:none;z-index:50;text-shadow:0 2px 8px rgba(0,0,0,.35);transition:opacity .2s}.head-wrap-overlay.show{opacity:.92;animation:headSpin 1s linear infinite}@keyframes headSpin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}.head-nav .head-nav-btn:disabled{opacity:.35;cursor:default}.head-nav .head-nav-btn.wrap-edge{border-width:2.5px;background:rgba(210,132,0,.18)}.head-nav .head-nav-center{box-sizing:border-box;background:rgba(128,128,128,.12);border:1px solid var(--vscode-panel-border);border-radius:6px;padding:2px 6px;min-height:0;font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;cursor:pointer}.head-nav .head-nav-center:hover{background:rgba(128,128,128,.22)}.head-nav.line-hist{margin-left:0}.anchor-btn,.bidi-btn{width:30px;min-width:30px;max-width:30px;font-size:14px;line-height:1;text-align:center;padding-left:0;padding-right:0}.anchor-btn{font-size:14px;font-weight:900;color:#16a34a}.anchor-btn.back{color:#16a34a;box-shadow:inset 0 0 0 1px rgba(22,163,74,.18)}
+.nav-center{position:relative;display:grid;gap:6px;padding:7px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:rgba(128,128,128,.06);margin-top:2px}.nav-center-title{font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:none;color:var(--vscode-descriptionForeground)}.nav-center-title .nav-me-word,.toc-axis.current{color:#d18400}.nav-center-row{display:flex;align-items:center;gap:6px;min-height:28px}.toc-nav-row{gap:5px;white-space:nowrap;position:relative;padding-top:0}.me-axis-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}.me-flip-row{display:inline-flex;align-items:stretch;gap:4px;margin:0 2px}.me-nav-switch{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--vscode-panel-border);border-radius:11px;background:rgba(128,128,128,.07);padding:1px 4px 1px 2px}.me-nav-seg{display:inline-flex;align-items:stretch;border:1px solid var(--vscode-panel-border);border-radius:7px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);height:22px}.me-nav-mode{border:0;border-right:1px solid var(--vscode-panel-border);border-radius:0;min-height:22px;padding:0 7px;font-size:10.5px;line-height:1;font-weight:900;letter-spacing:.01em;background:rgba(128,128,128,.28);color:var(--vscode-button-secondaryForeground);opacity:.72}.me-nav-mode:last-child{border-right:0}.me-nav-mode.warp.on{background:#f8fafc;color:#111827;opacity:1}.me-nav-mode.warp.off{background:rgba(20,20,24,.48);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.off{background:rgba(128,128,128,.24);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.on{background:var(--submarine-bg,#8fe9ff);color:#082f49;opacity:1}.depth-window{display:inline-block;margin-left:2px;padding:1px 4px;border-radius:4px;background:#fff;color:#111;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(0,0,0,.16)}.me-flip-btn{min-width:18px;min-height:22px;padding:0 5px;border-radius:5px;font-size:12px;line-height:1;font-weight:900;color:#d18400}.me-nav-switch .me-flip-btn{box-sizing:border-box;width:17px;min-width:17px;height:17px;min-height:17px;padding:0;border:1.5px solid #d18400;border-radius:50%;background:rgba(210,132,0,.08);color:#d18400;font-size:11px;line-height:1;font-weight:900;display:inline-flex;align-items:center;justify-content:center}.me-nav-switch .me-flip-btn:hover{background:rgba(210,132,0,.20)}/* v0.9.792: 矢印グリフを太く(font-weightは記号に効きにくいのでstrokeで縁取り) */.head-nav .head-nav-btn,.me-nav-switch .me-flip-btn{-webkit-text-stroke:.6px currentColor}.toc-axis{font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.62;letter-spacing:.02em}.toc-axis.current{opacity:.86}.nav-center-row.line-row{padding-top:1px}.nav-center-row.anchor-bidi-row{justify-content:flex-start;gap:6px;white-space:nowrap}.nav-jump-label{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground)}.nav-center-label{font-size:12px;font-weight:800;color:var(--vscode-descriptionForeground)}.nav-center-divider{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.7}.nav-center .line-input{flex:1}.nav-center-btn{min-height:25px;font-weight:800}.nav-center-btn.disabled{opacity:.35;cursor:default;filter:grayscale(.4)}.toc-create-btn{color:#d18400;font-weight:900}.toc-create-btn.hidden{display:none}.toc-btn.top-mode{color:var(--vscode-button-secondaryForeground)}.toc-btn.toc-mode{color:#d18400}.eof-btn{min-width:42px}.head-nav{display:inline-flex;align-items:center;gap:4px;margin-left:14px;padding:1px 5px;border:1.5px solid var(--vscode-panel-border);border-radius:9px;background:rgba(128,128,128,.07)}.head-nav .head-nav-btn{box-sizing:border-box;width:17px;min-width:17px;height:17px;min-height:17px;padding:0;border:1.5px solid #d18400;border-radius:50%;font-size:11px;line-height:1;font-weight:900;color:#d18400;background:rgba(210,132,0,.08);display:inline-flex;align-items:center;justify-content:center}.head-nav .head-nav-btn:hover{background:rgba(210,132,0,.20)}.nav-center-btn:not(.me-nav-mode):not(.head-nav-btn){border:1px solid var(--vscode-panel-border)}.head-nav-label{font-size:11px;font-weight:900;min-width:16px;text-align:center}.head-wrap-overlay{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:36px;font-weight:900;color:#d18400;opacity:0;pointer-events:none;z-index:50;text-shadow:0 2px 8px rgba(0,0,0,.35);transition:opacity .2s}.head-wrap-overlay.show{opacity:.92;animation:headSpin 1s linear infinite}@keyframes headSpin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}.head-nav .head-nav-btn:disabled{opacity:.35;cursor:default}.head-nav .head-nav-btn.wrap-edge{border-width:2.5px;background:rgba(210,132,0,.18)}.head-nav .head-nav-center{box-sizing:border-box;background:rgba(128,128,128,.12);border:1px solid var(--vscode-panel-border);border-radius:6px;padding:2px 6px;min-height:0;font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;cursor:pointer}.head-nav .head-nav-center:hover{background:rgba(128,128,128,.22)}.head-nav.line-hist{margin-left:0}.anchor-btn,.bidi-btn{width:30px;min-width:30px;max-width:30px;font-size:14px;line-height:1;text-align:center;padding-left:0;padding-right:0}.anchor-btn{font-size:14px;font-weight:900;color:#16a34a}.anchor-btn.back{color:#16a34a;box-shadow:inset 0 0 0 1px rgba(22,163,74,.18)}
 .color-row{display:inline-flex;align-items:center;justify-content:flex-start;gap:6px;margin:0}.color-row.hidden{display:none}.me-choice .color-row{margin-left:4px}.color-btn{min-width:48px;font-weight:800;padding:2px 7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);border-color:var(--vscode-panel-border)}.color-pop{display:none;position:fixed;z-index:50;padding:5px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.24);gap:3px;flex-direction:column}.color-pop.on{display:flex}.swatch{width:25px;height:25px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;font-size:14px;padding:0;line-height:1}.swatch.active::after{content:'✓';position:absolute;font-weight:900;color:#111;text-shadow:0 0 2px #fff,0 0 2px #fff}.swatch-wrap{position:relative;display:grid;place-items:center}.swatch-label{font-size:18px;line-height:1}
 .edit-actions{display:grid;gap:6px;margin-top:2px}.edit-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px;padding:6px 7px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);font-size:12px;user-select:none}.edit-row:hover{background:var(--vscode-list-hoverBackground)}.edit-row.hidden{display:none}.buttons{display:flex;justify-content:flex-end;gap:6px}button{border:1px solid var(--vscode-button-border,transparent);border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer}.cancel{background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground)}.set{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}
 .hint{padding:2px 2px 0 2px;font-size:11px;opacity:.65;line-height:1.35}
@@ -11280,7 +11248,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
   <div class="nav-center" id="nav-center">
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></div>
-    <div class="nav-center-row toc-nav-row"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" title="TOP — jump to top of file">TOP</button><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" title="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" title="Warp/Submarine Me! skeleton"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" title="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" title="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel nav-center-btn me-flip-btn" id="nav-me-minus" title="Me Flip − skeleton: previous membrane cruise">−</button><button class="cancel nav-center-btn me-flip-btn" id="nav-me-plus" title="Me Flip + skeleton: next membrane cruise">+</button></span><span class="toc-axis">---</span><button class="cancel nav-center-btn eof-btn" id="nav-eof" title="EOF — jump to end of file">EOF</button><span class="head-nav" title="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" title="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">##</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" title="Next ##[…]## heading (below ↓)">↓</button></span></div>
+    <div class="nav-center-row toc-nav-row"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" title="TOP — jump to top of file">TOP</button><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" title="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" title="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" title="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" title="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" title="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" title="Next membrane (down ↓)">↓</button></span></span><span class="toc-axis">---</span><button class="cancel nav-center-btn eof-btn" id="nav-eof" title="EOF — jump to end of file">EOF</button><span class="head-nav" title="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" title="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">##</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" title="Next ##[…]## heading (below ↓)">↓</button></span></div>
     <div class="nav-center-row line-row"><span class="head-nav line-hist"><button class="cancel nav-center-btn head-nav-btn" id="hist-back" title="Back">←</button><button class="cancel time-machine-trigger head-nav-center" id="time-machine-trigger" title="Time Machine Me">(0/0)</button><button class="cancel nav-center-btn head-nav-btn" id="hist-forward" title="Forward">→</button></span><button class="cancel line-btn ${meDockCurrentLineMarkerActive?'on':''}" id="line-btn" title="Toggle line marker">Line</button><input class="line-input" id="line-input" value="${esc(initial.line || '')}" inputmode="numeric"/></div>
     <div class="time-machine-panel" id="time-machine-panel"><div class="time-machine-title">Time Machine Me</div><div class="time-machine-main"><div class="tm-world-box"><div class="tm-world-row real active" id="tm-world-real" title="Real world line"><div class="tm-world-label">Real</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-real"></div><input class="time-machine-slider" id="time-machine-slider-real" type="range" min="1" max="1" value="1"/></div></div><div class="tm-world-row reinc" id="tm-world-reinc" title="REinc world line"><div class="tm-world-label">REinc</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-reinc"></div><input class="time-machine-slider" id="time-machine-slider-reinc" type="range" min="1" max="1" value="1"/></div></div></div><div class="time-machine-side"><input class="time-machine-index" id="time-machine-index" type="number" min="1" value="1"/><span class="line-meter" id="time-machine-total">/ 0</span><button class="cancel time-machine-clear" id="time-machine-clear" title="Clear current Line history">Clear</button></div></div></div>
     <!-- v0.9.690: Navigate Me の Bi-direction Jump バー(nav-anchor🟢/nav-bidi🔴/nav-clear)を撤去 — Current Me に統合(俊克 am11:25)。参照JSは全て if(...) ガード済みなので要素削除で安全。 -->
