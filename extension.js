@@ -1,4 +1,10 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.798: 純正 Fold All(⌘K⌘0)/Unfold All(⌘K⌘J)を横取りして無効化(俊克 6/12 am01:19)。慣れでつい打つと MeOSの折畳み状態(foldStateByPairKey/⊖⊕)とズレ▼⇄▼▲が誤動作するため。package.json keybindingsで lai-membrane.blockNativeFold(no-op+ヒント)へ上書き(editorTextFocus)。MeOSに一括折畳みの概念は無い。
+// - v0.9.797: 「Me Shadow」スコープ撤去(俊克 6/12 am01:09)。stealth膜用UIの未実装スタブ(Toggle/Shedがnoop)で誤解の元。all/shadow消滅でスコープ選択は不要に→ドロップダウンを「Me」単純ラベルにcollapse(meScopeはnullガードで自動'me')。
+// - v0.9.796: ★「Me all」スコープ＋パレットFold All/Unfold Allコマンドを撤去(俊克 6/12 am00:08)。一括折畳みは『見出し折畳みの世界の常識』であってMeOSには不要(ナビ=Warp/Current Me/Hyper TOCが代替・俯瞰は純正⌘K⌘0)。バグの温床も消滅。Me Dockスコープは Me / Me Shadow に。toggleMeAllMembranes/foldAll/unfoldAllは未参照の死コードとして残置(後日掃除)。
+// - v0.9.795: Me All Toggleが固定(f)膜を巻き込み誤動作する件を修正(俊克 pm07:52 バグ1)。toggleMeAllMembranes冒頭でisMstatFixedをcontinueスキップ→Me Allはf指定以外のみ開閉(f膜は不可侵)・▼⇄▼▲/単体Meは従来通りf膜も開閉可。メタ膜が展開され閉じ膜がズレる/normal膜が開閉しない不具合を解消。
+// - v0.9.794: HTOC1_METAメタ膜のバッジに固定指定f追加(俊克 pm07:05): ⊖→⊖f。Unfold All/展開メニューでも展開されないロック折畳みに(isMstatFixedがfを尊重)。日記も(📊⊖f6...)とf付きだった。
+// - v0.9.793: ★課題6=H-TOCメタデータをHTOC1_META膜で包む(俊克 pm01:54 B再実装)。従来は末尾の隠しコメント<!-- mHTOC1 hex -->(影)のみ→可視の畳まれた「do not edit」メタ膜で包装。writeHyperTocToSourceで作成/旧bare→包装へ自動アップグレード/更新時は内側hex行だけ置換。reader(readHyperTocFromSource)は包装有無に関わらずhex行を探すのでデータ完全互換。HTOC_META_ID='HTOC1_META'をWarp/Submarineのナビ対象から除外。折畳み既定=(📊⊖f0+0D0W)。
 // - v0.9.792: 矢印ボタン(↑↓←→ 円形)の矢印を太字化(俊克 pm01:18)。記号グリフはfont-weightが効きにくいので-webkit-text-stroke:.6px currentColorで縁取りして太く。
 // - v0.9.791: ①Warp ↑/↓ボタンの矢印色をジャンプ先の開始膜色に統一(俊克 pm01:01 改良1)。色予測(meDockFlipColorStateForEditor)のWarp分岐を開始膜クルーズに合わせ書換+mNT除外→従来↓が自分の閉じ膜色を出していた件を解消。②Submarineも閉じ膜を辿らず開始膜のみ(全深度)に変更(改良2)。cruise/forecast両方。
 // - v0.9.790: Warp ↑/↓ を開始膜のみのクルーズに統一(俊克 pm00:41 疑問1)。従来は↓が開始→閉じ→次開始(開始+閉じ両方)・↑はほぼ開始のみで非対称だった。Current Meが開始/閉じ/カーソルを担うのでWarpは開始膜だけで必要十分・↑=前の開始/↓=次の開始で対称。Submarineは従来通り全イベント潜航。
@@ -5012,34 +5018,49 @@ function hyperTocStorageHideRanges(editor) {
   if (ln >= 0) ranges.push(new vscode.Range(ln, 0, ln, (editor.document.lineAt(ln).text || '').length));
   return ranges;
 }
+// v0.9.793: the H-TOC metadata line is wrapped in a folded, "do not edit" HTOC1_META meta-
+// membrane so the H-TOC is a VISIBLE structural membrane (like the diary) instead of an invisible
+// end-of-file shadow (俊克 pm01:54 B再実装). Fully data-compatible: readHyperTocFromSource finds the
+// `<!-- mHTOC1 <hex> -->` line whether or not it is wrapped, so old (bare) files still load and are
+// upgraded to the wrapped form on the next write.
+const HTOC_META_ID = 'HTOC1_META';
+function isHtocMetaOpenAt(document, ln) {
+  if (!document || ln < 0 || ln >= document.lineCount) return false;
+  try { const o = parseOpenLine(document.lineAt(ln).text || ''); return !!(o && o.id === HTOC_META_ID); } catch (_) { return false; }
+}
 async function writeHyperTocToSource(document, data) {
   if (!document) return false;
   const editor = vscode.window.visibleTextEditors.find(e => e.document === document)
     || ((vscode.window.activeTextEditor && vscode.window.activeTextEditor.document === document) ? vscode.window.activeTextEditor : null);
   if (!editor) return false; // doc not open as an editor → globalState keeps it until next open
-  const line = encodeHyperTocLine(data);
-  if (!line) return false;
+  const hexLine = encodeHyperTocLine(data);
+  if (!hexLine) return false;
+  const metaOpen = wrapWorkingTocComment(document, '▼mCN=' + HTOC_META_ID + ' // MeOS H-TOC metadata — do not edit (📊⊖f0+0D0W)');
+  const metaClose = wrapWorkingTocComment(document, '▲mCN=' + HTOC_META_ID + ' // end');
   const existing = findHyperTocMarkerLine(document);
-  if (existing >= 0 && (document.lineAt(existing).text || '') === line) return true; // no change
+  const wrapped = existing >= 0 && isHtocMetaOpenAt(document, existing - 1);
+  // No change (already wrapped + identical hex) → nothing to write.
+  if (wrapped && (document.lineAt(existing).text || '') === hexLine) return true;
   deferRefreshCount++;
   let ok = true;
   try {
     await editor.edit(eb => {
-      if (existing >= 0) {
-        eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), line);
+      if (existing >= 0 && wrapped) {
+        // Already wrapped → replace only the inner hex line (keep the meta-membrane intact).
+        eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), hexLine);
+      } else if (existing >= 0) {
+        // Legacy bare marker → upgrade in place by wrapping it in the meta-membrane.
+        eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), metaOpen + '\n' + hexLine + '\n' + metaClose);
       } else {
+        // First time → create the wrapped block at the end of the file.
         const last = document.lineCount - 1;
         const lastText = document.lineAt(last).text || '';
-        // Trailing-newline case (last line empty): drop the marker into it directly (no extra
-        // blank line). Otherwise put it on a fresh line after the last content line.
-        eb.insert(new vscode.Position(last, lastText.length), (lastText.length === 0 ? '' : '\n') + line);
+        eb.insert(new vscode.Position(last, lastText.length), (lastText.length === 0 ? '' : '\n') + metaOpen + '\n' + hexLine + '\n' + metaClose);
       }
     }, { undoStopBefore: false, undoStopAfter: false });
   } catch (_) { ok = false; } finally {
     deferRefreshCount = Math.max(0, deferRefreshCount - 1);
   }
-  // v0.9.677: apply the hide decoration so the freshly-written marker line is invisible.
-  // Deferred + visibility-gated so it never blocks (H-TOC writes are low-frequency anyway).
   if (ok) setTimeout(() => { try { if (editor === vscode.window.activeTextEditor) refresh(editor); } catch (_) {} }, 0);
   return ok;
 }
@@ -8374,6 +8395,11 @@ async function toggleMeAllMembranes() {
   // two bulk commands. Do not call setPairFoldStateAndMstat() per pair, because
   // that function used to refresh/redraw the whole file repeatedly.
   for (const pair of pairs) {
+    // v0.9.795: Me All leaves FIXED (f) membranes untouched (e.g. the ⊖f HTOC1_META meta-membrane).
+    // The ▼⇄▼▲ / single Me toggle can still flip a fixed membrane; Me All only cycles non-fixed ones.
+    // (Forcing fixed membranes into the bulk fold/unfold corrupted the batch — meta got expanded with a
+    // stale ⊖ badge and normal membranes stopped toggling. Skipping them entirely fixes both.) 俊克 pm07:52.
+    if (isMstatFixed(pair, doc)) continue;
     let targetFolded = fixedMstatFoldTarget(pair, doc);
 
     if (targetFolded === null) {
@@ -10808,7 +10834,7 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
   if (mode === 'submarine') {
     // v0.9.791: Submarine cruises OPEN lines only (all depths), no close jumps — Current Me covers
     // a membrane's close. (Warp = depth-0 cores only; Submarine = all depths.) 俊克 pm01:01.
-    const opens = pairs.map(p => p.start).filter(n => typeof n === 'number').sort((a, b) => a - b);
+    const opens = pairs.filter(p => p.id !== HTOC_META_ID).map(p => p.start).filter(n => typeof n === 'number').sort((a, b) => a - b);
     if (!opens.length) return false;
     if (dir === 'plus') {
       const next = opens.find(st => st > line);
@@ -10822,7 +10848,7 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
   // v0.9.788: Warp jumps the outermost CORE membranes only — exclude mNT envelopes
   // (notebooks). mNT is depth-transparent already, so its inner core members stay depth 0
   // and remain Warp targets; mNT itself is navigated via the Current Me click instead.
-  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt);
+  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt && p.id !== HTOC_META_ID);
   if (!layer.length) return false;
 
   // v0.9.790: Warp cruises ONLY the open lines of core membranes (俊克 pm00:41). The Current Me
@@ -10883,7 +10909,7 @@ function meDockSubmarineCruiseForecastForEditor(editor, pairs, line) {
   const doc = editor.document;
   const colorOf = (pair) => pair ? lineColorCodeFromOpenLine(doc, pair.start) : '';
   // v0.9.791: open-only preview (all depths). minus = previous open, plus = next open (wrap).
-  const opensSorted = pairs.slice().filter(p => typeof p.start === 'number').sort((a, b) => a.start - b.start);
+  const opensSorted = pairs.slice().filter(p => typeof p.start === 'number' && p.id !== HTOC_META_ID).sort((a, b) => a.start - b.start);
   if (!opensSorted.length) return fallback;
   const enclosing = pairs.filter(p => p.start <= line && line <= p.end).sort((a,b)=>(b.start-a.start)||(a.end-b.end))[0] || null;
   const at = opensSorted.find(p => p.start === line) || null;
@@ -10911,7 +10937,7 @@ function meDockFlipColorStateForEditor(editor) {
   // v0.9.791: preview must match the Warp cruise = open lines of depth-0 CORE membranes only
   // (exclude mNT). minus = previous open, plus = next open, with wrap. So both arrows show the
   // destination OPEN membrane's colour (no more "own close" colour on +). 俊克 pm01:01.
-  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
+  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && p.id !== HTOC_META_ID).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
   if (rootLayer.length) {
     const starts = rootLayer.map(p => p.start).sort((a,b)=>a-b);
     let plusStart = starts.find(st => st > line); if (plusStart === undefined) plusStart = starts[0];
@@ -11197,7 +11223,7 @@ function meDockHtml() {
 .a{font-weight:800;font-size:16px;text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px;text-decoration-color:#4ade80}.chev{opacity:.8;font-size:12px}
 .inline-panel{padding:8px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:var(--vscode-editor-background);display:grid;gap:8px}
 .inline-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}.inline-title{font-size:14px;font-weight:900;color:var(--vscode-editor-foreground);display:flex;align-items:center;gap:5px;min-width:0}.edit-mode-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:13px;font-weight:900;padding:2px 20px 2px 7px;outline:none;cursor:pointer;min-height:25px}.edit-mode-select:hover{filter:brightness(1.04)}.zoom-scope-indicator{margin-left:auto;flex:1;min-width:0;text-align:right;font-size:11px;font-weight:900;color:var(--vscode-editor-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}.zoom-scope-indicator .zoom-scope-label{color:#d18400;font-weight:900}.zoom-scope-indicator .zoom-scope-value{color:var(--vscode-editor-foreground);font-weight:900}.zoom-scope-indicator .zoom-scope-name{color:var(--vscode-editor-foreground);font-weight:900}.inline-title .me-word{font-weight:900}.inline-title .me-word.pending{color:#b8bcc2}.me-name-wrap.hidden,.zoom-me-panel.hidden{display:none}.zoom-me-panel{display:grid;gap:4px}.zoom-me-row{display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:28px}.zoom-me-title{font-size:13px;font-weight:900;color:#d18400;letter-spacing:.01em}.zoom-me-input{width:42px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;padding:4px 5px}.zoom-me-input.me-mode-name{width:116px;text-align:left;font-variant-numeric:normal}.zoom-me-input.me-mode-count{width:34px}.zoom-me-sep{font-size:13px;font-weight:900;color:var(--vscode-descriptionForeground)}.zoom-me-mode{min-height:24px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:900;line-height:1.2;padding:3px 7px}.zoom-me-mode:hover{filter:brightness(1.06)}.zoom-me-load{min-height:26px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;line-height:1.2;padding:4px 8px}.zoom-me-load:hover{filter:brightness(1.06)}.zoom-me-status{display:none}.zoom-me-status .loaded-label{color:#d18400;font-weight:900}.zoom-me-status .loaded-range{color:var(--vscode-editor-foreground);font-weight:900}
-.top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:8px}.top-buttons.hidden{display:none}.membrane-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:4px}.membrane-panel.hidden{display:none}.membrane-visual{position:relative;min-height:76px}.me-choice{display:flex;align-items:center;gap:5px;font-weight:900;font-size:14px;line-height:1;margin-bottom:4px}.me-choice input,.contents-choice input{width:17px;height:17px;margin:0;accent-color:currentColor}.me-scope-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:currentColor;font:inherit;font-weight:900;padding:2px 20px 2px 8px;outline:none;cursor:pointer;min-height:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}.me-scope-select:hover{filter:brightness(1.04)}.me-scope-select:focus{outline:1.5px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.me-scope-select option{color:var(--vscode-editor-foreground);background:var(--vscode-dropdown-background,var(--vscode-editor-background))}.contents-box{border:2px solid currentColor;background:rgba(128,128,128,.10);min-height:56px;margin-left:23px;display:grid;place-items:center}.contents-choice{display:flex;align-items:center;gap:5px;font-size:14px;line-height:1}.membrane-actions{display:grid;gap:5px;min-width:92px;align-content:end}.big-action{min-height:28px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;line-height:1.2;padding:4px 8px}.big-action:hover{filter:brightness(1.06)}.big-action .toc-word{color:#d18400}.big-action.remove{font-size:12px}.big-action.hidden{display:none}
+.top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:8px}.top-buttons.hidden{display:none}.membrane-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:4px}.membrane-panel.hidden{display:none}.membrane-visual{position:relative;min-height:76px}.me-choice{display:flex;align-items:center;gap:5px;font-weight:900;font-size:14px;line-height:1;margin-bottom:4px}.me-choice input,.contents-choice input{width:17px;height:17px;margin:0;accent-color:currentColor}.me-scope-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:currentColor;font:inherit;font-weight:900;padding:2px 20px 2px 8px;outline:none;cursor:pointer;min-height:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}.me-scope-select:hover{filter:brightness(1.04)}.me-scope-select:focus{outline:1.5px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.me-scope-select option{color:var(--vscode-editor-foreground);background:var(--vscode-dropdown-background,var(--vscode-editor-background))}.me-scope-label{font-weight:900;padding:2px 6px}.contents-box{border:2px solid currentColor;background:rgba(128,128,128,.10);min-height:56px;margin-left:23px;display:grid;place-items:center}.contents-choice{display:flex;align-items:center;gap:5px;font-size:14px;line-height:1}.membrane-actions{display:grid;gap:5px;min-width:92px;align-content:end}.big-action{min-height:28px;border:1px solid var(--vscode-button-border,transparent);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;line-height:1.2;padding:4px 8px}.big-action:hover{filter:brightness(1.06)}.big-action .toc-word{color:#d18400}.big-action.remove{font-size:12px}.big-action.hidden{display:none}
 input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff);background:var(--vscode-input-background);color:var(--vscode-input-foreground);border-radius:5px;padding:5px 6px;font-size:12px;outline:1px solid rgba(55,148,255,.18)}input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .name-input{width:100%}.line-row{display:flex;align-items:center;gap:6px}.line-meter{font-size:11px;line-height:1;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;user-select:none}.time-machine-trigger{min-width:48px;text-align:center;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums;padding-left:5px;padding-right:5px}.nav-btn{min-width:28px;padding-left:7px;padding-right:7px}.nav-btn:disabled{opacity:.35;cursor:default}.line-btn{min-width:44px}.line-btn.on{color:#d97706;font-weight:800;border-color:#f59e0b}.line-input{width:100%;font-variant-numeric:tabular-nums}.time-machine-panel{display:none;position:relative;gap:8px;margin-top:6px;padding:12px 10px 10px;border:1px solid #e8bd72;border-radius:16px;background:#fff6e6;box-shadow:0 1px 3px rgba(0,0,0,.14)}.time-machine-panel.on{display:block}.time-machine-panel.on::before{content:"";position:absolute;top:-13px;left:54px;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:13px solid #e8bd72}.time-machine-panel.on::after{content:"";position:absolute;top:-11px;left:56px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:11px solid #fff6e6}.time-machine-title{font-size:12px;font-weight:900;color:#d18400;letter-spacing:.02em;line-height:1.25;padding-top:2px;margin-bottom:8px}.time-machine-main{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:8px;align-items:stretch}.tm-world-box{border:1px solid #ebcd92;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.22)}.tm-world-row{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:8px;min-height:43px;padding:7px 10px;cursor:pointer}.tm-world-row+.tm-world-row{border-top:1px solid #ebcd92}.tm-world-label{font-size:11px;font-weight:900;text-align:right}.tm-world-row.real .tm-world-label{color:#22c55e}.tm-world-row.reinc .tm-world-label{color:#d18400}.tm-world-row:not(.active){opacity:.46}.tm-world-row.active{opacity:1}.time-machine-slider-wrap{position:relative;min-width:120px;padding-top:10px}.time-machine-slider{width:100%;min-width:120px}.tm-insertion-marks{position:absolute;left:8px;right:8px;top:0;height:12px;pointer-events:none}.tm-insertion-mark{position:absolute;top:0;transform:translateX(-50%);color:#ff3333;font-size:14px;font-weight:400;font-style:normal;line-height:1;text-shadow:0 1px 0 rgba(255,255,255,.75)}.time-machine-side{display:grid;grid-template-columns:auto auto;grid-template-rows:auto 1fr auto;gap:6px;align-items:center;align-self:stretch;min-height:100%}.time-machine-index{width:54px;text-align:center;font-variant-numeric:tabular-nums}.time-machine-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end}.time-machine-actions button{font-size:11px;padding:3px 7px}.time-machine-pre{font-weight:800}.time-machine-clear{font-weight:800;color:#b45309;grid-column:1 / span 2;grid-row:3;justify-self:center;align-self:end}.time-machine-clear.disabled{opacity:.45}
 .nav-center{position:relative;display:grid;gap:6px;padding:7px;border:1px solid var(--vscode-panel-border);border-radius:8px;background:rgba(128,128,128,.06);margin-top:2px}.nav-center-title{font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:none;color:var(--vscode-descriptionForeground)}.nav-center-title .nav-me-word,.toc-axis.current{color:#d18400}.nav-center-row{display:flex;align-items:center;gap:6px;min-height:28px}.toc-nav-row{gap:5px;white-space:nowrap;position:relative;padding-top:0}.me-axis-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}.me-flip-row{display:inline-flex;align-items:stretch;gap:4px;margin:0 2px}.me-nav-switch{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--vscode-panel-border);border-radius:11px;background:rgba(128,128,128,.07);padding:1px 4px 1px 2px}.me-nav-seg{display:inline-flex;align-items:stretch;border:1px solid var(--vscode-panel-border);border-radius:7px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);height:22px}.me-nav-mode{border:0;border-right:1px solid var(--vscode-panel-border);border-radius:0;min-height:22px;padding:0 7px;font-size:10.5px;line-height:1;font-weight:900;letter-spacing:.01em;background:rgba(128,128,128,.28);color:var(--vscode-button-secondaryForeground);opacity:.72}.me-nav-mode:last-child{border-right:0}.me-nav-mode.warp.on{background:#f8fafc;color:#111827;opacity:1}.me-nav-mode.warp.off{background:rgba(20,20,24,.48);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.off{background:rgba(128,128,128,.24);color:#c8c8c8;opacity:.78}.me-nav-mode.submarine.on{background:var(--submarine-bg,#8fe9ff);color:#082f49;opacity:1}.depth-window{display:inline-block;margin-left:2px;padding:1px 4px;border-radius:4px;background:#fff;color:#111;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(0,0,0,.16)}.me-flip-btn{min-width:18px;min-height:22px;padding:0 5px;border-radius:5px;font-size:12px;line-height:1;font-weight:900;color:#d18400}.me-nav-switch .me-flip-btn{box-sizing:border-box;width:17px;min-width:17px;height:17px;min-height:17px;padding:0;border:1.5px solid #d18400;border-radius:50%;background:rgba(210,132,0,.08);color:#d18400;font-size:11px;line-height:1;font-weight:900;display:inline-flex;align-items:center;justify-content:center}.me-nav-switch .me-flip-btn:hover{background:rgba(210,132,0,.20)}/* v0.9.792: 矢印グリフを太く(font-weightは記号に効きにくいのでstrokeで縁取り) */.head-nav .head-nav-btn,.me-nav-switch .me-flip-btn{-webkit-text-stroke:.6px currentColor}.toc-axis{font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.62;letter-spacing:.02em}.toc-axis.current{opacity:.86}.nav-center-row.line-row{padding-top:1px}.nav-center-row.anchor-bidi-row{justify-content:flex-start;gap:6px;white-space:nowrap}.nav-jump-label{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground)}.nav-center-label{font-size:12px;font-weight:800;color:var(--vscode-descriptionForeground)}.nav-center-divider{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.7}.nav-center .line-input{flex:1}.nav-center-btn{min-height:25px;font-weight:800}.nav-center-btn.disabled{opacity:.35;cursor:default;filter:grayscale(.4)}.toc-create-btn{color:#d18400;font-weight:900}.toc-create-btn.hidden{display:none}.toc-btn.top-mode{color:var(--vscode-button-secondaryForeground)}.toc-btn.toc-mode{color:#d18400}.eof-btn{min-width:42px}.head-nav{display:inline-flex;align-items:center;gap:4px;margin-left:14px;padding:1px 5px;border:1.5px solid var(--vscode-panel-border);border-radius:9px;background:rgba(128,128,128,.07)}.head-nav .head-nav-btn{box-sizing:border-box;width:17px;min-width:17px;height:17px;min-height:17px;padding:0;border:1.5px solid #d18400;border-radius:50%;font-size:11px;line-height:1;font-weight:900;color:#d18400;background:rgba(210,132,0,.08);display:inline-flex;align-items:center;justify-content:center}.head-nav .head-nav-btn:hover{background:rgba(210,132,0,.20)}.nav-center-btn:not(.me-nav-mode):not(.head-nav-btn){border:1px solid var(--vscode-panel-border)}.head-nav-label{font-size:11px;font-weight:900;min-width:16px;text-align:center}.head-wrap-overlay{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:36px;font-weight:900;color:#d18400;opacity:0;pointer-events:none;z-index:50;text-shadow:0 2px 8px rgba(0,0,0,.35);transition:opacity .2s}.head-wrap-overlay.show{opacity:.92;animation:headSpin 1s linear infinite}@keyframes headSpin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}.head-nav .head-nav-btn:disabled{opacity:.35;cursor:default}.head-nav .head-nav-btn.wrap-edge{border-width:2.5px;background:rgba(210,132,0,.18)}.head-nav .head-nav-center{box-sizing:border-box;background:rgba(128,128,128,.12);border:1px solid var(--vscode-panel-border);border-radius:6px;padding:2px 6px;min-height:0;font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;cursor:pointer}.head-nav .head-nav-center:hover{background:rgba(128,128,128,.22)}.head-nav.line-hist{margin-left:0}.anchor-btn,.bidi-btn{width:30px;min-width:30px;max-width:30px;font-size:14px;line-height:1;text-align:center;padding-left:0;padding-right:0}.anchor-btn{font-size:14px;font-weight:900;color:#16a34a}.anchor-btn.back{color:#16a34a;box-shadow:inset 0 0 0 1px rgba(22,163,74,.18)}
@@ -11255,7 +11281,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
   </div>
   <div class="membrane-panel" id="membrane-panel">
     <div class="membrane-visual" id="membrane-visual">
-      <label class="me-choice" id="me-choice"><input type="checkbox" id="me-check" checked/><select class="me-scope-select" id="me-scope-select" title="Target scope"><option value="me">Me</option><option value="all">Me all</option><option value="shadow">Me Shadow</option></select><span class="color-row hidden" id="color-row"><button class="color-btn" id="color-btn" title="Membrane color">🟩(G)</button><div class="color-pop" id="color-pop"></div></span></label>
+      <label class="me-choice" id="me-choice"><input type="checkbox" id="me-check" checked/><span class="me-scope-label" id="me-scope-label">Me</span><span class="color-row hidden" id="color-row"><button class="color-btn" id="color-btn" title="Membrane color">🟩(G)</button><div class="color-pop" id="color-pop"></div></span></label>
       <div class="contents-box" id="contents-box"><label class="contents-choice"><input type="checkbox" id="contents-check"/><span>Contents</span></label></div>
     </div>
     <div class="membrane-actions" id="membrane-actions">
@@ -11501,7 +11527,7 @@ if(bmFront)bmFront.addEventListener('click',()=>{vscode.postMessage({type:'bookm
 document.addEventListener('click',ev=>{if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();},true);
 function renderBookmarkState(count,full){if(bmCycle)bmCycle.classList.toggle('zero',!count);if(bmMenuBtn)bmMenuBtn.classList.toggle('zero',!count);if(bmCycle){const c=bmCycle.querySelector('.bm-cnt');if(count){if(c)c.textContent=count;else bmCycle.insertAdjacentHTML('beforeend','<span class="bm-cnt">'+count+'</span>');}else if(c)c.remove();}if(bmInsert)bmInsert.classList.toggle('disabled',!!full);if(bmPop)bmPop.classList.toggle('full',!!full);}
 if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
-if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='all')vscode.postMessage({type:'toggleMeAll'});else if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
+if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
 if(opRemove)opRemove.addEventListener('click',()=>{if(meScope==='me'){vscode.postMessage({type:'shedMe'});}else{vscode.postMessage({type:'noop',name:(meScope==='shadow'?'removeMeShadowSkeleton':'removeMeAllSkeleton')});}});
 if(opCopy)opCopy.addEventListener('click',()=>{const me=!!(meCheck&&meCheck.checked),contents=!!(contentsCheck&&contentsCheck.checked);vscode.postMessage({type:(me&&contents)?'copyMe':'copyMyContents'});});
 if(opSelect)opSelect.addEventListener('click',()=>vscode.postMessage({type:'selectMyContents'}));
@@ -12201,10 +12227,6 @@ function toggleMeDock(editorOverride) {
       }
       return;
     }
-    if (message && message.type === 'toggleMeAll') {
-      await toggleMeAllMembranes();
-      return;
-    }
     if (message && message.type === 'toggleMeOne') {
       await toggleMeDockCurrentMembrane(message.line);
       return;
@@ -12583,6 +12605,13 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFront', () => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFrontAt', (line) => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
+  // v0.9.798: intercept native Fold All (⌘K⌘0) / Unfold All (⌘K⌘J) and neuter them. They bypass
+  // MeOS's fold-state tracking (foldStateByPairKey / ⊖⊕ badges) and desync the ▼⇄▼▲ toggle. MeOS
+  // has no "fold everything" concept (俊克 6/12 am01:19) — fold a membrane individually, navigate
+  // with Warp / Current Me / Hyper TOC. Bound in package.json keybindings (editorTextFocus).
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.blockNativeFold', () => {
+    vscode.window.setStatusBarMessage('MeOS: Fold All / Unfold All is off — fold a membrane with ▼⇄▼▲, navigate with Warp / Hyper TOC.', 2600);
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.lineHistoryForward', async () => {
     const ok = goMeDockLineHistory(1);
     if (!ok) vscode.window.setStatusBarMessage('Me Dock: No forward Line history', 1200);
@@ -12861,9 +12890,7 @@ makeDecorations();
     vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
     vscode.commands.registerCommand('laiMembrane.toggleCurrent', toggleCurrent),
     vscode.commands.registerCommand('laiMembrane.foldCurrent', foldCurrent),
-    vscode.commands.registerCommand('laiMembrane.unfoldCurrent', unfoldCurrent),
-    vscode.commands.registerCommand('laiMembrane.foldAll', foldAll),
-    vscode.commands.registerCommand('laiMembrane.unfoldAll', unfoldAll)
+    vscode.commands.registerCommand('laiMembrane.unfoldCurrent', unfoldCurrent)
   ];
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
