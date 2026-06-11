@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.783: 見出しジャンプ修正(俊克 am10:27)。見出しが1つだけ+カーソルがその行上だと plus/minusWraps両true→⊖⊕両方太枠になっていた。修正=操作可能は見出し2つ以上の時のみ(count>=2)、0/1個は無効化+半透明。
 // - v0.9.782: 見出しジャンプ仕上げ5(俊克 am09:47)。①回転0.5→0.3秒。②[-##+]が端で逆サイドへ巡回する側のボタンの縁を太く(wrap-edge=現在膜内のカーソル位置でplus/minusWraps判定→headNavStateで送信)。③現在膜内に見出しが無ければ-/+を無効化+半透明(:disabled)。
 // - v0.9.781: 見出しジャンプ仕上げ4(俊克 am09:32)。①回転矢印の表示時間を2.2秒→0.5秒に短縮(tip抑止窓も同じ)。②(n/n)Time Machineトリガーも角丸四角で囲み(head-nav-centerに境界+背景+hover)他のhead-navボタンと統一。
 // - v0.9.780: 見出しジャンプ仕上げ3(俊克 am09:19)。①回転矢印をやや上(top:50%→30%)に。②回転矢印の表示中(約2秒)はtipを抑止(headWrapで__headWrapUntil設定+hideTocTip、showTocTip冒頭でガード)。
@@ -10760,7 +10761,7 @@ function headNavStateForEditor(editor) {
   for (let i = lo; i <= hi; i++) {
     if (reHead.test(doc.lineAt(i).text || '')) { count++; if (i < cur) hasBefore = true; if (i > cur) hasAfter = true; }
   }
-  return { count: count, plusWraps: count > 0 && !hasAfter, minusWraps: count > 0 && !hasBefore };
+  return { count: count, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
 
@@ -11464,7 +11465,7 @@ document.addEventListener('keydown',meCockpitKeyCruise,true);
 if(navEof)navEof.addEventListener('click',()=>vscode.postMessage({type:'navCenterEof'}));
 if(navHeadPrev)navHeadPrev.addEventListener('click',()=>vscode.postMessage({type:'navHeadJump',dir:-1}));
 if(navHeadNext)navHeadNext.addEventListener('click',()=>vscode.postMessage({type:'navHeadJump',dir:1}));
-function renderHeadNav(st){if(!navHeadPrev||!navHeadNext)return;const c=(st&&st.count)||0,off=c===0;navHeadPrev.disabled=off;navHeadNext.disabled=off;navHeadPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
+function renderHeadNav(st){if(!navHeadPrev||!navHeadNext)return;const c=(st&&st.count)||0,off=c<2;navHeadPrev.disabled=off;navHeadNext.disabled=off;navHeadPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
 if(navAnchor){
   // v0.9.584: unified S-click=JUMP / W-click=RAW. S-click → navCenterMeDouble
   // (open ⇔ close jump). W-click → navCenterMeSingle (mSkeletonMode toggle).
