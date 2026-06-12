@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.824: me-face仕上げ=「押せる/押せない」をキャラ設定で表現(俊克 6/13 am02:35)。①向かって左の前歯(飾り・span.me-tooth)=線を1pxに細く+虫歯のように下端ギザギザ欠け(clip-path polygon)+膜色10%の薄染み(白い口内でもシルエットが読める)。②向かって右の前歯(チェックボックス本体)=outline 2px currentColorで囲み線を濃く=押せる方が際立つ。③Me円(キャラの右目=向かって左)はボタンではない→「目をつぶっている」設定で囲み線を1.5px/28%に薄く。
 // - v0.9.823: 膜キャラの位置固定(俊克 pm11:49 改良1)。チェック切替でボタンの顔ぶれが変わる(Add to Hyper TOC⇄Copy等)とボタン列の幅が変わり、justify-content:centerの膜キャラが左右に動く→マウス固定で連続切替できなかった。修正=.membrane-actionsを最広ボタン基準の固定幅142pxに(gridボタンは全幅stretch=見た目も統一)。
 // - v0.9.822: ★バグ修正=チェックボックス操作でキャラ毎消える件(俊克 pm10:29・v801以来の持病)。真因=checkbox change→renderMembraneTargetPanel→renderEditPanelModeが「!rename」だけでmembranePanelを隠し、v801の「膜の中なら表示」(inMembrane)を知らなかった(本文クリックで復活=modeメッセージ再送の補正行のおかげ)。修正=inMembraneStateをwebview状態に昇格し applyMode/renderEditPanelMode 共通で (!r&&!inMembrane) 判定・旧v801/802の事後remove('hidden')行は撤去。＋改良1=右ボタン文字を13px/28pxに拡大(キャラ大型化に合わせ視認性UP)。
 // - v0.9.821: me-face改良2件(俊克 pm10:05 OK&NG)。①前歯2本: Contentsチェックボックスは「前歯2本の内の1本」という設定→v820は鼻の穴に被っていた。修正=口(Contents)の上唇から内側へ生える歯2本: 左=飾りの白い歯(span.me-tooth・膜色縁)・右=チェックボックス本体。中央で左右対称(translateX(-100%)/+4%)。②「(R)」をキャラ自身の左目(=画面右の光沢ボール)に密着(gap0+margin-left:-2px)。
@@ -11552,7 +11553,8 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .membrane-visual{border-width:2.5px;border-radius:14px;overflow:visible}
 .me-choice{justify-content:center;gap:10px;padding:7px 8px 2px}
 .me-choice input{position:relative;z-index:1;border-radius:5px}
-.me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:2px solid rgba(0,0,0,.72);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
+/* v0.9.824: Meの右目(向かって左)はボタンではない=「目をつぶっている」設定で囲み線を薄く(俊克 am02:35)。 */
+.me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:1.5px solid rgba(0,0,0,.28);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
 .color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:0;background:transparent;border:none;padding:0;cursor:pointer;color:inherit}
 .color-btn:hover{filter:brightness(1.08)}
 .color-ball{width:27px;height:27px;border-radius:50%;border:2px solid rgba(0,0,0,.72);box-shadow:inset 0 0 0 3.5px var(--vscode-editor-background);display:inline-block;background:currentColor}
@@ -11565,8 +11567,11 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .contents-choice{position:static}
 /* v0.9.821: 前歯2本(俊克 pm10:05 改良1)=チェックボックスは前歯の1本という設定。上唇(上辺)から
    口の内側へ生える: 左=飾りの白い歯(me-tooth)・右=contents-checkbox。鼻の穴には被らない。 */
-.me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:2px solid currentColor;border-radius:5px;background:var(--vscode-editor-background);box-sizing:border-box}
-.contents-choice input{position:absolute;top:-1px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background)}
+/* v0.9.824: 前歯の役割分担(俊克 am02:35)。向かって左=飾りの歯: 線を細く・「虫歯」のように
+   下端が欠けたギザギザ(clip-path)+膜色の薄い染みでシルエットを出す=ボタンではないと分かる。
+   向かって右=チェックボックス本体: outlineで囲み線を濃く=押せる方が一目瞭然。 */
+.me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:1px solid color-mix(in srgb,currentColor 55%,transparent);border-radius:5px 5px 0 0;background:color-mix(in srgb,currentColor 10%,var(--vscode-editor-background));box-sizing:border-box;clip-path:polygon(0 0,100% 0,100% 48%,80% 60%,96% 80%,68% 100%,50% 72%,30% 100%,12% 78%,0 92%)}
+.contents-choice input{position:absolute;top:-1px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background);outline:2px solid currentColor;outline-offset:0}
 .contents-word{font-weight:700;font-size:14px;color:var(--vscode-foreground)}
 /* v0.9.822: キャラが大きめになったので右側の操作ボタンも文字を大きく(俊克 pm10:29 改良1)。v800のcompact(11px/23px)→13px/28px。 */
 .big-action{min-height:28px;font-size:13px;padding:4px 10px}
