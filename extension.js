@@ -1,6 +1,7 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.830: Mepyの挨拶を英語化(俊克 6/13 am03:47「英語化を忘れているよ」)。「I'm Mepy.よろしく」→「I'm Mepy. Nice to meet you!」。UI tipは全英語の原則(v0.9.685 tip英語化)に整合。
 // - v0.9.829: Mepyの挨拶tipを必ず顔の外に(俊克 6/13 am03:43)。showTocTipに.mepy-hello専用分岐: membrane-visualのrectを基準に顔の真上へ中央寄せ(8px浮かせ)・上に余地が無ければ顔の下。デフォルトの左伸ばし配置だと顔に被っていた。
-// - v0.9.828: Mepy自己紹介tip(俊克 6/13 am03:36)。膜キャラ(v827完成・命名Mepy=ミーピー)の外枠線にマウスを乗せると「I'm Mepy.よろしく」。実装=枠線に沿う透明ホバー帯span×4辺(各6px・data-tip)。tipリスナーはdocument全域(11984)なのでMe Dock側でも共通スタイルtipが出る。線の上だけ反応=顔の中の操作(チェック/色ボタン)は邪魔しない。
+// - v0.9.828: Mepy自己紹介tip(俊克 6/13 am03:36)。膜キャラ(v827完成・命名Mepy=ミーピー)の外枠線にマウスを乗せると「I'm Mepy. Nice to meet you!」。実装=枠線に沿う透明ホバー帯span×4辺(各6px・data-tip)。tipリスナーはdocument全域(11984)なのでMe Dock側でも共通スタイルtipが出る。線の上だけ反応=顔の中の操作(チェック/色ボタン)は邪魔しない。
 // - v0.9.827: 欠けた歯も白色に(俊克 6/13 am03:08・v826の欠け位置はOK)。膜色10%の薄染み背景を撤去し、口内と同じ地色(--vscode-editor-background)に。歯は輪郭1px+欠け口の線だけで描く=2本の前歯の地色が揃う。
 // - v0.9.826: 虫歯の欠けを1px上へ(俊克 6/13 am02:57)。菱形チップ bottom:-4px→-3px=食い込みが1px深く・下へのはみ出しが1px減。
 // - v0.9.825: 前歯の修正(俊克 6/13 am02:50 OK&NG)。①チェックボックス(向かって右)のv824真四角outline=NG→撤回し素のまま。②虫歯(向かって左)のギザギザ=今一→「下端に一箇所だけの欠け」に: 45°回転の小菱形(6px)を下辺に食い込ませ、上2辺に本体と同じ1px線=欠け口の輪郭も均一線幅(clip-pathでは切断面に線が引けない問題の解)。菱形の下半分は口内と同色で不可視・歯の下辺線は欠け部分だけ自然に途切れる。閉じた右目の薄縁(👍)は維持。
@@ -11558,7 +11559,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .membrane-visual{border-width:2.5px;border-radius:14px;overflow:visible}
 .me-choice{justify-content:center;gap:10px;padding:7px 8px 2px}
 .me-choice input{position:relative;z-index:1;border-radius:5px}
-/* v0.9.828: Mepyの外枠線ホバーで自己紹介tip「I'm Mepy.よろしく」(俊克 am03:36)。枠線(2.5px)に
+/* v0.9.828: Mepyの外枠線ホバーで自己紹介tip「I'm Mepy. Nice to meet you!」(俊克 am03:36)。枠線(2.5px)に
    沿う透明ホバー帯を4辺に配置(各6px幅・data-tip)=線の上だけで反応し、顔の中の操作は邪魔しない。 */
 .mepy-hello{position:absolute;z-index:2}
 .mepy-hello-t{top:-3px;left:0;right:0;height:6px}
@@ -11667,7 +11668,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
   </div>
   <div class="membrane-panel" id="membrane-panel">
     <div class="membrane-visual" id="membrane-visual">
-      <span class="mepy-hello mepy-hello-t" data-tip="I'm Mepy.よろしく"></span><span class="mepy-hello mepy-hello-b" data-tip="I'm Mepy.よろしく"></span><span class="mepy-hello mepy-hello-l" data-tip="I'm Mepy.よろしく"></span><span class="mepy-hello mepy-hello-r" data-tip="I'm Mepy.よろしく"></span>
+      <span class="mepy-hello mepy-hello-t" data-tip="I'm Mepy. Nice to meet you!"></span><span class="mepy-hello mepy-hello-b" data-tip="I'm Mepy. Nice to meet you!"></span><span class="mepy-hello mepy-hello-l" data-tip="I'm Mepy. Nice to meet you!"></span><span class="mepy-hello mepy-hello-r" data-tip="I'm Mepy. Nice to meet you!"></span>
       <label class="me-choice" id="me-choice"><input type="checkbox" id="me-check" checked/><span class="me-scope-label" id="me-scope-label">Me</span><span class="color-row hidden" id="color-row"><button class="color-btn" id="color-btn" title="Membrane color"><span class="color-ball" id="color-ball"></span><span class="color-letter" id="color-letter">(G)</span></button><div class="color-pop" id="color-pop"></div></span></label>
       <div class="me-face-nose"><i></i><i></i></div>
       <div class="contents-box" id="contents-box"><span class="me-tooth" aria-hidden="true"></span><label class="contents-choice"><input type="checkbox" id="contents-check"/><span class="contents-word">Contents</span></label></div>
