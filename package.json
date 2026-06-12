@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣 / MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). A membrane is a comment — so it leaves your original data as it is. Comments (semantic metadata) create structure. MeOS notation itself is editor-independent; this extension is one of multiple possible implementations.",
-  "version": "0.9.817",
+  "version": "0.9.818",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -156,6 +156,16 @@
           "default": 1,
           "minimum": 1,
           "maximum": 4
+        },
+        "laiMembrane.gutterLanes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Draw membrane lanes in the editor gutter (glyph margin) instead of inside the text area. The text layout stays 100% untouched (no IME wedge, no wrap collisions)."
+        },
+        "laiMembrane.gutterHideFoldingControls": {
+          "type": "boolean",
+          "default": true,
+          "description": "While gutter lanes are on, hide the native folding chevrons (sets editor.showFoldingControls to 'never'). Folding still works via the MeOS toggle. Restored when turned off."
         },
         "laiMembrane.depthGap": {
           "type": "number",

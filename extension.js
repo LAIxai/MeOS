@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.818: ★課題7(本丸)=膜縦線をガター領域へ(俊克 6/12 pm07:37)。①膜線をテキスト内before疑似要素→グリフマージンのgutterIconPath(動的SVG縦線)に移植: 深さ=スロットx位置(5レーン・pitch2.6)/開始・閉じ行=太線/膜色維持/警告=赤太線slot0。SVGシグネチャごとにdecoration typeをプール(gutterIconPathはtype属性のため)・400超で再構築。②laiMembrane.gutterLanes(既定true)で新旧切替・旧レンダラ温存。③gutterHideFoldingControls(既定true)=editor.showFoldingControls:'never'で純正折畳みシェブロン非表示(editor.foldコマンドは生きる=▼⇄▼▲無傷・自分で設定した時だけ復元)。④副産物: ガターはテキスト不干渉→IME中も膜線が消えない(compose-mode lane-hideは旧モード限定に)。テキスト域は膜線ゼロ=1mmも汚さないの完成形。
 // - v0.9.817: 100%未満の配色仕上げ(俊克 6/12 pm02:59「ラストオーダーたぶん(笑)」)。分子と%数値の文字色=プログレスバーのfill色(青〜緑のcolor-mixをinline styleで適用)+白背景の角丸ピル(.me-char-pill=me-char-num-overの色なし版)。超過時の赤ピル/赤数字と完全に対の構成: 色が状態を語り、形は常に同じ。括弧と%は黒のまま。
 // - v0.9.816: 100%未満も同形式に統一(俊克 6/12 pm02:52 OK&NG)。%表示を常に「括弧と%が黒・数字だけ色付き」に: 超過=赤太字/100%以下=白抜き(ラベル既定を継承)。マークアップを一本化(over時のみme-char-pct-overクラス付与)。
 // - v0.9.815: %記号も黒に(俊克 6/12 pm02:44 OK&NG「注文の多いLAIxai(笑)」)。超過表示の赤は数字だけ「(177%)」=括弧と%が黒・177のみ赤太字(%を閉じ括弧側pct-parenスパンへ移動)。
@@ -2323,6 +2324,7 @@ function asRealMembraneSource(text) {
 
 // {* ▼mCN=0200_DECORATIONS // decoration lifecycle and style setup (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 function disposeDecorations() {
+  clearGutterLaneDecorations(null, true); // dispose pool — config changes regenerate SVGs
   if (lineDecoration) lineDecoration.dispose();
   lineDecoration = undefined;
   if (openLineHideDecoration) openLineHideDecoration.dispose();
@@ -3662,6 +3664,137 @@ function computeWarningArrowDecorations(document) {
   // v0.9.216: arrowheads are drawn inside computeLineDecorations as warning-lane SVG backgrounds,
   // so they never push raw text or membrane labels to the right.
   return [];
+}
+
+// v0.9.818: ★課題7(本丸) — membrane lanes in the GUTTER (glyph margin) instead of the text
+// area. The in-text before-element lane was the root of the IME wedge, wrap-row estimation,
+// and wrappingIndent collisions; a gutter icon never touches text layout, so none of those
+// problems can exist here (compose-mode lane hiding is unnecessary — the lane stays visible
+// during IME). One line = one dynamically generated SVG (vertical bars; depth = slot x-position,
+// open/close terminal = thick bar, membrane colour preserved, warnings = red thick bar at slot 0).
+// One TextEditorDecorationType per distinct SVG, pooled by the SVG string (gutterIconPath is a
+// TYPE property, not a per-range option). Old renderer stays behind laiMembrane.gutterLanes=false.
+const GUTTER_SLOT_PITCH = 2.6;  // x distance between depth slots (viewBox units of 16)
+const GUTTER_SLOT_MAX = 4;      // slots 0..4; depth ≥ 4 shares the last slot
+const _gutterLaneTypePool = new Map(); // svg string -> TextEditorDecorationType
+function gutterLanesOn(cfg) {
+  try { return !!(cfg || vscode.workspace.getConfiguration('laiMembrane')).get('gutterLanes', true); }
+  catch (_) { return true; }
+}
+function gutterLaneSvg(stack) {
+  let rects = '';
+  for (const s of stack) {
+    const w = s.thick ? 2.4 : 1.4;
+    const x = 0.6 + s.slot * GUTTER_SLOT_PITCH;
+    rects += '<rect x="' + x + '" y="0" width="' + w + '" height="16" fill="' + s.color + '"/>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" preserveAspectRatio="none">' + rects + '</svg>';
+}
+function getGutterLaneType(svg) {
+  let t = _gutterLaneTypePool.get(svg);
+  if (!t) {
+    const uri = vscode.Uri.parse('data:image/svg+xml;base64,' + Buffer.from(svg, 'utf8').toString('base64'));
+    t = vscode.window.createTextEditorDecorationType({ gutterIconPath: uri, gutterIconSize: 'cover' });
+    _gutterLaneTypePool.set(svg, t);
+  }
+  return t;
+}
+function computeGutterLaneDecorations(document) {
+  const cfg = vscode.workspace.getConfiguration('laiMembrane');
+  const excludeIndex = cfg.get('excludeIndexMembrane', false);
+  const maxDepth = Math.max(1, Math.min(24, Number(cfg.get('maxDepth', 12)) || 12));
+  const structure = collectMembraneStructure(document, { excludeIndex });
+  // Per-pair metadata precomputed ONCE (colour lookups read the open line text);
+  // the per-line loop then only range-tests numbers — cheaper than the text renderer.
+  const meta = structure.pairs
+    .slice().sort((a, b) => (a.depth || 0) - (b.depth || 0) || (a.start || 0) - (b.start || 0))
+    .map(p => {
+      const depth = Math.max(0, p.depth || 0);
+      return {
+        start: p.start, end: p.end, depth,
+        slot: Math.min(depth, GUTTER_SLOT_MAX),
+        color: membraneColorForOpenLineText(document.lineAt(p.start).text, colorForDepth(depth, cfg)),
+        stealth: isStealthMembrane(p, document)
+      };
+    });
+  const warnings = selectDisplayedWarnings(structure);
+  const lastLine = document.lineCount - 1;
+  const byKey = new Map(); // svg -> Range[]
+  for (let line = 0; line <= lastLine; line++) {
+    const stack = [];
+    const seen = new Set();
+    let used = 0;
+    for (const m of meta) {
+      if (m.start > line || line > m.end) continue;
+      if (used >= maxDepth) break;
+      used++;
+      const isTerminal = (line === m.start || line === m.end);
+      if (m.stealth && isTerminal) continue; // ◤◢ markers take the lane's place (v0.9.515)
+      const k = m.slot + ':' + m.color + (isTerminal ? ':t' : '');
+      if (seen.has(k)) continue;
+      seen.add(k);
+      stack.push({ slot: m.slot, color: m.color, thick: isTerminal });
+    }
+    for (const w of warnings) {
+      if ((w.warningKind === 'unclosed' && w.start <= line)
+        || (w.warningKind === 'orphan' && line <= (w.endLine !== undefined ? w.endLine : w.start))) {
+        stack.push({ slot: 0, color: 'rgba(255,64,64,0.96)', thick: true });
+        break;
+      }
+    }
+    if (!stack.length) continue;
+    const svg = gutterLaneSvg(stack);
+    let arr = byKey.get(svg);
+    if (!arr) { arr = []; byKey.set(svg, arr); }
+    arr.push(new vscode.Range(line, 0, line, 0));
+  }
+  return byKey;
+}
+function applyGutterLaneDecorations(editor) {
+  if (!editor) return;
+  const byKey = computeGutterLaneDecorations(editor.document);
+  // Pool hygiene: a colourful document can mint many signatures over a session; past 400
+  // dispose everything and rebuild from the current frame (a one-frame repaint at worst).
+  if (_gutterLaneTypePool.size > 400) clearGutterLaneDecorations(null, true);
+  for (const [svg, t] of _gutterLaneTypePool) {
+    if (!byKey.has(svg)) { try { editor.setDecorations(t, []); } catch (_) {} }
+  }
+  for (const [svg, ranges] of byKey) {
+    try { editor.setDecorations(getGutterLaneType(svg), ranges); } catch (_) {}
+  }
+}
+function clearGutterLaneDecorations(editor, dispose) {
+  for (const t of _gutterLaneTypePool.values()) {
+    if (editor) { try { editor.setDecorations(t, []); } catch (_) {} }
+    if (dispose) { try { t.dispose(); } catch (_) {} } // dispose removes it from ALL editors
+  }
+  if (dispose) _gutterLaneTypePool.clear();
+}
+// v0.9.818: hide the native folding chevrons while gutter lanes are on (俊克 pm07:37
+// 「既存の折り畳みボタン…を非表示にできるのか?」). editor.showFoldingControls='never' only
+// hides the UI — editor.fold/unfold commands keep working, so the MeOS ▼⇄▼▲ toggle is
+// unaffected. Restores the default when gutter lanes (or the sub-setting) are turned off,
+// and only if WE set it (globalState flag) — a user's own 'never' is left alone.
+async function syncGutterEditorSettings() {
+  let cfg, ed;
+  try {
+    cfg = vscode.workspace.getConfiguration('laiMembrane');
+    ed = vscode.workspace.getConfiguration('editor');
+  } catch (_) { return; }
+  const on = gutterLanesOn(cfg) && cfg.get('gutterHideFoldingControls', true);
+  const FLAG = 'meosSetShowFoldingControlsNever';
+  try {
+    if (on) {
+      if (ed.get('glyphMargin') === false) await ed.update('glyphMargin', true, vscode.ConfigurationTarget.Global);
+      if (ed.get('showFoldingControls') !== 'never') {
+        await ed.update('showFoldingControls', 'never', vscode.ConfigurationTarget.Global);
+        if (extensionContext) await extensionContext.globalState.update(FLAG, true);
+      }
+    } else if (extensionContext && extensionContext.globalState.get(FLAG)) {
+      if (ed.get('showFoldingControls') === 'never') await ed.update('showFoldingControls', undefined, vscode.ConfigurationTarget.Global);
+      await extensionContext.globalState.update(FLAG, false);
+    }
+  } catch (_) {}
 }
 
 function lineVisible(editor, line) {
@@ -6032,6 +6165,7 @@ function maybeHandleRawTrigger(e) {
 }
 function clear(editor) {
   if (!editor) return;
+  clearGutterLaneDecorations(editor);
   if (lineDecoration) setDecoCached(editor, lineDecoration, 'line', []);
   if (openLineHideDecoration) setDecoCached(editor, openLineHideDecoration, 'openHide', []);
   if (openLineLabelDecoration) setDecoCached(editor, openLineLabelDecoration, 'openLabel', []);
@@ -6048,6 +6182,7 @@ function clear(editor) {
 }
 function clearMembraneVisualDecorations(editor) {
   if (!editor) return;
+  clearGutterLaneDecorations(editor);
   if (lineDecoration) setDecoCached(editor, lineDecoration, 'line', []);
   if (openLineHideDecoration) setDecoCached(editor, openLineHideDecoration, 'openHide', []);
   if (openLineLabelDecoration) setDecoCached(editor, openLineLabelDecoration, 'openLabel', []);
@@ -8191,7 +8326,15 @@ function refresh(editor = vscode.window.activeTextEditor) {
     scheduleMstatMetadata(editor);
     return;
   }
-  setDecoCached(editor, lineDecoration, 'line', computeLineDecorations(editor.document));
+  // v0.9.818: gutter lanes (課題7) — the lane moves to the glyph margin; the in-text
+  // before-element lane is cleared. Old renderer kept behind laiMembrane.gutterLanes=false.
+  if (gutterLanesOn(cfg)) {
+    setDecoCached(editor, lineDecoration, 'line', []);
+    applyGutterLaneDecorations(editor);
+  } else {
+    clearGutterLaneDecorations(editor);
+    setDecoCached(editor, lineDecoration, 'line', computeLineDecorations(editor.document));
+  }
   if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, computeWarningArrowDecorations(editor.document));
   applyPrettyLabels(editor);
   // v0.9.512: Stealth rendering — hide Sth1 shells, render ◤◢ markers,
@@ -12822,6 +12965,7 @@ function activate(context) {
     if (!ok) vscode.window.setStatusBarMessage('Me Dock: No back Line history', 1200);
   }));
 makeDecorations();
+  syncGutterEditorSettings(); // v0.9.818: hide/restore folding chevrons per gutterLanes setting
   refresh();
   setTimeout(() => restoreMstatsForEditor(vscode.window.activeTextEditor), 250);
   setTimeout(() => autoShowMeDockForEditor(vscode.window.activeTextEditor), 320);
@@ -13065,7 +13209,9 @@ makeDecorations();
         // thumb-shift's near-simultaneous keys). One tick's delay is imperceptible.
         // v0.9.653: RESTORED (the v0.9.652 removal failed — see the lane-skip note above).
         setTimeout(() => {
-          try { if (activeEditor && lineDecoration) activeEditor.setDecorations(lineDecoration, computeLineDecorations(activeEditor.document)); } catch (_) {}
+          // v0.9.818: gutter lanes never touch the text layout — no IME wedge is possible,
+          // so the compose-mode lane-hide repaint is needed only for the legacy text renderer.
+          try { if (activeEditor && lineDecoration && !gutterLanesOn()) activeEditor.setDecorations(lineDecoration, computeLineDecorations(activeEditor.document)); } catch (_) {}
         }, 0);
       }
       // v0.9.639: NO auto-restore. The lane stays hidden until the user intentionally
@@ -13075,7 +13221,7 @@ makeDecorations();
       // 「改行を最後に意図して打ったときに膜線を戻すようにした方がスマート」.
       if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
     }),
-    vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); refresh(); } }),
+    vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); syncGutterEditorSettings(); refresh(); } }),
     vscode.commands.registerCommand('laiMembrane.refresh', () => refresh()),
     vscode.commands.registerCommand('laiMembrane.addMembrane', addMembrane),
     vscode.commands.registerCommand('laiMembrane.toggleMeDock', toggleMeDock),
