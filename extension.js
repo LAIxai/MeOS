@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.807: ★課題3=Current Me文字数目標(俊克 6/12 am11:06/11:14)。Current Me Pin直下に文字数行: 目標設定時はプログレスバー(0-70%青→70-100%緑へ遷移→100%超は橙=書きすぎ)+右端にΔChar(基準値からの差、+橙/−緑=減らす目標にも対応)。文字数=膜本文の全文字(改行込み)から膜タグ行・mHTOC行・取消線(~~…~~/~~{…}~~/複数行~~{…}~~)を除外。基準値=初測定時に自動セット+ポップの「Reset Δ」で再計算(現在値を新基準に)。目標/基準はmHTOC(charStats)へ随伴永続化(初回自動基準はメモリ→次のmHTOC書込に同乗=selと同方式)。カウントはdoc versionキャッシュ+250msスロットルで軽量選択パスを汚さない。クリックでポップ(Reset Δ/Target Set/Clear)。
 // - v0.9.806: v805が効かない件修正(俊克 6/12 am04:19)。showTocTipのガードはmousemove時のみ→打鍵中は発火せず、編集開始前のホバーで出ていた古いtipが残っていた。focusin(編集開始)で即 hideTocTip。
 // - v0.9.805: H-TOC項目のコメント編集中はtip非表示(俊克 6/12 am04:15)。toc-value入力にフォーカスがある間 showTocTip を抑止=編集の邪魔をしない。
 // - v0.9.804: バグ修正(俊克 6/12 am02:47)。膜の中で色ボタンがW(既定)になる件=表示色がflip.currentColor(深度0ルート膜)で、色変更対象のinnermost(findCurrentPair)とズレていた。'new'モードの表示色もinnermost膜の色コードに統一→表示と変更対象が一致。
@@ -5119,6 +5120,8 @@ async function setHyperTocData(document, data) {
   if (!document) return;
   // v0.9.766: ride the live per-tab selection into the mHTOC on every save (tab switch etc.).
   flushHtocSelIntoData(document, data);
+  // v0.9.807: ride the live per-membrane char stats (Δ baseline / target) the same way.
+  flushMeCharStatsIntoData(document, data);
   // v0.9.677: persist to the in-file "別セクター" (source of truth, travels with the file).
   // Keep globalState as a fast cache / fallback for when the doc isn't open as an editor.
   if (extensionContext) { try { await extensionContext.globalState.update(hyperTocDataKey(document), data); } catch (_) {} }
@@ -8236,6 +8239,117 @@ function findCurrentPair(editor) {
 // the version-cached structure → cheap. MUST be called only on the lightweight selection /
 // active-editor path, never inside the heavy refresh, per [[project_meos_freeze_pattern]].
 // Used by BOTH the status bar (対策1) and the H-TOC "Current Me" Pin (対策2) so they stay in sync.
+// v0.9.807: ★課題3 — per-membrane character counter for the Current Me Pin.
+// Counts the membrane BODY (lines between open and close tags), all characters incl.
+// newlines (Joplin-plugin compatible "全文字方式"), EXCLUDING:
+//   - membrane tag lines (any pair's open/close line — structure, not prose)
+//   - the mHTOC storage line (<!-- mHTOC1 hex -->)
+//   - struck-out text: single-line ~~…~~ / ~~{…}~~ and multi-line ~~{ … }~~
+//     (same rules as the strike decorations: plain ~~ never crosses lines, v0.9.709)
+// Baseline (Δ basis) and target are stored per membrane id in the mHTOC line
+// (data.charStats) so they travel with the file; the live map rides into the file on
+// any mHTOC save (same "live only, no write here" pattern as flushHtocSelIntoData).
+const _meCharLive = new Map(); // uriString -> { [membraneId]: { base, target } }
+let _meCharCache = { uri: null, version: -1, start: -1, count: 0, at: 0 };
+function getMeCharStats(document) {
+  const k = document.uri.toString();
+  let stats = _meCharLive.get(k);
+  if (!stats) {
+    stats = {};
+    try {
+      const data = readHyperTocFromSource(document);
+      if (data && data.charStats && typeof data.charStats === 'object') {
+        for (const id of Object.keys(data.charStats)) {
+          const s = data.charStats[id];
+          if (s && typeof s === 'object') {
+            const t = Number(s.target);
+            stats[id] = { base: Number(s.base) || 0, target: (isFinite(t) && t > 0) ? Math.floor(t) : null };
+          }
+        }
+      }
+    } catch (_) {}
+    _meCharLive.set(k, stats);
+  }
+  return stats;
+}
+function flushMeCharStatsIntoData(document, data) {
+  if (!document || !data) return;
+  const stats = _meCharLive.get(document.uri.toString());
+  if (!stats) return;
+  data.charStats = Object.assign({}, data.charStats || {}, stats);
+}
+// Strip struck-out text from one line; st = { on } carries the multi-line ~~{ … }~~ state.
+// Returns the number of counted characters on this line (newline not included).
+function _strikeStrippedLen(text, st) {
+  let s = text;
+  if (st.on) {
+    const close = s.indexOf('}~~');
+    if (close < 0) return 0; // still inside the multi-line strike
+    st.on = false;
+    s = s.slice(close + 3);
+  }
+  s = s.replace(/~~\{[^\n]*?\}~~/g, '').replace(/~~(?!\{)[^~\n]+?~~/g, '');
+  const open = s.indexOf('~~{');
+  if (open >= 0) { st.on = true; s = s.slice(0, open); } // opens a multi-line strike
+  return s.length;
+}
+function countMembraneChars(document, pair) {
+  if (!document || !pair) return 0;
+  const uri = document.uri.toString();
+  const now = Date.now();
+  // Version cache: cursor moves are free; per-edit recount throttled to ≥250ms so a huge
+  // membrane cannot saturate the lightweight selection path ([[project_meos_freeze_pattern]]).
+  if (_meCharCache.uri === uri && _meCharCache.start === pair.start
+      && (_meCharCache.version === document.version || now - _meCharCache.at < 250)) {
+    return _meCharCache.count;
+  }
+  const tagLines = new Set();
+  try { for (const p of collectPairs(document, { excludeIndex: false })) { tagLines.add(p.start); tagLines.add(p.end); } } catch (_) {}
+  let count = 0;
+  const st = { on: false };
+  const to = Math.min(pair.end - 1, document.lineCount - 1);
+  for (let ln = pair.start + 1; ln <= to; ln++) {
+    if (tagLines.has(ln)) continue;
+    const text = document.lineAt(ln).text || '';
+    if (HTOC_MARKER_RE.test(text)) continue;
+    const wasOn = st.on;
+    const len = _strikeStrippedLen(text, st);
+    if (wasOn && st.on) continue; // whole line inside a multi-line strike (newline struck too)
+    count += len + 1; // +1 = newline (全文字方式)
+  }
+  _meCharCache = { uri, version: document.version, start: pair.start, count, at: now };
+  return count;
+}
+function meCharStatsKey(pair) {
+  const id = String(pair.id || '').trim();
+  return id || ('@Ln' + (pair.start + 1));
+}
+async function setMeCharTargetForCurrent(editor, target) {
+  if (!editor) return;
+  let cur = null;
+  try { cur = findCurrentPair(editor); } catch (_) { cur = null; }
+  if (!cur) return;
+  const stats = getMeCharStats(editor.document);
+  const key = meCharStatsKey(cur);
+  const s = stats[key] || (stats[key] = { base: countMembraneChars(editor.document, cur), target: null });
+  const t = Number(target);
+  s.target = (isFinite(t) && t > 0) ? Math.floor(t) : null;
+  try { const data = await ensureHyperTocData(editor.document); await setHyperTocData(editor.document, data); } catch (_) {}
+  postFixedWorkingTocSnapshot();
+}
+async function resetMeCharBaseForCurrent(editor) {
+  if (!editor) return;
+  let cur = null;
+  try { cur = findCurrentPair(editor); } catch (_) { cur = null; }
+  if (!cur) return;
+  _meCharCache.uri = null; // force a fresh count — this becomes the new Δ baseline
+  const stats = getMeCharStats(editor.document);
+  const key = meCharStatsKey(cur);
+  const s = stats[key] || (stats[key] = { base: 0, target: null });
+  s.base = countMembraneChars(editor.document, cur);
+  try { const data = await ensureHyperTocData(editor.document); await setHyperTocData(editor.document, data); } catch (_) {}
+  postFixedWorkingTocSnapshot();
+}
 function currentMembraneInfo(editor) {
   if (!editor) return null;
   let cur = null;
@@ -8244,7 +8358,18 @@ function currentMembraneInfo(editor) {
   const total = cur.end - cur.start + 1;
   const id = String(cur.id || '').trim();
   if (pinBaseline.id !== id) { pinBaseline.id = id; pinBaseline.total = total; } // entered a new membrane → reset Δ baseline
-  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total };
+  // v0.9.807: char count (strike-excluded) + per-membrane Δ baseline / target from mHTOC.
+  let chars = 0, charBase = 0, charTarget = null;
+  try {
+    chars = countMembraneChars(editor.document, cur);
+    const stats = getMeCharStats(editor.document);
+    const key = meCharStatsKey(cur);
+    let s = stats[key];
+    if (!s) { s = stats[key] = { base: chars, target: null }; } // first measurement → auto baseline (live; rides into mHTOC on next save)
+    charBase = Number(s.base) || 0;
+    charTarget = (s.target === null || s.target === undefined) ? null : Number(s.target);
+  } catch (_) {}
+  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total, chars, charDelta: chars - charBase, charTarget };
 }
 // v0.9.682 (改善1): 差分は総数の後ろに `[Δ+30]` 形式で（188の内訳が+30、と読める）。0なら非表示。
 function deltaText(delta) { return delta ? `[Δ${delta > 0 ? '+' : ''}${delta}]` : ''; }
@@ -11264,6 +11389,18 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .fixed-toc-body{height:144px;overflow-y:scroll;border-top:1px solid rgba(210,140,0,.20);border-bottom:1px solid rgba(210,140,0,.20)}
 .bidi-jump-bar{background:var(--vscode-sideBar-background,var(--vscode-editor-background));border-bottom:1px solid rgba(210,140,0,.20);padding:5px 8px;font-size:12px;line-height:1.3;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .fixed-toc-body .bidi-jump-bar{position:sticky;top:0;z-index:2}.fixed-toc-body .toc-sticky-head{position:sticky;top:0;z-index:3;background:var(--vscode-sideBar-background,var(--vscode-editor-background))}.fixed-toc-body .toc-sticky-head .bidi-jump-bar{position:static}.toc-pin-bar .toc-pin{border-bottom:0;border-top:1px solid rgba(56,148,255,.32)}.toc-pin-bar:empty{display:none}
+.toc-pin-chars{display:flex;align-items:center;gap:6px;padding:3px 8px 4px;font-size:11px;background:rgba(56,148,255,.07);border-top:1px dashed rgba(56,148,255,.25);cursor:pointer}.toc-pin-chars:hover{background:rgba(56,148,255,.16)}
+.me-char-bar{position:relative;flex:1;min-width:0;height:13px;border:1px solid rgba(56,148,255,.45);border-radius:7px;overflow:hidden;background:var(--vscode-input-background)}
+.me-char-fill{height:100%;border-radius:6px 0 0 6px;transition:width .25s ease,background .25s ease}
+.me-char-bar-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.2px;color:var(--vscode-foreground);text-shadow:0 0 3px var(--vscode-editor-background),0 0 3px var(--vscode-editor-background)}
+.me-char-count{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;opacity:.8}
+.me-char-delta{flex:none;font-weight:800;font-size:11px}.me-char-delta.plus{color:#f59e0b}.me-char-delta.minus{color:#16a34a}.me-char-delta.zero{opacity:.5}
+.me-char-pop-row{display:flex;align-items:center;gap:4px;padding:3px 5px;font-size:12px}
+.me-char-pop-row.head{font-weight:700;opacity:.85;padding-bottom:1px}
+.me-char-pop-row input{width:72px;font-size:12px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
+.me-char-pop-row .me-char-pop-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}
+.me-char-pop-row .me-char-pop-btn:hover{background:rgba(56,148,255,.18)}
+.me-char-pop-row #me-char-target-set{background:#3794ff;border-color:#3794ff;color:#fff}.me-char-pop-row #me-char-target-set:hover{background:#1f7fe8}
 .bidi-jump-bar-nav{border-bottom:none;border-top:1px solid rgba(210,140,0,.20);margin-top:4px}
 .bidi-jump-bar .bidi-label{opacity:.85;font-weight:500}
 .bidi-jump-bar .bidi-btn{cursor:pointer;user-select:none;padding:1px 4px;border-radius:3px}
@@ -11280,7 +11417,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .toc-tools .bm-split{margin-left:auto;display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-remove{order:0}.bm-pop #bm-insert{order:1}.bm-pop.full #bm-remove{order:2}.bm-pop #bm-front{order:3;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:#dc2626;font-weight:700}.bm-pop #bm-front:hover{background:rgba(220,38,38,.14)}
 .fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-del{color:#b91c1c}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:800;padding:1px 5px;margin-left:auto;border:1px solid rgba(56,148,255,.5);border-radius:4px;background:rgba(56,148,255,.12);color:var(--vscode-foreground);line-height:1.4}.toc-pin-toggle:hover{background:rgba(56,148,255,.30);border-color:#3794ff}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:var(--vscode-editorHoverWidget-background,#f3f3f3);color:var(--vscode-editorHoverWidget-foreground,#333);border:1px solid var(--vscode-editorHoverWidget-border,#c8c8c8);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
 </style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button><button class="close" title="Close">×</button></span></header><main class="body">
-<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel" id="toggle-editor-toc" title="Fold / unfold raw TOC in editor">Fold TOC</button><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">−</button><button class="cancel toc-onsite" id="toc-onsite" title="On-site TOC: split editor and keep raw TOC above">On-site</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | insert / remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove the bookmark</button><button class="bm-pop-item" id="bm-insert" data-tip="Drop a 🔖 at the current cursor line (up to 3)">insert a bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩). One click of 🔖 always jumps here. Works even with no bookmark here.">Update it to Front Anchor</button></div>
+<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel" id="toggle-editor-toc" title="Fold / unfold raw TOC in editor">Fold TOC</button><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">−</button><button class="cancel toc-onsite" id="toc-onsite" title="On-site TOC: split editor and keep raw TOC above">On-site</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | insert / remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove the bookmark</button><button class="bm-pop-item" id="bm-insert" data-tip="Drop a 🔖 at the current cursor line (up to 3)">insert a bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩). One click of 🔖 always jumps here. Works even with no bookmark here.">Update it to Front Anchor</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
 <div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | wraps the selection: =={ text (red/yellow) //tip }==">==</button><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | wraps the selection: ~~{ text (red/) //tip }~~ (faint pink background)">~~</button><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | turns the current line into: ##[ text (white/green) //tip ]##">##</button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button></span></div>
 <div class="inline-panel" id="new-rename-panel">
   <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div></div>
@@ -11445,7 +11582,13 @@ function renderHyperTocTabs(toc){
 function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const toggleTip=escText('Toggle fold/unfold this membrane (▼⇄▼▲). Works even when the cursor is inside the membrane.');
   // v0.9.757: "From Out To 🟢" checkbox+glyph removed (俊克 am07:04) — the 🟢 jump system is
   // retired in favour of the bookmark (栞) and the ▼⇄▼▲ toggle. Pin keeps title/name/Ln + toggle.
-  return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><button class="toc-pin-toggle" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>';}
+  return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><button class="toc-pin-toggle" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>'+meCharRowHtml(cm);}
+/* v0.9.807: ★課題3 — char counter row at the BOTTOM edge of the Current Me Pin.
+   No target → plain count + ΔChar. Target set → progress bar (0-70% blue → blends to green
+   approaching 100% → orange when over = wrote past the target) + ΔChar at the right end.
+   ΔChar color: + orange / − green (cutting words can be the goal too — 俊克 am11:06). */
+let __meCharCur={chars:0,target:null};
+function meCharRowHtml(cm){if(!cm||cm.chars===undefined||cm.chars===null)return '';const chars=Number(cm.chars)||0;const target=(cm.charTarget===null||cm.charTarget===undefined)?null:Number(cm.charTarget);__meCharCur={chars,target};const d=Number(cm.charDelta)||0;const dCls=d>0?'plus':(d<0?'minus':'zero');const dTxt='ΔChar '+(d>0?'+':'')+d.toLocaleString('en-US');const rowTip=escText('Chars in this membrane (strikethrough excluded, newlines included). ΔChar = change since the baseline. Click to set a target / reset the baseline.');let left;if(target&&target>0){const pRaw=chars/target*100;const p=Math.min(100,pRaw);let col;if(pRaw>100)col='#f59e0b';else if(pRaw<70)col='#3794ff';else col='color-mix(in srgb,#16a34a '+Math.round((pRaw-70)/30*100)+'%,#3794ff)';left='<div class="me-char-bar" data-tip="'+rowTip+'"><div class="me-char-fill" style="width:'+p.toFixed(1)+'%;background:'+col+'"></div><span class="me-char-bar-label">'+chars.toLocaleString('en-US')+' / '+target.toLocaleString('en-US')+'</span></div>';}else{left='<span class="me-char-count" data-tip="'+rowTip+'">'+chars.toLocaleString('en-US')+' chars</span>';}return '<div class="toc-pin-chars" id="toc-pin-chars" data-tip="'+rowTip+'">'+left+'<span class="me-char-delta '+dCls+'">'+dTxt+'</span></div>';}
 function bidiJumpBarHtml(toc){const greenActive=!!(toc&&toc.greenActive);const redActive=!!(toc&&toc.redActive);const gCls='bidi-btn bidi-green'+(greenActive?'':' inactive');const rCls='bidi-btn bidi-red'+(redActive?'':' inactive');const gTip=greenActive?'S-click: jump open ⇔ close of active 🟢 pair':'No active 🟢 pair (select a membrane name in body to arm)';const rTip=redActive?'S-click: jump source ⇔ target of active 🔴 pair':'No active 🔴 pair (select citation text or click an H-TOC entry to arm)';return '<div class="bidi-jump-bar"><span class="bidi-label">Bi-direction Jump:</span><span class="'+gCls+'" data-tip="'+escText(gTip)+'">🟢</span><span class="bidi-sep">/</span><span class="'+rCls+'" data-tip="'+escText(rTip)+'">🔴</span><span class="bidi-btn bidi-clear" data-tip="このファイルの 🟢/🔴 ジャンプフラグを全消去（初期化／デバッグ用・Cmd+Zで復元）">Clear</span><span class="bidi-jumponly">(Jump only / S-click)</span></div>';}
 function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.hasToc));fixedToc.classList.toggle('on',!!(toc&&toc.enabled));if(!toc||!toc.enabled)return;renderHyperTocTabs(toc);if(fixedTocName&&document.activeElement!==fixedTocName)fixedTocName.value=toc.tocName||'';const items=(toc.items||[]);if(tocPinBar)tocPinBar.innerHTML=pinRowHtml(toc);/* v0.9.766: このタブの保存済み選択(selKey)をkeyで照合して復元。タブ切替時もそのタブの選択が戻る。 */if(toc.selKey){const _f=items.find(it=>String(it.key)===String(toc.selKey));selectedTocLine0=_f?Number(_f.line0):null;}else{selectedTocLine0=null;}if(!items.length){fixedTocBody.innerHTML='<div class="fixed-toc-empty">Hyper TOC is empty. Press ＋ to add one.</div>';selectedTocLine0=null;return;}fixedTocBody.innerHTML=items.map(it=>{const checked=it.checkedAt?' checked':'';const parts=[];if(it.createdAt)parts.push('Created: '+escText(it.createdAt));if(Array.isArray(it.checkLog)&&it.checkLog.length){it.checkLog.forEach(e=>{if(e&&e.at)parts.push((e.label||(e.checked?'Checked':'Unchecked'))+': '+escText(e.at));});}else if(it.checkedAt){parts.push('Checked: '+escText(it.checkedAt));}if(it.citeN!==null&&it.citeN!==undefined)parts.push('Cite #'+escText(String(it.citeN)));const tip=parts.length?parts.join(' | '):('Line '+it.line);const val=escText(it.value||it.label||it.key||'');const sel=(selectedTocLine0!==null&&Number(it.line0)===selectedTocLine0)?' selected':'';const citeAttr=(it.citeN!==null&&it.citeN!==undefined)?(' data-cite-n="'+escText(String(it.citeN))+'"'):'';return '<div class="fixed-toc-item'+sel+'" data-key="'+escText(it.key||'')+'" data-state-key="'+escText(it.stateKey||it.key||'')+'" data-line0="'+String(it.line0)+'"'+citeAttr+' data-tip="'+tip+'"><input class="toc-check" type="checkbox"'+checked+' data-tip="CheckTimeBox(CTB)"/><input class="toc-value" value="'+val+'" data-tip="'+tip+'"/></div>'}).join('');setTimeout(ensureSelectedTocVisible,0);}
 let standardsOn=true;
@@ -11555,7 +11698,17 @@ if(fixedTocBody)fixedTocBody.addEventListener('mousedown',ev=>{const item=ev.tar
 if(fixedTocBody)fixedTocBody.addEventListener('compositionstart',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value'))tocImeComposing=true;},true);
 if(fixedTocBody)fixedTocBody.addEventListener('compositionend',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-value'))setTimeout(()=>{tocImeComposing=false;},0);},true);
 if(fixedTocBody)fixedTocBody.addEventListener('click',ev=>{const bidiGreen=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-green'):null;if(bidiGreen){if(!bidiGreen.classList.contains('inactive'))vscode.postMessage({type:'jumpBiGreen'});return;}const bidiRed=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-red'):null;if(bidiRed){if(!bidiRed.classList.contains('inactive'))vscode.postMessage({type:'jumpBiRed'});return;}const bidiClear=ev.target&&ev.target.closest?ev.target.closest('.bidi-jump-bar .bidi-clear'):null;if(bidiClear){vscode.postMessage({type:'clearAllJumps'});return;}const pin=ev.target&&ev.target.closest?ev.target.closest('.toc-pin'):null;if(pin){if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-check')){vscode.postMessage({type:'pinJumpMode',toSelected:!!ev.target.checked});return;}if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-toggle')){vscode.postMessage({type:'toggleMeOne',line:ev.target.getAttribute('data-line')});return;}if(ev.target&&ev.target.closest&&ev.target.closest('.toc-pin-mode')){return;}vscode.postMessage({type:'pinCycle'});return;}const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const cls=ev.target&&ev.target.classList;if(cls&&cls.contains('toc-check')){const checked=!!ev.target.checked;const tip=checked?('Checked: '+new Date().toLocaleString('ja-JP')):('Line '+((Number(item.getAttribute('data-line0'))||0)+1));item.setAttribute('data-tip',tip);ev.target.setAttribute('data-tip',tip);const valueEl=item.querySelector('.toc-value');if(valueEl)valueEl.setAttribute('data-tip',tip);showTocTip(ev);vscode.postMessage({type:'toggleTocCheck',key:item.getAttribute('data-state-key')||item.getAttribute('data-key'),checked});return;}if(cls&&cls.contains('toc-value'))return;const key=item.getAttribute('data-key');const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
-if(tocPinBar)tocPinBar.addEventListener('click',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-toggle')){vscode.postMessage({type:'toggleMeOne',line:ev.target.getAttribute('data-line')});return;}const pin=ev.target&&ev.target.closest?ev.target.closest('.toc-pin'):null;if(pin){vscode.postMessage({type:'pinCycle'});return;}});
+if(tocPinBar)tocPinBar.addEventListener('click',ev=>{if(ev.target&&ev.target.classList&&ev.target.classList.contains('toc-pin-toggle')){vscode.postMessage({type:'toggleMeOne',line:ev.target.getAttribute('data-line')});return;}const chars=ev.target&&ev.target.closest?ev.target.closest('.toc-pin-chars'):null;if(chars){openMeCharPop(chars);return;}const pin=ev.target&&ev.target.closest?ev.target.closest('.toc-pin'):null;if(pin){vscode.postMessage({type:'pinCycle'});return;}});
+/* v0.9.807: char-target pop — opens above the char row (same fixed-pop pattern as bm-pop). */
+const meCharPop=document.getElementById('me-char-pop'),meCharPopHead=document.getElementById('me-char-pop-head'),meCharRecalc=document.getElementById('me-char-recalc'),meCharTargetInput=document.getElementById('me-char-target-input'),meCharTargetSet=document.getElementById('me-char-target-set'),meCharTargetClear=document.getElementById('me-char-target-clear');
+function closeMeCharPop(){if(meCharPop)meCharPop.classList.remove('on');}
+function openMeCharPop(anchorEl){if(!meCharPop)return;hideTocTip();if(meCharPopHead)meCharPopHead.textContent=__meCharCur.chars.toLocaleString('en-US')+' chars'+(__meCharCur.target?(' / target '+__meCharCur.target.toLocaleString('en-US')):'');if(meCharTargetInput)meCharTargetInput.value=__meCharCur.target||'';meCharPop.classList.add('on');const r=anchorEl.getBoundingClientRect();requestAnimationFrame(()=>{const h=meCharPop.offsetHeight||80,w=meCharPop.offsetWidth||180;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;meCharPop.style.left=left+'px';meCharPop.style.top=Math.max(6,r.top-h-6)+'px';});}
+if(meCharRecalc)meCharRecalc.addEventListener('click',()=>{vscode.postMessage({type:'resetMeCharBase'});closeMeCharPop();});
+function sendMeCharTarget(){const v=meCharTargetInput?Number(meCharTargetInput.value):NaN;vscode.postMessage({type:'setMeCharTarget',target:(isFinite(v)&&v>0)?Math.floor(v):null});closeMeCharPop();}
+if(meCharTargetSet)meCharTargetSet.addEventListener('click',sendMeCharTarget);
+if(meCharTargetInput)meCharTargetInput.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();sendMeCharTarget();}});
+if(meCharTargetClear)meCharTargetClear.addEventListener('click',()=>{vscode.postMessage({type:'setMeCharTarget',target:null});closeMeCharPop();});
+document.addEventListener('click',ev=>{if(meCharPop&&meCharPop.classList.contains('on')&&!meCharPop.contains(ev.target)&&!(ev.target.closest&&ev.target.closest('.toc-pin-chars')))closeMeCharPop();},true);
 if(fixedTocBody)fixedTocBody.addEventListener('dblclick',ev=>{const item=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!item)return;selectTocItem(item);const inputEl=item.querySelector('.toc-value');const key=tocKeyFromInputValue(inputEl?inputEl.value:item.getAttribute('data-key'));const citeNAttr=item.getAttribute('data-cite-n');const citeN=citeNAttr!==null&&citeNAttr!==''?Number(citeNAttr):null;if(key)vscode.postMessage({type:'jumpToTocItem',key,citeN});});
 function tocTextWidth(el,text){
   try{
@@ -12386,6 +12539,16 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'pinCycle') {
       // v0.9.680 (対策2): H-TOC "現在の膜" Pin click → cycle open → close → cursor.
       await cycleCurrentMembrane(getMeDockTargetEditor());
+      return;
+    }
+    if (message && message.type === 'setMeCharTarget') {
+      // v0.9.807: set / clear (null) the char target of the membrane the cursor is in.
+      await setMeCharTargetForCurrent(getMeDockTargetEditor(), message.target);
+      return;
+    }
+    if (message && message.type === 'resetMeCharBase') {
+      // v0.9.807: 再計算 — current count becomes the new Δ baseline (Δ=0).
+      await resetMeCharBaseForCurrent(getMeDockTargetEditor());
       return;
     }
     if (message && message.type === 'pinJumpMode') {
