@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.808: 「↺ Reset ΔChar baseline」をボタン形状に(俊克 6/12 am11:50 テスト全OK👍)。メニュー項目風の素テキストだと押せる事が分かりにくい→角丸四角の枠+背景でボタン化(#me-char-recalcにborder/radius/中央寄せ)。v807テスト結果: 1,056,722文字のフルカウント・取消線11文字で−11・Reset Δ=0 全部パーペキ。
 // - v0.9.807: ★課題3=Current Me文字数目標(俊克 6/12 am11:06/11:14)。Current Me Pin直下に文字数行: 目標設定時はプログレスバー(0-70%青→70-100%緑へ遷移→100%超は橙=書きすぎ)+右端にΔChar(基準値からの差、+橙/−緑=減らす目標にも対応)。文字数=膜本文の全文字(改行込み)から膜タグ行・mHTOC行・取消線(~~…~~/~~{…}~~/複数行~~{…}~~)を除外。基準値=初測定時に自動セット+ポップの「Reset Δ」で再計算(現在値を新基準に)。目標/基準はmHTOC(charStats)へ随伴永続化(初回自動基準はメモリ→次のmHTOC書込に同乗=selと同方式)。カウントはdoc versionキャッシュ+250msスロットルで軽量選択パスを汚さない。クリックでポップ(Reset Δ/Target Set/Clear)。
 // - v0.9.806: v805が効かない件修正(俊克 6/12 am04:19)。showTocTipのガードはmousemove時のみ→打鍵中は発火せず、編集開始前のホバーで出ていた古いtipが残っていた。focusin(編集開始)で即 hideTocTip。
 // - v0.9.805: H-TOC項目のコメント編集中はtip非表示(俊克 6/12 am04:15)。toc-value入力にフォーカスがある間 showTocTip を抑止=編集の邪魔をしない。
@@ -11401,6 +11402,8 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .me-char-pop-row .me-char-pop-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}
 .me-char-pop-row .me-char-pop-btn:hover{background:rgba(56,148,255,.18)}
 .me-char-pop-row #me-char-target-set{background:#3794ff;border-color:#3794ff;color:#fff}.me-char-pop-row #me-char-target-set:hover{background:#1f7fe8}
+.me-char-pop #me-char-recalc{margin:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);text-align:center;font-size:11px;font-weight:600;padding:4px 8px}
+.me-char-pop #me-char-recalc:hover{background:rgba(56,148,255,.18);border-color:#3794ff}
 .bidi-jump-bar-nav{border-bottom:none;border-top:1px solid rgba(210,140,0,.20);margin-top:4px}
 .bidi-jump-bar .bidi-label{opacity:.85;font-weight:500}
 .bidi-jump-bar .bidi-btn{cursor:pointer;user-select:none;padding:1px 4px;border-radius:3px}
