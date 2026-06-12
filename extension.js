@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.826: 虫歯の欠けを1px上へ(俊克 6/13 am02:57)。菱形チップ bottom:-4px→-3px=食い込みが1px深く・下へのはみ出しが1px減。
 // - v0.9.825: 前歯の修正(俊克 6/13 am02:50 OK&NG)。①チェックボックス(向かって右)のv824真四角outline=NG→撤回し素のまま。②虫歯(向かって左)のギザギザ=今一→「下端に一箇所だけの欠け」に: 45°回転の小菱形(6px)を下辺に食い込ませ、上2辺に本体と同じ1px線=欠け口の輪郭も均一線幅(clip-pathでは切断面に線が引けない問題の解)。菱形の下半分は口内と同色で不可視・歯の下辺線は欠け部分だけ自然に途切れる。閉じた右目の薄縁(👍)は維持。
 // - v0.9.824: me-face仕上げ=「押せる/押せない」をキャラ設定で表現(俊克 6/13 am02:35)。①向かって左の前歯(飾り・span.me-tooth)=線を1pxに細く+虫歯のように下端ギザギザ欠け(clip-path polygon)+膜色10%の薄染み(白い口内でもシルエットが読める)。②向かって右の前歯(チェックボックス本体)=outline 2px currentColorで囲み線を濃く=押せる方が際立つ。③Me円(キャラの右目=向かって左)はボタンではない→「目をつぶっている」設定で囲み線を1.5px/28%に薄く。
 // - v0.9.823: 膜キャラの位置固定(俊克 pm11:49 改良1)。チェック切替でボタンの顔ぶれが変わる(Add to Hyper TOC⇄Copy等)とボタン列の幅が変わり、justify-content:centerの膜キャラが左右に動く→マウス固定で連続切替できなかった。修正=.membrane-actionsを最広ボタン基準の固定幅142pxに(gridボタンは全幅stretch=見た目も統一)。
@@ -11573,7 +11574,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
    菱形の下半分は口内と同色なので見えず、歯の下辺の線は欠け部分だけ自然に途切れる。
    チェックボックス(向かって右)はv824の真四角outlineを撤回し元の素のまま。 */
 .me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:1px solid color-mix(in srgb,currentColor 55%,transparent);border-radius:5px;background:color-mix(in srgb,currentColor 10%,var(--vscode-editor-background));box-sizing:border-box}
-.me-tooth::after{content:'';position:absolute;width:6px;height:6px;left:7px;bottom:-4px;transform:rotate(45deg);background:var(--vscode-editor-background);border-top:1px solid color-mix(in srgb,currentColor 55%,transparent);border-left:1px solid color-mix(in srgb,currentColor 55%,transparent);box-sizing:border-box}
+.me-tooth::after{content:'';position:absolute;width:6px;height:6px;left:7px;bottom:-3px;transform:rotate(45deg);background:var(--vscode-editor-background);border-top:1px solid color-mix(in srgb,currentColor 55%,transparent);border-left:1px solid color-mix(in srgb,currentColor 55%,transparent);box-sizing:border-box}
 .contents-choice input{position:absolute;top:-1px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background)}
 .contents-word{font-weight:700;font-size:14px;color:var(--vscode-foreground)}
 /* v0.9.822: キャラが大きめになったので右側の操作ボタンも文字を大きく(俊克 pm10:29 改良1)。v800のcompact(11px/23px)→13px/28px。 */
