@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.819: v818の2バグ修正(俊克 6/12 pm08:49 OK&NG・日本語入力は完璧👍)。①★▼⇄▼▲折畳み破壊の真因=v818がeditor.showFoldingControlsを直接書いた→この設定はStandards>V状態の保存変数(currentStandardsOn+起動600ms再適用がここからdefaultFoldingRangeProviderを導出)で、裏から書くとfold provider構成が狂う。修正=showFoldingControls書込み全廃(変更はsetNativeStandardsDisclosureControls経由のみ)・v818が書いたGlobal'never'はinspectで検出し一度だけ自動復元・gutterHideFoldingControls設定撤去。シェブロン非表示はStandards>V OFF(既存ボタン)が担当=fold安全ペア。②栞被り=栞行は膜線を1行スキップ(栞が膜線を貫く意匠)・栞の追加/削除/全消去/setFrontでガター膜線を即再適用(編集パスでは呼ばない)。※「行番号の右側(折畳み列)」描画はVSCode APIが拡張に開放していない→グリフマージン(左)が唯一のガター描画面。
 // - v0.9.818: ★課題7(本丸)=膜縦線をガター領域へ(俊克 6/12 pm07:37)。①膜線をテキスト内before疑似要素→グリフマージンのgutterIconPath(動的SVG縦線)に移植: 深さ=スロットx位置(5レーン・pitch2.6)/開始・閉じ行=太線/膜色維持/警告=赤太線slot0。SVGシグネチャごとにdecoration typeをプール(gutterIconPathはtype属性のため)・400超で再構築。②laiMembrane.gutterLanes(既定true)で新旧切替・旧レンダラ温存。③gutterHideFoldingControls(既定true)=editor.showFoldingControls:'never'で純正折畳みシェブロン非表示(editor.foldコマンドは生きる=▼⇄▼▲無傷・自分で設定した時だけ復元)。④副産物: ガターはテキスト不干渉→IME中も膜線が消えない(compose-mode lane-hideは旧モード限定に)。テキスト域は膜線ゼロ=1mmも汚さないの完成形。
 // - v0.9.817: 100%未満の配色仕上げ(俊克 6/12 pm02:59「ラストオーダーたぶん(笑)」)。分子と%数値の文字色=プログレスバーのfill色(青〜緑のcolor-mixをinline styleで適用)+白背景の角丸ピル(.me-char-pill=me-char-num-overの色なし版)。超過時の赤ピル/赤数字と完全に対の構成: 色が状態を語り、形は常に同じ。括弧と%は黒のまま。
 // - v0.9.816: 100%未満も同形式に統一(俊克 6/12 pm02:52 OK&NG)。%表示を常に「括弧と%が黒・数字だけ色付き」に: 超過=赤太字/100%以下=白抜き(ラベル既定を継承)。マークアップを一本化(over時のみme-char-pct-overクラス付与)。
@@ -3718,9 +3719,14 @@ function computeGutterLaneDecorations(document) {
       };
     });
   const warnings = selectDisplayedWarnings(structure);
+  // v0.9.819: bookmark lines keep their 🔖/🚩 gutter icon — the lane skips that one line
+  // (the bookmark "pierces" the lane) instead of both icons overlapping (俊克 pm08:49).
+  let bmLines = null;
+  try { const bm = getBookmarks(document); if (bm && bm.marks && bm.marks.length) bmLines = new Set(bm.marks); } catch (_) {}
   const lastLine = document.lineCount - 1;
   const byKey = new Map(); // svg -> Range[]
   for (let line = 0; line <= lastLine; line++) {
+    if (bmLines && bmLines.has(line)) continue;
     const stack = [];
     const seen = new Set();
     let used = 0;
@@ -3770,28 +3776,33 @@ function clearGutterLaneDecorations(editor, dispose) {
   }
   if (dispose) _gutterLaneTypePool.clear();
 }
-// v0.9.818: hide the native folding chevrons while gutter lanes are on (俊克 pm07:37
-// 「既存の折り畳みボタン…を非表示にできるのか?」). editor.showFoldingControls='never' only
-// hides the UI — editor.fold/unfold commands keep working, so the MeOS ▼⇄▼▲ toggle is
-// unaffected. Restores the default when gutter lanes (or the sub-setting) are turned off,
-// and only if WE set it (globalState flag) — a user's own 'never' is left alone.
+// v0.9.819: v818 wrote editor.showFoldingControls directly — but that setting IS MeOS's
+// persistent Standards>V state variable (currentStandardsOn() reads it; the 600ms activation
+// reapply derives standardsOn from it and writes editor.defaultFoldingRangeProvider
+// accordingly). Writing it behind the state machine's back desynced the fold-provider
+// pairing and broke the ▼⇄▼▲ toggle (俊克 pm08:49). Lesson: showFoldingControls must ONLY
+// ever change through setNativeStandardsDisclosureControls. Chevron hiding while gutter
+// lanes are on = Standards>V OFF (the existing Me Dock toggle), which hides the chevrons
+// AND makes MeOS the sole fold provider — the fold-safe pairing. This function now only
+// (a) ensures the glyph margin is visible so gutter lanes can render, and (b) repairs the
+// v818 residue once: removes OUR global 'never' (flagged in globalState) so the user's
+// real Standards state is back in charge.
 async function syncGutterEditorSettings() {
   let cfg, ed;
   try {
     cfg = vscode.workspace.getConfiguration('laiMembrane');
     ed = vscode.workspace.getConfiguration('editor');
   } catch (_) { return; }
-  const on = gutterLanesOn(cfg) && cfg.get('gutterHideFoldingControls', true);
   const FLAG = 'meosSetShowFoldingControlsNever';
   try {
-    if (on) {
-      if (ed.get('glyphMargin') === false) await ed.update('glyphMargin', true, vscode.ConfigurationTarget.Global);
-      if (ed.get('showFoldingControls') !== 'never') {
-        await ed.update('showFoldingControls', 'never', vscode.ConfigurationTarget.Global);
-        if (extensionContext) await extensionContext.globalState.update(FLAG, true);
+    if (gutterLanesOn(cfg) && ed.get('glyphMargin') === false) {
+      await ed.update('glyphMargin', true, vscode.ConfigurationTarget.Global);
+    }
+    if (extensionContext && extensionContext.globalState.get(FLAG)) {
+      const insp = ed.inspect ? ed.inspect('showFoldingControls') : null;
+      if (insp && insp.globalValue === 'never') {
+        await ed.update('showFoldingControls', undefined, vscode.ConfigurationTarget.Global);
       }
-    } else if (extensionContext && extensionContext.globalState.get(FLAG)) {
-      if (ed.get('showFoldingControls') === 'never') await ed.update('showFoldingControls', undefined, vscode.ConfigurationTarget.Global);
       await extensionContext.globalState.update(FLAG, false);
     }
   } catch (_) {}
@@ -10636,6 +10647,12 @@ async function bookmarkClearAll(editor) { // 全しおり消去(H-TOCメニュ�
   if (!editor) return;
   await saveBookmarks(editor.document, { marks: [], cycleIdx: -1, front: -1 });
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
+  reapplyGutterLanesAfterBookmarkChange(editor);
+}
+// v0.9.819: bookmark add/remove changes which lines the gutter lane skips — reapply once.
+// Only on explicit bookmark mutations (rare user clicks), NEVER on the per-edit path.
+function reapplyGutterLanesAfterBookmarkChange(editor) {
+  try { if (editor && gutterLanesOn()) applyGutterLaneDecorations(editor); } catch (_) {}
 }
 function postBookmarkState(editor) {
   if (!meDockPanel) return;
@@ -10650,6 +10667,7 @@ async function bookmarkInsert(editor) { // カーソル行に追加(3個未満�
   data.front = line; // v0.9.760: 最後に追加した栞が最前線(Front Anchor)になる。
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
+  reapplyGutterLanesAfterBookmarkChange(editor);
 }
 async function bookmarkRemove(editor, line) { // カーソル行(or 指定行)のしおりだけ消す(意図的)。大事な場所は勝手に消えない。
   if (!editor) return;
@@ -10663,6 +10681,7 @@ async function bookmarkRemove(editor, line) { // カーソル行(or 指定行)�
   if (data.front === ln) data.front = -1;
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
+  reapplyGutterLanesAfterBookmarkChange(editor);
 }
 // v0.9.760: 「Update it to Front Anchor」= カーソル行を最前線栞にする。栞が無い場所でも実行可
 // (その場で栞を作って最前線化)。既存栞の行で実行すれば、それが最前線になる。
@@ -10684,6 +10703,7 @@ async function bookmarkSetFront(editor, line) {
   data.cycleIdx = data.marks.indexOf(ln);
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
+  reapplyGutterLanesAfterBookmarkChange(editor); // setFront can add/evict a mark line
   vscode.window.setStatusBarMessage('🚩 Front Anchor set (Ln ' + (ln + 1) + ')', 1500);
 }
 async function bookmarkCycle(editor) { // v0.9.760: 1クリックで必ず最前線(Front Anchor)へ。既に最前線にいれば次の栞へ巡回。
