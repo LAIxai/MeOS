@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.809: プログレスバーのラベル文字を白抜きに(俊克 6/12 pm00:11)。色付きfillの上で見やすく=color:#fff+濃い縁取りshadow3層(未達側の薄い地でも読める)。従来はvar(--vscode-foreground)+editor-background影。
 // - v0.9.808: 「↺ Reset ΔChar baseline」をボタン形状に(俊克 6/12 am11:50 テスト全OK👍)。メニュー項目風の素テキストだと押せる事が分かりにくい→角丸四角の枠+背景でボタン化(#me-char-recalcにborder/radius/中央寄せ)。v807テスト結果: 1,056,722文字のフルカウント・取消線11文字で−11・Reset Δ=0 全部パーペキ。
 // - v0.9.807: ★課題3=Current Me文字数目標(俊克 6/12 am11:06/11:14)。Current Me Pin直下に文字数行: 目標設定時はプログレスバー(0-70%青→70-100%緑へ遷移→100%超は橙=書きすぎ)+右端にΔChar(基準値からの差、+橙/−緑=減らす目標にも対応)。文字数=膜本文の全文字(改行込み)から膜タグ行・mHTOC行・取消線(~~…~~/~~{…}~~/複数行~~{…}~~)を除外。基準値=初測定時に自動セット+ポップの「Reset Δ」で再計算(現在値を新基準に)。目標/基準はmHTOC(charStats)へ随伴永続化(初回自動基準はメモリ→次のmHTOC書込に同乗=selと同方式)。カウントはdoc versionキャッシュ+250msスロットルで軽量選択パスを汚さない。クリックでポップ(Reset Δ/Target Set/Clear)。
 // - v0.9.806: v805が効かない件修正(俊克 6/12 am04:19)。showTocTipのガードはmousemove時のみ→打鍵中は発火せず、編集開始前のホバーで出ていた古いtipが残っていた。focusin(編集開始)で即 hideTocTip。
@@ -11393,7 +11394,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .toc-pin-chars{display:flex;align-items:center;gap:6px;padding:3px 8px 4px;font-size:11px;background:rgba(56,148,255,.07);border-top:1px dashed rgba(56,148,255,.25);cursor:pointer}.toc-pin-chars:hover{background:rgba(56,148,255,.16)}
 .me-char-bar{position:relative;flex:1;min-width:0;height:13px;border:1px solid rgba(56,148,255,.45);border-radius:7px;overflow:hidden;background:var(--vscode-input-background)}
 .me-char-fill{height:100%;border-radius:6px 0 0 6px;transition:width .25s ease,background .25s ease}
-.me-char-bar-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.2px;color:var(--vscode-foreground);text-shadow:0 0 3px var(--vscode-editor-background),0 0 3px var(--vscode-editor-background)}
+.me-char-bar-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.2px;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7),0 1px 2px rgba(0,0,0,.6)}
 .me-char-count{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;opacity:.8}
 .me-char-delta{flex:none;font-weight:800;font-size:11px}.me-char-delta.plus{color:#f59e0b}.me-char-delta.minus{color:#16a34a}.me-char-delta.zero{opacity:.5}
 .me-char-pop-row{display:flex;align-items:center;gap:4px;padding:3px 5px;font-size:12px}
