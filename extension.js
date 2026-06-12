@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.821: me-face改良2件(俊克 pm10:05 OK&NG)。①前歯2本: Contentsチェックボックスは「前歯2本の内の1本」という設定→v820は鼻の穴に被っていた。修正=口(Contents)の上唇から内側へ生える歯2本: 左=飾りの白い歯(span.me-tooth・膜色縁)・右=チェックボックス本体。中央で左右対称(translateX(-100%)/+4%)。②「(R)」をキャラ自身の左目(=画面右の光沢ボール)に密着(gap0+margin-left:-2px)。
 // - v0.9.820: ★me-face=膜パネルのキャラクター化(俊克 pm09:42 推しキャラ案{tmp>v0.9.819_0942 膜の顔.png})。目=Me円ラベル(左・✓が左目尻に重なる)+色ボタンを光沢ボール化(右・radial-gradientハイライト+「(R)」=括弧黒/文字膜色)・鼻=グレー点2つ(me-face-nose)・口=Contentsボックス(チェックボックスが上辺中央を跨ぐ)。全てcurrentColor駆動=膜色で顔が着替わる。renderColorButtonのtextContent書込をball/letter span更新に分離(旧構造はフォールバック)。既存ID/ハンドラ完全温存。
 // - v0.9.819: v818の2バグ修正(俊克 6/12 pm08:49 OK&NG・日本語入力は完璧👍)。①★▼⇄▼▲折畳み破壊の真因=v818がeditor.showFoldingControlsを直接書いた→この設定はStandards>V状態の保存変数(currentStandardsOn+起動600ms再適用がここからdefaultFoldingRangeProviderを導出)で、裏から書くとfold provider構成が狂う。修正=showFoldingControls書込み全廃(変更はsetNativeStandardsDisclosureControls経由のみ)・v818が書いたGlobal'never'はinspectで検出し一度だけ自動復元・gutterHideFoldingControls設定撤去。シェブロン非表示はStandards>V OFF(既存ボタン)が担当=fold安全ペア。②栞被り=栞行は膜線を1行スキップ(栞が膜線を貫く意匠)・栞の追加/削除/全消去/setFrontでガター膜線を即再適用(編集パスでは呼ばない)。※「行番号の右側(折畳み列)」描画はVSCode APIが拡張に開放していない→グリフマージン(左)が唯一のガター描画面。
 // - v0.9.818: ★課題7(本丸)=膜縦線をガター領域へ(俊克 6/12 pm07:37)。①膜線をテキスト内before疑似要素→グリフマージンのgutterIconPath(動的SVG縦線)に移植: 深さ=スロットx位置(5レーン・pitch2.6)/開始・閉じ行=太線/膜色維持/警告=赤太線slot0。SVGシグネチャごとにdecoration typeをプール(gutterIconPathはtype属性のため)・400超で再構築。②laiMembrane.gutterLanes(既定true)で新旧切替・旧レンダラ温存。③gutterHideFoldingControls(既定true)=editor.showFoldingControls:'never'で純正折畳みシェブロン非表示(editor.foldコマンドは生きる=▼⇄▼▲無傷・自分で設定した時だけ復元)。④副産物: ガターはテキスト不干渉→IME中も膜線が消えない(compose-mode lane-hideは旧モード限定に)。テキスト域は膜線ゼロ=1mmも汚さないの完成形。
@@ -11550,16 +11551,20 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .me-choice{justify-content:center;gap:10px;padding:7px 8px 2px}
 .me-choice input{position:relative;z-index:1;border-radius:5px}
 .me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:2px solid rgba(0,0,0,.72);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
-.color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:2px;background:transparent;border:none;padding:0;cursor:pointer;color:inherit}
+.color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:0;background:transparent;border:none;padding:0;cursor:pointer;color:inherit}
 .color-btn:hover{filter:brightness(1.08)}
 .color-ball{width:27px;height:27px;border-radius:50%;border:2px solid rgba(0,0,0,.72);box-shadow:inset 0 0 0 3.5px var(--vscode-editor-background);display:inline-block;background:currentColor}
-.color-letter{font-weight:900;font-size:12px;line-height:1;margin-top:-3px}
+/* v0.9.821: 「(R)」はキャラ自身の左目(=画面右のボール)に接するくらい密着(俊克 pm10:05 改良2)。 */
+.color-letter{font-weight:900;font-size:12px;line-height:1;margin:-2px 0 0 -2px}
 .color-letter i{font-style:normal;color:var(--vscode-foreground)}
 .me-face-nose{display:flex;justify-content:center;gap:8px;margin:1px 0 2px}
 .me-face-nose i{width:5px;height:5px;border-radius:50%;background:rgba(125,125,125,.85)}
 .contents-box{position:relative;border-width:2px;border-radius:10px;margin:4px 8px 8px;min-height:46px;overflow:visible}
 .contents-choice{position:static}
-.contents-choice input{position:absolute;top:-9px;left:50%;transform:translateX(-50%);border-radius:5px;background:var(--vscode-editor-background)}
+/* v0.9.821: 前歯2本(俊克 pm10:05 改良1)=チェックボックスは前歯の1本という設定。上唇(上辺)から
+   口の内側へ生える: 左=飾りの白い歯(me-tooth)・右=contents-checkbox。鼻の穴には被らない。 */
+.me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:2px solid currentColor;border-radius:5px;background:var(--vscode-editor-background);box-sizing:border-box}
+.contents-choice input{position:absolute;top:-1px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background)}
 .contents-word{font-weight:700;font-size:14px;color:var(--vscode-foreground)}.color-pop{display:none;position:fixed;z-index:50;padding:5px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.24);gap:3px;flex-direction:column}.color-pop.on{display:flex}.swatch{width:25px;height:25px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;font-size:14px;padding:0;line-height:1}.swatch.active::after{content:'✓';position:absolute;font-weight:900;color:#111;text-shadow:0 0 2px #fff,0 0 2px #fff}.swatch-wrap{position:relative;display:grid;place-items:center}.swatch-label{font-size:18px;line-height:1}
 .edit-actions{display:grid;gap:6px;margin-top:2px}.edit-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px;padding:6px 7px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);font-size:12px;user-select:none}.edit-row:hover{background:var(--vscode-list-hoverBackground)}.edit-row.hidden{display:none}.buttons{display:flex;justify-content:flex-end;gap:6px}button{border:1px solid var(--vscode-button-border,transparent);border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer}.cancel{background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground)}.set{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}
 .hint{padding:2px 2px 0 2px;font-size:11px;opacity:.65;line-height:1.35}
@@ -11635,7 +11640,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
     <div class="membrane-visual" id="membrane-visual">
       <label class="me-choice" id="me-choice"><input type="checkbox" id="me-check" checked/><span class="me-scope-label" id="me-scope-label">Me</span><span class="color-row hidden" id="color-row"><button class="color-btn" id="color-btn" title="Membrane color"><span class="color-ball" id="color-ball"></span><span class="color-letter" id="color-letter">(G)</span></button><div class="color-pop" id="color-pop"></div></span></label>
       <div class="me-face-nose"><i></i><i></i></div>
-      <div class="contents-box" id="contents-box"><label class="contents-choice"><input type="checkbox" id="contents-check"/><span class="contents-word">Contents</span></label></div>
+      <div class="contents-box" id="contents-box"><span class="me-tooth" aria-hidden="true"></span><label class="contents-choice"><input type="checkbox" id="contents-check"/><span class="contents-word">Contents</span></label></div>
     </div>
     <div class="membrane-actions" id="membrane-actions">
       <button class="big-action" id="op-add-toc">Add to <span class="toc-word">Hyper TOC</span></button>
