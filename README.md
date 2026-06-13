@@ -218,9 +218,11 @@ MeOS stands on the shoulders of:
 > ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`
 > Keeps wrapped lines flush, so they sit cleanly next to the gutter membrane lanes.
 
-> 📌 **Known limitation — membrane lanes & wrapped lines.**
-> Membrane lanes are drawn in the **gutter** (glyph margin), which keeps the text area completely untouched — most importantly, **CJK / IME input stays perfectly smooth** (no caret wedging). The trade-off: the current editor API renders a gutter decoration **only on the first visual row** of a wrapped line, so on wrapped lines the membrane lane shows a small gap. Drawing the lane inside the text instead (set `"laiMembrane.gutterLanes": false`) makes it continuous across wraps, but reintroduces IME friction — so the gutter is the default.
-> **A note for VSCodium / VS Code maintainers:** an API to let glyph-margin / gutter decorations span all visual rows of a wrapped line (as breakpoints and folding controls already do internally) would let MeOS draw a perfectly continuous lane *and* keep IME input clean. We'd love to see it. 🙏
+> 📌 **Membrane lanes & wrapped lines — a quirk with an upside.**
+> Membrane lanes are drawn in the **gutter** (glyph margin), which keeps the text area completely untouched — most importantly, **CJK / IME input stays perfectly smooth** (no caret wedging). One side effect: the current editor API renders a gutter decoration **only on the first visual row** of a wrapped line, so the lane shows a small break wherever a line wraps.
+> **Many find this useful rather than annoying:** the break quietly marks two things at a glance — the **start of each membrane**, and any **unusually long paragraph** (the rare line that wraps). In prose, most lines fit on one row, so a break stands out exactly where the text is dense. Like the rest of MeOS, *the shape stays constant; only the signal changes.*
+> Prefer a perfectly continuous lane? Set `"laiMembrane.gutterLanes": false` to draw it inside the text instead — at the cost of some IME friction (so the gutter is the default).
+> **A note for VSCodium / VS Code maintainers:** an API to let glyph-margin / gutter decorations span all visual rows of a wrapped line (as breakpoints and folding controls already do internally) would let MeOS offer both a perfectly continuous lane *and* clean IME input. We'd love to see it. 🙏
 
 ## Markdown⊕ — Welcome to the New World
 
