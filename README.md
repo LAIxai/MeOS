@@ -215,8 +215,12 @@ MeOS stands on the shoulders of:
 - **🔖 Bookmarks** — up to 3 "place" bookmarks; cycle-jump to return. A safety net so you never lose your home.
 - **Raw view (👁 button or type `kakaka`)** — toggle all rendering off for a plain editor: friction-free CJK input (日本語 / 中文 / 한국어). Cast the spell again to restore MeOS.
 
-> ⚙️ **Recommended setting:** `"editor.wrappingIndent": "indent"`
-> The editor default `"same"` can make long wrapped lines overlap the membrane line — a known issue, with a built-in fix (drawing the membrane line in the gutter) coming in the next version.
+> ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`
+> Keeps wrapped lines flush, so they sit cleanly next to the gutter membrane lanes.
+
+> 📌 **Known limitation — membrane lanes & wrapped lines.**
+> Membrane lanes are drawn in the **gutter** (glyph margin), which keeps the text area completely untouched — most importantly, **CJK / IME input stays perfectly smooth** (no caret wedging). The trade-off: the current editor API renders a gutter decoration **only on the first visual row** of a wrapped line, so on wrapped lines the membrane lane shows a small gap. Drawing the lane inside the text instead (set `"laiMembrane.gutterLanes": false`) makes it continuous across wraps, but reintroduces IME friction — so the gutter is the default.
+> **A note for VSCodium / VS Code maintainers:** an API to let glyph-margin / gutter decorations span all visual rows of a wrapped line (as breakpoints and folding controls already do internally) would let MeOS draw a perfectly continuous lane *and* keep IME input clean. We'd love to see it. 🙏
 
 ## Markdown⊕ — Welcome to the New World
 
