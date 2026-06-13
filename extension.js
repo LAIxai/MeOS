@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.836: 栞行ホバーtipの並びもbm-popと統一(俊克 6/13 pm08:56)。tipは必ず栞行より上に出る(下に出たことがない)=ドロップダウンと同じ「下＝行に近い＝最頻用」が成立→ 上→下= Clear all / Remove this / Switch Front。v835で「ホバーは末尾にClear all」とした判断を、実挙動(常に上表示)の指摘で撤回し統一。
 // - v0.9.835: bm-popメニューの並べ替え(俊克 6/13 pm08:49)。メニューは▾ボタンの上に開く=最下段がボタンに最も近く最も押しやすい→最頻用の Switch Front bookmark を最下段に。破壊的な Clear all bookmarks は最遠の最上段(誤クリック安全地帯)。上→下= Clear all / Remove this / Switch Front。区切り線はClear all直下に移動。※栞行ホバー(3層tip)はSwitch Front最上・Clear all最下のまま(自由配置のtipは破壊的操作を末尾に置く方が安全)。
 // - v0.9.834: 栞メニュー整理(俊克 6/13 pm08:24-08:32)。改良1=「insert a bookmark」廃止(1個目/2個目を追加してもF栞になる=Switch Front Anchorと実質同じ・bookmarkSetFrontが満杯時の入替も既存栞の昇格も処理)→bm-popメニューを Remove this bookmark / Switch Front bookmark の2本に集約(「Update it to Front Anchor」→「Switch Front bookmark」に改名: 別の場所でSwitchすると旧F栞は通常栞に降格しキープ、無設定の見えない栞とのSwitchとも解釈できる)。改良2=栞行のホバーメニューを横並び→3層の縦並び(markdownハードブレーク)でクリックしやすく・命名統一。＋栞全削除(Clear all bookmarks)をtipだけでなくMe Dockメニュー(bm-pop)にも追加(破壊的なので区切り線+ホバーで赤)。bookmarkInsert関数/メッセージは休眠(neuter)。
 // - v0.9.833: ★バグ修正=ハイライト本体の先頭1グリフだけ背景が塗られない(俊克 6/13 pm01:48「最初のOneだけハイライトが入らない・文字色は正常」)。真因=背景レンジが直前の font-size:0 で隠した `=={` のすぐ右隣から始まると、VSCodeが背景ボックスの先頭グリフを塗り損ねる(文字色はグリフ単位なので正常=症状と一致)。修正=背景レンジ(bg)だけ開始位置を幅0の `=={` を含む openStart まで左に伸ばし、先頭可視グリフをボックス内側に。文字色レンジは innerStart のまま。per-line/複数行の両方に適用。
@@ -10699,11 +10700,13 @@ function refreshBookmarkDecoration(editor) {
     // ハードブレーク(行末2スペース+改行)で1行ずつ積み、クリックしやすく。命名も新メニューに合わせ
     // 「Switch Front bookmark」「Remove this bookmark」へ統一(改良1と同じ)。
     const lnArg = encodeURIComponent(JSON.stringify([ln]));
+    // v0.9.836: ホバーtipの並びもbm-popと統一(俊克 pm08:56)。tipは必ず栞行より"上"に出るので、
+    // 行(=マウス)に最も近い最下段が最も押しやすい→最頻用 Switch Front を最下に、破壊的 Clear all を最上に。
     const md = new vscode.MarkdownString(
       tag + ' (Ln ' + (ln + 1) + ')  \n' +
-      '[🚩 Switch Front bookmark](command:lai-membrane.bookmarkSetFrontAt?' + lnArg + ')  \n' +
+      '[🧹 Clear all bookmarks](command:lai-membrane.bookmarkClearAll)  \n' +
       '[🔖 Remove this bookmark](command:lai-membrane.bookmarkRemoveAt?' + lnArg + ')  \n' +
-      '[🧹 Clear all bookmarks](command:lai-membrane.bookmarkClearAll)'
+      '[🚩 Switch Front bookmark](command:lai-membrane.bookmarkSetFrontAt?' + lnArg + ')'
     );
     md.isTrusted = { enabledCommands: ['lai-membrane.bookmarkRemoveAt', 'lai-membrane.bookmarkSetFrontAt', 'lai-membrane.bookmarkClearAll'] };
     hoverItems.push({ range: new vscode.Range(ln, 0, ln, eol), hoverMessage: md });
