@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.832: ★バグ修正=改行をまたぐハイライト =={…}== が効かない(俊克 6/13 pm00:14「だいぶ前から気づいていた」)。取消線 ~~{…}~~ には複数行ハンドラ(hasMlBracedStrike)があったのに、ハイライトには無く行単位正規表現[^\n]のみ→改行で切れていた。修正=取消線ブロックと完全対称の hasMlBracedHighlight 検出+全文走査ブロック(/=={([\s\S]*?)}==/g)を追加。波括弧つき =={…}== 限定・カーソル範囲内は生表示・50行超は暴走防止。文字色/背景色/コメントtipも複数行で機能。※膜線の折返し切れ(課題)はガターアイコンのVSCode仕様(折返し2行目以降に描画不可)で、IME完璧(ガター)と折返し連続(テキスト内=旧gutterLanes:false)はトレードオフ=同時不可。
 // - v0.9.831: Mepyの挨拶を英国風ジョークに(俊克 6/13 am03:51)。「Nice to meet you!」→「Nice to meet Me!」=鏡に映った自分への自己紹介。MeOSでは膜=Meなので「Mepyに会う=Meに会う」と世界観も一致する二重の駄洒落。
 // - v0.9.830: Mepyの挨拶を英語化(俊克 6/13 am03:47「英語化を忘れているよ」)。「I'm Mepy.よろしく」→「I'm Mepy. Nice to meet you!」。UI tipは全英語の原則(v0.9.685 tip英語化)に整合。
 // - v0.9.829: Mepyの挨拶tipを必ず顔の外に(俊克 6/13 am03:43)。showTocTipに.mepy-hello専用分岐: membrane-visualのrectを基準に顔の真上へ中央寄せ(8px浮かせ)・上に余地が無ければ顔の下。デフォルトの左伸ばし配置だと顔に被っていた。
@@ -4219,10 +4220,14 @@ function applyPrettyLabels(editor) {
   // (v705で単独 ~~ が遠くの ~~ まで巻き込んで暴走→誤爆。俊克 am08:40「使い物にならない」)。
   // 起動条件=「~~{ が同一行で }~~ で閉じていない(=複数行に開いた)行」がある時だけ全文走査(性能温存)。
   let hasMlBracedStrike = false;
+  // v0.9.832: 取消線と同様に、改行をまたぐハイライト =={…}== も検出する(俊克 6/13 pm00:14
+  // 「改行を含むハイライトが効かない」)。起動条件=「=={ が同一行で }== で閉じていない行」がある時だけ全文走査。
+  let hasMlBracedHighlight = false;
 
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
     if (text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
+    if (text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
     const jfHideRanges = jumpFlagRangesInText(line, text);
     // v0.9.656/657: ハイライト ==text(色)== を検出（膜行・本文行どちらでも効く）。
     // 同一行に複数可。`==`マーカーは隠す。内側末尾に (色) があればその色の背景にし、
@@ -4626,6 +4631,40 @@ function applyPrettyLabels(editor) {
         if (faint) strikeFaintBgRanges.push({ range: r });
       }
       strikeMarkerRanges.push({ range: new vscode.Range(editor.document.positionAt(bodyEndOff), endPos) });
+    }
+  }
+  // v0.9.832: 改行をまたぐハイライト =={本文(文字色/背景色)//コメント}== を本文=複数行レンジで一括装飾。
+  // 取消線の複数行ブロック(上)と完全に対称。波括弧つき =={…}== だけが対象(素の ==…== は行単位パス限定で
+  // 行をまたがない)。カーソルが範囲内なら生表示(編集中)。
+  if (hasMlBracedHighlight) {
+    const fullText = editor.document.getText();
+    const reMLH = /=={([\s\S]*?)\}==/g;
+    let mMLH;
+    while ((mMLH = reMLH.exec(fullText)) !== null) {
+      const inner = mMLH[1];
+      if (inner.indexOf('\n') < 0) continue;                 // 単一行は行単位パスが担当済み
+      const matchStart = mMLH.index;
+      const matchEnd = matchStart + mMLH[0].length;
+      const innerStartOff = matchStart + 3;                  // '=={'
+      const startPos = editor.document.positionAt(matchStart);
+      const endPos = editor.document.positionAt(matchEnd);
+      if (endPos.line - startPos.line > 50) continue;        // 暴走防止(巨大化)
+      if (docCursorLine >= startPos.line && docCursorLine <= endPos.line) continue; // 範囲内は編集中→生表示
+      const hi = parseColorSpec(inner, 'bg');
+      let bgKey = hi.bgKey, fgKey = hi.fgKey;
+      const hiComment = hi.comment, bodyLen = hi.bodyLen;
+      if (!bgKey && !fgKey) bgKey = 'yellow';                // 色未指定は黄背景(行単位パスと同じ)
+      if (bgKey && !fgKey && DARK_BG_KEYS.has(bgKey)) fgKey = 'white'; // 暗背景は白文字
+      const bodyEndOff = innerStartOff + bodyLen;
+      highlightMarkerRanges.push({ range: new vscode.Range(startPos, editor.document.positionAt(innerStartOff)) });
+      if (bodyEndOff > innerStartOff) {
+        const r = new vscode.Range(editor.document.positionAt(innerStartOff), editor.document.positionAt(bodyEndOff));
+        let hover = null;
+        if (hiComment) { hover = new vscode.MarkdownString('💬 ' + hiComment); hover.isTrusted = false; }
+        if (bgKey) (highlightBodyRangesByColor[bgKey] || highlightBodyRangesByColor.yellow).push(hover ? { range: r, hoverMessage: hover } : { range: r });
+        if (fgKey) (highlightFgRangesByColor[fgKey] || []).push((hover && !bgKey) ? { range: r, hoverMessage: hover } : { range: r });
+      }
+      highlightMarkerRanges.push({ range: new vscode.Range(editor.document.positionAt(bodyEndOff), endPos) });
     }
   }
 
