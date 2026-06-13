@@ -4,7 +4,7 @@
 
 ### **Markdown⊕** — *Markdown, plus.*
 
-MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the ⊕). A membrane is just a comment — so a Markdown⊕ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown⊕ adds structure, navigation, and bi-directional links** — without touching your data.
+MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the ⊕). A membrane is just a comment — so a Markdown⊕ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown⊕ adds structure, navigation, and bookmarks that bring you back** — without touching your data.
 
 > **A new world — where comments become commands.**
 >
@@ -16,7 +16,7 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 >
 > **The ultimate environment for creation!!!**
 >
-> **And the future is in view: bi-directionally linking every membrane on Earth.**
+> **And the future is in view: every membrane on Earth, connected.**
 >
 > ## **I, My, MeOS 🐣**
 >
@@ -24,7 +24,7 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 
 ---
 
-## MeOS for VSCm — Fold Membrane, Anywhere Bi-Link
+## MeOS for VSCm — Fold Membrane, Warp Anywhere
 
 > Part of **MeOS™ for anywhere** — the universal membrane notation.  
 > Abbreviated as **μOS** (read: mu-OS / mi-OS / me-OS).  
@@ -77,7 +77,7 @@ MeOS := VSCodiuM = VSCodium + Membrane
 
 ```text
 Hyperlink connected pages.
-BiperLink connects meaning — by text, bidirectionally, from anywhere.
+Membranes connect meaning — by name, from anywhere.
 ```
 
 ```text
@@ -122,7 +122,7 @@ as "micro-OS" on the surface, but unfolds to **membraneOS** at its root.
 
 ### Notation — Public Domain
 
-The **MeOS notation specification** (membrane syntax, BiperLink `⇄`,
+The **MeOS notation specification** (membrane syntax, cross-reference `⇄`,
 Me notation `⇒`, badge format, depth markers, etc.) is dedicated to
 **the public domain**. The notation is intended to become a universal
 technical convention, in the spirit of open scientific terms like
