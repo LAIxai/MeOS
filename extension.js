@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.849: バグ修正=栞未設定時に🔖ボタン無反応(俊克 6/14 am08:36)。真因=bm-cycleのクリックハンドラに旧ガード「.zero(栞0個)なら何もせずreturn」が残存し、v848でバックエンドに足した空時F栞作成が呼ばれる前に握り潰されていた。修正=ガード撤去でクリックを常に通す。
 // - v0.9.848: 栞の一貫性2件(俊克 6/14 am08:09)。バグ1=🔖ボタン(bm-cycle)のtipが静的で日時非表示→postBookmarkStateでmarksInfo(行/作成日時/F印)を送りrenderBookmarkStateで動的tip化「🔖 Bookmark | … | 🚩 Ln NNN · 日時 | 🔖 Ln … 」。改良1=通常栞 未設定時に🔖ボタンをクリックするだけでその場にF栞を貼る(bookmarkCycleの空時returnをbookmarkSetFrontに)=💤ボタン(空→駐車)と操作の一貫性。
 // - v0.9.847: 通常栞・F栞にも作成日時(タイムスタンプ)を付与(俊克 6/14 am07:23「F栞にも」)。非侵襲方式=marks(行番号配列)は触らず別マップ markStamps{行→日時} を追加。栞行ホバーに「🔖/🚩 (Ln NNN · YYYY-MM-DD HH:MM)」と表示。追加(insert/SetFront新規)で日時記録・既存栞のSwitchでは上書きせず作成日時を保つ・削除/退避/全消去で日時も除去・行ズレ時はpairでrekey追従。globalState永続化。栞=globalState(マシン内)保存はそのまま。
 // - v0.9.846: 💤ボタン(設定済み)のtipに行番号+保留日時を表示(俊克 6/14 am07:09)。「💤 Jump to your pending bookmark — Ln NNN · YYYY-MM-DD HH:MM. Resolve it (✅)…」=飛ぶ前にどこに何を保留したか判断できる。複数(将来5〜10)は ' / ' 区切りで列挙。
@@ -12106,7 +12107,7 @@ const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.add
 const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmAddPending=document.getElementById('bm-add-pending'),bmPendingList=document.getElementById('bm-pending-list'),bmPendingBtn=document.getElementById('bm-pending-btn');
 if(bmPendingBtn)bmPendingBtn.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkTogglePending'});if(typeof hideTocTip==='function')hideTocTip();}); // v0.9.841: ツールバー💤=駐車/ジャンプ。v843: クリック後は開いたままの古いtipを消す→次ホバーで状態別tipに更新
 function closeBmPop(){if(bmPop)bmPop.classList.remove('on');}
-if(bmCycle)bmCycle.addEventListener('click',()=>{if(bmCycle.classList.contains('zero'))return;vscode.postMessage({type:'bookmarkCycle'});});
+if(bmCycle)bmCycle.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkCycle'});}); /* v0.9.849: 旧.zeroガードを撤去=栞未設定でもクリックを通し、バックエンドのbookmarkCycleが空時にF栞を貼る(俊克バグ報告) */
 if(bmMenuBtn)bmMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!bmPop.classList.contains('on');bmPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=bmMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=bmPop.offsetHeight||60,w=bmPop.offsetWidth||140;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;bmPop.style.left=left+'px';bmPop.style.top=Math.max(6,r.top-h-6)+'px';});});
 if(bmRemove)bmRemove.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkRemove'});closeBmPop();});
 if(bmFront)bmFront.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkSetFront'});closeBmPop();});
