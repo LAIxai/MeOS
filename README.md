@@ -44,19 +44,19 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 ## VSCodium meets Me.  
 ## It becomes MeOS — the Brain Editor.
 
-### BiperLink by Text — Beyond Hyperlink
+### Beyond Hyperlink — Navigate by Name, Return by Bookmark
 
-**Type the same membrane name anywhere — in TOCs or checklists — and jump instantly, then jump back.**
+**Membrane names are proper nouns.** Type a name in a TOC or a checklist — or search your whole workspace for it — and jump straight to that membrane.
 
-**Workspace: search by membrane name — because membrane names are proper nouns.**
+**🔖 Bookmarks bring you home.** Drop up to three "place" bookmarks; one click flies you to your **Front Anchor** — the very line you're writing now. With two bookmarks, it becomes a **bidirectional jump**: leap there, and back, again and again.
 
 Me (Membrane) transforms VSCodium into a Brain Editor for writers, developers, researchers, and AI.
 
 Membrane structure introduces named, foldable, navigable thought architecture into code and text:
 
 - Fold beyond headings
-- Jump / Bi-Link instantly by membrane name
-- Turn text itself into bidirectional structural navigation
+- Jump instantly by membrane name — from TOCs, checklists, or workspace search
+- Return anywhere with bookmarks — three place markers and a one-click Front Anchor
 - Use membrane names as proper nouns for workspace-wide discovery
 - Build AI-readable and human-readable structured memory
 - Transform notes, code, and knowledge into MeOS
@@ -209,10 +209,9 @@ MeOS stands on the shoulders of:
 - **Membranes** — comment-based structure that leaves your source untouched (decoration-only). **Fold** a huge file into a clean skeleton in one keystroke.
 - **Hyper TOC (H-TOC)** — jump anywhere from an outline panel. *One structure: read by AI (in-source, grep-able) and navigated by you (the panel).*
 - **Current Me** — always know which membrane the cursor is in; 3-point jump (open ⇔ close ⇔ cursor).
-- **BiperLink — bi-directional jump** — text-based two-way links, like 実身/仮身: leap there, and back.
 - **Zoom Me!** — focus into a sub-region, then return.
 - **Writer formatting** — highlight / strikethrough / headings with text & background colors and `//comments` (editor⇄author notes), via one-tap buttons.
-- **🔖 Bookmarks** — up to 3 "place" bookmarks; cycle-jump to return. A safety net so you never lose your home.
+- **🔖 Bookmarks — leap there, and back** — up to 3 "place" bookmarks with a one-click **Front Anchor** (the line you're writing right now). Two bookmarks make a **bidirectional jump**: there, and back, again and again. A safety net so you never lose your home.
 - **Raw view (👁 button or type `kakaka`)** — toggle all rendering off for a plain editor: friction-free CJK input (日本語 / 中文 / 한국어). Cast the spell again to restore MeOS.
 
 > ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`
