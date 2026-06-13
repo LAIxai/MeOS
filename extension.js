@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.839: 💤を栞ペナントの中に埋め込み(俊克 6/13 pm09:56「F栞のように栞マークの真ん中に💤を」)。bookmark-pending.svg=明るいスレート(#cbd5e1)ペナント+中央に💤絵文字(font-size7・y6.6)。F栞(赤地白F)と同じ作法で、青い💤が映える明色地に。栞ファミリーの見た目統一(🔖琥珀/🚩赤F/💤スレート)。
 // - v0.9.838: 💤保留栞アイコンを実絵文字に(俊克 6/13 pm09:48「Zだけだと分かりにくい・💤を入れて」)。bookmark-pending.svgを<text>💤</text>に変更=Z3つの眠り絵柄をそのまま表示(macOSはカラー絵文字描画)。万一モノクロ/豆腐になる環境向けには手描きの青Zzzへ差し戻す余地あり。
 // - v0.9.837: ★💤保留栞(Pending bookmark)新機能(俊克 6/13 pm09:09-09:17ひらめき)。「後で片付ける」を忘れないTODOマーカー。発端=『bookmarkInsert関数を休眠させた、それを忘れないため』のメタ会話。通常栞(🔖/🚩=ナビ拠点)とは別プール・別アイコン(bookmark-pending.svg=スレート地白z)。保留した年月日を記録(pendingStamp)。bm-pop最上段に「💤 A pending bookmark」(作成)+直下に保留一覧(クリックでジャンプ・日付表示)。栞行ホバーに💤項目(parked日時+✅Resolve)。Clear all bookmarksは💤を残す(別プール・失くしたくないTODO)。行ズレ追従(adjustBookmarksForChange)。初回はPENDING_BOOKMARK_MAX=1(満杯はResolveを促し古い保留を勝手に消さない)→要望次第で5〜10に定数1つで拡張。データ構造は最初から複数対応。
 // - v0.9.836: 栞行ホバーtipの並びもbm-popと統一(俊克 6/13 pm08:56)。tipは必ず栞行より上に出る(下に出たことがない)=ドロップダウンと同じ「下＝行に近い＝最頻用」が成立→ 上→下= Clear all / Remove this / Switch Front。v835で「ホバーは末尾にClear all」とした判断を、実挙動(常に上表示)の指摘で撤回し統一。
