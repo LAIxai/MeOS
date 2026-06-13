@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.833: ★バグ修正=ハイライト本体の先頭1グリフだけ背景が塗られない(俊克 6/13 pm01:48「最初のOneだけハイライトが入らない・文字色は正常」)。真因=背景レンジが直前の font-size:0 で隠した `=={` のすぐ右隣から始まると、VSCodeが背景ボックスの先頭グリフを塗り損ねる(文字色はグリフ単位なので正常=症状と一致)。修正=背景レンジ(bg)だけ開始位置を幅0の `=={` を含む openStart まで左に伸ばし、先頭可視グリフをボックス内側に。文字色レンジは innerStart のまま。per-line/複数行の両方に適用。
 // - v0.9.832: ★バグ修正=改行をまたぐハイライト =={…}== が効かない(俊克 6/13 pm00:14「だいぶ前から気づいていた」)。取消線 ~~{…}~~ には複数行ハンドラ(hasMlBracedStrike)があったのに、ハイライトには無く行単位正規表現[^\n]のみ→改行で切れていた。修正=取消線ブロックと完全対称の hasMlBracedHighlight 検出+全文走査ブロック(/=={([\s\S]*?)}==/g)を追加。波括弧つき =={…}== 限定・カーソル範囲内は生表示・50行超は暴走防止。文字色/背景色/コメントtipも複数行で機能。※膜線の折返し切れ(課題)はガターアイコンのVSCode仕様(折返し2行目以降に描画不可)で、IME完璧(ガター)と折返し連続(テキスト内=旧gutterLanes:false)はトレードオフ=同時不可。
 // - v0.9.831: Mepyの挨拶を英国風ジョークに(俊克 6/13 am03:51)。「Nice to meet you!」→「Nice to meet Me!」=鏡に映った自分への自己紹介。MeOSでは膜=Meなので「Mepyに会う=Meに会う」と世界観も一致する二重の駄洒落。
 // - v0.9.830: Mepyの挨拶を英語化(俊克 6/13 am03:47「英語化を忘れているよ」)。「I'm Mepy.よろしく」→「I'm Mepy. Nice to meet you!」。UI tipは全英語の原則(v0.9.685 tip英語化)に整合。
@@ -4265,10 +4266,14 @@ function applyPrettyLabels(editor) {
         highlightMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
         if (bodyEnd > innerStart) {
           const r = new vscode.Range(line, innerStart, line, bodyEnd);
+          // v0.9.833: 背景レンジは隠した `=={`(幅0)を含む位置から開始する。直前の font-size:0 要素に
+          // 隣接すると VSCode が本体先頭1グリフの背景を塗り損ねる(俊克 pm01:48「最初のOneだけ背景が無い・
+          // 文字色は正常」)。文字色はグリフ単位なので innerStart のままで正しい。`=={` は幅0=見た目の隙間なし。
+          const rBg = new vscode.Range(line, openStart, line, bodyEnd);
           let hover = null;
           if (hiComment) { hover = new vscode.MarkdownString('💬 ' + hiComment); hover.isTrusted = false; }
           if (bgKey) {
-            const item = hover ? { range: r, hoverMessage: hover } : { range: r };
+            const item = hover ? { range: rBg, hoverMessage: hover } : { range: rBg };
             (highlightBodyRangesByColor[bgKey] || highlightBodyRangesByColor.yellow).push(item);
           }
           if (fgKey) {
@@ -4659,9 +4664,11 @@ function applyPrettyLabels(editor) {
       highlightMarkerRanges.push({ range: new vscode.Range(startPos, editor.document.positionAt(innerStartOff)) });
       if (bodyEndOff > innerStartOff) {
         const r = new vscode.Range(editor.document.positionAt(innerStartOff), editor.document.positionAt(bodyEndOff));
+        // v0.9.833: 背景は隠した `=={`(幅0)から開始=先頭グリフの塗り損ね対策(per-lineと同じ)。
+        const rBg = new vscode.Range(startPos, editor.document.positionAt(bodyEndOff));
         let hover = null;
         if (hiComment) { hover = new vscode.MarkdownString('💬 ' + hiComment); hover.isTrusted = false; }
-        if (bgKey) (highlightBodyRangesByColor[bgKey] || highlightBodyRangesByColor.yellow).push(hover ? { range: r, hoverMessage: hover } : { range: r });
+        if (bgKey) (highlightBodyRangesByColor[bgKey] || highlightBodyRangesByColor.yellow).push(hover ? { range: rBg, hoverMessage: hover } : { range: rBg });
         if (fgKey) (highlightFgRangesByColor[fgKey] || []).push((hover && !bgKey) ? { range: r, hoverMessage: hover } : { range: r });
       }
       highlightMarkerRanges.push({ range: new vscode.Range(editor.document.positionAt(bodyEndOff), endPos) });
