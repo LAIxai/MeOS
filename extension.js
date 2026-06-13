@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.845: ★バグ修正=保留栞が再インストール/再読込で消える(俊克 6/14 am06:52)。真因=saveBookmarksのglobalState書込が{marks,cycleIdx,front}のみでpendingを落としていた(v837でメモリ/getには入れたがsave漏れ)。通常栞は保存対象なので残り、保留だけ消える症状と一致。修正=globalStateにpendingも書く。※栞は通常も保留もglobalState(マシン内・URLキー)保存=メタ膜(mHTOC)ではない。
 // - v0.9.844: 💤ボタン微修正3件(俊克 6/14 am06:36)。バグ1=未設定の背景を薄グレー(#e2e8f0)→白(#ffffff)に(俊克モデル: 白=昼=起きてる=未設定)。バグ2=設定後tipが変わらない件=クリック時にマウスがボタン上に留まると開いたままのtipが古いまま→クリックハンドラでhideTocTip()し次ホバーで状態別tip(Jump/Park)に更新。改良1=数字バッジが右肩inlineでボタン幅を変えてた→position:absoluteで右下(下付き)に配置し幅一定に。
 // - v0.9.843: 💤ボタン改良2件(俊克 6/14 am05:37)。改良1=設定済みの合図を「縁取りの太さ」→🔖と同じ白抜き数字バッジ(.bm-pending-cnt)に(縁太さは分かりにくい)。未設定=明るい白(=昼・起きてる)で数字なし、保留あり=💤が眠ってる合図に数字「1」が点く。バグ1=設定済み時のtipを状態別に切替(有=「Jump to your pending bookmark」/無=「Park a pending bookmark」)。
 // - v0.9.842: 💤ボタンの視認性改善(俊克 6/13 pm11:21「未設定時が見えにくい・設定時の灰色が濃すぎ」)。暗スレート地に青💤=低コントラストで沈んでいた→薄グレー地(#e2e8f0)に変更し青💤を映えさせる。保留あり(.has)も濃くしすぎず薄スレート(#cbd5e1)+スレートのリングで区別。
@@ -10704,7 +10705,9 @@ function getBookmarks(document) {
 async function saveBookmarks(document, data) {
   if (!document) return;
   _bookmarkMem.set(document.uri.toString(), data);
-  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1) }); } catch (_) {}
+  // v0.9.845: pending(💤保留栞)も globalState に永続化する(俊克バグ報告: 再インストールで保留栞だけ消える)。
+  // v0.9.837でgetBookmarks/メモリには入れたが、saveのglobalState書込から漏れていた=通常栞は残るのに保留だけ消える真因。
+  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1), pending: Array.isArray(data.pending) ? data.pending : [] }); } catch (_) {}
 }
 function refreshBookmarkDecoration(editor) {
   if (!bookmarkDecoration || !editor) return;
