@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.847: 通常栞・F栞にも作成日時(タイムスタンプ)を付与(俊克 6/14 am07:23「F栞にも」)。非侵襲方式=marks(行番号配列)は触らず別マップ markStamps{行→日時} を追加。栞行ホバーに「🔖/🚩 (Ln NNN · YYYY-MM-DD HH:MM)」と表示。追加(insert/SetFront新規)で日時記録・既存栞のSwitchでは上書きせず作成日時を保つ・削除/退避/全消去で日時も除去・行ズレ時はpairでrekey追従。globalState永続化。栞=globalState(マシン内)保存はそのまま。
 // - v0.9.846: 💤ボタン(設定済み)のtipに行番号+保留日時を表示(俊克 6/14 am07:09)。「💤 Jump to your pending bookmark — Ln NNN · YYYY-MM-DD HH:MM. Resolve it (✅)…」=飛ぶ前にどこに何を保留したか判断できる。複数(将来5〜10)は ' / ' 区切りで列挙。
 // - v0.9.845: ★バグ修正=保留栞が再インストール/再読込で消える(俊克 6/14 am06:52)。真因=saveBookmarksのglobalState書込が{marks,cycleIdx,front}のみでpendingを落としていた(v837でメモリ/getには入れたがsave漏れ)。通常栞は保存対象なので残り、保留だけ消える症状と一致。修正=globalStateにpendingも書く。※栞は通常も保留もglobalState(マシン内・URLキー)保存=メタ膜(mHTOC)ではない。
 // - v0.9.844: 💤ボタン微修正3件(俊克 6/14 am06:36)。バグ1=未設定の背景を薄グレー(#e2e8f0)→白(#ffffff)に(俊克モデル: 白=昼=起きてる=未設定)。バグ2=設定後tipが変わらない件=クリック時にマウスがボタン上に留まると開いたままのtipが古いまま→クリックハンドラでhideTocTip()し次ホバーで状態別tip(Jump/Park)に更新。改良1=数字バッジが右肩inlineでボタン幅を変えてた→position:absoluteで右下(下付き)に配置し幅一定に。
@@ -10689,17 +10690,18 @@ function bookmarkStateKey(document) { return document ? ('meosBookmarks:' + docu
 // v0.9.837: 💤保留栞の最大数。初回公開は1個、要望次第で5〜10に上げる(定数1つでスケール)。
 const PENDING_BOOKMARK_MAX = 1;
 function getBookmarks(document) {
-  if (!document) return { marks: [], cycleIdx: -1, front: -1, pending: [] };
+  if (!document) return { marks: [], cycleIdx: -1, front: -1, pending: [], markStamps: {} };
   const k = document.uri.toString();
   if (_bookmarkMem.has(k)) return _bookmarkMem.get(k);
-  let data = { marks: [], cycleIdx: -1, front: -1, pending: [] };
+  let data = { marks: [], cycleIdx: -1, front: -1, pending: [], markStamps: {} };
   try {
     const saved = extensionContext && extensionContext.globalState.get(bookmarkStateKey(document));
-    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1), front: (typeof saved.front === 'number' ? saved.front : -1), pending: Array.isArray(saved.pending) ? saved.pending.filter(p => p && typeof p.line === 'number').map(p => ({ line: p.line, at: p.at || '' })) : [] };
+    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1), front: (typeof saved.front === 'number' ? saved.front : -1), pending: Array.isArray(saved.pending) ? saved.pending.filter(p => p && typeof p.line === 'number').map(p => ({ line: p.line, at: p.at || '' })) : [], markStamps: (saved.markStamps && typeof saved.markStamps === 'object') ? saved.markStamps : {} };
   } catch (_) {}
   // v0.9.760: front must be one of the current marks; otherwise drop it.
   if (data.front >= 0 && data.marks.indexOf(data.front) < 0) data.front = -1;
   if (!Array.isArray(data.pending)) data.pending = [];
+  if (!data.markStamps || typeof data.markStamps !== 'object') data.markStamps = {}; // v0.9.847: 行番号→作成日時
   _bookmarkMem.set(k, data);
   return data;
 }
@@ -10708,7 +10710,7 @@ async function saveBookmarks(document, data) {
   _bookmarkMem.set(document.uri.toString(), data);
   // v0.9.845: pending(💤保留栞)も globalState に永続化する(俊克バグ報告: 再インストールで保留栞だけ消える)。
   // v0.9.837でgetBookmarks/メモリには入れたが、saveのglobalState書込から漏れていた=通常栞は残るのに保留だけ消える真因。
-  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1), pending: Array.isArray(data.pending) ? data.pending : [] }); } catch (_) {}
+  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1), pending: Array.isArray(data.pending) ? data.pending : [], markStamps: (data.markStamps && typeof data.markStamps === 'object') ? data.markStamps : {} }); } catch (_) {} // v0.9.847: markStamps(通常栞の作成日時)も永続化
 }
 function refreshBookmarkDecoration(editor) {
   if (!bookmarkDecoration || !editor) return;
@@ -10724,6 +10726,8 @@ function refreshBookmarkDecoration(editor) {
     (isFront ? frontIconItems : iconItems).push({ range: new vscode.Range(ln, 0, ln, 0) });
     const eol = doc.lineAt(ln).text.length;
     const tag = isFront ? '🚩 Front Anchor (最前線栞)' : '🔖';
+    // v0.9.847: 通常栞・F栞にも作成日時を表示(俊克 am07:23)。markStamps[行]に記録した日時を Ln の後ろに。
+    const stamp = (data.markStamps && data.markStamps[ln]) ? (' · ' + data.markStamps[ln]) : '';
     // v0.9.834: ホバーメニューを横並び→3層の縦並びに(俊克 pm08:24 改良2)。各項目を markdown の
     // ハードブレーク(行末2スペース+改行)で1行ずつ積み、クリックしやすく。命名も新メニューに合わせ
     // 「Switch Front bookmark」「Remove this bookmark」へ統一(改良1と同じ)。
@@ -10731,7 +10735,7 @@ function refreshBookmarkDecoration(editor) {
     // v0.9.836: ホバーtipの並びもbm-popと統一(俊克 pm08:56)。tipは必ず栞行より"上"に出るので、
     // 行(=マウス)に最も近い最下段が最も押しやすい→最頻用 Switch Front を最下に、破壊的 Clear all を最上に。
     const md = new vscode.MarkdownString(
-      tag + ' (Ln ' + (ln + 1) + ')  \n' +
+      tag + ' (Ln ' + (ln + 1) + stamp + ')  \n' +
       '[🧹 Clear all bookmarks](command:lai-membrane.bookmarkClearAll)  \n' +
       '[🔖 Remove this bookmark](command:lai-membrane.bookmarkRemoveAt?' + lnArg + ')  \n' +
       '[🚩 Switch Front bookmark](command:lai-membrane.bookmarkSetFrontAt?' + lnArg + ')'
@@ -10761,7 +10765,7 @@ function refreshBookmarkDecoration(editor) {
 async function bookmarkClearAll(editor) { // 通常栞(🔖/🚩)を全消去。v0.9.837: 💤保留栞は別プールなので残す(失くしたくないTODO)。
   if (!editor) return;
   const data = getBookmarks(editor.document);
-  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1, front: -1, pending: Array.isArray(data.pending) ? data.pending : [] });
+  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1, front: -1, pending: Array.isArray(data.pending) ? data.pending : [], markStamps: {} }); // v0.9.847: 通常栞のタイムスタンプも全消去(💤は残す)
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
   reapplyGutterLanesAfterBookmarkChange(editor);
 }
@@ -10781,6 +10785,7 @@ async function bookmarkInsert(editor) { // カーソル行に追加(3個未満�
   const doc = editor.document, line = editor.selection.active.line, data = getBookmarks(doc);
   if (data.marks.indexOf(line) >= 0 || data.marks.length >= 3) { postBookmarkState(editor); return; }
   data.marks.push(line); data.marks.sort((a, b) => a - b);
+  if (!data.markStamps) data.markStamps = {}; data.markStamps[line] = pendingStamp(); // v0.9.847: 作成日時を記録
   data.front = line; // v0.9.760: 最後に追加した栞が最前線(Front Anchor)になる。
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
@@ -10793,6 +10798,7 @@ async function bookmarkRemove(editor, line) { // カーソル行(or 指定行)�
   const idx = data.marks.indexOf(ln);
   if (idx < 0) { postBookmarkState(editor); return; }
   data.marks.splice(idx, 1);
+  if (data.markStamps) delete data.markStamps[ln]; // v0.9.847: 作成日時も消す
   if (data.cycleIdx >= data.marks.length) data.cycleIdx = data.marks.length - 1;
   // v0.9.760: 最前線を消したら front は解除(残った栞には自動昇格しない)。
   if (data.front === ln) data.front = -1;
@@ -10807,14 +10813,16 @@ async function bookmarkSetFront(editor, line) {
   const doc = editor.document, data = getBookmarks(doc);
   const ln = (typeof line === 'number') ? line : editor.selection.active.line;
   if (ln < 0 || ln >= doc.lineCount) { postBookmarkState(editor); return; }
+  if (!data.markStamps) data.markStamps = {};
   if (data.marks.indexOf(ln) < 0) {
     // 新しい行 → 栞として追加。満杯なら現在の最前線(無ければ先頭の栞)を退避して空ける。
     if (data.marks.length >= 3) {
       const evict = (data.front >= 0 && data.marks.indexOf(data.front) >= 0) ? data.front : data.marks[0];
       const ei = data.marks.indexOf(evict);
-      if (ei >= 0) data.marks.splice(ei, 1);
+      if (ei >= 0) { data.marks.splice(ei, 1); delete data.markStamps[evict]; } // v0.9.847: 退避した栞の日時も消す
     }
     data.marks.push(ln); data.marks.sort((a, b) => a - b);
+    data.markStamps[ln] = pendingStamp(); // v0.9.847: 新規追加時に作成日時を記録(既存栞のSwitchでは上書きしない=作成日時を保つ)
   }
   data.front = ln;
   data.cycleIdx = data.marks.indexOf(ln);
@@ -10905,13 +10913,16 @@ function adjustBookmarksForChange(e) { // 編集による行ズレを分かる�
   const data = _bookmarkMem.get(k);
   const pending = Array.isArray(data.pending) ? data.pending : [];
   if (!data.marks.length && !pending.length) return;
+  // v0.9.847: 通常栞のタイムスタンプ(markStamps)も行ズレに追従させるため、行番号と日時を対(pair)で持って一緒にずらす。
+  const stamps = (data.markStamps && typeof data.markStamps === 'object') ? data.markStamps : {};
+  let pairs = data.marks.map(L => ({ line: L, at: stamps[L] || '' }));
   let changed = false;
   for (const c of e.contentChanges) {
     const startLine = c.range.start.line;
     const delta = ((c.text.match(/\n/g) || []).length) - (c.range.end.line - c.range.start.line);
     if (!delta) continue;
-    for (let i = 0; i < data.marks.length; i++) {
-      if (data.marks[i] > startLine) { data.marks[i] = Math.max(startLine, data.marks[i] + delta); changed = true; }
+    for (const pr of pairs) {
+      if (pr.line > startLine) { pr.line = Math.max(startLine, pr.line + delta); changed = true; }
     }
     // v0.9.760: Front Anchor の行も同じ規則でずらす。
     if (data.front > startLine) { data.front = Math.max(startLine, data.front + delta); changed = true; }
@@ -10921,7 +10932,13 @@ function adjustBookmarksForChange(e) { // 編集による行ズレを分かる�
     }
   }
   if (changed) {
-    data.marks = data.marks.filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
+    // 行で重複排除(先勝ち)・昇順。日時は新しい行番号にrekeyして保持。
+    pairs.sort((a, b) => a.line - b.line);
+    const seen = new Set(), kept = [];
+    for (const pr of pairs) { if (!seen.has(pr.line)) { seen.add(pr.line); kept.push(pr); } }
+    data.marks = kept.map(pr => pr.line);
+    const ns = {}; for (const pr of kept) { if (pr.at) ns[pr.line] = pr.at; }
+    data.markStamps = ns;
     if (data.front >= 0 && data.marks.indexOf(data.front) < 0) data.front = -1;
     saveBookmarks(e.document, data);
   }
