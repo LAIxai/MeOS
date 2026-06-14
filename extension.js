@@ -1,5 +1,6 @@
-// {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero: total lines & chars) *}
+// {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.873: 外側のextension_js膜にmSTATバッジ(📊⊕0+0D0W)を付与(俊克 6/15 am02:47・バッジ無しだと色変更不可)。mCN開始膜の正規仕様に合わせ、色ピッカーで色付け可能に。
 // - v0.9.872: TOCボタンをTOPボタンに変更(俊克 6/15 am02:27)。常にファイル先頭(0行目)へ飛ぶだけに。jumpMeDockTocOrTopのTOC領域ジャンプを撤去し常にjumpMeDockTopOfFile。renderNavTocStateのラベル/title/modeも常にTOP固定。
 // - v0.9.871: Me Dock tip背景を「適応トナーグレー」に(俊克 6/14 pm09:31・Gemini助言)。inverseを地色へ84%寄せ=ダーク=眩しくない明グレー/ライト=濃グレーで地に溶けない。文字はeditor-background。
 // - v0.9.870: tipの色を前景↔背景の入れ替え(inverse surface・俊克 6/14 pm06:24)。.toc-tooltip背景=editor-foreground/文字=editor-background→ダーク=明背景+黒字/ライト=暗背景+白字で常に強コントラスト。Material Designのinverse surface流。
