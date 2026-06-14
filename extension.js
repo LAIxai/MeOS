@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.852: 栞ジャンプの最終カーソル復元を全栞に拡張(俊克 6/14 am09:27 バグ報告)。v851は栞が膜の開始行ぴったりの時だけ復元で不十分→栞を"含む"膜(最内)を判定し、栞がどこにあってもその膜で最後にいた行へ着地。Warpは開始膜を辿る意味があるので対象外のまま。
 // - v0.9.851: 栞ジャンプでも膜の最終カーソル位置へ着地(俊克 6/14 am09:13 改良1)。栞が膜の"開始行"にある時だけ、その膜で最後にいた行(開始膜行+offset)へ飛ぶ(H-TOCジャンプと同じ)。本文行の栞はその行ぴったり=精密ブックマークの意味は維持。bookmarkCycleのジャンプ直前にcollectPairsで開始行判定→savedMeCursorLine適用。
 // - v0.9.850: ★膜ごとの最終カーソル位置を記憶→ジャンプで自動復元(俊克 6/14 am08:56・Zennデビューのラストピース)。Joplinはノート毎にカーソルを覚えるが、MeOSはファイルでなく"膜"毎に。記憶=開始膜行からの行差offset(膜が上の編集でずれても有効)・膜IDキー・globalState(マシン内)にデバウンス保存=ファイル不汚染&カーソル毎の書込なし(freeze回避)。記録=選択変更時recordMeCursor(findCurrentPairはversion cachedで軽量)。復元=H-TOCで膜にジャンプ時、開始膜行+offsetへ着地(膜範囲内クランプ・offset0は従来どおり開始膜行)。Warp/Submarineは将来拡張候補。
 // - v0.9.849: バグ修正=栞未設定時に🔖ボタン無反応(俊克 6/14 am08:36)。真因=bm-cycleのクリックハンドラに旧ガード「.zero(栞0個)なら何もせずreturn」が残存し、v848でバックエンドに足した空時F栞作成が呼ばれる前に握り潰されていた。修正=ガード撤去でクリックを常に通す。
@@ -10910,9 +10911,9 @@ async function bookmarkCycle(editor) { // v0.9.760: 1クリックで必ず最前
     data.cycleIdx = (data.cycleIdx + 1) % data.marks.length;
   }
   let line = Math.min(Math.max(0, data.marks[data.cycleIdx]), doc.lineCount - 1);
-  // v0.9.851: 栞が膜の"開始行"にある時は、その膜で最後にいた行へ着地(H-TOCジャンプと同じ・俊克)。
-  // 本文行の栞はその行ぴったりに飛ぶ(従来どおり)=精密ブックマークの意味を壊さない。
-  try { const pp = collectPairs(doc, { excludeIndex: false }).find(p => p.start === line); if (pp) { const ml = savedMeCursorLine(doc, pp.id, pp.start, pp.end); if (ml >= 0) line = ml; } } catch (_) {}
+  // v0.9.852: 栞が"どこにあっても"その栞を含む膜(最内)で最後にいた行へ着地(俊克: H-TOCでも栞でも最後に
+  // 居た場所に戻りたい・Warpだけは開始膜を辿る意味がある)。v851は開始行ぴったりの栞限定で不十分だった。
+  try { const pp = collectPairs(doc, { excludeIndex: false }).filter(p => p.start <= line && line <= p.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0]; if (pp) { const ml = savedMeCursorLine(doc, pp.id, pp.start, pp.end); if (ml >= 0) line = ml; } } catch (_) {}
   await saveBookmarks(doc, data);
   const pos = new vscode.Position(line, 0);
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) });
