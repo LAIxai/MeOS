@@ -1,4 +1,6 @@
+// {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero: total lines & chars) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.872: TOCボタンをTOPボタンに変更(俊克 6/15 am02:27)。常にファイル先頭(0行目)へ飛ぶだけに。jumpMeDockTocOrTopのTOC領域ジャンプを撤去し常にjumpMeDockTopOfFile。renderNavTocStateのラベル/title/modeも常にTOP固定。
 // - v0.9.871: Me Dock tip背景を「適応トナーグレー」に(俊克 6/14 pm09:31・Gemini助言)。inverseを地色へ84%寄せ=ダーク=眩しくない明グレー/ライト=濃グレーで地に溶けない。文字はeditor-background。
 // - v0.9.870: tipの色を前景↔背景の入れ替え(inverse surface・俊克 6/14 pm06:24)。.toc-tooltip背景=editor-foreground/文字=editor-background→ダーク=明背景+黒字/ライト=暗背景+白字で常に強コントラスト。Material Designのinverse surface流。
 // - v0.9.869: Mepyの欠けた歯(.me-tooth)の地色をeditor-background→白(#f5f5f5)固定(俊克 6/14 pm04:35・ダークでも白い歯)。最終駅。
@@ -11332,7 +11334,6 @@ function jumpMeDockTocOrTop() {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document) return false;
   const region = findWorkingTocRegion(editor.document);
-  if (region && typeof region.markerLine === 'number') return jumpMeDockTargetLine(String(region.markerLine + 1));
   return jumpMeDockTopOfFile();
 }
 
@@ -12072,7 +12073,7 @@ let tocImeComposing=false;
 let _tabNameComposing=false;
 function ensureSelectedTocVisible(){const sel=document.querySelector('.fixed-toc-item.selected');if(sel&&typeof sel.scrollIntoView==='function'){sel.scrollIntoView({block:'nearest',inline:'nearest'});}}
 function selectTocItem(item){if(!item)return;selectedTocLine0=Number(item.getAttribute('data-line0'));tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));item.classList.add('selected');ensureSelectedTocVisible();/* v0.9.766: このタブの選択をkeyで永続(globalState)。タブを切り替えて戻っても選択が残る。 */vscode.postMessage({type:'setTocSelection',key:item.getAttribute('data-key')||''});}function moveSelectedToc(delta){if(selectedTocLine0===null)return;const current=document.querySelector('.fixed-toc-item.selected');if(!current)return;const next=delta<0?current.previousElementSibling:current.nextElementSibling;if(!(next&&next.classList&&next.classList.contains('fixed-toc-item'))){return;}const fromLine0=Number(current.getAttribute('data-line0'));const toLine0=Number(next.getAttribute('data-line0'));selectedTocLine0=toLine0;tocLastSelectLine0=selectedTocLine0;tocLastSelectAt=Date.now();document.querySelectorAll('.fixed-toc-item.selected').forEach(el=>el.classList.remove('selected'));next.classList.add('selected');ensureSelectedTocVisible();vscode.postMessage({type:'moveTocItem',line0:fromLine0,delta});}
-function renderNavTocState(hasToc){if(navToc){navToc.textContent=hasToc?'TOC':'TOP';navToc.title=hasToc?'TOC — jump to Hyper TOC membrane':'TOP — jump to top of file';navToc.classList.toggle('toc-mode',!!hasToc);navToc.classList.toggle('top-mode',!hasToc);navToc.disabled=false;navToc.classList.remove('disabled');}if(navCreateToc){navCreateToc.classList.toggle('hidden',!!hasToc);navCreateToc.disabled=!!hasToc;}}
+function renderNavTocState(hasToc){if(navToc){navToc.textContent='TOP';navToc.title='TOP — jump to top of file';navToc.classList.remove('toc-mode');navToc.classList.add('top-mode');navToc.disabled=false;navToc.classList.remove('disabled');}if(navCreateToc){navCreateToc.classList.toggle('hidden',!!hasToc);navCreateToc.disabled=!!hasToc;}}
 function renderHyperTocTabs(toc){
   if(!tocTabRow)return;
   const tabs=(toc&&Array.isArray(toc.tabs))?toc.tabs:[];
@@ -13630,3 +13631,4 @@ function deactivate() {
 }
 module.exports = { activate, deactivate };
 // {* ▲mCN=0900_PROVIDER_ACTIVATE // end [cGJF=h] *}
+// {* ▲mCN=extension_js // end *}
