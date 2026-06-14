@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.869: Mepyの欠けた歯(.me-tooth)の地色をeditor-background→白(#f5f5f5)固定(俊克 6/14 pm04:35・ダークでも白い歯)。最終駅。
 // - v0.9.868: (n/n)チップの真の枠は.head-nav .head-nav-center(panel-border)だった→--meos-frameに(俊克 6/14 pm04:23・time-machine-triggerは枠無しで誤爆していた)。
 // - v0.9.867: v866の(n/n)内側チップ枠を撤去(俊克 6/14 pm04:17 二重枠で煩雑)。(5/5)の外枠は.head-nav(v864)で既に可視。
 // - v0.9.866: (5/5)タイムマシン表示(.time-machine-trigger)に--meos-frameの枠を付与しチップ化(俊克 6/14 pm04:09)。
@@ -11842,7 +11843,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
    菱形の下半分は口内と同色なので見えず、歯の下辺の線は欠け部分だけ自然に途切れる。
    チェックボックス(向かって右)はv824の真四角outlineを撤回し元の素のまま。 */
 /* v0.9.827: 欠けた歯も白に(俊克 am03:08)=膜色10%の染みを撤去し口内と同じ地色。輪郭1px+欠け口の線だけで描く。 */
-.me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:1px solid color-mix(in srgb,currentColor 55%,transparent);border-radius:5px;background:var(--vscode-editor-background);box-sizing:border-box}
+.me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:1px solid color-mix(in srgb,currentColor 55%,transparent);border-radius:5px;background:#f5f5f5;box-sizing:border-box}
 .me-tooth::after{content:'';position:absolute;width:6px;height:6px;left:7px;bottom:-3px;transform:rotate(45deg);background:var(--vscode-editor-background);border-top:1px solid color-mix(in srgb,currentColor 55%,transparent);border-left:1px solid color-mix(in srgb,currentColor 55%,transparent);box-sizing:border-box}
 .contents-choice input{position:absolute;top:-1px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background)}
 .contents-word{font-weight:700;font-size:14px;color:var(--vscode-foreground)}
