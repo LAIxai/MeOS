@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.855: ダーク対応の続き=ボタンの黒固定の縁も右目(v854)と同様にテーマ対応(俊克 6/14 pm01:25)。①Mepyの開いた目=色ボタン(.color-ball)の縁 rgba(0,0,0,.72)→color-mix(foreground 72%)。②タブ削除確認ボタン(.toc-tab-confirm-btn)の縁 rgba(0,0,0,.20)→var(--vscode-panel-border)。ダークで縁が消えていた。
 // - v0.9.854: ★ダークテーマ対応3件(俊克 6/14 pm01:04・開発者の多くはダーク既定)。①ハイライト既定文字色: 暗背景→白(既存)に加え明背景(黄等)→黒を固定。従来は色未指定時テーマ前景任せで、ダークだと黄地に薄文字が沈んでいた(per-line/複数行 両パス)。②文字メーターの括弧()と%が黒固定→var(--vscode-editor-foreground)+背景色の2重縁取りに(ライト=黒系/ダーク=白系・地色で自動反転)。ダークで未達バーの暗い未達部分に黒括弧が消えていた件。③Mepy閉じた右目の縁 rgba(0,0,0,.28)→color-mix(foreground 30%)でダークでも見える。見出しの白抜き既定が正解だった流れの延長。
 // - v0.9.853: ★栞の最終カーソル復元を撤去=栞は置いた位置ぴったりに飛ぶだけに戻す(俊克 6/14 am09:42 自己訂正)。v851/852の誤り: 2栞でF栞へ飛ぶと、そこが最終カーソル位置として記録され再クリックで同所に戻り続け2個目の栞へ巡回不能(無限ループ)。最終カーソル復元はH-TOC(v850)専用が正しい住み分け。Warpは開始膜を辿る。教訓: 言われたまま作らず設計の論理矛盾を実装前に指摘すべきだった。
 // - v0.9.852: 栞ジャンプの最終カーソル復元を全栞に拡張(俊克 6/14 am09:27 バグ報告)。v851は栞が膜の開始行ぴったりの時だけ復元で不十分→栞を"含む"膜(最内)を判定し、栞がどこにあってもその膜で最後にいた行へ着地。Warpは開始膜を辿る意味があるので対象外のまま。
@@ -11814,7 +11815,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
 .color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:0;background:transparent;border:none;padding:0;cursor:pointer;color:inherit}
 .color-btn:hover{filter:brightness(1.08)}
-.color-ball{width:27px;height:27px;border-radius:50%;border:2px solid rgba(0,0,0,.72);box-shadow:inset 0 0 0 3.5px var(--vscode-editor-background);display:inline-block;background:currentColor}
+.color-ball{width:27px;height:27px;border-radius:50%;border:2px solid color-mix(in srgb,var(--vscode-foreground) 72%,transparent);box-shadow:inset 0 0 0 3.5px var(--vscode-editor-background);display:inline-block;background:currentColor}
 /* v0.9.821: 「(R)」はキャラ自身の左目(=画面右のボール)に接するくらい密着(俊克 pm10:05 改良2)。 */
 .color-letter{font-weight:900;font-size:12px;line-height:1;margin:-2px 0 0 -2px}
 .color-letter i{font-style:normal;color:var(--vscode-foreground)}
@@ -11854,7 +11855,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .toc-tab-confirm{display:none;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,80,80,.10);border-bottom:1px solid rgba(255,80,80,.40);font-size:12px}
 .toc-tab-confirm.on{display:flex}
 .toc-tab-confirm-msg{flex:1;color:#b91c1c}
-.toc-tab-confirm-btn{font-size:11px;padding:3px 8px;border:1px solid rgba(0,0,0,.20);border-radius:4px;cursor:pointer}
+.toc-tab-confirm-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:4px;cursor:pointer}
 .toc-tab-confirm-yes{background:#b91c1c;color:#fff;border-color:#b91c1c}
 .toc-tab-confirm-no{background:var(--vscode-input-background);color:var(--vscode-foreground)}
 .fixed-toc-body{height:144px;overflow-y:scroll;border-top:1px solid rgba(210,140,0,.20);border-bottom:1px solid rgba(210,140,0,.20)}
