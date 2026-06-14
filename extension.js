@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.875: ★ハイライト誤爆修正(俊克 6/15 am03:45・自分のコードの=== 0 と !== でハイライトが点灯)。プレーンハイライト ==…== がJS比較演算子(===/!==/==)の一部の == を区切りと誤認→区切り==の両外側に =!<>~ や = が隣接しないようlookbehind/lookaheadガードを追加(=={…}== 波括弧版は元から安全)。3箇所(maskInlineTokens相当/装飾本体reHi/tokenRe)を統一修正。
 // - v0.9.874: ★最外核膜ルール(俊克 6/15 am03:03 「Warpが包み膜をぐるぐる回るだけ・深度D+1にしても駄目」)。バッジのD値は表示専用でコードが書出すだけ→構造深度はネストから計算するためバッジ書換では変わらないのが原因。解決=引退したmNTの「深度透過」を最外核mCNに復活(記法不要・唯一の深度0膜を構造判定でisEnvelope化)。直下の章を深度-1して0へ戻し、Warpは章(深度0)を巡回・最外核は除外。countEnclosingMembranesAtLine/Warp/Submarine両filterに!isEnvelope追加。
 // - v0.9.873: 外側のextension_js膜にmSTATバッジ(📊⊕0+0D0W)を付与(俊克 6/15 am02:47・バッジ無しだと色変更不可)。mCN開始膜の正規仕様に合わせ、色ピッカーで色付け可能に。
 // - v0.9.872: TOCボタンをTOPボタンに変更(俊克 6/15 am02:27)。常にファイル先頭(0行目)へ飛ぶだけに。jumpMeDockTocOrTopのTOC領域ジャンプを撤去し常にjumpMeDockTopOfFile。renderNavTocStateのラベル/title/modeも常にTOP固定。
@@ -1951,7 +1952,7 @@ function normalizeBgColor(name) {
 // 伏字('X')に置換した文字列を返す。見出しの色/コメント判定で、インラインの中の // や () を
 // 見出し自身のものと誤検出しないために使う(置換後も長さが同じなので位置が一致する)。
 function maskInlineTokens(s) {
-  return s.replace(/=={[^\n]*?}==|==(?!\{)[^=\n]+?==|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/g, function (m) { return 'X'.repeat(m.length); });
+  return s.replace(/=={[^\n]*?}==|(?<![=!<>~])==(?!\{)[^=\n]+?(?<![!<>])==(?!=)|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/g, function (m) { return 'X'.repeat(m.length); });
 }
 // v0.9.699: ハイライト/見出し/取消線で共通の色指定パーサ。記法の一貫性のため1関数に集約。
 // content 末尾の `(文字色/背景色)` と `//コメント` を分離して返す。
@@ -4305,7 +4306,7 @@ function applyPrettyLabels(editor) {
       // v0.9.695: 統一記法。新形 =={本文(文字色/背景色)//コメント}== — 開き `=={`・閉じ `}==` で
       // 曖昧性なし(従来 ==…== は開閉同記号で曖昧)。旧形 ==本文(色)== も後方互換で温存。色は `/` 区切り
       // (文字色/背景色)、`+` も互換。`//` 以降はコメント(編集者⇄作家の通信、ホバー💬表示。日時も自由記述)。
-      const reHi = /=={([^\n]*?)}==|==(?!\{)([^=\n]+?)==/g;
+      const reHi = /=={([^\n]*?)}==|(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g;
       let mHi;
       while ((mHi = reHi.exec(text)) !== null) {
         const braced = mHi[1] !== undefined;
@@ -4452,7 +4453,7 @@ function applyPrettyLabels(editor) {
             }
             headColorArr.push(it);
           };
-          const tokenRe = /=={[^\n]*?}==|==(?!\{)[^=\n]+?==|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/g;
+          const tokenRe = /=={[^\n]*?}==|(?<![=!<>~])==(?!\{)[^=\n]+?(?<![!<>])==(?!=)|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/g;
           const spans = [];
           let tk;
           while ((tk = tokenRe.exec(sp.bodyText)) !== null) spans.push([tk.index, tk.index + tk[0].length]);
