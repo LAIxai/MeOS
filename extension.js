@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.853: ★栞の最終カーソル復元を撤去=栞は置いた位置ぴったりに飛ぶだけに戻す(俊克 6/14 am09:42 自己訂正)。v851/852の誤り: 2栞でF栞へ飛ぶと、そこが最終カーソル位置として記録され再クリックで同所に戻り続け2個目の栞へ巡回不能(無限ループ)。最終カーソル復元はH-TOC(v850)専用が正しい住み分け。Warpは開始膜を辿る。教訓: 言われたまま作らず設計の論理矛盾を実装前に指摘すべきだった。
 // - v0.9.852: 栞ジャンプの最終カーソル復元を全栞に拡張(俊克 6/14 am09:27 バグ報告)。v851は栞が膜の開始行ぴったりの時だけ復元で不十分→栞を"含む"膜(最内)を判定し、栞がどこにあってもその膜で最後にいた行へ着地。Warpは開始膜を辿る意味があるので対象外のまま。
 // - v0.9.851: 栞ジャンプでも膜の最終カーソル位置へ着地(俊克 6/14 am09:13 改良1)。栞が膜の"開始行"にある時だけ、その膜で最後にいた行(開始膜行+offset)へ飛ぶ(H-TOCジャンプと同じ)。本文行の栞はその行ぴったり=精密ブックマークの意味は維持。bookmarkCycleのジャンプ直前にcollectPairsで開始行判定→savedMeCursorLine適用。
 // - v0.9.850: ★膜ごとの最終カーソル位置を記憶→ジャンプで自動復元(俊克 6/14 am08:56・Zennデビューのラストピース)。Joplinはノート毎にカーソルを覚えるが、MeOSはファイルでなく"膜"毎に。記憶=開始膜行からの行差offset(膜が上の編集でずれても有効)・膜IDキー・globalState(マシン内)にデバウンス保存=ファイル不汚染&カーソル毎の書込なし(freeze回避)。記録=選択変更時recordMeCursor(findCurrentPairはversion cachedで軽量)。復元=H-TOCで膜にジャンプ時、開始膜行+offsetへ着地(膜範囲内クランプ・offset0は従来どおり開始膜行)。Warp/Submarineは将来拡張候補。
@@ -10910,10 +10911,10 @@ async function bookmarkCycle(editor) { // v0.9.760: 1クリックで必ず最前
     // 最前線未設定 かつ 栞以外 → 従来の巡回。
     data.cycleIdx = (data.cycleIdx + 1) % data.marks.length;
   }
-  let line = Math.min(Math.max(0, data.marks[data.cycleIdx]), doc.lineCount - 1);
-  // v0.9.852: 栞が"どこにあっても"その栞を含む膜(最内)で最後にいた行へ着地(俊克: H-TOCでも栞でも最後に
-  // 居た場所に戻りたい・Warpだけは開始膜を辿る意味がある)。v851は開始行ぴったりの栞限定で不十分だった。
-  try { const pp = collectPairs(doc, { excludeIndex: false }).filter(p => p.start <= line && line <= p.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0]; if (pp) { const ml = savedMeCursorLine(doc, pp.id, pp.start, pp.end); if (ml >= 0) line = ml; } } catch (_) {}
+  // v0.9.853: 栞は"置いた位置ぴったり"に飛ぶだけに戻す(俊克自己訂正・私も指摘すべきだった)。v851/852で栞に
+  // 膜の最終カーソル復元を入れたのは誤り: 2栞のうちF栞へ飛ぶと、そこが最終カーソルとして記録され、再クリックで
+  // 同じ場所に戻り続けて2個目の栞へ巡回できない(無限ループ)。最終カーソル復元はH-TOC(v850)だけが担う=住み分け。
+  const line = Math.min(Math.max(0, data.marks[data.cycleIdx]), doc.lineCount - 1);
   await saveBookmarks(doc, data);
   const pos = new vscode.Position(line, 0);
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) });
