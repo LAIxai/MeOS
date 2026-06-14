@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.850: ★膜ごとの最終カーソル位置を記憶→ジャンプで自動復元(俊克 6/14 am08:56・Zennデビューのラストピース)。Joplinはノート毎にカーソルを覚えるが、MeOSはファイルでなく"膜"毎に。記憶=開始膜行からの行差offset(膜が上の編集でずれても有効)・膜IDキー・globalState(マシン内)にデバウンス保存=ファイル不汚染&カーソル毎の書込なし(freeze回避)。記録=選択変更時recordMeCursor(findCurrentPairはversion cachedで軽量)。復元=H-TOCで膜にジャンプ時、開始膜行+offsetへ着地(膜範囲内クランプ・offset0は従来どおり開始膜行)。Warp/Submarineは将来拡張候補。
 // - v0.9.849: バグ修正=栞未設定時に🔖ボタン無反応(俊克 6/14 am08:36)。真因=bm-cycleのクリックハンドラに旧ガード「.zero(栞0個)なら何もせずreturn」が残存し、v848でバックエンドに足した空時F栞作成が呼ばれる前に握り潰されていた。修正=ガード撤去でクリックを常に通す。
 // - v0.9.848: 栞の一貫性2件(俊克 6/14 am08:09)。バグ1=🔖ボタン(bm-cycle)のtipが静的で日時非表示→postBookmarkStateでmarksInfo(行/作成日時/F印)を送りrenderBookmarkStateで動的tip化「🔖 Bookmark | … | 🚩 Ln NNN · 日時 | 🔖 Ln … 」。改良1=通常栞 未設定時に🔖ボタンをクリックするだけでその場にF栞を貼る(bookmarkCycleの空時returnをbookmarkSetFrontに)=💤ボタン(空→駐車)と操作の一貫性。
 // - v0.9.847: 通常栞・F栞にも作成日時(タイムスタンプ)を付与(俊克 6/14 am07:23「F栞にも」)。非侵襲方式=marks(行番号配列)は触らず別マップ markStamps{行→日時} を追加。栞行ホバーに「🔖/🚩 (Ln NNN · YYYY-MM-DD HH:MM)」と表示。追加(insert/SetFront新規)で日時記録・既存栞のSwitchでは上書きせず作成日時を保つ・削除/退避/全消去で日時も除去・行ズレ時はpairでrekey追従。globalState永続化。栞=globalState(マシン内)保存はそのまま。
@@ -5915,6 +5916,10 @@ function jumpToWorkingTocItem(rawKey, citeN) {
     const open = parseOpenLine(text);
     if (open && open.id === key) {
       const r = membraneNameRangeOnLine(editor, i) || new vscode.Range(i, 0, i, Math.min(text.length, 1));
+      // v0.9.850: この膜で最後にカーソルがあった行を復元(開始膜行+offset)。膜範囲内にクランプ。
+      let pairEnd = i;
+      try { const pp = collectPairs(doc, { excludeIndex: false }).find(p => p.start === i); if (pp) pairEnd = pp.end; } catch (_) {}
+      const memLine = savedMeCursorLine(doc, key, i, pairEnd);
       // Me Dock TOC navigation is always a one-way jump to the opening membrane.
       // Keep the editor selection collapsed; selecting the full membrane name would
       // re-enter the editor-side W-click/pair-jump fallback and bounce to the close.
@@ -5922,8 +5927,16 @@ function jumpToWorkingTocItem(rawKey, citeN) {
         // v0.9.578: keep folded targets folded — suppress maybeAutoUnfold's
         // open-on-selection. See navCenterBidiDoubleClick comment.
         suppressAutoUnfoldUntil = Date.now() + 700;
-        ed.selection = new vscode.Selection(r.start, r.start);
-        ed.revealRange(new vscode.Range(i, 0, i, Math.max(1, text.length)), vscode.TextEditorRevealType.InCenter);
+        if (memLine >= 0) {
+          // v0.9.850: 記憶した行へ着地(畳まれていればrevealで自然に展開=続きから書ける)。
+          const mp = new vscode.Position(memLine, 0);
+          ed.selection = new vscode.Selection(mp, mp);
+          const mt = ed.document.lineAt(memLine).text || '';
+          ed.revealRange(new vscode.Range(memLine, 0, memLine, Math.max(1, mt.length)), vscode.TextEditorRevealType.InCenter);
+        } else {
+          ed.selection = new vscode.Selection(r.start, r.start);
+          ed.revealRange(new vscode.Range(i, 0, i, Math.max(1, text.length)), vscode.TextEditorRevealType.InCenter);
+        }
         refresh(ed);
       });
       return true;
@@ -8481,6 +8494,47 @@ function findCurrentPair(editor) {
   return collectPairs(editor.document, { excludeIndex: false })
     .filter(p => p.start <= line && line <= p.end)
     .sort((a, b) => (a.end - a.start) - (b.end - b.start))[0] || null;
+}
+// v0.9.850: ★膜ごとに「最後に文字カーソルがあった行」を記憶し、その膜へジャンプした時に自動で戻る
+// (俊克 6/14 am08:56・Joplinはノート毎に覚える→MeOSはファイルでなく膜毎に)。開始膜からの行差(offset)で
+// 持つので、膜が上の編集でずれても有効。保存はglobalState(マシン内・Joplin同等)にデバウンス書込=ファイルを
+// 汚さない・カーソル移動の度にファイル書込もしない(freeze pattern回避)。
+const _meCursorMem = new Map(); // uriString -> { [membraneId]: offset }
+let _meCursorSaveTimer = null;
+function meCursorKey(document) { return 'meMembraneCursor:' + (document ? document.uri.toString() : ''); }
+function getMeCursorMap(document) {
+  if (!document) return {};
+  const k = document.uri.toString();
+  if (_meCursorMem.has(k)) return _meCursorMem.get(k);
+  let m = {};
+  try { const s = extensionContext && extensionContext.globalState.get(meCursorKey(document)); if (s && typeof s === 'object') m = s; } catch (_) {}
+  _meCursorMem.set(k, m);
+  return m;
+}
+function recordMeCursor(editor) {
+  if (!editor || !editor.document || !editor.selection) return;
+  let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
+  if (!pair) return;
+  const id = String(pair.id || '').trim();
+  if (!id) return;
+  const off = editor.selection.active.line - pair.start;
+  if (off < 0) return;
+  const m = getMeCursorMap(editor.document);
+  if (m[id] === off) return; // 変化なし
+  m[id] = off;
+  if (_meCursorSaveTimer) clearTimeout(_meCursorSaveTimer);
+  const doc = editor.document;
+  _meCursorSaveTimer = setTimeout(() => { try { if (extensionContext) extensionContext.globalState.update(meCursorKey(doc), m); } catch (_) {} }, 800);
+}
+// 開始膜行 pairStart の膜について、記憶した行を返す(無効/開始膜行そのもの/範囲外なら -1)。
+function savedMeCursorLine(document, membraneId, pairStart, pairEnd) {
+  if (!document) return -1;
+  const m = getMeCursorMap(document);
+  const off = m[String(membraneId || '').trim()];
+  if (typeof off !== 'number' || off <= 0) return -1; // offset0(=開始膜行)は従来どおりなので特別扱い不要
+  const ln = pairStart + off;
+  if (ln <= pairStart || ln > pairEnd) return -1;
+  return Math.min(ln, document.lineCount - 1);
 }
 // v0.9.678 (対策1)/v0.9.681 (改善2): shared info about the membrane the cursor is inside —
 // the INNERMOST enclosing pair (findCurrentPair) + total line count + Δ (line-count change
@@ -13530,7 +13584,7 @@ makeDecorations();
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
-    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); }),
+    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
   // v0.9.754: On activation, re-apply Standards > V state (writes defaultFoldingRangeProvider)
   // so MeOS fold ranges are in VSCode's cache before the first editor.fold call.
