@@ -1,4 +1,5 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.854: ★ダークテーマ対応3件(俊克 6/14 pm01:04・開発者の多くはダーク既定)。①ハイライト既定文字色: 暗背景→白(既存)に加え明背景(黄等)→黒を固定。従来は色未指定時テーマ前景任せで、ダークだと黄地に薄文字が沈んでいた(per-line/複数行 両パス)。②文字メーターの括弧()と%が黒固定→var(--vscode-editor-foreground)+背景色の2重縁取りに(ライト=黒系/ダーク=白系・地色で自動反転)。ダークで未達バーの暗い未達部分に黒括弧が消えていた件。③Mepy閉じた右目の縁 rgba(0,0,0,.28)→color-mix(foreground 30%)でダークでも見える。見出しの白抜き既定が正解だった流れの延長。
 // - v0.9.853: ★栞の最終カーソル復元を撤去=栞は置いた位置ぴったりに飛ぶだけに戻す(俊克 6/14 am09:42 自己訂正)。v851/852の誤り: 2栞でF栞へ飛ぶと、そこが最終カーソル位置として記録され再クリックで同所に戻り続け2個目の栞へ巡回不能(無限ループ)。最終カーソル復元はH-TOC(v850)専用が正しい住み分け。Warpは開始膜を辿る。教訓: 言われたまま作らず設計の論理矛盾を実装前に指摘すべきだった。
 // - v0.9.852: 栞ジャンプの最終カーソル復元を全栞に拡張(俊克 6/14 am09:27 バグ報告)。v851は栞が膜の開始行ぴったりの時だけ復元で不十分→栞を"含む"膜(最内)を判定し、栞がどこにあってもその膜で最後にいた行へ着地。Warpは開始膜を辿る意味があるので対象外のまま。
 // - v0.9.851: 栞ジャンプでも膜の最終カーソル位置へ着地(俊克 6/14 am09:13 改良1)。栞が膜の"開始行"にある時だけ、その膜で最後にいた行(開始膜行+offset)へ飛ぶ(H-TOCジャンプと同じ)。本文行の栞はその行ぴったり=精密ブックマークの意味は維持。bookmarkCycleのジャンプ直前にcollectPairsで開始行判定→savedMeCursorLine適用。
@@ -4289,7 +4290,9 @@ function applyPrettyLabels(editor) {
           bgKey = hi.bgKey; fgKey = hi.fgKey; hiComment = hi.comment; bodyLen = hi.bodyLen;
           if (!bgKey && !fgKey) bgKey = 'yellow'; // 色未指定は黄背景
           // v0.9.698: 暗い背景色で文字色未指定なら自動で白文字(auto-contrast)。黒文字では読めないため。
-          if (bgKey && !fgKey && DARK_BG_KEYS.has(bgKey)) fgKey = 'white';
+          // v0.9.854: 逆に明るい背景色で文字色未指定なら黒文字に固定(俊克 6/14 ダーク対応)。従来はテーマ前景色
+          // 任せで、ダークテーマだと黄等の明背景に薄文字が沈んでいた。背景色は不変なので文字色も背景明暗で固定。
+          if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
         } else {
           bgKey = 'yellow'; fgKey = null; hiComment = ''; bodyLen = content.length;
         }
@@ -4690,7 +4693,7 @@ function applyPrettyLabels(editor) {
       let bgKey = hi.bgKey, fgKey = hi.fgKey;
       const hiComment = hi.comment, bodyLen = hi.bodyLen;
       if (!bgKey && !fgKey) bgKey = 'yellow';                // 色未指定は黄背景(行単位パスと同じ)
-      if (bgKey && !fgKey && DARK_BG_KEYS.has(bgKey)) fgKey = 'white'; // 暗背景は白文字
+      if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black'; // v0.9.854: 暗背景→白/明背景→黒(ダーク対応)
       const bodyEndOff = innerStartOff + bodyLen;
       highlightMarkerRanges.push({ range: new vscode.Range(startPos, editor.document.positionAt(innerStartOff)) });
       if (bodyEndOff > innerStartOff) {
@@ -11808,7 +11811,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .mepy-hello-l{left:-3px;top:0;bottom:0;width:6px}
 .mepy-hello-r{right:-3px;top:0;bottom:0;width:6px}
 /* v0.9.824: Meの右目(向かって左)はボタンではない=「目をつぶっている」設定で囲み線を薄く(俊克 am02:35)。 */
-.me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:1.5px solid rgba(0,0,0,.28);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
+.me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
 .color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:0;background:transparent;border:none;padding:0;cursor:pointer;color:inherit}
 .color-btn:hover{filter:brightness(1.08)}
 .color-ball{width:27px;height:27px;border-radius:50%;border:2px solid rgba(0,0,0,.72);box-shadow:inset 0 0 0 3.5px var(--vscode-editor-background);display:inline-block;background:currentColor}
@@ -11864,7 +11867,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .me-char-num-over{color:#dc2626;font-weight:900;background:rgba(255,255,255,.92);border-radius:4px;padding:0 4px;margin-right:1px;text-shadow:none}
 .me-char-pill{font-weight:900;background:rgba(255,255,255,.92);border-radius:4px;padding:0 4px;margin-right:1px;text-shadow:none}
 .me-char-pct{margin-left:5px}
-.me-char-pct .pct-paren{color:#000;font-weight:800;text-shadow:none}
+.me-char-pct .pct-paren{color:var(--vscode-editor-foreground);font-weight:800;text-shadow:0 0 2px var(--vscode-editor-background),0 0 2px var(--vscode-editor-background)}
 .me-char-pct-over{color:#dc2626;font-weight:900;text-shadow:none}
 .me-char-count{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;opacity:.8}
 .me-char-delta{flex:none;font-weight:800;font-size:11px}.me-char-delta.plus{color:#f59e0b}.me-char-delta.minus{color:#16a34a}.me-char-delta.zero{opacity:.5}
