@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.874: ★最外核膜ルール(俊克 6/15 am03:03 「Warpが包み膜をぐるぐる回るだけ・深度D+1にしても駄目」)。バッジのD値は表示専用でコードが書出すだけ→構造深度はネストから計算するためバッジ書換では変わらないのが原因。解決=引退したmNTの「深度透過」を最外核mCNに復活(記法不要・唯一の深度0膜を構造判定でisEnvelope化)。直下の章を深度-1して0へ戻し、Warpは章(深度0)を巡回・最外核は除外。countEnclosingMembranesAtLine/Warp/Submarine両filterに!isEnvelope追加。
 // - v0.9.873: 外側のextension_js膜にmSTATバッジ(📊⊕0+0D0W)を付与(俊克 6/15 am02:47・バッジ無しだと色変更不可)。mCN開始膜の正規仕様に合わせ、色ピッカーで色付け可能に。
 // - v0.9.872: TOCボタンをTOPボタンに変更(俊克 6/15 am02:27)。常にファイル先頭(0行目)へ飛ぶだけに。jumpMeDockTocOrTopのTOC領域ジャンプを撤去し常にjumpMeDockTopOfFile。renderNavTocStateのラベル/title/modeも常にTOP固定。
 // - v0.9.871: Me Dock tip背景を「適応トナーグレー」に(俊克 6/14 pm09:31・Gemini助言)。inverseを地色へ84%寄せ=ダーク=眩しくない明グレー/ライト=濃グレーで地に溶けない。文字はeditor-background。
@@ -3092,7 +3093,7 @@ function mstatDepthForPair(pair) {
 function countEnclosingMembranesAtLine(document, line) {
   // v0.9.604: mNT pairs are depth-transparent (do not count as enclosure).
   const pairs = collectPairs(document, { excludeIndex: false });
-  return pairs.filter(p => !p.isMnt && p.start < line && line < p.end).length;
+  return pairs.filter(p => !p.isMnt && !p.isEnvelope && p.start < line && line < p.end).length;
 }
 function newMembraneDepthForInsertion(document, line) {
   return -Math.max(0, countEnclosingMembranesAtLine(document, line));
@@ -3378,6 +3379,21 @@ function collectMembraneStructure(document, options = {}) {
     unclosedOpens: unclosedOpens.sort((a, b) => a.start - b.start),
     orphanCloses: orphanCloses.sort((a, b) => a.line - b.line)
   };
+  // v0.9.874: ★最外核膜ルール — ファイル全体を1つのmCNで包んだ場合、その膜を
+  // 深度+1(Warp平面の外側)とみなす。直下の章は深度を1つ繰り下げて0に戻し、Warpは
+  // 章(深度0)を巡回し続ける。最外核膜自体は depth-transparent + Warp除外(isEnvelope)。
+  // mNT記法を使わず「最外核=唯一の深度0膜」という構造だけで自動判定する。
+  {
+    const tops = value.pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && p.id !== HTOC_META_ID && !isIndexMembrane(p.id));
+    if (tops.length === 1) {
+      const env = tops[0];
+      const kids = value.pairs.filter(p => p !== env && p.start > env.start && p.end < env.end);
+      if (kids.length) {
+        env.isEnvelope = true;
+        for (const p of kids) p.depth = Math.max(0, (Number(p.depth) || 0) - 1);
+      }
+    }
+  }
   _membraneStructureCache.set(document, { key: cacheKey, value });
   return value;
 }
@@ -11427,7 +11443,7 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
   // v0.9.788: Warp jumps the outermost CORE membranes only — exclude mNT envelopes
   // (notebooks). mNT is depth-transparent already, so its inner core members stay depth 0
   // and remain Warp targets; mNT itself is navigated via the Current Me click instead.
-  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt && p.id !== HTOC_META_ID);
+  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt && !p.isEnvelope && p.id !== HTOC_META_ID);
   if (!layer.length) return false;
 
   // v0.9.790: Warp cruises ONLY the open lines of core membranes (俊克 pm00:41). The Current Me
@@ -11524,7 +11540,7 @@ function meDockFlipColorStateForEditor(editor) {
   // v0.9.791: preview must match the Warp cruise = open lines of depth-0 CORE membranes only
   // (exclude mNT). minus = previous open, plus = next open, with wrap. So both arrows show the
   // destination OPEN membrane's colour (no more "own close" colour on +). 俊克 pm01:01.
-  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && p.id !== HTOC_META_ID).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
+  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && !p.isEnvelope && p.id !== HTOC_META_ID).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
   if (rootLayer.length) {
     const starts = rootLayer.map(p => p.start).sort((a,b)=>a-b);
     let plusStart = starts.find(st => st > line); if (plusStart === undefined) plusStart = starts[0];
