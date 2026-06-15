@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.885: ★FormatボタンをC系言語で分割方式出力に(俊克 6/15 pm08:50)。ハイライト=/* =={ */ body /* (色)//tip}== */・取消線=/* ~~{ */ body /* (色)//tip}~~ */。本文が実コードでも動く・全体包みは中の */ /* を消すだけで得られる(インライン1操作)。見出しは行頭ラベル用途で実コードにならず、現レンダラで分割の中区切りを隠せないため全体包みのまま。markdown等は素のまま。bodySelもopenPart長に追従。
 // - v0.9.884: ★コメント包み「分割方式」追加(俊克 6/15 pm08:41)。/* =={ */ code /* (色)//tip}== */ の形=codeは実コードのまま動き、マーカーと中の */ /* も隠してcodeだけ装飾(実コードを汚さず色付け)。ハイライト/取消線に対応。処理済み区間をdtextで空白化し、既存のreHi/reSt/reHead検出をdtext対象にして二重発火を防止。全体包み方式(v876)は中の */ /* が無いケースとして従来通り(見出し/注釈向け)。
 // - v0.9.883: hT_122105.511にも標準バッジ付与=全開始膜のバッジ統一完了(俊克 6/15 pm07:30「なぜ特別扱い?」)。hT_は旧式の名前プレフィックスで、v0.9.543以降TOC検出はmTC=文法に移行済み→mCN=hT_xxxは普通のmCN膜。特別扱いの根拠は無かった(私の誤判断)。これでバッジ無しの開始膜はゼロ。
 // - v0.9.882: バッジ欠けの開始膜2つに標準バッジ(📊⊕0+0D0W)を付与(俊克 6/15 pm06:58 指摘・全膜を色変更可に統一)。0867_BOOKMARK と 0871_WARP_SUBMARINE_ME_CRUISE。※0200_DECORATIONSは元から付与済み。hT_122105.511(Hyper TOC source索引)は特殊膜のため対象外。
@@ -10853,8 +10854,11 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
     else return;
     const body = selText || defBody;
     const startOff = doc.offsetAt(sel.start);
-    await editor.edit(eb => eb.replace(sel, cOpen + prefix + body + spec + close + cClose));
-    const b = startOff + cOpen.length + prefix.length;
+    // v0.9.885: C系言語では「分割方式」で出力(本文=実コードのまま動く)。全体包みが欲しければ中の */ /* を消すだけ(俊克 6/15 pm08:50)。
+    const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
+    const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
+    await editor.edit(eb => eb.replace(sel, openPart + body + tailPart));
+    const b = startOff + openPart.length;
     bodySel = new vscode.Selection(doc.positionAt(b), doc.positionAt(b + body.length));
   }
   // v0.9.714: 挿入後、エディタにフォーカスを移し、本文(プレースホルダ)を選択状態にする(即上書きで書き込めるように)。
