@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.894: ★Format三兄弟のtip復活(俊克 6/16 am07:51・診断的中)。v891で初期値が (色)//[]tip=(コメント空)になり、空コメント→ホバー生成条件if(comment)を通らずtipが出なくなっていた。修正=parseColorSpecで tip= マークはコメント空でも先頭に☐(未対応)/☑(対応済=空でない[…])を付与→既存7ホバーサイト無改修で「💬 ☐」「💬 ☑ 直した」等が表示。ホバー文のみ影響(本文長/ジャンプ判定は別経路)。旧//tip(=無し)はグリフ無しで後方互換。副産物=ホバーで対応状況も一目で分かる。
 // - v0.9.893: 目標文字数の入力枠を、目標未設定時は現在の文字数で初期化(俊克 6/16 am07:14)。openMeCharPopで value=target||chars。現在値からの増減を打ち込みたいニーズに対応。
 // - v0.9.892: 見出しの[]チェックボックス衝突を修正(俊克 6/16 am03:07 バグ1)。見出し本文 [^\]\n]* が最初の]で打切る→//[]tip=の](チェックボックス)が見出し閉じ]と衝突し見出しが消えていた。本文を「対になった[…]を含められる」(?:[^\]\n]|\[[^\]\n]*\])* に拡張(バラの]では従来通り打切り)。該当4正規表現(描画reHead/MARK_HEADING_RE/navMeHeadingJump/headNavStateForEditor)を統一修正。チェックボックスは見出しでも機能。
 // - v0.9.891: ★レビュー注釈にチェックボックス(俊克 6/16 am02:30-38「最後の一手」)。Format初期値 (色)//tip= → (色)//[]tip=。空[]=未対応・[…]に何か書けば対応済み(タイムスタンプ/☑️/イニシャル等、使う人次第)。💬は未対応だけ巡回(MARK_TIP_OPEN_RE)→直して[]に記入すると外れ、止まらなくなれば全件完了=レビューの信号機。parseColorSpecは//直後の[…]もホバー時に剥がし注釈は綺麗。旧//tip=も未対応扱いで後方互換。💬着地行=カーソル行=生データ表示でその場で記入可。
@@ -2009,8 +2010,19 @@ function parseColorSpec(content, single, scan) {
     if (!tipM && !isEnd) continue;                 // 末尾metadataでない → 本文中の色名扱いはしない
     // 末尾側を優先(後から見つかった有効colorで上書き)。tip は実テキスト(content)側から切り出す。
     // v0.9.888/891: `//` 直後の任意キーワード `[チェック]tip=` をホバー表示時に剥がす(注釈は綺麗・grep可・後方互換)。
-    // v0.9.891: チェックボックス `//[]tip=`(未) / `//[☑️]tip=`(済) の `[…]` 部分も剥がす。
-    chosen = { index: m.index, fg, bg, tip: tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '').replace(/^\s*\[[^\]]*\]/, '').replace(/^\s*tip=/, '').trim() : '' };
+    // v0.9.894: ★コメントが空でも `tip=` マークなら☐(未対応)/☑(対応済=空でない[…])をコメント先頭に付けて返す。
+    //   これで `//[]tip=`(コメント空)でもホバー「💬 ☐」が出る(俊克 6/16 am07:51「[]追加でtip無し誤判定」)。
+    //   ホバー文だけに影響(本文長・ジャンプ判定は別経路)。旧 `//tip`(=無し)は従来どおりグリフ無し。
+    let _rt = tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '') : '';
+    let _box = null, _marked = false;
+    if (tipM) {
+      const _bm = _rt.match(/^\s*\[([^\]]*)\]/);
+      if (_bm) { _box = _bm[1]; _rt = _rt.replace(/^\s*\[[^\]]*\]/, ''); }
+      if (/^\s*tip=/.test(_rt)) { _marked = true; _rt = _rt.replace(/^\s*tip=/, ''); }
+      _rt = _rt.trim();
+      if (_marked) { const _ck = !!(_box && _box.trim()); _rt = (_ck ? '☑' : '☐') + (_rt ? ' ' + _rt : ''); }
+    }
+    chosen = { index: m.index, fg, bg, tip: _rt };
   }
   if (chosen) { fgKey = chosen.fg; bgKey = chosen.bg; bodyText = content.slice(0, chosen.index); comment = chosen.tip; }
   return { bodyText: bodyText, bodyLen: bodyText.length, fgKey: fgKey, bgKey: bgKey, comment: comment };
