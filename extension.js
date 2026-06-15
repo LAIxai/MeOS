@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.895: ホバーの対応済表示を ✅[内容] 本文 に(俊克 6/16 am08:16)。ブラケットの中身(日付等)をそのままホバーに出す→「いつ対応したか」が一目で分かる。未対応は ⬜ 本文。例 //[済:2026…]tip=指示 → 💬 ✅[済:2026…] 指示。parseColorSpec1箇所のみ変更で全ホバー反映。
 // - v0.9.894: ★Format三兄弟のtip復活(俊克 6/16 am07:51・診断的中)。v891で初期値が (色)//[]tip=(コメント空)になり、空コメント→ホバー生成条件if(comment)を通らずtipが出なくなっていた。修正=parseColorSpecで tip= マークはコメント空でも先頭に☐(未対応)/☑(対応済=空でない[…])を付与→既存7ホバーサイト無改修で「💬 ☐」「💬 ☑ 直した」等が表示。ホバー文のみ影響(本文長/ジャンプ判定は別経路)。旧//tip(=無し)はグリフ無しで後方互換。副産物=ホバーで対応状況も一目で分かる。
 // - v0.9.893: 目標文字数の入力枠を、目標未設定時は現在の文字数で初期化(俊克 6/16 am07:14)。openMeCharPopで value=target||chars。現在値からの増減を打ち込みたいニーズに対応。
 // - v0.9.892: 見出しの[]チェックボックス衝突を修正(俊克 6/16 am03:07 バグ1)。見出し本文 [^\]\n]* が最初の]で打切る→//[]tip=の](チェックボックス)が見出し閉じ]と衝突し見出しが消えていた。本文を「対になった[…]を含められる」(?:[^\]\n]|\[[^\]\n]*\])* に拡張(バラの]では従来通り打切り)。該当4正規表現(描画reHead/MARK_HEADING_RE/navMeHeadingJump/headNavStateForEditor)を統一修正。チェックボックスは見出しでも機能。
@@ -2020,7 +2021,8 @@ function parseColorSpec(content, single, scan) {
       if (_bm) { _box = _bm[1]; _rt = _rt.replace(/^\s*\[[^\]]*\]/, ''); }
       if (/^\s*tip=/.test(_rt)) { _marked = true; _rt = _rt.replace(/^\s*tip=/, ''); }
       _rt = _rt.trim();
-      if (_marked) { const _ck = !!(_box && _box.trim()); _rt = (_ck ? '☑' : '☐') + (_rt ? ' ' + _rt : ''); }
+      // v0.9.895: 対応済は ✅[内容] でブラケットの中身(日付等)もホバーに表示(俊克 6/16 am08:16)。未対応は ⬜。
+      if (_marked) { const _bx = _box ? _box.trim() : ''; _rt = _bx ? ('✅[' + _bx + ']' + (_rt ? ' ' + _rt : '')) : ('⬜' + (_rt ? ' ' + _rt : '')); }
     }
     chosen = { index: m.index, fg, bg, tip: _rt };
   }
