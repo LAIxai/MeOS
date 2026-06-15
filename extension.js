@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.892: 見出しの[]チェックボックス衝突を修正(俊克 6/16 am03:07 バグ1)。見出し本文 [^\]\n]* が最初の]で打切る→//[]tip=の](チェックボックス)が見出し閉じ]と衝突し見出しが消えていた。本文を「対になった[…]を含められる」(?:[^\]\n]|\[[^\]\n]*\])* に拡張(バラの]では従来通り打切り)。該当4正規表現(描画reHead/MARK_HEADING_RE/navMeHeadingJump/headNavStateForEditor)を統一修正。チェックボックスは見出しでも機能。
 // - v0.9.891: ★レビュー注釈にチェックボックス(俊克 6/16 am02:30-38「最後の一手」)。Format初期値 (色)//tip= → (色)//[]tip=。空[]=未対応・[…]に何か書けば対応済み(タイムスタンプ/☑️/イニシャル等、使う人次第)。💬は未対応だけ巡回(MARK_TIP_OPEN_RE)→直して[]に記入すると外れ、止まらなくなれば全件完了=レビューの信号機。parseColorSpecは//直後の[…]もホバー時に剥がし注釈は綺麗。旧//tip=も未対応扱いで後方互換。💬着地行=カーソル行=生データ表示でその場で記入可。
 // - v0.9.890: 💬ジャンプ誤反応修正(俊克 6/16 am01:59)。本文中に //tip= が出るだけの行(私の例示/grep文字列/見出し本文への言及)を誤って拾っていた→判定を「色閉じ )の直後の //tip=」(MARK_TIP_RE=/\)\s*\/\/tip=/)に厳格化。本物のマーク注釈 (色)//tip= だけが対象に。あわせて見出しジャンプの # ラベルを白色に(俊克 改良1)。
 // - v0.9.889: 💬ジャンプ改良2件(俊克 6/16 am01:43)。①見出し ##[…]##(コメント包み /* ##[…]## */ 両対応)も //tip= があれば💬の巡回対象に追加(markNavHit=MARK_NAV_RE∨MARK_HEADING_RE ∧ //tip=)。②隣の見出しジャンプのラベルを ## → 1文字 # に+サイズ拡大(11→21px・💬と同格の目立ち)。
@@ -4493,7 +4494,7 @@ function applyPrettyLabels(editor) {
     if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && dtext.indexOf('[') >= 0) {
       // 行頭(空白可) #{1,3} [ 中身 ] #{1,3}(\2で開き#数と一致)。中身は ] / 改行を含まない。
       // v0.9.876: 任意の /* … */ 殻に対応(コメント包み見出し /* ##[本文(色)//tip]## */)。
-      const reHead = /^(\s*)(\/\*\s*)?(#{1,3})\[([^\]\n]*)\]\3(\s*\*\/)?/;
+      const reHead = /^(\s*)(\/\*\s*)?(#{1,3})\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/;
       const mH = reHead.exec(dtext);
       if (mH) {
         const shellOpen = mH[2] || '';              // 任意の "/* " 殻
@@ -11464,7 +11465,7 @@ function navMeHeadingJump(direction) {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document) return false;
   const doc = editor.document;
-  const reHead = /^\s*(#{1,3})\[[^\]\n]*\]\1/; // mirror MeOS heading; not plain `## text`
+  const reHead = /^\s*(#{1,3})\[(?:[^\]\n]|\[[^\]\n]*\])*\]\1/; // mirror MeOS heading; not plain `## text`
   let lo = 0, hi = doc.lineCount - 1;
   let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
   if (pair) { lo = pair.start; hi = pair.end; } // v0.9.776: stay inside the current membrane
@@ -11490,7 +11491,7 @@ function navMeHeadingJump(direction) {
 function headNavStateForEditor(editor) {
   if (!editor || !editor.document) return { count: 0, plusWraps: false, minusWraps: false };
   const doc = editor.document;
-  const reHead = /^\s*(#{1,3})\[[^\]\n]*\]\1/;
+  const reHead = /^\s*(#{1,3})\[(?:[^\]\n]|\[[^\]\n]*\])*\]\1/;
   let lo = 0, hi = doc.lineCount - 1, pair = null;
   try { pair = findCurrentPair(editor); } catch (_) {}
   if (pair) { lo = pair.start; hi = pair.end; }
@@ -11507,7 +11508,7 @@ function headNavStateForEditor(editor) {
 // tip(💬)空欄でも拾う(書き忘れの取りこぼし無し)。1行に複数あっても行単位で1ストップ。
 const MARK_NAV_RE = /=={[^\n]*?}==|(?<![=!<>~])==(?!\{)[^=\n]+?(?<![!<>])==(?!=)|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/;
 // v0.9.889: 見出し(##[…]##・コメント包み /* ##[…]## */ 両対応)も //tip= があれば 💬 の対象に含める(俊克 6/16)。
-const MARK_HEADING_RE = /^\s*(?:\/\*\s*)?(#{1,3})\[[^\]\n]*\]\1/;
+const MARK_HEADING_RE = /^\s*(?:\/\*\s*)?(#{1,3})\[(?:[^\]\n]|\[[^\]\n]*\])*\]\1/;
 // v0.9.890: 本物のレビュー注釈は必ず「色指定の直後」 (色)//tip= の形。行内のどこかに //tip= があるだけでは
 // 拾わない(本文中の言及・grep 文字列・URL等を除外)。色閉じ ) の直後の //tip= だけを注釈とみなす。
 // v0.9.891: ★チェックボックス導入。//[]tip= は未対応。[…] に「何か書き込んであれば対応済み」(俊克 6/16 am02:38)=
