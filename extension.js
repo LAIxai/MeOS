@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.884: ★コメント包み「分割方式」追加(俊克 6/15 pm08:41)。/* =={ */ code /* (色)//tip}== */ の形=codeは実コードのまま動き、マーカーと中の */ /* も隠してcodeだけ装飾(実コードを汚さず色付け)。ハイライト/取消線に対応。処理済み区間をdtextで空白化し、既存のreHi/reSt/reHead検出をdtext対象にして二重発火を防止。全体包み方式(v876)は中の */ /* が無いケースとして従来通り(見出し/注釈向け)。
 // - v0.9.883: hT_122105.511にも標準バッジ付与=全開始膜のバッジ統一完了(俊克 6/15 pm07:30「なぜ特別扱い?」)。hT_は旧式の名前プレフィックスで、v0.9.543以降TOC検出はmTC=文法に移行済み→mCN=hT_xxxは普通のmCN膜。特別扱いの根拠は無かった(私の誤判断)。これでバッジ無しの開始膜はゼロ。
 // - v0.9.882: バッジ欠けの開始膜2つに標準バッジ(📊⊕0+0D0W)を付与(俊克 6/15 pm06:58 指摘・全膜を色変更可に統一)。0867_BOOKMARK と 0871_WARP_SUBMARINE_ME_CRUISE。※0200_DECORATIONSは元から付与済み。hT_122105.511(Hyper TOC source索引)は特殊膜のため対象外。
 // - v0.9.881: ★Format色ピッカー改良6件(俊克 6/15 pm00:24)。①(🟢/🔴)スロットは色玉のみに簡素化・非選択側を半透明(.dim)で「今どちらを設定中か」可視化。②スウォッチtipを英日併記「Red, 赤」。③見出し/スロットの文言を英語化(Text/Line/Background color)。④tipを要素の真上に近接表示(離れすぎ解消・showTocTipに#fmt-popブランチ)。⑤ポップアップ背景を黒固定→テーマ適応(editorWidget-background)+枠を--meos-frame。⑥ポップアップを対象Formatボタンの真上に中央表示(Vの右でなく==等の上)。
@@ -4305,19 +4306,62 @@ function applyPrettyLabels(editor) {
     const text = editor.document.lineAt(line).text;
     if (text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
     if (text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
-    // v0.9.876: ★コメント包み記法(俊克 6/15 am10:01)。装飾全体を /* … */ ブロックコメントで包むと、
-    // コードから見れば ただのコメント、MeOS上では装飾された文字だけが見える(味気ないソースを読みやすく
-    // する注釈ツール)。内側の =={…}== / ~~{…}~~ は既存ロジックがそのまま描画するので、ここでは殻 /* と
-    // */ を隠すだけにする。見出し ##[…]## は行頭判定があるため reHead 側で /* */ を取り込む。
+    // v0.9.876/884: ★コメント包み記法。装飾を /* … */ ブロックコメントで包むと、コードからは ただの
+    // コメント、MeOS上では装飾された文字だけが見える。2方式を両立:
+    //  ①全体包み /* =={ body (色)//tip}== */  … body はコメント(見出し・注釈向け)。内側 =={…}== は
+    //    既存ロジックで描画し、ここでは殻 /* と */ を隠す。
+    //  ②分割    /* =={ */ code /* (色)//tip}== */ … code は実コードのまま動く。マーカーと中の */ /* も
+    //    隠し body(=code)だけ装飾。処理済み区間は dtext を空白化して既存の素マーカー検出の二重発火を防ぐ。
+    let dtext = text;
     if (line !== docCursorLine && text.indexOf('/*') >= 0) {
+      const blankDt = (s, e) => { dtext = dtext.slice(0, s) + ' '.repeat(e - s) + dtext.slice(e); };
+      // ②分割ハイライト /* =={ */ code /* (色)//tip}== */
+      const reHiSplit = /(\/\*\s*=={\s*\*\/\s*)([^\n]*?)(\s*\/\*\s*([^\n]*?)\}==\s*\*\/)/g;
+      let mhs;
+      while ((mhs = reHiSplit.exec(text)) !== null) {
+        const oS = mhs.index, bS = oS + mhs[1].length, bE = bS + mhs[2].length, cE = bE + mhs[3].length;
+        const hi = parseColorSpec((mhs[2] || '') + (mhs[4] || ''), 'bg');
+        let bgKey = hi.bgKey, fgKey = hi.fgKey;
+        if (!bgKey && !fgKey) bgKey = 'yellow';
+        if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
+        highlightMarkerRanges.push({ range: new vscode.Range(line, oS, line, bS) });
+        highlightMarkerRanges.push({ range: new vscode.Range(line, bE, line, cE) });
+        if (bE > bS) {
+          const r = new vscode.Range(line, bS, line, bE), rBg = new vscode.Range(line, oS, line, bE);
+          let hv = null; if (hi.comment) { hv = new vscode.MarkdownString('💬 ' + hi.comment); hv.isTrusted = false; }
+          if (bgKey) (highlightBodyRangesByColor[bgKey] || highlightBodyRangesByColor.yellow).push(hv ? { range: rBg, hoverMessage: hv } : { range: rBg });
+          if (fgKey) (highlightFgRangesByColor[fgKey] || []).push((hv && !bgKey) ? { range: r, hoverMessage: hv } : { range: r });
+        }
+        blankDt(oS, cE);
+      }
+      // ②分割取消線 /* ~~{ */ code /* (色)//tip}~~ */
+      const reStSplit = /(\/\*\s*~~\{\s*\*\/\s*)([^\n]*?)(\s*\/\*\s*([^\n]*?)\}~~\s*\*\/)/g;
+      let mss;
+      while ((mss = reStSplit.exec(text)) !== null) {
+        const oS = mss.index, bS = oS + mss[1].length, bE = bS + mss[2].length, cE = bE + mss[3].length;
+        const sp = parseColorSpec((mss[2] || '') + (mss[4] || ''), 'fg');
+        const lineKey = sp.fgKey || 'red', bgKey = sp.bgKey;
+        strikeMarkerRanges.push({ range: new vscode.Range(line, oS, line, bS) });
+        strikeMarkerRanges.push({ range: new vscode.Range(line, bE, line, cE) });
+        if (bE > bS) {
+          const r = new vscode.Range(line, bS, line, bE);
+          let hv = null; if (sp.comment) { hv = new vscode.MarkdownString('💬 ' + sp.comment); hv.isTrusted = false; }
+          (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(hv ? { range: r, hoverMessage: hv } : { range: r });
+          if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
+          if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
+          if (!bgKey) strikeFaintBgRanges.push({ range: r });
+        }
+        blankDt(oS, cE);
+      }
+      // ①全体包み: 殻 /* と */ を隠す(分割で空白化済みの所は dtext に無いので当たらない)
       let msh;
       const reOpenShell = /\/\*\s*(?==={|~~\{)/g;
-      while ((msh = reOpenShell.exec(text)) !== null) {
+      while ((msh = reOpenShell.exec(dtext)) !== null) {
         const r = { range: new vscode.Range(line, msh.index, line, msh.index + msh[0].length) };
-        (text.charAt(msh.index + msh[0].length) === '~' ? strikeMarkerRanges : highlightMarkerRanges).push(r);
+        (dtext.charAt(msh.index + msh[0].length) === '~' ? strikeMarkerRanges : highlightMarkerRanges).push(r);
       }
       const reCloseShell = /(\}==|\}~~)(\s*\*\/)/g;
-      while ((msh = reCloseShell.exec(text)) !== null) {
+      while ((msh = reCloseShell.exec(dtext)) !== null) {
         const s = msh.index + msh[1].length;
         const r = { range: new vscode.Range(line, s, line, s + msh[2].length) };
         (msh[1] === '}~~' ? strikeMarkerRanges : highlightMarkerRanges).push(r);
@@ -4334,7 +4378,7 @@ function applyPrettyLabels(editor) {
       // (文字色/背景色)、`+` も互換。`//` 以降はコメント(編集者⇄作家の通信、ホバー💬表示。日時も自由記述)。
       const reHi = /=={([^\n]*?)}==|(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g;
       let mHi;
-      while ((mHi = reHi.exec(text)) !== null) {
+      while ((mHi = reHi.exec(dtext)) !== null) {
         const braced = mHi[1] !== undefined;
         const content = braced ? mHi[1] : mHi[2];   // 中身(本文+(色)+//コメント)
         const openLen = braced ? 3 : 2;             // '=={' or '=='
@@ -4388,8 +4432,9 @@ function applyPrettyLabels(editor) {
       // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ と 旧形 ~~本文~~ / ~~本文(日時//コメント)~~ の両方。
       // ハイライト(=={…}==)と鏡像の記法統一: 開き `~~{`・閉じ `}~~`。線色=fg側(既定 red)、背景色=bg側。
       const reSt = /~~\{([^\n]*?)\}~~|~~(?!\{)([^~\n]+?)~~/g;
+      // v0.9.884: dtext(分割方式で処理済み区間を空白化済み)に対して検出。
       let mSt;
-      while ((mSt = reSt.exec(text)) !== null) {
+      while ((mSt = reSt.exec(dtext)) !== null) {
         const stBraced = mSt[1] !== undefined;
         const openStart = mSt.index;
         const innerStart = openStart + (stBraced ? 3 : 2);  // '~~{' or '~~'
@@ -4436,11 +4481,11 @@ function applyPrettyLabels(editor) {
     //   v0.9.699: 色/コメントを (文字色/背景色)//コメント に統一(ハイライト/取消線と同記法)。
     //     例 ##[見出し(青/黄)//旧題はABC]##  ##[題(/紺)]##(暗背景は白文字auto)  ##[題(紫)]##(文字紫)
     //   #{1,3}[ と ]#{1,3}(と末尾の(色/色)//コメント) は隠す。行頭のみ(空白可)。カーソル行は生データ表示。
-    if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && text.indexOf('[') >= 0) {
+    if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && dtext.indexOf('[') >= 0) {
       // 行頭(空白可) #{1,3} [ 中身 ] #{1,3}(\2で開き#数と一致)。中身は ] / 改行を含まない。
       // v0.9.876: 任意の /* … */ 殻に対応(コメント包み見出し /* ##[本文(色)//tip]## */)。
       const reHead = /^(\s*)(\/\*\s*)?(#{1,3})\[([^\]\n]*)\]\3(\s*\*\/)?/;
-      const mH = reHead.exec(text);
+      const mH = reHead.exec(dtext);
       if (mH) {
         const shellOpen = mH[2] || '';              // 任意の "/* " 殻
         const level = mH[3].length;                 // 1|2|3
