@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.877: ★Format書式ボタンがファイル形式を認識して出力を変える(俊克 6/15 am10:33)。C系ブロックコメント言語(js/ts/c/cpp/csharp/java/go/rust/php/swift/kotlin/scala/dart/css/scss/less/jsonc/objc)では ==/~~/## の出力を /* … */ で包む→そのままコメント包み記法として描画。markdown/plaintext等は素のまま。MEOS_BLOCK_COMMENT_LANGS集合でlanguageId判定・bodySelも殻長ぶんオフセット。
 // - v0.9.876: ★コメント包み記法(俊克 6/15 am10:01)。装飾全体をC系ブロックコメント /* … */ で包むと、コードからは ただのコメント、MeOS上では装飾された文字だけが見える(味気ないソースを読みやすくする注釈ツール)。例 /* =={ ハイライト (赤/黄)//tip}== */。内側の =={…}== / ~~{…}~~ は既存描画のまま、追加した殻隠しパスで /* と */ を非表示化。見出し ##[…]## は行頭判定があるため reHead に任意の /* */ 殻を取り込み。js等で実コードを汚さず装飾可能に。
 // - v0.9.875: ★ハイライト誤爆修正(俊克 6/15 am03:45・自分のコードの=== 0 と !== でハイライトが点灯)。プレーンハイライト ==…== がJS比較演算子(===/!==/==)の一部の == を区切りと誤認→区切り==の両外側に =!<>~ や = が隣接しないようlookbehind/lookaheadガードを追加(=={…}== 波括弧版は元から安全)。3箇所(maskInlineTokens相当/装飾本体reHi/tokenRe)を統一修正。
 // - v0.9.874: ★最外核膜ルール(俊克 6/15 am03:03 「Warpが包み膜をぐるぐる回るだけ・深度D+1にしても駄目」)。バッジのD値は表示専用でコードが書出すだけ→構造深度はネストから計算するためバッジ書換では変わらないのが原因。解決=引退したmNTの「深度透過」を最外核mCNに復活(記法不要・唯一の深度0膜を構造判定でisEnvelope化)。直下の章を深度-1して0へ戻し、Warpは章(深度0)を巡回・最外核は除外。countEnclosingMembranesAtLine/Warp/Submarine両filterに!isEnvelope追加。
@@ -10766,20 +10767,29 @@ function getMeDockTargetEditor() {
 //   highlight → =={本文(赤/黄)//tip}==      (文字色赤・背景黄・コメントtip)
 //   strike    → ~~{本文(赤/)//tip}~~       (線色赤・背景は薄ピンク自動・コメントtip)
 //   heading   → ##[本文(白/緑)//tip]##      (H2・白文字・緑背景・コメントtip。行頭でないと効かないため現在行を包む)
+// v0.9.877: C系ブロックコメント /* … */ を持つ言語。これらでは書式ボタンの出力を /* … */ で包む
+// (コメント包み記法 → コードから見れば ただのコメント、MeOS上では装飾だけが見える)。markdown/
+// plaintext 等の非該当言語は素の MeOS 記法のまま出力する。俊克 6/15 am10:33。
+const MEOS_BLOCK_COMMENT_LANGS = new Set(['javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'jsonc', 'c', 'cpp', 'csharp', 'java', 'go', 'rust', 'php', 'swift', 'kotlin', 'scala', 'dart', 'css', 'scss', 'less', 'objective-c', 'objective-cpp']);
 async function insertFormatTemplate(kind, editor) {
   if (!editor) return;
   const doc = editor.document;
   const sel = editor.selection;
   const selText = sel.isEmpty ? '' : doc.getText(sel);
+  // v0.9.877: ファイル形式を認識して出力を変える。C系コメント言語なら装飾を /* … */ で包む。
+  const wrap = MEOS_BLOCK_COMMENT_LANGS.has(doc.languageId);
+  const cOpen = wrap ? '/* ' : '';
+  const cClose = wrap ? ' */' : '';
   let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
   if (kind === 'heading') {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
     const ln = sel.active.line;
     const lineText = doc.lineAt(ln).text;
     const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || '見出し');
-    const newText = '##[' + body + '(白/緑)//tip]##';
+    const newText = cOpen + '##[' + body + '(白/緑)//tip]##' + cClose;
     await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
-    bodySel = new vscode.Selection(new vscode.Position(ln, 3), new vscode.Position(ln, 3 + body.length)); // '##[' の直後〜本文末
+    const b = cOpen.length + 3; // (/* )##[ の直後
+    bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b + body.length));
   } else {
     let prefix, suffix, defBody;
     if (kind === 'highlight') { prefix = '=={'; suffix = '(赤/黄)//tip}=='; defBody = 'ハイライト'; }
@@ -10787,8 +10797,9 @@ async function insertFormatTemplate(kind, editor) {
     else return;
     const body = selText || defBody;
     const startOff = doc.offsetAt(sel.start);
-    await editor.edit(eb => eb.replace(sel, prefix + body + suffix));
-    bodySel = new vscode.Selection(doc.positionAt(startOff + prefix.length), doc.positionAt(startOff + prefix.length + body.length));
+    await editor.edit(eb => eb.replace(sel, cOpen + prefix + body + suffix + cClose));
+    const b = startOff + cOpen.length + prefix.length;
+    bodySel = new vscode.Selection(doc.positionAt(b), doc.positionAt(b + body.length));
   }
   // v0.9.714: 挿入後、エディタにフォーカスを移し、本文(プレースホルダ)を選択状態にする(即上書きで書き込めるように)。
   // 俊克 am11:15「ボタンを押した後エディタにフォーカスを移して」。focusMeDockTargetEditorは選択を1点に潰すので使わない。
