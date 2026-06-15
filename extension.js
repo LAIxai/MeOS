@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.883: hT_122105.511にも標準バッジ付与=全開始膜のバッジ統一完了(俊克 6/15 pm07:30「なぜ特別扱い?」)。hT_は旧式の名前プレフィックスで、v0.9.543以降TOC検出はmTC=文法に移行済み→mCN=hT_xxxは普通のmCN膜。特別扱いの根拠は無かった(私の誤判断)。これでバッジ無しの開始膜はゼロ。
 // - v0.9.882: バッジ欠けの開始膜2つに標準バッジ(📊⊕0+0D0W)を付与(俊克 6/15 pm06:58 指摘・全膜を色変更可に統一)。0867_BOOKMARK と 0871_WARP_SUBMARINE_ME_CRUISE。※0200_DECORATIONSは元から付与済み。hT_122105.511(Hyper TOC source索引)は特殊膜のため対象外。
 // - v0.9.881: ★Format色ピッカー改良6件(俊克 6/15 pm00:24)。①(🟢/🔴)スロットは色玉のみに簡素化・非選択側を半透明(.dim)で「今どちらを設定中か」可視化。②スウォッチtipを英日併記「Red, 赤」。③見出し/スロットの文言を英語化(Text/Line/Background color)。④tipを要素の真上に近接表示(離れすぎ解消・showTocTipに#fmt-popブランチ)。⑤ポップアップ背景を黒固定→テーマ適応(editorWidget-background)+枠を--meos-frame。⑥ポップアップを対象Formatボタンの真上に中央表示(Vの右でなく==等の上)。
 // - v0.9.880: ★Format色ピッカーをミーピー方式に(俊克 6/15 pm00:00)。パレットを下端固定で上に伸ばし、(🟢/🔴)文字色/背景色スロットを常時下に表示=隠れない→文字色を選んだ後そのまま背景色スロットを押せる。fmtPopCh(null/fg/bg)で展開管理・placeFmtPop()がfmtPopBottom基準でtop=bottom-高さ(上伸ばし)・開いてるスロットをactive表示・スウォッチ選択後もパレット維持。
@@ -1832,7 +1833,7 @@
 
 // {* ▲mCN=0000_HISTORY // end [cGJF=h] *}
 
-// {* ▼mCN=hT_122105.511 // Hyper TOC ★source index for extension.js 🚧(0):v0.9.407 [oGJF=h] [tRJF=h] *}
+// {* ▼mCN=hT_122105.511 // Hyper TOC ★source index for extension.js 🚧(0):v0.9.407 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // ⇄ 0100_CORE_STATE // require / VERSION / shared state
 // ⇄ 0200_DECORATIONS // decoration lifecycle and style setup
 // ⇄ 0300_MSTATS // mSTATS badge parser / formatter / sync / restore
