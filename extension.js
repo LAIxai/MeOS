@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.888: ★レビュー注釈マーカー //tip= 導入(俊克 6/16 am01:24・推し一致でA案)。①Format初期値 (色)//tip → (色)//tip=。②parseColorSpecで `//` 直後の任意キーワード `tip=` をホバー表示時に剥がす(注釈は綺麗・後方互換・既存//コメントも温存)。③💬ジャンプは //tip= を持つマーク行のみ対象に変更(純粋スポットライトは除外・grep "//tip=" で全注釈抽出・URL等はマーク同行条件で誤検出回避)。書き忘れ対策はボタン既定が//tip=なので自動付与=明示削除でオプトアウト。
 // - v0.9.887: ハイライト/取消線ジャンプの💬ラベルを約2倍に拡大(俊克 6/16 am01:14)。#nav-mark-label font-size 11→21px。
 // - v0.9.886: ★ハイライト/取消線ジャンプ追加(俊克 6/15 pm09:02 編集者⇄作家のレビュー注釈巡回)。Navigate Me!に [↑💬↓] を追加=現在膜内のハイライト(=={…}==/分割/素)＋取消線(~~{…}~~/分割/素)を含む行を上/下に巡回・端で循環(見出しジャンプと同方式)。tip空欄でも拾う(書き忘れ取りこぼし無し)・1行複数は1ストップ。2個未満で無効化半透明・巡回側はwrap-edge太枠。navMeMarkJump/markNavStateForEditor/MARK_NAV_RE。
 // - v0.9.885: ★FormatボタンをC系言語で分割方式出力に(俊克 6/15 pm08:50)。ハイライト=/* =={ */ body /* (色)//tip}== */・取消線=/* ~~{ */ body /* (色)//tip}~~ */。本文が実コードでも動く・全体包みは中の */ /* を消すだけで得られる(インライン1操作)。見出しは行頭ラベル用途で実コードにならず、現レンダラで分割の中区切りを隠せないため全体包みのまま。markdown等は素のまま。bodySelもopenPart長に追従。
@@ -2002,7 +2003,8 @@ function parseColorSpec(content, single, scan) {
     const isEnd = /^\s*$/.test(after);             // (色) が行末
     if (!tipM && !isEnd) continue;                 // 末尾metadataでない → 本文中の色名扱いはしない
     // 末尾側を優先(後から見つかった有効colorで上書き)。tip は実テキスト(content)側から切り出す。
-    chosen = { index: m.index, fg, bg, tip: tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '').trim() : '' };
+    // v0.9.888: `//` の直後の任意キーワード `tip=` はホバー表示時に剥がす(注釈は綺麗・grep "//tip=" 可・後方互換)。
+    chosen = { index: m.index, fg, bg, tip: tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '').replace(/^\s*tip=/, '').trim() : '' };
   }
   if (chosen) { fgKey = chosen.fg; bgKey = chosen.bg; bodyText = content.slice(0, chosen.index); comment = chosen.tip; }
   return { bodyText: bodyText, bodyLen: bodyText.length, fgKey: fgKey, bgKey: bgKey, comment: comment };
@@ -10838,7 +10840,7 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
   const def = (kind === 'heading') ? { fg: '白', bg: '緑' } : (kind === 'strike') ? { fg: '赤', bg: '' } : { fg: '赤', bg: '黄' };
   const FG = (fg && String(fg).trim()) ? String(fg).trim() : def.fg;
   const BG = (typeof bg === 'string') ? bg.trim() : def.bg;
-  const spec = '(' + FG + '/' + BG + ')//tip';
+  const spec = '(' + FG + '/' + BG + ')//tip=';
   let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
   if (kind === 'heading') {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
@@ -11508,7 +11510,7 @@ function navMeMarkJump(direction) {
   try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
   if (pair) { lo = pair.start; hi = pair.end; } // 現在膜内に限定
   const marks = [];
-  for (let i = lo; i <= hi; i++) { if (MARK_NAV_RE.test(doc.lineAt(i).text || '')) marks.push(i); }
+  for (let i = lo; i <= hi; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf('//tip=') >= 0 && MARK_NAV_RE.test(t)) marks.push(i); }
   if (!marks.length) { vscode.window.setStatusBarMessage('MeOS: no highlights / strikethroughs here.', 2000); return false; }
   const cur = editor.selection.active.line;
   let target, wrapped = false;
@@ -11525,7 +11527,7 @@ function markNavStateForEditor(editor) {
   if (pair) { lo = pair.start; hi = pair.end; }
   const cur = editor.selection.active.line;
   let count = 0, hasBefore = false, hasAfter = false;
-  for (let i = lo; i <= hi; i++) { if (MARK_NAV_RE.test(doc.lineAt(i).text || '')) { count++; if (i < cur) hasBefore = true; if (i > cur) hasAfter = true; } }
+  for (let i = lo; i <= hi; i++) { const t = doc.lineAt(i).text || ''; if (t.indexOf('//tip=') >= 0 && MARK_NAV_RE.test(t)) { count++; if (i < cur) hasBefore = true; if (i > cur) hasAfter = true; } }
   return { count: count, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
