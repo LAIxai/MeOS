@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.876: ★コメント包み記法(俊克 6/15 am10:01)。装飾全体をC系ブロックコメント /* … */ で包むと、コードからは ただのコメント、MeOS上では装飾された文字だけが見える(味気ないソースを読みやすくする注釈ツール)。例 /* =={ ハイライト (赤/黄)//tip}== */。内側の =={…}== / ~~{…}~~ は既存描画のまま、追加した殻隠しパスで /* と */ を非表示化。見出し ##[…]## は行頭判定があるため reHead に任意の /* */ 殻を取り込み。js等で実コードを汚さず装飾可能に。
 // - v0.9.875: ★ハイライト誤爆修正(俊克 6/15 am03:45・自分のコードの=== 0 と !== でハイライトが点灯)。プレーンハイライト ==…== がJS比較演算子(===/!==/==)の一部の == を区切りと誤認→区切り==の両外側に =!<>~ や = が隣接しないようlookbehind/lookaheadガードを追加(=={…}== 波括弧版は元から安全)。3箇所(maskInlineTokens相当/装飾本体reHi/tokenRe)を統一修正。
 // - v0.9.874: ★最外核膜ルール(俊克 6/15 am03:03 「Warpが包み膜をぐるぐる回るだけ・深度D+1にしても駄目」)。バッジのD値は表示専用でコードが書出すだけ→構造深度はネストから計算するためバッジ書換では変わらないのが原因。解決=引退したmNTの「深度透過」を最外核mCNに復活(記法不要・唯一の深度0膜を構造判定でisEnvelope化)。直下の章を深度-1して0へ戻し、Warpは章(深度0)を巡回・最外核は除外。countEnclosingMembranesAtLine/Warp/Submarine両filterに!isEnvelope追加。
 // - v0.9.873: 外側のextension_js膜にmSTATバッジ(📊⊕0+0D0W)を付与(俊克 6/15 am02:47・バッジ無しだと色変更不可)。mCN開始膜の正規仕様に合わせ、色ピッカーで色付け可能に。
@@ -4297,6 +4298,24 @@ function applyPrettyLabels(editor) {
     const text = editor.document.lineAt(line).text;
     if (text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
     if (text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
+    // v0.9.876: ★コメント包み記法(俊克 6/15 am10:01)。装飾全体を /* … */ ブロックコメントで包むと、
+    // コードから見れば ただのコメント、MeOS上では装飾された文字だけが見える(味気ないソースを読みやすく
+    // する注釈ツール)。内側の =={…}== / ~~{…}~~ は既存ロジックがそのまま描画するので、ここでは殻 /* と
+    // */ を隠すだけにする。見出し ##[…]## は行頭判定があるため reHead 側で /* */ を取り込む。
+    if (line !== docCursorLine && text.indexOf('/*') >= 0) {
+      let msh;
+      const reOpenShell = /\/\*\s*(?==={|~~\{)/g;
+      while ((msh = reOpenShell.exec(text)) !== null) {
+        const r = { range: new vscode.Range(line, msh.index, line, msh.index + msh[0].length) };
+        (text.charAt(msh.index + msh[0].length) === '~' ? strikeMarkerRanges : highlightMarkerRanges).push(r);
+      }
+      const reCloseShell = /(\}==|\}~~)(\s*\*\/)/g;
+      while ((msh = reCloseShell.exec(text)) !== null) {
+        const s = msh.index + msh[1].length;
+        const r = { range: new vscode.Range(line, s, line, s + msh[2].length) };
+        (msh[1] === '}~~' ? strikeMarkerRanges : highlightMarkerRanges).push(r);
+      }
+    }
     const jfHideRanges = jumpFlagRangesInText(line, text);
     // v0.9.656/657: ハイライト ==text(色)== を検出（膜行・本文行どちらでも効く）。
     // 同一行に複数可。`==`マーカーは隠す。内側末尾に (色) があればその色の背景にし、
@@ -4412,16 +4431,18 @@ function applyPrettyLabels(editor) {
     //   #{1,3}[ と ]#{1,3}(と末尾の(色/色)//コメント) は隠す。行頭のみ(空白可)。カーソル行は生データ表示。
     if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && text.indexOf('[') >= 0) {
       // 行頭(空白可) #{1,3} [ 中身 ] #{1,3}(\2で開き#数と一致)。中身は ] / 改行を含まない。
-      const reHead = /^(\s*)(#{1,3})\[([^\]\n]*)\]\2/;
+      // v0.9.876: 任意の /* … */ 殻に対応(コメント包み見出し /* ##[本文(色)//tip]## */)。
+      const reHead = /^(\s*)(\/\*\s*)?(#{1,3})\[([^\]\n]*)\]\3(\s*\*\/)?/;
       const mH = reHead.exec(text);
       if (mH) {
-        const level = mH[2].length;                 // 1|2|3
+        const shellOpen = mH[2] || '';              // 任意の "/* " 殻
+        const level = mH[3].length;                 // 1|2|3
         const hashLen = level;
-        const openStart = mH[1].length;             // 最初の # の位置
-        const innerStart = openStart + hashLen + 1; // #{1,3}[ の直後 = 中身(本文)開始
-        const inner = mH[3];                        // [ と ] の間
+        const openStart = mH[1].length;             // 行頭インデント直後(=殻 or 最初の # の位置)
+        const innerStart = openStart + shellOpen.length + hashLen + 1; // (/*) #{1,3}[ の直後 = 本文開始
+        const inner = mH[4];                        // [ と ] の間
         const closeStart = innerStart + inner.length; // ] の位置
-        const closeEnd = closeStart + 1 + hashLen;  // ]#{1,3} の終端
+        const closeEnd = closeStart + 1 + hashLen + (mH[5] ? mH[5].length : 0); // ]#{1,3}(␣*/) の終端
         // v0.9.699: 中身末尾の (文字色/背景色) と //コメント を分離(統一記法)。1色のみ=文字色。
         // v0.9.700: 見出しは本文中にインライン(=={…}==/~~{…}~~)を持てるので、その中の //・() を
         // 見出し自身のものと誤認しないよう maskInlineTokens でマスクした版で位置検出する。
