@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.882: バッジ欠けの開始膜2つに標準バッジ(📊⊕0+0D0W)を付与(俊克 6/15 pm06:58 指摘・全膜を色変更可に統一)。0867_BOOKMARK と 0871_WARP_SUBMARINE_ME_CRUISE。※0200_DECORATIONSは元から付与済み。hT_122105.511(Hyper TOC source索引)は特殊膜のため対象外。
 // - v0.9.881: ★Format色ピッカー改良6件(俊克 6/15 pm00:24)。①(🟢/🔴)スロットは色玉のみに簡素化・非選択側を半透明(.dim)で「今どちらを設定中か」可視化。②スウォッチtipを英日併記「Red, 赤」。③見出し/スロットの文言を英語化(Text/Line/Background color)。④tipを要素の真上に近接表示(離れすぎ解消・showTocTipに#fmt-popブランチ)。⑤ポップアップ背景を黒固定→テーマ適応(editorWidget-background)+枠を--meos-frame。⑥ポップアップを対象Formatボタンの真上に中央表示(Vの右でなく==等の上)。
 // - v0.9.880: ★Format色ピッカーをミーピー方式に(俊克 6/15 pm00:00)。パレットを下端固定で上に伸ばし、(🟢/🔴)文字色/背景色スロットを常時下に表示=隠れない→文字色を選んだ後そのまま背景色スロットを押せる。fmtPopCh(null/fg/bg)で展開管理・placeFmtPop()がfmtPopBottom基準でtop=bottom-高さ(上伸ばし)・開いてるスロットをactive表示・スウォッチ選択後もパレット維持。
 // - v0.9.879: ★Format色UI刷新(俊克 6/15 am11:06 「イメージが違う」)。v878の共有プルダウン撤去。各ボタン(==/~~/##)右に「V」カレット→押すと(文字色/背景色)2スロット(🟢/🔴)→各スロットを押すとミーピー左目と同方式の色パレットが開く。fg=13色/bg=10色+なし。fmtSpec(種別ごとにfg/bg保持)→insertFormat.fg/bgで伝達。insertFormatTemplateは spec=(FG/BG)//tip を統一生成(未指定は種別既定: hl=赤/黄,strike=赤/なし,heading=白/緑)。
@@ -10816,7 +10817,7 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: bodySel });
 }
 
-// {* ▼mCN=0867_BOOKMARK // 🔖 ワンブックマーク(最大3個・安全装置) v0.9.715 *}
+// {* ▼mCN=0867_BOOKMARK // 🔖 ワンブックマーク(最大3個・安全装置) v0.9.715 (📊⊕0+0D0W) *}
 // 「場所の記憶」。最大3個のしおりを装飾🔖のみで表示(ソースに1mmも書かない)。globalStateにURIキーで永続。
 // ★戻る(cycle)と消す(remove)を分離: cycleは大事な場所へ巡回ジャンプ／removeはカーソル行のしおりだけ消す
 // (最後に居た大事な場所が勝手に消えない)。満杯時の挿入は無効(自動削除しない)。編集の行ズレは分かる範囲で追従。
@@ -11444,7 +11445,7 @@ function headNavStateForEditor(editor) {
 }
 
 
-// {* ▼mCN=0871_WARP_SUBMARINE_ME_CRUISE // v0.9.384 Warp/Submarine Me two-world cruise navigation [oGJF=h] [tRJF=h] *}
+// {* ▼mCN=0871_WARP_SUBMARINE_ME_CRUISE // v0.9.384 Warp/Submarine Me two-world cruise navigation (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue = 0) {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document || !editor.selection) return false;
