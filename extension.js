@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.891: ★レビュー注釈にチェックボックス(俊克 6/16 am02:30-38「最後の一手」)。Format初期値 (色)//tip= → (色)//[]tip=。空[]=未対応・[…]に何か書けば対応済み(タイムスタンプ/☑️/イニシャル等、使う人次第)。💬は未対応だけ巡回(MARK_TIP_OPEN_RE)→直して[]に記入すると外れ、止まらなくなれば全件完了=レビューの信号機。parseColorSpecは//直後の[…]もホバー時に剥がし注釈は綺麗。旧//tip=も未対応扱いで後方互換。💬着地行=カーソル行=生データ表示でその場で記入可。
 // - v0.9.890: 💬ジャンプ誤反応修正(俊克 6/16 am01:59)。本文中に //tip= が出るだけの行(私の例示/grep文字列/見出し本文への言及)を誤って拾っていた→判定を「色閉じ )の直後の //tip=」(MARK_TIP_RE=/\)\s*\/\/tip=/)に厳格化。本物のマーク注釈 (色)//tip= だけが対象に。あわせて見出しジャンプの # ラベルを白色に(俊克 改良1)。
 // - v0.9.889: 💬ジャンプ改良2件(俊克 6/16 am01:43)。①見出し ##[…]##(コメント包み /* ##[…]## */ 両対応)も //tip= があれば💬の巡回対象に追加(markNavHit=MARK_NAV_RE∨MARK_HEADING_RE ∧ //tip=)。②隣の見出しジャンプのラベルを ## → 1文字 # に+サイズ拡大(11→21px・💬と同格の目立ち)。
 // - v0.9.888: ★レビュー注釈マーカー //tip= 導入(俊克 6/16 am01:24・推し一致でA案)。①Format初期値 (色)//tip → (色)//tip=。②parseColorSpecで `//` 直後の任意キーワード `tip=` をホバー表示時に剥がす(注釈は綺麗・後方互換・既存//コメントも温存)。③💬ジャンプは //tip= を持つマーク行のみ対象に変更(純粋スポットライトは除外・grep "//tip=" で全注釈抽出・URL等はマーク同行条件で誤検出回避)。書き忘れ対策はボタン既定が//tip=なので自動付与=明示削除でオプトアウト。
@@ -2005,8 +2006,9 @@ function parseColorSpec(content, single, scan) {
     const isEnd = /^\s*$/.test(after);             // (色) が行末
     if (!tipM && !isEnd) continue;                 // 末尾metadataでない → 本文中の色名扱いはしない
     // 末尾側を優先(後から見つかった有効colorで上書き)。tip は実テキスト(content)側から切り出す。
-    // v0.9.888: `//` の直後の任意キーワード `tip=` はホバー表示時に剥がす(注釈は綺麗・grep "//tip=" 可・後方互換)。
-    chosen = { index: m.index, fg, bg, tip: tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '').replace(/^\s*tip=/, '').trim() : '' };
+    // v0.9.888/891: `//` 直後の任意キーワード `[チェック]tip=` をホバー表示時に剥がす(注釈は綺麗・grep可・後方互換)。
+    // v0.9.891: チェックボックス `//[]tip=`(未) / `//[☑️]tip=`(済) の `[…]` 部分も剥がす。
+    chosen = { index: m.index, fg, bg, tip: tipM ? content.slice(afterIdx).replace(/^\s*\/\//, '').replace(/^\s*\[[^\]]*\]/, '').replace(/^\s*tip=/, '').trim() : '' };
   }
   if (chosen) { fgKey = chosen.fg; bgKey = chosen.bg; bodyText = content.slice(0, chosen.index); comment = chosen.tip; }
   return { bodyText: bodyText, bodyLen: bodyText.length, fgKey: fgKey, bgKey: bgKey, comment: comment };
@@ -10842,7 +10844,7 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
   const def = (kind === 'heading') ? { fg: '白', bg: '緑' } : (kind === 'strike') ? { fg: '赤', bg: '' } : { fg: '赤', bg: '黄' };
   const FG = (fg && String(fg).trim()) ? String(fg).trim() : def.fg;
   const BG = (typeof bg === 'string') ? bg.trim() : def.bg;
-  const spec = '(' + FG + '/' + BG + ')//tip=';
+  const spec = '(' + FG + '/' + BG + ')//[]tip=';
   let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
   if (kind === 'heading') {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
@@ -11507,9 +11509,13 @@ const MARK_NAV_RE = /=={[^\n]*?}==|(?<![=!<>~])==(?!\{)[^=\n]+?(?<![!<>])==(?!=)
 // v0.9.889: 見出し(##[…]##・コメント包み /* ##[…]## */ 両対応)も //tip= があれば 💬 の対象に含める(俊克 6/16)。
 const MARK_HEADING_RE = /^\s*(?:\/\*\s*)?(#{1,3})\[[^\]\n]*\]\1/;
 // v0.9.890: 本物のレビュー注釈は必ず「色指定の直後」 (色)//tip= の形。行内のどこかに //tip= があるだけでは
-// 拾わない(本文中の言及・grep "//tip=" 文字列・URL等を除外)。色閉じ ) の直後の //tip= だけを注釈とみなす。
-const MARK_TIP_RE = /\)\s*\/\/tip=/;
-const markNavHit = (t) => MARK_TIP_RE.test(t) && (MARK_NAV_RE.test(t) || MARK_HEADING_RE.test(t));
+// 拾わない(本文中の言及・grep 文字列・URL等を除外)。色閉じ ) の直後の //tip= だけを注釈とみなす。
+// v0.9.891: ★チェックボックス導入。//[]tip= は未対応。[…] に「何か書き込んであれば対応済み」(俊克 6/16 am02:38)=
+// タイムスタンプ //[2026.06.16…]tip= でも ☑️ でもイニシャルでも何でも可=使い方は使う人次第。空 [] だけが未対応。
+// 💬は「未対応」だけを巡回→直して [] に何か書けば巡回から外れ、💬が止まらなくなったら全件完了=レビューの信号機。
+// MARK_TIP_OPEN_RE = 色閉じ ) の直後の //(空[]のみ可)tip= = 未対応。旧 //tip=(括弧無し)も未対応扱い(後方互換)。
+const MARK_TIP_OPEN_RE = /\)\s*\/\/(?:\[\s*\])?tip=/;
+const markNavHit = (t) => MARK_TIP_OPEN_RE.test(t) && (MARK_NAV_RE.test(t) || MARK_HEADING_RE.test(t));
 function navMeMarkJump(direction) {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document) return false;
