@@ -1,5 +1,6 @@
-// {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
+// {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.908: ★赤い波線の真因を根治(俊克 6/16 pm09:37)。H-TOCメタの埋め込みマーカーが <!-- mHTOC1 hex --> (HTML式コメント)で、.jsに書くと tsserver が <!-- を構文エラー扱い→以降の行(空行含む)に赤い波線が連鎖していた(複数行スキャンではないのでv907で直らなかった)。修正=C系コード言語では JS有効な /* mHTOC1 hex */ で包む(reader正規表現は両形式を受理・後方互換)。あわせてバグ1緩和: extension_js膜の折返しが起きる長いコメントを短縮(折畳みヘッダが折返さず誤展開しにくく)。
 // - v0.9.907: ★複数行ハイライト/取消線の誤爆を根絶(俊克 6/16 pm08:57: 折畳メタ膜の下クリックで空行に赤い波線)。真因=改行またぎ =={…}== / ~~{…}~~ の全文スキャンが、C系コードのコメント/regex/文字列中の =={ ~~{ を無関係に最大50行まで誤マッチしていた(extension.js自身で発生)。修正=複数行スキャンを散文(markdown/plaintext等)専用に=MEOS_BLOCK_COMMENT_LANGS(js/ts/c…)では無効化。コードの装飾はコメント包み(単一行)で足りるため安全。
 // - v0.9.906: ★畳んだ膜が2〜3秒後に勝手に展開しカーソルが次行へ移る件を根治(俊克 6/16 pm06:08)。真因=mSTATバッジ同期が折畳んだ開始行を編集→VSCodeが折畳みを再計算して展開。setPairFoldStateAndMstatの順序変更: ①バッジ同期を折畳む前(開いた状態)に実施 ②ウォームアップ→折畳みを最後の操作に ③折畳み後はscheduleMstatsSyncを呼ばずrefresh(装飾のみ)だけ=以後ドキュメント編集ゼロ。maybeAutoUnfoldは元々neuter済み。
 // - v0.9.905: ★畳んだ膜が4〜5秒後に勝手に展開する件を修正(俊克 6/16 pm05:57)。v904でカーソル移動を外したため、畳んだ後もカーソルが膜内部(隠れた行)に残り、後続のreveal(mSTAT同期/refresh)でVSCodeがカーソルを見せるため自動展開していた(バッジは▼▲のまま)。畳む時のみカーソルをpair.start(畳んでも見える行)へ退避。selectionLinesによる一発折畳みは維持。
@@ -5406,11 +5407,16 @@ async function setHtocSelForActiveTab(key) {
 // 消失=俊克 2026.06.01 am09:13 指摘)。hexエンコードなので //, ==, ~~, --> 等のパーサ干渉文字を一切
 // 含まず安全。editor 上では装飾(mdWrapperHideDecoration)で非表示、markdown preview でも HTMLコメント
 // として非表示。globalState は移行フォールバック/キャッシュに降格。
-const HTOC_MARKER_RE = /<!--\s*mHTOC1\s+([0-9a-fA-F]*)\s*-->/;
+const HTOC_MARKER_RE = /(?:<!--|\/\*)\s*mHTOC1\s+([0-9a-fA-F]*)\s*(?:-->|\*\/)/;
 const _htocSourceCache = new WeakMap(); // document -> { version, markerLine, data }
-function encodeHyperTocLine(data) {
-  try { return '<!-- mHTOC1 ' + Buffer.from(JSON.stringify(data), 'utf8').toString('hex') + ' -->'; }
-  catch (_) { return null; }
+function encodeHyperTocLine(data, document) {
+  // v0.9.908: C系コード(js/ts/c…)では HTMLコメント <!-- --> を書くと tsserver が構文エラー扱い→以降の行に
+  // 赤い波線が連鎖する(俊克 6/16 pm09:37)。コード言語では JS有効な /* */ ブロックコメントで包む。
+  try {
+    const hex = Buffer.from(JSON.stringify(data), 'utf8').toString('hex');
+    const code = document && MEOS_BLOCK_COMMENT_LANGS.has(document.languageId);
+    return code ? ('/* mHTOC1 ' + hex + ' */') : ('<!-- mHTOC1 ' + hex + ' -->');
+  } catch (_) { return null; }
 }
 function decodeHyperTocLineText(text) {
   if (!text) return null;
@@ -5466,7 +5472,7 @@ async function writeHyperTocToSource(document, data) {
   const editor = vscode.window.visibleTextEditors.find(e => e.document === document)
     || ((vscode.window.activeTextEditor && vscode.window.activeTextEditor.document === document) ? vscode.window.activeTextEditor : null);
   if (!editor) return false; // doc not open as an editor → globalState keeps it until next open
-  const hexLine = encodeHyperTocLine(data);
+  const hexLine = encodeHyperTocLine(data, document);
   if (!hexLine) return false;
   const metaOpen = wrapWorkingTocComment(document, '▼mCN=' + HTOC_META_ID + ' // MeOS H-TOC metadata — do not edit (📊⊖f0+0D0W)');
   const metaClose = wrapWorkingTocComment(document, '▲mCN=' + HTOC_META_ID + ' // end');
