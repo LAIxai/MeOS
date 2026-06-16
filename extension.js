@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.899: 最前線保留栞アイコン微調整(俊克 6/16 pm00:26)。Fを少し右下(4,4→5.2,5.4)・💤を少し上(9,9.2→8.6,7.4)に。
 // - v0.9.898: 💤保留栞にプルアップメニュー追加(俊克 6/16 pm00:03・通常栞🔖▾と同仕組み)。💤をbm-split化し ▾(bm-pending-menu-btn)→専用メニュー bm-pending-pop: 💤追加/保留一覧/🧹Clear all pending/✅Resolve this(カーソル行)/🚩Switch Front pending(最頻用=最下)。bm-popからは💤項目を分離し通常栞メニューを純化。bookmarkClearAllPending/bookmarkRemovePending(カーソル)メッセージ追加。
 // - v0.9.897: ★最前線保留栞(Front pending)追加(俊克 6/16 am11:51・通常栞Frontと同アルゴリズム)。data.pendingFront(globalState永続/編集追従/満杯時退避)・専用ガターアイコン bookmark-pending-front.svg(赤地・左上白F+💤)・💤トグルは保留以外→最前線保留へ直行/保留上→次へ巡回・💤行ホバーに「🚩 Switch Front pending」コマンド・ResolveでpendingFront解除・Clear all(通常栞)は💤と最前線保留を残す。コマンド bookmarkSetPendingFront/At 登録。
 // - v0.9.896: 💤保留栞の上限を1→3に(俊克 6/16 am11:41「もう1つ付けているので3つくらい必要」)。PENDING_BOOKMARK_MAX=3。データ構造/UI(一覧/追加/削除/巡回ジャンプ/行ズレ追従)は最初から複数対応=定数1つでスケール。
