@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.897: ★最前線保留栞(Front pending)追加(俊克 6/16 am11:51・通常栞Frontと同アルゴリズム)。data.pendingFront(globalState永続/編集追従/満杯時退避)・専用ガターアイコン bookmark-pending-front.svg(赤地・左上白F+💤)・💤トグルは保留以外→最前線保留へ直行/保留上→次へ巡回・💤行ホバーに「🚩 Switch Front pending」コマンド・ResolveでpendingFront解除・Clear all(通常栞)は💤と最前線保留を残す。コマンド bookmarkSetPendingFront/At 登録。
 // - v0.9.896: 💤保留栞の上限を1→3に(俊克 6/16 am11:41「もう1つ付けているので3つくらい必要」)。PENDING_BOOKMARK_MAX=3。データ構造/UI(一覧/追加/削除/巡回ジャンプ/行ズレ追従)は最初から複数対応=定数1つでスケール。
 // - v0.9.895: ホバーの対応済表示を ✅[内容] 本文 に(俊克 6/16 am08:16)。ブラケットの中身(日付等)をそのままホバーに出す→「いつ対応したか」が一目で分かる。未対応は ⬜ 本文。例 //[済:2026…]tip=指示 → 💬 ✅[済:2026…] 指示。parseColorSpec1箇所のみ変更で全ホバー反映。
 // - v0.9.894: ★Format三兄弟のtip復活(俊克 6/16 am07:51・診断的中)。v891で初期値が (色)//[]tip=(コメント空)になり、空コメント→ホバー生成条件if(comment)を通らずtipが出なくなっていた。修正=parseColorSpecで tip= マークはコメント空でも先頭に☐(未対応)/☑(対応済=空でない[…])を付与→既存7ホバーサイト無改修で「💬 ☐」「💬 ☑ 直した」等が表示。ホバー文のみ影響(本文長/ジャンプ判定は別経路)。旧//tip(=無し)はグリフ無しで後方互換。副産物=ホバーで対応状況も一目で分かる。
@@ -2464,6 +2465,7 @@ function disposeDecorations() {
   if (bookmarkDecoration) { bookmarkDecoration.dispose(); bookmarkDecoration = undefined; }
   if (bookmarkPendingDecoration) { bookmarkPendingDecoration.dispose(); bookmarkPendingDecoration = undefined; } // v0.9.837
   if (bookmarkFrontDecoration) { bookmarkFrontDecoration.dispose(); bookmarkFrontDecoration = undefined; }
+  if (bookmarkPendingFrontDecoration) { bookmarkPendingFrontDecoration.dispose(); bookmarkPendingFrontDecoration = undefined; } // v0.9.897
   if (bookmarkHoverDecoration) { bookmarkHoverDecoration.dispose(); bookmarkHoverDecoration = undefined; }
   if (headingSizeByLevel) {
     for (const d of headingSizeByLevel.values()) { try { d.dispose(); } catch (_) {} }
@@ -2842,6 +2844,16 @@ function makeDecorations() {
   try { if (extensionContext && extensionContext.extensionUri) _bmPendingOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark-pending.svg'); } catch (_) {}
   if (!_bmPendingOpts.gutterIconPath) _bmPendingOpts.before = { contentText: '💤', margin: '0 3px 0 0' };
   bookmarkPendingDecoration = vscode.window.createTextEditorDecorationType(_bmPendingOpts);
+  // v0.9.897: 💤保留栞の最前線(Front pending)=赤地・左上白F の専用アイコン(通常栞Frontと同アルゴリズム)。
+  const _bmPendingFrontOpts = {
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    overviewRulerColor: 'rgba(220,38,38,0.98)',
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+    gutterIconSize: 'contain'
+  };
+  try { if (extensionContext && extensionContext.extensionUri) _bmPendingFrontOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark-pending-front.svg'); } catch (_) {}
+  if (!_bmPendingFrontOpts.gutterIconPath) _bmPendingFrontOpts.before = { contentText: '🚩', margin: '0 3px 0 0' };
+  bookmarkPendingFrontDecoration = vscode.window.createTextEditorDecorationType(_bmPendingFrontOpts);
   bookmarkHoverDecoration = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v0.9.721: ホバー専用
   // v0.9.660: 見出し — レベル別サイズ(太字)装飾 ×3。font-size は em で控えめに。
   // v0.9.669: font-size を復活(H1=1.3 / H2=1.2 / H3=1.1em 太字)。v0.9.666で10秒固着の切り分けの
@@ -10899,23 +10911,27 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
 let bookmarkDecoration = null;
 let bookmarkPendingDecoration = null;  // v0.9.837: 💤保留栞専用=スレート地・白z のガターアイコン(後で片付ける用)
 let bookmarkFrontDecoration = null;  // v0.9.760: Front Anchor(最前線栞)専用=赤地・白F のガターアイコン
+let bookmarkPendingFrontDecoration = null;  // v0.9.897: 最前線保留栞(Front pending)専用=赤地・左上白F+💤
 let bookmarkHoverDecoration = null;  // v0.9.721: ホバー専用(ガターアイコン無し・行全体)            // 🔖 をしおり行に表示
 const _bookmarkMem = new Map();           // uriString -> { marks:[line0...], cycleIdx:int }
 function bookmarkStateKey(document) { return document ? ('meosBookmarks:' + document.uri.toString()) : ''; }
 // v0.9.837: 💤保留栞の最大数。初回公開は1個、要望次第で5〜10に上げる(定数1つでスケール)。
 const PENDING_BOOKMARK_MAX = 3;
 function getBookmarks(document) {
-  if (!document) return { marks: [], cycleIdx: -1, front: -1, pending: [], markStamps: {} };
+  if (!document) return { marks: [], cycleIdx: -1, front: -1, pending: [], pendingFront: -1, markStamps: {} };
   const k = document.uri.toString();
   if (_bookmarkMem.has(k)) return _bookmarkMem.get(k);
-  let data = { marks: [], cycleIdx: -1, front: -1, pending: [], markStamps: {} };
+  let data = { marks: [], cycleIdx: -1, front: -1, pending: [], pendingFront: -1, markStamps: {} };
   try {
     const saved = extensionContext && extensionContext.globalState.get(bookmarkStateKey(document));
-    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1), front: (typeof saved.front === 'number' ? saved.front : -1), pending: Array.isArray(saved.pending) ? saved.pending.filter(p => p && typeof p.line === 'number').map(p => ({ line: p.line, at: p.at || '' })) : [], markStamps: (saved.markStamps && typeof saved.markStamps === 'object') ? saved.markStamps : {} };
+    if (saved && Array.isArray(saved.marks)) data = { marks: saved.marks.slice(0, 3), cycleIdx: (typeof saved.cycleIdx === 'number' ? saved.cycleIdx : -1), front: (typeof saved.front === 'number' ? saved.front : -1), pending: Array.isArray(saved.pending) ? saved.pending.filter(p => p && typeof p.line === 'number').map(p => ({ line: p.line, at: p.at || '' })) : [], pendingFront: (typeof saved.pendingFront === 'number' ? saved.pendingFront : -1), markStamps: (saved.markStamps && typeof saved.markStamps === 'object') ? saved.markStamps : {} };
   } catch (_) {}
   // v0.9.760: front must be one of the current marks; otherwise drop it.
   if (data.front >= 0 && data.marks.indexOf(data.front) < 0) data.front = -1;
   if (!Array.isArray(data.pending)) data.pending = [];
+  if (typeof data.pendingFront !== 'number') data.pendingFront = -1;
+  // v0.9.897: pendingFront must be one of the current pending lines; otherwise drop it.
+  if (data.pendingFront >= 0 && !data.pending.some(p => p.line === data.pendingFront)) data.pendingFront = -1;
   if (!data.markStamps || typeof data.markStamps !== 'object') data.markStamps = {}; // v0.9.847: 行番号→作成日時
   _bookmarkMem.set(k, data);
   return data;
@@ -10925,7 +10941,7 @@ async function saveBookmarks(document, data) {
   _bookmarkMem.set(document.uri.toString(), data);
   // v0.9.845: pending(💤保留栞)も globalState に永続化する(俊克バグ報告: 再インストールで保留栞だけ消える)。
   // v0.9.837でgetBookmarks/メモリには入れたが、saveのglobalState書込から漏れていた=通常栞は残るのに保留だけ消える真因。
-  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1), pending: Array.isArray(data.pending) ? data.pending : [], markStamps: (data.markStamps && typeof data.markStamps === 'object') ? data.markStamps : {} }); } catch (_) {} // v0.9.847: markStamps(通常栞の作成日時)も永続化
+  try { if (extensionContext) await extensionContext.globalState.update(bookmarkStateKey(document), { marks: data.marks.slice(0, 3), cycleIdx: data.cycleIdx, front: (typeof data.front === 'number' ? data.front : -1), pending: Array.isArray(data.pending) ? data.pending : [], pendingFront: (typeof data.pendingFront === 'number' ? data.pendingFront : -1), markStamps: (data.markStamps && typeof data.markStamps === 'object') ? data.markStamps : {} }); } catch (_) {} // v0.9.847: markStamps / v0.9.897: pendingFront も永続化
 }
 function refreshBookmarkDecoration(editor) {
   if (!bookmarkDecoration || !editor) return;
@@ -10934,6 +10950,7 @@ function refreshBookmarkDecoration(editor) {
   const iconItems = [];      // v0.9.721: 通常栞アイコン(点レンジ=折返し行でも1個)。
   const frontIconItems = []; // v0.9.760: Front Anchor(赤地・白F)アイコン。
   const pendingIconItems = [];// v0.9.837: 💤 保留栞アイコン。
+  const pendingFrontIconItems = [];// v0.9.897: 最前線保留栞(赤地・左上白F)アイコン。
   const hoverItems = [];     // ホバーは行全体レンジ(別装飾・ガターアイコン無し)。
   for (const ln of data.marks) {
     if (ln < 0 || ln >= doc.lineCount) continue;
@@ -10962,25 +10979,29 @@ function refreshBookmarkDecoration(editor) {
   for (const p of (Array.isArray(data.pending) ? data.pending : [])) {
     const ln = p.line;
     if (ln < 0 || ln >= doc.lineCount) continue;
-    pendingIconItems.push({ range: new vscode.Range(ln, 0, ln, 0) });
+    const isPFront = (ln === data.pendingFront); // v0.9.897
+    (isPFront ? pendingFrontIconItems : pendingIconItems).push({ range: new vscode.Range(ln, 0, ln, 0) });
     const eol = doc.lineAt(ln).text.length;
     const lnArg = encodeURIComponent(JSON.stringify([ln]));
+    const ptag = isPFront ? '🚩 Front pending (最前線保留栞)' : '💤 Pending';
     const md = new vscode.MarkdownString(
-      '💤 Pending' + (p.at ? ' · parked ' + p.at : '') + ' (Ln ' + (ln + 1) + ')  \n' +
-      '[✅ Resolve (remove this 💤)](command:lai-membrane.bookmarkRemovePendingAt?' + lnArg + ')'
+      ptag + (p.at ? ' · parked ' + p.at : '') + ' (Ln ' + (ln + 1) + ')  \n' +
+      '[✅ Resolve (remove this 💤)](command:lai-membrane.bookmarkRemovePendingAt?' + lnArg + ')  \n' +
+      '[🚩 Switch Front pending](command:lai-membrane.bookmarkSetPendingFrontAt?' + lnArg + ')'
     );
-    md.isTrusted = { enabledCommands: ['lai-membrane.bookmarkRemovePendingAt'] };
+    md.isTrusted = { enabledCommands: ['lai-membrane.bookmarkRemovePendingAt', 'lai-membrane.bookmarkSetPendingFrontAt'] };
     hoverItems.push({ range: new vscode.Range(ln, 0, ln, eol), hoverMessage: md });
   }
   try { editor.setDecorations(bookmarkDecoration, iconItems); } catch (_) {}
   try { if (bookmarkFrontDecoration) editor.setDecorations(bookmarkFrontDecoration, frontIconItems); } catch (_) {}
   try { if (bookmarkPendingDecoration) editor.setDecorations(bookmarkPendingDecoration, pendingIconItems); } catch (_) {}
+  try { if (bookmarkPendingFrontDecoration) editor.setDecorations(bookmarkPendingFrontDecoration, pendingFrontIconItems); } catch (_) {}
   try { if (bookmarkHoverDecoration) editor.setDecorations(bookmarkHoverDecoration, hoverItems); } catch (_) {}
 }
 async function bookmarkClearAll(editor) { // 通常栞(🔖/🚩)を全消去。v0.9.837: 💤保留栞は別プールなので残す(失くしたくないTODO)。
   if (!editor) return;
   const data = getBookmarks(editor.document);
-  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1, front: -1, pending: Array.isArray(data.pending) ? data.pending : [], markStamps: {} }); // v0.9.847: 通常栞のタイムスタンプも全消去(💤は残す)
+  await saveBookmarks(editor.document, { marks: [], cycleIdx: -1, front: -1, pending: Array.isArray(data.pending) ? data.pending : [], pendingFront: (typeof data.pendingFront === 'number' ? data.pendingFront : -1), markStamps: {} }); // v0.9.847: 通常栞のタイムスタンプも全消去(💤は残す) / v0.9.897: 💤の最前線も残す
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
   reapplyGutterLanesAfterBookmarkChange(editor);
 }
@@ -11107,9 +11128,34 @@ async function bookmarkRemovePending(editor, line) {
   const idx = data.pending.findIndex(p => p.line === ln);
   if (idx < 0) { postBookmarkState(editor); return; }
   data.pending.splice(idx, 1);
+  if (data.pendingFront === ln) data.pendingFront = -1; // v0.9.897: 最前線保留を消したらFront解除
   await saveBookmarks(doc, data);
   refreshBookmarkDecoration(editor); postBookmarkState(editor);
   reapplyGutterLanesAfterBookmarkChange(editor);
+}
+// v0.9.897: 最前線保留栞(Front pending)を設定。通常栞 bookmarkSetFront と同アルゴリズム(保留プール版)。
+async function bookmarkSetPendingFront(editor, line) {
+  if (!editor) return;
+  const doc = editor.document, data = getBookmarks(doc);
+  const ln = (typeof line === 'number') ? line : editor.selection.active.line;
+  if (ln < 0 || ln >= doc.lineCount) { postBookmarkState(editor); return; }
+  if (!Array.isArray(data.pending)) data.pending = [];
+  if (!data.pending.some(p => p.line === ln)) {
+    // 新しい行 → 保留として追加。満杯なら現在の最前線(無ければ先頭)を退避して空ける。
+    if (data.pending.length >= PENDING_BOOKMARK_MAX) {
+      const sorted = data.pending.slice().sort((a, b) => a.line - b.line);
+      const evict = (data.pendingFront >= 0 && data.pending.some(p => p.line === data.pendingFront)) ? data.pendingFront : sorted[0].line;
+      const ei = data.pending.findIndex(p => p.line === evict);
+      if (ei >= 0) data.pending.splice(ei, 1);
+    }
+    data.pending.push({ line: ln, at: pendingStamp() });
+    data.pending.sort((a, b) => a.line - b.line);
+  }
+  data.pendingFront = ln;
+  await saveBookmarks(doc, data);
+  refreshBookmarkDecoration(editor); postBookmarkState(editor);
+  reapplyGutterLanesAfterBookmarkChange(editor);
+  vscode.window.setStatusBarMessage('🚩 Front pending set (Ln ' + (ln + 1) + ')', 1500);
 }
 // v0.9.841: Me Dockの💤ボタン用。メニューを開かずワンクリックで: 保留が無ければカーソル行に駐車、
 // 有れば(カーソルの次の)保留へジャンプ(末尾→先頭で巡回)。状態判断はバックエンド側=同期ズレ無し。
@@ -11120,7 +11166,12 @@ async function bookmarkTogglePending(editor) {
   const pending = Array.isArray(data.pending) ? data.pending.slice().sort((a, b) => a.line - b.line) : [];
   if (!pending.length) { await bookmarkAddPending(editor); return; }
   const cur = editor.selection.active.line;
-  const target = pending.find(p => p.line > cur) || pending[0]; // 次の保留(無ければ先頭=巡回)
+  // v0.9.897: 通常栞 bookmarkCycle と同アルゴリズム。保留の上→次の保留へ巡回／保留以外→最前線保留へ直行。
+  const onIdx = pending.findIndex(p => p.line === cur);
+  let target;
+  if (onIdx >= 0) { target = pending[(onIdx + 1) % pending.length]; }
+  else if (data.pendingFront >= 0 && pending.some(p => p.line === data.pendingFront)) { target = pending.find(p => p.line === data.pendingFront); }
+  else { target = pending.find(p => p.line > cur) || pending[0]; }
   const ln = Math.min(Math.max(0, target.line), doc.lineCount - 1);
   const pos = new vscode.Position(ln, 0);
   try { await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) }); } catch (_) {}
@@ -11150,6 +11201,8 @@ function adjustBookmarksForChange(e) { // 編集による行ズレを分かる�
     for (const p of pending) {
       if (p.line > startLine) { p.line = Math.max(startLine, p.line + delta); changed = true; }
     }
+    // v0.9.897: 最前線保留栞の行も同じ規則でずらす。
+    if (typeof data.pendingFront === 'number' && data.pendingFront > startLine) { data.pendingFront = Math.max(startLine, data.pendingFront + delta); changed = true; }
   }
   if (changed) {
     // 行で重複排除(先勝ち)・昇順。日時は新しい行番号にrekeyして保持。
@@ -11160,6 +11213,7 @@ function adjustBookmarksForChange(e) { // 編集による行ズレを分かる�
     const ns = {}; for (const pr of kept) { if (pr.at) ns[pr.line] = pr.at; }
     data.markStamps = ns;
     if (data.front >= 0 && data.marks.indexOf(data.front) < 0) data.front = -1;
+    if (typeof data.pendingFront === 'number' && data.pendingFront >= 0 && !pending.some(p => p.line === data.pendingFront)) data.pendingFront = -1; // v0.9.897
     saveBookmarks(e.document, data);
   }
 }
@@ -13106,6 +13160,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'bookmarkInsert') { await bookmarkInsert(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkRemove') { await bookmarkRemove(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkSetFront') { await bookmarkSetFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
+    if (message && message.type === 'bookmarkSetPendingFront') { await bookmarkSetPendingFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.897
     if (message && message.type === 'bookmarkClearAll') { await bookmarkClearAll(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.834: Me Dockメニューにも栞全削除(俊克 pm08:32)
     if (message && message.type === 'bookmarkAddPending') { await bookmarkAddPending(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.837: 💤保留栞を追加
     if (message && message.type === 'bookmarkTogglePending') { await bookmarkTogglePending(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.841: 💤ツールバーボタン(駐車/ジャンプ)
@@ -13519,6 +13574,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkClearAll', () => bookmarkClearAll(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFront', () => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFrontAt', (line) => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetPendingFront', () => bookmarkSetPendingFront(vscode.window.activeTextEditor || getMeDockTargetEditor()))); // v0.9.897
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetPendingFrontAt', (line) => bookmarkSetPendingFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.897
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemovePendingAt', (line) => bookmarkRemovePending(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.837: 💤ホバーのResolve
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
   // v0.9.798: intercept native Fold All (⌘K⌘0) / Unfold All (⌘K⌘J) and neuter them. They bypass
