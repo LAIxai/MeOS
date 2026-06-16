@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.921: Mepyの前歯=位置はv919と同じ(top:-1px)に戻し、上唇(contents-box上辺)を#contents-box::beforeで歯の上に重ね描き→歯の上端が唇の裏に隠れて「唇から生える」絵に(俊克 6/17: 位置は同じ・上端だけ隠す)。CSSのみ・webview<script>同一。
 // - v0.9.920: Mepyの前歯2本(me-tooth/contents-checkbox)を top:-1px→3px に。枠(=唇)の上辺より下へ垂らし、上唇から内側へ生える歯に(俊克 6/17: 枠が唇なので歯が唇の上は変)。CSSのみ・webview<script>は919と同一。
 // - v0.9.919: H-TOC項目を「膜名 // コメント」にシンプル化(俊克 6/17: v918は項目をUI2分割する大工事でパネル全壊→撤回)。今回はnode側のみ: ①新規追加の値から ⇒{}/⇄{} ラッパーを撤去 ②既存項目も表示時に括弧を剥がして正規化(tocDisplayValue/tocCommentFromValue)。webviewの<script>は917と完全同一=パネルは壊れ得ない。「最後の}を消すとジャンプ不能」の煩わしさは解消。//青・コメント緑の色付けは入力欄分割が要るため別ステップで慎重に。
 // - v0.9.917: H-TOCボタン(俊克 6/17 am04:45)。①真因=`.toc-del`は単一クラス(0,1,0)で`.toc-tools button`(0,1,1)に負け11pxに固定されていた(44px指定が無効化)→`.toc-tools .toc-del`の2クラスに昇格しfont-size22pxで左の＋と同サイズに均衡。②H-TOCタブの＋(複製)=緑#16a34a・−(削除)=赤#dc2626の淡色背景+枠+hover。
@@ -12144,7 +12145,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .color-letter i{font-style:normal;color:var(--vscode-foreground)}
 .me-face-nose{display:flex;justify-content:center;gap:8px;margin:1px 0 2px}
 .me-face-nose i{width:5px;height:5px;border-radius:50%;background:rgba(125,125,125,.85)}
-.contents-box{position:relative;border-width:2px;border-radius:10px;margin:4px 8px 8px;min-height:46px;overflow:visible}
+.contents-box{position:relative;border-width:2px;border-radius:10px;margin:4px 8px 8px;min-height:46px;overflow:visible}/* v0.9.921: 上唇(上辺)を歯の上に重ね描きして歯の上端を隠す(俊克 6/17: 位置はそのまま・上端だけ隠す) */#contents-box::before{content:'';position:absolute;left:-2px;right:-2px;top:-2px;height:6px;background:var(--vscode-editor-background);border-top:2px solid currentColor;border-radius:10px 10px 0 0;z-index:4;pointer-events:none}
 .contents-choice{position:static}
 /* v0.9.821: 前歯2本(俊克 pm10:05 改良1)=チェックボックスは前歯の1本という設定。上唇(上辺)から
    口の内側へ生える: 左=飾りの白い歯(me-tooth)・右=contents-checkbox。鼻の穴には被らない。 */
@@ -12153,9 +12154,9 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
    菱形の下半分は口内と同色なので見えず、歯の下辺の線は欠け部分だけ自然に途切れる。
    チェックボックス(向かって右)はv824の真四角outlineを撤回し元の素のまま。 */
 /* v0.9.827: 欠けた歯も白に(俊克 am03:08)=膜色10%の染みを撤去し口内と同じ地色。輪郭1px+欠け口の線だけで描く。 */
-.me-tooth{position:absolute;top:3px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:1px solid color-mix(in srgb,currentColor 55%,transparent);border-radius:5px;background:#f5f5f5;box-sizing:border-box}
+.me-tooth{position:absolute;top:-1px;left:50%;transform:translateX(-100%);width:17px;height:17px;border:1px solid color-mix(in srgb,currentColor 55%,transparent);border-radius:5px;background:#f5f5f5;box-sizing:border-box}
 .me-tooth::after{content:'';position:absolute;width:6px;height:6px;left:7px;bottom:-3px;transform:rotate(45deg);background:var(--vscode-editor-background);border-top:1px solid color-mix(in srgb,currentColor 55%,transparent);border-left:1px solid color-mix(in srgb,currentColor 55%,transparent);box-sizing:border-box}
-.contents-choice input{position:absolute;top:3px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background)}
+.contents-choice input{position:absolute;top:-1px;left:50%;transform:translateX(4%);border-radius:5px;background:var(--vscode-editor-background)}
 .contents-word{font-weight:700;font-size:14px;color:var(--vscode-foreground)}
 /* v0.9.822: キャラが大きめになったので右側の操作ボタンも文字を大きく(俊克 pm10:29 改良1)。v800のcompact(11px/23px)→13px/28px。 */
 .big-action{min-height:28px;font-size:13px;padding:4px 10px}
