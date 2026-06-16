@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.907: ★複数行ハイライト/取消線の誤爆を根絶(俊克 6/16 pm08:57: 折畳メタ膜の下クリックで空行に赤い波線)。真因=改行またぎ =={…}== / ~~{…}~~ の全文スキャンが、C系コードのコメント/regex/文字列中の =={ ~~{ を無関係に最大50行まで誤マッチしていた(extension.js自身で発生)。修正=複数行スキャンを散文(markdown/plaintext等)専用に=MEOS_BLOCK_COMMENT_LANGS(js/ts/c…)では無効化。コードの装飾はコメント包み(単一行)で足りるため安全。
 // - v0.9.906: ★畳んだ膜が2〜3秒後に勝手に展開しカーソルが次行へ移る件を根治(俊克 6/16 pm06:08)。真因=mSTATバッジ同期が折畳んだ開始行を編集→VSCodeが折畳みを再計算して展開。setPairFoldStateAndMstatの順序変更: ①バッジ同期を折畳む前(開いた状態)に実施 ②ウォームアップ→折畳みを最後の操作に ③折畳み後はscheduleMstatsSyncを呼ばずrefresh(装飾のみ)だけ=以後ドキュメント編集ゼロ。maybeAutoUnfoldは元々neuter済み。
 // - v0.9.905: ★畳んだ膜が4〜5秒後に勝手に展開する件を修正(俊克 6/16 pm05:57)。v904でカーソル移動を外したため、畳んだ後もカーソルが膜内部(隠れた行)に残り、後続のreveal(mSTAT同期/refresh)でVSCodeがカーソルを見せるため自動展開していた(バッジは▼▲のまま)。畳む時のみカーソルをpair.start(畳んでも見える行)へ退避。selectionLinesによる一発折畳みは維持。
 // - v0.9.904: ★▼⇄▼▲を膜内から一発で畳めるよう修正(俊克 6/16 pm05:46)。旧方式=カーソルをpair.startへ移動→無引数editor.foldは、膜の深い内部だと対象レンジがズレて畳めずバッジだけ畳み状態に=状態デシンクで2〜3回押し。setPairFoldStateAndMstatを selectionLines:[pair.start] 明示指定に変更=カーソル位置非依存で開始行の折畳みレンジを直接対象→膜内どこからでも一発。
@@ -4364,11 +4365,16 @@ function applyPrettyLabels(editor) {
   // v0.9.832: 取消線と同様に、改行をまたぐハイライト =={…}== も検出する(俊克 6/13 pm00:14
   // 「改行を含むハイライトが効かない」)。起動条件=「=={ が同一行で }== で閉じていない行」がある時だけ全文走査。
   let hasMlBracedHighlight = false;
+  // v0.9.907: ★改行またぎの複数行ハイライト/取消線は「散文(markdown/plaintext/日記)」専用にする(俊克 6/16
+  // pm08:57)。C系コード(js/ts/c…)では =={ / ~~{ がコメントやregex・文字列としてソースに頻出し、無関係な
+  // =={…}== / ~~{…}~~ を遠く(最大50行)まで誤マッチ→空行に赤い波線等が出ていた(extension.js自身で発生)。
+  // コードの装飾はコメント包み(単一行)で足りるため、複数行スキャンを言語で無効化して誤爆を根絶する。
+  const mlBracedAllowed = !MEOS_BLOCK_COMMENT_LANGS.has(editor.document.languageId);
 
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
-    if (text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
-    if (text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
+    if (mlBracedAllowed && text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
+    if (mlBracedAllowed && text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
     // v0.9.876/884: ★コメント包み記法。装飾を /* … */ ブロックコメントで包むと、コードからは ただの
     // コメント、MeOS上では装飾された文字だけが見える。2方式を両立:
     //  ①全体包み /* =={ body (色)//tip}== */  … body はコメント(見出し・注釈向け)。内側 =={…}== は
