@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.896: 💤保留栞の上限を1→3に(俊克 6/16 am11:41「もう1つ付けているので3つくらい必要」)。PENDING_BOOKMARK_MAX=3。データ構造/UI(一覧/追加/削除/巡回ジャンプ/行ズレ追従)は最初から複数対応=定数1つでスケール。
 // - v0.9.895: ホバーの対応済表示を ✅[内容] 本文 に(俊克 6/16 am08:16)。ブラケットの中身(日付等)をそのままホバーに出す→「いつ対応したか」が一目で分かる。未対応は ⬜ 本文。例 //[済:2026…]tip=指示 → 💬 ✅[済:2026…] 指示。parseColorSpec1箇所のみ変更で全ホバー反映。
 // - v0.9.894: ★Format三兄弟のtip復活(俊克 6/16 am07:51・診断的中)。v891で初期値が (色)//[]tip=(コメント空)になり、空コメント→ホバー生成条件if(comment)を通らずtipが出なくなっていた。修正=parseColorSpecで tip= マークはコメント空でも先頭に☐(未対応)/☑(対応済=空でない[…])を付与→既存7ホバーサイト無改修で「💬 ☐」「💬 ☑ 直した」等が表示。ホバー文のみ影響(本文長/ジャンプ判定は別経路)。旧//tip(=無し)はグリフ無しで後方互換。副産物=ホバーで対応状況も一目で分かる。
 // - v0.9.893: 目標文字数の入力枠を、目標未設定時は現在の文字数で初期化(俊克 6/16 am07:14)。openMeCharPopで value=target||chars。現在値からの増減を打ち込みたいニーズに対応。
@@ -10902,7 +10903,7 @@ let bookmarkHoverDecoration = null;  // v0.9.721: ホバー専用(ガターア�
 const _bookmarkMem = new Map();           // uriString -> { marks:[line0...], cycleIdx:int }
 function bookmarkStateKey(document) { return document ? ('meosBookmarks:' + document.uri.toString()) : ''; }
 // v0.9.837: 💤保留栞の最大数。初回公開は1個、要望次第で5〜10に上げる(定数1つでスケール)。
-const PENDING_BOOKMARK_MAX = 1;
+const PENDING_BOOKMARK_MAX = 3;
 function getBookmarks(document) {
   if (!document) return { marks: [], cycleIdx: -1, front: -1, pending: [], markStamps: {} };
   const k = document.uri.toString();
