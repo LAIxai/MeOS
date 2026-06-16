@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.905: ★畳んだ膜が4〜5秒後に勝手に展開する件を修正(俊克 6/16 pm05:57)。v904でカーソル移動を外したため、畳んだ後もカーソルが膜内部(隠れた行)に残り、後続のreveal(mSTAT同期/refresh)でVSCodeがカーソルを見せるため自動展開していた(バッジは▼▲のまま)。畳む時のみカーソルをpair.start(畳んでも見える行)へ退避。selectionLinesによる一発折畳みは維持。
 // - v0.9.904: ★▼⇄▼▲を膜内から一発で畳めるよう修正(俊克 6/16 pm05:46)。旧方式=カーソルをpair.startへ移動→無引数editor.foldは、膜の深い内部だと対象レンジがズレて畳めずバッジだけ畳み状態に=状態デシンクで2〜3回押し。setPairFoldStateAndMstatを selectionLines:[pair.start] 明示指定に変更=カーソル位置非依存で開始行の折畳みレンジを直接対象→膜内どこからでも一発。
 // - v0.9.903: ★膜名中ハイライトのバグ修正(俊克 6/16 pm05:13)。膜名に =={…}== 等を入れると、その閉じ }== の } を膜シェルの閉じ } と誤認し名前が途中で切れ→開閉ペア不一致で閉じ膜が崩れて畳めなかった。修正①OPEN_RE/CLOSE_RE等4箇所の膜シェル閉じ } ルックアヘッドを行末アンカー(\}\s*$)に=}== midnameで切れない。②cleanMembraneNameが装飾マーカーを本文に畳んで識別子化→装飾した開き名が素の閉じ名と一致(装飾無し名は不変)。
 // - v0.9.902: ★💬ジャンプをLine行の右端へ移動(俊克 6/16 pm01:41)。#ボタン群(上のナビ行)とLine行の💬群を共に右寄せ+ラベル幅を24pxに統一→↑/↓が上下で揃いクリックしやすい(機動力)。ナビ行から💬を抜きMe Dock幅を圧縮、Line入力枠(flex:1)も自動で縮小。nav-head-groupにmargin-left:auto。
@@ -3271,6 +3272,10 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   // 畳み状態になり状態デシンク→2〜3回押し・俊克 6/16 pm05:46)。selectionLinesはカーソル位置に依存せず
   // pair.startの折畳みレンジを直接対象にするので、膜内どこからでも一発。
   const savedSel = editor.selection;
+  // v0.9.905: 畳む時はカーソルを開始行(=畳んだ後も見える行)へ退避させる。膜の内部にカーソルが残ると、
+  // 後続のreveal(mSTAT同期/refresh等)でVSCodeがカーソルを見せるため自動展開してしまう(俊克 6/16 pm05:57:
+  // 4〜5秒後に▼▲のまま勝手に展開)。selectionLinesで一発に畳む性質はそのまま維持。
+  if (folded) { try { editor.selection = new vscode.Selection(pair.start, 0, pair.start, 0); } catch (_) {} }
   await vscode.commands.executeCommand(folded ? 'editor.fold' : 'editor.unfold', { selectionLines: [pair.start] });
   if (!folded) {
     try { editor.selection = savedSel; } catch (_) {}
