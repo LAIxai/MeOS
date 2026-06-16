@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.906: ★畳んだ膜が2〜3秒後に勝手に展開しカーソルが次行へ移る件を根治(俊克 6/16 pm06:08)。真因=mSTATバッジ同期が折畳んだ開始行を編集→VSCodeが折畳みを再計算して展開。setPairFoldStateAndMstatの順序変更: ①バッジ同期を折畳む前(開いた状態)に実施 ②ウォームアップ→折畳みを最後の操作に ③折畳み後はscheduleMstatsSyncを呼ばずrefresh(装飾のみ)だけ=以後ドキュメント編集ゼロ。maybeAutoUnfoldは元々neuter済み。
 // - v0.9.905: ★畳んだ膜が4〜5秒後に勝手に展開する件を修正(俊克 6/16 pm05:57)。v904でカーソル移動を外したため、畳んだ後もカーソルが膜内部(隠れた行)に残り、後続のreveal(mSTAT同期/refresh)でVSCodeがカーソルを見せるため自動展開していた(バッジは▼▲のまま)。畳む時のみカーソルをpair.start(畳んでも見える行)へ退避。selectionLinesによる一発折畳みは維持。
 // - v0.9.904: ★▼⇄▼▲を膜内から一発で畳めるよう修正(俊克 6/16 pm05:46)。旧方式=カーソルをpair.startへ移動→無引数editor.foldは、膜の深い内部だと対象レンジがズレて畳めずバッジだけ畳み状態に=状態デシンクで2〜3回押し。setPairFoldStateAndMstatを selectionLines:[pair.start] 明示指定に変更=カーソル位置非依存で開始行の折畳みレンジを直接対象→膜内どこからでも一発。
 // - v0.9.903: ★膜名中ハイライトのバグ修正(俊克 6/16 pm05:13)。膜名に =={…}== 等を入れると、その閉じ }== の } を膜シェルの閉じ } と誤認し名前が途中で切れ→開閉ペア不一致で閉じ膜が崩れて畳めなかった。修正①OPEN_RE/CLOSE_RE等4箇所の膜シェル閉じ } ルックアヘッドを行末アンカー(\}\s*$)に=}== midnameで切れない。②cleanMembraneNameが装飾マーカーを本文に畳んで識別子化→装飾した開き名が素の閉じ名と一致(装飾無し名は不変)。
@@ -3260,7 +3261,14 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   const key = pairStateKey(editor, pair);
   foldStateByPairKey.set(key, !!folded);
 
+  // v0.9.906: ★mSTATバッジ同期を「折り畳む前(=開いた状態)」に行う。畳んだ後に開始行のバッジを書くと、
+  // 折畳んだ行への編集でVSCodeが折畳みを再計算して勝手に展開していた(俊克 6/16 pm06:08: 2〜3秒後に展開・
+  // カーソルが膜の次行へ)。畳む操作を最後にし、以後ドキュメント編集を一切しないことで展開を防ぐ。
+  if (!suppressMstat) {
+    await syncPairMstatFromFoldState(editor, pair);
+  }
   // FOLD: warm up MeOS fold ranges so editor.fold picks MeOS range (not enclosing ##).
+  // バッジ編集後にウォームアップ＝最新ドキュメントで折畳みレンジを再計算させる。
   if (folded && membraneFoldingProviderInstance) {
     membraneFoldingProviderInstance.notifyRangesChanged();
     await new Promise(r => setTimeout(r, 500));
@@ -3284,13 +3292,10 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
 
   foldStateByPairKey.set(key, !!folded);
 
-  if (!suppressMstat) {
-    await syncPairMstatFromFoldState(editor, pair);
-  }
-
+  // v0.9.906: 折り畳んだ後はドキュメントを編集しない(バッジ同期は上で実施済み)。refreshは装飾のみ＝
+  // 折畳みを崩さない。scheduleMstatsSyncは折畳んだ開始行を再編集して展開を招くので呼ばない。
   if (!suppressRefresh) {
     refresh(editor);
-    scheduleMstatsSync(editor);
     updateMeDockMode();
   }
 }
