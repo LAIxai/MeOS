@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // ★ MeOS for VSCm — the whole extension.js as ONE membrane (README hero) (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.903: ★膜名中ハイライトのバグ修正(俊克 6/16 pm05:13)。膜名に =={…}== 等を入れると、その閉じ }== の } を膜シェルの閉じ } と誤認し名前が途中で切れ→開閉ペア不一致で閉じ膜が崩れて畳めなかった。修正①OPEN_RE/CLOSE_RE等4箇所の膜シェル閉じ } ルックアヘッドを行末アンカー(\}\s*$)に=}== midnameで切れない。②cleanMembraneNameが装飾マーカーを本文に畳んで識別子化→装飾した開き名が素の閉じ名と一致(装飾無し名は不変)。
 // - v0.9.902: ★💬ジャンプをLine行の右端へ移動(俊克 6/16 pm01:41)。#ボタン群(上のナビ行)とLine行の💬群を共に右寄せ+ラベル幅を24pxに統一→↑/↓が上下で揃いクリックしやすい(機動力)。ナビ行から💬を抜きMe Dock幅を圧縮、Line入力枠(flex:1)も自動で縮小。nav-head-groupにmargin-left:auto。
 // - v0.9.901: Format三兄弟ボタン右の記号を栞ボタンと統一(俊克 6/16 pm01:18)。fmt-caret の「V」→「▾」(bm-menu-btn/bm-pending-menu-btn と同じプルアップ記号)。
 // - v0.9.900: 最前線保留栞アイコン微調整2(俊克 6/16 pm00:34)。💤を少し右(x 8.6→9.6)に。
@@ -2279,8 +2280,8 @@ let caretSkipSuppressUntil = 0;
 // isWorkingTocMembranePair returns for the resulting pair. Non-capturing alternation
 // keeps m[1] = name (backward compatible with all callers).
 const MEMBRANE_NAME_CHARS = '[^\r\n]*?';
-const OPEN_RE = new RegExp('^\\s*\\/\\/[ \\t]*\\{[ \\t]*[▼▽][ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)');
-const CLOSE_RE = new RegExp('^\\s*\\/\\/[ \\t]*\\{[ \\t]*[▲△][ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)');
+const OPEN_RE = new RegExp('^\\s*\\/\\/[ \\t]*\\{[ \\t]*[▼▽][ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}\\s*$|$)');
+const CLOSE_RE = new RegExp('^\\s*\\/\\/[ \\t]*\\{[ \\t]*[▲△][ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}\\s*$|$)');
 // v0.9.543: Cheap predicate — does this line use mTC= specifically?
 const MTC_LINE_RE = /^\s*\/\/[ \t]*\{[ \t]*[▼▽▲△][ \t]*mTC[ \t]*=/;
 const MD_MEMBRANE_QUOTED_RE = new RegExp('^\\s*\\[\\/\\/\\]:[ \\t]*#[ \\t]*\"[ \\t]*([▼▽▲△])[ \\t]*(?:mCN[ \\t]*=[ \\t]*)?(' + MEMBRANE_NAME_CHARS + ')(?=[ \\t]+\\/\\/|[ \\t]*\"\\s*$)([\\s\\S]*?)\\s*\"\\s*$');
@@ -2296,6 +2297,11 @@ function cleanMembraneName(id) {
   // the open line. Strip it so open/close pair matching ignores the hash and only the
   // membrane name (= `ファイル名_TS`) participates in identity comparison.
   return String(id || '')
+    // v0.9.903: 膜名に入れたハイライト/取消線の装飾を本文に畳んで識別子化(開閉ペア一致のため・装飾無し名は不変)。
+    .replace(/=={([^\n]*?)}==/g, function (_m, inner) { return parseColorSpec(inner, 'bg').bodyText; })
+    .replace(/~~\{([^\n]*?)\}~~/g, function (_m, inner) { return parseColorSpec(inner, 'fg').bodyText; })
+    .replace(/(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g, '$1')
+    .replace(/~~(?!\{)([^~\n]+?)~~/g, '$1')
     .replace(/\s+#[0-9a-fA-F]+\s*$/, '')
     // v0.9.672 (bug1): only strip a TRAILING 🟢/🔴 cluster (legacy literal button that
     // pre-v0.9.483 wrote right after the name) — NOT a 🟢/🔴 embedded mid-name. The old
@@ -4138,7 +4144,7 @@ function membraneLineParts(text, kind) {
 
   // Canonical code-style source: // {* ▼mCN=name // comment}
   // v0.9.545: also accept mTC= (TOC membrane).
-  let re = new RegExp('^(\\s*)(//[ \\t]*\\{[ \\t]*' + arrow + '[ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)(.*)$');
+  let re = new RegExp('^(\\s*)(//[ \\t]*\\{[ \\t]*' + arrow + '[ \\t]*(?:mCN|mTC|mNT)[ \\t]*=[ \\t]*)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}\\s*$|$)(.*)$');
   let m = text.match(re);
   if (m && !/^\s*\/\/[ \t]*(?:\/\/|#|--|;)/.test(text)) {
     const indentLen = m[1].length;
@@ -10711,7 +10717,7 @@ function membraneNameRangeForRenameOnLine(document, line, expectedKind, expected
   // Code / proto source:
   //   // {* ▼mCN=name // comment *}
   //   // {* ▼H1=name // comment *}
-  let re = new RegExp('^(\\s*)(//[ \\t]*\\{[ \\t]*' + arrow + '[ \\t]*' + key + '[ \\t]*=[ \\t]*)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}|$)(.*)$');
+  let re = new RegExp('^(\\s*)(//[ \\t]*\\{[ \\t]*' + arrow + '[ \\t]*' + key + '[ \\t]*=[ \\t]*)([^\\r\\n]*?)(?=[ \\t]+\\/\\/|[ \\t]*\\*?\\}\\s*$|$)(.*)$');
   let m = text.match(re);
 
   // Markdown hidden comments:
