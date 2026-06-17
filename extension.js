@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.932: ★魔法の呪文3『よよよ』/「ょょょ」/YOYOYO/yoyoyo 追加(俊克 6/17)。見出しジャンプ(#ボタン↑↓)を代行=大/大文字『よよよ』『YOYOYO』→前の見出し(↑)・小/小文字「ょょょ」「yoyoyo」→次の見出し(↓)。か(かかか)+み(みみみ)+よ(よよよ)=「神よ」完成。実装=呪文をSPELLSテーブル(triggers→action)に集約し検知(A)非ASCII/(B)ASCIIを共通化。node側のみ・webview<script>同一。
 // - v0.9.931: 📊バッジの「扉」によるクリックMe Dock開閉を引退し、開閉を呪文『みみみ』/mimimiに一本化(俊克 6/17)。handleMembraneNameSelectionのmstatIconHit分岐からtoggleMeDock()を除去(誤爆抑止のreturnは残置=クリックは通常キャレットのみ)。極小±1の扉に偶然当たって開く挙動が消える。node側のみ・webview<script>同一。
 // - v0.9.930: ★魔法の呪文2『みみみ』/mimimi 追加(俊克 6/17)。打つと3文字消してMe Dockを開閉トグル(toggleMeDock)。視界を広げてエディタに集中→再び呪文で戻せる。折返し右端が隠れる時に有効。実装=『かかか』機構を一般化(_fireRawTriggerにaction引数・既定=Rawトグル)＋MEDOCK_TRIGGERSを(A)カーソル位置/(B)ASCII末尾の2系統に追加。閉じている時もonDidChangeTextDocumentで検知し開く。node側のみ・webview<script>同一。
 // - v0.9.929: 💬(ハイライト/取消線レビュー注釈)ジャンプに見出しジャンプと同じ一連を移植(俊克 6/17)。navMeMarkJump=①マークの1行上に着地(curEff=cur+1で再ジャンプ張り付き回避)②着地行の行末にカーソル③本文へフォーカス。markNavStateForEditorのwrap判定もcurEff整合。renderMarkNavの無効化をc<2→c<1(1つでも有効)。node＋webview render部のみ・<script>構文確認済。
@@ -6455,6 +6456,14 @@ async function toggleRawMode() {
 }
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
 const MEDOCK_TRIGGERS = ['みみみ', 'mimimi']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
+const HEAD_PREV_TRIGGERS = ['よよよ', 'YOYOYO']; // v0.9.932: 魔法の呪文3(大/大文字)=前の見出しへ(↑)
+const HEAD_NEXT_TRIGGERS = ['ょょょ', 'yoyoyo']; // v0.9.932: 魔法の呪文3(小/小文字)=次の見出しへ(↓)。か+み+よ=神よ
+const SPELLS = [ // v0.9.932: 呪文テーブルに集約(trigger群→action)。非ASCIIは(A)カーソル位置・ASCIIは(B)変更末尾で判定。
+  { triggers: RAW_TRIGGERS, action: () => toggleRawMode() },
+  { triggers: MEDOCK_TRIGGERS, action: () => toggleMeDock() },
+  { triggers: HEAD_PREV_TRIGGERS, action: () => navMeHeadingJump(-1) },
+  { triggers: HEAD_NEXT_TRIGGERS, action: () => navMeHeadingJump(1) },
+];
 let _rawTriggerBusy = false;
 function _fireRawTrigger(ed, line, endChar, n, action) {
   _rawTriggerBusy = true; deferRefreshCount++;
@@ -6475,15 +6484,10 @@ function maybeHandleRawTrigger(e) {
   //     → v0.9.726で起きた「マークテキストを削除→次の入力で『かかか』が生き返り再トグル(かかかい)」を回避(v0.9.724の挙動に復帰)。
   const sel = ed.selection.active;
   const selLine = ed.document.lineAt(sel.line).text;
-  for (const t of RAW_TRIGGERS) {
+  for (const sp of SPELLS) for (const t of sp.triggers) { // (A) 非ASCII(かかか/みみみ/よよよ/ょょょ)=カーソル位置で判定
     if (t.charCodeAt(0) < 128) continue; // ASCIIは(B)で扱う
     if (sel.character >= t.length && selLine.slice(sel.character - t.length, sel.character) === t)
-      return _fireRawTrigger(ed, sel.line, sel.character, t.length);
-  }
-  for (const t of MEDOCK_TRIGGERS) { // v0.9.930: 『みみみ』(非ASCII)=Me Dockトグル
-    if (t.charCodeAt(0) < 128) continue;
-    if (sel.character >= t.length && selLine.slice(sel.character - t.length, sel.character) === t)
-      return _fireRawTrigger(ed, sel.line, sel.character, t.length, () => toggleMeDock());
+      return _fireRawTrigger(ed, sel.line, sel.character, t.length, sp.action);
   }
   // (B) ローマ字(ASCII=kakaka): 変更の末尾位置で判定(1文字ずつの入力でも正確)。IMEのマークが無いので削除は安全。
   for (const c of e.contentChanges) {
@@ -6491,15 +6495,10 @@ function maybeHandleRawTrigger(e) {
     const line = c.range.start.line;
     const endChar = c.range.start.character + c.text.length; // 挿入後の末尾位置
     const lineText = ed.document.lineAt(line).text;
-    for (const t of RAW_TRIGGERS) {
+    for (const sp of SPELLS) for (const t of sp.triggers) { // (B) ASCII(kakaka/mimimi/YOYOYO/yoyoyo)=変更末尾で判定(大小文字は区別)
       if (t.charCodeAt(0) >= 128) continue; // 非ASCIIは(A)で扱う
       if (endChar >= t.length && lineText.slice(endChar - t.length, endChar) === t)
-        return _fireRawTrigger(ed, line, endChar, t.length);
-    }
-    for (const t of MEDOCK_TRIGGERS) { // v0.9.930: 『mimimi』(ASCII)=Me Dockトグル
-      if (t.charCodeAt(0) >= 128) continue;
-      if (endChar >= t.length && lineText.slice(endChar - t.length, endChar) === t)
-        return _fireRawTrigger(ed, line, endChar, t.length, () => toggleMeDock());
+        return _fireRawTrigger(ed, line, endChar, t.length, sp.action);
     }
   }
   return false;
