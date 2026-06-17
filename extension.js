@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.928: 見出しジャンプの着地カーソルを着地行(見出しの1行前)の行末に(俊克 6/17: すぐ追記できる)。jump後にeditor.selectionを(land,行末列)へ。node側のみ・webview<script>同一。
 // - v0.9.927: 見出しジャンプ後すぐ打鍵できるよう、移動後に本文へフォーカス移動(俊克 6/17)。navMeHeadingJumpでjump後にfocusMeDockTargetEditorPreservingView(リビール済みなので再スクロールしない方)を呼ぶ。node側のみ・webview<script>同一。
 // - v0.9.926: 見出しジャンプを見出し1つでも有効化(俊克 6/17)。renderHeadNavの無効化条件をc<2→c<1に(0個のときだけ無効)。膜内に唯一の見出しでも、その1行上へ移動できる。webview render部のみ・<script>構文確認済(ハンドラ無改修)。
 // - v0.9.925: 見出しジャンプ(Navigate Me! #)の着地を「見出しの1行上」に(俊克 6/17: 見出し行に乗るとカーソル行=素になり分かりにくい→1つ上に止めれば見出しは装飾されたまま見える)。navMeHeadingJump=curEff(cur+1)で比較し再ジャンプで同じ見出しに張り付かない・着地land=max(lo,target-1)。headNavStateForEditorのwrap判定もcurEffに合わせ整合。node側のみ・webview<script>同一。
@@ -11641,6 +11642,12 @@ function navMeHeadingJump(direction) {
   if (wrapped && meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} }
   const land = Math.max(lo, target - 1); // land just above the heading so it shows decorated
   const ok = jumpMeDockTargetLine(String(land + 1));
+  // v0.9.928: put the caret at the END of the landing line so appending is immediate (俊克 6/17)
+  try {
+    const endCol = editor.document.lineAt(land).text.length;
+    const endPos = new vscode.Position(land, endCol);
+    editor.selection = new vscode.Selection(endPos, endPos);
+  } catch (_) {}
   focusMeDockTargetEditorPreservingView(editor); // v0.9.927: 移動後すぐ打鍵できるよう本文へフォーカス(俊克 6/17)
   return ok;
 }
