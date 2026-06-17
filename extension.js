@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.933: ①(バグ)英語色名が大文字だと通らない(White×/white○)→normalize系を小文字フォールバックで大文字小文字非依存に。②##ボタンの既定出力を変更: 本文「Heading」(英)＋色を(白/Green)=日本語fg+英語bgの混在(どちらも動く事をZennで見せる)＋見出しに作成日時タイムスタンプ自動付与(meosFormatStamp: YYYY.MM.DD(曜日1字)+am/pm先頭+HH:MM.SS・俊克: pmは区切りとして前)。消したい人は消せる。==/~~は従来どおり(タイムスタンプ無し)。③カラー全数テストベンチ color-test-bench.md(repo外)生成。node側のみ・webview<script>同一。
 // - v0.9.932: ★魔法の呪文3『よよよ』/「ょょょ」/YOYOYO/yoyoyo 追加(俊克 6/17)。見出しジャンプ(#ボタン↑↓)を代行=大/大文字『よよよ』『YOYOYO』→前の見出し(↑)・小/小文字「ょょょ」「yoyoyo」→次の見出し(↓)。か(かかか)+み(みみみ)+よ(よよよ)=「神よ」完成。実装=呪文をSPELLSテーブル(triggers→action)に集約し検知(A)非ASCII/(B)ASCIIを共通化。node側のみ・webview<script>同一。
 // - v0.9.931: 📊バッジの「扉」によるクリックMe Dock開閉を引退し、開閉を呪文『みみみ』/mimimiに一本化(俊克 6/17)。handleMembraneNameSelectionのmstatIconHit分岐からtoggleMeDock()を除去(誤爆抑止のreturnは残置=クリックは通常キャレットのみ)。極小±1の扉に偶然当たって開く挙動が消える。node側のみ・webview<script>同一。
 // - v0.9.930: ★魔法の呪文2『みみみ』/mimimi 追加(俊克 6/17)。打つと3文字消してMe Dockを開閉トグル(toggleMeDock)。視界を広げてエディタに集中→再び呪文で戻せる。折返し右端が隠れる時に有効。実装=『かかか』機構を一般化(_fireRawTriggerにaction引数・既定=Rawトグル)＋MEDOCK_TRIGGERSを(A)カーソル位置/(B)ASCII末尾の2系統に追加。閉じている時もonDidChangeTextDocumentで検知し開く。node側のみ・webview<script>同一。
@@ -1989,19 +1990,19 @@ const HIGHLIGHT_COLOR_ALIASES = {
 };
 function normalizeHighlightColor(name) {
   if (!name) return 'yellow';
-  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()];
+  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()] || HIGHLIGHT_COLOR_ALIASES[name.trim().toLowerCase()]; // v0.9.933: 英語色名は大文字小文字非依存(White=white)
   return key || 'yellow';
 }
 // v0.9.661: 文字色キーの正規化（空はnull=指定なし）。エイリアス表は共用。
 function normalizeFgColor(name) {
   if (!name || !name.trim()) return null;
-  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()];
+  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()] || HIGHLIGHT_COLOR_ALIASES[name.trim().toLowerCase()]; // v0.9.933: 英語色名は大文字小文字非依存(White=white)
   return (key && HIGHLIGHT_FG_COLORS[key]) ? key : null;
 }
 // v0.9.661: 背景色キーの正規化（空はnull=指定なし）。背景は無彩色を持たない→7色のみ。
 function normalizeBgColor(name) {
   if (!name || !name.trim()) return null;
-  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()];
+  const key = HIGHLIGHT_COLOR_ALIASES[name.trim()] || HIGHLIGHT_COLOR_ALIASES[name.trim().toLowerCase()]; // v0.9.933: 英語色名は大文字小文字非依存(White=white)
   return (key && HIGHLIGHT_COLORS[key]) ? key : null;
 }
 // v0.9.700: 見出し本文中のインライン記号(=={…}==・==…==・~~{…}~~・~~…~~)を、同じ長さの
@@ -10950,6 +10951,15 @@ function getMeDockTargetEditor() {
 // (コメント包み記法 → コードから見れば ただのコメント、MeOS上では装飾だけが見える)。markdown/
 // plaintext 等の非該当言語は素の MeOS 記法のまま出力する。俊克 6/15 am10:33。
 const MEOS_BLOCK_COMMENT_LANGS = new Set(['javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'jsonc', 'c', 'cpp', 'csharp', 'java', 'go', 'rust', 'php', 'swift', 'kotlin', 'scala', 'dart', 'css', 'scss', 'less', 'objective-c', 'objective-cpp']);
+// v0.9.933: 見出し等のタイムスタンプ。YYYY.MM.DD(曜日1字)+ am/pm先頭(俊克: pmは区切りとして前に) + HH:MM.SS。曜日=S-M-T-W-t-F-s。
+function meosFormatStamp(d) {
+  const p = n => String(n).padStart(2, '0');
+  const wd = ['S', 'M', 'T', 'W', 't', 'F', 's'][d.getDay()];
+  let h = d.getHours();
+  const ap = h < 12 ? 'am' : 'pm';
+  h = h % 12; if (h === 0) h = 12;
+  return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + '(' + wd + ')' + ap + p(h) + ':' + p(d.getMinutes()) + '.' + p(d.getSeconds());
+}
 async function insertFormatTemplate(kind, editor, fg, bg) {
   if (!editor) return;
   const doc = editor.document;
@@ -10960,17 +10970,20 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
   const cOpen = wrap ? '/* ' : '';
   const cClose = wrap ? ' */' : '';
   // v0.9.879: 文字色(fg)/背景色(bg)はFormatの「V」カラーピッカーで選ぶ。未指定は種別ごとの既定色。
-  const def = (kind === 'heading') ? { fg: '白', bg: '緑' } : (kind === 'strike') ? { fg: '赤', bg: '' } : { fg: '赤', bg: '黄' };
+  const def = (kind === 'heading') ? { fg: '白', bg: 'Green' } : (kind === 'strike') ? { fg: '赤', bg: '' } : { fg: '赤', bg: '黄' };
   const FG = (fg && String(fg).trim()) ? String(fg).trim() : def.fg;
   const BG = (typeof bg === 'string') ? bg.trim() : def.bg;
   const spec = '(' + FG + '/' + BG + ')//[]tip=';
   let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
   if (kind === 'heading') {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
+    // v0.9.933: 見出しに作成日時のタイムスタンプを //コメントへ自動付与(消したい人は消せる・確実に日付を残したい人に有意義)。
+    const stamp = meosFormatStamp(new Date());
+    const hspec = '(' + FG + '/' + BG + ')//' + stamp + ' []tip=';
     const ln = sel.active.line;
     const lineText = doc.lineAt(ln).text;
-    const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || '見出し');
-    const newText = cOpen + '##[' + body + spec + ']##' + cClose;
+    const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || 'Heading');
+    const newText = cOpen + '##[' + body + hspec + ']##' + cClose;
     await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
     const b = cOpen.length + 3; // (/* )##[ の直後
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b + body.length));
