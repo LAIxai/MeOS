@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.931: 📊バッジの「扉」によるクリックMe Dock開閉を引退し、開閉を呪文『みみみ』/mimimiに一本化(俊克 6/17)。handleMembraneNameSelectionのmstatIconHit分岐からtoggleMeDock()を除去(誤爆抑止のreturnは残置=クリックは通常キャレットのみ)。極小±1の扉に偶然当たって開く挙動が消える。node側のみ・webview<script>同一。
 // - v0.9.930: ★魔法の呪文2『みみみ』/mimimi 追加(俊克 6/17)。打つと3文字消してMe Dockを開閉トグル(toggleMeDock)。視界を広げてエディタに集中→再び呪文で戻せる。折返し右端が隠れる時に有効。実装=『かかか』機構を一般化(_fireRawTriggerにaction引数・既定=Rawトグル)＋MEDOCK_TRIGGERSを(A)カーソル位置/(B)ASCII末尾の2系統に追加。閉じている時もonDidChangeTextDocumentで検知し開く。node側のみ・webview<script>同一。
 // - v0.9.929: 💬(ハイライト/取消線レビュー注釈)ジャンプに見出しジャンプと同じ一連を移植(俊克 6/17)。navMeMarkJump=①マークの1行上に着地(curEff=cur+1で再ジャンプ張り付き回避)②着地行の行末にカーソル③本文へフォーカス。markNavStateForEditorのwrap判定もcurEff整合。renderMarkNavの無効化をc<2→c<1(1つでも有効)。node＋webview render部のみ・<script>構文確認済。
 // - v0.9.928: 見出しジャンプの着地カーソルを着地行(見出しの1行前)の行末に(俊克 6/17: すぐ追記できる)。jump後にeditor.selectionを(land,行末列)へ。node側のみ・webview<script>同一。
@@ -9584,8 +9585,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   // v0.9.289: the 📊 badge icon is a Me Dock door. Click toggles Open/Close.
   const mstatIconHit = isMouseSelection ? mstatBadgeIconHitInfo(editor) : null;
   if (mstatIconHit) {
+    // v0.9.931: 📊バッジの「扉」によるMe Dock開閉を引退→開閉は呪文『みみみ』/mimimi に一本化(俊克 6/17)。
+    // クリックは扉として消費せず通常のキャレット配置に任せる(jump誤爆だけ抑止し、トグルはしない)。
     nameJumpSuppressUntil = now + 250;
-    toggleMeDock();
     return;
   }
 
