@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.929: 💬(ハイライト/取消線レビュー注釈)ジャンプに見出しジャンプと同じ一連を移植(俊克 6/17)。navMeMarkJump=①マークの1行上に着地(curEff=cur+1で再ジャンプ張り付き回避)②着地行の行末にカーソル③本文へフォーカス。markNavStateForEditorのwrap判定もcurEff整合。renderMarkNavの無効化をc<2→c<1(1つでも有効)。node＋webview render部のみ・<script>構文確認済。
 // - v0.9.928: 見出しジャンプの着地カーソルを着地行(見出しの1行前)の行末に(俊克 6/17: すぐ追記できる)。jump後にeditor.selectionを(land,行末列)へ。node側のみ・webview<script>同一。
 // - v0.9.927: 見出しジャンプ後すぐ打鍵できるよう、移動後に本文へフォーカス移動(俊克 6/17)。navMeHeadingJumpでjump後にfocusMeDockTargetEditorPreservingView(リビール済みなので再スクロールしない方)を呼ぶ。node側のみ・webview<script>同一。
 // - v0.9.926: 見出しジャンプを見出し1つでも有効化(俊克 6/17)。renderHeadNavの無効化条件をc<2→c<1に(0個のときだけ無効)。膜内に唯一の見出しでも、その1行上へ移動できる。webview render部のみ・<script>構文確認済(ハンドラ無改修)。
@@ -11694,11 +11695,21 @@ function navMeMarkJump(direction) {
   for (let i = lo; i <= hi; i++) { if (markNavHit(doc.lineAt(i).text || '')) marks.push(i); }
   if (!marks.length) { vscode.window.setStatusBarMessage('MeOS: no highlights / strikethroughs here.', 2000); return false; }
   const cur = editor.selection.active.line;
+  const curEff = cur + 1; // v0.9.929: same "park one line above" as the heading jump (mark stays decorated)
   let target, wrapped = false;
-  if (direction >= 0) { target = marks.find(l => l > cur); if (target === undefined) { target = marks[0]; wrapped = true; } }
-  else { const before = marks.filter(l => l < cur); if (before.length) target = before[before.length - 1]; else { target = marks[marks.length - 1]; wrapped = true; } }
+  if (direction >= 0) { target = marks.find(l => l > curEff); if (target === undefined) { target = marks[0]; wrapped = true; } }
+  else { const before = marks.filter(l => l < curEff); if (before.length) target = before[before.length - 1]; else { target = marks[marks.length - 1]; wrapped = true; } }
   if (wrapped && meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} }
-  return jumpMeDockTargetLine(String(target + 1));
+  const land = Math.max(lo, target - 1); // land just above the mark
+  const ok = jumpMeDockTargetLine(String(land + 1));
+  // v0.9.929: caret to END of the landing line + focus editor for immediate append (= heading jump)
+  try {
+    const endCol = editor.document.lineAt(land).text.length;
+    const endPos = new vscode.Position(land, endCol);
+    editor.selection = new vscode.Selection(endPos, endPos);
+  } catch (_) {}
+  focusMeDockTargetEditorPreservingView(editor);
+  return ok;
 }
 function markNavStateForEditor(editor) {
   if (!editor || !editor.document) return { count: 0, plusWraps: false, minusWraps: false };
@@ -11706,9 +11717,9 @@ function markNavStateForEditor(editor) {
   let lo = 0, hi = doc.lineCount - 1, pair = null;
   try { pair = findCurrentPair(editor); } catch (_) {}
   if (pair) { lo = pair.start; hi = pair.end; }
-  const cur = editor.selection.active.line;
+  const curEff = editor.selection.active.line + 1; // v0.9.929: match navMeMarkJump's park-above offset
   let count = 0, hasBefore = false, hasAfter = false;
-  for (let i = lo; i <= hi; i++) { if (markNavHit(doc.lineAt(i).text || '')) { count++; if (i < cur) hasBefore = true; if (i > cur) hasAfter = true; } }
+  for (let i = lo; i <= hi; i++) { if (markNavHit(doc.lineAt(i).text || '')) { count++; if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; } }
   return { count: count, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
@@ -12467,7 +12478,7 @@ if(navHeadNext)navHeadNext.addEventListener('click',()=>vscode.postMessage({type
 function renderHeadNav(st){if(!navHeadPrev||!navHeadNext)return;const c=(st&&st.count)||0,off=c<1;/* v0.9.926: 見出し1つでも有効化(俊克 6/17) */navHeadPrev.disabled=off;navHeadNext.disabled=off;navHeadPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
 if(navMarkPrev)navMarkPrev.addEventListener('click',()=>vscode.postMessage({type:'navMarkJump',dir:-1}));
 if(navMarkNext)navMarkNext.addEventListener('click',()=>vscode.postMessage({type:'navMarkJump',dir:1}));
-function renderMarkNav(st){if(!navMarkPrev||!navMarkNext)return;const c=(st&&st.count)||0,off=c<2;navMarkPrev.disabled=off;navMarkNext.disabled=off;navMarkPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navMarkNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
+function renderMarkNav(st){if(!navMarkPrev||!navMarkNext)return;const c=(st&&st.count)||0,off=c<1;/* v0.9.929: 💬も1つで有効化 */navMarkPrev.disabled=off;navMarkNext.disabled=off;navMarkPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navMarkNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
 if(navAnchor){
   // v0.9.584: unified S-click=JUMP / W-click=RAW. S-click → navCenterMeDouble
   // (open ⇔ close jump). W-click → navCenterMeSingle (mSkeletonMode toggle).
