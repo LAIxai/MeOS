@@ -1,7 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
-// - v0.9.938: 現在行ガターマーカーが「普段非表示・改行時に巨大で一瞬」のバグ修正(俊克 6/17)。真因=栞と違い①rangeBehavior:ClosedClosed無し②行全体レンジで当てていた→ガターアイコンが誤描画。栞と同一の点レンジ(ln,0,ln,0)+ClosedClosedに統一。node側のみ・webview<script>同一。
-// - v0.9.937: Lineボタンの現在行マーカーを行末テキスト ⇦(長い行で右に押し出され隠れる)→左ガターのSVGアイコン(current-line.svg・橙の右矢印)に(俊克 6/17)。栞と同じgutterIconPath方式。注意=グリフマージンは膜線/栞と共有=現在行ではマーカーが膜線位置に重なる(栞の貫く流儀と同じ)。SVG不可時はafter ⇦にフォールバック。node側+SVG新規・webview<script>同一。
+// - v0.9.939: 現在行マーカーのガター移植(v937-938)を撤回し、動く v936の行末 ⇦ に復帰。真因=グリフマージンは1行1アイコンの共有資源で膜縦線が占有・栞は静止なので1回スキップで共存できるが、現在行マーカーは毎キーストローク移動→膜ガターをカーソル毎に再計算=大ファイルでラグ懸念。方式は設計判断待ち(before行頭/背景ハイライト/ガター+膜線スキップ等)。current-line.svg削除。
 // - v0.9.936: 見出しタイムスタンプを「本文末尾に可視」へ(俊克 6/17 NG: //コメントだと隠れて見えない)。見出し本文=テキスト+空白+タイムスタンプ・コメントは空//[]tip=に。本文中の(W)はparseColorSpecが色無効&直後非行末で温存=末尾(白/green)だけ色認識(安全確認済)。bodySelは見出しテキストのみ選択(タイムスタンプ残し即上書き可)。node側のみ・webview<script>同一。
 // - v0.9.935: ##ボタン出力の色指定を混在に(俊克 6/17)。真因=色はwebviewのfmtSpec.heading(日本語白/緑)由来でv933のnode側def変更は不使用→insertFormatTemplateの見出し出力でbgのみ英語小文字へ変換(normalizeBgColor)し(白/green)に。pickerは日本語のまま=ボタン色プレビュー不変。node側のみ・webview<script>同一。
 // - v0.9.934: 色パネル(Format V picker)のtip英語名を小文字に(俊克 6/17: green等。小文字=シフト不要で入力しやすい正準形・大文字も通るので説明不要)。FMT_ENを小文字化＋ハードコードのNone→none。表示専用(挿入値は日本語名のまま=常に通る)。webview render部のみ・<script>構文確認済。
@@ -10907,17 +10906,16 @@ async function renameMe() {
 // {* ▼mCN=0867_ME_DOCK_CURRENT_LINE_MARKER // v0.9.253 Me Dock current line marker (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 function ensureMeDockCurrentLineDecoration() {
   if (meDockCurrentLineDecoration) return meDockCurrentLineDecoration;
-  // v0.9.937: 現在行マーカーを行末テキスト(後ろ=長い行で隠れる)→左ガターのSVGアイコンへ(俊克 6/17)。
-  // グリフマージンは拡張に開かれた唯一のガター面で膜線/栞と共有 → 現在行ではマーカーが膜線位置に重なる(栞と同じ"貫く"流儀)。
-  const opts = {
-    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+  meDockCurrentLineDecoration = vscode.window.createTextEditorDecorationType({
     overviewRulerColor: 'rgba(255, 170, 0, 0.95)',
     overviewRulerLane: vscode.OverviewRulerLane.Right,
-    gutterIconSize: 'contain'
-  };
-  try { if (extensionContext && extensionContext.extensionUri) opts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'current-line.svg'); } catch (_) {}
-  if (!opts.gutterIconPath) opts.after = { contentText: ' \u21e6', color: 'rgba(255, 120, 0, 1)', fontWeight: 'bold', margin: '0 0 0 6px' }; // フォールバック(SVG不可時は従来の行末マーカー)
-  meDockCurrentLineDecoration = vscode.window.createTextEditorDecorationType(opts);
+    after: {
+      contentText: ' ⇦',
+      color: 'rgba(255, 120, 0, 1)',
+      fontWeight: 'bold',
+      margin: '0 0 0 6px'
+    }
+  });
   return meDockCurrentLineDecoration;
 }
 
@@ -10932,7 +10930,7 @@ function updateMeDockCurrentLineMarker() {
     clearMeDockCurrentLineMarker();
     return;
   }
-  const range = new vscode.Range(pos.line, 0, pos.line, 0); // v0.9.938: 栞と同じ点レンジ(行全体レンジだとガターアイコンが誤描画=巨大/非表示)
+  const range = editor.document.lineAt(pos.line).range;
   editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
 }
 
