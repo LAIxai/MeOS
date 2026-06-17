@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.925: 見出しジャンプ(Navigate Me! #)の着地を「見出しの1行上」に(俊克 6/17: 見出し行に乗るとカーソル行=素になり分かりにくい→1つ上に止めれば見出しは装飾されたまま見える)。navMeHeadingJump=curEff(cur+1)で比較し再ジャンプで同じ見出しに張り付かない・着地land=max(lo,target-1)。headNavStateForEditorのwrap判定もcurEffに合わせ整合。node側のみ・webview<script>同一。
 // - v0.9.924: H-TOC項目名の色付け(俊克 6/17 am09:36「構造を作らず//を含む項目名を色付けするだけ」)。安全策=編集は従来の単一<input class=toc-value>のまま・イベント処理は一切不変→その上に色付き表示レイヤー.toc-dispを重ねるだけ(pointer-events:noneでクリック透過・:focus-withinで編集時は隠れ入力が出る)。//があれば青セパレータ・後ろのコメントを緑。//が無ければコメント無し扱い。webviewの<script>はrender部のみ変更しnode --checkで構文確認(ハンドラ無改修)。
 // - v0.9.923: 右前歯(チェックボックス)がクリック不能の修正(俊克 6/17 am09:10)。原因=透明でもpointer-eventsはautoで、z-index:-1で裏に回した歯の手前を口枠#contents-boxがクリック横取り。修正=#contents-boxをpointer-events:noneで判定透過し、ラベル.contents-choiceをautoで再有効化→クリックが背面のチェックボックスに届く。CSSのみ・webview<script>同一。
 // - v0.9.922: Mepy前歯=俊克の正解レシピ。v921の白線オーバーレイ撤去(チェックボックス半隠れの原因)→描画順を逆に: 歯(me-tooth/contents-checkbox)をz-index:-1で口枠の裏へ・口枠(contents-box)の中身をbackground:transparentに・membrane-visualにisolation:isolateで歯のneg-zを口枠直下に留める。これで唇(枠の色付き縁)が歯の上端を覆い、枠内は透明なので歯が透けて見える。CSSのみ・webview<script>同一。
@@ -11622,17 +11623,22 @@ function navMeHeadingJump(direction) {
   for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '')) heads.push(i); }
   if (!heads.length) { vscode.window.setStatusBarMessage('MeOS: no ##[…]## headings here (make one with the Format ## button).', 2000); return false; }
   const cur = editor.selection.active.line;
+  // v0.9.925: park ONE line ABOVE the heading so the heading stays decorated (the cursor line
+  // renders raw = 素 → hard to read). Compare against curEff=cur+1 (≈ the heading we're parked
+  // above) so repeat jumps advance past it instead of sticking. (俊克 6/17)
+  const curEff = cur + 1;
   let target, wrapped = false;
   if (direction >= 0) {
-    target = heads.find(l => l > cur);
+    target = heads.find(l => l > curEff);
     if (target === undefined) { target = heads[0]; wrapped = true; }
   } else {
-    const before = heads.filter(l => l < cur);
+    const before = heads.filter(l => l < curEff);
     if (before.length) target = before[before.length - 1];
     else { target = heads[heads.length - 1]; wrapped = true; }
   }
   if (wrapped && meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} }
-  return jumpMeDockTargetLine(String(target + 1));
+  const land = Math.max(lo, target - 1); // land just above the heading so it shows decorated
+  return jumpMeDockTargetLine(String(land + 1));
 }
 // v0.9.782: state for the [- ## +] buttons — count of MeOS headings in the current membrane and
 // whether -/+ would wrap (cursor before first / after last). Used to dim when none and thicken the
@@ -11644,10 +11650,10 @@ function headNavStateForEditor(editor) {
   let lo = 0, hi = doc.lineCount - 1, pair = null;
   try { pair = findCurrentPair(editor); } catch (_) {}
   if (pair) { lo = pair.start; hi = pair.end; }
-  const cur = editor.selection.active.line;
+  const curEff = editor.selection.active.line + 1; // v0.9.925: match navMeHeadingJump's park-above offset
   let count = 0, hasBefore = false, hasAfter = false;
   for (let i = lo; i <= hi; i++) {
-    if (reHead.test(doc.lineAt(i).text || '')) { count++; if (i < cur) hasBefore = true; if (i > cur) hasAfter = true; }
+    if (reHead.test(doc.lineAt(i).text || '')) { count++; if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; }
   }
   return { count: count, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
