@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.947: H-TOC帰還メニュー改良(俊克 6/18)。①(バグ)戻った先でメニューが出ない事がある=ホバー装飾がisWholeLineでなく空行/短行でホバー判定が外れていた→isWholeLine:trueで行全体ホバー可に。②現在地を膜名でなく行番号「Ln NNN」で表示(直近H-TOC=膜名と視覚的に区別・最悪Lineツールで番号再入力でも戻れる)。node側のみ・webview<script>同一。
 // - v0.9.946: ★H-TOC帰還リング実装(俊克 6/18 合意)。現在行の橙矢印をホバーすると栞式のcommand:リンクメニュー(📍現在地＋↩直近H-TOC最大2件・現在膜と同keyは除外)が出て、その項目の膜へ戻れる=savedMeCursorLineで「膜ごとの最後の行」へ着地。記録=jumpToWorkingTocItem標準分岐でpushHtocReturn(飛び先key,uri/最新先頭/重複排除/最大2)。透明hoverDecoration(行範囲)で実現・栞と同方式。コマンドlai-membrane.htocReturn登録。node側のみ・webview<script>同一。
 // - v0.9.945: 現在行矢印をv943のSVG(viewBox20・矢印右端=左透明のみ)に戻す(俊克 6/17: v944の4倍は小さ過ぎ・前回が位置もサイズも最適)。viewBoxパディング法は位置寄せとサイズがトレードオフ=限界ありと結論。SVGのみ変更。
 // - v0.9.944: 現在行矢印の左透明を約4倍に(俊克 6/17: 行番号にもっと寄せる)。viewBox20→40幅・矢印は右端(tip39.5/tail26.8)=左透明約27単位。containで矢印は縮小(小さすぎれば位置だけ動かす方式へ切替予定)。SVGのみ変更。
@@ -10942,7 +10943,7 @@ function ensureMeDockCurrentLineDecoration() {
 
 function ensureMeDockCurrentLineHoverDecoration() {
   if (meDockCurrentLineHoverDecoration) return meDockCurrentLineHoverDecoration;
-  meDockCurrentLineHoverDecoration = vscode.window.createTextEditorDecorationType({}); // 視覚効果なし=hoverMessage専用
+  meDockCurrentLineHoverDecoration = vscode.window.createTextEditorDecorationType({ isWholeLine: true }); // v0.9.947: 視覚なし・行全体でホバー可(空行/短行でもメニューが出る)
   return meDockCurrentLineHoverDecoration;
 }
 // v0.9.946: H-TOCジャンプの飛び先keyを帰還リングへ(最新先頭・重複排除・最大2・URI付き)。
@@ -10962,7 +10963,8 @@ function buildHtocReturnMenu(editor) {
   try { const cp = findCurrentPair(editor); if (cp) curKey = String(cp.id || "").trim(); } catch (_) {}
   const entries = _htocReturnRing.filter(e => e.uri === uri && e.key && e.key !== curKey).slice(0, 2);
   if (!entries.length) return null;
-  let body = "\uD83E\uDDED H-TOC \u3078\u623b\u308b  \n\uD83D\uDCCD " + (curKey || "(\u73fe\u5728\u5730)") + "  \n";
+  const ln = (editor.selection && editor.selection.active) ? (editor.selection.active.line + 1) : 0; // v0.9.947: 現在地は行番号で表示(膜名のH-TOC項目と区別・Lineツールで再入力も可)
+  let body = "\uD83E\uDDED H-TOC \u3078\u623b\u308b  \n\uD83D\uDCCD Ln " + ln + "  \n";
   entries.forEach(e => {
     const arg = encodeURIComponent(JSON.stringify([e.key]));
     body += "[\u21a9 " + e.key + "](command:lai-membrane.htocReturn?" + arg + ")  \n";
