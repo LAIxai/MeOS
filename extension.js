@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.943: 現在行矢印を左の透明のみに(俊克 6/17: 右の透明は無意味)。viewBox20維持・矢印を右端(tip≈19.5)に配置=左に透明余白・右は余白ほぼ0。サイズ維持。SVGのみ変更。
 // - v0.9.942: 現在行矢印SVGを左右対称の透明余白に(俊克 6/17: v941は右だけ余白で矢印が左寄りのままだった)。viewBox20幅維持・矢印を中央配置(x+2.15)=左右の透明が同幅。サイズは現状維持。SVGのみ変更。
 // - v0.9.941: 現在行マーカー矢印を行番号側に寄せる(俊克 6/17)。current-line.svgのviewBoxを16→20幅にし矢印は左寄せ・右に透明余白=ガターアイコンの箱内で矢印が左(行番号側)に寄る。栞行は1アイコン制限で🔖優先=矢印非表示は仕様(俊克了承)。SVGのみ変更。
 // - v0.9.940: 現在行マーカーをガター矢印に(俊克の指摘=F栞が出せるなら矢印も出せる・正しい)。真因はラグでなく「現在行を膜線スキップ対象に入れていない」だけ→computeGutterLaneDecorationsにcurLineスキップ追加(栞bmLinesと同じ)。膜構造はversionキャッシュ済・refresh(=applyGutterLane)は元々カーソル移動毎に走るので追加コストは行ループのみ。current-line.svg(橙右矢印)復活・点レンジ+ClosedClosed。SVG不可時はafter ⇦フォールバック。node側+SVG・webview<script>同一。
