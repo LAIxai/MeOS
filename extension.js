@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.946: ★H-TOC帰還リング実装(俊克 6/18 合意)。現在行の橙矢印をホバーすると栞式のcommand:リンクメニュー(📍現在地＋↩直近H-TOC最大2件・現在膜と同keyは除外)が出て、その項目の膜へ戻れる=savedMeCursorLineで「膜ごとの最後の行」へ着地。記録=jumpToWorkingTocItem標準分岐でpushHtocReturn(飛び先key,uri/最新先頭/重複排除/最大2)。透明hoverDecoration(行範囲)で実現・栞と同方式。コマンドlai-membrane.htocReturn登録。node側のみ・webview<script>同一。
 // - v0.9.945: 現在行矢印をv943のSVG(viewBox20・矢印右端=左透明のみ)に戻す(俊克 6/17: v944の4倍は小さ過ぎ・前回が位置もサイズも最適)。viewBoxパディング法は位置寄せとサイズがトレードオフ=限界ありと結論。SVGのみ変更。
 // - v0.9.944: 現在行矢印の左透明を約4倍に(俊克 6/17: 行番号にもっと寄せる)。viewBox20→40幅・矢印は右端(tip39.5/tail26.8)=左透明約27単位。containで矢印は縮小(小さすぎれば位置だけ動かす方式へ切替予定)。SVGのみ変更。
 // - v0.9.943: 現在行矢印を左の透明のみに(俊克 6/17: 右の透明は無意味)。viewBox20維持・矢印を右端(tip≈19.5)に配置=左に透明余白・右は余白ほぼ0。サイズ維持。SVGのみ変更。
@@ -2168,6 +2169,8 @@ let meDockTargetEditor;
 let meDockAutoLastUri = '';
 let meDockAutoTimer = null;
 let meDockCurrentLineDecoration;
+let meDockCurrentLineHoverDecoration; // v0.9.946: 現在行ホバーでH-TOC帰還メニュー(透明・hoverMessage専用)
+let _htocReturnRing = []; // v0.9.946: H-TOC帰還リング {key,uri} 最大2・最新先頭・重複排除
 let meDockCurrentLineMarkerActive = false;
 let meDockLineHistoryByUri = new Map();
 let meDockPreviousLineHistoryByUri = new Map();
@@ -6162,6 +6165,7 @@ function jumpToWorkingTocItem(rawKey, citeN) {
     const text = doc.lineAt(i).text || '';
     const open = parseOpenLine(text);
     if (open && open.id === key) {
+      pushHtocReturn(key, doc.uri.toString()); // v0.9.946: 帰還リングに飛び先を記録
       const r = membraneNameRangeOnLine(editor, i) || new vscode.Range(i, 0, i, Math.min(text.length, 1));
       // v0.9.850: この膜で最後にカーソルがあった行を復元(開始膜行+offset)。膜範囲内にクランプ。
       let pairEnd = i;
@@ -10936,6 +10940,37 @@ function ensureMeDockCurrentLineDecoration() {
   return meDockCurrentLineDecoration;
 }
 
+function ensureMeDockCurrentLineHoverDecoration() {
+  if (meDockCurrentLineHoverDecoration) return meDockCurrentLineHoverDecoration;
+  meDockCurrentLineHoverDecoration = vscode.window.createTextEditorDecorationType({}); // 視覚効果なし=hoverMessage専用
+  return meDockCurrentLineHoverDecoration;
+}
+// v0.9.946: H-TOCジャンプの飛び先keyを帰還リングへ(最新先頭・重複排除・最大2・URI付き)。
+function pushHtocReturn(key, uri) {
+  const k = String(key || "").trim();
+  if (!k) return;
+  const u = String(uri || "");
+  _htocReturnRing = _htocReturnRing.filter(e => !(e.key === k && e.uri === u));
+  _htocReturnRing.unshift({ key: k, uri: u });
+  if (_htocReturnRing.length > 2) _htocReturnRing.length = 2;
+}
+// v0.9.946: 現在行ホバーの帰還メニュー(📍現在地 + ↩直近H-TOC最大2件・現在膜と同keyは除外)。
+function buildHtocReturnMenu(editor) {
+  if (!editor || !editor.document) return null;
+  const uri = editor.document.uri.toString();
+  let curKey = "";
+  try { const cp = findCurrentPair(editor); if (cp) curKey = String(cp.id || "").trim(); } catch (_) {}
+  const entries = _htocReturnRing.filter(e => e.uri === uri && e.key && e.key !== curKey).slice(0, 2);
+  if (!entries.length) return null;
+  let body = "\uD83E\uDDED H-TOC \u3078\u623b\u308b  \n\uD83D\uDCCD " + (curKey || "(\u73fe\u5728\u5730)") + "  \n";
+  entries.forEach(e => {
+    const arg = encodeURIComponent(JSON.stringify([e.key]));
+    body += "[\u21a9 " + e.key + "](command:lai-membrane.htocReturn?" + arg + ")  \n";
+  });
+  const md = new vscode.MarkdownString(body);
+  md.isTrusted = { enabledCommands: ["lai-membrane.htocReturn"] };
+  return md;
+}
 function updateMeDockCurrentLineMarker() {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!meDockPanel || !editor || !meDockCurrentLineMarkerActive) {
@@ -10949,12 +10984,21 @@ function updateMeDockCurrentLineMarker() {
   }
   const range = new vscode.Range(pos.line, 0, pos.line, 0); // v0.9.940: 栞と同じ点レンジ
   editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
+  // v0.9.946: 現在行に帰還メニューのホバーを重ねる(行範囲・透明)。
+  const hov = ensureMeDockCurrentLineHoverDecoration();
+  const md = buildHtocReturnMenu(editor);
+  if (md) {
+    const eol = editor.document.lineAt(pos.line).text.length;
+    editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, 0, pos.line, Math.max(1, eol)), hoverMessage: md }]);
+  } else {
+    editor.setDecorations(hov, []);
+  }
 }
 
 function clearMeDockCurrentLineMarker() {
-  if (!meDockCurrentLineDecoration) return;
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
-  if (editor) editor.setDecorations(meDockCurrentLineDecoration, []);
+  if (meDockCurrentLineDecoration && editor) editor.setDecorations(meDockCurrentLineDecoration, []);
+  if (meDockCurrentLineHoverDecoration && editor) editor.setDecorations(meDockCurrentLineHoverDecoration, []);
 }
 // {* ▲mCN=0867_ME_DOCK_CURRENT_LINE_MARKER // end [cGJF=h] *}
 
@@ -13740,6 +13784,7 @@ function activate(context) {
   // v0.9.719: 🔖 ホバーのコマンドリンク用。次へ巡回 / 指定行のしおり削除。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemoveAt', (line) => bookmarkRemove(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturn', (key) => { try { jumpToWorkingTocItem(key); } catch (_) {} })); // v0.9.946: H-TOC帰還
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkClearAll', () => bookmarkClearAll(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFront', () => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFrontAt', (line) => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
