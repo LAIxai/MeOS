@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.948: 帰還メニューを「ガター矢印アイコン自体のhoverMessage」に載せる(俊克 6/18: 空行はテキストのホバー判定が乗らずカーソル位置でしか出なかった)。矢印は空行でも常在→矢印ホバーで確実にメニューが出る=当初望んだ「矢印をホバー」を実現。行テキスト側ホバーも併用維持。node側のみ・webview<script>同一。
 // - v0.9.947: H-TOC帰還メニュー改良(俊克 6/18)。①(バグ)戻った先でメニューが出ない事がある=ホバー装飾がisWholeLineでなく空行/短行でホバー判定が外れていた→isWholeLine:trueで行全体ホバー可に。②現在地を膜名でなく行番号「Ln NNN」で表示(直近H-TOC=膜名と視覚的に区別・最悪Lineツールで番号再入力でも戻れる)。node側のみ・webview<script>同一。
 // - v0.9.946: ★H-TOC帰還リング実装(俊克 6/18 合意)。現在行の橙矢印をホバーすると栞式のcommand:リンクメニュー(📍現在地＋↩直近H-TOC最大2件・現在膜と同keyは除外)が出て、その項目の膜へ戻れる=savedMeCursorLineで「膜ごとの最後の行」へ着地。記録=jumpToWorkingTocItem標準分岐でpushHtocReturn(飛び先key,uri/最新先頭/重複排除/最大2)。透明hoverDecoration(行範囲)で実現・栞と同方式。コマンドlai-membrane.htocReturn登録。node側のみ・webview<script>同一。
 // - v0.9.945: 現在行矢印をv943のSVG(viewBox20・矢印右端=左透明のみ)に戻す(俊克 6/17: v944の4倍は小さ過ぎ・前回が位置もサイズも最適)。viewBoxパディング法は位置寄せとサイズがトレードオフ=限界ありと結論。SVGのみ変更。
@@ -10985,10 +10986,11 @@ function updateMeDockCurrentLineMarker() {
     return;
   }
   const range = new vscode.Range(pos.line, 0, pos.line, 0); // v0.9.940: 栞と同じ点レンジ
-  editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
-  // v0.9.946: 現在行に帰還メニューのホバーを重ねる(行範囲・透明)。
-  const hov = ensureMeDockCurrentLineHoverDecoration();
   const md = buildHtocReturnMenu(editor);
+  // v0.9.948: ガター矢印アイコン自体にhoverMessageを載せる→空行でも「常にそこにある矢印」をホバーすればメニューが出る(俊克 6/18: 空行はテキストのホバー判定が乗らない)。
+  editor.setDecorations(ensureMeDockCurrentLineDecoration(), md ? [{ range, hoverMessage: md }] : [range]);
+  // 行テキスト側のホバーも併用(行全体)。
+  const hov = ensureMeDockCurrentLineHoverDecoration();
   if (md) {
     const eol = editor.document.lineAt(pos.line).text.length;
     editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, 0, pos.line, Math.max(1, eol)), hoverMessage: md }]);
