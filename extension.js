@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.927: 見出しジャンプ後すぐ打鍵できるよう、移動後に本文へフォーカス移動(俊克 6/17)。navMeHeadingJumpでjump後にfocusMeDockTargetEditorPreservingView(リビール済みなので再スクロールしない方)を呼ぶ。node側のみ・webview<script>同一。
 // - v0.9.926: 見出しジャンプを見出し1つでも有効化(俊克 6/17)。renderHeadNavの無効化条件をc<2→c<1に(0個のときだけ無効)。膜内に唯一の見出しでも、その1行上へ移動できる。webview render部のみ・<script>構文確認済(ハンドラ無改修)。
 // - v0.9.925: 見出しジャンプ(Navigate Me! #)の着地を「見出しの1行上」に(俊克 6/17: 見出し行に乗るとカーソル行=素になり分かりにくい→1つ上に止めれば見出しは装飾されたまま見える)。navMeHeadingJump=curEff(cur+1)で比較し再ジャンプで同じ見出しに張り付かない・着地land=max(lo,target-1)。headNavStateForEditorのwrap判定もcurEffに合わせ整合。node側のみ・webview<script>同一。
 // - v0.9.924: H-TOC項目名の色付け(俊克 6/17 am09:36「構造を作らず//を含む項目名を色付けするだけ」)。安全策=編集は従来の単一<input class=toc-value>のまま・イベント処理は一切不変→その上に色付き表示レイヤー.toc-dispを重ねるだけ(pointer-events:noneでクリック透過・:focus-withinで編集時は隠れ入力が出る)。//があれば青セパレータ・後ろのコメントを緑。//が無ければコメント無し扱い。webviewの<script>はrender部のみ変更しnode --checkで構文確認(ハンドラ無改修)。
@@ -11639,7 +11640,9 @@ function navMeHeadingJump(direction) {
   }
   if (wrapped && meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} }
   const land = Math.max(lo, target - 1); // land just above the heading so it shows decorated
-  return jumpMeDockTargetLine(String(land + 1));
+  const ok = jumpMeDockTargetLine(String(land + 1));
+  focusMeDockTargetEditorPreservingView(editor); // v0.9.927: 移動後すぐ打鍵できるよう本文へフォーカス(俊克 6/17)
+  return ok;
 }
 // v0.9.782: state for the [- ## +] buttons — count of MeOS headings in the current membrane and
 // whether -/+ would wrap (cursor before first / after last). Used to dim when none and thicken the
