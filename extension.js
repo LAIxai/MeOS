@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.950: 帰還メニューのホバーを行状態で出し分け(俊克 6/18: v948両方=2重・v949矢印だけ=当たり判定微妙)。文字行→行テキスト側(行全体ホバー=どこでも楽)・空行→ガター矢印。厳密に片方だけ=重複なし＋テキスト行は楽＋空行も出る。栞重なり時もテキスト行なら行ホバーで出る。node側のみ・webview<script>同一。
 // - v0.9.949: H-TOC帰還メニュー2バグ修正(俊克 6/18)。①(バグ2)メニュー2重表示=ホバーをガター矢印と行テキストの2箇所に載せていた→ガター矢印に一本化(行側撤去)。②(バグ1)元の位置に戻れない=「現在地」が情報表示のみだった→★作業位置anchor導入: H-TOCリングと無関係な場所(=作業場所)で現在地をanchorに更新(H-TOC膜内移動では更新しない)・メニューに「↩ Ln NNN（作業位置）」戻りリンク追加(lai-membrane.htocReturnLine)。これでH-TOC探索後に作業位置へ戻れる。node側のみ・webview<script>同一。
 // - v0.9.948: 帰還メニューを「ガター矢印アイコン自体のhoverMessage」に載せる(俊克 6/18: 空行はテキストのホバー判定が乗らずカーソル位置でしか出なかった)。矢印は空行でも常在→矢印ホバーで確実にメニューが出る=当初望んだ「矢印をホバー」を実現。行テキスト側ホバーも併用維持。node側のみ・webview<script>同一。
 // - v0.9.947: H-TOC帰還メニュー改良(俊克 6/18)。①(バグ)戻った先でメニューが出ない事がある=ホバー装飾がisWholeLineでなく空行/短行でホバー判定が外れていた→isWholeLine:trueで行全体ホバー可に。②現在地を膜名でなく行番号「Ln NNN」で表示(直近H-TOC=膜名と視覚的に区別・最悪Lineツールで番号再入力でも戻れる)。node側のみ・webview<script>同一。
@@ -10998,9 +10999,18 @@ function updateMeDockCurrentLineMarker() {
   }
   const range = new vscode.Range(pos.line, 0, pos.line, 0); // v0.9.940: 栞と同じ点レンジ
   const md = buildHtocReturnMenu(editor);
-  // v0.9.948-949: hoverMessageはガター矢印アイコンに一本化(矢印は空行でも常在)。行テキスト側の重複ホバーは撤去(俊克 6/18: メニュー2重表示の原因)。
-  editor.setDecorations(ensureMeDockCurrentLineDecoration(), md ? [{ range, hoverMessage: md }] : [range]);
-  if (meDockCurrentLineHoverDecoration) editor.setDecorations(ensureMeDockCurrentLineHoverDecoration(), []);
+  const eol = editor.document.lineAt(pos.line).text.length;
+  const hov = ensureMeDockCurrentLineHoverDecoration();
+  // v0.9.950: ホバーは行の状態で「厳密に片方だけ」に載せ重複回避(俊克 6/18: 両方=2重・矢印だけ=微妙)。
+  //   文字のある行→行テキスト側(行全体ホバー=どこでも楽に出る)。空行→ガター矢印(テキスト無くホバー判定が乗らないため)。
+  if (md && eol === 0) {
+    editor.setDecorations(ensureMeDockCurrentLineDecoration(), [{ range, hoverMessage: md }]);
+    editor.setDecorations(hov, []);
+  } else {
+    editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
+    if (md) editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, 0, pos.line, Math.max(1, eol)), hoverMessage: md }]);
+    else editor.setDecorations(hov, []);
+  }
 }
 
 function clearMeDockCurrentLineMarker() {
