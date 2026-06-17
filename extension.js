@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.949: H-TOC帰還メニュー2バグ修正(俊克 6/18)。①(バグ2)メニュー2重表示=ホバーをガター矢印と行テキストの2箇所に載せていた→ガター矢印に一本化(行側撤去)。②(バグ1)元の位置に戻れない=「現在地」が情報表示のみだった→★作業位置anchor導入: H-TOCリングと無関係な場所(=作業場所)で現在地をanchorに更新(H-TOC膜内移動では更新しない)・メニューに「↩ Ln NNN（作業位置）」戻りリンク追加(lai-membrane.htocReturnLine)。これでH-TOC探索後に作業位置へ戻れる。node側のみ・webview<script>同一。
 // - v0.9.948: 帰還メニューを「ガター矢印アイコン自体のhoverMessage」に載せる(俊克 6/18: 空行はテキストのホバー判定が乗らずカーソル位置でしか出なかった)。矢印は空行でも常在→矢印ホバーで確実にメニューが出る=当初望んだ「矢印をホバー」を実現。行テキスト側ホバーも併用維持。node側のみ・webview<script>同一。
 // - v0.9.947: H-TOC帰還メニュー改良(俊克 6/18)。①(バグ)戻った先でメニューが出ない事がある=ホバー装飾がisWholeLineでなく空行/短行でホバー判定が外れていた→isWholeLine:trueで行全体ホバー可に。②現在地を膜名でなく行番号「Ln NNN」で表示(直近H-TOC=膜名と視覚的に区別・最悪Lineツールで番号再入力でも戻れる)。node側のみ・webview<script>同一。
 // - v0.9.946: ★H-TOC帰還リング実装(俊克 6/18 合意)。現在行の橙矢印をホバーすると栞式のcommand:リンクメニュー(📍現在地＋↩直近H-TOC最大2件・現在膜と同keyは除外)が出て、その項目の膜へ戻れる=savedMeCursorLineで「膜ごとの最後の行」へ着地。記録=jumpToWorkingTocItem標準分岐でpushHtocReturn(飛び先key,uri/最新先頭/重複排除/最大2)。透明hoverDecoration(行範囲)で実現・栞と同方式。コマンドlai-membrane.htocReturn登録。node側のみ・webview<script>同一。
@@ -2173,6 +2174,7 @@ let meDockAutoTimer = null;
 let meDockCurrentLineDecoration;
 let meDockCurrentLineHoverDecoration; // v0.9.946: 現在行ホバーでH-TOC帰還メニュー(透明・hoverMessage専用)
 let _htocReturnRing = []; // v0.9.946: H-TOC帰還リング {key,uri} 最大2・最新先頭・重複排除
+let _htocAnchor = null; // v0.9.949: 作業位置(anchor) {uri,line} — H-TOCリングと無関係な場所で更新・戻り先
 let meDockCurrentLineMarkerActive = false;
 let meDockLineHistoryByUri = new Map();
 let meDockPreviousLineHistoryByUri = new Map();
@@ -10960,18 +10962,27 @@ function pushHtocReturn(key, uri) {
 function buildHtocReturnMenu(editor) {
   if (!editor || !editor.document) return null;
   const uri = editor.document.uri.toString();
+  const line = (editor.selection && editor.selection.active) ? editor.selection.active.line : 0;
   let curKey = "";
   try { const cp = findCurrentPair(editor); if (cp) curKey = String(cp.id || "").trim(); } catch (_) {}
-  const entries = _htocReturnRing.filter(e => e.uri === uri && e.key && e.key !== curKey).slice(0, 2);
-  if (!entries.length) return null;
-  const ln = (editor.selection && editor.selection.active) ? (editor.selection.active.line + 1) : 0; // v0.9.947: 現在地は行番号で表示(膜名のH-TOC項目と区別・Lineツールで再入力も可)
-  let body = "\uD83E\uDDED H-TOC \u3078\u623b\u308b  \n\uD83D\uDCCD Ln " + ln + "  \n";
-  entries.forEach(e => {
+  const ringKeys = _htocReturnRing.filter(e => e.uri === uri).map(e => e.key);
+  // v0.9.949: 現在膜がH-TOCリングに無い(=無関係な作業場所)なら、作業位置anchorを現在地に更新(最後に居た行)。
+  //   H-TOC膜の中を動いても更新しない=俊克の但し書き。
+  if (!(curKey && ringKeys.indexOf(curKey) >= 0)) { _htocAnchor = { uri: uri, line: line }; }
+  const targets = _htocReturnRing.filter(e => e.uri === uri && e.key && e.key !== curKey).slice(0, 2);
+  const showAnchor = !!(_htocAnchor && _htocAnchor.uri === uri && _htocAnchor.line !== line);
+  if (!targets.length && !showAnchor) return null;
+  let body = "\uD83E\uDDED H-TOC \u3078\u623b\u308b  \n\uD83D\uDCCD Ln " + (line + 1) + "  \n";
+  if (showAnchor) {
+    const aArg = encodeURIComponent(JSON.stringify([_htocAnchor.line]));
+    body += "[\u21a9 Ln " + (_htocAnchor.line + 1) + "\uFF08\u4f5c\u696d\u4f4d\u7f6e\uFF09](command:lai-membrane.htocReturnLine?" + aArg + ")  \n";
+  }
+  targets.forEach(e => {
     const arg = encodeURIComponent(JSON.stringify([e.key]));
     body += "[\u21a9 " + e.key + "](command:lai-membrane.htocReturn?" + arg + ")  \n";
   });
   const md = new vscode.MarkdownString(body);
-  md.isTrusted = { enabledCommands: ["lai-membrane.htocReturn"] };
+  md.isTrusted = { enabledCommands: ["lai-membrane.htocReturn", "lai-membrane.htocReturnLine"] };
   return md;
 }
 function updateMeDockCurrentLineMarker() {
@@ -10987,16 +10998,9 @@ function updateMeDockCurrentLineMarker() {
   }
   const range = new vscode.Range(pos.line, 0, pos.line, 0); // v0.9.940: 栞と同じ点レンジ
   const md = buildHtocReturnMenu(editor);
-  // v0.9.948: ガター矢印アイコン自体にhoverMessageを載せる→空行でも「常にそこにある矢印」をホバーすればメニューが出る(俊克 6/18: 空行はテキストのホバー判定が乗らない)。
+  // v0.9.948-949: hoverMessageはガター矢印アイコンに一本化(矢印は空行でも常在)。行テキスト側の重複ホバーは撤去(俊克 6/18: メニュー2重表示の原因)。
   editor.setDecorations(ensureMeDockCurrentLineDecoration(), md ? [{ range, hoverMessage: md }] : [range]);
-  // 行テキスト側のホバーも併用(行全体)。
-  const hov = ensureMeDockCurrentLineHoverDecoration();
-  if (md) {
-    const eol = editor.document.lineAt(pos.line).text.length;
-    editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, 0, pos.line, Math.max(1, eol)), hoverMessage: md }]);
-  } else {
-    editor.setDecorations(hov, []);
-  }
+  if (meDockCurrentLineHoverDecoration) editor.setDecorations(ensureMeDockCurrentLineHoverDecoration(), []);
 }
 
 function clearMeDockCurrentLineMarker() {
@@ -13789,6 +13793,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemoveAt', (line) => bookmarkRemove(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturn', (key) => { try { jumpToWorkingTocItem(key); } catch (_) {} })); // v0.9.946: H-TOC帰還
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturnLine', (line0) => { try { jumpMeDockTargetLine(String((Number(line0) || 0) + 1)); } catch (_) {} })); // v0.9.949: 作業位置(行番号)へ戻る
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkClearAll', () => bookmarkClearAll(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFront', () => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFrontAt', (line) => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
