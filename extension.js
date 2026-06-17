@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.926: 見出しジャンプを見出し1つでも有効化(俊克 6/17)。renderHeadNavの無効化条件をc<2→c<1に(0個のときだけ無効)。膜内に唯一の見出しでも、その1行上へ移動できる。webview render部のみ・<script>構文確認済(ハンドラ無改修)。
 // - v0.9.925: 見出しジャンプ(Navigate Me! #)の着地を「見出しの1行上」に(俊克 6/17: 見出し行に乗るとカーソル行=素になり分かりにくい→1つ上に止めれば見出しは装飾されたまま見える)。navMeHeadingJump=curEff(cur+1)で比較し再ジャンプで同じ見出しに張り付かない・着地land=max(lo,target-1)。headNavStateForEditorのwrap判定もcurEffに合わせ整合。node側のみ・webview<script>同一。
 // - v0.9.924: H-TOC項目名の色付け(俊克 6/17 am09:36「構造を作らず//を含む項目名を色付けするだけ」)。安全策=編集は従来の単一<input class=toc-value>のまま・イベント処理は一切不変→その上に色付き表示レイヤー.toc-dispを重ねるだけ(pointer-events:noneでクリック透過・:focus-withinで編集時は隠れ入力が出る)。//があれば青セパレータ・後ろのコメントを緑。//が無ければコメント無し扱い。webviewの<script>はrender部のみ変更しnode --checkで構文確認(ハンドラ無改修)。
 // - v0.9.923: 右前歯(チェックボックス)がクリック不能の修正(俊克 6/17 am09:10)。原因=透明でもpointer-eventsはautoで、z-index:-1で裏に回した歯の手前を口枠#contents-boxがクリック横取り。修正=#contents-boxをpointer-events:noneで判定透過し、ラベル.contents-choiceをautoで再有効化→クリックが背面のチェックボックスに届く。CSSのみ・webview<script>同一。
@@ -12453,7 +12454,7 @@ document.addEventListener('keydown',meCockpitKeyCruise,true);
 if(navEof)navEof.addEventListener('click',()=>vscode.postMessage({type:'navCenterEof'}));
 if(navHeadPrev)navHeadPrev.addEventListener('click',()=>vscode.postMessage({type:'navHeadJump',dir:-1}));
 if(navHeadNext)navHeadNext.addEventListener('click',()=>vscode.postMessage({type:'navHeadJump',dir:1}));
-function renderHeadNav(st){if(!navHeadPrev||!navHeadNext)return;const c=(st&&st.count)||0,off=c<2;navHeadPrev.disabled=off;navHeadNext.disabled=off;navHeadPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
+function renderHeadNav(st){if(!navHeadPrev||!navHeadNext)return;const c=(st&&st.count)||0,off=c<1;/* v0.9.926: 見出し1つでも有効化(俊克 6/17) */navHeadPrev.disabled=off;navHeadNext.disabled=off;navHeadPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
 if(navMarkPrev)navMarkPrev.addEventListener('click',()=>vscode.postMessage({type:'navMarkJump',dir:-1}));
 if(navMarkNext)navMarkNext.addEventListener('click',()=>vscode.postMessage({type:'navMarkJump',dir:1}));
 function renderMarkNav(st){if(!navMarkPrev||!navMarkNext)return;const c=(st&&st.count)||0,off=c<2;navMarkPrev.disabled=off;navMarkNext.disabled=off;navMarkPrev.classList.toggle('wrap-edge',!!(st&&st.minusWraps));navMarkNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));}
