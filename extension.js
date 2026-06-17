@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.935: ##ボタン出力の色指定を混在に(俊克 6/17)。真因=色はwebviewのfmtSpec.heading(日本語白/緑)由来でv933のnode側def変更は不使用→insertFormatTemplateの見出し出力でbgのみ英語小文字へ変換(normalizeBgColor)し(白/green)に。pickerは日本語のまま=ボタン色プレビュー不変。node側のみ・webview<script>同一。
 // - v0.9.934: 色パネル(Format V picker)のtip英語名を小文字に(俊克 6/17: green等。小文字=シフト不要で入力しやすい正準形・大文字も通るので説明不要)。FMT_ENを小文字化＋ハードコードのNone→none。表示専用(挿入値は日本語名のまま=常に通る)。webview render部のみ・<script>構文確認済。
 // - v0.9.933: ①(バグ)英語色名が大文字だと通らない(White×/white○)→normalize系を小文字フォールバックで大文字小文字非依存に。②##ボタンの既定出力を変更: 本文「Heading」(英)＋色を(白/Green)=日本語fg+英語bgの混在(どちらも動く事をZennで見せる)＋見出しに作成日時タイムスタンプ自動付与(meosFormatStamp: YYYY.MM.DD(曜日1字)+am/pm先頭+HH:MM.SS・俊克: pmは区切りとして前)。消したい人は消せる。==/~~は従来どおり(タイムスタンプ無し)。③カラー全数テストベンチ color-test-bench.md(repo外)生成。node側のみ・webview<script>同一。
 // - v0.9.932: ★魔法の呪文3『よよよ』/「ょょょ」/YOYOYO/yoyoyo 追加(俊克 6/17)。見出しジャンプ(#ボタン↑↓)を代行=大/大文字『よよよ』『YOYOYO』→前の見出し(↑)・小/小文字「ょょょ」「yoyoyo」→次の見出し(↓)。か(かかか)+み(みみみ)+よ(よよよ)=「神よ」完成。実装=呪文をSPELLSテーブル(triggers→action)に集約し検知(A)非ASCII/(B)ASCIIを共通化。node側のみ・webview<script>同一。
@@ -10980,7 +10981,8 @@ async function insertFormatTemplate(kind, editor, fg, bg) {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
     // v0.9.933: 見出しに作成日時のタイムスタンプを //コメントへ自動付与(消したい人は消せる・確実に日付を残したい人に有意義)。
     const stamp = meosFormatStamp(new Date());
-    const hspec = '(' + FG + '/' + BG + ')//' + stamp + ' []tip=';
+    const bgEn = normalizeBgColor(BG) || BG; // v0.9.935: 見出しの背景色を英語小文字に=「日本語fg + 英語bg」の混在表示(俊克 6/17: 日英どちらも動く事を見せる)
+    const hspec = '(' + FG + '/' + bgEn + ')//' + stamp + ' []tip=';
     const ln = sel.active.line;
     const lineText = doc.lineAt(ln).text;
     const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || 'Heading');
