@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.930: ★魔法の呪文2『みみみ』/mimimi 追加(俊克 6/17)。打つと3文字消してMe Dockを開閉トグル(toggleMeDock)。視界を広げてエディタに集中→再び呪文で戻せる。折返し右端が隠れる時に有効。実装=『かかか』機構を一般化(_fireRawTriggerにaction引数・既定=Rawトグル)＋MEDOCK_TRIGGERSを(A)カーソル位置/(B)ASCII末尾の2系統に追加。閉じている時もonDidChangeTextDocumentで検知し開く。node側のみ・webview<script>同一。
 // - v0.9.929: 💬(ハイライト/取消線レビュー注釈)ジャンプに見出しジャンプと同じ一連を移植(俊克 6/17)。navMeMarkJump=①マークの1行上に着地(curEff=cur+1で再ジャンプ張り付き回避)②着地行の行末にカーソル③本文へフォーカス。markNavStateForEditorのwrap判定もcurEff整合。renderMarkNavの無効化をc<2→c<1(1つでも有効)。node＋webview render部のみ・<script>構文確認済。
 // - v0.9.928: 見出しジャンプの着地カーソルを着地行(見出しの1行前)の行末に(俊克 6/17: すぐ追記できる)。jump後にeditor.selectionを(land,行末列)へ。node側のみ・webview<script>同一。
 // - v0.9.927: 見出しジャンプ後すぐ打鍵できるよう、移動後に本文へフォーカス移動(俊克 6/17)。navMeHeadingJumpでjump後にfocusMeDockTargetEditorPreservingView(リビール済みなので再スクロールしない方)を呼ぶ。node側のみ・webview<script>同一。
@@ -6452,12 +6453,14 @@ async function toggleRawMode() {
   vscode.window.setStatusBarMessage('MeOS: Raw view ' + (meosRawMode ? 'ON (rendering off — plain editor)' : 'OFF'), 1800);
 }
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
+const MEDOCK_TRIGGERS = ['みみみ', 'mimimi']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
 let _rawTriggerBusy = false;
-function _fireRawTrigger(ed, line, endChar, n) {
+function _fireRawTrigger(ed, line, endChar, n, action) {
   _rawTriggerBusy = true; deferRefreshCount++;
   const delRange = new vscode.Range(line, endChar - n, line, endChar);
+  const _act = action || toggleRawMode; // v0.9.930: 呪文ごとのアクション(既定=Rawトグル)
   ed.edit(eb => eb.delete(delRange), { undoStopBefore: false, undoStopAfter: false }).then(
-    () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; toggleRawMode(); },
+    () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; try { _act(); } catch (_) {} },
     () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; }
   );
   return true;
@@ -6476,6 +6479,11 @@ function maybeHandleRawTrigger(e) {
     if (sel.character >= t.length && selLine.slice(sel.character - t.length, sel.character) === t)
       return _fireRawTrigger(ed, sel.line, sel.character, t.length);
   }
+  for (const t of MEDOCK_TRIGGERS) { // v0.9.930: 『みみみ』(非ASCII)=Me Dockトグル
+    if (t.charCodeAt(0) < 128) continue;
+    if (sel.character >= t.length && selLine.slice(sel.character - t.length, sel.character) === t)
+      return _fireRawTrigger(ed, sel.line, sel.character, t.length, () => toggleMeDock());
+  }
   // (B) ローマ字(ASCII=kakaka): 変更の末尾位置で判定(1文字ずつの入力でも正確)。IMEのマークが無いので削除は安全。
   for (const c of e.contentChanges) {
     if (!c.text || c.text.indexOf(String.fromCharCode(10)) >= 0) continue; // 改行を含む変更はスキップ
@@ -6486,6 +6494,11 @@ function maybeHandleRawTrigger(e) {
       if (t.charCodeAt(0) >= 128) continue; // 非ASCIIは(A)で扱う
       if (endChar >= t.length && lineText.slice(endChar - t.length, endChar) === t)
         return _fireRawTrigger(ed, line, endChar, t.length);
+    }
+    for (const t of MEDOCK_TRIGGERS) { // v0.9.930: 『mimimi』(ASCII)=Me Dockトグル
+      if (t.charCodeAt(0) >= 128) continue;
+      if (endChar >= t.length && lineText.slice(endChar - t.length, endChar) === t)
+        return _fireRawTrigger(ed, line, endChar, t.length, () => toggleMeDock());
     }
   }
   return false;
