@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.953: アクセス数表示改良(俊克 6/18)。①(改良1)ピン表示を「📊N=5」に=📊0(バッジ非表示指定)と紛れない ②桁が増えたら圧縮表示k/M(formatAccessCount) ③上限ME_ACCESS_MAX=99999で停止。カウントの意味(進入だけ→操作した訪問のみ等)と滞留時間は次段で要確認。
 // - v0.9.952: ★膜アクセスカウンタ第1段(俊克 6/18 合意)。膜に入る度に+1=globalStateライブ(膜ごと・800msデバウンス永続)・ソース一切不変=AI超高速アクセスでも安全(二読者の共有不変構造)。進入検知=recordMeCursorで最内膜が変わった時(=1訪問)・Me Dock開閉に依らず動作。表示=Current Meピンに📊N。次段: バッジ装飾表示/既定非表示/Me Dock⊕⊖fボタン/保存時mHTOC flush。
 // - v0.9.951: 呪文2のローマ字を mimimi→mememe に(俊克 6/18: me-me-me の方がMe Dockを連想しやすい)。★かな みみみ は維持=か・み・よ=「神よ」の言霊を壊さないため(ローマ字は別オーディエンス向けの別トリガー)。MEDOCK_TRIGGERS=[みみみ, mememe]。node側のみ・webview<script>同一。
 // - v0.9.950: 帰還メニューのホバーを行状態で出し分け(俊克 6/18: v948両方=2重・v949矢印だけ=当たり判定微妙)。文字行→行テキスト側(行全体ホバー=どこでも楽)・空行→ガター矢印。厳密に片方だけ=重複なし＋テキスト行は楽＋空行も出る。栞重なり時もテキスト行なら行ホバーで出る。node側のみ・webview<script>同一。
@@ -8779,12 +8780,22 @@ function getMeAccessMap(document) {
   _meAccessMem.set(k, m);
   return m;
 }
+const ME_ACCESS_MAX = 99999; // v0.9.953: アクセス数の上限(到達で停止=飽和した生きた記憶)
+// v0.9.953: 表示整形。桁が増えたら圧縮(k/M)。表示は「N=値」で 📊0(バッジ非表示指定)と紛れないように。
+function formatAccessCount(n) {
+  n = Number(n) || 0;
+  if (n < 1000) return String(n);
+  if (n < 1000000) return (Math.round(n / 100) / 10) + 'k';
+  return (Math.round(n / 100000) / 10) + 'M';
+}
 function bumpMeAccess(document, membraneId) {
   if (!document) return 0;
   const id = String(membraneId || '').trim();
   if (!id) return 0;
   const m = getMeAccessMap(document);
-  m[id] = (Number(m[id]) || 0) + 1;
+  const cur = Number(m[id]) || 0;
+  if (cur >= ME_ACCESS_MAX) return cur; // 上限到達=これ以上数えない
+  m[id] = cur + 1;
   if (_meAccessSaveTimer) clearTimeout(_meAccessSaveTimer);
   const doc = document;
   _meAccessSaveTimer = setTimeout(() => { try { if (extensionContext) extensionContext.globalState.update(meAccessKey(doc), getMeAccessMap(doc)); } catch (_) {} }, 800);
@@ -8973,7 +8984,7 @@ function currentMembraneInfo(editor) {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
     mcolor = membraneColorForOpenLineText(openText, colorForDepth(cur.depth || 0, cfg)) || '';
   } catch (_) {}
-  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total, chars, charDelta: chars - charBase, charTarget, color: mcolor, access: (Number(getMeAccessMap(editor.document)[id]) || 0) };
+  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total, chars, charDelta: chars - charBase, charTarget, color: mcolor, access: (Number(getMeAccessMap(editor.document)[id]) || 0), accessText: formatAccessCount(Number(getMeAccessMap(editor.document)[id]) || 0) };
 }
 // v0.9.682 (改善1): 差分は総数の後ろに `[Δ+30]` 形式で（188の内訳が+30、と読める）。0なら非表示。
 function deltaText(delta) { return delta ? `[Δ${delta > 0 ? '+' : ''}${delta}]` : ''; }
@@ -12577,7 +12588,7 @@ function renderHyperTocTabs(toc){
 function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const toggleTip=escText('Toggle fold/unfold this membrane (▼⇄▼▲). Works even when the cursor is inside the membrane.');
   // v0.9.757: "From Out To 🟢" checkbox+glyph removed (俊克 am07:04) — the 🟢 jump system is
   // retired in favour of the bookmark (栞) and the ▼⇄▼▲ toggle. Pin keeps title/name/Ln + toggle.
-  return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><span class="toc-pin-access" data-tip="この膜へのアクセス回数(膜に入る度+1・ソース不変。将来バッジへ統合)">\uD83D\uDCCA'+(cm.access||0)+'</span><button class="toc-pin-toggle" style="color:'+(cm.color||'#888')+'" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>'+meCharRowHtml(cm);}
+  return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><span class="toc-pin-access" data-tip="この膜へのアクセス回数(膜に入る度+1・ソース不変。将来バッジへ統合)">\uD83D\uDCCAN='+(cm.accessText||'0')+'</span><button class="toc-pin-toggle" style="color:'+(cm.color||'#888')+'" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>'+meCharRowHtml(cm);}
 /* v0.9.807: ★課題3 — char counter row at the BOTTOM edge of the Current Me Pin.
    No target → plain count + ΔChar. Target set → progress bar (0-70% blue → blends to green
    approaching 100% → orange when over = wrote past the target) + ΔChar at the right end.
