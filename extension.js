@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.958: メタ膜名を一般化 HTOC1_META→mMETA(俊克 6/18: mCN/mH1の系譜・METAと読めて自己説明的)。内部はmCN膜のまま名前をmMETAに(描画▼mMETA・パーサ新型は多数正規表現の改修リスク回避)。後方互換=isMetaMembraneId(mMETA/HTOC1_META両認識)で除外・isHtocMetaOpenAt両対応=孤児/二重ラッパー防止。書込時に旧名ラッパーは3行ごとmMETAへ安全アップグレード(直下がメタ閉じ膜の時のみ・でなければhexのみ置換)。ラベルもH-TOC metadata→metadata汎用化。次段: アクセス数のmHTOC flush(ファイル付属)・バッジ表示。node側のみ・webview<script>同一。
 // - v0.9.957: 子膜の中に居た位置に親から戻れない件の修正(俊克 6/18)。真因=recordMeCursorが最内膜(findCurrentPair)にだけ記録→親膜の最後位置は子の中では更新されず。修正=全ての包含膜(collectPairsでカーソル行を含むpairを抽出・キャッシュ構造で軽量)に、各膜の開始行からの行数差を記録(各膜の構造行off=0/spanは除外)。どの膜に戻っても最後に居た位置へ着地。node側のみ・webview<script>同一。
 // - v0.9.956: 2件(俊克 6/18 ブランチ中に依頼)。①膜内の最後カーソル位置が開始/閉じ膜に飛ぶ件の根治=recordMeCursorが構造行(開始off=0・閉じoff=span)も記録し中身の最後位置を潰していた→off<=0||off>=spanは記録しない(中身行のみ記録)。②膜生成の既定バッジを非表示に=membraneCommentTemplateForLanguageの(📊⊕0+0D…)→(📊0⊕…)。📊0=badgeDisplay:false。node側のみ・webview<script>同一。
 // - v0.9.955: 10秒滞在の計上がピンに即反映されないバグ修正(俊克 6/18)。真因=タイマー発火はスナップショットを呼ばずピン再描画されない(出て戻ると反映=カーソル移動でスナップショット)→タイマー計上直後にpostFixedWorkingTocSnapshotでピン即更新。node側のみ・webview<script>同一。
@@ -3526,7 +3527,7 @@ function collectMembraneStructure(document, options = {}) {
   // 章(深度0)を巡回し続ける。最外核膜自体は depth-transparent + Warp除外(isEnvelope)。
   // mNT記法を使わず「最外核=唯一の深度0膜」という構造だけで自動判定する。
   {
-    const tops = value.pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && p.id !== HTOC_META_ID && !isIndexMembrane(p.id));
+    const tops = value.pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && !isMetaMembraneId(p.id) && !isIndexMembrane(p.id));
     if (tops.length === 1) {
       const env = tops[0];
       const kids = value.pairs.filter(p => p !== env && p.start > env.start && p.end < env.end);
@@ -5539,10 +5540,12 @@ function hyperTocStorageHideRanges(editor) {
 // end-of-file shadow (俊克 pm01:54 B再実装). Fully data-compatible: readHyperTocFromSource finds the
 // `<!-- mHTOC1 <hex> -->` line whether or not it is wrapped, so old (bare) files still load and are
 // upgraded to the wrapped form on the next write.
-const HTOC_META_ID = 'HTOC1_META';
+const HTOC_META_ID = 'mMETA'; // v0.9.958: メタ膜名を一般化(mCN/mH1の系譜=mMETA・俊克 6/18)。アクセス数も入る汎用メタへ。
+const META_LEGACY_IDS = ['HTOC1_META']; // 旧名(後方互換で認識・書込時にmMETAへアップグレード)
+function isMetaMembraneId(id) { const k = String(id || '').trim(); return k === HTOC_META_ID || META_LEGACY_IDS.indexOf(k) >= 0; }
 function isHtocMetaOpenAt(document, ln) {
   if (!document || ln < 0 || ln >= document.lineCount) return false;
-  try { const o = parseOpenLine(document.lineAt(ln).text || ''); return !!(o && o.id === HTOC_META_ID); } catch (_) { return false; }
+  try { const o = parseOpenLine(document.lineAt(ln).text || ''); return !!(o && isMetaMembraneId(o.id)); } catch (_) { return false; }
 }
 async function writeHyperTocToSource(document, data) {
   if (!document) return false;
@@ -5551,19 +5554,27 @@ async function writeHyperTocToSource(document, data) {
   if (!editor) return false; // doc not open as an editor → globalState keeps it until next open
   const hexLine = encodeHyperTocLine(data, document);
   if (!hexLine) return false;
-  const metaOpen = wrapWorkingTocComment(document, '▼mCN=' + HTOC_META_ID + ' // MeOS H-TOC metadata — do not edit (📊⊖f0+0D0W)');
+  const metaOpen = wrapWorkingTocComment(document, '▼mCN=' + HTOC_META_ID + ' // MeOS metadata — do not edit (📊⊖f0+0D0W)');
   const metaClose = wrapWorkingTocComment(document, '▲mCN=' + HTOC_META_ID + ' // end');
   const existing = findHyperTocMarkerLine(document);
-  const wrapped = existing >= 0 && isHtocMetaOpenAt(document, existing - 1);
-  // No change (already wrapped + identical hex) → nothing to write.
-  if (wrapped && (document.lineAt(existing).text || '') === hexLine) return true;
+  const wrapped = existing >= 0 && existing - 1 >= 0 && isHtocMetaOpenAt(document, existing - 1);
+  const _wrapOpenId = wrapped ? ((parseOpenLine(document.lineAt(existing - 1).text || '') || {}).id || '') : '';
+  // v0.9.958: 既にmMETA名で包まれ hex も同一 → 何もしない。旧名(HTOC1_META)はアップグレードのため通す。
+  if (wrapped && _wrapOpenId === HTOC_META_ID && (document.lineAt(existing).text || '') === hexLine) return true;
   deferRefreshCount++;
   let ok = true;
   try {
     await editor.edit(eb => {
       if (existing >= 0 && wrapped) {
-        // Already wrapped → replace only the inner hex line (keep the meta-membrane intact).
-        eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), hexLine);
+        // v0.9.958: 旧名(HTOC1_META)ラッパーは3行(開始/hex/閉じ)ごと mMETA へ書換=名前アップグレード。
+        //   ガード: 直下(existing+1)がメタ閉じ膜の時だけ3行置換、でなければ安全に hex のみ置換。
+        const _closeLn = existing + 1;
+        const _closeOk = _closeLn < document.lineCount && isMetaMembraneId(((parseCloseLine(document.lineAt(_closeLn).text || '') || {}).id) || '');
+        if (_wrapOpenId !== HTOC_META_ID && _closeOk) {
+          eb.replace(new vscode.Range(existing - 1, 0, _closeLn, (document.lineAt(_closeLn).text || '').length), metaOpen + '\n' + hexLine + '\n' + metaClose);
+        } else {
+          eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), hexLine);
+        }
       } else if (existing >= 0) {
         // Legacy bare marker → upgrade in place by wrapping it in the meta-membrane.
         eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), metaOpen + '\n' + hexLine + '\n' + metaClose);
@@ -11948,7 +11959,7 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
   if (mode === 'submarine') {
     // v0.9.791: Submarine cruises OPEN lines only (all depths), no close jumps — Current Me covers
     // a membrane's close. (Warp = depth-0 cores only; Submarine = all depths.) 俊克 pm01:01.
-    const opens = pairs.filter(p => p.id !== HTOC_META_ID).map(p => p.start).filter(n => typeof n === 'number').sort((a, b) => a - b);
+    const opens = pairs.filter(p => !isMetaMembraneId(p.id)).map(p => p.start).filter(n => typeof n === 'number').sort((a, b) => a - b);
     if (!opens.length) return false;
     if (dir === 'plus') {
       const next = opens.find(st => st > line);
@@ -11962,7 +11973,7 @@ function jumpMeDockWarpSubmarineCruise(direction, navMode = 'warp', depthValue =
   // v0.9.788: Warp jumps the outermost CORE membranes only — exclude mNT envelopes
   // (notebooks). mNT is depth-transparent already, so its inner core members stay depth 0
   // and remain Warp targets; mNT itself is navigated via the Current Me click instead.
-  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt && !p.isEnvelope && p.id !== HTOC_META_ID);
+  const layer = pairs.filter(p => (p.depth || 0) === 0 && !p.isMnt && !p.isEnvelope && !isMetaMembraneId(p.id));
   if (!layer.length) return false;
 
   // v0.9.790: Warp cruises ONLY the open lines of core membranes (俊克 pm00:41). The Current Me
@@ -12031,7 +12042,7 @@ function meDockSubmarineCruiseForecastForEditor(editor, pairs, line) {
   const doc = editor.document;
   const colorOf = (pair) => pair ? lineColorCodeFromOpenLine(doc, pair.start) : '';
   // v0.9.791: open-only preview (all depths). minus = previous open, plus = next open (wrap).
-  const opensSorted = pairs.slice().filter(p => typeof p.start === 'number' && p.id !== HTOC_META_ID).sort((a, b) => a.start - b.start);
+  const opensSorted = pairs.slice().filter(p => typeof p.start === 'number' && !isMetaMembraneId(p.id)).sort((a, b) => a.start - b.start);
   if (!opensSorted.length) return fallback;
   const enclosing = pairs.filter(p => p.start <= line && line <= p.end).sort((a,b)=>(b.start-a.start)||(a.end-b.end))[0] || null;
   const at = opensSorted.find(p => p.start === line) || null;
@@ -12059,7 +12070,7 @@ function meDockFlipColorStateForEditor(editor) {
   // v0.9.791: preview must match the Warp cruise = open lines of depth-0 CORE membranes only
   // (exclude mNT). minus = previous open, plus = next open, with wrap. So both arrows show the
   // destination OPEN membrane's colour (no more "own close" colour on +). 俊克 pm01:01.
-  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && !p.isEnvelope && p.id !== HTOC_META_ID).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
+  const rootLayer = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && !p.isEnvelope && !isMetaMembraneId(p.id)).sort((a,b)=>(a.start-b.start)||(a.end-b.end));
   if (rootLayer.length) {
     const starts = rootLayer.map(p => p.start).sort((a,b)=>a-b);
     let plusStart = starts.find(st => st > line); if (plusStart === undefined) plusStart = starts[0];
