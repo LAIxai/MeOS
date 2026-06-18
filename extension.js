@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.966: ★mMETAフォールドを全面再設計(俊克 6/18 NG: v964/965の可視で無条件フォールドが作業中に勝手にmMETAへ飛ぶ最悪挙動=fold→reveal→可視→foldのループ)。撤回し、起動/アクティブ化/書込/可視レンジの自動フォールドを全廃。新方式=recordMeCursorで「カーソルがmMETA膜に入った時だけ」、かつ「閉じ膜(pair.end)が可視レンジにある=実際に展開している時だけ」1回畳む(俊克の指摘: 展開状態は確実に検知できる→無駄な往復/リトライ不要)。カーソルが今そこ=飛ばない／畳めば閉じ膜は可視外=再判定で何もしない=ループ無し。node側のみ・webview<script>同一。
 // - v0.9.965: mMETA可視フォールドの検知をhex行も対象に拡大(俊克 6/18: 閉じ膜が見えた時にも畳んで欲しい)。中身の行(hex=開始+1)or閉じ膜が画面に見える=展開状態(折畳むと中身は隠れる)→畳む。hexも見るので閉じ膜が来る前に早く反応。node側のみ・webview<script>同一。
 // - v0.9.964: mMETA初回フォールドを確実化(俊克 6/18 仮免の残: 起動リトライ≤5sでは4万行のfold provider準備に間に合わず手動クリックで畳んでいた)。★onDidChangeTextEditorVisibleRangesで、mMETAの閉じ膜が画面に見える(=展開状態)瞬間に畳む(その時はprovider準備済=確実・畳めば閉じ膜は隠れ再発火しない・suppressMstatでchurnなし・再入防止_metaFolding)。起動リトライも残置(画面外の先回り用)。node側のみ・webview<script>同一。
 // - v0.9.963: mMETA初回フォールドが一発で効かない件(俊克 6/18: アクティブ化で畳まれるが起動/生成直後は閉じ膜が離れたまま)。真因=起動時はfold provider準備が遅くeditor.foldが空振り。対策=①open→closeをsuppressMstatで(バッジ⊖fのまま=ソース編集ゼロ=churn無し=冪等)②起動時リトライ(1.2s/2.8s/5.0s)=provider準備済の回で確実に畳む。メタ膜はファイル末尾で通常画面外=open→closeのちらつき不可視。WeakSetガード撤去(churn無しなので何度でも安全)。node側のみ・webview<script>同一。
@@ -5599,7 +5600,6 @@ async function writeHyperTocToSource(document, data) {
     setTimeout(() => { try { if (editor === vscode.window.activeTextEditor) refresh(editor); } catch (_) {} }, 0);
     // v0.9.960: 書いた mMETA メタ膜を実際に折畳む(⊖fバッジと実フォールドを一致=初回に閉じ膜が離れて見える件・俊克 6/18)。
     //   初回のみ(foldStateが未設定の時)=ユーザーの手動トグルは尊重。setPairFoldStateAndMstatはselectionLines方式で1発で畳める。
-    setTimeout(() => { try { foldMetaMembranesOnce(editor); } catch (_) {} }, 120);
   }
   return ok;
 }
@@ -5894,52 +5894,6 @@ async function deleteHyperTocTab() {
 }
 
 
-// v0.9.963: ⊖fのmMETAメタ膜を実フォールド(ロード/生成時に畳まれず閉じ膜が離れて見える件・俊克 6/18)。
-//   ★open→close を suppressMstat で行う=バッジは⊖fのまま=ソース編集ゼロ=churn無し→何度呼んでも安全(冪等)。
-//   メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→openでView/foldStateを揃えてからcloseでクリーンな⊕→⊖遷移=1発で畳める。
-//   editor.foldはアクティブエディタにしか効かない→非アクティブなら畳まず次のアクティブ化に委譲。起動時はprovider準備待ちでリトライ。
-async function foldMetaMembranesOnce(editor) {
-  try {
-    if (!editor || !editor.document) return;
-    const pairs = collectPairs(editor.document).filter(p => isMetaMembraneId(p.id));
-    if (!pairs.length) return;
-    const active = vscode.window.activeTextEditor;
-    if (!active || active.document !== editor.document) return;
-    for (const mp of pairs) {
-      try {
-        await setPairFoldStateAndMstat(active, mp, false, { suppressMstat: true });
-        await setPairFoldStateAndMstat(active, mp, true, { suppressMstat: true });
-      } catch (_) {}
-    }
-  } catch (_) {}
-}
-let _metaFolding = false; // v0.9.964: メタ膜フォールド中の再入防止
-// v0.9.964: ★mMETAの閉じ膜が画面に見える(=展開状態)なら畳む。スクロールで見えた瞬間に発火=その時はfold provider準備済=確実(俊克 6/18 仮免の残課題: 起動リトライでは4万行のprovider準備に間に合わない)。
-function foldMetaIfVisibleUnfolded(editor) {
-  try {
-    if (_metaFolding || !editor || !editor.document) return;
-    const active = vscode.window.activeTextEditor;
-    if (!active || active.document !== editor.document) return;
-    const ranges = active.visibleRanges || [];
-    if (!ranges.length) return;
-    const pairs = collectPairs(active.document).filter(p => isMetaMembraneId(p.id));
-    for (const mp of pairs) {
-      // v0.9.965: 中身の行(hex=開始+1) or 閉じ膜が見える=展開状態(折畳むと中身は隠れる)→畳む。hexも見るので閉じ膜より早く反応(俊克 6/18)。
-      const hexVisible = ranges.some(r => r.start.line <= mp.start + 1 && mp.start + 1 <= r.end.line);
-      const closeVisible = ranges.some(r => r.start.line <= mp.end && mp.end <= r.end.line);
-      if (hexVisible || closeVisible) { // 中身が見える=展開状態 → 畳む(畳めば中身は隠れ再発火しない)
-        _metaFolding = true;
-        (async () => {
-          try {
-            await setPairFoldStateAndMstat(active, mp, false, { suppressMstat: true });
-            await setPairFoldStateAndMstat(active, mp, true, { suppressMstat: true });
-          } catch (_) {} finally { _metaFolding = false; }
-        })();
-        return;
-      }
-    }
-  } catch (_) {}
-}
 async function foldWorkingTocRegion(editor) {
   if (!editor) return;
   const region = findWorkingTocRegion(editor.document);
@@ -8912,6 +8866,7 @@ function getMeCursorMap(document) {
   _meCursorMem.set(k, m);
   return m;
 }
+let _metaFolding = false; // v0.9.966: メタ膜フォールド中の再入防止
 function recordMeCursor(editor) {
   if (!editor || !editor.document || !editor.selection) return;
   let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
@@ -8920,6 +8875,17 @@ function recordMeCursor(editor) {
   if (!id) return;
   // v0.9.954: 膜に入ったら訪問開始(計上は編集 OR 10秒滞在の時のみ)。
   startMeVisit(editor.document, id);
+  // v0.9.966: ★mMETAメタ膜は「カーソルがそこへ入った時だけ」畳む(俊克 6/18: 可視で無条件に畳むと作業中に勝手にmMETAへ飛ぶ最悪挙動→撤回)。
+  //   しかも閉じ膜(pair.end)が可視レンジにある時=実際に展開している時だけ畳む(検知できるので無駄な往復/リトライ不要・俊克の指摘)。
+  //   カーソルが今mMETAに在る=飛ばない／畳めば閉じ膜は隠れ可視外=再判定で何もしない=ループ無し。
+  if (isMetaMembraneId(id) && !_metaFolding) {
+    const _closeVis = (editor.visibleRanges || []).some(r => r.start.line <= pair.end && pair.end <= r.end.line);
+    if (_closeVis) {
+      _metaFolding = true;
+      const _ed = editor, _mp = pair;
+      (async () => { try { await setPairFoldStateAndMstat(_ed, _mp, true, { suppressMstat: true }); } catch (_) {} finally { _metaFolding = false; } })();
+    }
+  }
   // v0.9.957: 全ての包含膜(最内=子・親・祖父…)に、それぞれの開始行からの行数差を記録(俊克 6/18: 子膜の中の位置に親から戻れない件)。
   //   →どの膜に戻っても「最後に居た位置(子の中でも)」へ着地。各膜の構造行(開始off=0/閉じoff=span)はその膜には記録しない。collectPairsはキャッシュ構造=軽量。
   const line = editor.selection.active.line;
@@ -14261,8 +14227,7 @@ makeDecorations();
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録
-    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); setTimeout(() => { try { foldMetaMembranesOnce(e); } catch (_) {} }, 250); }));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(ev => { try { foldMetaIfVisibleUnfolded(ev.textEditor); } catch (_) {} })); // v0.9.964: mMETAが画面に見えたら畳む
+    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
   // v0.9.754: On activation, re-apply Standards > V state (writes defaultFoldingRangeProvider)
   // so MeOS fold ranges are in VSCode's cache before the first editor.fold call.
   // Without this, the user would need to manually toggle Standards > V or disable/re-enable
@@ -14275,7 +14240,6 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
       setNativeStandardsDisclosureControls(standardsOn).catch(() => {});
     } catch (_) {}
   }, 600);
-  [1200, 2800, 5000].forEach(ms => setTimeout(() => { try { foldMetaMembranesOnce(vscode.window.activeTextEditor); } catch (_) {} }, ms)); // v0.9.963: 起動/再インストール時にmMETA膜を畳む(provider準備待ちでリトライ・suppressMstatでchurnなし)
 }
 function deactivate() {
   disposeDecorations();
