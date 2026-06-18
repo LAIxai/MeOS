@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.960: mMETAメタ膜が初回に折畳まれず閉じ膜が離れて表示される件の修正(俊克 6/18: ⊖fバッジは閉じなのに実フォールド未適用・2回トグルで直る)。setHyperTocData書込後に、トグルと同じsetPairFoldStateAndMstat(selectionLines方式・1発で畳める)でmMETA膜を実フォールド。初回のみ(foldState未設定時)=手動トグルは尊重。node側のみ・webview<script>同一。
 // - v0.9.959: 新規(Untitled)ファイルにH-TOC幽霊項目が出るバグ修正(俊克 6/18 バグ1)。真因=setHyperTocDataがglobalState(URIキー)にもキャッシュ書込→untitled:Untitled-1のURI使い回しで別の新規ファイルが前回データを拾う。修正=Untitled(scheme=untitled)はglobalStateの読み書きをスキップ(ファイル内mHTOCで足りる=内容と共に移動)。node側のみ・webview<script>同一。
 // - v0.9.958: メタ膜名を一般化 HTOC1_META→mMETA(俊克 6/18: mCN/mH1の系譜・METAと読めて自己説明的)。内部はmCN膜のまま名前をmMETAに(描画▼mMETA・パーサ新型は多数正規表現の改修リスク回避)。後方互換=isMetaMembraneId(mMETA/HTOC1_META両認識)で除外・isHtocMetaOpenAt両対応=孤児/二重ラッパー防止。書込時に旧名ラッパーは3行ごとmMETAへ安全アップグレード(直下がメタ閉じ膜の時のみ・でなければhexのみ置換)。ラベルもH-TOC metadata→metadata汎用化。次段: アクセス数のmHTOC flush(ファイル付属)・バッジ表示。node側のみ・webview<script>同一。
 // - v0.9.957: 子膜の中に居た位置に親から戻れない件の修正(俊克 6/18)。真因=recordMeCursorが最内膜(findCurrentPair)にだけ記録→親膜の最後位置は子の中では更新されず。修正=全ての包含膜(collectPairsでカーソル行を含むpairを抽出・キャッシュ構造で軽量)に、各膜の開始行からの行数差を記録(各膜の構造行off=0/spanは除外)。どの膜に戻っても最後に居た位置へ着地。node側のみ・webview<script>同一。
@@ -5589,7 +5590,19 @@ async function writeHyperTocToSource(document, data) {
   } catch (_) { ok = false; } finally {
     deferRefreshCount = Math.max(0, deferRefreshCount - 1);
   }
-  if (ok) setTimeout(() => { try { if (editor === vscode.window.activeTextEditor) refresh(editor); } catch (_) {} }, 0);
+  if (ok) {
+    setTimeout(() => { try { if (editor === vscode.window.activeTextEditor) refresh(editor); } catch (_) {} }, 0);
+    // v0.9.960: 書いた mMETA メタ膜を実際に折畳む(⊖fバッジと実フォールドを一致=初回に閉じ膜が離れて見える件・俊克 6/18)。
+    //   初回のみ(foldStateが未設定の時)=ユーザーの手動トグルは尊重。setPairFoldStateAndMstatはselectionLines方式で1発で畳める。
+    setTimeout(async () => {
+      try {
+        const mp = collectPairs(editor.document).filter(p => isMetaMembraneId(p.id))[0];
+        if (mp && foldStateByPairKey.get(pairStateKey(editor, mp)) === undefined) {
+          await setPairFoldStateAndMstat(editor, mp, true, { suppressMstat: true, suppressRefresh: true });
+        }
+      } catch (_) {}
+    }, 90);
+  }
   return ok;
 }
 function getHyperTocData(document) {
