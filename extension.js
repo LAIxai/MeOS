@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.963: mMETA初回フォールドが一発で効かない件(俊克 6/18: アクティブ化で畳まれるが起動/生成直後は閉じ膜が離れたまま)。真因=起動時はfold provider準備が遅くeditor.foldが空振り。対策=①open→closeをsuppressMstatで(バッジ⊖fのまま=ソース編集ゼロ=churn無し=冪等)②起動時リトライ(1.2s/2.8s/5.0s)=provider準備済の回で確実に畳む。メタ膜はファイル末尾で通常画面外=open→closeのちらつき不可視。WeakSetガード撤去(churn無しなので何度でも安全)。node側のみ・webview<script>同一。
 // - v0.9.962: mMETAフォールド初期化を俊克案で根治。メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→そこにfoldを当てても1回では効かない(2回トグルと同根)。foldMetaMembranesOnceを「一旦open(バッジ⊕・展開で同期)→close(バッジ⊖・実フォールド)」の2段に=クリーンな⊕→⊖遷移で1発で畳める。node側のみ・webview<script>同一。
 // - v0.9.961: mMETAメタ膜のフォールド初期化を根治(俊克 6/18: 再インストール/新規生成時に閉じ膜が離れて見える・v960の書込後だけでは不足)。真因=拡張リロードでfoldStateByPairKey(メモリ)リセット＆⊖fバッジからロード時に自動フォールドする処理が無い。foldMetaMembranesOnce(アクティブ時に1回・selectionLines方式・WeakSetでセッション内1回)を①起動setTimeout(1000ms・Standards>V再適用後)②onDidChangeActiveTextEditor(250ms)③setHyperTocData書込後 の3点で呼ぶ。非アクティブなら畳まず次のアクティブ化に委譲。node側のみ・webview<script>同一。
 // - v0.9.960: mMETAメタ膜が初回に折畳まれず閉じ膜が離れて表示される件の修正(俊克 6/18: ⊖fバッジは閉じなのに実フォールド未適用・2回トグルで直る)。setHyperTocData書込後に、トグルと同じsetPairFoldStateAndMstat(selectionLines方式・1発で畳める)でmMETA膜を実フォールド。初回のみ(foldState未設定時)=手動トグルは尊重。node側のみ・webview<script>同一。
@@ -5891,25 +5892,21 @@ async function deleteHyperTocTab() {
 }
 
 
-const _metaFoldedDocs = new WeakSet(); // v0.9.961: mMETAメタ膜を「ロード/生成時に1回だけ」自動フォールド済みの文書(再インストールでリセット=毎回畳み直す)
-// v0.9.961: ⊖fのmMETAメタ膜を実フォールド(ロード時に畳まれず閉じ膜が離れて見える件・俊克 6/18)。
-//   editor.foldはアクティブエディタにしか効かない→非アクティブなら畳まず、次のアクティブ化(onDidChangeActiveTextEditor)に任せる。
+// v0.9.963: ⊖fのmMETAメタ膜を実フォールド(ロード/生成時に畳まれず閉じ膜が離れて見える件・俊克 6/18)。
+//   ★open→close を suppressMstat で行う=バッジは⊖fのまま=ソース編集ゼロ=churn無し→何度呼んでも安全(冪等)。
+//   メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→openでView/foldStateを揃えてからcloseでクリーンな⊕→⊖遷移=1発で畳める。
+//   editor.foldはアクティブエディタにしか効かない→非アクティブなら畳まず次のアクティブ化に委譲。起動時はprovider準備待ちでリトライ。
 async function foldMetaMembranesOnce(editor) {
   try {
     if (!editor || !editor.document) return;
-    if (_metaFoldedDocs.has(editor.document)) return;
     const pairs = collectPairs(editor.document).filter(p => isMetaMembraneId(p.id));
-    if (!pairs.length) return; // メタ膜がまだ無い → マークしない(生成時に畳む)
+    if (!pairs.length) return;
     const active = vscode.window.activeTextEditor;
-    if (!active || active.document !== editor.document) return; // 非アクティブ=fold効かない→後で
-    _metaFoldedDocs.add(editor.document);
+    if (!active || active.document !== editor.document) return;
     for (const mp of pairs) {
       try {
-        // v0.9.962: ★俊克案=一旦開いて(バッジ⊕・展開で状態同期)→閉じる(バッジ⊖・実フォールド)。
-        //   メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→そこにfoldを当てても1回では効かない(2回トグルと同根)。
-        //   openでView/バッジ/foldStateを揃えてからcloseすると、クリーンな⊕→⊖遷移で1発で畳める。
-        await setPairFoldStateAndMstat(active, mp, false);
-        await setPairFoldStateAndMstat(active, mp, true);
+        await setPairFoldStateAndMstat(active, mp, false, { suppressMstat: true });
+        await setPairFoldStateAndMstat(active, mp, true, { suppressMstat: true });
       } catch (_) {}
     }
   } catch (_) {}
@@ -14248,7 +14245,7 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
       setNativeStandardsDisclosureControls(standardsOn).catch(() => {});
     } catch (_) {}
   }, 600);
-  setTimeout(() => { try { foldMetaMembranesOnce(vscode.window.activeTextEditor); } catch (_) {} }, 1000); // v0.9.961: 起動/再インストール時にmMETA膜を畳む(fold provider再適用後)
+  [1200, 2800, 5000].forEach(ms => setTimeout(() => { try { foldMetaMembranesOnce(vscode.window.activeTextEditor); } catch (_) {} }, ms)); // v0.9.963: 起動/再インストール時にmMETA膜を畳む(provider準備待ちでリトライ・suppressMstatでchurnなし)
 }
 function deactivate() {
   disposeDecorations();
