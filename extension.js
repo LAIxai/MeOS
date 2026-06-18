@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.967: ★mMETAが開いて見える真因を俊克が特定=EOFボタンが最終行(=mMETAの閉じ膜)に着地→折畳んだ隠れ行へカーソルを置こうとしVSCodeが展開していた。修正=jumpMeDockEndOfFileをmMETAメタ膜の手前(本文末尾=mMETA開始の1つ前)で止める(mMETAはメタデータで本文ではない)。これでEOFがmMETAを開かない=畳まれたまま。v966のカーソル進入フォールドと合わせて決着。node側のみ・webview<script>同一。
 // - v0.9.966: ★mMETAフォールドを全面再設計(俊克 6/18 NG: v964/965の可視で無条件フォールドが作業中に勝手にmMETAへ飛ぶ最悪挙動=fold→reveal→可視→foldのループ)。撤回し、起動/アクティブ化/書込/可視レンジの自動フォールドを全廃。新方式=recordMeCursorで「カーソルがmMETA膜に入った時だけ」、かつ「閉じ膜(pair.end)が可視レンジにある=実際に展開している時だけ」1回畳む(俊克の指摘: 展開状態は確実に検知できる→無駄な往復/リトライ不要)。カーソルが今そこ=飛ばない／畳めば閉じ膜は可視外=再判定で何もしない=ループ無し。node側のみ・webview<script>同一。
 // - v0.9.965: mMETA可視フォールドの検知をhex行も対象に拡大(俊克 6/18: 閉じ膜が見えた時にも畳んで欲しい)。中身の行(hex=開始+1)or閉じ膜が画面に見える=展開状態(折畳むと中身は隠れる)→畳む。hexも見るので閉じ膜が来る前に早く反応。node側のみ・webview<script>同一。
 // - v0.9.964: mMETA初回フォールドを確実化(俊克 6/18 仮免の残: 起動リトライ≤5sでは4万行のfold provider準備に間に合わず手動クリックで畳んでいた)。★onDidChangeTextEditorVisibleRangesで、mMETAの閉じ膜が画面に見える(=展開状態)瞬間に畳む(その時はprovider準備済=確実・畳めば閉じ膜は隠れ再発火しない・suppressMstatでchurnなし・再入防止_metaFolding)。起動リトライも残置(画面外の先回り用)。node側のみ・webview<script>同一。
@@ -11834,7 +11835,17 @@ function jumpMeDockTopOfFile() {
 function jumpMeDockEndOfFile() {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document) return false;
-  return jumpMeDockTargetLine(String(Math.max(1, editor.document.lineCount)));
+  // v0.9.967: EOFはmMETAメタ膜の手前で止める(末尾のmMETAの閉じ膜に着地すると、折畳んだ隠れ行へカーソルを置こうとして
+  //   VSCodeが展開する=「閉じ膜が離れる」真因・俊克 6/18)。mMETAはメタデータで本文ではない→本文末尾(=mMETA開始の1つ前)に着地。
+  let target = Math.max(1, editor.document.lineCount); // 既定=最終行(1-based)
+  try {
+    const metas = collectPairs(editor.document).filter(p => isMetaMembraneId(p.id));
+    if (metas.length) {
+      const top = Math.min.apply(null, metas.map(p => p.start)); // 最初のmMETA開始行(0-based)
+      if (top > 0) target = top; // 0-based(top-1)の行=1-based top → mMETA開始の1つ前
+    }
+  } catch (_) {}
+  return jumpMeDockTargetLine(String(Math.max(1, target)));
 }
 
 function jumpMeDockTocOrTop() {
