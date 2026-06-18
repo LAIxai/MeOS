@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.957: 子膜の中に居た位置に親から戻れない件の修正(俊克 6/18)。真因=recordMeCursorが最内膜(findCurrentPair)にだけ記録→親膜の最後位置は子の中では更新されず。修正=全ての包含膜(collectPairsでカーソル行を含むpairを抽出・キャッシュ構造で軽量)に、各膜の開始行からの行数差を記録(各膜の構造行off=0/spanは除外)。どの膜に戻っても最後に居た位置へ着地。node側のみ・webview<script>同一。
 // - v0.9.956: 2件(俊克 6/18 ブランチ中に依頼)。①膜内の最後カーソル位置が開始/閉じ膜に飛ぶ件の根治=recordMeCursorが構造行(開始off=0・閉じoff=span)も記録し中身の最後位置を潰していた→off<=0||off>=spanは記録しない(中身行のみ記録)。②膜生成の既定バッジを非表示に=membraneCommentTemplateForLanguageの(📊⊕0+0D…)→(📊0⊕…)。📊0=badgeDisplay:false。node側のみ・webview<script>同一。
 // - v0.9.955: 10秒滞在の計上がピンに即反映されないバグ修正(俊克 6/18)。真因=タイマー発火はスナップショットを呼ばずピン再描画されない(出て戻ると反映=カーソル移動でスナップショット)→タイマー計上直後にpostFixedWorkingTocSnapshotでピン即更新。node側のみ・webview<script>同一。
 // - v0.9.954: アクセス計数を「編集 OR 10秒滞在」モデルに(俊克 6/18 合意)。膜に入る→タイマー(ME_DWELL_MS=10s)。10秒残れば計上・途中で別膜へ抜ければ計上せず破棄(通り抜け除外)・編集が起きたら即計上(noteMeEditForAccess・1訪問1回)。startMeVisit/_meVisit。AIは自己判断で計上=コマンドlai-membrane.bumpAccess登録(key省略時は現在膜・高速スキャンで違ったら呼ばない=変えない)。node側のみ・webview<script>同一。
@@ -8848,13 +8849,23 @@ function recordMeCursor(editor) {
   if (!id) return;
   // v0.9.954: 膜に入ったら訪問開始(計上は編集 OR 10秒滞在の時のみ)。
   startMeVisit(editor.document, id);
-  const off = editor.selection.active.line - pair.start;
-  const span = pair.end - pair.start;
-  // v0.9.956: 開始膜行(off=0)・閉じ膜行(off=span)は記録しない=構造行に乗った瞬間に「中身の最後位置」を潰さない(俊克 6/18: 最近、開始/閉じ膜に飛ぶ件の根治)。
-  if (off <= 0 || off >= span) return;
+  // v0.9.957: 全ての包含膜(最内=子・親・祖父…)に、それぞれの開始行からの行数差を記録(俊克 6/18: 子膜の中の位置に親から戻れない件)。
+  //   →どの膜に戻っても「最後に居た位置(子の中でも)」へ着地。各膜の構造行(開始off=0/閉じoff=span)はその膜には記録しない。collectPairsはキャッシュ構造=軽量。
+  const line = editor.selection.active.line;
+  let pairs = [];
+  try { pairs = collectPairs(editor.document).filter(p => p.start <= line && line <= p.end); } catch (_) { pairs = [pair]; }
+  if (!pairs.length) return;
   const m = getMeCursorMap(editor.document);
-  if (m[id] === off) return; // 変化なし
-  m[id] = off;
+  let changed = false;
+  for (const p of pairs) {
+    const pid = String(p.id || '').trim();
+    if (!pid) continue;
+    const off = line - p.start;
+    const span = p.end - p.start;
+    if (off <= 0 || off >= span) continue;
+    if (m[pid] !== off) { m[pid] = off; changed = true; }
+  }
+  if (!changed) return;
   if (_meCursorSaveTimer) clearTimeout(_meCursorSaveTimer);
   const doc = editor.document;
   _meCursorSaveTimer = setTimeout(() => { try { if (extensionContext) extensionContext.globalState.update(meCursorKey(doc), m); } catch (_) {} }, 800);
