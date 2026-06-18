@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.956: 2件(俊克 6/18 ブランチ中に依頼)。①膜内の最後カーソル位置が開始/閉じ膜に飛ぶ件の根治=recordMeCursorが構造行(開始off=0・閉じoff=span)も記録し中身の最後位置を潰していた→off<=0||off>=spanは記録しない(中身行のみ記録)。②膜生成の既定バッジを非表示に=membraneCommentTemplateForLanguageの(📊⊕0+0D…)→(📊0⊕…)。📊0=badgeDisplay:false。node側のみ・webview<script>同一。
 // - v0.9.955: 10秒滞在の計上がピンに即反映されないバグ修正(俊克 6/18)。真因=タイマー発火はスナップショットを呼ばずピン再描画されない(出て戻ると反映=カーソル移動でスナップショット)→タイマー計上直後にpostFixedWorkingTocSnapshotでピン即更新。node側のみ・webview<script>同一。
 // - v0.9.954: アクセス計数を「編集 OR 10秒滞在」モデルに(俊克 6/18 合意)。膜に入る→タイマー(ME_DWELL_MS=10s)。10秒残れば計上・途中で別膜へ抜ければ計上せず破棄(通り抜け除外)・編集が起きたら即計上(noteMeEditForAccess・1訪問1回)。startMeVisit/_meVisit。AIは自己判断で計上=コマンドlai-membrane.bumpAccess登録(key省略時は現在膜・高速スキャンで違ったら呼ばない=変えない)。node側のみ・webview<script>同一。
 // - v0.9.953: アクセス数表示改良(俊克 6/18)。①(改良1)ピン表示を「📊N=5」に=📊0(バッジ非表示指定)と紛れない ②桁が増えたら圧縮表示k/M(formatAccessCount) ③上限ME_ACCESS_MAX=99999で停止。カウントの意味(進入だけ→操作した訪問のみ等)と滞留時間は次段で要確認。
@@ -8848,7 +8849,9 @@ function recordMeCursor(editor) {
   // v0.9.954: 膜に入ったら訪問開始(計上は編集 OR 10秒滞在の時のみ)。
   startMeVisit(editor.document, id);
   const off = editor.selection.active.line - pair.start;
-  if (off < 0) return;
+  const span = pair.end - pair.start;
+  // v0.9.956: 開始膜行(off=0)・閉じ膜行(off=span)は記録しない=構造行に乗った瞬間に「中身の最後位置」を潰さない(俊克 6/18: 最近、開始/閉じ膜に飛ぶ件の根治)。
+  if (off <= 0 || off >= span) return;
   const m = getMeCursorMap(editor.document);
   if (m[id] === off) return; // 変化なし
   m[id] = off;
@@ -10469,7 +10472,7 @@ function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = 
   // Inner body matches the slash-comment format so the parser pipeline stays common.
   if (lang === 'markdown' || lang === 'mdx') {
     return {
-      open: `${indent}<!-- {* ▼mCN=${id} // comment1 (📊⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *} -->`,
+      open: `${indent}<!-- {* ▼mCN=${id} // comment1 (📊0⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *} -->`,
       close: `${indent}<!-- {* ▲mCN=${id} // comment2 *} -->`,
       markdown: true
     };
@@ -10477,7 +10480,7 @@ function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = 
 
   // Default: existing code-oriented canonical markMup source.
   return {
-    open: `${indent}// {* ▼mCN=${id} // comment1 (📊⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *}`,
+    open: `${indent}// {* ▼mCN=${id} // comment1 (📊0⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *}`,
     close: `${indent}// {* ▲mCN=${id} // comment2 *}`
   };
 }
