@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.965: mMETA可視フォールドの検知をhex行も対象に拡大(俊克 6/18: 閉じ膜が見えた時にも畳んで欲しい)。中身の行(hex=開始+1)or閉じ膜が画面に見える=展開状態(折畳むと中身は隠れる)→畳む。hexも見るので閉じ膜が来る前に早く反応。node側のみ・webview<script>同一。
 // - v0.9.964: mMETA初回フォールドを確実化(俊克 6/18 仮免の残: 起動リトライ≤5sでは4万行のfold provider準備に間に合わず手動クリックで畳んでいた)。★onDidChangeTextEditorVisibleRangesで、mMETAの閉じ膜が画面に見える(=展開状態)瞬間に畳む(その時はprovider準備済=確実・畳めば閉じ膜は隠れ再発火しない・suppressMstatでchurnなし・再入防止_metaFolding)。起動リトライも残置(画面外の先回り用)。node側のみ・webview<script>同一。
 // - v0.9.963: mMETA初回フォールドが一発で効かない件(俊克 6/18: アクティブ化で畳まれるが起動/生成直後は閉じ膜が離れたまま)。真因=起動時はfold provider準備が遅くeditor.foldが空振り。対策=①open→closeをsuppressMstatで(バッジ⊖fのまま=ソース編集ゼロ=churn無し=冪等)②起動時リトライ(1.2s/2.8s/5.0s)=provider準備済の回で確実に畳む。メタ膜はファイル末尾で通常画面外=open→closeのちらつき不可視。WeakSetガード撤去(churn無しなので何度でも安全)。node側のみ・webview<script>同一。
 // - v0.9.962: mMETAフォールド初期化を俊克案で根治。メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→そこにfoldを当てても1回では効かない(2回トグルと同根)。foldMetaMembranesOnceを「一旦open(バッジ⊕・展開で同期)→close(バッジ⊖・実フォールド)」の2段に=クリーンな⊕→⊖遷移で1発で畳める。node側のみ・webview<script>同一。
@@ -5923,8 +5924,10 @@ function foldMetaIfVisibleUnfolded(editor) {
     if (!ranges.length) return;
     const pairs = collectPairs(active.document).filter(p => isMetaMembraneId(p.id));
     for (const mp of pairs) {
+      // v0.9.965: 中身の行(hex=開始+1) or 閉じ膜が見える=展開状態(折畳むと中身は隠れる)→畳む。hexも見るので閉じ膜より早く反応(俊克 6/18)。
+      const hexVisible = ranges.some(r => r.start.line <= mp.start + 1 && mp.start + 1 <= r.end.line);
       const closeVisible = ranges.some(r => r.start.line <= mp.end && mp.end <= r.end.line);
-      if (closeVisible) { // 閉じ膜が見える=展開状態 → 畳む(畳めば閉じ膜は隠れ再発火しない)
+      if (hexVisible || closeVisible) { // 中身が見える=展開状態 → 畳む(畳めば中身は隠れ再発火しない)
         _metaFolding = true;
         (async () => {
           try {
