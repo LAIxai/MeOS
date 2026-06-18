@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.959: 新規(Untitled)ファイルにH-TOC幽霊項目が出るバグ修正(俊克 6/18 バグ1)。真因=setHyperTocDataがglobalState(URIキー)にもキャッシュ書込→untitled:Untitled-1のURI使い回しで別の新規ファイルが前回データを拾う。修正=Untitled(scheme=untitled)はglobalStateの読み書きをスキップ(ファイル内mHTOCで足りる=内容と共に移動)。node側のみ・webview<script>同一。
 // - v0.9.958: メタ膜名を一般化 HTOC1_META→mMETA(俊克 6/18: mCN/mH1の系譜・METAと読めて自己説明的)。内部はmCN膜のまま名前をmMETAに(描画▼mMETA・パーサ新型は多数正規表現の改修リスク回避)。後方互換=isMetaMembraneId(mMETA/HTOC1_META両認識)で除外・isHtocMetaOpenAt両対応=孤児/二重ラッパー防止。書込時に旧名ラッパーは3行ごとmMETAへ安全アップグレード(直下がメタ閉じ膜の時のみ・でなければhexのみ置換)。ラベルもH-TOC metadata→metadata汎用化。次段: アクセス数のmHTOC flush(ファイル付属)・バッジ表示。node側のみ・webview<script>同一。
 // - v0.9.957: 子膜の中に居た位置に親から戻れない件の修正(俊克 6/18)。真因=recordMeCursorが最内膜(findCurrentPair)にだけ記録→親膜の最後位置は子の中では更新されず。修正=全ての包含膜(collectPairsでカーソル行を含むpairを抽出・キャッシュ構造で軽量)に、各膜の開始行からの行数差を記録(各膜の構造行off=0/spanは除外)。どの膜に戻っても最後に居た位置へ着地。node側のみ・webview<script>同一。
 // - v0.9.956: 2件(俊克 6/18 ブランチ中に依頼)。①膜内の最後カーソル位置が開始/閉じ膜に飛ぶ件の根治=recordMeCursorが構造行(開始off=0・閉じoff=span)も記録し中身の最後位置を潰していた→off<=0||off>=spanは記録しない(中身行のみ記録)。②膜生成の既定バッジを非表示に=membraneCommentTemplateForLanguageの(📊⊕0+0D…)→(📊0⊕…)。📊0=badgeDisplay:false。node側のみ・webview<script>同一。
@@ -5596,7 +5597,9 @@ function getHyperTocData(document) {
   // v0.9.677: the in-file "別セクター" is the source of truth — read it first; fall back to
   // globalState (legacy absolute-path key) only when the file has no marker yet (= migration src).
   let data = readHyperTocFromSource(document);
-  if (!data && extensionContext) {
+  // v0.9.959: Untitledファイルは URI が使い回され globalState の残存データが浮く(新規ファイルに幽霊項目)→
+  //   Untitledはファイル内mHTOC(内容と共に移動)で足りるので globalState フォールバックを使わない(俊克 6/18 バグ1)。
+  if (!data && extensionContext && !(document.uri && document.uri.scheme === 'untitled')) {
     try { data = extensionContext.globalState.get(hyperTocDataKey(document)); } catch (_) { data = null; }
   }
   try {
@@ -5642,7 +5645,7 @@ async function setHyperTocData(document, data) {
   flushMeCharStatsIntoData(document, data);
   // v0.9.677: persist to the in-file "別セクター" (source of truth, travels with the file).
   // Keep globalState as a fast cache / fallback for when the doc isn't open as an editor.
-  if (extensionContext) { try { await extensionContext.globalState.update(hyperTocDataKey(document), data); } catch (_) {} }
+  if (extensionContext && !(document.uri && document.uri.scheme === 'untitled')) { try { await extensionContext.globalState.update(hyperTocDataKey(document), data); } catch (_) {} } // v0.9.959: UntitledはglobalStateに残さない(URI使い回しの幽霊項目防止)
   await writeHyperTocToSource(document, data);
 }
 let __hyperTocIdCounter = 0;
