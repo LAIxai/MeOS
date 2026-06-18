@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.954: アクセス計数を「編集 OR 10秒滞在」モデルに(俊克 6/18 合意)。膜に入る→タイマー(ME_DWELL_MS=10s)。10秒残れば計上・途中で別膜へ抜ければ計上せず破棄(通り抜け除外)・編集が起きたら即計上(noteMeEditForAccess・1訪問1回)。startMeVisit/_meVisit。AIは自己判断で計上=コマンドlai-membrane.bumpAccess登録(key省略時は現在膜・高速スキャンで違ったら呼ばない=変えない)。node側のみ・webview<script>同一。
 // - v0.9.953: アクセス数表示改良(俊克 6/18)。①(改良1)ピン表示を「📊N=5」に=📊0(バッジ非表示指定)と紛れない ②桁が増えたら圧縮表示k/M(formatAccessCount) ③上限ME_ACCESS_MAX=99999で停止。カウントの意味(進入だけ→操作した訪問のみ等)と滞留時間は次段で要確認。
 // - v0.9.952: ★膜アクセスカウンタ第1段(俊克 6/18 合意)。膜に入る度に+1=globalStateライブ(膜ごと・800msデバウンス永続)・ソース一切不変=AI超高速アクセスでも安全(二読者の共有不変構造)。進入検知=recordMeCursorで最内膜が変わった時(=1訪問)・Me Dock開閉に依らず動作。表示=Current Meピンに📊N。次段: バッジ装飾表示/既定非表示/Me Dock⊕⊖fボタン/保存時mHTOC flush。
 // - v0.9.951: 呪文2のローマ字を mimimi→mememe に(俊克 6/18: me-me-me の方がMe Dockを連想しやすい)。★かな みみみ は維持=か・み・よ=「神よ」の言霊を壊さないため(ローマ字は別オーディエンス向けの別トリガー)。MEDOCK_TRIGGERS=[みみみ, mememe]。node側のみ・webview<script>同一。
@@ -8769,7 +8770,9 @@ let _meCursorSaveTimer = null;
 //   =AIが超高速grep/ジャンプしてもソース不変=「二読者(人間=遅/AI=速)が共有する不変構造」の核(俊克 6/18)。
 const _meAccessMem = new Map(); // uriString -> { [membraneId]: アクセス回数 }
 let _meAccessSaveTimer = null;
-let _lastAccess = null; // {uri,id} 直近の最内膜=進入検知
+const ME_DWELL_MS = 10000; // v0.9.954: 人間の閾値=10秒滞在(編集ORこれで計上・通り抜けは数えない)
+let _meVisit = null; // {uri,id,counted} 現在の訪問
+let _meVisitTimer = null;
 function meAccessKey(document) { return 'meMembraneAccess:' + (document ? document.uri.toString() : ''); }
 function getMeAccessMap(document) {
   if (!document) return {};
@@ -8801,6 +8804,30 @@ function bumpMeAccess(document, membraneId) {
   _meAccessSaveTimer = setTimeout(() => { try { if (extensionContext) extensionContext.globalState.update(meAccessKey(doc), getMeAccessMap(doc)); } catch (_) {} }, 800);
   return m[id];
 }
+// v0.9.954: 「1訪問」を計上するのは【編集した OR 10秒以上滞在した】時のみ(進入/通り抜けだけでは数えない)。
+//   膜に入る→タイマー開始。10秒残れば計上。途中で別膜へ抜けたら計上せず破棄。編集が起きたら即計上。
+function startMeVisit(document, id) {
+  if (!document || !id) return;
+  const uri = document.uri.toString();
+  if (_meVisit && _meVisit.uri === uri && _meVisit.id === id) return; // 同じ膜内=継続
+  if (_meVisitTimer) { clearTimeout(_meVisitTimer); _meVisitTimer = null; }
+  _meVisit = { uri: uri, id: id, counted: false };
+  const visit = _meVisit;
+  _meVisitTimer = setTimeout(() => {
+    if (_meVisit === visit && !visit.counted) { visit.counted = true; bumpMeAccess(document, visit.id); }
+  }, ME_DWELL_MS);
+}
+function noteMeEditForAccess(e) {
+  try {
+    if (!_meVisit || _meVisit.counted) return;
+    const ed = vscode.window.activeTextEditor;
+    if (!ed || !e || e.document !== ed.document) return;
+    if (ed.document.uri.toString() !== _meVisit.uri) return;
+    _meVisit.counted = true;
+    if (_meVisitTimer) { clearTimeout(_meVisitTimer); _meVisitTimer = null; }
+    bumpMeAccess(ed.document, _meVisit.id);
+  } catch (_) {}
+}
 function meCursorKey(document) { return 'meMembraneCursor:' + (document ? document.uri.toString() : ''); }
 function getMeCursorMap(document) {
   if (!document) return {};
@@ -8817,12 +8844,8 @@ function recordMeCursor(editor) {
   if (!pair) return;
   const id = String(pair.id || '').trim();
   if (!id) return;
-  // v0.9.952: 膜進入カウント(最内膜が変わった時=1訪問)。Me Dock開閉に依らず動作。
-  const _accUri = editor.document.uri.toString();
-  if (!_lastAccess || _lastAccess.uri !== _accUri || _lastAccess.id !== id) {
-    _lastAccess = { uri: _accUri, id: id };
-    bumpMeAccess(editor.document, id);
-  }
+  // v0.9.954: 膜に入ったら訪問開始(計上は編集 OR 10秒滞在の時のみ)。
+  startMeVisit(editor.document, id);
   const off = editor.selection.active.line - pair.start;
   if (off < 0) return;
   const m = getMeCursorMap(editor.document);
@@ -13849,6 +13872,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemoveAt', (line) => bookmarkRemove(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturn', (key) => { try { jumpToWorkingTocItem(key); } catch (_) {} })); // v0.9.946: H-TOC帰還
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturnLine', (line0) => { try { jumpMeDockTargetLine(String((Number(line0) || 0) + 1)); } catch (_) {} })); // v0.9.949: 作業位置(行番号)へ戻る
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bumpAccess', (key) => { try { const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return; let id = String(key || '').trim(); if (!id) { const cp = findCurrentPair(ed); if (cp) id = String(cp.id || '').trim(); } if (id) bumpMeAccess(ed.document, id); } catch (_) {} })); // v0.9.954: AIが自己判断でアクセス計上する明示フック
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkClearAll', () => bookmarkClearAll(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFront', () => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetFrontAt', (line) => bookmarkSetFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
@@ -14034,6 +14058,7 @@ makeDecorations();
     vscode.workspace.onDidChangeTextDocument(e => {
       // v0.9.715: 🔖 ブックマークの行ズレを追従(gate前に全変更で実行)。
       adjustBookmarksForChange(e);
+      noteMeEditForAccess(e); // v0.9.954: 編集が現在膜で起きたら訪問を計上
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
