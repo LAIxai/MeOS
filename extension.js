@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.962: mMETAフォールド初期化を俊克案で根治。メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→そこにfoldを当てても1回では効かない(2回トグルと同根)。foldMetaMembranesOnceを「一旦open(バッジ⊕・展開で同期)→close(バッジ⊖・実フォールド)」の2段に=クリーンな⊕→⊖遷移で1発で畳める。node側のみ・webview<script>同一。
 // - v0.9.961: mMETAメタ膜のフォールド初期化を根治(俊克 6/18: 再インストール/新規生成時に閉じ膜が離れて見える・v960の書込後だけでは不足)。真因=拡張リロードでfoldStateByPairKey(メモリ)リセット＆⊖fバッジからロード時に自動フォールドする処理が無い。foldMetaMembranesOnce(アクティブ時に1回・selectionLines方式・WeakSetでセッション内1回)を①起動setTimeout(1000ms・Standards>V再適用後)②onDidChangeActiveTextEditor(250ms)③setHyperTocData書込後 の3点で呼ぶ。非アクティブなら畳まず次のアクティブ化に委譲。node側のみ・webview<script>同一。
 // - v0.9.960: mMETAメタ膜が初回に折畳まれず閉じ膜が離れて表示される件の修正(俊克 6/18: ⊖fバッジは閉じなのに実フォールド未適用・2回トグルで直る)。setHyperTocData書込後に、トグルと同じsetPairFoldStateAndMstat(selectionLines方式・1発で畳める)でmMETA膜を実フォールド。初回のみ(foldState未設定時)=手動トグルは尊重。node側のみ・webview<script>同一。
 // - v0.9.959: 新規(Untitled)ファイルにH-TOC幽霊項目が出るバグ修正(俊克 6/18 バグ1)。真因=setHyperTocDataがglobalState(URIキー)にもキャッシュ書込→untitled:Untitled-1のURI使い回しで別の新規ファイルが前回データを拾う。修正=Untitled(scheme=untitled)はglobalStateの読み書きをスキップ(ファイル内mHTOCで足りる=内容と共に移動)。node側のみ・webview<script>同一。
@@ -5903,7 +5904,13 @@ async function foldMetaMembranesOnce(editor) {
     if (!active || active.document !== editor.document) return; // 非アクティブ=fold効かない→後で
     _metaFoldedDocs.add(editor.document);
     for (const mp of pairs) {
-      try { await setPairFoldStateAndMstat(active, mp, true, { suppressMstat: true }); } catch (_) {}
+      try {
+        // v0.9.962: ★俊克案=一旦開いて(バッジ⊕・展開で状態同期)→閉じる(バッジ⊖・実フォールド)。
+        //   メタ膜は⊖fで生まれるが実フォールド未適用=デシンク→そこにfoldを当てても1回では効かない(2回トグルと同根)。
+        //   openでView/バッジ/foldStateを揃えてからcloseすると、クリーンな⊕→⊖遷移で1発で畳める。
+        await setPairFoldStateAndMstat(active, mp, false);
+        await setPairFoldStateAndMstat(active, mp, true);
+      } catch (_) {}
     }
   } catch (_) {}
 }
