@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.955: 10秒滞在の計上がピンに即反映されないバグ修正(俊克 6/18)。真因=タイマー発火はスナップショットを呼ばずピン再描画されない(出て戻ると反映=カーソル移動でスナップショット)→タイマー計上直後にpostFixedWorkingTocSnapshotでピン即更新。node側のみ・webview<script>同一。
 // - v0.9.954: アクセス計数を「編集 OR 10秒滞在」モデルに(俊克 6/18 合意)。膜に入る→タイマー(ME_DWELL_MS=10s)。10秒残れば計上・途中で別膜へ抜ければ計上せず破棄(通り抜け除外)・編集が起きたら即計上(noteMeEditForAccess・1訪問1回)。startMeVisit/_meVisit。AIは自己判断で計上=コマンドlai-membrane.bumpAccess登録(key省略時は現在膜・高速スキャンで違ったら呼ばない=変えない)。node側のみ・webview<script>同一。
 // - v0.9.953: アクセス数表示改良(俊克 6/18)。①(改良1)ピン表示を「📊N=5」に=📊0(バッジ非表示指定)と紛れない ②桁が増えたら圧縮表示k/M(formatAccessCount) ③上限ME_ACCESS_MAX=99999で停止。カウントの意味(進入だけ→操作した訪問のみ等)と滞留時間は次段で要確認。
 // - v0.9.952: ★膜アクセスカウンタ第1段(俊克 6/18 合意)。膜に入る度に+1=globalStateライブ(膜ごと・800msデバウンス永続)・ソース一切不変=AI超高速アクセスでも安全(二読者の共有不変構造)。進入検知=recordMeCursorで最内膜が変わった時(=1訪問)・Me Dock開閉に依らず動作。表示=Current Meピンに📊N。次段: バッジ装飾表示/既定非表示/Me Dock⊕⊖fボタン/保存時mHTOC flush。
@@ -8814,7 +8815,7 @@ function startMeVisit(document, id) {
   _meVisit = { uri: uri, id: id, counted: false };
   const visit = _meVisit;
   _meVisitTimer = setTimeout(() => {
-    if (_meVisit === visit && !visit.counted) { visit.counted = true; bumpMeAccess(document, visit.id); }
+    if (_meVisit === visit && !visit.counted) { visit.counted = true; bumpMeAccess(document, visit.id); try { postFixedWorkingTocSnapshot(); } catch (_) {} } // v0.9.955: 計上後にピンを即更新(タイマー発火はスナップショットを呼ばないため表示が遅れていた)
   }, ME_DWELL_MS);
 }
 function noteMeEditForAccess(e) {
