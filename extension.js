@@ -1,5 +1,6 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.951: 呪文2のローマ字を mimimi→mememe に(俊克 6/18: me-me-me の方がMe Dockを連想しやすい)。★かな みみみ は維持=か・み・よ=「神よ」の言霊を壊さないため(ローマ字は別オーディエンス向けの別トリガー)。MEDOCK_TRIGGERS=[みみみ, mememe]。node側のみ・webview<script>同一。
 // - v0.9.950: 帰還メニューのホバーを行状態で出し分け(俊克 6/18: v948両方=2重・v949矢印だけ=当たり判定微妙)。文字行→行テキスト側(行全体ホバー=どこでも楽)・空行→ガター矢印。厳密に片方だけ=重複なし＋テキスト行は楽＋空行も出る。栞重なり時もテキスト行なら行ホバーで出る。node側のみ・webview<script>同一。
 // - v0.9.949: H-TOC帰還メニュー2バグ修正(俊克 6/18)。①(バグ2)メニュー2重表示=ホバーをガター矢印と行テキストの2箇所に載せていた→ガター矢印に一本化(行側撤去)。②(バグ1)元の位置に戻れない=「現在地」が情報表示のみだった→★作業位置anchor導入: H-TOCリングと無関係な場所(=作業場所)で現在地をanchorに更新(H-TOC膜内移動では更新しない)・メニューに「↩ Ln NNN（作業位置）」戻りリンク追加(lai-membrane.htocReturnLine)。これでH-TOC探索後に作業位置へ戻れる。node側のみ・webview<script>同一。
 // - v0.9.948: 帰還メニューを「ガター矢印アイコン自体のhoverMessage」に載せる(俊克 6/18: 空行はテキストのホバー判定が乗らずカーソル位置でしか出なかった)。矢印は空行でも常在→矢印ホバーで確実にメニューが出る=当初望んだ「矢印をホバー」を実現。行テキスト側ホバーも併用維持。node側のみ・webview<script>同一。
@@ -6485,7 +6486,7 @@ async function toggleRawMode() {
   vscode.window.setStatusBarMessage('MeOS: Raw view ' + (meosRawMode ? 'ON (rendering off — plain editor)' : 'OFF'), 1800);
 }
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
-const MEDOCK_TRIGGERS = ['みみみ', 'mimimi']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
+const MEDOCK_TRIGGERS = ['みみみ', 'mememe']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
 const HEAD_PREV_TRIGGERS = ['よよよ', 'YOYOYO']; // v0.9.932: 魔法の呪文3(大/大文字)=前の見出しへ(↑)
 const HEAD_NEXT_TRIGGERS = ['ょょょ', 'yoyoyo']; // v0.9.932: 魔法の呪文3(小/小文字)=次の見出しへ(↓)。か+み+よ=神よ
 const SPELLS = [ // v0.9.932: 呪文テーブルに集約(trigger群→action)。非ASCIIは(A)カーソル位置・ASCIIは(B)変更末尾で判定。
