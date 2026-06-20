@@ -22,6 +22,8 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 >
 > ## **Ai, Mai, MeOS 🐥**
 
+<p align="center"><b>— A collaboration between You(AI) &amp; I(LAI). —</b></p>
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/hero-image-00TOP.png" alt="The whole window" width="92%"><br>
   <sub><b>The whole picture.</b> Editor = strata of membranes · right = the Me Dock cockpit.</sub>
