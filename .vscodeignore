@@ -7,3 +7,5 @@ extension.js.pre*
 **/*.vsix
 **/.DS_Store
 .git/**
+media/hero/**
+
