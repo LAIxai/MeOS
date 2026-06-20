@@ -21,8 +21,8 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 > ## **I, My, MeOS 🐣**
 >
 > ## **Ai, Mai, MeOS 🐥**
-
-<p align="center"><b>— A collaboration between You(AI) &amp; I(LAI). —</b></p>
+>
+> ## **You(AI) & I(LAI) 🐔**
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/hero-image-00TOP.png" alt="The whole window" width="92%"><br>
