@@ -1,0 +1,9 @@
+# v0.9.971: 配布vsixから開発用の残骸を除外(公開Release用クリーン化)
+.vscode/**
+.gitignore
+**/*.bak
+extension.js.pre*
+引継時のextension/**
+**/*.vsix
+**/.DS_Store
+.git/**

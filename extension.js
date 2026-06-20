@@ -1,5 +1,9 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// - v0.9.971: 残った孤児 Me Dockタブが呪文で全部消えない問題の根治(俊克 6/20 am11:28: 呪文では1枚しか消えない・手動削除しかないのか?)。真因＝v970シリアライザは「正しく復元されるパネル」しか掴めず、シリアライザ無し時代に作られた死んだタブには deserialize が呼ばれない=自動掃除が届かない。解＝`vscode.window.tabGroups` API(1.67+/engines1.85で可)で全タブを列挙し viewType に 'meDock' を含むタブを一掃する closeAllMeDockTabs() を追加。toggleMeDock の閉path(追跡1枚を閉じた後に残骸も)と開path(開く前に一掃→開後は常に1枚・toClueは生成前確定で新パネルは閉じない)で呼ぶ→呪文/auto-show一発で残骸も全消去・手動削除不要。tabGroupsは拡張が参照を失った孤児を掃除できる唯一の手段。node側のみ・webview<script>同一。
+// - v0.9.970: Me Dockタブが再インストール/リロードの度に溜まり『みみみ』が一発で効かないバグの根治(俊克 6/20 am11:10)。真因=Me Dock webview に WebviewPanelSerializer が未登録→リロード時に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張の単一参照 meDockPanel が掴めず孤児化→タブ累積。単一参照しか見ない toggleMeDock(『みみみ』)＋autoShowMeDockForEditorの自動オープンが重なり「2〜3回やってやっと」。解=registerWebviewPanelSerializer('meDock') を登録し、復元パネルを即 dispose=リロード後に Me Dockタブを残さない→次の『みみみ』/auto-showで必ず1枚=一発トグル。rebindせず破棄で十分(状態はsnapshotで即復帰)。node側のみ・webview<script>同一。
+// - v0.9.969: 呪文①か(kakaka)②み(mememe)のローマ字を大小無視に(俊克 6/20 am10:55: KAKAKAが通じない。TRON配列は大文字固定⇄小文字固定を同サイドのシフトで切替=どちらのロックでも呪文を撃ちたい)。実装=SPELLSに ci:true を持つ呪文だけ(B)ASCII判定で toLowerCase 比較=KAKAKA/MEMEME も可。★設計上の矛盾を先に指摘して回避=呪文③よは ci 無しの厳密一致を維持し YOYOYO(↑)/yoyoyo(↓) の case=方向 を保持(case固定の切替がそのまま方向セレクタ=俊克の利点が生きる)。一律case-insensitiveにすると③の方向が壊れるため①②限定。node側のみ・webview<script>同一。
+// - v0.9.968: 膜名に素の () が含まれる膜を H-TOC に登録すると ( 以降が消えるバグの根治(俊克 6/20 am10:31)。真因=extractMembraneTocEntryFromLine の名前抽出正規表現(5288行)で、末尾アンカー (?:\s*\(|\s*$) が「最初の ( = mSTATバッジ開始」とみなし、非貪欲な名前を最初の ( で打ち切っていた。例「膜名(補足)」→「膜名」。修正=( をバッジ開始とみなすのは直後がバッジ文字(📊/⊕/⊖/∞)のときだけに限定(/u フラグ追加・lookahead)。これで素の括弧は名前として保持され、本物のバッジ括弧は従来通り剥がれる(OPEN_RE と整合)。node側のみ・webview<script>同一。
 // - v0.9.967: ★mMETAが開いて見える真因を俊克が特定=EOFボタンが最終行(=mMETAの閉じ膜)に着地→折畳んだ隠れ行へカーソルを置こうとしVSCodeが展開していた。修正=jumpMeDockEndOfFileをmMETAメタ膜の手前(本文末尾=mMETA開始の1つ前)で止める(mMETAはメタデータで本文ではない)。これでEOFがmMETAを開かない=畳まれたまま。v966のカーソル進入フォールドと合わせて決着。node側のみ・webview<script>同一。
 // - v0.9.966: ★mMETAフォールドを全面再設計(俊克 6/18 NG: v964/965の可視で無条件フォールドが作業中に勝手にmMETAへ飛ぶ最悪挙動=fold→reveal→可視→foldのループ)。撤回し、起動/アクティブ化/書込/可視レンジの自動フォールドを全廃。新方式=recordMeCursorで「カーソルがmMETA膜に入った時だけ」、かつ「閉じ膜(pair.end)が可視レンジにある=実際に展開している時だけ」1回畳む(俊克の指摘: 展開状態は確実に検知できる→無駄な往復/リトライ不要)。カーソルが今そこ=飛ばない／畳めば閉じ膜は可視外=再判定で何もしない=ループ無し。node側のみ・webview<script>同一。
 // - v0.9.965: mMETA可視フォールドの検知をhex行も対象に拡大(俊克 6/18: 閉じ膜が見えた時にも畳んで欲しい)。中身の行(hex=開始+1)or閉じ膜が画面に見える=展開状態(折畳むと中身は隠れる)→畳む。hexも見るので閉じ膜が来る前に早く反応。node側のみ・webview<script>同一。
@@ -5285,7 +5289,11 @@ function extractMembraneTocEntryFromLine(text) {
   // the note over the raw source comment, so H-TOC entries display
   // `realName // aliasName`. User v0.9.571_0701 improvement: 「エイリアスを選択
   // して、H-TOCに追加するとき、『膜名 // エイリアス名』として追加しよう」.
-  let m = inner.match(/([▼▲])\s*(mCN|mTC|mNT)\s*=\s*([^\r\n]*?)(?:\s+\/\/\s*([^()]*?))?(?:\s*\(|\s*$)/);
+  // v0.9.968: 膜名に素の () が含まれると H-TOC 登録で ( 以降が落ちるバグの根治(俊克 6/20 am10:31)。
+  // 真因=末尾アンカー (?:\s*\(|\s*$) が「最初の ( = バッジ開始」とみなし、非貪欲な名前を ( で打ち切っていた。
+  // 修正=( をバッジ開始とみなすのは直後がバッジ文字(📊/⊕/⊖/∞=MSTAT_BADGE_RE の先頭群)のときだけに限定。
+  // これで「膜名(補足)」の ( は名前として保持され、本物のバッジ ( は従来通り剥がれる(OPEN_RE と整合)。
+  let m = inner.match(/([▼▲])\s*(mCN|mTC|mNT)\s*=\s*([^\r\n]*?)(?:\s+\/\/\s*([^()]*?))?(?:\s*\((?=[📊⊕⊖∞])|\s*$)/u);
   if (m) {
     const arrow = m[1];
     const kindTag = m[2] === 'mTC' ? 'mTC' : 'mCN';
@@ -6522,8 +6530,10 @@ const MEDOCK_TRIGGERS = ['みみみ', 'mememe']; // v0.9.930: 魔法の呪文2�
 const HEAD_PREV_TRIGGERS = ['よよよ', 'YOYOYO']; // v0.9.932: 魔法の呪文3(大/大文字)=前の見出しへ(↑)
 const HEAD_NEXT_TRIGGERS = ['ょょょ', 'yoyoyo']; // v0.9.932: 魔法の呪文3(小/小文字)=次の見出しへ(↓)。か+み+よ=神よ
 const SPELLS = [ // v0.9.932: 呪文テーブルに集約(trigger群→action)。非ASCIIは(A)カーソル位置・ASCIIは(B)変更末尾で判定。
-  { triggers: RAW_TRIGGERS, action: () => toggleRawMode() },
-  { triggers: MEDOCK_TRIGGERS, action: () => toggleMeDock() },
+  // v0.9.969: ci=true の呪文はローマ字を大小無視で判定(俊克 6/20: TRONの大文字固定⇄小文字固定どちらで打っても効く・KAKAKA/MEMEMEも通る)。
+  //   呪文3(よ)だけは ci 無し=厳密一致のまま=YOYOYO(↑)/yoyoyo(↓) の case=方向 を保持(case固定の切替がそのまま方向セレクタ)。
+  { triggers: RAW_TRIGGERS, action: () => toggleRawMode(), ci: true },
+  { triggers: MEDOCK_TRIGGERS, action: () => toggleMeDock(), ci: true },
   { triggers: HEAD_PREV_TRIGGERS, action: () => navMeHeadingJump(-1) },
   { triggers: HEAD_NEXT_TRIGGERS, action: () => navMeHeadingJump(1) },
 ];
@@ -6558,9 +6568,12 @@ function maybeHandleRawTrigger(e) {
     const line = c.range.start.line;
     const endChar = c.range.start.character + c.text.length; // 挿入後の末尾位置
     const lineText = ed.document.lineAt(line).text;
-    for (const sp of SPELLS) for (const t of sp.triggers) { // (B) ASCII(kakaka/mimimi/YOYOYO/yoyoyo)=変更末尾で判定(大小文字は区別)
+    for (const sp of SPELLS) for (const t of sp.triggers) { // (B) ASCII(kakaka/mememe/YOYOYO/yoyoyo)=変更末尾で判定
       if (t.charCodeAt(0) >= 128) continue; // 非ASCIIは(A)で扱う
-      if (endChar >= t.length && lineText.slice(endChar - t.length, endChar) === t)
+      if (endChar < t.length) continue;
+      const hay = lineText.slice(endChar - t.length, endChar);
+      // v0.9.969: sp.ci の呪文(か/み)は大小無視=KAKAKA/MEMEME も可。呪文3(よ)は ci 無し=YOYOYO(↑)/yoyoyo(↓) の方向を厳密一致で保持。
+      if (hay === t || (sp.ci && hay.toLowerCase() === t.toLowerCase()))
         return _fireRawTrigger(ed, line, endChar, t.length, sp.action);
     }
   }
@@ -13423,6 +13436,23 @@ async function loadZoomMeLineRange(startValue, endValue) {
 
 // {* ▲mCN=0868_ZOOM_ME_LOAD // end [cGJF=h] *}
 
+// v0.9.971: 孤児化した Me Dock タブも含めて全 'meDock' webview タブを一掃(俊克 6/20 am11:28: 呪文では追跡中の1枚しか消えず残骸が残る)。
+// シリアライザ(v970)が掴めるのは「正しく復元されるパネル」だけ＝シリアライザ無し時代に作られた死んだタブには deserialize が
+// 呼ばれず自動掃除が届かない。tabGroups API は拡張が参照を失った孤児タブも列挙・クローズできる唯一の手段。viewType に 'meDock'
+// を含むタブを全て閉じる(VSCodeは viewType を 'mainThreadWebview-meDock' 等に整形するため部分一致で判定)。
+function closeAllMeDockTabs() {
+  try {
+    if (!vscode.window.tabGroups) return;
+    const toClose = [];
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        const input = tab && tab.input;
+        if (input && typeof input.viewType === 'string' && input.viewType.indexOf('meDock') >= 0) toClose.push(tab);
+      }
+    }
+    if (toClose.length) vscode.window.tabGroups.close(toClose, true);
+  } catch (_) {}
+}
 function toggleMeDock(editorOverride) {
   setMeDockTargetEditor(editorOverride || vscode.window.activeTextEditor);
   if (meDockPanel) {
@@ -13432,11 +13462,13 @@ function toggleMeDock(editorOverride) {
     meDockCurrentLineMarkerActive = false;
     clearMeDockCurrentLineMarker();
     meDockPanel = undefined;
+    closeAllMeDockTabs(); // v0.9.971: 追跡中の1枚を閉じた後、残った孤児タブも一掃
     return;
   }
 
   fixedWorkingTocEnabled = true;
 
+  closeAllMeDockTabs(); // v0.9.971: 開く前に孤児タブを一掃=開いた後 Me Dock は常に1枚だけ(toClose は生成前に確定するので新パネルは閉じない)
   meDockPanel = vscode.window.createWebviewPanel(
     'meDock',
     'Me Dock',
@@ -14239,6 +14271,19 @@ makeDecorations();
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
+  // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、
+  // 再インストール/ウィンドウリロードの度に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張側の単一参照
+  // meDockPanel がそれを掴めず孤児化→タブが溜まる。単一参照しか見ない toggleMeDock(『みみみ』)は孤児に効かず
+  // 「2〜3回やってやっと」になっていた。解=復元される 'meDock' パネルを即 dispose=リロード後に Me Dock タブを
+  // 一切残さない→次の『みみみ』or auto-show が必ず1枚だけ開く=一発トグル。Me Dock は即再オープン可・状態は
+  // postFixedWorkingTocSnapshot で即復帰するので、rebind(復元)せず破棄で十分。
+  if (vscode.window.registerWebviewPanelSerializer) {
+    context.subscriptions.push(
+      vscode.window.registerWebviewPanelSerializer('meDock', {
+        deserializeWebviewPanel: async (panel) => { try { panel.dispose(); } catch (_) {} }
+      })
+    );
+  }
   // v0.9.754: On activation, re-apply Standards > V state (writes defaultFoldingRangeProvider)
   // so MeOS fold ranges are in VSCode's cache before the first editor.fold call.
   // Without this, the user would need to manually toggle Standards > V or disable/re-enable
