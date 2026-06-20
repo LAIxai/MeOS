@@ -237,7 +237,7 @@ MeOS stands on the shoulders of:
 - **Zoom Me!** — focus into a sub-region, then return.
 - **Writer formatting** — highlight / strikethrough / headings with text & background colors and `//comments` (editor⇄author notes), via one-tap buttons.
 - **🔖 Bookmarks — leap there, and back** — up to 3 "place" bookmarks with a one-click **Front Anchor** (the line you're writing right now). Two bookmarks make a **bidirectional jump**: there, and back, again and again. A safety net so you never lose your home.
-- **Raw view (👁 button or type `kakaka`)** — toggle all rendering off for a plain editor: friction-free CJK input (日本語 / 中文 / 한국어). Cast the spell again to restore MeOS.
+- **Raw view (👁 button or type `kakaka`)** — toggle all rendering off to read the plain markup, or for a distraction-free editor. Cast the spell again to restore MeOS. *(CJK input is already smooth — decorations live in the gutter — so you rarely need this.)*
 
 > ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`
 > Keeps wrapped lines flush, so they sit cleanly next to the gutter membrane lanes.
@@ -286,12 +286,13 @@ And this is a fact: **one AI wrote this membrane-structured code, and another AI
 
 **`かかか`**（`kakaka` でも可）と打つ。それだけで Raw モード ―― **素のエディタ**に切り替わる。打った文字は自ら消える。
 
-かな漢字変換のストレス ―― **東アジア圏（CJK）の積年の悩み**は、これで終わる。
-素のエディタで軽快に書き、**呪文をもう一度**唱えれば、MeOS の全機能が戻ってくる。
+**生のマークアップを覗きたいとき**、あるいは**装飾を消して集中したいとき**に。**呪文をもう一度**唱えれば、MeOS の全機能が戻ってくる。
+
+そして ―― **かな漢字変換は、Raw モードにするまでもなく快適だ。** 装飾はすべてガター（行番号の脇）に描かれ、本文に指一本触れない。**東アジア圏（CJK）の積年の悩み**は、もう終わっている。
 
 ボタンも、メニューも、ショートカットもいらない。**ストレスフリー！**
 
-*Type `kakaka` to send MeOS dormant — a plain editor for friction-free CJK input — then `kakaka` again to bring it back.*
+*Type `kakaka` for a plain editor — to read the raw markup, or to focus with all decorations off. Cast it again to bring MeOS back. (CJK input is already smooth without it: decorations live in the gutter, never touching your text.)*
 
 ## Changelog
 
