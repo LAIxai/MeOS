@@ -2,6 +2,11 @@
 
 <p align="center"><img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="260"></p>
 
+<p align="center">
+  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/github/downloads/LAIxai/MeOS/total?label=downloads&color=4caf50" alt="Total Downloads"></a>
+  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/github/v/release/LAIxai/MeOS?label=release&color=2196f3" alt="Latest Release"></a>
+</p>
+
 ### **Markdown⊕** — *Markdown, plus.*
 
 MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the ⊕). A membrane is just a comment — so a Markdown⊕ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown⊕ adds structure, navigation, and bookmarks that bring you back** — without touching your data.
