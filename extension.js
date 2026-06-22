@@ -1,6 +1,8 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.988: git本体の検出+案内+🐙オン時にgit有無を表示(俊克 6/23 am00:52)。真っ新なVSCodium/OSではgitコマンドが無い場合がある(macOS=Xcode CLT/Windows=Git for Windows)→MeOS本体は不要だがOctopushのみ必要。checkGitInstalled()で`git --version`判定。🐙オン時: git有→armed+tipに「git ✓ v2.x」/git無→オンにせずguideGitInstall()案内(macOS=xcode-select --install でApple純正ダイアログ・Windows=git-scm.com・Linux=apt/dnf案内)。自動インストールはせずOS純正の仕組みを呼ぶ/案内のみ=安全側(削除時と同じ「危険操作はOS側+AI案内」思想)。Connect時もgit無しなら案内して中断。node+webview両側。
+// - v0.9.987: 🐙をワンショット化(俊克 6/22 pm10:17: push後も🐙が緑のまま=自動オフのはずだった)。onDidSaveTextDocumentでpush完了直後に githubAutoSync=false へ戻し webview に githubSyncState{on:false} を送る=1タップ1push。点けっぱなしで以降の保存まで送られる事故を防ぐ=「Push when you say so」を入力で体現。tip/ステータスをarmed(次のCmd+Sで1回push→オフ)表現に統一。node+webview両側。
 // - v0.9.986: 🐙のフォルダが最初に開いたworkspace[0]固定になるバグ修正(俊克 6/22 pm05:19: 別フォルダのテストmdを開いてもMeOS-docs固定)。真因=postGithubWizardState/connect/disconnectが全てworkspaceFolders[0]を見ていた。解=resolveGithubDir()で「アクティブファイルのgit repoルート > そのファイルのフォルダ > workspace[0]」を解決=開いているファイルのフォルダに自動追従。remote読取もgetRemoteForDir(dir)=execでworkspace外フォルダも対応。さらに③フォルダ行に[Change…]ボタン追加=showOpenDialogで任意フォルダを明示選択可(githubChosenDirでセッション override)。node+webview両側。
 // - v0.9.985: GitHub接続をフォルダ別に記憶(俊克 6/22 pm02:28: サイト名含め表示を残したい・日記とMeOSソースのように別々に登録したい)。①接続状態は「今開いているフォルダの実git remote」から導出=.git/configはフォルダ別なのでフォルダを切り替えるだけで正しいrepoが自動表示。②PATはアカウント単位でsecretsに保持(✕や再接続で消さない)・URLはlastProfileUrlに保存しウィザードへ自動プリフィル→PAT欄は「PAT saved ✓ — leave blank to reuse」で空欄再利用可=2フォルダ目以降はURL確認してConnectだけ。③✕(Disconnect)を「このフォルダのremote削除のみ」に変更=PATとGitHub上のrepo/データは保持→再接続が一瞬。前回の「✕でPAT消滅→再登録で名前衝突」の詰みを解消。node+webview両側。
 // - v0.9.984: ウィザード見出しを操作手順そのものに「🐙 GitHub: Push 🐙 & Save Me!」(俊克 6/22 pm01:35 ひらめき)。🐙を押す→Cmd+S(Save)で同期、と見出しが手順を語る。Save Me!=膜の「Me」と「save me(助けて)」の二重ダジャレ。🐙を押さない自由(ローカルのみ)も残す。Octopushはトグルの愛称として継続。webview側のみ。
@@ -6545,10 +6547,47 @@ async function toggleRawMode() {
 // v0.9.973: GitHub自動sync — Cmd+S連動ON/OFFトグル(俊克 6/22 am02:17: Evernote方式の強制syncは嫌・自分でコントロールしたい)
 // 🐙ボタン = auto sync ON/OFF切替。ONの時だけCmd+S(保存)でpush。OFFは保存のみ普通に。
 let githubAutoSync = false; // デフォルトOFF=安全側
-function toggleGithubAutoSync() {
-  githubAutoSync = !githubAutoSync;
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubSyncState', on: githubAutoSync }); } catch (_) {}
-  vscode.window.setStatusBarMessage('MeOS GitHub auto-sync: ' + (githubAutoSync ? '🐙 ON (Cmd+S → push)' : 'OFF'), 2000);
+// v0.9.988: git本体の有無を検出(OSにgitコマンドがあるか)。MeOS本体は不要・Octopushのみ必要。
+async function checkGitInstalled() {
+  try {
+    const execAsync = require('util').promisify(require('child_process').exec);
+    const { stdout } = await execAsync('git --version');
+    return { installed: true, version: (stdout || '').trim().replace(/^git version\s*/, '') };
+  } catch (_) { return { installed: false, version: '' }; }
+}
+// v0.9.988: gitが無い時の案内(自動インストールはせずOS純正の仕組みを呼ぶ/案内のみ=安全側)
+async function guideGitInstall() {
+  const platform = process.platform;
+  if (platform === 'darwin') {
+    const pick = await vscode.window.showWarningMessage('MeOS: GitHub Octopush Sync needs git, but it is not installed. Install Apple Command Line Tools (includes git)?', 'Install via Apple', 'Cancel');
+    if (pick === 'Install via Apple') {
+      try { require('child_process').exec('xcode-select --install'); } catch (_) {}
+      vscode.window.showInformationMessage('MeOS: Follow Apple’s installer dialog. When it finishes, tap 🐙 again.');
+    }
+  } else if (platform === 'win32') {
+    const pick = await vscode.window.showWarningMessage('MeOS: GitHub Octopush Sync needs git, but it is not installed. Open the Git for Windows download page?', 'Open download page', 'Cancel');
+    if (pick === 'Open download page') vscode.env.openExternal(vscode.Uri.parse('https://git-scm.com/download/win'));
+  } else {
+    vscode.window.showWarningMessage('MeOS: GitHub Octopush Sync needs git. Install it via your package manager, e.g. "sudo apt install git" or "sudo dnf install git".');
+  }
+}
+// v0.9.988: 🐙オン時にgit検出→tip/ステータスに有無を表示。git無しならオンにせず案内。
+async function toggleGithubAutoSync() {
+  if (githubAutoSync) {
+    githubAutoSync = false;
+    try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubSyncState', on: false }); } catch (_) {}
+    vscode.window.setStatusBarMessage('MeOS GitHub: Octopush off (local-only save)', 2000);
+    return;
+  }
+  const git = await checkGitInstalled();
+  if (!git.installed) {
+    try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubSyncState', on: false, gitInstalled: false, gitVersion: '' }); } catch (_) {}
+    await guideGitInstall();
+    return; // git無し→オンにしない
+  }
+  githubAutoSync = true;
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubSyncState', on: true, gitInstalled: true, gitVersion: git.version }); } catch (_) {}
+  vscode.window.setStatusBarMessage('🐙 Octopush armed — your next Cmd+S pushes once (git ' + git.version + ' ✓)', 2500);
 }
 // v0.9.976: GitHub PAT ウィザード — API helper / connect / disconnect
 function githubApiRequest(method, apiPath, body, pat) {
@@ -6575,6 +6614,9 @@ function githubApiRequest(method, apiPath, body, pat) {
 async function githubConnectWizard(profileUrl, pat, isPrivate) {
   const path = require('path');
   const execAsync = require('util').promisify(require('child_process').exec);
+  // v0.9.988: git本体が無ければConnectせず案内(真っ新OSで分かりにくいエラーになるのを防ぐ)
+  const gitChk = await checkGitInstalled();
+  if (!gitChk.installed) { postGithubWizardState('error', 'git not installed'); await guideGitInstall(); return; }
   // ユーザー名を抽出: https://github.com/LAIxai → LAIxai
   const usernameMatch = profileUrl.trim().replace(/\/$/, '').match(/github\.com\/([^/]+)$/);
   if (!usernameMatch) { vscode.window.showErrorMessage('MeOS: Invalid GitHub URL (e.g. https://github.com/LAIxai)'); postGithubWizardState('error', 'Bad URL'); return; }
@@ -12739,7 +12781,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 </style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><main class="body">
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">－</button><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="💤 Pending bookmark | One click: park the cursor line as a 'do it later' marker, or jump to your parked one (🚩 Front pending first). Kept apart from the 3 place 🔖 — and survives Clear all.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Pending menu | Switch 🚩 Front pending / Resolve / Clear all / Add">▾</button></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Switch Front / Remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩) — the 🔖 button always jumps here. The old Front becomes a normal 🔖 (kept). When 3 are full, the old Front is replaced. With no 🔖 here, it adds one.">Switch Front bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="bm-add-pending" data-tip="Park a 💤 pending bookmark at the cursor line — a 'do it later' marker, kept apart from the 3 place 🔖. The parked date is recorded.">💤 A pending bookmark</button><div class="bm-pending-list" id="bm-pending-list"></div><button class="bm-pop-item" id="bm-pending-clear" data-tip="Remove all 💤 pending bookmarks at once (the 3 place 🔖 are kept).">🧹 Clear all pending</button><button class="bm-pop-item" id="bm-pending-resolve" data-tip="Resolve (✅) the 💤 on the current cursor line.">✅ Resolve this pending</button><button class="bm-pop-item" id="bm-pending-front" data-tip="Make the cursor line the 🚩 Front pending — the 💤 button always jumps here first. With no 💤 here, it adds one.">🚩 Switch Front pending</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
 <div class="gh-wizard" id="gh-wizard"><div class="gh-wizard-head" id="gh-wizard-head" data-tip="Press the 🐙 button, then Cmd+S → your file is saved AND pushed to GitHub. Or leave 🐙 off to save locally only. (Click here to open/close settings.)"><span class="gh-wizard-title">🐙 GitHub: Push 🐙 &amp; Save Me!</span><span class="gh-wizard-status" id="gh-wizard-status"></span><button class="gh-wizard-toggle" id="gh-wizard-toggle" data-tip="Open / close">▾</button></div><div class="gh-wizard-body" id="gh-wizard-body">
-<div class="gh-connected-bar" id="gh-connected-bar" style="display:none"><span class="gh-conn-folder" id="gh-conn-folder"></span><span class="gh-conn-repo" id="gh-conn-repo"></span><button class="gh-sync-btn" id="gh-push" data-tip="Octopush: OFF — Cmd+S is normal save. Click to turn ON (Octopush & Cmd+S = push every save).">🐙</button><button class="gh-open-btn" id="gh-open" data-tip="Open this repository on GitHub in your browser.">🔗</button><button class="gh-disconnect-btn" id="gh-disconnect-btn" data-tip="Unlink THIS folder from GitHub (your saved PAT and the GitHub repo are kept — reconnect any time)">✕</button></div>
+<div class="gh-connected-bar" id="gh-connected-bar" style="display:none"><span class="gh-conn-folder" id="gh-conn-folder"></span><span class="gh-conn-repo" id="gh-conn-repo"></span><button class="gh-sync-btn" id="gh-push" data-tip="Octopush (one-shot): OFF — Cmd+S is normal save. Tap 🐙, then Cmd+S → pushes once, then turns OFF. Push when you say so.">🐙</button><button class="gh-open-btn" id="gh-open" data-tip="Open this repository on GitHub in your browser.">🔗</button><button class="gh-disconnect-btn" id="gh-disconnect-btn" data-tip="Unlink THIS folder from GitHub (your saved PAT and the GitHub repo are kept — reconnect any time)">✕</button></div>
 <div class="gh-setup-form" id="gh-setup-form"><div class="gh-form-row"><span class="gh-step">①</span><input class="gh-input" id="gh-profile-url" placeholder="https://github.com/LAIxai" spellcheck="false" data-tip="GitHubのプロフィールURL (例: https://github.com/LAIxai)"/></div><div class="gh-form-row"><span class="gh-step">②</span><input class="gh-input" id="gh-pat-input" type="password" placeholder="PAT (ghp_...)" spellcheck="false" data-tip="Personal Access Token — needs 'repo' scope"/><button class="gh-pat-link" id="gh-pat-link" disabled data-tip="Open GitHub's token creation page">Get PAT ↗</button></div><div class="gh-form-row gh-folder-row2"><span class="gh-step">③</span><span class="gh-folder-label2">📁</span><span class="gh-folder-name2" id="gh-folder-name2">Open a folder first</span><button class="gh-change-btn" id="gh-change-folder" data-tip="Pick which folder to back up to GitHub">Change…</button></div><label class="gh-priv-row" id="gh-priv-row" data-tip="Private = only you can see it (recommended for diaries / drafts). Uncheck for a public repo."><input type="checkbox" id="gh-private" checked/><span id="gh-priv-text">🔒 Private (only you)</span></label><button class="gh-connect-btn" id="gh-connect-btn" disabled>Connect &amp; Create Repo</button><div class="gh-msg" id="gh-msg"></div></div></div></div><div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><span class="fmt-cell"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | =={ text (text/bg)//tip }== — V picks text/background color">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button></span><span class="fmt-cell"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — V picks line/background color">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button></span><span class="fmt-cell"><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | ##[ text (text/bg)//tip ]## — V picks text/background color">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button></span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button><div class="color-pop fmt-pop" id="fmt-pop"></div></div>
 <div class="inline-panel" id="new-rename-panel">
   <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div></div>
@@ -13067,7 +13109,7 @@ if(ghPrivate)ghPrivate.addEventListener('change',()=>{if(ghPrivText)ghPrivText.t
 if(ghDisconnectBtn)ghDisconnectBtn.addEventListener('click',()=>vscode.postMessage({type:'githubDisconnect'}));
 const ghPush=document.getElementById('gh-push');if(ghPush)ghPush.addEventListener('click',()=>vscode.postMessage({type:'toggleGithubAutoSync'}));
 const ghOpen=document.getElementById('gh-open');if(ghOpen)ghOpen.addEventListener('click',()=>vscode.postMessage({type:'openGithubPage'}));
-window.addEventListener('message',ev=>{const msg=ev.data;if(!msg)return;if(msg.type==='githubSyncState'){if(ghPush){ghPush.classList.toggle('gh-on',!!msg.on);ghPush.setAttribute('data-tip',msg.on?'Octopush: ON — Cmd+S pushes to GitHub. Click to turn OFF (local-only save).':'Octopush: OFF — Cmd+S is normal save. Click to turn ON (Octopush & Cmd+S = push every save).');}}if(msg.type==='githubPushDone'){if(ghPush){const was=ghPush.textContent;ghPush.textContent='✅';setTimeout(()=>{ghPush.textContent=was;},1200);}}if(msg.type==='githubWizardState'){renderGhWizard(msg);if(msg.syncOn!==undefined&&ghPush){ghPush.classList.toggle('gh-on',!!msg.syncOn);}}});
+window.addEventListener('message',ev=>{const msg=ev.data;if(!msg)return;if(msg.type==='githubSyncState'){if(ghPush){ghPush.classList.toggle('gh-on',!!msg.on);var gitInfo=(msg.gitInstalled===false)?' | ⚠ git not installed (tap for help)':(msg.gitVersion?(' | git ✓ '+msg.gitVersion):'');var baseTip=msg.on?'Octopush armed 🐙 — your next Cmd+S pushes once, then turns OFF. (Click to cancel.)':'Octopush (one-shot): OFF — Cmd+S is normal save. Tap 🐙, then Cmd+S → pushes once, then turns OFF.';ghPush.setAttribute('data-tip',baseTip+gitInfo);}}if(msg.type==='githubPushDone'){if(ghPush){const was=ghPush.textContent;ghPush.textContent='✅';setTimeout(()=>{ghPush.textContent=was;},1200);}}if(msg.type==='githubWizardState'){renderGhWizard(msg);if(msg.syncOn!==undefined&&ghPush){ghPush.classList.toggle('gh-on',!!msg.syncOn);}}});
 /* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
 const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmAddPending=document.getElementById('bm-add-pending'),bmPendingList=document.getElementById('bm-pending-list'),bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document.getElementById('bm-pending-menu-btn'),bmPendingPop=document.getElementById('bm-pending-pop'),bmPendingClear=document.getElementById('bm-pending-clear'),bmPendingResolve=document.getElementById('bm-pending-resolve'),bmPendingFront=document.getElementById('bm-pending-front');
 if(bmPendingBtn)bmPendingBtn.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkTogglePending'});if(typeof hideTocTip==='function')hideTocTip();}); // v0.9.841: ツールバー💤=駐車/ジャンプ。v843: クリック後は開いたままの古いtipを消す→次ホバーで状態別tipに更新
@@ -14256,9 +14298,14 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973
   // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
+  // v0.9.987: ワンショット化(俊克 6/22 pm10:17)。🐙を点けてCmd+Sで1回push→直後に自動でオフへ戻す。
+  // =「Push when you say so」を1タップ1pushで体現。点けっぱなしで以降の保存まで送られる事故を防ぐ。
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
     if (!githubAutoSync) return;
     await githubCommitPush(doc);
+    githubAutoSync = false;
+    try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubSyncState', on: false }); } catch (_) {}
+    vscode.window.setStatusBarMessage('🐙 Octopush done — back to local-only (tap 🐙 again for the next push)', 3000);
   }));
   // v0.9.798: intercept native Fold All (⌘K⌘0) / Unfold All (⌘K⌘J) and neuter them. They bypass
   // MeOS's fold-state tracking (foldStateByPairKey / ⊖⊕ badges) and desync the ▼⇄▼▲ toggle. MeOS
