@@ -1,5 +1,20 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.986: 🐙のフォルダが最初に開いたworkspace[0]固定になるバグ修正(俊克 6/22 pm05:19: 別フォルダのテストmdを開いてもMeOS-docs固定)。真因=postGithubWizardState/connect/disconnectが全てworkspaceFolders[0]を見ていた。解=resolveGithubDir()で「アクティブファイルのgit repoルート > そのファイルのフォルダ > workspace[0]」を解決=開いているファイルのフォルダに自動追従。remote読取もgetRemoteForDir(dir)=execでworkspace外フォルダも対応。さらに③フォルダ行に[Change…]ボタン追加=showOpenDialogで任意フォルダを明示選択可(githubChosenDirでセッション override)。node+webview両側。
+// - v0.9.985: GitHub接続をフォルダ別に記憶(俊克 6/22 pm02:28: サイト名含め表示を残したい・日記とMeOSソースのように別々に登録したい)。①接続状態は「今開いているフォルダの実git remote」から導出=.git/configはフォルダ別なのでフォルダを切り替えるだけで正しいrepoが自動表示。②PATはアカウント単位でsecretsに保持(✕や再接続で消さない)・URLはlastProfileUrlに保存しウィザードへ自動プリフィル→PAT欄は「PAT saved ✓ — leave blank to reuse」で空欄再利用可=2フォルダ目以降はURL確認してConnectだけ。③✕(Disconnect)を「このフォルダのremote削除のみ」に変更=PATとGitHub上のrepo/データは保持→再接続が一瞬。前回の「✕でPAT消滅→再登録で名前衝突」の詰みを解消。node+webview両側。
+// - v0.9.984: ウィザード見出しを操作手順そのものに「🐙 GitHub: Push 🐙 & Save Me!」(俊克 6/22 pm01:35 ひらめき)。🐙を押す→Cmd+S(Save)で同期、と見出しが手順を語る。Save Me!=膜の「Me」と「save me(助けて)」の二重ダジャレ。🐙を押さない自由(ローカルのみ)も残す。Octopushはトグルの愛称として継続。webview側のみ。
+// - v0.9.983: 機能を命名「🐙 GitHub Octopush Sync」(俊克 6/22 pm01:30)。Octopush=Octopus(🐙)+push。頭にGitHubを残す=タコを知らない人にも伝わる/浸透後はOctopush Sync or 単にOctopushと呼ばれる想定。標語「Octopush & Cmd+S」。ウィザード見出し・🐙ボタンtip・切替文をOctopush表現に統一。アンチ強制同期(普段ローカル/送る時だけ🐙オン・再起動でオフ)=VSCode本家にもauto-push拡張にもObsidian Gitにも無い緩いトグルUXが独自。webview側のみ。
+// - v0.9.982: 🐙/🔗ボタンをGitHub Backup接続済みバーへ移動(俊克 6/22 pm00:32 改良1: GitHub関連はまとめた方が分かりやすい)。format-toolsバーから外し、接続後だけ現れるgh-connected-bar(📁folder ✅repo 🐙 🔗 ✕)に配置=auto-syncは接続時のみ意味を持つので場所と一致。初プッシュ成功(💾2026.06.22 12:36 monthlyDiary +53,879行・川崎俊克名義)=素人でも1ファイル生涯日記をGitHubにバージョン管理付きで置ける世界初の体験が完成。webview側のみ(id不変でJSハンドラ無修正)。
+// - v0.9.981: リポジトリの公開設定を選択可に(俊克 6/22 am11:53 改良1: 日記なのにPublicになっていた)。真因=v976で private:false 固定だった。ウィザードに「🔒 Private (only you)」チェックボックス追加(既定=ON=非公開・日記/原稿の安全側)。チェックでラベルが🔒Private⇄🌐Publicにトグル。新規作成時はprivate値を反映。既存リポジトリ(422)はPATCH /repos/{o}/{r}で公開設定を上書き=既にPublicで作ったMeOS-docsも再Connectで非公開化できる。webview+node両側。
+// - v0.9.979: ウィザードのボタンを入力ガード化(俊克 6/22 am11:20)。改良1: ①URL未入力なら[Get PAT ↗]を薄く無効化(URL入力後に有効)。改良2: ②PAT未入力 or フォルダ未オープンなら[Connect & Create Repo]を薄く無効化(両方揃って初めて有効)。updateGhFormState()がinputイベントで即時判定・初期state=両ボタンdisabled。Connecting…中は再判定しない。webview側のみ。
+// - v0.9.978: GitHubウィザード英語化+死んだ×ボタン撤去(俊克 6/22 am11:09)。改良1: ウィザードの全表示文字列を英語化(🐙 GitHub Backup / Get PAT ↗ / (not connected) / Open a folder first / Checking PAT… 等・node通知も英語)=Zenn/グローバル配布と整合。改良2: Me Dockヘッダー右の閉じる×ボタンを撤去(当初パネルを閉じる用に付けたが今は閉じる用途が無い・栞/呪文/Standards等で操作完結)。closeButton参照はif(closeButton)ガード化。🐙=GitHub公式マスコットOctocat(タコ猫)由来。
+// - v0.9.977: GitHub設定を折りたたみ枠化(俊克 6/22 am10:59 改良1: 使わない人は閉じておける)。ウィザード全体を1つの角丸枠で囲み、ヘッダー「🐙 GitHub バックアップ」クリックで開閉。閉じた時もヘッダーに✅user/repo or (未接続)の要約を表示。折りたたみ状態はglobalState(meos.github.collapsed)に永続。node+webview両側。
+// - v0.9.976: GitHub PAT接続ウィザード(俊克 6/22 am09:49 4ステップ案)。Me Dock設定を①プロフィールURL②PAT(発行↗リンク=settings/tokens/newへ直行)③フォルダ自動検出④[Connect & Create Repo]に再設計。Connectで(a)GitHub API /userでPAT検証(b)/user/reposでフォルダ名のリポジトリ自動作成(既存422もOK)(c)git init+remote(PAT埋込URL=認証プロンプト無し・.git/configはコミットされず安全)(d)PATはsecrets・username/repoNameはglobalStateへ保存。接続後は📁folder ✅user/repo+[✕]解除バーに切替。push は git push -u origin HEAD で初回upstream自動設定。openGithubPage/getGithubRemoteUrlは埋込PATを除去してから表示/オープン。node+webview両側。
+// - v0.9.975: GitHub設定UIにフォルダ表示追加(俊克 6/22 am02:40: フォルダ単位で管理する流れにしたい)。管理フォルダ名をgh-setup-row上部に表示。フォルダ未オープン時はConnect無効+「File → Open Folder」案内。node+webview両側変更。
+// - v0.9.974: Me DockにGitHub URL設定UI追加(俊克 6/22 am02:33: 素人でも使えるように。URLを貼ってConnectを押すだけでgit init+remote add自動実行。現在のremote URLも表示)。node+webview両側変更。
+// - v0.9.973: GitHub auto-sync ON/OFFトグル追加(俊克 6/22 am02:17: Evernote的な強制syncは嫌・自分でコントロールしたい)。🐙ボタン=auto sync切替(デフォルトOFF=安全)。ON時はCmd+S保存のたびにgit add+commit+push。OFFは普通の保存のみ。nothing to commitの無音処理。node+webview両側変更。
+// - v0.9.972: GitHub連携2機能追加(俊克 6/22 am01:47: 生涯日記等を有料クラウドでなくGitHubにバージョン管理付きで保存したい)。①laiMembrane.githubCommitPush=現在ファイルを自動タイムスタンプコミット+push(VSCode内蔵git API使用)②laiMembrane.openGithubPage=リポジトリのGitHubページをブラウザで開く。Me Dockのformat-toolsバーに🐙/🔗ボタン追加。node+webview両側変更。
 // - v0.9.971: 残った孤児 Me Dockタブが呪文で全部消えない問題の根治(俊克 6/20 am11:28: 呪文では1枚しか消えない・手動削除しかないのか?)。真因＝v970シリアライザは「正しく復元されるパネル」しか掴めず、シリアライザ無し時代に作られた死んだタブには deserialize が呼ばれない=自動掃除が届かない。解＝`vscode.window.tabGroups` API(1.67+/engines1.85で可)で全タブを列挙し viewType に 'meDock' を含むタブを一掃する closeAllMeDockTabs() を追加。toggleMeDock の閉path(追跡1枚を閉じた後に残骸も)と開path(開く前に一掃→開後は常に1枚・toClueは生成前確定で新パネルは閉じない)で呼ぶ→呪文/auto-show一発で残骸も全消去・手動削除不要。tabGroupsは拡張が参照を失った孤児を掃除できる唯一の手段。node側のみ・webview<script>同一。
 // - v0.9.970: Me Dockタブが再インストール/リロードの度に溜まり『みみみ』が一発で効かないバグの根治(俊克 6/20 am11:10)。真因=Me Dock webview に WebviewPanelSerializer が未登録→リロード時に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張の単一参照 meDockPanel が掴めず孤児化→タブ累積。単一参照しか見ない toggleMeDock(『みみみ』)＋autoShowMeDockForEditorの自動オープンが重なり「2〜3回やってやっと」。解=registerWebviewPanelSerializer('meDock') を登録し、復元パネルを即 dispose=リロード後に Me Dockタブを残さない→次の『みみみ』/auto-showで必ず1枚=一発トグル。rebindせず破棄で十分(状態はsnapshotで即復帰)。node側のみ・webview<script>同一。
 // - v0.9.969: 呪文①か(kakaka)②み(mememe)のローマ字を大小無視に(俊克 6/20 am10:55: KAKAKAが通じない。TRON配列は大文字固定⇄小文字固定を同サイドのシフトで切替=どちらのロックでも呪文を撃ちたい)。実装=SPELLSに ci:true を持つ呪文だけ(B)ASCII判定で toLowerCase 比較=KAKAKA/MEMEME も可。★設計上の矛盾を先に指摘して回避=呪文③よは ci 無しの厳密一致を維持し YOYOYO(↑)/yoyoyo(↓) の case=方向 を保持(case固定の切替がそのまま方向セレクタ=俊克の利点が生きる)。一律case-insensitiveにすると③の方向が壊れるため①②限定。node側のみ・webview<script>同一。
@@ -6132,6 +6147,8 @@ function postFixedWorkingTocSnapshot() {
   if (!editor) return;
   try { meDockPanel.webview.postMessage({ type: 'fixedToc', toc: getWorkingTocSnapshot(editor) }); } catch (_) {}
   postBookmarkState(editor); // v0.9.715: 🔖 ボタン状態(個数/満杯)も同期
+  // v0.9.976: GitHub ウィザード状態をMe Dockに送信
+  try { postGithubWizardState('sync'); } catch (_) {}
 }
 
 function jumpToWorkingTocItem(rawKey, citeN) {
@@ -6524,6 +6541,213 @@ async function toggleRawMode() {
   if (ed) refresh(ed);
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'rawState', on: meosRawMode }); } catch (_) {}
   vscode.window.setStatusBarMessage('MeOS: Raw view ' + (meosRawMode ? 'ON (rendering off — plain editor)' : 'OFF'), 1800);
+}
+// v0.9.973: GitHub自動sync — Cmd+S連動ON/OFFトグル(俊克 6/22 am02:17: Evernote方式の強制syncは嫌・自分でコントロールしたい)
+// 🐙ボタン = auto sync ON/OFF切替。ONの時だけCmd+S(保存)でpush。OFFは保存のみ普通に。
+let githubAutoSync = false; // デフォルトOFF=安全側
+function toggleGithubAutoSync() {
+  githubAutoSync = !githubAutoSync;
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubSyncState', on: githubAutoSync }); } catch (_) {}
+  vscode.window.setStatusBarMessage('MeOS GitHub auto-sync: ' + (githubAutoSync ? '🐙 ON (Cmd+S → push)' : 'OFF'), 2000);
+}
+// v0.9.976: GitHub PAT ウィザード — API helper / connect / disconnect
+function githubApiRequest(method, apiPath, body, pat) {
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const req = https.request({
+      hostname: 'api.github.com', path: apiPath, method,
+      headers: {
+        'Authorization': `token ${pat}`, 'User-Agent': 'MeOS-VSCode-Extension',
+        'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
+      }
+    }, res => {
+      let buf = '';
+      res.on('data', d => buf += d);
+      res.on('end', () => { try { resolve({ status: res.statusCode, data: JSON.parse(buf) }); } catch { resolve({ status: res.statusCode, data: buf }); } });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+async function githubConnectWizard(profileUrl, pat, isPrivate) {
+  const path = require('path');
+  const execAsync = require('util').promisify(require('child_process').exec);
+  // ユーザー名を抽出: https://github.com/LAIxai → LAIxai
+  const usernameMatch = profileUrl.trim().replace(/\/$/, '').match(/github\.com\/([^/]+)$/);
+  if (!usernameMatch) { vscode.window.showErrorMessage('MeOS: Invalid GitHub URL (e.g. https://github.com/LAIxai)'); postGithubWizardState('error', 'Bad URL'); return; }
+  const username = usernameMatch[1];
+  // v0.9.985: PAT未入力なら保存済みPATを再利用(アカウント単位で1つ・フォルダ毎の再入力不要)
+  if (!pat && extensionContext) { pat = (await extensionContext.secrets.get('meos.github.pat')) || ''; }
+  if (!pat) { vscode.window.showErrorMessage('MeOS: Enter your PAT (no saved token to reuse).'); postGithubWizardState('error', 'No PAT'); return; }
+  // PATを検証
+  postGithubWizardState('progress', 'Checking PAT…');
+  const me = await githubApiRequest('GET', '/user', null, pat).catch(() => null);
+  if (!me || me.status !== 200) { vscode.window.showErrorMessage('MeOS: Invalid PAT. Please check it.'); postGithubWizardState('error', 'Invalid PAT'); return; }
+  // フォルダ名をリポジトリ名に使用(解決済みフォルダ=アクティブファイルのフォルダ or 明示選択)
+  const dir = resolveGithubDir();
+  if (!dir) { vscode.window.showErrorMessage('MeOS: Open a folder/file first (or use Change…)'); postGithubWizardState('error', 'No folder'); return; }
+  const repoName = path.basename(dir).replace(/[^a-zA-Z0-9._-]/g, '-');
+  const folderName = path.basename(dir);
+  // リポジトリを作成(既存なら422→OK)。private は呼び出し側のチェックボックスに従う(既定=非公開)
+  postGithubWizardState('progress', 'Creating repository…');
+  const create = await githubApiRequest('POST', '/user/repos', { name: repoName, private: !!isPrivate, auto_init: false }, pat).catch(() => null);
+  if (!create || (create.status !== 201 && create.status !== 422)) {
+    vscode.window.showErrorMessage(`MeOS: Repository creation failed (${create ? create.status : 'network error'})`); postGithubWizardState('error', 'Create failed'); return;
+  }
+  // 既存リポジトリ(422)の場合は公開設定をユーザー選択に合わせてPATCH(Public→Private切替も可能)
+  if (create.status === 422) {
+    await githubApiRequest('PATCH', `/repos/${username}/${repoName}`, { private: !!isPrivate }, pat).catch(() => null);
+  }
+  const repoUrl = `https://github.com/${username}/${repoName}`;
+  // remote URLにPATを埋め込む(.git/config内・コミットされない=非技術者でも認証プロンプト無しでpush可)
+  const authUrl = `https://${username}:${pat}@github.com/${username}/${repoName}.git`;
+  // git init + remote
+  postGithubWizardState('progress', 'Configuring git…');
+  try {
+    try { await execAsync('git init', { cwd: dir }); } catch (_) {}
+    try { await execAsync(`git remote add origin "${authUrl}"`, { cwd: dir }); }
+    catch (_) { await execAsync(`git remote set-url origin "${authUrl}"`, { cwd: dir }); }
+    try { await vscode.commands.executeCommand('git.refresh'); } catch (_) {}
+  } catch (e) { vscode.window.showErrorMessage(`MeOS git config: ${e.message}`); postGithubWizardState('error', 'Git config failed'); return; }
+  // v0.9.985: PATはアカウント単位で保持・URLは次回プリフィル用に保存(repoNameはremoteから導出するので不保存)
+  if (extensionContext) {
+    await extensionContext.secrets.store('meos.github.pat', pat);
+    extensionContext.globalState.update('meos.github.lastProfileUrl', profileUrl.trim());
+  }
+  vscode.window.showInformationMessage(`✅ GitHub connected: ${username}/${repoName}`);
+  await postGithubWizardState('connected', repoUrl, folderName, dir);
+}
+// v0.9.985: ✕=このフォルダの接続解除のみ(git remote削除)。保存済みPATは保持→再接続が一瞬。GitHub上のrepo/データは無傷。
+async function githubDisconnect() {
+  const dir = resolveGithubDir();
+  if (dir) {
+    const execAsync = require('util').promisify(require('child_process').exec);
+    try { await execAsync('git remote remove origin', { cwd: dir }); } catch (_) {}
+    try { await vscode.commands.executeCommand('git.refresh'); } catch (_) {}
+  }
+  githubAutoSync = false;
+  await postGithubWizardState('sync'); // remoteが消えた→ウィザード表示に戻る
+  vscode.window.setStatusBarMessage('MeOS: Unlinked this folder (your saved PAT is kept)', 2500);
+}
+// v0.9.985: 接続状態は「今開いているフォルダの実remote」から導出=フォルダ毎に自動で別表示(.git/configはフォルダ別)
+async function postGithubWizardState(state, repoUrlOrMsg, folderName, folderPath) {
+  const path = require('path');
+  const dir = folderPath || resolveGithubDir();
+  const fn = folderName || (dir ? path.basename(dir) : '');
+  const fp = folderPath || dir || '';
+  const savedUrl = extensionContext ? extensionContext.globalState.get('meos.github.lastProfileUrl', '') : '';
+  const hasPat = extensionContext ? !!(await extensionContext.secrets.get('meos.github.pat').catch(() => null)) : false;
+  const collapsed = extensionContext ? extensionContext.globalState.get('meos.github.collapsed', false) : false;
+  let connected = false, username = '', repoName = '', repoUrl = '';
+  if (state === 'connected') {
+    repoUrl = repoUrlOrMsg || '';
+    const m = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (m) { username = m[1]; repoName = m[2]; connected = true; }
+  } else if (state === 'sync' || state === undefined) {
+    // 解決したフォルダの実remoteから導出(フォルダ別・workspace外も可)
+    const url = await getRemoteForDir(dir);
+    if (url) { const m = url.match(/github\.com\/([^/]+)\/([^/]+)/); if (m) { username = m[1]; repoName = m[2]; repoUrl = url; connected = true; } }
+  }
+  // progress/error/disconnected → connected=false(ウィザード表示)
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubWizardState', state, msg: repoUrlOrMsg || '', folderName: fn, folderPath: fp, username, repoName, repoUrl, syncOn: githubAutoSync, collapsed, savedUrl, hasPat }); } catch (_) {}
+}
+// v0.9.986: バックアップ対象フォルダの解決。優先: 明示選択 > アクティブファイルのgit repoルート > そのファイルのフォルダ > workspace[0]
+let githubChosenDir = null; // ユーザーがChange…で明示選択したフォルダ(セッション内)
+function resolveGithubDir() {
+  if (githubChosenDir) return githubChosenDir;
+  const path = require('path');
+  const editor = (getMeDockTargetEditor ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (editor && editor.document.uri.scheme === 'file') {
+    try {
+      const gitExt = vscode.extensions.getExtension('vscode.git');
+      if (gitExt && gitExt.isActive) {
+        const repo = gitExt.exports.getAPI(1).getRepository(editor.document.uri);
+        if (repo) return repo.rootUri.fsPath;
+      }
+    } catch (_) {}
+    return path.dirname(editor.document.uri.fsPath);
+  }
+  const wf = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+  return wf ? wf.uri.fsPath : null;
+}
+// v0.9.986: 任意フォルダのorigin remoteをexecで読む(workspace外でも可)・埋込PATは除去
+async function getRemoteForDir(dir) {
+  if (!dir) return null;
+  try {
+    const execAsync = require('util').promisify(require('child_process').exec);
+    const { stdout } = await execAsync('git remote get-url origin', { cwd: dir });
+    const raw = (stdout || '').trim();
+    if (!raw) return null;
+    return raw.replace(/\.git$/, '').replace(/^git@github\.com:/, 'https://github.com/').replace(/^https:\/\/[^@/]+@github\.com\//, 'https://github.com/');
+  } catch (_) { return null; }
+}
+// v0.9.974: git remote URLを取得(commit/push用)
+async function getGithubRemoteUrl() {
+  try {
+    const gitExt = vscode.extensions.getExtension('vscode.git');
+    if (!gitExt || !gitExt.isActive) return null;
+    const git = gitExt.exports.getAPI(1);
+    const editor = (getMeDockTargetEditor ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    const repo = editor ? git.getRepository(editor.document.uri) : (git.repositories[0] || null);
+    if (!repo) return null;
+    const remote = repo.state.remotes.find(r => r.name === 'origin') || repo.state.remotes[0];
+    if (!remote) return null;
+    return (remote.fetchUrl || remote.pushUrl || '').replace(/\.git$/, '').replace(/^git@github\.com:/, 'https://github.com/').replace(/^https:\/\/[^@/]+@github\.com\//, 'https://github.com/');
+  } catch (_) { return null; }
+}
+// v0.9.972: GitHub連携 — commit+push / open repo page
+async function githubCommitPush(doc) {
+  const gitExt = vscode.extensions.getExtension('vscode.git');
+  if (!gitExt || !gitExt.isActive) { vscode.window.showErrorMessage('MeOS: Git extension not found'); return; }
+  const git = gitExt.exports.getAPI(1);
+  const uri = doc ? doc.uri : ((getMeDockTargetEditor ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor || {}).document && ((getMeDockTargetEditor ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor).document.uri;
+  if (!uri) { vscode.window.showErrorMessage('MeOS: No active file'); return; }
+  const repo = git.getRepository(uri);
+  if (!repo) { if (!doc) vscode.window.showErrorMessage('MeOS: File is not in a git repository'); return; }
+  const relPath = vscode.workspace.asRelativePath(uri);
+  const now = new Date();
+  const ts = now.getFullYear() + '.' +
+    String(now.getMonth() + 1).padStart(2, '0') + '.' +
+    String(now.getDate()).padStart(2, '0') + ' ' +
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0');
+  const msg = `💾 ${ts} ${relPath}`;
+  const execAsync = require('util').promisify(require('child_process').exec);
+  const cwd = repo.rootUri.fsPath;
+  try {
+    await repo.add([uri.fsPath]);
+    try { await repo.commit(msg); }
+    catch (ce) { if (String(ce && ce.message).includes('nothing to commit')) { /* 変更なし→pushだけ試みる */ } else throw ce; }
+    // -u origin HEAD で初回(upstream未設定)・2回目以降の両方に対応。埋め込みPAT付きremoteで認証プロンプト無し。
+    await execAsync('git push -u origin HEAD', { cwd });
+    vscode.window.setStatusBarMessage(`✅ GitHub: ${ts}`, 3000);
+    try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubPushDone', label: ts }); } catch (_) {}
+  } catch (e) {
+    const msg2 = e && e.message ? e.message : String(e);
+    if (msg2.includes('nothing to commit') || msg2.includes('up-to-date') || msg2.includes('up to date')) {
+      try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubPushDone', label: ts }); } catch (_) {}
+    } else {
+      vscode.window.showErrorMessage(`MeOS GitHub push: ${msg2}`);
+    }
+  }
+}
+async function openGithubPage() {
+  const gitExt = vscode.extensions.getExtension('vscode.git');
+  if (!gitExt || !gitExt.isActive) { vscode.window.showErrorMessage('MeOS: Git extension not found'); return; }
+  const git = gitExt.exports.getAPI(1);
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  const repo = editor ? git.getRepository(editor.document.uri) : (git.repositories[0] || null);
+  if (!repo) { vscode.window.showErrorMessage('MeOS: No git repository found'); return; }
+  const remote = repo.state.remotes.find(r => r.name === 'origin') || repo.state.remotes[0];
+  if (!remote) { vscode.window.showErrorMessage('MeOS: No remote configured'); return; }
+  let url = (remote.fetchUrl || remote.pushUrl || '').replace(/\.git$/, '');
+  url = url.replace(/^git@github\.com:/, 'https://github.com/');
+  url = url.replace(/^https:\/\/[^@/]+@github\.com\//, 'https://github.com/'); // 埋め込みPATを除去
+  if (!url.includes('github.com')) { vscode.window.showErrorMessage('MeOS: Remote is not GitHub: ' + url); return; }
+  vscode.env.openExternal(vscode.Uri.parse(url));
 }
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
 const MEDOCK_TRIGGERS = ['みみみ', 'mememe']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
@@ -12505,16 +12729,18 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .bidi-jump-bar .bidi-clear:hover{background:rgba(200,60,60,.12)}
 .bidi-jump-bar .nav-jump-label.hidden{display:none}
 .toc-tools{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid rgba(210,140,0,.20);background:rgba(255,213,92,.08)}.toc-tools button{font-size:11px;padding:3px 6px}.toc-tools .toc-move{font-size:18px;line-height:1;padding:1px 7px}.toc-tools .toc-add{font-size:22px;line-height:1;color:#d18400;padding:0 8px}.toc-tools .toc-onsite{font-weight:800;color:#d18400}.toc-tools .toc-onsite.on{background:rgba(210,132,0,.22);border-color:#d18400}
-.format-tools .fmt-label{font-size:11px;font-weight:800;color:#d18400;opacity:.85}.format-tools .fmt-btns{display:flex;gap:6px}.fmt-cell{display:inline-flex;align-items:stretch}.fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}.fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}.fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}.fmt-slots{display:flex;align-items:center;gap:6px;justify-content:center}.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground);cursor:pointer}.fmt-slot:hover{filter:brightness(1.1)}.fmt-slot.dim{opacity:.35}.fmt-slot-sep{font-weight:900;opacity:.55}.fmt-ball{width:14px;height:14px;border-radius:50%;border:1px solid var(--meos-frame);display:inline-block;flex:0 0 auto}.fmt-ball.none{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--meos-frame) 2px,var(--meos-frame) 3px)}.fmt-pop-head{font-size:10px;font-weight:800;opacity:.85;margin-bottom:3px;color:#d18400}.fmt-grid{display:grid;grid-template-columns:repeat(7,auto);gap:3px}.fmt-swatch{width:22px;height:22px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}.fmt-swatch:hover{filter:brightness(1.1)}.fmt-swatch.active{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}.fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-btn:active{background:rgba(210,132,0,.30)}.fmt-btn.raw-toggle{margin-left:8px;font-family:inherit;font-weight:700;font-size:11px}#nav-toc.top-mode{background:#0d9aa0;border-color:#0d9aa0;color:#fff}#nav-eof{background:#6366f1;border-color:#6366f1;color:#fff}#time-machine-trigger{background:#7c3aed;border-color:#7c3aed;color:#fff}#refresh-btn{background:#a8730e;border-color:#a8730e;color:#fff}#reset-btn{background:#c0392b;border-color:#c0392b;color:#fff}#set-btn{background:#1f9d57;border-color:#1f9d57;color:#fff}#raw-toggle{background:#cd8a5c;border-color:#cd8a5c;color:#fff;text-shadow:0 0 1px rgba(0,0,0,.4)}.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
+.format-tools .fmt-label{font-size:11px;font-weight:800;color:#d18400;opacity:.85}.format-tools .fmt-btns{display:flex;gap:6px}.fmt-cell{display:inline-flex;align-items:stretch}.fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}.fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}.fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}.fmt-slots{display:flex;align-items:center;gap:6px;justify-content:center}.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground);cursor:pointer}.fmt-slot:hover{filter:brightness(1.1)}.fmt-slot.dim{opacity:.35}.fmt-slot-sep{font-weight:900;opacity:.55}.fmt-ball{width:14px;height:14px;border-radius:50%;border:1px solid var(--meos-frame);display:inline-block;flex:0 0 auto}.fmt-ball.none{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--meos-frame) 2px,var(--meos-frame) 3px)}.fmt-pop-head{font-size:10px;font-weight:800;opacity:.85;margin-bottom:3px;color:#d18400}.fmt-grid{display:grid;grid-template-columns:repeat(7,auto);gap:3px}.fmt-swatch{width:22px;height:22px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}.fmt-swatch:hover{filter:brightness(1.1)}.fmt-swatch.active{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}.fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-btn:active{background:rgba(210,132,0,.30)}.fmt-btn.raw-toggle{margin-left:8px;font-family:inherit;font-weight:700;font-size:11px}#nav-toc.top-mode{background:#0d9aa0;border-color:#0d9aa0;color:#fff}#nav-eof{background:#6366f1;border-color:#6366f1;color:#fff}#time-machine-trigger{background:#7c3aed;border-color:#7c3aed;color:#fff}#refresh-btn{background:#a8730e;border-color:#a8730e;color:#fff}#reset-btn{background:#c0392b;border-color:#c0392b;color:#fff}#set-btn{background:#1f9d57;border-color:#1f9d57;color:#fff}#raw-toggle{background:#cd8a5c;border-color:#cd8a5c;color:#fff;text-shadow:0 0 1px rgba(0,0,0,.4)}.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.fmt-btn.gh-push.gh-on{background:#1a7f37;border-color:#116329;color:#fff}.fmt-btn.gh-push.gh-on:hover{background:#2da44e}.gh-wizard{margin:5px 8px;border:1px solid rgba(26,127,55,.4);border-radius:7px;background:rgba(26,127,55,.06);overflow:hidden}.gh-wizard-head{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;background:rgba(26,127,55,.12);user-select:none}.gh-wizard-head:hover{background:rgba(26,127,55,.2)}.gh-wizard-title{flex:none;font-size:11px;font-weight:800;color:#2da44e}.gh-wizard-status{flex:1;min-width:0;font-size:10px;font-weight:700;color:#2da44e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}.gh-wizard-toggle{flex:none;font-size:11px;font-weight:900;padding:0 5px;border:none;background:transparent;color:#2da44e;cursor:pointer;line-height:1}.gh-wizard-body{padding:6px 8px}.gh-wizard.collapsed .gh-wizard-body{display:none}.gh-wizard.collapsed .gh-wizard-toggle{transform:rotate(-90deg)}.gh-setup-form{display:flex;flex-direction:column;gap:4px}.gh-form-row{display:flex;align-items:center;gap:5px}.gh-step{flex:none;font-size:11px;font-weight:900;color:#2da44e;width:14px}.gh-input{flex:1;min-width:0;font-size:11px;padding:3px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.gh-input:focus{border-color:#2da44e;outline:none}.gh-pat-link{flex:none;font-size:10px;padding:3px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:pointer;white-space:nowrap}.gh-pat-link:hover{background:rgba(26,127,55,.14)}.gh-pat-link:disabled{opacity:.35;cursor:default;background:transparent}.gh-priv-row{display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding-left:19px;user-select:none}.gh-priv-row input{margin:0;cursor:pointer}.gh-folder-row2{font-size:11px}.gh-folder-label2{flex:none;font-size:12px}.gh-folder-name2{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--vscode-foreground)}.gh-folder-name2.none{opacity:.45;font-weight:400}.gh-change-btn{flex:none;font-size:10px;padding:2px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:pointer;white-space:nowrap}.gh-change-btn:hover{background:rgba(26,127,55,.14)}.gh-connect-btn{font-size:11px;font-weight:700;padding:4px 8px;border:1px solid #1a7f37;border-radius:4px;background:#1a7f37;color:#fff;cursor:pointer;margin-top:2px}.gh-connect-btn:hover{background:#2da44e}.gh-connect-btn:disabled{opacity:.4;cursor:default}.gh-msg{font-size:10px;min-height:0;color:#2da44e;font-weight:600}.gh-msg.err{color:#e5534b}.gh-connected-bar{display:flex;align-items:center;gap:6px;font-size:11px}.gh-conn-folder{flex:none;font-weight:700;color:var(--vscode-foreground)}.gh-conn-folder::before{content:"📁 "}.gh-conn-repo{flex:1;min-width:0;color:#2da44e;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gh-conn-repo::before{content:"✅ "}.gh-disconnect-btn{flex:none;font-size:10px;padding:1px 6px;border:1px solid rgba(229,83,75,.5);border-radius:4px;background:transparent;color:#e5534b;cursor:pointer}.gh-disconnect-btn:hover{background:rgba(229,83,75,.14)}.gh-sync-btn,.gh-open-btn{flex:none;font-size:13px;padding:1px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:transparent;cursor:pointer;line-height:1.3}.gh-sync-btn:hover,.gh-open-btn:hover{background:rgba(26,127,55,.14)}.gh-sync-btn.gh-on{background:#1a7f37;border-color:#116329}
 .toc-tools .bm-pending-split{display:inline-flex;align-items:stretch;margin-left:auto;margin-right:6px}.toc-tools .bm-pending-btn{position:relative;font-size:13px;padding:3px 6px;border-radius:5px 0 0 5px;background:#ffffff;color:#1e293b;border-color:#94a3b8}.toc-tools .bm-pending-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-radius:0 5px 5px 0;background:#ffffff;color:#1e293b;border-color:#94a3b8}.toc-tools .bm-pending-menu-btn:hover{background:#f1f5f9}.toc-tools .bm-pending-btn:hover{background:#f1f5f9}.toc-tools .bm-pending-btn.has{background:#cbd5e1}.toc-tools .bm-pending-cnt{position:absolute;right:2px;bottom:-1px;font-size:9px;font-weight:900;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.85)}
 .toc-tools .bm-split{display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-add-pending{order:0;color:#475569;font-weight:600}.bm-pop #bm-add-pending:hover{background:rgba(100,116,139,.16)}.bm-pop #bm-add-pending.disabled{opacity:.4;cursor:default;pointer-events:none}
 .bm-pop #bm-pending-list{order:1;display:flex;flex-direction:column;gap:2px}.bm-pop #bm-pending-list:empty{display:none}
 .bm-pop .bm-pending-row{font-size:11px;text-align:left;padding:4px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-descriptionForeground);cursor:pointer;white-space:nowrap}.bm-pop .bm-pending-row:hover{background:rgba(100,116,139,.18);color:var(--vscode-foreground)}
 .bm-pop #bm-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}.bm-pop #bm-clear:hover{background:rgba(220,38,38,.12);color:#dc2626}.bm-pop #bm-remove{order:3}.bm-pop #bm-front{order:4;color:#dc2626;font-weight:700}.bm-pop #bm-front:hover{background:rgba(220,38,38,.14)}.bm-pop #bm-pending-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}.bm-pop #bm-pending-clear:hover{background:rgba(220,38,38,.12);color:#dc2626}.bm-pop #bm-pending-resolve{order:3}.bm-pop #bm-pending-front{order:4;color:#dc2626;font-weight:700}.bm-pop #bm-pending-front:hover{background:rgba(220,38,38,.14)}
 .fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-field{position:relative;min-width:0}.toc-disp{position:absolute;inset:0;display:flex;align-items:center;padding:3px 4px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;background:var(--vscode-input-background);border:1px solid rgba(210,140,0,.25);border-radius:4px;pointer-events:none;color:var(--vscode-input-foreground)}.toc-disp .toc-sep{color:#3794ff;font-weight:900;white-space:pre}.toc-disp .toc-comment{color:#16a34a}.fixed-toc-item:focus-within .toc-disp{display:none}.fixed-toc-item.selected .toc-disp{border-color:#d18400}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-tools .toc-del{font-size:22px;line-height:1;color:#b91c1c;padding:0 8px}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-access{flex:none;font-weight:700;font-size:11px;opacity:.85;margin-left:3px}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:900;padding:1px 5px;margin-left:auto;border:1px solid currentColor;border-radius:4px;background:#fff;line-height:1.4;text-shadow:0 0 1px rgba(0,0,0,.5)}.toc-pin-toggle:hover{background:color-mix(in srgb,currentColor 16%,#fff)}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
-</style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button><button class="close" title="Close">×</button></span></header><main class="body">
+</style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><main class="body">
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">－</button><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="💤 Pending bookmark | One click: park the cursor line as a 'do it later' marker, or jump to your parked one (🚩 Front pending first). Kept apart from the 3 place 🔖 — and survives Clear all.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Pending menu | Switch 🚩 Front pending / Resolve / Clear all / Add">▾</button></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Switch Front / Remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩) — the 🔖 button always jumps here. The old Front becomes a normal 🔖 (kept). When 3 are full, the old Front is replaced. With no 🔖 here, it adds one.">Switch Front bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="bm-add-pending" data-tip="Park a 💤 pending bookmark at the cursor line — a 'do it later' marker, kept apart from the 3 place 🔖. The parked date is recorded.">💤 A pending bookmark</button><div class="bm-pending-list" id="bm-pending-list"></div><button class="bm-pop-item" id="bm-pending-clear" data-tip="Remove all 💤 pending bookmarks at once (the 3 place 🔖 are kept).">🧹 Clear all pending</button><button class="bm-pop-item" id="bm-pending-resolve" data-tip="Resolve (✅) the 💤 on the current cursor line.">✅ Resolve this pending</button><button class="bm-pop-item" id="bm-pending-front" data-tip="Make the cursor line the 🚩 Front pending — the 💤 button always jumps here first. With no 💤 here, it adds one.">🚩 Switch Front pending</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
-<div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><span class="fmt-cell"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | =={ text (text/bg)//tip }== — V picks text/background color">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button></span><span class="fmt-cell"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — V picks line/background color">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button></span><span class="fmt-cell"><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | ##[ text (text/bg)//tip ]## — V picks text/background color">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button></span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button><div class="color-pop fmt-pop" id="fmt-pop"></div></div>
+<div class="gh-wizard" id="gh-wizard"><div class="gh-wizard-head" id="gh-wizard-head" data-tip="Press the 🐙 button, then Cmd+S → your file is saved AND pushed to GitHub. Or leave 🐙 off to save locally only. (Click here to open/close settings.)"><span class="gh-wizard-title">🐙 GitHub: Push 🐙 &amp; Save Me!</span><span class="gh-wizard-status" id="gh-wizard-status"></span><button class="gh-wizard-toggle" id="gh-wizard-toggle" data-tip="Open / close">▾</button></div><div class="gh-wizard-body" id="gh-wizard-body">
+<div class="gh-connected-bar" id="gh-connected-bar" style="display:none"><span class="gh-conn-folder" id="gh-conn-folder"></span><span class="gh-conn-repo" id="gh-conn-repo"></span><button class="gh-sync-btn" id="gh-push" data-tip="Octopush: OFF — Cmd+S is normal save. Click to turn ON (Octopush & Cmd+S = push every save).">🐙</button><button class="gh-open-btn" id="gh-open" data-tip="Open this repository on GitHub in your browser.">🔗</button><button class="gh-disconnect-btn" id="gh-disconnect-btn" data-tip="Unlink THIS folder from GitHub (your saved PAT and the GitHub repo are kept — reconnect any time)">✕</button></div>
+<div class="gh-setup-form" id="gh-setup-form"><div class="gh-form-row"><span class="gh-step">①</span><input class="gh-input" id="gh-profile-url" placeholder="https://github.com/LAIxai" spellcheck="false" data-tip="GitHubのプロフィールURL (例: https://github.com/LAIxai)"/></div><div class="gh-form-row"><span class="gh-step">②</span><input class="gh-input" id="gh-pat-input" type="password" placeholder="PAT (ghp_...)" spellcheck="false" data-tip="Personal Access Token — needs 'repo' scope"/><button class="gh-pat-link" id="gh-pat-link" disabled data-tip="Open GitHub's token creation page">Get PAT ↗</button></div><div class="gh-form-row gh-folder-row2"><span class="gh-step">③</span><span class="gh-folder-label2">📁</span><span class="gh-folder-name2" id="gh-folder-name2">Open a folder first</span><button class="gh-change-btn" id="gh-change-folder" data-tip="Pick which folder to back up to GitHub">Change…</button></div><label class="gh-priv-row" id="gh-priv-row" data-tip="Private = only you can see it (recommended for diaries / drafts). Uncheck for a public repo."><input type="checkbox" id="gh-private" checked/><span id="gh-priv-text">🔒 Private (only you)</span></label><button class="gh-connect-btn" id="gh-connect-btn" disabled>Connect &amp; Create Repo</button><div class="gh-msg" id="gh-msg"></div></div></div></div><div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><span class="fmt-cell"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | =={ text (text/bg)//tip }== — V picks text/background color">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button></span><span class="fmt-cell"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — V picks line/background color">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button></span><span class="fmt-cell"><button class="fmt-btn" id="fmt-heading" data-tip="Heading (H2) | ##[ text (text/bg)//tip ]## — V picks text/background color">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button></span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button><div class="color-pop fmt-pop" id="fmt-pop"></div></div>
 <div class="inline-panel" id="new-rename-panel">
   <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div></div>
   <div class="me-name-wrap" id="me-name-wrap"><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
@@ -12776,7 +13002,7 @@ if(editModeSelect)editModeSelect.addEventListener('change',()=>{editPanelMode=ed
 if(zoomMeModeBtn)zoomMeModeBtn.addEventListener('click',()=>{applyZoomMeMode(zoomMeMode==='me'?'line':'me',false);});
 ['zoom-me-start','zoom-me-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',saveZoomMeCurrentValues);});
 if(zoomMeLoad)zoomMeLoad.addEventListener('click',()=>{saveZoomMeCurrentValues();vscode.postMessage({type:'zoomMeLoad',mode:zoomMeMode,start:document.getElementById('zoom-me-start')?document.getElementById('zoom-me-start').value:'1',end:document.getElementById('zoom-me-end')?document.getElementById('zoom-me-end').value:'EOF'});});
-closeButton.addEventListener('click',()=>vscode.postMessage({type:'close'}));
+if(closeButton)closeButton.addEventListener('click',()=>vscode.postMessage({type:'close'}));
 /* v0.9.707: 書式ボタン(== ハイライト / ~~ 取消線 / ## 見出し)。選択を記法で包む。 */
 const fmtHighlight=document.getElementById('fmt-highlight'),fmtStrike=document.getElementById('fmt-strike'),fmtHeading=document.getElementById('fmt-heading');
 // v0.9.879: 各Formatボタン右の「V」→(文字色/背景色)2スロット→各スロットでパレット(ミーピー左目と同方式)。
@@ -12803,6 +13029,45 @@ if(fmtStrike)fmtStrike.addEventListener('click',()=>vscode.postMessage({type:'in
 if(fmtHeading)fmtHeading.addEventListener('click',()=>vscode.postMessage({type:'insertFormat',kind:'heading',fg:fmtSpec.heading.fg,bg:fmtSpec.heading.bg}));
 /* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){const ap=(btn,k)=>{if(!btn)return;const sp=fmtSpec[k];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.bg):'';btn.style.background=bg;btn.style.borderColor=bg||'';};ap(fmtHighlight,'highlight');ap(fmtStrike,'strike');ap(fmtHeading,'heading');}renderFmtBtnColors();
 const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.addEventListener('click',()=>vscode.postMessage({type:'toggleRaw'}));
+const ghWizard=document.getElementById('gh-wizard'),ghWizardHead=document.getElementById('gh-wizard-head'),ghWizardToggle=document.getElementById('gh-wizard-toggle'),ghWizardStatus=document.getElementById('gh-wizard-status'),ghProfileUrl=document.getElementById('gh-profile-url'),ghPatInput=document.getElementById('gh-pat-input'),ghPatLink=document.getElementById('gh-pat-link'),ghConnectBtn=document.getElementById('gh-connect-btn'),ghFolderName2=document.getElementById('gh-folder-name2'),ghMsg=document.getElementById('gh-msg'),ghSetupForm=document.getElementById('gh-setup-form'),ghConnectedBar=document.getElementById('gh-connected-bar'),ghConnFolder=document.getElementById('gh-conn-folder'),ghConnRepo=document.getElementById('gh-conn-repo'),ghDisconnectBtn=document.getElementById('gh-disconnect-btn');
+function toggleGhWizard(){if(!ghWizard)return;const willCollapse=!ghWizard.classList.contains('collapsed');ghWizard.classList.toggle('collapsed',willCollapse);vscode.postMessage({type:'githubSetCollapsed',collapsed:willCollapse});}
+if(ghWizardHead)ghWizardHead.addEventListener('click',ev=>{if(ev.target&&ev.target.tagName==='INPUT')return;toggleGhWizard();});
+function renderGhWizard(m){
+  if(ghWizard&&m.collapsed!==undefined)ghWizard.classList.toggle('collapsed',!!m.collapsed);
+  const connected=m.state==='connected'||(m.state==='sync'&&m.username&&m.repoUrl);
+  if(ghWizardStatus)ghWizardStatus.textContent=connected?('✅ '+(m.username||'')+'/'+(m.repoName||'')):'(not connected)';
+  if(ghSetupForm)ghSetupForm.style.display=connected?'none':'flex';
+  if(ghConnectedBar)ghConnectedBar.style.display=connected?'flex':'none';
+  if(connected){if(ghConnFolder)ghConnFolder.textContent=m.folderName||'';if(ghConnRepo){ghConnRepo.textContent=(m.username||'')+'/'+(m.repoName||'');ghConnRepo.title=m.repoUrl||'';}return;}
+  // 未接続フォーム
+  ghNoFolder=!m.folderName;
+  ghHasPat=!!m.hasPat; // v0.9.985: 保存済みPATがあればPAT欄は任意(空欄で再利用)
+  if(ghFolderName2){if(m.folderName){ghFolderName2.textContent=m.folderName;ghFolderName2.title=m.folderPath||'';ghFolderName2.classList.remove('none');}else{ghFolderName2.textContent='Open a folder first (File → Open Folder)';ghFolderName2.classList.add('none');}}
+  // v0.9.985: URLを前回値でプリフィル(空欄かつ未フォーカス時のみ)・PATが保存済みならプレースホルダで案内
+  if(ghProfileUrl&&!ghProfileUrl.value&&m.savedUrl&&document.activeElement!==ghProfileUrl)ghProfileUrl.value=m.savedUrl;
+  if(ghPatInput)ghPatInput.placeholder=ghHasPat?'PAT saved ✓ — leave blank to reuse':'PAT (ghp_...)';
+  if(ghMsg){if(m.state==='progress'){ghMsg.textContent=m.msg||'…';ghMsg.classList.remove('err');}else if(m.state==='error'){ghMsg.textContent='⚠ '+(m.msg||'failed');ghMsg.classList.add('err');if(ghConnectBtn)ghConnectBtn.textContent='Connect & Create Repo';}else{ghMsg.textContent='';ghMsg.classList.remove('err');}}
+  updateGhFormState();
+}
+// v0.9.979: 入力状態でボタンの有効/無効を制御。① URL未入力→Get PAT薄く ② PAT未入力(かつ保存無し) or フォルダ無し→Connect薄く
+let ghNoFolder=true,ghHasPat=false;
+function updateGhFormState(){
+  const url=(ghProfileUrl&&ghProfileUrl.value.trim())||'';
+  const pat=(ghPatInput&&ghPatInput.value.trim())||'';
+  if(ghPatLink)ghPatLink.disabled=!url; // Get PAT: URL入力後に有効化
+  if(ghConnectBtn&&ghConnectBtn.textContent!=='Connecting…')ghConnectBtn.disabled=ghNoFolder||!url||(!pat&&!ghHasPat);
+}
+if(ghProfileUrl)ghProfileUrl.addEventListener('input',updateGhFormState);
+if(ghPatInput)ghPatInput.addEventListener('input',updateGhFormState);
+if(ghPatLink)ghPatLink.addEventListener('click',()=>{if(ghPatLink.disabled)return;vscode.postMessage({type:'openGithubPat'});});
+const ghChangeFolder=document.getElementById('gh-change-folder');if(ghChangeFolder)ghChangeFolder.addEventListener('click',()=>vscode.postMessage({type:'githubChooseFolder'}));
+if(ghConnectBtn)ghConnectBtn.addEventListener('click',()=>{const profileUrl=(ghProfileUrl&&ghProfileUrl.value.trim())||'';const pat=(ghPatInput&&ghPatInput.value.trim())||'';if(!profileUrl){if(ghMsg){ghMsg.textContent='⚠ ① Enter your GitHub URL';ghMsg.classList.add('err');}if(ghProfileUrl)ghProfileUrl.focus();return;}if(!pat&&!ghHasPat){if(ghMsg){ghMsg.textContent='⚠ ② Enter your PAT';ghMsg.classList.add('err');}if(ghPatInput)ghPatInput.focus();return;}ghConnectBtn.disabled=true;ghConnectBtn.textContent='Connecting…';vscode.postMessage({type:'githubConnect',profileUrl,pat,isPrivate:ghPrivate?ghPrivate.checked:true});});
+const ghPrivate=document.getElementById('gh-private'),ghPrivText=document.getElementById('gh-priv-text');
+if(ghPrivate)ghPrivate.addEventListener('change',()=>{if(ghPrivText)ghPrivText.textContent=ghPrivate.checked?'🔒 Private (only you)':'🌐 Public (anyone)';});
+if(ghDisconnectBtn)ghDisconnectBtn.addEventListener('click',()=>vscode.postMessage({type:'githubDisconnect'}));
+const ghPush=document.getElementById('gh-push');if(ghPush)ghPush.addEventListener('click',()=>vscode.postMessage({type:'toggleGithubAutoSync'}));
+const ghOpen=document.getElementById('gh-open');if(ghOpen)ghOpen.addEventListener('click',()=>vscode.postMessage({type:'openGithubPage'}));
+window.addEventListener('message',ev=>{const msg=ev.data;if(!msg)return;if(msg.type==='githubSyncState'){if(ghPush){ghPush.classList.toggle('gh-on',!!msg.on);ghPush.setAttribute('data-tip',msg.on?'Octopush: ON — Cmd+S pushes to GitHub. Click to turn OFF (local-only save).':'Octopush: OFF — Cmd+S is normal save. Click to turn ON (Octopush & Cmd+S = push every save).');}}if(msg.type==='githubPushDone'){if(ghPush){const was=ghPush.textContent;ghPush.textContent='✅';setTimeout(()=>{ghPush.textContent=was;},1200);}}if(msg.type==='githubWizardState'){renderGhWizard(msg);if(msg.syncOn!==undefined&&ghPush){ghPush.classList.toggle('gh-on',!!msg.syncOn);}}});
 /* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
 const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmAddPending=document.getElementById('bm-add-pending'),bmPendingList=document.getElementById('bm-pending-list'),bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document.getElementById('bm-pending-menu-btn'),bmPendingPop=document.getElementById('bm-pending-pop'),bmPendingClear=document.getElementById('bm-pending-clear'),bmPendingResolve=document.getElementById('bm-pending-resolve'),bmPendingFront=document.getElementById('bm-pending-front');
 if(bmPendingBtn)bmPendingBtn.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkTogglePending'});if(typeof hideTocTip==='function')hideTocTip();}); // v0.9.841: ツールバー💤=駐車/ジャンプ。v843: クリック後は開いたままの古いtipを消す→次ホバーで状態別tipに更新
@@ -13569,6 +13834,18 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
+    if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
+    if (message && message.type === 'openGithubPage') { await openGithubPage(); return; }
+    if (message && message.type === 'toggleGithubAutoSync') { toggleGithubAutoSync(); return; }
+    if (message && message.type === 'githubConnect') { await githubConnectWizard(message.profileUrl || '', message.pat || '', message.isPrivate !== false); return; }
+    if (message && message.type === 'githubDisconnect') { await githubDisconnect(); return; }
+    if (message && message.type === 'openGithubPat') { vscode.env.openExternal(vscode.Uri.parse('https://github.com/settings/tokens/new?scopes=repo&description=MeOS')); return; }
+    if (message && message.type === 'githubSetCollapsed') { if (extensionContext) extensionContext.globalState.update('meos.github.collapsed', !!message.collapsed); return; }
+    if (message && message.type === 'githubChooseFolder') {
+      const picked = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: 'Use this folder for GitHub backup' });
+      if (picked && picked[0]) { githubChosenDir = picked[0].fsPath; await postGithubWizardState('sync'); }
+      return;
+    }
     if (message && message.type === 'addToWorkingToc') {
       await addCurrentMembraneToWorkingToc();
       updateMeDockMode();
@@ -13975,6 +14252,14 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetPendingFrontAt', (line) => bookmarkSetPendingFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.897
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemovePendingAt', (line) => bookmarkRemovePending(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.837: 💤ホバーのResolve
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973
+  // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
+  context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    if (!githubAutoSync) return;
+    await githubCommitPush(doc);
+  }));
   // v0.9.798: intercept native Fold All (⌘K⌘0) / Unfold All (⌘K⌘J) and neuter them. They bypass
   // MeOS's fold-state tracking (foldStateByPairKey / ⊖⊕ badges) and desync the ▼⇄▼▲ toggle. MeOS
   // has no "fold everything" concept (俊克 6/12 am01:19) — fold a membrane individually, navigate
