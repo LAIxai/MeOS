@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.994: 新規mdを「動くお手本」に(俊克 6/23 pm02:49)。万人の最初の動線 New .md→膜Create→Add to Hyper TOC を自動化。createNewMdFileで①ファイル全体を包む膜(buildMembraneOpenLine/CloseLine markdown=<!-- {* ▼/▲mCN=new_<yyyymmdd_hhmmss> *} -->)を自動生成 ②膜コメントに生成日時(meosFormatStamp=🆕 2026.06.23(T)pm…)を可視タイムスタンプとして ③開始膜行にカーソル→addCurrentMembraneToWorkingToc()で手動Addと同経路でHyper TOC登録→カーソルを膜の中(2行目)へ移し書き始め可・refresh()。=使い慣れない人でも開いた瞬間「膜で包む/日時が残る/目次に載る」が目で分かる自己説明ファイル。node側のみ。
 // - v0.9.993: v992を撤回(俊克 6/23 pm02:19 スクショ指摘: 先走り)。真相=v991時点でボタンは切れておらず最初のスクショ(1.16.02)では#/Setと右辺フラッシュ揃いだった。私が後の1枚(1.22.56=パネル幅が狭い瞬間)だけ見て誤判定→不要なmargin-right:12pxで端から左に寄り右揃えが崩れた。v991のCSSに復帰(margin削除/padding 2px 9px)。教訓=スクショは複数枚を見比べてから直す・1枚で先走らない。
 // - v0.9.992: v991の📝 New .mdボタンがパネル右端で見切れていた修正(俊克 6/23 pm01:28 スクショ指摘)。真因=先頭行がjustify-content:space-between+Zoom表示flex:1でボタンを最右端へ押し出し、縦スクロールバー/ウィンドウ端にボタン右側がクリップされていた(右マージン無し)。修正=.new-md-btnにmargin-right:12px+padding微縮(2px 8px)でスクロールバーを避け全幅表示。webview CSSのみ。
 // - v0.9.991: 作家向け「📝 New .md」ボタンをEdit Meパネル先頭行(inline-title-row)の右端に追加(俊克 6/23 pm01:09: プログラマーは通常メニューに慣れているが作家は不慣れ→論外)。ワンクリックで空のMarkdownを即開く(vscode.workspace.openTextDocument{language:'markdown'}→showTextDocument)。保存時にOSダイアログで命名=VSCode純正New Fileと同最短導線。緑(作成色#1a7f37)。webview(HTML+CSS+ハンドラ)+node(createNewMdFile)両側。
@@ -6809,8 +6810,31 @@ async function openGithubPage() {
 async function createNewMdFile() {
   try {
     const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: '' });
-    await vscode.window.showTextDocument(doc, { preview: false });
-    vscode.window.setStatusBarMessage('MeOS: New Markdown file — start writing, then Cmd+S to name & save it', 3000);
+    const editor = await vscode.window.showTextDocument(doc, { preview: false });
+    // v0.9.994: 新規ファイルを「動くお手本」にする(俊克 6/23 pm02:49)。万人が最初に辿る動線
+    //   New .md → 膜をCreate → Add to Hyper TOC を自動化: ①ファイル全体を包む膜を1つ自動生成
+    //   ②生成日時を膜のタイムスタンプ(可視コメント)に ③Hyper TOCへ自動登録(手動Addと同経路)。
+    //   →使い慣れていない人でも、開いた瞬間に「膜で包む/日時が残る/目次に載る」仕組みが目で分かる。
+    const now = new Date();
+    const p = n => String(n).padStart(2, '0');
+    const id = '' + now.getFullYear() + p(now.getMonth() + 1) + p(now.getDate()) + '_' + p(now.getHours()) + p(now.getMinutes()) + p(now.getSeconds());
+    const stamp = (typeof meosFormatStamp === 'function') ? meosFormatStamp(now) : now.toISOString();
+    const name = 'new_' + id;               // 膜名(安全な英数字_)
+    const comment = '🆕 ' + stamp;          // 生成日時を可視のタイムスタンプとして膜ラベルに見せる
+    const openLine = buildMembraneOpenLine(doc, '', name, comment, '(📊⊕0+0)');
+    const closeLine = buildMembraneCloseLine(doc, '', name, '');
+    await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), openLine + '\n\n' + closeLine + '\n'); });
+    // 開始膜行にカーソルを置き、手動の「Add to Hyper TOC」と同じ経路で目次へ登録。
+    editor.selection = new vscode.Selection(0, 0, 0, 0);
+    if (typeof addCurrentMembraneToWorkingToc === 'function') { await addCurrentMembraneToWorkingToc(); }
+    if (typeof updateMeDockMode === 'function') { try { updateMeDockMode(); } catch (_) {} }
+    // 書き始められるよう、膜の中(2行目=空行)へカーソルを移す。
+    const writeLine = Math.min(1, editor.document.lineCount - 1);
+    const wpos = new vscode.Position(writeLine, 0);
+    editor.selection = new vscode.Selection(wpos, wpos);
+    editor.revealRange(new vscode.Range(wpos, wpos), vscode.TextEditorRevealType.InCenter);
+    try { refresh(editor); } catch (_) {}
+    vscode.window.setStatusBarMessage('MeOS: New file wrapped in a timestamped membrane and added to Hyper TOC — start writing, then Cmd+S to save', 4000);
   } catch (e) {
     vscode.window.showErrorMessage('MeOS: Could not create a new Markdown file. ' + (e && e.message ? e.message : ''));
   }
