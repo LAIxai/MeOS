@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.9996: 暗号文を隠して「🔐 Locked」だけ見せる装飾(俊克 6/24 am02:52)。★暗号強度のためでなくUX(ゴミ文字を消す/覗き見・スクショにブロブを映さない・状態が一目)=ケルクホフスの原理で暗号文公開でも安全なので隠すのは見た目目的。実装=encHideDecoration(font-size:0で透明化)+encLabelDecoration(before='🔐 Locked — press 🔓 to view'橙)を新設・applyEncDecorations(可視範囲のみ走査=軽量・Raw中は隠さず生表示)をrefresh末尾で呼ぶ。スクロールはデバウンスrefresh経由で再適用。解錠すると本文が平文に戻りマーカー消失→自動で装飾解除。
 // - v0.9.9995: 解錠/施錠直後に🔐/🔓状態が更新されない件(俊克 6/24 am02:06: 解錠直後、膜の上なのに🔓白のまま・本来🔐橙に切替わるべき)。真因=updateMeDockModeはカーソル移動でしか呼ばれず、解錠/施錠の文書編集だけでは発火しない→encStateがstale。修正=encryptCurrentMembrane/unlockCurrentMembraneのedit直後にupdateMeDockMode()を呼びencStateを即更新。
 // - v0.9.9994: 暗号化のバグ2件(俊克 6/23 pm08:47)。①バグ1=解錠後のCmd+Vで秘密がクリップボードに残る→★ペースト検知でクリップボード即上書き: onDidChangeTextDocumentで1挿入テキスト==現在クリップボードなら=貼り付けと判断し中立語(_MEOS_CLIP_WIPED)へ上書き(1文字未満除外・120msスロットルでIME連続入力でも軽量)。②バグ2=🔐/🔓背景がおかしい→Create/Set(rename=膜の上)に同期: encStateをinMembrane(本文含む)からonMembrane(state.mode==='rename'=カーソルが開始/閉じ膜行)に変更。膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。暗号化済み膜では🔐灰(再施錠不可)・🔓白。クリップボードワイプ文言を_MEOS_CLIP_WIPED定数に共通化。残=暗号文を🔐だけ見せる装飾/合言葉入力をMe Dock上に。
 // - v0.9.9993: 暗号化ボタンの状態モデル+クリップボード上書き(俊克 6/23 pm05:37)。①🔐の背景が膜外でも色付きだった→状態で出し分け: encStateにinMembrane追加し webview で 膜外=灰(opacity.5)/平文膜=🔐橙(.enc-active)/暗号膜=🔓白(.enc-active)。②暗号化後にクリップボードへ平文が残る→encrypt成功時に clipboard.writeText で即上書き(「🔐 cleared by MeOS」)=コピーしてた秘密を消す。③「既に暗号化済み」警告を🔓へ誘導する文言に(開いてるのに再暗号化不可の混乱対策=状態可視化と合わせ、暗号膜では🔐灰/🔓白で流れが一目)。残=合言葉入力をMe Dock上に出す(showInputBoxは上中央固定で移設不可→webview入力欄が要る・次段)/ペースト検知でのクリップボード消去は別途検討。
@@ -1980,6 +1981,8 @@ const VERSION = "0.9.669";
 let lineDecoration;
 let openLineHideDecoration;
 let openLineLabelDecoration;
+let encHideDecoration; // v0.9.9996: 暗号文(🔒MeOS-enc行)を隠す
+let encLabelDecoration; // v0.9.9996: 「🔐 Locked」ラベルを見せる
 let closeLineHideDecoration;
 let closeLineLabelDecoration;
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
@@ -2552,6 +2555,8 @@ function disposeDecorations() {
   lineDecoration = undefined;
   if (openLineHideDecoration) openLineHideDecoration.dispose();
   if (openLineLabelDecoration) openLineLabelDecoration.dispose();
+  if (encHideDecoration) encHideDecoration.dispose();
+  if (encLabelDecoration) encLabelDecoration.dispose();
   if (closeLineHideDecoration) closeLineHideDecoration.dispose();
   if (closeLineLabelDecoration) closeLineLabelDecoration.dispose();
   if (stealthShellHideDecoration) stealthShellHideDecoration.dispose();
@@ -2609,6 +2614,8 @@ function disposeDecorations() {
   headingMarkerDecoration = undefined;
   openLineHideDecoration = undefined;
   openLineLabelDecoration = undefined;
+  encHideDecoration = undefined;
+  encLabelDecoration = undefined;
   closeLineHideDecoration = undefined;
   closeLineLabelDecoration = undefined;
   stealthShellHideDecoration = undefined;
@@ -2768,6 +2775,15 @@ function makeDecorations() {
   openLineLabelDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     before: { margin: '0 0 0 0', fontWeight: '600' }
+  });
+  // v0.9.9996: 暗号文(🔒MeOS-enc:v1 …)の中身を隠し、「🔐 Locked」だけ見せる(UXのため・暗号強度には無関係)。
+  encHideDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    textDecoration: 'none; opacity: 0; font-size: 0px;'
+  });
+  encLabelDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { margin: '0 0 0 0', fontWeight: '700' }
   });
   closeLineHideDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -9231,6 +9247,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   // the ext-host-driven panel lagged). The 🟢 only needs RE-resolving when the membrane LINES
   // shift = a STRUCTURAL edit, so the repaint now lives in the onDidChangeTextDocument
   // structural branch instead. Plain selection-change refreshes stay free.
+  applyEncDecorations(editor); // v0.9.9996: 暗号文を隠し「🔐 Locked」だけ見せる
   postFixedWorkingTocSnapshot();
 }
 function findCurrentPair(editor) {
@@ -12799,6 +12816,32 @@ function isCurrentMembraneEncrypted(editor) {
     }
     return false;
   } catch (_) { return false; }
+}
+// v0.9.9996: 暗号文行(🔒MeOS-enc:v1 …)の中身を隠し「🔐 Locked」だけ見せる(俊克 6/24 am02:52)。
+//   ★暗号強度のためではなくUX(ゴミ文字を消す/覗き見・スクショにブロブを映さない)。可視範囲のみ走査=軽量。
+//   Rawモード中は隠さず生の暗号文を見せる(透明化解除)。
+function applyEncDecorations(editor) {
+  if (!editor || !encHideDecoration || !encLabelDecoration) return;
+  try {
+    if (meosRawMode) { editor.setDecorations(encHideDecoration, []); editor.setDecorations(encLabelDecoration, []); return; }
+    const doc = editor.document;
+    const hideRanges = [];
+    const labelRanges = [];
+    const seen = new Set();
+    for (const vr of (editor.visibleRanges || [])) {
+      const from = Math.max(0, vr.start.line - 1), to = Math.min(doc.lineCount - 1, vr.end.line + 1);
+      for (let i = from; i <= to; i++) {
+        if (seen.has(i)) continue; seen.add(i);
+        const text = doc.lineAt(i).text || '';
+        const idx = text.indexOf(_MEOS_ENC_PREFIX);
+        if (idx < 0) continue;
+        hideRanges.push(new vscode.Range(i, idx, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
+        labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: '🔐 Locked — press 🔓 to view', color: '#d2691e', fontWeight: '700' } } });
+      }
+    }
+    editor.setDecorations(encHideDecoration, hideRanges);
+    editor.setDecorations(encLabelDecoration, labelRanges);
+  } catch (_) {}
 }
 function updateMeDockMode() {
   if (!meDockPanel) return;
