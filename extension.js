@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.9997: 暗号化の2件(俊克 6/24 am04:51)。①バグ1=ペースト消去が無差別(MeOS上で通常テキストを貼ってもクリップボードがすり替わる)→「直近に解錠した秘密」に一致するペーストだけ消す: 解錠時に_recentSecret=平文を記録(10分TTL/再施錠でクリア)、ペースト検知は_recentSecret.indexOf(挿入)>=0の時のみ上書き。通常ペーストは無傷。②Raw(かかか)で暗号文が隠れたまま(予想と違った)→clearForRawにencHide/encLabelを追加=Rawでは生の暗号文(base64)を見せる。
 // - v0.9.9996: 暗号文を隠して「🔐 Locked」だけ見せる装飾(俊克 6/24 am02:52)。★暗号強度のためでなくUX(ゴミ文字を消す/覗き見・スクショにブロブを映さない・状態が一目)=ケルクホフスの原理で暗号文公開でも安全なので隠すのは見た目目的。実装=encHideDecoration(font-size:0で透明化)+encLabelDecoration(before='🔐 Locked — press 🔓 to view'橙)を新設・applyEncDecorations(可視範囲のみ走査=軽量・Raw中は隠さず生表示)をrefresh末尾で呼ぶ。スクロールはデバウンスrefresh経由で再適用。解錠すると本文が平文に戻りマーカー消失→自動で装飾解除。
 // - v0.9.9995: 解錠/施錠直後に🔐/🔓状態が更新されない件(俊克 6/24 am02:06: 解錠直後、膜の上なのに🔓白のまま・本来🔐橙に切替わるべき)。真因=updateMeDockModeはカーソル移動でしか呼ばれず、解錠/施錠の文書編集だけでは発火しない→encStateがstale。修正=encryptCurrentMembrane/unlockCurrentMembraneのedit直後にupdateMeDockMode()を呼びencStateを即更新。
 // - v0.9.9994: 暗号化のバグ2件(俊克 6/23 pm08:47)。①バグ1=解錠後のCmd+Vで秘密がクリップボードに残る→★ペースト検知でクリップボード即上書き: onDidChangeTextDocumentで1挿入テキスト==現在クリップボードなら=貼り付けと判断し中立語(_MEOS_CLIP_WIPED)へ上書き(1文字未満除外・120msスロットルでIME連続入力でも軽量)。②バグ2=🔐/🔓背景がおかしい→Create/Set(rename=膜の上)に同期: encStateをinMembrane(本文含む)からonMembrane(state.mode==='rename'=カーソルが開始/閉じ膜行)に変更。膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。暗号化済み膜では🔐灰(再施錠不可)・🔓白。クリップボードワイプ文言を_MEOS_CLIP_WIPED定数に共通化。残=暗号文を🔐だけ見せる装飾/合言葉入力をMe Dock上に。
@@ -6567,6 +6568,7 @@ function clearForRaw(editor) {
   if (headingSizeByLevel) for (const d of headingSizeByLevel.values()) z(d);
   if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
   z(headingMarkerDecoration); z(annotationColorDecoration);
+  z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
   // bookmark は残す(IMEに無害・ナビ有用)
 }
 async function toggleRawMode() {
@@ -6910,6 +6912,9 @@ async function createNewMdFile() {
 const _MEOS_ENC_PREFIX = '🔒MeOS-enc:v1 ';
 const _MEOS_CLIP_WIPED = '🔐 (cleared by MeOS)'; // v0.9.9994: クリップボード上書き用の中立語(暗号化時/ペースト時に共通)
 let _meosClipCheckAt = 0; // v0.9.9994: ペースト検知のクリップボード読みスロットル
+let _recentSecret = '';   // v0.9.9997: 直近に解錠した平文(ペースト消去の対象判定用・通常ペーストは消さない)
+let _recentSecretAt = 0;
+const _RECENT_SECRET_TTL = 10 * 60 * 1000; // 10分で失効
 function meosEncryptText(plain, pass) {
   const crypto = require('crypto');
   const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
@@ -6951,6 +6956,7 @@ async function encryptCurrentMembrane() {
   if (pass2 !== pass) { vscode.window.showErrorMessage('MeOS: Passphrases do not match — nothing was encrypted.'); return; }
   let blob; try { blob = meosEncryptText(info.text, pass); } catch (e) { vscode.window.showErrorMessage('MeOS: Encryption failed. ' + (e && e.message ? e.message : '')); return; }
   await editor.edit(eb => { eb.replace(info.range, _MEOS_ENC_PREFIX + blob); });
+  _recentSecret = ''; _recentSecretAt = 0; // v0.9.9997: 再施錠したら直近秘密の追跡を解除(以後の通常ペーストは消さない)
   try { refresh(editor); } catch (_) {}
   try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 施錠直後に🔐/🔓状態を更新(膜の上=暗号→🔐灰/🔓白)
   // v0.9.9993: 暗号化したら、コピーしていた平文がクリップボードに残らないよう即上書き(俊克 6/23 pm05:37: 暗号化後にペーストすると秘密が出た)。
@@ -6973,6 +6979,7 @@ async function unlockCurrentMembrane() {
   const pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to unlock this membrane 🔓' });
   if (!pass) return;
   let plain; try { plain = meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS: Wrong passphrase, or the data is corrupted. Nothing was changed.'); return; }
+  _recentSecret = plain || ''; _recentSecretAt = Date.now(); // v0.9.9997: 解錠した平文を記録→このテキストをペーストした時だけクリップボード消去
   const range = new vscode.Range(markerLine, 0, markerLine, (doc.lineAt(markerLine).text || '').length);
   await editor.edit(eb => { eb.replace(range, plain); });
   try { refresh(editor); } catch (_) {}
@@ -14730,14 +14737,16 @@ makeDecorations();
       try {
         if (activeEditor && e.document === activeEditor.document && e.contentChanges && e.contentChanges.length === 1) {
           const _ins = e.contentChanges[0].text || '';
-          if (_ins.length >= 2 && Date.now() - _meosClipCheckAt >= 120) {
+          // v0.9.9997: 「直近に解錠した秘密」に一致するペーストだけクリップボードを消去(俊克 6/24 am04:51: 通常のペーストまで消えるのは駄目)。
+          const _secActive = _recentSecret && (Date.now() - _recentSecretAt < _RECENT_SECRET_TTL);
+          if (_secActive && _ins.length >= 3 && _recentSecret.indexOf(_ins) >= 0 && Date.now() - _meosClipCheckAt >= 120) {
             _meosClipCheckAt = Date.now();
             (async () => {
               try {
                 const _clip = await vscode.env.clipboard.readText();
                 if (_clip && _clip === _ins && _clip !== _MEOS_CLIP_WIPED) {
                   await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED);
-                  vscode.window.setStatusBarMessage('MeOS: pasted — clipboard wiped 🔐', 2500);
+                  vscode.window.setStatusBarMessage('MeOS: secret pasted — clipboard wiped 🔐', 2500);
                 }
               } catch (_) {}
             })();
