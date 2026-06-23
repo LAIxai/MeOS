@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.9994: 暗号化のバグ2件(俊克 6/23 pm08:47)。①バグ1=解錠後のCmd+Vで秘密がクリップボードに残る→★ペースト検知でクリップボード即上書き: onDidChangeTextDocumentで1挿入テキスト==現在クリップボードなら=貼り付けと判断し中立語(_MEOS_CLIP_WIPED)へ上書き(1文字未満除外・120msスロットルでIME連続入力でも軽量)。②バグ2=🔐/🔓背景がおかしい→Create/Set(rename=膜の上)に同期: encStateをinMembrane(本文含む)からonMembrane(state.mode==='rename'=カーソルが開始/閉じ膜行)に変更。膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。暗号化済み膜では🔐灰(再施錠不可)・🔓白。クリップボードワイプ文言を_MEOS_CLIP_WIPED定数に共通化。残=暗号文を🔐だけ見せる装飾/合言葉入力をMe Dock上に。
 // - v0.9.9993: 暗号化ボタンの状態モデル+クリップボード上書き(俊克 6/23 pm05:37)。①🔐の背景が膜外でも色付きだった→状態で出し分け: encStateにinMembrane追加し webview で 膜外=灰(opacity.5)/平文膜=🔐橙(.enc-active)/暗号膜=🔓白(.enc-active)。②暗号化後にクリップボードへ平文が残る→encrypt成功時に clipboard.writeText で即上書き(「🔐 cleared by MeOS」)=コピーしてた秘密を消す。③「既に暗号化済み」警告を🔓へ誘導する文言に(開いてるのに再暗号化不可の混乱対策=状態可視化と合わせ、暗号膜では🔐灰/🔓白で流れが一目)。残=合言葉入力をMe Dock上に出す(showInputBoxは上中央固定で移設不可→webview入力欄が要る・次段)/ペースト検知でのクリップボード消去は別途検討。
 // - v0.9.9992: 暗号化ボタンの見た目改良(俊克 6/23 pm05:12)。①🔒→🔐(鍵付き=「これから施錠」が分かる)②2つの鍵を近づける(.enc-btnをmin-width:auto+padding微縮・🔓のmargin-left:1px)③🔐の背景を橙(#d2691e・「これから鍵をかける」アクション色)④暗号化膜にカーソルがある時だけ🔓を白背景(.enc-in)=「ここで開けられる」文脈ハイライト。判定=isCurrentMembraneEncrypted(本文に🔒MeOS-encマーカー)→updateMeDockModeでencStateを送信→webviewでクラス切替。
 // - v0.9.9991: 暗号化を🔒/🔓ボタン化(俊克 6/23 pm05:04: 起動方法が分からない=コマンドパレットは作家に論外)。※版番号は4桁0.9.999.1がvsce不可→3桁semverの0.9.9991(patch=9991・見た目999.1)で代用(俊克 pm05:09)。format-toolsバー(== ~~ ## … 👁Raw)の右に🔒(Encrypt)/🔓(Unlock)を追加。HTML+CSS(#enc-lockに区切りmargin)+webviewハンドラ(encryptMembrane/unlockMembrane postMessage)+node側ハンドラ。コマンド(laiMembrane.encryptMembrane/unlockMembrane)も従来どおり残置。
@@ -6890,6 +6891,8 @@ async function createNewMdFile() {
 //   本文を `🔒MeOS-enc:v1 <base64>` 1行に置換=暗号化膜。Unlockで合言葉→平文へ戻す(GCM認証で合言葉違いは確実に検出)。
 //   ★正直な注意: 合言葉を忘れたら復元不能/Unlock中は平文がundo履歴・自動保存に残り得る(暗号は本物・「文字変換」ではない)。
 const _MEOS_ENC_PREFIX = '🔒MeOS-enc:v1 ';
+const _MEOS_CLIP_WIPED = '🔐 (cleared by MeOS)'; // v0.9.9994: クリップボード上書き用の中立語(暗号化時/ペースト時に共通)
+let _meosClipCheckAt = 0; // v0.9.9994: ペースト検知のクリップボード読みスロットル
 function meosEncryptText(plain, pass) {
   const crypto = require('crypto');
   const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
@@ -6933,7 +6936,7 @@ async function encryptCurrentMembrane() {
   await editor.edit(eb => { eb.replace(info.range, _MEOS_ENC_PREFIX + blob); });
   try { refresh(editor); } catch (_) {}
   // v0.9.9993: 暗号化したら、コピーしていた平文がクリップボードに残らないよう即上書き(俊克 6/23 pm05:37: 暗号化後にペーストすると秘密が出た)。
-  try { await vscode.env.clipboard.writeText('🔐 (cleared by MeOS)'); } catch (_) {}
+  try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) {}
   vscode.window.setStatusBarMessage('MeOS: Membrane encrypted 🔐 — clipboard cleared. Remember your passphrase (no recovery).', 4000);
 }
 async function unlockCurrentMembrane() {
@@ -12799,7 +12802,7 @@ function updateMeDockMode() {
   const editor = getMeDockTargetEditor();
   const state = meDockModeForEditor(editor);
   meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor) });
-  meDockPanel.webview.postMessage({ type: 'encState', inMembrane: !!findCurrentPair(editor), encrypted: isCurrentMembraneEncrypted(editor) }); // v0.9.9993: 🔐/🔓状態(膜外=灰/平文膜=🔐橙/暗号膜=🔓白)
+  meDockPanel.webview.postMessage({ type: 'encState', onMembrane: state.mode === 'rename', encrypted: isCurrentMembraneEncrypted(editor) }); // v0.9.9994: Create/Set(rename=膜の上)に同期。膜の上=平文→🔐橙/暗号→🔓白/それ以外=灰
   postFixedWorkingTocSnapshot();
   updateMeDockCurrentLineMarker();
   postMeDockAnchorState(editor);
@@ -13253,7 +13256,7 @@ if(fmtHeading)fmtHeading.addEventListener('click',()=>vscode.postMessage({type:'
 const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.addEventListener('click',()=>vscode.postMessage({type:'toggleRaw'}));
 const encLock=document.getElementById('enc-lock');if(encLock)encLock.addEventListener('click',()=>vscode.postMessage({type:'encryptMembrane'}));
 const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.addEventListener('click',()=>vscode.postMessage({type:'unlockMembrane'}));
-window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='encState'){const L=document.getElementById('enc-lock'),U=document.getElementById('enc-unlock');if(L)L.classList.toggle('enc-active',!!m.inMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.inMembrane&&!!m.encrypted);}}); /* v0.9.9993: 膜外=灰/平文膜=🔐橙/暗号膜=🔓白 */
+window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='encState'){const L=document.getElementById('enc-lock'),U=document.getElementById('enc-unlock');if(L)L.classList.toggle('enc-active',!!m.onMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.onMembrane&&!!m.encrypted);}}); /* v0.9.9994: Create/Set(rename=膜の上)に同期。膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰 */
 const ghWizard=document.getElementById('gh-wizard'),ghWizardHead=document.getElementById('gh-wizard-head'),ghWizardToggle=document.getElementById('gh-wizard-toggle'),ghWizardStatus=document.getElementById('gh-wizard-status'),ghProfileUrl=document.getElementById('gh-profile-url'),ghPatInput=document.getElementById('gh-pat-input'),ghPatLink=document.getElementById('gh-pat-link'),ghConnectBtn=document.getElementById('gh-connect-btn'),ghFolderName2=document.getElementById('gh-folder-name2'),ghMsg=document.getElementById('gh-msg'),ghSetupForm=document.getElementById('gh-setup-form'),ghConnectedBar=document.getElementById('gh-connected-bar'),ghConnFolder=document.getElementById('gh-conn-folder'),ghConnRepo=document.getElementById('gh-conn-repo'),ghDisconnectBtn=document.getElementById('gh-disconnect-btn');
 function toggleGhWizard(){if(!ghWizard)return;const willCollapse=!ghWizard.classList.contains('collapsed');ghWizard.classList.toggle('collapsed',willCollapse);vscode.postMessage({type:'githubSetCollapsed',collapsed:willCollapse});}
 if(ghWizardHead)ghWizardHead.addEventListener('click',ev=>{if(ev.target&&ev.target.tagName==='INPUT')return;toggleGhWizard();});
@@ -14675,6 +14678,26 @@ makeDecorations();
       // v0.9.715: 🔖 ブックマークの行ズレを追従(gate前に全変更で実行)。
       adjustBookmarksForChange(e);
       noteMeEditForAccess(e); // v0.9.954: 編集が現在膜で起きたら訪問を計上
+      // v0.9.9994: ★ペースト検知でクリップボード即上書き(俊克 6/23 pm08:47 バグ1: 解錠後のCmd+Vで秘密が残る)。
+      //   1回の挿入テキストが現在のクリップボードと一致=貼り付け→中立語へ上書き(秘密を残さない)。
+      //   1文字未満は対象外/120msスロットルでクリップボード読みを抑制(IME連続入力でも重くしない)。
+      try {
+        if (activeEditor && e.document === activeEditor.document && e.contentChanges && e.contentChanges.length === 1) {
+          const _ins = e.contentChanges[0].text || '';
+          if (_ins.length >= 2 && Date.now() - _meosClipCheckAt >= 120) {
+            _meosClipCheckAt = Date.now();
+            (async () => {
+              try {
+                const _clip = await vscode.env.clipboard.readText();
+                if (_clip && _clip === _ins && _clip !== _MEOS_CLIP_WIPED) {
+                  await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED);
+                  vscode.window.setStatusBarMessage('MeOS: pasted — clipboard wiped 🔐', 2500);
+                }
+              } catch (_) {}
+            })();
+          }
+        }
+      } catch (_) {}
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
