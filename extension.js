@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.9995: 解錠/施錠直後に🔐/🔓状態が更新されない件(俊克 6/24 am02:06: 解錠直後、膜の上なのに🔓白のまま・本来🔐橙に切替わるべき)。真因=updateMeDockModeはカーソル移動でしか呼ばれず、解錠/施錠の文書編集だけでは発火しない→encStateがstale。修正=encryptCurrentMembrane/unlockCurrentMembraneのedit直後にupdateMeDockMode()を呼びencStateを即更新。
 // - v0.9.9994: 暗号化のバグ2件(俊克 6/23 pm08:47)。①バグ1=解錠後のCmd+Vで秘密がクリップボードに残る→★ペースト検知でクリップボード即上書き: onDidChangeTextDocumentで1挿入テキスト==現在クリップボードなら=貼り付けと判断し中立語(_MEOS_CLIP_WIPED)へ上書き(1文字未満除外・120msスロットルでIME連続入力でも軽量)。②バグ2=🔐/🔓背景がおかしい→Create/Set(rename=膜の上)に同期: encStateをinMembrane(本文含む)からonMembrane(state.mode==='rename'=カーソルが開始/閉じ膜行)に変更。膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。暗号化済み膜では🔐灰(再施錠不可)・🔓白。クリップボードワイプ文言を_MEOS_CLIP_WIPED定数に共通化。残=暗号文を🔐だけ見せる装飾/合言葉入力をMe Dock上に。
 // - v0.9.9993: 暗号化ボタンの状態モデル+クリップボード上書き(俊克 6/23 pm05:37)。①🔐の背景が膜外でも色付きだった→状態で出し分け: encStateにinMembrane追加し webview で 膜外=灰(opacity.5)/平文膜=🔐橙(.enc-active)/暗号膜=🔓白(.enc-active)。②暗号化後にクリップボードへ平文が残る→encrypt成功時に clipboard.writeText で即上書き(「🔐 cleared by MeOS」)=コピーしてた秘密を消す。③「既に暗号化済み」警告を🔓へ誘導する文言に(開いてるのに再暗号化不可の混乱対策=状態可視化と合わせ、暗号膜では🔐灰/🔓白で流れが一目)。残=合言葉入力をMe Dock上に出す(showInputBoxは上中央固定で移設不可→webview入力欄が要る・次段)/ペースト検知でのクリップボード消去は別途検討。
 // - v0.9.9992: 暗号化ボタンの見た目改良(俊克 6/23 pm05:12)。①🔒→🔐(鍵付き=「これから施錠」が分かる)②2つの鍵を近づける(.enc-btnをmin-width:auto+padding微縮・🔓のmargin-left:1px)③🔐の背景を橙(#d2691e・「これから鍵をかける」アクション色)④暗号化膜にカーソルがある時だけ🔓を白背景(.enc-in)=「ここで開けられる」文脈ハイライト。判定=isCurrentMembraneEncrypted(本文に🔒MeOS-encマーカー)→updateMeDockModeでencStateを送信→webviewでクラス切替。
@@ -6935,6 +6936,7 @@ async function encryptCurrentMembrane() {
   let blob; try { blob = meosEncryptText(info.text, pass); } catch (e) { vscode.window.showErrorMessage('MeOS: Encryption failed. ' + (e && e.message ? e.message : '')); return; }
   await editor.edit(eb => { eb.replace(info.range, _MEOS_ENC_PREFIX + blob); });
   try { refresh(editor); } catch (_) {}
+  try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 施錠直後に🔐/🔓状態を更新(膜の上=暗号→🔐灰/🔓白)
   // v0.9.9993: 暗号化したら、コピーしていた平文がクリップボードに残らないよう即上書き(俊克 6/23 pm05:37: 暗号化後にペーストすると秘密が出た)。
   try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) {}
   vscode.window.setStatusBarMessage('MeOS: Membrane encrypted 🔐 — clipboard cleared. Remember your passphrase (no recovery).', 4000);
@@ -6958,6 +6960,7 @@ async function unlockCurrentMembrane() {
   const range = new vscode.Range(markerLine, 0, markerLine, (doc.lineAt(markerLine).text || '').length);
   await editor.edit(eb => { eb.replace(range, plain); });
   try { refresh(editor); } catch (_) {}
+  try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 解錠直後に🔐/🔓状態を更新(膜の上=平文→🔐橙/🔓灰)。俊克 6/24 am02:06: 解錠後も🔓白のままだった
   vscode.window.setStatusBarMessage('MeOS: Membrane unlocked 🔓 — re-run Encrypt to lock it again when done', 5000);
 }
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
