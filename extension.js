@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.990: ✕(Disconnect)に確認パネルを追加(俊克 6/23 am09:15: 押すと即消えていた→確認を出すべき)。githubDisconnect()冒頭でshowWarningMessage({modal:true})→「Unlink」を選んだ時だけ解除・Cancel/閉じるは何もしない。detailで「PATとGitHub上のrepoは残る/このフォルダのlocal remoteのみ削除」を明記=誤クリックでの即解除を防ぐ。node側のみ。
 // - v0.9.989: 🔗(Open GitHub)ボタンを登録済みなら緑色に(俊克 6/23 am08:47: 🐙オン=緑と同様に)。🔗を含むgh-connected-barは接続済みのときだけ表示=🔗が見えている時点で常に登録済み→`.gh-open-btn`を🐙onと同じ塗り(#1a7f37/枠#116329・hover#2da44e)に。「緑=GitHubと繋がっている」を🐙🔗で一目で揃えた。webview側CSSのみ。
 // - v0.9.988: git本体の検出+案内+🐙オン時にgit有無を表示(俊克 6/23 am00:52)。真っ新なVSCodium/OSではgitコマンドが無い場合がある(macOS=Xcode CLT/Windows=Git for Windows)→MeOS本体は不要だがOctopushのみ必要。checkGitInstalled()で`git --version`判定。🐙オン時: git有→armed+tipに「git ✓ v2.x」/git無→オンにせずguideGitInstall()案内(macOS=xcode-select --install でApple純正ダイアログ・Windows=git-scm.com・Linux=apt/dnf案内)。自動インストールはせずOS純正の仕組みを呼ぶ/案内のみ=安全側(削除時と同じ「危険操作はOS側+AI案内」思想)。Connect時もgit無しなら案内して中断。node+webview両側。
 // - v0.9.987: 🐙をワンショット化(俊克 6/22 pm10:17: push後も🐙が緑のまま=自動オフのはずだった)。onDidSaveTextDocumentでpush完了直後に githubAutoSync=false へ戻し webview に githubSyncState{on:false} を送る=1タップ1push。点けっぱなしで以降の保存まで送られる事故を防ぐ=「Push when you say so」を入力で体現。tip/ステータスをarmed(次のCmd+Sで1回push→オフ)表現に統一。node+webview両側。
@@ -6665,6 +6666,14 @@ async function githubConnectWizard(profileUrl, pat, isPrivate) {
 }
 // v0.9.985: ✕=このフォルダの接続解除のみ(git remote削除)。保存済みPATは保持→再接続が一瞬。GitHub上のrepo/データは無傷。
 async function githubDisconnect() {
+  // v0.9.990: ✕(Disconnect)に確認パネルを追加(俊克 6/23 am09:15: 押すと即消えていた→確認を出すべき)。
+  // モーダルにして誤クリックでの即解除を防ぐ。Cancelは自動で付く。PATとGitHub上のrepoは残る安全側を明記。
+  const pick = await vscode.window.showWarningMessage(
+    'MeOS: Unlink this folder from GitHub?',
+    { modal: true, detail: 'Your saved PAT and the GitHub repository are kept — you can reconnect any time. Only this folder’s local remote is removed.' },
+    'Unlink'
+  );
+  if (pick !== 'Unlink') return; // Cancel/閉じる=何もしない
   const dir = resolveGithubDir();
   if (dir) {
     const execAsync = require('util').promisify(require('child_process').exec);
