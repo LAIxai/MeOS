@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.9998: ペースト消去をワンショット化(俊克 6/24 am08:33: 解錠後、秘密の膜に出てくる普通の単語を後でコピー→ペーストすると3,4回すり替わる/直ぐに解除されない)。真因=_recentSecret.indexOf一致=内容マッチでは「パスワード」と「膜にたまたま出る単語」を区別できない。対処=一度消去したら_recentSecretを即クリア(追跡解除)→繰り返しすり替えが止まる。※内容マッチの限界は残るので本筋は「📋コピー&N秒自動消去」ボタン(MeOSがコピーを制御・ブラウザ貼付も対応)を次段提案。
 // - v0.9.9997: 暗号化の2件(俊克 6/24 am04:51)。①バグ1=ペースト消去が無差別(MeOS上で通常テキストを貼ってもクリップボードがすり替わる)→「直近に解錠した秘密」に一致するペーストだけ消す: 解錠時に_recentSecret=平文を記録(10分TTL/再施錠でクリア)、ペースト検知は_recentSecret.indexOf(挿入)>=0の時のみ上書き。通常ペーストは無傷。②Raw(かかか)で暗号文が隠れたまま(予想と違った)→clearForRawにencHide/encLabelを追加=Rawでは生の暗号文(base64)を見せる。
 // - v0.9.9996: 暗号文を隠して「🔐 Locked」だけ見せる装飾(俊克 6/24 am02:52)。★暗号強度のためでなくUX(ゴミ文字を消す/覗き見・スクショにブロブを映さない・状態が一目)=ケルクホフスの原理で暗号文公開でも安全なので隠すのは見た目目的。実装=encHideDecoration(font-size:0で透明化)+encLabelDecoration(before='🔐 Locked — press 🔓 to view'橙)を新設・applyEncDecorations(可視範囲のみ走査=軽量・Raw中は隠さず生表示)をrefresh末尾で呼ぶ。スクロールはデバウンスrefresh経由で再適用。解錠すると本文が平文に戻りマーカー消失→自動で装飾解除。
 // - v0.9.9995: 解錠/施錠直後に🔐/🔓状態が更新されない件(俊克 6/24 am02:06: 解錠直後、膜の上なのに🔓白のまま・本来🔐橙に切替わるべき)。真因=updateMeDockModeはカーソル移動でしか呼ばれず、解錠/施錠の文書編集だけでは発火しない→encStateがstale。修正=encryptCurrentMembrane/unlockCurrentMembraneのedit直後にupdateMeDockMode()を呼びencStateを即更新。
@@ -14746,6 +14747,7 @@ makeDecorations();
                 const _clip = await vscode.env.clipboard.readText();
                 if (_clip && _clip === _ins && _clip !== _MEOS_CLIP_WIPED) {
                   await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED);
+                  _recentSecret = ''; _recentSecretAt = 0; // v0.9.9998: 一度消したら追跡を即解除=繰り返しすり替えを止める(俊克 6/24 am08:33: 直ぐに解除されない)
                   vscode.window.setStatusBarMessage('MeOS: secret pasted — clipboard wiped 🔐', 2500);
                 }
               } catch (_) {}
