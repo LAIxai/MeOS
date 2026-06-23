@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999: ★膜まるごと暗号化 第1段(俊克 6/23 pm04:25: Joplinに無くEvernoteを暗号化ツールとしてだけ使い続けている穴をMeOSで埋める)。パスワード/銀行データ等を膜単位で本物の暗号で保護。crypto AES-256-GCM+scryptSync鍵導出(salt16/iv12/tag16+ct→base64)。コマンド2つ: laiMembrane.encryptMembrane=カーソル位置の膜本文を `🔒MeOS-enc:v1 <base64>` 1行に置換(合言葉2回確認・既暗号化/空はスキップ)/laiMembrane.unlockMembrane=合言葉で復号し平文へ戻す(GCM認証で合言葉違いは確実検出・失敗時は無変更)。膜単位=Evernoteの範囲指定を超える(まとめて書き足すパスワード帳/家計データ向け)。注意=合言葉忘れたら復元不能・Unlock中は平文がundo履歴に残り得る。次段=暗号文を🔒だけ見せて隠す装飾+クリップボード自動消去(ペースト即上書き)。node側+package.json(commands)。
 // - v0.9.998: メタ膜フォールドを「フォーカス+カーソル進入」方式に(俊克 6/23 pm04:04 発見: ↓キーで開始膜に入ると閉じ膜が消える=recordMeCursorは手動カーソル進入で畳む・プログラムのeditor.foldは空振り)。v997のeditor.foldリトライを廃止。createNewMdFileで_ensureMetaFolded: showTextDocument(preserveFocus:false, selection:meta.start)=エディタにフォーカスしつつカーソルをメタ膜の開始膜へ→recordMeCursor→650ms待ち→visibleRangesでbody行が隠れたか確認(畳めた判定)。空振りなら400ms後に1回リトライ。最後に書き出し位置(2行目)へshowTextDocumentでフォーカス+カーソルを戻す。タイニーな新規docなのでメタ膜は画面内=スクロール無しの一瞬のカーソル移動のみ。node側のみ。
 // - v0.9.997: メタ膜フォールドをリトライ方式に(俊克 6/23 pm03:53 v996もNG: バッジ⊖fは畳みだが閉じ膜が下に浮く=editor.fold空振り)。真因=v963既知の「生成直後はfold provider準備が遅くeditor.foldが空振り」。新規untitledでは固定1回(800ms)で間に合わない。修正=createNewMdFileで_foldMetaTryを250/900/2000/3600msの4回スケジュール。各回notifyRangesChanged+300ms→editor.fold(selectionLines:[meta.start]=カーソル非依存・EOFへ飛ばない)。visibleRangesでメタ膜body(start+1)が隠れ済み=既に畳まれていれば即return(フリッカー無し・冪等)。providerが準備できた回で必ず当たる。node側のみ。
 // - v0.9.996: メタ膜の初期フォールド崩れを正攻法で(俊克 6/23 pm03:36 v995 NG)。真因=メタ膜は⊖fバッジ(畳み表示)で書かれるが実フォールドは書込時に当たらない(v966で書込/可視の自動フォールドを全廃=作業中に勝手にメタへ飛ぶ挙動を嫌い撤去)→生成直後カーソルがメタに入らずbadge/実体デシンク。手動▼⇄▼▲×2が直すのは「unfold(開で同期)→fold(クリーンに実畳み)」のクリーン遷移ゆえ。createNewMdFileでカーソルを一切動かさずeditor.unfold→notifyRangesChanged+500ms→editor.fold(selectionLines:[meta.start]・カーソル非依存)を当てEOFへ飛ばない。v995の(setPairFoldStateAndMstatがpair.startへカーソル移動=EOFに飛ぶ)を廃止。※書込時first-creationでの全域fold化は別途検討(v966の撤去理由=飛び挙動に注意)。node側のみ。
@@ -6880,6 +6881,76 @@ async function createNewMdFile() {
   } catch (e) {
     vscode.window.showErrorMessage('MeOS: Could not create a new Markdown file. ' + (e && e.message ? e.message : ''));
   }
+}
+// v0.9.999: 膜まるごと暗号化(俊克 6/23 pm04:25)。パスワード/銀行データ等を膜単位で本物の暗号(AES-256-GCM
+//   +scrypt鍵導出・ランダムsalt/iv・GCM認証タグ)で保護。Evernoteが範囲指定なのは膜が無いから→MeOSは膜単位。
+//   本文を `🔒MeOS-enc:v1 <base64>` 1行に置換=暗号化膜。Unlockで合言葉→平文へ戻す(GCM認証で合言葉違いは確実に検出)。
+//   ★正直な注意: 合言葉を忘れたら復元不能/Unlock中は平文がundo履歴・自動保存に残り得る(暗号は本物・「文字変換」ではない)。
+const _MEOS_ENC_PREFIX = '🔒MeOS-enc:v1 ';
+function meosEncryptText(plain, pass) {
+  const crypto = require('crypto');
+  const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
+  const key = crypto.scryptSync(String(pass), salt, 32);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const ct = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([salt, iv, tag, ct]).toString('base64');
+}
+function meosDecryptText(blobB64, pass) {
+  const crypto = require('crypto');
+  const buf = Buffer.from(String(blobB64), 'base64');
+  const salt = buf.subarray(0, 16), iv = buf.subarray(16, 28), tag = buf.subarray(28, 44), ct = buf.subarray(44);
+  const key = crypto.scryptSync(String(pass), salt, 32);
+  const d = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  d.setAuthTag(tag);
+  return Buffer.concat([d.update(ct), d.final()]).toString('utf8'); // 合言葉違い=GCM認証失敗でthrow
+}
+function _currentMembraneBodyInfo(editor) {
+  const doc = editor.document;
+  let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
+  if (!pair) return null;
+  const bodyStart = pair.start + 1, bodyEnd = pair.end - 1;
+  if (bodyEnd < bodyStart) return { pair, empty: true };
+  const range = new vscode.Range(bodyStart, 0, bodyEnd, (doc.lineAt(bodyEnd).text || '').length);
+  return { pair, range, text: doc.getText(range), empty: false };
+}
+async function encryptCurrentMembrane() {
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const info = _currentMembraneBodyInfo(editor);
+  if (!info) { vscode.window.showInformationMessage('MeOS: Put the cursor inside a membrane to encrypt it (🔒).'); return; }
+  if (info.empty || !String(info.text).trim()) { vscode.window.showInformationMessage('MeOS: This membrane has no contents to encrypt.'); return; }
+  if (info.text.indexOf(_MEOS_ENC_PREFIX) >= 0) { vscode.window.showInformationMessage('MeOS: This membrane is already encrypted 🔒.'); return; }
+  const pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to encrypt this membrane — there is NO recovery if you forget it', placeHolder: 'passphrase' });
+  if (!pass) return;
+  const pass2 = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Confirm passphrase' });
+  if (pass2 == null) return;
+  if (pass2 !== pass) { vscode.window.showErrorMessage('MeOS: Passphrases do not match — nothing was encrypted.'); return; }
+  let blob; try { blob = meosEncryptText(info.text, pass); } catch (e) { vscode.window.showErrorMessage('MeOS: Encryption failed. ' + (e && e.message ? e.message : '')); return; }
+  await editor.edit(eb => { eb.replace(info.range, _MEOS_ENC_PREFIX + blob); });
+  try { refresh(editor); } catch (_) {}
+  vscode.window.setStatusBarMessage('MeOS: Membrane encrypted 🔒 — remember your passphrase (no recovery)', 4000);
+}
+async function unlockCurrentMembrane() {
+  const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (!editor) return;
+  const doc = editor.document;
+  let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
+  if (!pair) { vscode.window.showInformationMessage('MeOS: Put the cursor inside an encrypted (🔒) membrane to unlock it.'); return; }
+  let markerLine = -1, blob = '';
+  for (let i = pair.start + 1; i <= pair.end - 1; i++) {
+    const t = doc.lineAt(i).text || '';
+    const idx = t.indexOf(_MEOS_ENC_PREFIX);
+    if (idx >= 0) { markerLine = i; blob = t.slice(idx + _MEOS_ENC_PREFIX.length).trim(); break; }
+  }
+  if (markerLine < 0) { vscode.window.showInformationMessage('MeOS: This membrane is not encrypted.'); return; }
+  const pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to unlock this membrane 🔓' });
+  if (!pass) return;
+  let plain; try { plain = meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS: Wrong passphrase, or the data is corrupted. Nothing was changed.'); return; }
+  const range = new vscode.Range(markerLine, 0, markerLine, (doc.lineAt(markerLine).text || '').length);
+  await editor.edit(eb => { eb.replace(range, plain); });
+  try { refresh(editor); } catch (_) {}
+  vscode.window.setStatusBarMessage('MeOS: Membrane unlocked 🔓 — re-run Encrypt to lock it again when done', 5000);
 }
 const RAW_TRIGGERS = ['かかか', 'kakaka']; // v0.9.725: 日本語『かかか』＋ローマ字 kakaka どちらでもRawをトグル(IMEオフ/欧米人も可)
 const MEDOCK_TRIGGERS = ['みみみ', 'mememe']; // v0.9.930: 魔法の呪文2『みみみ』/mimimi=Me Dockの開閉トグル(俊克 6/17: 視界を広げてエディタに集中→再び呪文で戻す)
@@ -14389,6 +14460,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.encryptMembrane', () => encryptCurrentMembrane())); // v0.9.999
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.unlockMembrane', () => unlockCurrentMembrane())); // v0.9.999
   // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
   // v0.9.987: ワンショット化(俊克 6/22 pm10:17)。🐙を点けてCmd+Sで1回push→直後に自動でオフへ戻す。
   // =「Push when you say so」を1タップ1pushで体現。点けっぱなしで以降の保存まで送られる事故を防ぐ。
