@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.9999: ペースト消去を「アーム式・解錠後の最初の貼り付け1回」に再設計(俊克 6/24 am08:48: v9998は秘密ペーストで発火しなくなった)。真因=内容一致(_recentSecret.indexOf)は①秘密と膜内の偶然の単語を区別不能②ワンショットが偶然の単語に先に消費され肝心の秘密で不発。新方式=解錠のedit後に_armWipeOnNextPaste=true→次に「ペースト(挿入==現在クリップボード=タイピング/IMEは不一致)」した最初の1回でクリップボード消去→即false。偶然の単語/タイピングでは消費されず・秘密ペーストで確実1回・再施錠でディスアーム・5分TTL。※ブラウザ貼付は依然検知不可→本筋は📋コピー&N秒自動消去ボタン(次段)。
 // - v0.9.9998: ペースト消去をワンショット化(俊克 6/24 am08:33: 解錠後、秘密の膜に出てくる普通の単語を後でコピー→ペーストすると3,4回すり替わる/直ぐに解除されない)。真因=_recentSecret.indexOf一致=内容マッチでは「パスワード」と「膜にたまたま出る単語」を区別できない。対処=一度消去したら_recentSecretを即クリア(追跡解除)→繰り返しすり替えが止まる。※内容マッチの限界は残るので本筋は「📋コピー&N秒自動消去」ボタン(MeOSがコピーを制御・ブラウザ貼付も対応)を次段提案。
 // - v0.9.9997: 暗号化の2件(俊克 6/24 am04:51)。①バグ1=ペースト消去が無差別(MeOS上で通常テキストを貼ってもクリップボードがすり替わる)→「直近に解錠した秘密」に一致するペーストだけ消す: 解錠時に_recentSecret=平文を記録(10分TTL/再施錠でクリア)、ペースト検知は_recentSecret.indexOf(挿入)>=0の時のみ上書き。通常ペーストは無傷。②Raw(かかか)で暗号文が隠れたまま(予想と違った)→clearForRawにencHide/encLabelを追加=Rawでは生の暗号文(base64)を見せる。
 // - v0.9.9996: 暗号文を隠して「🔐 Locked」だけ見せる装飾(俊克 6/24 am02:52)。★暗号強度のためでなくUX(ゴミ文字を消す/覗き見・スクショにブロブを映さない・状態が一目)=ケルクホフスの原理で暗号文公開でも安全なので隠すのは見た目目的。実装=encHideDecoration(font-size:0で透明化)+encLabelDecoration(before='🔐 Locked — press 🔓 to view'橙)を新設・applyEncDecorations(可視範囲のみ走査=軽量・Raw中は隠さず生表示)をrefresh末尾で呼ぶ。スクロールはデバウンスrefresh経由で再適用。解錠すると本文が平文に戻りマーカー消失→自動で装飾解除。
@@ -6913,9 +6914,9 @@ async function createNewMdFile() {
 const _MEOS_ENC_PREFIX = '🔒MeOS-enc:v1 ';
 const _MEOS_CLIP_WIPED = '🔐 (cleared by MeOS)'; // v0.9.9994: クリップボード上書き用の中立語(暗号化時/ペースト時に共通)
 let _meosClipCheckAt = 0; // v0.9.9994: ペースト検知のクリップボード読みスロットル
-let _recentSecret = '';   // v0.9.9997: 直近に解錠した平文(ペースト消去の対象判定用・通常ペーストは消さない)
-let _recentSecretAt = 0;
-const _RECENT_SECRET_TTL = 10 * 60 * 1000; // 10分で失効
+let _armWipeOnNextPaste = false; // v0.9.9999: 解錠後「最初の貼り付け1回だけ」クリップボード消去(俊克 6/24: 内容一致は誤爆/先に消費される→解錠後の最初のペーストに限定)
+let _armWipeAt = 0;
+const _ARM_WIPE_TTL = 5 * 60 * 1000; // 5分でアーム失効
 function meosEncryptText(plain, pass) {
   const crypto = require('crypto');
   const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
@@ -6957,7 +6958,7 @@ async function encryptCurrentMembrane() {
   if (pass2 !== pass) { vscode.window.showErrorMessage('MeOS: Passphrases do not match — nothing was encrypted.'); return; }
   let blob; try { blob = meosEncryptText(info.text, pass); } catch (e) { vscode.window.showErrorMessage('MeOS: Encryption failed. ' + (e && e.message ? e.message : '')); return; }
   await editor.edit(eb => { eb.replace(info.range, _MEOS_ENC_PREFIX + blob); });
-  _recentSecret = ''; _recentSecretAt = 0; // v0.9.9997: 再施錠したら直近秘密の追跡を解除(以後の通常ペーストは消さない)
+  _armWipeOnNextPaste = false; // v0.9.9999: 再施錠したらアーム解除(以後の通常ペーストは消さない)
   try { refresh(editor); } catch (_) {}
   try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 施錠直後に🔐/🔓状態を更新(膜の上=暗号→🔐灰/🔓白)
   // v0.9.9993: 暗号化したら、コピーしていた平文がクリップボードに残らないよう即上書き(俊克 6/23 pm05:37: 暗号化後にペーストすると秘密が出た)。
@@ -6980,9 +6981,9 @@ async function unlockCurrentMembrane() {
   const pass = await vscode.window.showInputBox({ password: true, ignoreFocusOut: true, prompt: 'Passphrase to unlock this membrane 🔓' });
   if (!pass) return;
   let plain; try { plain = meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS: Wrong passphrase, or the data is corrupted. Nothing was changed.'); return; }
-  _recentSecret = plain || ''; _recentSecretAt = Date.now(); // v0.9.9997: 解錠した平文を記録→このテキストをペーストした時だけクリップボード消去
   const range = new vscode.Range(markerLine, 0, markerLine, (doc.lineAt(markerLine).text || '').length);
   await editor.edit(eb => { eb.replace(range, plain); });
+  _armWipeOnNextPaste = true; _armWipeAt = Date.now(); // v0.9.9999: 解錠のedit後にアーム(自身の挿入では消費させない)→次の貼り付け1回でクリップボード消去
   try { refresh(editor); } catch (_) {}
   try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 解錠直後に🔐/🔓状態を更新(膜の上=平文→🔐橙/🔓灰)。俊克 6/24 am02:06: 解錠後も🔓白のままだった
   vscode.window.setStatusBarMessage('MeOS: Membrane unlocked 🔓 — re-run Encrypt to lock it again when done', 5000);
@@ -14736,18 +14737,19 @@ makeDecorations();
       //   1回の挿入テキストが現在のクリップボードと一致=貼り付け→中立語へ上書き(秘密を残さない)。
       //   1文字未満は対象外/120msスロットルでクリップボード読みを抑制(IME連続入力でも重くしない)。
       try {
-        if (activeEditor && e.document === activeEditor.document && e.contentChanges && e.contentChanges.length === 1) {
+        // v0.9.9999: 解錠後「最初の貼り付け1回だけ」クリップボードを消去(俊克 6/24 am08:48: 内容一致は誤爆/発火しない→アーム式に)。
+        //   アーム中かつ「ペースト(挿入テキスト==現在クリップボード=タイピングでなく貼り付け)」の最初の1回で消去→即ディスアーム。
+        if (_armWipeOnNextPaste && (Date.now() - _armWipeAt < _ARM_WIPE_TTL)
+            && activeEditor && e.document === activeEditor.document && e.contentChanges && e.contentChanges.length === 1) {
           const _ins = e.contentChanges[0].text || '';
-          // v0.9.9997: 「直近に解錠した秘密」に一致するペーストだけクリップボードを消去(俊克 6/24 am04:51: 通常のペーストまで消えるのは駄目)。
-          const _secActive = _recentSecret && (Date.now() - _recentSecretAt < _RECENT_SECRET_TTL);
-          if (_secActive && _ins.length >= 3 && _recentSecret.indexOf(_ins) >= 0 && Date.now() - _meosClipCheckAt >= 120) {
+          if (_ins.length >= 2 && Date.now() - _meosClipCheckAt >= 120) {
             _meosClipCheckAt = Date.now();
             (async () => {
               try {
                 const _clip = await vscode.env.clipboard.readText();
-                if (_clip && _clip === _ins && _clip !== _MEOS_CLIP_WIPED) {
+                if (_clip && _clip === _ins && _clip !== _MEOS_CLIP_WIPED) { // ==一致=貼り付け(タイピングは一致しない)
                   await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED);
-                  _recentSecret = ''; _recentSecretAt = 0; // v0.9.9998: 一度消したら追跡を即解除=繰り返しすり替えを止める(俊克 6/24 am08:33: 直ぐに解除されない)
+                  _armWipeOnNextPaste = false; // 一度きり=即ディスアーム(繰り返し消さない)
                   vscode.window.setStatusBarMessage('MeOS: secret pasted — clipboard wiped 🔐', 2500);
                 }
               } catch (_) {}
