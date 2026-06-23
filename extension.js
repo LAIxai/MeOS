@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.995: v994の3点改良(俊克 6/23 pm03:16-03:21)。①メタ膜の初期フォールド崩れ(生成直後provider未準備で閉じ膜が離れて見える・クリックで直る)→俊克案で根治: 400ms後に「メタ膜の開始膜へカーソル+reveal→recordMeCursor/setPairFoldStateAndMstatで畳む」を自動シミュレート→その後2行目へ移動。②膜コメントの日時重複を解消: 膜名自体を生成日時(yyyymmdd_hhmmss=身元)にし、コメントは役割ラベル『🆕 file-membrane』に。③H-TOC項目のコメントを膜コメントと別文言『今日の課題#1』に上書き(登録後にactiveタブの該当itemのvalueを name // tocComment へ→setHyperTocData)=「H-TOCの緑コメントは膜と独立に編集できる」と一目で伝える。node側のみ。
 // - v0.9.994: 新規mdを「動くお手本」に(俊克 6/23 pm02:49)。万人の最初の動線 New .md→膜Create→Add to Hyper TOC を自動化。createNewMdFileで①ファイル全体を包む膜(buildMembraneOpenLine/CloseLine markdown=<!-- {* ▼/▲mCN=new_<yyyymmdd_hhmmss> *} -->)を自動生成 ②膜コメントに生成日時(meosFormatStamp=🆕 2026.06.23(T)pm…)を可視タイムスタンプとして ③開始膜行にカーソル→addCurrentMembraneToWorkingToc()で手動Addと同経路でHyper TOC登録→カーソルを膜の中(2行目)へ移し書き始め可・refresh()。=使い慣れない人でも開いた瞬間「膜で包む/日時が残る/目次に載る」が目で分かる自己説明ファイル。node側のみ。
 // - v0.9.993: v992を撤回(俊克 6/23 pm02:19 スクショ指摘: 先走り)。真相=v991時点でボタンは切れておらず最初のスクショ(1.16.02)では#/Setと右辺フラッシュ揃いだった。私が後の1枚(1.22.56=パネル幅が狭い瞬間)だけ見て誤判定→不要なmargin-right:12pxで端から左に寄り右揃えが崩れた。v991のCSSに復帰(margin削除/padding 2px 9px)。教訓=スクショは複数枚を見比べてから直す・1枚で先走らない。
 // - v0.9.992: v991の📝 New .mdボタンがパネル右端で見切れていた修正(俊克 6/23 pm01:28 スクショ指摘)。真因=先頭行がjustify-content:space-between+Zoom表示flex:1でボタンを最右端へ押し出し、縦スクロールバー/ウィンドウ端にボタン右側がクリップされていた(右マージン無し)。修正=.new-md-btnにmargin-right:12px+padding微縮(2px 8px)でスクロールバーを避け全幅表示。webview CSSのみ。
@@ -6817,24 +6818,49 @@ async function createNewMdFile() {
     //   →使い慣れていない人でも、開いた瞬間に「膜で包む/日時が残る/目次に載る」仕組みが目で分かる。
     const now = new Date();
     const p = n => String(n).padStart(2, '0');
-    const id = '' + now.getFullYear() + p(now.getMonth() + 1) + p(now.getDate()) + '_' + p(now.getHours()) + p(now.getMinutes()) + p(now.getSeconds());
-    const stamp = (typeof meosFormatStamp === 'function') ? meosFormatStamp(now) : now.toISOString();
-    const name = 'new_' + id;               // 膜名(安全な英数字_)
-    const comment = '🆕 ' + stamp;          // 生成日時を可視のタイムスタンプとして膜ラベルに見せる
+    // v0.9.995: 膜名=生成日時(これ自体がタイムスタンプ=膜の身元)。コメントは日時と重複させず役割ラベルに。
+    const name = '' + now.getFullYear() + p(now.getMonth() + 1) + p(now.getDate()) + '_' + p(now.getHours()) + p(now.getMinutes()) + p(now.getSeconds());
+    const comment = '🆕 file-membrane';     // 膜のコメント=役割ラベル(俊克 6/23 pm03:16: 日時の二重表記をやめる)
+    const tocComment = '今日の課題#1';        // H-TOCのコメント=膜コメントと別の編集可能プレースホルダ(緑部分は編集できると伝える)
     const openLine = buildMembraneOpenLine(doc, '', name, comment, '(📊⊕0+0)');
     const closeLine = buildMembraneCloseLine(doc, '', name, '');
     await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), openLine + '\n\n' + closeLine + '\n'); });
     // 開始膜行にカーソルを置き、手動の「Add to Hyper TOC」と同じ経路で目次へ登録。
     editor.selection = new vscode.Selection(0, 0, 0, 0);
     if (typeof addCurrentMembraneToWorkingToc === 'function') { await addCurrentMembraneToWorkingToc(); }
+    // v0.9.995: 登録された項目のコメントだけを別文言に上書き=「H-TOCの緑コメントは膜と独立に編集できる」と一目で伝える。
+    try {
+      const data = getHyperTocData(doc);
+      const at = (data && typeof activeHyperTocTab === 'function') ? activeHyperTocTab(data) : null;
+      if (at && at.tab && Array.isArray(at.tab.items)) {
+        const it = at.tab.items.find(x => x && x.key === name && (x.citeN == null || x.citeN === undefined));
+        if (it) { it.value = name + ' // ' + tocComment; await setHyperTocData(doc, data); }
+      }
+    } catch (_) {}
     if (typeof updateMeDockMode === 'function') { try { updateMeDockMode(); } catch (_) {} }
-    // 書き始められるよう、膜の中(2行目=空行)へカーソルを移す。
-    const writeLine = Math.min(1, editor.document.lineCount - 1);
-    const wpos = new vscode.Position(writeLine, 0);
-    editor.selection = new vscode.Selection(wpos, wpos);
-    editor.revealRange(new vscode.Range(wpos, wpos), vscode.TextEditorRevealType.InCenter);
-    try { refresh(editor); } catch (_) {}
-    vscode.window.setStatusBarMessage('MeOS: New file wrapped in a timestamped membrane and added to Hyper TOC — start writing, then Cmd+S to save', 4000);
+    // v0.9.995: メタ膜の初期フォールド崩れ対策(俊克 6/23 pm03:21の案)。生成直後はfold provider準備が間に合わず
+    //   mMETAの閉じ膜が離れて見える→俊克が手で「メタ膜の開始膜にカーソルを置く」と直る。それをシミュレート:
+    //   少し待って provider 準備後、①メタ膜開始膜へカーソル+reveal(閉じ膜を可視に)→recordMeCursor/直接foldで畳む
+    //   →②書き始める2行目へ移動。
+    setTimeout(async () => {
+      try {
+        let metaPair = null;
+        try { metaPair = (collectPairs(editor.document) || []).find(pr => isMetaMembraneId(pr.id)) || null; } catch (_) { metaPair = null; }
+        if (metaPair) {
+          const mpos = new vscode.Position(metaPair.start, 0);
+          editor.selection = new vscode.Selection(mpos, mpos);
+          editor.revealRange(new vscode.Range(metaPair.start, 0, metaPair.end, 0), vscode.TextEditorRevealType.InCenter);
+          try { recordMeCursor(editor); } catch (_) {}
+          try { await setPairFoldStateAndMstat(editor, metaPair, true, { suppressMstat: true }); } catch (_) {}
+        }
+        const writeLine = Math.min(1, editor.document.lineCount - 1);
+        const wpos = new vscode.Position(writeLine, 0);
+        editor.selection = new vscode.Selection(wpos, wpos);
+        editor.revealRange(new vscode.Range(wpos, wpos), vscode.TextEditorRevealType.InCenter);
+        try { refresh(editor); } catch (_) {}
+      } catch (_) {}
+    }, 400);
+    vscode.window.setStatusBarMessage('MeOS: New file wrapped in a membrane and added to Hyper TOC — start writing, then Cmd+S to save', 4000);
   } catch (e) {
     vscode.window.showErrorMessage('MeOS: Could not create a new Markdown file. ' + (e && e.message ? e.message : ''));
   }
