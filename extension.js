@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.998: メタ膜フォールドを「フォーカス+カーソル進入」方式に(俊克 6/23 pm04:04 発見: ↓キーで開始膜に入ると閉じ膜が消える=recordMeCursorは手動カーソル進入で畳む・プログラムのeditor.foldは空振り)。v997のeditor.foldリトライを廃止。createNewMdFileで_ensureMetaFolded: showTextDocument(preserveFocus:false, selection:meta.start)=エディタにフォーカスしつつカーソルをメタ膜の開始膜へ→recordMeCursor→650ms待ち→visibleRangesでbody行が隠れたか確認(畳めた判定)。空振りなら400ms後に1回リトライ。最後に書き出し位置(2行目)へshowTextDocumentでフォーカス+カーソルを戻す。タイニーな新規docなのでメタ膜は画面内=スクロール無しの一瞬のカーソル移動のみ。node側のみ。
 // - v0.9.997: メタ膜フォールドをリトライ方式に(俊克 6/23 pm03:53 v996もNG: バッジ⊖fは畳みだが閉じ膜が下に浮く=editor.fold空振り)。真因=v963既知の「生成直後はfold provider準備が遅くeditor.foldが空振り」。新規untitledでは固定1回(800ms)で間に合わない。修正=createNewMdFileで_foldMetaTryを250/900/2000/3600msの4回スケジュール。各回notifyRangesChanged+300ms→editor.fold(selectionLines:[meta.start]=カーソル非依存・EOFへ飛ばない)。visibleRangesでメタ膜body(start+1)が隠れ済み=既に畳まれていれば即return(フリッカー無し・冪等)。providerが準備できた回で必ず当たる。node側のみ。
 // - v0.9.996: メタ膜の初期フォールド崩れを正攻法で(俊克 6/23 pm03:36 v995 NG)。真因=メタ膜は⊖fバッジ(畳み表示)で書かれるが実フォールドは書込時に当たらない(v966で書込/可視の自動フォールドを全廃=作業中に勝手にメタへ飛ぶ挙動を嫌い撤去)→生成直後カーソルがメタに入らずbadge/実体デシンク。手動▼⇄▼▲×2が直すのは「unfold(開で同期)→fold(クリーンに実畳み)」のクリーン遷移ゆえ。createNewMdFileでカーソルを一切動かさずeditor.unfold→notifyRangesChanged+500ms→editor.fold(selectionLines:[meta.start]・カーソル非依存)を当てEOFへ飛ばない。v995の(setPairFoldStateAndMstatがpair.startへカーソル移動=EOFに飛ぶ)を廃止。※書込時first-creationでの全域fold化は別途検討(v966の撤去理由=飛び挙動に注意)。node側のみ。
 // - v0.9.995: v994の3点改良(俊克 6/23 pm03:16-03:21)。①メタ膜の初期フォールド崩れ(生成直後provider未準備で閉じ膜が離れて見える・クリックで直る)→俊克案で根治: 400ms後に「メタ膜の開始膜へカーソル+reveal→recordMeCursor/setPairFoldStateAndMstatで畳む」を自動シミュレート→その後2行目へ移動。②膜コメントの日時重複を解消: 膜名自体を生成日時(yyyymmdd_hhmmss=身元)にし、コメントは役割ラベル『🆕 file-membrane』に。③H-TOC項目のコメントを膜コメントと別文言『今日の課題#1』に上書き(登録後にactiveタブの該当itemのvalueを name // tocComment へ→setHyperTocData)=「H-TOCの緑コメントは膜と独立に編集できる」と一目で伝える。node側のみ。
@@ -6846,34 +6847,35 @@ async function createNewMdFile() {
       const wpos0 = new vscode.Position(writeLine0, 0);
       editor.selection = new vscode.Selection(wpos0, wpos0);
     }
-    editor.revealRange(new vscode.Range(0, 0, 0, 0), vscode.TextEditorRevealType.AtTop);
-    // v0.9.997: メタ膜の実フォールドが新規untitledで空振りする件(俊克 6/23 pm03:36/03:53 NG: バッジ⊖fは畳みだが
-    //   閉じ膜が下に浮く=editor.foldが空振り)。真因=v963で既知の「生成直後はfold provider準備が遅くeditor.foldが
-    //   空振り」。固定1回(800ms)では新規untitledに間に合わない→★リトライ方式(v963起動リトライと同思想)。
-    //   ・カーソルは動かさない(editor.fold selectionLines=カーソル非依存)→EOFへ飛ばない・書き出し位置を保つ。
-    //   ・畳み済みなら何もしない(visibleRangesで判定)=フリッカー無し・冪等。providerが準備できた回で必ず当たる。
-    const _metaBodyHidden = (mp) => {
-      const body = mp.start + 1;
-      return !(editor.visibleRanges || []).some(r => r.start.line <= body && body <= r.end.line);
-    };
-    const _foldMetaTry = async () => {
+    // v0.9.998: メタ膜フォールドは「カーソルを実際にメタ膜の開始膜へ入れ+エディタにフォーカス」する経路でないと
+    //   効かない(俊克 6/23 pm04:04 発見: ↓キーで開始膜に入ると閉じ膜が消える=recordMeCursorは手動カーソル進入で
+    //   畳む。プログラムのeditor.foldは空振り)。既存の showTextDocument(preserveFocus:false, selection:…) で
+    //   ★エディタにフォーカスしつつカーソルをメタ膜開始膜へ→recordMeCursorが畳む→畳み確認後、書き出し位置(2行目)へ戻す。
+    const _ensureMetaFolded = async () => {
       try {
-        if (editor !== vscode.window.activeTextEditor) return;
-        const mp = (collectPairs(editor.document) || []).find(pr => isMetaMembraneId(pr.id)) || null;
-        if (!mp || mp.end <= mp.start) return;
-        if (_metaBodyHidden(mp)) return; // 既に畳まれている→何もしない(フリッカー防止)
-        const key = pairStateKey(editor, mp);
-        if (membraneFoldingProviderInstance) { membraneFoldingProviderInstance.notifyRangesChanged(); await new Promise(r => setTimeout(r, 300)); }
-        suppressAutoUnfoldUntil = Date.now() + 1500;
-        try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [mp.start] }); } catch (_) {}
-        foldStateByPairKey.set(key, true);
-        try { refresh(editor); } catch (_) {}
-      } catch (_) {}
+        const docNow = editor.document;
+        const mp = (collectPairs(docNow) || []).find(pr => isMetaMembraneId(pr.id)) || null;
+        if (!mp || mp.end <= mp.start) return false;
+        const mpos = new vscode.Position(mp.start, 0);
+        // エディタにフォーカス+カーソルをメタ膜の開始膜へ(手動↓と同じ進入)→recordMeCursorが畳む
+        const ed = await vscode.window.showTextDocument(docNow, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(mpos, mpos) });
+        try { recordMeCursor(ed); } catch (_) {}
+        await new Promise(r => setTimeout(r, 650)); // recordMeCursor内のfold(500msウォームアップ)完了待ち
+        const body = mp.start + 1;
+        return !(ed.visibleRanges || []).some(r => r.start.line <= body && body <= r.end.line); // body行が隠れた=畳めた
+      } catch (_) { return false; }
     };
-    setTimeout(_foldMetaTry, 250);
-    setTimeout(_foldMetaTry, 900);
-    setTimeout(_foldMetaTry, 2000);
-    setTimeout(_foldMetaTry, 3600);
+    setTimeout(async () => {
+      try {
+        let ok = await _ensureMetaFolded();
+        if (!ok) { await new Promise(r => setTimeout(r, 400)); ok = await _ensureMetaFolded(); } // provider準備待ちで1回リトライ
+        // 書き出し位置(2行目=膜の中)へフォーカス+カーソルを戻す。
+        const wln = Math.min(1, editor.document.lineCount - 1);
+        const wpos = new vscode.Position(wln, 0);
+        try { await vscode.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(wpos, wpos) }); } catch (_) {}
+        try { refresh(vscode.window.activeTextEditor || editor); } catch (_) {}
+      } catch (_) {}
+    }, 350);
     vscode.window.setStatusBarMessage('MeOS: New file wrapped in a membrane and added to Hyper TOC — start writing, then Cmd+S to save', 4000);
   } catch (e) {
     vscode.window.showErrorMessage('MeOS: Could not create a new Markdown file. ' + (e && e.message ? e.message : ''));
