@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99911: ★クリップボード戦略を確実な経路に一本化(俊克 6/24 am09:14: 📋の使い方が分からない/解錠でCmd+Vが1回もクリアされない)。判明=俊克の狙いは「合言葉をCmd+Vで貼り付け→クリップボードを消す」。①🔓解錠完了でクリップボード消去(施錠と対称=貼り付けた合言葉を残さない)。②環境依存で5回不発のペースト検知方式(_armWipe*/onDidChangeTextDocument)を全撤去。③📋ボタンは「解錠した秘密を選択→コピー→20秒後自動消去(ブラウザ貼付も守れる)」と用途明確化。=消去経路は 🔐施錠後/🔓解錠後/📋 の3つだけ・全て確実。
 // - v0.9.99910: ①ペースト検知の不発を是正+②確実な📋ボタン追加(俊克 6/24 am08:56: v9999も秘密ペーストで不発)。①最有力の真因=🔓はwebviewにありクリックでactiveEditorが外れ、貼り付け時のガード(activeEditor && e.document===activeEditor.document)が成立せずブロックskip→ガード除去(アーム中はどの文書のペーストでも消去・一度きり)。②★本筋=copySelectionAutoWipe + 📋ボタン(🔓の隣): 選択した秘密をコピーし20秒後にクリップボード自動消去(その時まだ秘密が残っていれば)。MeOSがコピーを握る=誤爆ゼロ・ブラウザのログイン欄へ貼っても守れる(ペースト検知では不可能だった本命)。
 // - v0.9.9999: ペースト消去を「アーム式・解錠後の最初の貼り付け1回」に再設計(俊克 6/24 am08:48: v9998は秘密ペーストで発火しなくなった)。真因=内容一致(_recentSecret.indexOf)は①秘密と膜内の偶然の単語を区別不能②ワンショットが偶然の単語に先に消費され肝心の秘密で不発。新方式=解錠のedit後に_armWipeOnNextPaste=true→次に「ペースト(挿入==現在クリップボード=タイピング/IMEは不一致)」した最初の1回でクリップボード消去→即false。偶然の単語/タイピングでは消費されず・秘密ペーストで確実1回・再施錠でディスアーム・5分TTL。※ブラウザ貼付は依然検知不可→本筋は📋コピー&N秒自動消去ボタン(次段)。
 // - v0.9.9998: ペースト消去をワンショット化(俊克 6/24 am08:33: 解錠後、秘密の膜に出てくる普通の単語を後でコピー→ペーストすると3,4回すり替わる/直ぐに解除されない)。真因=_recentSecret.indexOf一致=内容マッチでは「パスワード」と「膜にたまたま出る単語」を区別できない。対処=一度消去したら_recentSecretを即クリア(追跡解除)→繰り返しすり替えが止まる。※内容マッチの限界は残るので本筋は「📋コピー&N秒自動消去」ボタン(MeOSがコピーを制御・ブラウザ貼付も対応)を次段提案。
@@ -6914,10 +6915,7 @@ async function createNewMdFile() {
 //   ★正直な注意: 合言葉を忘れたら復元不能/Unlock中は平文がundo履歴・自動保存に残り得る(暗号は本物・「文字変換」ではない)。
 const _MEOS_ENC_PREFIX = '🔒MeOS-enc:v1 ';
 const _MEOS_CLIP_WIPED = '🔐 (cleared by MeOS)'; // v0.9.9994: クリップボード上書き用の中立語(暗号化時/ペースト時に共通)
-let _meosClipCheckAt = 0; // v0.9.9994: ペースト検知のクリップボード読みスロットル
-let _armWipeOnNextPaste = false; // v0.9.9999: 解錠後「最初の貼り付け1回だけ」クリップボード消去(俊克 6/24: 内容一致は誤爆/先に消費される→解錠後の最初のペーストに限定)
-let _armWipeAt = 0;
-const _ARM_WIPE_TTL = 5 * 60 * 1000; // 5分でアーム失効
+// v0.9.99911: ペースト検知方式(_armWipe*/_meosClipCheckAt)は撤去。クリップボード消去は施錠後/解錠後/📋ボタンの確実な経路に一本化。
 function meosEncryptText(plain, pass) {
   const crypto = require('crypto');
   const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
@@ -6959,7 +6957,6 @@ async function encryptCurrentMembrane() {
   if (pass2 !== pass) { vscode.window.showErrorMessage('MeOS: Passphrases do not match — nothing was encrypted.'); return; }
   let blob; try { blob = meosEncryptText(info.text, pass); } catch (e) { vscode.window.showErrorMessage('MeOS: Encryption failed. ' + (e && e.message ? e.message : '')); return; }
   await editor.edit(eb => { eb.replace(info.range, _MEOS_ENC_PREFIX + blob); });
-  _armWipeOnNextPaste = false; // v0.9.9999: 再施錠したらアーム解除(以後の通常ペーストは消さない)
   try { refresh(editor); } catch (_) {}
   try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 施錠直後に🔐/🔓状態を更新(膜の上=暗号→🔐灰/🔓白)
   // v0.9.9993: 暗号化したら、コピーしていた平文がクリップボードに残らないよう即上書き(俊克 6/23 pm05:37: 暗号化後にペーストすると秘密が出た)。
@@ -6984,10 +6981,11 @@ async function unlockCurrentMembrane() {
   let plain; try { plain = meosDecryptText(blob, pass); } catch (_) { vscode.window.showErrorMessage('MeOS: Wrong passphrase, or the data is corrupted. Nothing was changed.'); return; }
   const range = new vscode.Range(markerLine, 0, markerLine, (doc.lineAt(markerLine).text || '').length);
   await editor.edit(eb => { eb.replace(range, plain); });
-  _armWipeOnNextPaste = true; _armWipeAt = Date.now(); // v0.9.9999: 解錠のedit後にアーム(自身の挿入では消費させない)→次の貼り付け1回でクリップボード消去
+  // v0.9.99911: 解錠完了でクリップボードを消去(俊克 6/24 am09:14: 合言葉をCmd+Vで貼って解錠→その合言葉を残さない)。施錠と対称・ペースト検知より確実。
+  try { await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED); } catch (_) {}
   try { refresh(editor); } catch (_) {}
   try { updateMeDockMode(); } catch (_) {} // v0.9.9995: 解錠直後に🔐/🔓状態を更新(膜の上=平文→🔐橙/🔓灰)。俊克 6/24 am02:06: 解錠後も🔓白のままだった
-  vscode.window.setStatusBarMessage('MeOS: Membrane unlocked 🔓 — re-run Encrypt to lock it again when done', 5000);
+  vscode.window.setStatusBarMessage('MeOS: Membrane unlocked 🔓 — clipboard cleared. Re-run Encrypt 🔐 to lock again.', 5000);
 }
 // v0.9.99910: 📋 Copy & auto-clear(俊克 6/24: ペースト検知は不確実→MeOSがコピーを握る確実な方式)。選択した秘密をコピーし、
 //   N秒後にクリップボードを自動消去(その時まだ秘密が残っていれば)。ブラウザのログイン欄へ貼っても守れる=本筋。
@@ -14753,30 +14751,8 @@ makeDecorations();
       // v0.9.715: 🔖 ブックマークの行ズレを追従(gate前に全変更で実行)。
       adjustBookmarksForChange(e);
       noteMeEditForAccess(e); // v0.9.954: 編集が現在膜で起きたら訪問を計上
-      // v0.9.9994: ★ペースト検知でクリップボード即上書き(俊克 6/23 pm08:47 バグ1: 解錠後のCmd+Vで秘密が残る)。
-      //   1回の挿入テキストが現在のクリップボードと一致=貼り付け→中立語へ上書き(秘密を残さない)。
-      //   1文字未満は対象外/120msスロットルでクリップボード読みを抑制(IME連続入力でも重くしない)。
-      try {
-        // v0.9.9999: 解錠後「最初の貼り付け1回だけ」クリップボードを消去(俊克 6/24 am08:48: 内容一致は誤爆/発火しない→アーム式に)。
-        //   アーム中かつ「ペースト(挿入テキスト==現在クリップボード=タイピングでなく貼り付け)」の最初の1回で消去→即ディスアーム。
-        if (_armWipeOnNextPaste && (Date.now() - _armWipeAt < _ARM_WIPE_TTL)
-            && e.contentChanges && e.contentChanges.length === 1) { // v0.9.99910: activeEditorガード除去(webviewクリックで外れ貼り付けを取りこぼす疑い)
-          const _ins = e.contentChanges[0].text || '';
-          if (_ins.length >= 2 && Date.now() - _meosClipCheckAt >= 120) {
-            _meosClipCheckAt = Date.now();
-            (async () => {
-              try {
-                const _clip = await vscode.env.clipboard.readText();
-                if (_clip && _clip === _ins && _clip !== _MEOS_CLIP_WIPED) { // ==一致=貼り付け(タイピングは一致しない)
-                  await vscode.env.clipboard.writeText(_MEOS_CLIP_WIPED);
-                  _armWipeOnNextPaste = false; // 一度きり=即ディスアーム(繰り返し消さない)
-                  vscode.window.setStatusBarMessage('MeOS: secret pasted — clipboard wiped 🔐', 2500);
-                }
-              } catch (_) {}
-            })();
-          }
-        }
-      } catch (_) {}
+      // v0.9.99911: ★ペースト検知方式は撤去(俊克 6/24 am09:14: 環境依存で5回不発・誤爆/混乱)。
+      //   クリップボード消去は確実な経路に一本化=①🔐施錠後②🔓解錠後(合言葉を残さない)③📋 Copy&auto-clear(秘密を選択→コピー→N秒後消去)。
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
