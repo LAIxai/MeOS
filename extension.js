@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99917: 未暗号化の外膜で🔓が白くなるバグ修正(俊克 6/24 pm05:15: 779行の膜は一度も暗号化してないのに🔓白)。真因=isCurrentMembraneEncryptedが本文(子膜含む)を走査し、暗号化した子膜の🔒MeOS-encマーカーを見つけ外膜を暗号化済みと誤判定。修正=「直接暗号化された膜は必ず開始+マーカー1行+閉じの3行」でO(1)判定(pair.end-pair.start===2 && 中央行がマーカー)→入れ子に惑わされず巨大外膜でも軽量。施錠ガードもinfo.text.indexOfからisCurrentMembraneEncryptedへ=子だけ暗号化の外膜は施錠可=入れ子暗号(二重膜)が成立。
 // - v0.9.99916: 暗号機能を「Encrypt Me」と命名しFormat→Edit Meパネルへ移設(俊克 6/24 pm04:37: 暗号化は膜=Meへの操作なので装飾Formatでなく膜操作Edit Meの仲間・Create/Set同期と同じ理屈)。format-toolsから🔐🔓📋(enc-btns)とenc-pass-rowを撤去→new-rename-panelのtop-buttons(Reset/Create)直下に専用行encrypt-me-row(区切り線+ラベル「Encrypt Me」+🔐🔓📋+合言葉入力欄)を新設。IDは不変なのでハンドラ/encState/node無改修。Formatバーは==~~##と👁Rawのみに。tipも「Encrypt Me/Unlock Me」に。
 // - v0.9.99915: パス入力枠の改良(俊克 6/24 am10:37)。①バグ=非対象でも入力枠が出る(暗号化してない膜で🔓/膜外で🔐)→ボタンがアクティブ(enc-active=平文膜なら🔐/暗号膜なら🔓)の時だけshowEncPass。②入力枠をFormat枠の外→中へ(format-toolsをflex-wrap・enc-pass-rowをflex-basis:100%で2行目に・自前の枠/背景/marginを廃し上に破線セパレータで密着)。③膜外へカーソルが出たらencState(onMembrane=false)でhideEncPass。
 // - v0.9.99914: 暗号3兄弟まわり3改良(俊克 6/24 am09:56)。①📋tipを2行に簡潔化。②📋に青背景(#2f80b8=常時実行可の安心色)。③★合言葉入力をMe Dockに(showInputBoxは画面上中央固定で遠い)=暗号3兄弟の直下にenc-pass-row(🔐/🔓ラベル+password入力+👁表示切替+Go+✕)。🔐/🔓クリックで該当モードで表示・Enter/Goで{type:'encOp',op,pass}送信・Esc/✕で閉じ。node=encrypt/unlockCurrentMembraneにpassArg追加(渡された時はshowInputBox省略・👁が二重入力の代わり/未指定=コマンドパレットは従来のshowInputBox)。webview HTML+CSS+ハンドラ+node両側。
@@ -6954,7 +6955,8 @@ async function encryptCurrentMembrane(passArg) {
   const info = _currentMembraneBodyInfo(editor);
   if (!info) { vscode.window.showInformationMessage('MeOS: Put the cursor inside a membrane to encrypt it (🔒).'); return; }
   if (info.empty || !String(info.text).trim()) { vscode.window.showInformationMessage('MeOS: This membrane has no contents to encrypt.'); return; }
-  if (info.text.indexOf(_MEOS_ENC_PREFIX) >= 0) { vscode.window.showInformationMessage('MeOS: This membrane is already locked 🔐. Press 🔓 to unlock it first (enter the passphrase), then you can edit and re-lock.'); return; }
+  // v0.9.99917: 「この膜自身が暗号化済み(3行=単一マーカー)」の時だけ拒否。暗号化した子膜を含むだけの外膜は施錠可=入れ子暗号(二重膜)が成立。
+  if (isCurrentMembraneEncrypted(editor)) { vscode.window.showInformationMessage('MeOS: This membrane is already locked 🔐. Press 🔓 to unlock it first (enter the passphrase), then you can edit and re-lock.'); return; }
   // v0.9.99914: Me Dockのパス入力欄から渡された時(passArg)はそれを使う(👁表示切替が二重入力の代わり)。コマンドパレット等はshowInputBoxで2回確認。
   let pass = (typeof passArg === 'string' && passArg) ? passArg : '';
   if (!pass) {
@@ -12844,11 +12846,11 @@ function isCurrentMembraneEncrypted(editor) {
     if (!editor) return false;
     const pair = findCurrentPair(editor);
     if (!pair) return false;
-    const doc = editor.document;
-    for (let i = pair.start + 1; i <= pair.end - 1; i++) {
-      if ((doc.lineAt(i).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0) return true;
-    }
-    return false;
+    // v0.9.99917: 直接暗号化された膜は必ず「開始膜+マーカー1行+閉じ膜」の3行(本文=単一マーカー)。
+    //   これで判定すれば、暗号化した子膜を含むだけの外膜を誤って暗号化済みと見なさない(俊克 6/24: 未暗号化の外膜で🔓が白くなる件)。
+    //   かつ本文走査ゼロ=O(1)で巨大な外膜でも軽量。
+    if (pair.end - pair.start !== 2) return false;
+    return ((editor.document.lineAt(pair.start + 1).text || '').indexOf(_MEOS_ENC_PREFIX) >= 0);
   } catch (_) { return false; }
 }
 // v0.9.9996: 暗号文行(🔒MeOS-enc:v1 …)の中身を隠し「🔐 Locked」だけ見せる(俊克 6/24 am02:52)。
