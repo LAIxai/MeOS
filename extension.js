@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99958: 3兄弟(見出し/ハイライト/取消線)の先頭✅を背景色範囲から外す(俊克 7/1 am11:18「背景に埋もれて見えにくい」)。対応済で刻む「✅ 」(＋全角/半角スペース)分だけ背景decorationの開始位置を後ろへずらす→✅がエディタ地色に乗り緑が映える。ハイライトrBg/取消線bg/見出しbgの3描画サイトを修正(_bl=先頭✅+スペースのcode unit長)。split形(コード用)は✅が入らないので対象外。文字サイズ/文字色/取消線は本文全体のまま(背景のみ除外)。node側のみ。
 // - v0.9.99957: ✅チェック機構をハイライト=={…}==/取消線~~{…}~~にも横展開(俊克 7/1 am10:00「ハイライト+箇条書き=チェックリスト」)。inner構造(本文 (色)//[…]tip=)が見出しと同一なので変換をapplyCheckTransformに共通化しsyncHeadingDoneMarksを行全体変換方式に再構成。対応済で本文先頭に✅+[]へ日時注入→`=={✅`/`~~{✅`で全文検索・ホバー「✅ Checked:日時」(parseColorSpec共有ゆえ既に効く)。whole form(=={…}==)のみ対象・split形`/* =={ */`は負の先読み(?!\s*\*\/)で除外しコードを汚さない。node側のみ。
 // - v0.9.99956: 見出しチェックボックスのホバーに「✅ Checked: 日時」をH-TOC調で表示(俊克 7/1 am09:53)。保存時にsyncHeadingDoneMarksが対応済の[]へタイムスタンプ(YYYY-MM-DD HH:MM=pendingStamp)を自動注入=生データに刻む(タイトル✅と同じ思想「唯一の現実」)→ parseColorSpecがそれを検出しホバーを`✅[済]`から`✅ Checked: 2026-07-01 09:53`へ。既にタイムスタンプがある/未対応なら不変(冪等)。node側のみ。
 // - v0.9.99955: v99954のバグ修正(俊克 7/1 am09:09 NG「タイトル先頭に✅が入らない」)。真因=onWillSaveTextDocumentのwaitUntil編集がこの環境で適用されなかった(このAPIはTextEdit適用がVSCode版依存で不安定)。ロジック(checked判定/挿入位置)は正しかった。修正=onDidSaveTextDocumentで applyEdit→doc.save() の確実経路に変更。__headDoneResaving(uri Set)で再入ガード→再保存時のOctopush二重発火/無限ループを防止。node側のみ。
@@ -4680,7 +4681,8 @@ function applyPrettyLabels(editor) {
           // v0.9.833: 背景レンジは隠した `=={`(幅0)を含む位置から開始する。直前の font-size:0 要素に
           // 隣接すると VSCode が本体先頭1グリフの背景を塗り損ねる(俊克 pm01:48「最初のOneだけ背景が無い・
           // 文字色は正常」)。文字色はグリフ単位なので innerStart のままで正しい。`=={` は幅0=見た目の隙間なし。
-          const rBg = new vscode.Range(line, openStart, line, bodyEnd);
+          const _bl = braced ? ((/^✅[ 　]?/.exec(content.slice(0, bodyLen)) || [''])[0].length) : 0; // v0.9.99958: 先頭「✅ 」を背景色から外す(埋もれ防止)
+          const rBg = new vscode.Range(line, _bl ? innerStart + _bl : openStart, line, bodyEnd);
           let hover = null;
           if (hiComment) { hover = new vscode.MarkdownString('💬 ' + hiComment); hover.isTrusted = false; }
           if (bgKey) {
@@ -4724,7 +4726,7 @@ function applyPrettyLabels(editor) {
             if (sp.comment) { hover = new vscode.MarkdownString('💬 ' + sp.comment); hover.isTrusted = false; }
             const item = hover ? { range: r, hoverMessage: hover } : { range: r };
             (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(item);
-            if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
+            if (bgKey) { const _bl = (/^✅[ 　]?/.exec(sp.bodyText || '') || [''])[0].length; (highlightBodyRangesByColor[bgKey] || []).push({ range: _bl ? new vscode.Range(line, innerStart + _bl, line, bodyEnd) : r }); } // v0.9.99958: 先頭「✅ 」を背景色から外す
             if (bgKey && DARK_BG_KEYS.has(bgKey)) (highlightFgRangesByColor.white || []).push({ range: r });
             // v0.9.707: 背景色を明示しない {} 取消線は弱いハイライト背景で目立たせる(線色やコメントの有無は不問)。
             // これで「赤線＋薄ピンク＋tip」(~~{…(赤/)//tip}~~)も成立。明示bgがある時だけ素地のまま。
@@ -4782,7 +4784,7 @@ function applyPrettyLabels(editor) {
           const r = new vscode.Range(line, innerStart, line, bodyEnd);
           // サイズ装飾・背景色は本文全体に適用
           headingSizeRangesByLevel[level].push(r);
-          if (bgKey) (highlightBodyRangesByColor[bgKey] || []).push({ range: r });
+          if (bgKey) { const _bl = (/^✅[ 　]?/.exec(sp.bodyText || '') || [''])[0].length; (highlightBodyRangesByColor[bgKey] || []).push({ range: _bl ? new vscode.Range(line, innerStart + _bl, line, bodyEnd) : r }); } // v0.9.99958: 先頭「✅ 」を背景色から外す
           // v0.9.701: 文字色は本文全体に適用するが、見出しコメントtipは「インライン(=={…}==/~~{…}~~)
           // 以外の素のテキスト部分」にだけ付ける。インライン部分は自前のtipを持つので、見出しtipと
           // 二重表示しないようにする(俊克 NG: ハイライト/取消線のtipに見出しtipも出る)。
