@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99963: Format3兄弟ボタンの挿入テンプレに左右の半角スペースを入れる=背景色が連続する"真の"左右padding(俊克 7/1 pm12:52「嫌なら手で消せる」)。装飾APIの壁(v99959-62)を諦め、実スペースで実現(=={ 本文 (色)…}==/~~{ 本文 …}~~/##[ 本文 …]##)。code(split方式)はpad無し。✅チェックとの整合=applyCheckTransformの✅挿入を「絶対先頭」に変更(左paddingスペースより前)→#[✅/=={✅/~~{✅の検索を維持しつつ、✅は背景除外で映え、左padding空白は背景色に残る。bodySelはpad分ずらして本文のみ選択。node側のみ。
 // - v0.9.99962: ハイライト左右パディングの実験を全撤回しv99958の綺麗な状態(パディング無し・✅背景除外あり)へ復帰(俊克 7/1 pm00:12 NG)。VS Code装飾APIの限界が確定: padding注入=右のみ描画+text-decoration:noneが取消線を消す(v99959)/border=inlineで横幅を確保しない(v99960)/before-after=本体背景と別ブロックに分離し崩れる(v99961)。継ぎ目のない左右パディングは装飾APIでは不可能。highlightBodyByColorをbackgroundColor+borderRadius:2pxのみに戻す。node側のみ。
 // - v0.9.99961: ハイライト左右パディングをbefore/afterの同色スペースで実現(俊克 7/1 pm00:00 v99960 NG「左右ともギリギリ」)。真因=inline装飾のborderは線を描くだけで横幅(レイアウト)を確保しない→余白ゼロ。padding注入(v99959)は右のみ描画。確実に横幅を取れるのはbefore/afterの実コンテンツのみ→contentText=スペース+backgroundColor=背景色を左右に付与。text-decoration不使用ゆえ取消線も生存。highlightBodyByColor(見出し/取消線と共有)。node側のみ。
 // - v0.9.99960: v99959の2バグ修正(俊克 7/1 am11:49)。バグ1=取消線のline-throughが消えた→真因: bg装飾に入れた`text-decoration:none`が取消線decorationのline-throughを上書き。バグ2=左パディング未描画→VS Codeの装飾paddingは右のみ描画される既知の不安定挙動。修正=paddingを廃し「背景と同色の左右ボーダー(borderWidth:'0 2px'・borderColor=背景色)」に変更→左右とも確実描画・text-decorationを汚さず取消線復活。3記法の背景共有型なので一律適用。node側のみ。
@@ -11758,9 +11759,9 @@ async function insertFormatTemplate(kind, editor, fg, bg, level) {
     const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || 'Heading');
     const visibleBody = body + ' ' + stamp; // 本文 + 可視タイムスタンプ
     const hashes = '#'.repeat(Math.max(1, Math.min(3, Number(level) || 2))); // v0.9.99936: ↻でH1/H2/H3を選んで挿入
-    const newText = cOpen + hashes + '[' + visibleBody + hspec + ']' + hashes + cClose;
+    const newText = cOpen + hashes + '[ ' + visibleBody + ' ' + hspec + ']' + hashes + cClose; // v0.9.99963: 見出し本文の左右にも半角スペースpadding
     await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
-    const b = cOpen.length + hashes.length + 1; // #{1,3}[ の直後
+    const b = cOpen.length + hashes.length + 2; // #{1,3}[ + 左padding空白 の直後
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b + body.length)); // 見出しテキストのみ選択=即上書き可・タイムスタンプは残る
   } else {
     let prefix, close, defBody;
@@ -11772,8 +11773,11 @@ async function insertFormatTemplate(kind, editor, fg, bg, level) {
     // v0.9.885: C系言語では「分割方式」で出力(本文=実コードのまま動く)。全体包みが欲しければ中の */ /* を消すだけ(俊克 6/15 pm08:50)。
     const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
     const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
-    await editor.edit(eb => eb.replace(sel, openPart + body + tailPart));
-    const b = startOff + openPart.length;
+    // v0.9.99963: prose の ==/~~ は本文の左右に半角スペースを入れる(俊克 7/1 pm12:52)=背景色が連続する"真の"左右padding。
+    //   嫌なら手で消せる。code(split方式)は本文=実コードなのでpad無し。
+    const pad = wrap ? '' : ' ';
+    await editor.edit(eb => eb.replace(sel, openPart + pad + body + pad + tailPart));
+    const b = startOff + openPart.length + pad.length;
     bodySel = new vscode.Selection(doc.positionAt(b), doc.positionAt(b + body.length));
   }
   // v0.9.714: 挿入後、エディタにフォーカスを移し、本文(プレースホルダ)を選択状態にする(即上書きで書き込めるように)。
@@ -14768,8 +14772,8 @@ function activate(context) {
     const checked = !HEAD_DONE_TIP_OPEN.test(inner);           // 対応済 = 未対応でない
     const hasMark = /^\s*✅/.test(inner);
     let ni = inner;
-    if (checked && !hasMark) ni = ni.replace(/^(\s*)/, '$1✅ ');          // 対応済→本文先頭に✅
-    else if (!checked && hasMark) ni = ni.replace(/^(\s*)✅[ \t]?/, '$1'); // 未対応に戻す→✅除去
+    if (checked && !hasMark) ni = '✅ ' + ni;                            // v0.9.99963: ✅は絶対先頭に(左paddingスペースより前)→#[✅/=={✅/~~{✅の検索を維持しつつ、左padding空白は背景色に残す
+    else if (!checked && hasMark) ni = ni.replace(/^(\s*)✅[ 　\t]?/, '$1'); // 未対応に戻す→✅除去(左paddingは残す)
     if (checked) ni = ni.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) =>  // 対応済で日時未記録なら注入
       (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
     return ni;
