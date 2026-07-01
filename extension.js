@@ -1,6 +1,8 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99955: v99954のバグ修正(俊克 7/1 am09:09 NG「タイトル先頭に✅が入らない」)。真因=onWillSaveTextDocumentのwaitUntil編集がこの環境で適用されなかった(このAPIはTextEdit適用がVSCode版依存で不安定)。ロジック(checked判定/挿入位置)は正しかった。修正=onDidSaveTextDocumentで applyEdit→doc.save() の確実経路に変更。__headDoneResaving(uri Set)で再入ガード→再保存時のOctopush二重発火/無限ループを防止。node側のみ。
+// - v0.9.99954: ★見出しの簡易チェックボックスを対応済にすると本文先頭に✅を生データで刻む(俊克 7/1 am08:58)。見出し`##[本文 (色)//[]tip=]##`の`[]`に何か書く(対応済)と、保存時に`##[✅ 本文 …]##`へ同期→`#[✅`で全文検索できる=JoplinのToDoを超える「唯一の現実」(H-TOCのCTB=複数タブの仮想とは独立)。未対応(空[])に戻すと✅も除去(両方向同期)。実装=onWillSaveTextDocumentでsyncHeadingDoneMarks(冪等・注釈行のみ検査・inner先頭だけピンポイント置換)。node側のみ・webview<script>不変。
 // - v0.9.99953: NavigateとMe!が離れる回帰を修正(俊克 7/1 am08:36 NG)。真因=v99941で鷲ラベル追加時にタイトル行を.nav-center-titlebar(flex/space-between)化→子が[Navigate][Me!][Bird-EV ToDo]の3要素になりspace-betweenが3つを両端+中央にばらけさせた。修正=Navigate+Me!を<span class="nav-title-main">で1つに括りflexの子を2個(タイトル/鷲ラベル)に。HTMLのみ(CSS不要・Navigate Me!が再結合し鷲は右端維持)。
 // - v0.9.99952: 視線ラインの起点を5px下げ(俊克 6/28 pm03:48)。SVG y1 3→8(端y46不変=起点のみ下げ)。SVGのみ。
 // - v0.9.99951: 視線ライン2点修正(俊克 6/28 pm03:35)。①起点の高さを鷲の目に確定(v99950はチップ下端top100%にしてた→top35%=目の高さ・横は枠外ギリgiri left edge=right100%)。②2本の端の高さを揃える(左右とも viewBox y=46)。起点一致(67,3)・左線=角度/右線=ほぼ垂直。CSS+SVGのみ。
@@ -14735,7 +14737,51 @@ function activate(context) {
   // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
   // v0.9.987: ワンショット化(俊克 6/22 pm10:17)。🐙を点けてCmd+Sで1回push→直後に自動でオフへ戻す。
   // =「Push when you say so」を1タップ1pushで体現。点けっぱなしで以降の保存まで送られる事故を防ぐ。
+  // v0.9.99954: 見出しの簡易チェックボックス(//[…]tip=)を対応済にしたら、見出し本文先頭に✅を"生データ"で刻む
+  // (俊克 7/1 am08:58)。`#[✅` で全文検索できる = JoplinのToDoを超える「唯一の現実」。H-TOCのCTBチェック(複数タブ=仮想)
+  // とは独立。保存時に1回だけ同期(入力ごとでなく冪等)。対応済=`)//[非空]tip=` / 未対応=`)//[]tip=` or `)//tip=`。
+  const HEAD_DONE_HEAD_RE = /^(\s*)(\/\*\s*)?(#{1,3})\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/;
+  const HEAD_DONE_TIP_ANY = /\)\s*\/\/(?:\[[^\]\n]*\])?tip=/;   // 注釈あり(未対応+対応済のどちらも)
+  const HEAD_DONE_TIP_OPEN = /\)\s*\/\/(?:\[\s*\])?tip=/;       // 未対応(空[] または 括弧無しの旧//tip=)
+  const syncHeadingDoneMarks = (doc) => {
+    const edits = [];
+    try {
+      if (!doc) return edits;
+      const n = doc.lineCount;
+      for (let i = 0; i < n; i++) {
+        const text = doc.lineAt(i).text;
+        if (text.indexOf('tip=') < 0) continue;                // 高速スキップ(注釈行のみ検査)
+        const m = HEAD_DONE_HEAD_RE.exec(text);
+        if (!m) continue;
+        const inner = m[4];
+        if (!HEAD_DONE_TIP_ANY.test(inner)) continue;          // チェックボックス見出しのみ対象
+        const checked = !HEAD_DONE_TIP_OPEN.test(inner);       // 対応済 = 未対応でない
+        const hasMark = /^\s*✅/.test(inner);
+        let newInner = null;
+        if (checked && !hasMark) newInner = inner.replace(/^(\s*)/, '$1✅ ');       // 対応済→本文先頭に✅
+        else if (!checked && hasMark) newInner = inner.replace(/^(\s*)✅[ \t]?/, '$1'); // 未対応に戻す→✅除去
+        if (newInner === null || newInner === inner) continue;
+        const start = (m[1] ? m[1].length : 0) + (m[2] ? m[2].length : 0) + m[3].length + 1; // '#{n}[' の直後
+        edits.push(vscode.TextEdit.replace(new vscode.Range(i, start, i, start + inner.length), newInner));
+      }
+    } catch (_) {}
+    return edits;
+  };
+  const __headDoneResaving = new Set(); // v0.9.99955: 再保存中のuri(再入=Octopush二重発火/無限ループ防止)
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    // v0.9.99955: ✅同期はonWillSaveのwaitUntilが不安定(適用されない)ため、保存"後"にapplyEdit→再保存で確実に生データへ刻む。
+    const __k = (doc && doc.uri) ? doc.uri.toString() : '';
+    if (__k && !__headDoneResaving.has(__k)) {
+      const edits = syncHeadingDoneMarks(doc);
+      if (edits.length) {
+        const we = new vscode.WorkspaceEdit();
+        for (const ed of edits) we.replace(doc.uri, ed.range, ed.newText);
+        try {
+          const ok = await vscode.workspace.applyEdit(we);
+          if (ok) { __headDoneResaving.add(__k); await doc.save(); __headDoneResaving.delete(__k); } // 再保存でディスクへ(冪等なので2回目は差分0)
+        } catch (_) { __headDoneResaving.delete(__k); }
+      }
+    }
     if (!githubAutoSync) return;
     await githubCommitPush(doc);
     githubAutoSync = false;
