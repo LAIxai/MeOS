@@ -3,7 +3,7 @@
 <p align="center"><img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="260"></p>
 
 <p align="center">
-  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/github/downloads/LAIxai/MeOS/total?label=downloads&color=4caf50" alt="Total Downloads"></a>
+  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-194-4caf50" alt="Downloads on Open VSX (194 at the v0.9.99963 release)"></a>
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/github/v/release/LAIxai/MeOS?label=release&color=2196f3" alt="Latest Release"></a>
 </p>
 

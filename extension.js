@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99964: README のダウンロードバッジを更新(俊克 7/1 pm02:08)。GitHub Releasesのdownloads(≈1)を表示していたshields badgeを、Open VSXの実インストール数のスナップショット「downloads-194」(静的・リリース時点の記録)に差替え・リンク先をOpen VSX拡張ページに。Open VSXページはvsix内READMEから描画されるため再publish目的の版上げ。コード変更なし(README+版のみ)。
 // - v0.9.99963: Format3兄弟ボタンの挿入テンプレに左右の半角スペースを入れる=背景色が連続する"真の"左右padding(俊克 7/1 pm12:52「嫌なら手で消せる」)。装飾APIの壁(v99959-62)を諦め、実スペースで実現(=={ 本文 (色)…}==/~~{ 本文 …}~~/##[ 本文 …]##)。code(split方式)はpad無し。✅チェックとの整合=applyCheckTransformの✅挿入を「絶対先頭」に変更(左paddingスペースより前)→#[✅/=={✅/~~{✅の検索を維持しつつ、✅は背景除外で映え、左padding空白は背景色に残る。bodySelはpad分ずらして本文のみ選択。node側のみ。
 // - v0.9.99962: ハイライト左右パディングの実験を全撤回しv99958の綺麗な状態(パディング無し・✅背景除外あり)へ復帰(俊克 7/1 pm00:12 NG)。VS Code装飾APIの限界が確定: padding注入=右のみ描画+text-decoration:noneが取消線を消す(v99959)/border=inlineで横幅を確保しない(v99960)/before-after=本体背景と別ブロックに分離し崩れる(v99961)。継ぎ目のない左右パディングは装飾APIでは不可能。highlightBodyByColorをbackgroundColor+borderRadius:2pxのみに戻す。node側のみ。
 // - v0.9.99961: ハイライト左右パディングをbefore/afterの同色スペースで実現(俊克 7/1 pm00:00 v99960 NG「左右ともギリギリ」)。真因=inline装飾のborderは線を描くだけで横幅(レイアウト)を確保しない→余白ゼロ。padding注入(v99959)は右のみ描画。確実に横幅を取れるのはbefore/afterの実コンテンツのみ→contentText=スペース+backgroundColor=背景色を左右に付与。text-decoration不使用ゆえ取消線も生存。highlightBodyByColor(見出し/取消線と共有)。node側のみ。
