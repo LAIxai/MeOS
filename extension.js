@@ -1,6 +1,10 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99962: ハイライト左右パディングの実験を全撤回しv99958の綺麗な状態(パディング無し・✅背景除外あり)へ復帰(俊克 7/1 pm00:12 NG)。VS Code装飾APIの限界が確定: padding注入=右のみ描画+text-decoration:noneが取消線を消す(v99959)/border=inlineで横幅を確保しない(v99960)/before-after=本体背景と別ブロックに分離し崩れる(v99961)。継ぎ目のない左右パディングは装飾APIでは不可能。highlightBodyByColorをbackgroundColor+borderRadius:2pxのみに戻す。node側のみ。
+// - v0.9.99961: ハイライト左右パディングをbefore/afterの同色スペースで実現(俊克 7/1 pm00:00 v99960 NG「左右ともギリギリ」)。真因=inline装飾のborderは線を描くだけで横幅(レイアウト)を確保しない→余白ゼロ。padding注入(v99959)は右のみ描画。確実に横幅を取れるのはbefore/afterの実コンテンツのみ→contentText=スペース+backgroundColor=背景色を左右に付与。text-decoration不使用ゆえ取消線も生存。highlightBodyByColor(見出し/取消線と共有)。node側のみ。
+// - v0.9.99960: v99959の2バグ修正(俊克 7/1 am11:49)。バグ1=取消線のline-throughが消えた→真因: bg装飾に入れた`text-decoration:none`が取消線decorationのline-throughを上書き。バグ2=左パディング未描画→VS Codeの装飾paddingは右のみ描画される既知の不安定挙動。修正=paddingを廃し「背景と同色の左右ボーダー(borderWidth:'0 2px'・borderColor=背景色)」に変更→左右とも確実描画・text-decorationを汚さず取消線復活。3記法の背景共有型なので一律適用。node側のみ。
+// - v0.9.99959: ハイライト背景の左右に2pxパディング(俊克 7/1 am11:45「端がギリギリで窮屈」)。highlightBodyByColorの装飾型にtextDecoration:'none; padding:0 2px;'を注入=背景boxが本文の左右2px外へ広がりチップ風に(縦0で行高不変)・borderRadius 2→3px。この背景型は見出し/取消線の背景とも共有ゆえ3記法とも余白が付く。node側のみ(makeDecorations)。
 // - v0.9.99958: 3兄弟(見出し/ハイライト/取消線)の先頭✅を背景色範囲から外す(俊克 7/1 am11:18「背景に埋もれて見えにくい」)。対応済で刻む「✅ 」(＋全角/半角スペース)分だけ背景decorationの開始位置を後ろへずらす→✅がエディタ地色に乗り緑が映える。ハイライトrBg/取消線bg/見出しbgの3描画サイトを修正(_bl=先頭✅+スペースのcode unit長)。split形(コード用)は✅が入らないので対象外。文字サイズ/文字色/取消線は本文全体のまま(背景のみ除外)。node側のみ。
 // - v0.9.99957: ✅チェック機構をハイライト=={…}==/取消線~~{…}~~にも横展開(俊克 7/1 am10:00「ハイライト+箇条書き=チェックリスト」)。inner構造(本文 (色)//[…]tip=)が見出しと同一なので変換をapplyCheckTransformに共通化しsyncHeadingDoneMarksを行全体変換方式に再構成。対応済で本文先頭に✅+[]へ日時注入→`=={✅`/`~~{✅`で全文検索・ホバー「✅ Checked:日時」(parseColorSpec共有ゆえ既に効く)。whole form(=={…}==)のみ対象・split形`/* =={ */`は負の先読み(?!\s*\*\/)で除外しコードを汚さない。node側のみ。
 // - v0.9.99956: 見出しチェックボックスのホバーに「✅ Checked: 日時」をH-TOC調で表示(俊克 7/1 am09:53)。保存時にsyncHeadingDoneMarksが対応済の[]へタイムスタンプ(YYYY-MM-DD HH:MM=pendingStamp)を自動注入=生データに刻む(タイトル✅と同じ思想「唯一の現実」)→ parseColorSpecがそれを検出しホバーを`✅[済]`から`✅ Checked: 2026-07-01 09:53`へ。既にタイムスタンプがある/未対応なら不変(冪等)。node側のみ。
@@ -2977,7 +2981,7 @@ function makeDecorations() {
     highlightBodyByColor.set(key, vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
       backgroundColor: HIGHLIGHT_COLORS[key],
-      borderRadius: '2px'
+      borderRadius: '2px',
     }));
   }
   highlightBodyDecoration = highlightBodyByColor.get('yellow');
