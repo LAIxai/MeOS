@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99956: 見出しチェックボックスのホバーに「✅ Checked: 日時」をH-TOC調で表示(俊克 7/1 am09:53)。保存時にsyncHeadingDoneMarksが対応済の[]へタイムスタンプ(YYYY-MM-DD HH:MM=pendingStamp)を自動注入=生データに刻む(タイトル✅と同じ思想「唯一の現実」)→ parseColorSpecがそれを検出しホバーを`✅[済]`から`✅ Checked: 2026-07-01 09:53`へ。既にタイムスタンプがある/未対応なら不変(冪等)。node側のみ。
 // - v0.9.99955: v99954のバグ修正(俊克 7/1 am09:09 NG「タイトル先頭に✅が入らない」)。真因=onWillSaveTextDocumentのwaitUntil編集がこの環境で適用されなかった(このAPIはTextEdit適用がVSCode版依存で不安定)。ロジック(checked判定/挿入位置)は正しかった。修正=onDidSaveTextDocumentで applyEdit→doc.save() の確実経路に変更。__headDoneResaving(uri Set)で再入ガード→再保存時のOctopush二重発火/無限ループを防止。node側のみ。
 // - v0.9.99954: ★見出しの簡易チェックボックスを対応済にすると本文先頭に✅を生データで刻む(俊克 7/1 am08:58)。見出し`##[本文 (色)//[]tip=]##`の`[]`に何か書く(対応済)と、保存時に`##[✅ 本文 …]##`へ同期→`#[✅`で全文検索できる=JoplinのToDoを超える「唯一の現実」(H-TOCのCTB=複数タブの仮想とは独立)。未対応(空[])に戻すと✅も除去(両方向同期)。実装=onWillSaveTextDocumentでsyncHeadingDoneMarks(冪等・注釈行のみ検査・inner先頭だけピンポイント置換)。node側のみ・webview<script>不変。
 // - v0.9.99953: NavigateとMe!が離れる回帰を修正(俊克 7/1 am08:36 NG)。真因=v99941で鷲ラベル追加時にタイトル行を.nav-center-titlebar(flex/space-between)化→子が[Navigate][Me!][Bird-EV ToDo]の3要素になりspace-betweenが3つを両端+中央にばらけさせた。修正=Navigate+Me!を<span class="nav-title-main">で1つに括りflexの子を2個(タイトル/鷲ラベル)に。HTMLのみ(CSS不要・Navigate Me!が再結合し鷲は右端維持)。
@@ -2180,7 +2181,17 @@ function parseColorSpec(content, single, scan) {
       if (/^\s*tip=/.test(_rt)) { _marked = true; _rt = _rt.replace(/^\s*tip=/, ''); }
       _rt = _rt.trim();
       // v0.9.895: 対応済は ✅[内容] でブラケットの中身(日付等)もホバーに表示(俊克 6/16 am08:16)。未対応は ⬜。
-      if (_marked) { const _bx = _box ? _box.trim() : ''; _rt = _bx ? ('✅[' + _bx + ']' + (_rt ? ' ' + _rt : '')) : ('⬜' + (_rt ? ' ' + _rt : '')); }
+      // v0.9.99956: []内にタイムスタンプ(YYYY-MM-DD HH:MM・保存時に自動注入)があれば H-TOC調で「✅ Checked: 日時」表示(俊克 7/1 am09:53)。
+      if (_marked) {
+        const _bx = _box ? _box.trim() : '';
+        if (_bx) {
+          const _tm = _bx.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
+          let _head;
+          if (_tm) { const _rest = _bx.replace(_tm[0], '').trim(); _head = '✅ Checked: ' + _tm[0] + (_rest ? ' [' + _rest + ']' : ''); }
+          else _head = '✅[' + _bx + ']';
+          _rt = _head + (_rt ? ' ' + _rt : '');
+        } else { _rt = '⬜' + (_rt ? ' ' + _rt : ''); }
+      }
     }
     chosen = { index: m.index, fg, bg, tip: _rt };
   }
@@ -14757,10 +14768,15 @@ function activate(context) {
         if (!HEAD_DONE_TIP_ANY.test(inner)) continue;          // チェックボックス見出しのみ対象
         const checked = !HEAD_DONE_TIP_OPEN.test(inner);       // 対応済 = 未対応でない
         const hasMark = /^\s*✅/.test(inner);
-        let newInner = null;
-        if (checked && !hasMark) newInner = inner.replace(/^(\s*)/, '$1✅ ');       // 対応済→本文先頭に✅
-        else if (!checked && hasMark) newInner = inner.replace(/^(\s*)✅[ \t]?/, '$1'); // 未対応に戻す→✅除去
-        if (newInner === null || newInner === inner) continue;
+        let newInner = inner;
+        if (checked && !hasMark) newInner = newInner.replace(/^(\s*)/, '$1✅ ');       // 対応済→本文先頭に✅
+        else if (!checked && hasMark) newInner = newInner.replace(/^(\s*)✅[ \t]?/, '$1'); // 未対応に戻す→✅除去
+        // v0.9.99956: 対応済で []内にタイムスタンプ未記録なら、保存時刻(YYYY-MM-DD HH:MM)を[]へ注入=Checked日時を生データに刻む。
+        if (checked) newInner = newInner.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) => {
+          if (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) return a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c;
+          return mm;
+        });
+        if (newInner === inner) continue;
         const start = (m[1] ? m[1].length : 0) + (m[2] ? m[2].length : 0) + m[3].length + 1; // '#{n}[' の直後
         edits.push(vscode.TextEdit.replace(new vscode.Range(i, start, i, start + inner.length), newInner));
       }
