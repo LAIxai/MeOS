@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99957: ✅チェック機構をハイライト=={…}==/取消線~~{…}~~にも横展開(俊克 7/1 am10:00「ハイライト+箇条書き=チェックリスト」)。inner構造(本文 (色)//[…]tip=)が見出しと同一なので変換をapplyCheckTransformに共通化しsyncHeadingDoneMarksを行全体変換方式に再構成。対応済で本文先頭に✅+[]へ日時注入→`=={✅`/`~~{✅`で全文検索・ホバー「✅ Checked:日時」(parseColorSpec共有ゆえ既に効く)。whole form(=={…}==)のみ対象・split形`/* =={ */`は負の先読み(?!\s*\*\/)で除外しコードを汚さない。node側のみ。
 // - v0.9.99956: 見出しチェックボックスのホバーに「✅ Checked: 日時」をH-TOC調で表示(俊克 7/1 am09:53)。保存時にsyncHeadingDoneMarksが対応済の[]へタイムスタンプ(YYYY-MM-DD HH:MM=pendingStamp)を自動注入=生データに刻む(タイトル✅と同じ思想「唯一の現実」)→ parseColorSpecがそれを検出しホバーを`✅[済]`から`✅ Checked: 2026-07-01 09:53`へ。既にタイムスタンプがある/未対応なら不変(冪等)。node側のみ。
 // - v0.9.99955: v99954のバグ修正(俊克 7/1 am09:09 NG「タイトル先頭に✅が入らない」)。真因=onWillSaveTextDocumentのwaitUntil編集がこの環境で適用されなかった(このAPIはTextEdit適用がVSCode版依存で不安定)。ロジック(checked判定/挿入位置)は正しかった。修正=onDidSaveTextDocumentで applyEdit→doc.save() の確実経路に変更。__headDoneResaving(uri Set)で再入ガード→再保存時のOctopush二重発火/無限ループを防止。node側のみ。
 // - v0.9.99954: ★見出しの簡易チェックボックスを対応済にすると本文先頭に✅を生データで刻む(俊克 7/1 am08:58)。見出し`##[本文 (色)//[]tip=]##`の`[]`に何か書く(対応済)と、保存時に`##[✅ 本文 …]##`へ同期→`#[✅`で全文検索できる=JoplinのToDoを超える「唯一の現実」(H-TOCのCTB=複数タブの仮想とは独立)。未対応(空[])に戻すと✅も除去(両方向同期)。実装=onWillSaveTextDocumentでsyncHeadingDoneMarks(冪等・注釈行のみ検査・inner先頭だけピンポイント置換)。node側のみ・webview<script>不変。
@@ -14748,12 +14749,25 @@ function activate(context) {
   // v0.9.973: Cmd+S連動 auto push — githubAutoSyncがONの時だけ発火
   // v0.9.987: ワンショット化(俊克 6/22 pm10:17)。🐙を点けてCmd+Sで1回push→直後に自動でオフへ戻す。
   // =「Push when you say so」を1タップ1pushで体現。点けっぱなしで以降の保存まで送られる事故を防ぐ。
-  // v0.9.99954: 見出しの簡易チェックボックス(//[…]tip=)を対応済にしたら、見出し本文先頭に✅を"生データ"で刻む
-  // (俊克 7/1 am08:58)。`#[✅` で全文検索できる = JoplinのToDoを超える「唯一の現実」。H-TOCのCTBチェック(複数タブ=仮想)
-  // とは独立。保存時に1回だけ同期(入力ごとでなく冪等)。対応済=`)//[非空]tip=` / 未対応=`)//[]tip=` or `)//tip=`。
-  const HEAD_DONE_HEAD_RE = /^(\s*)(\/\*\s*)?(#{1,3})\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/;
+  // v0.9.99954: 簡易チェックボックス(//[…]tip=)を対応済にしたら本文先頭に✅を"生データ"で刻む(俊克 7/1 am08:58)。
+  // v0.9.99956: 対応済の[]へ保存時刻(YYYY-MM-DD HH:MM=pendingStamp)を注入→ホバー「✅ Checked: 日時」(H-TOC調)。
+  // v0.9.99957: 見出し ##[…]## に加え ハイライト =={…}== / 取消線 ~~{…}~~ にも適用(俊克 7/1 am10:00)。
+  //   inner構造(本文 (色)//[…]tip=)は3記法とも同一なので変換を applyCheckTransform に共通化。ハイライト+箇条書き=チェックリスト。
+  //   `#[✅`/`=={✅`/`~~{✅`で全文検索できる=JoplinのToDoを超える「唯一の現実」(H-TOCのCTB=複数タブの仮想とは独立)。
+  //   保存時に1回だけ同期(冪等)。対応済=`)//[非空]tip=` / 未対応=`)//[]tip=` or `)//tip=`。
   const HEAD_DONE_TIP_ANY = /\)\s*\/\/(?:\[[^\]\n]*\])?tip=/;   // 注釈あり(未対応+対応済のどちらも)
   const HEAD_DONE_TIP_OPEN = /\)\s*\/\/(?:\[\s*\])?tip=/;       // 未対応(空[] または 括弧無しの旧//tip=)
+  const applyCheckTransform = (inner) => {                      // inner = "本文 (色)//[…]tip="。注釈が無ければ不変。
+    if (!HEAD_DONE_TIP_ANY.test(inner)) return inner;
+    const checked = !HEAD_DONE_TIP_OPEN.test(inner);           // 対応済 = 未対応でない
+    const hasMark = /^\s*✅/.test(inner);
+    let ni = inner;
+    if (checked && !hasMark) ni = ni.replace(/^(\s*)/, '$1✅ ');          // 対応済→本文先頭に✅
+    else if (!checked && hasMark) ni = ni.replace(/^(\s*)✅[ \t]?/, '$1'); // 未対応に戻す→✅除去
+    if (checked) ni = ni.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) =>  // 対応済で日時未記録なら注入
+      (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
+    return ni;
+  };
   const syncHeadingDoneMarks = (doc) => {
     const edits = [];
     try {
@@ -14762,23 +14776,15 @@ function activate(context) {
       for (let i = 0; i < n; i++) {
         const text = doc.lineAt(i).text;
         if (text.indexOf('tip=') < 0) continue;                // 高速スキップ(注釈行のみ検査)
-        const m = HEAD_DONE_HEAD_RE.exec(text);
-        if (!m) continue;
-        const inner = m[4];
-        if (!HEAD_DONE_TIP_ANY.test(inner)) continue;          // チェックボックス見出しのみ対象
-        const checked = !HEAD_DONE_TIP_OPEN.test(inner);       // 対応済 = 未対応でない
-        const hasMark = /^\s*✅/.test(inner);
-        let newInner = inner;
-        if (checked && !hasMark) newInner = newInner.replace(/^(\s*)/, '$1✅ ');       // 対応済→本文先頭に✅
-        else if (!checked && hasMark) newInner = newInner.replace(/^(\s*)✅[ \t]?/, '$1'); // 未対応に戻す→✅除去
-        // v0.9.99956: 対応済で []内にタイムスタンプ未記録なら、保存時刻(YYYY-MM-DD HH:MM)を[]へ注入=Checked日時を生データに刻む。
-        if (checked) newInner = newInner.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) => {
-          if (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) return a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c;
-          return mm;
-        });
-        if (newInner === inner) continue;
-        const start = (m[1] ? m[1].length : 0) + (m[2] ? m[2].length : 0) + m[3].length + 1; // '#{n}[' の直後
-        edits.push(vscode.TextEdit.replace(new vscode.Range(i, start, i, start + inner.length), newInner));
+        let out = text;
+        // 見出し ##[…]## (行頭・任意の /* */ 殻・閉じは同数ハッシュ\3)
+        out = out.replace(/^(\s*)(\/\*\s*)?(#{1,3})\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/,
+          (mm, ws, cm, h, inner, tr) => ws + (cm || '') + h + '[' + applyCheckTransform(inner) + ']' + h + (tr || ''));
+        // ハイライト =={…}== / 取消線 ~~{…}~~ (whole form のみ。split `/* =={ */…` は先頭 */ を負の先読みで除外=コードを汚さない)
+        out = out.replace(/=={(?!\s*\*\/)([^\n]*?)}==/g, (mm, inner) => '=={' + applyCheckTransform(inner) + '}==');
+        out = out.replace(/~~\{(?!\s*\*\/)([^\n]*?)\}~~/g, (mm, inner) => '~~{' + applyCheckTransform(inner) + '}~~');
+        if (out === text) continue;
+        edits.push(vscode.TextEdit.replace(new vscode.Range(i, 0, i, text.length), out));
       }
     } catch (_) {}
     return edits;
