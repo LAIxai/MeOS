@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-194-4caf50" alt="Downloads on Open VSX (194 at the v0.9.99963 release)"></a>
-  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v0.9.99964-2196f3" alt="Latest Release (v0.9.99964)"></a>
+  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v0.9.99965-2196f3" alt="Latest Release (v0.9.99965)"></a>
 </p>
 
 ### **Markdown⊕** — *Markdown, plus.*
