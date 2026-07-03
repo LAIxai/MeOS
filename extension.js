@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99966: ★✅膜名刻印=参照膜プロジェクト段1(俊克 7/3 pm02:29)。H-TOCのCTBチェック→開き膜名先頭に`✅ `を生データで刻む/解除で除去(最後の操作が勝つ・H-TOCの基本機能に昇格)。実装2点=①cleanMembraneNameに✅剥がし1行(先頭`✅ `を除いてペア一致判定=v903装飾名正規化と同パターン→開き膜だけ書換で閉じ膜無編集・膜の同一性維持=H-TOCキー/checkLog/📊カウンタのリンク不切断)②toggleWorkingTocItemCheck→syncMembraneCheckMark(parseOpenLineでkey一致の開き膜を探しindexOfで素名位置→前に✅挿入/前の✅除去・冪等)。grep面の完成: `#[✅`見出し/`=={✅`ハイライト/`~~{✅`取消線/`=✅`膜名。タブcheckLog=履歴(仮想)/膜名✅=現在(現実)。node実測10項目PASS(刻印往復無傷/ペア一致/mTC対応/全角スペース)。node側のみ。
 // - v0.9.99965: ストア表示の国際化+バッジ静的化(俊克 7/2 am07:12)。①package.jsonのdescriptionを英語先行・日本語後置に再構成(Marketplace/Open VSXの検索カードは先頭~150字しか出ず、日本語先頭だと英語圏に読めない文字列だけが見えていた)。日本語は全文後半に温存。②READMEのreleaseバッジを静的化のままv0.9.99965へ更新(shields.ioのgithub/v/releaseバッジがレート制限で間欠的にinvalid/Unable to select next GitHub tokenになる持病→静的スナップショットで根治・downloads 194と同運用)。コード変更なし(doc+版のみ)。
 // - v0.9.99964: README のダウンロードバッジを更新(俊克 7/1 pm02:08)。GitHub Releasesのdownloads(≈1)を表示していたshields badgeを、Open VSXの実インストール数のスナップショット「downloads-194」(静的・リリース時点の記録)に差替え・リンク先をOpen VSX拡張ページに。Open VSXページはvsix内READMEから描画されるため再publish目的の版上げ。コード変更なし(README+版のみ)。
 // - v0.9.99963: Format3兄弟ボタンの挿入テンプレに左右の半角スペースを入れる=背景色が連続する"真の"左右padding(俊克 7/1 pm12:52「嫌なら手で消せる」)。装飾APIの壁(v99959-62)を諦め、実スペースで実現(=={ 本文 (色)…}==/~~{ 本文 …}~~/##[ 本文 …]##)。code(split方式)はpad無し。✅チェックとの整合=applyCheckTransformの✅挿入を「絶対先頭」に変更(左paddingスペースより前)→#[✅/=={✅/~~{✅の検索を維持しつつ、✅は背景除外で映え、左padding空白は背景色に残る。bodySelはpad分ずらして本文のみ選択。node側のみ。
@@ -2470,6 +2471,9 @@ function cleanMembraneName(id) {
   // the open line. Strip it so open/close pair matching ignores the hash and only the
   // membrane name (= `ファイル名_TS`) participates in identity comparison.
   return String(id || '')
+    // v0.9.99966: 先頭の`✅ `を剥がして識別子化(H-TOC CTBチェックの膜名刻印・開き膜だけに✅を刻んでも
+    // 閉じ膜とペア一致する=v903の装飾名正規化と同パターン。俊克案 2026.07.03 pm01:54)。
+    .replace(/^\s*✅[ 　]*/u, '')
     // v0.9.903: 膜名に入れたハイライト/取消線の装飾を本文に畳んで識別子化(開閉ペア一致のため・装飾無し名は不変)。
     .replace(/=={([^\n]*?)}==/g, function (_m, inner) { return parseColorSpec(inner, 'bg').bodyText; })
     .replace(/~~\{([^\n]*?)\}~~/g, function (_m, inner) { return parseColorSpec(inner, 'fg').bodyText; })
@@ -6176,10 +6180,45 @@ async function toggleWorkingTocItemCheck(key, checked) {
       item.checkLog.push({ at: now, checked: !!checked, label });
       if (item.checkLog.length > 20) item.checkLog = item.checkLog.slice(-20);
       await setHyperTocData(doc, data);
+      // v0.9.99966: ★✅膜名刻印 — CTBチェックを膜名先頭に`✅ `として生データへ刻む(開き膜のみ)。
+      // タブのcheckLogは履歴(仮想)/膜名の✅は現在(現実)。最後の操作が勝つ。
+      // `=✅`でgrep=#[✅/=={✅/~~{✅と並ぶ「唯一の現実」検索面の完成(俊克 2026.07.03 am10:40)。
+      const memKey = tocKeyFromValue(item.value || '') || item.key;
+      if (memKey) await syncMembraneCheckMark(editor, memKey, !!checked);
     }
   }
   await setTocCheckedAt(doc, key, !!checked);
   postFixedWorkingTocSnapshot();
+}
+
+// v0.9.99966: H-TOC CTBチェック⇄開き膜名先頭の`✅ `を同期する(生データ書込)。
+// 開き膜だけを書き換える(閉じ膜無編集)— ペア一致はcleanMembraneNameの✅剥がしが保証。
+// H-TOCキー/checkLog/📊カウンタは膜名導出(cleaned)なのでリンク切れしない。
+async function syncMembraneCheckMark(editor, memKey, checked) {
+  const doc = editor.document;
+  for (let i = 0; i < doc.lineCount; i++) {
+    const text = doc.lineAt(i).text || '';
+    const open = parseOpenLine(text);
+    if (!open || open.id !== memKey) continue;
+    // 生行上のクリーン名の開始位置(membraneNameRangeOnLineと同じindexOfイディオム)。
+    // 刻印済みなら生名は`✅ 名前`なのでindexOfは✅の後ろの素の名前に着地する。
+    const idStart = text.indexOf(open.id);
+    if (idStart < 0) return false;
+    const pre = text.slice(0, idStart);
+    const mark = pre.match(/✅[ 　]*$/u);
+    const we = new vscode.WorkspaceEdit();
+    if (checked && !mark) {
+      we.insert(doc.uri, new vscode.Position(i, idStart), '✅ ');
+    } else if (!checked && mark) {
+      we.delete(doc.uri, new vscode.Range(i, idStart - mark[0].length, i, idStart));
+    } else {
+      return true; // 既に同期済み(冪等)
+    }
+    await vscode.workspace.applyEdit(we);
+    refresh(editor);
+    return true;
+  }
+  return false; // H-TOC項目が膜でない(引用等)場合は何もしない
 }
 
 function getWorkingTocSnapshot(editor) {
