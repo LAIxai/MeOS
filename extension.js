@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99967: ★点膜▶◀=参照膜プロジェクト段2(俊克 7/3)。新種の膜=点膜(開閉ペア無し・常に1行・範囲でなく点・行中インライン可)。参照符 {* ▶◀mRn=参照膜名_TS *} / {* ▶◀mRn=名前_TS // 説明文 *} をインライン装飾パイプライン(=={}==と同経路・行膜機構でない)で描画: 生データをfont-size:0で隠し(TS非表示=stealth思想)、beforeチップに R族記号+文書順仮想採番(※1 / †1 : 出典)を琥珀色で表示・ホバーに膜名/TS/説明。R1=※,R2=†,R3=‡,R4=*,R5=§,R6=💤(未知族はRn表示)。採番=R族ごと文書順・描画時に毎回計算(仮想・不保存)・カーソル行は生データ表示(v659思想)だが採番は進めて番号安定。新セクション0620_REF_POINT(REF_POINT_RE/parseRefPointInner/collectRefPoints=段4巡回の共通足場)。膜ペア機構と不干渉(▶◀は▼▲でないのでcollectPairs対象外=折畳対象外が自動成立)・保存時変換の非対象=往復無傷をnode実測15項目PASS。node側のみ。
 // - v0.9.99966: ★✅膜名刻印=参照膜プロジェクト段1(俊克 7/3 pm02:29)。H-TOCのCTBチェック→開き膜名先頭に`✅ `を生データで刻む/解除で除去(最後の操作が勝つ・H-TOCの基本機能に昇格)。実装2点=①cleanMembraneNameに✅剥がし1行(先頭`✅ `を除いてペア一致判定=v903装飾名正規化と同パターン→開き膜だけ書換で閉じ膜無編集・膜の同一性維持=H-TOCキー/checkLog/📊カウンタのリンク不切断)②toggleWorkingTocItemCheck→syncMembraneCheckMark(parseOpenLineでkey一致の開き膜を探しindexOfで素名位置→前に✅挿入/前の✅除去・冪等)。grep面の完成: `#[✅`見出し/`=={✅`ハイライト/`~~{✅`取消線/`=✅`膜名。タブcheckLog=履歴(仮想)/膜名✅=現在(現実)。node実測10項目PASS(刻印往復無傷/ペア一致/mTC対応/全角スペース)。node側のみ。
 // - v0.9.99965: ストア表示の国際化+バッジ静的化(俊克 7/2 am07:12)。①package.jsonのdescriptionを英語先行・日本語後置に再構成(Marketplace/Open VSXの検索カードは先頭~150字しか出ず、日本語先頭だと英語圏に読めない文字列だけが見えていた)。日本語は全文後半に温存。②READMEのreleaseバッジを静的化のままv0.9.99965へ更新(shields.ioのgithub/v/releaseバッジがレート制限で間欠的にinvalid/Unable to select next GitHub tokenになる持病→静的スナップショットで根治・downloads 194と同運用)。コード変更なし(doc+版のみ)。
 // - v0.9.99964: README のダウンロードバッジを更新(俊克 7/1 pm02:08)。GitHub Releasesのdownloads(≈1)を表示していたshields badgeを、Open VSXの実インストール数のスナップショット「downloads-194」(静的・リリース時点の記録)に差替え・リンク先をOpen VSX拡張ページに。Open VSXページはvsix内READMEから描画されるため再publish目的の版上げ。コード変更なし(README+版のみ)。
@@ -2019,6 +2020,7 @@
 // ⇄ 0400_PARSE_PAIRS // membrane source parser and pair collector
 // ⇄ 0500_VISUAL_LINES // lane depth rendering / folding-state helpers
 // ⇄ 0600_PRETTY_LABELS // hide raw source prefix/suffix and draw labels
+// ⇄ 0620_REF_POINT // v0.9.99967 参照符=点膜▶◀ parser + 仮想採番 (参照膜プロジェクト段2)
 // ⇄ 0700_COMMANDS // refresh / fold / unfold / auto-unfold commands
 // ⇄ 0710_HYPER_TOC_PIPELINE // 🚧(0) hT-only Hyper TOC parsing / insert / snapshot / Me Dock render
 // ⇄ 0850_CONTROL_ME // Control Me! floating QuickPick prototype v0.9.221
@@ -2067,6 +2069,12 @@ let highlightBodyDecoration;        // 後方互換: 黄(=yellow)を指す
 let highlightMarkerDecoration;
 let highlightBodyByColor = null;    // Map<'red'|'orange'|...|'yellow', decorationType> (背景)
 let highlightFgByColor = null;      // v0.9.661: Map<色キー, decorationType> (文字色レイヤー)
+// v0.9.99967: ★参照膜プロジェクト段2 — 点膜▶◀(開閉ペア無し・範囲でなく「点」・行中インライン可)。
+// 参照符 {* ▶◀mRn=参照膜名_TS *} / {* ▶◀mRn=参照膜名_TS // 説明文 *} の生データを
+// font-size:0で隠し、R族記号+文書順仮想採番(※1 / †2 : 説明文)をbeforeチップで描く。
+// 実装はインライン装飾パイプライン(=={}==と同経路)=行膜機構ではない(俊克決定 2026.07.03 pm02:08)。
+let refPointHideDecoration;
+let refPointLabelDecoration;
 // 色キー → 背景色。v0.9.698: 「本物の色に見える」濃さにする(俊克: 薄い赤=ピンク・薄い紺=紫で駄目)。
 // 明るい暗色は色相がズレるので濃い(高alpha)本物色にし、暗い背景は自動で白文字を当てて可読化
 // (DARK_BG_KEYS + highlight parse の auto-contrast)。元々OKの 黄/橙/桃/紫 は明るいまま維持。
@@ -2665,6 +2673,8 @@ function disposeDecorations() {
   strikeBodyDecoration = undefined;
   if (strikeMarkerDecoration) strikeMarkerDecoration.dispose();
   strikeMarkerDecoration = undefined;
+  if (refPointHideDecoration) { refPointHideDecoration.dispose(); refPointHideDecoration = undefined; } // v0.9.99967
+  if (refPointLabelDecoration) { refPointLabelDecoration.dispose(); refPointLabelDecoration = undefined; } // v0.9.99967
   if (strikeColorByKey) {
     for (const d of strikeColorByKey.values()) { try { d.dispose(); } catch (_) {} }
     strikeColorByKey = null;
@@ -3014,6 +3024,15 @@ function makeDecorations() {
   // v0.9.658: 取消線の `~~` と `(日時)` と `{ }` を font-size:0 で隠す。
   strikeMarkerDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  // v0.9.99967: 参照符=点膜▶◀。生データ {* ▶◀mRn=… *} を font-size:0 で隠し(タイムスタンプ非表示=
+  // 既存stealth思想)、before チップに「※1 / †2 : 説明文」を描く(contentTextは項目ごとのrenderOptions)。
+  refPointHideDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  refPointLabelDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
   });
   // v0.9.699: 新形取消線 ~~{本文(線色/背景色)}~~ の線色別 line-through。文字色は付けず
@@ -4534,6 +4553,44 @@ function workingTocHighlightRanges(editor) {
   return { lineRanges, itemRanges };
 }
 
+// {* ▼mCN=0620_REF_POINT // v0.9.99967 参照符=点膜▶◀ parser + 仮想採番 (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// 参照符=「名前付き・グループ化・grep可能な in-text 栞」= 栞の一般形(俊克×Gemini 2026.07.02)。
+// 3層アーキテクチャ: ①本体=生データ(現実・grep可) ②表示=記号+番号(仮想・描画時に毎回計算・不保存)
+// ③設定=記号↔R族/F指定=mMETA随伴。巡回グループ=「参照膜名_TS」完全一致。R号=見た目の族で独立。
+const REF_POINT_RE = /\{\*[ \t]*▶◀[ \t]*mR(\d+)[ \t]*=[ \t]*([^\r\n]*?)[ \t]*\*\}/g;
+// R1=※(日本式)→R2=†, R3=‡, R4=*, R5=§(欧米式)。R0は作らない(作家向けはR1起点)。💤は段5でR族入り。
+const REF_FAMILY_SYMBOLS = { 1: '※', 2: '†', 3: '‡', 4: '*', 5: '§', 6: '💤' };
+function refFamilySymbol(fam) {
+  return REF_FAMILY_SYMBOLS[fam] || ('R' + fam);
+}
+// inner = `参照膜名_タイムスタンプ // 説明文`。TSは生データ保持・表示のみ隠す(小説/説明書向けstealth思想)。
+function parseRefPointInner(inner) {
+  let name = String(inner || '').trim(), desc = '';
+  const ci = name.indexOf('//');
+  if (ci >= 0) { desc = name.slice(ci + 2).trim(); name = name.slice(0, ci).trim(); }
+  const tm = name.match(/_(\d{6}\.\d{3})$/); // MeOS標準TS(HHMMSS.mmm)
+  return { name, desc, ts: tm ? tm[1] : '', base: tm ? name.slice(0, name.length - tm[0].length) : name };
+}
+// 全参照符を文書順に収集(R族ごと仮想採番つき)。描画(applyPrettyLabels)と巡回ジャンプ(段4)の共通足場。
+function collectRefPoints(doc) {
+  const points = [];
+  const counts = {};
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    if (text.indexOf('▶◀') < 0) continue;
+    REF_POINT_RE.lastIndex = 0;
+    let m;
+    while ((m = REF_POINT_RE.exec(text)) !== null) {
+      const fam = Number(m[1]);
+      counts[fam] = (counts[fam] || 0) + 1;
+      const p = parseRefPointInner(m[2]);
+      points.push({ line, start: m.index, end: m.index + m[0].length, fam, serial: counts[fam], name: p.name, base: p.base, ts: p.ts, desc: p.desc });
+    }
+  }
+  return points;
+}
+// {* ▲mCN=0620_REF_POINT // end [cGJF=h] *}
+
 function applyPrettyLabels(editor) {
   if (!editor || !openLineHideDecoration || !openLineLabelDecoration || !closeLineHideDecoration || !closeLineLabelDecoration) return;
   const openHide = [];
@@ -4550,6 +4607,10 @@ function applyPrettyLabels(editor) {
   const highlightFgRangesByColor = {};   // 文字色別 { red:[...], black:[...], ... }
   for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) highlightFgRangesByColor[key] = [];
   const highlightMarkerRanges = [];
+  // v0.9.99967: 参照符(点膜▶◀)の隠し範囲とラベル項目。採番は仮想=このループで毎回計算(不保存)。
+  const refPointHideItems = [];
+  const refPointLabelItems = [];
+  const refPointCounts = {};
   // v0.9.658: 取消線 ~~text~~(日時) の本体範囲（赤線）とマーカー範囲（~~・(日時)を隠す）。
   // 本体はホバーで日時を出すため DecorationOptions({range, hoverMessage}) で push。
   const strikeBodyItems = [];
@@ -4587,6 +4648,27 @@ function applyPrettyLabels(editor) {
 
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
+    // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
+    if (text.indexOf('▶◀') >= 0) {
+      REF_POINT_RE.lastIndex = 0;
+      let mRef;
+      while ((mRef = REF_POINT_RE.exec(text)) !== null) {
+        const fam = Number(mRef[1]);
+        refPointCounts[fam] = (refPointCounts[fam] || 0) + 1;
+        if (line === docCursorLine) continue; // カーソル行は生データを見せて編集可能に(v659の思想)
+        const serial = refPointCounts[fam];
+        const sym = refFamilySymbol(fam);
+        const p = parseRefPointInner(mRef[2]);
+        const label = sym + serial + (p.desc ? ' : ' + p.desc : '');
+        const hover = new vscode.MarkdownString('▶◀ ' + sym + serial + ' — ' + (p.base || p.name || '(無名)') + (p.ts ? '  `_' + p.ts + '`' : '') + (p.desc ? '\n\n' + p.desc : ''));
+        hover.isTrusted = false;
+        refPointHideItems.push({ range: new vscode.Range(line, mRef.index, line, mRef.index + mRef[0].length), hoverMessage: hover });
+        refPointLabelItems.push({
+          range: new vscode.Range(line, mRef.index, line, mRef.index),
+          renderOptions: { before: { contentText: label, color: 'rgba(180, 83, 9, 0.95)', backgroundColor: 'rgba(245, 158, 11, 0.14)', margin: '0 2px 0 2px', fontWeight: '600' } }
+        });
+      }
+    }
     if (mlBracedAllowed && text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
     if (mlBracedAllowed && text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
     // v0.9.876/884: ★コメント包み記法。装飾を /* … */ ブロックコメントで包むと、コードからは ただの
@@ -5149,6 +5231,13 @@ function applyPrettyLabels(editor) {
   refreshBookmarkDecoration(editor);
   if (strikeMarkerDecoration) {
     setDecoCached(editor, strikeMarkerDecoration, 'stMarker', strikeMarkerRanges);
+  }
+  // v0.9.99967: 参照符(点膜▶◀)適用(生データ隠し+記号チップ)。
+  if (refPointHideDecoration) {
+    setDecoCached(editor, refPointHideDecoration, 'refPtHide', refPointHideItems);
+  }
+  if (refPointLabelDecoration) {
+    setDecoCached(editor, refPointLabelDecoration, 'refPtLabel', refPointLabelItems);
   }
   // v0.9.660: 見出し適用（レベル別サイズ＋色別文字色＋マーカー#/(…)隠し）
   if (headingSizeByLevel) {
