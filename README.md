@@ -244,6 +244,7 @@ MeOS stands on the shoulders of:
 - **Zoom Me!** — focus into a sub-region, then return.
 - **Writer formatting** — highlight / strikethrough / headings with text & background colors and `//comments` (editor⇄author notes), via one-tap buttons.
 - **🔖 Bookmarks — leap there, and back** — up to 3 "place" bookmarks with a one-click **Front Anchor** (the line you're writing right now). Two bookmarks make a **bidirectional jump**: there, and back, again and again. A safety net so you never lose your home.
+- **▶◀ Reference marks (point membranes)** — named, grouped, grep-able in-text bookmarks that live in your text and travel with Git. Create a group via **Edit▾ → Reference** (pick a canonical symbol: ※ † ‡ * §), issue marks with the **💤 button** (one click parks a "do it later" point; the new mark becomes **F**), and cycle a group with the **※ button** (one click jumps to F, click again to walk the group). Footnotes (†n) are simply the most classic use of reference marks — the mark sits in the text, the explanation lives with the mark.
 - **Raw view (👁 button or type `kakaka`)** — toggle all rendering off to read the plain markup, or for a distraction-free editor. Cast the spell again to restore MeOS. *(CJK input is already smooth — decorations live in the gutter — so you rarely need this.)*
 
 > ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`

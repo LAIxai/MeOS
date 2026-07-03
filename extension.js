@@ -2063,7 +2063,7 @@ let mdWrapperHideDecoration;
 // v0.9.615: †† 注釈領域 — コメントとバッジの間。
 // MD の HTML コメント構文色（緑）を editor.foreground で上書きし、
 // 注釈が通常テキスト色で表示されるようにする。
-let annotationColorDecoration;
+// v0.9.99971: annotationColorDecoration(††注釈の赤色表示)は撤去(参照符▶◀が後継)。
 // v0.9.656: 文筆家向けハイライト ==text== → 黄背景。`==` マーカーは font-size:0 で隠す
 // (膜マーカー隠しと同じ手法)。本体(黄背景)とマーカー隠しの2装飾。
 // v0.9.657: 7色対応 ==text(色)==。色名は日英両対応。色ごとに装飾型を持つ
@@ -2660,8 +2660,6 @@ function disposeDecorations() {
   if (workingTocItemDecoration) workingTocItemDecoration.dispose();
   if (fixedTocHideDecoration) fixedTocHideDecoration.dispose();
   if (mstatIconDoorDecoration) mstatIconDoorDecoration.dispose();
-  if (annotationColorDecoration) annotationColorDecoration.dispose();
-  annotationColorDecoration = undefined;
   if (highlightBodyByColor) {
     for (const deco of highlightBodyByColor.values()) { try { deco.dispose(); } catch (_) {} }
     highlightBodyByColor = null;
@@ -2991,11 +2989,6 @@ function makeDecorations() {
     textDecoration: 'none; opacity: 0; font-size: 0px;',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
   });
-  // v0.9.627: †† 注釈領域を赤色で表示。注釈として目立たせる。
-  annotationColorDecoration = vscode.window.createTextEditorDecorationType({
-    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    color: 'rgba(220, 60, 60, 0.95)'
-  });
   // v0.9.656/657: ハイライト ==text(色)== の本体に色別の半透明背景（蛍光ペン風）。
   // 色ごとに装飾型を生成して Map に保持。highlightBodyDecoration は後方互換で yellow を指す。
   highlightBodyByColor = new Map();
@@ -3205,46 +3198,11 @@ function cleanTail(tail) {
 //   (📊⊕f0+2O D-2)
 // The D value is the submarine depth: outer/root = D0, deeper membranes = D-1, D-2...
 // v0.9.526: Accept both legacy `(📊...)` and new `(📊1... 📊)` / `(📊0... 📊)` formats.
-// v0.9.626: 番号付き注釈パーサー ——————————————————————————————
-// 対応形式:
-//   ††[01]? text       — 旧形式（番号なし）
-//   †n†[01]? text      — 番号付き（n = 注釈番号）
-//   †n/N†[01]? text    — 番号付き＋総数（マスター注釈、N = 総数）
-// 表示: †n → 可視、/N†1 → 非表示。旧形式は †† → 可視、1 → 非表示。
-const DAGGER_ANNOT_RE = /†(\d+(?:\/(\d+))?)?†/;
-function findDaggerAnnotation(text, searchStart, searchEnd) {
-  if (searchStart == null) searchStart = 0;
-  if (searchEnd == null) searchEnd = text.length;
-  const area = text.slice(searchStart, searchEnd);
-  const m = area.match(DAGGER_ANNOT_RE);
-  if (!m) return null;
-  const idx = searchStart + m.index;
-  const fullMatch = m[0];
-  let annotNum = null, totalCount = null, numStr = '', totalStr = '';
-  if (m[1]) {
-    if (m[2]) {
-      const slashPos = m[1].indexOf('/');
-      numStr = m[1].slice(0, slashPos);
-      totalStr = m[2];
-      annotNum = parseInt(numStr, 10);
-      totalCount = parseInt(totalStr, 10);
-    } else {
-      numStr = m[1];
-      annotNum = parseInt(numStr, 10);
-    }
-  }
-  const afterIdx = idx + fullMatch.length;
-  const afterChar = text[afterIdx];
-  let visible = true;
-  let headerLen = fullMatch.length;
-  if (afterChar === '0') { visible = false; headerLen++; }
-  else if (afterChar === '1') { visible = true; headerLen++; }
-  const visiblePrefixLen = annotNum !== null ? (1 + numStr.length) : 2;
-  const displayPrefix = annotNum !== null ? ('†' + numStr) : '††';
-  return { idx, annotNum, totalCount, visible, headerLen, numStr, totalStr,
-           visiblePrefixLen, displayPrefix, fullMatch };
-}
-function hasDaggerAnnotation(text) { return DAGGER_ANNOT_RE.test(text); }
+// v0.9.99971: ††注釈(v0.9.615〜627)を廃止(参照膜プロジェクト段6・俊克決定 2026.07.03 am09:45)。
+// 参照符(点膜▶◀・0620_REF_POINT)が後継: 脚注(†n)は参照符の代表的用途。††は装飾のみの機能だった
+// のでパーサ撤去でも既存テキストは無傷(素のテキストとして見えるだけ=往復破壊ゼロ)。旧記法が
+// 残っていれば `††` でgrepして参照符へ移行可。DAGGER_ANNOT_RE/findDaggerAnnotation/
+// hasDaggerAnnotation と描画側(annotationColor系・annotInLabel)を撤去。
 
 // The leading icon may be `📊`, `📊0` (badge hidden), or `📊1` (badge shown).
 // Trailing ` 📊` before the closing `)` is the new format's badge-end delimiter.
@@ -4778,8 +4736,6 @@ function applyPrettyLabels(editor) {
   const closeHide = [];
   const closeLabels = [];
   const linkHide = [];
-  // v0.9.615: †† 注釈の色上書き範囲（MD の緑 → editor.foreground）
-  const annotationColorRanges = [];
   // v0.9.656/657: ハイライト ==text(色)== の本体範囲（色別）とマーカー範囲（==・(色)を隠す）
   const highlightBodyRangesByColor = {}; // 背景色別 { red:[Range...], yellow:[...], ... }
   for (const key of Object.keys(HIGHLIGHT_COLORS)) highlightBodyRangesByColor[key] = [];
@@ -5144,54 +5100,16 @@ function applyPrettyLabels(editor) {
           aliasSrcEnd = aliasSrcStart + openBadge.alias.length;
         }
       }
-      // v0.9.615: ††X 注釈領域 — コメントとバッジの間。
-      // 書式: {* ▼mCN=name // comment ††1 注釈 (📊badge📊) [flags] *}
-      //   ††0 注釈 → 注釈があっても非表示（トグルで一時隠し）
-      //   ††1 注釈 → 「†† 注釈」として表示（1 は非表示）
-      //   ††  注釈 → ††1 と同等（数字省略＝表示）
-      //   †† なし  → 従来通り badgeStart まで非表示
-      // 色上書き: MD の HTML コメント緑 → editor.foreground。
-      // v0.9.626: 番号付き注釈対応（findDaggerAnnotation で統一パース）
+      // v0.9.99971: ††注釈の描画分岐を撤去(参照符▶◀が後継)。†† テキストが残っていても
+      // 素のソーステキストとして見えるだけ(無傷)。
       const badgeStartPos = openBadge ? openBadge.start : -1;
-      const annotSearchEnd = badgeStartPos > parts.idStart ? badgeStartPos : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
-      const daggerInfo = findDaggerAnnotation(text, parts.idStart, annotSearchEnd);
-      const daggerIdx = daggerInfo ? daggerInfo.idx : -1;
-      const annotDisplay = daggerInfo ? daggerInfo.visible : true;
-      const annotHeaderLen = daggerInfo ? daggerInfo.headerLen : 0;
-      const annotDisplayPrefix = daggerInfo ? daggerInfo.displayPrefix : '††';
-      let annotationText = '';
-      let annotationRangeEnd = -1;
-      if (daggerIdx >= 0) {
-        annotationRangeEnd = badgeStartPos > daggerIdx ? badgeStartPos : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
-        annotationText = text.slice(daggerIdx + annotHeaderLen, annotationRangeEnd).trim();
-      }
-      // 注釈あり+表示 → 色上書き
-      if (daggerIdx >= 0 && annotDisplay && annotationText.length > 0 && annotationRangeEnd > daggerIdx) {
-        annotationColorRanges.push(new vscode.Range(line, daggerIdx, line, annotationRangeEnd));
-      }
-      // ヘッダー内の非表示部分: †n を見せ、残り（/N†1 等）を隠す
-      if (daggerIdx >= 0 && annotDisplay && annotationText.length > 0 && daggerInfo && daggerInfo.visiblePrefixLen < annotHeaderLen) {
-        openHide.push({ range: new vscode.Range(line, daggerIdx + daggerInfo.visiblePrefixLen, line, daggerIdx + annotHeaderLen) });
-      }
-      // 非表示(†0) or 注釈空 → 丸ごと非表示
-      if (daggerIdx >= 0 && (!annotDisplay || annotationText.length === 0)) {
-        const daggerEnd = annotationRangeEnd > daggerIdx ? annotationRangeEnd : (daggerIdx + annotHeaderLen);
-        openHide.push({ range: new vscode.Range(line, daggerIdx, line, daggerEnd) });
-      }
       if (hideName && parts.idStart >= 0) {
-        if (daggerIdx >= 0 && annotDisplay && annotationText.length > 0) {
-          // idStart→†† を非表示（「†† 注釈」は表示のまま）
-          if (daggerIdx > parts.idStart) {
-            openHide.push({ range: new vscode.Range(line, parts.idStart, line, daggerIdx) });
-          }
-        } else {
-          // †† なし or ††0 or 注釈空 — 従来動作（idStart→badge まで非表示）
-          const cutEnd = (badgeStartPos > parts.idStart)
-            ? badgeStartPos
-            : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
-          if (cutEnd > parts.idStart) {
-            openHide.push({ range: new vscode.Range(line, parts.idStart, line, cutEnd) });
-          }
+        // idStart→badge まで非表示
+        const cutEnd = (badgeStartPos > parts.idStart)
+          ? badgeStartPos
+          : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
+        if (cutEnd > parts.idStart) {
+          openHide.push({ range: new vscode.Range(line, parts.idStart, line, cutEnd) });
         }
       }
       // 📊0 → hide the entire badge text — EXCEPT when an alias literal lives inside
@@ -5233,19 +5151,10 @@ function applyPrettyLabels(editor) {
         // ソースのエイリアスも非表示（デコレーションで表示するため）
         openHide.push({ range: new vscode.Range(line, aliasSrcStart, line, aliasSrcEnd) });
       }
-      // v0.9.617→623: MD + エイリアスありの場合のみ注釈をラベルに埋め込む。
-      // エイリアスなしの場合は注釈をソーステキストのまま残す。
-      // ソース上の位置がコメントの後なので「▼ 膜名 // コメント †† 注釈」と自然に表示。
-      // v0.9.618: カーソル行ではスキップして編集可能にする。
-      let annotInLabel = '';
-      if (isMd && !isEditingLine && aliasInLabel && daggerIdx >= 0 && annotDisplay && annotationText.length > 0) {
-        annotInLabel = ' ' + annotDisplayPrefix + ' ' + annotationText;
-        // ソース上の †† 注釈テキストを非表示（デコレーションで表示するため）
-        openHide.push({ range: new vscode.Range(line, daggerIdx, line, annotationRangeEnd) });
-      }
+      // v0.9.99971: ††注釈のラベル埋め込み(annotInLabel)は撤去(参照符▶◀が後継)。
       const openGlyph = isMnt
-        ? (baseOpenGlyph + '📒' + aliasInLabel + annotInLabel)
-        : (baseOpenGlyph + aliasInLabel + annotInLabel);
+        ? (baseOpenGlyph + '📒' + aliasInLabel)
+        : (baseOpenGlyph + aliasInLabel);
       openLabels.push({
         range: new vscode.Range(line, parts.idStart, line, parts.idStart),
         renderOptions: { before: { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
@@ -5374,10 +5283,6 @@ function applyPrettyLabels(editor) {
   setDecoCached(editor, openLineLabelDecoration, 'openLabel', openLabels);
   setDecoCached(editor, closeLineHideDecoration, 'closeHide', closeHide);
   setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', closeLabels);
-  // v0.9.615: †† 注釈領域の色上書き適用
-  if (annotationColorDecoration) {
-    setDecoCached(editor, annotationColorDecoration, 'annotColor', annotationColorRanges);
-  }
   // v0.9.656/657: ハイライト ==text(色)== 適用（色ごとの本体背景＋マーカー==/(色)隠し）
   if (highlightBodyByColor) {
     for (const key of Object.keys(HIGHLIGHT_COLORS)) {
@@ -6986,7 +6891,7 @@ function clearForRaw(editor) {
   if (strikeColorByKey) for (const d of strikeColorByKey.values()) z(d);
   if (headingSizeByLevel) for (const d of headingSizeByLevel.values()) z(d);
   if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
-  z(headingMarkerDecoration); z(annotationColorDecoration);
+  z(headingMarkerDecoration);
   z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
   // bookmark は残す(IMEに無害・ナビ有用)
 }
@@ -10558,8 +10463,7 @@ function membraneArrowToggleHitInfo(editor) {
       const lineText = editor.document.lineAt(info.line).text || '';
       const badge = parseMstatBadgeFromText(lineText);
       const hasActiveAlias = badge && typeof badge.alias === 'string' && badge.alias.length > 0 && badge.nameDisplay !== false;
-      const hasDagger = hasDaggerAnnotation(lineText);
-      if (hasActiveAlias || hasDagger) {
+      if (hasActiveAlias) { // v0.9.99971: hasDagger判定は††廃止で撤去
         // カーソルが既にこの行にいた → 編集モード中 → toggle 許可
         if (prevLineBeforeSelectionChange === info.line) return info;
         return null;
@@ -11203,16 +11107,7 @@ function maybeRedirectClickFromHiddenSuffix(editor) {
   // If cursor is past the wrap column, it's on the visual 2nd line.
   if (pos.character < wrapColumn) return;
 
-  // v0.9.626: 番号付き注釈対応 — 注釈領域があればその直後へカーソル移動
-  const openBadge = parseMstatBadgeFromText(text);
-  const badgeStartPos = openBadge ? openBadge.start : -1;
-  const searchEnd = badgeStartPos > parts.idStart ? badgeStartPos : (parts.suffixStart >= 0 ? parts.suffixStart : text.length);
-  const redirectDagger = findDaggerAnnotation(text, parts.idStart, searchEnd);
-  if (redirectDagger && redirectDagger.visible) {
-    const p = new vscode.Position(pos.line, redirectDagger.idx + redirectDagger.headerLen);
-    editor.selection = new vscode.Selection(p, p);
-    return;
-  }
+  // v0.9.99971: ††注釈へのカーソルリダイレクト(v626)は††廃止で撤去。
 
   // v0.9.909: ★折り畳まれた膜では、次行(=隠れた行)へカーソルを移すとVSCodeがそれを見せるため自動展開して
   // しまう(俊克 6/16 pm10:00: 膜名コメントが折り返し、その部分をクリックすると膜が展開)。畳まれている時は
@@ -11268,8 +11163,7 @@ async function maybeAutoUnfoldOnSelection(editor, selectionKind) {
   const isMd = isMarkdownDocument(editor.document);
   if (isMd) {
     const hasAlias = badge && typeof badge.alias === 'string' && badge.alias.length > 0 && badge.nameDisplay !== false;
-    const hasDagger = hasDaggerAnnotation(lineText);
-    if ((hasAlias || hasDagger) && prevLineBeforeSelectionChange !== line) return;
+    if (hasAlias && prevLineBeforeSelectionChange !== line) return; // v0.9.99971: hasDagger判定は††廃止で撤去
   }
   if (badge && typeof badge.alias === 'string' && badge.alias.length > 0) {
     const badgeText = lineText.slice(badge.start, badge.end);
@@ -11677,125 +11571,9 @@ async function duplicateMe(editor) {
 
 // v0.9.619: Annotate Me… — 現在の膜行に †† 注釈を挿入/変更する。
 // コメントとバッジの間に ††1 注釈テキスト を配置する。
-async function annotateMe() {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) return;
-  const pair = currentMembranePairForRename(editor);
-  if (!pair) {
-    vscode.window.showInformationMessage('Annotate Me: カーソルを膜行または膜の中に置いてください。');
-    return;
-  }
-  const openLineText = editor.document.lineAt(pair.start).text;
-  const badge = parseMstatBadgeFromText(openLineText);
-  if (!badge) {
-    vscode.window.showWarningMessage('Annotate Me: バッジが見つかりません。');
-    return;
-  }
-  // v0.9.626: findDaggerAnnotation で統一パース
-  const existingDagger = findDaggerAnnotation(openLineText, 0, badge.start);
-  let currentAnnotation = '';
-  let daggerStart = -1;
-  let daggerEnd = -1;
-  let existingNum = null;
-  if (existingDagger) {
-    daggerStart = existingDagger.idx;
-    daggerEnd = badge.start;
-    currentAnnotation = openLineText.slice(daggerStart + existingDagger.headerLen, daggerEnd).trim();
-    existingNum = existingDagger.annotNum;
-  }
+// v0.9.99971: annotateMe / updateMasterAnnotationTotal(††注釈の作成/総数更新 v615-627)は††廃止で撤去。
+// 後継=参照符(Reference Me=作成/💤=発行/参照ボタン=巡回)。
 
-  const input = await vscode.window.showInputBox({
-    title: 'Annotate Me †',
-    prompt: '膜の注釈を入力（空欄で注釈を削除）',
-    value: currentAnnotation,
-    placeHolder: '注釈テキスト'
-  });
-  if (input === undefined) return; // キャンセル
-
-  const annotText = input.trim();
-
-  // ファイル内の全番号付き注釈をスキャン
-  const doc = editor.document;
-  const allAnnotations = [];
-  for (let i = 0; i < doc.lineCount; i++) {
-    if (i === pair.start) continue;
-    const lt = doc.lineAt(i).text;
-    if (!parseOpenLine(lt)) continue;
-    const b = parseMstatBadgeFromText(lt);
-    const d = findDaggerAnnotation(lt, 0, b ? b.start : lt.length);
-    if (d) allAnnotations.push({ line: i, dagger: d });
-  }
-  const usedNums = allAnnotations.filter(a => a.dagger.annotNum !== null).map(a => a.dagger.annotNum);
-
-  if (daggerStart >= 0) {
-    if (annotText.length > 0) {
-      // 既存の注釈を番号付きで更新
-      const myNum = existingNum !== null ? existingNum : ((usedNums.length > 0 ? Math.max(...usedNums) : 0) + 1);
-      const totalAnnots = allAnnotations.length + 1;
-      const firstAnnotLine = allAnnotations.length > 0 ? Math.min(...allAnnotations.map(a => a.line)) : Infinity;
-      const isMaster = pair.start <= firstAnnotLine;
-      const header = isMaster ? ('†' + myNum + '/' + totalAnnots + '†1 ') : ('†' + myNum + '†1 ');
-      const replacement = header + annotText + ' ';
-      await editor.edit(edit => {
-        edit.replace(new vscode.Range(pair.start, daggerStart, pair.start, daggerEnd), replacement);
-      }, { undoStopBefore: true, undoStopAfter: true });
-      if (!isMaster) await updateMasterAnnotationTotal(editor, totalAnnots, pair.start);
-    } else {
-      // 注釈削除
-      await editor.edit(edit => {
-        edit.replace(new vscode.Range(pair.start, daggerStart, pair.start, daggerEnd), '');
-      }, { undoStopBefore: true, undoStopAfter: true });
-      if (allAnnotations.length > 0) await updateMasterAnnotationTotal(editor, allAnnotations.length, -1);
-    }
-  } else if (annotText.length > 0) {
-    // 新規挿入 — 次の番号を割り当て
-    const myNum = (usedNums.length > 0 ? Math.max(...usedNums) : 0) + 1;
-    const totalAnnots = allAnnotations.length + 1;
-    const firstAnnotLine = allAnnotations.length > 0 ? Math.min(...allAnnotations.map(a => a.line)) : Infinity;
-    const isMaster = pair.start <= firstAnnotLine;
-    const header = isMaster ? ('†' + myNum + '/' + totalAnnots + '†1 ') : ('†' + myNum + '†1 ');
-    const insertion = header + annotText + ' ';
-    await editor.edit(edit => {
-      edit.insert(new vscode.Position(pair.start, badge.start), insertion);
-    }, { undoStopBefore: true, undoStopAfter: true });
-    if (!isMaster) await updateMasterAnnotationTotal(editor, totalAnnots, pair.start);
-  }
-  setTimeout(() => refresh(editor), 80);
-}
-
-// v0.9.626: マスター注釈（†n/N†）の総数 N を更新する。
-async function updateMasterAnnotationTotal(editor, newTotal, excludeLine) {
-  const doc = editor.document;
-  for (let i = 0; i < doc.lineCount; i++) {
-    if (i === excludeLine) continue;
-    const lt = doc.lineAt(i).text;
-    if (!parseOpenLine(lt)) continue;
-    const b = parseMstatBadgeFromText(lt);
-    const d = findDaggerAnnotation(lt, 0, b ? b.start : lt.length);
-    if (d && d.totalCount !== null && d.totalCount !== newTotal) {
-      const newHeader = '†' + d.numStr + '/' + newTotal + '†' + (d.visible ? '1' : '0');
-      await editor.edit(edit => {
-        edit.replace(new vscode.Range(i, d.idx, i, d.idx + d.headerLen), newHeader);
-      }, { undoStopBefore: false, undoStopAfter: false });
-      return;
-    }
-  }
-  // マスターなし → ファイル内最初の番号付き注釈を昇格
-  for (let i = 0; i < doc.lineCount; i++) {
-    if (i === excludeLine) continue;
-    const lt = doc.lineAt(i).text;
-    if (!parseOpenLine(lt)) continue;
-    const b = parseMstatBadgeFromText(lt);
-    const d = findDaggerAnnotation(lt, 0, b ? b.start : lt.length);
-    if (d && d.annotNum !== null && d.totalCount === null) {
-      const newHeader = '†' + d.numStr + '/' + newTotal + '†' + (d.visible ? '1' : '0');
-      await editor.edit(edit => {
-        edit.replace(new vscode.Range(i, d.idx, i, d.idx + d.headerLen), newHeader);
-      }, { undoStopBefore: false, undoStopAfter: false });
-      return;
-    }
-  }
-}
 
 // v0.9.619: Alias Me… — 現在の膜にエイリアスを設定/変更する。
 // バッジ内の N1=aliasText を書き換える。
@@ -15004,8 +14782,7 @@ function membraneArrowHoverMessage(editor, position) {
       const lineText = editor.document.lineAt(position.line).text || '';
       const badge = parseMstatBadgeFromText(lineText);
       const hasActiveAlias = badge && typeof badge.alias === 'string' && badge.alias.length > 0 && badge.nameDisplay !== false;
-      const hasDagger = hasDaggerAnnotation(lineText);
-      if (hasActiveAlias || hasDagger) {
+      if (hasActiveAlias) { // v0.9.99971: hasDagger判定は††廃止で撤去
         const cursorLine = editor.selection ? editor.selection.active.line : -1;
         if (cursorLine !== position.line) return null;
       }
@@ -15458,7 +15235,6 @@ makeDecorations();
     vscode.commands.registerCommand('laiMembrane.copyMyContents', copyMyContents),
     vscode.commands.registerCommand('laiMembrane.selectMyContents', selectMyContents),
     vscode.commands.registerCommand('laiMembrane.duplicateMe', duplicateMe),
-    vscode.commands.registerCommand('laiMembrane.annotateMe', annotateMe),
     vscode.commands.registerCommand('laiMembrane.aliasMe', aliasMe),
     vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
     vscode.commands.registerCommand('laiMembrane.toggleCurrent', toggleCurrent),
