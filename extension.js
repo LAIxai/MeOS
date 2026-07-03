@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99968: ★Reference Me=参照膜プロジェクト段3(俊克 7/3-4)。①Edit Meプルダウン(Edit/Zoom)に「Reference」を追加=選ぶとnode側QuickPickフローが走り選択は元モードへ即戻る(パネル大改造を避ける=v918教訓・webview scriptの差分はリスナー1行のみをHEAD比較で検証済)。②作成フロー=記号ピッカー(※/†/‡/*/§/💤・前回記号を先頭に=mMETA記憶・正準記号の強制=記号ブレによるグループ分裂防止の本質機能)→グループ名入力(検証: //と{* *}禁止)→説明文(任意)→カーソル位置に {* ▶◀mRn=名前_TS // 説明 *} を挿入(C系コードの空行は// で包む・名前+TS=グループID)。1膜1グループ=カーソル膜の直属(レキシカルスコープ・innermostPairAt新設・孫膜は別グループ可)に既存参照符があれば警告(続行可)。③設定のmMETA随伴= _refMem{lastFam,groups,front}を_fmtMem(v99938)と同パスでdata.refへ(flushHtocSelIntoData相乗り+saveRefMeta即書込)=ファイルと旅する(Git越しに生きる)。打った符がその場でF=ref.front(段4の巡回起点)。④段2のTS regexを実物形式に修正: HHMMSS.mmm(誤)→HHMMSS.MDD(月コード=J F M A 5 6 7 8 S O N D・getDefaultMembraneName()と同形式)・月コード英字ケースをnode実測5項目PASS。webview+node両側。
 // - v0.9.99967: ★点膜▶◀=参照膜プロジェクト段2(俊克 7/3)。新種の膜=点膜(開閉ペア無し・常に1行・範囲でなく点・行中インライン可)。参照符 {* ▶◀mRn=参照膜名_TS *} / {* ▶◀mRn=名前_TS // 説明文 *} をインライン装飾パイプライン(=={}==と同経路・行膜機構でない)で描画: 生データをfont-size:0で隠し(TS非表示=stealth思想)、beforeチップに R族記号+文書順仮想採番(※1 / †1 : 出典)を琥珀色で表示・ホバーに膜名/TS/説明。R1=※,R2=†,R3=‡,R4=*,R5=§,R6=💤(未知族はRn表示)。採番=R族ごと文書順・描画時に毎回計算(仮想・不保存)・カーソル行は生データ表示(v659思想)だが採番は進めて番号安定。新セクション0620_REF_POINT(REF_POINT_RE/parseRefPointInner/collectRefPoints=段4巡回の共通足場)。膜ペア機構と不干渉(▶◀は▼▲でないのでcollectPairs対象外=折畳対象外が自動成立)・保存時変換の非対象=往復無傷をnode実測15項目PASS。node側のみ。
 // - v0.9.99966: ★✅膜名刻印=参照膜プロジェクト段1(俊克 7/3 pm02:29)。H-TOCのCTBチェック→開き膜名先頭に`✅ `を生データで刻む/解除で除去(最後の操作が勝つ・H-TOCの基本機能に昇格)。実装2点=①cleanMembraneNameに✅剥がし1行(先頭`✅ `を除いてペア一致判定=v903装飾名正規化と同パターン→開き膜だけ書換で閉じ膜無編集・膜の同一性維持=H-TOCキー/checkLog/📊カウンタのリンク不切断)②toggleWorkingTocItemCheck→syncMembraneCheckMark(parseOpenLineでkey一致の開き膜を探しindexOfで素名位置→前に✅挿入/前の✅除去・冪等)。grep面の完成: `#[✅`見出し/`=={✅`ハイライト/`~~{✅`取消線/`=✅`膜名。タブcheckLog=履歴(仮想)/膜名✅=現在(現実)。node実測10項目PASS(刻印往復無傷/ペア一致/mTC対応/全角スペース)。node側のみ。
 // - v0.9.99965: ストア表示の国際化+バッジ静的化(俊克 7/2 am07:12)。①package.jsonのdescriptionを英語先行・日本語後置に再構成(Marketplace/Open VSXの検索カードは先頭~150字しか出ず、日本語先頭だと英語圏に読めない文字列だけが見えていた)。日本語は全文後半に温存。②READMEのreleaseバッジを静的化のままv0.9.99965へ更新(shields.ioのgithub/v/releaseバッジがレート制限で間欠的にinvalid/Unable to select next GitHub tokenになる持病→静的スナップショットで根治・downloads 194と同運用)。コード変更なし(doc+版のみ)。
@@ -4568,7 +4569,8 @@ function parseRefPointInner(inner) {
   let name = String(inner || '').trim(), desc = '';
   const ci = name.indexOf('//');
   if (ci >= 0) { desc = name.slice(ci + 2).trim(); name = name.slice(0, ci).trim(); }
-  const tm = name.match(/_(\d{6}\.\d{3})$/); // MeOS標準TS(HHMMSS.mmm)
+  // v0.9.99968: TS形式を実物に合わせ修正(HHMMSS.MDD・月コード=J F M A 5 6 7 8 S O N D。例 122105.511=5/11)
+  const tm = name.match(/_(\d{6}\.[JFMA5678SOND]\d{2})$/); // getDefaultMembraneName()と同形式
   return { name, desc, ts: tm ? tm[1] : '', base: tm ? name.slice(0, name.length - tm[0].length) : name };
 }
 // 全参照符を文書順に収集(R族ごと仮想採番つき)。描画(applyPrettyLabels)と巡回ジャンプ(段4)の共通足場。
@@ -4588,6 +4590,80 @@ function collectRefPoints(doc) {
     }
   }
   return points;
+}
+// 指定行を直接囲む最内の膜ペア(レキシカルスコープ判定用)。
+function innermostPairAt(pairs, line) {
+  let best = null;
+  for (const p of pairs) {
+    if (p.start < line && line < p.end) {
+      if (!best || (p.end - p.start) < (best.end - best.start)) best = p;
+    }
+  }
+  return best;
+}
+// v0.9.99968: ★参照膜プロジェクト段3 — Reference Me(参照グループ作成)。Edit Meプルダウンから起動。
+// 手順(1)create: 記号ピッカー(前回記号=mMETA随伴記憶)→名前入力→説明(任意)→カーソル位置に点膜を挿入。
+// 名前+TS=グループID。記号ピッカーは「正準記号を強制しグループ化を成立させる」本質機能(記号ブレ=分裂防止)。
+// 1膜1グループ=同一膜(レキシカルスコープ・小膜/孫膜は別グループ可)に既存グループがあれば警告。
+// 打った符がその場でF(💤駐車と同じ)=段4の巡回起点としてref.frontへ。
+async function referenceMeCreate() {
+  const editor = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+  if (!editor) { vscode.window.showInformationMessage('Reference Me: 対象のエディタがありません。'); return; }
+  const doc = editor.document;
+  const ref = getRefMeta(doc);
+  const famItems = Object.keys(REF_FAMILY_SYMBOLS).map(k => ({
+    label: REF_FAMILY_SYMBOLS[k] + '  (R' + k + ')',
+    description: k === '1' ? '日本式・既定' : (k === '6' ? '保留' : ''),
+    fam: Number(k)
+  }));
+  const lastIdx = famItems.findIndex(it => it.fam === Number(ref.lastFam));
+  if (lastIdx > 0) famItems.unshift(famItems.splice(lastIdx, 1)[0]); // 前回の記号を先頭に(mMETA記憶)
+  const famPick = await vscode.window.showQuickPick(famItems, { placeHolder: 'Reference Me: 参照記号を選択(R族=見た目の族。グループとは独立)' });
+  if (!famPick) return;
+  const base = await vscode.window.showInputBox({
+    prompt: 'Reference Me: 参照グループ名(名前+タイムスタンプがグループIDになります)',
+    value: '参照',
+    validateInput: (v) => {
+      const s = String(v || '').trim();
+      if (!s) return '名前を入力してください';
+      if (s.includes('//') || s.includes('*}') || s.includes('{*')) return '「//」「{*」「*}」は名前に使えません';
+      return null;
+    }
+  });
+  if (base === undefined) return;
+  const desc = await vscode.window.showInputBox({ prompt: 'Reference Me: この参照符の説明文(任意・Enterでスキップ)' });
+  if (desc === undefined) return;
+  // 1膜1グループ(レキシカルスコープ): カーソル膜の"直属"に既存参照符があれば警告(孫膜内は別グループ可)。
+  let cur = null; try { cur = findCurrentPair(editor); } catch (_) {}
+  if (cur) {
+    const pairs = collectPairs(doc, { excludeIndex: false });
+    const clash = collectRefPoints(doc).find(p => {
+      if (p.line <= cur.start || p.line >= cur.end) return false;
+      const inner = innermostPairAt(pairs, p.line);
+      return inner && inner.start === cur.start && inner.end === cur.end;
+    });
+    if (clash) {
+      const go = await vscode.window.showWarningMessage(
+        'この膜には既に参照グループ「' + (clash.base || clash.name) + '」があります(1膜1グループ)。それでも作成しますか?', '作成する', 'キャンセル');
+      if (go !== '作成する') return;
+    }
+  }
+  const stamp = getDefaultMembraneName().replace(/^name_/, '');
+  const groupName = String(base).trim() + '_' + stamp;
+  const pos = editor.selection.active;
+  const lineText = doc.lineAt(pos.line).text || '';
+  // C系コードの空行では行コメントで包む(コードを壊さない)。散文/行中はそのまま挿す。
+  const needComment = MEOS_BLOCK_COMMENT_LANGS.has(doc.languageId) && lineText.trim() === '';
+  const snippet = (needComment ? '// ' : '') + '{* ▶◀mR' + famPick.fam + '=' + groupName + (String(desc).trim() ? ' // ' + String(desc).trim() : '') + ' *}';
+  const we = new vscode.WorkspaceEdit();
+  we.insert(doc.uri, pos, snippet);
+  await vscode.workspace.applyEdit(we);
+  ref.groups[groupName] = famPick.fam;
+  ref.lastFam = famPick.fam;
+  ref.front = { name: groupName }; // 打った符がその場でF(駐車と同じ)
+  await saveRefMeta(doc, ref);
+  refresh(editor);
+  vscode.window.setStatusBarMessage('Reference Me: ' + refFamilySymbol(famPick.fam) + ' グループ「' + groupName + '」を作成しました', 4000);
 }
 // {* ▲mCN=0620_REF_POINT // end [cGJF=h] *}
 
@@ -5694,9 +5770,29 @@ function getHtocSelMap(document) {
   return map;
 }
 // Merge the live selection map into the tab data so it gets serialized into the mHTOC line.
+// v0.9.99968: 参照符の設定(記号↔R族対応/前回記号/F参照符)をmMETAへ随伴(v99938 Format色と同じ書込パス)。
+// globalStateでなくmMETA=ファイルと旅する(Git越しに生きる・マシン替えで消えない。俊克の図式 2026.07.03)。
+const _refMem = new Map(); // uriString -> { lastFam, groups: {グループ名_TS: fam}, front: {name} }
+function getRefMeta(document) {
+  const k = document.uri.toString();
+  let r = _refMem.get(k);
+  if (!r) {
+    const d = getHyperTocData(document);
+    r = (d && d.ref && typeof d.ref === 'object') ? d.ref : {};
+    _refMem.set(k, r);
+  }
+  if (!r.groups || typeof r.groups !== 'object') r.groups = {};
+  if (!r.lastFam) r.lastFam = 1;
+  return r;
+}
+async function saveRefMeta(document, ref) {
+  _refMem.set(document.uri.toString(), ref);
+  try { const data = getHyperTocData(document); if (data) { data.ref = ref; await writeHyperTocToSource(document, data); } } catch (_) {}
+}
 function flushHtocSelIntoData(document, data) {
   if (!document || !data) return;
   const f = _fmtMem.get(document.uri.toString()); if (f) data.fmt = f; // v0.9.99938: Format色もmMETAへ随伴
+  const rm = _refMem.get(document.uri.toString()); if (rm) data.ref = rm; // v0.9.99968: 参照符設定もmMETAへ随伴
   if (!Array.isArray(data.tabs)) return;
   const map = _htocSelMem.get(document.uri.toString());
   if (!map) return;
@@ -13318,7 +13414,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 <div class="gh-connected-bar" id="gh-connected-bar" style="display:none"><span class="gh-conn-folder" id="gh-conn-folder"></span><span class="gh-conn-repo" id="gh-conn-repo"></span><button class="gh-sync-btn" id="gh-push" data-tip="Octopush (one-shot): OFF — Cmd+S is normal save. Tap 🐙, then Cmd+S → pushes once, then turns OFF. Push when you say so.">🐙</button><button class="gh-open-btn" id="gh-open" data-tip="Open this repository on GitHub in your browser.">🔗</button><button class="gh-disconnect-btn" id="gh-disconnect-btn" data-tip="Unlink THIS folder from GitHub (your saved PAT and the GitHub repo are kept — reconnect any time)">✕</button></div>
 <div class="gh-setup-form" id="gh-setup-form"><div class="gh-form-row"><span class="gh-step">①</span><input class="gh-input" id="gh-profile-url" placeholder="https://github.com/LAIxai" spellcheck="false" data-tip="GitHubのプロフィールURL (例: https://github.com/LAIxai)"/></div><div class="gh-form-row"><span class="gh-step">②</span><input class="gh-input" id="gh-pat-input" type="password" placeholder="PAT (ghp_...)" spellcheck="false" data-tip="Personal Access Token — needs 'repo' scope"/><button class="gh-pat-link" id="gh-pat-link" disabled data-tip="Open GitHub's token creation page">Get PAT ↗</button></div><div class="gh-form-row gh-folder-row2"><span class="gh-step">③</span><span class="gh-folder-label2">📁</span><span class="gh-folder-name2" id="gh-folder-name2">Open a folder first</span><button class="gh-change-btn" id="gh-change-folder" data-tip="Pick which folder to back up to GitHub">Change…</button></div><label class="gh-priv-row" id="gh-priv-row" data-tip="Private = only you can see it (recommended for diaries / drafts). Uncheck for a public repo."><input type="checkbox" id="gh-private" checked/><span id="gh-priv-text">🔒 Private (only you)</span></label><button class="gh-connect-btn" id="gh-connect-btn" disabled>Connect &amp; Create Repo</button><div class="gh-msg" id="gh-msg"></div></div></div></div><div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | =={ text (text/bg)//tip }== — ▾ picks color · ↻ cycles 3 saved colors">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##[ text (text/bg)//tip ]## — ▾ picks color · ↻ cycles ## → # → ###">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button><div class="color-pop fmt-pop" id="fmt-pop"></div></div>
 <div class="inline-panel" id="new-rename-panel">
-  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button></div>
+  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button></div>
   <div class="me-name-wrap" id="me-name-wrap"><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
@@ -13582,7 +13678,7 @@ function saveZoomMeCurrentValues(){const zs=document.getElementById('zoom-me-sta
 function renderZoomMeLoaded(label){if(zoomMeStatus)zoomMeStatus.innerHTML='';renderZoomScopeIndicator(label||'1〜EOF');}
 function applyZoomMeMode(mode,keepValues){if(!keepValues)saveZoomMeCurrentValues();zoomMeMode=mode==='me'?'me':'line';const zs=document.getElementById('zoom-me-start'),ze=document.getElementById('zoom-me-end'),sep=document.getElementById('zoom-me-sep');if(zoomMeModeBtn)zoomMeModeBtn.textContent=zoomMeMode==='me'?'Me':'Line';if(zs){zs.classList.toggle('me-mode-name',zoomMeMode==='me');zs.inputMode=zoomMeMode==='me'?'text':'numeric';zs.value=zoomMeMode==='me'?zoomMembraneNameValue:zoomLineStartValue;}if(ze){ze.classList.toggle('me-mode-count',zoomMeMode==='me');ze.inputMode='numeric';ze.value=zoomMeMode==='me'?zoomMembraneCountValue:zoomLineEndValue;}if(sep)sep.textContent=zoomMeMode==='me'?'+':'〜';}
 applyZoomMeMode(zoomMeMode,true);renderZoomScopeIndicator('${esc(zoomMeLastLoadedLabel || '1〜EOF')}');renderEditPanelMode();
-if(editModeSelect)editModeSelect.addEventListener('change',()=>{editPanelMode=editModeSelect.value==='zoom'?'zoom':'edit';renderEditPanelMode();});
+if(editModeSelect)editModeSelect.addEventListener('change',()=>{if(editModeSelect.value==='reference'){/* v0.9.99968: Reference Me=作成フローはnode側QuickPickで実行し、選択は元のモードへ即戻す(パネル大改造を避ける=v918教訓) */vscode.postMessage({type:'referenceMeCreate'});editModeSelect.value=(editPanelMode==='zoom')?'zoom':'edit';return;}editPanelMode=editModeSelect.value==='zoom'?'zoom':'edit';renderEditPanelMode();});
 if(zoomMeModeBtn)zoomMeModeBtn.addEventListener('click',()=>{applyZoomMeMode(zoomMeMode==='me'?'line':'me',false);});
 ['zoom-me-start','zoom-me-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',saveZoomMeCurrentValues);});
 if(zoomMeLoad)zoomMeLoad.addEventListener('click',()=>{saveZoomMeCurrentValues();vscode.postMessage({type:'zoomMeLoad',mode:zoomMeMode,start:document.getElementById('zoom-me-start')?document.getElementById('zoom-me-start').value:'1',end:document.getElementById('zoom-me-end')?document.getElementById('zoom-me-end').value:'EOF'});});
@@ -14463,6 +14559,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
     if (message && message.type === 'openGithubPage') { await openGithubPage(); return; }
     if (message && message.type === 'createNewMdFile') { await createNewMdFile(); return; }
+    if (message && message.type === 'referenceMeCreate') { await referenceMeCreate(); return; } // v0.9.99968: Reference Me
     if (message && message.type === 'toggleGithubAutoSync') { toggleGithubAutoSync(); return; }
     if (message && message.type === 'githubConnect') { await githubConnectWizard(message.profileUrl || '', message.pat || '', message.isPrivate !== false); return; }
     if (message && message.type === 'githubDisconnect') { await githubDisconnect(); return; }
