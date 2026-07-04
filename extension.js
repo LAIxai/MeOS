@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99977: ★参照グループの3分類=参照膜の有無を区別(俊克 7/4 pm10:41・pm10:44訂正「保留栞は参照膜なしの一形態・🔖3個では不足するので参照グループに属する」)。分類=①💤保留(fam6・膜なしの特殊用途) ②参照膜なし(印だけの軽い用途: プロジェクト用等) ③参照膜有り(説明文付きの点=参照膜を持つ=説明書などの本当の参照)。実装: ⇄トグルを2状態から3状態循環(💤→膜なし→膜有り→💤)に(referenceToggleMode書換・refGroupsByCategory新設・カテゴリ別復帰先lastPlainGroup/lastDocGroupを記憶・空カテゴリはスキップ・全空でも💤に着地=行き止まり無し)。▾の参照膜リストを「— 参照膜有り —」「— 参照膜なし —」の2セクション見出し付きに。referenceStateにmode('pending'/'plain'/'doc')とhasMembraneを追加・トグルラベルは現在カテゴリに●。カテゴリ判定は生データ導出(descの有無)=説明を書き足せば膜なし→膜有りへ自然に昇格。3状態循環をnode実測7項目PASS。webview+node両側。
 // - v0.9.99976: Me DockのHomeボタン表示をH→🏠に(俊克 7/4 pm10:25 改良1: 隣の参照ボタン(記号)/🔖が絵文字なので統一)。CSSの太字白文字指定を絵文字向けに簡素化・パディングを💤/🔖と同じ3px 6pxに・ガターホバー文言もHボタン→🏠ボタンに。ガターはhome.svg(緑地白H)のまま=スクショで👍済みのデザイン。webviewのみ(HTML+CSS+文言)。
 // - v0.9.99975: ★Home栞を新設(俊克 7/4 pm06:18)。動機=生涯日記: Current Meの最終カーソル復元は膜単位のため、7月膜の中に日記以外の膜を作ってそこに居ると「日記の本当に書き込む場所」へ簡単に戻れない→一番戻りたい場所をHomeとして1ファイル1個定義。機動力が命: ①🔖栞ボタンの右に白抜きHボタン(緑地#16a34a)+▾(メニューはSwitch Homeのみ=シンプル至上)。Hクリック=Homeへ直行・未設定ならその場をHomeに(栞の空時F貼りv848と同じ一貫性)。▾Switch Home=カーソル行をHomeに。②ガター=home.svg新規(緑地・白H)=ボタンと同デザインで対応が一目(俊克案)・overview ruler緑・ホバーに🏠 Home(Ln·日時)。③データ=栞と同じ仮想方式: getBookmarksにhome/homeAt追加・saveBookmarksのglobalStateホワイトリストにも追加(v845の教訓=save側の漏れで消える)・Clear all bookmarksでもHomeは温存(別ファミリー)・adjustBookmarksForChangeで行ズレ追従(挿入/削除/跨ぎクランプをnode実測4項目PASS)。④コマンドlai-membrane.homeJump/homeSwitch登録・bookmarkStateにhome随伴・renderBookmarkStateでボタンtip/未設定zero表示。webview差分=homeシンボルのみ(HEAD比較監査)。webview+node+SVG1枚。
 // - v0.9.99974: ★参照メニュー再編+符数カウント修正(俊克 7/4 pm06:01 スクショ{tmp > v0.9.99973_0601}・pm06:11訂正「最前線は参照符の中の1つ」)。①バグ1: ボタン/リストの個数が膜を含んでいた→「参照符の総数」に修正: refMarkCount=説明文付きの点=参照膜とみなし1つ除外(Reference Meのcreate=説明を書く=膜/発行・Switch挿入=素の符)・保留参照は特殊=膜なし符のみ→全数。②改良1: ▾メニューを俊克指定の順に再編: 🗑Delete a group…/🧹Delete ALL groups/(区切)/参照膜リスト=通常参照のみ(保留はリストに出さない)/(区切)/⇄Select 💤 or Normal Ref=保留⇄通常のトグル(referenceToggleMode新設・復帰先=lastNormalGroup記憶・通常なしなら案内して留まる・ラベルに●現在+保留符数)/🚩Switch Front Reference。③➕Issue mark here(発行)を廃止→Switch Front Referenceに吸収: 符の上=その符がF(+そのグループを作業対象に・保留符なら💤モード)/符が無い場所=作業グループの符を挿入して即F(栞の「With no 🔖 here, it adds one」と同義・referenceIssueは内部関数として存続)。④CSSのorder:1撤去=メニューはDOM順。referenceStateの形を{activeSym,count,pending:{count,active},groups=通常のみ}に変更。ロジックをnode実測9項目PASS。webview+node両側。
@@ -4799,36 +4800,64 @@ async function referenceSelectGroup(editor, name, pending) {
   if (!editor) return;
   const ref = getRefMeta(editor.document);
   ref.activeGroup = pending ? '💤' : String(name || '');
-  if (!pending && name) { ref.issueGroup = name; ref.lastNormalGroup = name; } // v0.9.99974: トグル復帰先を記憶
+  if (!pending && name) {
+    ref.issueGroup = name;
+    ref.lastNormalGroup = name; // 後方互換
+    // v0.9.99977: カテゴリ別の復帰先(膜有り/膜なし)を記憶
+    try { const cats = refGroupsByCategory(editor.document, ref); if (cats.doclike.includes(name)) ref.lastDocGroup = name; else ref.lastPlainGroup = name; } catch (_) {}
+  }
   await saveRefMeta(editor.document, ref);
   postBookmarkState(editor);
   vscode.window.setStatusBarMessage('作業参照グループ: ' + (pending ? '💤 保留' : name), 2500);
 }
-// v0.9.99974(改良1 俊克): Select 💤 or Normal Ref — 保留モード⇄通常参照をワンタップで切替。
-// 通常側の復帰先=最後に選んだ通常グループ(lastNormalGroup)・無ければ文書先頭の通常グループ。
+// v0.9.99977(俊克 pm10:41): 3状態循環トグル 💤保留 → 参照膜なし → 参照膜有り → 💤…
+// 膜有り=説明文付きの点(参照膜)を持つグループ=本当の参照(説明書等)/膜なし=印だけの軽い用途/
+// 保留💤=膜なしの一形態・特殊用途。カテゴリ別に復帰先を記憶(lastPlainGroup/lastDocGroup)。
+// カテゴリが空なら次へスキップ(状況をステータスバーで通知)。
+function refGroupsByCategory(doc, ref) {
+  const points = collectRefPoints(doc);
+  const map = new Map();
+  for (const p of points) { const a = map.get(p.name) || []; a.push(p); map.set(p.name, a); }
+  for (const n of Object.keys(ref.groups)) if (!map.has(n)) map.set(n, []);
+  const plain = [], doclike = [];
+  for (const [name, pts] of map) {
+    const fam = pts.length ? pts[0].fam : (Number(ref.groups[name]) || 1);
+    if (fam === 6) continue; // 保留は💤カテゴリ
+    (pts.some(q => q.desc) ? doclike : plain).push(name);
+  }
+  return { plain, doclike, hasPending: points.some(p => p.fam === 6) || Object.keys(ref.groups).some(n => Number(ref.groups[n]) === 6) };
+}
 async function referenceToggleMode(editor) {
   if (!editor) return;
   const doc = editor.document;
   const ref = getRefMeta(doc);
-  const points = collectRefPoints(doc);
-  const pendingMode = (ref.activeGroup || ref.issueGroup || '') === '💤';
-  if (pendingMode) {
-    let name = ref.lastNormalGroup;
-    if (!name || !points.some(p => p.name === name && p.fam !== 6)) {
-      const firstNormal = points.find(p => p.fam !== 6);
-      name = firstNormal ? firstNormal.name : (Object.keys(ref.groups).find(n => Number(ref.groups[n]) !== 6) || '');
-    }
-    if (!name) { vscode.window.setStatusBarMessage('通常の参照グループがありません — Edit▾ → Reference で作成', 3000); return; }
+  const cats = refGroupsByCategory(doc, ref);
+  const cur = (ref.activeGroup || ref.issueGroup || '');
+  let mode = 'pending';
+  if (cur && cur !== '💤') mode = cats.doclike.includes(cur) ? 'doc' : 'plain';
+  const order = ['pending', 'plain', 'doc'];
+  let next = mode, hops = 0, name = '';
+  while (hops < 3) {
+    next = order[(order.indexOf(next) + 1) % order.length];
+    hops++;
+    if (next === 'pending') { name = '💤'; break; } // 💤はグループ未作成でも選べる(初回発行で自動作成)
+    const pool = next === 'plain' ? cats.plain : cats.doclike;
+    const last = next === 'plain' ? ref.lastPlainGroup : ref.lastDocGroup;
+    if (pool.length) { name = (last && pool.includes(last)) ? last : pool[0]; break; }
+  }
+  if (!name) { vscode.window.setStatusBarMessage('参照グループがありません — Edit▾ → Reference で作成', 3000); return; }
+  if (name === '💤') {
+    if (cur && cur !== '💤') { if (cats.doclike.includes(cur)) ref.lastDocGroup = cur; else ref.lastPlainGroup = cur; }
+    ref.activeGroup = '💤';
+  } else {
     ref.activeGroup = name;
     ref.issueGroup = name;
-    ref.lastNormalGroup = name;
-  } else {
-    if (ref.activeGroup && ref.activeGroup !== '💤') ref.lastNormalGroup = ref.activeGroup;
-    ref.activeGroup = '💤';
+    if (next === 'plain') ref.lastPlainGroup = name; else ref.lastDocGroup = name;
   }
   await saveRefMeta(doc, ref);
   postBookmarkState(editor);
-  vscode.window.setStatusBarMessage('作業参照: ' + (ref.activeGroup === '💤' ? '💤 保留' : ref.activeGroup), 2500);
+  const modeLabel = name === '💤' ? '💤 保留(膜なしの特殊用途)' : (next === 'doc' ? '参照膜有り: ' + name : '参照膜なし: ' + name);
+  vscode.window.setStatusBarMessage('作業参照: ' + modeLabel, 2500);
 }
 // v0.9.99968: ★参照膜プロジェクト段3 — Reference Me(参照グループ作成)。Edit Meプルダウンから起動。
 // 手順(1)create: 記号ピッカー(前回記号=mMETA随伴記憶)→名前入力→説明(任意)→カーソル位置に点膜を挿入。
@@ -12252,18 +12281,22 @@ function postReferenceState(editor) {
     for (const n of Object.keys(ref.groups)) if (!map.has(n)) map.set(n, []);
     const activeName = ref.activeGroup || ref.issueGroup || '';
     const pendingMode = activeName === '💤';
-    // v0.9.99974(改良1): 参照膜リスト=通常参照のみ。保留(fam6)はリストに出さずトグルで切替(膜なし=符のみ)。
+    // v0.9.99974(改良1): 参照膜リスト=通常参照のみ。保留(fam6)はリストに出さずトグルで切替。
+    // v0.9.99977(俊克 pm10:41): 参照膜の有無を区別=3分類。膜有り=説明文付きの点がある(説明書などの
+    // 本当の参照)/膜なし=印だけ(プロジェクト用等)/保留💤=膜なしの一形態・特殊用途(🔖3個では不足する
+    // ので参照グループに属する)。トグルは 💤→膜なし→膜有り の3状態循環。
     const groups = [];
     let pendingCount = 0;
     for (const [name, pts] of map) {
       const fam = pts.length ? pts[0].fam : (Number(ref.groups[name]) || 1);
       if (fam === 6) { pendingCount += pts.length; continue; }
-      groups.push({ name, label: name, sym: refFamilySymbol(fam), fam, count: refMarkCount(pts, fam), active: !pendingMode && name === activeName });
+      groups.push({ name, label: name, sym: refFamilySymbol(fam), fam, count: refMarkCount(pts, fam), hasMembrane: pts.some(q => q.desc), active: !pendingMode && name === activeName });
     }
     const act = groups.find(g => g.active);
     const activeSym = pendingMode ? '💤' : (act ? act.sym : '💤');
     const count = pendingMode ? pendingCount : (act ? act.count : 0);
-    meDockPanel.webview.postMessage({ type: 'referenceState', activeSym, count, pending: { count: pendingCount, active: pendingMode }, groups });
+    const mode = pendingMode ? 'pending' : (act ? (act.hasMembrane ? 'doc' : 'plain') : 'pending');
+    meDockPanel.webview.postMessage({ type: 'referenceState', activeSym, count, mode, pending: { count: pendingCount, active: pendingMode }, groups });
   } catch (_) {}
 }
 async function bookmarkInsert(editor) { // カーソル行に追加(3個未満・重複なし)。満杯は何もしない。
@@ -13939,8 +13972,8 @@ function renderBookmarkState(count,full,pending,pendingFull,marksInfo,home){if(h
 }
 /* v0.9.99972(改良2 俊克): 統合参照ボタンの状態描画。ボタン=作業グループの記号(💤=保留・別枠)+件数バッジ。▾メニュー=グループ一覧(保留を先頭の別枠に)。 */
 function renderReferenceState(m){const pendActive=!!(m.pending&&m.pending.active);if(bmPendingBtn){const sym=m.activeSym||'💤';const cnt=Number(m.count)||0;bmPendingBtn.textContent=sym;if(cnt>0)bmPendingBtn.insertAdjacentHTML('beforeend','<span class="bm-pending-cnt">'+cnt+'</span>');bmPendingBtn.classList.toggle('has',cnt>0);const act=(m.groups||[]).find(g=>g.active);bmPendingBtn.setAttribute('data-tip','Reference '+sym+(pendActive?(' — 保留 ('+cnt+' marks)'):(act?(' — '+act.name+' ('+cnt+' marks)'):''))+' | One click jumps to the F mark; click again to cycle the working reference. Pick it from ▾.');}
-if(refGroupList){const norm=Array.isArray(m.groups)?m.groups:[];/* v0.9.99974: 参照膜リスト=通常参照のみ(保留はトグルで) */const row=g=>'<button class="bm-pending-row'+(g.active?' active':'')+'" data-name="'+escText(g.name)+'" data-pending="0" data-tip="参照グループ — 選ぶとボタンがこの記号に(数字=参照符の総数・参照膜は含まず)">'+(g.active?'● ':'　')+escText(g.sym)+' '+escText(g.label||g.name)+' ('+g.count+')</button>';refGroupList.innerHTML=norm.length?norm.map(row).join(''):'<div class="bm-pending-row" style="cursor:default">参照膜なし — Edit▾ → Reference で作成</div>';}
-if(refModeToggleBtn){const pc=(m.pending&&m.pending.count)||0;refModeToggleBtn.textContent=pendActive?('⇄ Select: ● 💤 保留('+pc+') / 通常参照'):('⇄ Select: 💤 保留('+pc+') / ● 通常参照');refModeToggleBtn.classList.toggle('active',pendActive);}}
+if(refGroupList){const norm=Array.isArray(m.groups)?m.groups:[];/* v0.9.99977: 参照膜有り/なしの2セクション表示(俊克: 膜有り=本当の参照説明があるケース) */const row=g=>'<button class="bm-pending-row'+(g.active?' active':'')+'" data-name="'+escText(g.name)+'" data-pending="0" data-tip="'+(g.hasMembrane?'参照膜有り(説明文付きの点=参照膜を持つ) — 選ぶとボタンがこの記号に':'参照膜なし(印だけの軽い用途) — 選ぶとボタンがこの記号に')+'">'+(g.active?'● ':'　')+escText(g.sym)+' '+escText(g.label||g.name)+' ('+g.count+')</button>';const head=t=>'<div class="bm-pending-row" style="cursor:default;opacity:.65;font-size:10px;padding:2px 9px">'+t+'</div>';const docs=norm.filter(g=>g.hasMembrane),plains=norm.filter(g=>!g.hasMembrane);refGroupList.innerHTML=norm.length?((docs.length?head('— 参照膜有り —')+docs.map(row).join(''):'')+(plains.length?head('— 参照膜なし —')+plains.map(row).join(''):'')):'<div class="bm-pending-row" style="cursor:default">参照グループなし — Edit▾ → Reference で作成</div>';}
+if(refModeToggleBtn){const pc=(m.pending&&m.pending.count)||0;const mk=(on,t)=>(on?'● ':'')+t;const mode=m.mode||'pending';refModeToggleBtn.textContent='⇄ '+mk(mode==='pending','💤 保留('+pc+')')+' / '+mk(mode==='plain','膜なし')+' / '+mk(mode==='doc','膜有り');refModeToggleBtn.classList.toggle('active',mode==='pending');refModeToggleBtn.setAttribute('data-tip','3-state switch: 💤 pending (a special no-membrane group) → plain groups (marks only) → documented groups (with a reference membrane = a described point). Cycles in this order.');}}
 if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
 if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
 if(opRemove)opRemove.addEventListener('click',()=>{if(meScope==='me'){vscode.postMessage({type:'shedMe'});}else{vscode.postMessage({type:'noop',name:(meScope==='shadow'?'removeMeShadowSkeleton':'removeMeAllSkeleton')});}});
