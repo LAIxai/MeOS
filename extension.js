@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99973: ★参照グループのグローバル化(俊克ひらめき 7/4 pm04:48 スクショ{tmp > v0.9.99972_0448})。プルダウンに貼り付け説明文中の参照膜名まで出る=ファイル全体grepの性質に最初戸惑い→逆にひらめき: 「グループ=名前空間(用途)/膜=構造」の完全分離が正。①1膜1グループ(レキシカルスコープ)を撤廃=v99972バグ3対応の意図的ロールバック(仕様の進化): referenceMeCreateの同膜ブロック/referenceIssueのowner優先/refGroupOfMembrane/innermostPairAtを撤去。参照グループは通常の栞(3個)と同じくファイルグローバル=説明書の参照だけでなくプロジェクト用・今日の予定用など柔軟な名前空間として使える。②▾メニューに削除2項目: 「🗑 Delete a group…」=QuickPickで選択→modal確認→そのグループの符を文書から全削除+mMETA掃除(activeGroup/issueGroup/frontも整合)/「🧹 Delete ALL groups」=modal確認→全符削除+mMETAリセット。deleteRefPoints=行全体が符(+行コメント//)だけなら行ごと削除・行中なら符の範囲だけ削除(削除計画をnode実測6項目PASS)。③REF_GROUP_MAX=10: グループ作成(Reference Me/発行の自動作成)をmax10で制限(生涯日記で無限に作ると管理不能・既存グループの表示/巡回は無制限=貼り付け文中の外来グループも数には入る)。webview+node両側。
 // - v0.9.99972: ★参照符の実機テストフィードバック対応=バグ3件+改良2件(俊克 7/4 pm03:12 スクショ{tmp > v0.9.99971_0312})。①バグ1+改良1: F参照符のガターが栞の赤F(bookmark-front.svg)と同一で区別不能→通常参照のF=青F(ref-front.svg新規・#2563eb)/保留参照(R6)のF=従来の保留Fマーク(bookmark-pending-front.svg)に出し分け(refFrontPendingGutterDecoration新設・refPtAllにfam追加)。②バグ2: Rawモード(👁/かかか)で点膜が生データにならない→真因=clearForRaw(v723)に参照符装飾が未登録(v99967以降の新参者)→4装飾(hide/label/F青/F保留)をzリストに追加。③バグ3: 2種類の参照マークが同じ膜に混在→2経路を封鎖: referenceMeCreate=同膜(直属・孫膜は別グループ可)に既存グループがあれば作成ブロック(v99969の続行可警告では防げなかった)/referenceIssue=カーソル膜に既存グループがあればそのグループへ発行(レキシカルスコープ>固定選択・refGroupOfMembrane新設)。④改良2: ※ボタンを💤スプリットに統合=参照ボタンは1つ: メインボタン=作業グループの記号を表示(💤=保留・件数バッジ)・クリック=そのグループのFへ→符上再クリックで巡回(巡回を作業グループに限定=他グループの符はスキップ)。▾メニュー=グループ一覧(💤保留は先頭の別枠・区切り線)+➕発行+Switch Front Reference。選択=ref.activeGroup(mMETA随伴・'💤'=保留モード番兵=fam6グループが無くても選べて初回発行で自動作成)。referenceState(postBookmarkState相乗り)で記号/件数/一覧をwebviewへ。旧bm-pending(仮想保留)のメニュー/バッジ/リスト配線を撤去=統合完了(node側の旧関数はレガシー残置)。作業グループロジックをnode実測10項目PASS・webview差分シンボル監査(旧id=削除側のみ/新id=追加側のみ)。webview+node+SVG1枚。
 // - v0.9.99971: ★††注釈廃止=参照膜プロジェクト段6・完結(俊克決定 7/3 am09:45)。v0.9.615〜627の††注釈(††/†n†/†n/N†)を全撤去=参照符▶◀が後継(脚注†n=参照符の代表的用途)。撤去8箇所: ①DAGGER_ANNOT_RE/findDaggerAnnotation/hasDaggerAnnotation(パーサ) ②applyPrettyLabelsの††描画分岐(色上書き/ヘッダ隠し/hideName分岐を単純化) ③annotInLabel(MDラベル埋め込み) ④annotationColorDecoration(宣言/生成/dispose/適用/z()) ⑤MD編集ゲート3箇所のhasDagger判定 ⑥word-wrapカーソルリダイレクト(v626) ⑦annotateMe/updateMasterAnnotationTotal(作成/総数更新コマンド) ⑧package.jsonのannotateMe(コマンド+メニュー)。安全性=††は装飾のみの機能なので既存テキスト無傷(素のテキストとして見えるだけ・往復破壊ゼロ)・旧記法は`††`grepで発見し参照符へ移行可。READMEのFeaturesに参照符1項目追加(棲み分け: 脚注は参照符の代表用途)。node+package.json+README。★参照膜プロジェクト全6段完了(v99966✅刻印→99967点膜→99968Reference Me→99969参照ボタン+F→99970💤発行→99971††廃止)。
 // - v0.9.99970: ★💤統合=参照膜プロジェクト段5(俊克 7/3-4)。「参照符=保留栞の一般形」を回収=一般形が特殊形を吸収。①💤ボタンの中身を「参照符の発行」に差替(referenceIssue): カーソル位置に点膜 {* ▶◀mRn=グループ *} を挿入=保留の生データ化(Gitと旅する・行ズレ消滅・`💤`grep横断・3個制限撤廃)。挿入した符がその場でF(駐車と同じ・ord=挿入位置より前の同グループ符数)。②発行先グループ: 固定済み(ref.issueGroup=mMETA記憶)→即発行/初回・複数→QuickPickで選択後固定/1つ→自動固定/皆無→「保留_TS」(R6=💤)を自動作成=従来のワンクリック駐車と同速度。用件はカーソル行=生データ表示なのでその場で「// 用件」を書ける(発行時ダイアログ無し=摩擦ゼロ維持)。③配線=最小変更: webviewリスナーはbookmarkTogglePendingのまま、node側ハンドラでreferenceIssueへ差替(script変更=tip文字列2行のみ・HEAD比較検証済)。④旧bm-pending機構(仮想保留・PENDING_BOOKMARK_MAX=3)は▾メニュー専用のレガシーに降格=既存ユーザーのglobalState保留データを消さない移行措置(完全撤去は移行合意後に俊克判断・v910 mTC温存と同じ流儀)。通常の場所栞🔖は仮想のまま存続(軽い一時記憶=仮想が正しい・役割線引き)。グループ決定+ord計算をnode実測9項目PASS。webview(tipのみ)+node両側。
@@ -4577,26 +4578,88 @@ function collectRefPoints(doc) {
   }
   return points;
 }
-// 指定行を直接囲む最内の膜ペア(レキシカルスコープ判定用)。
-function innermostPairAt(pairs, line) {
-  let best = null;
-  for (const p of pairs) {
-    if (p.start < line && line < p.end) {
-      if (!best || (p.end - p.start) < (best.end - best.start)) best = p;
+// v0.9.99973(俊克ひらめき 7/4 pm04:48): ★参照グループはグローバル=1膜1グループ(レキシカルスコープ)を
+// 撤廃。グループ=名前空間(用途: 説明書の参照/プロジェクト用/今日の予定…)・膜=構造、の完全分離。
+// 通常の栞(3個)と同じくファイル全体で生きる。プルダウンに全グループが見える今の実装が正=
+// 「1ファイルに何種類あるかが見えた方が使いやすい」。innermostPairAt/refGroupOfMembraneは撤去。
+const REF_GROUP_MAX = 10; // 生涯日記で無限に作ると管理不能→max10(作成のみ制限・既存表示は無制限)
+function refGroupCount(doc, ref) {
+  return new Set([...collectRefPoints(doc).map(p => p.name), ...Object.keys(ref.groups)]).size;
+}
+// 参照符(点膜)の物理削除。filterFn(name)=trueのグループの符を全て消す。
+// 行全体が符だけ(任意の // コメントプレフィックス込み)なら行ごと削除・行中なら符の範囲だけ削除。
+async function deleteRefPoints(editor, filterFn) {
+  const doc = editor.document;
+  const we = new vscode.WorkspaceEdit();
+  let removed = 0;
+  for (let line = 0; line < doc.lineCount; line++) {
+    const text = doc.lineAt(line).text || '';
+    if (text.indexOf('▶◀') < 0) continue;
+    REF_POINT_RE.lastIndex = 0;
+    let m;
+    const spans = [];
+    while ((m = REF_POINT_RE.exec(text)) !== null) {
+      if (filterFn(parseRefPointInner(m[2]).name)) spans.push([m.index, m.index + m[0].length]);
+    }
+    if (!spans.length) continue;
+    const nonSpanRest = spans.reduce((t, s) => t.slice(0, s[0]) + ' '.repeat(s[1] - s[0]) + t.slice(s[1]), text);
+    if (!nonSpanRest.replace(/^\s*\/\/\s*$/, '').trim()) {
+      // 符(と行コメント//)以外に何も無い行 → 行ごと削除
+      we.delete(doc.uri, new vscode.Range(line, 0, Math.min(line + 1, doc.lineCount - 1), line + 1 < doc.lineCount ? 0 : text.length));
+      removed += spans.length;
+    } else {
+      for (const s of spans) { we.delete(doc.uri, new vscode.Range(line, s[0], line, s[1])); removed++; }
     }
   }
-  return best;
+  if (removed) await vscode.workspace.applyEdit(we);
+  return removed;
 }
-// v0.9.99972: カーソル膜の"直属"(孫膜は除く)にある参照符グループを返す(1膜1グループ=レキシカルスコープ)。
-// cur=findCurrentPairの結果(nullなら膜外=トップレベル)。戻り値=直属の最初の参照符 or null。
-function refGroupOfMembrane(doc, cur) {
-  const pairs = collectPairs(doc, { excludeIndex: false });
-  return collectRefPoints(doc).find(p => {
-    const inner = innermostPairAt(pairs, p.line);
-    if (!cur) return !inner; // トップレベル同士
-    if (p.line <= cur.start || p.line >= cur.end) return false;
-    return inner && inner.start === cur.start && inner.end === cur.end;
-  }) || null;
+// v0.9.99973: 1グループ削除(▾メニュー)。QuickPickで選択→確認→符を全削除+mMETA掃除。
+async function referenceDeleteGroup(editor) {
+  if (!editor) return;
+  const doc = editor.document;
+  const ref = getRefMeta(doc);
+  const points = collectRefPoints(doc);
+  const names = [...new Set([...points.map(p => p.name), ...Object.keys(ref.groups)])];
+  if (!names.length) { vscode.window.setStatusBarMessage('削除できる参照グループがありません', 2500); return; }
+  const famOf = (n) => { const p = points.find(q => q.name === n); return p ? p.fam : (Number(ref.groups[n]) || 6); };
+  const cnt = (n) => points.filter(p => p.name === n).length;
+  const pick = await vscode.window.showQuickPick(
+    names.map(n => ({ label: refFamilySymbol(famOf(n)) + '  ' + n, description: cnt(n) + '個の符', name: n })),
+    { placeHolder: '削除する参照グループを選択(文書中の符も全て消えます)' });
+  if (!pick) return;
+  const go = await vscode.window.showWarningMessage(
+    'グループ「' + pick.name + '」の参照符 ' + cnt(pick.name) + '個 を文書から削除します。よろしいですか?', { modal: true }, '削除する');
+  if (go !== '削除する') return;
+  const removed = await deleteRefPoints(editor, (n) => n === pick.name);
+  delete ref.groups[pick.name];
+  if (ref.activeGroup === pick.name) ref.activeGroup = '';
+  if (ref.issueGroup === pick.name) ref.issueGroup = '';
+  if (ref.front && ref.front.name === pick.name) ref.front = null;
+  await saveRefMeta(doc, ref);
+  refresh(editor);
+  postBookmarkState(editor);
+  vscode.window.setStatusBarMessage('参照グループ「' + pick.name + '」を削除しました(' + removed + '個)', 3000);
+}
+// v0.9.99973: 全参照グループ削除(▾メニュー)。確認→全符削除+mMETAリセット。
+async function referenceDeleteAll(editor) {
+  if (!editor) return;
+  const doc = editor.document;
+  const ref = getRefMeta(doc);
+  const total = collectRefPoints(doc).length;
+  if (!total && !Object.keys(ref.groups).length) { vscode.window.setStatusBarMessage('参照符はありません', 2500); return; }
+  const go = await vscode.window.showWarningMessage(
+    '全ての参照グループを削除します(文書中の参照符 ' + total + '個 を全て削除)。よろしいですか?', { modal: true }, '全て削除する');
+  if (go !== '全て削除する') return;
+  const removed = await deleteRefPoints(editor, () => true);
+  ref.groups = {};
+  ref.activeGroup = '';
+  ref.issueGroup = '';
+  ref.front = null;
+  await saveRefMeta(doc, ref);
+  refresh(editor);
+  postBookmarkState(editor);
+  vscode.window.setStatusBarMessage('全参照グループを削除しました(' + removed + '個)', 3000);
 }
 // v0.9.99970: ★参照膜プロジェクト段5 — 💤統合=発行。役割分担: 💤=書く(発行)/参照ボタン=読む(巡回)。
 // 「参照符=保留栞の一般形」を回収=一般形が特殊形を吸収(俊克 2026.07.03 am10:13)。カーソル位置に
@@ -4611,18 +4674,14 @@ async function referenceIssue(editor) {
   const points = collectRefPoints(doc);
   const names = [...new Set([...points.map(p => p.name), ...Object.keys(ref.groups)])];
   const famOf = (n) => { const p = points.find(q => q.name === n); return p ? p.fam : (Number(ref.groups[n]) || 6); };
-  // v0.9.99972: 1膜1グループ(俊克バグ3) — カーソル膜に既存グループがあればそのグループへ発行
-  // (レキシカルスコープが固定選択より優先=2種類の記号が同膜に混在しない)。
-  let cur = null; try { cur = findCurrentPair(editor); } catch (_) {}
-  const owner = refGroupOfMembrane(doc, cur);
+  // v0.9.99973: グローバル化(俊克 7/4) — 発行先は常に作業グループ(▾で選択)。膜との紐付けは廃止。
   let group = null;
-  if (owner) {
-    group = owner.name; // レキシカルスコープ優先(1膜1グループ=俊克バグ3)
-  } else {
+  {
     const sel = ref.activeGroup || ref.issueGroup || '';
     if (sel === '💤') {
       // 保留モード(番兵): 既存の保留グループへ・無ければ初回発行で自動作成(=従来のワンクリック駐車)
       const g6 = points.find(p => p.fam === 6);
+      if (!g6 && refGroupCount(doc, ref) >= REF_GROUP_MAX) { vscode.window.showWarningMessage('参照グループは最大' + REF_GROUP_MAX + '個です。▾メニューから不要なグループを削除してください。'); return; }
       group = g6 ? g6.name : ('保留_' + getDefaultMembraneName().replace(/^name_/, ''));
       if (!g6) ref.groups[group] = 6;
     } else if (sel && names.includes(sel)) {
@@ -4756,13 +4815,9 @@ async function referenceMeCreate() {
   if (base === undefined) return;
   const desc = await vscode.window.showInputBox({ prompt: 'Reference Me: この参照符の説明文(任意・Enterでスキップ)' });
   if (desc === undefined) return;
-  // 1膜1グループ(レキシカルスコープ): カーソル膜の"直属"に既存参照符があれば作成をブロック
-  // (v99969の「続行可の警告」では2種類の記号が同膜に混在した=俊克バグ3。孫膜内は別グループ可)。
-  let cur = null; try { cur = findCurrentPair(editor); } catch (_) {}
-  const clash = refGroupOfMembrane(doc, cur);
-  if (clash) {
-    vscode.window.showWarningMessage(
-      'この膜には既に参照グループ「' + (clash.base || clash.name) + '」があります(1膜1グループ)。新しいグループは別の膜(または小膜)で作成してください。');
+  // v0.9.99973: グローバル化(俊克 7/4)=1膜1グループの作成ブロックを撤廃。上限のみ守る(max10)。
+  if (refGroupCount(doc, ref) >= REF_GROUP_MAX) {
+    vscode.window.showWarningMessage('参照グループは最大' + REF_GROUP_MAX + '個です。▾メニューから不要なグループを削除してください。');
     return;
   }
   const stamp = getDefaultMembraneName().replace(/^name_/, '');
@@ -13393,7 +13448,7 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .bm-pop #bm-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}.bm-pop #bm-clear:hover{background:rgba(220,38,38,.12);color:#dc2626}.bm-pop #bm-remove{order:3}.bm-pop #bm-front{order:4;color:#dc2626;font-weight:700}.bm-pop #bm-front:hover{background:rgba(220,38,38,.14)}.bm-pop #bm-pending-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}.bm-pop #bm-pending-clear:hover{background:rgba(220,38,38,.12);color:#dc2626}.bm-pop #bm-pending-resolve{order:3}.bm-pop #bm-pending-front{order:4;color:#dc2626;font-weight:700}.bm-pop #bm-pending-front:hover{background:rgba(220,38,38,.14)}
 .fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-field{position:relative;min-width:0}.toc-disp{position:absolute;inset:0;display:flex;align-items:center;padding:3px 4px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;background:var(--vscode-input-background);border:1px solid rgba(210,140,0,.25);border-radius:4px;pointer-events:none;color:var(--vscode-input-foreground)}.toc-disp .toc-sep{color:#3794ff;font-weight:900;white-space:pre}.toc-disp .toc-comment{color:#16a34a}.fixed-toc-item:focus-within .toc-disp{display:none}.fixed-toc-item.selected .toc-disp{border-color:#d18400}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-tools .toc-del{font-size:22px;line-height:1;color:#b91c1c;padding:0 8px}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-access{flex:none;font-weight:700;font-size:11px;opacity:.85;margin-left:3px}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:900;padding:1px 5px;margin-left:auto;border:1px solid currentColor;border-radius:4px;background:#fff;line-height:1.4;text-shadow:0 0 1px rgba(0,0,0,.5)}.toc-pin-toggle:hover{background:color-mix(in srgb,currentColor 16%,#fff)}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
 </style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><main class="body">
-<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">－</button><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = pending, a special group). One click jumps to its F mark; click again to cycle the group. Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) / Issue a mark at the cursor / Switch Front">▾</button></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Switch Front / Remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩) — the 🔖 button always jumps here. The old Front becomes a normal 🔖 (kept). When 3 are full, the old Front is replaced. With no 🔖 here, it adds one.">Switch Front bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><div class="bm-pending-list" id="ref-group-list"></div><button class="bm-pop-item" id="ref-issue" data-tip="Insert a reference mark of the working group at the cursor (inside a membrane that already has a group, that group wins). The new mark becomes F.">➕ Issue mark here (発行)</button><button class="bm-pop-item" id="ref-switch-front" data-tip="Make the reference mark under the cursor the F (front) mark of its group.">🚩 Switch Front Reference</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
+<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">－</button><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = pending, a special group). One click jumps to its F mark; click again to cycle the group. Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) / Issue a mark at the cursor / Switch Front">▾</button></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Switch Front / Remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩) — the 🔖 button always jumps here. The old Front becomes a normal 🔖 (kept). When 3 are full, the old Front is replaced. With no 🔖 here, it adds one.">Switch Front bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><div class="bm-pending-list" id="ref-group-list"></div><button class="bm-pop-item" id="ref-issue" data-tip="Insert a reference mark of the working group at the cursor. Groups are global to the file (up to 10). The new mark becomes F.">➕ Issue mark here (発行)</button><button class="bm-pop-item" id="ref-switch-front" data-tip="Make the reference mark under the cursor the F (front) mark of its group.">🚩 Switch Front Reference</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too).">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
 <div class="gh-wizard" id="gh-wizard"><div class="gh-wizard-head" id="gh-wizard-head" data-tip="Press the 🐙 button, then Cmd+S → your file is saved AND pushed to GitHub. Or leave 🐙 off to save locally only. (Click here to open/close settings.)"><span class="gh-wizard-title">🐙 GitHub: Push 🐙 &amp; Save Me!</span><span class="gh-wizard-status" id="gh-wizard-status"></span><button class="gh-wizard-toggle" id="gh-wizard-toggle" data-tip="Open / close">▾</button></div><div class="gh-wizard-body" id="gh-wizard-body">
 <div class="gh-connected-bar" id="gh-connected-bar" style="display:none"><span class="gh-conn-folder" id="gh-conn-folder"></span><span class="gh-conn-repo" id="gh-conn-repo"></span><button class="gh-sync-btn" id="gh-push" data-tip="Octopush (one-shot): OFF — Cmd+S is normal save. Tap 🐙, then Cmd+S → pushes once, then turns OFF. Push when you say so.">🐙</button><button class="gh-open-btn" id="gh-open" data-tip="Open this repository on GitHub in your browser.">🔗</button><button class="gh-disconnect-btn" id="gh-disconnect-btn" data-tip="Unlink THIS folder from GitHub (your saved PAT and the GitHub repo are kept — reconnect any time)">✕</button></div>
 <div class="gh-setup-form" id="gh-setup-form"><div class="gh-form-row"><span class="gh-step">①</span><input class="gh-input" id="gh-profile-url" placeholder="https://github.com/LAIxai" spellcheck="false" data-tip="GitHubのプロフィールURL (例: https://github.com/LAIxai)"/></div><div class="gh-form-row"><span class="gh-step">②</span><input class="gh-input" id="gh-pat-input" type="password" placeholder="PAT (ghp_...)" spellcheck="false" data-tip="Personal Access Token — needs 'repo' scope"/><button class="gh-pat-link" id="gh-pat-link" disabled data-tip="Open GitHub's token creation page">Get PAT ↗</button></div><div class="gh-form-row gh-folder-row2"><span class="gh-step">③</span><span class="gh-folder-label2">📁</span><span class="gh-folder-name2" id="gh-folder-name2">Open a folder first</span><button class="gh-change-btn" id="gh-change-folder" data-tip="Pick which folder to back up to GitHub">Change…</button></div><label class="gh-priv-row" id="gh-priv-row" data-tip="Private = only you can see it (recommended for diaries / drafts). Uncheck for a public repo."><input type="checkbox" id="gh-private" checked/><span id="gh-priv-text">🔒 Private (only you)</span></label><button class="gh-connect-btn" id="gh-connect-btn" disabled>Connect &amp; Create Repo</button><div class="gh-msg" id="gh-msg"></div></div></div></div><div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | =={ text (text/bg)//tip }== — ▾ picks color · ↻ cycles 3 saved colors">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##[ text (text/bg)//tip ]## — ▾ picks color · ↻ cycles ## → # → ###">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button><div class="color-pop fmt-pop" id="fmt-pop"></div></div>
@@ -13770,6 +13825,9 @@ if(bmClear)bmClear.addEventListener('click',()=>{vscode.postMessage({type:'bookm
 if(refGroupList)refGroupList.addEventListener('click',ev=>{const row=ev.target&&ev.target.closest?ev.target.closest('.bm-pending-row'):null;if(!row||!row.hasAttribute('data-name'))return;vscode.postMessage({type:'referenceSelectGroup',name:row.getAttribute('data-name'),pending:row.getAttribute('data-pending')==='1'});closeBmPendingPop();});
 if(refIssueBtn)refIssueBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceIssue'});closeBmPendingPop();});
 if(refSwitchFrontBtn)refSwitchFrontBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceSwitchFront'});closeBmPendingPop();});
+const refDelGroupBtn=document.getElementById('ref-delete-group'),refDelAllBtn=document.getElementById('ref-delete-all');/* v0.9.99973: グループ削除(俊克: プロジェクト用/今日の予定用と使い分けるなら片付け導線が要る) */
+if(refDelGroupBtn)refDelGroupBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceDeleteGroup'});closeBmPendingPop();});
+if(refDelAllBtn)refDelAllBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceDeleteAll'});closeBmPendingPop();});
 document.addEventListener('click',ev=>{if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();},true);
 /* v0.9.897: 💤保留栞のプルアップメニュー(通常栞の🔖▾と同じ仕組み)。 */
 function closeBmPendingPop(){if(bmPendingPop)bmPendingPop.classList.remove('on');}
@@ -14521,6 +14579,8 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'referenceIssue') { await referenceIssue(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99972: ▾メニューの➕発行
     if (message && message.type === 'referenceSelectGroup') { await referenceSelectGroup(getMeDockTargetEditor() || vscode.window.activeTextEditor, message.name, !!message.pending); return; } // v0.9.99972: 作業グループ切替
     if (message && message.type === 'referenceSwitchFront') { await referenceSwitchFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99972: ▾メニューのSwitch Front
+    if (message && message.type === 'referenceDeleteGroup') { await referenceDeleteGroup(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99973: 1グループ削除
+    if (message && message.type === 'referenceDeleteAll') { await referenceDeleteAll(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99973: 全グループ削除
     if (message && message.type === 'bookmarkInsert') { await bookmarkInsert(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkRemove') { await bookmarkRemove(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkSetFront') { await bookmarkSetFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
