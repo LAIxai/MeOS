@@ -9,3 +9,4 @@ extension.js.pre*
 .git/**
 media/hero/**
 
+check_webview.js
