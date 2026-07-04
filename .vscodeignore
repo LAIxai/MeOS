@@ -10,3 +10,4 @@ extension.js.pre*
 media/hero/**
 
 check_webview.js
+webview_out*.js
