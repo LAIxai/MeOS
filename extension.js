@@ -2079,7 +2079,8 @@ let highlightFgByColor = null;      // v0.9.661: Map<色キー, decorationType> 
 // 実装はインライン装飾パイプライン(=={}==と同経路)=行膜機構ではない(俊克決定 2026.07.03 pm02:08)。
 let refPointHideDecoration;
 let refPointLabelDecoration;
-let refFrontGutterDecoration; // v0.9.99969: F参照符だけガターにF栞様アイコン
+let refFrontGutterDecoration; // v0.9.99969: F参照符だけガターにアイコン。v99972: 青F(ref-front.svg)=栞の赤Fと区別(俊克バグ1)
+let refFrontPendingGutterDecoration; // v0.9.99972: 保留参照(R6=💤)のFは従来の保留Fマーク(bookmark-pending-front.svg)
 // 色キー → 背景色。v0.9.698: 「本物の色に見える」濃さにする(俊克: 薄い赤=ピンク・薄い紺=紫で駄目)。
 // 明るい暗色は色相がズレるので濃い(高alpha)本物色にし、暗い背景は自動で白文字を当てて可読化
 // (DARK_BG_KEYS + highlight parse の auto-contrast)。元々OKの 黄/橙/桃/紫 は明るいまま維持。
@@ -2679,6 +2680,7 @@ function disposeDecorations() {
   if (refPointHideDecoration) { refPointHideDecoration.dispose(); refPointHideDecoration = undefined; } // v0.9.99967
   if (refPointLabelDecoration) { refPointLabelDecoration.dispose(); refPointLabelDecoration = undefined; } // v0.9.99967
   if (refFrontGutterDecoration) { refFrontGutterDecoration.dispose(); refFrontGutterDecoration = undefined; } // v0.9.99969
+  if (refFrontPendingGutterDecoration) { refFrontPendingGutterDecoration.dispose(); refFrontPendingGutterDecoration = undefined; } // v0.9.99972
   if (strikeColorByKey) {
     for (const d of strikeColorByKey.values()) { try { d.dispose(); } catch (_) {} }
     strikeColorByKey = null;
@@ -3034,16 +3036,26 @@ function makeDecorations() {
   refPointLabelDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
   });
-  // v0.9.99969: F参照符のガターアイコン(F栞様=bookmark-front.svg流用・他の参照符は無印)。
+  // v0.9.99969/99972: F参照符のガターアイコン(他の参照符は無印)。通常参照のF=青F(ref-front.svg)=
+  // 栞の赤F(bookmark-front.svg)と区別(俊克バグ1)。保留参照(R6)のF=従来の保留Fマーク(改良1)。
   const _refFrontOpts = {
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    overviewRulerColor: 'rgba(180, 83, 9, 0.95)',
+    overviewRulerColor: 'rgba(37, 99, 235, 0.95)',
     overviewRulerLane: vscode.OverviewRulerLane.Left,
     gutterIconSize: 'contain'
   };
-  try { if (extensionContext && extensionContext.extensionUri) _refFrontOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark-front.svg'); } catch (_) {}
-  if (!_refFrontOpts.gutterIconPath) _refFrontOpts.before = { contentText: '🚩', margin: '0 3px 0 0' };
+  try { if (extensionContext && extensionContext.extensionUri) _refFrontOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'ref-front.svg'); } catch (_) {}
+  if (!_refFrontOpts.gutterIconPath) _refFrontOpts.before = { contentText: '🔷', margin: '0 3px 0 0' };
   refFrontGutterDecoration = vscode.window.createTextEditorDecorationType(_refFrontOpts);
+  const _refFrontPendOpts = {
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    overviewRulerColor: 'rgba(100, 116, 139, 0.95)',
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+    gutterIconSize: 'contain'
+  };
+  try { if (extensionContext && extensionContext.extensionUri) _refFrontPendOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark-pending-front.svg'); } catch (_) {}
+  if (!_refFrontPendOpts.gutterIconPath) _refFrontPendOpts.before = { contentText: '💤', margin: '0 3px 0 0' };
+  refFrontPendingGutterDecoration = vscode.window.createTextEditorDecorationType(_refFrontPendOpts);
   // v0.9.699: 新形取消線 ~~{本文(線色/背景色)}~~ の線色別 line-through。文字色は付けず
   // (本文を読めるように)、線だけ指定色にする。太さ2px。背景色は別レイヤーで重ねる。
   strikeColorByKey = new Map();
@@ -4574,6 +4586,17 @@ function innermostPairAt(pairs, line) {
   }
   return best;
 }
+// v0.9.99972: カーソル膜の"直属"(孫膜は除く)にある参照符グループを返す(1膜1グループ=レキシカルスコープ)。
+// cur=findCurrentPairの結果(nullなら膜外=トップレベル)。戻り値=直属の最初の参照符 or null。
+function refGroupOfMembrane(doc, cur) {
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  return collectRefPoints(doc).find(p => {
+    const inner = innermostPairAt(pairs, p.line);
+    if (!cur) return !inner; // トップレベル同士
+    if (p.line <= cur.start || p.line >= cur.end) return false;
+    return inner && inner.start === cur.start && inner.end === cur.end;
+  }) || null;
+}
 // v0.9.99970: ★参照膜プロジェクト段5 — 💤統合=発行。役割分担: 💤=書く(発行)/参照ボタン=読む(巡回)。
 // 「参照符=保留栞の一般形」を回収=一般形が特殊形を吸収(俊克 2026.07.03 am10:13)。カーソル位置に
 // 参照符(点膜)を打つ=保留が生データ化: Gitと旅する・行ズレ問題消滅・`💤`でgrep横断・個数無制限。
@@ -4587,19 +4610,36 @@ async function referenceIssue(editor) {
   const points = collectRefPoints(doc);
   const names = [...new Set([...points.map(p => p.name), ...Object.keys(ref.groups)])];
   const famOf = (n) => { const p = points.find(q => q.name === n); return p ? p.fam : (Number(ref.groups[n]) || 6); };
-  let group = ref.issueGroup;
-  if (!group || !names.includes(group)) {
-    if (!names.length) {
-      group = '保留_' + getDefaultMembraneName().replace(/^name_/, ''); // 駐車と同じワンクリック=自動でR6💤グループ
+  // v0.9.99972: 1膜1グループ(俊克バグ3) — カーソル膜に既存グループがあればそのグループへ発行
+  // (レキシカルスコープが固定選択より優先=2種類の記号が同膜に混在しない)。
+  let cur = null; try { cur = findCurrentPair(editor); } catch (_) {}
+  const owner = refGroupOfMembrane(doc, cur);
+  let group = null;
+  if (owner) {
+    group = owner.name; // レキシカルスコープ優先(1膜1グループ=俊克バグ3)
+  } else {
+    const sel = ref.activeGroup || ref.issueGroup || '';
+    if (sel === '💤') {
+      // 保留モード(番兵): 既存の保留グループへ・無ければ初回発行で自動作成(=従来のワンクリック駐車)
+      const g6 = points.find(p => p.fam === 6);
+      group = g6 ? g6.name : ('保留_' + getDefaultMembraneName().replace(/^name_/, ''));
+      if (!g6) ref.groups[group] = 6;
+    } else if (sel && names.includes(sel)) {
+      group = sel;
+    } else if (!names.length) {
+      group = '保留_' + getDefaultMembraneName().replace(/^name_/, '');
       ref.groups[group] = 6;
+      ref.activeGroup = '💤';
     } else if (names.length === 1) {
       group = names[0];
+      ref.activeGroup = group;
     } else {
       const pick = await vscode.window.showQuickPick(
         names.map(n => ({ label: refFamilySymbol(famOf(n)) + '  ' + n, name: n })),
-        { placeHolder: '💤 発行先の参照グループを選択(以後このグループに固定=mMETA記憶)' });
+        { placeHolder: '発行先の参照グループを選択(=作業グループになります)' });
       if (!pick) return;
       group = pick.name;
+      ref.activeGroup = group;
     }
     ref.issueGroup = group;
   }
@@ -4616,7 +4656,8 @@ async function referenceIssue(editor) {
   ref.front = { name: group, ord: before.length };
   await saveRefMeta(doc, ref);
   refresh(editor);
-  vscode.window.setStatusBarMessage('💤 発行: ' + refFamilySymbol(fam) + (before.length + 1) + ' — ' + group + ' (この符がFになりました)', 3000);
+  postBookmarkState(editor); // v0.9.99972: 統合参照ボタンの記号/件数を即更新
+  vscode.window.setStatusBarMessage('発行: ' + refFamilySymbol(fam) + (before.length + 1) + ' — ' + group + ' (この符がFになりました)', 3000);
 }
 // v0.9.99969: ★参照膜プロジェクト段4 — 参照ボタン(🔖左隣)＋F参照符。役割分担: 参照ボタン=読む(巡回)。
 // 1クリック=グローバルF(最後に置いた/Switchした参照符)へ着地→符の上で再クリック=同名グループ
@@ -4626,23 +4667,29 @@ async function referenceCycle(editor) {
   if (!editor) return;
   const doc = editor.document;
   const points = collectRefPoints(doc);
-  if (!points.length) { vscode.window.setStatusBarMessage('参照符がありません — Edit▾ → Reference で作成', 3000); return; }
+  if (!points.length) { vscode.window.setStatusBarMessage('参照符がありません — Edit▾ → Reference で作成 / ▾の➕発行で💤保留を自動作成', 3000); return; }
   const ref = getRefMeta(doc);
-  const groupOf = (name) => points.filter(p => p.name === name);
-  let frontPt = null;
-  if (ref.front && ref.front.name) {
-    const g = groupOf(ref.front.name);
-    if (g.length) frontPt = g[Math.min(Number(ref.front.ord) || 0, g.length - 1)];
+  // v0.9.99972(改良2 俊克): 巡回は「作業グループ」に限定(通常は、ある参照マークを選んで、それを巡回する)。
+  let gname = ref.activeGroup || ref.issueGroup || '';
+  if (gname === '💤') {
+    const g6 = points.find(p => p.fam === 6);
+    if (!g6) { vscode.window.setStatusBarMessage('保留参照はまだありません — ▾メニューの➕発行で作成', 3000); return; }
+    gname = g6.name;
   }
-  if (!frontPt) frontPt = points[0]; // F不明/消滅→先頭の参照符をFとみなす
+  if (!gname || !points.some(p => p.name === gname)) {
+    gname = (ref.front && ref.front.name && points.some(p => p.name === ref.front.name)) ? ref.front.name : points[0].name;
+  }
+  const g2 = points.filter(p => p.name === gname);
+  let frontPt = null;
+  if (ref.front && ref.front.name === gname) frontPt = g2[Math.min(Number(ref.front.ord) || 0, g2.length - 1)];
+  if (!frontPt) frontPt = g2[0]; // Fがこのグループに無い→グループ先頭をFとみなす
   const curLine = editor.selection.active.line, curCh = editor.selection.active.character;
-  const onPt = points.find(p => p.line === curLine && p.start <= curCh && curCh <= p.end);
-  let target, g2;
+  const onPt = g2.find(p => p.line === curLine && p.start <= curCh && curCh <= p.end);
+  let target;
   if (onPt) {
-    g2 = groupOf(onPt.name);
-    target = g2[(g2.indexOf(onPt) + 1) % g2.length]; // 符の上→同名グループの次へ巡回
+    target = g2[(g2.indexOf(onPt) + 1) % g2.length]; // 符の上→同グループの次へ巡回(末尾→先頭)
   } else {
-    target = frontPt; g2 = groupOf(target.name);     // 執筆中(符以外)→必ずFへ直行
+    target = frontPt;                                 // 執筆中(符以外)→必ずFへ直行
   }
   const pos = new vscode.Position(target.line, target.start);
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) });
@@ -4660,9 +4707,21 @@ async function referenceSwitchFront(editor) {
   const g = points.filter(p => p.name === onPt.name);
   const ref = getRefMeta(doc);
   ref.front = { name: onPt.name, ord: g.indexOf(onPt) };
+  ref.activeGroup = onPt.name; // v0.9.99972: Switchした符のグループを作業グループに
   await saveRefMeta(doc, ref);
   refresh(editor);
+  postBookmarkState(editor);
   vscode.window.setStatusBarMessage('F参照符: ' + refFamilySymbol(onPt.fam) + onPt.serial + ' — ' + (onPt.base || onPt.name), 3000);
+}
+// v0.9.99972(改良2 俊克): ▾メニューからの作業グループ切替。pending=true → 保留モード(番兵'💤')。
+async function referenceSelectGroup(editor, name, pending) {
+  if (!editor) return;
+  const ref = getRefMeta(editor.document);
+  ref.activeGroup = pending ? '💤' : String(name || '');
+  if (!pending && name) ref.issueGroup = name;
+  await saveRefMeta(editor.document, ref);
+  postBookmarkState(editor);
+  vscode.window.setStatusBarMessage('作業参照グループ: ' + (pending ? '💤 保留' : name), 2500);
 }
 // v0.9.99968: ★参照膜プロジェクト段3 — Reference Me(参照グループ作成)。Edit Meプルダウンから起動。
 // 手順(1)create: 記号ピッカー(前回記号=mMETA随伴記憶)→名前入力→説明(任意)→カーソル位置に点膜を挿入。
@@ -4696,20 +4755,14 @@ async function referenceMeCreate() {
   if (base === undefined) return;
   const desc = await vscode.window.showInputBox({ prompt: 'Reference Me: この参照符の説明文(任意・Enterでスキップ)' });
   if (desc === undefined) return;
-  // 1膜1グループ(レキシカルスコープ): カーソル膜の"直属"に既存参照符があれば警告(孫膜内は別グループ可)。
+  // 1膜1グループ(レキシカルスコープ): カーソル膜の"直属"に既存参照符があれば作成をブロック
+  // (v99969の「続行可の警告」では2種類の記号が同膜に混在した=俊克バグ3。孫膜内は別グループ可)。
   let cur = null; try { cur = findCurrentPair(editor); } catch (_) {}
-  if (cur) {
-    const pairs = collectPairs(doc, { excludeIndex: false });
-    const clash = collectRefPoints(doc).find(p => {
-      if (p.line <= cur.start || p.line >= cur.end) return false;
-      const inner = innermostPairAt(pairs, p.line);
-      return inner && inner.start === cur.start && inner.end === cur.end;
-    });
-    if (clash) {
-      const go = await vscode.window.showWarningMessage(
-        'この膜には既に参照グループ「' + (clash.base || clash.name) + '」があります(1膜1グループ)。それでも作成しますか?', '作成する', 'キャンセル');
-      if (go !== '作成する') return;
-    }
+  const clash = refGroupOfMembrane(doc, cur);
+  if (clash) {
+    vscode.window.showWarningMessage(
+      'この膜には既に参照グループ「' + (clash.base || clash.name) + '」があります(1膜1グループ)。新しいグループは別の膜(または小膜)で作成してください。');
+    return;
   }
   const stamp = getDefaultMembraneName().replace(/^name_/, '');
   const groupName = String(base).trim() + '_' + stamp;
@@ -4724,8 +4777,11 @@ async function referenceMeCreate() {
   ref.groups[groupName] = famPick.fam;
   ref.lastFam = famPick.fam;
   ref.front = { name: groupName, ord: 0 }; // 打った符がその場でF(駐車と同じ・ord=グループ内文書順)
+  ref.activeGroup = (famPick.fam === 6) ? '💤' : groupName; // v0.9.99972: 作成したグループを作業グループに
+  ref.issueGroup = groupName;
   await saveRefMeta(doc, ref);
   refresh(editor);
+  postBookmarkState(editor);
   vscode.window.setStatusBarMessage('Reference Me: ' + refFamilySymbol(famPick.fam) + ' グループ「' + groupName + '」を作成しました', 4000);
 }
 // {* ▲mCN=0620_REF_POINT // end [cGJF=h] *}
@@ -4794,7 +4850,7 @@ function applyPrettyLabels(editor) {
         const fam = Number(mRef[1]);
         refPointCounts[fam] = (refPointCounts[fam] || 0) + 1;
         const pAll = parseRefPointInner(mRef[2]);
-        refPtAll.push({ line, start: mRef.index, name: pAll.name }); // v0.9.99969: Fガター用(カーソル行も含む)
+        refPtAll.push({ line, start: mRef.index, name: pAll.name, fam }); // v0.9.99969: Fガター用(カーソル行も含む)。v99972: famで青F/保留Fを出し分け
         if (line === docCursorLine) continue; // カーソル行は生データを見せて編集可能に(v659の思想)
         const serial = refPointCounts[fam];
         const sym = refFamilySymbol(fam);
@@ -5328,18 +5384,21 @@ function applyPrettyLabels(editor) {
   if (refPointLabelDecoration) {
     setDecoCached(editor, refPointLabelDecoration, 'refPtLabel', refPointLabelItems);
   }
-  // v0.9.99969: F参照符だけガターにF栞様アイコン(他の参照符は無印・俊克決定 2026.07.03 am09:25)。
-  if (refFrontGutterDecoration) {
+  // v0.9.99969: F参照符だけガターにアイコン(他の参照符は無印・俊克決定 2026.07.03 am09:25)。
+  // v0.9.99972: 通常参照のF=青F/保留参照(R6)のF=従来の保留Fマークに出し分け(俊克バグ1+改良1)。
+  if (refFrontGutterDecoration && refFrontPendingGutterDecoration) {
     const refFrontItems = [];
+    const refFrontPendItems = [];
     try {
       const ref = getRefMeta(editor.document);
       if (ref.front && ref.front.name) {
         const g = refPtAll.filter(p => p.name === ref.front.name);
         const fp = g.length ? g[Math.min(Number(ref.front.ord) || 0, g.length - 1)] : null;
-        if (fp) refFrontItems.push({ range: new vscode.Range(fp.line, fp.start, fp.line, fp.start) });
+        if (fp) (fp.fam === 6 ? refFrontPendItems : refFrontItems).push({ range: new vscode.Range(fp.line, fp.start, fp.line, fp.start) });
       }
     } catch (_) {}
     setDecoCached(editor, refFrontGutterDecoration, 'refFront', refFrontItems);
+    setDecoCached(editor, refFrontPendingGutterDecoration, 'refFrontPend', refFrontPendItems);
   }
   // v0.9.660: 見出し適用（レベル別サイズ＋色別文字色＋マーカー#/(…)隠し）
   if (headingSizeByLevel) {
@@ -6894,6 +6953,7 @@ function clearForRaw(editor) {
   if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
   z(headingMarkerDecoration);
   z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
+  z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); // v0.9.99972: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
   // bookmark は残す(IMEに無害・ナビ有用)
 }
 async function toggleRawMode() {
@@ -12032,6 +12092,30 @@ function postBookmarkState(editor) {
   // v0.9.848: 🔖ボタンtipに行番号+作成日時(+F印)を出すため、通常栞の明細も送る。
   const marksInfo = (Array.isArray(data.marks) ? data.marks : []).map(L => ({ line: L, at: (data.markStamps && data.markStamps[L]) || '', front: L === data.front }));
   try { meDockPanel.webview.postMessage({ type: 'bookmarkState', count: data.marks.length, full: data.marks.length >= 3, pending, pendingFull: pending.length >= PENDING_BOOKMARK_MAX, marksInfo }); } catch (_) {}
+  if (editor) postReferenceState(editor); // v0.9.99972: 統合参照ボタンの状態も同じタイミングで送る
+}
+// v0.9.99972(改良2 俊克): 統合参照ボタンの状態を送る。groups=文書内の参照グループ(保留=fam6は別枠フラグ)
+// +mMETA登録のみの空グループ。active=作業グループ(ref.activeGroup・'💤'=保留モードの番兵)。
+function postReferenceState(editor) {
+  if (!meDockPanel || !editor) return;
+  try {
+    const doc = editor.document;
+    const points = collectRefPoints(doc);
+    const ref = getRefMeta(doc);
+    const map = new Map(); // name -> {fam, count}
+    for (const p of points) { const e = map.get(p.name) || { fam: p.fam, count: 0 }; e.count++; map.set(p.name, e); }
+    for (const n of Object.keys(ref.groups)) if (!map.has(n)) map.set(n, { fam: Number(ref.groups[n]) || 1, count: 0 });
+    const activeName = ref.activeGroup || ref.issueGroup || '';
+    const pendingMode = activeName === '💤';
+    const groups = [];
+    for (const [name, e] of map) {
+      const pnd = e.fam === 6;
+      groups.push({ name, label: name, sym: refFamilySymbol(e.fam), fam: e.fam, count: e.count, pending: pnd, active: pendingMode ? pnd : name === activeName });
+    }
+    if (!groups.some(g => g.pending)) groups.push({ name: '💤', label: '保留(初回発行で自動作成)', sym: '💤', fam: 6, count: 0, pending: true, active: pendingMode });
+    const act = groups.find(g => g.active);
+    meDockPanel.webview.postMessage({ type: 'referenceState', activeSym: act ? act.sym : '💤', groups });
+  } catch (_) {}
 }
 async function bookmarkInsert(editor) { // カーソル行に追加(3個未満・重複なし)。満杯は何もしない。
   if (!editor) return;
@@ -13302,13 +13386,13 @@ input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff)
 .toc-tools{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid rgba(210,140,0,.20);background:rgba(255,213,92,.08)}.toc-tools button{font-size:11px;padding:3px 6px}.toc-tools .toc-move{font-size:18px;line-height:1;padding:1px 7px}.toc-tools .toc-add{font-size:22px;line-height:1;color:#d18400;padding:0 8px}.toc-tools .toc-onsite{font-weight:800;color:#d18400}.toc-tools .toc-onsite.on{background:rgba(210,132,0,.22);border-color:#d18400}
 .format-tools .fmt-label{font-size:11px;font-weight:800;color:#d18400;opacity:.85}.format-tools .fmt-btns{display:flex;gap:6px}.fmt-cell{display:inline-flex;align-items:stretch}.fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}.fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}.fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-cell-head{position:relative}.fmt-lvl{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:4;line-height:1}.fmt-lvl:hover{background:#c98a1a}#fmt-heading,#fmt-highlight,#fmt-strike{width:44px;min-width:44px;box-sizing:border-box;text-align:center;padding-left:0;padding-right:0}.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}.fmt-slots{display:flex;align-items:center;gap:6px;justify-content:center}.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground);cursor:pointer}.fmt-slot:hover{filter:brightness(1.1)}.fmt-slot.dim{opacity:.35}.fmt-slot-sep{font-weight:900;opacity:.55}.fmt-ball{width:14px;height:14px;border-radius:50%;border:1px solid var(--meos-frame);display:inline-block;flex:0 0 auto}.fmt-ball.none{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--meos-frame) 2px,var(--meos-frame) 3px)}.fmt-pop-head{font-size:10px;font-weight:800;opacity:.85;margin-bottom:3px;color:#d18400}.fmt-grid{display:grid;grid-template-columns:repeat(7,auto);gap:3px}.fmt-swatch{width:22px;height:22px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}.fmt-swatch:hover{filter:brightness(1.1)}.fmt-swatch.active{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}.fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}.fmt-btn:active{background:rgba(210,132,0,.30)}.row.format-tools{justify-content:flex-start;flex-wrap:wrap}.fmt-btn.raw-toggle{margin-left:auto;font-family:inherit;font-weight:700;font-size:11px}.enc-btns{display:inline-flex;gap:3px;align-items:stretch;flex:none}.encrypt-me-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:7px;padding-top:8px;border-top:1px solid var(--meos-frame)}.encrypt-me-label{font-size:11px;font-weight:800;color:#d2691e;opacity:.9}.enc-pass-row{flex-basis:100%;width:100%;align-items:center;gap:6px;margin-top:7px;padding-top:7px;border-top:1px dashed rgba(210,105,30,.4)}.enc-pass-label{flex:none;font-size:13px;font-weight:800}.enc-pass-input{flex:1;min-width:0;font-size:12px;padding:3px 7px;border:1px solid rgba(210,105,30,.5);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.enc-pass-input:focus{border-color:#d2691e;outline:none}.enc-pass-eye,.enc-pass-go,.enc-pass-x{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid rgba(127,127,127,.35);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}.enc-pass-go{background:#1a7f37;border-color:#116329;color:#fff}.enc-pass-go:hover{background:#2da44e}.enc-pass-eye:hover,.enc-pass-x:hover{filter:brightness(1.1)}.fmt-btn.enc-btn{font-family:inherit;min-width:auto;padding:1px 8px;font-size:18px;line-height:1;background:rgba(127,127,127,.16);border-color:rgba(127,127,127,.32);color:var(--vscode-foreground);opacity:.5}#enc-copy{opacity:1;background:#2f80b8;border-color:#1f5f8f;color:#fff}#enc-copy:hover{background:#3a93d0;border-color:#1f5f8f}#enc-lock.enc-active{background:#d2691e;border-color:#a0500f;color:#fff;opacity:1}#enc-lock.enc-active:hover{background:#e07b2a;border-color:#a0500f}#enc-unlock.enc-active{background:#fff;color:#111;border-color:#fff;opacity:1}#enc-unlock.enc-active:hover{background:#fff}#nav-toc.top-mode{background:#0d9aa0;border-color:#0d9aa0;color:#fff}#nav-eof{background:#6366f1;border-color:#6366f1;color:#fff}#time-machine-trigger{background:#7c3aed;border-color:#7c3aed;color:#fff}#refresh-btn{background:#a8730e;border-color:#a8730e;color:#fff}#reset-btn{background:#c0392b;border-color:#c0392b;color:#fff}#set-btn{background:#1f9d57;border-color:#1f9d57;color:#fff}#raw-toggle{background:#cd8a5c;border-color:#cd8a5c;color:#fff;text-shadow:0 0 1px rgba(0,0,0,.4)}.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.fmt-btn.gh-push.gh-on{background:#1a7f37;border-color:#116329;color:#fff}.fmt-btn.gh-push.gh-on:hover{background:#2da44e}.gh-wizard{margin:5px 8px;border:1px solid rgba(26,127,55,.4);border-radius:7px;background:rgba(26,127,55,.06);overflow:hidden}.gh-wizard-head{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;background:rgba(26,127,55,.12);user-select:none}.gh-wizard-head:hover{background:rgba(26,127,55,.2)}.gh-wizard-title{flex:none;font-size:11px;font-weight:800;color:#2da44e}.gh-wizard-status{flex:1;min-width:0;font-size:10px;font-weight:700;color:#2da44e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}.gh-wizard-toggle{flex:none;font-size:11px;font-weight:900;padding:0 5px;border:none;background:transparent;color:#2da44e;cursor:pointer;line-height:1}.gh-wizard-body{padding:6px 8px}.gh-wizard.collapsed .gh-wizard-body{display:none}.gh-wizard.collapsed .gh-wizard-toggle{transform:rotate(-90deg)}.gh-setup-form{display:flex;flex-direction:column;gap:4px}.gh-form-row{display:flex;align-items:center;gap:5px}.gh-step{flex:none;font-size:11px;font-weight:900;color:#2da44e;width:14px}.gh-input{flex:1;min-width:0;font-size:11px;padding:3px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.gh-input:focus{border-color:#2da44e;outline:none}.gh-pat-link{flex:none;font-size:10px;padding:3px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:pointer;white-space:nowrap}.gh-pat-link:hover{background:rgba(26,127,55,.14)}.gh-pat-link:disabled{opacity:.35;cursor:default;background:transparent}.gh-priv-row{display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding-left:19px;user-select:none}.gh-priv-row input{margin:0;cursor:pointer}.gh-folder-row2{font-size:11px}.gh-folder-label2{flex:none;font-size:12px}.gh-folder-name2{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--vscode-foreground)}.gh-folder-name2.none{opacity:.45;font-weight:400}.gh-change-btn{flex:none;font-size:10px;padding:2px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:pointer;white-space:nowrap}.gh-change-btn:hover{background:rgba(26,127,55,.14)}.gh-connect-btn{font-size:11px;font-weight:700;padding:4px 8px;border:1px solid #1a7f37;border-radius:4px;background:#1a7f37;color:#fff;cursor:pointer;margin-top:2px}.gh-connect-btn:hover{background:#2da44e}.gh-connect-btn:disabled{opacity:.4;cursor:default}.gh-msg{font-size:10px;min-height:0;color:#2da44e;font-weight:600}.gh-msg.err{color:#e5534b}.gh-connected-bar{display:flex;align-items:center;gap:6px;font-size:11px}.gh-conn-folder{flex:none;font-weight:700;color:var(--vscode-foreground)}.gh-conn-folder::before{content:"📁 "}.gh-conn-repo{flex:1;min-width:0;color:#2da44e;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gh-conn-repo::before{content:"✅ "}.gh-disconnect-btn{flex:none;font-size:10px;padding:1px 6px;border:1px solid rgba(229,83,75,.5);border-radius:4px;background:transparent;color:#e5534b;cursor:pointer}.gh-disconnect-btn:hover{background:rgba(229,83,75,.14)}.gh-sync-btn,.gh-open-btn{flex:none;font-size:13px;padding:1px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:transparent;cursor:pointer;line-height:1.3}.gh-sync-btn:hover,.gh-open-btn:hover{background:rgba(26,127,55,.14)}.gh-sync-btn.gh-on{background:#1a7f37;border-color:#116329}.gh-open-btn{background:#1a7f37;border-color:#116329}.gh-open-btn:hover{background:#2da44e;border-color:#116329}
 .toc-tools .bm-pending-split{display:inline-flex;align-items:stretch;margin-left:auto;margin-right:6px}.toc-tools .bm-pending-btn{position:relative;font-size:13px;padding:3px 6px;border-radius:5px 0 0 5px;background:#ffffff;color:#1e293b;border-color:#94a3b8}.toc-tools .bm-pending-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-radius:0 5px 5px 0;background:#ffffff;color:#1e293b;border-color:#94a3b8}.toc-tools .bm-pending-menu-btn:hover{background:#f1f5f9}.toc-tools .bm-pending-btn:hover{background:#f1f5f9}.toc-tools .bm-pending-btn.has{background:#cbd5e1}.toc-tools .bm-pending-cnt{position:absolute;right:2px;bottom:-1px;font-size:9px;font-weight:900;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.85)}
-.toc-tools .ref-cycle{font-size:13px;padding:3px 7px;border-radius:5px;background:#8a5a00;color:#fff7e0;border-color:#6b4400;margin-right:4px}.toc-tools .ref-cycle:hover{background:#a87000}.toc-tools .bm-split{display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-add-pending{order:0;color:#475569;font-weight:600}.bm-pop #bm-add-pending:hover{background:rgba(100,116,139,.16)}.bm-pop #bm-add-pending.disabled{opacity:.4;cursor:default;pointer-events:none}
-.bm-pop #bm-pending-list{order:1;display:flex;flex-direction:column;gap:2px}.bm-pop #bm-pending-list:empty{display:none}
-.bm-pop .bm-pending-row{font-size:11px;text-align:left;padding:4px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-descriptionForeground);cursor:pointer;white-space:nowrap}.bm-pop .bm-pending-row:hover{background:rgba(100,116,139,.18);color:var(--vscode-foreground)}
+.toc-tools .bm-split{display:inline-flex;align-items:stretch}.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-cycle:hover{background:#9a6500}.toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}.toc-tools .bm-menu-btn:hover{background:#9a6500}.toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}.toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}.bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}.bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}.bm-pop.on{display:flex}.bm-pop-item{font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}.bm-pop-item:hover{background:rgba(210,132,0,.16)}.bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}.bm-pop #bm-add-pending{order:0;color:#475569;font-weight:600}.bm-pop #bm-add-pending:hover{background:rgba(100,116,139,.16)}.bm-pop #bm-add-pending.disabled{opacity:.4;cursor:default;pointer-events:none}
+.bm-pop #ref-group-list{order:1;display:flex;flex-direction:column;gap:2px}.bm-pop #ref-group-list:empty{display:none}
+.bm-pop .bm-pending-row{font-size:11px;text-align:left;padding:4px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-descriptionForeground);cursor:pointer;white-space:nowrap}.bm-pop .bm-pending-row:hover{background:rgba(100,116,139,.18);color:var(--vscode-foreground)}.bm-pop .bm-pending-row.active{color:#d18400;font-weight:800}
 .bm-pop #bm-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}.bm-pop #bm-clear:hover{background:rgba(220,38,38,.12);color:#dc2626}.bm-pop #bm-remove{order:3}.bm-pop #bm-front{order:4;color:#dc2626;font-weight:700}.bm-pop #bm-front:hover{background:rgba(220,38,38,.14)}.bm-pop #bm-pending-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}.bm-pop #bm-pending-clear:hover{background:rgba(220,38,38,.12);color:#dc2626}.bm-pop #bm-pending-resolve{order:3}.bm-pop #bm-pending-front{order:4;color:#dc2626;font-weight:700}.bm-pop #bm-pending-front:hover{background:rgba(220,38,38,.14)}
 .fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}.fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}.fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}.fixed-toc-item.editing-comment{background:transparent;box-shadow:inset 3px 0 0 #d18400}.fixed-toc-item.selected.editing-comment .toc-value{border-color:var(--vscode-focusBorder,#3794ff);background:linear-gradient(to right, rgba(245,158,11,.28) 0 var(--toc-prefix-w,0px), var(--vscode-input-background) var(--toc-prefix-w,0px));}.toc-check{width:15px;height:15px}.toc-value{width:100%;min-width:0;font-size:12px;padding:3px 4px;border:1px solid rgba(210,140,0,.25);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}.toc-value:focus{border-color:var(--vscode-focusBorder,#3794ff);outline:1px solid var(--vscode-focusBorder,#3794ff)}.toc-field{position:relative;min-width:0}.toc-disp{position:absolute;inset:0;display:flex;align-items:center;padding:3px 4px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;background:var(--vscode-input-background);border:1px solid rgba(210,140,0,.25);border-radius:4px;pointer-events:none;color:var(--vscode-input-foreground)}.toc-disp .toc-sep{color:#3794ff;font-weight:900;white-space:pre}.toc-disp .toc-comment{color:#16a34a}.fixed-toc-item:focus-within .toc-disp{display:none}.fixed-toc-item.selected .toc-disp{border-color:#d18400}.toc-mini{padding:2px 4px;min-width:20px;font-size:11px}.toc-tools .toc-del{font-size:22px;line-height:1;color:#b91c1c;padding:0 8px}.fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}.toc-pin:hover{background:rgba(56,148,255,.24)}.toc-pin-emoji{flex:none;font-size:12px}.toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}.toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}.toc-pin-access{flex:none;font-weight:700;font-size:11px;opacity:.85;margin-left:3px}.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}.toc-pin-mode.dim{opacity:.35;cursor:default}.toc-pin-check{width:12px;height:12px;margin:0}.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}.toc-pin-jump.dim{opacity:.35}.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:900;padding:1px 5px;margin-left:auto;border:1px solid currentColor;border-radius:4px;background:#fff;line-height:1.4;text-shadow:0 0 1px rgba(0,0,0,.5)}.toc-pin-toggle:hover{background:color-mix(in srgb,currentColor 16%,#fff)}.toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
 </style></head><body><section class="dock"><header class="title"><span class="title-left">Me Dock</span><span class="title-actions"><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><main class="body">
-<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">－</button><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="💤 Issue a reference mark | One click parks a 💤 point membrane at the cursor — a 'do it later' mark that lives in the text (travels with Git, no line-drift, grep 💤). First use picks the target group (remembered). The new mark becomes F.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Pending menu | Switch 🚩 Front pending / Resolve / Clear all / Add">▾</button></span><button class="cancel ref-cycle" id="ref-cycle" data-tip="Reference | One click jumps to your F reference mark (the front). Click again to cycle marks of the same group. Create marks via Edit▾ → Reference.">※</button><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Switch Front / Remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩) — the 🔖 button always jumps here. The old Front becomes a normal 🔖 (kept). When 3 are full, the old Front is replaced. With no 🔖 here, it adds one.">Switch Front bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="bm-add-pending" data-tip="Park a 💤 pending bookmark at the cursor line — a 'do it later' marker, kept apart from the 3 place 🔖. The parked date is recorded.">💤 A pending bookmark</button><div class="bm-pending-list" id="bm-pending-list"></div><button class="bm-pop-item" id="bm-pending-clear" data-tip="Remove all 💤 pending bookmarks at once (the 3 place 🔖 are kept).">🧹 Clear all pending</button><button class="bm-pop-item" id="bm-pending-resolve" data-tip="Resolve (✅) the 💤 on the current cursor line.">✅ Resolve this pending</button><button class="bm-pop-item" id="bm-pending-front" data-tip="Make the cursor line the 🚩 Front pending — the 💤 button always jumps here first. With no 💤 here, it adds one.">🚩 Switch Front pending</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
+<div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><button class="cancel toc-move" id="toc-move-up" title="Move selected item up">⬆️</button><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><button class="cancel toc-del" id="toc-del-item" title="Delete selected item">－</button><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = pending, a special group). One click jumps to its F mark; click again to cycle the group. Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) / Issue a mark at the cursor / Switch Front">▾</button></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Switch Front / Remove a 🔖">▾</button></span></div></div><div class="toc-tooltip" id="toc-tooltip"></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button><button class="bm-pop-item" id="bm-front" data-tip="Make the current cursor line the Front Anchor (🚩) — the 🔖 button always jumps here. The old Front becomes a normal 🔖 (kept). When 3 are full, the old Front is replaced. With no 🔖 here, it adds one.">Switch Front bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><div class="bm-pending-list" id="ref-group-list"></div><button class="bm-pop-item" id="ref-issue" data-tip="Insert a reference mark of the working group at the cursor (inside a membrane that already has a group, that group wins). The new mark becomes F.">➕ Issue mark here (発行)</button><button class="bm-pop-item" id="ref-switch-front" data-tip="Make the reference mark under the cursor the F (front) mark of its group.">🚩 Switch Front Reference</button></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div>
 <div class="gh-wizard" id="gh-wizard"><div class="gh-wizard-head" id="gh-wizard-head" data-tip="Press the 🐙 button, then Cmd+S → your file is saved AND pushed to GitHub. Or leave 🐙 off to save locally only. (Click here to open/close settings.)"><span class="gh-wizard-title">🐙 GitHub: Push 🐙 &amp; Save Me!</span><span class="gh-wizard-status" id="gh-wizard-status"></span><button class="gh-wizard-toggle" id="gh-wizard-toggle" data-tip="Open / close">▾</button></div><div class="gh-wizard-body" id="gh-wizard-body">
 <div class="gh-connected-bar" id="gh-connected-bar" style="display:none"><span class="gh-conn-folder" id="gh-conn-folder"></span><span class="gh-conn-repo" id="gh-conn-repo"></span><button class="gh-sync-btn" id="gh-push" data-tip="Octopush (one-shot): OFF — Cmd+S is normal save. Tap 🐙, then Cmd+S → pushes once, then turns OFF. Push when you say so.">🐙</button><button class="gh-open-btn" id="gh-open" data-tip="Open this repository on GitHub in your browser.">🔗</button><button class="gh-disconnect-btn" id="gh-disconnect-btn" data-tip="Unlink THIS folder from GitHub (your saved PAT and the GitHub repo are kept — reconnect any time)">✕</button></div>
 <div class="gh-setup-form" id="gh-setup-form"><div class="gh-form-row"><span class="gh-step">①</span><input class="gh-input" id="gh-profile-url" placeholder="https://github.com/LAIxai" spellcheck="false" data-tip="GitHubのプロフィールURL (例: https://github.com/LAIxai)"/></div><div class="gh-form-row"><span class="gh-step">②</span><input class="gh-input" id="gh-pat-input" type="password" placeholder="PAT (ghp_...)" spellcheck="false" data-tip="Personal Access Token — needs 'repo' scope"/><button class="gh-pat-link" id="gh-pat-link" disabled data-tip="Open GitHub's token creation page">Get PAT ↗</button></div><div class="gh-form-row gh-folder-row2"><span class="gh-step">③</span><span class="gh-folder-label2">📁</span><span class="gh-folder-name2" id="gh-folder-name2">Open a folder first</span><button class="gh-change-btn" id="gh-change-folder" data-tip="Pick which folder to back up to GitHub">Change…</button></div><label class="gh-priv-row" id="gh-priv-row" data-tip="Private = only you can see it (recommended for diaries / drafts). Uncheck for a public repo."><input type="checkbox" id="gh-private" checked/><span id="gh-priv-text">🔒 Private (only you)</span></label><button class="gh-connect-btn" id="gh-connect-btn" disabled>Connect &amp; Create Repo</button><div class="gh-msg" id="gh-msg"></div></div></div></div><div class="row format-tools" id="format-tools"><span class="fmt-label">Format</span><span class="fmt-btns"><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Highlight | =={ text (text/bg)//tip }== — ▾ picks color · ↻ cycles 3 saved colors">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span><span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##[ text (text/bg)//tip ]## — ▾ picks color · ↻ cycles ## → # → ###">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button><div class="color-pop fmt-pop" id="fmt-pop"></div></div>
@@ -13673,29 +13757,29 @@ const ghOpen=document.getElementById('gh-open');if(ghOpen)ghOpen.addEventListene
 const newMdBtn=document.getElementById('new-md-btn');if(newMdBtn)newMdBtn.addEventListener('click',()=>vscode.postMessage({type:'createNewMdFile'})); /* v0.9.991: 作家向け新規mdファイル作成 */
 window.addEventListener('message',ev=>{const msg=ev.data;if(!msg)return;if(msg.type==='githubSyncState'){if(ghPush){ghPush.classList.toggle('gh-on',!!msg.on);var gitInfo=(msg.gitInstalled===false)?' | ⚠ git not installed (tap for help)':(msg.gitVersion?(' | git ✓ '+msg.gitVersion):'');var baseTip=msg.on?'Octopush armed 🐙 — your next Cmd+S pushes once, then turns OFF. (Click to cancel.)':'Octopush (one-shot): OFF — Cmd+S is normal save. Tap 🐙, then Cmd+S → pushes once, then turns OFF.';ghPush.setAttribute('data-tip',baseTip+gitInfo);}}if(msg.type==='githubPushDone'){if(ghPush){const was=ghPush.textContent;ghPush.textContent='✅';setTimeout(()=>{ghPush.textContent=was;},1200);}}if(msg.type==='githubWizardState'){renderGhWizard(msg);if(msg.syncOn!==undefined&&ghPush){ghPush.classList.toggle('gh-on',!!msg.syncOn);}}});
 /* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
-const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmAddPending=document.getElementById('bm-add-pending'),bmPendingList=document.getElementById('bm-pending-list'),bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document.getElementById('bm-pending-menu-btn'),bmPendingPop=document.getElementById('bm-pending-pop'),bmPendingClear=document.getElementById('bm-pending-clear'),bmPendingResolve=document.getElementById('bm-pending-resolve'),bmPendingFront=document.getElementById('bm-pending-front');
-if(bmPendingBtn)bmPendingBtn.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkTogglePending'});if(typeof hideTocTip==='function')hideTocTip();}); // v0.9.841: ツールバー💤=駐車/ジャンプ。v843: クリック後は開いたままの古いtipを消す→次ホバーで状態別tipに更新
+const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document.getElementById('bm-pending-menu-btn'),bmPendingPop=document.getElementById('bm-pending-pop'),refGroupList=document.getElementById('ref-group-list'),refIssueBtn=document.getElementById('ref-issue'),refSwitchFrontBtn=document.getElementById('ref-switch-front');
+if(bmPendingBtn)bmPendingBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceCycle'});if(typeof hideTocTip==='function')hideTocTip();}); /* v0.9.99972(改良2 俊克): 統合参照ボタン=作業グループの巡回(読む)。表示記号はreferenceStateが更新・発行/選択は▾メニュー */
 function closeBmPop(){if(bmPop)bmPop.classList.remove('on');}
-const refCycle=document.getElementById('ref-cycle');if(refCycle)refCycle.addEventListener('click',()=>{vscode.postMessage({type:'referenceCycle'});}); /* v0.9.99969: 参照ボタン=読む(巡回)。💤=書く(発行・段5) */
 if(bmCycle)bmCycle.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkCycle'});}); /* v0.9.849: 旧.zeroガードを撤去=栞未設定でもクリックを通し、バックエンドのbookmarkCycleが空時にF栞を貼る(俊克バグ報告) */
 if(bmMenuBtn)bmMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!bmPop.classList.contains('on');bmPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=bmMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=bmPop.offsetHeight||60,w=bmPop.offsetWidth||140;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;bmPop.style.left=left+'px';bmPop.style.top=Math.max(6,r.top-h-6)+'px';});});
 if(bmRemove)bmRemove.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkRemove'});closeBmPop();});
 if(bmFront)bmFront.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkSetFront'});closeBmPop();});
 if(bmClear)bmClear.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkClearAll'});closeBmPop();});
-if(bmAddPending)bmAddPending.addEventListener('click',()=>{if(bmAddPending.classList.contains('disabled'))return;vscode.postMessage({type:'bookmarkAddPending'});closeBmPendingPop();});
-if(bmPendingList)bmPendingList.addEventListener('click',ev=>{const row=ev.target&&ev.target.closest?ev.target.closest('.bm-pending-row'):null;if(!row)return;const ln=Number(row.getAttribute('data-line'));if(!isNaN(ln))vscode.postMessage({type:'bookmarkJumpPending',line:ln});closeBmPendingPop();});
+/* v0.9.99972(改良2 俊克): ▾メニュー=参照グループ選択(💤保留は別枠)+発行+Switch Front。行クリック=作業グループを切替。 */
+if(refGroupList)refGroupList.addEventListener('click',ev=>{const row=ev.target&&ev.target.closest?ev.target.closest('.bm-pending-row'):null;if(!row||!row.hasAttribute('data-name'))return;vscode.postMessage({type:'referenceSelectGroup',name:row.getAttribute('data-name'),pending:row.getAttribute('data-pending')==='1'});closeBmPendingPop();});
+if(refIssueBtn)refIssueBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceIssue'});closeBmPendingPop();});
+if(refSwitchFrontBtn)refSwitchFrontBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceSwitchFront'});closeBmPendingPop();});
 document.addEventListener('click',ev=>{if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();},true);
 /* v0.9.897: 💤保留栞のプルアップメニュー(通常栞の🔖▾と同じ仕組み)。 */
 function closeBmPendingPop(){if(bmPendingPop)bmPendingPop.classList.remove('on');}
 if(bmPendingMenuBtn)bmPendingMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!bmPendingPop.classList.contains('on');bmPendingPop.classList.toggle('on',willOpen);if(!willOpen)return;const r=bmPendingMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=bmPendingPop.offsetHeight||60,w=bmPendingPop.offsetWidth||150;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;bmPendingPop.style.left=left+'px';bmPendingPop.style.top=Math.max(6,r.top-h-6)+'px';});});
-if(bmPendingFront)bmPendingFront.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkSetPendingFront'});closeBmPendingPop();});
-if(bmPendingResolve)bmPendingResolve.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkRemovePending'});closeBmPendingPop();});
-if(bmPendingClear)bmPendingClear.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkClearAllPending'});closeBmPendingPop();});
+/* v0.9.99972: 旧bm-pending(仮想保留)のメニュー配線を撤去=保留は参照符(生データ)に統合完了 */
 document.addEventListener('click',ev=>{if(bmPendingPop&&bmPendingPop.classList.contains('on')&&!bmPendingPop.contains(ev.target)&&ev.target!==bmPendingMenuBtn)closeBmPendingPop();},true);
-function renderBookmarkState(count,full,pending,pendingFull,marksInfo){if(bmCycle)bmCycle.classList.toggle('zero',!count);if(bmMenuBtn)bmMenuBtn.classList.toggle('zero',!count);if(bmCycle){/* v0.9.848: 🔖ボタンtipに各栞の行番号+作成日時(🚩=F栞印)を表示。未設定はクリックでF栞を貼る案内。 */const mi=Array.isArray(marksInfo)?marksInfo:[];bmCycle.setAttribute('data-tip',mi.length?("🔖 Bookmark | One click → 🚩 Front Anchor, click again to cycle. | "+mi.map(m=>(m.front?'🚩':'🔖')+' Ln '+(m.line+1)+(m.at?' · '+m.at:'')).join(' | ')):"🔖 Bookmark | Click to drop a 🚩 Front Anchor at the cursor line.");}if(bmPendingBtn){/* v0.9.843: 保留あり→🔖と同じ白抜き数字バッジで設定済みを示す(縁取り太さは分かりにくい・俊克)。tipも状態別。 */const np=Array.isArray(pending)?pending.length:0;bmPendingBtn.classList.toggle('has',np>0);let c=bmPendingBtn.querySelector('.bm-pending-cnt');if(np>0){if(c)c.textContent=np;else bmPendingBtn.insertAdjacentHTML('beforeend','<span class="bm-pending-cnt">'+np+'</span>');}else if(c)c.remove();const _pinfo=np>0?pending.map(p=>'Ln '+(p.line+1)+(p.at?' · '+p.at:'')).join(' / '):'';/* v0.9.846: 設定済みtipに行番号+保留日時=飛ぶ前に判断できる(俊克) */bmPendingBtn.setAttribute('data-tip',np>0?("💤 Issue a reference mark at the cursor (the new mark becomes F). | Legacy pending: "+_pinfo+" — manage via ▾"):"💤 Issue a reference mark at the cursor — a 'do it later' point membrane that lives in the text (travels with Git, grep 💤). First use picks the target group (remembered).");}if(bmCycle){const c=bmCycle.querySelector('.bm-cnt');if(count){if(c)c.textContent=count;else bmCycle.insertAdjacentHTML('beforeend','<span class="bm-cnt">'+count+'</span>');}else if(c)c.remove();}
-/* v0.9.837: 💤保留栞の一覧をメニューに描画(クリックでジャンプ)+満杯なら「A pending bookmark」を無効化。 */
-if(bmPendingList){const ps=Array.isArray(pending)?pending:[];bmPendingList.innerHTML=ps.map(p=>'<button class="bm-pending-row" data-line="'+p.line+'" data-tip="Jump to this 💤 pending bookmark">💤 Ln '+(p.line+1)+(p.at?' · '+escText(p.at):'')+'</button>').join('');}
-if(bmAddPending)bmAddPending.classList.toggle('disabled',!!pendingFull);}
+function renderBookmarkState(count,full,pending,pendingFull,marksInfo){if(bmCycle)bmCycle.classList.toggle('zero',!count);if(bmMenuBtn)bmMenuBtn.classList.toggle('zero',!count);if(bmCycle){/* v0.9.848: 🔖ボタンtipに各栞の行番号+作成日時(🚩=F栞印)を表示。未設定はクリックでF栞を貼る案内。 */const mi=Array.isArray(marksInfo)?marksInfo:[];bmCycle.setAttribute('data-tip',mi.length?("🔖 Bookmark | One click → 🚩 Front Anchor, click again to cycle. | "+mi.map(m=>(m.front?'🚩':'🔖')+' Ln '+(m.line+1)+(m.at?' · '+m.at:'')).join(' | ')):"🔖 Bookmark | Click to drop a 🚩 Front Anchor at the cursor line.");}/* v0.9.99972: 参照ボタンの記号/tip/バッジは renderReferenceState が担当(旧bm-pendingバッジ撤去) */if(bmCycle){const c=bmCycle.querySelector('.bm-cnt');if(count){if(c)c.textContent=count;else bmCycle.insertAdjacentHTML('beforeend','<span class="bm-cnt">'+count+'</span>');}else if(c)c.remove();}
+}
+/* v0.9.99972(改良2 俊克): 統合参照ボタンの状態描画。ボタン=作業グループの記号(💤=保留・別枠)+件数バッジ。▾メニュー=グループ一覧(保留を先頭の別枠に)。 */
+function renderReferenceState(m){if(bmPendingBtn){const sym=m.activeSym||'💤';bmPendingBtn.textContent=sym;const act=(m.groups||[]).find(g=>g.active);const cnt=act?act.count:0;if(cnt>0)bmPendingBtn.insertAdjacentHTML('beforeend','<span class="bm-pending-cnt">'+cnt+'</span>');bmPendingBtn.classList.toggle('has',cnt>0);bmPendingBtn.setAttribute('data-tip','Reference '+sym+(act?(' — '+act.name+' ('+cnt+')'):'')+' | One click jumps to the F mark of the working group; click again to cycle. Pick the group from ▾ (💤 pending is a special group).');}
+if(refGroupList){const gs=Array.isArray(m.groups)?m.groups:[];const pend=gs.filter(g=>g.pending),norm=gs.filter(g=>!g.pending);const row=g=>'<button class="bm-pending-row'+(g.active?' active':'')+'" data-name="'+escText(g.name)+'" data-pending="'+(g.pending?1:0)+'" data-tip="'+(g.pending?'保留参照(別枠) — 選ぶとボタンが💤に':'参照グループ — 選ぶとボタンがこの記号に')+'">'+(g.active?'● ':'　')+escText(g.sym)+' '+escText(g.label||g.name)+' ('+g.count+')</button>';refGroupList.innerHTML=pend.map(row).join('')+(pend.length&&norm.length?'<div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div>':'')+norm.map(row).join('')+(gs.length?'':'<div class="bm-pending-row" style="cursor:default">参照グループなし — Edit▾→Referenceで作成/➕発行で💤自動作成</div>');}}
 if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
 if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
 if(opRemove)opRemove.addEventListener('click',()=>{if(meScope==='me'){vscode.postMessage({type:'shedMe'});}else{vscode.postMessage({type:'noop',name:(meScope==='shadow'?'removeMeShadowSkeleton':'removeMeAllSkeleton')});}});
@@ -13916,7 +14000,7 @@ lineInput.addEventListener('keydown',ev=>{
   if(ev.key==='Enter'){ev.preventDefault();clearTimeout(lineJumpTimer);vscode.postMessage({type:'jumpLine',line:lineInput.value});return;}
   if(ev.key==='Escape'){lineInput.value=currentLine||'';lineInput.blur();return;}
 });
-window.addEventListener('message',event=>{const m=event.data;if(m&&m.type==='opResult'){showMeDockToast(m.text);return;}if(m&&m.type==='headWrap'){/* v0.9.780: 端→端の巡回時、Navigate Me!枠内に回転矢印を約2秒+その間tipを抑止。 */const ov=document.getElementById('head-wrap-overlay');if(ov){ov.classList.add('show');window.__headWrapUntil=Date.now()+300;if(typeof hideTocTip==='function')hideTocTip();clearTimeout(window.__headWrapT);window.__headWrapT=setTimeout(()=>{ov.classList.remove('show');window.__headWrapUntil=0;},300);}return;}if(m&&m.type==='bookmarkState'){renderBookmarkState(m.count||0,!!m.full,m.pending||[],!!m.pendingFull,m.marksInfo||[]);return;}if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;applyMode(m.mode,m.value,!!m.force,m.line,m.markerOn,m.history,m.color,m.flipMinusColor,m.flipPlusColor,m.navDepth,m.anchor);if(typeof m.standardsOn==='boolean'&&m.standardsOn!==standardsOn){standardsOn=m.standardsOn;renderStandardsToggle();}if(m.headNav)renderHeadNav(m.headNav);if(m.markNav)renderMarkNav(m.markNav);window.__navOnly=null;}if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);}return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);});}if(f.level)fmtHeadingLevel=Math.max(1,Math.min(3,Number(f.level)||2));fmtSpec.highlight=fmtHlSlots[fmtHlIdx];fmtSpec.strike=fmtStSlots[fmtStIdx];fmtSpec.heading=fmtHeadingColors[fmtHeadingLevel];if(fmtHeading)fmtHeading.textContent='#'.repeat(fmtHeadingLevel);if(fmtHighlight)fmtHighlight.textContent='='.repeat([2,1,3][fmtHlIdx]);if(fmtStrike)fmtStrike.textContent='~'.repeat([2,1,3][fmtStIdx]);if(typeof renderFmtBtnColors==='function')renderFmtBtnColors();if(fmtPop&&fmtPop.classList.contains('on'))renderFmtPop();}return;}if(m&&m.type==='zoomMeLoaded'){renderZoomMeLoaded(m.label||'');if(m.mode==='me'){zoomMembraneNameValue=m.start!==undefined?String(m.start):zoomMembraneNameValue;zoomMembraneCountValue=m.end!==undefined?String(m.end):zoomMembraneCountValue;}else{zoomLineStartValue=m.start!==undefined?String(m.start):zoomLineStartValue;zoomLineEndValue=m.end!==undefined?String(m.end):zoomLineEndValue;}if(m.mode){applyZoomMeMode(m.mode,true);}}if(m&&m.type==='focusName')focusNameInput(m.select!==false);});
+window.addEventListener('message',event=>{const m=event.data;if(m&&m.type==='opResult'){showMeDockToast(m.text);return;}if(m&&m.type==='headWrap'){/* v0.9.780: 端→端の巡回時、Navigate Me!枠内に回転矢印を約2秒+その間tipを抑止。 */const ov=document.getElementById('head-wrap-overlay');if(ov){ov.classList.add('show');window.__headWrapUntil=Date.now()+300;if(typeof hideTocTip==='function')hideTocTip();clearTimeout(window.__headWrapT);window.__headWrapT=setTimeout(()=>{ov.classList.remove('show');window.__headWrapUntil=0;},300);}return;}if(m&&m.type==='bookmarkState'){renderBookmarkState(m.count||0,!!m.full,m.pending||[],!!m.pendingFull,m.marksInfo||[]);return;}if(m&&m.type==='referenceState'){renderReferenceState(m);return;}if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;applyMode(m.mode,m.value,!!m.force,m.line,m.markerOn,m.history,m.color,m.flipMinusColor,m.flipPlusColor,m.navDepth,m.anchor);if(typeof m.standardsOn==='boolean'&&m.standardsOn!==standardsOn){standardsOn=m.standardsOn;renderStandardsToggle();}if(m.headNav)renderHeadNav(m.headNav);if(m.markNav)renderMarkNav(m.markNav);window.__navOnly=null;}if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);}return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);});}if(f.level)fmtHeadingLevel=Math.max(1,Math.min(3,Number(f.level)||2));fmtSpec.highlight=fmtHlSlots[fmtHlIdx];fmtSpec.strike=fmtStSlots[fmtStIdx];fmtSpec.heading=fmtHeadingColors[fmtHeadingLevel];if(fmtHeading)fmtHeading.textContent='#'.repeat(fmtHeadingLevel);if(fmtHighlight)fmtHighlight.textContent='='.repeat([2,1,3][fmtHlIdx]);if(fmtStrike)fmtStrike.textContent='~'.repeat([2,1,3][fmtStIdx]);if(typeof renderFmtBtnColors==='function')renderFmtBtnColors();if(fmtPop&&fmtPop.classList.contains('on'))renderFmtPop();}return;}if(m&&m.type==='zoomMeLoaded'){renderZoomMeLoaded(m.label||'');if(m.mode==='me'){zoomMembraneNameValue=m.start!==undefined?String(m.start):zoomMembraneNameValue;zoomMembraneCountValue=m.end!==undefined?String(m.end):zoomMembraneCountValue;}else{zoomLineStartValue=m.start!==undefined?String(m.start):zoomLineStartValue;zoomLineEndValue=m.end!==undefined?String(m.end):zoomLineEndValue;}if(m.mode){applyZoomMeMode(m.mode,true);}}if(m&&m.type==='focusName')focusNameInput(m.select!==false);});
 </script></body></html>`;
 }
 
@@ -14433,6 +14517,9 @@ function toggleMeDock(editorOverride) {
     // v0.9.715: 🔖 ブックマーク。cycle=巡回ジャンプ / insert=カーソル行に追加 / remove=カーソル行を削除。
     if (message && message.type === 'bookmarkCycle') { await bookmarkCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'referenceCycle') { await referenceCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99969: 参照ボタン=読む(巡回)
+    if (message && message.type === 'referenceIssue') { await referenceIssue(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99972: ▾メニューの➕発行
+    if (message && message.type === 'referenceSelectGroup') { await referenceSelectGroup(getMeDockTargetEditor() || vscode.window.activeTextEditor, message.name, !!message.pending); return; } // v0.9.99972: 作業グループ切替
+    if (message && message.type === 'referenceSwitchFront') { await referenceSwitchFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99972: ▾メニューのSwitch Front
     if (message && message.type === 'bookmarkInsert') { await bookmarkInsert(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkRemove') { await bookmarkRemove(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
     if (message && message.type === 'bookmarkSetFront') { await bookmarkSetFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
