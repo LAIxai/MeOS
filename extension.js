@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99994: 衛星ガター栞をカテゴリ色に(俊克 7/6 am08:19: 通常栞は赤橙なので参照は色で区別)。膜なしグループの衛星=水色(ref-mark-plain.svg)/膜有りグループの衛星=濃青(ref-mark-doc.svg)/保留=スレート(ref-mark-pending.svg)=Fの3色と完全一致(文字なしの栞)。v99993の琥珀1枚(ref-mark.svg)を3枚に差替。色はグループの膜有無で決定(groupHasMem[name]=そのグループにdesc符があるか)・Fと同じ規準。refSatPlain/Doc/PendGutterDecorationの3装飾(宣言/生成_mkSatヘルパ/dispose明示/clearForRaw/描画分類)。node実測4項目PASS(膜有り衛星=doc/膜なし衛星=plain/保留=pend/desc符はガター無し)。node+SVG3枚。
 // - v0.9.99993: ①参照符をホスト言語コメントで包む(俊克 7/6 am07:50・後方互換不要): md=<!-- {* ▶◀mRn=… *} -->/code=/* {* … *} */→膜と同じく生ファイル・レンダリング(GitHub/Zenn)・他エディタで不可視(昨日Zenn下書きに生の参照符が映る問題の根治)。REF_POINT_REにラッパーを任意の非捕捉グループで追加=captureはmarker/fam/inner不変・m[0]がコメント全体を含むので隠し/削除がラッパーごと効く・マーカー置換(無効化)は内側の▶◀位置をindexOfで特定=不変。wrapRefMark(doc,core)を挿入2箇所(referenceIssue/referenceMeCreate)に適用・needComment(旧//前置)は廃止。裸の{* *}も任意ラッパーゆえ引き続き認識。②改良1=F以外・説明文なしの参照符(衛星)にもガター栞(ref-mark.svg新規=琥珀の栞・文字なし)。参照膜(説明文あり)は記号+説明が本文に見えるのでガター不要。refSatelliteGutterDecoration新設(宣言/生成/dispose/clearForRaw/描画)・ガターブロックでrefPtAllを走査しdescなし&F以外を衛星に。node実測10項目PASS(md/code/裸/無効化/マーカー置換/削除)。node+SVG1枚。
 // - v0.9.99992: 参照符の巡回ジャンプの着地点を符の1行上に(俊克 7/6 am07:29: シリアル番号を見えるようにしたい)。真因=カーソル行は生データ表示(v659思想)なので符の上に着地すると{* ▶◀ *}が生表示になりチップ(※1等)の番号が隠れる→着地を target.line-1(col0・0クランプ)に降ろすと符のチップが描画され番号が見える・符自体は画面中央にreveal。巡回継続の対応=onPt検出に「curLine+1に符がある(=1行上に着地した状態)」も加え、直下の符から次へ回れるようにした(exact-on-mark優先→無ければ直下行)。node側のみ・referenceCycleのみ(SwitchFront等の他ジャンプは不変)。
 // - v0.9.99991: Home栞ガターの🏠を素数13に(俊克 7/5 pm08:17: 11はこじんまりし過ぎ)。font-size 11→13。14(大)→11(小)→13(ちょうど)の探索。SVG1枚のみ。
@@ -2103,7 +2104,8 @@ let refPointLabelDecoration;
 let refFrontGutterDecoration; // v0.9.99969: F参照符だけガターにアイコン。v99972: 青F(ref-front.svg)=栞の赤Fと区別(俊克バグ1)
 let refFrontPendingGutterDecoration; // v0.9.99972: 保留参照(R6=💤)のFは従来の保留Fマーク(bookmark-pending-front.svg)
 let refFrontPlainGutterDecoration; // v0.9.99981: 膜なしグループのF=薄い水色F(ref-front-plain.svg・俊克改良2)
-let refSatelliteGutterDecoration; // v0.9.99993: F以外・説明文なしの参照符=琥珀の栞(ref-mark.svg・俊克改良1)
+// v0.9.99993/99994: F以外・説明文なしの参照符(衛星)のガター栞。カテゴリ色でFと一致(俊克改良1): 膜なし=水色/膜有り=濃青/保留=スレート。
+let refSatPlainGutterDecoration, refSatDocGutterDecoration, refSatPendGutterDecoration;
 let homeBookmarkDecoration; // v0.9.99975: Home栞(緑地・白H=home.svg・ボタンと同デザイン=分かり易さ)
 // 色キー → 背景色。v0.9.698: 「本物の色に見える」濃さにする(俊克: 薄い赤=ピンク・薄い紺=紫で駄目)。
 // 明るい暗色は色相がズレるので濃い(高alpha)本物色にし、暗い背景は自動で白文字を当てて可読化
@@ -2706,7 +2708,9 @@ function disposeDecorations() {
   if (refFrontGutterDecoration) { refFrontGutterDecoration.dispose(); refFrontGutterDecoration = undefined; } // v0.9.99969
   if (refFrontPendingGutterDecoration) { refFrontPendingGutterDecoration.dispose(); refFrontPendingGutterDecoration = undefined; } // v0.9.99972
   if (refFrontPlainGutterDecoration) { refFrontPlainGutterDecoration.dispose(); refFrontPlainGutterDecoration = undefined; } // v0.9.99981
-  if (refSatelliteGutterDecoration) { refSatelliteGutterDecoration.dispose(); refSatelliteGutterDecoration = undefined; } // v0.9.99993
+  if (refSatPlainGutterDecoration) { refSatPlainGutterDecoration.dispose(); refSatPlainGutterDecoration = undefined; } // v0.9.99994
+  if (refSatDocGutterDecoration) { refSatDocGutterDecoration.dispose(); refSatDocGutterDecoration = undefined; }
+  if (refSatPendGutterDecoration) { refSatPendGutterDecoration.dispose(); refSatPendGutterDecoration = undefined; }
   if (homeBookmarkDecoration) { homeBookmarkDecoration.dispose(); homeBookmarkDecoration = undefined; } // v0.9.99975
   if (strikeColorByKey) {
     for (const d of strikeColorByKey.values()) { try { d.dispose(); } catch (_) {} }
@@ -3095,15 +3099,16 @@ function makeDecorations() {
   refFrontPlainGutterDecoration = vscode.window.createTextEditorDecorationType(_refFrontPlainOpts);
   // v0.9.99993: F以外・説明文なしの参照符(衛星)にも栞マーク=一貫性(俊克改良1)。参照膜(説明文あり)は
   // 記号+説明が本文に見えるのでガター不要。琥珀の栞(文字なし・参照チップの色に合わせる)。
-  const _refMarkOpts = {
-    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    overviewRulerColor: 'rgba(217, 119, 6, 0.9)',
-    overviewRulerLane: vscode.OverviewRulerLane.Left,
-    gutterIconSize: 'contain'
+  // v0.9.99994(俊克改良1): 衛星のガター栞をカテゴリ色に(F同様)。膜なし=水色/膜有り=濃青/保留=スレート・文字なし。
+  const _mkSat = (svg, ruler, fb) => {
+    const o = { rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, overviewRulerColor: ruler, overviewRulerLane: vscode.OverviewRulerLane.Left, gutterIconSize: 'contain' };
+    try { if (extensionContext && extensionContext.extensionUri) o.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, svg); } catch (_) {}
+    if (!o.gutterIconPath) o.before = { contentText: fb, margin: '0 3px 0 0' };
+    return vscode.window.createTextEditorDecorationType(o);
   };
-  try { if (extensionContext && extensionContext.extensionUri) _refMarkOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'ref-mark.svg'); } catch (_) {}
-  if (!_refMarkOpts.gutterIconPath) _refMarkOpts.before = { contentText: '\u00b7', margin: '0 3px 0 0' };
-  refSatelliteGutterDecoration = vscode.window.createTextEditorDecorationType(_refMarkOpts);
+  refSatPlainGutterDecoration = _mkSat('ref-mark-plain.svg', 'rgba(56, 189, 248, 0.85)', '\u00b7');
+  refSatDocGutterDecoration = _mkSat('ref-mark-doc.svg', 'rgba(37, 99, 235, 0.85)', '\u00b7');
+  refSatPendGutterDecoration = _mkSat('ref-mark-pending.svg', 'rgba(148, 163, 184, 0.85)', '\u00b7');
   // v0.9.99975: Home栞=一番戻りたい場所(俊克: 生涯日記で「日記の本当に書き込む場所」へ一撃で帰る)。
   // ガターのマークとMe Dockのボタンを同デザイン(緑地・白H)にして対応を一目で(俊克案)。
   const _homeOpts = {
@@ -5660,11 +5665,11 @@ function applyPrettyLabels(editor) {
   // v0.9.99969: F参照符だけガターにアイコン(他の参照符は無印・俊克決定 2026.07.03 am09:25)。
   // v0.9.99972/99981: Fガターを3分類の色に出し分け(俊克改良2): 保留(R6)=従来の保留Fマーク/
   // 膜なし(説明文付きの符が無いグループ)=薄い水色F(ref-front-plain.svg)/膜有り=濃い青F(ref-front.svg)。
-  if (refFrontGutterDecoration && refFrontPendingGutterDecoration && refFrontPlainGutterDecoration && refSatelliteGutterDecoration) {
+  if (refFrontGutterDecoration && refFrontPendingGutterDecoration && refFrontPlainGutterDecoration && refSatPlainGutterDecoration && refSatDocGutterDecoration && refSatPendGutterDecoration) {
     const refFrontItems = [];       // 膜有り=濃青
     const refFrontPlainItems = [];  // 膜なし=水色
     const refFrontPendItems = [];   // 保留
-    const refSatelliteItems = [];   // v0.9.99993: F以外・説明文なしの衛星符=琥珀の栞
+    const refSatPlainItems = [], refSatDocItems = [], refSatPendItems = []; // v0.9.99994: 衛星符をカテゴリ色で(膜なし水色/膜有り濃青/保留スレート)
     try {
       const ref = getRefMeta(editor.document);
       let fp = null;
@@ -5679,17 +5684,25 @@ function applyPrettyLabels(editor) {
           else refFrontPlainItems.push(item);
         }
       }
-      // v0.9.99993(俊克改良1): F以外・説明文なしの参照符(衛星)にも栞マーク。参照膜(説明文あり)は不要。
+      // v0.9.99993/99994(俊克改良1): F以外・説明文なしの参照符(衛星)にも栞マーク=Fと同じカテゴリ色。
+      // 参照膜(説明文あり)は本文に記号+説明が見えるのでガター不要。色はグループの膜有無で決める(Fと一致)。
+      const groupHasMem = {};
+      for (const p of refPtAll) if (p.desc) groupHasMem[p.name] = true;
       for (const q of refPtAll) {
         if (q.desc) continue;                                            // 参照膜=説明文ありはガター不要
         if (fp && q.line === fp.line && q.start === fp.start) continue;  // FはF専用アイコンで別途表示
-        refSatelliteItems.push({ range: new vscode.Range(q.line, q.start, q.line, q.start) });
+        const item = { range: new vscode.Range(q.line, q.start, q.line, q.start) };
+        if (isPendingFam(q.fam)) refSatPendItems.push(item);             // 保留=スレート
+        else if (groupHasMem[q.name]) refSatDocItems.push(item);         // 膜有りグループ=濃青
+        else refSatPlainItems.push(item);                                // 膜なしグループ=水色
       }
     } catch (_) {}
     setDecoCached(editor, refFrontGutterDecoration, 'refFront', refFrontItems);
     setDecoCached(editor, refFrontPlainGutterDecoration, 'refFrontPlain', refFrontPlainItems);
     setDecoCached(editor, refFrontPendingGutterDecoration, 'refFrontPend', refFrontPendItems);
-    setDecoCached(editor, refSatelliteGutterDecoration, 'refSat', refSatelliteItems);
+    setDecoCached(editor, refSatPlainGutterDecoration, 'refSatPlain', refSatPlainItems);
+    setDecoCached(editor, refSatDocGutterDecoration, 'refSatDoc', refSatDocItems);
+    setDecoCached(editor, refSatPendGutterDecoration, 'refSatPend', refSatPendItems);
   }
   // v0.9.660: 見出し適用（レベル別サイズ＋色別文字色＋マーカー#/(…)隠し）
   if (headingSizeByLevel) {
@@ -7244,7 +7257,7 @@ function clearForRaw(editor) {
   if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
   z(headingMarkerDecoration);
   z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
-  z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); z(refFrontPlainGutterDecoration); z(refSatelliteGutterDecoration); // v0.9.99972/99981/99993: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
+  z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); z(refFrontPlainGutterDecoration); z(refSatPlainGutterDecoration); z(refSatDocGutterDecoration); z(refSatPendGutterDecoration); // v0.9.99972/99981/99993/99994: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
   // bookmark は残す(IMEに無害・ナビ有用)
 }
 async function toggleRawMode() {
