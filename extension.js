@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99989: Home栞のガターアイコンを🏠に(俊克 7/5 pm08:01「その方が美しい」)。home.svgを緑地+白H→🏠絵文字のSVG(<text>🏠</text>・viewBox中央・font-size14)に差替=Me Dockのボタン(v99976で🏠済み)とガターが同じ絵柄で揃う。栞ファミリーの中でHomeだけ「家」の絵柄=帰る場所という別格の役割が一目で分かる。SVG1枚のみ(コード/webview不変)。
 // - v0.9.99988: セグメント決定中はtip抑制を継続(俊克 7/5 pm04:26: v99987の1.6秒では別セグメントへ移動中にtipが復活してしまう)。時限__tipSuppressUntilを廃し、決定中フラグ window.__refDeciding に変更: セグメントを1回クリックした時点で決定中=ON→3つを切り替えて見比べる間ずっとtip非表示(移動中も出ない)、メニューを閉じた時(=同セグメント再クリックまたは外側クリック)にOFF=次回オープンでtip復活。▾を開いた直後はOFF(最初の1回はtipで機能説明を読める)。webviewのみ・check_webview.js構文OK。
 // - v0.9.99987: セグメントトグルのクリックでtipを消す(俊克 7/5 pm04:16 スクショ: 説明tipが右下の参照ボタンを覆い、色/記号の変化が見えない)。セグメントクリック時に window.__tipSuppressUntil=now+1600ms を立てhideTocTip()→showTocTip冒頭でこの抑制窓をチェックし1.6秒間tip非表示=ボタンの✓移動と色替わりを確認できる(mousemoveで復活するが1.6秒後)。webviewのみ・check_webview.js構文OK。
 // - v0.9.99986: ★3状態トグルをセグメント直行式に(俊克ひらめき 7/5 pm04:01 眼科待合)。「💤保留/膜なし/膜有り」を3つのクリック可能セグメント(data-mode付きspan)に分割=クリックした位置のモードへ直行(循環でなく)。メニューは閉じず、✓の移動とボタン表示の切替をその場で確認できる。既に✓が付いているセグメントを再クリックすると閉じる(=2度目のクリックで確定・閉じる)。node=referenceSetMode(mode直接指定・referenceToggleModeの循環から分離・lastPlain/lastDocGroup記憶は共有)。webview=window.__refModeで現モード保持・.ref-seg CSS(ホバー背景)。「クリック位置で3択判定+メニュー据え置き」は有りそうで無いUI(俊克)。webview+node・check_webview.js構文OK・アポストロフィ厳禁順守。
