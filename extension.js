@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99992: 参照符の巡回ジャンプの着地点を符の1行上に(俊克 7/6 am07:29: シリアル番号を見えるようにしたい)。真因=カーソル行は生データ表示(v659思想)なので符の上に着地すると{* ▶◀ *}が生表示になりチップ(※1等)の番号が隠れる→着地を target.line-1(col0・0クランプ)に降ろすと符のチップが描画され番号が見える・符自体は画面中央にreveal。巡回継続の対応=onPt検出に「curLine+1に符がある(=1行上に着地した状態)」も加え、直下の符から次へ回れるようにした(exact-on-mark優先→無ければ直下行)。node側のみ・referenceCycleのみ(SwitchFront等の他ジャンプは不変)。
 // - v0.9.99991: Home栞ガターの🏠を素数13に(俊克 7/5 pm08:17: 11はこじんまりし過ぎ)。font-size 11→13。14(大)→11(小)→13(ちょうど)の探索。SVG1枚のみ。
 // - v0.9.99990: Home栞ガターの🏠を少し小さく(俊克 7/5 pm08:15「素数11を試す」)。home.svgのfont-size 14→11=行の高さに収まり隣の栞マーク(F等)と高さが揃う。SVG1枚のみ。
 // - v0.9.99989: Home栞のガターアイコンを🏠に(俊克 7/5 pm08:01「その方が美しい」)。home.svgを緑地+白H→🏠絵文字のSVG(<text>🏠</text>・viewBox中央・font-size14)に差替=Me Dockのボタン(v99976で🏠済み)とガターが同じ絵柄で揃う。栞ファミリーの中でHomeだけ「家」の絵柄=帰る場所という別格の役割が一目で分かる。SVG1枚のみ(コード/webview不変)。
@@ -4838,16 +4839,21 @@ async function referenceCycle(editor) {
   if (ref.front && ref.front.name === gname) frontPt = g2[Math.min(Number(ref.front.ord) || 0, g2.length - 1)];
   if (!frontPt) frontPt = g2[0]; // Fがこのグループに無い→グループ先頭をFとみなす
   const curLine = editor.selection.active.line, curCh = editor.selection.active.character;
-  const onPt = g2.find(p => p.line === curLine && p.start <= curCh && curCh <= p.end);
+  let onPt = g2.find(p => p.line === curLine && p.start <= curCh && curCh <= p.end);
+  // v0.9.99992(俊克): 着地を符の1行上にするため(下記)、直下の符も「その符の上」とみなして巡回を継続する。
+  if (!onPt) onPt = g2.find(p => p.line === curLine + 1);
   let target;
   if (onPt) {
-    target = g2[(g2.indexOf(onPt) + 1) % g2.length]; // 符の上→同グループの次へ巡回(末尾→先頭)
+    target = g2[(g2.indexOf(onPt) + 1) % g2.length]; // 符の上(または直上行)→同グループの次へ巡回(末尾→先頭)
   } else {
     target = frontPt;                                 // 執筆中(符以外)→必ずFへ直行
   }
-  const pos = new vscode.Position(target.line, target.start);
+  // v0.9.99992(俊克): 着地点を符の1行上に。カーソル行は生データ表示になるため符の上だとシリアル番号が
+  // 隠れる→1行上に降ろすと符のチップ(※1 等)が描画され番号が見える。符は画面中央に表示。
+  const landLine = Math.max(0, target.line - 1);
+  const pos = new vscode.Position(landLine, 0);
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) });
-  editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+  editor.revealRange(new vscode.Range(target.line, 0, target.line, 0), vscode.TextEditorRevealType.InCenter);
   vscode.window.setStatusBarMessage((target === frontPt ? 'F ' : '') + refFamilySymbol(target.fam) + target.serial + ' — ' + (target.base || target.name) + ' (' + (g2.indexOf(target) + 1) + '/' + g2.length + ')', 3000);
 }
 // カーソル位置の参照符をFに(栞のSwitch Frontと同流儀)。Fはピッカーでなくカーソル操作で移動(俊克決定)。
