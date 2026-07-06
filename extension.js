@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99997: 保留を唯一の特別枠に(俊克 7/6 am10:01 改良1)。保留(💤=R9)をReference Meの記号ピッカーから除外→保留グループはReference Meで作成不可(通常記号※†‡*§のみ)。保留は⇄トグルで選び💤発行するだけ=常に単一の保留グループ(referenceIssueが最初の保留グループを再利用=複数作られない)。根拠(俊克): 保留符は互いに基本無関係でただ「保留」の意味だけ共有・1つのTS付き膜名・説明なし=膜なしの一形態。3状態トグルで保留だけが個数(N)を表示するのは保留グループが1つだから(膜なし/膜有りは複数グループのカテゴリなので個数を出さない)。保留は膜あり/膜なしのカテゴリ分類にも入らない(postReferenceStateでisPendingFam→pendingCountへ別集計)。node実測(picker候補=[1,2,3,4,5])PASS。node側のみ。
 // - v0.9.99996: 参照のF保留ガターを赤→灰色系に(俊克 7/6 am09:32 改良1)。F保留は従来 bookmark-pending-front.svg(赤地白F+💤・通常栞と共用)だった→参照専用の ref-front-pending.svg 新設=明るい灰(#cbd5e1・Me Dockの保留ボタン.has色と一致)+濃いF・赤を止めた。その他(衛星)の保留ガター ref-mark-pending.svg を #94a3b8→#64748b の暗い灰に(F=明/その他=暗の明暗差)。オーバービュー定規もF保留=明るい灰/衛星保留=暗い灰に。赤い bookmark-pending-front.svg は通常栞(bmPendingFront)用に温存=参照と切り離し。node+SVG2枚(新規ref-front-pending/更新ref-mark-pending)。
 // - v0.9.99995: max10グループ制限のバグ修正(俊克 7/6 am09:08: 膜有り5+膜なし3=8個なのに保留追加で『max10・削除しろ』警告)。真因2つ=①保留(💤)グループもカウントに含めていた(俊克「保留は別枠」が正)②refGroupCountがObject.keys(ref.groups)経由でmMETAに残った幽霊グループ(符を消したのに登録が残ったもの)も数えていた。修正: refGroupCountを「実在の符を持つ通常グループのみ」に(collectRefPointsからisPendingFamでない名前をSet化・Object.keys(ref.groups)は使わない)。referenceIssueの保留パスからmax検査を撤去(保留は無制限)・referenceMeCreateも保留(R9)作成時はmax対象外。node実測2項目PASS。node側のみ。
 // - v0.9.99994: 衛星ガター栞をカテゴリ色に(俊克 7/6 am08:19: 通常栞は赤橙なので参照は色で区別)。膜なしグループの衛星=水色(ref-mark-plain.svg)/膜有りグループの衛星=濃青(ref-mark-doc.svg)/保留=スレート(ref-mark-pending.svg)=Fの3色と完全一致(文字なしの栞)。v99993の琥珀1枚(ref-mark.svg)を3枚に差替。色はグループの膜有無で決定(groupHasMem[name]=そのグループにdesc符があるか)・Fと同じ規準。refSatPlain/Doc/PendGutterDecorationの3装飾(宣言/生成_mkSatヘルパ/dispose明示/clearForRaw/描画分類)。node実測4項目PASS(膜有り衛星=doc/膜なし衛星=plain/保留=pend/desc符はガター無し)。node+SVG3枚。
@@ -5010,9 +5011,11 @@ async function referenceMeCreate() {
   if (!editor) { vscode.window.showInformationMessage('Reference Me: 対象のエディタがありません。'); return; }
   const doc = editor.document;
   const ref = getRefMeta(doc);
-  const famItems = Object.keys(REF_FAMILY_SYMBOLS).map(k => ({
+  // v0.9.99997(俊克改良1): 保留(💤)はReference Meで作らない=唯一の特別枠。記号ピッカーは通常記号のみ(※†‡*§)。
+  // 保留は⇄トグルで選び💤発行するだけ=常に単一の保留グループ(保留符は互いに無関係・ただ「保留」の意味だけ共有)。
+  const famItems = Object.keys(REF_FAMILY_SYMBOLS).filter(k => !isPendingFam(Number(k))).map(k => ({
     label: REF_FAMILY_SYMBOLS[k] + '  (R' + k + ')',
-    description: k === '1' ? '日本式・既定' : (k === '9' ? '保留(💤)' : ''),
+    description: k === '1' ? '日本式・既定' : '',
     fam: Number(k)
   }));
   const lastIdx = famItems.findIndex(it => it.fam === Number(ref.lastFam));
