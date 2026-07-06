@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99996: 参照のF保留ガターを赤→灰色系に(俊克 7/6 am09:32 改良1)。F保留は従来 bookmark-pending-front.svg(赤地白F+💤・通常栞と共用)だった→参照専用の ref-front-pending.svg 新設=明るい灰(#cbd5e1・Me Dockの保留ボタン.has色と一致)+濃いF・赤を止めた。その他(衛星)の保留ガター ref-mark-pending.svg を #94a3b8→#64748b の暗い灰に(F=明/その他=暗の明暗差)。オーバービュー定規もF保留=明るい灰/衛星保留=暗い灰に。赤い bookmark-pending-front.svg は通常栞(bmPendingFront)用に温存=参照と切り離し。node+SVG2枚(新規ref-front-pending/更新ref-mark-pending)。
 // - v0.9.99995: max10グループ制限のバグ修正(俊克 7/6 am09:08: 膜有り5+膜なし3=8個なのに保留追加で『max10・削除しろ』警告)。真因2つ=①保留(💤)グループもカウントに含めていた(俊克「保留は別枠」が正)②refGroupCountがObject.keys(ref.groups)経由でmMETAに残った幽霊グループ(符を消したのに登録が残ったもの)も数えていた。修正: refGroupCountを「実在の符を持つ通常グループのみ」に(collectRefPointsからisPendingFamでない名前をSet化・Object.keys(ref.groups)は使わない)。referenceIssueの保留パスからmax検査を撤去(保留は無制限)・referenceMeCreateも保留(R9)作成時はmax対象外。node実測2項目PASS。node側のみ。
 // - v0.9.99994: 衛星ガター栞をカテゴリ色に(俊克 7/6 am08:19: 通常栞は赤橙なので参照は色で区別)。膜なしグループの衛星=水色(ref-mark-plain.svg)/膜有りグループの衛星=濃青(ref-mark-doc.svg)/保留=スレート(ref-mark-pending.svg)=Fの3色と完全一致(文字なしの栞)。v99993の琥珀1枚(ref-mark.svg)を3枚に差替。色はグループの膜有無で決定(groupHasMem[name]=そのグループにdesc符があるか)・Fと同じ規準。refSatPlain/Doc/PendGutterDecorationの3装飾(宣言/生成_mkSatヘルパ/dispose明示/clearForRaw/描画分類)。node実測4項目PASS(膜有り衛星=doc/膜なし衛星=plain/保留=pend/desc符はガター無し)。node+SVG3枚。
 // - v0.9.99993: ①参照符をホスト言語コメントで包む(俊克 7/6 am07:50・後方互換不要): md=<!-- {* ▶◀mRn=… *} -->/code=/* {* … *} */→膜と同じく生ファイル・レンダリング(GitHub/Zenn)・他エディタで不可視(昨日Zenn下書きに生の参照符が映る問題の根治)。REF_POINT_REにラッパーを任意の非捕捉グループで追加=captureはmarker/fam/inner不変・m[0]がコメント全体を含むので隠し/削除がラッパーごと効く・マーカー置換(無効化)は内側の▶◀位置をindexOfで特定=不変。wrapRefMark(doc,core)を挿入2箇所(referenceIssue/referenceMeCreate)に適用・needComment(旧//前置)は廃止。裸の{* *}も任意ラッパーゆえ引き続き認識。②改良1=F以外・説明文なしの参照符(衛星)にもガター栞(ref-mark.svg新規=琥珀の栞・文字なし)。参照膜(説明文あり)は記号+説明が本文に見えるのでガター不要。refSatelliteGutterDecoration新設(宣言/生成/dispose/clearForRaw/描画)・ガターブロックでrefPtAllを走査しdescなし&F以外を衛星に。node実測10項目PASS(md/code/裸/無効化/マーカー置換/削除)。node+SVG1枚。
@@ -2103,7 +2104,7 @@ let highlightFgByColor = null;      // v0.9.661: Map<色キー, decorationType> 
 let refPointHideDecoration;
 let refPointLabelDecoration;
 let refFrontGutterDecoration; // v0.9.99969: F参照符だけガターにアイコン。v99972: 青F(ref-front.svg)=栞の赤Fと区別(俊克バグ1)
-let refFrontPendingGutterDecoration; // v0.9.99972: 保留参照(R6=💤)のFは従来の保留Fマーク(bookmark-pending-front.svg)
+let refFrontPendingGutterDecoration; // v0.9.99972/99995: 保留参照のF=明るい灰の栞F(ref-front-pending.svg・赤止め)
 let refFrontPlainGutterDecoration; // v0.9.99981: 膜なしグループのF=薄い水色F(ref-front-plain.svg・俊克改良2)
 // v0.9.99993/99994: F以外・説明文なしの参照符(衛星)のガター栞。カテゴリ色でFと一致(俊克改良1): 膜なし=水色/膜有り=濃青/保留=スレート。
 let refSatPlainGutterDecoration, refSatDocGutterDecoration, refSatPendGutterDecoration;
@@ -3081,11 +3082,11 @@ function makeDecorations() {
   refFrontGutterDecoration = vscode.window.createTextEditorDecorationType(_refFrontOpts);
   const _refFrontPendOpts = {
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    overviewRulerColor: 'rgba(100, 116, 139, 0.95)',
+    overviewRulerColor: 'rgba(203, 213, 225, 0.95)', // v0.9.99995: F保留=明るい灰(赤止め・俊克改良1)
     overviewRulerLane: vscode.OverviewRulerLane.Left,
     gutterIconSize: 'contain'
   };
-  try { if (extensionContext && extensionContext.extensionUri) _refFrontPendOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'bookmark-pending-front.svg'); } catch (_) {}
+  try { if (extensionContext && extensionContext.extensionUri) _refFrontPendOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'ref-front-pending.svg'); } catch (_) {}
   if (!_refFrontPendOpts.gutterIconPath) _refFrontPendOpts.before = { contentText: '💤', margin: '0 3px 0 0' };
   refFrontPendingGutterDecoration = vscode.window.createTextEditorDecorationType(_refFrontPendOpts);
   // v0.9.99981: 膜なしグループのF=薄い水色(俊克改良2: 膜なし=薄い水色/膜有り=濃い青)。
@@ -3109,7 +3110,7 @@ function makeDecorations() {
   };
   refSatPlainGutterDecoration = _mkSat('ref-mark-plain.svg', 'rgba(56, 189, 248, 0.85)', '\u00b7');
   refSatDocGutterDecoration = _mkSat('ref-mark-doc.svg', 'rgba(37, 99, 235, 0.85)', '\u00b7');
-  refSatPendGutterDecoration = _mkSat('ref-mark-pending.svg', 'rgba(148, 163, 184, 0.85)', '\u00b7');
+  refSatPendGutterDecoration = _mkSat('ref-mark-pending.svg', 'rgba(100, 116, 139, 0.9)', '\u00b7'); // v0.9.99995: その他の保留=暗い灰
   // v0.9.99975: Home栞=一番戻りたい場所(俊克: 生涯日記で「日記の本当に書き込む場所」へ一撃で帰る)。
   // ガターのマークとMe Dockのボタンを同デザイン(緑地・白H)にして対応を一目で(俊克案)。
   const _homeOpts = {
