@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99999: ★参照スロット体系を確定(俊克 7/6 am11:06): 最大10=R1〜R9(通常)+RP(保留・別枠の10番目)。R1〜R5=プリセット記号(※†‡*§)/R6〜R9=カスタム記号枠(4つ・v999100のパネルで設定・当面はR6..R9表示)/RP=💤保留。①保留の記法を mR9 → mRP に(数字空間の外へ=R6〜R9をカスタムに解放)。REF_POINT_RE=mR(P|\d+)・fam='P'(文字)・REF_PENDING_FAM='P'・isPendingFam=fam==='P'のみ(旧mR9/mR6の保留扱いは外す=R9がカスタムと衝突するため・俊克「後方互換不要」)。②REF_GROUP_MAX 10→9(通常グループのみ・保留RPは別枠)。③refFamilySymbol(fam,custom)に第2引数=R6〜9のカスタム記号(mMETA随伴・v999100で配線)・未設定はR6..R9表示。collectRefPoints/applyPrettyLabelsのfam解析・isPendingFam呼出(raw値)・picker filterを'P'対応に。★影響: 既存のmR9保留符は通常R9表示に変わる→Delete a group→再発行(保留は1グループ)で戻る。node実測14項目PASS。★バージョン規約: 次から99999→999100→…の6桁で刻む(俊克決定・1.0はまだ)。node側のみ。
 // - v0.9.99998: F保留のガター栞に💤マークを復活(俊克 7/6 am10:25)。ref-front-pending.svgを従来レイアウト(F左上+💤右)に戻すが色は明るい灰(#cbd5e1・赤止めはv99996維持)+濃いF。SVG1枚のみ。
 // - v0.9.99997: 保留を唯一の特別枠に(俊克 7/6 am10:01 改良1)。保留(💤=R9)をReference Meの記号ピッカーから除外→保留グループはReference Meで作成不可(通常記号※†‡*§のみ)。保留は⇄トグルで選び💤発行するだけ=常に単一の保留グループ(referenceIssueが最初の保留グループを再利用=複数作られない)。根拠(俊克): 保留符は互いに基本無関係でただ「保留」の意味だけ共有・1つのTS付き膜名・説明なし=膜なしの一形態。3状態トグルで保留だけが個数(N)を表示するのは保留グループが1つだから(膜なし/膜有りは複数グループのカテゴリなので個数を出さない)。保留は膜あり/膜なしのカテゴリ分類にも入らない(postReferenceStateでisPendingFam→pendingCountへ別集計)。node実測(picker候補=[1,2,3,4,5])PASS。node側のみ。
 // - v0.9.99996: 参照のF保留ガターを赤→灰色系に(俊克 7/6 am09:32 改良1)。F保留は従来 bookmark-pending-front.svg(赤地白F+💤・通常栞と共用)だった→参照専用の ref-front-pending.svg 新設=明るい灰(#cbd5e1・Me Dockの保留ボタン.has色と一致)+濃いF・赤を止めた。その他(衛星)の保留ガター ref-mark-pending.svg を #94a3b8→#64748b の暗い灰に(F=明/その他=暗の明暗差)。オーバービュー定規もF保留=明るい灰/衛星保留=暗い灰に。赤い bookmark-pending-front.svg は通常栞(bmPendingFront)用に温存=参照と切り離し。node+SVG2枚(新規ref-front-pending/更新ref-mark-pending)。
@@ -4615,7 +4616,8 @@ function workingTocHighlightRanges(editor) {
 // 同じ文法=生/眠の対。無効化は説明文を残したまま採番/巡回/カウントから除外・grep可・▷◁→▶◀で復活。
 // v0.9.99993(俊克): 参照符もホスト言語コメントで包む(md=<!-- -->/code=/* */)→生ファイル・レンダリング・
 // 他エディタでも不可視(膜と同じ思想)。ラッパーは任意の非捕捉グループ=captureはmarker/fam/innerのまま。
-const REF_POINT_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(▶◀|▷◁)[ \t]*mR(\d+)[ \t]*=[ \t]*([^\r\n]*?)[ \t]*\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;
+// v0.9.99999(俊克): 参照グループは最大10=R1〜R9(通常)+RP(保留)。R1〜5=プリセット記号(※†‡*§)・R6〜9=カスタム記号・RP=💤保留(別枠)。
+const REF_POINT_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*(▶◀|▷◁)[ \t]*mR(P|\d+)[ \t]*=[ \t]*([^\r\n]*?)[ \t]*\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;
 // 参照符をホスト言語コメントで包む(md=<!-- -->/code=/* *//その他=裸)。core={* ▶◀mRn=… *}。
 function wrapRefMark(doc, core) {
   const lang = doc && doc.languageId;
@@ -4628,11 +4630,13 @@ const REF_MARK_DISABLED = '\u25b7\u25c1'; // ▷◁
 function lineHasRefMark(t) { return t.indexOf(REF_MARK_ACTIVE) >= 0 || t.indexOf(REF_MARK_DISABLED) >= 0; }
 // R1=※(日本式)→R2=†, R3=‡, R4=*, R5=§(欧米式)。R0は作らない(作家向けはR1起点)。💤は段5でR族入り。
 // v0.9.99982(俊克改良2): 💤=R9(高番号)。1〜8を将来の可視記号用に空ける。旧mR6も💤として認識(後方互換)。
-const REF_FAMILY_SYMBOLS = { 1: '※', 2: '†', 3: '‡', 4: '*', 5: '§', 9: '💤' };
-const REF_PENDING_FAM = 9;
-function isPendingFam(fam) { return fam === 9 || fam === 6; }
-function refFamilySymbol(fam) {
-  if (fam === 6) return '💤';
+// v0.9.99999: 保留は数字空間の外=fam 'P'(mRP)。R6〜9は将来のカスタム記号(未設定はR6..R9表示)。旧mR9/mR6は保留扱いを外す(R9=カスタム枠のため)。
+const REF_FAMILY_SYMBOLS = { 1: '※', 2: '†', 3: '‡', 4: '*', 5: '§', P: '💤' };
+const REF_PENDING_FAM = 'P';
+function isPendingFam(fam) { return fam === 'P'; }
+function refFamilySymbol(fam, custom) {
+  if (isPendingFam(fam)) return '💤';
+  if (custom && custom[fam]) return custom[fam]; // v0.9.999100: R6〜9のカスタム記号(mMETA随伴)
   return REF_FAMILY_SYMBOLS[fam] || ('R' + fam);
 }
 // inner = `参照膜名_タイムスタンプ // 説明文`。TSは生データ保持・表示のみ隠す(小説/説明書向けstealth思想)。
@@ -4655,7 +4659,7 @@ function collectRefPoints(doc) {
     let m;
     while ((m = REF_POINT_RE.exec(text)) !== null) {
       const disabled = (m[1] === REF_MARK_DISABLED); // v0.9.99981: ▷◁=無効化
-      const fam = Number(m[2]);
+      const fam = (m[2] === 'P') ? 'P' : Number(m[2]); // v0.9.99999: 保留='P'
       if (!disabled) counts[fam] = (counts[fam] || 0) + 1; // 採番は生きた符のみ(無効化は番号を持たない)
       const p = parseRefPointInner(m[3]);
       points.push({ line, start: m.index, end: m.index + m[0].length, fam, serial: disabled ? 0 : counts[fam], name: p.name, base: p.base, ts: p.ts, desc: p.desc, disabled });
@@ -4667,7 +4671,7 @@ function collectRefPoints(doc) {
 // 撤廃。グループ=名前空間(用途: 説明書の参照/プロジェクト用/今日の予定…)・膜=構造、の完全分離。
 // 通常の栞(3個)と同じくファイル全体で生きる。プルダウンに全グループが見える今の実装が正=
 // 「1ファイルに何種類あるかが見えた方が使いやすい」。innermostPairAt/refGroupOfMembraneは撤去。
-const REF_GROUP_MAX = 10; // 生涯日記で無限に作ると管理不能→max10(作成のみ制限・既存表示は無制限)
+const REF_GROUP_MAX = 9; // v0.9.99999: 通常グループはR1〜R9の最大9個(保留RPは別枠の10番目)。
 // v0.9.99995(俊克バグ1): max10は「通常の参照グループ」だけを数える。保留(💤)は別枠=数えない。
 // 実在の符を持つグループのみカウント(mMETAに残った幽霊グループは数えない)=Object.keys(ref.groups)は使わない。
 function refGroupCount(doc, ref) {
@@ -4945,7 +4949,7 @@ function refGroupsByCategory(doc, ref) {
     if (isPendingFam(fam)) continue; // 保留は💤カテゴリ
     (pts.some(q => q.desc) ? doclike : plain).push(name);
   }
-  return { plain, doclike, hasPending: points.some(p => isPendingFam(p.fam)) || Object.keys(ref.groups).some(n => isPendingFam(Number(ref.groups[n]))) };
+  return { plain, doclike, hasPending: points.some(p => isPendingFam(p.fam)) || Object.keys(ref.groups).some(n => isPendingFam(ref.groups[n])) };
 }
 async function referenceToggleMode(editor) {
   if (!editor) return;
@@ -5014,7 +5018,7 @@ async function referenceMeCreate() {
   const ref = getRefMeta(doc);
   // v0.9.99997(俊克改良1): 保留(💤)はReference Meで作らない=唯一の特別枠。記号ピッカーは通常記号のみ(※†‡*§)。
   // 保留は⇄トグルで選び💤発行するだけ=常に単一の保留グループ(保留符は互いに無関係・ただ「保留」の意味だけ共有)。
-  const famItems = Object.keys(REF_FAMILY_SYMBOLS).filter(k => !isPendingFam(Number(k))).map(k => ({
+  const famItems = Object.keys(REF_FAMILY_SYMBOLS).filter(k => !isPendingFam(k)).map(k => ({
     label: REF_FAMILY_SYMBOLS[k] + '  (R' + k + ')',
     description: k === '1' ? '日本式・既定' : '',
     fam: Number(k)
@@ -5123,7 +5127,7 @@ function applyPrettyLabels(editor) {
       let mRef;
       while ((mRef = REF_POINT_RE.exec(text)) !== null) {
         const disabled = (mRef[1] === REF_MARK_DISABLED);
-        const fam = Number(mRef[2]);
+        const fam = (mRef[2] === 'P') ? 'P' : Number(mRef[2]); // v0.9.99999: 保留='P'
         if (!disabled) refPointCounts[fam] = (refPointCounts[fam] || 0) + 1;
         const pAll = parseRefPointInner(mRef[3]);
         if (!disabled) refPtAll.push({ line, start: mRef.index, name: pAll.name, fam, desc: pAll.desc }); // Fガター用(生きた符のみ・カーソル行含む)。v99981: descで膜有無を判定
