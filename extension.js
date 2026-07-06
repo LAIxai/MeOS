@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.99995: max10グループ制限のバグ修正(俊克 7/6 am09:08: 膜有り5+膜なし3=8個なのに保留追加で『max10・削除しろ』警告)。真因2つ=①保留(💤)グループもカウントに含めていた(俊克「保留は別枠」が正)②refGroupCountがObject.keys(ref.groups)経由でmMETAに残った幽霊グループ(符を消したのに登録が残ったもの)も数えていた。修正: refGroupCountを「実在の符を持つ通常グループのみ」に(collectRefPointsからisPendingFamでない名前をSet化・Object.keys(ref.groups)は使わない)。referenceIssueの保留パスからmax検査を撤去(保留は無制限)・referenceMeCreateも保留(R9)作成時はmax対象外。node実測2項目PASS。node側のみ。
 // - v0.9.99994: 衛星ガター栞をカテゴリ色に(俊克 7/6 am08:19: 通常栞は赤橙なので参照は色で区別)。膜なしグループの衛星=水色(ref-mark-plain.svg)/膜有りグループの衛星=濃青(ref-mark-doc.svg)/保留=スレート(ref-mark-pending.svg)=Fの3色と完全一致(文字なしの栞)。v99993の琥珀1枚(ref-mark.svg)を3枚に差替。色はグループの膜有無で決定(groupHasMem[name]=そのグループにdesc符があるか)・Fと同じ規準。refSatPlain/Doc/PendGutterDecorationの3装飾(宣言/生成_mkSatヘルパ/dispose明示/clearForRaw/描画分類)。node実測4項目PASS(膜有り衛星=doc/膜なし衛星=plain/保留=pend/desc符はガター無し)。node+SVG3枚。
 // - v0.9.99993: ①参照符をホスト言語コメントで包む(俊克 7/6 am07:50・後方互換不要): md=<!-- {* ▶◀mRn=… *} -->/code=/* {* … *} */→膜と同じく生ファイル・レンダリング(GitHub/Zenn)・他エディタで不可視(昨日Zenn下書きに生の参照符が映る問題の根治)。REF_POINT_REにラッパーを任意の非捕捉グループで追加=captureはmarker/fam/inner不変・m[0]がコメント全体を含むので隠し/削除がラッパーごと効く・マーカー置換(無効化)は内側の▶◀位置をindexOfで特定=不変。wrapRefMark(doc,core)を挿入2箇所(referenceIssue/referenceMeCreate)に適用・needComment(旧//前置)は廃止。裸の{* *}も任意ラッパーゆえ引き続き認識。②改良1=F以外・説明文なしの参照符(衛星)にもガター栞(ref-mark.svg新規=琥珀の栞・文字なし)。参照膜(説明文あり)は記号+説明が本文に見えるのでガター不要。refSatelliteGutterDecoration新設(宣言/生成/dispose/clearForRaw/描画)・ガターブロックでrefPtAllを走査しdescなし&F以外を衛星に。node実測10項目PASS(md/code/裸/無効化/マーカー置換/削除)。node+SVG1枚。
 // - v0.9.99992: 参照符の巡回ジャンプの着地点を符の1行上に(俊克 7/6 am07:29: シリアル番号を見えるようにしたい)。真因=カーソル行は生データ表示(v659思想)なので符の上に着地すると{* ▶◀ *}が生表示になりチップ(※1等)の番号が隠れる→着地を target.line-1(col0・0クランプ)に降ろすと符のチップが描画され番号が見える・符自体は画面中央にreveal。巡回継続の対応=onPt検出に「curLine+1に符がある(=1行上に着地した状態)」も加え、直下の符から次へ回れるようにした(exact-on-mark優先→無ければ直下行)。node側のみ・referenceCycleのみ(SwitchFront等の他ジャンプは不変)。
@@ -4664,8 +4665,12 @@ function collectRefPoints(doc) {
 // 通常の栞(3個)と同じくファイル全体で生きる。プルダウンに全グループが見える今の実装が正=
 // 「1ファイルに何種類あるかが見えた方が使いやすい」。innermostPairAt/refGroupOfMembraneは撤去。
 const REF_GROUP_MAX = 10; // 生涯日記で無限に作ると管理不能→max10(作成のみ制限・既存表示は無制限)
+// v0.9.99995(俊克バグ1): max10は「通常の参照グループ」だけを数える。保留(💤)は別枠=数えない。
+// 実在の符を持つグループのみカウント(mMETAに残った幽霊グループは数えない)=Object.keys(ref.groups)は使わない。
 function refGroupCount(doc, ref) {
-  return new Set([...collectRefPoints(doc).map(p => p.name), ...Object.keys(ref.groups)]).size;
+  const names = new Set();
+  for (const p of collectRefPoints(doc)) if (!isPendingFam(p.fam)) names.add(p.name);
+  return names.size;
 }
 // 参照符(点膜)の物理削除。filterFn(name)=trueのグループの符を全て消す。
 // 行全体が符だけ(任意の // コメントプレフィックス込み)なら行ごと削除・行中なら符の範囲だけ削除。
@@ -4804,7 +4809,7 @@ async function referenceIssue(editor) {
     if (sel === '💤') {
       // 保留モード(番兵): 既存の保留グループへ・無ければ初回発行で自動作成(=従来のワンクリック駐車)
       const g6 = points.find(p => isPendingFam(p.fam));
-      if (!g6 && refGroupCount(doc, ref) >= REF_GROUP_MAX) { vscode.window.showWarningMessage('参照グループは最大' + REF_GROUP_MAX + '個です。▾メニューから不要なグループを削除してください。'); return; }
+      // v0.9.99995(俊克バグ1): 保留は別枠=max10の対象外。無制限に発行できる。
       group = g6 ? g6.name : ('保留_' + getDefaultMembraneName().replace(/^name_/, ''));
       if (!g6) ref.groups[group] = REF_PENDING_FAM;
     } else if (sel && names.includes(sel)) {
@@ -5026,8 +5031,8 @@ async function referenceMeCreate() {
   if (base === undefined) return;
   const desc = await vscode.window.showInputBox({ prompt: 'Reference Me: この参照符の説明文(任意・Enterでスキップ)' });
   if (desc === undefined) return;
-  // v0.9.99973: グローバル化(俊克 7/4)=1膜1グループの作成ブロックを撤廃。上限のみ守る(max10)。
-  if (refGroupCount(doc, ref) >= REF_GROUP_MAX) {
+  // v0.9.99973/99995: 上限は通常グループのみ(max10)。保留(💤=R9)は別枠なので上限対象外。
+  if (!isPendingFam(famPick.fam) && refGroupCount(doc, ref) >= REF_GROUP_MAX) {
     vscode.window.showWarningMessage('参照グループは最大' + REF_GROUP_MAX + '個です。▾メニューから不要なグループを削除してください。');
     return;
   }
