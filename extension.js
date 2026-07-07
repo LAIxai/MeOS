@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999121: 副メニューの上下スペーサー撤去+行tip削除(俊克 7/8)。改良1=上下端の無駄な空白の正体=極端項目を中央へ持って行くためのスペーサー→撤去(先頭/末尾は端に来るがクリックで選べる)。改良2=行のtip(title=Ln N)は回転しても変わらず無意味→削除。webviewのみ。
 // - v0.9.999120: 副メニューの文字が20個で潰れて消えるバグ修正(俊克 7/8 スクショ)。真因=.bm-popはflex-direction:column、行がflex-shrink(既定1)で高さ上限内に押し込まれ潰れていた→.toc-child-rowにflex:0 0 auto(縮ませない)。+高さを最大10行分に制限(wheel時=10*rowH+8px・少数はCSS70vhにフォールバック)。CSS+webview。
 // - v0.9.999119: ★H-TOC副メニューをダイヤル式に(俊克 7/8・生年月日ピッカーの感覚)。子膜が9件以上=ポインタ(カーソル位置)を固定してリストの方をスクロール、カーソル位置の項目が常にハイライト→合わせてクリック(=マウスを動かさない)。上下スペーサーで先頭/末尾もカーソル位置に来られる・↑↓でリスト送り/Enterで中央選択・scrollでハイライト追従。少数(<9)は従来の一覧のまま。「目次としては新感覚」。webviewのみ。 → [[project_htoc_submenu_child_list]]
 // - v0.9.999118: 参照パネルの名前選択で改名の機動性UP(俊克 7/7 pm07:28)。①New reference group=カーソルが既存符の上(編集モード)なら現状(名前/説明)を保ったまま名前を選択して変更を誘う(new_TSに潰さない)・符の上でなければ従来通りnew_TSで新規。両ケースで名前をfocus+select(明示クリックなので可)。②符/膜の上にカーソル→自動編集オープン時も名前を選択状態に(setSelectionRange・エディタからfocusは奪わない)。webviewのみ。
@@ -14124,8 +14125,7 @@ function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.h
   window.renderTocChildPop=function(children){
     const arr=Array.isArray(children)?children:[];
     const wheel=arr.length>=9; /* 9件以上=ダイヤル式(月の日付など)。少数はそのまま一覧 */
-    var bodyHtml=arr.length?arr.map(function(c){return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'" title="Ln '+c.line+'">'+escText(c.name||'')+'</button>';}).join(''):'<div class="bm-pop-item" style="cursor:default;opacity:.6">(no sub-items)</div>';
-    if(wheel)bodyHtml='<div class="toc-child-spacer" id="toc-child-sp-top"></div>'+bodyHtml+'<div class="toc-child-spacer" id="toc-child-sp-bot"></div>';
+    var bodyHtml=arr.length?arr.map(function(c){return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'">'+escText(c.name||'')+'</button>';}).join(''):'<div class="bm-pop-item" style="cursor:default;opacity:.6">(no sub-items)</div>';
     pop.innerHTML=bodyHtml;
     pop.classList.toggle('wheel',wheel);
     pop.classList.add('on');
@@ -14139,9 +14139,6 @@ function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.h
       if(!rows.length)return;
       const ci=Math.floor(rows.length/2),center=rows[ci];
       if(wheel){
-        const visH=pop.clientHeight;const sp=Math.max(0,Math.floor(visH/2-rowH/2));
-        const st=document.getElementById('toc-child-sp-top'),sb=document.getElementById('toc-child-sp-bot');
-        if(st)st.style.height=sp+'px';if(sb)sb.style.height=sp+'px';
         requestAnimationFrame(function(){
           const want=at.y-pop.getBoundingClientRect().top;
           pop.scrollTop=Math.max(0,center.offsetTop+center.offsetHeight/2-want);
