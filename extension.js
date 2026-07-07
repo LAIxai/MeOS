@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999116: H-TOC副メニューの行を膜名だけに(俊克 7/7 pm06:10・シンプル化)。コメント/バッジを非表示(node側のcommentは送るが使わない)。webviewのみ。
 // - v0.9.999115: H-TOC副メニューの(no sub-items)バグ修正(俊克 7/7 テスト)。真因=H-TOC item の data-line0 は「タブ内の項目index」であって文書行ではない(6977行コメント通り)→line0=0等で膜が見つからず子ゼロ。修正=右クリック時に膜名(key=tocKeyFromInputValue)を送り、node側で findOpeningMembraneByName→開始行→collectTocChildMembranes。実関数を隔離した再現でnodeロジック自体は正常と確認済(親一致で子2件返る)。node+webview。
 // - v0.9.999114: ★H-TOC副メニュー=1階層下(子膜)リストへジャンプ(俊克 7/7)。H-TOCのitemを右クリック→その膜の直下の子膜(=生涯日記なら月→日)を順にフライアウト表示。★中央項目がマウスカーソルの位置に来るようにポップを開く(webviewはOSカーソルを動かせないので逆に「中央をカーソル位置へ」・macOSポップアップ流)+中央をハイライト&フォーカス(↑↓+Enter/Escape)。クリックでjumpLine。シンプル版(当日ロジック/フォールバック無し)。node=collectTocChildMembranes(直接の子のみ・メタ/索引除外・line0一致or内包fallback)+requestTocChildrenハンドラ。webview=#toc-child-popフライアウト+renderTocChildPop(中央位置合わせscroll)+contextmenuトリガ+tipに右クリックヒント。node+webview・check_webview.js構文OK。 → [[project_htoc_submenu_child_list]]
 // - v0.9.999113: Reference Meピッカーの仕上げ(俊克 7/6 pm08:54・全体OK)。改良1=ピッカーボタンを平べったい形に戻す(正方形風→横長・高さ26→22px/min-width26/padding0 9px)。改良2=ピッカーのtip(title)を英語化(UIは英語なので統一・built-in reference mark/custom slot)。CSS+webview(HTML)のみ。
@@ -14107,7 +14108,7 @@ function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.h
   window.closeTocChildPop=function(){pop.classList.remove('on');};
   window.renderTocChildPop=function(children){
     const arr=Array.isArray(children)?children:[];
-    pop.innerHTML=arr.length?arr.map(function(c){return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'" title="Ln '+c.line+'">'+escText(c.name||'')+(c.comment?' <span class="toc-child-cmt">// '+escText(c.comment)+'</span>':'')+'</button>';}).join(''):'<div class="bm-pop-item" style="cursor:default;opacity:.6">(no sub-items)</div>';
+    pop.innerHTML=arr.length?arr.map(function(c){return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'" title="Ln '+c.line+'">'+escText(c.name||'')+'</button>';}).join(''):'<div class="bm-pop-item" style="cursor:default;opacity:.6">(no sub-items)</div>';
     pop.classList.add('on');
     requestAnimationFrame(function(){
       const at=window.__tocChildAt||{x:120,y:160};
