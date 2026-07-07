@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999115: H-TOC副メニューの(no sub-items)バグ修正(俊克 7/7 テスト)。真因=H-TOC item の data-line0 は「タブ内の項目index」であって文書行ではない(6977行コメント通り)→line0=0等で膜が見つからず子ゼロ。修正=右クリック時に膜名(key=tocKeyFromInputValue)を送り、node側で findOpeningMembraneByName→開始行→collectTocChildMembranes。実関数を隔離した再現でnodeロジック自体は正常と確認済(親一致で子2件返る)。node+webview。
 // - v0.9.999114: ★H-TOC副メニュー=1階層下(子膜)リストへジャンプ(俊克 7/7)。H-TOCのitemを右クリック→その膜の直下の子膜(=生涯日記なら月→日)を順にフライアウト表示。★中央項目がマウスカーソルの位置に来るようにポップを開く(webviewはOSカーソルを動かせないので逆に「中央をカーソル位置へ」・macOSポップアップ流)+中央をハイライト&フォーカス(↑↓+Enter/Escape)。クリックでjumpLine。シンプル版(当日ロジック/フォールバック無し)。node=collectTocChildMembranes(直接の子のみ・メタ/索引除外・line0一致or内包fallback)+requestTocChildrenハンドラ。webview=#toc-child-popフライアウト+renderTocChildPop(中央位置合わせscroll)+contextmenuトリガ+tipに右クリックヒント。node+webview・check_webview.js構文OK。 → [[project_htoc_submenu_child_list]]
 // - v0.9.999113: Reference Meピッカーの仕上げ(俊克 7/6 pm08:54・全体OK)。改良1=ピッカーボタンを平べったい形に戻す(正方形風→横長・高さ26→22px/min-width26/padding0 9px)。改良2=ピッカーのtip(title)を英語化(UIは英語なので統一・built-in reference mark/custom slot)。CSS+webview(HTML)のみ。
 // - v0.9.999112: 参照記号を7プリセット化+サイズ微調整(俊克 7/6 pm08:32-46)。改良3=既定記号にR6=‖(平行線)/R7=¶(パラグラフ)を追加(伝統的脚注記号列)・カスタム自由枠はR8,R9のまま=合計R1〜R9(9個)。ピッカーは ※†‡∗§‖¶ | R8 R9。改良1=ボタン高さを0.8倍(ツールバー28→23px/ピッカー30→26px)。改良2=§が小さくなり過ぎ→中間へ(ボタン12→13px/ピッカー11→12px)・‖は†‡と同じ15px。node(REF_FAMILY_SYMBOLS/カスタム範囲6-9→8-9)+webview(ピッカーHTML/paint/glyphSize/CSS)。
@@ -14124,7 +14125,7 @@ function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.h
     });
   };
   const body=document.getElementById('fixed-toc-body');
-  if(body)body.addEventListener('contextmenu',function(ev){const it=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!it)return;ev.preventDefault();const l0=parseInt(it.getAttribute('data-line0'),10);if(!Number.isFinite(l0))return;window.__tocChildAt={x:ev.clientX,y:ev.clientY};vscode.postMessage({type:'requestTocChildren',line0:l0});});
+  if(body)body.addEventListener('contextmenu',function(ev){const it=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!it)return;ev.preventDefault();const inEl=it.querySelector('.toc-value');let key=(typeof tocKeyFromInputValue==='function'&&inEl)?tocKeyFromInputValue(inEl.value):'';if(!key)key=it.getAttribute('data-key')||'';if(!key)return;window.__tocChildAt={x:ev.clientX,y:ev.clientY};vscode.postMessage({type:'requestTocChildren',key:key});});
   pop.addEventListener('click',function(ev){const r=ev.target&&ev.target.closest?ev.target.closest('.toc-child-row'):null;if(!r)return;const ln=parseInt(r.getAttribute('data-line'),10);if(Number.isFinite(ln))vscode.postMessage({type:'jumpLine',line:ln});window.closeTocChildPop();});
   pop.addEventListener('keydown',function(ev){const rows=Array.prototype.slice.call(pop.querySelectorAll('.toc-child-row'));if(!rows.length)return;const i=rows.indexOf(document.activeElement);if(ev.key==='ArrowDown'){ev.preventDefault();(rows[i+1]||rows[0]).focus();}else if(ev.key==='ArrowUp'){ev.preventDefault();(rows[i-1]||rows[rows.length-1]).focus();}else if(ev.key==='Escape'){ev.preventDefault();window.closeTocChildPop();}});
   document.addEventListener('click',function(ev){if(pop.classList.contains('on')&&!pop.contains(ev.target))window.closeTocChildPop();});
@@ -15318,10 +15319,14 @@ function toggleMeDock(editorOverride) {
       jumpMeDockTargetLine(message.line);
       return;
     }
-    if (message && message.type === 'requestTocChildren') { // v0.9.999114: H-TOC副メニュー=子膜リスト要求
+    if (message && message.type === 'requestTocChildren') { // v0.9.999114/115: H-TOC副メニュー=子膜リスト要求。keyから開始行を解決(data-line0はタブ内indexで文書行ではない=v999114バグ)
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
-      const children = ed ? collectTocChildMembranes(ed.document, Number(message.line0)) : [];
-      if (meDockPanel) meDockPanel.webview.postMessage({ type: 'tocChildren', line0: message.line0, children });
+      let children = [];
+      if (ed && message.key) {
+        const info = findOpeningMembraneByName(ed.document, tocKeyFromValue(message.key));
+        if (info) children = collectTocChildMembranes(ed.document, info.line);
+      }
+      if (meDockPanel) meDockPanel.webview.postMessage({ type: 'tocChildren', children });
       return;
     }
     if (message && message.type === 'navMeWorldChanged') {
