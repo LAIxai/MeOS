@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999122: ★副メニューのポップアップ・スライド(俊克 7/8・ダイヤルの理想形)。内部スクロールが端(先頭/末尾)に達したら、その先はwheelでポップアップ全体を上下スライドさせ、端の項目を固定カーソル位置に寄せる=スペーサーの空白を出さずに全項目をカーソルで選べる。wheelハンドラ=端で内部scroll不可の時だけpreventDefaultしpop.__shift(±Gmax=clientH/2-rowH/2)を動かしpop.style.topを更新。逆スクロールで先にshiftを戻す。webviewのみ。 → [[project_htoc_submenu_child_list]]
 // - v0.9.999121: 副メニューの上下スペーサー撤去+行tip削除(俊克 7/8)。改良1=上下端の無駄な空白の正体=極端項目を中央へ持って行くためのスペーサー→撤去(先頭/末尾は端に来るがクリックで選べる)。改良2=行のtip(title=Ln N)は回転しても変わらず無意味→削除。webviewのみ。
 // - v0.9.999120: 副メニューの文字が20個で潰れて消えるバグ修正(俊克 7/8 スクショ)。真因=.bm-popはflex-direction:column、行がflex-shrink(既定1)で高さ上限内に押し込まれ潰れていた→.toc-child-rowにflex:0 0 auto(縮ませない)。+高さを最大10行分に制限(wheel時=10*rowH+8px・少数はCSS70vhにフォールバック)。CSS+webview。
 // - v0.9.999119: ★H-TOC副メニューをダイヤル式に(俊克 7/8・生年月日ピッカーの感覚)。子膜が9件以上=ポインタ(カーソル位置)を固定してリストの方をスクロール、カーソル位置の項目が常にハイライト→合わせてクリック(=マウスを動かさない)。上下スペーサーで先頭/末尾もカーソル位置に来られる・↑↓でリスト送り/Enterで中央選択・scrollでハイライト追従。少数(<9)は従来の一覧のまま。「目次としては新感覚」。webviewのみ。 → [[project_htoc_submenu_child_list]]
@@ -14134,7 +14135,7 @@ function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.h
       const rows=pop.querySelectorAll('.toc-child-row');
       const rowH=rows.length?rows[0].offsetHeight:24;window.__tocRowH=rowH;pop.style.maxHeight=wheel?((10*rowH+8)+'px'):'';/* v0.9.999120(俊克): 副メニューは最大10行分の高さに限定 */
       const popH=pop.offsetHeight,popW=pop.offsetWidth;
-      let top=at.y-popH/2;if(top<2)top=2;if(top+popH>window.innerHeight-2)top=window.innerHeight-popH-2;pop.style.top=top+'px';
+      let top=at.y-popH/2;if(top<2)top=2;if(top+popH>window.innerHeight-2)top=window.innerHeight-popH-2;pop.style.top=top+'px';pop.__baseTop=top;pop.__shift=0;
       let left=at.x+6;if(left+popW>window.innerWidth-2)left=at.x-popW-6;if(left<2)left=2;pop.style.left=left+'px';
       if(!rows.length)return;
       const ci=Math.floor(rows.length/2),center=rows[ci];
@@ -14153,7 +14154,7 @@ function renderFixedToc(toc){if(!fixedToc)return;renderNavTocState(!!(toc&&toc.h
       }
     });
   };
-  pop.addEventListener('scroll',function(){if(pop.classList.contains('wheel'))window.__tocChildActive();});
+  pop.addEventListener('scroll',function(){if(pop.classList.contains('wheel'))window.__tocChildActive();});/* v0.9.999122(俊克): 内部スクロールが端に達したら、その先はポップアップ全体を上下スライドさせ、端の項目をマウス位置(固定)に寄せる=空白を出さずに全項目をカーソルで選べる。 */pop.addEventListener('wheel',function(ev){if(!pop.classList.contains('wheel'))return;const rowH=window.__tocRowH||24;const Gmax=Math.max(0,pop.clientHeight/2-rowH/2);const maxScroll=pop.scrollHeight-pop.clientHeight;const d=ev.deltaY;if(typeof pop.__shift!=='number')pop.__shift=0;function apply(){pop.style.top=((pop.__baseTop||0)+pop.__shift)+'px';}if(d<0){if(pop.scrollTop<=0){if(pop.__shift<Gmax){ev.preventDefault();pop.__shift=Math.min(Gmax,pop.__shift-d);apply();window.__tocChildActive();}}else if(pop.__shift<0){ev.preventDefault();pop.__shift=Math.min(0,pop.__shift-d);apply();window.__tocChildActive();}}else if(d>0){if(pop.scrollTop>=maxScroll){if(pop.__shift>-Gmax){ev.preventDefault();pop.__shift=Math.max(-Gmax,pop.__shift-d);apply();window.__tocChildActive();}}else if(pop.__shift>0){ev.preventDefault();pop.__shift=Math.max(0,pop.__shift-d);apply();window.__tocChildActive();}}});
   const body=document.getElementById('fixed-toc-body');
   if(body)body.addEventListener('contextmenu',function(ev){const it=ev.target&&ev.target.closest?ev.target.closest('.fixed-toc-item'):null;if(!it)return;ev.preventDefault();const inEl=it.querySelector('.toc-value');let key=(typeof tocKeyFromInputValue==='function'&&inEl)?tocKeyFromInputValue(inEl.value):'';if(!key)key=it.getAttribute('data-key')||'';if(!key)return;window.__tocChildAt={x:ev.clientX,y:ev.clientY};vscode.postMessage({type:'requestTocChildren',key:key});});
   pop.addEventListener('click',function(ev){const r=ev.target&&ev.target.closest?ev.target.closest('.toc-child-row'):null;if(!r)return;const ln=parseInt(r.getAttribute('data-line'),10);if(Number.isFinite(ln))vscode.postMessage({type:'jumpLine',line:ln});window.closeTocChildPop();});
