@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999124: ★Formatの文脈トグル=装飾の解除(俊克 7/8)。Formatボタンを押した時、選択が空でカーソルが既存装飾の中(=={…}==/~~{…}~~/##[…]##)なら、その装飾を解除(マーカーを剥がし本文に戻す)。ハイライト/取消線は解除後に本文範囲を選択で返す(範囲を失わず即再装飾可)、見出しは行が対象なので選択不要。今まで両端を手で消していた面倒が1クリックに。実装=formatSpanAtCursor(行内regex+parseColorSpecで本文抽出)+removeFormatAtCursor、insertFormatハンドラで分岐(選択ありor装飾外は従来の適用のまま)。node側のみ・webview無変更。
 // - v0.9.999123: 副メニューのtip抑止+ホバー色修正(俊克 7/8)。改良1=副メニューを出した瞬間、H-TOC itemのtip(Created…/right-click…)が邪魔→開いたら window.__tocChildOpen=true+hideTocTip()、showTocTipもこのフラグで抑止、closeで解除。改良2=ホバー時こそ白っぽく=.bm-pop-item:hover(暗い琥珀)が中央の白っぽいハイライトを上書きし暗転していた→.toc-child-pop接頭辞で詳細度を上げ、ホバー/中央を同じactiveSelection(白っぽい)に統一。CSS+webview。
 // - v0.9.999122: ★副メニューのポップアップ・スライド(俊克 7/8・ダイヤルの理想形)。内部スクロールが端(先頭/末尾)に達したら、その先はwheelでポップアップ全体を上下スライドさせ、端の項目を固定カーソル位置に寄せる=スペーサーの空白を出さずに全項目をカーソルで選べる。wheelハンドラ=端で内部scroll不可の時だけpreventDefaultしpop.__shift(±Gmax=clientH/2-rowH/2)を動かしpop.style.topを更新。逆スクロールで先にshiftを戻す。webviewのみ。 → [[project_htoc_submenu_child_list]]
 // - v0.9.999121: 副メニューの上下スペーサー撤去+行tip削除(俊克 7/8)。改良1=上下端の無駄な空白の正体=極端項目を中央へ持って行くためのスペーサー→撤去(先頭/末尾は端に来るがクリックで選べる)。改良2=行のtip(title=Ln N)は回転しても変わらず無意味→削除。webviewのみ。
@@ -12431,6 +12432,53 @@ async function insertFormatTemplate(kind, editor, fg, bg, level) {
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: bodySel });
 }
 
+// v0.9.999124(俊克): Formatの文脈トグル。選択が空でカーソルが既存装飾の中なら、その装飾を「解除」する。
+// 検出=行内の =={…}== / ~~{…}~~、または行頭見出し ##[…]##。本文は parseColorSpec で色スペックを剥がして取り出す。
+// 解除後、ハイライト/取消線は本文範囲を選択で返す(範囲を失わず即再装飾可)。見出しは行が対象なので選択不要。
+function formatSpanAtCursor(editor, kind) {
+  if (!editor) return null;
+  const doc = editor.document;
+  const pos = editor.selection.active;
+  const line = pos.line;
+  const text = doc.lineAt(line).text || '';
+  if (kind === 'heading') {
+    const m = text.match(MARK_HEADING_RE);
+    if (!m) return null;
+    const hs = m[0].indexOf('#'); if (hs < 0) return null;
+    const openBr = m[0].indexOf('['), closeBr = m[0].lastIndexOf(']');
+    if (openBr < 0 || closeBr <= openBr) return null;
+    const inner = m[0].slice(openBr + 1, closeBr);
+    const body = String(parseColorSpec(inner, 'fg', inner).bodyText || inner).trim();
+    return { kind, range: new vscode.Range(line, hs, line, m[0].length), body };
+  }
+  const re = (kind === 'highlight') ? /=={[^\n]*?}==/g : (kind === 'strike') ? /~~\{[^\n]*?\}~~/g : null;
+  if (!re) return null;
+  let m; re.lastIndex = 0;
+  while ((m = re.exec(text)) !== null) {
+    const s = m.index, e = m.index + m[0].length;
+    if (pos.character >= s && pos.character <= e) {
+      const inner = m[0].slice(3, m[0].length - 3); // =={ / }== ・ ~~{ / }~~ を剥がす
+      const body = String(parseColorSpec(inner, 'fg', inner).bodyText || inner).trim();
+      return { kind, range: new vscode.Range(line, s, line, e), body };
+    }
+  }
+  return null;
+}
+async function removeFormatAtCursor(editor, span) {
+  if (!editor || !span) return;
+  const doc = editor.document;
+  const we = new vscode.WorkspaceEdit();
+  we.replace(doc.uri, span.range, span.body);
+  await vscode.workspace.applyEdit(we);
+  const start = span.range.start;
+  const sel = (span.kind === 'heading')
+    ? new vscode.Selection(start, start)
+    : new vscode.Selection(start, new vscode.Position(start.line, start.character + span.body.length));
+  editor.selection = sel;
+  await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: sel });
+  vscode.window.setStatusBarMessage('Format: 解除しました', 1500);
+}
+
 // {* ▼mCN=0867_BOOKMARK // 🔖 ワンブックマーク(最大3個・安全装置) v0.9.715 (📊⊕0+0D0W) *}
 // 「場所の記憶」。最大3個のしおりを装飾🔖のみで表示(ソースに1mmも書かない)。globalStateにURIキーで永続。
 // ★戻る(cycle)と消す(remove)を分離: cycleは大事な場所へ巡回ジャンプ／removeはカーソル行のしおりだけ消す
@@ -15106,7 +15154,10 @@ function toggleMeDock(editorOverride) {
     }
     // v0.9.707: Me Dock の書式ボタン(== ハイライト / ~~ 取消線 / ## 見出し)。選択を記法で包んで挿入。
     if (message && message.type === 'insertFormat') {
-      await insertFormatTemplate(message.kind, getMeDockTargetEditor() || vscode.window.activeTextEditor, message.fg, message.bg, message.level);
+      const _fed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      const _fspan = (_fed && _fed.selection.isEmpty) ? formatSpanAtCursor(_fed, message.kind) : null; // v0.9.999124: 選択なし+装飾内=解除
+      if (_fspan) await removeFormatAtCursor(_fed, _fspan);
+      else await insertFormatTemplate(message.kind, _fed, message.fg, message.bg, message.level);
       return;
     }
     // v0.9.99938: Format色設定をmMETAへ随伴保存(in-memory即更新＋800msデバウンスで書込=連続選択を1回にまとめ・undo汚染を抑制)。
