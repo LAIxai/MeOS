@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999126: 見出し解除時にタイムスタンプも削除(俊克 7/8 改良2)。見出しは本文末尾に可視タイムスタンプ(YYYY.MM.DD(W)amHH:MM.SS)が付くので、removeFormatAtCursorで見出しを解除する時、末尾のスタンプ正規表現でstripしてから本文に戻す。node側のみ。(改良1=↻のライブ切替再設計は別途)
 // - v0.9.999125: Format解除を可視化=ボタンに⊘表示(俊克 7/8・v999124は動きが分りにくい)。カーソルが既存装飾の中(選択なし)で、そのFormatボタンが「解除」になる時、ボタン頭に赤い⊘を real-time で前置(⊘##/⊘==/⊘~~)=押すと消えると一目で分かる。実装=updateMeDockModeのmodeメッセージにfmtRemove{heading/highlight/strike}(formatSpanAtCursorで判定)を追加、webviewが.fmt-removeクラスをトグル、CSS .fmt-remove::before{content:⊘}。textContent無変更(色付けと非干渉)。node+webview(CSS)。
 // - v0.9.999124: ★Formatの文脈トグル=装飾の解除(俊克 7/8)。Formatボタンを押した時、選択が空でカーソルが既存装飾の中(=={…}==/~~{…}~~/##[…]##)なら、その装飾を解除(マーカーを剥がし本文に戻す)。ハイライト/取消線は解除後に本文範囲を選択で返す(範囲を失わず即再装飾可)、見出しは行が対象なので選択不要。今まで両端を手で消していた面倒が1クリックに。実装=formatSpanAtCursor(行内regex+parseColorSpecで本文抽出)+removeFormatAtCursor、insertFormatハンドラで分岐(選択ありor装飾外は従来の適用のまま)。node側のみ・webview無変更。
 // - v0.9.999123: 副メニューのtip抑止+ホバー色修正(俊克 7/8)。改良1=副メニューを出した瞬間、H-TOC itemのtip(Created…/right-click…)が邪魔→開いたら window.__tocChildOpen=true+hideTocTip()、showTocTipもこのフラグで抑止、closeで解除。改良2=ホバー時こそ白っぽく=.bm-pop-item:hover(暗い琥珀)が中央の白っぽいハイライトを上書きし暗転していた→.toc-child-pop接頭辞で詳細度を上げ、ホバー/中央を同じactiveSelection(白っぽい)に統一。CSS+webview。
@@ -12468,6 +12469,10 @@ function formatSpanAtCursor(editor, kind) {
 async function removeFormatAtCursor(editor, span) {
   if (!editor || !span) return;
   const doc = editor.document;
+  // v0.9.999126(俊克 改良2): 見出しは本文末尾に可視タイムスタンプが付く→解除時に一緒に消す。
+  if (span.kind === 'heading') {
+    span.body = span.body.replace(/\s*\d{4}\.\d{2}\.\d{2}\([SMTWtFs]\)(?:am|pm)\d{2}:\d{2}\.\d{2}\s*$/, '').trim();
+  }
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
   await vscode.workspace.applyEdit(we);
