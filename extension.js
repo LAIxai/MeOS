@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999142: 見出しで別プリセット適用時に色が付かないバグ修正(俊克 7/9 am08:15)。真因=既存見出しの再レベルは「外側#だけ差替でinner温存」だったため色スペックが旧色のまま。修正=re-levelパスでinner内の末尾(色)グループだけ新fg/bgに差替(parseColorSpecでbody境界を得て先頭(…)をreplace)、本文とTSは温存。ハイライト/取消線はbuildInlineFmtで元々色反映済=見出しのみの穴。node側のみ。
 // - v0.9.999141: ★「一瞬===が出た後==に化ける」真因を特定・根治(俊克 7/9 am05:50「どこかに余計な処理」)。真因=loadFmtハンドラがボタン文字を素のプリセット('='.repeat([1,2,3][fmtHlIdx]))で固定書きしていた。適用のドキュメント編集→H-TOCスナップショット(7044)がloadFmtを発火→↻直後に届いてリング表示(===)を素の==へ上書き。前versionでも残っていた。修正=loadFmtでボタン文字を固定書きせず__renderFmtRing('highlight'/'strike'/'heading')でactionable/リング状態を尊重(適用中は===保持・非適用時のみプリセット)。webviewのみ。
 // - v0.9.999140: ★「1回目OK・2回目以降で⊘==→==に化ける」真因を特定・根治(俊克 7/9)。真因=modeハンドラのサイクル時間窓(_cyc)が「カーソルが装飾を離れた」リセットまでスキップ→actionableがtrueのまま残留(stale)。次テストで==ボタンを押しても「適用」でなく「リング操作」に化け、↻がリング(⊘)でなくプリセット(=→==→===)を回す→1歩目が狂う。修正=①時間窓と__fmtWasDecoを撤去。②離脱(非deco)は常にリセット(actionable=false/ring=0/baseW=2)=残留しない。③侵入は false→true 遷移時のみ ring=0/baseW=2、既にactionable(適用直後)なら触らない。純粋な↻はmodeを一切発火しないのでリング破壊は原理的に起きない。node不変。webviewのみ。
 // - v0.9.999139: ↻リングを4状態に戻す(俊克 7/9 改良1・v138で==をパスするのは過剰・迷った末に==で終えたい)。base==: ⊘==→===→=→==→⊘==。v138の「==をパスする3状態」は撤回し4状態{0=⊘,1,2,3}に。★v138の真の成果=フォーカスがMe Dockへ移りeditor無しのmodeでfmtCtx=null→ボタンが素の==に戻らない、は維持(これが「⊘==→==」の真因だった)。%3→%4のみ。node不変。webviewのみ。
@@ -15219,9 +15220,19 @@ function toggleMeDock(editorOverride) {
         const hline = ed.selection.active.line;
         const htext = ed.document.lineAt(hline).text || '';
         const hm = htext.match(MARK_HEADING_RE);
-        if (hm) { // 既存見出しの再レベル=外側#だけ差替(inner=本文+色+TSは温存)
+        if (hm) { // 既存見出しの再レベル=外側#だけ差替(inner=本文+TSは温存)。v0.9.999142: 色スペックは差し替える(俊克: 別プリセット適用で色が付かない)。
           const hsx = hm[0].indexOf('#'), ob = hm[0].indexOf('['), cb = hm[0].lastIndexOf(']');
-          const inner = hm[0].slice(ob + 1, cb);
+          let inner = hm[0].slice(ob + 1, cb);
+          if (message.fg || (typeof message.bg === 'string')) {
+            const FG = (message.fg && String(message.fg).trim()) ? String(message.fg).trim() : '白';
+            const BG = (typeof message.bg === 'string') ? message.bg.trim() : 'Green';
+            const bgEn = normalizeBgColor(BG) || BG;
+            const parsed = parseColorSpec(inner, 'fg');
+            if (parsed.fgKey || parsed.bgKey) { // 既存の (色) を新色に差替(本文/TSはそのまま)
+              const tail = inner.slice(parsed.bodyText.length);
+              inner = parsed.bodyText + tail.replace(/^\([^()]*\)/, '(' + FG + '/' + bgEn + ')');
+            }
+          }
           const we2 = new vscode.WorkspaceEdit();
           we2.replace(ed.document.uri, new vscode.Range(hline, hsx, hline, hm[0].length), hashes + '[' + inner + ']' + hashes);
           await vscode.workspace.applyEdit(we2);
