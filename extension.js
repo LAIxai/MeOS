@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999148: ★Markdownテーブル桁揃えコマンド追加(俊克 7/9 am10:56「他人任せより貴方が簡易テーブル機能をささっと」)。コマンド laiMembrane.formatTable(パレット「MeOS: Format Table」)=カーソル行のGFMテーブルブロックを検出し列を桁揃え。★全角(CJK)+East Asian Ambiguous(★✅→①■等)を2幅としてカウント=日本語の表もモノスペースで綺麗に揃う(一般拡張が苦手な点=MeOSの強み)。区切り行の:で左/中央/右揃えを踏襲。node側のみ(meosFormatTableLines/meosTableBlockRange/meosFormatTableAtCursor+registerCommand+package.json commands)。
 // - v0.9.999147: 🚫を2px→1pxに戻す(俊克 7/9 am10:15: 少し行き過ぎた)。.fmt-btn.fmt-remove::before の top:1px。CSSのみ。
 // - v0.9.999146: 🚫が少し上寄り→2px下げる(俊克 7/9 am10:06 スクショ)。ボタン本体を動かすと隣とズレるのでグリフのみ移動=isRemove時 textContent=''にして .fmt-btn.fmt-remove::before{content:🚫;position:relative;top:2px}。CSSのみ。
 // - v0.9.999145: 無効化状態は幅記号(==等)を出さず、ボタン中央に大きな🚫だけを表示(俊克 7/9 am10:03: どのケースでも🚫を中央にドカンと=無効化が一目で分かる)。renderFmtRingのisRemove時 textContent=🚫(幅記号なし)。CSS .fmt-remove{font-size:1.3em;line-height:1;-webkit-text-fill-color:initial}(旧::beforeプレフィックスは撤去)。webviewのみ。
@@ -15709,6 +15710,90 @@ async function jumpToPairedMembraneFromCursor() {
   editor.revealRange(targetRange, vscode.TextEditorRevealType.InCenter);
 }
 
+// v0.9.999148(俊克): Markdownテーブルの桁揃え整形。★全角(CJK)を2幅としてカウント=日本語の表もモノスペースで綺麗に揃う(一般の表整形拡張が苦手な点)。カーソル行のテーブルブロックを整形。
+function meosCharWidth(cp) {
+  // ★East Asian Ambiguous(★✅→①■等)も2幅扱い=日本語等幅フォント前提でMeOSは揃える(俊克の記号多用に最適化)。
+  return ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2190 && cp <= 0x21FF) || (cp >= 0x2460 && cp <= 0x24FF) ||
+    (cp >= 0x2500 && cp <= 0x2BFF) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
+    (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0xA000 && cp <= 0xA4CF) ||
+    (cp >= 0xAC00 && cp <= 0xD7A3) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE6F) ||
+    (cp >= 0xFF00 && cp <= 0xFF60) || (cp >= 0xFFE0 && cp <= 0xFFE6) || (cp >= 0x1F000 && cp <= 0x1FAFF) ||
+    (cp >= 0x20000 && cp <= 0x3FFFD)) ? 2 : 1;
+}
+function meosStrWidth(s) { let w = 0; for (const ch of String(s)) w += meosCharWidth(ch.codePointAt(0)); return w; }
+function meosPadCell(s, width, align) {
+  const pad = Math.max(0, width - meosStrWidth(s));
+  if (align === 'right') return ' '.repeat(pad) + s;
+  if (align === 'center') { const l = Math.floor(pad / 2); return ' '.repeat(l) + s + ' '.repeat(pad - l); }
+  return s + ' '.repeat(pad);
+}
+function meosSplitTableRow(line) {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+  return s.split(/(?<!\\)\|/).map(c => c.trim());
+}
+function meosIsTableSeparator(cells) { return cells.length > 0 && cells.every(c => /^:?-+:?$/.test(c.replace(/\s/g, ''))); }
+function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !== ''; }
+// テーブル行配列 → 桁揃え後の行配列。区切り行(|---|)が無ければ null。
+function meosFormatTableLines(lines) {
+  const rows = lines.map(meosSplitTableRow);
+  let sepIdx = -1;
+  for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
+  if (sepIdx < 0) return null;
+  const cols = Math.max.apply(null, rows.map(r => r.length));
+  const align = [], width = [];
+  for (let c = 0; c < cols; c++) {
+    const spec = (rows[sepIdx][c] || '').replace(/\s/g, '');
+    const l = spec.charAt(0) === ':', r = spec.charAt(spec.length - 1) === ':';
+    align[c] = (l && r) ? 'center' : r ? 'right' : l ? 'left' : 'none';
+    let w = 3;
+    for (let i = 0; i < rows.length; i++) { if (i === sepIdx) continue; w = Math.max(w, meosStrWidth(rows[i][c] || '')); }
+    width[c] = w;
+  }
+  const out = [];
+  for (let i = 0; i < rows.length; i++) {
+    const seg = [];
+    for (let c = 0; c < cols; c++) {
+      const w = width[c], a = align[c];
+      if (i === sepIdx) {
+        if (a === 'center') seg.push(':' + '-'.repeat(w - 2) + ':');
+        else if (a === 'right') seg.push('-'.repeat(w - 1) + ':');
+        else if (a === 'left') seg.push(':' + '-'.repeat(w - 1));
+        else seg.push('-'.repeat(w));
+      } else {
+        seg.push(meosPadCell(rows[i][c] || '', w, a === 'none' ? 'left' : a));
+      }
+    }
+    out.push('| ' + seg.join(' | ') + ' |');
+  }
+  return out;
+}
+function meosTableBlockRange(doc, line) {
+  if (!meosIsTableLine(doc.lineAt(line).text)) return null;
+  let start = line, end = line;
+  while (start - 1 >= 0 && meosIsTableLine(doc.lineAt(start - 1).text)) start--;
+  while (end + 1 < doc.lineCount && meosIsTableLine(doc.lineAt(end + 1).text)) end++;
+  return { start, end };
+}
+async function meosFormatTableAtCursor(editor) {
+  if (!editor) { vscode.window.setStatusBarMessage('MeOS: アクティブなエディタがありません', 2000); return; }
+  const doc = editor.document;
+  const cur = editor.selection.active.line;
+  const blk = meosTableBlockRange(doc, cur);
+  if (!blk) { vscode.window.setStatusBarMessage('MeOS: カーソル行にテーブルがありません', 2000); return; }
+  const raw = [];
+  for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
+  const indent = (raw[0].match(/^\s*/) || [''])[0];
+  const formatted = meosFormatTableLines(raw);
+  if (!formatted) { vscode.window.setStatusBarMessage('MeOS: 区切り行 |---| が見つかりません(GFMテーブルではない)', 2800); return; }
+  const withIndent = formatted.map(l => indent + l);
+  const we = new vscode.WorkspaceEdit();
+  we.replace(doc.uri, new vscode.Range(blk.start, 0, blk.end, doc.lineAt(blk.end).text.length), withIndent.join('\n'));
+  await vscode.workspace.applyEdit(we);
+  vscode.window.setStatusBarMessage('MeOS: テーブルを整形しました ✅', 1500);
+}
+
 function activate(context) {
   extensionContext = context;
   // v0.9.678 (対策1): window-bottom status bar item showing the cursor's current membrane.
@@ -15741,6 +15826,7 @@ function activate(context) {
 
   // v0.9.719: 🔖 ホバーのコマンドリンク用。次へ巡回 / 指定行のしおり削除。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.formatTable', () => meosFormatTableAtCursor(vscode.window.activeTextEditor || getMeDockTargetEditor()))); // v0.9.999148: Markdownテーブル桁揃え(全角2幅対応)
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceSwitchFront', () => referenceSwitchFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
