@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999163: ★縦結合(rowspan)の記法追加(俊克 7/10 am02:56)。🤝→N=横結合(colspan)/🤝↓N=縦結合(下のセルと結合)/素の🤝N=→(後方互換)。コメント形式 <!--🤝→N--> / <!--🤝↓N-->。★縦はテキスト表に行間罫線が無いので「上に内容・下は空+マーカー隠す」だけで縦に繋がって見える(横より簡潔)。実装=meosCellSpanは横colspanのみ返す(↓は1)・meosMergeMarkerで方向保持してコメント再出力・装飾は→↓両方のマーカーをゼロ幅で隠し→のみ内側|を不可視化。↑/←は今回省略。node側のみ。
 // - v0.9.999162: 結合セルの編集性向上(俊克 7/10 am00:44)。改良1/3: カーソルがある行はマージ装飾(コメントゼロ幅・|不可視)を外して生データを見せる→<!--🤝N-->をインライン編集して結合の付け外しができる+ゼロ幅コメントでカーソルが抜け出せない罠を回避。改良4: ↑↓は隣の行へ移動(区切り行|---|も飛ばさず入れる。Tab/Cmd←→のセル移動は従来通り区切り行スキップ)。node/webview。※改良2(整形の列幅)は自動=col0=6(りんご基準)で論理的に揃うはず→手修正版col0=5との差異を確認中。
 // - v0.9.999161: ★結合マーカーをコメント形式 <!--🤝N--> に(俊克 7/9 pm09:13「データを汚さないのがMeOSのモットー」)。HTMLコメント=GitHub含め全ビューアで不可視=生データが汚れない。フォーマッタはコメントを除いた内容で幅計算・出力はcomment+桁揃え済み内容(コメントはゼロ幅前提)。装飾2種=コメントはfont-size:0でゼロ幅に完全に消す(内容はoutW幅に整形済みなので桁揃え維持)+内側|はopacity:0で不可視(幅維持)。空テーブル雛形も<!--🤝2-->に・カーソルはコメント直後。旧・素の🤝Nも後方互換で認識(整形でコメント形式に変換)。node側のみ。
 // - v0.9.999160: 結合表の桁揃えを結合対応に(俊克 7/9 pm07:52 スクショ3枚目=手修正版that自動で出るべき)+空テーブル雛形に🤝2の例(改良1)。①フォーマッタ: 結合セル(🤝N)と被吸収の空セルは列幅に寄与させない→列幅は単独セルだけで決まる(🤝2 合計がcol0を膨らませない・col0はりんご基準)。結合セルのはみ出しは右の空セルの幅を減らして吸収→外側の|が揃う(内側|は装飾で不可視なので位置ズレは見えない)。セル数は維持(GFM有効)。②空テーブル雛形の1行目を| 🤝2 |に=結合の学習/不要なら削除。node側のみ。
@@ -15768,8 +15769,10 @@ function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !=
 // テーブル行配列 → 桁揃え後の行配列。区切り行(|---|)が無ければ null。
 // v0.9.999158(俊克): セル横結合はセル数を変えない方式に。生データは正しいGFM表のまま(VSCm/GitHub単独でも崩れない)。セル先頭の🤝Nは「N列を結合」の目印で、整形は通常通り全セルを桁揃え(データ保持)。結合の"見た目"はMeOSの装飾(🤝Nと内側|を不可視化)で表現→meosApplyTableMergeDecorations。
 // v0.9.999161(俊克): 結合マーカーをコメント形式 <!--🤝N--> に。HTMLコメント=GitHub含め全ビューアで不可視=生データを汚さない(MeOSのモットー)。MeOSはコメントを読んで結合装飾+コメント自体をエディタ上でゼロ幅に隠す。旧・素の🤝Nも後方互換で認識。
-function meosCellSpan(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(\d+)(?=\s|$)/u.exec(t.trim()); return m ? Math.max(1, parseInt(m[1], 10)) : 1; }
-function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*\d+\s*-->/gu, '').replace(/^\s*🤝\s*\d+\s*/u, '').trim(); }
+// v0.9.999163(俊克): 結合の方向記法。🤝→N=横結合(colspan)/🤝↓N=縦結合(rowspan・下のセルと結合)/素の🤝N=→(後方互換)。コメント形式で生データを汚さない。
+function meosCellSpan(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); if (!m || m[1] === '↓') return 1; return Math.max(1, parseInt(m[2], 10)); } // 横結合(colspan)のみ返す。縦(↓)や非結合は1。
+function meosMergeMarker(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); return m ? ('<!--🤝' + (m[1] || '→') + m[2] + '-->') : ''; } // 元マーカーを方向付きコメント形式で返す(素の🤝N→<!--🤝→N-->)
+function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*(?:→|↓)?\s*\d+\s*-->/gu, '').replace(/^\s*🤝\s*(?:→|↓)?\s*\d+\s*/u, '').trim(); }
 function meosFormatTableLines(lines) {
   const rows = lines.map(meosSplitTableRow);
   let sepIdx = -1;
@@ -15836,8 +15839,7 @@ function meosFormatTableLines(lines) {
       }
       for (let c = 0; c < cols; c++) {
         const raw = cells[c] || '';
-        const sp = meosCellSpan(raw);
-        const marker = (sp > 1) ? ('<!--🤝' + sp + '-->') : ''; // 結合マーカーはコメント形式で出力(ゼロ幅で隠す)
+        const marker = meosMergeMarker(raw); // 結合マーカー(→/↓)をコメント形式で保持(ゼロ幅で隠す)
         seg.push(marker + meosPadCell(meosStripMergeMarker(raw), outW[c], align[c] === 'none' ? 'left' : align[c]));
       }
     }
@@ -16027,10 +16029,10 @@ function meosApplyTableMergeDecorations(editor) {
         for (let k = 0; k < pipes.length - 1; k++) {
           const cellStart = pipes[k] + 1, cellEnd = pipes[k + 1];
           const cellText = text.slice(cellStart, cellEnd);
-          const span = meosCellSpan(cellText); if (span <= 1) continue;
-          const cm = /<!--\s*🤝\s*\d+\s*-->/.exec(cellText); // 🤝Nコメントをゼロ幅で隠す
-          if (cm) commentRanges.push(new vscode.Range(ln, cellStart + cm.index, ln, cellStart + cm.index + cm[0].length));
-          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; pipeRanges.push(new vscode.Range(ln, pp, ln, pp + 1)); } // 内側|(N-1本)を不可視化
+          const cm = /<!--\s*🤝\s*(?:→|↓)?\s*\d+\s*-->/.exec(cellText); if (!cm) continue; // 🤝マーカー(→/↓)を検出
+          commentRanges.push(new vscode.Range(ln, cellStart + cm.index, ln, cellStart + cm.index + cm[0].length)); // マーカーをゼロ幅で隠す(→も↓も)
+          const span = meosCellSpan(cellText); // 横colspan(↓や非結合は1)
+          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; pipeRanges.push(new vscode.Range(ln, pp, ln, pp + 1)); } // →のみ内側|(N-1本)を不可視化
         }
       }
     }
