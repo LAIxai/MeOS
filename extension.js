@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999159: 区切り行 |---| が無い表を整形時に自動で表化(俊克 7/9 pm07:37: 区切り行無しの2行表で▦が効かない「なぜ?」)。真因=GFMは区切り行必須でmeosFormatTableLinesがnull→整形不発。修正=区切り行が無く2行以上あれば1行目をヘッダとみなし区切り行を自動生成(列数=最大セル数)。ヘッダ+データを書いて▦で表になる。node側のみ。
 // - v0.9.999158: ★セル横結合をv157の「セル削減」から「セル数維持＋装飾」方式に転換(俊克 7/9 pm07:15: セル数を変えない＝VSCm/GitHub単独でも表that崩れない)。生データは全セル保持の正しいGFM表。整形は通常通り(v157のデータ削減バグを撤回)。MeOSが装飾で結合を見せる=meosApplyTableMergeDecorationsで🤝Nの右の(N-1)本の内側|をopacity:0(幅維持=桁揃え不変)で不可視化→1つの結合セルに見える。refresh/可視範囲変更で追従・Rawで解除・可視範囲のみ走査(巨大ファイル対策)。v1はマーカー🤝Nは残す(完全に揃う・目印/grep可。opacityは幅を保つのでマーカーを消すと中身that数文字ズレるため)。node側のみ。
 // - v0.9.999157: ★セル横結合(俊克 7/9 pm07:03 ひらめき: セル内に🤝Nと書けば右のセルと結合)。GFMはcolspan非対応→MeOS独自のプレーンテキスト記法。整形時、セル先頭の🤝NでそのセルにN列ぶんの幅(Σ列幅+(N-1)*3)を与え内側|を消す=モノスペース上で視覚的に横結合。結合行はそのセルを1つとして書く(内側|省く・列数は区切り行が基準)。★MeOSエディタ内の結合=標準Markdown/GitHubは🤝Nをそのまま文字表示(GFMにcolspan無し=非可搬)。横結合のみ(縦結合rowspanは対象外)。マーカーはv1で可視(grep可・解除可)。meosCellSpan追加+meosFormatTableLinesをcolspan対応に。node側のみ。
 // - v0.9.999156: ★表内のセル間キーボード移動(俊克 7/9 pm06:45: Tabでセル移動くらい付けよう・既存アプリは不完全)。Tab/Cmd+→=次セル(行末→次行先頭・表の最後→新規空行追加)、Cmd+←=前セル(俊克は右シフトにTab割当でShift+Tab不可のため←で代用)、↑↓=上下の同セル(区切り行|---|はスキップ)。カスタムコンテキスト meos.inTable(カーソルが本物のGFMテーブル内=区切り行ありの時true・選択変更で更新・値変化時のみsetContext)をwhen条件に=表の外ではTab/矢印は通常動作。node=meosTableNav/meosTableInfo/セル位置ヘルパ+4コマンド登録+onDidChangeTextEditorSelection。package.json=keybindings5本(tab/cmd+right/cmd+left/down/up・suggest/snippet等はガード)。
@@ -15768,7 +15769,13 @@ function meosFormatTableLines(lines) {
   const rows = lines.map(meosSplitTableRow);
   let sepIdx = -1;
   for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
-  if (sepIdx < 0) return null;
+  if (sepIdx < 0) {
+    // v0.9.999159(俊克): 区切り行が無い=ヘッダ+データだけ→1行目をヘッダとみなし区切り行 |---| を自動生成して表にする。
+    if (rows.length < 2) return null; // 1行だけ=表でない
+    const nCols = Math.max.apply(null, rows.map(r => r.length));
+    rows.splice(1, 0, new Array(nCols).fill('-'));
+    sepIdx = 1;
+  }
   const cols = Math.max.apply(null, rows.map(r => r.length));
   const align = [], width = [];
   for (let c = 0; c < cols; c++) {
