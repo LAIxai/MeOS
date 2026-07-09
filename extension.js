@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999157: ★セル横結合(俊克 7/9 pm07:03 ひらめき: セル内に🤝Nと書けば右のセルと結合)。GFMはcolspan非対応→MeOS独自のプレーンテキスト記法。整形時、セル先頭の🤝NでそのセルにN列ぶんの幅(Σ列幅+(N-1)*3)を与え内側|を消す=モノスペース上で視覚的に横結合。結合行はそのセルを1つとして書く(内側|省く・列数は区切り行が基準)。★MeOSエディタ内の結合=標準Markdown/GitHubは🤝Nをそのまま文字表示(GFMにcolspan無し=非可搬)。横結合のみ(縦結合rowspanは対象外)。マーカーはv1で可視(grep可・解除可)。meosCellSpan追加+meosFormatTableLinesをcolspan対応に。node側のみ。
 // - v0.9.999156: ★表内のセル間キーボード移動(俊克 7/9 pm06:45: Tabでセル移動くらい付けよう・既存アプリは不完全)。Tab/Cmd+→=次セル(行末→次行先頭・表の最後→新規空行追加)、Cmd+←=前セル(俊克は右シフトにTab割当でShift+Tab不可のため←で代用)、↑↓=上下の同セル(区切り行|---|はスキップ)。カスタムコンテキスト meos.inTable(カーソルが本物のGFMテーブル内=区切り行ありの時true・選択変更で更新・値変化時のみsetContext)をwhen条件に=表の外ではTab/矢印は通常動作。node=meosTableNav/meosTableInfo/セル位置ヘルパ+4コマンド登録+onDidChangeTextEditorSelection。package.json=keybindings5本(tab/cmd+right/cmd+left/down/up・suggest/snippet等はガード)。
 // - v0.9.999155: テーブル膜の仕上げ(俊克 7/9 pm04:53)。①膜化/解除の直後に refresh(editor) を呼び、解除後に残る▼マーカー装飾を即消す(従来はカーソル移動まで残存)。②▾メニューの並びを ✂️解除→📋膜化 に(膜化を下=カーソル/ボタンに近い側へ)。webview+node。★質問回答: 標準Markdown/GFMのテーブルは上下の区切りが無く空行/非表行で暗黙終了=範囲が明示されない→テーブル膜that範囲を明示する価値。
 // - v0.9.999154: ★テーブル膜(俊克 7/9 pm02:27: 長い表は自動膜化+▾メニューで手動膜化/解除)。表をMeOS膜(<!-- {* ▼mCN=table_… // 📋 表 *} -->)で包み範囲明確化→Current Meでどんなに縦長でも末尾へジャンプ可(既存拡張に無いMeOS独自)。①整形時に8行以上の表は自動膜化(meosWrapTableMembrane・既に膜化ならスキップ)。②▦の隣に▾を追加(fmt-cellで連結)→table-popメニュー(📋膜化/✂️解除)。node=meosLineIsMembraneOpen/Close+Wrap/Unwrap(buildMembraneOpenLine/CloseLine再利用)+message tableWrap/tableUnwrap。webview=▾caret+bm-pop流用のtable-pop+ハンドラ。node+webview。
@@ -15759,34 +15760,48 @@ function meosSplitTableRow(line) {
 function meosIsTableSeparator(cells) { return cells.length > 0 && cells.every(c => /^:?-+:?$/.test(c.replace(/\s/g, ''))); }
 function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !== ''; }
 // テーブル行配列 → 桁揃え後の行配列。区切り行(|---|)が無ければ null。
+// v0.9.999157(俊克): セル横結合。セル先頭に 🤝N があればN列ぶんを横結合(colspan)=結合行はそのセルを1つとして書く(内側|を省く)。MeOSエディタ内での結合(標準MarkdownはGFMにcolspan無しなので🤝Nはそのまま文字表示)。
+function meosCellSpan(cellText) { const m = /^🤝\s*(\d+)/u.exec(String(cellText || '').trim()); return m ? Math.max(1, parseInt(m[1], 10)) : 1; }
 function meosFormatTableLines(lines) {
   const rows = lines.map(meosSplitTableRow);
   let sepIdx = -1;
   for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
   if (sepIdx < 0) return null;
-  const cols = Math.max.apply(null, rows.map(r => r.length));
-  const align = [], width = [];
-  for (let c = 0; c < cols; c++) {
+  const C = rows[sepIdx].length; // 列数=区切り行が定義
+  const align = [];
+  for (let c = 0; c < C; c++) {
     const spec = (rows[sepIdx][c] || '').replace(/\s/g, '');
     const l = spec.charAt(0) === ':', r = spec.charAt(spec.length - 1) === ':';
     align[c] = (l && r) ? 'center' : r ? 'right' : l ? 'left' : 'none';
-    let w = 3;
-    for (let i = 0; i < rows.length; i++) { if (i === sepIdx) continue; w = Math.max(w, meosStrWidth(rows[i][c] || '')); }
-    width[c] = w;
+  }
+  // 各列幅=単独セル(colspan1)の最大幅(最小3)
+  const width = new Array(C).fill(3);
+  for (let i = 0; i < rows.length; i++) {
+    if (i === sepIdx) continue;
+    let col = 0;
+    for (const cell of rows[i]) { if (col >= C) break; const span = Math.min(meosCellSpan(cell), C - col); if (span === 1) width[col] = Math.max(width[col], meosStrWidth(cell)); col += span; }
+  }
+  // 結合セルが収まらなければ最終被覆列を広げる
+  for (let i = 0; i < rows.length; i++) {
+    if (i === sepIdx) continue;
+    let col = 0;
+    for (const cell of rows[i]) { if (col >= C) break; const span = Math.min(meosCellSpan(cell), C - col); if (span > 1) { let avail = (span - 1) * 3; for (let c = col; c < col + span; c++) avail += width[c]; const need = meosStrWidth(cell); if (need > avail) width[col + span - 1] += (need - avail); } col += span; }
   }
   const out = [];
   for (let i = 0; i < rows.length; i++) {
     const seg = [];
-    for (let c = 0; c < cols; c++) {
-      const w = width[c], a = align[c];
-      if (i === sepIdx) {
+    if (i === sepIdx) {
+      for (let c = 0; c < C; c++) {
+        const w = width[c], a = align[c];
         if (a === 'center') seg.push(':' + '-'.repeat(w - 2) + ':');
         else if (a === 'right') seg.push('-'.repeat(w - 1) + ':');
         else if (a === 'left') seg.push(':' + '-'.repeat(w - 1));
         else seg.push('-'.repeat(w));
-      } else {
-        seg.push(meosPadCell(rows[i][c] || '', w, a === 'none' ? 'left' : a));
       }
+    } else {
+      let col = 0;
+      for (const cell of rows[i]) { if (col >= C) break; const span = Math.min(meosCellSpan(cell), C - col); let w = (span - 1) * 3; for (let c = col; c < col + span; c++) w += width[c]; const a = align[col] === 'none' ? 'left' : align[col]; seg.push(meosPadCell(cell, w, a)); col += span; }
+      while (col < C) { seg.push(meosPadCell('', width[col], align[col] === 'none' ? 'left' : align[col])); col++; }
     }
     out.push('| ' + seg.join(' | ') + ' |');
   }
