@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999153: テーブル外で表ボタン(▦)/コマンドを押したら空のテーブル(3列×1行)を作成(俊克 7/9 pm02:18)。meosFormatTableAtCursorの!blk分岐で雛形挿入(空行なら置換・非空行なら次行に挿入)+1つ目のセルにカーソル。node側のみ。
 // - v0.9.999152: 表整形ボタン(升目)をFormat3兄弟から離す(俊克 7/9 pm02:00: もう少し離そう)。#fmt-tableにmargin-left:16px。★改良1(整形精度)は俊克「まー善しとしましょう」で既定フォント限界を受容=幅モデル確定。webviewのみ(CSS)。
 // - v0.9.999151: 表整形ボタンのアイコンを▦→SVGの4列×3行グリッド(升目)に(俊克 7/9 pm01:50: ▦は細か過ぎ)。#fmt-tableにinline-flex中央寄せ。★改良1(既定フォントで手修正版と完全一致)は幅モデルでは原理的に不可と結論=Menloは日本語を半角ちょうど2倍でなく約2.05倍で描き、日本語の多いセルほど端数が積もり最長セルで約1コラムずれる。整数コラム方式の限界。完全一致は等幅(Sarasa等・全角=半角×2)のみ、そこではv150モデルでピクセル完璧。幅モデルは固定(これ以上いじると別フォントで悪化)。webviewのみ。
 // - v0.9.999150: ①Me Dockに表整形ボタン▦を追加(俊克 7/9 pm01:29: Format3兄弟とRawの中間に)。fmt-btnsとraw-toggleの間に#fmt-table・クリックでpostMessage formatTable→node meosFormatTableAtCursor。②文字幅を更に既定フォント一致へ: 絵文字(✅💥等)も幅1に(俊克の手修正=✅完了が5幅=✅は1・VSCodiumエディタは絵文字を半角セルで描く)。これで漢字/かな/全角のみ2・他は全部1=俊克の手修正版とほぼ一致。node+webview。
@@ -15791,7 +15792,23 @@ async function meosFormatTableAtCursor(editor) {
   const doc = editor.document;
   const cur = editor.selection.active.line;
   const blk = meosTableBlockRange(doc, cur);
-  if (!blk) { vscode.window.setStatusBarMessage('MeOS: カーソル行にテーブルがありません', 2000); return; }
+  if (!blk) {
+    // v0.9.999153(俊克): テーブル外で押したら空の表(3列×1行)を作成。
+    const tpl = meosFormatTableLines(['|  |  |  |', '|-|-|-|', '|  |  |  |']);
+    const curText = doc.lineAt(cur).text;
+    const atBlank = (curText.trim() === '');
+    const we0 = new vscode.WorkspaceEdit();
+    if (atBlank) we0.replace(doc.uri, new vscode.Range(cur, 0, cur, curText.length), tpl.join('\n'));
+    else we0.insert(doc.uri, new vscode.Position(cur, curText.length), '\n' + tpl.join('\n'));
+    await vscode.workspace.applyEdit(we0);
+    const headLine = atBlank ? cur : cur + 1;
+    const firstCol = tpl[0].indexOf('|') + 2; // "| " の直後=1つ目のセル先頭
+    const pos = new vscode.Position(headLine, firstCol);
+    editor.selection = new vscode.Selection(pos, pos);
+    await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection });
+    vscode.window.setStatusBarMessage('MeOS: 空のテーブルを作成しました ▦', 1800);
+    return;
+  }
   const raw = [];
   for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
   const indent = (raw[0].match(/^\s*/) || [''])[0];
