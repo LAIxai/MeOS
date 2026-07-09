@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999149: テーブル整形の文字幅モデルを既定フォント最適化に修正(俊克 7/9 pm01:05 スクショ3枚: フォント変更は勧められない・既定フォントである程度揃えたい)。真因=v148は曖昧幅記号★→①■を幅2にしていたが、既定フォント(Menlo/Consolas/Sarasa Term等)はこれらを半角(幅1)描画→右に余り、俊克が手で削って揃えていた。修正=①真の全角(漢字/かな/全角/CJK)=2 ②曖昧幅記号(★→①■○)=1 ③カラー絵文字(✅⭐❌💥等・Emoji_Presentation)=2。これで既定フォントで記号込みの表がかなり揃う。※カラー絵文字だけは字送りがグリッド非整合で±1残るのは原理的限界(プレーンテキスト共通)。node側meosCharWidthのみ。
 // - v0.9.999148: ★Markdownテーブル桁揃えコマンド追加(俊克 7/9 am10:56「他人任せより貴方が簡易テーブル機能をささっと」)。コマンド laiMembrane.formatTable(パレット「MeOS: Format Table」)=カーソル行のGFMテーブルブロックを検出し列を桁揃え。★全角(CJK)+East Asian Ambiguous(★✅→①■等)を2幅としてカウント=日本語の表もモノスペースで綺麗に揃う(一般拡張が苦手な点=MeOSの強み)。区切り行の:で左/中央/右揃えを踏襲。node側のみ(meosFormatTableLines/meosTableBlockRange/meosFormatTableAtCursor+registerCommand+package.json commands)。
 // - v0.9.999147: 🚫を2px→1pxに戻す(俊克 7/9 am10:15: 少し行き過ぎた)。.fmt-btn.fmt-remove::before の top:1px。CSSのみ。
 // - v0.9.999146: 🚫が少し上寄り→2px下げる(俊克 7/9 am10:06 スクショ)。ボタン本体を動かすと隣とズレるのでグリフのみ移動=isRemove時 textContent=''にして .fmt-btn.fmt-remove::before{content:🚫;position:relative;top:2px}。CSSのみ。
@@ -15712,13 +15713,22 @@ async function jumpToPairedMembraneFromCursor() {
 
 // v0.9.999148(俊克): Markdownテーブルの桁揃え整形。★全角(CJK)を2幅としてカウント=日本語の表もモノスペースで綺麗に揃う(一般の表整形拡張が苦手な点)。カーソル行のテーブルブロックを整形。
 function meosCharWidth(cp) {
-  // ★East Asian Ambiguous(★✅→①■等)も2幅扱い=日本語等幅フォント前提でMeOSは揃える(俊克の記号多用に最適化)。
-  return ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2190 && cp <= 0x21FF) || (cp >= 0x2460 && cp <= 0x24FF) ||
-    (cp >= 0x2500 && cp <= 0x2BFF) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
+  // ①真の全角(漢字・かな・全角・CJK約物・ハングル・CJK拡張)=2幅。既定フォントのCJKフォールバックがほぼ半角2つ分に描く。
+  if ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
     (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0xA000 && cp <= 0xA4CF) ||
     (cp >= 0xAC00 && cp <= 0xD7A3) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE6F) ||
     (cp >= 0xFF00 && cp <= 0xFF60) || (cp >= 0xFFE0 && cp <= 0xFFE6) || (cp >= 0x1F000 && cp <= 0x1FAFF) ||
-    (cp >= 0x20000 && cp <= 0x3FFFD)) ? 2 : 1;
+    (cp >= 0x20000 && cp <= 0x3FFFD)) return 2;
+  // ②BMPの「絵文字提示(Emoji_Presentation=Yes)」=既定フォントでカラー絵文字=2幅(✅⭐❌⚡⌚等)。★→①■○等のテキスト記号は含めない=これらは既定フォントで半角描画=幅1。
+  if ((cp >= 0x231A && cp <= 0x231B) || (cp >= 0x23E9 && cp <= 0x23EC) || cp === 0x23F0 || cp === 0x23F3 ||
+    (cp >= 0x25FD && cp <= 0x25FE) || (cp >= 0x2614 && cp <= 0x2615) || (cp >= 0x2648 && cp <= 0x2653) ||
+    cp === 0x267F || cp === 0x2693 || cp === 0x26A1 || (cp >= 0x26AA && cp <= 0x26AB) ||
+    (cp >= 0x26BD && cp <= 0x26BE) || (cp >= 0x26C4 && cp <= 0x26C5) || cp === 0x26CE || cp === 0x26D4 ||
+    cp === 0x26EA || (cp >= 0x26F2 && cp <= 0x26F3) || cp === 0x26F5 || cp === 0x26FA || cp === 0x26FD ||
+    cp === 0x2705 || (cp >= 0x270A && cp <= 0x270B) || cp === 0x2728 || cp === 0x274C || cp === 0x274E ||
+    (cp >= 0x2753 && cp <= 0x2755) || cp === 0x2757 || (cp >= 0x2795 && cp <= 0x2797) || cp === 0x27B0 ||
+    cp === 0x27BF || (cp >= 0x2B1B && cp <= 0x2B1C) || cp === 0x2B50 || cp === 0x2B55) return 2;
+  return 1;
 }
 function meosStrWidth(s) { let w = 0; for (const ch of String(s)) w += meosCharWidth(ch.codePointAt(0)); return w; }
 function meosPadCell(s, width, align) {
