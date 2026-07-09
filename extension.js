@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999161: ★結合マーカーをコメント形式 <!--🤝N--> に(俊克 7/9 pm09:13「データを汚さないのがMeOSのモットー」)。HTMLコメント=GitHub含め全ビューアで不可視=生データが汚れない。フォーマッタはコメントを除いた内容で幅計算・出力はcomment+桁揃え済み内容(コメントはゼロ幅前提)。装飾2種=コメントはfont-size:0でゼロ幅に完全に消す(内容はoutW幅に整形済みなので桁揃え維持)+内側|はopacity:0で不可視(幅維持)。空テーブル雛形も<!--🤝2-->に・カーソルはコメント直後。旧・素の🤝Nも後方互換で認識(整形でコメント形式に変換)。node側のみ。
 // - v0.9.999160: 結合表の桁揃えを結合対応に(俊克 7/9 pm07:52 スクショ3枚目=手修正版that自動で出るべき)+空テーブル雛形に🤝2の例(改良1)。①フォーマッタ: 結合セル(🤝N)と被吸収の空セルは列幅に寄与させない→列幅は単独セルだけで決まる(🤝2 合計がcol0を膨らませない・col0はりんご基準)。結合セルのはみ出しは右の空セルの幅を減らして吸収→外側の|が揃う(内側|は装飾で不可視なので位置ズレは見えない)。セル数は維持(GFM有効)。②空テーブル雛形の1行目を| 🤝2 |に=結合の学習/不要なら削除。node側のみ。
 // - v0.9.999159: 区切り行 |---| が無い表を整形時に自動で表化(俊克 7/9 pm07:37: 区切り行無しの2行表で▦が効かない「なぜ?」)。真因=GFMは区切り行必須でmeosFormatTableLinesがnull→整形不発。修正=区切り行が無く2行以上あれば1行目をヘッダとみなし区切り行を自動生成(列数=最大セル数)。ヘッダ+データを書いて▦で表になる。node側のみ。
 // - v0.9.999158: ★セル横結合をv157の「セル削減」から「セル数維持＋装飾」方式に転換(俊克 7/9 pm07:15: セル数を変えない＝VSCm/GitHub単独でも表that崩れない)。生データは全セル保持の正しいGFM表。整形は通常通り(v157のデータ削減バグを撤回)。MeOSが装飾で結合を見せる=meosApplyTableMergeDecorationsで🤝Nの右の(N-1)本の内側|をopacity:0(幅維持=桁揃え不変)で不可視化→1つの結合セルに見える。refresh/可視範囲変更で追従・Rawで解除・可視範囲のみ走査(巨大ファイル対策)。v1はマーカー🤝Nは残す(完全に揃う・目印/grep可。opacityは幅を保つのでマーカーを消すと中身that数文字ズレるため)。node側のみ。
@@ -15765,7 +15766,9 @@ function meosIsTableSeparator(cells) { return cells.length > 0 && cells.every(c 
 function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !== ''; }
 // テーブル行配列 → 桁揃え後の行配列。区切り行(|---|)が無ければ null。
 // v0.9.999158(俊克): セル横結合はセル数を変えない方式に。生データは正しいGFM表のまま(VSCm/GitHub単独でも崩れない)。セル先頭の🤝Nは「N列を結合」の目印で、整形は通常通り全セルを桁揃え(データ保持)。結合の"見た目"はMeOSの装飾(🤝Nと内側|を不可視化)で表現→meosApplyTableMergeDecorations。
-function meosCellSpan(cellText) { const m = /^🤝\s*(\d+)/u.exec(String(cellText || '').trim()); return m ? Math.max(1, parseInt(m[1], 10)) : 1; }
+// v0.9.999161(俊克): 結合マーカーをコメント形式 <!--🤝N--> に。HTMLコメント=GitHub含め全ビューアで不可視=生データを汚さない(MeOSのモットー)。MeOSはコメントを読んで結合装飾+コメント自体をエディタ上でゼロ幅に隠す。旧・素の🤝Nも後方互換で認識。
+function meosCellSpan(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(\d+)(?=\s|$)/u.exec(t.trim()); return m ? Math.max(1, parseInt(m[1], 10)) : 1; }
+function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*\d+\s*-->/gu, '').replace(/^\s*🤝\s*\d+\s*/u, '').trim(); }
 function meosFormatTableLines(lines) {
   const rows = lines.map(meosSplitTableRow);
   let sepIdx = -1;
@@ -15793,7 +15796,7 @@ function meosFormatTableLines(lines) {
     for (let k = 0; k < cells.length; k++) { const sp = meosCellSpan(cells[k]); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
     for (let c = 0; c < cells.length && c < cols; c++) {
       if (meosCellSpan(cells[c]) > 1 || absorbed[c]) continue;
-      width[c] = Math.max(width[c], meosStrWidth(cells[c]));
+      width[c] = Math.max(width[c], meosStrWidth(meosStripMergeMarker(cells[c])));
     }
   }
   // 結合セルの内容が被覆列合計に収まらなければ最終被覆列を拡張
@@ -15804,7 +15807,7 @@ function meosFormatTableLines(lines) {
       const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
       const end = Math.min(k + sp - 1, cols - 1);
       let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
-      const W = meosStrWidth(cells[k]);
+      const W = meosStrWidth(meosStripMergeMarker(cells[k]));
       if (W > sumCols) width[end] += (W - sumCols);
     }
   }
@@ -15825,12 +15828,17 @@ function meosFormatTableLines(lines) {
       for (let k = 0; k < cells.length && k < cols; k++) {
         const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
         const end = Math.min(k + sp - 1, cols - 1);
-        const W = meosStrWidth(cells[k]);
+        const W = meosStrWidth(meosStripMergeMarker(cells[k]));
         let overflow = Math.max(0, W - width[k]);
         outW[k] = width[k] + overflow; // = max(width[k], W)
         for (let j = k + 1; j <= end && overflow > 0; j++) { const reduce = Math.min(overflow, outW[j]); outW[j] -= reduce; overflow -= reduce; } // はみ出しを右の空セルで吸収
       }
-      for (let c = 0; c < cols; c++) seg.push(meosPadCell(cells[c] || '', outW[c], align[c] === 'none' ? 'left' : align[c]));
+      for (let c = 0; c < cols; c++) {
+        const raw = cells[c] || '';
+        const sp = meosCellSpan(raw);
+        const marker = (sp > 1) ? ('<!--🤝' + sp + '-->') : ''; // 結合マーカーはコメント形式で出力(ゼロ幅で隠す)
+        seg.push(marker + meosPadCell(meosStripMergeMarker(raw), outW[c], align[c] === 'none' ? 'left' : align[c]));
+      }
     }
     out.push('| ' + seg.join(' | ') + ' |');
   }
@@ -15850,7 +15858,7 @@ async function meosFormatTableAtCursor(editor) {
   const blk = meosTableBlockRange(doc, cur);
   if (!blk) {
     // v0.9.999153(俊克): テーブル外で押したら空の表(3列×1行)を作成。
-    const tpl = meosFormatTableLines(['| 🤝2 |  |  |', '|-|-|-|', '|  |  |  |']); // v0.9.999160(俊克): 🤝2を例として入れておく(結合の学習・不要なら消すだけ)
+    const tpl = meosFormatTableLines(['| <!--🤝2--> |  |  |', '|-|-|-|', '|  |  |  |']); // v0.9.999161(俊克): 🤝2をコメント形式で例として入れておく(結合の学習・不要なら消すだけ・生データを汚さない)
     const curText = doc.lineAt(cur).text;
     const atBlank = (curText.trim() === '');
     const we0 = new vscode.WorkspaceEdit();
@@ -15858,7 +15866,8 @@ async function meosFormatTableAtCursor(editor) {
     else we0.insert(doc.uri, new vscode.Position(cur, curText.length), '\n' + tpl.join('\n'));
     await vscode.workspace.applyEdit(we0);
     const headLine = atBlank ? cur : cur + 1;
-    const firstCol = tpl[0].indexOf('|') + 2; // "| " の直後=1つ目のセル先頭
+    const afterCm = tpl[0].indexOf('-->'); // 🤝2コメントの直後にカーソル(結合セルの内容をすぐ書ける)
+    const firstCol = afterCm >= 0 ? afterCm + 3 : (tpl[0].indexOf('|') + 2);
     const pos = new vscode.Position(headLine, firstCol);
     editor.selection = new vscode.Selection(pos, pos);
     await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection });
@@ -15995,12 +16004,14 @@ function meosUpdateInTableContext(editor) {
 }
 // v0.9.999158(俊克): セル横結合を「装飾」で見せる。生データは全セル保持(正しいGFM)。🤝Nマーカーと、その右の(N-1)本の内側|を opacity:0 で不可視化(幅は維持=桁揃えは崩れない)→エディタ上で1つの結合セルに見える。Rawモードでは解除。可視範囲のみ走査(巨大ファイル対策)。
 let tableMergeHideDecoration = null;
+let tableCommentHideDecoration = null;
 function meosApplyTableMergeDecorations(editor) {
   if (!editor || !editor.document) return;
-  if (!tableMergeHideDecoration) tableMergeHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!tableMergeHideDecoration) tableMergeHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 内側パイプ=不可視だが幅維持(桁揃え不変)
+  if (!tableCommentHideDecoration) tableCommentHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 🤝Nコメント=ゼロ幅で完全に消す(内容はoutW幅に整形済みなので桁は揃う)
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableMergeHideDecoration, []); return; }
-    const doc = editor.document; const ranges = [];
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableMergeHideDecoration, []); editor.setDecorations(tableCommentHideDecoration, []); return; }
+    const doc = editor.document; const pipeRanges = [], commentRanges = [];
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
@@ -16012,14 +16023,15 @@ function meosApplyTableMergeDecorations(editor) {
         for (let k = 0; k < pipes.length - 1; k++) {
           const cellStart = pipes[k] + 1, cellEnd = pipes[k + 1];
           const cellText = text.slice(cellStart, cellEnd);
-          const m = /^\s*🤝\s*\d+/u.exec(cellText); if (!m) continue;
-          const span = meosCellSpan(cellText);
-          // v1: 内側|(N-1本)だけを不可視化(opacity:0=幅維持で桁揃え不変)。🤝Nマーカーは残す(桁が完全に揃う・結合の目印/grep可)。
-          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; ranges.push(new vscode.Range(ln, pp, ln, pp + 1)); }
+          const span = meosCellSpan(cellText); if (span <= 1) continue;
+          const cm = /<!--\s*🤝\s*\d+\s*-->/.exec(cellText); // 🤝Nコメントをゼロ幅で隠す
+          if (cm) commentRanges.push(new vscode.Range(ln, cellStart + cm.index, ln, cellStart + cm.index + cm[0].length));
+          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; pipeRanges.push(new vscode.Range(ln, pp, ln, pp + 1)); } // 内側|(N-1本)を不可視化
         }
       }
     }
-    editor.setDecorations(tableMergeHideDecoration, ranges);
+    editor.setDecorations(tableMergeHideDecoration, pipeRanges);
+    editor.setDecorations(tableCommentHideDecoration, commentRanges);
   } catch (_) {}
 }
 
