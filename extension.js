@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999160: 結合表の桁揃えを結合対応に(俊克 7/9 pm07:52 スクショ3枚目=手修正版that自動で出るべき)+空テーブル雛形に🤝2の例(改良1)。①フォーマッタ: 結合セル(🤝N)と被吸収の空セルは列幅に寄与させない→列幅は単独セルだけで決まる(🤝2 合計がcol0を膨らませない・col0はりんご基準)。結合セルのはみ出しは右の空セルの幅を減らして吸収→外側の|が揃う(内側|は装飾で不可視なので位置ズレは見えない)。セル数は維持(GFM有効)。②空テーブル雛形の1行目を| 🤝2 |に=結合の学習/不要なら削除。node側のみ。
 // - v0.9.999159: 区切り行 |---| が無い表を整形時に自動で表化(俊克 7/9 pm07:37: 区切り行無しの2行表で▦が効かない「なぜ?」)。真因=GFMは区切り行必須でmeosFormatTableLinesがnull→整形不発。修正=区切り行が無く2行以上あれば1行目をヘッダとみなし区切り行を自動生成(列数=最大セル数)。ヘッダ+データを書いて▦で表になる。node側のみ。
 // - v0.9.999158: ★セル横結合をv157の「セル削減」から「セル数維持＋装飾」方式に転換(俊克 7/9 pm07:15: セル数を変えない＝VSCm/GitHub単独でも表that崩れない)。生データは全セル保持の正しいGFM表。整形は通常通り(v157のデータ削減バグを撤回)。MeOSが装飾で結合を見せる=meosApplyTableMergeDecorationsで🤝Nの右の(N-1)本の内側|をopacity:0(幅維持=桁揃え不変)で不可視化→1つの結合セルに見える。refresh/可視範囲変更で追従・Rawで解除・可視範囲のみ走査(巨大ファイル対策)。v1はマーカー🤝Nは残す(完全に揃う・目印/grep可。opacityは幅を保つのでマーカーを消すと中身that数文字ズレるため)。node側のみ。
 // - v0.9.999157: ★セル横結合(俊克 7/9 pm07:03 ひらめき: セル内に🤝Nと書けば右のセルと結合)。GFMはcolspan非対応→MeOS独自のプレーンテキスト記法。整形時、セル先頭の🤝NでそのセルにN列ぶんの幅(Σ列幅+(N-1)*3)を与え内側|を消す=モノスペース上で視覚的に横結合。結合行はそのセルを1つとして書く(内側|省く・列数は区切り行が基準)。★MeOSエディタ内の結合=標準Markdown/GitHubは🤝Nをそのまま文字表示(GFMにcolspan無し=非可搬)。横結合のみ(縦結合rowspanは対象外)。マーカーはv1で可視(grep可・解除可)。meosCellSpan追加+meosFormatTableLinesをcolspan対応に。node側のみ。
@@ -15777,28 +15778,59 @@ function meosFormatTableLines(lines) {
     sepIdx = 1;
   }
   const cols = Math.max.apply(null, rows.map(r => r.length));
-  const align = [], width = [];
+  const align = [];
   for (let c = 0; c < cols; c++) {
     const spec = (rows[sepIdx][c] || '').replace(/\s/g, '');
     const l = spec.charAt(0) === ':', r = spec.charAt(spec.length - 1) === ':';
     align[c] = (l && r) ? 'center' : r ? 'right' : l ? 'left' : 'none';
-    let w = 3;
-    for (let i = 0; i < rows.length; i++) { if (i === sepIdx) continue; w = Math.max(w, meosStrWidth(rows[i][c] || '')); }
-    width[c] = w;
+  }
+  // v0.9.999160(俊克): 結合対応の列幅。結合セル(🤝N)と、それに吸収される右の空セルは列幅に寄与しない=列幅は単独セルだけで決まる(結合セルがcol0を膨らませない)。
+  const width = new Array(cols).fill(3);
+  for (let i = 0; i < rows.length; i++) {
+    if (i === sepIdx) continue;
+    const cells = rows[i];
+    const absorbed = new Array(cells.length).fill(false);
+    for (let k = 0; k < cells.length; k++) { const sp = meosCellSpan(cells[k]); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
+    for (let c = 0; c < cells.length && c < cols; c++) {
+      if (meosCellSpan(cells[c]) > 1 || absorbed[c]) continue;
+      width[c] = Math.max(width[c], meosStrWidth(cells[c]));
+    }
+  }
+  // 結合セルの内容が被覆列合計に収まらなければ最終被覆列を拡張
+  for (let i = 0; i < rows.length; i++) {
+    if (i === sepIdx) continue;
+    const cells = rows[i];
+    for (let k = 0; k < cells.length && k < cols; k++) {
+      const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
+      const end = Math.min(k + sp - 1, cols - 1);
+      let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
+      const W = meosStrWidth(cells[k]);
+      if (W > sumCols) width[end] += (W - sumCols);
+    }
   }
   const out = [];
   for (let i = 0; i < rows.length; i++) {
     const seg = [];
-    for (let c = 0; c < cols; c++) {
-      const w = width[c], a = align[c];
-      if (i === sepIdx) {
+    if (i === sepIdx) {
+      for (let c = 0; c < cols; c++) {
+        const w = width[c], a = align[c];
         if (a === 'center') seg.push(':' + '-'.repeat(w - 2) + ':');
         else if (a === 'right') seg.push('-'.repeat(w - 1) + ':');
         else if (a === 'left') seg.push(':' + '-'.repeat(w - 1));
         else seg.push('-'.repeat(w));
-      } else {
-        seg.push(meosPadCell(rows[i][c] || '', w, a === 'none' ? 'left' : a));
       }
+    } else {
+      const cells = rows[i];
+      const outW = width.slice(); // 各セルの出力幅(既定=列幅)
+      for (let k = 0; k < cells.length && k < cols; k++) {
+        const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
+        const end = Math.min(k + sp - 1, cols - 1);
+        const W = meosStrWidth(cells[k]);
+        let overflow = Math.max(0, W - width[k]);
+        outW[k] = width[k] + overflow; // = max(width[k], W)
+        for (let j = k + 1; j <= end && overflow > 0; j++) { const reduce = Math.min(overflow, outW[j]); outW[j] -= reduce; overflow -= reduce; } // はみ出しを右の空セルで吸収
+      }
+      for (let c = 0; c < cols; c++) seg.push(meosPadCell(cells[c] || '', outW[c], align[c] === 'none' ? 'left' : align[c]));
     }
     out.push('| ' + seg.join(' | ') + ' |');
   }
@@ -15818,7 +15850,7 @@ async function meosFormatTableAtCursor(editor) {
   const blk = meosTableBlockRange(doc, cur);
   if (!blk) {
     // v0.9.999153(俊克): テーブル外で押したら空の表(3列×1行)を作成。
-    const tpl = meosFormatTableLines(['|  |  |  |', '|-|-|-|', '|  |  |  |']);
+    const tpl = meosFormatTableLines(['| 🤝2 |  |  |', '|-|-|-|', '|  |  |  |']); // v0.9.999160(俊克): 🤝2を例として入れておく(結合の学習・不要なら消すだけ)
     const curText = doc.lineAt(cur).text;
     const atBlank = (curText.trim() === '');
     const we0 = new vscode.WorkspaceEdit();
