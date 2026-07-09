@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999162: 結合セルの編集性向上(俊克 7/10 am00:44)。改良1/3: カーソルがある行はマージ装飾(コメントゼロ幅・|不可視)を外して生データを見せる→<!--🤝N-->をインライン編集して結合の付け外しができる+ゼロ幅コメントでカーソルが抜け出せない罠を回避。改良4: ↑↓は隣の行へ移動(区切り行|---|も飛ばさず入れる。Tab/Cmd←→のセル移動は従来通り区切り行スキップ)。node/webview。※改良2(整形の列幅)は自動=col0=6(りんご基準)で論理的に揃うはず→手修正版col0=5との差異を確認中。
 // - v0.9.999161: ★結合マーカーをコメント形式 <!--🤝N--> に(俊克 7/9 pm09:13「データを汚さないのがMeOSのモットー」)。HTMLコメント=GitHub含め全ビューアで不可視=生データが汚れない。フォーマッタはコメントを除いた内容で幅計算・出力はcomment+桁揃え済み内容(コメントはゼロ幅前提)。装飾2種=コメントはfont-size:0でゼロ幅に完全に消す(内容はoutW幅に整形済みなので桁揃え維持)+内側|はopacity:0で不可視(幅維持)。空テーブル雛形も<!--🤝2-->に・カーソルはコメント直後。旧・素の🤝Nも後方互換で認識(整形でコメント形式に変換)。node側のみ。
 // - v0.9.999160: 結合表の桁揃えを結合対応に(俊克 7/9 pm07:52 スクショ3枚目=手修正版that自動で出るべき)+空テーブル雛形に🤝2の例(改良1)。①フォーマッタ: 結合セル(🤝N)と被吸収の空セルは列幅に寄与させない→列幅は単独セルだけで決まる(🤝2 合計がcol0を膨らませない・col0はりんご基準)。結合セルのはみ出しは右の空セルの幅を減らして吸収→外側の|が揃う(内側|は装飾で不可視なので位置ズレは見えない)。セル数は維持(GFM有効)。②空テーブル雛形の1行目を| 🤝2 |に=結合の学習/不要なら削除。node側のみ。
 // - v0.9.999159: 区切り行 |---| が無い表を整形時に自動で表化(俊克 7/9 pm07:37: 区切り行無しの2行表で▦が効かない「なぜ?」)。真因=GFMは区切り行必須でmeosFormatTableLinesがnull→整形不発。修正=区切り行が無く2行以上あれば1行目をヘッダとみなし区切り行を自動生成(列数=最大セル数)。ヘッダ+データを書いて▦で表になる。node側のみ。
@@ -15986,10 +15987,10 @@ async function meosTableNav(editor, dir) {
     else if (rowPos > 0) { targetLine = rows[rowPos - 1]; targetCell = Math.max(0, meosRowCellCount(doc.lineAt(rows[rowPos - 1]).text) - 1); }
     else { targetCell = 0; }
   } else if (dir === 'down') {
-    if (rowPos + 1 < rows.length) targetLine = rows[rowPos + 1]; else return;
+    // v0.9.999162(俊克 改良4): ↑↓は隣の行へ(区切り行|---|も飛ばさず入れる)。Tab/Cmd←→のセル移動は従来通り区切り行をスキップ。
+    if (cur.line + 1 <= info.blk.end) targetLine = cur.line + 1; else return;
   } else if (dir === 'up') {
-    const pp = onSep ? rowPos : rowPos - 1;
-    if (pp >= 0) targetLine = rows[pp]; else return;
+    if (cur.line - 1 >= info.blk.start) targetLine = cur.line - 1; else return;
   }
   const tText = doc.lineAt(targetLine).text;
   const p = meosCellContentPos(tText, Math.min(targetCell, Math.max(0, meosRowCellCount(tText) - 1)));
@@ -16012,10 +16013,13 @@ function meosApplyTableMergeDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableMergeHideDecoration, []); editor.setDecorations(tableCommentHideDecoration, []); return; }
     const doc = editor.document; const pipeRanges = [], commentRanges = [];
+    // v0.9.999162(俊克 改良1/3): カーソルがある行はマージ装飾を外して生データ(<!--🤝N-->と|)を見せる=インラインで結合を編集でき、ゼロ幅コメントのカーソルの罠も回避。
+    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
       for (let ln = from; ln <= to; ln++) {
+        if (cursorLines.has(ln)) continue; // カーソル行は生表示(編集可・罠回避)
         const text = doc.lineAt(ln).text;
         if (text.indexOf('🤝') < 0) continue;
         if (!meosInTable(doc, ln)) continue;
