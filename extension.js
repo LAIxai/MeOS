@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999158: ★セル横結合をv157の「セル削減」から「セル数維持＋装飾」方式に転換(俊克 7/9 pm07:15: セル数を変えない＝VSCm/GitHub単独でも表that崩れない)。生データは全セル保持の正しいGFM表。整形は通常通り(v157のデータ削減バグを撤回)。MeOSが装飾で結合を見せる=meosApplyTableMergeDecorationsで🤝Nの右の(N-1)本の内側|をopacity:0(幅維持=桁揃え不変)で不可視化→1つの結合セルに見える。refresh/可視範囲変更で追従・Rawで解除・可視範囲のみ走査(巨大ファイル対策)。v1はマーカー🤝Nは残す(完全に揃う・目印/grep可。opacityは幅を保つのでマーカーを消すと中身that数文字ズレるため)。node側のみ。
 // - v0.9.999157: ★セル横結合(俊克 7/9 pm07:03 ひらめき: セル内に🤝Nと書けば右のセルと結合)。GFMはcolspan非対応→MeOS独自のプレーンテキスト記法。整形時、セル先頭の🤝NでそのセルにN列ぶんの幅(Σ列幅+(N-1)*3)を与え内側|を消す=モノスペース上で視覚的に横結合。結合行はそのセルを1つとして書く(内側|省く・列数は区切り行が基準)。★MeOSエディタ内の結合=標準Markdown/GitHubは🤝Nをそのまま文字表示(GFMにcolspan無し=非可搬)。横結合のみ(縦結合rowspanは対象外)。マーカーはv1で可視(grep可・解除可)。meosCellSpan追加+meosFormatTableLinesをcolspan対応に。node側のみ。
 // - v0.9.999156: ★表内のセル間キーボード移動(俊克 7/9 pm06:45: Tabでセル移動くらい付けよう・既存アプリは不完全)。Tab/Cmd+→=次セル(行末→次行先頭・表の最後→新規空行追加)、Cmd+←=前セル(俊克は右シフトにTab割当でShift+Tab不可のため←で代用)、↑↓=上下の同セル(区切り行|---|はスキップ)。カスタムコンテキスト meos.inTable(カーソルが本物のGFMテーブル内=区切り行ありの時true・選択変更で更新・値変化時のみsetContext)をwhen条件に=表の外ではTab/矢印は通常動作。node=meosTableNav/meosTableInfo/セル位置ヘルパ+4コマンド登録+onDidChangeTextEditorSelection。package.json=keybindings5本(tab/cmd+right/cmd+left/down/up・suggest/snippet等はガード)。
 // - v0.9.999155: テーブル膜の仕上げ(俊克 7/9 pm04:53)。①膜化/解除の直後に refresh(editor) を呼び、解除後に残る▼マーカー装飾を即消す(従来はカーソル移動まで残存)。②▾メニューの並びを ✂️解除→📋膜化 に(膜化を下=カーソル/ボタンに近い側へ)。webview+node。★質問回答: 標準Markdown/GFMのテーブルは上下の区切りが無く空行/非表行で暗黙終了=範囲が明示されない→テーブル膜that範囲を明示する価値。
@@ -10087,6 +10088,7 @@ function setDecoCached(editor, deco, tag, ranges) {
 
 function refresh(editor = vscode.window.activeTextEditor) {
   activeEditor = editor;
+  try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
@@ -15760,48 +15762,36 @@ function meosSplitTableRow(line) {
 function meosIsTableSeparator(cells) { return cells.length > 0 && cells.every(c => /^:?-+:?$/.test(c.replace(/\s/g, ''))); }
 function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !== ''; }
 // テーブル行配列 → 桁揃え後の行配列。区切り行(|---|)が無ければ null。
-// v0.9.999157(俊克): セル横結合。セル先頭に 🤝N があればN列ぶんを横結合(colspan)=結合行はそのセルを1つとして書く(内側|を省く)。MeOSエディタ内での結合(標準MarkdownはGFMにcolspan無しなので🤝Nはそのまま文字表示)。
+// v0.9.999158(俊克): セル横結合はセル数を変えない方式に。生データは正しいGFM表のまま(VSCm/GitHub単独でも崩れない)。セル先頭の🤝Nは「N列を結合」の目印で、整形は通常通り全セルを桁揃え(データ保持)。結合の"見た目"はMeOSの装飾(🤝Nと内側|を不可視化)で表現→meosApplyTableMergeDecorations。
 function meosCellSpan(cellText) { const m = /^🤝\s*(\d+)/u.exec(String(cellText || '').trim()); return m ? Math.max(1, parseInt(m[1], 10)) : 1; }
 function meosFormatTableLines(lines) {
   const rows = lines.map(meosSplitTableRow);
   let sepIdx = -1;
   for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
   if (sepIdx < 0) return null;
-  const C = rows[sepIdx].length; // 列数=区切り行が定義
-  const align = [];
-  for (let c = 0; c < C; c++) {
+  const cols = Math.max.apply(null, rows.map(r => r.length));
+  const align = [], width = [];
+  for (let c = 0; c < cols; c++) {
     const spec = (rows[sepIdx][c] || '').replace(/\s/g, '');
     const l = spec.charAt(0) === ':', r = spec.charAt(spec.length - 1) === ':';
     align[c] = (l && r) ? 'center' : r ? 'right' : l ? 'left' : 'none';
-  }
-  // 各列幅=単独セル(colspan1)の最大幅(最小3)
-  const width = new Array(C).fill(3);
-  for (let i = 0; i < rows.length; i++) {
-    if (i === sepIdx) continue;
-    let col = 0;
-    for (const cell of rows[i]) { if (col >= C) break; const span = Math.min(meosCellSpan(cell), C - col); if (span === 1) width[col] = Math.max(width[col], meosStrWidth(cell)); col += span; }
-  }
-  // 結合セルが収まらなければ最終被覆列を広げる
-  for (let i = 0; i < rows.length; i++) {
-    if (i === sepIdx) continue;
-    let col = 0;
-    for (const cell of rows[i]) { if (col >= C) break; const span = Math.min(meosCellSpan(cell), C - col); if (span > 1) { let avail = (span - 1) * 3; for (let c = col; c < col + span; c++) avail += width[c]; const need = meosStrWidth(cell); if (need > avail) width[col + span - 1] += (need - avail); } col += span; }
+    let w = 3;
+    for (let i = 0; i < rows.length; i++) { if (i === sepIdx) continue; w = Math.max(w, meosStrWidth(rows[i][c] || '')); }
+    width[c] = w;
   }
   const out = [];
   for (let i = 0; i < rows.length; i++) {
     const seg = [];
-    if (i === sepIdx) {
-      for (let c = 0; c < C; c++) {
-        const w = width[c], a = align[c];
+    for (let c = 0; c < cols; c++) {
+      const w = width[c], a = align[c];
+      if (i === sepIdx) {
         if (a === 'center') seg.push(':' + '-'.repeat(w - 2) + ':');
         else if (a === 'right') seg.push('-'.repeat(w - 1) + ':');
         else if (a === 'left') seg.push(':' + '-'.repeat(w - 1));
         else seg.push('-'.repeat(w));
+      } else {
+        seg.push(meosPadCell(rows[i][c] || '', w, a === 'none' ? 'left' : a));
       }
-    } else {
-      let col = 0;
-      for (const cell of rows[i]) { if (col >= C) break; const span = Math.min(meosCellSpan(cell), C - col); let w = (span - 1) * 3; for (let c = col; c < col + span; c++) w += width[c]; const a = align[col] === 'none' ? 'left' : align[col]; seg.push(meosPadCell(cell, w, a)); col += span; }
-      while (col < C) { seg.push(meosPadCell('', width[col], align[col] === 'none' ? 'left' : align[col])); col++; }
     }
     out.push('| ' + seg.join(' | ') + ' |');
   }
@@ -15964,6 +15954,35 @@ function meosUpdateInTableContext(editor) {
   try { if (editor && editor.document && editor.selection) v = meosInTable(editor.document, editor.selection.active.line); } catch (_) {}
   if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
 }
+// v0.9.999158(俊克): セル横結合を「装飾」で見せる。生データは全セル保持(正しいGFM)。🤝Nマーカーと、その右の(N-1)本の内側|を opacity:0 で不可視化(幅は維持=桁揃えは崩れない)→エディタ上で1つの結合セルに見える。Rawモードでは解除。可視範囲のみ走査(巨大ファイル対策)。
+let tableMergeHideDecoration = null;
+function meosApplyTableMergeDecorations(editor) {
+  if (!editor || !editor.document) return;
+  if (!tableMergeHideDecoration) tableMergeHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableMergeHideDecoration, []); return; }
+    const doc = editor.document; const ranges = [];
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        const text = doc.lineAt(ln).text;
+        if (text.indexOf('🤝') < 0) continue;
+        if (!meosInTable(doc, ln)) continue;
+        const pipes = meosRowPipePositions(text); if (pipes.length < 2) continue;
+        for (let k = 0; k < pipes.length - 1; k++) {
+          const cellStart = pipes[k] + 1, cellEnd = pipes[k + 1];
+          const cellText = text.slice(cellStart, cellEnd);
+          const m = /^\s*🤝\s*\d+/u.exec(cellText); if (!m) continue;
+          const span = meosCellSpan(cellText);
+          // v1: 内側|(N-1本)だけを不可視化(opacity:0=幅維持で桁揃え不変)。🤝Nマーカーは残す(桁が完全に揃う・結合の目印/grep可)。
+          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; ranges.push(new vscode.Range(ln, pp, ln, pp + 1)); }
+        }
+      }
+    }
+    editor.setDecorations(tableMergeHideDecoration, ranges);
+  } catch (_) {}
+}
 
 function activate(context) {
   extensionContext = context;
@@ -16005,6 +16024,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158: スクロールで結合装飾を追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
