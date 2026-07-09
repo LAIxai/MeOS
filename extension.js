@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999156: ★表内のセル間キーボード移動(俊克 7/9 pm06:45: Tabでセル移動くらい付けよう・既存アプリは不完全)。Tab/Cmd+→=次セル(行末→次行先頭・表の最後→新規空行追加)、Cmd+←=前セル(俊克は右シフトにTab割当でShift+Tab不可のため←で代用)、↑↓=上下の同セル(区切り行|---|はスキップ)。カスタムコンテキスト meos.inTable(カーソルが本物のGFMテーブル内=区切り行ありの時true・選択変更で更新・値変化時のみsetContext)をwhen条件に=表の外ではTab/矢印は通常動作。node=meosTableNav/meosTableInfo/セル位置ヘルパ+4コマンド登録+onDidChangeTextEditorSelection。package.json=keybindings5本(tab/cmd+right/cmd+left/down/up・suggest/snippet等はガード)。
 // - v0.9.999155: テーブル膜の仕上げ(俊克 7/9 pm04:53)。①膜化/解除の直後に refresh(editor) を呼び、解除後に残る▼マーカー装飾を即消す(従来はカーソル移動まで残存)。②▾メニューの並びを ✂️解除→📋膜化 に(膜化を下=カーソル/ボタンに近い側へ)。webview+node。★質問回答: 標準Markdown/GFMのテーブルは上下の区切りが無く空行/非表行で暗黙終了=範囲が明示されない→テーブル膜that範囲を明示する価値。
 // - v0.9.999154: ★テーブル膜(俊克 7/9 pm02:27: 長い表は自動膜化+▾メニューで手動膜化/解除)。表をMeOS膜(<!-- {* ▼mCN=table_… // 📋 表 *} -->)で包み範囲明確化→Current Meでどんなに縦長でも末尾へジャンプ可(既存拡張に無いMeOS独自)。①整形時に8行以上の表は自動膜化(meosWrapTableMembrane・既に膜化ならスキップ)。②▦の隣に▾を追加(fmt-cellで連結)→table-popメニュー(📋膜化/✂️解除)。node=meosLineIsMembraneOpen/Close+Wrap/Unwrap(buildMembraneOpenLine/CloseLine再利用)+message tableWrap/tableUnwrap。webview=▾caret+bm-pop流用のtable-pop+ハンドラ。node+webview。
 // - v0.9.999153: テーブル外で表ボタン(▦)/コマンドを押したら空のテーブル(3列×1行)を作成(俊克 7/9 pm02:18)。meosFormatTableAtCursorの!blk分岐で雛形挿入(空行なら置換・非空行なら次行に挿入)+1つ目のセルにカーソル。node側のみ。
@@ -15889,6 +15890,65 @@ async function meosUnwrapTableMembrane(editor) {
   try { refresh(editor); } catch (_) {} // v0.9.999155(俊克): 解除直後に残る▼マーカー装飾を即消す(従来はカーソル移動まで残っていた)
   vscode.window.setStatusBarMessage('MeOS: 表の膜を解除しました ✂️', 1600);
 }
+// v0.9.999156(俊克): 表内のセル間キーボード移動。Tab/Cmd+→=次セル・Cmd+←=前セル・↑↓=上下の同セル(区切り行はスキップ)。meos.inTable コンテキストがtrueの時だけ発火。
+function meosRowPipePositions(text) { const ps = []; for (let i = 0; i < text.length; i++) { if (text.charAt(i) === '|' && (i === 0 || text.charAt(i - 1) !== '\\')) ps.push(i); } return ps; }
+function meosRowCellCount(text) { const n = meosRowPipePositions(text).length; return n >= 2 ? n - 1 : 0; }
+function meosCellIndexAtChar(text, ch) { const ps = meosRowPipePositions(text); if (ps.length < 2) return 0; for (let k = 0; k < ps.length - 1; k++) { if (ch > ps[k] && ch <= ps[k + 1]) return k; } return ch <= ps[0] ? 0 : ps.length - 2; }
+function meosCellContentPos(text, k) { const ps = meosRowPipePositions(text); if (ps.length < 2) return 0; if (k < 0) k = 0; if (k > ps.length - 2) k = ps.length - 2; let c = ps[k] + 1; while (c < ps[k + 1] && text.charAt(c) === ' ') c++; if (c >= ps[k + 1]) c = Math.min(ps[k] + 2, ps[k + 1]); return c; }
+function meosTableInfo(doc, line) {
+  const blk = meosTableBlockRange(doc, line); if (!blk) return null;
+  let sep = -1; const rows = [];
+  for (let i = blk.start; i <= blk.end; i++) { if (sep < 0 && meosIsTableSeparator(meosSplitTableRow(doc.lineAt(i).text))) sep = i; }
+  if (sep < 0) return null; // 区切り行が無い=本物のGFMテーブルでない
+  for (let i = blk.start; i <= blk.end; i++) { if (i !== sep) rows.push(i); }
+  return { blk, sep, rows };
+}
+function meosInTable(doc, line) { try { return !!meosTableInfo(doc, line); } catch (_) { return false; } }
+async function meosTableNav(editor, dir) {
+  if (!editor) return;
+  const doc = editor.document; const cur = editor.selection.active;
+  const info = meosTableInfo(doc, cur.line); if (!info) return;
+  const { rows } = info; const sep = info.sep;
+  const curText = doc.lineAt(cur.line).text;
+  const onSep = (cur.line === sep);
+  const cellIdx = onSep ? 0 : meosCellIndexAtChar(curText, cur.character);
+  let rowPos = rows.indexOf(cur.line);
+  if (rowPos < 0) rowPos = rows.filter(l => l < cur.line).length - 1; // 区切り行の上=直前rowを基準
+  let targetLine = cur.line, targetCell = cellIdx;
+  if (dir === 'next') {
+    const cells = meosRowCellCount(curText);
+    if (!onSep && cellIdx < cells - 1) { targetCell = cellIdx + 1; }
+    else if (rowPos < rows.length - 1) { targetLine = rows[rowPos + 1]; targetCell = 0; }
+    else { // 表の最後のセル→新規空行を追加してそこへ
+      const last = rows[rows.length - 1];
+      const cols = meosRowCellCount(doc.lineAt(last).text) || 3;
+      const we = new vscode.WorkspaceEdit();
+      we.insert(doc.uri, new vscode.Position(last, doc.lineAt(last).text.length), '\n|' + '  |'.repeat(cols));
+      await vscode.workspace.applyEdit(we);
+      const nl = last + 1; const p = meosCellContentPos(doc.lineAt(nl).text, 0);
+      editor.selection = new vscode.Selection(nl, p, nl, p); editor.revealRange(new vscode.Range(nl, p, nl, p)); return;
+    }
+  } else if (dir === 'prev') {
+    if (!onSep && cellIdx > 0) { targetCell = cellIdx - 1; }
+    else if (rowPos > 0) { targetLine = rows[rowPos - 1]; targetCell = Math.max(0, meosRowCellCount(doc.lineAt(rows[rowPos - 1]).text) - 1); }
+    else { targetCell = 0; }
+  } else if (dir === 'down') {
+    if (rowPos + 1 < rows.length) targetLine = rows[rowPos + 1]; else return;
+  } else if (dir === 'up') {
+    const pp = onSep ? rowPos : rowPos - 1;
+    if (pp >= 0) targetLine = rows[pp]; else return;
+  }
+  const tText = doc.lineAt(targetLine).text;
+  const p = meosCellContentPos(tText, Math.min(targetCell, Math.max(0, meosRowCellCount(tText) - 1)));
+  editor.selection = new vscode.Selection(targetLine, p, targetLine, p);
+  editor.revealRange(new vscode.Range(targetLine, p, targetLine, p));
+}
+let _meosInTableCtx = false;
+function meosUpdateInTableContext(editor) {
+  let v = false;
+  try { if (editor && editor.document && editor.selection) v = meosInTable(editor.document, editor.selection.active.line); } catch (_) {}
+  if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
+}
 
 function activate(context) {
   extensionContext = context;
@@ -15923,6 +15983,14 @@ function activate(context) {
   // v0.9.719: 🔖 ホバーのコマンドリンク用。次へ巡回 / 指定行のしおり削除。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.formatTable', () => meosFormatTableAtCursor(vscode.window.activeTextEditor || getMeDockTargetEditor()))); // v0.9.999148: Markdownテーブル桁揃え(全角2幅対応)
+  // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
+  try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceSwitchFront', () => referenceSwitchFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
