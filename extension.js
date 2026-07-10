@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999167: 結合列の複製/削除でカーソル位置により意味を変える(俊克 7/10 pm07:51)。①🤝→Nを含むセル(マーカー上)で複製=結合単位を丸ごと複製・削除=単位ごと削除(v166同様)。②その右隣=被吸収セル上で複製=結合を1広げる(🤝→2→🤝→3・空列を全行に挿入しcur.lineのマーカーを+1)/削除=結合を1縮める(→span-1・1になればマーカー除去)。「右隣で複製=列を1本足したいはず」という最も可能性の高い意図を汲む。node側のみ。
 // - v0.9.999166: 列の複製/削除を結合対応に(俊克 7/10 pm07:42: 横2結合なら2列を1単位で複製/削除すべき)。カーソルの横結合(🤝→N)that跨ぐ全列を1単位として複製/削除(被吸収セル上でも結合開始まで遡る)。単一列だけ複製して結合が壊れるのを防ぐ。node側のみ。
 // - v0.9.999165: 行・列の複製/削除(俊克 7/10 pm07:34: 空挿入より複製that実用的=一部流用が多い・元/複製どちらを直してもよい)。▦の▾メニューに⧉行複製/✕行削除/⧉列複製/✕列削除+コマンド4本。行複製=カーソル行の複製を下に挿入。列複製/削除=全行のセルを分割→colIdxを複製/削除→再整形。区切り行・最後の1列は保護。node+webview。
 // - v0.9.999164: ★テーブルの全角幅をVSCodium既定フォントに最適化(俊克 7/10 pm00:08「デフォルトフォントに最適化すべき」)。Mac既定=Menlo+Hiraginoは全角を半角ちょうど2倍でなく約1.67倍で描く(Menloの半角が細い)→全角幅を2→1.67に。小数幅→列幅は整数に丸め(区切り行ダッシュ/パディング)。結果=俊克の手修正版と完全一致(りんご3文字→col5・長野2文字→col3)。設定 laiMembrane.tableCjkWidth(既定1.67・範囲1〜2)で等幅フォント派は2に切替可・変更で即再整形。node側+package.json。
@@ -15993,18 +15994,27 @@ async function meosTableColOp(editor, op) { // op: 'dup' | 'del'
   const info = meosTableInfo(doc, cur.line); if (!info) { meosStatus('MeOS: カーソル行に表がありません'); return; }
   const blk = info.blk;
   const curCells = meosSplitTableRow(doc.lineAt(cur.line).text);
-  let colIdx = meosCellIndexAtChar(doc.lineAt(cur.line).text, cur.character);
-  // v0.9.999166(俊克): 結合セルなら、その横結合(🤝→N)が跨ぐ全列を1単位として扱う。カーソルが結合の被吸収セルにあっても結合開始まで遡る。
-  let span = 1;
-  for (let c = colIdx; c >= 0; c--) { const sp = meosCellSpan(curCells[c] || ''); if (sp > 1 && c + sp - 1 >= colIdx) { colIdx = c; span = sp; break; } }
+  const origCol = meosCellIndexAtChar(doc.lineAt(cur.line).text, cur.character);
+  // v0.9.999167(俊克): カーソルが横結合(🤝→N)の中か判定。mc=結合開始列/span=N。onMarker=マーカーセル上/onAbsorbed=被吸収セル上。
+  let mc = origCol, span = 1;
+  for (let c = origCol; c >= 0; c--) { const sp = meosCellSpan(curCells[c] || ''); if (sp > 1 && c + sp - 1 >= origCol) { mc = c; span = sp; break; } }
+  const inMerge = (span > 1), onMarker = inMerge && (mc === origCol), onAbsorbed = inMerge && (mc < origCol);
   const totalCols = meosSplitTableRow(doc.lineAt(info.sep).text).length;
-  if (op === 'del' && span >= totalCols) { meosStatus('MeOS: 全列は削除できません'); return; }
+  if (op === 'del') { if (onMarker && span >= totalCols) { meosStatus('MeOS: 全列は削除できません'); return; } if (!inMerge && totalCols <= 1) { meosStatus('MeOS: 最後の1列は削除できません'); return; } }
+  let label = '列';
   const newLines = [];
   for (let ln = blk.start; ln <= blk.end; ln++) {
     const cells = meosSplitTableRow(doc.lineAt(ln).text);
     const isSep = (ln === info.sep);
-    if (op === 'dup') { const copies = []; for (let j = colIdx; j < colIdx + span; j++) copies.push(cells[j] !== undefined ? cells[j] : (isSep ? '-' : '')); cells.splice(colIdx + span, 0, ...copies); }
-    else { cells.splice(colIdx, span); }
+    if (op === 'dup') {
+      if (onAbsorbed) { if (ln === cur.line) cells[mc] = '<!--🤝→' + (span + 1) + '-->' + meosStripMergeMarker(cells[mc]); cells.splice(origCol, 0, isSep ? '-' : ''); label = '結合を拡張(→' + (span + 1) + ')'; } // 被吸収セル=結合を1広げる
+      else if (onMarker) { const copies = []; for (let j = mc; j < mc + span; j++) copies.push(cells[j] !== undefined ? cells[j] : (isSep ? '-' : '')); cells.splice(mc + span, 0, ...copies); label = '結合列(' + span + ')'; } // マーカー=結合単位を複製
+      else { const d = cells[origCol] !== undefined ? cells[origCol] : (isSep ? '-' : ''); cells.splice(origCol + 1, 0, d); }
+    } else {
+      if (onAbsorbed) { if (ln === cur.line) { const ns = span - 1; cells[mc] = (ns > 1 ? '<!--🤝→' + ns + '-->' : '') + meosStripMergeMarker(cells[mc]); } cells.splice(origCol, 1); label = '結合を縮小(→' + (span - 1) + ')'; } // 被吸収セル=結合を1縮める
+      else if (onMarker) { cells.splice(mc, span); label = '結合列(' + span + ')'; } // マーカー=結合単位を削除
+      else { cells.splice(origCol, 1); }
+    }
     newLines.push('| ' + cells.join(' | ') + ' |');
   }
   const formatted = meosFormatTableLines(newLines) || newLines;
@@ -16012,8 +16022,7 @@ async function meosTableColOp(editor, op) { // op: 'dup' | 'del'
   we.replace(doc.uri, new vscode.Range(blk.start, 0, blk.end, doc.lineAt(blk.end).text.length), formatted.join('\n'));
   await vscode.workspace.applyEdit(we);
   try { refresh(editor); } catch (_) {}
-  const label = span > 1 ? ('結合列(' + span + ')') : '列';
-  meosStatus(op === 'dup' ? ('MeOS: ' + label + 'を複製しました ⧉') : ('MeOS: ' + label + 'を削除しました'));
+  meosStatus('MeOS: ' + label + (op === 'dup' ? 'しました ⧉' : (onAbsorbed ? 'しました' : 'を削除しました')));
 }
 // v0.9.999156(俊克): 表内のセル間キーボード移動。Tab/Cmd+→=次セル・Cmd+←=前セル・↑↓=上下の同セル(区切り行はスキップ)。meos.inTable コンテキストがtrueの時だけ発火。
 function meosRowPipePositions(text) { const ps = []; for (let i = 0; i < text.length; i++) { if (text.charAt(i) === '|' && (i === 0 || text.charAt(i - 1) !== '\\')) ps.push(i); } return ps; }
