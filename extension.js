@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v0.9.999164: ★テーブルの全角幅をVSCodium既定フォントに最適化(俊克 7/10 pm00:08「デフォルトフォントに最適化すべき」)。Mac既定=Menlo+Hiraginoは全角を半角ちょうど2倍でなく約1.67倍で描く(Menloの半角が細い)→全角幅を2→1.67に。小数幅→列幅は整数に丸め(区切り行ダッシュ/パディング)。結果=俊克の手修正版と完全一致(りんご3文字→col5・長野2文字→col3)。設定 laiMembrane.tableCjkWidth(既定1.67・範囲1〜2)で等幅フォント派は2に切替可・変更で即再整形。node側+package.json。
 // - v0.9.999163: ★縦結合(rowspan)の記法追加(俊克 7/10 am02:56)。🤝→N=横結合(colspan)/🤝↓N=縦結合(下のセルと結合)/素の🤝N=→(後方互換)。コメント形式 <!--🤝→N--> / <!--🤝↓N-->。★縦はテキスト表に行間罫線が無いので「上に内容・下は空+マーカー隠す」だけで縦に繋がって見える(横より簡潔)。実装=meosCellSpanは横colspanのみ返す(↓は1)・meosMergeMarkerで方向保持してコメント再出力・装飾は→↓両方のマーカーをゼロ幅で隠し→のみ内側|を不可視化。↑/←は今回省略。node側のみ。
 // - v0.9.999162: 結合セルの編集性向上(俊克 7/10 am00:44)。改良1/3: カーソルがある行はマージ装飾(コメントゼロ幅・|不可視)を外して生データを見せる→<!--🤝N-->をインライン編集して結合の付け外しができる+ゼロ幅コメントでカーソルが抜け出せない罠を回避。改良4: ↑↓は隣の行へ移動(区切り行|---|も飛ばさず入れる。Tab/Cmd←→のセル移動は従来通り区切り行スキップ)。node/webview。※改良2(整形の列幅)は自動=col0=6(りんご基準)で論理的に揃うはず→手修正版col0=5との差異を確認中。
 // - v0.9.999161: ★結合マーカーをコメント形式 <!--🤝N--> に(俊克 7/9 pm09:13「データを汚さないのがMeOSのモットー」)。HTMLコメント=GitHub含め全ビューアで不可視=生データが汚れない。フォーマッタはコメントを除いた内容で幅計算・出力はcomment+桁揃え済み内容(コメントはゼロ幅前提)。装飾2種=コメントはfont-size:0でゼロ幅に完全に消す(内容はoutW幅に整形済みなので桁揃え維持)+内側|はopacity:0で不可視(幅維持)。空テーブル雛形も<!--🤝2-->に・カーソルはコメント直後。旧・素の🤝Nも後方互換で認識(整形でコメント形式に変換)。node側のみ。
@@ -15742,22 +15743,24 @@ async function jumpToPairedMembraneFromCursor() {
 }
 
 // v0.9.999148(俊克): Markdownテーブルの桁揃え整形。★全角(CJK)を2幅としてカウント=日本語の表もモノスペースで綺麗に揃う(一般の表整形拡張が苦手な点)。カーソル行のテーブルブロックを整形。
+// v0.9.999164(俊克): 全角の幅係数。VSCodium既定フォント(Mac=Menlo+Hiragino)は全角を半角ちょうど2倍でなく約1.67倍で描く(Menloの半角が細い)→既定を1.67に最適化。等幅フォント派は設定 laiMembrane.tableCjkWidth=2 に。
+let _meosTableCjkW = 1.67;
 function meosCharWidth(cp) {
-  // ★VSCodiumエディタ(既定フォント)の実描画に合わせる: 真の全角(漢字・かな・全角・CJK約物・ハングル・CJK拡張)のみ2幅。
-  // 絵文字(✅💥等)や曖昧幅記号(★→①■○)はエディタでほぼ半角描画=1幅(俊克の実測: ✅完了=5幅=✅が1)。
+  // 真の全角(漢字・かな・全角・CJK約物・ハングル・CJK拡張)= _meosTableCjkW幅。絵文字(✅💥)や曖昧幅記号(★→①)はエディタでほぼ半角=1幅。
   return ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
     (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0xA000 && cp <= 0xA4CF) ||
     (cp >= 0xAC00 && cp <= 0xD7A3) || (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE6F) ||
     (cp >= 0xFF00 && cp <= 0xFF60) || (cp >= 0xFFE0 && cp <= 0xFFE6) ||
-    (cp >= 0x20000 && cp <= 0x3FFFD)) ? 2 : 1;
+    (cp >= 0x20000 && cp <= 0x3FFFD)) ? _meosTableCjkW : 1;
 }
-function meosStrWidth(s) { let w = 0; for (const ch of String(s)) w += meosCharWidth(ch.codePointAt(0)); return w; }
+function meosStrWidth(s) { let w = 0; for (const ch of String(s)) w += meosCharWidth(ch.codePointAt(0)); return w; } // 小数幅の合計
 function meosPadCell(s, width, align) {
-  const pad = Math.max(0, width - meosStrWidth(s));
+  const pad = Math.max(0, Math.round(width - meosStrWidth(s))); // 全角が小数幅なので整数スペースに丸める
   if (align === 'right') return ' '.repeat(pad) + s;
   if (align === 'center') { const l = Math.floor(pad / 2); return ' '.repeat(l) + s + ' '.repeat(pad - l); }
   return s + ' '.repeat(pad);
 }
+function meosReadTableCjkWidth() { try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableCjkWidth', 1.67)); if (v >= 1 && v <= 2) _meosTableCjkW = v; } catch (_) {} }
 function meosSplitTableRow(line) {
   let s = line.trim();
   if (s.startsWith('|')) s = s.slice(1);
@@ -15803,6 +15806,7 @@ function meosFormatTableLines(lines) {
       width[c] = Math.max(width[c], meosStrWidth(meosStripMergeMarker(cells[c])));
     }
   }
+  for (let c = 0; c < cols; c++) width[c] = Math.max(3, Math.round(width[c])); // 全角の小数幅→整数の列幅に丸める(区切り行のダッシュ本数/パディングは整数)
   // 結合セルの内容が被覆列合計に収まらなければ最終被覆列を拡張
   for (let i = 0; i < rows.length; i++) {
     if (i === sepIdx) continue;
@@ -15812,7 +15816,7 @@ function meosFormatTableLines(lines) {
       const end = Math.min(k + sp - 1, cols - 1);
       let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
       const W = meosStrWidth(meosStripMergeMarker(cells[k]));
-      if (W > sumCols) width[end] += (W - sumCols);
+      if (W > sumCols) width[end] += Math.ceil(W - sumCols);
     }
   }
   const out = [];
@@ -15833,8 +15837,8 @@ function meosFormatTableLines(lines) {
         const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
         const end = Math.min(k + sp - 1, cols - 1);
         const W = meosStrWidth(meosStripMergeMarker(cells[k]));
-        let overflow = Math.max(0, W - width[k]);
-        outW[k] = width[k] + overflow; // = max(width[k], W)
+        let overflow = Math.max(0, Math.round(W) - width[k]);
+        outW[k] = width[k] + overflow; // = max(width[k], round(W))
         for (let j = k + 1; j <= end && overflow > 0; j++) { const reduce = Math.min(overflow, outW[j]); outW[j] -= reduce; overflow -= reduce; } // はみ出しを右の空セルで吸収
       }
       for (let c = 0; c < cols; c++) {
@@ -16074,6 +16078,8 @@ function activate(context) {
   // v0.9.719: 🔖 ホバーのコマンドリンク用。次へ巡回 / 指定行のしおり削除。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.formatTable', () => meosFormatTableAtCursor(vscode.window.activeTextEditor || getMeDockTargetEditor()))); // v0.9.999148: Markdownテーブル桁揃え(全角2幅対応)
+  try { meosReadTableCjkWidth(); } catch (_) {} // v0.9.999164: テーブルの全角幅係数を設定から読む
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('laiMembrane.tableCjkWidth')) { try { meosReadTableCjkWidth(); refresh(vscode.window.activeTextEditor); } catch (_) {} } }));
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
