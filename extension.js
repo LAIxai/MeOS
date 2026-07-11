@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.4: バグ1(俊克 7/11 pm05:53)参照メニュー/tipの残存日本語を英語化(Phase1の主役=参照機能なので英語ファースト徹底)。webview: 参照グループ孫メニューのDocumented/Plainラベル・「Click to open the … group list on the left」tip・「No reference groups — create via Edit ▾ → Reference」・サブメニューtip「Documented/Plain — select to set the button to this symbol」・(none)・セグメント💤 Pending/Plain/Documented。node: 参照系ステータスバー5件も英語化(No reference marks/No pending references/No reference groups/modeLabel Documented:Plain:/No documented|plain reference groups)。用語は既存英語tip「pending/plain/documented」に統一。webview+node。
 // - v1.0.3: 改良1の真意(俊克 7/11 am11:07「3兄弟のtipは常に上部に表示して欲しかった」)。v1.0.2の抑制だけでは不足=左伸ばし位置that問題→showTocTipに #format-tools 専用分岐を追加し、Format3兄弟(==/~~/##)と↻/▾のtipをボタン真上に中央寄せ表示(上に余地なければ下)。#fmt-pop分岐の直後(fmt-popは自前配置を維持)。抑制(↻後は最初の1回のみ)はそのまま。webviewのみ。
 // - v1.0.2: 改良1(俊克 7/11 am10:48): Format↻を1回押したらプリセット選択中はtip抑制(見出し↻のtipが左に大きく伸びて##ボタン左を覆い邪魔)。↻クリックで window.__fmtTipSuppress=true+hideTocTip、showTocTipは#format-tools内のhoverを抑制、#format-toolsのmouseleaveで解除=Format行を離れたら次回また最初の1回だけ出る。webviewのみ。
 // - v1.0.1: v1.0.0テストフィードバック2件(俊克 7/11 am10:30)。①疑問1=Format↻を全フェーズで表示に戻す。↻の「3プリセット/見出しレベル巡回」は昔から公開版にあった機能(後付けでない)→phase1で隠したのは行き過ぎ。後付け(v124+)なのは動的リング/🚫(カーソルを装飾内に置いた時の解除・幅巡回)だけ=これはactionableのphase>=4限定で引き続き抑止。結果phase<4=「↻でプリセット巡回+==/~~/##適用+▾色ピッカー」(=🚫前の状態)。俊克シナリオ「v1.0=↻前菜/v4.0=🚫で完成」を実装。②バグ1=H-TOC項目tipの「▸ right-click: jump to sub-items」を副メニュー未解禁(phase<2)では出さない(実際はネイティブCut/Copy/Pasteが出るので約束と不一致)。webviewのみ。
@@ -4960,13 +4961,13 @@ async function referenceCycle(editor) {
   if (!editor) return;
   const doc = editor.document;
   const points = collectRefPoints(doc).filter(p => !p.disabled); // v0.9.99981: 無効化(▷◁)は巡回対象外
-  if (!points.length) { vscode.window.setStatusBarMessage('参照符がありません — Edit▾ → Reference で作成 / ▾の➕発行で💤保留を自動作成', 3000); return; }
+  if (!points.length) { vscode.window.setStatusBarMessage('No reference marks — create via Edit ▾ → Reference, or issue ➕ from ▾ to auto-create a 💤 pending group', 3000); return; }
   const ref = getRefMeta(doc);
   // v0.9.99972(改良2 俊克): 巡回は「作業グループ」に限定(通常は、ある参照マークを選んで、それを巡回する)。
   let gname = ref.activeGroup || ref.issueGroup || '';
   if (gname === '💤') {
     const g6 = points.find(p => isPendingFam(p.fam));
-    if (!g6) { vscode.window.setStatusBarMessage('保留参照はまだありません — ▾メニューの➕発行で作成', 3000); return; }
+    if (!g6) { vscode.window.setStatusBarMessage('No pending references yet — issue ➕ from the ▾ menu to create one', 3000); return; }
     gname = g6.name;
   }
   if (!gname || !points.some(p => p.name === gname)) {
@@ -5069,7 +5070,7 @@ async function referenceToggleMode(editor) {
     const last = next === 'plain' ? ref.lastPlainGroup : ref.lastDocGroup;
     if (pool.length) { name = (last && pool.includes(last)) ? last : pool[0]; break; }
   }
-  if (!name) { vscode.window.setStatusBarMessage('参照グループがありません — Edit▾ → Reference で作成', 3000); return; }
+  if (!name) { vscode.window.setStatusBarMessage('No reference groups — create via Edit ▾ → Reference', 3000); return; }
   if (name === '💤') {
     if (cur && cur !== '💤') { if (cats.doclike.includes(cur)) ref.lastDocGroup = cur; else ref.lastPlainGroup = cur; }
     ref.activeGroup = '💤';
@@ -5080,7 +5081,7 @@ async function referenceToggleMode(editor) {
   }
   await saveRefMeta(doc, ref);
   postBookmarkState(editor);
-  const modeLabel = name === '💤' ? '💤 保留(膜なしの特殊用途)' : (next === 'doc' ? '参照膜有り: ' + name : '参照膜なし: ' + name);
+  const modeLabel = name === '💤' ? '💤 Pending (special: marks only, no membrane)' : (next === 'doc' ? 'Documented: ' + name : 'Plain: ' + name);
   vscode.window.setStatusBarMessage('作業参照: ' + modeLabel, 2500);
 }
 // v0.9.99986(俊克ひらめき 7/5 眼科): 3セグメントトグルの「クリックした位置=目的のモード」を直接セット
@@ -5098,7 +5099,7 @@ async function referenceSetMode(editor, mode) {
     const pool = mode === 'plain' ? cats.plain : cats.doclike;
     const last = mode === 'plain' ? ref.lastPlainGroup : ref.lastDocGroup;
     const name = (last && pool.includes(last)) ? last : (pool[0] || '');
-    if (!name) { vscode.window.setStatusBarMessage((mode === 'doc' ? '参照膜有り' : '参照膜なし') + 'のグループがありません — Edit▾ → Reference で作成', 3000); return; }
+    if (!name) { vscode.window.setStatusBarMessage('No ' + (mode === 'doc' ? 'documented' : 'plain') + ' reference groups — create via Edit ▾ → Reference', 3000); return; }
     ref.activeGroup = name;
     ref.issueGroup = name;
     if (mode === 'plain') ref.lastPlainGroup = name; else ref.lastDocGroup = name;
@@ -14499,7 +14500,7 @@ if(bmRemove)bmRemove.addEventListener('click',()=>{vscode.postMessage({type:'boo
 if(bmFront)bmFront.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkSetFront'});closeBmPop();});
 if(bmClear)bmClear.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkClearAll'});closeBmPop();});
 /* v0.9.99972(改良2 俊克): ▾メニュー=参照グループ選択(💤保留は別枠)+発行+Switch Front。行クリック=作業グループを切替。 */
-const refSubmenu=document.getElementById('ref-submenu');function closeRefSubmenu(){if(refSubmenu)refSubmenu.classList.remove('on');}function openRefSubmenu(catName,trigEl){if(!refSubmenu)return;const arr=(window.__refGroups||[]).filter(g=>catName==='doc'?g.hasMembrane:!g.hasMembrane);const row=g=>'<button class="bm-pop-item ref-sub-row" data-name="'+escText(g.name)+'" data-tip="'+(g.hasMembrane?'参照膜有り — 選ぶとボタンがこの記号に':'参照膜なし — 選ぶとボタンがこの記号に')+'">'+(g.active?'<span class="ref-chk">✓</span> ':'　')+escText(g.sym)+' '+escText(g.label||g.name)+' ('+g.count+')</button>';refSubmenu.innerHTML=arr.length?arr.map(row).join(''):'<div class="bm-pop-item" style="cursor:default;opacity:.6">(なし)</div>';refSubmenu.classList.add('on');const pop=document.getElementById('bm-pending-pop');const pr=pop.getBoundingClientRect();const tr=trigEl.getBoundingClientRect();requestAnimationFrame(()=>{const w=refSubmenu.offsetWidth||180,h=refSubmenu.offsetHeight||40;let left=pr.left-w-2;if(left<4)left=4;refSubmenu.style.left=left+'px';let top=tr.top;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;if(top<2)top=2;refSubmenu.style.top=top+'px';});}if(refGroupList)refGroupList.addEventListener('click',ev=>{const catEl=ev.target&&ev.target.closest?ev.target.closest('.ref-cat'):null;if(catEl){openRefSubmenu(catEl.getAttribute('data-cat'),catEl);return;}});if(refSubmenu)refSubmenu.addEventListener('click',ev=>{const row=ev.target&&ev.target.closest?ev.target.closest('.ref-sub-row'):null;if(!row||!row.hasAttribute('data-name'))return;vscode.postMessage({type:'referenceSelectGroup',name:row.getAttribute('data-name'),pending:false});closeRefSubmenu();closeBmPendingPop();});
+const refSubmenu=document.getElementById('ref-submenu');function closeRefSubmenu(){if(refSubmenu)refSubmenu.classList.remove('on');}function openRefSubmenu(catName,trigEl){if(!refSubmenu)return;const arr=(window.__refGroups||[]).filter(g=>catName==='doc'?g.hasMembrane:!g.hasMembrane);const row=g=>'<button class="bm-pop-item ref-sub-row" data-name="'+escText(g.name)+'" data-tip="'+(g.hasMembrane?'Documented — select to set the button to this symbol':'Plain — select to set the button to this symbol')+'">'+(g.active?'<span class="ref-chk">✓</span> ':'　')+escText(g.sym)+' '+escText(g.label||g.name)+' ('+g.count+')</button>';refSubmenu.innerHTML=arr.length?arr.map(row).join(''):'<div class="bm-pop-item" style="cursor:default;opacity:.6">(none)</div>';refSubmenu.classList.add('on');const pop=document.getElementById('bm-pending-pop');const pr=pop.getBoundingClientRect();const tr=trigEl.getBoundingClientRect();requestAnimationFrame(()=>{const w=refSubmenu.offsetWidth||180,h=refSubmenu.offsetHeight||40;let left=pr.left-w-2;if(left<4)left=4;refSubmenu.style.left=left+'px';let top=tr.top;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;if(top<2)top=2;refSubmenu.style.top=top+'px';});}if(refGroupList)refGroupList.addEventListener('click',ev=>{const catEl=ev.target&&ev.target.closest?ev.target.closest('.ref-cat'):null;if(catEl){openRefSubmenu(catEl.getAttribute('data-cat'),catEl);return;}});if(refSubmenu)refSubmenu.addEventListener('click',ev=>{const row=ev.target&&ev.target.closest?ev.target.closest('.ref-sub-row'):null;if(!row||!row.hasAttribute('data-name'))return;vscode.postMessage({type:'referenceSelectGroup',name:row.getAttribute('data-name'),pending:false});closeRefSubmenu();closeBmPendingPop();});
 if(refModeToggleBtn)refModeToggleBtn.addEventListener('click',ev=>{const s=ev.target&&ev.target.closest?ev.target.closest('.ref-seg'):null;if(!s)return;const md=s.getAttribute('data-mode');/* v0.9.99986(俊克ひらめき): クリックした位置=そのモードへ直行。メニューは閉じず✓とボタンが動くのを確認。既に✓のセグメントを再クリックで閉じる(2度目のクリック) */window.__refDeciding=true;if(typeof hideTocTip==='function')hideTocTip();/* v0.9.99988(改良1 俊克): クリックしたら決定中=切替えて見比べる間tipを出さない(閉じるまで) */if(md===window.__refMode){closeBmPendingPop();return;}vscode.postMessage({type:'referenceSetMode',mode:md});});
 if(refSwitchFrontBtn)refSwitchFrontBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceSwitchFront'});closeBmPendingPop();});
 const refDelGroupBtn=document.getElementById('ref-delete-group'),refDelAllBtn=document.getElementById('ref-delete-all');/* v0.9.99973: グループ削除(俊克: プロジェクト用/今日の予定用と使い分けるなら片付け導線が要る) */
@@ -14526,8 +14527,8 @@ function renderBookmarkState(count,full,pending,pendingFull,marksInfo,home){if(h
 function refBtnGlyphSize(s){if(s==='※')return '12px';if(s==='∗'||s==='*'||s==='＊')return '26px';if(s==='§')return '13px';if(s==='†'||s==='‡'||s==='‖')return '15px';return '14px';}
 /* v0.9.99972(改良2 俊克): 統合参照ボタンの状態描画。ボタン=作業グループの記号(💤=保留・別枠)+件数バッジ。▾メニュー=グループ一覧(保留を先頭の別枠に)。 */
 function renderReferenceState(m){const pendActive=!!(m.pending&&m.pending.active);if(bmPendingBtn){const sym=m.activeSym||'💤';const cnt=Number(m.count)||0;bmPendingBtn.textContent='';var _ss=document.createElement('span');_ss.className='bm-pending-sym';_ss.textContent=sym;_ss.style.fontSize=refBtnGlyphSize(sym);bmPendingBtn.appendChild(_ss);if(cnt>0){var _cs=document.createElement('span');_cs.className='bm-pending-cnt';_cs.textContent=cnt;bmPendingBtn.appendChild(_cs);}bmPendingBtn.classList.toggle('has',cnt>0);/* v0.9.99981(改良2): 作業カテゴリで背景色=膜なし薄水色/膜有り濃青/保留は従来 */const _md=m.mode||'pending';bmPendingBtn.classList.toggle('ref-plain',_md==='plain');bmPendingBtn.classList.toggle('ref-doc',_md==='doc');const act=(m.groups||[]).find(g=>g.active);bmPendingBtn.setAttribute('data-tip','Reference '+sym+(pendActive?(' — 保留 ('+cnt+' marks)'):(act?(' — '+act.name+' ('+cnt+' marks)'):''))+' | One click jumps to the F mark; click again to cycle the working reference. Pick it from ▾.');}
-if(refGroupList){const norm=Array.isArray(m.groups)?m.groups:[];window.__refGroups=norm;/* v0.9.99983(俊克バグ1): 参照膜有り/なしを孫メニュー(フライアウト)に=クリックで横にリストを開く */const docs=norm.filter(g=>g.hasMembrane),plains=norm.filter(g=>!g.hasMembrane);const cat=(c,label,arr)=>'<button class="bm-pending-row ref-cat" data-cat="'+c+'" data-tip="クリックで「'+label+'」のグループ一覧を左に開く">'+(arr.some(g=>g.active)?'<span class="ref-chk">✓</span> ':'　')+label+'<span class="ref-arrow">('+arr.length+') &gt;</span></button>';refGroupList.innerHTML=norm.length?((docs.length?cat('doc','参照膜有り',docs):'')+(plains.length?cat('plain','参照膜なし',plains):'')):'<div class="bm-pending-row" style="cursor:default">参照グループなし — Edit▾ → Reference で作成</div>';if(typeof closeRefSubmenu==='function')closeRefSubmenu();}
-if(refModeToggleBtn){const pc=(m.pending&&m.pending.count)||0;const mode=m.mode||'pending';window.__refMode=mode;const seg=(md,t)=>'<span class="ref-seg" data-mode="'+md+'">'+(mode===md?'<span class="ref-chk">✓</span>':'')+t+'</span>';refModeToggleBtn.innerHTML=seg('pending','💤保留('+pc+')')+' / '+seg('plain','膜なし')+' / '+seg('doc','膜有り');refModeToggleBtn.classList.toggle('active',mode==='pending');refModeToggleBtn.setAttribute('data-tip','Click a segment to move the ✓ there (💤 pending / plain / documented). The menu stays open so you can watch the ✓ and the button change; click the segment that is already ✓ to close the menu.');}}
+if(refGroupList){const norm=Array.isArray(m.groups)?m.groups:[];window.__refGroups=norm;/* v0.9.99983(俊克バグ1): 参照膜有り/なしを孫メニュー(フライアウト)に=クリックで横にリストを開く */const docs=norm.filter(g=>g.hasMembrane),plains=norm.filter(g=>!g.hasMembrane);const cat=(c,label,arr)=>'<button class="bm-pending-row ref-cat" data-cat="'+c+'" data-tip="Click to open the '+label+' group list on the left">'+(arr.some(g=>g.active)?'<span class="ref-chk">✓</span> ':'　')+label+'<span class="ref-arrow">('+arr.length+') &gt;</span></button>';refGroupList.innerHTML=norm.length?((docs.length?cat('doc','Documented',docs):'')+(plains.length?cat('plain','Plain',plains):'')):'<div class="bm-pending-row" style="cursor:default">No reference groups — create via Edit ▾ → Reference</div>';if(typeof closeRefSubmenu==='function')closeRefSubmenu();}
+if(refModeToggleBtn){const pc=(m.pending&&m.pending.count)||0;const mode=m.mode||'pending';window.__refMode=mode;const seg=(md,t)=>'<span class="ref-seg" data-mode="'+md+'">'+(mode===md?'<span class="ref-chk">✓</span>':'')+t+'</span>';refModeToggleBtn.innerHTML=seg('pending','💤 Pending('+pc+')')+' / '+seg('plain','Plain')+' / '+seg('doc','Documented');refModeToggleBtn.classList.toggle('active',mode==='pending');refModeToggleBtn.setAttribute('data-tip','Click a segment to move the ✓ there (💤 pending / plain / documented). The menu stays open so you can watch the ✓ and the button change; click the segment that is already ✓ to close the menu.');}}
 if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
 if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
 if(opRemove)opRemove.addEventListener('click',()=>{if(meScope==='me'){vscode.postMessage({type:'shedMe'});}else{vscode.postMessage({type:'noop',name:(meScope==='shadow'?'removeMeShadowSkeleton':'removeMeAllSkeleton')});}});
