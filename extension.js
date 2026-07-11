@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.8: バグ1(俊克 7/12 am04:25)参照グループを切り替えると最前線Fが各グループに保存されず、切替でFマークが消えて「どれが最前線か分からない」→★グループごとにFを記憶(ref.fronts={name→ord})。①referenceSwitchFrontでref.fronts[name]=ordを記録。②共通ヘルパーrestoreRefFront(doc,ref)=アクティブグループの記憶Fをref.frontに復元(未記録は先頭符を暫定F)。3切替経路(referenceSelectGroup/referenceToggleMode/referenceSetMode)すべての保存前に呼ぶ→切替のたびにそのグループのFがガター再表示。③getRefMetaでr.fronts初期化。ref丸ごとJSON.stringifyでmMETA随伴なのでfrontsも自動永続化。ついでにreferenceToggleModeのステータスバー「作業参照:」を英語化(Working reference:)。node側のみ。
 // - v1.0.7: 改良1+2(俊克 7/12 am04:03)。①改良1: 保留参照の既定グループ名that本文に日本語「保留_」で出ていた(mRP=保留_TS)→英語ファーストなので「pending_」に(生成2箇所4923/4928)。保留検出はfam(RP枠)なので既存「保留_」マークは影響なし。作業参照グループ切替のステータスバーも英語化(Working reference group: 💤 Pending)。②改良2: 参照メニュー等の大ポップアップのtipが下に落ちて右下ボタン群を隠す件→左に余地(≥120px)があれば幅を余地に詰めて左へ逃がす(下に落とさない)。Me Dockが狭い時だけ従来の上/下。showTocTipのbm-pop.on分岐を書換+他tipはmaxWidthを既定に戻す。webview+node。
 // - v1.0.6: 疑問1続き(俊克 7/12 am03:57「保留は保留・a pending groupでいい」)。Pendingの説明を over-explain から簡素化: セグメントtip「💤 Pending (a pending group)」/ modeLabel「💤 Pending group」/ 💤ボタンtip「(💤 = a pending group)」/ ⇄Select tip「a 💤 pending group and a normal reference group」。全ての"special (…)"を撤去。webview+node。
 // - v1.0.5: 疑問1(俊克 7/12 am03:51)参照グループ分類名を Documented/Plain → **Annotated/Marks** に(俊克「Documented/Plainがしっくりこない・1語+tip説明が良い」)。膜有り=Annotated(marks+注釈膜)/膜なし=Marks(印だけ)。tipに意味を補足(「Annotated = reference marks + a note membrane」「Marks = reference marks only」)。フライアウト見出し・サブメニューtip・セグメント(💤 Pending/Marks/Annotated)・セグメントtip・node側modeLabel/ステータスバーも統一。webview+node。
@@ -5016,12 +5017,26 @@ async function referenceSwitchFront(editor) {
   }
   const g = points.filter(p => p.name === onPt.name);
   const ref = getRefMeta(doc);
-  ref.front = { name: onPt.name, ord: g.indexOf(onPt) }; // v0.9.99974: 最前線(F)は参照符の中の1つ(俊克 pm06:11)
+  const _ford = g.indexOf(onPt);
+  ref.front = { name: onPt.name, ord: _ford }; // v0.9.99974: 最前線(F)は参照符の中の1つ(俊克 pm06:11)
+  if (!ref.fronts || typeof ref.fronts !== 'object') ref.fronts = {};
+  ref.fronts[onPt.name] = _ford; // v1.0.8(俊克 バグ1): グループごとにFを記憶=切替で復元できる
   ref.activeGroup = isPendingFam(onPt.fam) ? '💤' : onPt.name; // v0.9.99972/74: Switchした符のグループを作業対象に(保留は番兵)
   await saveRefMeta(doc, ref);
   refresh(editor);
   postBookmarkState(editor);
   vscode.window.setStatusBarMessage('F参照符: ' + refFamilySymbol(onPt.fam) + onPt.serial + ' — ' + (onPt.base || onPt.name), 3000);
+}
+// v1.0.8(俊克 バグ1): アクティブグループの記憶したF(ref.fronts[name])を ref.front に復元。未記録なら先頭符を暫定F。
+// これでグループを切り替えるたびに、そのグループの最前線Fがガターに再表示される(切替でFが消える問題の解消)。
+function restoreRefFront(doc, ref) {
+  try {
+    const ag = ref.activeGroup || '';
+    let name = ag;
+    if (ag === '💤') { const pp = collectRefPoints(doc).filter(p => !p.disabled && isPendingFam(p.fam)); name = pp.length ? pp[0].name : ''; }
+    if (!name) return;
+    ref.front = { name, ord: (ref.fronts && ref.fronts[name] != null) ? ref.fronts[name] : 0 };
+  } catch (_) {}
 }
 // v0.9.99972(改良2 俊克): ▾メニューからの作業グループ切替。pending=true → 保留モード(番兵'💤')。
 async function referenceSelectGroup(editor, name, pending) {
@@ -5034,6 +5049,7 @@ async function referenceSelectGroup(editor, name, pending) {
     // v0.9.99977: カテゴリ別の復帰先(膜有り/膜なし)を記憶
     try { const cats = refGroupsByCategory(editor.document, ref); if (cats.doclike.includes(name)) ref.lastDocGroup = name; else ref.lastPlainGroup = name; } catch (_) {}
   }
+  restoreRefFront(editor.document, ref); // v1.0.8(俊克 バグ1): 切替先グループの最前線Fを復元
   await saveRefMeta(editor.document, ref);
   postBookmarkState(editor);
   vscode.window.setStatusBarMessage('Working reference group: ' + (pending ? '💤 Pending' : name), 2500);
@@ -5082,10 +5098,11 @@ async function referenceToggleMode(editor) {
     ref.issueGroup = name;
     if (next === 'plain') ref.lastPlainGroup = name; else ref.lastDocGroup = name;
   }
+  restoreRefFront(doc, ref); // v1.0.8(俊克 バグ1): 切替先グループの最前線Fを復元
   await saveRefMeta(doc, ref);
   postBookmarkState(editor);
   const modeLabel = name === '💤' ? '💤 Pending group' : (next === 'doc' ? 'Annotated: ' + name : 'Marks: ' + name);
-  vscode.window.setStatusBarMessage('作業参照: ' + modeLabel, 2500);
+  vscode.window.setStatusBarMessage('Working reference: ' + modeLabel, 2500);
 }
 // v0.9.99986(俊克ひらめき 7/5 眼科): 3セグメントトグルの「クリックした位置=目的のモード」を直接セット
 // (循環でなく直行)。💤保留/膜なし/膜有りのどれをクリックしたかで判定。メニューは閉じない(webview側)。
@@ -5107,6 +5124,7 @@ async function referenceSetMode(editor, mode) {
     ref.issueGroup = name;
     if (mode === 'plain') ref.lastPlainGroup = name; else ref.lastDocGroup = name;
   }
+  restoreRefFront(doc, ref); // v1.0.8(俊克 バグ1): 切替先グループの最前線Fを復元
   await saveRefMeta(doc, ref);
   postBookmarkState(editor);
 }
@@ -6384,6 +6402,7 @@ function getRefMeta(document) {
   }
   if (!r.groups || typeof r.groups !== 'object') r.groups = {};
   if (!r.symbols || typeof r.symbols !== 'object') r.symbols = {}; // v0.9.999100: R6〜9のカスタム記号(fam→glyph)
+  if (!r.fronts || typeof r.fronts !== 'object') r.fronts = {}; // v1.0.8(俊克 バグ1): グループごとのF位置(name→ord)
   if (!r.lastFam) r.lastFam = 1;
   return r;
 }
