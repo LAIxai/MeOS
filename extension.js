@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.10: バグ1続き(俊克 7/12 am05:02「Jump to noteのtipメニューが出ない」=Me Dockの▾でなく、エディタで符にホバーした時のtipに出したかった)。★参照符のホバー(MarkdownString)に「📖 Jump to note」クリックリンクを追加=そのグループの注釈(desc符)へジャンプ。isTrusted=trueでcommandリンク有効化・引数でグループ名/行を渡すのでカーソル位置に依らずそのマークから飛ぶ。注釈を持つグループの符のみ表示(この符が唯一の注釈なら非表示)。判定用にグループ別注釈数をapplyPrettyLabels冒頭で先計算。referenceJumpToNoteを(editor,fromGroup,fromLine)対応に+コマンド登録も引数受けに。▾メニュー項目(v1.0.9)も併存。node側のみ。
 // - v1.0.9: バグ1(俊克 7/12 am04:42)Annotatedグループで、複数の参照符から「説明文(desc)のあるところ」へ飛ぶインターフェースが無かった(巡回のみ)→★脚注ジャンプを追加。参照ボタン=巡回用/新「📖 Jump to note」=注釈へ飛ぶ用(脚注仕様)。カーソルが符の上/符の1行上(巡回の着地点)にある時、その同名グループのdescを持つ符(=参照膜)へジャンプ(複数なら順に巡回)。node関数referenceJumpToNote+コマンドlai-membrane.referenceJumpToNote+▾メニュー項目+webview配線+message handler。node+webview+package.json。
 // - v1.0.8: バグ1(俊克 7/12 am04:25)参照グループを切り替えると最前線Fが各グループに保存されず、切替でFマークが消えて「どれが最前線か分からない」→★グループごとにFを記憶(ref.fronts={name→ord})。①referenceSwitchFrontでref.fronts[name]=ordを記録。②共通ヘルパーrestoreRefFront(doc,ref)=アクティブグループの記憶Fをref.frontに復元(未記録は先頭符を暫定F)。3切替経路(referenceSelectGroup/referenceToggleMode/referenceSetMode)すべての保存前に呼ぶ→切替のたびにそのグループのFがガター再表示。③getRefMetaでr.fronts初期化。ref丸ごとJSON.stringifyでmMETA随伴なのでfrontsも自動永続化。ついでにreferenceToggleModeのステータスバー「作業参照:」を英語化(Working reference:)。node側のみ。
 // - v1.0.7: 改良1+2(俊克 7/12 am04:03)。①改良1: 保留参照の既定グループ名that本文に日本語「保留_」で出ていた(mRP=保留_TS)→英語ファーストなので「pending_」に(生成2箇所4923/4928)。保留検出はfam(RP枠)なので既存「保留_」マークは影響なし。作業参照グループ切替のステータスバーも英語化(Working reference group: 💤 Pending)。②改良2: 参照メニュー等の大ポップアップのtipが下に落ちて右下ボタン群を隠す件→左に余地(≥120px)があれば幅を余地に詰めて左へ逃がす(下に落とさない)。Me Dockが狭い時だけ従来の上/下。showTocTipのbm-pop.on分岐を書換+他tipはmaxWidthを既定に戻す。webview+node。
@@ -5030,21 +5031,26 @@ async function referenceSwitchFront(editor) {
 }
 // v1.0.9(俊克 バグ1): 脚注ジャンプ=参照符から、同名グループの「説明文(desc)を持つ符(=参照膜/注釈)」へ飛ぶ。
 // 参照ボタン=巡回用/これは注釈へ飛ぶ用(脚注仕様)。カーソルが符の上、または符の1行上(巡回の着地点)にある時に働く。
-async function referenceJumpToNote(editor) {
+async function referenceJumpToNote(editor, fromGroup, fromLine) {
   if (!editor) return;
   const doc = editor.document;
   const pts = collectRefPoints(doc).filter(p => !p.disabled);
   if (!pts.length) { vscode.window.setStatusBarMessage('No reference marks in this file', 3000); return; }
   const curLine = editor.selection.active.line, curCh = editor.selection.active.character;
-  // カーソル位置の符 → この行の符 → 1行下の符(巡回は符の1行上に着地するので)
-  const onPt = pts.find(p => p.line === curLine && p.start <= curCh && curCh <= p.end)
-    || pts.find(p => p.line === curLine)
-    || pts.find(p => p.line === curLine + 1);
-  if (!onPt) { vscode.window.setStatusBarMessage('Put the cursor on a reference mark (or the line just above it) to jump to its note', 4000); return; }
-  const notes = pts.filter(p => p.name === onPt.name && p.desc);
+  // v1.0.10: ホバーリンクからは対象グループ/行が引数で来る。無ければカーソル検出(符の上 → この行 → 1行下=巡回の着地点)。
+  let gname = (typeof fromGroup === 'string' && fromGroup) ? fromGroup : '';
+  let baseLine = (typeof fromLine === 'number') ? fromLine : curLine;
+  if (!gname) {
+    const onPt = pts.find(p => p.line === curLine && p.start <= curCh && curCh <= p.end)
+      || pts.find(p => p.line === curLine)
+      || pts.find(p => p.line === curLine + 1);
+    if (!onPt) { vscode.window.setStatusBarMessage('Put the cursor on a reference mark (or the line just above it) to jump to its note', 4000); return; }
+    gname = onPt.name; baseLine = onPt.line;
+  }
+  const notes = pts.filter(p => p.name === gname && p.desc);
   if (!notes.length) { vscode.window.setStatusBarMessage('This reference group has no note yet — a note is a mark written  name // your note', 4000); return; }
-  // カーソルより後の最初のnoteへ(無ければ先頭=巡回)。複数注釈にも対応。
-  const target = notes.find(p => p.line > curLine) || notes[0];
+  // 基準行より後の最初のnoteへ(無ければ先頭=巡回)。複数注釈にも対応。
+  const target = notes.find(p => p.line > baseLine) || notes[0];
   const pos = new vscode.Position(target.line, target.start);
   editor.selection = new vscode.Selection(pos, pos);
   editor.revealRange(new vscode.Range(target.line, target.start, target.line, target.end), vscode.TextEditorRevealType.InCenter);
@@ -5321,6 +5327,8 @@ function applyPrettyLabels(editor) {
   const refPointLabelItems = [];
   const refPointCounts = {};
   const refPtAll = []; // v0.9.99969: F参照符ガター判定用(カーソル行の符も含む全収集)
+  // v1.0.10(俊克 バグ1): グループごとの注釈(desc符=参照膜)の個数を先に計算=符ホバーに「Jump to note」リンクを出す判定用。
+  const refNoteCount = new Map(); try { for (const _p of collectRefPoints(editor.document)) { if (_p.desc && !_p.disabled) refNoteCount.set(_p.name, (refNoteCount.get(_p.name) || 0) + 1); } } catch (_) {}
   // v0.9.658: 取消線 ~~text~~(日時) の本体範囲（赤線）とマーカー範囲（~~・(日時)を隠す）。
   // 本体はホバーで日時を出すため DecorationOptions({range, hoverMessage}) で push。
   const strikeBodyItems = [];
@@ -5389,6 +5397,13 @@ function applyPrettyLabels(editor) {
         const label = sym + serial + (p.desc ? ' : ' + p.desc : '');
         const hover = new vscode.MarkdownString('▶◀ ' + sym + serial + ' — ' + (p.base || p.name || '(無名)') + (p.ts ? '  `_' + p.ts + '`' : '') + (p.desc ? '\n\n' + p.desc : ''));
         hover.isTrusted = false;
+        // v1.0.10(俊克 バグ1): このグループが注釈(desc符=参照膜)を持つなら、ホバーに「📖 Jump to note」クリックリンクを出す(脚注ジャンプ)。この符自身が唯一の注釈なら出さない。
+        const _nc = refNoteCount.get(p.name) || 0;
+        if (_nc > 0 && (!p.desc || _nc > 1)) {
+          const _args = encodeURIComponent(JSON.stringify([p.name, line]));
+          hover.appendMarkdown('\n\n[📖 Jump to note](command:lai-membrane.referenceJumpToNote?' + _args + ')');
+          hover.isTrusted = true;
+        }
         refPointHideItems.push({ range: new vscode.Range(line, mRef.index, line, mRef.index + mRef[0].length), hoverMessage: hover });
         refPointLabelItems.push({
           range: new vscode.Range(line, mRef.index, line, mRef.index),
@@ -16242,7 +16257,7 @@ function activate(context) {
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceSwitchFront', () => referenceSwitchFront(vscode.window.activeTextEditor || getMeDockTargetEditor())));
-  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceJumpToNote', () => referenceJumpToNote(vscode.window.activeTextEditor || getMeDockTargetEditor()))); // v1.0.9: 脚注ジャンプ
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceJumpToNote', (groupName, line) => referenceJumpToNote(vscode.window.activeTextEditor || getMeDockTargetEditor(), groupName, line))); // v1.0.9/10: 脚注ジャンプ(ホバーリンクからは引数でグループ/行)
   // v0.9.99975: Home栞。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.homeJump', () => homeJump(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.homeSwitch', () => homeSwitch(vscode.window.activeTextEditor || getMeDockTargetEditor())));
