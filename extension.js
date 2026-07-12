@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.12: 改良1〜3(俊克 7/12 am08:59)。①改良1=参照ボタンtipにCmd+クリック説明が無かった件=renderReferenceStateの動的tipが静的tipを上書きしていた→動的tip側に⌘/Ctrl説明を追加+残っていた「保留」も英語化(Pending)。②改良2=着地時raw抑止を#(見出し)/💬(注釈=ハイライト・取消線)ナビにも適用。汎用化: applyPrettyLabelsのdocCursorLineを「着地行(_refNoRawLine)ならば-1」にすることで全Format(見出し/ハイライト/取消線/参照符/複数行スパン)を一括で着地時raw抑止。navMeHeadingJump/JumpTo/navMeMarkJump/JumpToの着地を「1行上」→「対象そのもの+setRefNoRaw」に(4関数)。③改良3=セグメントの順をPending先頭→末尾に(Marks / Annotated / Pending(N))=Pendingは使用頻度低。フライアウトの選択リストはAnnotated上/Marks下のまま(俊克「そのままでいい」)。webview+node。
 // - v1.0.11: 改良1+2(俊克 7/12 am05:27)。①改良1=ジャンプ着地の一時raw抑止: 脚注/巡回で符へ飛んだ直後は、カーソルが乗ってもインライン(raw)にせずチップ描画のまま(読む用)。カーソルがその行を離れたら解除→再クリックで通常のraw編集。setRefNoRaw+applyPrettyLabelsの `line===docCursorLine && line!==_noRawLine` 判定。referenceCycleも着地を「符の1行上」→「符そのもの」に変更(一貫性・巡回中に編集する機会は少ない)。referenceJumpToNoteも着地時抑止。②改良2=参照ボタン⌘/Ctrl+クリック(referenceCmdJump): Annotatedグループなら注釈(desc符)へ、Marks/Pendingなら最前線Fへ即ジャンプ。巡回中にワンアクションでFへ戻れる(通常はエディタで符以外をクリックしないとFに戻れず機動性が悪い件の解消)。webview側でev.metaKey/ctrlKey判定。node+webview。
 // - v1.0.10: バグ1続き(俊克 7/12 am05:02「Jump to noteのtipメニューが出ない」=Me Dockの▾でなく、エディタで符にホバーした時のtipに出したかった)。★参照符のホバー(MarkdownString)に「📖 Jump to note」クリックリンクを追加=そのグループの注釈(desc符)へジャンプ。isTrusted=trueでcommandリンク有効化・引数でグループ名/行を渡すのでカーソル位置に依らずそのマークから飛ぶ。注釈を持つグループの符のみ表示(この符が唯一の注釈なら非表示)。判定用にグループ別注釈数をapplyPrettyLabels冒頭で先計算。referenceJumpToNoteを(editor,fromGroup,fromLine)対応に+コマンド登録も引数受けに。▾メニュー項目(v1.0.9)も併存。node側のみ。
 // - v1.0.9: バグ1(俊克 7/12 am04:42)Annotatedグループで、複数の参照符から「説明文(desc)のあるところ」へ飛ぶインターフェースが無かった(巡回のみ)→★脚注ジャンプを追加。参照ボタン=巡回用/新「📖 Jump to note」=注釈へ飛ぶ用(脚注仕様)。カーソルが符の上/符の1行上(巡回の着地点)にある時、その同名グループのdescを持つ符(=参照膜)へジャンプ(複数なら順に巡回)。node関数referenceJumpToNote+コマンドlai-membrane.referenceJumpToNote+▾メニュー項目+webview配線+message handler。node+webview+package.json。
@@ -5381,10 +5382,11 @@ function applyPrettyLabels(editor) {
   // v0.9.659: カーソルがある行ではハイライト/取消線の装飾を抑制し、生データ
   // (== ~~ (色) (日時)) を見せて編集可能にする。膜ラベルの isEditingLine(v0.9.618)と
   // 同じ思想。行を離れたら refresh で再適用。ホバーtip不要(クリックで日時が直接見える)。
-  const docCursorLine = editor.selection ? editor.selection.active.line : -1;
-  // v1.0.11(俊克 改良1): 着地の一時raw抑止=カーソルがその行を離れたら解除。乗っている間だけチップ表示を維持。
+  let docCursorLine = editor.selection ? editor.selection.active.line : -1;
+  // v1.0.11/12(俊克 改良1/2): 着地の一時raw抑止=カーソルがその行を離れたら解除。乗っている間は「カーソル行扱い」を外し、
+  // その行を全Format(見出し##/💬注釈=ハイライト・取消線/参照符)で一括してチップ描画のまま維持=読む用(インライン編集にしない)。
   if (_refNoRawLine >= 0 && (_refNoRawUri !== editor.document.uri.toString() || docCursorLine !== _refNoRawLine)) { _refNoRawLine = -1; _refNoRawUri = ''; }
-  const _noRawLine = (_refNoRawUri === editor.document.uri.toString()) ? _refNoRawLine : -1;
+  if (_refNoRawLine >= 0 && _refNoRawUri === editor.document.uri.toString() && docCursorLine === _refNoRawLine) docCursorLine = -1;
   // v0.9.709: 複数行取消線は ~~{…}~~ (波括弧つき) だけに限定し、単独の ~~ では行をまたがない
   // (v705で単独 ~~ が遠くの ~~ まで巻き込んで暴走→誤爆。俊克 am08:40「使い物にならない」)。
   // 起動条件=「~~{ が同一行で }~~ で閉じていない(=複数行に開いた)行」がある時だけ全文走査(性能温存)。
@@ -5412,7 +5414,7 @@ function applyPrettyLabels(editor) {
         if (!disabled) refPointCounts[fam] = (refPointCounts[fam] || 0) + 1;
         const pAll = parseRefPointInner(mRef[3]);
         if (!disabled) refPtAll.push({ line, start: mRef.index, name: pAll.name, fam, desc: pAll.desc }); // Fガター用(生きた符のみ・カーソル行含む)。v99981: descで膜有無を判定
-        if (line === docCursorLine && line !== _noRawLine) continue; // カーソル行は生データを見せて編集可能に(v659の思想)。ただしジャンプ着地の一時抑止行(_noRawLine)はチップ描画のまま(改良1)
+        if (line === docCursorLine) continue; // カーソル行は生データを見せて編集可能に(v659の思想)。着地の一時抑止行はdocCursorLine=-1化(上)で自動的に抑止される
         const p = pAll;
         if (disabled) {
           // 無効化符=灰色・番号なし・「▷ 記号 : 説明」。説明が消えないので後で復活できる。
@@ -13395,7 +13397,7 @@ function navMeHeadingJump(direction) {
     else { target = heads[heads.length - 1]; wrapped = true; }
   }
   if (wrapped && meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} }
-  const land = Math.max(lo, target - 1); // land just above the heading so it shows decorated
+  const land = target; setRefNoRaw(doc, target); // v1.0.12(俊克 改良2): 見出しそのものに着地+着地時raw抑止(参照ジャンプと一貫・巡回中の編集機会は少ない)
   const ok = jumpMeDockTargetLine(String(land + 1));
   // v0.9.928: put the caret at the END of the landing line so appending is immediate (俊克 6/17)
   try {
@@ -13423,7 +13425,7 @@ function navMeHeadingJumpTo(n) {
   const desired = lo + Math.max(0, Math.min(1, Number(n) || 0)) * (hi - lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し
   let target = heads[0], best = Infinity;
   for (const h of heads) { const d = Math.abs(h - desired); if (d < best) { best = d; target = h; } }
-  const land = Math.max(lo, target - 1);
+  const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 見出しそのものに着地+着地時raw抑止
   const ok = jumpMeDockTargetLine(String(land + 1));
   try { const col = editor.document.lineAt(land).text.length; editor.selection = new vscode.Selection(new vscode.Position(land, col), new vscode.Position(land, col)); } catch (_) {}
   focusMeDockTargetEditorPreservingView(editor);
@@ -13441,7 +13443,7 @@ function navMeMarkJumpTo(n) {
   const desired = lo + Math.max(0, Math.min(1, Number(n) || 0)) * (hi - lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り注釈
   let target = marks[0], best = Infinity;
   for (const mk of marks) { const d = Math.abs(mk - desired); if (d < best) { best = d; target = mk; } }
-  const land = Math.max(lo, target - 1);
+  const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 💬注釈そのものに着地+着地時raw抑止
   const ok = jumpMeDockTargetLine(String(land + 1));
   try { const col = editor.document.lineAt(land).text.length; editor.selection = new vscode.Selection(new vscode.Position(land, col), new vscode.Position(land, col)); } catch (_) {}
   focusMeDockTargetEditorPreservingView(editor);
@@ -13517,7 +13519,7 @@ function navMeMarkJump(direction) {
   if (direction >= 0) { target = marks.find(l => l > curEff); if (target === undefined) { target = marks[0]; wrapped = true; } }
   else { const before = marks.filter(l => l < curEff); if (before.length) target = before[before.length - 1]; else { target = marks[marks.length - 1]; wrapped = true; } }
   if (wrapped && meDockPanel) { try { meDockPanel.webview.postMessage({ type: 'headWrap' }); } catch (_) {} }
-  const land = Math.max(lo, target - 1); // land just above the mark
+  const land = target; setRefNoRaw(doc, target); // v1.0.12(俊克 改良2): 💬注釈そのものに着地+着地時raw抑止(参照ジャンプと一貫)
   const ok = jumpMeDockTargetLine(String(land + 1));
   // v0.9.929: caret to END of the landing line + focus editor for immediate append (= heading jump)
   try {
@@ -14621,9 +14623,9 @@ function renderBookmarkState(count,full,pending,pendingFull,marksInfo,home){if(h
 /* v0.9.999110(俊克): 参照記号は文字ごとに見た目のサイズが大きく違う(※=大/∗=小)ので、ボタン内の記号だけ個別に正規化する。 */
 function refBtnGlyphSize(s){if(s==='※')return '12px';if(s==='∗'||s==='*'||s==='＊')return '26px';if(s==='§')return '13px';if(s==='†'||s==='‡'||s==='‖')return '15px';return '14px';}
 /* v0.9.99972(改良2 俊克): 統合参照ボタンの状態描画。ボタン=作業グループの記号(💤=保留・別枠)+件数バッジ。▾メニュー=グループ一覧(保留を先頭の別枠に)。 */
-function renderReferenceState(m){const pendActive=!!(m.pending&&m.pending.active);if(bmPendingBtn){const sym=m.activeSym||'💤';const cnt=Number(m.count)||0;bmPendingBtn.textContent='';var _ss=document.createElement('span');_ss.className='bm-pending-sym';_ss.textContent=sym;_ss.style.fontSize=refBtnGlyphSize(sym);bmPendingBtn.appendChild(_ss);if(cnt>0){var _cs=document.createElement('span');_cs.className='bm-pending-cnt';_cs.textContent=cnt;bmPendingBtn.appendChild(_cs);}bmPendingBtn.classList.toggle('has',cnt>0);/* v0.9.99981(改良2): 作業カテゴリで背景色=膜なし薄水色/膜有り濃青/保留は従来 */const _md=m.mode||'pending';bmPendingBtn.classList.toggle('ref-plain',_md==='plain');bmPendingBtn.classList.toggle('ref-doc',_md==='doc');const act=(m.groups||[]).find(g=>g.active);bmPendingBtn.setAttribute('data-tip','Reference '+sym+(pendActive?(' — 保留 ('+cnt+' marks)'):(act?(' — '+act.name+' ('+cnt+' marks)'):''))+' | One click jumps to the F mark; click again to cycle the working reference. Pick it from ▾.');}
+function renderReferenceState(m){const pendActive=!!(m.pending&&m.pending.active);if(bmPendingBtn){const sym=m.activeSym||'💤';const cnt=Number(m.count)||0;bmPendingBtn.textContent='';var _ss=document.createElement('span');_ss.className='bm-pending-sym';_ss.textContent=sym;_ss.style.fontSize=refBtnGlyphSize(sym);bmPendingBtn.appendChild(_ss);if(cnt>0){var _cs=document.createElement('span');_cs.className='bm-pending-cnt';_cs.textContent=cnt;bmPendingBtn.appendChild(_cs);}bmPendingBtn.classList.toggle('has',cnt>0);/* v0.9.99981(改良2): 作業カテゴリで背景色=膜なし薄水色/膜有り濃青/保留は従来 */const _md=m.mode||'pending';bmPendingBtn.classList.toggle('ref-plain',_md==='plain');bmPendingBtn.classList.toggle('ref-doc',_md==='doc');const act=(m.groups||[]).find(g=>g.active);bmPendingBtn.setAttribute('data-tip','Reference '+sym+(pendActive?(' — Pending ('+cnt+' marks)'):(act?(' — '+act.name+' ('+cnt+' marks)'):''))+' | One click jumps to the F mark; click again to cycle. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.');}
 if(refGroupList){const norm=Array.isArray(m.groups)?m.groups:[];window.__refGroups=norm;/* v0.9.99983(俊克バグ1): 参照膜有り/なしを孫メニュー(フライアウト)に=クリックで横にリストを開く */const docs=norm.filter(g=>g.hasMembrane),plains=norm.filter(g=>!g.hasMembrane);const cat=(c,label,arr)=>'<button class="bm-pending-row ref-cat" data-cat="'+c+'" data-tip="'+(c==='doc'?'Annotated = reference marks + a note membrane (the group carries an explanation). ':'Marks = reference marks only, no note. ')+'Click to open this group list on the left">'+(arr.some(g=>g.active)?'<span class="ref-chk">✓</span> ':'　')+label+'<span class="ref-arrow">('+arr.length+') &gt;</span></button>';refGroupList.innerHTML=norm.length?((docs.length?cat('doc','Annotated',docs):'')+(plains.length?cat('plain','Marks',plains):'')):'<div class="bm-pending-row" style="cursor:default">No reference groups — create via Edit ▾ → Reference</div>';if(typeof closeRefSubmenu==='function')closeRefSubmenu();}
-if(refModeToggleBtn){const pc=(m.pending&&m.pending.count)||0;const mode=m.mode||'pending';window.__refMode=mode;const seg=(md,t)=>'<span class="ref-seg" data-mode="'+md+'">'+(mode===md?'<span class="ref-chk">✓</span>':'')+t+'</span>';refModeToggleBtn.innerHTML=seg('pending','💤 Pending('+pc+')')+' / '+seg('plain','Marks')+' / '+seg('doc','Annotated');refModeToggleBtn.classList.toggle('active',mode==='pending');refModeToggleBtn.setAttribute('data-tip','Working reference kind — 💤 Pending (a pending group) · Marks (reference marks only) · Annotated (marks + a note membrane). Click a segment to move the ✓; the menu stays open so you can watch it change; click the ✓ segment to close.');}}
+if(refModeToggleBtn){const pc=(m.pending&&m.pending.count)||0;const mode=m.mode||'pending';window.__refMode=mode;const seg=(md,t)=>'<span class="ref-seg" data-mode="'+md+'">'+(mode===md?'<span class="ref-chk">✓</span>':'')+t+'</span>';refModeToggleBtn.innerHTML=seg('plain','Marks')+' / '+seg('doc','Annotated')+' / '+seg('pending','💤 Pending('+pc+')');/* v1.0.12(俊克 改良3): Pendingは使用頻度が低いので末尾に。Marks / Annotated / Pending の順 */refModeToggleBtn.classList.toggle('active',mode==='pending');refModeToggleBtn.setAttribute('data-tip','Working reference kind — 💤 Pending (a pending group) · Marks (reference marks only) · Annotated (marks + a note membrane). Click a segment to move the ✓; the menu stays open so you can watch it change; click the ✓ segment to close.');}}
 if(opAddToc)opAddToc.addEventListener('click',()=>vscode.postMessage({type:'addToWorkingToc'}));
 if(opToggle)opToggle.addEventListener('click',()=>{if(meScope==='me')vscode.postMessage({type:'toggleMeOne',line:lineInput?lineInput.value:''});else vscode.postMessage({type:'noop',name:'toggleMeShadowSkeleton'});});
 if(opRemove)opRemove.addEventListener('click',()=>{if(meScope==='me'){vscode.postMessage({type:'shedMe'});}else{vscode.postMessage({type:'noop',name:(meScope==='shadow'?'removeMeShadowSkeleton':'removeMeAllSkeleton')});}});
