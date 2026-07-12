@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.13: バグ1(俊克 7/12 am09:44)#/💬ボタンで自分自身に着地して↑で進めない。真因=v1.0.12で着地を「1行上」→「対象そのもの」に変えたのに、探索基準 curEff=cur+1(旧1行上着地の補正)が残存→prev(l<curEff=cur+1)が自分の行を含み自己着地。修正=navMeHeadingJump/navMeMarkJumpの curEff=cur+1 → cur(2箇所)。これで on-target着地でも prev/next が自分を除外して進む。node側のみ。
 // - v1.0.12: 改良1〜3(俊克 7/12 am08:59)。①改良1=参照ボタンtipにCmd+クリック説明が無かった件=renderReferenceStateの動的tipが静的tipを上書きしていた→動的tip側に⌘/Ctrl説明を追加+残っていた「保留」も英語化(Pending)。②改良2=着地時raw抑止を#(見出し)/💬(注釈=ハイライト・取消線)ナビにも適用。汎用化: applyPrettyLabelsのdocCursorLineを「着地行(_refNoRawLine)ならば-1」にすることで全Format(見出し/ハイライト/取消線/参照符/複数行スパン)を一括で着地時raw抑止。navMeHeadingJump/JumpTo/navMeMarkJump/JumpToの着地を「1行上」→「対象そのもの+setRefNoRaw」に(4関数)。③改良3=セグメントの順をPending先頭→末尾に(Marks / Annotated / Pending(N))=Pendingは使用頻度低。フライアウトの選択リストはAnnotated上/Marks下のまま(俊克「そのままでいい」)。webview+node。
 // - v1.0.11: 改良1+2(俊克 7/12 am05:27)。①改良1=ジャンプ着地の一時raw抑止: 脚注/巡回で符へ飛んだ直後は、カーソルが乗ってもインライン(raw)にせずチップ描画のまま(読む用)。カーソルがその行を離れたら解除→再クリックで通常のraw編集。setRefNoRaw+applyPrettyLabelsの `line===docCursorLine && line!==_noRawLine` 判定。referenceCycleも着地を「符の1行上」→「符そのもの」に変更(一貫性・巡回中に編集する機会は少ない)。referenceJumpToNoteも着地時抑止。②改良2=参照ボタン⌘/Ctrl+クリック(referenceCmdJump): Annotatedグループなら注釈(desc符)へ、Marks/Pendingなら最前線Fへ即ジャンプ。巡回中にワンアクションでFへ戻れる(通常はエディタで符以外をクリックしないとFに戻れず機動性が悪い件の解消)。webview側でev.metaKey/ctrlKey判定。node+webview。
 // - v1.0.10: バグ1続き(俊克 7/12 am05:02「Jump to noteのtipメニューが出ない」=Me Dockの▾でなく、エディタで符にホバーした時のtipに出したかった)。★参照符のホバー(MarkdownString)に「📖 Jump to note」クリックリンクを追加=そのグループの注釈(desc符)へジャンプ。isTrusted=trueでcommandリンク有効化・引数でグループ名/行を渡すのでカーソル位置に依らずそのマークから飛ぶ。注釈を持つグループの符のみ表示(この符が唯一の注釈なら非表示)。判定用にグループ別注釈数をapplyPrettyLabels冒頭で先計算。referenceJumpToNoteを(editor,fromGroup,fromLine)対応に+コマンド登録も引数受けに。▾メニュー項目(v1.0.9)も併存。node側のみ。
@@ -13386,7 +13387,7 @@ function navMeHeadingJump(direction) {
   // v0.9.925: park ONE line ABOVE the heading so the heading stays decorated (the cursor line
   // renders raw = 素 → hard to read). Compare against curEff=cur+1 (≈ the heading we're parked
   // above) so repeat jumps advance past it instead of sticking. (俊克 6/17)
-  const curEff = cur + 1;
+  const curEff = cur; // v1.0.13(俊克 バグ1): 着地を対象そのものに変えた(v1.0.12)のに合わせ +1補正を撤去。旧1行上着地の名残で、prev(l<curEff)が自分自身を含み↑で進めなくなっていた。
   let target, wrapped = false;
   if (direction >= 0) {
     target = heads.find(l => l > curEff);
@@ -13514,7 +13515,7 @@ function navMeMarkJump(direction) {
   for (let i = lo; i <= hi; i++) { if (markNavHit(doc.lineAt(i).text || '')) marks.push(i); }
   if (!marks.length) { vscode.window.setStatusBarMessage('MeOS: no highlights / strikethroughs here.', 2000); return false; }
   const cur = editor.selection.active.line;
-  const curEff = cur + 1; // v0.9.929: same "park one line above" as the heading jump (mark stays decorated)
+  const curEff = cur; // v1.0.13(俊克 バグ1): 着地を対象そのものに変えた(v1.0.12)のに合わせ +1補正を撤去。旧1行上着地の名残で、prev(l<curEff)が自分自身を含み↑で進めなくなっていた。 // v0.9.929: same "park one line above" as the heading jump (mark stays decorated)
   let target, wrapped = false;
   if (direction >= 0) { target = marks.find(l => l > curEff); if (target === undefined) { target = marks[0]; wrapped = true; } }
   else { const before = marks.filter(l => l < curEff); if (before.length) target = before[before.length - 1]; else { target = marks[marks.length - 1]; wrapped = true; } }
