@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.16: バグ1(俊克 7/12 am11:18)参照符ホバーの「📖 Jump to note」リンクにマウスを乗せるとVS Codeがリンク先の生URL(command:…referenceJumpToNote?%5B%22…%22%2C106%5D)を表示し、%文字が誤記のように見えた→markdownリンクにtitle("Jump to this group's note")を付与し、hoverに生URLでなく読める説明が出るように。node側のみ。
 // - v1.0.15: 改良1(俊克 7/12 am10:23)▾メニュー「Jump to note/F」項目の「⌘-Click」をショートカット風に右端表示。ボタンをflex(justify-content:space-between)にし左=ラベル/右=淡色小さめの⌘-Click。webview。
 // - v1.0.14: 改良(俊克 7/12 am10:06)▾メニューの「Jump to note」を、⌘-Clickの動作を映す動的ラベルに=Annotatedなら「📖 Jump to note ⌘-Click」/Marks・Pendingなら「🎯 Jump to F ⌘-Click」(renderReferenceStateでm.modeにより切替)。クリックで⌘-Clickと同じreferenceCmdJump(Annotated→note/Marks・Pending→F)。位置をDelete ALL groupsの直下に移動(Switch Front Referenceを最下段に戻す=俊克「一番下にあるべき」)。webview。
 // - v1.0.13: バグ1(俊克 7/12 am09:44)#/💬ボタンで自分自身に着地して↑で進めない。真因=v1.0.12で着地を「1行上」→「対象そのもの」に変えたのに、探索基準 curEff=cur+1(旧1行上着地の補正)が残存→prev(l<curEff=cur+1)が自分の行を含み自己着地。修正=navMeHeadingJump/navMeMarkJumpの curEff=cur+1 → cur(2箇所)。これで on-target着地でも prev/next が自分を除外して進む。node側のみ。
@@ -5440,7 +5441,7 @@ function applyPrettyLabels(editor) {
         const _nc = refNoteCount.get(p.name) || 0;
         if (_nc > 0 && (!p.desc || _nc > 1)) {
           const _args = encodeURIComponent(JSON.stringify([p.name, line]));
-          hover.appendMarkdown('\n\n[📖 Jump to note](command:lai-membrane.referenceJumpToNote?' + _args + ')');
+          hover.appendMarkdown('\n\n[📖 Jump to note](command:lai-membrane.referenceJumpToNote?' + _args + ' "Jump to this group’s note")'); // v1.0.16(俊克 バグ1): titleを付けてリンクhoverに生URL(command:…%5B…)でなく読める説明を出す
           hover.isTrusted = true;
         }
         refPointHideItems.push({ range: new vscode.Range(line, mRef.index, line, mRef.index + mRef[0].length), hoverMessage: hover });
