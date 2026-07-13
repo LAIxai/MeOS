@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v1.0.29: ★不具合1(俊克 7/13 pm02:45「ここ数日、ハイライトを付けても付かない/途中で停止・再起動で正常化・ループしてる?」)の真因特定+根治。真因=onDidChangeTextDocumentの refresh ゲート「if(deferRefreshCount>0)return」。deferRefreshCountはバッチ編集中だけ一時的に>0にする再入防止カウンタで、>0の間は全装飾リフレッシュ(ハイライト描画含む)をスキップする(テキスト編集自体は通る=マークは入るが描画されない)。3つのincrement箇所のうち6604/9127はtry/finally保護済だが、8033 _fireRawTrigger(魔法の呪文かかか/みみみ/よよよ)は.then方式で、ed.editが同期throw/未settleだとdecrementが飛びカウンタが永久に>0固着→以後リフレッシュ永久停止・再起動でのみ0復帰=症状に完全一致。①修正=_fireRawTriggerをasync+try/finallyにしてどんな失敗でも必ずdeferRefreshCount/_rawTriggerBusyを戻す。②自己回復(defense-in-depth)=ゲートでdeferRefreshCountが3s超>0のまま固着したら「リーク」とみなし0へ自己回復し当該イベントで再描画(正常バッチは<1sなので誤発火せず)+再発確認用にステータスバー通知。node側のみ。※間欠再現不能のため強い仮説+確実な安全網の位置づけ。
 // - v1.0.28: 改良1(俊克 7/13 am11:10 スクショ{tmp > v1.0.27_1110}「参照/栞の飛び先行が良い感じ👍」)=🏠Home主ボタンtipも同様に飛び先行を最下部・緑(#16a34a=home統一色)・折り返さず1行に。従来トップにあった「🏠 Home — Ln N · 日時」をセンチネルU+0001付きで最下部へ移動(未設定時は飛び先無しなので従来通り)。色は既存の.home-split分岐(緑)that担当。webviewのみ(renderBookmarkStateのhome tip文字列のみ変更)。
 // - v1.0.27: 改良1(俊克 7/13 am10:32-10:51 スクショ{tmp > v1.0.26_1032})=参照/栞の主ボタンtipで「飛び先(warp先)」の表示に一貫性が無い(栞は🚩Ln行あり・参照は行なし)→両方で飛び先を最下部・色付き・折り返さず1行に統一。①参照=青(#2563eb): 従来トップにあったグループ識別行を最下部へ移し、F符が何番目のmarkかまで表示=「Reference ¶6 — 名前 (9 marks)」。node=postReferenceStateでcountedマーク(refMarkCount=バッジ数・descの膜宣言符除外)内でのFの0基準位置frontOrdを算出送出(Annotatedでもバッジ数と整合)。②栞=赤(#dc2626): 🚩Front行を最下部の飛び先行に(他の🔖は上に列挙)。③描画=showTocTipの.bm-split分岐: センチネルU+0001(String.fromCharCode(1)=テンプレリテラルの\エスケープ化け回避)付きセグメントを色付きnowrap<div>で描画・隠しspanでその行の実幅を測りtip幅を自動調整(200〜460pxで1行に収める)。④色=参照青/栞赤(F/Hバッジ=ボタン統一色に一致)。node+webview。
 // - v1.0.26: 改良1(俊克 7/13 am10:03 スクショ{tmp > v1.0.25_1003}「気持ちよく栞3兄弟を使える👍」)=栞/参照の▾プルアップメニューを開くと、▾ボタンのtip(真上表示)that開いたメニューに重なって邪魔→メニューが開いている間はsplitクラスタ(主/▾/バッジ)のtipを出さない。①showTocTipの.bm-split分岐冒頭にガード=document.querySelector('.bm-pop.on')があればhideTocTip()して返す(メニュー内の項目tipは別分岐.bm-pop.onが担当するので温存)。②bmMenuBtn/bmPendingMenuBtnのクリック開時にhideTocTip()を追加=クリック直後に既存tipを即消し(次のmousemove待ちにしない)。webviewのみ。
@@ -2514,6 +2515,7 @@ const COMPOSE_RESTORE_MS = 350;
 // end. Counter is incremented/decremented in pairs (try/finally) and works
 // safely if multiple batches stack.
 let deferRefreshCount = 0;
+let _deferRaisedAt = 0; // v1.0.29(俊克 不具合1): deferRefreshCountが>0のまま固着した時刻。3s超で「リーク」とみなし自己回復(全リフレッシュ停止=ハイライト非描画の根治)。
 // v0.9.457: debounce the expensive name-jump / red-arm / refresh chain for
 // rapid Shift+Arrow selection growth. Each keystroke would otherwise fire the
 // full handleMembraneNameSelection pipeline on every intermediate selection
@@ -8033,10 +8035,16 @@ function _fireRawTrigger(ed, line, endChar, n, action) {
   _rawTriggerBusy = true; deferRefreshCount++;
   const delRange = new vscode.Range(line, endChar - n, line, endChar);
   const _act = action || toggleRawMode; // v0.9.930: 呪文ごとのアクション(既定=Rawトグル)
-  ed.edit(eb => eb.delete(delRange), { undoStopBefore: false, undoStopAfter: false }).then(
-    () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; try { _act(); } catch (_) {} },
-    () => { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; }
-  );
+  // v1.0.29(俊克 不具合1): 旧.then方式はed.editが同期throw/未settleだとdeferRefreshCount/_rawTriggerBusyが戻らず、
+  //   onDidChangeTextDocumentの refresh ゲート(deferRefreshCount>0でreturn)が永久に閉じ、ハイライト等の装飾が描画されなくなる(再起動でしか回復しない)。
+  //   async+try/finallyでどんな失敗でも必ず両フラグを戻す。
+  (async () => {
+    let ok = false;
+    try { ok = await ed.edit(eb => eb.delete(delRange), { undoStopBefore: false, undoStopAfter: false }); }
+    catch (_) { ok = false; }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _rawTriggerBusy = false; }
+    if (ok) { try { _act(); } catch (_) {} }
+  })();
   return true;
 }
 function maybeHandleRawTrigger(e) {
@@ -16596,7 +16604,17 @@ makeDecorations();
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a
       // refresh()→setDecorations interrupt fired from the selection handler's immediate
       // (non-keyboard) branch on Kawasemi's macro-commit, NOT an IME bug. Fixed in v0.9.650.
-      if (deferRefreshCount > 0) return;
+      // v1.0.29(俊克 不具合1): deferRefreshCountはバッチ編集中だけ一時的に>0にする再入防止カウンタ。
+      //   >0の間は装飾リフレッシュ(ハイライト描画含む)を丸ごとスキップする。もし何らかの経路で
+      //   デクリメントが飛んで>0のまま固着すると、以後リフレッシュが永久に止まり「ハイライトを付けても
+      //   描画されない/途中で止まる・再起動でしか直らない」というゆゆしき症状になる。正常なバッチは<1sで
+      //   完了するので、3s超で>0が続いたら「リーク」とみなしカウンタを0へ自己回復し、このイベントで再描画する。
+      if (deferRefreshCount > 0) {
+        if (!_deferRaisedAt) _deferRaisedAt = Date.now();
+        if (Date.now() - _deferRaisedAt <= 3000) return; // 正常バッチの窓 → refreshを抑止(従来動作)
+        deferRefreshCount = 0; _deferRaisedAt = 0; // 固着(リーク)→自己回復して以降はfall-throughで再描画
+        try { vscode.window.setStatusBarMessage('MeOS: refresh recovered (defer counter was stuck)', 2500); } catch (_) {}
+      } else if (_deferRaisedAt) { _deferRaisedAt = 0; }
       if (!activeEditor || e.document !== activeEditor.document) return;
       // v0.9.633: debounce typing-driven refresh to stop MeOS edits racing the
       // Japanese IME. onDidChangeTextDocument fires on every keystroke AND on every
