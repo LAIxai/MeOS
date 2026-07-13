@@ -2,6 +2,49 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v1.0 era — highlights (2026-06 → 2026-07)
+
+_Curated, user-facing highlights. Exhaustive per-version notes live in the source header._
+
+### v1.0.20–1.0.30 — Action badges on the three bookmarks
+- **F / H shoulder badges** on the Bookmark / Reference / Home buttons: one click makes the cursor line the Front (**F**) — or, for Home, the single ribbon (**H**). No menu needed.
+- Every "return spot" now shows its **jump destination as a one-line, colored tooltip**: Reference in blue with the mark's position (e.g. `¶6`), Bookmark in red, Home in green.
+- Fix: highlights could occasionally stop rendering until a restart (the refresh gate could get stuck); it now self-heals.
+
+### v1.0.0 — Reference Groups (phased release)
+- **Reference groups**: named, grep-able in-text anchors. One click warps to the group's Front mark; click again to cycle every mark. Each group remembers its own Front, so switching groups returns you to that draft's last spot.
+- **Marks / Annotated / Pending.** Annotated marks carry a footnote; ⌘/Ctrl-click jumps to the note (Annotated) or straight to the Front (Marks / Pending).
+- Marks are stored as **HTML comments** — invisible in GitHub and Markdown preview, so your text stays clean.
+- Pick from 7 preset symbols (`※ † ‡ ∗ § ‖ ¶`) plus 2 custom.
+
+### v0.9.999 — Markdown tables
+- **Format Table** (CJK & emoji width aware), **cell navigation** (Tab / Cmd+arrows), **cell merge** (stored as invisible comments so the GFM table stays valid), and **row / column duplicate & delete**.
+
+### v0.9.999147 — Format ring
+- ↻ toggles and cycles highlight / strikethrough / heading presets with just the cursor inside the decoration.
+
+### v0.9.999123 — Reference Membranes, the Three Bookmark Treasures & the Aiming Menu
+- 🏠 Home (one ribbon per file), 🔖 Bookmarks (up to 3), and reference marks — each with a Front you can jump to.
+
+### v0.9.99957 — Done-checkbox
+- Any heading / highlight / list item can become a searchable checklist item.
+
+### v0.9.99940 — Format three-brothers
+- ↻ color palette for highlight / strike / heading, with per-file color memory.
+
+### v0.9.99935 — Navigate Me minimap scrollbar
+
+### v0.9.99922 — ⌘/Ctrl-click to warp in the Hyper TOC
+
+### v0.9.99921 — 🔐 Encrypt Me
+- Encrypt a membrane's contents in place.
+
+### v0.9.986–0.9.988 — 🐙 Octopush
+- One-shot, git-aware GitHub backup / sync.
+
+### v0.9.971 — Membrane OS · Markdown⊕
+- Rebrand to **MeOS** (Membrane OS).
+
 ## Original Notes
 
 # VSCodiuM - Fold Membrane v0.9.312
