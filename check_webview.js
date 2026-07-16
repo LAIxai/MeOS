@@ -17,6 +17,8 @@ let js = raw
   .split('\\`').join('`')
   .split('\\$').join('$')
   .split("\\'").join("'")
+  // v2.0.32(俊克): ★v2.0.31全壊(webview全壊)の再発防止。テンプレートリテラルは残る全ての \X を X へ落とす(\/→/, \d→d 等)。この一般de-escapeが無く、正規表現の \/ が実行時に / に化けて<script>が壊れる件を見逃していた。ここで実行時と同じ姿にしてsyntax checkする。
+  .replace(/\\[\s\S]/g, function (m) { return m[1]; })
   .split(SENTINEL).join('\\\\');
 js = js.replace(/\$\{[^}]*\}/g, '"0"');
 const out = path.join(__dirname, 'webview_out.js');
