@@ -2,6 +2,14 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v2.0 era — highlights (2026-07 →)
+
+_Curated, user-facing highlights. Exhaustive per-version notes live in the source header._
+
+### v2.0.0 — Hyper TOC sub-menu (phased release · Phase 2)
+- **Right-click any Hyper TOC item to fly out its child membranes** — one level down (e.g. a lifelong diary's month → its days). The list opens centered on your cursor; move with **↑ / ↓**, confirm with **Enter**, dismiss with **Esc**, or click to jump.
+- Second of the weekly phased-release unlocks: everything ships in one build, and each week opens one more feature at the door.
+
 ## v1.0 era — highlights (2026-06 → 2026-07)
 
 _Curated, user-facing highlights. Exhaustive per-version notes live in the source header._
