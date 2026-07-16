@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v2.0.34(俊克 7/17 am08:37 検索=空白区切りAND): requestDiarySearchを空白区切りAND検索に(各語=膜名+コメントの部分一致、全語を含む日記だけ「猛暑 沖縄」=両方)。1語なら従来の部分一致と同じ。node側(webviewテンプレ外)なので正規表現OK。★別途相談=「猛暑日→猛暑」の意味論的切り出しは形態素解析(kuromoji等・辞書数MB)が要り軽量思想に反する→無依存の代替(末尾トリム)は誤爆あり・substringは既に語根方向に寛容(「猛暑」で猛暑日も拾う)。webview不変・node1箇所。→ [[project_lifelong_diary_template]]
 // - v2.0.33(俊克 7/17 am08:00 テストOK改良1): v2.0.32テスト成功(7/2=日付基準OK・「猛暑」=検索OK・俊克「パーベき・こんなIFは今まで実存しなかった」)。改良1=inline編集の入力枠が右腰の↻/Nバッジに被る→右Todayボタンを+6px広げ(padding右9→15・max-width180→186)、入力枠幅は右ボタン幅-6px(=従来の実効幅を維持)でバッジ帯を避ける。webview(CSS+JS 1箇所)のみ・node不変。→ [[project_lifelong_diary_template]]
 // - v2.0.32(俊克 7/17 am06:36 ★v2.0.31全壊の真因修正+検証器強化): v2.0.31テストでMe Dock全壊(俊克「またやっちまった」)→即revert(v2.0.30へ)。真因=右Today実装の _dwParseBase の正規表現 /^(\d{1,2})\s*\/\s*.../。webview JSは meDockHtml() のテンプレートリテラル内なので実行時に \/ が / に化け、正規表現が途中で閉じ→webviewスクリプト全体がSyntaxError→全パネル初期化されず全壊。node --check/check_webviewは「生」のソースを見るため通過(実行時の姿を見ていなかった)。①修正=_dwParseBaseを正規表現廃止しsplit('/')+_dwAllDigitsで解析(バックスラッシュ皆無=コードベースの約束、String.fromCharCode(10)と同根)。②★検証器強化=check_webview.jsに残る全 \X→X の一般de-escapeを追加(実行時と同じ姿に)=以後この種を確実に検出。broken版で回帰テスト済(強化版はv2.0.31をSyntaxErrorで捕捉・v2.0.32はOK)。機能自体はv2.0.31と同一(下記)。→ [[feedback_minimal_change_verify_webview]] [[project_lifelong_diary_template]]
 // - v2.0.31(俊克 7/17 am06:20 ★右Today=多態の「基準点」入力を実装・全壊revert済→v2.0.32で修正): 右Todayボタン(dw-scope)を**ダブルクリック→inline編集**(#dw-base-input を上に重ねる)。入力で3モード分岐: ①空/T/Today/今日の日付→基準=今日 ②M/D(6/4)→日付基準 ③それ以外テキスト→膜名/コメント部分一致の日記を副メニュー(新msg requestDiarySearch→既存tocChildrenフライアウト流用)・↻のWeek/Month/Year無効(グレー)。基準点はday/date/searchで共有=↻スコープはその基準から刻む(requestDateDialにanchorパラメータ追加=既定は今日を明示送信・従来diaryAnchorDateはフォールバック)。左Ⓣ=基準を今日へリセット+帰還。見せ方=編集可(day)は白抜き囲み枠(inset ring)+ホバーIビーム/検索中は↻グレー+ラベル横伸び&14字超で…&全文tip。単クリック=ダイヤル(220msデバウンスでdblclickと区別)。webview(CSS/HTML/JS)+node(2ハンドラ)。→ [[project_lifelong_diary_template]] [[project_htoc_submenu_child_list]]
@@ -15930,11 +15931,12 @@ function toggleMeDock(editorOverride) {
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
       if (!ed) return;
       const q = String(message.q || '').trim().toLowerCase();
+      // v2.0.34(俊克): 空白区切りAND。各語は膜名+コメントの部分一致、全語を含む日記だけ(「猛暑 沖縄」=両方含む)。1語なら従来と同じ。node側なので正規表現OK(webviewテンプレ外)。
+      const terms = q ? q.split(/\s+/).filter(Boolean) : [];
       const entries = collectDiaryEntries(ed.document); // 日付降順(新しい日が上)
-      const list = q ? entries.filter(e => {
-        const nm = tocChildDisplayName(e.id).toLowerCase();
-        const cm = tocChildComment(e.tail).toLowerCase();
-        return nm.indexOf(q) >= 0 || cm.indexOf(q) >= 0; // 部分一致(表記ゆれは短い語根で拾える)
+      const list = terms.length ? entries.filter(e => {
+        const hay = (tocChildDisplayName(e.id) + ' ' + tocChildComment(e.tail)).toLowerCase();
+        return terms.every(t => hay.indexOf(t) >= 0);
       }) : entries;
       const children = list.map(e => ({ key: e.id, name: tocChildDisplayName(e.id), comment: tocChildComment(e.tail), line: e.start + 1 }));
       if (meDockPanel) meDockPanel.webview.postMessage({ type: 'tocChildren', children, centerIndex: 0 });
