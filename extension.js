@@ -3738,53 +3738,46 @@ let _reconcileFoldTimer = null, _reconcilingFolds = false;
 function scheduleReconcilePastedFolds(editor, from, to) {
   if (!editor) return;
   if (_reconcileFoldTimer) clearTimeout(_reconcileFoldTimer);
-  _reconcileFoldTimer = setTimeout(() => { _reconcileFoldTimer = null; reconcilePastedFolds(editor, from, to, 0); }, 150);
+  _reconcileFoldTimer = setTimeout(() => { _reconcileFoldTimer = null; reconcilePastedFolds(editor, from, to); }, 40);
 }
 function _pairBodyVisible(editor, p) { // 膜の本文(開始+1〜end)が今ビューに見えている=展開中。
   const top = p.start + 1, bot = p.end; if (top > bot) return false;
   try { for (const r of editor.visibleRanges) { if (r.start.line <= bot && r.end.line >= top) return true; } } catch (_) {}
   return false;
 }
-async function reconcilePastedFolds(editor, from, to, attempt) {
-  attempt = attempt || 0;
+// v2.0.48(俊克「待たずに処理して」): 固定待ちをやめ、fold provider が範囲を再計算し終えた瞬間に畳めるよう「畳めるまで細かく試す」ポーリングに。
+// 巨大日記では貼付でキャッシュ無効化→90k行超の再計算に時間がかかり、固定200msでは空振りしていた(=3秒)。70ms間隔で最速to畳む。
+async function reconcilePastedFolds(editor, from, to) {
   if (!editor || _reconcilingFolds || editor.document.isClosed) return;
   _reconcilingFolds = true;
-  let hadTargets = false;
   try {
     const doc = editor.document;
     const last = doc.lineCount - 1;
     const lo = Math.max(0, Math.min(from, last)), hi = Math.max(0, Math.min(to, last));
-    const pairs = collectMembraneStructure(doc).pairs
-      .filter(p => p.start >= lo && p.start <= hi)
-      .sort((a, b) => a.start - b.start);
-    if (!pairs.length) return;
-    // v2.0.47(俊克): 体感短縮のため初回ウォームアップを450→200msに。貼付直後は fold provider が新レンジ再計算中だと editor.fold が空振りするので、下で1回だけリトライ。
-    if (attempt === 0 && membraneFoldingProviderInstance) {
-      membraneFoldingProviderInstance.notifyRangesChanged();
-      await new Promise(r => setTimeout(r, 200));
-    }
-    suppressAutoUnfoldUntil = Date.now() + 1800;
-    let skipUntil = -1;
-    for (const p of pairs) {
-      if (p.start <= skipUntil) continue; // 既に畳んだ膜の内側(隠れている)→降りない
-      let badge = null;
-      try { badge = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {}
-      if (badge && badge.symbol === '⊖') {
-        // リトライでは「まだ展開中(=初回が空振り)」の膜だけ畳む。既に畳んだ膜には触れずカーソルも動かさない(二重スクロール回避)。
-        if (attempt > 0 && !_pairBodyVisible(editor, p)) { skipUntil = p.end; continue; }
-        hadTargets = true;
-        // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開する→開始行(畳んでも見える)へ退避。
+    if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged();
+    suppressAutoUnfoldUntil = Date.now() + 3000;
+    const deadline = Date.now() + 1800;
+    while (!editor.document.isClosed && Date.now() < deadline) {
+      const pairs = collectMembraneStructure(doc).pairs
+        .filter(p => { if (p.start < lo || p.start > hi) return false; let b = null; try { b = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {} return b && b.symbol === '⊖'; })
+        .sort((a, b) => a.start - b.start);
+      let anyExpanded = false, skipUntil = -1;
+      for (const p of pairs) {
+        if (p.start <= skipUntil) continue;               // 既に畳んだ膜の内側→降りない
+        if (!_pairBodyVisible(editor, p)) { skipUntil = p.end; continue; } // もう畳まれている(or画面外)→この枝は打ち切り
+        anyExpanded = true;
+        // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開→開始行(畳んでも見える)へ退避。
         try { editor.selection = new vscode.Selection(p.start, 0, p.start, 0); } catch (_) {}
         try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [p.start] }); } catch (_) {}
         try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) {}
-        skipUntil = p.end; // この膜の中身は隠れた
+        if (!_pairBodyVisible(editor, p)) skipUntil = p.end; // 畳めた→中身は隠れた(空振りなら次ポーリングで再試行)
       }
+      if (!anyExpanded) break;                            // 全部畳めた(or対象なし)→終了
+      await new Promise(r => setTimeout(r, 70));          // provider の再計算完了を細かく待つ
     }
   } finally {
     _reconcilingFolds = false;
   }
-  // v2.0.47: 短い初期待ちで空振りしても、provider が整った頃にもう一度だけ(冪等・展開中の取りこぼしのみ)。
-  if (attempt === 0 && hadTargets) setTimeout(() => reconcilePastedFolds(editor, from, to, 1), 260);
 }
 
 async function syncManyMstatsFromTargetStates(editor, items) {
