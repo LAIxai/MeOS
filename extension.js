@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v2.0.42(俊克 7/17 pm06:16 day=今月だけに変更): 俊克「通常はTodayを基準に今月のリストだけ表示を想定」。day(Today)スコープを全日付→**基準の年+月だけ**に(requestDateDialのday分岐=e.y===a.y&&e.mo===a.mo)。多年日記で全日付は数百行=実用不可だった。↻のWeek/Month/Yearは跨いだ串刺しのまま。tip「(all days)」→「this month's entries」(月's=カーリー'でwebview単引用符string安全)。node1行+webview tip1箇所。→ [[project_lifelong_diary_template]]
 // - v2.0.41(俊克 7/17 pm05:08 基準ラベルに年を表示): 基準を「6/19 2025」に設定してもラベルが「6/19」で年を落とし「保存されない」ように見えた(実際は__dwBaseDate.yに保存済・ダイヤル中心決定にも使用)。→ 基準年が今年と違う時だけラベルに年を出す(6/19 2025 / 今年は6/19のまま)。★仕様の明確化(コード変更なし)=dayスコープは全日付一覧(基準年は"中心"に効くが年で絞らない・年串刺しはYearスコープ)/日付ルールは膜名のどこかにM/D+年があれば拾う寛容設計(✴️等の装飾・末尾TSはルール不要で無視される=実日記✴️7/16 2026が動く理由)。webview(JS 1箇所)のみ・node不変。→ [[project_lifelong_diary_template]]
 // - v2.0.40(俊克 7/17 pm04:09 Ⓣoday→Ⓣday): もう一捻り。丸Ⓣの○が"o"を兼ねる=Ⓣ=To(to-dayの語源=今日この日のto)→Ⓣ+day=Today。ラベルから"o"を落とし「Ⓣday」に(innerHTMLの'oday'→'day')。俊克「分るかなー分んねーだろうーな」。webview(JS 1字)のみ・node不変。→ [[project_lifelong_diary_template]]
 // - v2.0.39(俊克 7/17 pm03:08 Today→Ⓣoday): 右Todayのday既定ラベル「Today」を「Ⓣoday」に(頭文字を丸Ⓣ=左Ⓣと揃い「Ⓣ=今日」が一目)。__dwRenderScopeのday+基準今日の分岐だけinnerHTMLで<span class="dw-tg2">Ⓣ</span>oday(基準日6/4や検索語はtextContentのまま=Ⓣ無し)。Ⓣは少し大きめ=CSS .dw-tg2 font-size 1.4em。webview(JS+CSS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]]
@@ -14644,7 +14645,7 @@ function meCockpitKeyCruise(ev){const t=ev&&ev.target;if(!t)return;const cockpit
 document.addEventListener('keydown',meCockpitKeyCruise,true);
 if(navEof)navEof.addEventListener('click',()=>vscode.postMessage({type:'navCenterEof'}));
 /* v2.0.5(俊克): Date Warp=H-TOCツール行(⬆⬇＋－の右)にカレンダー式 ⇦ Today ⇨。⇦/⇨=今いる日記(無ければ今日)から前後1日。Today=システムの今日の日記へ(全文検索=warpToDate abs)。年・絶対はプルアップ(改良3)で次段。 */
-{window.__dwScope=0;window.__dwBaseDate=null;window.__dwSearch=null;var _dwScopes=['day','week','month','year'],_dwLabels=['Today','Week','Month','Year'],_dwColors=['#16a34a','#2563eb','#d97706','#7c3aed'],_dwTips=['Today — day dial (all days). Double-click to type a base date (e.g. 6/4), "T" = today, or a word to search diaries. ↻ cycles the scope (Shift-click = reverse). Left Ⓣ = jump straight to today.','Week — step by week on the same weekday as the base.','Month — step by month on the same day-of-month as the base.','Year — step by year on the same month/day (= a year ago · a 10-year diary).'];function _dwToday(){var n=new Date();return {y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate()};}
+{window.__dwScope=0;window.__dwBaseDate=null;window.__dwSearch=null;var _dwScopes=['day','week','month','year'],_dwLabels=['Today','Week','Month','Year'],_dwColors=['#16a34a','#2563eb','#d97706','#7c3aed'],_dwTips=['Today — this month’s entries. Double-click to type a base date (e.g. 6/4), "T" = today, or a word to search diaries. ↻ cycles the scope (Shift-click = reverse). Left Ⓣ = jump straight to today.','Week — step by week on the same weekday as the base.','Month — step by month on the same day-of-month as the base.','Year — step by year on the same month/day (= a year ago · a 10-year diary).'];function _dwToday(){var n=new Date();return {y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate()};}
 /* v2.0.31(俊克): 右Today=多態の「基準点」入力。ダブルクリックでinline編集→ 空/T/Today/今日の日付=今日, M/D=日付基準, それ以外=テキスト検索(膜名/コメント部分一致→副メニュー・Week/Month/Year無効)。基準点はday/date/searchで共有・編集はTodayのみ・↻スコープはその基準から刻む・左Ⓣ=今日へリセット+帰還。見せ方=編集可(day)は白抜き囲み枠、検索中は↻グレー。 */
 window.__dwRenderScope=function(){var b=document.getElementById('dw-scope');if(!b)return;var dial=document.getElementById('dw-dial');var i=window.__dwScope;b.classList.remove('dw-editable');if(dial)dial.classList.remove('dw-dial-off');if(window.__dwSearch!=null){var q=window.__dwSearch;b.textContent=(q.length>14?(q.slice(0,14)+'…'):q);b.style.background='#0f766e';b.title='Diary search: '+q+' — matches show in the sub-menu. Double-click to change; Left Ⓣ (or "T") clears. Week/Month/Year are off while searching.';b.classList.add('dw-editable');if(dial)dial.classList.add('dw-dial-off');return;}if(i===0){var bd=window.__dwBaseDate;if(bd){b.textContent=bd.mo+'/'+bd.d+((bd.y&&bd.y!==_dwToday().y)?(' '+bd.y):'');/* v2.0.41(俊克): 基準年が今年と違う時はラベルに年を出す(6/19 2025)=年が保存されている事を可視化。 */}else{b.innerHTML='<span class="dw-tg2">Ⓣ</span>day';/* v2.0.40(俊克): Ⓣday。丸Ⓣの○が"o"を兼ねる=Ⓣ=To=to-dayの語源→Ⓣ+day=Today。「分るかなー分んねーだろうーな」の粋。 */}b.style.background=_dwColors[0];b.title=_dwTips[0];b.classList.add('dw-editable');}else{b.textContent=_dwLabels[i];b.style.background=_dwColors[i];b.title=_dwTips[i];}};window.__dwRenderScope();
 /* v2.0.32(俊克): v2.0.31全壊の真因=この関数の正規表現。webview JSはmeDockHtml()のテンプレートリテラル内=実行時にバックスラッシュのエスケープが解けて正規表現が途中で閉じ、webviewスクリプトがSyntaxError→Me Dock全壊。対策=バックスラッシュを使わず split で解析(テンプレ内エスケープ回避の約束・String.fromCharCode と同じ理由)。 */
@@ -15929,12 +15930,13 @@ function toggleMeDock(editorOverride) {
       const a = (message.anchor && message.anchor.mo) ? { y: (message.anchor.y || new Date().getFullYear()), mo: message.anchor.mo, d: message.anchor.d } : diaryAnchorDate(ed);
       const aKey = a.y * 10000 + a.mo * 100 + a.d;
       const scope = message.scope || 'day';
-      // v2.0.18(俊克 改良2/3): スコープ=ダイヤルの軸。day=全日/week=今日と同じ曜日/month=同じ日/year=同じ月日 の実在日付だけを並べる。
+      // v2.0.42(俊克): day=基準の「その月」だけ(全日付ではない・多年日記で全部出すと数百行で実用不可)。week=同曜日/month=同じ日/year=同じ月日は跨いだ串刺しのまま。
       const aWd = new Date(a.y, a.mo - 1, a.d).getDay();
       let list = entries;
       if (scope === 'week') list = entries.filter(e => new Date(e.y, e.mo - 1, e.d).getDay() === aWd);
       else if (scope === 'month') list = entries.filter(e => e.d === a.d);
       else if (scope === 'year') list = entries.filter(e => e.mo === a.mo && e.d === a.d);
+      else list = entries.filter(e => e.y === a.y && e.mo === a.mo); // day = 基準の年+月だけ
       // v2.0.10(俊克): 文書順ソートなので日付順に依らず、アンカー(今日/今いる日)以下で最も新しい実在日をcenterに(=最初にポイントした高さに今日)。無ければ最古。
       let centerIndex = 0, bestK = -1;
       for (let i = 0; i < list.length; i++) { const k = list[i].y * 10000 + list[i].mo * 100 + list[i].d; if (k <= aKey && k > bestK) { bestK = k; centerIndex = i; } }
