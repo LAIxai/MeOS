@@ -3,8 +3,8 @@
 <p align="center"><img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="260"></p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-194-4caf50" alt="Downloads on Open VSX (194 at the v0.9.99963 release)"></a>
-  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v0.9.99965-2196f3" alt="Latest Release (v0.9.99965)"></a>
+  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-968-4caf50" alt="Downloads on Open VSX (968 around the v2.0 release)"></a>
+  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
 </p>
 
 ### **Markdown⊕** — *Markdown, plus.*
@@ -28,6 +28,11 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 > ## **Ai, Mai, MeOS 🐥**
 >
 > ## **You(AI) & I(LAI) 🐔**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v2-lifelong-diary.png" alt="Lifelong diary — the Ⓣday base-point button and its day list" width="92%"><br>
+  <sub><b>NEW in v2.0 — your whole life's diary, from one button.</b> The right <b>Ⓣday</b> is a polymorphic base point: type a <b>date</b> to warp there, a <b>word</b> to search by meaning, or <b>T</b> for today — then ↻ threads a day across Week / Month / Year (a 10-year diary). All structure lives in comments, so it never touches your prose.</sub>
+</p>
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/hero-image-00TOP.png" alt="The whole window" width="92%"><br>
