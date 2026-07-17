@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v2.0.46(俊克 7/18 am08:03 折畳み膜を貼ると開く件を根治=バッジ⊖照合(A案・最小)): 入れ子の折畳み膜をコピペすると展開されるバグ。真因は表示アルゴリズムでなく「foldはビュー状態でテキストに乗らない+MeOSは自動foldをv966で撤去」。★俊克の設計=fold状態はバッジの⊖(開=⊕)としてテキストに書かれている(setPairFoldStateAndMstatが同期)ので**コピペで一緒に運ばれる**→貼った膜の⊖に実foldを合わせるだけ。lazy(見える最前線だけ・畳んだら降りない=軽い)。実装=onDidChangeTextDocumentで「⊖かつ改行を含む挿入」を貼付と判定(単行のバッジ同期は改行無しで誤発火せず・MeOSバッチはdeferRefreshゲートで既にreturn)→scheduleReconcilePastedFolds→reconcilePastedFolds(貼付範囲のpairsを上から走査・parseMstatBadgeFromText().symbol==='⊖'ならeditor.fold{selectionLines}=カーソル非依存でEOFに飛ばない・カーソルは開始行へ退避・skipUntilで畳んだ膜の内側は降りない)。今回は貼付トリガのみ(bullet1のアンフォールド時1階層は次段)。node側のみ・webview不変。★EOF飛びは旧バグでv0.9.904/996で根治済(カーソル移動廃止→selectionLines)。→ [[project_lifelong_diary_template]] [[feedback_root_cause_before_patching]]
 // - v2.0.45(俊克 7/17 pm11:24 固定幅に基準ラベル幅も含める): v2.0.44は最広スコープ名(Ⓣday)に固定したが、日付基準「6/26 2025」等はそれより広く、見せた後↻で縮み再び動いた。→_dwRelockで固定幅=スコープ名+現在の基準ラベル(日付/検索語)の最大に。基準変更時(commit/Ⓣリセット)に測り直し→長い基準でも↻巡回で不動。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]] 俊克「内部の幅じゃなく外側の幅」=Ⓣdayだけ広くWeek/Monthは自然幅のまま↻が動いた(v2.0.43はmin-width測定/適用のタイミングで失敗)。→最広ラベル幅を window.__dwScopeMinW に測って保存し、__dwRenderScopeが毎レンダーで再適用(refresh等で消えても付け直す・border-box=外側幅)。測定はrAF二段+document.fonts.ready+setTimeout(500)で確実に。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]]
 // - v2.0.43(俊克 7/17 pm10:54 右ボタン幅を最広ラベルに固定): スコープ切替(Ⓣday/Week/Month/Year)で幅が変動し↻が動いて連打しにくい→右Todayのmin-widthを最広ラベル(Ⓣday等)の実測幅に固定(フォント確定後document.fonts.readyで一度だけ_dwFixWが各ラベルを実測しmax)。スコープ巡回中は不動に。日付/検索の長ラベルはmin-width超で伸びる(↻対象外)。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]]
 // - v2.0.42(俊克 7/17 pm06:16 day=今月だけに変更): 俊克「通常はTodayを基準に今月のリストだけ表示を想定」。day(Today)スコープを全日付→**基準の年+月だけ**に(requestDateDialのday分岐=e.y===a.y&&e.mo===a.mo)。多年日記で全日付は数百行=実用不可だった。↻のWeek/Month/Yearは跨いだ串刺しのまま。tip「(all days)」→「this month's entries」(月's=カーリー'でwebview単引用符string安全)。node1行+webview tip1箇所。→ [[project_lifelong_diary_template]]
@@ -3727,6 +3728,50 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   if (!suppressRefresh) {
     refresh(editor);
     updateMeDockMode();
+  }
+}
+
+// v2.0.46(俊克): 折畳み膜(⊖バッジ)を貼り付け/挿入した時、その範囲の"見える最前線"の⊖膜だけを実フォールドして着地させる。
+// ★俊克の設計: バッジ⊖はテキストなのでコピペで一緒に運ばれる=「畳め」という命令が既に在る→実フォールドを合わせるだけ。
+// 畳んだら中身は隠れるので、そこで打ち切って降りない(遅延処理=常に約1階層=軽い)。カーソル非依存selectionLines(EOFに飛ばない)。
+let _reconcileFoldTimer = null, _reconcilingFolds = false;
+function scheduleReconcilePastedFolds(editor, from, to) {
+  if (!editor) return;
+  if (_reconcileFoldTimer) clearTimeout(_reconcileFoldTimer);
+  _reconcileFoldTimer = setTimeout(() => { _reconcileFoldTimer = null; reconcilePastedFolds(editor, from, to); }, 300);
+}
+async function reconcilePastedFolds(editor, from, to) {
+  if (!editor || _reconcilingFolds || editor.document.isClosed) return;
+  _reconcilingFolds = true;
+  try {
+    const doc = editor.document;
+    const last = doc.lineCount - 1;
+    const lo = Math.max(0, Math.min(from, last)), hi = Math.max(0, Math.min(to, last));
+    const pairs = collectMembraneStructure(doc).pairs
+      .filter(p => p.start >= lo && p.start <= hi)
+      .sort((a, b) => a.start - b.start);
+    if (!pairs.length) return;
+    // 貼付直後は fold provider が新レンジを再計算し終えていないと editor.fold が空振り → ウォームアップ(1回だけ)。
+    if (membraneFoldingProviderInstance) {
+      membraneFoldingProviderInstance.notifyRangesChanged();
+      await new Promise(r => setTimeout(r, 450));
+    }
+    suppressAutoUnfoldUntil = Date.now() + 1800;
+    let skipUntil = -1;
+    for (const p of pairs) {
+      if (p.start <= skipUntil) continue; // 既に畳んだ膜の内側(隠れている)→降りない
+      let badge = null;
+      try { badge = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {}
+      if (badge && badge.symbol === '⊖') {
+        // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開する→開始行(畳んでも見える)へ退避。
+        try { editor.selection = new vscode.Selection(p.start, 0, p.start, 0); } catch (_) {}
+        try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [p.start] }); } catch (_) {}
+        try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) {}
+        skipUntil = p.end; // この膜の中身は隠れた
+      }
+    }
+  } finally {
+    _reconcilingFolds = false;
   }
 }
 
@@ -16903,6 +16948,19 @@ makeDecorations();
         try { vscode.window.setStatusBarMessage('MeOS: refresh recovered (defer counter was stuck)', 2500); } catch (_) {}
       } else if (_deferRaisedAt) { _deferRaisedAt = 0; }
       if (!activeEditor || e.document !== activeEditor.document) return;
+      // v2.0.46(俊克): 折畳み膜(⊖バッジ)を含む複数行の挿入=貼り付け→貼った範囲の"見える最前線"の⊖膜を畳んで着地。
+      //   バッジ⊖=テキストに在る「畳め」命令。単行のバッジ同期(⊕→⊖)は改行を含まないので誤発火しない。MeOSのバッチ編集はdeferRefreshCountで上のゲートが既にreturn済。
+      if (!mstatsSyncing) {
+        let _pf = null;
+        for (const cc of e.contentChanges) {
+          const t = cc.text || '';
+          if (t.indexOf('⊖') >= 0 && t.indexOf('\n') >= 0) {
+            const _from = cc.range.start.line, _to = _from + (t.match(/\n/g) || []).length;
+            if (!_pf) _pf = { from: _from, to: _to }; else { _pf.from = Math.min(_pf.from, _from); _pf.to = Math.max(_pf.to, _to); }
+          }
+        }
+        if (_pf) scheduleReconcilePastedFolds(activeEditor, _pf.from, _pf.to);
+      }
       // v0.9.633: debounce typing-driven refresh to stop MeOS edits racing the
       // Japanese IME. onDidChangeTextDocument fires on every keystroke AND on every
       // IME composition update; the old code ran refresh() synchronously each time,
