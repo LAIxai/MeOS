@@ -3738,11 +3738,18 @@ let _reconcileFoldTimer = null, _reconcilingFolds = false;
 function scheduleReconcilePastedFolds(editor, from, to) {
   if (!editor) return;
   if (_reconcileFoldTimer) clearTimeout(_reconcileFoldTimer);
-  _reconcileFoldTimer = setTimeout(() => { _reconcileFoldTimer = null; reconcilePastedFolds(editor, from, to); }, 300);
+  _reconcileFoldTimer = setTimeout(() => { _reconcileFoldTimer = null; reconcilePastedFolds(editor, from, to, 0); }, 150);
 }
-async function reconcilePastedFolds(editor, from, to) {
+function _pairBodyVisible(editor, p) { // 膜の本文(開始+1〜end)が今ビューに見えている=展開中。
+  const top = p.start + 1, bot = p.end; if (top > bot) return false;
+  try { for (const r of editor.visibleRanges) { if (r.start.line <= bot && r.end.line >= top) return true; } } catch (_) {}
+  return false;
+}
+async function reconcilePastedFolds(editor, from, to, attempt) {
+  attempt = attempt || 0;
   if (!editor || _reconcilingFolds || editor.document.isClosed) return;
   _reconcilingFolds = true;
+  let hadTargets = false;
   try {
     const doc = editor.document;
     const last = doc.lineCount - 1;
@@ -3751,10 +3758,10 @@ async function reconcilePastedFolds(editor, from, to) {
       .filter(p => p.start >= lo && p.start <= hi)
       .sort((a, b) => a.start - b.start);
     if (!pairs.length) return;
-    // 貼付直後は fold provider が新レンジを再計算し終えていないと editor.fold が空振り → ウォームアップ(1回だけ)。
-    if (membraneFoldingProviderInstance) {
+    // v2.0.47(俊克): 体感短縮のため初回ウォームアップを450→200msに。貼付直後は fold provider が新レンジ再計算中だと editor.fold が空振りするので、下で1回だけリトライ。
+    if (attempt === 0 && membraneFoldingProviderInstance) {
       membraneFoldingProviderInstance.notifyRangesChanged();
-      await new Promise(r => setTimeout(r, 450));
+      await new Promise(r => setTimeout(r, 200));
     }
     suppressAutoUnfoldUntil = Date.now() + 1800;
     let skipUntil = -1;
@@ -3763,6 +3770,9 @@ async function reconcilePastedFolds(editor, from, to) {
       let badge = null;
       try { badge = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {}
       if (badge && badge.symbol === '⊖') {
+        // リトライでは「まだ展開中(=初回が空振り)」の膜だけ畳む。既に畳んだ膜には触れずカーソルも動かさない(二重スクロール回避)。
+        if (attempt > 0 && !_pairBodyVisible(editor, p)) { skipUntil = p.end; continue; }
+        hadTargets = true;
         // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開する→開始行(畳んでも見える)へ退避。
         try { editor.selection = new vscode.Selection(p.start, 0, p.start, 0); } catch (_) {}
         try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [p.start] }); } catch (_) {}
@@ -3773,6 +3783,8 @@ async function reconcilePastedFolds(editor, from, to) {
   } finally {
     _reconcilingFolds = false;
   }
+  // v2.0.47: 短い初期待ちで空振りしても、provider が整った頃にもう一度だけ(冪等・展開中の取りこぼしのみ)。
+  if (attempt === 0 && hadTargets) setTimeout(() => reconcilePastedFolds(editor, from, to, 1), 260);
 }
 
 async function syncManyMstatsFromTargetStates(editor, items) {
