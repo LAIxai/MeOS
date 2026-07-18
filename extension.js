@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v2.0.49(俊克 7/18 am09:40 貼付フォールド遅延短縮=全走査プレフィルタ+計測): 貼付→折畳みが約2秒。俊克「対象は小さいのに何故遅い?全走査は要らないのでは」。→①collectMembraneStructureに「矢印[▼▽▲△]なし行は重い解析(asRealMembraneSource+正規表現)をスキップ」プレフィルタ(散文=大半を弾く・挙動不変=膜行は必ず矢印を含む)。★但しベンチで全走査は90k行でも数十msと判明=2秒の主犯でなかった(私の見立て外れ)。プレフィルタは正しい一般改善として残す。②真犯人特定にreconcilePastedFoldsへ計測(暫定)=ステータスバー「total/1st-scan/1st-fold/polls」。俊克テストで内訳報告→本命(VSCode foldモデル更新 or refresh競合)を突き止める。node側のみ。※v2.0.47(delay短縮150/200+リトライ)・v2.0.48(固定待ち撤去→70msポーリング)のログはこの版に集約(perl no-matchで欠落)。→ [[feedback_root_cause_before_patching]]
 // - v2.0.46(俊克 7/18 am08:03 折畳み膜を貼ると開く件を根治=バッジ⊖照合(A案・最小)): 入れ子の折畳み膜をコピペすると展開されるバグ。真因は表示アルゴリズムでなく「foldはビュー状態でテキストに乗らない+MeOSは自動foldをv966で撤去」。★俊克の設計=fold状態はバッジの⊖(開=⊕)としてテキストに書かれている(setPairFoldStateAndMstatが同期)ので**コピペで一緒に運ばれる**→貼った膜の⊖に実foldを合わせるだけ。lazy(見える最前線だけ・畳んだら降りない=軽い)。実装=onDidChangeTextDocumentで「⊖かつ改行を含む挿入」を貼付と判定(単行のバッジ同期は改行無しで誤発火せず・MeOSバッチはdeferRefreshゲートで既にreturn)→scheduleReconcilePastedFolds→reconcilePastedFolds(貼付範囲のpairsを上から走査・parseMstatBadgeFromText().symbol==='⊖'ならeditor.fold{selectionLines}=カーソル非依存でEOFに飛ばない・カーソルは開始行へ退避・skipUntilで畳んだ膜の内側は降りない)。今回は貼付トリガのみ(bullet1のアンフォールド時1階層は次段)。node側のみ・webview不変。★EOF飛びは旧バグでv0.9.904/996で根治済(カーソル移動廃止→selectionLines)。→ [[project_lifelong_diary_template]] [[feedback_root_cause_before_patching]]
 // - v2.0.45(俊克 7/17 pm11:24 固定幅に基準ラベル幅も含める): v2.0.44は最広スコープ名(Ⓣday)に固定したが、日付基準「6/26 2025」等はそれより広く、見せた後↻で縮み再び動いた。→_dwRelockで固定幅=スコープ名+現在の基準ラベル(日付/検索語)の最大に。基準変更時(commit/Ⓣリセット)に測り直し→長い基準でも↻巡回で不動。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]] 俊克「内部の幅じゃなく外側の幅」=Ⓣdayだけ広くWeek/Monthは自然幅のまま↻が動いた(v2.0.43はmin-width測定/適用のタイミングで失敗)。→最広ラベル幅を window.__dwScopeMinW に測って保存し、__dwRenderScopeが毎レンダーで再適用(refresh等で消えても付け直す・border-box=外側幅)。測定はrAF二段+document.fonts.ready+setTimeout(500)で確実に。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]]
 // - v2.0.43(俊克 7/17 pm10:54 右ボタン幅を最広ラベルに固定): スコープ切替(Ⓣday/Week/Month/Year)で幅が変動し↻が動いて連打しにくい→右Todayのmin-widthを最広ラベル(Ⓣday等)の実測幅に固定(フォント確定後document.fonts.readyで一度だけ_dwFixWが各ラベルを実測しmax)。スコープ巡回中は不動に。日付/検索の長ラベルはmin-width超で伸びる(↻対象外)。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]]
@@ -3750,6 +3751,7 @@ function _pairBodyVisible(editor, p) { // 膜の本文(開始+1〜end)が今ビ�
 async function reconcilePastedFolds(editor, from, to) {
   if (!editor || _reconcilingFolds || editor.document.isClosed) return;
   _reconcilingFolds = true;
+  const _t0 = Date.now(); let _iters = 0, _scanMs = -1, _foldedMs = -1, _ever = false; // v2.0.49: 計測(暫定)
   try {
     const doc = editor.document;
     const last = doc.lineCount - 1;
@@ -3758,25 +3760,30 @@ async function reconcilePastedFolds(editor, from, to) {
     suppressAutoUnfoldUntil = Date.now() + 3000;
     const deadline = Date.now() + 1800;
     while (!editor.document.isClosed && Date.now() < deadline) {
-      const pairs = collectMembraneStructure(doc).pairs
+      _iters++;
+      const _cs = Date.now();
+      const struct = collectMembraneStructure(doc);
+      if (_scanMs < 0) _scanMs = Date.now() - _cs; // 初回の全走査時間(実測)
+      const pairs = struct.pairs
         .filter(p => { if (p.start < lo || p.start > hi) return false; let b = null; try { b = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {} return b && b.symbol === '⊖'; })
         .sort((a, b) => a.start - b.start);
       let anyExpanded = false, skipUntil = -1;
       for (const p of pairs) {
         if (p.start <= skipUntil) continue;               // 既に畳んだ膜の内側→降りない
         if (!_pairBodyVisible(editor, p)) { skipUntil = p.end; continue; } // もう畳まれている(or画面外)→この枝は打ち切り
-        anyExpanded = true;
+        anyExpanded = true; _ever = true;
         // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開→開始行(畳んでも見える)へ退避。
         try { editor.selection = new vscode.Selection(p.start, 0, p.start, 0); } catch (_) {}
         try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [p.start] }); } catch (_) {}
         try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) {}
-        if (!_pairBodyVisible(editor, p)) skipUntil = p.end; // 畳めた→中身は隠れた(空振りなら次ポーリングで再試行)
+        if (!_pairBodyVisible(editor, p)) { skipUntil = p.end; if (_foldedMs < 0) _foldedMs = Date.now() - _t0; } // 畳めた(初回=着地時刻)
       }
       if (!anyExpanded) break;                            // 全部畳めた(or対象なし)→終了
       await new Promise(r => setTimeout(r, 70));          // provider の再計算完了を細かく待つ
     }
   } finally {
     _reconcilingFolds = false;
+    if (_ever) { try { vscode.window.setStatusBarMessage('MeOS fold ▶ total ' + (Date.now() - _t0) + 'ms · 1st-scan ' + _scanMs + 'ms · 1st-fold ' + _foldedMs + 'ms · ' + _iters + ' polls', 7000); } catch (_) {} }
   }
 }
 
@@ -3886,6 +3893,10 @@ function membraneLineInfo(document, line) {
 // in place). Existing call sites all iterate read-only.
 const _membraneStructureCache = new WeakMap();
 
+// v2.0.49(俊克「全走査は必要ない」): 膜の開始/閉じ行は asRealMembraneSource の全分岐が [▼▽▲△] を要求する=必ずこの矢印を含む。
+// よって矢印を含まない行(=散文=巨大日記の大半)は、重い asRealMembraneSource+正規表現に入る前に indexOf 相当で弾ける。挙動は完全に不変(矢印なし行は元々null)。全走査を桁で軽くする。
+const MEMBRANE_ARROW_RE = /[▼▽▲△]/;
+
 function collectMembraneStructure(document, options = {}) {
   const excludeIndex = !!options.excludeIndex;
   const cacheKey = `${document.version}::${excludeIndex ? 1 : 0}`;
@@ -3902,6 +3913,7 @@ function collectMembraneStructure(document, options = {}) {
   const isMntOpenText = (t) => MNT_OPEN.test(t);
   for (let i = 0; i < document.lineCount; i++) {
     const text = document.lineAt(i).text;
+    if (!MEMBRANE_ARROW_RE.test(text)) continue; // v2.0.49: 矢印なし=膜になり得ない→重い解析を回避(挙動不変)
     const open = parseOpenLine(text);
     const close = parseCloseLine(text);
     if (open) {
