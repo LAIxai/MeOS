@@ -3784,7 +3784,7 @@ async function reconcilePastedFolds(editor, from, to) {
     }
   } finally {
     _reconcilingFolds = false;
-    if (_ever) { try { vscode.window.setStatusBarMessage('MeOS fold ▶ total ' + (Date.now() - _t0) + 'ms · 1st-scan ' + _scanMs + 'ms · 1st-fold ' + _foldedMs + 'ms · ' + _iters + ' polls', 7000); } catch (_) {} }
+    if (_ever) { try { vscode.window.setStatusBarMessage('MeOS fold ▶ total ' + (Date.now() - _t0) + 'ms · 1st-scan ' + _scanMs + 'ms · 1st-fold ' + _foldedMs + 'ms · ' + _iters + ' polls · refresh ' + _lastRefreshMs + 'ms', 8000); } catch (_) {} }
   }
 }
 
@@ -10407,8 +10407,9 @@ function setDecoCached(editor, deco, tag, ranges) {
 function refresh(editor = vscode.window.activeTextEditor) {
   const _rt0 = Date.now();
   try { return _refreshBody(editor); }
-  finally { const _rd = Date.now() - _rt0; if (_rd > 400) { try { vscode.window.setStatusBarMessage('MeOS refresh ' + _rd + 'ms', 6000); } catch (_) {} } }
+  finally { _lastRefreshMs = Date.now() - _rt0; } // v2.0.51: 貼付フォールドの計測メッセージに合流させる(別々のstatusBarだと後勝ちで消えるため)
 }
+let _lastRefreshMs = 0;
 function _refreshBody(editor = vscode.window.activeTextEditor) {
   activeEditor = editor;
   try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
