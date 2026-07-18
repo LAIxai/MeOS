@@ -3752,7 +3752,7 @@ function _pairBodyVisible(editor, p) { // 膜の本文(開始+1〜end)が今ビ�
 async function reconcilePastedFolds(editor, from, to) {
   if (!editor || _reconcilingFolds || editor.document.isClosed) return;
   _reconcilingFolds = true;
-  const _t0 = Date.now(); let _iters = 0, _scanMs = -1, _foldedMs = -1, _ever = false; // v2.0.49: 計測(暫定)
+  const _t0 = Date.now(); const _v0 = editor.document.version; let _iters = 0, _scanMs = -1, _foldedMs = -1, _ever = false; // v2.0.49: 計測(暫定)
   try {
     const doc = editor.document;
     const last = doc.lineCount - 1;
@@ -3784,7 +3784,7 @@ async function reconcilePastedFolds(editor, from, to) {
     }
   } finally {
     _reconcilingFolds = false;
-    if (_ever) { try { vscode.window.setStatusBarMessage('MeOS fold ▶ total ' + (Date.now() - _t0) + 'ms · 1st-scan ' + _scanMs + 'ms · 1st-fold ' + _foldedMs + 'ms · ' + _iters + ' polls · refresh ' + _lastRefreshMs + 'ms', 8000); } catch (_) {} }
+    if (_ever) { try { vscode.window.setStatusBarMessage('MeOS fold ▶ total ' + (Date.now() - _t0) + 'ms · 1st-scan ' + _scanMs + 'ms · 1st-fold ' + _foldedMs + 'ms · ' + _iters + ' polls · refresh ' + _lastRefreshMs + 'ms · ver +' + (editor.document.version - _v0), 9000); } catch (_) {} }
   }
 }
 
