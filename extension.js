@@ -2,6 +2,7 @@
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
 // - v2.0.50(俊克 7/18 pm 計測#2=refresh時間+deadline延長): v2.0.49計測結果=total 2770/1st-scan 0/1st-fold 2700/1 polls=2.7秒は丸ごと editor.fold 1回の中(パースでもポーリングでもない)=VSCodeの折畳みモデル更新待ち。「70ms差」=畳めた後の1回だけのawait 70ms(無害)。本命はMeOS refresh(貼付後に巨大日記の装飾を打ち直す重処理)がメインスレッド占有→VSCode折畳み更新(=editor.fold待ち)を詰まらせる線。→refreshをtry/finallyで計測(>400msでステータスバー「MeOS refresh Xms」)し確定させる。+reconcile deadlineを1800→4000ms(単一foldが1800超で切れないよう安全側)。node側のみ。→ [[feedback_root_cause_before_patching]]
+// - v2.0.54(俊克 7/19 pm 貼付フォールド遅延の真因確定=VSCode折畳み全再構築・計測撤去): 計測で消去法完了=遅さは全部VSCode由来。小md(36pairs)204ms vs 90k日記(976pairs)3084ms=規模に比例/MeOSパース両方0ms/refresh~0.6s(≠3s)/ver+0(MeOS無編集)/pairs<5000(上限無関係)/Standards>V ON/OFF差ゼロ(他プロバイダ無関係)。★結論=VSCodeは編集のたびに折畳みモデルを差分でなく丸ごと再構築し、それがファイル規模に引きずられる=MeOSの外・変更不能。→受け入れ、暫定計測(ステータスバー/refresh timing wrapper/_lastRefreshMs/pairs/ver)を全撤去し機能確定。ポーリング折畳み自体は維持。※v2.0.49プレフィルタ(矢印なし行skip)は正しい一般改善として残存。長期の壁=巨大単一ファイル×VSCode折畳み→いつか多ファイル分割+grep([[project_zoom_deferred]])。node側のみ。→ [[feedback_root_cause_before_patching]]
 // - v2.0.49(俊克 7/18 am09:40 貼付フォールド遅延短縮=全走査プレフィルタ+計測): 貼付→折畳みが約2秒。俊克「対象は小さいのに何故遅い?全走査は要らないのでは」。→①collectMembraneStructureに「矢印[▼▽▲△]なし行は重い解析(asRealMembraneSource+正規表現)をスキップ」プレフィルタ(散文=大半を弾く・挙動不変=膜行は必ず矢印を含む)。★但しベンチで全走査は90k行でも数十msと判明=2秒の主犯でなかった(私の見立て外れ)。プレフィルタは正しい一般改善として残す。②真犯人特定にreconcilePastedFoldsへ計測(暫定)=ステータスバー「total/1st-scan/1st-fold/polls」。俊克テストで内訳報告→本命(VSCode foldモデル更新 or refresh競合)を突き止める。node側のみ。※v2.0.47(delay短縮150/200+リトライ)・v2.0.48(固定待ち撤去→70msポーリング)のログはこの版に集約(perl no-matchで欠落)。→ [[feedback_root_cause_before_patching]]
 // - v2.0.46(俊克 7/18 am08:03 折畳み膜を貼ると開く件を根治=バッジ⊖照合(A案・最小)): 入れ子の折畳み膜をコピペすると展開されるバグ。真因は表示アルゴリズムでなく「foldはビュー状態でテキストに乗らない+MeOSは自動foldをv966で撤去」。★俊克の設計=fold状態はバッジの⊖(開=⊕)としてテキストに書かれている(setPairFoldStateAndMstatが同期)ので**コピペで一緒に運ばれる**→貼った膜の⊖に実foldを合わせるだけ。lazy(見える最前線だけ・畳んだら降りない=軽い)。実装=onDidChangeTextDocumentで「⊖かつ改行を含む挿入」を貼付と判定(単行のバッジ同期は改行無しで誤発火せず・MeOSバッチはdeferRefreshゲートで既にreturn)→scheduleReconcilePastedFolds→reconcilePastedFolds(貼付範囲のpairsを上から走査・parseMstatBadgeFromText().symbol==='⊖'ならeditor.fold{selectionLines}=カーソル非依存でEOFに飛ばない・カーソルは開始行へ退避・skipUntilで畳んだ膜の内側は降りない)。今回は貼付トリガのみ(bullet1のアンフォールド時1階層は次段)。node側のみ・webview不変。★EOF飛びは旧バグでv0.9.904/996で根治済(カーソル移動廃止→selectionLines)。→ [[project_lifelong_diary_template]] [[feedback_root_cause_before_patching]]
 // - v2.0.45(俊克 7/17 pm11:24 固定幅に基準ラベル幅も含める): v2.0.44は最広スコープ名(Ⓣday)に固定したが、日付基準「6/26 2025」等はそれより広く、見せた後↻で縮み再び動いた。→_dwRelockで固定幅=スコープ名+現在の基準ラベル(日付/検索語)の最大に。基準変更時(commit/Ⓣリセット)に測り直し→長い基準でも↻巡回で不動。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]] 俊克「内部の幅じゃなく外側の幅」=Ⓣdayだけ広くWeek/Monthは自然幅のまま↻が動いた(v2.0.43はmin-width測定/適用のタイミングで失敗)。→最広ラベル幅を window.__dwScopeMinW に測って保存し、__dwRenderScopeが毎レンダーで再適用(refresh等で消えても付け直す・border-box=外側幅)。測定はrAF二段+document.fonts.ready+setTimeout(500)で確実に。webview(JS)のみ・node不変・バックスラッシュ皆無。→ [[project_lifelong_diary_template]]
@@ -3752,39 +3753,34 @@ function _pairBodyVisible(editor, p) { // 膜の本文(開始+1〜end)が今ビ�
 async function reconcilePastedFolds(editor, from, to) {
   if (!editor || _reconcilingFolds || editor.document.isClosed) return;
   _reconcilingFolds = true;
-  const _t0 = Date.now(); const _v0 = editor.document.version; let _iters = 0, _scanMs = -1, _foldedMs = -1, _ever = false, _totalPairs = 0; // v2.0.49: 計測(暫定)
   try {
     const doc = editor.document;
     const last = doc.lineCount - 1;
     const lo = Math.max(0, Math.min(from, last)), hi = Math.max(0, Math.min(to, last));
     if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged();
     suppressAutoUnfoldUntil = Date.now() + 3000;
+    // v2.0.54(俊克): 遅さの真因は VSCode 自身の折畳みモデル全再構築(小md 204ms vs 90k日記 3084ms=規模比例・MeOSのパースは両方0ms=無罪)。MeOS側では縮められないので受け入れ。畳めるまで70ms間隔で試すポーリングは維持(空振り→providerが整い次第畳む)。
     const deadline = Date.now() + 4000;
     while (!editor.document.isClosed && Date.now() < deadline) {
-      _iters++;
-      const _cs = Date.now();
-      const struct = collectMembraneStructure(doc);
-      if (_scanMs < 0) { _scanMs = Date.now() - _cs; _totalPairs = struct.pairs.length; } // 初回=全走査時間+膜総数(VSCode折畳み上限5000の判定用)
-      const pairs = struct.pairs
+      const pairs = collectMembraneStructure(doc).pairs
         .filter(p => { if (p.start < lo || p.start > hi) return false; let b = null; try { b = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {} return b && b.symbol === '⊖'; })
         .sort((a, b) => a.start - b.start);
       let anyExpanded = false, skipUntil = -1;
       for (const p of pairs) {
         if (p.start <= skipUntil) continue;               // 既に畳んだ膜の内側→降りない
         if (!_pairBodyVisible(editor, p)) { skipUntil = p.end; continue; } // もう畳まれている(or画面外)→この枝は打ち切り
-        anyExpanded = true; _ever = true;
+        anyExpanded = true;
         // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開→開始行(畳んでも見える)へ退避。
         try { editor.selection = new vscode.Selection(p.start, 0, p.start, 0); } catch (_) {}
         try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [p.start] }); } catch (_) {}
         try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) {}
-        if (!_pairBodyVisible(editor, p)) { skipUntil = p.end; if (_foldedMs < 0) _foldedMs = Date.now() - _t0; } // 畳めた(初回=着地時刻)
+        if (!_pairBodyVisible(editor, p)) skipUntil = p.end; // 畳めた→中身は隠れた(空振りなら次ポーリングで再試行)
       }
       if (!anyExpanded) break;                            // 全部畳めた(or対象なし)→終了
       await new Promise(r => setTimeout(r, 70));          // provider の再計算完了を細かく待つ
     }
   } finally {
     _reconcilingFolds = false;
-    if (_ever) { try { vscode.window.setStatusBarMessage('MeOS fold ▶ total ' + (Date.now() - _t0) + 'ms · 1st-scan ' + _scanMs + 'ms · 1st-fold ' + _foldedMs + 'ms · ' + _iters + ' polls · refresh ' + _lastRefreshMs + 'ms · ver +' + (editor.document.version - _v0) + ' · pairs ' + _totalPairs, 9000); } catch (_) {} }
   }
 }
 
@@ -10403,14 +10399,7 @@ function setDecoCached(editor, deco, tag, ranges) {
   editor.setDecorations(deco, ranges);
 }
 
-// v2.0.50(俊克 計測): refresh の所要時間を測る(暫定)。>400ms ならステータスバーに出す=貼付フォールドの2.7秒がこの重い装飾処理由来かを確定させる。
 function refresh(editor = vscode.window.activeTextEditor) {
-  const _rt0 = Date.now();
-  try { return _refreshBody(editor); }
-  finally { _lastRefreshMs = Date.now() - _rt0; } // v2.0.51: 貼付フォールドの計測メッセージに合流させる(別々のstatusBarだと後勝ちで消えるため)
-}
-let _lastRefreshMs = 0;
-function _refreshBody(editor = vscode.window.activeTextEditor) {
   activeEditor = editor;
   try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
   if (!editor || !lineDecoration) return;
