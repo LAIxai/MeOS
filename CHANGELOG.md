@@ -6,6 +6,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 _Curated, user-facing highlights. Exhaustive per-version notes live in the source header._
 
+### v2.0 — Lifelong Diary · the [Ⓣ|Ⓣday] gate (Hyper IDX)
+- **One button drives a whole-life diary kept in a single Markdown file.** Left **Ⓣ** jumps straight back to today's entry — landing on the exact line you were last writing. Right **Ⓣday** is the dial: **↻** cycles the scope **Day → Week → Month → Year**, and each scope's sub-menu lists the matching entries, so you pick a date by scrolling alone without moving the pointer.
+- **Double-click Ⓣday for one polymorphic input**: type `6/4` to make that date the base point, type words to search membrane names and comments (space-separated AND), or `T` to return to today. Zero matches simply reopens the field with a hint — never a dead end.
+- **Year scope is the ten-year diary, without its straitjacket.** Entries are found by **name**, not by position, so the membrane structure stays entirely yours — nested, flat, or scattered, with years left blank if you like. Structure lives in comments, so the prose itself is never touched.
+
 ### v2.0.0 — Hyper TOC sub-menu (phased release · Phase 2)
 - **Right-click any Hyper TOC item to fly out its child membranes** — one level down (e.g. a lifelong diary's month → its days). The list opens centered on your cursor; move with **↑ / ↓**, confirm with **Enter**, dismiss with **Esc**, or click to jump.
 - Second of the weekly phased-release unlocks: everything ships in one build, and each week opens one more feature at the door.
