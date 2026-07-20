@@ -3,7 +3,8 @@
 <p align="center"><img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="260"></p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-968-4caf50" alt="Downloads on Open VSX (968 around the v2.0 release)"></a>
+  <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
+  <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-1014-4caf50" alt="Downloads on Open VSX (1014 at the v2.0 release)"></a>
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
 </p>
 
