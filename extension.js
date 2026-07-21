@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.0.0: ★段階リリース Phase 3 解禁=Markdownテーブル一式を公開(俊克 7/21 pm03:11「それでは、フェーズ3を始めよう!」)。MEOS_RELEASE_PHASE を 2→3 に上げるだけ(実装は全機能入り同一HEADに v0.9.999148〜169 で完成済=Format Table(整形)・Tab/Shift+Tab/↑↓のセル移動・セル結合(コメント不可視)・行/列の複製と削除)。門番3経路が自動で開く: ①webview CSS `body[data-phase="1"/"2"] .fmt-table-cell{display:none}` → 升目ボタン(#fmt-table)が出る ②node `meosUpdateInTableContext`(phase<3でinTable=false)→ セル移動keybindingが効く+`meosApplyTableMergeDecorations`の早期returnが外れ結合装飾を描く ③package.json `menus.commandPalette` の `when: meos.phase >= 3` → テーブル9コマンドがpaletteに出る。★版番号は段階に合わせメジャー版=v3.0.0(Phase3の節目)。コードの実質変更は定数1文字のみ。→ [[project_phased_release]] [[project_table_formatter]]
 // - v2.0.73(俊克 7/21 am10:27 パネル幅1.2倍＋説明を実例3つに圧縮): 俊克「幅を1.2倍に。説明を極限まで短く。一般的な話は削除して具体例を3つくらい示してシンプルに」。→①.dw-name-pop 300→360px。②ヘルプを散文の塊(936字)→**「ルール→何に一致するか」の実例3行＋凡例1行(445字)**に(52%減)。実例=『✴️?M/DW? YYYY→✴️7/20M 2026 and 7/20 2026(既定)』『✴️M/DW YYYY→✴️7/20M 2026 only(厳密)』『YYYY.MM.DD(W)→2026.07.20(M)』。凡例=W曜日/MM・DD2桁/?省略可/他はリテラル。★抽象的な文法説明をやめ「一致する実例を並べる」形にしたことで、トークンの意味が例から自然に読み取れる=説明せずに教える。.dnp-ex(flex 2列)/.dnp-leg のCSS追加。webview(HTML/CSS)のみ・node不変。→ [[project_lifelong_diary_template]]
 // - v2.0.72(俊克 7/21 am10:17 Ⓝパネルの並べ替え): 俊克「説明が長過ぎる。説明はボタンの下に。設定を変えたすぐ下に個数が出る方が視線移動が少ない」。→DOM順を **見出し→入力→件数→ボタン→説明** に変更(従来は入力と件数の間に長い説明が挟まり、件数が入力欄の約700px下＝編集のたびに視線が往復していた)。私が機能追加のたびにヘルプへ追記し続けた結果の肥大＝自分で作った負債。併せて①ヘルプを刈り込み(1115→936字。「下の行に件数が出ます」の一文は件数が隣に来たので削除)②ヘルプ上端に区切り線(border-top)を入れ本体と分離③件数を少し大きく(11→11.5px)=即時フィードバックとして立たせる。webview(HTML並べ替え＋CSS)のみ・node不変。→ [[project_lifelong_diary_template]] [[feedback_look_at_screenshots]]
 // - v2.0.71(俊克 7/21 am10:06 既定=✴️?M/DW? YYYY に決定): ★俊克の設計思想が私の想定より上だった=緩い既定は「ルーズ」ではなく**発見のための出発点**。①?を既定に載せることで、正規表現を知らない人が「省略可という語彙」を既定から学べる ②厳密に使いたい人は各自が絞る(俊克は ✴️M/DW YYYY) ③★**?は診断器具になる**=普段66件の人が一時的に ✴️? へ変えて71件になれば「5件どこかで印を書き忘れている」と判る。1文字書き換えて件数の差を読むだけで自分の表記ゆれが炙り出せる(Ⓝパネルの件数表示と組で初めて成立)。→私は既定を「最終形」と見て精度を論じたが、俊克は「出発点＋差分計測器」として設計していた。私が指摘した誤検出(66→284)は「絞れば済む」ので問題にならない。実装=DIARY_DEFAULT_TPLを新設し**既定文字列を1箇所に統一**、手書きの既定正規表現を廃止(ヘルプと実装が別々に存在し二度ズレてバグになった反省)。webviewの既定/placeholder/ステータス文言/ヘルプ例も追随＋「?を外して件数の差を見ると自分の誤記が判る」コツを明記。★事故=perl -i で置換した際 wide character 警告を軽視し**ファイル全体が二重エンコード**(Â/â)。U+FFFDが出ないためUTF-8検査をすり抜けた→git checkoutで復旧しpythonで再実施。→ [[feedback_no_perl_for_utf8]] [[project_lifelong_diary_template]]
@@ -2530,7 +2531,7 @@ let fixedWorkingTocHideEditor = true;
 let extensionContext = null;
 // v1.0.0(俊克 段階リリース): 公開範囲を1個の数字で切替える「元栓」。1=参照グループ / 2=+H-TOC副メニュー / 3=+簡易テーブル / 4=+Format 3兄弟リング。
 // 毎週これを +1 して publish するだけ(コードは全機能入りの同一HEAD・入口だけ門番で開閉)。webviewには <body data-phase="N"> で伝える。palette/keybindingは meos.phase コンテキストで when 制御。
-const MEOS_RELEASE_PHASE = 2;
+const MEOS_RELEASE_PHASE = 3;
 // v0.9.678 (対策1): window-bottom status bar showing the membrane the cursor is inside.
 let membraneStatusBarItem = null;
 // v0.9.681 (改善2): baseline line-count of the membrane the cursor entered, so the Pin /

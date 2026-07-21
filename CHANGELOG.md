@@ -2,6 +2,14 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v3.0 era — highlights (2026-07 →)
+
+### v3.0.0 — Tables (phased release · Phase 3)
+- **Markdown tables you can actually work in.** The grid button in Me Dock formats the table under your cursor; **Tab / Shift+Tab** and **↑ / ↓** walk cell to cell instead of dropping you into raw pipes.
+- **Merged cells that survive as plain Markdown.** A merge is recorded in a comment, so the file stays valid GFM everywhere else — the merge is drawn in the editor, never baked into the text.
+- **Duplicate or delete a whole row or column** in one command, merges included.
+- Third of the weekly phased-release unlocks: everything ships in one build, and each week opens one more feature at the door.
+
 ## v2.0 era — highlights (2026-07 →)
 
 _Curated, user-facing highlights. Exhaustive per-version notes live in the source header._
