@@ -6,6 +6,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 _Curated, user-facing highlights. Exhaustive per-version notes live in the source header._
 
+### v2.0.73 — The diary title rule, made visible
+- **Say how your entries are named, and watch the rule work.** The Ⓝ panel takes a template — `W` a weekday letter (S-M-T-W-t-F-s), `MM` / `DD` exactly two zero-padded digits, `M` / `D` one or two, and a trailing **`?`** to make *just the element before it* optional (`✴️?` the mark may be missing, `W?` the weekday may be missing).
+- **Brackets are literal.** `(W)` means a weekday *in brackets*, as in `7/20(M)` — the way dates are actually written, and the way MeOS writes its own heading timestamps.
+- **The panel counts what your rule really finds** — this month (exactly what Ⓣday will list) and in the whole file — *before* you save it. Tighten a rule and watch the number: the drop is how many entries break your own convention, which makes it the fastest way to find your own typos.
+
+### v2.0.60–63 — One button, one job
+- **🔓 rides on 🔐's shoulder** — the unlock badge lights blue only on an encrypted membrane.
+- **EOF folded into TOP** as a circled **E** on its hip: the circle is the O of EOF, E is for End, and it sits low because that is where the end of a file is.
+
+### v2.0.46 — Pasted folds stay folded
+- Copy a folded membrane, paste it, and it stays folded — the fold state travels in the text (the `⊖` in the badge), not in the editor.
+
 ### v2.0 — Lifelong Diary · the [Ⓣ|Ⓣday] gate (Hyper IDX)
 - **One button drives a whole-life diary kept in a single Markdown file.** Left **Ⓣ** jumps straight back to today's entry — landing on the exact line you were last writing. Right **Ⓣday** is the dial: **↻** cycles the scope **Day → Week → Month → Year**, and each scope's sub-menu lists the matching entries, so you pick a date by scrolling alone without moving the pointer.
 - **Double-click Ⓣday for one polymorphic input**: type `6/4` to make that date the base point, type words to search membrane names and comments (space-separated AND), or `T` to return to today. Zero matches simply reopens the field with a hint — never a dead end.
