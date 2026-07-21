@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.0.1(俊克 7/21 pm03:43 v3.0.0テストOK&NG バグ1=「1行目と2行目が少し調整不足」/「3列目の幅が過剰」/「右端がガタガタ」): ★桁揃えを**累積(carry)方式**に作り替え。真因=**全角の幅係数1.67(小数)と、半角スペース(1.0刻み)しか詰め物が無いこと**。旧実装は列ごとに `pad=round(列幅-内容幅)` を**独立に**丸めていたため端数が列ごとに残り、**右へ行くほど誤差が累積**(実測=テスト6で1.33文字ぶん、テスト3で2.34文字ぶんズレ)。→①列幅を整数に丸めるのをやめ**小数のまま**保持 ②理想のパイプ位置 `P[c]`(小数)を先に確定し、各行は**実測位置curからpadを逆算**=誤差は各パイプで±0.5未満に留まり次列へ持ち越さない ③区切り行(|---|)も同じ計算に乗せる(旧=整数幅そのままで、そこだけ独自にズレていた) ④横結合セルは「先頭=内容のみ・中間=幅0・余白は単位末尾セル」に整理(内側の|は装飾で不可視なのでどこに寄せても見た目は同じ)。実測ばらつき: テスト1 1.02→0.38 / テスト3 2.34→0.67 / テスト4 1.02→0.04 / テスト6 1.33→0.69。★**完全一致は原理的に不可能**(1.67は小数・詰め物は1.0刻み)＝残る0.3〜0.7文字は理論下限。ピタリ揃えたい人は設定 `laiMembrane.tableCjkWidth=2`(全角を2倍で描く等幅フォント)で**誤差ゼロ**になる(新旧とも0.00を確認)。node側のみ(meosFormatTableLines)。→ [[project_table_formatter]]
 // - v3.0.0: ★段階リリース Phase 3 解禁=Markdownテーブル一式を公開(俊克 7/21 pm03:11「それでは、フェーズ3を始めよう!」)。MEOS_RELEASE_PHASE を 2→3 に上げるだけ(実装は全機能入り同一HEADに v0.9.999148〜169 で完成済=Format Table(整形)・Tab/Shift+Tab/↑↓のセル移動・セル結合(コメント不可視)・行/列の複製と削除)。門番3経路が自動で開く: ①webview CSS `body[data-phase="1"/"2"] .fmt-table-cell{display:none}` → 升目ボタン(#fmt-table)が出る ②node `meosUpdateInTableContext`(phase<3でinTable=false)→ セル移動keybindingが効く+`meosApplyTableMergeDecorations`の早期returnが外れ結合装飾を描く ③package.json `menus.commandPalette` の `when: meos.phase >= 3` → テーブル9コマンドがpaletteに出る。★版番号は段階に合わせメジャー版=v3.0.0(Phase3の節目)。コードの実質変更は定数1文字のみ。→ [[project_phased_release]] [[project_table_formatter]]
 // - v2.0.73(俊克 7/21 am10:27 パネル幅1.2倍＋説明を実例3つに圧縮): 俊克「幅を1.2倍に。説明を極限まで短く。一般的な話は削除して具体例を3つくらい示してシンプルに」。→①.dw-name-pop 300→360px。②ヘルプを散文の塊(936字)→**「ルール→何に一致するか」の実例3行＋凡例1行(445字)**に(52%減)。実例=『✴️?M/DW? YYYY→✴️7/20M 2026 and 7/20 2026(既定)』『✴️M/DW YYYY→✴️7/20M 2026 only(厳密)』『YYYY.MM.DD(W)→2026.07.20(M)』。凡例=W曜日/MM・DD2桁/?省略可/他はリテラル。★抽象的な文法説明をやめ「一致する実例を並べる」形にしたことで、トークンの意味が例から自然に読み取れる=説明せずに教える。.dnp-ex(flex 2列)/.dnp-leg のCSS追加。webview(HTML/CSS)のみ・node不変。→ [[project_lifelong_diary_template]]
 // - v2.0.72(俊克 7/21 am10:17 Ⓝパネルの並べ替え): 俊克「説明が長過ぎる。説明はボタンの下に。設定を変えたすぐ下に個数が出る方が視線移動が少ない」。→DOM順を **見出し→入力→件数→ボタン→説明** に変更(従来は入力と件数の間に長い説明が挟まり、件数が入力欄の約700px下＝編集のたびに視線が往復していた)。私が機能追加のたびにヘルプへ追記し続けた結果の肥大＝自分で作った負債。併せて①ヘルプを刈り込み(1115→936字。「下の行に件数が出ます」の一文は件数が隣に来たので削除)②ヘルプ上端に区切り線(border-top)を入れ本体と分離③件数を少し大きく(11→11.5px)=即時フィードバックとして立たせる。webview(HTML並べ替え＋CSS)のみ・node不変。→ [[project_lifelong_diary_template]] [[feedback_look_at_screenshots]]
@@ -16382,7 +16383,7 @@ function meosFormatTableLines(lines) {
       width[c] = Math.max(width[c], meosStrWidth(meosStripMergeMarker(cells[c])));
     }
   }
-  for (let c = 0; c < cols; c++) width[c] = Math.max(3, Math.round(width[c])); // 全角の小数幅→整数の列幅に丸める(区切り行のダッシュ本数/パディングは整数)
+  for (let c = 0; c < cols; c++) width[c] = Math.max(3, width[c]); // v3.0.1: 小数幅のまま保持(丸めない=誤差を最後の1回だけに閉じ込める)
   // 結合セルの内容が被覆列合計に収まらなければ最終被覆列を拡張
   for (let i = 0; i < rows.length; i++) {
     if (i === sepIdx) continue;
@@ -16392,38 +16393,43 @@ function meosFormatTableLines(lines) {
       const end = Math.min(k + sp - 1, cols - 1);
       let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
       const W = meosStrWidth(meosStripMergeMarker(cells[k]));
-      if (W > sumCols) width[end] += Math.ceil(W - sumCols);
+      if (W > sumCols) width[end] += W - sumCols; // 内側の「 | 」は理想側にも同じだけ在るので勘定に入れない
     }
   }
+  // v3.0.1(俊克 7/21 pm03:43「1行目と2行目が少し調整不足」): 桁揃えを「列ごとの独立丸め」から「累積(carry)方式」へ。
+  // 旧=各セルで pad=round(列幅-内容幅) を独立に決めていた→全角(既定1.67幅)の端数が列ごとに残り、右へ行くほど誤差が積み上がる(4列で最大1.3文字ぶんズレた)。
+  // 新=理想のパイプ位置 P[c](小数)を先に決め、各行はそこまでの実測位置 cur から pad を逆算する→誤差は各パイプで±0.5未満に留まり、次の列へ持ち越さない。
+  // ※半角スペースは1.0刻みなので、全角が小数幅(1.67)である限り完全一致は原理的に不可能。設定 laiMembrane.tableCjkWidth=2(等幅フォント)なら誤差ゼロで揃う。
+  const P = []; { let x = 2; for (let c = 0; c < cols; c++) { x += width[c]; P[c] = x; x += 3; } } // 行頭'| '=2、セル間' | '=3
   const out = [];
   for (let i = 0; i < rows.length; i++) {
-    const seg = [];
+    const cells = rows[i];
+    let cur = 2, line = '| ';
     if (i === sepIdx) {
       for (let c = 0; c < cols; c++) {
-        const w = width[c], a = align[c];
-        if (a === 'center') seg.push(':' + '-'.repeat(w - 2) + ':');
-        else if (a === 'right') seg.push('-'.repeat(w - 1) + ':');
-        else if (a === 'left') seg.push(':' + '-'.repeat(w - 1));
-        else seg.push('-'.repeat(w));
+        const a = align[c], n = Math.max(3, Math.round(P[c] - cur));
+        line += (a === 'center') ? ':' + '-'.repeat(n - 2) + ':' : (a === 'right') ? '-'.repeat(n - 1) + ':' : (a === 'left') ? ':' + '-'.repeat(n - 1) : '-'.repeat(n);
+        cur += n; if (c < cols - 1) { line += ' | '; cur += 3; }
       }
     } else {
-      const cells = rows[i];
-      const outW = width.slice(); // 各セルの出力幅(既定=列幅)
-      for (let k = 0; k < cells.length && k < cols; k++) {
-        const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
-        const end = Math.min(k + sp - 1, cols - 1);
-        const W = meosStrWidth(meosStripMergeMarker(cells[k]));
-        let overflow = Math.max(0, Math.round(W) - width[k]);
-        outW[k] = width[k] + overflow; // = max(width[k], round(W))
-        for (let j = k + 1; j <= end && overflow > 0; j++) { const reduce = Math.min(overflow, outW[j]); outW[j] -= reduce; overflow -= reduce; } // はみ出しを右の空セルで吸収
+      // 横結合(🤝→N): 先頭セルは内容のみ・中間の被吸収セルは幅0・余白は単位末尾のセルが受け持つ(内側の|は装飾で不可視なので、どこに寄せても見た目は1つの結合セル)
+      const zero = new Array(cols).fill(false), isHead = new Array(cols).fill(false);
+      for (let k = 0; k < cols; k++) {
+        const sp = meosCellSpan(cells[k] || ''); if (sp <= 1) continue;
+        const end = Math.min(k + sp - 1, cols - 1); isHead[k] = end > k;
+        for (let j = k + 1; j < end; j++) zero[j] = true;
       }
       for (let c = 0; c < cols; c++) {
         const raw = cells[c] || '';
         const marker = meosMergeMarker(raw); // 結合マーカー(→/↓)をコメント形式で保持(ゼロ幅で隠す)
-        seg.push(marker + meosPadCell(meosStripMergeMarker(raw), outW[c], align[c] === 'none' ? 'left' : align[c]));
+        const body = meosStripMergeMarker(raw), w = meosStrWidth(body);
+        const pad = (zero[c] || isHead[c]) ? 0 : Math.max(0, Math.round(P[c] - cur - w));
+        const a = align[c] === 'none' ? 'left' : align[c];
+        line += marker + ((a === 'right') ? ' '.repeat(pad) + body : (a === 'center') ? ' '.repeat(Math.floor(pad / 2)) + body + ' '.repeat(pad - Math.floor(pad / 2)) : body + ' '.repeat(pad));
+        cur += w + pad; if (c < cols - 1) { line += ' | '; cur += 3; }
       }
     }
-    out.push('| ' + seg.join(' | ') + ' |');
+    out.push(line + ' |');
   }
   return out;
 }
