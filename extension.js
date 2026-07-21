@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.0.2(俊克 7/21 pm04:14 v3.0.1テストOK「おおむね合格。細かく言えば改良の余地はある/3列目の幅はまだ過剰。もっと正確に計算できるはず」): 結合セルのはみ出しを**覆う列で山分け**に。旧=はみ出し(結合セルの内容幅 − 覆う列の合計)を**最終被覆列に全部載せる**→テスト5でC列だけが9幅(中身はc2の2幅)、テスト4で所属列だけが10幅(中身は開発/営業の3.34幅)になり、1列だけ極端に間延びしていた。新=`(W-sumCols)/覆う列数` を各列へ均等配分→テスト5はB/Cとも6幅、テスト4は名前/所属とも6.68幅で釣り合う。★**表の総幅は1文字も変わらない**(はみ出し量そのものは数学的な下限＝結合セルの内容がその列群に収まらなければ列群を広げるしかない)。変えたのは「広がる分をどの列が引き受けるか」だけ＝見た目の釣り合い。node側1行(meosFormatTableLines)。→ [[project_table_formatter]]
 // - v3.0.1(俊克 7/21 pm03:43 v3.0.0テストOK&NG バグ1=「1行目と2行目が少し調整不足」/「3列目の幅が過剰」/「右端がガタガタ」): ★桁揃えを**累積(carry)方式**に作り替え。真因=**全角の幅係数1.67(小数)と、半角スペース(1.0刻み)しか詰め物が無いこと**。旧実装は列ごとに `pad=round(列幅-内容幅)` を**独立に**丸めていたため端数が列ごとに残り、**右へ行くほど誤差が累積**(実測=テスト6で1.33文字ぶん、テスト3で2.34文字ぶんズレ)。→①列幅を整数に丸めるのをやめ**小数のまま**保持 ②理想のパイプ位置 `P[c]`(小数)を先に確定し、各行は**実測位置curからpadを逆算**=誤差は各パイプで±0.5未満に留まり次列へ持ち越さない ③区切り行(|---|)も同じ計算に乗せる(旧=整数幅そのままで、そこだけ独自にズレていた) ④横結合セルは「先頭=内容のみ・中間=幅0・余白は単位末尾セル」に整理(内側の|は装飾で不可視なのでどこに寄せても見た目は同じ)。実測ばらつき: テスト1 1.02→0.38 / テスト3 2.34→0.67 / テスト4 1.02→0.04 / テスト6 1.33→0.69。★**完全一致は原理的に不可能**(1.67は小数・詰め物は1.0刻み)＝残る0.3〜0.7文字は理論下限。ピタリ揃えたい人は設定 `laiMembrane.tableCjkWidth=2`(全角を2倍で描く等幅フォント)で**誤差ゼロ**になる(新旧とも0.00を確認)。node側のみ(meosFormatTableLines)。→ [[project_table_formatter]]
 // - v3.0.0: ★段階リリース Phase 3 解禁=Markdownテーブル一式を公開(俊克 7/21 pm03:11「それでは、フェーズ3を始めよう!」)。MEOS_RELEASE_PHASE を 2→3 に上げるだけ(実装は全機能入り同一HEADに v0.9.999148〜169 で完成済=Format Table(整形)・Tab/Shift+Tab/↑↓のセル移動・セル結合(コメント不可視)・行/列の複製と削除)。門番3経路が自動で開く: ①webview CSS `body[data-phase="1"/"2"] .fmt-table-cell{display:none}` → 升目ボタン(#fmt-table)が出る ②node `meosUpdateInTableContext`(phase<3でinTable=false)→ セル移動keybindingが効く+`meosApplyTableMergeDecorations`の早期returnが外れ結合装飾を描く ③package.json `menus.commandPalette` の `when: meos.phase >= 3` → テーブル9コマンドがpaletteに出る。★版番号は段階に合わせメジャー版=v3.0.0(Phase3の節目)。コードの実質変更は定数1文字のみ。→ [[project_phased_release]] [[project_table_formatter]]
 // - v2.0.73(俊克 7/21 am10:27 パネル幅1.2倍＋説明を実例3つに圧縮): 俊克「幅を1.2倍に。説明を極限まで短く。一般的な話は削除して具体例を3つくらい示してシンプルに」。→①.dw-name-pop 300→360px。②ヘルプを散文の塊(936字)→**「ルール→何に一致するか」の実例3行＋凡例1行(445字)**に(52%減)。実例=『✴️?M/DW? YYYY→✴️7/20M 2026 and 7/20 2026(既定)』『✴️M/DW YYYY→✴️7/20M 2026 only(厳密)』『YYYY.MM.DD(W)→2026.07.20(M)』。凡例=W曜日/MM・DD2桁/?省略可/他はリテラル。★抽象的な文法説明をやめ「一致する実例を並べる」形にしたことで、トークンの意味が例から自然に読み取れる=説明せずに教える。.dnp-ex(flex 2列)/.dnp-leg のCSS追加。webview(HTML/CSS)のみ・node不変。→ [[project_lifelong_diary_template]]
@@ -16393,7 +16394,9 @@ function meosFormatTableLines(lines) {
       const end = Math.min(k + sp - 1, cols - 1);
       let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
       const W = meosStrWidth(meosStripMergeMarker(cells[k]));
-      if (W > sumCols) width[end] += W - sumCols; // 内側の「 | 」は理想側にも同じだけ在るので勘定に入れない
+      // v3.0.2(俊克 7/21 pm04:14「3列目の幅がまだ過剰」): はみ出しは最終被覆列に全部載せず、覆う列で山分け(表の総幅は同じ・特定の1列だけが極端に広がるのを防ぐ)。
+      // ※内側の「 | 」は理想側にも同じだけ在るので勘定に入れない(はみ出しの分だけ列を広げるのが数学的な下限)。
+      if (W > sumCols) { const add = (W - sumCols) / (end - k + 1); for (let j = k; j <= end; j++) width[j] += add; }
     }
   }
   // v3.0.1(俊克 7/21 pm03:43「1行目と2行目が少し調整不足」): 桁揃えを「列ごとの独立丸め」から「累積(carry)方式」へ。
