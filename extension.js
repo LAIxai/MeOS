@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.2(俊克 7/22 pm00:49 v3.1.1テストOK&NG バグ1=「テスト4(data URI)が表示できない・前版では出ていた」＋質問「ポップアップのサイズは変更できないか」): ①★真因=v3.1.1で可視の画像リンク行を**全て**VS Code標準ホバーに委譲したが、**標準は`data:`画像を描けない**(スクショで確認=data:行にホバーすると画像でなく「Follow link (cmd+click)」しか出ない)。→可視行のうち**`data:` URIだけMeOSが描く**ように差し戻し(file/相対は従来通り標準へ委譲=大画像OK・二重表示なし)。折り畳み見出し行の走査は不変。②サイズ調整=設定 `laiMembrane.imageHoverHeight`(px・既定320・80〜1600)を新設しMeOS描画ホバーの`<img height>`に反映。※VS Codeのホバー枠には固有の最大サイズがあり、それを超える拡大は不可(原寸でじっくりは将来のMe Dock表示)。可視のfileリンクは標準ホバー描画なのでこの設定は効かない。node hover + package.json設定のみ・webview不変。→ [[project_phased_release]]
 // - v3.1.1(俊克 7/22 am11:38 v3.1.0テストOK&NG バグ1=「今までスクショをドラッグコピペするとホバーで画像が出たのに、数字が並ぶだけになった」): ★真因2つ。①**巨大 data: URI はVS Codeのホバーで描画されず文字列(base64の数字)になる**=小さいtest-image.png(395B)は`<img src="data:…">`で出たが、実スクショ(大)はsrc属性が長すぎて生テキスト表示に(俊克のスクショで確認)。→ローカルファイルは data: をやめ**短い file: URI**に(`vscode.Uri.file(path).toString()`・spaces/日本語は自動%エンコード)=標準markdownホバーと同じ方式で大画像も描ける。data: ソースはそのまま。②**回帰**=可視の`![](…)`行にMeOSのホバーが横取りして被せていた→**OPEN(見出し)行にホバーした時だけ発火**に限定し、可視の画像リンク行はVS Code標準markdownホバーに委譲(従来通り実画像が出る/二重表示も防ぐ)。画像膜の価値は「折り畳んで隠れた画像を見出しホバーで覗く」に集約。webview不変・node hover のみ。★フェーズ割当=俊克「画像膜をフェーズ5として隔離し従来のフェーズ5→6にシフト」。ゲート(`MEOS_RELEASE_PHASE>=5`)を今入れると本人のテストで見えなくなるため、詰め終えて日曜のPhase3リリース直前にゲートを入れる方針(それまで生かす)。→ [[project_phased_release]]
 // - v3.1.0(俊克 7/22 am11:26 Geminiと話して発案「mdの禁断の果実=画像のインライン表示」・フェーズ4の前に): ★画像膜(Image Membrane)。膜の本文に `![alt](path)` を仕込み、普段は折り畳んで名前だけ見せる→**見出し行(折り畳み時)または画像リンク行(展開時)にホバーで実画像をポップ表示**。でかい絵がプレーンテキストの世界を汚さず、見たい時だけはっきり見える=「範囲を閉じる」膜だからこそ両立。★重要な技術的制約=VS Code/VSCodiumのテキストエディタは行高固定で**本文への原寸画像埋め込みは不可**(唯一可能なeditorInsetsはproposed API=公開拡張で封印)→ホバーが最も"インライン"に近い実現(俊克に説明し選択肢4=ホバー先/Me Dock原寸は後の2段階でと合意・まずホバーを実装)。実装(node hover 追加のみ・webview不変)=①MEOS_IMG_LINK_RE でmd画像リンク抽出(`<...>`括弧パス/title付き対応)②meosResolveImageDataUri=相対(文書フォルダ基準)/絶対/file:を解決しfs読み込み→base64 data URI(png/jpg/gif/webp/bmp/svg/avif/ico・12MB上限・data:はそのまま・http(s)は非対応)③imageMembraneHoverMessage=ホバー行が画像リンクならそれ、OPEN行なら本文を対応closeまで走査し最初の画像を拾う→MarkdownString(isTrusted+supportHtml)で`<img height=260>`④provideHoverチェーンの末尾(グリフ固有ホバーが外れた領域のフォールバック)に追加。※現状ゲート無し(画像リンクを含む膜でのみ発火=未使用時は不可視)。次段=折り畳みヘッダに🖼マーカー+Me Dock原寸表示。テスト素材=MeOS直下 image-membrane-test.md + test-image.png(240x160 赤緑青)。→ [[project_phased_release]]
 // - v3.0.5(俊克 7/22 am10:42 v3.0.4テストNG 改良1=「▼の上にマウスを置くと今まで通り日本語混じりのtipが出る/▼をクリックしてもtipが消えない」): ★真因2つ。①日本語混じりtip=v3.0.3で**▼caret自身のdata-tip**に「Toggle ✓ 膜化する to wrap…」と書いていた(v3.0.4はボタンラベルのtipだけ英語化し、caretのtipを見落とした)→caretのdata-tipから「膜化する」を除き「Toggle ✓ Membrane this table to wrap the table the cursor is in …」に。②クリックしてもtipが残る=v3.0.4のガードは「table-popが開いている間、メニュー外のtipを抑止」だが、既に**表示中**のtipはshowTocTipが再発火しないと消えない→マウス静止でクリックすると残る。→caretクリックで開く瞬間に hideTocTip() を明示呼び出し(既存の副メニュー/栞メニューと同じ即時消去)。webviewのみ(caret data-tip + click handlerに hideTocTip)・node不変。※残る「膜化する」7件は全てJSコメント内=ユーザー可視tipは grep で0件確認済。→ [[project_table_formatter]]
@@ -16285,24 +16286,32 @@ function meosResolveImageSrc(document, rawUrl) {
     return vscode.Uri.file(fsPath).toString(); // 短いfile: URI=大きな画像も描画される
   } catch (_) { return null; }
 }
-// v3.1.1(俊克 バグ1): ★見出し(OPEN)行にホバーした時だけ発火。可視の画像リンク行(`![](…)`)はVS Code標準のmarkdownホバーに任せる=(a)従来通り実画像が出る回帰の解消 (b)自前の巨大data URIで潰さない (c)画像の二重表示を防ぐ。画像膜の価値は「折り畳んで隠れた画像を見出しホバーで覗く」ことに集約。
+function meosImageHoverHeight() { try { const h = Number(vscode.workspace.getConfiguration('laiMembrane').get('imageHoverHeight', 320)); if (h >= 80 && h <= 1600) return Math.round(h); } catch (_) {} return 320; }
+// v3.1.1/3.1.2(俊克 バグ1): 発火条件=①膜のOPEN(見出し)行=本文を走査して画像を出す(折り畳んだ画像を覗く=画像膜の本命)。②可視の画像リンク行は原則VS Code標準markdownホバーに委譲(回帰回避・二重表示防止)だが、★`data:` URI だけは標準が描けない(「Follow link」しか出ない=テスト4が消えた真因)のでMeOSが出す。file/相対は標準が描く。
 function imageMembraneHoverMessage(document, position) {
   try {
     if (!document || !position) return null;
-    const open = parseOpenLine(document.lineAt(position.line).text);
-    if (!open) return null; // 可視の画像リンク行は標準ホバーへ委譲(回帰の芽を断つ)
+    const text = document.lineAt(position.line).text;
     let imgUrl = null;
-    for (let ln = position.line + 1; ln < document.lineCount && ln < position.line + 2000; ln++) {
-      const t = document.lineAt(ln).text;
-      const c = parseCloseLine(t); if (c && c.id === open.id) break; // 対応するcloseで打ち切り
-      const mm = MEOS_IMG_LINK_RE.exec(t); if (mm) { imgUrl = mm[1]; break; } // 本文の最初の画像リンク
+    const open = parseOpenLine(text);
+    if (open) { // 見出し行=本文(次行〜対応close)を走査して最初の画像リンクを拾う
+      for (let ln = position.line + 1; ln < document.lineCount && ln < position.line + 2000; ln++) {
+        const t = document.lineAt(ln).text;
+        const c = parseCloseLine(t); if (c && c.id === open.id) break;
+        const mm = MEOS_IMG_LINK_RE.exec(t); if (mm) { imgUrl = mm[1]; break; }
+      }
+    } else { // 可視の画像リンク行: data: のみMeOSが出す(標準は描けない)・file/相対は標準へ委譲
+      const here = MEOS_IMG_LINK_RE.exec(text);
+      if (!here) return null;
+      if (!/^\s*<?\s*data:image\//i.test(here[1])) return null;
+      imgUrl = here[1];
     }
     if (!imgUrl) return null;
     const md = new vscode.MarkdownString();
     md.isTrusted = true; md.supportHtml = true;
     const src = meosResolveImageSrc(document, imgUrl);
     md.value = src
-      ? '<img src="' + src + '" alt="" height="260" />'
+      ? '<img src="' + src + '" alt="" height="' + meosImageHoverHeight() + '" />'
       : '🖼 ' + String(imgUrl).replace(/[<>]/g, '') + '\n\n_(loads local files or data: URIs only)_';
     return md;
   } catch (_) { return null; }
