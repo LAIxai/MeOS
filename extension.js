@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.2.7(俊克 7/22 pm10:39/10:46 v3.2.6テストNG「img/にコピーはされるが元データが残る」＋訂正「元はシステムSSD(内蔵APFS)・mdは外付けT7」): 既定を always にしたのに元が残る=**削除がsilent catchで握り潰されていた**(原因が見えなかった)。→削除を堅牢化=①**コピー先が存在しサイズ一致(=確実に複製済み)の時だけ**元を消す安全ガード ②useTrash失敗時は複製確認済みなので `useTrash:false`(通常削除)で"移動"を完遂(ゴミ箱不可の環境向けフォールバック) ③失敗は握り潰さず警告表示 ④ステータスに削除/ゴミ箱の別を明示。trashListを{src,dest}のtrashJobsに変えサイズ照合。※内蔵APFSはuseTrash成功するはずなので、これで原因(設定/権限/例外)が表に出る。node のみ。→ [[project_phased_release]]
 // - v3.2.6(俊克 7/22 pm10:03 v3.2.5テストOK&NG「🖼で img/ にコピーされたが元データがゴミ箱に移動しない・単に移動でいい」＋質問1「なぜリンクが alt text になるのか」): ★元がゴミ箱に残る真因=設定 `imageAutoImportTrash` の既定が **ask**(毎回確認)＝右下に一瞬出る通知をクリックしないと元が残る(見逃しやすい)。俊克は一貫して「即ゴミ箱/単に移動でいい」→**既定を `always` に変更**(即ゴミ箱＝実質"移動"・img/に実体が残る＋ゴミ箱は復元可なので安全)。あわせて取り込み成功のステータスに「元 N をゴミ箱へ🗑」を明示。※質問1=`![alt text](…)`の`alt text`はMarkdown画像の**代替テキスト(alternative text)**=画像が表示できない時の代替表示＋スクリーンリーダー用の説明。VS Codeがドロップ時に置くプレースホルダで、消しても(`![](…)`)説明に置き換えてもよい(表示には影響しない)。package.json(既定)+node(既定/メッセージ)。→ [[project_phased_release]]
 // - v3.2.5(俊克 7/22 pm07:31 v3.2.4テストOK「Shift縮小👍」＋バグ1「imgフォルダがあってもコピーされない/元データもゴミ箱に入らない」＋改良1設計「画像膜の指定=🖼ボタンでバッジに🖼・CN=は通常膜のまま」): ★バグ1の真因=**自動取り込みは"新規の貼付/ドロップ・イベント"でしか発火しない**(onDidChangeTextDocumentの挿入テキストに完全な![](…)がある時)→**以前のバージョンで既に貼ってあったリンクは取り込まれない**(貼付イベントが起きていない)。ファイル解決/コピー/連番ロジック自体は正常(実ファイルでドライラン確認済)。対策=①自動取り込みブロックをonDidChangeTextDocumentの**先頭**へ移動(先行処理の例外に巻き込まれない保険)②★**🖼 手動ボタン**を画像ビューアのEdit Me行(↻の左)に新設=押すと**その膜の画像を全部 img/ に取り込む**(既存リンクも対象＝確実な経路・冪等・0枚ならステータス通知)。node imageMembraneImportハンドラ→現在の膜の行範囲でmeosAutoImportImagesInLines(枚数を返すよう変更)。改良1の設計は合意(CN=通常のまま・区別はバッジ🖼)だが、mstatバッジ形式(MSTAT_BADGE_RE)への🖼マーカー追加は次段(慎重に)。今回の🖼ボタンは「取り込み」を担う。webview+node。→ [[project_phased_release]]
 // - v3.2.4(俊克 7/22 pm07:09 v3.2.3テストOK「やっと拡大できた」＋改良2点): ①改良1=画像ビューアで**Shift押下中は縮小カーソル＋Shift+クリックで縮小**(点ズームの逆・factor 0.625)。document keydown/keyupでカーソル切替。②★改良2=**画像リンクの自動取り込み**。Markdownに画像リンクを貼付/ドロップ(完全な![](…)が一括挿入)した瞬間、実体を **<docdir>/img/ にコピーして相対リンク `img/名前` に貼り替え**る(手作業の移動が不要)。元データはゴミ箱へ=設定 `laiMembrane.imageAutoImportTrash`(ask=毎回確認[既定]/always=即ゴミ箱/never=触らない)。img/に実体が残る＋ゴミ箱は復元可なので安全。実装=onDidChangeTextDocumentで挿入テキストに完全な画像リンクがある時だけ発火(タイピングは1文字ずつなので誤爆せず・Undo/Redo除外・_imgImportBusyで自edit再入防止・data:/http/既にimg/配下/画像拡張子以外はスキップ・同名別内容は連番)。設定 `laiMembrane.imageAutoImport`(既定true)でON/OFF。node+webview+package.json。★★フェーズ5ゲート(日曜前)に**この自動取り込み(meosAutoImportImagesInLinesのonDidChangeTextDocument発火)も要ガード**(ファイルを動かす機能なのでテーブル解禁リリースに漏らさないこと)。★続き=(1)折り畳みヘッダの豆粒サムネ。→ [[project_phased_release]]
@@ -16368,7 +16369,7 @@ async function meosAutoImportImagesInLines(document, lineList) {
   _imgImportBusy = true;
   try {
     if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-    const edit = new vscode.WorkspaceEdit(), trashList = [];
+    const edit = new vscode.WorkspaceEdit(), trashJobs = [];
     for (const j of jobs) {
       let destName = j.base, dest = path.join(imgDir, destName), i = 1;
       while (fs.existsSync(dest) && fs.statSync(dest).size !== fs.statSync(j.abs).size) { // 同名で中身が違う=連番
@@ -16377,20 +16378,28 @@ async function meosAutoImportImagesInLines(document, lineList) {
       if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest);
       let rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>';
       edit.replace(document.uri, new vscode.Range(j.ln, j.urlStart, j.ln, j.urlStart + j.rawLen), rel);
-      if (trashList.indexOf(j.abs) < 0) trashList.push(j.abs);
+      if (!trashJobs.some(t => t.src === j.abs)) trashJobs.push({ src: j.abs, dest });
     }
     await vscode.workspace.applyEdit(edit);
     const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'always');
-    let trashedN = 0;
-    if (mode !== 'never' && trashList.length) {
+    let trashedN = 0, hardN = 0, trashErr = '';
+    if (mode !== 'never' && trashJobs.length) {
       let doTrash = (mode !== 'ask'); // always→即・ask→確認
       if (mode === 'ask') {
-        const pick = await vscode.window.showInformationMessage('MeOS: imported ' + trashList.length + ' image(s) into img/. Move the original file(s) to Trash? (a copy is kept in img/)', 'Move to Trash', 'Keep');
+        const pick = await vscode.window.showInformationMessage('MeOS: imported ' + trashJobs.length + ' image(s) into img/. Move the original(s) to Trash? (a copy is kept in img/)', 'Move to Trash', 'Keep');
         doTrash = (pick === 'Move to Trash');
       }
-      if (doTrash) for (const p of trashList) { try { await vscode.workspace.fs.delete(vscode.Uri.file(p), { useTrash: true, recursive: false }); trashedN++; } catch (_) {} }
+      if (doTrash) for (const tj of trashJobs) {
+        try {
+          if (!(fs.existsSync(tj.dest) && fs.existsSync(tj.src) && fs.statSync(tj.dest).size === fs.statSync(tj.src).size)) continue; // ★複製が確実(サイズ一致)な時だけ元を消す
+          try { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: true }); trashedN++; }
+          catch (e1) { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: false }); hardN++; } // ゴミ箱が使えない環境=複製確認済みなので通常削除でmove完遂
+        } catch (e2) { trashErr = (e2 && e2.message) || String(e2); }
+      }
     }
-    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました' + (trashedN ? '（元 ' + trashedN + ' をゴミ箱へ🗑）' : '') + ' 🖼', 3000);
+    if (trashErr) { try { vscode.window.showWarningMessage('MeOS: 元データの削除に失敗しました（img/のコピーは無事です）: ' + trashErr); } catch (_) {} }
+    const removed = trashedN + hardN;
+    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました' + (removed ? ('（元 ' + removed + ' を' + (hardN && !trashedN ? '削除' : 'ゴミ箱へ') + '🗑）') : '') + ' 🖼', 3000);
     return jobs.length;
   } catch (err) { try { vscode.window.showWarningMessage('MeOS image import failed: ' + (err && err.message)); } catch (_) {} return 0; }
   finally { _imgImportBusy = false; }
