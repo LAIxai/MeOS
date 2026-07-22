@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.2.8(俊克 7/22 pm10:51 v3.2.7テストNG「『元1をゴミ箱へ』と表示されるのにゴミ箱に移動しない」・スクショで元データ(docDir)が残存＝リンクはimg/に貼替済・img/にコピー済なのに元が消えない): ★真因＝**外付けT7(HFS)では `vscode.workspace.fs.delete(useTrash:true)` が例外を投げずに"成功を返すのに実際は消さない"**(T7の.Trashesが使えない)→v3.2.7はcatchベースのフォールバックだったため例外が出ず素通り＝元が残り、しかもtrashedN++で「ゴミ箱へ」と誤表示。→**存在確認ベース**に変更=useTrash後に `fs.existsSync(src)` で実際に消えたか確認し、残っていたら `useTrash:false`(通常削除)でmoveを完遂(複製はサイズ一致で確認済み)。表示も実結果に合わせ hardN>0 なら「削除🗑 ※ゴミ箱の使えない場所」と正直に。※ドロップ時はVS Codeが先にワークスペースへ複製を作る既定挙動があり、その複製をMeOSがimg/へ移すため、Desktop等の"真の元"はMeOSからは見えない(リンク先=複製)ので手動 or 将来DropEditProvider。node のみ。→ [[project_phased_release]]
 // - v3.2.7(俊克 7/22 pm10:39/10:46 v3.2.6テストNG「img/にコピーはされるが元データが残る」＋訂正「元はシステムSSD(内蔵APFS)・mdは外付けT7」): 既定を always にしたのに元が残る=**削除がsilent catchで握り潰されていた**(原因が見えなかった)。→削除を堅牢化=①**コピー先が存在しサイズ一致(=確実に複製済み)の時だけ**元を消す安全ガード ②useTrash失敗時は複製確認済みなので `useTrash:false`(通常削除)で"移動"を完遂(ゴミ箱不可の環境向けフォールバック) ③失敗は握り潰さず警告表示 ④ステータスに削除/ゴミ箱の別を明示。trashListを{src,dest}のtrashJobsに変えサイズ照合。※内蔵APFSはuseTrash成功するはずなので、これで原因(設定/権限/例外)が表に出る。node のみ。→ [[project_phased_release]]
 // - v3.2.6(俊克 7/22 pm10:03 v3.2.5テストOK&NG「🖼で img/ にコピーされたが元データがゴミ箱に移動しない・単に移動でいい」＋質問1「なぜリンクが alt text になるのか」): ★元がゴミ箱に残る真因=設定 `imageAutoImportTrash` の既定が **ask**(毎回確認)＝右下に一瞬出る通知をクリックしないと元が残る(見逃しやすい)。俊克は一貫して「即ゴミ箱/単に移動でいい」→**既定を `always` に変更**(即ゴミ箱＝実質"移動"・img/に実体が残る＋ゴミ箱は復元可なので安全)。あわせて取り込み成功のステータスに「元 N をゴミ箱へ🗑」を明示。※質問1=`![alt text](…)`の`alt text`はMarkdown画像の**代替テキスト(alternative text)**=画像が表示できない時の代替表示＋スクリーンリーダー用の説明。VS Codeがドロップ時に置くプレースホルダで、消しても(`![](…)`)説明に置き換えてもよい(表示には影響しない)。package.json(既定)+node(既定/メッセージ)。→ [[project_phased_release]]
 // - v3.2.5(俊克 7/22 pm07:31 v3.2.4テストOK「Shift縮小👍」＋バグ1「imgフォルダがあってもコピーされない/元データもゴミ箱に入らない」＋改良1設計「画像膜の指定=🖼ボタンでバッジに🖼・CN=は通常膜のまま」): ★バグ1の真因=**自動取り込みは"新規の貼付/ドロップ・イベント"でしか発火しない**(onDidChangeTextDocumentの挿入テキストに完全な![](…)がある時)→**以前のバージョンで既に貼ってあったリンクは取り込まれない**(貼付イベントが起きていない)。ファイル解決/コピー/連番ロジック自体は正常(実ファイルでドライラン確認済)。対策=①自動取り込みブロックをonDidChangeTextDocumentの**先頭**へ移動(先行処理の例外に巻き込まれない保険)②★**🖼 手動ボタン**を画像ビューアのEdit Me行(↻の左)に新設=押すと**その膜の画像を全部 img/ に取り込む**(既存リンクも対象＝確実な経路・冪等・0枚ならステータス通知)。node imageMembraneImportハンドラ→現在の膜の行範囲でmeosAutoImportImagesInLines(枚数を返すよう変更)。改良1の設計は合意(CN=通常のまま・区別はバッジ🖼)だが、mstatバッジ形式(MSTAT_BADGE_RE)への🖼マーカー追加は次段(慎重に)。今回の🖼ボタンは「取り込み」を担う。webview+node。→ [[project_phased_release]]
@@ -16392,14 +16393,18 @@ async function meosAutoImportImagesInLines(document, lineList) {
       if (doTrash) for (const tj of trashJobs) {
         try {
           if (!(fs.existsSync(tj.dest) && fs.existsSync(tj.src) && fs.statSync(tj.dest).size === fs.statSync(tj.src).size)) continue; // ★複製が確実(サイズ一致)な時だけ元を消す
-          try { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: true }); trashedN++; }
-          catch (e1) { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: false }); hardN++; } // ゴミ箱が使えない環境=複製確認済みなので通常削除でmove完遂
+          try { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: true }); } catch (_) {}
+          if (!fs.existsSync(tj.src)) { trashedN++; continue; } // ゴミ箱移動が実際に効いた
+          // ★外付けHFS等では useTrash が"成功を返すのに実際は消えない"→存在確認して残っていたら通常削除でmoveを完遂(複製確認済み)
+          try { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: false }); } catch (_) {}
+          if (!fs.existsSync(tj.src)) hardN++; else trashErr = 'could not remove ' + tj.src;
         } catch (e2) { trashErr = (e2 && e2.message) || String(e2); }
       }
     }
     if (trashErr) { try { vscode.window.showWarningMessage('MeOS: 元データの削除に失敗しました（img/のコピーは無事です）: ' + trashErr); } catch (_) {} }
     const removed = trashedN + hardN;
-    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました' + (removed ? ('（元 ' + removed + ' を' + (hardN && !trashedN ? '削除' : 'ゴミ箱へ') + '🗑）') : '') + ' 🖼', 3000);
+    const removedMsg = removed ? ('（元 ' + removed + ' を' + (hardN ? '削除🗑 ※ゴミ箱の使えない場所' : 'ゴミ箱へ🗑') + '）') : '';
+    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました' + removedMsg + ' 🖼', 4000);
     return jobs.length;
   } catch (err) { try { vscode.window.showWarningMessage('MeOS image import failed: ' + (err && err.message)); } catch (_) {} return 0; }
   finally { _imgImportBusy = false; }
