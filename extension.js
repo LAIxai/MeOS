@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.2.6(俊克 7/22 pm10:03 v3.2.5テストOK&NG「🖼で img/ にコピーされたが元データがゴミ箱に移動しない・単に移動でいい」＋質問1「なぜリンクが alt text になるのか」): ★元がゴミ箱に残る真因=設定 `imageAutoImportTrash` の既定が **ask**(毎回確認)＝右下に一瞬出る通知をクリックしないと元が残る(見逃しやすい)。俊克は一貫して「即ゴミ箱/単に移動でいい」→**既定を `always` に変更**(即ゴミ箱＝実質"移動"・img/に実体が残る＋ゴミ箱は復元可なので安全)。あわせて取り込み成功のステータスに「元 N をゴミ箱へ🗑」を明示。※質問1=`![alt text](…)`の`alt text`はMarkdown画像の**代替テキスト(alternative text)**=画像が表示できない時の代替表示＋スクリーンリーダー用の説明。VS Codeがドロップ時に置くプレースホルダで、消しても(`![](…)`)説明に置き換えてもよい(表示には影響しない)。package.json(既定)+node(既定/メッセージ)。→ [[project_phased_release]]
 // - v3.2.5(俊克 7/22 pm07:31 v3.2.4テストOK「Shift縮小👍」＋バグ1「imgフォルダがあってもコピーされない/元データもゴミ箱に入らない」＋改良1設計「画像膜の指定=🖼ボタンでバッジに🖼・CN=は通常膜のまま」): ★バグ1の真因=**自動取り込みは"新規の貼付/ドロップ・イベント"でしか発火しない**(onDidChangeTextDocumentの挿入テキストに完全な![](…)がある時)→**以前のバージョンで既に貼ってあったリンクは取り込まれない**(貼付イベントが起きていない)。ファイル解決/コピー/連番ロジック自体は正常(実ファイルでドライラン確認済)。対策=①自動取り込みブロックをonDidChangeTextDocumentの**先頭**へ移動(先行処理の例外に巻き込まれない保険)②★**🖼 手動ボタン**を画像ビューアのEdit Me行(↻の左)に新設=押すと**その膜の画像を全部 img/ に取り込む**(既存リンクも対象＝確実な経路・冪等・0枚ならステータス通知)。node imageMembraneImportハンドラ→現在の膜の行範囲でmeosAutoImportImagesInLines(枚数を返すよう変更)。改良1の設計は合意(CN=通常のまま・区別はバッジ🖼)だが、mstatバッジ形式(MSTAT_BADGE_RE)への🖼マーカー追加は次段(慎重に)。今回の🖼ボタンは「取り込み」を担う。webview+node。→ [[project_phased_release]]
 // - v3.2.4(俊克 7/22 pm07:09 v3.2.3テストOK「やっと拡大できた」＋改良2点): ①改良1=画像ビューアで**Shift押下中は縮小カーソル＋Shift+クリックで縮小**(点ズームの逆・factor 0.625)。document keydown/keyupでカーソル切替。②★改良2=**画像リンクの自動取り込み**。Markdownに画像リンクを貼付/ドロップ(完全な![](…)が一括挿入)した瞬間、実体を **<docdir>/img/ にコピーして相対リンク `img/名前` に貼り替え**る(手作業の移動が不要)。元データはゴミ箱へ=設定 `laiMembrane.imageAutoImportTrash`(ask=毎回確認[既定]/always=即ゴミ箱/never=触らない)。img/に実体が残る＋ゴミ箱は復元可なので安全。実装=onDidChangeTextDocumentで挿入テキストに完全な画像リンクがある時だけ発火(タイピングは1文字ずつなので誤爆せず・Undo/Redo除外・_imgImportBusyで自edit再入防止・data:/http/既にimg/配下/画像拡張子以外はスキップ・同名別内容は連番)。設定 `laiMembrane.imageAutoImport`(既定true)でON/OFF。node+webview+package.json。★★フェーズ5ゲート(日曜前)に**この自動取り込み(meosAutoImportImagesInLinesのonDidChangeTextDocument発火)も要ガード**(ファイルを動かす機能なのでテーブル解禁リリースに漏らさないこと)。★続き=(1)折り畳みヘッダの豆粒サムネ。→ [[project_phased_release]]
 // - v3.2.3(俊克 7/22 pm06:40 v3.2.2テストNG バグ1「拡大鏡⊕が機能しない・Me Dock幅が最大で全体拡大の限界・部分拡大にならない」): ★真因＝**VS Code webviewの既定スタイルが `img{max-width:100%}` を注入**していて、`IMG.style.width=200%` にしても `min(200%,100%)=100%` に潰され、+ボタンもクリック点ズームも**パネル幅で頭打ち**になっていた(v3.2.1/3.2.2で+もクリックも効かなかった症状が全部これで説明つく)。→ `.iv-img{max-width:none !important;max-height:none !important}` で上書き。これで width>100% が枠を超え、zoomAt(クリック点中心+その点を画面中央へスクロール)が本来動作＝部分をどんどん拡大できる。webview CSS 1行。→ [[project_phased_release]]
@@ -16379,16 +16380,17 @@ async function meosAutoImportImagesInLines(document, lineList) {
       if (trashList.indexOf(j.abs) < 0) trashList.push(j.abs);
     }
     await vscode.workspace.applyEdit(edit);
-    const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'ask');
+    const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'always');
+    let trashedN = 0;
     if (mode !== 'never' && trashList.length) {
-      let doTrash = (mode === 'always');
+      let doTrash = (mode !== 'ask'); // always→即・ask→確認
       if (mode === 'ask') {
         const pick = await vscode.window.showInformationMessage('MeOS: imported ' + trashList.length + ' image(s) into img/. Move the original file(s) to Trash? (a copy is kept in img/)', 'Move to Trash', 'Keep');
         doTrash = (pick === 'Move to Trash');
       }
-      if (doTrash) for (const p of trashList) { try { await vscode.workspace.fs.delete(vscode.Uri.file(p), { useTrash: true, recursive: false }); } catch (_) {} }
+      if (doTrash) for (const p of trashList) { try { await vscode.workspace.fs.delete(vscode.Uri.file(p), { useTrash: true, recursive: false }); trashedN++; } catch (_) {} }
     }
-    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました 🖼', 2500);
+    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました' + (trashedN ? '（元 ' + trashedN + ' をゴミ箱へ🗑）' : '') + ' 🖼', 3000);
     return jobs.length;
   } catch (err) { try { vscode.window.showWarningMessage('MeOS image import failed: ' + (err && err.message)); } catch (_) {} return 0; }
   finally { _imgImportBusy = false; }

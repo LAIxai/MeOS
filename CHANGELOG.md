@@ -9,7 +9,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - **A magnifier that zooms into the spot you click** (Shift+click to zoom out; Ctrl/Cmd+wheel too), well past panel width, so you can inspect a detail.
 - **Rename the membrane right there** — the same ↻ / Reset / Set controls as a normal membrane, so an image gets a unique, warp-to name (handy for a manual's figure list).
 - **Drag the Me Dock panel wider and the image grows with it** — the resize a hover could never give you.
-- **Paste or drop an image and it files itself.** MeOS copies the image into an `img/` folder beside the document, rewrites the link to point there, and offers to Trash the original — no more moving files by hand. Configurable via `laiMembrane.imageAutoImport` / `imageAutoImportTrash`.
+- **Paste or drop an image and it files itself.** MeOS copies the image into an `img/` folder beside the document, rewrites the link to point there, and moves the original to Trash — effectively a *move*, no more shuffling files by hand. The 🖼 button in the viewer does the same on demand for links pasted earlier. Configurable via `laiMembrane.imageAutoImport` / `imageAutoImportTrash` (default: move to Trash).
 
 ### v3.1.0–3.1.2 — Image membranes (the forbidden fruit of Markdown)
 - **Tuck an image link inside a membrane, fold it, and your plain text stays plain.** The membrane shows just its name; hover the folded header and the real picture pops up right there.
