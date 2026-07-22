@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.1 era — highlights (2026-07 →)
 
+### v3.2.0 — Image membrane viewer in Me Dock
+- **Put the cursor in an image membrane and Me Dock overlays a full viewer** — the picture at full panel width, with ⇦ ⇨ to walk multiple images, a magnifier zoom (click / ＋ − / Ctrl+wheel), and × to drop back to the normal dock.
+- **Drag the Me Dock panel wider and the image grows with it** — the resize the hover could never give you.
+
 ### v3.1.0–3.1.2 — Image membranes (the forbidden fruit of Markdown)
 - **Tuck an image link inside a membrane, fold it, and your plain text stays plain.** The membrane shows just its name; hover the folded header and the real picture pops up right there.
 - Loads local files (relative to the document, or absolute) and `data:` URIs — png / jpg / gif / webp / bmp / svg / ico. Large images render fine (they load by path, not by inlining megabytes of data).
