@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.2.9(俊克 7/23 am02:32/02:42 v3.2.8テストNG「まったく変わらない」＋改良案1「copyでなくmoveで移動」＋情報「テストのリンク先はシステムSSD・mdは外付けT7」): ★俊克の改良案1を全面採用=**copy+delete をやめ MOVE に**。真因の総まとめ=①VS Codeのゴミ箱API(workspace.fs.delete useTrash)が外付けで"成功を返すのに消えない" ②既存テスト膜はリンクが既に img/ で"何も起きない"。→**Node fs で move**: 同ボリューム=`fs.renameSync`(原子移動)/別ボリューム(システムSSD→外付けT7=EXDEV)=`fs.copyFileSync`+`fs.unlinkSync`。**削除はfs.unlinkSync**=VS Codeゴミ箱APIを一切使わない(クロスボリュームmoveをドライラン検証済=src消滅/dest生成)。設定=always→move(既定)/never→copyのみ/ask→copy後に確認して元をunlink。★診断=画像リンクだがファイルが見つからない件数を数え、0取り込み時に「N件はファイルが見つからず取り込めません」と通知(パス解決の問題を切り分け)。node のみ。→ [[project_phased_release]]
 // - v3.2.8(俊克 7/22 pm10:51 v3.2.7テストNG「『元1をゴミ箱へ』と表示されるのにゴミ箱に移動しない」・スクショで元データ(docDir)が残存＝リンクはimg/に貼替済・img/にコピー済なのに元が消えない): ★真因＝**外付けT7(HFS)では `vscode.workspace.fs.delete(useTrash:true)` が例外を投げずに"成功を返すのに実際は消さない"**(T7の.Trashesが使えない)→v3.2.7はcatchベースのフォールバックだったため例外が出ず素通り＝元が残り、しかもtrashedN++で「ゴミ箱へ」と誤表示。→**存在確認ベース**に変更=useTrash後に `fs.existsSync(src)` で実際に消えたか確認し、残っていたら `useTrash:false`(通常削除)でmoveを完遂(複製はサイズ一致で確認済み)。表示も実結果に合わせ hardN>0 なら「削除🗑 ※ゴミ箱の使えない場所」と正直に。※ドロップ時はVS Codeが先にワークスペースへ複製を作る既定挙動があり、その複製をMeOSがimg/へ移すため、Desktop等の"真の元"はMeOSからは見えない(リンク先=複製)ので手動 or 将来DropEditProvider。node のみ。→ [[project_phased_release]]
 // - v3.2.7(俊克 7/22 pm10:39/10:46 v3.2.6テストNG「img/にコピーはされるが元データが残る」＋訂正「元はシステムSSD(内蔵APFS)・mdは外付けT7」): 既定を always にしたのに元が残る=**削除がsilent catchで握り潰されていた**(原因が見えなかった)。→削除を堅牢化=①**コピー先が存在しサイズ一致(=確実に複製済み)の時だけ**元を消す安全ガード ②useTrash失敗時は複製確認済みなので `useTrash:false`(通常削除)で"移動"を完遂(ゴミ箱不可の環境向けフォールバック) ③失敗は握り潰さず警告表示 ④ステータスに削除/ゴミ箱の別を明示。trashListを{src,dest}のtrashJobsに変えサイズ照合。※内蔵APFSはuseTrash成功するはずなので、これで原因(設定/権限/例外)が表に出る。node のみ。→ [[project_phased_release]]
 // - v3.2.6(俊克 7/22 pm10:03 v3.2.5テストOK&NG「🖼で img/ にコピーされたが元データがゴミ箱に移動しない・単に移動でいい」＋質問1「なぜリンクが alt text になるのか」): ★元がゴミ箱に残る真因=設定 `imageAutoImportTrash` の既定が **ask**(毎回確認)＝右下に一瞬出る通知をクリックしないと元が残る(見逃しやすい)。俊克は一貫して「即ゴミ箱/単に移動でいい」→**既定を `always` に変更**(即ゴミ箱＝実質"移動"・img/に実体が残る＋ゴミ箱は復元可なので安全)。あわせて取り込み成功のステータスに「元 N をゴミ箱へ🗑」を明示。※質問1=`![alt text](…)`の`alt text`はMarkdown画像の**代替テキスト(alternative text)**=画像が表示できない時の代替表示＋スクリーンリーダー用の説明。VS Codeがドロップ時に置くプレースホルダで、消しても(`![](…)`)説明に置き換えてもよい(表示には影響しない)。package.json(既定)+node(既定/メッセージ)。→ [[project_phased_release]]
@@ -16349,7 +16350,7 @@ async function meosAutoImportImagesInLines(document, lineList) {
   const path = require('path'), fs = require('fs');
   const docPath = document.uri.fsPath; if (!docPath) return 0;
   const docDir = path.dirname(docPath), imgDir = path.join(docDir, 'img');
-  const jobs = [];
+  const jobs = []; let unresolved = 0;
   for (const ln of lineList) {
     if (ln < 0 || ln >= document.lineCount) continue;
     const text = document.lineAt(ln).text;
@@ -16360,51 +16361,44 @@ async function meosAutoImportImagesInLines(document, lineList) {
       let src; try { src = decodeURI(url.replace(/^file:\/\//i, '')); } catch (_) { src = url.replace(/^file:\/\//i, ''); }
       let abs = path.normalize(path.isAbsolute(src) ? src : path.join(docDir, src));
       if ((abs + path.sep).toLowerCase().startsWith((imgDir + path.sep).toLowerCase())) continue; // 既に img/ 配下
-      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) continue;
       if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs).slice(1))) continue;
+      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { unresolved++; continue; } // ★画像リンクだがファイルが見つからない=診断用に数える
       let p = m[0].indexOf('](') + 2; while (p < m[0].length && /\s/.test(m[0][p])) p++; // URL開始位置(空白スキップ)
       jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs) });
     }
   }
-  if (!jobs.length) return 0;
+  if (!jobs.length) { if (unresolved) { try { vscode.window.setStatusBarMessage('MeOS: 画像リンク ' + unresolved + ' 件はファイルが見つからず取り込めません（パスを確認）', 4000); } catch (_) {} } return 0; }
   _imgImportBusy = true;
   try {
     if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-    const edit = new vscode.WorkspaceEdit(), trashJobs = [];
+    const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'always');
+    const edit = new vscode.WorkspaceEdit(), askJobs = [];
+    let movedN = 0, copiedN = 0, importErr = '';
     for (const j of jobs) {
       let destName = j.base, dest = path.join(imgDir, destName), i = 1;
       while (fs.existsSync(dest) && fs.statSync(dest).size !== fs.statSync(j.abs).size) { // 同名で中身が違う=連番
         const e = path.extname(j.base), b = path.basename(j.base, e); destName = b + '_' + i + e; dest = path.join(imgDir, destName); i++;
       }
-      if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest);
+      try {
+        if (mode === 'never') { if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest); copiedN++; }
+        else if (mode === 'ask') { if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest); copiedN++; if (!askJobs.some(a => a.src === j.abs)) askJobs.push({ src: j.abs, dest }); }
+        else { // ★always = MOVE(俊克 改良案1: copyでなくmove)。同ボリューム=fs.renameSync(原子移動)/別ボリューム(EXDEV=システムSSD→外付け等)=copyFileSync+unlinkSync。削除はNode fs.unlinkSync=VS Codeのゴミ箱API(外付けで"成功を返すが消えない")を一切使わない。
+          if (fs.existsSync(dest)) { fs.unlinkSync(j.abs); } // 同内容が既にimg/にある→元を除去するだけ
+          else { try { fs.renameSync(j.abs, dest); } catch (_) { fs.copyFileSync(j.abs, dest); fs.unlinkSync(j.abs); } }
+          movedN++;
+        }
+      } catch (e) { importErr = (e && e.message) || String(e); if (!fs.existsSync(dest)) continue; } // コピーすら無ければリンクは書き換えない
       let rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>';
       edit.replace(document.uri, new vscode.Range(j.ln, j.urlStart, j.ln, j.urlStart + j.rawLen), rel);
-      if (!trashJobs.some(t => t.src === j.abs)) trashJobs.push({ src: j.abs, dest });
     }
     await vscode.workspace.applyEdit(edit);
-    const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'always');
-    let trashedN = 0, hardN = 0, trashErr = '';
-    if (mode !== 'never' && trashJobs.length) {
-      let doTrash = (mode !== 'ask'); // always→即・ask→確認
-      if (mode === 'ask') {
-        const pick = await vscode.window.showInformationMessage('MeOS: imported ' + trashJobs.length + ' image(s) into img/. Move the original(s) to Trash? (a copy is kept in img/)', 'Move to Trash', 'Keep');
-        doTrash = (pick === 'Move to Trash');
-      }
-      if (doTrash) for (const tj of trashJobs) {
-        try {
-          if (!(fs.existsSync(tj.dest) && fs.existsSync(tj.src) && fs.statSync(tj.dest).size === fs.statSync(tj.src).size)) continue; // ★複製が確実(サイズ一致)な時だけ元を消す
-          try { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: true }); } catch (_) {}
-          if (!fs.existsSync(tj.src)) { trashedN++; continue; } // ゴミ箱移動が実際に効いた
-          // ★外付けHFS等では useTrash が"成功を返すのに実際は消えない"→存在確認して残っていたら通常削除でmoveを完遂(複製確認済み)
-          try { await vscode.workspace.fs.delete(vscode.Uri.file(tj.src), { useTrash: false }); } catch (_) {}
-          if (!fs.existsSync(tj.src)) hardN++; else trashErr = 'could not remove ' + tj.src;
-        } catch (e2) { trashErr = (e2 && e2.message) || String(e2); }
-      }
+    if (mode === 'ask' && askJobs.length) {
+      const pick = await vscode.window.showInformationMessage('MeOS: copied ' + askJobs.length + ' image(s) into img/. Remove the original(s)? (the img/ copy stays)', 'Remove', 'Keep');
+      if (pick === 'Remove') for (const a of askJobs) { try { if (fs.existsSync(a.dest) && fs.existsSync(a.src) && fs.statSync(a.dest).size === fs.statSync(a.src).size) { fs.unlinkSync(a.src); movedN++; copiedN--; } } catch (e) { importErr = (e && e.message) || String(e); } }
     }
-    if (trashErr) { try { vscode.window.showWarningMessage('MeOS: 元データの削除に失敗しました（img/のコピーは無事です）: ' + trashErr); } catch (_) {} }
-    const removed = trashedN + hardN;
-    const removedMsg = removed ? ('（元 ' + removed + ' を' + (hardN ? '削除🗑 ※ゴミ箱の使えない場所' : 'ゴミ箱へ🗑') + '）') : '';
-    vscode.window.setStatusBarMessage('MeOS: 画像 ' + jobs.length + ' 枚を img/ に取り込みました' + removedMsg + ' 🖼', 4000);
+    if (importErr) { try { vscode.window.showWarningMessage('MeOS: 画像取り込みで一部失敗（img/のコピーは無事）: ' + importErr); } catch (_) {} }
+    const verb = (movedN && !copiedN) ? '移動' : (copiedN && !movedN) ? 'コピー' : '取り込み';
+    vscode.window.setStatusBarMessage('MeOS: 画像 ' + (movedN + copiedN) + ' 枚を img/ に' + verb + 'しました 🖼', 4000);
     return jobs.length;
   } catch (err) { try { vscode.window.showWarningMessage('MeOS image import failed: ' + (err && err.message)); } catch (_) {} return 0; }
   finally { _imgImportBusy = false; }
