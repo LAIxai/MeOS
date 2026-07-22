@@ -4,9 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.1 era — highlights (2026-07 →)
 
-### v3.1.0 — Image membranes (the forbidden fruit of Markdown)
-- **Tuck an image link inside a membrane, fold it, and your plain text stays plain.** The membrane shows just its name; hover the header and the real picture pops up right there. Expand it and hover the `![](…)` line directly for the same.
-- Loads local files (relative to the document, or absolute) and `data:` URIs — png / jpg / gif / webp / bmp / svg / ico, up to 12 MB.
+### v3.1.0–3.1.1 — Image membranes (the forbidden fruit of Markdown)
+- **Tuck an image link inside a membrane, fold it, and your plain text stays plain.** The membrane shows just its name; hover the folded header and the real picture pops up right there.
+- Loads local files (relative to the document, or absolute) and `data:` URIs — png / jpg / gif / webp / bmp / svg / ico. Large images render fine (they load by path, not by inlining megabytes of data).
+- A visible `![](…)` line still gets Markdown's own image hover — the membrane's job is to reveal a *folded* picture on demand.
 - A big picture no longer pollutes the text world — you see it, sharp, only when you want to. That both-worlds trick is what a membrane makes possible.
 
 ## v3.0 era — highlights (2026-07 →)
