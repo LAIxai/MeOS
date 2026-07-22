@@ -4,9 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.0 era — highlights (2026-07 →)
 
-### v3.0.3 — Wrapping a table is your call now
+### v3.0.3–3.0.4 — Wrapping a table is your call now
 - **A table never wraps itself in a membrane.** The old rule ("tables of 8+ rows wrap automatically on format") is gone — no more membrane comments appearing around a table you only wanted aligned.
-- **One checkable menu item instead of two.** The ▾ menu now shows **✓ 膜化する**: a green check when the table under the cursor is wrapped, empty when it isn't. Click to toggle wrap ⇄ unwrap.
+- **One checkable menu item instead of two.** The ▾ menu shows **✓ Membrane this table**: a green check when the table the cursor is in is wrapped, empty when it isn't. Click to toggle wrap ⇄ unwrap.
+- Opening the ▾ menu no longer leaves a tooltip covering it.
 
 ### v3.0.1–3.0.2 — Sharper column alignment
 - **CJK columns line up tighter.** Padding is computed from each row's running position instead of rounding every cell on its own, so the drift that used to build up toward the right edge is gone. Set `laiMembrane.tableCjkWidth = 2` for a perfectly even grid in a fixed-width font.
