@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.0(俊克 7/22 am11:26 Geminiと話して発案「mdの禁断の果実=画像のインライン表示」・フェーズ4の前に): ★画像膜(Image Membrane)。膜の本文に `![alt](path)` を仕込み、普段は折り畳んで名前だけ見せる→**見出し行(折り畳み時)または画像リンク行(展開時)にホバーで実画像をポップ表示**。でかい絵がプレーンテキストの世界を汚さず、見たい時だけはっきり見える=「範囲を閉じる」膜だからこそ両立。★重要な技術的制約=VS Code/VSCodiumのテキストエディタは行高固定で**本文への原寸画像埋め込みは不可**(唯一可能なeditorInsetsはproposed API=公開拡張で封印)→ホバーが最も"インライン"に近い実現(俊克に説明し選択肢4=ホバー先/Me Dock原寸は後の2段階でと合意・まずホバーを実装)。実装(node hover 追加のみ・webview不変)=①MEOS_IMG_LINK_RE でmd画像リンク抽出(`<...>`括弧パス/title付き対応)②meosResolveImageDataUri=相対(文書フォルダ基準)/絶対/file:を解決しfs読み込み→base64 data URI(png/jpg/gif/webp/bmp/svg/avif/ico・12MB上限・data:はそのまま・http(s)は非対応)③imageMembraneHoverMessage=ホバー行が画像リンクならそれ、OPEN行なら本文を対応closeまで走査し最初の画像を拾う→MarkdownString(isTrusted+supportHtml)で`<img height=260>`④provideHoverチェーンの末尾(グリフ固有ホバーが外れた領域のフォールバック)に追加。※現状ゲート無し(画像リンクを含む膜でのみ発火=未使用時は不可視)。次段=折り畳みヘッダに🖼マーカー+Me Dock原寸表示。テスト素材=MeOS直下 image-membrane-test.md + test-image.png(240x160 赤緑青)。→ [[project_phased_release]]
 // - v3.0.5(俊克 7/22 am10:42 v3.0.4テストNG 改良1=「▼の上にマウスを置くと今まで通り日本語混じりのtipが出る/▼をクリックしてもtipが消えない」): ★真因2つ。①日本語混じりtip=v3.0.3で**▼caret自身のdata-tip**に「Toggle ✓ 膜化する to wrap…」と書いていた(v3.0.4はボタンラベルのtipだけ英語化し、caretのtipを見落とした)→caretのdata-tipから「膜化する」を除き「Toggle ✓ Membrane this table to wrap the table the cursor is in …」に。②クリックしてもtipが残る=v3.0.4のガードは「table-popが開いている間、メニュー外のtipを抑止」だが、既に**表示中**のtipはshowTocTipが再発火しないと消えない→マウス静止でクリックすると残る。→caretクリックで開く瞬間に hideTocTip() を明示呼び出し(既存の副メニュー/栞メニューと同じ即時消去)。webviewのみ(caret data-tip + click handlerに hideTocTip)・node不変。※残る「膜化する」7件は全てJSコメント内=ユーザー可視tipは grep で0件確認済。→ [[project_table_formatter]]
 // - v3.0.4(俊克 7/22 am10:14 v3.0.3テストOK「期待通りの動き」→改良2点): ①改良1=表の▾プルアップメニュー(table-pop)を開いている間はtipを抑止(開いた瞬間、表ボタン/▾自身のtipがメニューを覆っていた)。showTocTip冒頭に「table-popが.onかつホバー先がメニュー外ならhideして返す」ガードを追加=栞/参照メニューの既存挙動(v1.0.26)と統一。メニュー内の項目tipは従来通り.bm-pop.on分岐が左端に出す(覆わない)。②改良2=チェック項目のラベルを日本語「膜化する」→英語「Membrane this table」に(俊克「今カーソルがいるテーブルが対象と分かりやすく」)。tipも「Membrane this table | Wrap the table the cursor is in …」に。webviewのみ(HTML+showTocTipガード)・node不変。→ [[project_table_formatter]]
 // - v3.0.3(俊克 7/22 am10:03 v3.0.2テストOK→提案「表の自動生成はバッジ非表示にして、メニューに『✓ 膜化する』という設定項目を付けた方がいい」): ★表の膜化を**自動から明示トグルへ**。①**自動膜化を撤去**=旧v0.9.999154の「整形時に8行以上の表は自動で膜化」を削除(勝手に `<!-- {* ▼mCN=table_… // 📋 表 *} -->` が付かなくなった。長い日記等で表を整形するたびに膜バッジが増える煩わしさを解消)。②▾メニューの2項目(📋 Wrap / ✂️ Unwrap)を**1つのチェック式トグル「✓ 膜化する」に統合**=今の表が膜化済みなら緑✓、素の表なら空欄。クリックで膜化⇄解除。表の外ではグレーアウト(opacity 0.4)。③状態同期=meosTableWrapStateAtCursor(null=表の外/false=素/true=膜化済み)を毎selectionのmode messageに載せ、メニューを開く直前(および開いている間のカーソル移動)に✓を更新。トグル実行後は updateMeDockMode() で即反映。node(helper+toggleハンドラ+mode message+format自動膜化削除)+webview(HTML 2項目→1トグル/CSS .tw-check/mode handlerで__tableWrapped保持/開く直前に__renderTableWrapCheck)。→ [[project_table_formatter]]
@@ -16262,6 +16263,56 @@ class MembraneFoldingProvider {
   notifyRangesChanged() { try { this._emitter.fire(); } catch(_) {} }
 }
 let membraneFoldingProviderInstance = null;
+// v3.1.0(俊克 7/22 am11:26 Geminiと話して発案「mdの禁断の果実=画像のインライン表示」): ★画像膜。
+// 膜の本文に ![alt](path) を仕込み、普段は折り畳んで名前(+🖼)だけ見せる→見出し行(または画像リンク行)にホバーで実画像をポップ表示。
+// でかい絵がプレーンテキストの世界を汚さず、見たい時だけ、はっきり見える。「範囲を閉じる」膜だからこそ両立する(エディタ本文への原寸埋め込みはproposed API editorInsets限定で公開拡張では不可→ホバーが最も"インライン"に近い実現)。
+const MEOS_IMG_LINK_RE = /!\[[^\]]*\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+["'][^"']*["'])?\s*\)/;
+function meosResolveImageDataUri(document, rawUrl) {
+  try {
+    let url = String(rawUrl || '').trim();
+    if (url.startsWith('<') && url.endsWith('>')) url = url.slice(1, -1).trim();
+    if (!url) return null;
+    if (/^data:image\//i.test(url)) return url; // 既にdata URI=そのまま
+    if (/^https?:\/\//i.test(url)) return null; // リモートはホバーで不可(ローカル/data のみ・原寸はMe Dockで後日)
+    const path = require('path'), fs = require('fs');
+    let fsPath = decodeURI(url.replace(/^file:\/\//i, ''));
+    if (!path.isAbsolute(fsPath)) fsPath = path.join(path.dirname(document.uri.fsPath || ''), fsPath);
+    if (!fs.existsSync(fsPath)) return null;
+    const st = fs.statSync(fsPath);
+    if (!st.isFile() || st.size > 12 * 1024 * 1024) return null; // 12MB超はホバーに載せない
+    const ext = path.extname(fsPath).toLowerCase().replace('.', '');
+    const mime = ext === 'jpg' ? 'jpeg' : (ext === 'svg' ? 'svg+xml' : ext);
+    if (!/^(png|jpeg|gif|webp|bmp|svg\+xml|avif|ico)$/.test(mime)) return null;
+    return 'data:image/' + mime + ';base64,' + fs.readFileSync(fsPath).toString('base64');
+  } catch (_) { return null; }
+}
+function imageMembraneHoverMessage(document, position) {
+  try {
+    if (!document || !position) return null;
+    const line = position.line, text = document.lineAt(line).text;
+    let imgUrl = null;
+    const here = MEOS_IMG_LINK_RE.exec(text);
+    if (here) imgUrl = here[1]; // 展開時=画像リンク行の上に直接ホバー
+    else {
+      const open = parseOpenLine(text);
+      if (open) { // 折り畳み時=見出し行にホバー→本文を走査して最初の画像リンクを拾う
+        for (let ln = line + 1; ln < document.lineCount && ln < line + 2000; ln++) {
+          const t = document.lineAt(ln).text;
+          const c = parseCloseLine(t); if (c && c.id === open.id) break;
+          const mm = MEOS_IMG_LINK_RE.exec(t); if (mm) { imgUrl = mm[1]; break; }
+        }
+      }
+    }
+    if (!imgUrl) return null;
+    const md = new vscode.MarkdownString();
+    md.isTrusted = true; md.supportHtml = true;
+    const dataUri = meosResolveImageDataUri(document, imgUrl);
+    md.value = dataUri
+      ? '<img src="' + dataUri + '" alt="" height="260" />'
+      : '🖼 ' + String(imgUrl).replace(/[<>]/g, '') + '\n\n_(loads local files or data: URIs only, ≤12MB)_';
+    return md;
+  } catch (_) { return null; }
+}
 function membraneArrowHoverMessage(editor, position) {
   if (!editor || !position) return null;
   const info = membraneLineInfo(editor.document, position.line);
@@ -16914,6 +16965,9 @@ makeDecorations();
         if (mstatMsg) return new vscode.Hover(mstatMsg);
         const arrowMsg = membraneArrowHoverMessage(editor, position);
         if (arrowMsg) return new vscode.Hover(arrowMsg);
+        // v3.1.0(俊克): 画像膜=見出し行/画像リンク行にホバーで実画像をポップ表示(グリフ固有ホバーが外れた領域のフォールバック)。
+        const imgMsg = imageMembraneHoverMessage(document, position);
+        if (imgMsg) return new vscode.Hover(imgMsg);
         return undefined;
       }
     }),
