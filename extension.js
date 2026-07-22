@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.2.4(俊克 7/22 pm07:09 v3.2.3テストOK「やっと拡大できた」＋改良2点): ①改良1=画像ビューアで**Shift押下中は縮小カーソル＋Shift+クリックで縮小**(点ズームの逆・factor 0.625)。document keydown/keyupでカーソル切替。②★改良2=**画像リンクの自動取り込み**。Markdownに画像リンクを貼付/ドロップ(完全な![](…)が一括挿入)した瞬間、実体を **<docdir>/img/ にコピーして相対リンク `img/名前` に貼り替え**る(手作業の移動が不要)。元データはゴミ箱へ=設定 `laiMembrane.imageAutoImportTrash`(ask=毎回確認[既定]/always=即ゴミ箱/never=触らない)。img/に実体が残る＋ゴミ箱は復元可なので安全。実装=onDidChangeTextDocumentで挿入テキストに完全な画像リンクがある時だけ発火(タイピングは1文字ずつなので誤爆せず・Undo/Redo除外・_imgImportBusyで自edit再入防止・data:/http/既にimg/配下/画像拡張子以外はスキップ・同名別内容は連番)。設定 `laiMembrane.imageAutoImport`(既定true)でON/OFF。node+webview+package.json。★★フェーズ5ゲート(日曜前)に**この自動取り込み(meosAutoImportImagesInLinesのonDidChangeTextDocument発火)も要ガード**(ファイルを動かす機能なのでテーブル解禁リリースに漏らさないこと)。★続き=(1)折り畳みヘッダの豆粒サムネ。→ [[project_phased_release]]
 // - v3.2.3(俊克 7/22 pm06:40 v3.2.2テストNG バグ1「拡大鏡⊕が機能しない・Me Dock幅が最大で全体拡大の限界・部分拡大にならない」): ★真因＝**VS Code webviewの既定スタイルが `img{max-width:100%}` を注入**していて、`IMG.style.width=200%` にしても `min(200%,100%)=100%` に潰され、+ボタンもクリック点ズームも**パネル幅で頭打ち**になっていた(v3.2.1/3.2.2で+もクリックも効かなかった症状が全部これで説明つく)。→ `.iv-img{max-width:none !important;max-height:none !important}` で上書き。これで width>100% が枠を超え、zoomAt(クリック点中心+その点を画面中央へスクロール)が本来動作＝部分をどんどん拡大できる。webview CSS 1行。→ [[project_phased_release]]
 // - v3.2.2(俊克 7/22 pm06:11 v3.2.1テストOK&NG 改良1「通常膜のように↻/Reset/Setを配置=固有名詞化してどこからでもワープ(取説の図一覧等)」＋改良2「虫眼鏡⊕でクリックした部分をもっと拡大したい・+はMe Dock幅までしか拡大できない」): ①改良1=画像ビューアのEdit Me行を通常のEdit Meと同じ**↻(Time Stamp)/Reset/Set**の3ボタンに(✓単体をやめる)。↻=imageMembraneStamp→node refreshTrailingTimestampで末尾TSを付け直し入力欄に戻す(Setで適用=一意名でワープ先化)/Reset=入力を現在名に戻す/Set=imageMembraneRename。色も通常Edit Meに合わせ橙/赤/緑。②★改良2=**虫眼鏡⊕の点ズーム**を実装。旧=画像クリックで100%⇔200%の一律ズーム→新=**クリックした点を中心にpct×1.6で拡大し、その点を画面中央へスクロール**(Me Dock幅を超えて拡大可・最大790%到達で次クリックはfitに戻す)。Ctrl/⌘+ホイールもカーソル位置基準の点ズームに。applyZoomはwidth%指定のまま(block化済みで枠超え可)。webview(CSS/HTML/JS)+node(stampハンドラ)。★続き=(1)折り畳みヘッダの豆粒サムネ。→ [[project_phased_release]]
 // - v3.2.1(俊克 7/22 pm05:35 v3.2.0テストOK&NG バグ1「虫眼鏡ボタンが効かない」＋改良3点): ①★バグ1真因=iv-stageが `display:flex`＝**flex-shrinkが画像を枠幅に縮め戻す**ためズームが視覚に出なかった→stageをblock(`text-align:center`)・画像を`display:block;margin:0 auto;width:100%`に。pct>100%で枠を超え overflow:auto でスクロール(左端も届く)。②改良1=**Edit Meを絵の上に常設**(iv-name-row=ラベル🖼+入力+✓)→画像膜の**改名**が同時に可能(Enter/✓で imageMembraneRename→node renameMeWithName・カーソルはその膜内なのでcurrentMembranePairForRenameが対象)。③改良2=**⇦の右肩に⇨バッジ**(iv-split・MeOSの主+肩バッジ流用)。④改良3=**＋の右肩に⊖(zoom out)・右腰に⊙(fit)**の3ボタン合体。node(rename handler)+webview(CSS/HTML/JS)+CSPは既存。★続き=(1)折り畳みヘッダの豆粒サムネ。→ [[project_phased_release]]
@@ -15218,7 +15219,7 @@ window.addEventListener('message',event=>{const m=event.data;if(m&&m.type==='opR
 /* v3.2.0(俊克 7/22): Me Dock 画像ビューア(オーバーレイ)。画像膜にカーソルが来ると通常Me Dockに被さり、膜内の画像を横幅一杯で表示。虫眼鏡ズーム(クリック/＋−/Ctrl+ホイール)・複数は⇦⇨・×で通常Me Dockへ戻る。パネル幅を変えれば画像も伸縮(width:100%)。 */
 (function(){var V=document.getElementById('img-viewer');if(!V)return;var IMG=document.getElementById('iv-img'),NIN=document.getElementById('iv-name'),NGO=document.getElementById('iv-name-go'),NST=document.getElementById('iv-name-stamp'),NRS=document.getElementById('iv-name-reset'),CNT=document.getElementById('iv-count'),BP=document.getElementById('iv-prev'),BN=document.getElementById('iv-next'),BZI=document.getElementById('iv-zin'),BZO=document.getElementById('iv-zout'),BZF=document.getElementById('iv-zfit'),BC=document.getElementById('iv-close'),STAGE=document.getElementById('iv-stage');var list=[],idx=0,pct=100,name='';function clampPct(p){return Math.max(20,Math.min(800,Math.round(p)));}function applyZoom(){IMG.style.width=pct+'%';}
 /* v3.2.2(俊克 改良2): 虫眼鏡⊕=クリックした点を中心にさらに拡大(Me Dock幅を超えてもよい・その点を画面中央へスクロール)。最大到達で fit に戻す。 */
-function zoomAt(cx,cy,factor){var r=IMG.getBoundingClientRect();var fx=r.width?(cx-r.left)/r.width:0.5,fy=r.height?(cy-r.top)/r.height:0.5;fx=Math.max(0,Math.min(1,fx));fy=Math.max(0,Math.min(1,fy));pct=clampPct(pct*factor);applyZoom();requestAnimationFrame(function(){STAGE.scrollLeft=fx*IMG.offsetWidth-STAGE.clientWidth/2;STAGE.scrollTop=fy*IMG.offsetHeight-STAGE.clientHeight/2;});}function renderIdx(){if(idx<0)idx=list.length-1;if(idx>=list.length)idx=0;IMG.src=list[idx].src;CNT.textContent=list.length>1?((idx+1)+' / '+list.length):'';var single=(list.length<2);BP.disabled=single;if(BN)BN.classList.toggle('disabled',single);pct=100;applyZoom();STAGE.scrollTop=0;STAGE.scrollLeft=0;}function render(){if(!list.length){V.classList.remove('on');return;}if(NIN&&document.activeElement!==NIN)NIN.value=name;renderIdx();V.classList.add('on');}window.__imgViewer=function(m){if(m&&m.images&&m.images.length){list=m.images;name=m.name||'';idx=0;render();}else{list=[];V.classList.remove('on');}};function go(d){if(list.length<2)return;idx=(idx+d+list.length)%list.length;renderIdx();}function zoom(f){pct=clampPct(pct*f);applyZoom();}function commitName(){if(!NIN)return;var v=(NIN.value||'').trim();if(v&&v!==name){vscode.postMessage({type:'imageMembraneRename',value:v});NIN.blur();}}if(BP)BP.addEventListener('click',function(){go(-1);});if(BN)BN.addEventListener('click',function(){go(1);});if(BZI)BZI.addEventListener('click',function(){zoom(1.25);});if(BZO)BZO.addEventListener('click',function(){zoom(0.8);});if(BZF)BZF.addEventListener('click',function(){pct=100;applyZoom();STAGE.scrollTop=0;STAGE.scrollLeft=0;});if(BC)BC.addEventListener('click',function(){V.classList.remove('on');});if(IMG)IMG.addEventListener('click',function(ev){if(pct>=790){pct=100;applyZoom();STAGE.scrollTop=0;STAGE.scrollLeft=0;return;}zoomAt(ev.clientX,ev.clientY,1.6);});if(NGO)NGO.addEventListener('click',commitName);if(NRS)NRS.addEventListener('click',function(){if(NIN){NIN.value=name;NIN.focus();}});if(NST)NST.addEventListener('click',function(){if(NIN)vscode.postMessage({type:'imageMembraneStamp',value:NIN.value||name});});if(NIN)NIN.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();commitName();}else if(ev.key==='Escape'){NIN.value=name;NIN.blur();}});window.__imgViewerStamp=function(v){if(NIN&&typeof v==='string')NIN.value=v;};if(STAGE)STAGE.addEventListener('wheel',function(ev){if(!ev.ctrlKey&&!ev.metaKey)return;ev.preventDefault();zoomAt(ev.clientX,ev.clientY,ev.deltaY<0?1.12:0.9);},{passive:false});})();
+function zoomAt(cx,cy,factor){var r=IMG.getBoundingClientRect();var fx=r.width?(cx-r.left)/r.width:0.5,fy=r.height?(cy-r.top)/r.height:0.5;fx=Math.max(0,Math.min(1,fx));fy=Math.max(0,Math.min(1,fy));pct=clampPct(pct*factor);applyZoom();requestAnimationFrame(function(){STAGE.scrollLeft=fx*IMG.offsetWidth-STAGE.clientWidth/2;STAGE.scrollTop=fy*IMG.offsetHeight-STAGE.clientHeight/2;});}function renderIdx(){if(idx<0)idx=list.length-1;if(idx>=list.length)idx=0;IMG.src=list[idx].src;CNT.textContent=list.length>1?((idx+1)+' / '+list.length):'';var single=(list.length<2);BP.disabled=single;if(BN)BN.classList.toggle('disabled',single);pct=100;applyZoom();STAGE.scrollTop=0;STAGE.scrollLeft=0;}function render(){if(!list.length){V.classList.remove('on');return;}if(NIN&&document.activeElement!==NIN)NIN.value=name;renderIdx();V.classList.add('on');}window.__imgViewer=function(m){if(m&&m.images&&m.images.length){list=m.images;name=m.name||'';idx=0;render();}else{list=[];V.classList.remove('on');}};function go(d){if(list.length<2)return;idx=(idx+d+list.length)%list.length;renderIdx();}function zoom(f){pct=clampPct(pct*f);applyZoom();}function commitName(){if(!NIN)return;var v=(NIN.value||'').trim();if(v&&v!==name){vscode.postMessage({type:'imageMembraneRename',value:v});NIN.blur();}}if(BP)BP.addEventListener('click',function(){go(-1);});if(BN)BN.addEventListener('click',function(){go(1);});if(BZI)BZI.addEventListener('click',function(){zoom(1.25);});if(BZO)BZO.addEventListener('click',function(){zoom(0.8);});if(BZF)BZF.addEventListener('click',function(){pct=100;applyZoom();STAGE.scrollTop=0;STAGE.scrollLeft=0;});if(BC)BC.addEventListener('click',function(){V.classList.remove('on');});if(IMG)IMG.addEventListener('click',function(ev){if(ev.shiftKey){zoomAt(ev.clientX,ev.clientY,0.625);return;}if(pct>=790){pct=100;applyZoom();STAGE.scrollTop=0;STAGE.scrollLeft=0;return;}zoomAt(ev.clientX,ev.clientY,1.6);});/* v3.2.4(俊克 改良1): Shift押下中は縮小カーソル(zoom-out)＋Shift+クリックで縮小。 */document.addEventListener('keydown',function(ev){if(ev.key==='Shift'&&IMG)IMG.style.cursor='zoom-out';});document.addEventListener('keyup',function(ev){if(ev.key==='Shift'&&IMG)IMG.style.cursor='';});if(NGO)NGO.addEventListener('click',commitName);if(NRS)NRS.addEventListener('click',function(){if(NIN){NIN.value=name;NIN.focus();}});if(NST)NST.addEventListener('click',function(){if(NIN)vscode.postMessage({type:'imageMembraneStamp',value:NIN.value||name});});if(NIN)NIN.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();commitName();}else if(ev.key==='Escape'){NIN.value=name;NIN.blur();}});window.__imgViewerStamp=function(v){if(NIN&&typeof v==='string')NIN.value=v;};if(STAGE)STAGE.addEventListener('wheel',function(ev){if(!ev.ctrlKey&&!ev.metaKey)return;ev.preventDefault();zoomAt(ev.clientX,ev.clientY,ev.deltaY<0?1.12:0.9);},{passive:false});})();
 </script></body></html>`;
 }
 
@@ -16325,6 +16326,60 @@ function meosImageToViewerData(document, rawUrl, alt) {
     return { src: 'data:image/' + mime + ';base64,' + fs.readFileSync(fsPath).toString('base64'), label };
   } catch (_) { return null; }
 }
+// v3.2.4(俊克 7/22 pm07:09): 画像リンクを貼った/落とした時、実体を <docdir>/img/ にコピーして相対リンクに貼り替える(手作業の移動を不要に)。元データはゴミ箱へ(設定 imageAutoImportTrash=ask/always/never)。復元可能なゴミ箱移動＋img/に実体が残るので安全。
+let _imgImportBusy = false;
+function meosImageAutoImportEnabled() { try { return !!vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImport', true); } catch (_) { return false; } }
+async function meosAutoImportImagesInLines(document, lineList) {
+  if (_imgImportBusy) return;
+  const path = require('path'), fs = require('fs');
+  const docPath = document.uri.fsPath; if (!docPath) return;
+  const docDir = path.dirname(docPath), imgDir = path.join(docDir, 'img');
+  const jobs = [];
+  for (const ln of lineList) {
+    if (ln < 0 || ln >= document.lineCount) continue;
+    const text = document.lineAt(ln).text;
+    MEOS_IMG_LINK_RE_G.lastIndex = 0; let m;
+    while ((m = MEOS_IMG_LINK_RE_G.exec(text))) {
+      const raw = m[2]; let url = raw; if (url.startsWith('<') && url.endsWith('>')) url = url.slice(1, -1).trim();
+      if (/^(data:|https?:)/i.test(url) || !url) continue;
+      let src; try { src = decodeURI(url.replace(/^file:\/\//i, '')); } catch (_) { src = url.replace(/^file:\/\//i, ''); }
+      let abs = path.normalize(path.isAbsolute(src) ? src : path.join(docDir, src));
+      if ((abs + path.sep).toLowerCase().startsWith((imgDir + path.sep).toLowerCase())) continue; // 既に img/ 配下
+      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) continue;
+      if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs).slice(1))) continue;
+      let p = m[0].indexOf('](') + 2; while (p < m[0].length && /\s/.test(m[0][p])) p++; // URL開始位置(空白スキップ)
+      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs) });
+    }
+  }
+  if (!jobs.length) return;
+  _imgImportBusy = true;
+  try {
+    if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
+    const edit = new vscode.WorkspaceEdit(), trashList = [];
+    for (const j of jobs) {
+      let destName = j.base, dest = path.join(imgDir, destName), i = 1;
+      while (fs.existsSync(dest) && fs.statSync(dest).size !== fs.statSync(j.abs).size) { // 同名で中身が違う=連番
+        const e = path.extname(j.base), b = path.basename(j.base, e); destName = b + '_' + i + e; dest = path.join(imgDir, destName); i++;
+      }
+      if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest);
+      let rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>';
+      edit.replace(document.uri, new vscode.Range(j.ln, j.urlStart, j.ln, j.urlStart + j.rawLen), rel);
+      if (trashList.indexOf(j.abs) < 0) trashList.push(j.abs);
+    }
+    await vscode.workspace.applyEdit(edit);
+    const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'ask');
+    if (mode !== 'never' && trashList.length) {
+      let doTrash = (mode === 'always');
+      if (mode === 'ask') {
+        const pick = await vscode.window.showInformationMessage('MeOS: imported ' + trashList.length + ' image(s) into img/. Move the original file(s) to Trash? (a copy is kept in img/)', 'Move to Trash', 'Keep');
+        doTrash = (pick === 'Move to Trash');
+      }
+      if (doTrash) for (const p of trashList) { try { await vscode.workspace.fs.delete(vscode.Uri.file(p), { useTrash: true, recursive: false }); } catch (_) {} }
+    }
+    vscode.window.setStatusBarMessage('MeOS: 画像を img/ に取り込みました 🖼', 2500);
+  } catch (err) { try { vscode.window.showWarningMessage('MeOS image import failed: ' + (err && err.message)); } catch (_) {} }
+  finally { _imgImportBusy = false; }
+}
 // カーソルの Current Me(膜)内の画像リンクを全部集める(URLのみ・軽い)。画像が無ければ null。
 function meosCollectMembraneImageUrls(editor) {
   try {
@@ -17169,6 +17224,15 @@ makeDecorations();
       // v0.9.715: 🔖 ブックマークの行ズレを追従(gate前に全変更で実行)。
       adjustBookmarksForChange(e);
       noteMeEditForAccess(e); // v0.9.954: 編集が現在膜で起きたら訪問を計上
+      // v3.2.4(俊克): 画像リンクを貼付/ドロップした瞬間=完全な ![](…) が一括挿入された時、実体を img/ に取り込む(タイピングは1文字ずつなので発火しない)。Undo/Redoは除外。
+      try {
+        const _R = vscode.TextDocumentChangeReason;
+        if (meosImageAutoImportEnabled() && !_imgImportBusy && e.document.uri.scheme === 'file' && isMarkdownDocument(e.document) && !(_R && (e.reason === _R.Undo || e.reason === _R.Redo))) {
+          const _il = new Set();
+          for (const ch of e.contentChanges) { const t = ch.text || ''; if (/!\[[^\]]*\]\([^)]*\)/.test(t)) { const s = ch.range.start.line, n = (t.match(/\n/g) || []).length; for (let k = 0; k <= n; k++) _il.add(s + k); } }
+          if (_il.size) meosAutoImportImagesInLines(e.document, Array.from(_il));
+        }
+      } catch (_) {}
       // v0.9.99911: ★ペースト検知方式は撤去(俊克 6/24 am09:14: 環境依存で5回不発・誤爆/混乱)。
       //   クリップボード消去は確実な経路に一本化=①🔐施錠後②🔓解錠後(合言葉を残さない)③📋 Copy&auto-clear(秘密を選択→コピー→N秒後消去)。
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替

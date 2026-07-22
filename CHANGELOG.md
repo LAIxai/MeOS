@@ -4,9 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.1 era — highlights (2026-07 →)
 
-### v3.2.0 — Image membrane viewer in Me Dock
-- **Put the cursor in an image membrane and Me Dock overlays a full viewer** — the picture at full panel width, with ⇦ ⇨ to walk multiple images, a magnifier zoom (click / ＋ − / Ctrl+wheel), and × to drop back to the normal dock.
-- **Drag the Me Dock panel wider and the image grows with it** — the resize the hover could never give you.
+### v3.2.0–3.2.4 — Image membrane viewer in Me Dock
+- **Put the cursor in an image membrane and Me Dock overlays a full viewer** — the picture at full panel width, with ⇦ ⇨ to walk multiple images and × to drop back to the normal dock.
+- **A magnifier that zooms into the spot you click** (Shift+click to zoom out; Ctrl/Cmd+wheel too), well past panel width, so you can inspect a detail.
+- **Rename the membrane right there** — the same ↻ / Reset / Set controls as a normal membrane, so an image gets a unique, warp-to name (handy for a manual's figure list).
+- **Drag the Me Dock panel wider and the image grows with it** — the resize a hover could never give you.
+- **Paste or drop an image and it files itself.** MeOS copies the image into an `img/` folder beside the document, rewrites the link to point there, and offers to Trash the original — no more moving files by hand. Configurable via `laiMembrane.imageAutoImport` / `imageAutoImportTrash`.
 
 ### v3.1.0–3.1.2 — Image membranes (the forbidden fruit of Markdown)
 - **Tuck an image link inside a membrane, fold it, and your plain text stays plain.** The membrane shows just its name; hover the folded header and the real picture pops up right there.
