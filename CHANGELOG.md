@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.0 era — highlights (2026-07 →)
 
+### v3.0.3 — Wrapping a table is your call now
+- **A table never wraps itself in a membrane.** The old rule ("tables of 8+ rows wrap automatically on format") is gone — no more membrane comments appearing around a table you only wanted aligned.
+- **One checkable menu item instead of two.** The ▾ menu now shows **✓ 膜化する**: a green check when the table under the cursor is wrapped, empty when it isn't. Click to toggle wrap ⇄ unwrap.
+
+### v3.0.1–3.0.2 — Sharper column alignment
+- **CJK columns line up tighter.** Padding is computed from each row's running position instead of rounding every cell on its own, so the drift that used to build up toward the right edge is gone. Set `laiMembrane.tableCjkWidth = 2` for a perfectly even grid in a fixed-width font.
+- **A merged cell's overflow is shared across the columns it spans**, so no single column balloons while its neighbours stay narrow.
+
 ### v3.0.0 — Tables (phased release · Phase 3)
 - **Markdown tables you can actually work in.** The grid button in Me Dock formats the table under your cursor; **Tab / Shift+Tab** and **↑ / ↓** walk cell to cell instead of dropping you into raw pipes.
 - **Merged cells that survive as plain Markdown.** A merge is recorded in a comment, so the file stays valid GFM everywhere else — the merge is drawn in the editor, never baked into the text.
