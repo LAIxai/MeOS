@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.3.2(俊克 7/23 am11:05 v3.3.1テストOK「🖼ボタン消滅」＋改良1「Me Dock画像ビューアの起動条件=シフトドラッグ時に自動 or imgリンク行にカーソルが入った時」＋観察「シフトドラッグ後Undoすると真パス `../../../../Users/…/Desktop/…` が一瞬見える」): ★ビューアの起動を**膜に依存しない**よう拡張=①画像リンクを含む膜の中→その膜の全画像(従来)②**膜の外でも、カーソル行に画像リンクがあれば前後の連続する画像リンク行(貼った一群)を集めて表示**。→「imgリンク行にカーソルが入ったら開く」を実現し、ドロップ直後も新リンク行にカーソルが来るので自動起動(両案を1つで満たす)。meosCollectMembraneImageUrlsにフォールバック追加(meosScanImgLinesヘルパ抽出)。※Undo観察=v3.3.0が正しく動く証拠(VS Codeが真のDesktopパスでリンク挿入→MeOSが一瞬でimg/へ書換)。注意=import後にUndoするとリンクは真パスに戻るが実体は既にimg/へmove済=そのリンクは切れる(move＝FS操作でundoスタック外・仕様上の限界)。node のみ(webview不変)。→ [[project_phased_release]]
 // - v3.3.1(俊克 7/23 am10:52 v3.3.0テストOK「画像膜か否かに関係なく、シフトドラッグで貼付と同時に元がimg/へ移動する。元ファイルがMeOSの中に移動したように見える👍」→「🖼ボタンは不要になった」): ★自動取り込みが真の元ファイルまで届くようになった(v3.3.0)ので、手動の**🖼ボタンを撤去**(ビューアEdit Me行の↻左)。webviewのボタン/JS配線+node imageMembraneImportハンドラを削除。※既存の外部リンクを一括取り込む用途が将来必要なら、コマンド化で復活可(YAGNIで今は入れない)。webview+node。→ [[project_phased_release]]
 // - v3.3.0(俊克 7/23 am10:17 v3.2.9テストNG「moveでも元が消えない・moveの仕様は本当に元を消すのか?」): ★真因を実ファイルで特定=**MeOSのmoveは正しく動いている**(img/に新規10.12.51等が有り・docDirから消え・リンクもimg/に書換済)。消えないのは"真の元"=**VS Codeが既定でドロップ/貼付画像をワークスペース(docDir)へ複製し、そのバレ名リンクを挿す**→MeOSはdocDir複製をimg/へmoveするだけで、システムSSDにある"真の元"には届かない(リンク先=複製)。→**VS Codeの複製を無効化**: activate時に `markdown.editor.drop.copyIntoWorkspace` と `editor.filePaste.copyIntoWorkspace` を Global で `never` に設定(初回のみ通知・imageAutoImport有効時のみ)。こうすると真のパスへのリンクが入り、MeOSのmoveがシステムSSDの元を直接img/へ移せる。※Finderの拡張子非表示は無関係(pngは付いている)・アクセス権も無関係(docDir複製は問題なく移動できていた)。node のみ。→ [[project_phased_release]]
 // - v3.2.9(俊克 7/23 am02:32/02:42 v3.2.8テストNG「まったく変わらない」＋改良案1「copyでなくmoveで移動」＋情報「テストのリンク先はシステムSSD・mdは外付けT7」): ★俊克の改良案1を全面採用=**copy+delete をやめ MOVE に**。真因の総まとめ=①VS Codeのゴミ箱API(workspace.fs.delete useTrash)が外付けで"成功を返すのに消えない" ②既存テスト膜はリンクが既に img/ で"何も起きない"。→**Node fs で move**: 同ボリューム=`fs.renameSync`(原子移動)/別ボリューム(システムSSD→外付けT7=EXDEV)=`fs.copyFileSync`+`fs.unlinkSync`。**削除はfs.unlinkSync**=VS Codeゴミ箱APIを一切使わない(クロスボリュームmoveをドライラン検証済=src消滅/dest生成)。設定=always→move(既定)/never→copyのみ/ask→copy後に確認して元をunlink。★診断=画像リンクだがファイルが見つからない件数を数え、0取り込み時に「N件はファイルが見つからず取り込めません」と通知(パス解決の問題を切り分け)。node のみ。→ [[project_phased_release]]
@@ -16394,19 +16395,29 @@ async function meosAutoImportImagesInLines(document, lineList) {
   } catch (err) { try { vscode.window.showWarningMessage('MeOS image import failed: ' + (err && err.message)); } catch (_) {} return 0; }
   finally { _imgImportBusy = false; }
 }
-// カーソルの Current Me(膜)内の画像リンクを全部集める(URLのみ・軽い)。画像が無ければ null。
+// カーソル位置の画像を集める(URLのみ・軽い)。画像が無ければ null。
+// v3.3.2(俊克 改良1): ①画像リンクを含む膜の中 → その膜の全画像。②膜の外でも、カーソル行に画像リンクがあれば → 前後の連続する画像リンク行(貼った一群)を集める。=膜に関係なく「画像リンク行にカーソルが入ったら」ビューアが開く(ドロップ直後も新リンク行にカーソルが来るので自動起動)。
+function meosScanImgLines(doc, s, e, out) {
+  for (let ln = s; ln <= e; ln++) { const text = doc.lineAt(ln).text; MEOS_IMG_LINK_RE_G.lastIndex = 0; let m; while ((m = MEOS_IMG_LINK_RE_G.exec(text))) out.push({ alt: m[1] || '', url: m[2] }); }
+}
 function meosCollectMembraneImageUrls(editor) {
   try {
     if (!editor) return null;
-    const pair = findCurrentPair(editor); if (!pair) return null;
-    if ((pair.end - pair.start) > 400) return null; // 巨大な膜は画像膜でない前提=毎カーソル移動で全走査しない(性能)
-    const doc = editor.document; const out = [];
-    const end = Math.min(pair.end, doc.lineCount - 1);
-    for (let ln = pair.start; ln <= end; ln++) {
-      const text = doc.lineAt(ln).text; MEOS_IMG_LINK_RE_G.lastIndex = 0; let m;
-      while ((m = MEOS_IMG_LINK_RE_G.exec(text))) out.push({ alt: m[1] || '', url: m[2] });
+    const doc = editor.document;
+    const pair = findCurrentPair(editor);
+    if (pair && (pair.end - pair.start) <= 400) { // ①膜の中(巨大膜は性能のため除外)
+      const out = []; meosScanImgLines(doc, pair.start, Math.min(pair.end, doc.lineCount - 1), out);
+      if (out.length) return { id: pair.id || '', start: pair.start, imgs: out };
     }
-    return out.length ? { id: pair.id || '', start: pair.start, imgs: out } : null;
+    // ②膜の外=カーソル行(+前後の連続する画像リンク行)に画像があれば見せる
+    const IMG_LINE = /!\[[^\]]*\]\([^)]*\)/;
+    const cur = editor.selection.active.line;
+    if (cur < 0 || cur >= doc.lineCount || !IMG_LINE.test(doc.lineAt(cur).text)) return null;
+    let s = cur, e = cur;
+    while (s - 1 >= 0 && IMG_LINE.test(doc.lineAt(s - 1).text)) s--;
+    while (e + 1 < doc.lineCount && IMG_LINE.test(doc.lineAt(e + 1).text)) e++;
+    const out = []; meosScanImgLines(doc, s, e, out);
+    return out.length ? { id: 'images', start: s, imgs: out } : null;
   } catch (_) { return null; }
 }
 // 変化時だけエンコード&送信(選択変更ごとの再エンコードを避ける)。画像膜を離れたら images:[] で閉じる。
