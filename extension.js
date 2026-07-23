@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.6.7(俊克 7/24 am00:04 v3.6.6テストOK&NG 改良1「画像ビューアのEdit Meに『images』と出るのは無意味・ここはこの画像リンクが入っている膜の名称を編集するもの・膜を選択せず膜名を修正できる簡便な手段でもある」): ★真因=画像リンクが膜の外(または400行超の大膜内)にある時、meosCollectMembraneImageUrlsの生パス/line-clusterフォールバックが `id:'images'` を返していた→Edit Meに'images'表示。→**含んでいる膜の名前(findCurrentPairのid)を使う**(大膜でもidは取れる・膜の外なら空)。rename自体は元々 currentMembranePairForRename でカーソルの膜を対象にしていたので、表示名が正しくなれば「膜を選択せず膜名編集」が成立。node のみ(1行)。→ [[project_phased_release]]
 // - v3.6.6(俊克 7/23 pm11:49「長い膜で画像リンクの場所が分からない時、ビューアを消すと開始膜に行かないとリンクへ行けず煩わしい・Hyper IDXの⬇️の左に🖼ボタンを追加し押すとリンク現場へワープ+ビューア表示・戻るボタンで戻れる・開始膜🖼ポップアップかMe Dock🖼ボタンの2手段」): ★Me Dockの Hyper IDX 行に **🖼ボタン**を追加(⬇️の左・margin-left:autoを🖼へ移し右寄せ)。押すと**現在の膜の最初の画像リンク行へワープ**(unfold+revealRange InCenter)＋**ビューア強制表示**(_lastImgMembraneSig=nullで×/Escで閉じていても再オープン)。長い膜でも画像の現場へ一発。画像リンクが無ければステータス通知。node(gotoMembraneImageハンドラ)+webview(ボタン+配線)。→ [[project_phased_release]]
 // - v3.6.5(俊克 7/23 pm11:18/11:25「円の縁がガタガタ・真円に描けないか」→「白地の円は黒縁不要・真っ白い円＋中心に点でいい」): ⊙カーソルの丸から**黒縁strokeを撤去**(細い1.2px strokeのアンチエイリアスがガタガタの原因)→**塗り潰しの真っ白い円＋中心に黒点**のみ(fillはstrokeより滑らか)。ハンドル(黒+白縁・2/3長)は不変。webview のみ(cursor差し替え)。→ [[project_phased_release]]
 // - v3.6.4(俊克 7/23 pm11:07 v3.6.3テストOK&NG 改良1「白地の円の真中に黒い点というイメージに・ハンドルを2/3に短く・丸は白地/ハンドルは黒地というコントラストの違い」): ★⊙カーソル再デザイン。**丸=白塗り(fill白)＋細い黒縁＋中心に黒点**(白地に黒点)／**ハンドル=黒(白縁付き・ダーク対策)で長さ2/3**(端18.5→16)。丸(白)とハンドル(黒)のコントラスト。20px・hotspotレンズ中心(8,8)。webview のみ(cursor差し替え)。→ [[project_phased_release]]
@@ -16516,7 +16517,8 @@ function meosCollectMembraneImageUrls(editor) {
     while (s - 1 >= 0 && IMG_LINE.test(doc.lineAt(s - 1).text)) s--;
     while (e + 1 < doc.lineCount && IMG_LINE.test(doc.lineAt(e + 1).text)) e++;
     const out = []; meosScanImgLines(doc, s, e, out);
-    return out.length ? { id: 'images', start: s, imgs: out } : null;
+    // v3.6.7(俊克): Edit Me には**この画像リンクを含む膜の名前**を出す(膜を選択せず膜名を編集できる簡便な手段)。'images'という無意味名をやめ、カーソルの膜名(400行超の大膜でもidは取れる)・膜の外なら空。
+    return out.length ? { id: (pair ? (pair.id || '') : ''), start: s, imgs: out } : null;
   } catch (_) { return null; }
 }
 // 変化時だけエンコード&送信(選択変更ごとの再エンコードを避ける)。画像膜を離れたら images:[] で閉じる。
