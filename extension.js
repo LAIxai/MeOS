@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.0(俊克 7/23 am11:40 v3.3.3テストOK「パーペキ完成」→次の課題(1)「膜の最初の絵を開始膜の先頭に額縁のように表示・バッジ指定でなく標準機能として・絵が1つ以上入っているのが分かる」): ★画像膜の**額縁サムネ(標準機能)**を実装。膜の本文に画像リンクがあれば、その膜の**開始行の先頭**に最初の画像の小さな額縁(装飾 before.contentIconPath・行高サイズ1.9em×1.2em)を表示。畳んでも「この膜に絵が入っている」が一目で分かる=ホバー/Me Dockが"大きく見る"担当、これは"在るのが分かる"担当。実装=meosApplyImageThumbDecorations(可視範囲のみ走査・開始膜行→本文の最初の解決できるfile画像→1つのdecoration typeにper-range renderOptions.before.contentIconPathでUri指定)＋meosResolveImageFileUri(file画像のみ・data:/リモート非対応)。refresh()とonDidChangeTextEditorVisibleRangesにフック。★フェーズ5隔離ゲートは今や5箇所目(このサムネ装飾も日曜前にgate)。node のみ(webview不変)。→ [[project_phased_release]]
 // - v3.3.3(俊克 7/23 am11:23 v3.3.2テストNG バグ1「シフトドラッグ時にMe Dockにオーバーラップしない・一旦リンク外へ出て中に入ると表示される」＋俊克の的確な診断「最初のドラッグ時はカーソルがリンク内に居るが"外→中"の変化を捉えられない・初期状態を"外に居た"にしてモード変数を変化させたように見せればいい」): ★その通り=取り込み直後はカーソルが既に画像リンク行に居て、しかも_lastImgMembraneSigが重複判定で再送しない(＋リンク書換のapplyEditが選択変更を発火しないと最終img/状態がpostされない)→ビューアが開かない。→**meosAutoImportImagesInLinesの最後で `_lastImgMembraneSig=null` にリセットして90ms後にpostMeDockImageMembraneを強制再実行**(カーソルが画像リンク行に居れば開く=俊克案の"外→中を作る")。node のみ。→ [[project_phased_release]]
 // - v3.3.2(俊克 7/23 am11:05 v3.3.1テストOK「🖼ボタン消滅」＋改良1「Me Dock画像ビューアの起動条件=シフトドラッグ時に自動 or imgリンク行にカーソルが入った時」＋観察「シフトドラッグ後Undoすると真パス `../../../../Users/…/Desktop/…` が一瞬見える」): ★ビューアの起動を**膜に依存しない**よう拡張=①画像リンクを含む膜の中→その膜の全画像(従来)②**膜の外でも、カーソル行に画像リンクがあれば前後の連続する画像リンク行(貼った一群)を集めて表示**。→「imgリンク行にカーソルが入ったら開く」を実現し、ドロップ直後も新リンク行にカーソルが来るので自動起動(両案を1つで満たす)。meosCollectMembraneImageUrlsにフォールバック追加(meosScanImgLinesヘルパ抽出)。※Undo観察=v3.3.0が正しく動く証拠(VS Codeが真のDesktopパスでリンク挿入→MeOSが一瞬でimg/へ書換)。注意=import後にUndoするとリンクは真パスに戻るが実体は既にimg/へmove済=そのリンクは切れる(move＝FS操作でundoスタック外・仕様上の限界)。node のみ(webview不変)。→ [[project_phased_release]]
 // - v3.3.1(俊克 7/23 am10:52 v3.3.0テストOK「画像膜か否かに関係なく、シフトドラッグで貼付と同時に元がimg/へ移動する。元ファイルがMeOSの中に移動したように見える👍」→「🖼ボタンは不要になった」): ★自動取り込みが真の元ファイルまで届くようになった(v3.3.0)ので、手動の**🖼ボタンを撤去**(ビューアEdit Me行の↻左)。webviewのボタン/JS配線+node imageMembraneImportハンドラを削除。※既存の外部リンクを一括取り込む用途が将来必要なら、コマンド化で復活可(YAGNIで今は入れない)。webview+node。→ [[project_phased_release]]
@@ -10488,6 +10489,7 @@ function setDecoCached(editor, deco, tag, ranges) {
 function refresh(editor = vscode.window.activeTextEditor) {
   activeEditor = editor;
   try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
+  try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
@@ -16932,6 +16934,47 @@ function meosApplyTableMergeDecorations(editor) {
   } catch (_) {}
 }
 
+// v3.4.0(俊克 7/23): ★画像膜の額縁サムネ(標準機能)。膜の本文に画像リンクがあれば、その膜の**開始行の先頭**に最初の画像の小さな額縁(行高サイズ)を装飾で表示=畳んでも「この膜に絵が入っている」が一目で分かる。ホバー/Me Dockが"大きく見る"担当、これは"在るのが分かる"担当。可視範囲のみ走査(性能)・data:/リモートは非対応(file画像のみ)。
+let imageThumbDecoration = null;
+function meosResolveImageFileUri(document, rawUrl) {
+  try {
+    let url = String(rawUrl || '').trim();
+    if (url.startsWith('<') && url.endsWith('>')) url = url.slice(1, -1).trim();
+    if (!url || /^(data:|https?:)/i.test(url)) return null; // data:/リモートはcontentIconPath非対応
+    const path = require('path'), fs = require('fs');
+    let raw = url.replace(/^file:\/\//i, ''); let fsPath; try { fsPath = decodeURI(raw); } catch (_) { fsPath = raw; }
+    if (!path.isAbsolute(fsPath)) fsPath = path.join(path.dirname(document.uri.fsPath || ''), fsPath);
+    if (!fs.existsSync(fsPath) || !fs.statSync(fsPath).isFile()) return null;
+    if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/i.test(path.extname(fsPath).slice(1))) return null;
+    return vscode.Uri.file(fsPath);
+  } catch (_) { return null; }
+}
+function meosApplyImageThumbDecorations(editor) {
+  if (!editor || !editor.document) return;
+  if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(imageThumbDecoration, []); return; }
+    const doc = editor.document; const opts = [];
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        const open = parseOpenLine(doc.lineAt(ln).text); if (!open) continue; // 開始膜行だけ
+        let uri = null;
+        for (let bl = ln + 1; bl < doc.lineCount && bl < ln + 400; bl++) { // 本文の最初の"解決できる"画像リンク
+          const t = doc.lineAt(bl).text;
+          const c = parseCloseLine(t); if (c && c.id === open.id) break;
+          MEOS_IMG_LINK_RE.lastIndex = 0; const mm = MEOS_IMG_LINK_RE.exec(t);
+          if (mm) { const u = meosResolveImageFileUri(doc, mm[1]); if (u) { uri = u; break; } }
+        }
+        if (!uri) continue;
+        opts.push({ range: new vscode.Range(ln, 0, ln, 0), renderOptions: { before: { contentIconPath: uri, width: '1.9em', height: '1.2em', margin: '0 0.45em 0 0' } } }); // 開始行の先頭に額縁(行高サイズ)
+      }
+    }
+    editor.setDecorations(imageThumbDecoration, opts);
+  } catch (_) {}
+}
+
 function activate(context) {
   extensionContext = context;
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
@@ -16993,7 +17036,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158: スクロールで結合装飾を追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.4.0: スクロールで結合装飾+額縁サムネを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));

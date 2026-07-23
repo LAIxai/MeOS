@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.1 era — highlights (2026-07 →)
 
+### v3.4.0 — A little framed thumbnail on the membrane header
+- **A membrane that holds an image shows a tiny framed thumbnail at the start of its opening line** — so even folded, you can tell at a glance that a picture lives inside. Hover / Me Dock are for *seeing it big*; this is for *knowing it's there*. Standard, no marker needed.
+
 ### v3.2.0–3.2.4 — Image membrane viewer in Me Dock
 - **Put the cursor in an image membrane and Me Dock overlays a full viewer** — the picture at full panel width, with ⇦ ⇨ to walk multiple images and × to drop back to the normal dock.
 - **A magnifier that zooms into the spot you click** (Shift+click to zoom out; Ctrl/Cmd+wheel too), well past panel width, so you can inspect a detail.
