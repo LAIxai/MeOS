@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.5(俊克 7/23 pm03:50 v3.4.4テストNG「やはりimgフォルダが作られない・リンクも従来型で元の位置を指したまま」): ★スクショで真因確定=挿入されたのが `![](…)` mdリンクでなく**生の絶対パス**(`/Users/itocci2/Desktop/…png` が行としてそのまま)。=v3.3.0の `copyIntoWorkspace:never` の副作用で、VS Codeがワークスペース外ファイルをmdリンクでなく**生パスで挿入**することがある→自動取り込みは`![](…)`しか見ないので素通り(img/も作られず)。→**生の画像パス行も取り込む**よう拡張=①onDidChangeTextDocumentのトリガを画像拡張子を含む挿入でも発火②job収集で「行に![が無く、trim後が実在する画像ファイルのパス」ならbare jobとして拾う③適用時 bare は `![](img/名前)` に変換(生パス→markdown画像リンク)。実ファイルでドライラン検証済(urlStart/rawLen/置換文字列OK)。※質問1=非画像ファイル(PDF等)はまだ未対応(画像のみ)=一般化は次段。node のみ。→ [[project_phased_release]]
 // - v3.4.4(俊克 7/23 pm03:30 v3.4.3テストOK「🖼は生データに無い仮想=栞と同じ・ポップ画像クリックでリンク行へワープ👍」＋改良1「シフトドラッグ時にimgフォルダが無いと移動できない・自動作成して」): ★取り込み時の img/ 自動作成を確実化=`if(!existsSync)`ガードを外し常に `fs.mkdirSync(imgDir,{recursive:true})`(既存でも無害・existsSync誤判定でも作る)＋失敗時は明示警告してreturn。※俊克の洞察=シフトドラッグでの"移動"は絵に限らずPDF等あらゆるファイルで成立し、単なる「絵をノートに入れる」を超える(＝将来は画像以外のファイルリンクもimg/等へ移動する一般化の布石)。今回は画像のみ。node のみ。→ [[project_phased_release]]
 // - v3.4.3(俊克 7/23 pm00:43 v3.4.2テストOK「🖼ホバーで絵がポップ👍」＋改良2点): ①改良1=**ホバー画像をクリックするとその画像リンクがある行へワープ**(畳んでいれば展開)。imageMembraneHoverMessageで画像のある行(imgLine)を覚え、`<img>`を `<a href="command:laiMembrane.jumpToImageLine?[imgLine]">` で包む＋コマンド登録(選択移動+editor.unfold+revealRange InCenter)。②改良2=**Current Me(Me Dockのピン)にも 🖼**。currentMembraneInfoに hasImage(膜本文に画像リンクがあるか・可視範囲不問で膜内400行走査)を追加、webview pinRowHtmlで名前頭に🖼を前置。node+webview。→ [[project_phased_release]]
 // - v3.4.2(俊克 7/23 pm00:23 v3.4.1テストNG「微妙に出方は違うがサイズは小さくならない」→改良1「とりあえず絵文字🖼を膜名の頭に付けよう・画像リンクが1つ以上ある条件で」): ★contentIconPathはtype側width/heightでもサイズが効かない(原寸)と確定→**実画像サムネを諦め、🖼絵文字マーカーに切替**(装飾contentText・確実/軽量/非破壊)。膜本文に画像リンクが1つ以上あれば開始行の先頭に🖼を表示。meosApplyImageThumbDecorationsを絵文字版に簡素化(画像リンクの存在チェックのみ・解決不要)。※俊克の「macのsipsで画像から小絵文字/サムネをリアルタイム生成」案=実現可だがmac専用+shell依存なので保留(将来の任意サイズ・インライン画像の布石)。node のみ。→ [[project_phased_release]]
@@ -16365,7 +16366,20 @@ async function meosAutoImportImagesInLines(document, lineList) {
       if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs).slice(1))) continue;
       if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { unresolved++; continue; } // ★画像リンクだがファイルが見つからない=診断用に数える
       let p = m[0].indexOf('](') + 2; while (p < m[0].length && /\s/.test(m[0][p])) p++; // URL開始位置(空白スキップ)
-      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs) });
+      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs), bare: false });
+    }
+    // v3.4.5(俊克 バグ1): ![]で囲まれていない**生の画像パス**の行も取り込む(VS Codeが copyIntoWorkspace:never で生パスを挿すことがある)→ ![](img/名前) に変換。行に![が無く、trim後が実在する画像ファイルのパスの時だけ。
+    if (text.indexOf('![') < 0) {
+      const trimmed = text.trim();
+      let bu = trimmed; if (bu.startsWith('<') && bu.endsWith('>')) bu = bu.slice(1, -1).trim();
+      if (bu && !/^(data:|https?:)/i.test(bu)) {
+        let src2; try { src2 = decodeURI(bu.replace(/^file:\/\//i, '')); } catch (_) { src2 = bu.replace(/^file:\/\//i, ''); }
+        const abs2 = path.normalize(path.isAbsolute(src2) ? src2 : path.join(docDir, src2));
+        if (!(abs2 + path.sep).toLowerCase().startsWith((imgDir + path.sep).toLowerCase()) && /^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs2).slice(1))) {
+          if (fs.existsSync(abs2) && fs.statSync(abs2).isFile()) { jobs.push({ ln, urlStart: text.indexOf(trimmed), rawLen: trimmed.length, abs: abs2, base: path.basename(abs2), bare: true }); }
+          else unresolved++;
+        }
+      }
     }
   }
   if (!jobs.length) { if (unresolved) { try { vscode.window.setStatusBarMessage('MeOS: 画像リンク ' + unresolved + ' 件はファイルが見つからず取り込めません（パスを確認）', 4000); } catch (_) {} } return 0; }
@@ -16390,7 +16404,9 @@ async function meosAutoImportImagesInLines(document, lineList) {
           movedN++;
         }
       } catch (e) { importErr = (e && e.message) || String(e); if (!fs.existsSync(dest)) continue; } // コピーすら無ければリンクは書き換えない
-      let rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>';
+      let rel;
+      if (j.bare) { rel = /\s/.test(destName) ? ('![](<img/' + destName + '>)') : ('![](img/' + destName + ')'); } // 生パス→markdown画像リンクに変換
+      else { rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>'; }
       edit.replace(document.uri, new vscode.Range(j.ln, j.urlStart, j.ln, j.urlStart + j.rawLen), rel);
     }
     await vscode.workspace.applyEdit(edit);
@@ -17314,7 +17330,8 @@ makeDecorations();
         const _R = vscode.TextDocumentChangeReason;
         if (meosImageAutoImportEnabled() && !_imgImportBusy && e.document.uri.scheme === 'file' && isMarkdownDocument(e.document) && !(_R && (e.reason === _R.Undo || e.reason === _R.Redo))) {
           const _il = new Set();
-          for (const ch of e.contentChanges) { const t = ch.text || ''; if (/!\[[^\]]*\]\([^)]*\)/.test(t)) { const s = ch.range.start.line, n = (t.match(/\n/g) || []).length; for (let k = 0; k <= n; k++) _il.add(s + k); } }
+          // v3.4.5(俊克 バグ1): ![](…)リンクだけでなく**生の画像パス**(VS Codeが copyIntoWorkspace:never でmdリンクでなく生パスを挿すことがある)も拾えるよう、画像拡張子を含む挿入でも発火。
+          for (const ch of e.contentChanges) { const t = ch.text || ''; if (/!\[[^\]]*\]\([^)]*\)/.test(t) || /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)(\s|$|>|\)|\])/i.test(t)) { const s = ch.range.start.line, n = (t.match(/\n/g) || []).length; for (let k = 0; k <= n; k++) _il.add(s + k); } }
           if (_il.size) meosAutoImportImagesInLines(e.document, Array.from(_il));
         }
       } catch (_) {}
