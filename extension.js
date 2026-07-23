@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.2(俊克 7/23 pm00:23 v3.4.1テストNG「微妙に出方は違うがサイズは小さくならない」→改良1「とりあえず絵文字🖼を膜名の頭に付けよう・画像リンクが1つ以上ある条件で」): ★contentIconPathはtype側width/heightでもサイズが効かない(原寸)と確定→**実画像サムネを諦め、🖼絵文字マーカーに切替**(装飾contentText・確実/軽量/非破壊)。膜本文に画像リンクが1つ以上あれば開始行の先頭に🖼を表示。meosApplyImageThumbDecorationsを絵文字版に簡素化(画像リンクの存在チェックのみ・解決不要)。※俊克の「macのsipsで画像から小絵文字/サムネをリアルタイム生成」案=実現可だがmac専用+shell依存なので保留(将来の任意サイズ・インライン画像の布石)。node のみ。→ [[project_phased_release]]
 // - v3.4.1(俊克 7/23 am11:57 v3.4.0テストNG「84924行の膜が分からないくらい最初の画像がバカでかく表示・逆にこんなでかくインライン表示できるんだね」): ★真因=`before.contentIconPath`の**per-instance renderOptionsに書いたwidth/heightが効かず原寸(巨大)描画**(スクショで数百px級が数行を覆う)。★これは重要な発見=**decorationで大きなインライン画像が描ける**(以前「本文に原寸画像は不可能=editorInsets限定」と言ったのは誤り)。→修正=**サイズをdecoration type側にpxで固定**(type=額縁の箱 width:38px/height:24px/margin/枠線、per-instance=contentIconPathのみ、をVS Codeがマージ)。これで小さな額縁になる想定。node のみ。※もしtype側でも効かなければ次段はSVGラッパ(固定寸法)かgutterIconに切替。→ [[project_phased_release]]
 // - v3.4.0(俊克 7/23 am11:40 v3.3.3テストOK「パーペキ完成」→次の課題(1)「膜の最初の絵を開始膜の先頭に額縁のように表示・バッジ指定でなく標準機能として・絵が1つ以上入っているのが分かる」): ★画像膜の**額縁サムネ(標準機能)**を実装。膜の本文に画像リンクがあれば、その膜の**開始行の先頭**に最初の画像の小さな額縁(装飾 before.contentIconPath・行高サイズ1.9em×1.2em)を表示。畳んでも「この膜に絵が入っている」が一目で分かる=ホバー/Me Dockが"大きく見る"担当、これは"在るのが分かる"担当。実装=meosApplyImageThumbDecorations(可視範囲のみ走査・開始膜行→本文の最初の解決できるfile画像→1つのdecoration typeにper-range renderOptions.before.contentIconPathでUri指定)＋meosResolveImageFileUri(file画像のみ・data:/リモート非対応)。refresh()とonDidChangeTextEditorVisibleRangesにフック。★フェーズ5隔離ゲートは今や5箇所目(このサムネ装飾も日曜前にgate)。node のみ(webview不変)。→ [[project_phased_release]]
 // - v3.3.3(俊克 7/23 am11:23 v3.3.2テストNG バグ1「シフトドラッグ時にMe Dockにオーバーラップしない・一旦リンク外へ出て中に入ると表示される」＋俊克の的確な診断「最初のドラッグ時はカーソルがリンク内に居るが"外→中"の変化を捉えられない・初期状態を"外に居た"にしてモード変数を変化させたように見せればいい」): ★その通り=取り込み直後はカーソルが既に画像リンク行に居て、しかも_lastImgMembraneSigが重複判定で再送しない(＋リンク書換のapplyEditが選択変更を発火しないと最終img/状態がpostされない)→ビューアが開かない。→**meosAutoImportImagesInLinesの最後で `_lastImgMembraneSig=null` にリセットして90ms後にpostMeDockImageMembraneを強制再実行**(カーソルが画像リンク行に居れば開く=俊克案の"外→中を作る")。node のみ。→ [[project_phased_release]]
@@ -16935,45 +16936,29 @@ function meosApplyTableMergeDecorations(editor) {
   } catch (_) {}
 }
 
-// v3.4.0(俊克 7/23): ★画像膜の額縁サムネ(標準機能)。膜の本文に画像リンクがあれば、その膜の**開始行の先頭**に最初の画像の小さな額縁(行高サイズ)を装飾で表示=畳んでも「この膜に絵が入っている」が一目で分かる。ホバー/Me Dockが"大きく見る"担当、これは"在るのが分かる"担当。可視範囲のみ走査(性能)・data:/リモートは非対応(file画像のみ)。
+// v3.4.0/3.4.2(俊克 7/23): ★画像膜マーカー(標準機能)。膜の本文に画像リンクが1つ以上あれば、その膜の**開始行の先頭に 🖼 絵文字**を装飾(contentText)で表示=畳んでも「この膜に絵が入っている」が一目で分かる。★v3.4.0/3.4.1の実画像サムネ(contentIconPath)はサイズ制御が効かず原寸(巨大)になったため、確実・軽量・非破壊(ファイルを汚さない)な絵文字マーカーに切替。可視範囲のみ走査(性能)。
 let imageThumbDecoration = null;
-function meosResolveImageFileUri(document, rawUrl) {
-  try {
-    let url = String(rawUrl || '').trim();
-    if (url.startsWith('<') && url.endsWith('>')) url = url.slice(1, -1).trim();
-    if (!url || /^(data:|https?:)/i.test(url)) return null; // data:/リモートはcontentIconPath非対応
-    const path = require('path'), fs = require('fs');
-    let raw = url.replace(/^file:\/\//i, ''); let fsPath; try { fsPath = decodeURI(raw); } catch (_) { fsPath = raw; }
-    if (!path.isAbsolute(fsPath)) fsPath = path.join(path.dirname(document.uri.fsPath || ''), fsPath);
-    if (!fs.existsSync(fsPath) || !fs.statSync(fsPath).isFile()) return null;
-    if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/i.test(path.extname(fsPath).slice(1))) return null;
-    return vscode.Uri.file(fsPath);
-  } catch (_) { return null; }
-}
 function meosApplyImageThumbDecorations(editor) {
   if (!editor || !editor.document) return;
-  // v3.4.1(俊克 バグ1): per-instanceのwidth/heightが効かず原寸(巨大)描画→**サイズをdecoration type側にpxで固定**。type=額縁の箱(width/height/margin/枠線)、per-instance=contentIconPathだけ、をVS Codeがマージする。
-  if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ before: { width: '38px', height: '24px', margin: '0 6px 0 0', border: '1px solid rgba(127,127,127,.5)' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ before: { contentText: '🖼 ', margin: '0 2px 0 0' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(imageThumbDecoration, []); return; }
-    const doc = editor.document; const opts = [];
+    const doc = editor.document; const ranges = [];
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
       for (let ln = from; ln <= to; ln++) {
         const open = parseOpenLine(doc.lineAt(ln).text); if (!open) continue; // 開始膜行だけ
-        let uri = null;
-        for (let bl = ln + 1; bl < doc.lineCount && bl < ln + 400; bl++) { // 本文の最初の"解決できる"画像リンク
+        let has = false;
+        for (let bl = ln + 1; bl < doc.lineCount && bl < ln + 400; bl++) { // 本文に画像リンクが1つでもあれば付ける
           const t = doc.lineAt(bl).text;
           const c = parseCloseLine(t); if (c && c.id === open.id) break;
-          MEOS_IMG_LINK_RE.lastIndex = 0; const mm = MEOS_IMG_LINK_RE.exec(t);
-          if (mm) { const u = meosResolveImageFileUri(doc, mm[1]); if (u) { uri = u; break; } }
+          if (MEOS_IMG_LINK_RE.test(t)) { has = true; break; }
         }
-        if (!uri) continue;
-        opts.push({ range: new vscode.Range(ln, 0, ln, 0), renderOptions: { before: { contentIconPath: uri } } }); // 開始行の先頭に額縁(サイズはtype側で固定)
+        if (has) ranges.push(new vscode.Range(ln, 0, ln, 0));
       }
     }
-    editor.setDecorations(imageThumbDecoration, opts);
+    editor.setDecorations(imageThumbDecoration, ranges);
   } catch (_) {}
 }
 
