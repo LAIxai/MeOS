@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.7(俊克 7/23 pm04:37 「altはAltキーを想起させるので不可・現状画像のみなら![img]でいい・imgへ移動した意味も伝わる・好きに書き換えればいい」): ★取り込み時の alt を **img** に統一。①生パス変換→`![img](img/…)`(v3.4.6のファイル名altをやめ img に)②markdown画像リンク取り込み時、altが**空/無意味プレースホルダ("alt text"/"image"/"alt")**なら **img** に置換(本物のalt=富士山等は保持)。job収集でalt範囲(altStart/altLen/altText)を保持し、URL置換と同時にalt置換(同一行の非重複2編集・範囲検証済)。node のみ。→ [[project_phased_release]]
 // - v3.4.6(俊克 7/23 pm04:25 v3.4.5テストOK「img/自動作成👍」＋疑問1「なぜ生パス変換の![]が空なのか・従来のalt textも意味不明」): ★生パス変換のalt空問題=元が生パス(alt無し)なので`![]`にしていた。→**alt にファイル名(拡張子なし)を入れる**=意味のある自動alt(`![スクリーンショット 2026-07-23 午後3.56.51](img/…)`)。空`![]`やVS Codeの無意味プレースホルダ"alt text"を避ける。※`![]`が空なのはimg/の有無とは無関係(元が生パスだったから)。node のみ(bare jobのrel構築のみ)。→ [[project_phased_release]]
 // - v3.4.5(俊克 7/23 pm03:50 v3.4.4テストNG「やはりimgフォルダが作られない・リンクも従来型で元の位置を指したまま」): ★スクショで真因確定=挿入されたのが `![](…)` mdリンクでなく**生の絶対パス**(`/Users/itocci2/Desktop/…png` が行としてそのまま)。=v3.3.0の `copyIntoWorkspace:never` の副作用で、VS Codeがワークスペース外ファイルをmdリンクでなく**生パスで挿入**することがある→自動取り込みは`![](…)`しか見ないので素通り(img/も作られず)。→**生の画像パス行も取り込む**よう拡張=①onDidChangeTextDocumentのトリガを画像拡張子を含む挿入でも発火②job収集で「行に![が無く、trim後が実在する画像ファイルのパス」ならbare jobとして拾う③適用時 bare は `![](img/名前)` に変換(生パス→markdown画像リンク)。実ファイルでドライラン検証済(urlStart/rawLen/置換文字列OK)。※質問1=非画像ファイル(PDF等)はまだ未対応(画像のみ)=一般化は次段。node のみ。→ [[project_phased_release]]
 // - v3.4.4(俊克 7/23 pm03:30 v3.4.3テストOK「🖼は生データに無い仮想=栞と同じ・ポップ画像クリックでリンク行へワープ👍」＋改良1「シフトドラッグ時にimgフォルダが無いと移動できない・自動作成して」): ★取り込み時の img/ 自動作成を確実化=`if(!existsSync)`ガードを外し常に `fs.mkdirSync(imgDir,{recursive:true})`(既存でも無害・existsSync誤判定でも作る)＋失敗時は明示警告してreturn。※俊克の洞察=シフトドラッグでの"移動"は絵に限らずPDF等あらゆるファイルで成立し、単なる「絵をノートに入れる」を超える(＝将来は画像以外のファイルリンクもimg/等へ移動する一般化の布石)。今回は画像のみ。node のみ。→ [[project_phased_release]]
@@ -16367,7 +16368,8 @@ async function meosAutoImportImagesInLines(document, lineList) {
       if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs).slice(1))) continue;
       if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { unresolved++; continue; } // ★画像リンクだがファイルが見つからない=診断用に数える
       let p = m[0].indexOf('](') + 2; while (p < m[0].length && /\s/.test(m[0][p])) p++; // URL開始位置(空白スキップ)
-      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs), bare: false });
+      const altOff = m[0].indexOf('[') + 1; // alt は ![ の直後(m[0]内の '[' の次)
+      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs), bare: false, altStart: m.index + altOff, altLen: (m[1] || '').length, altText: m[1] || '' });
     }
     // v3.4.5(俊克 バグ1): ![]で囲まれていない**生の画像パス**の行も取り込む(VS Codeが copyIntoWorkspace:never で生パスを挿すことがある)→ ![](img/名前) に変換。行に![が無く、trim後が実在する画像ファイルのパスの時だけ。
     if (text.indexOf('![') < 0) {
@@ -16406,11 +16408,14 @@ async function meosAutoImportImagesInLines(document, lineList) {
         }
       } catch (e) { importErr = (e && e.message) || String(e); if (!fs.existsSync(dest)) continue; } // コピーすら無ければリンクは書き換えない
       let rel;
-      if (j.bare) { // v3.4.6(俊克): 生パス→markdown画像リンク。alt は**ファイル名(拡張子なし)**=意味のある自動alt(空の![]や無意味な"alt text"を避ける)。
-        const alt = path.basename(destName, path.extname(destName)).replace(/[\[\]]/g, '');
+      if (j.bare) { // v3.4.7(俊克): 生パス→markdown画像リンク。alt は **img**(=img/へ移動した意味・"alt"はAltキーを想起させるので不可・好きに書き換え可)。
         const urlPart = /\s/.test(destName) ? ('<img/' + destName + '>') : ('img/' + destName);
-        rel = '![' + alt + '](' + urlPart + ')';
+        rel = '![img](' + urlPart + ')';
       } else { rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>'; }
+      // v3.4.7(俊克): markdown画像リンクの alt が空 or 無意味プレースホルダ("alt text"/"image"/"alt")なら **img** に置換(本物のalt=富士山等は保持)。
+      if (!j.bare && /^(?:alt text|image|alt)?$/i.test((j.altText || '').trim())) {
+        edit.replace(document.uri, new vscode.Range(j.ln, j.altStart, j.ln, j.altStart + j.altLen), 'img');
+      }
       edit.replace(document.uri, new vscode.Range(j.ln, j.urlStart, j.ln, j.urlStart + j.rawLen), rel);
     }
     await vscode.workspace.applyEdit(edit);
