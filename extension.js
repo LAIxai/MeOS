@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.3.0(俊克 7/23 am10:17 v3.2.9テストNG「moveでも元が消えない・moveの仕様は本当に元を消すのか?」): ★真因を実ファイルで特定=**MeOSのmoveは正しく動いている**(img/に新規10.12.51等が有り・docDirから消え・リンクもimg/に書換済)。消えないのは"真の元"=**VS Codeが既定でドロップ/貼付画像をワークスペース(docDir)へ複製し、そのバレ名リンクを挿す**→MeOSはdocDir複製をimg/へmoveするだけで、システムSSDにある"真の元"には届かない(リンク先=複製)。→**VS Codeの複製を無効化**: activate時に `markdown.editor.drop.copyIntoWorkspace` と `editor.filePaste.copyIntoWorkspace` を Global で `never` に設定(初回のみ通知・imageAutoImport有効時のみ)。こうすると真のパスへのリンクが入り、MeOSのmoveがシステムSSDの元を直接img/へ移せる。※Finderの拡張子非表示は無関係(pngは付いている)・アクセス権も無関係(docDir複製は問題なく移動できていた)。node のみ。→ [[project_phased_release]]
 // - v3.2.9(俊克 7/23 am02:32/02:42 v3.2.8テストNG「まったく変わらない」＋改良案1「copyでなくmoveで移動」＋情報「テストのリンク先はシステムSSD・mdは外付けT7」): ★俊克の改良案1を全面採用=**copy+delete をやめ MOVE に**。真因の総まとめ=①VS Codeのゴミ箱API(workspace.fs.delete useTrash)が外付けで"成功を返すのに消えない" ②既存テスト膜はリンクが既に img/ で"何も起きない"。→**Node fs で move**: 同ボリューム=`fs.renameSync`(原子移動)/別ボリューム(システムSSD→外付けT7=EXDEV)=`fs.copyFileSync`+`fs.unlinkSync`。**削除はfs.unlinkSync**=VS Codeゴミ箱APIを一切使わない(クロスボリュームmoveをドライラン検証済=src消滅/dest生成)。設定=always→move(既定)/never→copyのみ/ask→copy後に確認して元をunlink。★診断=画像リンクだがファイルが見つからない件数を数え、0取り込み時に「N件はファイルが見つからず取り込めません」と通知(パス解決の問題を切り分け)。node のみ。→ [[project_phased_release]]
 // - v3.2.8(俊克 7/22 pm10:51 v3.2.7テストNG「『元1をゴミ箱へ』と表示されるのにゴミ箱に移動しない」・スクショで元データ(docDir)が残存＝リンクはimg/に貼替済・img/にコピー済なのに元が消えない): ★真因＝**外付けT7(HFS)では `vscode.workspace.fs.delete(useTrash:true)` が例外を投げずに"成功を返すのに実際は消さない"**(T7の.Trashesが使えない)→v3.2.7はcatchベースのフォールバックだったため例外が出ず素通り＝元が残り、しかもtrashedN++で「ゴミ箱へ」と誤表示。→**存在確認ベース**に変更=useTrash後に `fs.existsSync(src)` で実際に消えたか確認し、残っていたら `useTrash:false`(通常削除)でmoveを完遂(複製はサイズ一致で確認済み)。表示も実結果に合わせ hardN>0 なら「削除🗑 ※ゴミ箱の使えない場所」と正直に。※ドロップ時はVS Codeが先にワークスペースへ複製を作る既定挙動があり、その複製をMeOSがimg/へ移すため、Desktop等の"真の元"はMeOSからは見えない(リンク先=複製)ので手動 or 将来DropEditProvider。node のみ。→ [[project_phased_release]]
 // - v3.2.7(俊克 7/22 pm10:39/10:46 v3.2.6テストNG「img/にコピーはされるが元データが残る」＋訂正「元はシステムSSD(内蔵APFS)・mdは外付けT7」): 既定を always にしたのに元が残る=**削除がsilent catchで握り潰されていた**(原因が見えなかった)。→削除を堅牢化=①**コピー先が存在しサイズ一致(=確実に複製済み)の時だけ**元を消す安全ガード ②useTrash失敗時は複製確認済みなので `useTrash:false`(通常削除)で"移動"を完遂(ゴミ箱不可の環境向けフォールバック) ③失敗は握り潰さず警告表示 ④ステータスに削除/ゴミ箱の別を明示。trashListを{src,dest}のtrashJobsに変えサイズ照合。※内蔵APFSはuseTrash成功するはずなので、これで原因(設定/権限/例外)が表に出る。node のみ。→ [[project_phased_release]]
@@ -16931,6 +16932,19 @@ function activate(context) {
   extensionContext = context;
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
   try { vscode.commands.executeCommand('setContext', 'meos.phase', MEOS_RELEASE_PHASE); } catch (_) {}
+  // v3.3.0(俊克 7/23): ★画像の自動取り込みを"真の元ファイル"に届かせる。VS Codeは既定でドロップ/貼付した画像をワークスペースへ複製しバレ名リンクを挿す→MeOSはその複製をimg/へmoveするだけで、システムSSD等の"真の元"に届かない。→VS Codeの複製を無効化(never)して真のパスへのリンクを入れさせ、MeOSがそれをimg/へmove(元を削除)できるようにする。初回のみ通知。
+  try {
+    if (meosImageAutoImportEnabled()) {
+      const mdCfg = vscode.workspace.getConfiguration('markdown'); let changed = false;
+      for (const key of ['editor.drop.copyIntoWorkspace', 'editor.filePaste.copyIntoWorkspace']) {
+        try { if (mdCfg.get(key) !== 'never') { mdCfg.update(key, 'never', vscode.ConfigurationTarget.Global); changed = true; } } catch (_) {}
+      }
+      if (changed && !context.globalState.get('meosDropCopyNotified')) {
+        context.globalState.update('meosDropCopyNotified', true);
+        vscode.window.showInformationMessage('MeOS: 画像のドロップ/貼付でVS Codeが行うワークスペース複製をOFFにしました。これで元画像そのものが img/ へ移動します（markdown.editor.drop/filePaste.copyIntoWorkspace = never）。MeOSの自動取り込みを切るならこの設定は戻せます。');
+      }
+    }
+  } catch (_) {}
   // v0.9.678 (対策1): window-bottom status bar item showing the cursor's current membrane.
   membraneStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   membraneStatusBarItem.name = 'MeOS Current Membrane';
