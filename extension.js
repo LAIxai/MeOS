@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.1(俊克 7/23 am11:57 v3.4.0テストNG「84924行の膜が分からないくらい最初の画像がバカでかく表示・逆にこんなでかくインライン表示できるんだね」): ★真因=`before.contentIconPath`の**per-instance renderOptionsに書いたwidth/heightが効かず原寸(巨大)描画**(スクショで数百px級が数行を覆う)。★これは重要な発見=**decorationで大きなインライン画像が描ける**(以前「本文に原寸画像は不可能=editorInsets限定」と言ったのは誤り)。→修正=**サイズをdecoration type側にpxで固定**(type=額縁の箱 width:38px/height:24px/margin/枠線、per-instance=contentIconPathのみ、をVS Codeがマージ)。これで小さな額縁になる想定。node のみ。※もしtype側でも効かなければ次段はSVGラッパ(固定寸法)かgutterIconに切替。→ [[project_phased_release]]
 // - v3.4.0(俊克 7/23 am11:40 v3.3.3テストOK「パーペキ完成」→次の課題(1)「膜の最初の絵を開始膜の先頭に額縁のように表示・バッジ指定でなく標準機能として・絵が1つ以上入っているのが分かる」): ★画像膜の**額縁サムネ(標準機能)**を実装。膜の本文に画像リンクがあれば、その膜の**開始行の先頭**に最初の画像の小さな額縁(装飾 before.contentIconPath・行高サイズ1.9em×1.2em)を表示。畳んでも「この膜に絵が入っている」が一目で分かる=ホバー/Me Dockが"大きく見る"担当、これは"在るのが分かる"担当。実装=meosApplyImageThumbDecorations(可視範囲のみ走査・開始膜行→本文の最初の解決できるfile画像→1つのdecoration typeにper-range renderOptions.before.contentIconPathでUri指定)＋meosResolveImageFileUri(file画像のみ・data:/リモート非対応)。refresh()とonDidChangeTextEditorVisibleRangesにフック。★フェーズ5隔離ゲートは今や5箇所目(このサムネ装飾も日曜前にgate)。node のみ(webview不変)。→ [[project_phased_release]]
 // - v3.3.3(俊克 7/23 am11:23 v3.3.2テストNG バグ1「シフトドラッグ時にMe Dockにオーバーラップしない・一旦リンク外へ出て中に入ると表示される」＋俊克の的確な診断「最初のドラッグ時はカーソルがリンク内に居るが"外→中"の変化を捉えられない・初期状態を"外に居た"にしてモード変数を変化させたように見せればいい」): ★その通り=取り込み直後はカーソルが既に画像リンク行に居て、しかも_lastImgMembraneSigが重複判定で再送しない(＋リンク書換のapplyEditが選択変更を発火しないと最終img/状態がpostされない)→ビューアが開かない。→**meosAutoImportImagesInLinesの最後で `_lastImgMembraneSig=null` にリセットして90ms後にpostMeDockImageMembraneを強制再実行**(カーソルが画像リンク行に居れば開く=俊克案の"外→中を作る")。node のみ。→ [[project_phased_release]]
 // - v3.3.2(俊克 7/23 am11:05 v3.3.1テストOK「🖼ボタン消滅」＋改良1「Me Dock画像ビューアの起動条件=シフトドラッグ時に自動 or imgリンク行にカーソルが入った時」＋観察「シフトドラッグ後Undoすると真パス `../../../../Users/…/Desktop/…` が一瞬見える」): ★ビューアの起動を**膜に依存しない**よう拡張=①画像リンクを含む膜の中→その膜の全画像(従来)②**膜の外でも、カーソル行に画像リンクがあれば前後の連続する画像リンク行(貼った一群)を集めて表示**。→「imgリンク行にカーソルが入ったら開く」を実現し、ドロップ直後も新リンク行にカーソルが来るので自動起動(両案を1つで満たす)。meosCollectMembraneImageUrlsにフォールバック追加(meosScanImgLinesヘルパ抽出)。※Undo観察=v3.3.0が正しく動く証拠(VS Codeが真のDesktopパスでリンク挿入→MeOSが一瞬でimg/へ書換)。注意=import後にUndoするとリンクは真パスに戻るが実体は既にimg/へmove済=そのリンクは切れる(move＝FS操作でundoスタック外・仕様上の限界)。node のみ(webview不変)。→ [[project_phased_release]]
@@ -16951,7 +16952,8 @@ function meosResolveImageFileUri(document, rawUrl) {
 }
 function meosApplyImageThumbDecorations(editor) {
   if (!editor || !editor.document) return;
-  if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  // v3.4.1(俊克 バグ1): per-instanceのwidth/heightが効かず原寸(巨大)描画→**サイズをdecoration type側にpxで固定**。type=額縁の箱(width/height/margin/枠線)、per-instance=contentIconPathだけ、をVS Codeがマージする。
+  if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ before: { width: '38px', height: '24px', margin: '0 6px 0 0', border: '1px solid rgba(127,127,127,.5)' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(imageThumbDecoration, []); return; }
     const doc = editor.document; const opts = [];
@@ -16968,7 +16970,7 @@ function meosApplyImageThumbDecorations(editor) {
           if (mm) { const u = meosResolveImageFileUri(doc, mm[1]); if (u) { uri = u; break; } }
         }
         if (!uri) continue;
-        opts.push({ range: new vscode.Range(ln, 0, ln, 0), renderOptions: { before: { contentIconPath: uri, width: '1.9em', height: '1.2em', margin: '0 0.45em 0 0' } } }); // 開始行の先頭に額縁(行高サイズ)
+        opts.push({ range: new vscode.Range(ln, 0, ln, 0), renderOptions: { before: { contentIconPath: uri } } }); // 開始行の先頭に額縁(サイズはtype側で固定)
       }
     }
     editor.setDecorations(imageThumbDecoration, opts);
