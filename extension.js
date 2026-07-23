@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.3(俊克 7/23 pm00:43 v3.4.2テストOK「🖼ホバーで絵がポップ👍」＋改良2点): ①改良1=**ホバー画像をクリックするとその画像リンクがある行へワープ**(畳んでいれば展開)。imageMembraneHoverMessageで画像のある行(imgLine)を覚え、`<img>`を `<a href="command:laiMembrane.jumpToImageLine?[imgLine]">` で包む＋コマンド登録(選択移動+editor.unfold+revealRange InCenter)。②改良2=**Current Me(Me Dockのピン)にも 🖼**。currentMembraneInfoに hasImage(膜本文に画像リンクがあるか・可視範囲不問で膜内400行走査)を追加、webview pinRowHtmlで名前頭に🖼を前置。node+webview。→ [[project_phased_release]]
 // - v3.4.2(俊克 7/23 pm00:23 v3.4.1テストNG「微妙に出方は違うがサイズは小さくならない」→改良1「とりあえず絵文字🖼を膜名の頭に付けよう・画像リンクが1つ以上ある条件で」): ★contentIconPathはtype側width/heightでもサイズが効かない(原寸)と確定→**実画像サムネを諦め、🖼絵文字マーカーに切替**(装飾contentText・確実/軽量/非破壊)。膜本文に画像リンクが1つ以上あれば開始行の先頭に🖼を表示。meosApplyImageThumbDecorationsを絵文字版に簡素化(画像リンクの存在チェックのみ・解決不要)。※俊克の「macのsipsで画像から小絵文字/サムネをリアルタイム生成」案=実現可だがmac専用+shell依存なので保留(将来の任意サイズ・インライン画像の布石)。node のみ。→ [[project_phased_release]]
 // - v3.4.1(俊克 7/23 am11:57 v3.4.0テストNG「84924行の膜が分からないくらい最初の画像がバカでかく表示・逆にこんなでかくインライン表示できるんだね」): ★真因=`before.contentIconPath`の**per-instance renderOptionsに書いたwidth/heightが効かず原寸(巨大)描画**(スクショで数百px級が数行を覆う)。★これは重要な発見=**decorationで大きなインライン画像が描ける**(以前「本文に原寸画像は不可能=editorInsets限定」と言ったのは誤り)。→修正=**サイズをdecoration type側にpxで固定**(type=額縁の箱 width:38px/height:24px/margin/枠線、per-instance=contentIconPathのみ、をVS Codeがマージ)。これで小さな額縁になる想定。node のみ。※もしtype側でも効かなければ次段はSVGラッパ(固定寸法)かgutterIconに切替。→ [[project_phased_release]]
 // - v3.4.0(俊克 7/23 am11:40 v3.3.3テストOK「パーペキ完成」→次の課題(1)「膜の最初の絵を開始膜の先頭に額縁のように表示・バッジ指定でなく標準機能として・絵が1つ以上入っているのが分かる」): ★画像膜の**額縁サムネ(標準機能)**を実装。膜の本文に画像リンクがあれば、その膜の**開始行の先頭**に最初の画像の小さな額縁(装飾 before.contentIconPath・行高サイズ1.9em×1.2em)を表示。畳んでも「この膜に絵が入っている」が一目で分かる=ホバー/Me Dockが"大きく見る"担当、これは"在るのが分かる"担当。実装=meosApplyImageThumbDecorations(可視範囲のみ走査・開始膜行→本文の最初の解決できるfile画像→1つのdecoration typeにper-range renderOptions.before.contentIconPathでUri指定)＋meosResolveImageFileUri(file画像のみ・data:/リモート非対応)。refresh()とonDidChangeTextEditorVisibleRangesにフック。★フェーズ5隔離ゲートは今や5箇所目(このサムネ装飾も日曜前にgate)。node のみ(webview不変)。→ [[project_phased_release]]
@@ -10838,7 +10839,9 @@ function currentMembraneInfo(editor) {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
     mcolor = membraneColorForOpenLineText(openText, colorForDepth(cur.depth || 0, cfg)) || '';
   } catch (_) {}
-  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total, chars, charDelta: chars - charBase, charTarget, color: mcolor, access: (Number(getMeAccessMap(editor.document)[id]) || 0), accessText: formatAccessCount(Number(getMeAccessMap(editor.document)[id]) || 0) };
+  let hasImage = false; // v3.4.3(俊克 改良2): 現在膜に画像リンクがあれば Current Me に 🖼 を付ける
+  try { const end = Math.min(cur.end, editor.document.lineCount - 1); for (let ln = cur.start; ln <= end && ln < cur.start + 400; ln++) { if (MEOS_IMG_LINK_RE.test(editor.document.lineAt(ln).text)) { hasImage = true; break; } } } catch (_) {}
+  return { name: id || '(無名)', start: cur.start + 1, end: cur.end + 1, total, delta: total - pinBaseline.total, chars, charDelta: chars - charBase, charTarget, color: mcolor, hasImage, access: (Number(getMeAccessMap(editor.document)[id]) || 0), accessText: formatAccessCount(Number(getMeAccessMap(editor.document)[id]) || 0) };
 }
 // v0.9.682 (改善1): 差分は総数の後ろに `[Δ+30]` 形式で（188の内訳が+30、と読める）。0なら非表示。
 function deltaText(delta) { return delta ? `[Δ${delta > 0 ? '+' : ''}${delta}]` : ''; }
@@ -14667,7 +14670,7 @@ function renderHyperTocTabs(toc){
   const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
   tocTabRow.innerHTML=tabsHtml+opsHtml;
 }
-function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const toggleTip=escText('Toggle fold/unfold this membrane (▼⇄▼▲). Works even when the cursor is inside the membrane.');
+function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=(cm.hasImage?'🖼 ':'')+escText(cm.name||'(無名)');const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');const toggleTip=escText('Toggle fold/unfold this membrane (▼⇄▼▲). Works even when the cursor is inside the membrane.');
   // v0.9.757: "From Out To 🟢" checkbox+glyph removed (俊克 am07:04) — the 🟢 jump system is
   // retired in favour of the bookmark (栞) and the ▼⇄▼▲ toggle. Pin keeps title/name/Ln + toggle.
   return '<div class="toc-pin"><span class="toc-pin-emoji">📍</span><span class="toc-pin-title" data-tip="'+titleTip+'">Current Me</span> <span class="toc-pin-name" data-tip="'+titleTip+'">'+nm+'</span> <span class="toc-pin-ln" data-tip="'+titleTip+'">(Ln '+cm.start+'-'+cm.end+'='+cm.total+b+')</span><span class="toc-pin-access" data-tip="この膜へのアクセス回数(膜に入る度+1・ソース不変。将来バッジへ統合)">\uD83D\uDCCAN='+(cm.accessText||'0')+'</span><button class="toc-pin-toggle" style="color:'+(cm.color||'#888')+'" data-line="'+cm.start+'" data-tip="'+toggleTip+'">▼⇄▼▲</button></div>'+meCharRowHtml(cm);}
@@ -16447,13 +16450,13 @@ function imageMembraneHoverMessage(document, position) {
   try {
     if (!document || !position) return null;
     const text = document.lineAt(position.line).text;
-    let imgUrl = null;
+    let imgUrl = null, imgLine = position.line; // v3.4.3(俊克 改良1): 画像がある行を覚え、ホバー画像クリックでそこへワープ
     const open = parseOpenLine(text);
     if (open) { // 見出し行=本文(次行〜対応close)を走査して最初の画像リンクを拾う
       for (let ln = position.line + 1; ln < document.lineCount && ln < position.line + 2000; ln++) {
         const t = document.lineAt(ln).text;
         const c = parseCloseLine(t); if (c && c.id === open.id) break;
-        const mm = MEOS_IMG_LINK_RE.exec(t); if (mm) { imgUrl = mm[1]; break; }
+        const mm = MEOS_IMG_LINK_RE.exec(t); if (mm) { imgUrl = mm[1]; imgLine = ln; break; }
       }
     } else { // 可視の画像リンク行: data: のみMeOSが出す(標準は描けない)・file/相対は標準へ委譲
       const here = MEOS_IMG_LINK_RE.exec(text);
@@ -16465,8 +16468,9 @@ function imageMembraneHoverMessage(document, position) {
     const md = new vscode.MarkdownString();
     md.isTrusted = true; md.supportHtml = true;
     const src = meosResolveImageSrc(document, imgUrl);
+    const jumpHref = 'command:laiMembrane.jumpToImageLine?' + encodeURIComponent(JSON.stringify([imgLine]));
     md.value = src
-      ? '<img src="' + src + '" alt="" height="' + meosImageHoverHeight() + '" />'
+      ? '<a href="' + jumpHref + '" title="Jump to this image\'s line"><img src="' + src + '" alt="" height="' + meosImageHoverHeight() + '" /></a>'
       : '🖼 ' + String(imgUrl).replace(/[<>]/g, '') + '\n\n_(loads local files or data: URIs only)_';
     return md;
   } catch (_) { return null; }
@@ -16966,6 +16970,17 @@ function activate(context) {
   extensionContext = context;
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
   try { vscode.commands.executeCommand('setContext', 'meos.phase', MEOS_RELEASE_PHASE); } catch (_) {}
+  // v3.4.3(俊克 改良1): ホバー画像クリック→その画像リンクがある行へワープ(畳んでいれば展開)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.jumpToImageLine', (line0) => {
+    try {
+      const editor = vscode.window.activeTextEditor || getMeDockTargetEditor(); if (!editor || typeof line0 !== 'number') return;
+      const ln = Math.max(0, Math.min(line0, editor.document.lineCount - 1));
+      const pos = new vscode.Position(ln, 0);
+      editor.selection = new vscode.Selection(pos, pos);
+      try { vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) {}
+      editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    } catch (_) {}
+  }));
   // v3.3.0(俊克 7/23): ★画像の自動取り込みを"真の元ファイル"に届かせる。VS Codeは既定でドロップ/貼付した画像をワークスペースへ複製しバレ名リンクを挿す→MeOSはその複製をimg/へmoveするだけで、システムSSD等の"真の元"に届かない。→VS Codeの複製を無効化(never)して真のパスへのリンクを入れさせ、MeOSがそれをimg/へmove(元を削除)できるようにする。初回のみ通知。
   try {
     if (meosImageAutoImportEnabled()) {
