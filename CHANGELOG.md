@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.1 era — highlights (2026-07 →)
 
+### v3.6.0 — Hover shows the first attachment, Quick Look for files
+- **Hovering a membrane header shows its first attachment in order** — an image, or, for a PDF or other file, a **Quick Look preview** (macOS). No more showing a later image when a file sits at the top.
+
 ### v3.5.0 — Drop any file, it moves into the note
 - **Drop or paste a file and MeOS moves it beside your note** — images into `img/`, everything else (PDF, zip, docx…) into `files/` — and rewrites the link to point there. Not a copy: the original is relocated, so your note becomes the one place its attachments live. (`.md` links are left untouched.)
 

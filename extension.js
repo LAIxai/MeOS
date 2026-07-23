@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.6.0(俊克 7/23 pm06:40 v3.5.1テストOK「スペース入りpdf移動👍」＋バグ1「🖼ホバーで先頭のpdfのQuick Look表示が出ず、imgフォルダの先頭画像が出る・2フォルダ分離でどっちを見せるか問題」＋Part B): ★ホバーを「膜内の**先頭の添付(画像でもファイルでも文書順)**」に変更(旧=最初の画像リンクだけ→PDFが先頭でも後ろの画像を出していた)。画像=そのまま/**非画像(PDF等)=Quick Lookサムネ(Mac の qlmanage・512px・キャッシュ付き)**を生成して出す。実機で qlmanage が `<basename>.png` を生成することを検証済。①meosResolveAttachment(URL→{abs,isImg}・data:画像も)②meosQuickLookThumb(spawnSync・mtimeキャッシュ・macOS専用・非Macや失敗時は「📄ファイル名(Quick Look preview needs macOS)」フォールバック)③imageMembraneHoverMessageをMEOS_ANY_LINK_RE(![]も[]も)で先頭添付を探し画像/QLで出す。可視のfile画像は従来通り標準ホバーへ委譲・data:画像とQLはMeOSが出す。※俊克案の🖼ボタン+QLカスタマイズメニューは、まずQLが出ることを確認後に(customizeが要るなら)追加。node のみ。→ [[project_phased_release]]
 // - v3.5.1(俊克 7/23 pm06:31 v3.5.0テストNG「pdfをドロップしたがfilesフォルダが作られず移動できない」＋改良1「Fit to widthを虫眼鏡のCmd押下として」): ★バグ1真因=挿入されたのが `/Users/itocci2/Downloads/Membrane Operating System .pdf`＝**ファイル名にスペースがある生パス**で、onDidChangeTextDocumentのトリガ正規表現 `[\/\\][^\s\/\\<>]+\.ext` が**スペースを許さず発火しなかった**(取り込みロジック自体はスペース対応済)。→トリガを `[\/\\][^\n<>]*\.[A-Za-z0-9]{1,8}(境界)` に(スラッシュ+任意文字+.拡張子・スペース可)。実プロンプト検証=スペースpdfは発火・素の散文/スラッシュ無しは非発火。併せて生パスの誤検出はunresolvedに数えない(無用な通知防止)。②改良1=画像ビューアで **Cmd/Ctrl+クリック→Fit to width**(⊙と同じ・pct=100)。node+webview。→ [[project_phased_release]]
 // - v3.5.0(俊克 7/23 pm04:59「img、filesフォルダの2系統で進めて」): ★「あらゆる種類のファイルの移動」に一般化。画像→**img/**・その他(PDF/zip/docx等)→**files/**。①検出=`![](…)`画像埋め込み＋`[名前](…)`通常リンク＋生パス、を統合正規表現+生パス走査で拾う②ルーティング=拡張子で img//files/ を決定(`.md`/`.markdown`はプロジェクト参照を壊さないよう移動しない・http/data/#/mailto/command/vscodeスキームは除外)③リンク書換=画像埋め込みはURLだけ差替(無意味alt→img)・通常リンクもURL差替(空名前→ファイル名)・生パスは画像=`![img](img/…)`/非画像=`[ファイル名](files/…)`④必要フォルダ(img/ と/or files/)を自動作成⑤トリガを画像拡張子限定から「`](`を含む or 生パス(スラッシュ+名前+拡張子)」に拡張。moveロジック(rename/EXDEV=copy+unlink・ゴミ箱API不使用)は共通。実ファイルでルーティング検証済(img/files/.md除外/http除外)。★次段=Part B(Me Dockオーバーレイに🖼ボタン復活→クイックルック(Mac qlmanage)メニュー・非画像もホバーでプレビュー)。node のみ。→ [[project_phased_release]]
 // - v3.4.7(俊克 7/23 pm04:37 「altはAltキーを想起させるので不可・現状画像のみなら![img]でいい・imgへ移動した意味も伝わる・好きに書き換えればいい」): ★取り込み時の alt を **img** に統一。①生パス変換→`![img](img/…)`(v3.4.6のファイル名altをやめ img に)②markdown画像リンク取り込み時、altが**空/無意味プレースホルダ("alt text"/"image"/"alt")**なら **img** に置換(本物のalt=富士山等は保持)。job収集でalt範囲(altStart/altLen/altText)を保持し、URL置換と同時にalt置換(同一行の非重複2編集・範囲検証済)。node のみ。→ [[project_phased_release]]
@@ -16327,6 +16328,36 @@ function meosResolveImageSrc(document, rawUrl) {
     return vscode.Uri.file(fsPath).toString(); // 短いfile: URI=大きな画像も描画される
   } catch (_) { return null; }
 }
+// v3.6.0(俊克): 添付リンク(画像/その他)を解決。{abs, isImg} or null。data:画像は {isImg:true, dataUri}。
+const MEOS_IMG_EXT_RE = /^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i;
+function meosResolveAttachment(document, rawUrl) {
+  try {
+    let url = String(rawUrl || '').trim(); if (url.startsWith('<') && url.endsWith('>')) url = url.slice(1, -1).trim();
+    if (!url) return null;
+    if (/^data:image\//i.test(url)) return { abs: null, isImg: true, dataUri: url };
+    if (/^(https?:|#|mailto:|command:|vscode:|data:)/i.test(url)) return null;
+    const path = require('path'), fs = require('fs');
+    let raw = url.replace(/^file:\/\//i, ''); let fsPath; try { fsPath = decodeURI(raw); } catch (_) { fsPath = raw; }
+    if (!path.isAbsolute(fsPath)) fsPath = path.join(path.dirname(document.uri.fsPath || ''), fsPath);
+    if (!fs.existsSync(fsPath) || !fs.statSync(fsPath).isFile()) return null;
+    return { abs: fsPath, isImg: MEOS_IMG_EXT_RE.test(path.extname(fsPath).slice(1)) };
+  } catch (_) { return null; }
+}
+// v3.6.0(俊克 Part B): 非画像ファイルの Quick Look サムネ(Mac の qlmanage・キャッシュ付き)。返り値=サムネPNGパス or null。macOS専用。
+const _qlThumbCache = new Map();
+function meosQuickLookThumb(fsPath) {
+  try {
+    if (process.platform !== 'darwin' || !fsPath) return null;
+    const fs = require('fs'), path = require('path'), os = require('os'), cp = require('child_process');
+    const st = fs.statSync(fsPath); const cached = _qlThumbCache.get(fsPath);
+    if (cached && cached.mtime === st.mtimeMs && fs.existsSync(cached.thumb)) return cached.thumb;
+    const outDir = path.join(os.tmpdir(), 'meos-ql'); fs.mkdirSync(outDir, { recursive: true });
+    cp.spawnSync('qlmanage', ['-t', '-s', '512', fsPath, '-o', outDir], { timeout: 6000 }); // outDir/<basename>.png を生成
+    const thumb = path.join(outDir, path.basename(fsPath) + '.png');
+    if (fs.existsSync(thumb)) { _qlThumbCache.set(fsPath, { mtime: st.mtimeMs, thumb }); return thumb; }
+    return null;
+  } catch (_) { return null; }
+}
 function meosImageHoverHeight() { try { const h = Number(vscode.workspace.getConfiguration('laiMembrane').get('imageHoverHeight', 320)); if (h >= 80 && h <= 1600) return Math.round(h); } catch (_) {} return 320; }
 // v3.2.0(俊克 7/22 pm05:15): Me Dock 画像ビューア用。★webviewは本物のChromium=巨大な data: URI も普通に描ける(ホバーの枠制限が無い)ので、file読み込み→base64 data URI をメッセージで送る(localResourceRoots不要)。ラベル=altテキストかファイル名。
 const MEOS_IMG_LINK_RE_G = /!\[([^\]]*)\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+["'][^"']*["'])?\s*\)/g;
@@ -16481,32 +16512,43 @@ function postMeDockImageMembrane(editor) {
   } catch (_) {}
 }
 // v3.1.1/3.1.2(俊克 バグ1): 発火条件=①膜のOPEN(見出し)行=本文を走査して画像を出す(折り畳んだ画像を覗く=画像膜の本命)。②可視の画像リンク行は原則VS Code標準markdownホバーに委譲(回帰回避・二重表示防止)だが、★`data:` URI だけは標準が描けない(「Follow link」しか出ない=テスト4が消えた真因)のでMeOSが出す。file/相対は標準が描く。
+// v3.6.0(俊克 バグ1): 膜内の**先頭の添付(画像でもファイルでも文書順)**を出す。2フォルダ化で「どっちを見せるか」問題→単純に「一番上の添付」。画像=そのまま/非画像(PDF等)=Quick Lookサムネ(Mac)。可視のfile画像は標準ホバーへ委譲・data:画像とQL対象はMeOSが出す。
+const MEOS_ANY_LINK_RE = /(!?)\[[^\]]*\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+["'][^"']*["'])?\s*\)/;
 function imageMembraneHoverMessage(document, position) {
   try {
     if (!document || !position) return null;
+    const path = require('path');
     const text = document.lineAt(position.line).text;
-    let imgUrl = null, imgLine = position.line; // v3.4.3(俊克 改良1): 画像がある行を覚え、ホバー画像クリックでそこへワープ
+    let att = null, attUrl = null, attLine = position.line;
     const open = parseOpenLine(text);
-    if (open) { // 見出し行=本文(次行〜対応close)を走査して最初の画像リンクを拾う
+    if (open) { // 見出し行=本文を走査して最初の"解決できる添付"を拾う
       for (let ln = position.line + 1; ln < document.lineCount && ln < position.line + 2000; ln++) {
         const t = document.lineAt(ln).text;
         const c = parseCloseLine(t); if (c && c.id === open.id) break;
-        const mm = MEOS_IMG_LINK_RE.exec(t); if (mm) { imgUrl = mm[1]; imgLine = ln; break; }
+        MEOS_ANY_LINK_RE.lastIndex = 0; const mm = MEOS_ANY_LINK_RE.exec(t);
+        if (mm) { const a = meosResolveAttachment(document, mm[2]); if (a) { att = a; attUrl = mm[2]; attLine = ln; break; } }
       }
-    } else { // 可視の画像リンク行: data: のみMeOSが出す(標準は描けない)・file/相対は標準へ委譲
-      const here = MEOS_IMG_LINK_RE.exec(text);
-      if (!here) return null;
-      if (!/^\s*<?\s*data:image\//i.test(here[1])) return null;
-      imgUrl = here[1];
+    } else { // 可視のリンク行
+      const here = MEOS_ANY_LINK_RE.exec(text); if (!here) return null;
+      const a = meosResolveAttachment(document, here[2]); if (!a) return null;
+      // 可視の file 画像は標準markdownホバーに委譲(data:画像 と 非画像QL は MeOS が出す)
+      if (a.isImg && !a.dataUri) return null;
+      att = a; attUrl = here[2]; attLine = position.line;
     }
-    if (!imgUrl) return null;
-    const md = new vscode.MarkdownString();
-    md.isTrusted = true; md.supportHtml = true;
-    const src = meosResolveImageSrc(document, imgUrl);
-    const jumpHref = 'command:laiMembrane.jumpToImageLine?' + encodeURIComponent(JSON.stringify([imgLine]));
-    md.value = src
-      ? '<a href="' + jumpHref + '" title="Jump to this image\'s line"><img src="' + src + '" alt="" height="' + meosImageHoverHeight() + '" /></a>'
-      : '🖼 ' + String(imgUrl).replace(/[<>]/g, '') + '\n\n_(loads local files or data: URIs only)_';
+    if (!att) return null;
+    const md = new vscode.MarkdownString(); md.isTrusted = true; md.supportHtml = true;
+    const jumpHref = 'command:laiMembrane.jumpToImageLine?' + encodeURIComponent(JSON.stringify([attLine]));
+    const H = meosImageHoverHeight();
+    if (att.isImg) {
+      const src = att.dataUri || meosResolveImageSrc(document, attUrl);
+      md.value = src ? ('<a href="' + jumpHref + '" title="Jump to this image\'s line"><img src="' + src + '" alt="" height="' + H + '" /></a>')
+        : ('🖼 ' + String(attUrl).replace(/[<>]/g, '') + '\n\n_(loads local files or data: URIs only)_');
+    } else { // 非画像=Quick Lookサムネ(Mac)
+      const thumb = meosQuickLookThumb(att.abs);
+      md.value = thumb
+        ? ('<a href="' + jumpHref + '" title="Jump to this file\'s line"><img src="' + vscode.Uri.file(thumb).toString() + '" alt="" height="' + H + '" /></a>\n\n📄 ' + path.basename(att.abs))
+        : ('📄 ' + path.basename(att.abs) + '\n\n_(Quick Look preview needs macOS)_');
+    }
     return md;
   } catch (_) { return null; }
 }
