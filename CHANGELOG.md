@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.1 era — highlights (2026-07 →)
 
+### v3.5.0 — Drop any file, it moves into the note
+- **Drop or paste a file and MeOS moves it beside your note** — images into `img/`, everything else (PDF, zip, docx…) into `files/` — and rewrites the link to point there. Not a copy: the original is relocated, so your note becomes the one place its attachments live. (`.md` links are left untouched.)
+
 ### v3.4.0 — A little framed thumbnail on the membrane header
 - **A membrane that holds an image shows a tiny framed thumbnail at the start of its opening line** — so even folded, you can tell at a glance that a picture lives inside. Hover / Me Dock are for *seeing it big*; this is for *knowing it's there*. Standard, no marker needed.
 

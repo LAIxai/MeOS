@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.5.0(俊克 7/23 pm04:59「img、filesフォルダの2系統で進めて」): ★「あらゆる種類のファイルの移動」に一般化。画像→**img/**・その他(PDF/zip/docx等)→**files/**。①検出=`![](…)`画像埋め込み＋`[名前](…)`通常リンク＋生パス、を統合正規表現+生パス走査で拾う②ルーティング=拡張子で img//files/ を決定(`.md`/`.markdown`はプロジェクト参照を壊さないよう移動しない・http/data/#/mailto/command/vscodeスキームは除外)③リンク書換=画像埋め込みはURLだけ差替(無意味alt→img)・通常リンクもURL差替(空名前→ファイル名)・生パスは画像=`![img](img/…)`/非画像=`[ファイル名](files/…)`④必要フォルダ(img/ と/or files/)を自動作成⑤トリガを画像拡張子限定から「`](`を含む or 生パス(スラッシュ+名前+拡張子)」に拡張。moveロジック(rename/EXDEV=copy+unlink・ゴミ箱API不使用)は共通。実ファイルでルーティング検証済(img/files/.md除外/http除外)。★次段=Part B(Me Dockオーバーレイに🖼ボタン復活→クイックルック(Mac qlmanage)メニュー・非画像もホバーでプレビュー)。node のみ。→ [[project_phased_release]]
 // - v3.4.7(俊克 7/23 pm04:37 「altはAltキーを想起させるので不可・現状画像のみなら![img]でいい・imgへ移動した意味も伝わる・好きに書き換えればいい」): ★取り込み時の alt を **img** に統一。①生パス変換→`![img](img/…)`(v3.4.6のファイル名altをやめ img に)②markdown画像リンク取り込み時、altが**空/無意味プレースホルダ("alt text"/"image"/"alt")**なら **img** に置換(本物のalt=富士山等は保持)。job収集でalt範囲(altStart/altLen/altText)を保持し、URL置換と同時にalt置換(同一行の非重複2編集・範囲検証済)。node のみ。→ [[project_phased_release]]
 // - v3.4.6(俊克 7/23 pm04:25 v3.4.5テストOK「img/自動作成👍」＋疑問1「なぜ生パス変換の![]が空なのか・従来のalt textも意味不明」): ★生パス変換のalt空問題=元が生パス(alt無し)なので`![]`にしていた。→**alt にファイル名(拡張子なし)を入れる**=意味のある自動alt(`![スクリーンショット 2026-07-23 午後3.56.51](img/…)`)。空`![]`やVS Codeの無意味プレースホルダ"alt text"を避ける。※`![]`が空なのはimg/の有無とは無関係(元が生パスだったから)。node のみ(bare jobのrel構築のみ)。→ [[project_phased_release]]
 // - v3.4.5(俊克 7/23 pm03:50 v3.4.4テストNG「やはりimgフォルダが作られない・リンクも従来型で元の位置を指したまま」): ★スクショで真因確定=挿入されたのが `![](…)` mdリンクでなく**生の絶対パス**(`/Users/itocci2/Desktop/…png` が行としてそのまま)。=v3.3.0の `copyIntoWorkspace:never` の副作用で、VS Codeがワークスペース外ファイルをmdリンクでなく**生パスで挿入**することがある→自動取り込みは`![](…)`しか見ないので素通り(img/も作られず)。→**生の画像パス行も取り込む**よう拡張=①onDidChangeTextDocumentのトリガを画像拡張子を含む挿入でも発火②job収集で「行に![が無く、trim後が実在する画像ファイルのパス」ならbare jobとして拾う③適用時 bare は `![](img/名前)` に変換(生パス→markdown画像リンク)。実ファイルでドライラン検証済(urlStart/rawLen/置換文字列OK)。※質問1=非画像ファイル(PDF等)はまだ未対応(画像のみ)=一般化は次段。node のみ。→ [[project_phased_release]]
@@ -16353,68 +16354,74 @@ async function meosAutoImportImagesInLines(document, lineList) {
   if (_imgImportBusy) return 0;
   const path = require('path'), fs = require('fs');
   const docPath = document.uri.fsPath; if (!docPath) return 0;
-  const docDir = path.dirname(docPath), imgDir = path.join(docDir, 'img');
+  const docDir = path.dirname(docPath);
+  // v3.5.0(俊克): 画像→img/・その他→files/ の2系統に一般化。あらゆる種類のファイルをドロップ/貼付でノートの側へ"移動"する。
+  const IMG_EXT = /^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i;
+  const NO_MOVE_EXT = /^(md|markdown)$/i; // .md等はプロジェクト参照リンクを壊さないよう移動しない
+  const LINK_RE = /(!?)\[([^\]]*)\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+["'][^"']*["'])?\s*\)/g;
+  const resolveAbs = (urlStr) => { let u = String(urlStr || '').trim(); if (u.startsWith('<') && u.endsWith('>')) u = u.slice(1, -1).trim(); if (!u || /^(data:|https?:|#|mailto:|command:|vscode:)/i.test(u)) return null; let s; try { s = decodeURI(u.replace(/^file:\/\//i, '')); } catch (_) { s = u.replace(/^file:\/\//i, ''); } return path.normalize(path.isAbsolute(s) ? s : path.join(docDir, s)); };
+  const folderFor = (abs) => { const ext = path.extname(abs).slice(1); if (!ext || NO_MOVE_EXT.test(ext)) return null; return IMG_EXT.test(ext) ? 'img' : 'files'; };
+  const underDir = (abs, folder) => { const d = path.join(docDir, folder); return (abs + path.sep).toLowerCase().startsWith((d + path.sep).toLowerCase()); };
   const jobs = []; let unresolved = 0;
   for (const ln of lineList) {
     if (ln < 0 || ln >= document.lineCount) continue;
     const text = document.lineAt(ln).text;
-    MEOS_IMG_LINK_RE_G.lastIndex = 0; let m;
-    while ((m = MEOS_IMG_LINK_RE_G.exec(text))) {
-      const raw = m[2]; let url = raw; if (url.startsWith('<') && url.endsWith('>')) url = url.slice(1, -1).trim();
-      if (/^(data:|https?:)/i.test(url) || !url) continue;
-      let src; try { src = decodeURI(url.replace(/^file:\/\//i, '')); } catch (_) { src = url.replace(/^file:\/\//i, ''); }
-      let abs = path.normalize(path.isAbsolute(src) ? src : path.join(docDir, src));
-      if ((abs + path.sep).toLowerCase().startsWith((imgDir + path.sep).toLowerCase())) continue; // 既に img/ 配下
-      if (!/^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs).slice(1))) continue;
-      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { unresolved++; continue; } // ★画像リンクだがファイルが見つからない=診断用に数える
-      let p = m[0].indexOf('](') + 2; while (p < m[0].length && /\s/.test(m[0][p])) p++; // URL開始位置(空白スキップ)
-      const altOff = m[0].indexOf('[') + 1; // alt は ![ の直後(m[0]内の '[' の次)
-      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs), bare: false, altStart: m.index + altOff, altLen: (m[1] || '').length, altText: m[1] || '' });
+    LINK_RE.lastIndex = 0; let m;
+    while ((m = LINK_RE.exec(text))) { // ![](…)画像埋め込み も [名前](…)通常リンク も
+      const isImg = m[1] === '!'; const raw = m[3];
+      const abs = resolveAbs(raw); if (!abs) continue;
+      const folder = folderFor(abs); if (!folder) continue;
+      if (underDir(abs, folder)) continue; // 既に img//files/ 配下
+      if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { unresolved++; continue; }
+      let p = m[0].indexOf('](') + 2; while (p < m[0].length && /\s/.test(m[0][p])) p++;
+      const altOff = m[0].indexOf('[') + 1;
+      jobs.push({ ln, urlStart: m.index + p, rawLen: raw.length, abs, base: path.basename(abs), kind: 'link', isImg, folder, altStart: m.index + altOff, altLen: (m[2] || '').length, altText: m[2] || '' });
     }
-    // v3.4.5(俊克 バグ1): ![]で囲まれていない**生の画像パス**の行も取り込む(VS Codeが copyIntoWorkspace:never で生パスを挿すことがある)→ ![](img/名前) に変換。行に![が無く、trim後が実在する画像ファイルのパスの時だけ。
-    if (text.indexOf('![') < 0) {
+    // 生パス行(リンク記法が無い行)=VS Codeが copyIntoWorkspace:never で生パスを挿すことがある
+    if (text.indexOf('](') < 0) {
       const trimmed = text.trim();
-      let bu = trimmed; if (bu.startsWith('<') && bu.endsWith('>')) bu = bu.slice(1, -1).trim();
-      if (bu && !/^(data:|https?:)/i.test(bu)) {
-        let src2; try { src2 = decodeURI(bu.replace(/^file:\/\//i, '')); } catch (_) { src2 = bu.replace(/^file:\/\//i, ''); }
-        const abs2 = path.normalize(path.isAbsolute(src2) ? src2 : path.join(docDir, src2));
-        if (!(abs2 + path.sep).toLowerCase().startsWith((imgDir + path.sep).toLowerCase()) && /^(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)$/i.test(path.extname(abs2).slice(1))) {
-          if (fs.existsSync(abs2) && fs.statSync(abs2).isFile()) { jobs.push({ ln, urlStart: text.indexOf(trimmed), rawLen: trimmed.length, abs: abs2, base: path.basename(abs2), bare: true }); }
+      const abs = trimmed ? resolveAbs(trimmed) : null;
+      if (abs) { const folder = folderFor(abs);
+        if (folder && !underDir(abs, folder)) {
+          if (fs.existsSync(abs) && fs.statSync(abs).isFile()) jobs.push({ ln, urlStart: text.indexOf(trimmed), rawLen: trimmed.length, abs, base: path.basename(abs), kind: 'bare', isImg: IMG_EXT.test(path.extname(abs).slice(1)), folder });
           else unresolved++;
         }
       }
     }
   }
-  if (!jobs.length) { if (unresolved) { try { vscode.window.setStatusBarMessage('MeOS: 画像リンク ' + unresolved + ' 件はファイルが見つからず取り込めません（パスを確認）', 4000); } catch (_) {} } return 0; }
+  if (!jobs.length) { if (unresolved) { try { vscode.window.setStatusBarMessage('MeOS: リンク ' + unresolved + ' 件はファイルが見つからず取り込めません（パスを確認）', 4000); } catch (_) {} } return 0; }
   _imgImportBusy = true;
   try {
-    // v3.4.4(俊克 改良1): img/ が無ければ自動作成。★existsSyncガードを外し常に mkdir(recursive は既存でも無害)＝誤判定でも確実に作る。失敗は明示。
-    try { fs.mkdirSync(imgDir, { recursive: true }); } catch (eMk) { try { vscode.window.showWarningMessage('MeOS: img/ フォルダを作成できませんでした: ' + (eMk && eMk.message)); } catch (_) {} _imgImportBusy = false; return 0; }
+    // v3.4.4/3.5.0: 必要なフォルダ(img/ と/or files/)を自動作成(recursiveは既存でも無害・失敗は明示)。
+    for (const f of new Set(jobs.map(j => j.folder))) { try { fs.mkdirSync(path.join(docDir, f), { recursive: true }); } catch (eMk) { try { vscode.window.showWarningMessage('MeOS: ' + f + '/ フォルダを作成できませんでした: ' + (eMk && eMk.message)); } catch (_) {} _imgImportBusy = false; return 0; } }
     const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'always');
     const edit = new vscode.WorkspaceEdit(), askJobs = [];
     let movedN = 0, copiedN = 0, importErr = '';
+    const stripBr = (s) => String(s || '').replace(/[\[\]]/g, '');
     for (const j of jobs) {
-      let destName = j.base, dest = path.join(imgDir, destName), i = 1;
+      const targetDir = path.join(docDir, j.folder);
+      let destName = j.base, dest = path.join(targetDir, destName), i = 1;
       while (fs.existsSync(dest) && fs.statSync(dest).size !== fs.statSync(j.abs).size) { // 同名で中身が違う=連番
-        const e = path.extname(j.base), b = path.basename(j.base, e); destName = b + '_' + i + e; dest = path.join(imgDir, destName); i++;
+        const e = path.extname(j.base), b = path.basename(j.base, e); destName = b + '_' + i + e; dest = path.join(targetDir, destName); i++;
       }
       try {
         if (mode === 'never') { if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest); copiedN++; }
         else if (mode === 'ask') { if (!fs.existsSync(dest)) fs.copyFileSync(j.abs, dest); copiedN++; if (!askJobs.some(a => a.src === j.abs)) askJobs.push({ src: j.abs, dest }); }
-        else { // ★always = MOVE(俊克 改良案1: copyでなくmove)。同ボリューム=fs.renameSync(原子移動)/別ボリューム(EXDEV=システムSSD→外付け等)=copyFileSync+unlinkSync。削除はNode fs.unlinkSync=VS Codeのゴミ箱API(外付けで"成功を返すが消えない")を一切使わない。
-          if (fs.existsSync(dest)) { fs.unlinkSync(j.abs); } // 同内容が既にimg/にある→元を除去するだけ
+        else { // ★always = MOVE。同ボリューム=fs.renameSync(原子移動)/別ボリューム(EXDEV)=copyFileSync+unlinkSync。VS Codeのゴミ箱APIは使わない。
+          if (fs.existsSync(dest)) { fs.unlinkSync(j.abs); } // 同内容が既に配下→元を除去するだけ
           else { try { fs.renameSync(j.abs, dest); } catch (_) { fs.copyFileSync(j.abs, dest); fs.unlinkSync(j.abs); } }
           movedN++;
         }
-      } catch (e) { importErr = (e && e.message) || String(e); if (!fs.existsSync(dest)) continue; } // コピーすら無ければリンクは書き換えない
+      } catch (e) { importErr = (e && e.message) || String(e); if (!fs.existsSync(dest)) continue; }
+      const inner = j.folder + '/' + destName; const wrapped = /\s/.test(inner) ? ('<' + inner + '>') : inner; // img/foo.png / files/bar.pdf
+      const nameNoExt = stripBr(path.basename(destName, path.extname(destName)));
       let rel;
-      if (j.bare) { // v3.4.7(俊克): 生パス→markdown画像リンク。alt は **img**(=img/へ移動した意味・"alt"はAltキーを想起させるので不可・好きに書き換え可)。
-        const urlPart = /\s/.test(destName) ? ('<img/' + destName + '>') : ('img/' + destName);
-        rel = '![img](' + urlPart + ')';
-      } else { rel = 'img/' + destName; if (/\s/.test(rel)) rel = '<' + rel + '>'; }
-      // v3.4.7(俊克): markdown画像リンクの alt が空 or 無意味プレースホルダ("alt text"/"image"/"alt")なら **img** に置換(本物のalt=富士山等は保持)。
-      if (!j.bare && /^(?:alt text|image|alt)?$/i.test((j.altText || '').trim())) {
-        edit.replace(document.uri, new vscode.Range(j.ln, j.altStart, j.ln, j.altStart + j.altLen), 'img');
+      if (j.kind === 'bare') { // 生パス→リンク。画像=![img](img/…)埋め込み / 非画像=[ファイル名](files/…)通常リンク
+        rel = j.folder === 'img' ? ('![img](' + wrapped + ')') : ('[' + nameNoExt + '](' + wrapped + ')');
+      } else { // 既存リンク=URLだけ差し替え(![ or [ の形は保持)。プレースホルダの名前だけ整える。
+        rel = wrapped;
+        if (j.isImg && /^(?:alt text|image|alt)?$/i.test((j.altText || '').trim())) edit.replace(document.uri, new vscode.Range(j.ln, j.altStart, j.ln, j.altStart + j.altLen), 'img'); // 画像埋め込みの無意味alt→img
+        else if (!j.isImg && !(j.altText || '').trim()) edit.replace(document.uri, new vscode.Range(j.ln, j.altStart, j.ln, j.altStart + j.altLen), nameNoExt); // 通常リンクの空名前→ファイル名
       }
       edit.replace(document.uri, new vscode.Range(j.ln, j.urlStart, j.ln, j.urlStart + j.rawLen), rel);
     }
@@ -16425,7 +16432,7 @@ async function meosAutoImportImagesInLines(document, lineList) {
     }
     if (importErr) { try { vscode.window.showWarningMessage('MeOS: 画像取り込みで一部失敗（img/のコピーは無事）: ' + importErr); } catch (_) {} }
     const verb = (movedN && !copiedN) ? '移動' : (copiedN && !movedN) ? 'コピー' : '取り込み';
-    vscode.window.setStatusBarMessage('MeOS: 画像 ' + (movedN + copiedN) + ' 枚を img/ に' + verb + 'しました 🖼', 4000);
+    vscode.window.setStatusBarMessage('MeOS: ファイル ' + (movedN + copiedN) + ' 個を img//files/ に' + verb + 'しました 🖼', 4000);
     // v3.3.3(俊克 バグ1): 取り込み直後は"外→中"の変化が起きずビューアが自動で開かない(カーソルは既にリンク内・sig重複で再送されない)→sigをリセットして少し後に強制再検出(カーソルが画像リンク行に居れば開く)。
     try { const ed = vscode.window.visibleTextEditors.find(e => e.document === document) || getMeDockTargetEditor(); if (ed) setTimeout(() => { try { _lastImgMembraneSig = null; postMeDockImageMembrane(ed); } catch (_) {} }, 90); } catch (_) {}
     return jobs.length;
@@ -17339,8 +17346,8 @@ makeDecorations();
         const _R = vscode.TextDocumentChangeReason;
         if (meosImageAutoImportEnabled() && !_imgImportBusy && e.document.uri.scheme === 'file' && isMarkdownDocument(e.document) && !(_R && (e.reason === _R.Undo || e.reason === _R.Redo))) {
           const _il = new Set();
-          // v3.4.5(俊克 バグ1): ![](…)リンクだけでなく**生の画像パス**(VS Codeが copyIntoWorkspace:never でmdリンクでなく生パスを挿すことがある)も拾えるよう、画像拡張子を含む挿入でも発火。
-          for (const ch of e.contentChanges) { const t = ch.text || ''; if (/!\[[^\]]*\]\([^)]*\)/.test(t) || /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico|heic|tiff?)(\s|$|>|\)|\])/i.test(t)) { const s = ch.range.start.line, n = (t.match(/\n/g) || []).length; for (let k = 0; k <= n; k++) _il.add(s + k); } }
+          // v3.4.5/3.5.0: markdownリンク `](`、または 生パス(スラッシュ+名前+拡張子)を含む挿入で発火(画像に限らずあらゆるファイルのドロップ/貼付を拾う)。
+          for (const ch of e.contentChanges) { const t = ch.text || ''; if (/\]\(/.test(t) || /[\/\\][^\s\/\\<>]+\.[A-Za-z0-9]{1,8}(?:[\s>)\]]|$)/.test(t)) { const s = ch.range.start.line, n = (t.match(/\n/g) || []).length; for (let k = 0; k <= n; k++) _il.add(s + k); } }
           if (_il.size) meosAutoImportImagesInLines(e.document, Array.from(_il));
         }
       } catch (_) {}
