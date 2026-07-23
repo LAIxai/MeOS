@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.4.4(俊克 7/23 pm03:30 v3.4.3テストOK「🖼は生データに無い仮想=栞と同じ・ポップ画像クリックでリンク行へワープ👍」＋改良1「シフトドラッグ時にimgフォルダが無いと移動できない・自動作成して」): ★取り込み時の img/ 自動作成を確実化=`if(!existsSync)`ガードを外し常に `fs.mkdirSync(imgDir,{recursive:true})`(既存でも無害・existsSync誤判定でも作る)＋失敗時は明示警告してreturn。※俊克の洞察=シフトドラッグでの"移動"は絵に限らずPDF等あらゆるファイルで成立し、単なる「絵をノートに入れる」を超える(＝将来は画像以外のファイルリンクもimg/等へ移動する一般化の布石)。今回は画像のみ。node のみ。→ [[project_phased_release]]
 // - v3.4.3(俊克 7/23 pm00:43 v3.4.2テストOK「🖼ホバーで絵がポップ👍」＋改良2点): ①改良1=**ホバー画像をクリックするとその画像リンクがある行へワープ**(畳んでいれば展開)。imageMembraneHoverMessageで画像のある行(imgLine)を覚え、`<img>`を `<a href="command:laiMembrane.jumpToImageLine?[imgLine]">` で包む＋コマンド登録(選択移動+editor.unfold+revealRange InCenter)。②改良2=**Current Me(Me Dockのピン)にも 🖼**。currentMembraneInfoに hasImage(膜本文に画像リンクがあるか・可視範囲不問で膜内400行走査)を追加、webview pinRowHtmlで名前頭に🖼を前置。node+webview。→ [[project_phased_release]]
 // - v3.4.2(俊克 7/23 pm00:23 v3.4.1テストNG「微妙に出方は違うがサイズは小さくならない」→改良1「とりあえず絵文字🖼を膜名の頭に付けよう・画像リンクが1つ以上ある条件で」): ★contentIconPathはtype側width/heightでもサイズが効かない(原寸)と確定→**実画像サムネを諦め、🖼絵文字マーカーに切替**(装飾contentText・確実/軽量/非破壊)。膜本文に画像リンクが1つ以上あれば開始行の先頭に🖼を表示。meosApplyImageThumbDecorationsを絵文字版に簡素化(画像リンクの存在チェックのみ・解決不要)。※俊克の「macのsipsで画像から小絵文字/サムネをリアルタイム生成」案=実現可だがmac専用+shell依存なので保留(将来の任意サイズ・インライン画像の布石)。node のみ。→ [[project_phased_release]]
 // - v3.4.1(俊克 7/23 am11:57 v3.4.0テストNG「84924行の膜が分からないくらい最初の画像がバカでかく表示・逆にこんなでかくインライン表示できるんだね」): ★真因=`before.contentIconPath`の**per-instance renderOptionsに書いたwidth/heightが効かず原寸(巨大)描画**(スクショで数百px級が数行を覆う)。★これは重要な発見=**decorationで大きなインライン画像が描ける**(以前「本文に原寸画像は不可能=editorInsets限定」と言ったのは誤り)。→修正=**サイズをdecoration type側にpxで固定**(type=額縁の箱 width:38px/height:24px/margin/枠線、per-instance=contentIconPathのみ、をVS Codeがマージ)。これで小さな額縁になる想定。node のみ。※もしtype側でも効かなければ次段はSVGラッパ(固定寸法)かgutterIconに切替。→ [[project_phased_release]]
@@ -16370,7 +16371,8 @@ async function meosAutoImportImagesInLines(document, lineList) {
   if (!jobs.length) { if (unresolved) { try { vscode.window.setStatusBarMessage('MeOS: 画像リンク ' + unresolved + ' 件はファイルが見つからず取り込めません（パスを確認）', 4000); } catch (_) {} } return 0; }
   _imgImportBusy = true;
   try {
-    if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
+    // v3.4.4(俊克 改良1): img/ が無ければ自動作成。★existsSyncガードを外し常に mkdir(recursive は既存でも無害)＝誤判定でも確実に作る。失敗は明示。
+    try { fs.mkdirSync(imgDir, { recursive: true }); } catch (eMk) { try { vscode.window.showWarningMessage('MeOS: img/ フォルダを作成できませんでした: ' + (eMk && eMk.message)); } catch (_) {} _imgImportBusy = false; return 0; }
     const mode = vscode.workspace.getConfiguration('laiMembrane').get('imageAutoImportTrash', 'always');
     const edit = new vscode.WorkspaceEdit(), askJobs = [];
     let movedN = 0, copiedN = 0, importErr = '';
