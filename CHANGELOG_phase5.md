@@ -2,9 +2,11 @@
 
 _この節は **フェーズ5(画像/ファイル添付)** 解禁までの退避先です。v3.0.7(2026.07.24)で CHANGELOG.md から切り出しました。_
 _理由: CHANGELOG.md は vsix に同梱されストアの Changes タブに描画されるため、未公開(ゲート中)の機能を宣伝してしまう。_
-_フェーズ5解禁時 = `MEOS_RELEASE_PHASE = 5` にし、この節を CHANGELOG.md の先頭(v3.0 era の上)へ戻す。_
+_フェーズ5解禁時 = `MEOS_RELEASE_PHASE = 5` にし、この節を CHANGELOG.md の先頭へ戻す。_
 
-## v3.1 era — highlights (2026-07 →)
+_★版番号について(2026.07.24 追記): MeOS は **メジャー版＝フェーズ番号**(Phase1→v1.0 / Phase2→v2.0 / Phase3→v3.0)。画像/添付は開発時に v3.1〜3.6 を名乗ったが、これは**フェーズ3の最中に作っていたための便宜的な番号**。解禁は **Phase 5 ＝ v5.0 era** として出すこと(下の各項の v3.x は開発版番号なので、公開時に v5.0.x へ振り直す)。**空いた v3.1 は、テーブル系の次の機能(Σ 合計など)が使う。**_
+
+## v5.0 era — images & attachments (opens with Phase 5 · entries below carry dev version numbers)
 
 ### v3.6.0 — Hover shows the first attachment, Quick Look for files
 - **Hovering a membrane header shows its first attachment in order** — an image, or, for a PDF or other file, a **Quick Look preview** (macOS). No more showing a later image when a file sits at the top.
