@@ -1,0 +1,25 @@
+// v3.0.7(2026.07.24): フェーズ5(画像/ファイル添付)まで package.json から退避した設定3件。
+// 理由: contributes.configuration は VS Code Marketplace の Feature Contributions タブと
+//       設定UIに出る=ゲート中の機能が公開ページに載ってしまうため。
+// 復帰: MEOS_RELEASE_PHASE=5 にする時、下記を contributes.configuration.properties へ戻す。
+
+        "laiMembrane.imageHoverHeight": {
+          "type": "number",
+          "default": 320,
+          "minimum": 80,
+          "maximum": 1600,
+          "markdownDescription": "Height in pixels of the image preview shown when you hover an **image membrane** header (or a `data:` image link). Larger = bigger preview, up to VS Code's own hover size limit. Plain visible `![](…)` file links are rendered by VS Code's built-in Markdown hover, whose size this setting does not affect."
+        },
+        "laiMembrane.imageAutoImport": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When you paste or drag-drop a file into a Markdown file, move it beside the document — images into `img/`, other files into `files/` — and rewrite the link to point there, so you never move files by hand. (`.md` links are left alone.)"
+        },
+        "laiMembrane.imageAutoImportTrash": {
+          "type": "string",
+          "enum": ["always", "ask", "never"],
+          "default": "always",
+          "markdownEnumDescriptions": ["MOVE the image into img/ — the original is removed (rename on the same volume, copy+delete across volumes)", "Copy into img/, then ask whether to remove the original", "Copy into img/ and leave the original in place"],
+          "markdownDescription": "What to do with the original file when an image link is imported into `img/`. Default **always** MOVES it (the picture ends up only in img/). The copy in img/ is your safety net."
+        },
+        
