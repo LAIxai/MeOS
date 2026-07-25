@@ -5722,6 +5722,11 @@ function applyPrettyLabels(editor) {
   const mlBracedAllowed = !MEOS_BLOCK_COMMENT_LANGS.has(editor.document.languageId);
 
   const refCustom = (function(){ try { return getRefMeta(editor.document).symbols || {}; } catch (_) { return {}; } })(); // v0.9.999100: カスタム記号
+  // v3.1.3(俊克 7/25 計測): ★可視範囲+マージン判定。参照符の採番と複数行ハイライト/取消線の検出は全行必要(番号がずれる/ML開きを見落とす)ので必ず走らせ、その後の"重い装飾計算"(ハイライト/取消線/見出し/膜ラベルのレンジ生成)だけを画面外でスキップする。旧=全11.9万行で装飾生成=167ms。スクロールはonDidChangeTextEditorVisibleRanges→refreshが追従。
+  const _plSpans = (editor.visibleRanges && editor.visibleRanges.length)
+    ? editor.visibleRanges.map(r => [Math.max(0, r.start.line - 120), Math.min(editor.document.lineCount - 1, r.end.line + 120)])
+    : null;
+  const _plVis = (ln) => !_plSpans || _plSpans.some(s => ln >= s[0] && ln <= s[1]);
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
@@ -5770,6 +5775,7 @@ function applyPrettyLabels(editor) {
     }
     if (mlBracedAllowed && text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
     if (mlBracedAllowed && text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
+    if (!_plVis(line)) continue; // v3.1.3(俊克 計測): 画面外は重い装飾計算をスキップ(採番/ML検出は上で全行実施済)
     // v0.9.876/884: ★コメント包み記法。装飾を /* … */ ブロックコメントで包むと、コードからは ただの
     // コメント、MeOS上では装飾された文字だけが見える。2方式を両立:
     //  ①全体包み /* =={ body (色)//tip}== */  … body はコメント(見出し・注釈向け)。内側 =={…}== は
