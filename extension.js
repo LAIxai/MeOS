@@ -14359,7 +14359,12 @@ function meDockHtml() {
   const initial = meDockModeForEditor(vscode.window.activeTextEditor);
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   // v3.1.0(俊克 7/25 pm01:44「Me Dock タイトルの横にバージョンを表示」): 実行時の拡張バージョンをタイトルに出す(package.json由来=入れている build と必ず一致)。
-  const meosVer = (() => { try { return String(extensionContext.extension.packageJSON.version || ''); } catch (_) { return ''; } })();
+  // ★取得は「extensionPathのpackage.jsonをfsで直読み」を第一手に(context.extension は環境により未定義=v3.1.0初版が空表示になった真因)。次点でcontext.extension.packageJSON。
+  const meosVer = (() => {
+    try { const fs = require('fs'), path = require('path'); const p = extensionContext && extensionContext.extensionPath; if (p) { const pj = JSON.parse(fs.readFileSync(path.join(p, 'package.json'), 'utf8')); if (pj && pj.version) return String(pj.version); } } catch (_) {}
+    try { return String(extensionContext.extension.packageJSON.version || ''); } catch (_) {}
+    return '';
+  })();
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <style>
