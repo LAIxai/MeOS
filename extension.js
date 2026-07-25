@@ -14355,16 +14355,16 @@ async function setNativeStandardsDisclosureControls(enabled) {
 }
 
 // {* ▼mCN=0870_ME_DOCK // v0.9.229 Me Dock prototype (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
+// v3.1.0/3.1.1(俊克 7/25「Me Dock にバージョン表示」): 実行時の拡張バージョン。extensionPathのpackage.jsonをfsで直読み(第一手)=v3.1.0初版で空表示になった真因は context.extension が環境により未定義だったこと。Me Dockの**パネルタブ名**(createWebviewPanel)と**webviewヘッダ**の両方で使う。
+function meosExtVersion() {
+  try { const fs = require('fs'), path = require('path'); const p = extensionContext && extensionContext.extensionPath; if (p) { const pj = JSON.parse(fs.readFileSync(path.join(p, 'package.json'), 'utf8')); if (pj && pj.version) return String(pj.version); } } catch (_) {}
+  try { return String(extensionContext.extension.packageJSON.version || ''); } catch (_) {}
+  return '';
+}
 function meDockHtml() {
   const initial = meDockModeForEditor(vscode.window.activeTextEditor);
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  // v3.1.0(俊克 7/25 pm01:44「Me Dock タイトルの横にバージョンを表示」): 実行時の拡張バージョンをタイトルに出す(package.json由来=入れている build と必ず一致)。
-  // ★取得は「extensionPathのpackage.jsonをfsで直読み」を第一手に(context.extension は環境により未定義=v3.1.0初版が空表示になった真因)。次点でcontext.extension.packageJSON。
-  const meosVer = (() => {
-    try { const fs = require('fs'), path = require('path'); const p = extensionContext && extensionContext.extensionPath; if (p) { const pj = JSON.parse(fs.readFileSync(path.join(p, 'package.json'), 'utf8')); if (pj && pj.version) return String(pj.version); } } catch (_) {}
-    try { return String(extensionContext.extension.packageJSON.version || ''); } catch (_) {}
-    return '';
-  })();
+  const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <style>
@@ -15687,9 +15687,10 @@ function toggleMeDock(editorOverride) {
   fixedWorkingTocEnabled = true;
 
   closeAllMeDockTabs(); // v0.9.971: 開く前に孤児タブを一掃=開いた後 Me Dock は常に1枚だけ(toClose は生成前に確定するので新パネルは閉じない)
+  const _mdVer = meosExtVersion(); // v3.1.1(俊克): パネルのタブ名に版を出す(常に見える・webviewキャッシュ無関係)
   meDockPanel = vscode.window.createWebviewPanel(
     'meDock',
-    'Me Dock',
+    'Me Dock' + (_mdVer ? ' v' + _mdVer : ''),
     vscode.ViewColumn.Beside,
     { enableScripts: true, retainContextWhenHidden: true }
   );
