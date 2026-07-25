@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v3.0 era — highlights (2026-07 →)
 
+### v3.0 — Tables that never touch your data (Phase 3)
+- **Cell merge, without touching the file.** GFM has no `colspan` / `rowspan`; MeOS adds them with one HTML comment — `<!--🤝→2-->` (merge right) / `<!--🤝↓2-->` (merge down). The cell count never changes, so the file stays valid GFM and the marker is **invisible on GitHub and every Markdown preview**. MeOS shows the merge in the **main editor** — not a preview pane. Put the cursor on the row and the raw marker reappears for inline editing.
+- **Format Table, CJK & emoji aware.** One press of the ▦ button aligns the columns. MeOS knows the editor's default font draws a full-width character at ~1.67× the ASCII width (not 2×) and pads with a carry method, so Japanese tables actually line up; `laiMembrane.tableCjkWidth = 2` gives a pixel-perfect grid on a duospaced font.
+- **Cell navigation** (Tab / ⌘→ / ⌘← / ↑ ↓), **duplicate & delete row / column** (merge-aware), and a **table membrane** to wrap a long table so Current Me can jump to its tail.
+
 ### v3.0.3–3.0.4 — Wrapping a table is your call now
 - **A table never wraps itself in a membrane.** The old rule ("tables of 8+ rows wrap automatically on format") is gone — no more membrane comments appearing around a table you only wanted aligned.
 - **One checkable menu item instead of two.** The ▾ menu shows **✓ Membrane this table**: a green check when the table the cursor is in is wrapped, empty when it isn't. Click to toggle wrap ⇄ unwrap.
