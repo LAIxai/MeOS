@@ -2577,7 +2577,7 @@ let extensionContext = null;
 const MEOS_RELEASE_PHASE = 3;
 // v3.0.7.1(俊克 7/24 pm): ★表計算(Σ 合計 / Π 総乗)の隔離スイッチ。テスト中は true、日曜のPhase3リリース前に false にして「一旦隔離」→火/水の v3.1 で true に戻して単独リリース。
 // 記法(番地を1文字も書かない): <!--Σ↑--> 上の列を合計 / Σ↓ 下 / Σ← 左 / Σ→ 右。<!--Π←2--> 左2セルの積(×/x/* も別名として受理し整形で Π に揃える)。自分のセルは含めない=自己参照しない。
-const MEOS_TABLE_CALC = false; // v3.0.9(俊克 7/24 pm06:35「表計算機能を隔離して下さい」): 日曜のPhase3(結合のみ)リリースに向け一旦隔離。火/水の v3.1 単独リリースで true に戻す。false時=計算マーカーはただのHTMLコメント(GitHubでも不可視)・整形は素通り・装飾なし。
+const MEOS_TABLE_CALC = true; // v3.1.0(俊克 7/25 pm01:30「v3.1のロックを解除しましょう・早く使いたいので」): 表計算Σ/Πを解禁。日曜のv3.0(結合)公開が済んだので、隔離を解いた。true=Σ/Πの装飾・整形の正規化・再帰計算が有効。※縦結合の行罫線方式(前人未到)と巨大日記refresh可視範囲化は v3.1 の残タスク(未実装)。
 // v0.9.678 (対策1): window-bottom status bar showing the membrane the cursor is inside.
 let membraneStatusBarItem = null;
 // v0.9.681 (改善2): baseline line-count of the membrane the cursor entered, so the Pin /
