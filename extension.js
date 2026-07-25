@@ -4554,7 +4554,7 @@ function getGutterLaneType(svg) {
   }
   return t;
 }
-function computeGutterLaneDecorations(document) {
+function computeGutterLaneDecorations(document, editor) {
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
   const excludeIndex = cfg.get('excludeIndexMembrane', false);
   const maxDepth = Math.max(1, Math.min(24, Number(cfg.get('maxDepth', 12)) || 12));
@@ -4588,7 +4588,15 @@ function computeGutterLaneDecorations(document) {
   } catch (_) {}
   const lastLine = document.lineCount - 1;
   const byKey = new Map(); // svg -> Range[]
-  for (let line = 0; line <= lastLine; line++) {
+  // v3.1.2(俊克 7/25 計測): ★可視範囲+マージンだけ走査(旧=全行×全膜で11.8万行時275ms=遅延の48%)。ガター線は見える所にしか描画されない→画面外10万行の走査は無駄。スクロールはonDidChangeTextEditorVisibleRanges→refreshが100msで追従。editor無し(旧呼び出し)は全行フォールバック。
+  let _spans;
+  if (editor && editor.visibleRanges && editor.visibleRanges.length) {
+    const MARGIN = 120;
+    _spans = editor.visibleRanges.map(r => [Math.max(0, r.start.line - MARGIN), Math.min(lastLine, r.end.line + MARGIN)]).sort((a, b) => a[0] - b[0]);
+    const merged = []; for (const s of _spans) { const last = merged[merged.length - 1]; if (last && s[0] <= last[1] + 1) last[1] = Math.max(last[1], s[1]); else merged.push(s.slice()); } _spans = merged;
+  } else { _spans = [[0, lastLine]]; }
+  for (const _sp of _spans) {
+  for (let line = _sp[0]; line <= _sp[1]; line++) {
     if (bmLines && bmLines.has(line)) continue;
     if (line === curLine) continue; // v0.9.940: 現在行は膜線スキップ(矢印マーカーが貫く)
     const stack = [];
@@ -4618,11 +4626,12 @@ function computeGutterLaneDecorations(document) {
     if (!arr) { arr = []; byKey.set(svg, arr); }
     arr.push(new vscode.Range(line, 0, line, 0));
   }
+  }
   return byKey;
 }
 function applyGutterLaneDecorations(editor) {
   if (!editor) return;
-  const byKey = computeGutterLaneDecorations(editor.document);
+  const byKey = computeGutterLaneDecorations(editor.document, editor);
   // Pool hygiene: a colourful document can mint many signatures over a session; past 400
   // dispose everything and rebuild from the current frame (a one-frame repaint at worst).
   if (_gutterLaneTypePool.size > 400) clearGutterLaneDecorations(null, true);
