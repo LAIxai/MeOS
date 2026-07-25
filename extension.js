@@ -2578,6 +2578,16 @@ const MEOS_RELEASE_PHASE = 3;
 // v3.0.7.1(俊克 7/24 pm): ★表計算(Σ 合計 / Π 総乗)の隔離スイッチ。テスト中は true、日曜のPhase3リリース前に false にして「一旦隔離」→火/水の v3.1 で true に戻して単独リリース。
 // 記法(番地を1文字も書かない): <!--Σ↑--> 上の列を合計 / Σ↓ 下 / Σ← 左 / Σ→ 右。<!--Π←2--> 左2セルの積(×/x/* も別名として受理し整形で Π に揃える)。自分のセルは含めない=自己参照しない。
 const MEOS_TABLE_CALC = true; // v3.1.0(俊克 7/25 pm01:30「v3.1のロックを解除しましょう・早く使いたいので」): 表計算Σ/Πを解禁。日曜のv3.0(結合)公開が済んだので、隔離を解いた。true=Σ/Πの装飾・整形の正規化・再帰計算が有効。※縦結合の行罫線方式(前人未到)と巨大日記refresh可視範囲化は v3.1 の残タスク(未実装)。
+// ★★TEMP v3.1(俊克 7/25 pm07:07「遅延問題に取り掛かろう」): 巨大日記の refresh 遅延を計測する仮の仕掛け。refresh()の各装飾ブロックの所要msを測り、total>=40msの時だけログファイルへ1行追記(貼付→Claudeがログ直読み=転記不要)。真犯人を数字で確定したら、可視範囲化を実装→この計測ブロックは撤去する。false or 削除で無効化。
+const MEOS_PROFILE_REFRESH = true;
+const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
+let _prof = null;
+function _ck(label) { if (!_prof) return; const now = Date.now(); _prof.rows.push(label + '=' + (now - _prof.last)); _prof.last = now; }
+function _profFlush() {
+  if (!_prof) return;
+  try { const total = Date.now() - _prof.t0; if (total >= 40) { require('fs').appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' lines=' + _prof.lines + ' total=' + total + ' | ' + _prof.rows.join(' ') + '\n'); } } catch (_) {}
+  _prof = null;
+}
 // v0.9.678 (対策1): window-bottom status bar showing the membrane the cursor is inside.
 let membraneStatusBarItem = null;
 // v0.9.681 (改善2): baseline line-count of the membrane the cursor entered, so the Pin /
@@ -10528,6 +10538,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
     scheduleMstatMetadata(editor);
     return;
   }
+  if (MEOS_PROFILE_REFRESH) { _prof = { t0: Date.now(), last: Date.now(), rows: [], lines: editor.document.lineCount }; } // TEMP v3.1 計測開始
   // v0.9.818: gutter lanes (課題7) — the lane moves to the glyph margin; the in-text
   // before-element lane is cleared. Old renderer kept behind laiMembrane.gutterLanes=false.
   if (gutterLanesOn(cfg)) {
@@ -10537,11 +10548,14 @@ function refresh(editor = vscode.window.activeTextEditor) {
     clearGutterLaneDecorations(editor);
     setDecoCached(editor, lineDecoration, 'line', computeLineDecorations(editor.document));
   }
+  _ck('gutterLine');
   if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, computeWarningArrowDecorations(editor.document));
+  _ck('warnArrow');
   applyPrettyLabels(editor);
   // v0.9.512: Stealth rendering — hide Sth1 shells, render ◤◢ markers,
   // and for full-stealth (nested Sth1) hide content too.
   applyStealthDecorations(editor);
+  _ck('prettyStealth');
   // v0.9.504: depthProxy apply removed.
   clearMembraneBadgeColorDecorations(editor);
   const badgeColorRanges = computeMembraneBadgeColorRanges(editor);
@@ -10549,6 +10563,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
     const deco = ensureMembraneBadgeColorDecoration(code);
     if (deco) editor.setDecorations(deco, ranges);
   }
+  _ck('badgeColor');
   if (mstatIconDoorDecoration) {
     editor.setDecorations(mstatIconDoorDecoration, mstatBadgeIconDoorRanges(editor));
   }
@@ -10557,7 +10572,9 @@ function refresh(editor = vscode.window.activeTextEditor) {
     if (workingTocLineDecoration) editor.setDecorations(workingTocLineDecoration, tocRanges.lineRanges);
     if (workingTocItemDecoration) editor.setDecorations(workingTocItemDecoration, fixedWorkingTocEnabled ? [] : tocRanges.itemRanges);
   }
+  _ck('iconDoorToc');
   if (fixedTocHideDecoration) setDecoCached(editor, fixedTocHideDecoration, 'tocHide', fixedTocHiddenRanges(editor));
+  _ck('fixedTocHide');
   if (rightEdgeSpaceDecoration) {
     editor.setDecorations(rightEdgeSpaceDecoration, membraneRightEdgeVirtualSpaceRanges(editor));
   }
@@ -10570,6 +10587,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   if (mdWrapperHideDecoration) {
     setDecoCached(editor, mdWrapperHideDecoration, 'mdHide', markdownWrapperHideRanges(editor).concat(sourceRjfHideRanges(editor)).concat(hyperTocStorageHideRanges(editor)));
   }
+  _ck('tail');
   scheduleMstatsSync(editor);
   scheduleMstatMetadata(editor); // v0.9.635: was a missed setTimeout(...,260) in v0.9.633's replace_all (2-space indent).
   // v0.9.674: green re-render was REMOVED from here. v0.9.672 called renderActiveGreenMarkers
@@ -10581,6 +10599,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   // structural branch instead. Plain selection-change refreshes stay free.
   applyEncDecorations(editor); // v0.9.9996: 暗号文を隠し「🔐 Locked」だけ見せる
   postFixedWorkingTocSnapshot();
+  _ck('mstatEncSnap'); _profFlush(); // TEMP v3.1 計測終了→ログ追記
 }
 function findCurrentPair(editor) {
   if (!editor) return null;
