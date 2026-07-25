@@ -2582,10 +2582,20 @@ const MEOS_TABLE_CALC = true; // v3.1.0(俊克 7/25 pm01:30「v3.1のロック�
 const MEOS_PROFILE_REFRESH = true;
 const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
 let _prof = null;
+// v3.1.5(俊克 7/25「しばらく使って10秒遅延が起きたら通知」): 計測を"静かな見張り番"に。普段(通常refresh 142ms)は無記録。異常のみ記録=①SLOW: 1回のrefreshが250ms超(全文スキャンの残り) ②BURST: refreshが連射して累計1.5秒超(×N連射の暴走=10秒遅延の正体候補)。実使用で間欠10秒を自動捕捉→1回の巨大スキャンか多数連射かを区別。★公開v3.1では計測ブロック(MEOS_PROFILE_*/_ck/_profFlush/refresh内フック)を撤去すること。
+let _burstN = 0, _burstMs = 0, _burstT0 = 0, _burstLogged = false, _lastRefreshEnd = 0;
 function _ck(label) { if (!_prof) return; const now = Date.now(); _prof.rows.push(label + '=' + (now - _prof.last)); _prof.last = now; }
 function _profFlush() {
   if (!_prof) return;
-  try { const total = Date.now() - _prof.t0; if (total >= 40) { require('fs').appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' lines=' + _prof.lines + ' total=' + total + ' | ' + _prof.rows.join(' ') + '\n'); } } catch (_) {}
+  try {
+    const total = Date.now() - _prof.t0, now = Date.now();
+    if (now - _lastRefreshEnd < 400) { _burstN++; _burstMs += total; } else { _burstN = 1; _burstMs = total; _burstT0 = now - total; _burstLogged = false; }
+    _lastRefreshEnd = now;
+    const detail = 'lines=' + _prof.lines + ' total=' + total + ' | ' + _prof.rows.join(' ');
+    const fs = require('fs');
+    if (total >= 250) fs.appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' SLOW ' + detail + '\n');
+    if (_burstMs >= 1500 && !_burstLogged) { _burstLogged = true; fs.appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' BURST n=' + _burstN + ' burstMs=' + _burstMs + ' window=' + (now - _burstT0) + ' | ' + detail + '\n'); }
+  } catch (_) {}
   _prof = null;
 }
 // v0.9.678 (対策1): window-bottom status bar showing the membrane the cursor is inside.
