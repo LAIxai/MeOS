@@ -31,8 +31,13 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 > ## **You(AI) & I(LAI) 🐔**
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3-table-merge.png" alt="Cell merge — the raw data stays valid GFM, MeOS shows the merge in the main editor" width="72%"><br>
+  <sub><b>NEW in v3.0 — tables that never touch your data.</b> GFM has no colspan / rowspan; MeOS adds them with one HTML comment (<code>&lt;!--🤝→2--&gt;</code>). The cell count never changes, so the file stays valid GFM and the marker is invisible on GitHub. The merge shows in the <b>main editor</b> — not a preview pane; put the cursor on the row and the raw marker returns for inline editing.</sub>
+</p>
+
+<p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v2-lifelong-diary.png" alt="Lifelong diary — the Ⓣday base-point button and its day list" width="92%"><br>
-  <sub><b>NEW in v2.0 — your whole life's diary, from one button.</b> The right <b>Ⓣday</b> is a polymorphic base point: type a <b>date</b> to warp there, a <b>word</b> to search by meaning, or <b>T</b> for today — then ↻ threads a day across Week / Month / Year (a 10-year diary). All structure lives in comments, so it never touches your prose.</sub>
+  <sub><b>In v2.0 — your whole life's diary, from one button.</b> The right <b>Ⓣday</b> is a polymorphic base point: type a <b>date</b> to warp there, a <b>word</b> to search by meaning, or <b>T</b> for today — then ↻ threads a day across Week / Month / Year (a 10-year diary). All structure lives in comments, so it never touches your prose.</sub>
 </p>
 
 <p align="center">
