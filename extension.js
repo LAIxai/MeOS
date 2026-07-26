@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.14(俊克 7/27 am01:29 v3.1.13 OK・改良「帯でなく、ヘッダと区切り行を縦結合して見せる」): 塗り帯(v3.1.13)を撤回し、**ヘッダ行と区切り行を縦結合**して見せる方式に。①太い仕切りを**区切り行の下端**(border-bottom 3px foreground)へ=ヘッダ+区切りの底=ヘッダ/データ境界。②ヘッダ行の横結合(→N)に対応する**内部パイプを区切り行でも隠す**(sepPipeHide)→ヘッダと区切りが縦に繋がって1つの背高セルに見える(区切り行が「空行」でなくヘッダの続き)。③--- は従来通り隠す・ヘッダ/区切り間に線は引かない(縦結合の見せ方と同型)。俊克「ヘッダは項目名が入るので背が高く見えても違和感無い」。→ [[project_table_formatter]]
 // - v3.1.13(俊克 7/27 am01:12 v3.1.12 OK「両端の削り具合◎・角の空きは想像で埋まる高度な空間」・改良1つ「太線を元の --- の高さに重ねられないか」): 太い仕切りを **border-top → 塗り帯(backgroundColor band)** に変更。理由=**borderは行ボックスの上端/下端にしか引けず、--- のある"中段"の高さに線を出せない**(text-decorationは実グリフ上だけ=全幅不可)。→区切り行の高さごと `panel.border` 色で塗る＝ --- の位置に重なり、かつ「空行」に見えない。runs()の連続&両端トリムはそのまま(帯も表幅・外枠内側)。色/濃さは要ビジュアル確認(重すぎれば別ThemeColorか半透明へ)。→ [[project_table_formatter]]
 // - v3.1.12(俊克 7/27 am01:02 v3.1.11 OK「ほぼパーペキ」・改良1つ): 横罫線の**両端(表の左右外縁)を1文字ぶん削り**、外枠パイプの内側に収める(旧=左端pipes[0]/右端pipes[n]+1で外枠パイプの下まで伸びていた→左end=pipes[0]+1・右end=pipes[n]。内部のパイプ跨ぎ・縦結合の抜き境界は連続/従来のまま)。runs()にpush(s,e1)を追加し、表の左端(s===0)と右端(e1===n)のときだけトリム。→ [[project_table_formatter]]
 // - v3.1.11(俊克 7/27 am00:26 v3.1.10テスト OK&NG・2件): ①**改良1バグ修正**=上端/太線/下線が「左の途中の変な所で途切れる」真因=横罫線を**セル単位**で引き、全パイプ位置に隙間ができていた(普通のパイプは`|`グリフが埋めるが、横結合→2で**隠したパイプ**の所は埋まらず途切れて見えた)。→`runs()`で**パイプを跨いで連続**で引く(縦結合の抜き列だけで分断)。②**改良2**=太い仕切りをヘッダ下でなく**区切り行そのもの(元の --- の位置)の上端**に移動(border-top 3px)=区切り行が「空行」でなく「仕切り線の行」に見えるように。※GFMは --- 行を必須とするため**行の高さ自体は消せない**(折り畳みは当codebaseで不安定=[[project_no_fold_all]]・非推奨)。まだ空きが気になるなら次は「塗り帯(背景band)」か「太線を諦めて --- 表示」の二択。→ [[project_table_formatter]]
@@ -17287,7 +17288,7 @@ function meosApplyTableRowLineDecorations(editor) {
   // v3.1.10(俊克 改良1): 横罫線は縦結合の有無に関わらず全表のデフォルト・太さを倍(1px→2px)。
   if (!tableRowLineDeco) tableRowLineDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 2px 0', borderColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   if (!tableRowLineTopDeco) tableRowLineTopDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '2px 0 0 0', borderColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 改良2: 上端の横罫線
-  if (!tableRowLineThickDeco) tableRowLineThickDeco = vscode.window.createTextEditorDecorationType({ backgroundColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v3.1.13 改良: 区切り行を塗り帯(band)に。borderは行の上下端しか引けず --- のある中段の高さに線を出せない→行の高さごと塗って --- の位置に重ねる(かつ「空行」に見えない)。
+  if (!tableRowLineThickDeco) tableRowLineThickDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 3px 0', borderColor: new vscode.ThemeColor('foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v3.1.14(俊克): 太い仕切りを区切り行の下端に。ヘッダ行と区切り行を縦結合して見せ、その底が太線=ヘッダ/データの境界。
   if (!tableSepHideDeco) tableSepHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 改良3: 区切り行の --- を見えなくする(データは消さない=GFM仕様のまま)
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Rawは罫線ゼロ・--- も生表示
@@ -17301,7 +17302,10 @@ function meosApplyTableRowLineDecorations(editor) {
       const rows = lines.map(meosSplitTableRow); let sepIdx = -1;
       for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
       const sk = meosRowLineSkipSet(rows, sepIdx);
-      const info = { start: blk.start, sepIdx, vskip: sk.vskip };
+      // v3.1.14(俊克): ヘッダ行の横結合(→N)に対応する内部パイプ=区切り行でも隠す→ヘッダ行と区切り行が縦に結合して見える(区切り行が「空行」でなくヘッダの続きになる)。
+      const sepPipeHide = new Set();
+      for (let r = 0; r < sepIdx; r++) { const cells = rows[r] || []; for (let c = 0; c < cells.length; c++) { const sp = meosCellSpan(cells[c]); for (let p = 1; p < sp; p++) sepPipeHide.add(c + p); } }
+      const info = { start: blk.start, sepIdx, vskip: sk.vskip, sepPipeHide };
       blockCache.set(blk.start, info); return info;
     }
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
@@ -17319,8 +17323,12 @@ function meosApplyTableRowLineDecorations(editor) {
         const runs = (skip) => { const out = []; const n = pipes.length - 1; const T = 1; let a = -1; const push = (s, e1) => { const L = (s === 0) ? pipes[0] + T : pipes[s]; const R = (e1 === n) ? pipes[n] + 1 - T : pipes[e1] + 1; out.push(new vscode.Range(ln, L, ln, R)); }; for (let k = 0; k < n; k++) { if (skip && skip.has(k)) { if (a >= 0) { push(a, k); a = -1; } } else if (a < 0) a = k; } if (a >= 0) push(a, n); return out; }; // v3.1.12(俊克): 横罫線の両端(表の左右外縁)をT文字ぶん削り、外枠パイプの内側に収める(内部のパイプ跨ぎは連続のまま)
         if (rowIdx === 0) top.push(...runs(null)); // 改良2: 上端(全幅連続)
         if (rowIdx === blk.sepIdx) {
-          // v3.1.11(俊克 改良2): 太い仕切りをヘッダ下でなく区切り行そのもの(元の --- の位置)に。--- は隠す。カーソル行は生表示で :--- 揃え編集可。
-          if (!cursorLines.has(ln)) { for (let k = 0; k < pipes.length - 1; k++) sepHide.push(cell(k)); thick.push(...runs(null)); }
+          // v3.1.14(俊克): 区切り行=--- を隠し、ヘッダ結合に対応するパイプも隠し(ヘッダと縦結合して見せる)、下端に太い仕切り。カーソル行は生表示で :--- 揃え編集可。
+          if (!cursorLines.has(ln)) {
+            for (let k = 0; k < pipes.length - 1; k++) sepHide.push(cell(k)); // --- を隠す
+            for (const pi of blk.sepPipeHide) if (pi < pipes.length) sepHide.push(new vscode.Range(ln, pipes[pi], ln, pipes[pi] + 1)); // ヘッダ結合に対応する縦線を隠す
+            thick.push(...runs(null)); // 下端に太い仕切り(ヘッダ+区切りの底=境界)
+          }
         } else if (rowIdx > blk.sepIdx) {
           // データ行(改良1): 下線を連続で。縦結合の内部境界だけ抜く(=結合部に線が無い→縦1つのセルに見える)。
           const skip = new Set(); for (let k = 0; k < pipes.length - 1; k++) if (blk.vskip.has(rowIdx + ',' + k)) skip.add(k);
