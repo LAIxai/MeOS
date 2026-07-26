@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.9(俊克 7/26 深夜「少し進めておこう」): ★縦結合の行罫線方式(前人未到)の第一歩=装飾を1層足すだけ(既存の結合ロジックは無改修=低リスク)。縦結合(🤝↓N)はテキスト表に行間罫線が無く「結合されて空」と「ただ空」が区別できない→全データセルの下に薄い横罫線(border-bottom装飾)を引き、縦結合スパンの内部境界だけ抜く=結合部に線が無い→そのセルが縦1つに立って見える(HTMLのrowspanと同じ正攻法)。縦線は既存GFMパイプ、横線だけ装飾で補い結合部で抜く=素GFMのまま格子を持ち込む。実装(node のみ)=①`meosVMergeSpan`(🤝↓NのN抽出)②`meosRowLineSkipSet(rows,sepIdx)`=抜く行×列の集合＋hasV(縦結合が1つでもあるか)=純関数(headlessテスト6件パス)③`meosApplyTableRowLineDecorations`=可視範囲のみ・縦結合のある表だけ格子・データ行に下線・vskipで内部を抜く・Raw/phase<3はゼロ。border色は `ThemeColor('panel.border')`。★未検証=**罫線の見た目(色/太さ/パイプ際の隙間/ヘッダ境界)は実機ビジュアル確認が必要**(装飾レンダリングは headless不可)。結合膜(←/↑)は未着手(scalar meosCellSpan改修=別途)。→ [[project_table_formatter]] [[project_meos_freeze_pattern]]
 // - v3.1.8(俊克 7/26 pm「計算膜を実装して」): ★★表計算膜 — Σ/Π を「番地もカウントも書かず、始まり(壁)と終わり(結果)のマーカーで範囲を囲む」。列/行を挿しても数字を直さない(insertion-stable)＝[[project_true_outliner_membrane]]の膜思想(開始/終了で囲む・数えない)を表計算へ。記法=開き `<!--Σ→-->`(範囲の始点=壁・無表示。表の一番左の項目名/通番セルに置くのが典型)… 閉じ `<!--Σ←-->`(結果を表示・壁の手前まで合計=壁セル自身は計算対象外)。Π・縦(↓…↑)も同型。★どちらに結果を出すかは末尾 `d`(display)で指定=`Σ→d…Σ←`は左に表示/`Σ→…Σ←d`は右。d 無しなら閉じ側(←/↑=読み順で後)に自動表示(=打鍵最小)。単独マーカー(相方なし)は従来通り端まで合計＝完全後方互換。実装(node のみ)=①MEOS_CALC_RE に `(d|D)?` 追加+meosCalcMarkerに disp。②meosCalcPartner/meosCalcCellRole(相方探索・d優先・既定は閉じ側)。③resolverのスキャンを「相方の壁の手前で停止」(exclusive)に。④装飾/整形は role==='boundary' で結果を出さず生テキストを表示。★俊克の核心指摘=表の一番左は通番/項目名(数値の事も)→単独Σ←だと通番まで足してしまう(1+100+120+90=311)が、そこに開き壁Σ→を置けば通番を除外(=310)。headlessテスト16件パス(後方互換4/膜12: 通番除外・役割・insertion-stable・d左右・縦・Π)。→ [[project_table_formatter]] [[project_true_outliner_membrane]]
 // - v3.1.7(俊克 7/26 pm00:29 v3.1.6テストNG「まったく変わらない・再描画が走る」): ★v3.1.6の署名デデュープはリストDOMの部分再構築を止めただけで**真因ではなかった**。真因=**パネルまるごとの dispose+再生成**。呪文みみみ(および📊)経由の `toggleMeDock` は Dock を開くとき `meDockAutoLastUri` を記録しない→開いた直後 webview にフォーカスが移り、ユーザーがエディタをクリックしてフォーカスが戻ると `onDidChangeActiveTextEditor`→`autoShowMeDockForEditor` が `uri !== meDockAutoLastUri(未記録)` を「別ドキュメント」と誤判定し `disposeMeDockPanelForAutoShow()`＋80ms後に再 `toggleMeDock`=**パネル全再生成(webview.html再代入)=丸ごと再描画**。→修正=toggleMeDock の開path で開いた今のエディタの uri を `meDockAutoLastUri` に記録→フォーカス復帰時の autoShow は「同一ドキュメント」と分かり retarget だけで済む(作り直さない)。v3.1.6のリストデデュープは相補的に残す(retarget後の updateMeDockMode の無駄なリスト再構築を防ぐ)。node のみ変更。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v3.1.6(俊克 7/26 am11:57「みみみ後にエディタをクリックして入力を始めると Me Dock の再描画が走る・無駄で不快。前から気づいていた」): ★真因=`onDidChangeTextEditorSelection`(activate内)が**毎selectionで** `updateMeDockMode()`→`postFixedWorkingTocSnapshot()` を呼び、webviewの `renderFixedToc` が `fixedTocBody.innerHTML=items.map(...)` で**H-TOCリスト全体のDOMを毎回作り直していた**。カーソル移動ではリスト内容は変わらない(変わるのはピン=現在膜だけ)のに、クリック/カーソル移動のたびにリストが再構築されちらつく=[[project_meos_freeze_pattern]]の典型(高頻度イベント上の無駄な同期再描画)。→**webview側で署名デデュープ**: `renderFixedToc` でリスト内容の署名(enabled/hasToc/activeIdx/selKey/tocName/各item[key,value,checkedAt,citeN,createdAt,checkLog長])を作り、前回と同じ間は `fixedTocBody` の再構築をスキップ(`window.__fixedTocSig`)。**ピン(tocPinBar)は署名チェックの前で毎回更新**するのでカーソル追従は不変。任意の実変更(追加/削除/改名/チェック/並び替え/タブ/選択)は署名を変えるのでstaleにならない。全callerに効く(cursor移動に限らず同一内容の再postを無視)。node→webviewのプロトコルは不変。webview<script>のみ変更。node --check + check_webview.js OK。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
@@ -10551,6 +10552,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   activeEditor = editor;
   try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
   try { meosApplyTableCalcDecorations(editor); } catch (_) {} // v3.0.7.1: 表計算 Σ/Π の装飾(Raw/隔離時は関数内で解除)
+  try { meosApplyTableRowLineDecorations(editor); } catch (_) {} // v3.1.9: 縦結合の行罫線方式(Raw/隔離時は関数内で解除)
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
@@ -16753,6 +16755,21 @@ function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !=
 function meosCellSpan(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); if (!m || m[1] === '↓') return 1; return Math.max(1, parseInt(m[2], 10)); } // 横結合(colspan)のみ返す。縦(↓)や非結合は1。
 function meosMergeMarker(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); return m ? ('<!--🤝' + (m[1] || '→') + m[2] + '-->') : ''; } // 元マーカーを方向付きコメント形式で返す(素の🤝N→<!--🤝→N-->)
 function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*(?:→|↓)?\s*\d+\s*-->/gu, '').replace(/^\s*🤝\s*(?:→|↓)?\s*\d+\s*/u, '').trim(); }
+// v3.1.9(俊克 7/26「縦結合の行罫線方式」): 縦結合(rowspan)を、テキスト表に無い横罫線を装飾で補い、結合部だけ抜くことで見せる(前人未到)。
+function meosVMergeSpan(cellText) { const m = /<!--\s*🤝\s*↓\s*(\d+)\s*-->/u.exec(String(cellText || '')); return m ? Math.max(1, parseInt(m[1], 10)) : 1; } // 縦結合(🤝↓N)のN。↓でなければ1。
+// 各データ行×列の「下線を抜く」集合を返す=縦結合スパンの内部境界(最終行以外)。hasV=表に縦結合が1つでもあるか(格子はそれがある表だけに描く=抜きが意味を持つ)。
+function meosRowLineSkipSet(rows, sepIdx) {
+  const vskip = new Set(); let hasV = false;
+  for (let r = 0; r < rows.length; r++) {
+    if (r === sepIdx) continue;
+    const cells = rows[r] || [];
+    for (let c = 0; c < cells.length; c++) {
+      const n = meosVMergeSpan(cells[c]);
+      if (n >= 2) { hasV = true; for (let k = 0; k < n - 1; k++) vskip.add((r + k) + ',' + c); } // r..r+n-2 の下線を抜く(最終行 r+n-1 は引く=結合セルの底)
+    }
+  }
+  return { vskip, hasV };
+}
 
 // ===== v3.0.7.1(俊克): 表計算 Σ/Π ==========================================================
 // 番地を書かない合計・積。マーカーは HTMLコメント=生データを1mmしか汚さない(🤝 と同じ層)。表示は常に再計算した値が真(焼いた数字は外向けの写し)。
@@ -17254,6 +17271,50 @@ function meosApplyTableCalcDecorations(editor) {
   } catch (_) {}
 }
 
+// v3.1.9(俊克 7/26「縦結合の行罫線方式」・前人未到): 縦結合(🤝↓N)は、テキスト表に行間罫線が無いため「結合されて空」と「ただ空」が区別できない。
+// →全データセルの下に薄い横罫線を装飾で引き、縦結合しているセルの内部境界だけ抜く=結合部に線が無い→そのセルが縦に1つ立って見える(HTMLのrowspanと同じ正攻法)。
+// 縦線は既存GFMパイプ(ファイル実在)、横線だけMeOSが装飾で補い結合部で抜く=素のGFMを保ったまま格子を持ち込む。罫線は純粋装飾(生データ0汚染)/Raw・隔離時はゼロ。
+// 格子は縦結合が1つでもある表だけに描く(抜きが意味を持つため=有/無の差で結合を語る)。可視範囲のみ走査(性能)。
+let tableRowLineDeco = null;
+function meosApplyTableRowLineDecorations(editor) {
+  if (!editor || !editor.document) return;
+  if (MEOS_RELEASE_PHASE < 3) { if (tableRowLineDeco) editor.setDecorations(tableRowLineDeco, []); return; } // テーブル未解禁フェーズでは罫線ゼロ
+  if (!tableRowLineDeco) tableRowLineDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 1px 0', borderColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableRowLineDeco, []); return; } // Rawは罫線ゼロ
+    const doc = editor.document; const ranges = [];
+    const blockCache = new Map();
+    function blockFor(ln) {
+      const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
+      if (blockCache.has(blk.start)) return blockCache.get(blk.start);
+      const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
+      const rows = lines.map(meosSplitTableRow); let sepIdx = -1;
+      for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
+      const sk = meosRowLineSkipSet(rows, sepIdx);
+      const info = { start: blk.start, sepIdx, vskip: sk.vskip, hasV: sk.hasV };
+      blockCache.set(blk.start, info); return info;
+    }
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        const text = doc.lineAt(ln).text;
+        if (text.indexOf('|') < 0) continue;
+        if (!meosInTable(doc, ln)) continue;
+        const blk = blockFor(ln); if (!blk || blk.sepIdx < 0 || !blk.hasV) continue; // 縦結合のある表だけ格子を描く
+        const rowIdx = ln - blk.start;
+        if (rowIdx <= blk.sepIdx) continue; // 罫線はデータ行(区切り行より下)に引く
+        const pipes = meosRowPipePositions(text); if (pipes.length < 2) continue;
+        for (let k = 0; k < pipes.length - 1; k++) {
+          if (blk.vskip.has(rowIdx + ',' + k)) continue; // 縦結合の内部境界=下線を抜く
+          ranges.push(new vscode.Range(ln, pipes[k] + 1, ln, pipes[k + 1])); // セル内側に下線(パイプは既存の縦線)
+        }
+      }
+    }
+    editor.setDecorations(tableRowLineDeco, ranges);
+  } catch (_) {}
+}
+
 // v3.4.0/3.4.2(俊克 7/23): ★画像膜マーカー(標準機能)。膜の本文に画像リンクが1つ以上あれば、その膜の**開始行の先頭に 🖼 絵文字**を装飾(contentText)で表示=畳んでも「この膜に絵が入っている」が一目で分かる。★v3.4.0/3.4.1の実画像サムネ(contentIconPath)はサイズ制御が効かず原寸(巨大)になったため、確実・軽量・非破壊(ファイルを汚さない)な絵文字マーカーに切替。可視範囲のみ走査(性能)。
 let imageThumbDecoration = null;
 function meosApplyImageThumbDecorations(editor) {
@@ -17354,7 +17415,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.4.0: スクロールで結合装飾+計算結果+額縁サムネを追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
