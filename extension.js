@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.10(俊克 7/27 am00:06 v3.1.9テスト OK&NG・4改良): 行罫線方式を"表の格子"へ格上げ。①**改良1**=横罫線を縦結合の有無に関わらず**全表のデフォルト**に(旧v3.1.9は縦結合のある表だけ)＋**太さを倍(1px→2px)**(細すぎた)。②**改良2**=下端だけでなく**上端**にも横罫線(先頭ヘッダ行に border-top)=枠が閉じて締まる。③**改良3**=GFMの区切り行 `---` を**装飾で見えなくして**(`tableSepHideDeco` opacity0・データは消さない=GFM仕様のまま/カーソル行は生表示で `:---` 揃え編集可)、**ヘッダ直下に太い仕切り(3px・foreground色)**を出す=`---` の代わり。太い横罫線で**縦線のガタツキ(全角1.67の桁揃え残差)も目立たなくなる**狙い。④**改良4**=表外で▦を押した時の空雛形を、横結合(→2)と縦結合(↓2)を両方例示する4行版に差替え。実装=`meosApplyTableRowLineDecorations` を4デコタイプ(bottom2px/top2px/thick3px/sepHide)に再構成。ヘッダ<区切り<データで役割分岐。縦結合内部はvskipで下線を抜く(v3.1.9のまま)。★**罫線の色/太さ/区切り行の空き/太線の強さは実機ビジュアル要確認**。→ [[project_table_formatter]]
 // - v3.1.9(俊克 7/26 深夜「少し進めておこう」): ★縦結合の行罫線方式(前人未到)の第一歩=装飾を1層足すだけ(既存の結合ロジックは無改修=低リスク)。縦結合(🤝↓N)はテキスト表に行間罫線が無く「結合されて空」と「ただ空」が区別できない→全データセルの下に薄い横罫線(border-bottom装飾)を引き、縦結合スパンの内部境界だけ抜く=結合部に線が無い→そのセルが縦1つに立って見える(HTMLのrowspanと同じ正攻法)。縦線は既存GFMパイプ、横線だけ装飾で補い結合部で抜く=素GFMのまま格子を持ち込む。実装(node のみ)=①`meosVMergeSpan`(🤝↓NのN抽出)②`meosRowLineSkipSet(rows,sepIdx)`=抜く行×列の集合＋hasV(縦結合が1つでもあるか)=純関数(headlessテスト6件パス)③`meosApplyTableRowLineDecorations`=可視範囲のみ・縦結合のある表だけ格子・データ行に下線・vskipで内部を抜く・Raw/phase<3はゼロ。border色は `ThemeColor('panel.border')`。★未検証=**罫線の見た目(色/太さ/パイプ際の隙間/ヘッダ境界)は実機ビジュアル確認が必要**(装飾レンダリングは headless不可)。結合膜(←/↑)は未着手(scalar meosCellSpan改修=別途)。→ [[project_table_formatter]] [[project_meos_freeze_pattern]]
 // - v3.1.8(俊克 7/26 pm「計算膜を実装して」): ★★表計算膜 — Σ/Π を「番地もカウントも書かず、始まり(壁)と終わり(結果)のマーカーで範囲を囲む」。列/行を挿しても数字を直さない(insertion-stable)＝[[project_true_outliner_membrane]]の膜思想(開始/終了で囲む・数えない)を表計算へ。記法=開き `<!--Σ→-->`(範囲の始点=壁・無表示。表の一番左の項目名/通番セルに置くのが典型)… 閉じ `<!--Σ←-->`(結果を表示・壁の手前まで合計=壁セル自身は計算対象外)。Π・縦(↓…↑)も同型。★どちらに結果を出すかは末尾 `d`(display)で指定=`Σ→d…Σ←`は左に表示/`Σ→…Σ←d`は右。d 無しなら閉じ側(←/↑=読み順で後)に自動表示(=打鍵最小)。単独マーカー(相方なし)は従来通り端まで合計＝完全後方互換。実装(node のみ)=①MEOS_CALC_RE に `(d|D)?` 追加+meosCalcMarkerに disp。②meosCalcPartner/meosCalcCellRole(相方探索・d優先・既定は閉じ側)。③resolverのスキャンを「相方の壁の手前で停止」(exclusive)に。④装飾/整形は role==='boundary' で結果を出さず生テキストを表示。★俊克の核心指摘=表の一番左は通番/項目名(数値の事も)→単独Σ←だと通番まで足してしまう(1+100+120+90=311)が、そこに開き壁Σ→を置けば通番を除外(=310)。headlessテスト16件パス(後方互換4/膜12: 通番除外・役割・insertion-stable・d左右・縦・Π)。→ [[project_table_formatter]] [[project_true_outliner_membrane]]
 // - v3.1.7(俊克 7/26 pm00:29 v3.1.6テストNG「まったく変わらない・再描画が走る」): ★v3.1.6の署名デデュープはリストDOMの部分再構築を止めただけで**真因ではなかった**。真因=**パネルまるごとの dispose+再生成**。呪文みみみ(および📊)経由の `toggleMeDock` は Dock を開くとき `meDockAutoLastUri` を記録しない→開いた直後 webview にフォーカスが移り、ユーザーがエディタをクリックしてフォーカスが戻ると `onDidChangeActiveTextEditor`→`autoShowMeDockForEditor` が `uri !== meDockAutoLastUri(未記録)` を「別ドキュメント」と誤判定し `disposeMeDockPanelForAutoShow()`＋80ms後に再 `toggleMeDock`=**パネル全再生成(webview.html再代入)=丸ごと再描画**。→修正=toggleMeDock の開path で開いた今のエディタの uri を `meDockAutoLastUri` に記録→フォーカス復帰時の autoShow は「同一ドキュメント」と分かり retarget だけで済む(作り直さない)。v3.1.6のリストデデュープは相補的に残す(retarget後の updateMeDockMode の無駄なリスト再構築を防ぐ)。node のみ変更。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
@@ -16957,7 +16958,7 @@ async function meosFormatTableAtCursor(editor) {
   const blk = meosTableBlockRange(doc, cur);
   if (!blk) {
     // v0.9.999153(俊克): テーブル外で押したら空の表(3列×1行)を作成。
-    const tpl = meosFormatTableLines(['| <!--🤝2--> |  |  |', '|-|-|-|', '|  |  |  |']); // v0.9.999161(俊克): 🤝2をコメント形式で例として入れておく(結合の学習・不要なら消すだけ・生データを汚さない)
+    const tpl = meosFormatTableLines(['| <!--🤝→2--> |  |  |', '|-|-|-|', '|  |  | <!--🤝↓2--> |', '|  |  |  |']); // v3.1.10(俊克): 横結合(→2)と縦結合(↓2)の両方を例示した雛形(結合の学習・不要なら消すだけ・生データを汚さない)
     const curText = doc.lineAt(cur).text;
     const atBlank = (curText.trim() === '');
     const we0 = new vscode.WorkspaceEdit();
@@ -17275,14 +17276,20 @@ function meosApplyTableCalcDecorations(editor) {
 // →全データセルの下に薄い横罫線を装飾で引き、縦結合しているセルの内部境界だけ抜く=結合部に線が無い→そのセルが縦に1つ立って見える(HTMLのrowspanと同じ正攻法)。
 // 縦線は既存GFMパイプ(ファイル実在)、横線だけMeOSが装飾で補い結合部で抜く=素のGFMを保ったまま格子を持ち込む。罫線は純粋装飾(生データ0汚染)/Raw・隔離時はゼロ。
 // 格子は縦結合が1つでもある表だけに描く(抜きが意味を持つため=有/無の差で結合を語る)。可視範囲のみ走査(性能)。
-let tableRowLineDeco = null;
+let tableRowLineDeco = null, tableRowLineTopDeco = null, tableRowLineThickDeco = null, tableSepHideDeco = null;
 function meosApplyTableRowLineDecorations(editor) {
   if (!editor || !editor.document) return;
-  if (MEOS_RELEASE_PHASE < 3) { if (tableRowLineDeco) editor.setDecorations(tableRowLineDeco, []); return; } // テーブル未解禁フェーズでは罫線ゼロ
-  if (!tableRowLineDeco) tableRowLineDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 1px 0', borderColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  const clearAll = () => { for (const d of [tableRowLineDeco, tableRowLineTopDeco, tableRowLineThickDeco, tableSepHideDeco]) if (d) editor.setDecorations(d, []); };
+  if (MEOS_RELEASE_PHASE < 3) { clearAll(); return; } // テーブル未解禁フェーズでは罫線ゼロ
+  // v3.1.10(俊克 改良1): 横罫線は縦結合の有無に関わらず全表のデフォルト・太さを倍(1px→2px)。
+  if (!tableRowLineDeco) tableRowLineDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 2px 0', borderColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!tableRowLineTopDeco) tableRowLineTopDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '2px 0 0 0', borderColor: new vscode.ThemeColor('panel.border'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 改良2: 上端の横罫線
+  if (!tableRowLineThickDeco) tableRowLineThickDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 3px 0', borderColor: new vscode.ThemeColor('foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 改良3: ヘッダ直下の太い仕切り(GFMの --- の代わり)
+  if (!tableSepHideDeco) tableSepHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 改良3: 区切り行の --- を見えなくする(データは消さない=GFM仕様のまま)
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableRowLineDeco, []); return; } // Rawは罫線ゼロ
-    const doc = editor.document; const ranges = [];
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Rawは罫線ゼロ・--- も生表示
+    const doc = editor.document; const bottom = [], top = [], thick = [], sepHide = [];
+    const cursorLines = new Set(); try { for (const s of editor.selections) cursorLines.add(s.active.line); } catch (_) {}
     const blockCache = new Map();
     function blockFor(ln) {
       const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
@@ -17291,7 +17298,7 @@ function meosApplyTableRowLineDecorations(editor) {
       const rows = lines.map(meosSplitTableRow); let sepIdx = -1;
       for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
       const sk = meosRowLineSkipSet(rows, sepIdx);
-      const info = { start: blk.start, sepIdx, vskip: sk.vskip, hasV: sk.hasV };
+      const info = { start: blk.start, sepIdx, vskip: sk.vskip };
       blockCache.set(blk.start, info); return info;
     }
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
@@ -17301,17 +17308,26 @@ function meosApplyTableRowLineDecorations(editor) {
         const text = doc.lineAt(ln).text;
         if (text.indexOf('|') < 0) continue;
         if (!meosInTable(doc, ln)) continue;
-        const blk = blockFor(ln); if (!blk || blk.sepIdx < 0 || !blk.hasV) continue; // 縦結合のある表だけ格子を描く
+        const blk = blockFor(ln); if (!blk || blk.sepIdx < 0) continue; // 改良1: 全ての表に格子(縦結合の有無を問わない)
         const rowIdx = ln - blk.start;
-        if (rowIdx <= blk.sepIdx) continue; // 罫線はデータ行(区切り行より下)に引く
         const pipes = meosRowPipePositions(text); if (pipes.length < 2) continue;
-        for (let k = 0; k < pipes.length - 1; k++) {
-          if (blk.vskip.has(rowIdx + ',' + k)) continue; // 縦結合の内部境界=下線を抜く
-          ranges.push(new vscode.Range(ln, pipes[k] + 1, ln, pipes[k + 1])); // セル内側に下線(パイプは既存の縦線)
+        const cell = (k) => new vscode.Range(ln, pipes[k] + 1, ln, pipes[k + 1]);
+        if (rowIdx < blk.sepIdx) {
+          // ヘッダ行: 先頭行に上端罫線(改良2)・区切り直前の行に太い仕切り(改良3=--- の代わり)
+          for (let k = 0; k < pipes.length - 1; k++) { if (rowIdx === 0) top.push(cell(k)); if (rowIdx === blk.sepIdx - 1) thick.push(cell(k)); }
+        } else if (rowIdx === blk.sepIdx) {
+          // 区切り行(改良3): --- を見えなくする。ただしカーソル行は生表示で編集可(:--- の揃え指定を触れる)。
+          if (!cursorLines.has(ln)) for (let k = 0; k < pipes.length - 1; k++) sepHide.push(cell(k));
+        } else {
+          // データ行(改良1): セル下線。縦結合の内部境界だけ抜く(=結合部に線が無い→縦1つのセルに見える)。
+          for (let k = 0; k < pipes.length - 1; k++) { if (!blk.vskip.has(rowIdx + ',' + k)) bottom.push(cell(k)); }
         }
       }
     }
-    editor.setDecorations(tableRowLineDeco, ranges);
+    editor.setDecorations(tableRowLineDeco, bottom);
+    editor.setDecorations(tableRowLineTopDeco, top);
+    editor.setDecorations(tableRowLineThickDeco, thick);
+    editor.setDecorations(tableSepHideDeco, sepHide);
   } catch (_) {}
 }
 
