@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.7(俊克 7/26 pm00:29 v3.1.6テストNG「まったく変わらない・再描画が走る」): ★v3.1.6の署名デデュープはリストDOMの部分再構築を止めただけで**真因ではなかった**。真因=**パネルまるごとの dispose+再生成**。呪文みみみ(および📊)経由の `toggleMeDock` は Dock を開くとき `meDockAutoLastUri` を記録しない→開いた直後 webview にフォーカスが移り、ユーザーがエディタをクリックしてフォーカスが戻ると `onDidChangeActiveTextEditor`→`autoShowMeDockForEditor` が `uri !== meDockAutoLastUri(未記録)` を「別ドキュメント」と誤判定し `disposeMeDockPanelForAutoShow()`＋80ms後に再 `toggleMeDock`=**パネル全再生成(webview.html再代入)=丸ごと再描画**。→修正=toggleMeDock の開path で開いた今のエディタの uri を `meDockAutoLastUri` に記録→フォーカス復帰時の autoShow は「同一ドキュメント」と分かり retarget だけで済む(作り直さない)。v3.1.6のリストデデュープは相補的に残す(retarget後の updateMeDockMode の無駄なリスト再構築を防ぐ)。node のみ変更。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v3.1.6(俊克 7/26 am11:57「みみみ後にエディタをクリックして入力を始めると Me Dock の再描画が走る・無駄で不快。前から気づいていた」): ★真因=`onDidChangeTextEditorSelection`(activate内)が**毎selectionで** `updateMeDockMode()`→`postFixedWorkingTocSnapshot()` を呼び、webviewの `renderFixedToc` が `fixedTocBody.innerHTML=items.map(...)` で**H-TOCリスト全体のDOMを毎回作り直していた**。カーソル移動ではリスト内容は変わらない(変わるのはピン=現在膜だけ)のに、クリック/カーソル移動のたびにリストが再構築されちらつく=[[project_meos_freeze_pattern]]の典型(高頻度イベント上の無駄な同期再描画)。→**webview側で署名デデュープ**: `renderFixedToc` でリスト内容の署名(enabled/hasToc/activeIdx/selKey/tocName/各item[key,value,checkedAt,citeN,createdAt,checkLog長])を作り、前回と同じ間は `fixedTocBody` の再構築をスキップ(`window.__fixedTocSig`)。**ピン(tocPinBar)は署名チェックの前で毎回更新**するのでカーソル追従は不変。任意の実変更(追加/削除/改名/チェック/並び替え/タブ/選択)は署名を変えるのでstaleにならない。全callerに効く(cursor移動に限らず同一内容の再postを無視)。node→webviewのプロトコルは不変。webview<script>のみ変更。node --check + check_webview.js OK。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v3.0.9(俊克 7/24 pm06:35「表計算機能を隔離して下さい」): v3.0.8で全項目パーペキ(俊克「あっけない」)→日曜のPhase3(結合のみ)リリースに向け `MEOS_TABLE_CALC` を true→**false で隔離**。false時=Σ/Π マーカーはただのHTMLコメント(GitHubでも不可視)・整形は計算セルを素通り(生マーカーを保持・Πへの正規化もしない)・装飾なし。火/水の v3.1 単独リリースで true に戻すだけ。※test7の「整形で間延び」は計算のバグでなく整形器の最小列幅=3(v148・中央揃え `:-:` に必要)で全1文字列でのみ露出=仕様、と切り分け済(→[[project_table_formatter]])。1文字のみ変更。
 // - v3.0.8(俊克 7/24 pm「v3.0.7.1として、表計算機能を実装してテスト→うまく行ったら隔離して日曜のリリースに備える」・俊克が"v3.0.7.1"と呼ぶ表計算テスト。semverは4桁不可なのでpackage.jsonは3.0.8): ★**表計算 Σ/Π を実装(番地を1文字も書かない)**。記法=`<!--Σ↑-->`上の列を合計/`Σ↓`下/`Σ←`左/`Σ→`右、`<!--Π←2-->`左2セルの積(×/x/* も別名で受理→整形でΠに正規化・∑→Σ)。マーカーはHTMLコメント=🤝と同じ「生データを汚さず装飾で見せる」層(GitHubでは空セル/MeOSでは結果)。①**隔離スイッチ** `const MEOS_TABLE_CALC`(extensionContext直後・MEOS_RELEASE_PHASEの下)=テスト中true・**日曜前にfalseで一旦隔離**→火/水のv3.1でtrueに戻し単独リリース。②**再帰resolver**(meosCalcResolver)=小計列(×←2)をさらにΣ↑で総計できる(実測=単価×個数の小計を縦計して2100)。循環は自己参照ガードでnull。自分のセルは範囲に含めない。③数値化は通貨/単位/カンマを落として読む寛容方式(¥1,200→1200・3件→3・読めなければ範囲から除外)。④**表示は常に再計算した値が真**(焼いた数字は外向けの写し)。装飾=マーカーをゼロ幅で隠し結果を after で描画・カーソル行は生表示(編集可)=結合と同じ流儀。⑤整形(meosFormatTableLines)=計算セルの列幅は生マーカー長でなく**結果の桁数**で確保・生データは Π/Σ に正規化。⑥門番=`MEOS_RELEASE_PHASE<3` かつ `!MEOS_TABLE_CALC` で装飾オフ。headlessユニットテスト13件パス(Σ4方向/Π/×別名/入れ子/自己参照/N限定/通貨/空→null/正規化)。テスト素材=MeOS直下 table-calc-test.md。node のみ。→ [[project_table_formatter]] [[project_phased_release]]
@@ -15730,6 +15731,13 @@ function toggleMeDock(editorOverride) {
   }
 
   fixedWorkingTocEnabled = true;
+
+  // v3.1.7(俊克 7/26 pm00:29「みみみ後にエディタをクリックして入力を始めると Me Dock がまるごと再描画される」の真因): 呪文/📊経由の toggleMeDock は
+  // Dock を開くのに meDockAutoLastUri を記録していなかった。→開いた直後、webview にフォーカスが移り、ユーザーがエディタをクリックして
+  // フォーカスが戻ると onDidChangeActiveTextEditor が発火→autoShowMeDockForEditor が「uri !== meDockAutoLastUri(未記録)」を
+  // 「別ドキュメント」と誤判定し、パネルを dispose して 80ms 後に作り直す=パネル全体の再生成(=全再描画)。開いた今のエディタの uri を
+  // ここで記録しておけば、フォーカス復帰時の autoShow は「同一ドキュメント」と分かり retarget だけで済む(作り直さない)。
+  try { const _oe = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (_oe && _oe.document && _oe.document.uri) meDockAutoLastUri = _oe.document.uri.toString(); } catch (_) {}
 
   closeAllMeDockTabs(); // v0.9.971: 開く前に孤児タブを一掃=開いた後 Me Dock は常に1枚だけ(toClose は生成前に確定するので新パネルは閉じない)
   const _mdVer = meosExtVersion(); // v3.1.1(俊克): パネルのタブ名に版を出す(常に見える・webviewキャッシュ無関係)
