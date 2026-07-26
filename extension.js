@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.8(俊克 7/26 pm「計算膜を実装して」): ★★表計算膜 — Σ/Π を「番地もカウントも書かず、始まり(壁)と終わり(結果)のマーカーで範囲を囲む」。列/行を挿しても数字を直さない(insertion-stable)＝[[project_true_outliner_membrane]]の膜思想(開始/終了で囲む・数えない)を表計算へ。記法=開き `<!--Σ→-->`(範囲の始点=壁・無表示。表の一番左の項目名/通番セルに置くのが典型)… 閉じ `<!--Σ←-->`(結果を表示・壁の手前まで合計=壁セル自身は計算対象外)。Π・縦(↓…↑)も同型。★どちらに結果を出すかは末尾 `d`(display)で指定=`Σ→d…Σ←`は左に表示/`Σ→…Σ←d`は右。d 無しなら閉じ側(←/↑=読み順で後)に自動表示(=打鍵最小)。単独マーカー(相方なし)は従来通り端まで合計＝完全後方互換。実装(node のみ)=①MEOS_CALC_RE に `(d|D)?` 追加+meosCalcMarkerに disp。②meosCalcPartner/meosCalcCellRole(相方探索・d優先・既定は閉じ側)。③resolverのスキャンを「相方の壁の手前で停止」(exclusive)に。④装飾/整形は role==='boundary' で結果を出さず生テキストを表示。★俊克の核心指摘=表の一番左は通番/項目名(数値の事も)→単独Σ←だと通番まで足してしまう(1+100+120+90=311)が、そこに開き壁Σ→を置けば通番を除外(=310)。headlessテスト16件パス(後方互換4/膜12: 通番除外・役割・insertion-stable・d左右・縦・Π)。→ [[project_table_formatter]] [[project_true_outliner_membrane]]
 // - v3.1.7(俊克 7/26 pm00:29 v3.1.6テストNG「まったく変わらない・再描画が走る」): ★v3.1.6の署名デデュープはリストDOMの部分再構築を止めただけで**真因ではなかった**。真因=**パネルまるごとの dispose+再生成**。呪文みみみ(および📊)経由の `toggleMeDock` は Dock を開くとき `meDockAutoLastUri` を記録しない→開いた直後 webview にフォーカスが移り、ユーザーがエディタをクリックしてフォーカスが戻ると `onDidChangeActiveTextEditor`→`autoShowMeDockForEditor` が `uri !== meDockAutoLastUri(未記録)` を「別ドキュメント」と誤判定し `disposeMeDockPanelForAutoShow()`＋80ms後に再 `toggleMeDock`=**パネル全再生成(webview.html再代入)=丸ごと再描画**。→修正=toggleMeDock の開path で開いた今のエディタの uri を `meDockAutoLastUri` に記録→フォーカス復帰時の autoShow は「同一ドキュメント」と分かり retarget だけで済む(作り直さない)。v3.1.6のリストデデュープは相補的に残す(retarget後の updateMeDockMode の無駄なリスト再構築を防ぐ)。node のみ変更。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v3.1.6(俊克 7/26 am11:57「みみみ後にエディタをクリックして入力を始めると Me Dock の再描画が走る・無駄で不快。前から気づいていた」): ★真因=`onDidChangeTextEditorSelection`(activate内)が**毎selectionで** `updateMeDockMode()`→`postFixedWorkingTocSnapshot()` を呼び、webviewの `renderFixedToc` が `fixedTocBody.innerHTML=items.map(...)` で**H-TOCリスト全体のDOMを毎回作り直していた**。カーソル移動ではリスト内容は変わらない(変わるのはピン=現在膜だけ)のに、クリック/カーソル移動のたびにリストが再構築されちらつく=[[project_meos_freeze_pattern]]の典型(高頻度イベント上の無駄な同期再描画)。→**webview側で署名デデュープ**: `renderFixedToc` でリスト内容の署名(enabled/hasToc/activeIdx/selKey/tocName/各item[key,value,checkedAt,citeN,createdAt,checkLog長])を作り、前回と同じ間は `fixedTocBody` の再構築をスキップ(`window.__fixedTocSig`)。**ピン(tocPinBar)は署名チェックの前で毎回更新**するのでカーソル追従は不変。任意の実変更(追加/削除/改名/チェック/並び替え/タブ/選択)は署名を変えるのでstaleにならない。全callerに効く(cursor移動に限らず同一内容の再postを無視)。node→webviewのプロトコルは不変。webview<script>のみ変更。node --check + check_webview.js OK。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v3.0.9(俊克 7/24 pm06:35「表計算機能を隔離して下さい」): v3.0.8で全項目パーペキ(俊克「あっけない」)→日曜のPhase3(結合のみ)リリースに向け `MEOS_TABLE_CALC` を true→**false で隔離**。false時=Σ/Π マーカーはただのHTMLコメント(GitHubでも不可視)・整形は計算セルを素通り(生マーカーを保持・Πへの正規化もしない)・装飾なし。火/水の v3.1 単独リリースで true に戻すだけ。※test7の「整形で間延び」は計算のバグでなく整形器の最小列幅=3(v148・中央揃え `:-:` に必要)で全1文字列でのみ露出=仕様、と切り分け済(→[[project_table_formatter]])。1文字のみ変更。
@@ -16755,9 +16756,32 @@ function meosStripMergeMarker(cellText) { return String(cellText || '').replace(
 
 // ===== v3.0.7.1(俊克): 表計算 Σ/Π ==========================================================
 // 番地を書かない合計・積。マーカーは HTMLコメント=生データを1mmしか汚さない(🤝 と同じ層)。表示は常に再計算した値が真(焼いた数字は外向けの写し)。
-const MEOS_CALC_RE = /<!--\s*(Σ|∑|Π|∏|×|x|\*)\s*(→|←|↑|↓)\s*(\d+)?\s*-->/u;
-function meosCalcMarker(cellText) { const m = MEOS_CALC_RE.exec(String(cellText || '')); if (!m) return null; const sym = m[1]; const op = (sym === 'Σ' || sym === '∑') ? 'sum' : 'prod'; return { op, dir: m[2], n: m[3] ? Math.max(1, parseInt(m[3], 10)) : 0, raw: m[0] }; } // n=0=方向の端まで
+const MEOS_CALC_RE = /<!--\s*(Σ|∑|Π|∏|×|x|\*)\s*(→|←|↑|↓)\s*(\d+)?\s*(d|D)?\s*-->/u; // v3.1.8: 末尾 d = 計算膜で「結果をこのセルに表示」(display)
+function meosCalcMarker(cellText) { const m = MEOS_CALC_RE.exec(String(cellText || '')); if (!m) return null; const sym = m[1]; const op = (sym === 'Σ' || sym === '∑') ? 'sum' : 'prod'; return { op, dir: m[2], n: m[3] ? Math.max(1, parseInt(m[3], 10)) : 0, disp: !!m[4], raw: m[0] }; } // n=0=方向の端まで / disp=結果表示セル
 function meosCalcNormalize(sym) { return (sym === 'Σ' || sym === '∑') ? 'Σ' : 'Π'; } // ×/x/*/∏ → Π、∑ → Σ に正規化(整形で揃える)
+// v3.1.8(俊克 7/26「計算膜」): 始まりと終わりのマーカーで範囲を囲む=番地もカウントも書かない・列/行を挿しても数字を直さない(insertion-stable)。
+// 開き=→/↓(範囲の始点・自分の生値は範囲に入る・結果は出さない壁)/ 閉じ=←/↑(結果を表示・開き壁を含んで手前まで合計)。相方(同op・逆方向)が在る時だけ膜化し、単独マーカーは従来通り端まで。
+const MEOS_CALC_OPP = { '→': '←', '←': '→', '↑': '↓', '↓': '↑' };
+function meosCalcIsWall(raw, op, dir) { const m = meosCalcMarker(raw); return !!(m && m.op === op && m.dir === MEOS_CALC_OPP[dir]); } // 計算膜の相方の壁(同op・逆方向)か
+// マーカーセルの役割: null=計算マーカーでない / 'boundary'=開き側(→/↓)で相方の閉じ壁が在る=結果を出さないデータ壁 / 'result'=結果を表示(閉じ側 or 単独)
+function meosCalcPartner(rows, sepIdx, r, c, mk) { // 計算膜の相方の壁(同op・逆方向)を探して返す。無ければ null(=単独マーカー)。
+  const lastCol = Math.max.apply(null, rows.map(x => x.length || 0)) - 1, lastRow = rows.length - 1, opp = MEOS_CALC_OPP[mk.dir];
+  const hit = (raw) => { const m2 = meosCalcMarker(raw); return (m2 && m2.op === mk.op && m2.dir === opp) ? m2 : null; };
+  if (mk.dir === '→') { for (let j = c + 1; j <= lastCol; j++) { const p = hit(rows[r] && rows[r][j]); if (p) return p; } }
+  else if (mk.dir === '←') { for (let j = c - 1; j >= 0; j--) { const p = hit(rows[r] && rows[r][j]); if (p) return p; } }
+  else if (mk.dir === '↓') { for (let i = r + 1; i <= lastRow; i++) { if (i === sepIdx) continue; const p = hit(rows[i] && rows[i][c]); if (p) return p; } }
+  else if (mk.dir === '↑') { for (let i = r - 1; i > sepIdx; i--) { const p = hit(rows[i] && rows[i][c]); if (p) return p; } }
+  return null;
+}
+function meosCalcCellRole(rows, sepIdx, r, c) {
+  const mk = meosCalcMarker(rows[r] && rows[r][c]); if (!mk) return null;
+  const partner = meosCalcPartner(rows, sepIdx, r, c, mk);
+  if (!partner) return 'result'; // 単独マーカー=従来通り端まで合計して表示
+  // 計算膜: d 付きが結果セル。両方 d 無しなら閉じ側(←/↑=読み順で後)が結果、開き側(→/↓)は無表示の壁。
+  const thisIsResult = mk.disp ? true : (partner.disp ? false : (mk.dir === '←' || mk.dir === '↑'));
+  return thisIsResult ? 'result' : 'boundary';
+}
+function meosStripCalcMarker(raw) { return String(raw == null ? '' : raw).replace(/<!--[^]*?-->/g, '').trim(); } // 計算膜の開き壁のデータ本文(マーカーを剥がした表示テキスト)
 // セルの数値化: 通貨記号・単位・カンマ・マーカーを落として数だけ読む。読めなければ null(=範囲から除外)。
 function meosCalcParseNum(cellText) {
   let t = String(cellText == null ? '' : cellText).replace(/<!--[^]*?-->/g, '').trim();
@@ -16779,13 +16803,15 @@ function meosCalcResolver(rows, sepIdx) {
     const raw = rows[r] && rows[r][c];
     const mk = meosCalcMarker(raw);
     if (!mk) { const n = meosCalcParseNum(raw); memo.set(key, n); return n; }
+    if (meosCalcCellRole(rows, sepIdx, r, c) === 'boundary') { const n = meosCalcParseNum(raw); memo.set(key, n); return n; } // v3.1.8: 計算膜の開き壁=データセル(自分の生値・式ではない)
     busy.add(key);
     const vals = []; let count = 0; const lim = () => (mk.n > 0 && count >= mk.n);
     const take = (rr, cc) => { const v = cellVal(rr, cc); if (v != null) vals.push(v); count++; };
-    if (mk.dir === '↑') { for (let i = r - 1; i > sepIdx && !lim(); i--) take(i, c); }
-    else if (mk.dir === '↓') { for (let i = r + 1; i <= lastRow && !lim(); i++) { if (i !== sepIdx) take(i, c); } }
-    else if (mk.dir === '←') { for (let j = c - 1; j >= 0 && !lim(); j--) take(r, j); }
-    else if (mk.dir === '→') { for (let j = c + 1; j <= lastCol && !lim(); j++) take(r, j); }
+    // v3.1.8: 相方の壁(逆方向・同op)の手前で止める=壁セル(範囲の始点=項目名/通番)は計算対象外。壁が無ければ従来通り端まで(insertion-stable)。
+    if (mk.dir === '↑') { for (let i = r - 1; i > sepIdx && !lim(); i--) { if (meosCalcIsWall(rows[i] && rows[i][c], mk.op, mk.dir)) break; take(i, c); } }
+    else if (mk.dir === '↓') { for (let i = r + 1; i <= lastRow && !lim(); i++) { if (i === sepIdx) continue; if (meosCalcIsWall(rows[i] && rows[i][c], mk.op, mk.dir)) break; take(i, c); } }
+    else if (mk.dir === '←') { for (let j = c - 1; j >= 0 && !lim(); j--) { if (meosCalcIsWall(rows[r] && rows[r][j], mk.op, mk.dir)) break; take(r, j); } }
+    else if (mk.dir === '→') { for (let j = c + 1; j <= lastCol && !lim(); j++) { if (meosCalcIsWall(rows[r] && rows[r][j], mk.op, mk.dir)) break; take(r, j); } }
     busy.delete(key);
     const res = !vals.length ? null : (mk.op === 'sum' ? vals.reduce((a, b) => a + b, 0) : vals.reduce((a, b) => a * b, 1));
     memo.set(key, res); return res;
@@ -16795,7 +16821,7 @@ function meosCalcResolver(rows, sepIdx) {
 // 計算セルの表示文字列(空=計算結果なし)。rows/sepIdx が要る(範囲の実データを読むため)。
 function meosCalcDisplay(rows, sepIdx, r, c) { try { return meosFmtCalc(meosCalcResolver(rows, sepIdx)(r, c)); } catch (_) { return ''; } }
 // 正規化した計算マーカーのコメント文字列(×/x/*/∏→Π・∑→Σ・不要な数字は落とす)。整形で生データもこれに揃える。
-function meosCalcMarkerText(raw) { const mk = meosCalcMarker(raw); if (!mk) return ''; return '<!--' + (mk.op === 'sum' ? 'Σ' : 'Π') + mk.dir + (mk.n > 0 ? mk.n : '') + '-->'; }
+function meosCalcMarkerText(raw) { const mk = meosCalcMarker(raw); if (!mk) return ''; return '<!--' + (mk.op === 'sum' ? 'Σ' : 'Π') + mk.dir + (mk.n > 0 ? mk.n : '') + (mk.disp ? 'd' : '') + '-->'; }
 // ============================================================================================
 
 function meosFormatTableLines(lines) {
@@ -16827,7 +16853,7 @@ function meosFormatTableLines(lines) {
     for (let k = 0; k < cells.length; k++) { const sp = meosCellSpan(cells[k]); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
     for (let c = 0; c < cells.length && c < cols; c++) {
       if (meosCellSpan(cells[c]) > 1 || absorbed[c]) continue;
-      const cw = (calcVal && meosCalcMarker(cells[c])) ? meosStrWidth(meosFmtCalc(calcVal(i, c))) : meosStrWidth(meosStripMergeMarker(cells[c]));
+      const cw = (calcVal && meosCalcMarker(cells[c])) ? (meosCalcCellRole(rows, sepIdx, i, c) === 'boundary' ? meosStrWidth(meosStripCalcMarker(cells[c])) : meosStrWidth(meosFmtCalc(calcVal(i, c)))) : meosStrWidth(meosStripMergeMarker(cells[c])); // v3.1.8: 計算膜の開き壁は結果でなく生テキストの幅
       width[c] = Math.max(width[c], cw);
     }
   }
@@ -16873,7 +16899,16 @@ function meosFormatTableLines(lines) {
         const raw = cells[c] || '';
         // v3.0.7.1(俊克): 計算セル=正規化マーカー(表示ゼロ幅)＋結果は装飾で出す。emit本文は空・幅は結果の桁数を予約(装飾の after が同じ幅を占める)。生データは Π/Σ に揃える(×→Π 等)。
         if (calcVal && meosCalcMarker(raw)) {
-          const emitMk = meosCalcMarkerText(raw), w = meosStrWidth(meosFmtCalc(calcVal(i, c)));
+          const emitMk = meosCalcMarkerText(raw);
+          if (meosCalcCellRole(rows, sepIdx, i, c) === 'boundary') {
+            // v3.1.8: 計算膜の開き壁=データセル。マーカー(ゼロ幅)＋生テキストを出す(結果は出さない)。
+            const bodyB = meosStripCalcMarker(raw), wB = meosStrWidth(bodyB), a = align[c] === 'none' ? 'left' : align[c];
+            const padB = Math.max(0, Math.round(P[c] - cur - wB));
+            line += emitMk + ((a === 'right') ? ' '.repeat(padB) + bodyB : (a === 'center') ? ' '.repeat(Math.floor(padB / 2)) + bodyB + ' '.repeat(padB - Math.floor(padB / 2)) : bodyB + ' '.repeat(padB));
+            cur += wB + padB; if (c < cols - 1) { line += ' | '; cur += 3; }
+            continue;
+          }
+          const w = meosStrWidth(meosFmtCalc(calcVal(i, c)));
           const pad = Math.max(0, Math.round(P[c] - cur - w));
           line += emitMk + ' '.repeat(pad); // 結果はここに装飾(after)で描画=結果幅ぶんは cur で予約
           cur += w + pad; if (c < cols - 1) { line += ' | '; cur += 3; }
@@ -17209,7 +17244,7 @@ function meosApplyTableCalcDecorations(editor) {
           MEOS_CALC_RE.lastIndex = 0; const cm = MEOS_CALC_RE.exec(cellText); if (!cm) continue;
           const mStart = cs + cm.index, mEnd = mStart + cm[0].length;
           hideRanges.push(new vscode.Range(ln, mStart, ln, mEnd));
-          const disp = meosFmtCalc(blk.calc(rowIdx, k));
+          const disp = (meosCalcCellRole(blk.rows, blk.sepIdx, rowIdx, k) === 'boundary') ? '' : meosFmtCalc(blk.calc(rowIdx, k)); // v3.1.8: 計算膜の開き壁は結果を出さない(マーカーは隠すが生テキストはそのまま見える)
           if (disp !== '') resultOpts.push({ range: new vscode.Range(ln, mEnd, ln, mEnd), renderOptions: { after: { contentText: disp, color: 'var(--vscode-foreground)' } } });
         }
       }
