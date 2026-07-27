@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v3.1.15(俊克 7/27 am09:13「結合膜 →…← を実装／Σ→…Σ← と同様」): ★**結合膜**=番地もカウントも書かず、始点(→/↓)と終点(←/↑)のマーカーで結合範囲を囲む(計算膜 Σ→…Σ← と同型)。`<!--🤝→--> … <!--🤝←-->` で間の全セルが1つに結合(横colspan)/`<!--🤝↓--> … <!--🤝↑-->` で縦結合(rowspan)。**列/行を挿しても数字を直さない(insertion-stable)**=旧カウント式 `🤝→N` の弱点(挿入でNを直す)を解消。旧カウント式は後方互換で残す。実装(node のみ・既存の結合レンダリングに膜解決を足す形)=①`meosMergeAt`(→←↓↑・番号任意)②`meosColspanInCells(cells,c)`=横実効colspan(🤝→N or 🤝→…←)③`meosRowspanAt(rows,sepIdx,r,c)`=縦実効rowspan(🤝↓N or 🤝↓…↑)④meosMergeMarker/StripMergeMarkerを←↑・無番号対応⑤結合装飾=同一行内で相方←を探しマーカー(→←↓↑)を隠し内側パイプを不可視化⑥整形(4箇所)とrow-lineのvskip/sepPipeHideをcolspan/rowspan膜対応に。headlessテスト9件パス(count後方互換/横膜/insertion-stable/相方なし/縦膜↓…↑/skip-set)。★column ops(列複製/削除)は当面カウント式のまま(膜は挿入で自動伸縮するのでop側の特別処理は不要=既存動作で問題なし・要実機確認)。→ [[project_table_formatter]]
 // - v3.1.14(俊克 7/27 am01:29 v3.1.13 OK・改良「帯でなく、ヘッダと区切り行を縦結合して見せる」): 塗り帯(v3.1.13)を撤回し、**ヘッダ行と区切り行を縦結合**して見せる方式に。①太い仕切りを**区切り行の下端**(border-bottom 3px foreground)へ=ヘッダ+区切りの底=ヘッダ/データ境界。②ヘッダ行の横結合(→N)に対応する**内部パイプを区切り行でも隠す**(sepPipeHide)→ヘッダと区切りが縦に繋がって1つの背高セルに見える(区切り行が「空行」でなくヘッダの続き)。③--- は従来通り隠す・ヘッダ/区切り間に線は引かない(縦結合の見せ方と同型)。俊克「ヘッダは項目名が入るので背が高く見えても違和感無い」。→ [[project_table_formatter]]
 // - v3.1.13(俊克 7/27 am01:12 v3.1.12 OK「両端の削り具合◎・角の空きは想像で埋まる高度な空間」・改良1つ「太線を元の --- の高さに重ねられないか」): 太い仕切りを **border-top → 塗り帯(backgroundColor band)** に変更。理由=**borderは行ボックスの上端/下端にしか引けず、--- のある"中段"の高さに線を出せない**(text-decorationは実グリフ上だけ=全幅不可)。→区切り行の高さごと `panel.border` 色で塗る＝ --- の位置に重なり、かつ「空行」に見えない。runs()の連続&両端トリムはそのまま(帯も表幅・外枠内側)。色/濃さは要ビジュアル確認(重すぎれば別ThemeColorか半透明へ)。→ [[project_table_formatter]]
 // - v3.1.12(俊克 7/27 am01:02 v3.1.11 OK「ほぼパーペキ」・改良1つ): 横罫線の**両端(表の左右外縁)を1文字ぶん削り**、外枠パイプの内側に収める(旧=左端pipes[0]/右端pipes[n]+1で外枠パイプの下まで伸びていた→左end=pipes[0]+1・右end=pipes[n]。内部のパイプ跨ぎ・縦結合の抜き境界は連続/従来のまま)。runs()にpush(s,e1)を追加し、表の左端(s===0)と右端(e1===n)のときだけトリム。→ [[project_table_formatter]]
@@ -16758,8 +16759,15 @@ function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !=
 // v0.9.999161(俊克): 結合マーカーをコメント形式 <!--🤝N--> に。HTMLコメント=GitHub含め全ビューアで不可視=生データを汚さない(MeOSのモットー)。MeOSはコメントを読んで結合装飾+コメント自体をエディタ上でゼロ幅に隠す。旧・素の🤝Nも後方互換で認識。
 // v0.9.999163(俊克): 結合の方向記法。🤝→N=横結合(colspan)/🤝↓N=縦結合(rowspan・下のセルと結合)/素の🤝N=→(後方互換)。コメント形式で生データを汚さない。
 function meosCellSpan(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); if (!m || m[1] === '↓') return 1; return Math.max(1, parseInt(m[2], 10)); } // 横結合(colspan)のみ返す。縦(↓)や非結合は1。
-function meosMergeMarker(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); return m ? ('<!--🤝' + (m[1] || '→') + m[2] + '-->') : ''; } // 元マーカーを方向付きコメント形式で返す(素の🤝N→<!--🤝→N-->)
-function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*(?:→|↓)?\s*\d+\s*-->/gu, '').replace(/^\s*🤝\s*(?:→|↓)?\s*\d+\s*/u, '').trim(); }
+function meosMergeMarker(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?\s*-->/u.exec(t) || /^\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?(?=\s|$)/u.exec(t.trim()); return m ? ('<!--🤝' + (m[1] || '→') + (m[2] || '') + '-->') : ''; } // v3.1.15: →←↓↑＋番号任意(膜は無番号)。元マーカーをコメント形式で保持(素の🤝N→<!--🤝→N-->)。
+function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*(?:→|←|↓|↑)?\s*\d*\s*-->/gu, '').replace(/^\s*🤝\s*(?:→|←|↓|↑)?\s*\d*\s*/u, '').trim(); }
+// v3.1.15(俊克「結合膜 →…←」・計算膜 Σ→…Σ← と同型): 番地もカウントも書かず、始点(→/↓)と終点(←/↑)のマーカーで結合範囲を囲む。列/行を挿しても数字を直さない(insertion-stable)。素の🤝N(カウント)は後方互換で残す。
+const MEOS_MERGE_OPP = { '→': '←', '←': '→', '↓': '↑', '↑': '↓' };
+function meosMergeAt(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?\s*-->/u.exec(t) || /^\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?(?=\s|$)/u.exec(t.trim()); if (!m) return null; return { dir: m[1] || '→', n: m[2] ? Math.max(1, parseInt(m[2], 10)) : 0 }; } // n=0=膜(相方を探す)
+// 横colspanの実効値(cells配列とcol): 🤝→N=N(カウント) / 🤝→(膜・無番号)=相方🤝←までの距離 / それ以外(←/↓/↑/非結合)=1。
+function meosColspanInCells(cells, c) { const mk = meosMergeAt(cells[c]); if (!mk || mk.dir !== '→') return 1; if (mk.n > 0) return mk.n; for (let j = c + 1; j < cells.length; j++) { const m2 = meosMergeAt(cells[j]); if (m2 && m2.dir === '←' && m2.n === 0) return j - c + 1; } return 1; }
+// 縦rowspanの実効値(rows/sepIdx/r/c): 🤝↓N=N / 🤝↓(膜)=相方🤝↑までの距離 / それ以外=1。
+function meosRowspanAt(rows, sepIdx, r, c) { const mk = meosMergeAt(rows[r] && rows[r][c]); if (!mk || mk.dir !== '↓') return 1; if (mk.n > 0) return mk.n; for (let i = r + 1; i < rows.length; i++) { if (i === sepIdx) continue; const m2 = meosMergeAt(rows[i] && rows[i][c]); if (m2 && m2.dir === '↑' && m2.n === 0) return i - r + 1; } return 1; }
 // v3.1.9(俊克 7/26「縦結合の行罫線方式」): 縦結合(rowspan)を、テキスト表に無い横罫線を装飾で補い、結合部だけ抜くことで見せる(前人未到)。
 function meosVMergeSpan(cellText) { const m = /<!--\s*🤝\s*↓\s*(\d+)\s*-->/u.exec(String(cellText || '')); return m ? Math.max(1, parseInt(m[1], 10)) : 1; } // 縦結合(🤝↓N)のN。↓でなければ1。
 // 各データ行×列の「下線を抜く」集合を返す=縦結合スパンの内部境界(最終行以外)。hasV=表に縦結合が1つでもあるか(格子はそれがある表だけに描く=抜きが意味を持つ)。
@@ -16769,7 +16777,7 @@ function meosRowLineSkipSet(rows, sepIdx) {
     if (r === sepIdx) continue;
     const cells = rows[r] || [];
     for (let c = 0; c < cells.length; c++) {
-      const n = meosVMergeSpan(cells[c]);
+      const n = meosRowspanAt(rows, sepIdx, r, c); // v3.1.15: 🤝↓N(カウント)と 🤝↓…↑(膜)の両方
       if (n >= 2) { hasV = true; for (let k = 0; k < n - 1; k++) vskip.add((r + k) + ',' + c); } // r..r+n-2 の下線を抜く(最終行 r+n-1 は引く=結合セルの底)
     }
   }
@@ -16872,9 +16880,9 @@ function meosFormatTableLines(lines) {
     if (i === sepIdx) continue;
     const cells = rows[i];
     const absorbed = new Array(cells.length).fill(false);
-    for (let k = 0; k < cells.length; k++) { const sp = meosCellSpan(cells[k]); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
+    for (let k = 0; k < cells.length; k++) { const sp = meosColspanInCells(cells, k); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
     for (let c = 0; c < cells.length && c < cols; c++) {
-      if (meosCellSpan(cells[c]) > 1 || absorbed[c]) continue;
+      if (meosColspanInCells(cells, c) > 1 || absorbed[c]) continue;
       const cw = (calcVal && meosCalcMarker(cells[c])) ? (meosCalcCellRole(rows, sepIdx, i, c) === 'boundary' ? meosStrWidth(meosStripCalcMarker(cells[c])) : meosStrWidth(meosFmtCalc(calcVal(i, c)))) : meosStrWidth(meosStripMergeMarker(cells[c])); // v3.1.8: 計算膜の開き壁は結果でなく生テキストの幅
       width[c] = Math.max(width[c], cw);
     }
@@ -16885,7 +16893,7 @@ function meosFormatTableLines(lines) {
     if (i === sepIdx) continue;
     const cells = rows[i];
     for (let k = 0; k < cells.length && k < cols; k++) {
-      const sp = meosCellSpan(cells[k]); if (sp <= 1) continue;
+      const sp = meosColspanInCells(cells, k); if (sp <= 1) continue;
       const end = Math.min(k + sp - 1, cols - 1);
       let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
       const W = meosStrWidth(meosStripMergeMarker(cells[k]));
@@ -16913,7 +16921,7 @@ function meosFormatTableLines(lines) {
       // 横結合(🤝→N): 先頭セルは内容のみ・中間の被吸収セルは幅0・余白は単位末尾のセルが受け持つ(内側の|は装飾で不可視なので、どこに寄せても見た目は1つの結合セル)
       const zero = new Array(cols).fill(false), isHead = new Array(cols).fill(false);
       for (let k = 0; k < cols; k++) {
-        const sp = meosCellSpan(cells[k] || ''); if (sp <= 1) continue;
+        const sp = meosColspanInCells(cells, k); if (sp <= 1) continue;
         const end = Math.min(k + sp - 1, cols - 1); isHead[k] = end > k;
         for (let j = k + 1; j < end; j++) zero[j] = true;
       }
@@ -17213,13 +17221,14 @@ function meosApplyTableMergeDecorations(editor) {
         if (text.indexOf('🤝') < 0) continue;
         if (!meosInTable(doc, ln)) continue;
         const pipes = meosRowPipePositions(text); if (pipes.length < 2) continue;
+        const cells = meosSplitTableRow(text); // v3.1.15: 膜(→…←)の相方を同じ行内で探すため
         for (let k = 0; k < pipes.length - 1; k++) {
           const cellStart = pipes[k] + 1, cellEnd = pipes[k + 1];
           const cellText = text.slice(cellStart, cellEnd);
-          const cm = /<!--\s*🤝\s*(?:→|↓)?\s*\d+\s*-->/.exec(cellText); if (!cm) continue; // 🤝マーカー(→/↓)を検出
-          commentRanges.push(new vscode.Range(ln, cellStart + cm.index, ln, cellStart + cm.index + cm[0].length)); // マーカーをゼロ幅で隠す(→も↓も)
-          const span = meosCellSpan(cellText); // 横colspan(↓や非結合は1)
-          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; pipeRanges.push(new vscode.Range(ln, pp, ln, pp + 1)); } // →のみ内側|(N-1本)を不可視化
+          const cm = /<!--\s*🤝\s*(?:→|←|↓|↑)?\s*\d*\s*-->/.exec(cellText); if (!cm) continue; // v3.1.15: →←↓↑・番号任意(膜の無番号も)
+          commentRanges.push(new vscode.Range(ln, cellStart + cm.index, ln, cellStart + cm.index + cm[0].length)); // マーカーをゼロ幅で隠す(→←↓↑すべて)
+          const span = meosColspanInCells(cells, k); // 横colspan(カウント🤝→N or 膜🤝→…←)。←/↓/↑ は1。
+          for (let p = 1; p < span && (k + p) < pipes.length; p++) { const pp = pipes[k + p]; pipeRanges.push(new vscode.Range(ln, pp, ln, pp + 1)); } // →の内側|を不可視化(膜は相方←まで)
         }
       }
     }
@@ -17304,7 +17313,7 @@ function meosApplyTableRowLineDecorations(editor) {
       const sk = meosRowLineSkipSet(rows, sepIdx);
       // v3.1.14(俊克): ヘッダ行の横結合(→N)に対応する内部パイプ=区切り行でも隠す→ヘッダ行と区切り行が縦に結合して見える(区切り行が「空行」でなくヘッダの続きになる)。
       const sepPipeHide = new Set();
-      for (let r = 0; r < sepIdx; r++) { const cells = rows[r] || []; for (let c = 0; c < cells.length; c++) { const sp = meosCellSpan(cells[c]); for (let p = 1; p < sp; p++) sepPipeHide.add(c + p); } }
+      for (let r = 0; r < sepIdx; r++) { const cells = rows[r] || []; for (let c = 0; c < cells.length; c++) { const sp = meosColspanInCells(cells, c); for (let p = 1; p < sp; p++) sepPipeHide.add(c + p); } }
       const info = { start: blk.start, sepIdx, vskip: sk.vskip, sepPipeHide };
       blockCache.set(blk.start, info); return info;
     }
