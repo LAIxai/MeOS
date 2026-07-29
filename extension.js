@@ -2608,6 +2608,9 @@ const MEOS_RELEASE_PHASE = 3;
 // v3.0.7.1(俊克 7/24 pm): ★表計算(Σ 合計 / Π 総乗)の隔離スイッチ。テスト中は true、日曜のPhase3リリース前に false にして「一旦隔離」→火/水の v3.1 で true に戻して単独リリース。
 // 記法(番地を1文字も書かない): <!--Σ↑--> 上の列を合計 / Σ↓ 下 / Σ← 左 / Σ→ 右。<!--Π←2--> 左2セルの積(×/x/* も別名として受理し整形で Π に揃える)。自分のセルは含めない=自己参照しない。
 const MEOS_TABLE_CALC = true; // v3.1.0(俊克 7/25 pm01:30「v3.1のロックを解除しましょう・早く使いたいので」): 表計算Σ/Πを解禁。日曜のv3.0(結合)公開が済んだので、隔離を解いた。true=Σ/Πの装飾・整形の正規化・再帰計算が有効。※縦結合の行罫線方式(前人未到)と巨大日記refresh可視範囲化は v3.1 の残タスク(未実装)。
+// v3.5.0(俊克 7/30 am02:47「まずはMeTeXを実装して」): ★MeTeX(ミーテックス)= LaTeXの次世代・小学生でも分かる記法。上付き=↑2(2乗)/下付き=↓3。^ と _ を使わない。分数は / のまま(frac不要)。
+// この記法は関数膜だけでなく普通の膜・散文のどこに書いても同様に整形する(生データは1文字も汚さない=装飾のみ・カーソル行/Raw時は生表示で編集可)。true=解禁 / false=隔離(素の ↑2/↓3 のまま)。
+const MEOS_METEX = true;
 // ★★TEMP v3.1(俊克 7/25 pm07:07「遅延問題に取り掛かろう」): 巨大日記の refresh 遅延を計測する仮の仕掛け。refresh()の各装飾ブロックの所要msを測り、total>=40msの時だけログファイルへ1行追記(貼付→Claudeがログ直読み=転記不要)。真犯人を数字で確定したら、可視範囲化を実装→この計測ブロックは撤去する。false or 削除で無効化。
 const MEOS_PROFILE_REFRESH = true;
 const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
@@ -10580,6 +10583,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   try { meosApplyTableCalcDecorations(editor); } catch (_) {} // v3.0.7.1: 表計算 Σ/Π の装飾(Raw/隔離時は関数内で解除)
   try { meosApplyTableRowLineDecorations(editor); } catch (_) {} // v3.1.9: 縦結合の行罫線方式(Raw/隔離時は関数内で解除)
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
+  try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
@@ -17425,6 +17429,79 @@ function meosApplyImageThumbDecorations(editor) {
   } catch (_) {}
 }
 
+// ===== v3.5.0(俊克 7/30): MeTeX(ミーテックス)— 上付き ↑ / 下付き ↓ の整形 ==========================
+// LaTeXの ^ / _ を捨て、小学生でも分かる矢印記法に。base↑2 = 2乗(上付き)、base↓3 = 下付き。分数は / のまま(frac不要)。
+// 生データは1文字も汚さない=装飾のみ(矢印をゼロ幅で隠し、続く operand を上/下付きにずらす)。関数膜だけでなく普通の膜・散文のどこでも効く。
+// カーソル行=生表示(編集可)/ Raw時・隔離(MEOS_METEX=false)時はゼロ。HTMLコメント内(Σ↑/🤝↓ 等の計算膜・結合膜マーカー)は対象外。
+let meTexHideDeco = null, meTexSupDeco = null, meTexSubDeco = null;
+// 行内の <!-- ... --> コメント範囲 [start,end) を集める(この中の ↑↓ は MeTeX 対象外=計算膜/結合膜マーカーを守る)。
+function meosMeTexCommentSpans(text) { const spans = []; const re = /<!--[\s\S]*?-->/g; let m; while ((m = re.exec(text))) spans.push([m.index, m.index + m[0].length]); return spans; }
+// 1行を走査して MeTeX トークンを返す。各トークン: {arrow, kind:'sup'|'sub', hides:[[s,e],...], opStart, opEnd}
+function meosMeTexTokens(text) {
+  if (!text || (text.indexOf('↑') < 0 && text.indexOf('↓') < 0)) return [];
+  const spans = meosMeTexCommentSpans(text);
+  const inComment = (i) => spans.some(([s, e]) => i >= s && i < e);
+  const BAD_BASE = new Set(['Σ', '∑', 'Π', '∏', '×', '🤝', ' ', '\t', '', undefined]); // 直前がこれ=計算膜/結合膜シンボルや空白 → MeTeX扱いしない
+  const isOp = (ch) => /[0-9A-Za-z·]/.test(ch); // operand 本体に使える文字
+  const out = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch !== '↑' && ch !== '↓') continue;
+    if (inComment(i)) continue;
+    const prev = i > 0 ? text[i - 1] : '';
+    if (BAD_BASE.has(prev)) continue; // 「何かの」上/下付きである(単独の矢印は対象外)
+    const kind = ch === '↑' ? 'sup' : 'sub';
+    let j = i + 1;
+    const hides = [[i, i + 1]]; // 矢印はゼロ幅で隠す
+    let opStart, opEnd;
+    if (text[j] === '(') { // ↑(n+1) のような括弧付き=括弧も隠して中身をずらす(1階層)
+      let depth = 0, k = j;
+      for (; k < text.length; k++) { if (text[k] === '(') depth++; else if (text[k] === ')') { depth--; if (depth === 0) break; } }
+      if (k >= text.length || k === j + 1) continue; // 閉じ括弧なし or 空 → 無視
+      hides.push([j, j + 1]); hides.push([k, k + 1]); // ( と ) を隠す
+      opStart = j + 1; opEnd = k;
+    } else { // ↑2 / ↑10 / ↑ab / ↑-1 のような素の operand
+      let s = j; if (text[j] === '+' || text[j] === '-') j++; // 先頭の符号(負の指数など)
+      if (!(j < text.length && isOp(text[j]))) continue; // 矢印の直後が operand でない → 無視
+      while (j < text.length && isOp(text[j])) j++;
+      opStart = s; opEnd = j;
+    }
+    out.push({ kind, hides, opStart, opEnd });
+    i = opEnd - 1;
+  }
+  return out;
+}
+function meosApplyMeTexDecorations(editor) {
+  if (!editor || !editor.document) return;
+  const clearAll = () => { for (const d of [meTexHideDeco, meTexSupDeco, meTexSubDeco]) if (d) editor.setDecorations(d, []); };
+  if (!MEOS_METEX) { clearAll(); return; }
+  if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!meTexSupDeco) meTexSupDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0.68em; vertical-align: super; line-height: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!meTexSubDeco) meTexSubDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0.68em; vertical-align: sub; line-height: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
+    const doc = editor.document; const hideRanges = [], supRanges = [], subRanges = [];
+    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
+        const text = doc.lineAt(ln).text;
+        const toks = meosMeTexTokens(text);
+        for (const t of toks) {
+          for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
+          const r = new vscode.Range(ln, t.opStart, ln, t.opEnd);
+          (t.kind === 'sup' ? supRanges : subRanges).push(r);
+        }
+      }
+    }
+    editor.setDecorations(meTexHideDeco, hideRanges);
+    editor.setDecorations(meTexSupDeco, supRanges);
+    editor.setDecorations(meTexSubDeco, subRanges);
+  } catch (_) {}
+}
+
 function activate(context) {
   extensionContext = context;
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
@@ -17498,7 +17575,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネを追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeXを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
