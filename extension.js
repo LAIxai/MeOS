@@ -10584,6 +10584,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   try { meosApplyTableRowLineDecorations(editor); } catch (_) {} // v3.1.9: 縦結合の行罫線方式(Raw/隔離時は関数内で解除)
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
+  try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
@@ -17502,6 +17503,102 @@ function meosApplyMeTexDecorations(editor) {
   } catch (_) {}
 }
 
+// ===== v3.5.0(俊克 7/30): 関数膜 — 名前つき数式の定義＋呼び出し(関数電卓) ==========================
+// 定義: 名前が name(params)_タイムスタンプ の膜。本文に name(params) = 式 を書く。例) f(x)_024718.730 の中に f(x) = (x-3)↑2 / (x-1)。
+// 呼び出し: 散文でも表のセルでも name(x=5)_タイムスタンプ と書くと、そのトークンを隠して計算結果を表示(=関数電卓)。↑=べき乗として評価(表示の上付きと同じ記号=一貫)。
+// 生データは汚さない(装飾のみ・カーソル行/Raw/隔離時は生表示)。第一弾は引数=数値のみ。セル相対参照(←N 等)は次段。
+// --- 数式評価器: + - * / ↑(べき) ( ) ・変数。読めなければ null(安全に素通り) ---
+function meosEvalExpr(str, vars) {
+  const s = String(str == null ? '' : str); const toks = []; let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === ' ' || c === '\t') { i++; continue; }
+    if (/[0-9.]/.test(c)) { let j = i + 1; while (j < s.length && /[0-9.]/.test(s[j])) j++; toks.push({ t: 'num', v: parseFloat(s.slice(i, j)) }); i = j; continue; }
+    if (/[A-Za-z]/.test(c)) { let j = i + 1; while (j < s.length && /[A-Za-z0-9]/.test(s[j])) j++; toks.push({ t: 'id', v: s.slice(i, j) }); i = j; continue; }
+    if (c === '↑') { toks.push({ t: 'op', v: '^' }); i++; continue; }
+    if (c === '·' || c === '×' || c === '*') { toks.push({ t: 'op', v: '*' }); i++; continue; }
+    if (c === '+' || c === '-' || c === '/') { toks.push({ t: 'op', v: c }); i++; continue; }
+    if (c === '(') { toks.push({ t: 'lp' }); i++; continue; }
+    if (c === ')') { toks.push({ t: 'rp' }); i++; continue; }
+    return null; // 未知の文字 → 評価しない
+  }
+  let p = 0; const peek = () => toks[p];
+  function pExpr() { let a = pTerm(); if (a == null) return null; while (peek() && peek().t === 'op' && (peek().v === '+' || peek().v === '-')) { const op = toks[p++].v; const b = pTerm(); if (b == null) return null; a = op === '+' ? a + b : a - b; } return a; }
+  function pTerm() { let a = pUnary(); if (a == null) return null; while (peek() && peek().t === 'op' && (peek().v === '*' || peek().v === '/')) { const op = toks[p++].v; const b = pUnary(); if (b == null) return null; a = op === '*' ? a * b : a / b; } return a; }
+  function pUnary() { if (peek() && peek().t === 'op' && peek().v === '-') { p++; const a = pUnary(); return a == null ? null : -a; } return pPower(); }
+  function pPower() { let a = pPrimary(); if (a == null) return null; if (peek() && peek().t === 'op' && peek().v === '^') { p++; const b = pUnary(); if (b == null) return null; a = Math.pow(a, b); } return a; }
+  function pPrimary() { const tk = peek(); if (!tk) return null; if (tk.t === 'num') { p++; return tk.v; } if (tk.t === 'id') { p++; return (vars && Object.prototype.hasOwnProperty.call(vars, tk.v)) ? vars[tk.v] : null; } if (tk.t === 'lp') { p++; const a = pExpr(); if (a == null) return null; if (peek() && peek().t === 'rp') { p++; return a; } return null; } return null; }
+  const val = pExpr();
+  if (val == null || p !== toks.length || !isFinite(val)) return null;
+  return val;
+}
+// --- 引数のパース: "x=5, y=2" → {x:5,y:2}(全て数値でなければ null) ---
+function meosFuncParseArgs(argstr) {
+  const out = {}; const parts = String(argstr == null ? '' : argstr).split(',');
+  for (const part of parts) { if (!part.trim()) continue; const m = /^\s*([A-Za-z][A-Za-z0-9]*)\s*=\s*(-?[0-9]*\.?[0-9]+)\s*$/.exec(part); if (!m) return null; out[m[1]] = parseFloat(m[2]); }
+  return out;
+}
+// --- 関数レジストリ: ドキュメント全体を走査し name(params)_TS 膜の定義本文(name(...) = 式)を集める。version でキャッシュ。 ---
+let _meosFuncReg = { uri: null, version: -1, map: null };
+const MEOS_FUNC_OPEN_RE = /▼\s*mCN\s*=\s*([A-Za-z][A-Za-z0-9]*)\(([^)]*)\)_(\d[\d.]+)/;
+function meosFuncRegistry(doc) {
+  const uri = doc.uri.toString(), version = doc.version;
+  if (_meosFuncReg.uri === uri && _meosFuncReg.version === version && _meosFuncReg.map) return _meosFuncReg.map;
+  const map = new Map(); const n = doc.lineCount;
+  for (let i = 0; i < n; i++) {
+    const t = doc.lineAt(i).text; if (t.indexOf('mCN') < 0) continue;
+    const mo = MEOS_FUNC_OPEN_RE.exec(t); if (!mo) continue;
+    const name = mo[1], ts = mo[3]; const params = mo[2].split(',').map(s => s.trim()).filter(Boolean);
+    const DEF_RE = new RegExp('^\\s*' + name + '\\s*\\([^)]*\\)\\s*=\\s*(.+?)\\s*$');
+    const CLOSE_RE = new RegExp('▲\\s*mCN\\s*=\\s*' + name + '\\(');
+    let expr = null;
+    for (let j = i + 1; j < n && j < i + 200; j++) { const bt = doc.lineAt(j).text; if (CLOSE_RE.test(bt)) break; const dm = DEF_RE.exec(bt); if (dm) { expr = dm[1]; break; } }
+    if (expr == null) continue;
+    if (!map.has(name)) map.set(name, []); map.get(name).push({ ts, params, expr });
+  }
+  _meosFuncReg = { uri, version, map }; return map;
+}
+function meosFuncResolve(map, name, ts) { const arr = map.get(name); if (!arr || !arr.length) return null; if (ts) { const hit = arr.find(d => d.ts === ts); if (hit) return hit; } return arr[arr.length - 1]; }
+// 呼び出しトークンを評価: {name, args:{...}, ts} → 数値 or null。式の変数に args を代入。
+function meosFuncEval(map, name, argstr, ts) { const def = meosFuncResolve(map, name, ts); if (!def) return null; const vars = meosFuncParseArgs(argstr); if (vars == null) return null; return meosEvalExpr(def.expr, vars); }
+const MEOS_FUNC_CALL_RE = /([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)/g; // name(args)_TS
+let funcHideDeco = null, funcResultDeco = null;
+function meosApplyFuncDecorations(editor) {
+  if (!editor || !editor.document) return;
+  const clearAll = () => { for (const d of [funcHideDeco, funcResultDeco]) if (d) editor.setDecorations(d, []); };
+  if (!MEOS_METEX) { clearAll(); return; }
+  if (!funcHideDeco) funcHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!funcResultDeco) funcResultDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
+    const doc = editor.document; const hideRanges = [], resultOpts = [];
+    // 可視範囲に呼び出しトークンが在る時だけレジストリを組む(全文走査を無駄に走らせない)
+    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    let map = null;
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        if (cursorLines.has(ln)) continue;
+        const text = doc.lineAt(ln).text;
+        if (text.indexOf(')_') < 0) continue; // 速い足切り
+        const spans = meosMeTexCommentSpans(text); const inComment = (idx) => spans.some(([s, e]) => idx >= s && idx < e);
+        MEOS_FUNC_CALL_RE.lastIndex = 0; let m;
+        while ((m = MEOS_FUNC_CALL_RE.exec(text))) {
+          const idx = m.index; if (inComment(idx)) continue;
+          if (map == null) map = meosFuncRegistry(doc);
+          const val = meosFuncEval(map, m[1], m[2], m[3]); if (val == null) continue;
+          const end = idx + m[0].length;
+          hideRanges.push(new vscode.Range(ln, idx, ln, end));
+          resultOpts.push({ range: new vscode.Range(ln, end, ln, end), renderOptions: { after: { contentText: meosFmtCalc(val), color: 'var(--vscode-foreground)' } } });
+        }
+      }
+    }
+    editor.setDecorations(funcHideDeco, hideRanges);
+    editor.setDecorations(funcResultDeco, resultOpts);
+  } catch (_) {}
+}
+
 function activate(context) {
   extensionContext = context;
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
@@ -17575,7 +17672,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeXを追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜を追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
