@@ -2611,6 +2611,8 @@ const MEOS_TABLE_CALC = true; // v3.1.0(俊克 7/25 pm01:30「v3.1のロック�
 // v3.5.0(俊克 7/30 am02:47「まずはMeTeXを実装して」): ★MeTeX(ミーテックス)= LaTeXの次世代・小学生でも分かる記法。上付き=↑2(2乗)/下付き=↓3。^ と _ を使わない。分数は / のまま(frac不要)。
 // この記法は関数膜だけでなく普通の膜・散文のどこに書いても同様に整形する(生データは1文字も汚さない=装飾のみ・カーソル行/Raw時は生表示で編集可)。true=解禁 / false=隔離(素の ↑2/↓3 のまま)。
 const MEOS_METEX = true;
+// v3.7.0(俊克 7/30「太文字ボタン=六つ子」): 太字/斜体。正式=**{ 太字 (白/黄)//[]tip= }**(ハイライト同型・色/tip)＋従来記法 **text** も容認して太字レンダリング(あなたが今まで書いた説明を読みやすく)。**text** は同一行内のみ(俊克)。true=解禁/false=隔離。
+const MEOS_BOLD = true;
 // ★★TEMP v3.1(俊克 7/25 pm07:07「遅延問題に取り掛かろう」): 巨大日記の refresh 遅延を計測する仮の仕掛け。refresh()の各装飾ブロックの所要msを測り、total>=40msの時だけログファイルへ1行追記(貼付→Claudeがログ直読み=転記不要)。真犯人を数字で確定したら、可視範囲化を実装→この計測ブロックは撤去する。false or 削除で無効化。
 const MEOS_PROFILE_REFRESH = true;
 const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
@@ -10585,6 +10587,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
+  try { meosApplyBoldDecorations(editor); } catch (_) {} // v3.7.0: 太字/斜体 **text**/***text***(同一行内・Raw/隔離時は解除)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
@@ -17557,6 +17560,40 @@ function meosApplyMeTexDecorations(editor) {
   } catch (_) {}
 }
 
+// ===== v3.7.0(俊克 7/30): 太字/斜体 — 従来記法 **text**/***text***/*text* を同一行内で描画 ==========================
+// マーカーをゼロ幅で隠し本文を太字/斜体に。単一行のみ(行ごと走査で自動保証)。//コメント内も描画(changelog等を読みやすく)。カーソル行/Raw/隔離時は生表示。
+// ※色つきの正式膜 **{ 本文 (fg/bg)//tip }** と 𝗕ボタンは次段(ハイライトの色パイプライン流用)。ここは従来記法の可読化。
+let boldHideDeco = null, boldDeco = null, boldItalicDeco = null;
+function meosApplyBoldDecorations(editor) {
+  if (!editor || !editor.document) return;
+  const clearAll = () => { for (const d of [boldHideDeco, boldDeco, boldItalicDeco]) if (d) editor.setDecorations(d, []); };
+  if (!MEOS_BOLD) { clearAll(); return; }
+  if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!boldDeco) boldDeco = vscode.window.createTextEditorDecorationType({ fontWeight: 'bold', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!boldItalicDeco) boldItalicDeco = vscode.window.createTextEditorDecorationType({ fontWeight: 'bold', fontStyle: 'italic', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
+    const doc = editor.document; const hideR = [], boldR = [], biR = [];
+    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
+        const text = doc.lineAt(ln).text;
+        if (text.indexOf('**') < 0) continue; // **/*** のみ(単体*の斜体はボタンのMeOS形で・レガシー自動描画は誤爆回避で対象外)
+        const consumed = new Array(text.length).fill(false);
+        const run = (re, n, arr) => { let m; re.lastIndex = 0; while ((m = re.exec(text))) { const s = m.index, e = s + m[0].length; let ov = false; for (let i = s; i < e; i++) if (consumed[i]) { ov = true; break; } if (ov) continue; for (let i = s; i < e; i++) consumed[i] = true; hideR.push(new vscode.Range(ln, s, ln, s + n)); hideR.push(new vscode.Range(ln, e - n, ln, e)); arr.push(new vscode.Range(ln, s + n, ln, e - n)); } };
+        run(/\*\*\*([^*\n]+?)\*\*\*/g, 3, biR); // ***太字斜体***(先に)
+        run(/\*\*([^*\n]+?)\*\*/g, 2, boldR);   // **太字**(同一行内)
+      }
+    }
+    editor.setDecorations(boldHideDeco, hideR);
+    editor.setDecorations(boldDeco, boldR);
+    editor.setDecorations(boldItalicDeco, biR);
+  } catch (_) {}
+}
+
 // ===== v3.5.0(俊克 7/30): 関数膜 — 名前つき数式の定義＋呼び出し(関数電卓) ==========================
 // 定義: 名前が name(params)_タイムスタンプ の膜。本文に name(params) = 式 を書く。例) f(x)_024718.730 の中に f(x) = (x-3)↑2 / (x-1)。
 // 呼び出し: 散文でも表のセルでも name(x=5)_タイムスタンプ と書くと、そのトークンを隠して計算結果を表示(=関数電卓)。↑=べき乗として評価(表示の上付きと同じ記号=一貫)。
@@ -17768,7 +17805,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜を追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜を追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
