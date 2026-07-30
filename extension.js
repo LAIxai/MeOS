@@ -16934,7 +16934,7 @@ function meosFormatTableLines(lines, funcMap) {
     for (let k = 0; k < cells.length; k++) { const sp = meosColspanInCells(cells, k); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
     for (let c = 0; c < cells.length && c < cols; c++) {
       if (meosColspanInCells(cells, c) > 1 || absorbed[c]) continue;
-      const fci = meosFuncCallInfo(cells[c], funcMap); // v3.1.40: 関数電卓セルは結果の桁数で列幅を確保(生トークン長でなく)
+      const fci = meosFuncCallInfo(cells[c], funcMap, (dir, n) => meosCellRefValue(rows, sepIdx, i, c, dir, n)); // v3.1.40/41: 関数電卓セルは結果の桁数で列幅を確保(生トークン長でなく)・相対参照も解決
       const cw = (calcVal && meosCalcMarker(cells[c])) ? (meosCalcCellRole(rows, sepIdx, i, c) === 'boundary' ? meosStrWidth(meosStripCalcMarker(cells[c])) : meosStrWidth(meosFmtCalc(calcVal(i, c)))) : fci ? meosStrWidth(meosFmtCalc(fci.val)) : meosStrWidth(meosStripMergeMarker(cells[c])); // v3.1.8: 計算膜の開き壁は結果でなく生テキストの幅
       width[c] = Math.max(width[c], cw);
     }
@@ -16980,7 +16980,7 @@ function meosFormatTableLines(lines, funcMap) {
       for (let c = 0; c < cols; c++) {
         const raw = cells[c] || '';
         // v3.1.40(俊克 7/30): 関数電卓セル=トークン(装飾でゼロ幅に隠れ結果を after で描画)。列幅は結果の桁数で予約し、揃え方向に応じて余白を置く(生トークン長でなく)。
-        const fc = meosFuncCallInfo(raw, funcMap);
+        const fc = meosFuncCallInfo(raw, funcMap, (dir, n) => meosCellRefValue(rows, sepIdx, i, c, dir, n));
         if (fc && !(zero[c] || isHead[c])) {
           const w = meosStrWidth(meosFmtCalc(fc.val)), pad = Math.max(0, Math.round(P[c] - cur - w)), a = align[c] === 'none' ? 'left' : align[c];
           line += (a === 'right') ? ' '.repeat(pad) + fc.token : (a === 'center') ? ' '.repeat(Math.floor(pad / 2)) + fc.token + ' '.repeat(pad - Math.floor(pad / 2)) : fc.token + ' '.repeat(pad);
@@ -17542,11 +17542,30 @@ function meosEvalExpr(str, vars) {
   if (val == null || p !== toks.length || !isFinite(val)) return null;
   return val;
 }
-// --- 引数のパース: "x=5, y=2" → {x:5,y:2}(全て数値でなければ null) ---
-function meosFuncParseArgs(argstr) {
+// --- 引数のパース: "x=5, y=2" → {x:5,y:2}。値は数値 or 相対セル参照 ←N/→N/↑N/↓N(N省略=1)。cellRef(dir,n)→数値で解決。読めなければ null ---
+// v3.1.41(俊克): 相対参照は「オフセット=Nセル離れた1点」(Σのカウント式とは役割が別=集計は膜の壁で囲む/参照はNで1点を指す)。基本は同じ行の横参照(←/→)。
+const MEOS_ARG_RE = /^\s*([A-Za-z][A-Za-z0-9]*)\s*=\s*(?:(-?[0-9]*\.?[0-9]+)|([←→↑↓])\s*(\d*))\s*$/u;
+function meosFuncParseArgs(argstr, cellRef) {
   const out = {}; const parts = String(argstr == null ? '' : argstr).split(',');
-  for (const part of parts) { if (!part.trim()) continue; const m = /^\s*([A-Za-z][A-Za-z0-9]*)\s*=\s*(-?[0-9]*\.?[0-9]+)\s*$/.exec(part); if (!m) return null; out[m[1]] = parseFloat(m[2]); }
+  for (const part of parts) {
+    if (!part.trim()) continue; const m = MEOS_ARG_RE.exec(part); if (!m) return null;
+    if (m[2] != null) { out[m[1]] = parseFloat(m[2]); }
+    else { if (!cellRef) return null; const n = m[4] ? parseInt(m[4], 10) : 1; const v = cellRef(m[3], n); if (v == null) return null; out[m[1]] = v; }
+  }
   return out;
+}
+// 相対参照の到達セル: ←/→ は同じ行の左右、↑/↓ は同じ列で区切り行を飛ばしながら上下にNデータセル。範囲外は null。
+function meosRelTargetIndex(rows, sepIdx, r, c, dir, n) {
+  if (dir === '←') return [r, c - n]; if (dir === '→') return [r, c + n];
+  let i = r, step = dir === '↑' ? -1 : 1, cnt = 0;
+  while (cnt < n) { i += step; if (i < 0 || i >= rows.length) return null; if (i === sepIdx) continue; cnt++; }
+  return [i, c];
+}
+function meosCellRefValue(rows, sepIdx, r, c, dir, n) {
+  const t = meosRelTargetIndex(rows, sepIdx, r, c, dir, n); if (!t) return null;
+  const tr = t[0], tc = t[1]; if (tr < 0 || tr >= rows.length || tc < 0) return null;
+  const cell = rows[tr] && rows[tr][tc]; if (cell == null) return null;
+  return meosCalcParseNum(cell); // 参照先セルの生値を数値化(通貨/単位を落とす寛容方式)
 }
 // --- 関数レジストリ: ドキュメント全体を走査し name(params)_TS 膜の定義本文(name(...) = 式)を集める。version でキャッシュ。 ---
 let _meosFuncReg = { uri: null, version: -1, map: null };
@@ -17570,13 +17589,13 @@ function meosFuncRegistry(doc) {
 }
 function meosFuncResolve(map, name, ts) { const arr = map.get(name); if (!arr || !arr.length) return null; if (ts) { const hit = arr.find(d => d.ts === ts); if (hit) return hit; } return arr[arr.length - 1]; }
 // 呼び出しトークンを評価: {name, args:{...}, ts} → 数値 or null。式の変数に args を代入。
-function meosFuncEval(map, name, argstr, ts) { const def = meosFuncResolve(map, name, ts); if (!def) return null; const vars = meosFuncParseArgs(argstr); if (vars == null) return null; return meosEvalExpr(def.expr, vars); }
-// セルが「ちょうど1個の関数呼び出しトークン」なら {token, val} を返す(整形で列幅を結果の桁数で確保する為)。それ以外は null。
-function meosFuncCallInfo(cellText, funcMap) {
+function meosFuncEval(map, name, argstr, ts, cellRef) { const def = meosFuncResolve(map, name, ts); if (!def) return null; const vars = meosFuncParseArgs(argstr, cellRef); if (vars == null) return null; return meosEvalExpr(def.expr, vars); }
+// セルが「ちょうど1個の関数呼び出しトークン」なら {token, val} を返す(整形で列幅を結果の桁数で確保する為)。それ以外は null。cellRef=表内の相対参照解決(任意)。
+function meosFuncCallInfo(cellText, funcMap, cellRef) {
   if (!MEOS_METEX || !funcMap) return null;
   const t = String(cellText == null ? '' : cellText).trim();
   const m = /^([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)$/.exec(t); if (!m) return null;
-  const val = meosFuncEval(funcMap, m[1], m[2], m[3]); if (val == null) return null;
+  const val = meosFuncEval(funcMap, m[1], m[2], m[3], cellRef); if (val == null) return null;
   return { token: t, val };
 }
 const MEOS_FUNC_CALL_RE = /([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)/g; // name(args)_TS
@@ -17594,6 +17613,16 @@ function meosApplyFuncDecorations(editor) {
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     let map = null;
+    // v3.1.41: 表の中の呼び出しは相対参照(←N 等)を解けるよう、表ブロックのグリッドをキャッシュして cellRef を作る。
+    const blockCache = new Map();
+    function blockFor(ln) {
+      const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
+      if (blockCache.has(blk.start)) return blockCache.get(blk.start);
+      const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
+      const rows = lines.map(meosSplitTableRow); let sepIdx = -1;
+      for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
+      const info = { start: blk.start, rows, sepIdx }; blockCache.set(blk.start, info); return info;
+    }
     for (const vr of vrs) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
       for (let ln = from; ln <= to; ln++) {
@@ -17601,11 +17630,16 @@ function meosApplyFuncDecorations(editor) {
         const text = doc.lineAt(ln).text;
         if (text.indexOf(')_') < 0) continue; // 速い足切り
         const spans = meosMeTexCommentSpans(text); const inComment = (idx) => spans.some(([s, e]) => idx >= s && idx < e);
+        let blk = null, rowIdx = -1, pipes = null;
+        if (meosInTable(doc, ln)) { blk = blockFor(ln); if (blk && blk.sepIdx >= 0) { rowIdx = ln - blk.start; pipes = meosRowPipePositions(text); } }
+        const cellIndexAt = (idx) => { if (!pipes || pipes.length < 2) return -1; for (let k = 0; k < pipes.length - 1; k++) { if (idx > pipes[k] && idx < pipes[k + 1]) return k; } return -1; };
         MEOS_FUNC_CALL_RE.lastIndex = 0; let m;
         while ((m = MEOS_FUNC_CALL_RE.exec(text))) {
           const idx = m.index; if (inComment(idx)) continue;
           if (map == null) map = meosFuncRegistry(doc);
-          const val = meosFuncEval(map, m[1], m[2], m[3]); if (val == null) continue;
+          let cellRef = null;
+          if (blk && rowIdx >= 0 && rowIdx !== blk.sepIdx) { const k = cellIndexAt(idx); if (k >= 0) cellRef = (dir, n) => meosCellRefValue(blk.rows, blk.sepIdx, rowIdx, k, dir, n); }
+          const val = meosFuncEval(map, m[1], m[2], m[3], cellRef); if (val == null) continue;
           const end = idx + m[0].length;
           hideRanges.push(new vscode.Range(ln, idx, ln, end));
           resultOpts.push({ range: new vscode.Range(ln, end, ln, end), renderOptions: { after: { contentText: meosFmtCalc(val), color: 'var(--vscode-foreground)' } } });
