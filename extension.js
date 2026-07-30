@@ -17488,12 +17488,13 @@ function meosMeTexTokens(text) {
   }
   return out;
 }
-// v3.5.2(俊克 7/30 テストNG): 高さを em で一本化。旧「100%だけ super/sub キーワード・他はem」は不連続で、キーワードの実効(≈0.44em/-0.34em)よりem基準(0.34/0.16)が小さく130%が既定と変わらず下付きは逆に浅く見えた。
-// →全 scale を em で表現(100%=基準・線形)。基準はキーワード相当に合わせる=既定の見た目を保ちつつ 80/100/130% が素直に上下する。上付き=正(上)/下付き=負(下)で必ず逆向き。
-const MEOS_METEX_BASE_EM = { sup: 0.44, sub: 0.34 };
+// v3.5.3(俊克 7/30): 高さ%を物理アンカーに校正(画像ツールの整列と同発想)。50%=上/下付きの底が基準文字の底(基準線)に一致 / 150%=底が基準文字の頭に一致 / 100%=中間(既定)。
+// 傾き=TOP/100(旧の約2倍)で 80%⇔100% の差もハッキリ。上付き=上(正)/下付き=下(負)で符号反転。TOP=「頭の高さ」emは視覚に合わせて要微調整(俊克テストで校正)。
+const MEOS_METEX_TOP_EM = 0.66; // 150% で上付きの底が一致する基準文字の頭の高さ(em)。
 function meosMeTexStyle(kind, scale) {
   const sc = (scale == null) ? 100 : scale;
-  const va = Math.round(MEOS_METEX_BASE_EM[kind] * sc / 100 * 1000) / 1000 * (kind === 'sup' ? 1 : -1);
+  let va = Math.round(MEOS_METEX_TOP_EM * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
+  if (kind === 'sub') va = -va; // 下付きは下向き
   return 'none; font-size: 0.68em; vertical-align: ' + va + 'em; line-height: 0;';
 }
 const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
