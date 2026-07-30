@@ -17483,19 +17483,21 @@ function meosMeTexTokens(text) {
       const close = text.indexOf('}', scanFrom);
       if (close > scanFrom) { const pm = /^\s*(\d{1,3})\s*%\s*$/.exec(text.slice(scanFrom + 1, close)); if (pm) { pct = parseInt(pm[1], 10); hides.push([scanFrom, close + 1]); consumedEnd = close + 1; } }
     }
-    out.push({ kind, hides, opStart, opEnd, pct });
+    out.push({ kind, hides, opStart, opEnd, pct, base: prev }); // base=直前の基準文字(上付きの頭合わせの大小判定に使う)
     i = consumedEnd - 1;
   }
   return out;
 }
 // v3.5.3(俊克 7/30): 高さ%を物理アンカーに校正(画像ツールの整列と同発想)。50%=上/下付きの底が基準文字の底(基準線)に一致 / 150%=底が基準文字の頭に一致 / 100%=中間(既定)。
 // 傾き=TOP/100(旧の約2倍)で 80%⇔100% の差もハッキリ。上付き=上(正)/下付き=下(負)で符号反転。TOP=「頭の高さ」emは視覚に合わせて要微調整(俊克テストで校正)。
-// v3.5.5(俊克 7/30 テスト): 上付きが「ほとんど改善されない・特に大文字Xが低い」。真因2つ=(1)vertical-alignのem解決が要素自身のfont-size(0.68em)基準→0.66→0.75の実効差は約0.06emで1px未満=不可視。(2)頭の高さは小文字x(x-height≈0.5)と大文字X(cap≈0.7)で違い、固定オフセットは大文字で低く見える。
-// →上付きTOPを大文字の頭(cap≈0.7em_親)へ届く値まで大きく上げる(em解決0.68倍を打ち消し 0.7/0.68≈1.03)。下付きは👍据え置き。50%=0はTOP非依存で不変。
-const MEOS_METEX_TOP_EM = { sup: 1.05, sub: 0.66 }; // 150% で底が基準文字の頭(大文字cap)に一致する高さ(em)。em解決の0.68倍を織り込み済み。
-function meosMeTexStyle(kind, scale) {
+// v3.5.6(俊克 7/30): 基準文字の大小を自動判定して上付きの頭を合わせる(数式変数はほぼASCII=大文字/数字/記号は背高cap≈0.7・x-height小文字は背低≈0.5)。上に伸びる小文字(bdfhklt)は背高扱い。手動 {N%} は例外用に残る。
+// TOP=150% で上付きの底が一致する頭の高さ(em)。em解決が要素自身の0.68em基準なので 0.68倍を打ち消した値(頭0.7/0.68≈1.03, x-height0.5/0.68≈0.74)。下付きは基準線(50%=0)基準なので大小非依存。
+const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
+function meosMeTexBaseTall(base) { const b = String(base || ''); if (/[a-z]/.test(b)) return /[bdfhklt]/.test(b); return true; } // 小文字はx-height=背低(上伸びbdfhkltは背高)・大文字/数字/記号/括弧=背高
+function meosMeTexStyle(kind, scale, baseTall) {
   const sc = (scale == null) ? 100 : scale;
-  let va = Math.round(MEOS_METEX_TOP_EM[kind] * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
+  const top = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_TOP_EM.supShort : MEOS_METEX_TOP_EM.sup) : MEOS_METEX_TOP_EM.sub;
+  let va = Math.round(top * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
   if (kind === 'sub') va = -va; // 下付きは下向き
   return 'none; font-size: 0.68em; vertical-align: ' + va + 'em; line-height: 0;';
 }
@@ -17521,7 +17523,8 @@ function meosApplyMeTexDecorations(editor) {
         for (const t of toks) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
-          const style = meosMeTexStyle(t.kind, scale);
+          const baseTall = (t.kind === 'sup') ? meosMeTexBaseTall(t.base) : true; // 上付きは基準文字の大小で頭を合わせる
+          const style = meosMeTexStyle(t.kind, scale, baseTall);
           if (!styleRanges.has(style)) styleRanges.set(style, []);
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
