@@ -17488,11 +17488,12 @@ function meosMeTexTokens(text) {
   }
   return out;
 }
-// v3.5.1: MeTeX 上/下付きのスタイル文字列。scale=100(既定)は従来どおり super/sub キーワード(見た目維持)。≠100 は em で高さを微調整(基準比%)。
-const MEOS_METEX_BASE_EM = { sup: 0.34, sub: 0.16 };
+// v3.5.2(俊克 7/30 テストNG): 高さを em で一本化。旧「100%だけ super/sub キーワード・他はem」は不連続で、キーワードの実効(≈0.44em/-0.34em)よりem基準(0.34/0.16)が小さく130%が既定と変わらず下付きは逆に浅く見えた。
+// →全 scale を em で表現(100%=基準・線形)。基準はキーワード相当に合わせる=既定の見た目を保ちつつ 80/100/130% が素直に上下する。上付き=正(上)/下付き=負(下)で必ず逆向き。
+const MEOS_METEX_BASE_EM = { sup: 0.44, sub: 0.34 };
 function meosMeTexStyle(kind, scale) {
-  if (scale === 100 || scale == null) return 'none; font-size: 0.68em; vertical-align: ' + (kind === 'sup' ? 'super' : 'sub') + '; line-height: 0;';
-  const va = Math.round(MEOS_METEX_BASE_EM[kind] * scale / 100 * 1000) / 1000 * (kind === 'sup' ? 1 : -1);
+  const sc = (scale == null) ? 100 : scale;
+  const va = Math.round(MEOS_METEX_BASE_EM[kind] * sc / 100 * 1000) / 1000 * (kind === 'sup' ? 1 : -1);
   return 'none; font-size: 0.68em; vertical-align: ' + va + 'em; line-height: 0;';
 }
 const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
