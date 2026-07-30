@@ -17490,10 +17490,11 @@ function meosMeTexTokens(text) {
 }
 // v3.5.3(俊克 7/30): 高さ%を物理アンカーに校正(画像ツールの整列と同発想)。50%=上/下付きの底が基準文字の底(基準線)に一致 / 150%=底が基準文字の頭に一致 / 100%=中間(既定)。
 // 傾き=TOP/100(旧の約2倍)で 80%⇔100% の差もハッキリ。上付き=上(正)/下付き=下(負)で符号反転。TOP=「頭の高さ」emは視覚に合わせて要微調整(俊克テストで校正)。
-const MEOS_METEX_TOP_EM = 0.66; // 150% で上付きの底が一致する基準文字の頭の高さ(em)。
+// v3.5.4(俊克 7/30 テスト): 上付き150%が若干低め→上付きTOPだけ引き上げ(下付きは50%基準線も130%も👍なので据え置き)。50%=0はTOP非依存で不変。
+const MEOS_METEX_TOP_EM = { sup: 0.75, sub: 0.66 }; // 150% で底が基準文字の頭に一致する高さ(em)。上付きは頭(キャップ)まで届くよう少し高め。
 function meosMeTexStyle(kind, scale) {
   const sc = (scale == null) ? 100 : scale;
-  let va = Math.round(MEOS_METEX_TOP_EM * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
+  let va = Math.round(MEOS_METEX_TOP_EM[kind] * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
   if (kind === 'sub') va = -va; // 下付きは下向き
   return 'none; font-size: 0.68em; vertical-align: ' + va + 'em; line-height: 0;';
 }
