@@ -17569,7 +17569,7 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey) {
   const key = (bold ? 'b' : '') + (italic ? 'i' : '') + '|' + (fgKey || '') + '|' + (bgKey || '');
   if (boldFmtTypeCache.has(key)) return boldFmtTypeCache.get(key);
   const opt = { rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed };
-  if (bold) opt.fontWeight = '900';
+  if (bold) { opt.fontWeight = '900'; opt.textDecoration = 'none; -webkit-text-stroke: 0.5px currentColor;'; } // v3.7.1(俊克): Menloの900はBold止まりで弱い→縁取りstrokeでハッキリ太く(既存の矢印グリフ太字と同技法)
   if (italic) opt.fontStyle = 'italic';
   if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) opt.color = HIGHLIGHT_FG_COLORS[fgKey];
   if (bgKey && HIGHLIGHT_COLORS[bgKey]) opt.backgroundColor = HIGHLIGHT_COLORS[bgKey];
