@@ -17444,7 +17444,7 @@ function meosApplyImageThumbDecorations(editor) {
 // LaTeXの ^ / _ を捨て、小学生でも分かる矢印記法に。base↑2 = 2乗(上付き)、base↓3 = 下付き。分数は / のまま(frac不要)。
 // 生データは1文字も汚さない=装飾のみ(矢印をゼロ幅で隠し、続く operand を上/下付きにずらす)。関数膜だけでなく普通の膜・散文のどこでも効く。
 // カーソル行=生表示(編集可)/ Raw時・隔離(MEOS_METEX=false)時はゼロ。HTMLコメント内(Σ↑/🤝↓ 等の計算膜・結合膜マーカー)は対象外。
-let meTexHideDeco = null, meTexSupDeco = null, meTexSubDeco = null;
+let meTexHideDeco = null; // 上/下付き本体の型は meTexTypeCache(scale別)で持つ
 // 行内の <!-- ... --> コメント範囲 [start,end) を集める(この中の ↑↓ は MeTeX 対象外=計算膜/結合膜マーカーを守る)。
 function meosMeTexCommentSpans(text) { const spans = []; const re = /<!--[\s\S]*?-->/g; let m; while ((m = re.exec(text))) spans.push([m.index, m.index + m[0].length]); return spans; }
 // 1行を走査して MeTeX トークンを返す。各トークン: {arrow, kind:'sup'|'sub', hides:[[s,e],...], opStart, opEnd}
@@ -17464,34 +17464,48 @@ function meosMeTexTokens(text) {
     const kind = ch === '↑' ? 'sup' : 'sub';
     let j = i + 1;
     const hides = [[i, i + 1]]; // 矢印はゼロ幅で隠す
-    let opStart, opEnd;
+    let opStart, opEnd, scanFrom;
     if (text[j] === '(') { // ↑(n+1) のような括弧付き=括弧も隠して中身をずらす(1階層)
       let depth = 0, k = j;
       for (; k < text.length; k++) { if (text[k] === '(') depth++; else if (text[k] === ')') { depth--; if (depth === 0) break; } }
       if (k >= text.length || k === j + 1) continue; // 閉じ括弧なし or 空 → 無視
       hides.push([j, j + 1]); hides.push([k, k + 1]); // ( と ) を隠す
-      opStart = j + 1; opEnd = k;
+      opStart = j + 1; opEnd = k; scanFrom = k + 1;
     } else { // ↑2 / ↑10 / ↑ab / ↑-1 のような素の operand
       let s = j; if (text[j] === '+' || text[j] === '-') j++; // 先頭の符号(負の指数など)
       if (!(j < text.length && isOp(text[j]))) continue; // 矢印の直後が operand でない → 無視
       while (j < text.length && isOp(text[j])) j++;
-      opStart = s; opEnd = j;
+      opStart = s; opEnd = j; scanFrom = j;
     }
-    out.push({ kind, hides, opStart, opEnd });
-    i = opEnd - 1;
+    // v3.5.1(俊克 7/30): operand直後の {N%} で高さを微調整。基準の高さから見た%(例 x↑2{110%})。{…}はゼロ幅で隠す。
+    let consumedEnd = scanFrom, pct = null;
+    if (text[scanFrom] === '{') {
+      const close = text.indexOf('}', scanFrom);
+      if (close > scanFrom) { const pm = /^\s*(\d{1,3})\s*%\s*$/.exec(text.slice(scanFrom + 1, close)); if (pm) { pct = parseInt(pm[1], 10); hides.push([scanFrom, close + 1]); consumedEnd = close + 1; } }
+    }
+    out.push({ kind, hides, opStart, opEnd, pct });
+    i = consumedEnd - 1;
   }
   return out;
 }
+// v3.5.1: MeTeX 上/下付きのスタイル文字列。scale=100(既定)は従来どおり super/sub キーワード(見た目維持)。≠100 は em で高さを微調整(基準比%)。
+const MEOS_METEX_BASE_EM = { sup: 0.34, sub: 0.16 };
+function meosMeTexStyle(kind, scale) {
+  if (scale === 100 || scale == null) return 'none; font-size: 0.68em; vertical-align: ' + (kind === 'sup' ? 'super' : 'sub') + '; line-height: 0;';
+  const va = Math.round(MEOS_METEX_BASE_EM[kind] * scale / 100 * 1000) / 1000 * (kind === 'sup' ? 1 : -1);
+  return 'none; font-size: 0.68em; vertical-align: ' + va + 'em; line-height: 0;';
+}
+const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
 function meosApplyMeTexDecorations(editor) {
   if (!editor || !editor.document) return;
-  const clearAll = () => { for (const d of [meTexHideDeco, meTexSupDeco, meTexSubDeco]) if (d) editor.setDecorations(d, []); };
+  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); };
   if (!MEOS_METEX) { clearAll(); return; }
   if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  if (!meTexSupDeco) meTexSupDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0.68em; vertical-align: super; line-height: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  if (!meTexSubDeco) meTexSubDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0.68em; vertical-align: sub; line-height: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
-    const doc = editor.document; const hideRanges = [], supRanges = [], subRanges = [];
+    // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
+    let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 100) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 100) | 0)); } catch (_) {}
+    const doc = editor.document; const hideRanges = [], styleRanges = new Map(); // style → ranges[]
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
@@ -17502,14 +17516,16 @@ function meosApplyMeTexDecorations(editor) {
         const toks = meosMeTexTokens(text);
         for (const t of toks) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
-          const r = new vscode.Range(ln, t.opStart, ln, t.opEnd);
-          (t.kind === 'sup' ? supRanges : subRanges).push(r);
+          const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
+          const style = meosMeTexStyle(t.kind, scale);
+          if (!styleRanges.has(style)) styleRanges.set(style, []);
+          styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
       }
     }
     editor.setDecorations(meTexHideDeco, hideRanges);
-    editor.setDecorations(meTexSupDeco, supRanges);
-    editor.setDecorations(meTexSubDeco, subRanges);
+    for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
+    for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
 }
 
