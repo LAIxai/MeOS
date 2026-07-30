@@ -17563,17 +17563,27 @@ function meosApplyMeTexDecorations(editor) {
 // ===== v3.7.0(俊克 7/30): 太字/斜体 — 従来記法 **text**/***text***/*text* を同一行内で描画 ==========================
 // マーカーをゼロ幅で隠し本文を太字/斜体に。単一行のみ(行ごと走査で自動保証)。//コメント内も描画(changelog等を読みやすく)。カーソル行/Raw/隔離時は生表示。
 // ※色つきの正式膜 **{ 本文 (fg/bg)//tip }** と 𝗕ボタンは次段(ハイライトの色パイプライン流用)。ここは従来記法の可読化。
-let boldHideDeco = null, boldDeco = null, boldItalicDeco = null;
+let boldHideDeco = null; const boldFmtTypeCache = new Map(); // key: 太字/斜体+文字色+背景色 → decorationType
+function meosBoldFmtType(bold, italic, fgKey, bgKey) {
+  if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black'; // 暗背景は自動白文字(ハイライトと同じauto-contrast)
+  const key = (bold ? 'b' : '') + (italic ? 'i' : '') + '|' + (fgKey || '') + '|' + (bgKey || '');
+  if (boldFmtTypeCache.has(key)) return boldFmtTypeCache.get(key);
+  const opt = { rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed };
+  if (bold) opt.fontWeight = '900';
+  if (italic) opt.fontStyle = 'italic';
+  if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) opt.color = HIGHLIGHT_FG_COLORS[fgKey];
+  if (bgKey && HIGHLIGHT_COLORS[bgKey]) opt.backgroundColor = HIGHLIGHT_COLORS[bgKey];
+  const t = vscode.window.createTextEditorDecorationType(opt); boldFmtTypeCache.set(key, t); return t;
+}
 function meosApplyBoldDecorations(editor) {
   if (!editor || !editor.document) return;
-  const clearAll = () => { for (const d of [boldHideDeco, boldDeco, boldItalicDeco]) if (d) editor.setDecorations(d, []); };
+  const clearAll = () => { if (boldHideDeco) editor.setDecorations(boldHideDeco, []); for (const d of boldFmtTypeCache.values()) editor.setDecorations(d, []); };
   if (!MEOS_BOLD) { clearAll(); return; }
   if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  if (!boldDeco) boldDeco = vscode.window.createTextEditorDecorationType({ fontWeight: 'bold', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  if (!boldItalicDeco) boldItalicDeco = vscode.window.createTextEditorDecorationType({ fontWeight: 'bold', fontStyle: 'italic', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
-    const doc = editor.document; const hideR = [], boldR = [], biR = [];
+    const doc = editor.document; const hideR = []; const itemsByType = new Map();
+    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
@@ -17581,16 +17591,22 @@ function meosApplyBoldDecorations(editor) {
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
-        if (text.indexOf('**') < 0) continue; // **/*** のみ(単体*の斜体はボタンのMeOS形で・レガシー自動描画は誤爆回避で対象外)
-        const consumed = new Array(text.length).fill(false);
-        const run = (re, n, arr) => { let m; re.lastIndex = 0; while ((m = re.exec(text))) { const s = m.index, e = s + m[0].length; let ov = false; for (let i = s; i < e; i++) if (consumed[i]) { ov = true; break; } if (ov) continue; for (let i = s; i < e; i++) consumed[i] = true; hideR.push(new vscode.Range(ln, s, ln, s + n)); hideR.push(new vscode.Range(ln, e - n, ln, e)); arr.push(new vscode.Range(ln, s + n, ln, e - n)); } };
-        run(/\*\*\*([^*\n]+?)\*\*\*/g, 3, biR); // ***太字斜体***(先に)
-        run(/\*\*([^*\n]+?)\*\*/g, 2, boldR);   // **太字**(同一行内)
+        if (text.indexOf('*') < 0 && text.indexOf('__{') < 0) continue;
+        let m;
+        // 正式膜(色/tip): **{ 本文(白/黄)//tip }** = 太字 / __{ 本文(色)//tip }__ = 斜体。入れ子は各scanが独立に効くので太字×斜体が両立。
+        const reBF = /\*\*\{([^\n]*?)\}\*\*/g; reBF.lastIndex = 0;
+        while ((m = reBF.exec(text))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); }
+        const reIF = /__\{([^\n]*?)\}__/g; reIF.lastIndex = 0;
+        while ((m = reIF.exec(text))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
+        // 従来記法(同一行内・色なし): ***太字斜体*** / **太字**(**{ ではない時)
+        const reBI = /\*\*\*([^*\n]+?)\*\*\*/g; reBI.lastIndex = 0;
+        while ((m = reBI.exec(text))) { const s = m.index, e = s + m[0].length; hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); pushStyle(ln, s + 3, e - 3, true, true, null, null, ''); }
+        const reB = /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g; reB.lastIndex = 0; // ***の一部でない・**{でもない 純粋な **太字**
+        while ((m = reB.exec(text))) { const s = m.index, e = s + m[0].length; hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); pushStyle(ln, s + 2, e - 2, true, false, null, null, ''); }
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
-    editor.setDecorations(boldDeco, boldR);
-    editor.setDecorations(boldItalicDeco, biR);
+    for (const [t, items] of boldFmtTypeCache.size ? [...boldFmtTypeCache].map(([k, t]) => [t, itemsByType.get(t) || []]) : []) editor.setDecorations(t, items);
   } catch (_) {}
 }
 
