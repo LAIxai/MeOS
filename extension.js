@@ -16905,7 +16905,7 @@ function meosCalcDisplay(rows, sepIdx, r, c) { try { return meosFmtCalc(meosCalc
 function meosCalcMarkerText(raw) { const mk = meosCalcMarker(raw); if (!mk) return ''; return '<!--' + (mk.op === 'sum' ? 'Σ' : 'Π') + mk.dir + (mk.n > 0 ? mk.n : '') + (mk.disp ? 'd' : '') + '-->'; }
 // ============================================================================================
 
-function meosFormatTableLines(lines) {
+function meosFormatTableLines(lines, funcMap) {
   const rows = lines.map(meosSplitTableRow);
   let sepIdx = -1;
   for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
@@ -16934,7 +16934,8 @@ function meosFormatTableLines(lines) {
     for (let k = 0; k < cells.length; k++) { const sp = meosColspanInCells(cells, k); if (sp > 1) for (let j = k + 1; j < k + sp && j < cells.length; j++) absorbed[j] = true; }
     for (let c = 0; c < cells.length && c < cols; c++) {
       if (meosColspanInCells(cells, c) > 1 || absorbed[c]) continue;
-      const cw = (calcVal && meosCalcMarker(cells[c])) ? (meosCalcCellRole(rows, sepIdx, i, c) === 'boundary' ? meosStrWidth(meosStripCalcMarker(cells[c])) : meosStrWidth(meosFmtCalc(calcVal(i, c)))) : meosStrWidth(meosStripMergeMarker(cells[c])); // v3.1.8: 計算膜の開き壁は結果でなく生テキストの幅
+      const fci = meosFuncCallInfo(cells[c], funcMap); // v3.1.40: 関数電卓セルは結果の桁数で列幅を確保(生トークン長でなく)
+      const cw = (calcVal && meosCalcMarker(cells[c])) ? (meosCalcCellRole(rows, sepIdx, i, c) === 'boundary' ? meosStrWidth(meosStripCalcMarker(cells[c])) : meosStrWidth(meosFmtCalc(calcVal(i, c)))) : fci ? meosStrWidth(meosFmtCalc(fci.val)) : meosStrWidth(meosStripMergeMarker(cells[c])); // v3.1.8: 計算膜の開き壁は結果でなく生テキストの幅
       width[c] = Math.max(width[c], cw);
     }
   }
@@ -16978,6 +16979,14 @@ function meosFormatTableLines(lines) {
       }
       for (let c = 0; c < cols; c++) {
         const raw = cells[c] || '';
+        // v3.1.40(俊克 7/30): 関数電卓セル=トークン(装飾でゼロ幅に隠れ結果を after で描画)。列幅は結果の桁数で予約し、揃え方向に応じて余白を置く(生トークン長でなく)。
+        const fc = meosFuncCallInfo(raw, funcMap);
+        if (fc && !(zero[c] || isHead[c])) {
+          const w = meosStrWidth(meosFmtCalc(fc.val)), pad = Math.max(0, Math.round(P[c] - cur - w)), a = align[c] === 'none' ? 'left' : align[c];
+          line += (a === 'right') ? ' '.repeat(pad) + fc.token : (a === 'center') ? ' '.repeat(Math.floor(pad / 2)) + fc.token + ' '.repeat(pad - Math.floor(pad / 2)) : fc.token + ' '.repeat(pad);
+          cur += w + pad; if (c < cols - 1) { line += ' | '; cur += 3; }
+          continue;
+        }
         // v3.0.7.1(俊克): 計算セル=正規化マーカー(表示ゼロ幅)＋結果は装飾で出す。emit本文は空・幅は結果の桁数を予約(装飾の after が同じ幅を占める)。生データは Π/Σ に揃える(×→Π 等)。
         if (calcVal && meosCalcMarker(raw)) {
           const emitMk = meosCalcMarkerText(raw);
@@ -17040,7 +17049,8 @@ async function meosFormatTableAtCursor(editor) {
   const raw = [];
   for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
   const indent = (raw[0].match(/^\s*/) || [''])[0];
-  const formatted = meosFormatTableLines(raw);
+  let funcMap = null; try { if (MEOS_METEX) funcMap = meosFuncRegistry(doc); } catch (_) {} // v3.1.40: 関数電卓セルを結果幅で整形する為、定義(表の外)を集めたレジストリを渡す
+  const formatted = meosFormatTableLines(raw, funcMap);
   if (!formatted) { vscode.window.setStatusBarMessage('MeOS: 区切り行 |---| が見つかりません(GFMテーブルではない)', 2800); return; }
   const withIndent = formatted.map(l => indent + l);
   const we = new vscode.WorkspaceEdit();
@@ -17561,6 +17571,14 @@ function meosFuncRegistry(doc) {
 function meosFuncResolve(map, name, ts) { const arr = map.get(name); if (!arr || !arr.length) return null; if (ts) { const hit = arr.find(d => d.ts === ts); if (hit) return hit; } return arr[arr.length - 1]; }
 // 呼び出しトークンを評価: {name, args:{...}, ts} → 数値 or null。式の変数に args を代入。
 function meosFuncEval(map, name, argstr, ts) { const def = meosFuncResolve(map, name, ts); if (!def) return null; const vars = meosFuncParseArgs(argstr); if (vars == null) return null; return meosEvalExpr(def.expr, vars); }
+// セルが「ちょうど1個の関数呼び出しトークン」なら {token, val} を返す(整形で列幅を結果の桁数で確保する為)。それ以外は null。
+function meosFuncCallInfo(cellText, funcMap) {
+  if (!MEOS_METEX || !funcMap) return null;
+  const t = String(cellText == null ? '' : cellText).trim();
+  const m = /^([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)$/.exec(t); if (!m) return null;
+  const val = meosFuncEval(funcMap, m[1], m[2], m[3]); if (val == null) return null;
+  return { token: t, val };
+}
 const MEOS_FUNC_CALL_RE = /([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)/g; // name(args)_TS
 let funcHideDeco = null, funcResultDeco = null;
 function meosApplyFuncDecorations(editor) {
