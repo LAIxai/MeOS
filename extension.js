@@ -16925,6 +16925,27 @@ function meosCalcResolver(rows, sepIdx) {
 function meosCalcDisplay(rows, sepIdx, r, c) { try { return meosFmtCalc(meosCalcResolver(rows, sepIdx)(r, c)); } catch (_) { return ''; } }
 // 正規化した計算マーカーのコメント文字列(×/x/*/∏→Π・∑→Σ・不要な数字は落とす)。整形で生データもこれに揃える。
 function meosCalcMarkerText(raw) { const mk = meosCalcMarker(raw); if (!mk) return ''; return '<!--' + (mk.op === 'sum' ? 'Σ' : 'Π') + mk.dir + (mk.n > 0 ? mk.n : '') + (mk.disp ? 'd' : '') + '-->'; }
+// v3.1.61(俊克 7/31): ▦整形(=再計算)で焼き値が変わった計算セル(result役=再計算するセル)を検出→一時ハイライトで「何が更新されたか」を見せる(手動計算モードの押し忘れ対策)。old/new=整形前後の表ブロック行。行数が違えば[]=印なし(安全側)。壁/生値セルは再計算しないので対象外。
+function meosCalcChangedCells(oldLines, newLines) {
+  try {
+    const oldRows = oldLines.map(meosSplitTableRow), newRows = newLines.map(meosSplitTableRow);
+    if (oldRows.length !== newRows.length) return [];
+    let newSep = -1; for (let i = 0; i < newRows.length; i++) { if (meosIsTableSeparator(newRows[i])) { newSep = i; break; } }
+    if (newSep < 0) return [];
+    const out = [];
+    for (let r = 0; r < newRows.length; r++) {
+      if (r === newSep) continue;
+      const cells = newRows[r];
+      for (let c = 0; c < cells.length; c++) {
+        if (!meosCalcMarker(cells[c])) continue;
+        if (meosCalcCellRole(newRows, newSep, r, c) !== 'result') continue; // 再計算するセルだけ
+        const oldCell = (oldRows[r] || [])[c] || '';
+        if (meosStripCalcMarker(cells[c]) !== meosStripCalcMarker(oldCell)) out.push({ r, c }); // 焼き値が変わった=再計算で更新された
+      }
+    }
+    return out;
+  } catch (_) { return []; }
+}
 // ============================================================================================
 
 function meosFormatTableLines(lines, funcMap) {
@@ -17020,9 +17041,11 @@ function meosFormatTableLines(lines, funcMap) {
             cur += wB + padB; if (c < cols - 1) { line += ' | '; cur += 3; }
             continue;
           }
-          const w = meosStrWidth(meosFmtCalc(calcVal(i, c)));
+          // v3.1.59(俊克 7/31): 計算結果をセルに焼き込む(整形＝更新)。MeOS外(GitHub/素のMarkdown)でも数字が見える。MeOS上は装飾がライブ再計算値を after で表示し、焼いた値は隠す(常に真)。
+          const valStr = meosFmtCalc(calcVal(i, c));
+          const w = meosStrWidth(valStr);
           const pad = Math.max(0, Math.round(P[c] - cur - w));
-          line += emitMk + ' '.repeat(pad); // 結果はここに装飾(after)で描画=結果幅ぶんは cur で予約
+          line += emitMk + valStr + ' '.repeat(pad); // マーカー直後に結果を焼き込む(装飾がライブ値をafterで上書き表示・結果幅ぶんは cur で予約済)
           cur += w + pad; if (c < cols - 1) { line += ' | '; cur += 3; }
           continue;
         }
@@ -17078,6 +17101,18 @@ async function meosFormatTableAtCursor(editor) {
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, new vscode.Range(blk.start, 0, blk.end, doc.lineAt(blk.end).text.length), withIndent.join('\n'));
   await vscode.workspace.applyEdit(we);
+  // v3.1.61(俊克 7/31): 再計算(=整形)で焼き値が変わった計算セルを一時ハイライト(5秒)=「何が更新されたか」を目で確認(手動計算モードの押し忘れ対策)。装飾のみ。何も変われば[]でクリア。
+  try {
+    if (MEOS_TABLE_CALC && MEOS_RELEASE_PHASE >= 3) {
+      const changed = meosCalcChangedCells(raw, withIndent), flashRanges = [];
+      for (const ch of changed) {
+        const ln = blk.start + ch.r; if (ln < blk.start || ln > blk.end) continue;
+        const pipes = meosRowPipePositions(doc.lineAt(ln).text);
+        if (pipes.length >= ch.c + 2) flashRanges.push(new vscode.Range(ln, pipes[ch.c] + 1, ln, pipes[ch.c + 1]));
+      }
+      meosFlashTableCells(editor, flashRanges, 5000);
+    }
+  } catch (_) {}
   // v3.0.3(俊克 7/22): 旧v0.9.999154の「8行以上は整形時に自動膜化」を撤去。膜化は▾メニューの「✓ 膜化する」で明示的に選ぶ(勝手に膜が付かない)。
   vscode.window.setStatusBarMessage('MeOS: テーブルを整形しました ✅', 1500);
 }
@@ -17320,7 +17355,7 @@ function meosApplyTableMergeDecorations(editor) {
   } catch (_) {}
 }
 
-// v3.0.7.1(俊克): ★表計算 Σ/Π の装飾。計算マーカー(<!--Σ↑-->等)をゼロ幅で隠し、その場に計算結果(常に再計算した値)を after で描画。カーソル行は生表示(マーカーを編集できる)。結合と同じ「生データを汚さず装飾で見せる」層。
+// v3.0.7.1/v3.1.60(俊克): ★表計算 Σ/Π の装飾。計算マーカー(<!--Σ↑-->等)のコメントをゼロ幅で隠し、セルに焼き込んだ計算結果(過去の値)をそのまま見せる。★v3.1.60=手動計算モード=再計算はここ(装飾)でなく ▦ 整形時のみ(Excelの手動計算+F9と同型)。表示=ファイルの値=MeOS外と常に一致・毎スクロール/毎編集の再計算なし。カーソル行は生表示(マーカーを編集できる)。結合と同じ「生データを汚さず装飾で見せる」層。
 let tableCalcHideDeco = null, tableCalcResultDeco = null;
 function meosApplyTableCalcDecorations(editor) {
   if (!editor || !editor.document) return;
@@ -17331,16 +17366,6 @@ function meosApplyTableCalcDecorations(editor) {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableCalcHideDeco, []); editor.setDecorations(tableCalcResultDeco, []); return; }
     const doc = editor.document; const hideRanges = [], resultOpts = [];
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
-    const blockCache = new Map(); // 表ブロックの grid/sepIdx/calc をブロック単位でキャッシュ(行ごとに再構築しない)
-    function blockFor(ln) {
-      const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
-      if (blockCache.has(blk.start)) return blockCache.get(blk.start);
-      const lines = []; for (let i = blk.start; i <= blk.end; i++) lines.push(doc.lineAt(i).text);
-      const rows = lines.map(meosSplitTableRow); let sepIdx = -1;
-      for (let i = 0; i < rows.length; i++) { if (meosIsTableSeparator(rows[i])) { sepIdx = i; break; } }
-      const info = { start: blk.start, rows, sepIdx, calc: meosCalcResolver(rows, sepIdx) };
-      blockCache.set(blk.start, info); return info;
-    }
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
@@ -17349,23 +17374,33 @@ function meosApplyTableCalcDecorations(editor) {
         const text = doc.lineAt(ln).text;
         if (text.indexOf('<!--') < 0 || !MEOS_CALC_RE.test(text)) continue;
         if (!meosInTable(doc, ln)) continue;
-        const blk = blockFor(ln); if (!blk || blk.sepIdx < 0) continue;
-        const rowIdx = ln - blk.start;
         const pipes = meosRowPipePositions(text); if (pipes.length < 2) continue;
+        // v3.1.60(俊克 7/31): 手動計算モード。装飾は「計算マーカー(コメント)を隠して、セルに焼き込んだ値(過去の結果)をそのまま見せる」だけ。再計算は ▦ 整形時のみ(Excelの手動計算+F9と同型)。→ 毎スクロール/毎編集の resolver 実行を撤去(固まり対策)。結果セル/境界壁の区別も不要=セルに在る文字をそのまま表示。
         for (let k = 0; k < pipes.length - 1; k++) {
           const cs = pipes[k] + 1, ce = pipes[k + 1];
           const cellText = text.slice(cs, ce);
           MEOS_CALC_RE.lastIndex = 0; const cm = MEOS_CALC_RE.exec(cellText); if (!cm) continue;
           const mStart = cs + cm.index, mEnd = mStart + cm[0].length;
-          hideRanges.push(new vscode.Range(ln, mStart, ln, mEnd));
-          const disp = (meosCalcCellRole(blk.rows, blk.sepIdx, rowIdx, k) === 'boundary') ? '' : meosFmtCalc(blk.calc(rowIdx, k)); // v3.1.8: 計算膜の開き壁は結果を出さない(マーカーは隠すが生テキストはそのまま見える)
-          if (disp !== '') resultOpts.push({ range: new vscode.Range(ln, mEnd, ln, mEnd), renderOptions: { after: { contentText: disp, color: 'var(--vscode-foreground)' } } });
+          hideRanges.push(new vscode.Range(ln, mStart, ln, mEnd)); // マーカー(コメント)だけ隠す=焼いた値が見える
         }
       }
     }
     editor.setDecorations(tableCalcHideDeco, hideRanges);
     editor.setDecorations(tableCalcResultDeco, resultOpts);
   } catch (_) {}
+}
+// v3.1.61(俊克 7/31): ▦で再計算して焼き値が変わったセルを一時ハイライト(既定5秒)。装飾のみ=ファイルは汚さない。手動計算モードで「押したら何が変わったか(或いは何も変わらなかったか)」を目で確認できる=押し忘れ対策。
+let tableCalcFlashDeco = null, tableCalcFlashTimer = null;
+function meosFlashTableCells(editor, ranges, ms) {
+  if (!editor) return;
+  if (!tableCalcFlashDeco) tableCalcFlashDeco = vscode.window.createTextEditorDecorationType({ // v3.1.62(俊克 7/31 スクショ=薄い): 濃度up＋明るい緑＋輪郭線＋テーマ別(ダーク強め/ライト控えめ)。緑=再計算で更新された印
+    backgroundColor: 'rgba(88,200,64,0.55)', border: '1px solid rgba(120,225,90,0.9)', borderRadius: '3px', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    dark: { backgroundColor: 'rgba(88,200,64,0.55)', border: '1px solid rgba(120,225,90,0.9)' },
+    light: { backgroundColor: 'rgba(46,160,67,0.40)', border: '1px solid rgba(31,136,61,0.85)' }
+  });
+  if (tableCalcFlashTimer) { clearTimeout(tableCalcFlashTimer); tableCalcFlashTimer = null; }
+  editor.setDecorations(tableCalcFlashDeco, ranges || []);
+  if (ranges && ranges.length) tableCalcFlashTimer = setTimeout(() => { try { editor.setDecorations(tableCalcFlashDeco, []); } catch (_) {} tableCalcFlashTimer = null; }, ms || 5000);
 }
 
 // v3.1.9(俊克 7/26「縦結合の行罫線方式」・前人未到): 縦結合(🤝↓N)は、テキスト表に行間罫線が無いため「結合されて空」と「ただ空」が区別できない。
