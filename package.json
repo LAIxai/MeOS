@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. A membrane is just a comment — so it structures, folds, warps, and encrypts your notes and code without touching your data, not by a millimeter. One file, one brain: Hyper TOC warp & bi-directional jump, ✅ searchable checklists, 🐙 one-tap GitHub backup (Octopush), 🔐 AES-256 Encrypt Me. Markdown⊕ — Markdown, plus. MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). ／ それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣",
-  "version": "3.1.66",
+  "version": "3.1.72",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -164,6 +164,11 @@
           "minimum": 1,
           "maximum": 2,
           "markdownDescription": "Width of a full-width (CJK) character relative to a half-width one, used by **MeOS: Format Table** for column alignment. Default **1.67** is tuned for VSCodium's default font (Menlo + Hiragino on macOS), where CJK glyphs are ~1.67× the ASCII advance — not exactly 2×. Set **2** if you use a duospaced coding font (Sarasa Term J, UDEV Gothic, etc.) where full-width = exactly two half-widths."
+        },
+        "laiMembrane.tableAutoCalc": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Table calc mode. **On (default) = auto (live + save)**: a total updates **on screen** as you move to another cell — without touching the file — and is **committed (baked) into the file on save (Cmd+S)**. Recalculation happens when you switch cells (not on every keystroke, so kana-kanji conversion inside a cell isn't disturbed). **Off = manual**: a total shows the last computed value and recomputes only when you press **▦ Format Table** (Excel-style manual calc + F9). Either way, cells whose value changed **flash green** (auto = on save, manual = on ▦). Toggle from the ▦ ▾ menu → *Auto-calc: live + save* checkbox."
         },
         "laiMembrane.metexSuperScale": {
           "type": "number",
