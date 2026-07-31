@@ -17792,14 +17792,23 @@ function meosApplyFuncDecorations(editor) {
         const cellIndexAt = (idx) => { if (!pipes || pipes.length < 2) return -1; for (let k = 0; k < pipes.length - 1; k++) { if (idx > pipes[k] && idx < pipes[k + 1]) return k; } return -1; };
         MEOS_FUNC_CALL_RE.lastIndex = 0; let m;
         while ((m = MEOS_FUNC_CALL_RE.exec(text))) {
-          const idx = m.index; if (inComment(idx)) continue;
+          const idx = m.index;
+          const span = spans.find(([s, e]) => idx >= s && idx < e); // v3.1.63: コメント包み <!--f(x=3)_TS-->ans なら span=そのコメント範囲(素トークンなら span=undefined)
           if (map == null) map = meosFuncRegistry(doc);
           let cellRef = null;
           if (blk && rowIdx >= 0 && rowIdx !== blk.sepIdx) { const k = cellIndexAt(idx); if (k >= 0) cellRef = (dir, n) => meosCellRefValue(blk.rows, blk.sepIdx, rowIdx, k, dir, n); }
           const val = meosFuncEval(map, m[1], m[2], m[3], cellRef); if (val == null) continue;
           const end = idx + m[0].length;
-          hideRanges.push(new vscode.Range(ln, idx, ln, end));
-          resultOpts.push({ range: new vscode.Range(ln, end, ln, end), renderOptions: { after: { contentText: meosFmtCalc(val), color: 'var(--vscode-foreground)' } } });
+          if (span) {
+            // v3.1.63(俊克 7/31): 電卓のコメント包み(散文でも動く形)。式をコメントで隠し、コメント"直後"のプレースホルダ文字列を結果で上書き表示=テーブルの<!--Σ↑-->310と同じく値は後ろ側so統一感。生データはプレースホルダのまま(MeOS外で読める)。プレースホルダ無しはコメント後ろに結果を出すだけ。
+            const cS = span[0], cE = span[1];
+            let pE = cE; while (pE < text.length && !/[\s|<>]/.test(text[pE])) pE++; // コメント直後の非空白・非パイプ・非<>の連なり=プレースホルダ
+            hideRanges.push(new vscode.Range(ln, cS, ln, pE)); // コメント＋プレースホルダ(在れば)を隠す
+            resultOpts.push({ range: new vscode.Range(ln, pE, ln, pE), renderOptions: { after: { contentText: meosFmtCalc(val), color: 'var(--vscode-foreground)' } } });
+          } else {
+            hideRanges.push(new vscode.Range(ln, idx, ln, end)); // 素トークン(従来)=トークンを隠して後ろに結果
+            resultOpts.push({ range: new vscode.Range(ln, end, ln, end), renderOptions: { after: { contentText: meosFmtCalc(val), color: 'var(--vscode-foreground)' } } });
+          }
         }
       }
     }
