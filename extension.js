@@ -17036,8 +17036,12 @@ function meosFormatTableLines(lines, funcMap) {
         // v3.1.40(俊克 7/30): 関数電卓セル=トークン(装飾でゼロ幅に隠れ結果を after で描画)。列幅は結果の桁数で予約し、揃え方向に応じて余白を置く(生トークン長でなく)。
         const fc = meosFuncCallInfo(raw, funcMap, (dir, n) => meosCellRefValue(rows, sepIdx, i, c, dir, n));
         if (fc && !(zero[c] || isHead[c])) {
-          const w = meosStrWidth(meosFmtCalc(fc.val)), pad = Math.max(0, Math.round(P[c] - cur - w)), a = align[c] === 'none' ? 'left' : align[c];
-          line += (a === 'right') ? ' '.repeat(pad) + fc.token : (a === 'center') ? ' '.repeat(Math.floor(pad / 2)) + fc.token + ' '.repeat(pad - Math.floor(pad / 2)) : fc.token + ' '.repeat(pad);
+          const valStr = meosFmtCalc(fc.val), w = meosStrWidth(valStr), pad = Math.max(0, Math.round(P[c] - cur - w)), a = align[c] === 'none' ? 'left' : align[c];
+          if (fc.comment) { // v3.1.79(俊克): コメント包み <!--f(args)_TS-->結果 を焼く(Σ/Πと同型・列幅は結果桁数so間延びしない・装飾がコメント+焼き値を隠し結果をafterで描画)
+            line += fc.mkText + valStr + ' '.repeat(pad);
+          } else { // 素トークン: 装飾でゼロ幅に隠れ結果をafterで描画so揃え方向に余白
+            line += (a === 'right') ? ' '.repeat(pad) + fc.token : (a === 'center') ? ' '.repeat(Math.floor(pad / 2)) + fc.token + ' '.repeat(pad - Math.floor(pad / 2)) : fc.token + ' '.repeat(pad);
+          }
           cur += w + pad; if (c < cols - 1) { line += ' | '; cur += 3; }
           continue;
         }
@@ -17832,13 +17836,19 @@ function meosEvalExpr(str, vars) {
 }
 // --- 引数のパース: "x=5, y=2" → {x:5,y:2}。値は数値 or 相対セル参照 ←N/→N/↑N/↓N(N省略=1)。cellRef(dir,n)→数値で解決。読めなければ null ---
 // v3.1.41(俊克): 相対参照は「オフセット=Nセル離れた1点」(Σのカウント式とは役割が別=集計は膜の壁で囲む/参照はNで1点を指す)。基本は同じ行の横参照(←/→)。
-const MEOS_ARG_RE = /^\s*([A-Za-z][A-Za-z0-9]*)\s*=\s*(?:(-?[0-9]*\.?[0-9]+)|([←→↑↓])\s*(\d*))\s*$/u;
-function meosFuncParseArgs(argstr, cellRef) {
-  const out = {}; const parts = String(argstr == null ? '' : argstr).split(',');
+const MEOS_ARG_RE = /^\s*([A-Za-z][A-Za-z0-9]*)\s*=\s*(?:(-?[0-9]*\.?[0-9]+)|([←→↑↓])\s*(\d*))\s*$/u; // 名前つき: name=値
+const MEOS_ARGVAL_RE = /^\s*(?:(-?[0-9]*\.?[0-9]+)|([←→↑↓])\s*(\d*))\s*$/u; // 位置引数: 値だけ(数値 or 相対参照)
+// v3.1.78(俊克 8/1): 位置引数を正式採用。名前なし f(←1,←2)_TS の各値を、定義の仮引数(params)に"順番で"割り当てる(TSが一意so名前は不要)。名前つき x=5 も後方互換で併用可。
+function meosFuncParseArgs(argstr, cellRef, params) {
+  const out = {}; const parts = String(argstr == null ? '' : argstr).split(','); let pos = 0;
+  const resolve = (numStr, dir, nStr) => { if (numStr != null) return parseFloat(numStr); if (!cellRef) return null; const n = nStr ? parseInt(nStr, 10) : 1; return cellRef(dir, n); };
   for (const part of parts) {
-    if (!part.trim()) continue; const m = MEOS_ARG_RE.exec(part); if (!m) return null;
-    if (m[2] != null) { out[m[1]] = parseFloat(m[2]); }
-    else { if (!cellRef) return null; const n = m[4] ? parseInt(m[4], 10) : 1; const v = cellRef(m[3], n); if (v == null) return null; out[m[1]] = v; }
+    if (!part.trim()) continue;
+    let m = MEOS_ARG_RE.exec(part); // 名前つき優先
+    if (m) { const v = resolve(m[2], m[3], m[4]); if (v == null) return null; out[m[1]] = v; continue; }
+    m = MEOS_ARGVAL_RE.exec(part); // 位置引数→定義の仮引数に順番で
+    if (m) { const nm = params && params[pos]; if (!nm) return null; const v = resolve(m[1], m[2], m[3]); if (v == null) return null; out[nm] = v; pos++; continue; }
+    return null;
   }
   return out;
 }
@@ -17877,14 +17887,18 @@ function meosFuncRegistry(doc) {
 }
 function meosFuncResolve(map, name, ts) { const arr = map.get(name); if (!arr || !arr.length) return null; if (ts) { const hit = arr.find(d => d.ts === ts); if (hit) return hit; } return arr[arr.length - 1]; }
 // 呼び出しトークンを評価: {name, args:{...}, ts} → 数値 or null。式の変数に args を代入。
-function meosFuncEval(map, name, argstr, ts, cellRef) { const def = meosFuncResolve(map, name, ts); if (!def) return null; const vars = meosFuncParseArgs(argstr, cellRef); if (vars == null) return null; return meosEvalExpr(def.expr, vars); }
+function meosFuncEval(map, name, argstr, ts, cellRef) { const def = meosFuncResolve(map, name, ts); if (!def) return null; const vars = meosFuncParseArgs(argstr, cellRef, def.params); if (vars == null) return null; return meosEvalExpr(def.expr, vars); }
 // セルが「ちょうど1個の関数呼び出しトークン」なら {token, val} を返す(整形で列幅を結果の桁数で確保する為)。それ以外は null。cellRef=表内の相対参照解決(任意)。
 function meosFuncCallInfo(cellText, funcMap, cellRef) {
   if (!MEOS_METEX || !funcMap) return null;
   const t = String(cellText == null ? '' : cellText).trim();
-  const m = /^([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)$/.exec(t); if (!m) return null;
-  const val = meosFuncEval(funcMap, m[1], m[2], m[3], cellRef); if (val == null) return null;
-  return { token: t, val };
+  // (a) 素トークン: f(args)_TS
+  let m = /^([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)$/.exec(t);
+  if (m) { const val = meosFuncEval(funcMap, m[1], m[2], m[3], cellRef); if (val == null) return null; return { token: t, val, comment: false }; }
+  // (b) コメント包み: <!--f(args)_TS--> (後ろに焼き値があってもよい)。v3.1.79(俊克 8/1): これも結果桁数で整形するため認識。
+  m = /^<!--\s*([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)\s*-->/.exec(t);
+  if (m) { const val = meosFuncEval(funcMap, m[1], m[2], m[3], cellRef); if (val == null) return null; return { token: m[0], val, comment: true, mkText: '<!--' + m[1] + '(' + m[2] + ')_' + m[3] + '-->' }; }
+  return null;
 }
 const MEOS_FUNC_CALL_RE = /([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)/g; // name(args)_TS
 let funcHideDeco = null, funcResultDeco = null;
