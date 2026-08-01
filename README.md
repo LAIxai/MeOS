@@ -31,6 +31,16 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 > ## **You(AI) & I(LAI) 🐔**
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3.1-table-calc.png" alt="Spreadsheet totals with no cell addresses — the formula is one HTML comment, the result is plain text" width="58%"><br>
+  <sub><b>NEW in v3.1 — spreadsheet totals without cell addresses.</b> Sum and product by <b>direction</b>, not coordinates: <code>&lt;!--Σ↑--&gt;</code> sums the column above, <code>&lt;!--Π←2--&gt;</code> multiplies the two cells to the left. No <code>SUM</code>, no <code>B2:B4</code>. The formula hides in a comment; the result stays plain text in the cell, so it reads on GitHub and with grep — all in the <b>main editor</b>, not a preview.</sub>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3.1-recalc-highlight.png" alt="Changed cells flash green — totals update live on screen, the file is baked only on save" width="58%"><br>
+  <sub><b>Auto mode — totals move as you type, the file stays clean.</b> Edit a quantity and the row's amount and the grand total update live on screen; the <code>.md</code> is untouched until you save (Cmd+S), which bakes the results in and <b>flashes the changed cells green</b>. Manual mode (recompute on ▦, Excel-style) is one option away.</sub>
+</p>
+
+<p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3-table-merge.png" alt="Cell merge — the raw data stays valid GFM, MeOS shows the merge in the main editor" width="72%"><br>
   <sub><b>NEW in v3.0 — tables that never touch your data.</b> GFM has no colspan / rowspan; MeOS adds them with one HTML comment (<code>&lt;!--🤝→2--&gt;</code>). The cell count never changes, so the file stays valid GFM and the marker is invisible on GitHub. The merge shows in the <b>main editor</b> — not a preview pane; put the cursor on the row and the raw marker returns for inline editing.</sub>
 </p>
