@@ -2,6 +2,18 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v3.1 era — highlights (2026-08 →)
+
+### v3.1 — Spreadsheet totals without cell addresses (座標からの解放)
+- **Table math with no cell addresses.** Sum and product by direction, not coordinates: `<!--Σ↑-->` sums the column above, `<!--Π←2-->` multiplies the two cells to the left. No `SUM`, no `B2:B4`. Insert a column and nothing breaks — the markers follow.
+- **Calc membrane `Σ→…Σ←`.** Sum across a row by wrapping it between an opening wall and a result; the wall auto-excludes the row-number cell.
+- **Function membrane / calculator.** Define `name(a,b) = expr` once in a membrane, then call it anywhere — in a table or in prose — as `<!--f(←1,←2)_TS-->`, with arrows for arguments instead of addresses. Your formulas become a personal library, in plain Markdown.
+- **Auto / Manual calc modes.** Auto (default): totals update live on screen as you type, and are baked into the file on save (Cmd+S). Manual: totals show the last baked value and recompute on ▦ (Excel manual calc + F9). Either way, **changed cells flash green**, and **Re-calculate all** bakes every table in a membrane at once.
+- **Numbers stay plain text.** The formula hides in an HTML comment; the result is plain text in the cell — readable on GitHub, in any Markdown preview, with `grep`. The cell count never changes: still valid GFM.
+- **Vertical-merge row rules.** A thin row rule under every cell, dropped under merged cells, so a value spanning two rows reads as one — matching how `Σ` counts it once.
+- **Merge membrane `→…←` / `↓…↑`.** Merge by wrapping the range between start/end markers — no count to write; it grows and shrinks as you insert rows or columns.
+- Plus **MeTeX** superscript / subscript, **Me Dock zoom**, and a hardened **Octopush (🐙)** GitHub backup (loud, actionable errors when a token expires, and a token check the moment you arm it).
+
 ## v3.0 era — highlights (2026-07 →)
 
 ### v3.0 — Tables that never touch your data (Phase 3)
