@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.8(俊克 8/2 「外部リンクと膜名リンクの片道切符だけテスト実装」・週間制限98%): ★ノート内リンク第一歩(片道・逆引き無し)。記法=コメント包みハイブリッド `<!-- =={ -->[表示文字](行先)<!-- (fg/bg)//[]tip=…}== -->`。行先が http(s)://=外部リンク / それ以外=膜名→その膜へジャンプ。生データは標準 [text](行先) が残りMeOS外でも壊れない(膜名だけは相対リンク化する点は段階Bで対処)。実装=①MEOS_MELINK_RE ②meosApplyMeLinkDecorations(コメント/[]/(行先)を隠し表示文字を色+下線・カーソル行は生表示・refresh/visibleRangesにフック)③DocumentLinkProvider(表示文字をCmd+クリック可能に・URL→openExternal / 膜名→command:laiMembrane.jumpMeLink)④jumpMeLinkコマンド+meosFindMembraneLineByName(膜名→行→reveal)。未了=段階B(膜名リンクのMeOS外畳み)・C(不可視ID/バックリンク)・挿入ボタンUI。→ [[project_highlight_underline_link]] [[project_comment_wrapped_decorations]]
 // - v4.0.7(俊克 8/2 「上付/下付の色指定、メタデータに書き込んでない?インストールする度に色なしに戻る」): バグ修正=metexの色(mtxFg/mtxBg)がmMETA随伴保存に入っておらず再インストールでリセットされていた(太字色v3.1.74と同じ穴)。修正=①pushFmtに metexFg/metexBg 追加②loadFmtで復元(mtxBuildGrids/mtxFace/mtxPrev再描画)③色スウォッチ選択時に pushFmt() 呼出。node saveFmtはfmtを丸ごとmMETAへ保存する経路なので任意キーが通る。→ [[project_format_ring]]
 // - v4.0.6(俊克 8/2 「戻して。何これは驚きの褒め言葉」): v4.0.5を差し戻し、ツールバーのA²/A₃ボタンの肩数字だけ色チップを復活。★誤読の教訓=俊克の「何これ?」は不満でなく「肩/腰文字だけ着色するボタンは見たことない」という驚嘆(=独自の見せ場)。ベース中立・肩数字だけ着色はMeTeXの役割分担を体現した唯一無二のUI。次回「何これ」は文脈で賞賛/苦情を即断せず確認する。→ [[project_format_ring]] [[feedback_look_at_screenshots]]
 // - v4.0.5(俊克 8/2 「上付/下付ボタンに色が入ると何これ?」・誤読で一旦無色化→v4.0.6で差し戻し): ツールバーのA²/A₃ボタンを無色にした版(俊克の意図を取り違えた)。
@@ -10653,6 +10654,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   try { meosApplyTableRowLineDecorations(editor); } catch (_) {} // v3.1.9: 縦結合の行罫線方式(Raw/隔離時は関数内で解除)
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
+  try { meosApplyMeLinkDecorations(editor); } catch (_) {} // v4.0.8: ノート内リンク(コメント包み)の整形
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
   try { meosApplyBoldDecorations(editor); } catch (_) {} // v3.7.0: 太字/斜体 **text**/***text***(同一行内・Raw/隔離時は解除)
   if (!editor || !lineDecoration) return;
@@ -17891,6 +17893,45 @@ function meosApplyMeTexDecorations(editor) {
   } catch (_) {}
 }
 
+// ===== v4.0.8(俊克 8/2): ノート内リンク(片道切符・テスト実装) ==========================================
+// 記法(コメント包みハイブリッド): <!-- =={ -->[表示文字](行先)<!-- (fg/bg)//[]tip=…}== -->
+//  ・行先が http(s):// = 外部リンク / それ以外 = 膜名→その膜へジャンプ(片道。逆引き=段階Cは後段)
+//  ・生データは標準の [表示文字](行先) が残り、MeOSマーカーはコメントに包む=MeOS外でも壊れない
+//  ・MeOS内は表示文字だけを色+下線で見せ、[ ]( ) とコメントは隠す。カーソル行は生表示。→ [[project_highlight_underline_link]]
+const MEOS_MELINK_RE = /<!--\s*=={\s*-->\[([^\]\n]*)\]\(([^)\n]*)\)<!--\s*([^\n]*?)\}==\s*-->/g;
+function meosMeLinkColor(spec) { let fg = null, bg = null; const c = /\(([^)/]*)\/([^)]*)\)/.exec(String(spec || '')); if (c) { fg = normalizeFgColor(c[1]); bg = normalizeBgColor(c[2]); } return { fg, bg }; }
+function meosFindMembraneLineByName(doc, name) { const needle = String(name || '').trim(); if (!doc || !needle) return -1; for (let i = 0; i < doc.lineCount; i++) { const info = membraneLineInfo(doc, i); if (info && info.kind === 'open' && info.id === needle) return i; } return -1; }
+let meLinkHideDeco = null; const meLinkStyleCache = new Map();
+function meosApplyMeLinkDecorations(editor) {
+  if (!editor || !editor.document) return;
+  const clearAll = () => { if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
+  try {
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=生表示
+    if (!meLinkHideDeco) meLinkHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    const doc = editor.document, hideRanges = [], styleRanges = new Map();
+    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
+        const text = doc.lineAt(ln).text; let m; MEOS_MELINK_RE.lastIndex = 0;
+        while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
+          const label = m[1] || '', s = m.index, e = m.index + m[0].length;
+          const lb = s + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
+          if (textStart > s) hideRanges.push(new vscode.Range(ln, s, ln, textStart)); // 前(コメント+[)を隠す
+          if (e > textEnd) hideRanges.push(new vscode.Range(ln, textEnd, ln, e)); // 後(]( 行先 )+コメント)を隠す
+          const { fg, bg } = meosMeLinkColor(m[3]); let style = 'underline;'; let fk = fg; if (bg && !fk && DARK_BG_KEYS.has(bg)) fk = 'white'; if (fk && HIGHLIGHT_FG_COLORS[fk]) style += ' color: ' + HIGHLIGHT_FG_COLORS[fk] + ';'; if (bg && HIGHLIGHT_COLORS[bg]) style += ' background-color: ' + HIGHLIGHT_COLORS[bg] + ';';
+          if (!styleRanges.has(style)) styleRanges.set(style, []); styleRanges.get(style).push(new vscode.Range(ln, textStart, ln, textEnd));
+        }
+      }
+    }
+    editor.setDecorations(meLinkHideDeco, hideRanges);
+    for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
+    for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }
+  } catch (_) {}
+}
+
 // ===== v3.7.0(俊克 7/30): 太字/斜体 — 従来記法 **text**/***text***/*text* を同一行内で描画 ==========================
 // マーカーをゼロ幅で隠し本文を太字/斜体に。単一行のみ(行ごと走査で自動保証)。//コメント内も描画(changelog等を読みやすく)。カーソル行/Raw/隔離時は生表示。
 // ※色つきの正式膜 **{ 本文 (fg/bg)//tip }** と 𝗕ボタンは次段(ハイライトの色パイプライン流用)。ここは従来記法の可読化。
@@ -18116,6 +18157,34 @@ function activate(context) {
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
   try { vscode.commands.executeCommand('setContext', 'meos.phase', MEOS_RELEASE_PHASE); } catch (_) {}
   // v3.4.3(俊克 改良1): ホバー画像クリック→その画像リンクがある行へワープ(畳んでいれば展開)。
+  // v4.0.8(俊克): ノート内リンク(片道切符)。膜名リンクのジャンプ先コマンド + 表示文字をクリック可能にするDocumentLinkProvider。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.jumpMeLink', (name) => {
+    try {
+      const ed = vscode.window.activeTextEditor; if (!ed) return;
+      const line = meosFindMembraneLineByName(ed.document, name);
+      if (line >= 0) { const p = new vscode.Position(line, 0); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter); }
+      else vscode.window.showInformationMessage('MeOS: 膜が見つかりません: ' + name);
+    } catch (_) {}
+  }));
+  context.subscriptions.push(vscode.languages.registerDocumentLinkProvider([{ language: 'markdown' }, { pattern: '**/*.md' }], {
+    provideDocumentLinks(document) {
+      const links = [];
+      try {
+        for (let ln = 0; ln < document.lineCount; ln++) {
+          const text = document.lineAt(ln).text; let m; MEOS_MELINK_RE.lastIndex = 0;
+          while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
+            const label = m[1] || '', target = (m[2] || '').trim(); if (!target) continue;
+            const lb = m.index + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
+            const dl = new vscode.DocumentLink(new vscode.Range(ln, textStart, ln, textEnd));
+            if (/^https?:\/\//i.test(target)) { dl.target = vscode.Uri.parse(target); dl.tooltip = 'Open: ' + target; }
+            else { dl.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl.tooltip = 'Jump to membrane: ' + target; }
+            links.push(dl);
+          }
+        }
+      } catch (_) {}
+      return links;
+    }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.jumpToImageLine', (line0) => {
     try {
       if (MEOS_RELEASE_PHASE < 5) return; // v3.0.7: 画像/添付はフェーズ5(隔離)
@@ -18184,7 +18253,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜を追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
