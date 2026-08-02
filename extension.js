@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.4(俊克 8/2 v4.0.3テストOK&NGバグ1): 基準文字が無く上付/下付が不成立の時( ↑2<!-- {…} -->=先頭スペース等)にスペックコメントが生で見えるバグを修正。真因=コメントを隠すのは「成立したMeTeXトークンのhides」経由だけ→不成立だと隠れない。修正=meosApplyMeTexDecorationsで、トークンと独立に `<!-- {150%(白/緑)} -->`(中身が (数字%)?(fg/bg)? 形)を常に隠すスキャンを追加(MEOS_METEX_SPEC_COMMENT_RE + meosIsMeTexSpec・`<!-- {note: 50% done} -->`等は形が違うので誤爆しない)。コメント=不可視のbacking data原則を徹底。→ [[project_format_ring]] [[project_comment_wrapped_decorations]]
 // - v4.0.3(俊克 8/2 v4.0.2テストOK&NG): 上付/下付の色を3点改良。①(改良2)色は()付きに統一 `{150%(白/緑)}`(ハイライトと同記法)。②(改良3)記法全体をコメント包み `↑2<!-- {150%(白/緑)} -->` にして、膜型でない上付/下付をMeOS外では `(x+2)↑2` に見せる(生データを汚さない=表計算マーカーと同思想)。bare `{…}` は後方互換で読める。③(改良1)▾popの `A²`/`A₃` プレビューにも色を反映(設定済みはボタンが🚫で色を確認できない為)。役割分担=基底の文字列/数式は通常のハイライト・太字で色付け(俊克)。→ [[project_format_ring]] [[project_comment_wrapped_decorations]]
 // - v4.0.2(俊克 8/2 「肩文字/腰文字の色だけ先ず実装」教育用途=「緑のが2乗だよ」と先生が教えやすい): ★上付/下付(MeTeX)に色(fg/bg)。軽量記法のまま=`{…}`スロットを拡張し `x↑2{150% 赤/黄}`(色だけ `{赤/}` も・順不同)。`x↑2`/`x↑2{150%}`は完全後方互換。ベース別色/サイズ調整は保留(要望次第)。実装=①meosMeTexTokensが{}内の色を解析(pct正規表現を緩め+`fg/bg`抽出→normalizeFg/BgColor)②meosMeTexStyleがcolor/background-colorをtextDecoration文字列に相乗り(暗背景auto白文字)③insertMetexScriptが▾で選んだ色を焼込(表示名のまま)④webview: A²の▾popに色グリッド(fg/bg・FMT_FG/FMT_BG流用)を追加・A²ボタンがmtxFg/mtxBgを送る・ボタン面もプレビュー色。→ [[project_format_ring]]
 // - v4.0.1(俊克 8/2 v4.0.0テストOK&NG): 上付/下付(MeTeX)の🚫解除を2点改良。①🚫化のトリガを基準文字の"右"から(旧=arrowPos-1の左でも🚫になり「まだ対象の外」感)→`pos.character>=arrowPos`。②解除は肩文字/腰文字(operand)も落として基準文字だけ残す(旧=テスト↑2{150%}→テスト2で`2`が残った→テストへ)。③Format5兄弟の全tipに「cursor inside → 🚫 removes it」を明記(3兄弟はtip=も一緒に消える旨も)。→ [[project_format_ring]]
@@ -17813,6 +17814,10 @@ function meosMeTexTokens(text) {
 // v3.5.6(俊克 7/30): 基準文字の大小を自動判定して上付きの頭を合わせる(数式変数はほぼASCII=大文字/数字/記号は背高cap≈0.7・x-height小文字は背低≈0.5)。上に伸びる小文字(bdfhklt)は背高扱い。手動 {N%} は例外用に残る。
 // TOP=150% で上付きの底が一致する頭の高さ(em)。em解決が要素自身の0.68em基準なので 0.68倍を打ち消した値(頭0.7/0.68≈1.03, x-height0.5/0.68≈0.74)。下付きは基準線(50%=0)基準なので大小非依存。
 const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
+// v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
+// 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
+const MEOS_METEX_SPEC_COMMENT_RE = /<!--\s*\{([^}]*)\}\s*-->/g;
+function meosIsMeTexSpec(inner) { const s = String(inner || '').trim(); if (!/%/.test(s) && !/\//.test(s)) return false; return /^(?:\d{1,3}\s*%)?\s*(?:\([^)]*\/[^)]*\))?$/.test(s); }
 function meosMeTexBaseTall(base) { const b = String(base || ''); if (/[a-z]/.test(b)) return /[bdfhklt]/.test(b); return true; } // 小文字はx-height=背低(上伸びbdfhkltは背高)・大文字/数字/記号/括弧=背高
 // v3.6.1(俊克): Me Dock「A²/A₃」ボタン=テンプレ挿入。選択=基準文字/無ければ'A'、上付き↑2/下付き↓3、現在の設定%を {N%} で付ける。例: B選択→B↑2{150%} / 無選択→A↑2{150%}。
 async function insertMetexScript(editor, sub, fg, bg) {
@@ -17872,6 +17877,9 @@ function meosApplyMeTexDecorations(editor) {
           if (!styleRanges.has(style)) styleRanges.set(style, []);
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
+        // v4.0.4(俊克): 基準文字が無くMeTeXが不成立でも、スペックコメント <!-- {150%(白/緑)} --> は常に隠す(コメント=不可視のbacking data)。トークンで隠した分と重なっても無害。
+        let cm; MEOS_METEX_SPEC_COMMENT_RE.lastIndex = 0;
+        while ((cm = MEOS_METEX_SPEC_COMMENT_RE.exec(text)) !== null) { if (meosIsMeTexSpec(cm[1])) hideRanges.push(new vscode.Range(ln, cm.index, ln, cm.index + cm[0].length)); }
       }
     }
     editor.setDecorations(meTexHideDeco, hideRanges);
