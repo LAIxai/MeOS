@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.9(俊克 8/5 「10秒以上の遅延が短い文字のコピペで起きた」): ★v4.0.8回帰の固着を修正。真因=DocumentLinkProviderが約140,000行の巨大日記で全行 lineAt+正規表現を毎回同期実行(VS Codeは変更ごとにprovideDocumentLinksを呼ぶ)=[[project_meos_freeze_pattern]]の典型(連続発火経路の同期重処理)。修正=①全文を一度だけ getText し核 `-->[` が無ければ即return(リンク皆無=巨大日記の常態で瞬時)②有る時のみ全文1回正規表現+positionAt(行毎lineAt割付を廃止)③装飾側meosApplyMeLinkDecorationsにも `-->[` 足切り。教訓=全文走査のProviderは早期脱出必須(巨大ファイル前提)。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v4.0.8(俊克 8/2 「外部リンクと膜名リンクの片道切符だけテスト実装」・週間制限98%): ★ノート内リンク第一歩(片道・逆引き無し)。記法=コメント包みハイブリッド `<!-- =={ -->[表示文字](行先)<!-- (fg/bg)//[]tip=…}== -->`。行先が http(s)://=外部リンク / それ以外=膜名→その膜へジャンプ。生データは標準 [text](行先) が残りMeOS外でも壊れない(膜名だけは相対リンク化する点は段階Bで対処)。実装=①MEOS_MELINK_RE ②meosApplyMeLinkDecorations(コメント/[]/(行先)を隠し表示文字を色+下線・カーソル行は生表示・refresh/visibleRangesにフック)③DocumentLinkProvider(表示文字をCmd+クリック可能に・URL→openExternal / 膜名→command:laiMembrane.jumpMeLink)④jumpMeLinkコマンド+meosFindMembraneLineByName(膜名→行→reveal)。未了=段階B(膜名リンクのMeOS外畳み)・C(不可視ID/バックリンク)・挿入ボタンUI。→ [[project_highlight_underline_link]] [[project_comment_wrapped_decorations]]
 // - v4.0.7(俊克 8/2 「上付/下付の色指定、メタデータに書き込んでない?インストールする度に色なしに戻る」): バグ修正=metexの色(mtxFg/mtxBg)がmMETA随伴保存に入っておらず再インストールでリセットされていた(太字色v3.1.74と同じ穴)。修正=①pushFmtに metexFg/metexBg 追加②loadFmtで復元(mtxBuildGrids/mtxFace/mtxPrev再描画)③色スウォッチ選択時に pushFmt() 呼出。node saveFmtはfmtを丸ごとmMETAへ保存する経路なので任意キーが通る。→ [[project_format_ring]]
 // - v4.0.6(俊克 8/2 「戻して。何これは驚きの褒め言葉」): v4.0.5を差し戻し、ツールバーのA²/A₃ボタンの肩数字だけ色チップを復活。★誤読の教訓=俊克の「何これ?」は不満でなく「肩/腰文字だけ着色するボタンは見たことない」という驚嘆(=独自の見せ場)。ベース中立・肩数字だけ着色はMeTeXの役割分担を体現した唯一無二のUI。次回「何これ」は文脈で賞賛/苦情を即断せず確認する。→ [[project_format_ring]] [[feedback_look_at_screenshots]]
@@ -17915,7 +17916,8 @@ function meosApplyMeLinkDecorations(editor) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
-        const text = doc.lineAt(ln).text; let m; MEOS_MELINK_RE.lastIndex = 0;
+        const text = doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; // v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
+        let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
           const label = m[1] || '', s = m.index, e = m.index + m[0].length;
           const lb = s + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
@@ -18170,16 +18172,19 @@ function activate(context) {
     provideDocumentLinks(document) {
       const links = [];
       try {
-        for (let ln = 0; ln < document.lineCount; ln++) {
-          const text = document.lineAt(ln).text; let m; MEOS_MELINK_RE.lastIndex = 0;
-          while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
-            const label = m[1] || '', target = (m[2] || '').trim(); if (!target) continue;
-            const lb = m.index + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
-            const dl = new vscode.DocumentLink(new vscode.Range(ln, textStart, ln, textEnd));
-            if (/^https?:\/\//i.test(target)) { dl.target = vscode.Uri.parse(target); dl.tooltip = 'Open: ' + target; }
-            else { dl.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl.tooltip = 'Jump to membrane: ' + target; }
-            links.push(dl);
-          }
+        // v4.0.9(俊克): 真因=140k行の日記で全行 lineAt+正規表現を毎回同期実行→10秒固着。
+        // 早期脱出=全文を一度だけ取り、リンク記法の核 '-->[' が無ければ即return(巨大日記の常態=瞬時)。
+        // 有る時だけ全文を1回正規表現スキャン(行毎lineAt割付を廃止・positionAtでoffset→位置)。→ [[project_meos_freeze_pattern]]
+        const full = document.getText();
+        if (full.indexOf('-->[') < 0) return links;
+        let m; MEOS_MELINK_RE.lastIndex = 0;
+        while ((m = MEOS_MELINK_RE.exec(full)) !== null) {
+          const label = m[1] || '', target = (m[2] || '').trim(); if (!target) continue;
+          const lb = m.index + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
+          const dl = new vscode.DocumentLink(new vscode.Range(document.positionAt(textStart), document.positionAt(textEnd)));
+          if (/^https?:\/\//i.test(target)) { dl.target = vscode.Uri.parse(target); dl.tooltip = 'Open: ' + target; }
+          else { dl.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl.tooltip = 'Jump to membrane: ' + target; }
+          links.push(dl);
         }
       } catch (_) {}
       return links;
