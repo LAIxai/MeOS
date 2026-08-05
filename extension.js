@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.13(俊克 8/5 「GMT+9で出る→ローカル記法のJST・短い3字がいい」): TZ略号をIntl shortでなくIANAゾーン→略号マップ(MEOS_TZ_ABBR)で確実に。Asia/Tokyo→JST等・DST有りゾーン(NY等)は[標準,夏]を1月/7月offset比較で自動選択(両半球対応)・未知ゾーンのみIntl shortにフォールバック。→ [[project_v4_next_wave]]
 // - v4.0.12(俊克 8/5 改良1「Format5兄弟でもタイムゾーンを書く」): 可視スタンプ(meosFormatStamp)末尾にTZ略号を追加=`2026.08.05(W)am09:24.05JST`。TZはIntl short名(full-ICUのElectron/VS CodeではJST・small-ICU環境ではGMT+9)。曜日の`(W)`括弧は維持(俊克の既存判断=日本語は曜日を括弧で書く慣習・v2.0.68/70)=可視スタンプは散文readableのまま/膜名IDは括弧無しコンパクト(意味は統一・文字列は用途別)。見出し解除のstrip正規表現に末尾TZ `(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?` を追加(旧TZ無しも後方互換・JST/GMT+9両対応)。★残=改良2(膜作成の新記法TS)・例外1(生涯日記 `✴️8/05W タイトル_20260805W021835JST`)は膜名生成の本体refactorso別途。→ [[project_v4_next_wave]] [[project_lifelong_diary_template]]
 // - v4.0.11(俊克 8/5 「pm12でなくpm00にしよう」): meosFormatStampの時刻表記を正午=pm00/深夜=am00に(旧 `h%12; if(h===0)h=12` の後半を削除=12→00・13時→pm01は不変)。標準ライブラリは12表記だがMeOSは00-11で統一。見出し解除のTS strip正規表現(\d{2})は00も12も拾うので後方互換。→ [[project_v4_next_wave]]
 // - v4.0.10(俊克 8/5 改良3「見出しだけ[]括弧で統一感がない→{}に変える」): 見出しを新形 `##{ 本文 }##` に統一。旧形 `##[ 本文 ]##` は後方互換で読める(read-both/write-new)=140k行日記の既存見出しを壊さない。変更=①見出し正規表現8箇所を両対応(hashesのみ系=[]|{}の交替/中身captureする描画reHead・targetColorKeys・checkbox変換=[]と{}の2本立て)②生成2箇所(insertFormatTemplate・fmtCycle再レベル)は{}で書く③formatSpanAtCursor/fmtCycleの括弧抽出を `#直後の[か{`+対応する閉じで両対応④装飾の足切りを `indexOf('#[')||indexOf('#{')` に(旧 indexOf('[') より狭い=速い)⑤web/tip更新。→ [[project_v4_next_wave]] [[project_format_ring]]
@@ -12988,9 +12989,28 @@ function getMeDockTargetEditor() {
 // plaintext 等の非該当言語は素の MeOS 記法のまま出力する。俊克 6/15 am10:33。
 const MEOS_BLOCK_COMMENT_LANGS = new Set(['javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'jsonc', 'c', 'cpp', 'csharp', 'java', 'go', 'rust', 'php', 'swift', 'kotlin', 'scala', 'dart', 'css', 'scss', 'less', 'objective-c', 'objective-cpp']);
 // v0.9.933: 見出し等のタイムスタンプ。YYYY.MM.DD(曜日1字)+ am/pm先頭(俊克: pmは区切りとして前に) + HH:MM.SS。曜日=S-M-T-W-t-F-s。
-// v4.0.12(俊克): タイムゾーン略号(JST/EAT/PST…)。Intlのshort名。取れなければ空(=従来通りTZ無し)。
+// v4.0.12/4.0.13(俊克): タイムゾーン略号(JST/EAT/PST…短い3-4字)。Intl short は環境によりGMT+9を返すので、IANAゾーン→略号のマップで確実に。
+// DST有りゾーンは [標準,夏時間]。標準=1月/7月offsetの大きい方(両半球対応)・現在がそれより小さい=DST。未知ゾーンはIntl shortにフォールバック。
+const MEOS_TZ_ABBR = {
+  'Asia/Tokyo': 'JST', 'Asia/Seoul': 'KST', 'Asia/Kolkata': 'IST', 'Asia/Shanghai': 'CST', 'Asia/Hong_Kong': 'HKT',
+  'Asia/Singapore': 'SGT', 'Asia/Bangkok': 'ICT', 'Asia/Taipei': 'CST', 'Asia/Jakarta': 'WIB', 'Asia/Dubai': 'GST',
+  'UTC': 'UTC', 'Etc/UTC': 'UTC', 'Africa/Addis_Ababa': 'EAT', 'Africa/Nairobi': 'EAT', 'Africa/Cairo': 'EET',
+  'Europe/London': ['GMT', 'BST'], 'Europe/Paris': ['CET', 'CEST'], 'Europe/Berlin': ['CET', 'CEST'],
+  'Europe/Madrid': ['CET', 'CEST'], 'Europe/Rome': ['CET', 'CEST'], 'Europe/Moscow': 'MSK',
+  'America/New_York': ['EST', 'EDT'], 'America/Chicago': ['CST', 'CDT'], 'America/Denver': ['MST', 'MDT'],
+  'America/Los_Angeles': ['PST', 'PDT'], 'America/Sao_Paulo': 'BRT', 'Australia/Sydney': ['AEST', 'AEDT'], 'Pacific/Auckland': ['NZST', 'NZDT']
+};
 function meosTzAbbr(d) {
-  try { const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(d || new Date()); const t = parts.find(x => x.type === 'timeZoneName'); return t ? String(t.value).replace(/\s+/g, '') : ''; } catch (_) { return ''; }
+  d = d || new Date();
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const v = MEOS_TZ_ABBR[zone];
+    if (v) {
+      if (Array.isArray(v)) { const jan = new Date(d.getFullYear(), 0, 1).getTimezoneOffset(), jul = new Date(d.getFullYear(), 6, 1).getTimezoneOffset(); return (d.getTimezoneOffset() < Math.max(jan, jul)) ? v[1] : v[0]; }
+      return v;
+    }
+    const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(d); const t = parts.find(x => x.type === 'timeZoneName'); return t ? String(t.value).replace(/\s+/g, '') : '';
+  } catch (_) { return ''; }
 }
 function meosFormatStamp(d) {
   const p = n => String(n).padStart(2, '0');
