@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.11(俊克 8/5 「pm12でなくpm00にしよう」): meosFormatStampの時刻表記を正午=pm00/深夜=am00に(旧 `h%12; if(h===0)h=12` の後半を削除=12→00・13時→pm01は不変)。標準ライブラリは12表記だがMeOSは00-11で統一。見出し解除のTS strip正規表現(\d{2})は00も12も拾うので後方互換。→ [[project_v4_next_wave]]
 // - v4.0.10(俊克 8/5 改良3「見出しだけ[]括弧で統一感がない→{}に変える」): 見出しを新形 `##{ 本文 }##` に統一。旧形 `##[ 本文 ]##` は後方互換で読める(read-both/write-new)=140k行日記の既存見出しを壊さない。変更=①見出し正規表現8箇所を両対応(hashesのみ系=[]|{}の交替/中身captureする描画reHead・targetColorKeys・checkbox変換=[]と{}の2本立て)②生成2箇所(insertFormatTemplate・fmtCycle再レベル)は{}で書く③formatSpanAtCursor/fmtCycleの括弧抽出を `#直後の[か{`+対応する閉じで両対応④装飾の足切りを `indexOf('#[')||indexOf('#{')` に(旧 indexOf('[') より狭い=速い)⑤web/tip更新。→ [[project_v4_next_wave]] [[project_format_ring]]
 // - v4.0.9(俊克 8/5 「10秒以上の遅延が短い文字のコピペで起きた」): ★v4.0.8回帰の固着を修正。真因=DocumentLinkProviderが約140,000行の巨大日記で全行 lineAt+正規表現を毎回同期実行(VS Codeは変更ごとにprovideDocumentLinksを呼ぶ)=[[project_meos_freeze_pattern]]の典型(連続発火経路の同期重処理)。修正=①全文を一度だけ getText し核 `-->[` が無ければ即return(リンク皆無=巨大日記の常態で瞬時)②有る時のみ全文1回正規表現+positionAt(行毎lineAt割付を廃止)③装飾側meosApplyMeLinkDecorationsにも `-->[` 足切り。教訓=全文走査のProviderは早期脱出必須(巨大ファイル前提)。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
 // - v4.0.8(俊克 8/2 「外部リンクと膜名リンクの片道切符だけテスト実装」・週間制限98%): ★ノート内リンク第一歩(片道・逆引き無し)。記法=コメント包みハイブリッド `<!-- =={ -->[表示文字](行先)<!-- (fg/bg)//[]tip=…}== -->`。行先が http(s)://=外部リンク / それ以外=膜名→その膜へジャンプ。生データは標準 [text](行先) が残りMeOS外でも壊れない(膜名だけは相対リンク化する点は段階Bで対処)。実装=①MEOS_MELINK_RE ②meosApplyMeLinkDecorations(コメント/[]/(行先)を隠し表示文字を色+下線・カーソル行は生表示・refresh/visibleRangesにフック)③DocumentLinkProvider(表示文字をCmd+クリック可能に・URL→openExternal / 膜名→command:laiMembrane.jumpMeLink)④jumpMeLinkコマンド+meosFindMembraneLineByName(膜名→行→reveal)。未了=段階B(膜名リンクのMeOS外畳み)・C(不可視ID/バックリンク)・挿入ボタンUI。→ [[project_highlight_underline_link]] [[project_comment_wrapped_decorations]]
@@ -12991,7 +12992,7 @@ function meosFormatStamp(d) {
   const wd = ['S', 'M', 'T', 'W', 't', 'F', 's'][d.getDay()];
   let h = d.getHours();
   const ap = h < 12 ? 'am' : 'pm';
-  h = h % 12; if (h === 0) h = 12;
+  h = h % 12; // v4.0.11(俊克): 正午=pm00 / 深夜=am00(旧: pm12/am12を廃止。標準ライブラリは12表記だがMeOSは00-11で統一)
   return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + '(' + wd + ')' + ap + p(h) + ':' + p(d.getMinutes()) + '.' + p(d.getSeconds());
 }
 async function insertFormatTemplate(kind, editor, fg, bg, level) {
