@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.15(俊克 8/5 v4.0.14「直ったけど空白が前後4文字分」): 見出し内の太字/斜体膜が空白を生むバグを修正。真因=見出しのfont-size:大が、膜マーカーのhide(font-size:0)に競合勝ち→不可視マーカーが見出しサイズの幅を占める。修正=boldHideDecoのfont-sizeに`!important`(hide側は常に畳みたいので安全・非見出しでは競合無しso無影響)。同様の膜マーカー(MeTeX/link/highlight/strike)が見出し内に来た時も同手法で直せる(要望次第)。→ [[project_format_ring]]
 // - v4.0.14(俊克 8/5 「見出しにバグ」): 見出し `##{ }##` の中に太字+斜体 `**{ __{ }__ }**`(={{}}=波括弧2階層)を入れると見出しがマッチせず描画されないバグを修正。真因=見出しの中身正規表現が波括弧の入れ子を1階層(`\{[^}\n]*\}`)しか許さず、中の膜の`{}`が見出しの`{}`と衝突。修正=中身パターンを**2階層許容**(`\{(?:[^}\n]|\{[^}\n]*\})*\}`)に(MARK_HEADING_RE/reHeadCu/reHdCu/checkbox変換の4箇所)。旧`##[ ]##`は`]`基準so無影響。★未修正(改良2で対応)=見出し内の太字/斜体膜が「前後2文字分の空白」を生む件=見出しのfont-size装飾が中の膜マーカー(hide=font-size:0)と競合し、不可視マーカーが見出しサイズの幅を占める。改良2の太字/斜体膜(`__{}__`→`_{}_`)装飾作り直し時に一緒に直す。→ [[project_v4_next_wave]] [[project_format_ring]]
 // - v4.0.13(俊克 8/5 「GMT+9で出る→ローカル記法のJST・短い3字がいい」): TZ略号をIntl shortでなくIANAゾーン→略号マップ(MEOS_TZ_ABBR)で確実に。Asia/Tokyo→JST等・DST有りゾーン(NY等)は[標準,夏]を1月/7月offset比較で自動選択(両半球対応)・未知ゾーンのみIntl shortにフォールバック。→ [[project_v4_next_wave]]
 // - v4.0.12(俊克 8/5 改良1「Format5兄弟でもタイムゾーンを書く」): 可視スタンプ(meosFormatStamp)末尾にTZ略号を追加=`2026.08.05(W)am09:24.05JST`。TZはIntl short名(full-ICUのElectron/VS CodeではJST・small-ICU環境ではGMT+9)。曜日の`(W)`括弧は維持(俊克の既存判断=日本語は曜日を括弧で書く慣習・v2.0.68/70)=可視スタンプは散文readableのまま/膜名IDは括弧無しコンパクト(意味は統一・文字列は用途別)。見出し解除のstrip正規表現に末尾TZ `(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?` を追加(旧TZ無しも後方互換・JST/GMT+9両対応)。★残=改良2(膜作成の新記法TS)・例外1(生涯日記 `✴️8/05W タイトル_20260805W021835JST`)は膜名生成の本体refactorso別途。→ [[project_v4_next_wave]] [[project_lifelong_diary_template]]
@@ -17999,7 +18000,7 @@ function meosApplyBoldDecorations(editor) {
   if (!editor || !editor.document) return;
   const clearAll = () => { if (boldHideDeco) editor.setDecorations(boldHideDeco, []); for (const d of boldFmtTypeCache.values()) editor.setDecorations(d, []); };
   if (!MEOS_BOLD) { clearAll(); return; }
-  if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.15(俊克): font-sizeに!important=見出し内(font-size:大)でも太字/斜体膜のマーカーが確実に畳まれる(前後の空白バグ修正)
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
     const doc = editor.document; const hideR = []; const itemsByType = new Map();
