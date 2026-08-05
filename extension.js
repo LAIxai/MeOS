@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.12(俊克 8/5 改良1「Format5兄弟でもタイムゾーンを書く」): 可視スタンプ(meosFormatStamp)末尾にTZ略号を追加=`2026.08.05(W)am09:24.05JST`。TZはIntl short名(full-ICUのElectron/VS CodeではJST・small-ICU環境ではGMT+9)。曜日の`(W)`括弧は維持(俊克の既存判断=日本語は曜日を括弧で書く慣習・v2.0.68/70)=可視スタンプは散文readableのまま/膜名IDは括弧無しコンパクト(意味は統一・文字列は用途別)。見出し解除のstrip正規表現に末尾TZ `(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?` を追加(旧TZ無しも後方互換・JST/GMT+9両対応)。★残=改良2(膜作成の新記法TS)・例外1(生涯日記 `✴️8/05W タイトル_20260805W021835JST`)は膜名生成の本体refactorso別途。→ [[project_v4_next_wave]] [[project_lifelong_diary_template]]
 // - v4.0.11(俊克 8/5 「pm12でなくpm00にしよう」): meosFormatStampの時刻表記を正午=pm00/深夜=am00に(旧 `h%12; if(h===0)h=12` の後半を削除=12→00・13時→pm01は不変)。標準ライブラリは12表記だがMeOSは00-11で統一。見出し解除のTS strip正規表現(\d{2})は00も12も拾うので後方互換。→ [[project_v4_next_wave]]
 // - v4.0.10(俊克 8/5 改良3「見出しだけ[]括弧で統一感がない→{}に変える」): 見出しを新形 `##{ 本文 }##` に統一。旧形 `##[ 本文 ]##` は後方互換で読める(read-both/write-new)=140k行日記の既存見出しを壊さない。変更=①見出し正規表現8箇所を両対応(hashesのみ系=[]|{}の交替/中身captureする描画reHead・targetColorKeys・checkbox変換=[]と{}の2本立て)②生成2箇所(insertFormatTemplate・fmtCycle再レベル)は{}で書く③formatSpanAtCursor/fmtCycleの括弧抽出を `#直後の[か{`+対応する閉じで両対応④装飾の足切りを `indexOf('#[')||indexOf('#{')` に(旧 indexOf('[') より狭い=速い)⑤web/tip更新。→ [[project_v4_next_wave]] [[project_format_ring]]
 // - v4.0.9(俊克 8/5 「10秒以上の遅延が短い文字のコピペで起きた」): ★v4.0.8回帰の固着を修正。真因=DocumentLinkProviderが約140,000行の巨大日記で全行 lineAt+正規表現を毎回同期実行(VS Codeは変更ごとにprovideDocumentLinksを呼ぶ)=[[project_meos_freeze_pattern]]の典型(連続発火経路の同期重処理)。修正=①全文を一度だけ getText し核 `-->[` が無ければ即return(リンク皆無=巨大日記の常態で瞬時)②有る時のみ全文1回正規表現+positionAt(行毎lineAt割付を廃止)③装飾側meosApplyMeLinkDecorationsにも `-->[` 足切り。教訓=全文走査のProviderは早期脱出必須(巨大ファイル前提)。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
@@ -12987,13 +12988,17 @@ function getMeDockTargetEditor() {
 // plaintext 等の非該当言語は素の MeOS 記法のまま出力する。俊克 6/15 am10:33。
 const MEOS_BLOCK_COMMENT_LANGS = new Set(['javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'jsonc', 'c', 'cpp', 'csharp', 'java', 'go', 'rust', 'php', 'swift', 'kotlin', 'scala', 'dart', 'css', 'scss', 'less', 'objective-c', 'objective-cpp']);
 // v0.9.933: 見出し等のタイムスタンプ。YYYY.MM.DD(曜日1字)+ am/pm先頭(俊克: pmは区切りとして前に) + HH:MM.SS。曜日=S-M-T-W-t-F-s。
+// v4.0.12(俊克): タイムゾーン略号(JST/EAT/PST…)。Intlのshort名。取れなければ空(=従来通りTZ無し)。
+function meosTzAbbr(d) {
+  try { const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(d || new Date()); const t = parts.find(x => x.type === 'timeZoneName'); return t ? String(t.value).replace(/\s+/g, '') : ''; } catch (_) { return ''; }
+}
 function meosFormatStamp(d) {
   const p = n => String(n).padStart(2, '0');
   const wd = ['S', 'M', 'T', 'W', 't', 'F', 's'][d.getDay()];
   let h = d.getHours();
   const ap = h < 12 ? 'am' : 'pm';
   h = h % 12; // v4.0.11(俊克): 正午=pm00 / 深夜=am00(旧: pm12/am12を廃止。標準ライブラリは12表記だがMeOSは00-11で統一)
-  return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + '(' + wd + ')' + ap + p(h) + ':' + p(d.getMinutes()) + '.' + p(d.getSeconds());
+  return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + '(' + wd + ')' + ap + p(h) + ':' + p(d.getMinutes()) + '.' + p(d.getSeconds()) + meosTzAbbr(d); // v4.0.12(俊克): 末尾にTZ(2026.08.05(W)am09:24.05JST)
 }
 async function insertFormatTemplate(kind, editor, fg, bg, level) {
   if (!editor) return;
@@ -13089,7 +13094,7 @@ async function removeFormatAtCursor(editor, span) {
   const doc = editor.document;
   // v0.9.999126(俊克 改良2): 見出しは本文末尾に可視タイムスタンプが付く→解除時に一緒に消す。
   if (span.kind === 'heading') {
-    span.body = span.body.replace(/\s*\d{4}\.\d{2}\.\d{2}\([SMTWtFs]\)(?:am|pm)\d{2}:\d{2}\.\d{2}\s*$/, '').trim();
+    span.body = span.body.replace(/\s*\d{4}\.\d{2}\.\d{2}\([SMTWtFs]\)(?:am|pm)\d{2}:\d{2}\.\d{2}(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?\s*$/, '').trim(); // v4.0.12: 末尾TZ(JST/GMT+9等)も一緒に剥がす・旧TZ無しも後方互換
   }
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
