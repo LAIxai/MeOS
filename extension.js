@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.20(俊克 8/6「{}が外れたMarkdownの基本記法も、すべて正しくレンダリングする」): 素の斜体 `_text_` を描画(5兄弟のうち欠けていた1つ目)。実装=meosApplyBoldDecorationsに reI1p を追加(hideは`_`各1文字・本文にitalic)。★誤爆対策=①語中の`_`は不発(CommonMark同様の lookaround `(?<![\w*_])`/`(?![\w_])`)so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷 ②開き`_`の直後が`{`なら正式膜 `_{ }_` の仕事so見送り ③**散文限定**(新 MEOS_PROSE_LANGS/meosIsProseDoc)=js等では `catch (_)` で56件誤爆したため。足切りも散文だけ`_`全般(コードは従来どおり`_{`)。headless 13/13 PASS(MEMORY.md/zenn草稿で誤検出0)。残=素の`## 見出し`描画・🚫統合・太字ボタン削除。→ [[project_v4_next_wave]]
 // - v4.0.19(俊克 8/5 統一ボタン化・増分B=ボタン面のB/I表示): 統一ボタン(ハイライト)の面を、現プリセットがbold/italicなら `B`/`I`/`BI`(太字/斜体スタイル付き)・両オフなら従来の `=`/`==`/`===` に。実装=fmtHlFace()ヘルパー + __renderFmtRingの非actionable面2箇所(phase<4/最終else)をhighlight分岐 + ↻ハンドラの面もfmtHlFace。共有__renderFmtRingのstrike/heading分岐は無傷。actionable(ring)面は据え置き(🚫統合=増分Dで)。headless 6/6 PASS。残=増分C(太字ボタン削除)・D(🚫統合)→その後 □Link 下線。→ [[project_v4_next_wave]]
 // - v4.0.18(俊克 8/5 統一ボタン化・増分A=▾メニューの形): ハイライトの▾を統一ボタン形に=`□ Bold □ Italic` チェックボックス様式を**一番上**(▼caretから遠い=操作機会少)・色は**下**(見出し等と共通・スクショ2形)。将来「□ Link 下線 ▼」もこの上段に並べる想定。増分1で下部に置いたB/Iトグルは撤去し上段へ移設。方針=「両オフ=既存ハイライト処理を流用」so生き残りボタンはhighlightの機構を土台(位置は==のまま・後でBへ移動可)。残=増分B(ボタン面のB/I表示)・C(太字ボタン削除)・D(🚫のkind統合)。→ [[project_v4_next_wave]]
 // - v4.0.17(俊克 8/5 統一ボタン化・増分1): ハイライトボタンの3プリセットが太字/斜体フラグを持てるように。①fmtHlSlotsに{bold,italic}追加(pushFmt/loadFmtは配列丸ごと保存/復元so永続化は自動)②ハイライトの▾popに `□B □I`(highlightの時だけ表示・spec.bold/italicトグル)③クリック=現プリセットがB/I持てば insertBold(太字/斜体記法)・無ければ従来のハイライト。B/I無=`=={ }==`/Bold=`**{ }**`/Italic=`_{ }_`/両方=`**{ _{ }_ }**`。★増分1はボタン面(共有__renderFmtRing)には触らず安全に。増分2=ボタン面のB/I表示・太字ボタン(#fmt-bold)撤去・🚫のkind統合。→ [[project_v4_next_wave]]
@@ -2633,6 +2634,11 @@ const MEOS_TABLE_CALC = true; // v3.1.0(俊克 7/25 pm01:30「v3.1のロック�
 const MEOS_METEX = true;
 // v3.7.0(俊克 7/30「太文字ボタン=六つ子」): 太字/斜体。正式=**{ 太字 (白/黄)//[]tip= }**(ハイライト同型・色/tip)＋従来記法 **text** も容認して太字レンダリング(あなたが今まで書いた説明を読みやすく)。**text** は同一行内のみ(俊克)。true=解禁/false=隔離。
 const MEOS_BOLD = true;
+// v4.0.20(俊克 8/6「{}が外れたMarkdownの基本記法も正しくレンダリングする」): 素の記法(_斜体_ / # 見出し)は**散文だけ**で有効化する。
+// 理由=コードでは `catch (_)` `_tmp` や shellの `# コメント` が頻出し、素の記法を全言語で拾うと誤爆する(extension.js自身で56件)。
+// {}付きの正式膜(=={}== / **{}** / _{}_ / ~~{}~~ / ##{}##)は従来どおり全言語で描画=コードを汚さない装飾はそのまま。
+const MEOS_PROSE_LANGS = new Set(['markdown', 'plaintext', 'mdx', 'quarto', 'rmd']);
+function meosIsProseDoc(doc) { try { return !!doc && MEOS_PROSE_LANGS.has(doc.languageId); } catch (_) { return false; } }
 // ★★TEMP v3.1(俊克 7/25 pm07:07「遅延問題に取り掛かろう」): 巨大日記の refresh 遅延を計測する仮の仕掛け。refresh()の各装飾ブロックの所要msを測り、total>=40msの時だけログファイルへ1行追記(貼付→Claudeがログ直読み=転記不要)。真犯人を数字で確定したら、可視範囲化を実装→この計測ブロックは撤去する。false or 削除で無効化。
 const MEOS_PROFILE_REFRESH = true;
 const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
@@ -18010,6 +18016,7 @@ function meosApplyBoldDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
     const doc = editor.document; const hideR = []; const itemsByType = new Map();
+    const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
@@ -18018,7 +18025,7 @@ function meosApplyBoldDecorations(editor) {
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
-        if (text.indexOf('*') < 0 && text.indexOf('_{') < 0) continue; // v4.0.16: _{ で単一下線斜体も拾う(__{ も部分列で含む)
+        if (text.indexOf('*') < 0 && (_prose ? text.indexOf('_') < 0 : text.indexOf('_{') < 0)) continue; // v4.0.20: 散文は素の斜体 _text_ も拾うので足切りを `_` 全般に(コードは従来どおり `_{` だけ=速い)
         let m;
         // 正式膜(色/tip): **{ 本文(白/黄)//tip }** = 太字 / __{ 本文(色)//tip }__ = 斜体。入れ子は各scanが独立に効くので太字×斜体が両立。
         const reBF = /\*\*\{([^\n]*?)\}\*\*/g; reBF.lastIndex = 0;
@@ -18033,6 +18040,11 @@ function meosApplyBoldDecorations(editor) {
         while ((m = reBI.exec(text))) { const s = m.index, e = s + m[0].length; hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); pushStyle(ln, s + 3, e - 3, true, true, null, null, ''); }
         const reB = /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g; reB.lastIndex = 0; // ***の一部でない・**{でもない 純粋な **太字**
         while ((m = reB.exec(text))) { const s = m.index, e = s + m[0].length; hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); pushStyle(ln, s + 2, e - 2, true, false, null, null, ''); }
+        // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
+        // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
+        // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
+        const reI1p = _prose ? /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g : null; if (reI1p) reI1p.lastIndex = 0;
+        while (reI1p && (m = reI1p.exec(text))) { const s = m.index, e = s + m[0].length; hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); pushStyle(ln, s + 1, e - 1, false, true, null, null, ''); }
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
