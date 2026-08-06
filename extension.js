@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.24(俊克 8/6 バグ1「素の見出しがレンダリングされないよ」): ★真因=v4.0.21のコードフェンス判定。140k行日記に**閉じ忘れの ``` が1本**あり(93310行目までに715回トグル=奇数)、その先の全行が「コードブロックの中」扱いになって素の見出しが一切描画されなかった(🚫解除はfence判定を通らないので効いていた=OK&NGの内訳と一致)。修正=**安全弁**=フェンスが200行以上開きっぱなしなら迷子と見なして閉じる(実際のコードブロックは十数行so余裕・迷子1本で以降が全滅しない)。★教訓=全文走査の状態機械は「壊れた入力で自己修復するか」を必ず問う(生涯日記は必ず壊れた入力を含む)。検証=**applyPrettyLabelsを実ロードして直接叩くheadlessハーネス**を新設(閉じ忘れフェンス込みの文書で hMarker/hSize_1..3 の行番号を照合・ALL PASS)＋実日記でL93310のfence状態がfalseになることを確認。→ [[project_v4_next_wave]]
 // - v4.0.23(俊克 8/6 統一ボタン化・増分C=太字ボタン削除): Formatから太字/斜体ボタン(#fmt-bold ＋ ↻ ＋ ▾ ＋ #bold-pop)を撤去=5兄弟→4つ(統一/取消/上付下付/見出し)。太字/斜体は統一ボタンの▾(□Bold □Italic)＋クリックで出し、解除はv4.0.22の🚫統合が受け持つso機能欠落なし。★最小変更=HTMLとtipだけを削除/更新し<script>は前版とバイト比較で一致を確認(mbFace/mb*ハンドラは全て `if(fmtBold)`/`if(boldPop)` ガード付きso要素が無くても無害・#fmt-bold のCSS幅指定も無害so残置)。tip更新=統一ボタン(Format|3プリセット・□Bold/□Italic・素のMarkdownも🚫で解除)＋取消線/見出し(素の ~~text~~ / ## text も解除)。→ [[project_v4_next_wave]]
 // - v4.0.22(俊克 8/6 🚫統合・node側): 🚫解除を**素のMarkdown記法**にも拡張＋統一ボタンに集約。①formatSpanAtCursor=`==ハイライト==`/`~~取消線~~`/`## 見出し` も検出(散文限定so `a == b` や shellの `# コメント` は壊さない)②boldSpanAtCursor=素の `_斜体_` を追加(描画v4.0.20と同じlookaround)③統一ボタン(ハイライト)は太字/斜体スパンの中でも🚫になり、1発で解除(fmtCtx.highlight と fmtCycle ring0 の2箇所)=太字ボタンを畳んでもB/I解除を失わない。headless 15/15 PASS(vscodeスタブでextension.jsを実ロードしてspan関数を直接テスト)。残=増分C(太字ボタン削除・tip更新)。→ [[project_v4_next_wave]]
 // - v4.0.21(俊克 8/6 同上・2つ目): 素の見出し `# text`/`## text`/`### text` を描画(#と直後の空白を隠し・レベル既定色 #=赤/##=緑/###=青＋見出しサイズ)。`##{ }##` とは排他(素の記法は#の後に空白が要る)so独立ifで足りる。#### 以降はH3の見た目に丸める。★誤爆対策=①散文限定(meosIsProseDoc)②```/~~~ のコードブロック内は不発(bashの `# コメント` が巨大な赤見出しになるのを防ぐ・フェンス判定は全行必要so_plVis足切りの前・先頭charCodeで安く弾く)③列0のみ(インデント不可)④膜行/カーソル行は除外。headless PASS(README18件/zenn草稿6件を正しく検出・コード内0)。残=🚫統合・太字ボタン削除。→ [[project_v4_next_wave]]
@@ -5805,10 +5806,13 @@ function applyPrettyLabels(editor) {
   // コードブロック内は見出しにしない(bashの `# コメント` が巨大な赤見出しになるのを防ぐ)。フェンス判定は全行必要
   // (画面外で開いたフェンスが可視行に効く)ので _plVis の足切りより前で、先頭文字のcharCodeで安く弾いてから測る。
   const _proseDoc = meosIsProseDoc(editor.document);
-  let _inFence = false;
+  let _inFence = false, _fenceAt = -1;
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
-    if (_proseDoc) { const _c0 = text.charCodeAt(0); if (_c0 === 96 || _c0 === 126 || _c0 === 32 || _c0 === 9) { if (/^[ \t]{0,3}(?:```|~~~)/.test(text)) _inFence = !_inFence; } }
+    // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
+    // 「コードブロックの中」扱いになって素の見出しが一切描画されなかった。フェンスが200行以上開きっぱなしなら
+    // 迷子と見なして閉じる=1本の迷子フェンスで以降が全滅しない(日記の実コードブロックは十数行so十分な余裕)。
+    if (_proseDoc) { if (_inFence && (line - _fenceAt) > 200) _inFence = false; const _c0 = text.charCodeAt(0); if (_c0 === 96 || _c0 === 126 || _c0 === 32 || _c0 === 9) { if (/^[ \t]{0,3}(?:```|~~~)/.test(text)) { _inFence = !_inFence; if (_inFence) _fenceAt = line; } } }
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
     if (lineHasRefMark(text)) {
