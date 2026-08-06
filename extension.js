@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.22(俊克 8/6 🚫統合・node側): 🚫解除を**素のMarkdown記法**にも拡張＋統一ボタンに集約。①formatSpanAtCursor=`==ハイライト==`/`~~取消線~~`/`## 見出し` も検出(散文限定so `a == b` や shellの `# コメント` は壊さない)②boldSpanAtCursor=素の `_斜体_` を追加(描画v4.0.20と同じlookaround)③統一ボタン(ハイライト)は太字/斜体スパンの中でも🚫になり、1発で解除(fmtCtx.highlight と fmtCycle ring0 の2箇所)=太字ボタンを畳んでもB/I解除を失わない。headless 15/15 PASS(vscodeスタブでextension.jsを実ロードしてspan関数を直接テスト)。残=増分C(太字ボタン削除・tip更新)。→ [[project_v4_next_wave]]
 // - v4.0.21(俊克 8/6 同上・2つ目): 素の見出し `# text`/`## text`/`### text` を描画(#と直後の空白を隠し・レベル既定色 #=赤/##=緑/###=青＋見出しサイズ)。`##{ }##` とは排他(素の記法は#の後に空白が要る)so独立ifで足りる。#### 以降はH3の見た目に丸める。★誤爆対策=①散文限定(meosIsProseDoc)②```/~~~ のコードブロック内は不発(bashの `# コメント` が巨大な赤見出しになるのを防ぐ・フェンス判定は全行必要so_plVis足切りの前・先頭charCodeで安く弾く)③列0のみ(インデント不可)④膜行/カーソル行は除外。headless PASS(README18件/zenn草稿6件を正しく検出・コード内0)。残=🚫統合・太字ボタン削除。→ [[project_v4_next_wave]]
 // - v4.0.20(俊克 8/6「{}が外れたMarkdownの基本記法も、すべて正しくレンダリングする」): 素の斜体 `_text_` を描画(5兄弟のうち欠けていた1つ目)。実装=meosApplyBoldDecorationsに reI1p を追加(hideは`_`各1文字・本文にitalic)。★誤爆対策=①語中の`_`は不発(CommonMark同様の lookaround `(?<![\w*_])`/`(?![\w_])`)so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷 ②開き`_`の直後が`{`なら正式膜 `_{ }_` の仕事so見送り ③**散文限定**(新 MEOS_PROSE_LANGS/meosIsProseDoc)=js等では `catch (_)` で56件誤爆したため。足切りも散文だけ`_`全般(コードは従来どおり`_{`)。headless 13/13 PASS(MEMORY.md/zenn草稿で誤検出0)。残=素の`## 見出し`描画・🚫統合・太字ボタン削除。→ [[project_v4_next_wave]]
 // - v4.0.19(俊克 8/5 統一ボタン化・増分B=ボタン面のB/I表示): 統一ボタン(ハイライト)の面を、現プリセットがbold/italicなら `B`/`I`/`BI`(太字/斜体スタイル付き)・両オフなら従来の `=`/`==`/`===` に。実装=fmtHlFace()ヘルパー + __renderFmtRingの非actionable面2箇所(phase<4/最終else)をhighlight分岐 + ↻ハンドラの面もfmtHlFace。共有__renderFmtRingのstrike/heading分岐は無傷。actionable(ring)面は据え置き(🚫統合=増分Dで)。headless 6/6 PASS。残=増分C(太字ボタン削除)・D(🚫統合)→その後 □Link 下線。→ [[project_v4_next_wave]]
@@ -13121,7 +13122,13 @@ function formatSpanAtCursor(editor, kind) {
   const text = doc.lineAt(line).text || '';
   if (kind === 'heading') {
     const m = text.match(MARK_HEADING_RE);
-    if (!m) return null;
+    // v4.0.22(俊克 8/6 🚫統合): 素のMarkdown見出し `## text` も解除対象(散文限定=shellの `# コメント` を壊さない)。
+    if (!m) {
+      if (!meosIsProseDoc(doc)) return null;
+      const mp = /^(#{1,6})[ \t]+(\S.*?)[ \t]*$/.exec(text);
+      if (!mp) return null;
+      return { kind, range: new vscode.Range(line, 0, line, text.length), body: mp[2] };
+    }
     const hs = m[0].indexOf('#'); if (hs < 0) return null;
     const bm = /(#{1,3})([\[{])/.exec(m[0]); if (!bm) return null; // v4.0.10: 開き括弧は#直後の [ か { (本文中の[]と誤認しない)
     const close = bm[2] === '{' ? '}' : ']';
@@ -13141,6 +13148,17 @@ function formatSpanAtCursor(editor, kind) {
       const body = String(parseColorSpec(inner, 'fg', inner).bodyText || inner).trim();
       return { kind, range: new vscode.Range(line, s, line, e), body };
     }
+  }
+  // v4.0.22(俊克 8/6 🚫統合): {}が外れた素の記法 ==ハイライト== / ~~取消線~~ も同じボタン一発で解除。
+  // 散文限定=コードの `a == b` や `~~~` を誤って解除しない。正式膜(=={…}==)を先に見ているので二重には当たらない。
+  if (!meosIsProseDoc(doc)) return null;
+  const rePlain = (kind === 'highlight')
+    ? /(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g
+    : /~~(?!\{)([^~\n]+?)~~/g;
+  rePlain.lastIndex = 0;
+  while ((m = rePlain.exec(text)) !== null) {
+    const s = m.index, e = m.index + m[0].length;
+    if (pos.character >= s && pos.character <= e) return { kind, range: new vscode.Range(line, s, line, e), body: String(m[1] || '').trim() };
   }
   return null;
 }
@@ -13191,6 +13209,8 @@ function boldSpanAtCursor(editor) {
     { re: /___[^\n_]+___/g, open: 3, close: 3 },         // ___太字斜体___
     { re: /__[^\n_]+__/g, open: 2, close: 2 }            // __斜体__(従来記法)
   ];
+  // v4.0.22(俊克 8/6 🚫統合): 素のMarkdown斜体 `_text_` も解除対象(描画=v4.0.20 と同じ足切り規則)。散文限定=コードの `catch (_)` を壊さない。
+  if (meosIsProseDoc(doc)) pats.push({ re: /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g, open: 1, close: 1 });
   for (const p of pats) {
     let m; p.re.lastIndex = 0;
     while ((m = p.re.exec(text)) !== null) {
@@ -14582,6 +14602,8 @@ function updateMeDockMode() {
         else if (!_empty) fmtCtx[_k] = 'sel';
         else fmtCtx[_k] = 'none';
       }
+      // v4.0.22(俊克 8/6 🚫統合): 統一ボタン(=ハイライト)は太字/斜体の中でも🚫になる(太字ボタンを畳んだ後もB/Iを解除できる)。
+      if (fmtCtx.highlight !== 'deco' && boldSpanAtCursor(editor)) fmtCtx.highlight = 'deco';
       // v4.0.0(俊克): 太字/斜体・上付/下付にも🚫解除。カーソルが既存装飾の中なら'deco'(ボタンが🚫に化ける)。
       if (boldSpanAtCursor(editor)) fmtCtx.bold = 'deco'; else if (!_empty) fmtCtx.bold = 'sel';
       if (metexSpanAtCursor(editor)) fmtCtx.metex = 'deco'; else if (!_empty) fmtCtx.metex = 'sel';
@@ -16163,7 +16185,9 @@ function toggleMeDock(editorOverride) {
         return;
       }
       let body, range;
-      const span = formatSpanAtCursor(ed, kind);
+      let span = formatSpanAtCursor(ed, kind);
+      // v4.0.22(俊克 8/6 🚫統合): 統一ボタン(=ハイライト)の🚫は太字/斜体(正式膜/従来記法/素の _text_)も1発で解除する。
+      if (!span && kind === 'highlight' && ring === 0) { const bs = boldSpanAtCursor(ed); if (bs) { await removeFormatAtCursor(ed, bs); return; } }
       if (span) { body = span.body; range = span.range; }
       else if (!ed.selection.isEmpty) { body = ed.document.getText(ed.selection); range = ed.selection; }
       else return;
