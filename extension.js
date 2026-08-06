@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.27(俊克 8/6「最後の場所に行かない=戻る手段がない」): 膜名リンクのジャンプで**飛ぶ前に発射地点を履歴へ積む**(pushMeDockLineHistory・膜名ジャンプ tryActivateSelectedNameJump と同じ流儀)。→ Me Dockの履歴◀で元の場所へ戻れる=リンクが片道切符でなくなる(帰りの第一歩)。★設計メモ=俊克案「リンクに番号を振りメタに発射地点を記憶(栞のように)」は、**行番号をメタに保存すると編集で行がズレる**(栞が苦労している所)。参照符と同じく**番号は本文に書く**(grepで探せる)方が行ズレと無縁。さらに行先=膜名で全文grepすれば「その膜を指すリンク一覧」=バックリンクは番号なしでも出せる(番号は同じ膜を指す複数リンクの区別と表示チップ用)。→段階Cで実装。→ [[project_highlight_underline_link]] [[project_reference_membrane]]
 // - v4.0.26(俊克 8/6「どこでもH-TOC」使える化): ★**挿入UIとリンクの🚫**。①統一ボタンの▾上段に `□ Link`(□Bold □Italicの隣=8/05に空けておいた場所)＋Link ON の時だけ**下線種の4択**(0単線/1二重/2波線/3二重波線・実物の下線でプレビュー・生データは番号so手打ち不要)②プリセットに link/ul を追加(pushFmt/loadFmtは配列丸ごとso永続化は自動・旧保存はundefined→falsy/0で無害)③ボタン面=🔗④クリック=**リンクを挿入して行先 `( )` の中でカーソルが待つ**(そのままURLを貼るor膜名を打てば完成)＝手打ちコメント包みからの解放⑤`meLinkSpanAtCursor` を fmtCtx.highlight と fmtCycle ring0 に合流=**リンクの中でも🚫**が出て表示文字だけ残して解除(🚫統合の一員)。記法=`<!-- =={ -->[表示文字](行先)<!-- (fg/bg)(N)//[]tip=}== -->`(0=既定so(N)を書かない)。headless 16/16 PASS。残=「最後の場所に行かない」調査・段階C(バックリンク)。→ [[project_highlight_underline_link]]
 // - v4.0.25(俊克 8/6「どこでもH-TOC、ついに来たね」): ★ノート内リンク 段階A仕上げ(melink-test.mdに俊克が書き残した3点のうち2点)。①**空リンク `()` は下線を付けない**=ハイライト等価(行先が無いのに下線=クリックできそうに見えるのが嘘)②**下線種を数字で**=`(fg/bg)(N)//tip` の N: 0=単線/1=二重/2=波線/3=二重波線(3はCSSに単独指定が無いので一工夫=波線＋もう1本の波をSVG背景で敷く)③リンクのtipをホバー💬表示(=この記法の売り「リンク先に説明を添えられる」)。実装=meosMeLinkSpec(最初の`//`の前だけを色/下線種の解析対象にするのでtip内の`(2)`や`//`で壊れない)＋meosMeLinkUnderline。headless 11/11 PASS。残=挿入UI(▾に□Link＋下線種)・リンクの🚫解除・「最後の場所に行かない」調査・段階C(バックリンク)。→ [[project_highlight_underline_link]]
 // - v4.0.24(俊克 8/6 バグ1「素の見出しがレンダリングされないよ」): ★真因=v4.0.21のコードフェンス判定。140k行日記に**閉じ忘れの ``` が1本**あり(93310行目までに715回トグル=奇数)、その先の全行が「コードブロックの中」扱いになって素の見出しが一切描画されなかった(🚫解除はfence判定を通らないので効いていた=OK&NGの内訳と一致)。修正=**安全弁**=フェンスが200行以上開きっぱなしなら迷子と見なして閉じる(実際のコードブロックは十数行so余裕・迷子1本で以降が全滅しない)。★教訓=全文走査の状態機械は「壊れた入力で自己修復するか」を必ず問う(生涯日記は必ず壊れた入力を含む)。検証=**applyPrettyLabelsを実ロードして直接叩くheadlessハーネス**を新設(閉じ忘れフェンス込みの文書で hMarker/hSize_1..3 の行番号を照合・ALL PASS)＋実日記でL93310のfence状態がfalseになることを確認。→ [[project_v4_next_wave]]
@@ -18337,6 +18338,9 @@ function activate(context) {
     try {
       const ed = vscode.window.activeTextEditor; if (!ed) return;
       const line = meosFindMembraneLineByName(ed.document, name);
+      // v4.0.27(俊克「戻る手段がない」): 飛ぶ前に**発射地点を履歴へ積む**(膜名ジャンプ tryActivateSelectedNameJump と同じ流儀)。
+      // これで Me Dock の履歴◀で元の場所へ戻れる=リンクが片道切符でなくなる(帰りの第一歩・恒久のバックリンクは段階C)。
+      if (line >= 0) { try { pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) {} }
       if (line >= 0) { const p = new vscode.Position(line, 0); ed.selection = new vscode.Selection(p, p); ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter); }
       else vscode.window.showInformationMessage('MeOS: 膜が見つかりません: ' + name);
     } catch (_) {}
