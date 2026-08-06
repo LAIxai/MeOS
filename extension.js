@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.21(俊克 8/6 同上・2つ目): 素の見出し `# text`/`## text`/`### text` を描画(#と直後の空白を隠し・レベル既定色 #=赤/##=緑/###=青＋見出しサイズ)。`##{ }##` とは排他(素の記法は#の後に空白が要る)so独立ifで足りる。#### 以降はH3の見た目に丸める。★誤爆対策=①散文限定(meosIsProseDoc)②```/~~~ のコードブロック内は不発(bashの `# コメント` が巨大な赤見出しになるのを防ぐ・フェンス判定は全行必要so_plVis足切りの前・先頭charCodeで安く弾く)③列0のみ(インデント不可)④膜行/カーソル行は除外。headless PASS(README18件/zenn草稿6件を正しく検出・コード内0)。残=🚫統合・太字ボタン削除。→ [[project_v4_next_wave]]
 // - v4.0.20(俊克 8/6「{}が外れたMarkdownの基本記法も、すべて正しくレンダリングする」): 素の斜体 `_text_` を描画(5兄弟のうち欠けていた1つ目)。実装=meosApplyBoldDecorationsに reI1p を追加(hideは`_`各1文字・本文にitalic)。★誤爆対策=①語中の`_`は不発(CommonMark同様の lookaround `(?<![\w*_])`/`(?![\w_])`)so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷 ②開き`_`の直後が`{`なら正式膜 `_{ }_` の仕事so見送り ③**散文限定**(新 MEOS_PROSE_LANGS/meosIsProseDoc)=js等では `catch (_)` で56件誤爆したため。足切りも散文だけ`_`全般(コードは従来どおり`_{`)。headless 13/13 PASS(MEMORY.md/zenn草稿で誤検出0)。残=素の`## 見出し`描画・🚫統合・太字ボタン削除。→ [[project_v4_next_wave]]
 // - v4.0.19(俊克 8/5 統一ボタン化・増分B=ボタン面のB/I表示): 統一ボタン(ハイライト)の面を、現プリセットがbold/italicなら `B`/`I`/`BI`(太字/斜体スタイル付き)・両オフなら従来の `=`/`==`/`===` に。実装=fmtHlFace()ヘルパー + __renderFmtRingの非actionable面2箇所(phase<4/最終else)をhighlight分岐 + ↻ハンドラの面もfmtHlFace。共有__renderFmtRingのstrike/heading分岐は無傷。actionable(ring)面は据え置き(🚫統合=増分Dで)。headless 6/6 PASS。残=増分C(太字ボタン削除)・D(🚫統合)→その後 □Link 下線。→ [[project_v4_next_wave]]
 // - v4.0.18(俊克 8/5 統一ボタン化・増分A=▾メニューの形): ハイライトの▾を統一ボタン形に=`□ Bold □ Italic` チェックボックス様式を**一番上**(▼caretから遠い=操作機会少)・色は**下**(見出し等と共通・スクショ2形)。将来「□ Link 下線 ▼」もこの上段に並べる想定。増分1で下部に置いたB/Iトグルは撤去し上段へ移設。方針=「両オフ=既存ハイライト処理を流用」so生き残りボタンはhighlightの機構を土台(位置は==のまま・後でBへ移動可)。残=増分B(ボタン面のB/I表示)・C(太字ボタン削除)・D(🚫のkind統合)。→ [[project_v4_next_wave]]
@@ -5798,8 +5799,14 @@ function applyPrettyLabels(editor) {
     ? editor.visibleRanges.map(r => [Math.max(0, r.start.line - 120), Math.min(editor.document.lineCount - 1, r.end.line + 120)])
     : null;
   const _plVis = (ln) => !_plSpans || _plSpans.some(s => ln >= s[0] && ln <= s[1]);
+  // v4.0.21(俊克 8/6): 素の Markdown 見出し `## text` を描画する為の下ごしらえ。①散文(md/txt)だけ ②```/~~~ の
+  // コードブロック内は見出しにしない(bashの `# コメント` が巨大な赤見出しになるのを防ぐ)。フェンス判定は全行必要
+  // (画面外で開いたフェンスが可視行に効く)ので _plVis の足切りより前で、先頭文字のcharCodeで安く弾いてから測る。
+  const _proseDoc = meosIsProseDoc(editor.document);
+  let _inFence = false;
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
+    if (_proseDoc) { const _c0 = text.charCodeAt(0); if (_c0 === 96 || _c0 === 126 || _c0 === 32 || _c0 === 9) { if (/^[ \t]{0,3}(?:```|~~~)/.test(text)) _inFence = !_inFence; } }
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
     if (lineHasRefMark(text)) {
@@ -6087,6 +6094,22 @@ function applyPrettyLabels(editor) {
         }
         // 後ろの ((色/色)//コメント) ]#{1,3} を隠す
         headingMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+      }
+    }
+    // v4.0.21(俊克 8/6「{}が外れたMarkdownの基本記法も、すべて正しくレンダリングする」): 素の見出し `## text`。
+    // ##{ }## とは排他(素の記法は#の後ろに空白が要る=`##{`には当たらない)so独立ifで足りる。色/tipは無し(素の記法so
+    // 指定する場所が無い)=レベル既定色(#=赤/##=緑/###=青)＋見出しサイズ。#### 以降は H3 と同じ見た目に丸める。
+    // 散文(md/txt)限定＋コードブロック外＋膜行でない＋カーソル行でない。#と直後の空白を隠して本文だけ見せる。
+    if (_proseDoc && !_inFence && line !== docCursorLine && dtext.charCodeAt(0) === 35 && !parseOpenLine(text) && !parseCloseLine(text)) {
+      const mP = /^(#{1,6})([ \t]+)(\S[^\n]*?)[ \t]*$/.exec(dtext);
+      if (mP) {
+        const level = Math.min(3, mP[1].length);
+        const bodyStart = mP[1].length + mP[2].length; // # と直後の空白の分だけ進む
+        const bodyEndP = bodyStart + mP[3].length;
+        headingMarkerRanges.push({ range: new vscode.Range(line, 0, line, bodyStart) });
+        const rP = new vscode.Range(line, bodyStart, line, bodyEndP);
+        headingSizeRangesByLevel[level].push(rP);
+        (headingColorItemsByKey[HEADING_DEFAULT_COLOR[level]] || []).push({ range: rP });
       }
     }
     const open = parseOpenLine(text);
