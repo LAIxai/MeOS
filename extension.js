@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.25(俊克 8/6「どこでもH-TOC、ついに来たね」): ★ノート内リンク 段階A仕上げ(melink-test.mdに俊克が書き残した3点のうち2点)。①**空リンク `()` は下線を付けない**=ハイライト等価(行先が無いのに下線=クリックできそうに見えるのが嘘)②**下線種を数字で**=`(fg/bg)(N)//tip` の N: 0=単線/1=二重/2=波線/3=二重波線(3はCSSに単独指定が無いので一工夫=波線＋もう1本の波をSVG背景で敷く)③リンクのtipをホバー💬表示(=この記法の売り「リンク先に説明を添えられる」)。実装=meosMeLinkSpec(最初の`//`の前だけを色/下線種の解析対象にするのでtip内の`(2)`や`//`で壊れない)＋meosMeLinkUnderline。headless 11/11 PASS。残=挿入UI(▾に□Link＋下線種)・リンクの🚫解除・「最後の場所に行かない」調査・段階C(バックリンク)。→ [[project_highlight_underline_link]]
 // - v4.0.24(俊克 8/6 バグ1「素の見出しがレンダリングされないよ」): ★真因=v4.0.21のコードフェンス判定。140k行日記に**閉じ忘れの ``` が1本**あり(93310行目までに715回トグル=奇数)、その先の全行が「コードブロックの中」扱いになって素の見出しが一切描画されなかった(🚫解除はfence判定を通らないので効いていた=OK&NGの内訳と一致)。修正=**安全弁**=フェンスが200行以上開きっぱなしなら迷子と見なして閉じる(実際のコードブロックは十数行so余裕・迷子1本で以降が全滅しない)。★教訓=全文走査の状態機械は「壊れた入力で自己修復するか」を必ず問う(生涯日記は必ず壊れた入力を含む)。検証=**applyPrettyLabelsを実ロードして直接叩くheadlessハーネス**を新設(閉じ忘れフェンス込みの文書で hMarker/hSize_1..3 の行番号を照合・ALL PASS)＋実日記でL93310のfence状態がfalseになることを確認。→ [[project_v4_next_wave]]
 // - v4.0.23(俊克 8/6 統一ボタン化・増分C=太字ボタン削除): Formatから太字/斜体ボタン(#fmt-bold ＋ ↻ ＋ ▾ ＋ #bold-pop)を撤去=5兄弟→4つ(統一/取消/上付下付/見出し)。太字/斜体は統一ボタンの▾(□Bold □Italic)＋クリックで出し、解除はv4.0.22の🚫統合が受け持つso機能欠落なし。★最小変更=HTMLとtipだけを削除/更新し<script>は前版とバイト比較で一致を確認(mbFace/mb*ハンドラは全て `if(fmtBold)`/`if(boldPop)` ガード付きso要素が無くても無害・#fmt-bold のCSS幅指定も無害so残置)。tip更新=統一ボタン(Format|3プリセット・□Bold/□Italic・素のMarkdownも🚫で解除)＋取消線/見出し(素の ~~text~~ / ## text も解除)。→ [[project_v4_next_wave]]
 // - v4.0.22(俊克 8/6 🚫統合・node側): 🚫解除を**素のMarkdown記法**にも拡張＋統一ボタンに集約。①formatSpanAtCursor=`==ハイライト==`/`~~取消線~~`/`## 見出し` も検出(散文限定so `a == b` や shellの `# コメント` は壊さない)②boldSpanAtCursor=素の `_斜体_` を追加(描画v4.0.20と同じlookaround)③統一ボタン(ハイライト)は太字/斜体スパンの中でも🚫になり、1発で解除(fmtCtx.highlight と fmtCycle ring0 の2箇所)=太字ボタンを畳んでもB/I解除を失わない。headless 15/15 PASS(vscodeスタブでextension.jsを実ロードしてspan関数を直接テスト)。残=増分C(太字ボタン削除・tip更新)。→ [[project_v4_next_wave]]
@@ -17998,6 +17999,32 @@ function meosApplyMeTexDecorations(editor) {
 //  ・MeOS内は表示文字だけを色+下線で見せ、[ ]( ) とコメントは隠す。カーソル行は生表示。→ [[project_highlight_underline_link]]
 const MEOS_MELINK_RE = /<!--\s*=={\s*-->\[([^\]\n]*)\]\(([^)\n]*)\)<!--\s*([^\n]*?)\}==\s*-->/g;
 function meosMeLinkColor(spec) { let fg = null, bg = null; const c = /\(([^)/]*)\/([^)]*)\)/.exec(String(spec || '')); if (c) { fg = normalizeFgColor(c[1]); bg = normalizeBgColor(c[2]); } return { fg, bg }; }
+// v4.0.25(俊克 8/6 「どこでもH-TOC」段階A仕上げ): リンクのスペック `(fg/bg)(下線種)//[]tip=説明` を1回で読む。
+// 下線種は**数字**で表す(手打ちせず▾から設定する前提・生データは番号)。0=単線 / 1=二重 / 2=波線 / 3=二重波線。
+// tip側に (3) や // が混ざっても壊さない為、最初の `//` の前(head)だけを色/下線種の解析対象にする。
+function meosMeLinkSpec(spec) {
+  const s = String(spec || '');
+  const ti = s.indexOf('//');
+  const head = ti >= 0 ? s.slice(0, ti) : s;
+  let ul = null;
+  const headNoUl = head.replace(/\((\d)\)/, (mm, d) => { ul = Number(d); return ''; });
+  let fg = null, bg = null;
+  const c = /\(([^)/]*)\/([^)]*)\)/.exec(headNoUl);
+  if (c) { fg = normalizeFgColor(c[1]); bg = normalizeBgColor(c[2]); }
+  let tip = '';
+  if (ti >= 0) tip = s.slice(ti + 2).replace(/^\s*\[[^\]]*\]/, '').replace(/^\s*tip=/, '').trim(); // `//[]tip=` の飾りを剥がす(ハイライトと同じ流儀)
+  return { fg, bg, ul, tip };
+}
+// 下線のCSS。3(二重波線)だけCSSに単独の指定が無いので一工夫=波線(text-decoration)＋もう1本の波をSVG背景で敷く。
+function meosMeLinkUnderline(ul, colorCss) {
+  if (ul === 1) return 'underline double;';
+  if (ul === 2) return 'underline wavy;';
+  if (ul === 3) {
+    const col = encodeURIComponent(colorCss || 'currentColor');
+    return 'underline wavy; background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%276%27 height=%273%27%3E%3Cpath d=%27M0 2 Q1.5 0 3 2 T6 2%27 fill=%27none%27 stroke=%27' + col + '%27 stroke-width=%271%27/%3E%3C/svg%3E"); background-repeat: repeat-x; background-position: left bottom;';
+  }
+  return 'underline;';
+}
 function meosFindMembraneLineByName(doc, name) { const needle = String(name || '').trim(); if (!doc || !needle) return -1; for (let i = 0; i < doc.lineCount; i++) { const info = membraneLineInfo(doc, i); if (info && info.kind === 'open' && info.id === needle) return i; } return -1; }
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 function meosApplyMeLinkDecorations(editor) {
@@ -18020,8 +18047,17 @@ function meosApplyMeLinkDecorations(editor) {
           const lb = s + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
           if (textStart > s) hideRanges.push(new vscode.Range(ln, s, ln, textStart)); // 前(コメント+[)を隠す
           if (e > textEnd) hideRanges.push(new vscode.Range(ln, textEnd, ln, e)); // 後(]( 行先 )+コメント)を隠す
-          const { fg, bg } = meosMeLinkColor(m[3]); let style = 'underline;'; let fk = fg; if (bg && !fk && DARK_BG_KEYS.has(bg)) fk = 'white'; if (fk && HIGHLIGHT_FG_COLORS[fk]) style += ' color: ' + HIGHLIGHT_FG_COLORS[fk] + ';'; if (bg && HIGHLIGHT_COLORS[bg]) style += ' background-color: ' + HIGHLIGHT_COLORS[bg] + ';';
-          if (!styleRanges.has(style)) styleRanges.set(style, []); styleRanges.get(style).push(new vscode.Range(ln, textStart, ln, textEnd));
+          // v4.0.25(俊克): 空リンク `()` は下線を付けない=ハイライト等価(行先が無いのに下線=クリックできそうに見えるのが嘘)。
+          // 行先があれば下線種(0-3・既定=単線)。tipはホバーで💬表示(リンク先の説明を添えられる=この記法の売り)。
+          const sp = meosMeLinkSpec(m[3]); const target = (m[2] || '').trim();
+          let fk = sp.fg; if (sp.bg && !fk && DARK_BG_KEYS.has(sp.bg)) fk = 'white';
+          const colorCss = (fk && HIGHLIGHT_FG_COLORS[fk]) ? HIGHLIGHT_FG_COLORS[fk] : '';
+          let style = target ? meosMeLinkUnderline(sp.ul, colorCss) : 'none;';
+          if (colorCss) style += ' color: ' + colorCss + ';';
+          if (sp.bg && HIGHLIGHT_COLORS[sp.bg]) style += ' background-color: ' + HIGHLIGHT_COLORS[sp.bg] + ';';
+          const item = { range: new vscode.Range(ln, textStart, ln, textEnd) };
+          if (sp.tip) { const hv = new vscode.MarkdownString('💬 ' + sp.tip); hv.isTrusted = false; item.hoverMessage = hv; }
+          if (!styleRanges.has(style)) styleRanges.set(style, []); styleRanges.get(style).push(item);
         }
       }
     }
