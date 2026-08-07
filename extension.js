@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.59(俊克 8/8 am01:09「先頭に-記号があるから、コメントの方に-記号は要らない」): 番号付きの指定を `-1` → **`1`** に(`- 番号付き<!-- 1 (白/紫)//[]tip= -->`)。行頭の `- ` が既に「リスト項目である」を言っているので、コメント側は「番号付きにせよ」だけでよい=**同じことを2度言わない**。旧 `-1` も read-both(今夜書いた分が壊れない)。書く/読む/Enterの継続/連番カウントの4箇所を更新。headless 18/18＋12/12＋21/21＋15/15 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.58(俊克 8/8 am01:02 バグ1/改良1): ①**バグ1=箇条書きに色指定が無い**→箇条書きにも後置きコメントで色/tipを書き(`- 項目<!-- (白/紫)//[]tip= -->`)、ラベル(•/N.)は文字色に従い本文に文字色/背景色を掛ける。②**改良1「表が整形しても崩れる」の真因=コードスパンの中まで装飾していた**。記法を `\`==本文==<!-- (色) -->\`` のように引用すると、MeOSがそれを本物として描き**仕様コメントまで隠す**ので、**見えている幅と生データの幅が食い違い**表の整形が崩れていた。→ 検出の前に**コードスパンを空白化**(meosMaskCodeSpans・長さは保つのでrangeは不変)。適用先=ハイライト/取消線(dtext)・太字/斜体(tScan)・MeTeX・リンク。Markdownの約束どおり**バッククォートの中は文字そのもの**に。★この記法を説明する文書(README/Zenn/記法まとめ)を自分の日記で書けるようになった=**ドッグフーディングの前提**が整った。headless 21/21＋18/18＋15/15＋12/12 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.57(俊克 8/8 am00:35 改良1/バグ1): ①**改良1=`•` と `N.` で本文の開始位置が1桁ずれる**→ラベルを3桁に揃える(`•␣␣` / `N.␣`)=箇条書きと番号付きの左端が一致。②**バグ1=太字/斜体だけ旧形のまま(空白も残る)**→**記法の大転換 第3弾**=散文では `**本文**<!-- (白/青)//[]tip= -->` / `_本文_<!-- … -->` / `***本文***<!-- … -->` で書く。MeOS外では**本物の太字/斜体**。`{ }` が消えるので**空白も一緒に消える**(俊克「しかも空白が残っている」の答え)。読む側=素の `**` `_` `***` の直後にある仕様コメントを色/tipとして使い、コメントは隠す(共通ヘルパ meosSpecCommentAfter)。🚫も後置きコメントごと落とす。コード系(js等)や非散文は従来の正式膜のまま(素の `**` が効かない/コードを壊さない)。旧形は read-both。headless 19/19＋18/18＋15/15＋12/12 PASS。★これで **見出し/箇条書き/ハイライト/取消線/太字/斜体** が全て「Markdown＋後置きコメント」に統一(リンクは俊克👍so現状維持・上付き下付きは元からこの形)。→ [[reference_meos_notation_v4]]
 // - v4.0.56(俊克 8/8 am00:13 改良1/2): ①**改良1=箇条書きの間が空き過ぎ**→`- `(マーカー+空白)を**丸ごと隠す**(ラベル `• ` が区切りの空白を持っているので、生の空白まで見せると二重になっていた)。②**改良2=記法の大転換の第2弾(インライン)**=ハイライト/取消線を**素のMarkdown＋後置きコメント**へ。`==本文==<!-- (白/黄)//[]tip= -->` / `~~本文~~<!-- (赤/)//[]tip= -->`。MeOS外では**本物のハイライト/取消線**として生きる。実装=共通ヘルパ `meosSpecCommentAfter`(素の記法の**直後**にあるコメントだけを見るので文中の普通のコメントを巻き込まない)＋描画(色/tip適用・コメントを隠す)＋挿入＋↻の再適用＋🚫(コメントごと落とす)。**コード系(js等)は従来の分割形のまま**(実コードを壊さない)。旧形 `=={ }==` `~~{ }~~` は read-both。★俊克が👍と言ったリンクの形(`<!-- =={ -->[t](u)<!-- (色)(N)}== -->`)は**そのまま維持**(既にMeOS外で本物のリンクとして生きているので触らない)。headless 13/13(新規t_inline)＋18/18＋15/15＋12/12 PASS。📌残=太字/斜体の新形化。→ [[reference_meos_notation_v4]]
@@ -6224,8 +6225,9 @@ function applyPrettyLabels(editor) {
         const mC = /<!--\s*([^\n]*?)\s*-->\s*$/.exec(dtext);
         if (mC && mC.index >= bodyStart) {
           const payload = mC[1] || '';
-          numbered = /(^|\s)-1(\s|$)/.test(payload);
-          const inner = payload.replace(/(^|\s)-1(?=\s|$)/, '').trim();
+          // v4.0.59(俊克): 行頭に `- ` があるのだから、コメント内の指定は**数字だけ**でよい(`-1`→`1`)。旧 `-1` も読む。
+          numbered = /(^|\s)-?1(\s|$)/.test(payload);
+          const inner = payload.replace(/(^|\s)-?1(?=\s|$)/, '').trim();
           if (inner) sp = parseColorSpec(inner, 'fg', inner);
           headingMarkerRanges.push({ range: new vscode.Range(line, mC.index, line, dtext.length) });
           bodyEndP = mC.index;
@@ -12662,7 +12664,7 @@ function meosSpecCommentAfter(text, e) {
   if (!m) return null;
   return { raw: m[1] || '', end: e + m[0].length };
 }
-const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)|^[ \t]*[-*+][ \t].*<!--[^\n]*(?:^|\s)-1(?:\s|[^\n]*)-->[ \t]*$/; // 連番の対象(新形 `- 項目<!-- -1 -->` と旧Me記法の両方)
+const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)|^[ \t]*[-*+][ \t].*<!--[^\n]*(?:^|\s)-?1(?:\s|[^\n]*)-->[ \t]*$/; // v4.0.59: コメント内は `1`(旧 `-1` も読む) // 連番の対象(新形 `- 項目<!-- -1 -->` と旧Me記法の両方)
 const MEOS_ANY_ITEM_RE = /^[ \t]*(?:-1?\{|#{1,3}-1?\{|[-*+][ \t])/; // 項目の並び(間に挟まっても連番は途切れない)
 async function meosContinueListOnEnter(editor) {
   try {
@@ -12702,7 +12704,7 @@ async function meosContinueListOnEnter(editor) {
       ? (parseInt(marker, 10) + 1) + marker.slice(-1) // 旧来の手打ち番号は +1 して継続
       : marker;
     // v4.0.54(俊克): 新形の番号付き項目(`- 項目<!-- -1 -->`)は、**マーカーの指定ごと**継続する(番号は書かないので +1 は不要)。
-    const numSpec = /<!--\s*(?:[^\n]*\s)?-1(?:\s[^\n]*)?\s*-->[ \t]*$/.test(text) ? '<!-- -1 -->' : '';
+    const numSpec = /<!--\s*(?:[^\n]*\s)?-?1(?:\s[^\n]*)?\s*-->[ \t]*$/.test(text) ? '<!-- 1 -->' : ''; // v4.0.59: 書くのは `1`・旧 `-1` も読む
     // 仕様コメントが末尾にある行は、**行末で**改行する(カーソル位置で割るとコメントが次行へ落ちる)。
     await editor.edit(eb => eb.insert(numSpec ? new vscode.Position(pos.line, text.length) : pos, '\n' + indent + next + gap + numSpec));
     if (numSpec) { const p4 = new vscode.Position(pos.line + 1, (indent + next + gap).length); editor.selection = new vscode.Selection(p4, p4); } // カーソルは本文の位置(コメントの手前)
@@ -13358,7 +13360,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // v4.0.54: 素のMarkdownの箇条書きで書く(番号付きだけ「自動採番せよ」をコメントで足す)。
       // v4.0.58(俊克 バグ1「箇条書きの色指定が抜けている」): 箇条書きにも色/tipを後置きコメントで付ける。
       const open = _indent + '- ';
-      const _numTag = (_mk === '-1') ? '-1 ' : '';
+      const _numTag = (_mk === '-1') ? '1 ' : '';
       const plain = open + body + '<!-- ' + _numTag + hspec + ' -->';
       await editor.edit(eb => eb.replace(doc.lineAt(ln).range, plain));
       const pb = new vscode.Position(ln, open.length + body.length);
@@ -13375,7 +13377,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     //   それ以外(js/py/sh…) → 旧形 `##{ 本文 (色) }##`(必要なら /* */ の殻付き)=コードを壊さない
     // ★v4.0.54でコード側の書き出しから殻を落としてしまっていた(この版で回復)。読む方は前から両形とも読める。
     const _blt = _mk ? '- ' : '';
-    const _numMk = (_mk === '-1') ? '-1 ' : '';
+    const _numMk = (_mk === '-1') ? '1 ' : ''; // v4.0.59(俊克): コメント内の指定は数字だけ
     const _prose = meosIsProseDoc(doc);
     const newText = _prose
       ? (_indent + _blt + hashes + ' ' + visibleBody + '<!-- ' + _numMk + hspec + ' -->')
