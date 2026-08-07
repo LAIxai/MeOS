@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.48(俊克 8/7 pm02:38「従来記法の箇条書きも選択なしで🚫で解除できるように」): 箇条書きは見出しボタンの管轄になったので、**素の `- 項目` / `1. 項目` の行にカーソルを置くだけで見出しボタンが🚫**になり、押すとマーカーだけ落として本文を残す(インデントは温存)。formatSpanAtCursor(heading)の第3の受け皿として追加(①正式膜 ##{ }## ②素の `## 見出し` ③素の箇条書き の順)。散文限定=YAMLやコードの `-` を壊さない。★`- ##{ }##`(デカ文字の箇条書き)は**外側の見出しから剥がれ**、もう一度押すと箇条書きも取れる=入れ子を外から順に脱がせる。headless 11/11 PASS。→ [[project_v4_next_wave]]
 // - v4.0.47(俊克 8/7 pm02:10「見出しに箇条書きを組み込む」): ★見出しボタンを **□見出し □箇条書き の2チェック**に(統一ボタンの□Bold□Italicと同じ「2チェックで軸を合成」に収束)。4通り=見出しのみ/`- ##{ }##`デカ文字の箇条書き/`- 項目`素の箇条書き/(両オフは作らない)。①見出しプリセット(3つ)に head/bullet/blt を追加(永続化は丸ごと保存so自動)②▾上段に□見出し□箇条書き＋箇条書きONの時だけ種類(`-`/`1.`。`- * +` は描画が同じso出さない=意味が変わるのは番号付きだけ)③**箇条書きは一発で自動オフ**(俊克案。1行出せば以後はEnterで継続するのでモードを居座らせない)＋見出しがOFFなら見出しをONに戻す(押しても何も起きないボタンを作らない)④見出し正規表現6本の行頭に箇条書き接頭辞 `(?:[-*+]|\d+[.)])[ \t]+` を許可=**MeOSの見出しは折り畳みと無関係な装飾ランドマークso行頭の`-`と合成できる**(従来の`#`見出しでは構造的に不可能)⑤挿入は接頭辞を見出しの外に置き、既に `- ` で始まる行はそれを温存。★**リストの自動継続もMeOSが持つ**: VSCodium/VS Codeの組込みMarkdownには onEnterRules が1つも無い(markdown-basics/language-configuration.json を確認)=自動継続はMarkdown All in One等の拡張の機能だった。MeOSは既にEnterを握っている(laiMembrane.enterAtCloseRightEdge)のでそこで面倒を見る=他拡張に依存せず箇条書きが完結。`- 項目`でEnter→同じマーカー継続(番号付きは+1)/空項目でEnter→マーカーを消してリストを終える/散文限定・選択中や複数カーソルでは既定に任せる。headless 16/16 PASS。→ [[project_v4_next_wave]]
 // - v4.0.46(俊克 8/7 pm00:57「ハイライト・見出しで空白が前後に入るのがウザい」): 挿入する記法から**本文の左右padding空白を廃止**。`=={ 本文 (色)//tip }==` → `=={本文(色)//tip}==` / `##{ 本文 … }##` → `##{本文 …}##`。v0.9.99963では「背景色が連続する真の左右padding」として入れていたが、**本文に空白が混ざる方が邪魔**(装飾は見た目・本文は本文)＋俊克「従来のMarkdown見出しと違い Me記法は空白を要求しない」。変更=insertFormatTemplate(見出し/ハイライト/取消線)＋buildInlineFmt(↻の再適用)＋見出し挿入後のカーソル位置(+2→+1)。★取消線も同じコードパスなので一緒に外した(==だけ外すと兄弟で食い違う)。既存の空白入りデータは**そのまま読める**(検出regexは空白非依存・過去は一括変換しない[[project_now_not_bulk]])。headless 7/7 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.45(俊克 8/7 pm01:40 「今回は1秒以内に開いた。なぜ前回は駄目だったのか?」への備え): ①ログに**どの経路でエディタを掴んだか**(via=meDockTarget/activeTextEditor/visibleTextEditors[0])と attempt を出す=次に同じ疑問が出たら一発で分かる。②**時間切れで永久に諦めない**: 起動時の再試行(最長17秒)を使い切っても、その後**最初にテキストエディタがアクティブになった時に1回だけ**試す(_autoTodayDoneで二重実行しない)。★v4.0.43が失敗した理由の推定=当時は activeTextEditor だけを見ており、起動直後にMe Dock(webview)がアクティブだと undefined so 全リトライが空振り→約9秒で永久に諦めていた。v4.0.44で他2経路を足したら初回で成功(ログ 13:41:19 = 起動+約3秒)。→ [[project_lifelong_diary_template]]
@@ -13214,8 +13215,12 @@ function formatSpanAtCursor(editor, kind) {
     if (!m) {
       if (!meosIsProseDoc(doc)) return null;
       const mp = /^(#{1,6})[ \t]+(\S.*?)[ \t]*$/.exec(text);
-      if (!mp) return null;
-      return { kind, range: new vscode.Range(line, 0, line, text.length), body: mp[2] };
+      if (mp) return { kind, range: new vscode.Range(line, 0, line, text.length), body: mp[2] };
+      // v4.0.48(俊克): **従来記法の箇条書き**も選択なしで🚫解除(箇条書きは見出しボタンの管轄になったので、同じボタンで外せる)。
+      // `- 項目` / `1. 項目` の行にカーソルがあれば、マーカーだけ落として本文を残す(インデントは温存)。散文限定=YAMLやコードの `-` を壊さない。
+      const mb = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+([\s\S]*)$/.exec(text);
+      if (mb) return { kind, range: new vscode.Range(line, 0, line, text.length), body: mb[1] + mb[2] };
+      return null;
     }
     const hs = m[0].indexOf('#'); if (hs < 0) return null;
     const bm = /(#{1,3})([\[{])/.exec(m[0]); if (!bm) return null; // v4.0.10: 開き括弧は#直後の [ か { (本文中の[]と誤認しない)
