@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.44(俊克 8/7 pm01:30 バグ1「2秒待つと言ったのに自動でⓉが実行されない」): ★真因の第一候補=**activeTextEditorがundefined**。起動直後にMe Dock(webview)がアクティブだと `vscode.window.activeTextEditor` は undefined になる(webviewはテキストエディタではない)ので、v4.0.43は毎回そこで空振りしていた可能性が高い。→ **getMeDockTargetEditor() → activeTextEditor → visibleTextEditors[0]** の順に探す＋再試行を6回×1.2秒→**10回×1.5秒(最長17秒)**＋膜がまだ0件なら解析途中と見なして待つ。★切り分け用に**パレットコマンド `MeOS: Warp to Today (Ⓣ)`** を追加(手で叩けばジャンプ自体の可否が分かる)＋各段階を meosDbg(MeOS Debug出力チャンネル)に記録し、手動実行時はステータスバーに結果を出す。※検出ロジック自体は実日記(Kt_19580126S08JST.md)に対してheadlessで検証済み=今日の膜 `✴️8/07F 2026 …` を正しく見つける(=論理は正しく、実行に到達していなかった)。→ [[project_lifelong_diary_template]]
 // - v4.0.43(俊克 8/7 pm00:36「バージョンアップするとノート全体が畳まれた状態で表示される。Ⓣを自動で押せないか」): ★起動時に**Ⓣ(Today)を自動で1回押す**。理由=起動直後は mSTAT の⊖に従って膜が畳まれた状態で開くので、生涯日記が「全部畳まれている」ように見える(仕様どおりだが人間には不便)。実装=autoWarpToTodayOnStart()=今日の日付を持つ日記膜を探し jumpToWorkingTocItem(=H-TOCと同じ「開いて最後にいた行へ復元」)。★手動Ⓣとの違い=**今日の日記が無ければ何もしない**(通知も出さない=起動時に驚かせない)＋**1回きり**(以後の編集では走らない)＋巨大日記のfold provider準備待ち(v2.0.50計測=1st-fold 2.7秒)で最大6回×1.2秒だけ再試行。設定 `laiMembrane.warpToTodayOnStart`(既定true)で無効化可。→ [[project_lifelong_diary_template]]
 // - v4.0.42(俊克 8/7 pm00:17「ファイル毎に初期化されるのは使い難い」): ★Format設定(ハイライト3プリセット/太字色/上付下付の色/見出し色)に**ユーザー既定**の層を追加。真因=保存先がノートのmMETAだけで、**mMETAを持たないファイルには null を送っていた**ので、VS Codeを開き直した直後にそういうファイルを開くと組込み既定(赤/黄)に戻って見えた(セッション中は前のファイルの設定が残るので今まで気づきにくかった)。→ saveFmt時に globalState(meosFmtUserDefault)へも保存し、ノートに記録が無ければそれを渡す。**優先順=ノートのmMETA ＞ ユーザー既定(globalState) ＞ 組込み既定**。mMETAはそのノート固有の記録(他人に渡しても色がtravelする)、globalStateは自分の好み、という住み分け。→ [[reference_meos_notation_v4]]
 // - v4.0.41(俊克 8/7 pm00:08「150%/50%はデフォルトだよ。100%との差を表していることを学習させる意味」): v4.0.40の既定変更(下付き50→100)を**撤回**。150/50は意図的な既定で、**数字そのものが「100%からどれだけ離れているか」を教える**装置(=MeOSの記法哲学と同じ・見た目でなく関係を数字で示す)。→ package.jsonの既定を50に戻し、コード側フォールバック3箇所も宣言(150/50)に一致させる。説明文の「(default)」表記だけは実値に合わせて修正(以前は上付き/下付きとも「100%=midway (default)」と書いてあり宣言値と食い違っていた)。※v4.0.39のプレビュー描き忘れ修正はそのまま有効。→ [[reference_meos_notation_v4]]
@@ -18414,22 +18415,40 @@ function meosApplyFuncDecorations(editor) {
 // → **Ⓣ(Today)を自動で1回押す**=今日の日記膜へワープして開く(jumpToWorkingTocItem=H-TOCと同じ「開いて最後にいた行へ」)。
 // 今日の日記が無ければ**何もしない**(手動Ⓣと違い通知も出さない=起動時に驚かせない)。設定 laiMembrane.warpToTodayOnStart で無効化可。
 let _autoTodayDone = false;
-function autoWarpToTodayOnStart(attempt) {
-  if (_autoTodayDone) return;
+function autoWarpToTodayOnStart(attempt, manual) {
+  if (_autoTodayDone && !manual) return;
   try {
-    if (!vscode.workspace.getConfiguration('laiMembrane').get('warpToTodayOnStart', true)) { _autoTodayDone = true; return; }
-    const ed = vscode.window.activeTextEditor;
-    // 巨大日記はfold providerの準備に数秒かかる(v2.0.50計測=1st-fold 2.7秒)ので、開くまでは数回だけ待つ。
-    if (!ed || !ed.document) { if ((attempt || 0) < 6) setTimeout(() => autoWarpToTodayOnStart((attempt || 0) + 1), 1200); return; }
+    if (!manual && !vscode.workspace.getConfiguration('laiMembrane').get('warpToTodayOnStart', true)) { _autoTodayDone = true; return; }
+    // v4.0.44(俊克 バグ1「2秒待つと言ったのに自動でⓉが実行されない」): ★真因候補=**activeTextEditorがundefined**。
+    // 起動直後にMe Dock(webview)がアクティブだと activeTextEditor は undefined になる(webviewはテキストエディタではない)。
+    // → Me Dockの対象エディタ・可視エディタも見る。さらに再試行を10回×1.5秒(=最長17秒)に伸ばす。
+    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor || (vscode.window.visibleTextEditors || [])[0];
+    if (!ed || !ed.document) {
+      meosDbg('autoWarpToday: no editor (attempt ' + (attempt || 0) + ')');
+      if ((attempt || 0) < 10) setTimeout(() => autoWarpToTodayOnStart((attempt || 0) + 1, manual), 1500);
+      else if (manual) vscode.window.setStatusBarMessage('MeOS: エディタが見つかりません', 3000);
+      return;
+    }
     const n = new Date(), ty = n.getFullYear(), tmo = n.getMonth() + 1, td = n.getDate();
-    let hit = null;
-    for (const o of collectAllOpenMembranes(ed.document)) {
+    let hit = null, opens = [];
+    try { opens = collectAllOpenMembranes(ed.document) || []; } catch (e) { meosDbg('autoWarpToday: collect failed ' + e); }
+    for (const o of opens) {
       const dt = parseDiaryDateFromName(o.id);
       if (dt && dt.y === ty && dt.mo === tmo && dt.d === td) { if (!hit || o.start < hit.start) hit = o; }
     }
-    _autoTodayDone = true; // 見つからなくても1回きり(以後の編集で走らせない)
-    if (hit) jumpToWorkingTocItem(hit.id);
-  } catch (_) { _autoTodayDone = true; }
+    meosDbg('autoWarpToday: doc=' + ed.document.uri.fsPath + ' opens=' + opens.length + ' today=' + ty + '/' + tmo + '/' + td + ' hit=' + (hit ? hit.id : 'none'));
+    if (!hit) {
+      // 膜がまだ拾えない(起動直後の解析途中)なら数回だけ待つ。それでも無ければ静かに終了。
+      if (!opens.length && (attempt || 0) < 10) { setTimeout(() => autoWarpToTodayOnStart((attempt || 0) + 1, manual), 1500); return; }
+      _autoTodayDone = true;
+      if (manual) vscode.window.setStatusBarMessage('MeOS: 今日(' + tmo + '/' + td + ')の日記が見つかりません', 3000);
+      return;
+    }
+    _autoTodayDone = true;
+    setMeDockTargetEditor(ed); // 対象エディタを確定させてからジャンプ(手動Ⓣと同じ状態にする)
+    jumpToWorkingTocItem(hit.id);
+    if (manual) vscode.window.setStatusBarMessage('MeOS: 今日の日記へ移動しました', 2000);
+  } catch (e) { _autoTodayDone = true; meosDbg('autoWarpToday: error ' + e); }
 }
 function activate(context) {
   extensionContext = context;
@@ -18979,6 +18998,8 @@ makeDecorations();
     vscode.commands.registerCommand('laiMembrane.foldCurrent', foldCurrent),
     vscode.commands.registerCommand('laiMembrane.unfoldCurrent', unfoldCurrent)
   ];
+  const warpTodayCommand = vscode.commands.registerCommand('laiMembrane.warpToTodayNow', () => autoWarpToTodayOnStart(0, true)); // v4.0.44: 自動Ⓣを手で叩いて切り分ける
+  context.subscriptions.push(warpTodayCommand);
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
