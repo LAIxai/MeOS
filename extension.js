@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.52(俊克 8/7 pm07:50「従来の箇条書きが生データモードでも戻らない。なぜ?」): ★真因=**Rawで消す装飾の一覧(clearForRaw)に bulletGlyphDecoration を入れ忘れ**。生データは1文字も変えていない(装飾のみ)が、Rawモードで `•` が残ると人間には「生データが書き変わった」ようにしか見えない=**理念の違反に見える**。→ Rawで消す。★教訓=**新しい装飾を足したら clearForRaw にも足す**(Raw=MeOS休眠の約束。装飾を追加する時の必須チェック項目)。→ [[project_now_not_bulk]]
 // - v4.0.51(俊克 8/7 pm07:11 改良2/「ボタンが戻らない」): ①**箇条書きの種類(1.)を選んでも面が追従しない**=`.fmt-blt` ハンドラで `__renderFmtRing` を呼び忘れていた(エディタをクリックすると mode メッセージで描き直されるので変わって見えた=v4.0.29の下線と**同じ呼び忘れ**・3度目so次からは「▾で値を変えたら面も描く」を型にする)。②**□見出しも□箇条書きも外せてしまう**と面が空・押しても何も起きないボタンになる(俊克「ボタンが戻らない」)→**最後の1つは外せない**ガード(太字/斜体の▾が昔から同じ規則)。→ [[project_v4_next_wave]]
 // - v4.0.50(俊克 8/7 pm06:38 バグ1「Me Dockが文字列になっちゃったよ」・v4.0.47〜49の全滅): ★真因=**webviewテンプレートリテラル内の裸のbacktick**。v4.0.47で書いたコメント「`-` `*` `+` は描画結果が同じ」の**backtick 6個**がテンプレートリテラルを途中で終わらせ、以降のHTML/JSが式として評価されてMe Dockが文字列として表示された(画面に NaN が出ていたのは `-` `*` `+` が演算子として評価された証拠)。修正=コメントから backtick を除去(ハイフン/アスタリスク/プラスと書く)。★**なぜ検査を素通りしたか**=node --check も check_webview も「syntaxとして通るか」しか見ておらず、**途中で終わっても残りが偶然valid JSになりうる**から(まさに今回)。→ check_webview.js に**別の目**を追加=「Me Dockの HTML テンプレート領域に裸の ` が1つでもあれば即NG」。わざと壊して検知することも確認済み。★教訓=**同じ検査を厚くしても同じ穴は塞がらない。壊れ方から逆算した別の検査を足す**(v2.0.31の全壊も同種so2度目)。→ [[feedback_minimal_change_verify_webview]]
 // - v4.0.49(俊克 8/7 pm02:46「無いからこそ、やりましょう」): ★**素の箇条書きを `•` で描く**(Markdown救済計画の見せ場)。エディタでMarkdownの箇条書きが箇条書きらしく見えるものは**存在しない**(中黒になるのはプレビューだけ)ので、書いた瞬間から `- 項目` が `• 項目` に見えるのはMeOSだけの絵になる。実装=`-`/`*`/`+` の**1文字だけ**を隠して before で `•` を出す(等幅so桁が動かない・後ろの空白と本文は無傷)。★生データは1文字も変えない・カーソル行は素の `- ` に戻る(編集できる)・散文限定・コードフェンス外・膜行でない。誤爆しない形=「マーカー+空白+本文」の並びだけを見るので `---`(区切り線)や `*イタリック*` は当たらない。入れ子でも記号は変えない(俊克「子や孫は要らない。そこまで必要な人は普通いない」)・番号付きは元から正しく見えるので触らない。※ぶら下げインデント(折り返し行を本文位置に揃える)だけはエディタの領分so不可。headless 15/15 PASS。→ [[project_v4_next_wave]]
@@ -8050,6 +8051,7 @@ function clearForRaw(editor) {
   if (headingSizeByLevel) for (const d of headingSizeByLevel.values()) z(d);
   if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
   z(headingMarkerDecoration);
+  z(bulletGlyphDecoration); // v4.0.52(俊克「生データモードでも戻らない。なぜ?」): ★Rawで消す装飾の一覧に入れ忘れ。生データは変えていない(装飾のみ)が、Rawで `•` が残ると「データが書き変わった」ようにしか見えない。
   z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
   z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); z(refFrontPlainGutterDecoration); z(refSatPlainGutterDecoration); z(refSatDocGutterDecoration); z(refSatPendGutterDecoration); // v0.9.99972/99981/99993/99994: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
   // bookmark は残す(IMEに無害・ナビ有用)
