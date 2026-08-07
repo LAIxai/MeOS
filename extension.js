@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.45(俊克 8/7 pm01:40 「今回は1秒以内に開いた。なぜ前回は駄目だったのか?」への備え): ①ログに**どの経路でエディタを掴んだか**(via=meDockTarget/activeTextEditor/visibleTextEditors[0])と attempt を出す=次に同じ疑問が出たら一発で分かる。②**時間切れで永久に諦めない**: 起動時の再試行(最長17秒)を使い切っても、その後**最初にテキストエディタがアクティブになった時に1回だけ**試す(_autoTodayDoneで二重実行しない)。★v4.0.43が失敗した理由の推定=当時は activeTextEditor だけを見ており、起動直後にMe Dock(webview)がアクティブだと undefined so 全リトライが空振り→約9秒で永久に諦めていた。v4.0.44で他2経路を足したら初回で成功(ログ 13:41:19 = 起動+約3秒)。→ [[project_lifelong_diary_template]]
 // - v4.0.44(俊克 8/7 pm01:30 バグ1「2秒待つと言ったのに自動でⓉが実行されない」): ★真因の第一候補=**activeTextEditorがundefined**。起動直後にMe Dock(webview)がアクティブだと `vscode.window.activeTextEditor` は undefined になる(webviewはテキストエディタではない)ので、v4.0.43は毎回そこで空振りしていた可能性が高い。→ **getMeDockTargetEditor() → activeTextEditor → visibleTextEditors[0]** の順に探す＋再試行を6回×1.2秒→**10回×1.5秒(最長17秒)**＋膜がまだ0件なら解析途中と見なして待つ。★切り分け用に**パレットコマンド `MeOS: Warp to Today (Ⓣ)`** を追加(手で叩けばジャンプ自体の可否が分かる)＋各段階を meosDbg(MeOS Debug出力チャンネル)に記録し、手動実行時はステータスバーに結果を出す。※検出ロジック自体は実日記(Kt_19580126S08JST.md)に対してheadlessで検証済み=今日の膜 `✴️8/07F 2026 …` を正しく見つける(=論理は正しく、実行に到達していなかった)。→ [[project_lifelong_diary_template]]
 // - v4.0.43(俊克 8/7 pm00:36「バージョンアップするとノート全体が畳まれた状態で表示される。Ⓣを自動で押せないか」): ★起動時に**Ⓣ(Today)を自動で1回押す**。理由=起動直後は mSTAT の⊖に従って膜が畳まれた状態で開くので、生涯日記が「全部畳まれている」ように見える(仕様どおりだが人間には不便)。実装=autoWarpToTodayOnStart()=今日の日付を持つ日記膜を探し jumpToWorkingTocItem(=H-TOCと同じ「開いて最後にいた行へ復元」)。★手動Ⓣとの違い=**今日の日記が無ければ何もしない**(通知も出さない=起動時に驚かせない)＋**1回きり**(以後の編集では走らない)＋巨大日記のfold provider準備待ち(v2.0.50計測=1st-fold 2.7秒)で最大6回×1.2秒だけ再試行。設定 `laiMembrane.warpToTodayOnStart`(既定true)で無効化可。→ [[project_lifelong_diary_template]]
 // - v4.0.42(俊克 8/7 pm00:17「ファイル毎に初期化されるのは使い難い」): ★Format設定(ハイライト3プリセット/太字色/上付下付の色/見出し色)に**ユーザー既定**の層を追加。真因=保存先がノートのmMETAだけで、**mMETAを持たないファイルには null を送っていた**ので、VS Codeを開き直した直後にそういうファイルを開くと組込み既定(赤/黄)に戻って見えた(セッション中は前のファイルの設定が残るので今まで気づきにくかった)。→ saveFmt時に globalState(meosFmtUserDefault)へも保存し、ノートに記録が無ければそれを渡す。**優先順=ノートのmMETA ＞ ユーザー既定(globalState) ＞ 組込み既定**。mMETAはそのノート固有の記録(他人に渡しても色がtravelする)、globalStateは自分の好み、という住み分け。→ [[reference_meos_notation_v4]]
@@ -18422,7 +18423,9 @@ function autoWarpToTodayOnStart(attempt, manual) {
     // v4.0.44(俊克 バグ1「2秒待つと言ったのに自動でⓉが実行されない」): ★真因候補=**activeTextEditorがundefined**。
     // 起動直後にMe Dock(webview)がアクティブだと activeTextEditor は undefined になる(webviewはテキストエディタではない)。
     // → Me Dockの対象エディタ・可視エディタも見る。さらに再試行を10回×1.5秒(=最長17秒)に伸ばす。
-    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor || (vscode.window.visibleTextEditors || [])[0];
+    const _srcDock = getMeDockTargetEditor(), _srcActive = vscode.window.activeTextEditor, _srcVis = (vscode.window.visibleTextEditors || [])[0];
+    const ed = _srcDock || _srcActive || _srcVis;
+    const _src = _srcDock ? 'meDockTarget' : (_srcActive ? 'activeTextEditor' : (_srcVis ? 'visibleTextEditors[0]' : 'none'));
     if (!ed || !ed.document) {
       meosDbg('autoWarpToday: no editor (attempt ' + (attempt || 0) + ')');
       if ((attempt || 0) < 10) setTimeout(() => autoWarpToTodayOnStart((attempt || 0) + 1, manual), 1500);
@@ -18436,7 +18439,7 @@ function autoWarpToTodayOnStart(attempt, manual) {
       const dt = parseDiaryDateFromName(o.id);
       if (dt && dt.y === ty && dt.mo === tmo && dt.d === td) { if (!hit || o.start < hit.start) hit = o; }
     }
-    meosDbg('autoWarpToday: doc=' + ed.document.uri.fsPath + ' opens=' + opens.length + ' today=' + ty + '/' + tmo + '/' + td + ' hit=' + (hit ? hit.id : 'none'));
+    meosDbg('autoWarpToday: via=' + _src + ' attempt=' + (attempt || 0) + ' doc=' + ed.document.uri.fsPath + ' opens=' + opens.length + ' today=' + ty + '/' + tmo + '/' + td + ' hit=' + (hit ? hit.id : 'none'));
     if (!hit) {
       // 膜がまだ拾えない(起動直後の解析途中)なら数回だけ待つ。それでも無ければ静かに終了。
       if (!opens.length && (attempt || 0) < 10) { setTimeout(() => autoWarpToTodayOnStart((attempt || 0) + 1, manual), 1500); return; }
@@ -19004,7 +19007,7 @@ makeDecorations();
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録
-    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
+    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); if (e && !_autoTodayDone) setTimeout(() => autoWarpToTodayOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => autoWarpToTodayOnStart(0), 2200); // v4.0.43: 起動して落ち着いた頃にⓉを自動で1回
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、
   // 再インストール/ウィンドウリロードの度に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張側の単一参照
