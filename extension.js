@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.53(俊克 8/7 pm08:24「Me記法として膜で表わすべき」): ★**箇条書きのMe記法**を新設。`-{ 項目 }`(表示 `• 項目`) / `-1{ 項目 }`(表示 `N. 項目`・**番号は生データに書かず自動採番**so途中に挿入しても腐らない) / 見出しと合成する時は `##-{ }##` `##-1{ }##`(#の直後にマーカー=「`-`が箇条書き・`-1`が番号付き」の1規則で全部読める。俊克と相談して `##1{` から変更)。★**素のMarkdown `- 項目` は救済対象として別に残る**=見た目は同じ・カーソルを入れれば違いが分かる・🚫で外すのは書いた人の自由(ハイライトの `==hl==` と `=={ }==` と同じ2系統併存)。実装=①記法定数(MEOS_ME_ITEM_RE他)②描画(マーカーと閉じ}を隠しbeforeで `•`/`N.`・連番は**全行で数える**=画面外を飛ばすと番号がずれる・項目でない行が来たらリセット)③見出し正規表現に `(-1|-)?` を許可(下流のグループindexを+1・足切りに `#-` を追加=`##-{`は`#{`を含まないので今まで弾かれていた)④ボタン挿入(見出しOFF→膜・ON→合成・**既に箇条書きだった行に見出しを掛けても箇条書きのまま**)⑤Enterの継続はMe記法のまま(空で終える)⑥🚫は Me記法も素の記法も外せる。★素の `1.` の救済は**やらない**(俊克「単なる数字か番号付き箇条書きか判定不能・指示記号に数字はいただけない」=`==`が開閉で範囲を刻むのに対し`1.`は閉じない前置きで文脈頼み)。headless 15/15＋15/15＋16/16 PASS。→ [[project_v4_next_wave]]
 // - v4.0.52(俊克 8/7 pm07:50「従来の箇条書きが生データモードでも戻らない。なぜ?」): ★真因=**Rawで消す装飾の一覧(clearForRaw)に bulletGlyphDecoration を入れ忘れ**。生データは1文字も変えていない(装飾のみ)が、Rawモードで `•` が残ると人間には「生データが書き変わった」ようにしか見えない=**理念の違反に見える**。→ Rawで消す。★教訓=**新しい装飾を足したら clearForRaw にも足す**(Raw=MeOS休眠の約束。装飾を追加する時の必須チェック項目)。→ [[project_now_not_bulk]]
 // - v4.0.51(俊克 8/7 pm07:11 改良2/「ボタンが戻らない」): ①**箇条書きの種類(1.)を選んでも面が追従しない**=`.fmt-blt` ハンドラで `__renderFmtRing` を呼び忘れていた(エディタをクリックすると mode メッセージで描き直されるので変わって見えた=v4.0.29の下線と**同じ呼び忘れ**・3度目so次からは「▾で値を変えたら面も描く」を型にする)。②**□見出しも□箇条書きも外せてしまう**と面が空・押しても何も起きないボタンになる(俊克「ボタンが戻らない」)→**最後の1つは外せない**ガード(太字/斜体の▾が昔から同じ規則)。→ [[project_v4_next_wave]]
 // - v4.0.50(俊克 8/7 pm06:38 バグ1「Me Dockが文字列になっちゃったよ」・v4.0.47〜49の全滅): ★真因=**webviewテンプレートリテラル内の裸のbacktick**。v4.0.47で書いたコメント「`-` `*` `+` は描画結果が同じ」の**backtick 6個**がテンプレートリテラルを途中で終わらせ、以降のHTML/JSが式として評価されてMe Dockが文字列として表示された(画面に NaN が出ていたのは `-` `*` `+` が演算子として評価された証拠)。修正=コメントから backtick を除去(ハイフン/アスタリスク/プラスと書く)。★**なぜ検査を素通りしたか**=node --check も check_webview も「syntaxとして通るか」しか見ておらず、**途中で終わっても残りが偶然valid JSになりうる**から(まさに今回)。→ check_webview.js に**別の目**を追加=「Me Dockの HTML テンプレート領域に裸の ` が1つでもあれば即NG」。わざと壊して検知することも確認済み。★教訓=**同じ検査を厚くしても同じ穴は塞がらない。壊れ方から逆算した別の検査を足す**(v2.0.31の全壊も同種so2度目)。→ [[feedback_minimal_change_verify_webview]]
@@ -2569,6 +2570,7 @@ let headingSizeByLevel = null;   // Map<1|2|3, 装飾型(font-size+bold)>
 let headingColorByKey = null;    // Map<'red'|...|, 装飾型(文字色)>
 let headingMarkerDecoration;     // # と (色//コメント) を隠す
 let bulletGlyphDecoration;       // v4.0.49(俊克): 素の箇条書きの `-` を隠して `•` を出す(生データは変えない)
+let meItemHideDecoration, meItemLabelDecoration; // v4.0.53(俊克): Me記法の箇条書き膜 -{ }/-1{ } のマーカーを隠す/• N. を描く
 const HEADING_DEFAULT_COLOR = { 1: 'red', 2: 'green', 3: 'blue' };
 const HEADING_SIZE = { 1: '1.3em', 2: '1.2em', 3: '1.1em' };
 // 見出し文字色(不透明寄り)。ハイライト背景より濃いめにして文字として読める。
@@ -3074,6 +3076,10 @@ function disposeDecorations() {
   headingMarkerDecoration = undefined;
   if (bulletGlyphDecoration) bulletGlyphDecoration.dispose();
   bulletGlyphDecoration = undefined;
+  if (meItemHideDecoration) meItemHideDecoration.dispose();
+  meItemHideDecoration = undefined;
+  if (meItemLabelDecoration) meItemLabelDecoration.dispose();
+  meItemLabelDecoration = undefined;
   openLineHideDecoration = undefined;
   openLineLabelDecoration = undefined;
   encHideDecoration = undefined;
@@ -3548,6 +3554,12 @@ function makeDecorations() {
   // エディタでMarkdownの箇条書きが「箇条書きらしく」見えるものは存在しない(プレビューでしか中黒にならない)ので、
   // ここがMarkdown救済計画の見せ場になる。★生データは1文字も変えない=装飾のみ・カーソル行は素の `- ` に戻る。
   // 幅は等幅フォントで `-` も `•` も1セルso桁が揃う(隠した分を before で埋め直す形)。
+  // v4.0.53: Me記法の箇条書き膜。マーカーは隠し、ラベル(• / N.)は幅0の範囲にbeforeで描く(参照符と同じ2枚方式)。
+  meItemHideDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  meItemLabelDecoration = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   bulletGlyphDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; opacity: 0; font-size: 0px;',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -5812,6 +5824,8 @@ function applyPrettyLabels(editor) {
   for (const key of Object.keys(HEADING_TEXT_COLORS)) headingColorItemsByKey[key] = [];
   const headingMarkerRanges = [];
   const bulletGlyphRanges = []; // v4.0.49: 素の箇条書きマーカー `-` の位置(隠して • を出す)
+  const meItemHideRanges = [];  // v4.0.53: Me記法の箇条書き膜 -{ } / -1{ } のマーカー範囲(隠す)
+  const meItemLabelItems = [];  // v4.0.53: その位置に描く • / N.(番号は自動)
 
   const pairs = collectPairs(editor.document, { excludeIndex: false });
   const byStart = new Map(pairs.map(p => [p.start, p]));
@@ -5848,6 +5862,7 @@ function applyPrettyLabels(editor) {
   // (画面外で開いたフェンスが可視行に効く)ので _plVis の足切りより前で、先頭文字のcharCodeで安く弾いてから測る。
   const _proseDoc = meosIsProseDoc(editor.document);
   let _inFence = false, _fenceAt = -1;
+  let _numRun = 0; const _numOf = new Map(); // v4.0.53: 番号付き項目の連番(行→N)
   for (let line = 0; line < editor.document.lineCount; line++) {
     const text = editor.document.lineAt(line).text;
     // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
@@ -5900,6 +5915,15 @@ function applyPrettyLabels(editor) {
     }
     if (mlBracedAllowed && text.indexOf('~~{') >= 0 && (text.split('~~{').length - 1) > (text.split('}~~').length - 1)) hasMlBracedStrike = true;
     if (mlBracedAllowed && text.indexOf('=={') >= 0 && (text.split('=={').length - 1) > (text.split('}==').length - 1)) hasMlBracedHighlight = true;
+    // v4.0.53(俊克): 番号付き項目(-1{ } / ##-1{ }##)の**連番を全行で数える**(画面外を飛ばすと番号がずれる)。
+    // 連続していない行(項目でない行)が来たらリセット=Markdownのリストと同じ感覚。安く済ませるため先頭文字で足切り。
+    if (_proseDoc) {
+      const _c = text.charCodeAt(0);
+      if (_c === 45 || _c === 35 || _c === 32 || _c === 9) {
+        if (MEOS_NUM_ITEM_RE.test(text)) { _numRun++; _numOf.set(line, _numRun); }
+        else if (!MEOS_ANY_ITEM_RE.test(text)) _numRun = 0;
+      } else if (text.trim()) _numRun = 0;
+    }
     if (!_plVis(line)) continue; // v3.1.3(俊克 計測): 画面外は重い装飾計算をスキップ(採番/ML検出は上で全行実施済)
     // v0.9.876/884: ★コメント包み記法。装飾を /* … */ ブロックコメントで包むと、コードからは ただの
     // コメント、MeOS上では装飾された文字だけが見える。2方式を両立:
@@ -6085,21 +6109,22 @@ function applyPrettyLabels(editor) {
     //   v0.9.699: 色/コメントを (文字色/背景色)//コメント に統一(ハイライト/取消線と同記法)。
     //     例 ##[見出し(青/黄)//旧題はABC]##  ##[題(/紺)]##(暗背景は白文字auto)  ##[題(紫)]##(文字紫)
     //   #{1,3}[ と ]#{1,3}(と末尾の(色/色)//コメント) は隠す。行頭のみ(空白可)。カーソル行は生データ表示。
-    if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && (dtext.indexOf('#[') >= 0 || dtext.indexOf('#{') >= 0)) { // v4.0.10(俊克): 見出し ##[ or ##{ の核だけで足切り(旧 indexOf('[') より狭い=速い+新形{}対応)
+    if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && (dtext.indexOf('#[') >= 0 || dtext.indexOf('#{') >= 0 || dtext.indexOf('#-') >= 0)) { // v4.0.10(俊克): 見出し ##[ or ##{ の核だけで足切り(旧 indexOf('[') より狭い=速い+新形{}対応)
       // 行頭(空白可) #{1,3} [ 中身 ] #{1,3}(\2で開き#数と一致)。中身は ] / 改行を含まない。
       // v0.9.876: 任意の /* … */ 殻に対応(コメント包み見出し /* ##[本文(色)//tip]## */)。
-      const reHeadSq = /^(\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?)(\/\*\s*)?(#{1,3})\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/; // v4.0.47: 行頭の箇条書き接頭辞(- / 1.)を許す
-      const reHeadCu = /^(\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?)(\/\*\s*)?(#{1,3})\{((?:[^}\n]|\{(?:[^}\n]|\{[^}\n]*\})*\})*)\}\3(\s*\*\/)?/; // v4.0.47: 行頭の箇条書き接頭辞を許す(mH[1]に含めるのでoffsetは不変) // v4.0.10(俊克): 新形 ##{ }## も描画(mH[3]=#数/mH[4]=中身/mH[5]=殻閉じ は両形で同一so下流不変)
+      const reHeadSq = /^(\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?)(\/\*\s*)?(#{1,3})(-1|-)?\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/; // v4.0.47: 行頭の箇条書き接頭辞(- / 1.)を許す
+      const reHeadCu = /^(\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?)(\/\*\s*)?(#{1,3})(-1|-)?\{((?:[^}\n]|\{(?:[^}\n]|\{[^}\n]*\})*\})*)\}\3(\s*\*\/)?/; // v4.0.53(俊克): #の直後に箇条書きマーカー(- / -1)を許す=##-{ }## / ##-1{ }## // v4.0.47: 行頭の箇条書き接頭辞を許す(mH[1]に含めるのでoffsetは不変) // v4.0.10(俊克): 新形 ##{ }## も描画(mH[3]=#数/mH[4]=中身/mH[5]=殻閉じ は両形で同一so下流不変)
       const mH = reHeadSq.exec(dtext) || reHeadCu.exec(dtext);
       if (mH) {
         const shellOpen = mH[2] || '';              // 任意の "/* " 殻
         const level = mH[3].length;                 // 1|2|3
         const hashLen = level;
+        const bulletMk = mH[4] || '';               // v4.0.53: '' / '-' / '-1'(箇条書きマーカー)
         const openStart = mH[1].length;             // 行頭インデント直後(=殻 or 最初の # の位置)
-        const innerStart = openStart + shellOpen.length + hashLen + 1; // (/*) #{1,3}[ の直後 = 本文開始
-        const inner = mH[4];                        // [ と ] の間
+        const innerStart = openStart + shellOpen.length + hashLen + bulletMk.length + 1; // (/*) #{1,3}(-1|-)?[ の直後 = 本文開始
+        const inner = mH[5];                        // [ と ] の間
         const closeStart = innerStart + inner.length; // ] の位置
-        const closeEnd = closeStart + 1 + hashLen + (mH[5] ? mH[5].length : 0); // ]#{1,3}(␣*/) の終端
+        const closeEnd = closeStart + 1 + hashLen + (mH[6] ? mH[6].length : 0); // ]#{1,3}(␣*/) の終端
         // v0.9.699: 中身末尾の (文字色/背景色) と //コメント を分離(統一記法)。1色のみ=文字色。
         // v0.9.700: 見出しは本文中にインライン(=={…}==/~~{…}~~)を持てるので、その中の //・() を
         // 見出し自身のものと誤認しないよう maskInlineTokens でマスクした版で位置検出する。
@@ -6110,8 +6135,10 @@ function applyPrettyLabels(editor) {
         const headComment = sp.comment;
         // auto-contrast: 暗い背景色 + 文字色未指定 → レベル規定色でなく白文字にして可読化
         if (bgKey && !sp.fgKey && DARK_BG_KEYS.has(bgKey)) colorKey = 'white';
-        // 前の #{1,3}[ を隠す
+        // 前の #{1,3}(-1|-)?[ を隠す
         headingMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+        // v4.0.53(俊克): 見出し+箇条書き。マーカーを隠した位置に `• ` / `N. ` を描く(番号は生データに書かず自動採番)。
+        if (bulletMk) meItemLabelItems.push({ range: new vscode.Range(line, openStart, line, openStart), renderOptions: { before: { contentText: (bulletMk === '-1' ? ((_numOf.get(line) || 1) + '. ') : '• '), color: new vscode.ThemeColor('editor.foreground') } } });
         if (bodyEnd > innerStart) {
           const r = new vscode.Range(line, innerStart, line, bodyEnd);
           // サイズ装飾・背景色は本文全体に適用
@@ -6167,12 +6194,24 @@ function applyPrettyLabels(editor) {
         (headingColorItemsByKey[HEADING_DEFAULT_COLOR[level]] || []).push({ range: rP });
       }
     }
+    // v4.0.53(俊克): Me記法の箇条書き膜 -{ 項目 } / -1{ 項目 }。マーカーと閉じ } を隠し、先頭に • / N. を描く。
+    if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && dtext.indexOf('-') >= 0) {
+      const mI = MEOS_ME_ITEM_RE.exec(dtext);
+      if (mI) {
+        const ind = mI[1].length, isNum = !!mI[2], open = ind + (isNum ? 3 : 2), close = dtext.lastIndexOf('}');
+        if (close > open) {
+          meItemHideRanges.push(new vscode.Range(line, ind, line, open));
+          meItemHideRanges.push(new vscode.Range(line, close, line, dtext.length));
+          meItemLabelItems.push({ range: new vscode.Range(line, ind, line, ind), renderOptions: { before: { contentText: isNum ? ((_numOf.get(line) || 1) + '. ') : '• ', color: new vscode.ThemeColor('editor.foreground') } } });
+        }
+      }
+    }
     // v4.0.49(俊克): 素の箇条書き `- 項目` の marker を隠して `•` を出す(Markdown救済計画=書いた瞬間から箇条書きに見える)。
     //   ・`- ` `* ` `+ ` の1文字だけが対象(後ろの空白と本文はそのまま=桁が動かない)
     //   ・`---`(区切り線)や `*強調*` は「マーカー+空白+本文」の形でないので当たらない
     //   ・入れ子で記号は変えない(俊克「子や孫は要らない」)・番号付きは元から正しく見えるので触らない
     if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text)) {
-      const mB = /^([ \t]*)([-*+])[ \t]+(?=\S)/.exec(dtext);
+      const mB = /^([ \t]*)([-*+])[ \t]+(?=\S)/.exec(dtext); // ※Me記法 -{ は `-` の直後が `{` so当たらない
       if (mB) bulletGlyphRanges.push(new vscode.Range(line, mB[1].length, line, mB[1].length + 1));
     }
     const open = parseOpenLine(text);
@@ -6510,6 +6549,8 @@ function applyPrettyLabels(editor) {
     setDecoCached(editor, headingMarkerDecoration, 'hMarker', headingMarkerRanges);
   }
   if (bulletGlyphDecoration) setDecoCached(editor, bulletGlyphDecoration, 'bullet', bulletGlyphRanges); // v4.0.49
+  if (meItemHideDecoration) setDecoCached(editor, meItemHideDecoration, 'meItemHide', meItemHideRanges); // v4.0.53
+  if (meItemLabelDecoration) setDecoCached(editor, meItemLabelDecoration, 'meItemLabel', meItemLabelItems);
 }
 
 
@@ -8051,7 +8092,7 @@ function clearForRaw(editor) {
   if (headingSizeByLevel) for (const d of headingSizeByLevel.values()) z(d);
   if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
   z(headingMarkerDecoration);
-  z(bulletGlyphDecoration); // v4.0.52(俊克「生データモードでも戻らない。なぜ?」): ★Rawで消す装飾の一覧に入れ忘れ。生データは変えていない(装飾のみ)が、Rawで `•` が残ると「データが書き変わった」ようにしか見えない。
+  z(bulletGlyphDecoration); z(meItemHideDecoration); z(meItemLabelDecoration); // v4.0.52/53: 新しい装飾を足したらRawの消し忘れに注意 // v4.0.52(俊克「生データモードでも戻らない。なぜ?」): ★Rawで消す装飾の一覧に入れ忘れ。生データは変えていない(装飾のみ)が、Rawで `•` が残ると「データが書き変わった」ようにしか見えない。
   z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
   z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); z(refFrontPlainGutterDecoration); z(refSatPlainGutterDecoration); z(refSatDocGutterDecoration); z(refSatPendGutterDecoration); // v0.9.99972/99981/99993/99994: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
   // bookmark は残す(IMEに無害・ナビ有用)
@@ -12526,12 +12567,37 @@ async function insertBlankLineAfterMembraneRightEdgeIfNeeded(editor) {
 //   ・`- `(中身が空)の行で Enter → **マーカーを消して**リストを終える(定番の挙動)
 //   ・散文(.md/.txt)限定・選択中や複数カーソルでは何もしない(既定のEnterに任せる)
 const MEOS_LIST_ITEM_RE = /^(\s*)([-*+]|\d+[.)])([ \t]+)(.*)$/;
+// v4.0.53(俊克「Me記法として、膜として表わすべき」): ★箇条書きのMe記法。
+//   -{ 項目 }    = 箇条書き(表示 `• 項目`)
+//   -1{ 項目 }   = 番号付き(表示 `N. 項目`。**番号は生データに書かない**=自動採番so途中に挿入しても腐らない)
+//   ##-{ }## / ##-1{ }##  = 見出しと合成(デカ文字の箇条書き)
+// ★素のMarkdown `- 項目` は救済対象として別に残る(見た目は同じ・カーソルを入れれば違いが分かる・🚫で外せる)。
+const MEOS_ME_ITEM_RE = /^([ \t]*)-(1)?\{([\s\S]*)\}[ \t]*$/;
+const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)/;   // 連番の対象(Me記法の番号付き項目・見出し合成も)
+const MEOS_ANY_ITEM_RE = /^[ \t]*(?:-1?\{|#{1,3}-1?\{)/; // 項目の並び(間に挟まると連番は途切れない)
 async function meosContinueListOnEnter(editor) {
   try {
     if (!meosIsProseDoc(editor.document)) return false;
     if (!editor.selection.isEmpty || editor.selections.length !== 1) return false;
     const pos = editor.selection.active;
     const text = editor.document.lineAt(pos.line).text;
+    // v4.0.53: Me記法の箇条書き膜 -{ } / -1{ } は、Me記法のまま続ける(カーソルは新しい膜の中で待つ)。
+    const mMe = MEOS_ME_ITEM_RE.exec(text);
+    if (mMe) {
+      const ind = mMe[1] || '', num = mMe[2] ? '-1' : '-', inner = mMe[3] || '';
+      if (!inner.trim()) { // 空項目 → 行を空にしてリストを終える
+        const r = new vscode.Range(pos.line, 0, pos.line, text.length);
+        await editor.edit(eb => eb.replace(r, ind));
+        const p2 = new vscode.Position(pos.line, ind.length);
+        editor.selection = new vscode.Selection(p2, p2);
+        return true;
+      }
+      const head = '\n' + ind + num + '{';
+      await editor.edit(eb => eb.insert(new vscode.Position(pos.line, text.length), head + '}'));
+      const p3 = new vscode.Position(pos.line + 1, (ind + num + '{').length);
+      editor.selection = new vscode.Selection(p3, p3);
+      return true;
+    }
     const m = MEOS_LIST_ITEM_RE.exec(text);
     if (!m) return false;
     const indent = m[1], marker = m[2], gap = m[3], body = m[4];
@@ -13183,26 +13249,32 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const lineText = doc.lineAt(ln).text;
     // v4.0.47(俊克「見出しに箇条書きを組み込む」): 行頭の箇条書き接頭辞は**見出しの外**に置く(= `- ##{ }##` デカ文字の箇条書き)。
     // 既に `- ` で始まる行なら、その接頭辞を温存して中身だけを見出しにする。□箇条書きがONなら無ければ付ける。
-    const _bm = /^(\s*)((?:[-*+]|\d+[.)])[ \t]+)?([\s\S]*)$/.exec(lineText) || [null, '', '', lineText];
+    // v4.0.53(俊克): 箇条書きは**Me記法の膜**で書く。`-{ }`/`-1{ }`、見出しと合成する時は `##-{ }##`/`##-1{ }##`。
+    //   ボタンが作るのはMe記法(番号を生データに書かない)。素の `- 項目` は救済対象として別に残る(書いた人の自由)。
+    const _bm = /^([ \t]*)((?:[-*+]|\d+[.)])[ \t]+|-1?\{)?([\s\S]*?)\}?[ \t]*$/.exec(lineText) || [null, '', '', lineText];
     const _indent = _bm[1] || '';
-    let _bullet = _bm[2] || '';
+    const _pre = _bm[2] || '';   // 既にあった箇条書き(素の `- ` `1. ` / Me記法 `-{` `-1{`)
     const _rest = _bm[3] || '';
-    if (opt && opt.bullet && !_bullet) _bullet = (opt.blt || '-') + ' ';
+    let _mk = (opt && opt.bullet) ? ((opt.blt === '1.') ? '-1' : '-') : ''; // 箇条書きマーカー
+    // v4.0.53(俊克): 既に箇条書きだった行に見出しを掛けたら、**箇条書きのままデカ文字にする**(勝手に箇条書きを捨てない)。
+    // 素の `- ` も Me記法 `-{` も、見出しと合成する時は #の直後のマーカー(##-{ / ##-1{)に一本化される。
+    if (!_mk && _pre) _mk = (/^(?:\d+[.)]|-1\{)/.test(_pre)) ? '-1' : '-';
     const body = (selText && selText.indexOf('\n') < 0) ? selText : (_rest.trim() || (opt && opt.head === false ? '' : 'Heading'));
-    // □見出しがOFF = 見出しにせず素の箇条書き行にする(行の中身はそのまま)。
+    // □見出しがOFF = 見出しにせず**箇条書きの膜**にする。
     if (opt && opt.head === false) {
-      const plain = _indent + _bullet + body;
+      const open = _indent + (_mk || '-') + '{';
+      const plain = open + body + '}';
       await editor.edit(eb => eb.replace(doc.lineAt(ln).range, plain));
-      const pb = new vscode.Position(ln, (_indent + _bullet).length + body.length);
+      const pb = new vscode.Position(ln, open.length + body.length);
       editor.selection = new vscode.Selection(pb, pb);
       await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection });
       return;
     }
     const visibleBody = body + ' ' + stamp; // 本文 + 可視タイムスタンプ
     const hashes = '#'.repeat(Math.max(1, Math.min(3, Number(level) || 2))); // v0.9.99936: ↻でH1/H2/H3を選んで挿入
-    const newText = _indent + _bullet + cOpen + hashes + '{' + visibleBody + hspec + '}' + hashes + cClose; // v4.0.47: 箇条書き接頭辞は見出しの外 // v4.0.46(俊克): 本文の左右padding空白を廃止(従来のMarkdown見出しと違い Me記法は空白を要求しない) // v0.9.99963: 見出し本文の左右にも半角スペースpadding / v4.0.10(俊克): 新形 ##{ }## で書く(他兄弟と統一)
+    const newText = _indent + cOpen + hashes + _mk + '{' + visibleBody + hspec + '}' + hashes + cClose; // v4.0.53: 箇条書きマーカーは #の直後(##-{ }## / ##-1{ }##) // v4.0.47: 箇条書き接頭辞は見出しの外 // v4.0.46(俊克): 本文の左右padding空白を廃止(従来のMarkdown見出しと違い Me記法は空白を要求しない) // v0.9.99963: 見出し本文の左右にも半角スペースpadding / v4.0.10(俊克): 新形 ##{ }## で書く(他兄弟と統一)
     await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
-    const b = (_indent + _bullet).length + cOpen.length + hashes.length + 1; // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
+    const b = _indent.length + cOpen.length + hashes.length + _mk.length + 1; // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
   } else {
     let prefix, close, defBody;
@@ -13245,14 +13317,17 @@ function formatSpanAtCursor(editor, kind) {
       if (mp) return { kind, range: new vscode.Range(line, 0, line, text.length), body: mp[2] };
       // v4.0.48(俊克): **従来記法の箇条書き**も選択なしで🚫解除(箇条書きは見出しボタンの管轄になったので、同じボタンで外せる)。
       // `- 項目` / `1. 項目` の行にカーソルがあれば、マーカーだけ落として本文を残す(インデントは温存)。散文限定=YAMLやコードの `-` を壊さない。
+      // v4.0.53: Me記法の箇条書き膜 -{ } / -1{ } も解除(本文だけ残す)。
+      const mMe = MEOS_ME_ITEM_RE.exec(text);
+      if (mMe) return { kind, range: new vscode.Range(line, 0, line, text.length), body: (mMe[1] || '') + String(mMe[3] || '').trim() };
       const mb = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+([\s\S]*)$/.exec(text);
       if (mb) return { kind, range: new vscode.Range(line, 0, line, text.length), body: mb[1] + mb[2] };
       return null;
     }
     const hs = m[0].indexOf('#'); if (hs < 0) return null;
-    const bm = /(#{1,3})([\[{])/.exec(m[0]); if (!bm) return null; // v4.0.10: 開き括弧は#直後の [ か { (本文中の[]と誤認しない)
+    const bm = /(#{1,3})(?:-1|-)?([\[{])/.exec(m[0]); if (!bm) return null; // v4.0.10: 開き括弧は#直後の [ か { (本文中の[]と誤認しない)
     const close = bm[2] === '{' ? '}' : ']';
-    const openBr = bm.index + bm[1].length, closeBr = m[0].lastIndexOf(close);
+    const openBr = bm.index + bm[0].length - 1, closeBr = m[0].lastIndexOf(close); // v4.0.53: 箇条書きマーカー(-/-1)の分も飛ばす=開き括弧の位置
     if (openBr < 0 || closeBr <= openBr) return null;
     const inner = m[0].slice(openBr + 1, closeBr);
     const body = String(parseColorSpec(inner, 'fg', inner).bodyText || inner).trim();
@@ -14114,7 +14189,7 @@ function navMeHeadingJump(direction) {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document) return false;
   const doc = editor.document;
-  const reHead = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // v4.0.47: 箇条書き接頭辞つきの見出しも数える // mirror MeOS heading; not plain `## text`
+  const reHead = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:-1|-)?(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // v4.0.47: 箇条書き接頭辞つきの見出しも数える // mirror MeOS heading; not plain `## text`
   let lo = 0, hi = doc.lineCount - 1;
   let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
   if (pair) { lo = pair.start; hi = pair.end; } // v0.9.776: stay inside the current membrane
@@ -14155,7 +14230,7 @@ function navMeHeadingJumpTo(n) {
   const editor = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
   if (!editor || !editor.document) return false;
   const doc = editor.document;
-  const reHead = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // v4.0.47: 箇条書き接頭辞つきの見出しも数える
+  const reHead = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:-1|-)?(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // v4.0.47: 箇条書き接頭辞つきの見出しも数える
   let lo = 0, hi = doc.lineCount - 1, pair = null; try { pair = findCurrentPair(editor); } catch (_) {}
   if (pair) { lo = pair.start; hi = pair.end; }
   const heads = [];
@@ -14209,7 +14284,7 @@ function targetColorKeys(text) {
 function headNavStateForEditor(editor) {
   if (!editor || !editor.document) return { count: 0, plusWraps: false, minusWraps: false };
   const doc = editor.document;
-  const reHead = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // v4.0.47: 箇条書き接頭辞つきの見出しも数える
+  const reHead = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:-1|-)?(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // v4.0.47: 箇条書き接頭辞つきの見出しも数える
   let lo = 0, hi = doc.lineCount - 1, pair = null;
   try { pair = findCurrentPair(editor); } catch (_) {}
   if (pair) { lo = pair.start; hi = pair.end; }
@@ -14234,7 +14309,7 @@ function headNavStateForEditor(editor) {
 // tip(💬)空欄でも拾う(書き忘れの取りこぼし無し)。1行に複数あっても行単位で1ストップ。
 const MARK_NAV_RE = /=={[^\n]*?}==|(?<![=!<>~])==(?!\{)[^=\n]+?(?<![!<>])==(?!=)|~~\{[^\n]*?\}~~|~~(?!\{)[^~\n]+?~~/;
 // v0.9.889: 見出し(##[…]##・コメント包み /* ##[…]## */ 両対応)も //tip= があれば 💬 の対象に含める(俊克 6/16)。
-const MARK_HEADING_RE = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:\/\*\s*)?(#{1,3})(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{(?:[^}\n]|\{[^}\n]*\})*\})*\})\1/; // v4.0.10(俊克): 見出しは新形 ##{ }## と旧形 ##[ ]## の両方を読む(統一・後方互換) / v4.0.14: 波括弧の入れ子を2階層許容(見出し内の太字+斜体 **{ _{ }_ }** が {{}}=2階層so)
+const MARK_HEADING_RE = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:\/\*\s*)?(#{1,3})(?:-1|-)?(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{(?:[^}\n]|\{[^}\n]*\})*\})*\})\1/; // v4.0.10(俊克): 見出しは新形 ##{ }## と旧形 ##[ ]## の両方を読む(統一・後方互換) / v4.0.14: 波括弧の入れ子を2階層許容(見出し内の太字+斜体 **{ _{ }_ }** が {{}}=2階層so)
 // v0.9.890: 本物のレビュー注釈は必ず「色指定の直後」 (色)//tip= の形。行内のどこかに //tip= があるだけでは
 // 拾わない(本文中の言及・grep 文字列・URL等を除外)。色閉じ ) の直後の //tip= だけを注釈とみなす。
 // v0.9.891: ★チェックボックス導入。//[]tip= は未対応。[…] に「何か書き込んであれば対応済み」(俊克 6/16 am02:38)=
@@ -16287,7 +16362,7 @@ function toggleMeDock(editorOverride) {
         const htext = ed.document.lineAt(hline).text || '';
         const hm = htext.match(MARK_HEADING_RE);
         if (hm) { // 既存見出しの再レベル=外側#だけ差替(inner=本文+TSは温存)。v0.9.999142: 色スペックは差し替える(俊克: 別プリセット適用で色が付かない)。
-          const bm = /(#{1,3})([\[{])/.exec(hm[0]); const _cl = (bm && bm[2] === '{') ? '}' : ']'; // v4.0.10: 旧[]/新{}の両方から中身を取り
+          const bm = /(#{1,3})(?:-1|-)?([\[{])/.exec(hm[0]); const _cl = (bm && bm[2] === '{') ? '}' : ']'; // v4.0.10: 旧[]/新{}の両方から中身を取り
           const hsx = hm[0].indexOf('#'), ob = bm ? bm.index + bm[1].length : hm[0].indexOf('['), cb = hm[0].lastIndexOf(_cl);
           let inner = hm[0].slice(ob + 1, cb);
           if (message.fg || (typeof message.bg === 'string')) {
