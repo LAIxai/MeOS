@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.58(俊克 8/8 am01:02 バグ1/改良1): ①**バグ1=箇条書きに色指定が無い**→箇条書きにも後置きコメントで色/tipを書き(`- 項目<!-- (白/紫)//[]tip= -->`)、ラベル(•/N.)は文字色に従い本文に文字色/背景色を掛ける。②**改良1「表が整形しても崩れる」の真因=コードスパンの中まで装飾していた**。記法を `\`==本文==<!-- (色) -->\`` のように引用すると、MeOSがそれを本物として描き**仕様コメントまで隠す**ので、**見えている幅と生データの幅が食い違い**表の整形が崩れていた。→ 検出の前に**コードスパンを空白化**(meosMaskCodeSpans・長さは保つのでrangeは不変)。適用先=ハイライト/取消線(dtext)・太字/斜体(tScan)・MeTeX・リンク。Markdownの約束どおり**バッククォートの中は文字そのもの**に。★この記法を説明する文書(README/Zenn/記法まとめ)を自分の日記で書けるようになった=**ドッグフーディングの前提**が整った。headless 21/21＋18/18＋15/15＋12/12 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.57(俊克 8/8 am00:35 改良1/バグ1): ①**改良1=`•` と `N.` で本文の開始位置が1桁ずれる**→ラベルを3桁に揃える(`•␣␣` / `N.␣`)=箇条書きと番号付きの左端が一致。②**バグ1=太字/斜体だけ旧形のまま(空白も残る)**→**記法の大転換 第3弾**=散文では `**本文**<!-- (白/青)//[]tip= -->` / `_本文_<!-- … -->` / `***本文***<!-- … -->` で書く。MeOS外では**本物の太字/斜体**。`{ }` が消えるので**空白も一緒に消える**(俊克「しかも空白が残っている」の答え)。読む側=素の `**` `_` `***` の直後にある仕様コメントを色/tipとして使い、コメントは隠す(共通ヘルパ meosSpecCommentAfter)。🚫も後置きコメントごと落とす。コード系(js等)や非散文は従来の正式膜のまま(素の `**` が効かない/コードを壊さない)。旧形は read-both。headless 19/19＋18/18＋15/15＋12/12 PASS。★これで **見出し/箇条書き/ハイライト/取消線/太字/斜体** が全て「Markdown＋後置きコメント」に統一(リンクは俊克👍so現状維持・上付き下付きは元からこの形)。→ [[reference_meos_notation_v4]]
 // - v4.0.56(俊克 8/8 am00:13 改良1/2): ①**改良1=箇条書きの間が空き過ぎ**→`- `(マーカー+空白)を**丸ごと隠す**(ラベル `• ` が区切りの空白を持っているので、生の空白まで見せると二重になっていた)。②**改良2=記法の大転換の第2弾(インライン)**=ハイライト/取消線を**素のMarkdown＋後置きコメント**へ。`==本文==<!-- (白/黄)//[]tip= -->` / `~~本文~~<!-- (赤/)//[]tip= -->`。MeOS外では**本物のハイライト/取消線**として生きる。実装=共通ヘルパ `meosSpecCommentAfter`(素の記法の**直後**にあるコメントだけを見るので文中の普通のコメントを巻き込まない)＋描画(色/tip適用・コメントを隠す)＋挿入＋↻の再適用＋🚫(コメントごと落とす)。**コード系(js等)は従来の分割形のまま**(実コードを壊さない)。旧形 `=={ }==` `~~{ }~~` は read-both。★俊克が👍と言ったリンクの形(`<!-- =={ -->[t](u)<!-- (色)(N)}== -->`)は**そのまま維持**(既にMeOS外で本物のリンクとして生きているので触らない)。headless 13/13(新規t_inline)＋18/18＋15/15＋12/12 PASS。📌残=太字/斜体の新形化。→ [[reference_meos_notation_v4]]
 // - v4.0.55(俊克 8/7 pm09:49「今までの記法は、mdに限らずあらゆるファイル形式に対応するためだった」): ★**戻さず、ファイルの種類で書き分ける**。散文(.md/.txt)=新形 `## 本文<!-- (色)//tip -->`(MeOS外でも本物のH2) / それ以外(js/py/sh…)=旧形 `##{ 本文 (色) }##`(block-comment言語なら `/* */` の殻付き)=コードを壊さない。MeOSは元から `MEOS_BLOCK_COMMENT_LANGS` でハイライト/取消線を書き分けており、見出しもその流儀に戻すだけ。読む側は両形とも読めるので**戻す作業は不要**。⚠️v4.0.54でコード側の書き出しから殻を落としていた退行をこの版で回復。★俊克の整理=「基本は**膜をあらゆるファイル形式でも実現できること**。それさえできれば細かいことはそれぞれで対応すればいい」。headless 18/18 PASS(js=`/* ##{ }## */` / python=`##{ }##` も検証)。→ [[reference_meos_notation_v4]]
@@ -5999,6 +6000,7 @@ function applyPrettyLabels(editor) {
       MEOS_MELINK_RE.lastIndex = 0; let _mk;
       while ((_mk = MEOS_MELINK_RE.exec(dtext)) !== null) { const _s = _mk.index, _e = _s + _mk[0].length; dtext = dtext.slice(0, _s) + ' '.repeat(_e - _s) + dtext.slice(_e); }
     }
+    if (line !== docCursorLine && dtext.indexOf('`') >= 0) dtext = meosMaskCodeSpans(dtext); // v4.0.58: コードスパンの中は装飾しない
     const jfHideRanges = jumpFlagRangesInText(line, text);
     // v0.9.656/657: ハイライト ==text(色)== を検出（膜行・本文行どちらでも効く）。
     // 同一行に複数可。`==`マーカーは隠す。内側末尾に (色) があればその色の背景にし、
@@ -6248,7 +6250,17 @@ function applyPrettyLabels(editor) {
           // v4.0.56(俊克 改良1): マーカーだけ隠して生の空白を残すと、ラベル `• ` の空白と二重になって間が空く。
           bulletHandledLines.add(line);
           meItemHideRanges.push(new vscode.Range(line, indent, line, indent + bulletLen));
-          meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: numbered ? ((_numOf.get(line) || 1) + '. ') : '•  ' /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: new vscode.ThemeColor('editor.foreground') } } });
+          // v4.0.58(俊克 バグ1): 箇条書きにも色を効かせる。ラベル(•/N.)は文字色に従い、本文には文字色/背景色を掛ける。
+          const _bfg = (sp && sp.fgKey && HIGHLIGHT_FG_COLORS[sp.fgKey]) ? HIGHLIGHT_FG_COLORS[sp.fgKey] : null;
+          meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: numbered ? ((_numOf.get(line) || 1) + '. ') : '•  ' /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: _bfg || new vscode.ThemeColor('editor.foreground') } } });
+          if (!hashes && sp && (sp.fgKey || sp.bgKey || sp.comment) && bodyEndP > bodyStart) { // 見出し無しの箇条書き=本文に色/tipを掛ける(見出しありは上の分岐が担当)
+            const rB = new vscode.Range(line, bodyStart, line, bodyEndP);
+            let fk = sp.fgKey; if (sp.bgKey && !fk) fk = DARK_BG_KEYS.has(sp.bgKey) ? 'white' : 'black';
+            const itB = { range: rB };
+            if (sp.comment) { const md = new vscode.MarkdownString('💬 ' + sp.comment); md.isTrusted = false; itB.hoverMessage = md; }
+            if (fk && highlightFgRangesByColor[fk]) highlightFgRangesByColor[fk].push(itB);
+            if (sp.bgKey && highlightBodyRangesByColor[sp.bgKey]) highlightBodyRangesByColor[sp.bgKey].push({ range: rB });
+          }
         }
       }
     }
@@ -12634,6 +12646,17 @@ const MEOS_ME_ITEM_RE = /^([ \t]*)-(1)?\{([\s\S]*)\}[ \t]*$/;
 // v4.0.56(俊克「Markdown＋後置きコメントで統一」・第2弾=インライン): 素の記法の**直後**にある仕様コメントを読む。
 //   `==本文==<!-- (白/黄)//[]tip=説明 -->` / `~~本文~~<!-- (赤/)//tip -->` / `**本文**<!-- (色) -->`
 // 直後(空白を挟まない)だけを見るので、文中の普通のコメントを巻き込まない。返り値={spec, end}(endは行内のコメント終端)。
+// v4.0.58(俊克「表が整形しても崩れる」): ★真因=**コードスパン `…` の中まで装飾していた**。
+// 記法を引用するとMeOSがそれを本物として描き(==本文==がハイライトになる等)、仕様コメントまで隠すので
+// **見えている幅と生データの幅が食い違い**、表の整形が崩れる。→ 検出の前にコードスパンを空白化する(長さは保つのでrangeは不変)。
+// Markdownの約束どおり、バッククォートの中は「文字そのもの」as-is。
+function meosMaskCodeSpans(t) {
+  const str = String(t == null ? '' : t);
+  if (str.indexOf('`') < 0) return str;
+  let out = str, m; const re = /(`+)([^\n]*?)\1/g;
+  while ((m = re.exec(str)) !== null) { const a = m.index, b = a + m[0].length; out = out.slice(0, a) + ' '.repeat(b - a) + out.slice(b); }
+  return out;
+}
 function meosSpecCommentAfter(text, e) {
   const m = /^<!--\s*([^\n]*?)\s*-->/.exec(String(text).slice(e));
   if (!m) return null;
@@ -13333,8 +13356,10 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     // □見出しがOFF = 見出しにせず**箇条書きの膜**にする。
     if (opt && opt.head === false) {
       // v4.0.54: 素のMarkdownの箇条書きで書く(番号付きだけ「自動採番せよ」をコメントで足す)。
+      // v4.0.58(俊克 バグ1「箇条書きの色指定が抜けている」): 箇条書きにも色/tipを後置きコメントで付ける。
       const open = _indent + '- ';
-      const plain = open + body + ((_mk === '-1') ? '<!-- -1 -->' : '');
+      const _numTag = (_mk === '-1') ? '-1 ' : '';
+      const plain = open + body + '<!-- ' + _numTag + hspec + ' -->';
       await editor.edit(eb => eb.replace(doc.lineAt(ln).range, plain));
       const pb = new vscode.Position(ln, open.length + body.length);
       editor.selection = new vscode.Selection(pb, pb);
@@ -18173,7 +18198,7 @@ let meTexHideDeco = null; // 上/下付き本体の型は meTexTypeCache(scale�
 // 行内の <!-- ... --> コメント範囲 [start,end) を集める(この中の ↑↓ は MeTeX 対象外=計算膜/結合膜マーカーを守る)。
 function meosMeTexCommentSpans(text) { const spans = []; const re = /<!--[\s\S]*?-->/g; let m; while ((m = re.exec(text))) spans.push([m.index, m.index + m[0].length]); return spans; }
 // 1行を走査して MeTeX トークンを返す。各トークン: {arrow, kind:'sup'|'sub', hides:[[s,e],...], opStart, opEnd}
-function meosMeTexTokens(text) {
+function meosMeTexTokens(text) { text = (String(text).indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text; /* v4.0.58: コードスパンの中は上付き/下付きにしない */
   if (!text || (text.indexOf('↑') < 0 && text.indexOf('↓') < 0)) return [];
   const spans = meosMeTexCommentSpans(text);
   const inComment = (i) => spans.some(([s, e]) => i >= s && i < e);
@@ -18417,7 +18442,7 @@ function meosApplyMeLinkDecorations(editor) {
       const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
-        const text = doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; // v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
+        let text = doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
         let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
           const label = m[1] || '', s = m.index, e = m.index + m[0].length;
@@ -18509,29 +18534,30 @@ function meosApplyBoldDecorations(editor) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
         if (text.indexOf('*') < 0 && (_prose ? text.indexOf('_') < 0 : text.indexOf('_{') < 0)) continue;
+        const tScan = (text.indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text; // v4.0.58: コードスパンの中は装飾しない
         _lnLinks = linkSpansOf(text); // v4.0.31: リンクの中の太字は縁取り(text-decoration運び屋)を止めて下線を残す // v4.0.20: 散文は素の斜体 _text_ も拾うので足切りを `_` 全般に(コードは従来どおり `_{` だけ=速い)
         let m;
         // 正式膜(色/tip): **{ 本文(白/黄)//tip }** = 太字 / __{ 本文(色)//tip }__ = 斜体。入れ子は各scanが独立に効くので太字×斜体が両立。
         const reBF = /\*\*\{([^\n]*?)\}\*\*/g; reBF.lastIndex = 0;
-        while ((m = reBF.exec(text))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); }
+        while ((m = reBF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); }
         const reIF = /__\{([^\n]*?)\}__/g; reIF.lastIndex = 0;
-        while ((m = reIF.exec(text))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
+        while ((m = reIF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.16(俊克): 単一下線の斜体膜 _{ 本文(色)//tip }_(新形)。(?<!_)/(?!_) で二重 __{ }__ の内側に誤マッチしない。__{ ではない `x_{sub}` 等はLaTeXに閉じ`_`が無いので無反応。
         const reIF1 = /(?<!_)_\{([^\n]*?)\}_(?!_)/g; reIF1.lastIndex = 0;
-        while ((m = reIF1.exec(text))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
+        while ((m = reIF1.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.57(俊克): 素の記法の直後に仕様コメントがあれば色/tipとして使い、コメントは隠す(新形)。
         //   `**本文**<!-- (白/青)//[]tip= -->` — MeOS外では本物の太字。旧 `**{ }**` は read-both。
         const _spec = (e0) => { const sc = meosSpecCommentAfter(text, e0); if (!sc) return null; const cs = parseColorSpec(sc.raw, 'fg', sc.raw); return { sc, cs }; };
         // 従来記法(同一行内): ***太字斜体*** / **太字**(**{ ではない時)
         const reBI = /\*\*\*([^*\n]+?)\*\*\*/g; reBI.lastIndex = 0;
-        while ((m = reBI.exec(text))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while ((m = reBI.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         const reB = /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g; reB.lastIndex = 0; // ***の一部でない・**{でもない 純粋な **太字**
-        while ((m = reB.exec(text))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while ((m = reB.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
         const reI1p = _prose ? /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g : null; if (reI1p) reI1p.lastIndex = 0;
-        while (reI1p && (m = reI1p.exec(text))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
