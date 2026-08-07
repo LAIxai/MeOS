@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.41(俊克 8/7 pm00:08「150%/50%はデフォルトだよ。100%との差を表していることを学習させる意味」): v4.0.40の既定変更(下付き50→100)を**撤回**。150/50は意図的な既定で、**数字そのものが「100%からどれだけ離れているか」を教える**装置(=MeOSの記法哲学と同じ・見た目でなく関係を数字で示す)。→ package.jsonの既定を50に戻し、コード側フォールバック3箇所も宣言(150/50)に一致させる。説明文の「(default)」表記だけは実値に合わせて修正(以前は上付き/下付きとも「100%=midway (default)」と書いてあり宣言値と食い違っていた)。※v4.0.39のプレビュー描き忘れ修正はそのまま有効。→ [[reference_meos_notation_v4]]
 // - v4.0.40(俊克 8/7 pm00:02「最初にインストールした時に、ちゃんと上付き/下付きの無地色で出るなら、それでいい」): ★調べたら**下付きの既定が50%=まったく下がらない**設定だった(vertical-align 0em)。式は「50%=底が基準線(最も浅い)/150%=1文字ぶん下」so50は下限。しかもpackage.jsonの説明文は「100%=midway (default)」と書いてあり**宣言している既定値(50)と食い違っていた**。→ **metexSubScaleの既定を100(midway)に**(下付きが -0.33em 下がる=ちゃんと下付きに見える)＋説明文の(default)表記を実際に合わせる(上付き150/下付き100)＋コード側フォールバックも3箇所揃える。⚠️既存ユーザーで metexSubScale を明示していない人は、下付きが今より0.33em下がる(=今まで下がっていなかったのが直る)。色は付けない=本人の自由([[project_relation_over_appearance]]の趣旨どおり既定は無地)。→ [[reference_meos_notation_v4]]
 // - v4.0.39(俊克 8/7 am11:54 改良1「A2の表示に色が付かないのは不自然」): ★真因=**描き忘れ**。共有パネルは開くたびHTMLを組み立て直すのでプレビューの span が毎回**新しい要素**になり、上付き化(font-size/vertical-align)と色を塗る `mtxPrev()` が一度も走っていなかった(=平らな素の「A2」に見えた)。色の既定(mtxFg=null)の話ではない=俊克の設定は緑で入っていた。→ renderFmtPop の innerHTML 差し替え直後に metex なら mtxPrev() を呼ぶ。★教訓=**動的に組み立てるパネルでは「値を描く処理」も毎回呼ぶ**(v4.0.38の入力欄の参照と同じ罠の別の顔)。→ [[reference_meos_notation_v4]]
 // - v4.0.38(俊克 8/7 am11:15「上付きの▾パネルを他と同じにしよう」): 上付/下付(MeTeX)の▾を**専用パネル(#metex-pop)から共有パネル(#fmt-pop)へ移設**=他の兄弟と同じ形(上段に設定・下段に色スロット・スロットを押した時だけグリッドが開く)。実装=①fmtSpecに`metex`を追加(getter/setterで実体は従来の mtxFg/mtxBg so既存コードは無傷)②fmtCurSpecはmetexなら常にfmtSpec.metex(リング/スロットの概念が無い)③renderFmtPopにmetexの上段(Super%/Sub%の2行)④▾は openFmtPop(metex) を開く⑤**入力欄は開くたび作り直されるので参照は都度取得＋イベントは共有パネルへ委譲**(キャッシュした要素を掴むと無反応になる)⑥%の現在値は mtxSupVal/mtxSubVal に保持(パネルが閉じていてもボタン面を正しい%で描ける)⑦metexのfgだけ「なし」(=本文の色を継ぐ)を足す(他の兄弟は文字色必須so無い)⑧旧#metex-popのHTMLを撤去(残ったハンドラは要素が無く無害)。→ [[reference_meos_notation_v4]]
@@ -14691,7 +14692,7 @@ function meDockHtml() {
   const initial = meDockModeForEditor(vscode.window.activeTextEditor);
   const _mtxCfg = vscode.workspace.getConfiguration('laiMembrane'); // v3.6.1: MeTeX %メニューの初期値を設定から(保存値の反映)
   const mtxSup = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSuperScale', 150)) || 150));
-  const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 100)) || 100)); // v4.0.40(俊克): 既定50は「下がらない下付き」so100(midway)へ
+  const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 50)) || 50));
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
@@ -17954,7 +17955,7 @@ function meosMeTexBaseTall(base) { const b = String(base || ''); if (/[a-z]/.tes
 async function insertMetexScript(editor, sub, fg, bg) {
   if (!editor) return;
   const doc = editor.document, sel = editor.selection;
-  const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = sub ? 100 : 150; // v4.0.40: 下付きの既定は100(midway)
+  const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = sub ? 50 : 150;
   const pct = Math.max(30, Math.min(200, Number(cfg.get(sub ? 'metexSubScale' : 'metexSuperScale', dflt)) || dflt));
   const arrow = sub ? '↓' : '↑', exp = sub ? '3' : '2';
   const empty = sel.isEmpty, base = empty ? 'A' : doc.getText(sel);
@@ -17990,7 +17991,7 @@ function meosApplyMeTexDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
-    let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 150) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 100) | 0)); /* v4.0.40: 設定が無い時のフォールバックもpackage.jsonの既定(150/100)に揃える */ } catch (_) {}
+    let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 150) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 50) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
     const doc = editor.document; const hideRanges = [], styleRanges = new Map(); // style → ranges[]
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
