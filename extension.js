@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.46(俊克 8/7 pm00:57「ハイライト・見出しで空白が前後に入るのがウザい」): 挿入する記法から**本文の左右padding空白を廃止**。`=={ 本文 (色)//tip }==` → `=={本文(色)//tip}==` / `##{ 本文 … }##` → `##{本文 …}##`。v0.9.99963では「背景色が連続する真の左右padding」として入れていたが、**本文に空白が混ざる方が邪魔**(装飾は見た目・本文は本文)＋俊克「従来のMarkdown見出しと違い Me記法は空白を要求しない」。変更=insertFormatTemplate(見出し/ハイライト/取消線)＋buildInlineFmt(↻の再適用)＋見出し挿入後のカーソル位置(+2→+1)。★取消線も同じコードパスなので一緒に外した(==だけ外すと兄弟で食い違う)。既存の空白入りデータは**そのまま読める**(検出regexは空白非依存・過去は一括変換しない[[project_now_not_bulk]])。headless 7/7 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.45(俊克 8/7 pm01:40 「今回は1秒以内に開いた。なぜ前回は駄目だったのか?」への備え): ①ログに**どの経路でエディタを掴んだか**(via=meDockTarget/activeTextEditor/visibleTextEditors[0])と attempt を出す=次に同じ疑問が出たら一発で分かる。②**時間切れで永久に諦めない**: 起動時の再試行(最長17秒)を使い切っても、その後**最初にテキストエディタがアクティブになった時に1回だけ**試す(_autoTodayDoneで二重実行しない)。★v4.0.43が失敗した理由の推定=当時は activeTextEditor だけを見ており、起動直後にMe Dock(webview)がアクティブだと undefined so 全リトライが空振り→約9秒で永久に諦めていた。v4.0.44で他2経路を足したら初回で成功(ログ 13:41:19 = 起動+約3秒)。→ [[project_lifelong_diary_template]]
 // - v4.0.44(俊克 8/7 pm01:30 バグ1「2秒待つと言ったのに自動でⓉが実行されない」): ★真因の第一候補=**activeTextEditorがundefined**。起動直後にMe Dock(webview)がアクティブだと `vscode.window.activeTextEditor` は undefined になる(webviewはテキストエディタではない)ので、v4.0.43は毎回そこで空振りしていた可能性が高い。→ **getMeDockTargetEditor() → activeTextEditor → visibleTextEditors[0]** の順に探す＋再試行を6回×1.2秒→**10回×1.5秒(最長17秒)**＋膜がまだ0件なら解析途中と見なして待つ。★切り分け用に**パレットコマンド `MeOS: Warp to Today (Ⓣ)`** を追加(手で叩けばジャンプ自体の可否が分かる)＋各段階を meosDbg(MeOS Debug出力チャンネル)に記録し、手動実行時はステータスバーに結果を出す。※検出ロジック自体は実日記(Kt_19580126S08JST.md)に対してheadlessで検証済み=今日の膜 `✴️8/07F 2026 …` を正しく見つける(=論理は正しく、実行に到達していなかった)。→ [[project_lifelong_diary_template]]
 // - v4.0.43(俊克 8/7 pm00:36「バージョンアップするとノート全体が畳まれた状態で表示される。Ⓣを自動で押せないか」): ★起動時に**Ⓣ(Today)を自動で1回押す**。理由=起動直後は mSTAT の⊖に従って膜が畳まれた状態で開くので、生涯日記が「全部畳まれている」ように見える(仕様どおりだが人間には不便)。実装=autoWarpToTodayOnStart()=今日の日付を持つ日記膜を探し jumpToWorkingTocItem(=H-TOCと同じ「開いて最後にいた行へ復元」)。★手動Ⓣとの違い=**今日の日記が無ければ何もしない**(通知も出さない=起動時に驚かせない)＋**1回きり**(以後の編集では走らない)＋巨大日記のfold provider準備待ち(v2.0.50計測=1st-fold 2.7秒)で最大6回×1.2秒だけ再試行。設定 `laiMembrane.warpToTodayOnStart`(既定true)で無効化可。→ [[project_lifelong_diary_template]]
@@ -13121,9 +13122,9 @@ async function insertFormatTemplate(kind, editor, fg, bg, level) {
     const body = (selText && selText.indexOf('\n') < 0) ? selText : (lineText.trim() || 'Heading');
     const visibleBody = body + ' ' + stamp; // 本文 + 可視タイムスタンプ
     const hashes = '#'.repeat(Math.max(1, Math.min(3, Number(level) || 2))); // v0.9.99936: ↻でH1/H2/H3を選んで挿入
-    const newText = cOpen + hashes + '{ ' + visibleBody + ' ' + hspec + '}' + hashes + cClose; // v0.9.99963: 見出し本文の左右にも半角スペースpadding / v4.0.10(俊克): 新形 ##{ }## で書く(他兄弟と統一)
+    const newText = cOpen + hashes + '{' + visibleBody + hspec + '}' + hashes + cClose; // v4.0.46(俊克): 本文の左右padding空白を廃止(従来のMarkdown見出しと違い Me記法は空白を要求しない) // v0.9.99963: 見出し本文の左右にも半角スペースpadding / v4.0.10(俊克): 新形 ##{ }## で書く(他兄弟と統一)
     await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
-    const b = cOpen.length + hashes.length + 2; // #{1,3}[ + 左padding空白 の直後
+    const b = cOpen.length + hashes.length + 1; // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
   } else {
     let prefix, close, defBody;
@@ -13135,9 +13136,9 @@ async function insertFormatTemplate(kind, editor, fg, bg, level) {
     // v0.9.885: C系言語では「分割方式」で出力(本文=実コードのまま動く)。全体包みが欲しければ中の */ /* を消すだけ(俊克 6/15 pm08:50)。
     const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
     const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
-    // v0.9.99963: prose の ==/~~ は本文の左右に半角スペースを入れる(俊克 7/1 pm12:52)=背景色が連続する"真の"左右padding。
-    //   嫌なら手で消せる。code(split方式)は本文=実コードなのでpad無し。
-    const pad = wrap ? '' : ' ';
+    // v4.0.46(俊克 8/7「空白が前後に入るのがウザい」): 本文の左右padding空白を廃止。
+    //   v0.9.99963では「背景色が連続する"真の"左右padding」として入れていたが、本文に空白が混ざる方が邪魔(装飾は見た目・本文は本文)。
+    const pad = '';
     await editor.edit(eb => eb.replace(sel, openPart + pad + body + pad + tailPart));
     const b = startOff + openPart.length + pad.length;
     bodySel = new vscode.Selection(doc.positionAt(b), doc.positionAt(b + body.length));
@@ -13231,7 +13232,7 @@ function buildInlineFmt(doc, kind, body, fg, bg) {
   const spec = '(' + FG + '/' + BG + ')//[]tip=';
   const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
   const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
-  const pad = wrap ? '' : ' ';
+  const pad = ''; // v4.0.46(俊克): ↻での再適用もpadding空白なしに揃える
   return { full: openPart + pad + body + pad + tailPart, bodyOffset: openPart.length + pad.length, bodyLen: body.length };
 }
 // v4.0.0(俊克): 太字/斜体の🚫解除用。カーソル行で、正式膜(**{ }** / __{ }__ / 入れ子**{ __{ } }**)+従来記法(***/**/___/__)を外側から走査し、
