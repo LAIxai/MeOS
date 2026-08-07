@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.42(俊克 8/7 pm00:17「ファイル毎に初期化されるのは使い難い」): ★Format設定(ハイライト3プリセット/太字色/上付下付の色/見出し色)に**ユーザー既定**の層を追加。真因=保存先がノートのmMETAだけで、**mMETAを持たないファイルには null を送っていた**ので、VS Codeを開き直した直後にそういうファイルを開くと組込み既定(赤/黄)に戻って見えた(セッション中は前のファイルの設定が残るので今まで気づきにくかった)。→ saveFmt時に globalState(meosFmtUserDefault)へも保存し、ノートに記録が無ければそれを渡す。**優先順=ノートのmMETA ＞ ユーザー既定(globalState) ＞ 組込み既定**。mMETAはそのノート固有の記録(他人に渡しても色がtravelする)、globalStateは自分の好み、という住み分け。→ [[reference_meos_notation_v4]]
 // - v4.0.41(俊克 8/7 pm00:08「150%/50%はデフォルトだよ。100%との差を表していることを学習させる意味」): v4.0.40の既定変更(下付き50→100)を**撤回**。150/50は意図的な既定で、**数字そのものが「100%からどれだけ離れているか」を教える**装置(=MeOSの記法哲学と同じ・見た目でなく関係を数字で示す)。→ package.jsonの既定を50に戻し、コード側フォールバック3箇所も宣言(150/50)に一致させる。説明文の「(default)」表記だけは実値に合わせて修正(以前は上付き/下付きとも「100%=midway (default)」と書いてあり宣言値と食い違っていた)。※v4.0.39のプレビュー描き忘れ修正はそのまま有効。→ [[reference_meos_notation_v4]]
 // - v4.0.40(俊克 8/7 pm00:02「最初にインストールした時に、ちゃんと上付き/下付きの無地色で出るなら、それでいい」): ★調べたら**下付きの既定が50%=まったく下がらない**設定だった(vertical-align 0em)。式は「50%=底が基準線(最も浅い)/150%=1文字ぶん下」so50は下限。しかもpackage.jsonの説明文は「100%=midway (default)」と書いてあり**宣言している既定値(50)と食い違っていた**。→ **metexSubScaleの既定を100(midway)に**(下付きが -0.33em 下がる=ちゃんと下付きに見える)＋説明文の(default)表記を実際に合わせる(上付き150/下付き100)＋コード側フォールバックも3箇所揃える。⚠️既存ユーザーで metexSubScale を明示していない人は、下付きが今より0.33em下がる(=今まで下がっていなかったのが直る)。色は付けない=本人の自由([[project_relation_over_appearance]]の趣旨どおり既定は無地)。→ [[reference_meos_notation_v4]]
 // - v4.0.39(俊克 8/7 am11:54 改良1「A2の表示に色が付かないのは不自然」): ★真因=**描き忘れ**。共有パネルは開くたびHTMLを組み立て直すのでプレビューの span が毎回**新しい要素**になり、上付き化(font-size/vertical-align)と色を塗る `mtxPrev()` が一度も走っていなかった(=平らな素の「A2」に見えた)。色の既定(mtxFg=null)の話ではない=俊克の設定は緑で入っていた。→ renderFmtPop の innerHTML 差し替え直後に metex なら mtxPrev() を呼ぶ。★教訓=**動的に組み立てるパネルでは「値を描く処理」も毎回呼ぶ**(v4.0.38の入力欄の参照と同じ罠の別の顔)。→ [[reference_meos_notation_v4]]
@@ -7627,7 +7628,10 @@ function postFixedWorkingTocSnapshot() {
   if (!editor) return;
   try { meDockPanel.webview.postMessage({ type: 'fixedToc', toc: getWorkingTocSnapshot(editor) }); } catch (_) {}
   // v0.9.99938: Format色設定(mMETA随伴)をロード。初回はファイルから読み_fmtMemへ、以降は最新の_fmtMem優先(編集中の上書き事故防止)。
-  try { const uri = editor.document.uri.toString(); let fmt = _fmtMem.get(uri); if (!fmt) { const d = getHyperTocData(editor.document); if (d && d.fmt) { fmt = d.fmt; _fmtMem.set(uri, fmt); } } meDockPanel.webview.postMessage({ type: 'loadFmt', fmt: fmt || null }); } catch (_) {}
+  try { const uri = editor.document.uri.toString(); let fmt = _fmtMem.get(uri); if (!fmt) { const d = getHyperTocData(editor.document); if (d && d.fmt) { fmt = d.fmt; _fmtMem.set(uri, fmt); } } // v4.0.42(俊克): そのノートに記録が無ければ**ユーザー既定**(globalState)を渡す。以前はnullを渡していたので、VS Codeを開き直した直後に
+  // mMETAを持たないファイルを開くと組込み既定(赤/黄)に戻って見えた=「ファイル毎に初期化される」の正体。
+  if (!fmt) { try { fmt = extensionContext && extensionContext.globalState.get('meosFmtUserDefault'); } catch (_) {} }
+  meDockPanel.webview.postMessage({ type: 'loadFmt', fmt: fmt || null }); } catch (_) {}
   postBookmarkState(editor); // v0.9.715: 🔖 ボタン状態(個数/満杯)も同期
   // v0.9.976: GitHub ウィザード状態をMe Dockに送信
   try { postGithubWizardState('sync'); } catch (_) {}
@@ -16247,6 +16251,9 @@ function toggleMeDock(editorOverride) {
       if (ed && message.fmt) {
         const doc = ed.document;
         _fmtMem.set(doc.uri.toString(), message.fmt);
+        // v4.0.42(俊克「ファイル毎に初期化されるのは使い難い」): Format設定を**ユーザー既定**としてもglobalStateに保存。
+        // 住み分け=ノートのmMETA(そのノート固有・他人に渡しても色が travel する)＞globalState(自分の既定)＞組込み既定。
+        try { if (extensionContext) extensionContext.globalState.update('meosFmtUserDefault', message.fmt); } catch (_) {}
         clearTimeout(_fmtWriteTimer);
         _fmtWriteTimer = setTimeout(async () => {
           try { const data = getHyperTocData(doc); data.fmt = _fmtMem.get(doc.uri.toString()); await writeHyperTocToSource(doc, data); } catch (_) {}
