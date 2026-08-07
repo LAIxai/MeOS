@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.49(俊克 8/7 pm02:46「無いからこそ、やりましょう」): ★**素の箇条書きを `•` で描く**(Markdown救済計画の見せ場)。エディタでMarkdownの箇条書きが箇条書きらしく見えるものは**存在しない**(中黒になるのはプレビューだけ)ので、書いた瞬間から `- 項目` が `• 項目` に見えるのはMeOSだけの絵になる。実装=`-`/`*`/`+` の**1文字だけ**を隠して before で `•` を出す(等幅so桁が動かない・後ろの空白と本文は無傷)。★生データは1文字も変えない・カーソル行は素の `- ` に戻る(編集できる)・散文限定・コードフェンス外・膜行でない。誤爆しない形=「マーカー+空白+本文」の並びだけを見るので `---`(区切り線)や `*イタリック*` は当たらない。入れ子でも記号は変えない(俊克「子や孫は要らない。そこまで必要な人は普通いない」)・番号付きは元から正しく見えるので触らない。※ぶら下げインデント(折り返し行を本文位置に揃える)だけはエディタの領分so不可。headless 15/15 PASS。→ [[project_v4_next_wave]]
 // - v4.0.48(俊克 8/7 pm02:38「従来記法の箇条書きも選択なしで🚫で解除できるように」): 箇条書きは見出しボタンの管轄になったので、**素の `- 項目` / `1. 項目` の行にカーソルを置くだけで見出しボタンが🚫**になり、押すとマーカーだけ落として本文を残す(インデントは温存)。formatSpanAtCursor(heading)の第3の受け皿として追加(①正式膜 ##{ }## ②素の `## 見出し` ③素の箇条書き の順)。散文限定=YAMLやコードの `-` を壊さない。★`- ##{ }##`(デカ文字の箇条書き)は**外側の見出しから剥がれ**、もう一度押すと箇条書きも取れる=入れ子を外から順に脱がせる。headless 11/11 PASS。→ [[project_v4_next_wave]]
 // - v4.0.47(俊克 8/7 pm02:10「見出しに箇条書きを組み込む」): ★見出しボタンを **□見出し □箇条書き の2チェック**に(統一ボタンの□Bold□Italicと同じ「2チェックで軸を合成」に収束)。4通り=見出しのみ/`- ##{ }##`デカ文字の箇条書き/`- 項目`素の箇条書き/(両オフは作らない)。①見出しプリセット(3つ)に head/bullet/blt を追加(永続化は丸ごと保存so自動)②▾上段に□見出し□箇条書き＋箇条書きONの時だけ種類(`-`/`1.`。`- * +` は描画が同じso出さない=意味が変わるのは番号付きだけ)③**箇条書きは一発で自動オフ**(俊克案。1行出せば以後はEnterで継続するのでモードを居座らせない)＋見出しがOFFなら見出しをONに戻す(押しても何も起きないボタンを作らない)④見出し正規表現6本の行頭に箇条書き接頭辞 `(?:[-*+]|\d+[.)])[ \t]+` を許可=**MeOSの見出しは折り畳みと無関係な装飾ランドマークso行頭の`-`と合成できる**(従来の`#`見出しでは構造的に不可能)⑤挿入は接頭辞を見出しの外に置き、既に `- ` で始まる行はそれを温存。★**リストの自動継続もMeOSが持つ**: VSCodium/VS Codeの組込みMarkdownには onEnterRules が1つも無い(markdown-basics/language-configuration.json を確認)=自動継続はMarkdown All in One等の拡張の機能だった。MeOSは既にEnterを握っている(laiMembrane.enterAtCloseRightEdge)のでそこで面倒を見る=他拡張に依存せず箇条書きが完結。`- 項目`でEnter→同じマーカー継続(番号付きは+1)/空項目でEnter→マーカーを消してリストを終える/散文限定・選択中や複数カーソルでは既定に任せる。headless 16/16 PASS。→ [[project_v4_next_wave]]
 // - v4.0.46(俊克 8/7 pm00:57「ハイライト・見出しで空白が前後に入るのがウザい」): 挿入する記法から**本文の左右padding空白を廃止**。`=={ 本文 (色)//tip }==` → `=={本文(色)//tip}==` / `##{ 本文 … }##` → `##{本文 …}##`。v0.9.99963では「背景色が連続する真の左右padding」として入れていたが、**本文に空白が混ざる方が邪魔**(装飾は見た目・本文は本文)＋俊克「従来のMarkdown見出しと違い Me記法は空白を要求しない」。変更=insertFormatTemplate(見出し/ハイライト/取消線)＋buildInlineFmt(↻の再適用)＋見出し挿入後のカーソル位置(+2→+1)。★取消線も同じコードパスなので一緒に外した(==だけ外すと兄弟で食い違う)。既存の空白入りデータは**そのまま読める**(検出regexは空白非依存・過去は一括変換しない[[project_now_not_bulk]])。headless 7/7 PASS。→ [[reference_meos_notation_v4]]
@@ -2564,6 +2565,7 @@ let strikeFaintBgDecoration;  // 弱いハイライト背景。色指定/コメ�
 let headingSizeByLevel = null;   // Map<1|2|3, 装飾型(font-size+bold)>
 let headingColorByKey = null;    // Map<'red'|...|, 装飾型(文字色)>
 let headingMarkerDecoration;     // # と (色//コメント) を隠す
+let bulletGlyphDecoration;       // v4.0.49(俊克): 素の箇条書きの `-` を隠して `•` を出す(生データは変えない)
 const HEADING_DEFAULT_COLOR = { 1: 'red', 2: 'green', 3: 'blue' };
 const HEADING_SIZE = { 1: '1.3em', 2: '1.2em', 3: '1.1em' };
 // 見出し文字色(不透明寄り)。ハイライト背景より濃いめにして文字として読める。
@@ -3067,6 +3069,8 @@ function disposeDecorations() {
   }
   if (headingMarkerDecoration) headingMarkerDecoration.dispose();
   headingMarkerDecoration = undefined;
+  if (bulletGlyphDecoration) bulletGlyphDecoration.dispose();
+  bulletGlyphDecoration = undefined;
   openLineHideDecoration = undefined;
   openLineLabelDecoration = undefined;
   encHideDecoration = undefined;
@@ -3536,6 +3540,15 @@ function makeDecorations() {
   headingMarkerDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: 'none; opacity: 0; font-size: 0px;',
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+  });
+  // v4.0.49(俊克 8/7「無いからこそ、やりましょう」): 素のMarkdown箇条書きの `-`/`*`/`+` を隠して **`•`** を出す。
+  // エディタでMarkdownの箇条書きが「箇条書きらしく」見えるものは存在しない(プレビューでしか中黒にならない)ので、
+  // ここがMarkdown救済計画の見せ場になる。★生データは1文字も変えない=装飾のみ・カーソル行は素の `- ` に戻る。
+  // 幅は等幅フォントで `-` も `•` も1セルso桁が揃う(隠した分を before で埋め直す形)。
+  bulletGlyphDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: 'none; opacity: 0; font-size: 0px;',
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { contentText: '•', color: new vscode.ThemeColor('editor.foreground') }
   });
 
   // v0.9.483: button decorations now style the LITERAL 🔴/🟢 chars written
@@ -5795,6 +5808,7 @@ function applyPrettyLabels(editor) {
   const headingColorItemsByKey = {}; // { red:[{range,hoverMessage?}...], ... }
   for (const key of Object.keys(HEADING_TEXT_COLORS)) headingColorItemsByKey[key] = [];
   const headingMarkerRanges = [];
+  const bulletGlyphRanges = []; // v4.0.49: 素の箇条書きマーカー `-` の位置(隠して • を出す)
 
   const pairs = collectPairs(editor.document, { excludeIndex: false });
   const byStart = new Map(pairs.map(p => [p.start, p]));
@@ -6150,6 +6164,14 @@ function applyPrettyLabels(editor) {
         (headingColorItemsByKey[HEADING_DEFAULT_COLOR[level]] || []).push({ range: rP });
       }
     }
+    // v4.0.49(俊克): 素の箇条書き `- 項目` の marker を隠して `•` を出す(Markdown救済計画=書いた瞬間から箇条書きに見える)。
+    //   ・`- ` `* ` `+ ` の1文字だけが対象(後ろの空白と本文はそのまま=桁が動かない)
+    //   ・`---`(区切り線)や `*強調*` は「マーカー+空白+本文」の形でないので当たらない
+    //   ・入れ子で記号は変えない(俊克「子や孫は要らない」)・番号付きは元から正しく見えるので触らない
+    if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text)) {
+      const mB = /^([ \t]*)([-*+])[ \t]+(?=\S)/.exec(dtext);
+      if (mB) bulletGlyphRanges.push(new vscode.Range(line, mB[1].length, line, mB[1].length + 1));
+    }
     const open = parseOpenLine(text);
     const close = parseCloseLine(text);
     // v0.9.606: mNT goes through the standard mCN pipeline below. The pair's `isMnt`
@@ -6484,6 +6506,7 @@ function applyPrettyLabels(editor) {
   if (headingMarkerDecoration) {
     setDecoCached(editor, headingMarkerDecoration, 'hMarker', headingMarkerRanges);
   }
+  if (bulletGlyphDecoration) setDecoCached(editor, bulletGlyphDecoration, 'bullet', bulletGlyphRanges); // v4.0.49
 }
 
 
