@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.43(俊克 8/7 pm00:36「バージョンアップするとノート全体が畳まれた状態で表示される。Ⓣを自動で押せないか」): ★起動時に**Ⓣ(Today)を自動で1回押す**。理由=起動直後は mSTAT の⊖に従って膜が畳まれた状態で開くので、生涯日記が「全部畳まれている」ように見える(仕様どおりだが人間には不便)。実装=autoWarpToTodayOnStart()=今日の日付を持つ日記膜を探し jumpToWorkingTocItem(=H-TOCと同じ「開いて最後にいた行へ復元」)。★手動Ⓣとの違い=**今日の日記が無ければ何もしない**(通知も出さない=起動時に驚かせない)＋**1回きり**(以後の編集では走らない)＋巨大日記のfold provider準備待ち(v2.0.50計測=1st-fold 2.7秒)で最大6回×1.2秒だけ再試行。設定 `laiMembrane.warpToTodayOnStart`(既定true)で無効化可。→ [[project_lifelong_diary_template]]
 // - v4.0.42(俊克 8/7 pm00:17「ファイル毎に初期化されるのは使い難い」): ★Format設定(ハイライト3プリセット/太字色/上付下付の色/見出し色)に**ユーザー既定**の層を追加。真因=保存先がノートのmMETAだけで、**mMETAを持たないファイルには null を送っていた**ので、VS Codeを開き直した直後にそういうファイルを開くと組込み既定(赤/黄)に戻って見えた(セッション中は前のファイルの設定が残るので今まで気づきにくかった)。→ saveFmt時に globalState(meosFmtUserDefault)へも保存し、ノートに記録が無ければそれを渡す。**優先順=ノートのmMETA ＞ ユーザー既定(globalState) ＞ 組込み既定**。mMETAはそのノート固有の記録(他人に渡しても色がtravelする)、globalStateは自分の好み、という住み分け。→ [[reference_meos_notation_v4]]
 // - v4.0.41(俊克 8/7 pm00:08「150%/50%はデフォルトだよ。100%との差を表していることを学習させる意味」): v4.0.40の既定変更(下付き50→100)を**撤回**。150/50は意図的な既定で、**数字そのものが「100%からどれだけ離れているか」を教える**装置(=MeOSの記法哲学と同じ・見た目でなく関係を数字で示す)。→ package.jsonの既定を50に戻し、コード側フォールバック3箇所も宣言(150/50)に一致させる。説明文の「(default)」表記だけは実値に合わせて修正(以前は上付き/下付きとも「100%=midway (default)」と書いてあり宣言値と食い違っていた)。※v4.0.39のプレビュー描き忘れ修正はそのまま有効。→ [[reference_meos_notation_v4]]
 // - v4.0.40(俊克 8/7 pm00:02「最初にインストールした時に、ちゃんと上付き/下付きの無地色で出るなら、それでいい」): ★調べたら**下付きの既定が50%=まったく下がらない**設定だった(vertical-align 0em)。式は「50%=底が基準線(最も浅い)/150%=1文字ぶん下」so50は下限。しかもpackage.jsonの説明文は「100%=midway (default)」と書いてあり**宣言している既定値(50)と食い違っていた**。→ **metexSubScaleの既定を100(midway)に**(下付きが -0.33em 下がる=ちゃんと下付きに見える)＋説明文の(default)表記を実際に合わせる(上付き150/下付き100)＋コード側フォールバックも3箇所揃える。⚠️既存ユーザーで metexSubScale を明示していない人は、下付きが今より0.33em下がる(=今まで下がっていなかったのが直る)。色は付けない=本人の自由([[project_relation_over_appearance]]の趣旨どおり既定は無地)。→ [[reference_meos_notation_v4]]
@@ -18408,6 +18409,28 @@ function meosApplyFuncDecorations(editor) {
   } catch (_) {}
 }
 
+// v4.0.43(俊克 8/7「バージョンアップするとノート全体が畳まれた状態で表示される。Ⓣを自動で押せないか」):
+// 起動直後は mSTAT の⊖に従って膜が畳まれた状態で開くので、生涯日記が「全部畳まれている」ように見える。
+// → **Ⓣ(Today)を自動で1回押す**=今日の日記膜へワープして開く(jumpToWorkingTocItem=H-TOCと同じ「開いて最後にいた行へ」)。
+// 今日の日記が無ければ**何もしない**(手動Ⓣと違い通知も出さない=起動時に驚かせない)。設定 laiMembrane.warpToTodayOnStart で無効化可。
+let _autoTodayDone = false;
+function autoWarpToTodayOnStart(attempt) {
+  if (_autoTodayDone) return;
+  try {
+    if (!vscode.workspace.getConfiguration('laiMembrane').get('warpToTodayOnStart', true)) { _autoTodayDone = true; return; }
+    const ed = vscode.window.activeTextEditor;
+    // 巨大日記はfold providerの準備に数秒かかる(v2.0.50計測=1st-fold 2.7秒)ので、開くまでは数回だけ待つ。
+    if (!ed || !ed.document) { if ((attempt || 0) < 6) setTimeout(() => autoWarpToTodayOnStart((attempt || 0) + 1), 1200); return; }
+    const n = new Date(), ty = n.getFullYear(), tmo = n.getMonth() + 1, td = n.getDate();
+    let hit = null;
+    for (const o of collectAllOpenMembranes(ed.document)) {
+      const dt = parseDiaryDateFromName(o.id);
+      if (dt && dt.y === ty && dt.mo === tmo && dt.d === td) { if (!hit || o.start < hit.start) hit = o; }
+    }
+    _autoTodayDone = true; // 見つからなくても1回きり(以後の編集で走らせない)
+    if (hit) jumpToWorkingTocItem(hit.id);
+  } catch (_) { _autoTodayDone = true; }
+}
 function activate(context) {
   extensionContext = context;
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
@@ -18961,6 +18984,7 @@ makeDecorations();
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); }));
+  setTimeout(() => autoWarpToTodayOnStart(0), 2200); // v4.0.43: 起動して落ち着いた頃にⓉを自動で1回
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、
   // 再インストール/ウィンドウリロードの度に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張側の単一参照
   // meDockPanel がそれを掴めず孤児化→タブが溜まる。単一参照しか見ない toggleMeDock(『みみみ』)は孤児に効かず
