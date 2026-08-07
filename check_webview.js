@@ -4,6 +4,25 @@
 const fs = require('fs');
 const path = require('path');
 const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+// ★v4.0.50(俊克 8/7「Me Dockが文字列になっちゃったよ」): **テンプレートリテラル内の裸のbacktick検出**。
+// Me Dock の HTML は1つの巨大なテンプレートリテラル(`...`)。その中にコメントであっても ` を書くと、
+// そこでリテラルが終わり、以降がJS式として評価されてパネルが「文字列」として表示される(v4.0.47の全壊)。
+// ★syntax checkでは捕まらない: 途中で終わっても残りが偶然valid JSになりうる(実際 `-` `*` `+` は演算子として通り NaN が出た)。
+// so「HTML領域に裸のbacktickが1つでもあれば即NG」という別の目で見る。
+{
+  const cI = src.indexOf('</script></body>');
+  const oI = src.lastIndexOf('<!DOCTYPE html>', cI);
+  if (oI >= 0 && cI > oI) {
+    const region = src.slice(oI, cI);
+    const hits = [];
+    for (let i = 0; i < region.length; i++) if (region[i] === '`' && region[i - 1] !== '\\') hits.push(oI + i);
+    if (hits.length) {
+      console.log('webview template: BACKTICK ERROR -> テンプレートリテラル内に裸の ` が ' + hits.length + ' 個あります(Me Dockが文字列化します)');
+      for (const h of hits.slice(0, 5)) console.log('   …' + src.slice(h - 70, h + 50).replace(/\n/g, ' ') + '…');
+      process.exit(1);
+    }
+  }
+}
 // 閉じ側(</script></body>)の位置から逆算して直近の<script>を実スクリプトの開始とする
 const closeM = src.match(/<\/script>\s*<\/body>/);
 if (!closeM) { console.log('NO </script></body> found'); process.exit(1); }
