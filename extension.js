@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.56(俊克 8/8 am00:13 改良1/2): ①**改良1=箇条書きの間が空き過ぎ**→`- `(マーカー+空白)を**丸ごと隠す**(ラベル `• ` が区切りの空白を持っているので、生の空白まで見せると二重になっていた)。②**改良2=記法の大転換の第2弾(インライン)**=ハイライト/取消線を**素のMarkdown＋後置きコメント**へ。`==本文==<!-- (白/黄)//[]tip= -->` / `~~本文~~<!-- (赤/)//[]tip= -->`。MeOS外では**本物のハイライト/取消線**として生きる。実装=共通ヘルパ `meosSpecCommentAfter`(素の記法の**直後**にあるコメントだけを見るので文中の普通のコメントを巻き込まない)＋描画(色/tip適用・コメントを隠す)＋挿入＋↻の再適用＋🚫(コメントごと落とす)。**コード系(js等)は従来の分割形のまま**(実コードを壊さない)。旧形 `=={ }==` `~~{ }~~` は read-both。★俊克が👍と言ったリンクの形(`<!-- =={ -->[t](u)<!-- (色)(N)}== -->`)は**そのまま維持**(既にMeOS外で本物のリンクとして生きているので触らない)。headless 13/13(新規t_inline)＋18/18＋15/15＋12/12 PASS。📌残=太字/斜体の新形化。→ [[reference_meos_notation_v4]]
 // - v4.0.55(俊克 8/7 pm09:49「今までの記法は、mdに限らずあらゆるファイル形式に対応するためだった」): ★**戻さず、ファイルの種類で書き分ける**。散文(.md/.txt)=新形 `## 本文<!-- (色)//tip -->`(MeOS外でも本物のH2) / それ以外(js/py/sh…)=旧形 `##{ 本文 (色) }##`(block-comment言語なら `/* */` の殻付き)=コードを壊さない。MeOSは元から `MEOS_BLOCK_COMMENT_LANGS` でハイライト/取消線を書き分けており、見出しもその流儀に戻すだけ。読む側は両形とも読めるので**戻す作業は不要**。⚠️v4.0.54でコード側の書き出しから殻を落としていた退行をこの版で回復。★俊克の整理=「基本は**膜をあらゆるファイル形式でも実現できること**。それさえできれば細かいことはそれぞれで対応すればいい」。headless 18/18 PASS(js=`/* ##{ }## */` / python=`##{ }##` も検証)。→ [[reference_meos_notation_v4]]
 // - v4.0.54(俊克 8/7 pm09:21「Markdown＋後置きコメントで統一しよう。見出しからGo」): ★**記法の大転換(第1弾=見出し/箇条書き)**。書く形を `## 本文 スタンプ<!-- (白/green)//[]tip= -->` / `- 項目` / `- 項目<!-- -1 -->`(番号付き) / `- ## 本文<!-- … -->`(合成) に変更。**MeOSの外では本物のH2/箇条書きとして生きる**(コメントは消える)。★原理=**`{ }` は範囲を示す為ではなく色とtipの箱として要っただけ**。行単位のものは**行末が終わり**なので閉じ記号が要らない(上付き `A↑2<!-- {150%} -->` が最初からこの形だった=v4.0.2の発明を他へ広げていなかっただけ)。閉じが要るのは**終わりが構造から決まらないインライン**だけ。★俊克の当初案 `##<!-- { --> 見出し2` は**空白の位置が違う**とレンダラで実証(`##<` はATX見出しにならず段落になる=CommonMarkは`#`の直後に空白を要求・`#hashtag`を見出しにしない為の規則so「直る」ことはない)。→ 包まない (B) 形を採用。実装=①描画(見出し/箇条書き/番号付き/合成を1ブロックで・末尾コメントから色とtipを読む・`-`を隠して`•`/`N.`・番号は自動採番)②挿入③🚫(コメントごと落とす・`- ## 本文`は見出しだけ外して`- `を残す=外側から1枚ずつ)④Enterの継続(番号付きは指定コメントごと継続・行末で改行so コメントが次行へ落ちない)⑤**#ジャンプ(Navigate Me!)の対象に新形を追加**(ボタンの標準出力が新形になったので拾わないと自作の見出しへ飛べない=8/6の判断は旧形が標準だった頃のもの)。旧形 `##{ }##` `##[ ]##` `##-{ }##` `-{ }` は read-both で読み続ける(過去は変換しない)。headless 16/16＋15/15＋16/16 PASS。📌次=取消線→ハイライト→太字/斜体→リンク。→ [[reference_meos_notation_v4]]
 // - v4.0.53(俊克 8/7 pm08:24「Me記法として膜で表わすべき」): ★**箇条書きのMe記法**を新設。`-{ 項目 }`(表示 `• 項目`) / `-1{ 項目 }`(表示 `N. 項目`・**番号は生データに書かず自動採番**so途中に挿入しても腐らない) / 見出しと合成する時は `##-{ }##` `##-1{ }##`(#の直後にマーカー=「`-`が箇条書き・`-1`が番号付き」の1規則で全部読める。俊克と相談して `##1{` から変更)。★**素のMarkdown `- 項目` は救済対象として別に残る**=見た目は同じ・カーソルを入れれば違いが分かる・🚫で外すのは書いた人の自由(ハイライトの `==hl==` と `=={ }==` と同じ2系統併存)。実装=①記法定数(MEOS_ME_ITEM_RE他)②描画(マーカーと閉じ}を隠しbeforeで `•`/`N.`・連番は**全行で数える**=画面外を飛ばすと番号がずれる・項目でない行が来たらリセット)③見出し正規表現に `(-1|-)?` を許可(下流のグループindexを+1・足切りに `#-` を追加=`##-{`は`#{`を含まないので今まで弾かれていた)④ボタン挿入(見出しOFF→膜・ON→合成・**既に箇条書きだった行に見出しを掛けても箇条書きのまま**)⑤Enterの継続はMe記法のまま(空で終える)⑥🚫は Me記法も素の記法も外せる。★素の `1.` の救済は**やらない**(俊克「単なる数字か番号付き箇条書きか判定不能・指示記号に数字はいただけない」=`==`が開閉で範囲を刻むのに対し`1.`は閉じない前置きで文脈頼み)。headless 15/15＋15/15＋16/16 PASS。→ [[project_v4_next_wave]]
@@ -6031,6 +6032,17 @@ function applyPrettyLabels(editor) {
           if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
         } else {
           bgKey = 'yellow'; fgKey = null; hiComment = ''; bodyLen = content.length;
+          // v4.0.56: 素の `==本文==` の直後に仕様コメントがあれば、それを色/tipとして使う(新形)。
+          const _sc = meosSpecCommentAfter(dtext, closeEnd);
+          if (_sc) {
+            const hi2 = parseColorSpec(_sc.raw, 'bg', _sc.raw);
+            if (hi2.bgKey || hi2.fgKey || hi2.comment) {
+              bgKey = hi2.bgKey || null; fgKey = hi2.fgKey || null; hiComment = hi2.comment || '';
+              if (!bgKey && !fgKey) bgKey = 'yellow';
+              if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
+            }
+            highlightMarkerRanges.push({ range: new vscode.Range(line, closeEnd, line, _sc.end) }); // コメントは隠す
+          }
         }
         const bodyEnd = innerStart + bodyLen;
         highlightMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
@@ -6097,10 +6109,22 @@ function applyPrettyLabels(editor) {
           // ※従来形はハイライトなし(住み分け)。淡ハイライトは新コンパクト形 ~~{本文}~~ だけ。
           const bodyEnd = innerStart + inner.length;
           strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
+          // v4.0.56(俊克): 素の `~~本文~~` の直後に仕様コメントがあれば、線色/背景/tipとして使う(新形)。
+          const _sc = meosSpecCommentAfter(dtext, closeEnd);
+          const _st = _sc ? parseColorSpec(_sc.raw, 'fg', _sc.raw) : null;
           if (bodyEnd > innerStart) {
-            strikeBodyItems.push({ range: new vscode.Range(line, innerStart, line, bodyEnd) });
+            const _r = new vscode.Range(line, innerStart, line, bodyEnd);
+            if (_st && (_st.fgKey || _st.bgKey || _st.comment)) {
+              const lineKey = _st.fgKey || 'red';
+              let hv = null; if (_st.comment) { hv = new vscode.MarkdownString('💬 ' + _st.comment); hv.isTrusted = false; }
+              (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(hv ? { range: _r, hoverMessage: hv } : { range: _r });
+              if (_st.bgKey) { (highlightBodyRangesByColor[_st.bgKey] || []).push({ range: _r }); if (DARK_BG_KEYS.has(_st.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r }); }
+            } else {
+              strikeBodyItems.push({ range: _r });
+            }
           }
           strikeMarkerRanges.push({ range: new vscode.Range(line, bodyEnd, line, closeEnd) });
+          if (_sc) strikeMarkerRanges.push({ range: new vscode.Range(line, closeEnd, line, _sc.end) }); // コメントは隠す
         }
       }
     }
@@ -6219,9 +6243,10 @@ function applyPrettyLabels(editor) {
             if (bgk) (highlightBodyRangesByColor[bgk] || []).push({ range: rP });
           }
         }
-        if (bulletLen) { // 箇条書き: `-` 1文字を隠して • / N. を描く(番号は生データに書かない=自動採番)
+        if (bulletLen) { // 箇条書き: `- `(マーカー+空白)を丸ごと隠して • / N. を描く(番号は生データに書かない=自動採番)
+          // v4.0.56(俊克 改良1): マーカーだけ隠して生の空白を残すと、ラベル `• ` の空白と二重になって間が空く。
           bulletHandledLines.add(line);
-          meItemHideRanges.push(new vscode.Range(line, indent, line, indent + 1));
+          meItemHideRanges.push(new vscode.Range(line, indent, line, indent + bulletLen));
           meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: numbered ? ((_numOf.get(line) || 1) + '. ') : '• ', color: new vscode.ThemeColor('editor.foreground') } } });
         }
       }
@@ -12605,6 +12630,14 @@ const MEOS_LIST_ITEM_RE = /^(\s*)([-*+]|\d+[.)])([ \t]+)(.*)$/;
 //   ##-{ }## / ##-1{ }##  = 見出しと合成(デカ文字の箇条書き)
 // ★素のMarkdown `- 項目` は救済対象として別に残る(見た目は同じ・カーソルを入れれば違いが分かる・🚫で外せる)。
 const MEOS_ME_ITEM_RE = /^([ \t]*)-(1)?\{([\s\S]*)\}[ \t]*$/;
+// v4.0.56(俊克「Markdown＋後置きコメントで統一」・第2弾=インライン): 素の記法の**直後**にある仕様コメントを読む。
+//   `==本文==<!-- (白/黄)//[]tip=説明 -->` / `~~本文~~<!-- (赤/)//tip -->` / `**本文**<!-- (色) -->`
+// 直後(空白を挟まない)だけを見るので、文中の普通のコメントを巻き込まない。返り値={spec, end}(endは行内のコメント終端)。
+function meosSpecCommentAfter(text, e) {
+  const m = /^<!--\s*([^\n]*?)\s*-->/.exec(String(text).slice(e));
+  if (!m) return null;
+  return { raw: m[1] || '', end: e + m[0].length };
+}
 const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)|^[ \t]*[-*+][ \t].*<!--[^\n]*(?:^|\s)-1(?:\s|[^\n]*)-->[ \t]*$/; // 連番の対象(新形 `- 項目<!-- -1 -->` と旧Me記法の両方)
 const MEOS_ANY_ITEM_RE = /^[ \t]*(?:-1?\{|#{1,3}-1?\{|[-*+][ \t])/; // 項目の並び(間に挟まっても連番は途切れない)
 async function meosContinueListOnEnter(editor) {
@@ -13332,6 +13365,17 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const body = selText || defBody;
     const startOff = doc.offsetAt(sel.start);
     // v0.9.885: C系言語では「分割方式」で出力(本文=実コードのまま動く)。全体包みが欲しければ中の */ /* を消すだけ(俊克 6/15 pm08:50)。
+    // v4.0.56(俊克): 散文は素のMarkdown＋後置きコメント。コード系は従来の分割形。
+    if (!wrap && meosIsProseDoc(doc)) {
+      const mk = (kind === 'highlight') ? '==' : '~~';
+      const full = mk + body + mk + '<!-- ' + spec + ' -->';
+      await editor.edit(eb => eb.replace(sel, full));
+      const bs = doc.positionAt(startOff + mk.length);
+      bodySel = new vscode.Selection(bs, doc.positionAt(startOff + mk.length + body.length));
+      editor.selection = bodySel;
+      await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: bodySel });
+      return;
+    }
     const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
     const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
     // v4.0.46(俊克 8/7「空白が前後に入るのがウザい」): 本文の左右padding空白を廃止。
@@ -13414,7 +13458,10 @@ function formatSpanAtCursor(editor, kind) {
     : /~~(?!\{)([^~\n]+?)~~/g;
   rePlain.lastIndex = 0;
   while ((m = rePlain.exec(text)) !== null) {
-    const s = m.index, e = m.index + m[0].length;
+    const s = m.index; let e = m.index + m[0].length;
+    // v4.0.56(俊克): 新形は素の記法＋後置きコメント so、解除では**コメントも一緒に**落とす。
+    const sc = meosSpecCommentAfter(text, e);
+    if (sc) e = sc.end;
     if (pos.character >= s && pos.character <= e) return { kind, range: new vscode.Range(line, s, line, e), body: String(m[1] || '').trim() };
   }
   return null;
@@ -13446,6 +13493,13 @@ function buildInlineFmt(doc, kind, body, fg, bg) {
   const FG = (fg && String(fg).trim()) ? String(fg).trim() : def.fg;
   const BG = (typeof bg === 'string') ? bg.trim() : def.bg;
   const spec = '(' + FG + '/' + BG + ')//[]tip=';
+  // v4.0.56(俊克): 散文は**素のMarkdown＋後置きコメント**で書く(MeOS外でもハイライト/取消線として生きる)。
+  //   `==本文==<!-- (白/黄)//[]tip= -->` / `~~本文~~<!-- (赤/)//[]tip= -->`
+  // コード系(js等)は従来の分割形のまま=実コードを壊さない。
+  if (!wrap && meosIsProseDoc(doc)) {
+    const mk = (kind === 'highlight') ? '==' : '~~';
+    return { full: mk + body + mk + '<!-- ' + spec + ' -->', bodyOffset: mk.length, bodyLen: body.length };
+  }
   const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
   const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
   const pad = ''; // v4.0.46(俊克): ↻での再適用もpadding空白なしに揃える
