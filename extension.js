@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.81(俊克 8/8 pm08:23「Markdownのリンク記法にそのままリンクを入れると、どうしても次の文字とつながらないことがある。いっそのこと、Me記法では、そこにコメント形式で入れる」＋pm08:32「`[文字列](<!-- 行先 -->)` のように書けばいいんだよ」): ★★**リンクの行先をコメントに入れる**。Markdownのリンクの**形は保ったまま**、行先だけ `<!-- … -->` に包む。`[文字列](<!-- テスト_20260808s174510JST -->)` / `[文字列](<!-- https://… -->)`。★これで**VS Code内蔵のMarkdownリンクが掴むものが無くなる**=v4.0.79/80の「行先に死んだ下線が出てCmd+クリックが効かない」が**根元から消える**(内蔵は行先を相対パスと解釈してリンクを張るが、コメントはパスではない)。v4.0.80で重ねた救済リンクも新形では出さない(要らなくなった)。★俊克の設計思想=**機械のデータ(URL)を人間の文章の流れに割り込ませない**。他アプリは「リンクの形」は見えるが行先が無いので飛ばない=ただの下線。解釈したいアプリはこのコメントを読めばよい。俊克「そうしないからWYSIWYGで表示が崩れる。そもそもの発想が悪いんだね」。★これは今日一日の原理(`-1.`/`H2`/`A↑2`/`Mew!`=指示はコメントへ・本文は本文のまま)の**リンクへの適用**であり、v4.0の背骨と一貫している。実装=行先を「コメント形式(新形)|裸(旧形)」の二択にした正規表現(素の形・包み形の両方)＋解析(boxedフラグ)＋装飾/DocumentLink/表の幅/🚫解除の利用側＋**書く側も新形**(`[表示](<!-- 行先 -->)`＋色/下線/tipが要る時だけ後置きコメント)。旧形は全部 read-both。headless 12/12＋34/34＋18/18 PASS。★実データ検証=同一スナップショットで旧/新の正規表現を1行ずつ突き合わせ、新たに拾ったのは**俊克が書いた新形の2行だけ**・包み形は差分ゼロ。★教訓=**生きているファイルでは、時刻の違う2つの計測を比べてはいけない**(日記は会話を貼りながら育っているので行数もリンク数も増える。v4.0.79でも同じ罠に一度落ちた)。
 // - v4.0.80(俊克 8/8 pm07:42「右の膜名のところは下線が引かれてCmd+クリックのtipが出るのに飛ばない。これは正しい動きなのか?」): ★正しくない。ただし**あれはMeOSが引いた下線ではない**=**VS Code内蔵のMarkdownリンク**。内蔵は `[label](target)` を見つけると行先を「相対パスのファイル」と解釈してリンクを張るが、膜名はファイルではないので押しても何も起きない=**死んだリンク**。(MeOSはカーソル行を素表示にする=そこでは装飾を一切しないので、下線の出どころは内蔵だと切り分けられる。)★他の拡張が張ったリンクは消せないので、**同じ範囲にMeOSのリンクを重ねて、押したら膜へ飛ぶ**ようにした。対象は**膜名の時だけ**(URL/ファイルパス/他スキームは内蔵やOSに任せた方が正しい)。包み形・素の形の両方に適用。★なお行先はカーソル行以外では隠れているso、これは**編集中の行だけ**の話。
 // - v4.0.79(俊克 8/8 pm07:10「リンクの中に()があると駄目だね。これは元々がそうなのかな?」): ★**元々そう**=v4.0.8(リンクを作った最初の版)からの持病。行先を `[^)]*` で取っていたので**最初の `)` で切れて**いた。症状は形で違い、**包み形はリンク自体が成立せず記法が丸見え**・**素の形は行先が `Foo_(bar` に切れて末尾の `)` が残る**。Wikipedia等の `..._(bar)` 型URLが全滅していた。→ CommonMarkと同じく**釣り合った括弧を1段だけ許す** `((?:[^()<\n]|\([^()<\n]*\))*)`。第1候補 `[^()<]` と第2候補 `(…)` は先頭文字が排他so後戻り爆発なし(病的入力で実測<200ms)。★`<` も禁じている(予防)=括弧を許すと貪欲な行先が1行に2つ並んだリンクの `)<!--…}== -->` を飲み込んで**2つを1つに合体**させ得るため。URLも膜名も `<` を含まないので実害なし。★教訓=**括弧を許すと区切り記号まで飲み込めるようになる。許した分だけ壁を立て直す。**★実データ検証=日記14万行で旧/新の一致数を1行ずつ突き合わせ**差分ゼロ**(回帰なし)。※途中「88→84に減った」と焦ったのは**私の計測ミス**(旧=リンクを含む行数・新=マッチ数、という別の指標を比べていた)。★教訓2=**回帰を疑う時は、必ず同じ物差しで新旧を並べる**。
 // - v4.0.78(俊克 8/8 pm05:49「リンクを表に入れると駄目みたいね。膜名でも駄目だよ」): ★諦めではなく**記法を短くする**方で解いた=**素のMarkdownリンク `[表示](行先)` をMeOSのリンクとして読む**。真因はv4.0.77で判明済み(見えている幅は既に一致・崩れるのは生データが長くて折り返すから)so、**生データを短くする**のが唯一の道だった。コメント包みは色/下線/tipを運ぶ箱so、それが要らない時は箱ごと要らない。`<!-- Mew! =={ -->[…](テスト_20260808s174510JST)<!-- (白/黄)(0)//[]tip=}== -->` **102文字** → `[…](テスト_…)` **57文字**。見える幅は 25.69 で他の行と一致したまま。★これはv4.0の背骨そのもの=**生データはどこでも本物のMarkdown**。箱なしの `[text](target)` が一番Markdownらしい形。実装=①装飾(角括弧と行先を隠し表示文字に既定の単線・ホバーで行先)②DocumentLink(URL=外部/膜名=ワープ・ファイルパスや他スキームはVS Code本体に任せる)③表の幅(表示文字だけ数える)④🚫解除(表示文字だけ残す)。★コメント包みリンクを**先にマスクしてから**素のリンクを探す(鉄則=リンクは常に先に・5度目)。画像 `![](…)` とコードスパンは除外。【実データ】日記に素のMarkdownリンクは**574個**(URL 99/膜名 2/ファイルパス 468/その他5)=全部が本物のリンクで誤検出ゼロ。ただし**574箇所の見え方が変わる**(行先が隠れて表示文字に下線)。★事故=生成スクリプトを1本流し忘れて、**定義していない関数を呼ぶコード**を書き込んでいた(node --checkは構文だけso通る)。grepで「使用2/定義0」を数えて発見。→ **書き換えスクリプトは流したことをgrepで確認する**。
@@ -17835,7 +17836,7 @@ function meosStripHiddenForWidth(s) {
   //    まるごと表示文字に置き換えてから数える。★ここでも鉄則=**リンクは常に先に判定/先にマスク**(4度目)。
   //    (後ろのコメントは `}==` で終わるので①の spec 判定に当たらない=個別に外す必要がある。)
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
-  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ
+  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
   // ① MeOSが隠す仕様コメント(署名付き/形がspec/結合・計算マーカー)。ただのHTMLコメントは見えているので数える。
   if (t.indexOf('<!--') >= 0) {
     t = t.replace(/<!--[^]*?-->/g, (m) => {
@@ -18837,7 +18838,7 @@ function meosApplyMeTexDecorations(editor) {
 //   URLも膜名も `<` を含まないので実害なし。★教訓=**括弧を許すと区切り記号まで飲み込めるようになる**=許した分だけ壁を立て直す。
 // ★実データ検証=日記14万行で旧正規表現と新正規表現の一致数を1行ずつ突き合わせ、**差分ゼロ**を確認(回帰なし)。
 //   ※途中「88→84に減った」と焦ったのは私の計測ミス(旧=リンクを含む行数・新=マッチ数を比べていた)。
-const MEOS_MELINK_RE = /<!--\s*(?:[Mm][Ee][Ww]!\s*)?=={\s*-->\[([^\]\n]*)\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)<!--\s*([^\n]*?)\}==\s*-->/g; // v4.0.79: 行先に釣り合った括弧を1段許す
+const MEOS_MELINK_RE = /<!--\s*(?:[Mm][Ee][Ww]!\s*)?=={\s*-->\[([^\]\n]*)\]\((?:<!--\s*([^\n]*?)\s*-->|((?:[^()<\n]|\([^()<\n]*\))*))\)<!--\s*([^\n]*?)\}==\s*-->/g; // v4.0.79: 行先に釣り合った括弧を1段許す // v4.0.81: 行先=コメント形式も読む
 function meosMeLinkColor(spec) { let fg = null, bg = null; const c = /\(([^)/]*)\/([^)]*)\)/.exec(String(spec || '')); if (c) { fg = normalizeFgColor(c[1]); bg = normalizeBgColor(c[2]); } return { fg, bg }; }
 // v4.0.25(俊克 8/6 「どこでもH-TOC」段階A仕上げ): リンクのスペック `(fg/bg)(下線種)//[]tip=説明` を1回で読む。
 // 下線種は**数字**で表す(手打ちせず▾から設定する前提・生データは番号)。0=単線 / 1=二重 / 2=波線 / 3=二重波線。
@@ -18884,12 +18885,21 @@ function meosUlBgCss(ul, colorCss) {
 // ★これはv4.0の背骨そのもの=**生データはどこでも本物のMarkdown**。箱なしの [text](target) が一番Markdownらしい。
 // 表示=表示文字だけ(角括弧と行先を隠す)＋既定の単線。行先はURLでも膜名でもよい(ジャンプは同じ口)。
 // 画像 ![alt](url) は除外。コメント包みリンクと重ならないよう、**先にそちらをマスクしてから**探す(鉄則=リンクは先に)。
-const MEOS_MD_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)/g; // v4.0.79: 同上
+// v4.0.81(俊克 8/8 pm08:32「[文字列](<!-- 行先 -->) のように書けばいいんだよ」): ★★リンクの**行先をコメントに入れる**。
+// Markdownのリンクの**形は保ったまま**、行先だけを `<!-- … -->` に包む。
+//   `[文字列](<!-- テスト_20260808s174510JST -->)` / `[文字列](<!-- https://… -->)`
+// ★これで**VS Code内蔵のMarkdownリンクが掴むものが無くなる**=v4.0.79/80の「行先に死んだ下線が出る」が根元から消える
+//   (内蔵は行先を相対パスと解釈してリンクを張るが、コメントはパスではない)。
+// ★俊克の設計思想=**機械のデータ(URL)を人間の文章の流れに割り込ませない**。他アプリは「リンクの形」は見えるが
+//   行先が無いので飛ばない=ただの下線。解釈したいアプリはこのコメントを読めばよい。
+// 旧形(行先を裸で書く `[文字列](行先)`)も read-both。
+const MEOS_MD_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\((?:<!--\s*([^\n]*?)\s*-->|((?:[^()<\n]|\([^()<\n]*\))*))\)/g;
 // v4.0.80: 行先の文字そのものにもMeOSのリンクを張る(膜名の時だけ=URLは内蔵/OSに任せて問題ない)。
 // m=正規表現のマッチ・base=マッチ開始のオフセット。行先は `](` の直後から `)` の手前まで。
 function meosTargetLinks(document, m, base, target) {
   try {
     if (!target || /^https?:\/\//i.test(target)) return [];
+    if (String(m[0]).indexOf('](<!--') >= 0) return []; // v4.0.81: 行先がコメント形式なら内蔵は死んだリンクを張らないso重ねる必要がない
     if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) return []; // ファイル/他スキームはVS Codeに任せる
     const at = m[0].indexOf('](' + target + ')');
     if (at < 0) return [];
@@ -18911,7 +18921,8 @@ function meosBareMdLinks(text) {
   const out = []; let m; MEOS_MD_LINK_RE.lastIndex = 0;
   while ((m = MEOS_MD_LINK_RE.exec(t)) !== null) {
     const label = m[1] || '', start = m.index, end = start + m[0].length;
-    out.push({ start, end, label, target: (m[2] || '').trim(), textStart: start + 1, textEnd: start + 1 + label.length });
+    const boxed = m[2] != null; // v4.0.81: 行先がコメント形式(新形)か、裸(旧形)か
+    out.push({ start, end, label, target: String(boxed ? m[2] : (m[3] || '')).trim(), boxed, textStart: start + 1, textEnd: start + 1 + label.length });
   }
   return out;
 }
@@ -18945,8 +18956,10 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   const label = (bold && italic) ? ('***' + body + '***') : bold ? ('**' + body + '**') : italic ? ('_' + body + '_') : body;
   const color = '(' + (fg || '') + '/' + (bg || '') + ')';
   const ulPart = '(' + ((Number(ul) >= 1 && Number(ul) <= 3) ? Number(ul) : 0) + ')'; // v4.0.31(俊克 改良1): 0も明示して書く(インライン編集で数字を打ち替えるだけで線種を変えられる)
-  const head = '<!-- ' + MEOS_MEW_SIG + ' =={ -->[' + label + '](';  // v4.0.65: 開き側で鳴く
-  const text = head + ')<!-- ' + color + ulPart + '//[]tip=}== -->';
+  // v4.0.81(俊克): 新形で書く。`[表示](<!-- 行先 -->)` ＋ 色/下線/tipが要る時だけ後置きの仕様コメント。
+  //   行先はコメントの中so、他アプリは「リンクの形」だけ見て飛ばない=ただの下線。カーソルは行先の中で待つ。
+  const head = '[' + label + '](<!-- ';
+  const text = head + ' -->)' + meosSpecComment('', color + ulPart + '//[]tip=');
   await editor.edit(eb => eb.replace(sel, text));
   try { const p = sel.start.translate(0, head.length); editor.selection = new vscode.Selection(p, p); } catch (_) {} // 行先の中で待つ
   try { await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection }); } catch (_) {}
@@ -19001,7 +19014,7 @@ function meosApplyMeLinkDecorations(editor) {
           if (e > textEnd) hideRanges.push(new vscode.Range(ln, textEnd, ln, e)); // 後(]( 行先 )+コメント)を隠す
           // v4.0.25(俊克): 空リンク `()` は下線を付けない=ハイライト等価(行先が無いのに下線=クリックできそうに見えるのが嘘)。
           // 行先があれば下線種(0-3・既定=単線)。tipはホバーで💬表示(リンク先の説明を添えられる=この記法の売り)。
-          const sp = meosMeLinkSpec(m[3]); const target = (m[2] || '').trim();
+          const sp = meosMeLinkSpec(m[4]); const target = String(m[2] != null ? m[2] : (m[3] || '')).trim(); // v4.0.81: 行先=コメント形式(m[2])優先・旧形は裸(m[3])
           let fk = sp.fg; if (sp.bg && !fk && DARK_BG_KEYS.has(sp.bg)) fk = 'white';
           const colorCss = (fk && HIGHLIGHT_FG_COLORS[fk]) ? HIGHLIGHT_FG_COLORS[fk] : '';
           // v4.0.29(俊克 バグ4・テストデータの(1)=種なしでも「下線」): **リンク記法なら常に下線**(種なし=単線)。
@@ -19353,7 +19366,7 @@ function activate(context) {
         if (full.indexOf('-->[') < 0 && full.indexOf('](') < 0) return links; // v4.0.78: 素のMarkdownリンクも対象(早期脱出は維持)
         let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(full)) !== null) {
-          const label = m[1] || '', target = (m[2] || '').trim(); if (!target) continue;
+          const label = m[1] || '', target = String(m[2] != null ? m[2] : (m[3] || '')).trim(); if (!target) continue; // v4.0.81
           const lb = m.index + m[0].indexOf('['), textStart = lb + 1, textEnd = textStart + label.length;
           const dl = new vscode.DocumentLink(new vscode.Range(document.positionAt(textStart), document.positionAt(textEnd)));
           if (/^https?:\/\//i.test(target)) { dl.target = vscode.Uri.parse(target); dl.tooltip = 'Open: ' + target; }
@@ -19371,7 +19384,7 @@ function activate(context) {
           const masked = full.replace(MEOS_MELINK_RE, (mm) => ' '.repeat(mm.length));
           let b; MEOS_MD_LINK_RE.lastIndex = 0;
           while ((b = MEOS_MD_LINK_RE.exec(masked)) !== null) {
-            const label = b[1] || '', target = (b[2] || '').trim(); if (!target || !label) continue;
+            const label = b[1] || '', target = String(b[2] != null ? b[2] : (b[3] || '')).trim(); if (!target || !label) continue; // v4.0.81
             const ts = b.index + 1, te = ts + label.length;
             const dl2 = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
             if (/^https?:\/\//i.test(target)) { dl2.target = vscode.Uri.parse(target); dl2.tooltip = 'Open: ' + target; }
