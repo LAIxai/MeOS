@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.64(俊克 8/8 改良1 書く側): ★ボタンが**署名＋命令トークン付き**で書き出すようにした(共通口 meosSpecComment)。`## 本文<!-- Mew! H2 (白/緑)//[]tip= -->` / `- ## 本文<!-- Mew! -H2 … -->` / `1. 本文<!-- Mew! -1.H2 … -->` / `- 項目<!-- Mew! - … -->` / `==本文==<!-- Mew! == … -->` / `~~本文~~<!-- Mew! ~~ … -->` / `**本文**<!-- Mew! ** … -->` / `A↑2<!-- Mew! A↑2{150%(白/緑)} -->`。命令トークン=**実際に使ったマーカーそのもの**(== / ~~ / ** / _ / *** / 基準文字＋矢印＋肩腰文字)＋行単位は H1..H3 と箇条書き指定。★指定するものが何も無い時はコメント自体を書かない(署名だけのコメントは雑音・素のMarkdownにMeOSの印は要らない)。★上付/下付の基準文字は空白を含む選択だとトークンから外す(読取り側が空白なしのトークンしか許さないため)。ラウンドトリップ(書いた形をそのまま読み直す)テスト 18/18＋既存 34/34 PASS。★未対応=ノート内リンク `<!-- =={ -->[…](…)<!-- … -->` は前後2つのコメントで1組so別途(頭の `=={` が既に固有トークンとして grep できる)。→ [[reference_meos_notation_v4]]
 // - v4.0.63(俊克 8/8 am09:12 改良1「開始点に依存しないで、コメントで完全にコントロールする」＋am09:23「Me記法のコメントは『Mew!』とコメントの最初で鳴かせる」): ★行単位の記法にも**命令トークン**＋★**署名 Mew!**。読む側を先に完成。【命令トークン】`## 本文<!-- H2 (白/緑)//[]tip= -->` / `- ## 本文<!-- -H2 … -->` / `1. 本文<!-- -1.H2 … -->`。H2 も ## も同じ・宣言があれば**そちらが優先**。→ **`#` の後ろの空白を書き忘れた `##本文` でも見出しとして描ける**(俊克の言う最大の利点)。行頭マーカーの無い行でもコメントだけで箇条書き/見出しにできる(本文がある行に限る=`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。★誤爆防止=トークンの直後は「行末 / `(` / `//`」だけ許す(`<!-- - see below -->` `<!-- note: 50% done -->` は食わない)。【署名 Mew!】仕様コメントは先頭で🐱と鳴く=①`grep Mew!` 一発②「MeOSの指定」と「ただのHTMLコメント」を**推測でなく宣言**で分けられる。★ただし過去14万行には無いので**門番にはしない**=署名は「緩さを買う券」(あれば疑わずに読む/無ければ従来どおり形を厳しく見る)→過去は1文字も変換しない[[project_now_not_bulk]]。読みは `Mew!` `MeW!` `mew!` の大小無視。【横展開】見出し/箇条書き・上付/下付・ハイライト/取消線/太字/斜体(meosSpecCommentAfter)・Enterの継続(署名と命令ごと引き継ぐ)・🚫解除(空白なし `##本文` も外せる)。headless 34/34 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.62(俊克 8/8 am09:12 改良1「開始点に依存しないで、コメントで完全にコントロールする」・第1弾=上付/下付): ★仕様コメントの先頭に**命令トークン**を書けるようにした。`A↑2<!-- A↑2{150%(白/緑)} -->` / `A↑2<!-- ↑2{…} -->` / 従来の `A↑2<!-- {…} -->` の全部を読む。★これが**バグ**でもあった=俊克の実機テストで「上付きだけ色が適用されない」の真因は、コメント包みの正規表現が `<!--` の直後に `{` が来ることを要求していて、`A↑2{…}` と書くと**spec と認識されず色も付かずコメントも隠れなかった**(画面にコメントが生見えしていたのが証拠)。トークンは「↑か↓を含む空白なしの並び」だけ許す(=上付/下付である宣言・`<!-- メモ{150%} -->` は食わない)。番号付きの `-1.` と同じく**理想の記法を書き残す印**。孤児コメントの隠し(MEOS_METEX_SPEC_COMMENT_RE)も同形に。headless 9/9 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.61(俊克 8/8 am02:40「1. 本文<!-- -1.(色)//tip --> と、あえて理想の形を書いておく」): ★番号付き箇条書きを**本物のMarkdown順序付きリスト**に。書く形=`1. 本文<!-- -1.(白/緑)//[]tip= -->`。①行頭は**常に `1.`**(Markdownの正式な逃げ道=レンダラが1,2,3と振り直す)so**生データの数字は腐らない**②MeOSはその数字を無視して**表示で数える**③コメントの `-1.` は「**本来こう書かれるべきだった**」という理想の記法を書き残す印(将来 -1記法が採用されたらそのまま移行できる)。★これで**MeOS外でも番号付きリストとして生きる**(旧 `- 項目<!-- 1 -->` は外ではただの箇条書きに見えていた)。俊克のスタンス=「MeWOSはコメントがあるので誤動作しない。他のアプリで誤動作するならそれはアプリの問題」。実装=描画/連番カウント(★足切りに**数字**を入れ忘れて連番が1,1,1になっていた)/挿入/Enterの継続(MeOS管理の項目は常に `1. `・手打ちの番号付きは従来どおり+1)/🚫(順序付きマーカーも新形分岐で処理=コメントごと落とす)。旧形は全部read-both。headless 20/20＋21/21＋15/15＋12/12 PASS。→ [[reference_meos_notation_v4]]
@@ -12695,7 +12696,14 @@ function meosMaskCodeSpans(t) {
 //   ★ただし過去14万行には無いので**必須にはできない**(門番にしない)。署名は「緩さを買う券」=
 //     あれば疑わずに読む/無ければ従来どおり形を厳しく見る。→ 過去は1文字も変換せずに済む。
 //   読む方は大小無視で `Mew!` `MeW!` `mew!` を受ける(書くのは `Mew!` に統一)。
+const MEOS_MEW_SIG = 'Mew!';
 const MEOS_MEW_SIGNATURE_RE = /^[ \t]*mew!\s*/i;
+// v4.0.64(俊克): 仕様コメントを組み立てる共通口。`<!-- Mew! <命令トークン> (色)//tip -->` の順で並べる。
+// ★指定するものが何も無い時はコメント自体を書かない(署名だけのコメントは雑音)。素のMarkdownにMeOSの印は要らない。
+function meosSpecComment(directive, spec) {
+  const d = String(directive == null ? '' : directive).trim(), s = String(spec == null ? '' : spec).trim();
+  return '<!-- ' + [MEOS_MEW_SIG, d, s].filter(Boolean).join(' ') + ' -->';
+}
 function meosHasMewSignature(payload) { return MEOS_MEW_SIGNATURE_RE.test(String(payload == null ? '' : payload)); }
 function meosStripMewSignature(payload) { return String(payload == null ? '' : payload).replace(MEOS_MEW_SIGNATURE_RE, ''); }
 const MEOS_LINE_DIRECTIVE_RE = /^(-1\.|-1|1\.|1|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(?:$|(?=\(|\/\/))/;
@@ -13435,8 +13443,9 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // v4.0.54: 素のMarkdownの箇条書きで書く(番号付きだけ「自動採番せよ」をコメントで足す)。
       // v4.0.58(俊克 バグ1「箇条書きの色指定が抜けている」): 箇条書きにも色/tipを後置きコメントで付ける。
       const open = _indent + ((_mk === '-1') ? '1. ' : '- ');
-      const _numTag = (_mk === '-1') ? '-1.' : '';
-      const plain = open + body + '<!-- ' + _numTag + hspec + ' -->';
+      // v4.0.64(俊克): コメント側に「これは箇条書き/番号付きである」を宣言として書き残す(署名 Mew! 付き)。
+      const _numTag = (_mk === '-1') ? '-1.' : '-';
+      const plain = open + body + meosSpecComment(_numTag, hspec);
       await editor.edit(eb => eb.replace(doc.lineAt(ln).range, plain));
       const pb = new vscode.Position(ln, open.length + body.length);
       editor.selection = new vscode.Selection(pb, pb);
@@ -13452,10 +13461,12 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     //   それ以外(js/py/sh…) → 旧形 `##{ 本文 (色) }##`(必要なら /* */ の殻付き)=コードを壊さない
     // ★v4.0.54でコード側の書き出しから殻を落としてしまっていた(この版で回復)。読む方は前から両形とも読める。
     const _blt = _mk ? ((_mk === '-1') ? '1. ' : '- ') : ''; // v4.0.61: 番号付きは**本物のMarkdown順序付きリスト**(全部 `1.` と書く=レンダラが振り直す・腐らない)
-    const _numMk = (_mk === '-1') ? '-1.' : ''; // v4.0.61(俊克): コメントには**理想の記法**(-1.)を書き残す。行頭の `1. ` が実務を担う。
+    const _numMk = (_mk === '-1') ? '-1.' : (_mk ? '-' : ''); // v4.0.61(俊克): コメントには**理想の記法**(-1.)を書き残す。行頭の `1. ` が実務を担う。
+    // v4.0.64(俊克 改良1): 見出しレベルもコメントで宣言する(`H2` / `-H2` / `-1.H2`)。`#` の後ろの空白を書き忘れても壊れない。
+    const _dirTag = _numMk + 'H' + Math.max(1, Math.min(3, Number(level) || 2));
     const _prose = meosIsProseDoc(doc);
     const newText = _prose
-      ? (_indent + _blt + hashes + ' ' + visibleBody + '<!-- ' + _numMk + hspec + ' -->')
+      ? (_indent + _blt + hashes + ' ' + visibleBody + meosSpecComment(_dirTag, hspec))
       : (_indent + cOpen + hashes + '{' + visibleBody + hspec + '}' + hashes + cClose); // v4.0.53: 箇条書きマーカーは #の直後(##-{ }## / ##-1{ }##) // v4.0.47: 箇条書き接頭辞は見出しの外 // v4.0.46(俊克): 本文の左右padding空白を廃止(従来のMarkdown見出しと違い Me記法は空白を要求しない) // v0.9.99963: 見出し本文の左右にも半角スペースpadding / v4.0.10(俊克): 新形 ##{ }## で書く(他兄弟と統一)
     await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
     const b = _prose ? (_indent.length + _blt.length + hashes.length + 1) : (_indent.length + cOpen.length + hashes.length + 1); // 本文の先頭 // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
@@ -13471,7 +13482,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     // v4.0.56(俊克): 散文は素のMarkdown＋後置きコメント。コード系は従来の分割形。
     if (!wrap && meosIsProseDoc(doc)) {
       const mk = (kind === 'highlight') ? '==' : '~~';
-      const full = mk + body + mk + '<!-- ' + spec + ' -->';
+      const full = mk + body + mk + meosSpecComment(mk, spec); // v4.0.64: 命令トークン=使ったマーカーそのもの(== / ~~)
       await editor.edit(eb => eb.replace(sel, full));
       const bs = doc.positionAt(startOff + mk.length);
       bodySel = new vscode.Selection(bs, doc.positionAt(startOff + mk.length + body.length));
@@ -13605,7 +13616,7 @@ function buildInlineFmt(doc, kind, body, fg, bg) {
   // コード系(js等)は従来の分割形のまま=実コードを壊さない。
   if (!wrap && meosIsProseDoc(doc)) {
     const mk = (kind === 'highlight') ? '==' : '~~';
-    return { full: mk + body + mk + '<!-- ' + spec + ' -->', bodyOffset: mk.length, bodyLen: body.length };
+    return { full: mk + body + mk + meosSpecComment(mk, spec), bodyOffset: mk.length, bodyLen: body.length }; // v4.0.64: 命令トークン付き
   }
   const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
   const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
@@ -18358,7 +18369,9 @@ async function insertMetexScript(editor, sub, fg, bg) {
   // v4.0.3(俊克): 色は()付き {150%(白/緑)}(ハイライトと統一)＋記法全体をコメント包み <!-- {…} --> にしてMeOS外では base↑2 だけ見せる。色はexpの後ろ=base/expの位置は不変。
   const fgW = (fg && normalizeFgColor(fg)) ? fg : '', bgW = (bg && normalizeBgColor(bg)) ? bg : '';
   const colorPart = (fgW || bgW) ? ('(' + fgW + '/' + bgW + ')') : '';
-  const spec = '<!-- {' + pct + '%' + colorPart + '} -->';
+  // v4.0.64(俊克): 署名 Mew! ＋命令トークン(基準文字＋矢印＋肩腰文字)。基準文字に空白が混じる時はトークンから外す(読取り側は空白なしのみ許すため)。
+  const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(base) ? base : '') + arrow + exp;
+  const spec = '<!-- ' + MEOS_MEW_SIG + ' ' + _mtxTok + '{' + pct + '%' + colorPart + '} -->';
   await editor.edit(eb => eb.replace(sel, base + arrow + exp + spec));
   try { const s = sel.start;
     if (empty) editor.selection = new vscode.Selection(s, s.translate(0, 1)); // プレースホルダ 'A' を選択(すぐ基準文字を打てる)
@@ -18574,7 +18587,7 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
   // MeOS外では**本物の太字/斜体**として生きる。`{ }` は色とtipの箱だったので、コメントに移せば消える(空白も一緒に消える)。
   if (meosIsProseDoc(doc)) {
     const mk = (bold && italic) ? '***' : (italic ? '_' : '**');
-    const spec = (fg || bg) ? ('<!-- (' + (fg || '') + '/' + (bg || '') + ')//[]tip= -->') : '';
+    const spec = (fg || bg) ? meosSpecComment(mk, '(' + (fg || '') + '/' + (bg || '') + ')//[]tip=') : ''; // v4.0.64: 命令トークン=使ったマーカー(** / _ / ***)
     text = mk + body + mk + spec; off = mk.length;
   }
   // コード系(js等)や非散文は従来の正式膜のまま(実コードを壊さない/Markdown以外では素の ** が効かない)。
