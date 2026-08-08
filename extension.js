@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.89(俊克 8/9 am00:33「何日を設定したかは分るのか? それとも、登録直後の数値でそれを知るのか?」): ★**俊克の2つ目の推測が正解**。GitHubが返すのは**期限の日付だけ**で「何日を選んだか」は返さないso、**登録直後の残り日数=発行時の日数(total)**として覚える。v4.0.86で「新PAT保存時に即問い合わせ」を入れてあったのがそのまま使えた。★自己修復=観測した残り日数が覚えているtotalより**大きければ**新しいトークンに入れ替わった(または未記録)と判断してtotalを更新→取り逃しても次の観測で直る。★これでしきい値を**固定日数から割合へ**=発行時の日数の1/3(最短1日・最長7日で挟む)。7日発行→残り2日で橙 / 30日以上→残り7日で橙。通知はその中でも手前(最大2日)。★色と通知は**meosGhThresholds 1つ**から引き、**webview側には数字を焼かない**(node側で決めて渡す)=[[feedback_one_source_for_mark_count_action]]の実践。tipにも「issued for N days」を出して根拠が見えるようにした。★v4.0.88で「3日固定」に直したが、それは**運用の長さを当て推量していた**だけだった。本当の答えは「聞かなくても、登録直後の値が教えてくれる」。俊克の問いがそこを突いた。headless 7/7 PASS。
 // - v4.0.88(俊克 8/9 am00:28「🐙の左にPAT 7dと表示された。もしかして1dになると赤色になるのかな?」の実機スクショから発覚): ★答えは「はい」だが、**しきい値が長い期限のトークン前提だった**。俊克は7日で発行するso「7日以内=橙・7日以内で通知」だと**初日から橙・寿命の全期間で毎日通知**になり、色も通知も何も知らせない(スクショで `PAT 7d` が既に橙だったのが証拠)。→ **色=3日以内で橙・1日以内で赤／通知=2日以内だけ**(7日運用なら通知は2回)。tipもしきい値の実態に合わせた。★教訓=**しきい値は「一番短い運用」で試す**。長い期限だけ想定すると、短い運用では常時ONになって意味が消える。(俊克がPATを選んだ理由=期限を自分で決められる [[project_oauth_vs_pat_expiry]] so、短い期限は想定外どころか**標準の使い方**だった。)
 // - v4.0.87(俊克 8/8 pm11:30 改良1「Mewの説明がまだ長いのに、分りにくい。『🐱ガターがある旧記法を画面に見えるものだけ、新記法に変換する。』それだけで十分でしょ?」): ★tipを俊克の1文だけに(約1/3→さらに1/4)。`Mew! | Converts the cat-marked lines to the new notation - only the ones visible on screen.`。★教訓=**説明が長いのは、書く側が「何が主役か」を決めていないから**。v4.0.86でも私は「数の意味/Cmd+Zで戻せる/入れ子は触らない/薄い時は綺麗」の4つを残したが、主役は**🐱の印が付いた行を、見えている分だけ直す**の1つだけだった。残りは押せば分かるか、要らない。短くしただけでなく**分かりやすくなった**のは、要素を削ったのではなく主役を選び直したから。
 // - v4.0.86(俊克 8/8 pm11:24 バグ1「PAT expiredを押すとパネルが出てしまう。×ボタンの形を単にPAT expiredにするだけで良い。そして処理が終わったら×ボタンに戻す」＋改良1「🐙の3つのボタンのtipがボタンから遠く離れる」＋改良2「🐱のtipが長過ぎ・位置も離れている」): ★バグ1=×の確認パネル(v0.9.990「誤クリックで即解除されるのを防ぐ」)がそのまま出ていた。確認は**迷いがある時**にだけ意味があるが、期限切れの時は「外して入れ直す」ことがまさにやりたいことso答えが1つしかない問いになっていた。→ **失効の姿で押された時だけ確認を飛ばして即実行**(通常の×は今までどおり確認を出す=誤クリック防止は残す)。★教訓=**確認は答えが決まっている場面では邪魔になる。同じボタンでも、状況で聞くかどうかを変える。**★「処理が終わったら×に戻す」の裏側=**新しいPATを入れたら期限のキャッシュを捨てて即問い合わせる**ようにした。これを忘れると正しいトークンを入れ直しても expired のキャッシュが残り、×が PAT expired のままになる=**直したのに直っていないように見える**最悪の型(1日待たないと戻らない)。★改良1=共通tipはマウス追従で左へ伸びる設計so、Me Dock右端のボタンではtipが大きく離れる。→ **🐙の並び(🐙/🔗/✕)と🐱は右端揃えで真上**に固定(v4.0.84で#gh-pat-expだけに入れた枝を、その並び全体へ広げた)。★改良2=🐱のtipを約1/3に(必要なことだけ=何を数えているか・押すと何が起きるか・Cmd+Zで戻せる・入れ子は触らない)。
@@ -8458,9 +8459,25 @@ async function meosGhFetchTokenExpiry(force) {
       }
     }
     const out = { iso, checkedAt: Date.now() };
+    // v4.0.89(俊克 8/9 am00:33「何日を設定したかは分るのか? それとも、登録直後の数値でそれを知るのか?」):
+    // ★俊克の2つ目の推測が正解。GitHubは**期限の日付しか返さない**(何日を選んだかは返さない)so、
+    //   **登録直後の残り日数=選んだ日数**として覚える。v4.0.86で「新PAT保存時に即問い合わせ」を入れてあるので、
+    //   その瞬間の値が発行時の日数になる。★自己修復=観測した残り日数が覚えている total より**大きければ**
+    //   新しいトークンに入れ替わった(または未記録)と判断して total を更新する→取り逃しても次の観測で直る。
+    const prev = extensionContext.globalState.get(MEOS_GH_EXP_KEY, null);
+    const nowDays = meosGhExpiryDays(out);
+    const prevTotal = (prev && typeof prev.total === 'number') ? prev.total : 0;
+    out.total = (nowDays !== null && nowDays > prevTotal) ? nowDays : prevTotal;
     await extensionContext.globalState.update(MEOS_GH_EXP_KEY, out);
     return out;
   } catch (_) { return null; }
+}
+// v4.0.89: しきい値は**発行時の日数の1/3**(最短1日・最長7日で挟む)。7日発行なら残り2日・90日発行なら残り7日で橙。
+// 通知はその中でも更に手前(最大2日)。★色と通知は**この1つの関数**から引く(v4.0.73の教訓=判定は1箇所)。
+function meosGhThresholds(cached) {
+  const total = (cached && typeof cached.total === 'number' && cached.total > 0) ? cached.total : 7;
+  const warn = Math.max(1, Math.min(7, Math.round(total / 3)));
+  return { total, warn, notify: Math.max(1, Math.min(2, warn)) };
 }
 // 残り日数(切れ=-1・不明=null)。表示と警告で同じ1つの計算を使う(v4.0.73の教訓=数える場所は1つ)。
 function meosGhExpiryDays(cached) {
@@ -8480,7 +8497,8 @@ async function meosGhWarnIfExpiring(cached) {
     //   「7日以内で橙・7日以内で通知」だと**初日から橙・寿命の全期間で毎日通知**になり、色も通知も何も知らせない。
     // → 通知は**残り2日以内**だけ(7日運用なら2回)。色は 3日以内=橙 / 1日以内=赤(下の webview 側)。
     // ★教訓=**しきい値は「一番短い運用」で試す**。長い期限だけ想定すると、短い運用では常時ONになって意味が消える。
-    const d = meosGhExpiryDays(cached); if (d === null || d > 2) return;
+    const d = meosGhExpiryDays(cached); if (d === null) return;
+    if (d > meosGhThresholds(cached).notify) return; // v4.0.89: 発行時の日数から決めたしきい値
     const today = new Date().toISOString().slice(0, 10);
     if (extensionContext.globalState.get(MEOS_GH_EXP_WARNED, '') === today) return; // 1日1回だけ
     await extensionContext.globalState.update(MEOS_GH_EXP_WARNED, today);
@@ -8502,7 +8520,12 @@ async function postGithubWizardState(state, repoUrlOrMsg, folderName, folderPath
   const hasPat = extensionContext ? !!(await extensionContext.secrets.get('meos.github.pat').catch(() => null)) : false;
   // v4.0.82: PATの期限(1日1回だけ問い合わせ・以後キャッシュ)。切れそう/切れていたら通知も1日1回。
   let patDays = null;
-  if (hasPat) { const _exp = await meosGhFetchTokenExpiry(false); patDays = meosGhExpiryDays(_exp); meosGhWarnIfExpiring(_exp); }
+  let patWarn = 3, patTotal = 0;
+  if (hasPat) {
+    const _exp = await meosGhFetchTokenExpiry(false); patDays = meosGhExpiryDays(_exp);
+    const _th = meosGhThresholds(_exp); patWarn = _th.warn; patTotal = _th.total; // v4.0.89: 色のしきい値もnode側で決めて渡す
+    meosGhWarnIfExpiring(_exp);
+  }
   const collapsed = extensionContext ? extensionContext.globalState.get('meos.github.collapsed', false) : false;
   let connected = false, username = '', repoName = '', repoUrl = '';
   if (state === 'connected') {
@@ -8515,7 +8538,7 @@ async function postGithubWizardState(state, repoUrlOrMsg, folderName, folderPath
     if (url) { const m = url.match(/github\.com\/([^/]+)\/([^/]+)/); if (m) { username = m[1]; repoName = m[2]; repoUrl = url; connected = true; } }
   }
   // progress/error/disconnected → connected=false(ウィザード表示)
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubWizardState', state, msg: repoUrlOrMsg || '', folderName: fn, folderPath: fp, username, repoName, repoUrl, patDays, syncOn: githubAutoSync, collapsed, savedUrl, hasPat }); } catch (_) {}
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'githubWizardState', state, msg: repoUrlOrMsg || '', folderName: fn, folderPath: fp, username, repoName, repoUrl, patDays, patWarn, patTotal, syncOn: githubAutoSync, collapsed, savedUrl, hasPat }); } catch (_) {}
 }
 // v0.9.986: バックアップ対象フォルダの解決。優先: 明示選択 > アクティブファイルのgit repoルート > そのファイルのフォルダ > workspace[0]
 let githubChosenDir = null; // ユーザーがChange…で明示選択したフォルダ(セッション内)
@@ -16216,7 +16239,8 @@ if(_dc){if(window.__ghDcTip===undefined)window.__ghDcTip=_dc.getAttribute('data-
  if(msg.patDays!==null&&msg.patDays!==undefined&&msg.patDays<0){_dc.textContent='PAT expired';_dc.classList.add('gh-expired');
   _dc.setAttribute('data-tip','PAT expired - Octopush cannot push. Click here to unlink, then paste a new token into the PAT field that appears. Your site address and repo are remembered, so only the token has to be typed again. (Get the new token on GitHub first: Regenerate keeps the same name and scopes.)');}
  else{_dc.textContent='✕';_dc.classList.remove('gh-expired');_dc.setAttribute('data-tip',window.__ghDcTip);}}
-if(_pe){var d=msg.patDays;if(d===null||d===undefined||d<0){_pe.style.display='none';}/* v4.0.85: 失効の知らせは×が担うのでチップは出さない */else{_pe.style.display='';_pe.classList.remove('warn','bad');{_pe.textContent='PAT '+d+'d';if(d<=1){_pe.classList.add('bad');}else if(d<=3){_pe.classList.add('warn');}/* v4.0.88: 7日運用でも意味を持つように 7→3 */_pe.setAttribute('data-tip','Days left on your GitHub Personal Access Token. 3 days or less turns orange, the last day red. When it expires, the ✕ button turns into PAT expired - press that to re-enter the token.');}}}}});
+if(_pe){var d=msg.patDays;if(d===null||d===undefined||d<0){_pe.style.display='none';}/* v4.0.85: 失効の知らせは×が担うのでチップは出さない */else{_pe.style.display='';_pe.classList.remove('warn','bad');{_pe.textContent='PAT '+d+'d';var _w=(typeof msg.patWarn==='number')?msg.patWarn:3;/* v4.0.89: しきい値はnode側(発行時の日数の1/3)から受け取る=数字をwebviewに焼かない */
+if(d<=1){_pe.classList.add('bad');}else if(d<=_w){_pe.classList.add('warn');}_pe.setAttribute('data-tip',('Days left on your GitHub Personal Access Token (issued for '+(msg.patTotal||'?')+' days). '+_w+' day(s) or less turns orange, the last day red. When it expires, the ✕ button turns into PAT expired - press that to re-enter the token.'));}}}}});
 /* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
 const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document.getElementById('bm-pending-menu-btn'),bmPendingPop=document.getElementById('bm-pending-pop'),refGroupList=document.getElementById('ref-group-list'),refModeToggleBtn=document.getElementById('ref-mode-toggle'),refSwitchFrontBtn=document.getElementById('ref-switch-front'),homeBtn=document.getElementById('home-btn'),homeMenuBtn=document.getElementById('home-menu-btn'),homePop=document.getElementById('home-pop'),homeSwitchBtn=document.getElementById('home-switch');
 if(bmPendingBtn)bmPendingBtn.addEventListener('click',(ev)=>{vscode.postMessage({type:(ev&&(ev.metaKey||ev.ctrlKey))?'referenceCmdJump':'referenceCycle'});if(typeof hideTocTip==='function')hideTocTip();}); /* v0.9.99972(改良2 俊克): 統合参照ボタン=作業グループの巡回(読む)。v1.0.11: ⌘/Ctrl+クリック=Annotatedは注釈へ/Marks・Pendingは最前線Fへ即ジャンプ。表示記号はreferenceStateが更新・発行/選択は▾メニュー */
