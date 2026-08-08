@@ -6647,6 +6647,7 @@ function applyPrettyLabels(editor) {
   if (bulletGlyphDecoration) setDecoCached(editor, bulletGlyphDecoration, 'bullet', bulletGlyphRanges); // v4.0.49
   if (meItemHideDecoration) setDecoCached(editor, meItemHideDecoration, 'meItemHide', meItemHideRanges); // v4.0.53
   if (meItemLabelDecoration) setDecoCached(editor, meItemLabelDecoration, 'meItemLabel', meItemLabelItems);
+  meosUpdateMewDiagnostics(editor); // v4.0.66: 装飾と同じ拍で「Mew!と鳴いていない仕様コメント」に波線を出す(可視範囲のみ)
 }
 
 
@@ -12717,6 +12718,110 @@ function meosLineDirective(payload) {
     level: m[2] ? (m[2].charAt(0) === 'H' ? parseInt(m[2].slice(1), 10) : m[2].length) : 0, // H2 も ## も同じ
     rest: s.slice(m[0].length), // 残り=(色)//tip
   };
+}
+// ===== v4.0.66(俊克 8/8 am10:20「Mew!と鳴いてない旧記法があったら、直すように、そこを点滅させるとか」) ===========
+// ★点滅ではなく**薄い波線(Hint診断)＋ワンクリック修正**にした(日記を書いている最中に視界の端が動くのは辛い/
+//   5,845行の旧記法が画面に入るたび点滅したら騒音になる)。VS Codiumが元から持っている道具に乗せる。
+// ★出すのは**可視範囲だけ**(装飾と同じ±120行)。全部出すとProblemsパネルに数千件並んで使い物にならない。
+// ★これで**一括変換が要らなくなる**=見えているところを直したい時に直す。過去は勝手に変わらない[[project_now_not_bulk]]。
+// 判定=行内の `<!-- … -->` のうち「MeOSが仕様コメントとして読む形」なのに Mew! と鳴いていないもの。
+//   ①リンクの開き `=={`  ②上付/下付の `{150%…}`  ③(任意の命令トークン)＋`(色)` または `//tip`
+// ★形は**両端を留める**(前だけ見ると誤爆する)。実データで `「<!--(×←)→ --> 5」` を拾っていた=
+//   `(…)` の後ろが行末でも `//tip` でもないのに、先頭一致だけで通していたため。
+const MEOS_SPEC_SHAPE_RE = /^(?:-1\.?|1\.?|-|H[1-6]|#{1,6}|==|~~|\*{1,3}|_)?[ \t]*(?:(?:\([^()\n]*\)[ \t]*)+(?:\/\/[^\n]*)?|\/\/[^\n]*)$/;
+function meosLooksLikeSpecComment(payload) {
+  const s = String(payload == null ? '' : payload).trim();
+  if (!s) return false;
+  if (/^=={/.test(s)) return true;                                    // リンクの開き `<!-- =={ -->`
+  if (/\}==$/.test(s)) return false;                                  // リンクの閉じ=1組で1回鳴けばよいので対象外
+  // ★実データ(14万行日記)で見つかった誤爆: **膜の行** `<!-- {* ▼mCN=… // … (📊…) *} -->` を拾っていた。
+  //   膜はMe記法の本体であって仕様コメントではない(署名は要らない)。名前に `//` と `(…)` が入るので形だけでは見分けが付かない。
+  if (/mCN\s*=|^\{\*|\*\}$/.test(s)) return false;
+  const mx = /^(?:[^\s{}<>]*[↑↓][^\s{}<>]*[ \t]*)?\{([^}]*)\}$/.exec(s);
+  if (mx) return meosIsMeTexSpec(mx[1]);                              // 上付/下付=中身が {N%} / (fg/bg) の形の時だけ
+  return MEOS_SPEC_SHAPE_RE.test(s);
+}
+// 1行の中から「鳴いていない仕様コメント」の開始位置(`<!--` の直後)を列挙する。
+function meosUnsignedSpecComments(text) {
+  let line = String(text == null ? '' : text);
+  if (line.indexOf('<!--') < 0) return [];
+  // v4.0.58と同じ約束: **コードスパン `…` の中は記法ではなく引用**。記法を説明する文で波線が出たら本末転倒。
+  if (line.indexOf('`') >= 0) line = meosMaskCodeSpans(line);
+  const out = []; const re = /<!--(\s*)([^\n]*?)\s*-->/g; let m;
+  while ((m = re.exec(line)) !== null) {
+    const payload = m[2] || '';
+    if (meosHasMewSignature(payload)) continue;
+    if (!meosLooksLikeSpecComment(payload)) continue;
+    out.push({ start: m.index, insertAt: m.index + 4 + (m[1] || '').length, end: m.index + m[0].length });
+  }
+  return out;
+}
+const MEOS_MEW_DIAG_CODE = 'mew-missing';
+let meosMewDiagnostics = null;
+function meosUpdateMewDiagnostics(editor) {
+  try {
+    if (!meosMewDiagnostics) return;
+    if (!editor || !meosIsProseDoc(editor.document)) { if (editor) meosMewDiagnostics.delete(editor.document.uri); return; }
+    const doc = editor.document, last = doc.lineCount - 1;
+    const spans = (editor.visibleRanges && editor.visibleRanges.length)
+      ? editor.visibleRanges.map(r => [Math.max(0, r.start.line - 120), Math.min(last, r.end.line + 120)])
+      : [];
+    if (!spans.length) { meosMewDiagnostics.delete(doc.uri); return; }
+    const items = [];
+    for (const [a, b] of spans) {
+      for (let ln = a; ln <= b; ln++) {
+        const text = doc.lineAt(ln).text;
+        for (const h of meosUnsignedSpecComments(text)) {
+          const d = new vscode.Diagnostic(new vscode.Range(ln, h.start, ln, h.end), '🐱 Me記法のコメントが Mew! と鳴いていません', vscode.DiagnosticSeverity.Hint);
+          d.code = MEOS_MEW_DIAG_CODE; d.source = 'MeOS';
+          items.push(d);
+        }
+      }
+    }
+    meosMewDiagnostics.set(doc.uri, items);
+  } catch (_) { }
+}
+// Quick Fix(💡電球)。`Cmd+.` を使わなくても電球をクリックすれば直せる(俊克=キー配列変更中so既定キーは割り当てない)。
+const meosMewCodeActionProvider = {
+  provideCodeActions(doc, range, ctx) {
+    try {
+      const mine = (ctx.diagnostics || []).filter(d => d && d.code === MEOS_MEW_DIAG_CODE);
+      if (!mine.length) return [];
+      const out = [];
+      for (const d of mine) {
+        const ln = d.range.start.line, text = doc.lineAt(ln).text;
+        const hit = meosUnsignedSpecComments(text).find(h => h.start === d.range.start.character);
+        if (!hit) continue;
+        const a = new vscode.CodeAction('🐱 Mew! を付ける', vscode.CodeActionKind.QuickFix);
+        a.edit = new vscode.WorkspaceEdit();
+        a.edit.insert(doc.uri, new vscode.Position(ln, hit.insertAt), MEOS_MEW_SIG + ' ');
+        a.diagnostics = [d]; a.isPreferred = true;
+        out.push(a);
+      }
+      if (out.length) {
+        const all = new vscode.CodeAction('🐱 この画面のMe記法に全部 Mew! を付ける', vscode.CodeActionKind.QuickFix);
+        all.command = { command: 'lai-membrane.mewSignVisible', title: '🐱 この画面のMe記法に全部 Mew! を付ける' };
+        out.push(all);
+      }
+      return out;
+    } catch (_) { return []; }
+  },
+};
+// 可視範囲の「鳴いていない仕様コメント」をまとめて署名する。★14万行一括はやらない(8/6の事故=閉じ忘れ ``` 1本で全滅)。
+async function meosMewSignVisible() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !meosIsProseDoc(editor.document)) return;
+  const doc = editor.document, last = doc.lineCount - 1;
+  const spans = (editor.visibleRanges || []).map(r => [Math.max(0, r.start.line - 120), Math.min(last, r.end.line + 120)]);
+  const edits = [];
+  for (const [a, b] of spans) {
+    for (let ln = a; ln <= b; ln++) {
+      for (const h of meosUnsignedSpecComments(doc.lineAt(ln).text)) edits.push(new vscode.Position(ln, h.insertAt));
+    }
+  }
+  if (!edits.length) { vscode.window.showInformationMessage('🐱 この画面のMe記法は全部 Mew! と鳴いています'); return; }
+  await editor.edit(eb => { for (const p of edits) eb.insert(p, MEOS_MEW_SIG + ' '); });
+  vscode.window.showInformationMessage('🐱 Mew! を ' + edits.length + '箇所に付けました');
 }
 function meosSpecCommentAfter(text, e) {
   const m = /^<!--\s*([^\n]*?)\s*-->/.exec(String(text).slice(e));
@@ -19090,6 +19195,15 @@ function activate(context) {
   // MeOS's fold-state tracking (foldStateByPairKey / ⊖⊕ badges) and desync the ▼⇄▼▲ toggle. MeOS
   // has no "fold everything" concept (俊克 6/12 am01:19) — fold a membrane individually, navigate
   // with Warp / Current Me / Hyper TOC. Bound in package.json keybindings (editorTextFocus).
+  // v4.0.66(俊克): Mew!署名の波線＋Quick Fix。既定キーは割り当てない(俊克はキー配列変更中so `Cmd+.` に頼らない)。
+  //   直し方=①💡電球をクリック ②パレットの「MeOS: この画面のMe記法に Mew! を付ける」 ③好きなキーに自分で割り当てる。
+  meosMewDiagnostics = vscode.languages.createDiagnosticCollection('meos-mew');
+  context.subscriptions.push(meosMewDiagnostics);
+  context.subscriptions.push(vscode.languages.registerCodeActionsProvider(
+    Array.from(MEOS_PROSE_LANGS).map(l => ({ language: l })),
+    meosMewCodeActionProvider,
+    { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.mewSignVisible', meosMewSignVisible));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.blockNativeFold', () => {
     vscode.window.setStatusBarMessage('MeOS: Fold All / Unfold All is off — fold a membrane with ▼⇄▼▲, navigate with Warp / Hyper TOC.', 2600);
   }));

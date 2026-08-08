@@ -154,6 +154,11 @@
         "command": "laiMembrane.warpToTodayNow",
         "title": "Warp to Today (Ⓣ) — jump to today's diary entry and open it",
         "category": "MeOS"
+      },
+      {
+        "command": "lai-membrane.mewSignVisible",
+        "title": "MeOS: この画面のMe記法に Mew! を付ける",
+        "category": "MeOS"
       }
     ],
     "configuration": {
@@ -283,15 +288,42 @@
     },
     "menus": {
       "commandPalette": [
-        { "command": "laiMembrane.formatTable", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableCellNext", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableCellPrev", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableCellUp", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableCellDown", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableDupRow", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableDelRow", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableDupCol", "when": "meos.phase >= 3" },
-        { "command": "laiMembrane.tableDelCol", "when": "meos.phase >= 3" }
+        {
+          "command": "laiMembrane.formatTable",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableCellNext",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableCellPrev",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableCellUp",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableCellDown",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableDupRow",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableDelRow",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableDupCol",
+          "when": "meos.phase >= 3"
+        },
+        {
+          "command": "laiMembrane.tableDelCol",
+          "when": "meos.phase >= 3"
+        }
       ],
       "editor/title": [
         {
