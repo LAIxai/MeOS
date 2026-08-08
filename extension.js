@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.92(俊克 8/9 am01:02「以下の素のリンク記法は、MeOSでは、リンク部分を表示せずに正しくレンダリングして下さい」): ★★**v4.0.78の素のMarkdownリンクの装飾は一度も動いていなかった**。`for` を包みリンクの `while` の**中**に書いてしまっていたので、「同じ行に包みリンクもある」時だけ動く=普通の行では何も起きない。→ 独立したループに出した。読み取り(meosBareMdLinks)・DocumentLink・表の幅・🚫は正しく動いていたので、**装飾だけが抜けていた**(だからv4.0.78で「日記の574個の見え方が変わる」と書いたのは嘘=何も変わっていなかった)。★見つけ方=**ヘッドレスで装飾関数を実際に呼んだ**(偽エディタでsetDecorationsを受け取り、行ごとに何が隠れるかを表に出す)。素のリンクだけの行=0件 / 同じ行に包みリンクも置くと=6件、で入れ子の位置が確定した。★教訓=**入れ子の位置は目でも波括弧の数え上げでも間違える**(正規表現の `{1,6}` が数を狂わせる)。**「実装したのに実機で効かない」は、たいてい入れ子の位置**so、動かして確かめる。★ハーネスの欠陥も直した=vscodeスタブが装飾型に**同じキー**を返していてテスト側で上書きされ、検証にならなかった。→ 一意の連番キーに。★教訓=**テストの土台がウソをつくと、バグが見えない**。headless 9/9＋34/34＋18/18 PASS。
 // - v4.0.91(俊克 8/9 am00:54「PAT 7d leftを四角で囲んであるとボタンと間違うので、<PAT 7d left>とか、何か分かりやすい表示の仕方はないかな?」): ★指摘の芯=**この行では枠と塗りがあるものが押せるもの**(🐙/🔗/✕)。v4.0.90で読みやすくするために付けた「枠＋塗り」は、ボタンとまったく同じ服だった。→ **囲みを外して素の文字**にする=見た目の飾りでなく**構造**で区別が付く。色は状態を示すために残す(平常=文字色/橙/赤)。加えて**点線の下線**を引いた=「ホバーで説明が出る」印で、押せる合図ではない(慣習として押せるものは実線か枠)。★`<…>`案も検討したが採らず=問題はラベルの書き方ではなく**服がボタンと同じだったこと**so、囲みを外せば括弧は要らない(記号を足すと今度はコードのように見える)。★教訓=**押せる/押せないは、色や文字ではなく「枠と塗り」で語られている**。読みやすくしたい時に枠を足すと、意味を1つ壊す。
 // - v4.0.90(俊克 8/9 am00:44「PAT 7dの背景が結構暗いね。まー🐱もかなり暗いけどね。英語には『後7日』のようなコンパクトな表示の仕方は無いの?」): ★表記=**`PAT 7d left`**(`left`=残り)。英語のバッジで「残りN日」の定番の短縮形で、読み間違えが起きない(`in 7d`や`T-7d`も通じるが、`7d`単独だと「作ってから7日」と読める曖昧さがある)。★明るさ=平常の灰チップは bg .18→.30 / opacity .75→1 ＋枠を追加(輪郭が出る)。橙 .22→.38・赤 .22→.38 も同様に。🐱は消灯 .28→.42(消えていても「居る」と分かる)・点灯の背景 .18→.34。★俊克のスクショで `PAT 7d` が**灰色**だったのは v4.0.89 のしきい値(7日発行so橙は残り2日から)が効いている証拠でもあった。★教訓=**「まだ大丈夫」の状態も読めなければ情報ではない**。警告色だけ調整して平常色を暗いまま放置していた。★事故=webview側のコメントに**バッククォート**を書いてテンプレートリテラルを途中で終わらせた(v4.0.50の全壊と同じ穴・2度目)。node --check が即落ちて発覚so被害ゼロ。→ **webview領域のコメントでは記法をバッククォートで囲まない**(囲みたくなるのが罠)。
 // - v4.0.89(俊克 8/9 am00:33「何日を設定したかは分るのか? それとも、登録直後の数値でそれを知るのか?」): ★**俊克の2つ目の推測が正解**。GitHubが返すのは**期限の日付だけ**で「何日を選んだか」は返さないso、**登録直後の残り日数=発行時の日数(total)**として覚える。v4.0.86で「新PAT保存時に即問い合わせ」を入れてあったのがそのまま使えた。★自己修復=観測した残り日数が覚えているtotalより**大きければ**新しいトークンに入れ替わった(または未記録)と判断してtotalを更新→取り逃しても次の観測で直る。★これでしきい値を**固定日数から割合へ**=発行時の日数の1/3(最短1日・最長7日で挟む)。7日発行→残り2日で橙 / 30日以上→残り7日で橙。通知はその中でも手前(最大2日)。★色と通知は**meosGhThresholds 1つ**から引き、**webview側には数字を焼かない**(node側で決めて渡す)=[[feedback_one_source_for_mark_count_action]]の実践。tipにも「issued for N days」を出して根拠が見えるようにした。★v4.0.88で「3日固定」に直したが、それは**運用の長さを当て推量していた**だけだった。本当の答えは「聞かなくても、登録直後の値が教えてくれる」。俊克の問いがそこを突いた。headless 7/7 PASS。
@@ -19168,11 +19169,25 @@ function meosApplyMeLinkDecorations(editor) {
           if (sp.tip) { const hv = new vscode.MarkdownString('💬 ' + sp.tip); hv.isTrusted = false; item.hoverMessage = hv; }
           if (!styleRanges.has(style)) styleRanges.set(style, []); styleRanges.get(style).push(item);
         }
-        // v4.0.78: 素のMarkdownリンク `[表示](行先)`。角括弧と行先を隠し、表示文字に既定の単線を引く。
-        for (const b of meosBareMdLinks(doc.lineAt(ln).text)) {
-          if (b.textEnd > b.textStart) hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // `[`
-          hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); // `](行先)`
-          if (b.textEnd <= b.textStart) continue;
+      }
+    }
+    // v4.0.92(俊克 8/9 am01:02「素のリンク記法は、リンク部分を表示せずに正しくレンダリングして下さい」):
+    // ★★v4.0.78の素のMarkdownリンクの装飾は**一度も動いていなかった**。for を包みリンクの while の**中**に
+    //   書いてしまっていたので、「同じ行に包みリンクもある」時だけ動いていた(だから気づけなかった)。
+    //   → 独立したループに出す。★ここで見つけられたのは**ヘッドレスで装飾関数を実際に呼んだ**から
+    //   (偽エディタでsetDecorationsを受け取り、行ごとに何が隠れるかを表で出した)。
+    //   ★教訓=**入れ子の位置は、目でも波括弧の数え上げでも間違える**(正規表現の `{1,6}` が数を狂わせる)。
+    //   動かして確かめる。「実装したのに実機で効かない」は、たいてい入れ子の位置。
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
+        const raw = doc.lineAt(ln).text;
+        if (raw.indexOf('](') < 0) continue;
+        for (const b of meosBareMdLinks(raw)) {
+          if (b.textEnd > b.textStart) hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
+          hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); // ](行先) をまとめて隠す
+          if (b.textEnd <= b.textStart) continue; // 表示文字が空=下線を引く相手がいない
           const st = meosMeLinkUnderline(0, ''); // 既定=単線・文字色そのまま(色やtipが欲しい時はコメント包みを使う)
           if (!styleRanges.has(st)) styleRanges.set(st, []);
           const it = { range: new vscode.Range(ln, b.textStart, ln, b.textEnd) };
