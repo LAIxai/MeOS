@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.63(俊克 8/8 am09:12 改良1「開始点に依存しないで、コメントで完全にコントロールする」＋am09:23「Me記法のコメントは『Mew!』とコメントの最初で鳴かせる」): ★行単位の記法にも**命令トークン**＋★**署名 Mew!**。読む側を先に完成。【命令トークン】`## 本文<!-- H2 (白/緑)//[]tip= -->` / `- ## 本文<!-- -H2 … -->` / `1. 本文<!-- -1.H2 … -->`。H2 も ## も同じ・宣言があれば**そちらが優先**。→ **`#` の後ろの空白を書き忘れた `##本文` でも見出しとして描ける**(俊克の言う最大の利点)。行頭マーカーの無い行でもコメントだけで箇条書き/見出しにできる(本文がある行に限る=`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。★誤爆防止=トークンの直後は「行末 / `(` / `//`」だけ許す(`<!-- - see below -->` `<!-- note: 50% done -->` は食わない)。【署名 Mew!】仕様コメントは先頭で🐱と鳴く=①`grep Mew!` 一発②「MeOSの指定」と「ただのHTMLコメント」を**推測でなく宣言**で分けられる。★ただし過去14万行には無いので**門番にはしない**=署名は「緩さを買う券」(あれば疑わずに読む/無ければ従来どおり形を厳しく見る)→過去は1文字も変換しない[[project_now_not_bulk]]。読みは `Mew!` `MeW!` `mew!` の大小無視。【横展開】見出し/箇条書き・上付/下付・ハイライト/取消線/太字/斜体(meosSpecCommentAfter)・Enterの継続(署名と命令ごと引き継ぐ)・🚫解除(空白なし `##本文` も外せる)。headless 34/34 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.62(俊克 8/8 am09:12 改良1「開始点に依存しないで、コメントで完全にコントロールする」・第1弾=上付/下付): ★仕様コメントの先頭に**命令トークン**を書けるようにした。`A↑2<!-- A↑2{150%(白/緑)} -->` / `A↑2<!-- ↑2{…} -->` / 従来の `A↑2<!-- {…} -->` の全部を読む。★これが**バグ**でもあった=俊克の実機テストで「上付きだけ色が適用されない」の真因は、コメント包みの正規表現が `<!--` の直後に `{` が来ることを要求していて、`A↑2{…}` と書くと**spec と認識されず色も付かずコメントも隠れなかった**(画面にコメントが生見えしていたのが証拠)。トークンは「↑か↓を含む空白なしの並び」だけ許す(=上付/下付である宣言・`<!-- メモ{150%} -->` は食わない)。番号付きの `-1.` と同じく**理想の記法を書き残す印**。孤児コメントの隠し(MEOS_METEX_SPEC_COMMENT_RE)も同形に。headless 9/9 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.61(俊克 8/8 am02:40「1. 本文<!-- -1.(色)//tip --> と、あえて理想の形を書いておく」): ★番号付き箇条書きを**本物のMarkdown順序付きリスト**に。書く形=`1. 本文<!-- -1.(白/緑)//[]tip= -->`。①行頭は**常に `1.`**(Markdownの正式な逃げ道=レンダラが1,2,3と振り直す)so**生データの数字は腐らない**②MeOSはその数字を無視して**表示で数える**③コメントの `-1.` は「**本来こう書かれるべきだった**」という理想の記法を書き残す印(将来 -1記法が採用されたらそのまま移行できる)。★これで**MeOS外でも番号付きリストとして生きる**(旧 `- 項目<!-- 1 -->` は外ではただの箇条書きに見えていた)。俊克のスタンス=「MeWOSはコメントがあるので誤動作しない。他のアプリで誤動作するならそれはアプリの問題」。実装=描画/連番カウント(★足切りに**数字**を入れ忘れて連番が1,1,1になっていた)/挿入/Enterの継続(MeOS管理の項目は常に `1. `・手打ちの番号付きは従来どおり+1)/🚫(順序付きマーカーも新形分岐で処理=コメントごと落とす)。旧形は全部read-both。headless 20/20＋21/21＋15/15＋12/12 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.60(俊克 8/8 am01:35 改良1): ①**改行で色指定が抜け落ちる**→Enterの継続で仕様コメントの**番号指定と色を引き継ぐ**(tipは項目ごとの注釈so空にして骨だけ持ち越す・色だけの箇条書きでも引き継ぐ)。②**`•` と `1.` と `10.` で本文の開始位置が揃わない**→ラベルの**幅を3chに固定**(before.width)。文字数で揃えようとしていたが `•` は等幅1マスとは限らない(フォント次第)ので桁が合わなかった=**文字数でなく幅を指定する**のが正解。1桁は右に余白・2桁はぴったり・3桁以上はズレる(俊克「10以上はズレてもいいと割り切る」)。headless 20/20＋21/21＋15/15＋12/12 PASS。→ [[reference_meos_notation_v4]]
@@ -6219,27 +6220,43 @@ function applyPrettyLabels(editor) {
     // 旧形 `##{ }##` `##[ ]##` `##-{ }##` は read-both で読み続ける(過去は変換しない)。
     if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text)) {
       const mP = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?(\S[^\n]*?)[ \t]*$/.exec(dtext); // v4.0.61(俊克): 行頭が `1. ` の順序付きリストも項目(MeOS外で本物の番号付きリストになる)
-      if (mP && (mP[3] || mP[2])) { // 見出しか箇条書きのどちらかであること
-        const indent = mP[1].length, bulletLen = mP[2].length, hashes = mP[3] || '', gap = mP[4] || '';
+      // v4.0.63(俊克 改良1): 末尾の仕様コメントを**先に**読む。命令トークン(H2 / -H2 / -1.H2)があれば、
+      // 行頭のマーカーが不完全でも(例 `##本文` = #の後ろの空白を書き忘れ)、コメント側の宣言で見出しにできる。
+      const mCpre = mP ? /<!--\s*([^\n]*?)\s*-->\s*$/.exec(dtext) : null;
+      const payloadPre = mCpre ? meosStripMewSignature(mCpre[1] || '') : '';
+      const dir = mCpre ? meosLineDirective(payloadPre) : null;
+      // コメントの宣言だけで成立させるのは「本文がある行」に限る(`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。
+      const _dirOnly = !!(dir && (dir.level || dir.bullet) && mCpre.index > mP[1].length);
+      if (mP && (mP[3] || mP[2] || _dirOnly)) { // 見出しか箇条書きのどちらかであること(コメントの宣言でも可)
+        const indent = mP[1].length, bulletLen = mP[2].length, gap = mP[4] || '';
+        let hashes = mP[3] || '';
         let bodyStart = indent + bulletLen + hashes.length + gap.length;
+        // v4.0.63: コメントが見出しを宣言していて行頭が `##本文`(空白なし)なら、その `#` も見出しマーカーとして扱う。
+        let bareHashLen = 0;
+        if (!hashes && dir && dir.level) { const mH = /^#{1,6}/.exec(dtext.slice(bodyStart)); if (mH) bareHashLen = mH[0].length; }
         let bodyEndP = bodyStart + mP[5].length;
         // 末尾の仕様コメント <!-- (色)//tip / -1 --> を読み、本文から外して隠す
         let sp = null, numbered = false;
-        const mC = /<!--\s*([^\n]*?)\s*-->\s*$/.exec(dtext);
+        const mC = mCpre;
         if (mC && mC.index >= bodyStart) {
-          const payload = mC[1] || '';
           // v4.0.59(俊克): 行頭に `- ` があるのだから、コメント内の指定は**数字だけ**でよい(`-1`→`1`)。旧 `-1` も読む。
           // v4.0.61(俊克): 行頭が `N. ` なら番号付き。コメントの `-1.` / `-1` / `1` は**理想の記法を書き残す印**(read-both)。
-          numbered = /^\s*\d+[.)]/.test(mP[2] || '') || /(^|\s)-?1\.?(\s|\(|$)/.test(payload);
-          const inner = payload.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '').trim();
+          // v4.0.63(俊克): 命令トークンは meosLineDirective が切り出し済み。残り(rest)だけを色/tipとして読む。
+          numbered = /^\s*\d+[.)]/.test(mP[2] || '') || (dir ? dir.bullet === 'number' : /(^|\s)-?1\.?(\s|\(|$)/.test(payloadPre));
+          const inner = (dir ? dir.rest : payloadPre.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '')).trim();
           if (inner) sp = parseColorSpec(inner, 'fg', inner);
           headingMarkerRanges.push({ range: new vscode.Range(line, mC.index, line, dtext.length) });
           bodyEndP = mC.index;
           while (bodyEndP > bodyStart && /\s/.test(dtext.charAt(bodyEndP - 1))) bodyEndP--; // コメント前の空白は本文に含めない
         }
-        if (hashes) { // 見出し: #と直後の空白を隠し、サイズと色を本文へ
-          const level = Math.min(3, hashes.length);
-          headingMarkerRanges.push({ range: new vscode.Range(line, indent + bulletLen, line, bodyStart) });
+        if (bareHashLen) { // v4.0.63: 空白を書き忘れた `##本文` の `#` を隠して本文を1つ後ろへ
+          headingMarkerRanges.push({ range: new vscode.Range(line, bodyStart, line, bodyStart + bareHashLen) });
+          hashes = '#'.repeat(bareHashLen); bodyStart += bareHashLen;
+          while (bodyStart < bodyEndP && /[ \t]/.test(dtext.charAt(bodyStart))) bodyStart++;
+        }
+        if (hashes || (dir && dir.level)) { // 見出し: #と直後の空白を隠し、サイズと色を本文へ
+          const level = Math.min(3, (dir && dir.level) ? dir.level : hashes.length); // v4.0.63: 明示された宣言が優先
+          if (hashes && !bareHashLen) headingMarkerRanges.push({ range: new vscode.Range(line, indent + bulletLen, line, bodyStart) });
           if (bodyEndP > bodyStart) {
             const rP = new vscode.Range(line, bodyStart, line, bodyEndP);
             headingSizeRangesByLevel[level].push(rP);
@@ -6252,14 +6269,15 @@ function applyPrettyLabels(editor) {
             if (bgk) (highlightBodyRangesByColor[bgk] || []).push({ range: rP });
           }
         }
-        if (bulletLen) { // 箇条書き: `- `(マーカー+空白)を丸ごと隠して • / N. を描く(番号は生データに書かない=自動採番)
+        if (bulletLen || (dir && dir.bullet)) { // 箇条書き: `- `(マーカー+空白)を丸ごと隠して • / N. を描く(番号は生データに書かない=自動採番)
           // v4.0.56(俊克 改良1): マーカーだけ隠して生の空白を残すと、ラベル `• ` の空白と二重になって間が空く。
+          // v4.0.63(俊克): 行頭マーカーが無くてもコメントの宣言だけで箇条書きにできる(隠すものが無いだけ)。
           bulletHandledLines.add(line);
-          meItemHideRanges.push(new vscode.Range(line, indent, line, indent + bulletLen));
+          if (bulletLen) meItemHideRanges.push(new vscode.Range(line, indent, line, indent + bulletLen));
           // v4.0.58(俊克 バグ1): 箇条書きにも色を効かせる。ラベル(•/N.)は文字色に従い、本文には文字色/背景色を掛ける。
           const _bfg = (sp && sp.fgKey && HIGHLIGHT_FG_COLORS[sp.fgKey]) ? HIGHLIGHT_FG_COLORS[sp.fgKey] : null;
           meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: numbered ? ((_numOf.get(line) || 1) + '.') : '•' /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: _bfg || new vscode.ThemeColor('editor.foreground'), width: '3ch' } } });
-          if (!hashes && sp && (sp.fgKey || sp.bgKey || sp.comment) && bodyEndP > bodyStart) { // 見出し無しの箇条書き=本文に色/tipを掛ける(見出しありは上の分岐が担当)
+          if (!hashes && !(dir && dir.level) && sp && (sp.fgKey || sp.bgKey || sp.comment) && bodyEndP > bodyStart) { // 見出し無しの箇条書き=本文に色/tipを掛ける(見出しありは上の分岐が担当)
             const rB = new vscode.Range(line, bodyStart, line, bodyEndP);
             let fk = sp.fgKey; if (sp.bgKey && !fk) fk = DARK_BG_KEYS.has(sp.bgKey) ? 'white' : 'black';
             const itB = { range: rB };
@@ -12663,10 +12681,40 @@ function meosMaskCodeSpans(t) {
   while ((m = re.exec(str)) !== null) { const a = m.index, b = a + m[0].length; out = out.slice(0, a) + ' '.repeat(b - a) + out.slice(b); }
   return out;
 }
+// v4.0.63(俊克 8/8 改良1「開始点に依存しないで、コメントで完全にコントロールする」・第2弾=行単位):
+//   仕様コメント先頭の**命令トークン**で「この行が何であるか」を宣言する。
+//     `## 本文<!-- H2 (白/緑)//[]tip= -->`      = 見出しレベル2
+//     `- ## 本文<!-- -H2 (白/緑)//[]tip= -->`   = 箇条書き＋見出し
+//     `1. 本文<!-- -1.H2(白/緑)//[]tip= -->`    = 番号付き＋見出し
+//   見出し/箇条書きは**膜と違って開始と終了が対になっていない**(行末が終わり)ので、開始マーカーに頼らず
+//   コメント側だけで完全に決められる。→ `#` の後ろの空白を書き忘れた `##本文` でも見出しとして描ける。
+//   ★誤爆防止=トークンの直後は「行末 / `(` / `//`」だけ許す(`<!-- - see below -->` のような散文は食わない)。
+// v4.0.63(俊克 8/8 am09:23「Me記法のコメントは『Mew!』とコメントの最初で鳴かせる」): ★署名。
+//   `<!-- Mew! H2 (白/緑)//[]tip= -->` のように、MeOSの仕様コメントは先頭で 🐱 と鳴く。
+//   ①grepで一発(`grep 'Mew!'`)②「MeOSの指定」と「ただのHTMLコメント」を**推測でなく宣言**で分けられる。
+//   ★ただし過去14万行には無いので**必須にはできない**(門番にしない)。署名は「緩さを買う券」=
+//     あれば疑わずに読む/無ければ従来どおり形を厳しく見る。→ 過去は1文字も変換せずに済む。
+//   読む方は大小無視で `Mew!` `MeW!` `mew!` を受ける(書くのは `Mew!` に統一)。
+const MEOS_MEW_SIGNATURE_RE = /^[ \t]*mew!\s*/i;
+function meosHasMewSignature(payload) { return MEOS_MEW_SIGNATURE_RE.test(String(payload == null ? '' : payload)); }
+function meosStripMewSignature(payload) { return String(payload == null ? '' : payload).replace(MEOS_MEW_SIGNATURE_RE, ''); }
+const MEOS_LINE_DIRECTIVE_RE = /^(-1\.|-1|1\.|1|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(?:$|(?=\(|\/\/))/;
+function meosLineDirective(payload) {
+  const s = String(payload == null ? '' : payload);
+  const m = MEOS_LINE_DIRECTIVE_RE.exec(s);
+  if (!m || (!m[1] && !m[2])) return null;
+  return {
+    bullet: m[1] ? (m[1] === '-' ? 'bullet' : 'number') : null, // '-'=箇条書き / '1' '1.' '-1' '-1.'=番号付き
+    level: m[2] ? (m[2].charAt(0) === 'H' ? parseInt(m[2].slice(1), 10) : m[2].length) : 0, // H2 も ## も同じ
+    rest: s.slice(m[0].length), // 残り=(色)//tip
+  };
+}
 function meosSpecCommentAfter(text, e) {
   const m = /^<!--\s*([^\n]*?)\s*-->/.exec(String(text).slice(e));
   if (!m) return null;
-  return { raw: m[1] || '', end: e + m[0].length };
+  // v4.0.63(俊克): 先頭の署名 `Mew!` は読み飛ばす(あっても無くても同じに読める=read-both)。
+  const raw0 = m[1] || '', mew = meosHasMewSignature(raw0);
+  return { raw: mew ? meosStripMewSignature(raw0) : raw0, mew, end: e + m[0].length };
 }
 const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)|^[ \t]*\d+[.)][ \t][^\n]*<!--[^\n]*-->[ \t]*$|^[ \t]*[-*+][ \t][^\n]*<!--[^\n]*(?:^|\s)-?1\.?(?:[\s(][^\n]*)?-->[ \t]*$/; // v4.0.61: 新形=行頭 `N. `+仕様コメント / 旧形=`- 項目<!-- 1 -->` // v4.0.59: コメント内は `1`(旧 `-1` も読む) // 連番の対象(新形 `- 項目<!-- -1 -->` と旧Me記法の両方)
 const MEOS_ANY_ITEM_RE = /^[ \t]*(?:-1?\{|#{1,3}-1?\{|[-*+][ \t]|\d+[.)][ \t])/; // 項目の並び(間に挟まっても連番は途切れない)
@@ -12717,13 +12765,18 @@ async function meosContinueListOnEnter(editor) {
     {
       const scm = /<!--\s*([^\n]*?)\s*-->[ \t]*$/.exec(text);
       if (scm) {
-        const payload = scm[1] || '';
-        const num = /(^|\s)-?1\.?(\s|\(|$)/.test(payload) ? '-1.' : ''; // v4.0.61: 理想の記法をそのまま引き継ぐ
-        const rest = payload.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '');
+        // v4.0.63(俊克): 署名 `Mew!` と命令トークン(-1. / -H2 / H2 …)ごと次の項目へ引き継ぐ。
+        const raw = scm[1] || '', sig = meosHasMewSignature(raw) ? 'Mew! ' : '';
+        const payload = meosStripMewSignature(raw);
+        const dir = meosLineDirective(payload);
+        const num = dir
+          ? ((dir.bullet === 'number' ? '-1.' : (dir.bullet === 'bullet' ? '-' : '')) + (dir.level ? ('H' + dir.level) : ''))
+          : (/(^|\s)-?1\.?(\s|\(|$)/.test(payload) ? '-1.' : ''); // v4.0.61: 理想の記法をそのまま引き継ぐ
+        const rest = dir ? dir.rest : payload.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '');
         const cm = /\([^()]*\)/.exec(rest);
         const color = cm ? cm[0] : '';
         const tip = /\/\//.test(rest) ? '//[]tip=' : '';
-        if (num || color) numSpec = '<!-- ' + (num + color + tip).trim() + ' -->'; // 番号だけの時に空白が二重にならないように
+        if (num || color) numSpec = '<!-- ' + (sig + num + (num && color ? ' ' : '') + color + tip).trim() + ' -->'; // 番号だけの時に空白が二重にならないように
         else if (/^\s*\d+[.)]/.test(text)) numSpec = ''; // 順序付きだが指定コメントが無い行=そのまま
       }
     }
@@ -13458,11 +13511,15 @@ function formatSpanAtCursor(editor, kind) {
       // v4.0.54(俊克): 新形 `## 本文<!-- (色)//tip -->` / `- ## 本文<!-- … -->` / `- 項目<!-- -1 -->`。
       //   見出しがあれば**見出しだけ**を外す(箇条書きの `- ` は残す=外側から1枚ずつ脱ぐ)。末尾の仕様コメントも一緒に落とす。
       const mp = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})[ \t]+)?(\S[^\n]*?)[ \t]*$/.exec(text); // v4.0.61: `1. ` も対象
-      if (mp && (mp[3] || mp[2])) {
+      // v4.0.63(俊克): コメントの命令トークン(H2/-H2/-1.H2)で宣言された見出し・箇条書きも解除対象にする。
+      const _dc = /<!--\s*([^\n]*?)\s*-->[ \t]*$/.exec(text);
+      const _dir = _dc ? meosLineDirective(meosStripMewSignature(_dc[1] || '')) : null;
+      if (mp && (mp[3] || mp[2] || (_dir && (_dir.level || _dir.bullet)))) {
         let body = mp[4] || '';
         const mc = /<!--[\s\S]*?-->[ \t]*$/.exec(body);
         if (mc) body = body.slice(0, mc.index).replace(/[ \t]+$/, '');
-        if (mp[3]) { // 見出しあり → #から行末までを本文に置き換え(先頭の `- ` は温存)
+        if (!mp[3] && _dir && _dir.level) body = body.replace(/^#{1,6}[ \t]*/, ''); // v4.0.63: 空白を書き忘れた `##本文` の # も落とす
+        if (mp[3] || (_dir && _dir.level)) { // 見出しあり → #から行末までを本文に置き換え(先頭の `- ` は温存)
           const hs = (mp[1] || '').length + (mp[2] || '').length;
           return { kind, range: new vscode.Range(line, hs, line, text.length), body };
         }
@@ -18263,7 +18320,8 @@ function meosMeTexTokens(text) { text = (String(text).indexOf('`') >= 0) ? meosM
       //   `A↑2<!-- A↑2{150%(白/緑)} -->` / `A↑2<!-- ↑2{…} -->` / 従来どおり `A↑2<!-- {…} -->`。
       // トークンは「↑か↓を含む空白なしの並び」だけを許す(=この行が上付/下付であるという宣言)。
       // 番号付き箇条書きの `-1.` と同じ発想で、**理想の記法を書き残す印**として読み飛ばす。
-      const cw = /^\s*<!--\s*(?:[^\s{}<>]*[↑↓][^\s{}<>]*[ \t]*)?\{([^}]*)\}\s*-->/.exec(text.slice(scanFrom));
+      // v4.0.63(俊克): 先頭の署名 `Mew!` も受ける(`A↑2<!-- Mew! A↑2{150%(白/緑)} -->`)。
+      const cw = /^\s*<!--\s*(?:[Mm][Ee][Ww]!\s*)?(?:[^\s{}<>]*[↑↓][^\s{}<>]*[ \t]*)?\{([^}]*)\}\s*-->/.exec(text.slice(scanFrom));
       if (cw) { specInner = cw[1]; specStart = scanFrom; specEnd = scanFrom + cw[0].length; }
     }
     if (specInner != null) {
@@ -18285,7 +18343,7 @@ const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
 // v4.0.62(俊克): 命令トークン付き `<!-- A↑2{150%(白/緑)} -->` も同じく隠す(見えているのはバグ)。
-const MEOS_METEX_SPEC_COMMENT_RE = /<!--\s*(?:[^\s{}<>]*[↑↓][^\s{}<>]*[ \t]*)?\{([^}]*)\}\s*-->/g;
+const MEOS_METEX_SPEC_COMMENT_RE = /<!--\s*(?:[Mm][Ee][Ww]!\s*)?(?:[^\s{}<>]*[↑↓][^\s{}<>]*[ \t]*)?\{([^}]*)\}\s*-->/g;
 function meosIsMeTexSpec(inner) { const s = String(inner || '').trim(); if (!/%/.test(s) && !/\//.test(s)) return false; return /^(?:\d{1,3}\s*%)?\s*(?:\([^)]*\/[^)]*\))?$/.test(s); }
 function meosMeTexBaseTall(base) { const b = String(base || ''); if (/[a-z]/.test(b)) return /[bdfhklt]/.test(b); return true; } // 小文字はx-height=背低(上伸びbdfhkltは背高)・大文字/数字/記号/括弧=背高
 // v3.6.1(俊克): Me Dock「A²/A₃」ボタン=テンプレ挿入。選択=基準文字/無ければ'A'、上付き↑2/下付き↓3、現在の設定%を {N%} で付ける。例: B選択→B↑2{150%} / 無選択→A↑2{150%}。
