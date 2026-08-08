@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.69(俊克 8/8 am11:22 実機テスト バグ1「完全に古い形式は、🐱判定できていない」): ★旧形も🐱の対象にした。v4.0.66で「旧形は対象外」と自分で宣言したが、俊克の日記では**旧形こそが本体**(##{ }## 3,500行 / =={ }== 1,475 / ~~{ }~~ 623 / **{ }** 247)。🐱が素通りするなら「この画面はもう全部鳴いている」が嘘になる=判定として成立していなかった。★旧形の直し方は署名の挿入ではなく**記法の変換**so、Quick Fixは「🐱 Markdown＋Mew! の新形に直す」。`##{ 睡眠 … (白/green)//[]tip= }##` → `## 睡眠 …<!-- Mew! H2 (白/green)//[]tip= -->`。色名は**書かれたまま持ち越す**(正規化しない=生データが読みやすい)。対応=見出し(#〜###・[]/{}両方・箇条書き付き ##-{ } ##-1{ })／箇条書き膜 -{ } -1{ }／インライン =={ } ~~{ } **{ } __{ } _{ }。★**安全に変換できる行だけ💡を出す**。入れ子(`**{_{…}_(白/黄)}**`)や1行に複数ある行は、波線と🐱だけ出して**手を出さない**(外側だけ剥がすと内側の `(色)` を外側の色と誤読して壊れる)。勝手に壊すより、見えていて直っていない方がよい。入れ子は外側から1枚ずつ(🚫と同じ流儀)。【実データ】14万行日記=**旧形 4,948行**を検出、うち**4,547行(92%)が1クリック変換可**・401行は手を出さない(残りは全部、入れ子か1行複数=人間が見るべき行)。署名なし新形は168件。★これで**「一括変換しない」と「旧形を減らす」が両立**する[[project_now_not_bulk]]=見ている画面の分だけ、直したい時に直す。→ [[reference_meos_notation_v4]]
 // - v4.0.68(俊克 8/8 am11:05 実機テスト 疑問1「スクロールしても🐱の数字が変わらない。本当に120行をリアルタイムに見ているのか?」＋改良1「どこが対象になっているのかが分らないと不安だよね。栞マークのような感じでガターに🐱を出したらどうかな?」): ★【疑問1=俊克が正しい。見ていなかった】真因=**数える場所が2つあった**。波線(診断)はスクロールのrefreshで更新されるのに、🐱の件数は updateMeDockMode 経由でしか送っておらず、**スクロールでは updateMeDockMode が呼ばれない**(onDidChangeTextEditorVisibleRanges が呼ぶのは refresh だけ・v0.9.676のデバウンス設計)。soカーソルを動かすまで数字が固まっていた。→ **数えるのは診断のパス1箇所だけ**にして、そこから Me Dock へ直接 mewState を送る(1回の走査で波線とガターと🐱の3つが同時に動く・件数が変わった時だけpost=スクロール中のメッセージ洪水を避ける)。Me Dockが開き直した時のためにキャッシュをforce送信する口も1つ用意(数え直しはしない)。★教訓=**同じ数を2箇所で数えると、片方だけ更新されて必ずズレる**。数える場所は1つにして配る。★【改良1=ガターの🐱】栞/参照符と同じ gutterIconPath 方式で mew.svg を新規追加(橙の猫顔・overviewRulerにも橙の印)。未署名が1つでもある行に1つだけ出す。→ **件数(🐱³)と場所(ガター)と直し方(💡)が揃った**。webviewは[[feedback_minimal_change_verify_webview]]どおり前版と文字単位でdiffし、意図した6箇所(8ハンク/56行)だけを確認。node --check/check_webview/headless 34/34＋18/18＋日記169件(退行なし)。→ [[reference_meos_notation_v4]]
 // - v4.0.67(俊克 8/8 am10:37「今の120行で、旧記法が見つかった時だけ、Me Dockに🐱が現れる、というのが良いかもね」): ★Me Dockに**🐱ボタン**(Formatバー・👁Rawの左隣)。この画面(可視±120行=波線と同じ範囲)に「Mew!と鳴いていない仕様コメント」が居る時だけ**色が点いて件数が肩に出る**(🐱³)・押すと画面分をまとめて署名する。★俊克の案は「現れる」だったが**位置は固定で、点く/消えるだけ**にした=現れたり消えたりすると隣のボタンが動いて押し間違える。MeOSには既に同じ流儀がある(💬ジャンプの「2個未満で無効化半透明」v0.9.886)ので、そこに合わせた。実装=node meosMewUnsignedCountVisible→modeメッセージに mewCount 同送/webview #mew-btn＋window.__renderMew／クリックは既存の meosMewSignVisible を呼ぶだけ(パレット・電球と同じ1つの口)。★webviewは[[feedback_minimal_change_verify_webview]]どおり最小変更＝前版とのdiffを1行ずつ確認し、意図した7箇所だけであることを検証(21行)。その過程で**HTMLに `\\ud83d\\udc31` と `\\u2014` が literal で入る事故**を発見して修正(pythonの \\\\u が生文字列で出ていた)＝**tipや絵文字は必ず出力を目で確認する**。node --check/check_webview/headless 34/34＋18/18＋日記169件(退行なし)。→ [[reference_meos_notation_v4]]
 // - v4.0.66(俊克 8/8 am10:20「Mew!と鳴いてない旧記法があったら、直すように、そこを点滅させるとかすればいいんじゃないかな?」＋am10:27「`Cmd+.` は別のにして(キー配列を変更している)」): ★**点滅ではなく薄い波線(Hint診断)＋ワンクリック修正**。理由=日記を書いている最中に視界の端が動くのは辛い/旧記法が画面に入るたび点滅したら騒音。VS Codiumが元から持っている道具(Diagnostic＋CodeAction)に乗せる。★直し方は3つ=①**💡電球をクリック**(ショートカット不要=`Cmd+.` に依存しない)②パレット「MeOS: この画面のMe記法に Mew! を付ける」③好きなキーに自分で割り当てる(**既定キーは割り当てない**=俊克はキー配列変更中)。★出すのは**可視範囲だけ**(装飾と同じ±120行・全部出すとProblemsパネルに数千件並ぶ)。★これで**一括変換が要らなくなる**=見えているところを直したい時に直す・過去は勝手に変わらない[[project_now_not_bulk]]・8/6の事故(閉じ忘れ ``` 1本で14万行全滅)の再来もない。【★実データ検証=14万行日記に流して2回直した】(1)最初 **2,485件**=**膜の行 `<!-- {* ▼mCN=… // … (📊…) *} -->` を拾っていた**(膜の名前に `//` と `(…)` が入るので形だけでは見分けが付かない・上付き判定の `{…}` が膜の `{* … *}` に丸ごと一致していた)→膜を明示除外＋上付きは meosIsMeTexSpec で中身を確かめる。(2)次に **224件**=①**コードスパンの中の引用**(記法を説明する文で波線が出たら本末転倒→v4.0.58と同じくマスク)②`「<!--(×←)→ --> 5」`(形の**前だけ**見て通していた→**両端を留める**正規表現に)。→ 最終 **169件**、全部が本物(8/6〜8/8に書いた署名なしの新形)。★教訓=**判定の形は前だけでなく後ろも留める**／**実データに流すまで誤爆の正体は分からない**(机上のテストは20/20通っていた)。headless 20/20＋34/34＋18/18 PASS。→ [[reference_meos_notation_v4]]
@@ -12783,6 +12784,87 @@ function meosCreateMewGutterDecoration() {
   if (!opts.gutterIconPath) opts.before = { contentText: '🐱', margin: '0 3px 0 0' };
   meosMewGutterDecoration = vscode.window.createTextEditorDecorationType(opts);
 }
+// ===== v4.0.69(俊克 8/8 am11:22 バグ1「完全に古い形式は、🐱判定できていない」) =====================
+// ★v4.0.66で「新形なのに鳴いていないコメント」だけを対象にしていた(旧形は対象外と宣言した)が、
+//   俊克の日記では旧形こそが本体(##{ }## 3,500行 / =={ }== 1,475 / ~~{ }~~ 623 / **{ }** 247)。
+//   🐱が旧形を素通りするなら「この画面はもう全部鳴いている」が嘘になる → 旧形も🐱の対象にする。
+// ★旧形の直し方は署名の挿入ではなく**記法の変換**なので、Quick Fixは「新形に直す」。
+//   安全に変換できる行だけに💡を出し、入れ子など曖昧な行は**波線と🐱だけ出して手を出さない**
+//   (勝手に壊すより、見えていて直っていない方がよい)。入れ子は外側から1枚ずつ脱ぐ(🚫と同じ流儀)。
+const MEOS_LEGACY_HEAD_RE = /^([ \t]*)(#{1,3})(-1|-)?(\{|\[)([\s\S]*)(\}|\])\2[ \t]*$/;
+// インラインの旧形(開き/閉じ/新形で使うマーカー)。__{ }__ は _{ }_ より先に置く(長い方優先)。
+const MEOS_LEGACY_FORMS = [
+  { open: '=={', close: '}==', mk: '==', single: 'bg' },
+  { open: '~~{', close: '}~~', mk: '~~', single: 'fg' },
+  { open: '**{', close: '}**', mk: '**', single: 'fg' },
+  { open: '__{', close: '}__', mk: '_', single: 'fg' },
+  { open: '_{', close: '}_', mk: '_', single: 'fg' },
+];
+const MEOS_LEGACY_OPEN_RE = /=={|~~\{|\*\*\{|__\{|_\{|^[ \t]*-1?\{/;
+// この行に旧形が居るか(安い足切り付き)。居れば範囲を返す。
+function meosLegacyHits(text) {
+  let line = String(text == null ? '' : text);
+  if (line.indexOf('{') < 0 && line.indexOf('[') < 0) return [];
+  if (line.indexOf('`') >= 0) line = meosMaskCodeSpans(line); // 記法を引用しているだけの行は対象外(v4.0.58と同じ約束)
+  const out = [];
+  const mh = MEOS_LEGACY_HEAD_RE.exec(line);
+  if (mh && ((mh[4] === '{') === (mh[6] === '}'))) out.push({ start: (mh[1] || '').length, end: line.replace(/[ \t]+$/, '').length, kind: 'head' });
+  else {
+    const mi = MEOS_ME_ITEM_RE.exec(line);
+    if (mi) out.push({ start: (mi[1] || '').length, end: line.replace(/[ \t]+$/, '').length, kind: 'item' });
+  }
+  if (!out.length) { // 行全体が旧形の殻でない時だけ、インラインの旧形を探す(殻の中は次の周回で1枚ずつ)
+    for (const f of MEOS_LEGACY_FORMS) {
+      let i = 0;
+      while ((i = line.indexOf(f.open, i)) >= 0) {
+        if (f.open === '_{' && i > 0 && line.charAt(i - 1) === '_') { i += f.open.length; continue; } // __{ は上で拾う
+        const c = line.indexOf(f.close, i + f.open.length);
+        if (c < 0) { i += f.open.length; continue; }
+        out.push({ start: i, end: c + f.close.length, kind: 'span', form: f });
+        i = c + f.close.length;
+      }
+    }
+    out.sort((a, b) => a.start - b.start);
+  }
+  return out;
+}
+// 旧形1つを新形＋Mew!へ。安全に変換できない(入れ子・閉じ不一致)時は null。
+function meosConvertLegacyLine(text) {
+  const line = String(text == null ? '' : text);
+  const hits = meosLegacyHits(line);
+  if (!hits.length) return null;
+  const inner0 = (a, b) => line.slice(a, b);
+  const splitSpec = (inner, single) => { // 本文と (色)//tip を、書かれたまま分ける(色名は正規化しない=生データが読みやすい)
+    const sp = parseColorSpec(inner, single, maskInlineTokens(inner));
+    return { body: String(sp.bodyText).trim(), spec: inner.slice(sp.bodyLen).trim() };
+  };
+  const h = hits[0];
+  if (h.kind === 'head') {
+    const m = MEOS_LEGACY_HEAD_RE.exec(line);
+    const indent = m[1] || '', level = m[2].length, blt = m[3] || '', inner = m[5];
+    if (MEOS_LEGACY_OPEN_RE.test(inner)) return null; // 入れ子=外側だけ剥がすと中の (色) を誤読するので手を出さない
+    const { body, spec } = splitSpec(inner, 'fg');
+    if (!body) return null;
+    const dir = (blt === '-1' ? '-1.' : (blt === '-' ? '-' : '')) + 'H' + level;
+    const lead = blt ? (blt === '-1' ? '1. ' : '- ') : '';
+    return indent + lead + '#'.repeat(level) + ' ' + body + meosSpecComment(dir, spec);
+  }
+  if (h.kind === 'item') {
+    const m = MEOS_ME_ITEM_RE.exec(line);
+    const indent = m[1] || '', num = !!m[2], inner = m[3] || '';
+    if (MEOS_LEGACY_OPEN_RE.test(inner)) return null;
+    const { body, spec } = splitSpec(inner, 'fg');
+    if (!body) return null;
+    return indent + (num ? '1. ' : '- ') + body + meosSpecComment(num ? '-1.' : '-', spec);
+  }
+  if (hits.length !== 1) return null; // 1行に複数=どれを直したいか曖昧so手を出さない(1つずつ書き直してもらう)
+  const inner = inner0(h.start + h.form.open.length, h.end - h.form.close.length);
+  if (MEOS_LEGACY_OPEN_RE.test(inner)) return null; // 入れ子
+  const { body, spec } = splitSpec(inner, h.form.single);
+  if (!body) return null;
+  return line.slice(0, h.start) + h.form.mk + body + h.form.mk + meosSpecComment(h.form.mk, spec) + line.slice(h.end);
+}
+const MEOS_MEW_LEGACY_CODE = 'mew-legacy';
 const MEOS_MEW_DIAG_CODE = 'mew-missing';
 let meosMewDiagnostics = null;
 function meosUpdateMewDiagnostics(editor) {
@@ -12799,12 +12881,18 @@ function meosUpdateMewDiagnostics(editor) {
       for (let ln = a; ln <= b; ln++) {
         const text = doc.lineAt(ln).text;
         const hits = meosUnsignedSpecComments(text);
+        const legacy = meosLegacyHits(text); // v4.0.69(俊克 バグ1): 完全に古い形式も🐱の対象
         // v4.0.68(俊克 改良1「どこが対象になっているのかが分らないと不安だよね。栞マークのような感じでガターに🐱を」):
         // 行に1つでも未署名があれば、栞と同じ流儀でガターに🐱を出す(1行に何個あっても印は1つ)。
-        if (hits.length) gutter.push(new vscode.Range(ln, 0, ln, 0));
+        if (hits.length || legacy.length) gutter.push(new vscode.Range(ln, 0, ln, 0));
         for (const h of hits) {
           const d = new vscode.Diagnostic(new vscode.Range(ln, h.start, ln, h.end), '🐱 Me記法のコメントが Mew! と鳴いていません', vscode.DiagnosticSeverity.Hint);
           d.code = MEOS_MEW_DIAG_CODE; d.source = 'MeOS';
+          items.push(d);
+        }
+        for (const g of legacy) {
+          const d = new vscode.Diagnostic(new vscode.Range(ln, g.start, ln, g.end), '🐱 古い形式のMe記法です(Markdown＋Mew!の新形に直せます)', vscode.DiagnosticSeverity.Hint);
+          d.code = MEOS_MEW_LEGACY_CODE; d.source = 'MeOS';
           items.push(d);
         }
       }
@@ -12818,9 +12906,22 @@ function meosUpdateMewDiagnostics(editor) {
 const meosMewCodeActionProvider = {
   provideCodeActions(doc, range, ctx) {
     try {
-      const mine = (ctx.diagnostics || []).filter(d => d && d.code === MEOS_MEW_DIAG_CODE);
-      if (!mine.length) return [];
       const out = [];
+      // v4.0.69: 旧形は「署名を足す」ではなく「新形に直す」。安全に変換できる行だけ💡を出す。
+      for (const d of (ctx.diagnostics || [])) {
+        if (!d || d.code !== MEOS_MEW_LEGACY_CODE) continue;
+        const ln = d.range.start.line, text = doc.lineAt(ln).text;
+        const nt = meosConvertLegacyLine(text);
+        if (nt == null || nt === text) continue;
+        const a = new vscode.CodeAction('🐱 Markdown＋Mew! の新形に直す', vscode.CodeActionKind.QuickFix);
+        a.edit = new vscode.WorkspaceEdit();
+        a.edit.replace(doc.uri, new vscode.Range(ln, 0, ln, text.length), nt);
+        a.diagnostics = [d]; a.isPreferred = true;
+        out.push(a);
+        break; // 1行に1つ(入れ子は次の周回で1枚ずつ)
+      }
+      const mine = (ctx.diagnostics || []).filter(d => d && d.code === MEOS_MEW_DIAG_CODE);
+      if (!mine.length) return out;
       for (const d of mine) {
         const ln = d.range.start.line, text = doc.lineAt(ln).text;
         const hit = meosUnsignedSpecComments(text).find(h => h.start === d.range.start.character);
@@ -12831,7 +12932,7 @@ const meosMewCodeActionProvider = {
         a.diagnostics = [d]; a.isPreferred = true;
         out.push(a);
       }
-      if (out.length) {
+      if (mine.length) {
         const all = new vscode.CodeAction('🐱 この画面のMe記法に全部 Mew! を付ける', vscode.CodeActionKind.QuickFix);
         all.command = { command: 'lai-membrane.mewSignVisible', title: '🐱 この画面のMe記法に全部 Mew! を付ける' };
         out.push(all);
