@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.93(俊克 8/9 am01:25「URLの方は続きの文字が次の行に追い出されてしまう。コメント文なのだから文字が連続して出るべき。やろうと思えば、できるのか? できるはずだよね?」): ★**折り返しは変えられない**=VS Codeの折り返しは「モデルのテキストの桁数」で決まり、装飾(font-size:0)は**描画だけ**に効く。拡張から「この範囲は幅ゼロとして折り返せ」と伝えるAPIは無い(画像膜の editorInsets 封印と同じ一族の壁)。★so **URLをその行に置かない**方で解いた=**Markdownの参照形式リンクに対応**。本文 `[URLを表示][vsx]に飛ぶ。`(17文字so折り返さない) / 定義 `[vsx]: <!-- https://… -->`(別の行・行先はコメントでも裸でも可)。省略形 `[表示][]` も可(表示文字をrefとして使う)。**定義が無ければリンクにしない**(嘘の下線を引かない)。★これは標準のMarkdownsoMeOSの外でも本物の参照リンクとして生きる=v4.0の背骨と一貫。実装=定義の収集(**document.versionでキャッシュ**so14万行を毎回走らない・足切り `]:`)＋装飾(角括弧とrefを隠して下線)＋DocumentLink(URL=外部/膜名=ワープ)＋表の幅＋🚫解除。★幅の足切りに `](` と `][` を入れ忘れて、リンクだけのセルが素通りしていた(テストで捕まえた)=**早期脱出の条件は、後から機能を足したら必ず見直す**。headless 14/14＋34/34＋18/18 PASS。
 // - v4.0.92(俊克 8/9 am01:02「以下の素のリンク記法は、MeOSでは、リンク部分を表示せずに正しくレンダリングして下さい」): ★★**v4.0.78の素のMarkdownリンクの装飾は一度も動いていなかった**。`for` を包みリンクの `while` の**中**に書いてしまっていたので、「同じ行に包みリンクもある」時だけ動く=普通の行では何も起きない。→ 独立したループに出した。読み取り(meosBareMdLinks)・DocumentLink・表の幅・🚫は正しく動いていたので、**装飾だけが抜けていた**(だからv4.0.78で「日記の574個の見え方が変わる」と書いたのは嘘=何も変わっていなかった)。★見つけ方=**ヘッドレスで装飾関数を実際に呼んだ**(偽エディタでsetDecorationsを受け取り、行ごとに何が隠れるかを表に出す)。素のリンクだけの行=0件 / 同じ行に包みリンクも置くと=6件、で入れ子の位置が確定した。★教訓=**入れ子の位置は目でも波括弧の数え上げでも間違える**(正規表現の `{1,6}` が数を狂わせる)。**「実装したのに実機で効かない」は、たいてい入れ子の位置**so、動かして確かめる。★ハーネスの欠陥も直した=vscodeスタブが装飾型に**同じキー**を返していてテスト側で上書きされ、検証にならなかった。→ 一意の連番キーに。★教訓=**テストの土台がウソをつくと、バグが見えない**。headless 9/9＋34/34＋18/18 PASS。
 // - v4.0.91(俊克 8/9 am00:54「PAT 7d leftを四角で囲んであるとボタンと間違うので、<PAT 7d left>とか、何か分かりやすい表示の仕方はないかな?」): ★指摘の芯=**この行では枠と塗りがあるものが押せるもの**(🐙/🔗/✕)。v4.0.90で読みやすくするために付けた「枠＋塗り」は、ボタンとまったく同じ服だった。→ **囲みを外して素の文字**にする=見た目の飾りでなく**構造**で区別が付く。色は状態を示すために残す(平常=文字色/橙/赤)。加えて**点線の下線**を引いた=「ホバーで説明が出る」印で、押せる合図ではない(慣習として押せるものは実線か枠)。★`<…>`案も検討したが採らず=問題はラベルの書き方ではなく**服がボタンと同じだったこと**so、囲みを外せば括弧は要らない(記号を足すと今度はコードのように見える)。★教訓=**押せる/押せないは、色や文字ではなく「枠と塗り」で語られている**。読みやすくしたい時に枠を足すと、意味を1つ壊す。
 // - v4.0.90(俊克 8/9 am00:44「PAT 7dの背景が結構暗いね。まー🐱もかなり暗いけどね。英語には『後7日』のようなコンパクトな表示の仕方は無いの?」): ★表記=**`PAT 7d left`**(`left`=残り)。英語のバッジで「残りN日」の定番の短縮形で、読み間違えが起きない(`in 7d`や`T-7d`も通じるが、`7d`単独だと「作ってから7日」と読める曖昧さがある)。★明るさ=平常の灰チップは bg .18→.30 / opacity .75→1 ＋枠を追加(輪郭が出る)。橙 .22→.38・赤 .22→.38 も同様に。🐱は消灯 .28→.42(消えていても「居る」と分かる)・点灯の背景 .18→.34。★俊克のスクショで `PAT 7d` が**灰色**だったのは v4.0.89 のしきい値(7日発行so橙は残り2日から)が効いている証拠でもあった。★教訓=**「まだ大丈夫」の状態も読めなければ情報ではない**。警告色だけ調整して平常色を暗いまま放置していた。★事故=webview側のコメントに**バッククォート**を書いてテンプレートリテラルを途中で終わらせた(v4.0.50の全壊と同じ穴・2度目)。node --check が即落ちて発覚so被害ゼロ。→ **webview領域のコメントでは記法をバッククォートで囲まない**(囲みたくなるのが罠)。
@@ -17969,7 +17970,8 @@ function meosCharWidth(cp) {
 // ★バッククォートの中は「文字そのもの」so手を付けない(v4.0.58の約束)。記法を説明する表が崩れない。
 function meosStripHiddenForWidth(s) {
   let t = String(s == null ? '' : s);
-  if (!t || (t.indexOf('*') < 0 && t.indexOf('_') < 0 && t.indexOf('=') < 0 && t.indexOf('~') < 0 && t.indexOf('<!--') < 0)) return t;
+  // v4.0.93: 足切りに `](` と `][` を入れ忘れると、リンクだけのセルが素通りして幅が合わない(テストで捕まえた)。
+  if (!t || (t.indexOf('*') < 0 && t.indexOf('_') < 0 && t.indexOf('=') < 0 && t.indexOf('~') < 0 && t.indexOf('<!--') < 0 && t.indexOf('](') < 0 && t.indexOf('][') < 0)) return t;
   // コードスパンは丸ごと退避してから処理し、最後に戻す(中身は見えている=幅に数える)。番兵は私用領域 U+E000。
   const keep = [];
   t = t.replace(/(`+)[^\n]*?\1/g, (m) => { keep.push(m); return '\uE000' + (keep.length - 1) + '\uE000'; });
@@ -17979,6 +17981,9 @@ function meosStripHiddenForWidth(s) {
   //    (後ろのコメントは `}==` で終わるので①の spec 判定に当たらない=個別に外す必要がある。)
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
   if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
+  // v4.0.93: 参照形式 `[表示][ref]` も表示文字だけ。ここには定義表が無いので、定義の有無は見ない
+  //   (表の中で未定義の参照を書くのは病的so、定義済みに寄せる方が実害が小さい)。
+  if (t.indexOf('][') >= 0) t = t.replace(MEOS_MD_REFLINK_RE, (m, label) => label);
   // ① MeOSが隠す仕様コメント(署名付き/形がspec/結合・計算マーカー)。ただのHTMLコメントは見えているので数える。
   if (t.indexOf('<!--') >= 0) {
     t = t.replace(/<!--[^]*?-->/g, (m) => {
@@ -19052,6 +19057,52 @@ function meosTargetLinks(document, m, base, target) {
     return [dl];
   } catch (_) { return []; }
 }
+// ===== v4.0.93(俊克 8/9 am01:25「URLの方は続きの文字が次の行に追い出される。やろうと思えば、できるのか?」) =====
+// ★折り返しそのものは**エディタ側の壁**=VS Codeの折り返しは「モデルのテキストの桁数」で決まり、
+//   装飾(font-size:0)は描画だけに効いて折り返しの計算には一切影響しない。拡張から変える口は無い
+//   (画像膜で当たった editorInsets 封印と同じ一族)。
+// ★so **URLをその行に置かない**方で解く=Markdownの**参照形式リンク**に対応する。
+//     本文  `[URLを表示][vsx]に飛ぶ。`      ← 14文字so折り返さない
+//     定義  `[vsx]: <!-- https://… -->`     ← 別の行(行先はコメントに入れてよい)
+//   これは標準のMarkdownso、MeOSの外でも本物の参照リンクとして生きる。
+// 定義は文書全体から集めるが、**document.version をキーにキャッシュ**する(14万行を毎回走らない)。
+const MEOS_MD_REFDEF_RE = /^[ \t]{0,3}\[([^\]\n]+)\]:[ \t]*(?:<!--[ \t]*([^\n]*?)[ \t]*-->|(\S+))[ \t]*$/gm;
+let _meosRefDefCache = { key: '', map: null };
+function meosRefDefs(doc) {
+  try {
+    const key = doc.uri.toString() + '@' + doc.version;
+    if (_meosRefDefCache.key === key && _meosRefDefCache.map) return _meosRefDefCache.map;
+    const map = new Map();
+    const full = doc.getText();
+    if (full.indexOf(']:') >= 0) { // 安い足切り(参照定義が1つも無い文書では正規表現を回さない)
+      let m; MEOS_MD_REFDEF_RE.lastIndex = 0;
+      while ((m = MEOS_MD_REFDEF_RE.exec(full)) !== null) {
+        const ref = String(m[1] || '').trim().toLowerCase();
+        const target = String(m[2] != null ? m[2] : (m[3] || '')).trim();
+        if (ref && target && !map.has(ref)) map.set(ref, target); // 先に書いた方が勝つ(CommonMarkと同じ)
+      }
+    }
+    _meosRefDefCache = { key, map };
+    return map;
+  } catch (_) { return new Map(); }
+}
+// 本文側 `[表示][ref]` と省略形 `[表示][]`(refが空=表示文字をrefとして使う)。定義が無ければ**素の文字のまま**(嘘のリンクにしない)。
+const MEOS_MD_REFLINK_RE = /(?<!\!)\[([^\]\n]+)\]\[([^\]\n]*)\]/g;
+function meosRefMdLinks(text, defs) {
+  let t = String(text == null ? '' : text);
+  if (t.indexOf('][') < 0) return [];
+  if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
+  if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
+  const out = []; let m; MEOS_MD_REFLINK_RE.lastIndex = 0;
+  while ((m = MEOS_MD_REFLINK_RE.exec(t)) !== null) {
+    const label = m[1] || '', refRaw = String(m[2] || '').trim();
+    const ref = (refRaw || label).trim().toLowerCase();
+    const target = defs ? (defs.get(ref) || '') : '';
+    if (!target) continue;
+    out.push({ start: m.index, end: m.index + m[0].length, label, target, textStart: m.index + 1, textEnd: m.index + 1 + label.length });
+  }
+  return out;
+}
 function meosBareMdLinks(text) {
   let t = String(text == null ? '' : text);
   if (t.indexOf('](') < 0) return [];
@@ -19111,7 +19162,7 @@ function meLinkSpanAtCursor(editor) {
   if (!editor) return null;
   const doc = editor.document, pos = editor.selection.active, line = pos.line;
   const text = doc.lineAt(line).text || '';
-  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0) return null; // v4.0.78: 素のMarkdownリンクも解除対象
+  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0 && text.indexOf('][') < 0) return null; // v4.0.78/93: 素のMarkdownリンク・参照形式も解除対象
   let m; MEOS_MELINK_RE.lastIndex = 0;
   while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
     const s = m.index, e = s + m[0].length;
@@ -19122,6 +19173,13 @@ function meLinkSpanAtCursor(editor) {
       if (um) b = um[1].trim();
       return { kind: 'melink', range: new vscode.Range(line, s, line, e), body: b };
     }
+  }
+  for (const b of meosRefMdLinks(text, meosRefDefs(doc))) { // v4.0.93: 参照形式 → 表示文字だけ残す
+    if (pos.character < b.start || pos.character > b.end) continue;
+    let body = String(b.label || '').trim();
+    const um0 = body.match(/^\*\*\*([\s\S]+)\*\*\*$/) || body.match(/^\*\*([\s\S]+)\*\*$/) || body.match(/^_([\s\S]+)_$/);
+    if (um0) body = um0[1].trim();
+    return { kind: 'melink', range: new vscode.Range(line, b.start, line, b.end), body };
   }
   for (const b of meosBareMdLinks(text)) { // v4.0.78: 素のMarkdownリンク → 表示文字だけ残す
     if (pos.character < b.start || pos.character > b.end) continue;
@@ -19183,7 +19241,17 @@ function meosApplyMeLinkDecorations(editor) {
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const raw = doc.lineAt(ln).text;
-        if (raw.indexOf('](') < 0) continue;
+        if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0) continue;
+        // v4.0.93: 参照形式 `[表示][ref]`。定義(`[ref]: 行先`)がある時だけリンクにする。
+        for (const b of meosRefMdLinks(raw, meosRefDefs(doc))) {
+          hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
+          hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ][ref] をまとめて隠す
+          const st2 = meosMeLinkUnderline(0, '');
+          if (!styleRanges.has(st2)) styleRanges.set(st2, []);
+          const it2 = { range: new vscode.Range(ln, b.textStart, ln, b.textEnd) };
+          const hv2 = new vscode.MarkdownString('🔗 ' + b.target); hv2.isTrusted = false; it2.hoverMessage = hv2;
+          styleRanges.get(st2).push(it2);
+        }
         for (const b of meosBareMdLinks(raw)) {
           if (b.textEnd > b.textStart) hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
           hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); // ](行先) をまとめて隠す
@@ -19519,7 +19587,7 @@ function activate(context) {
         // 早期脱出=全文を一度だけ取り、リンク記法の核 '-->[' が無ければ即return(巨大日記の常態=瞬時)。
         // 有る時だけ全文を1回正規表現スキャン(行毎lineAt割付を廃止・positionAtでoffset→位置)。→ [[project_meos_freeze_pattern]]
         const full = document.getText();
-        if (full.indexOf('-->[') < 0 && full.indexOf('](') < 0) return links; // v4.0.78: 素のMarkdownリンクも対象(早期脱出は維持)
+        if (full.indexOf('-->[') < 0 && full.indexOf('](') < 0 && full.indexOf('][') < 0) return links; // v4.0.78/93: 素のMarkdownリンク・参照形式も対象(早期脱出は維持)
         let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(full)) !== null) {
           const label = m[1] || '', target = String(m[2] != null ? m[2] : (m[3] || '')).trim(); if (!target) continue; // v4.0.81
@@ -19548,6 +19616,24 @@ function activate(context) {
             else { dl2.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl2.tooltip = 'Jump to membrane: ' + target; }
             links.push(dl2);
             links.push(...meosTargetLinks(document, b, b.index, target)); // v4.0.80: 行先の文字もMeOSのリンクにする(内蔵の死んだリンクを上書き)
+          }
+        }
+        // v4.0.93: 参照形式 `[表示][ref]` → 定義(`[ref]: 行先`)を引いて飛ぶ。
+        if (full.indexOf('][') >= 0) {
+          const defs = meosRefDefs(document);
+          if (defs.size) {
+            const masked = full.replace(MEOS_MELINK_RE, (mm) => ' '.repeat(mm.length));
+            let r; MEOS_MD_REFLINK_RE.lastIndex = 0;
+            while ((r = MEOS_MD_REFLINK_RE.exec(masked)) !== null) {
+              const label = r[1] || '', ref = (String(r[2] || '').trim() || label).trim().toLowerCase();
+              const target = defs.get(ref); if (!target || !label) continue;
+              const ts = r.index + 1, te = ts + label.length;
+              const dl3 = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
+              if (/^https?:\/\//i.test(target)) { dl3.target = vscode.Uri.parse(target); dl3.tooltip = 'Open: ' + target; }
+              else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue;
+              else { dl3.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl3.tooltip = 'Jump to membrane: ' + target; }
+              links.push(dl3);
+            }
           }
         }
       } catch (_) {}
