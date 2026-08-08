@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.71(俊克 8/8 pm00:04 改良2「膜の生成のタイムスタンプが完全体にまだ直してなかったね」): ★膜名のタイムスタンプを**完全形**へ。`name_075200.805` → `name_20260808s120415JST`。文法=`<ID>_<YYYYMMDD><曜日1字><HHMMSS><TZ>`([[project_v4_next_wave]]改良1の確定文法)。曜日は自動計算(S-M-T-W-t-F-s [[project_2011_weekday_notation]])・TZは可視スタンプv4.0.12と同じ meosTzAbbr を共有。★**時刻は24時間の HHMMSS にした**(設計メモには「膜名側も 00-11+am/pm」の行もあるが、膜名は散文でなく識別子で、24時間なら `grep | sort` がそのまま時系列順になる。am/pmだと順序が壊れる)。本文に書く可視スタンプは今までどおり am/pm 00-11 = ここが違うのは意図的。★旧形 `_HHMMSS.MDD` は read-both(既存の膜名は1文字も変えない)。貼り替え(refreshTrailingTimestamp)・参照膜のTS切り出し(parseRefPointInner)・H-TOC子膜の表示名(tocChildDisplayName)の3箇所を新旧両対応に。【★実データで締めた】日記の**膜名479種**に流したら、当初の正規表現が **7件を誤爆**していた=`table_143052`(=1430年52月と読めた)・`sq(x)_1001`・`3064_20260623`。原因=「年だけ/年月だけ」の部分日付まで取っていたこと。→ **AD日付は曜日字が付いている時だけ**TSと認めるようにした(生成側は必ず入れる)。★収穫=俊克の「年月日があれば曜日は計算できる(so曜日で区切れる)」という設計が、そのまま**誤爆よけ**にもなっていた。BCは曜日を書かない(7日週の制度以前)so別枝 `BC\\d{1,12}`(ルーシー `L_BC3200000EAT`)。実データ再走査で新たに掴むのはルーシー1件のみ=既存の膜名の見え方は変わらない。headless 17/17＋34/34＋18/18 PASS。★**未着手=生涯日記の例外**(`✴️8/05W 2026 タイトル_021835.805` → `✴️8/05W タイトル_20260805W021835JST`＝年を完全TSへ吸収)。日記検出システム(M/DW YYYYトークン・過去に誤検出66→284件で苦労 [[project_lifelong_diary_template]])に触るので**別版で慎重に**。
 // - v4.0.70(俊克 8/8 pm00:04 実機テスト 改良1「DのXが良いんじゃない?」＋改良3「太文字斜体と普通のハイライトで背景の四角が真四角か角丸四角の違いがあるのが違和感がある」): ★改良1=ガターの🐱を候補Dに差し替え(頭と耳が1パス・耳を大きく尖らせた比率)。v4.0.68のが猫に見えなかった原因=**耳を頭から離れた細い線で描いていた**(16pxではアンテナに見える)＋ヒゲが頭とくっついて輪郭が潰れる。16pxで猫と読ませているのは**耳が頭のシルエットと一体であること**だけ。★改良3=太字/斜体の背景に borderRadius:2px を付けてハイライトと揃えた。真因=meosBoldFmtType だけ backgroundColor を後付けしていて角丸の指定が抜けていた(ハイライト/取消線の弱背景は最初から 2px)。俊克の理由が本質=**角丸だと隣り合う別設定の境が分かる**。★同種の穴を全部さらった=色つき背景を出す装飾は node 側に3つだけ(ハイライト本体/取消線の弱背景/太字斜体)で、欠けていたのはこの1つ。見出しと箇条書きの背景はハイライトの装飾型を共有so元から角丸。→ [[reference_meos_notation_v4]]
 // - v4.0.69(俊克 8/8 am11:22 実機テスト バグ1「完全に古い形式は、🐱判定できていない」): ★旧形も🐱の対象にした。v4.0.66で「旧形は対象外」と自分で宣言したが、俊克の日記では**旧形こそが本体**(##{ }## 3,500行 / =={ }== 1,475 / ~~{ }~~ 623 / **{ }** 247)。🐱が素通りするなら「この画面はもう全部鳴いている」が嘘になる=判定として成立していなかった。★旧形の直し方は署名の挿入ではなく**記法の変換**so、Quick Fixは「🐱 Markdown＋Mew! の新形に直す」。`##{ 睡眠 … (白/green)//[]tip= }##` → `## 睡眠 …<!-- Mew! H2 (白/green)//[]tip= -->`。色名は**書かれたまま持ち越す**(正規化しない=生データが読みやすい)。対応=見出し(#〜###・[]/{}両方・箇条書き付き ##-{ } ##-1{ })／箇条書き膜 -{ } -1{ }／インライン =={ } ~~{ } **{ } __{ } _{ }。★**安全に変換できる行だけ💡を出す**。入れ子(`**{_{…}_(白/黄)}**`)や1行に複数ある行は、波線と🐱だけ出して**手を出さない**(外側だけ剥がすと内側の `(色)` を外側の色と誤読して壊れる)。勝手に壊すより、見えていて直っていない方がよい。入れ子は外側から1枚ずつ(🚫と同じ流儀)。【実データ】14万行日記=**旧形 4,948行**を検出、うち**4,547行(92%)が1クリック変換可**・401行は手を出さない(残りは全部、入れ子か1行複数=人間が見るべき行)。署名なし新形は168件。★これで**「一括変換しない」と「旧形を減らす」が両立**する[[project_now_not_bulk]]=見ている画面の分だけ、直したい時に直す。→ [[reference_meos_notation_v4]]
 // - v4.0.68(俊克 8/8 am11:05 実機テスト 疑問1「スクロールしても🐱の数字が変わらない。本当に120行をリアルタイムに見ているのか?」＋改良1「どこが対象になっているのかが分らないと不安だよね。栞マークのような感じでガターに🐱を出したらどうかな?」): ★【疑問1=俊克が正しい。見ていなかった】真因=**数える場所が2つあった**。波線(診断)はスクロールのrefreshで更新されるのに、🐱の件数は updateMeDockMode 経由でしか送っておらず、**スクロールでは updateMeDockMode が呼ばれない**(onDidChangeTextEditorVisibleRanges が呼ぶのは refresh だけ・v0.9.676のデバウンス設計)。soカーソルを動かすまで数字が固まっていた。→ **数えるのは診断のパス1箇所だけ**にして、そこから Me Dock へ直接 mewState を送る(1回の走査で波線とガターと🐱の3つが同時に動く・件数が変わった時だけpost=スクロール中のメッセージ洪水を避ける)。Me Dockが開き直した時のためにキャッシュをforce送信する口も1つ用意(数え直しはしない)。★教訓=**同じ数を2箇所で数えると、片方だけ更新されて必ずズレる**。数える場所は1つにして配る。★【改良1=ガターの🐱】栞/参照符と同じ gutterIconPath 方式で mew.svg を新規追加(橙の猫顔・overviewRulerにも橙の印)。未署名が1つでもある行に1つだけ出す。→ **件数(🐱³)と場所(ガター)と直し方(💡)が揃った**。webviewは[[feedback_minimal_change_verify_webview]]どおり前版と文字単位でdiffし、意図した6箇所(8ハンク/56行)だけを確認。node --check/check_webview/headless 34/34＋18/18＋日記169件(退行なし)。→ [[reference_meos_notation_v4]]
@@ -4188,7 +4189,7 @@ function collectPairs(document, options = {}) {
 // 「1階層下」=直接の子のみ(孫は除外)。メタ膜/索引膜は除外。line=1基点(jumpLine用)。
 function tocChildComment(tail) { let t = String(tail || '').trim(); if (t.slice(0, 2) === '//') t = t.slice(2).trim(); t = t.replace(MSTAT_BADGE_RE, '').trim(); return t; } // v2.0.2(俊克): 副メニューのコメントはバッジ(📊…⊕…📊)を除去し純コメントだけに
 // v2.0.2(俊克): 副メニューの膜名は末尾タイムスタンプを外して短く表示(_HHMMSS.MDD / legacy _HHMMSS.mmm / _YYYYMMDD…_HHMMSS)。ジャンプはlineで行うので表示のみの加工。
-function tocChildDisplayName(name) { return String(name || '').replace(/_\d{8}[A-Za-z]?_\d{6}(?:\.\d+)?$/, '').replace(/_(\d{6}\.[JFMA5678SOND]\d{2})$/, '').replace(/_\d{6}\.\d+$/, '').trim(); }
+function tocChildDisplayName(name) { return String(name || '').replace(/_\d{8}[A-Za-z]?_\d{6}(?:\.\d+)?$/, '').replace(MEOS_NAME_TS_RE, '').replace(/_(\d{6}\.[JFMA5678SOND]\d{2})$/, '').replace(/_\d{6}\.\d+$/, '').trim(); }
 // v2.0.4(俊克): Date Warp用=日記膜名から日付(年/月/日)を抽出。俊克の書式「✴️7/1W 2026…」= M/D[曜1字] 空白 YYYY。曜日1字(任意)を挟んでもよい。年は4桁。見つからなければnull(=日付膜でない)。
 // v2.0.23(俊克): 日記タイトル膜名規則の登録=テンプレ(YYYY / M / MM / D / DD / w=曜1字任意 / その他はリテラル)→正規表現。globalState 'meDiaryTitleTemplate' に保存。空なら既定 M/D[曜] YYYY。
 function diaryPatternFromTemplate(tpl) {
@@ -5223,7 +5224,7 @@ function parseRefPointInner(inner) {
   const ci = name.indexOf('//');
   if (ci >= 0) { desc = name.slice(ci + 2).trim(); name = name.slice(0, ci).trim(); }
   // v0.9.99968: TS形式を実物に合わせ修正(HHMMSS.MDD・月コード=J F M A 5 6 7 8 S O N D。例 122105.511=5/11)
-  const tm = name.match(/_(\d{6}\.[JFMA5678SOND]\d{2})$/); // getDefaultMembraneName()と同形式
+  const tm = name.match(MEOS_NAME_TS_RE); // v4.0.71: 完全形 _YYYYMMDD<曜日>HHMMSS<TZ> と 旧形 _HHMMSS.MDD の両方
   return { name, desc, ts: tm ? tm[1] : '', base: tm ? name.slice(0, name.length - tm[0].length) : name };
 }
 // 全参照符を文書順に収集(R族ごと仮想採番つき)。描画(applyPrettyLabels)と巡回ジャンプ(段4)の共通足場。
@@ -13049,18 +13050,30 @@ function normalizeMembraneId(input) {
   raw = raw.replace(/\s+\/\/[\s\S]*$/g, '').replace(/\*\}/g, '').replace(/[{}]/g, '').trim();
   return raw || getDefaultMembraneName();
 }
+// v4.0.71(俊克 8/8 pm00:04 改良2「膜の生成のタイムスタンプが完全体にまだ直してなかったね」・設計は[[project_v4_next_wave]]改良1):
+// ★膜名のタイムスタンプを**完全形**へ。`name_075200.805` → `name_20260808s120415JST`。
+//   文法 = `<ID>_<YYYYMMDD><曜日1字><HHMMSS><TZ>`
+//   ・曜日は**自動計算**して入れる(S-M-T-W-t-F-s = [[project_2011_weekday_notation]])。ユーザーは打たない。
+//     曜日字が「日付と時刻の自然な区切り」なので、時刻を省いた可変長でも一意にパースできる(俊克の設計)。
+//   ・TZ略号(JST等)は可視スタンプ v4.0.12 と同じ meosTzAbbr を共有。
+// ★時刻は**24時間の HHMMSS** にした。設計メモには「膜名側も 00-11+am/pm」という行もあるが、
+//   膜名は散文でなく**識別子**で、24時間表記なら `grep | sort` がそのまま時系列順になる(am/pmだと順序が壊れる)。
+//   可視スタンプ(本文に書く方)は今までどおり am/pm 00-11。ここが違うのは意図的。
+// ★旧形 `_HHMMSS.MDD` は read-both(既存の膜名は1文字も変えない)。
+function meosMembraneStamp(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  const wd = ['S', 'M', 'T', 'W', 't', 'F', 's'][d.getDay()];
+  return String(d.getFullYear()) + p(d.getMonth() + 1) + p(d.getDate()) + wd
+    + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + meosTzAbbr(d);
+}
+// 完全形(可変精度)＋旧形の両方にマッチする「末尾のタイムスタンプ」。BC日付は曜日を書かない(7日週の制度以前)。
+// ★実データ(日記479種の膜名)に流して締めた。当初は「年だけ/年月だけ」の部分日付も取っていたが、
+//   `table_143052` (=1430年52月と読めてしまう)や `sq(x)_1001` `3064_20260623` を7件も掴んだ。
+//   → **AD日付は曜日字が付いている時だけ**TSと認める(生成側は必ず入れる)。曜日字が「これは日付だ」の目印になる=
+//   俊克の『年月日があれば曜日は計算できる』設計が、そのまま**誤爆よけ**にもなっていた。BCは曜日なし(7日週の制度以前)so別枝。
+const MEOS_NAME_TS_RE = /_((?:BC\d{1,12}|\d{8}[SMTWtFs](?:\d{2}(?:\d{2}(?:\d{2})?)?)?)[A-Z]{0,5}|\d{6}\.[JFMA5678SOND]\d{2})$/;
 function getDefaultMembraneName() {
-  // v0.9.216: Human-readable short ID: HHMMSS.MDD
-  // Month code: J F M A 5 6 7 8 S O N D
-  const now = new Date();
-  const monthCodes = ['J', 'F', 'M', 'A', '5', '6', '7', '8', 'S', 'O', 'N', 'D'];
-  const pad2 = (n) => String(n).padStart(2, '0');
-  const hh = pad2(now.getHours());
-  const mm = pad2(now.getMinutes());
-  const ss = pad2(now.getSeconds());
-  const mc = monthCodes[now.getMonth()] || String(now.getMonth() + 1);
-  const dd = pad2(now.getDate());
-  return 'name_' + hh + mm + ss + '.' + mc + dd;
+  return 'name_' + meosMembraneStamp(new Date());
 }
 
 function refreshTrailingTimestamp(name) {
@@ -13074,8 +13087,9 @@ function refreshTrailingTimestamp(name) {
   //   Base_185142_503
   //   Base_185142_J07
   //   Base_185142.507_031303.507  -> Base_031303.507
+  // v4.0.71: 旧形(_HHMMSS.MDD 等)に加えて完全形(_YYYYMMDD<曜日>HHMMSS<TZ>)も剥がす。
   const suffixRe = /(?:_+\d{6}(?:[._][A-Z0-9]\d{2})?)+$/;
-  const base = raw.replace(suffixRe, '').replace(/_+$/, '');
+  const base = raw.replace(MEOS_NAME_TS_RE, '').replace(suffixRe, '').replace(/_+$/, '');
   return (base || 'name') + '_' + fresh;
 }
 
