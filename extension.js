@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.80(俊克 8/8 pm07:42「右の膜名のところは下線が引かれてCmd+クリックのtipが出るのに飛ばない。これは正しい動きなのか?」): ★正しくない。ただし**あれはMeOSが引いた下線ではない**=**VS Code内蔵のMarkdownリンク**。内蔵は `[label](target)` を見つけると行先を「相対パスのファイル」と解釈してリンクを張るが、膜名はファイルではないので押しても何も起きない=**死んだリンク**。(MeOSはカーソル行を素表示にする=そこでは装飾を一切しないので、下線の出どころは内蔵だと切り分けられる。)★他の拡張が張ったリンクは消せないので、**同じ範囲にMeOSのリンクを重ねて、押したら膜へ飛ぶ**ようにした。対象は**膜名の時だけ**(URL/ファイルパス/他スキームは内蔵やOSに任せた方が正しい)。包み形・素の形の両方に適用。★なお行先はカーソル行以外では隠れているso、これは**編集中の行だけ**の話。
 // - v4.0.79(俊克 8/8 pm07:10「リンクの中に()があると駄目だね。これは元々がそうなのかな?」): ★**元々そう**=v4.0.8(リンクを作った最初の版)からの持病。行先を `[^)]*` で取っていたので**最初の `)` で切れて**いた。症状は形で違い、**包み形はリンク自体が成立せず記法が丸見え**・**素の形は行先が `Foo_(bar` に切れて末尾の `)` が残る**。Wikipedia等の `..._(bar)` 型URLが全滅していた。→ CommonMarkと同じく**釣り合った括弧を1段だけ許す** `((?:[^()<\n]|\([^()<\n]*\))*)`。第1候補 `[^()<]` と第2候補 `(…)` は先頭文字が排他so後戻り爆発なし(病的入力で実測<200ms)。★`<` も禁じている(予防)=括弧を許すと貪欲な行先が1行に2つ並んだリンクの `)<!--…}== -->` を飲み込んで**2つを1つに合体**させ得るため。URLも膜名も `<` を含まないので実害なし。★教訓=**括弧を許すと区切り記号まで飲み込めるようになる。許した分だけ壁を立て直す。**★実データ検証=日記14万行で旧/新の一致数を1行ずつ突き合わせ**差分ゼロ**(回帰なし)。※途中「88→84に減った」と焦ったのは**私の計測ミス**(旧=リンクを含む行数・新=マッチ数、という別の指標を比べていた)。★教訓2=**回帰を疑う時は、必ず同じ物差しで新旧を並べる**。
 // - v4.0.78(俊克 8/8 pm05:49「リンクを表に入れると駄目みたいね。膜名でも駄目だよ」): ★諦めではなく**記法を短くする**方で解いた=**素のMarkdownリンク `[表示](行先)` をMeOSのリンクとして読む**。真因はv4.0.77で判明済み(見えている幅は既に一致・崩れるのは生データが長くて折り返すから)so、**生データを短くする**のが唯一の道だった。コメント包みは色/下線/tipを運ぶ箱so、それが要らない時は箱ごと要らない。`<!-- Mew! =={ -->[…](テスト_20260808s174510JST)<!-- (白/黄)(0)//[]tip=}== -->` **102文字** → `[…](テスト_…)` **57文字**。見える幅は 25.69 で他の行と一致したまま。★これはv4.0の背骨そのもの=**生データはどこでも本物のMarkdown**。箱なしの `[text](target)` が一番Markdownらしい形。実装=①装飾(角括弧と行先を隠し表示文字に既定の単線・ホバーで行先)②DocumentLink(URL=外部/膜名=ワープ・ファイルパスや他スキームはVS Code本体に任せる)③表の幅(表示文字だけ数える)④🚫解除(表示文字だけ残す)。★コメント包みリンクを**先にマスクしてから**素のリンクを探す(鉄則=リンクは常に先に・5度目)。画像 `![](…)` とコードスパンは除外。【実データ】日記に素のMarkdownリンクは**574個**(URL 99/膜名 2/ファイルパス 468/その他5)=全部が本物のリンクで誤検出ゼロ。ただし**574箇所の見え方が変わる**(行先が隠れて表示文字に下線)。★事故=生成スクリプトを1本流し忘れて、**定義していない関数を呼ぶコード**を書き込んでいた(node --checkは構文だけso通る)。grepで「使用2/定義0」を数えて発見。→ **書き換えスクリプトは流したことをgrepで確認する**。
 // - v4.0.77(俊克 8/8 pm05:21 実機テスト): ★【改良1a=耳】候補**F(上辺を水平・耳は低め)**を採用(俊克「良い感じ」)。頭の輪郭・目・鼻はv4.0.74のまま=耳だけ。★【改良1b=🐱の出るタイミング】俊克の証言が**左右非対称**だった=「下から出てくる時はまだ遅い/上から現れる時は早過ぎる」。これは VS Codeの visibleRanges が **start=1pxでも見えた行 / end=ほぼ収まった行** という食い違った基準を返している証拠。両方の不満が「1行ぶん下へずらせ」を指しているso、**数える窓をまるごと+1行下へずらす**。★観察から出した補正so、行き過ぎたらこの +1 を 0 に戻すだけで元に戻せる(そう書き残す)。★【改良2=リンクの表はまだ崩れる】★整形は**もう正しい**。計測=リンク行の「見えている幅 25.69」は他の行と**完全に一致**している。崩れて見える真因は別で、**生データが134文字あること**(他の行は21文字)。VS Codeの折り返しは**装飾を見ずに生テキストの桁で決まる**so、隠して短く見えていても、行は134桁の所で折り返す。→ 整形では直せない。対処は「折り返しを切る/URLを短くする/この行だけ諦める」のいずれか。★教訓=**「見えている幅」と「折り返しの桁」は別物**。v4.0.73で前者は揃えたが、後者はMonacoが生テキストで決めている。
@@ -18884,6 +18885,21 @@ function meosUlBgCss(ul, colorCss) {
 // 表示=表示文字だけ(角括弧と行先を隠す)＋既定の単線。行先はURLでも膜名でもよい(ジャンプは同じ口)。
 // 画像 ![alt](url) は除外。コメント包みリンクと重ならないよう、**先にそちらをマスクしてから**探す(鉄則=リンクは先に)。
 const MEOS_MD_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)/g; // v4.0.79: 同上
+// v4.0.80: 行先の文字そのものにもMeOSのリンクを張る(膜名の時だけ=URLは内蔵/OSに任せて問題ない)。
+// m=正規表現のマッチ・base=マッチ開始のオフセット。行先は `](` の直後から `)` の手前まで。
+function meosTargetLinks(document, m, base, target) {
+  try {
+    if (!target || /^https?:\/\//i.test(target)) return [];
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) return []; // ファイル/他スキームはVS Codeに任せる
+    const at = m[0].indexOf('](' + target + ')');
+    if (at < 0) return [];
+    const ts = base + at + 2, te = ts + target.length;
+    const dl = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
+    dl.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target])));
+    dl.tooltip = 'Jump to membrane: ' + target;
+    return [dl];
+  } catch (_) { return []; }
+}
 function meosBareMdLinks(text) {
   let t = String(text == null ? '' : text);
   if (t.indexOf('](') < 0) return [];
@@ -19343,6 +19359,12 @@ function activate(context) {
           if (/^https?:\/\//i.test(target)) { dl.target = vscode.Uri.parse(target); dl.tooltip = 'Open: ' + target; }
           else { dl.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl.tooltip = 'Jump to membrane: ' + target; }
           links.push(dl);
+          // v4.0.80(俊克 8/8 pm07:42「右の膜名のところは下線が引かれてCmd+クリックのtipが出るのに飛ばない」):
+          // ★あれはMeOSではなく**VS Code内蔵のMarkdownリンク**。`[label](target)` を見つけて行先を
+          //   「相対パスのファイル」と解釈しリンクを張るが、膜名はファイルではないので押しても何も起きない=死んだリンク。
+          //   他の拡張のリンクは消せないので、**同じ範囲にMeOSのリンクも重ねて、押したら膜へ飛ぶようにする**。
+          //   (行先はカーソル行以外では隠れているので、これはカーソル行=編集中だけの話。)
+          links.push(...meosTargetLinks(document, m, m.index, target));
         }
         // v4.0.78: 素のMarkdownリンク。行先が膜名ならワープ・URLなら外部を開く(コメント包みと同じ口)。
         if (full.indexOf('](') >= 0) {
@@ -19356,6 +19378,7 @@ function activate(context) {
             else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue; // ファイル/他スキームはVS Code本体に任せる
             else { dl2.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl2.tooltip = 'Jump to membrane: ' + target; }
             links.push(dl2);
+            links.push(...meosTargetLinks(document, b, b.index, target)); // v4.0.80: 行先の文字もMeOSのリンクにする(内蔵の死んだリンクを上書き)
           }
         }
       } catch (_) {}
