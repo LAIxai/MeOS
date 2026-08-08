@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.78(俊克 8/8 pm05:49「リンクを表に入れると駄目みたいね。膜名でも駄目だよ」): ★諦めではなく**記法を短くする**方で解いた=**素のMarkdownリンク `[表示](行先)` をMeOSのリンクとして読む**。真因はv4.0.77で判明済み(見えている幅は既に一致・崩れるのは生データが長くて折り返すから)so、**生データを短くする**のが唯一の道だった。コメント包みは色/下線/tipを運ぶ箱so、それが要らない時は箱ごと要らない。`<!-- Mew! =={ -->[…](テスト_20260808s174510JST)<!-- (白/黄)(0)//[]tip=}== -->` **102文字** → `[…](テスト_…)` **57文字**。見える幅は 25.69 で他の行と一致したまま。★これはv4.0の背骨そのもの=**生データはどこでも本物のMarkdown**。箱なしの `[text](target)` が一番Markdownらしい形。実装=①装飾(角括弧と行先を隠し表示文字に既定の単線・ホバーで行先)②DocumentLink(URL=外部/膜名=ワープ・ファイルパスや他スキームはVS Code本体に任せる)③表の幅(表示文字だけ数える)④🚫解除(表示文字だけ残す)。★コメント包みリンクを**先にマスクしてから**素のリンクを探す(鉄則=リンクは常に先に・5度目)。画像 `![](…)` とコードスパンは除外。【実データ】日記に素のMarkdownリンクは**574個**(URL 99/膜名 2/ファイルパス 468/その他5)=全部が本物のリンクで誤検出ゼロ。ただし**574箇所の見え方が変わる**(行先が隠れて表示文字に下線)。★事故=生成スクリプトを1本流し忘れて、**定義していない関数を呼ぶコード**を書き込んでいた(node --checkは構文だけso通る)。grepで「使用2/定義0」を数えて発見。→ **書き換えスクリプトは流したことをgrepで確認する**。
 // - v4.0.77(俊克 8/8 pm05:21 実機テスト): ★【改良1a=耳】候補**F(上辺を水平・耳は低め)**を採用(俊克「良い感じ」)。頭の輪郭・目・鼻はv4.0.74のまま=耳だけ。★【改良1b=🐱の出るタイミング】俊克の証言が**左右非対称**だった=「下から出てくる時はまだ遅い/上から現れる時は早過ぎる」。これは VS Codeの visibleRanges が **start=1pxでも見えた行 / end=ほぼ収まった行** という食い違った基準を返している証拠。両方の不満が「1行ぶん下へずらせ」を指しているso、**数える窓をまるごと+1行下へずらす**。★観察から出した補正so、行き過ぎたらこの +1 を 0 に戻すだけで元に戻せる(そう書き残す)。★【改良2=リンクの表はまだ崩れる】★整形は**もう正しい**。計測=リンク行の「見えている幅 25.69」は他の行と**完全に一致**している。崩れて見える真因は別で、**生データが134文字あること**(他の行は21文字)。VS Codeの折り返しは**装飾を見ずに生テキストの桁で決まる**so、隠して短く見えていても、行は134桁の所で折り返す。→ 整形では直せない。対処は「折り返しを切る/URLを短くする/この行だけ諦める」のいずれか。★教訓=**「見えている幅」と「折り返しの桁」は別物**。v4.0.73で前者は揃えたが、後者はMonacoが生テキストで決めている。
 // - v4.0.76(俊克 8/8 pm04:46 実機テスト 改良1〜2): ★【改良1=耳の失敗を差し戻し】v4.0.75のEは「耳の上辺を水平に」を実装するのに**頭頂部の曲線まで動かして**しまい、頭のてっぺんが逆さに凹んだ(俊克「頭頂部まで逆さになっちまったよ」)。→ **v4.0.74の形(D23)に戻した**。★教訓=**言われた所だけ動かす**。上辺を水平にするには耳と頭の接点の高さを変える必要があり、その接点は頭頂部の曲線の端でもあった=「耳だけ」のつもりが頭を触っていた。接点を動かさずに済む案(F/G/H)を作って俊克に選んでもらう。★【改良2=🐱が「にょっこり」出る】v4.0.75で「絵も見えている行だけに描く」にしたら、**スクロールのデバウンス(100ms)の分だけ遅れて**出るようになった。先読みで描いてあれば行が入ってくるのと一緒に自然に現れる。→ **絵は先読み(±120)で描く/数字は見えている行だけで数える**に戻す。絵が先・数字が半行後は許容する(逆=数字が先に動く方が嘘に見える、が俊克の元の指摘so誤差の向きはこれで正しい)。
 // - v4.0.75(俊克 8/8 pm04:14 実機テスト 改良1〜3): ★【改良1=耳の上辺を水平に】「鬼の角」対策の続き。耳の上辺を水平にして、頭の肩から立ち上がる形に。★【改良2=🐱カウンターの出るタイミング】v4.0.74で端の1行を落としたら今度は**1行遅く**なった。VS Codeが教えてくれるのは「1pxでも見えたか」だけso、選べるのは「半行早い」か「1行遅い」の二択しかない。→ **早い方に戻す**(俊克の不満の度合い=「やや不満」<「遅過ぎる」)。★そのうえで**絵と数字を必ず同時に動かす**=ガターの🐱も、数える範囲と**まったく同じ行**にだけ描く(先読みの±120には描かない)。これで「数字だけ先に動いた」は原理的に起きない。v4.0.68(範囲)→v4.0.72(条件)→v4.0.73(単位)→今回(描く行まで)=**印・数字・ボタンを1つの集合から引く**の完成形。★【改良3a=リンクのセルで表が崩れる】ノート内リンクは**表示文字だけ**が見えている(前後のコメントも行先URLも隠れる)。→ 幅を測る前にリンクを表示文字へ置き換える。`<!-- Mew! =={ -->[***太字+斜体+リンク***](https://…)<!-- (白/黄)(0)//[]tip=}== -->` = 生110文字/画面8文字。★ここでも鉄則=**リンクは常に先に判定/先にマスク**(これで4度目)。後ろのコメントは `}==` で終わるのでspec判定に当たらず、個別に外す必要があったのが見落としの原因。★【改良3b=一番上の横線が太い】あれは「表の上端」ではなく**ヘッダと本文の仕切り**(3px・foreground色so明るい)。俊克の表は**ヘッダ行が空**so、2pxの上端線とこの3pxの仕切りの間に文字が無く、まとめて「太い上線」に見えていた。→ ヘッダが全部空なら仕切りを太くしない(区切るものが無いのだから普通の線)。
@@ -17832,6 +17833,7 @@ function meosStripHiddenForWidth(s) {
   //    まるごと表示文字に置き換えてから数える。★ここでも鉄則=**リンクは常に先に判定/先にマスク**(4度目)。
   //    (後ろのコメントは `}==` で終わるので①の spec 判定に当たらない=個別に外す必要がある。)
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
+  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ
   // ① MeOSが隠す仕様コメント(署名付き/形がspec/結合・計算マーカー)。ただのHTMLコメントは見えているので数える。
   if (t.indexOf('<!--') >= 0) {
     t = t.replace(/<!--[^]*?-->/g, (m) => {
@@ -18862,6 +18864,30 @@ function meosUlBgCss(ul, colorCss) {
   if (ul === 3) return pad + 'background-image: ' + meosWaveCss(colorCss, 2) + '; background-position: left bottom; background-repeat: repeat-x;'; // v4.0.37(俊克): 二重波は逆に1px離す
   return pad + 'background-image: linear-gradient(' + col + ',' + col + '); background-size: 100% 1px; background-position: left calc(100% - 2px); background-repeat: repeat-x;';
 }
+// v4.0.78(俊克 8/8 pm05:49「リンクを表に入れると駄目みたいね。膜名でも駄目だよ」): ★**素のMarkdownリンクもMeOSのリンク**にする。
+// 真因はv4.0.77で判明済み=見えている幅はもう揃っていて、崩れるのは**生データが長くて折り返す**から
+// (Monacoの折り返しは装飾を見ずに生テキストの桁で決まる)。
+// コメント包みは色/下線/tipを運ぶための箱so、**それが要らない時は箱ごと要らない**。
+//   `<!-- Mew! =={ -->[表示](行先)<!-- (白/黄)(0)//[]tip=}== -->` 102文字 → `[表示](行先)` 57文字。
+// ★これはv4.0の背骨そのもの=**生データはどこでも本物のMarkdown**。箱なしの [text](target) が一番Markdownらしい。
+// 表示=表示文字だけ(角括弧と行先を隠す)＋既定の単線。行先はURLでも膜名でもよい(ジャンプは同じ口)。
+// 画像 ![alt](url) は除外。コメント包みリンクと重ならないよう、**先にそちらをマスクしてから**探す(鉄則=リンクは先に)。
+const MEOS_MD_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(([^)\n]*)\)/g;
+function meosBareMdLinks(text) {
+  let t = String(text == null ? '' : text);
+  if (t.indexOf('](') < 0) return [];
+  if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
+  if (t.indexOf('-->[') >= 0) {
+    MEOS_MELINK_RE.lastIndex = 0; let w;
+    while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); }
+  }
+  const out = []; let m; MEOS_MD_LINK_RE.lastIndex = 0;
+  while ((m = MEOS_MD_LINK_RE.exec(t)) !== null) {
+    const label = m[1] || '', start = m.index, end = start + m[0].length;
+    out.push({ start, end, label, target: (m[2] || '').trim(), textStart: start + 1, textEnd: start + 1 + label.length });
+  }
+  return out;
+}
 // 波線の背景SVG(n=1: 1本 / n=2: 二重波線)。webview側と同じ形。引用符なしurl()=HTML属性に埋めても壊れない。
 // backslashを使わない(webviewはテンプレートリテラル内so \( 等が実行時に落ちる=v2.0.31の全壊)。
 function meosWaveCss(colorCss, n) {
@@ -18903,7 +18929,7 @@ function meLinkSpanAtCursor(editor) {
   if (!editor) return null;
   const doc = editor.document, pos = editor.selection.active, line = pos.line;
   const text = doc.lineAt(line).text || '';
-  if (text.indexOf('-->[') < 0) return null;
+  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0) return null; // v4.0.78: 素のMarkdownリンクも解除対象
   let m; MEOS_MELINK_RE.lastIndex = 0;
   while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
     const s = m.index, e = s + m[0].length;
@@ -18914,6 +18940,13 @@ function meLinkSpanAtCursor(editor) {
       if (um) b = um[1].trim();
       return { kind: 'melink', range: new vscode.Range(line, s, line, e), body: b };
     }
+  }
+  for (const b of meosBareMdLinks(text)) { // v4.0.78: 素のMarkdownリンク → 表示文字だけ残す
+    if (pos.character < b.start || pos.character > b.end) continue;
+    let body = String(b.label || '').trim();
+    const um = body.match(/^\*\*\*([\s\S]+)\*\*\*$/) || body.match(/^\*\*([\s\S]+)\*\*$/) || body.match(/^_([\s\S]+)_$/);
+    if (um) body = um[1].trim();
+    return { kind: 'melink', range: new vscode.Range(line, b.start, line, b.end), body };
   }
   return null;
 }
@@ -18953,6 +18986,17 @@ function meosApplyMeLinkDecorations(editor) {
           const item = { range: new vscode.Range(ln, textStart, ln, textEnd) };
           if (sp.tip) { const hv = new vscode.MarkdownString('💬 ' + sp.tip); hv.isTrusted = false; item.hoverMessage = hv; }
           if (!styleRanges.has(style)) styleRanges.set(style, []); styleRanges.get(style).push(item);
+        }
+        // v4.0.78: 素のMarkdownリンク `[表示](行先)`。角括弧と行先を隠し、表示文字に既定の単線を引く。
+        for (const b of meosBareMdLinks(doc.lineAt(ln).text)) {
+          if (b.textEnd > b.textStart) hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // `[`
+          hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end)); // `](行先)`
+          if (b.textEnd <= b.textStart) continue;
+          const st = meosMeLinkUnderline(0, ''); // 既定=単線・文字色そのまま(色やtipが欲しい時はコメント包みを使う)
+          if (!styleRanges.has(st)) styleRanges.set(st, []);
+          const it = { range: new vscode.Range(ln, b.textStart, ln, b.textEnd) };
+          if (b.target) { const hv = new vscode.MarkdownString('🔗 ' + b.target); hv.isTrusted = false; it.hoverMessage = hv; }
+          styleRanges.get(st).push(it);
         }
       }
     }
@@ -19279,7 +19323,7 @@ function activate(context) {
         // 早期脱出=全文を一度だけ取り、リンク記法の核 '-->[' が無ければ即return(巨大日記の常態=瞬時)。
         // 有る時だけ全文を1回正規表現スキャン(行毎lineAt割付を廃止・positionAtでoffset→位置)。→ [[project_meos_freeze_pattern]]
         const full = document.getText();
-        if (full.indexOf('-->[') < 0) return links;
+        if (full.indexOf('-->[') < 0 && full.indexOf('](') < 0) return links; // v4.0.78: 素のMarkdownリンクも対象(早期脱出は維持)
         let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(full)) !== null) {
           const label = m[1] || '', target = (m[2] || '').trim(); if (!target) continue;
@@ -19288,6 +19332,20 @@ function activate(context) {
           if (/^https?:\/\//i.test(target)) { dl.target = vscode.Uri.parse(target); dl.tooltip = 'Open: ' + target; }
           else { dl.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl.tooltip = 'Jump to membrane: ' + target; }
           links.push(dl);
+        }
+        // v4.0.78: 素のMarkdownリンク。行先が膜名ならワープ・URLなら外部を開く(コメント包みと同じ口)。
+        if (full.indexOf('](') >= 0) {
+          const masked = full.replace(MEOS_MELINK_RE, (mm) => ' '.repeat(mm.length));
+          let b; MEOS_MD_LINK_RE.lastIndex = 0;
+          while ((b = MEOS_MD_LINK_RE.exec(masked)) !== null) {
+            const label = b[1] || '', target = (b[2] || '').trim(); if (!target || !label) continue;
+            const ts = b.index + 1, te = ts + label.length;
+            const dl2 = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
+            if (/^https?:\/\//i.test(target)) { dl2.target = vscode.Uri.parse(target); dl2.tooltip = 'Open: ' + target; }
+            else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue; // ファイル/他スキームはVS Code本体に任せる
+            else { dl2.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl2.tooltip = 'Jump to membrane: ' + target; }
+            links.push(dl2);
+          }
         }
       } catch (_) {}
       return links;
