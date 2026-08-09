@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.115(俊克 8/9 pm08:14「コピペで4、5秒遅延」・ログ= `[host-blocked]` 978/2570/1786/1124/1061ms が並ぶのに**MeOSの計測は1行も出ない**): ★★この形は「どれか1つの関数が長い」ではなく**関数の外=GC(ごみ集め)がホストを止めている**。真因=**11MBの文字列を1回のrefreshで何度も作り直していた**: ①applyPrettyLabelsの `getText().split()`(**v4.0.113で私が足した**) ②複数行取消線 ③複数行ハイライト。最大3回=毎refresh 30MB超のごみ。スクロールでもrefreshは走るso毎秒100MB級。起動ディスク残6.1GiB・スワップ86%の実機では、これが**秒単位のGC停止**になる。→ 全文と行配列を**文書の版ごとに1回だけ**作る共有キャッシュ(`meosDocText`/`meosDocLines`)に。編集していない間(スクロール/カーソル移動)は**ごみゼロ**。参照定義とDocumentLinkの getText も同じ口へ。★教訓=**速さと、ごみの量は別の指標**。v4.0.113は関数を747ms→9msにしたが、同時に毎refresh 11MBのごみを新設していた=**片方だけ見ていると、直しながら壊す**。★あわせて俊克の質問「表が整形で大きく崩れるのはなぜ?」に**実測で回答**=`laiMembrane.tableCjkWidth` の既定 **1.67** が原因。実データで検証: 1.67だと各列の見えている幅が 41.34/41.68/41.70/42.04 と**端数**になり、詰め物は空白(幅1)なのだから**原理的に揃わない**。**2.0 にすると全列が 45/49 でぴったり一致**。1.67 の出どころは俊克のフォント設定 `Menlo, Monaco…`=**MenloにCJKが無く**macOSがHiraginoへ落とすため、ASCII 0.6em / CJK 1.0em = **1/0.6 = 1.667**。つまりMeOSの計算ではなく**フォントの組み合わせ**の問題。→ 1:2の日本語等幅フォント(macOS同梱の **Osaka-Mono**、または HackGen/PlemolJP/UDEV Gothic)に替えて tableCjkWidth を 2 にすれば表は完全に揃う。
 // - v4.0.114(俊克 8/9 pm07:59「コピペで5秒くらいの遅延。上のコメントをペーストした時だよ」・ただしログには `[refresh] 348ms` **1行しか無い**): ★MeOSの計測(refresh/foldingRanges/documentLinks/paste-folds)がどれも出ていないのに固まる=**切り分けの道具が1つ足りない**。→ **拡張ホストのイベントループが何秒止められたか**を測る `[host-blocked]`(1秒ごとに時計を見るだけ・負荷ゼロに近い)。読み方=①同時にMeOSの計測も出る→MeOSが犯人 ②`[host-blocked]` だけ出る→**拡張ホストの中のMeOS以外**(他拡張/VSCode本体の同期処理) ③**どちらも出ないのに固まる**→拡張ホストは動いていた=**描画側(renderer)かOSのスワップ**(8/9時点で起動ディスク残6.1GiB・スワップ86%so現状これが濃厚)。★憶測で終わらせず、測る口を先に作る[[feedback_root_cause_before_patching]]。★あわせて俊克の疑問に事実で回答=`1. ただの数字` は**すでに連番の対象外**(MEOS_NUM_ITEM_REは行末の仕様コメントを要求する)。つまり**コメントを書かないこと自体が逃げ道**になっており、提案された「ただの文字」命令は不要。ただし**色やtipは付けたいが番号は振られたくない**場合だけは口が無い=命令トークンを `-1.`(番号)と `1.`(番号にしない)で分ける案は有効。未実装・v4.1候補。
 // - v4.0.113(俊克 8/9 pm07:16「40秒以上遅延。これが本当にイライラするんだよ。面倒くさくなって、途中でVSCmを再起動してしまうこともよくある」＋改良1): ★★★**40秒の真犯人を捕まえた= computeLineDecorations(実測747ms/回)**。俊克のログの読み方が鍵だった=`[refresh] 300〜656ms` が**延々と並ぶ**(19:14:44〜49の5秒間に8回)＝**1回が長いのではなく、400msが何十回も積もって**体感40秒になっていた。`[foldingRanges]`/`[documentLinks]` は1行も出ていない=300ms未満so無罪＝**網は正しく張れていて、犯人は refresh の中に居た**。★構造= 全行(149,704) × 全膜(1,139) の**総当たり**で「この行を含む膜」を毎行 filter＝**1.7億回**の比較＋そのたびに `{...p}` で複製。→ ①**掃引(sweep)**に(行は昇順so開始行が来た膜を足し終了行を過ぎた膜を落とすだけ。直後に depth で sort するので順序は不問=安全) ②複製と開始行テキスト読みを**1膜1回**に ③**可視範囲±120行の外は「作らない」**(v3.1.3でapplyPrettyLabelsに入れたのと同じ足切り。掃引=判定は全行通す。画面外で開いた膜が可視行に効くため)。実測 **747ms → 9ms**・生成する装飾オブジェクト **149,696個 → 301個**(setDecorationsは描画プロセスへの受け渡しがあるので、渡す量そのものが重さだった)。＋applyPrettyLabelsの全行ループも `document.lineAt()` **15万回**をやめて全文splitの配列読みに(VS CodeにTextLineを15万個作らせていた)。★教訓=**「重い」の犯人は、1回の最長ではなく回数×単価で決まる**。ログが同じ数字を並べていたら、それは「遅い1回」ではなく「多すぎる普通」。★改良1(俊克「🐱で直した行の右に新記法のコメントが丸見え。🐱は1のまま。カーソルを次の行に移すと正常化」)=**同類の穴**。編集した後、誰も描き直していなかった: ①単一行の編集はIME保護でrefreshを止めてある(v0.9.637)が、**これはユーザーの打鍵ではない**ので対象外→自分で描き直す ②数の更新タイマーがまた `activeTextEditor` 直読み(ボタン直後は焦点がMe Dock)→ `meosMewTargetEditor(getMeDockTargetEditor())` に合流(v4.0.112と同じ口)。★疑問1(素のMarkdownも🐱の対象にすべきでは)への回答は俊克へ別途: **設計上の衝突**を報告(日記の素の記法は 見出し6,260/箇条書き10,803/番号付き3,657=**計20,720行**あり、旧記法5,548行の約4倍。🐱に混ぜると数字が桁違いになり「今見えている分だけ直す」の安心が壊れる)→**別ボタン/別モードにする**提案。
 // - v4.0.112(俊克 8/9 pm06:48 バグ1「🐱ボタンを押しても修正されないよ」＋貼付5秒の続報): ★★**バグ1の真因=v4.0.110バグ2と同じ穴の4度目**。`meosMewSignVisible()` が1行目で `vscode.window.activeTextEditor` を読んでいたが、**ボタンを押した瞬間は焦点が Me Dock(webview)にある**ので undefined → **黙って return** していた。★症状が「何も起きない=通知すら出ない」だったのがそのまま証拠(この関数は走れば必ず何か通知する)。変換ロジックは無罪で、俊克のテスト行 `##[ 旧記法 (白/green)//[]tip=]##` はheadlessで `## 旧記法<!-- Mew! H2 (白/green)//[]tip= -->` に正しく変換できることを確認済み。★**本当の教訓=既にある流儀に合わせていなかった**。Me Dockの他のハンドラは**全て** `getMeDockTargetEditor() || activeTextEditor` を使っている(bookmark/reference/home…20箇所以上)。v4.0.67で🐱を足した時、私だけがその作法を踏まなかった。→ `meosMewTargetEditor(getMeDockTargetEditor())` に合流＋相手が見つからない時は**黙らず通知**する(黙る関数はデバッグできない)。★**貼付5秒の続報=計測の網が足りなかった**。俊克のログは `[refresh] 367/308/633ms` だけで `[paste-folds]` は**一度も出ていない**＝5秒は前回計測した2箇所の**外**にある。→ VSCodeが自分の都合で呼ぶ**Provider**は refresh() の外so映らない。`provideFoldingRanges`(全膜を集める)と `provideDocumentLinks`(全文・**v4.0.9で一度固着の犯人になった場所**)にも同じ流儀(300ms超だけ1行)で計測を追加。★教訓=**計測で犯人が出ないのは無罪の証明ではなく、網の外に居る証明**。
@@ -5953,8 +5954,7 @@ function applyPrettyLabels(editor) {
   //   その400msの正体が `document.lineAt(line)` の**15万回**(VS CodeにTextLineオブジェクトを15万個作らせる)。
   //   全行ループ自体は外せない(参照符の採番/複数行記法の開き/コードフェンスの状態は全行必要)ので、
   //   **読み方だけ安くする**=全文を一度 split して配列で読む。同じものを同じ順で読むだけso見た目は不変。
-  const _eol = (editor.document.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
-  const _allLines = editor.document.getText().split(_eol);
+  const _allLines = meosDocLines(editor.document); // v4.0.115: 版ごとに1回だけ(毎refresh 11MBを刻み直さない)
   const _lineCount = Math.min(editor.document.lineCount, _allLines.length);
   for (let line = 0; line < _lineCount; line++) {
     const text = _allLines[line];
@@ -6558,7 +6558,7 @@ function applyPrettyLabels(editor) {
   // だけに限定。単独の ~~ / ~~…~~ は単一行(行単位パス)のみで、行をまたがない(遠くの ~~ を巻き込まない)。
   // 起動は「複数行に開いた ~~{ がある」時だけ。改行を含む ~~{…}~~ を本文=複数行レンジで一括装飾。
   if (hasMlBracedStrike) {
-    const fullText = editor.document.getText();
+    const fullText = meosDocText(editor.document); // v4.0.115: 版ごとに1回だけ
     const reML = /~~\{([\s\S]*?)\}~~/g;                       // ★波括弧つきのみ(単独 ~~ は対象外)
     let mML;
     while ((mML = reML.exec(fullText)) !== null) {
@@ -6594,7 +6594,7 @@ function applyPrettyLabels(editor) {
   // 取消線の複数行ブロック(上)と完全に対称。波括弧つき =={…}== だけが対象(素の ==…== は行単位パス限定で
   // 行をまたがない)。カーソルが範囲内なら生表示(編集中)。
   if (hasMlBracedHighlight) {
-    const fullText = editor.document.getText();
+    const fullText = meosDocText(editor.document); // v4.0.115: 版ごとに1回だけ
     const reMLH = /=={([\s\S]*?)\}==/g;
     let mMLH;
     while ((mMLH = reMLH.exec(fullText)) !== null) {
@@ -18123,6 +18123,27 @@ async function jumpToPairedMembraneFromCursor() {
 // v0.9.999148(俊克): Markdownテーブルの桁揃え整形。★全角(CJK)を2幅としてカウント=日本語の表もモノスペースで綺麗に揃う(一般の表整形拡張が苦手な点)。カーソル行のテーブルブロックを整形。
 // v0.9.999164(俊克): 全角の幅係数。VSCodium既定フォント(Mac=Menlo+Hiragino)は全角を半角ちょうど2倍でなく約1.67倍で描く(Menloの半角が細い)→既定を1.67に最適化。等幅フォント派は設定 laiMembrane.tableCjkWidth=2 に。
 let _meosTableCjkW = 1.67;
+// v4.0.115(俊克 8/9 pm08:14「コピペで4、5秒遅延」・ログは [host-blocked] だけでMeOSの計測は無し):
+// ★全文と行配列は**文書の版ごとに1回だけ**作る。11MBの文字列を1refreshで何度も作り直すと、
+//   関数はどれも速いのに**GCが秒単位でホストを止める**(=計測に映らない固まり方)。
+//   編集していない間(スクロール/カーソル移動)は作り直さない=ごみゼロ。
+let _meosTextCache = { key: '', text: null, lines: null };
+function _meosTextKey(doc) { return doc.uri.toString() + '@' + doc.version; }
+function meosDocText(doc) {
+  const key = _meosTextKey(doc);
+  if (_meosTextCache.key === key && _meosTextCache.text != null) return _meosTextCache.text;
+  const text = doc.getText();
+  _meosTextCache = { key, text, lines: null };
+  return text;
+}
+function meosDocLines(doc) {
+  const key = _meosTextKey(doc);
+  if (_meosTextCache.key === key && _meosTextCache.lines) return _meosTextCache.lines;
+  const text = meosDocText(doc);
+  const lines = text.split((doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n');
+  _meosTextCache = { key, text, lines };
+  return lines;
+}
 function meosCharWidth(cp) {
   // 真の全角(漢字・かな・全角・CJK約物・ハングル・CJK拡張)= _meosTableCjkW幅。絵文字(✅💥)や曖昧幅記号(★→①)はエディタでほぼ半角=1幅。
   return ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
@@ -19245,7 +19266,7 @@ function meosRefDefs(doc) {
     const key = doc.uri.toString() + '@' + doc.version;
     if (_meosRefDefCache.key === key && _meosRefDefCache.map) return _meosRefDefCache.map;
     const map = new Map();
-    const full = doc.getText();
+    const full = meosDocText(doc); // v4.0.115: 共有キャッシュから
     if (full.indexOf(']:') >= 0) { // 安い足切り(参照定義が1つも無い文書では正規表現を回さない)
       let m; MEOS_MD_REFDEF_RE.lastIndex = 0;
       while ((m = MEOS_MD_REFDEF_RE.exec(full)) !== null) {
@@ -19878,7 +19899,7 @@ function activate(context) {
         // v4.0.9(俊克): 真因=140k行の日記で全行 lineAt+正規表現を毎回同期実行→10秒固着。
         // 早期脱出=全文を一度だけ取り、リンク記法の核 '-->[' が無ければ即return(巨大日記の常態=瞬時)。
         // 有る時だけ全文を1回正規表現スキャン(行毎lineAt割付を廃止・positionAtでoffset→位置)。→ [[project_meos_freeze_pattern]]
-        const full = document.getText();
+        const full = meosDocText(document); // v4.0.115: 共有キャッシュから
         if (full.indexOf('-->[') < 0 && full.indexOf('](') < 0 && full.indexOf('][') < 0) return links; // v4.0.78/93: 素のMarkdownリンク・参照形式も対象(早期脱出は維持)
         let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(full)) !== null) {
