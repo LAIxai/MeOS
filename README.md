@@ -1,16 +1,16 @@
 # MeOS — Membrane OS
 
-<div align="center">
-<table><tr>
-<td align="center" valign="middle"><img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeW - Membrane Warpspace" width="200"></td>
-<td align="center" valign="middle">
-  <img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="240"><br>
+<p align="center">
+  <!-- 新ロゴ(MeW)とM↓⊕を1枚に。右に透明の余白を入れて**画像の中心=M↓⊕の中心**にしてあるので、
+       下のバッジを中央寄せするだけでM↓⊕の真下に来る。GitHubは<table>に必ず枠線を付けるsoこの方式にした。 -->
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="776">
+</p>
+
+<p align="center">
   <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
   <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-1014-4caf50" alt="Downloads on Open VSX (1014 at the v2.0 release)"></a>
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
-</td>
-</tr></table>
-</div>
+</p>
 
 ### **Markdown⊕** — *Markdown, plus.*
 
