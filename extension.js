@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.122(俊克 8/10 am00:58 質問1「60を設定しても、もう一度設定を見ると、どれが設定されているか分らない」＋バグ1「文字は小さくなるのに整形が崩れたまま直らない」): ★**質問1の真因**= 現在値を**設定**から読んでいたが、v4.0.121で保存先を globalState へ移したので**表示と実体が食い違っていた**。→ 現在値は `meosTableFitColumns()`(実際に使っている値)から引く＋タイトルにも `now: 60 columns` を出す。★教訓(3度目)=**状態の表示は、実際に使っている値と同じ1つの出どころから引く**[[feedback_one_source_for_mark_count_action]]。保存先を変えたら、それを読む側を全部探す。★**バグ1の真因を実測で特定= `font-weight: 900`(extension.js の太字装飾)**。俊克のスクショで列1の閉じ `|` の位置を画素で測ると(開始|=306px) ヘッダ1060 / 通常行1064 / 通常行1065 に対し、**太字を含む行だけ 1044(−21px)**。太字の日本語12文字ぶんで約1.2桁ずれ= **太字CJKは 1.67ではなく約1.57幅**で描かれている。原因= MeOSの太字は `-webkit-text-stroke` の縁取りに加えて **fontWeight='900'** も掛けており、**Menloに日本語が無い→太字だと macOS が別の日本語フォント面に落ちる**ので、ASCII基準の比率が変わる。★これは表の整形以前の**元からある食い違い**(v4.0.116の縮小機能とは無関係。縮小しても比率は保たれるので同じだけずれる)。→ 直し方は2つあり**見た目の判断がいる**ので俊克に選んでもらう: (A)表の中だけ fontWeight を外し縁取りだけで太くする(幅が変わらなくなる=完全に揃う) (B)meosStrWidth で太字CJKを1.57として数える(見た目は今のまま・定数がもう1つ増える)。私の推しは(A)。
 // - v4.0.121(俊克 8/10 am00:35 バグ1「箇条書きで、バックスラッシュ(=バッククォート)で囲まれた文字列が表示されない」＋バグ2「Fit Tables to Width 60を選択するとerrorが出て駄目」): ★★**バグ1の真因= 行頭マーカーを dtext(コードスパンを空白に潰した文字列)で測っていた**。`- \`Cmd + Shift + P\` を押す` は dtext では `- ` の後ろが**全部空白**に見えるので、`[ \t]+` が貪欲にそこまで飲み込み、**20文字を「マーカー+空白」として隠して**いた(headlessで hide 範囲が `"- \`Cmd + Shift + P\` "` になることを実測)。→ **マーカーは生データで測る**(行頭マーカーがコードスパンの中に入ることは決して無いので、生の方が常に正しい)。副産物= `` `x` - item `` を箇条書きと誤認しなくなる(潰した空白のせいで `-` が行頭に見えていた)。★教訓=**マスクした文字列は「そこに何かが在った」ことまで消す**。長さを保つマスクは検出には安全だが、**空白を意味に使う判定(マーカー+空白)には使ってはいけない**。空白そのものが情報である場所では生データを見る。★**バグ2の真因= 設定への書き込みがVS Code側の登録状態に依存していた**(`not a registered configuration`)。tableFitColumns は v4.0.116以降**全vsixのマニフェストに入っている**ことを確認済み(116/117/118/119/120すべてTrue)so、MeOS側の記述漏れではなく、拡張を入れ替えた直後のレジストリの都合。→ **そこに命綱を預けない**=保存先を **globalState** に(読む順= globalState ＞ 設定 ＞ 組込み既定80)。MeOSには既に『ユーザー既定はglobalState』の前例がある(v4.0.42 Format設定)。設定にも一応書くが失敗は無視。＋コマンド名の「MeOS: MeOS:」二重を修正(category と title の両方に入れていた)。headless 79/79 PASS(3件追加)。
 // - v4.0.120(俊克 8/10 am00:18 バグ1「空行1つあると採番がイニシャライズと言う仕様だったはずなので、最後の2つは2と3にしなければいけない」): ★**規則が裏返っていた**。v4.0.53の実装は「**項目でない行**が来たらリセット/**空行は無視**」で、俊克の仕様「**空行**で初期化」の**真逆**。→ 区切りは**空行だけ**。普通の文が挟まっても**リストは続いている**。俊克の例(文2行を挟む)で 1.2 / 2. / 3. になることを実データで確認。★書き手の感覚が正しい=**間に一言はさんでも同じリストの続き。段落を空けたら別のリスト**。Markdownの緩いリストとも一致する。★教訓=**仕様は「何が区切りか」を先に決める**。v4.0.53は『項目が途切れたら終わり』と機械の都合で決めていて、書き手が『まだ続いている』と思っている状態を表現できていなかった。
 // - v4.0.119(俊克 8/10 am00:07 バグ1「行頭の1.を削除した時、コメント命令が削除されない」＋「もっと小さいフォント指定にしないと駄目みたいね」): ★**バグ1=行頭に取り残された命令コメントを掃除する**。俊克のやりたいこと=『ここでリストをやめて普通の文を書く』so、行頭マーカーを消すのは自然な操作。残った `<!-- Mew! -1a … -->` はただのゴミ(読み手にも生データにも意味が無い)。→ 消す条件は**とても狭く**した=行の**先頭**が、**行に効く命令**(箇条書き/番号/見出し)のMeOSコメントである時だけ。これらは『その行のマーカー』を説明する命令so、マーカーが無い所に在れば必ず孤児。**語に効く命令(ハイライト等)は本文の途中に正しく現れる**ので対象外。膜・素のHTMLコメントも触らない(実データで確認)。自分の編集で再入しないよう deferRefreshCount で囲み、250ms待って1回だけ実行(IMEと競合しない)。★**表がまだ収まらない件=倍率ではなく目標桁数**。既定80に対し俊克のペインは**約58桁**(Me Dockが右半分を占める=MeOSの標準配置)so、80に収めても58には収まらない。★既定を勝手に下げると**全員の表がいきなり縮む**=非侵襲に反するため、**選べる口**を作る方を選んだ=パレット `MeOS: Fit Tables to Width…`(Off/50/60/70/80/100/120)。**webviewは触っていない**(v4.0.50/90でbacktick事故を2度起こしているso、深夜の変更でwebviewに手を入れない)。俊克の環境は **60** が目安。headless 76/76 PASS(5件追加)。
@@ -20073,7 +20074,10 @@ function activate(context) {
   // ★原因は倍率ではなく**目標桁数**。既定80に対し俊克のペインは約58桁(Me Dockが右半分=MeOSの標準配置)so、
   //   80に収めても58には収まらない。既定を勝手に下げると全員の表がいきなり縮む=非侵襲に反するため、**選べる口**を作る。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableFitWidth', async () => {
-    const cur = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableFitColumns', 80));
+    // v4.0.122(俊克 質問1「60を設定しても、もう一度見るとどれが設定されているか分らない」):
+    // ★現在値を**設定**から読んでいたが、v4.0.121で保存先をglobalStateに移したので食い違っていた。
+    //   → **実際に使っている値**(meosTableFitColumns)から引く。印・数字・状態は同じ1つの出どころから[[feedback_one_source_for_mark_count_action]]。
+    const cur = meosTableFitColumns();
     const mk = (n, note) => ({ label: (n === 0 ? 'Off' : String(n) + ' columns'), description: (n === cur ? '(current)' : ''), detail: note, value: n });
     const picks = [
       mk(0, 'Never shrink — tables stay at full size and wrap if the pane is narrow.'),
@@ -20084,7 +20088,7 @@ function activate(context) {
       mk(100, ''),
       mk(120, 'Wide / full-screen editor.'),
     ];
-    const sel = await vscode.window.showQuickPick(picks, { title: 'Fit tables to width', placeHolder: 'How many columns wide is your editor pane? (VS Code does not tell extensions, so you choose)' });
+    const sel = await vscode.window.showQuickPick(picks, { title: 'Fit tables to width  —  now: ' + (cur ? (cur + ' columns') : 'Off'), placeHolder: 'How many columns wide is your editor pane? (VS Code does not tell extensions, so you choose)' });
     if (!sel) return;
     // v4.0.121(俊克 バグ2「Fit Tables to Width 60を選択するとerrorが出て駄目」):
     // ★真因= 設定への書き込みは「その設定が登録済みか」というVS Code側の状態に依存する(拡張を入れ替えた直後などに
