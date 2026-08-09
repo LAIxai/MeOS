@@ -1,16 +1,16 @@
 # MeOS — Membrane OS
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeW - Membrane Warpspace" width="150">
-  &nbsp;&nbsp;
-  <img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="260">
-</p>
-
-<p align="center">
+<div align="center">
+<table><tr>
+<td align="center" valign="middle"><img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeW - Membrane Warpspace" width="170"></td>
+<td align="center" valign="middle">
+  <img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="240"><br>
   <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
   <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-1014-4caf50" alt="Downloads on Open VSX (1014 at the v2.0 release)"></a>
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
-</p>
+</td>
+</tr></table>
+</div>
 
 ### **Markdown⊕** — *Markdown, plus.*
 
