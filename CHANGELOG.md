@@ -2,6 +2,25 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v4.0 era — highlights (2026-08 →)
+
+### v4.0 — Plain Markdown, plus a comment (記法の大転換)
+- **Everything you write is real Markdown.** Headings, ordered/unordered lists, bold, italic, highlight,
+  strikethrough and links are plain Markdown; MeOS keeps its colours, tips and instructions in an HTML
+  comment at the **end of the line**. A MeOS document renders correctly with or without MeOS.
+- **Warp anywhere.** `[label]()` plus `<!-- Mew! [](target) -->` turns any word into a jump — to a membrane
+  by name, or to a URL. The destination never sits between your words, so the sentence keeps flowing.
+  Markdown reference links (`[label][ref]`) are supported too, for long URLs.
+- **Mew! 🐱 — a signature, and a way home.** Every MeOS comment starts with `Mew!`, so one `grep` finds them all.
+  Old notation is marked with a cat in the gutter; **↻** shows the marks for five seconds, **🐱** converts what is
+  on screen — one click, one undo. Nothing is ever converted behind your back.
+- **Numbers that never rot.** Ordered lists are stored as `1.` on every line; MeOS numbers them on screen.
+  Insert a line anywhere and the file does not change.
+- **Membrane timestamps in full.** New membranes are named `name_YYYYMMDD<weekday>HHMMSS<TZ>` — sortable,
+  grep-able, and honest about where you were when you wrote it.
+- **GitHub token, watched.** The push row shows the days left on your access token, warns before it runs out,
+  and turns the disconnect button into a one-press fix when it expires.
+
 ## v3.1 era — highlights (2026-08 →)
 
 ### v3.1 — Spreadsheet totals without cell addresses (座標からの解放)

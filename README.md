@@ -8,7 +8,7 @@
 <p align="center">
   <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
   <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-1014-4caf50" alt="Downloads on Open VSX (1014 at the v2.0 release)"></a>
-  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
+  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v4.0-2196f3" alt="Latest Release (v4.0)"></a>
 </p>
 
 ### **Markdown⊕** — *Markdown, plus.*
@@ -32,6 +32,32 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 > ## **Ai, Mai, MeOS 🐥**
 >
 > ## **You(AI) & I(LAI) 🐔**
+
+### NEW in v4.0 — your data is plain Markdown; the instructions live in comments
+
+v4.0 finishes the idea. **Every mark you write is real Markdown** — headings, lists, bold, highlight,
+strikethrough, links. Everything MeOS needs sits in an HTML comment at the **end of the line**, where it
+never comes between your words.
+
+```md
+## Morning  2026.08.09<!-- Mew! H2 (white/green)//[]tip= -->
+1. first item<!-- Mew! -1.(white/green)//[]tip= -->
+1. second item<!-- Mew! -1.(white/green)//[]tip= -->
+Warp to [the design note]() from any word.<!-- Mew! [](design_20260809s101533JST) -->
+```
+
+Open that file anywhere else and you get an H2, an ordered list, and a link label. Nothing is broken,
+nothing is proprietary. Open it in MeOS and the comments disappear: you read prose, and the words are live.
+
+- **Warp anywhere** — `[label]()` plus one comment jumps to a membrane **by name**, or opens a URL.
+  The destination never sits inside your sentence, so the text after a link stays on the same line.
+- **Numbers that never rot** — ordered lists are written `1.` every time (Markdown's own escape hatch).
+  MeOS counts them on screen, so inserting a line in the middle never renumbers your file.
+- **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
+  Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
+  what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.
+- **Your token, watched** — the GitHub push button shows how many days your access token has left,
+  and turns into a one-press fix when it expires.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3.1-table-calc.png" alt="Spreadsheet totals with no cell addresses — the formula is one HTML comment, the result is plain text" width="58%"><br>
@@ -262,6 +288,13 @@ MeOS stands on the shoulders of:
 
 ## Features
 
+- **Plain Markdown, always (v4.0)** — headings, lists, bold, highlight, strikethrough and links are written as
+  real Markdown; MeOS reads its own settings from a comment at the end of the line. Your file renders correctly
+  on GitHub, in any editor, and in any Markdown tool — with or without MeOS installed.
+- **Warp anywhere (v4.0)** — turn any word into a jump to a membrane by name, or to a URL, without putting the
+  destination in the middle of your sentence.
+- **Mew! 🐱 (v4.0)** — one signature makes every MeOS comment grep-able, and the cat converts old notation
+  screen by screen, at your pace. Marks are off by default; ↻ shows them for five seconds.
 - **Membranes** — comment-based structure that leaves your source untouched (decoration-only). **Fold** a huge file into a clean skeleton in one keystroke.
 - **Hyper TOC (H-TOC)** — jump anywhere from an outline panel. *One structure: read by AI (in-source, grep-able) and navigated by you (the panel).*
 - **Current Me** — always know which membrane the cursor is in; 3-point jump (open ⇔ close ⇔ cursor).
