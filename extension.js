@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.97(俊克 8/9 am11:24「PAT無期限は『PAT ∞』と表示すればいいかな」): ★そのまま採用。★真因の分解=これまで**「無期限」と「取れなかった(不明)」を同じ空文字**にしていたので、両方とも非表示だった。GitHubは**期限のあるトークンにだけ**このヘッダを返すso、200が返ってヘッダが無ければ**無期限で確定**できる。→ `iso='never'` を新設し、残り日数は Infinity・表示は `PAT ∞`・警告は出さない。★実装の罠=**postMessageのJSONにInfinityは載らない**(nullに化ける)so、webviewへ渡す直前に文字列 `never` に変換。globalStateのtotalにもInfinityを溜めない(同じ理由)。★tipには「漏れたら永久に有効so、その時はGitHubで失効させる」も書いた(便利さと引き換えの注意)。headless 4/4＋52/52 PASS。
 // - v4.0.96(俊克 8/9 am11:16「よよよ呪文で、マークダウンのオリジナル記法の見出しをキャッチしてしまうように最近なっている。これが使い難い。Me記法の見出しだけを捕捉して下さい」): ★真因=**v4.0.54で「素のMarkdown見出しもナビの対象」にしたこと**。俊克の日記には**会話の貼り付け**が大量にあり、その中の `## 見出し` を全部拾うのでジャンプが使い物にならなくなっていた。★拾うのは**Me記法の見出しだけ**に=①旧形の膜 `##{ }##` `##[ ]##`(箇条書き接頭辞つきも)②素のMarkdown見出し**＋行末の仕様コメント** ③コメントだけで見出しを宣言した行(v4.0.63の形)。俊克の見出しには必ず `<!-- Mew! H2 (色)//tip -->` が付くので全部拾える。★実データ=日記のジャンプ先が **9,555 → 3,365**(6,190個減った=全部が貼り付けの素の見出し)。★3箇所に写経されていた正規表現を**1つの定数(MEOS_NAV_HEAD_RE)に集約**した=[[feedback_one_source_for_mark_count_action]]の実践(写経は必ずズレる)。★教訓=**「全部を救う」は親切ではない**。8/06に俊克は既に「#ジャンプは ##{ }## 系だけでよい/素の見出しが拾われないと気づけば自分で直す」と言っていた。v4.0.54でそれを踏み越えたのが今回の原因so、方針の方に戻した。headless 12/12＋52/52 PASS。
 // - v4.0.95(俊克 8/9 am10:52「PATの残日数表示を🐙プッシュエリアを閉じた時の右端に移動しよう。そうすれば、閉じて🐙ボタンや🔗ボタンが見えない時でも気づくでしょ?」): ★チップを**ヘッダ(閉じていても見える所)の右端**へ移動(タイトル→状態→チップ→▾)。★これに伴い**失効の知らせもチップに出す**ようにした=v4.0.85で「失効は×が担う」と決めたが、**閉じていると×が見えない**so知らせが消えてしまう。情報=ヘッダのチップ(常に見える)／操作=×(開くと出る)、という分担は保ったまま、情報だけ常時見えるようにした。★チップはヘッダの中にあるso、押すと**ヘッダのクリックに乗ってパネルが開く**=次の一手に自然につながる(それでいて枠も塗りも無いのでボタンには見えない=v4.0.91の判断を壊さない)。headless 52/52 PASS。
 // - v4.0.94(俊克 8/9 am10:33「貴方の推し、行末一括コメント方式で実装して下さい」): ★★リンクを他の書式と**同じ形**に=**本文に印・行末に指定**。`[リンク1]()と[リンク2]()をこう書く。<!-- Mew! [](行先1)(白/黄)(0)//[]tip= --><!-- Mew! [](行先2) -->`。本文側は `[表示]()` だけso**印と後ろの文字の間に何も挟まらない=文字が連続する**。★俊克の「次の行に書く」案を採らなかった理由=**隠した行も1行を占める**(MeOSは幅ゼロにできるが高さゼロにできない)so常に空行が見える。行末なら、行が長くて折り返した時だけ末尾に見えない行が出る。★器は**行**=行を消せば指定も消える/行をコピーすれば指定も付いてくる(膜の名札を直下に置いたのと同じ理屈)。1行に複数は**順番で対応**。指定コメントが無い `[x]()` はリンクにしない(嘘の下線を引かない)。実装=解析(meosTrailingComments/meosLinkSpecFromComment/meosLineEndLinks)＋装飾＋DocumentLink＋表の幅＋🚫(印と指定を一緒に落とす)＋書く側。★**行単位の指定の読み取りを直した**=行末にコメントが複数並ぶようになったので「最後の1つ」決め打ちをやめ、**並び全部を見て行単位の宣言を持つものを選ぶ**。これをしないと `## 見出しの[リンク]()です<!-- Mew! [](url) --><!-- Mew! H2 -->` で見出しがリンクの指定を読む。順番の決め打ちにしないのは、俊克が手で書き足した時に壊れないため。★テストで**二重装飾**を捕まえた=素のリンク側が `[x]()`(行先が空)と**コメント内の `[](行先)`** まで拾っていた。→ 行先が空の印は素のリンクから除外＋**行末コメント群も先にマスク**(鉄則=リンクは先にマスク・6度目)。★書く側は**1回の編集**にまとめてカーソル位置を計算で決める(後から探すと既に在る行末コメントに引っかかる)。★scratchpadが消えていたのでヘッドレスハーネスを作り直し、**回帰テストを1本にまとめた**(t_all.js・52/52 PASS)。その過程で**偽ドキュメントが同じURI＋同じversionを使い回してproduct側のキャッシュを共有**していたのを発見(参照定義が別のテストの結果を返していた)→ 偽docは毎回別URIに。**テストの土台がウソをつくとバグが見えない**(2度目)。★日記の実データ=行先が空の `[x]()` は8件あるが、全部が包み形の中か散文の引用か**書きかけのリンク**so、生表示に戻るのはむしろ正しい(未完成が見える)。
@@ -8471,6 +8472,10 @@ async function meosGhFetchTokenExpiry(force) {
     if (res.status === 401 || res.status === 403) iso = 'expired'; // 弾かれた=もう切れている(または失効)
     else {
       const h = res.headers['github-authentication-token-expiration'] || '';
+      // v4.0.97(俊克 8/9 am11:24「PAT無期限は『PAT ∞』と表示すればいいかな」): ★**ヘッダが無い=無期限**。
+      //   これまで「無期限」と「取れなかった(不明)」を同じ空文字にしていたので、両方とも非表示になっていた。
+      //   GitHubは期限のあるトークンにだけこのヘッダを返すso、200が返ってヘッダが無ければ無期限で確定できる。
+      if (!h) iso = 'never';
       if (h) {
         const d = new Date(String(h).replace(' UTC', 'Z').replace(' ', 'T'));
         // ★fine-grainedの不具合対策=「今」に近すぎる期限は信用しない
@@ -8486,7 +8491,7 @@ async function meosGhFetchTokenExpiry(force) {
     const prev = extensionContext.globalState.get(MEOS_GH_EXP_KEY, null);
     const nowDays = meosGhExpiryDays(out);
     const prevTotal = (prev && typeof prev.total === 'number') ? prev.total : 0;
-    out.total = (nowDays !== null && nowDays > prevTotal) ? nowDays : prevTotal;
+    out.total = (nowDays !== null && isFinite(nowDays) && nowDays > prevTotal) ? nowDays : prevTotal; // v4.0.97: 無期限(Infinity)はtotalにしない
     await extensionContext.globalState.update(MEOS_GH_EXP_KEY, out);
     return out;
   } catch (_) { return null; }
@@ -8502,6 +8507,7 @@ function meosGhThresholds(cached) {
 function meosGhExpiryDays(cached) {
   if (!cached || !cached.iso) return null;
   if (cached.iso === 'expired') return -1;
+  if (cached.iso === 'never') return Infinity; // v4.0.97: 無期限
   const t = new Date(cached.iso).getTime(); if (isNaN(t)) return null;
   const now = Date.now();
   if (t <= now) return -1; // 過ぎている=切れている(端数で0日と出さない)
@@ -8543,6 +8549,7 @@ async function postGithubWizardState(state, repoUrlOrMsg, folderName, folderPath
   if (hasPat) {
     const _exp = await meosGhFetchTokenExpiry(false); patDays = meosGhExpiryDays(_exp);
     const _th = meosGhThresholds(_exp); patWarn = _th.warn; patTotal = _th.total; // v4.0.89: 色のしきい値もnode側で決めて渡す
+    if (patDays === Infinity) patDays = 'never'; // v4.0.97: JSONにInfinityは載らないので文字列で渡す
     meosGhWarnIfExpiring(_exp);
   }
   const collapsed = extensionContext ? extensionContext.globalState.get('meos.github.collapsed', false) : false;
@@ -16273,7 +16280,9 @@ if(_dc){if(window.__ghDcTip===undefined)window.__ghDcTip=_dc.getAttribute('data-
    ★チップを**ヘッダ(閉じていても見える所)**へ移した。so**失効の知らせもここに出す**=閉じていると×が見えず、
    v4.0.85の「失効は×が担う」だけでは知らせが消えてしまう。情報=ヘッダのチップ(常に見える)・操作=×(開くと出る)。
    チップはヘッダの中なので、押すとヘッダのクリックに乗って**パネルが開く**=次の一手に自然につながる(ボタンには見せない)。 */
-if(_pe){var d=msg.patDays;if(d===null||d===undefined){_pe.style.display='none';}else if(d<0){_pe.style.display='';_pe.classList.remove('warn');_pe.classList.add('bad');_pe.textContent='PAT expired';_pe.setAttribute('data-tip','PAT expired - Octopush cannot push. Open this panel and press the red PAT expired button (it sits where the ✕ is) to re-enter the token. Your site address and repo are remembered.');}else{_pe.style.display='';_pe.classList.remove('warn','bad');{_pe.textContent='PAT '+d+'d left';/* v4.0.90(俊克「英語にコンパクトな『後7日』は無いの?」): 7d left =残りN日の定番の短縮形。★ここはwebviewのテンプレートリテラル内soバッククォート禁止(v4.0.50の全壊と同じ穴を今また踏んだ) */var _w=(typeof msg.patWarn==='number')?msg.patWarn:3;/* v4.0.89: しきい値はnode側(発行時の日数の1/3)から受け取る=数字をwebviewに焼かない */
+if(_pe){var d=msg.patDays;if(d===null||d===undefined){_pe.style.display='none';}
+else if(d==='never'){_pe.style.display='';_pe.classList.remove('warn','bad');_pe.textContent='PAT \u221E';_pe.setAttribute('data-tip','This Personal Access Token never expires, so Octopush will not stop. (A token with no expiry is convenient but stays valid forever if it leaks - revoke it on GitHub if that ever happens.)');}/* v4.0.97: 無期限 */
+else if(d<0){_pe.style.display='';_pe.classList.remove('warn');_pe.classList.add('bad');_pe.textContent='PAT expired';_pe.setAttribute('data-tip','PAT expired - Octopush cannot push. Open this panel and press the red PAT expired button (it sits where the ✕ is) to re-enter the token. Your site address and repo are remembered.');}else{_pe.style.display='';_pe.classList.remove('warn','bad');{_pe.textContent='PAT '+d+'d left';/* v4.0.90(俊克「英語にコンパクトな『後7日』は無いの?」): 7d left =残りN日の定番の短縮形。★ここはwebviewのテンプレートリテラル内soバッククォート禁止(v4.0.50の全壊と同じ穴を今また踏んだ) */var _w=(typeof msg.patWarn==='number')?msg.patWarn:3;/* v4.0.89: しきい値はnode側(発行時の日数の1/3)から受け取る=数字をwebviewに焼かない */
 if(d<=1){_pe.classList.add('bad');}else if(d<=_w){_pe.classList.add('warn');}_pe.setAttribute('data-tip',('Days left on your GitHub Personal Access Token (issued for '+(msg.patTotal||'?')+' days). '+_w+' day(s) or less turns orange, the last day red. When it expires, the ✕ button turns into PAT expired - press that to re-enter the token.'));}}}}});
 /* v0.9.715: 🔖 ブックマーク [🔖▾] 分割ボタン。左=巡回ジャンプ／右▾=insert/removeメニュー。 */
 const bmCycle=document.getElementById('bm-cycle'),bmMenuBtn=document.getElementById('bm-menu-btn'),bmPop=document.getElementById('bm-pop'),bmRemove=document.getElementById('bm-remove'),bmFront=document.getElementById('bm-front'),bmClear=document.getElementById('bm-clear'),bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document.getElementById('bm-pending-menu-btn'),bmPendingPop=document.getElementById('bm-pending-pop'),refGroupList=document.getElementById('ref-group-list'),refModeToggleBtn=document.getElementById('ref-mode-toggle'),refSwitchFrontBtn=document.getElementById('ref-switch-front'),homeBtn=document.getElementById('home-btn'),homeMenuBtn=document.getElementById('home-menu-btn'),homePop=document.getElementById('home-pop'),homeSwitchBtn=document.getElementById('home-switch');
