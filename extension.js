@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.117(俊克 8/9 pm09:11「-1.1と言う命令を書けば、見た目をインデントしてくれる。しかも次の行では-1.2と書くことではなく、**必ず-1.1と書くことで** 1.1、1.2と表示してくれる」＋pm09:19「-1aと言う命令なら、1a、1b...のように見せる。そういう見せ方をすることがあるでしょ?」): ★★**番号付き箇条書きの階層**。★**私が読み違えた**: 最初 `-1.1` を「値の手書き」と読んで『腐る』と指摘したが、俊克の設計では `-1.1` は**階層の指定**で、同じ階層の行には**常に同じ `-1.1`** と書く。数えるのはMeOS。so**腐らないし、ソースにインデントを打つ必要も無い**(生データは平らな `1. ` のまま)。俊克の案の方が正しかった。★書式= `-1` の後ろが下位階層の並び。`.数字`=数字の階層 / `英字1文字`=英字の階層。`-1.`→深さ1(1. 2. 3.) / `-1.1`→深さ2数字(1.1 1.2) / `-1a`→深さ2英字(1a 1b。「図1a・図1b」の形) / `-1.1a`→深さ3。★実装= 全行の採番パスを**階層カウンタ配列**に(浅い項目が来たら深い方は捨てる・項目でない行でリセット)。ラベルと深さぶんのインデントは**MeOSが描く**(生データ不変)。ラベル幅は文字数に合わせて可変(`1.`=3ch / `  1.1`=6ch)。★親が変われば子も追従する: 二番目の下の `-1a` は **2a/2b**(1a/1bではない)=階層として正しい。headless 67/67 PASS(10件追加)。★`meosLineDirective` に `token` を追加(命令トークンそのものを渡す)。MEOS_LINE_DIRECTIVE_RE と MEOS_SPEC_SHAPE_RE も階層形を通すよう拡張。
 // - v4.0.116(俊克 8/9 pm08:46「収まらないセルだけフォントサイズ指定を変えて、表の形を保つ。そのうえで、MeOSはそのセルの行をクリックすれば生データが見えるので、それを読めばいい。これで、とりあえずは運用可能でしょ」→ pm08:52「実装して見ないと分らないので、やって見るしかないでしょ」): ★★**広い表をペイン幅に収める**。俊克案の核=**生データを1文字も変えずに、表示だけ収める**=列に `font-size` を掛けると**本文も詰め物の空白も一緒に縮む**ので、ソースは正しいGFMのまま(俊克の表なら92桁)・画面だけ縮む。**整形器には一切手を入れない**。★俊克案を1つだけ直した=**縮めるのは「セル」でなく「列」**。同じ列の中で倍率が違うと次の `|` が行ごとにずれ、「表の形を保つ」という目的そのものが壊れる。幸い『収まらない』のは列の性質so意図は変わらない。★アルゴリズム=**頭を押さえる二分探索**(上限Cを探し、C超の列だけ C/幅 に縮める)＝広い列から縮み、**狭い列は100%のまま**。5%刻みに切り捨て(必ず収まる側へ)・**下限50%**(それ以下は読めないので諦めて折り返させる)。実測: (42,43)→88桁が90%/85%で**77.3桁**、(60,10,10)→84桁が**90%/100%/100%**(長い列だけ)、(200,10)は50%が下限so収まらない=**壊すより何もしない側に倒す**。★読む口は**新設しない**=カーソル行は元から生データを原寸で見せる(v659の思想)。俊克の言う「クリックすれば読める」は**既にある挙動そのもの**。新UIゼロ。★VS Codeは**エディタの表示幅を拡張に公開していない**(visibleRangesは行だけ)so、収めたい桁数は設定 `laiMembrane.tableFitColumns`(既定80・0で無効)で持つ。これは実装前に俊克へ報告済みの制約。★`font-size` に `!important` を**付けない**=マーカーを隠す `font-size:0 !important` の方が必ず勝つ(v4.0.14の教訓)。★clearForRaw にも追加(v4.0.52の教訓=新しい装飾を足したらRawの解除にも足す)。headless 57/57 PASS(5件追加)。
 // - v4.0.115(俊克 8/9 pm08:14「コピペで4、5秒遅延」・ログ= `[host-blocked]` 978/2570/1786/1124/1061ms が並ぶのに**MeOSの計測は1行も出ない**): ★★この形は「どれか1つの関数が長い」ではなく**関数の外=GC(ごみ集め)がホストを止めている**。真因=**11MBの文字列を1回のrefreshで何度も作り直していた**: ①applyPrettyLabelsの `getText().split()`(**v4.0.113で私が足した**) ②複数行取消線 ③複数行ハイライト。最大3回=毎refresh 30MB超のごみ。スクロールでもrefreshは走るso毎秒100MB級。起動ディスク残6.1GiB・スワップ86%の実機では、これが**秒単位のGC停止**になる。→ 全文と行配列を**文書の版ごとに1回だけ**作る共有キャッシュ(`meosDocText`/`meosDocLines`)に。編集していない間(スクロール/カーソル移動)は**ごみゼロ**。参照定義とDocumentLinkの getText も同じ口へ。★教訓=**速さと、ごみの量は別の指標**。v4.0.113は関数を747ms→9msにしたが、同時に毎refresh 11MBのごみを新設していた=**片方だけ見ていると、直しながら壊す**。★あわせて俊克の質問「表が整形で大きく崩れるのはなぜ?」に**実測で回答**=`laiMembrane.tableCjkWidth` の既定 **1.67** が原因。実データで検証: 1.67だと各列の見えている幅が 41.34/41.68/41.70/42.04 と**端数**になり、詰め物は空白(幅1)なのだから**原理的に揃わない**。**2.0 にすると全列が 45/49 でぴったり一致**。1.67 の出どころは俊克のフォント設定 `Menlo, Monaco…`=**MenloにCJKが無く**macOSがHiraginoへ落とすため、ASCII 0.6em / CJK 1.0em = **1/0.6 = 1.667**。つまりMeOSの計算ではなく**フォントの組み合わせ**の問題。→ 1:2の日本語等幅フォント(macOS同梱の **Osaka-Mono**、または HackGen/PlemolJP/UDEV Gothic)に替えて tableCjkWidth を 2 にすれば表は完全に揃う。
 // - v4.0.114(俊克 8/9 pm07:59「コピペで5秒くらいの遅延。上のコメントをペーストした時だよ」・ただしログには `[refresh] 348ms` **1行しか無い**): ★MeOSの計測(refresh/foldingRanges/documentLinks/paste-folds)がどれも出ていないのに固まる=**切り分けの道具が1つ足りない**。→ **拡張ホストのイベントループが何秒止められたか**を測る `[host-blocked]`(1秒ごとに時計を見るだけ・負荷ゼロに近い)。読み方=①同時にMeOSの計測も出る→MeOSが犯人 ②`[host-blocked]` だけ出る→**拡張ホストの中のMeOS以外**(他拡張/VSCode本体の同期処理) ③**どちらも出ないのに固まる**→拡張ホストは動いていた=**描画側(renderer)かOSのスワップ**(8/9時点で起動ディスク残6.1GiB・スワップ86%so現状これが濃厚)。★憶測で終わらせず、測る口を先に作る[[feedback_root_cause_before_patching]]。★あわせて俊克の疑問に事実で回答=`1. ただの数字` は**すでに連番の対象外**(MEOS_NUM_ITEM_REは行末の仕様コメントを要求する)。つまり**コメントを書かないこと自体が逃げ道**になっており、提案された「ただの文字」命令は不要。ただし**色やtipは付けたいが番号は振られたくない**場合だけは口が無い=命令トークンを `-1.`(番号)と `1.`(番号にしない)で分ける案は有効。未実装・v4.1候補。
@@ -5948,7 +5949,9 @@ function applyPrettyLabels(editor) {
   // (画面外で開いたフェンスが可視行に効く)ので _plVis の足切りより前で、先頭文字のcharCodeで安く弾いてから測る。
   const _proseDoc = meosIsProseDoc(editor.document);
   let _inFence = false, _fenceAt = -1;
-  let _numRun = 0; const _numOf = new Map(); // v4.0.53: 番号付き項目の連番(行→N)
+  // v4.0.117: 連番を**階層ごと**に持つ。_numLv[d-1] が深さdのカウンタ。浅い項目が来たら深い方はリセット。
+  let _numLv = []; const _numOf = new Map(); // 行 → 表示ラベル文字列('1.' / '1.1' / '1a')
+  const _numIndentOf = new Map();            // 行 → 先頭に空ける桁数(深さ-1)*2
   const bulletHandledLines = new Set(); // v4.0.54: 新形ブロックで • を描いた行(素の箇条書き検出と二重にしない)
   // v4.0.113(俊克 8/9 pm07:16「40秒以上遅延。これが本当にイライラする」): ★真因はここ。
   //   ログは400ms前後の refresh が延々と並ぶ=**1回が長い**のではなく**回数×400msが積もる**。
@@ -6014,9 +6017,20 @@ function applyPrettyLabels(editor) {
     if (_proseDoc) {
       const _c = text.charCodeAt(0);
       if (_c === 45 || _c === 35 || _c === 32 || _c === 9 || (_c >= 48 && _c <= 57)) { // v4.0.61: 行頭が数字(`1. `)の項目も数える
-        if (MEOS_NUM_ITEM_RE.test(text)) { _numRun++; _numOf.set(line, _numRun); }
-        else if (!MEOS_ANY_ITEM_RE.test(text)) _numRun = 0;
-      } else if (text.trim()) _numRun = 0;
+        if (MEOS_NUM_ITEM_RE.test(text)) {
+          // v4.0.117: 行末コメントの命令から**深さと書式**を読む(無ければ従来どおり深さ1)。
+          let lv = null;
+          try { const tc = meosTrailingComments(text); for (let i = tc.length - 1; i >= 0; i--) { const d = meosLineDirective(meosStripMewSignature(tc[i].payload)); if (d && d.token) { lv = meosItemLevels(d.token); break; } } } catch (_) { }
+          if (!lv || !lv.length) lv = [{ style: 'num' }];
+          const d = lv.length;
+          if (_numLv.length > d) _numLv.length = d;           // 浅い項目に戻った=深い方は捨てる
+          while (_numLv.length < d) _numLv.push(0);           // 深くなった=その階層を1から
+          _numLv[d - 1] = (_numLv[d - 1] || 0) + 1;
+          _numOf.set(line, meosItemLabel(_numLv, lv));
+          _numIndentOf.set(line, (d - 1) * 2);
+        }
+        else if (!MEOS_ANY_ITEM_RE.test(text)) _numLv = [];
+      } else if (text.trim()) _numLv = [];
     }
     if (!_plVis(line)) continue; // v3.1.3(俊克 計測): 画面外は重い装飾計算をスキップ(採番/ML検出は上で全行実施済)
     // v0.9.876/884: ★コメント包み記法。装飾を /* … */ ブロックコメントで包むと、コードからは ただの
@@ -6256,7 +6270,7 @@ function applyPrettyLabels(editor) {
         // 前の #{1,3}(-1|-)?[ を隠す
         headingMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
         // v4.0.53(俊克): 見出し+箇条書き。マーカーを隠した位置に `• ` / `N. ` を描く(番号は生データに書かず自動採番)。
-        if (bulletMk) meItemLabelItems.push({ range: new vscode.Range(line, openStart, line, openStart), renderOptions: { before: { contentText: (bulletMk === '-1' ? ((_numOf.get(line) || 1) + '.') : '•'), color: new vscode.ThemeColor('editor.foreground'), width: '3ch' } } });
+        if (bulletMk) meItemLabelItems.push({ range: new vscode.Range(line, openStart, line, openStart), renderOptions: { before: { contentText: (bulletMk === '-1' ? (_numOf.get(line) || '1.') : '•'), color: new vscode.ThemeColor('editor.foreground'), width: '3ch' } } });
         if (bodyEnd > innerStart) {
           const r = new vscode.Range(line, innerStart, line, bodyEnd);
           // サイズ装飾・背景色は本文全体に適用
@@ -6371,7 +6385,10 @@ function applyPrettyLabels(editor) {
           if (bulletLen) meItemHideRanges.push(new vscode.Range(line, indent, line, indent + bulletLen));
           // v4.0.58(俊克 バグ1): 箇条書きにも色を効かせる。ラベル(•/N.)は文字色に従い、本文には文字色/背景色を掛ける。
           const _bfg = (sp && sp.fgKey && HIGHLIGHT_FG_COLORS[sp.fgKey]) ? HIGHLIGHT_FG_COLORS[sp.fgKey] : null;
-          meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: numbered ? ((_numOf.get(line) || 1) + '.') : '•' /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: _bfg || new vscode.ThemeColor('editor.foreground'), width: '3ch' } } });
+          // v4.0.117(俊克): 階層つきの番号。ラベルは _numOf(既に '1.' / '1.1' / '1a' の形)・深さぶんの空白は MeOS が描く
+          const _lbl = numbered ? (_numOf.get(line) || '1.') : '•';
+          const _lin = numbered ? (_numIndentOf.get(line) || 0) : 0;
+          meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: (_lin ? ' '.repeat(_lin) : '') + _lbl /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: _bfg || new vscode.ThemeColor('editor.foreground'), width: (Math.max(3, _lin + _lbl.length + 1)) + 'ch' } } });
           if (!hashes && !(dir && dir.level) && sp && (sp.fgKey || sp.bgKey || sp.comment) && bodyEndP > bodyStart) { // 見出し無しの箇条書き=本文に色/tipを掛ける(見出しありは上の分岐が担当)
             const rB = new vscode.Range(line, bodyStart, line, bodyEndP);
             let fk = sp.fgKey; if (sp.bgKey && !fk) fk = DARK_BG_KEYS.has(sp.bgKey) ? 'white' : 'black';
@@ -6391,7 +6408,7 @@ function applyPrettyLabels(editor) {
         if (close > open) {
           meItemHideRanges.push(new vscode.Range(line, ind, line, open));
           meItemHideRanges.push(new vscode.Range(line, close, line, dtext.length));
-          meItemLabelItems.push({ range: new vscode.Range(line, ind, line, ind), renderOptions: { before: { contentText: isNum ? ((_numOf.get(line) || 1) + '.') : '•', color: new vscode.ThemeColor('editor.foreground'), width: '3ch' } } });
+          meItemLabelItems.push({ range: new vscode.Range(line, ind, line, ind), renderOptions: { before: { contentText: isNum ? (_numOf.get(line) || '1.') : '•', color: new vscode.ThemeColor('editor.foreground'), width: '3ch' } } });
         }
       }
     }
@@ -12931,12 +12948,37 @@ function meosSpecComment(directive, spec) {
 }
 function meosHasMewSignature(payload) { return MEOS_MEW_SIGNATURE_RE.test(String(payload == null ? '' : payload)); }
 function meosStripMewSignature(payload) { return String(payload == null ? '' : payload).replace(MEOS_MEW_SIGNATURE_RE, ''); }
-const MEOS_LINE_DIRECTIVE_RE = /^(-1\.|-1|1\.|1|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(?:$|(?=\(|\/\/))/;
+// v4.0.117: 番号付きの命令に**階層**を許す。`-1.`(深さ1) / `-1.1`(深さ2・数字) / `-1a`(深さ2・英字) / `-1.1a` …
+//   ★下位の並びは貪欲に取る=`-1.1` は「`-1.` の後に1」ではなく「`-1` ＋ 数字階層1つ」と読む。
+const MEOS_LINE_DIRECTIVE_RE = /^(-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(?:$|(?=\(|\/\/))/;
+// 命令トークン → 階層の並び。[{style:'num'|'alpha'}, …] を返す(長さ=深さ)。深さ1は [{num}]。
+function meosItemLevels(tok) {
+  const t = String(tok == null ? '' : tok);
+  if (!t || t === '-') return null;
+  const body = t.replace(/^-/, '').replace(/\.$/, ''); // 先頭の - と末尾の . を落とす
+  if (body.charAt(0) !== '1') return null;
+  const out = [{ style: 'num' }]; // 深さ1は必ず数字
+  const re = /\.(\d+)|([a-z])/g; let m;
+  while ((m = re.exec(body.slice(1))) !== null) out.push({ style: m[2] ? 'alpha' : 'num' });
+  return out;
+}
+// 各階層のカウンタ → 表示ラベル。深さ1だけ末尾に `.` を付ける(`1.`)。以降は `1.1` / `1a`。
+function meosItemLabel(counts, levels) {
+  let out = String(counts[0] || 1);
+  for (let i = 1; i < counts.length; i++) {
+    const n = counts[i] || 1;
+    out += (levels[i] && levels[i].style === 'alpha')
+      ? String.fromCharCode(96 + Math.min(26, Math.max(1, n)))  // 1→a 2→b …
+      : '.' + n;
+  }
+  return counts.length === 1 ? out + '.' : out;
+}
 function meosLineDirective(payload) {
   const s = String(payload == null ? '' : payload);
   const m = MEOS_LINE_DIRECTIVE_RE.exec(s);
   if (!m || (!m[1] && !m[2])) return null;
   return {
+    token: m[1] || '', // v4.0.117: 命令トークンそのもの(階層 `-1.1` / `-1a` を読むため)
     bullet: m[1] ? (m[1] === '-' ? 'bullet' : 'number') : null, // '-'=箇条書き / '1' '1.' '-1' '-1.'=番号付き
     level: m[2] ? (m[2].charAt(0) === 'H' ? parseInt(m[2].slice(1), 10) : m[2].length) : 0, // H2 も ## も同じ
     rest: s.slice(m[0].length), // 残り=(色)//tip
@@ -12951,7 +12993,7 @@ function meosLineDirective(payload) {
 //   ①リンクの開き `=={`  ②上付/下付の `{150%…}`  ③(任意の命令トークン)＋`(色)` または `//tip`
 // ★形は**両端を留める**(前だけ見ると誤爆する)。実データで `「<!--(×←)→ --> 5」` を拾っていた=
 //   `(…)` の後ろが行末でも `//tip` でもないのに、先頭一致だけで通していたため。
-const MEOS_SPEC_SHAPE_RE = /^(?:-1\.?|1\.?|-|H[1-6]|#{1,6}|==|~~|\*{1,3}|_)?[ \t]*(?:(?:\([^()\n]*\)[ \t]*)+(?:\/\/[^\n]*)?|\/\/[^\n]*)$/;
+const MEOS_SPEC_SHAPE_RE = /^(?:-?1(?:\.\d+|[a-z])*\.?|-|H[1-6]|#{1,6}|==|~~|\*{1,3}|_)?[ \t]*(?:(?:\([^()\n]*\)[ \t]*)+(?:\/\/[^\n]*)?|\/\/[^\n]*)$/;
 function meosLooksLikeSpecComment(payload) {
   const s = String(payload == null ? '' : payload).trim();
   if (!s) return false;
