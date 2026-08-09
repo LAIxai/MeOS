@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.123(俊克 8/10 am01:14「『-1.』を『-』に書き換えるだけで、数字付きから普通の箇条書きに変更できる。このとき、行頭の1.を自動削除してくれるとうれしいけどね」): ★**行頭マーカーは命令に従う**。一般化すると「**命令が本当のこと**」so逆向き(`-`→`-1.`で行頭を `1. ` にする)も同じ規則で直す。書き手が触るのは**コメントの命令だけ**でよくなる=v4.0の思想『指示はコメントへ』の当然の帰結。実装はv4.0.119の掃除機構に相乗り(250msデバウンス・deferRefreshCountで再入防止)。行頭にマーカーが無い行/命令が無い行/一致している行は触らない。headless 86/86 PASS(7件追加)。★**遅延の原因が確定した(実機を計測)**: 起動ディスク **6.6GiB空き/460GiB**・スワップ **8,671MB使用/9,216MB(残り544MB=94%)**。**スワップがほぼ満杯で、ディスクが空いていないので増やせない**=OSが全プロセスを数百msずつ止める状態。`[host-blocked]` が **MeOSの計測ゼロで700〜2300ms**出るのはこれ(v4.0.114の切り分け表の3番目)。8/5から出ている拡張ホストのクラッシュ(code 5)も同じ根。→ MeOS側でできることは尽きている(v4.0.113で747ms→9ms・v4.0.115でGCを根治)。**ディスクを空けるのが唯一の対処**。★合わせて `[host-blocked]` に **rss/heapUsed** を出すようにした=MeOS自身が太っているのか(rssが増え続ける)、OSのスワップ側か(rss横ばい)を次回で切り分ける。
 // - v4.0.122(俊克 8/10 am00:58 質問1「60を設定しても、もう一度設定を見ると、どれが設定されているか分らない」＋バグ1「文字は小さくなるのに整形が崩れたまま直らない」): ★**質問1の真因**= 現在値を**設定**から読んでいたが、v4.0.121で保存先を globalState へ移したので**表示と実体が食い違っていた**。→ 現在値は `meosTableFitColumns()`(実際に使っている値)から引く＋タイトルにも `now: 60 columns` を出す。★教訓(3度目)=**状態の表示は、実際に使っている値と同じ1つの出どころから引く**[[feedback_one_source_for_mark_count_action]]。保存先を変えたら、それを読む側を全部探す。★**バグ1の真因を実測で特定= `font-weight: 900`(extension.js の太字装飾)**。俊克のスクショで列1の閉じ `|` の位置を画素で測ると(開始|=306px) ヘッダ1060 / 通常行1064 / 通常行1065 に対し、**太字を含む行だけ 1044(−21px)**。太字の日本語12文字ぶんで約1.2桁ずれ= **太字CJKは 1.67ではなく約1.57幅**で描かれている。原因= MeOSの太字は `-webkit-text-stroke` の縁取りに加えて **fontWeight='900'** も掛けており、**Menloに日本語が無い→太字だと macOS が別の日本語フォント面に落ちる**ので、ASCII基準の比率が変わる。★これは表の整形以前の**元からある食い違い**(v4.0.116の縮小機能とは無関係。縮小しても比率は保たれるので同じだけずれる)。→ 直し方は2つあり**見た目の判断がいる**ので俊克に選んでもらう: (A)表の中だけ fontWeight を外し縁取りだけで太くする(幅が変わらなくなる=完全に揃う) (B)meosStrWidth で太字CJKを1.57として数える(見た目は今のまま・定数がもう1つ増える)。私の推しは(A)。
 // - v4.0.121(俊克 8/10 am00:35 バグ1「箇条書きで、バックスラッシュ(=バッククォート)で囲まれた文字列が表示されない」＋バグ2「Fit Tables to Width 60を選択するとerrorが出て駄目」): ★★**バグ1の真因= 行頭マーカーを dtext(コードスパンを空白に潰した文字列)で測っていた**。`- \`Cmd + Shift + P\` を押す` は dtext では `- ` の後ろが**全部空白**に見えるので、`[ \t]+` が貪欲にそこまで飲み込み、**20文字を「マーカー+空白」として隠して**いた(headlessで hide 範囲が `"- \`Cmd + Shift + P\` "` になることを実測)。→ **マーカーは生データで測る**(行頭マーカーがコードスパンの中に入ることは決して無いので、生の方が常に正しい)。副産物= `` `x` - item `` を箇条書きと誤認しなくなる(潰した空白のせいで `-` が行頭に見えていた)。★教訓=**マスクした文字列は「そこに何かが在った」ことまで消す**。長さを保つマスクは検出には安全だが、**空白を意味に使う判定(マーカー+空白)には使ってはいけない**。空白そのものが情報である場所では生データを見る。★**バグ2の真因= 設定への書き込みがVS Code側の登録状態に依存していた**(`not a registered configuration`)。tableFitColumns は v4.0.116以降**全vsixのマニフェストに入っている**ことを確認済み(116/117/118/119/120すべてTrue)so、MeOS側の記述漏れではなく、拡張を入れ替えた直後のレジストリの都合。→ **そこに命綱を預けない**=保存先を **globalState** に(読む順= globalState ＞ 設定 ＞ 組込み既定80)。MeOSには既に『ユーザー既定はglobalState』の前例がある(v4.0.42 Format設定)。設定にも一応書くが失敗は無視。＋コマンド名の「MeOS: MeOS:」二重を修正(category と title の両方に入れていた)。headless 79/79 PASS(3件追加)。
 // - v4.0.120(俊克 8/10 am00:18 バグ1「空行1つあると採番がイニシャライズと言う仕様だったはずなので、最後の2つは2と3にしなければいけない」): ★**規則が裏返っていた**。v4.0.53の実装は「**項目でない行**が来たらリセット/**空行は無視**」で、俊克の仕様「**空行**で初期化」の**真逆**。→ 区切りは**空行だけ**。普通の文が挟まっても**リストは続いている**。俊克の例(文2行を挟む)で 1.2 / 2. / 3. になることを実データで確認。★書き手の感覚が正しい=**間に一言はさんでも同じリストの続き。段落を空けたら別のリスト**。Markdownの緩いリストとも一致する。★教訓=**仕様は「何が区切りか」を先に決める**。v4.0.53は『項目が途切れたら終わり』と機械の都合で決めていて、書き手が『まだ続いている』と思っている状態を表現できていなかった。
@@ -13062,6 +13063,26 @@ function meosLineStartsWithOrphanDirective(text) {
   if (!dir || (!dir.bullet && !dir.level)) return null; // 行に効く命令でなければ触らない
   return { start: 0, end: m[0].length };
 }
+// v4.0.123(俊克 8/10 am01:14「『-1.』を『-』に書き換えるだけで数字付きから普通の箇条書きに変更できる。
+//   このとき、行頭の1.を自動削除してくれるとうれしい」):
+// ★**命令が本当のこと**。行頭マーカーは命令に従う。so逆向き(`-` → `-1.`)も同じ規則で直す。
+//   書き手が触るのは**コメントの命令だけ**でよくなる=「指示はコメントへ」の当然の帰結。
+function meosMarkerFixForLine(text) {
+  const t = String(text || '');
+  let dir = null;
+  try {
+    const tc = meosTrailingComments(t);
+    for (let i = tc.length - 1; i >= 0; i--) { const d = meosLineDirective(meosStripMewSignature(tc[i].payload)); if (d && d.bullet) { dir = d; break; } }
+  } catch (_) { return null; }
+  if (!dir) return null;
+  const m = /^([ \t]*)(?:([-*+])[ \t]+|(\d+)[.)][ \t]+)/.exec(t);
+  if (!m) return null;                       // 行頭にマーカーが無い=触らない(空行や見出しを壊さない)
+  const isBullet = !!m[2], isNumber = !!m[3];
+  const start = m[1].length, end = m[0].length;
+  if (dir.bullet === 'bullet' && isNumber) return { start, end, to: '- ' };   // -1. → - : 行頭の `1. ` を落とす
+  if (dir.bullet === 'number' && isBullet) return { start, end, to: '1. ' };  // - → -1. : 行頭を `1. ` に(番号は常に1=腐らない番号)
+  return null;
+}
 async function meosSweepOrphanDirectives(editor, lines) {
   if (!editor || !editor.document || editor.document.isClosed) return;
   try {
@@ -13069,12 +13090,15 @@ async function meosSweepOrphanDirectives(editor, lines) {
     const doc = editor.document, edits = [];
     for (const ln of lines) {
       if (ln < 0 || ln > doc.lineCount - 1) continue;
-      const hit = meosLineStartsWithOrphanDirective(doc.lineAt(ln).text);
-      if (hit) edits.push(new vscode.Range(ln, hit.start, ln, hit.end));
+      const text = doc.lineAt(ln).text;
+      const hit = meosLineStartsWithOrphanDirective(text);
+      if (hit) { edits.push({ range: new vscode.Range(ln, hit.start, ln, hit.end), to: '' }); continue; }
+      const fix = meosMarkerFixForLine(text); // v4.0.123: 行頭マーカーを命令に合わせる
+      if (fix) edits.push({ range: new vscode.Range(ln, fix.start, ln, fix.end), to: fix.to });
     }
     if (!edits.length) return;
     deferRefreshCount++;
-    try { await editor.edit(eb => { for (const r of edits) eb.delete(r); }, { undoStopBefore: false, undoStopAfter: false }); }
+    try { await editor.edit(eb => { for (const r of edits) { if (r.to) eb.replace(r.range, r.to); else eb.delete(r.range); } }, { undoStopBefore: false, undoStopAfter: false }); }
     finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); }
     try { refresh(editor); } catch (_) { }
   } catch (_) { }
@@ -20060,7 +20084,12 @@ function meosStartLagWatch() {
   let last = Date.now();
   _meosLagWatch = setInterval(() => {
     const now = Date.now(), gap = now - last - 1000; last = now;
-    if (gap > 700) { try { meosDbg('[host-blocked] ' + gap + 'ms 拡張ホストが止まっていた(同じ時刻にMeOSの計測が無ければ、止めたのはMeOSではない)'); } catch (_) {} }
+    if (gap > 700) {
+      // v4.0.123: 拡張ホスト自身の足跡も出す。rssが大きい/増え続けるならメモリ側、横ばいならOSのスワップ側。
+      let mem = '';
+      try { const m = process.memoryUsage(); mem = ' rss=' + Math.round(m.rss / 1048576) + 'MB heap=' + Math.round(m.heapUsed / 1048576) + 'MB'; } catch (_) { }
+      try { meosDbg('[host-blocked] ' + gap + 'ms' + mem + ' (同じ時刻にMeOSの計測が無ければ、止めたのはMeOSではない)'); } catch (_) {}
+    }
   }, 1000);
 }
 function activate(context) {
