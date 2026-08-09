@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. A membrane is just a comment — so it structures, folds, warps, and encrypts your notes and code without touching your data, not by a millimeter. One file, one brain: Hyper TOC warp & bi-directional jump, ✅ searchable checklists, 🐙 one-tap GitHub backup (Octopush), 🔐 AES-256 Encrypt Me. Markdown⊕ — Markdown, plus. MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). ／ それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣",
-  "version": "4.0.115",
+  "version": "4.0.116",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -174,6 +174,13 @@
           "minimum": 1,
           "maximum": 2,
           "markdownDescription": "Width of a full-width (CJK) character relative to a half-width one, used by **MeOS: Format Table** for column alignment. Default **1.67** is tuned for VSCodium's default font (Menlo + Hiragino on macOS), where CJK glyphs are ~1.67× the ASCII advance — not exactly 2×. Set **2** if you use a duospaced coding font (Sarasa Term J, UDEV Gothic, etc.) where full-width = exactly two half-widths."
+        },
+        "laiMembrane.tableFitColumns": {
+          "type": "number",
+          "default": 80,
+          "minimum": 0,
+          "maximum": 400,
+          "markdownDescription": "Shrink wide tables so they fit your editor pane, **without touching the file**. When a table is wider than this many columns, MeOS draws its widest columns at a smaller font size (down to 50%) until it fits — the raw Markdown is never modified, and every column stays aligned because a whole column is scaled together. Put the cursor on a row to see that row at full size. Set **0** to turn this off. VS Code does not tell extensions how wide the editor is, so this number is your pane width, not a measured one."
         },
         "laiMembrane.tableAutoCalc": {
           "type": "boolean",

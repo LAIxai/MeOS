@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.116(俊克 8/9 pm08:46「収まらないセルだけフォントサイズ指定を変えて、表の形を保つ。そのうえで、MeOSはそのセルの行をクリックすれば生データが見えるので、それを読めばいい。これで、とりあえずは運用可能でしょ」→ pm08:52「実装して見ないと分らないので、やって見るしかないでしょ」): ★★**広い表をペイン幅に収める**。俊克案の核=**生データを1文字も変えずに、表示だけ収める**=列に `font-size` を掛けると**本文も詰め物の空白も一緒に縮む**ので、ソースは正しいGFMのまま(俊克の表なら92桁)・画面だけ縮む。**整形器には一切手を入れない**。★俊克案を1つだけ直した=**縮めるのは「セル」でなく「列」**。同じ列の中で倍率が違うと次の `|` が行ごとにずれ、「表の形を保つ」という目的そのものが壊れる。幸い『収まらない』のは列の性質so意図は変わらない。★アルゴリズム=**頭を押さえる二分探索**(上限Cを探し、C超の列だけ C/幅 に縮める)＝広い列から縮み、**狭い列は100%のまま**。5%刻みに切り捨て(必ず収まる側へ)・**下限50%**(それ以下は読めないので諦めて折り返させる)。実測: (42,43)→88桁が90%/85%で**77.3桁**、(60,10,10)→84桁が**90%/100%/100%**(長い列だけ)、(200,10)は50%が下限so収まらない=**壊すより何もしない側に倒す**。★読む口は**新設しない**=カーソル行は元から生データを原寸で見せる(v659の思想)。俊克の言う「クリックすれば読める」は**既にある挙動そのもの**。新UIゼロ。★VS Codeは**エディタの表示幅を拡張に公開していない**(visibleRangesは行だけ)so、収めたい桁数は設定 `laiMembrane.tableFitColumns`(既定80・0で無効)で持つ。これは実装前に俊克へ報告済みの制約。★`font-size` に `!important` を**付けない**=マーカーを隠す `font-size:0 !important` の方が必ず勝つ(v4.0.14の教訓)。★clearForRaw にも追加(v4.0.52の教訓=新しい装飾を足したらRawの解除にも足す)。headless 57/57 PASS(5件追加)。
 // - v4.0.115(俊克 8/9 pm08:14「コピペで4、5秒遅延」・ログ= `[host-blocked]` 978/2570/1786/1124/1061ms が並ぶのに**MeOSの計測は1行も出ない**): ★★この形は「どれか1つの関数が長い」ではなく**関数の外=GC(ごみ集め)がホストを止めている**。真因=**11MBの文字列を1回のrefreshで何度も作り直していた**: ①applyPrettyLabelsの `getText().split()`(**v4.0.113で私が足した**) ②複数行取消線 ③複数行ハイライト。最大3回=毎refresh 30MB超のごみ。スクロールでもrefreshは走るso毎秒100MB級。起動ディスク残6.1GiB・スワップ86%の実機では、これが**秒単位のGC停止**になる。→ 全文と行配列を**文書の版ごとに1回だけ**作る共有キャッシュ(`meosDocText`/`meosDocLines`)に。編集していない間(スクロール/カーソル移動)は**ごみゼロ**。参照定義とDocumentLinkの getText も同じ口へ。★教訓=**速さと、ごみの量は別の指標**。v4.0.113は関数を747ms→9msにしたが、同時に毎refresh 11MBのごみを新設していた=**片方だけ見ていると、直しながら壊す**。★あわせて俊克の質問「表が整形で大きく崩れるのはなぜ?」に**実測で回答**=`laiMembrane.tableCjkWidth` の既定 **1.67** が原因。実データで検証: 1.67だと各列の見えている幅が 41.34/41.68/41.70/42.04 と**端数**になり、詰め物は空白(幅1)なのだから**原理的に揃わない**。**2.0 にすると全列が 45/49 でぴったり一致**。1.67 の出どころは俊克のフォント設定 `Menlo, Monaco…`=**MenloにCJKが無く**macOSがHiraginoへ落とすため、ASCII 0.6em / CJK 1.0em = **1/0.6 = 1.667**。つまりMeOSの計算ではなく**フォントの組み合わせ**の問題。→ 1:2の日本語等幅フォント(macOS同梱の **Osaka-Mono**、または HackGen/PlemolJP/UDEV Gothic)に替えて tableCjkWidth を 2 にすれば表は完全に揃う。
 // - v4.0.114(俊克 8/9 pm07:59「コピペで5秒くらいの遅延。上のコメントをペーストした時だよ」・ただしログには `[refresh] 348ms` **1行しか無い**): ★MeOSの計測(refresh/foldingRanges/documentLinks/paste-folds)がどれも出ていないのに固まる=**切り分けの道具が1つ足りない**。→ **拡張ホストのイベントループが何秒止められたか**を測る `[host-blocked]`(1秒ごとに時計を見るだけ・負荷ゼロに近い)。読み方=①同時にMeOSの計測も出る→MeOSが犯人 ②`[host-blocked]` だけ出る→**拡張ホストの中のMeOS以外**(他拡張/VSCode本体の同期処理) ③**どちらも出ないのに固まる**→拡張ホストは動いていた=**描画側(renderer)かOSのスワップ**(8/9時点で起動ディスク残6.1GiB・スワップ86%so現状これが濃厚)。★憶測で終わらせず、測る口を先に作る[[feedback_root_cause_before_patching]]。★あわせて俊克の疑問に事実で回答=`1. ただの数字` は**すでに連番の対象外**(MEOS_NUM_ITEM_REは行末の仕様コメントを要求する)。つまり**コメントを書かないこと自体が逃げ道**になっており、提案された「ただの文字」命令は不要。ただし**色やtipは付けたいが番号は振られたくない**場合だけは口が無い=命令トークンを `-1.`(番号)と `1.`(番号にしない)で分ける案は有効。未実装・v4.1候補。
 // - v4.0.113(俊克 8/9 pm07:16「40秒以上遅延。これが本当にイライラするんだよ。面倒くさくなって、途中でVSCmを再起動してしまうこともよくある」＋改良1): ★★★**40秒の真犯人を捕まえた= computeLineDecorations(実測747ms/回)**。俊克のログの読み方が鍵だった=`[refresh] 300〜656ms` が**延々と並ぶ**(19:14:44〜49の5秒間に8回)＝**1回が長いのではなく、400msが何十回も積もって**体感40秒になっていた。`[foldingRanges]`/`[documentLinks]` は1行も出ていない=300ms未満so無罪＝**網は正しく張れていて、犯人は refresh の中に居た**。★構造= 全行(149,704) × 全膜(1,139) の**総当たり**で「この行を含む膜」を毎行 filter＝**1.7億回**の比較＋そのたびに `{...p}` で複製。→ ①**掃引(sweep)**に(行は昇順so開始行が来た膜を足し終了行を過ぎた膜を落とすだけ。直後に depth で sort するので順序は不問=安全) ②複製と開始行テキスト読みを**1膜1回**に ③**可視範囲±120行の外は「作らない」**(v3.1.3でapplyPrettyLabelsに入れたのと同じ足切り。掃引=判定は全行通す。画面外で開いた膜が可視行に効くため)。実測 **747ms → 9ms**・生成する装飾オブジェクト **149,696個 → 301個**(setDecorationsは描画プロセスへの受け渡しがあるので、渡す量そのものが重さだった)。＋applyPrettyLabelsの全行ループも `document.lineAt()` **15万回**をやめて全文splitの配列読みに(VS CodeにTextLineを15万個作らせていた)。★教訓=**「重い」の犯人は、1回の最長ではなく回数×単価で決まる**。ログが同じ数字を並べていたら、それは「遅い1回」ではなく「多すぎる普通」。★改良1(俊克「🐱で直した行の右に新記法のコメントが丸見え。🐱は1のまま。カーソルを次の行に移すと正常化」)=**同類の穴**。編集した後、誰も描き直していなかった: ①単一行の編集はIME保護でrefreshを止めてある(v0.9.637)が、**これはユーザーの打鍵ではない**ので対象外→自分で描き直す ②数の更新タイマーがまた `activeTextEditor` 直読み(ボタン直後は焦点がMe Dock)→ `meosMewTargetEditor(getMeDockTargetEditor())` に合流(v4.0.112と同じ口)。★疑問1(素のMarkdownも🐱の対象にすべきでは)への回答は俊克へ別途: **設計上の衝突**を報告(日記の素の記法は 見出し6,260/箇条書き10,803/番号付き3,657=**計20,720行**あり、旧記法5,548行の約4倍。🐱に混ぜると数字が桁違いになり「今見えている分だけ直す」の安心が壊れる)→**別ボタン/別モードにする**提案。
@@ -8270,6 +8271,7 @@ async function controlMePanel() {
 
 let meosRawMode = false; // v0.9.723: Raw(MeOS休眠)モード — 全装飾OFF＋編集/refresh抑止でプレーンエディタ化(日本語入力対策)
 function clearForRaw(editor) {
+  try { meosClearTableFitDecos(editor); } catch (_) {} // v4.0.116: Rawでは縮小もやめる(生データを原寸で見せる)
   if (!editor) return;
   clear(editor); // 膜/line/jump系
   const z = (d) => { if (d) { try { editor.setDecorations(d, []); } catch (_) {} } };
@@ -11119,6 +11121,7 @@ function _refreshInner(editor) {
   try { meosApplyTableMergeDecorations(editor); } catch (_) {} // v0.9.999158: セル横結合の装飾(Raw時は関数内で解除)
   try { meosApplyTableCalcDecorations(editor); } catch (_) {} // v3.0.7.1: 表計算 Σ/Π の装飾(Raw/隔離時は関数内で解除)
   try { meosApplyTableRowLineDecorations(editor); } catch (_) {} // v3.1.9: 縦結合の行罫線方式(Raw/隔離時は関数内で解除)
+  try { meosApplyTableFitDecorations(editor); } catch (_) {} // v4.0.116: 広い表をペイン幅に収める(列ごとに縮小・生データ不変)
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
   try { meosApplyMeLinkDecorations(editor); } catch (_) {} // v4.0.8: ノート内リンク(コメント包み)の整形
@@ -18792,6 +18795,101 @@ function meosUpdateInTableContext(editor) {
 // v0.9.999158(俊克): セル横結合を「装飾」で見せる。生データは全セル保持(正しいGFM)。🤝Nマーカーと、その右の(N-1)本の内側|を opacity:0 で不可視化(幅は維持=桁揃えは崩れない)→エディタ上で1つの結合セルに見える。Rawモードでは解除。可視範囲のみ走査(巨大ファイル対策)。
 let tableMergeHideDecoration = null;
 let tableCommentHideDecoration = null;
+// ===== v4.0.116(俊克 8/9 pm08:46「収まらないセルだけフォントサイズ指定を変えて、表の形を保つ。そのうえで、
+//   MeOSはそのセルの行をクリックすれば生データが見えるので、それを読めばいい。これで運用可能でしょ」) ==========
+// ★俊克案の核= **生データを1文字も変えずに、表示だけ収める**。列に font-size を掛けると、本文も詰め物の空白も
+//   一緒に縮むので、ソースは正しいGFMのまま(92桁)・画面だけ縮む。整形器には一切手を入れない。
+// ★1つだけ俊克案を直した=**縮めるのは「セル」でなく「列」**。同じ列の中で倍率が違うと次の `|` の位置が
+//   行ごとにずれて桁が崩れる(表の形を保つ、という目的そのものが壊れる)。幸い「収まらない」のは列の性質so意図は同じ。
+// ★読む口は**新設しない**=カーソル行は元から生データを原寸で見せる(v659の思想)。俊克の言う「クリックすれば読める」は
+//   既にある挙動そのもの。新しいUIはゼロ。
+// ★VS Codeは**エディタの表示幅を拡張に公開していない**(visibleRangesは行だけ)so、収めたい桁数は設定で持つ。
+//   既定80桁=一般的なペイン幅。0で無効。
+const MEOS_TABLE_FIT_STEPS = [95, 90, 85, 80, 75, 70, 65, 60, 55, 50]; // 5%刻み・下限50%(これ以下は読めない)
+let tableFitDecoByPct = null; // Map<pct, 装飾型>
+function meosEnsureTableFitDecos() {
+  if (tableFitDecoByPct) return;
+  tableFitDecoByPct = new Map();
+  for (const pct of MEOS_TABLE_FIT_STEPS) {
+    tableFitDecoByPct.set(pct, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      // !important は付けない=マーカーを隠す font-size:0 !important の方が必ず勝つ(v4.0.14の教訓)。
+      textDecoration: 'none; font-size: ' + pct + '%;'
+    }));
+  }
+}
+function meosClearTableFitDecos(editor) {
+  if (!tableFitDecoByPct || !editor) return;
+  for (const d of tableFitDecoByPct.values()) { try { editor.setDecorations(d, []); } catch (_) {} }
+}
+function meosTableFitColumns() {
+  try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableFitColumns', 80)); return (v >= 20 && v <= 400) ? v : 0; } catch (_) { return 80; }
+}
+// 列ごとの倍率を決める。幅の広い列から順に縮める(上限Cで頭を押さえる=狭い列は触らない)。
+function meosTableFitScales(colW, target, pipes) {
+  const total = (w) => w.reduce((a, b) => a + b, 0) + pipes;
+  if (total(colW) <= target) return null;
+  const scaleAt = (C) => colW.map(w => (w <= C ? 1 : Math.max(0.5, C / w)));
+  let lo = 1, hi = Math.max(...colW), best = null;
+  for (let i = 0; i < 40; i++) { // 二分探索で「頭の高さ」Cを決める
+    const C = (lo + hi) / 2, sc = scaleAt(C);
+    if (total(colW.map((w, k) => w * sc[k])) <= target) { best = sc; lo = C; } else { hi = C; }
+  }
+  const sc = best || scaleAt(lo);
+  // 5%刻みに**切り捨て**(必ず収まる側へ)。1のままの列は触らない。
+  return sc.map(v => {
+    if (v >= 0.999) return 100;
+    const pct = Math.floor(v * 20) * 5;
+    return Math.max(50, Math.min(95, pct));
+  });
+}
+function meosApplyTableFitDecorations(editor) {
+  if (!editor || !editor.document) return;
+  if (MEOS_RELEASE_PHASE < 3) return;
+  meosEnsureTableFitDecos();
+  try {
+    const target = meosTableFitColumns();
+    if (!target || (typeof meosRawMode !== 'undefined' && meosRawMode)) { meosClearTableFitDecos(editor); return; }
+    const doc = editor.document;
+    const cursorLines = new Set(); try { for (const sel of editor.selections) { cursorLines.add(sel.active.line); cursorLines.add(sel.anchor.line); } } catch (_) {}
+    const byPct = new Map(); for (const pct of MEOS_TABLE_FIT_STEPS) byPct.set(pct, []);
+    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const done = new Set(); // 同じ表を2度measureしない
+    for (const vr of vrs) {
+      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      for (let ln = from; ln <= to; ln++) {
+        if (done.has(ln)) continue;
+        const info = meosTableInfo(doc, ln); if (!info) { done.add(ln); continue; }
+        for (let i = info.blk.start; i <= info.blk.end; i++) done.add(i);
+        // 列幅=各列の「見えている幅」の最大値。行によって列数が違う表は触らない(壊すより何もしない)。
+        const rows = [];
+        let ncols = -1, ok = true;
+        for (let i = info.blk.start; i <= info.blk.end; i++) {
+          const t = doc.lineAt(i).text, ps = meosRowPipePositions(t);
+          if (ps.length < 2) { ok = false; break; }
+          if (ncols < 0) ncols = ps.length - 1; else if (ps.length - 1 !== ncols) { ok = false; break; }
+          rows.push({ ln: i, text: t, ps });
+        }
+        if (!ok || ncols < 1) continue;
+        const colW = new Array(ncols).fill(0);
+        for (const r of rows) for (let k = 0; k < ncols; k++) {
+          colW[k] = Math.max(colW[k], meosStrWidth(r.text.slice(r.ps[k] + 1, r.ps[k + 1])));
+        }
+        const pcts = meosTableFitScales(colW, target, ncols + 1);
+        if (!pcts) continue; // 収まっている=何もしない
+        for (const r of rows) {
+          if (cursorLines.has(r.ln)) continue; // カーソル行は原寸の生データ(俊克「その行をクリックすれば読める」)
+          for (let k = 0; k < ncols; k++) {
+            const pct = pcts[k]; if (pct >= 100) continue;
+            const a = r.ps[k] + 1, b = r.ps[k + 1]; if (b <= a) continue;
+            byPct.get(pct).push(new vscode.Range(r.ln, a, r.ln, b));
+          }
+        }
+      }
+    }
+    for (const [pct, ranges] of byPct) editor.setDecorations(tableFitDecoByPct.get(pct), ranges);
+  } catch (_) { }
+}
 function meosApplyTableMergeDecorations(editor) {
   if (!editor || !editor.document) return;
   if (MEOS_RELEASE_PHASE < 3) return; // v1.0.0: テーブル未解禁フェーズでは結合装飾を描かない(生GFMのまま表示)
