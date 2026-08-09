@@ -2,7 +2,7 @@
 
 <div align="center">
 <table><tr>
-<td align="center" valign="middle"><img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeW - Membrane Warpspace" width="170"></td>
+<td align="center" valign="middle"><img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeW - Membrane Warpspace" width="200"></td>
 <td align="center" valign="middle">
   <img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="240"><br>
   <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
