@@ -18,8 +18,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
   Insert a line anywhere and the file does not change.
 - **Membrane timestamps in full.** New membranes are named `name_YYYYMMDD<weekday>HHMMSS<TZ>` — sortable,
   grep-able, and honest about where you were when you wrote it.
-- **GitHub token, watched.** The push row shows the days left on your access token, warns before it runs out,
-  and turns the disconnect button into a one-press fix when it expires.
+- **GitHub token, watched.** The days left on your access token sit at the right edge of the GitHub push row —
+  visible **even when the panel is folded**. MeOS warns before it runs out, and turns the disconnect button
+  into a one-press fix when it expires.
 
 ## v3.1 era — highlights (2026-08 →)
 

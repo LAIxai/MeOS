@@ -57,8 +57,9 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
 - **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
   Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
   what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.
-- **Your token, watched** — the GitHub push button shows how many days your access token has left,
-  and turns into a one-press fix when it expires.
+- **Your token, watched** — the GitHub push row shows how many days your access token has left, at the right
+  edge where you can see it **even with the panel folded**. When it expires, the disconnect button turns into
+  a one-press fix.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3.1-table-calc.png" alt="Spreadsheet totals with no cell addresses — the formula is one HTML comment, the result is plain text" width="58%"><br>
