@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.94(俊克 8/9 am10:33「貴方の推し、行末一括コメント方式で実装して下さい」): ★★リンクを他の書式と**同じ形**に=**本文に印・行末に指定**。`[リンク1]()と[リンク2]()をこう書く。<!-- Mew! [](行先1)(白/黄)(0)//[]tip= --><!-- Mew! [](行先2) -->`。本文側は `[表示]()` だけso**印と後ろの文字の間に何も挟まらない=文字が連続する**。★俊克の「次の行に書く」案を採らなかった理由=**隠した行も1行を占める**(MeOSは幅ゼロにできるが高さゼロにできない)so常に空行が見える。行末なら、行が長くて折り返した時だけ末尾に見えない行が出る。★器は**行**=行を消せば指定も消える/行をコピーすれば指定も付いてくる(膜の名札を直下に置いたのと同じ理屈)。1行に複数は**順番で対応**。指定コメントが無い `[x]()` はリンクにしない(嘘の下線を引かない)。実装=解析(meosTrailingComments/meosLinkSpecFromComment/meosLineEndLinks)＋装飾＋DocumentLink＋表の幅＋🚫(印と指定を一緒に落とす)＋書く側。★**行単位の指定の読み取りを直した**=行末にコメントが複数並ぶようになったので「最後の1つ」決め打ちをやめ、**並び全部を見て行単位の宣言を持つものを選ぶ**。これをしないと `## 見出しの[リンク]()です<!-- Mew! [](url) --><!-- Mew! H2 -->` で見出しがリンクの指定を読む。順番の決め打ちにしないのは、俊克が手で書き足した時に壊れないため。★テストで**二重装飾**を捕まえた=素のリンク側が `[x]()`(行先が空)と**コメント内の `[](行先)`** まで拾っていた。→ 行先が空の印は素のリンクから除外＋**行末コメント群も先にマスク**(鉄則=リンクは先にマスク・6度目)。★書く側は**1回の編集**にまとめてカーソル位置を計算で決める(後から探すと既に在る行末コメントに引っかかる)。★scratchpadが消えていたのでヘッドレスハーネスを作り直し、**回帰テストを1本にまとめた**(t_all.js・52/52 PASS)。その過程で**偽ドキュメントが同じURI＋同じversionを使い回してproduct側のキャッシュを共有**していたのを発見(参照定義が別のテストの結果を返していた)→ 偽docは毎回別URIに。**テストの土台がウソをつくとバグが見えない**(2度目)。★日記の実データ=行先が空の `[x]()` は8件あるが、全部が包み形の中か散文の引用か**書きかけのリンク**so、生表示に戻るのはむしろ正しい(未完成が見える)。
 // - v4.0.93(俊克 8/9 am01:25「URLの方は続きの文字が次の行に追い出されてしまう。コメント文なのだから文字が連続して出るべき。やろうと思えば、できるのか? できるはずだよね?」): ★**折り返しは変えられない**=VS Codeの折り返しは「モデルのテキストの桁数」で決まり、装飾(font-size:0)は**描画だけ**に効く。拡張から「この範囲は幅ゼロとして折り返せ」と伝えるAPIは無い(画像膜の editorInsets 封印と同じ一族の壁)。★so **URLをその行に置かない**方で解いた=**Markdownの参照形式リンクに対応**。本文 `[URLを表示][vsx]に飛ぶ。`(17文字so折り返さない) / 定義 `[vsx]: <!-- https://… -->`(別の行・行先はコメントでも裸でも可)。省略形 `[表示][]` も可(表示文字をrefとして使う)。**定義が無ければリンクにしない**(嘘の下線を引かない)。★これは標準のMarkdownsoMeOSの外でも本物の参照リンクとして生きる=v4.0の背骨と一貫。実装=定義の収集(**document.versionでキャッシュ**so14万行を毎回走らない・足切り `]:`)＋装飾(角括弧とrefを隠して下線)＋DocumentLink(URL=外部/膜名=ワープ)＋表の幅＋🚫解除。★幅の足切りに `](` と `][` を入れ忘れて、リンクだけのセルが素通りしていた(テストで捕まえた)=**早期脱出の条件は、後から機能を足したら必ず見直す**。headless 14/14＋34/34＋18/18 PASS。
 // - v4.0.92(俊克 8/9 am01:02「以下の素のリンク記法は、MeOSでは、リンク部分を表示せずに正しくレンダリングして下さい」): ★★**v4.0.78の素のMarkdownリンクの装飾は一度も動いていなかった**。`for` を包みリンクの `while` の**中**に書いてしまっていたので、「同じ行に包みリンクもある」時だけ動く=普通の行では何も起きない。→ 独立したループに出した。読み取り(meosBareMdLinks)・DocumentLink・表の幅・🚫は正しく動いていたので、**装飾だけが抜けていた**(だからv4.0.78で「日記の574個の見え方が変わる」と書いたのは嘘=何も変わっていなかった)。★見つけ方=**ヘッドレスで装飾関数を実際に呼んだ**(偽エディタでsetDecorationsを受け取り、行ごとに何が隠れるかを表に出す)。素のリンクだけの行=0件 / 同じ行に包みリンクも置くと=6件、で入れ子の位置が確定した。★教訓=**入れ子の位置は目でも波括弧の数え上げでも間違える**(正規表現の `{1,6}` が数を狂わせる)。**「実装したのに実機で効かない」は、たいてい入れ子の位置**so、動かして確かめる。★ハーネスの欠陥も直した=vscodeスタブが装飾型に**同じキー**を返していてテスト側で上書きされ、検証にならなかった。→ 一意の連番キーに。★教訓=**テストの土台がウソをつくと、バグが見えない**。headless 9/9＋34/34＋18/18 PASS。
 // - v4.0.91(俊克 8/9 am00:54「PAT 7d leftを四角で囲んであるとボタンと間違うので、<PAT 7d left>とか、何か分かりやすい表示の仕方はないかな?」): ★指摘の芯=**この行では枠と塗りがあるものが押せるもの**(🐙/🔗/✕)。v4.0.90で読みやすくするために付けた「枠＋塗り」は、ボタンとまったく同じ服だった。→ **囲みを外して素の文字**にする=見た目の飾りでなく**構造**で区別が付く。色は状態を示すために残す(平常=文字色/橙/赤)。加えて**点線の下線**を引いた=「ホバーで説明が出る」印で、押せる合図ではない(慣習として押せるものは実線か枠)。★`<…>`案も検討したが採らず=問題はラベルの書き方ではなく**服がボタンと同じだったこと**so、囲みを外せば括弧は要らない(記号を足すと今度はコードのように見える)。★教訓=**押せる/押せないは、色や文字ではなく「枠と塗り」で語られている**。読みやすくしたい時に枠を足すと、意味を1つ壊す。
@@ -6252,9 +6253,21 @@ function applyPrettyLabels(editor) {
       const mP = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?(\S[^\n]*?)[ \t]*$/.exec(dtext); // v4.0.61(俊克): 行頭が `1. ` の順序付きリストも項目(MeOS外で本物の番号付きリストになる)
       // v4.0.63(俊克 改良1): 末尾の仕様コメントを**先に**読む。命令トークン(H2 / -H2 / -1.H2)があれば、
       // 行頭のマーカーが不完全でも(例 `##本文` = #の後ろの空白を書き忘れ)、コメント側の宣言で見出しにできる。
-      const mCpre = mP ? /<!--\s*([^\n]*?)\s*-->\s*$/.exec(dtext) : null;
-      const payloadPre = mCpre ? meosStripMewSignature(mCpre[1] || '') : '';
-      const dir = mCpre ? meosLineDirective(payloadPre) : null;
+      // v4.0.94(俊克): 行末にコメントが**複数並ぶ**ようになった(リンクの指定＋行単位の指定)so、
+      //   「最後の1つ」決め打ちをやめて**並び全部を見て、行単位の指定を持つものを選ぶ**。
+      //   ★これをしないと `## 見出しの[リンク]()です<!-- Mew! [](url) --><!-- Mew! H2 (色) -->` で
+      //   見出しがリンクの指定を読んでしまう(順番の決め打ちは、俊克が手で書き足した時に壊れる)。
+      const _tail = mP ? meosTrailingComments(dtext) : [];
+      let mCpre = null, payloadPre = '', dir = null;
+      for (const _c of _tail) {
+        const _pl = meosStripMewSignature(_c.payload), _d = meosLineDirective(_pl);
+        if (_d && (_d.level || _d.bullet)) { mCpre = { index: _tail[0].start, 1: _c.payload }; payloadPre = _pl; dir = _d; break; }
+      }
+      if (!mCpre && _tail.length && !meosLinkSpecFromComment(_tail[_tail.length - 1].payload)) {
+        // 行単位の宣言が無い時は従来どおり最後のコメントを色/tipとして読む(リンクの指定は除く)
+        mCpre = { index: _tail[0].start, 1: _tail[_tail.length - 1].payload };
+        payloadPre = meosStripMewSignature(_tail[_tail.length - 1].payload);
+      }
       // コメントの宣言だけで成立させるのは「本文がある行」に限る(`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。
       const _dirOnly = !!(dir && (dir.level || dir.bullet) && mCpre.index > mP[1].length);
       if (mP && (mP[3] || mP[2] || _dirOnly)) { // 見出しか箇条書きのどちらかであること(コメントの宣言でも可)
@@ -6275,7 +6288,7 @@ function applyPrettyLabels(editor) {
           numbered = /^\s*\d+[.)]/.test(mP[2] || '') || (dir ? dir.bullet === 'number' : /(^|\s)-?1\.?(\s|\(|$)/.test(payloadPre));
           const inner = (dir ? dir.rest : payloadPre.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '')).trim();
           if (inner) sp = parseColorSpec(inner, 'fg', inner);
-          headingMarkerRanges.push({ range: new vscode.Range(line, mC.index, line, dtext.length) });
+          headingMarkerRanges.push({ range: new vscode.Range(line, mC.index, line, dtext.length) }); // v4.0.94: 行末コメント群の先頭から末尾まで
           bodyEndP = mC.index;
           while (bodyEndP > bodyStart && /\s/.test(dtext.charAt(bodyEndP - 1))) bodyEndP--; // コメント前の空白は本文に含めない
         }
@@ -17981,6 +17994,8 @@ function meosStripHiddenForWidth(s) {
   //    (後ろのコメントは `}==` で終わるので①の spec 判定に当たらない=個別に外す必要がある。)
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
   if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
+  // v4.0.94: 行末一括コメント方式。指定コメントは①で消えるので、ここでは印 `[表示]()` を表示文字に戻すだけ。
+  if (t.indexOf(']()') >= 0) t = t.replace(/(?<!\!)\[([^\]\n]*)\]\(\)/g, (m, label) => label);
   // v4.0.93: 参照形式 `[表示][ref]` も表示文字だけ。ここには定義表が無いので、定義の有無は見ない
   //   (表の中で未定義の参照を書くのは病的so、定義済みに寄せる方が実害が小さい)。
   if (t.indexOf('][') >= 0) t = t.replace(MEOS_MD_REFLINK_RE, (m, label) => label);
@@ -17988,7 +18003,7 @@ function meosStripHiddenForWidth(s) {
   if (t.indexOf('<!--') >= 0) {
     t = t.replace(/<!--[^]*?-->/g, (m) => {
       const inner = m.replace(/^<!--\s*/, '').replace(/\s*-->$/, '');
-      if (meosHasMewSignature(inner)) return '';
+      if (meosHasMewSignature(inner)) return ''; // v4.0.94: `Mew! [](行先)…` の指定コメントもここで消える
       if (meosLooksLikeSpecComment(inner)) return '';
       if (/^\s*(?:🤝|Σ|∑|Π|∏)/u.test(inner)) return '';
       return m;
@@ -19103,6 +19118,60 @@ function meosRefMdLinks(text, defs) {
   }
   return out;
 }
+// ===== v4.0.94(俊克 8/9 am10:33「行末一括コメント方式で実装して下さい」) =========================
+// ★リンクを他の書式と**同じ形**にする=**本文に印・行末に指定**。
+//     [リンク1]()と[リンク2]()をこのように書く。<!-- Mew! [](行先1)(白/黄)(0)//[]tip= --><!-- Mew! [](行先2) -->
+//   本文側は `[表示]()` だけ(行先は空)so、リンクと後ろの文字の**間に何も挟まらない=文字が連続する**。
+//   ★俊克の「次の行に書く」案を採らなかった理由=**隠した行も1行を占める**(MeOSは幅ゼロにできるが高さゼロにできない)
+//     so常に空行が見える。行末なら、行が長くて折り返した時だけ末尾に見えない行が出る。
+//   ★器は行=行を消せば指定も消える/行をコピーすれば指定も付いてくる(膜の名札を直下に置いたのと同じ理屈)。
+//   1行に複数ある時は**順番で対応**(N番目の `[x]()` ↔ N番目のリンク指定)。
+// 旧形(`[表示](<!-- 行先 -->)` / `[表示](行先)` / 包み形 / 参照形式)は全部 read-both。
+
+// 行末に連続して並ぶコメント群(末尾から遡って拾う)。行単位の指定もリンクの指定もここに混ざる。
+function meosTrailingComments(text) {
+  const line = String(text == null ? '' : text);
+  const out = [];
+  let end = line.length;
+  for (let guard = 0; guard < 32; guard++) {
+    let e = end; while (e > 0 && (line.charAt(e - 1) === ' ' || line.charAt(e - 1) === '\t')) e--;
+    if (e < 7 || line.slice(e - 3, e) !== '-->') break;
+    const open = line.lastIndexOf('<!--', e - 3);
+    if (open < 0) break;
+    out.unshift({ start: open, end: e, payload: line.slice(open + 4, e - 3).trim() });
+    end = open;
+  }
+  return out;
+}
+// コメントの中身が「リンクの指定」か。形= [](行先) のあとに (色)(下線)//tip。行先は釣り合った括弧を1段許す。
+const MEOS_LINK_SPEC_RE = /^\[\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)[ \t]*([\s\S]*)$/;
+function meosLinkSpecFromComment(payload) {
+  const m = MEOS_LINK_SPEC_RE.exec(meosStripMewSignature(payload));
+  if (!m) return null;
+  return { target: String(m[1] || '').trim(), spec: String(m[2] || '').trim() };
+}
+// 本文側の印 `[表示]()`(行先が空)。コードスパン・画像・他形式のリンク・行末コメント群は先に外す(鉄則=リンクは先にマスク)。
+const MEOS_EMPTY_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(\)/g;
+function meosLineEndLinks(text) {
+  const raw = String(text == null ? '' : text);
+  if (raw.indexOf(']()') < 0) return [];
+  const tail = meosTrailingComments(raw);
+  const specs = [];
+  for (const c of tail) { const sp = meosLinkSpecFromComment(c.payload); if (sp) specs.push({ c, sp }); }
+  if (!specs.length) return [];
+  let t = raw;
+  if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
+  if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
+  for (const c of tail) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end); // 行末コメント群を外す
+  const out = []; let m; MEOS_EMPTY_LINK_RE.lastIndex = 0; let i = 0;
+  while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) {
+    if (i >= specs.length) break; // 指定より印が多い=余った印はただの文字のまま
+    const label = m[1] || '', start = m.index, end = start + m[0].length;
+    out.push({ start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: specs[i].sp.target, spec: specs[i].sp.spec, comment: specs[i].c });
+    i++;
+  }
+  return out;
+}
 function meosBareMdLinks(text) {
   let t = String(text == null ? '' : text);
   if (t.indexOf('](') < 0) return [];
@@ -19111,10 +19180,14 @@ function meosBareMdLinks(text) {
     MEOS_MELINK_RE.lastIndex = 0; let w;
     while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); }
   }
+  // v4.0.94: 行末の指定コメント群も外す。中の `[](行先)` を素のリンクと誤認して**二重に装飾していた**(テストで発覚)。
+  for (const c of meosTrailingComments(t)) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end);
   const out = []; let m; MEOS_MD_LINK_RE.lastIndex = 0;
   while ((m = MEOS_MD_LINK_RE.exec(t)) !== null) {
     const label = m[1] || '', start = m.index, end = start + m[0].length;
     const boxed = m[2] != null; // v4.0.81: 行先がコメント形式(新形)か、裸(旧形)か
+    // v4.0.94: 行先が空の `[表示]()` は**行末一括コメント方式の印**so、ここでは拾わない(行先の無いリンクは元々意味が無い)。
+    if (!boxed && !String(m[3] || '').trim()) continue;
     out.push({ start, end, label, target: String(boxed ? m[2] : (m[3] || '')).trim(), boxed, textStart: start + 1, textEnd: start + 1 + label.length });
   }
   return out;
@@ -19149,12 +19222,21 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   const label = (bold && italic) ? ('***' + body + '***') : bold ? ('**' + body + '**') : italic ? ('_' + body + '_') : body;
   const color = '(' + (fg || '') + '/' + (bg || '') + ')';
   const ulPart = '(' + ((Number(ul) >= 1 && Number(ul) <= 3) ? Number(ul) : 0) + ')'; // v4.0.31(俊克 改良1): 0も明示して書く(インライン編集で数字を打ち替えるだけで線種を変えられる)
-  // v4.0.81(俊克): 新形で書く。`[表示](<!-- 行先 -->)` ＋ 色/下線/tipが要る時だけ後置きの仕様コメント。
-  //   行先はコメントの中so、他アプリは「リンクの形」だけ見て飛ばない=ただの下線。カーソルは行先の中で待つ。
-  const head = '[' + label + '](<!-- ';
-  const text = head + ' -->)' + meosSpecComment('', color + ulPart + '//[]tip=');
-  await editor.edit(eb => eb.replace(sel, text));
-  try { const p = sel.start.translate(0, head.length); editor.selection = new vscode.Selection(p, p); } catch (_) {} // 行先の中で待つ
+  // v4.0.94(俊克): **行末一括コメント方式**で書く。本文には印 `[表示]()` だけ・指定は**行末**へ。
+  //   これで印と後ろの文字の間に何も挟まらない=文字が連続する。指定は `Mew! [](行先)(色)(N)//tip`。
+  //   ★カーソルは**行先の中**で待たせる(そのままURLか膜名を打てば完成)=手打ちからの解放は維持。
+  const mark = '[' + label + ']()';
+  const specPre = '<!-- ' + MEOS_MEW_SIG + ' [](';                       // ここまで書いたら行先が来る
+  const specPost = ')' + color + ulPart + '//[]tip= -->';
+  const ln = sel.end.line, orig = doc.lineAt(ln).text;
+  const lineEnd = new vscode.Position(ln, orig.length);
+  // ★1回の編集にまとめる=カーソル位置を後から探さず**計算で決められる**(探すと既に在る行末コメントに引っかかる)。
+  await editor.edit(eb => { eb.replace(sel, mark); eb.insert(lineEnd, specPre + specPost); });
+  try {
+    const before = orig.length - (sel.end.character - sel.start.character) + mark.length; // 印を置いた後の、行末コメント手前までの長さ
+    const p = new vscode.Position(ln, before + specPre.length); // 行先の中
+    editor.selection = new vscode.Selection(p, p);
+  } catch (_) {}
   try { await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection }); } catch (_) {}
 }
 // v4.0.26(俊克): リンクの🚫解除=表示文字だけ残して素の本文に戻す(🚫統合の一員)。
@@ -19162,7 +19244,16 @@ function meLinkSpanAtCursor(editor) {
   if (!editor) return null;
   const doc = editor.document, pos = editor.selection.active, line = pos.line;
   const text = doc.lineAt(line).text || '';
-  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0 && text.indexOf('][') < 0) return null; // v4.0.78/93: 素のMarkdownリンク・参照形式も解除対象
+  if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0 && text.indexOf('][') < 0 && text.indexOf(']()') < 0) return null; // v4.0.78/93/94: 素のMarkdownリンク・参照形式・行末一括も解除対象
+  // v4.0.94: 行末一括コメント方式=印と**その指定コメントを一緒に**落とす(片方だけ残すと相手のいない指定が残る)。
+  for (const b of meosLineEndLinks(text)) {
+    if (pos.character < b.start || pos.character > b.end) continue;
+    let body = String(b.label || '').trim();
+    const um2 = body.match(/^\*\*\*([\s\S]+)\*\*\*$/) || body.match(/^\*\*([\s\S]+)\*\*$/) || body.match(/^_([\s\S]+)_$/);
+    if (um2) body = um2[1].trim();
+    const head = text.slice(0, b.start), mid = text.slice(b.end, b.comment.start), tail = text.slice(b.comment.end);
+    return { kind: 'melink', range: new vscode.Range(line, 0, line, text.length), body: (head + body + mid + tail).replace(/[ \t]+$/, '') };
+  }
   let m; MEOS_MELINK_RE.lastIndex = 0;
   while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
     const s = m.index, e = s + m[0].length;
@@ -19241,7 +19332,25 @@ function meosApplyMeLinkDecorations(editor) {
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const raw = doc.lineAt(ln).text;
-        if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0) continue;
+        if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0 && raw.indexOf(']()') < 0) continue;
+        // v4.0.94: 行末一括コメント方式 `[表示]()` ＋ 行末の `<!-- Mew! [](行先)(色)(N)//tip -->`。
+        for (const b of meosLineEndLinks(raw)) {
+          hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
+          hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
+          hideRanges.push(new vscode.Range(ln, b.comment.start, ln, b.comment.end)); // 行末の指定コメント
+          if (b.textEnd <= b.textStart) continue;
+          const sp0 = meosMeLinkSpec(b.spec);
+          let fk0 = sp0.fg; if (sp0.bg && !fk0 && DARK_BG_KEYS.has(sp0.bg)) fk0 = 'white';
+          const cc0 = (fk0 && HIGHLIGHT_FG_COLORS[fk0]) ? HIGHLIGHT_FG_COLORS[fk0] : '';
+          let st0 = meosMeLinkUnderline(sp0.ul, cc0);
+          if (cc0) st0 += ' color: ' + cc0 + ';';
+          if (sp0.bg && HIGHLIGHT_COLORS[sp0.bg]) st0 += ' background-color: ' + HIGHLIGHT_COLORS[sp0.bg] + ';';
+          if (!styleRanges.has(st0)) styleRanges.set(st0, []);
+          const it0 = { range: new vscode.Range(ln, b.textStart, ln, b.textEnd) };
+          const tip0 = sp0.tip ? ('💬 ' + sp0.tip) : (b.target ? ('🔗 ' + b.target) : '');
+          if (tip0) { const hv0 = new vscode.MarkdownString(tip0); hv0.isTrusted = false; it0.hoverMessage = hv0; }
+          styleRanges.get(st0).push(it0);
+        }
         // v4.0.93: 参照形式 `[表示][ref]`。定義(`[ref]: 行先`)がある時だけリンクにする。
         for (const b of meosRefMdLinks(raw, meosRefDefs(doc))) {
           hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
@@ -19616,6 +19725,24 @@ function activate(context) {
             else { dl2.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl2.tooltip = 'Jump to membrane: ' + target; }
             links.push(dl2);
             links.push(...meosTargetLinks(document, b, b.index, target)); // v4.0.80: 行先の文字もMeOSのリンクにする(内蔵の死んだリンクを上書き)
+          }
+        }
+        // v4.0.94: 行末一括コメント方式。対応が行の中で閉じているso行ごとに見る(全文一括だと順番が混ざる)。
+        if (full.indexOf(']()') >= 0) {
+          let off = 0;
+          for (let ln = 0; ln < document.lineCount; ln++) {
+            const lt = document.lineAt(ln).text;
+            if (lt.indexOf(']()') >= 0) {
+              for (const b of meosLineEndLinks(lt)) {
+                const target = b.target; if (!target || !b.label) continue;
+                const dl4 = new vscode.DocumentLink(new vscode.Range(new vscode.Position(ln, b.textStart), new vscode.Position(ln, b.textEnd)));
+                if (/^https?:\/\//i.test(target)) { dl4.target = vscode.Uri.parse(target); dl4.tooltip = 'Open: ' + target; }
+                else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue;
+                else { dl4.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl4.tooltip = 'Jump to membrane: ' + target; }
+                links.push(dl4);
+              }
+            }
+            off += lt.length + 1;
           }
         }
         // v4.0.93: 参照形式 `[表示][ref]` → 定義(`[ref]: 行先`)を引いて飛ぶ。
