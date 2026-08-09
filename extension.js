@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.112(俊克 8/9 pm06:48 バグ1「🐱ボタンを押しても修正されないよ」＋貼付5秒の続報): ★★**バグ1の真因=v4.0.110バグ2と同じ穴の4度目**。`meosMewSignVisible()` が1行目で `vscode.window.activeTextEditor` を読んでいたが、**ボタンを押した瞬間は焦点が Me Dock(webview)にある**ので undefined → **黙って return** していた。★症状が「何も起きない=通知すら出ない」だったのがそのまま証拠(この関数は走れば必ず何か通知する)。変換ロジックは無罪で、俊克のテスト行 `##[ 旧記法 (白/green)//[]tip=]##` はheadlessで `## 旧記法<!-- Mew! H2 (白/green)//[]tip= -->` に正しく変換できることを確認済み。★**本当の教訓=既にある流儀に合わせていなかった**。Me Dockの他のハンドラは**全て** `getMeDockTargetEditor() || activeTextEditor` を使っている(bookmark/reference/home…20箇所以上)。v4.0.67で🐱を足した時、私だけがその作法を踏まなかった。→ `meosMewTargetEditor(getMeDockTargetEditor())` に合流＋相手が見つからない時は**黙らず通知**する(黙る関数はデバッグできない)。★**貼付5秒の続報=計測の網が足りなかった**。俊克のログは `[refresh] 367/308/633ms` だけで `[paste-folds]` は**一度も出ていない**＝5秒は前回計測した2箇所の**外**にある。→ VSCodeが自分の都合で呼ぶ**Provider**は refresh() の外so映らない。`provideFoldingRanges`(全膜を集める)と `provideDocumentLinks`(全文・**v4.0.9で一度固着の犯人になった場所**)にも同じ流儀(300ms超だけ1行)で計測を追加。★教訓=**計測で犯人が出ないのは無罪の証明ではなく、網の外に居る証明**。
 // - v4.0.111(俊克 8/9 pm06:38 バグ1「旧記法があって🐱↑1と認識しているのに、🐱ボタンが暗くなるのはおかしいでしょ。押して変換できないよ。**5秒で消すと最初に言ったのは、ガターのことだよ**。私もすっかりだまされたよ」): ★俊克が正しい。v4.0.106で**5秒(reveal)をボタンの点灯条件に巻き込んだ**のが誤り(`b.classList.toggle('on', __mewRevealOn && c>0)`)。5秒は**印(ガター/波線)を出しておく時間**であって、**ボタンが押せるかどうかとは無関係**。→ v4.0.67の元の設計に戻す=**点灯は「この画面に旧記法が何個あるか」だけで決める**(`c>0`)＋revealメッセージではボタンの見た目を触らない。※変換自体(meosMewSignVisible)はもともとrevealに依存していないso**押せば動いてはいた**=つまり**見た目だけが嘘をついていた**。それが一番たちが悪い。★教訓=**ボタンの明暗は「押した結果が起きるか」だけを表す**。他の状態(表示中/非表示中)を同じ1つの明暗に相乗りさせると、押せるのに押せなく見える。[[feedback_one_source_for_mark_count_action]]の姉妹形=**1つの見た目に2つの意味を持たせない**。★webviewは最小変更(変更2行のみ・前版と行単位で照合)[[feedback_minimal_change_verify_webview]]。
 // - v4.0.110(俊克 8/9 pm02:53 バグ1「🐱ボタンを囲む四角の右端が欠けている。これは▼ボタンを使わないからかな? ホームボタンと同じ作りにすれば良いんじゃない?」＋バグ2「↻を押すと🐱ガターが出るが、5秒経つと🐱ボタンは暗くなり個数表示も消えるのに、🐱ガターが消えない。エディタ画面をクリックすると消える」＋バグ3「コピペの遅延が10秒以上続くことがたびたび起きる。最近の処理の追加が影響しているのか?」): ★**バグ1=俊克の見立てが正解**。真因は `.fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}`＝これは**右に▾が続いて箱を閉じる前提**のルールで、▾を持たない🐱では右辺が開いたままになる。→ 🐱のセルから `fmt-cell` を外す(位置決めは `.mew-cell` の position:relative/inline-flex で足りる)＝俊克の言う「ホームボタンと同じ作り」(▾なしボタン＋右肩バッジ)になる。★★**バグ2の真因=「見えている」と「アクティブ」は別**(v4.0.43と同じ穴・**3度目**)。↻を押すと焦点が Me Dock(webview)へ移るので、5秒後のタイマーが読む `vscode.window.activeTextEditor` は **undefined**。`meosUpdateMewDiagnostics` の入口が `if (editor)` を条件に印を消していたため、**消す処理だけが飛んでいた**。数字が0に落ちるのは `meosPostMewState(0)` が early return の外にあるからで、**「数字は消えるのに絵が残る」という症状の食い違いがそのまま証拠**だった(エディタをクリックすると activeTextEditor が戻り、次の refresh で消えていた)。→ 二重に直す: ①対象エディタを **activeTextEditor → 見えている散文エディタ** の順で探す(俊克案「エディタを自動でアクティブにする」は採らない=**押したボタンが焦点やカーソルを動かすのは書き手の邪魔**)。②5秒後は `meosMewClearMarks()` で**見えているエディタ全部の印を無条件に消す**(俊克「そうしなくても🐱ガターが消えるべきだと思うけどね」)＝探索が空振りしても消し忘れが原理的に起きない。★教訓=**出す条件と消す条件を別々に書くと、片方だけ壊れる。消す方は無条件にする。**(=[[feedback_fix_signal_at_fix_place]]の裏返し)★**バグ3=MeOSはシロ**。俊克の日記(**149,530行 / 11MB**)で実測: collectMembraneStructure 6.8ms / 全149k行の meosLegacyHits 18ms / meosUnsignedSpecComments 14ms / 全文マスク(MEOS_MELINK_RE) 4ms / 参照定義の全文スキャン 数ms。**最近の追加はどれもミリ秒台**so「最近の処理が重い」ではない。秒を食う心当たりは1つだけ=**VSCode自身の折畳みモデル再構築**(v2.0.54で計測済: 小md 204ms に対し 90k行日記 **3084ms**=規模比例。この日記はその1.66倍)＋`reconcilePastedFolds` がそれを**最大4秒ポーリング**する構造。加えて8/9時点の実機は**起動ディスク残 6.1GiB・スワップ86%**で、拡張ホストのクラッシュ(code 5)も出ている。→ **推測で削らない**。`refresh()` と `reconcilePastedFolds()` に**300ms超えた時だけ** MeOS Debug へ1行出す計測を入れた(数えるだけ・動作は不変)。次に10秒が起きた時、View > Output > MeOS Debug で `[refresh] …ms` / `[paste-folds] …ms rounds=… folded=…` を見れば**犯人を名指しできる**。★教訓=**「重い」の原因は測ってから削る**[[feedback_root_cause_before_patching]]。今回はMeOSが無罪だと分かったので、削っていたら見当違いの改造をしていた。
 // - v4.0.109(俊克 8/9 pm02:05「『🐙 の隣に GitHub トークンの残り日数』は誤記だよ」): ★その通り。v4.0.95で**ヘッダの右端(▾の隣・閉じていても見える所)**へ移したのに、リリースノート/README/CHANGELOGの3箇所とも「🐙の隣」のままだった。3箇所とも直した。★原因=**機能を動かした時に、それを説明している文書を一緒に直していない**。コードは直したが、外向きの文章は別の場所にあるので取り残された。★教訓=**UIの位置を変えたら、その位置を書いている文章を全部探す**(README/CHANGELOG/リリースノート/tip)。grepできる言葉(ここでは「push」「token」)で横断して確かめる。
@@ -13231,8 +13232,15 @@ const meosMewCodeActionProvider = {
 };
 // 可視範囲の「鳴いていない仕様コメント」をまとめて署名する。★14万行一括はやらない(8/6の事故=閉じ忘れ ``` 1本で全滅)。
 async function meosMewSignVisible() {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor || !meosIsProseDoc(editor.document)) return;
+  // v4.0.112(俊克 8/9 pm06:48 バグ1「🐱ボタンを押しても修正されないよ」): ★v4.0.110バグ2と**同じ穴の4度目**。
+  //   ボタンを押した瞬間は焦点が Me Dock(webview)にあるので activeTextEditor は undefined
+  //   → ここで黙って return していた(**通知すら出ないのが証拠**=走っていれば必ず何か出る関数だから)。
+  //   変換ロジックは無罪(`##[ … ]##` もheadlessで正しく新形になる)。
+  const editor = meosMewTargetEditor(getMeDockTargetEditor());
+  if (!editor || !meosIsProseDoc(editor.document)) {
+    vscode.window.showInformationMessage('🐱 直す相手の文書が見つかりません(散文ファイルを開いてください)');
+    return;
+  }
   const doc = editor.document;
   // v4.0.73(俊克 改良1): 直すのは**今見えている行だけ**。画面外(±120の先読み分)には手を出さない。
   const _last = doc.lineCount - 1;
@@ -17748,9 +17756,13 @@ class MembraneFoldingProvider {
   provideFoldingRanges(document) {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
     if (!cfg.get('enabled', true)) return [];
-    return collectPairs(document, { excludeIndex: false })
-      .filter(p => p.end > p.start)
-      .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region));
+    // v4.0.112: 貼付の5秒を探す計測。VSCodeが自分の都合で呼ぶProviderは refresh() の外so前回は映らなかった。
+    const _t0 = Date.now();
+    try {
+      return collectPairs(document, { excludeIndex: false })
+        .filter(p => p.end > p.start)
+        .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region));
+    } finally { try { const _ms = Date.now() - _t0; if (_ms > 300) meosDbg('[foldingRanges] ' + _ms + 'ms lines=' + document.lineCount); } catch (_) {} }
   }
   // Call before editor.fold to force VSCode to re-request ranges from this provider.
   notifyRangesChanged() { try { this._emitter.fire(); } catch(_) {} }
@@ -19801,6 +19813,11 @@ function activate(context) {
   }));
   context.subscriptions.push(vscode.languages.registerDocumentLinkProvider([{ language: 'markdown' }, { pattern: '**/*.md' }], {
     provideDocumentLinks(document) {
+      const _t0 = Date.now(); // v4.0.112: 同上。ここは v4.0.9 で一度固着の犯人になった場所so必ず見る。
+      try { return this._links(document); }
+      finally { try { const _ms = Date.now() - _t0; if (_ms > 300) meosDbg('[documentLinks] ' + _ms + 'ms lines=' + document.lineCount); } catch (_) {} }
+    },
+    _links(document) {
       // v4.0.105(俊克 8/9 pm00:49 バグ1「勝手に再読込みになる」の調査から): ★このプロバイダは**とても頻繁に呼ばれる**のに、
       //   毎回 (a)全文1.4MBのコピーを**2回**作り (b)v4.0.94では**全14.7万行を document.lineAt でなめて**いた。
       //   拡張ホストのクラッシュ(code 5)は8/5から出ているので原因は1つではないが、ここは明確に重い=直す。
