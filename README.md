@@ -2,7 +2,7 @@
 
 <p align="center">
   <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。 -->
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="508">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-2.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="508">
 </p>
 
 <p align="center">
