@@ -1,9 +1,8 @@
 # MeOS — Membrane OS
 
 <p align="center">
-  <!-- 新ロゴ(MeW)とM↓⊕を1枚に。右に透明の余白を入れて**画像の中心=M↓⊕の中心**にしてあるので、
-       下のバッジを中央寄せするだけでM↓⊕の真下に来る。GitHubは<table>に必ず枠線を付けるsoこの方式にした。 -->
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="776">
+  <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。 -->
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="508">
 </p>
 
 <p align="center">
