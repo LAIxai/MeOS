@@ -2,13 +2,14 @@
 
 <p align="center">
   <!-- 新ロゴ(MeW)とM↓⊕を1枚に(GitHubは<table>に必ず枠線を付けるので合成にした)。2つで1つを表わす分身。 -->
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-2.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="508">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-header-3.png" alt="MeW - Membrane Warpspace / Markdown(+)" width="776">
 </p>
 
 <p align="center">
-  <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
+  <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点の記録。DL数=1014 と release=v2.0 の**2つとも**意図的に固定。
+       実数や最新版と合わなくても更新しないこと(v4.0.108で一度間違えて release を v4.0 にしてしまった)。 -->
   <a href="https://open-vsx.org/extension/lai/lai-membrane"><img src="https://img.shields.io/badge/downloads-1014-4caf50" alt="Downloads on Open VSX (1014 at the v2.0 release)"></a>
-  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v4.0-2196f3" alt="Latest Release (v4.0)"></a>
+  <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
 </p>
 
 ### **Markdown⊕** — *Markdown, plus.*
