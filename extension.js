@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.105(俊克 8/9 pm00:49 バグ1「最近、勝手に再読込みになることがある。10、30個以前のバージョンから」の調査＋対処): ★**ログに証拠があった**=`main.log` に `[UtilityProcess type: extensionHost]: crashed with code 5` (今日 12:24 / 12:54 / 12:58・8/8 10:03・8/7 20:02・8/5 に2回)。**拡張ホストが落ちて、VSCodiumが自動で立て直している**のが「勝手に再読込み」の正体。exthost.log にJSの例外は残っていない=**捕まえられる例外ではなく、プロセスごと死んでいる**(メモリ圧が濃厚)。俊克の「10〜30版前から」も合っている(8/5=v4.0.9〜19のあたり)。★MeOS側で明確に重い所を潰した=**リンクのDocumentLinkプロバイダ**。ここはVS Codeがとても頻繁に呼ぶのに、毎回①**全文(いま5.4MB)のコピーを2回**作り ②v4.0.94で**全14.9万行を document.lineAt でなめて**いた。→ (a)**document.version でキャッシュ**(編集していない間は作り直さない) (b)マスク済み全文は**1回だけ**作って使い回す (c)`]()` の行は**出現位置から逆算**して該当行だけ見る(全行走査を廃止)。★注意=クラッシュは8/5から出ているのでこれが唯一の原因とは断定できない。まず一番重い所を消して様子を見る。★教訓=**「頻繁に呼ばれる口」で全文コピーと全行走査をしない**。v4.0.9で同じ穴(10秒固着)を塞いだのに、機能を足すたびに同じ口へ重い処理を積んでいた=**足す時こそ、その口が何回呼ばれるかを見る**。
 // - v4.0.104(俊克 8/9 pm00:30「絵が小さくなっちゃったよ。なぜ?」): ★真因=**GitHubの画像プロキシ(camo)が古い画像をキャッシュしていた**。ファイル名が同じ `mew-header.png` のままso、ブラウザには**透明paddingが入った古い1552px版**が配られ、それを `width=508` で縮めた=絵だけが小さく見えた(1016px版が配られていれば同じ大きさになるはずだった)。→ ファイル名を `mew-header-2.png` に変えてキャッシュを外す。★教訓=**同じURLで画像を差し替えると、キャッシュのせいで「直したのに直らない」**。画像を作り直したら**名前も変える**(GitHubのcamoはURL単位でキャッシュする)。★これは v4.0.86 の「新PATを入れたのにexpiredのキャッシュが残る」と同じ形=**中身を変えたのに鍵を変えていない**。
 // - v4.0.103(俊克 8/9 pm00:28「中央寄せにしよう」): ★v4.0.102の透明padding(画像の中心=M↓⊕の中心)は、**2つのロゴが画面の左寄りに見える**という副作用があった。→ paddingを外して**2つのロゴを画面の中央**に。表示幅 776→508px。★代償=バッジは「2つのロゴを合わせた中心」の下=**M↓⊕の真下ではなく2つの間**に来る。中央寄せと「M↓⊕の真下」は**同時に成立しない**(枠なしでやる限り)ので、俊克の今回の指示=中央寄せを優先した。
 // - v4.0.102(俊克 8/9 pm00:21「マイナーバージョンが100に到達。四角枠が見えるので見えなくして、新ロゴは240pxに」): ★枠線は**GitHubが `<table>` に必ず付ける**(READMEでは `style` 属性が消されるので消せない)。→ 表をやめて**新ロゴとM↓⊕を1枚のPNGに合成**(media/logo/mew-header.png)。★仕掛け=**右側に「新ロゴ＋隙間」と同じ幅の透明を足して、画像の中心をM↓⊕の中心に一致させた**。so下のバッジを普通に中央寄せするだけで**M↓⊕の真下**に来る(表もCSSも要らない)。新ロゴは240px相当(合成は網膜用に2倍の480pxで作り、表示幅776pxで1/2に落とす)。★教訓=**器の都合で表現を曲げない**。枠を消せないなら、枠が要らない作り方に変える。
@@ -19116,6 +19117,7 @@ function meosTargetLinks(document, m, base, target) {
 // 定義は文書全体から集めるが、**document.version をキーにキャッシュ**する(14万行を毎回走らない)。
 const MEOS_MD_REFDEF_RE = /^[ \t]{0,3}\[([^\]\n]+)\]:[ \t]*(?:<!--[ \t]*([^\n]*?)[ \t]*-->|(\S+))[ \t]*$/gm;
 let _meosRefDefCache = { key: '', map: null };
+let _meosDocLinkCache = { key: '', links: null }; // v4.0.105: リンク一覧も版ごとにキャッシュ(頻繁に呼ばれるため)
 function meosRefDefs(doc) {
   try {
     const key = doc.uri.toString() + '@' + doc.version;
@@ -19723,6 +19725,13 @@ function activate(context) {
   }));
   context.subscriptions.push(vscode.languages.registerDocumentLinkProvider([{ language: 'markdown' }, { pattern: '**/*.md' }], {
     provideDocumentLinks(document) {
+      // v4.0.105(俊克 8/9 pm00:49 バグ1「勝手に再読込みになる」の調査から): ★このプロバイダは**とても頻繁に呼ばれる**のに、
+      //   毎回 (a)全文1.4MBのコピーを**2回**作り (b)v4.0.94では**全14.7万行を document.lineAt でなめて**いた。
+      //   拡張ホストのクラッシュ(code 5)は8/5から出ているので原因は1つではないが、ここは明確に重い=直す。
+      // → ①**document.version でキャッシュ**(編集していない間は作り直さない)
+      //   ②マスク済み全文は**1回だけ**作って使い回す ③`]()` の行は**出現位置から求める**(全行走査をやめる)。
+      const _ck = document.uri.toString() + '@' + document.version;
+      if (_meosDocLinkCache.key === _ck && _meosDocLinkCache.links) return _meosDocLinkCache.links;
       const links = [];
       try {
         // v4.0.9(俊克): 真因=140k行の日記で全行 lineAt+正規表現を毎回同期実行→10秒固着。
@@ -19746,8 +19755,10 @@ function activate(context) {
           links.push(...meosTargetLinks(document, m, m.index, target));
         }
         // v4.0.78: 素のMarkdownリンク。行先が膜名ならワープ・URLなら外部を開く(コメント包みと同じ口)。
+        let _masked = null; // 包み形リンクを空白化した全文(必要になった時に1回だけ作る)
+        const maskedFull = () => (_masked !== null ? _masked : (_masked = full.replace(MEOS_MELINK_RE, (mm) => ' '.repeat(mm.length))));
         if (full.indexOf('](') >= 0) {
-          const masked = full.replace(MEOS_MELINK_RE, (mm) => ' '.repeat(mm.length));
+          const masked = maskedFull();
           let b; MEOS_MD_LINK_RE.lastIndex = 0;
           while ((b = MEOS_MD_LINK_RE.exec(masked)) !== null) {
             const label = b[1] || '', target = String(b[2] != null ? b[2] : (b[3] || '')).trim(); if (!target || !label) continue; // v4.0.81
@@ -19762,10 +19773,12 @@ function activate(context) {
         }
         // v4.0.94: 行末一括コメント方式。対応が行の中で閉じているso行ごとに見る(全文一括だと順番が混ざる)。
         if (full.indexOf(']()') >= 0) {
-          let off = 0;
-          for (let ln = 0; ln < document.lineCount; ln++) {
-            const lt = document.lineAt(ln).text;
-            if (lt.indexOf(']()') >= 0) {
+          // ★`]()` が在る行だけを、出現位置から逆算して拾う(14.7万行のなめ回しをやめる)。
+          const _lines = new Set();
+          for (let i = full.indexOf(']()'); i >= 0; i = full.indexOf(']()', i + 3)) _lines.add(document.positionAt(i).line);
+          for (const ln of _lines) {
+            {
+              const lt = document.lineAt(ln).text;
               for (const b of meosLineEndLinks(lt)) {
                 const target = b.target; if (!target || !b.label) continue;
                 const dl4 = new vscode.DocumentLink(new vscode.Range(new vscode.Position(ln, b.textStart), new vscode.Position(ln, b.textEnd)));
@@ -19775,14 +19788,13 @@ function activate(context) {
                 links.push(dl4);
               }
             }
-            off += lt.length + 1;
           }
         }
         // v4.0.93: 参照形式 `[表示][ref]` → 定義(`[ref]: 行先`)を引いて飛ぶ。
         if (full.indexOf('][') >= 0) {
           const defs = meosRefDefs(document);
           if (defs.size) {
-            const masked = full.replace(MEOS_MELINK_RE, (mm) => ' '.repeat(mm.length));
+            const masked = maskedFull();
             let r; MEOS_MD_REFLINK_RE.lastIndex = 0;
             while ((r = MEOS_MD_REFLINK_RE.exec(masked)) !== null) {
               const label = r[1] || '', ref = (String(r[2] || '').trim() || label).trim().toLowerCase();
@@ -19797,6 +19809,7 @@ function activate(context) {
           }
         }
       } catch (_) {}
+      _meosDocLinkCache = { key: _ck, links };
       return links;
     }
   }));
