@@ -44,7 +44,7 @@ never comes between your words.
 ## Morning  2026.08.09<!-- Mew! H2 (white/green)//[]tip= -->
 1. first item<!-- Mew! -1.(white/green)//[]tip= -->
 1. second item<!-- Mew! -1.(white/green)//[]tip= -->
-Warp to [the design note]() from any word.<!-- Mew! [](design_20260809s101533JST) -->
+Warp to [the design note]() from any word.<!-- Mew! [](design_20260809S101533JST) -->
 ```
 
 Open that file anywhere else and you get an H2, an ordered list, and a link label. Nothing is broken,
