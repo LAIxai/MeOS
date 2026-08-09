@@ -1,6 +1,10 @@
 # MeOS — Membrane OS
 
-<p align="center"><img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeOS - Membrane Warpspace" width="200"></p>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/logo/mew-logo-512.png" alt="MeW - Membrane Warpspace" width="150">
+  &nbsp;&nbsp;
+  <img src="./mdplus-logo.png" alt="Markdown(+) - Markdown plus" width="260">
+</p>
 
 <p align="center">
   <!-- 記念碑: v2.0(2026.07.20 Open VSX v2.0.63公開)時点のDL数=1014。意図的に固定。実数と合わなくても更新しないこと。 -->
