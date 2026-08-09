@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.125(俊克 8/10 am03:36「コメントの中の『-』や『-1.』などを削除しても、1行丸ごと消去、という方が命令としては完全でしょ。行頭の『-』を消した時も同様だね」→ 3択で俊克が**B=命令を両端とも消す**を選択): ★**命令は「行頭マーカー」と「コメントの命令トークン」の2つで1つ**。片方を消したら、もう片方も道連れにして**普通の文に戻す**。どちらから消しても同じ結果=**命令としての対称性**。本文は必ず残す(選択肢C=行ごと削除は本文が失われるので却下)。★**誤爆よけ=語に効く記法がある行では触らない**。`- 項目 ==強調==<!-- Mew! ==(白/黄) -->` の行末コメントは『消し忘れた命令』ではなくハイライトの指定so巻き添えにしない。リンク指定・上付き下付きも同様(headlessで確認)。★**v4.0.63の価値ある部分は無傷**=`##本文`(空白なしの見出し・俊克の言う最大の利点)も『見出しを宣言だけで』も**触らない**。引退するのは**「行頭マーカーがまったく無い箇条書き/番号付き」という狭い形だけ**(私は当初『箇条書きの宣言は引退』と広く言ったが、実装で確かめると見出しは対象外だった)。headless 95/95 PASS(9件追加)。
 // - v4.0.123(俊克 8/10 am01:14「『-1.』を『-』に書き換えるだけで、数字付きから普通の箇条書きに変更できる。このとき、行頭の1.を自動削除してくれるとうれしいけどね」): ★**行頭マーカーは命令に従う**。一般化すると「**命令が本当のこと**」so逆向き(`-`→`-1.`で行頭を `1. ` にする)も同じ規則で直す。書き手が触るのは**コメントの命令だけ**でよくなる=v4.0の思想『指示はコメントへ』の当然の帰結。実装はv4.0.119の掃除機構に相乗り(250msデバウンス・deferRefreshCountで再入防止)。行頭にマーカーが無い行/命令が無い行/一致している行は触らない。headless 86/86 PASS(7件追加)。★**遅延の原因が確定した(実機を計測)**: 起動ディスク **6.6GiB空き/460GiB**・スワップ **8,671MB使用/9,216MB(残り544MB=94%)**。**スワップがほぼ満杯で、ディスクが空いていないので増やせない**=OSが全プロセスを数百msずつ止める状態。`[host-blocked]` が **MeOSの計測ゼロで700〜2300ms**出るのはこれ(v4.0.114の切り分け表の3番目)。8/5から出ている拡張ホストのクラッシュ(code 5)も同じ根。→ MeOS側でできることは尽きている(v4.0.113で747ms→9ms・v4.0.115でGCを根治)。**ディスクを空けるのが唯一の対処**。★合わせて `[host-blocked]` に **rss/heapUsed** を出すようにした=MeOS自身が太っているのか(rssが増え続ける)、OSのスワップ側か(rss横ばい)を次回で切り分ける。
 // - v4.0.122(俊克 8/10 am00:58 質問1「60を設定しても、もう一度設定を見ると、どれが設定されているか分らない」＋バグ1「文字は小さくなるのに整形が崩れたまま直らない」): ★**質問1の真因**= 現在値を**設定**から読んでいたが、v4.0.121で保存先を globalState へ移したので**表示と実体が食い違っていた**。→ 現在値は `meosTableFitColumns()`(実際に使っている値)から引く＋タイトルにも `now: 60 columns` を出す。★教訓(3度目)=**状態の表示は、実際に使っている値と同じ1つの出どころから引く**[[feedback_one_source_for_mark_count_action]]。保存先を変えたら、それを読む側を全部探す。★**バグ1の真因を実測で特定= `font-weight: 900`(extension.js の太字装飾)**。俊克のスクショで列1の閉じ `|` の位置を画素で測ると(開始|=306px) ヘッダ1060 / 通常行1064 / 通常行1065 に対し、**太字を含む行だけ 1044(−21px)**。太字の日本語12文字ぶんで約1.2桁ずれ= **太字CJKは 1.67ではなく約1.57幅**で描かれている。原因= MeOSの太字は `-webkit-text-stroke` の縁取りに加えて **fontWeight='900'** も掛けており、**Menloに日本語が無い→太字だと macOS が別の日本語フォント面に落ちる**ので、ASCII基準の比率が変わる。★これは表の整形以前の**元からある食い違い**(v4.0.116の縮小機能とは無関係。縮小しても比率は保たれるので同じだけずれる)。→ 直し方は2つあり**見た目の判断がいる**ので俊克に選んでもらう: (A)表の中だけ fontWeight を外し縁取りだけで太くする(幅が変わらなくなる=完全に揃う) (B)meosStrWidth で太字CJKを1.57として数える(見た目は今のまま・定数がもう1つ増える)。私の推しは(A)。
 // - v4.0.121(俊克 8/10 am00:35 バグ1「箇条書きで、バックスラッシュ(=バッククォート)で囲まれた文字列が表示されない」＋バグ2「Fit Tables to Width 60を選択するとerrorが出て駄目」): ★★**バグ1の真因= 行頭マーカーを dtext(コードスパンを空白に潰した文字列)で測っていた**。`- \`Cmd + Shift + P\` を押す` は dtext では `- ` の後ろが**全部空白**に見えるので、`[ \t]+` が貪欲にそこまで飲み込み、**20文字を「マーカー+空白」として隠して**いた(headlessで hide 範囲が `"- \`Cmd + Shift + P\` "` になることを実測)。→ **マーカーは生データで測る**(行頭マーカーがコードスパンの中に入ることは決して無いので、生の方が常に正しい)。副産物= `` `x` - item `` を箇条書きと誤認しなくなる(潰した空白のせいで `-` が行頭に見えていた)。★教訓=**マスクした文字列は「そこに何かが在った」ことまで消す**。長さを保つマスクは検出には安全だが、**空白を意味に使う判定(マーカー+空白)には使ってはいけない**。空白そのものが情報である場所では生データを見る。★**バグ2の真因= 設定への書き込みがVS Code側の登録状態に依存していた**(`not a registered configuration`)。tableFitColumns は v4.0.116以降**全vsixのマニフェストに入っている**ことを確認済み(116/117/118/119/120すべてTrue)so、MeOS側の記述漏れではなく、拡張を入れ替えた直後のレジストリの都合。→ **そこに命綱を預けない**=保存先を **globalState** に(読む順= globalState ＞ 設定 ＞ 組込み既定80)。MeOSには既に『ユーザー既定はglobalState』の前例がある(v4.0.42 Format設定)。設定にも一応書くが失敗は無視。＋コマンド名の「MeOS: MeOS:」二重を修正(category と title の両方に入れていた)。headless 79/79 PASS(3件追加)。
@@ -13083,6 +13084,36 @@ function meosMarkerFixForLine(text) {
   if (dir.bullet === 'number' && isBullet) return { start, end, to: '1. ' };  // - → -1. : 行頭を `1. ` に(番号は常に1=腐らない番号)
   return null;
 }
+// v4.0.125(俊克 8/10 am03:36「コメントの中の『-』や『-1.』などを削除しても、1行丸ごと消去、という方が命令としては完全でしょ。
+//   行頭の『-』を消した時も同様だね」→ 選択肢Bを俊克が選択=**命令を両端とも消して普通の文に戻す**):
+// ★命令は「行頭マーカー」と「コメントの命令トークン」の**2つで1つ**。片方を消したら、もう片方も道連れにする。
+//   どちらから消しても同じ結果=**命令としての対称性**。本文は必ず残す。
+// ★これにより v4.0.63 の「行頭マーカーが無くてもコメントの宣言だけで箇条書きにできる」は
+//   **箇条書きについては引退**する(俊克が承知のうえで選択)。見出し(H2等)は宣言だけの形を残す。
+// ★誤爆よけ=**語に効く記法がある行では触らない**。`- 項目 ==強調==<!-- Mew! ==(白/黄) -->` のような行の
+//   コメントは「消し忘れた命令」ではなくハイライトの指定so、巻き添えにしてはいけない。
+const MEOS_INLINE_SPAN_HINT_RE = /==|~~|\*\*|(?:^|[^\w])_|↑|↓|\]\(|\]\[/;
+function meosListCommandFixForLine(text) {
+  const t = String(text || '');
+  if (t.indexOf('<!--') < 0) return null;
+  let tail = [];
+  try { tail = meosTrailingComments(t); } catch (_) { return null; }
+  if (!tail.length) return null;
+  const last = tail[tail.length - 1];
+  const raw = last.payload || '';
+  if (!meosHasMewSignature(raw)) return null;              // MeOSの命令コメントだけが対象
+  const dir = meosLineDirective(meosStripMewSignature(raw));
+  const m = /^([ \t]*)(?:[-*+][ \t]+|\d+[.)][ \t]+)/.exec(t);
+  // ① 行頭マーカーが消えた: コメントは箇条書き/番号付きを宣言しているのに、行頭にマーカーが無い → コメントを消す
+  if (!m && dir && dir.bullet && !dir.level) return [{ start: last.start, end: t.length }];
+  // ② コメントの命令が消えた: 行頭にマーカーがあるのに、コメントに命令トークンが無い → 両方消す
+  if (m && (!dir || (!dir.bullet && !dir.level))) {
+    const body = t.slice(m[0].length, last.start);
+    if (MEOS_INLINE_SPAN_HINT_RE.test(body)) return null;  // 語に効く記法がある=そのコメントは別物so触らない
+    return [{ start: last.start, end: t.length }, { start: m[1].length, end: m[0].length }];
+  }
+  return null;
+}
 async function meosSweepOrphanDirectives(editor, lines) {
   if (!editor || !editor.document || editor.document.isClosed) return;
   try {
@@ -13094,7 +13125,9 @@ async function meosSweepOrphanDirectives(editor, lines) {
       const hit = meosLineStartsWithOrphanDirective(text);
       if (hit) { edits.push({ range: new vscode.Range(ln, hit.start, ln, hit.end), to: '' }); continue; }
       const fix = meosMarkerFixForLine(text); // v4.0.123: 行頭マーカーを命令に合わせる
-      if (fix) edits.push({ range: new vscode.Range(ln, fix.start, ln, fix.end), to: fix.to });
+      if (fix) { edits.push({ range: new vscode.Range(ln, fix.start, ln, fix.end), to: fix.to }); continue; }
+      const cmd = meosListCommandFixForLine(text); // v4.0.125: 命令は両端で1つ。片方を消したら道連れ
+      if (cmd) for (const c of cmd) edits.push({ range: new vscode.Range(ln, c.start, ln, c.end), to: '' });
     }
     if (!edits.length) return;
     deferRefreshCount++;
