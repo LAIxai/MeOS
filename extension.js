@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.121(俊克 8/10 am00:35 バグ1「箇条書きで、バックスラッシュ(=バッククォート)で囲まれた文字列が表示されない」＋バグ2「Fit Tables to Width 60を選択するとerrorが出て駄目」): ★★**バグ1の真因= 行頭マーカーを dtext(コードスパンを空白に潰した文字列)で測っていた**。`- \`Cmd + Shift + P\` を押す` は dtext では `- ` の後ろが**全部空白**に見えるので、`[ \t]+` が貪欲にそこまで飲み込み、**20文字を「マーカー+空白」として隠して**いた(headlessで hide 範囲が `"- \`Cmd + Shift + P\` "` になることを実測)。→ **マーカーは生データで測る**(行頭マーカーがコードスパンの中に入ることは決して無いので、生の方が常に正しい)。副産物= `` `x` - item `` を箇条書きと誤認しなくなる(潰した空白のせいで `-` が行頭に見えていた)。★教訓=**マスクした文字列は「そこに何かが在った」ことまで消す**。長さを保つマスクは検出には安全だが、**空白を意味に使う判定(マーカー+空白)には使ってはいけない**。空白そのものが情報である場所では生データを見る。★**バグ2の真因= 設定への書き込みがVS Code側の登録状態に依存していた**(`not a registered configuration`)。tableFitColumns は v4.0.116以降**全vsixのマニフェストに入っている**ことを確認済み(116/117/118/119/120すべてTrue)so、MeOS側の記述漏れではなく、拡張を入れ替えた直後のレジストリの都合。→ **そこに命綱を預けない**=保存先を **globalState** に(読む順= globalState ＞ 設定 ＞ 組込み既定80)。MeOSには既に『ユーザー既定はglobalState』の前例がある(v4.0.42 Format設定)。設定にも一応書くが失敗は無視。＋コマンド名の「MeOS: MeOS:」二重を修正(category と title の両方に入れていた)。headless 79/79 PASS(3件追加)。
 // - v4.0.120(俊克 8/10 am00:18 バグ1「空行1つあると採番がイニシャライズと言う仕様だったはずなので、最後の2つは2と3にしなければいけない」): ★**規則が裏返っていた**。v4.0.53の実装は「**項目でない行**が来たらリセット/**空行は無視**」で、俊克の仕様「**空行**で初期化」の**真逆**。→ 区切りは**空行だけ**。普通の文が挟まっても**リストは続いている**。俊克の例(文2行を挟む)で 1.2 / 2. / 3. になることを実データで確認。★書き手の感覚が正しい=**間に一言はさんでも同じリストの続き。段落を空けたら別のリスト**。Markdownの緩いリストとも一致する。★教訓=**仕様は「何が区切りか」を先に決める**。v4.0.53は『項目が途切れたら終わり』と機械の都合で決めていて、書き手が『まだ続いている』と思っている状態を表現できていなかった。
 // - v4.0.119(俊克 8/10 am00:07 バグ1「行頭の1.を削除した時、コメント命令が削除されない」＋「もっと小さいフォント指定にしないと駄目みたいね」): ★**バグ1=行頭に取り残された命令コメントを掃除する**。俊克のやりたいこと=『ここでリストをやめて普通の文を書く』so、行頭マーカーを消すのは自然な操作。残った `<!-- Mew! -1a … -->` はただのゴミ(読み手にも生データにも意味が無い)。→ 消す条件は**とても狭く**した=行の**先頭**が、**行に効く命令**(箇条書き/番号/見出し)のMeOSコメントである時だけ。これらは『その行のマーカー』を説明する命令so、マーカーが無い所に在れば必ず孤児。**語に効く命令(ハイライト等)は本文の途中に正しく現れる**ので対象外。膜・素のHTMLコメントも触らない(実データで確認)。自分の編集で再入しないよう deferRefreshCount で囲み、250ms待って1回だけ実行(IMEと競合しない)。★**表がまだ収まらない件=倍率ではなく目標桁数**。既定80に対し俊克のペインは**約58桁**(Me Dockが右半分を占める=MeOSの標準配置)so、80に収めても58には収まらない。★既定を勝手に下げると**全員の表がいきなり縮む**=非侵襲に反するため、**選べる口**を作る方を選んだ=パレット `MeOS: Fit Tables to Width…`(Off/50/60/70/80/100/120)。**webviewは触っていない**(v4.0.50/90でbacktick事故を2度起こしているso、深夜の変更でwebviewに手を入れない)。俊克の環境は **60** が目安。headless 76/76 PASS(5件追加)。
 // - v4.0.118(俊克 8/9 pm11:50 バグ1「-1.1指定のとき、文字だけインデントして、数字の1.1がインデントしない」＋「改行したのに駄目(-1.1/-1aが-1.に化ける)」): ★**2つとも原因が別**。①**ラベルがインデントしない**=装飾の `before(contentText)` は**HTMLとして描かれる**ので、**先頭の半角空白が畳まれて消える**。幅(width)は予約されるので**本文だけが右に動き、ラベルは箱の左端に残る**=俊克の見たとおりの症状。→ 畳まれない空白(NBSP U+00A0)で寄せる。★教訓=**装飾のcontentTextはテキストではなくHTML**。空白で位置を作るならNBSP。②**改行で階層が消える**=継続行を組み立てる所(meosContinueListOnEnter)で命令を**再構成**しており、番号付きを一律 `-1.` と**書き直していた**。v4.0.117で階層を足したのに、この書き直しが古いままだった。→ `dir.token`(元の命令トークン)をそのまま引き継ぐ。★教訓=**記法に種類を増やしたら、その記法を「書く側」を全部探す**(読む側だけ直しても、書く側が古い形に潰す)。★z打ち止めは俊克判断で確定(「zまで書く人はたぶんいないでしょ。でも、zで打ち止めで良いでしょ」)＝aa/ab や z1/z2 には伸ばさない。headless 71/71 PASS(4件追加)。
@@ -6346,9 +6347,14 @@ function applyPrettyLabels(editor) {
       }
       // コメントの宣言だけで成立させるのは「本文がある行」に限る(`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。
       const _dirOnly = !!(dir && (dir.level || dir.bullet) && mCpre.index > mP[1].length);
-      if (mP && (mP[3] || mP[2] || _dirOnly)) { // 見出しか箇条書きのどちらかであること(コメントの宣言でも可)
-        const indent = mP[1].length, bulletLen = mP[2].length, gap = mP[4] || '';
-        let hashes = mP[3] || '';
+      // v4.0.121(俊克 8/10 am00:35 バグ1「箇条書きで、バックスラッシュで囲まれた文字列が表示されない」):
+      // ★行頭マーカーは**生データ**で測る。dtextはコードスパンを空白に潰しているので、`- ` の後ろの `[ \t]+` が
+      //   その空白を貪欲に飲み込み、`- \`Cmd + Shift + P\` ` を丸ごとマーカー扱いして隠していた。
+      //   行頭マーカーがコードスパンの中に入ることは無いので、生で測る方が常に正しい。
+      const mPr = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?/.exec(text) || ['', '', '', '', ''];
+      if (mP && (mPr[3] || mPr[2] || _dirOnly)) { // 見出しか箇条書きのどちらかであること(コメントの宣言でも可)
+        const indent = mPr[1].length, bulletLen = mPr[2].length, gap = mPr[4] || '';
+        let hashes = mPr[3] || '';
         let bodyStart = indent + bulletLen + hashes.length + gap.length;
         // v4.0.63: コメントが見出しを宣言していて行頭が `##本文`(空白なし)なら、その `#` も見出しマーカーとして扱う。
         let bareHashLen = 0;
@@ -18910,7 +18916,15 @@ function meosClearTableFitDecos(editor) {
   if (!tableFitDecoByPct || !editor) return;
   for (const d of tableFitDecoByPct.values()) { try { editor.setDecorations(d, []); } catch (_) {} }
 }
+const MEOS_TABLE_FIT_KEY = 'meos.table.fitColumns';
 function meosTableFitColumns() {
+  // v4.0.121: 読む順= ユーザー既定(globalState) ＞ 設定 ＞ 組込み既定80。v4.0.42のFormat設定と同じ流儀。
+  try {
+    if (extensionContext) {
+      const g = extensionContext.globalState.get(MEOS_TABLE_FIT_KEY, null);
+      if (g !== null && g !== undefined) { const n = Number(g); return (n >= 20 && n <= 400) ? n : 0; }
+    }
+  } catch (_) { }
   try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableFitColumns', 80)); return (v >= 20 && v <= 400) ? v : 0; } catch (_) { return 80; }
 }
 // 列ごとの倍率を決める。幅の広い列から順に縮める(上限Cで頭を押さえる=狭い列は触らない)。
@@ -20072,7 +20086,12 @@ function activate(context) {
     ];
     const sel = await vscode.window.showQuickPick(picks, { title: 'Fit tables to width', placeHolder: 'How many columns wide is your editor pane? (VS Code does not tell extensions, so you choose)' });
     if (!sel) return;
-    await vscode.workspace.getConfiguration('laiMembrane').update('tableFitColumns', sel.value, vscode.ConfigurationTarget.Global);
+    // v4.0.121(俊克 バグ2「Fit Tables to Width 60を選択するとerrorが出て駄目」):
+    // ★真因= 設定への書き込みは「その設定が登録済みか」というVS Code側の状態に依存する(拡張を入れ替えた直後などに
+    //   `not a registered configuration` で落ちる)。**そこに命綱を預けない**=保存先を globalState にする。
+    //   MeOSには既に「ユーザー既定は globalState」の前例がある(v4.0.42 Format設定)。設定にも一応書くが、失敗は無視。
+    try { if (extensionContext) await extensionContext.globalState.update(MEOS_TABLE_FIT_KEY, sel.value); } catch (_) { }
+    try { await vscode.workspace.getConfiguration('laiMembrane').update('tableFitColumns', sel.value, vscode.ConfigurationTarget.Global); } catch (_) { }
     try { refresh(vscode.window.activeTextEditor); } catch (_) { }
     vscode.window.setStatusBarMessage(sel.value ? ('MeOS: tables fit to ' + sel.value + ' columns') : 'MeOS: table fitting off', 3000);
   }));
