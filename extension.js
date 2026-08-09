@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.119(俊克 8/10 am00:07 バグ1「行頭の1.を削除した時、コメント命令が削除されない」＋「もっと小さいフォント指定にしないと駄目みたいね」): ★**バグ1=行頭に取り残された命令コメントを掃除する**。俊克のやりたいこと=『ここでリストをやめて普通の文を書く』so、行頭マーカーを消すのは自然な操作。残った `<!-- Mew! -1a … -->` はただのゴミ(読み手にも生データにも意味が無い)。→ 消す条件は**とても狭く**した=行の**先頭**が、**行に効く命令**(箇条書き/番号/見出し)のMeOSコメントである時だけ。これらは『その行のマーカー』を説明する命令so、マーカーが無い所に在れば必ず孤児。**語に効く命令(ハイライト等)は本文の途中に正しく現れる**ので対象外。膜・素のHTMLコメントも触らない(実データで確認)。自分の編集で再入しないよう deferRefreshCount で囲み、250ms待って1回だけ実行(IMEと競合しない)。★**表がまだ収まらない件=倍率ではなく目標桁数**。既定80に対し俊克のペインは**約58桁**(Me Dockが右半分を占める=MeOSの標準配置)so、80に収めても58には収まらない。★既定を勝手に下げると**全員の表がいきなり縮む**=非侵襲に反するため、**選べる口**を作る方を選んだ=パレット `MeOS: Fit Tables to Width…`(Off/50/60/70/80/100/120)。**webviewは触っていない**(v4.0.50/90でbacktick事故を2度起こしているso、深夜の変更でwebviewに手を入れない)。俊克の環境は **60** が目安。headless 76/76 PASS(5件追加)。
 // - v4.0.118(俊克 8/9 pm11:50 バグ1「-1.1指定のとき、文字だけインデントして、数字の1.1がインデントしない」＋「改行したのに駄目(-1.1/-1aが-1.に化ける)」): ★**2つとも原因が別**。①**ラベルがインデントしない**=装飾の `before(contentText)` は**HTMLとして描かれる**ので、**先頭の半角空白が畳まれて消える**。幅(width)は予約されるので**本文だけが右に動き、ラベルは箱の左端に残る**=俊克の見たとおりの症状。→ 畳まれない空白(NBSP U+00A0)で寄せる。★教訓=**装飾のcontentTextはテキストではなくHTML**。空白で位置を作るならNBSP。②**改行で階層が消える**=継続行を組み立てる所(meosContinueListOnEnter)で命令を**再構成**しており、番号付きを一律 `-1.` と**書き直していた**。v4.0.117で階層を足したのに、この書き直しが古いままだった。→ `dir.token`(元の命令トークン)をそのまま引き継ぐ。★教訓=**記法に種類を増やしたら、その記法を「書く側」を全部探す**(読む側だけ直しても、書く側が古い形に潰す)。★z打ち止めは俊克判断で確定(「zまで書く人はたぶんいないでしょ。でも、zで打ち止めで良いでしょ」)＝aa/ab や z1/z2 には伸ばさない。headless 71/71 PASS(4件追加)。
 // - v4.0.117(俊克 8/9 pm09:11「-1.1と言う命令を書けば、見た目をインデントしてくれる。しかも次の行では-1.2と書くことではなく、**必ず-1.1と書くことで** 1.1、1.2と表示してくれる」＋pm09:19「-1aと言う命令なら、1a、1b...のように見せる。そういう見せ方をすることがあるでしょ?」): ★★**番号付き箇条書きの階層**。★**私が読み違えた**: 最初 `-1.1` を「値の手書き」と読んで『腐る』と指摘したが、俊克の設計では `-1.1` は**階層の指定**で、同じ階層の行には**常に同じ `-1.1`** と書く。数えるのはMeOS。so**腐らないし、ソースにインデントを打つ必要も無い**(生データは平らな `1. ` のまま)。俊克の案の方が正しかった。★書式= `-1` の後ろが下位階層の並び。`.数字`=数字の階層 / `英字1文字`=英字の階層。`-1.`→深さ1(1. 2. 3.) / `-1.1`→深さ2数字(1.1 1.2) / `-1a`→深さ2英字(1a 1b。「図1a・図1b」の形) / `-1.1a`→深さ3。★実装= 全行の採番パスを**階層カウンタ配列**に(浅い項目が来たら深い方は捨てる・項目でない行でリセット)。ラベルと深さぶんのインデントは**MeOSが描く**(生データ不変)。ラベル幅は文字数に合わせて可変(`1.`=3ch / `  1.1`=6ch)。★親が変われば子も追従する: 二番目の下の `-1a` は **2a/2b**(1a/1bではない)=階層として正しい。headless 67/67 PASS(10件追加)。★`meosLineDirective` に `token` を追加(命令トークンそのものを渡す)。MEOS_LINE_DIRECTIVE_RE と MEOS_SPEC_SHAPE_RE も階層形を通すよう拡張。
 // - v4.0.116(俊克 8/9 pm08:46「収まらないセルだけフォントサイズ指定を変えて、表の形を保つ。そのうえで、MeOSはそのセルの行をクリックすれば生データが見えるので、それを読めばいい。これで、とりあえずは運用可能でしょ」→ pm08:52「実装して見ないと分らないので、やって見るしかないでしょ」): ★★**広い表をペイン幅に収める**。俊克案の核=**生データを1文字も変えずに、表示だけ収める**=列に `font-size` を掛けると**本文も詰め物の空白も一緒に縮む**ので、ソースは正しいGFMのまま(俊克の表なら92桁)・画面だけ縮む。**整形器には一切手を入れない**。★俊克案を1つだけ直した=**縮めるのは「セル」でなく「列」**。同じ列の中で倍率が違うと次の `|` が行ごとにずれ、「表の形を保つ」という目的そのものが壊れる。幸い『収まらない』のは列の性質so意図は変わらない。★アルゴリズム=**頭を押さえる二分探索**(上限Cを探し、C超の列だけ C/幅 に縮める)＝広い列から縮み、**狭い列は100%のまま**。5%刻みに切り捨て(必ず収まる側へ)・**下限50%**(それ以下は読めないので諦めて折り返させる)。実測: (42,43)→88桁が90%/85%で**77.3桁**、(60,10,10)→84桁が**90%/100%/100%**(長い列だけ)、(200,10)は50%が下限so収まらない=**壊すより何もしない側に倒す**。★読む口は**新設しない**=カーソル行は元から生データを原寸で見せる(v659の思想)。俊克の言う「クリックすれば読める」は**既にある挙動そのもの**。新UIゼロ。★VS Codeは**エディタの表示幅を拡張に公開していない**(visibleRangesは行だけ)so、収めたい桁数は設定 `laiMembrane.tableFitColumns`(既定80・0で無効)で持つ。これは実装前に俊克へ報告済みの制約。★`font-size` に `!important` を**付けない**=マーカーを隠す `font-size:0 !important` の方が必ず勝つ(v4.0.14の教訓)。★clearForRaw にも追加(v4.0.52の教訓=新しい装飾を足したらRawの解除にも足す)。headless 57/57 PASS(5件追加)。
@@ -13029,6 +13030,40 @@ function meosUnsignedSpecComments(text) {
 // → **数えるのは1箇所(診断のパス)だけ**にして、そこから Me Dock へ直接送る。1回の走査で波線と🐱の両方が動く。
 let meosMewLastCount = -1;
 let meosMewEditTimer = null; // v4.0.74: 1行編集でも🐱だけは追従させる軽いタイマー
+// v4.0.119(俊克 8/10 am00:07 バグ1「行頭の1.を削除した時、コメント命令が削除されない」):
+// ★俊克のやりたいこと=「ここでリストをやめて普通の文を書く」。行頭マーカーを消すのが自然な操作なので、
+//   残った `<!-- Mew! -1a … -->` はただのゴミ(読み手にも生データにも意味が無い)。
+// ★消す条件は**とても狭く**する=行の**先頭**が、**行に効く命令**(箇条書き/番号/見出し)のMeOSコメントである時だけ。
+//   これらは「その行のマーカー」を説明する命令なので、マーカーが無い所に在れば必ず孤児。
+//   ハイライト等の**語に効く**命令は本文の途中に正しく現れるので対象外(触らない)。
+// ★自分の編集で再入しないよう deferRefreshCount で囲み、250ms待って1回だけ実行(IMEと競合しない)。
+let meosOrphanDirTimer = null;
+const MEOS_ORPHAN_DIR_RE = /^[ \t]*<!--[ \t]*([^\n]*?)[ \t]*-->[ \t]?/;
+function meosLineStartsWithOrphanDirective(text) {
+  const m = MEOS_ORPHAN_DIR_RE.exec(String(text || ''));
+  if (!m) return null;
+  const payload = meosStripMewSignature(m[1] || '');
+  const dir = meosLineDirective(payload);
+  if (!dir || (!dir.bullet && !dir.level)) return null; // 行に効く命令でなければ触らない
+  return { start: 0, end: m[0].length };
+}
+async function meosSweepOrphanDirectives(editor, lines) {
+  if (!editor || !editor.document || editor.document.isClosed) return;
+  try {
+    if (!meosIsProseDoc(editor.document)) return;
+    const doc = editor.document, edits = [];
+    for (const ln of lines) {
+      if (ln < 0 || ln > doc.lineCount - 1) continue;
+      const hit = meosLineStartsWithOrphanDirective(doc.lineAt(ln).text);
+      if (hit) edits.push(new vscode.Range(ln, hit.start, ln, hit.end));
+    }
+    if (!edits.length) return;
+    deferRefreshCount++;
+    try { await editor.edit(eb => { for (const r of edits) eb.delete(r); }, { undoStopBefore: false, undoStopAfter: false }); }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); }
+    try { refresh(editor); } catch (_) { }
+  } catch (_) { }
+}
 function meosPostMewState(count, force) {
   if (!force && count === meosMewLastCount) return; // 変わった時だけ送る(スクロール中のメッセージ洪水を避ける)
   meosMewLastCount = count;
@@ -20012,6 +20047,27 @@ function activate(context) {
   try { vscode.commands.executeCommand('setContext', 'meos.phase', MEOS_RELEASE_PHASE); } catch (_) {}
   // v3.4.3(俊克 改良1): ホバー画像クリック→その画像リンクがある行へワープ(畳んでいれば展開)。
   // v4.0.8(俊克): ノート内リンク(片道切符)。膜名リンクのジャンプ先コマンド + 表示文字をクリック可能にするDocumentLinkProvider。
+  // v4.0.119(俊克 8/10 am00:07「もっと小さいフォント指定にしないと駄目みたいね」):
+  // ★原因は倍率ではなく**目標桁数**。既定80に対し俊克のペインは約58桁(Me Dockが右半分=MeOSの標準配置)so、
+  //   80に収めても58には収まらない。既定を勝手に下げると全員の表がいきなり縮む=非侵襲に反するため、**選べる口**を作る。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableFitWidth', async () => {
+    const cur = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableFitColumns', 80));
+    const mk = (n, note) => ({ label: (n === 0 ? 'Off' : String(n) + ' columns'), description: (n === cur ? '(current)' : ''), detail: note, value: n });
+    const picks = [
+      mk(0, 'Never shrink — tables stay at full size and wrap if the pane is narrow.'),
+      mk(50, 'Very narrow pane.'),
+      mk(60, 'Narrow pane — e.g. the editor beside Me Dock.'),
+      mk(70, ''),
+      mk(80, 'Default.'),
+      mk(100, ''),
+      mk(120, 'Wide / full-screen editor.'),
+    ];
+    const sel = await vscode.window.showQuickPick(picks, { title: 'Fit tables to width', placeHolder: 'How many columns wide is your editor pane? (VS Code does not tell extensions, so you choose)' });
+    if (!sel) return;
+    await vscode.workspace.getConfiguration('laiMembrane').update('tableFitColumns', sel.value, vscode.ConfigurationTarget.Global);
+    try { refresh(vscode.window.activeTextEditor); } catch (_) { }
+    vscode.window.setStatusBarMessage(sel.value ? ('MeOS: tables fit to ' + sel.value + ' columns') : 'MeOS: table fitting off', 3000);
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.jumpMeLink', (name) => {
     try {
       const ed = vscode.window.activeTextEditor; if (!ed) return;
@@ -20559,6 +20615,19 @@ makeDecorations();
       //   テキストを1文字も触らない(editor.edit を呼ばない)so IMEと競合しない。
       //   ただし v0.9.650 の教訓(composition中の重い再描画で文字が消えた)に敬意を払い、
       //   入力が落ち着いてから(400ms)1回だけ走らせる=打鍵ごとには走らない。
+      // v4.0.119: 行頭に取り残された命令コメントを掃除する(マーカーを消した跡)。250ms待って1回だけ=IMEと競合しない。
+      try {
+        const _oc = e.contentChanges.filter(c => c.text.indexOf('\n') < 0).map(c => c.range.start.line);
+        if (_oc.length) {
+          if (meosOrphanDirTimer) clearTimeout(meosOrphanDirTimer);
+          const _lines = Array.from(new Set(_oc));
+          meosOrphanDirTimer = setTimeout(() => {
+            meosOrphanDirTimer = null;
+            const _e = meosMewTargetEditor(getMeDockTargetEditor());
+            if (_e && _e.document === e.document) meosSweepOrphanDirectives(_e, _lines);
+          }, 250);
+        }
+      } catch (_) { }
       if (meosMewEditTimer) clearTimeout(meosMewEditTimer);
       meosMewEditTimer = setTimeout(() => {
         meosMewEditTimer = null;
