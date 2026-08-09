@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.113(俊克 8/9 pm07:16「40秒以上遅延。これが本当にイライラするんだよ。面倒くさくなって、途中でVSCmを再起動してしまうこともよくある」＋改良1): ★★★**40秒の真犯人を捕まえた= computeLineDecorations(実測747ms/回)**。俊克のログの読み方が鍵だった=`[refresh] 300〜656ms` が**延々と並ぶ**(19:14:44〜49の5秒間に8回)＝**1回が長いのではなく、400msが何十回も積もって**体感40秒になっていた。`[foldingRanges]`/`[documentLinks]` は1行も出ていない=300ms未満so無罪＝**網は正しく張れていて、犯人は refresh の中に居た**。★構造= 全行(149,704) × 全膜(1,139) の**総当たり**で「この行を含む膜」を毎行 filter＝**1.7億回**の比較＋そのたびに `{...p}` で複製。→ ①**掃引(sweep)**に(行は昇順so開始行が来た膜を足し終了行を過ぎた膜を落とすだけ。直後に depth で sort するので順序は不問=安全) ②複製と開始行テキスト読みを**1膜1回**に ③**可視範囲±120行の外は「作らない」**(v3.1.3でapplyPrettyLabelsに入れたのと同じ足切り。掃引=判定は全行通す。画面外で開いた膜が可視行に効くため)。実測 **747ms → 9ms**・生成する装飾オブジェクト **149,696個 → 301個**(setDecorationsは描画プロセスへの受け渡しがあるので、渡す量そのものが重さだった)。＋applyPrettyLabelsの全行ループも `document.lineAt()` **15万回**をやめて全文splitの配列読みに(VS CodeにTextLineを15万個作らせていた)。★教訓=**「重い」の犯人は、1回の最長ではなく回数×単価で決まる**。ログが同じ数字を並べていたら、それは「遅い1回」ではなく「多すぎる普通」。★改良1(俊克「🐱で直した行の右に新記法のコメントが丸見え。🐱は1のまま。カーソルを次の行に移すと正常化」)=**同類の穴**。編集した後、誰も描き直していなかった: ①単一行の編集はIME保護でrefreshを止めてある(v0.9.637)が、**これはユーザーの打鍵ではない**ので対象外→自分で描き直す ②数の更新タイマーがまた `activeTextEditor` 直読み(ボタン直後は焦点がMe Dock)→ `meosMewTargetEditor(getMeDockTargetEditor())` に合流(v4.0.112と同じ口)。★疑問1(素のMarkdownも🐱の対象にすべきでは)への回答は俊克へ別途: **設計上の衝突**を報告(日記の素の記法は 見出し6,260/箇条書き10,803/番号付き3,657=**計20,720行**あり、旧記法5,548行の約4倍。🐱に混ぜると数字が桁違いになり「今見えている分だけ直す」の安心が壊れる)→**別ボタン/別モードにする**提案。
 // - v4.0.112(俊克 8/9 pm06:48 バグ1「🐱ボタンを押しても修正されないよ」＋貼付5秒の続報): ★★**バグ1の真因=v4.0.110バグ2と同じ穴の4度目**。`meosMewSignVisible()` が1行目で `vscode.window.activeTextEditor` を読んでいたが、**ボタンを押した瞬間は焦点が Me Dock(webview)にある**ので undefined → **黙って return** していた。★症状が「何も起きない=通知すら出ない」だったのがそのまま証拠(この関数は走れば必ず何か通知する)。変換ロジックは無罪で、俊克のテスト行 `##[ 旧記法 (白/green)//[]tip=]##` はheadlessで `## 旧記法<!-- Mew! H2 (白/green)//[]tip= -->` に正しく変換できることを確認済み。★**本当の教訓=既にある流儀に合わせていなかった**。Me Dockの他のハンドラは**全て** `getMeDockTargetEditor() || activeTextEditor` を使っている(bookmark/reference/home…20箇所以上)。v4.0.67で🐱を足した時、私だけがその作法を踏まなかった。→ `meosMewTargetEditor(getMeDockTargetEditor())` に合流＋相手が見つからない時は**黙らず通知**する(黙る関数はデバッグできない)。★**貼付5秒の続報=計測の網が足りなかった**。俊克のログは `[refresh] 367/308/633ms` だけで `[paste-folds]` は**一度も出ていない**＝5秒は前回計測した2箇所の**外**にある。→ VSCodeが自分の都合で呼ぶ**Provider**は refresh() の外so映らない。`provideFoldingRanges`(全膜を集める)と `provideDocumentLinks`(全文・**v4.0.9で一度固着の犯人になった場所**)にも同じ流儀(300ms超だけ1行)で計測を追加。★教訓=**計測で犯人が出ないのは無罪の証明ではなく、網の外に居る証明**。
 // - v4.0.111(俊克 8/9 pm06:38 バグ1「旧記法があって🐱↑1と認識しているのに、🐱ボタンが暗くなるのはおかしいでしょ。押して変換できないよ。**5秒で消すと最初に言ったのは、ガターのことだよ**。私もすっかりだまされたよ」): ★俊克が正しい。v4.0.106で**5秒(reveal)をボタンの点灯条件に巻き込んだ**のが誤り(`b.classList.toggle('on', __mewRevealOn && c>0)`)。5秒は**印(ガター/波線)を出しておく時間**であって、**ボタンが押せるかどうかとは無関係**。→ v4.0.67の元の設計に戻す=**点灯は「この画面に旧記法が何個あるか」だけで決める**(`c>0`)＋revealメッセージではボタンの見た目を触らない。※変換自体(meosMewSignVisible)はもともとrevealに依存していないso**押せば動いてはいた**=つまり**見た目だけが嘘をついていた**。それが一番たちが悪い。★教訓=**ボタンの明暗は「押した結果が起きるか」だけを表す**。他の状態(表示中/非表示中)を同じ1つの明暗に相乗りさせると、押せるのに押せなく見える。[[feedback_one_source_for_mark_count_action]]の姉妹形=**1つの見た目に2つの意味を持たせない**。★webviewは最小変更(変更2行のみ・前版と行単位で照合)[[feedback_minimal_change_verify_webview]]。
 // - v4.0.110(俊克 8/9 pm02:53 バグ1「🐱ボタンを囲む四角の右端が欠けている。これは▼ボタンを使わないからかな? ホームボタンと同じ作りにすれば良いんじゃない?」＋バグ2「↻を押すと🐱ガターが出るが、5秒経つと🐱ボタンは暗くなり個数表示も消えるのに、🐱ガターが消えない。エディタ画面をクリックすると消える」＋バグ3「コピペの遅延が10秒以上続くことがたびたび起きる。最近の処理の追加が影響しているのか?」): ★**バグ1=俊克の見立てが正解**。真因は `.fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}`＝これは**右に▾が続いて箱を閉じる前提**のルールで、▾を持たない🐱では右辺が開いたままになる。→ 🐱のセルから `fmt-cell` を外す(位置決めは `.mew-cell` の position:relative/inline-flex で足りる)＝俊克の言う「ホームボタンと同じ作り」(▾なしボタン＋右肩バッジ)になる。★★**バグ2の真因=「見えている」と「アクティブ」は別**(v4.0.43と同じ穴・**3度目**)。↻を押すと焦点が Me Dock(webview)へ移るので、5秒後のタイマーが読む `vscode.window.activeTextEditor` は **undefined**。`meosUpdateMewDiagnostics` の入口が `if (editor)` を条件に印を消していたため、**消す処理だけが飛んでいた**。数字が0に落ちるのは `meosPostMewState(0)` が early return の外にあるからで、**「数字は消えるのに絵が残る」という症状の食い違いがそのまま証拠**だった(エディタをクリックすると activeTextEditor が戻り、次の refresh で消えていた)。→ 二重に直す: ①対象エディタを **activeTextEditor → 見えている散文エディタ** の順で探す(俊克案「エディタを自動でアクティブにする」は採らない=**押したボタンが焦点やカーソルを動かすのは書き手の邪魔**)。②5秒後は `meosMewClearMarks()` で**見えているエディタ全部の印を無条件に消す**(俊克「そうしなくても🐱ガターが消えるべきだと思うけどね」)＝探索が空振りしても消し忘れが原理的に起きない。★教訓=**出す条件と消す条件を別々に書くと、片方だけ壊れる。消す方は無条件にする。**(=[[feedback_fix_signal_at_fix_place]]の裏返し)★**バグ3=MeOSはシロ**。俊克の日記(**149,530行 / 11MB**)で実測: collectMembraneStructure 6.8ms / 全149k行の meosLegacyHits 18ms / meosUnsignedSpecComments 14ms / 全文マスク(MEOS_MELINK_RE) 4ms / 参照定義の全文スキャン 数ms。**最近の追加はどれもミリ秒台**so「最近の処理が重い」ではない。秒を食う心当たりは1つだけ=**VSCode自身の折畳みモデル再構築**(v2.0.54で計測済: 小md 204ms に対し 90k行日記 **3084ms**=規模比例。この日記はその1.66倍)＋`reconcilePastedFolds` がそれを**最大4秒ポーリング**する構造。加えて8/9時点の実機は**起動ディスク残 6.1GiB・スワップ86%**で、拡張ホストのクラッシュ(code 5)も出ている。→ **推測で削らない**。`refresh()` と `reconcilePastedFolds()` に**300ms超えた時だけ** MeOS Debug へ1行出す計測を入れた(数えるだけ・動作は不変)。次に10秒が起きた時、View > Output > MeOS Debug で `[refresh] …ms` / `[paste-folds] …ms rounds=… folded=…` を見れば**犯人を名指しできる**。★教訓=**「重い」の原因は測ってから削る**[[feedback_root_cause_before_patching]]。今回はMeOSが無罪だと分かったので、削っていたら見当違いの改造をしていた。
@@ -4505,7 +4506,7 @@ function warningArrowX(w, direction) {
 }
 
 
-function computeLineDecorations(document) {
+function computeLineDecorations(document, visibleRanges) {
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
   const excludeIndex = cfg.get('excludeIndexMembrane', false);
   const lineWidth = Math.max(1, Math.min(4, Number(cfg.get('lineWidth', 1)) || 1));
@@ -4549,7 +4550,27 @@ function computeLineDecorations(document) {
   // v0.9.216: one row = one drawing object.
   // This prevents child membrane pseudo-elements from cutting parent lanes.
   // v0.9.216: unmatched membranes are also visualized as red warning lanes.
+  // v4.0.113(俊克 8/9 pm07:16「40秒以上遅延。これが本当にイライラする」): ★ここが真犯人(実測747ms/回)。
+  //   旧= 全行 × 全膜 の総当たり(149,704 × 1,139 = **1.7億回**)＋毎行 `{...p}` で複製していた。
+  //   新= **掃引**。行は昇順so「開始行が来た膜を足し、終了行を過ぎた膜を落とす」だけで同じ集合が得られる。
+  //   複製と開始行テキストの読み取りも**1膜1回**に。答えは同じ・見た目は不変。
+  const _normPairs = pairs.map(pp => ({ ...pp, warningKind: 'normal' })).sort((a, b) => (a.start || 0) - (b.start || 0));
+  const _startTextOf = new Map(); // 膜の開始行テキスト(1膜1回だけ読む)
+  const _startTextFor = (p) => {
+    if (_startTextOf.has(p.start)) return _startTextOf.get(p.start);
+    let t = ''; try { t = document.lineAt(p.start).text; } catch (_) {}
+    _startTextOf.set(p.start, t); return t;
+  };
+  // v4.0.113: 作る対象は可視範囲±120行だけ(判定=掃引は全行通す。画面外で開いた膜が可視行に効くため)。
+  const _clSpans = (visibleRanges && visibleRanges.length)
+    ? visibleRanges.map(r => [Math.max(0, r.start.line - 120), Math.min(document.lineCount - 1, r.end.line + 120)])
+    : null;
+  const _clVis = (ln) => !_clSpans || _clSpans.some(sp => ln >= sp[0] && ln <= sp[1]);
+  let _sweepIdx = 0; let _livePairs = [];
   for (let line = 0; line < document.lineCount; line++) {
+    // 掃引はどの分岐より先に進める(composingLine で continue しても集合を取りこぼさない)。
+    while (_sweepIdx < _normPairs.length && _normPairs[_sweepIdx].start <= line) _livePairs.push(_normPairs[_sweepIdx++]);
+    if (_livePairs.length) { let _w = 0; for (let _i = 0; _i < _livePairs.length; _i++) { if (line <= _livePairs[_i].end) _livePairs[_w++] = _livePairs[_i]; } _livePairs.length = _w; }
     // v0.9.638: hide the membrane lane (thin vertical line + indent) on the line
     // being IME-composed, so the composing text sits at the caret instead of having
     // the line wedged between caret and text. Restored when composition settles / on
@@ -4561,10 +4582,9 @@ function computeLineDecorations(document) {
     // (v0.9.650) stops the setDecorations INTERRUPT that ate the ")", while A hides the lane
     // so it can't visually wedge / reflow the composing line. Both are needed; keep the skip.
     if (line === composingLine) continue;
-    const activeNormal = pairs
-      .filter(p => p.start <= line && line <= p.end)
-      .map(p => ({ ...p, warningKind: 'normal' }));
-    const activeWarnings = displayedWarnings.filter(w => {
+    if (!_clVis(line)) continue; // v4.0.113: 画面外は「作らない」(掃引は上で済ませてある)
+    const activeNormal = _livePairs.slice(); // v4.0.113: 掃引で得た集合(直後に depth で sort するので順序は不問)
+    const activeWarnings = !displayedWarnings.length ? [] : displayedWarnings.filter(w => {
       if (w.warningKind === 'unclosed') return w.start <= line;
       if (w.warningKind === 'orphan') return line <= w.endLine;
       return false;
@@ -4585,14 +4605,14 @@ function computeLineDecorations(document) {
     let maxPx = minLanePx;
 
     for (const p of active) {
-      const startText = document.lineAt(p.start).text;
+      const startText = _startTextFor(p); // v4.0.113: 1膜1回(毎行読み直していた)
       const visualIndent = indentToCh(makeIndent(startText));
       const depth = Math.max(0, p.depth || 0);
       const isWarning = p.warningKind === 'unclosed' || p.warningKind === 'orphan';
       // v0.9.504: depthCompressionProxy branch removed.
       const color = isWarning
         ? warningColor
-        : membraneColorForOpenLineText(document.lineAt(p.start).text, colorForDepth(depth, cfg));
+        : membraneColorForOpenLineText(startText, colorForDepth(depth, cfg)); // v4.0.113: 上で読んだものを使い回す
       const isTerminal = p.warningKind === 'normal' && (line === p.start || line === p.end);
       // v0.9.515: for stealth pairs at open/close lines, skip lane
       // rendering entirely — the ◤◢ markers take the lane's place
@@ -5927,8 +5947,16 @@ function applyPrettyLabels(editor) {
   let _inFence = false, _fenceAt = -1;
   let _numRun = 0; const _numOf = new Map(); // v4.0.53: 番号付き項目の連番(行→N)
   const bulletHandledLines = new Set(); // v4.0.54: 新形ブロックで • を描いた行(素の箇条書き検出と二重にしない)
-  for (let line = 0; line < editor.document.lineCount; line++) {
-    const text = editor.document.lineAt(line).text;
+  // v4.0.113(俊克 8/9 pm07:16「40秒以上遅延。これが本当にイライラする」): ★真因はここ。
+  //   ログは400ms前後の refresh が延々と並ぶ=**1回が長い**のではなく**回数×400msが積もる**。
+  //   その400msの正体が `document.lineAt(line)` の**15万回**(VS CodeにTextLineオブジェクトを15万個作らせる)。
+  //   全行ループ自体は外せない(参照符の採番/複数行記法の開き/コードフェンスの状態は全行必要)ので、
+  //   **読み方だけ安くする**=全文を一度 split して配列で読む。同じものを同じ順で読むだけso見た目は不変。
+  const _eol = (editor.document.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  const _allLines = editor.document.getText().split(_eol);
+  const _lineCount = Math.min(editor.document.lineCount, _allLines.length);
+  for (let line = 0; line < _lineCount; line++) {
+    const text = _allLines[line];
     // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
     // 「コードブロックの中」扱いになって素の見出しが一切描画されなかった。フェンスが200行以上開きっぱなしなら
     // 迷子と見なして閉じる=1本の迷子フェンスで以降が全滅しない(日記の実コードブロックは十数行so十分な余裕)。
@@ -11117,7 +11145,7 @@ function _refreshInner(editor) {
     applyGutterLaneDecorations(editor);
   } else {
     clearGutterLaneDecorations(editor);
-    setDecoCached(editor, lineDecoration, 'line', computeLineDecorations(editor.document));
+    setDecoCached(editor, lineDecoration, 'line', computeLineDecorations(editor.document, editor.visibleRanges));
   }
   _ck('gutterLine');
   if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, computeWarningArrowDecorations(editor.document));
@@ -13278,6 +13306,11 @@ async function meosMewSignVisible() {
   const parts = [];
   if (rewrites.length) parts.push('新形に' + rewrites.length + '行');
   if (inserts.length) parts.push('Mew!を' + inserts.length + '箇所');
+  // v4.0.113(俊克 8/9 pm07:16 改良1「直した行の右に新記法のコメントが丸見えに出る。🐱は1のまま。
+  //   カーソルを次の行に移動すると正常化される」): ★自分で書き変えたのだから、自分で描き直す。
+  //   単一行の編集は IME 保護で refresh を止めてある(v0.9.637)が、**これはユーザーの打鍵ではない**ので対象外。
+  try { refresh(editor); } catch (_) { }
+  try { meosUpdateMewDiagnostics(editor); } catch (_) { }
   vscode.window.showInformationMessage('🐱 ' + parts.join(' / ') + ' 直しました'
     + (skipped ? '(入れ子の' + skipped + '行は手つかず)' : '') + ' — Cmd+Zで全部戻せます');
 }
@@ -20350,7 +20383,8 @@ makeDecorations();
       if (meosMewEditTimer) clearTimeout(meosMewEditTimer);
       meosMewEditTimer = setTimeout(() => {
         meosMewEditTimer = null;
-        try { const _e = vscode.window.activeTextEditor; if (_e && _e.document === e.document) meosUpdateMewDiagnostics(_e); } catch (_) { }
+        // v4.0.113: ここも activeTextEditor 直読みだった(Me Dockに焦点があると数が更新されない)。
+        try { const _e = meosMewTargetEditor(getMeDockTargetEditor()); if (_e && _e.document === e.document) meosUpdateMewDiagnostics(_e); } catch (_) { }
       }, 400);
       // Cancel any pending repaint / edit so nothing fires mid-composition.
       if (mstatMetaTimer) { clearTimeout(mstatMetaTimer); mstatMetaTimer = null; }
@@ -20418,7 +20452,7 @@ makeDecorations();
         setTimeout(() => {
           // v0.9.818: gutter lanes never touch the text layout — no IME wedge is possible,
           // so the compose-mode lane-hide repaint is needed only for the legacy text renderer.
-          try { if (activeEditor && lineDecoration && !gutterLanesOn()) activeEditor.setDecorations(lineDecoration, computeLineDecorations(activeEditor.document)); } catch (_) {}
+          try { if (activeEditor && lineDecoration && !gutterLanesOn()) activeEditor.setDecorations(lineDecoration, computeLineDecorations(activeEditor.document, activeEditor.visibleRanges)); } catch (_) {}
         }, 0);
       }
       // v0.9.639: NO auto-restore. The lane stays hidden until the user intentionally
