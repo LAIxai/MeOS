@@ -162,7 +162,7 @@
       },
       {
         "command": "laiMembrane.tableFitWidth",
-        "title": "Fit Tables to Width…",
+        "title": "Fit Tables to Width…  (paused — returns in v5.0)",
         "category": "MeOS"
       }
     ],
@@ -182,10 +182,10 @@
         },
         "laiMembrane.tableFitColumns": {
           "type": "number",
-          "default": 80,
+          "default": 0,
           "minimum": 0,
           "maximum": 400,
-          "markdownDescription": "Shrink wide tables so they fit your editor pane, **without touching the file**. When a table is wider than this many columns, MeOS draws its widest columns at a smaller font size (down to 50%) until it fits — the raw Markdown is never modified, and every column stays aligned because a whole column is scaled together. Put the cursor on a row to see that row at full size. Set **0** to turn this off. VS Code does not tell extensions how wide the editor is, so this number is your pane width, not a measured one."
+          "markdownDescription": "**Paused in v4.0 — this setting currently has no effect.** Shrinking wide tables happened while you scrolled, which breaks the MeOS rule that a table is only ever reformatted when you press the table button. It also could not prevent wrapping (VS Code wraps on the raw text; decorations only change how it is drawn). It returns in v5.0, applied on the table button instead."
         },
         "laiMembrane.tableAutoCalc": {
           "type": "boolean",

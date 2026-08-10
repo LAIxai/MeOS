@@ -59,15 +59,20 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   ever holds a number, so nothing can go stale. A blank line starts a new list; a sentence in between does not.
 - **The comment is the truth** — change `-1.` to `-` in the comment and the line becomes a plain bullet:
   MeOS rewrites the `1. ` at the head of the line to `- ` for you. You only ever edit the instruction.
-- **Wide tables fit your pane** — a table too wide for your editor is drawn column by column at a smaller
-  size until it fits, so the grid stays aligned instead of wrapping into pieces. The file is untouched, and
-  putting the cursor on a row shows that row at full size. `MeOS: Fit Tables to Width…` picks the target.
 - **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
   Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
   what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.
 - **Your token, watched** — the GitHub push row shows how many days your access token has left, at the right
   edge where you can see it **even with the panel folded**. When it expires, the disconnect button turns into
   a one-press fix.
+
+<!-- ★v4.0 ヒーロー画像 待ち: media/hero/v4-comment-is-the-command.png を撮って push したら、下の1ブロックを有効にする。
+     (撮り方は MeOS/hero-link-sample.md の先頭コメント。カーソルを1行だけ置いて、生データと見え方を同時に写す)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once — MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
+  <sub><b>NEW in v4.0 — the comment is the command, and the data is still plain Markdown.</b> A heading, a numbered list that sub-numbers itself, a link that warps by name — every instruction sits in an HTML comment at the <b>end of the line</b>, so it never comes between your words. Put the cursor on a line and MeOS hands that line back to you raw: that is the whole file, valid Markdown everywhere else on Earth.</sub>
+</p>
+-->
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3.1-table-calc.png" alt="Spreadsheet totals with no cell addresses — the formula is one HTML comment, the result is plain text" width="58%"><br>
