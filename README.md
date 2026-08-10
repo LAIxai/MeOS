@@ -57,8 +57,6 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
 - **Sub-numbering without indenting** — write the same `-1.1` on every line of a sub-level and MeOS renders
   `1.1`, `1.2`, `1.3`, indented. `-1a` gives you `1a`, `1b`, `1c` (the *Figure 1a* style). Nothing in the file
   ever holds a number, so nothing can go stale. A blank line starts a new list; a sentence in between does not.
-- **The comment is the truth** — change `-1.` to `-` in the comment and the line becomes a plain bullet:
-  MeOS rewrites the `1. ` at the head of the line to `- ` for you. You only ever edit the instruction.
 - **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
   Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
   what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.
