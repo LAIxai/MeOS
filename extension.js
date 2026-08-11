@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.135(俊克 8/12 am06:56 バグ1「素の見出しに累乗を入れると、大きく離れて、前の行の領域まで進入してしまう。正確な記法でも駄目。なぜ?」): ★真因=**見出しの font-size と上付きの font-size が、同じ1つのspanで取り合いになり、見出しが勝っていた**。MeOSの見出しは装飾で `font-size: 1.1〜1.3em` を被せる。上付きも装飾で `font-size: 0.68em` を被せる。範囲が重なるとMonacoは**1つのspanに両方のクラスを載せる**so、!important の無い方は負ける。★そして効き方が二重に悪い= **`vertical-align` の `em` は「その要素自身の font-size」基準**で解決される。so上付きが縮まないだけでなく、浮き上がりが **1.05×0.68=0.71em → 1.05×1.2=1.26em(ほぼ1行ぶん)** に膨らむ。**スクショで上付きの `2` が小さくなっていない**のが決定的な証拠だった(縮んでいれば別の原因)。★直し=**`font-size` に `!important`**(本体＋マーカーを隠す側の両方)。これは **v4.0.15(太字/斜体が見出し内で空白を生む)と同じ穴の別の顔**で、その時のメモに「同様の膜マーカー(MeTeX/link/highlight/strike)が見出し内に来た時も同手法で直せる」と書いてあった=**予告どおり来た**。★俊克の「100%指定と同じになるべき」について= 素の `3↑2` は**設定の既定(上付き150%)**で描く(100%ではない)。150%=「肩の頭が基準文字の頭に合う」位置so、直った後も少し高いのが正しい。低くしたければ▾で%を下げる。★行末にコメントをまとめる必要は無い(記法の問題ではなくCSSの取り合いだった)。→ [[reference_meos_notation_v4]]
 // - v4.0.134(俊克 8/12 am06:26「その間に、ヒーロー画像を作ったよ」): ★**v4.0のヒーロー画像をREADMEに入れた**(`media/hero/v4-comment-is-the-command.png`)。v3.1で止まっていた絵の並びに、ようやくv4.0の1枚が載る。★この絵が語っているのは**v4.0の核そのもの**= ①ボタンの統合(Bold/Italic/リンクで1つ・見出し/箇条書きで1つ)②**範囲選択不要の🚫一発解除**(カーソルを中に置くだけ)③`[どこでもH-TOC]()<!-- Mew! [](膜名)(白/紫)(3)//tip -->`=**膜名で飛ぶリンク**④`-1.1H2`=箇条書きの命令。そして全部に共通して、**カーソル行だけ生データが出る**(橙の矢印の行)=「命令はコメントに書く」が1枚で分かる。★READMEは**GitHubのraw URL参照**so、画像はvsixに入れない(サイズを増やさない)。→ [[feedback_readme_is_storefront]]\n// - v4.0.133(俊克 8/10 pm02:20 バグ「取消線を2個入れると2個目が駄目。真中の取り消してないのにも横線が出る」): ★真因=**仕様コメントの中の命令トークンが、素のマーカーとして数えられていた**。この行には `~~` が**6個**在る(本文の2組＋コメントの中の命令トークン2個)。1組目を取った後の探索が**コメントの中の3個目**に当たって2組目の開きと対になる→ 取り消していない字まで線が伸び、2個目のコメントも隠れない。★`==`(ハイライト)・`**`(太字)・`_`(斜体)も命令トークンが同じ字so、同じ行に2つ書けば同じ事が起きていた(まとめて直る)。★直し方=v4.0.31/58と**同じ流儀**=検出の前に dtext から隠す。隠すのは**命令トークンだけ**で `(色)//tip` は残す(meosSpecCommentAfter が読むため)。長さは保つso位置が1文字もずれない。**ハイライト検出より前に置く**(v4.0.31の教訓=順番が全て)。★検証= 6個の `~~` が4個(=2組ちょうど)に／普通のコメントは無傷／長さ不変。→ [[reference_meos_notation_v4]]
 // - v4.0.132(公開前の点検): ★**ストアの顔が、封印した機能を宣伝していた**のを直した(3か所目)。README の「The comment is the truth（コメントの `-1.` を `-` に変えたら行頭の `1. ` も直す）」は v4.0.129 で封印した機能so削除。CHANGELOG も同じ項目を「v5.0へ見送り」に書き換え。★これで v4.0.127(表の縮小)・v4.0.129(自動書き換え) の封印が、README/CHANGELOG/設定の**全部に**反映された。★教訓(2度目)= **機能を止めたら、それを語っている場所を全部探す**。コードだけ止めても、ストアが語り続けていたら嘘をついたことになる=[[feedback_readme_is_storefront]]。Open VSXは同一版を再公開できないso、公開直前のこの点検は毎回やる。
 // - v4.0.131(俊克 8/10 pm01:19 二分探索で犯人を1版に特定「v4.0.95=OK / v4.0.96=NG。このバグがあるとき、EOFに飛ぶと**膜の縦線がガターに表示されない**」): ★★**真因=正規表現の破滅的バックトラッキング(ReDoS)**。v4.0.96で3箇所の写経を1つにまとめた時に `^[^\n]*\S[^\n]*<!--…` と書いた= **`[^\n]*` が2つ、`\S` を挟んで並んでいる**。行末が `-->` で終わらない**長い行**に当たると、エンジンは分割の仕方を **O(n²)通り全部試す**。実測= 1,000字 0.6ms / 2,000字 1.9ms / 4,000字 7.4ms / 8,000字 29.4ms（**長さ2倍で時間4倍**）。10万字の行なら**1行で約4.6秒**、それを**3箇所×全行**so実質帰ってこない=再起動しか無くなる。★**俊克の観察が決め手**=「膜の縦線がガターに出ない」=装飾のパスがこの正規表現の中で止まっている、という意味so、症状が犯人の場所まで指していた。EOFが引き金だったのは着地点の周りに長い行が在ったから。★直し方=**正規表現に全部やらせない**。`<!--`/`-->` は indexOf/末尾比較で切り出し(線形)、正規表現は**短い断片だけ**を見る。判定の意味はv4.0.96のまま。新は20,000字の行で **0.01ms**。★教訓= **`[^\n]*` を2つ以上並べない**(1つの正規表現で1行を丸ごと解こうとすると必ず生まれる形)。そして**3箇所を1つにまとめる判断は正しかったが、まとめた先が壊れていたら3倍壊れる**。★被害= v4.0.96〜130 の**35版**。俊克が二分探索(v4.0.50/90/95 OK, 96/98/100 NG)で1版に絞って発見した。★v4.0.129(自動書き換えの封印)と v4.0.130(EOFの全文走査をO(1)化)は**空振りだったが残す**=前者は無限ループの危険が消えたわけではない・後者は素直な改善so戻す理由が無い。→ [[project_meos_freeze_pattern]] [[feedback_root_cause_before_patching]]
@@ -19487,7 +19488,11 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg) {
   const top = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_TOP_EM.supShort : MEOS_METEX_TOP_EM.sup) : MEOS_METEX_TOP_EM.sub;
   let va = Math.round(top * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
   if (kind === 'sub') va = -va; // 下付きは下向き
-  let s = 'none; font-size: 0.68em; vertical-align: ' + va + 'em; line-height: 0;';
+  // v4.0.135: font-size に !important。見出しの font-size(1.1-1.3em)と**同じ1つのspanに乗る**ので
+  //   取り合いになり、見出しが勝つと上付きが縮まない。しかも vertical-align の em は
+  //   **その要素自身の font-size 基準**so、0.68em のはずが 1.2em で解決され、浮き上がりが
+  //   1.05x0.68=0.71em → 1.05x1.2=1.26em(ほぼ1行)に膨らむ。v4.0.15(太字)と同じ穴の別の顔。
+  let s = 'none; font-size: 0.68em !important; vertical-align: ' + va + 'em; line-height: 0;';
   // v4.0.2(俊克): 肩/腰文字の色。textDecoration文字列にcolor/backgroundを相乗り(font-sizeと同じ注入技法)。暗背景は自動白文字(ハイライトと同じauto-contrast)。
   let fgKey = fg; if (bg && !fgKey && DARK_BG_KEYS.has(bg)) fgKey = 'white';
   if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) s += ' color: ' + HIGHLIGHT_FG_COLORS[fgKey] + ';';
@@ -19499,7 +19504,7 @@ function meosApplyMeTexDecorations(editor) {
   if (!editor || !editor.document) return;
   const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); };
   if (!MEOS_METEX) { clearAll(); return; }
-  if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
