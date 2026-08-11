@@ -64,13 +64,10 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   edge where you can see it **even with the panel folded**. When it expires, the disconnect button turns into
   a one-press fix.
 
-<!-- ★v4.0 ヒーロー画像 待ち: media/hero/v4-comment-is-the-command.png を撮って push したら、下の1ブロックを有効にする。
-     (撮り方は MeOS/hero-link-sample.md の先頭コメント。カーソルを1行だけ置いて、生データと見え方を同時に写す)
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once — MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
-  <sub><b>NEW in v4.0 — the comment is the command, and the data is still plain Markdown.</b> A heading, a numbered list that sub-numbers itself, a link that warps by name — every instruction sits in an HTML comment at the <b>end of the line</b>, so it never comes between your words. Put the cursor on a line and MeOS hands that line back to you raw: that is the whole file, valid Markdown everywhere else on Earth.</sub>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once - MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
+  <sub><b>NEW in v4.0 — the comment is the command, and the data is still plain Markdown.</b> A heading, a numbered list that sub-numbers itself, a link that warps <b>by membrane name</b> — every instruction sits in an HTML comment at the <b>end of the line</b>, so it never comes between your words. Put the cursor on a line (the orange arrows) and MeOS hands that line back to you raw: that is the whole file, valid Markdown everywhere else on Earth. Bold / italic / link and heading / bullet each collapse into <b>one button</b>, and <b>🚫 takes any of it back with no selecting</b> — just put the cursor inside.</sub>
 </p>
--->
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v3.1-table-calc.png" alt="Spreadsheet totals with no cell addresses — the formula is one HTML comment, the result is plain text" width="58%"><br>
