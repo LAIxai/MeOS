@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.138(俊克 8/12 am07:44「Bをやって、それを折り畳む、という最終奥義を実装しましょう」＋am08:00「ラベルは必要ない。たとえ累乗が何個あっても、順番で対応できるんだね」): ★★**長いものは行の外へ出し、外へ出したものは畳む**。★問題= 行末のコメントは**隠れていても桁は食う**(折り返しはモデルの桁数=v4.0.93の壁)so、指定を書くほど**続く文字が次の視覚行へ追い出される**。1行の途中は畳めない(折り畳みは行単位)so、**外へ出す**のが先に要る。★記法= 本文の**真下の行**に `<!-- Mew!^ … -->`(`^`=上の行に効く)。俊克の例で **133桁 → 45桁**(ペイン58桁に収まる)。★結び方= **名前＋出現順**。ラベルは作らない。`A↑2{…}` は1つめの `A↑2` に、次は2つめに。飛ばす時だけ `A↑2#2{…}`。**数えるのはMeOSで、ファイルは番号を持たない**(v4.0の「腐らない番号」と同じ)。★俊克のラベル案(`A↑2<!-- 1 -->`)は**数えて却下**= `<!-- 1 -->` は10文字so2つで20文字戻り、**65桁=また折り返す**。外へ出した意味が消える。俊克も即座に納得(「そう言うことか。ラベルは必要ない」)。★リンクは**標準の参照形式のまま**(`[表示][]` ＋ `[表示]: url`)= 識別にラベルは要らない(表示文字が名乗る)が、`[ ]` と定義行は**MeOS外でも本物のリンクとして生きる**ために残す。上付きの飾りとはそこが違う。★実装4点= ①指定行のパーサ ②上付/下付へ配る(直後の指定が勝つ=近い方が強い) ③見出し/箇条書きへ配る(行末の長さゼロのコメントとして渡す=既存の読み手に手を入れずに済む) ④**折り畳み範囲**(指定行＋リンク定義行の連なりを直前の行の下に畳む)を既存の MembraneFoldingProvider に足す。★書く側も入れた= パレット **「MeOS: この行の指定を外へ出す」**。**形が最初から噛み合っていた**=直後コメントの中身も行末コメントの中身も、署名を外せば**そのまま指定行の項目**になる。★書く側のバグを往復テストで捕まえた= コメントを消すと `A↓3<!--…-->Heading` が `A↓3Heading` になり、operandが `3Heading` まで飲み込む=**コメントが区切りとして働いていた**。→ 両隣が英数字の時だけ空白1つ足す。★リンクの箱(前後2つで1組)は**動かさない**(鉄則「リンクは常に先に判定」6度目)。従来の書き方はそのまま動く(過去は変換しない)。headless 32/32＋17/17 PASS。→ [[project_out_of_line_and_fold]] [[reference_meos_notation_v4]]
 // - v4.0.137(俊克 8/12 am07:29 v4.0.136テストOK＋NG「素の見出しの色が緑so、累乗指定で文字色を白にしているのに緑色で描かれて文字が見えない。なぜ?」): ★真因=**v4.0.135と同じ取り合いが、今度は `color` で起きていた**。MeOSの見出しは文字色を装飾で被せる(H2の既定=緑)。上付き/下付きも色を装飾で被せる。同じspanに乗って **!important の無い上付き側が負ける** → **背景の緑は出ているのに文字まで緑**=見えない。★スクショの決め手= **緑の丸い箱(=上付き自身の背景)は出ているのに中の `2` が見えない**。背景が出ている=上付きの装飾自体は効いている、so負けているのは色だけ、と場所が絞れた。★直し= `color` と `background-color` にも `!important`。**色を明示したなら、それが最後の言葉**であるべきで、周りの見出し色に上書きされてはいけない。色を書かなければ従来どおり周りの色に従う(既定は無地=本人の自由)。★これで見出しの中の上付き/下付きは **大きさ・高さ・色** の3つとも揃った(v4.0.135＋137)。★教訓(3度目)= **装飾で同じCSSプロパティを2つ被せたら、後から乗る方は必ず `!important`**。v4.0.15(太字のfont-size)→v4.0.135(上付きのfont-size)→今回(上付きのcolor)。**同じ穴を3回踏んだso、次に色や大きさを被せる装飾を足す時は最初から付ける**。headless 17/17 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.136(俊克 8/12 am07:10「あなたも勘違いしている。50%指定は下付き文字のケース。2^3という従来の記法で表示されるのが素の高さ。so上付きは**100%が基準**であり、150%というもう一つの基準があるから、100〜150%の間でどんな高さになるかを予想できる」): ★**俊克が正しい。私は実装の説明をなぞっただけで、どこを100%と呼ぶべきかを考えていなかった**。★そして**測ったら数字はもう俊克の言うとおりだった**= 上付き100%の浮き上がりは **0.357 base-em**で、CSSの `vertical-align: super`(=`x²` の素の高さ)の**約0.33em とほぼ一致**する。so「100%が基準・150%がもう一つの基準・間は予想できる」は**今のMeOSでそのまま成り立っている**。★間違っていたのは**説明文だけ**= ①100%を「midway(中間)」と書いていた=**実装の都合であって意味を語っていない**②50%を上付きの選択肢のように並べていた=上付きの50%は**基準線に乗る=もう上付きではない**(俊克「あれは下付きのケース」)。→ 説明を俊克の模型に書き直した(上付き=100%が素の高さ・**使う範囲は100〜150%**・100%未満は下付きの領域)。**動きは1ミリも変えていない**(既に正しいので)。★[[project_metex_percent_naming]] の結論も差し替え= 「`%`をやめて高さ0〜100に」は**不要**。`%` のままで、**100%を素の高さと呼ぶ**だけで意味が通る。名前を変えるより、正しい所を基準と呼ぶ方が安い。
 // - v4.0.135(俊克 8/12 am06:56 バグ1「素の見出しに累乗を入れると、大きく離れて、前の行の領域まで進入してしまう。正確な記法でも駄目。なぜ?」): ★真因=**見出しの font-size と上付きの font-size が、同じ1つのspanで取り合いになり、見出しが勝っていた**。MeOSの見出しは装飾で `font-size: 1.1〜1.3em` を被せる。上付きも装飾で `font-size: 0.68em` を被せる。範囲が重なるとMonacoは**1つのspanに両方のクラスを載せる**so、!important の無い方は負ける。★そして効き方が二重に悪い= **`vertical-align` の `em` は「その要素自身の font-size」基準**で解決される。so上付きが縮まないだけでなく、浮き上がりが **1.05×0.68=0.71em → 1.05×1.2=1.26em(ほぼ1行ぶん)** に膨らむ。**スクショで上付きの `2` が小さくなっていない**のが決定的な証拠だった(縮んでいれば別の原因)。★直し=**`font-size` に `!important`**(本体＋マーカーを隠す側の両方)。これは **v4.0.15(太字/斜体が見出し内で空白を生む)と同じ穴の別の顔**で、その時のメモに「同様の膜マーカー(MeTeX/link/highlight/strike)が見出し内に来た時も同手法で直せる」と書いてあった=**予告どおり来た**。★俊克の「100%指定と同じになるべき」について= 素の `3↑2` は**設定の既定(上付き150%)**で描く(100%ではない)。150%=「肩の頭が基準文字の頭に合う」位置so、直った後も少し高いのが正しい。低くしたければ▾で%を下げる。★行末にコメントをまとめる必要は無い(記法の問題ではなくCSSの取り合いだった)。→ [[reference_meos_notation_v4]]
@@ -6371,6 +6372,17 @@ function applyPrettyLabels(editor) {
         // 行単位の宣言が無い時は従来どおり最後のコメントを色/tipとして読む(リンクの指定は除く)
         mCpre = { index: _tail[0].start, 1: _tail[_tail.length - 1].payload };
         payloadPre = meosStripMewSignature(_tail[_tail.length - 1].payload);
+      }
+      // v4.0.138: 行末に**行単位の指定が無い**時は、真下の指定行(Mew!^)を読む。
+      //   位置は「行末の長さゼロのコメント」として渡す=本文の終わりは行末のまま・隠す範囲は空(消す物が無い)。
+      if (!dir && MEOS_SPEC_LINE) {
+        try {
+          const _sl = meosSpecLineFor(_allLines, line);
+          if (_sl && _sl.line) {
+            const _d = meosLineDirective(_sl.line);
+            if (_d && (_d.level || _d.bullet)) { mCpre = { index: dtext.length, 1: _sl.line }; payloadPre = _sl.line; dir = _d; }
+          }
+        } catch (_) { }
       }
       // コメントの宣言だけで成立させるのは「本文がある行」に限る(`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。
       const _dirOnly = !!(dir && (dir.level || dir.bullet) && mCpre.index > mP[1].length);
@@ -18046,9 +18058,11 @@ class MembraneFoldingProvider {
     // v4.0.112: 貼付の5秒を探す計測。VSCodeが自分の都合で呼ぶProviderは refresh() の外so前回は映らなかった。
     const _t0 = Date.now();
     try {
+      // v4.0.138: 膜の折り畳みに加えて、**行の外へ出した指定行/定義行**も畳める範囲として返す。
       return collectPairs(document, { excludeIndex: false })
         .filter(p => p.end > p.start)
-        .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region));
+        .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region))
+        .concat(meosDefBlockFoldingRanges(document));
     } finally { try { const _ms = Date.now() - _t0; if (_ms > 300) meosDbg('[foldingRanges] ' + _ms + 'ms lines=' + document.lineCount); } catch (_) {} }
   }
   // Call before editor.fold to force VSCode to re-request ranges from this provider.
@@ -19458,6 +19472,129 @@ function meosMeTexTokens(text) { text = (String(text).indexOf('`') >= 0) ? meosM
 // v3.5.6(俊克 7/30): 基準文字の大小を自動判定して上付きの頭を合わせる(数式変数はほぼASCII=大文字/数字/記号は背高cap≈0.7・x-height小文字は背低≈0.5)。上に伸びる小文字(bdfhklt)は背高扱い。手動 {N%} は例外用に残る。
 // TOP=150% で上付きの底が一致する頭の高さ(em)。em解決が要素自身の0.68em基準なので 0.68倍を打ち消した値(頭0.7/0.68≈1.03, x-height0.5/0.68≈0.74)。下付きは基準線(50%=0)基準なので大小非依存。
 const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
+// ===== v4.0.138(俊克 8/12 am07:44「Bをやって、それを折り畳む、という最終奥義を実装しましょう」) ==========
+// ★問題= 行末のコメントは**隠れていても桁は食う**(折り返しはモデルのテキストの桁数で決まる=v4.0.93の壁)so、
+//   指定を書くほど**続く文字が次の視覚行へ追い出される**。俊克のスクショ(Heading… が2行目へ落ちる)がそれ。
+// ★答え= **長いものは行の外へ出し、外へ出したものは畳む**。本文行は素のMarkdownだけにして、指定は**真下の行**へ。
+//   本文行が短くなるので折り返さない。そして指定行は**別の行**so**折り畳める**
+//   (1行の途中は畳めない=VS Codeの折り畳みは行単位。だから「外へ出す」が先に要る)。
+// ★記法= `<!-- Mew!^ … -->`。`^` = 「**上の行**に効く」。
+//     ## A↑2 A↓3 Heading 2026.08.12(W)am06:40.04JST
+//     <!-- Mew!^ A↑2{150%(白/緑)} A↓3{50%(白/緑)} H2 (白/green)//[]tip= -->
+//   俊克の例で **148桁 → 45桁**(ペイン58桁に収まる=折り返さない)。
+// ★結び方= **名前＋出現順**。ラベルは作らない(俊克「たとえ累乗が何個あっても、順番で対応できるんだね」)。
+//   `A↑2{…}` は1つめの `A↑2` に、次の `A↑2{…}` は2つめに。飛ばして指したい時だけ `A↑2#2{…}`=「2つめの A↑2」。
+//   ★**数えるのはMeOSで、ファイルは番号を持たない**(v4.0の「腐らない番号」と同じ思想)。
+//   ★本文行には**1文字も足さない**。ラベル `<!-- 1 -->` を本文に置く案は却下= 10文字×個数を呼び戻すことになり、
+//     俊克の例だと 45桁が **65桁**に戻って**また折り返す**(ペインは58桁)=外へ出した意味が消える。
+// ★リンクは**標準の参照形式のまま**(`[表示][]` ＋ `[表示]: url`)。識別にラベルは要らない(表示文字が名乗る)が、
+//   `[ ]` と定義行は残す=**MeOSの外でも本物のリンクとして生きる**ため。上付きの飾りとはそこが違う。
+// ★直後に書いた指定がある時は**そちらが勝つ**(近い方が強い)。従来の書き方はそのまま動く=過去は変換しない。
+const MEOS_SPEC_LINE = true;
+const MEOS_SPEC_LINE_RE = /^[ \t]*<!--[ \t]*[Mm][Ee][Ww]![ \t]*\^[ \t]*([^\n]*?)[ \t]*-->[ \t]*$/;
+// 参照形式リンクの定義行(`[表示]: https://…`)。畳む相手はこれも同じ=「行の外へ出したもの」。
+const MEOS_DEF_LINK_RE = /^[ \t]*\[[^\]\n]+\][ \t]*:[ \t]*\S/;
+// 指定行の中の上付/下付の項目。`A↑2{…}` / `↑2{…}`(基準文字を省く) / `A↑2#2{…}`(2つめ)。
+const MEOS_SPEC_ITEM_RE = /([^\s{}<>#]*[↑↓][^\s{}<>#]*)(?:#(\d{1,3}))?\{([^}]*)\}/g;
+function meosParseSpecLine(text) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('<!--') < 0) return null;                    // 足切り(大半の行はここで落ちる)
+  const m = MEOS_SPEC_LINE_RE.exec(t);
+  if (!m) return null;
+  let rest = m[1] || '';
+  const metex = [];
+  MEOS_SPEC_ITEM_RE.lastIndex = 0; let it;
+  while ((it = MEOS_SPEC_ITEM_RE.exec(rest)) !== null) metex.push({ tok: it[1], nth: it[2] ? parseInt(it[2], 10) : 0, inner: it[3] });
+  if (metex.length) rest = rest.replace(MEOS_SPEC_ITEM_RE, ' '); // 取り出した分は行単位の読み取りから外す
+  return { metex, line: rest.trim() };
+}
+// 本文行 ln の指定行(=真下の行)。無ければ null。lines は meosDocLines の配列(版ごとに1回だけ刻んである)。
+function meosSpecLineFor(lines, ln) {
+  if (!MEOS_SPEC_LINE || !lines) return null;
+  const next = lines[ln + 1];
+  return (next == null) ? null : meosParseSpecLine(next);
+}
+// 指定行の上付/下付を、本文行のトークンへ配る(名前＋出現順)。
+function meosApplySpecLineToTokens(text, toks, spec) {
+  if (!spec || !spec.metex.length || !toks || !toks.length) return;
+  const arrow = (t) => (t.kind === 'sup' ? '↑' : '↓');
+  const full = (t) => (t.base || '') + arrow(t) + text.slice(t.opStart, t.opEnd);
+  const short = (t) => arrow(t) + text.slice(t.opStart, t.opEnd);
+  const used = new Set();
+  for (const item of spec.metex) {
+    const cands = [];
+    for (let i = 0; i < toks.length; i++) if (item.tok === full(toks[i]) || item.tok === short(toks[i])) cands.push(i);
+    if (!cands.length) continue;
+    let pick = -1;
+    if (item.nth > 0) { if (item.nth - 1 < cands.length) pick = cands[item.nth - 1]; }
+    else for (const c of cands) { if (!used.has(c)) { pick = c; break; } }
+    if (pick < 0) continue;
+    used.add(pick);
+    const t = toks[pick];
+    if (t.pct != null || t.fg != null || t.bg != null) continue; // 直後の指定が勝つ(近い方が強い)
+    const pm = /(\d{1,3})\s*%/.exec(item.inner); if (pm) t.pct = parseInt(pm[1], 10);
+    let cc = /\(([^)/]*)\/([^)]*)\)/.exec(item.inner); if (!cc) cc = /([^\s%(){}/]*)\/([^\s%(){}/]*)/.exec(item.inner);
+    if (cc) { t.fg = normalizeFgColor(cc[1]); t.bg = normalizeBgColor(cc[2]); }
+  }
+}
+// 書く側= この行の指定を**外へ出す**。1行を {本文, 指定行} に割る(純関数so headless で確かめられる)。
+// ★形が最初から噛み合っている= 直後コメントの中身 `A↑2{150%(白/緑)}` も、行末コメントの中身 `H2 (白/green)//[]tip=` も、
+//   署名を外せば**そのまま指定行の項目**になる。並べて `<!-- Mew!^ … -->` に包むだけでよい。
+// ★**リンクの箱は触らない**(`<!-- Mew! =={ -->…<!-- …}== -->` は前後2つで1組so、片方だけ動かすと壊れる)=
+//   リンクは元から標準の参照形式で外へ出せる[[project_out_of_line_and_fold]]。★鉄則「リンクは常に先に判定」(6度目)。
+// ★空白は**原則足さない**(コメントは元から隠れているso、消しても見えている文字は変わらない)。
+//   ただし**足さないと記法の切れ目が消える所だけ**足す= `A↓3<!--…-->Heading` からコメントを抜くと
+//   `A↓3Heading` になり、上付き/下付きの operand が `3Heading` まで飲み込む(英数字を貪欲に取るため)。
+//   **コメントが区切りとして働いていた**= headlessの往復テストで捕まえた。両隣が英数字の時だけ空白1つ。
+function meosMoveSpecsOutOfLine(text) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('<!--') < 0) return null;
+  if (MEOS_SPEC_LINE_RE.test(t)) return null;                 // 指定行そのものは対象外
+  const linkSpans = [];
+  try { MEOS_MELINK_RE.lastIndex = 0; let lk; while ((lk = MEOS_MELINK_RE.exec(t)) !== null) linkSpans.push([lk.index, lk.index + lk[0].length]); } catch (_) { }
+  const inLink = (i) => linkSpans.some(([a, b]) => i >= a && i < b);
+  const items = [], cuts = [];
+  const re = /<!--([^\n]*?)-->/g; let m;
+  while ((m = re.exec(t)) !== null) {
+    if (inLink(m.index)) continue;
+    const payload = meosStripMewSignature(m[1] || '').trim();
+    if (!payload) continue;
+    const isMetex = /[↑↓][^\s{}<>]*\{[^}]*\}/.test(payload) || /^\{[^}]*\}$/.test(payload);
+    const isLine = !!(meosLineDirective(payload) || meosLooksLikeSpecComment(payload));
+    if (!isMetex && !isLine) continue;                        // ただのHTMLコメントは動かさない
+    items.push(payload); cuts.push([m.index, m.index + m[0].length]);
+  }
+  if (!items.length) return null;
+  let body = '', prev = 0;
+  const glue = /[0-9A-Za-z\u00b7]/; // operand に使える文字(meosMeTexTokens の isOp と同じ範囲)
+  for (const [a, b] of cuts) {
+    body += t.slice(prev, a);
+    const l = body.slice(-1), r = t.charAt(b);
+    if (l && r && glue.test(l) && glue.test(r)) body += ' '; // 切れ目が消えるので1つだけ足す
+    prev = b;
+  }
+  body += t.slice(prev);
+  body = body.replace(/[ \t]+$/, '');
+  if (!body.trim()) return null;                              // 本文が消えるなら何もしない(コメントだけの行)
+  return { body, spec: '<!-- ' + MEOS_MEW_SIG + '^ ' + items.join(' ') + ' -->' };
+}
+// 折り畳み= 「行の外へ出したもの」(指定行＋リンク定義行)の連なりを、その**直前の行**の下に畳む。
+// ★畳むと本文行だけが残り、空白地帯が消える=俊克の言う最終奥義。畳む/開くはVS Codeの標準の折り畳み。
+function meosDefBlockFoldingRanges(document) {
+  const out = [];
+  if (!MEOS_SPEC_LINE || !document) return out;
+  try {
+    const lines = meosDocLines(document), n = Math.min(document.lineCount, lines.length);
+    const isDef = (t) => !!t && ((t.indexOf('<!--') >= 0 && MEOS_SPEC_LINE_RE.test(t)) || (t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t)));
+    for (let ln = 1; ln < n; ln++) {
+      if (!isDef(lines[ln])) continue;
+      let e = ln; while (e + 1 < n && isDef(lines[e + 1])) e++;
+      if (!isDef(lines[ln - 1])) out.push(new vscode.FoldingRange(ln - 1, e, vscode.FoldingRangeKind.Region));
+      ln = e;
+    }
+  } catch (_) { }
+  return out;
+}
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
 // v4.0.62(俊克): 命令トークン付き `<!-- A↑2{150%(白/緑)} -->` も同じく隠す(見えているのはバグ)。
@@ -19515,6 +19652,7 @@ function meosApplyMeTexDecorations(editor) {
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
     let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 150) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 50) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
     const doc = editor.document; const hideRanges = [], styleRanges = new Map(); // style → ranges[]
+    const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
     for (const vr of vrs) {
@@ -19523,6 +19661,8 @@ function meosApplyMeTexDecorations(editor) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
         const toks = meosMeTexTokens(text);
+        // v4.0.138: 直後に指定が無いトークンは、**真下の指定行**から名前＋出現順で受け取る。
+        if (MEOS_SPEC_LINE) { try { meosApplySpecLineToTokens(text, toks, meosSpecLineFor(_slLines, ln)); } catch (_) { } }
         for (const t of toks) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
@@ -20259,6 +20399,29 @@ function activate(context) {
   // v4.0.119(俊克 8/10 am00:07「もっと小さいフォント指定にしないと駄目みたいね」):
   // ★原因は倍率ではなく**目標桁数**。既定80に対し俊克のペインは約58桁(Me Dockが右半分=MeOSの標準配置)so、
   //   80に収めても58には収まらない。既定を勝手に下げると全員の表がいきなり縮む=非侵襲に反するため、**選べる口**を作る。
+  // v4.0.138(俊克 8/12): この行の指定を**外へ出す**=本文行を素のMarkdownだけにして、指定は真下の行へ。
+  //   折り返しが止まり、外へ出した行は畳める。選択範囲があればその行すべて・無ければカーソル行。
+  //   ★下から上へ書き換える(行を足すと下の行番号がずれるため)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.specOutOfLine', async () => {
+    const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    if (!editor || !editor.document) return;
+    const doc = editor.document;
+    const lines = [];
+    try { for (const sel of editor.selections) for (let l = sel.start.line; l <= sel.end.line; l++) lines.push(l); } catch (_) { }
+    const uniq = Array.from(new Set(lines)).filter(l => l >= 0 && l < doc.lineCount).sort((a, b) => b - a); // 下から上へ
+    const plan = [];
+    for (const l of uniq) { const r = meosMoveSpecsOutOfLine(doc.lineAt(l).text); if (r) plan.push({ l, r }); }
+    if (!plan.length) { vscode.window.showInformationMessage('MeOS: この行に、外へ出せる指定はありません。'); return; }
+    const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+    await editor.edit(eb => {
+      for (const { l, r } of plan) {
+        eb.replace(doc.lineAt(l).range, r.body);
+        eb.insert(new vscode.Position(l, doc.lineAt(l).text.length), eol + r.spec);
+      }
+    });
+    try { refresh(editor); } catch (_) { }
+    vscode.window.showInformationMessage('MeOS: ' + plan.length + ' 行の指定を下の行へ出しました(折り畳めます)。');
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableFitWidth', async () => {
     // v4.0.122(俊克 質問1「60を設定しても、もう一度見るとどれが設定されているか分らない」):
     // ★現在値を**設定**から読んでいたが、v4.0.121で保存先をglobalStateに移したので食い違っていた。
