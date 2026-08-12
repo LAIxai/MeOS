@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.154(俊克 8/12 pm03:11「従来記法の見出しが全滅だよ。なぜ? しかもVSCmを再起動するとMe Dockが10秒以上真っ黒」→ v4.0.151に戻した): ★★**v4.0.152で私が作ったバグ2つ**。★【見出し全滅の真因】`_sc` が null の時に **`_sc.end` を読んでいた**=FC行から色を引いた時はコメントが無い(=`_sc` が null)のに、隠す範囲を作ろうとして**例外**。`applyPrettyLabels` が丸ごと死ぬso、**その先で描くはずの見出しが全部消える**。取消線側には `if (_sc)` の番人が居たのに、**ハイライト側だけ抜けていた**=同じ形の2箇所を直したのに、片方しか確かめなかった。★【10秒の真因】**全行を回るパスで、毎行 指定行を引いていた**(15万行ぶんの走査)。→ **必要になった時だけ引く**(遅延)。`==` や `~~` が実際に在る行だけで済む。★★教訓= **全行ループに何かを足す時は、必ず遅延か足切り**(v4.0.113で同じ穴を踏んでいる)。そして**同じ形の場所を複数直したら、全部を同じ目で見る**(片方だけ番人が居る、が起きる)。★★★教訓(いちばん大事)= **headlessで通っても、実データで壊れる**。`meosParseSpecLine` は 73/73 通っていたが、**描画側の呼び出しは1つもテストしていなかった**。純関数だけ固めて、繋ぎ目を見ていなかった。
 // - v4.0.153(点検・**4回目の同じ穴**): ★v4.0.152のREADME/CHANGELOGへの追記が、**アンカーの写し間違いでスクリプトが途中で落ち、それに気づかないままcommit・パッケージまで通っていた**。★★今日4回目= ①封印したものを宣伝(8/10) ②作ったものを語っていない(午前) ③`not` を書き忘れ ④今回。★**手順の問題だと確定した**= 「書く」を**別のスクリプトの後半**に置くと、前半が成功した時点で版が上がり、後半が落ちても**先へ進んでしまう**。→ **文書の追記はコードの変更と同じスクリプトの中で、先に書く**。そして**失敗したらそこで止める**(`&&` でつながっていない行に頼らない)。
 // - v4.0.152(俊克 8/12 pm02:46「FC方式が本当に欲しいのは、取消線なんだよ。つまり、両サイドから挟む形式だね」): ★★**俊克が正しい。しかも理由は数字ではなく構造にある**= 見出しの指定は**行末**にいるので後ろに文字が無い。でも取消線やハイライトの指定は「その語の**直後**」so**文の途中**にいて、**そこから後ろの文字が全部ずれる**。リンクで俊克が「最悪の仕様」と言ったのと同じ形so、**両サイドから挟む記法(== ~~ *** ** _)こそ行の外へ出す価値が一番大きい**。★記法= 指定行に `~~(赤/)` `==(白/黄)` `**(白/青)`。上付きと同じで**種類を名乗るだけ**、結びは**その行の何個目か**。飛ばす時は `~~#2(赤/)`、tipは `~~{(赤/)//注釈}`(`//` は行末まで伸びるso箱に入れる)。★実装= 読み取りの口が4つとも同じ形だった(`meosSpecCommentAfter` の直後に `parseColorSpec`)so、**「直後に無ければFC行から引く」を4箇所に同じ形で足すだけ**で済んだ(ハイライト/取消線/太字/斜体)。数える単位は**その行の・その種類の・何個目か**=[[feedback_one_source_for_mark_count_action]]。★これで指定行は**上付き/語の記法/行の指定**の3種類を1本の中で受けられる(headlessで分離を確認)。★俊克の日記の実測(=この機能の値打ち)= 行末に仕様コメントが付く行は**467行**、うち**63%が既にペインを超えて折り返し**、**24%はコメントを外へ出すだけで収まる**。コメントが食う桁は**中央値35桁**(58桁ペインの6割)。headless 73/73＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
 // - v4.0.151(俊克 8/12 pm02:23 実測＋「ただし、クリアしてもクリアしても no FC blocks が出てくるよ」): ★★**私が作ったログの無限ループ**。**MeOS Debug の出力チャネル自体が、VS Codeにとっては1つの文書**so、ログを1行書く→その文書が変わる→折り畳みの処理が走る→「FC行なし」とログを書く→…と回り続けていた。俊克が「クリアしても出てくる」と言ったのは、**消しているそばから自分で書き足していた**から。★真因は2つ重なっていた= ①**本物のファイル以外でも走っていた**(`output:` / settings / git差分…) ②**熱い経路でログを書いた**(ログ自体が次の発火の燃料になる)。→ 両方塞いだ(scheme が file/untitled の時だけ・黙って帰る)。★**同時に2回畳んでいた**のも直した(起動時の3連発が競合し ok が2行出ていた)→ 進行中フラグで1回に。★★教訓= **自分の出力が自分の入力に戻る所でログを書かない**。★【実測(俊克の日記 155,306行)】**走査は30ms未満**(`[fcScan]` が1行も出ない=閾値未満)／**畳むのは209ms・22ブロック**(起動時に1回だけ)。→ **元栓を落とす必要は無い**と判断。
@@ -5997,7 +5998,11 @@ function applyPrettyLabels(editor) {
   for (let line = 0; line < _lineCount; line++) {
     const text = _allLines[line];
     // v4.0.152: この行のFC指定行(真下)。語に効く記法の色/tipを、行の外から受け取るため。
-    const _fcL = MEOS_SPEC_LINE ? meosSpecLineFor(_allLines, line) : null;
+    // ★v4.0.154: **必要になった時だけ引く**(遅延)。ここは**全行を回るパス**so、毎行引くと15万行ぶんの
+    //   走査になり、Me Dockが10秒以上真っ黒になった(俊克 pm03:11)。== や ~~ が実際に在る行だけで済む。
+    //   これは v4.0.113 と同じ穴(全行パスに重い処理を足した)=**全行ループに何かを足す時は、必ず遅延か足切り**。
+    let _fcLv = null, _fcLdone = false;
+    const _fcL = () => { if (!_fcLdone) { _fcLdone = true; _fcLv = MEOS_SPEC_LINE ? meosSpecLineFor(_allLines, line) : null; } return _fcLv; };
     let _fcHi = 0, _fcSt = 0; // この行で何個目のハイライト/取消線か
     // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
     // 「コードブロックの中」扱いになって素の見出しが一切描画されなかった。フェンスが200行以上開きっぱなしなら
@@ -6197,7 +6202,7 @@ function applyPrettyLabels(editor) {
           // v4.0.56: 素の `==本文==` の直後に仕様コメントがあれば、それを色/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
           // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の ==」を引く。
-          const _fcRaw = (!_sc && _fcL) ? meosFcFmtInner(_fcL, '==', ++_fcHi) : (_fcHi++, null);
+          const _fcRaw = _sc ? (_fcHi++, null) : meosFcFmtInner(_fcL(), '==', ++_fcHi);
           if (_sc || _fcRaw) {
             const hi2 = parseColorSpec(_sc ? _sc.raw : _fcRaw, 'bg', _sc ? _sc.raw : _fcRaw);
             if (hi2.bgKey || hi2.fgKey || hi2.comment) {
@@ -6205,7 +6210,7 @@ function applyPrettyLabels(editor) {
               if (!bgKey && !fgKey) bgKey = 'yellow';
               if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
             }
-            highlightMarkerRanges.push({ range: new vscode.Range(line, closeEnd, line, _sc.end) }); // コメントは隠す
+            if (_sc) highlightMarkerRanges.push({ range: new vscode.Range(line, closeEnd, line, _sc.end) }); // v4.0.154: FC行から引いた時は _sc が無い(隠すコメントも無い)
           }
         }
         const bodyEnd = innerStart + bodyLen;
@@ -6276,7 +6281,7 @@ function applyPrettyLabels(editor) {
           // v4.0.56(俊克): 素の `~~本文~~` の直後に仕様コメントがあれば、線色/背景/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
           // v4.0.152(俊克「FC方式が本当に欲しいのは取消線」): 直後にコメントが無ければ、真下の指定行から引く。
-          const _fcRaw = (!_sc && _fcL) ? meosFcFmtInner(_fcL, '~~', ++_fcSt) : (_fcSt++, null);
+          const _fcRaw = _sc ? (_fcSt++, null) : meosFcFmtInner(_fcL(), '~~', ++_fcSt);
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
@@ -20447,13 +20452,14 @@ function meosApplyBoldDecorations(editor) {
         // v4.0.57(俊克): 素の記法の直後に仕様コメントがあれば色/tipとして使い、コメントは隠す(新形)。
         //   `**本文**<!-- (白/青)//[]tip= -->` — MeOS外では本物の太字。旧 `**{ }**` は read-both。
         // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の kind」を引く。
-        const _fcL2 = MEOS_SPEC_LINE ? meosSpecLineFor(_bLines, ln) : null;
+        let _fcL2v = null, _fcL2done = false;
+        const _fcL2 = () => { if (!_fcL2done) { _fcL2done = true; _fcL2v = MEOS_SPEC_LINE ? meosSpecLineFor(_bLines, ln) : null; } return _fcL2v; };
         const _fcOrd = {};
         const _spec = (e0, kind) => {
           const sc = meosSpecCommentAfter(text, e0);
           const ord = kind ? (_fcOrd[kind] = (_fcOrd[kind] || 0) + 1) : 0;
           if (sc) { const cs = parseColorSpec(sc.raw, 'fg', sc.raw); return { sc, cs }; }
-          const raw = (kind && _fcL2) ? meosFcFmtInner(_fcL2, kind, ord) : null;
+          const raw = kind ? meosFcFmtInner(_fcL2(), kind, ord) : null;
           if (!raw) return null;
           return { sc: null, cs: parseColorSpec(raw, 'fg', raw) };
         };
