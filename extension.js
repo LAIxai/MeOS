@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.150(俊克 8/12 pm02:16「実測は、ログをクリアしてからVSCmを再起動でいいのか?」): ★**そのままでは数字が出ない**= 私が計測を仕掛けたのは「畳むコマンド」だけで、15万行の本当の負担である**走査そのもの(`meosDefBlocks`)を測っていなかった**。しかもFC行が0件の日記では、走査は走るのにログは「相手が居ない」としか言わない。→ **走査を計測**(30ms超で `[fcScan] …ms lines=… blocks=…`)＋FC行0件のログにも「走査は完了・行数」を出す。★教訓(またこれ)= **計測は「重い所」に仕掛ける**。v4.0.112「計測で犯人が出ないのは網の外に居る証明」の再演で、今回は自分で網を張り直した。
 // - v4.0.149(公開前の点検・3回目): ★**`not`(v4.0.148)をREADMEにもCHANGELOGにも書いていなかった**。今日これで**3回目**= ①8/10「封印したものを宣伝していた」(嘘) ②今朝「作ったものを語っていない」(取りこぼし) ③今回。**向きは違っても、ストアの顔が実物と食い違っているのは同じ**=[[feedback_readme_is_storefront]]。★教訓の格上げ= **記法を1つ足したら、その場でREADME/CHANGELOGにも足す**。「あとでまとめて書く」は、公開直前に必ず取りこぼす(3回とも公開直前に見つかっている)。★ついでに README/CHANGELOG の上付きの例を**一般形**に揃えた(`🐱↑3<!-- Mew! 🐱↑3{…} -->` → `<!-- Mew!FC A↑1(白/緑) -->`)。
 // - v4.0.148(俊克 8/12 pm01:49→pm01:54「それじゃ、こうしよう。`<!-- Mew!FC ↑↓not -->`」): ★**`not` = 「これは上付き/下付きにしない」**。俊克が pm01:16 に言った「**空の命令**」に、名前が付いた。★これで**素の矢印と本物が同じ行に混ざっても書き分けられる**= `x↑2 は上付き、A↑B は矢印` に対して `<!-- Mew!FC A↑1(白/緑) ↑↓not -->`。**順番で消費するso `#N` は要らない**(1つめは緑・2つめは素)。★**`↑↓` は「どちらの向きでも」**にした= 俊克が繰り返しこの形を書くso、そちらが自然な読み方(向きを言わずに「次の1つ」を指せる)。`A↑1not` / `A↓1not` と向きを明示してもよい。★`not` に色を書いても**塗る相手が居ないso無視**する(俊克の最初の案 `↑↓not(白/緑)` の色は効かない、と伝えて合意)。★実装の勘所= `not` の文字はトークンの文字集合に入っていて貪欲に飲み込むso、**後ろから剥がす**。そして外す token は**最後にまとめて取り除く**(途中で抜くと出現順がずれる)。★エスケープの選択肢がこれで3つ= ①コードスパン ②空白1つ ③`not`(**散文の中で、文字を1つも足さずに**止められる唯一の手)。headless 62/62＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]] [[reference_meos_notation_v4]]
 // - v4.0.147(俊克 8/12 pm01:27「FCコメントを複数並べる書き方もあったよね?」): ★★**あった。しかも穴が2つ開いていた**= ①**FC行を複数行並べる**と、畳む時は1つの塊として扱うのに**読むのは1行目だけ**だった(`meosSpecLineFor` が `lines[ln+1]` しか見ていなかった)。②**1行にFCコメントを複数並べる**と、中身が `-->` をまたいで**1つに繋がって**いた(`([^\n]*?)` が `-->` を食えたため)。**俊克の例で色が消えたのはこれが真因**。★直し= 「その行が **Mew!FCコメントだけで出来ているか**」を見て**中身を全部つないで**返す口(`meosSpecLinePayload`)を1つ作り、判定・読取り・折り畳み・「外へ出す」の**4箇所を全部そこへ集約**(写経を残さない)。さらに `meosSpecLineFor` は真下から**続く限り**のFC行をまとめて読む。→ **1行にまとめても、複数行に分けても、まったく同じ結果**になる(headlessで同値を確認)。★`-->` を食えないよう **tempered**(`(?:(?!-->)[^\n])*?`)にした=1文字ずつ確かめる形so**後戻り爆発は起きない**(v4.0.131のReDoSの教訓=`[^\n]*` を2つ並べない、を守った形)。★★残っている設計課題= 俊克の `<!-- Mew!FC ↑↓ -->`(素の矢印のための「空の命令」)は、**no-opではなく「上付きが1つある」と名乗る項目**so、1つめの上付きを食ってしまう。素の矢印を混ぜる件は**まだ決めていない**(逃げ道はコードスパンと空白の2つ)。headless 55/55＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
@@ -19708,6 +19709,7 @@ function meosMoveSpecsOutOfLine(text) {
 function meosDefBlocks(document) {
   const out = [];
   if (!MEOS_SPEC_LINE || !document) return out;
+  const _t0 = Date.now(); // v4.0.150: **走査そのもの**を計測する(前は畳むコマンドしか測っていなかった=15万行の本当の負担が映らない)
   try {
     const lines = meosDocLines(document), n = Math.min(document.lineCount, lines.length);
     const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t);
@@ -19724,6 +19726,7 @@ function meosDefBlocks(document) {
       ln = e;
     }
   } catch (_) { }
+  try { const _ms = Date.now() - _t0; if (_ms > 30) meosDbg('[fcScan] ' + _ms + 'ms lines=' + document.lineCount + ' blocks=' + out.length); } catch (_) { }
   return out;
 }
 function meosDefBlockFoldingRanges(document) {
@@ -19810,7 +19813,7 @@ async function meosAutoFoldSpecLines(editor, force) {
   if (!force && _meosFcFolded.has(key)) return;
   let heads = [];
   try { heads = meosDefBlocks(editor.document).filter(b => b.fc).map(b => b.start); } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
-  if (!heads.length) { try { meosDbg('[fcFold] no FC blocks in ' + key); } catch (_) { } return; } // 相手が居ない=済みにしない
+  if (!heads.length) { try { meosDbg('[fcFold] FC行なし(走査は完了) lines=' + editor.document.lineCount + ' ' + key); } catch (_) { } return; } // 相手が居ない=済みにしない
   if (vscode.window.activeTextEditor !== editor) { try { meosDbg('[fcFold] editor is not active — 次の機会に譲る (' + heads.length + ' blocks)'); } catch (_) { } return; }
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
