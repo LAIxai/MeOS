@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.155(俊克 8/12 pm03:21「肝心の取消線ボタンで、FC形コメントが出ない。それは未実装なの?」): ★**未実装だった**= v4.0.152で作ったのは**読む側だけ**。**書く側**を足した。★やり方= 挿入した**直後にその行の指定を外へ出す**(既にある `meosMoveSpecsOutOfLine` をそのまま使う)。**左から右へ拾うso出現順が自然に一致する**=新しい番号も要らない。★**既にFC行が真下に在る行ではやらない**(従来どおり直後に書く)= 後から行の前の方を修飾すると新しい指定行が先に入って**別の相手に結び付く**事故を、原理的に起こさない。★対象は**両サイドから挟む記法だけ**(ハイライト/取消線/太字/斜体)=俊克が「本当に欲しいのは取消線」と言った所。見出しは行末に居て後ろに文字が無いso、外へ出す値打ちより「見出しごとに1行増える」代償の方が大きい。★**既定はオフ**(今までどおり直後に書く)。パレット「MeOS: 修飾の指定を行の外に書く（FC方式）切替」で入/切。保存先は globalState=v4.0.42のユーザー既定と同じ流儀。
 // - v4.0.154(俊克 8/12 pm03:11「従来記法の見出しが全滅だよ。なぜ? しかもVSCmを再起動するとMe Dockが10秒以上真っ黒」→ v4.0.151に戻した): ★★**v4.0.152で私が作ったバグ2つ**。★【見出し全滅の真因】`_sc` が null の時に **`_sc.end` を読んでいた**=FC行から色を引いた時はコメントが無い(=`_sc` が null)のに、隠す範囲を作ろうとして**例外**。`applyPrettyLabels` が丸ごと死ぬso、**その先で描くはずの見出しが全部消える**。取消線側には `if (_sc)` の番人が居たのに、**ハイライト側だけ抜けていた**=同じ形の2箇所を直したのに、片方しか確かめなかった。★【10秒の真因】**全行を回るパスで、毎行 指定行を引いていた**(15万行ぶんの走査)。→ **必要になった時だけ引く**(遅延)。`==` や `~~` が実際に在る行だけで済む。★★教訓= **全行ループに何かを足す時は、必ず遅延か足切り**(v4.0.113で同じ穴を踏んでいる)。そして**同じ形の場所を複数直したら、全部を同じ目で見る**(片方だけ番人が居る、が起きる)。★★★教訓(いちばん大事)= **headlessで通っても、実データで壊れる**。`meosParseSpecLine` は 73/73 通っていたが、**描画側の呼び出しは1つもテストしていなかった**。純関数だけ固めて、繋ぎ目を見ていなかった。→ **煙テストを新設**(`t_render.js`)= vscodeスタブで **`applyPrettyLabels` / 太字 / MeTeX を実データ風の文書に対して実際に走らせ、①例外が出ないこと ②装飾を実際に描いていること(0なら丸ごと死んでいる)** を見る。★**そのテストが今回のバグを本当に捕まえることを確認済み**= 番人を外すと `TypeError: Cannot read properties of null (reading end)` ＋ **本体の装飾数が 52→0** になり、「見出し全滅」がそのまま再現する。
 // - v4.0.153(点検・**4回目の同じ穴**): ★v4.0.152のREADME/CHANGELOGへの追記が、**アンカーの写し間違いでスクリプトが途中で落ち、それに気づかないままcommit・パッケージまで通っていた**。★★今日4回目= ①封印したものを宣伝(8/10) ②作ったものを語っていない(午前) ③`not` を書き忘れ ④今回。★**手順の問題だと確定した**= 「書く」を**別のスクリプトの後半**に置くと、前半が成功した時点で版が上がり、後半が落ちても**先へ進んでしまう**。→ **文書の追記はコードの変更と同じスクリプトの中で、先に書く**。そして**失敗したらそこで止める**(`&&` でつながっていない行に頼らない)。
 // - v4.0.152(俊克 8/12 pm02:46「FC方式が本当に欲しいのは、取消線なんだよ。つまり、両サイドから挟む形式だね」): ★★**俊克が正しい。しかも理由は数字ではなく構造にある**= 見出しの指定は**行末**にいるので後ろに文字が無い。でも取消線やハイライトの指定は「その語の**直後**」so**文の途中**にいて、**そこから後ろの文字が全部ずれる**。リンクで俊克が「最悪の仕様」と言ったのと同じ形so、**両サイドから挟む記法(== ~~ *** ** _)こそ行の外へ出す価値が一番大きい**。★記法= 指定行に `~~(赤/)` `==(白/黄)` `**(白/青)`。上付きと同じで**種類を名乗るだけ**、結びは**その行の何個目か**。飛ばす時は `~~#2(赤/)`、tipは `~~{(赤/)//注釈}`(`//` は行末まで伸びるso箱に入れる)。★実装= 読み取りの口が4つとも同じ形だった(`meosSpecCommentAfter` の直後に `parseColorSpec`)so、**「直後に無ければFC行から引く」を4箇所に同じ形で足すだけ**で済んだ(ハイライト/取消線/太字/斜体)。数える単位は**その行の・その種類の・何個目か**=[[feedback_one_source_for_mark_count_action]]。★これで指定行は**上付き/語の記法/行の指定**の3種類を1本の中で受けられる(headlessで分離を確認)。★俊克の日記の実測(=この機能の値打ち)= 行末に仕様コメントが付く行は**467行**、うち**63%が既にペインを超えて折り返し**、**24%はコメントを外へ出すだけで収まる**。コメントが食う桁は**中央値35桁**(58桁ペインの6割)。headless 73/73＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
@@ -14373,6 +14374,29 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   // 俊克 am11:15「ボタンを押した後エディタにフォーカスを移して」。focusMeDockTargetEditorは選択を1点に潰すので使わない。
   editor.selection = bodySel;
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: bodySel });
+  // v4.0.155: FC方式が入っていれば、挿入した行の指定を**そのまま外へ出す**(両サイドから挟む記法だけ)。
+  try {
+    if (MEOS_SPEC_LINE && kind !== 'heading' && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor);
+  } catch (_) { }
+}
+// v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
+//   ★既にFC行が真下に在る時は**何もしない**=順番がずれて別の相手に結び付く事故を起こさない。
+async function meosPushLineSpecsOutOfLine(editor) {
+  if (!editor || !editor.document) return false;
+  const doc = editor.document, ln = editor.selection.active.line;
+  if (ln < 0 || ln >= doc.lineCount) return false;
+  const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
+  if (meosIsSpecLine(next)) return false;                 // 既にFC行が在る=触らない
+  const r = meosMoveSpecsOutOfLine(doc.lineAt(ln).text);
+  if (!r) return false;
+  const keep = editor.selection;
+  const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  await editor.edit(eb => {
+    eb.replace(doc.lineAt(ln).range, r.body);
+    eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + r.spec);
+  }, { undoStopBefore: false, undoStopAfter: false });
+  try { editor.selection = keep; } catch (_) { }          // 挿した本文の選択はそのまま残す
+  return true;
 }
 
 // v0.9.999124(俊克): Formatの文脈トグル。選択が空でカーソルが既存装飾の中なら、その装飾を「解除」する。
@@ -19562,6 +19586,18 @@ const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
 // ★リンクは**標準の参照形式のまま**(`[表示][]` ＋ `[表示]: url`)。識別にラベルは要らない(表示文字が名乗る)が、
 //   `[ ]` と定義行は残す=**MeOSの外でも本物のリンクとして生きる**ため。上付きの飾りとはそこが違う。
 // ★直後に書いた指定がある時は**そちらが勝つ**(近い方が強い)。従来の書き方はそのまま動く=過去は変換しない。
+// v4.0.155(俊克 8/12 pm03:21「肝心の取消線ボタンで、FC形コメントが出ない。それは未実装なの?」):
+// ★**未実装だった**= v4.0.152で作ったのは**読む側だけ**(FC行に書けば効く)。**書く側**は手付かずだった。
+// ★書く側= 挿入した**直後に、その行の指定を外へ出す**(既にある `meosMoveSpecsOutOfLine` をそのまま使う)。
+//   並びは左から右へ拾うso、**出現順が自然に一致する**=新しい番号も要らない。
+// ★**既にFC行がある行では、やらない**(従来どおり直後に書く)。
+//   後から行の前の方を修飾すると、新しい指定行が先に入って**別の相手に結び付く**=その事故を原理的に起こさない。
+// ★対象は**両サイドから挟む記法だけ**(ハイライト/取消線/太字/斜体)。俊克が「本当に欲しいのは取消線」と言った所。
+//   見出しは行末に居て後ろに文字が無いso、外へ出す値打ちが小さい(見出しごとに1行増える代償の方が大きい)。
+const MEOS_FMT_FC_KEY = 'meos.format.specOutOfLine';
+function meosFormatWritesFC() {
+  try { return !!(extensionContext && extensionContext.globalState.get(MEOS_FMT_FC_KEY, false)); } catch (_) { return false; }
+}
 const MEOS_SPEC_LINE = true;
 const MEOS_SPEC_LINE_AUTOFOLD = true; // FC付きの指定行を開いた時に1回だけ畳む。重ければ false で止められる。
 // v4.0.139(俊克 8/12 am08:49「^記号は分りにくいので(手書きで修正する時も面倒so)、`Mew!FC` ではどうか?
@@ -20743,6 +20779,14 @@ function activate(context) {
     const heads = meosDefBlocks(ed.document).filter(b => b.fc).map(b => b.start);
     if (!heads.length) return;
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: heads });
+  }));
+  // v4.0.155: 修飾の指定を「行の外(FC)」に書くかどうかの切替。既定はオフ(今までどおり直後に書く)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleFormatFC', async () => {
+    const now = meosFormatWritesFC();
+    try { if (extensionContext) await extensionContext.globalState.update(MEOS_FMT_FC_KEY, !now); } catch (_) { }
+    vscode.window.showInformationMessage(!now
+      ? 'MeOS: 修飾の指定を**行の外**に書きます（ハイライト/取消線/太字/斜体）。真下に <!-- Mew!FC … --> が出て、既定で畳まれます。'
+      : 'MeOS: 修飾の指定を**その語の直後**に書きます（今までどおり）。');
   }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.specOutOfLine', async () => {
     const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
