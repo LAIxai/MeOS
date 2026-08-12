@@ -69,9 +69,11 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   and the file holds no label or number that can go stale. Write `A↑1#2(…)` only when you mean *the
   second one*. The command palette will move a line's instructions out for you.
 - **Superscripts don't ambush your prose** — `x↑2` and `(a+b)↑2` render, but `、↑2` or `🐱↑3` stay as
-  plain text, because a superscript needs something it can sit on. Want one anyway? Name it in a comment:
-  `🐱↑3<!-- Mew! 🐱↑3{150%(white/green)} -->`. Same rule as everywhere else in MeOS — **plain text by
-  default, the comment is the command** — so you never need an escape character.
+  plain text, because a superscript needs something it can sit on. Want one anyway? Name it in a comment
+  on the line below: `<!-- Mew!FC A↑1(white/green) -->`. Want the opposite — a real arrow sitting next to a
+  real superscript? Say **`not`**: `<!-- Mew!FC A↑1(white/green) ↑↓not -->` means "colour the first one,
+  leave the second alone". Same rule as everywhere else in MeOS — **plain text by default, the comment is
+  the command** — so you never need an escape character.
 - **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
   Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
   what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.
