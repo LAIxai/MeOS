@@ -68,6 +68,10 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   Repeats are matched in the order they appear, so **editing your text never breaks the instruction**,
   and the file holds no label or number that can go stale. Write `A↑1#2(…)` only when you mean *the
   second one*. The command palette will move a line's instructions out for you.
+  A spec line carries **everything the line holds** — the heading, the superscripts, and the highlight or
+  strikethrough sitting in the middle of your sentence: `<!-- Mew!FC ~~(red/) ==(white/yellow) -->`.
+  **Those inline ones matter most**: their comment sits *between your words*, not at the end, so every
+  character after it gets pushed along.
 - **Superscripts don't ambush your prose** — `x↑2` and `(a+b)↑2` render, but `、↑2` or `🐱↑3` stay as
   plain text, because a superscript needs something it can sit on. Want one anyway? Name it in a comment
   on the line below: `<!-- Mew!FC A↑1(white/green) -->`. Want the opposite — a real arrow sitting next to a
