@@ -8366,6 +8366,10 @@ async function toggleRawMode() {
   meosRawMode = !meosRawMode;
   const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (ed) refresh(ed);
+  // v4.0.141(俊克 改良2「生モードにしてもコメントが見えない」): Rawは**生データを全部見せる**約束so、
+  //   装飾だけでなく**折り畳みも解く**(切った時は畳み直す)。Rawボタンは焦点がMe Dockに在るまま押されるが、
+  //   meosSyncFcFoldForCursor はアクティブなエディタを見て動くso、そのまま呼べる。
+  try { if (ed) await meosSyncFcFoldForCursor(ed); } catch (_) { }
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'rawState', on: meosRawMode }); } catch (_) {}
   vscode.window.setStatusBarMessage('MeOS: Raw view ' + (meosRawMode ? 'ON (rendering off — plain editor)' : 'OFF'), 1800);
 }
@@ -19622,6 +19626,64 @@ function meosDefBlockFoldingRanges(document) {
 // ★**FCと書いてあるものだけ**を既定で畳む(俊克「FCを書かなければ、エディタ上ではコメントが見える」)。
 //   リンクの定義行は標準のMarkdownで、それ自体は読める物so勝手には畳まない(畳みたければ手で畳める)。
 // ★畳むのは**その文書につき1回だけ**(セッション中)。毎回畳み直すと、手で開いた人と喧嘩になる。
+// ===== v4.0.141(俊克 8/12 am09:44 改良2「インライン編集にしてもコメントが見えない。同様に、生モードにしてもコメントが見えない」) =====
+// ★**私の設計漏れ**。MeOSには根本の約束が2つある=
+//   ①**カーソルを置いた行は生データを見せる**(v0.9.659以来) ②**Rawなら全部見える**(v0.9.723)。
+//   装飾はどちらもちゃんと解除していたのに、**折り畳みは解除していなかった**so、
+//   指定行を外へ出した瞬間に「見たいのに見られない」が生まれた=外へ出した代償を私が払い忘れていた。
+// ★直し= **折り畳みも同じ約束に従わせる**。
+//   ・カーソルがFCの塊の中(頭の行を含む)に入ったら、**その塊だけ**開く。出たら畳み直す。
+//   ・Rawの間は**全部**開く。Rawを切ったら畳み直す。
+// ★**カーソルが動くたびに15万行を舐めない**= 塊の一覧は document.version でキャッシュする。
+//   (これを怠ると、それこそ固着の原因になる=[[project_meos_freeze_pattern]] / v4.0.125 の教訓)
+// ★開閉は非同期so、**今どれを開けているか**を1つの変数で覚えて、二重に投げない。
+let _meosFcBlocksCache = { key: '', blocks: null };
+function meosFcBlocks(document) {
+  try {
+    const key = String(document.uri || '') + '@' + document.version;
+    if (_meosFcBlocksCache.key === key) return _meosFcBlocksCache.blocks;
+    const blocks = meosDefBlocks(document).filter(b => b.fc);
+    _meosFcBlocksCache = { key, blocks };
+    return blocks;
+  } catch (_) { return []; }
+}
+let _meosFcOpen = null;      // 今カーソル(またはRaw)のために開けている物: 行番号 / 'ALL' / null
+let _meosFcCursorTimer = null;
+let _meosFcBusy = false;
+function meosScheduleFcCursorSync(editor) {
+  if (!MEOS_SPEC_LINE_AUTOFOLD) return;
+  if (_meosFcCursorTimer) clearTimeout(_meosFcCursorTimer);
+  _meosFcCursorTimer = setTimeout(() => { _meosFcCursorTimer = null; meosSyncFcFoldForCursor(editor); }, 180);
+}
+async function meosSyncFcFoldForCursor(editor) {
+  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy) return;
+  try {
+    if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
+    const blocks = meosFcBlocks(editor.document);
+    if (!blocks.length) return;
+    const raw = (typeof meosRawMode !== 'undefined' && meosRawMode);
+    _meosFcBusy = true;
+    const fold = (ls) => vscode.commands.executeCommand('editor.fold', { selectionLines: ls });
+    const unfold = (ls) => vscode.commands.executeCommand('editor.unfold', { selectionLines: ls });
+    if (raw) { // Raw=生データを全部見せる約束
+      if (_meosFcOpen !== 'ALL') { await unfold(blocks.map(b => b.start)); _meosFcOpen = 'ALL'; }
+      return;
+    }
+    if (_meosFcOpen === 'ALL') { await fold(blocks.map(b => b.start)); _meosFcOpen = null; } // Rawが切れた=畳み直す
+    const line = editor.selection.active.line;
+    const hit = blocks.find(b => line >= b.start && line <= b.end);
+    if (hit) {
+      if (_meosFcOpen !== hit.start) {
+        if (_meosFcOpen != null) await fold([_meosFcOpen]);
+        await unfold([hit.start]);
+        _meosFcOpen = hit.start;
+      }
+    } else if (_meosFcOpen != null) {
+      await fold([_meosFcOpen]);
+      _meosFcOpen = null;
+    }
+  } catch (_) { } finally { _meosFcBusy = false; }
+}
 const _meosFcFolded = new Set();
 // v4.0.140(俊克 質問1「FC指定なのに、なぜコメントが自動で折り畳まれないのか?」):
 // ★スクショ2枚目で**折り畳みマーク(>)は出ていた**=**範囲の提供は正しく、失敗しているのは「畳む」動作だけ**と絞れた。
@@ -20466,6 +20528,17 @@ function activate(context) {
   // v4.0.139: FC付きの指定行を「開いた時に1回だけ」畳む。手で開いた人と喧嘩しないよう、文書につき1回。
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) setTimeout(() => { try { meosAutoFoldSpecLines(ed); } catch (_) { } }, 400); }));
   context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
+  // v4.0.141: カーソルがFCの塊に入ったらそこだけ開く(出たら畳み直す)=「カーソル行は生データ」を折り畳みにも広げる。
+  // v4.0.141(俊克 改良1「インストール直後は折り畳まれない。エディタをクリックしてアクティブにすると折り畳まれた」):
+  //   ★**俊克の観察で原因が確定**= `editor.fold` は**焦点のあるエディタ**にしか効かない。インストール直後は焦点が
+  //     拡張パネルに在るので空振りしていた。★**焦点は奪わない**(読んでいる所から勝手に飛ばすのは行儀が悪い)。
+  //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
+  //     済んでいれば即returnするso何度呼ばれても無駄は無い。
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+    try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
+    try { meosScheduleFcCursorSync(e.textEditor); } catch (_) { }
+  }));
+  context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st && st.focused) setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 500); }));
   // v4.0.140: 起動直後は「まだアクティブでない/範囲が未計算」で空振りしやすいso、間を空けて3回ぶつける(済みなら即returnするso無駄は無い)。
   for (const _ms of [1200, 3000, 6000]) { try { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, _ms); } catch (_) { } }
   // 手で畳み直す/開く口。自動が効かない時と、開いて中身を読みたい時のため。
