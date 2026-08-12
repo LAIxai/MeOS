@@ -71,7 +71,9 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   A spec line carries **everything the line holds** — the heading, the superscripts, and the highlight or
   strikethrough sitting in the middle of your sentence: `<!-- Mew!FC ~~(red/) ==(white/yellow) -->`.
   **Those inline ones matter most**: their comment sits *between your words*, not at the end, so every
-  character after it gets pushed along.
+  character after it gets pushed along. Two palette commands move a line either way — out to a spec line,
+  or **back to the end of the line** when you want to reorder or delete things by hand. Going back is
+  **self-checked**: MeOS re-derives the spec line from the restored text and refuses if anything woulddiffer.
 - **Superscripts don't ambush your prose** — `x↑2` and `(a+b)↑2` render, but `、↑2` or `🐱↑3` stay as
   plain text, because a superscript needs something it can sit on. Want one anyway? Name it in a comment
   on the line below: `<!-- Mew!FC A↑1(white/green) -->`. Want the opposite — a real arrow sitting next to a

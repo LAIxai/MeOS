@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.156(俊克 8/12 pm03:35「FC方式を一旦解除して従来の1行方式に戻す。その上で並べ替えや一部削除をする。そして最後にFC化したければFC化する。つまり、どっちを選択するかは自由」＋pm03:43「そのメニューはどこ?」): ★★**俊克の設計の方が正しい**= 私がv4.0.155で入れた制限(「既にFC行がある行では外へ出さない」)は、**順番がずれる事故を避けるための逃げ**だった。**戻せるなら逃げが要らない**=戻して1行の形にして並べ替え・削除をして、済んだらまたFC化すればいい。**決めるのは書き手**=MeOSの流儀そのもの。★★**安全装置を先に置いた**= 戻した結果を**もう一度FC化してみて、元と一致しなければ実行しない**(①本文が1文字も違わない ②指定の項目が同じ)。→ 私の位置合わせが間違っていても**行が壊れることは原理的に起きない**(何も起きないだけ)。今日「見出し全滅」を出荷した直後so、**データを書き換える機能は自己検証付きで出す**。★記法を探す形は描画側と**同じもの**を定数にまとめた(写経がズレる事故を減らす)。★パレット「MeOS: 指定を行末に戻す（FC解除）」。★**往復テストを新設**(1行の形→FC化→FC解除→**元と1バイトも違わないか**)= **8/8 通過**(取消線/ハイライト/太字/斜体/見出し混在/上付き/上付き2つ＋下付き/tip付きが2つ)。★そのテストが**さっそく1件捕まえた**= `~~ (赤/)//[]tip=` の `//tip` がFC行で拾えず、**次の項目や行単位の指定を巻き込んで**いた(`//` は行末まで伸びるため)。→ 外へ出す時に **`//` を持つものは箱に入れる**(`~~{(赤/)//tip}`)。
 // - v4.0.155(俊克 8/12 pm03:21「肝心の取消線ボタンで、FC形コメントが出ない。それは未実装なの?」): ★**未実装だった**= v4.0.152で作ったのは**読む側だけ**。**書く側**を足した。★やり方= 挿入した**直後にその行の指定を外へ出す**(既にある `meosMoveSpecsOutOfLine` をそのまま使う)。**左から右へ拾うso出現順が自然に一致する**=新しい番号も要らない。★**既にFC行が真下に在る行ではやらない**(従来どおり直後に書く)= 後から行の前の方を修飾すると新しい指定行が先に入って**別の相手に結び付く**事故を、原理的に起こさない。★対象は**両サイドから挟む記法だけ**(ハイライト/取消線/太字/斜体)=俊克が「本当に欲しいのは取消線」と言った所。見出しは行末に居て後ろに文字が無いso、外へ出す値打ちより「見出しごとに1行増える」代償の方が大きい。★**既定はオフ**(今までどおり直後に書く)。パレット「MeOS: 修飾の指定を行の外に書く（FC方式）切替」で入/切。保存先は globalState=v4.0.42のユーザー既定と同じ流儀。
 // - v4.0.154(俊克 8/12 pm03:11「従来記法の見出しが全滅だよ。なぜ? しかもVSCmを再起動するとMe Dockが10秒以上真っ黒」→ v4.0.151に戻した): ★★**v4.0.152で私が作ったバグ2つ**。★【見出し全滅の真因】`_sc` が null の時に **`_sc.end` を読んでいた**=FC行から色を引いた時はコメントが無い(=`_sc` が null)のに、隠す範囲を作ろうとして**例外**。`applyPrettyLabels` が丸ごと死ぬso、**その先で描くはずの見出しが全部消える**。取消線側には `if (_sc)` の番人が居たのに、**ハイライト側だけ抜けていた**=同じ形の2箇所を直したのに、片方しか確かめなかった。★【10秒の真因】**全行を回るパスで、毎行 指定行を引いていた**(15万行ぶんの走査)。→ **必要になった時だけ引く**(遅延)。`==` や `~~` が実際に在る行だけで済む。★★教訓= **全行ループに何かを足す時は、必ず遅延か足切り**(v4.0.113で同じ穴を踏んでいる)。そして**同じ形の場所を複数直したら、全部を同じ目で見る**(片方だけ番人が居る、が起きる)。★★★教訓(いちばん大事)= **headlessで通っても、実データで壊れる**。`meosParseSpecLine` は 73/73 通っていたが、**描画側の呼び出しは1つもテストしていなかった**。純関数だけ固めて、繋ぎ目を見ていなかった。→ **煙テストを新設**(`t_render.js`)= vscodeスタブで **`applyPrettyLabels` / 太字 / MeTeX を実データ風の文書に対して実際に走らせ、①例外が出ないこと ②装飾を実際に描いていること(0なら丸ごと死んでいる)** を見る。★**そのテストが今回のバグを本当に捕まえることを確認済み**= 番人を外すと `TypeError: Cannot read properties of null (reading end)` ＋ **本体の装飾数が 52→0** になり、「見出し全滅」がそのまま再現する。
 // - v4.0.153(点検・**4回目の同じ穴**): ★v4.0.152のREADME/CHANGELOGへの追記が、**アンカーの写し間違いでスクリプトが途中で落ち、それに気づかないままcommit・パッケージまで通っていた**。★★今日4回目= ①封印したものを宣伝(8/10) ②作ったものを語っていない(午前) ③`not` を書き忘れ ④今回。★**手順の問題だと確定した**= 「書く」を**別のスクリプトの後半**に置くと、前半が成功した時点で版が上がり、後半が落ちても**先へ進んでしまう**。→ **文書の追記はコードの変更と同じスクリプトの中で、先に書く**。そして**失敗したらそこで止める**(`&&` でつながっていない行に頼らない)。
@@ -14379,6 +14380,93 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     if (MEOS_SPEC_LINE && kind !== 'heading' && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor);
   } catch (_) { }
 }
+// ===== v4.0.156(俊克 8/12 pm03:35「FC方式を一旦解除して、従来の1行方式に戻す。その上で並べ替えや一部削除をする。
+//   そして最後にFC化したければFC化する。つまり、どっちを選択するかは自由」＋pm03:43「そのメニューはどこ?」) ======
+// ★★**俊克の設計の方が正しい**= 私が入れた制限(「既にFC行がある行では外へ出さない」)は、
+//   **順番がずれる事故を避けるための逃げ**だった。**戻せるなら逃げが要らない**=
+//   戻して(1行の形にして)並べ替えや削除をして、済んだらまたFC化すればいい。MeOSの流儀そのもの=**決めるのは書き手**。
+// ★戻すには「その項目が**この行の何個目の記法か**」を数えて、**正しい位置に挿し直す**必要がある。
+//   位置を探す物差しが描画側とズレると、行が壊れる(今日それで見出しを全滅させた)。
+// ★so **安全装置を先に置く**= 戻した結果を**もう一度FC化してみて、元と一致しなければ実行しない**。
+//   一致の条件は①**本文が1文字も違わない**こと ②指定の項目が同じこと。
+//   これで、私の位置合わせが間違っていても**行が壊れることは原理的に起きない**(何も起きないだけ)。
+// ★記法を探す形は描画側と**同じもの**を使う(下の定数は 6178/6247/20503/20505/20510 と同一)。
+const MEOS_INLINE_MARK_RES = [
+  ['==', /=={([^\n]*?)}==|(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g],
+  ['~~', /~~\{([^\n]*?)\}~~|~~(?!\{)([^~\n]+?)~~/g],
+  ['***', /\*\*\*([^*\n]+?)\*\*\*/g],
+  ['**', /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g],
+  ['_', /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g],
+];
+// この行にある「語に効く記法」の終わり位置を、種類ごとに出現順で返す。[{kind, ord, end}]
+function meosInlineMarkEnds(text) {
+  const t = String(text == null ? '' : text);
+  const out = [];
+  for (const [kind, re] of MEOS_INLINE_MARK_RES) {
+    re.lastIndex = 0; let m, ord = 0;
+    while ((m = re.exec(t)) !== null) { ord++; out.push({ kind, ord, end: m.index + m[0].length }); }
+  }
+  return out;
+}
+// FC行を本文の行末形式へ戻す。{ line } か null(戻せない/戻すと壊れる時)。
+function meosPullSpecsBackInline(bodyText, specText) {
+  try {
+    const spec = meosParseSpecLine(specText);
+    if (!spec) return null;
+    const body = String(bodyText == null ? '' : bodyText);
+    const ins = []; // {at, text}
+    // ① 語に効く記法= その種類の ord 個目の直後へ
+    const ends = meosInlineMarkEnds(body);
+    for (const it of spec.fmt || []) {
+      const ord = it.nth > 0 ? it.nth : (1 + (spec.fmt.filter(x => x.kind === it.kind).indexOf(it)));
+      const hit = ends.find(e => e.kind === it.kind && e.ord === ord);
+      if (!hit) return null;                                  // 相手が見つからない=戻さない
+      ins.push({ at: hit.end, text: '<!-- ' + MEOS_MEW_SIG + ' ' + it.kind + ' ' + it.inner + ' -->' });
+    }
+    // ② 上付き/下付き= その向きの ord 個目の直後へ
+    const toks = meosMeTexTokens(body, spec);
+    for (const it of spec.metex || []) {
+      if (it.not) return null;                                // not は行末形式に相当する形が無い=戻さない
+      const kind = String(it.tok).indexOf('↑') >= 0 ? 'sup' : 'sub';
+      const cands = toks.filter(t => t.kind === kind);
+      const ord = it.nth > 0 ? it.nth : (1 + (spec.metex.filter(x => (String(x.tok).indexOf('↑') >= 0 ? 'sup' : 'sub') === kind).indexOf(it)));
+      const t2 = cands[ord - 1];
+      if (!t2) return null;
+      const tokTxt = (t2.base || '') + (kind === 'sup' ? '↑' : '↓') + body.slice(t2.opStart, t2.opEnd);
+      const inner = /^\(/.test(it.inner) ? ('{' + it.inner + '}') : (it.inner ? ('{' + it.inner + '}') : '');
+      ins.push({ at: t2.opEnd, text: '<!-- ' + MEOS_MEW_SIG + ' ' + tokTxt + inner + ' -->' });
+    }
+    // ③ 行に効く指定= 行末へ
+    let line = body;
+    ins.sort((a, b) => b.at - a.at);                          // 後ろから挿す(位置がずれない)
+    for (const x of ins) line = line.slice(0, x.at) + x.text + line.slice(x.at);
+    if (spec.line) line = line + '<!-- ' + MEOS_MEW_SIG + ' ' + spec.line + ' -->';
+    // ★安全装置= 戻した行をもう一度FC化して、元と一致するか確かめる
+    const back = meosMoveSpecsOutOfLine(line);
+    if (!back || back.body !== body) return null;             // 本文が1文字でも変わるなら実行しない
+    const a = meosParseSpecLine(back.spec), b = meosParseSpecLine(specText);
+    const sig = (x) => x ? JSON.stringify([(x.fmt || []).map(i => [i.kind, i.nth, i.inner]), (x.metex || []).map(i => [String(i.tok).indexOf('↑') >= 0 ? 'sup' : 'sub', i.nth, i.inner, !!i.not]), x.line]) : '';
+    if (sig(a) !== sig(b)) return null;                       // 指定が変わるなら実行しない
+    return { line };
+  } catch (_) { return null; }
+}
+// カーソル行(またはその上の本文行)のFC行を、行末形式へ戻す。
+async function meosPullLineSpecsBackInline(editor) {
+  if (!editor || !editor.document) return false;
+  const doc = editor.document;
+  let ln = editor.selection.active.line;
+  if (meosIsSpecLine(doc.lineAt(ln).text) && ln > 0) ln--;    // 指定行にカーソルが在るなら、その上が本文
+  if (ln + 1 >= doc.lineCount) return false;
+  const specLn = ln + 1;
+  if (!meosIsSpecLine(doc.lineAt(specLn).text)) return false;
+  const r = meosPullSpecsBackInline(doc.lineAt(ln).text, doc.lineAt(specLn).text);
+  if (!r) return false;
+  await editor.edit(eb => {
+    eb.replace(doc.lineAt(ln).range, r.line);
+    eb.delete(new vscode.Range(new vscode.Position(ln, doc.lineAt(ln).text.length), new vscode.Position(specLn, doc.lineAt(specLn).text.length)));
+  }, { undoStopBefore: true, undoStopAfter: true });
+  return true;
+}
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
 //   ★既にFC行が真下に在る時は**何もしない**=順番がずれて別の相手に結び付く事故を起こさない。
 async function meosPushLineSpecsOutOfLine(editor) {
@@ -19766,6 +19854,12 @@ function meosMoveSpecsOutOfLine(text) {
     const isMetex = /[↑↓][^\s{}<>]*\{[^}]*\}/.test(payload) || /^\{[^}]*\}$/.test(payload);
     // v4.0.146: 外へ出す時は**一般形に直す**。実物(`x↑2`)を名乗ったままだと、本文を書き換えた時に腐る。
     if (isMetex) { items.push(payload.replace(/^[^\s{}<>#]*([↑↓])[^\s{}<>#]*/, (mm, ar) => 'A' + ar + '1')); cuts.push([m.index, m.index + m[0].length]); continue; }
+    // v4.0.156: 語に効く記法で `//tip` を持つものは**箱に入れる**(`~~ (赤/)//tip` → `~~{(赤/)//tip}`)。
+    //   `//` は行末まで伸びるso、箱に入れないと**次の項目や行単位の指定を巻き込む**(往復テストが捕まえた)。
+    const _fm = /^(={2}|~{2}|\*{1,3}|_)[ \t]*(.+)$/.exec(payload);
+    if (_fm && _fm[2].indexOf('//') >= 0 && _fm[2].charAt(0) !== '{') {
+      items.push(_fm[1] + '{' + _fm[2] + '}'); cuts.push([m.index, m.index + m[0].length]); continue;
+    }
     const isLine = !!(meosLineDirective(payload) || meosLooksLikeSpecComment(payload));
     if (!isMetex && !isLine) continue;                        // ただのHTMLコメントは動かさない
     items.push(payload); cuts.push([m.index, m.index + m[0].length]);
@@ -20779,6 +20873,16 @@ function activate(context) {
     const heads = meosDefBlocks(ed.document).filter(b => b.fc).map(b => b.start);
     if (!heads.length) return;
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: heads });
+  }));
+  // v4.0.156: FC行を行末形式へ戻す(俊克「一旦解除して、並べ替えや一部削除をして、済んだらまたFC化する」)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.specBackInline', async () => {
+    const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    if (!ed) return;
+    const okd = await meosPullLineSpecsBackInline(ed);
+    try { refresh(ed); } catch (_) { }
+    vscode.window.showInformationMessage(okd
+      ? 'MeOS: 指定を行末に戻しました。並べ替えや削除をしたら、また「行の外へ出す」で畳めます。'
+      : 'MeOS: この行に戻せる指定行はありません（または戻すと形が変わるので実行しませんでした）。');
   }));
   // v4.0.155: 修飾の指定を「行の外(FC)」に書くかどうかの切替。既定はオフ(今までどおり直後に書く)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleFormatFC', async () => {
