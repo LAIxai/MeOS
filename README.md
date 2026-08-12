@@ -64,9 +64,9 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   opens; switch to **Raw** and everything opens. *Skipped line numbers are not deleted lines — they are
   the receipt that your file is untouched.*
 - **Nothing to keep in sync** — an instruction says *what kind of thing it is*, never which one:
-  `A↑2{150%(white/green)}` means "a superscript", exactly the way `-1.` means "a numbered item".
+  `A↑1(white/green)` means "a superscript", exactly the way `-1.` means "a numbered item".
   Repeats are matched in the order they appear, so **editing your text never breaks the instruction**,
-  and the file holds no label or number that can go stale. Write `A↑2#2{…}` only when you mean *the
+  and the file holds no label or number that can go stale. Write `A↑1#2(…)` only when you mean *the
   second one*. The command palette will move a line's instructions out for you.
 - **Superscripts don't ambush your prose** — `x↑2` and `(a+b)↑2` render, but `、↑2` or `🐱↑3` stay as
   plain text, because a superscript needs something it can sit on. Want one anyway? Name it in a comment:
