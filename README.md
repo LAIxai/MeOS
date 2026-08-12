@@ -69,7 +69,8 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   and the file holds no label or number that can go stale. Write `A↑1#2(…)` only when you mean *the
   second one*. The command palette will move a line's instructions out for you.
   A spec line carries **everything the line holds** — the heading, the superscripts, and the highlight or
-  strikethrough sitting in the middle of your sentence: `<!-- Mew!FC ~~(red/) ==(white/yellow) -->`.
+  strikethrough sitting in the middle of your sentence — **one comment per instruction**, so the number of
+  boxes *is* the number of instructions: `<!-- Mew!FC ~~(red/) --><!-- Mew!FC ==(white/yellow) -->`.
   **Those inline ones matter most**: their comment sits *between your words*, not at the end, so every
   character after it gets pushed along. Two palette commands move a line either way — out to a spec line,
   or **back to the end of the line** when you want to reorder or delete things by hand. Going back is

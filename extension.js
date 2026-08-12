@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.157(俊克 8/12 pm06:15「1行ずつFCコメントを並べるのは美しいが、何個並んでいるかすぐには分らない。(a)だから1行に並べる。(b)あるいはコメント1つの中に命令を並べる。個数を簡単に把握できるのは(a)だよね」): ★★**(a)を採用。しかも俊克の理由(数えやすい)に加えて、技術的な利点がある**= `//tip` は**行末まで伸びる**so、1コメントに複数の命令を並べる(b)だと**後ろの命令を巻き込む**。実際それが起きて v4.0.156 で「tipは箱に入れる」という逃げを作った。**(a)なら `-->` が自然な終わり**so、その逃げが要らない=**数えやすさと境界の明確さが同じ形に落ちる**。★実装= ①読む側は**中身を繋げず1コメントずつ別々に読む**(繋げると境界が消える=v4.0.147で作った穴) ②**項目が1つで残りが行の指定でないなら、残りはその項目の続き**(`//tip`)として足す ③書く側は**1命令=1コメント**で並べる ④v4.0.156の箱入れは撤去。★これで開いた時に **箱の数=命令の数** が一目で分かる。
 // - v4.0.156(俊克 8/12 pm03:35「FC方式を一旦解除して従来の1行方式に戻す。その上で並べ替えや一部削除をする。そして最後にFC化したければFC化する。つまり、どっちを選択するかは自由」＋pm03:43「そのメニューはどこ?」): ★★**俊克の設計の方が正しい**= 私がv4.0.155で入れた制限(「既にFC行がある行では外へ出さない」)は、**順番がずれる事故を避けるための逃げ**だった。**戻せるなら逃げが要らない**=戻して1行の形にして並べ替え・削除をして、済んだらまたFC化すればいい。**決めるのは書き手**=MeOSの流儀そのもの。★★**安全装置を先に置いた**= 戻した結果を**もう一度FC化してみて、元と一致しなければ実行しない**(①本文が1文字も違わない ②指定の項目が同じ)。→ 私の位置合わせが間違っていても**行が壊れることは原理的に起きない**(何も起きないだけ)。今日「見出し全滅」を出荷した直後so、**データを書き換える機能は自己検証付きで出す**。★記法を探す形は描画側と**同じもの**を定数にまとめた(写経がズレる事故を減らす)。★パレット「MeOS: 指定を行末に戻す（FC解除）」。★**往復テストを新設**(1行の形→FC化→FC解除→**元と1バイトも違わないか**)= **8/8 通過**(取消線/ハイライト/太字/斜体/見出し混在/上付き/上付き2つ＋下付き/tip付きが2つ)。★そのテストが**さっそく1件捕まえた**= `~~ (赤/)//[]tip=` の `//tip` がFC行で拾えず、**次の項目や行単位の指定を巻き込んで**いた(`//` は行末まで伸びるため)。→ 外へ出す時に **`//` を持つものは箱に入れる**(`~~{(赤/)//tip}`)。
 // - v4.0.155(俊克 8/12 pm03:21「肝心の取消線ボタンで、FC形コメントが出ない。それは未実装なの?」): ★**未実装だった**= v4.0.152で作ったのは**読む側だけ**。**書く側**を足した。★やり方= 挿入した**直後にその行の指定を外へ出す**(既にある `meosMoveSpecsOutOfLine` をそのまま使う)。**左から右へ拾うso出現順が自然に一致する**=新しい番号も要らない。★**既にFC行が真下に在る行ではやらない**(従来どおり直後に書く)= 後から行の前の方を修飾すると新しい指定行が先に入って**別の相手に結び付く**事故を、原理的に起こさない。★対象は**両サイドから挟む記法だけ**(ハイライト/取消線/太字/斜体)=俊克が「本当に欲しいのは取消線」と言った所。見出しは行末に居て後ろに文字が無いso、外へ出す値打ちより「見出しごとに1行増える」代償の方が大きい。★**既定はオフ**(今までどおり直後に書く)。パレット「MeOS: 修飾の指定を行の外に書く（FC方式）切替」で入/切。保存先は globalState=v4.0.42のユーザー既定と同じ流儀。
 // - v4.0.154(俊克 8/12 pm03:11「従来記法の見出しが全滅だよ。なぜ? しかもVSCmを再起動するとMe Dockが10秒以上真っ黒」→ v4.0.151に戻した): ★★**v4.0.152で私が作ったバグ2つ**。★【見出し全滅の真因】`_sc` が null の時に **`_sc.end` を読んでいた**=FC行から色を引いた時はコメントが無い(=`_sc` が null)のに、隠す範囲を作ろうとして**例外**。`applyPrettyLabels` が丸ごと死ぬso、**その先で描くはずの見出しが全部消える**。取消線側には `if (_sc)` の番人が居たのに、**ハイライト側だけ抜けていた**=同じ形の2箇所を直したのに、片方しか確かめなかった。★【10秒の真因】**全行を回るパスで、毎行 指定行を引いていた**(15万行ぶんの走査)。→ **必要になった時だけ引く**(遅延)。`==` や `~~` が実際に在る行だけで済む。★★教訓= **全行ループに何かを足す時は、必ず遅延か足切り**(v4.0.113で同じ穴を踏んでいる)。そして**同じ形の場所を複数直したら、全部を同じ目で見る**(片方だけ番人が居る、が起きる)。★★★教訓(いちばん大事)= **headlessで通っても、実データで壊れる**。`meosParseSpecLine` は 73/73 通っていたが、**描画側の呼び出しは1つもテストしていなかった**。純関数だけ固めて、繋ぎ目を見ていなかった。→ **煙テストを新設**(`t_render.js`)= vscodeスタブで **`applyPrettyLabels` / 太字 / MeTeX を実データ風の文書に対して実際に走らせ、①例外が出ないこと ②装飾を実際に描いていること(0なら丸ごと死んでいる)** を見る。★**そのテストが今回のバグを本当に捕まえることを確認済み**= 番人を外すと `TypeError: Cannot read properties of null (reading end)` ＋ **本体の装飾数が 52→0** になり、「見出し全滅」がそのまま再現する。
@@ -19705,7 +19706,14 @@ const MEOS_SPEC_LINE_AUTOFOLD = true; // FC付きの指定行を開いた時に1
 //   ★`-->` を食えないよう **tempered** にした(`(?:(?!-->)[^\n])*?`=1文字ずつ確かめる形so後戻り爆発は起きない)。
 const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc|\^)[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
 // 行全体が Mew!FC コメント(1つ以上)だけで出来ている時、その中身を全部つないで返す。そうでなければ null。
-function meosSpecLinePayload(text) {
+// v4.0.157(俊克 8/12 pm06:15「1行ずつFCコメントを並べるのは美しいが、何個並んでいるかすぐには分らない。
+//   (a)だから1行に並べる。(b)あるいはコメント1つの中に命令を並べる。個数を簡単に把握できるのは(a)だよね」):
+// ★★**(a)が正しい。しかも俊克の理由(数えやすい)に加えて、技術的な利点がある**=
+//   `//tip` は**行末まで伸びる**so、1つのコメントに複数の命令を並べると(b)、後ろの命令を**巻き込む**。
+//   実際それが起きて v4.0.156 で「tipは箱に入れる」という逃げを作った。
+//   **(a)なら `-->` が自然な終わりになる**so、その逃げが要らない。**数えやすさと境界の明確さが同じ形に落ちる**。
+// ★soここは**中身を繋げず、1コメントずつ別々に返す**(繋げると境界が消える=v4.0.147で作った穴)。
+function meosSpecLinePayloads(text) {
   const t = String(text == null ? '' : text);
   if (t.indexOf('<!--') < 0) return null;
   const out = []; let last = 0, found = 0, m;
@@ -19715,9 +19723,10 @@ function meosSpecLinePayload(text) {
     out.push(m[1] || ''); last = m.index + m[0].length; found++;
   }
   if (!found || t.slice(last).trim()) return null;
-  return out.join(' ');
+  return out;
 }
-function meosIsSpecLine(text) { return meosSpecLinePayload(text) !== null; }
+function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
+function meosIsSpecLine(text) { return meosSpecLinePayloads(text) !== null; }
 // 参照形式リンクの定義行(`[表示]: https://…`)。畳む相手はこれも同じ=「行の外へ出したもの」。
 const MEOS_DEF_LINK_RE = /^[ \t]*\[[^\]\n]+\][ \t]*:[ \t]*\S/;
 // v4.0.146(俊克 8/12 pm01:02「書式として、Aの1乗、つまり `A↑1` を使うということだよ」＋例 `<!-- Mew!FC A↑1(白/green)//[]tip= -->`):
@@ -19749,9 +19758,21 @@ function meosFcFmtInner(spec, kind, ord) {
   return null;
 }
 function meosParseSpecLine(text) {
-  const payload = meosSpecLinePayload(text);
-  if (payload === null) return null;
-  let rest = payload;
+  const payloads = meosSpecLinePayloads(text);
+  if (payloads === null) return null;
+  const _metex = [], _fmt = []; let _line = '';
+  for (const _pl of payloads) {
+    const one = meosParseSpecPayload(_pl);
+    for (const x of one.metex) _metex.push(x);
+    for (const x of one.fmt) _fmt.push(x);
+    if (!_line && one.line) _line = one.line;
+  }
+  return { metex: _metex, fmt: _fmt, line: _line };
+}
+// コメント1つ分の中身を読む。★**項目が1つだけで残りが行の指定でない時は、残りをその項目の中身に足す**
+//   = `~~ (赤/)//[]tip=` の `//tip` が、次の項目や行の指定に流れ込まないようにする(1コメント＝1命令の形の肝)。
+function meosParseSpecPayload(payload) {
+  let rest = String(payload == null ? '' : payload);
   const metex = [];
   MEOS_SPEC_ITEM_RE.lastIndex = 0; let it;
   while ((it = MEOS_SPEC_ITEM_RE.exec(rest)) !== null) {
@@ -19773,7 +19794,14 @@ function meosParseSpecLine(text) {
     fmt.push({ kind: ft[1], nth: ft[2] ? parseInt(ft[2], 10) : 0, inner });
   }
   if (fmt.length) rest = rest.replace(MEOS_SPEC_FMT_RE, (mm, k, n, br, pa) => (br !== undefined || pa) ? ' ' : mm);
-  return { metex, fmt, line: rest.trim() };
+  rest = rest.trim();
+  // v4.0.157: 項目が1つだけで、残りが**行の指定として読めない**なら、残りはその項目の続き(`//tip` など)。
+  if (rest && (metex.length + fmt.length) === 1 && !meosLineDirective(rest)) {
+    const only = metex.length ? metex[0] : fmt[0];
+    only.inner = (only.inner ? (only.inner + rest) : rest);
+    rest = '';
+  }
+  return { metex, fmt, line: rest };
 }
 // 本文行 ln の指定行(=真下の行)。無ければ null。lines は meosDocLines の配列(版ごとに1回だけ刻んである)。
 function meosSpecLineFor(lines, ln) {
@@ -19854,17 +19882,15 @@ function meosMoveSpecsOutOfLine(text) {
     const isMetex = /[↑↓][^\s{}<>]*\{[^}]*\}/.test(payload) || /^\{[^}]*\}$/.test(payload);
     // v4.0.146: 外へ出す時は**一般形に直す**。実物(`x↑2`)を名乗ったままだと、本文を書き換えた時に腐る。
     if (isMetex) { items.push(payload.replace(/^[^\s{}<>#]*([↑↓])[^\s{}<>#]*/, (mm, ar) => 'A' + ar + '1')); cuts.push([m.index, m.index + m[0].length]); continue; }
-    // v4.0.156: 語に効く記法で `//tip` を持つものは**箱に入れる**(`~~ (赤/)//tip` → `~~{(赤/)//tip}`)。
-    //   `//` は行末まで伸びるso、箱に入れないと**次の項目や行単位の指定を巻き込む**(往復テストが捕まえた)。
-    const _fm = /^(={2}|~{2}|\*{1,3}|_)[ \t]*(.+)$/.exec(payload);
-    if (_fm && _fm[2].indexOf('//') >= 0 && _fm[2].charAt(0) !== '{') {
-      items.push(_fm[1] + '{' + _fm[2] + '}'); cuts.push([m.index, m.index + m[0].length]); continue;
-    }
+    // v4.0.157: v4.0.156の「`//` を持つものは箱に入れる」措置は**不要になった**=1命令=1コメントso `-->` が終わりを決める。
     const isLine = !!(meosLineDirective(payload) || meosLooksLikeSpecComment(payload));
     if (!isMetex && !isLine) continue;                        // ただのHTMLコメントは動かさない
     items.push(payload); cuts.push([m.index, m.index + m[0].length]);
   }
   if (!items.length) return null;
+  // v4.0.157(俊克): **1つの命令につき1つのコメント**にする。箱の数がそのまま命令の数so、開いた時に一目で数えられる。
+  //   `//tip` も `-->` で自然に終わるso、箱に入れる逃げが要らない(v4.0.156の措置は不要になった)。
+  const _spec = items.map(x => '<!-- ' + MEOS_MEW_SIG + 'FC ' + x + ' -->').join('');
   let body = '', prev = 0;
   const glue = /[0-9A-Za-z\u00b7]/; // operand に使える文字(meosMeTexTokens の isOp と同じ範囲)
   for (const [a, b] of cuts) {
@@ -19876,7 +19902,7 @@ function meosMoveSpecsOutOfLine(text) {
   body += t.slice(prev);
   body = body.replace(/[ \t]+$/, '');
   if (!body.trim()) return null;                              // 本文が消えるなら何もしない(コメントだけの行)
-  return { body, spec: '<!-- ' + MEOS_MEW_SIG + 'FC ' + items.join(' ') + ' -->' }; // v4.0.139: FC=Folding Comment(既定で畳む)
+  return { body, spec: _spec }; // v4.0.157: 1命令=1コメント(箱の数=命令の数)
 }
 // 折り畳み= 「行の外へ出したもの」(指定行＋リンク定義行)の連なりを、その**直前の行**の下に畳む。
 // ★畳むと本文行だけが残り、空白地帯が消える=俊克の言う最終奥義。畳む/開くはVS Codeの標準の折り畳み。
