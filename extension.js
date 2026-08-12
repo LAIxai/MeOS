@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.151(俊克 8/12 pm02:23 実測＋「ただし、クリアしてもクリアしても no FC blocks が出てくるよ」): ★★**私が作ったログの無限ループ**。**MeOS Debug の出力チャネル自体が、VS Codeにとっては1つの文書**so、ログを1行書く→その文書が変わる→折り畳みの処理が走る→「FC行なし」とログを書く→…と回り続けていた。俊克が「クリアしても出てくる」と言ったのは、**消しているそばから自分で書き足していた**から。★真因は2つ重なっていた= ①**本物のファイル以外でも走っていた**(`output:` / settings / git差分…) ②**熱い経路でログを書いた**(ログ自体が次の発火の燃料になる)。→ 両方塞いだ(scheme が file/untitled の時だけ・黙って帰る)。★**同時に2回畳んでいた**のも直した(起動時の3連発が競合し ok が2行出ていた)→ 進行中フラグで1回に。★★教訓= **自分の出力が自分の入力に戻る所でログを書かない**。★【実測(俊克の日記 155,306行)】**走査は30ms未満**(`[fcScan]` が1行も出ない=閾値未満)／**畳むのは209ms・22ブロック**(起動時に1回だけ)。→ **元栓を落とす必要は無い**と判断。
 // - v4.0.150(俊克 8/12 pm02:16「実測は、ログをクリアしてからVSCmを再起動でいいのか?」): ★**そのままでは数字が出ない**= 私が計測を仕掛けたのは「畳むコマンド」だけで、15万行の本当の負担である**走査そのもの(`meosDefBlocks`)を測っていなかった**。しかもFC行が0件の日記では、走査は走るのにログは「相手が居ない」としか言わない。→ **走査を計測**(30ms超で `[fcScan] …ms lines=… blocks=…`)＋FC行0件のログにも「走査は完了・行数」を出す。★教訓(またこれ)= **計測は「重い所」に仕掛ける**。v4.0.112「計測で犯人が出ないのは網の外に居る証明」の再演で、今回は自分で網を張り直した。
 // - v4.0.149(公開前の点検・3回目): ★**`not`(v4.0.148)をREADMEにもCHANGELOGにも書いていなかった**。今日これで**3回目**= ①8/10「封印したものを宣伝していた」(嘘) ②今朝「作ったものを語っていない」(取りこぼし) ③今回。**向きは違っても、ストアの顔が実物と食い違っているのは同じ**=[[feedback_readme_is_storefront]]。★教訓の格上げ= **記法を1つ足したら、その場でREADME/CHANGELOGにも足す**。「あとでまとめて書く」は、公開直前に必ず取りこぼす(3回とも公開直前に見つかっている)。★ついでに README/CHANGELOG の上付きの例を**一般形**に揃えた(`🐱↑3<!-- Mew! 🐱↑3{…} -->` → `<!-- Mew!FC A↑1(白/緑) -->`)。
 // - v4.0.148(俊克 8/12 pm01:49→pm01:54「それじゃ、こうしよう。`<!-- Mew!FC ↑↓not -->`」): ★**`not` = 「これは上付き/下付きにしない」**。俊克が pm01:16 に言った「**空の命令**」に、名前が付いた。★これで**素の矢印と本物が同じ行に混ざっても書き分けられる**= `x↑2 は上付き、A↑B は矢印` に対して `<!-- Mew!FC A↑1(白/緑) ↑↓not -->`。**順番で消費するso `#N` は要らない**(1つめは緑・2つめは素)。★**`↑↓` は「どちらの向きでも」**にした= 俊克が繰り返しこの形を書くso、そちらが自然な読み方(向きを言わずに「次の1つ」を指せる)。`A↑1not` / `A↓1not` と向きを明示してもよい。★`not` に色を書いても**塗る相手が居ないso無視**する(俊克の最初の案 `↑↓not(白/緑)` の色は効かない、と伝えて合意)。★実装の勘所= `not` の文字はトークンの文字集合に入っていて貪欲に飲み込むso、**後ろから剥がす**。そして外す token は**最後にまとめて取り除く**(途中で抜くと出現順がずれる)。★エスケープの選択肢がこれで3つ= ①コードスパン ②空白1つ ③`not`(**散文の中で、文字を1つも足さずに**止められる唯一の手)。headless 62/62＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]] [[reference_meos_notation_v4]]
@@ -19726,7 +19727,7 @@ function meosDefBlocks(document) {
       ln = e;
     }
   } catch (_) { }
-  try { const _ms = Date.now() - _t0; if (_ms > 30) meosDbg('[fcScan] ' + _ms + 'ms lines=' + document.lineCount + ' blocks=' + out.length); } catch (_) { }
+  try { const _ms = Date.now() - _t0; if (_ms > 30 && meosIsRealFileDoc(document)) meosDbg('[fcScan] ' + _ms + 'ms lines=' + document.lineCount + ' blocks=' + out.length); } catch (_) { }
   return out;
 }
 function meosDefBlockFoldingRanges(document) {
@@ -19771,6 +19772,7 @@ async function meosSyncFcFoldForCursor(editor) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy) return;
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
+    if (!meosIsRealFileDoc(editor.document)) return; // v4.0.151: 出力チャネル等では走らせない
     const blocks = meosFcBlocks(editor.document);
     if (!blocks.length) return;
     const raw = (typeof meosRawMode !== 'undefined' && meosRawMode);
@@ -19806,15 +19808,29 @@ const _meosFcFolded = new Set();
 //   ①`editor.fold` は**アクティブなエディタ**に効くso、焦点がMe Dock(webview)にある間は空振りする
 //     → **アクティブでない時は「済み」にせず**、次の機会に譲る(v4.0.112と同じ穴を作らない)。
 //   ②起動直後はVS Codeがまだ範囲を取り直していない可能性so、**間を空けて数回試す**。
+// v4.0.151(俊克 8/12 pm02:23 実測「ただし、クリアしてもクリアしても no FC blocks が出てくるよ」):
+// ★★**私が作ったログの無限ループ**。**MeOS Debug の出力チャネル自体が、VS Codeにとっては1つの文書**so、
+//   ログを1行書く → その文書が変わる → 折り畳みの処理が走る → 「FC行なし」と**ログを書く** → …と回り続ける。
+//   俊克が「クリアしても出てくる」と言ったのは、消しているそばから自分で書き足していたから。
+// ★真因は2つ重なっていた= ①**本物のファイル以外にも走っていた**(output: / settings / git差分…)
+//   ②**熱い経路でログを書いた**(ログ自体が次の発火の燃料になる)。→ 両方塞ぐ。
+// ★併せて**同時に2回畳んでいた**(起動時の3連発が競合。ログに ok が2行出ていた)→ 進行中フラグで1回に。
+// ★教訓= **自分の出力が自分の入力に戻る所でログを書かない**。計測は熱い経路の外側に置く。
+function meosIsRealFileDoc(doc) {
+  try { return !!doc && !doc.isClosed && (doc.uri.scheme === 'file' || doc.uri.scheme === 'untitled'); } catch (_) { return false; }
+}
+let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二重に畳むのを防ぐ)
 async function meosAutoFoldSpecLines(editor, force) {
-  if (!MEOS_SPEC_LINE_AUTOFOLD) return;
-  if (!editor || !editor.document) { try { meosDbg('[fcFold] no editor'); } catch (_) { } return; }
+  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding) return;
+  if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
   if (!force && _meosFcFolded.has(key)) return;
   let heads = [];
   try { heads = meosDefBlocks(editor.document).filter(b => b.fc).map(b => b.start); } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
-  if (!heads.length) { try { meosDbg('[fcFold] FC行なし(走査は完了) lines=' + editor.document.lineCount + ' ' + key); } catch (_) { } return; } // 相手が居ない=済みにしない
-  if (vscode.window.activeTextEditor !== editor) { try { meosDbg('[fcFold] editor is not active — 次の機会に譲る (' + heads.length + ' blocks)'); } catch (_) { } return; }
+  if (!heads.length) return; // 相手が居ない=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
+  if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
+  _meosFcFolding = true;
+  try {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
@@ -19829,6 +19845,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     }
   }
   try { meosDbg('[fcFold] gave up after 3 attempts (' + heads.length + ' blocks)'); } catch (_) { }
+  } finally { _meosFcFolding = false; }
 }
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
