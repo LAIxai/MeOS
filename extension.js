@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.159(俊克 8/12 pm07:24 バグ1「FC方式にすると次の行にFCコメントが出る。ただし🚫を押してもコメントの方が消えない。続けて取消線ボタンを押すと、そのあとは従来同様に行末にコメントが出たり消えたりする」): ★真因の連鎖= ①**🚫はその行しか見ない**so次の行のFCコメントが残る ②**残ったFC行のせい**で「既にFC行が在る=触らない」に当たり、次からは行末形式に戻る。俊克が見たとおりの順序。★★**規則を1つにした**= **FC方式の時は、行を触る前に必ず1行の形へ戻し、触り終わったら外へ出す**。戻してから触れば**位置も順番も1行の形で自然に決まる**so、特別扱いが1つも要らない。★置き場所= **範囲(span)を数える前**に戻す(Formatボタンの入口)。v4.0.158で学んだばかりの「早期returnのある所では末尾は最後ではない」を踏まえ、**入口は1箇所(fmtCycleの先頭)、出口は解除と挿入のそれぞれ**に置いた。
 // - v4.0.158(俊克 8/12 pm06:52 バグ1「⑬ ボタンをFC形で書かせるが動作しない。設定を2回しても行末方式のまま」): ★**私の置き場所が間違っていた**。FC化を `insertFormatTemplate` の**末尾**に置いたが、**ハイライト/取消線の「散文の新形」パスは途中で `return` して抜ける**so、**俊克が実際に使う道には一度も届いていなかった**(設定は正しく効いていた)。→ **抜ける直前に置く**。太字/斜体は別関数(`insertBoldItalic`)soそちらにも同じ1行を足した。★★教訓= **早期returnのある関数では、末尾は「最後」ではない**。「関数の終わりに足せば全部通る」と思い込んだ=**入口と出口を数えずに足した**。
 // - v4.0.157(俊克 8/12 pm06:15「1行ずつFCコメントを並べるのは美しいが、何個並んでいるかすぐには分らない。(a)だから1行に並べる。(b)あるいはコメント1つの中に命令を並べる。個数を簡単に把握できるのは(a)だよね」): ★★**(a)を採用。しかも俊克の理由(数えやすい)に加えて、技術的な利点がある**= `//tip` は**行末まで伸びる**so、1コメントに複数の命令を並べる(b)だと**後ろの命令を巻き込む**。実際それが起きて v4.0.156 で「tipは箱に入れる」という逃げを作った。**(a)なら `-->` が自然な終わり**so、その逃げが要らない=**数えやすさと境界の明確さが同じ形に落ちる**。★実装= ①読む側は**中身を繋げず1コメントずつ別々に読む**(繋げると境界が消える=v4.0.147で作った穴) ②**項目が1つで残りが行の指定でないなら、残りはその項目の続き**(`//tip`)として足す ③書く側は**1命令=1コメント**で並べる ④v4.0.156の箱入れは撤去。★これで開いた時に **箱の数=命令の数** が一目で分かる。
 // - v4.0.156(俊克 8/12 pm03:35「FC方式を一旦解除して従来の1行方式に戻す。その上で並べ替えや一部削除をする。そして最後にFC化したければFC化する。つまり、どっちを選択するかは自由」＋pm03:43「そのメニューはどこ?」): ★★**俊克の設計の方が正しい**= 私がv4.0.155で入れた制限(「既にFC行がある行では外へ出さない」)は、**順番がずれる事故を避けるための逃げ**だった。**戻せるなら逃げが要らない**=戻して1行の形にして並べ替え・削除をして、済んだらまたFC化すればいい。**決めるのは書き手**=MeOSの流儀そのもの。★★**安全装置を先に置いた**= 戻した結果を**もう一度FC化してみて、元と一致しなければ実行しない**(①本文が1文字も違わない ②指定の項目が同じ)。→ 私の位置合わせが間違っていても**行が壊れることは原理的に起きない**(何も起きないだけ)。今日「見出し全滅」を出荷した直後so、**データを書き換える機能は自己検証付きで出す**。★記法を探す形は描画側と**同じもの**を定数にまとめた(写経がズレる事故を減らす)。★パレット「MeOS: 指定を行末に戻す（FC解除）」。★**往復テストを新設**(1行の形→FC化→FC解除→**元と1バイトも違わないか**)= **8/8 通過**(取消線/ハイライト/太字/斜体/見出し混在/上付き/上付き2つ＋下付き/tip付きが2つ)。★そのテストが**さっそく1件捕まえた**= `~~ (赤/)//[]tip=` の `//tip` がFC行で拾えず、**次の項目や行単位の指定を巻き込んで**いた(`//` は行末まで伸びるため)。→ 外へ出す時に **`//` を持つものは箱に入れる**(`~~{(赤/)//tip}`)。
@@ -14276,6 +14277,7 @@ function meosFormatStamp(d) {
 }
 async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   if (!editor) return;
+  try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
   const doc = editor.document;
   const sel = editor.selection;
   const selText = sel.isEmpty ? '' : doc.getText(sel);
@@ -14475,6 +14477,21 @@ async function meosPullLineSpecsBackInline(editor) {
 }
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
 //   ★既にFC行が真下に在る時は**何もしない**=順番がずれて別の相手に結び付く事故を起こさない。
+// v4.0.159(俊克 8/12 pm07:24 バグ1「FC方式にすると次の行にFCコメントが出る。ただし🚫を押してもコメントの方が消えない。
+//   続けて取消線ボタンを押すと、そのあとは従来同様に行末にコメントが出たり消えたりする」):
+// ★★**規則を1つにした**= **FC方式の時は、行を触る前に必ず1行の形へ戻し、触り終わったら外へ出す**。
+// ★真因の連鎖= ①🚫は**その行しか見ない**so、次の行のFCコメントが残る
+//   ②残ったFC行のせいで「既にFC行が在る=触らない」に当たり、次からは行末形式に戻る。俊克が見たとおり。
+// ★「戻してから触る」なら、**位置も順番も1行の形で自然に決まる**=特別扱いが1つも要らない。
+async function meosEnsureInlineBeforeEdit(editor) {
+  try {
+    if (!MEOS_SPEC_LINE || !meosFormatWritesFC() || !editor || !editor.document) return false;
+    const doc = editor.document, ln = editor.selection.active.line;
+    if (ln + 1 >= doc.lineCount) return false;
+    if (!meosIsSpecLine(doc.lineAt(ln + 1).text)) return false;
+    return await meosPullLineSpecsBackInline(editor);
+  } catch (_) { return false; }
+}
 async function meosPushLineSpecsOutOfLine(editor) {
   if (!editor || !editor.document) return false;
   const doc = editor.document, ln = editor.selection.active.line;
@@ -14589,6 +14606,8 @@ async function removeFormatAtCursor(editor, span) {
   editor.selection = sel;
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: sel });
   vscode.window.setStatusBarMessage('Format: 解除しました', 1500);
+  // v4.0.159: 解除の後も、残った指定があれば外へ出す(1つ消しても、他の指定はFC形のまま保つ)。
+  try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
 }
 // v0.9.999127(俊克): ハイライト/取消線の記法を組み立てる(insertFormatTemplateと同形式)。↻リングのライブ再適用用。
 function buildInlineFmt(doc, kind, body, fg, bg) {
@@ -17648,6 +17667,8 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'fmtCycle') { // v0.9.999127: ハイライト/取消線=↻リングのライブ切替(⊘解除/プリセット再適用)
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
       if (!ed) return;
+      // v4.0.159: **範囲を数える前に**1行の形へ戻す(この先で span を求めるso、戻すのはここでないと位置がずれる)。
+      try { await meosEnsureInlineBeforeEdit(ed); } catch (_) { }
       const kind = message.kind; const ring = Number(message.ring) || 0;
       if (kind === 'bold') { const bs = boldSpanAtCursor(ed); if (ring === 0 && bs) await removeFormatAtCursor(ed, bs); return; } // v4.0.0: 太字/斜体の🚫解除
       if (kind === 'metex') { const ms = metexSpanAtCursor(ed); if (ring === 0 && ms) await removeFormatAtCursor(ed, ms); return; } // v4.0.0: 上付/下付の🚫解除
@@ -20542,6 +20563,7 @@ function meosApplyMeLinkDecorations(editor) {
 // v3.7.2(俊克): Me Dock「𝗕」ボタン=選択を正式膜で包む。太字=**{ }**・斜体=__{ }__・両方=入れ子 **{ __{ } }**。選択が空なら'本文'を選択。
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
   if (!editor) return;
+  try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
   const doc = editor.document, sel = editor.selection;
   const empty = sel.isEmpty, body = empty ? '本文' : doc.getText(sel);
   const color = (fg || bg) ? ' (' + (fg || '') + '/' + (bg || '') + ')//[]tip=' : ''; // 色指定があれば正式spec+tip
