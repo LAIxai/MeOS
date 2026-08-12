@@ -67,12 +67,12 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   `A↑1(white/green)` means "a superscript", exactly the way `-1.` means "a numbered item".
   Repeats are matched in the order they appear, so **editing your text never breaks the instruction**,
   and the file holds no label or number that can go stale. Write `A↑1#2(…)` only when you mean *the
-  second one*. Me Dock's **[Format] Me** menu will move a line's instructions out for you.
+  second one*. Me Dock's **Format ▼** menu will move a line's instructions out for you.
   A spec line carries **everything the line holds** — the heading, the superscripts, and the highlight or
   strikethrough sitting in the middle of your sentence — **one comment per instruction**, so the number of
   boxes *is* the number of instructions: `<!-- Mew!FC ~~(red/) --><!-- Mew!FC ==(white/yellow) -->`.
   **Those inline ones matter most**: their comment sits *between your words*, not at the end, so every
-  character after it gets pushed along. The **[Format] Me** menu moves a line either way — out to a spec line, or
+  character after it gets pushed along. The **Format ▼** menu moves a line either way — out to a spec line, or
   **back to the end of the line** when you want to reorder or delete things by hand — and a checkbox
   there tells the format buttons which form to write from now on. Going back is
   **self-checked**: MeOS re-derives the spec line from the restored text and refuses if anything would differ.
