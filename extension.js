@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.148(俊克 8/12 pm01:49→pm01:54「それじゃ、こうしよう。`<!-- Mew!FC ↑↓not -->`」): ★**`not` = 「これは上付き/下付きにしない」**。俊克が pm01:16 に言った「**空の命令**」に、名前が付いた。★これで**素の矢印と本物が同じ行に混ざっても書き分けられる**= `x↑2 は上付き、A↑B は矢印` に対して `<!-- Mew!FC A↑1(白/緑) ↑↓not -->`。**順番で消費するso `#N` は要らない**(1つめは緑・2つめは素)。★**`↑↓` は「どちらの向きでも」**にした= 俊克が繰り返しこの形を書くso、そちらが自然な読み方(向きを言わずに「次の1つ」を指せる)。`A↑1not` / `A↓1not` と向きを明示してもよい。★`not` に色を書いても**塗る相手が居ないso無視**する(俊克の最初の案 `↑↓not(白/緑)` の色は効かない、と伝えて合意)。★実装の勘所= `not` の文字はトークンの文字集合に入っていて貪欲に飲み込むso、**後ろから剥がす**。そして外す token は**最後にまとめて取り除く**(途中で抜くと出現順がずれる)。★エスケープの選択肢がこれで3つ= ①コードスパン ②空白1つ ③`not`(**散文の中で、文字を1つも足さずに**止められる唯一の手)。headless 62/62＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]] [[reference_meos_notation_v4]]
 // - v4.0.147(俊克 8/12 pm01:27「FCコメントを複数並べる書き方もあったよね?」): ★★**あった。しかも穴が2つ開いていた**= ①**FC行を複数行並べる**と、畳む時は1つの塊として扱うのに**読むのは1行目だけ**だった(`meosSpecLineFor` が `lines[ln+1]` しか見ていなかった)。②**1行にFCコメントを複数並べる**と、中身が `-->` をまたいで**1つに繋がって**いた(`([^\n]*?)` が `-->` を食えたため)。**俊克の例で色が消えたのはこれが真因**。★直し= 「その行が **Mew!FCコメントだけで出来ているか**」を見て**中身を全部つないで**返す口(`meosSpecLinePayload`)を1つ作り、判定・読取り・折り畳み・「外へ出す」の**4箇所を全部そこへ集約**(写経を残さない)。さらに `meosSpecLineFor` は真下から**続く限り**のFC行をまとめて読む。→ **1行にまとめても、複数行に分けても、まったく同じ結果**になる(headlessで同値を確認)。★`-->` を食えないよう **tempered**(`(?:(?!-->)[^\n])*?`)にした=1文字ずつ確かめる形so**後戻り爆発は起きない**(v4.0.131のReDoSの教訓=`[^\n]*` を2つ並べない、を守った形)。★★残っている設計課題= 俊克の `<!-- Mew!FC ↑↓ -->`(素の矢印のための「空の命令」)は、**no-opではなく「上付きが1つある」と名乗る項目**so、1つめの上付きを食ってしまう。素の矢印を混ぜる件は**まだ決めていない**(逃げ道はコードスパンと空白の2つ)。headless 55/55＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
 // - v4.0.146(俊克 8/12 pm01:02「書式として、Aの1乗、つまり `A↑1` を使うということだよ」＋例 `10↑2+b` / `<!-- Mew!FC A↑1(白/green)//[]tip= -->`): ★**一般形を `A↑1` / `A↓1` に確定**(「Aの1乗」=形だけを見せる)。`-1.` が「番号付きの項目」の形を見せるのと同じ思想。読む側は矢印の向きしか見ない(v4.0.145)so、`A↑2` でも `↑2` でも `🐱↑3` でもこれまでどおり動く(read-both)。★★**俊克の例で気づいたこと= `{}` が無い**。`A↑1(白/green)` は他の命令(`H2 (白/green)`)と**同じ形**だ。`{}` は「高さ%」を運ぶ箱で、**%を指定しない時は箱ごと要らない**(v4.0.64「指定するものが無ければ書かない」)。→ 箱を**任意**にした= `A↑1`(指定なし) / `A↑1(白/緑)`(色だけ) / `A↑1{150%(白/緑)}`(高さも) の3つとも通る。**これでMeTeXの命令が、やっと他の命令と同じ顔になった**。★**外へ出す時は一般形に直す**= `x↑2{…}` → `A↑1{…}`。実物を名乗ったままだと本文を書き換えた時に腐るため。★headlessで捕まえたバグ= トークンの文字集合から**括弧を外し忘れて** `(白/緑)` まで貪欲に飲み込んでいた(色が丸ごと消えていた)。→ `()` を除外。**箱を外すなら、境界も作り直す**(v4.0.79「括弧を許すと区切り記号まで飲み込める」の裏返し)。headless 48/48＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]] [[reference_meos_notation_v4]]
 // - v4.0.145(俊克 8/12 pm00:37「`Mew!FC 🐱↑3` と書くのは汎用的じゃない。`Mew!FC A↑2` のように常に基本形を書くべき。そうしないと、文字が変わる度に命令文が変わってしまう。**コメント命令は、一般形を書くもの**よ。数字付き箇条書きと同じようにね」): ★★**俊克が正しい。しかもMeOSの他の命令は全部そうなっていた**= `H2 (白/緑)` は見出しの文字を繰り返さないし、`-1.` も `==` も `~~` も**「種類」であって「実物」ではない**。**MeTeXだけが実物を名乗っていた**。★実害= `x↑2` を `x↑5` に直した瞬間、`↑2{…}` は相手を見失い**色が黙って消える**=俊克が箇条書きの番号で潰した「**腐る**」問題そのもの。★so結び方を **「矢印の向き＋出現順」** に変えた= 見るのは `↑`/`↓` だけ。`A↑2` でも `↑2` でも `🐱↑3` でも同じに効く(**read-both**=これまで書いたものもそのまま動く)。飛ばす時だけ `A↑2#2`。名乗り(変わり種の基準文字の解禁)も同じ規則に。★これで**本文を書き換えても命令は無傷**。命令が持つのは「上付きが1つある」という事実だけ。★ついでに文言修正= チェンジログの「133桁 → 45桁」は**文字数**の誤記(俊克の指摘)。桁(全角1.67で数える表の単位)と混ぜない。README/CHANGELOGも「種類を名乗る」に書き直した。headless 42/42＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
@@ -19592,7 +19593,15 @@ function meosParseSpecLine(text) {
   let rest = payload;
   const metex = [];
   MEOS_SPEC_ITEM_RE.lastIndex = 0; let it;
-  while ((it = MEOS_SPEC_ITEM_RE.exec(rest)) !== null) metex.push({ tok: it[1], nth: it[2] ? parseInt(it[2], 10) : 0, inner: (it[3] !== undefined ? it[3] : (it[4] || '')) });
+  while ((it = MEOS_SPEC_ITEM_RE.exec(rest)) !== null) {
+    // v4.0.148(俊克 8/12 pm01:49「それじゃ、こうしよう。`<!-- Mew!FC ↑↓not(白/緑) -->`」):
+    // ★**`not` = 「これは上付き/下付きにしない」**。俊克が前回言った「**空の命令**」に名前が付いた。
+    //   `not` の文字はトークンの文字集合に入っている(貪欲に飲み込む)so、**後ろから剥がす**方が確実。
+    let tok = it[1] || '', isNot = false;
+    const _stripped = tok.replace(/not$/i, '');
+    if (_stripped !== tok && /[↑↓]/.test(_stripped)) { tok = _stripped; isNot = true; }
+    metex.push({ tok, nth: it[2] ? parseInt(it[2], 10) : 0, inner: (it[3] !== undefined ? it[3] : (it[4] || '')), not: isNot });
+  }
   if (metex.length) rest = rest.replace(MEOS_SPEC_ITEM_RE, ' '); // 取り出した分は行単位の読み取りから外す
   return { metex, line: rest.trim() };
 }
@@ -19622,25 +19631,32 @@ function meosSpecLineFor(lines, ln) {
 // ★これで**本文を書き換えても命令は無傷**。命令が持つのは「上付きが1つある」という事実だけで、中身は持たない。
 function meosApplySpecLineToTokens(text, toks, spec) {
   if (!spec || !spec.metex.length || !toks || !toks.length) return;
-  const kindOf = (tok) => (String(tok).indexOf('↑') >= 0) ? 'sup' : ((String(tok).indexOf('↓') >= 0) ? 'sub' : null);
-  const used = new Set();
+  // v4.0.148(俊克 8/12 pm01:54 `<!-- Mew!FC ↑↓not -->`): **`↑↓` は「どちらの向きでも」**。
+  //   俊克が繰り返しこの形を書くso、そちらが自然な読み方=向きを言わずに「次の1つ」を指せる。
+  const kindOf = (tok) => { const t = String(tok), u = t.indexOf('↑') >= 0, d = t.indexOf('↓') >= 0; return (u && d) ? 'any' : (u ? 'sup' : (d ? 'sub' : null)); };
+  const used = new Set(), kill = [];
   for (const item of spec.metex) {
     const kind = kindOf(item.tok);
     if (!kind) continue;
     const cands = [];
-    for (let i = 0; i < toks.length; i++) if (toks[i].kind === kind) cands.push(i);
+    for (let i = 0; i < toks.length; i++) if (kind === 'any' || toks[i].kind === kind) cands.push(i);
     if (!cands.length) continue;
     let pick = -1;
     if (item.nth > 0) { if (item.nth - 1 < cands.length) pick = cands[item.nth - 1]; }
     else for (const c of cands) { if (!used.has(c)) { pick = c; break; } }
     if (pick < 0) continue;
     used.add(pick);
+    // v4.0.148: `not` は**その1つを素の字に戻す**(矢印も隠さない)。色を書いても塗る相手が居ないので無視。
+    //   順番で消費するので `#N` は要らない= `A↑1(白/緑) A↑1not` で「1つめは緑・2つめは素」。
+    if (item.not) { kill.push(pick); continue; }
     const t = toks[pick];
     if (t.pct != null || t.fg != null || t.bg != null) continue; // 直後の指定が勝つ(近い方が強い)
     const pm = /(\d{1,3})\s*%/.exec(item.inner); if (pm) t.pct = parseInt(pm[1], 10);
     let cc = /\(([^)/]*)\/([^)]*)\)/.exec(item.inner); if (!cc) cc = /([^\s%(){}/]*)\/([^\s%(){}/]*)/.exec(item.inner);
     if (cc) { t.fg = normalizeFgColor(cc[1]); t.bg = normalizeBgColor(cc[2]); }
   }
+  // `not` で外す分は最後にまとめて取り除く(途中で抜くと出現順がずれるため)。
+  kill.sort((a, b) => b - a).forEach(i => toks.splice(i, 1));
 }
 // 書く側= この行の指定を**外へ出す**。1行を {本文, 指定行} に割る(純関数so headless で確かめられる)。
 // ★形が最初から噛み合っている= 直後コメントの中身 `A↑2{150%(白/緑)}` も、行末コメントの中身 `H2 (白/green)//[]tip=` も、
