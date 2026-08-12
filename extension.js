@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.145(俊克 8/12 pm00:37「`Mew!FC 🐱↑3` と書くのは汎用的じゃない。`Mew!FC A↑2` のように常に基本形を書くべき。そうしないと、文字が変わる度に命令文が変わってしまう。**コメント命令は、一般形を書くもの**よ。数字付き箇条書きと同じようにね」): ★★**俊克が正しい。しかもMeOSの他の命令は全部そうなっていた**= `H2 (白/緑)` は見出しの文字を繰り返さないし、`-1.` も `==` も `~~` も**「種類」であって「実物」ではない**。**MeTeXだけが実物を名乗っていた**。★実害= `x↑2` を `x↑5` に直した瞬間、`↑2{…}` は相手を見失い**色が黙って消える**=俊克が箇条書きの番号で潰した「**腐る**」問題そのもの。★so結び方を **「矢印の向き＋出現順」** に変えた= 見るのは `↑`/`↓` だけ。`A↑2` でも `↑2` でも `🐱↑3` でも同じに効く(**read-both**=これまで書いたものもそのまま動く)。飛ばす時だけ `A↑2#2`。名乗り(変わり種の基準文字の解禁)も同じ規則に。★これで**本文を書き換えても命令は無傷**。命令が持つのは「上付きが1つある」という事実だけ。★ついでに文言修正= チェンジログの「133桁 → 45桁」は**文字数**の誤記(俊克の指摘)。桁(全角1.67で数える表の単位)と混ぜない。README/CHANGELOGも「種類を名乗る」に書き直した。headless 42/42＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
 // - v4.0.144(俊克 8/12 am11:20「v4.0.143をインストールしたけどロゴは古いまま。media/icon.pngが古いままだったので256サイズの新ロゴを入れといたよ」): ★ストアのロゴ= `package.json` の `"icon": "media/icon.png"` が指す**vsixの中の画像**をそのまま表示する(別途アップロードする口は無い)so、**差し替えて版を上げれば変わる**。★俊克が置いた新ロゴは `MeOS/wt-iswholeline/media/`(**古い実験用ワークツリー**)に入っていて、ビルドには使われない場所だった。→ `src/media/icon.png` へ移した(**128×128 → 256×256**でRetinaでも輪郭が出る)。★前の128版は `media/icon-mew128-old.png` として**残す**(過去の物件を消さない=[[feedback_vsix_output_location]]の精神)。
 // - v4.0.143(公開前の仕上げ): ★**README/CHANGELOGに v4.0.138〜142 を書いた**。8/10は「**封印した機能を宣伝していた**」(嘘)だったが、今度は逆で「**作った機能を語っていない**」(取りこぼし)。**どちらもストアの顔が実物と食い違っている**ことに変わりはない=[[feedback_readme_is_storefront]]。★書いたのは3つ= ①**長いものは行の外へ出し、外へ出したものは畳む**(FC=Folding Comment・カーソルで開く/Rawで全部開く・**飛んだ行番号はファイルが手つかずである証拠**) ②**同期させるものが無い**(指定が自分の相手を名乗る＋出現順so、ファイルは腐りうるラベルも番号も持たない) ③**上付きが散文に不意打ちしない**(素はただの字・コメントで名乗れば累乗so**エスケープ文字が要らない**)。★俊克の問い「ユーザーはなぜ行番号が飛ぶのか不思議に思うのでは?」への答えも、**UIに印を足すのではなく文書で答えた**(俊克はStandards>vをオフ=`showFoldingControls: never` にしていて、**山形マークを見たくないからオフにしている**。そこにMeOSが代わりの印を出したら本末転倒)。
 // - v4.0.142(俊克 8/12 am10:37「素の矢印↑↓を書くとき、偶然その後に数字があると累乗になってしまう。`、↑2` は、累乗は**基準の文字があってのもの**という理念からするとおかしい。「、」は式でも数字でもない」＋am10:43「ただし `🐱↑3` のように書きたいこともあるね。自由度があった方が便利。やはりバックスラッシュでエスケープにする?」): ★真因= 基準文字の判定が**除外リスト**だった(`Σ Π × 🤝 空白` だけ弾き、あとは何でも基準にしていた)。→ **素で書ける基準は英数字と閉じ括弧だけ**にした(許可リスト)。★★**バックスラッシュは採らない**= ①CommonMarkのエスケープは**ASCII記号にしか効かない**so `\↑` は解釈されず**MeOS外で `\` が字として見える**(v4.0の背骨をここだけ破る) ②エスケープ方式は既定が逆(「放っておくと累乗になる」)so散文を書くたび気をつける必要が残り、事故が減らない。★答えは**MeOSに元からある**= **命令はコメントに書く**。**素で書いたらただの字/コメントで名乗ったら累乗**。`🐱↑3<!-- Mew! 🐱↑3{150%(白/緑)} -->` も、真下の指定行 `<!-- Mew!FC 🐱↑3{…} -->` でも通る。**どんな文字でも基準にできて(自由度は完全)、宣言しない限り何も起きない(事故ゼロ)**。新しい記号は要らない。★**エスケープ記法も作らない**= 既に2つある。①**コードスパン** `` `2↑32` ``(v4.0.58で対象外)…**俊克は既に167箇所でこれを使っている** ②**空白1つ** `2↑ 32`。★【実データ検証】日記14万行= **100件はそのまま**(1件は名乗りで救済)・**11件がただの字に戻る**=`、↑2` / `🐱↑1` / `}==↑2` / `**↑28` / `付加した↑2` / **`(←N=左/→N=右/↑N=上/↓N=下)`**(表の説明文が累乗になっていた)。★headlessで捕まえたバグ= **絵文字はサロゲートペア(2つ分)**so直前1文字だけ見ると半分しか取れず、`🐱↑3` はコメントで名乗っても一致しなかった。→ 直前がサロゲートなら2つ分を基準として取る。★俊克の他の問い= `2↑32` は**正しい**(2の32乗)。括弧は「式」用= `↑(n+1)` のように**演算子や空白を含む**時。括弧なしで拾うのは、矢印の直後の英数字の連なりを指数として読むから。headless 25/25＋36/36＋17/17 PASS。→ [[reference_meos_notation_v4]]
@@ -19501,10 +19502,10 @@ function meosMeTexTokens(text, specLine) { text = (String(text).indexOf('`') >= 
     // v4.0.142: 素で書けない基準文字(絵文字・句読点・かな漢字…)は、**命令で名乗った時だけ**上付/下付にする。
     //   名乗り=直後の仕様コメントの命令トークン(↑↓を含む)／真下の指定行(Mew!FC)の項目。どちらも無ければただの字。
     if (needsDecl) {
-      const tokFull = prev + ch + text.slice(opStart, opEnd), tokShort = ch + text.slice(opStart, opEnd);
+      // v4.0.145: 名乗りも**一般形**でよい(見るのは矢印の向きだけ)= `A↑2` でも `🐱↑3` でも同じに効く。
       let declared = false;
-      if (specStart >= 0) { const dm = /<!--\s*(?:[Mm][Ee][Ww]!\s*)?([^\s{}<>]*[↑↓][^\s{}<>]*)[ \t]*\{/.exec(text.slice(specStart, specEnd)); declared = !!(dm && (dm[1] === tokFull || dm[1] === tokShort)); }
-      if (!declared && specLine && specLine.metex) declared = specLine.metex.some(it => it.tok === tokFull || it.tok === tokShort);
+      if (specStart >= 0) { const dm = /<!--\s*(?:[Mm][Ee][Ww]!\s*)?([^\s{}<>]*[↑↓][^\s{}<>]*)[ \t]*\{/.exec(text.slice(specStart, specEnd)); declared = !!(dm && dm[1].indexOf(ch) >= 0); }
+      if (!declared && specLine && specLine.metex) declared = specLine.metex.some(it => String(it.tok).indexOf(ch) >= 0);
       if (!declared) { i = scanFrom - 1; continue; } // 宣言が無い=ただの字(矢印も隠さない)
     }
     if (specInner != null) {
@@ -19532,7 +19533,7 @@ const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
 // ★記法= `<!-- Mew!^ … -->`。`^` = 「**上の行**に効く」。
 //     ## A↑2 A↓3 Heading 2026.08.12(W)am06:40.04JST
 //     <!-- Mew!^ A↑2{150%(白/緑)} A↓3{50%(白/緑)} H2 (白/green)//[]tip= -->
-//   俊克の例で **148桁 → 45桁**(ペイン58桁に収まる=折り返さない)。
+//   俊克の例で **148文字 → 45文字**(ペインは約58桁so収まる)。
 // ★結び方= **名前＋出現順**。ラベルは作らない(俊克「たとえ累乗が何個あっても、順番で対応できるんだね」)。
 //   `A↑2{…}` は1つめの `A↑2` に、次の `A↑2{…}` は2つめに。飛ばして指したい時だけ `A↑2#2{…}`=「2つめの A↑2」。
 //   ★**数えるのはMeOSで、ファイルは番号を持たない**(v4.0の「腐らない番号」と同じ思想)。
@@ -19574,15 +19575,24 @@ function meosSpecLineFor(lines, ln) {
   return (next == null) ? null : meosParseSpecLine(next);
 }
 // 指定行の上付/下付を、本文行のトークンへ配る(名前＋出現順)。
+// v4.0.145(俊克 8/12 pm00:37「`Mew!FC 🐱↑3` と書くのは汎用的じゃない。`Mew!FC A↑2` のように常に基本形を書くべき。
+//   そうしないと、文字が変わる度に命令文が変わってしまう。**コメント命令は、一般形を書くもの**よ。数字付き箇条書きと同じようにね」):
+// ★★**俊克が正しい。しかもMeOSの他の命令は全部そうなっている**= `H2 (白/緑)` は見出しの文字を繰り返さない。
+//   `-1.` も `==` も `~~` も、**「種類」であって「実物」ではない**。MeTeXだけが実物を名乗っていた。
+// ★実害= `x↑2` を `x↑5` に直した瞬間、`↑2{…}` は相手を見失い**色が黙って消える**
+//   =俊克が箇条書きの番号で潰した「**腐る**」問題そのもの([[project_now_not_bulk]]の兄弟)。
+// ★so結び方を **「矢印の向き＋出現順」** に変えた= 見るのは `↑`/`↓` だけ。`A↑2` でも `↑2` でも `🐱↑3` でも同じに効く
+//   (**read-both**=これまで書いたものもそのまま動く)。飛ばして指したい時だけ `A↑2#2`=「2つめの上付き」。
+// ★これで**本文を書き換えても命令は無傷**。命令が持つのは「上付きが1つある」という事実だけで、中身は持たない。
 function meosApplySpecLineToTokens(text, toks, spec) {
   if (!spec || !spec.metex.length || !toks || !toks.length) return;
-  const arrow = (t) => (t.kind === 'sup' ? '↑' : '↓');
-  const full = (t) => (t.base || '') + arrow(t) + text.slice(t.opStart, t.opEnd);
-  const short = (t) => arrow(t) + text.slice(t.opStart, t.opEnd);
+  const kindOf = (tok) => (String(tok).indexOf('↑') >= 0) ? 'sup' : ((String(tok).indexOf('↓') >= 0) ? 'sub' : null);
   const used = new Set();
   for (const item of spec.metex) {
+    const kind = kindOf(item.tok);
+    if (!kind) continue;
     const cands = [];
-    for (let i = 0; i < toks.length; i++) if (item.tok === full(toks[i]) || item.tok === short(toks[i])) cands.push(i);
+    for (let i = 0; i < toks.length; i++) if (toks[i].kind === kind) cands.push(i);
     if (!cands.length) continue;
     let pick = -1;
     if (item.nth > 0) { if (item.nth - 1 < cands.length) pick = cands[item.nth - 1]; }
@@ -19781,7 +19791,7 @@ async function insertMetexScript(editor, sub, fg, bg) {
   const fgW = (fg && normalizeFgColor(fg)) ? fg : '', bgW = (bg && normalizeBgColor(bg)) ? bg : '';
   const colorPart = (fgW || bgW) ? ('(' + fgW + '/' + bgW + ')') : '';
   // v4.0.64(俊克): 署名 Mew! ＋命令トークン(基準文字＋矢印＋肩腰文字)。基準文字に空白が混じる時はトークンから外す(読取り側は空白なしのみ許すため)。
-  const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(base) ? base : '') + arrow + exp;
+  const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(base) ? base : '') + arrow + exp; // v4.0.145: 読む側は矢印しか見ないので、この形は「書き残す印」
   const spec = '<!-- ' + MEOS_MEW_SIG + ' ' + _mtxTok + '{' + pct + '%' + colorPart + '} -->';
   await editor.edit(eb => eb.replace(sel, base + arrow + exp + spec));
   try { const s = sel.start;
