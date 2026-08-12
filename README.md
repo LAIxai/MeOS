@@ -57,6 +57,20 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
 - **Sub-numbering without indenting** — write the same `-1.1` on every line of a sub-level and MeOS renders
   `1.1`, `1.2`, `1.3`, indented. `-1a` gives you `1a`, `1b`, `1c` (the *Figure 1a* style). Nothing in the file
   ever holds a number, so nothing can go stale. A blank line starts a new list; a sentence in between does not.
+- **Long instructions leave the line** — a line that ends in a pile of comments still *wraps* on those
+  hidden characters, pushing your own words onto the next screen line. So move them out: write
+  `<!-- Mew!FC … -->` on the line **below**, and the sentence stays whole. **FC = Folding Comment** —
+  MeOS folds those lines away by default, so the page reads clean. Put the cursor on the line and it
+  opens; switch to **Raw** and everything opens. *Skipped line numbers are not deleted lines — they are
+  the receipt that your file is untouched.*
+- **Nothing to keep in sync** — the instruction names its own target (`A↑2{150%(white/green)}`), and
+  repeats are matched in the order they appear, so the file never holds a label or a number that can go
+  stale. Write `A↑2#2{…}` only when you mean *the second one*. The command palette will move a line's
+  instructions out for you.
+- **Superscripts don't ambush your prose** — `x↑2` and `(a+b)↑2` render, but `、↑2` or `🐱↑3` stay as
+  plain text, because a superscript needs something it can sit on. Want one anyway? Name it in a comment:
+  `🐱↑3<!-- Mew! 🐱↑3{150%(white/green)} -->`. Same rule as everywhere else in MeOS — **plain text by
+  default, the comment is the command** — so you never need an escape character.
 - **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
   Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
   what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.
