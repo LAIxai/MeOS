@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.139(俊克 8/12 am08:49 v4.0.138テストOK＋改良1「`^`記号は分りにくいので(手書きで修正する時も面倒so)、`Mew!FC` ではどうか? Folding Comment という意味で。やはり、次の行に書いたコメント命令は、デフォルトで折り畳むべきだからね。だから、FCを書かなければ、エディタ上では、コメントが見えるってことだね」): ★**俊克の方が良い。採用**。`^`(私の案)は「上の行に効く」という**位置**しか言っていないが、`FC` は**「畳まれるべきコメント」という役割**を名乗るso、上付きにも見出しにも、この先の別の用途にも**同じ1つの印**が使える。手で打てる/直せるのも大きい(記号は探すのが面倒)。★`^` も読み続ける(read-both)。★これで規則が1行で言える= **FCと書いてあるコメント行は、既定で畳む。書かなければ見えたまま**。★実装= ①記法を `Mew!FC` に(書く側も) ②**FC付きの塊だけ**を自動で畳む(リンクの定義行は標準のMarkdownでそれ自体読める物so勝手に畳まない=俊克の規則そのまま) ③畳むのは**その文書につき1回だけ**(毎回畳み直すと、手で開いた人と喧嘩になる) ④手動の口も2つ(`指定行を畳む`/`開く`)=自動が効かない時と、中を読みたい時のため。★自動で畳む作法は v0.9.961 の踏襲(notifyRangesChanged→120ms待つ→`editor.fold` に selectionLines をまとめて渡す)。**重ければ `MEOS_SPEC_LINE_AUTOFOLD = false` で止められる**(15万行での実測はこれから)。headless 36/36 PASS。→ [[project_out_of_line_and_fold]]
 // - v4.0.138(俊克 8/12 am07:44「Bをやって、それを折り畳む、という最終奥義を実装しましょう」＋am08:00「ラベルは必要ない。たとえ累乗が何個あっても、順番で対応できるんだね」): ★★**長いものは行の外へ出し、外へ出したものは畳む**。★問題= 行末のコメントは**隠れていても桁は食う**(折り返しはモデルの桁数=v4.0.93の壁)so、指定を書くほど**続く文字が次の視覚行へ追い出される**。1行の途中は畳めない(折り畳みは行単位)so、**外へ出す**のが先に要る。★記法= 本文の**真下の行**に `<!-- Mew!^ … -->`(`^`=上の行に効く)。俊克の例で **133桁 → 45桁**(ペイン58桁に収まる)。★結び方= **名前＋出現順**。ラベルは作らない。`A↑2{…}` は1つめの `A↑2` に、次は2つめに。飛ばす時だけ `A↑2#2{…}`。**数えるのはMeOSで、ファイルは番号を持たない**(v4.0の「腐らない番号」と同じ)。★俊克のラベル案(`A↑2<!-- 1 -->`)は**数えて却下**= `<!-- 1 -->` は10文字so2つで20文字戻り、**65桁=また折り返す**。外へ出した意味が消える。俊克も即座に納得(「そう言うことか。ラベルは必要ない」)。★リンクは**標準の参照形式のまま**(`[表示][]` ＋ `[表示]: url`)= 識別にラベルは要らない(表示文字が名乗る)が、`[ ]` と定義行は**MeOS外でも本物のリンクとして生きる**ために残す。上付きの飾りとはそこが違う。★実装4点= ①指定行のパーサ ②上付/下付へ配る(直後の指定が勝つ=近い方が強い) ③見出し/箇条書きへ配る(行末の長さゼロのコメントとして渡す=既存の読み手に手を入れずに済む) ④**折り畳み範囲**(指定行＋リンク定義行の連なりを直前の行の下に畳む)を既存の MembraneFoldingProvider に足す。★書く側も入れた= パレット **「MeOS: この行の指定を外へ出す」**。**形が最初から噛み合っていた**=直後コメントの中身も行末コメントの中身も、署名を外せば**そのまま指定行の項目**になる。★書く側のバグを往復テストで捕まえた= コメントを消すと `A↓3<!--…-->Heading` が `A↓3Heading` になり、operandが `3Heading` まで飲み込む=**コメントが区切りとして働いていた**。→ 両隣が英数字の時だけ空白1つ足す。★リンクの箱(前後2つで1組)は**動かさない**(鉄則「リンクは常に先に判定」6度目)。従来の書き方はそのまま動く(過去は変換しない)。headless 32/32＋17/17 PASS。→ [[project_out_of_line_and_fold]] [[reference_meos_notation_v4]]
 // - v4.0.137(俊克 8/12 am07:29 v4.0.136テストOK＋NG「素の見出しの色が緑so、累乗指定で文字色を白にしているのに緑色で描かれて文字が見えない。なぜ?」): ★真因=**v4.0.135と同じ取り合いが、今度は `color` で起きていた**。MeOSの見出しは文字色を装飾で被せる(H2の既定=緑)。上付き/下付きも色を装飾で被せる。同じspanに乗って **!important の無い上付き側が負ける** → **背景の緑は出ているのに文字まで緑**=見えない。★スクショの決め手= **緑の丸い箱(=上付き自身の背景)は出ているのに中の `2` が見えない**。背景が出ている=上付きの装飾自体は効いている、so負けているのは色だけ、と場所が絞れた。★直し= `color` と `background-color` にも `!important`。**色を明示したなら、それが最後の言葉**であるべきで、周りの見出し色に上書きされてはいけない。色を書かなければ従来どおり周りの色に従う(既定は無地=本人の自由)。★これで見出しの中の上付き/下付きは **大きさ・高さ・色** の3つとも揃った(v4.0.135＋137)。★教訓(3度目)= **装飾で同じCSSプロパティを2つ被せたら、後から乗る方は必ず `!important`**。v4.0.15(太字のfont-size)→v4.0.135(上付きのfont-size)→今回(上付きのcolor)。**同じ穴を3回踏んだso、次に色や大きさを被せる装飾を足す時は最初から付ける**。headless 17/17 PASS。→ [[reference_meos_notation_v4]]
 // - v4.0.136(俊克 8/12 am07:10「あなたも勘違いしている。50%指定は下付き文字のケース。2^3という従来の記法で表示されるのが素の高さ。so上付きは**100%が基準**であり、150%というもう一つの基準があるから、100〜150%の間でどんな高さになるかを予想できる」): ★**俊克が正しい。私は実装の説明をなぞっただけで、どこを100%と呼ぶべきかを考えていなかった**。★そして**測ったら数字はもう俊克の言うとおりだった**= 上付き100%の浮き上がりは **0.357 base-em**で、CSSの `vertical-align: super`(=`x²` の素の高さ)の**約0.33em とほぼ一致**する。so「100%が基準・150%がもう一つの基準・間は予想できる」は**今のMeOSでそのまま成り立っている**。★間違っていたのは**説明文だけ**= ①100%を「midway(中間)」と書いていた=**実装の都合であって意味を語っていない**②50%を上付きの選択肢のように並べていた=上付きの50%は**基準線に乗る=もう上付きではない**(俊克「あれは下付きのケース」)。→ 説明を俊克の模型に書き直した(上付き=100%が素の高さ・**使う範囲は100〜150%**・100%未満は下付きの領域)。**動きは1ミリも変えていない**(既に正しいので)。★[[project_metex_percent_naming]] の結論も差し替え= 「`%`をやめて高さ0〜100に」は**不要**。`%` のままで、**100%を素の高さと呼ぶ**だけで意味が通る。名前を変えるより、正しい所を基準と呼ぶ方が安い。
@@ -19491,7 +19492,15 @@ const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
 //   `[ ]` と定義行は残す=**MeOSの外でも本物のリンクとして生きる**ため。上付きの飾りとはそこが違う。
 // ★直後に書いた指定がある時は**そちらが勝つ**(近い方が強い)。従来の書き方はそのまま動く=過去は変換しない。
 const MEOS_SPEC_LINE = true;
-const MEOS_SPEC_LINE_RE = /^[ \t]*<!--[ \t]*[Mm][Ee][Ww]![ \t]*\^[ \t]*([^\n]*?)[ \t]*-->[ \t]*$/;
+const MEOS_SPEC_LINE_AUTOFOLD = true; // FC付きの指定行を開いた時に1回だけ畳む。重ければ false で止められる。
+// v4.0.139(俊克 8/12 am08:49「^記号は分りにくいので(手書きで修正する時も面倒so)、`Mew!FC` ではどうか?
+//   Folding Comment という意味で。やはり、次の行に書いたコメント命令は、デフォルトで折り畳むべきだからね。
+//   だから、FCを書かなければ、エディタ上では、コメントが見えるってことだね」):
+// ★**俊克の方が良い**。`^` は「上の行に効く」という**位置**しか言っていない。`FC` は
+//   「**畳まれるべきコメント**」という**役割**を名乗るso、上付きにも見出しにも、この先の別の用途にも同じ1つの印が使える。
+//   手で打てる/直せるのも大きい(記号は探すのが面倒)。★`^` も読み続ける(read-both=いつもの流儀)。
+// ★これで規則が1行で言える= **FCと書いてあるコメント行は、既定で畳む**。書かなければ見えたまま。
+const MEOS_SPEC_LINE_RE = /^[ \t]*<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc|\^)[ \t]*([^\n]*?)[ \t]*-->[ \t]*$/;
 // 参照形式リンクの定義行(`[表示]: https://…`)。畳む相手はこれも同じ=「行の外へ出したもの」。
 const MEOS_DEF_LINK_RE = /^[ \t]*\[[^\]\n]+\][ \t]*:[ \t]*\S/;
 // 指定行の中の上付/下付の項目。`A↑2{…}` / `↑2{…}`(基準文字を省く) / `A↑2#2{…}`(2つめ)。
@@ -19576,24 +19585,49 @@ function meosMoveSpecsOutOfLine(text) {
   body += t.slice(prev);
   body = body.replace(/[ \t]+$/, '');
   if (!body.trim()) return null;                              // 本文が消えるなら何もしない(コメントだけの行)
-  return { body, spec: '<!-- ' + MEOS_MEW_SIG + '^ ' + items.join(' ') + ' -->' };
+  return { body, spec: '<!-- ' + MEOS_MEW_SIG + 'FC ' + items.join(' ') + ' -->' }; // v4.0.139: FC=Folding Comment(既定で畳む)
 }
 // 折り畳み= 「行の外へ出したもの」(指定行＋リンク定義行)の連なりを、その**直前の行**の下に畳む。
 // ★畳むと本文行だけが残り、空白地帯が消える=俊克の言う最終奥義。畳む/開くはVS Codeの標準の折り畳み。
-function meosDefBlockFoldingRanges(document) {
+// 「行の外へ出したもの」の連なりを拾う。fc=この塊にFC付きの指定行が含まれる(=既定で畳む相手)。
+function meosDefBlocks(document) {
   const out = [];
   if (!MEOS_SPEC_LINE || !document) return out;
   try {
     const lines = meosDocLines(document), n = Math.min(document.lineCount, lines.length);
-    const isDef = (t) => !!t && ((t.indexOf('<!--') >= 0 && MEOS_SPEC_LINE_RE.test(t)) || (t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t)));
+    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && MEOS_SPEC_LINE_RE.test(t);
+    const isDef = (t) => isSpec(t) || (!!t && t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t));
     for (let ln = 1; ln < n; ln++) {
       if (!isDef(lines[ln])) continue;
-      let e = ln; while (e + 1 < n && isDef(lines[e + 1])) e++;
-      if (!isDef(lines[ln - 1])) out.push(new vscode.FoldingRange(ln - 1, e, vscode.FoldingRangeKind.Region));
+      let e = ln, fc = isSpec(lines[ln]);
+      while (e + 1 < n && isDef(lines[e + 1])) { e++; if (isSpec(lines[e])) fc = true; }
+      if (!isDef(lines[ln - 1])) out.push({ start: ln - 1, end: e, fc });
       ln = e;
     }
   } catch (_) { }
   return out;
+}
+function meosDefBlockFoldingRanges(document) {
+  return meosDefBlocks(document).map(b => new vscode.FoldingRange(b.start, b.end, vscode.FoldingRangeKind.Region));
+}
+// ★**FCと書いてあるものだけ**を既定で畳む(俊克「FCを書かなければ、エディタ上ではコメントが見える」)。
+//   リンクの定義行は標準のMarkdownで、それ自体は読める物so勝手には畳まない(畳みたければ手で畳める)。
+// ★畳むのは**その文書につき1回だけ**(セッション中)。毎回畳み直すと、手で開いた人と喧嘩になる。
+const _meosFcFolded = new Set();
+async function meosAutoFoldSpecLines(editor, force) {
+  if (!MEOS_SPEC_LINE_AUTOFOLD || !editor || !editor.document) return;
+  const key = String(editor.document.uri || '');
+  if (!force && _meosFcFolded.has(key)) return;
+  _meosFcFolded.add(key);
+  try {
+    const _t0 = Date.now();
+    const heads = meosDefBlocks(editor.document).filter(b => b.fc).map(b => b.start);
+    if (!heads.length) return;
+    try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
+    await new Promise(r => setTimeout(r, 120)); // VS Codeが範囲を取り直すのを待つ(v0.9.961と同じ作法)
+    await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
+    try { const _ms = Date.now() - _t0; if (_ms > 300) meosDbg('[fcFold] ' + _ms + 'ms blocks=' + heads.length + ' lines=' + editor.document.lineCount); } catch (_) { }
+  } catch (_) { }
 }
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
@@ -20402,6 +20436,27 @@ function activate(context) {
   // v4.0.138(俊克 8/12): この行の指定を**外へ出す**=本文行を素のMarkdownだけにして、指定は真下の行へ。
   //   折り返しが止まり、外へ出した行は畳める。選択範囲があればその行すべて・無ければカーソル行。
   //   ★下から上へ書き換える(行を足すと下の行番号がずれるため)。
+  // v4.0.139: FC付きの指定行を「開いた時に1回だけ」畳む。手で開いた人と喧嘩しないよう、文書につき1回。
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) setTimeout(() => { try { meosAutoFoldSpecLines(ed); } catch (_) { } }, 300); }));
+  try { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 1200); } catch (_) { }
+  // 手で畳み直す/開く口。自動が効かない時と、開いて中身を読みたい時のため。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.foldSpecLines', async () => {
+    const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    if (!ed || !ed.document) return;
+    const heads = meosDefBlocks(ed.document).filter(b => b.fc).map(b => b.start);
+    if (!heads.length) { vscode.window.showInformationMessage('MeOS: 畳める指定行(Mew!FC)はありません。'); return; }
+    try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
+    await new Promise(r => setTimeout(r, 120));
+    await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
+    vscode.window.showInformationMessage('MeOS: 指定行 ' + heads.length + ' 個を畳みました。');
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.unfoldSpecLines', async () => {
+    const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    if (!ed || !ed.document) return;
+    const heads = meosDefBlocks(ed.document).filter(b => b.fc).map(b => b.start);
+    if (!heads.length) return;
+    await vscode.commands.executeCommand('editor.unfold', { selectionLines: heads });
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.specOutOfLine', async () => {
     const editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!editor || !editor.document) return;
