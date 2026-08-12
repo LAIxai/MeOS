@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.152(俊克 8/12 pm02:46「FC方式が本当に欲しいのは、取消線なんだよ。つまり、両サイドから挟む形式だね」): ★★**俊克が正しい。しかも理由は数字ではなく構造にある**= 見出しの指定は**行末**にいるので後ろに文字が無い。でも取消線やハイライトの指定は「その語の**直後**」so**文の途中**にいて、**そこから後ろの文字が全部ずれる**。リンクで俊克が「最悪の仕様」と言ったのと同じ形so、**両サイドから挟む記法(== ~~ *** ** _)こそ行の外へ出す価値が一番大きい**。★記法= 指定行に `~~(赤/)` `==(白/黄)` `**(白/青)`。上付きと同じで**種類を名乗るだけ**、結びは**その行の何個目か**。飛ばす時は `~~#2(赤/)`、tipは `~~{(赤/)//注釈}`(`//` は行末まで伸びるso箱に入れる)。★実装= 読み取りの口が4つとも同じ形だった(`meosSpecCommentAfter` の直後に `parseColorSpec`)so、**「直後に無ければFC行から引く」を4箇所に同じ形で足すだけ**で済んだ(ハイライト/取消線/太字/斜体)。数える単位は**その行の・その種類の・何個目か**=[[feedback_one_source_for_mark_count_action]]。★これで指定行は**上付き/語の記法/行の指定**の3種類を1本の中で受けられる(headlessで分離を確認)。★俊克の日記の実測(=この機能の値打ち)= 行末に仕様コメントが付く行は**467行**、うち**63%が既にペインを超えて折り返し**、**24%はコメントを外へ出すだけで収まる**。コメントが食う桁は**中央値35桁**(58桁ペインの6割)。headless 73/73＋26/26＋17/17 PASS。→ [[project_out_of_line_and_fold]]
 // - v4.0.151(俊克 8/12 pm02:23 実測＋「ただし、クリアしてもクリアしても no FC blocks が出てくるよ」): ★★**私が作ったログの無限ループ**。**MeOS Debug の出力チャネル自体が、VS Codeにとっては1つの文書**so、ログを1行書く→その文書が変わる→折り畳みの処理が走る→「FC行なし」とログを書く→…と回り続けていた。俊克が「クリアしても出てくる」と言ったのは、**消しているそばから自分で書き足していた**から。★真因は2つ重なっていた= ①**本物のファイル以外でも走っていた**(`output:` / settings / git差分…) ②**熱い経路でログを書いた**(ログ自体が次の発火の燃料になる)。→ 両方塞いだ(scheme が file/untitled の時だけ・黙って帰る)。★**同時に2回畳んでいた**のも直した(起動時の3連発が競合し ok が2行出ていた)→ 進行中フラグで1回に。★★教訓= **自分の出力が自分の入力に戻る所でログを書かない**。★【実測(俊克の日記 155,306行)】**走査は30ms未満**(`[fcScan]` が1行も出ない=閾値未満)／**畳むのは209ms・22ブロック**(起動時に1回だけ)。→ **元栓を落とす必要は無い**と判断。
 // - v4.0.150(俊克 8/12 pm02:16「実測は、ログをクリアしてからVSCmを再起動でいいのか?」): ★**そのままでは数字が出ない**= 私が計測を仕掛けたのは「畳むコマンド」だけで、15万行の本当の負担である**走査そのもの(`meosDefBlocks`)を測っていなかった**。しかもFC行が0件の日記では、走査は走るのにログは「相手が居ない」としか言わない。→ **走査を計測**(30ms超で `[fcScan] …ms lines=… blocks=…`)＋FC行0件のログにも「走査は完了・行数」を出す。★教訓(またこれ)= **計測は「重い所」に仕掛ける**。v4.0.112「計測で犯人が出ないのは網の外に居る証明」の再演で、今回は自分で網を張り直した。
 // - v4.0.149(公開前の点検・3回目): ★**`not`(v4.0.148)をREADMEにもCHANGELOGにも書いていなかった**。今日これで**3回目**= ①8/10「封印したものを宣伝していた」(嘘) ②今朝「作ったものを語っていない」(取りこぼし) ③今回。**向きは違っても、ストアの顔が実物と食い違っているのは同じ**=[[feedback_readme_is_storefront]]。★教訓の格上げ= **記法を1つ足したら、その場でREADME/CHANGELOGにも足す**。「あとでまとめて書く」は、公開直前に必ず取りこぼす(3回とも公開直前に見つかっている)。★ついでに README/CHANGELOG の上付きの例を**一般形**に揃えた(`🐱↑3<!-- Mew! 🐱↑3{…} -->` → `<!-- Mew!FC A↑1(白/緑) -->`)。
@@ -5994,6 +5995,9 @@ function applyPrettyLabels(editor) {
   const _lineCount = Math.min(editor.document.lineCount, _allLines.length);
   for (let line = 0; line < _lineCount; line++) {
     const text = _allLines[line];
+    // v4.0.152: この行のFC指定行(真下)。語に効く記法の色/tipを、行の外から受け取るため。
+    const _fcL = MEOS_SPEC_LINE ? meosSpecLineFor(_allLines, line) : null;
+    let _fcHi = 0, _fcSt = 0; // この行で何個目のハイライト/取消線か
     // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
     // 「コードブロックの中」扱いになって素の見出しが一切描画されなかった。フェンスが200行以上開きっぱなしなら
     // 迷子と見なして閉じる=1本の迷子フェンスで以降が全滅しない(日記の実コードブロックは十数行so十分な余裕)。
@@ -6191,8 +6195,10 @@ function applyPrettyLabels(editor) {
           bgKey = 'yellow'; fgKey = null; hiComment = ''; bodyLen = content.length;
           // v4.0.56: 素の `==本文==` の直後に仕様コメントがあれば、それを色/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
-          if (_sc) {
-            const hi2 = parseColorSpec(_sc.raw, 'bg', _sc.raw);
+          // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の ==」を引く。
+          const _fcRaw = (!_sc && _fcL) ? meosFcFmtInner(_fcL, '==', ++_fcHi) : (_fcHi++, null);
+          if (_sc || _fcRaw) {
+            const hi2 = parseColorSpec(_sc ? _sc.raw : _fcRaw, 'bg', _sc ? _sc.raw : _fcRaw);
             if (hi2.bgKey || hi2.fgKey || hi2.comment) {
               bgKey = hi2.bgKey || null; fgKey = hi2.fgKey || null; hiComment = hi2.comment || '';
               if (!bgKey && !fgKey) bgKey = 'yellow';
@@ -6268,7 +6274,9 @@ function applyPrettyLabels(editor) {
           strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
           // v4.0.56(俊克): 素の `~~本文~~` の直後に仕様コメントがあれば、線色/背景/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
-          const _st = _sc ? parseColorSpec(_sc.raw, 'fg', _sc.raw) : null;
+          // v4.0.152(俊克「FC方式が本当に欲しいのは取消線」): 直後にコメントが無ければ、真下の指定行から引く。
+          const _fcRaw = (!_sc && _fcL) ? meosFcFmtInner(_fcL, '~~', ++_fcSt) : (_fcSt++, null);
+          const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
             if (_st && (_st.fgKey || _st.bgKey || _st.comment)) {
@@ -19590,6 +19598,26 @@ const MEOS_DEF_LINK_RE = /^[ \t]*\[[^\]\n]+\][ \t]*:[ \t]*\S/;
 //   → 箱を**任意**にした= `A↑1`(指定なし) / `A↑1(白/緑)`(色だけ) / `A↑1{150%(白/緑)}`(高さも) の3つとも通る。
 //   ★トークンの文字集合から**括弧を外す**のを忘れると、貪欲に `(白/緑)` まで飲み込む(headlessで捕まえた)。
 const MEOS_SPEC_ITEM_RE = /([^\s{}<>#()]*[↑↓][^\s{}<>#()]*)(?:#(\d{1,3}))?[ \t]*(?:\{([^}]*)\}|(\([^()\n]*\)))?/g;
+// v4.0.152(俊克 8/12 pm02:46「FC方式が本当に欲しいのは、取消線なんだよ。つまり、両サイドから挟む形式だね」):
+// ★★**俊克が正しい。しかも理由は数字ではなく構造にある**=
+//   見出しの指定は**行末**にいるので後ろに文字が無い。でも取消線やハイライトの指定は「その語の**直後**」so
+//   **文の途中**にいて、**そこから後ろの文字が全部ずれる**。リンクで俊克が「最悪の仕様」と言ったのと同じ形。
+//   → **両サイドから挟む記法(== ~~ *** ** _)こそ、行の外へ出す価値が一番大きい**。
+// ★記法= 指定行に `~~(赤/)` `==(白/黄)` `**(白/青)` のように書く。上付きと同じで**種類を名乗る**だけ。
+//   結びは**その行の何個目か**(出現順)。飛ばして指す時は `~~#2(赤/)`。tipを付けたい時は `~~{(赤/)//注釈}`。
+const MEOS_SPEC_FMT_RE = /(?:^|[\s])(={2}|~{2}|\*{3}|\*{2}|_)(?:#(\d{1,3}))?[ \t]*(?:\{([^}]*)\}|(\([^()\n]*\)))?/g;
+// 指定行から「この行の kind の ord 個目」の中身を引く。無ければ null。
+function meosFcFmtInner(spec, kind, ord) {
+  if (!spec || !spec.fmt || !spec.fmt.length) return null;
+  let n = 0;
+  for (const it of spec.fmt) {
+    if (it.kind !== kind) continue;
+    if (it.nth > 0) { if (it.nth === ord) return it.inner; continue; } // #N は名指し
+    n++;
+    if (n === ord) return it.inner;                                     // 番号なしは出現順
+  }
+  return null;
+}
 function meosParseSpecLine(text) {
   const payload = meosSpecLinePayload(text);
   if (payload === null) return null;
@@ -19606,21 +19634,31 @@ function meosParseSpecLine(text) {
     metex.push({ tok, nth: it[2] ? parseInt(it[2], 10) : 0, inner: (it[3] !== undefined ? it[3] : (it[4] || '')), not: isNot });
   }
   if (metex.length) rest = rest.replace(MEOS_SPEC_ITEM_RE, ' '); // 取り出した分は行単位の読み取りから外す
-  return { metex, line: rest.trim() };
+  // v4.0.152: 語に効く記法(== ~~ *** ** _)の項目。上付きを取り除いた後に拾う(順番が全て)。
+  const fmt = []; let ft;
+  MEOS_SPEC_FMT_RE.lastIndex = 0;
+  while ((ft = MEOS_SPEC_FMT_RE.exec(rest)) !== null) {
+    const inner = (ft[3] !== undefined ? ft[3] : (ft[4] || ''));
+    if (!inner) continue;                       // 中身が無いものは項目にしない(行単位の指定を巻き込まない)
+    fmt.push({ kind: ft[1], nth: ft[2] ? parseInt(ft[2], 10) : 0, inner });
+  }
+  if (fmt.length) rest = rest.replace(MEOS_SPEC_FMT_RE, (mm, k, n, br, pa) => (br !== undefined || pa) ? ' ' : mm);
+  return { metex, fmt, line: rest.trim() };
 }
 // 本文行 ln の指定行(=真下の行)。無ければ null。lines は meosDocLines の配列(版ごとに1回だけ刻んである)。
 function meosSpecLineFor(lines, ln) {
   if (!MEOS_SPEC_LINE || !lines) return null;
   // v4.0.147: 真下から**続く限り**の指定行をまとめて読む(1行に収めても、複数行に分けても同じ)。
-  let metex = null, line = '', found = false;
+  let metex = null, fmt = null, line = '', found = false;
   for (let i = ln + 1; i < lines.length; i++) {
     const p = meosParseSpecLine(lines[i]);
     if (!p) break;
     found = true;
     metex = metex ? metex.concat(p.metex) : p.metex.slice();
+    fmt = fmt ? fmt.concat(p.fmt || []) : (p.fmt || []).slice();
     if (!line && p.line) line = p.line;   // 行単位の指定は**最初に見つけた1つ**(2つ書いても混ぜない)
   }
-  return found ? { metex: metex || [], line } : null;
+  return found ? { metex: metex || [], fmt: fmt || [], line } : null;
 }
 // 指定行の上付/下付を、本文行のトークンへ配る(名前＋出現順)。
 // v4.0.145(俊克 8/12 pm00:37「`Mew!FC 🐱↑3` と書くのは汎用的じゃない。`Mew!FC A↑2` のように常に基本形を書くべき。
@@ -20381,6 +20419,7 @@ function meosApplyBoldDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
     const doc = editor.document; const hideR = []; const itemsByType = new Map();
+    const _bLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.152: 語に効く記法のFC指定行を引くための行配列(版ごとに1回だけ刻んである)
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
     let _lnLinks = [];
@@ -20406,17 +20445,27 @@ function meosApplyBoldDecorations(editor) {
         while ((m = reIF1.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.57(俊克): 素の記法の直後に仕様コメントがあれば色/tipとして使い、コメントは隠す(新形)。
         //   `**本文**<!-- (白/青)//[]tip= -->` — MeOS外では本物の太字。旧 `**{ }**` は read-both。
-        const _spec = (e0) => { const sc = meosSpecCommentAfter(text, e0); if (!sc) return null; const cs = parseColorSpec(sc.raw, 'fg', sc.raw); return { sc, cs }; };
+        // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の kind」を引く。
+        const _fcL2 = MEOS_SPEC_LINE ? meosSpecLineFor(_bLines, ln) : null;
+        const _fcOrd = {};
+        const _spec = (e0, kind) => {
+          const sc = meosSpecCommentAfter(text, e0);
+          const ord = kind ? (_fcOrd[kind] = (_fcOrd[kind] || 0) + 1) : 0;
+          if (sc) { const cs = parseColorSpec(sc.raw, 'fg', sc.raw); return { sc, cs }; }
+          const raw = (kind && _fcL2) ? meosFcFmtInner(_fcL2, kind, ord) : null;
+          if (!raw) return null;
+          return { sc: null, cs: parseColorSpec(raw, 'fg', raw) };
+        };
         // 従来記法(同一行内): ***太字斜体*** / **太字**(**{ ではない時)
         const reBI = /\*\*\*([^*\n]+?)\*\*\*/g; reBI.lastIndex = 0;
-        while ((m = reBI.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while ((m = reBI.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '***'); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         const reB = /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g; reB.lastIndex = 0; // ***の一部でない・**{でもない 純粋な **太字**
-        while ((m = reB.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while ((m = reB.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '**'); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
         const reI1p = _prose ? /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g : null; if (reI1p) reI1p.lastIndex = 0;
-        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
