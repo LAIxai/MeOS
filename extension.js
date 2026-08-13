@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.182(俊克 8/14 am00:39「分割テスト: 飛ばなかった。不自然さは無い／結合テスト: 膜の始めに飛んだっきり、戻ってこなくなった」): ★★**v4.0.181で入れた私の門番that厳し過ぎた**= 「選択that変わっていたら何もしない」と書いたthat、**畳む動作そのものthatカーソルを動かす**(畳んだ領域の中にカーソルthat居ると、その先頭へ移る)。結合の直後は**必ず**選択that変わるso、**戻す処理that毎回自分で降りていた**=飛んだきり戻らない。分割thatOKで結合thatNGだったのは、結合だけ**カーソルthat畳まれる側に居た**から。★区別の付け方は**時間**だった= 畳むコマンドの**直後**に呼ぶ道は、間に人thatキーを押す隙thatそもそも無いso**選択ごと戻してよい**。150/300/450msの待ちを挟む一括畳みの道だけ、選択that変わっていたら**降りる**(v4.0.176でワープを打ち消していた本当の場所はここだった)。★教訓= **同じ関数に2つの立場を持たせるなら、区別を引数で明示する**。「たぶん同じでいいだろう」で1つにすると、今日のように**片方を直すと片方that壊れる**。
 // - v4.0.181(俊克 8/14 am00:22 質問1「ジャンプすると、1、2秒で再び元の位置に戻ってくる。そもそも、なぜジャンプを防止できないのか?」→ am00:31「そうではなく、今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」): ★★**飛んでいるのは分割ではなく、その直後に走るFCの開閉**= 割ると**カーソルthat別の塊へ移る**so、FCの同期that「前に開いていた塊」を畳みに行く。その塊that画面の外なら、`editor.fold` は**そこまでスクロールして見せてしまう**。★戻す仕掛けは v4.0.176 で入れてあったthat、**まとめて最後に1回だけ**戻していたso「**飛んで、戻る**」thatそのまま目に見えていた。→ **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わる。★★**もう1つ、私の直しthat悪さをしていた**= v4.0.176で「カーソルthat変わっていたら元へ戻す」と書いたthat、それは「畳んだ拍子に動いた」のか**「俊克thatジャンプした」のか区別thatついていない**so、**ワープを打ち消していた**(畳む処理は最大3回×150/300/450msの待ちを挟むso1〜2秒後に引き戻される)。→ 規則を1つに= **控えた時と選択that1文字でも違えば、何もしない**。誰かthat動かしたのなら、それthat正しい位置。**戻していいのは、誰も動かしていない時だけ**。★【質問1の後半への答え】`editor.fold`/`unfold` は**コマンド**で、「畳むthatスクロールはするな」という選択肢thatVS Code側に**無い**。soMeOSにできるのは**後から戻すこと**だけで、前もって止める口thatそもそも無い。
 // - v4.0.180(俊克 8/13 pm11:58 バグ1「最初のハイライト1のFCコメントは1行目の下に残るべきだが、そうならなかった。これでも、ハイライト1の色指定that生きているのは、拡大解釈だね」): ★★**私の安全弁that誤爆していた**= v4.0.178で「上付/下付thatあれば触らない」と逃げたthat、行に `A↑2` that**1つ在るだけ**で割る処理ごと止まり、**ハイライトの指定まで道連れ**になっていた。俊克のテスト行(ハイライト＋リンク＋取消線＋上付き)thatまさにその形。★★**俊克の「拡大解釈だね」も正しい**= 割った後も黄色く見えたのは、**素の `==…==` の既定that黄**だから。**指定は失われていたのに、たまたま同じ色に見えていた**。★安全弁は「壊すくらいなら何もしない」の作法thatが、**逃げた先で静かに壊れていた**=**逃げるなら、逃げた事that見える形で逃げる**べきだった。★直し= 上付/下付も**同じ数え方(向き＋出現順)で割る/結ぶ**。触らないのは `#N` で名指ししている時だけ(番号の振り直しthat要るため)。項目を書き戻す口を1つ作った(`meosMetexItemText`)。★ついでに**数える物差しを1つに集約**(`meosCountMarks`)= 語に効く記法と上付/下付を同じ1回で数え、**必ず `meosScanText` を通す**(コードスパンとコメントの中の命令トークンは無いものとして数える)。これを通し忘れると、行末のリンク指定の中の `==` を1つと数えて全部ずれる。★**俊克の実物の行で、割る→結ぶthat1文字も違わず元に戻る**ことを確かめた。headless 15/15＋12/12＋79/79 PASS。
 // - v4.0.179(俊克 8/13 pm09:52「と言うことは、改行を削除して、1つの段落にまとめたときは、結合という処理も必要ってことだね?」): ★★**その通り。割る口を作ったなら、必ず結ぶ口も要る**。俊克thatこちらから言う前に気づいた=**片方だけ作るのは、今日ずっと踏んできた穴と同じ形**。★放っておくと一番ひどい壊れ方をする= 下の本文の頭でBackspaceを押すと、**直前の行=指定行に本文that吸い込まれる**(`<!-- Mew!FC == (白/黄) -->==B==の行。`)=**コメントの中に文字that入る**。★上に指定行that無い時も静かに壊れる= 繋いだ後、下の指定は**上の記法から数え直される**so相手thatずれる。→ その時だけ **`#N` で名指し**して繋ぐ(番号を書く仕組みは元からある)。上下の数that合っている時は番号を書かない(素直な形を保つ)。★行に効く指定(H2/-1.)は**上that勝つ**(下の行頭マーカーは文中へ移るso、もう効かない)。★安全弁は割る側と同じ= 上付/下付／既に `#N` thatあれば**何もしない**。★実装= Enterと同じ作法でBackspaceも握る(`laiMembrane.backspaceJoinSpecLines`)。**当たらなければ必ず `deleteLeft` に落とす**=Backspaceは一番使う鍵so、握るなら逃げ道を先に作る。★**割って結ぶと元どおり**をテストで確かめた(往復)。headless 12/12(新規 t_join_fc)＋89/89 PASS。
@@ -20385,16 +20386,24 @@ function meosScheduleFcCursorSync(editor) {
 // ★【質問1の後半「そもそも、なぜジャンプを防止できないのか?」】= `editor.fold`/`unfold` は**コマンド**で、
 //   「畳むthatスクロールはするな」という選択肢thatVS Code側に無い。soMeOSにできるのは**後から戻すこと**だけ。
 //   前もって止められないのはそのため(APIの口that無い)。
-function meosRestoreView(editor, topLine, sel) {
+// v4.0.182(俊克 8/14 am00:39「結合テスト: 膜の始めに飛んだっきり、戻ってこなくなった」):
+// ★★**v4.0.181の私の門番that厳し過ぎた**= 「選択that変わっていたら何もしない」と書いたthat、
+//   **畳む動作そのものthatカーソルを動かす**(畳んだ領域の中にカーソルthat居ると、その先頭へ移る)so、
+//   結合の直後は**必ず**選択that変わる→**戻す処理that毎回自分で降りていた**=飛んだきり戻らない。
+// ★区別の付け方は**時間**だった= `strict=false`(畳むコマンドの**直後**に呼ぶ)なら、間に人thatキーを押す隙は無いso
+//   **選択ごと戻してよい**。`strict=true`(150/300/450msの待ちを挟む一括畳み)だけ、選択that変わっていたら**降りる**
+//   (そこthatワープを打ち消していた本当の場所)。**同じ関数に2つの立場を持たせるなら、区別を引数で明示する**。
+function meosRestoreView(editor, topLine, sel, strict) {
   try {
     if (!editor || topLine < 0) return;
     if (editor !== vscode.window.activeTextEditor) return;         // もう別のエディタ=触らない
-    if (!sel || !editor.selection.isEqual(sel)) return;            // ★誰かthat動かした=何もしない(ワープを打ち消さない)
+    if (strict && sel && !editor.selection.isEqual(sel)) return;   // 待ちを挟む道だけ: 誰かthat動かした=何もしない
     const now = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
     if (now >= 0 && now !== topLine) {
       const ln = Math.min(topLine, Math.max(0, editor.document.lineCount - 1));
       editor.revealRange(new vscode.Range(ln, 0, ln, 0), vscode.TextEditorRevealType.AtTop);
     }
+    if (!strict && sel && !editor.selection.isEqual(sel)) editor.selection = sel; // 畳んだ拍子に動いたカーソルを戻す
   } catch (_) { }
 }
 async function meosSyncFcFoldForCursor(editor) {
@@ -20414,7 +20423,7 @@ async function meosSyncFcFoldForCursor(editor) {
     //   ここthat「前に開いていた塊」を畳みに行く= その塊that画面の外なら、**そこまでスクロールして見せてしまう**。
     //   戻すのは v4.0.176 で入れたthat、**まとめて最後に戻していた**so「飛んで、戻る」thatそのまま見えていた。
     // ★直し= **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わるso、目には残らない。
-    const _keep = () => meosRestoreView(editor, _topBefore, _selBefore);
+    const _keep = () => meosRestoreView(editor, _topBefore, _selBefore, false); // 直後so選択ごと戻す
     const fold = async (ls) => { await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); _keep(); };
     const unfold = async (ls) => { await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); _keep(); };
     if (raw) { // Raw=生データを全部見せる約束
@@ -20434,7 +20443,7 @@ async function meosSyncFcFoldForCursor(editor) {
       await fold([_meosFcOpen]);
       _meosFcOpen = null;
     }
-  } catch (_) { } finally { meosRestoreView(editor, _topBefore, _selBefore); _meosFcBusy = false; }
+  } catch (_) { } finally { meosRestoreView(editor, _topBefore, _selBefore, false); _meosFcBusy = false; }
 }
 const _meosFcFolded = new Set();
 // v4.0.140(俊克 質問1「FC指定なのに、なぜコメントが自動で折り畳まれないのか?」):
@@ -20486,7 +20495,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     }
   }
   try { meosDbg('[fcFold] gave up after 3 attempts (' + heads.length + ' blocks)'); } catch (_) { }
-  } finally { meosRestoreView(editor, _topBefore, _selBefore); _meosFcFolding = false; }
+  } finally { meosRestoreView(editor, _topBefore, _selBefore, true); _meosFcFolding = false; } // 待ちを挟む道=厳しく
 }
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
