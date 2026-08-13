@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.171(俊克 8/13 pm02:03「見出しボタンも、FC記法にならない件を修正して。…このように、長い文字列だと、FC記法にしないと、空白が空く。見出しなので少し離れて見えるのは悪くはないけど、空けたければ、FC指定で、本当の空行を入れればいいだけだよね」): ★★**見出しを外していた私が間違っていた**。v4.0.152で「見出しの指定は**行末にいるので後ろに文字が無い**＝外へ出す値打ちが小さい」と書いたthat、**見出しが長ければ、その行自体が折り返す**。俊克のスクショthatまさにそれ= 隠れたコメントthat桁を食い、緑の帯の下に**空の視覚行**that1本残る。「後ろに文字が無い」のではなく、**後ろに自分の続きが在った**。★俊克の言葉that正確= 「**たまたま空いて見えるのと、空けたのは別物**」。決めるのは書き手so、勝手に空けない。★★**Format行の4つのボタン全部**を同じ約束に揃えた= `Format ▼` のtipは前から「**the four buttons**」と書いてあったso、**UIの約束にコードが追いついていなかった**(見出し=除外・上付/下付=そもそも呼んでいない・箇条書きだけの道=早期returnで素通り)。3つとも直した。★★**ついでに見出しボタンの「押し直し」を直した**= 見出しボタンは行を**組み立て直す**so、押すたびに古い印・スタンプ・指定コメントを本文に飲み込んでいた(`### ## 見出しの例 <TS><!-- H2 --> <TS><!-- H3 -->`)。これはFCと無関係に**前から壊れていた**that、FCを入れると「戻す→触る」で毎回通る道になるso先に塞いだ。★落とすのは**行単位の宣言を持つコメントだけ**(`meosLineDirective` that null でないもの)= `== (白/黄)` や `[](行先)` は**その語のもの**so残す(消すとハイライトやリンクthat相手を失う)。スタンプの物差しは🚫解除と共有(1つに集約)。★headless 16/16(新規 t_heading_fc)＋25/25＋11/11＋11/11 PASS。→ [[feedback_one_source_for_mark_count_action]]
 // - v4.0.170(俊克 8/13 pm01:40「(質問1)⑧は、上だけ「つ。」が押し出されたのはなぜ? …あなたの目で、スクショを見て、何か気づくことはあるのか?」): ★【質問1の答え】**太字は斜体より、1つにつき3桁ぶん長い**= 本文のマーカー `**A**`(5桁) vs `*C*`(3桁) で+2、コメントの中の命令 `**` vs `*` で+1、それが2箇所so**合計+6桁**(実測 83桁 対 77桁)。**折り返しは生のテキストの桁数で決まる**(装飾は描画にしか効かない=v4.0.93の壁)so、**隠れているコメントもきっちり桁を食う**。⑧はわざと旧形(行末に直接書く)で書いたテストso、この2行だけでコメントが60桁を占めている。**同じ行をFC形にすると 83桁→19桁**=これがFCを作った理由そのもの。テストファイルにこの答えを書き足した。★★【スクショを見て気づいたこと=**新しいバグを1つ見つけた**】**マスクが `FC` を知らなかった**= v4.0.133(8/10)の「コメントの中の命令トークンを素のマーカーとして数えない」物差しは `Mew!` しか読まず、**FC(8/12)を作った時に直し忘れていた**。→ **指定行に同じ種類を2つ並べると、指定行そのものが壊れて描かれる**(`<!-- Mew!FC ** … --><!-- Mew!FC ** … -->` の `**` 4つが2組と読まれ、間の `(白/黄)//tip -->` が太字になり `**` が消える)。**畳んでいる間は見えないが、カーソルを置いて開いた瞬間に見える**so、俊克のスクショには写っていなかった(全部畳まれていた)。直しは `(?:FC|fc|\^)?` を1つ足すだけ(長さは1文字も変えないso位置がずれない)。★【スクショの確認結果】①==素の文字列==/**太字**/*イタリック*/***太字かつイタリック***/~~取消線~~ の5つとも色が付いた(👍1〜5=v4.0.168の直しが実機で効いている)②バグ5の4語1つずつ=**4つとも正しい語that包まれた**③🚫で4つとも素に戻った④`* 箇条書き`/`*.md と *.js`/コードスパンは無反応(誤爆なし)⑤`2*3*4`は`3`だけ斜体=GitHubと同じ。★★**エディタの色そのものが今回の変更の証拠になっていた**= 13行目の `*イタリック*` は**水色**(VS Code自身のMarkdown配色that「これは斜体だ」と認めている)、15行目の `_イタリック_` は**白**(VS Codeは斜体と認めない)。**斜体に見えているのはMeOSだけ**=外では `_` が字のまま見えるという話that、そのまま画面に出ていた。★リンクの表示文字 `[*ここ*]()` の斜体は**効いている**(6倍に拡大して確認。低倍率では立体に見えたthat、拡大すると確かに傾いていた=**見た目の判断は倍率で変わるso拡大して確かめる**)。headless 25/25＋11/11＋11/11 PASS。
 // - v4.0.169(俊克 8/13 pm00:00「早く突っ込んでよ。だから、イタリックには2つの記法があるんだね。そうなれば、一択でしょ。`*イタリック*`と書く」): ★★**斜体は `*` に一択**。v4.0.16で `_` を選んだのは「Markdownの `_`＝斜体と一致させる」ためだったが、**一致させる相手を間違えていた**= CommonMarkは**`_` にだけ語中の制限**を掛ける(閉じの `_` の後ろが文字なら閉じられない)。日本語は助詞that続くso `_イタリック_の後に…` は**外の世界で `_` が字のまま見える**。`*` にその制限は無い。★**本物のCommonMark実装(marked)で確かめた**= `_イタリック_の後に文字`→素の字／`*イタリック*の後に文字`→`<em>`。推測でなく実測で決めた。★★**俊克の「コメントで挟む」案は採らなかった**= `<!-- Mew! _ -->…<!-- Mew! _ -->` は**30桁**を本文の途中に置くso、v4.0.138で勝ち取った「長いものは行の外へ出す」を斜体1語のために手放すことになる。`*` なら**2桁**。**ただしこの発明の的は正しい**= 本当にMarkdownに無いのは**ハイライト `==`** の方で(GFMにも無い=外では `==` が丸見え)、そこが挟み記法の出番。→ 次の課題。★【実データ検証】日記157,183行= **433箇所(363種)が新たに斜体になる**that、中身は `*記憶*` `*意志*` `> *片づけなくても、迷子にならない。*` `*ciere*` 等**全部が本物の斜体**= 誤爆ではなく**これまでMeOSが描いていなかった433個**。斜体らしくないのは正規表現の断片3件だけで、それも**GitHubでは元から斜体**so一致が正しい(逃げ道はコードスパン)。★実装= 描画/🚫/指定行の種類/戻す口/リンクの表示文字、**全部が同じ1つの形**(`MEOS_STAR_ITALIC_SRC`)を共有。`_` は read-both。★★**ついでに v4.0.133 の穴を塞いだ**= 「コメントの中の命令トークンを素のマーカーとして数える」バグは、**ハイライト/取消線のパスにしか対策that入っていなかった**(太字/斜体のパスは素通し)。単一 `*` を足すと当たる確率that上がるso、マスクを `meosMaskSpecTokens` に集約して**両方から引く**。★リンクの表示文字から包みを外す処理は**4か所に写経してあった**so1つに集約(`meosUnwrapEmphasis`)=3か所だけ直す事故を作らない。headless 19/19＋11/11＋11/11 PASS。→ [[feedback_one_source_for_mark_count_action]] [[project_setting_decides_future_only]]
 // - v4.0.168(俊克 8/13 am11:24「FCコメントを次の行に書く方式は、取消線以外はまだ不完全。バグの巣窟状態だね。1つずつ直そう。先ずは、太字/イタリック/リンク用の設定ボタンを見て行こう」): ★★**バグ1〜3は1つの真因**= 太字/斜体は指定を**2つの口**から引く(①直後の行末コメント ②真下のFC指定行)が、②で `q.sc.end`(=隠すコメントの終わり)を読んでいた。②には**隠すコメントが無い**(`sc` は null)so **TypeError** → 外側の `catch` に飲まれ、**その版の太字/斜体装飾が丸ごと出ない**。俊克が見た「肝心の文字列が素のまま」「水色にもならない」は全部これ1つ。**水色は VS Code 自身のMarkdown配色**で、MeOSの装飾が死んでいた証拠だった。★★**同じ判断が2箇所にあり、片方だけ正しかった**= ハイライト側(v4.0.154)は `if (_sc)` と書いてあった。so太字側の**3箇所の写経をやめて1つの口**(`_hideSpecComment`)に集約= [[feedback_one_source_for_mark_count_action]]。★俊克の「`_イタリック_`の後に文字を入れると駄目」も同じ真因(MeOSは元から描ける)。**ただし外の世界では本当に斜体にならない**(CommonMarkは閉じ `_` の後ろが文字なら閉じられない)=**MeOSだけが斜体になる食い違い**が残る→設計判断が要る。★★**バグ5=行を書き換えたのに選択を置き去りにしていた**= FC方式ではボタンを押すとまず `meosEnsureInlineBeforeEdit` が指定行を行末形式へ**戻す**(本文の途中にコメントが挿さる)。その行を**丸ごと置換**するのでVS Codeは選択を追えず、**元の桁のまま**残る→挿さったコメントの中を包む。俊克の `<**!-**-` は「`<!--` の2文字目から2文字(=「太字」と同じ長さ)を包んだ跡」そのもの。★直し= 戻す時の**挿し込み位置と長さ**を持って帰り、その行の選択を同じだけ動かす(`meosShiftOffsetByInserts` が唯一の物差し)。開き側は同じ桁なら後ろへ・閉じ側は動かさない=記法をちょうど囲んで選んでもコメントを巻き込まない。★headless 11/11＋11/11 PASS(バグ5は「直し前=`!-`／直し後=`太字`」まで再現して確かめた)。📌**バグ4(リンクだけ行末指定のまま)は次**= リンクの指定は v4.0.94 で**行末一括**に決めた形so、FCに乗せるには**読む側4か所＋🚫**を直す必要がある(移す/戻す口は既に安全=リンクの箱は動かさない)。
@@ -14305,6 +14306,23 @@ function meosFormatStamp(d) {
   h = h % 12; // v4.0.11(俊克): 正午=pm00 / 深夜=am00(旧: pm12/am12を廃止。標準ライブラリは12表記だがMeOSは00-11で統一)
   return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate()) + '(' + wd + ')' + ap + p(h) + ':' + p(d.getMinutes()) + '.' + p(d.getSeconds()) + meosTzAbbr(d); // v4.0.12(俊克): 末尾にTZ(2026.08.05(W)am09:24.05JST)
 }
+// v4.0.171: 見出し本文の末尾に付く**可視タイムスタンプ**。押し直した時に古いスタンプを落とすため、
+//   🚫解除(removeFormatAtCursor)と**同じ1つの物差し**を使う= [[feedback_one_source_for_mark_count_action]]。
+const MEOS_HEAD_STAMP_RE = /\s*\d{4}\.\d{2}\.\d{2}\([SMTWtFs]\)(?:am|pm)\d{2}:\d{2}\.\d{2}(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?\s*$/;
+// v4.0.171(俊克 8/13 pm02:03「見出しボタンも、FC記法にならない件を修正して」): 見出しボタンは行を**組み立て直す**so、
+//   押し直した時に古い指定コメントを本文に飲み込んでいた(`### ## 見出し …<!-- H2 --> …<!-- H3 -->`)。
+// ★落とすのは**行単位の宣言を持つコメントだけ**(`H2` `-1.` `-`)。`== (白/黄)` や `[](行先)` は
+//   **その語のもの**so残す(消すとハイライトやリンクが相手を失う)。meosLineDirective が null を返すものは触らない。
+function meosStripLineDirectiveComments(text) {
+  let s = String(text == null ? '' : text);
+  if (s.indexOf('<!--') < 0) return s;
+  const tail = meosTrailingComments(s);
+  for (let i = tail.length - 1; i >= 0; i--) {                 // 後ろから消す(位置がずれない)
+    const c = tail[i];
+    if (meosLineDirective(meosStripMewSignature(c.payload))) s = s.slice(0, c.start) + s.slice(c.end);
+  }
+  return s.replace(/[ \t]+$/, '');
+}
 async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   if (!editor) return;
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
@@ -14330,7 +14348,8 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const bgEn = normalizeBgColor(BG) || BG; // v0.9.935: bgは英語小文字=日英混在表示
     const hspec = '(' + FG + '/' + bgEn + ')//[]tip=';
     const ln = sel.active.line;
-    const lineText = doc.lineAt(ln).text;
+    // v4.0.171: 押し直しで二重にしない= 行の指定コメントを先に落としてから読む(語に効く指定とリンクは残る)。
+    const lineText = meosStripLineDirectiveComments(doc.lineAt(ln).text);
     // v4.0.47(俊克「見出しに箇条書きを組み込む」): 行頭の箇条書き接頭辞は**見出しの外**に置く(= `- ##{ }##` デカ文字の箇条書き)。
     // 既に `- ` で始まる行なら、その接頭辞を温存して中身だけを見出しにする。□箇条書きがONなら無ければ付ける。
     // v4.0.53(俊克): 箇条書きは**Me記法の膜**で書く。`-{ }`/`-1{ }`、見出しと合成する時は `##-{ }##`/`##-1{ }##`。
@@ -14338,7 +14357,8 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const _bm = /^([ \t]*)((?:[-*+]|\d+[.)])[ \t]+|-1?\{)?([\s\S]*?)\}?[ \t]*$/.exec(lineText) || [null, '', '', lineText];
     const _indent = _bm[1] || '';
     const _pre = _bm[2] || '';   // 既にあった箇条書き(素の `- ` `1. ` / Me記法 `-{` `-1{`)
-    const _rest = _bm[3] || '';
+    // v4.0.171: 既に見出しだった行なら、印(`##`)と古いスタンプも落とす(押すたびに `### ##` と積まない)。
+    const _rest = String(_bm[3] || '').replace(/^#{1,6}[ \t]*/, '').replace(MEOS_HEAD_STAMP_RE, '');
     let _mk = (opt && opt.bullet) ? ((opt.blt === '1.') ? '-1' : '-') : ''; // 箇条書きマーカー
     // v4.0.53(俊克): 既に箇条書きだった行に見出しを掛けたら、**箇条書きのままデカ文字にする**(勝手に箇条書きを捨てない)。
     // 素の `- ` も Me記法 `-{` も、見出しと合成する時は #の直後のマーカー(##-{ / ##-1{)に一本化される。
@@ -14356,6 +14376,8 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       const pb = new vscode.Position(ln, open.length + body.length);
       editor.selection = new vscode.Selection(pb, pb);
       await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection });
+      // v4.0.171: 箇条書きだけの道も**早期returnで抜ける**so、抜ける直前に置く(v4.0.158と同じ教訓)。
+      try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
       return;
     }
     const visibleBody = body + ' ' + stamp; // 本文 + 可視タイムスタンプ
@@ -14413,9 +14435,15 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   // 俊克 am11:15「ボタンを押した後エディタにフォーカスを移して」。focusMeDockTargetEditorは選択を1点に潰すので使わない。
   editor.selection = bodySel;
   await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: bodySel });
-  // v4.0.155: FC方式が入っていれば、挿入した行の指定を**そのまま外へ出す**(両サイドから挟む記法だけ)。
+  // v4.0.155: FC方式が入っていれば、挿入した行の指定を**そのまま外へ出す**。
+  // v4.0.171(俊克 8/13 pm02:03「見出しボタンも、FC記法にならない件を修正して」): ★**見出しを外していた私が間違っていた**。
+  //   v4.0.152で「見出しの指定は行末にいるので後ろに文字が無い＝外へ出す値打ちが小さい」と書いたthat、
+  //   **見出しが長ければ、その行自体が折り返す**。俊克のスクショがそれ= 隠れたコメントthat桁を食い、
+  //   緑の帯の下に**空の視覚行**が1本残る。「後ろに文字が無い」のではなく、**後ろに自分の続きが在った**。
+  // ★俊克「見出しなので少し離れて見えるのは悪くはないけど、空けたければ本当の空行を入れればいいだけ」
+  //   = **たまたま空いて見えるのと、空けたのは別物**。決めるのは書き手。
   try {
-    if (MEOS_SPEC_LINE && kind !== 'heading' && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor);
+    if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor);
   } catch (_) { }
 }
 // ===== v4.0.156(俊克 8/12 pm03:35「FC方式を一旦解除して、従来の1行方式に戻す。その上で並べ替えや一部削除をする。
@@ -14652,7 +14680,7 @@ async function removeFormatAtCursor(editor, span) {
   const doc = editor.document;
   // v0.9.999126(俊克 改良2): 見出しは本文末尾に可視タイムスタンプが付く→解除時に一緒に消す。
   if (span.kind === 'heading') {
-    span.body = span.body.replace(/\s*\d{4}\.\d{2}\.\d{2}\([SMTWtFs]\)(?:am|pm)\d{2}:\d{2}\.\d{2}(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?\s*$/, '').trim(); // v4.0.12: 末尾TZ(JST/GMT+9等)も一緒に剥がす・旧TZ無しも後方互換
+    span.body = span.body.replace(MEOS_HEAD_STAMP_RE, '').trim(); // v4.0.12: 末尾TZ(JST/GMT+9等)も一緒に剥がす・旧TZ無しも後方互換 // v4.0.171: 物差しは1つ(見出しボタンの押し直しと共有)
   }
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
@@ -20163,6 +20191,9 @@ function meosMeTexBaseTall(base) { const b = String(base || ''); if (/[a-z]/.tes
 // v3.6.1(俊克): Me Dock「A²/A₃」ボタン=テンプレ挿入。選択=基準文字/無ければ'A'、上付き↑2/下付き↓3、現在の設定%を {N%} で付ける。例: B選択→B↑2{150%} / 無選択→A↑2{150%}。
 async function insertMetexScript(editor, sub, fg, bg) {
   if (!editor) return;
+  // v4.0.171: Format行の**4つのボタン全部**が同じ約束に従う(俊克が見出しで気づいた穴は、上付/下付にも開いていた)。
+  //   `Format ▼` のtipは前から「the four buttons」と書いてあった=**UIの約束にコードが追いついていなかった**。
+  try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // 触る前に1行の形へ
   const doc = editor.document, sel = editor.selection;
   const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = sub ? 50 : 150;
   const pct = Math.max(30, Math.min(200, Number(cfg.get(sub ? 'metexSubScale' : 'metexSuperScale', dflt)) || dflt));
@@ -20180,6 +20211,8 @@ async function insertMetexScript(editor, sub, fg, bg) {
     if (empty) editor.selection = new vscode.Selection(s, s.translate(0, 1)); // プレースホルダ 'A' を選択(すぐ基準文字を打てる)
     else { const ep = s.translate(0, base.length + 1); editor.selection = new vscode.Selection(ep, ep.translate(0, exp.length)); } // 指数の桁を選択
   } catch (_) {}
+  // v4.0.171: 済んだら外へ出す(指定は選択の**後ろ**に在るso、選んだ桁はそのまま残る)。
+  try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
 }
 function meosMeTexStyle(kind, scale, baseTall, fg, bg) {
   const sc = (scale == null) ? 100 : scale;
