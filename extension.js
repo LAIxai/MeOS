@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.168(俊克 8/13 am11:24「FCコメントを次の行に書く方式は、取消線以外はまだ不完全。バグの巣窟状態だね。1つずつ直そう。先ずは、太字/イタリック/リンク用の設定ボタンを見て行こう」): ★★**バグ1〜3は1つの真因**= 太字/斜体は指定を**2つの口**から引く(①直後の行末コメント ②真下のFC指定行)が、②で `q.sc.end`(=隠すコメントの終わり)を読んでいた。②には**隠すコメントが無い**(`sc` は null)so **TypeError** → 外側の `catch` に飲まれ、**その版の太字/斜体装飾が丸ごと出ない**。俊克が見た「肝心の文字列が素のまま」「水色にもならない」は全部これ1つ。**水色は VS Code 自身のMarkdown配色**で、MeOSの装飾が死んでいた証拠だった。★★**同じ判断が2箇所にあり、片方だけ正しかった**= ハイライト側(v4.0.154)は `if (_sc)` と書いてあった。so太字側の**3箇所の写経をやめて1つの口**(`_hideSpecComment`)に集約= [[feedback_one_source_for_mark_count_action]]。★俊克の「`_イタリック_`の後に文字を入れると駄目」も同じ真因(MeOSは元から描ける)。**ただし外の世界では本当に斜体にならない**(CommonMarkは閉じ `_` の後ろが文字なら閉じられない)=**MeOSだけが斜体になる食い違い**が残る→設計判断が要る。★★**バグ5=行を書き換えたのに選択を置き去りにしていた**= FC方式ではボタンを押すとまず `meosEnsureInlineBeforeEdit` が指定行を行末形式へ**戻す**(本文の途中にコメントが挿さる)。その行を**丸ごと置換**するのでVS Codeは選択を追えず、**元の桁のまま**残る→挿さったコメントの中を包む。俊克の `<**!-**-` は「`<!--` の2文字目から2文字(=「太字」と同じ長さ)を包んだ跡」そのもの。★直し= 戻す時の**挿し込み位置と長さ**を持って帰り、その行の選択を同じだけ動かす(`meosShiftOffsetByInserts` が唯一の物差し)。開き側は同じ桁なら後ろへ・閉じ側は動かさない=記法をちょうど囲んで選んでもコメントを巻き込まない。★headless 11/11＋11/11 PASS(バグ5は「直し前=`!-`／直し後=`太字`」まで再現して確かめた)。📌**バグ4(リンクだけ行末指定のまま)は次**= リンクの指定は v4.0.94 で**行末一括**に決めた形so、FCに乗せるには**読む側4か所＋🚫**を直す必要がある(移す/戻す口は既に安全=リンクの箱は動かさない)。
 // - v4.0.167(俊克 8/13 am00:30 改良1「ついでにtableボタンのメニューの一番上のAuto-calc:live + saveも□がないので統一しましょう」＋改良2「Boldなどの従来の方の□はだいぶ大きくなって見やすくなった。ただしFolding Comment(FC) belowの□がまだ少し小さい」): ★★**改良2の真因は、大きさの数字ではなくフォントだった**= メニュー項目は button、見出しメニューは div。**button は font-family を継承しない**(既定Arial / divは-apple-system)so、**同じ font-size 18px でも箱のグリフが小さい**。**ブラウザで実測して確かめた**(枠は 20.7x18.0 で同じ・中の字だけ違う)so、数字をいじらず `font-family:inherit` を足した。★教訓=**「小さい」の原因が大きさとは限らない**。数字を上げて合わせると、フォントが変わった日にまたずれる。★**改良1=表のメニューも同じ箱に**(☑/□・.meos-chk)。併せて**緑と太字もやめた**=v4.0.166でFCに決めた「印は形が語る・色は優劣を主張する」を**Me Dock全体に揃える**(Auto-calcも膜化も「オンの方が良い」機能ではなく、どちらでもいい選択so緑は嘘)。★これで Me Dock のチェックは**5か所すべて同じ字・同じ大きさ・同じ色**になった。
 // - v4.0.166(俊克 8/13 am00:12 改良1「☑が小さい。特にFormatのが小さ過ぎる。Boldなどでも小さい。Boldなどの従来のサイズの1.5倍くらいにできないか?」＋改良2「なぜ□ Folding Comment(FC) belowの✓を入れた時だけ緑色にするのか?」): ★★**まず、印の見た目が4か所に散っていた**= 見出し/箇条書き・Bold/Italic/Link・mbGridのBold/Italic・FC が**それぞれ別の書き方**で箱を出していたso、大きさを直すには4か所を触る必要があった。**1つのクラス `.meos-chk` に集めて、そこだけで決める**=[[feedback_one_source_for_mark_count_action]]を印の見た目にも適用。★1.5倍(12pxの本文に対し箱だけ1.5em)。両方の状態が同じ寸法so切替で1pxも動かない。★★**改良2=緑をやめた。俊克の問いが正しい**= 緑は「良い/完了」を意味するthat、これは**どちらでもいい2つの形の選択**(直後に書くか、下の行に書くか)so、**色で優劣を付けるのは嘘**だった。見出しメニューの ☑/□ は最初から色を変えていない=**そちらが正しかった**のに、私はFCだけ緑にしていた。★教訓=**色は意味を主張する**。「オンだから緑」は、その機能が「オンの方が良い」時にだけ正しい。
 // - v4.0.165(俊克 8/13 am00:01 改良1「□ Folding Comment(FC) below をチェックすると□が消えて✓だけになってしまう。これは「□ Bold」などと同じにしようよ。それにメニュー全体の高さが変わってしまうのもよくないね」): ★★**箱を消してはいけない**= `☑`/`□` は**どちらも箱**so、切替の前後で**字の形も大きさも同じ**。`✓` は箱が無いsoグリフの寸法that変わり、**行の高さまで動いていた**(スクショ2枚を並べると分かる)。既に見出しメニューが `☑ Bold / □ Bold` でそれをやっていたのに、私はFCだけ別の形にしていた=**同じ家の中で作法を変えていた**。★横幅の方も動いていた= 共有クラス `.tw-on` が**項目を太字にする**so、チェックすると文字幅that伸びる。専用クラス `.fc-on` にして色だけ変える。★高さは `line-height` を固定して、グリフに左右されないようにした。★教訓=**トグルの2つの状態は、寸法が1pxも動かない字で作る**。動くと「押した」以上のことを言ってしまう。
@@ -14454,17 +14455,32 @@ function meosPullSpecsBackInline(bodyText, specText) {
     }
     // ③ 行に効く指定= 行末へ
     let line = body;
+    if (spec.line) ins.push({ at: body.length, text: '<!-- ' + MEOS_MEW_SIG + ' ' + spec.line + ' -->' });
     ins.sort((a, b) => b.at - a.at);                          // 後ろから挿す(位置がずれない)
     for (const x of ins) line = line.slice(0, x.at) + x.text + line.slice(x.at);
-    if (spec.line) line = line + '<!-- ' + MEOS_MEW_SIG + ' ' + spec.line + ' -->';
     // ★安全装置= 戻した行をもう一度FC化して、元と一致するか確かめる
     const back = meosMoveSpecsOutOfLine(line);
     if (!back || back.body !== body) return null;             // 本文が1文字でも変わるなら実行しない
     const a = meosParseSpecLine(back.spec), b = meosParseSpecLine(specText);
     const sig = (x) => x ? JSON.stringify([(x.fmt || []).map(i => [i.kind, i.nth, i.inner]), (x.metex || []).map(i => [String(i.tok).indexOf('↑') >= 0 ? 'sup' : 'sub', i.nth, i.inner, !!i.not]), x.line]) : '';
     if (sig(a) !== sig(b)) return null;                       // 指定が変わるなら実行しない
-    return { line };
+    // v4.0.168: `ins` も返す= 戻すのは**純粋な挿し込みだけ**(安全装置が本文の一致を保証している)so、
+    //   呼ぶ側は「どこに何文字入ったか」を足すだけで**選択範囲を正しく運べる**([[バグ5]]の直し)。
+    return { line, ins: ins.map(x => ({ at: x.at, len: x.text.length })) };
   } catch (_) { return null; }
+}
+// v4.0.168(俊克 8/13 am11:24 バグ5「1行の中の複数の文字列に1つずつボタンで設定して行くと、おかしな現象になる」):
+// ★★真因= **行を書き換えたのに、選択範囲を置き去りにした**。FC方式では、ボタンを押すと まず
+//   `meosEnsureInlineBeforeEdit` が指定行を行末形式へ**戻す**(=本文行の途中にコメントが挿さる)。
+//   その行を**丸ごと置換**しているのでVS Codeは選択の中身を追えず、選択は**元の桁のまま**残る。
+//   → 挿さったコメントのぶんだけ右にずれた場所(=コメントの中)を包んでしまう。
+//   俊克の実測 `<**!-**-` は、`<!--` の2文字目から2文字(=「太字」と同じ長さ)を包んだ跡そのもの。
+// ★直し= 戻す時の挿し込み位置と長さを持って帰り、**その行に居る選択を同じだけ動かす**。
+//   開き側は「挿し込みと同じ桁なら後ろへ」(コメントは直前の語のものso語の外に出す)、閉じ側は動かさない。
+function meosShiftOffsetByInserts(off, ins, isStart) {
+  let d = 0;
+  for (const x of (ins || [])) { if (x.at < off || (x.at === off && isStart)) d += x.len; }
+  return off + d;
 }
 // カーソル行(またはその上の本文行)のFC行を、行末形式へ戻す。
 async function meosPullLineSpecsBackInline(editor) {
@@ -14477,10 +14493,22 @@ async function meosPullLineSpecsBackInline(editor) {
   if (!meosIsSpecLine(doc.lineAt(specLn).text)) return false;
   const r = meosPullSpecsBackInline(doc.lineAt(ln).text, doc.lineAt(specLn).text);
   if (!r) return false;
+  // v4.0.168(バグ5): 行を丸ごと置換する前に選択を控え、挿し込んだぶんだけ動かして返す(下の関数が唯一の物差し)。
+  const _keep = [];
+  try { for (const s of editor.selections) _keep.push({ sl: s.start.line, sc: s.start.character, el: s.end.line, ec: s.end.character, rev: s.active.isBefore(s.anchor) }); } catch (_) { }
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, r.line);
     eb.delete(new vscode.Range(new vscode.Position(ln, doc.lineAt(ln).text.length), new vscode.Position(specLn, doc.lineAt(specLn).text.length)));
   }, { undoStopBefore: true, undoStopAfter: true });
+  try {
+    if (_keep.length) editor.selections = _keep.map(k => {
+      const empty = (k.sl === k.el && k.sc === k.ec);
+      const a = (k.sl === ln) ? new vscode.Position(ln, meosShiftOffsetByInserts(k.sc, r.ins, true)) : new vscode.Position(k.sl, k.sc);
+      let b = (k.el === ln) ? new vscode.Position(ln, meosShiftOffsetByInserts(k.ec, r.ins, empty)) : new vscode.Position(k.el, k.ec);
+      if (b.line === a.line && b.character < a.character) b = a;   // 逆転させない(安全弁)
+      return k.rev ? new vscode.Selection(b, a) : new vscode.Selection(a, b);
+    });
+  } catch (_) { }
   return true;
 }
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
@@ -20677,16 +20705,23 @@ function meosApplyBoldDecorations(editor) {
           if (!raw) return null;
           return { sc: null, cs: parseColorSpec(raw, 'fg', raw) };
         };
+        // v4.0.168(俊克 8/13 am11:24 バグ1/2/3「FCコメントは折り畳まれるが、肝心の文字列が素のまま」):
+        // ★真因= **隠すコメントが無いのに隠しに行っていた**。`_spec` は指定を**2つの口**から引く=
+        //   ①直後の行末コメント(`sc` あり) ②真下のFC指定行(`sc` は **null**)。②の時に `q.sc.end` を読むので
+        //   TypeError → 外側の `catch` に飲まれ、**その版の太字/斜体装飾が丸ごと出ない**(俊克の見た「素のまま」)。
+        // ★ハイライト側(v4.0.154 の 6226行)は `if (_sc)` と書いてあった=**同じ判断が2箇所にあり、片方だけ正しかった**。
+        //   so ここは**1つの口**に集約する=[[feedback_one_source_for_mark_count_action]]。3箇所の写経をやめる。
+        const _hideSpecComment = (q, e) => { if (q && q.sc) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); };
         // 従来記法(同一行内): ***太字斜体*** / **太字**(**{ ではない時)
         const reBI = /\*\*\*([^*\n]+?)\*\*\*/g; reBI.lastIndex = 0;
-        while ((m = reBI.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '***'); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while ((m = reBI.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '***'); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         const reB = /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g; reB.lastIndex = 0; // ***の一部でない・**{でもない 純粋な **太字**
-        while ((m = reB.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '**'); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while ((m = reB.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '**'); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
         const reI1p = _prose ? /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g : null; if (reI1p) reI1p.lastIndex = 0;
-        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); if (q) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
