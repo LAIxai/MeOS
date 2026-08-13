@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.174(俊克 8/13 pm07:45「テスト2を🚫ボタンで解除すると、膜の始めにジャンプした。行末形のままで、FC膜に戻らない」): ★★**🚫の本体that2か所に在り、私はv4.0.173で片方しか直していなかった**= 太字/斜体・上付下付・見出し・リンクの🚫は `removeFormatAtCursor` を通るthat、**ハイライト/取消線の🚫だけ fmtCycle の中に写経してあった**。soそこには①FC化(外へ出す)の呼び出しthat無く=**戻らない** ②`showTextDocument(…{selection})` のrevealthat残っていて=**膜の先頭へ飛ぶ**。**俊克の2つの症状は、この1つの写経that生んでいた**。→ ring0 は `removeFormatAtCursor` に集約し、↻の再適用も `meosFocusBack`＋FC化を通す。表ボタンの作成後の focus も同じ口に。★★**教訓を書いたその日に、同じ穴をもう一度踏んだ**= v4.0.172で「同じ判断を2か所に書いたら片方は必ず腐る」と[[feedback_one_source_for_mark_count_action]]に書き足した数時間後に、**直す時に「他に何か所あるか」を数えなかった**。**次からは、直す前に必ず数える**(grepで呼び出し元を全部出してから直す)。★【バグ3=解決】俊克の実機ログ `[fcEnter] 継続する body=96675 specEnd=96676` ＝**FC方式のEnter継続は正しく効いていた**(v4.0.172の直しthat入っていなかっただけ)。計測を入れた判断thatそのまま答えになった=推測で触らなくて正解だった。
 // - v4.0.173(俊克 8/13 pm05:57 バグ2「1つ目のFCコメントが行末形のまま残る。本当はFCコメントとして残るべき」＋バグ4「Format系のボタンを使うと、なぜか、この膜の先頭に飛んでしまう。頻発している。思い当たる節はないか?」): ★★**思い当たる節thatあった。しかも1つの原因で両方説明that付く**= ボタンの最後に呼んでいる `showTextDocument(doc, { selection })` の **`selection` は「そこを画面に出せ」という命令**so、VS Codeは**その範囲をreveal(スクロール)する**。15万行＋折り畳みthat効いた文書では、狙った行that**畳まれた領域の中**に居るとrevealは**その領域の先頭**を見せる=俊克の「膜の先頭に飛ぶ」。★**カーソルは既にそこに在るsorevealは要らない**。要るのは**フォーカスをエディタに戻すこと**だけ(v0.9.714の約束)。→ `selection` を渡さずに開き直す。★もう1つの実害= `showTextDocument` は**新しい TextEditor を返す**so、**古い参照のまま `edit()` を呼ぶと黙って何も起きない**(catchに飲まれる)。🚫の後のFC化thatこれで空振りしていた=バグ2。→ 1つの口(`meosFocusBack`)にして**必ず返り値を受け取り直す**(5か所)。★これは**スワップ不足ではない**=メモリthat潤沢でも、revealは同じように飛ぶ。★★【バグ3=FC方式のEnter継続that効かない】**再現しなかった**= 俊克の日記の**実データをその行のまま**headlessに流すと**正しく効く**(FC行that複製され、元の項目も指定を保つ)。so**推測で直さず、計測を仕込んだ**(v4.0.140の教訓)= `[fcEnter] …` thatDebugチャネルに1行出る(指定行thatない/箇条書きでない/マーカーの左/継続する/例外、のどれか)。次のテストでEnterを1回押してログを見れば、**どこで諦めているかthat機械の言葉で分かる**。→ [[feedback_root_cause_before_patching]]
 // - v4.0.172(俊克 8/13 pm02:40 バグ2「ハイライトを削除すると、一見すると正常に消えたと思いきや、FCコメントが実は消えていない」＋バグ3「箇条書きの改行で次の行に箇条書きが続けられる機能がうまく動作しない。これは、行末方式のときはうまく行っていたよね。FC方式だと、文字列の行で改行しても、FCコメントの末尾で改行しても駄目だよ」): ★★【バグ2】**v4.0.133の穴の3か所目**= 「記法を探す前に、コードスパンとコメントの中の命令トークンを隠す」という下ごしらえは、①ハイライト/取消線を**描く**所(v4.0.133) ②太字/斜体を**描く**所(v4.0.169) で直したthat、③**🚫that範囲を探す所**(formatSpanAtCursor / boldSpanAtCursor)には**一度も入っていなかった**。★FC方式では🚫の直前に指定行を**行末形式へ戻す**so、その瞬間 `==` that本文2つ＋コメント2つの**4つ**になる。2つめを消そうとすると**コメントの中の `==` と対にして**しまい、閉じの `==` that本文に取り残され、指定行の項目も種類を失う(`<!-- Mew!FC (白/緑) -->`)=俊克の見た「消えていない」。★直し= **探す前の下ごしらえを1つの口(`meosScanText`)に集約**し、描く側も🚫側も必ずそこを通す。長さは1文字も変えないso位置thatずれない。★★**今日これで3回目so、教訓を格上げする**= **同じ判断を2か所に書いたら、片方は必ず腐る**。[[feedback_one_source_for_mark_count_action]] ★総当たりで確かめた(16通り×6種類)= 残ったのは全部**正しい残り方**(消していない方の指定thatそのまま生きている)。★★【バグ3】**継続の処理thatその行しか見ていなかった**= FC方式では指定は真下の行に在るso、①本文行で割ると**指定行that新しい空の項目に付いてしまう**(元の項目は指定を失う) ②指定行で割るとそもそも箇条書きに見えない(素のEnterになる)。俊克の「どちらで改行しても駄目」は、この2つthatそのまま出ていた。★答えは1つ= **塊(本文行＋続く指定行)を1つの項目として扱い、塊の末尾で割り、新しい項目にも指定行を付ける**=行末方式の「命令ごと引き継ぐ」を、行that2本の形でやるだけ。骨だけ引き継ぐ物差し(`meosCarryItemSpec`)は行末方式と共有(階層 `-1.1` も元のトークンのまま・tipは空にして持ち越す)。空項目のEnterは**本文と指定行をまとめて畳んで**リストを終える。★【バグ1=10秒以上消えない】俊克thatVSCm再起動で解消を確認済み(メモリ/スワップ不足)。コード側の変更なし。★headless 13/13(新規 t_enter_fc)＋16/16＋25/25＋11/11＋11/11 PASS。
 // - v4.0.171(俊克 8/13 pm02:03「見出しボタンも、FC記法にならない件を修正して。…このように、長い文字列だと、FC記法にしないと、空白が空く。見出しなので少し離れて見えるのは悪くはないけど、空けたければ、FC指定で、本当の空行を入れればいいだけだよね」): ★★**見出しを外していた私が間違っていた**。v4.0.152で「見出しの指定は**行末にいるので後ろに文字が無い**＝外へ出す値打ちが小さい」と書いたthat、**見出しが長ければ、その行自体が折り返す**。俊克のスクショthatまさにそれ= 隠れたコメントthat桁を食い、緑の帯の下に**空の視覚行**that1本残る。「後ろに文字が無い」のではなく、**後ろに自分の続きが在った**。★俊克の言葉that正確= 「**たまたま空いて見えるのと、空けたのは別物**」。決めるのは書き手so、勝手に空けない。★★**Format行の4つのボタン全部**を同じ約束に揃えた= `Format ▼` のtipは前から「**the four buttons**」と書いてあったso、**UIの約束にコードが追いついていなかった**(見出し=除外・上付/下付=そもそも呼んでいない・箇条書きだけの道=早期returnで素通り)。3つとも直した。★★**ついでに見出しボタンの「押し直し」を直した**= 見出しボタンは行を**組み立て直す**so、押すたびに古い印・スタンプ・指定コメントを本文に飲み込んでいた(`### ## 見出しの例 <TS><!-- H2 --> <TS><!-- H3 -->`)。これはFCと無関係に**前から壊れていた**that、FCを入れると「戻す→触る」で毎回通る道になるso先に塞いだ。★落とすのは**行単位の宣言を持つコメントだけ**(`meosLineDirective` that null でないもの)= `== (白/黄)` や `[](行先)` は**その語のもの**so残す(消すとハイライトやリンクthat相手を失う)。スタンプの物差しは🚫解除と共有(1つに集約)。★headless 16/16(新規 t_heading_fc)＋25/25＋11/11＋11/11 PASS。→ [[feedback_one_source_for_mark_count_action]]
@@ -17909,19 +17910,22 @@ function toggleMeDock(editorOverride) {
       else if (!ed.selection.isEmpty) { body = ed.document.getText(ed.selection); range = ed.selection; }
       else return;
       if (ring === 0 && !span) return; // v0.9.999129: ⊘を素の選択に=消す装飾が無い→何もしない
+      // v4.0.174(俊克 8/13 pm07:45「テスト2を🚫ボタンで解除すると、膜の始めにジャンプした。行末形のままで、FC膜に戻らない」):
+      // ★★**🚫の本体that2か所に在り、私はv4.0.173で片方(removeFormatAtCursor)しか直していなかった**。
+      //   ハイライト/取消線の🚫だけ**ここに写経してあった**so、①FC化(外へ出す)を呼ばない=戻らない
+      //   ②`showTextDocument(…{selection})` のrevealで膜の先頭へ飛ぶ、の2つthatそのまま残っていた。
+      //   → **1つの口に集約する**。俊克の2つの症状は、これ1つの写経that生んでいた。
+      //   [[feedback_one_source_for_mark_count_action]]（同じ教訓を、それを書いた当日にもう一度踏んだ）
+      if (ring === 0) { await removeFormatAtCursor(ed, span); return; }
+      const built = buildInlineFmt(ed.document, kind, body, message.fg, message.bg);
       const we = new vscode.WorkspaceEdit();
-      let selStart, selLen;
-      if (ring === 0) { we.replace(ed.document.uri, range, body); selStart = range.start; selLen = body.length; }
-      else {
-        const built = buildInlineFmt(ed.document, kind, body, message.fg, message.bg);
-        we.replace(ed.document.uri, range, built.full);
-        selStart = new vscode.Position(range.start.line, range.start.character + built.bodyOffset);
-        selLen = built.bodyLen;
-      }
+      we.replace(ed.document.uri, range, built.full);
+      const selStart = new vscode.Position(range.start.line, range.start.character + built.bodyOffset);
       await vscode.workspace.applyEdit(we);
-      const sel = new vscode.Selection(selStart, new vscode.Position(selStart.line, selStart.character + selLen));
-      ed.selection = sel;
-      await vscode.window.showTextDocument(ed.document, { viewColumn: ed.viewColumn, preserveFocus: false, selection: sel });
+      const sel = new vscode.Selection(selStart, new vscode.Position(selStart.line, selStart.character + built.bodyLen));
+      const ed2 = await meosFocusBack(ed, sel);                 // v4.0.173: revealしない＋生きているエディタ
+      // v4.0.174: ↻での再適用も**書いた指定を外へ出す**(ボタンthat書く形は1つ、という約束)。
+      try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(ed2); } catch (_) { }
       return;
     }
     // v0.9.99938: Format色設定をmMETAへ随伴保存(in-memory即更新＋800msデバウンスで書込=連続選択を1回にまとめ・undo汚染を抑制)。
@@ -19115,7 +19119,7 @@ async function meosFormatTableAtCursor(editor) {
     const firstCol = afterCm >= 0 ? afterCm + 3 : (tpl[0].indexOf('|') + 2);
     const pos = new vscode.Position(headLine, firstCol);
     editor.selection = new vscode.Selection(pos, pos);
-    await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: editor.selection });
+    editor = await meosFocusBack(editor, editor.selection); // v4.0.174: 表ボタンもrevealしない(飛ばない)
     vscode.window.setStatusBarMessage('MeOS: 空のテーブルを作成しました ▦', 1800);
     return;
   }
