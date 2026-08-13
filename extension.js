@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.178(俊克 8/13 pm09:42「ハイライトのFC指定が複数ある段落を途中で改行した時に、どう処理しているのか?」→ pm09:45「と言うことは、正しく分割してなかったってことだよね?」): ★★**その通り。分割という処理that無かった**= 段落の改行はMeOSthat手を出さずVS Code既定のEnterthat走るso、**指定行は下半分に残り、番号that繰り上がる**。`==A==と|==B==` を割ると `==B==` that1つめの指定を食い、`==A==` は指定を失い、2つめは相手を失う=**色that1つずれて、1つ消える**。★**行末での改行はもっと素直に壊れていた**= 本文と指定行の**間に空行that入り**、`meosSpecLineFor` は真下しか見ないso**結び付きthat切れる**(こちらの方that日常的に起きる)。★答えは1つ= **割った時は、指定も一緒に割る**。数える単位は他と全部同じ「その行の・その種類の・何個目か」= ①種類ごとにカーソルより前の数だけ上へ、残りを下へ ②行に効く指定(H2/-1.)は上に残す ③片方に無ければその指定行は書かない ④**行末なら割らず、新しい行を指定行の下に作る**(箇条書きと同じ作法)。★安全弁= 上付/下付thatある／`#N` で名指ししている時は**何もしない**(番号の振り直しthat要る=壊す危険)。「戻すと壊れるなら実行しない」(v4.0.156)と同じ流儀。★★**これで「FCを足したら読む側/割る側も真下を見る」の5か所目**= 装飾(168)・🚫(172)・箇条書きのEnter(172)・見出しナビ(177)・段落のEnter(178)。**行をまたぐ記法を足したら、行を扱う所を全部探す**。headless 10/10(新規 t_split_fc)＋79/79 PASS。
 // - v4.0.177(俊克 8/13 pm09:06 バグ1「よよよ呪文that、FC形の見出しをスルーしている」＋テスト1「新規mdでハイライトの既定を見たら、なぜかリンク指定that入っている。外したんじゃないの? メタthatコピーされたのかな?」): ★★【バグ1】**v4.0.96の判定は「行末にコメントthatある」を見出しの証拠にしていた**that、FC方式では**その証拠that真下の行に引っ越している**so、見出しthatまるごと見えなくなっていた。★v4.0.96の趣旨(会話の貼り付けの `## …` を拾わない)は**そのまま守る**= 素のMarkdown見出しは**真下のFC指定行that見出しの命令(H1〜H6)を名乗っている時だけ**数える。名乗りthat無ければ従来どおり無視。★**今日ずっと同じ形**= 読む側that「この行だけ」を見ている。FCを足したら、読む側も真下を見る(装飾・🚫・Enter継続に続いて4つめ)。判定の口は1つのまま(v4.0.96の形)＝呼び出し3箇所に真下の行を渡すだけ。headless 7/7 PASS。★★【テスト1=バグではない】**メタのコピーではなく、「ユーザー既定」thatそこに在った**= mMETAを持たないファイルを開くと `globalState.meosFmtUserDefault`(=最後に俊克that設定した値)that使われる(v0.9.99938の逃げ道=「ファイル毎に初期化される」の対策)。so俊克thatいつか☑Linkを入れた設定thatユーザー既定として残っていて、新規mdにもそれthat出た。**私that変えたのは組込み既定(3段目)**so、mMETAもユーザー既定も無い人にしか出ない。★直し方は俊克の手元で1回=▾で☑Linkを外せばユーザー既定thatその場で上書きされる。★**設計として一言**= 「組込み既定を変えました」は、既に使っている人には**届かない**。次に既定を変える時は、それthat誰に届くのかを先に言うべきだった。
 // - v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」＋Debugログ): ★★**同じ症状に原因that2つ在った**。v4.0.173/174で消したのは**Formatボタンの飛び**(showTextDocumentのreveal)で、俊克thatまだ見ていたのは**もう1つの口**= **カーソル移動のたびに走る FC の開閉**。★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、カーソルthat別の塊へ移った時に**前に開いていた塊を畳む**と、**その塊の所へ画面that飛ぶ**。カーソル移動のたびに走る道soFC行that増えるほど当たる=俊克の「最近これも多い」thatそのまま説明できる。★直し= 畳む/開くの**前後で画面の一番上の行を控え、変わっていたら戻す**(`meosRestoreView`)。**行番号で戻す**so、上の方that畳まれて内容that詰まっても**同じ行that同じ場所に見える**。カーソルthat畳んだ拍子に動いた時も戻す。★一括で畳む道(`meosAutoFoldSpecLines`)にも同じ物差しを入れた=**一番画面を動かすのはそこ**。★俊克thatくれた `[fcEnter] 本文行が箇条書きではない: "## CN=…"` は**正しい動作**(見出しの行でEnterを押した)=計測that期待どおり読めることも確認できた。★教訓=**「直した」と言えるのは、同じ症状の口を全部数えた時だけ**(今日3回目の同じ形)。→ [[feedback_one_source_for_mark_count_action]]
 // - v4.0.175(俊克 8/13 pm08:40「デフォルトを以下のようにしよう。素のハイライト、太字、イタリック(リンク:二重下線)／ == 白/黄色、**白/紫、*白/青」): ★★**3つとも同じ既定(赤/黄×3)では、↻は「押しても何も起きないボタン」に見えていた**。俊克の「プリセット3つの何が違うのか?」thatその証拠= **違いは自分で作るもの**という設計thatUIから読めていなかった。→ 既定を**3つとも別の記法**にした= ①`==`(白/黄) ②`**`太字(白/紫) ③`*`斜体(白/青)。1回押すごとに顔that変わるso、**3つ登録できることthat押した瞬間に分かる**。★`ul:1`(二重下線)= ☑Linkを入れた時の既定の線種(俊克「リンク:二重下線」)。**Linkのチェック自体は入れない**= 入れると押した瞬間にリンク記法that入り行先の入力待ちになるso、既定としては強すぎる(もし③をリンクにしたいなら `link:true` を1つ足すだけ)。★**既に保存されているノートは自分の設定that勝つ**(mMETAに焼いてある)=[[project_setting_decides_future_only]]どおり、新既定は**これから作るノート**に出る。★やらかし= このコメントに**バックティックを書いてテンプレート文字列を壊した**(v4.0.50/90と同じ事故を3度目)。`node --check` that即座に捕まえたthat、**webviewの中に書く時はバックティック禁止**を、その場のコメントにも書き残した。
@@ -13696,6 +13697,53 @@ async function meosContinueListOnEnterFC(editor, pos) {
   editor.selection = new vscode.Selection(p, p);                // カーソルは新しい項目の本文の位置
   return true;
 }
+// v4.0.178(俊克 8/13 pm09:42「ハイライトのFC指定が複数ある段落を途中で改行した時に、どう処理しているのか?」
+//   → pm09:45「と言うことは、正しく分割してなかったってことだよね?」): ★★**その通り。分割という処理that無かった**。
+//   段落の改行はMeOSthat手を出さずVS Code既定のEnterthat走るso、**指定行は下半分に残り、番号that繰り上がる**=
+//   `==A==と|==B==` を割ると `==B==` that1つめの指定を食い、`==A==` は指定を失い、2つめは相手を失う
+//   (**色that1つずれて、1つ消える**)。★行末で改行した時はもっと素直に壊れる= 本文と指定行の**間に空行that入り**、
+//   `meosSpecLineFor` は真下しか見ないso**結び付きthat切れる**。
+// ★答えは1つ= **割った時は、指定も一緒に割る**。数える単位は他と全部同じ「その行の・その種類の・何個目か」。
+//   ①種類ごとに**カーソルより前にいくつ在るか**を数え、その数だけ上へ、残りを下へ
+//   ②**行に効く指定(H2/-1.)は上に残す**(見出しは上の行のもの) ③片方に1つも無ければ**その指定行は書かない**
+//   ④**行末なら割らない**= 新しい行を**指定行の下**に作る(本文と指定thatくっついたまま=箇条書きと同じ作法)
+// ★安全弁= 上付/下付thatある／`#N` で名指ししている時は**触らない**(番号の振り直しthat要る=壊す危険)。
+//   「戻すと壊れるなら実行しない」(v4.0.156)と同じ流儀で、**何もしない方に倒す**。
+async function meosSplitSpecsOnEnter(editor, pos) {
+  const doc = editor.document, bodyLn = pos.line;
+  const bodyText = doc.lineAt(bodyLn).text;
+  if (meosIsSpecLine(bodyText)) return false;               // 指定行の上では何もしない
+  if (MEOS_LIST_ITEM_RE.test(bodyText)) return false;       // 箇条書きは上の口(meosContinueListOnEnterFC)の持ち物
+  let specEnd = bodyLn;
+  while (specEnd + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(specEnd + 1).text)) specEnd++;
+  if (specEnd === bodyLn) return false;                     // FC方式ではない
+  const spec = meosSpecLineFor(meosDocLines(doc), bodyLn);
+  if (!spec) return false;
+  if ((spec.metex || []).length) return false;              // 安全弁: 上付/下付thatあれば触らない
+  if ((spec.fmt || []).some(it => it.nth > 0)) return false; // 安全弁: #N で名指ししていれば触らない
+  const specEndText = doc.lineAt(specEnd).text;
+  const head = bodyText.slice(0, pos.character), tail = bodyText.slice(pos.character);
+  const box = (payload) => '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
+  if (!tail.trim()) {                                       // ④行末=割らない。新しい行は指定行の下へ
+    await editor.edit(eb => eb.insert(new vscode.Position(specEnd, specEndText.length), '\n' + tail));
+    const p = new vscode.Position(specEnd + 1, tail.length);
+    editor.selection = new vscode.Selection(p, p);
+    return true;
+  }
+  const cnt = {};                                           // ①カーソルより前に、種類ごとにいくつ在るか
+  for (const e of meosInlineMarkEnds(head)) cnt[e.kind] = (cnt[e.kind] || 0) + 1;
+  const seen = {}, up = [], lo = [];
+  for (const it of (spec.fmt || [])) {
+    seen[it.kind] = (seen[it.kind] || 0) + 1;
+    (seen[it.kind] <= (cnt[it.kind] || 0) ? up : lo).push(box(it.kind + ' ' + it.inner));
+  }
+  if (spec.line) up.push(box(spec.line));                   // ②行に効く指定は上に残す
+  const out = [head].concat(up.length ? [up.join('')] : []).concat([tail]).concat(lo.length ? [lo.join('')] : []);
+  await editor.edit(eb => eb.replace(new vscode.Range(new vscode.Position(bodyLn, 0), new vscode.Position(specEnd, specEndText.length)), out.join('\n')));
+  const p = new vscode.Position(bodyLn + (up.length ? 2 : 1), 0); // カーソルは下半分の頭
+  editor.selection = new vscode.Selection(p, p);
+  return true;
+}
 async function meosContinueListOnEnter(editor) {
   try {
     if (!meosIsProseDoc(editor.document)) return false;
@@ -13703,6 +13751,8 @@ async function meosContinueListOnEnter(editor) {
     const pos = editor.selection.active;
     // v4.0.172(バグ3): FC方式(指定that真下の行に在る)なら、塊ごと扱う道へ。
     if (MEOS_SPEC_LINE) { try { if (await meosContinueListOnEnterFC(editor, pos)) return true; } catch (e) { try { meosDbg('[fcEnter] 例外: ' + (e && e.message)); } catch (_) { } } }
+    // v4.0.178: 段落(箇条書きでない行)をFC指定ごと割る。
+    if (MEOS_SPEC_LINE) { try { if (await meosSplitSpecsOnEnter(editor, pos)) return true; } catch (e) { try { meosDbg('[fcSplit] 例外: ' + (e && e.message)); } catch (_) { } } }
     const text = editor.document.lineAt(pos.line).text;
     // v4.0.53: Me記法の箇条書き膜 -{ } / -1{ } は、Me記法のまま続ける(カーソルは新しい膜の中で待つ)。
     const mMe = MEOS_ME_ITEM_RE.exec(text);
