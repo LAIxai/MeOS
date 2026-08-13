@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.172(俊克 8/13 pm02:40 バグ2「ハイライトを削除すると、一見すると正常に消えたと思いきや、FCコメントが実は消えていない」＋バグ3「箇条書きの改行で次の行に箇条書きが続けられる機能がうまく動作しない。これは、行末方式のときはうまく行っていたよね。FC方式だと、文字列の行で改行しても、FCコメントの末尾で改行しても駄目だよ」): ★★【バグ2】**v4.0.133の穴の3か所目**= 「記法を探す前に、コードスパンとコメントの中の命令トークンを隠す」という下ごしらえは、①ハイライト/取消線を**描く**所(v4.0.133) ②太字/斜体を**描く**所(v4.0.169) で直したthat、③**🚫that範囲を探す所**(formatSpanAtCursor / boldSpanAtCursor)には**一度も入っていなかった**。★FC方式では🚫の直前に指定行を**行末形式へ戻す**so、その瞬間 `==` that本文2つ＋コメント2つの**4つ**になる。2つめを消そうとすると**コメントの中の `==` と対にして**しまい、閉じの `==` that本文に取り残され、指定行の項目も種類を失う(`<!-- Mew!FC (白/緑) -->`)=俊克の見た「消えていない」。★直し= **探す前の下ごしらえを1つの口(`meosScanText`)に集約**し、描く側も🚫側も必ずそこを通す。長さは1文字も変えないso位置thatずれない。★★**今日これで3回目so、教訓を格上げする**= **同じ判断を2か所に書いたら、片方は必ず腐る**。[[feedback_one_source_for_mark_count_action]] ★総当たりで確かめた(16通り×6種類)= 残ったのは全部**正しい残り方**(消していない方の指定thatそのまま生きている)。★★【バグ3】**継続の処理thatその行しか見ていなかった**= FC方式では指定は真下の行に在るso、①本文行で割ると**指定行that新しい空の項目に付いてしまう**(元の項目は指定を失う) ②指定行で割るとそもそも箇条書きに見えない(素のEnterになる)。俊克の「どちらで改行しても駄目」は、この2つthatそのまま出ていた。★答えは1つ= **塊(本文行＋続く指定行)を1つの項目として扱い、塊の末尾で割り、新しい項目にも指定行を付ける**=行末方式の「命令ごと引き継ぐ」を、行that2本の形でやるだけ。骨だけ引き継ぐ物差し(`meosCarryItemSpec`)は行末方式と共有(階層 `-1.1` も元のトークンのまま・tipは空にして持ち越す)。空項目のEnterは**本文と指定行をまとめて畳んで**リストを終える。★【バグ1=10秒以上消えない】俊克thatVSCm再起動で解消を確認済み(メモリ/スワップ不足)。コード側の変更なし。★headless 13/13(新規 t_enter_fc)＋16/16＋25/25＋11/11＋11/11 PASS。
 // - v4.0.171(俊克 8/13 pm02:03「見出しボタンも、FC記法にならない件を修正して。…このように、長い文字列だと、FC記法にしないと、空白が空く。見出しなので少し離れて見えるのは悪くはないけど、空けたければ、FC指定で、本当の空行を入れればいいだけだよね」): ★★**見出しを外していた私が間違っていた**。v4.0.152で「見出しの指定は**行末にいるので後ろに文字が無い**＝外へ出す値打ちが小さい」と書いたthat、**見出しが長ければ、その行自体が折り返す**。俊克のスクショthatまさにそれ= 隠れたコメントthat桁を食い、緑の帯の下に**空の視覚行**that1本残る。「後ろに文字が無い」のではなく、**後ろに自分の続きが在った**。★俊克の言葉that正確= 「**たまたま空いて見えるのと、空けたのは別物**」。決めるのは書き手so、勝手に空けない。★★**Format行の4つのボタン全部**を同じ約束に揃えた= `Format ▼` のtipは前から「**the four buttons**」と書いてあったso、**UIの約束にコードが追いついていなかった**(見出し=除外・上付/下付=そもそも呼んでいない・箇条書きだけの道=早期returnで素通り)。3つとも直した。★★**ついでに見出しボタンの「押し直し」を直した**= 見出しボタンは行を**組み立て直す**so、押すたびに古い印・スタンプ・指定コメントを本文に飲み込んでいた(`### ## 見出しの例 <TS><!-- H2 --> <TS><!-- H3 -->`)。これはFCと無関係に**前から壊れていた**that、FCを入れると「戻す→触る」で毎回通る道になるso先に塞いだ。★落とすのは**行単位の宣言を持つコメントだけ**(`meosLineDirective` that null でないもの)= `== (白/黄)` や `[](行先)` は**その語のもの**so残す(消すとハイライトやリンクthat相手を失う)。スタンプの物差しは🚫解除と共有(1つに集約)。★headless 16/16(新規 t_heading_fc)＋25/25＋11/11＋11/11 PASS。→ [[feedback_one_source_for_mark_count_action]]
 // - v4.0.170(俊克 8/13 pm01:40「(質問1)⑧は、上だけ「つ。」が押し出されたのはなぜ? …あなたの目で、スクショを見て、何か気づくことはあるのか?」): ★【質問1の答え】**太字は斜体より、1つにつき3桁ぶん長い**= 本文のマーカー `**A**`(5桁) vs `*C*`(3桁) で+2、コメントの中の命令 `**` vs `*` で+1、それが2箇所so**合計+6桁**(実測 83桁 対 77桁)。**折り返しは生のテキストの桁数で決まる**(装飾は描画にしか効かない=v4.0.93の壁)so、**隠れているコメントもきっちり桁を食う**。⑧はわざと旧形(行末に直接書く)で書いたテストso、この2行だけでコメントが60桁を占めている。**同じ行をFC形にすると 83桁→19桁**=これがFCを作った理由そのもの。テストファイルにこの答えを書き足した。★★【スクショを見て気づいたこと=**新しいバグを1つ見つけた**】**マスクが `FC` を知らなかった**= v4.0.133(8/10)の「コメントの中の命令トークンを素のマーカーとして数えない」物差しは `Mew!` しか読まず、**FC(8/12)を作った時に直し忘れていた**。→ **指定行に同じ種類を2つ並べると、指定行そのものが壊れて描かれる**(`<!-- Mew!FC ** … --><!-- Mew!FC ** … -->` の `**` 4つが2組と読まれ、間の `(白/黄)//tip -->` が太字になり `**` が消える)。**畳んでいる間は見えないが、カーソルを置いて開いた瞬間に見える**so、俊克のスクショには写っていなかった(全部畳まれていた)。直しは `(?:FC|fc|\^)?` を1つ足すだけ(長さは1文字も変えないso位置がずれない)。★【スクショの確認結果】①==素の文字列==/**太字**/*イタリック*/***太字かつイタリック***/~~取消線~~ の5つとも色が付いた(👍1〜5=v4.0.168の直しが実機で効いている)②バグ5の4語1つずつ=**4つとも正しい語that包まれた**③🚫で4つとも素に戻った④`* 箇条書き`/`*.md と *.js`/コードスパンは無反応(誤爆なし)⑤`2*3*4`は`3`だけ斜体=GitHubと同じ。★★**エディタの色そのものが今回の変更の証拠になっていた**= 13行目の `*イタリック*` は**水色**(VS Code自身のMarkdown配色that「これは斜体だ」と認めている)、15行目の `_イタリック_` は**白**(VS Codeは斜体と認めない)。**斜体に見えているのはMeOSだけ**=外では `_` が字のまま見えるという話that、そのまま画面に出ていた。★リンクの表示文字 `[*ここ*]()` の斜体は**効いている**(6倍に拡大して確認。低倍率では立体に見えたthat、拡大すると確かに傾いていた=**見た目の判断は倍率で変わるso拡大して確かめる**)。headless 25/25＋11/11＋11/11 PASS。
 // - v4.0.169(俊克 8/13 pm00:00「早く突っ込んでよ。だから、イタリックには2つの記法があるんだね。そうなれば、一択でしょ。`*イタリック*`と書く」): ★★**斜体は `*` に一択**。v4.0.16で `_` を選んだのは「Markdownの `_`＝斜体と一致させる」ためだったが、**一致させる相手を間違えていた**= CommonMarkは**`_` にだけ語中の制限**を掛ける(閉じの `_` の後ろが文字なら閉じられない)。日本語は助詞that続くso `_イタリック_の後に…` は**外の世界で `_` が字のまま見える**。`*` にその制限は無い。★**本物のCommonMark実装(marked)で確かめた**= `_イタリック_の後に文字`→素の字／`*イタリック*の後に文字`→`<em>`。推測でなく実測で決めた。★★**俊克の「コメントで挟む」案は採らなかった**= `<!-- Mew! _ -->…<!-- Mew! _ -->` は**30桁**を本文の途中に置くso、v4.0.138で勝ち取った「長いものは行の外へ出す」を斜体1語のために手放すことになる。`*` なら**2桁**。**ただしこの発明の的は正しい**= 本当にMarkdownに無いのは**ハイライト `==`** の方で(GFMにも無い=外では `==` が丸見え)、そこが挟み記法の出番。→ 次の課題。★【実データ検証】日記157,183行= **433箇所(363種)が新たに斜体になる**that、中身は `*記憶*` `*意志*` `> *片づけなくても、迷子にならない。*` `*ciere*` 等**全部が本物の斜体**= 誤爆ではなく**これまでMeOSが描いていなかった433個**。斜体らしくないのは正規表現の断片3件だけで、それも**GitHubでは元から斜体**so一致が正しい(逃げ道はコードスパン)。★実装= 描画/🚫/指定行の種類/戻す口/リンクの表示文字、**全部が同じ1つの形**(`MEOS_STAR_ITALIC_SRC`)を共有。`_` は read-both。★★**ついでに v4.0.133 の穴を塞いだ**= 「コメントの中の命令トークンを素のマーカーとして数える」バグは、**ハイライト/取消線のパスにしか対策that入っていなかった**(太字/斜体のパスは素通し)。単一 `*` を足すと当たる確率that上がるso、マスクを `meosMaskSpecTokens` に集約して**両方から引く**。★リンクの表示文字から包みを外す処理は**4か所に写経してあった**so1つに集約(`meosUnwrapEmphasis`)=3か所だけ直す事故を作らない。headless 19/19＋11/11＋11/11 PASS。→ [[feedback_one_source_for_mark_count_action]] [[project_setting_decides_future_only]]
@@ -13040,6 +13041,20 @@ function meosMaskSpecTokens(t) {
   if (s.indexOf('<!--') < 0) return s;
   return s.replace(MEOS_SPEC_TOKEN_MASK_RE, (_all, head, tok) => head + ' '.repeat(tok.length));
 }
+// v4.0.172(俊克 8/13 pm02:40 バグ2「ハイライトを削除すると、一見すると正常に消えたと思いきや、FCコメントが実は消えていない」):
+// ★★真因= **v4.0.133の穴の3か所目**。「記法を探す前に、コードスパンとコメントの中の命令トークンを隠す」という
+//   下ごしらえは、①ハイライト/取消線を**描く**所(v4.0.133) ②太字/斜体を**描く**所(v4.0.169) で直したthat、
+//   ③**🚫が範囲を探す所**(formatSpanAtCursor / boldSpanAtCursor)には**一度も入っていなかった**。
+// ★FC方式では🚫の直前に指定行を**行末形式へ戻す**so、その瞬間 `==` が本文2つ＋コメント2つの**4つ**になる。
+//   2つめを消そうとすると**コメントの中の `==` と対にして**しまい、閉じの `==` が本文に取り残され、
+//   指定行の項目も種類を失う(`<!-- Mew!FC (白/緑) -->`)=俊克の見た「消えていない」。
+// ★so**探す前の下ごしらえを1つの口に集約**する= 描く側も🚫側も、必ずここを通る。
+//   [[feedback_one_source_for_mark_count_action]]（今日これで3回目）。長さは1文字も変えないso位置がずれない。
+function meosScanText(t) {
+  let s = String(t == null ? '' : t);
+  if (s.indexOf('`') >= 0) s = meosMaskCodeSpans(s);
+  return meosMaskSpecTokens(s);
+}
 // v4.0.169(俊克 8/13 pm00:00「だから、イタリックには2つの記法があるんだね。そうなれば、一択でしょ。`*イタリック*`と書く」):
 // ★**素の単一 `*` の斜体**(CommonMark)。`_` と違い**語中の制限が無い**so、`*イタリック*の後に文字` も
 //   GitHub/Zennで**本物の斜体**になる(v4.0.168で本物のCommonMark実装に確かめた)。
@@ -13617,11 +13632,67 @@ function meosSpecCommentAfter(text, e) {
 }
 const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)|^[ \t]*\d+[.)][ \t][^\n]*<!--[^\n]*-->[ \t]*$|^[ \t]*[-*+][ \t][^\n]*<!--[^\n]*(?:^|\s)-?1\.?(?:[\s(][^\n]*)?-->[ \t]*$/; // v4.0.61: 新形=行頭 `N. `+仕様コメント / 旧形=`- 項目<!-- 1 -->` // v4.0.59: コメント内は `1`(旧 `-1` も読む) // 連番の対象(新形 `- 項目<!-- -1 -->` と旧Me記法の両方)
 const MEOS_ANY_ITEM_RE = /^[ \t]*(?:-1?\{|#{1,3}-1?\{|[-*+][ \t]|\d+[.)][ \t])/; // 項目の並び(間に挟まっても連番は途切れない)
+// v4.0.172(俊克 8/13 pm02:40 バグ3「箇条書きの改行で次の行に箇条書きが続けられる機能がうまく動作しない。
+//   これは、行末方式のときはうまく行っていたよね」): 次の項目へ**骨だけ**引き継ぐ(命令トークン＋色。
+//   tipは項目ごとの注釈so空にして持ち越す)。★行末方式もFC方式も**同じ1つの物差し**を使う。
+function meosCarryItemSpec(payload) {
+  const p = String(payload == null ? '' : payload);
+  const dir = meosLineDirective(p);
+  // v4.0.118(俊克 バグ1): 階層 `-1.1` / `-1a` が改行で `-1.` に化けていた=命令を組み直していたため。
+  //   **元のトークンをそのまま引き継ぐ**(階層は同じ行が続く、が俊克の設計)。
+  const num = dir
+    ? ((dir.bullet === 'number' ? (dir.token || '-1.') : (dir.bullet === 'bullet' ? '-' : '')) + (dir.level ? ('H' + dir.level) : ''))
+    : (/(^|\s)-?1\.?(\s|\(|$)/.test(p) ? '-1.' : ''); // v4.0.61: 理想の記法をそのまま引き継ぐ
+  const rest = dir ? dir.rest : p.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '');
+  const cm = /\([^()]*\)/.exec(rest);
+  const color = cm ? cm[0] : '';
+  const tip = /\/\//.test(rest) ? '//[]tip=' : '';
+  if (!num && !color) return '';
+  return (num + (num && color ? ' ' : '') + color + tip).trim(); // 番号だけの時に空白が二重にならないように
+}
+// v4.0.172(バグ3): FC方式の箇条書きをEnterで続ける。
+// ★★真因= 継続の処理は**その行しか見ていなかった**。FC方式では指定は**真下の行**に在るso、
+//   ①本文行で割ると、**指定行that新しい空の項目に付いてしまう**(元の項目は指定を失う)
+//   ②指定行で割ると、そもそも箇条書きに見えない(ただのコメント行)→ 素のEnterになる。
+//   俊克の「文字列の行で改行しても、FCコメントの末尾で改行しても駄目」は、この2つthatそのまま出ていた。
+// ★答えは1つ= **塊(本文行＋続く指定行)を1つの項目として扱い、塊の末尾で割り、新しい項目にも指定行を付ける**。
+//   行末方式が「命令ごと引き継ぐ」のと**同じことを、行が2本の形でやる**だけ。
+async function meosContinueListOnEnterFC(editor, pos) {
+  const doc = editor.document;
+  let bodyLn = pos.line;
+  if (meosIsSpecLine(doc.lineAt(bodyLn).text)) { if (bodyLn === 0) return false; bodyLn--; } // 指定行に居る→上が本文
+  let specEnd = bodyLn;
+  while (specEnd + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(specEnd + 1).text)) specEnd++;
+  if (specEnd === bodyLn) return false;                        // 指定行that無い=FC方式ではない
+  const bodyText = doc.lineAt(bodyLn).text;
+  const m = MEOS_LIST_ITEM_RE.exec(bodyText);
+  if (!m) return false;
+  const indent = m[1], marker = m[2], gap = m[3], body = m[4];
+  if (pos.line === bodyLn && pos.character < (indent + marker + gap).length) return false; // マーカーの中/左では既定のEnter
+  const specEndText = doc.lineAt(specEnd).text;
+  if (!body.trim()) {                                          // 空項目 → リストを終える(本文と指定行をまとめて畳む)
+    const r = new vscode.Range(new vscode.Position(bodyLn, 0), new vscode.Position(specEnd, specEndText.length));
+    await editor.edit(eb => eb.replace(r, indent));
+    const p = new vscode.Position(bodyLn, indent.length);
+    editor.selection = new vscode.Selection(p, p);
+    return true;
+  }
+  const sp = meosSpecLineFor(meosDocLines(doc), bodyLn);
+  const carried = meosCarryItemSpec(sp && sp.line ? sp.line : '');
+  const next = /^\d+[.)]$/.test(marker) ? ('1' + marker.slice(-1)) : marker; // MeOSthat管理する項目は常に `1.`
+  const newSpec = carried ? ('\n<!-- ' + MEOS_MEW_SIG + 'FC ' + carried + ' -->') : '';
+  await editor.edit(eb => eb.insert(new vscode.Position(specEnd, specEndText.length), '\n' + indent + next + gap + newSpec));
+  const p = new vscode.Position(specEnd + 1, (indent + next + gap).length);
+  editor.selection = new vscode.Selection(p, p);                // カーソルは新しい項目の本文の位置
+  return true;
+}
 async function meosContinueListOnEnter(editor) {
   try {
     if (!meosIsProseDoc(editor.document)) return false;
     if (!editor.selection.isEmpty || editor.selections.length !== 1) return false;
     const pos = editor.selection.active;
+    // v4.0.172(バグ3): FC方式(指定that真下の行に在る)なら、塊ごと扱う道へ。
+    if (MEOS_SPEC_LINE) { try { if (await meosContinueListOnEnterFC(editor, pos)) return true; } catch (_) { } }
     const text = editor.document.lineAt(pos.line).text;
     // v4.0.53: Me記法の箇条書き膜 -{ } / -1{ } は、Me記法のまま続ける(カーソルは新しい膜の中で待つ)。
     const mMe = MEOS_ME_ITEM_RE.exec(text);
@@ -13666,18 +13737,8 @@ async function meosContinueListOnEnter(editor) {
       if (scm) {
         // v4.0.63(俊克): 署名 `Mew!` と命令トークン(-1. / -H2 / H2 …)ごと次の項目へ引き継ぐ。
         const raw = scm[1] || '', sig = meosHasMewSignature(raw) ? 'Mew! ' : '';
-        const payload = meosStripMewSignature(raw);
-        const dir = meosLineDirective(payload);
-        const num = dir
-          // v4.0.118(俊克 バグ1): 階層 `-1.1` / `-1a` が改行で `-1.` に化けていた=ここで命令を再構成し、
-          //   番号付きを一律 `-1.` と書き直していたため。**元のトークンをそのまま引き継ぐ**(階層は同じ行が続く、が俊克の設計)。
-          ? ((dir.bullet === 'number' ? (dir.token || '-1.') : (dir.bullet === 'bullet' ? '-' : '')) + (dir.level ? ('H' + dir.level) : ''))
-          : (/(^|\s)-?1\.?(\s|\(|$)/.test(payload) ? '-1.' : ''); // v4.0.61: 理想の記法をそのまま引き継ぐ
-        const rest = dir ? dir.rest : payload.replace(/(^|\s)-?1\.?(?=\s|\(|$)/, '');
-        const cm = /\([^()]*\)/.exec(rest);
-        const color = cm ? cm[0] : '';
-        const tip = /\/\//.test(rest) ? '//[]tip=' : '';
-        if (num || color) numSpec = '<!-- ' + (sig + num + (num && color ? ' ' : '') + color + tip).trim() + ' -->'; // 番号だけの時に空白が二重にならないように
+        const carried = meosCarryItemSpec(meosStripMewSignature(raw));
+        if (carried) numSpec = '<!-- ' + (sig + carried).trim() + ' -->';
         else if (/^\s*\d+[.)]/.test(text)) numSpec = ''; // 順序付きだが指定コメントが無い行=そのまま
       }
     }
@@ -14650,8 +14711,11 @@ function formatSpanAtCursor(editor, kind) {
   if (kind === 'highlight' && meLinkSpanAtCursor(editor)) return null;
   const re = (kind === 'highlight') ? /=={[^\n]*?}==/g : (kind === 'strike') ? /~~\{[^\n]*?\}~~/g : null;
   if (!re) return null;
+  // v4.0.172: 探すのは**描く時と同じ物差し**の上で(コードスパンとコメントの中の命令トークンは無いものとして数える)。
+  //   長さは1文字も変わらないso、ここで得た位置はそのまま生のテキストに使える。
+  const tScan = meosScanText(text);
   let m; re.lastIndex = 0;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = re.exec(tScan)) !== null) {
     const s = m.index, e = m.index + m[0].length;
     if (pos.character >= s && pos.character <= e) {
       const inner = m[0].slice(3, m[0].length - 3); // =={ / }== ・ ~~{ / }~~ を剥がす
@@ -14666,7 +14730,7 @@ function formatSpanAtCursor(editor, kind) {
     ? /(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g
     : /~~(?!\{)([^~\n]+?)~~/g;
   rePlain.lastIndex = 0;
-  while ((m = rePlain.exec(text)) !== null) {
+  while ((m = rePlain.exec(tScan)) !== null) {
     const s = m.index; let e = m.index + m[0].length;
     // v4.0.56(俊克): 新形は素の記法＋後置きコメント so、解除では**コメントも一緒に**落とす。
     const sc = meosSpecCommentAfter(text, e);
@@ -14734,9 +14798,10 @@ function boldSpanAtCursor(editor) {
   // v4.0.22(俊克 8/6 🚫統合): 素のMarkdown斜体 `_text_` も解除対象(描画=v4.0.20 と同じ足切り規則)。散文限定=コードの `catch (_)` を壊さない。
   // v4.0.169: 新しい一択 `*text*` も同じ列に(描画と同じ形を共有)。`_` は read-both で残す。
   if (meosIsProseDoc(doc)) { pats.push({ re: new RegExp(MEOS_STAR_ITALIC_SRC, 'g'), open: 1, close: 1 }); pats.push({ re: /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g, open: 1, close: 1 }); }
+  const tScan = meosScanText(text); // v4.0.172: 🚫も描く時と同じ物差しで探す(長さ不変so位置はそのまま使える)
   for (const p of pats) {
     let m; p.re.lastIndex = 0;
-    while ((m = p.re.exec(text)) !== null) {
+    while ((m = p.re.exec(tScan)) !== null) {
       const s = m.index, e = m.index + m[0].length;
       const _sc = meosSpecCommentAfter(text, e); const eAll = _sc ? _sc.end : e; // v4.0.57: 新形は後置きコメントごと解除
       if (pos.character >= s && pos.character <= eAll) {
