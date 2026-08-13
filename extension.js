@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.180(俊克 8/13 pm11:58 バグ1「最初のハイライト1のFCコメントは1行目の下に残るべきだが、そうならなかった。これでも、ハイライト1の色指定that生きているのは、拡大解釈だね」): ★★**私の安全弁that誤爆していた**= v4.0.178で「上付/下付thatあれば触らない」と逃げたthat、行に `A↑2` that**1つ在るだけ**で割る処理ごと止まり、**ハイライトの指定まで道連れ**になっていた。俊克のテスト行(ハイライト＋リンク＋取消線＋上付き)thatまさにその形。★★**俊克の「拡大解釈だね」も正しい**= 割った後も黄色く見えたのは、**素の `==…==` の既定that黄**だから。**指定は失われていたのに、たまたま同じ色に見えていた**。★安全弁は「壊すくらいなら何もしない」の作法thatが、**逃げた先で静かに壊れていた**=**逃げるなら、逃げた事that見える形で逃げる**べきだった。★直し= 上付/下付も**同じ数え方(向き＋出現順)で割る/結ぶ**。触らないのは `#N` で名指ししている時だけ(番号の振り直しthat要るため)。項目を書き戻す口を1つ作った(`meosMetexItemText`)。★ついでに**数える物差しを1つに集約**(`meosCountMarks`)= 語に効く記法と上付/下付を同じ1回で数え、**必ず `meosScanText` を通す**(コードスパンとコメントの中の命令トークンは無いものとして数える)。これを通し忘れると、行末のリンク指定の中の `==` を1つと数えて全部ずれる。★**俊克の実物の行で、割る→結ぶthat1文字も違わず元に戻る**ことを確かめた。headless 15/15＋12/12＋79/79 PASS。
 // - v4.0.179(俊克 8/13 pm09:52「と言うことは、改行を削除して、1つの段落にまとめたときは、結合という処理も必要ってことだね?」): ★★**その通り。割る口を作ったなら、必ず結ぶ口も要る**。俊克thatこちらから言う前に気づいた=**片方だけ作るのは、今日ずっと踏んできた穴と同じ形**。★放っておくと一番ひどい壊れ方をする= 下の本文の頭でBackspaceを押すと、**直前の行=指定行に本文that吸い込まれる**(`<!-- Mew!FC == (白/黄) -->==B==の行。`)=**コメントの中に文字that入る**。★上に指定行that無い時も静かに壊れる= 繋いだ後、下の指定は**上の記法から数え直される**so相手thatずれる。→ その時だけ **`#N` で名指し**して繋ぐ(番号を書く仕組みは元からある)。上下の数that合っている時は番号を書かない(素直な形を保つ)。★行に効く指定(H2/-1.)は**上that勝つ**(下の行頭マーカーは文中へ移るso、もう効かない)。★安全弁は割る側と同じ= 上付/下付／既に `#N` thatあれば**何もしない**。★実装= Enterと同じ作法でBackspaceも握る(`laiMembrane.backspaceJoinSpecLines`)。**当たらなければ必ず `deleteLeft` に落とす**=Backspaceは一番使う鍵so、握るなら逃げ道を先に作る。★**割って結ぶと元どおり**をテストで確かめた(往復)。headless 12/12(新規 t_join_fc)＋89/89 PASS。
 // - v4.0.178(俊克 8/13 pm09:42「ハイライトのFC指定が複数ある段落を途中で改行した時に、どう処理しているのか?」→ pm09:45「と言うことは、正しく分割してなかったってことだよね?」): ★★**その通り。分割という処理that無かった**= 段落の改行はMeOSthat手を出さずVS Code既定のEnterthat走るso、**指定行は下半分に残り、番号that繰り上がる**。`==A==と|==B==` を割ると `==B==` that1つめの指定を食い、`==A==` は指定を失い、2つめは相手を失う=**色that1つずれて、1つ消える**。★**行末での改行はもっと素直に壊れていた**= 本文と指定行の**間に空行that入り**、`meosSpecLineFor` は真下しか見ないso**結び付きthat切れる**(こちらの方that日常的に起きる)。★答えは1つ= **割った時は、指定も一緒に割る**。数える単位は他と全部同じ「その行の・その種類の・何個目か」= ①種類ごとにカーソルより前の数だけ上へ、残りを下へ ②行に効く指定(H2/-1.)は上に残す ③片方に無ければその指定行は書かない ④**行末なら割らず、新しい行を指定行の下に作る**(箇条書きと同じ作法)。★安全弁= 上付/下付thatある／`#N` で名指ししている時は**何もしない**(番号の振り直しthat要る=壊す危険)。「戻すと壊れるなら実行しない」(v4.0.156)と同じ流儀。★★**これで「FCを足したら読む側/割る側も真下を見る」の5か所目**= 装飾(168)・🚫(172)・箇条書きのEnter(172)・見出しナビ(177)・段落のEnter(178)。**行をまたぐ記法を足したら、行を扱う所を全部探す**。headless 10/10(新規 t_split_fc)＋79/79 PASS。
 // - v4.0.177(俊克 8/13 pm09:06 バグ1「よよよ呪文that、FC形の見出しをスルーしている」＋テスト1「新規mdでハイライトの既定を見たら、なぜかリンク指定that入っている。外したんじゃないの? メタthatコピーされたのかな?」): ★★【バグ1】**v4.0.96の判定は「行末にコメントthatある」を見出しの証拠にしていた**that、FC方式では**その証拠that真下の行に引っ越している**so、見出しthatまるごと見えなくなっていた。★v4.0.96の趣旨(会話の貼り付けの `## …` を拾わない)は**そのまま守る**= 素のMarkdown見出しは**真下のFC指定行that見出しの命令(H1〜H6)を名乗っている時だけ**数える。名乗りthat無ければ従来どおり無視。★**今日ずっと同じ形**= 読む側that「この行だけ」を見ている。FCを足したら、読む側も真下を見る(装飾・🚫・Enter継続に続いて4つめ)。判定の口は1つのまま(v4.0.96の形)＝呼び出し3箇所に真下の行を渡すだけ。headless 7/7 PASS。★★【テスト1=バグではない】**メタのコピーではなく、「ユーザー既定」thatそこに在った**= mMETAを持たないファイルを開くと `globalState.meosFmtUserDefault`(=最後に俊克that設定した値)that使われる(v0.9.99938の逃げ道=「ファイル毎に初期化される」の対策)。so俊克thatいつか☑Linkを入れた設定thatユーザー既定として残っていて、新規mdにもそれthat出た。**私that変えたのは組込み既定(3段目)**so、mMETAもユーザー既定も無い人にしか出ない。★直し方は俊克の手元で1回=▾で☑Linkを外せばユーザー既定thatその場で上書きされる。★**設計として一言**= 「組込み既定を変えました」は、既に使っている人には**届かない**。次に既定を変える時は、それthat誰に届くのかを先に言うべきだった。
@@ -13710,6 +13711,24 @@ async function meosContinueListOnEnterFC(editor, pos) {
 //   ④**行末なら割らない**= 新しい行を**指定行の下**に作る(本文と指定thatくっついたまま=箇条書きと同じ作法)
 // ★安全弁= 上付/下付thatある／`#N` で名指ししている時は**触らない**(番号の振り直しthat要る=壊す危険)。
 //   「戻すと壊れるなら実行しない」(v4.0.156)と同じ流儀で、**何もしない方に倒す**。
+// v4.0.180: 「その文字列の中に、種類ごとに記法thatいくつ在るか」を数える**1つの物差し**。
+//   ★語に効く記法(== ~~ *** ** * _)と、上付/下付(sup/sub)を**同じ1回で**数える。
+//   ★数える前に必ず `meosScanText` を通す= コードスパンとコメントの中の命令トークンは**無いものとして数える**
+//     (今日3度直した所と同じ規則。ここで通し忘れると、行末コメントの中の `==` を1つと数えて全部ずれる)。
+function meosCountMarks(text) {
+  const t = meosScanText(text);
+  const out = {};
+  for (const e of meosInlineMarkEnds(t)) out[e.kind] = (out[e.kind] || 0) + 1;
+  try { for (const k of meosMeTexTokens(t)) out[k.kind] = (out[k.kind] || 0) + 1; } catch (_) { }
+  return out;
+}
+// 指定行の上付/下付の項目を、書き戻せる文字に直す(`A↑1{150%(白/緑)}` / `A↑1(白/緑)` / `A↑1not`)。
+function meosMetexItemText(it) {
+  const tok = String(it.tok || '') + (it.not ? 'not' : '');
+  const inner = String(it.inner == null ? '' : it.inner);
+  if (!inner) return tok;
+  return tok + (inner.charAt(0) === '(' ? inner : ('{' + inner + '}'));
+}
 async function meosSplitSpecsOnEnter(editor, pos) {
   const doc = editor.document, bodyLn = pos.line;
   const bodyText = doc.lineAt(bodyLn).text;
@@ -13720,8 +13739,13 @@ async function meosSplitSpecsOnEnter(editor, pos) {
   if (specEnd === bodyLn) return false;                     // FC方式ではない
   const spec = meosSpecLineFor(meosDocLines(doc), bodyLn);
   if (!spec) return false;
-  if ((spec.metex || []).length) return false;              // 安全弁: 上付/下付thatあれば触らない
-  if ((spec.fmt || []).some(it => it.nth > 0)) return false; // 安全弁: #N で名指ししていれば触らない
+  // v4.0.180(俊克 8/13 pm11:58 バグ1「最初のハイライト1のFCコメントは1行目の下に残るべきだが、そうならなかった」):
+  // ★★**私の安全弁that誤爆していた**= 行に上付き `A↑2` that1つ在るだけで「触らない」に落ち、
+  //   **ハイライトの指定まで道連れ**にしていた。俊克の行(ハイライト＋リンク＋取消線＋上付き)thatまさにそれ。
+  // ★俊克の「これでも色指定that生きているのは拡大解釈だね」も**正しい**= 素の `==…==` の既定that黄so
+  //   **たまたま同じ色に見えていただけ**。指定は失われていた。
+  // ★so上付/下付も**同じ数え方で割る**(向き＋出現順)。触らないのは `#N` で名指ししている時だけ。
+  if ((spec.fmt || []).some(it => it.nth > 0) || (spec.metex || []).some(it => it.nth > 0)) return false; // 安全弁: #N は番号の振り直しthat要る
   const specEndText = doc.lineAt(specEnd).text;
   const head = bodyText.slice(0, pos.character), tail = bodyText.slice(pos.character);
   const box = (payload) => '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
@@ -13731,12 +13755,16 @@ async function meosSplitSpecsOnEnter(editor, pos) {
     editor.selection = new vscode.Selection(p, p);
     return true;
   }
-  const cnt = {};                                           // ①カーソルより前に、種類ごとにいくつ在るか
-  for (const e of meosInlineMarkEnds(head)) cnt[e.kind] = (cnt[e.kind] || 0) + 1;
+  const cnt = meosCountMarks(head);                         // ①カーソルより前に、種類ごとにいくつ在るか
   const seen = {}, up = [], lo = [];
   for (const it of (spec.fmt || [])) {
     seen[it.kind] = (seen[it.kind] || 0) + 1;
     (seen[it.kind] <= (cnt[it.kind] || 0) ? up : lo).push(box(it.kind + ' ' + it.inner));
+  }
+  for (const it of (spec.metex || [])) {                    // v4.0.180: 上付/下付も向き＋出現順で割る
+    const d = (String(it.tok).indexOf('↑') >= 0) ? 'sup' : 'sub';
+    seen[d] = (seen[d] || 0) + 1;
+    (seen[d] <= (cnt[d] || 0) ? up : lo).push(box(meosMetexItemText(it)));
   }
   if (spec.line) up.push(box(spec.line));                   // ②行に効く指定は上に残す
   const out = [head].concat(up.length ? [up.join('')] : []).concat([tail]).concat(lo.length ? [lo.join('')] : []);
@@ -13774,23 +13802,31 @@ async function meosJoinSpecsOnBackspace(editor) {
   const upSpec = hasUpSpec ? meosSpecLineFor(lines, upLn) : null;
   const lowSpec = (lowSpecEnd > pos.line) ? meosSpecLineFor(lines, pos.line) : null;
   if (!upSpec && !lowSpec) return false;                           // FC方式ではない=既定のBackspace
-  const bad = (sp) => !!sp && ((((sp.metex || []).length) > 0) || (sp.fmt || []).some(it => it.nth > 0));
+  // v4.0.180: 上付/下付も割る側と同じ数え方で結ぶ。触らないのは `#N` で名指ししている時だけ。
+  const bad = (sp) => !!sp && ((sp.fmt || []).some(it => it.nth > 0) || (sp.metex || []).some(it => it.nth > 0));
   if (bad(upSpec) || bad(lowSpec)) return false;                   // 安全弁
   // 上の本文に、種類ごとに記法thatいくつ在るか(下の指定を数え直す基準)
-  const upCnt = {};
-  for (const e of meosInlineMarkEnds(upText)) upCnt[e.kind] = (upCnt[e.kind] || 0) + 1;
+  const upCnt = meosCountMarks(upText);
   const upItem = {};
   for (const it of ((upSpec && upSpec.fmt) || [])) upItem[it.kind] = (upItem[it.kind] || 0) + 1;
+  for (const it of ((upSpec && upSpec.metex) || [])) { const d = (String(it.tok).indexOf('↑') >= 0) ? 'sup' : 'sub'; upItem[d] = (upItem[d] || 0) + 1; }
   // 上の「記法の数」と「指定の数」that全部一致していれば、番号は書かなくてよい(素直な形を保つ)
   let needNum = false;
   for (const k of new Set(Object.keys(upCnt).concat(Object.keys(upItem)))) if ((upCnt[k] || 0) !== (upItem[k] || 0)) needNum = true;
   const box = (p) => '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(p).trim() + ' -->';
   const items = [];
   for (const it of ((upSpec && upSpec.fmt) || [])) items.push(box(it.kind + ' ' + it.inner));
+  for (const it of ((upSpec && upSpec.metex) || [])) items.push(box(meosMetexItemText(it)));
   const nth = {};
   for (const it of ((lowSpec && lowSpec.fmt) || [])) {
     nth[it.kind] = (nth[it.kind] || 0) + 1;
     items.push(box(it.kind + (needNum ? ('#' + ((upCnt[it.kind] || 0) + nth[it.kind])) : '') + ' ' + it.inner));
+  }
+  for (const it of ((lowSpec && lowSpec.metex) || [])) { // v4.0.180: 上付/下付も同じ規則で(ずれる時だけ #N)
+    const d = (String(it.tok).indexOf('↑') >= 0) ? 'sup' : 'sub';
+    nth[d] = (nth[d] || 0) + 1;
+    const t = meosMetexItemText(it);
+    items.push(box(needNum ? (String(it.tok || '') + '#' + ((upCnt[d] || 0) + nth[d]) + t.slice(String(it.tok || '').length)) : t));
   }
   const dir = (upSpec && upSpec.line) || '';                       // 行に効く指定は**上that勝つ**(下の行頭マーカーは文中へ移るso効かない)
   if (dir) items.push(box(dir));
