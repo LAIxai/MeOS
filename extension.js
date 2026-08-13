@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.181(俊克 8/14 am00:22 質問1「ジャンプすると、1、2秒で再び元の位置に戻ってくる。そもそも、なぜジャンプを防止できないのか?」→ am00:31「そうではなく、今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」): ★★**飛んでいるのは分割ではなく、その直後に走るFCの開閉**= 割ると**カーソルthat別の塊へ移る**so、FCの同期that「前に開いていた塊」を畳みに行く。その塊that画面の外なら、`editor.fold` は**そこまでスクロールして見せてしまう**。★戻す仕掛けは v4.0.176 で入れてあったthat、**まとめて最後に1回だけ**戻していたso「**飛んで、戻る**」thatそのまま目に見えていた。→ **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わる。★★**もう1つ、私の直しthat悪さをしていた**= v4.0.176で「カーソルthat変わっていたら元へ戻す」と書いたthat、それは「畳んだ拍子に動いた」のか**「俊克thatジャンプした」のか区別thatついていない**so、**ワープを打ち消していた**(畳む処理は最大3回×150/300/450msの待ちを挟むso1〜2秒後に引き戻される)。→ 規則を1つに= **控えた時と選択that1文字でも違えば、何もしない**。誰かthat動かしたのなら、それthat正しい位置。**戻していいのは、誰も動かしていない時だけ**。★【質問1の後半への答え】`editor.fold`/`unfold` は**コマンド**で、「畳むthatスクロールはするな」という選択肢thatVS Code側に**無い**。soMeOSにできるのは**後から戻すこと**だけで、前もって止める口thatそもそも無い。
 // - v4.0.180(俊克 8/13 pm11:58 バグ1「最初のハイライト1のFCコメントは1行目の下に残るべきだが、そうならなかった。これでも、ハイライト1の色指定that生きているのは、拡大解釈だね」): ★★**私の安全弁that誤爆していた**= v4.0.178で「上付/下付thatあれば触らない」と逃げたthat、行に `A↑2` that**1つ在るだけ**で割る処理ごと止まり、**ハイライトの指定まで道連れ**になっていた。俊克のテスト行(ハイライト＋リンク＋取消線＋上付き)thatまさにその形。★★**俊克の「拡大解釈だね」も正しい**= 割った後も黄色く見えたのは、**素の `==…==` の既定that黄**だから。**指定は失われていたのに、たまたま同じ色に見えていた**。★安全弁は「壊すくらいなら何もしない」の作法thatが、**逃げた先で静かに壊れていた**=**逃げるなら、逃げた事that見える形で逃げる**べきだった。★直し= 上付/下付も**同じ数え方(向き＋出現順)で割る/結ぶ**。触らないのは `#N` で名指ししている時だけ(番号の振り直しthat要るため)。項目を書き戻す口を1つ作った(`meosMetexItemText`)。★ついでに**数える物差しを1つに集約**(`meosCountMarks`)= 語に効く記法と上付/下付を同じ1回で数え、**必ず `meosScanText` を通す**(コードスパンとコメントの中の命令トークンは無いものとして数える)。これを通し忘れると、行末のリンク指定の中の `==` を1つと数えて全部ずれる。★**俊克の実物の行で、割る→結ぶthat1文字も違わず元に戻る**ことを確かめた。headless 15/15＋12/12＋79/79 PASS。
 // - v4.0.179(俊克 8/13 pm09:52「と言うことは、改行を削除して、1つの段落にまとめたときは、結合という処理も必要ってことだね?」): ★★**その通り。割る口を作ったなら、必ず結ぶ口も要る**。俊克thatこちらから言う前に気づいた=**片方だけ作るのは、今日ずっと踏んできた穴と同じ形**。★放っておくと一番ひどい壊れ方をする= 下の本文の頭でBackspaceを押すと、**直前の行=指定行に本文that吸い込まれる**(`<!-- Mew!FC == (白/黄) -->==B==の行。`)=**コメントの中に文字that入る**。★上に指定行that無い時も静かに壊れる= 繋いだ後、下の指定は**上の記法から数え直される**so相手thatずれる。→ その時だけ **`#N` で名指し**して繋ぐ(番号を書く仕組みは元からある)。上下の数that合っている時は番号を書かない(素直な形を保つ)。★行に効く指定(H2/-1.)は**上that勝つ**(下の行頭マーカーは文中へ移るso、もう効かない)。★安全弁は割る側と同じ= 上付/下付／既に `#N` thatあれば**何もしない**。★実装= Enterと同じ作法でBackspaceも握る(`laiMembrane.backspaceJoinSpecLines`)。**当たらなければ必ず `deleteLeft` に落とす**=Backspaceは一番使う鍵so、握るなら逃げ道を先に作る。★**割って結ぶと元どおり**をテストで確かめた(往復)。headless 12/12(新規 t_join_fc)＋89/89 PASS。
 // - v4.0.178(俊克 8/13 pm09:42「ハイライトのFC指定が複数ある段落を途中で改行した時に、どう処理しているのか?」→ pm09:45「と言うことは、正しく分割してなかったってことだよね?」): ★★**その通り。分割という処理that無かった**= 段落の改行はMeOSthat手を出さずVS Code既定のEnterthat走るso、**指定行は下半分に残り、番号that繰り上がる**。`==A==と|==B==` を割ると `==B==` that1つめの指定を食い、`==A==` は指定を失い、2つめは相手を失う=**色that1つずれて、1つ消える**。★**行末での改行はもっと素直に壊れていた**= 本文と指定行の**間に空行that入り**、`meosSpecLineFor` は真下しか見ないso**結び付きthat切れる**(こちらの方that日常的に起きる)。★答えは1つ= **割った時は、指定も一緒に割る**。数える単位は他と全部同じ「その行の・その種類の・何個目か」= ①種類ごとにカーソルより前の数だけ上へ、残りを下へ ②行に効く指定(H2/-1.)は上に残す ③片方に無ければその指定行は書かない ④**行末なら割らず、新しい行を指定行の下に作る**(箇条書きと同じ作法)。★安全弁= 上付/下付thatある／`#N` で名指ししている時は**何もしない**(番号の振り直しthat要る=壊す危険)。「戻すと壊れるなら実行しない」(v4.0.156)と同じ流儀。★★**これで「FCを足したら読む側/割る側も真下を見る」の5か所目**= 装飾(168)・🚫(172)・箇条書きのEnter(172)・見出しナビ(177)・段落のEnter(178)。**行をまたぐ記法を足したら、行を扱う所を全部探す**。headless 10/10(新規 t_split_fc)＋79/79 PASS。
@@ -20374,15 +20375,26 @@ function meosScheduleFcCursorSync(editor) {
 //   ★Formatボタンの飛び(v4.0.173/174)とは**別の口**だった= 同じ症状に原因that2つ在った。
 // ★直し= 畳む/開くの**前後で画面の一番上の行を控え、変わっていたら戻す**(選択も念のため戻す)。
 //   行番号で戻すso、上の方that畳まれて内容that詰まっても、**同じ行that同じ場所に見える**。
+// v4.0.181(俊克 8/14 am00:22 質問1「さっきから、ジャンプすると、1、2秒で再び元の位置に戻ってくる」):
+// ★★**犯人はv4.0.176の私の直しthatだった**= 畳む/開くで画面that動くのを戻すつもりで、
+//   **カーソルthat変わっていたら元へ戻す**と書いた。だthatそれは「畳んだ拍子に動いた」のか
+//   **「俊克thatジャンプした」のか区別thatついていない**so、**ワープを打ち消していた**。
+//   畳む処理は最大3回×150/300/450msの待ちを挟むso、**1〜2秒後に引き戻される**=俊克の見たとおり。
+// ★規則を1つにした= **控えた時と選択that1文字でも違えば、何もしない**。
+//   誰か(俊克/ジャンプ/他の拡張)that動かしたのなら、それthat正しい位置。**戻していいのは、誰も動かしていない時だけ**。
+// ★【質問1の後半「そもそも、なぜジャンプを防止できないのか?」】= `editor.fold`/`unfold` は**コマンド**で、
+//   「畳むthatスクロールはするな」という選択肢thatVS Code側に無い。soMeOSにできるのは**後から戻すこと**だけ。
+//   前もって止められないのはそのため(APIの口that無い)。
 function meosRestoreView(editor, topLine, sel) {
   try {
     if (!editor || topLine < 0) return;
+    if (editor !== vscode.window.activeTextEditor) return;         // もう別のエディタ=触らない
+    if (!sel || !editor.selection.isEqual(sel)) return;            // ★誰かthat動かした=何もしない(ワープを打ち消さない)
     const now = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
     if (now >= 0 && now !== topLine) {
       const ln = Math.min(topLine, Math.max(0, editor.document.lineCount - 1));
       editor.revealRange(new vscode.Range(ln, 0, ln, 0), vscode.TextEditorRevealType.AtTop);
     }
-    if (sel && !editor.selection.isEqual(sel)) editor.selection = sel; // 畳んだ拍子にカーソルthat動いたら戻す
   } catch (_) { }
 }
 async function meosSyncFcFoldForCursor(editor) {
@@ -20397,8 +20409,14 @@ async function meosSyncFcFoldForCursor(editor) {
     _meosFcBusy = true;
     _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
     _selBefore = editor.selection;
-    const fold = (ls) => vscode.commands.executeCommand('editor.fold', { selectionLines: ls });
-    const unfold = (ls) => vscode.commands.executeCommand('editor.unfold', { selectionLines: ls });
+    // v4.0.181(俊克 8/14 am00:31「今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」):
+    // ★★**飛んでいるのは分割ではなく、その直後に走るFCの開閉**。割ると**カーソルthat別の塊へ移る**so、
+    //   ここthat「前に開いていた塊」を畳みに行く= その塊that画面の外なら、**そこまでスクロールして見せてしまう**。
+    //   戻すのは v4.0.176 で入れたthat、**まとめて最後に戻していた**so「飛んで、戻る」thatそのまま見えていた。
+    // ★直し= **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わるso、目には残らない。
+    const _keep = () => meosRestoreView(editor, _topBefore, _selBefore);
+    const fold = async (ls) => { await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); _keep(); };
+    const unfold = async (ls) => { await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); _keep(); };
     if (raw) { // Raw=生データを全部見せる約束
       if (_meosFcOpen !== 'ALL') { await unfold(blocks.map(b => b.start)); _meosFcOpen = 'ALL'; }
       return;
