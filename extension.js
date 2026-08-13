@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.184(俊克 8/14 am01:16 バグ1「普通の見出しの先頭で改行したりBSで1行削除するという普通の使い方をしただけで、分割処理あるいは結合処理that走る。それは分割でも結合でもないよ。その時に矢印キーでカーソルを移動すると、再び膜の始めにジャンプするバグが復活した」＋「もしかして、これは箇条書きの処理that走っているのか?」): ★★**俊克thatまったく正しい。ただし犯人は箇条書きではなかった**= `## 見出し` は箇条書きの形(`- ` / `1. `)に当たらないso、走っていたのは**私that作った割る/結ぶの口**。**「指定行thatある行での改行/BS」を全部自分の仕事にしてしまい、割ってもいないのに割る処理を走らせていた**。その後の畳み直しthatジャンプを呼ぶ=俊克の見た「またジャンプthat復活」。★直し2つ= ①**行の頭での改行は割っていない**so既定のEnterに譲る(前に文字thatある時だけ割る) ②**見出しの頭でのBSは結合ではない**so譲る(`#` that文中へ移って意味を失う)。★教訓= **自分の処理を呼ぶ条件を「形」で決めていた(指定行thatある)thatが、正しくは「意図」で決める(実際に割れているか)**。前に文字thatあるか、という1行thatその答えだった。★📌**バグ2(FS thatまだ結合しない)は未解決**= 手元では同じ入力that通るso、**推測せず `[fcJoin]` の計測を仕込んだ**(断った時に1行出る)。次のテストでDeleteを1回押してログを見れば場所thatわかる。
 // - v4.0.183(俊克 8/14 am00:48「Backspaceではなく、Forwardspaceでもうまく行くのか? つまり、1つ前を削除するのがBSで、1つ後ろを削除するのがFSだよ」): ★★**行っていなかった。またしても片方だけ**= BS(Backspace)だけ握ってFS(Delete)を忘れていた。**今日これで6回目の同じ形**(片方だけ作る/直す)。★FSの壊れ方はBSより悪い= 本文行の**末尾**でDeleteを押すと、**真下の指定行that本文に吸い込まれる**(`ここで、==A==と<!-- Mew!FC == (白/黄) -->`)=コメントthat本文の一部になる。★★直しは**新しい処理を書かない**= 「上の本文行の末尾でFS」は「下の本文行の頭でBS」と**同じ結合**so、**下の本文行の頭へカーソルを移してBSの口をそのまま呼ぶ**。口を2つ作らない。当たらなければ**カーソルを元へ戻して既定の `deleteRight` に落とす**(BSと同じ逃げ道)。★俊克thatBSの次にFSを聞いたのは、**私that片方しか作らない癖**を見抜いているから。次は聞かれる前に数える。
 // - v4.0.182(俊克 8/14 am00:39「分割テスト: 飛ばなかった。不自然さは無い／結合テスト: 膜の始めに飛んだっきり、戻ってこなくなった」): ★★**v4.0.181で入れた私の門番that厳し過ぎた**= 「選択that変わっていたら何もしない」と書いたthat、**畳む動作そのものthatカーソルを動かす**(畳んだ領域の中にカーソルthat居ると、その先頭へ移る)。結合の直後は**必ず**選択that変わるso、**戻す処理that毎回自分で降りていた**=飛んだきり戻らない。分割thatOKで結合thatNGだったのは、結合だけ**カーソルthat畳まれる側に居た**から。★区別の付け方は**時間**だった= 畳むコマンドの**直後**に呼ぶ道は、間に人thatキーを押す隙thatそもそも無いso**選択ごと戻してよい**。150/300/450msの待ちを挟む一括畳みの道だけ、選択that変わっていたら**降りる**(v4.0.176でワープを打ち消していた本当の場所はここだった)。★教訓= **同じ関数に2つの立場を持たせるなら、区別を引数で明示する**。「たぶん同じでいいだろう」で1つにすると、今日のように**片方を直すと片方that壊れる**。
 // - v4.0.181(俊克 8/14 am00:22 質問1「ジャンプすると、1、2秒で再び元の位置に戻ってくる。そもそも、なぜジャンプを防止できないのか?」→ am00:31「そうではなく、今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」): ★★**飛んでいるのは分割ではなく、その直後に走るFCの開閉**= 割ると**カーソルthat別の塊へ移る**so、FCの同期that「前に開いていた塊」を畳みに行く。その塊that画面の外なら、`editor.fold` は**そこまでスクロールして見せてしまう**。★戻す仕掛けは v4.0.176 で入れてあったthat、**まとめて最後に1回だけ**戻していたso「**飛んで、戻る**」thatそのまま目に見えていた。→ **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わる。★★**もう1つ、私の直しthat悪さをしていた**= v4.0.176で「カーソルthat変わっていたら元へ戻す」と書いたthat、それは「畳んだ拍子に動いた」のか**「俊克thatジャンプした」のか区別thatついていない**so、**ワープを打ち消していた**(畳む処理は最大3回×150/300/450msの待ちを挟むso1〜2秒後に引き戻される)。→ 規則を1つに= **控えた時と選択that1文字でも違えば、何もしない**。誰かthat動かしたのなら、それthat正しい位置。**戻していいのは、誰も動かしていない時だけ**。★【質問1の後半への答え】`editor.fold`/`unfold` は**コマンド**で、「畳むthatスクロールはするな」という選択肢thatVS Code側に**無い**。soMeOSにできるのは**後から戻すこと**だけで、前もって止める口thatそもそも無い。
@@ -13751,6 +13752,12 @@ async function meosSplitSpecsOnEnter(editor, pos) {
   if ((spec.fmt || []).some(it => it.nth > 0) || (spec.metex || []).some(it => it.nth > 0)) return false; // 安全弁: #N は番号の振り直しthat要る
   const specEndText = doc.lineAt(specEnd).text;
   const head = bodyText.slice(0, pos.character), tail = bodyText.slice(pos.character);
+  // v4.0.184(俊克 8/14 am01:16 バグ1「普通の見出しの先頭で改行/BSしただけで、分割処理あるいは結合処理that走る。
+  //   それは分割でも結合でもないよ」): ★★**俊克thatまったく正しい**= 行の**頭**で押した改行は「割った」のではなく
+  //   **上に空行を1本足した**だけ。私は「指定行thatある行での改行」を全部自分の仕事にしてしまい、
+  //   **割っていないのに割る処理を走らせていた**(その後の畳み直しthatジャンプを呼ぶ)。
+  //   → **前に文字thatある時だけ**割る。頭で押した時は**既定のEnterに譲る**(何も起きない=正しい)。
+  if (!head.trim()) return false;
   const box = (payload) => '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
   if (!tail.trim()) {                                       // ④行末=割らない。新しい行は指定行の下へ
     await editor.edit(eb => eb.insert(new vscode.Position(specEnd, specEndText.length), '\n' + tail));
@@ -13791,6 +13798,9 @@ async function meosJoinSpecsOnBackspace(editor) {
   if (pos.character !== 0 || pos.line === 0) return false;
   const lowText = doc.lineAt(pos.line).text;
   if (!lowText.trim() || meosIsSpecLine(lowText)) return false;   // 空行/指定行の頭では既定のBackspaceに譲る
+  // v4.0.184(バグ1): **見出しの頭でのBSは「結合」ではない**= 見出しを前の行にくっつけるのは書き手の意図ではない
+  //   (行頭マーカー `#` that文中へ移って意味を失う)。→ 触らず既定のBackspaceに譲る。
+  if (/^[ \t]*#{1,6}[ \t]/.test(lowText)) return false;
   // 上の本文行を探す(間に指定行thatあれば飛び越える)
   let sTop = pos.line - 1, hasUpSpec = false;
   while (sTop >= 0 && meosIsSpecLine(doc.lineAt(sTop).text)) { sTop--; hasUpSpec = true; }
@@ -13805,6 +13815,7 @@ async function meosJoinSpecsOnBackspace(editor) {
   const upSpec = hasUpSpec ? meosSpecLineFor(lines, upLn) : null;
   const lowSpec = (lowSpecEnd > pos.line) ? meosSpecLineFor(lines, pos.line) : null;
   if (!upSpec && !lowSpec) return false;                           // FC方式ではない=既定のBackspace
+  try { meosDbg('[fcJoin] 結合する up=' + (upLn + 1) + ' low=' + (pos.line + 1) + ' upSpec=' + !!upSpec + ' lowSpec=' + !!lowSpec); } catch (_) { }
   // v4.0.180: 上付/下付も割る側と同じ数え方で結ぶ。触らないのは `#N` で名指ししている時だけ。
   const bad = (sp) => !!sp && ((sp.fmt || []).some(it => it.nth > 0) || (sp.metex || []).some(it => it.nth > 0));
   if (bad(upSpec) || bad(lowSpec)) return false;                   // 安全弁
@@ -13860,6 +13871,7 @@ async function handleDeleteJoinSpecLines() {
           const keep = editor.selection;
           editor.selection = new vscode.Selection(n, 0, n, 0);   // 下の本文の頭=BSと同じ場所へ
           if (await meosJoinSpecsOnBackspace(editor)) return;
+          try { meosDbg('[fcJoin] FS: 結合の口that断った low=' + (n + 1)); } catch (_) { } // v4.0.184: 断った理由を追えるように
           editor.selection = keep;                               // 当たらなかった=元の場所へ戻して既定へ
         }
       }
