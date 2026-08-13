@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.177(俊克 8/13 pm09:06 バグ1「よよよ呪文that、FC形の見出しをスルーしている」＋テスト1「新規mdでハイライトの既定を見たら、なぜかリンク指定that入っている。外したんじゃないの? メタthatコピーされたのかな?」): ★★【バグ1】**v4.0.96の判定は「行末にコメントthatある」を見出しの証拠にしていた**that、FC方式では**その証拠that真下の行に引っ越している**so、見出しthatまるごと見えなくなっていた。★v4.0.96の趣旨(会話の貼り付けの `## …` を拾わない)は**そのまま守る**= 素のMarkdown見出しは**真下のFC指定行that見出しの命令(H1〜H6)を名乗っている時だけ**数える。名乗りthat無ければ従来どおり無視。★**今日ずっと同じ形**= 読む側that「この行だけ」を見ている。FCを足したら、読む側も真下を見る(装飾・🚫・Enter継続に続いて4つめ)。判定の口は1つのまま(v4.0.96の形)＝呼び出し3箇所に真下の行を渡すだけ。headless 7/7 PASS。★★【テスト1=バグではない】**メタのコピーではなく、「ユーザー既定」thatそこに在った**= mMETAを持たないファイルを開くと `globalState.meosFmtUserDefault`(=最後に俊克that設定した値)that使われる(v0.9.99938の逃げ道=「ファイル毎に初期化される」の対策)。so俊克thatいつか☑Linkを入れた設定thatユーザー既定として残っていて、新規mdにもそれthat出た。**私that変えたのは組込み既定(3段目)**so、mMETAもユーザー既定も無い人にしか出ない。★直し方は俊克の手元で1回=▾で☑Linkを外せばユーザー既定thatその場で上書きされる。★**設計として一言**= 「組込み既定を変えました」は、既に使っている人には**届かない**。次に既定を変える時は、それthat誰に届くのかを先に言うべきだった。
 // - v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」＋Debugログ): ★★**同じ症状に原因that2つ在った**。v4.0.173/174で消したのは**Formatボタンの飛び**(showTextDocumentのreveal)で、俊克thatまだ見ていたのは**もう1つの口**= **カーソル移動のたびに走る FC の開閉**。★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、カーソルthat別の塊へ移った時に**前に開いていた塊を畳む**と、**その塊の所へ画面that飛ぶ**。カーソル移動のたびに走る道soFC行that増えるほど当たる=俊克の「最近これも多い」thatそのまま説明できる。★直し= 畳む/開くの**前後で画面の一番上の行を控え、変わっていたら戻す**(`meosRestoreView`)。**行番号で戻す**so、上の方that畳まれて内容that詰まっても**同じ行that同じ場所に見える**。カーソルthat畳んだ拍子に動いた時も戻す。★一括で畳む道(`meosAutoFoldSpecLines`)にも同じ物差しを入れた=**一番画面を動かすのはそこ**。★俊克thatくれた `[fcEnter] 本文行が箇条書きではない: "## CN=…"` は**正しい動作**(見出しの行でEnterを押した)=計測that期待どおり読めることも確認できた。★教訓=**「直した」と言えるのは、同じ症状の口を全部数えた時だけ**(今日3回目の同じ形)。→ [[feedback_one_source_for_mark_count_action]]
 // - v4.0.175(俊克 8/13 pm08:40「デフォルトを以下のようにしよう。素のハイライト、太字、イタリック(リンク:二重下線)／ == 白/黄色、**白/紫、*白/青」): ★★**3つとも同じ既定(赤/黄×3)では、↻は「押しても何も起きないボタン」に見えていた**。俊克の「プリセット3つの何が違うのか?」thatその証拠= **違いは自分で作るもの**という設計thatUIから読めていなかった。→ 既定を**3つとも別の記法**にした= ①`==`(白/黄) ②`**`太字(白/紫) ③`*`斜体(白/青)。1回押すごとに顔that変わるso、**3つ登録できることthat押した瞬間に分かる**。★`ul:1`(二重下線)= ☑Linkを入れた時の既定の線種(俊克「リンク:二重下線」)。**Linkのチェック自体は入れない**= 入れると押した瞬間にリンク記法that入り行先の入力待ちになるso、既定としては強すぎる(もし③をリンクにしたいなら `link:true` を1つ足すだけ)。★**既に保存されているノートは自分の設定that勝つ**(mMETAに焼いてある)=[[project_setting_decides_future_only]]どおり、新既定は**これから作るノート**に出る。★やらかし= このコメントに**バックティックを書いてテンプレート文字列を壊した**(v4.0.50/90と同じ事故を3度目)。`node --check` that即座に捕まえたthat、**webviewの中に書く時はバックティック禁止**を、その場のコメントにも書き残した。
 // - v4.0.174(俊克 8/13 pm07:45「テスト2を🚫ボタンで解除すると、膜の始めにジャンプした。行末形のままで、FC膜に戻らない」): ★★**🚫の本体that2か所に在り、私はv4.0.173で片方しか直していなかった**= 太字/斜体・上付下付・見出し・リンクの🚫は `removeFormatAtCursor` を通るthat、**ハイライト/取消線の🚫だけ fmtCycle の中に写経してあった**。soそこには①FC化(外へ出す)の呼び出しthat無く=**戻らない** ②`showTextDocument(…{selection})` のrevealthat残っていて=**膜の先頭へ飛ぶ**。**俊克の2つの症状は、この1つの写経that生んでいた**。→ ring0 は `removeFormatAtCursor` に集約し、↻の再適用も `meosFocusBack`＋FC化を通す。表ボタンの作成後の focus も同じ口に。★★**教訓を書いたその日に、同じ穴をもう一度踏んだ**= v4.0.172で「同じ判断を2か所に書いたら片方は必ず腐る」と[[feedback_one_source_for_mark_count_action]]に書き足した数時間後に、**直す時に「他に何か所あるか」を数えなかった**。**次からは、直す前に必ず数える**(grepで呼び出し元を全部出してから直す)。★【バグ3=解決】俊克の実機ログ `[fcEnter] 継続する body=96675 specEnd=96676` ＝**FC方式のEnter継続は正しく効いていた**(v4.0.172の直しthat入っていなかっただけ)。計測を入れた判断thatそのまま答えになった=推測で触らなくて正解だった。
@@ -15638,12 +15639,22 @@ function jumpMeDockTocOrTop() {
 const MEOS_NAV_HEAD_LEGACY_RE = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?(#{1,3})(?:-1|-)?(?:\[(?:[^\]\n]|\[[^\]\n]*\])*\]|\{(?:[^}\n]|\{[^}\n]*\})*\})\1/; // ①旧形の膜見出し(両端が留まる)
 const MEOS_NAV_HEAD_MD_RE = /^\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?#{1,6}[ \t]+\S/;                                    // ②素のMarkdown見出し(コメントの手前だけを見る)
 const MEOS_NAV_HEAD_PAYLOAD_RE = /^[ \t]*(?:[Mm][Ee][Ww]![ \t]*)?(?:-1\.?|1\.?|-)?[ \t]*H[1-6](?![0-9])/;         // ③コメントの中身が見出しの命令
-function meosIsNavHeadingLine(text) {
+// v4.0.177(俊克 8/13 pm09:06 バグ1「よよよ呪文が、FC形の見出しをスルーしている」):
+// ★★**v4.0.96の判定は「行末にコメントthatある」を見出しの証拠にしていた**that、FC方式では
+//   **その証拠that真下の行に引っ越している**so、見出しthatまるごと見えなくなっていた。
+//   ★v4.0.96の趣旨(会話の貼り付けの `## …` を拾わない)は**そのまま守る**= 素のMarkdown見出しは
+//   **真下のFC指定行that見出しの命令(H1〜H6)を名乗っている時だけ**数える。名乗りthat無ければ従来どおり無視。
+//   ★今日ずっと同じ形= **読む側that「この行だけ」を見ている**。FCを足したら、読む側も真下を見る。
+function meosIsNavHeadingLine(text, nextText) {
   const s = String(text == null ? '' : text);
   if (s.indexOf('#') < 0 && s.indexOf('<!--') < 0) return false; // 足切り(大半の行はここで落ちる)
   if (MEOS_NAV_HEAD_LEGACY_RE.test(s)) return true;
   const t = s.replace(/[ \t]+$/, '');
-  if (t.slice(-3) !== '-->') return false;      // 新形は必ず行末コメントで終わる=ここで落ちれば1回の比較で済む
+  if (t.slice(-3) !== '-->') {                  // 行末にコメントthat無い=FC方式かどうかを真下で確かめる
+    if (!nextText || !MEOS_NAV_HEAD_MD_RE.test(t)) return false;
+    if (String(nextText).indexOf('<!--') < 0) return false;      // 安い足切り
+    try { const p = meosParseSpecLine(nextText); return !!(p && p.line && MEOS_NAV_HEAD_PAYLOAD_RE.test(p.line)); } catch (_) { return false; }
+  }
   const open = t.lastIndexOf('<!--');           // 貪欲な `[^\n]*<!--` と同じ「最後の開き」を、走査せずに得る
   if (open < 0) return false;
   const before = t.slice(0, open);
@@ -15662,7 +15673,7 @@ function navMeHeadingJump(direction) {
   let pair = null; try { pair = findCurrentPair(editor); } catch (_) { pair = null; }
   if (pair) { lo = pair.start; hi = pair.end; } // v0.9.776: stay inside the current membrane
   const heads = [];
-  for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '')) heads.push(i); }
+  for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) heads.push(i); } // v4.0.177: 真下の指定行も渡す(FC形の見出し)
   if (!heads.length) { vscode.window.setStatusBarMessage('MeOS: no ##[…]## headings here (make one with the Format ## button).', 2000); return false; }
   const cur = editor.selection.active.line;
   // v0.9.925: park ONE line ABOVE the heading so the heading stays decorated (the cursor line
@@ -15702,7 +15713,7 @@ function navMeHeadingJumpTo(n) {
   let lo = 0, hi = doc.lineCount - 1, pair = null; try { pair = findCurrentPair(editor); } catch (_) {}
   if (pair) { lo = pair.start; hi = pair.end; }
   const heads = [];
-  for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '')) heads.push(i); }
+  for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) heads.push(i); } // v4.0.177: 真下の指定行も渡す(FC形の見出し)
   if (!heads.length) return false;
   const desired = lo + Math.max(0, Math.min(1, Number(n) || 0)) * (hi - lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し
   let target = heads[0], best = Infinity;
@@ -15762,7 +15773,8 @@ function headNavStateForEditor(editor) {
   const headLines = [];
   for (let i = lo; i <= hi; i++) {
     const t = doc.lineAt(i).text || '';
-    if (reHead.test(t)) { count++; headLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; }
+    // v4.0.177: 真下の指定行も渡す(FC形の見出しも数える)
+    if (reHead.test(t, i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) { count++; headLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; }
   }
   const ck = curText ? targetColorKeys(curText) : null; // v0.9.99925: ノブ色=現在見出しの色
   const span = Math.max(1, hi - lo);
