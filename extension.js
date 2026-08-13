@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.183(俊克 8/14 am00:48「Backspaceではなく、Forwardspaceでもうまく行くのか? つまり、1つ前を削除するのがBSで、1つ後ろを削除するのがFSだよ」): ★★**行っていなかった。またしても片方だけ**= BS(Backspace)だけ握ってFS(Delete)を忘れていた。**今日これで6回目の同じ形**(片方だけ作る/直す)。★FSの壊れ方はBSより悪い= 本文行の**末尾**でDeleteを押すと、**真下の指定行that本文に吸い込まれる**(`ここで、==A==と<!-- Mew!FC == (白/黄) -->`)=コメントthat本文の一部になる。★★直しは**新しい処理を書かない**= 「上の本文行の末尾でFS」は「下の本文行の頭でBS」と**同じ結合**so、**下の本文行の頭へカーソルを移してBSの口をそのまま呼ぶ**。口を2つ作らない。当たらなければ**カーソルを元へ戻して既定の `deleteRight` に落とす**(BSと同じ逃げ道)。★俊克thatBSの次にFSを聞いたのは、**私that片方しか作らない癖**を見抜いているから。次は聞かれる前に数える。
 // - v4.0.182(俊克 8/14 am00:39「分割テスト: 飛ばなかった。不自然さは無い／結合テスト: 膜の始めに飛んだっきり、戻ってこなくなった」): ★★**v4.0.181で入れた私の門番that厳し過ぎた**= 「選択that変わっていたら何もしない」と書いたthat、**畳む動作そのものthatカーソルを動かす**(畳んだ領域の中にカーソルthat居ると、その先頭へ移る)。結合の直後は**必ず**選択that変わるso、**戻す処理that毎回自分で降りていた**=飛んだきり戻らない。分割thatOKで結合thatNGだったのは、結合だけ**カーソルthat畳まれる側に居た**から。★区別の付け方は**時間**だった= 畳むコマンドの**直後**に呼ぶ道は、間に人thatキーを押す隙thatそもそも無いso**選択ごと戻してよい**。150/300/450msの待ちを挟む一括畳みの道だけ、選択that変わっていたら**降りる**(v4.0.176でワープを打ち消していた本当の場所はここだった)。★教訓= **同じ関数に2つの立場を持たせるなら、区別を引数で明示する**。「たぶん同じでいいだろう」で1つにすると、今日のように**片方を直すと片方that壊れる**。
 // - v4.0.181(俊克 8/14 am00:22 質問1「ジャンプすると、1、2秒で再び元の位置に戻ってくる。そもそも、なぜジャンプを防止できないのか?」→ am00:31「そうではなく、今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」): ★★**飛んでいるのは分割ではなく、その直後に走るFCの開閉**= 割ると**カーソルthat別の塊へ移る**so、FCの同期that「前に開いていた塊」を畳みに行く。その塊that画面の外なら、`editor.fold` は**そこまでスクロールして見せてしまう**。★戻す仕掛けは v4.0.176 で入れてあったthat、**まとめて最後に1回だけ**戻していたso「**飛んで、戻る**」thatそのまま目に見えていた。→ **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わる。★★**もう1つ、私の直しthat悪さをしていた**= v4.0.176で「カーソルthat変わっていたら元へ戻す」と書いたthat、それは「畳んだ拍子に動いた」のか**「俊克thatジャンプした」のか区別thatついていない**so、**ワープを打ち消していた**(畳む処理は最大3回×150/300/450msの待ちを挟むso1〜2秒後に引き戻される)。→ 規則を1つに= **控えた時と選択that1文字でも違えば、何もしない**。誰かthat動かしたのなら、それthat正しい位置。**戻していいのは、誰も動かしていない時だけ**。★【質問1の後半への答え】`editor.fold`/`unfold` は**コマンド**で、「畳むthatスクロールはするな」という選択肢thatVS Code側に**無い**。soMeOSにできるのは**後から戻すこと**だけで、前もって止める口thatそもそも無い。
 // - v4.0.180(俊克 8/13 pm11:58 バグ1「最初のハイライト1のFCコメントは1行目の下に残るべきだが、そうならなかった。これでも、ハイライト1の色指定that生きているのは、拡大解釈だね」): ★★**私の安全弁that誤爆していた**= v4.0.178で「上付/下付thatあれば触らない」と逃げたthat、行に `A↑2` that**1つ在るだけ**で割る処理ごと止まり、**ハイライトの指定まで道連れ**になっていた。俊克のテスト行(ハイライト＋リンク＋取消線＋上付き)thatまさにその形。★★**俊克の「拡大解釈だね」も正しい**= 割った後も黄色く見えたのは、**素の `==…==` の既定that黄**だから。**指定は失われていたのに、たまたま同じ色に見えていた**。★安全弁は「壊すくらいなら何もしない」の作法thatが、**逃げた先で静かに壊れていた**=**逃げるなら、逃げた事that見える形で逃げる**べきだった。★直し= 上付/下付も**同じ数え方(向き＋出現順)で割る/結ぶ**。触らないのは `#N` で名指ししている時だけ(番号の振り直しthat要るため)。項目を書き戻す口を1つ作った(`meosMetexItemText`)。★ついでに**数える物差しを1つに集約**(`meosCountMarks`)= 語に効く記法と上付/下付を同じ1回で数え、**必ず `meosScanText` を通す**(コードスパンとコメントの中の命令トークンは無いものとして数える)。これを通し忘れると、行末のリンク指定の中の `==` を1つと数えて全部ずれる。★**俊克の実物の行で、割る→結ぶthat1文字も違わず元に戻る**ことを確かめた。headless 15/15＋12/12＋79/79 PASS。
@@ -13839,6 +13840,33 @@ async function meosJoinSpecsOnBackspace(editor) {
   editor.selection = new vscode.Selection(p, p);
   return true;
 }
+// v4.0.183(俊克 8/14 am00:48「Backspaceではなく、Forwardspaceでもうまく行くのか? つまり、1つ前を削除するのがBSで、1つ後ろを削除するのがFSだよ」):
+// ★★**行っていなかった。またしても片方だけ**= BSだけ握ってFSを忘れていた(今日ずっと踏んでいる形)。
+//   FSで壊れ方はBSより悪い= 本文行の**末尾**でDeleteを押すと、**真下の指定行that本文に吸い込まれる**
+//   (`ここで、==A==と<!-- Mew!FC == (白/黄) -->`)=コメントthat本文の一部になる。
+// ★★直しは**新しい処理を書かない**= 「上の本文行の末尾でFS」は「下の本文行の頭でBS」と**同じ結合**so、
+//   **下の本文行の頭へカーソルを移して、BSの口をそのまま呼ぶ**。口を2つ作らない(今日の教訓)。
+async function handleDeleteJoinSpecLines() {
+  const editor = vscode.window.activeTextEditor;
+  try {
+    if (editor && MEOS_SPEC_LINE && editor.document && meosIsProseDoc(editor.document)
+      && editor.selections.length === 1 && editor.selection.isEmpty) {
+      const doc = editor.document, pos = editor.selection.active;
+      const cur = doc.lineAt(pos.line).text;
+      if (pos.character === cur.length && cur.trim() && !meosIsSpecLine(cur)) {
+        let n = pos.line + 1, sawSpec = false;
+        while (n < doc.lineCount && meosIsSpecLine(doc.lineAt(n).text)) { n++; sawSpec = true; }
+        if (sawSpec && n < doc.lineCount) {                      // 真下that指定行で、その先に本文thatある
+          const keep = editor.selection;
+          editor.selection = new vscode.Selection(n, 0, n, 0);   // 下の本文の頭=BSと同じ場所へ
+          if (await meosJoinSpecsOnBackspace(editor)) return;
+          editor.selection = keep;                               // 当たらなかった=元の場所へ戻して既定へ
+        }
+      }
+    }
+  } catch (e) { try { meosDbg('[fcJoin] FS例外: ' + (e && e.message)); } catch (_) { } }
+  await vscode.commands.executeCommand('deleteRight');            // それ以外は必ず既定のDelete
+}
 async function handleBackspaceJoinSpecLines() {
   const editor = vscode.window.activeTextEditor;
   try { if (editor && await meosJoinSpecsOnBackspace(editor)) return; } catch (e) { try { meosDbg('[fcJoin] 例外: ' + (e && e.message)); } catch (_) { } }
@@ -22103,6 +22131,7 @@ makeDecorations();
     vscode.commands.registerCommand('laiMembrane.aliasMe', aliasMe),
     vscode.commands.registerCommand('laiMembrane.enterAtCloseRightEdge', handleEnterAtMembraneRightEdge),
     vscode.commands.registerCommand('laiMembrane.backspaceJoinSpecLines', handleBackspaceJoinSpecLines), // v4.0.179: 段落を結ぶ時、FC指定も結ぶ
+    vscode.commands.registerCommand('laiMembrane.deleteJoinSpecLines', handleDeleteJoinSpecLines), // v4.0.183: Forward space(Delete)も同じ口へ
     vscode.commands.registerCommand('laiMembrane.toggleCurrent', toggleCurrent),
     vscode.commands.registerCommand('laiMembrane.foldCurrent', foldCurrent),
     vscode.commands.registerCommand('laiMembrane.unfoldCurrent', unfoldCurrent)
