@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.187(俊克 8/14 am01:52「見出しの頭での改行とbsは、まったく改善されていないよ。なぜ?」): ★**分からない。soここで推測をやめる**。v4.0.184で割る/結ぶは頭では走らないようにし、v4.0.186で画面外は畳まないようにしたthat、俊克の環境では変わらない=**私の想定した経路thatそもそも犯人ではない**。★今日バグ3で効いた手をもう一度使う= **畳む/開くを実際に打った時だけ1行出す**。`[fcSync] fold/unfold 行 画面上端 A→B→C`(A=打つ前 B=打った直後 C=戻した後)と `[fcFold] ★一括で畳んだ`。**Aと Bthat違えば、その行を畳んだことthat飛ばした**。**何も出ないなら、飛ばしているのはMeOSの畳み処理ではない**(VS Code自身の折り畳み再計算=編集で行thatずれた時に起きる)。★教訓の再確認= **計測で犯人が出ないのは、無罪の証明ではなく網の外に居る証明**(v4.0.112)。so網を「実際に打った瞬間」に張り直した。
 // - v4.0.186(俊克 8/14 am01:38「見出しの先頭で改行すると、ジャンプして戻ると言う動きをする。その処理に入った時、何もしないで出るようにできないのか? bsキーのときは、一瞬再描画されるのも、今一」): ★★**できる。しかも「戻す」より正しい**= 飛ぶのは**画面の外の塊を畳みに行く時だけ**。`editor.fold` は畳む相手を見せに行くso、画面の外なら**必ず**飛ぶ。v4.0.176〜182で私thatやってきたのは全部「飛んだ後で戻す」=**飛ぶこと自体は止められていなかった**so「飛んで戻る」thatが見え続けた(俊克の「一瞬再描画されるのも今一」thatそれ)。★★答えは俊克の言葉のまま= **何もしないで出る**。**画面の外の塊は、そもそも畳まない**。畳み忘れではない= その塊that画面に入ってきた時に畳めばいい(カーソルthat近づけばこの同期thatまた走る)。**見えていないものを整える必要thatそもそも無い**。★開く方(unfold)はカーソルの居る塊=**必ず画面の中**so元から飛ばない。★教訓= **後始末を上手くする前に、汚さない道を探す**。10版かけて「戻し方」を磨いていたthat、正しい問いは「なぜ触るのか」だった。
 // - v4.0.185(俊克 8/14 am01:30「分割したものを、前側の尻でdeleteと言っているのは、私は、FCコメントの右端で実行したが、あなたは、前側のテキストデータの右端と見ているのか?」): ★★**そのとおり。バグ2の答えthatこれだった**= FS(Delete)を受けるのを「**本文行の末尾**」だけにしていた。だthat指定行that開いている時、**目に見えている行の末尾は指定行の右端**so、俊克thatそこで押すのは**自然**。そこで既定のDeletethat走ると、**指定行と次の本文that1行に繋がる**(`<!-- Mew!FC == … -->[*ハイライト2*]…`)=俊克の貼った形と1文字も違わない。**手元で再現しなかったのは、私that自分の想定した場所でしか試していなかったから**。★直し= **本文行の末尾でも、指定行の末尾でも、同じ結合**として受ける(塊のどちらの端でも同じ)。★★教訓= **「どこで押すか」を私の都合で決めない**。**見えている行の端**thatが、書き手にとっての端。今日の「片方だけ作る」の親戚= **片方の入口しか開けていない**。
 // - v4.0.184(俊克 8/14 am01:16 バグ1「普通の見出しの先頭で改行したりBSで1行削除するという普通の使い方をしただけで、分割処理あるいは結合処理that走る。それは分割でも結合でもないよ。その時に矢印キーでカーソルを移動すると、再び膜の始めにジャンプするバグが復活した」＋「もしかして、これは箇条書きの処理that走っているのか?」): ★★**俊克thatまったく正しい。ただし犯人は箇条書きではなかった**= `## 見出し` は箇条書きの形(`- ` / `1. `)に当たらないso、走っていたのは**私that作った割る/結ぶの口**。**「指定行thatある行での改行/BS」を全部自分の仕事にしてしまい、割ってもいないのに割る処理を走らせていた**。その後の畳み直しthatジャンプを呼ぶ=俊克の見た「またジャンプthat復活」。★直し2つ= ①**行の頭での改行は割っていない**so既定のEnterに譲る(前に文字thatある時だけ割る) ②**見出しの頭でのBSは結合ではない**so譲る(`#` that文中へ移って意味を失う)。★教訓= **自分の処理を呼ぶ条件を「形」で決めていた(指定行thatある)thatが、正しくは「意図」で決める(実際に割れているか)**。前に文字thatあるか、という1行thatその答えだった。★📌**バグ2(FS thatまだ結合しない)は未解決**= 手元では同じ入力that通るso、**推測せず `[fcJoin]` の計測を仕込んだ**(断った時に1行出る)。次のテストでDeleteを1回押してログを見れば場所thatわかる。
@@ -20473,8 +20474,10 @@ async function meosSyncFcFoldForCursor(editor) {
     //   戻すのは v4.0.176 で入れたthat、**まとめて最後に戻していた**so「飛んで、戻る」thatそのまま見えていた。
     // ★直し= **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わるso、目には残らない。
     const _keep = () => meosRestoreView(editor, _topBefore, _selBefore, false); // 直後so選択ごと戻す
-    const fold = async (ls) => { await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); _keep(); };
-    const unfold = async (ls) => { await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); _keep(); };
+    // v4.0.187: **畳む/開くを実際に打った時だけ**1行出す(推測をやめ、犯人に名乗らせる)。
+    const _top = () => { try { return (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; } catch (_) { return -1; } };
+    const fold = async (ls) => { const t0 = _top(); await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] fold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
+    const unfold = async (ls) => { const t0 = _top(); await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] unfold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
     if (raw) { // Raw=生データを全部見せる約束
       if (_meosFcOpen !== 'ALL') { await unfold(blocks.map(b => b.start)); _meosFcOpen = 'ALL'; }
       return;
@@ -20544,7 +20547,9 @@ async function meosAutoFoldSpecLines(editor, force) {
       try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
       await new Promise(r => setTimeout(r, 150 * attempt)); // VS Codeが範囲を取り直すのを待つ(v0.9.961の作法)
       const _t0 = Date.now();
+      const _vt0 = (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; // v4.0.187
       await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
+      try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
       try { meosDbg('[fcFold] ok attempt=' + attempt + ' blocks=' + heads.length + ' lines=' + editor.document.lineCount + ' ' + (Date.now() - _t0) + 'ms heads=' + heads.slice(0, 8).join(',')); } catch (_) { }
       _meosFcFolded.add(key);
       return;
