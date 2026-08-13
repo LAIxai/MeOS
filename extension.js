@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」＋Debugログ): ★★**同じ症状に原因that2つ在った**。v4.0.173/174で消したのは**Formatボタンの飛び**(showTextDocumentのreveal)で、俊克thatまだ見ていたのは**もう1つの口**= **カーソル移動のたびに走る FC の開閉**。★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、カーソルthat別の塊へ移った時に**前に開いていた塊を畳む**と、**その塊の所へ画面that飛ぶ**。カーソル移動のたびに走る道soFC行that増えるほど当たる=俊克の「最近これも多い」thatそのまま説明できる。★直し= 畳む/開くの**前後で画面の一番上の行を控え、変わっていたら戻す**(`meosRestoreView`)。**行番号で戻す**so、上の方that畳まれて内容that詰まっても**同じ行that同じ場所に見える**。カーソルthat畳んだ拍子に動いた時も戻す。★一括で畳む道(`meosAutoFoldSpecLines`)にも同じ物差しを入れた=**一番画面を動かすのはそこ**。★俊克thatくれた `[fcEnter] 本文行が箇条書きではない: "## CN=…"` は**正しい動作**(見出しの行でEnterを押した)=計測that期待どおり読めることも確認できた。★教訓=**「直した」と言えるのは、同じ症状の口を全部数えた時だけ**(今日3回目の同じ形)。→ [[feedback_one_source_for_mark_count_action]]
 // - v4.0.175(俊克 8/13 pm08:40「デフォルトを以下のようにしよう。素のハイライト、太字、イタリック(リンク:二重下線)／ == 白/黄色、**白/紫、*白/青」): ★★**3つとも同じ既定(赤/黄×3)では、↻は「押しても何も起きないボタン」に見えていた**。俊克の「プリセット3つの何が違うのか?」thatその証拠= **違いは自分で作るもの**という設計thatUIから読めていなかった。→ 既定を**3つとも別の記法**にした= ①`==`(白/黄) ②`**`太字(白/紫) ③`*`斜体(白/青)。1回押すごとに顔that変わるso、**3つ登録できることthat押した瞬間に分かる**。★`ul:1`(二重下線)= ☑Linkを入れた時の既定の線種(俊克「リンク:二重下線」)。**Linkのチェック自体は入れない**= 入れると押した瞬間にリンク記法that入り行先の入力待ちになるso、既定としては強すぎる(もし③をリンクにしたいなら `link:true` を1つ足すだけ)。★**既に保存されているノートは自分の設定that勝つ**(mMETAに焼いてある)=[[project_setting_decides_future_only]]どおり、新既定は**これから作るノート**に出る。★やらかし= このコメントに**バックティックを書いてテンプレート文字列を壊した**(v4.0.50/90と同じ事故を3度目)。`node --check` that即座に捕まえたthat、**webviewの中に書く時はバックティック禁止**を、その場のコメントにも書き残した。
 // - v4.0.174(俊克 8/13 pm07:45「テスト2を🚫ボタンで解除すると、膜の始めにジャンプした。行末形のままで、FC膜に戻らない」): ★★**🚫の本体that2か所に在り、私はv4.0.173で片方しか直していなかった**= 太字/斜体・上付下付・見出し・リンクの🚫は `removeFormatAtCursor` を通るthat、**ハイライト/取消線の🚫だけ fmtCycle の中に写経してあった**。soそこには①FC化(外へ出す)の呼び出しthat無く=**戻らない** ②`showTextDocument(…{selection})` のrevealthat残っていて=**膜の先頭へ飛ぶ**。**俊克の2つの症状は、この1つの写経that生んでいた**。→ ring0 は `removeFormatAtCursor` に集約し、↻の再適用も `meosFocusBack`＋FC化を通す。表ボタンの作成後の focus も同じ口に。★★**教訓を書いたその日に、同じ穴をもう一度踏んだ**= v4.0.172で「同じ判断を2か所に書いたら片方は必ず腐る」と[[feedback_one_source_for_mark_count_action]]に書き足した数時間後に、**直す時に「他に何か所あるか」を数えなかった**。**次からは、直す前に必ず数える**(grepで呼び出し元を全部出してから直す)。★【バグ3=解決】俊克の実機ログ `[fcEnter] 継続する body=96675 specEnd=96676` ＝**FC方式のEnter継続は正しく効いていた**(v4.0.172の直しthat入っていなかっただけ)。計測を入れた判断thatそのまま答えになった=推測で触らなくて正解だった。
 // - v4.0.173(俊克 8/13 pm05:57 バグ2「1つ目のFCコメントが行末形のまま残る。本当はFCコメントとして残るべき」＋バグ4「Format系のボタンを使うと、なぜか、この膜の先頭に飛んでしまう。頻発している。思い当たる節はないか?」): ★★**思い当たる節thatあった。しかも1つの原因で両方説明that付く**= ボタンの最後に呼んでいる `showTextDocument(doc, { selection })` の **`selection` は「そこを画面に出せ」という命令**so、VS Codeは**その範囲をreveal(スクロール)する**。15万行＋折り畳みthat効いた文書では、狙った行that**畳まれた領域の中**に居るとrevealは**その領域の先頭**を見せる=俊克の「膜の先頭に飛ぶ」。★**カーソルは既にそこに在るsorevealは要らない**。要るのは**フォーカスをエディタに戻すこと**だけ(v0.9.714の約束)。→ `selection` を渡さずに開き直す。★もう1つの実害= `showTextDocument` は**新しい TextEditor を返す**so、**古い参照のまま `edit()` を呼ぶと黙って何も起きない**(catchに飲まれる)。🚫の後のFC化thatこれで空振りしていた=バグ2。→ 1つの口(`meosFocusBack`)にして**必ず返り値を受け取り直す**(5か所)。★これは**スワップ不足ではない**=メモリthat潤沢でも、revealは同じように飛ぶ。★★【バグ3=FC方式のEnter継続that効かない】**再現しなかった**= 俊克の日記の**実データをその行のまま**headlessに流すと**正しく効く**(FC行that複製され、元の項目も指定を保つ)。so**推測で直さず、計測を仕込んだ**(v4.0.140の教訓)= `[fcEnter] …` thatDebugチャネルに1行出る(指定行thatない/箇条書きでない/マーカーの左/継続する/例外、のどれか)。次のテストでEnterを1回押してログを見れば、**どこで諦めているかthat機械の言葉で分かる**。→ [[feedback_root_cause_before_patching]]
@@ -20206,8 +20207,27 @@ function meosScheduleFcCursorSync(editor) {
   if (_meosFcCursorTimer) clearTimeout(_meosFcCursorTimer);
   _meosFcCursorTimer = setTimeout(() => { _meosFcCursorTimer = null; meosSyncFcFoldForCursor(editor); }, 180);
 }
+// v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」):
+// ★★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、
+//   カーソルthat別の塊へ移った時に**前に開いていた塊を畳む**と、**その塊の所へ画面that飛ぶ**。
+//   ★これは**カーソル移動のたび**に走る道so、FC行that増えるほど当たる=俊克の「最近これも多い」。
+//   ★Formatボタンの飛び(v4.0.173/174)とは**別の口**だった= 同じ症状に原因that2つ在った。
+// ★直し= 畳む/開くの**前後で画面の一番上の行を控え、変わっていたら戻す**(選択も念のため戻す)。
+//   行番号で戻すso、上の方that畳まれて内容that詰まっても、**同じ行that同じ場所に見える**。
+function meosRestoreView(editor, topLine, sel) {
+  try {
+    if (!editor || topLine < 0) return;
+    const now = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
+    if (now >= 0 && now !== topLine) {
+      const ln = Math.min(topLine, Math.max(0, editor.document.lineCount - 1));
+      editor.revealRange(new vscode.Range(ln, 0, ln, 0), vscode.TextEditorRevealType.AtTop);
+    }
+    if (sel && !editor.selection.isEqual(sel)) editor.selection = sel; // 畳んだ拍子にカーソルthat動いたら戻す
+  } catch (_) { }
+}
 async function meosSyncFcFoldForCursor(editor) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy) return;
+  let _topBefore = -1, _selBefore = null;
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
     if (!meosIsRealFileDoc(editor.document)) return; // v4.0.151: 出力チャネル等では走らせない
@@ -20215,6 +20235,8 @@ async function meosSyncFcFoldForCursor(editor) {
     if (!blocks.length) return;
     const raw = (typeof meosRawMode !== 'undefined' && meosRawMode);
     _meosFcBusy = true;
+    _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
+    _selBefore = editor.selection;
     const fold = (ls) => vscode.commands.executeCommand('editor.fold', { selectionLines: ls });
     const unfold = (ls) => vscode.commands.executeCommand('editor.unfold', { selectionLines: ls });
     if (raw) { // Raw=生データを全部見せる約束
@@ -20234,7 +20256,7 @@ async function meosSyncFcFoldForCursor(editor) {
       await fold([_meosFcOpen]);
       _meosFcOpen = null;
     }
-  } catch (_) { } finally { _meosFcBusy = false; }
+  } catch (_) { } finally { meosRestoreView(editor, _topBefore, _selBefore); _meosFcBusy = false; }
 }
 const _meosFcFolded = new Set();
 // v4.0.140(俊克 質問1「FC指定なのに、なぜコメントが自動で折り畳まれないのか?」):
@@ -20268,6 +20290,9 @@ async function meosAutoFoldSpecLines(editor, force) {
   if (!heads.length) return; // 相手が居ない=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
   if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
   _meosFcFolding = true;
+  // v4.0.176: **一括で畳むのthat一番画面を動かす**so、ここでも上の行を控えて戻す(俊克「矢印で飛ぶ」の兄弟)。
+  const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
+  const _selBefore = editor.selection;
   try {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -20283,7 +20308,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     }
   }
   try { meosDbg('[fcFold] gave up after 3 attempts (' + heads.length + ' blocks)'); } catch (_) { }
-  } finally { _meosFcFolding = false; }
+  } finally { meosRestoreView(editor, _topBefore, _selBefore); _meosFcFolding = false; }
 }
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
