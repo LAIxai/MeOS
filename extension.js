@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.199(俊克 8/14 pm04:48 バグ1「tipメニューが3つ重複している。特に、リンクの時に、🔗マークのは何を意味するのか?」): ★★真因= **同じ行を2度3度走査していた**。VS Codeの `visibleRanges` は**折り畳みthat有ると複数に割れる**。MeOSは各範囲を ±2行に広げて走査していたので、**隣り合う範囲の広げた分that重なり**、境目の行thatが2回3回処理され、装飾とホバーthatその回数だけ積まれていた。**FCを常時ONにして折り畳みthat増えた瞬間に表面化した**(v4.0.197まではFC既定オフso折り畳みthat少なく、当たる確率thatが低かった)。★直し= **走査する行を配る口を1つにして、そこで重なりを潰す**(`meosScanSpans`)。同じ形を**9か所thatが書いていた**のを全部ここから引く=[[feedback_one_source_for_mark_count_action]]。隣接する範囲も1つにまとめるso、FCthatだらけの行でも重複ゼロ。**折り畳み無し/隣接3範囲/間が空いた2範囲/1行ずつ割れた/順不同**の5通りで重複0を確認。★俊克の質問への答え= **🔗 は「この印の行先」**。tipを書いていない時だけ、代わりに行先を見せている(v4.0.94の仕様)。tipを書けば `💬 説明` に変わる。`//[]tip=` のように**中身が空だと `💬 ⬜`(チェックボックスだけ)that出る**thatが、これは仕様どおり。→ [[project_meos_freeze_pattern]]
 // - v4.0.198(俊克 8/14 pm04:33 バグ1「Rawボタンが分離してしまっている。Formatボタンと一緒のブロックの中にいたので、横幅を変えても、こんな形は生らなかった。膜の区分けを間違ったのだろう」): ★★**俊克の見立てthatそのまま当たり**= v4.0.197でFC▼のメニューを消した時に、その後ろに在った `</div>`(**row format-tools を閉じる方**)を**1つ巻き込んで**消していた。so Format行thatが枠を失い、`margin-left:auto` のRawボタンthat外側の右端まで飛んだ。俊克の191のスクショと並べて、タグの数を数えて確定(div 94→93 のはずthat開き93/閉じ92)。★原因は膜の**閉じ位置**= `dock_fcmenu` の閉じ膜を「次に `<div class=` で始まる行の直前」に置いたthat、fc-popは最後の子so次の行thatが無く、閉じ膜thatが行の `</div>` の**後ろ**に回っていた。★★**壊れ方から逆算した検査を、また1つ足した**(`check_webview.js`)= **開き/閉じの釣り合いthat前の版からズレていないか**。絶対値では見ない(191の時点で span thatが1つ釣り合っていない)so**前の版との差**を見る= 消したいものを消せば開きも閉じも同じだけ減る。片方だけ減ったら巻き込み。**実際に v4.0.197 を食わせて `div(0→1)` を捕まえることを確認**。★これで webview の検査は3本= ①構文 ②宣言that消えて使用thatが残っていないか(v4.0.197) ③開き/閉じの釣り合い(v4.0.198)。**3本とも「前の版と比べる」形**so、満点の解析器を作らずに済んでいる。→ [[feedback_minimal_change_verify_webview]]
 // - v4.0.197(俊克 8/14 pm01:16「v4.0.196のテストをした。OK!! v4.0.191とv4.0.196のスクショを入れたよ。まったく同じだね。あとは、v4.0.196をベースにして、修正して下さい」): ★★**v4.0.192の全壊の真因that出た= `const fcWriteT=…` を消したのに、`if(fcWriteT)fcWriteT.addEventListener(…)` を残していた**。未宣言の識別子を `if(x)` で読むと **ReferenceError** so、Me Dockの初期化thatそこで死に、**以降の配線that丸ごと動かない**=TOC・Hyper IDX・膜パネル(Add to Hyper TOC/Toggle/Shed Me)・参照グループ・GitHubの接続表示thatが全部出なくなっていた。俊克の191のスクショと並べて初めて「消えているもの」thatが見えた=**症状を見ずに差分だけ見ていたら永久に分からなかった**。★なぜ素通りしたか= `node --check` も `check_webview.js` も**構文しか見ない**。私は「消した4行の中身」は確かめたthat、**その4行が宣言していたものを、他の行that使っていないか**を確かめていなかった。★★**壊れ方から逆算した検査を足した**(`check_webview.js`)= **前の版と突き合わせて、宣言that消えたのに使用thatが残っている識別子**を報告する。満点の静的解析は要らない= 同じ(不完全な)読み取りを両側に掛けるso取りこぼしthat両側で同じになり、誤検出that出ない。**実際に v4.0.192 を食わせて `fcWriteT` を捕まえることを確認**(exit=1)。★その上で**FC一択を膜の上でやり直した**= 消したのは①▼のクリック処理②チェックの描画③チェックのクリックの3つで、**宣言も使用も同じ5行に閉じている**ことを確かめてから消した。HTML/CSS/node側も同じ手順で。残骸ゼロ(11個の名前を全部数えた)。★Format Me の行を描画して 191/196 と見比べ、`▼` の有無以外は同じことを確認。→ [[feedback_minimal_change_verify_webview]]
 // - v4.0.196(俊克 8/14 pm01:09「どこを間違ったかを調べるよりも、v4.0.191のhtmlソースを膜化して、そこからやり直した方が早いよ。膜化してあれば、間違いようがないでしょ? そのための膜なんだから」): ★★**俊克が正しい。犯人探しより、間違いようのない土台を先に作る**。v4.0.192〜194で私that触った webview は 281KB/981行に膜thatゼロの状態だったので、どの版で何を壊したのかthat追えなくなっていた。★やり直し= ①**webview領域(282KB)を丸ごと v4.0.191 に戻す**(バイト単位で完全一致を確認) ②192で消した node側4点(設定キー・meosFormatWritesFC・切替コマンド・fcWriteToggle の口)も戻す ③**その上で膜を巻き、行に割る**(CSS 170→684行・HTML 40→72行・最長 10,759→5,886桁)。★**戻した後の検証を3領域それぞれで通した**= CSSは改行と膜を除いて完全一致／HTMLはタグ間の空白と膜を除いて一致／JSは膜を除いて完全一致。つまり **191と中身thatが1文字も違わない**状態に、膜と行だけthat足されている。★残しているもの= v4.0.189(強調記号の区切り列)・190(リンクのFC化)・193(1つのテーブル=1段落)。これらは node側so webview とは無関係。★**FC一択(192)は膜を巻いた土台の上でやり直す**so、いったん設定に戻した(既定=オフ)。★★これで切り分けthat付く= 196でMe Dockthat治れば犯人は私のwebview編集／治らなければ犯人はnode側(189/190/193)で、webviewは無罪。→ [[feedback_minimal_change_verify_webview]] [[project_true_outliner_membrane]]
@@ -20495,10 +20496,10 @@ function meosApplyTableFitDecorations(editor) {
     const doc = editor.document;
     const cursorLines = new Set(); try { for (const sel of editor.selections) { cursorLines.add(sel.active.line); cursorLines.add(sel.anchor.line); } } catch (_) {}
     const byPct = new Map(); for (const pct of MEOS_TABLE_FIT_STEPS) byPct.set(pct, []);
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const done = new Set(); // 同じ表を2度measureしない
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (done.has(ln)) continue;
         const info = meosTableInfo(doc, ln); if (!info) { done.add(ln); continue; }
@@ -20542,9 +20543,9 @@ function meosApplyTableMergeDecorations(editor) {
     const doc = editor.document; const pipeRanges = [], commentRanges = [];
     // v0.9.999162(俊克 改良1/3): カーソルがある行はマージ装飾を外して生データ(<!--🤝N-->と|)を見せる=インラインで結合を編集でき、ゼロ幅コメントのカーソルの罠も回避。
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行は生表示(編集可・罠回避)
         const text = doc.lineAt(ln).text;
@@ -20595,9 +20596,9 @@ function meosApplyTableCalcDecorations(editor) {
       const info = { start: blk.start, rows, sepIdx, calc: meosCalcResolver(rows, sepIdx) };
       blockCache.set(blk.start, info); return info;
     }
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
@@ -20691,9 +20692,9 @@ function meosApplyTableRowLineDecorations(editor) {
       const info = { start: blk.start, sepIdx, vskip: sk.vskip, sepPipeHide, headEmpty };
       blockCache.set(blk.start, info); return info;
     }
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         const text = doc.lineAt(ln).text;
         if (text.indexOf('|') < 0) continue;
@@ -20736,9 +20737,9 @@ function meosApplyImageThumbDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(imageThumbDecoration, []); return; }
     const doc = editor.document; const ranges = [];
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         const open = parseOpenLine(doc.lineAt(ln).text); if (!open) continue; // 開始膜行だけ
         let has = false;
@@ -21472,9 +21473,9 @@ function meosApplyMeTexDecorations(editor) {
     const doc = editor.document; const hideRanges = [], styleRanges = new Map(); // style → ranges[]
     const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
@@ -21839,9 +21840,9 @@ function meosApplyMeLinkDecorations(editor) {
     if (!meLinkHideDeco) meLinkHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document, hideRanges = [], styleRanges = new Map();
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         let text = doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
@@ -21876,7 +21877,7 @@ function meosApplyMeLinkDecorations(editor) {
     //   ★教訓=**入れ子の位置は、目でも波括弧の数え上げでも間違える**(正規表現の `{1,6}` が数を狂わせる)。
     //   動かして確かめる。「実装したのに実機で効かない」は、たいてい入れ子の位置。
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const raw = doc.lineAt(ln).text;
@@ -21931,6 +21932,29 @@ function meosApplyMeLinkDecorations(editor) {
 // ===== v3.7.0(俊克 7/30): 太字/斜体 — 従来記法 **text**/***text***/*text* を同一行内で描画 ==========================
 // マーカーをゼロ幅で隠し本文を太字/斜体に。単一行のみ(行ごと走査で自動保証)。//コメント内も描画(changelog等を読みやすく)。カーソル行/Raw/隔離時は生表示。
 // ※色つきの正式膜 **{ 本文 (fg/bg)//tip }** と 𝗕ボタンは次段(ハイライトの色パイプライン流用)。ここは従来記法の可読化。
+// ===== v4.0.199(俊克 8/14 pm04:48 バグ1「tipメニューが3つ重複している」) ==============================
+// ★★真因= **同じ行を2度3度走査していた**。VS Codeの `visibleRanges` は**折り畳みthat有ると複数に割れる**。
+//   各範囲を ±2行に広げて走査していたので、**隣り合う範囲の広げた分that重なり**、境目の行thatが2回3回処理され、
+//   装飾(とホバー)thatその回数だけ積まれていた。FCを常時ONにして折り畳みthat増えた瞬間に表面化した。
+// ★so**走査する行を配る口を1つにして、そこで重なりを潰す**。9か所thatが同じ形で書いていたのを、全部ここから引く
+//   =[[feedback_one_source_for_mark_count_action]]。★返すのは [from, to] の配列(重なり無し・行番号の昇順)。
+function meosScanSpans(editor, doc, margin) {
+  const last = Math.max(0, ((doc && doc.lineCount) || 1) - 1);
+  const m = (margin == null) ? 2 : margin;
+  let spans;
+  try {
+    const rs = (editor && editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : null;
+    spans = rs ? rs.map(r => [Math.max(0, r.start.line - m), Math.min(last, r.end.line + m)]) : [[0, Math.min(last, 400)]];
+  } catch (_) { spans = [[0, Math.min(last, 400)]]; }
+  spans.sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const sp of spans) {
+    const t = out.length ? out[out.length - 1] : null;
+    if (t && sp[0] <= t[1] + 1) { if (sp[1] > t[1]) t[1] = sp[1]; }   // 重なる/隣接=1つにまとめる
+    else out.push([sp[0], sp[1]]);
+  }
+  return out;
+}
 // v3.7.2(俊克): Me Dock「𝗕」ボタン=選択を正式膜で包む。太字=**{ }**・斜体=__{ }__・両方=入れ子 **{ __{ } }**。選択が空なら'本文'を選択。
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
   if (!editor) return;
@@ -21990,9 +22014,9 @@ function meosApplyBoldDecorations(editor) {
     let _lnLinks = [];
     const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
@@ -22167,7 +22191,7 @@ function meosApplyFuncDecorations(editor) {
     const doc = editor.document; const hideRanges = [], resultOpts = [];
     // 可視範囲に呼び出しトークンが在る時だけレジストリを組む(全文走査を無駄に走らせない)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
-    const vrs = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : [new vscode.Range(0, 0, Math.min(doc.lineCount - 1, 400), 0)];
+    const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     let map = null;
     // v3.1.41: 表の中の呼び出しは相対参照(←N 等)を解けるよう、表ブロックのグリッドをキャッシュして cellRef を作る。
     const blockCache = new Map();
@@ -22180,7 +22204,7 @@ function meosApplyFuncDecorations(editor) {
       const info = { start: blk.start, rows, sepIdx }; blockCache.set(blk.start, info); return info;
     }
     for (const vr of vrs) {
-      const from = Math.max(0, vr.start.line - 2), to = Math.min(doc.lineCount - 1, vr.end.line + 2);
+      const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue;
         const text = doc.lineAt(ln).text;
