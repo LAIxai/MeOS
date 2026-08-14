@@ -88,3 +88,41 @@ catch (e) { console.log('webview script: SYNTAX ERROR -> ' + e.message + '  (詳
     }
   }
 }
+
+// ===== v4.0.198: **開きと閉じの釣り合いthat前の版からズレていないか** ===================================
+// ★v4.0.197の事故thatこれ= メニューを消した時に、その後ろに在った `</div>`(row format-tools を閉じる方)を
+//   **1つ巻き込んで**消していた。結果、Format行thatが枠を失い、Rawボタンthat外側の右端まで飛んだ。
+// ★★「開き=閉じ」を絶対値で見る検査は使えない(191の時点で span thatが1つ釣り合っていない)so、
+//   **前の版との差**を見る= 消したいものを消せば開きも閉じも同じだけ減る。片方だけ減ったら、それthat巻き込み。
+{
+  const { execSync } = require('child_process');
+  const ref2 = process.argv[2] || 'HEAD';
+  const htmlOf = (t) => {
+    const c = t.indexOf('</script></body>'); if (c < 0) return '';
+    const o = t.lastIndexOf('<!DOCTYPE html>', c); const b = t.indexOf('</style>', o); const d = t.lastIndexOf('<script>', c);
+    return (b < 0 || d < 0) ? '' : t.slice(b + 8, d).replace(/<!--[\s\S]*?-->/g, '');
+  };
+  const balance = (h) => {
+    const out = {};
+    for (const t of ['div', 'span', 'button', 'section', 'main', 'header', 'label', 'select', 'ul', 'li', 'table']) {
+      const o = (h.match(new RegExp('<' + t + '\\b', 'g')) || []).length;
+      const c = (h.match(new RegExp('</' + t + '>', 'g')) || []).length;
+      out[t] = o - c;
+    }
+    return out;
+  };
+  let base2 = null;
+  try { base2 = execSync('git show ' + ref2 + ':./extension.js', { cwd: __dirname, maxBuffer: 64 * 1024 * 1024 }).toString('utf8'); } catch (e) { base2 = null; }
+  if (!base2) { console.log('webview tags: SKIP (比較先 ' + ref2 + ' を読めませんでした)'); }
+  else {
+    const A2 = balance(htmlOf(base2)), B2 = balance(htmlOf(src));
+    const bad = Object.keys(B2).filter(t => A2[t] !== B2[t]);
+    if (bad.length) {
+      console.log('webview tags: BALANCE ERROR -> 開き/閉じの釣り合いthat前の版とずれたタグ: ' + bad.map(t => t + '(' + A2[t] + '→' + B2[t] + ')').join(', '));
+      console.log('  (閉じタグを巻き込んで消した/開きだけ足した可能性thatあります)');
+      process.exitCode = 1;
+    } else {
+      console.log('webview tags: OK (開き/閉じの釣り合いthat前の版と同じ / 比較先=' + ref2 + ')');
+    }
+  }
+}
