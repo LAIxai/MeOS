@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.200(俊克 8/14 pm05:10「これで完成かな? もう残る懸念はないよね?」→ **懸念thatが残っていた**): ★v4.0.199で直したのは `const vrs = …` の9か所thatが、**同じ形の穴thatもう2か所在った**= 🐱の診断(±120行)と🐱ボタンthat直す範囲。★★特に診断の方は**重なりを潰さずに行ループを回していた**so、折り畳みthat増えると**🐱の数字thatが水増しされる**(v4.0.73「ガターは1個なのに数字は3つ増える」の再来)。**実測= 折り畳み20個で、同じ行を最大20回走査していた**=数字thatが最大20倍・波線も20重。FC一択で折り畳みthat増えた今、必ず当たる所だった。★直し= 併合を `meosMergeSpans` に切り出し、**数える所と直す所thatが同じ範囲**を見るようにした=[[feedback_one_source_for_mark_count_action]]。★これで走査の重なりを潰す口は1つ。★★教訓= **「同じ形の穴」は1か所直したら、必ず全部数える**。9か所直して満足した所で2か所残っていた。
 // - v4.0.199(俊克 8/14 pm04:48 バグ1「tipメニューが3つ重複している。特に、リンクの時に、🔗マークのは何を意味するのか?」): ★★真因= **同じ行を2度3度走査していた**。VS Codeの `visibleRanges` は**折り畳みthat有ると複数に割れる**。MeOSは各範囲を ±2行に広げて走査していたので、**隣り合う範囲の広げた分that重なり**、境目の行thatが2回3回処理され、装飾とホバーthatその回数だけ積まれていた。**FCを常時ONにして折り畳みthat増えた瞬間に表面化した**(v4.0.197まではFC既定オフso折り畳みthat少なく、当たる確率thatが低かった)。★直し= **走査する行を配る口を1つにして、そこで重なりを潰す**(`meosScanSpans`)。同じ形を**9か所thatが書いていた**のを全部ここから引く=[[feedback_one_source_for_mark_count_action]]。隣接する範囲も1つにまとめるso、FCthatだらけの行でも重複ゼロ。**折り畳み無し/隣接3範囲/間が空いた2範囲/1行ずつ割れた/順不同**の5通りで重複0を確認。★俊克の質問への答え= **🔗 は「この印の行先」**。tipを書いていない時だけ、代わりに行先を見せている(v4.0.94の仕様)。tipを書けば `💬 説明` に変わる。`//[]tip=` のように**中身が空だと `💬 ⬜`(チェックボックスだけ)that出る**thatが、これは仕様どおり。→ [[project_meos_freeze_pattern]]
 // - v4.0.198(俊克 8/14 pm04:33 バグ1「Rawボタンが分離してしまっている。Formatボタンと一緒のブロックの中にいたので、横幅を変えても、こんな形は生らなかった。膜の区分けを間違ったのだろう」): ★★**俊克の見立てthatそのまま当たり**= v4.0.197でFC▼のメニューを消した時に、その後ろに在った `</div>`(**row format-tools を閉じる方**)を**1つ巻き込んで**消していた。so Format行thatが枠を失い、`margin-left:auto` のRawボタンthat外側の右端まで飛んだ。俊克の191のスクショと並べて、タグの数を数えて確定(div 94→93 のはずthat開き93/閉じ92)。★原因は膜の**閉じ位置**= `dock_fcmenu` の閉じ膜を「次に `<div class=` で始まる行の直前」に置いたthat、fc-popは最後の子so次の行thatが無く、閉じ膜thatが行の `</div>` の**後ろ**に回っていた。★★**壊れ方から逆算した検査を、また1つ足した**(`check_webview.js`)= **開き/閉じの釣り合いthat前の版からズレていないか**。絶対値では見ない(191の時点で span thatが1つ釣り合っていない)so**前の版との差**を見る= 消したいものを消せば開きも閉じも同じだけ減る。片方だけ減ったら巻き込み。**実際に v4.0.197 を食わせて `div(0→1)` を捕まえることを確認**。★これで webview の検査は3本= ①構文 ②宣言that消えて使用thatが残っていないか(v4.0.197) ③開き/閉じの釣り合い(v4.0.198)。**3本とも「前の版と比べる」形**so、満点の解析器を作らずに済んでいる。→ [[feedback_minimal_change_verify_webview]]
 // - v4.0.197(俊克 8/14 pm01:16「v4.0.196のテストをした。OK!! v4.0.191とv4.0.196のスクショを入れたよ。まったく同じだね。あとは、v4.0.196をベースにして、修正して下さい」): ★★**v4.0.192の全壊の真因that出た= `const fcWriteT=…` を消したのに、`if(fcWriteT)fcWriteT.addEventListener(…)` を残していた**。未宣言の識別子を `if(x)` で読むと **ReferenceError** so、Me Dockの初期化thatそこで死に、**以降の配線that丸ごと動かない**=TOC・Hyper IDX・膜パネル(Add to Hyper TOC/Toggle/Shed Me)・参照グループ・GitHubの接続表示thatが全部出なくなっていた。俊克の191のスクショと並べて初めて「消えているもの」thatが見えた=**症状を見ずに差分だけ見ていたら永久に分からなかった**。★なぜ素通りしたか= `node --check` も `check_webview.js` も**構文しか見ない**。私は「消した4行の中身」は確かめたthat、**その4行が宣言していたものを、他の行that使っていないか**を確かめていなかった。★★**壊れ方から逆算した検査を足した**(`check_webview.js`)= **前の版と突き合わせて、宣言that消えたのに使用thatが残っている識別子**を報告する。満点の静的解析は要らない= 同じ(不完全な)読み取りを両側に掛けるso取りこぼしthat両側で同じになり、誤検出that出ない。**実際に v4.0.192 を食わせて `fcWriteT` を捕まえることを確認**(exit=1)。★その上で**FC一択を膜の上でやり直した**= 消したのは①▼のクリック処理②チェックの描画③チェックのクリックの3つで、**宣言も使用も同じ5行に閉じている**ことを確かめてから消した。HTML/CSS/node側も同じ手順で。残骸ゼロ(11個の名前を全部数えた)。★Format Me の行を描画して 191/196 と見比べ、`▼` の有無以外は同じことを確認。→ [[feedback_minimal_change_verify_webview]]
@@ -13591,9 +13592,9 @@ function meosUpdateMewDiagnostics(editor) {
     editor = meosMewTargetEditor(editor); // v4.0.110: Me Dockに焦点があっても、見えている散文エディタを見る
     if (!editor || !meosIsProseDoc(editor.document)) { if (editor) { meosMewDiagnostics.delete(editor.document.uri); if (meosMewGutterDecoration) editor.setDecorations(meosMewGutterDecoration, []); } meosPostMewState(0); return; }
     const doc = editor.document, last = doc.lineCount - 1;
-    const spans = (editor.visibleRanges && editor.visibleRanges.length)
-      ? editor.visibleRanges.map(r => [Math.max(0, r.start.line - 120), Math.min(last, r.end.line + 120)])
-      : [];
+    // v4.0.200: ここも**重なりを潰してから**回す。±120は折り畳みthat有ると隣どうしthat大きく重なるので、
+    //   同じ行を2度3度数えて**🐱の数字thatが水増しされる**(v4.0.73「ガターは1個なのに数字は3つ増える」の再来)。
+    const spans = (editor.visibleRanges && editor.visibleRanges.length) ? meosScanSpans(editor, doc, 120) : [];
     if (!spans.length) { meosMewDiagnostics.delete(doc.uri); if (meosMewGutterDecoration) editor.setDecorations(meosMewGutterDecoration, []); meosPostMewState(0); return; }
     // v4.0.73(俊克 8/8 pm00:42 バグ1「🐱ガターは1個なのに数字は3つ増える」＋改良1「今見えている部分だけを捕捉して、それだけを修正する方が安心」):
     // ★数える単位を**行**にした(旧=記法の個数)。ガターは1行1匹・ボタンも行単位で直すのに、
@@ -13694,7 +13695,8 @@ async function meosMewSignVisible() {
   const doc = editor.document;
   // v4.0.73(俊克 改良1): 直すのは**今見えている行だけ**。画面外(±120の先読み分)には手を出さない。
   const _last = doc.lineCount - 1;
-  const spans = (editor.visibleRanges || []).map(r => meosCountableRange(r)).map(([a, b]) => [Math.max(0, Math.min(a, _last)), Math.max(0, Math.min(b, _last))]); // v4.0.77: 数える範囲と直す範囲は同じ(文書末でははみ出さないよう丸める)
+  // v4.0.200: 🐱ボタンthat直す範囲も重なりを潰す(数える所と直す所は同じ範囲でなければならない)。
+  const spans = meosMergeSpans((editor.visibleRanges || []).map(r => meosCountableRange(r)).map(([a, b]) => [Math.max(0, Math.min(a, _last)), Math.max(0, Math.min(b, _last))])); // v4.0.77: 数える範囲と直す範囲は同じ(文書末でははみ出さないよう丸める)
   // v4.0.72(俊克 8/8 pm00:28 改良1「🐱ボタンを押すと🐱ガターが付いたところが新記法に書き変わると想定していた」):
   // ★ボタンと数字が食い違っていた。v4.0.69で🐱の数に**旧記法**も入れたのに、このボタンは
   //   「署名なしの新形にMew!を挿す」だけのままだった → 🐱14と出ているのに「全部鳴いています」と言う。
@@ -21946,9 +21948,13 @@ function meosScanSpans(editor, doc, margin) {
     const rs = (editor && editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges : null;
     spans = rs ? rs.map(r => [Math.max(0, r.start.line - m), Math.min(last, r.end.line + m)]) : [[0, Math.min(last, 400)]];
   } catch (_) { spans = [[0, Math.min(last, 400)]]; }
-  spans.sort((a, b) => a[0] - b[0]);
+  return meosMergeSpans(spans);
+}
+// 行の区間[from,to]の配列から**重なりと隣接を潰す**。走査の重複はここ1か所で防ぐ。
+function meosMergeSpans(spans) {
+  const a = (spans || []).slice().sort((x, y) => x[0] - y[0]);
   const out = [];
-  for (const sp of spans) {
+  for (const sp of a) {
     const t = out.length ? out[out.length - 1] : null;
     if (t && sp[0] <= t[1] + 1) { if (sp[1] > t[1]) t[1] = sp[1]; }   // 重なる/隣接=1つにまとめる
     else out.push([sp[0], sp[1]]);
