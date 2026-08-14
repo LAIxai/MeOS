@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.193(俊克 8/14 am11:31「つまり、1つのテーブル = 1段落 と見なせばいいってことだよね。だから、テーブルの場合は、テーブルの後に、FCコメントを付ければいい。その時、順番は、横方向にスキャンするってことだよね?」): ★★**俊克thatが最後の例外を消した。しかも新しい概念that1つも増えない**= 表は行ごとに保存されているので、**横方向にスキャン＝そのまま文書順**。他の記法と同じ「出現順」のまま数えられる。★読み替えは1つだけ= 指定行は「本文の**真下**」ではなく「**その塊の下**」に置くもの。1行の段落なら塊＝その1行(今までどおり)、表なら塊＝表全体。★実装= ①`meosTableBlockFor` で表の範囲を出す ②`meosSpecLineFor` は表なら**表の下**を見る ③その行より前の行thatすでに使った分を `ordBase`(種類ごと)で持ち帰り、**読む口4つ(ハイライト/取消線・太字/斜体・リンク・上付下付)thatそこから数え始める**。★書く側= 表の全行から集めて**表の下に1本**(`meosPushTableSpecsOutOfLine`)／編集前に**各行へ配り直す**(`meosPullTableSpecsBackInline`)。★★配り直しthat簡単なのは **1命令=1コメント**のおかげ= payloadの並び＝命令の並びso、**組み立て直さずpayloadをそのまま配る**(文字thatズレようthatない)。相手thatが足りない/余った時は**何もしない**(既存の安全弁thatそのまま効く)。★v4.0.191で作ったガード(`meosCanTakeSpecLineBelow`)は**二度と呼ばれなくなったso消した**=呼ばれない判定は腐る[[feedback_one_source_for_mark_count_action]]。★実データ回帰= 日記の表4390行・table-merge/calc-testとも**新たに指定を拾う行は0**(既存の表の下にFC行thatが無いso何も変わらない)。★リンクの指定だけは戻す時に**最後の `|` の外**へ出るthat、GFMで表thatが壊れないことを実測で確認(往復の不変条件でテスト)。headless 20/20(新規 t_table)＋22/22＋13/13 PASS。→ [[project_out_of_line_and_fold]] [[project_table_formatter]]
 // - v4.0.192(俊克 8/14 am11:20「箇条書きの話しは、昨日、決着しているよね。そもそも 1.1 や 1a というような表現が、標準化(CommonMark)にはないでしょ? だから、MeOSと普通の既存のmdエディタ、Gitでも、違って当然だよ」＋am11:14「既存のデータ互換は考える必要がないよね。過去は振り返らないので」): ★★**俊克が正しい。私が決着済みの話を蒸し返した**= 箇条書きの番号(`1.1` / `1a`)は元からMeOSの拡張で、外と一致していない。段落that割れるのも同じ範囲の「違い」so、止める理由thatなかった。→ v4.0.191のガードを**表だけ**に絞った(741行中705行thatFCへ・行末に残るのは表の36行)。★**表だけ壊れ方の種類that違う**= 他は「拡張that効かないので違って見える」だthat、表は**表でなくなり、書いていない `|` that読者の目に出る**。飾りthat落ちるのではなく、文書that崩れる。ここだけは越えない(本物のCommonMark/GFM実装で3種類とも確かめた)。★★**FC一択にした**= `meosFormatWritesFC()` を常に true にし、**Me Dockの `Format ▼` メニュー(Folding Comment(FC) below)とパレットの切替コマンドを丸ごと撤去**。二択にしていたのは「畳むのthat本当に良いのか」を私that決め切れなかったからで、俊克はもう決めている。★**設定ではなく判断にする**= 選ばせるのをやめ、MeOSthat行を見て決める(置ける行はFC・表の途中は行末)。書き手は一度も選ばなくていい=[[feedback_fix_signal_at_fix_place]]「確認は、答えthat決まっている場面では邪魔」。★読む側は今までどおり両方読む(read-both)so過去は1文字も触らない。★webviewは**前版と `<script>` を差分比較**して、意図した3か所(CSS残骸・HTML・死んだJS4行)以外thatが1文字も動いていないことを確認=[[feedback_minimal_change_verify_webview]]。未使用になった定数と message も落とした。headless 10/10＋22/22＋13/13 PASS。→ [[project_out_of_line_and_fold]] [[project_setting_decides_future_only]]
 // - v4.0.191(俊克 8/14 am11:00「私的には、もう行末方式は要らない。だから、Formatメニューでの設定も要らない。つまり、FC一択ということだね」): ★★**その前に、真下に置けない行that実在することを見つけた**= 指定行は本文行の**真下**に置くので、真下that別のブロックの続きなら、置いた瞬間にそのブロックthat割れる。本物のCommonMark/GFM実装で確かめた= **表の途中**→そこで表that終わり残りthatただの文字になる(壊れる)／**箇条書きの途中**→リストthat分断され番号that 1. 1. 1. に戻る(壊れる)／**段落の途中**→段落that2つに割れる(外の世界での見え方that変わる)。★★**しかもこれは今日すでに起きる**= FCモードで表のセルにハイライトを付ければ、その場で表that壊れた。ガードthat1つも無かった。so提案が生む問題ではなく、**提案that避けられなくする問題**。どちらにせよ先に塞ぐ。★直し= `meosCanTakeSpecLineBelow(doc, ln)` を1つ作り、押し出しの前に必ず通す。見出しと囲み(```)は**単独ブロック**soいつでも置ける。★★**「FC一択」の読み替え**= 「形that1つになる」ではなく **「選ぶのは人ではなくMeOS」**。置ける行はFC・置けない行は行末。書き手は一度も選ばなくていい=**設定が要らない**(俊克の要求はこれで通る)。設定ではなく**判断**にする=[[feedback_fix_signal_at_fix_place]]「確認は答えが決まっている場面では邪魔」。★実データ(日記159,420行・行末形式の指定を持つ741行)= **FCへ出せる464／行末のまま277**(表36・箇条書き92・段落149)。headless 14/14(新規 t_below)＋22/22＋13/13 PASS。📌残= Formatメニューのトグル撤去とFC既定化は次版。→ [[project_out_of_line_and_fold]]
 // - v4.0.190(俊克 8/14 am10:16「その前に、リンクもFCコメントに対応しよう。これだけ行末と言うのは、いただけないので」): ★★**リンクだけが行末に取り残されていた**。v4.0.94で「本文に印・行末に指定」にした時、次の行へ出す道(FC)はまだ無かった。FCを作った後もリンクを外さなかったのは、包み形リンク(`<!-- Mew! =={ -->…<!-- …}== -->`)が前後2つで1組で、片方だけ動かすと壊れるから。だが**行末一括方式のリンクはコメント1つ**なので、他の記法とまったく同じに扱える。★実装は4か所だけで済んだ= ①読む(`meosParseSpecPayload` の先頭でリンクを判定=1命令1コメントなので中身まるごとが1つのリンク・鉄則「リンクは常に先に判定」)②引く(`meosLineEndLinks(text, fcLinks)`=行末の分を先、FC行の分を後に並べる。数える単位は「この行の何個目の `[表示]()` か」の1つだけ)③外へ出す(`meosMoveSpecsOutOfLine` に `isLink` を足す。包み形は既存の `inLink` で除外済み)④戻す(`meosPullSpecsBackInline`。**リンクと行の指定は1つの挿し込みにまとめる**=同じ位置に別々に挿すと順番が裏返り、別の `[表示]()` に結び付く)。★★**リンクだけ事情が1つ違う**= ボタンを押した直後、書き手は**行先をこれから打つ**。so外へ出して終わりにせず、**カーソルを行先の中のまま真下の行へ連れて行く**。その行はカーソルが居る間だけ開く(カーソルの下はいつも生データ)ので、打ち終われば畳まれる。行先の位置は探さず**最後の `[](`**で決まる(今書いたコメントは行末に挿したので、指定行でも必ず最後に来る)。★描く側・🚫・ジャンプ(DocumentLink)の3つが同じ口(`_fcLinksFor`)を呼ぶ。FC行から来た指定には**この行に消すコメントが無い**ので `b.comment` は null=使う側は必ず確かめる(3か所とも直した)。★FC行を読みに行くのは**印 `[表示]()` が在る行だけ**。★実データ検証= 既存のFC行でリンク指定を持つ行は**0**(過去の読み方が変わらない)。日記で新たに外へ出せるリンク行は42。headless 13/13(新規 t_link)＋22/22 PASS。→ [[reference_meos_notation_v4]] [[project_out_of_line_and_fold]]
@@ -6042,6 +6043,8 @@ function applyPrettyLabels(editor) {
     let _fcLv = null, _fcLdone = false;
     const _fcL = () => { if (!_fcLdone) { _fcLdone = true; _fcLv = MEOS_SPEC_LINE ? meosSpecLineFor(_allLines, line) : null; } return _fcLv; };
     let _fcHi = 0, _fcSt = 0; // この行で何個目のハイライト/取消線か
+    // v4.0.193: 表の中では、数える範囲that**表全体**so、前の行thatすでに使った分を足してから引く(横方向スキャン)。
+    const _fcN = (k, n) => { const b = _fcL(); return ((b && b.ordBase && b.ordBase[k]) || 0) + n; };
     // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
     // 「コードブロックの中」扱いになって素の見出しが一切描画されなかった。フェンスが200行以上開きっぱなしなら
     // 迷子と見なして閉じる=1本の迷子フェンスで以降が全滅しない(日記の実コードブロックは十数行so十分な余裕)。
@@ -6238,7 +6241,7 @@ function applyPrettyLabels(editor) {
           // v4.0.56: 素の `==本文==` の直後に仕様コメントがあれば、それを色/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
           // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の ==」を引く。
-          const _fcRaw = _sc ? (_fcHi++, null) : meosFcFmtInner(_fcL(), '==', ++_fcHi);
+          const _fcRaw = _sc ? (_fcHi++, null) : meosFcFmtInner(_fcL(), '==', _fcN('==', ++_fcHi));
           if (_sc || _fcRaw) {
             const hi2 = parseColorSpec(_sc ? _sc.raw : _fcRaw, 'bg', _sc ? _sc.raw : _fcRaw);
             if (hi2.bgKey || hi2.fgKey || hi2.comment) {
@@ -6317,7 +6320,7 @@ function applyPrettyLabels(editor) {
           // v4.0.56(俊克): 素の `~~本文~~` の直後に仕様コメントがあれば、線色/背景/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
           // v4.0.152(俊克「FC方式が本当に欲しいのは取消線」): 直後にコメントが無ければ、真下の指定行から引く。
-          const _fcRaw = _sc ? (_fcSt++, null) : meosFcFmtInner(_fcL(), '~~', ++_fcSt);
+          const _fcRaw = _sc ? (_fcSt++, null) : meosFcFmtInner(_fcL(), '~~', _fcN('~~', ++_fcSt));
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
@@ -14922,6 +14925,14 @@ function meosShiftOffsetByInserts(off, ins, isStart) {
 async function meosPullLineSpecsBackInline(editor) {
   if (!editor || !editor.document) return false;
   const doc = editor.document;
+  // v4.0.193: 表なら**表の下の1本**を、各行へ配り直す(1命令=1コメントso、payloadをそのまま配る)。
+  {
+    const _lines = meosDocLines(doc);
+    let _ln = editor.selection.active.line;
+    if (meosIsSpecLine(String(_lines[_ln] == null ? '' : _lines[_ln])) && _ln > 0) _ln--;  // 指定行に居るなら上が本文
+    const _blk = meosTableBlockFor(_lines, _ln);
+    if (_blk) return await meosPullTableSpecsBackInline(editor, _blk, _lines);
+  }
   let ln = editor.selection.active.line;
   if (meosIsSpecLine(doc.lineAt(ln).text) && ln > 0) ln--;    // 指定行にカーソルが在るなら、その上が本文
   if (ln + 1 >= doc.lineCount) return false;
@@ -14947,6 +14958,25 @@ async function meosPullLineSpecsBackInline(editor) {
   } catch (_) { }
   return true;
 }
+// 表の下のFC行を、各行の中へ配り直す。配れない時は何もしない(安全弁)。
+async function meosPullTableSpecsBackInline(editor, blk, lines) {
+  const doc = editor.document;
+  const specLns = [];
+  for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
+  if (!specLns.length) return false;
+  const out = meosSplitTableSpecToRows(lines, blk, specLns);
+  if (!out) return false;
+  const changed = out.filter(o => o.line !== lines[o.ln]);
+  if (!changed.length) return false;
+  await editor.edit(eb => {
+    for (const o of changed) eb.replace(doc.lineAt(o.ln).range, o.line);
+    // 配り終えたら指定行そのものを消す(行ごと畳んで消す=表の下に空行thatが残らない)
+    const a = new vscode.Position(blk.end, doc.lineAt(blk.end).text.length);
+    const z = new vscode.Position(specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length);
+    eb.delete(new vscode.Range(a, z));
+  }, { undoStopBefore: true, undoStopAfter: true });
+  return true;
+}
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
 //   ★既にFC行が真下に在る時は**何もしない**=順番がずれて別の相手に結び付く事故を起こさない。
 // v4.0.159(俊克 8/12 pm07:24 バグ1「FC方式にすると次の行にFCコメントが出る。ただし🚫を押してもコメントの方が消えない。
@@ -14959,38 +14989,66 @@ async function meosEnsureInlineBeforeEdit(editor) {
   try {
     if (!MEOS_SPEC_LINE || !meosFormatWritesFC() || !editor || !editor.document) return false;
     const doc = editor.document, ln = editor.selection.active.line;
-    if (ln + 1 >= doc.lineCount) return false;
-    if (!meosIsSpecLine(doc.lineAt(ln + 1).text)) return false;
+    // v4.0.193: 表なら、見るのは真下ではなく**表の下**。
+    const _blk = meosTableBlockFor(meosDocLines(doc), ln), _at = (_blk ? _blk.end : ln) + 1;
+    if (_at >= doc.lineCount) return false;
+    if (!meosIsSpecLine(doc.lineAt(_at).text)) return false;
     return await meosPullLineSpecsBackInline(editor);
   } catch (_) { return false; }
 }
-// ===== v4.0.191/192(俊克 8/14 am11:00「もう行末方式は要らない。FC一択ということだね」) ==================
-// ★指定行は本文行の**真下**に置く。so真下が別のブロックの続きなら、置いた瞬間にそのブロックが割れる。
-//   本物のCommonMark/GFM実装で3つとも確かめた=
-//     ・**表の途中**       → そこで表が終わり、**残りの行の `|` が本文の文字として読者に見える**
-//     ・**箇条書きの途中** → リストが分断され、番号が 1. 1. 1. に戻る
-//     ・**段落の途中**     → 段落が2つに割れる
-// ★★v4.0.192(俊克 8/14 am11:20「箇条書きの話しは、昨日、決着しているよね。そもそも 1.1 や 1a というような
-//   表現が、標準化(CommonMark)にはないでしょ? だから、MeOSと普通の既存のmdエディタ、Gitでも、違って当然だよ」):
-//   **俊克が正しい。決着済みの話を私が蒸し返した**。番号の付け方は元からMeOSの拡張で、外と一致していない。
-//   段落が割れるのも同じ範囲の「違い」だ。→ **止めるのは表だけにする**。
-// ★★**表だけ壊れ方の種類が違う**= 他は「拡張が効かないので違って見える」だが、表は**表でなくなり、
-//   書いていない `|` が読者の目に出る**。飾りが落ちるのではなく、文書が崩れる。ここだけは越えない。
-// ★これで「FC一択」がほぼ言葉どおりになる(日記の実測=指定を持つ741行のうち、行末に残るのは表の36行だけ)。
-function meosCanTakeSpecLineBelow(doc, ln) {
-  try {
-    if (!doc || ln + 1 >= doc.lineCount) return true;                   // 最終行=下に続きが無い
-    const row = (t) => /^[ \t]*\|/.test(t);
-    return !(row(doc.lineAt(ln).text) && row(doc.lineAt(ln + 1).text)); // 表の途中だけ置けない
-  } catch (_) { return true; }
+// ===== v4.0.191/192/193: 指定行は「本文の真下」ではなく「**その塊の下**」に置く ======================
+// ★1行の段落なら塊＝その1行(今までどおり真下)。表なら塊＝表全体so、置くのは**表の下**。
+// ★v4.0.191では「表の途中には置けない」というガードを作ったthat、v4.0.193で**表を塊として扱う**ようにしたので、
+//   ガードは二度と呼ばれなくなった=**呼ばれない判定は腐る**so消した([[feedback_one_source_for_mark_count_action]])。
+// ★本物のCommonMark/GFM実装で確かめた事実は残しておく= 表の**途中**に1行挟むと、そこで表that終わり、
+//   残りの行の `|` that本文の文字として読者に見える。だから塊の下に置く。
+// ===== v4.0.193: 表の書く側 =========================================================================
+// ★1つのテーブル=1段落so、**表の指定は表の下に1本**にまとめる。順番は横方向スキャン=文書順。
+// 指定行の中身(payload)は **1命令=1コメント** so、payloadの並び＝命令の並び。
+//   → 行に配り直す時も**payloadをそのまま配る**(組み立て直さない=文字thatズレようthatない)。
+// payload 1つの種類を返す。'==' '~~' '***' '**' '*' '_' / 'link' / 'sup' 'sub' / null(行に効く指定)
+function meosSpecPayloadKind(payload) {
+  const one = meosParseSpecPayload(payload);
+  if (one.link && one.link.length) return 'link';
+  if (one.metex && one.metex.length) { const t = String(one.metex[0].tok); return (t.indexOf('\u2191') >= 0) ? 'sup' : 'sub'; }
+  if (one.fmt && one.fmt.length) return one.fmt[0].kind;
+  return null;
+}
+// 表の下の指定行を、各行へ配り直した結果を返す。[{ln, line}] か null(配れない時は何もしない)。
+function meosSplitTableSpecToRows(lines, blk, specLns) {
+  let payloads = [];
+  for (const i of specLns) { const p = meosSpecLinePayloads(lines[i]); if (!p) return null; payloads = payloads.concat(p); }
+  const items = payloads.map(p => ({ p, kind: meosSpecPayloadKind(p) }));
+  const out = [];
+  for (let ln = blk.start; ln <= blk.end; ln++) {
+    const need = meosMarkCounts(lines[ln]);
+    const take = [];
+    for (const k of Object.keys(need)) {
+      let n = need[k];
+      for (const it of items) { if (n <= 0) break; if (it.used || it.kind !== k) continue; it.used = true; take.push(it); n--; }
+      if (n > 0) return null;                       // 相手thatが足りない=配らない
+    }
+    if (!take.length) { out.push({ ln, line: lines[ln] }); continue; }
+    take.sort((a, b) => items.indexOf(a) - items.indexOf(b));   // 文書順を保つ
+    const spec = take.map(x => '<!-- ' + MEOS_MEW_SIG + 'FC ' + x.p + ' -->').join('');
+    const r = meosPullSpecsBackInline(lines[ln], spec);
+    if (!r) return null;                            // 戻すと壊れる=何もしない(安全弁は既存のものthatそのまま効く)
+    out.push({ ln, line: r.line });
+  }
+  if (items.some(x => !x.used)) return null;        // 余りthat出た=配らない
+  return out;
 }
 async function meosPushLineSpecsOutOfLine(editor) {
   if (!editor || !editor.document) return false;
   const doc = editor.document, ln = editor.selection.active.line;
   if (ln < 0 || ln >= doc.lineCount) return false;
+  // v4.0.193(俊克「1つのテーブル=1段落」): 表なら**表全体**の指定を集めて、**表の下に1本**置く。
+  {
+    const _lines = meosDocLines(doc), _blk = meosTableBlockFor(_lines, ln);
+    if (_blk) return await meosPushTableSpecsOutOfLine(editor, _blk);
+  }
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
   if (meosIsSpecLine(next)) return false;                 // 既にFC行が在る=触らない
-  if (!meosCanTakeSpecLineBelow(doc, ln)) return false;   // v4.0.191: 真下に置くとブロックthat割れる行=行末のまま
   const r = meosMoveSpecsOutOfLine(doc.lineAt(ln).text);
   if (!r) return false;
   const keep = editor.selection;
@@ -15000,6 +15058,30 @@ async function meosPushLineSpecsOutOfLine(editor) {
     eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + r.spec);
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }          // 挿した本文の選択はそのまま残す
+  return true;
+}
+// 表の全行から指定を集めて、表の下に1本のFC行として置く(既に在れば、そこへ足す)。
+async function meosPushTableSpecsOutOfLine(editor, blk) {
+  const doc = editor.document, lines = meosDocLines(doc);
+  const bodies = [], specs = [];
+  let moved = false;
+  for (let i = blk.start; i <= blk.end; i++) {
+    const r = meosMoveSpecsOutOfLine(lines[i]);
+    if (r) { moved = true; bodies.push({ ln: i, body: r.body }); specs.push(r.spec); }
+  }
+  if (!moved) return false;                               // 出すものthat無い
+  // 表の下に既にFC行thatあれば、その前の分と合わせて1本にする(順番=文書順)。
+  const after = blk.end + 1;
+  const hadSpec = (after < doc.lineCount) && meosIsSpecLine(doc.lineAt(after).text);
+  const specText = (hadSpec ? doc.lineAt(after).text : '') + specs.join('');
+  const keep = editor.selection;
+  const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  await editor.edit(eb => {
+    for (const b of bodies) eb.replace(doc.lineAt(b.ln).range, b.body);
+    if (hadSpec) eb.replace(doc.lineAt(after).range, specText);
+    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + specText);
+  }, { undoStopBefore: false, undoStopAfter: false });
+  try { editor.selection = keep; } catch (_) { }
   return true;
 }
 
@@ -20395,11 +20477,49 @@ function meosParseSpecPayload(payload) {
   return { metex, fmt, link: [], line: rest };
 }
 // 本文行 ln の指定行(=真下の行)。無ければ null。lines は meosDocLines の配列(版ごとに1回だけ刻んである)。
+// ===== v4.0.193(俊克 8/14 am11:31「つまり、1つのテーブル = 1段落 と見なせばいいってことだよね。
+//   だから、テーブルの場合は、テーブルの後に、FCコメントを付ければいい。その時、順番は、横方向にスキャンするってことだよね?」) =====
+// ★★**俊克が正しい。しかも新しい概念that1つも増えない**= 表は行ごとに保存されているので、
+//   **横方向にスキャン＝そのまま文書順**。他の記法と同じ「出現順」のまま数えられる。
+// ★これで最後の例外that消える= 指定行は「本文の真下」ではなく「**その塊の下**」に置くもの、と読み替えるだけ。
+//   1行の段落なら塊＝その1行(今までどおり)。表なら塊＝表全体。
+// 表の行なら、その表の範囲を返す。表の行でなければ null。
+const MEOS_TABLE_ROW_RE = /^[ \t]*\|/;
+function meosTableBlockFor(lines, ln) {
+  if (!lines || !MEOS_TABLE_ROW_RE.test(String(lines[ln] == null ? '' : lines[ln]))) return null;
+  let s = ln, e = ln;
+  while (s > 0 && MEOS_TABLE_ROW_RE.test(String(lines[s - 1] == null ? '' : lines[s - 1]))) s--;
+  while (e + 1 < lines.length && MEOS_TABLE_ROW_RE.test(String(lines[e + 1] == null ? '' : lines[e + 1]))) e++;
+  return { start: s, end: e };
+}
+// 1行の中に「相手になる印」that種類ごとに何個あるか。**描く側と同じ物差し**から引く
+// (meosInlineMarkEnds=語に効く記法／meosMeTexTokens=上付下付／`[表示]()`=リンク)。
+function meosEmptyLinkCount(text) {
+  let t = String(text == null ? '' : text);
+  if (t.indexOf(']()') < 0) return 0;
+  if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
+  if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
+  for (const c of meosTrailingComments(t)) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end);
+  let n = 0; MEOS_EMPTY_LINK_RE.lastIndex = 0; while (MEOS_EMPTY_LINK_RE.exec(t) !== null) n++;
+  return n;
+}
+function meosMarkCounts(text) {
+  const out = {};
+  try {
+    for (const m of meosInlineMarkEnds(text)) out[m.kind] = Math.max(out[m.kind] || 0, m.ord);
+    const lk = meosEmptyLinkCount(text); if (lk) out.link = lk;
+    for (const t of (meosMeTexTokens(text, null) || [])) { const k = (t.kind === 'sup') ? 'sup' : 'sub'; out[k] = (out[k] || 0) + 1; }
+  } catch (_) { }
+  return out;
+}
 function meosSpecLineFor(lines, ln) {
   if (!MEOS_SPEC_LINE || !lines) return null;
+  // v4.0.193: 表なら**表の下**を見る。表でなければ今までどおり真下(=塊thatその1行)。
+  const _blk = meosTableBlockFor(lines, ln);
+  const _from = _blk ? _blk.end : ln;
   // v4.0.147: 真下から**続く限り**の指定行をまとめて読む(1行に収めても、複数行に分けても同じ)。
   let metex = null, fmt = null, link = null, line = '', found = false;
-  for (let i = ln + 1; i < lines.length; i++) {
+  for (let i = _from + 1; i < lines.length; i++) {
     const p = meosParseSpecLine(lines[i]);
     if (!p) break;
     found = true;
@@ -20408,7 +20528,14 @@ function meosSpecLineFor(lines, ln) {
     link = link ? link.concat(p.link || []) : (p.link || []).slice(); // v4.0.190: リンクは出現順にそのまま並べる
     if (!line && p.line) line = p.line;   // 行単位の指定は**最初に見つけた1つ**(2つ書いても混ぜない)
   }
-  return found ? { metex: metex || [], fmt: fmt || [], link: link || [], line } : null;
+  if (!found) return null;
+  // v4.0.193: 表の中の行は、**その行より前の行thatすでに使った分**だけ番号を進めてから数える(横方向スキャン)。
+  let ordBase = null;
+  if (_blk && _blk.start < ln) {
+    ordBase = {};
+    for (let i = _blk.start; i < ln; i++) { const c = meosMarkCounts(lines[i]); for (const k in c) ordBase[k] = (ordBase[k] || 0) + c[k]; }
+  }
+  return { metex: metex || [], fmt: fmt || [], link: link || [], line, ordBase };
 }
 // 指定行の上付/下付を、本文行のトークンへ配る(名前＋出現順)。
 // v4.0.145(俊克 8/12 pm00:37「`Mew!FC 🐱↑3` と書くのは汎用的じゃない。`Mew!FC A↑2` のように常に基本形を書くべき。
@@ -20422,6 +20549,18 @@ function meosSpecLineFor(lines, ln) {
 // ★これで**本文を書き換えても命令は無傷**。命令が持つのは「上付きが1つある」という事実だけで、中身は持たない。
 function meosApplySpecLineToTokens(text, toks, spec) {
   if (!spec || !spec.metex.length || !toks || !toks.length) return;
+  // v4.0.193: 表の中では、前の行thatすでに使った分を**向きごとに**先頭から捨ててから配る(横方向スキャン)。
+  if (spec.ordBase && (spec.ordBase.sup || spec.ordBase.sub)) {
+    let up = spec.ordBase.sup || 0, dn = spec.ordBase.sub || 0;
+    const rest = [];
+    for (const it of spec.metex) {
+      const t = String(it.tok), u = t.indexOf('\u2191') >= 0, d = t.indexOf('\u2193') >= 0;
+      if (u && !d && up > 0) { up--; continue; }
+      if (d && !u && dn > 0) { dn--; continue; }
+      rest.push(it);
+    }
+    spec = { metex: rest, fmt: spec.fmt, link: spec.link, line: spec.line };
+  }
   // v4.0.148(俊克 8/12 pm01:54 `<!-- Mew!FC ↑↓not -->`): **`↑↓` は「どちらの向きでも」**。
   //   俊克が繰り返しこの形を書くso、そちらが自然な読み方=向きを言わずに「次の1つ」を指せる。
   const kindOf = (tok) => { const t = String(tok), u = t.indexOf('↑') >= 0, d = t.indexOf('↓') >= 0; return (u && d) ? 'any' : (u ? 'sup' : (d ? 'sub' : null)); };
@@ -20957,7 +21096,13 @@ function meosRefMdLinks(text, defs) {
 
 // v4.0.190: 「その行のリンク指定を、真下のFC指定行から引く」共通口(描く側・🚫・ジャンプの3つが同じここを呼ぶ)。
 function _fcLinksFor(doc, ln) {
-  try { if (!MEOS_SPEC_LINE || !doc) return null; const p = meosSpecLineFor(meosDocLines(doc), ln); return p ? p.link : null; } catch (_) { return null; }
+  try {
+    if (!MEOS_SPEC_LINE || !doc) return null;
+    const p = meosSpecLineFor(meosDocLines(doc), ln);
+    if (!p) return null;
+    const b = (p.ordBase && p.ordBase.link) || 0;   // v4.0.193: 表の中=前の行that使った分を飛ばす
+    return b ? p.link.slice(b) : p.link;
+  } catch (_) { return null; }
 }
 // 行末に連続して並ぶコメント群(末尾から遡って拾う)。行単位の指定もリンクの指定もここに混ざる。
 function meosTrailingComments(text) {
@@ -21324,7 +21469,9 @@ function meosApplyBoldDecorations(editor) {
           const sc = meosSpecCommentAfter(text, e0);
           const ord = kind ? (_fcOrd[kind] = (_fcOrd[kind] || 0) + 1) : 0;
           if (sc) { const cs = parseColorSpec(sc.raw, 'fg', sc.raw); return { sc, cs }; }
-          const raw = kind ? meosFcFmtInner(_fcL2(), kind, ord) : null;
+          // v4.0.193: 表の中は数える範囲that表全体so、前の行thatすでに使った分を足す。
+          const _b2 = _fcL2(); const _ord2 = ord + ((_b2 && _b2.ordBase && _b2.ordBase[kind]) || 0);
+          const raw = kind ? meosFcFmtInner(_b2, kind, _ord2) : null;
           if (!raw) return null;
           return { sc: null, cs: parseColorSpec(raw, 'fg', raw) };
         };
