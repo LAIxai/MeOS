@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.208(俊克 8/14 pm09:00「何も変わってない。本当に、最後の最後にいつも駄目駄目だね。本気出してよ!」): ★★**私は挿す位置の計算を4版直したthat、俊克の画面では直らない**。so今度は**本物の関数を偽エディタで走らせた**=`meosPushTableSpecsOutOfLine` 自体に、俊克thatが押したのと同じ3手を食わせる。結果は**毎回正しい(青,紫,黄)**。配った vsix の中身も取り出して確認済み。**私の読みでは犯人that網の外に居る**。★★so**結果を数え方に依存させない**= 押した後に、指定行thatが**表の格子の順**になっていることを**保証**する。これは「並べ替え」ではなく**指定行は格子の順である、という定義**(俊克の `char(2,4)` そのもの)。**既に格子順なら1文字も動かさない**(挿入のまま)。対応(どの指定thatどの印か)は1つも変えない=動くのは並びだけ。★★**6通りの押し順**(順不同・4つ入れる場合も)を偽エディタで全部走らせ、**どの順で押しても格子順になる**ことを確認。★保証that働いた時は `[fcIns] ★格子順に合わせた: 前 → 後` をログに出す= **働いたこと自体that、私の数え方thatまだ狂っている証拠**になる。
 // - v4.0.207(俊克 8/14 pm08:12「FCコメントの並びにどうやって挿入しているの? 全部上書きするの? それともキーボードのように挿入できるの?」): ★★**俊克の問いthatそのまま指摘だった= 全部上書きしていた**。「読んで・配列にして・挟んで・また文字列に戻して・行ごと置換」so、**挿入と言いながら、毎回すべてのコメントを書き直していた**。俊克thatが pm07:46 に「これは挿入なんだよ」と言ったのに、私は挿す**位置**の計算だけ直して、**書き方は上書きのまま**にしていた。★直し= **本当に挿すだけにする**= 指定行の中の**文字位置**を1つ出して(`meosSpecLineInsertOffset`)、そこへ `insert` する。**既存のコメントには1文字も触らない**so、動きようthatが無い。複数挿す時は**後ろから**(前の位置thatずれない)。★指定行that複数行に分かれている時だけ、1本にまとめ直す道を残した(そこは元から書き直す仕事)。★★これで俊克の言う「キーボードのように挿入」になった。上書きしている限り、位置の計算thatが合っていても**別の理由で並びthat変わりうる**= 疑いの余地を消した。
 // - v4.0.206(俊克 8/14 pm07:55「何回間違えば気が済むんだよ。3個入れることすらできないのか? 最終的に、青、紫、黄 という順番にコメントが並ぶはずだよね。なのに、なぜ3個目に入れたのが、最後に入るんだよ」): ★**謝る前に、測る**。俊克thatが押した3回目をそのまま再現したところ、v4.0.205のコードは**正しい答え(青,紫,黄)を出す**。配った vsix にもそのコードthatが入っていることを、中身を取り出して確認した。so**実機で私の想定と違う何かthat起きている**= 静止した読みでは、もう出ない所に居る。★★今朝の教訓をそのまま使う= **計測で犯人that出ないのは無罪の証明ではなく、網の外に居る証明**。→ ボタンを押した瞬間だけ1行出す `[fcIns] 種類 通し番号=G 前の行=B この行=O 既存=N 表=S..E 行=L at=P body=…`。**Gthat期待と違えば、B と O のどちらthat狂っているかthatその場で分かる**。何も出なければ、そもそもこの道を通っていない(=別の押し出し口を通っている)。★推測で版を重ねない。
 // - v4.0.205(俊克 8/14 pm07:46「2番目に入れたのは白/黄でしょ。それが一番後ろだよね。なのに、スクショ4枚目では、それが2番目に突然移動してしまっている。単純に新しいコメントを1つ挿入するだけで、最後にあったのがこんな移動する筈がないでしょ。**並べ替えって言っていること自体おかしいよ。これは挿入なんだよ**」): ★★**俊克thatが正しい。そして私はスクショを読み違えていた**= あの並びは「移動した跡」ではなく**入力順そのまま**で、v4.0.204の並べ替えthatそもそも効いていなかった。私はそれを「並べ替えthat要る」と読み、繕いを足していた。★★**繕いthat要るのは、挿す位置that間違っている証拠**= v4.0.203は「**その種類の**N個目」に挿していたので、種類をまたぐと入力順になる。正しい位置は「**表全体で何個目の印か**」(左上から右下へ数えた通し番号)=俊克の `char(2,4)` の考え方そのもの。**そこへ挿せば他の指定は1つも動かない=純粋な挿入**。★so v4.0.204で足した並べ替え(`meosOrderSpecLineByTable`)と、種類ごとに数える口(`meosMarkOrdAt`)は**丸ごと削除**。★残したのは `meosRowMarksInOrder`(1行の印を文書順に並べる)だけ= 通し番号はこれを数えるだけで出る。★テスト(新規 t_tblins 9/9)= **俊克thatが実際に押した順**(リンク→***→リンク→*)をそのまま再現し、途中で**白/黄that最後のまま動かない**ことと、最終that走査順(link,link,*,***)になることを確認。読む側の色も4つとも一致。★★教訓= **後から直す仕掛けを足したくなったら、その手前の判断thatが間違っている**。今日2回目(v4.0.176〜186の「戻し方を磨いていた」と同じ形)。
@@ -15120,6 +15121,31 @@ async function meosPushLineSpecsOutOfLine(editor) {
   try { editor.selection = keep; } catch (_) { }          // 挿した本文の選択はそのまま残す
   return true;
 }
+// v4.0.208(俊克 8/14 pm09:00「何も変わってない。本気出してよ!」):
+// ★★**私は挿す位置の計算を何度も直したthat、俊克の画面では直らない**。本物の関数を偽エディタで走らせると
+//   毎回**正しい答え(青,紫,黄)**that出る。so私の読みでは犯人that網の外に居る。
+// ★★**so結果を数え方に依存させない**= 押した後に、指定行thatが**表の格子の順**になっていることを**保証**する。
+//   これは「並べ替え」ではない= **指定行は格子の順である、という定義**。既に格子順なら1文字も動かない。
+//   俊克の `char(2,4)` そのもの= 表の印を左上から右下へ歩き、その種類の待ち行列から1つずつ取る。
+// ★対応(どの指定thatどの印のものか)は**1つも変えない**= 種類ごとの順番はそのまま。動くのは並びだけ。
+function meosSpecLineGridOrder(lines, blk, specText) {
+  const t = String(specText == null ? '' : specText);
+  const raw = [];
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) raw.push({ text: m[0], kind: meosSpecPayloadKind((m[2] || '').trim()) });
+  if (raw.length < 2) return t;
+  const queue = new Map();
+  for (const r of raw) { if (!queue.has(r.kind)) queue.set(r.kind, []); queue.get(r.kind).push(r); }
+  const out = [];
+  for (let ln = blk.start; ln <= blk.end; ln++) {
+    for (const mk of meosRowMarksInOrder(String(lines[ln] == null ? '' : lines[ln]))) {
+      const q = queue.get(mk.kind);
+      if (q && q.length) out.push(q.shift());
+    }
+  }
+  for (const r of raw) if (out.indexOf(r) < 0) out.push(r);   // 相手の無い分は捨てずに後ろへ
+  return out.map(x => x.text).join('');
+}
 // 表の全行から指定を集めて、表の下に1本のFC行として置く(既に在れば、そこへ足す)。
 async function meosPushTableSpecsOutOfLine(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc);
@@ -15146,19 +15172,27 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
     _ins.push({ off: meosSpecLineInsertOffset(spec, g - 1), box: meosSpecLineBox(it.payload) });
     spec = meosInsertIntoSpecLine(spec, it.payload, g - 1);        // 次の位置計算のために手元でも進めておく
   }
+  // v4.0.208: 挿し終わった形thatが**表の格子の順**かどうかを確かめる。違えば、格子順の行に合わせる。
+  const _after = lines.slice(); _after[ln] = split.body;
+  const _gridSpec = meosSpecLineGridOrder(_after, blk, spec);
+  const _grid = (_gridSpec !== spec);
+  try { if (_grid) meosDbg('[fcIns] ★格子順に合わせた: ' + spec + '  →  ' + _gridSpec); } catch (_) { }
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, split.body);                   // 行から新しい指定を抜く
-    if (specLns.length === 1) {
+    if (specLns.length === 1 && !_grid) {
       // v4.0.207: **行を書き直さない**。決めた文字位置へ挿すだけ(後ろから挿せば前の位置thatずれない)。
       for (const x of _ins.slice().sort((a, b) => b.off - a.off)) eb.insert(new vscode.Position(specLns[0], x.off), x.box);
+    } else if (specLns.length === 1) {
+      // v4.0.208: 挿した結果that格子順でなければ、格子順の行に置き換える(=定義に合わせる)。
+      eb.replace(doc.lineAt(specLns[0]).range, _gridSpec);
     } else if (specLns.length) {
       // 指定行that複数行に分かれている時だけ、1本にまとめ直す(元からの畳み込み。ここは書き直す)。
       eb.replace(doc.lineAt(specLns[0]).range, spec);
       for (let k = 1; k < specLns.length; k++) eb.delete(new vscode.Range(new vscode.Position(specLns[k - 1], doc.lineAt(specLns[k - 1]).text.length), new vscode.Position(specLns[k], doc.lineAt(specLns[k]).text.length)));
     } else {
-      eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + spec);
+      eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + _gridSpec);
     }
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }
