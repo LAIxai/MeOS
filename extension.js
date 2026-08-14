@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.190(俊克 8/14 am10:16「その前に、リンクもFCコメントに対応しよう。これだけ行末と言うのは、いただけないので」): ★★**リンクだけが行末に取り残されていた**。v4.0.94で「本文に印・行末に指定」にした時、次の行へ出す道(FC)はまだ無かった。FCを作った後もリンクを外さなかったのは、包み形リンク(`<!-- Mew! =={ -->…<!-- …}== -->`)が前後2つで1組で、片方だけ動かすと壊れるから。だが**行末一括方式のリンクはコメント1つ**なので、他の記法とまったく同じに扱える。★実装は4か所だけで済んだ= ①読む(`meosParseSpecPayload` の先頭でリンクを判定=1命令1コメントなので中身まるごとが1つのリンク・鉄則「リンクは常に先に判定」)②引く(`meosLineEndLinks(text, fcLinks)`=行末の分を先、FC行の分を後に並べる。数える単位は「この行の何個目の `[表示]()` か」の1つだけ)③外へ出す(`meosMoveSpecsOutOfLine` に `isLink` を足す。包み形は既存の `inLink` で除外済み)④戻す(`meosPullSpecsBackInline`。**リンクと行の指定は1つの挿し込みにまとめる**=同じ位置に別々に挿すと順番が裏返り、別の `[表示]()` に結び付く)。★★**リンクだけ事情が1つ違う**= ボタンを押した直後、書き手は**行先をこれから打つ**。so外へ出して終わりにせず、**カーソルを行先の中のまま真下の行へ連れて行く**。その行はカーソルが居る間だけ開く(カーソルの下はいつも生データ)ので、打ち終われば畳まれる。行先の位置は探さず**最後の `[](`**で決まる(今書いたコメントは行末に挿したので、指定行でも必ず最後に来る)。★描く側・🚫・ジャンプ(DocumentLink)の3つが同じ口(`_fcLinksFor`)を呼ぶ。FC行から来た指定には**この行に消すコメントが無い**ので `b.comment` は null=使う側は必ず確かめる(3か所とも直した)。★FC行を読みに行くのは**印 `[表示]()` が在る行だけ**。★実データ検証= 既存のFC行でリンク指定を持つ行は**0**(過去の読み方が変わらない)。日記で新たに外へ出せるリンク行は42。headless 13/13(新規 t_link)＋22/22 PASS。→ [[reference_meos_notation_v4]] [[project_out_of_line_and_fold]]
 // - v4.0.189(俊克 8/14 am08:34 バグ1「**太字***イタリック****太字+イタリック***の連続を指定する時の矛盾。最初の太字が出ない」／バグ2「間にスペースを入れるとうまく行くが、スペースを削除したい」／バグ3「スペースを空けても背景が全て出ない。FCコメントがなぜか折り畳まれない」＋am09:00「結局、FCコメントの命令として書かれている`*`記号の数で解釈すれば良いだけじゃないの?」): ★★**バグ1/2の真因= 正規表現3本that「隣り合う`*`の列」を最初から諦めていた**。`**太字***イタリック*` の真中は `***` という**1つの列**で、**閉じ2つ＋開き1つ**に割れる。だthat `**` の形は `\*\*(?!\*)`=「後ろに `*` が来たら不発」so、**割れる前に諦めていた**。★★**空白は回避策であって、記法ではなかった**= 俊克that空けていた空白は、正規表現that割れない所を**人の手で割っていた**だけ。so空白を消せるようにするには、割り方そのものを持つしかない。→ **CommonMarkの区切り列(delimiter run)を実装**(強い方=2文字から先に取り、余りthat次の相手へ回る＋3の倍数の禁じ手)。**本物の実装(commonmark/markdown-it)と3.3万件で突き合わせて一致**を確認。★★**ただし句読点の条項だけは貰わない**= CommonMark厳密だと `**…(グローバル)**です。` のような**日本語で普通に起きる形**that落ちて、日記の**2438行から太字that消える**。実測で決めた= 条項を外せば **消える印14／増える印30**(158,907行)、しかも消える14は全部「本来ずれていた方」so**14件とも新しい方that正しい**。**割り方だけを本家から貰い、飛び道具は貰わない**。★**flankingは生の行で見る**= 走査用テキストthatコードスパンを空白で伏せているso、伏せた字で前後を判定すると太字that**1554行**消える。**探すのは伏せた字・成立を決めるのは生の字**。一度間違えて計測で捕まえた。★★**バグ3の真因は別物= `FC` を1つ書き忘れると、その行の指定that丸ごと死ぬ**。正しく書いた2つthat、間違えた1つの巻き添えで消え、しかも畳まれないので原因that見えない(俊克「なぜか」)。→ **`FC` は行に1つあればいい**(畳むのは行so、コメント1つずつに要求していたのthat間違い)。実データ2ファイルで**新たに指定行になる行=0**so、直したのは壊れた形だけ。往復(戻す→外へ出す)すれば**自分で全部FCに揃う**。★**俊克の「FCの`*`の数で解釈すれば」は正しい。しかも既にそうなっている**= 色/tipの割り当ては**FCの宣言(種類＋出現順)that決めている**。だthatFCが無い行(日記の`*`を含む31,558行のほとんど)も描くso、**文字だけで割れる物差しthat土台に要る**。宣言を「割り方の上書き」にすると**同じ判断が2箇所**=[[feedback_one_source_for_mark_count_action]]の穴に自分から入る。★物差しは1つ= 描く側・🚫・FC行へ戻す側that**全部 meosStarMarks を呼ぶ**(正規表現3本を撤去)。headless: 本体実ロードで往復・色引き・指定行判定を確認。→ [[reference_meos_notation_v4]] [[project_setting_decides_future_only]]
 // - v4.0.188(俊克 8/14 am02:18 実測ログ `[fcSync] fold 96666 画面上端 96660→95296→95296`): ★★**計測thatひと言で犯人を出した**= 96666は**画面の中**(上端96660)なのに、畳んだ瞬間に**1364行上の95296**へ飛んだ。**95296は膜の先頭**。★真因= `editor.fold({selectionLines:[N]})` は「N行の**一番内側の折り畳み範囲**」を畳む。**その塊thatすでに畳まれていると、内側thatもう無いso、次に外側=膜を畳む**。**俊克thatずっと言っていた「膜の始めにジャンプ」は、比喩ではなく文字どおり膜を畳んでいた**。★戻せなかった理由も同じ= 膜that畳まれた後は元の行thatが**隠れている**sorevealで戻れない(ログのC=95296thatその証拠)。**戻す仕掛けthatどれだけ賢くても、畳んだ後では手遅れ**だった=v4.0.176〜186の10版thatが全部「手遅れの後始末」を磨いていた。★直し= **畳む前に「その塊that本当に開いているか」を確かめる**(塊の最後の指定行that見えていれば開いている)。畳まれていれば**何もしない**so、**二度打ちthat膜に化ける事故を原理的に起こさない**。★★教訓= **推測を10版重ねるより、計測1行**。俊克thatログを取ってくれた1回で終わった。
 // - v4.0.187(俊克 8/14 am01:52「見出しの頭での改行とbsは、まったく改善されていないよ。なぜ?」): ★**分からない。soここで推測をやめる**。v4.0.184で割る/結ぶは頭では走らないようにし、v4.0.186で画面外は畳まないようにしたthat、俊克の環境では変わらない=**私の想定した経路thatそもそも犯人ではない**。★今日バグ3で効いた手をもう一度使う= **畳む/開くを実際に打った時だけ1行出す**。`[fcSync] fold/unfold 行 画面上端 A→B→C`(A=打つ前 B=打った直後 C=戻した後)と `[fcFold] ★一括で畳んだ`。**Aと Bthat違えば、その行を畳んだことthat飛ばした**。**何も出ないなら、飛ばしているのはMeOSの畳み処理ではない**(VS Code自身の折り畳み再計算=編集で行thatずれた時に起きる)。★教訓の再確認= **計測で犯人が出ないのは、無罪の証明ではなく網の外に居る証明**(v4.0.112)。so網を「実際に打った瞬間」に張り直した。
@@ -14882,16 +14883,20 @@ function meosPullSpecsBackInline(bodyText, specText) {
       const inner = /^\(/.test(it.inner) ? ('{' + it.inner + '}') : (it.inner ? ('{' + it.inner + '}') : '');
       ins.push({ at: t2.opEnd, text: '<!-- ' + MEOS_MEW_SIG + ' ' + tokTxt + inner + ' -->' });
     }
-    // ③ 行に効く指定= 行末へ
+    // ③ リンクの指定と行に効く指定= 行末へ。**1つの挿し込みにまとめる**=同じ位置に別々に挿すと順番が裏返る
+    //   (リンクは出現順で相手を決めるso、順番が裏返ると別の `[表示]()` に結び付く)。v4.0.190。
     let line = body;
-    if (spec.line) ins.push({ at: body.length, text: '<!-- ' + MEOS_MEW_SIG + ' ' + spec.line + ' -->' });
+    let tail = '';
+    for (const lk of (spec.link || [])) tail += '<!-- ' + MEOS_MEW_SIG + ' [](' + lk.target + ')' + (lk.spec ? (lk.spec.charAt(0) === '(' ? '' : ' ') + lk.spec : '') + ' -->';
+    if (spec.line) tail += '<!-- ' + MEOS_MEW_SIG + ' ' + spec.line + ' -->';
+    if (tail) ins.push({ at: body.length, text: tail });
     ins.sort((a, b) => b.at - a.at);                          // 後ろから挿す(位置がずれない)
     for (const x of ins) line = line.slice(0, x.at) + x.text + line.slice(x.at);
     // ★安全装置= 戻した行をもう一度FC化して、元と一致するか確かめる
     const back = meosMoveSpecsOutOfLine(line);
     if (!back || back.body !== body) return null;             // 本文が1文字でも変わるなら実行しない
     const a = meosParseSpecLine(back.spec), b = meosParseSpecLine(specText);
-    const sig = (x) => x ? JSON.stringify([(x.fmt || []).map(i => [i.kind, i.nth, i.inner]), (x.metex || []).map(i => [String(i.tok).indexOf('↑') >= 0 ? 'sup' : 'sub', i.nth, i.inner, !!i.not]), x.line]) : '';
+    const sig = (x) => x ? JSON.stringify([(x.fmt || []).map(i => [i.kind, i.nth, i.inner]), (x.metex || []).map(i => [String(i.tok).indexOf('↑') >= 0 ? 'sup' : 'sub', i.nth, i.inner, !!i.not]), (x.link || []).map(i => [i.target, i.spec]), x.line]) : ''; // v4.0.190: リンクも一致の対象
     if (sig(a) !== sig(b)) return null;                       // 指定が変わるなら実行しない
     // v4.0.168: `ins` も返す= 戻すのは**純粋な挿し込みだけ**(安全装置が本文の一致を保証している)so、
     //   呼ぶ側は「どこに何文字入ったか」を足すだけで**選択範囲を正しく運べる**([[バグ5]]の直し)。
@@ -20317,19 +20322,26 @@ function meosFcFmtInner(spec, kind, ord) {
 function meosParseSpecLine(text) {
   const payloads = meosSpecLinePayloads(text);
   if (payloads === null) return null;
-  const _metex = [], _fmt = []; let _line = '';
+  const _metex = [], _fmt = [], _link = []; let _line = '';
   for (const _pl of payloads) {
     const one = meosParseSpecPayload(_pl);
     for (const x of one.metex) _metex.push(x);
     for (const x of one.fmt) _fmt.push(x);
+    for (const x of (one.link || [])) _link.push(x); // v4.0.190: リンクの指定
     if (!_line && one.line) _line = one.line;
   }
-  return { metex: _metex, fmt: _fmt, line: _line };
+  return { metex: _metex, fmt: _fmt, link: _link, line: _line };
 }
 // コメント1つ分の中身を読む。★**項目が1つだけで残りが行の指定でない時は、残りをその項目の中身に足す**
 //   = `~~ (赤/)//[]tip=` の `//tip` が、次の項目や行の指定に流れ込まないようにする(1コメント＝1命令の形の肝)。
 function meosParseSpecPayload(payload) {
   let rest = String(payload == null ? '' : payload);
+  // v4.0.190(俊克 8/14 am10:16「リンクもFCコメントに対応しよう。これだけ行末と言うのは、いただけないので」):
+  // ★リンクの指定は **1命令=1コメント** なので、コメントの中身まるごとが1つのリンクになる。
+  //   `[](行先)` で始まっていれば、後ろは全部その行先の付属品(色・下線種・tip)。他の記法と混ざりようがない。
+  // ★**リンクは常に先に判定**(この鉄則を破ると、行先の中の記号を別の記法として拾ってしまう)。
+  const _lk = meosLinkSpecFromComment(rest);
+  if (_lk) return { metex: [], fmt: [], link: [_lk], line: '' };
   const metex = [];
   MEOS_SPEC_ITEM_RE.lastIndex = 0; let it;
   while ((it = MEOS_SPEC_ITEM_RE.exec(rest)) !== null) {
@@ -20358,22 +20370,23 @@ function meosParseSpecPayload(payload) {
     only.inner = (only.inner ? (only.inner + rest) : rest);
     rest = '';
   }
-  return { metex, fmt, line: rest };
+  return { metex, fmt, link: [], line: rest };
 }
 // 本文行 ln の指定行(=真下の行)。無ければ null。lines は meosDocLines の配列(版ごとに1回だけ刻んである)。
 function meosSpecLineFor(lines, ln) {
   if (!MEOS_SPEC_LINE || !lines) return null;
   // v4.0.147: 真下から**続く限り**の指定行をまとめて読む(1行に収めても、複数行に分けても同じ)。
-  let metex = null, fmt = null, line = '', found = false;
+  let metex = null, fmt = null, link = null, line = '', found = false;
   for (let i = ln + 1; i < lines.length; i++) {
     const p = meosParseSpecLine(lines[i]);
     if (!p) break;
     found = true;
     metex = metex ? metex.concat(p.metex) : p.metex.slice();
     fmt = fmt ? fmt.concat(p.fmt || []) : (p.fmt || []).slice();
+    link = link ? link.concat(p.link || []) : (p.link || []).slice(); // v4.0.190: リンクは出現順にそのまま並べる
     if (!line && p.line) line = p.line;   // 行単位の指定は**最初に見つけた1つ**(2つ書いても混ぜない)
   }
-  return found ? { metex: metex || [], fmt: fmt || [], line } : null;
+  return found ? { metex: metex || [], fmt: fmt || [], link: link || [], line } : null;
 }
 // 指定行の上付/下付を、本文行のトークンへ配る(名前＋出現順)。
 // v4.0.145(俊克 8/12 pm00:37「`Mew!FC 🐱↑3` と書くのは汎用的じゃない。`Mew!FC A↑2` のように常に基本形を書くべき。
@@ -20440,8 +20453,14 @@ function meosMoveSpecsOutOfLine(text) {
     // v4.0.146: 外へ出す時は**一般形に直す**。実物(`x↑2`)を名乗ったままだと、本文を書き換えた時に腐る。
     if (isMetex) { items.push(payload.replace(/^[^\s{}<>#]*([↑↓])[^\s{}<>#]*/, (mm, ar) => 'A' + ar + '1')); cuts.push([m.index, m.index + m[0].length]); continue; }
     // v4.0.157: v4.0.156の「`//` を持つものは箱に入れる」措置は**不要になった**=1命令=1コメントso `-->` が終わりを決める。
+    // v4.0.190(俊克「リンクもFCコメントに対応しよう。これだけ行末と言うのは、いただけないので」):
+    // ★リンクの指定 `[](行先)(色)(N)//tip` も外へ出す。**本文に残るのは印 `[表示]()` だけ**so、
+    //   他の記法とまったく同じ形になる= 本文は素のMarkdown・命令は行の外。
+    // ★包み形のリンク(`<!-- Mew! =={ -->…<!-- …}== -->`)は**上の `inLink` で既に除いてある**=
+    //   あれは前後2つで1組so、片方だけ動かすと壊れる。動かすのは**行末一括方式の1つコメント**だけ。
+    const isLink = !!meosLinkSpecFromComment(payload);
     const isLine = !!(meosLineDirective(payload) || meosLooksLikeSpecComment(payload));
-    if (!isMetex && !isLine) continue;                        // ただのHTMLコメントは動かさない
+    if (!isMetex && !isLine && !isLink) continue;              // ただのHTMLコメントは動かさない
     items.push(payload); cuts.push([m.index, m.index + m[0].length]);
   }
   if (!items.length) return null;
@@ -20914,6 +20933,10 @@ function meosRefMdLinks(text, defs) {
 //   1行に複数ある時は**順番で対応**(N番目の `[x]()` ↔ N番目のリンク指定)。
 // 旧形(`[表示](<!-- 行先 -->)` / `[表示](行先)` / 包み形 / 参照形式)は全部 read-both。
 
+// v4.0.190: 「その行のリンク指定を、真下のFC指定行から引く」共通口(描く側・🚫・ジャンプの3つが同じここを呼ぶ)。
+function _fcLinksFor(doc, ln) {
+  try { if (!MEOS_SPEC_LINE || !doc) return null; const p = meosSpecLineFor(meosDocLines(doc), ln); return p ? p.link : null; } catch (_) { return null; }
+}
 // 行末に連続して並ぶコメント群(末尾から遡って拾う)。行単位の指定もリンクの指定もここに混ざる。
 function meosTrailingComments(text) {
   const line = String(text == null ? '' : text);
@@ -20938,12 +20961,18 @@ function meosLinkSpecFromComment(payload) {
 }
 // 本文側の印 `[表示]()`(行先が空)。コードスパン・画像・他形式のリンク・行末コメント群は先に外す(鉄則=リンクは先にマスク)。
 const MEOS_EMPTY_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(\)/g;
-function meosLineEndLinks(text) {
+// v4.0.190(俊克): 指定は**行末のコメント群**からでも**真下のFC指定行**からでも引ける。
+//   `fcLinks` = meosSpecLineFor(...).link(真下の指定行のリンク項目)。
+// ★引く口は2つだが、**数える単位は1つ**= この行の何個目の `[表示]()` か。行末の分を先に、FC行の分を後に並べる
+//   (文書の並び順そのもの)so、混在していても順番が狂わない [[feedback_one_source_for_mark_count_action]]。
+// ★FC行から来た指定には**この行に消すコメントが無い**so `c` は null。使う側は必ず `b.comment` を確かめる。
+function meosLineEndLinks(text, fcLinks) {
   const raw = String(text == null ? '' : text);
   if (raw.indexOf(']()') < 0) return [];
   const tail = meosTrailingComments(raw);
   const specs = [];
   for (const c of tail) { const sp = meosLinkSpecFromComment(c.payload); if (sp) specs.push({ c, sp }); }
+  for (const sp of (fcLinks || [])) specs.push({ c: null, sp }); // v4.0.190: 真下の指定行の分
   if (!specs.length) return [];
   let t = raw;
   if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
@@ -21001,6 +21030,7 @@ function meosWaveCss(colorCss, n) {
 // 下線種は 1..3 の時だけ (N) を書く(0=単線=既定so書かない=生データを短く保つ)。
 async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   if (!editor) return;
+  try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.190: 触る前に1行の形へ(他の4つのボタンと同じ作法)
   const doc = editor.document, sel = editor.selection;
   const empty = sel.isEmpty, body = empty ? 'リンク' : doc.getText(sel);
   // v4.0.30(俊克 改良1「リンク指定をすると太字/斜体が活かされず素の文字になる」): 表示文字を素のMarkdownで包む。
@@ -21023,6 +21053,20 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
     const p = new vscode.Position(ln, before + specPre.length); // 行先の中
     editor.selection = new vscode.Selection(p, p);
   } catch (_) {}
+  // v4.0.190(俊克「リンクもFCコメントに対応しよう」): FC方式なら、この指定も**行の外へ出す**。
+  // ★リンクだけは事情that1つ違う= ボタンを押した直後、書き手は**行先をこれから打つ**。
+  //   so外へ出しっぱなしにせず、**カーソルを行先の中のまま真下の行へ連れて行く**。
+  //   その行はカーソルthat居る間だけ開く(MeOSの約束=カーソルの下はいつも生データ)so、打ち終わって離れれば畳まれる。
+  // ★行先の位置は探さずに**最後の `[](` **で決まる= 今書いたコメントは行末に挿したso、指定行でも必ず最後に来る。
+  try {
+    if (MEOS_SPEC_LINE && meosFormatWritesFC() && await meosPushLineSpecsOutOfLine(editor)) {
+      const d2 = editor.document;
+      if (ln + 1 < d2.lineCount) {
+        const st = d2.lineAt(ln + 1).text, k = st.lastIndexOf('[](');
+        if (k >= 0) { const p2 = new vscode.Position(ln + 1, k + 3); editor.selection = new vscode.Selection(p2, p2); }
+      }
+    }
+  } catch (_) { }
   editor = await meosFocusBack(editor, editor.selection); // v4.0.173
 }
 // v4.0.169: リンクの表示文字から太字/斜体の包みを外す。**4か所に写経してあった**ので1つの口に集約
@@ -21039,8 +21083,11 @@ function meLinkSpanAtCursor(editor) {
   const text = doc.lineAt(line).text || '';
   if (text.indexOf('-->[') < 0 && text.indexOf('](') < 0 && text.indexOf('][') < 0 && text.indexOf(']()') < 0) return null; // v4.0.78/93/94: 素のMarkdownリンク・参照形式・行末一括も解除対象
   // v4.0.94: 行末一括コメント方式=印と**その指定コメントを一緒に**落とす(片方だけ残すと相手のいない指定が残る)。
-  for (const b of meosLineEndLinks(text)) {
+  // v4.0.190: FC方式では🚫の直前に `meosEnsureInlineBeforeEdit` が指定行を行末形式へ戻すso、ここへ来る時は
+  //   必ず行末コメントの形になっている。それでも `b.comment` が無い形(手書き等)では**この行だけでは外せない**so譲る。
+  for (const b of meosLineEndLinks(text, text.indexOf(']()') >= 0 ? _fcLinksFor(doc, line) : null)) {
     if (pos.character < b.start || pos.character > b.end) continue;
+    if (!b.comment) break;
     const body = meosUnwrapEmphasis(b.label);
     const head = text.slice(0, b.start), mid = text.slice(b.end, b.comment.start), tail = text.slice(b.comment.end);
     return { kind: 'melink', range: new vscode.Range(line, 0, line, text.length), body: (head + body + mid + tail).replace(/[ \t]+$/, '') };
@@ -21116,10 +21163,11 @@ function meosApplyMeLinkDecorations(editor) {
         const raw = doc.lineAt(ln).text;
         if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0 && raw.indexOf(']()') < 0) continue;
         // v4.0.94: 行末一括コメント方式 `[表示]()` ＋ 行末の `<!-- Mew! [](行先)(色)(N)//tip -->`。
-        for (const b of meosLineEndLinks(raw)) {
+        // v4.0.190: 指定が真下のFC行に在っても描く。FC行を読みに行くのは**印 `[表示]()` が在る行だけ**(無駄打ちしない)。
+        for (const b of meosLineEndLinks(raw, raw.indexOf(']()') >= 0 ? _fcLinksFor(doc, ln) : null)) {
           hideRanges.push(new vscode.Range(ln, b.start, ln, b.textStart)); // 開き [
           hideRanges.push(new vscode.Range(ln, b.textEnd, ln, b.end));     // ]() を隠す
-          hideRanges.push(new vscode.Range(ln, b.comment.start, ln, b.comment.end)); // 行末の指定コメント
+          if (b.comment) hideRanges.push(new vscode.Range(ln, b.comment.start, ln, b.comment.end)); // 行末の指定コメント(FC行から来た分は隠す相手が居ない)
           if (b.textEnd <= b.textStart) continue;
           const sp0 = meosMeLinkSpec(b.spec);
           let fk0 = sp0.fg; if (sp0.bg && !fk0 && DARK_BG_KEYS.has(sp0.bg)) fk0 = 'white';
@@ -21701,7 +21749,7 @@ function activate(context) {
           for (const ln of _lines) {
             {
               const lt = document.lineAt(ln).text;
-              for (const b of meosLineEndLinks(lt)) {
+              for (const b of meosLineEndLinks(lt, _fcLinksFor(document, ln))) { // v4.0.190: 行先がFC行に在っても飛べる
                 const target = b.target; if (!target || !b.label) continue;
                 const dl4 = new vscode.DocumentLink(new vscode.Range(new vscode.Position(ln, b.textStart), new vscode.Position(ln, b.textEnd)));
                 if (/^https?:\/\//i.test(target)) { dl4.target = vscode.Uri.parse(target); dl4.tooltip = 'Open: ' + target; }
