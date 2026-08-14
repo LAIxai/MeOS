@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.214(俊克 8/15 am02:19 ①「文字を選択する時に、空白を入れてしまうことが何度かあったんだよ」②「コピーしようとして、見出しなどを選択している途中で、FCコメントthat折り畳まれてしまうので、選択しにくいんだよ。そう言うケースでは、折り畳まないようにしてよ。これは頻繁にする操作なので、必須なんだよ」): ★①**選択の端の空白は包まない**(`meosTrimSelection`)= 末尾に空白thatが混じったまま包むと `**作業 **` になり、**閉じの印の前that空白so記法that成立しない**(CommonMarkの規則・MeOSも同じに読むso描かれない)。俊克の表で `[**作業 **]()` thatが描かれなかったのthatこれ(整形のせいではなかった)。書き込み口4つ全部に通した。★②**選択している間は畳まない**= 畳むと行that消えて、掴んでいる範囲thatが動く=**選択そのものを壊す**。MeOSの約束「カーソルの下は生データ」の自然な延長= **選択も「今そこを見ている」の一種**。離した瞬間(選択that空に戻った時)に、また畳まれる。コピーは頻繁な操作so、ここthat壊れていると常に邪魔になる。📌残= 表の整形thatが「生の桁」で揃えるのに画面は「隠した後の桁」so凸凹に見える件は明日(俊克と合意)。
 // - v4.0.213(俊克 8/15 am01:29 バグ1「2番目に設定した最後のセルを🚫ボタンで解除してから、白/青に変更したが、最初の白/黄のFCコメントが残ったままだよ。惜しいね」): ★★**🚫だけ古い道のままだった**= v4.0.210で書く側を「1回の編集で本文と指定行の両方」に変えたthat、消す側は**その行しか見ない**ままso、印だけ消えて**相手の指定that取り残される**。次に入れた指定thatその残骸と対になり、色thatずれる。★直し= **書く時と同じ数え方**で「この印は表全体で何個目か」を出し、**指定行のその1つを一緒に消す**(`meosDeleteSpecForMark`)。最後の1つなら**指定行ごと**消す(空の行を残さない)。★書く口と消す口thatが同じ物差しを使う=[[feedback_one_source_for_mark_count_action]]。★通しで確認= ①リンク(太字ラベル) ②`==`黄 ③`***`緑 → **④🚫で②を解除(黄thatが消える)** → ⑤入れ直し(青)= `白/青, 白/青, 白/緑`。表でない行は従来どおり(戻してから触る道that効く)。
 // - v4.0.212(俊克 8/15 am01:18「3回ハイライトを設定したよ。やはり、結果は間違っているけどね」→ **実測ログthat真因を出した**): ★★`link セル=(1行,1列) **通し番号=2** … 本文="| [**作業**]() | 状態 |"` = **リンクの表示文字that `**作業**`**(Boldにチェックthat入っていた)so、その `**` も「印」として数えられ、リンク自身の番号that1でなく**2**になっていた。3回目では `前の行=[2,0,0,0]` で末尾へ押し出された。★★真因を一言で= **指定を持たない印を数えていた**。リンクの表示文字の装飾(v4.0.30= MeOS外でも本物の太字リンクにするため`[**text**]()` と書く)は、**指定thatそもそも存在しない**。数える相手ではなかった。★直し= **ラベルの中を伏せてから数える**(`meosMaskLinkLabels`・長さは保つso位置thatずれない)。書く側(`meosRowMarksInOrder`/`meosMarkCounts`)と**描く側(太字/斜体の番号)を同じ物差しに揃えた**=ラベルの中の装飾は**飾りは付けるthat番号は消費しない**。片方だけ直すと色thatずれる。★★**測り方を変えたthatが効いた**= 「ログを貼ってください」をやめてファイルに書くようにした瞬間、**1行で犯人that出た**。俊克はボタンを3回押しただけ。★今日ずっと私thatが外していたのは、**再現の材料を俊克に出させようとしていた**から。取りに行けばよかった。
 // - v4.0.211(俊克 8/15 am00:47「今回も3回目で、撃沈したね。本当に、何をシミュレーションしているのかな?」): ★★**俊克thatが正しい。私の試験装置that嘘をついていた**= 偽エディタの `getText(範囲)` that**範囲を無視して全文を返して**いた。so2回目3回目は**壊れた入力**で走っていて、「通った」と言っていたのは通っていなかった。直したら、**本物のボタン関数(insertMeLinkTemplate / insertBoldItalic)を3回押す通し**で正しい結果(青,紫,黄)thatが出る。★それでも俊克の画面では違うso、**実機との差thatまだ残っている**。★★**測り方を変える**= 「出力パネルを開いてログを貼ってください」をやめ、**ファイルに1行追記**する(`refresh-prof.log`)。**私thatそのファイルを直接読める**so、俊克はボタンを押すだけでいい。★出す中身= 種類・**セル(行,列)**・通し番号・挿す位置・表の範囲・**前の行ごとの印の数**・本文。これで「どこで数えを間違えたか」that1行で出る。
@@ -14730,7 +14731,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   if (!editor) return;
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
   const doc = editor.document;
-  const sel = editor.selection;
+  const sel = meosTrimSelection(doc, editor.selection);   // v4.0.214: 端の空白は包まない
   const selText = sel.isEmpty ? '' : doc.getText(sel);
   // v0.9.877: ファイル形式を認識して出力を変える。C系コメント言語なら装飾を /* … */ で包む。
   const wrap = MEOS_BLOCK_COMMENT_LANGS.has(doc.languageId);
@@ -15169,6 +15170,23 @@ function meosSpecLineGridOrder(lines, blk, specText) {
 // ★★**中間状態を作らなければ、その3つとも存在しない**= 1回の編集で「本文に印」と「指定行に指定」を同時に書く。
 // ★位置は**印の場所**から決める(コメントの居場所という代用品を使わない)= 俊克の「縦線を数える」と同じ考え方。
 // sel を markText に置き換え、その印に対応する指定を**指定行の正しい位置へ同時に挿す**。1回の編集で終わる。
+// v4.0.214(俊克 8/15 am02:19「文字を選択する時に、空白を入れてしまうことが何度かあったんだよ」):
+// ★末尾に空白thatが混じったまま包むと `**作業 **` になり、**閉じの印の前thatが空白so記法that成立しない**
+//   (CommonMarkの規則。MeOSも同じに読むso描かれない)。→ **選択の端の空白は包まない**。
+// 端の空白を外した選択を返す。中身that空白だけなら元のまま返す(何もしない)。
+function meosTrimSelection(doc, sel) {
+  try {
+    if (!doc || !sel || sel.isEmpty) return sel;
+    if (sel.start.line !== sel.end.line) return sel;          // 複数行は触らない
+    const line = doc.lineAt(sel.start.line).text;
+    let a = sel.start.character, b = sel.end.character;
+    while (a < b && /\s/.test(line.charAt(a))) a++;
+    while (b > a && /\s/.test(line.charAt(b - 1))) b--;
+    if (a >= b) return sel;                                   // 空白だけの選択=触らない
+    if (a === sel.start.character && b === sel.end.character) return sel;
+    return new vscode.Selection(new vscode.Position(sel.start.line, a), new vscode.Position(sel.start.line, b));
+  } catch (_) { return sel; }
+}
 //   kind = 印の種類('==' '~~' '***' '**' '*' '_' 'link' 'sup' 'sub') / payload = 指定の中身(署名なし)
 async function meosWriteMarkAndSpec(editor, sel, markText, kind, payload) {
   const doc = editor.document, ln = sel.start.line;
@@ -21523,6 +21541,12 @@ async function meosSyncFcFoldForCursor(editor) {
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
     if (!meosIsRealFileDoc(editor.document)) return; // v4.0.151: 出力チャネル等では走らせない
+    // ★★v4.0.214(俊克 8/15 am02:19「コピーしようとして、見出しなどを選択している途中で、FCコメントthat折り畳まれて
+    //   しまうので、選択しにくいんだよ。そう言うケースでは、折り畳まないようにしてよ。これは頻繁にする操作なので、必須」):
+    //   ★**選択している間は畳まない**。畳むと行thatが消えて、掴んでいる範囲thatが動く=選択そのものを壊す。
+    //   MeOSの約束は「カーソルの下は生データ」= **選択も「今そこを見ている」の一種**so、同じ扱いにする。
+    //   離した瞬間(選択that空に戻った時)に、また畳まれる。
+    try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
     const blocks = meosFcBlocks(editor.document);
     if (!blocks.length) return;
     const raw = (typeof meosRawMode !== 'undefined' && meosRawMode);
@@ -21643,7 +21667,7 @@ async function insertMetexScript(editor, sub, fg, bg) {
   // v4.0.171: Format行の**4つのボタン全部**が同じ約束に従う(俊克が見出しで気づいた穴は、上付/下付にも開いていた)。
   //   `Format ▼` のtipは前から「the four buttons」と書いてあった=**UIの約束にコードが追いついていなかった**。
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // 触る前に1行の形へ
-  const doc = editor.document, sel = editor.selection;
+  const doc = editor.document, sel = meosTrimSelection(editor.document, editor.selection); // v4.0.214: 端の空白は包まない
   const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = sub ? 50 : 150;
   const pct = Math.max(30, Math.min(200, Number(cfg.get(sub ? 'metexSubScale' : 'metexSuperScale', dflt)) || dflt));
   const arrow = sub ? '↓' : '↑', exp = sub ? '3' : '2';
@@ -21973,7 +21997,7 @@ function meosWaveCss(colorCss, n) {
 async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   if (!editor) return;
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.190: 触る前に1行の形へ(他の4つのボタンと同じ作法)
-  const doc = editor.document, sel = editor.selection;
+  const doc = editor.document, sel = meosTrimSelection(editor.document, editor.selection); // v4.0.214: 端の空白は包まない
   const empty = sel.isEmpty, body = empty ? 'リンク' : doc.getText(sel);
   // v4.0.30(俊克 改良1「リンク指定をすると太字/斜体が活かされず素の文字になる」): 表示文字を素のMarkdownで包む。
   // 正式膜(**{ }**)でなく素の `**`/`_` にするのは、MeOS外に出た時も [**text**](url) が本物の太字リンクとして生きるから(この記法の趣旨)。
@@ -22186,7 +22210,7 @@ function meosMergeSpans(spans) {
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
   if (!editor) return;
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
-  const doc = editor.document, sel = editor.selection;
+  const doc = editor.document, sel = meosTrimSelection(editor.document, editor.selection); // v4.0.214: 端の空白は包まない
   const empty = sel.isEmpty, body = empty ? '本文' : doc.getText(sel);
   const color = (fg || bg) ? ' (' + (fg || '') + '/' + (bg || '') + ')//[]tip=' : ''; // 色指定があれば正式spec+tip
   let text, off;
