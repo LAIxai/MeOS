@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.202(俊克 8/14 pm05:55 バグ1「1つ目のハイライトは問題ない。1行目の2つ目のセルの『状態』を選択して、まったく同じハイライトを入れると、前に見たようなおかしな状態になった」): ★★真因= **表の戻し口thatが選択を置き去りにしていた**。ボタンを押すと、まず指定行を各セルへ**戻す**(行thatが伸びる)。行を丸ごと置換するとVS Codeは選択の中身を追えないso、選択は**元の桁のまま**残り、挿さったコメントのぶん右にずれた場所=**コメントの中**を包む。俊克の `<!-- Mew! ** *<!-- Mew! * …` thatその跡。★★**v4.0.168 バグ5とまったく同じ穴**= あの時1行の口(`meosPullLineSpecsBackInline`)には仕掛けを入れたthat、v4.0.193で**表の口を新しく作った時に、同じ仕掛けを入れ忘れた**。**片方だけ作る癖**の再発(今日これで通算7回目)。★直し= 配り直しthat「どこに何文字挿したか」も持ち帰り(`ins`)、**1行の口と同じ物差し**(`meosShiftOffsetByInserts`)でその行の選択を動かす。★俊克の手順をそのまま再現するテストを追加(新規 t_tblsel)= **動かさないと『- 』(コメントの中)を掴み、動かすと『状態』を掴む**ことを実測。headless 7/7＋22/22＋13/13＋20/20 PASS。★★教訓= **同じ仕事の口を2つ作ったら、片方に入れた仕掛けは必ずもう片方にも要る**。新しい口を作る時は、古い口に何that入っているかを先に数える。
 // - v4.0.201(俊克 8/14 pm05:22「前後3ページ分の前処理をするようにしよう。ファイル全体をスキャンするのは無駄でしょ。この膜とか、膜の外なら、膜と膜の間だけとか。そうすれば、スクロールしても、何食わぬ顔で、整形されている」): ★★**俊克の言うとおり**= 装飾の走査は**±2行**しか先読みしていなかったso、スクロールすると「素の字that一瞬見えてから整う」。→ **前後3ページ**を先に整える。**3ページ＝今見えている行数×3**(窓の高さやズームで1ページの行数that変わるso数字で決め打ちしない・60〜600行に収める)。★**変えたのは1か所だけ**= v4.0.199で走査範囲の入口を `meosScanSpans` に集めておいたおかげ。9か所を触らずに済んだ。★実測= 45行の窓で **0.16ms/描き直し**(旧±2行は0.01ms)。全画面200行でも0.34ms。**広げても効かない**。★★**俊克の「膜で区切る」案は採らなかった。理由は実測**= 日記の膜の大きさは**中央値5行**(94%that300行未満)so、いちばん内側の膜で区切ると**画面より狭くなって描き漏らす**。★膜は範囲を**広げる**役には立つthat**狭める**役には立たない。so行数で決めた。なお「ファイル全体をスキャンしない」は元から満たしている(装飾は常に可視範囲＋マージンだけ)。
 // - v4.0.200(俊克 8/14 pm05:10「これで完成かな? もう残る懸念はないよね?」→ **懸念thatが残っていた**): ★v4.0.199で直したのは `const vrs = …` の9か所thatが、**同じ形の穴thatもう2か所在った**= 🐱の診断(±120行)と🐱ボタンthat直す範囲。★★特に診断の方は**重なりを潰さずに行ループを回していた**so、折り畳みthat増えると**🐱の数字thatが水増しされる**(v4.0.73「ガターは1個なのに数字は3つ増える」の再来)。**実測= 折り畳み20個で、同じ行を最大20回走査していた**=数字thatが最大20倍・波線も20重。FC一択で折り畳みthat増えた今、必ず当たる所だった。★直し= 併合を `meosMergeSpans` に切り出し、**数える所と直す所thatが同じ範囲**を見るようにした=[[feedback_one_source_for_mark_count_action]]。★これで走査の重なりを潰す口は1つ。★★教訓= **「同じ形の穴」は1か所直したら、必ず全部数える**。9か所直して満足した所で2か所残っていた。
 // - v4.0.199(俊克 8/14 pm04:48 バグ1「tipメニューが3つ重複している。特に、リンクの時に、🔗マークのは何を意味するのか?」): ★★真因= **同じ行を2度3度走査していた**。VS Codeの `visibleRanges` は**折り畳みthat有ると複数に割れる**。MeOSは各範囲を ±2行に広げて走査していたので、**隣り合う範囲の広げた分that重なり**、境目の行thatが2回3回処理され、装飾とホバーthatその回数だけ積まれていた。**FCを常時ONにして折り畳みthat増えた瞬間に表面化した**(v4.0.197まではFC既定オフso折り畳みthat少なく、当たる確率thatが低かった)。★直し= **走査する行を配る口を1つにして、そこで重なりを潰す**(`meosScanSpans`)。同じ形を**9か所thatが書いていた**のを全部ここから引く=[[feedback_one_source_for_mark_count_action]]。隣接する範囲も1つにまとめるso、FCthatだらけの行でも重複ゼロ。**折り畳み無し/隣接3範囲/間が空いた2範囲/1行ずつ割れた/順不同**の5通りで重複0を確認。★俊克の質問への答え= **🔗 は「この印の行先」**。tipを書いていない時だけ、代わりに行先を見せている(v4.0.94の仕様)。tipを書けば `💬 説明` に変わる。`//[]tip=` のように**中身が空だと `💬 ⬜`(チェックボックスだけ)that出る**thatが、これは仕様どおり。→ [[project_meos_freeze_pattern]]
@@ -14976,6 +14977,15 @@ async function meosPullTableSpecsBackInline(editor, blk, lines) {
   if (!out) return false;
   const changed = out.filter(o => o.line !== lines[o.ln]);
   if (!changed.length) return false;
+  // v4.0.202(俊克 8/14 pm05:55 バグ1「1行目の2つ目のセルの『状態』を選択して、まったく同じハイライトを入れると、
+  //   前に見たようなおかしな状態になった」): ★**選択を置き去りにしていた**。
+  //   行を丸ごと置換するとVS Codeは選択の中身を追えないので、選択は**元の桁のまま**残る。
+  //   その行にコメントthat挿さっているぶん右にずれた場所=**コメントの中**を包んでしまう。
+  //   → 1行の口(meosPullLineSpecsBackInline)と**同じ物差し**で、挿した分だけ選択を動かす。
+  const _keep = [];
+  try { for (const sl of editor.selections) _keep.push({ sl: sl.start.line, sc: sl.start.character, el: sl.end.line, ec: sl.end.character, rev: sl.active.isBefore(sl.anchor) }); } catch (_) { }
+  const insByLine = new Map();
+  for (const o of changed) insByLine.set(o.ln, o.ins || []);
   await editor.edit(eb => {
     for (const o of changed) eb.replace(doc.lineAt(o.ln).range, o.line);
     // 配り終えたら指定行そのものを消す(行ごと畳んで消す=表の下に空行thatが残らない)
@@ -14983,6 +14993,16 @@ async function meosPullTableSpecsBackInline(editor, blk, lines) {
     const z = new vscode.Position(specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length);
     eb.delete(new vscode.Range(a, z));
   }, { undoStopBefore: true, undoStopAfter: true });
+  try {
+    if (_keep.length) editor.selections = _keep.map(k => {
+      const empty = (k.sl === k.el && k.sc === k.ec);
+      const insA = insByLine.get(k.sl) || [], insB = insByLine.get(k.el) || [];
+      const a2 = new vscode.Position(k.sl, meosShiftOffsetByInserts(k.sc, insA, true));
+      let b2 = new vscode.Position(k.el, meosShiftOffsetByInserts(k.ec, insB, empty));
+      if (b2.line === a2.line && b2.character < a2.character) b2 = a2;   // 逆転させない(安全弁)
+      return k.rev ? new vscode.Selection(b2, a2) : new vscode.Selection(a2, b2);
+    });
+  } catch (_) { }
   return true;
 }
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
@@ -15036,12 +15056,14 @@ function meosSplitTableSpecToRows(lines, blk, specLns) {
       for (const it of items) { if (n <= 0) break; if (it.used || it.kind !== k) continue; it.used = true; take.push(it); n--; }
       if (n > 0) return null;                       // 相手thatが足りない=配らない
     }
-    if (!take.length) { out.push({ ln, line: lines[ln] }); continue; }
+    if (!take.length) { out.push({ ln, line: lines[ln], ins: [] }); continue; }
     take.sort((a, b) => items.indexOf(a) - items.indexOf(b));   // 文書順を保つ
     const spec = take.map(x => '<!-- ' + MEOS_MEW_SIG + 'FC ' + x.p + ' -->').join('');
     const r = meosPullSpecsBackInline(lines[ln], spec);
     if (!r) return null;                            // 戻すと壊れる=何もしない(安全弁は既存のものthatそのまま効く)
-    out.push({ ln, line: r.line });
+    // v4.0.202: **どこに何文字挿したか**も持ち帰る= 行thatが伸びるので、その行に居る選択を同じだけ動かさないと
+    //   ボタンthat「コメントの中」を包んでしまう([[v4.0.168]] バグ5と同じ穴・1行の口には入れてあったthat表の口に無かった)。
+    out.push({ ln, line: r.line, ins: r.ins || [] });
   }
   if (items.some(x => !x.used)) return null;        // 余りthat出た=配らない
   return out;
