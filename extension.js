@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.207(俊克 8/14 pm08:12「FCコメントの並びにどうやって挿入しているの? 全部上書きするの? それともキーボードのように挿入できるの?」): ★★**俊克の問いthatそのまま指摘だった= 全部上書きしていた**。「読んで・配列にして・挟んで・また文字列に戻して・行ごと置換」so、**挿入と言いながら、毎回すべてのコメントを書き直していた**。俊克thatが pm07:46 に「これは挿入なんだよ」と言ったのに、私は挿す**位置**の計算だけ直して、**書き方は上書きのまま**にしていた。★直し= **本当に挿すだけにする**= 指定行の中の**文字位置**を1つ出して(`meosSpecLineInsertOffset`)、そこへ `insert` する。**既存のコメントには1文字も触らない**so、動きようthatが無い。複数挿す時は**後ろから**(前の位置thatずれない)。★指定行that複数行に分かれている時だけ、1本にまとめ直す道を残した(そこは元から書き直す仕事)。★★これで俊克の言う「キーボードのように挿入」になった。上書きしている限り、位置の計算thatが合っていても**別の理由で並びthat変わりうる**= 疑いの余地を消した。
 // - v4.0.206(俊克 8/14 pm07:55「何回間違えば気が済むんだよ。3個入れることすらできないのか? 最終的に、青、紫、黄 という順番にコメントが並ぶはずだよね。なのに、なぜ3個目に入れたのが、最後に入るんだよ」): ★**謝る前に、測る**。俊克thatが押した3回目をそのまま再現したところ、v4.0.205のコードは**正しい答え(青,紫,黄)を出す**。配った vsix にもそのコードthatが入っていることを、中身を取り出して確認した。so**実機で私の想定と違う何かthat起きている**= 静止した読みでは、もう出ない所に居る。★★今朝の教訓をそのまま使う= **計測で犯人that出ないのは無罪の証明ではなく、網の外に居る証明**。→ ボタンを押した瞬間だけ1行出す `[fcIns] 種類 通し番号=G 前の行=B この行=O 既存=N 表=S..E 行=L at=P body=…`。**Gthat期待と違えば、B と O のどちらthat狂っているかthatその場で分かる**。何も出なければ、そもそもこの道を通っていない(=別の押し出し口を通っている)。★推測で版を重ねない。
 // - v4.0.205(俊克 8/14 pm07:46「2番目に入れたのは白/黄でしょ。それが一番後ろだよね。なのに、スクショ4枚目では、それが2番目に突然移動してしまっている。単純に新しいコメントを1つ挿入するだけで、最後にあったのがこんな移動する筈がないでしょ。**並べ替えって言っていること自体おかしいよ。これは挿入なんだよ**」): ★★**俊克thatが正しい。そして私はスクショを読み違えていた**= あの並びは「移動した跡」ではなく**入力順そのまま**で、v4.0.204の並べ替えthatそもそも効いていなかった。私はそれを「並べ替えthat要る」と読み、繕いを足していた。★★**繕いthat要るのは、挿す位置that間違っている証拠**= v4.0.203は「**その種類の**N個目」に挿していたので、種類をまたぐと入力順になる。正しい位置は「**表全体で何個目の印か**」(左上から右下へ数えた通し番号)=俊克の `char(2,4)` の考え方そのもの。**そこへ挿せば他の指定は1つも動かない=純粋な挿入**。★so v4.0.204で足した並べ替え(`meosOrderSpecLineByTable`)と、種類ごとに数える口(`meosMarkOrdAt`)は**丸ごと削除**。★残したのは `meosRowMarksInOrder`(1行の印を文書順に並べる)だけ= 通し番号はこれを数えるだけで出る。★テスト(新規 t_tblins 9/9)= **俊克thatが実際に押した順**(リンク→***→リンク→*)をそのまま再現し、途中で**白/黄that最後のまま動かない**ことと、最終that走査順(link,link,*,***)になることを確認。読む側の色も4つとも一致。★★教訓= **後から直す仕掛けを足したくなったら、その手前の判断thatが間違っている**。今日2回目(v4.0.176〜186の「戻し方を磨いていた」と同じ形)。
 // - v4.0.204(俊克 8/14 pm06:57 バグ1「FCコメントの順番が間違っているね。入れた順にコメントが並んでいる。それでも、正しい指定が表示されているのが不思議だ。あくまでも、表の左上から右下に向かってスキャンした順番のはずだよね」): ★★**俊克thatが正しい。しかも「不思議だ」の答えthatそのまま真因**= v4.0.203は「**その種類の**N個目」になる位置に挿していたso、**種類ごとの順番は正しい**(=色thatが合う)thatが、**種類をまたぐと入力順**になっていた。読む側は種類ごとに数えるso**気づけない**=見た目では見つからないズレだった。★指定行は**表を左上から右下へ読んだ順**でなければならない= 目で照らし合わせられることthatこの記法の値打ち。★直し= 挿した後に**並べ直す**(`meosOrderSpecLineByTable`)。表の印を文書順に歩き、その種類の待ち行列から1つずつ取る。相手の無い指定は捨てずに後ろへ。**印を文書順に並べる口**(`meosRowMarksInOrder`)は語の記法/上付下付/リンクを1つにまとめて返す。★★**検証は「見え方that変わらないこと」で見た**= 並べ替えの前後で、各印that引く色を全部読み比べて一致を確認。並べ替えは**表示の順だけ**を直し、対応は1つも動かさない。★すでに走査順なら1文字も変えない。headless 7/7(新規 t_tblord)＋9/9＋15/15＋22/22＋13/13 PASS。
@@ -15035,6 +15036,21 @@ function meosRowMarksInOrder(text) {
 //   v4.0.204ではそれを**後から並べ替えて**繕っていた。**並べ替えthat要るのは、挿す位置that間違っている証拠**だった。
 // ★正しい位置は「**表全体で何個目の印か**」= 俊克の `char(2,4)` の考え方そのもの。左上から右下へ数えた番号。
 //   そこへ挿せば、他の指定は**1つも動かない**(純粋な挿入)。so並べ替えの口は消した。
+// v4.0.207(俊克 8/14 pm08:12「FCコメントの並びにどうやって挿入しているの? 全部上書きするの?
+//   それともキーボードのように挿入できるの?」): ★★**全部上書きしていた**。
+//   「読んで・配列にして・挟んで・また文字列に戻して・行ごと置換」so、**挿入と言いながら毎回全部書き直していた**。
+//   → **本当に挿すだけにする**= 指定行の中の**文字位置**を1つ出して、そこへ `insert` する。
+//   既存のコメントには1文字も触らないso、**動きようthatが無い**(俊克「これは挿入なんだよ」)。
+// 指定行の中で、idx番目(0起点)のコメントthat始まる文字位置を返す。idxthat数を超えていれば行末。
+function meosSpecLineInsertOffset(specText, idx) {
+  const t = String(specText == null ? '' : specText);
+  const starts = [];
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) starts.push(m.index);
+  const at = Math.max(0, Math.min(starts.length, idx));
+  return (at < starts.length) ? starts[at] : t.length;
+}
+function meosSpecLineBox(payload) { return '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->'; }
 function meosInsertIntoSpecLine(specText, payload, idx) {
   const raw = [];
   MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
@@ -15117,6 +15133,7 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
   let spec = specLns.map(i => lines[i]).join('');
   // v4.0.205: 挿す位置=「**表全体で何個目の印か**」(左上から右下へ数えた通し番号)。
   //   ★その位置に挿せば、他の指定は1つも動かない=**純粋な挿入**。並べ替えは要らない。
+  const _ins = [];                                   // v4.0.207: {off, box} を集めて、後ろから挿す
   for (const it of split.items) {
     let before = 0;
     for (let i = blk.start; i < ln; i++) before += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
@@ -15125,14 +15142,19 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
     const g = before + own;
     // v4.0.206: **推測をやめて計測する**(今朝と同じ流儀)。ボタンを押した時だけ1行出す。
     //   `[fcIns] 種類 通し番号=G 前の行=B この行=O 既存=N 表=S..E 行=L`
-    try { meosDbg('[fcIns] ' + it.kind + ' 通し番号=' + g + ' 前の行=' + before + ' この行=' + own + ' 既存=' + ((spec.match(/<!--/g) || []).length) + ' 表=' + blk.start + '..' + blk.end + ' 行=' + ln + ' at=' + it.at + ' body=' + JSON.stringify(split.body.slice(0, 60))); } catch (_) { }
-    spec = meosInsertIntoSpecLine(spec, it.payload, g - 1);        // 0起点so通し番号-1
+    try { meosDbg('[fcIns] ' + it.kind + ' 通し番号=' + g + ' 前の行=' + before + ' この行=' + own + ' 既存=' + ((spec.match(/<!--/g) || []).length) + ' 表=' + blk.start + '..' + blk.end + ' 行=' + ln + ' 挿す位置=' + meosSpecLineInsertOffset(spec, g - 1) + ' at=' + it.at + ' body=' + JSON.stringify(split.body.slice(0, 60))); } catch (_) { }
+    _ins.push({ off: meosSpecLineInsertOffset(spec, g - 1), box: meosSpecLineBox(it.payload) });
+    spec = meosInsertIntoSpecLine(spec, it.payload, g - 1);        // 次の位置計算のために手元でも進めておく
   }
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, split.body);                   // 行から新しい指定を抜く
-    if (specLns.length) {
+    if (specLns.length === 1) {
+      // v4.0.207: **行を書き直さない**。決めた文字位置へ挿すだけ(後ろから挿せば前の位置thatずれない)。
+      for (const x of _ins.slice().sort((a, b) => b.off - a.off)) eb.insert(new vscode.Position(specLns[0], x.off), x.box);
+    } else if (specLns.length) {
+      // 指定行that複数行に分かれている時だけ、1本にまとめ直す(元からの畳み込み。ここは書き直す)。
       eb.replace(doc.lineAt(specLns[0]).range, spec);
       for (let k = 1; k < specLns.length; k++) eb.delete(new vscode.Range(new vscode.Position(specLns[k - 1], doc.lineAt(specLns[k - 1]).text.length), new vscode.Position(specLns[k], doc.lineAt(specLns[k]).text.length)));
     } else {
