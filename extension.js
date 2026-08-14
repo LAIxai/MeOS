@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.213(俊克 8/15 am01:29 バグ1「2番目に設定した最後のセルを🚫ボタンで解除してから、白/青に変更したが、最初の白/黄のFCコメントが残ったままだよ。惜しいね」): ★★**🚫だけ古い道のままだった**= v4.0.210で書く側を「1回の編集で本文と指定行の両方」に変えたthat、消す側は**その行しか見ない**ままso、印だけ消えて**相手の指定that取り残される**。次に入れた指定thatその残骸と対になり、色thatずれる。★直し= **書く時と同じ数え方**で「この印は表全体で何個目か」を出し、**指定行のその1つを一緒に消す**(`meosDeleteSpecForMark`)。最後の1つなら**指定行ごと**消す(空の行を残さない)。★書く口と消す口thatが同じ物差しを使う=[[feedback_one_source_for_mark_count_action]]。★通しで確認= ①リンク(太字ラベル) ②`==`黄 ③`***`緑 → **④🚫で②を解除(黄thatが消える)** → ⑤入れ直し(青)= `白/青, 白/青, 白/緑`。表でない行は従来どおり(戻してから触る道that効く)。
 // - v4.0.212(俊克 8/15 am01:18「3回ハイライトを設定したよ。やはり、結果は間違っているけどね」→ **実測ログthat真因を出した**): ★★`link セル=(1行,1列) **通し番号=2** … 本文="| [**作業**]() | 状態 |"` = **リンクの表示文字that `**作業**`**(Boldにチェックthat入っていた)so、その `**` も「印」として数えられ、リンク自身の番号that1でなく**2**になっていた。3回目では `前の行=[2,0,0,0]` で末尾へ押し出された。★★真因を一言で= **指定を持たない印を数えていた**。リンクの表示文字の装飾(v4.0.30= MeOS外でも本物の太字リンクにするため`[**text**]()` と書く)は、**指定thatそもそも存在しない**。数える相手ではなかった。★直し= **ラベルの中を伏せてから数える**(`meosMaskLinkLabels`・長さは保つso位置thatずれない)。書く側(`meosRowMarksInOrder`/`meosMarkCounts`)と**描く側(太字/斜体の番号)を同じ物差しに揃えた**=ラベルの中の装飾は**飾りは付けるthat番号は消費しない**。片方だけ直すと色thatずれる。★★**測り方を変えたthatが効いた**= 「ログを貼ってください」をやめてファイルに書くようにした瞬間、**1行で犯人that出た**。俊克はボタンを3回押しただけ。★今日ずっと私thatが外していたのは、**再現の材料を俊克に出させようとしていた**から。取りに行けばよかった。
 // - v4.0.211(俊克 8/15 am00:47「今回も3回目で、撃沈したね。本当に、何をシミュレーションしているのかな?」): ★★**俊克thatが正しい。私の試験装置that嘘をついていた**= 偽エディタの `getText(範囲)` that**範囲を無視して全文を返して**いた。so2回目3回目は**壊れた入力**で走っていて、「通った」と言っていたのは通っていなかった。直したら、**本物のボタン関数(insertMeLinkTemplate / insertBoldItalic)を3回押す通し**で正しい結果(青,紫,黄)thatが出る。★それでも俊克の画面では違うso、**実機との差thatまだ残っている**。★★**測り方を変える**= 「出力パネルを開いてログを貼ってください」をやめ、**ファイルに1行追記**する(`refresh-prof.log`)。**私thatそのファイルを直接読める**so、俊克はボタンを押すだけでいい。★出す中身= 種類・**セル(行,列)**・通し番号・挿す位置・表の範囲・**前の行ごとの印の数**・本文。これで「どこで数えを間違えたか」that1行で出る。
 // - v4.0.210(俊克 8/15 am00:29「それは、FC方式にするかどうかがカスタマイズできた頃の話しのままの実装になっているだけでしょ? 今はFC固定なんだから、最初から2行に分けて表示すべきだよね。テーブルの場合は、それがテーブルの下になると言うだけだよね。わざわざ行末に出力してから、表示位置を変えるなんて、意味ないよ」＋am00:38「今でしょ」): ★★**俊克thatが正しい。今日の失敗は全部「中間状態」から出ていた**= ボタンthat一度**行末に書いてから**、後で「行の外へ出す」引っ越しをしていた。FCthat設定だった頃の作りthatそのまま残っていた。その一瞬の形の上で**位置を数える/選択を運ぶ/戻す**をやっていたので、そこを間違え続けた(今日 v4.0.202/203/204/205/207/208)。★★**中間状態を作らなければ、その3つとも存在しない**= 1回の編集で「本文に印」と「指定行に指定」を**同時に**書く(`meosWriteMarkAndSpec`)。引っ越し(`meosPushLineSpecsOutOfLine`)は書く側から呼ばれなくなった。★位置は**印の場所**から決める= 選択の位置thatそのまま印の位置so、コメントの居場所という代用品を使わない。俊克の「縦線を数える」と同じ考え方(ログにも `セル=(行,列)` を出す)。★切り替えたのは3つ= ハイライト/取消線・太字/斜体・**リンク**。リンクだけ行末に書いていた例外もここで消えた。★★検証= 偽エディタで**7通りの押し順**(逆順・飛び飛び・一部だけ)を走らせ、**どの順で押しても表の格子順**になることを確認。表でない普通の段落でも、本文にコメントthat残らず2行に分かれることを確認。headless 7/7(新規 t_write)＋9/9＋15/15＋22/22＋13/13 PASS。📌残= 見出し/上付き下付き/🚫/↻ はまだ引っ越しの道を通る(次に触る時に同じ口へ寄せる)。
@@ -15276,6 +15277,41 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
 
 // v0.9.999124(俊克): Formatの文脈トグル。選択が空でカーソルが既存装飾の中なら、その装飾を「解除」する。
 // 検出=行内の =={…}== / ~~{…}~~、または行頭見出し ##[…]##。本文は parseColorSpec で色スペックを剥がして取り出す。
+// v4.0.213(俊克 8/15 am01:29 バグ1「🚫ボタンで解除してから、白/青に変更したが、最初の白/黄のFCコメントが残ったまま」):
+// ★★**🚫だけ古い道のままだった**= 表では指定thatFC行に在るのに、🚫は**その行しか見ない**so、印だけ消えて
+//   **相手の指定that取り残される**。次に入れた指定thatその残骸と対になり、色thatずれる。
+// ★直し= **書く時と同じ数え方**で「この印は表全体で何個目か」を出し、**指定行のその1つを一緒に消す**。
+//   書く口(`meosWriteMarkAndSpec`)と消す口thatが同じ物差しを使う=[[feedback_one_source_for_mark_count_action]]。
+// 指定行の idx 番目(0起点)のコメントの範囲。無ければ null。
+function meosSpecLineCommentRange(specText, idx) {
+  const t = String(specText == null ? '' : specText), spans = [];
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) spans.push([m.index, m.index + m[0].length]);
+  if (idx < 0 || idx >= spans.length) return null;
+  return { start: spans[idx][0], end: spans[idx][1], count: spans.length };
+}
+// 表の中の印を消す時、指定行の相手も一緒に落とす。we に足すだけ(1回の編集で終わる)。
+function meosDeleteSpecForMark(we, editor, range) {
+  try {
+    const doc = editor.document, ln = range.start.line, lines = meosDocLines(doc);
+    const blk = meosTableBlockFor(lines, ln);
+    if (!blk) return false;                       // 表でなければ従来どおり(戻してから触る道that効く)
+    const fcLn = blk.end + 1;
+    if (fcLn >= doc.lineCount || !meosIsSpecLine(doc.lineAt(fcLn).text)) return false;
+    let idx = 0;
+    for (let i = blk.start; i < ln; i++) idx += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
+    for (const mk of meosRowMarksInOrder(doc.lineAt(ln).text)) if (mk.end <= range.end.character) idx++;
+    const r = meosSpecLineCommentRange(doc.lineAt(fcLn).text, idx - 1);
+    if (!r) return false;
+    if (r.count <= 1) {                            // 最後の1つ=指定行thatが空になるso行ごと消す
+      we.delete(doc.uri, new vscode.Range(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), new vscode.Position(fcLn, doc.lineAt(fcLn).text.length)));
+    } else {
+      we.delete(doc.uri, new vscode.Range(fcLn, r.start, fcLn, r.end));
+    }
+    try { require('fs').appendFileSync(MEOS_PROFILE_LOG, '[fcDel] ' + new Date().toISOString() + ' 通し番号=' + idx + ' 残り=' + r.count + ' 行=' + ln + '\n'); } catch (_) { }
+    return true;
+  } catch (_) { return false; }
+}
 // 解除後、ハイライト/取消線は本文範囲を選択で返す(範囲を失わず即再装飾可)。見出しは行が対象なので選択不要。
 function formatSpanAtCursor(editor, kind) {
   if (!editor) return null;
@@ -15365,6 +15401,7 @@ async function removeFormatAtCursor(editor, span) {
   }
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
+  meosDeleteSpecForMark(we, editor, span.range);   // v4.0.213: 表なら指定行の相手も一緒に落とす
   await vscode.workspace.applyEdit(we);
   const start = span.range.start;
   const sel = (span.kind === 'heading')
