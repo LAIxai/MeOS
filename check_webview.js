@@ -42,5 +42,49 @@ let js = raw
 js = js.replace(/\$\{[^}]*\}/g, '"0"');
 const out = path.join(__dirname, 'webview_out.js');
 fs.writeFileSync(out, js);
-try { new Function(js); console.log('webview script: SYNTAX OK (' + Math.round(js.length / 1024) + 'KB)'); process.exit(0); }
+// v4.0.197: ここで exit せず**次の検査へ進む**(構文の後ろに、宣言that消えた識別子の検査that続く)。
+try { new Function(js); console.log('webview script: SYNTAX OK (' + Math.round(js.length / 1024) + 'KB)'); }
 catch (e) { console.log('webview script: SYNTAX ERROR -> ' + e.message + '  (詳細: node --check ' + out + ')'); process.exit(1); }
+
+// ===== v4.0.197(俊克 8/14 pm01:16 の後): **宣言だけ消して、使っている所を残す**事故を捕まえる検査 =========
+// ★v4.0.192の全壊がこれだった= `const fcWriteT=…` を消したのに `if(fcWriteT)fcWriteT.addEventListener(…)` を
+//   残した。未宣言の識別子を `if(x)` で読むと **ReferenceError** so、Me Dockの初期化thatそこで死に、
+//   **以降の配線(TOC/Hyper IDX/膜パネル/参照グループ/GitHubの状態)that丸ごと動かなくなる**。
+//   `node --check` も構文しか見ないso素通りした。
+// ★★満点の静的解析は要らない= **前の版と突き合わせる**だけで、この形は必ず捕まる。
+//   同じ(不完全な)読み取りを両側に掛けるso、取りこぼしthat両側で同じになり誤検出that出ない。
+// 使い方: node check_webview.js [比較先のgit ref] (既定=HEAD)
+{
+  const { execSync } = require('child_process');
+  const ref = process.argv[2] || 'HEAD';
+  const scriptOf = (t) => { const c = t.indexOf('</script></body>'); const d = t.lastIndexOf('<script>', c); return (c < 0 || d < 0) ? '' : t.slice(d, c); };
+  const strip = (t) => t
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''");
+  const namesOf = (t) => {
+    const decl = new Set(), used = new Set();
+    let m;
+    const reD = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)|\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)|,\s*([A-Za-z_$][\w$]*)\s*=/g;
+    while ((m = reD.exec(t)) !== null) decl.add(m[1] || m[2] || m[3]);
+    const reU = /(?<![.\w$])([A-Za-z_$][\w$]*)\s*(?=\.|\()/g;
+    while ((m = reU.exec(t)) !== null) used.add(m[1]);
+    return { decl, used };
+  };
+  let base = null;
+  try { base = execSync('git show ' + ref + ':./extension.js', { cwd: __dirname, maxBuffer: 64 * 1024 * 1024 }).toString('utf8'); } catch (e) { base = null; }
+  if (!base) {
+    console.log('webview refs: SKIP (比較先 ' + ref + ' を読めませんでした)');
+  } else {
+    const A = namesOf(strip(scriptOf(base))), B = namesOf(strip(scriptOf(src)));
+    const lost = [...B.used].filter(n => A.decl.has(n) && !B.decl.has(n));
+    if (lost.length) {
+      console.log('webview refs: DANGLING ERROR -> 宣言that消えたのに、まだ使っている識別子: ' + lost.join(', '));
+      console.log('  (' + ref + ' には宣言that在りました。消すなら、使っている行も一緒に消してください)');
+      process.exitCode = 1;
+    } else {
+      console.log('webview refs: OK (宣言that消えて使用thatが残っている識別子は無し / 比較先=' + ref + ')');
+    }
+  }
+}
