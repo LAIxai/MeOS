@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.212(俊克 8/15 am01:18「3回ハイライトを設定したよ。やはり、結果は間違っているけどね」→ **実測ログthat真因を出した**): ★★`link セル=(1行,1列) **通し番号=2** … 本文="| [**作業**]() | 状態 |"` = **リンクの表示文字that `**作業**`**(Boldにチェックthat入っていた)so、その `**` も「印」として数えられ、リンク自身の番号that1でなく**2**になっていた。3回目では `前の行=[2,0,0,0]` で末尾へ押し出された。★★真因を一言で= **指定を持たない印を数えていた**。リンクの表示文字の装飾(v4.0.30= MeOS外でも本物の太字リンクにするため`[**text**]()` と書く)は、**指定thatそもそも存在しない**。数える相手ではなかった。★直し= **ラベルの中を伏せてから数える**(`meosMaskLinkLabels`・長さは保つso位置thatずれない)。書く側(`meosRowMarksInOrder`/`meosMarkCounts`)と**描く側(太字/斜体の番号)を同じ物差しに揃えた**=ラベルの中の装飾は**飾りは付けるthat番号は消費しない**。片方だけ直すと色thatずれる。★★**測り方を変えたthatが効いた**= 「ログを貼ってください」をやめてファイルに書くようにした瞬間、**1行で犯人that出た**。俊克はボタンを3回押しただけ。★今日ずっと私thatが外していたのは、**再現の材料を俊克に出させようとしていた**から。取りに行けばよかった。
 // - v4.0.211(俊克 8/15 am00:47「今回も3回目で、撃沈したね。本当に、何をシミュレーションしているのかな?」): ★★**俊克thatが正しい。私の試験装置that嘘をついていた**= 偽エディタの `getText(範囲)` that**範囲を無視して全文を返して**いた。so2回目3回目は**壊れた入力**で走っていて、「通った」と言っていたのは通っていなかった。直したら、**本物のボタン関数(insertMeLinkTemplate / insertBoldItalic)を3回押す通し**で正しい結果(青,紫,黄)thatが出る。★それでも俊克の画面では違うso、**実機との差thatまだ残っている**。★★**測り方を変える**= 「出力パネルを開いてログを貼ってください」をやめ、**ファイルに1行追記**する(`refresh-prof.log`)。**私thatそのファイルを直接読める**so、俊克はボタンを押すだけでいい。★出す中身= 種類・**セル(行,列)**・通し番号・挿す位置・表の範囲・**前の行ごとの印の数**・本文。これで「どこで数えを間違えたか」that1行で出る。
 // - v4.0.210(俊克 8/15 am00:29「それは、FC方式にするかどうかがカスタマイズできた頃の話しのままの実装になっているだけでしょ? 今はFC固定なんだから、最初から2行に分けて表示すべきだよね。テーブルの場合は、それがテーブルの下になると言うだけだよね。わざわざ行末に出力してから、表示位置を変えるなんて、意味ないよ」＋am00:38「今でしょ」): ★★**俊克thatが正しい。今日の失敗は全部「中間状態」から出ていた**= ボタンthat一度**行末に書いてから**、後で「行の外へ出す」引っ越しをしていた。FCthat設定だった頃の作りthatそのまま残っていた。その一瞬の形の上で**位置を数える/選択を運ぶ/戻す**をやっていたので、そこを間違え続けた(今日 v4.0.202/203/204/205/207/208)。★★**中間状態を作らなければ、その3つとも存在しない**= 1回の編集で「本文に印」と「指定行に指定」を**同時に**書く(`meosWriteMarkAndSpec`)。引っ越し(`meosPushLineSpecsOutOfLine`)は書く側から呼ばれなくなった。★位置は**印の場所**から決める= 選択の位置thatそのまま印の位置so、コメントの居場所という代用品を使わない。俊克の「縦線を数える」と同じ考え方(ログにも `セル=(行,列)` を出す)。★切り替えたのは3つ= ハイライト/取消線・太字/斜体・**リンク**。リンクだけ行末に書いていた例外もここで消えた。★★検証= 偽エディタで**7通りの押し順**(逆順・飛び飛び・一部だけ)を走らせ、**どの順で押しても表の格子順**になることを確認。表でない普通の段落でも、本文にコメントthat残らず2行に分かれることを確認。headless 7/7(新規 t_write)＋9/9＋15/15＋22/22＋13/13 PASS。📌残= 見出し/上付き下付き/🚫/↻ はまだ引っ越しの道を通る(次に触る時に同じ口へ寄せる)。
 // - v4.0.208(俊克 8/14 pm09:00「何も変わってない。本当に、最後の最後にいつも駄目駄目だね。本気出してよ!」): ★★**私は挿す位置の計算を4版直したthat、俊克の画面では直らない**。so今度は**本物の関数を偽エディタで走らせた**=`meosPushTableSpecsOutOfLine` 自体に、俊克thatが押したのと同じ3手を食わせる。結果は**毎回正しい(青,紫,黄)**。配った vsix の中身も取り出して確認済み。**私の読みでは犯人that網の外に居る**。★★so**結果を数え方に依存させない**= 押した後に、指定行thatが**表の格子の順**になっていることを**保証**する。これは「並べ替え」ではなく**指定行は格子の順である、という定義**(俊克の `char(2,4)` そのもの)。**既に格子順なら1文字も動かさない**(挿入のまま)。対応(どの指定thatどの印か)は1つも変えない=動くのは並びだけ。★★**6通りの押し順**(順不同・4つ入れる場合も)を偽エディタで全部走らせ、**どの順で押しても格子順になる**ことを確認。★保証that働いた時は `[fcIns] ★格子順に合わせた: 前 → 後` をログに出す= **働いたこと自体that、私の数え方thatまだ狂っている証拠**になる。
@@ -15011,12 +15012,25 @@ function meosRowSplitInline(text) {
 // ★★**俊克thatが正しい**。v4.0.203は「その種類のN個目」になる位置に挿していたso**種類ごとの順番は正しい**
 //   (=色thatが合う理由)thatが、**種類をまたぐと入力順**になっていた。読む側は種類ごとに数えるso気づけない。
 // ★指定行は**表を左上から右下へ読んだ順**でなければならない= 目で照らし合わせられることthatこの記法の値打ち。
+// ★★v4.0.212(俊克 8/15 am01:18 の実測ログthat真因を出した):
+//   `link セル=(1行,1列) 通し番号=2 … 本文="| [**作業**]() | 状態 |"`
+//   → **リンクの表示文字that `**作業**`**(Boldにチェックthat入っていた)so、その `**` も「印」として数え、
+//     リンク自身の通し番号that 1 でなく **2** になっていた。3回目では `前の行=[2,0,0,0]` で末尾へ押し出された。
+// ★★**リンクのラベルの中の装飾には、指定thatそもそも存在しない**(v4.0.30= 表示文字を素のMarkdownで包む。
+//   MeOS外でも本物の太字リンクにするため)。**指定の無い印を数えていた**のthat間違い。
+// → ラベルの中を伏せてから数える。長さは保つso位置thatが1文字もずれない。
+function meosMaskLinkLabels(text) {
+  let t = String(text == null ? '' : text);
+  if (t.indexOf('](') < 0) return t;
+  return t.replace(/(?<!\!)\[([^\]\n]*)\]\(/g, (all, lab) => '[' + ' '.repeat(lab.length) + '](');
+}
 // 1行の中の「相手になる印」を**文書順**に並べて返す。[{kind, end}]。物差しは描く側と同じ。
 function meosRowMarksInOrder(text) {
   const raw = String(text == null ? '' : text), out = [];
+  const masked = meosMaskLinkLabels(raw);   // v4.0.212: ラベルの中の装飾は指定を持たないso数えない
   try {
-    for (const e of meosInlineMarkEnds(raw)) out.push({ kind: e.kind, end: e.end });
-    for (const tk of (meosMeTexTokens(raw, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', end: tk.opEnd });
+    for (const e of meosInlineMarkEnds(masked)) out.push({ kind: e.kind, end: e.end });
+    for (const tk of (meosMeTexTokens(masked, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', end: tk.opEnd });
     if (raw.indexOf(']()') >= 0) {
       let t = raw;
       if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
@@ -21229,9 +21243,10 @@ function meosEmptyLinkCount(text) {
 function meosMarkCounts(text) {
   const out = {};
   try {
-    for (const m of meosInlineMarkEnds(text)) out[m.kind] = Math.max(out[m.kind] || 0, m.ord);
+    const masked = meosMaskLinkLabels(String(text == null ? '' : text)); // v4.0.212: ラベルの中は数えない
+    for (const m of meosInlineMarkEnds(masked)) out[m.kind] = Math.max(out[m.kind] || 0, m.ord);
     const lk = meosEmptyLinkCount(text); if (lk) out.link = lk;
-    for (const t of (meosMeTexTokens(text, null) || [])) { const k = (t.kind === 'sup') ? 'sup' : 'sub'; out[k] = (out[k] || 0) + 1; }
+    for (const t of (meosMeTexTokens(masked, null) || [])) { const k = (t.kind === 'sup') ? 'sup' : 'sub'; out[k] = (out[k] || 0) + 1; }
   } catch (_) { }
   return out;
 }
@@ -22241,7 +22256,18 @@ function meosApplyBoldDecorations(editor) {
         //   3本の正規表現では「隣り合う列」(`**太字***イタリック*`)を割れなかった=空白を空けないと出なかった。
         //   ★flankingは**生の行**(text)で見る= tScanはコードスパンを空白で伏せているso、伏せた字で判定すると
         //     `**`+コードスパン+`**` の太字that消える(実データで1554行)。探すのは伏せた字・成立を決めるのは生の字。
+        // v4.0.212: リンクの表示文字の中の装飾は**指定を持たない**so、番号を消費させない(飾りは付ける)。
+        const _lbl = [];
+        try { const _mm = meosMaskLinkLabels(text); for (let k = 0; k < text.length; k++) if (text.charAt(k) !== _mm.charAt(k)) _lbl.push(k); } catch (_) { }
+        const _inLabel = (a, b) => _lbl.length > 0 && _lbl.some(k => k >= a && k < b);
         for (const mk of meosStarMarks(tScan, text)) {
+          if (mk.kind === '*' && !_prose) continue;   // 素の単一 `*` は散文だけ(コードの掛け算/ワイルドカードを拾わない)
+          if (_inLabel(mk.bodyStart, mk.bodyEnd)) {   // ラベルの中=番号を使わずに描くだけ
+            hideR.push(new vscode.Range(ln, mk.start, ln, mk.bodyStart));
+            hideR.push(new vscode.Range(ln, mk.bodyEnd, ln, mk.end));
+            pushStyle(ln, mk.bodyStart, mk.bodyEnd, mk.bold, mk.italic, null, null, '');
+            continue;
+          }
           if (mk.kind === '*' && !_prose) continue;   // 素の単一 `*` は散文だけ(コードの掛け算/ワイルドカードを拾わない)
           const q = _spec(mk.end, mk.kind);
           hideR.push(new vscode.Range(ln, mk.start, ln, mk.bodyStart));
