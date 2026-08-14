@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.205(俊克 8/14 pm07:46「2番目に入れたのは白/黄でしょ。それが一番後ろだよね。なのに、スクショ4枚目では、それが2番目に突然移動してしまっている。単純に新しいコメントを1つ挿入するだけで、最後にあったのがこんな移動する筈がないでしょ。**並べ替えって言っていること自体おかしいよ。これは挿入なんだよ**」): ★★**俊克thatが正しい。そして私はスクショを読み違えていた**= あの並びは「移動した跡」ではなく**入力順そのまま**で、v4.0.204の並べ替えthatそもそも効いていなかった。私はそれを「並べ替えthat要る」と読み、繕いを足していた。★★**繕いthat要るのは、挿す位置that間違っている証拠**= v4.0.203は「**その種類の**N個目」に挿していたので、種類をまたぐと入力順になる。正しい位置は「**表全体で何個目の印か**」(左上から右下へ数えた通し番号)=俊克の `char(2,4)` の考え方そのもの。**そこへ挿せば他の指定は1つも動かない=純粋な挿入**。★so v4.0.204で足した並べ替え(`meosOrderSpecLineByTable`)と、種類ごとに数える口(`meosMarkOrdAt`)は**丸ごと削除**。★残したのは `meosRowMarksInOrder`(1行の印を文書順に並べる)だけ= 通し番号はこれを数えるだけで出る。★テスト(新規 t_tblins 9/9)= **俊克thatが実際に押した順**(リンク→***→リンク→*)をそのまま再現し、途中で**白/黄that最後のまま動かない**ことと、最終that走査順(link,link,*,***)になることを確認。読む側の色も4つとも一致。★★教訓= **後から直す仕掛けを足したくなったら、その手前の判断thatが間違っている**。今日2回目(v4.0.176〜186の「戻し方を磨いていた」と同じ形)。
 // - v4.0.204(俊克 8/14 pm06:57 バグ1「FCコメントの順番が間違っているね。入れた順にコメントが並んでいる。それでも、正しい指定が表示されているのが不思議だ。あくまでも、表の左上から右下に向かってスキャンした順番のはずだよね」): ★★**俊克thatが正しい。しかも「不思議だ」の答えthatそのまま真因**= v4.0.203は「**その種類の**N個目」になる位置に挿していたso、**種類ごとの順番は正しい**(=色thatが合う)thatが、**種類をまたぐと入力順**になっていた。読む側は種類ごとに数えるso**気づけない**=見た目では見つからないズレだった。★指定行は**表を左上から右下へ読んだ順**でなければならない= 目で照らし合わせられることthatこの記法の値打ち。★直し= 挿した後に**並べ直す**(`meosOrderSpecLineByTable`)。表の印を文書順に歩き、その種類の待ち行列から1つずつ取る。相手の無い指定は捨てずに後ろへ。**印を文書順に並べる口**(`meosRowMarksInOrder`)は語の記法/上付下付/リンクを1つにまとめて返す。★★**検証は「見え方that変わらないこと」で見た**= 並べ替えの前後で、各印that引く色を全部読み比べて一致を確認。並べ替えは**表示の順だけ**を直し、対応は1つも動かさない。★すでに走査順なら1文字も変えない。headless 7/7(新規 t_tblord)＋9/9＋15/15＋22/22＋13/13 PASS。
 // - v4.0.203(俊克 8/14 pm06:34「そもそも、1個目のハイライトを入れて、2個目を順番通りに入れているので、このケースで何が問題なのかがよく分らないよ。1個目のFCコメントの次に、新しいFCコメントを挿入したいだけだよね。それはテーブルの下のFCコメント領域の中でもできる話しだよね。わざわざなぜ、表の中で作業をするの?」＋pm06:39「今でしょ!」): ★★**俊克thatが正しい。表の中を触る理由thatが無かった**。v4.0.159で決めた「触る前に1行の形へ戻し、触り終わったら外へ出す」を、v4.0.193で表にもそのまま当てはめていたthat、それは**設計判断ではなく、既にある仕掛けの再利用**だった。★やりたいのは「**指定行の正しい位置に1つ挿す**」だけ= 戻す/配る/まとめ直すthat丸ごと要らない。★★これで今日追った2つのバグthat**原理的に消えた**= ①**行を書き換えないso選択thatずれない**(v4.0.202の穴)②**最初から正しい位置に挿すso順番that入れ替わらない**(pm06:21の案で出た穴)。表that壊れかけの中間状態を一度も通らない。★挿す位置を決めるのは「**この印は表全体でその種類の何個目か**」だけ= 読む側の `ordBase`(v4.0.193)と**同じ数え方**を書く側でも使う。★実装= `meosRowSplitInline`(行から新しい指定だけ取り出す)＋`meosMarkOrdAt`(何個目か)＋`meosInsertIntoSpecLine`(その位置に挿す)。**`meosPullTableSpecsBackInline` と `meosSplitTableSpecToRows` は丸ごと削除**(呼ばれない道は腐る)。★テスト(新規 t_tbl203 9/9)= 順番通り／**左に後から入れる**／**別の行に入れる**／種類that混ざる／読む側that期待どおり引く。既存 15/15＋22/22＋13/13 PASS。★★教訓= **既にある仕掛けを当てはめる前に、その場の事情を一度考える**。再利用は速いthat、事情thatが違えば穴になる。今日はその穴を2つ踏んでから、俊克に「なぜ?」と聞かれて気づいた。
 // - v4.0.202(俊克 8/14 pm05:55 バグ1「1つ目のハイライトは問題ない。1行目の2つ目のセルの『状態』を選択して、まったく同じハイライトを入れると、前に見たようなおかしな状態になった」): ★★真因= **表の戻し口thatが選択を置き去りにしていた**。ボタンを押すと、まず指定行を各セルへ**戻す**(行thatが伸びる)。行を丸ごと置換するとVS Codeは選択の中身を追えないso、選択は**元の桁のまま**残り、挿さったコメントのぶん右にずれた場所=**コメントの中**を包む。俊克の `<!-- Mew! ** *<!-- Mew! * …` thatその跡。★★**v4.0.168 バグ5とまったく同じ穴**= あの時1行の口(`meosPullLineSpecsBackInline`)には仕掛けを入れたthat、v4.0.193で**表の口を新しく作った時に、同じ仕掛けを入れ忘れた**。**片方だけ作る癖**の再発(今日これで通算7回目)。★直し= 配り直しthat「どこに何文字挿したか」も持ち帰り(`ins`)、**1行の口と同じ物差し**(`meosShiftOffsetByInserts`)でその行の選択を動かす。★俊克の手順をそのまま再現するテストを追加(新規 t_tblsel)= **動かさないと『- 』(コメントの中)を掴み、動かすと『状態』を掴む**ことを実測。headless 7/7＋22/22＋13/13＋20/20 PASS。★★教訓= **同じ仕事の口を2つ作ったら、片方に入れた仕掛けは必ずもう片方にも要る**。新しい口を作る時は、古い口に何that入っているかを先に数える。
@@ -15003,20 +15004,6 @@ function meosRowSplitInline(text) {
   if (!body.trim()) return null;
   return { body, items: payloads.map((x, i) => ({ payload: x, kind: meosSpecPayloadKind(x), at: at[i] })) };
 }
-// body の中で、位置 at までに「その種類の印」that何個あるか(=この指定は何個目か)。
-// ★数える物差しは描く側と同じ(meosInlineMarkEnds / meosEmptyLinkCount / meosMeTexTokens)。
-function meosMarkOrdAt(body, kind, at) {
-  let n = 0;
-  try {
-    if (kind === 'link') return meosEmptyLinkCount(String(body).slice(0, at));
-    if (kind === 'sup' || kind === 'sub') {
-      for (const tk of (meosMeTexTokens(body, null) || [])) if (((tk.kind === 'sup') ? 'sup' : 'sub') === kind && tk.opEnd <= at) n++;
-      return n;
-    }
-    for (const e of meosInlineMarkEnds(body)) if (e.kind === kind && e.end <= at) n++;
-  } catch (_) { }
-  return n;
-}
 // v4.0.204(俊克 8/14 pm06:57 バグ1「FCコメントの順番が間違っているね。入れた順にコメントが並んでいる。
 //   それでも、正しい指定が表示されているのが不思議だ。あくまでも、表の左上から右下に向かってスキャンした順番のはず」):
 // ★★**俊克thatが正しい**。v4.0.203は「その種類のN個目」になる位置に挿していたso**種類ごとの順番は正しい**
@@ -15040,39 +15027,21 @@ function meosRowMarksInOrder(text) {
   out.sort((a, b) => a.end - b.end);
   return out;
 }
-// 指定行を、**表を左上から右下へ読んだ順**に並べ直す。相手の無い指定は後ろへ回す(捨てない)。
-function meosOrderSpecLineByTable(lines, blk, specText) {
+// 指定行の **idx 番目(0起点)** に payload を1つ挿す。
+// ★★v4.0.205(俊克 8/14 pm07:46「単純に新しいコメントを1つ挿入するだけで、最後にあったのがこんな移動する筈が
+//   ないでしょ。並べ替えって言っていること自体おかしいよ。**これは挿入なんだよ**」):
+//   **俊克thatが正しい**。v4.0.203は「**その種類の**N個目」に挿していたので、種類をまたぐと入力順になり、
+//   v4.0.204ではそれを**後から並べ替えて**繕っていた。**並べ替えthat要るのは、挿す位置that間違っている証拠**だった。
+// ★正しい位置は「**表全体で何個目の印か**」= 俊克の `char(2,4)` の考え方そのもの。左上から右下へ数えた番号。
+//   そこへ挿せば、他の指定は**1つも動かない**(純粋な挿入)。so並べ替えの口は消した。
+function meosInsertIntoSpecLine(specText, payload, idx) {
   const raw = [];
   MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
-  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(String(specText || ''))) !== null) raw.push({ text: m[0], kind: meosSpecPayloadKind((m[2] || '').trim()) });
-  if (raw.length < 2) return String(specText || '');
-  const queue = new Map();                       // 種類ごとに、書かれている順で待たせる
-  for (const r of raw) { if (!queue.has(r.kind)) queue.set(r.kind, []); queue.get(r.kind).push(r); }
-  const out = [];
-  for (let ln = blk.start; ln <= blk.end; ln++) {
-    for (const mk of meosRowMarksInOrder(String(lines[ln] == null ? '' : lines[ln]))) {
-      const q = queue.get(mk.kind);
-      if (q && q.length) out.push(q.shift());     // その印に当たる指定を、書かれている順で1つ取る
-    }
-  }
-  for (const r of raw) if (out.indexOf(r) < 0) out.push(r);   // 相手の無い分は後ろへ(捨てない)
-  return out.map(x => x.text).join('');
-}
-// 指定行に、その種類の ord 個目になるように payload を1つ挿す。specText は無ければ ''。
-function meosInsertIntoSpecLine(specText, payload, kind, ord) {
-  const raw = [];
-  const t = String(specText == null ? '' : specText);
-  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
-  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) raw.push({ text: m[0], payload: (m[2] || '').trim() });
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(String(specText == null ? '' : specText))) !== null) raw.push(m[0]);
   const box = '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
-  let n = 0, idx = raw.length;
-  for (let i = 0; i < raw.length; i++) {
-    if (kind == null || meosSpecPayloadKind(raw[i].payload) !== kind) continue;
-    n++;
-    if (n === ord) { idx = i; break; }        // 既に ord 個目that居る=その手前へ入る
-  }
-  raw.splice(idx, 0, { text: box });
-  return raw.map(x => x.text).join('');
+  const at = Math.max(0, Math.min(raw.length, idx));
+  raw.splice(at, 0, box);
+  return raw.join('');
 }
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
 //   ★既にFC行が真下に在る時は**何もしない**=順番がずれて別の相手に結び付く事故を起こさない。
@@ -15145,17 +15114,14 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
   const specLns = [];
   for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
   let spec = specLns.map(i => lines[i]).join('');
-  // 前の行thatすでに使った分(種類ごと)。読む側の ordBase と同じ数え方。
-  const base = {};
-  for (let i = blk.start; i < ln; i++) { const c = meosMarkCounts(lines[i]); for (const k in c) base[k] = (base[k] || 0) + c[k]; }
+  // v4.0.205: 挿す位置=「**表全体で何個目の印か**」(左上から右下へ数えた通し番号)。
+  //   ★その位置に挿せば、他の指定は1つも動かない=**純粋な挿入**。並べ替えは要らない。
   for (const it of split.items) {
-    const inRow = meosMarkOrdAt(split.body, it.kind, it.at);        // この行で何個目か
-    const ord = ((base[it.kind] || 0) + inRow) || 1;                // 表全体で何個目か
-    spec = meosInsertIntoSpecLine(spec, it.payload, it.kind, ord);
+    let g = 0;
+    for (let i = blk.start; i < ln; i++) g += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
+    for (const mk of meosRowMarksInOrder(split.body)) if (mk.end <= it.at) g++;   // この行で自分より前の印
+    spec = meosInsertIntoSpecLine(spec, it.payload, g - 1);        // 0起点so通し番号-1
   }
-  // v4.0.204(俊克): 最後に**表を左上から右下へ読んだ順**へ並べ直す。種類ごとの対応は保ったまま、
-  //   目で照らし合わせられる並びにする(種類をまたぐと入力順になっていた)。
-  { const after = lines.slice(); after[ln] = split.body; spec = meosOrderSpecLineByTable(after, blk, spec); }
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
