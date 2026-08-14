@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.204(俊克 8/14 pm06:57 バグ1「FCコメントの順番が間違っているね。入れた順にコメントが並んでいる。それでも、正しい指定が表示されているのが不思議だ。あくまでも、表の左上から右下に向かってスキャンした順番のはずだよね」): ★★**俊克thatが正しい。しかも「不思議だ」の答えthatそのまま真因**= v4.0.203は「**その種類の**N個目」になる位置に挿していたso、**種類ごとの順番は正しい**(=色thatが合う)thatが、**種類をまたぐと入力順**になっていた。読む側は種類ごとに数えるso**気づけない**=見た目では見つからないズレだった。★指定行は**表を左上から右下へ読んだ順**でなければならない= 目で照らし合わせられることthatこの記法の値打ち。★直し= 挿した後に**並べ直す**(`meosOrderSpecLineByTable`)。表の印を文書順に歩き、その種類の待ち行列から1つずつ取る。相手の無い指定は捨てずに後ろへ。**印を文書順に並べる口**(`meosRowMarksInOrder`)は語の記法/上付下付/リンクを1つにまとめて返す。★★**検証は「見え方that変わらないこと」で見た**= 並べ替えの前後で、各印that引く色を全部読み比べて一致を確認。並べ替えは**表示の順だけ**を直し、対応は1つも動かさない。★すでに走査順なら1文字も変えない。headless 7/7(新規 t_tblord)＋9/9＋15/15＋22/22＋13/13 PASS。
 // - v4.0.203(俊克 8/14 pm06:34「そもそも、1個目のハイライトを入れて、2個目を順番通りに入れているので、このケースで何が問題なのかがよく分らないよ。1個目のFCコメントの次に、新しいFCコメントを挿入したいだけだよね。それはテーブルの下のFCコメント領域の中でもできる話しだよね。わざわざなぜ、表の中で作業をするの?」＋pm06:39「今でしょ!」): ★★**俊克thatが正しい。表の中を触る理由thatが無かった**。v4.0.159で決めた「触る前に1行の形へ戻し、触り終わったら外へ出す」を、v4.0.193で表にもそのまま当てはめていたthat、それは**設計判断ではなく、既にある仕掛けの再利用**だった。★やりたいのは「**指定行の正しい位置に1つ挿す**」だけ= 戻す/配る/まとめ直すthat丸ごと要らない。★★これで今日追った2つのバグthat**原理的に消えた**= ①**行を書き換えないso選択thatずれない**(v4.0.202の穴)②**最初から正しい位置に挿すso順番that入れ替わらない**(pm06:21の案で出た穴)。表that壊れかけの中間状態を一度も通らない。★挿す位置を決めるのは「**この印は表全体でその種類の何個目か**」だけ= 読む側の `ordBase`(v4.0.193)と**同じ数え方**を書く側でも使う。★実装= `meosRowSplitInline`(行から新しい指定だけ取り出す)＋`meosMarkOrdAt`(何個目か)＋`meosInsertIntoSpecLine`(その位置に挿す)。**`meosPullTableSpecsBackInline` と `meosSplitTableSpecToRows` は丸ごと削除**(呼ばれない道は腐る)。★テスト(新規 t_tbl203 9/9)= 順番通り／**左に後から入れる**／**別の行に入れる**／種類that混ざる／読む側that期待どおり引く。既存 15/15＋22/22＋13/13 PASS。★★教訓= **既にある仕掛けを当てはめる前に、その場の事情を一度考える**。再利用は速いthat、事情thatが違えば穴になる。今日はその穴を2つ踏んでから、俊克に「なぜ?」と聞かれて気づいた。
 // - v4.0.202(俊克 8/14 pm05:55 バグ1「1つ目のハイライトは問題ない。1行目の2つ目のセルの『状態』を選択して、まったく同じハイライトを入れると、前に見たようなおかしな状態になった」): ★★真因= **表の戻し口thatが選択を置き去りにしていた**。ボタンを押すと、まず指定行を各セルへ**戻す**(行thatが伸びる)。行を丸ごと置換するとVS Codeは選択の中身を追えないso、選択は**元の桁のまま**残り、挿さったコメントのぶん右にずれた場所=**コメントの中**を包む。俊克の `<!-- Mew! ** *<!-- Mew! * …` thatその跡。★★**v4.0.168 バグ5とまったく同じ穴**= あの時1行の口(`meosPullLineSpecsBackInline`)には仕掛けを入れたthat、v4.0.193で**表の口を新しく作った時に、同じ仕掛けを入れ忘れた**。**片方だけ作る癖**の再発(今日これで通算7回目)。★直し= 配り直しthat「どこに何文字挿したか」も持ち帰り(`ins`)、**1行の口と同じ物差し**(`meosShiftOffsetByInserts`)でその行の選択を動かす。★俊克の手順をそのまま再現するテストを追加(新規 t_tblsel)= **動かさないと『- 』(コメントの中)を掴み、動かすと『状態』を掴む**ことを実測。headless 7/7＋22/22＋13/13＋20/20 PASS。★★教訓= **同じ仕事の口を2つ作ったら、片方に入れた仕掛けは必ずもう片方にも要る**。新しい口を作る時は、古い口に何that入っているかを先に数える。
 // - v4.0.201(俊克 8/14 pm05:22「前後3ページ分の前処理をするようにしよう。ファイル全体をスキャンするのは無駄でしょ。この膜とか、膜の外なら、膜と膜の間だけとか。そうすれば、スクロールしても、何食わぬ顔で、整形されている」): ★★**俊克の言うとおり**= 装飾の走査は**±2行**しか先読みしていなかったso、スクロールすると「素の字that一瞬見えてから整う」。→ **前後3ページ**を先に整える。**3ページ＝今見えている行数×3**(窓の高さやズームで1ページの行数that変わるso数字で決め打ちしない・60〜600行に収める)。★**変えたのは1か所だけ**= v4.0.199で走査範囲の入口を `meosScanSpans` に集めておいたおかげ。9か所を触らずに済んだ。★実測= 45行の窓で **0.16ms/描き直し**(旧±2行は0.01ms)。全画面200行でも0.34ms。**広げても効かない**。★★**俊克の「膜で区切る」案は採らなかった。理由は実測**= 日記の膜の大きさは**中央値5行**(94%that300行未満)so、いちばん内側の膜で区切ると**画面より狭くなって描き漏らす**。★膜は範囲を**広げる**役には立つthat**狭める**役には立たない。so行数で決めた。なお「ファイル全体をスキャンしない」は元から満たしている(装飾は常に可視範囲＋マージンだけ)。
@@ -15016,6 +15017,47 @@ function meosMarkOrdAt(body, kind, at) {
   } catch (_) { }
   return n;
 }
+// v4.0.204(俊克 8/14 pm06:57 バグ1「FCコメントの順番が間違っているね。入れた順にコメントが並んでいる。
+//   それでも、正しい指定が表示されているのが不思議だ。あくまでも、表の左上から右下に向かってスキャンした順番のはず」):
+// ★★**俊克thatが正しい**。v4.0.203は「その種類のN個目」になる位置に挿していたso**種類ごとの順番は正しい**
+//   (=色thatが合う理由)thatが、**種類をまたぐと入力順**になっていた。読む側は種類ごとに数えるso気づけない。
+// ★指定行は**表を左上から右下へ読んだ順**でなければならない= 目で照らし合わせられることthatこの記法の値打ち。
+// 1行の中の「相手になる印」を**文書順**に並べて返す。[{kind, end}]。物差しは描く側と同じ。
+function meosRowMarksInOrder(text) {
+  const raw = String(text == null ? '' : text), out = [];
+  try {
+    for (const e of meosInlineMarkEnds(raw)) out.push({ kind: e.kind, end: e.end });
+    for (const tk of (meosMeTexTokens(raw, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', end: tk.opEnd });
+    if (raw.indexOf(']()') >= 0) {
+      let t = raw;
+      if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
+      if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
+      for (const c of meosTrailingComments(t)) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end);
+      let m; MEOS_EMPTY_LINK_RE.lastIndex = 0;
+      while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) out.push({ kind: 'link', end: m.index + m[0].length });
+    }
+  } catch (_) { }
+  out.sort((a, b) => a.end - b.end);
+  return out;
+}
+// 指定行を、**表を左上から右下へ読んだ順**に並べ直す。相手の無い指定は後ろへ回す(捨てない)。
+function meosOrderSpecLineByTable(lines, blk, specText) {
+  const raw = [];
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(String(specText || ''))) !== null) raw.push({ text: m[0], kind: meosSpecPayloadKind((m[2] || '').trim()) });
+  if (raw.length < 2) return String(specText || '');
+  const queue = new Map();                       // 種類ごとに、書かれている順で待たせる
+  for (const r of raw) { if (!queue.has(r.kind)) queue.set(r.kind, []); queue.get(r.kind).push(r); }
+  const out = [];
+  for (let ln = blk.start; ln <= blk.end; ln++) {
+    for (const mk of meosRowMarksInOrder(String(lines[ln] == null ? '' : lines[ln]))) {
+      const q = queue.get(mk.kind);
+      if (q && q.length) out.push(q.shift());     // その印に当たる指定を、書かれている順で1つ取る
+    }
+  }
+  for (const r of raw) if (out.indexOf(r) < 0) out.push(r);   // 相手の無い分は後ろへ(捨てない)
+  return out.map(x => x.text).join('');
+}
 // 指定行に、その種類の ord 個目になるように payload を1つ挿す。specText は無ければ ''。
 function meosInsertIntoSpecLine(specText, payload, kind, ord) {
   const raw = [];
@@ -15111,6 +15153,9 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
     const ord = ((base[it.kind] || 0) + inRow) || 1;                // 表全体で何個目か
     spec = meosInsertIntoSpecLine(spec, it.payload, it.kind, ord);
   }
+  // v4.0.204(俊克): 最後に**表を左上から右下へ読んだ順**へ並べ直す。種類ごとの対応は保ったまま、
+  //   目で照らし合わせられる並びにする(種類をまたぐと入力順になっていた)。
+  { const after = lines.slice(); after[ln] = split.body; spec = meosOrderSpecLineByTable(after, blk, spec); }
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
