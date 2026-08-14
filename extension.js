@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.203(俊克 8/14 pm06:34「そもそも、1個目のハイライトを入れて、2個目を順番通りに入れているので、このケースで何が問題なのかがよく分らないよ。1個目のFCコメントの次に、新しいFCコメントを挿入したいだけだよね。それはテーブルの下のFCコメント領域の中でもできる話しだよね。わざわざなぜ、表の中で作業をするの?」＋pm06:39「今でしょ!」): ★★**俊克thatが正しい。表の中を触る理由thatが無かった**。v4.0.159で決めた「触る前に1行の形へ戻し、触り終わったら外へ出す」を、v4.0.193で表にもそのまま当てはめていたthat、それは**設計判断ではなく、既にある仕掛けの再利用**だった。★やりたいのは「**指定行の正しい位置に1つ挿す**」だけ= 戻す/配る/まとめ直すthat丸ごと要らない。★★これで今日追った2つのバグthat**原理的に消えた**= ①**行を書き換えないso選択thatずれない**(v4.0.202の穴)②**最初から正しい位置に挿すso順番that入れ替わらない**(pm06:21の案で出た穴)。表that壊れかけの中間状態を一度も通らない。★挿す位置を決めるのは「**この印は表全体でその種類の何個目か**」だけ= 読む側の `ordBase`(v4.0.193)と**同じ数え方**を書く側でも使う。★実装= `meosRowSplitInline`(行から新しい指定だけ取り出す)＋`meosMarkOrdAt`(何個目か)＋`meosInsertIntoSpecLine`(その位置に挿す)。**`meosPullTableSpecsBackInline` と `meosSplitTableSpecToRows` は丸ごと削除**(呼ばれない道は腐る)。★テスト(新規 t_tbl203 9/9)= 順番通り／**左に後から入れる**／**別の行に入れる**／種類that混ざる／読む側that期待どおり引く。既存 15/15＋22/22＋13/13 PASS。★★教訓= **既にある仕掛けを当てはめる前に、その場の事情を一度考える**。再利用は速いthat、事情thatが違えば穴になる。今日はその穴を2つ踏んでから、俊克に「なぜ?」と聞かれて気づいた。
 // - v4.0.202(俊克 8/14 pm05:55 バグ1「1つ目のハイライトは問題ない。1行目の2つ目のセルの『状態』を選択して、まったく同じハイライトを入れると、前に見たようなおかしな状態になった」): ★★真因= **表の戻し口thatが選択を置き去りにしていた**。ボタンを押すと、まず指定行を各セルへ**戻す**(行thatが伸びる)。行を丸ごと置換するとVS Codeは選択の中身を追えないso、選択は**元の桁のまま**残り、挿さったコメントのぶん右にずれた場所=**コメントの中**を包む。俊克の `<!-- Mew! ** *<!-- Mew! * …` thatその跡。★★**v4.0.168 バグ5とまったく同じ穴**= あの時1行の口(`meosPullLineSpecsBackInline`)には仕掛けを入れたthat、v4.0.193で**表の口を新しく作った時に、同じ仕掛けを入れ忘れた**。**片方だけ作る癖**の再発(今日これで通算7回目)。★直し= 配り直しthat「どこに何文字挿したか」も持ち帰り(`ins`)、**1行の口と同じ物差し**(`meosShiftOffsetByInserts`)でその行の選択を動かす。★俊克の手順をそのまま再現するテストを追加(新規 t_tblsel)= **動かさないと『- 』(コメントの中)を掴み、動かすと『状態』を掴む**ことを実測。headless 7/7＋22/22＋13/13＋20/20 PASS。★★教訓= **同じ仕事の口を2つ作ったら、片方に入れた仕掛けは必ずもう片方にも要る**。新しい口を作る時は、古い口に何that入っているかを先に数える。
 // - v4.0.201(俊克 8/14 pm05:22「前後3ページ分の前処理をするようにしよう。ファイル全体をスキャンするのは無駄でしょ。この膜とか、膜の外なら、膜と膜の間だけとか。そうすれば、スクロールしても、何食わぬ顔で、整形されている」): ★★**俊克の言うとおり**= 装飾の走査は**±2行**しか先読みしていなかったso、スクロールすると「素の字that一瞬見えてから整う」。→ **前後3ページ**を先に整える。**3ページ＝今見えている行数×3**(窓の高さやズームで1ページの行数that変わるso数字で決め打ちしない・60〜600行に収める)。★**変えたのは1か所だけ**= v4.0.199で走査範囲の入口を `meosScanSpans` に集めておいたおかげ。9か所を触らずに済んだ。★実測= 45行の窓で **0.16ms/描き直し**(旧±2行は0.01ms)。全画面200行でも0.34ms。**広げても効かない**。★★**俊克の「膜で区切る」案は採らなかった。理由は実測**= 日記の膜の大きさは**中央値5行**(94%that300行未満)so、いちばん内側の膜で区切ると**画面より狭くなって描き漏らす**。★膜は範囲を**広げる**役には立つthat**狭める**役には立たない。so行数で決めた。なお「ファイル全体をスキャンしない」は元から満たしている(装飾は常に可視範囲＋マージンだけ)。
 // - v4.0.200(俊克 8/14 pm05:10「これで完成かな? もう残る懸念はないよね?」→ **懸念thatが残っていた**): ★v4.0.199で直したのは `const vrs = …` の9か所thatが、**同じ形の穴thatもう2か所在った**= 🐱の診断(±120行)と🐱ボタンthat直す範囲。★★特に診断の方は**重なりを潰さずに行ループを回していた**so、折り畳みthat増えると**🐱の数字thatが水増しされる**(v4.0.73「ガターは1個なのに数字は3つ増える」の再来)。**実測= 折り畳み20個で、同じ行を最大20回走査していた**=数字thatが最大20倍・波線も20重。FC一択で折り畳みthat増えた今、必ず当たる所だった。★直し= 併合を `meosMergeSpans` に切り出し、**数える所と直す所thatが同じ範囲**を見るようにした=[[feedback_one_source_for_mark_count_action]]。★これで走査の重なりを潰す口は1つ。★★教訓= **「同じ形の穴」は1か所直したら、必ず全部数える**。9か所直して満足した所で2か所残っていた。
@@ -14934,14 +14935,6 @@ function meosShiftOffsetByInserts(off, ins, isStart) {
 async function meosPullLineSpecsBackInline(editor) {
   if (!editor || !editor.document) return false;
   const doc = editor.document;
-  // v4.0.193: 表なら**表の下の1本**を、各行へ配り直す(1命令=1コメントso、payloadをそのまま配る)。
-  {
-    const _lines = meosDocLines(doc);
-    let _ln = editor.selection.active.line;
-    if (meosIsSpecLine(String(_lines[_ln] == null ? '' : _lines[_ln])) && _ln > 0) _ln--;  // 指定行に居るなら上が本文
-    const _blk = meosTableBlockFor(_lines, _ln);
-    if (_blk) return await meosPullTableSpecsBackInline(editor, _blk, _lines);
-  }
   let ln = editor.selection.active.line;
   if (meosIsSpecLine(doc.lineAt(ln).text) && ln > 0) ln--;    // 指定行にカーソルが在るなら、その上が本文
   if (ln + 1 >= doc.lineCount) return false;
@@ -14967,43 +14960,77 @@ async function meosPullLineSpecsBackInline(editor) {
   } catch (_) { }
   return true;
 }
-// 表の下のFC行を、各行の中へ配り直す。配れない時は何もしない(安全弁)。
-async function meosPullTableSpecsBackInline(editor, blk, lines) {
-  const doc = editor.document;
-  const specLns = [];
-  for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
-  if (!specLns.length) return false;
-  const out = meosSplitTableSpecToRows(lines, blk, specLns);
-  if (!out) return false;
-  const changed = out.filter(o => o.line !== lines[o.ln]);
-  if (!changed.length) return false;
-  // v4.0.202(俊克 8/14 pm05:55 バグ1「1行目の2つ目のセルの『状態』を選択して、まったく同じハイライトを入れると、
-  //   前に見たようなおかしな状態になった」): ★**選択を置き去りにしていた**。
-  //   行を丸ごと置換するとVS Codeは選択の中身を追えないので、選択は**元の桁のまま**残る。
-  //   その行にコメントthat挿さっているぶん右にずれた場所=**コメントの中**を包んでしまう。
-  //   → 1行の口(meosPullLineSpecsBackInline)と**同じ物差し**で、挿した分だけ選択を動かす。
-  const _keep = [];
-  try { for (const sl of editor.selections) _keep.push({ sl: sl.start.line, sc: sl.start.character, el: sl.end.line, ec: sl.end.character, rev: sl.active.isBefore(sl.anchor) }); } catch (_) { }
-  const insByLine = new Map();
-  for (const o of changed) insByLine.set(o.ln, o.ins || []);
-  await editor.edit(eb => {
-    for (const o of changed) eb.replace(doc.lineAt(o.ln).range, o.line);
-    // 配り終えたら指定行そのものを消す(行ごと畳んで消す=表の下に空行thatが残らない)
-    const a = new vscode.Position(blk.end, doc.lineAt(blk.end).text.length);
-    const z = new vscode.Position(specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length);
-    eb.delete(new vscode.Range(a, z));
-  }, { undoStopBefore: true, undoStopAfter: true });
+// ===== v4.0.203(俊克 8/14 pm06:34「1個目のFCコメントの次に、新しいFCコメントを挿入したいだけだよね。
+//   それはテーブルの下のFCコメント領域の中でもできる話しだよね。わざわざなぜ、表の中で作業をするの?」) =====
+// ★★**俊克thatが正しい。表の中を触る理由thatが無かった**。v4.0.159で決めた「触る前に1行の形へ戻し、触り終わったら
+//   外へ出す」を、v4.0.193で表にもそのまま当てはめたthat、それは**設計判断ではなく再利用**だった。
+// ★やりたいのは「**指定行の正しい位置に1つ挿す**」だけ。so戻す/まとめ直すthat丸ごと要らない。
+// ★★これで今日追った2つのバグthat**原理的に消える**= ①行を書き換えないso選択thatずれない(v4.0.202)
+//   ②最初から正しい位置に挿すso順番that入れ替わらない。表that壊れかけの中間状態を一度も通らない。
+// 行の中に**新しく書かれた指定**を取り出す。{ body, items:[{payload, kind, at}] } / at = body の中でのその指定の位置。
+function meosRowSplitInline(text) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('<!--') < 0) return null;
+  const linkSpans = [];
+  try { MEOS_MELINK_RE.lastIndex = 0; let lk; while ((lk = MEOS_MELINK_RE.exec(t)) !== null) linkSpans.push([lk.index, lk.index + lk[0].length]); } catch (_) { }
+  const inLink = (i) => linkSpans.some(([a, b]) => i >= a && i < b);
+  const cuts = [], payloads = [];
+  const re = /<!--([^\n]*?)-->/g; let m;
+  while ((m = re.exec(t)) !== null) {
+    if (inLink(m.index)) continue;
+    const payload = meosStripMewSignature(m[1] || '').trim();
+    if (!payload) continue;
+    const isMetex = /[↑↓][^\s{}<>]*\{[^}]*\}/.test(payload) || /^\{[^}]*\}$/.test(payload);
+    const isLink = !!meosLinkSpecFromComment(payload);
+    const isLine = !!(meosLineDirective(payload) || meosLooksLikeSpecComment(payload));
+    if (!isMetex && !isLine && !isLink) continue;
+    payloads.push(isMetex ? payload.replace(/^[^\s{}<>#]*([↑↓])[^\s{}<>#]*/, (mm, ar) => 'A' + ar + '1') : payload);
+    cuts.push([m.index, m.index + m[0].length]);
+  }
+  if (!cuts.length) return null;
+  let body = '', prev = 0; const at = [];
+  const glue = /[0-9A-Za-z\u00b7]/;
+  for (const [a, b] of cuts) {
+    body += t.slice(prev, a);
+    at.push(body.length);
+    const l = body.slice(-1), r = t.charAt(b);
+    if (l && r && glue.test(l) && glue.test(r)) body += ' ';
+    prev = b;
+  }
+  body += t.slice(prev);
+  body = body.replace(/[ \t]+$/, '');
+  if (!body.trim()) return null;
+  return { body, items: payloads.map((x, i) => ({ payload: x, kind: meosSpecPayloadKind(x), at: at[i] })) };
+}
+// body の中で、位置 at までに「その種類の印」that何個あるか(=この指定は何個目か)。
+// ★数える物差しは描く側と同じ(meosInlineMarkEnds / meosEmptyLinkCount / meosMeTexTokens)。
+function meosMarkOrdAt(body, kind, at) {
+  let n = 0;
   try {
-    if (_keep.length) editor.selections = _keep.map(k => {
-      const empty = (k.sl === k.el && k.sc === k.ec);
-      const insA = insByLine.get(k.sl) || [], insB = insByLine.get(k.el) || [];
-      const a2 = new vscode.Position(k.sl, meosShiftOffsetByInserts(k.sc, insA, true));
-      let b2 = new vscode.Position(k.el, meosShiftOffsetByInserts(k.ec, insB, empty));
-      if (b2.line === a2.line && b2.character < a2.character) b2 = a2;   // 逆転させない(安全弁)
-      return k.rev ? new vscode.Selection(b2, a2) : new vscode.Selection(a2, b2);
-    });
+    if (kind === 'link') return meosEmptyLinkCount(String(body).slice(0, at));
+    if (kind === 'sup' || kind === 'sub') {
+      for (const tk of (meosMeTexTokens(body, null) || [])) if (((tk.kind === 'sup') ? 'sup' : 'sub') === kind && tk.opEnd <= at) n++;
+      return n;
+    }
+    for (const e of meosInlineMarkEnds(body)) if (e.kind === kind && e.end <= at) n++;
   } catch (_) { }
-  return true;
+  return n;
+}
+// 指定行に、その種類の ord 個目になるように payload を1つ挿す。specText は無ければ ''。
+function meosInsertIntoSpecLine(specText, payload, kind, ord) {
+  const raw = [];
+  const t = String(specText == null ? '' : specText);
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) raw.push({ text: m[0], payload: (m[2] || '').trim() });
+  const box = '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
+  let n = 0, idx = raw.length;
+  for (let i = 0; i < raw.length; i++) {
+    if (kind == null || meosSpecPayloadKind(raw[i].payload) !== kind) continue;
+    n++;
+    if (n === ord) { idx = i; break; }        // 既に ord 個目that居る=その手前へ入る
+  }
+  raw.splice(idx, 0, { text: box });
+  return raw.map(x => x.text).join('');
 }
 // v4.0.155: 「この行の指定を外へ出す」を1行ぶんだけ実行する共通口(ボタンからもパレットからも同じ道)。
 //   ★既にFC行が真下に在る時は**何もしない**=順番がずれて別の相手に結び付く事故を起こさない。
@@ -15017,10 +15044,11 @@ async function meosEnsureInlineBeforeEdit(editor) {
   try {
     if (!MEOS_SPEC_LINE || !meosFormatWritesFC() || !editor || !editor.document) return false;
     const doc = editor.document, ln = editor.selection.active.line;
-    // v4.0.193: 表なら、見るのは真下ではなく**表の下**。
-    const _blk = meosTableBlockFor(meosDocLines(doc), ln), _at = (_blk ? _blk.end : ln) + 1;
-    if (_at >= doc.lineCount) return false;
-    if (!meosIsSpecLine(doc.lineAt(_at).text)) return false;
+    // v4.0.203(俊克「わざわざなぜ、表の中で作業をするの?」): **表では戻さない**。
+    //   指定行の中に1つ挿すだけで済むso、表の行を1文字も触らない=選択thatずれず、順番も入れ替わらない。
+    if (meosTableBlockFor(meosDocLines(doc), ln)) return false;
+    if (ln + 1 >= doc.lineCount) return false;
+    if (!meosIsSpecLine(doc.lineAt(ln + 1).text)) return false;
     return await meosPullLineSpecsBackInline(editor);
   } catch (_) { return false; }
 }
@@ -15031,9 +15059,9 @@ async function meosEnsureInlineBeforeEdit(editor) {
 // ★本物のCommonMark/GFM実装で確かめた事実は残しておく= 表の**途中**に1行挟むと、そこで表that終わり、
 //   残りの行の `|` that本文の文字として読者に見える。だから塊の下に置く。
 // ===== v4.0.193: 表の書く側 =========================================================================
-// ★1つのテーブル=1段落so、**表の指定は表の下に1本**にまとめる。順番は横方向スキャン=文書順。
-// 指定行の中身(payload)は **1命令=1コメント** so、payloadの並び＝命令の並び。
-//   → 行に配り直す時も**payloadをそのまま配る**(組み立て直さない=文字thatズレようthatない)。
+// ★1つのテーブル=1段落so、**表の指定は表の下に1本**。順番は横方向スキャン=文書順。
+// v4.0.203: 「行へ配り直す」道は**丸ごと消した**(俊克「わざわざなぜ、表の中で作業をするの?」)。
+//   指定行の中に1つ挿すだけで済むso、戻す口も、配る口も要らなくなった。
 // payload 1つの種類を返す。'==' '~~' '***' '**' '*' '_' / 'link' / 'sup' 'sub' / null(行に効く指定)
 function meosSpecPayloadKind(payload) {
   const one = meosParseSpecPayload(payload);
@@ -15041,32 +15069,6 @@ function meosSpecPayloadKind(payload) {
   if (one.metex && one.metex.length) { const t = String(one.metex[0].tok); return (t.indexOf('\u2191') >= 0) ? 'sup' : 'sub'; }
   if (one.fmt && one.fmt.length) return one.fmt[0].kind;
   return null;
-}
-// 表の下の指定行を、各行へ配り直した結果を返す。[{ln, line}] か null(配れない時は何もしない)。
-function meosSplitTableSpecToRows(lines, blk, specLns) {
-  let payloads = [];
-  for (const i of specLns) { const p = meosSpecLinePayloads(lines[i]); if (!p) return null; payloads = payloads.concat(p); }
-  const items = payloads.map(p => ({ p, kind: meosSpecPayloadKind(p) }));
-  const out = [];
-  for (let ln = blk.start; ln <= blk.end; ln++) {
-    const need = meosMarkCounts(lines[ln]);
-    const take = [];
-    for (const k of Object.keys(need)) {
-      let n = need[k];
-      for (const it of items) { if (n <= 0) break; if (it.used || it.kind !== k) continue; it.used = true; take.push(it); n--; }
-      if (n > 0) return null;                       // 相手thatが足りない=配らない
-    }
-    if (!take.length) { out.push({ ln, line: lines[ln], ins: [] }); continue; }
-    take.sort((a, b) => items.indexOf(a) - items.indexOf(b));   // 文書順を保つ
-    const spec = take.map(x => '<!-- ' + MEOS_MEW_SIG + 'FC ' + x.p + ' -->').join('');
-    const r = meosPullSpecsBackInline(lines[ln], spec);
-    if (!r) return null;                            // 戻すと壊れる=何もしない(安全弁は既存のものthatそのまま効く)
-    // v4.0.202: **どこに何文字挿したか**も持ち帰る= 行thatが伸びるので、その行に居る選択を同じだけ動かさないと
-    //   ボタンthat「コメントの中」を包んでしまう([[v4.0.168]] バグ5と同じ穴・1行の口には入れてあったthat表の口に無かった)。
-    out.push({ ln, line: r.line, ins: r.ins || [] });
-  }
-  if (items.some(x => !x.used)) return null;        // 余りthat出た=配らない
-  return out;
 }
 async function meosPushLineSpecsOutOfLine(editor) {
   if (!editor || !editor.document) return false;
@@ -15093,23 +15095,32 @@ async function meosPushLineSpecsOutOfLine(editor) {
 // 表の全行から指定を集めて、表の下に1本のFC行として置く(既に在れば、そこへ足す)。
 async function meosPushTableSpecsOutOfLine(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc);
-  const bodies = [], specs = [];
-  let moved = false;
-  for (let i = blk.start; i <= blk.end; i++) {
-    const r = meosMoveSpecsOutOfLine(lines[i]);
-    if (r) { moved = true; bodies.push({ ln: i, body: r.body }); specs.push(r.spec); }
+  const ln = editor.selection.active.line;
+  if (ln < blk.start || ln > blk.end) return false;
+  const split = meosRowSplitInline(lines[ln]);          // この行に新しく書かれた指定だけを取り出す
+  if (!split || !split.items.length) return false;
+  // 表の下の指定行(続く限り)。無ければ新しく作る。
+  const specLns = [];
+  for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
+  let spec = specLns.map(i => lines[i]).join('');
+  // 前の行thatすでに使った分(種類ごと)。読む側の ordBase と同じ数え方。
+  const base = {};
+  for (let i = blk.start; i < ln; i++) { const c = meosMarkCounts(lines[i]); for (const k in c) base[k] = (base[k] || 0) + c[k]; }
+  for (const it of split.items) {
+    const inRow = meosMarkOrdAt(split.body, it.kind, it.at);        // この行で何個目か
+    const ord = ((base[it.kind] || 0) + inRow) || 1;                // 表全体で何個目か
+    spec = meosInsertIntoSpecLine(spec, it.payload, it.kind, ord);
   }
-  if (!moved) return false;                               // 出すものthat無い
-  // 表の下に既にFC行thatあれば、その前の分と合わせて1本にする(順番=文書順)。
-  const after = blk.end + 1;
-  const hadSpec = (after < doc.lineCount) && meosIsSpecLine(doc.lineAt(after).text);
-  const specText = (hadSpec ? doc.lineAt(after).text : '') + specs.join('');
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
-    for (const b of bodies) eb.replace(doc.lineAt(b.ln).range, b.body);
-    if (hadSpec) eb.replace(doc.lineAt(after).range, specText);
-    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + specText);
+    eb.replace(doc.lineAt(ln).range, split.body);                   // 行から新しい指定を抜く
+    if (specLns.length) {
+      eb.replace(doc.lineAt(specLns[0]).range, spec);
+      for (let k = 1; k < specLns.length; k++) eb.delete(new vscode.Range(new vscode.Position(specLns[k - 1], doc.lineAt(specLns[k - 1]).text.length), new vscode.Position(specLns[k], doc.lineAt(specLns[k]).text.length)));
+    } else {
+      eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + spec);
+    }
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }
   return true;
