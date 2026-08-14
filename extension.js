@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.189(俊克 8/14 am08:34 バグ1「**太字***イタリック****太字+イタリック***の連続を指定する時の矛盾。最初の太字が出ない」／バグ2「間にスペースを入れるとうまく行くが、スペースを削除したい」／バグ3「スペースを空けても背景が全て出ない。FCコメントがなぜか折り畳まれない」＋am09:00「結局、FCコメントの命令として書かれている`*`記号の数で解釈すれば良いだけじゃないの?」): ★★**バグ1/2の真因= 正規表現3本that「隣り合う`*`の列」を最初から諦めていた**。`**太字***イタリック*` の真中は `***` という**1つの列**で、**閉じ2つ＋開き1つ**に割れる。だthat `**` の形は `\*\*(?!\*)`=「後ろに `*` が来たら不発」so、**割れる前に諦めていた**。★★**空白は回避策であって、記法ではなかった**= 俊克that空けていた空白は、正規表現that割れない所を**人の手で割っていた**だけ。so空白を消せるようにするには、割り方そのものを持つしかない。→ **CommonMarkの区切り列(delimiter run)を実装**(強い方=2文字から先に取り、余りthat次の相手へ回る＋3の倍数の禁じ手)。**本物の実装(commonmark/markdown-it)と3.3万件で突き合わせて一致**を確認。★★**ただし句読点の条項だけは貰わない**= CommonMark厳密だと `**…(グローバル)**です。` のような**日本語で普通に起きる形**that落ちて、日記の**2438行から太字that消える**。実測で決めた= 条項を外せば **消える印14／増える印30**(158,907行)、しかも消える14は全部「本来ずれていた方」so**14件とも新しい方that正しい**。**割り方だけを本家から貰い、飛び道具は貰わない**。★**flankingは生の行で見る**= 走査用テキストthatコードスパンを空白で伏せているso、伏せた字で前後を判定すると太字that**1554行**消える。**探すのは伏せた字・成立を決めるのは生の字**。一度間違えて計測で捕まえた。★★**バグ3の真因は別物= `FC` を1つ書き忘れると、その行の指定that丸ごと死ぬ**。正しく書いた2つthat、間違えた1つの巻き添えで消え、しかも畳まれないので原因that見えない(俊克「なぜか」)。→ **`FC` は行に1つあればいい**(畳むのは行so、コメント1つずつに要求していたのthat間違い)。実データ2ファイルで**新たに指定行になる行=0**so、直したのは壊れた形だけ。往復(戻す→外へ出す)すれば**自分で全部FCに揃う**。★**俊克の「FCの`*`の数で解釈すれば」は正しい。しかも既にそうなっている**= 色/tipの割り当ては**FCの宣言(種類＋出現順)that決めている**。だthatFCが無い行(日記の`*`を含む31,558行のほとんど)も描くso、**文字だけで割れる物差しthat土台に要る**。宣言を「割り方の上書き」にすると**同じ判断が2箇所**=[[feedback_one_source_for_mark_count_action]]の穴に自分から入る。★物差しは1つ= 描く側・🚫・FC行へ戻す側that**全部 meosStarMarks を呼ぶ**(正規表現3本を撤去)。headless: 本体実ロードで往復・色引き・指定行判定を確認。→ [[reference_meos_notation_v4]] [[project_setting_decides_future_only]]
 // - v4.0.188(俊克 8/14 am02:18 実測ログ `[fcSync] fold 96666 画面上端 96660→95296→95296`): ★★**計測thatひと言で犯人を出した**= 96666は**画面の中**(上端96660)なのに、畳んだ瞬間に**1364行上の95296**へ飛んだ。**95296は膜の先頭**。★真因= `editor.fold({selectionLines:[N]})` は「N行の**一番内側の折り畳み範囲**」を畳む。**その塊thatすでに畳まれていると、内側thatもう無いso、次に外側=膜を畳む**。**俊克thatずっと言っていた「膜の始めにジャンプ」は、比喩ではなく文字どおり膜を畳んでいた**。★戻せなかった理由も同じ= 膜that畳まれた後は元の行thatが**隠れている**sorevealで戻れない(ログのC=95296thatその証拠)。**戻す仕掛けthatどれだけ賢くても、畳んだ後では手遅れ**だった=v4.0.176〜186の10版thatが全部「手遅れの後始末」を磨いていた。★直し= **畳む前に「その塊that本当に開いているか」を確かめる**(塊の最後の指定行that見えていれば開いている)。畳まれていれば**何もしない**so、**二度打ちthat膜に化ける事故を原理的に起こさない**。★★教訓= **推測を10版重ねるより、計測1行**。俊克thatログを取ってくれた1回で終わった。
 // - v4.0.187(俊克 8/14 am01:52「見出しの頭での改行とbsは、まったく改善されていないよ。なぜ?」): ★**分からない。soここで推測をやめる**。v4.0.184で割る/結ぶは頭では走らないようにし、v4.0.186で画面外は畳まないようにしたthat、俊克の環境では変わらない=**私の想定した経路thatそもそも犯人ではない**。★今日バグ3で効いた手をもう一度使う= **畳む/開くを実際に打った時だけ1行出す**。`[fcSync] fold/unfold 行 画面上端 A→B→C`(A=打つ前 B=打った直後 C=戻した後)と `[fcFold] ★一括で畳んだ`。**Aと Bthat違えば、その行を畳んだことthat飛ばした**。**何も出ないなら、飛ばしているのはMeOSの畳み処理ではない**(VS Code自身の折り畳み再計算=編集で行thatずれた時に起きる)。★教訓の再確認= **計測で犯人が出ないのは、無罪の証明ではなく網の外に居る証明**(v4.0.112)。so網を「実際に打った瞬間」に張り直した。
 // - v4.0.186(俊克 8/14 am01:38「見出しの先頭で改行すると、ジャンプして戻ると言う動きをする。その処理に入った時、何もしないで出るようにできないのか? bsキーのときは、一瞬再描画されるのも、今一」): ★★**できる。しかも「戻す」より正しい**= 飛ぶのは**画面の外の塊を畳みに行く時だけ**。`editor.fold` は畳む相手を見せに行くso、画面の外なら**必ず**飛ぶ。v4.0.176〜182で私thatやってきたのは全部「飛んだ後で戻す」=**飛ぶこと自体は止められていなかった**so「飛んで戻る」thatが見え続けた(俊克の「一瞬再描画されるのも今一」thatそれ)。★★答えは俊克の言葉のまま= **何もしないで出る**。**画面の外の塊は、そもそも畳まない**。畳み忘れではない= その塊that画面に入ってきた時に畳めばいい(カーソルthat近づけばこの同期thatまた走る)。**見えていないものを整える必要thatそもそも無い**。★開く方(unfold)はカーソルの居る塊=**必ず画面の中**so元から飛ばない。★教訓= **後始末を上手くする前に、汚さない道を探す**。10版かけて「戻し方」を磨いていたthat、正しい問いは「なぜ触るのか」だった。
@@ -13071,12 +13072,97 @@ function meosScanText(t) {
   if (s.indexOf('`') >= 0) s = meosMaskCodeSpans(s);
   return meosMaskSpecTokens(s);
 }
-// v4.0.169(俊克 8/13 pm00:00「だから、イタリックには2つの記法があるんだね。そうなれば、一択でしょ。`*イタリック*`と書く」):
-// ★**素の単一 `*` の斜体**(CommonMark)。`_` と違い**語中の制限が無い**so、`*イタリック*の後に文字` も
-//   GitHub/Zennで**本物の斜体**になる(v4.0.168で本物のCommonMark実装に確かめた)。
-// ★形は `**`/`***` と衝突しない= 開きの次が `*` なら不発・閉じの次が `*` なら不発。
-//   開きの次が空白なら不発so、箇条書きの `* 項目` は無傷。閉じの前が空白なら不発so `*.md と *.js` も無傷。
-const MEOS_STAR_ITALIC_SRC = '(?<!\\*)\\*(?![\\s*{])([^*\\n]+?)(?<!\\s)\\*(?!\\*)';
+// ===== v4.0.189(俊克 8/14 am08:34 バグ1/2「太字・イタリック・太字+イタリックの連続は空白を空けないと正しく
+//   レンダリングしない。ただし、それでも駄目なケースもある」): `*` の強調を**区切り列(delimiter run)**で読む =========
+// ★★真因= **正規表現3本が「隣り合う `*` の列」を最初から諦めていた**。`**太字***イタリック*` の真中は `***` の
+//   1つの列で、**閉じ2つ＋開き1つ**に割れる。だthat `**` の形は `\*\*(?!\*)`=「後ろに `*` が来たら不発」so、
+//   **割れる前に諦めていた**(俊克の「最初の太字が出ない」)。空白はその割れ目を人の手で作っていただけ=
+//   **空白は回避策であって、記法ではなかった**。so空白を消せるようにするには、割り方そのものを持つしかない。
+// ★答えはMarkdown本体that既に持っていた= CommonMarkの emphasis は**列を1文字ずつ配る**(強い方=2文字から先に取り、
+//   余りthat次の相手へ回る)。`**太字***イタリック****太字+イタリック***` は本家cmark/markdown-itで
+//   `<strong>太字</strong><em>イタリック</em><em><strong>太字+イタリック</strong></em>`= **俊克の期待どおり**。
+//   推測でなく**本物の実装(commonmark/markdown-it)を並べて4万件の総当たりで一致を確かめた**(v4.0.169と同じ流儀)。
+// ★★ただし**句読点の条項だけは外す**(=loose)。CommonMarkは「閉じの前that約物なら、後ろthat空白か約物でないと閉じない」so、
+//   `**…(グローバル)**です。` のような**日本語で普通に起きる形that外の世界では元から太字になっていない**。
+//   厳密に合わせると日記の**2438行から太字that消える**=[[project_setting_decides_future_only]]に真っ向から反する。
+//   → **割り方(列の配り方)だけを本家から貰い、飛び道具(約物の条項)は貰わない**。実データ158,907行で計測=
+//   **消える印14／増える印30**、しかも消える14は全部「本来ずれていた方」(`** ... **` の説明文・`**{ }**` 旧膜・
+//   `*新規install*` を挟んで**別の組と繋がっていた行**)so、**14件とも新しい方that正しい**。
+// ★開きの直後that `{` の時は開かない= 旧膜 `**{ 本文 }**` は今までどおり旧いパスthat描く(read-both)。
+// ★物差しは1つ= 描く側・🚫・FC行へ戻す側that**全部ここを呼ぶ** [[feedback_one_source_for_mark_count_action]]。
+// ★★**flankingは生テキストで見る**= 走査用テキストthatコードスパンを**空白**で伏せているso(meosMaskCodeSpans)、
+//   伏せた字で前後を判定すると `**`+コードスパン`**` の太字that1554行ぶん消える。**伏せるのは「記法を探す時」だけ**で、
+//   **「その記法that成立するか」は生の字that決める**。ここを1つ間違えて計測で捕まえた(教訓=計測を先に置く)。
+const MEOS_STAR_WS_RE = /\s/;
+// 1行の中の `*` の強調を全部返す。scan=記法を探すテキスト(伏せ済) / raw=前後の字を見るテキスト(生・長さは同じ)。
+// [{ openStart, openEnd, closeStart, closeEnd, strong }] を開始位置の昇順(同じなら外側が先)で返す。
+function meosStarEmphasisSpans(scan, raw) {
+  const t = String(scan == null ? '' : scan);
+  if (t.indexOf('*') < 0) return [];
+  const r = (raw == null) ? t : String(raw);
+  const runs = [];
+  for (let i = 0; i < t.length;) {
+    if (t.charAt(i) !== '*') { i++; continue; }
+    let j = i; while (j < t.length && t.charAt(j) === '*') j++;
+    const before = i > 0 ? r.charAt(i - 1) : '', after = j < r.length ? r.charAt(j) : '';
+    const wsB = !before || MEOS_STAR_WS_RE.test(before), wsA = !after || MEOS_STAR_WS_RE.test(after);
+    runs.push({ pos: i, len: j - i, origLen: j - i, canOpen: !wsA && after !== '{', canClose: !wsB });
+    i = j;
+  }
+  // 1行に `*` の列that異常に多い時は何もしない(安全弁)。日記の実測では最大でも十数個so、まず当たらない。
+  if (!runs.length || runs.length > 500) return [];
+  const nodes = [], bottom = {};
+  let ci = 0;
+  while (ci < runs.length) {
+    const closer = runs[ci];
+    if (!closer.canClose || closer.len <= 0) { ci++; continue; }
+    // 「ここより前には相手が居ない」と分かった所を種類ごとに覚える(CommonMarkのopeners_bottom)=総当たりにしない。
+    const key = (closer.canOpen ? 1 : 0) + '|' + (closer.origLen % 3);
+    const bt = (bottom[key] === undefined) ? -1 : bottom[key];
+    let oi = ci - 1, opener = null;
+    while (oi > bt) {
+      const d = runs[oi];
+      if (d.len > 0 && d.canOpen) {
+        // ★「3の倍数の禁じ手」(CommonMarkの rule of 3)= `*foo**bar**baz*` のような語中の食い違いを防ぐ唯一の錘。
+        const odd = (closer.canOpen || d.canClose)
+          && ((closer.origLen + d.origLen) % 3 === 0)
+          && !(closer.origLen % 3 === 0 && d.origLen % 3 === 0);
+        if (!odd) { opener = d; break; }
+      }
+      oi--;
+    }
+    if (!opener) { bottom[key] = ci - 1; if (!closer.canOpen) closer.len = 0; ci++; continue; }
+    const use = (closer.len >= 2 && opener.len >= 2) ? 2 : 1;   // 両方2つ以上あれば太字・でなければ斜体
+    const openEnd = opener.pos + opener.len;
+    nodes.push({ openStart: openEnd - use, openEnd, closeStart: closer.pos, closeEnd: closer.pos + use, strong: use === 2 });
+    opener.len -= use; closer.pos += use; closer.len -= use;    // 使った分だけ内側から減らす(余りthat次の相手へ回る)
+    for (let k = oi + 1; k < ci; k++) runs[k].len = 0;          // 間に挟まれた列はもう相手になれない
+    if (closer.len <= 0) ci++;
+  }
+  nodes.sort((a, b) => a.openStart - b.openStart || b.closeEnd - a.closeEnd);
+  return nodes;
+}
+// 描く側that使う形へ。**隙間なく入れ子の2つ(強+弱)は `***` 1つに畳む**= `***本文***` は3本の印that1組so、
+// 指定行の種類(`***`)・🚫の範囲・戻す時の位置that全部1つの単位で数えられる。
+// [{ kind:'***'|'**'|'*', start, bodyStart, bodyEnd, end, bold, italic }] を開始位置の昇順で返す。
+function meosStarMarks(scan, raw) {
+  const ns = meosStarEmphasisSpans(scan, raw);
+  if (!ns.length) return [];
+  const used = new Set(), out = [];
+  for (const n of ns) {
+    if (used.has(n)) continue;
+    const inner = ns.find(x => x !== n && !used.has(x) && x.openStart === n.openEnd && x.closeEnd === n.closeStart);
+    if (inner) {
+      used.add(n); used.add(inner);
+      out.push({ kind: '***', start: n.openStart, bodyStart: inner.openEnd, bodyEnd: inner.closeStart, end: n.closeEnd, bold: true, italic: true });
+      continue;
+    }
+    used.add(n);
+    out.push({ kind: n.strong ? '**' : '*', start: n.openStart, bodyStart: n.openEnd, bodyEnd: n.closeStart, end: n.closeEnd, bold: n.strong, italic: !n.strong });
+  }
+  out.sort((a, b) => a.start - b.start || b.end - a.end);
+  return out;
+}
 // v4.0.63(俊克 8/8 改良1「開始点に依存しないで、コメントで完全にコントロールする」・第2弾=行単位):
 //   仕様コメント先頭の**命令トークン**で「この行が何であるか」を宣言する。
 //     `## 本文<!-- H2 (白/緑)//[]tip= -->`      = 見出しレベル2
@@ -14752,12 +14838,11 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
 const MEOS_INLINE_MARK_RES = [
   ['==', /=={([^\n]*?)}==|(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g],
   ['~~', /~~\{([^\n]*?)\}~~|~~(?!\{)([^~\n]+?)~~/g],
-  ['***', /\*\*\*([^*\n]+?)\*\*\*/g],
-  ['**', /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g],
-  ['*', new RegExp(MEOS_STAR_ITALIC_SRC, 'g')], // v4.0.169: 素の単一 `*` の斜体(描画側と同じ形を共有)
   ['_', /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g],
 ];
 // この行にある「語に効く記法」の終わり位置を、種類ごとに出現順で返す。[{kind, ord, end}]
+// v4.0.189: `*` の3種(*** / ** / *)は**描く側と同じ1つの走査**から引く=戻す位置that描く位置とずれない
+//   [[feedback_one_source_for_mark_count_action]]。
 function meosInlineMarkEnds(text) {
   const t = String(text == null ? '' : text);
   const out = [];
@@ -14765,6 +14850,8 @@ function meosInlineMarkEnds(text) {
     re.lastIndex = 0; let m, ord = 0;
     while ((m = re.exec(t)) !== null) { ord++; out.push({ kind, ord, end: m.index + m[0].length }); }
   }
+  const nth = {};
+  for (const mk of meosStarMarks(meosScanText(t), t)) { nth[mk.kind] = (nth[mk.kind] || 0) + 1; out.push({ kind: mk.kind, ord: nth[mk.kind], end: mk.end }); }
   return out;
 }
 // FC行を本文の行末形式へ戻す。{ line } か null(戻せない/戻すと壊れる時)。
@@ -15021,14 +15108,11 @@ function boldSpanAtCursor(editor) {
     { re: /\*\*\{[\s\S]*?\}\*\*/g, open: 3, close: 3 }, // 太字正式膜(入れ子の両方=**{ _{ } }** も最外でここに一致)
     { re: /__\{[\s\S]*?\}__/g, open: 3, close: 3 },      // 斜体正式膜(旧・二重)read-both
     { re: /(?<!_)_\{[\s\S]*?\}_(?!_)/g, open: 2, close: 2 }, // v4.0.16: 斜体正式膜(新・単一)
-    { re: /\*\*\*[^\n*]+\*\*\*/g, open: 3, close: 3 },   // ***太字斜体***
-    { re: /\*\*[^\n*]+\*\*/g, open: 2, close: 2 },       // **太字**
     { re: /___[^\n_]+___/g, open: 3, close: 3 },         // ___太字斜体___
     { re: /__[^\n_]+__/g, open: 2, close: 2 }            // __斜体__(従来記法)
   ];
   // v4.0.22(俊克 8/6 🚫統合): 素のMarkdown斜体 `_text_` も解除対象(描画=v4.0.20 と同じ足切り規則)。散文限定=コードの `catch (_)` を壊さない。
-  // v4.0.169: 新しい一択 `*text*` も同じ列に(描画と同じ形を共有)。`_` は read-both で残す。
-  if (meosIsProseDoc(doc)) { pats.push({ re: new RegExp(MEOS_STAR_ITALIC_SRC, 'g'), open: 1, close: 1 }); pats.push({ re: /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g, open: 1, close: 1 }); }
+  if (meosIsProseDoc(doc)) { pats.push({ re: /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g, open: 1, close: 1 }); }
   const tScan = meosScanText(text); // v4.0.172: 🚫も描く時と同じ物差しで探す(長さ不変so位置はそのまま使える)
   for (const p of pats) {
     let m; p.re.lastIndex = 0;
@@ -15043,6 +15127,15 @@ function boldSpanAtCursor(editor) {
         return { kind: 'bold', range: new vscode.Range(line, s, line, eAll), body };
       }
     }
+  }
+  // v4.0.189: `*` の3種(*** / ** / *)は**描く側と同じ1つの走査**から引く。外側that先(重なっていれば大きい方を外す)。
+  for (const mk of meosStarMarks(tScan, text)) {
+    if (mk.kind === '*' && !meosIsProseDoc(doc)) continue;
+    const _sc = meosSpecCommentAfter(text, mk.end); const eAll = _sc ? _sc.end : mk.end;
+    if (pos.character < mk.start || pos.character > eAll) continue;
+    const inner = text.slice(mk.bodyStart, mk.bodyEnd); // 本文は**生の行**から取る(伏せた字を書き戻さない)
+    const body = String(parseColorSpec(inner, 'fg', inner).bodyText || inner).trim();
+    return { kind: 'bold', range: new vscode.Range(line, mk.start, line, eAll), body };
   }
   return null;
 }
@@ -20155,7 +20248,18 @@ const MEOS_SPEC_LINE_AUTOFOLD = true; // FC付きの指定行を開いた時に1
 // ★直し= 「その行が **Mew!FCコメントだけで出来ているか**」を見て、**中身を全部つないで**返す。
 //   これで `<!-- Mew!FC … --><!-- Mew!FC … -->` も、複数行に分けた書き方も、同じ1つの指定として読める。
 //   ★`-->` を食えないよう **tempered** にした(`(?:(?!-->)[^\n])*?`=1文字ずつ確かめる形so後戻り爆発は起きない)。
-const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc|\^)[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
+// v4.0.189(俊克 8/14 am08:34 バグ3「スペースを空けても背景が全て出ない。FCコメントがなぜか折り畳まれない」):
+// ★★真因= **`FC` を1つ書き忘れると、その行の指定that丸ごと死ぬ**。俊克の行は
+//   `<!-- Mew!FC ** … --><!-- Mew!FC * … --><!-- Mew! *** … -->` で、3つめだけ `FC` that無い。
+//   すると「行全体that Mew!FC コメントだけで出来ているか」の検査that落ちて **null**=色も畳みも1つも効かない。
+//   **正しく書いた2つthat、間違えた1つの巻き添えで消える**。しかも畳まれないので原因that見えない(俊克「なぜか」)。
+// ★直し= **`FC` は行に1つあればいい**。行that Me記法のコメントだけで出来ていて、そのうち**1つでも FC と名乗れば**
+//   その行は指定行=畳む・全部読む。**行に効く印を、コメント1つずつに要求していたのthat間違いだった**
+//   (`FC`=Folding **Comment** と名乗ってはいるthat、畳むのは行so、行に1つで足りる)。
+// ★これは緩めではなく**read-both**の続き= `^` を読み続けるのと同じ。書く側は今までどおり全部に `FC` を付ける
+//   (`meosMoveSpecsOutOfLine`)so、一度でも押し直せば**自分で揃う**。
+// ★FCthat1つも無い行は今までどおり**指定行ではない**(俊克「FCを書かなければ、エディタ上ではコメントが見える」)。
+const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(FC|fc|\^)?[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
 // 行全体が Mew!FC コメント(1つ以上)だけで出来ている時、その中身を全部つないで返す。そうでなければ null。
 // v4.0.157(俊克 8/12 pm06:15「1行ずつFCコメントを並べるのは美しいが、何個並んでいるかすぐには分らない。
 //   (a)だから1行に並べる。(b)あるいはコメント1つの中に命令を並べる。個数を簡単に把握できるのは(a)だよね」):
@@ -20167,13 +20271,14 @@ const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc|\^)[ \t]*((
 function meosSpecLinePayloads(text) {
   const t = String(text == null ? '' : text);
   if (t.indexOf('<!--') < 0) return null;
-  const out = []; let last = 0, found = 0, m;
+  const out = []; let last = 0, found = 0, fc = 0, m;
   MEOS_SPEC_LINE_ONE_RE.lastIndex = 0;
   while ((m = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) {
     if (t.slice(last, m.index).trim()) return null; // コメントの外に文字がある=指定行ではない
-    out.push(m[1] || ''); last = m.index + m[0].length; found++;
+    if (m[1]) fc++;                                 // v4.0.189: FC/^ と名乗ったコメントの数
+    out.push(m[2] || ''); last = m.index + m[0].length; found++;
   }
-  if (!found || t.slice(last).trim()) return null;
+  if (!found || !fc || t.slice(last).trim()) return null; // v4.0.189: 行に1つでもFCがあれば指定行(1つも無ければ従来どおり素のコメント)
   return out;
 }
 function meosSpecLinePayload(text) { const a = meosSpecLinePayloads(text); return a ? a.join(' ') : null; }
@@ -21160,20 +21265,24 @@ function meosApplyBoldDecorations(editor) {
         // ★ハイライト側(v4.0.154 の 6226行)は `if (_sc)` と書いてあった=**同じ判断が2箇所にあり、片方だけ正しかった**。
         //   so ここは**1つの口**に集約する=[[feedback_one_source_for_mark_count_action]]。3箇所の写経をやめる。
         const _hideSpecComment = (q, e) => { if (q && q.sc) hideR.push(new vscode.Range(ln, e, ln, q.sc.end)); };
-        // 従来記法(同一行内): ***太字斜体*** / **太字**(**{ ではない時)
-        const reBI = /\*\*\*([^*\n]+?)\*\*\*/g; reBI.lastIndex = 0;
-        while ((m = reBI.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '***'); hideR.push(new vscode.Range(ln, s, ln, s + 3)); hideR.push(new vscode.Range(ln, e - 3, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 3, e - 3, true, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
-        const reB = /(?<!\*)\*\*(?!\{)([^*\n]+?)\*\*(?!\*)/g; reB.lastIndex = 0; // ***の一部でない・**{でもない 純粋な **太字**
-        while ((m = reB.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '**'); hideR.push(new vscode.Range(ln, s, ln, s + 2)); hideR.push(new vscode.Range(ln, e - 2, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 2, e - 2, true, false, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        // v4.0.189(俊克 バグ1/2): `*` の従来記法(***太字斜体*** / **太字** / *斜体*)は**1つの走査**で拾う。
+        //   3本の正規表現では「隣り合う列」(`**太字***イタリック*`)を割れなかった=空白を空けないと出なかった。
+        //   ★flankingは**生の行**(text)で見る= tScanはコードスパンを空白で伏せているso、伏せた字で判定すると
+        //     `**`+コードスパン+`**` の太字that消える(実データで1554行)。探すのは伏せた字・成立を決めるのは生の字。
+        for (const mk of meosStarMarks(tScan, text)) {
+          if (mk.kind === '*' && !_prose) continue;   // 素の単一 `*` は散文だけ(コードの掛け算/ワイルドカードを拾わない)
+          const q = _spec(mk.end, mk.kind);
+          hideR.push(new vscode.Range(ln, mk.start, ln, mk.bodyStart));
+          hideR.push(new vscode.Range(ln, mk.bodyEnd, ln, mk.end));
+          _hideSpecComment(q, mk.end);
+          pushStyle(ln, mk.bodyStart, mk.bodyEnd, mk.bold, mk.italic, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '');
+        }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
         const reI1p = _prose ? /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g : null; if (reI1p) reI1p.lastIndex = 0;
         while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
-        // v4.0.169(俊克 8/13 pm00:00): **これからの斜体は `*本文*`**。`_` と違って外の世界でも本物の斜体になる。
-        //   `_本文_` は読み続ける(read-both)= 既に書かれたものは救わない/そのまま描く [[project_setting_decides_future_only]]。
-        const reI1s = _prose ? new RegExp(MEOS_STAR_ITALIC_SRC, 'g') : null; if (reI1s) reI1s.lastIndex = 0;
-        while (reI1s && (m = reI1s.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '*'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        // v4.0.169/189: **これからの斜体は `*本文*`**(`_本文_` は read-both で上に残す)。単一 `*` は上の走査that一緒に拾う。
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
