@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.210(俊克 8/15 am00:29「それは、FC方式にするかどうかがカスタマイズできた頃の話しのままの実装になっているだけでしょ? 今はFC固定なんだから、最初から2行に分けて表示すべきだよね。テーブルの場合は、それがテーブルの下になると言うだけだよね。わざわざ行末に出力してから、表示位置を変えるなんて、意味ないよ」＋am00:38「今でしょ」): ★★**俊克thatが正しい。今日の失敗は全部「中間状態」から出ていた**= ボタンthat一度**行末に書いてから**、後で「行の外へ出す」引っ越しをしていた。FCthat設定だった頃の作りthatそのまま残っていた。その一瞬の形の上で**位置を数える/選択を運ぶ/戻す**をやっていたので、そこを間違え続けた(今日 v4.0.202/203/204/205/207/208)。★★**中間状態を作らなければ、その3つとも存在しない**= 1回の編集で「本文に印」と「指定行に指定」を**同時に**書く(`meosWriteMarkAndSpec`)。引っ越し(`meosPushLineSpecsOutOfLine`)は書く側から呼ばれなくなった。★位置は**印の場所**から決める= 選択の位置thatそのまま印の位置so、コメントの居場所という代用品を使わない。俊克の「縦線を数える」と同じ考え方(ログにも `セル=(行,列)` を出す)。★切り替えたのは3つ= ハイライト/取消線・太字/斜体・**リンク**。リンクだけ行末に書いていた例外もここで消えた。★★検証= 偽エディタで**7通りの押し順**(逆順・飛び飛び・一部だけ)を走らせ、**どの順で押しても表の格子順**になることを確認。表でない普通の段落でも、本文にコメントthat残らず2行に分かれることを確認。headless 7/7(新規 t_write)＋9/9＋15/15＋22/22＋13/13 PASS。📌残= 見出し/上付き下付き/🚫/↻ はまだ引っ越しの道を通る(次に触る時に同じ口へ寄せる)。
 // - v4.0.208(俊克 8/14 pm09:00「何も変わってない。本当に、最後の最後にいつも駄目駄目だね。本気出してよ!」): ★★**私は挿す位置の計算を4版直したthat、俊克の画面では直らない**。so今度は**本物の関数を偽エディタで走らせた**=`meosPushTableSpecsOutOfLine` 自体に、俊克thatが押したのと同じ3手を食わせる。結果は**毎回正しい(青,紫,黄)**。配った vsix の中身も取り出して確認済み。**私の読みでは犯人that網の外に居る**。★★so**結果を数え方に依存させない**= 押した後に、指定行thatが**表の格子の順**になっていることを**保証**する。これは「並べ替え」ではなく**指定行は格子の順である、という定義**(俊克の `char(2,4)` そのもの)。**既に格子順なら1文字も動かさない**(挿入のまま)。対応(どの指定thatどの印か)は1つも変えない=動くのは並びだけ。★★**6通りの押し順**(順不同・4つ入れる場合も)を偽エディタで全部走らせ、**どの順で押しても格子順になる**ことを確認。★保証that働いた時は `[fcIns] ★格子順に合わせた: 前 → 後` をログに出す= **働いたこと自体that、私の数え方thatまだ狂っている証拠**になる。
 // - v4.0.207(俊克 8/14 pm08:12「FCコメントの並びにどうやって挿入しているの? 全部上書きするの? それともキーボードのように挿入できるの?」): ★★**俊克の問いthatそのまま指摘だった= 全部上書きしていた**。「読んで・配列にして・挟んで・また文字列に戻して・行ごと置換」so、**挿入と言いながら、毎回すべてのコメントを書き直していた**。俊克thatが pm07:46 に「これは挿入なんだよ」と言ったのに、私は挿す**位置**の計算だけ直して、**書き方は上書きのまま**にしていた。★直し= **本当に挿すだけにする**= 指定行の中の**文字位置**を1つ出して(`meosSpecLineInsertOffset`)、そこへ `insert` する。**既存のコメントには1文字も触らない**so、動きようthatが無い。複数挿す時は**後ろから**(前の位置thatずれない)。★指定行that複数行に分かれている時だけ、1本にまとめ直す道を残した(そこは元から書き直す仕事)。★★これで俊克の言う「キーボードのように挿入」になった。上書きしている限り、位置の計算thatが合っていても**別の理由で並びthat変わりうる**= 疑いの余地を消した。
 // - v4.0.206(俊克 8/14 pm07:55「何回間違えば気が済むんだよ。3個入れることすらできないのか? 最終的に、青、紫、黄 という順番にコメントが並ぶはずだよね。なのに、なぜ3個目に入れたのが、最後に入るんだよ」): ★**謝る前に、測る**。俊克thatが押した3回目をそのまま再現したところ、v4.0.205のコードは**正しい答え(青,紫,黄)を出す**。配った vsix にもそのコードthatが入っていることを、中身を取り出して確認した。so**実機で私の想定と違う何かthat起きている**= 静止した読みでは、もう出ない所に居る。★★今朝の教訓をそのまま使う= **計測で犯人that出ないのは無罪の証明ではなく、網の外に居る証明**。→ ボタンを押した瞬間だけ1行出す `[fcIns] 種類 通し番号=G 前の行=B この行=O 既存=N 表=S..E 行=L at=P body=…`。**Gthat期待と違えば、B と O のどちらthat狂っているかthatその場で分かる**。何も出なければ、そもそもこの道を通っていない(=別の押し出し口を通っている)。★推測で版を重ねない。
@@ -14809,17 +14810,14 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     // v4.0.56(俊克): 散文は素のMarkdown＋後置きコメント。コード系は従来の分割形。
     if (!wrap && meosIsProseDoc(doc)) {
       const mk = (kind === 'highlight') ? '==' : '~~';
-      const full = mk + body + mk + meosSpecComment(mk, spec); // v4.0.64: 命令トークン=使ったマーカーそのもの(== / ~~)
-      await editor.edit(eb => eb.replace(sel, full));
-      const bs = doc.positionAt(startOff + mk.length);
-      bodySel = new vscode.Selection(bs, doc.positionAt(startOff + mk.length + body.length));
+      // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
+      const _mark = mk + body + mk;
+      await meosWriteMarkAndSpec(editor, sel, _mark, mk, mk + ' ' + spec);
+      const bs = new vscode.Position(sel.start.line, sel.start.character + mk.length);
+      bodySel = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length));
       editor.selection = bodySel;
       editor = await meosFocusBack(editor, bodySel); // v4.0.173
-      // v4.0.158(俊克 8/12 pm06:52 バグ1「ボタンをFC形で書かせるが動作しない」): ★**私の置き場所が間違っていた**。
-      //   FC化を関数の**末尾**に置いたが、**散文の新形パスはここで `return` して抜ける**=俊克が実際に使う道には
-      //   一度も届いていなかった。→ **抜ける直前に置く**。★教訓=**早期returnのある関数では、末尾は「最後」ではない**。
-      try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
-      return;
+      return;   // v4.0.210: 引っ越し(meosPushLineSpecsOutOfLine)は要らない。もう指定行に書いてある。
     }
     const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
     const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
@@ -15145,6 +15143,57 @@ function meosSpecLineGridOrder(lines, blk, specText) {
   }
   for (const r of raw) if (out.indexOf(r) < 0) out.push(r);   // 相手の無い分は捨てずに後ろへ
   return out.map(x => x.text).join('');
+}
+// ===== v4.0.210(俊克 8/15 am00:29「それは、FC方式にするかどうかがカスタマイズできた頃の話しのままの実装に
+//   なっているだけでしょ? 今はFC固定なんだから、最初から2行に分けて表示すべきだよね。テーブルの場合は、
+//   それがテーブルの下になると言うだけだよね。わざわざ行末に出力してから、表示位置を変えるなんて、意味ないよ」) =====
+// ★★**俊克thatが正しい。今日の失敗は全部「中間状態」から出ていた**= ボタンthat一度**行末に書いてから**、
+//   後で「行の外へ出す」引っ越しをしていた。FCthat設定だった頃の作りthatそのまま残っていた。
+//   その一瞬の形の上で**位置を数える/選択を運ぶ/戻す**をやっていたので、そこを間違え続けた。
+// ★★**中間状態を作らなければ、その3つとも存在しない**= 1回の編集で「本文に印」と「指定行に指定」を同時に書く。
+// ★位置は**印の場所**から決める(コメントの居場所という代用品を使わない)= 俊克の「縦線を数える」と同じ考え方。
+// sel を markText に置き換え、その印に対応する指定を**指定行の正しい位置へ同時に挿す**。1回の編集で終わる。
+//   kind = 印の種類('==' '~~' '***' '**' '*' '_' 'link' 'sup' 'sub') / payload = 指定の中身(署名なし)
+async function meosWriteMarkAndSpec(editor, sel, markText, kind, payload) {
+  const doc = editor.document, ln = sel.start.line;
+  const line = doc.lineAt(ln).text;
+  const newLine = line.slice(0, sel.start.character) + markText + line.slice(sel.end.character);
+  const markEnd = sel.start.character + markText.length;
+  const lines = meosDocLines(doc);
+  const blk = meosTableBlockFor(lines, ln) || { start: ln, end: ln };
+  // 通し番号= 前の行の印の数 ＋ この行で自分までの印の数
+  let idx = 0;
+  for (let i = blk.start; i < ln; i++) idx += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
+  for (const mk of meosRowMarksInOrder(newLine)) if (mk.end <= markEnd) idx++;
+  const fcLn = blk.end + 1;
+  const hasFc = (fcLn < doc.lineCount) && meosIsSpecLine(doc.lineAt(fcLn).text);
+  const box = '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
+  const off = hasFc ? meosSpecLineInsertOffset(doc.lineAt(fcLn).text, idx - 1) : 0;
+  const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  try { meosDbg('[fcWrite] ' + kind + ' セル=(' + meosTableCellRow(lines, blk, ln) + '行,' + meosTableCellCol(newLine, markEnd) + '列) 通し番号=' + idx + ' 挿す位置=' + off + (hasFc ? '' : ' (指定行を新規)')); } catch (_) { }
+  await editor.edit(eb => {
+    eb.replace(sel, markText);
+    if (hasFc) eb.insert(new vscode.Position(fcLn, off), box);
+    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + box);
+  }, { undoStopBefore: true, undoStopAfter: false });
+  return { markEnd, fcLn: hasFc ? fcLn : (blk.end + 1) };
+}
+// 行の中の位置 at が、その行の何列目のセルか(1起点)。俊克の数え方=**縦線を数える**。
+function meosTableCellCol(rowText, at) {
+  const t = String(rowText == null ? '' : rowText);
+  let n = 0;
+  for (let i = 0; i < at && i < t.length; i++) if (t.charAt(i) === '|') n++;
+  return Math.max(1, n);
+}
+// 表の中で、その行thatが何行目か(1起点・区切り行は数えない)。
+function meosTableCellRow(lines, blk, ln) {
+  let n = 0;
+  for (let i = blk.start; i <= ln && i < lines.length; i++) {
+    const t = String(lines[i] == null ? '' : lines[i]);
+    if (/^[ \t]*\|[\s:|-]*$/.test(t)) continue;
+    n++;
+  }
+  return n;
 }
 // 表の全行から指定を集めて、表の下に1本のFC行として置く(既に在れば、そこへ足す)。
 async function meosPushTableSpecsOutOfLine(editor, blk) {
@@ -21871,31 +21920,17 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   //   これで印と後ろの文字の間に何も挟まらない=文字が連続する。指定は `Mew! [](行先)(色)(N)//tip`。
   //   ★カーソルは**行先の中**で待たせる(そのままURLか膜名を打てば完成)=手打ちからの解放は維持。
   const mark = '[' + label + ']()';
-  const specPre = '<!-- ' + MEOS_MEW_SIG + ' [](';                       // ここまで書いたら行先が来る
-  const specPost = ')' + color + ulPart + '//[]tip= -->';
-  const ln = sel.end.line, orig = doc.lineAt(ln).text;
-  const lineEnd = new vscode.Position(ln, orig.length);
-  // ★1回の編集にまとめる=カーソル位置を後から探さず**計算で決められる**(探すと既に在る行末コメントに引っかかる)。
-  await editor.edit(eb => { eb.replace(sel, mark); eb.insert(lineEnd, specPre + specPost); });
+  // ★★v4.0.210(俊克 8/15 am00:29): リンクだけ**行末**に書いていたのthat、FCthat設定だった頃の残骸だった。
+  //   今は他の4つとまったく同じ= **1回の編集で、本文に印・指定行に指定**。行末に書いてから引っ越す道は消えた。
+  const payload = '[]()' + color + ulPart + '//[]tip=';
+  const r = await meosWriteMarkAndSpec(editor, sel, mark, 'link', payload);
+  // ★カーソルは**行先の中**で待たせる(そのままURLか膜名を打てば完成)=手打ちからの解放は維持。
   try {
-    const before = orig.length - (sel.end.character - sel.start.character) + mark.length; // 印を置いた後の、行末コメント手前までの長さ
-    const p = new vscode.Position(ln, before + specPre.length); // 行先の中
-    editor.selection = new vscode.Selection(p, p);
+    const d2 = editor.document, st = d2.lineAt(r.fcLn).text;
+    const k = st.indexOf('[]()');                      // 行先thatまだ空=今書いたもの
+    if (k >= 0) { const p2 = new vscode.Position(r.fcLn, k + 3); editor.selection = new vscode.Selection(p2, p2); }
   } catch (_) {}
-  // v4.0.190(俊克「リンクもFCコメントに対応しよう」): FC方式なら、この指定も**行の外へ出す**。
-  // ★リンクだけは事情that1つ違う= ボタンを押した直後、書き手は**行先をこれから打つ**。
-  //   so外へ出しっぱなしにせず、**カーソルを行先の中のまま真下の行へ連れて行く**。
-  //   その行はカーソルthat居る間だけ開く(MeOSの約束=カーソルの下はいつも生データ)so、打ち終わって離れれば畳まれる。
-  // ★行先の位置は探さずに**最後の `[](` **で決まる= 今書いたコメントは行末に挿したso、指定行でも必ず最後に来る。
-  try {
-    if (MEOS_SPEC_LINE && meosFormatWritesFC() && await meosPushLineSpecsOutOfLine(editor)) {
-      const d2 = editor.document;
-      if (ln + 1 < d2.lineCount) {
-        const st = d2.lineAt(ln + 1).text, k = st.lastIndexOf('[](');
-        if (k >= 0) { const p2 = new vscode.Position(ln + 1, k + 3); editor.selection = new vscode.Selection(p2, p2); }
-      }
-    }
-  } catch (_) { }
+  // v4.0.210: 引っ越しは要らない(もう指定行に書いてある)。
   editor = await meosFocusBack(editor, editor.selection); // v4.0.173
 }
 // v4.0.169: リンクの表示文字から太字/斜体の包みを外す。**4か所に写経してあった**ので1つの口に集約
@@ -22099,8 +22134,14 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
     //   斜体は `_` でなく `*`。`_` は CommonMark が**語中で閉じさせない**so、日本語の直後だと外の世界で
     //   `_` が字のまま見えていた。`*` にその制限は無い=MeOSの外でも本物の斜体。
     const mk = (bold && italic) ? '***' : (italic ? '*' : '**');
-    const spec = (fg || bg) ? meosSpecComment(mk, '(' + (fg || '') + '/' + (bg || '') + ')//[]tip=') : ''; // v4.0.64: 命令トークン=使ったマーカー(** / _ / ***)
-    text = mk + body + mk + spec; off = mk.length;
+    // v4.0.210(俊克): 中間状態を作らず、1回の編集で本文と指定行の両方に書く。
+    if (fg || bg) {
+      await meosWriteMarkAndSpec(editor, sel, mk + body + mk, mk, mk + ' (' + (fg || '') + '/' + (bg || '') + ')//[]tip=');
+      try { const bs = new vscode.Position(sel.start.line, sel.start.character + mk.length); editor.selection = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length)); } catch (_) { }
+      editor = await meosFocusBack(editor, editor.selection);
+      return;
+    }
+    text = mk + body + mk; off = mk.length;   // 色指定thatが無い時は指定コメント自体を書かない(従来どおり)
   }
   // コード系(js等)や非散文は従来の正式膜のまま(実コードを壊さない/Markdown以外では素の ** が効かない)。
   // v4.0.16(俊克): 斜体を単一下線 _{ }_ に(Markdownの _=斜体 と一致・旧 __{ }__ 二重はread-bothで読める)。太字=**{ }** / 両方=**{ _{ }_ }**。
@@ -22109,8 +22150,6 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
   else { text = '**{ ' + body + color + ' }**'; off = 4; }
   await editor.edit(eb => eb.replace(sel, text));
   try { const s = sel.start, bs = s.translate(0, off); editor.selection = new vscode.Selection(bs, bs.translate(0, body.length)); } catch (_) {}
-  // v4.0.158: 太字/斜体も同じ約束(FC方式が入っていれば、その行の指定を外へ出す)。
-  try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
 }
 let boldHideDeco = null; const boldFmtTypeCache = new Map(); // key: 太字/斜体+文字色+背景色 → decorationType
 function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke) {
