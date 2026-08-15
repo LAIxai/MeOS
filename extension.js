@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.216(俊克 8/15 pm01:39「Me DockのFormat Meの四角の囲みは外そう」): `Format` の**枠だけ**外す(橙の文字とhover時の淡い橙の下地は残す=押せる印は消さない)。v4.0.162で枠を付けたのは「橙の文字だけでは、ただの見出しに見えて押せると分からなかった」からthat、使ってみると枠the主張that強すぎた。CSS 1行だけの変更で、`<script>` 区画は**前の版と1バイトも同じ**(208,387バイト)ことを確かめてある= [[feedback_minimal_change_verify_webview]]。
 // - v4.0.215(俊克 8/15 pm00:21「①表の整形that凸凹に見えるのをクリアしよう」): ★★**表の整形と画面の装飾that、違う物差しで「隠れる字」を数えていた**。整形はv4.0.74から「画面に見えている幅」でセルを詰めているのに、その幅を測る側には**正規表現that写経**されていて、描く側と食い違っていた。→ 日記の表 **820ブロック/9,563セル**を、装飾を実際に走らせて突き合わせたら **68セルthat食い違い**(=`|` thatセルごとに前後する=凸凹)。内訳と直し方=
 //   ①**単一 `*` の斜体を幅側が知らなかった**(`***`/`**` しか書いていない)→ `*斜体*` は画面3文字/整形5文字。→ **meosStarMarks(CommonMarkの区切り列)を幅側からも呼ぶ**=描く側/🚫/FCと同じ1本。
 //   ②**語中の `_` を斜体と読んでいた**(`MEMORY_LOG_ARCHIVE.md` で2文字詰めていた)→ 形を `MEOS_PLAIN_IT_US_SRC` の**1か所**にして両側から引く(`==`/`~~` も同様)。
@@ -17501,7 +17502,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* v4.0.161(俊克 pm09:44「どうも🐱と無関係な気がする。違和感しかない。だったらFormatと言う文字にメニューを付けた方が良い。4つのボタン全てに関係するからだ」): ★俊克が正しい= 🐱は「旧記法を変換する」ボタン、FCは「4つのボタンがどこに書くか」so、**似ているのは名前だけで仕事が違う**。効く範囲がFormat行の全部なら、**行の名前に付ける**のが正しい。 *//* v4.0.161b→v4.0.162(俊克 pm11:02「目立たないので、Edit Meのように四角枠で囲んだ方が良い。「Format Me」と改名して、Formatの部分を四角枠で囲む。ただし橙色の文字にしよう」): ★橙の文字だけでは**ただの見出しに見えて、押せると分からなかった**(スクショで一目瞭然)。so Format を四角で囲む=Me Dockの他の Me 系ラベルと同じ家族に見せる。(★webviewの中にバックティックを書くとテンプレート文字列が壊れる。本日2度目so、以後この区画にバックティックは書かない) */.fmt-label-menu{cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:3px}
 .fmt-label-menu:hover{opacity:1}
 .fmt-label-menu:hover .fmt-me-box{background:rgba(210,132,0,.16)}
-.fmt-me-box{border:1px solid #d18400;border-radius:4px;padding:1px 5px;color:#d18400}
+/* v4.0.216(俊克 8/15 pm01:39「Me DockのFormat Meの四角の囲みは外そう」): 枠だけ外す(橙の文字とhoverの淡い橙は残す=押せる印は消さない)。 */.fmt-me-box{padding:1px 5px;color:#d18400}
 /* v4.0.163(俊克「Format v あるいは Format ▼ にした方がいい。ただのボタンと勘違いされるからね」): ★枠だけでは**押すと何かが起きるボタン**に見える。▼が「**開く**」を意味するso、枠の中に入れる。 */.fmt-me-v{font-size:8px;opacity:.8;vertical-align:1px}
 .format-tools .fmt-btns{display:flex;gap:6px}
 .fmt-cell{display:inline-flex;align-items:stretch}
