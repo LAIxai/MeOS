@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.227(俊克 8/16 am00:05 改良1「`a↑(..)` thatできるといいんだけど」): ★**括弧の中は、形を字で説明した名前で書ける**。`..`=二つ点(¨) / `^^`=山 / `--`=横棒 / `oo`=丸 / `vv`=チェック。1文字の別名(`"`)より**打ちやすく、読んで分かる**。★括弧はMeTeXの「ここthat中身」と同じ役目so、**新しい記法ではない**(√と同じ筋= 既に在るものを読み替えるだけ)。★1文字の形(`a↑-`)も従来どおり。**括弧つきを先に見る**(長い方を先に当てないと取りこぼす)。★控えは**書いた形のまま**残す(`a↑(..)👒`)= やり直す時に同じ形that出る。★知らない名前(`a↑(zz)`)は**何もしない**=ただの字のまま。
 // - v4.0.226(俊克 8/15 pm11:44 バグ1「`a↑´`と書いて『↑´』を選択して上付きボタンを押しても駄目。直後で押すとなるthat、FCコメントではない」): ★【①選択して押せない】帽子の判定を `sel.isEmpty` に閉じていた。**選択して押すのthatが通常の使い方**(俊克)so、見るのを「選択の**終わり**」に変えた= `↑´` を選んでも `a↑´` を選んでも、終わりの手前thatが `a↑´` なら同じこと。★★【②FCコメントにならない】外へ出す側の判定 `isMetex` は **`{…}` の箱を必須**にしていたので、箱を持たない控え(`a↑´👒 (白/橙)`)thatが当たらず行末に取り残されていた。→ 控えを**箱なしでも運ぶ**枝を足した。★★さらに**控えは一般形に直さない**= 他の命令は「種類」を名乗るので `A↑1` に均してよいthat、**控えだけは実物を名乗るのthat仕事**(あとで別の字にやり直すための控えso、均したら値打ちthatが消える)。★★**同じ判断thatまた2か所に在った**(`meosRowSplitInline` と `meosMoveSpecsOutOfLine`)so、両方に入れた= 今日ずっと戦っている形。★★試験の作り直し= **編集を本文に本当に反映する偽エディタ**(`rig.js`)にした。前の版は編集を**記録するだけ**で、**FC行へ出す所を一度も試していなかった**= だから②を出荷してしまった。5通り(直後/`↑´`選択/`a↑´`選択/`↑3`選択/文字の後)で確認。
 // - v4.0.225(俊克 8/15 pm11:00〜pm11:35「√のことから、ひらめいた。外国のアルファベットの上に帽子のように付く形…一々その文字を見つけるのが面倒。どんなのでも作れるようにすればいい」): ★★**帽子(ハット)**= `a↑^` と書いて上付きボタンを押すと、本文that**本物の字 `â`** になる。★★ここだけ他の記法と**向きthat逆**= 隠して描くのではなく、**字そのものを作る**。理由= Unicodeには**結合文字**(U+0300〜)thatあり、`â` も `x̂` も `θ̂` も**標準の字として書ける**。標準that持っているものに私用の記法を被せたら、今度はこちらthat『悪い側』になる(ハイライト `==` の裏返し=記事の芯と対になる)。★★**FCコメントは命令ではなく『控え(レシピ)』**= `<!-- Mew!FC a↑^👒 (橙/) -->` に**作り方**thatが残る。俊克「あとで別の文字に変換したければ、コメントからコピーしてやり直せばいい。まさにインライン編集の極意」。MeOSはこの控えから**その字を行の中に見つけて色を塗る**(結び方は他と同じ**出現順**)。★**NFCで正規化**= 合成済みthat在れば1文字(`â`=U+00E2・BSで一度に消せる)、無ければ結合文字のまま2文字(`x̂` `θ̂`)。★**色は字と背景**(俊克 pm11:35「文字コードとしてある文字を使うんだから、帽子だけの色は無理だったね」)= **実際に描いて確かめた**(結合文字を別spanに割っても帽子だけには乗らない)。★打ちやすい別名も受ける(`'`=´ / `"`=¨ / `-`=¯ / `v`=ˇ / `o`=˚ / `.`=˙)。★帽子の控えは肩/腰の結び付けから外す(命令ではないため)。★★**同じ穴を今日2度踏んだ**= 分岐を `colorPart` の**宣言より前**に書いた(v4.0.220と同じTDZ)。**今度はheadlessの実行thatが捕まえた**(前回は目で気づいた)= 検査thatが1段深くなった。
 // - v4.0.224(俊克 8/15 pm09:15 バグ1「√の横棒thatまったく直ってないよ。なぜ?」＋👍1「bsキー遅延は直ったようだ」): ★★**私the直した所thatが違った**。v4.0.223で外したのは「肩/腰**自身**の overline」だけで、**棒の範囲thatが肩の上まで伸びたまま**だった。区間thatが分かれても、**外側の範囲thatその字を覆っていれば、VS Codeはそこにも棒を引く**= 見た目は1mmも変わらない(俊克の「なぜ?」thatが正しい)。→ **棒の範囲から肩/腰を切り取る**(`√(x↑2 + y↑2)` なら `x↑` と ` + y↑` の2本に割れる)。棒は「どこまでthat√の中身か」を言う線so、途切れて構わない。★教訓= **打ち消しは内側からは効かない**。消したいなら、**外側の範囲を狭める**。v4.0.217の『仕掛けを消したら見た目も消す』の兄弟で、今度は逆向き(見た目を消したつもりthatが、**もっと外側にもう1枚あった**)。headlessで棒の範囲を文字列で出して確かめた= 目で見る前に形で分かる。★bsキーの遅延は v4.0.223(打鍵中はFCの畳み/開きを走らせない)で直った=**秒の詰まりは `editor.fold`/`editor.unfold` の往復**thatが原因で確定。
@@ -22754,7 +22755,8 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
       ? meosHatBeforeCursor(doc.lineAt(sel.end.line).text.slice(0, sel.end.character)) : null;
     if (_hb) {
       const _hs = new vscode.Position(sel.end.line, _hb.start);
-      const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + _hb.mark + MEOS_HAT_MARK + (colorPart ? (' ' + colorPart) : '') + ' -->';
+      const _mk = _hb.paren ? ('(' + _hb.mark + ')') : _hb.mark; // v4.0.227: 書いた形のまま控える
+      const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + _mk + MEOS_HAT_MARK + (colorPart ? (' ' + colorPart) : '') + ' -->';
       await editor.edit(eb => eb.replace(new vscode.Range(_hs, sel.end), _hb.ch + _rec));
       try { const _after = _hs.translate(0, _hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
       try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
@@ -22830,26 +22832,45 @@ const MEOS_HAT_TABLE = { // 打ちやすい別名も受ける(左が書いた字
   '^': 0x0302, '´': 0x0301, "'": 0x0301, '`': 0x0300, '~': 0x0303, '¨': 0x0308, '"': 0x0308,
   '¯': 0x0304, '-': 0x0304, 'ˇ': 0x030C, 'v': 0x030C, '˚': 0x030A, 'o': 0x030A, '˙': 0x0307, '.': 0x0307, '˘': 0x0306,
 };
+// v4.0.227(俊克 8/16 am00:05 改良1「`a↑(..)` ができるといいんだけど」): ★**括弧の中は、名前で書ける**。
+//   `..`=二つ点(¨) のように、**形を字で説明した書き方**thatできる。1文字の別名(`"`)より、打ちやすく・読んで分かる。
+//   ★括弧はMeTeXの「ここthat中身」と同じ役目so、新しい記法ではない(√と同じ筋)。
+const MEOS_HAT_ALIAS = { '..': 0x0308, '--': 0x0304, '^^': 0x0302, 'oo': 0x030A, 'vv': 0x030C };
+function meosHatCodeOf(mark) {
+  const m = String(mark == null ? '' : mark);
+  return MEOS_HAT_ALIAS[m] || (m.length === 1 ? MEOS_HAT_TABLE[m] : 0) || 0;
+}
 function meosHatCompose(base, mark) {
-  const cp = MEOS_HAT_TABLE[mark]; if (!cp || !base) return '';
+  const cp = meosHatCodeOf(mark); if (!cp || !base) return '';
   try { return (String(base) + String.fromCodePoint(cp)).normalize('NFC'); } catch (_) { return ''; }
 }
 // 控えのトークン `a↑^👒` → { base:'a', mark:'^', ch:'â' }。帽子でなければ null。
 function meosHatFromToken(tok) {
   const t = String(tok == null ? '' : tok);
   if (t.indexOf(MEOS_HAT_MARK) < 0) return null;
-  const m = /^([\s\S]+?)[↑↓]([\s\S])👒$/u.exec(t);
+  // v4.0.227: 括弧の中の名前(`a↑(..)👒`)も読む。控えは**書いた形のまま**残す(やり直す時に同じ形that出る)。
+  const m = /^([\s\S]+?)[↑↓](?:\(([^()]{1,3})\)|([\s\S]))👒$/u.exec(t);
   if (!m) return null;
-  const ch = meosHatCompose(m[1], m[2]);
-  return ch ? { base: m[1], mark: m[2], ch } : null;
+  const mark = (m[2] !== undefined) ? m[2] : m[3];
+  const ch = meosHatCompose(m[1], mark);
+  return ch ? { base: m[1], mark, paren: m[2] !== undefined, ch } : null;
 }
 // 行の直前が `X↑^` の形か(ボタンを押した時に変換する相手)。基準は**絵文字(サロゲートペア)も1文字**として見る。
 function meosHatBeforeCursor(textBefore) {
   const s = String(textBefore == null ? '' : textBefore);
+  // v4.0.227: 括弧つき `a↑(..)` を**先に**見る(素の1文字より長いso、先に当てないと取りこぼす)。
+  const mp = /[↑↓]\(([^()]{1,3})\)$/u.exec(s);
+  if (mp && meosHatCodeOf(mp[1])) {
+    const arrowAt2 = s.length - mp[0].length;
+    let bs = arrowAt2 - 1, base2 = s.charAt(arrowAt2 - 1);
+    if (bs >= 1 && base2 >= '\uDC00' && base2 <= '\uDFFF' && s.charAt(bs - 1) >= '\uD800' && s.charAt(bs - 1) <= '\uDBFF') { bs--; base2 = s.slice(bs, arrowAt2); }
+    const ch2 = base2 ? meosHatCompose(base2, mp[1]) : '';
+    if (ch2) return { start: bs, base: base2, arrow: s.charAt(arrowAt2), mark: mp[1], paren: true, ch: ch2 };
+  }
   const m = /([\s\S])[↑↓]([\s\S])$/u.exec(s);
   if (!m) return null;
   const arrowAt = s.length - 2, mark = m[2];
-  if (!MEOS_HAT_TABLE[mark]) return null;
+  if (!meosHatCodeOf(mark)) return null;
   let baseStart = arrowAt - 1, base = s.charAt(arrowAt - 1);
   if (baseStart >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(baseStart - 1) >= '\uD800' && s.charAt(baseStart - 1) <= '\uDBFF') { baseStart--; base = s.slice(baseStart, arrowAt); }
   const arrow = s.charAt(arrowAt);
