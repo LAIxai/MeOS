@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.220(俊克 8/15 pm07:14 改良1＋バグ1): ★【バグ1=肩の上の肩】`(x+2)↑2↑2` that `22` と横に並んで見えた(スクショ)。2つめの `↑2` の基準文字は**1つめの肩文字そのもの**なのに、同じ大きさ・同じ高さで描いていたため。→ トークンに**深さ**を持たせ(前のトークンの肩/腰の範囲に基準文字thatが在れば深さ+1)、描く側で **0.68を深さの回数だけ掛ける**＋浮き上がりを段ごとに積む。★`vertical-align` の em は**その字自身の大きさ基準**(v4.0.135で判った癖)so、積み上げた量を最後に 0.68^d で割って渡す。**深さ1の見た目は1文字も変わらない**(`font-size:0.68em / vertical-align:1.05em` のまま)ことを実測で確認。★MeOSの計算(`meosEvalExpr`)の `↑` は右結合= `a↑b↑c`=`a^(b^c)` so、**見た目と計算thatが同じ読み方**になった。★【改良1=名乗りだけ出す】`↑3` を選んで上付きボタンを押した時は、**指定(FCコメント)だけ**を出す。旧= 選んだ字を基準文字と読んで `↑3↑2<!-- … -->` と重ねていた(「選んだものthat基準文字」という前提だけで作ってあった)。向きは**選んだ字thatが名乗る**(↑を選んで↓ボタンを押しても選んだ方を尊重)・高さの既定もその向きから引く。headlessで3通り確認(選択=↑3/選択=a/選択なし)。★作業中の自戒= 最初この分岐を `colorPart` の**宣言より前**に書いた(node --check は通る／実行時に ReferenceError)。v4.0.192の全壊と同じ穴so、書いた直後に自分で見つけて移した。
 // - v4.0.219(俊克 8/15 pm06:41 バグ1「上付き/下付きは、FC記法that無いのに🚫ボタンthat出てきてしまう」 例=`f↓x = (x+2)↑2 / (x-1)↑3`): ★**俊克thatが正しい。しかも押すと字thatが消える所だった**= 🚫の解除は「基準文字だけ残して矢印と肩/腰文字を落とす」so、指定を持たない素の数式で押すと `(x+2)↑2` → `(x+2)` になり、**書き手that打った `2` まで消える**(ボタンthat足した上付きを取り消す、という前提で作ってあった)。★真因= `metexSpanAtCursor` that**指定の有無を見ずに、矢印の在るトークンなら何でも相手にしていた**。しかも**真下の指定行(FC)を一度も読んでいなかった**=描く側とは別の物差しで、たまたま「全部拾う」ので当たって見えていただけ。★直し= ①トークンに `spec`(指定を持っているか)の旗を立てる= **指定を見つけた1か所**(同じ行の `{…}`/コメント)と、**FC行を配る1か所**(`meosApplySpecLineToTokens`)だけで立てる ②`metexSpanAtCursor` は**描く側と同じ手順**でFC行も読み、`spec` を持つトークンだけ返す。★これで `↑↓not` で素に戻したトークンthat🚫の相手にならないのも自動的に揃う(配る側thatが既に外しているため)。★headlessで確認= 指定なし=出ない／直後コメント=出る／FC指定=出る。★教訓(今日3度目)= **同じ判断を2か所に書いたら片方は必ず腐る**。🚫は「MeOSthat足した指定を取り消す」ボタンso、**指定thatが無い所に出してはいけない**。 → [[feedback_one_source_for_mark_count_action]]
 // - v4.0.218(俊克 8/15 pm02:12「私that添削している間に、貴方は、JSの膜化をし、それをGitへプッシュする」): ★**Me DockのJS(181KB/772行)を膜化**= v4.0.194でCSS/HTMLだけ済ませて残っていた最後の一枚。★**行割りは「改行だけ」で行う**= 入れてよいのは①括弧の外の `;` の後②同じく `,` の後③`}` の後で次that function/const/if… で始まる時、の3つだけ(文字列/テンプレート/正規表現/コメント/`${}` の中には絶対に入れない)。**ASIは `;` `,` の後では起きない**ので、避けるのは `for(a;b;c)` だけ= so**波括弧は数えず、今いる波括弧の中の丸括弧だけ**を見る(こうすると `addEventListener(…,()=>{…})` の中の文も割れる)。★結果= **772行 → 1,640行 / 最長 5,743桁 → 724桁 / 300桁超 119本 → 36本**。膜は **16対**(dock_js_elements/zoom/membrane/timemachine/mode/htoc/datewarp/nav/zoomme/format/encrypt/github/bookmark/toctip/tabs/message)。★★**証明を2つ通した**= ①**改行を全部取り除いたら前の版と1文字も違わない**(行割り) ②**膜の行を取り除いたら①の姿と1文字も違わない**(膜)。so「意味は1ミリも変わっていない」thatが機械で言い切れる。★ついでに **`dock_fc_removed` の開きthat独りぼっちだった**(v4.0.197の跡地マーカー)ので閉じを付けた= 開きthat閉じないと、それ以降の全部thatその膜の中に見える。★これで私that事故を起こしてきた場所(v4.0.192の全壊も、バックティック事故3回も、全部この区画)に**名前と範囲と目印**thatついた。→ [[project_true_outliner_membrane]] [[feedback_minimal_change_verify_webview]]
 // - v4.0.217(俊克 8/15 pm01:44「Formatのtipも不要かな? 今まではボタンにしていたから出していたんだよね」): ★**俊克that正しい。しかも「押せる印」も既に嘘だった**= `Format` のメニューは v4.0.168 の「FC一択=設定でなく判断にする」で撤去済みで、**今のラベルはどこからもクリックできない**。so ①tipを外す(Me Dockの17個のラベルのうち tip を持っていたのは、この `fmt-label` と `bird-ev-label` の**2つだけ**=ラベルにtipは例外の方だった) ②`.fmt-label-menu` の規則3本を撤去(**HTML/JSのどこからも付いていない死んだCSS**=メニューを外した時の名残。v4.0.216で私は『hoverの下地=押せる印は残す』と言ったthat、その規則は最初から発火していなかった)。★教訓= **消したのは仕掛けだけで、その仕掛けの見た目(枠/tip/hover)を消し忘れると「押せそうな飾り」だけthat残る**。`<script>` 区画は前の版と1バイトも同じ。
@@ -22085,6 +22086,16 @@ function meosMeTexTokens(text, specLine) { text = (String(text).indexOf('`') >= 
     out.push({ kind, hides, opStart, opEnd, pct, fg, bg, base: prev, spec: specInner != null }); // base=直前の基準文字(上付きの頭合わせの大小判定に使う)
     i = consumedEnd - 1;
   }
+  // v4.0.220(俊克 8/15 pm07:14 バグ1「`(x+2)↑2↑2` のように書いたら、2の2乗が右肩に出るべきだよね?」):
+  //   ★**肩の上の肩**を数える。2つめの `↑2` の基準文字は、1つめの**肩文字そのもの**(x+2 の肩の `2`)so、
+  //   同じ高さ・同じ大きさで並べると `22` に見えてしまう(俊克のスクショ)。→ **深さ**を持たせて、
+  //   描く側that 0.68倍を深さの回数だけ掛け、浮き上がりも積み上げる。
+  //   ★MeOSの計算(meosEvalExpr)の `↑` は右結合= `a↑b↑c` は `a^(b^c)`。**見た目と計算that同じ読み方**になる。
+  for (let k = 0; k < out.length; k++) {
+    const t = out[k], basePos = t.hides[0][0] - 1; // 基準文字=矢印の1つ前
+    t.depth = 1;
+    for (let j = 0; j < k; j++) { const p = out[j]; if (basePos >= p.opStart && basePos < p.opEnd) { t.depth = Math.max(t.depth, (p.depth || 1) + 1); } }
+  }
   return out;
 }
 // v3.5.3(俊克 7/30): 高さ%を物理アンカーに校正(画像ツールの整列と同発想)。50%=上/下付きの底が基準文字の底(基準線)に一致 / 150%=底が基準文字の頭に一致 / 100%=中間(既定)。
@@ -22666,6 +22677,20 @@ async function insertMetexScript(editor, sub, fg, bg) {
   // v4.0.3(俊克): 色は()付き {150%(白/緑)}(ハイライトと統一)＋記法全体をコメント包み <!-- {…} --> にしてMeOS外では base↑2 だけ見せる。色はexpの後ろ=base/expの位置は不変。
   const fgW = (fg && normalizeFgColor(fg)) ? fg : '', bgW = (bg && normalizeBgColor(bg)) ? bg : '';
   const colorPart = (fgW || bgW) ? ('(' + fgW + '/' + bgW + ')') : '';
+  // ★v4.0.220(俊克 8/15 pm07:14 改良1「`↑3` を選択して上付きボタンを押した時は、FCコメントだけを出すようにしよう」):
+  //   選んだものthat**既に上付き/下付きそのもの**(矢印＋肩腰文字)なら、書き足すものは無い= **名乗り(指定)だけ**を出す。
+  //   旧= それを基準文字と読んで `↑3↑2<!-- … -->` と重ねていた(選んだ字thatが基準文字になる、という前提だけで作ってあった)。
+  //   ★向きは**選んだ字that名乗る**(↑を選んだのに↓ボタンを押しても、選んだ方を尊重する)。高さの既定もその向きから引く。
+  const selTok = (!empty && /^[↑↓][^\s{}<>]*$/u.test(base.trim())) ? base.trim() : null;
+  if (selTok) {
+    const isSub = selTok.charAt(0) === '↓';
+    const pct2 = Math.max(30, Math.min(200, Number(cfg.get(isSub ? 'metexSubScale' : 'metexSuperScale', isSub ? 50 : 150)) || (isSub ? 50 : 150)));
+    const spec2 = '<!-- ' + MEOS_MEW_SIG + ' ' + selTok + '{' + pct2 + '%' + colorPart + '} -->';
+    await editor.edit(eb => eb.insert(sel.end, spec2));
+    try { editor.selection = new vscode.Selection(sel.start, sel.end); } catch (_) {} // 選んだ字はそのまま
+    try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
+    return;
+  }
   // v4.0.64(俊克): 署名 Mew! ＋命令トークン(基準文字＋矢印＋肩腰文字)。基準文字に空白が混じる時はトークンから外す(読取り側は空白なしのみ許すため)。
   const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(base) ? base : '') + arrow + exp; // v4.0.145: 読む側は矢印しか見ないので、この形は「書き残す印」
   const spec = '<!-- ' + MEOS_MEW_SIG + ' ' + _mtxTok + '{' + pct + '%' + colorPart + '} -->';
@@ -22677,16 +22702,24 @@ async function insertMetexScript(editor, sub, fg, bg) {
   // v4.0.171: 済んだら外へ出す(指定は選択の**後ろ**に在るso、選んだ桁はそのまま残る)。
   try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
 }
-function meosMeTexStyle(kind, scale, baseTall, fg, bg) {
+function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   const sc = (scale == null) ? 100 : scale;
   const top = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_TOP_EM.supShort : MEOS_METEX_TOP_EM.sup) : MEOS_METEX_TOP_EM.sub;
   let va = Math.round(top * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
   if (kind === 'sub') va = -va; // 下付きは下向き
+  // v4.0.220: **肩の上の肩**(`(x+2)↑2↑2`)。深さdの字は 0.68^d の大きさで、浮き上がりは各段の積み上げ。
+  //   ★`vertical-align` の em は**その字自身の大きさ基準**(v4.0.135で判った癖)so、
+  //   積み上げた量(基準の字のem単位)を最後に 0.68^d で割って渡す。深さ1なら今までと1文字も変わらない。
+  const d = Math.max(1, Number(depth) || 1);
+  const SH = 0.68;                                   // 1段ごとの縮小率(既存の font-size と同じ値)
+  const size = Math.round(Math.pow(SH, d) * 10000) / 10000;
+  let acc = 0; for (let k = 1; k <= d; k++) acc += va * Math.pow(SH, k); // 基準の字のem単位で積み上げ
+  va = Math.round(acc / Math.pow(SH, d) * 1000) / 1000;                  // その字自身のem単位へ戻す
   // v4.0.135: font-size に !important。見出しの font-size(1.1-1.3em)と**同じ1つのspanに乗る**ので
   //   取り合いになり、見出しが勝つと上付きが縮まない。しかも vertical-align の em は
   //   **その要素自身の font-size 基準**so、0.68em のはずが 1.2em で解決され、浮き上がりが
   //   1.05x0.68=0.71em → 1.05x1.2=1.26em(ほぼ1行)に膨らむ。v4.0.15(太字)と同じ穴の別の顔。
-  let s = 'none; font-size: 0.68em !important; vertical-align: ' + va + 'em; line-height: 0;';
+  let s = 'none; font-size: ' + size + 'em !important; vertical-align: ' + va + 'em; line-height: 0;';
   // v4.0.2(俊克): 肩/腰文字の色。textDecoration文字列にcolor/backgroundを相乗り(font-sizeと同じ注入技法)。暗背景は自動白文字(ハイライトと同じauto-contrast)。
   let fgKey = fg; if (bg && !fgKey && DARK_BG_KEYS.has(bg)) fgKey = 'white';
   // v4.0.137(俊克 8/12 am07:29): color/background にも !important。font-size と**同じ取り合い**が色でも起きる=
@@ -22722,7 +22755,7 @@ function meosApplyMeTexDecorations(editor) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
           const baseTall = (t.kind === 'sup') ? meosMeTexBaseTall(t.base) : true; // 上付きは基準文字の大小で頭を合わせる
-          const style = meosMeTexStyle(t.kind, scale, baseTall, t.fg, t.bg);
+          const style = meosMeTexStyle(t.kind, scale, baseTall, t.fg, t.bg, t.depth); // v4.0.220: 肩の上の肩
           if (!styleRanges.has(style)) styleRanges.set(style, []);
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
