@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.225(俊克 8/15 pm11:00〜pm11:35「√のことから、ひらめいた。外国のアルファベットの上に帽子のように付く形…一々その文字を見つけるのが面倒。どんなのでも作れるようにすればいい」): ★★**帽子(ハット)**= `a↑^` と書いて上付きボタンを押すと、本文that**本物の字 `â`** になる。★★ここだけ他の記法と**向きthat逆**= 隠して描くのではなく、**字そのものを作る**。理由= Unicodeには**結合文字**(U+0300〜)thatあり、`â` も `x̂` も `θ̂` も**標準の字として書ける**。標準that持っているものに私用の記法を被せたら、今度はこちらthat『悪い側』になる(ハイライト `==` の裏返し=記事の芯と対になる)。★★**FCコメントは命令ではなく『控え(レシピ)』**= `<!-- Mew!FC a↑^👒 (橙/) -->` に**作り方**thatが残る。俊克「あとで別の文字に変換したければ、コメントからコピーしてやり直せばいい。まさにインライン編集の極意」。MeOSはこの控えから**その字を行の中に見つけて色を塗る**(結び方は他と同じ**出現順**)。★**NFCで正規化**= 合成済みthat在れば1文字(`â`=U+00E2・BSで一度に消せる)、無ければ結合文字のまま2文字(`x̂` `θ̂`)。★**色は字と背景**(俊克 pm11:35「文字コードとしてある文字を使うんだから、帽子だけの色は無理だったね」)= **実際に描いて確かめた**(結合文字を別spanに割っても帽子だけには乗らない)。★打ちやすい別名も受ける(`'`=´ / `"`=¨ / `-`=¯ / `v`=ˇ / `o`=˚ / `.`=˙)。★帽子の控えは肩/腰の結び付けから外す(命令ではないため)。★★**同じ穴を今日2度踏んだ**= 分岐を `colorPart` の**宣言より前**に書いた(v4.0.220と同じTDZ)。**今度はheadlessの実行thatが捕まえた**(前回は目で気づいた)= 検査thatが1段深くなった。
 // - v4.0.224(俊克 8/15 pm09:15 バグ1「√の横棒thatまったく直ってないよ。なぜ?」＋👍1「bsキー遅延は直ったようだ」): ★★**私the直した所thatが違った**。v4.0.223で外したのは「肩/腰**自身**の overline」だけで、**棒の範囲thatが肩の上まで伸びたまま**だった。区間thatが分かれても、**外側の範囲thatその字を覆っていれば、VS Codeはそこにも棒を引く**= 見た目は1mmも変わらない(俊克の「なぜ?」thatが正しい)。→ **棒の範囲から肩/腰を切り取る**(`√(x↑2 + y↑2)` なら `x↑` と ` + y↑` の2本に割れる)。棒は「どこまでthat√の中身か」を言う線so、途切れて構わない。★教訓= **打ち消しは内側からは効かない**。消したいなら、**外側の範囲を狭める**。v4.0.217の『仕掛けを消したら見た目も消す』の兄弟で、今度は逆向き(見た目を消したつもりthatが、**もっと外側にもう1枚あった**)。headlessで棒の範囲を文字列で出して確かめた= 目で見る前に形で分かる。★bsキーの遅延は v4.0.223(打鍵中はFCの畳み/開きを走らせない)で直った=**秒の詰まりは `editor.fold`/`editor.unfold` の往復**thatが原因で確定。
 // - v4.0.223(俊克 8/15 pm08:47 改良1「√は累乗部分は描かないでいい。範囲を明確にするのthat最大の目的so、累乗部分は想像で埋めればいい」＋疑問1「最近、文字入力の反応that遅い。特にbsで数秒〜5秒無反応→もう一度押すと2つ消える」): ★【改良1】√の横棒は**肩/腰の上には引かない**。v4.0.222で肩にも overline を持たせたら、**その字の高さで棒that引かれて段差**になった(スクショ)。棒の役目は範囲を言うことso、段差より途切れの方that読める。使わなくなった引数も落とした(死んだ道を残さない)。★★【疑問1=遅さ】**測ってから直した**。①**私that今日入れた O(文書) の重さthat1つあった**= `collectRefPoints` は全16万行を歩くのに、v4.0.215でそこへ**1行ごとのコードスパン伏せ**を足していた(バッククォートを含む行=15,291)。**4.7ms → 16.3ms**(打鍵ごと)。→ 足切りを**生の行**で先に行い、伏せるのは**符thatが在る行だけ**に。**5.7ms** に戻った(3か所とも同じ形に直した)。②装飾パスの合計は昨日(v4.0.214)と**同じか速い**(実データ・別プロセスで準備運動込み: L97131 61.5→35.7ms / L140001 65.2→66.2ms)= **秒の遅さは装飾ではない**。③so**打鍵の道から `editor.fold`/`editor.unfold` を外した**= 畳む/開くはVS Codeへの命令で、16万行では折り畳み範囲の取り直しthat走る。**打鍵中(350ms以内に編集thatあった間)はFCの開閉を先送り**し、打ち終わってから開く/畳む。★俊克の「もう一度押すと2つ消える」は、**押した分that後から効く**=詰まりの典型so、ここthat筋。見た目の約束(カーソルの下は生データ)は変えていない。★教訓= **装置thatまた嘘をついた**(今日3度目)= 同じプロセスで2つの版を測ると、**先に測った方that準備運動を負担する**。1プロセス=1版に分けたら逆の結論thatが出た。
 // - v4.0.222(俊克 8/15 pm08:20 改良1「最優先は√だよ。横棒を奇麗に引こうよ。これがあらゆるアプリの欠陥なんだよね」＋改良2「否定は忘れてしまうので、↻ボタンで3つ目のプリセットとして入れよう」): ★★【√の横棒】**√は記号that半分しか無い**= `√` のグリフは斜めの棒だけで、**どこまでthat中身かを言う横棒(vinculum)thatが無い**。so `√(x↑2 + y↑2)` は括弧で範囲を言うしかなく、数式に見えない。→ **括弧を隠して、横棒を引く**(`meosRadicalSpans`＋`meTexBarDeco`=overline)。範囲の読み方はMeTeXと同じ= `√(…)`=括弧1階層／`√2` `√x`=英数字の並び／コードスパンの中は対象外／`√ x` は不発(中身thatが無い)。★★**横棒の下に居る肩/腰には、自分にも overline を持たせる**= 装飾は区間ごとに合成されるso、`none` のままだとその字の上だけ棒that抜ける。★**幅を測る側にも √ の括弧を教えた**(隠れる字thatが増えたら幅側にも足す=v4.0.215の物差しを保つ)。足切りにも `√` を追加。check_rulers は日記9,563セルでOK。★★【notを↻の3つ目に】`A²` → `A₃` → **not** の3つ巡り。面は「打ち消した A²」。**向きは選んだ字thatが名乗る**= `A↑B` を選べば `↑not`／`A↓B` なら `↓not`／選択なしなら `↑↓not`(どちらでも=次の1つ)。高さも色も要らないso `{…}` は書かない。headlessで3通り確認。★【改良3の答え】俊克「以下はすべて()で囲うようにすれば可能かな?」→ **その通りで、しかも今日の版でもう全部通る**。`H↓(2)O` `H↓(2)SO↓(4)` `d↑(2)y/dx↑(2)` `Ca↑(2+)` `NH↓(4)↑(+)` `SO↓(4)↑(2-)` `x↑(0.5)` `x↑(1/2)` `２↑(２)` を実測で確認。★★しかも `x↓(i)↑(2)` は**深さ2にならない**(基準thatが隠れた `)` so、xの腰と肩に見える)= **括弧that『肩の上の肩』と『両側』を書き分ける**。新しい記法を足さずに済んだ= [[project_virtual_membrane_scope]] と同じ筋(既に在るもので足りる)。
@@ -22374,6 +22375,7 @@ function meosApplySpecLineToTokens(text, toks, spec) {
   const kindOf = (tok) => { const t = String(tok), u = t.indexOf('↑') >= 0, d = t.indexOf('↓') >= 0; return (u && d) ? 'any' : (u ? 'sup' : (d ? 'sub' : null)); };
   const used = new Set(), kill = [];
   for (const item of spec.metex) {
+    if (String(item.tok || '').indexOf(MEOS_HAT_MARK) >= 0) continue; // v4.0.225: 帽子の控えは**命令ではない**so、肩/腰に結び付けない
     const kind = kindOf(item.tok);
     if (!kind) continue;
     const cands = [];
@@ -22729,6 +22731,19 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
   // v4.0.3(俊克): 色は()付き {150%(白/緑)}(ハイライトと統一)＋記法全体をコメント包み <!-- {…} --> にしてMeOS外では base↑2 だけ見せる。色はexpの後ろ=base/expの位置は不変。
   const fgW = (fg && normalizeFgColor(fg)) ? fg : '', bgW = (bg && normalizeBgColor(bg)) ? bg : '';
   const colorPart = (fgW || bgW) ? ('(' + fgW + '/' + bgW + ')') : '';
+  // ★v4.0.225(俊克): **帽子**= 直前that `a↑^` の形なら、**本物の字 `â` に変換**して、作り方をコメントに控える。
+  //   ここだけ「隠して描く」ではなく「字を作る」= Unicodeの結合文字thatあるものは、標準の字で書くのthat正しい。
+  {
+    const _hb = meosHatBeforeCursor(doc.lineAt(sel.start.line).text.slice(0, sel.start.character));
+    if (_hb && sel.isEmpty) {
+      const _hs = new vscode.Position(sel.start.line, _hb.start);
+      const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + _hb.mark + MEOS_HAT_MARK + (colorPart ? (' ' + colorPart) : '') + ' -->';
+      await editor.edit(eb => eb.replace(new vscode.Range(_hs, sel.start), _hb.ch + _rec));
+      try { const _after = _hs.translate(0, _hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
+      try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
+      return;
+    }
+  }
   // ★v4.0.220(俊克 8/15 pm07:14 改良1「`↑3` を選択して上付きボタンを押した時は、FCコメントだけを出すようにしよう」):
   //   選んだものthat**既に上付き/下付きそのもの**(矢印＋肩腰文字)なら、書き足すものは無い= **名乗り(指定)だけ**を出す。
   //   旧= それを基準文字と読んで `↑3↑2<!-- … -->` と重ねていた(選んだ字thatが基準文字になる、という前提だけで作ってあった)。
@@ -22783,6 +22798,47 @@ function meosRadicalSpans(text) {
   }
   return out;
 }
+// ===== v4.0.225(俊克 8/15 pm11:00「√のことから、ひらめいた。外国のアルファベットの上に帽子のように付く形…
+//   一々その文字を見つけるのが面倒。だったら、どんなのでも作れるようにすればいい」) =====================
+// ★**帽子(ハット)**= `a↑^` と書いてボタンを押すと、本文thatが**本物の字 `â`** になる。
+//   ★ここだけ他の記法と**向きthat逆**= 隠して描くのではなく、**字そのものを作る**。
+//   理由= Unicodeには**結合文字**(U+0300〜)thatあり、`â` も `x̂` も `θ̂` も**標準の字として書ける**。
+//   標準that持っているものに私用の記法を被せたら、今度はこちらthat「悪い側」になる(ハイライト `==` の裏返し)。
+// ★★**FCコメントは命令ではなく「控え(レシピ)」**= `<!-- Mew!FC a↑^👒 (白/橙) -->` に**作り方**thatが残る。
+//   俊克「あとで別の文字に変換したければ、コメント部分からコピーして、やり直せばいい。まさにインライン編集の極意」。
+//   MeOSはこの控えから**その字を見つけて色を塗る**(色は字と背景=従来どおり。帽子だけには塗れない=実際に描いて確かめた)。
+// ★NFCで正規化する= 合成済みthat在れば**1文字**(`â`=U+00E2)。BSで一度に消せる。無ければ結合文字のまま2文字(`x̂`)。
+const MEOS_HAT_MARK = '👒';
+const MEOS_HAT_TABLE = { // 打ちやすい別名も受ける(左が書いた字・右が結合文字)
+  '^': 0x0302, '´': 0x0301, "'": 0x0301, '`': 0x0300, '~': 0x0303, '¨': 0x0308, '"': 0x0308,
+  '¯': 0x0304, '-': 0x0304, 'ˇ': 0x030C, 'v': 0x030C, '˚': 0x030A, 'o': 0x030A, '˙': 0x0307, '.': 0x0307, '˘': 0x0306,
+};
+function meosHatCompose(base, mark) {
+  const cp = MEOS_HAT_TABLE[mark]; if (!cp || !base) return '';
+  try { return (String(base) + String.fromCodePoint(cp)).normalize('NFC'); } catch (_) { return ''; }
+}
+// 控えのトークン `a↑^👒` → { base:'a', mark:'^', ch:'â' }。帽子でなければ null。
+function meosHatFromToken(tok) {
+  const t = String(tok == null ? '' : tok);
+  if (t.indexOf(MEOS_HAT_MARK) < 0) return null;
+  const m = /^([\s\S]+?)[↑↓]([\s\S])👒$/u.exec(t);
+  if (!m) return null;
+  const ch = meosHatCompose(m[1], m[2]);
+  return ch ? { base: m[1], mark: m[2], ch } : null;
+}
+// 行の直前が `X↑^` の形か(ボタンを押した時に変換する相手)。基準は**絵文字(サロゲートペア)も1文字**として見る。
+function meosHatBeforeCursor(textBefore) {
+  const s = String(textBefore == null ? '' : textBefore);
+  const m = /([\s\S])[↑↓]([\s\S])$/u.exec(s);
+  if (!m) return null;
+  const arrowAt = s.length - 2, mark = m[2];
+  if (!MEOS_HAT_TABLE[mark]) return null;
+  let baseStart = arrowAt - 1, base = s.charAt(arrowAt - 1);
+  if (baseStart >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(baseStart - 1) >= '\uD800' && s.charAt(baseStart - 1) <= '\uDBFF') { baseStart--; base = s.slice(baseStart, arrowAt); }
+  const arrow = s.charAt(arrowAt);
+  const ch = meosHatCompose(base, mark);
+  return ch ? { start: baseStart, base, arrow, mark, ch } : null;
+}
 function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   const sc = (scale == null) ? 100 : scale;
   const top = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_TOP_EM.supShort : MEOS_METEX_TOP_EM.sup) : MEOS_METEX_TOP_EM.sub;
@@ -22831,6 +22887,36 @@ function meosApplyMeTexDecorations(editor) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
         const toks = meosMeTexTokens(text, MEOS_SPEC_LINE ? meosSpecLineFor(_slLines, ln) : null); // v4.0.142: 指定行で名乗った変わり種の基準文字も通す
+        // v4.0.225: 帽子の控え(`a↑^👒 (白/橙)`)から**その字を見つけて色を塗る**。色は字と背景=従来どおり。
+        //   結び方は他と同じ**出現順**(同じ字が複数あれば、控えの並び順に1つずつ)。
+        if (MEOS_SPEC_LINE) {
+          try {
+            const _sl = meosSpecLineFor(_slLines, ln);
+            const _hats = (_sl && _sl.metex) ? _sl.metex.map(it => ({ h: meosHatFromToken(it.tok), inner: it.inner })).filter(x => x.h) : [];
+            if (_hats.length) {
+              const _used = new Map();
+              for (const it of _hats) {
+                const ch = it.h.ch, n = (_used.get(ch) || 0);
+                let from = -1, seen = -1;
+                while (true) { from = text.indexOf(ch, from + 1); if (from < 0) break; seen++; if (seen === n) break; }
+                _used.set(ch, n + 1);
+                if (from < 0) continue; // 控えと本文that食い違っている(手で書き換えた)= 黙って何もしない
+                let fg = null, bg = null;
+                const cc = /\(([^)/]*)\/([^)]*)\)/.exec(String(it.inner || ''));
+                if (cc) { fg = normalizeFgColor(cc[1]); bg = normalizeBgColor(cc[2]); }
+                if (!fg && !bg) continue;
+                let st = '';
+                let fgKey = fg; if (bg && !fgKey && DARK_BG_KEYS.has(bg)) fgKey = 'white';
+                if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) st += ' color: ' + HIGHLIGHT_FG_COLORS[fgKey] + ' !important;';
+                if (bg && HIGHLIGHT_COLORS[bg]) st += ' background-color: ' + HIGHLIGHT_COLORS[bg] + ' !important; border-radius: 3px;';
+                if (!st) continue;
+                const style = 'none;' + st;
+                if (!styleRanges.has(style)) styleRanges.set(style, []);
+                styleRanges.get(style).push(new vscode.Range(ln, from, ln, from + ch.length));
+              }
+            }
+          } catch (_) { }
+        }
         // v4.0.222: √ = 括弧を隠して**横棒**を引く。中身の肩/腰にも overline を持たせて棒を繋ぐ。
         const rads = meosRadicalSpans(text);
         for (const r of rads) for (const h of r.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
