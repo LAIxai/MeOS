@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.221(俊克 8/15 pm07:43「空白のあとで上付き/下付きボタンを押すと今まで通り `A↑2` を出す。何かの文字のあとで押すと `↑2` という文字が入ると同時に、FCコメントも入る。これで完全に電卓仕様だよ」): ★**直前の字thatが基準文字になる**= 電卓の `x²` と同じ運指(数を打ってから押す)。空白の後・行頭でだけ、置き場所として `A` を立てる。★**本文に足すのは `↑2` だけ**で、書き残す印(コメントの命令トークン)には**直前の字**を入れる(`3↑2` / `)↑2` / `🐱↑2`)。読む側that見るのは矢印の向きだけ(v4.0.145)so、指定行へ出て `A↑1` に揃っても効き目は変わらない。絵文字は**サロゲートペア**so2文字ぶん見る(読む側と同じ癖・v4.0.142で踏んだ穴)。★カーソルは、置き場所を立てた時だけ `A` を選ぶ(すぐ基準文字を打てる)。文字の後で押した時は**肩の数字**を選ぶ(すぐ書き換えられる)。★headlessで7通り確認= 行頭／空白の後／文字の後／閉じ括弧の後／絵文字の後／文字を選択／`↑3` を選択。★これで**電卓の2つのボタンthat両方揃った**= `x²`=ボタンを押す(v4.0.221) / `^`=自分で `↑` と書く(v4.0.220の肩の上の肩)。俊克「選択と言うのは電卓にはできないけどね」。
 // - v4.0.220(俊克 8/15 pm07:14 改良1＋バグ1): ★【バグ1=肩の上の肩】`(x+2)↑2↑2` that `22` と横に並んで見えた(スクショ)。2つめの `↑2` の基準文字は**1つめの肩文字そのもの**なのに、同じ大きさ・同じ高さで描いていたため。→ トークンに**深さ**を持たせ(前のトークンの肩/腰の範囲に基準文字thatが在れば深さ+1)、描く側で **0.68を深さの回数だけ掛ける**＋浮き上がりを段ごとに積む。★`vertical-align` の em は**その字自身の大きさ基準**(v4.0.135で判った癖)so、積み上げた量を最後に 0.68^d で割って渡す。**深さ1の見た目は1文字も変わらない**(`font-size:0.68em / vertical-align:1.05em` のまま)ことを実測で確認。★MeOSの計算(`meosEvalExpr`)の `↑` は右結合= `a↑b↑c`=`a^(b^c)` so、**見た目と計算thatが同じ読み方**になった。★【改良1=名乗りだけ出す】`↑3` を選んで上付きボタンを押した時は、**指定(FCコメント)だけ**を出す。旧= 選んだ字を基準文字と読んで `↑3↑2<!-- … -->` と重ねていた(「選んだものthat基準文字」という前提だけで作ってあった)。向きは**選んだ字thatが名乗る**(↑を選んで↓ボタンを押しても選んだ方を尊重)・高さの既定もその向きから引く。headlessで3通り確認(選択=↑3/選択=a/選択なし)。★作業中の自戒= 最初この分岐を `colorPart` の**宣言より前**に書いた(node --check は通る／実行時に ReferenceError)。v4.0.192の全壊と同じ穴so、書いた直後に自分で見つけて移した。
 // - v4.0.219(俊克 8/15 pm06:41 バグ1「上付き/下付きは、FC記法that無いのに🚫ボタンthat出てきてしまう」 例=`f↓x = (x+2)↑2 / (x-1)↑3`): ★**俊克thatが正しい。しかも押すと字thatが消える所だった**= 🚫の解除は「基準文字だけ残して矢印と肩/腰文字を落とす」so、指定を持たない素の数式で押すと `(x+2)↑2` → `(x+2)` になり、**書き手that打った `2` まで消える**(ボタンthat足した上付きを取り消す、という前提で作ってあった)。★真因= `metexSpanAtCursor` that**指定の有無を見ずに、矢印の在るトークンなら何でも相手にしていた**。しかも**真下の指定行(FC)を一度も読んでいなかった**=描く側とは別の物差しで、たまたま「全部拾う」ので当たって見えていただけ。★直し= ①トークンに `spec`(指定を持っているか)の旗を立てる= **指定を見つけた1か所**(同じ行の `{…}`/コメント)と、**FC行を配る1か所**(`meosApplySpecLineToTokens`)だけで立てる ②`metexSpanAtCursor` は**描く側と同じ手順**でFC行も読み、`spec` を持つトークンだけ返す。★これで `↑↓not` で素に戻したトークンthat🚫の相手にならないのも自動的に揃う(配る側thatが既に外しているため)。★headlessで確認= 指定なし=出ない／直後コメント=出る／FC指定=出る。★教訓(今日3度目)= **同じ判断を2か所に書いたら片方は必ず腐る**。🚫は「MeOSthat足した指定を取り消す」ボタンso、**指定thatが無い所に出してはいけない**。 → [[feedback_one_source_for_mark_count_action]]
 // - v4.0.218(俊克 8/15 pm02:12「私that添削している間に、貴方は、JSの膜化をし、それをGitへプッシュする」): ★**Me DockのJS(181KB/772行)を膜化**= v4.0.194でCSS/HTMLだけ済ませて残っていた最後の一枚。★**行割りは「改行だけ」で行う**= 入れてよいのは①括弧の外の `;` の後②同じく `,` の後③`}` の後で次that function/const/if… で始まる時、の3つだけ(文字列/テンプレート/正規表現/コメント/`${}` の中には絶対に入れない)。**ASIは `;` `,` の後では起きない**ので、避けるのは `for(a;b;c)` だけ= so**波括弧は数えず、今いる波括弧の中の丸括弧だけ**を見る(こうすると `addEventListener(…,()=>{…})` の中の文も割れる)。★結果= **772行 → 1,640行 / 最長 5,743桁 → 724桁 / 300桁超 119本 → 36本**。膜は **16対**(dock_js_elements/zoom/membrane/timemachine/mode/htoc/datewarp/nav/zoomme/format/encrypt/github/bookmark/toctip/tabs/message)。★★**証明を2つ通した**= ①**改行を全部取り除いたら前の版と1文字も違わない**(行割り) ②**膜の行を取り除いたら①の姿と1文字も違わない**(膜)。so「意味は1ミリも変わっていない」thatが機械で言い切れる。★ついでに **`dock_fc_removed` の開きthat独りぼっちだった**(v4.0.197の跡地マーカー)ので閉じを付けた= 開きthat閉じないと、それ以降の全部thatその膜の中に見える。★これで私that事故を起こしてきた場所(v4.0.192の全壊も、バックティック事故3回も、全部この区画)に**名前と範囲と目印**thatついた。→ [[project_true_outliner_membrane]] [[feedback_minimal_change_verify_webview]]
@@ -22672,7 +22673,17 @@ async function insertMetexScript(editor, sub, fg, bg) {
   const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = sub ? 50 : 150;
   const pct = Math.max(30, Math.min(200, Number(cfg.get(sub ? 'metexSubScale' : 'metexSuperScale', dflt)) || dflt));
   const arrow = sub ? '↓' : '↑', exp = sub ? '3' : '2';
-  const empty = sel.isEmpty, base = empty ? 'A' : doc.getText(sel);
+  // ★v4.0.221(俊克 8/15 pm07:43「空白のあとで押すと今まで通り A↑2。何かの文字のあとで押すと ↑2 という文字が入ると
+  //   同時に、FCコメントも入る。これで完全に電卓仕様だよ」): ★**直前の字thatが基準文字になる**=電卓の `x²` と同じ運指。
+  //   空白の後(や行頭)だけ、置き場所として `A` を立てる。★絵文字は**サロゲートペア**so2文字ぶん見る(読む側と同じ癖)。
+  const _pl = doc.lineAt(sel.start.line).text.slice(0, sel.start.character);
+  const _prevCh = (() => {
+    if (!_pl) return '';
+    const a = _pl.length - 1, c = _pl.charAt(a);
+    return (a >= 1 && c >= '\uDC00' && c <= '\uDFFF' && _pl.charAt(a - 1) >= '\uD800' && _pl.charAt(a - 1) <= '\uDBFF') ? _pl.slice(a - 1) : c;
+  })();
+  const afterChar = sel.isEmpty && _prevCh !== '' && !/\s/.test(_prevCh); // 文字の後=置き場所は要らない
+  const empty = sel.isEmpty, base = empty ? (afterChar ? '' : 'A') : doc.getText(sel);
   // v4.0.2(俊克): ▾で選んだ肩/腰文字の色を焼き込む(表示名のまま=生データが読みやすい・読取り側で正規化)。
   // v4.0.3(俊克): 色は()付き {150%(白/緑)}(ハイライトと統一)＋記法全体をコメント包み <!-- {…} --> にしてMeOS外では base↑2 だけ見せる。色はexpの後ろ=base/expの位置は不変。
   const fgW = (fg && normalizeFgColor(fg)) ? fg : '', bgW = (bg && normalizeBgColor(bg)) ? bg : '';
@@ -22692,11 +22703,12 @@ async function insertMetexScript(editor, sub, fg, bg) {
     return;
   }
   // v4.0.64(俊克): 署名 Mew! ＋命令トークン(基準文字＋矢印＋肩腰文字)。基準文字に空白が混じる時はトークンから外す(読取り側は空白なしのみ許すため)。
-  const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(base) ? base : '') + arrow + exp; // v4.0.145: 読む側は矢印しか見ないので、この形は「書き残す印」
+  const _mtxDecl = afterChar ? _prevCh : base; // v4.0.221: 文字の後なら**その字**を書き残す(本文には足さない)
+  const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(_mtxDecl) ? _mtxDecl : '') + arrow + exp; // v4.0.145: 読む側は矢印しか見ないので、この形は「書き残す印」
   const spec = '<!-- ' + MEOS_MEW_SIG + ' ' + _mtxTok + '{' + pct + '%' + colorPart + '} -->';
   await editor.edit(eb => eb.replace(sel, base + arrow + exp + spec));
   try { const s = sel.start;
-    if (empty) editor.selection = new vscode.Selection(s, s.translate(0, 1)); // プレースホルダ 'A' を選択(すぐ基準文字を打てる)
+    if (empty && !afterChar) editor.selection = new vscode.Selection(s, s.translate(0, 1)); // プレースホルダ 'A' を選択(すぐ基準文字を打てる)
     else { const ep = s.translate(0, base.length + 1); editor.selection = new vscode.Selection(ep, ep.translate(0, exp.length)); } // 指数の桁を選択
   } catch (_) {}
   // v4.0.171: 済んだら外へ出す(指定は選択の**後ろ**に在るso、選んだ桁はそのまま残る)。
