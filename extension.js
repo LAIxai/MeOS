@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.219(俊克 8/15 pm06:41 バグ1「上付き/下付きは、FC記法that無いのに🚫ボタンthat出てきてしまう」 例=`f↓x = (x+2)↑2 / (x-1)↑3`): ★**俊克thatが正しい。しかも押すと字thatが消える所だった**= 🚫の解除は「基準文字だけ残して矢印と肩/腰文字を落とす」so、指定を持たない素の数式で押すと `(x+2)↑2` → `(x+2)` になり、**書き手that打った `2` まで消える**(ボタンthat足した上付きを取り消す、という前提で作ってあった)。★真因= `metexSpanAtCursor` that**指定の有無を見ずに、矢印の在るトークンなら何でも相手にしていた**。しかも**真下の指定行(FC)を一度も読んでいなかった**=描く側とは別の物差しで、たまたま「全部拾う」ので当たって見えていただけ。★直し= ①トークンに `spec`(指定を持っているか)の旗を立てる= **指定を見つけた1か所**(同じ行の `{…}`/コメント)と、**FC行を配る1か所**(`meosApplySpecLineToTokens`)だけで立てる ②`metexSpanAtCursor` は**描く側と同じ手順**でFC行も読み、`spec` を持つトークンだけ返す。★これで `↑↓not` で素に戻したトークンthat🚫の相手にならないのも自動的に揃う(配る側thatが既に外しているため)。★headlessで確認= 指定なし=出ない／直後コメント=出る／FC指定=出る。★教訓(今日3度目)= **同じ判断を2か所に書いたら片方は必ず腐る**。🚫は「MeOSthat足した指定を取り消す」ボタンso、**指定thatが無い所に出してはいけない**。 → [[feedback_one_source_for_mark_count_action]]
 // - v4.0.218(俊克 8/15 pm02:12「私that添削している間に、貴方は、JSの膜化をし、それをGitへプッシュする」): ★**Me DockのJS(181KB/772行)を膜化**= v4.0.194でCSS/HTMLだけ済ませて残っていた最後の一枚。★**行割りは「改行だけ」で行う**= 入れてよいのは①括弧の外の `;` の後②同じく `,` の後③`}` の後で次that function/const/if… で始まる時、の3つだけ(文字列/テンプレート/正規表現/コメント/`${}` の中には絶対に入れない)。**ASIは `;` `,` の後では起きない**ので、避けるのは `for(a;b;c)` だけ= so**波括弧は数えず、今いる波括弧の中の丸括弧だけ**を見る(こうすると `addEventListener(…,()=>{…})` の中の文も割れる)。★結果= **772行 → 1,640行 / 最長 5,743桁 → 724桁 / 300桁超 119本 → 36本**。膜は **16対**(dock_js_elements/zoom/membrane/timemachine/mode/htoc/datewarp/nav/zoomme/format/encrypt/github/bookmark/toctip/tabs/message)。★★**証明を2つ通した**= ①**改行を全部取り除いたら前の版と1文字も違わない**(行割り) ②**膜の行を取り除いたら①の姿と1文字も違わない**(膜)。so「意味は1ミリも変わっていない」thatが機械で言い切れる。★ついでに **`dock_fc_removed` の開きthat独りぼっちだった**(v4.0.197の跡地マーカー)ので閉じを付けた= 開きthat閉じないと、それ以降の全部thatその膜の中に見える。★これで私that事故を起こしてきた場所(v4.0.192の全壊も、バックティック事故3回も、全部この区画)に**名前と範囲と目印**thatついた。→ [[project_true_outliner_membrane]] [[feedback_minimal_change_verify_webview]]
 // - v4.0.217(俊克 8/15 pm01:44「Formatのtipも不要かな? 今まではボタンにしていたから出していたんだよね」): ★**俊克that正しい。しかも「押せる印」も既に嘘だった**= `Format` のメニューは v4.0.168 の「FC一択=設定でなく判断にする」で撤去済みで、**今のラベルはどこからもクリックできない**。so ①tipを外す(Me Dockの17個のラベルのうち tip を持っていたのは、この `fmt-label` と `bird-ev-label` の**2つだけ**=ラベルにtipは例外の方だった) ②`.fmt-label-menu` の規則3本を撤去(**HTML/JSのどこからも付いていない死んだCSS**=メニューを外した時の名残。v4.0.216で私は『hoverの下地=押せる印は残す』と言ったthat、その規則は最初から発火していなかった)。★教訓= **消したのは仕掛けだけで、その仕掛けの見た目(枠/tip/hover)を消し忘れると「押せそうな飾り」だけthat残る**。`<script>` 区画は前の版と1バイトも同じ。
 // - v4.0.216(俊克 8/15 pm01:39「Me DockのFormat Meの四角の囲みは外そう」): `Format` の**枠だけ**外す(橙の文字とhover時の淡い橙の下地は残す=押せる印は消さない)。v4.0.162で枠を付けたのは「橙の文字だけでは、ただの見出しに見えて押せると分からなかった」からthat、使ってみると枠the主張that強すぎた。CSS 1行だけの変更で、`<script>` 区画は**前の版と1バイトも同じ**(208,387バイト)ことを確かめてある= [[feedback_minimal_change_verify_webview]]。
@@ -15579,8 +15580,13 @@ function metexSpanAtCursor(editor) {
   if (!editor || !MEOS_METEX) return null;
   const doc = editor.document, pos = editor.selection.active, line = pos.line;
   const text = doc.lineAt(line).text || '';
-  const toks = meosMeTexTokens(text);
+  // v4.0.219: **描く側と同じ手順で読む**= 真下の指定行(FC)も見る。ここだけ素で読んでいたので、
+  //   FCで色を付けた上付き/下付きthat🚫の相手にならず、逆に**指定の無い素の矢印thatが相手になっていた**。
+  const _sl = MEOS_SPEC_LINE ? meosSpecLineFor(meosDocLines(doc), line) : null;
+  const toks = meosMeTexTokens(text, _sl);
+  if (_sl) { try { meosApplySpecLineToTokens(text, toks, _sl); } catch (_) { } }
   for (const t of toks) {
+    if (!t.spec) continue; // 指定を持たない素の `↑2` は🚫の相手ではない(書き手that自分で打った字)
     const arrowPos = t.hides[0][0], start = arrowPos - 1;
     if (start < 0) continue;
     let end = t.opEnd; for (const h of t.hides) if (h[1] > end) end = h[1];
@@ -22072,7 +22078,11 @@ function meosMeTexTokens(text, specLine) { text = (String(text).indexOf('`') >= 
       if (cc) { fg = normalizeFgColor(cc[1]); bg = normalizeBgColor(cc[2]); }
       if (pm || cc) { hides.push([specStart, specEnd]); consumedEnd = specEnd; }
     }
-    out.push({ kind, hides, opStart, opEnd, pct, fg, bg, base: prev }); // base=直前の基準文字(上付きの頭合わせの大小判定に使う)
+    // v4.0.219(俊克 8/15 pm06:41 バグ1「上付き/下付きは、FC記法that無いのに🚫ボタンthat出てきてしまう」):
+    //   ★**指定を持っているか**をトークン自身に持たせる。🚫は「MeOSthat足した指定を取り消す」ボタンso、
+    //   指定thatが無い素の `f↓x = (x+2)↑2` に出してはいけない(押すと肩の `2` まで消える=書き手の字を壊す)。
+    //   旗を立てるのは**指定を見つけたこの1か所**だけ= 真下の指定行(FC)の分は meosApplySpecLineToTokens で立てる。
+    out.push({ kind, hides, opStart, opEnd, pct, fg, bg, base: prev, spec: specInner != null }); // base=直前の基準文字(上付きの頭合わせの大小判定に使う)
     i = consumedEnd - 1;
   }
   return out;
@@ -22352,6 +22362,7 @@ function meosApplySpecLineToTokens(text, toks, spec) {
     //   順番で消費するので `#N` は要らない= `A↑1(白/緑) A↑1not` で「1つめは緑・2つめは素」。
     if (item.not) { kill.push(pick); continue; }
     const t = toks[pick];
+    t.spec = true; // v4.0.219: 真下の指定行thatこのトークンを名指した=これも「指定を持っている」(🚫の相手になる)
     if (t.pct != null || t.fg != null || t.bg != null) continue; // 直後の指定が勝つ(近い方が強い)
     const pm = /(\d{1,3})\s*%/.exec(item.inner); if (pm) t.pct = parseInt(pm[1], 10);
     let cc = /\(([^)/]*)\/([^)]*)\)/.exec(item.inner); if (!cc) cc = /([^\s%(){}/]*)\/([^\s%(){}/]*)/.exec(item.inner);
