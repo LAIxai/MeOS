@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.228(俊克 8/16 am08:44 バグ1「古い記法の膜名が、リンク記法でcmd+clickできない」): ★真因=行先が**拡張子付きに見えるだけ**でファイル扱いして捨てていた。旧記法の膜名は末尾がミリ秒(`Zenn投稿最終稿#7_204218.608`)なので `\.[A-Za-z0-9]{1,8}$` に当たり、リンクの口が揃って素通りしていた=**下線もtipも出るのにcmd+clickだけ出ない**の正体(新記法 `…_20260809S001528JST` は末尾に点が無く当たらない。この差だけ)。★直しは**判定の順番**=先に「その名前の膜が本当に在るか」を聞く(飛ぶ側 `jumpMeLink` と同じ問い)。在ればワープ、無ければ今まで通りVS Codeに任せる。**名前の見た目で決めない**。★同じ判定が4箇所に写経してあったので `meosLinkTargetIsFile` 1つに纏めた。膜名の集合は `collectMembraneStructure` から引き、**装飾側と同じ設定値で呼ぶ**ことで14万行の再走査を1回も増やさない。★新しい検査 `check_links.js`(実データで旧判定と新判定の差分を出す。**後退が1つでも出たら落ちる**)= 日記12MBで 飛べるようになった4 / 後退0。
 // - v4.0.227(俊克 8/16 am00:05 改良1「`a↑(..)` thatできるといいんだけど」): ★**括弧の中は、形を字で説明した名前で書ける**。`..`=二つ点(¨) / `^^`=山 / `--`=横棒 / `oo`=丸 / `vv`=チェック。1文字の別名(`"`)より**打ちやすく、読んで分かる**。★括弧はMeTeXの「ここthat中身」と同じ役目so、**新しい記法ではない**(√と同じ筋= 既に在るものを読み替えるだけ)。★1文字の形(`a↑-`)も従来どおり。**括弧つきを先に見る**(長い方を先に当てないと取りこぼす)。★控えは**書いた形のまま**残す(`a↑(..)👒`)= やり直す時に同じ形that出る。★知らない名前(`a↑(zz)`)は**何もしない**=ただの字のまま。
 // - v4.0.226(俊克 8/15 pm11:44 バグ1「`a↑´`と書いて『↑´』を選択して上付きボタンを押しても駄目。直後で押すとなるthat、FCコメントではない」): ★【①選択して押せない】帽子の判定を `sel.isEmpty` に閉じていた。**選択して押すのthatが通常の使い方**(俊克)so、見るのを「選択の**終わり**」に変えた= `↑´` を選んでも `a↑´` を選んでも、終わりの手前thatが `a↑´` なら同じこと。★★【②FCコメントにならない】外へ出す側の判定 `isMetex` は **`{…}` の箱を必須**にしていたので、箱を持たない控え(`a↑´👒 (白/橙)`)thatが当たらず行末に取り残されていた。→ 控えを**箱なしでも運ぶ**枝を足した。★★さらに**控えは一般形に直さない**= 他の命令は「種類」を名乗るので `A↑1` に均してよいthat、**控えだけは実物を名乗るのthat仕事**(あとで別の字にやり直すための控えso、均したら値打ちthatが消える)。★★**同じ判断thatまた2か所に在った**(`meosRowSplitInline` と `meosMoveSpecsOutOfLine`)so、両方に入れた= 今日ずっと戦っている形。★★試験の作り直し= **編集を本文に本当に反映する偽エディタ**(`rig.js`)にした。前の版は編集を**記録するだけ**で、**FC行へ出す所を一度も試していなかった**= だから②を出荷してしまった。5通り(直後/`↑´`選択/`a↑´`選択/`↑3`選択/文字の後)で確認。
 // - v4.0.225(俊克 8/15 pm11:00〜pm11:35「√のことから、ひらめいた。外国のアルファベットの上に帽子のように付く形…一々その文字を見つけるのが面倒。どんなのでも作れるようにすればいい」): ★★**帽子(ハット)**= `a↑^` と書いて上付きボタンを押すと、本文that**本物の字 `â`** になる。★★ここだけ他の記法と**向きthat逆**= 隠して描くのではなく、**字そのものを作る**。理由= Unicodeには**結合文字**(U+0300〜)thatあり、`â` も `x̂` も `θ̂` も**標準の字として書ける**。標準that持っているものに私用の記法を被せたら、今度はこちらthat『悪い側』になる(ハイライト `==` の裏返し=記事の芯と対になる)。★★**FCコメントは命令ではなく『控え(レシピ)』**= `<!-- Mew!FC a↑^👒 (橙/) -->` に**作り方**thatが残る。俊克「あとで別の文字に変換したければ、コメントからコピーしてやり直せばいい。まさにインライン編集の極意」。MeOSはこの控えから**その字を行の中に見つけて色を塗る**(結び方は他と同じ**出現順**)。★**NFCで正規化**= 合成済みthat在れば1文字(`â`=U+00E2・BSで一度に消せる)、無ければ結合文字のまま2文字(`x̂` `θ̂`)。★**色は字と背景**(俊克 pm11:35「文字コードとしてある文字を使うんだから、帽子だけの色は無理だったね」)= **実際に描いて確かめた**(結合文字を別spanに割っても帽子だけには乗らない)。★打ちやすい別名も受ける(`'`=´ / `"`=¨ / `-`=¯ / `v`=ˇ / `o`=˚ / `.`=˙)。★帽子の控えは肩/腰の結び付けから外す(命令ではないため)。★★**同じ穴を今日2度踏んだ**= 分岐を `colorPart` の**宣言より前**に書いた(v4.0.220と同じTDZ)。**今度はheadlessの実行thatが捕まえた**(前回は目で気づいた)= 検査thatが1段深くなった。
@@ -23074,13 +23075,51 @@ function meosUlBgCss(ul, colorCss) {
 //   行先が無いので飛ばない=ただの下線。解釈したいアプリはこのコメントを読めばよい。
 // 旧形(行先を裸で書く `[文字列](行先)`)も read-both。
 const MEOS_MD_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\((?:<!--\s*([^\n]*?)\s*-->|((?:[^()<\n]|\([^()<\n]*\))*))\)/g;
+// ===== v4.0.228(俊克 8/16 am08:44 バグ1「古い記法の膜名に飛べない」) =====
+// ★真因=行先が**拡張子付きに見えるだけ**でファイル扱いして捨てていた。
+//   旧記法の膜名は末尾がミリ秒(`Zenn投稿最終稿#7_204218.608`)なので `\.[A-Za-z0-9]{1,8}$` に当たり、
+//   リンクの口(4箇所)が揃って `continue` していた=下線もtipも出るのにcmd+clickだけ出ない、の正体。
+//   新記法(`…_20260809S001528JST`)は末尾に点が無く当たらない。「新しい膜名には飛べる」の差はここ。
+// ★直しは**判定の順番**=先に「その名前の膜が本当に在るか」を聞く(飛ぶ側 jumpMeLink と同じ問い)。
+//   在ればワープ、無ければ今まで通りファイル/他スキームはVS Codeに任せる。名前の見た目で決めない。
+//   →画像 `[名前](img/foo.png)` 等は膜名の集合に居ないので従来通り(振る舞い不変)。→ [[project_image_no_bang]]
+// ★同じ判定を4箇所に写経していたのを、この1つに纏める。→ [[feedback_one_source_for_mark_count_action]]
+// 膜名の集合は collectMembraneStructure(document.version でキャッシュ済=装飾側と同じ1回の走査)から引く。
+// ★重要=collectMembraneStructure のキャッシュは文書ごとに1枠しか無く、excludeIndex の違いで潰し合う。
+//   だからここは装飾側(computeGutterLaneDecorations 等)と**同じ設定値で呼ぶ**。常にキャッシュに相乗りし、
+//   14万行の再走査を1回も増やさない。索引膜の名前は必ず `0001_INDEX` 終わりで、この判定に来る形(末尾が点+英数)
+//   にはならないため、除外されても飛べる先は減らない。→ [[project_meos_freeze_pattern]]
+let _meosMembraneNameCache = { key: '', set: null };
+function meosMembraneNameSet(document) {
+  let excludeIndex = false;
+  try { excludeIndex = !!vscode.workspace.getConfiguration('laiMembrane').get('excludeIndexMembrane', false); } catch (_) {}
+  const key = document.uri.toString() + '@' + document.version + '::' + (excludeIndex ? 1 : 0);
+  if (_meosMembraneNameCache.key === key && _meosMembraneNameCache.set) return _meosMembraneNameCache.set;
+  const set = new Set();
+  try {
+    const st = collectMembraneStructure(document, { excludeIndex });
+    for (const p of st.pairs) set.add(p.id);          // 開閉が揃った膜
+    for (const o of st.unclosedOpens) set.add(o.id);  // 閉じ忘れでも開き膜が在れば飛べる(jumpMeLink と同じ)
+  } catch (_) {}
+  _meosMembraneNameCache = { key, set };
+  return set;
+}
+// 行先を「MeOSがリンクを張らないもの(=ファイル/他スキーム)」と見なすか。その名前の膜が在る時は常に false。
+function meosLinkTargetIsFile(document, target) {
+  const t = String(target || '').trim(); if (!t) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(t) || t.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(t)) {
+    try { if (meosMembraneNameSet(document).has(t)) return false; } catch (_) {}
+    return true;
+  }
+  return false;
+}
 // v4.0.80: 行先の文字そのものにもMeOSのリンクを張る(膜名の時だけ=URLは内蔵/OSに任せて問題ない)。
 // m=正規表現のマッチ・base=マッチ開始のオフセット。行先は `](` の直後から `)` の手前まで。
 function meosTargetLinks(document, m, base, target) {
   try {
     if (!target || /^https?:\/\//i.test(target)) return [];
     if (String(m[0]).indexOf('](<!--') >= 0) return []; // v4.0.81: 行先がコメント形式なら内蔵は死んだリンクを張らないso重ねる必要がない
-    if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) return []; // ファイル/他スキームはVS Codeに任せる
+    if (meosLinkTargetIsFile(document, target)) return []; // v4.0.228: ファイル/他スキームはVS Codeに任せる(その名前の膜が在れば飛ぶ)
     const at = m[0].indexOf('](' + target + ')');
     if (at < 0) return [];
     const ts = base + at + 2, te = ts + target.length;
@@ -23995,7 +24034,7 @@ function activate(context) {
             const ts = b.index + 1, te = ts + label.length;
             const dl2 = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
             if (/^https?:\/\//i.test(target)) { dl2.target = vscode.Uri.parse(target); dl2.tooltip = 'Open: ' + target; }
-            else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue; // ファイル/他スキームはVS Code本体に任せる
+            else if (meosLinkTargetIsFile(document, target)) continue; // v4.0.228: ファイル/他スキームはVS Code本体に任せる(その名前の膜が在れば飛ぶ)
             else { dl2.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl2.tooltip = 'Jump to membrane: ' + target; }
             links.push(dl2);
             links.push(...meosTargetLinks(document, b, b.index, target)); // v4.0.80: 行先の文字もMeOSのリンクにする(内蔵の死んだリンクを上書き)
@@ -24013,7 +24052,7 @@ function activate(context) {
                 const target = b.target; if (!target || !b.label) continue;
                 const dl4 = new vscode.DocumentLink(new vscode.Range(new vscode.Position(ln, b.textStart), new vscode.Position(ln, b.textEnd)));
                 if (/^https?:\/\//i.test(target)) { dl4.target = vscode.Uri.parse(target); dl4.tooltip = 'Open: ' + target; }
-                else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue;
+                else if (meosLinkTargetIsFile(document, target)) continue; // v4.0.228
                 else { dl4.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl4.tooltip = 'Jump to membrane: ' + target; }
                 links.push(dl4);
               }
@@ -24032,7 +24071,7 @@ function activate(context) {
               const ts = r.index + 1, te = ts + label.length;
               const dl3 = new vscode.DocumentLink(new vscode.Range(document.positionAt(ts), document.positionAt(te)));
               if (/^https?:\/\//i.test(target)) { dl3.target = vscode.Uri.parse(target); dl3.tooltip = 'Open: ' + target; }
-              else if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.indexOf('/') >= 0 || /\.[A-Za-z0-9]{1,8}$/.test(target)) continue;
+              else if (meosLinkTargetIsFile(document, target)) continue; // v4.0.228
               else { dl3.target = vscode.Uri.parse('command:laiMembrane.jumpMeLink?' + encodeURIComponent(JSON.stringify([target]))); dl3.tooltip = 'Jump to membrane: ' + target; }
               links.push(dl3);
             }
