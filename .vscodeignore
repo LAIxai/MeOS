@@ -11,6 +11,7 @@ media/hero/**
 
 check_webview.js
 check_rulers.js
+check_metex.js
 webview_out*.js
 CHANGELOG_phase5.md
 package_phase5_config.json.txt
