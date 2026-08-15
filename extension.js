@@ -1,6 +1,15 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.215(俊克 8/15 pm00:21「①表の整形that凸凹に見えるのをクリアしよう」): ★★**表の整形と画面の装飾that、違う物差しで「隠れる字」を数えていた**。整形はv4.0.74から「画面に見えている幅」でセルを詰めているのに、その幅を測る側には**正規表現that写経**されていて、描く側と食い違っていた。→ 日記の表 **820ブロック/9,563セル**を、装飾を実際に走らせて突き合わせたら **68セルthat食い違い**(=`|` thatセルごとに前後する=凸凹)。内訳と直し方=
+//   ①**単一 `*` の斜体を幅側が知らなかった**(`***`/`**` しか書いていない)→ `*斜体*` は画面3文字/整形5文字。→ **meosStarMarks(CommonMarkの区切り列)を幅側からも呼ぶ**=描く側/🚫/FCと同じ1本。
+//   ②**語中の `_` を斜体と読んでいた**(`MEMORY_LOG_ARCHIVE.md` で2文字詰めていた)→ 形を `MEOS_PLAIN_IT_US_SRC` の**1か所**にして両側から引く(`==`/`~~` も同様)。
+//   ③**上付/下付を幅側that知らなかった**(`M↓W` の `↓` は画面で消える)→ 描く側that使う `meosMeTexTokens` の hides をそのまま引く。
+//   ④★**表の行では `|` thatセルの壁**(`meosMaskCellBarriers`)。GFMは行を先に `|` で割って**各セルを独立に**読むso、`正照_… | 實造_…` の `_` 同士や `[題名 | 続き](url)` は**外の世界では成立していない**。MeOSだけthat行を1本の文として読んでいた。★仕掛けは**`|` を `\n` に替えるだけ**= 記法の正規表現は全部 `[^\n]` で行内に閉じているso、1か所でハイライト/取消線/斜体/コードスパン/リンクthatまとめてセルで止まる(長さ不変so位置はずれない)。
+//   ⑤**バッククォートの中は文字そのもの**(v4.0.58の約束)the守れていない所that3つ= 包み記法 `/* =={ */`(コードスパンを伏せる**前**に探していた→伏せるのを行頭に上げた)/ MeTeXの「コメントは常に隠す」ループ/ **参照符(点膜)**。特に点膜は日記の43個のうち**12個thatコードスパンの中の説明文**で、それを本物として採番/巡回/カウント/Fガターに数えていた。→ 探す前の下ごしらえを `meosRefScanText` の**1つの口**に集めた(数える/描く/消す/生眠を切り替える/カーソル判定の5か所)。
+//   ★結果= **食い違い 68 → 0セル**(実データ9,563セル)。画面の側that変わったのは**表の19行だけ**で、全部「外の世界では元から成立していない」形。**散文は1行も変わらない**(`*` の印の差分=0)。
+//   ★新しい検査 `src/check_rulers.js` = VS Codeスタブで extension.js を**そのまま読み込み**、装飾を実際に走らせて「画面で隠れる範囲」を受け取り、整形that使う `meosStrWidth` と突き合わせる。写経ゼロso**片方だけ直したら必ず落ちる**。`node src/check_rulers.js <file.md>` で日記も測れる(9,563セル 0.3秒)。→ [[feedback_one_source_for_mark_count_action]] [[reference_headless_vscode_stub_harness]]
+//   ★残(直していない)= `[表示]()` の印that**指定を1つも持たない**時だけ、幅側that印を隠す前提で測る(画面は生表示)。指定はFC行=表の外に在るので、整形の側からは見えない。実データでは0件。
 // - v4.0.214(俊克 8/15 am02:19 ①「文字を選択する時に、空白を入れてしまうことが何度かあったんだよ」②「コピーしようとして、見出しなどを選択している途中で、FCコメントthat折り畳まれてしまうので、選択しにくいんだよ。そう言うケースでは、折り畳まないようにしてよ。これは頻繁にする操作なので、必須なんだよ」): ★①**選択の端の空白は包まない**(`meosTrimSelection`)= 末尾に空白thatが混じったまま包むと `**作業 **` になり、**閉じの印の前that空白so記法that成立しない**(CommonMarkの規則・MeOSも同じに読むso描かれない)。俊克の表で `[**作業 **]()` thatが描かれなかったのthatこれ(整形のせいではなかった)。書き込み口4つ全部に通した。★②**選択している間は畳まない**= 畳むと行that消えて、掴んでいる範囲thatが動く=**選択そのものを壊す**。MeOSの約束「カーソルの下は生データ」の自然な延長= **選択も「今そこを見ている」の一種**。離した瞬間(選択that空に戻った時)に、また畳まれる。コピーは頻繁な操作so、ここthat壊れていると常に邪魔になる。📌残= 表の整形thatが「生の桁」で揃えるのに画面は「隠した後の桁」so凸凹に見える件は明日(俊克と合意)。
 // - v4.0.213(俊克 8/15 am01:29 バグ1「2番目に設定した最後のセルを🚫ボタンで解除してから、白/青に変更したが、最初の白/黄のFCコメントが残ったままだよ。惜しいね」): ★★**🚫だけ古い道のままだった**= v4.0.210で書く側を「1回の編集で本文と指定行の両方」に変えたthat、消す側は**その行しか見ない**ままso、印だけ消えて**相手の指定that取り残される**。次に入れた指定thatその残骸と対になり、色thatずれる。★直し= **書く時と同じ数え方**で「この印は表全体で何個目か」を出し、**指定行のその1つを一緒に消す**(`meosDeleteSpecForMark`)。最後の1つなら**指定行ごと**消す(空の行を残さない)。★書く口と消す口thatが同じ物差しを使う=[[feedback_one_source_for_mark_count_action]]。★通しで確認= ①リンク(太字ラベル) ②`==`黄 ③`***`緑 → **④🚫で②を解除(黄thatが消える)** → ⑤入れ直し(青)= `白/青, 白/青, 白/緑`。表でない行は従来どおり(戻してから触る道that効く)。
 // - v4.0.212(俊克 8/15 am01:18「3回ハイライトを設定したよ。やはり、結果は間違っているけどね」→ **実測ログthat真因を出した**): ★★`link セル=(1行,1列) **通し番号=2** … 本文="| [**作業**]() | 状態 |"` = **リンクの表示文字that `**作業**`**(Boldにチェックthat入っていた)so、その `**` も「印」として数えられ、リンク自身の番号that1でなく**2**になっていた。3回目では `前の行=[2,0,0,0]` で末尾へ押し出された。★★真因を一言で= **指定を持たない印を数えていた**。リンクの表示文字の装飾(v4.0.30= MeOS外でも本物の太字リンクにするため`[**text**]()` と書く)は、**指定thatそもそも存在しない**。数える相手ではなかった。★直し= **ラベルの中を伏せてから数える**(`meosMaskLinkLabels`・長さは保つso位置thatずれない)。書く側(`meosRowMarksInOrder`/`meosMarkCounts`)と**描く側(太字/斜体の番号)を同じ物差しに揃えた**=ラベルの中の装飾は**飾りは付けるthat番号は消費しない**。片方だけ直すと色thatずれる。★★**測り方を変えたthatが効いた**= 「ログを貼ってください」をやめてファイルに書くようにした瞬間、**1行で犯人that出た**。俊克はボタンを3回押しただけ。★今日ずっと私thatが外していたのは、**再現の材料を俊克に出させようとしていた**から。取りに行けばよかった。
@@ -5365,6 +5374,12 @@ function wrapRefMark(doc, core) {
 const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
 const REF_MARK_DISABLED = '\u25b7\u25c1'; // ▷◁
 function lineHasRefMark(t) { return t.indexOf(REF_MARK_ACTIVE) >= 0 || t.indexOf(REF_MARK_DISABLED) >= 0; }
+// v4.0.215(俊克 8/15「①表の整形が凸凹に見える」の道中で見つけた): ★参照符も**バッククォートの中は文字そのもの**
+// (v4.0.58の約束)。記法を説明する行の `` `<!-- {* \u25b6\u25c0mR1=name *} -->` `` を**本物の符として数えていた**=
+// 日記の点膜43個のうち**12個thatこれ**(採番/巡回/カウント/Fガターthat全部その分ずれていた)。
+// ★探す前の下ごしらえは**1つの口**に集める= 数える/描く/消す/生眠を切り替える/カーソル判定の5か所that必ずここを通る
+//   [[feedback_one_source_for_mark_count_action]]。長さは1文字も変えないso、位置(m.index)はそのまま使える。
+function meosRefScanText(t) { const x = String(t == null ? '' : t); return (x.indexOf('`') >= 0) ? meosMaskCodeSpans(x) : x; }
 // R1=※(日本式)→R2=†, R3=‡, R4=*, R5=§(欧米式)。R0は作らない(作家向けはR1起点)。💤は段5でR族入り。
 // v0.9.99982(俊克改良2): 💤=R9(高番号)。1〜8を将来の可視記号用に空ける。旧mR6も💤として認識(後方互換)。
 // v0.9.99999: 保留は数字空間の外=fam 'P'(mRP)。R6〜9は将来のカスタム記号(未設定はR6..R9表示)。旧mR9/mR6は保留扱いを外す(R9=カスタム枠のため)。
@@ -5394,7 +5409,7 @@ function collectRefPoints(doc) {
   const points = [];
   const counts = {};
   for (let line = 0; line < doc.lineCount; line++) {
-    const text = doc.lineAt(line).text || '';
+    const text = meosRefScanText(doc.lineAt(line).text || ''); // v4.0.215: コードスパンの中の符は数えない
     if (!lineHasRefMark(text)) continue;
     REF_POINT_RE.lastIndex = 0;
     let m;
@@ -5427,7 +5442,7 @@ async function deleteRefPoints(editor, filterFn) {
   const we = new vscode.WorkspaceEdit();
   let removed = 0;
   for (let line = 0; line < doc.lineCount; line++) {
-    const text = doc.lineAt(line).text || '';
+    const text = meosRefScanText(doc.lineAt(line).text || ''); // v4.0.215: コードスパンの中の符は触らない
     if (!lineHasRefMark(text)) continue;
     REF_POINT_RE.lastIndex = 0;
     let m;
@@ -5459,7 +5474,7 @@ async function setRefPointsDisabled(editor, filterFn, toDisabled, onlyLine, only
   const single = (typeof onlyLine === 'number'); // v0.9.99982: カーソル式=1符だけ
   for (let line = 0; line < doc.lineCount; line++) {
     if (single && line !== onlyLine) continue;
-    const text = doc.lineAt(line).text || '';
+    const text = meosRefScanText(doc.lineAt(line).text || ''); // v4.0.215: コードスパンの中の符は触らない
     if (text.indexOf(from) < 0) continue;
     REF_POINT_RE.lastIndex = 0;
     let m;
@@ -5824,7 +5839,7 @@ function refMarkAtCursor(editor) {
   const doc = editor.document;
   const sel = editor.selection.active; const line = sel.line, ch = sel.character;
   if (line < 0 || line >= doc.lineCount) return null;
-  const text = doc.lineAt(line).text || '';
+  const text = meosRefScanText(doc.lineAt(line).text || ''); // v4.0.215: コードスパンの中の符は符でない
   if (!lineHasRefMark(text)) return null;
   REF_POINT_RE.lastIndex = 0; let m;
   while ((m = REF_POINT_RE.exec(text)) !== null) {
@@ -6037,6 +6052,8 @@ function applyPrettyLabels(editor) {
     ? editor.visibleRanges.map(r => [Math.max(0, r.start.line - 120), Math.min(editor.document.lineCount - 1, r.end.line + 120)])
     : null;
   const _plVis = (ln) => !_plSpans || _plSpans.some(s => ln >= s[0] && ln <= s[1]);
+  // v4.0.215: 表の行=セルの境界 `|` を走査の壁にする(GFMと同じ「割ってからセルを読む」)。走査する範囲だけ集める。
+  const _plTblRows = (() => { const st = new Set(); const sp = _plSpans || [[0, Math.min(editor.document.lineCount - 1, 400)]]; for (const [a, b] of sp) for (const ln of meosTableRowLines(editor.document, a, b)) st.add(ln); return st; })();
   // v4.0.21(俊克 8/6): 素の Markdown 見出し `## text` を描画する為の下ごしらえ。①散文(md/txt)だけ ②```/~~~ の
   // コードブロック内は見出しにしない(bashの `# コメント` が巨大な赤見出しになるのを防ぐ)。フェンス判定は全行必要
   // (画面外で開いたフェンスが可視行に効く)ので _plVis の足切りより前で、先頭文字のcharCodeで安く弾いてから測る。
@@ -6071,9 +6088,10 @@ function applyPrettyLabels(editor) {
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
     if (lineHasRefMark(text)) {
+      const _refText = meosRefScanText(text); // v4.0.215: コードスパンの中は符として描かない/数えない
       REF_POINT_RE.lastIndex = 0;
       let mRef;
-      while ((mRef = REF_POINT_RE.exec(text)) !== null) {
+      while ((mRef = REF_POINT_RE.exec(_refText)) !== null) {
         const disabled = (mRef[1] === REF_MARK_DISABLED);
         const fam = (mRef[2] === 'P') ? 'P' : Number(mRef[2]); // v0.9.99999: 保留='P'
         if (!disabled) refPointCounts[fam] = (refPointCounts[fam] || 0) + 1;
@@ -6148,13 +6166,18 @@ function applyPrettyLabels(editor) {
     //    既存ロジックで描画し、ここでは殻 /* と */ を隠す。
     //  ②分割    /* =={ */ code /* (色)//tip}== */ … code は実コードのまま動く。マーカーと中の */ /* も
     //    隠し body(=code)だけ装飾。処理済み区間は dtext を空白化して既存の素マーカー検出の二重発火を防ぐ。
-    let dtext = text;
-    if (line !== docCursorLine && text.indexOf('/*') >= 0) {
+    // v4.0.215: ★コードスパンを伏せるのを**先頭に上げた**(旧=包み記法を見た後の6226行で伏せていた)。
+    //   包み記法 `/* =={ */ … /* }== */` も**バッククォートの中は文字そのもの**(v4.0.58の約束)なのに、
+    //   ここだけ生の行で探していたので、**記法を説明する表**thatその場で装飾され、幅も見た目も崩れていた。
+    //   伏せても長さは変わらないso、以降の位置(range)は1文字もずれない。
+    let dtext = (line !== docCursorLine && text.indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text;
+    if (line !== docCursorLine && dtext.indexOf('/*') >= 0) {
       const blankDt = (s, e) => { dtext = dtext.slice(0, s) + ' '.repeat(e - s) + dtext.slice(e); };
       // ②分割ハイライト /* =={ */ code /* (色)//tip}== */
       const reHiSplit = /(\/\*\s*=={\s*\*\/\s*)([^\n]*?)(\s*\/\*\s*([^\n]*?)\}==\s*\*\/)/g;
       let mhs;
-      while ((mhs = reHiSplit.exec(text)) !== null) {
+      const wtext = dtext; // 走査は伏せた写しで固定(ループの中で dtext を空白化するので、探す側は動かさない)
+      while ((mhs = reHiSplit.exec(wtext)) !== null) {
         const oS = mhs.index, bS = oS + mhs[1].length, bE = bS + mhs[2].length, cE = bE + mhs[3].length;
         const hi = parseColorSpec((mhs[2] || '') + (mhs[4] || ''), 'bg');
         let bgKey = hi.bgKey, fgKey = hi.fgKey;
@@ -6173,7 +6196,7 @@ function applyPrettyLabels(editor) {
       // ②分割取消線 /* ~~{ */ code /* (色)//tip}~~ */
       const reStSplit = /(\/\*\s*~~\{\s*\*\/\s*)([^\n]*?)(\s*\/\*\s*([^\n]*?)\}~~\s*\*\/)/g;
       let mss;
-      while ((mss = reStSplit.exec(text)) !== null) {
+      while ((mss = reStSplit.exec(wtext)) !== null) {
         const oS = mss.index, bS = oS + mss[1].length, bE = bS + mss[2].length, cE = bE + mss[3].length;
         const sp = parseColorSpec((mss[2] || '') + (mss[4] || ''), 'fg');
         const lineKey = sp.fgKey || 'red', bgKey = sp.bgKey;
@@ -6232,9 +6255,11 @@ function applyPrettyLabels(editor) {
       // v0.9.695: 統一記法。新形 =={本文(文字色/背景色)//コメント}== — 開き `=={`・閉じ `}==` で
       // 曖昧性なし(従来 ==…== は開閉同記号で曖昧)。旧形 ==本文(色)== も後方互換で温存。色は `/` 区切り
       // (文字色/背景色)、`+` も互換。`//` 以降はコメント(編集者⇄作家の通信、ホバー💬表示。日時も自由記述)。
-      const reHi = /=={([^\n]*?)}==|(?<![=!<>~])==(?!\{)([^=\n]+?)(?<![!<>])==(?!=)/g;
+      const reHi = meosPlainHlRe(); // v4.0.215: 形は1か所(MEOS_PLAIN_HL_SRC)。幅を測る側も同じものを見る。
+      // v4.0.215: 表の行はセル境界で切った写しを見る(長さ不変so位置はそのまま)。dtextは見出し/箇条書きも読むので触らない。
+      const itext = _plTblRows.has(line) ? meosMaskCellBarriers(dtext) : dtext;
       let mHi;
-      while ((mHi = reHi.exec(dtext)) !== null) {
+      while ((mHi = reHi.exec(itext)) !== null) {
         const braced = mHi[1] !== undefined;
         const content = braced ? mHi[1] : mHi[2];   // 中身(本文+(色)+//コメント)
         const openLen = braced ? 3 : 2;             // '=={' or '=='
@@ -6301,10 +6326,11 @@ function applyPrettyLabels(editor) {
     if (line !== docCursorLine) {
       // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ と 旧形 ~~本文~~ / ~~本文(日時//コメント)~~ の両方。
       // ハイライト(=={…}==)と鏡像の記法統一: 開き `~~{`・閉じ `}~~`。線色=fg側(既定 red)、背景色=bg側。
-      const reSt = /~~\{([^\n]*?)\}~~|~~(?!\{)([^~\n]+?)~~/g;
+      const reSt = meosPlainStRe(); // v4.0.215: 形は1か所(MEOS_PLAIN_ST_SRC)。
+      const itextS = _plTblRows.has(line) ? meosMaskCellBarriers(dtext) : dtext; // v4.0.215: 表はセル境界で切る
       // v0.9.884: dtext(分割方式で処理済み区間を空白化済み)に対して検出。
       let mSt;
-      while ((mSt = reSt.exec(dtext)) !== null) {
+      while ((mSt = reSt.exec(itextS)) !== null) {
         const stBraced = mSt[1] !== undefined;
         const openStart = mSt.index;
         const innerStart = openStart + (stBraced ? 3 : 2);  // '~~{' or '~~'
@@ -13097,6 +13123,55 @@ function meosScanText(t) {
   if (s.indexOf('`') >= 0) s = meosMaskCodeSpans(s);
   return meosMaskSpecTokens(s);
 }
+// ===== v4.0.215(俊克 8/15「①表の整形が凸凹に見える」): ★**素の記法を探す形は、ここ1か所にしか書かない** ====
+// 表の整形は「画面に見えている幅」でセルを詰める(v4.0.74)。so**描く側と幅を測る側が同じ形を見ていない**と、
+// 隠れる字の数が食い違い、`|` がセルごとに前後して**凸凹**に見える。実データ(日記の表 820ブロック/9,563セル)で
+// 突き合わせたところ **68セル**が食い違っていた。内訳=
+//   ・単一 `*` の斜体 … 幅側は**知らなかった**(`***`/`**` しか書いていない)→ 画面より2文字ぶん広く取っていた
+//   ・語中の `_` … 幅側が**緩すぎた**(`MEMORY_LOG_ARCHIVE.md` を斜体と読んで2文字ぶん詰めていた)
+//   ・上付/下付 … 幅側が**知らなかった**(`M↓W` の `↓` は画面では消える)
+// ★so **正規表現は写経せず、同じ定数/同じ走査を両側から呼ぶ**= [[feedback_one_source_for_mark_count_action]]。
+// ★毎回 new RegExp を作るのは、元から各描画ループの中で正規表現リテラルを書いていた(=毎行作っていた)のと同じ費用。
+//   lastIndex を共有すると走査が飛ぶので、**使う側が自分の1本を持つ**形にする。
+const MEOS_PLAIN_HL_SRC = '=={([^\\n]*?)}==|(?<![=!<>~])==(?!\\{)([^=\\n]+?)(?<![!<>])==(?!=)'; // ハイライト(新形 =={…}== / 素 ==本文==)
+const MEOS_PLAIN_ST_SRC = '~~\\{([^\\n]*?)\\}~~|~~(?!\\{)([^~\\n]+?)~~';                        // 取消線(新形 ~~{…}~~ / 素 ~~本文~~)
+const MEOS_PLAIN_IT_US_SRC = '(?<![\\w*_])_(?![\\s_{])([^_\\n]+?)(?<!\\s)_(?![\\w_])';           // 素の斜体 _本文_(語中の `_` は不発=ファイル名/膜名を壊さない)
+// ★★v4.0.215(俊克 8/15「①表の整形が凸凹に見える」の残り): **表の行では `|` thatセルの壁**。
+// GFMは行を先に `|` で割ってから**各セルを独立に**読むso、`正照_… | 實造_…` の `_` 同士は外の世界では
+// 対にならない。MeOSだけ行を1本の文として読んでいたので、①画面ではセルをまたいで斜体/コード span thatかかり
+// ②整形はセル単位で測る=**2つの物差しthat食い違って凸凹**になっていた。実データ=表のデータ行3,641のうち
+// **またいでいたのは26行だけ**(全部「外の世界では成立していない」形)so、直す方が正しい。
+// ★仕掛けは1つ= **`|` を `\n` に替えるだけ**。記法の正規表現は全部 `[^\n]` で行内に閉じているso、
+//   1か所替えれば ハイライト/取消線/斜体/コードスパン that**まとめてセルで止まる**。長さは1文字も変えない。
+function meosMaskCellBarriers(t) {
+  const s = String(t == null ? '' : t);
+  if (s.indexOf('|') < 0) return s;
+  let out = '';
+  for (let i = 0; i < s.length; i++) { const c = s.charAt(i); out += (c === '|' && (i === 0 || s.charAt(i - 1) !== '\\')) ? '\n' : c; }
+  return out;
+}
+// 走査範囲の中の「表の行」を1回の走査で集める(行ごとにブロックを数え直さない)。ブロックthat範囲の外へ
+// はみ出していても、上下へ伸ばして**同じブロックなら同じ答え**になるようにする。
+function meosTableRowLines(doc, from, to) {
+  const set = new Set();
+  try {
+    const last = doc.lineCount - 1;
+    let i = Math.max(0, from);
+    while (i > 0 && meosIsTableLine(doc.lineAt(i - 1).text)) i--;
+    for (; i <= to && i <= last;) {
+      if (!meosIsTableLine(doc.lineAt(i).text)) { i++; continue; }
+      let j = i; while (j + 1 <= last && meosIsTableLine(doc.lineAt(j + 1).text)) j++;
+      let sep = false;
+      for (let k = i; k <= j; k++) if (meosIsTableSeparator(meosSplitTableRow(doc.lineAt(k).text))) { sep = true; break; }
+      if (sep) for (let k = i; k <= j; k++) set.add(k);
+      i = j + 1;
+    }
+  } catch (_) {}
+  return set;
+}
+function meosPlainHlRe() { return new RegExp(MEOS_PLAIN_HL_SRC, 'g'); }
+function meosPlainStRe() { return new RegExp(MEOS_PLAIN_ST_SRC, 'g'); }
+function meosPlainItUsRe() { return new RegExp(MEOS_PLAIN_IT_US_SRC, 'g'); }
 // ===== v4.0.189(俊克 8/14 am08:34 バグ1/2「太字・イタリック・太字+イタリックの連続は空白を空けないと正しく
 //   レンダリングしない。ただし、それでも駄目なケースもある」): `*` の強調を**区切り列(delimiter run)**で読む =========
 // ★★真因= **正規表現3本が「隣り合う `*` の列」を最初から諦めていた**。`**太字***イタリック*` の真中は `***` の
@@ -13157,6 +13232,8 @@ function meosStarEmphasisSpans(scan, raw) {
       oi--;
     }
     if (!opener) { bottom[key] = ci - 1; if (!closer.canOpen) closer.len = 0; ci++; continue; }
+    // v4.0.215: 壁(表のセル境界=走査上は `\n`)をまたぐ対は作らない。ここだけthat本文の中身を見ない走査so、明示する。
+    if (t.slice(opener.pos, closer.pos).indexOf('\n') >= 0) { bottom[key] = ci - 1; if (!closer.canOpen) closer.len = 0; ci++; continue; }
     const use = (closer.len >= 2 && opener.len >= 2) ? 2 : 1;   // 両方2つ以上あれば太字・でなければ斜体
     const openEnd = opener.pos + opener.len;
     nodes.push({ openStart: openEnd - use, openEnd, closeStart: closer.pos, closeEnd: closer.pos + use, strong: use === 2 });
@@ -20019,7 +20096,8 @@ function meosCharWidth(cp) {
 function meosStripHiddenForWidth(s) {
   let t = String(s == null ? '' : s);
   // v4.0.93: 足切りに `](` と `][` を入れ忘れると、リンクだけのセルが素通りして幅が合わない(テストで捕まえた)。
-  if (!t || (t.indexOf('*') < 0 && t.indexOf('_') < 0 && t.indexOf('=') < 0 && t.indexOf('~') < 0 && t.indexOf('<!--') < 0 && t.indexOf('](') < 0 && t.indexOf('][') < 0)) return t;
+  // v4.0.215: 上付/下付の `↑` `↓` も足切りに入れる(入れ忘れると `M↓W` だけのセルthat素通りする=同じ穴)。
+  if (!t || (t.indexOf('*') < 0 && t.indexOf('_') < 0 && t.indexOf('=') < 0 && t.indexOf('~') < 0 && t.indexOf('<!--') < 0 && t.indexOf('](') < 0 && t.indexOf('][') < 0 && t.indexOf('\u2191') < 0 && t.indexOf('\u2193') < 0)) return t;
   // コードスパンは丸ごと退避してから処理し、最後に戻す(中身は見えている=幅に数える)。番兵は私用領域 U+E000。
   const keep = [];
   t = t.replace(/(`+)[^\n]*?\1/g, (m) => { keep.push(m); return '\uE000' + (keep.length - 1) + '\uE000'; });
@@ -20048,12 +20126,42 @@ function meosStripHiddenForWidth(s) {
   t = t.replace(/(?:=={|~~\{|\*\*\{|__\{|_\{)([^{}]*?)(?:\}==|\}~~|\}\*\*|\}__|\}_)/g, (m, b) => {
     try { const sp = parseColorSpec(b, 'fg', b); return String(sp.bodyText).trim(); } catch (_) { return b; }
   });
-  // ③ 素のMarkdownのマーカー(MeOSがゼロ幅で隠す分)
-  t = t.replace(/\*\*\*([^*\n]+)\*\*\*/g, '$1')
-    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
-    .replace(/(?<![=!<>~])==(?!=)([^=\n]+?)==(?!=)/g, '$1')
-    .replace(/~~([^~\n]+)~~/g, '$1')
-    .replace(/(?<!_)_([^_\n]+)_(?!_)/g, '$1');
+  // ③ 素のMarkdownのマーカー(MeOSがゼロ幅で隠す分)。
+  // v4.0.215(俊克 8/15「①表の整形が凸凹に見える」): ★**探し方は描く側と同じものを呼ぶ**。
+  //   旧= ここに正規表現を3本**写経**していた→描く側と食い違い、`|` が凸凹になっていた。実データの内訳=
+  //     ・単一 `*` の斜体が**無かった**(`*斜体*` は画面で3文字so、整形だけ5文字と思って広く取っていた)
+  //     ・`_` が緩すぎた(`MEMORY_LOG_ARCHIVE.md` の語中まで斜体と読んで2文字ぶん詰めていた)
+  //   新= `*` は meosStarMarks(CommonMarkの区切り列・描く側/🚫/FCと同じ1本)、`==`/`~~`/`_` は MEOS_PLAIN_*_SRC。
+  // ★`*` は入れ子(`**外 *内* 外**`)that在るので、置換でなく**隠れる字に印を付けて落とす**(重なっても壊れない)。
+  {
+    const marks = meosStarMarks(meosScanText(t), t);
+    if (marks.length) {
+      const hid = new Array(t.length).fill(false);
+      for (const mk of marks) {
+        for (let i = mk.start; i < mk.bodyStart; i++) hid[i] = true;
+        for (let i = mk.bodyEnd; i < mk.end; i++) hid[i] = true;
+      }
+      let out = ''; for (let i = 0; i < t.length; i++) if (!hid[i]) out += t.charAt(i);
+      t = out;
+    }
+  }
+  // 新形 =={…}== / ~~{…}~~ は②で済んでいるso、ここに当たるのは素の形だけ(第2群=本文)。
+  t = t.replace(meosPlainHlRe(), (m, braced, plain) => (braced !== undefined ? m : plain))
+    .replace(meosPlainStRe(), (m, braced, plain) => (braced !== undefined ? m : plain))
+    .replace(meosPlainItUsRe(), '$1');
+  // ④ v4.0.215: 上付/下付(MeTeX)。`M↓W` の `↓` は画面では消えるso、幅にも数えない。
+  //   ★ここも写経しない= 描く側that使う meosMeTexTokens の hides をそのまま引く(コードスパンの中は元から対象外)。
+  if (t.indexOf('↑') >= 0 || t.indexOf('↓') >= 0) {
+    try {
+      const toks = meosMeTexTokens(t, null);
+      if (toks.length) {
+        const hid = new Array(t.length).fill(false);
+        for (const tk of toks) for (const [s, e] of (tk.hides || [])) for (let i = Math.max(0, s); i < Math.min(t.length, e); i++) hid[i] = true;
+        let out = ''; for (let i = 0; i < t.length; i++) if (!hid[i]) out += t.charAt(i);
+        t = out;
+      }
+    } catch (_) {}
+  }
   return t.replace(/\uE000(\d+)\uE000/g, (m, i) => keep[Number(i)] || '');
 }
 function meosStrWidth(s) { let w = 0; for (const ch of meosStripHiddenForWidth(s)) w += meosCharWidth(ch.codePointAt(0)); return w; } // v4.0.74: 隠れるマーカーを外した「見えている幅」で測る
@@ -21737,8 +21845,12 @@ function meosApplyMeTexDecorations(editor) {
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
         // v4.0.4(俊克): 基準文字が無くMeTeXが不成立でも、スペックコメント <!-- {150%(白/緑)} --> は常に隠す(コメント=不可視のbacking data)。トークンで隠した分と重なっても無害。
+        // v4.0.215: ★ここだけ**生の行**を見ていた= `` `<!-- Mew! x\u21912{150%(白/緑)} -->` `` のように
+        //   コードスパンで**説明として引用したコメント**まで隠していた(トークン側は v4.0.58 で対象外にしてあるのに)。
+        //   → 同じように伏せてから探す。長さは変わらないso位置はそのまま。
+        const _mtText = (text.indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text;
         let cm; MEOS_METEX_SPEC_COMMENT_RE.lastIndex = 0;
-        while ((cm = MEOS_METEX_SPEC_COMMENT_RE.exec(text)) !== null) { if (meosIsMeTexSpec(cm[1])) hideRanges.push(new vscode.Range(ln, cm.index, ln, cm.index + cm[0].length)); }
+        while ((cm = MEOS_METEX_SPEC_COMMENT_RE.exec(_mtText)) !== null) { if (meosIsMeTexSpec(cm[1])) hideRanges.push(new vscode.Range(ln, cm.index, ln, cm.index + cm[0].length)); }
       }
     }
     editor.setDecorations(meTexHideDeco, hideRanges);
@@ -22073,11 +22185,12 @@ function meosApplyMeLinkDecorations(editor) {
     const doc = editor.document, hideRanges = [], styleRanges = new Map();
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
+    const _lTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _lTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
-        let text = doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
+        let text = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text; if (text.indexOf('-->[') < 0) continue; if (text.indexOf('`') >= 0) text = meosMaskCodeSpans(text); // v4.0.58: コードスパンの中はリンクにしない / v4.0.9: 早い足切り(リンク記法の核が無い行は正規表現を回さない)
         let m; MEOS_MELINK_RE.lastIndex = 0;
         while ((m = MEOS_MELINK_RE.exec(text)) !== null) {
           const label = m[1] || '', s = m.index, e = m.index + m[0].length;
@@ -22112,7 +22225,10 @@ function meosApplyMeLinkDecorations(editor) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
-        const raw = doc.lineAt(ln).text;
+        // v4.0.215: 表の行はセル境界 `|` を壁にする。`[題名 | 続き](url)` のように**ラベルの中に生の `|`**that在ると、
+        //   GFMは先に `|` で割るのでリンクは成立しない(外の世界では壊れている)。MeOSだけthat繋げて描くと、
+        //   ①外と食い違い ②整形はセル単位で測るので**表that凸凹**になる。→ 描かない=書き手that `\|` に直せる。
+        const raw = _lTblRows.has(ln) ? meosMaskCellBarriers(doc.lineAt(ln).text) : doc.lineAt(ln).text;
         if (raw.indexOf('](') < 0 && raw.indexOf('][') < 0 && raw.indexOf(']()') < 0) continue;
         // v4.0.94: 行末一括コメント方式 `[表示]()` ＋ 行末の `<!-- Mew! [](行先)(色)(N)//tip -->`。
         // v4.0.190: 指定が真下のFC行に在っても描く。FC行を読みに行くのは**印 `[表示]()` が在る行だけ**(無駄打ちしない)。
@@ -22270,6 +22386,7 @@ function meosApplyBoldDecorations(editor) {
     const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
+    const _bTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _bTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
@@ -22278,7 +22395,9 @@ function meosApplyBoldDecorations(editor) {
         if (text.indexOf('*') < 0 && (_prose ? text.indexOf('_') < 0 : text.indexOf('_{') < 0)) continue;
         // v4.0.58: コードスパンの中は装飾しない / v4.0.169: 仕様コメントの中の命令トークンも隠す
         //   (v4.0.133 と同じ穴がここにも開いていた=1行に2つ書くと2つめが壊れる。単一 `*` を足す前に塞ぐ)
-        let tScan = (text.indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text;
+        // v4.0.215: 表の行はセル境界 `|` を壁にしてから伏せる(壁が先=コードスパンもセルで止まる)。
+        let tScan = _bTblRows.has(ln) ? meosMaskCellBarriers(text) : text;
+        if (tScan.indexOf('`') >= 0) tScan = meosMaskCodeSpans(tScan);
         tScan = meosMaskSpecTokens(tScan);
         _lnLinks = linkSpansOf(text); // v4.0.31: リンクの中の太字は縁取り(text-decoration運び屋)を止めて下線を残す // v4.0.20: 散文は素の斜体 _text_ も拾うので足切りを `_` 全般に(コードは従来どおり `_{` だけ=速い)
         let m;
@@ -22339,7 +22458,7 @@ function meosApplyBoldDecorations(editor) {
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
-        const reI1p = _prose ? /(?<![\w*_])_(?![\s_{])([^_\n]+?)(?<!\s)_(?![\w_])/g : null; if (reI1p) reI1p.lastIndex = 0;
+        const reI1p = _prose ? meosPlainItUsRe() : null; // v4.0.215: 形は1か所(MEOS_PLAIN_IT_US_SRC)。
         while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.169/189: **これからの斜体は `*本文*`**(`_本文_` は read-both で上に残す)。単一 `*` は上の走査that一緒に拾う。
       }

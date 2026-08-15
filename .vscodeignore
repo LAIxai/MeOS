@@ -10,6 +10,7 @@ extension.js.pre*
 media/hero/**
 
 check_webview.js
+check_rulers.js
 webview_out*.js
 CHANGELOG_phase5.md
 package_phase5_config.json.txt
