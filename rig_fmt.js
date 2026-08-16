@@ -114,6 +114,7 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
   console.log(out[0] === want ? '  ★ 期待どおり(3分割)' : '  ⚠ 期待と違う');
 
   // ★俊克の(1)は「□太字 □イタリック」=両方オフ= **ハイライトの道**を通る
+  await new Promise(r => setTimeout(r, 900)); // v4.0.257: 二重発火の見張り(800ms)を跨ぐ=別のクリック扱いにする
   CUR = mkEditor(text, new P(0, a), new P(0, b));
   await T.insertFormatTemplate('highlight', CUR, '白', '青');
   out = CUR.document.text.split('\n');
