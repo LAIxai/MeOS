@@ -14959,8 +14959,11 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       //   `==` はMarkdownの標準に無い記号なので、MeOSの外へ出すと `==` が丸見えになる=**最後に残っていた例外**。
       //   → 本文は `***…***`(標準の太字＋斜体)、指定は `***not(白/黄)`=「太字/斜体は名乗らない・色だけ乗せる」。
       //   MeOSの中では今までどおりのハイライト、外では太字＋斜体。**どちらでも壊れない**。`==` は読める側に残す。
-      const mk = (kind === 'highlight') ? '***' : '~~';
-      const _dir = (kind === 'highlight') ? '***not' : '~~';
+      // ★v4.0.263(俊克 8/17 am07:59「あなたが一番よく使う **太字** を否定する。これが一番良いかもね。
+      //   素のエディタなら太字に見えるので違和感も無い。中ではハイライト、外では太字として強調している」):
+      //   ★**運び屋を `***` から `**` へ**。意味論的に近い(強調→強調)＋一番よく使う形なので見慣れている。
+      const mk = (kind === 'highlight') ? '**' : '~~';
+      const _dir = (kind === 'highlight') ? '**not' : '~~';
       // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
       const _mark = mk + body + mk;
       await meosWriteMarkAndSpec(editor, sel, _mark, mk, _dir + ' ' + spec);
@@ -15673,8 +15676,8 @@ function buildInlineFmt(doc, kind, body, fg, bg) {
     // ★v4.0.246(俊克 8/16 pm08:04 バグ1「ボタンで入れると `==` になる」): **ハイライトを書く場所が2つ在り、
     //   v4.0.238で直したのは `insertFormatTemplate` だけだった**。↻での再適用はこちらを通るので `==` のままだった。
     //   (すぐ上の v4.0.174 に「🚫の本体が2か所に在り、片方しか直していなかった」と書いてある。**同じ穴**。)
-    const mk = (kind === 'highlight') ? '***' : '~~';
-    const dir = (kind === 'highlight') ? '***not' : '~~';
+    const mk = (kind === 'highlight') ? '**' : '~~';   // v4.0.263: 運び屋は `**`
+    const dir = (kind === 'highlight') ? '**not' : '~~';
     return { full: mk + body + mk + meosSpecComment(dir, spec), bodyOffset: mk.length, bodyLen: body.length }; // v4.0.64: 命令トークン付き
   }
   const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
@@ -23762,7 +23765,10 @@ function meosSplitMarkForSegment(line, encl, selStart, selEnd) {
   parts.push(mid);
   if (after) parts.push(after);
   const midIdx = before ? 1 : 0;
-  const wrapped = parts.map(x => mk + x + mk).join('');
+  // ★v4.0.263(実測): `**前****中****後**` は**入れ子**になって割れない(`<strong>前<strong><strong>中…`)。
+  //   `<!---->` を挟めば3つに割れる(`<strong>前</strong><strong>中</strong><strong>後</strong>`)。
+  //   コメントはMeOSでも外でも見えないので、**見た目を1文字も変えずに境界だけ作れる**。全記号で同じ形にする。
+  const wrapped = parts.map(x => mk + x + mk).join('<!---->');
   return { line: t.slice(0, encl.start) + wrapped + t.slice(encl.end), pieces: parts.length, midIdx, mk };
 }
 // ★v4.0.252(俊克 8/17 am00:14「だったら、どう動くか、ログに出せばいいだろ」): **押した瞬間の実物を書き出す**。

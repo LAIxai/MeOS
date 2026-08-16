@@ -108,15 +108,15 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
 
 (async () => {
   // (1) の状態= 全体が *** で包まれ、真下にFC行が1本
-  const body = '***ハイライトと太字とイタリックと太字とイタリック***';
-  const fc = process.env.FC || '<!-- Mew!FC ***not (白/黄) -->';
+  const body = process.env.BODY || '**ハイライトと太字とイタリックと太字とイタリック**';
+  const fc = process.env.FC || '<!-- Mew!FC **not (白/黄) -->';
   const text = body + '\n' + fc + '\n';
   const a = body.indexOf('太字'), b = a + 2;                    // 「太字」を選ぶ
   CUR = mkEditor(text, new P(0, a), new P(0, b));
   console.log('押す前  本文: ' + body);
   console.log('        FC  : ' + fc);
   console.log('        選択: ' + JSON.stringify(body.slice(a, b)));
-  const want = '***ハイライトと******太字******とイタリックと太字とイタリック***';
+  const want = '**ハイライトと**<!---->**太字**<!---->**とイタリックと太字とイタリック**';
   await T.insertBoldItalic(CUR, true, true, '白', '青');        // ☑太字 ☑イタリック で押す
   let out = CUR.document.text.split('\n');
   console.log('【太字/斜体の道】本文: ' + out[0]);
@@ -134,7 +134,7 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
 
   // ★本番の形= 指定が**行末に付いた状態**(FC行がまだ無い)。ログで確定した実際の入力。
   await new Promise(r => setTimeout(r, 900));
-  const inlineText = body + '<!-- Mew! ***not (白/黄) -->\n';
+  const inlineText = body + '<!-- Mew! **not (白/黄) -->\n';
   CUR = mkEditor(inlineText, new P(0, a), new P(0, b));
   await T.insertFormatTemplate('highlight', CUR, '白', '青');
   out = CUR.document.text.split('\n');
