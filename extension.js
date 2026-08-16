@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.229(俊克 8/16 am10:05〜10:35 記法の確定「FCコメントの命令は a↑👒<(..)> の一択にしよう」): ★★**印(帽子)の記法を確定し、公開前の回帰を潰した**。①**名前は `<( )>` の中**= `a↑<(..)>`。控えは `a↑👒<(..)>` の一択(👒は矢印の直後)。②★**裸の1文字はもう帽子にしない**= `a↑'` は**プライム a′**、`x↑o` は**度 x°** に戻る。v4.0.225〜228は別名表の1文字を無条件に帽子にしていて、**数学で一番ありふれた上付きを2つ食っていた**(足すのでなく**やめる**直しなので小さく安全)。③**下に被せる印はv5.0**(上だけでv4.0デビュー)。★区切り記号そのものが判定を担う= `( )`だけ→**累乗 `a↑(n+1)` と衝突**(俊克の指摘)／`< >`だけ→**HTMLタグと衝突**(`<o>`は英字始まりでタグに読まれる)／`<( )>`→`<`の次が英字でないのでただの文字・`<(--)>`は `-->` を含まないので控えも壊れない。《 》「 」案は却下(IME前提で英語配列から出せない)。★控えは**旧形も読む**(v4.0.225/227で書いたものを生かす)。★新しい検査 `check_hat.js`= **「帽子にしない」行が主役**(プライム/度/負の指数/裸の括弧/下向き)＋控えが `-->` を自分で作らないこと。20項目すべて通過。
 // - v4.0.228(俊克 8/16 am08:44 バグ1「古い記法の膜名が、リンク記法でcmd+clickできない」): ★真因=行先が**拡張子付きに見えるだけ**でファイル扱いして捨てていた。旧記法の膜名は末尾がミリ秒(`Zenn投稿最終稿#7_204218.608`)なので `\.[A-Za-z0-9]{1,8}$` に当たり、リンクの口が揃って素通りしていた=**下線もtipも出るのにcmd+clickだけ出ない**の正体(新記法 `…_20260809S001528JST` は末尾に点が無く当たらない。この差だけ)。★直しは**判定の順番**=先に「その名前の膜が本当に在るか」を聞く(飛ぶ側 `jumpMeLink` と同じ問い)。在ればワープ、無ければ今まで通りVS Codeに任せる。**名前の見た目で決めない**。★同じ判定が4箇所に写経してあったので `meosLinkTargetIsFile` 1つに纏めた。膜名の集合は `collectMembraneStructure` から引き、**装飾側と同じ設定値で呼ぶ**ことで14万行の再走査を1回も増やさない。★新しい検査 `check_links.js`(実データで旧判定と新判定の差分を出す。**後退が1つでも出たら落ちる**)= 日記12MBで 飛べるようになった4 / 後退0。
 // - v4.0.227(俊克 8/16 am00:05 改良1「`a↑(..)` thatできるといいんだけど」): ★**括弧の中は、形を字で説明した名前で書ける**。`..`=二つ点(¨) / `^^`=山 / `--`=横棒 / `oo`=丸 / `vv`=チェック。1文字の別名(`"`)より**打ちやすく、読んで分かる**。★括弧はMeTeXの「ここthat中身」と同じ役目so、**新しい記法ではない**(√と同じ筋= 既に在るものを読み替えるだけ)。★1文字の形(`a↑-`)も従来どおり。**括弧つきを先に見る**(長い方を先に当てないと取りこぼす)。★控えは**書いた形のまま**残す(`a↑(..)👒`)= やり直す時に同じ形that出る。★知らない名前(`a↑(zz)`)は**何もしない**=ただの字のまま。
 // - v4.0.226(俊克 8/15 pm11:44 バグ1「`a↑´`と書いて『↑´』を選択して上付きボタンを押しても駄目。直後で押すとなるthat、FCコメントではない」): ★【①選択して押せない】帽子の判定を `sel.isEmpty` に閉じていた。**選択して押すのthatが通常の使い方**(俊克)so、見るのを「選択の**終わり**」に変えた= `↑´` を選んでも `a↑´` を選んでも、終わりの手前thatが `a↑´` なら同じこと。★★【②FCコメントにならない】外へ出す側の判定 `isMetex` は **`{…}` の箱を必須**にしていたので、箱を持たない控え(`a↑´👒 (白/橙)`)thatが当たらず行末に取り残されていた。→ 控えを**箱なしでも運ぶ**枝を足した。★★さらに**控えは一般形に直さない**= 他の命令は「種類」を名乗るので `A↑1` に均してよいthat、**控えだけは実物を名乗るのthat仕事**(あとで別の字にやり直すための控えso、均したら値打ちthatが消える)。★★**同じ判断thatまた2か所に在った**(`meosRowSplitInline` と `meosMoveSpecsOutOfLine`)so、両方に入れた= 今日ずっと戦っている形。★★試験の作り直し= **編集を本文に本当に反映する偽エディタ**(`rig.js`)にした。前の版は編集を**記録するだけ**で、**FC行へ出す所を一度も試していなかった**= だから②を出荷してしまった。5通り(直後/`↑´`選択/`a↑´`選択/`↑3`選択/文字の後)で確認。
@@ -17811,7 +17812,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-btns">
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (type the URL — or a membrane name to warp there) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript | Click = make the selection (or A) super/subscript, e.g. B↑2{150%} · ↻ toggles A² / A₃ · ▾ sets height % · cursor just after the base → 🚫 removes the super/subscript">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="Cycle A² → A₃ → not. The third one writes an instruction that says: do NOT make this arrow a superscript.">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript | Click = make the selection (or A) super/subscript, e.g. B↑2{150%} · ↻ toggles A² / A₃ · ▾ sets height % · cursor just after the base → 🚫 removes the super/subscript &#10;&#10;Accents: write a↑&lt;(..)&gt; and click → real letter ä. Names draw the shape: &lt;(..)&gt; &lt;(.)&gt; &lt;(--)&gt; &lt;(^)&gt; &lt;(o)&gt; &lt;(v)&gt; &lt;(~)&gt; &lt;(&#39;)&gt;. The recipe stays in a comment, so you can redo it later.">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="Cycle A² → A₃ → not. The third one writes an instruction that says: do NOT make this arrow a superscript.">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
 <span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button>
@@ -22756,8 +22757,8 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
       ? meosHatBeforeCursor(doc.lineAt(sel.end.line).text.slice(0, sel.end.character)) : null;
     if (_hb) {
       const _hs = new vscode.Position(sel.end.line, _hb.start);
-      const _mk = _hb.paren ? ('(' + _hb.mark + ')') : _hb.mark; // v4.0.227: 書いた形のまま控える
-      const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + _mk + MEOS_HAT_MARK + (colorPart ? (' ' + colorPart) : '') + ' -->';
+      // v4.0.229: 控えは `a↑👒<(..)>` の一択(👒は矢印の直後=先に「これは印だ」と分かってから形の名前が来る)。
+      const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + MEOS_HAT_MARK + '<(' + _hb.mark + ')>' + (colorPart ? (' ' + colorPart) : '') + ' -->';
       await editor.edit(eb => eb.replace(new vscode.Range(_hs, sel.end), _hb.ch + _rec));
       try { const _after = _hs.translate(0, _hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
       try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
@@ -22829,54 +22830,55 @@ function meosRadicalSpans(text) {
 //   MeOSはこの控えから**その字を見つけて色を塗る**(色は字と背景=従来どおり。帽子だけには塗れない=実際に描いて確かめた)。
 // ★NFCで正規化する= 合成済みthat在れば**1文字**(`â`=U+00E2)。BSで一度に消せる。無ければ結合文字のまま2文字(`x̂`)。
 const MEOS_HAT_MARK = '👒';
-const MEOS_HAT_TABLE = { // 打ちやすい別名も受ける(左が書いた字・右が結合文字)
-  '^': 0x0302, '´': 0x0301, "'": 0x0301, '`': 0x0300, '~': 0x0303, '¨': 0x0308, '"': 0x0308,
-  '¯': 0x0304, '-': 0x0304, 'ˇ': 0x030C, 'v': 0x030C, '˚': 0x030A, 'o': 0x030A, '˙': 0x0307, '.': 0x0307, '˘': 0x0306,
+// ===== v4.0.229(俊克 8/16 am10:05〜10:35 記法の確定) =====
+// ★**印の名前は `<( )>` の中に書く**= `a↑<(..)>`。控えは `a↑👒<(..)>` の一択(👒は矢印の直後)。
+// ★なぜ `<( )>` か(区切り記号そのものが判定を担う):
+//   - `( )` だけ = **累乗と衝突する**(`a↑(n+1)` は普通の数式。俊克「貴方は、累乗として数式を入れることを忘れている」)。
+//   - `< >` だけ = **HTMLタグと衝突する**(`<o>` `<v>` は英字で始まるのでタグとして読まれ、GitHub等で消える)。
+//   - `<( )>` = `<` の次が英字にならないので**ただの文字**のまま、かつ `<(--)>` は `-->` を含まないので控えのコメントも壊れない。
+//   《 》「 」案は却下= IME前提で英語配列から出せない(MeOSは2ストアで英語圏にも出る)。
+// ★★**裸の1文字はもう帽子にしない**= `a↑'` は**プライム a′**、`x↑o` は**度 x°** に戻る。
+//   v4.0.225〜228は別名表に在る1文字を無条件に帽子にしていたので、**数学で一番ありふれた上付きを2つ食っていた**。
+//   括弧を必須にすると、これは「足す」のではなく「やめる」直しになる=公開前に入れるべき回帰潰し。
+// ★下に被せる印(`a↓<(,)>`=Ț 等)は**v5.0**。上に被る印だけでv4.0デビュー(俊克「レシピ付きと言う革新も刺さる」)。
+const MEOS_HAT_NAMES = { // 名前(形を字で描く)→ 結合文字。1〜2文字。旧来の1文字別名も名前として読める。
+  '..': 0x0308, '.': 0x0307, '--': 0x0304, '-': 0x0304, '^^': 0x0302, '^': 0x0302,
+  'oo': 0x030A, 'o': 0x030A, 'vv': 0x030C, 'v': 0x030C, '~': 0x0303, ',': 0x0313,
+  "'": 0x0301, '´': 0x0301, '`': 0x0300, '"': 0x0308, '¨': 0x0308, '¯': 0x0304,
+  'ˇ': 0x030C, '˚': 0x030A, '˙': 0x0307, '˘': 0x0306,
 };
-// v4.0.227(俊克 8/16 am00:05 改良1「`a↑(..)` ができるといいんだけど」): ★**括弧の中は、名前で書ける**。
-//   `..`=二つ点(¨) のように、**形を字で説明した書き方**thatできる。1文字の別名(`"`)より、打ちやすく・読んで分かる。
-//   ★括弧はMeTeXの「ここthat中身」と同じ役目so、新しい記法ではない(√と同じ筋)。
-const MEOS_HAT_ALIAS = { '..': 0x0308, '--': 0x0304, '^^': 0x0302, 'oo': 0x030A, 'vv': 0x030C };
 function meosHatCodeOf(mark) {
   const m = String(mark == null ? '' : mark);
-  return MEOS_HAT_ALIAS[m] || (m.length === 1 ? MEOS_HAT_TABLE[m] : 0) || 0;
+  return (m.length >= 1 && m.length <= 2) ? (MEOS_HAT_NAMES[m] || 0) : 0;
 }
 function meosHatCompose(base, mark) {
   const cp = meosHatCodeOf(mark); if (!cp || !base) return '';
   try { return (String(base) + String.fromCodePoint(cp)).normalize('NFC'); } catch (_) { return ''; }
 }
-// 控えのトークン `a↑^👒` → { base:'a', mark:'^', ch:'â' }。帽子でなければ null。
+// 控えのトークン `a↑👒<(..)>` → { base:'a', mark:'..', ch:'ä' }。帽子でなければ null。
+// v4.0.229: 新形(👒が矢印の直後・名前は `<( )>`)を正とし、**旧形も読む**(v4.0.225〜228で書いた控えを生かす)。
 function meosHatFromToken(tok) {
   const t = String(tok == null ? '' : tok);
   if (t.indexOf(MEOS_HAT_MARK) < 0) return null;
-  // v4.0.227: 括弧の中の名前(`a↑(..)👒`)も読む。控えは**書いた形のまま**残す(やり直す時に同じ形that出る)。
-  const m = /^([\s\S]+?)[↑↓](?:\(([^()]{1,3})\)|([\s\S]))👒$/u.exec(t);
+  const m = /^([\s\S]+?)[↑↓]👒<\(([^()<>\s]{1,2})\)>$/u.exec(t)                    // 新形 a↑👒<(..)>
+    || /^([\s\S]+?)[↑↓](?:<\(([^()<>\s]{1,2})\)>|\(([^()]{1,3})\)|([\s\S]))👒$/u.exec(t); // 旧形(👒が末尾)
   if (!m) return null;
-  const mark = (m[2] !== undefined) ? m[2] : m[3];
+  const mark = [m[2], m[3], m[4]].find(x => x !== undefined);
   const ch = meosHatCompose(m[1], mark);
-  return ch ? { base: m[1], mark, paren: m[2] !== undefined, ch } : null;
+  return ch ? { base: m[1], mark, ch } : null;
 }
-// 行の直前が `X↑^` の形か(ボタンを押した時に変換する相手)。基準は**絵文字(サロゲートペア)も1文字**として見る。
+// 行の直前が `X↑<(..)>` の形か(ボタンを押した時に変換する相手)。基準は**絵文字(サロゲートペア)も1文字**として見る。
+// v4.0.229: **`<( )>` を必須**にした。裸の1文字(`a↑'`)はもう帽子ではない=普通の上付きへ戻る(プライム/度が書ける)。
+//   下向き(`a↓<(,)>`)はv5.0なので、ここでは**上向きだけ**を帽子にする(↓は素の下付きのまま通す)。
 function meosHatBeforeCursor(textBefore) {
   const s = String(textBefore == null ? '' : textBefore);
-  // v4.0.227: 括弧つき `a↑(..)` を**先に**見る(素の1文字より長いso、先に当てないと取りこぼす)。
-  const mp = /[↑↓]\(([^()]{1,3})\)$/u.exec(s);
-  if (mp && meosHatCodeOf(mp[1])) {
-    const arrowAt2 = s.length - mp[0].length;
-    let bs = arrowAt2 - 1, base2 = s.charAt(arrowAt2 - 1);
-    if (bs >= 1 && base2 >= '\uDC00' && base2 <= '\uDFFF' && s.charAt(bs - 1) >= '\uD800' && s.charAt(bs - 1) <= '\uDBFF') { bs--; base2 = s.slice(bs, arrowAt2); }
-    const ch2 = base2 ? meosHatCompose(base2, mp[1]) : '';
-    if (ch2) return { start: bs, base: base2, arrow: s.charAt(arrowAt2), mark: mp[1], paren: true, ch: ch2 };
-  }
-  const m = /([\s\S])[↑↓]([\s\S])$/u.exec(s);
-  if (!m) return null;
-  const arrowAt = s.length - 2, mark = m[2];
-  if (!meosHatCodeOf(mark)) return null;
-  let baseStart = arrowAt - 1, base = s.charAt(arrowAt - 1);
-  if (baseStart >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(baseStart - 1) >= '\uD800' && s.charAt(baseStart - 1) <= '\uDBFF') { baseStart--; base = s.slice(baseStart, arrowAt); }
-  const arrow = s.charAt(arrowAt);
-  const ch = meosHatCompose(base, mark);
-  return ch ? { start: baseStart, base, arrow, mark, ch } : null;
+  const mp = /↑<\(([^()<>\s]{1,2})\)>$/u.exec(s);
+  if (!mp || !meosHatCodeOf(mp[1])) return null;
+  const arrowAt = s.length - mp[0].length;
+  let bs = arrowAt - 1, base = s.charAt(arrowAt - 1);
+  if (bs >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(bs - 1) >= '\uD800' && s.charAt(bs - 1) <= '\uDBFF') { bs--; base = s.slice(bs, arrowAt); }
+  const ch = base ? meosHatCompose(base, mp[1]) : '';
+  return ch ? { start: bs, base, arrow: '↑', mark: mp[1], ch } : null;
 }
 function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   const sc = (scale == null) ? 100 : scale;
