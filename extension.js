@@ -14862,6 +14862,10 @@ async function meosFocusBack(editor, sel) {
   }
 }
 async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
+  // ★v4.0.254: 包み(`***…***` 等)の**一部**を選んで押したなら、割って3つにする(俊克の(3))。
+  //   ★**必ず `meosEnsureInlineBeforeEdit` より前**に置く= その後ではFC行が行末へ畳み戻されていて、
+  //   「FC行が無い」と見えてしまう(v4.0.250→251で同じ場所を踏んだ。偽エディタ rig_fmt.js で再現・確認)。
+  try { if (kind === 'highlight' && editor && await meosTrySplitEnclosing(editor, fg, bg)) return; } catch (_) { }
   if (!editor) return;
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
   const doc = editor.document;
@@ -23750,58 +23754,52 @@ function meosLogFmt(tag, o) {
     meosDbg('[fmt] ' + tag + ' ' + parts.join(' ')); // v4.0.253: MeOS Debug に出す(ファイルにも同時に残る)
   } catch (_) { }
 }
+// ★★v4.0.254(俊克 8/17 am00:31「早くやってよ」→ 偽エディタ rig_fmt.js で実測): **分割は正しく動いていた。
+//   呼ばれていなかっただけ**。俊克の(1)は「□太字 □イタリック」=両方オフ= **ハイライトの道**を通る。
+//   私は分割を**太字/斜体の道にだけ**置いていたので、一度も通らなかった。→ **1つの関数にして、両方の入口から呼ぶ**。
+//   (今日ずっと踏んでいる「対になっている片方を見ていない」の、最後の1つ。)
+// 返り値= 分割して書いたら true(呼んだ側はそこで終わる)。
+async function meosTrySplitEnclosing(editor, fg, bg) {
+  try {
+    const doc0 = editor.document, sel0 = meosTrimSelection(doc0, editor.selection);
+    if (sel0.isEmpty || !meosIsProseDoc(doc0) || sel0.start.line !== sel0.end.line) return false;
+    let _b0 = true, _i0 = true, _enc0 = null;   // 「包みthat既に持っているか」だけを見る(何を足したいかは問わない)
+    const _lt = doc0.lineAt(sel0.start.line).text;
+    for (const _m of meosStarMarks(_lt, _lt)) {
+      if (sel0.start.character >= _m.bodyStart && sel0.end.character <= _m.bodyEnd) _enc0 = _m;
+    }
+    if (!_enc0) return false;
+    const _ln = sel0.start.line;
+    const _sp = meosSplitMarkForSegment(_lt, { mk: _enc0.kind, start: _enc0.start, end: _enc0.end, bodyStart: _enc0.bodyStart, bodyEnd: _enc0.bodyEnd }, sel0.start.character, sel0.end.character);
+    const _fcLn = _ln + 1;
+    const _hasFc = (_fcLn < doc0.lineCount) && meosIsSpecLine(doc0.lineAt(_fcLn).text);
+    meosLogFmt('split', { encl: _enc0.kind, pieces: _sp ? _sp.pieces : 0, hasFc: _hasFc, line: _lt });
+    if (!_sp || !_hasFc) return false;
+    let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc0.end) _ord++;
+    const _fcText = doc0.lineAt(_fcLn).text;
+    const _rg = meosSpecLineCommentRange(_fcText, _ord - 1);
+    if (!_rg) return false;
+    const _origBox = _fcText.slice(_rg.start, _rg.end);
+    const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc0.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';
+    const _boxes = []; for (let k = 0; k < _sp.pieces; k++) _boxes.push(k === _sp.midIdx ? _newBox : _origBox);
+    const _newFc = _fcText.slice(0, _rg.start) + _boxes.join('') + _fcText.slice(_rg.end);
+    await editor.edit(eb => {
+      eb.replace(doc0.lineAt(_ln).range, _sp.line);
+      eb.replace(doc0.lineAt(_fcLn).range, _newFc);
+    }, { undoStopBefore: true, undoStopAfter: true });
+    try { const _p = new vscode.Position(_ln, sel0.start.character); editor.selection = new vscode.Selection(_p, _p); } catch (_) { }
+    try { await meosFocusBack(editor, editor.selection); } catch (_) { }
+    return true;
+  } catch (_) { return false; }
+}
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
   if (!editor) return;
+  if (await meosTrySplitEnclosing(editor, fg, bg)) return;   // v4.0.254: 包みの一部だけ色を変える=割る
   // ★★v4.0.251(俊克 8/17 am00:05「なぜ ***前******中******後*** という形にしないんだ?」): ★**判定を、FC行が行末へ
   //   戻される前に置く**。v4.0.250の分割は `meosEnsureInlineBeforeEdit`(触る前に1行の形へ)の**後ろ**に書いてあった
   //   ので、その時点でFC行は既に行末コメントへ畳み戻されており、「FC行が無い」と見て素通りしていた。
   //   俊克の「まだ行末コメントを最初に書いているんだね」は、この畳み戻しそのもの。→ **一番先に見る**。
-  {
-    const doc0 = editor.document, sel0 = meosTrimSelection(doc0, editor.selection);
-    try {
-      const _l0 = doc0.lineAt(sel0.start.line).text, _f0 = (sel0.start.line + 1 < doc0.lineCount) ? doc0.lineAt(sel0.start.line + 1).text : '';
-      meosLogFmt('insertBoldItalic', { bold: !!bold, italic: !!italic, fg: fg || '', bg: bg || '', empty: sel0.isEmpty, prose: meosIsProseDoc(doc0), sel: doc0.getText(sel0), line: _l0, next: _f0, nextIsFc: meosIsSpecLine(_f0) });
-    } catch (_) { }
-    if (!sel0.isEmpty && meosIsProseDoc(doc0) && sel0.start.line === sel0.end.line) {
-      let _b0 = !!bold, _i0 = !!italic, _enc0 = null;
-      try {
-        const _lt0 = doc0.lineAt(sel0.start.line).text;
-        for (const _m of meosStarMarks(_lt0, _lt0)) {
-          if (sel0.start.character >= _m.bodyStart && sel0.end.character <= _m.bodyEnd) {
-            if (_m.bold) _b0 = false;
-            if (_m.italic) _i0 = false;
-            _enc0 = _m;
-          }
-        }
-      } catch (_) { }
-      try { meosLogFmt('  包み', { b: _b0, i: _i0, encl: _enc0 ? _enc0.kind : null }); } catch (_) { }
-      if (!_b0 && !_i0 && _enc0) {
-        const _ln = sel0.start.line, _lt = doc0.lineAt(_ln).text;
-        const _sp = meosSplitMarkForSegment(_lt, { mk: _enc0.kind, start: _enc0.start, end: _enc0.end, bodyStart: _enc0.bodyStart, bodyEnd: _enc0.bodyEnd }, sel0.start.character, sel0.end.character);
-        const _fcLn = _ln + 1;
-        const _hasFc = (_fcLn < doc0.lineCount) && meosIsSpecLine(doc0.lineAt(_fcLn).text);
-        if (_sp && _hasFc) {
-          let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc0.end) _ord++;
-          const _fcText = doc0.lineAt(_fcLn).text;
-          const _rg = meosSpecLineCommentRange(_fcText, _ord - 1);
-          try { meosLogFmt('  分割', { pieces: _sp ? _sp.pieces : 0, ord: _ord, rg: !!_rg, fc: _fcText }); } catch (_) { }
-          if (_rg) {
-            const _origBox = _fcText.slice(_rg.start, _rg.end);
-            const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc0.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';
-            const _boxes = []; for (let k = 0; k < _sp.pieces; k++) _boxes.push(k === _sp.midIdx ? _newBox : _origBox);
-            const _newFc = _fcText.slice(0, _rg.start) + _boxes.join('') + _fcText.slice(_rg.end);
-            await editor.edit(eb => {
-              eb.replace(doc0.lineAt(_ln).range, _sp.line);
-              eb.replace(doc0.lineAt(_fcLn).range, _newFc);
-            }, { undoStopBefore: true, undoStopAfter: true });
-            try { const _p = new vscode.Position(_ln, sel0.start.character); editor.selection = new vscode.Selection(_p, _p); } catch (_) { }
-            editor = await meosFocusBack(editor, editor.selection);
-            return;
-          }
-        }
-      }
-    }
-  }
+
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
   const doc = editor.document, sel = meosTrimSelection(editor.document, editor.selection); // v4.0.214: 端の空白は包まない
   const empty = sel.isEmpty, body = empty ? '本文' : doc.getText(sel);
