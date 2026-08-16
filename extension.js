@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.250(俊克 8/16 pm11:49「こうなった時点で、以下のようにするんだよ」): ★★**足せるものが無い時は、外側を割る**。同じ装飾のまま一部だけ色を変えたい= 掛ける相手の印が無い → **印を作る**= `***前******中******後***` と3つに割り、指定も3つ書く(俊克の(3))。本物のCommonMarkで確認= `<em><strong>前</strong></em><em><strong>中</strong></em><em><strong>後</strong></em> の**3つの独立した印**になるので、全部が1対1で対応する。前/後が空なら2つ。元の指定はそのまま複製し、真ん中だけ新しい色にする(1回の編集で本文と指定行の両方)。★★**v4.0.249の最後の1行が誤りだった**= 「両方とも既に掛かっている=そのまま書く」で `***` の中に `***` を書き、外側を壊していた。★私は「同じ装飾の一部だけ色を変えることはできない」と言ったが、**間違い**。俊克が正しい。印が無いなら作ればよかった。
 // - v4.0.249(俊克 8/16 pm10:57「今テストしていることを言葉で表わしてみなよ」→ pm11:00「今でしょ」): ★★**測って一発で出た。生データの作り方が間違っていた**= 既に斜体の中で更に `***` と書くと、**外側の `*` が切れる**。実測= `*斜体と***斜体+太字***と太字*` は `*斜体と*` ＋ `**斜体+太字**` ＋ `*と太字*` の**3つに割れる**(だから外側の紫が「と太字」に届かない)。`*斜体と**斜体+太字**と太字*` なら `*` が全体・`**` が中の**入れ子**= 俊克の言った姿そのもの(**指定は2本・それぞれ1個目・一発で通る**)。→ **足すのは、まだ掛かっていない軸だけ**。選択を包んでいる印が既に斜体を持っていれば斜体は書かない(太字も同じ)。★これが俊克の(4)「**1つ目のFCコメントが『斜体と』と『と太字』の両方を修飾している**」を成り立たせる唯一の形。★`check_hat.js` に⑬(5項目)を追加= 割れる形と入れ子の形を**文字列で並べて**残した(次に触る人が目で確かめられる)。
 // - v4.0.248(俊克 8/16 pm10:27「なぜFCコメントにならずに、直ぐ横にへばりつくんだよ?」「`//[]tip=` は付けなくて良いだね」): ★①**4度目の同じ穴**= 外へ出す判定 `meosSpecPayloadAsIs` に**書式の not を入れていなかった**(v4.0.232で `↑not` を直し、「同じ判定を1つに纏めた」と書いた、その関数に片方だけ入れた)。`***not` は箱も矢印も持たないので行末に残っていた。→ `==not`/`~~not`/`*not`/`**not`/`***not`/`_not` を対象に。★②**書式の指定には空の `//[]tip=` を付けない**(俊克が書いた理想形= リンクは `[*]()(3)(白/紫)//[]tip=`、書式は `*** (白/赤)`)。指定するものが無ければ書かない(v4.0.64の約束)。見出し/リンクは従来どおり。★★**未解決(次の版で測ってから直す)**= (a)`not` を書く条件= 俊克の指定は「**BoldもItalicも✓を入れない時だけ** `***not`」なのに、私はチェックの状態を見ずに常に書いている (b)本文 `***…***` に指定 `**not` が出る食い違い (c)外側 `*` の色が内側の区間から先に届かない(`と太字` に紫が乗らない)。★**blindに直すのをやめる**= 書式ボタンの偽エディタ(rig)で、押した結果の本文と指定行を**文字列で突き合わせてから**触る。今日3版続けて穴を残したのは、測らずに直したから。
 // - v4.0.247(俊克 8/16 pm08:13「記号の最初が1個なので最後1個を外して次を解釈すればいい…v4.1に回すほど複雑ではないと思うけど」): ★★**俊克が正しい。複雑だったのは読み取りではなく、私の決め打ちだった**。入れ子の読み取りは v4.0.189 から1回の走査でできている(`*`→`***`→`**` と順に解釈)。止めていたのは v4.0.212 の1行= 「**リンクの表示文字の中の飾りは指定を持たない**ので番号を消費させない」という前提で、専用の枝を作っていたこと。前提が変わった(=リンクの中の一部を飾るのは**普通の書式指定**でよい、という俊克の整理)以上、**特例を外すだけ**で届く。→ ラベルの中も外と同じ道を通す= `[*斜体と***斜体+太字***と**太字***]()` に `<!-- Mew!FC [*]()(3)(白/紫) --><!-- Mew!FC *** (白/赤) --><!-- Mew!FC ** (白/緑) -->` thatそのまま効く。★これで**書く形と描く形が揃った**(v4.0.245でボタンが書く形は既にこの形だった)。日記の実データで、ラベルに強調を持つリンクは75行。
@@ -23715,6 +23716,24 @@ function meosMergeSpans(spans) {
   return out;
 }
 // v3.7.2(俊克): Me Dock「𝗕」ボタン=選択を正式膜で包む。太字=**{ }**・斜体=__{ }__・両方=入れ子 **{ __{ } }**。選択が空なら'本文'を選択。
+// ★★v4.0.250(俊克 8/16 pm11:49「こうなった時点で、以下のようにするんだよ」): **同じ装飾の一部だけ色を変える**。
+//   掛ける相手の印が無いなら、**印を作ればいい**= 外側を**3つに割る**(俊克の(3))。本物のCommonMarkで確認済み:
+//     `***前******中******後***` → <em><strong>前</strong></em><em><strong>中</strong></em><em><strong>後</strong></em>
+//   3つの独立した印になるので、指定も3つ書けば**全部が1対1で対応する**。
+//   前(または後)が空なら2つに割る。返すのは新しい行と、割った数。
+function meosSplitMarkForSegment(line, encl, selStart, selEnd) {
+  const t = String(line == null ? '' : line);
+  const mk = String(encl.mk || '');
+  const before = t.slice(encl.bodyStart, selStart), mid = t.slice(selStart, selEnd), after = t.slice(selEnd, encl.bodyEnd);
+  if (!mid) return null;
+  const parts = [];
+  if (before) parts.push(before);
+  parts.push(mid);
+  if (after) parts.push(after);
+  const midIdx = before ? 1 : 0;
+  const wrapped = parts.map(x => mk + x + mk).join('');
+  return { line: t.slice(0, encl.start) + wrapped + t.slice(encl.end), pieces: parts.length, midIdx, mk };
+}
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
   if (!editor) return;
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // v4.0.159: 触る前に1行の形へ
@@ -23735,17 +23754,47 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
     //     `*斜体と**斜体+太字**と太字*`  → `*` が全体・`**` が中の**入れ子**(俊克の言った姿・指定は2本でord=1ずつ)
     //   → 選択が既に掛かっている軸(斜体/太字)は**書かない**。これで外側の指定が「斜体と」と「と太字」の
     //   両方に届く(1本の指定が、内側で割られた2区間の両方を修飾する)。
-    let _b = !!bold, _i = !!italic;
+    let _b = !!bold, _i = !!italic, _enc = null;
     try {
       const _lt = doc.lineAt(sel.start.line).text;
       for (const _m of meosStarMarks(_lt, _lt)) {
         if (sel.start.character >= _m.bodyStart && sel.end.character <= _m.bodyEnd) { // 選択を包んでいる印
           if (_m.bold) _b = false;
           if (_m.italic) _i = false;
+          _enc = _m;                                   // いちばん内側の包みが残る
         }
       }
     } catch (_) { }
-    if (!_b && !_i) { _b = !!bold; _i = !!italic; }   // 両方とも既に掛かっている=そのまま書く(何も足さないと消えるため)
+    // ★★v4.0.250(俊克 8/16 pm11:49): **足せるものが無い時は、外側を割る**(俊克の(3))。
+    //   同じ装飾のまま一部だけ色を変えたい= 掛ける相手の印が無い → **印を作る**= `***前******中******後***`。
+    //   本物のCommonMarkで確認済み= 3つの独立した印になるので、指定も3つ書けば全部が1対1で対応する。
+    //   v4.0.249の「両方とも既に掛かっている=そのまま書く」は誤り(`***` の中に `***` を書いて外側を壊していた)。
+    if (!_b && !_i && _enc) {
+      const _ln = sel.start.line, _lt = doc.lineAt(_ln).text;
+      const _sp = meosSplitMarkForSegment(_lt, { mk: _enc.kind, start: _enc.start, end: _enc.end, bodyStart: _enc.bodyStart, bodyEnd: _enc.bodyEnd }, sel.start.character, sel.end.character);
+      const _fcLn = _ln + 1;
+      const _hasFc = (_fcLn < doc.lineCount) && meosIsSpecLine(doc.lineAt(_fcLn).text);
+      if (_sp && _hasFc) {
+        // 元の印の通し番号(この行で自分まで)→ 指定行の何番目か
+        let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc.end) _ord++;
+        const _fcText = doc.lineAt(_fcLn).text;
+        const _rg = meosSpecLineCommentRange(_fcText, _ord - 1);
+        if (_rg) {
+          const _origBox = _fcText.slice(_rg.start, _rg.end);                       // 元の指定(そのまま複製する)
+          const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';
+          const _boxes = []; for (let k = 0; k < _sp.pieces; k++) _boxes.push(k === _sp.midIdx ? _newBox : _origBox);
+          const _newFc = _fcText.slice(0, _rg.start) + _boxes.join('') + _fcText.slice(_rg.end);
+          await editor.edit(eb => {
+            eb.replace(doc.lineAt(_ln).range, _sp.line);
+            eb.replace(doc.lineAt(_fcLn).range, _newFc);
+          }, { undoStopBefore: true, undoStopAfter: true });
+          try { const _p = new vscode.Position(_ln, sel.start.character + _enc.kind.length * (_sp.midIdx ? 2 : 0)); editor.selection = new vscode.Selection(_p, _p); } catch (_) { }
+          editor = await meosFocusBack(editor, editor.selection);
+          return;
+        }
+      }
+    }
+    if (!_b && !_i) { _b = !!bold; _i = !!italic; }   // 割れない時だけ従来どおり
     const mk = (_b && _i) ? '***' : (_i ? '*' : '**');
     // v4.0.210(俊克): 中間状態を作らず、1回の編集で本文と指定行の両方に書く。
     if (fg || bg) {

@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -187,6 +187,21 @@ ok(g[0].kind === '*' && good.slice(g[0].bodyStart, g[0].bodyEnd) === '斜体と*
 ok(g[1].kind === '**' && good.slice(g[1].bodyStart, g[1].bodyEnd) === '斜体+太字', '内側の `**` は中だけ', sm(good));
 const ends = T.meosInlineMarkEnds(good);
 ok(ends.filter(e => e.kind === '*').length === 1 && ends.filter(e => e.kind === '**').length === 1, '指定は2本・それぞれ1個目(俊克「一発で通るはず」)', ends.map(e => e.kind + e.ord));
+
+console.log('⑭ 同じ装飾の一部だけ色を変える=外側を割る(v4.0.250・俊克の(3))');
+{
+  const t = '***ハイライトと太字とイタリックと太字とイタリック***';
+  const m = T.meosStarMarks(t, t)[0];
+  const encl = { mk: '***', start: m.start, end: m.end, bodyStart: m.bodyStart, bodyEnd: m.bodyEnd };
+  const a = t.indexOf('太字'), b = a + 2;
+  const r = T.meosSplitMarkForSegment(t, encl, a, b);
+  ok(!!r && r.line === '***ハイライトと******太字******とイタリックと太字とイタリック***', '真ん中を選ぶと3つに割れる(俊克の(3)そのもの)', r && r.line);
+  ok(!!r && r.pieces === 3 && r.midIdx === 1, '3つ・真ん中は2番目', r && [r.pieces, r.midIdx]);
+  const r2 = T.meosSplitMarkForSegment(t, encl, encl.bodyStart, encl.bodyStart + 6);
+  ok(!!r2 && r2.pieces === 2 && r2.midIdx === 0, '先頭を選んだ時は2つ(前が空)', r2 && [r2.pieces, r2.midIdx]);
+  const r3 = T.meosSplitMarkForSegment(t, encl, encl.bodyEnd - 5, encl.bodyEnd);
+  ok(!!r3 && r3.pieces === 2 && r3.midIdx === 1, '末尾を選んだ時も2つ(後が空)', r3 && [r3.pieces, r3.midIdx]);
+}
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);
