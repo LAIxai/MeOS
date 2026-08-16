@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.239(俊克 8/16 pm04:47 バグ1「ハイライトのnot指定は、太字ではないけど斜体が残っている」): ★**フラグを立てないだけでは、消えない**。`not` は `bold=false / italic=false` にするだけだったが、`*…*` `***…***` の斜体は**VS Code内蔵のMarkdown文法(テーマ)が付けている**ので、こちらが何も書かなければそのまま残る(`**` が平気だったのは、テーマがそこを太字にしていなかっただけ)。→ **素に戻す時は「戻す」と明示的に書く**= `font-style: normal` / `font-weight: normal` を装飾に持たせ、**同じCSSを2つ被せる形なので `!important` を付ける**(v4.0.15/3119と同じ穴・4度目。VS Codeの装飾でCSSを注ぐ唯一の口 textDecoration に載せる)。★俊克の結論= **見出しと取消線に not は要らない**(素の `##`/`~~` は既にMeOSが記号を隠して描いているので、運び屋にする必要が無い)。読む側は残すが、ボタンは出さない。
 // - v4.0.238(俊克 8/16 pm03:38〜04:11 Zenn#7の推敲から生まれた設計): ★★**ハイライトを `***` に載せる**= Markdownの標準に無い記号 `==` は、MeOSの外へ出すと丸見えになる。**8月に見出し/太字/斜体/取消線/リンク/上付きを次々と標準の記号へ載せ替えた中で、最後に残っていた1つ**。→ 本文は `***…***`(標準の太字＋斜体)、指定は `***not(白/黄)`。MeOSの中では今までどおりのハイライト、外では太字＋斜体。**どちらでも壊れない**。`==` は読める側に残す(書かなくなるだけ)。★★**`not` = この記号の意味を、MeOSでは名乗らない**。`↑not` と同じ言葉・同じ論理を `*` `**` `***` `~~` と、行の指定 `H2not` にも通した(俊克「どうせなら内部的には `*not` と `**not` も同じ論理なので入れてしまおう」)。→ 太字で書いたものに `not` を付けるだけで、**本文を1文字も触らずに**プレーンへ変えられる(インライン編集の芯)。★注意= **`not` は外の見え方を消さない**(記号は運び屋なので、外では記号どおり)。本当にどこでもやめたいなら記号を消す。`H2not` は `##` が行の構造なので、外では見出しのまま目次に載る=`***not` より副作用が大きい(用途が違う)。★`check_hat.js` に⑨⑩(11項目)を追加。全63項目通過。
 // - v4.0.237(俊克 8/16 pm02:41 バグ1「A↑4の右で上付き→🚫と押すと A↑4 全体が選択状態になり、もう一度押すと A↑4↑2 になる」): ★**解除の後は、上付き/下付きだけ右端にカーソルを置くだけ**にした(俊克案「そうすれば、何度でもやり直せる」)。解除後に本文を選んでおくのは、ハイライト等で別の飾りをすぐ掛け直せるようにするため。しかし v4.0.236 で上付き/下付きは**本文を残す**ようにしたので、残った `A↑4` を選んだままだと、次の一押しでそれ全部が基準文字になってしまった(選択が「相手」を名乗る規則の裏目)。★1つの直しが、対になっているもう片方の前提を崩す= 今日ずっと同じ形。
 // - v4.0.236(俊克 8/16 pm02:05 バグ1「取消で戻した時、なぜか🚫ボタンのままになっている」／バグ2「not指定をしたA↑Bの右にカーソルを置いても🚫にならない。だからFCコメントを削除できない」／バグ3「A↑4に上付きボタンを押した後に🚫を押すと、4が巻き添えで消える」): ★★バグ3=**消すのは命令だけ・本文は書き手のもの**。旧い解除は基準文字だけ残して肩/腰の字も落としていた(ボタンが作った `A↑2` を丸ごと戻す前提)。しかし `A↑4` のように**自分で打った字**を飾った時、その4を消す権利は無い。→ 本文は `A↑4` のまま残し、**指定だけ**を落とす(戻したい人は取消1回=v4.0.235で1回に纏めた)。★バグ2= ①`not` で外したトークンを**捨てずに控える**(描く側から消えていてよいが、**消したという事実も指定の一種**なので🚫の相手になれないと取り消す道が無い) ②`meosDeleteSpecForMark` が**表だけ**を見ていたので、普通の行ではFC行の相手が残っていた→ 表と同じ数え方(印の通し番号)で普通の行にも効かせた。★バグ1= ボタンの姿は**カーソルが動いた時にしか計算していなかった**。取消は文書を変えてもカーソルは動かないことがあるので、指定が消えた後も🚫のまま残っていた→ 文書が変わった時にも計算し直す(150msだけ待って、1打ごとには走らせない)。★入れる口と出す口は対で在るべき、が今日の通しの教訓。
@@ -23688,9 +23689,15 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
   try { const s = sel.start, bs = s.translate(0, off); editor.selection = new vscode.Selection(bs, bs.translate(0, body.length)); } catch (_) {}
 }
 let boldHideDeco = null; const boldFmtTypeCache = new Map(); // key: 太字/斜体+文字色+背景色 → decorationType
-function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke) {
+// v4.0.239(俊克 8/16 pm04:47 バグ1「ハイライトのnot指定は、太字ではないけど斜体が残っている」):
+//   ★真因= **フラグを立てないだけでは、消えない**。`not` は `bold=false / italic=false` にするだけだったが、
+//   `*…*` `***…***` の斜体は**VS Code内蔵のMarkdown文法(テーマ)が付けている**ので、こちらが何も書かなければ
+//   そのまま残る。→ **素に戻す時は「戻す」と明示的に書く**(font-style:normal / font-weight:normal)。
+//   ★装飾で同じCSSを2つ被せたら、後から乗る方は `!important` が要る(v4.0.15/3119と同じ穴・4度目)。
+//   VS Codeの装飾でCSSを注ぐ唯一の口は textDecoration なので、そこに載せる。
+function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain) {
   if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black'; // 暗背景は自動白文字(ハイライトと同じauto-contrast)
-  const key = (bold ? 'b' : '') + (italic ? 'i' : '') + '|' + (fgKey || '') + '|' + (bgKey || '') + (noStroke ? '|ns' : '');
+  const key = (bold ? 'b' : '') + (italic ? 'i' : '') + '|' + (fgKey || '') + '|' + (bgKey || '') + (noStroke ? '|ns' : '') + (plain ? '|p' : '');
   if (boldFmtTypeCache.has(key)) return boldFmtTypeCache.get(key);
   const opt = { rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed };
   // v4.0.31(俊克 考察1「太字の部分が下線がつかない/イタリックはつく」): 太字の縁取りは `text-decoration` を運び屋に
@@ -23699,6 +23706,10 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke) {
   // 縁取りを諦めて下線を優先する(noStroke)。太さは fontWeight:900 のまま。
   if (bold) { opt.fontWeight = '900'; if (!noStroke) opt.textDecoration = 'none; -webkit-text-stroke: 0.5px currentColor;'; } // v3.7.1(俊克): Menloの900はBold止まりで弱い→縁取りstrokeでハッキリ太く(既存の矢印グリフ太字と同技法)
   if (italic) opt.fontStyle = 'italic';
+  if (plain && !bold && !italic) { // v4.0.239: not= テーマが付けた太字/斜体まで戻す
+    opt.fontStyle = 'normal'; opt.fontWeight = 'normal';
+    opt.textDecoration = 'none; font-style: normal !important; font-weight: normal !important;';
+  }
   if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) opt.color = HIGHLIGHT_FG_COLORS[fgKey];
   if (bgKey && HIGHLIGHT_COLORS[bgKey]) { opt.backgroundColor = HIGHLIGHT_COLORS[bgKey]; opt.borderRadius = '2px'; } // v4.0.70(俊克 改良3): ハイライトと同じ角丸に(真四角だと隣り合う別設定の境が分からない)
   const t = vscode.window.createTextEditorDecorationType(opt); boldFmtTypeCache.set(key, t); return t;
@@ -23715,7 +23726,7 @@ function meosApplyBoldDecorations(editor) {
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
     let _lnLinks = [];
-    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
+    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _bTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _bTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
@@ -23788,7 +23799,7 @@ function meosApplyBoldDecorations(editor) {
           _hideSpecComment(q, mk.end);
           // v4.0.238: `***not(白/黄)` = 記号は運び屋・意味は指定が決める → 太字/斜体を名乗らず、色だけ乗せる(=従来の `==` に相当)。
           const _nb = (q && q.not) ? false : mk.bold, _ni = (q && q.not) ? false : mk.italic;
-          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '');
+          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', !!(q && q.not));
         }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
