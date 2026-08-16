@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -163,6 +163,18 @@ ok(ls('not(白/紫)(3)').fg === '白' || !!ls('not(白/紫)(3)').fg, 'notを剥�
 ok(ls('not(白/紫)(3)').ul === 3, '下線の種類も読める', ls('not(白/紫)(3)').ul);
 ok(ls('(白/紫)(3)').not === false, 'notを書かなければ今までどおり', ls('(白/紫)(3)'));
 ok(ls('(白/紫)//[]tip=notを含む説明').not === false, 'tipの中の not は命令にしない', ls('(白/紫)//[]tip=notを含む説明'));
+
+console.log('⑫ 指定の[ ]に印を名指しする(v4.0.243)');
+const lc = (t) => T.meosLinkSpecFromComment(t);
+const c1 = lc('[`*`](膜名)(3)not (白/紫)//[]tip=');
+ok(!!c1 && c1.mark === '*' && c1.target === '膜名', '`[`*`](膜名)` の印と行先を読める', c1);
+ok(!!c1 && T.meosMeLinkSpec(c1.spec).not === true && T.meosMeLinkSpec(c1.spec).ul === 3, '同じ指定からnotと下線種も読める', c1 && T.meosMeLinkSpec(c1.spec));
+const c2 = lc('[`***`](膜名)(0)(白/黄)//[]tip=');
+ok(!!c2 && c2.mark === '***', '`***` も名指しできる', c2);
+const c3 = lc('[](膜名)(3)(白/紫)//[]tip=');
+ok(!!c3 && c3.mark === '' && c3.target === '膜名', '空の `[]` は従来どおり(まとめて扱う)', c3);
+const c4 = lc('[説明文](膜名)(3)');
+ok(!!c4 && c4.mark === '', '印でない字が入っていても命令にしない(空扱い)', c4);
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);

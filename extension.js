@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.243(俊克 8/16 pm06:46「FCコメントにも `[`*`]()(3)` のように書くのは、対応付けという意味で必須だよね」): ★**指定の `[ ]` に、表示文字の中の印を名指しできる**= `<!-- Mew!FC [`*`](膜名)(3)not (白/紫)//[]tip= -->`。本文 `[*どこでも*]()` の `[ ]` と、指定の `[ ]` が**同じ位置で対応する**= 目で追える(俊克の言う対応付け)。★`not` は**名指しした印だけ**に効く= `[**太字**と*斜体*]()` で斜体だけ素に戻せる(v4.0.240の「まとめて否定」では選べなかった)。★空の `[]` は従来どおり(ラベルの中ぜんぶ)= read-both。印でない字が入っていても命令にしない(空扱い)。★ボタンも書く= 表示文字を太字/斜体にしたら、指定の `[ ]` にその印を書き残す。★`check_hat.js` に⑫(5項目)を追加。全78項目通過。
 // - v4.0.242(俊克 8/16 pm06:30 質問1「リンク/下線はv3.0には無かったよね? もしそうなら、v4で下線の種類の位置を直すのは今が良いんじゃないの?」): ★**俊克が正しい。しかも代償がゼロ**= ①リンク/下線は v4.0.8(8/2)から= **ストア(v3.1.86)には一度も出ていない** ②**読む側は元から並び順を見ていない**(実測= `(白/紫)(3)` も `(3)(白/紫)` も `(3)not (白/紫)` も同じに読める)。なので直すのは**書く側だけ**。→ ボタンが書く形を `[](行先)(3)(白/紫)//[]tip=` に(下線の種類を色の前へ)。家の作法「**種類 → 色**」に揃った(`H2 (白/緑)` / `~~ (赤/)` / `A↑1{150%(白/緑)}`)。★残り(v4.1候補)= 俊克案の `` [`*`]()(3)not (白/紫) ``= **ラベルの中の何を否定するかを名指しする**形。今は「ラベルの中の強調をまとめて否定」なので、2種類混ざった時に選べない。
 // - v4.0.241(俊克 8/16 pm06:24「やはり、それでも駄目だね」): ★**`pushStyle` の呼び出しが2か所在り、v4.0.240で直したのは外側だけだった**。リンクの**表示文字の中**は「番号を消費せずに描くだけ」の専用の枝を通るので、`not` の判定もそこに要る。★今日ずっと同じ形= **対になっている片方を見ていない**(notを書く道/消す道・出す側/描く側・1つ目/2つ目・本文を残す/選択を残す、そして今回=同じ描画の2つの枝)。
 // - v4.0.240(俊克 8/16 pm05:49 バグ1「`Mew!FC [](膜名)not` がまだ穴が開いている。リンクの場合は、[]の中に `*` 指定が入ってしまうからね」): ★**運び屋にした以上、リンクの表示文字の中にも「意味を名乗らせない」口が要る**= `[*どこでもH-TOC*]()` の `*` が斜体のまま残っていた。→ リンクの指定に `not` を書ける= `<!-- Mew!FC [](膜名)not(白/紫)(3) -->`。意味は他と同じ= **表示文字の中の `*` `**` `***` を太字/斜体として読まない**(色と下線は指定が決める)。★`not` を通す口はこれで4つ目(語=`*`一族／行=`H2`／上付き=`↑`／リンク=`[]()`)。**同じ言葉が、記法の全部に届いた**。★tipの中の `not`(`//[]tip=notを含む説明`)は命令にしない(頭の部分だけ見る)。`check_hat.js` に⑪(5項目)を追加。全68項目通過。
@@ -23372,11 +23373,17 @@ function meosTrailingComments(text) {
   return out;
 }
 // コメントの中身が「リンクの指定」か。形= [](行先) のあとに (色)(下線)//tip。行先は釣り合った括弧を1段許す。
-const MEOS_LINK_SPEC_RE = /^\[\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)[ \t]*([\s\S]*)$/;
+// ★v4.0.243(俊克 8/16 pm06:46「FCコメントにも `[`*`]()(3)` のように書くのは、対応付けという意味で必須だよね」):
+//   ★**指定の `[ ]` に、表示文字の中の印を書ける**= `[`*`](行先)(3)not (白/紫)`。
+//   本文 `[*どこでも*]()` の `[ ]` と、指定の `[ ]` が**同じ位置で対応する**= 目で追える。
+//   ★意味は「この印を名指す」なので、`not` は**その印だけ**に効く(`[**太字**と*斜体*]()` で斜体だけ素に戻せる)。
+//   ★書かなければ従来どおり(空 `[]`)= ラベルの中の強調をまとめて扱う。read-both。
+const MEOS_LINK_SPEC_RE = /^\[([^\]\n]*)\]\(((?:[^()<\n]|\([^()<\n]*\))*)\)[ \t]*([\s\S]*)$/;
 function meosLinkSpecFromComment(payload) {
   const m = MEOS_LINK_SPEC_RE.exec(meosStripMewSignature(payload));
   if (!m) return null;
-  return { target: String(m[1] || '').trim(), spec: String(m[2] || '').trim() };
+  const mk = String(m[1] || '').trim().replace(/`/g, ''); // v4.0.243: `` `*` `` の飾りは剥がす
+  return { mark: /^\*{1,3}$/.test(mk) ? mk : '', target: String(m[2] || '').trim(), spec: String(m[3] || '').trim() };
 }
 // 本文側の印 `[表示]()`(行先が空)。コードスパン・画像・他形式のリンク・行末コメント群は先に外す(鉄則=リンクは先にマスク)。
 const MEOS_EMPTY_LINK_RE = /(?<!\!)\[([^\]\n]*)\]\(\)/g;
@@ -23401,7 +23408,7 @@ function meosLineEndLinks(text, fcLinks) {
   while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) {
     if (i >= specs.length) break; // 指定より印が多い=余った印はただの文字のまま
     const label = m[1] || '', start = m.index, end = start + m[0].length;
-    out.push({ start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: specs[i].sp.target, spec: specs[i].sp.spec, comment: specs[i].c });
+    out.push({ start, end, label, textStart: start + 1, textEnd: start + 1 + label.length, target: specs[i].sp.target, spec: specs[i].sp.spec, mark: specs[i].sp.mark || '', comment: specs[i].c }); // v4.0.243: mark=名指しされた印
     i++;
   }
   return out;
@@ -23468,7 +23475,9 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   //   下線の種類はリンクの**種類**の側なので、色より前に置くのが正しい。ここだけ逆だった。
   //   ★**読む側は元から並び順を見ていない**(色も下線も、頭の中から形で探す)ので、直すのは書く側だけ。
   //   ★しかもリンク/下線は v4.0.8(8/2)から= **ストア(v3.1.86)には一度も出ていない**ので、今直すのが一番安い。
-  const payload = '[]()' + ulPart + color + '//[]tip=';
+  // v4.0.243: 表示文字に印を付けたなら、指定の `[ ]` にもその印を書く(対応付けが目で追える)。
+  const _lblMark = (bold && italic) ? '`***`' : bold ? '`**`' : italic ? '`*`' : '';
+  const payload = '[' + _lblMark + ']()' + ulPart + color + '//[]tip=';
   const r = await meosWriteMarkAndSpec(editor, sel, mark, 'link', payload);
   // ★カーソルは**行先の中**で待たせる(そのままURLか膜名を打てば完成)=手打ちからの解放は維持。
   try {
@@ -23800,10 +23809,11 @@ function meosApplyBoldDecorations(editor) {
         try {
           for (const b of meosLineEndLinks(text, MEOS_SPEC_LINE ? _fcLinksFor(doc, ln) : null)) {
             const sp = meosMeLinkSpec(b.spec);
-            if (sp && sp.not) _plainZones.push([b.textStart, b.textEnd]);
+            if (sp && sp.not) _plainZones.push([b.textStart, b.textEnd, b.mark || '']);
           }
         } catch (_) { }
-        const _inPlain = (a, b) => _plainZones.some(([x, y]) => a >= x && b <= y);
+        // v4.0.243: 印を名指ししてあれば**その印だけ**・空なら従来どおりラベルの中ぜんぶ。
+        const _inPlain = (a, b, kind) => _plainZones.some(([x, y, mk]) => a >= x && b <= y && (!mk || mk === kind));
         const _lbl = [];
         try { const _mm = meosMaskLinkLabels(text); for (let k = 0; k < text.length; k++) if (text.charAt(k) !== _mm.charAt(k)) _lbl.push(k); } catch (_) { }
         const _inLabel = (a, b) => _lbl.length > 0 && _lbl.some(k => k >= a && k < b);
@@ -23813,7 +23823,7 @@ function meosApplyBoldDecorations(editor) {
             // ★v4.0.241(俊克 8/16 pm06:24「やはり、それでも駄目だね」): **`pushStyle` の呼び出しが2か所在り、
             //   v4.0.240で直したのは外側だけだった**。ラベルの中は番号を消費しない専用の枝を通るので、
             //   `not` の判定もここに要る(今日ずっと同じ形= 対になっている片方を見ていない)。
-            const _pz = _inPlain(mk.bodyStart, mk.bodyEnd);
+            const _pz = _inPlain(mk.bodyStart, mk.bodyEnd, mk.kind);
             hideR.push(new vscode.Range(ln, mk.start, ln, mk.bodyStart));
             hideR.push(new vscode.Range(ln, mk.bodyEnd, ln, mk.end));
             pushStyle(ln, mk.bodyStart, mk.bodyEnd, _pz ? false : mk.bold, _pz ? false : mk.italic, null, null, '', _pz);
@@ -23825,7 +23835,7 @@ function meosApplyBoldDecorations(editor) {
           hideR.push(new vscode.Range(ln, mk.bodyEnd, ln, mk.end));
           _hideSpecComment(q, mk.end);
           // v4.0.238: `***not(白/黄)` = 記号は運び屋・意味は指定が決める → 太字/斜体を名乗らず、色だけ乗せる(=従来の `==` に相当)。
-          const _pz = _inPlain(mk.bodyStart, mk.bodyEnd);           // v4.0.240: リンクの表示文字の中で not
+          const _pz = _inPlain(mk.bodyStart, mk.bodyEnd, mk.kind);  // v4.0.240/243: リンクの表示文字の中で not
           const _no = !!(q && q.not) || _pz;
           const _nb = _no ? false : mk.bold, _ni = _no ? false : mk.italic;
           pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
