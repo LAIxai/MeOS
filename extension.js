@@ -14945,6 +14945,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     // v0.9.885: C系言語では「分割方式」で出力(本文=実コードのまま動く)。全体包みが欲しければ中の */ /* を消すだけ(俊克 6/15 pm08:50)。
     // v4.0.56(俊克): 散文は素のMarkdown＋後置きコメント。コード系は従来の分割形。
     if (!wrap && meosIsProseDoc(doc)) {
+      try { meosLogFmt('insertFormatTemplate', { kind, fg: fg || '', bg: bg || '', sel: selText, line: doc.lineAt(sel.start.line).text }); } catch (_) { }
       // ★v4.0.238(俊克 8/16 pm03:47〜04:11): ハイライトは **`***…***` に載せる**。
       //   `==` はMarkdownの標準に無い記号なので、MeOSの外へ出すと `==` が丸見えになる=**最後に残っていた例外**。
       //   → 本文は `***…***`(標準の太字＋斜体)、指定は `***not(白/黄)`=「太字/斜体は名乗らない・色だけ乗せる」。
@@ -23735,6 +23736,15 @@ function meosSplitMarkForSegment(line, encl, selStart, selEnd) {
   const wrapped = parts.map(x => mk + x + mk).join('');
   return { line: t.slice(0, encl.start) + wrapped + t.slice(encl.end), pieces: parts.length, midIdx, mk };
 }
+// ★v4.0.252(俊克 8/17 am00:14「だったら、どう動くか、ログに出せばいいだろ」): **押した瞬間の実物を書き出す**。
+//   どの関数へ入り、何を見て、どの枝を通り、何を書いたか。推測をやめて、これを読んでから直す。
+function meosLogFmt(tag, o) {
+  try {
+    const parts = [];
+    for (const k in o) parts.push(k + '=' + JSON.stringify(o[k]));
+    require('fs').appendFileSync(MEOS_PROFILE_LOG, '[fmt] ' + new Date().toISOString() + ' ' + tag + ' ' + parts.join(' ') + '\n');
+  } catch (_) { }
+}
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
   if (!editor) return;
   // ★★v4.0.251(俊克 8/17 am00:05「なぜ ***前******中******後*** という形にしないんだ?」): ★**判定を、FC行が行末へ
@@ -23743,6 +23753,10 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
   //   俊克の「まだ行末コメントを最初に書いているんだね」は、この畳み戻しそのもの。→ **一番先に見る**。
   {
     const doc0 = editor.document, sel0 = meosTrimSelection(doc0, editor.selection);
+    try {
+      const _l0 = doc0.lineAt(sel0.start.line).text, _f0 = (sel0.start.line + 1 < doc0.lineCount) ? doc0.lineAt(sel0.start.line + 1).text : '';
+      meosLogFmt('insertBoldItalic', { bold: !!bold, italic: !!italic, fg: fg || '', bg: bg || '', empty: sel0.isEmpty, prose: meosIsProseDoc(doc0), sel: doc0.getText(sel0), line: _l0, next: _f0, nextIsFc: meosIsSpecLine(_f0) });
+    } catch (_) { }
     if (!sel0.isEmpty && meosIsProseDoc(doc0) && sel0.start.line === sel0.end.line) {
       let _b0 = !!bold, _i0 = !!italic, _enc0 = null;
       try {
@@ -23755,6 +23769,7 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
           }
         }
       } catch (_) { }
+      try { meosLogFmt('  包み', { b: _b0, i: _i0, encl: _enc0 ? _enc0.kind : null }); } catch (_) { }
       if (!_b0 && !_i0 && _enc0) {
         const _ln = sel0.start.line, _lt = doc0.lineAt(_ln).text;
         const _sp = meosSplitMarkForSegment(_lt, { mk: _enc0.kind, start: _enc0.start, end: _enc0.end, bodyStart: _enc0.bodyStart, bodyEnd: _enc0.bodyEnd }, sel0.start.character, sel0.end.character);
@@ -23764,6 +23779,7 @@ async function insertBoldItalic(editor, bold, italic, fg, bg) {
           let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc0.end) _ord++;
           const _fcText = doc0.lineAt(_fcLn).text;
           const _rg = meosSpecLineCommentRange(_fcText, _ord - 1);
+          try { meosLogFmt('  分割', { pieces: _sp ? _sp.pieces : 0, ord: _ord, rg: !!_rg, fc: _fcText }); } catch (_) { }
           if (_rg) {
             const _origBox = _fcText.slice(_rg.start, _rg.end);
             const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc0.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';
