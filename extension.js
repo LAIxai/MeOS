@@ -20228,6 +20228,11 @@ function toggleMeDock(editorOverride) {
       //   → **1つの口に集約する**。俊克の2つの症状は、これ1つの写経that生んでいた。
       //   [[feedback_one_source_for_mark_count_action]]（同じ教訓を、それを書いた当日にもう一度踏んだ）
       if (ring === 0) { await removeFormatAtCursor(ed, span); return; }
+      // ★★v4.0.256(俊克 8/17 am00:43 ログで確定): **分割は成功していたのに、この再適用が上から書き直していた**。
+      //   ログ= `split2 ord=1 rg=true`(例外なし・return true)の後に、ここが走って `buildInlineFmt` の旧い形
+      //   (`***…***<!-- Mew! *** (白/黄) -->`)を書き戻す。俊克がずっと見ていた結果は、**分割の後の上書き**だった。
+      //   → 包みの一部を選んでいる時は、ここでも**割る**(入口3つ目。同じ関数から引く)。
+      try { if (kind === 'highlight' && await meosTrySplitEnclosing(ed, message.fg, message.bg)) return; } catch (_) { }
       const built = buildInlineFmt(ed.document, kind, body, message.fg, message.bg);
       const we = new vscode.WorkspaceEdit();
       we.replace(ed.document.uri, range, built.full);
