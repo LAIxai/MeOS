@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -133,6 +133,28 @@ ok(T.meosSpecLineMerge(up, dn, body, 10) === up + dn, '左→右の順に押し�
 const b2 = 'A↑B / C↑D';   // 同じ向きが2つ=順番を間違えると相手を取り違える
 const upA = '<!-- ' + SIG + 'FC ↑1(白/緑) -->', upB = '<!-- ' + SIG + 'FC ↑1(白/橙) -->';
 ok(T.meosSpecLineMerge(upB, upA, b2, 3) === upA + upB, '同じ向きが2つでも印の番目に差し込む', T.meosSpecLineMerge(upB, upA, b2, 3));
+
+console.log('⑨ 書式のnot(v4.0.238) — 記号は運び屋・意味は指定が決める');
+const fp = (t) => T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC ' + t + ' -->');
+const f1 = fp('***not(白/黄)');
+ok(!!f1 && f1.fmt.length === 1 && f1.fmt[0].kind === '***' && f1.fmt[0].not === true, '`***not(白/黄)` を読める', f1 && f1.fmt);
+ok(!!f1 && /白/.test(f1.fmt[0].inner) && /黄/.test(f1.fmt[0].inner), '色も一緒に読める', f1 && f1.fmt[0].inner);
+const f2 = fp('**not');
+ok(!!f2 && f2.fmt.length === 1 && f2.fmt[0].not === true, '色なしの `**not` も命令として読める', f2 && f2.fmt);
+const f3 = fp('*not(赤/)');
+ok(!!f3 && f3.fmt[0].kind === '*' && f3.fmt[0].not === true, '`*not` も同じ論理', f3 && f3.fmt);
+const f4 = fp('~~not(白/緑)');
+ok(!!f4 && f4.fmt[0].kind === '~~' && f4.fmt[0].not === true, '`~~not` も同じ論理(兄弟を1つだけ外さない)', f4 && f4.fmt);
+const f5 = fp('**(白/黄)');
+ok(!!f5 && f5.fmt[0].not === false, 'notを書かなければ今までどおり(太字のまま)', f5 && f5.fmt);
+ok(T.meosFcFmtIsNot(f1, '***', 1) === true && T.meosFcFmtIsNot(f5, '**', 1) === false, '色と同じ数え方で引ける', true);
+
+console.log('⑩ 行の指定のnot(v4.0.238) — H2not');
+const ld = (t) => T.meosLineDirective(t);
+ok(!!ld('H2not') && ld('H2not').not === true && ld('H2not').level === 2, '`H2not` を読める(見出しとして読まない)', ld('H2not'));
+ok(!!ld('H2not (白/緑)') && ld('H2not (白/緑)').not === true, '色つきも読める', ld('H2not (白/緑)'));
+ok(!!ld('H2') && ld('H2').not === false, 'notを書かなければ今までどおり見出し', ld('H2'));
+ok(!!ld('-1.H2') && ld('-1.H2').not === false, '番号付き見出しも従来どおり', ld('-1.H2'));
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);

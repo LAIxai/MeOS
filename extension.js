@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.238(俊克 8/16 pm03:38〜04:11 Zenn#7の推敲から生まれた設計): ★★**ハイライトを `***` に載せる**= Markdownの標準に無い記号 `==` は、MeOSの外へ出すと丸見えになる。**8月に見出し/太字/斜体/取消線/リンク/上付きを次々と標準の記号へ載せ替えた中で、最後に残っていた1つ**。→ 本文は `***…***`(標準の太字＋斜体)、指定は `***not(白/黄)`。MeOSの中では今までどおりのハイライト、外では太字＋斜体。**どちらでも壊れない**。`==` は読める側に残す(書かなくなるだけ)。★★**`not` = この記号の意味を、MeOSでは名乗らない**。`↑not` と同じ言葉・同じ論理を `*` `**` `***` `~~` と、行の指定 `H2not` にも通した(俊克「どうせなら内部的には `*not` と `**not` も同じ論理なので入れてしまおう」)。→ 太字で書いたものに `not` を付けるだけで、**本文を1文字も触らずに**プレーンへ変えられる(インライン編集の芯)。★注意= **`not` は外の見え方を消さない**(記号は運び屋なので、外では記号どおり)。本当にどこでもやめたいなら記号を消す。`H2not` は `##` が行の構造なので、外では見出しのまま目次に載る=`***not` より副作用が大きい(用途が違う)。★`check_hat.js` に⑨⑩(11項目)を追加。全63項目通過。
 // - v4.0.237(俊克 8/16 pm02:41 バグ1「A↑4の右で上付き→🚫と押すと A↑4 全体が選択状態になり、もう一度押すと A↑4↑2 になる」): ★**解除の後は、上付き/下付きだけ右端にカーソルを置くだけ**にした(俊克案「そうすれば、何度でもやり直せる」)。解除後に本文を選んでおくのは、ハイライト等で別の飾りをすぐ掛け直せるようにするため。しかし v4.0.236 で上付き/下付きは**本文を残す**ようにしたので、残った `A↑4` を選んだままだと、次の一押しでそれ全部が基準文字になってしまった(選択が「相手」を名乗る規則の裏目)。★1つの直しが、対になっているもう片方の前提を崩す= 今日ずっと同じ形。
 // - v4.0.236(俊克 8/16 pm02:05 バグ1「取消で戻した時、なぜか🚫ボタンのままになっている」／バグ2「not指定をしたA↑Bの右にカーソルを置いても🚫にならない。だからFCコメントを削除できない」／バグ3「A↑4に上付きボタンを押した後に🚫を押すと、4が巻き添えで消える」): ★★バグ3=**消すのは命令だけ・本文は書き手のもの**。旧い解除は基準文字だけ残して肩/腰の字も落としていた(ボタンが作った `A↑2` を丸ごと戻す前提)。しかし `A↑4` のように**自分で打った字**を飾った時、その4を消す権利は無い。→ 本文は `A↑4` のまま残し、**指定だけ**を落とす(戻したい人は取消1回=v4.0.235で1回に纏めた)。★バグ2= ①`not` で外したトークンを**捨てずに控える**(描く側から消えていてよいが、**消したという事実も指定の一種**なので🚫の相手になれないと取り消す道が無い) ②`meosDeleteSpecForMark` が**表だけ**を見ていたので、普通の行ではFC行の相手が残っていた→ 表と同じ数え方(印の通し番号)で普通の行にも効かせた。★バグ1= ボタンの姿は**カーソルが動いた時にしか計算していなかった**。取消は文書を変えてもカーソルは動かないことがあるので、指定が消えた後も🚫のまま残っていた→ 文書が変わった時にも計算し直す(150msだけ待って、1打ごとには走らせない)。★入れる口と出す口は対で在るべき、が今日の通しの教訓。
 // - v4.0.235(俊克 8/16 pm01:54 バグ1「上付き/下付きは、付けるときでも行末コメントが見える。取消のときだけ見えなくなっただけだね」): ★★**中間状態を文書に一度も書かない**。今までは①行末にコメントを書く→②別の編集でFC行へ移す、の2回で、①の姿が画面に出ていた(カーソル行は生表示なので、なおさら見える)。→ **入れたつもりの行をメモリの中で作り、`meosMoveSpecsOutOfLine` にかけ、1回の編集で本文とFC行を同時に書く**(`meosApplySpecEdit`)。文書には最終形しか現れない。v4.0.234の取消の一体化は「見えなくする」直しだったが、これは**在ること自体をやめる**直し。★上付き/下付きの5つの道(not/帽子/名乗りだけ/既に上付き/新規)を、この1つの入口に通した=「入れる→出す」の写経も5か所ぶん消えた。★表の中だけは今までどおり専用の口(`meosPushTableSpecsOutOfLine`)を通す(表は塊ごとに1本置くため)。★残り= ハイライト/取消線/見出し/リンク/解除の4か所はまだ2段構え(俊克の観察どおり、こちらは間に描き直しが入らないので中間状態は見えない)。同じ入口へ寄せるのは次の版。
@@ -6395,11 +6396,16 @@ function applyPrettyLabels(editor) {
           // v4.0.56(俊克): 素の `~~本文~~` の直後に仕様コメントがあれば、線色/背景/tipとして使う(新形)。
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
           // v4.0.152(俊克「FC方式が本当に欲しいのは取消線」): 直後にコメントが無ければ、真下の指定行から引く。
-          const _fcRaw = _sc ? (_fcSt++, null) : meosFcFmtInner(_fcL(), '~~', _fcN('~~', ++_fcSt));
+          // v4.0.238: `~~not` = 取消線を名乗らない(色だけ乗せる)。兄弟(`*` `**` `***`)を1つだけ外さない。
+          let _fcRaw = null, _fcNot = false;
+          if (_sc) { _fcSt++; } else { const _o = _fcN('~~', ++_fcSt); _fcRaw = meosFcFmtInner(_fcL(), '~~', _o); _fcNot = meosFcFmtIsNot(_fcL(), '~~', _o); }
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
-            if (_st && (_st.fgKey || _st.bgKey || _st.comment)) {
+            if (_fcNot) {                                  // v4.0.238: 線は引かず、色だけ乗せる
+              if (_st && _st.bgKey) { (highlightBodyRangesByColor[_st.bgKey] || []).push({ range: _r }); if (DARK_BG_KEYS.has(_st.bgKey)) (highlightFgRangesByColor.white || []).push({ range: _r }); }
+              else if (_st && _st.fgKey) { (highlightFgRangesByColor[_st.fgKey] || []).push({ range: _r }); }
+            } else if (_st && (_st.fgKey || _st.bgKey || _st.comment)) {
               const lineKey = _st.fgKey || 'red';
               let hv = null; if (_st.comment) { hv = new vscode.MarkdownString('💬 ' + _st.comment); hv.isTrusted = false; }
               (strikeColorItemsByKey[lineKey] || strikeColorItemsByKey.red).push(hv ? { range: _r, hoverMessage: hv } : { range: _r });
@@ -6559,7 +6565,7 @@ function applyPrettyLabels(editor) {
           hashes = '#'.repeat(bareHashLen); bodyStart += bareHashLen;
           while (bodyStart < bodyEndP && /[ \t]/.test(dtext.charAt(bodyStart))) bodyStart++;
         }
-        if (hashes || (dir && dir.level)) { // 見出し: #と直後の空白を隠し、サイズと色を本文へ
+        if ((hashes || (dir && dir.level)) && !(dir && dir.not)) { // 見出し: #と直後の空白を隠し、サイズと色を本文へ / v4.0.238: `H2not` は見出しにしない
           const level = Math.min(3, (dir && dir.level) ? dir.level : hashes.length); // v4.0.63: 明示された宣言が優先
           if (hashes && !bareHashLen) headingMarkerRanges.push({ range: new vscode.Range(line, indent + bulletLen, line, bodyStart) });
           if (bodyEndP > bodyStart) {
@@ -13321,7 +13327,9 @@ function meosHasMewSignature(payload) { return MEOS_MEW_SIGNATURE_RE.test(String
 function meosStripMewSignature(payload) { return String(payload == null ? '' : payload).replace(MEOS_MEW_SIGNATURE_RE, ''); }
 // v4.0.117: 番号付きの命令に**階層**を許す。`-1.`(深さ1) / `-1.1`(深さ2・数字) / `-1a`(深さ2・英字) / `-1.1a` …
 //   ★下位の並びは貪欲に取る=`-1.1` は「`-1.` の後に1」ではなく「`-1` ＋ 数字階層1つ」と読む。
-const MEOS_LINE_DIRECTIVE_RE = /^(-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(?:$|(?=\(|\/\/))/;
+// v4.0.238: 行の指定にも `not`= `H2not` と書けば「この `##` を、MeOSでは見出しとして読まない」。
+//   ★語に効く `***not` と同じ言葉・同じ論理(記号は運び屋・意味は指定that決める)。読む口だけが別なので、判定は2か所に足す。
+const MEOS_LINE_DIRECTIVE_RE = /^(-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(not)?[ \t]*(?:$|(?=\(|\/\/))/;
 // 命令トークン → 階層の並び。[{style:'num'|'alpha'}, …] を返す(長さ=深さ)。深さ1は [{num}]。
 function meosItemLevels(tok) {
   const t = String(tok == null ? '' : tok);
@@ -13347,11 +13355,12 @@ function meosItemLabel(counts, levels) {
 function meosLineDirective(payload) {
   const s = String(payload == null ? '' : payload);
   const m = MEOS_LINE_DIRECTIVE_RE.exec(s);
-  if (!m || (!m[1] && !m[2])) return null;
+  if (!m || (!m[1] && !m[2] && !m[3])) return null;
   return {
     token: m[1] || '', // v4.0.117: 命令トークンそのもの(階層 `-1.1` / `-1a` を読むため)
     bullet: m[1] ? (m[1] === '-' ? 'bullet' : 'number') : null, // '-'=箇条書き / '1' '1.' '-1' '-1.'=番号付き
     level: m[2] ? (m[2].charAt(0) === 'H' ? parseInt(m[2].slice(1), 10) : m[2].length) : 0, // H2 も ## も同じ
+    not: !!m[3], // v4.0.238: `H2not` = 見出しとして読まない(外では本物の見出しのまま)
     rest: s.slice(m[0].length), // 残り=(色)//tip
   };
 }
@@ -14920,10 +14929,15 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     // v0.9.885: C系言語では「分割方式」で出力(本文=実コードのまま動く)。全体包みが欲しければ中の */ /* を消すだけ(俊克 6/15 pm08:50)。
     // v4.0.56(俊克): 散文は素のMarkdown＋後置きコメント。コード系は従来の分割形。
     if (!wrap && meosIsProseDoc(doc)) {
-      const mk = (kind === 'highlight') ? '==' : '~~';
+      // ★v4.0.238(俊克 8/16 pm03:47〜04:11): ハイライトは **`***…***` に載せる**。
+      //   `==` はMarkdownの標準に無い記号なので、MeOSの外へ出すと `==` が丸見えになる=**最後に残っていた例外**。
+      //   → 本文は `***…***`(標準の太字＋斜体)、指定は `***not(白/黄)`=「太字/斜体は名乗らない・色だけ乗せる」。
+      //   MeOSの中では今までどおりのハイライト、外では太字＋斜体。**どちらでも壊れない**。`==` は読める側に残す。
+      const mk = (kind === 'highlight') ? '***' : '~~';
+      const _dir = (kind === 'highlight') ? '***not' : '~~';
       // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
       const _mark = mk + body + mk;
-      await meosWriteMarkAndSpec(editor, sel, _mark, mk, mk + ' ' + spec);
+      await meosWriteMarkAndSpec(editor, sel, _mark, mk, _dir + ' ' + spec);
       const bs = new vscode.Position(sel.start.line, sel.start.character + mk.length);
       bodySel = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length));
       editor.selection = bodySel;
@@ -22304,7 +22318,9 @@ const MEOS_SPEC_ITEM_RE = /([^\s{}<>#()]*[↑↓][^\s{}<>#()]*)(?:#(\d{1,3}))?[ 
 // ★記法= 指定行に `~~(赤/)` `==(白/黄)` `**(白/青)` のように書く。上付きと同じで**種類を名乗る**だけ。
 //   結びは**その行の何個目か**(出現順)。飛ばして指す時は `~~#2(赤/)`。tipを付けたい時は `~~{(赤/)//注釈}`。
 // v4.0.169: 斜体の一択が `*` になったので、単一 `*` も種類として名乗れる(長い方から並べる=`***`→`**`→`*`)。
-const MEOS_SPEC_FMT_RE = /(?:^|[\s])(={2}|~{2}|\*{3}|\*{2}|\*|_)(?:#(\d{1,3}))?[ \t]*(?:\{([^}]*)\}|(\([^()\n]*\)))?/g;
+// v4.0.238(俊克 8/16 pm03:47〜03:56): 記号の後ろに `not` を書けるようにした= `***not(白/黄)`。
+//   ★**not = この記号の意味を、MeOSでは名乗らない**。`↑not` と同じ言葉・同じ論理を、`*` `**` `***` `~~` `==` にも通す。
+const MEOS_SPEC_FMT_RE = /(?:^|[\s])(={2}|~{2}|\*{3}|\*{2}|\*|_)(?:#(\d{1,3}))?[ \t]*(not)?[ \t]*(?:\{([^}]*)\}|(\([^()\n]*\)))?/g;
 // 指定行から「この行の kind の ord 個目」の中身を引く。無ければ null。
 function meosFcFmtInner(spec, kind, ord) {
   if (!spec || !spec.fmt || !spec.fmt.length) return null;
@@ -22316,6 +22332,18 @@ function meosFcFmtInner(spec, kind, ord) {
     if (n === ord) return it.inner;                                     // 番号なしは出現順
   }
   return null;
+}
+// v4.0.238: 色と同じ数え方で「この記号のord個目は not か」を引く。数え方を2つ作らない。
+function meosFcFmtIsNot(spec, kind, ord) {
+  if (!spec || !spec.fmt || !spec.fmt.length) return false;
+  let n = 0;
+  for (const it of spec.fmt) {
+    if (it.kind !== kind) continue;
+    if (it.nth > 0) { if (it.nth === ord) return !!it.not; continue; }
+    n++;
+    if (n === ord) return !!it.not;
+  }
+  return false;
 }
 function meosParseSpecLine(text) {
   const payloads = meosSpecLinePayloads(text);
@@ -22365,11 +22393,12 @@ function meosParseSpecPayload(payload) {
   const fmt = []; let ft;
   MEOS_SPEC_FMT_RE.lastIndex = 0;
   while ((ft = MEOS_SPEC_FMT_RE.exec(rest)) !== null) {
-    const inner = (ft[3] !== undefined ? ft[3] : (ft[4] || ''));
-    if (!inner) continue;                       // 中身が無いものは項目にしない(行単位の指定を巻き込まない)
-    fmt.push({ kind: ft[1], nth: ft[2] ? parseInt(ft[2], 10) : 0, inner });
+    const _not = !!ft[3];                       // v4.0.238: `***not` = この記号の意味を名乗らない
+    const inner = (ft[4] !== undefined ? ft[4] : (ft[5] || ''));
+    if (!inner && !_not) continue;              // 中身が無いものは項目にしない(行単位の指定を巻き込まない)。notは中身無しでも命令
+    fmt.push({ kind: ft[1], nth: ft[2] ? parseInt(ft[2], 10) : 0, inner, not: _not });
   }
-  if (fmt.length) rest = rest.replace(MEOS_SPEC_FMT_RE, (mm, k, n, br, pa) => (br !== undefined || pa) ? ' ' : mm);
+  if (fmt.length) rest = rest.replace(MEOS_SPEC_FMT_RE, (mm, k, n, nt, br, pa) => (br !== undefined || pa || nt) ? ' ' : mm);
   rest = rest.trim();
   // v4.0.157: 項目が1つだけで、残りが**行の指定として読めない**なら、残りはその項目の続き(`//tip` など)。
   if (rest && (metex.length + fmt.length) === 1 && !meosLineDirective(rest)) {
@@ -23725,8 +23754,9 @@ function meosApplyBoldDecorations(editor) {
           // v4.0.193: 表の中は数える範囲that表全体so、前の行thatすでに使った分を足す。
           const _b2 = _fcL2(); const _ord2 = ord + ((_b2 && _b2.ordBase && _b2.ordBase[kind]) || 0);
           const raw = kind ? meosFcFmtInner(_b2, kind, _ord2) : null;
-          if (!raw) return null;
-          return { sc: null, cs: parseColorSpec(raw, 'fg', raw) };
+          const _not = kind ? meosFcFmtIsNot(_b2, kind, _ord2) : false; // v4.0.238
+          if (!raw && !_not) return null;
+          return { sc: null, cs: parseColorSpec(raw || '', 'fg', raw || ''), not: _not };
         };
         // v4.0.168(俊克 8/13 am11:24 バグ1/2/3「FCコメントは折り畳まれるが、肝心の文字列が素のまま」):
         // ★真因= **隠すコメントが無いのに隠しに行っていた**。`_spec` は指定を**2つの口**から引く=
@@ -23756,7 +23786,9 @@ function meosApplyBoldDecorations(editor) {
           hideR.push(new vscode.Range(ln, mk.start, ln, mk.bodyStart));
           hideR.push(new vscode.Range(ln, mk.bodyEnd, ln, mk.end));
           _hideSpecComment(q, mk.end);
-          pushStyle(ln, mk.bodyStart, mk.bodyEnd, mk.bold, mk.italic, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '');
+          // v4.0.238: `***not(白/黄)` = 記号は運び屋・意味は指定が決める → 太字/斜体を名乗らず、色だけ乗せる(=従来の `==` に相当)。
+          const _nb = (q && q.not) ? false : mk.bold, _ni = (q && q.not) ? false : mk.italic;
+          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '');
         }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
