@@ -23764,7 +23764,8 @@ function meosLogFmt(tag, o) {
 //   私は分割を**太字/斜体の道にだけ**置いていたので、一度も通らなかった。→ **1つの関数にして、両方の入口から呼ぶ**。
 //   (今日ずっと踏んでいる「対になっている片方を見ていない」の、最後の1つ。)
 // 返り値= 分割して書いたら true(呼んだ側はそこで終わる)。
-let _meosSplitBusy = 0; // v4.0.257: 1回のクリックで**3つの入口が同時に呼ぶ**ため、二重に走らせない
+let _meosSplitBusy = 0;
+let _meosSplitWatch = null; // v4.0.258: 分割の直後、その行を誰が書き換えるかを見張る // v4.0.257: 1回のクリックで**3つの入口が同時に呼ぶ**ため、二重に走らせない
 async function meosTrySplitEnclosing(editor, fg, bg) {
   try {
     // ★★v4.0.257(俊克 8/17 am00:49 ログで確定): **0.003秒差で2回走っていた**(入口3つのうち2つが同時に反応)。
@@ -23801,6 +23802,9 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
       eb.replace(doc0.lineAt(_fcLn).range, _newFc);
     }, { undoStopBefore: true, undoStopAfter: true });
     meosLogFmt('split-書いた', { ok: !!_okEdit, body: editor.document.lineAt(_ln).text, fc: editor.document.lineAt(_fcLn).text });
+    // ★v4.0.258(俊克 8/17 am00:57 ログで確定): **書けている。0.9秒後に元へ戻っている**。
+    //   → 書いた直後3秒間、この行への変更を**全部**記録して、消している者を名指しさせる。
+    try { _meosSplitWatch = { uri: doc0.uri.toString(), line: _ln, until: Date.now() + 3000 }; } catch (_) { }
     if (!_okEdit) { _meosSplitBusy = 0; return false; }
     try { const _p = new vscode.Position(_ln, sel0.start.character); editor.selection = new vscode.Selection(_p, _p); } catch (_) { }
     try { await meosFocusBack(editor, editor.selection); } catch (_) { }
@@ -24811,6 +24815,16 @@ makeDecorations();
       }
     }),
     vscode.workspace.onDidChangeTextDocument(e => {
+      // v4.0.258: 分割した行への変更を、理由と中身ごと記録する(誰が消したかを名指しさせる)。
+      try {
+        if (_meosSplitWatch && Date.now() < _meosSplitWatch.until && e.document.uri.toString() === _meosSplitWatch.uri) {
+          for (const ch of e.contentChanges) {
+            if (ch.range.start.line <= _meosSplitWatch.line + 1 && ch.range.end.line >= _meosSplitWatch.line) {
+              meosLogFmt('  行が変わった', { reason: String(e.reason), 範囲: ch.range.start.line + ':' + ch.range.start.character + '→' + ch.range.end.line + ':' + ch.range.end.character, 入る文字: ch.text, 今の本文: e.document.lineAt(_meosSplitWatch.line).text });
+            }
+          }
+        }
+      } catch (_) { }
       try { meosNoteEdit(); } catch (_) { } // v4.0.223: 「今、打っている」を控える(FCの畳み/開きを打鍵の道から外すため)
       // v3.2.4/3.2.5(俊克): 画像リンクを貼付/ドロップした瞬間=完全な ![](…) が一括挿入された時、実体を img/ に取り込む(タイピングは1文字ずつなので発火しない)。Undo/Redoは除外。★ハンドラ先頭に置き、他処理の例外に巻き込まれないようにする(バグ1対策)。※既存のリンクは"貼付イベント"が起きていないので取り込まれない=手動は 🖼 ボタン。
       try {
