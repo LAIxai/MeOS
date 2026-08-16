@@ -81,6 +81,21 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   real superscript? Say **`not`**: `<!-- Mew!FC A↑1(white/green) ↑↓not -->` means "colour the first one,
   leave the second alone". Same rule as everywhere else in MeOS — **plain text by default, the comment is
   the command** — so you never need an escape character.
+- **Accents, with the recipe** — write `a↑<(..)>`, press the superscript button, and the text becomes the
+  **real letter `ä`**. The name draws the shape: `<(..)>` two dots · `<(.)>` one dot · `<(--)>` a bar ·
+  `<(^)>` a hat · `<(o)>` a ring · `<(v)>` a check · `<(~)>` a tilde · `<(')>` an acute.
+  This is the one place MeOS works the other way round: it does not hide anything, it **makes the character**
+  — Unicode already has `â`, `x̂` and `θ̂` as standard letters, and covering standard letters with a private
+  notation would make *us* the bad guy. **The recipe stays in the comment**
+  (`<!-- Mew!FC a↑👒<(..)> (white/orange) -->`), so later you can copy it and redo the same letter with a
+  different mark. Prime `a↑'`, degree `x↑o` and negative exponents `10↑-3` stay ordinary superscripts.
+- **Highlight rides on standard Markdown** — `==highlight==` is in neither CommonMark nor GFM, so outside
+  MeOS the `==` shows up bare. It was the last mark still doing that. Now the button writes
+  `***highlight***` with `<!-- Mew!FC ***not (white/yellow) -->` below: **inside MeOS a highlight, outside
+  bold+italic — broken in neither**. `==` is still read, it is simply no longer written.
+  **`not` means "do not let this mark claim its usual meaning"** — the same word as `↑not`, and it works on
+  `*`, `**` and `***`. Add `not` to something you already wrote in bold and it turns plain **without touching
+  a single character of your text**.
 - **Mew! 🐱** — every MeOS comment starts with `Mew!`, so `grep Mew!` finds all of them.
   Still have the old notation? Press **↻** to see where it is for five seconds, press **🐱** to convert
   what is on your screen. One click, one undo — your 100k-line past is never rewritten in one go.

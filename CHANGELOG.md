@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.239 (2026-08-16)
+- **Accents, with the recipe** — `a↑<(..)>` + superscript button → the real letter `ä`. Names draw the shape
+  (`<(..)>` `<(.)>` `<(--)>` `<(^)>` `<(o)>` `<(v)>` `<(~)>` `<(')>`), and the recipe stays in the comment
+  so you can redo it later. Prime `a↑'`, degree `x↑o`, negative exponents `10↑-3` remain ordinary superscripts.
+- **Highlight rides on `***`** — the button now writes `***text***` + `***not (white/yellow)`. Inside MeOS a
+  highlight, outside bold+italic. `==` is still read but no longer written; it was the last mark that leaked
+  out of MeOS, because CommonMark and GFM have no highlight.
+- **`not` across the family** — `*not` `**not` `***not` (and `↑not` as before): *do not let this mark claim its
+  usual meaning*. Turns bold into plain without touching the text.
+- Old-notation membrane names are Cmd+Click targets again (a trailing `.608` was mistaken for a file extension).
+- Superscript instructions are written in **one edit** — the line-end comment never appears in the document,
+  and one undo takes it back.
+- 🚫 removes **only the instruction**; the characters you typed stay.
+
 - **斜体は `*` で書く（v4.0.169）.** Markdownの `_斜体_` は**語中で閉じられない** —— CommonMarkの規則で、
   閉じの `_` の後ろが文字だと斜体にならない。日本語は助詞が続くので `_イタリック_の後に…` は
   **MeOSの外で `_` が字のまま見えていた**。`*` にその制限は無いので、これからは `*斜体*` と書く ——
