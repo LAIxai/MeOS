@@ -2879,6 +2879,7 @@ function meosIsProseDoc(doc) { try { return !!doc && MEOS_PROSE_LANGS.has(doc.la
 // ★★TEMP v3.1(俊克 7/25 pm07:07「遅延問題に取り掛かろう」): 巨大日記の refresh 遅延を計測する仮の仕掛け。refresh()の各装飾ブロックの所要msを測り、total>=40msの時だけログファイルへ1行追記(貼付→Claudeがログ直読み=転記不要)。真犯人を数字で確定したら、可視範囲化を実装→この計測ブロックは撤去する。false or 削除で無効化。
 const MEOS_PROFILE_REFRESH = true;
 const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
+const MEOS_DEBUG_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/meos-debug.log'; // v4.0.253: MeOS Debug と同じ中身(私が読む側)
 let _prof = null;
 // v3.1.5(俊克 7/25「しばらく使って10秒遅延が起きたら通知」): 計測を"静かな見張り番"に。普段(通常refresh 142ms)は無記録。異常のみ記録=①SLOW: 1回のrefreshが250ms超(全文スキャンの残り) ②BURST: refreshが連射して累計1.5秒超(×N連射の暴走=10秒遅延の正体候補)。実使用で間欠10秒を自動捕捉→1回の巨大スキャンか多数連射かを区別。★公開v3.1では計測ブロック(MEOS_PROFILE_*/_ck/_profFlush/refresh内フック)を撤去すること。
 let _burstN = 0, _burstMs = 0, _burstT0 = 0, _burstLogged = false, _lastRefreshEnd = 0;
@@ -2916,6 +2917,10 @@ function meosDbg(msg) {
   if (meosDebugChannel) {
     try { meosDebugChannel.appendLine(`[${new Date().toLocaleTimeString('ja-JP')}] ${msg}`); } catch (_) {}
   }
+  // ★v4.0.253(俊克 8/17 am00:24「MeOS Debugになぜ入れない。自分で読みに行くって言ってたでしょ」):
+  //   出力チャンネルは**俊克の画面にしか出ない**(私からは読めない)。→ **同じものをファイルにも書く**。
+  //   俊克は「MeOS Debug」で見て、私は MeOS/meos-debug.log を読む。同じ1行を2つの目が見る。
+  try { require('fs').appendFileSync(MEOS_DEBUG_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (_) {}
 }
 let suppressAutoUnfoldUntil = 0;
 let disposables = [];
@@ -23742,7 +23747,7 @@ function meosLogFmt(tag, o) {
   try {
     const parts = [];
     for (const k in o) parts.push(k + '=' + JSON.stringify(o[k]));
-    require('fs').appendFileSync(MEOS_PROFILE_LOG, '[fmt] ' + new Date().toISOString() + ' ' + tag + ' ' + parts.join(' ') + '\n');
+    meosDbg('[fmt] ' + tag + ' ' + parts.join(' ')); // v4.0.253: MeOS Debug に出す(ファイルにも同時に残る)
   } catch (_) { }
 }
 async function insertBoldItalic(editor, bold, italic, fg, bg) {
@@ -24809,8 +24814,13 @@ makeDecorations();
       //   ことがあるので、指定が消えた後も🚫のまま残る=押せない相手を押せるように見せていた。
       //   → **文書が変わった時にも計算し直す**。連続入力で重くならないよう150msだけ待つ(1打ごとには走らせない)。
       try {
+        // ★v4.0.253(俊克 8/17 am00:24「bsキーの遅延が頻発している」): **打鍵のたびに走らせていた**。
+        //   v4.0.236の目的は「**取消の後**にボタンの姿が古いまま残る」ことだったので、取消/やり直しの時だけでよい。
+        //   毎打鍵の再計算は、巨大な日記では確実に効く(今日の遅延の心当たりはここ)。→ reason で絞る。
         const _ae = vscode.window.activeTextEditor;
-        if (_ae && e.document === _ae.document) {
+        const _R = vscode.TextDocumentChangeReason;
+        const _isUndo = !!(_R && (e.reason === _R.Undo || e.reason === _R.Redo));
+        if (_isUndo && _ae && e.document === _ae.document) {
           if (_meosDockStateTimer) clearTimeout(_meosDockStateTimer);
           _meosDockStateTimer = setTimeout(() => { _meosDockStateTimer = null; try { updateMeDockMode(); } catch (_) { } }, 150);
         }
