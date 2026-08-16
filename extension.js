@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.236(俊克 8/16 pm02:05 バグ1「取消で戻した時、なぜか🚫ボタンのままになっている」／バグ2「not指定をしたA↑Bの右にカーソルを置いても🚫にならない。だからFCコメントを削除できない」／バグ3「A↑4に上付きボタンを押した後に🚫を押すと、4が巻き添えで消える」): ★★バグ3=**消すのは命令だけ・本文は書き手のもの**。旧い解除は基準文字だけ残して肩/腰の字も落としていた(ボタンが作った `A↑2` を丸ごと戻す前提)。しかし `A↑4` のように**自分で打った字**を飾った時、その4を消す権利は無い。→ 本文は `A↑4` のまま残し、**指定だけ**を落とす(戻したい人は取消1回=v4.0.235で1回に纏めた)。★バグ2= ①`not` で外したトークンを**捨てずに控える**(描く側から消えていてよいが、**消したという事実も指定の一種**なので🚫の相手になれないと取り消す道が無い) ②`meosDeleteSpecForMark` が**表だけ**を見ていたので、普通の行ではFC行の相手が残っていた→ 表と同じ数え方(印の通し番号)で普通の行にも効かせた。★バグ1= ボタンの姿は**カーソルが動いた時にしか計算していなかった**。取消は文書を変えてもカーソルは動かないことがあるので、指定が消えた後も🚫のまま残っていた→ 文書が変わった時にも計算し直す(150msだけ待って、1打ごとには走らせない)。★入れる口と出す口は対で在るべき、が今日の通しの教訓。
 // - v4.0.235(俊克 8/16 pm01:54 バグ1「上付き/下付きは、付けるときでも行末コメントが見える。取消のときだけ見えなくなっただけだね」): ★★**中間状態を文書に一度も書かない**。今までは①行末にコメントを書く→②別の編集でFC行へ移す、の2回で、①の姿が画面に出ていた(カーソル行は生表示なので、なおさら見える)。→ **入れたつもりの行をメモリの中で作り、`meosMoveSpecsOutOfLine` にかけ、1回の編集で本文とFC行を同時に書く**(`meosApplySpecEdit`)。文書には最終形しか現れない。v4.0.234の取消の一体化は「見えなくする」直しだったが、これは**在ること自体をやめる**直し。★上付き/下付きの5つの道(not/帽子/名乗りだけ/既に上付き/新規)を、この1つの入口に通した=「入れる→出す」の写経も5か所ぶん消えた。★表の中だけは今までどおり専用の口(`meosPushTableSpecsOutOfLine`)を通す(表は塊ごとに1本置くため)。★残り= ハイライト/取消線/見出し/リンク/解除の4か所はまだ2段構え(俊克の観察どおり、こちらは間に描き直しが入らないので中間状態は見えない)。同じ入口へ寄せるのは次の版。
 // - v4.0.234(俊克 8/16 pm01:21 バグ1「右を否定し、次に左を否定すると、FCコメントの順番を間違ってしまう」／バグ2「取消で戻そうとしたとき、行末に命令コメントが入った状態が見えた。一発でFCコメントを出すようにしたはずだよね?」): ★**FC行は「本文の印の順」である、という定義**にした(v4.0.208で表の格子に対して決めたのと同じ考え。並べ替えではなく定義なので、既に順どおりなら1文字も動かない)。v4.0.233は押した順に末尾へ足していたので、右→左の順に押すと本文と逆になった。**同じ向きが2つ在る行では相手を取り違える**(読む側は向きごとに出現順で配るため)。→ 新しい命令は**その印の番目に差し込む**(番目= 本文の中でカーソルより前に在る印の数-1)。判定は `meosSpecLineMerge` 1つ。★バグ2= **中間状態を取消で見せない**。命令を本文に入れる編集と、それを外へ出す編集が**別々の取消**になっていた。→ 前者に `undoStopBefore:true / undoStopAfter:false` を付けて**2つで1つの取消**にした(5か所=not/帽子/名乗りだけ/既に上付き/新規)。俊克の言うとおり、押す人から見れば操作は1回なので、取消も1回で戻るべき。★`check_hat.js` に⑧(4項目)を追加。全52項目通過。
 // - v4.0.233(俊克 8/16 pm00:42 バグ1「↓指定がまだ駄目」／改良1「否定ボタンを not↑↓ にしよう」): ★★**同じ行の2つ目の命令が、ずっと行末に取り残されていた**。FC行へ押し出す入口が「**既にFC行が在る=触らない**」で戻っていた。1つ目は出るのに2つ目は出ない= **notに限らずFC方式ぜんぶ**に効く穴で、今回 `A↑B / A↓C` で表に出た。→ **在るなら、その行の末尾に足す**。並びは俊克が手で書いた形と同じ `<!-- Mew!FC ↑not --><!-- Mew!FC ↓not -->`(読む側は出現順に配る)。★測って見つけた= `meosMoveSpecsOutOfLine` を単体で走らせたら `↓not` は**正しく取り出せていた**ので、犯人は取り出しでなく手前の入口だと分かった([[feedback_go_get_the_measurement]])。★改良1= ボタンの面を `not↑↓` に(notだけでは何のnotか分からない)。★`check_hat.js` に⑦(5項目)を追加。全48項目通過。
@@ -15474,16 +15475,18 @@ function meosDeleteSpecForMark(we, editor, range) {
   try {
     const doc = editor.document, ln = range.start.line, lines = meosDocLines(doc);
     const blk = meosTableBlockFor(lines, ln);
-    if (!blk) return false;                       // 表でなければ従来どおり(戻してから触る道that効く)
-    const fcLn = blk.end + 1;
+    // ★v4.0.236(俊克 8/16 pm02:05 バグ2「FCコメントを削除できない」): **表でない普通の行でも落とす**。
+    //   ここは表だけを見ていたので、普通の行では指定行の相手that残り、🚫を押しても命令thatが消えなかった。
+    //   数え方は表と同じ= 本文の印を順に歩き、自分までの通し番号でFC行の何番目かを決める(v4.0.234の定義)。
+    const fcLn = (blk ? blk.end : ln) + 1;
     if (fcLn >= doc.lineCount || !meosIsSpecLine(doc.lineAt(fcLn).text)) return false;
     let idx = 0;
-    for (let i = blk.start; i < ln; i++) idx += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
+    if (blk) for (let i = blk.start; i < ln; i++) idx += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
     for (const mk of meosRowMarksInOrder(doc.lineAt(ln).text)) if (mk.end <= range.end.character) idx++;
     const r = meosSpecLineCommentRange(doc.lineAt(fcLn).text, idx - 1);
     if (!r) return false;
-    if (r.count <= 1) {                            // 最後の1つ=指定行thatが空になるso行ごと消す
-      we.delete(doc.uri, new vscode.Range(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), new vscode.Position(fcLn, doc.lineAt(fcLn).text.length)));
+    if (r.count <= 1) {                            // 最後の1つ=指定行が空になるので行ごと消す
+      we.delete(doc.uri, new vscode.Range(new vscode.Position(fcLn - 1, doc.lineAt(fcLn - 1).text.length), new vscode.Position(fcLn, doc.lineAt(fcLn).text.length)));
     } else {
       we.delete(doc.uri, new vscode.Range(fcLn, r.start, fcLn, r.end));
     }
@@ -15665,15 +15668,21 @@ function metexSpanAtCursor(editor) {
   const _sl = MEOS_SPEC_LINE ? meosSpecLineFor(meosDocLines(doc), line) : null;
   const toks = meosMeTexTokens(text, _sl);
   if (_sl) { try { meosApplySpecLineToTokens(text, toks, _sl); } catch (_) { } }
-  for (const t of toks) {
-    if (!t.spec) continue; // 指定を持たない素の `↑2` は🚫の相手ではない(書き手that自分で打った字)
+  // v4.0.236: notで外した分(描く側からは消えている)も🚫の相手にする。
+  const _all = toks.concat(toks.notKilled || []);
+  for (const t of _all) {
+    if (!t.spec) continue; // 指定を持たない素の `↑2` は🚫の相手ではない(書き手が自分で打った字)
     const arrowPos = t.hides[0][0], start = arrowPos - 1;
     if (start < 0) continue;
     let end = t.opEnd; for (const h of t.hides) if (h[1] > end) end = h[1];
     // v4.0.0改良(俊克): 🚫化は基準文字の"右"にカーソルが来た時から(左=arrowPos-1はまだ対象の外)。
-    // 解除は肩文字/腰文字(operand)も落として基準文字だけ残す=ボタンが足した上付/下付をまるごと取り消す(例 テスト↑2{150%}→テスト)。
+    // ★v4.0.236(俊克 8/16 pm02:05 バグ3「A↑4に上付きボタンを押した後に🚫を押すと、4that巻き添えで消える」):
+    //   **消すのは命令だけ・本文は書き手のもの**。旧= 基準文字だけ残して肩/腰の字も落としていた
+    //   (ボタンthat作った `A↑2` を丸ごと戻す前提)。しかし `A↑4` のように**自分で打った字**を飾った時は、
+    //   その4を消す権利は無い。→ 本文は `A↑4` のまま残し、**指定(FCコメント/直後の{…})だけ**を落とす。
+    //   戻したい人は取消(Cmd+Z)を1回押せばよい(v4.0.235で1回に纏めた)。
     if (pos.character >= arrowPos && pos.character <= end) {
-      const body = text.slice(start, arrowPos);
+      const body = text.slice(start, t.opEnd); // 基準文字＋矢印＋肩/腰の字はそのまま
       return { kind: 'metex', range: new vscode.Range(line, start, line, end), body };
     }
   }
@@ -22476,7 +22485,12 @@ function meosApplySpecLineToTokens(text, toks, spec) {
     if (cc) { t.fg = normalizeFgColor(cc[1]); t.bg = normalizeBgColor(cc[2]); }
   }
   // `not` で外す分は最後にまとめて取り除く(途中で抜くと出現順がずれるため)。
-  kill.sort((a, b) => b - a).forEach(i => toks.splice(i, 1));
+  // ★v4.0.236(俊克 8/16 pm02:05 バグ2「not指定をしたA↑Bの右にカーソルを置いても🚫にならない。だからFCコメントを削除できない」):
+  //   外した分を**捨てずに控える**。描く側からは消えていてよいが、**消したという事実も指定の一種**so、
+  //   🚫の相手になれないと「notを取り消す道that無い」ことになる(入れた口と出す口は対で在るべき)。
+  const _killed = [];
+  kill.sort((a, b) => b - a).forEach(i => { const t = toks.splice(i, 1)[0]; if (t) { t.spec = true; t.notSpec = true; _killed.unshift(t); } });
+  try { toks.notKilled = _killed; } catch (_) { }
 }
 // 書く側= この行の指定を**外へ出す**。1行を {本文, 指定行} に割る(純関数so headless で確かめられる)。
 // ★形が最初から噛み合っている= 直後コメントの中身 `A↑2{150%(白/緑)}` も、行末コメントの中身 `H2 (白/green)//[]tip=` も、
@@ -23456,6 +23470,7 @@ function meLinkSpanAtCursor(editor) {
   return null;
 }
 function meosFindMembraneLineByName(doc, name) { const needle = String(name || '').trim(); if (!doc || !needle) return -1; for (let i = 0; i < doc.lineCount; i++) { const info = membraneLineInfo(doc, i); if (info && info.kind === 'open' && info.id === needle) return i; } return -1; }
+let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算し直す待ち
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 function meosApplyMeLinkDecorations(editor) {
   if (!editor || !editor.document) return;
@@ -24571,6 +24586,17 @@ makeDecorations();
           if (_il.size) meosAutoImportImagesInLines(e.document, Array.from(_il));
         }
       } catch (_) {}
+      // ★v4.0.236(俊克 8/16 pm02:05 バグ1「取消キーで戻した時、なぜか🚫ボタンのままになっている」):
+      //   ボタンの姿は**カーソルが動いた時にしか計算していなかった**。取消は文書を変えるがカーソルは動かない
+      //   ことがあるので、指定が消えた後も🚫のまま残る=押せない相手を押せるように見せていた。
+      //   → **文書が変わった時にも計算し直す**。連続入力で重くならないよう150msだけ待つ(1打ごとには走らせない)。
+      try {
+        const _ae = vscode.window.activeTextEditor;
+        if (_ae && e.document === _ae.document) {
+          if (_meosDockStateTimer) clearTimeout(_meosDockStateTimer);
+          _meosDockStateTimer = setTimeout(() => { _meosDockStateTimer = null; try { updateMeDockMode(); } catch (_) { } }, 150);
+        }
+      } catch (_) { }
       // v0.9.715: 🔖 ブックマークの行ズレを追従(gate前に全変更で実行)。
       adjustBookmarksForChange(e);
       noteMeEditForAccess(e); // v0.9.954: 編集が現在膜で起きたら訪問を計上
