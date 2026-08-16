@@ -14203,7 +14203,7 @@ async function meosContinueListOnEnter(editor) {
     await editor.edit(eb => eb.insert(numSpec ? new vscode.Position(pos.line, text.length) : pos, '\n' + indent + next + gap + numSpec));
     if (numSpec) { const p4 = new vscode.Position(pos.line + 1, (indent + next + gap).length); editor.selection = new vscode.Selection(p4, p4); } // カーソルは本文の位置(コメントの手前)
     return true;
-  } catch (_) { return false; }
+  } catch (e) { try { meosLogFmt('split-例外', { err: String(e && e.message || e) }); } catch (_) { } return false; } // v4.0.255: 黙って落ちない
 }
 
 // {* ▲mCN=0810_MEMBRANE_SPACING // end [cGJF=h] *}
@@ -23778,6 +23778,7 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
     let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc0.end) _ord++;
     const _fcText = doc0.lineAt(_fcLn).text;
     const _rg = meosSpecLineCommentRange(_fcText, _ord - 1);
+    meosLogFmt('split2', { ord: _ord, rg: !!_rg, fc: _fcText, marks: meosRowMarksInOrder(_lt).length }); // v4.0.255
     if (!_rg) return false;
     const _origBox = _fcText.slice(_rg.start, _rg.end);
     const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc0.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';

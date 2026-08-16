@@ -99,7 +99,7 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
 (async () => {
   // (1) の状態= 全体が *** で包まれ、真下にFC行が1本
   const body = '***ハイライトと太字とイタリックと太字とイタリック***';
-  const fc = '<!-- Mew!FC ***not (白/黄) -->';
+  const fc = process.env.FC || '<!-- Mew!FC ***not (白/黄) -->';
   const text = body + '\n' + fc + '\n';
   const a = body.indexOf('太字'), b = a + 2;                    // 「太字」を選ぶ
   CUR = mkEditor(text, new P(0, a), new P(0, b));
