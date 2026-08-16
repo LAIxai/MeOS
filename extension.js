@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.233(俊克 8/16 pm00:42 バグ1「↓指定がまだ駄目」／改良1「否定ボタンを not↑↓ にしよう」): ★★**同じ行の2つ目の命令が、ずっと行末に取り残されていた**。FC行へ押し出す入口が「**既にFC行が在る=触らない**」で戻っていた。1つ目は出るのに2つ目は出ない= **notに限らずFC方式ぜんぶ**に効く穴で、今回 `A↑B / A↓C` で表に出た。→ **在るなら、その行の末尾に足す**。並びは俊克が手で書いた形と同じ `<!-- Mew!FC ↑not --><!-- Mew!FC ↓not -->`(読む側は出現順に配る)。★測って見つけた= `meosMoveSpecsOutOfLine` を単体で走らせたら `↓not` は**正しく取り出せていた**ので、犯人は取り出しでなく手前の入口だと分かった([[feedback_go_get_the_measurement]])。★改良1= ボタンの面を `not↑↓` に(notだけでは何のnotか分からない)。★`check_hat.js` に⑦(5項目)を追加。全48項目通過。
 // - v4.0.232(俊克 8/16 pm00:18 バグ1「否定ボタンを押してもFCコメントにならない。しかも否定されない」／バグ2「↑指定のときは `Mew! ↑not` にすると決めたよね?」／改良1「否定ボタンが分かりにくい・tipに説明が無い・説明が長過ぎ」): ★★**同じ穴を3度踏んだ**= 行末の指定を外へ出す判定 `isMetex` が **`{…}` の箱を必須**にしていた。`↑not` は箱を持たないので行末に取り残され、**行末のままでは読む側も見ないので否定も効かなかった**(v4.0.226の帽子とまったく同じ形)。→ **均さずそのまま出すもの**の判定を `meosSpecPayloadAsIs` 1つに纏め、2か所(`meosRowSplitInline` / `meosMoveSpecsOutOfLine`)から引く。帽子の控えと not の両方がここから出る。★バグ2= **向きは目の前に在るものが名乗る**。選んでいる時はその字から、選んでいない時は**カーソルの直前**から取る(v4.0.230と同じ形。押し方が違うだけで相手は同じ)。どちらも分からない時だけ `↑↓`(どちらでも)。★改良1= ボタンの面を**素直に `not`** にした(打ち消した A² は『上付きを消す』に見えて紛らわしかった)＋tipを刈り込み、not の説明を入れた。★`check_hat.js` に⑥(8項目)を追加。全43項目通過。
 // - v4.0.231(俊克 8/16 am11:00 バグ1「最初と最後のが駄目。最初のが↑が残ってしまう」): ★**出す側と描く側が揃っていなかった**。①**プライムを operand に入れた**= `a↑'`(a′)・`a↑''`(a″) は数学で最もありふれた上付きなのに、許可リストに `'` `"` が無く、矢印が素通りして `↑` がそのまま見えていた。v4.0.229で「裸の1文字は帽子でなく普通の上付き」に戻した以上、**受ける側にも同じ字を入れないと片手落ち**になる。実データで確認= 影響は今日の試験行11件だけ(古い散文への誤検出0)。②**帽子の控えを指定行で先に判定する**(リンクと同じ扱い)= 項目の文字集合 `[^\s{}<>#()]*` は `<` `(` `)` `>` をわざと外してある(v4.0.222)ため、v4.0.229で名前を `<( )>` に変えた瞬間、控えは `a↑👒` までしか読めず**色が相手に届かなくなっていた**(スクショの `ä` が無色)。★**色は字そのものに乗る**(俊克「文字色は文字そのものの色と解釈した方が良い。そうしないと、わざわざ色指定をしないといけなくなり、二重になってしまう」)= 帽子は本物の字なので、別に飾りを重ねなくてよいのがこの機能の芯。★`check_hat.js` に⑤(6項目)を追加= 今日塞いだ穴がそのまま検査になる。全35項目通過。
 // - v4.0.230(俊克 8/16 am10:43 バグ1「通常記法に2乗が付いちゃうよ」＋改良1「昨日までに書いた控えは切り捨てていいよ」): ★**直前が既に上付き/下付きそのものなら、書き足さず名乗り(指定)だけを出す**。`a↑'` の右で押すと `a↑'↑2` になっていた。v4.0.220で「選んだ時」には決めていた規則を、**カーソルを置いただけの時**にも広げた(押し方が違うだけで、目の前に在るものは同じ)。これが無いと、v4.0.229で普通の上付きに戻した プライム `a↑'`・度 `x↑o`・負の指数 `10↑-3`・累乗 `a↑(..)` を飾ろうとするたびに必ず二重になる。★判定は名前を付けて1つに= `MEOS_METEX_TAIL_RE`。中身は**ASCIIの数式らしい字だけ・6文字まで**(`a↑2とか` のような散文を巻き込まない)。★改良1= 帽子の控えは**新形1つだけ**にした(旧 `a↑^👒` / `a↑(..)👒` の読み取りを撤去)。公開前なので背負う理由が無い(read-bothの約束は公開後に効く)。★`check_hat.js` に④を追加(9項目)= 二重にしないこと・離れた上付きや散文を巻き込まないこと。全29項目通過。
@@ -15232,14 +15233,19 @@ async function meosPushLineSpecsOutOfLine(editor) {
     if (_blk) return await meosPushTableSpecsOutOfLine(editor, _blk);
   }
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
-  if (meosIsSpecLine(next)) return false;                 // 既にFC行が在る=触らない
   const r = meosMoveSpecsOutOfLine(doc.lineAt(ln).text);
   if (!r) return false;
+  // ★v4.0.233(俊克 8/16 pm00:42 バグ1「↓指定がまだ駄目」): **2つ目以降が行末に取り残されていた**。
+  //   ここは「既にFC行が在る=触らない」で戻っていた。1つ目は出るのに2つ目は出ない=同じ行に2つ目の命令を
+  //   足した瞬間に必ず起きる(notに限らずFC方式ぜんぶ)。→ **在るなら、その行の末尾に足す**。
+  //   並べ方は俊克が手で書いた形と同じ= `<!-- Mew!FC ↑not --><!-- Mew!FC ↓not -->`(読む側は出現順に配る)。
+  const _merge = meosIsSpecLine(next);
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, r.body);
-    eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + r.spec);
+    if (_merge) eb.insert(new vscode.Position(ln + 1, doc.lineAt(ln + 1).text.length), r.spec);
+    else eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + r.spec);
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }          // 挿した本文の選択はそのまま残す
   return true;
@@ -18753,7 +18759,7 @@ for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
 top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span style="font-size:0.82em;letter-spacing:0.5px">not</span>';return;}fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
+_bgH=mtxHex(FMT_BG,mtxBg);if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span style="font-size:0.78em;letter-spacing:0.3px">not↑↓</span>';return;}fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.222(俊克): ↻は3つ巡り= A2 → A3 → not。否定は忘れるso、目に見える所に置く。 */if(mtxNot){mtxNot=false;mtxSub=false;}else if(mtxSub){mtxSub=false;mtxNot=true;}else{mtxSub=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();

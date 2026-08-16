@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -109,6 +109,18 @@ ok(asIs('A↑1{150%(白/緑)}') === false, '普通の上付きは一般形に均
 ok(asIs('H2 (白/緑)') === false, '見出しの指定は関係ない', asIs('H2 (白/緑)'));
 const np = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC ↑not -->');
 ok(!!np && np.metex.length === 1 && np.metex[0].not === true && np.metex[0].tok === '↑', '`↑not` を読むと「向き=↑・否定」になる', np && np.metex);
+
+console.log('⑦ 同じ行の2つ目の命令(v4.0.233で塞いだ穴)');
+const mv = (t) => T.meosMoveSpecsOutOfLine(t);
+const r1 = mv('A↑B<!-- ' + T.MEOS_MEW_SIG + ' ↑not -->');
+ok(!!r1 && r1.body === 'A↑B' && /↑not/.test(r1.spec), '1つ目: 本文から外れてFC行になる', r1);
+const r2 = mv('A↑B / A↓C<!-- ' + T.MEOS_MEW_SIG + ' ↓not -->');
+ok(!!r2 && r2.body === 'A↑B / A↓C' && /↓not/.test(r2.spec), '2つ目も同じように取り出せる(取り出し側は元から正しかった)', r2);
+ok(T.meosIsSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC ↑not -->') === true, '既存のFC行はFC行と分かる=ここで「触らない」と戻っていたのが真因', true);
+const merged = '<!-- ' + T.MEOS_MEW_SIG + 'FC ↑not -->' + r2.spec;
+const mp = T.meosParseSpecLine(merged);
+ok(!!mp && mp.metex.length === 2 && mp.metex[0].tok === '↑' && mp.metex[1].tok === '↓', '足した後のFC行は↑と↓の2つとして読める', mp && mp.metex);
+ok(!!mp && mp.metex[0].not && mp.metex[1].not, '2つとも否定として読める', mp && mp.metex.map(x => x.not));
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);
