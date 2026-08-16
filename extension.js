@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.232(俊克 8/16 pm00:18 バグ1「否定ボタンを押してもFCコメントにならない。しかも否定されない」／バグ2「↑指定のときは `Mew! ↑not` にすると決めたよね?」／改良1「否定ボタンが分かりにくい・tipに説明が無い・説明が長過ぎ」): ★★**同じ穴を3度踏んだ**= 行末の指定を外へ出す判定 `isMetex` が **`{…}` の箱を必須**にしていた。`↑not` は箱を持たないので行末に取り残され、**行末のままでは読む側も見ないので否定も効かなかった**(v4.0.226の帽子とまったく同じ形)。→ **均さずそのまま出すもの**の判定を `meosSpecPayloadAsIs` 1つに纏め、2か所(`meosRowSplitInline` / `meosMoveSpecsOutOfLine`)から引く。帽子の控えと not の両方がここから出る。★バグ2= **向きは目の前に在るものが名乗る**。選んでいる時はその字から、選んでいない時は**カーソルの直前**から取る(v4.0.230と同じ形。押し方が違うだけで相手は同じ)。どちらも分からない時だけ `↑↓`(どちらでも)。★改良1= ボタンの面を**素直に `not`** にした(打ち消した A² は『上付きを消す』に見えて紛らわしかった)＋tipを刈り込み、not の説明を入れた。★`check_hat.js` に⑥(8項目)を追加。全43項目通過。
 // - v4.0.231(俊克 8/16 am11:00 バグ1「最初と最後のが駄目。最初のが↑が残ってしまう」): ★**出す側と描く側が揃っていなかった**。①**プライムを operand に入れた**= `a↑'`(a′)・`a↑''`(a″) は数学で最もありふれた上付きなのに、許可リストに `'` `"` が無く、矢印が素通りして `↑` がそのまま見えていた。v4.0.229で「裸の1文字は帽子でなく普通の上付き」に戻した以上、**受ける側にも同じ字を入れないと片手落ち**になる。実データで確認= 影響は今日の試験行11件だけ(古い散文への誤検出0)。②**帽子の控えを指定行で先に判定する**(リンクと同じ扱い)= 項目の文字集合 `[^\s{}<>#()]*` は `<` `(` `)` `>` をわざと外してある(v4.0.222)ため、v4.0.229で名前を `<( )>` に変えた瞬間、控えは `a↑👒` までしか読めず**色が相手に届かなくなっていた**(スクショの `ä` が無色)。★**色は字そのものに乗る**(俊克「文字色は文字そのものの色と解釈した方が良い。そうしないと、わざわざ色指定をしないといけなくなり、二重になってしまう」)= 帽子は本物の字なので、別に飾りを重ねなくてよいのがこの機能の芯。★`check_hat.js` に⑤(6項目)を追加= 今日塞いだ穴がそのまま検査になる。全35項目通過。
 // - v4.0.230(俊克 8/16 am10:43 バグ1「通常記法に2乗が付いちゃうよ」＋改良1「昨日までに書いた控えは切り捨てていいよ」): ★**直前が既に上付き/下付きそのものなら、書き足さず名乗り(指定)だけを出す**。`a↑'` の右で押すと `a↑'↑2` になっていた。v4.0.220で「選んだ時」には決めていた規則を、**カーソルを置いただけの時**にも広げた(押し方が違うだけで、目の前に在るものは同じ)。これが無いと、v4.0.229で普通の上付きに戻した プライム `a↑'`・度 `x↑o`・負の指数 `10↑-3`・累乗 `a↑(..)` を飾ろうとするたびに必ず二重になる。★判定は名前を付けて1つに= `MEOS_METEX_TAIL_RE`。中身は**ASCIIの数式らしい字だけ・6文字まで**(`a↑2とか` のような散文を巻き込まない)。★改良1= 帽子の控えは**新形1つだけ**にした(旧 `a↑^👒` / `a↑(..)👒` の読み取りを撤去)。公開前なので背負う理由が無い(read-bothの約束は公開後に効く)。★`check_hat.js` に④を追加(9項目)= 二重にしないこと・離れた上付きや散文を巻き込まないこと。全29項目通過。
 // - v4.0.229(俊克 8/16 am10:05〜10:35 記法の確定「FCコメントの命令は a↑👒<(..)> の一択にしよう」): ★★**印(帽子)の記法を確定し、公開前の回帰を潰した**。①**名前は `<( )>` の中**= `a↑<(..)>`。控えは `a↑👒<(..)>` の一択(👒は矢印の直後)。②★**裸の1文字はもう帽子にしない**= `a↑'` は**プライム a′**、`x↑o` は**度 x°** に戻る。v4.0.225〜228は別名表の1文字を無条件に帽子にしていて、**数学で一番ありふれた上付きを2つ食っていた**(足すのでなく**やめる**直しなので小さく安全)。③**下に被せる印はv5.0**(上だけでv4.0デビュー)。★区切り記号そのものが判定を担う= `( )`だけ→**累乗 `a↑(n+1)` と衝突**(俊克の指摘)／`< >`だけ→**HTMLタグと衝突**(`<o>`は英字始まりでタグに読まれる)／`<( )>`→`<`の次が英字でないのでただの文字・`<(--)>`は `-->` を含まないので控えも壊れない。《 》「 」案は却下(IME前提で英語配列から出せない)。★控えは**旧形も読む**(v4.0.225/227で書いたものを生かす)。★新しい検査 `check_hat.js`= **「帽子にしない」行が主役**(プライム/度/負の指数/裸の括弧/下向き)＋控えが `-->` を自分で作らないこと。20項目すべて通過。
@@ -15094,7 +15095,7 @@ function meosRowSplitInline(text) {
     //   均してよいthat、控えだけは**実物を名乗るのthat仕事**(あとで別の字にやり直すための控えso)。
     //   ★ここは**2か所に同じ判断thatある**(meosRowSplitInline と meosMoveSpecsOutOfLine)so、両方に入れる。
     const isMetex = /[↑↓][^\s{}<>]*\{[^}]*\}/.test(payload) || /^\{[^}]*\}$/.test(payload);
-    const isHat = payload.indexOf(MEOS_HAT_MARK) >= 0 && /[↑↓]/.test(payload); // v4.0.226: 控えは均さず、そのまま運ぶ
+    const isHat = meosSpecPayloadAsIs(payload); // v4.0.226/232: 控えと not は均さず、そのまま運ぶ(判定は1つ)
     const isLink = !!meosLinkSpecFromComment(payload);
     const isLine = !!(meosLineDirective(payload) || meosLooksLikeSpecComment(payload));
     if (!isHat && !isMetex && !isLine && !isLink) continue;
@@ -17814,7 +17815,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-btns">
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (type the URL — or a membrane name to warp there) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript | Click = make the selection (or A) super/subscript, e.g. B↑2{150%} · ↻ toggles A² / A₃ · ▾ sets height % · cursor just after the base → 🚫 removes the super/subscript &#10;&#10;Accents: write a↑&lt;(..)&gt; and click → real letter ä. Names draw the shape: &lt;(..)&gt; &lt;(.)&gt; &lt;(--)&gt; &lt;(^)&gt; &lt;(o)&gt; &lt;(v)&gt; &lt;(~)&gt; &lt;(&#39;)&gt;. The recipe stays in a comment, so you can redo it later.">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="Cycle A² → A₃ → not. The third one writes an instruction that says: do NOT make this arrow a superscript.">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · ↻ = A² / A₃ / not · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;Accents — a↑&lt;(..)&gt; then click → ä  ·  names draw the shape: &lt;(..)&gt; &lt;(.)&gt; &lt;(--)&gt; &lt;(^)&gt; &lt;(o)&gt; &lt;(v)&gt; &lt;(~)&gt; &lt;(&#39;)&gt;">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
 <span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button>
@@ -18752,7 +18753,7 @@ for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
 top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);if(mtxNot){/* v4.0.222: notの面=打ち消したA2(押すと『これは上付きにしない』を書く) */fmtMetex.innerHTML='<span style="text-decoration:line-through;opacity:.75">A<span style="font-size:0.68em;vertical-align:1.05em;line-height:0">2</span></span>';return;}fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
+_bgH=mtxHex(FMT_BG,mtxBg);if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span style="font-size:0.82em;letter-spacing:0.5px">not</span>';return;}fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.222(俊克): ↻は3つ巡り= A2 → A3 → not。否定は忘れるso、目に見える所に置く。 */if(mtxNot){mtxNot=false;mtxSub=false;}else if(mtxSub){mtxSub=false;mtxNot=true;}else{mtxSub=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
@@ -22453,7 +22454,7 @@ function meosMoveSpecsOutOfLine(text) {
     //   ★ここは**2か所に同じ判断thatある**(meosRowSplitInline と meosMoveSpecsOutOfLine)so、両方に入れる。
     const isMetex = /[↑↓][^\s{}<>]*\{[^}]*\}/.test(payload) || /^\{[^}]*\}$/.test(payload);
     // v4.0.146: 外へ出す時は**一般形に直す**。実物(`x↑2`)を名乗ったままだと、本文を書き換えた時に腐る。
-    if (payload.indexOf(MEOS_HAT_MARK) >= 0 && /[↑↓]/.test(payload)) { items.push(payload); cuts.push([m.index, m.index + m[0].length]); continue; } // v4.0.226: 控えは均さない
+    if (meosSpecPayloadAsIs(payload)) { items.push(payload); cuts.push([m.index, m.index + m[0].length]); continue; } // v4.0.226/232: 控えと not は均さない
     if (isMetex) { items.push(payload.replace(/^[^\s{}<>#]*([↑↓])[^\s{}<>#]*/, (mm, ar) => 'A' + ar + '1')); cuts.push([m.index, m.index + m[0].length]); continue; }
     // v4.0.157: v4.0.156の「`//` を持つものは箱に入れる」措置は**不要になった**=1命令=1コメントso `-->` が終わりを決める。
     // v4.0.190(俊克「リンクもFCコメントに対応しよう。これだけ行末と言うのは、いただけないので」):
@@ -22743,7 +22744,10 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
   //   ★**向きは選んだ字thatが名乗る**= `↑3` を選んだら `↑not`。何も選んでいなければ `↑↓not`(どちらでも=次の1つ)。
   //   `not` に高さも色も要らないso、`{…}` は書かない。
   if (isNot) {
-    const _sTxt = sel.isEmpty ? '' : doc.getText(sel);
+    // v4.0.232(俊克 8/16 pm00:18 バグ2「↑指定のときは Mew! ↑not にすると決めたよね?」):
+    //   ★向きは**目の前に在るものが名乗る**。選んでいる時はその字から、選んでいない時は**カーソルの直前**から取る
+    //   (v4.0.230と同じ形= 押し方が違うだけで、相手は同じ)。どちらも分からない時だけ `↑↓`(どちらでも)。
+    const _sTxt = sel.isEmpty ? (MEOS_METEX_TAIL_RE.exec(doc.lineAt(sel.start.line).text.slice(0, sel.start.character)) || [''])[0] : doc.getText(sel);
     const _dir = (_sTxt.indexOf('↑') >= 0) ? '↑' : (_sTxt.indexOf('↓') >= 0 ? '↓' : '↑↓');
     await editor.edit(eb => eb.insert(sel.end, '<!-- ' + MEOS_MEW_SIG + ' ' + _dir + 'not -->'));
     try { editor.selection = new vscode.Selection(sel.start, sel.end); } catch (_) { }
@@ -22900,6 +22904,18 @@ function meosHatFromToken(tok) {
   if (!m) return null;
   const ch = meosHatCompose(m[1], m[2]);
   return ch ? { base: m[1], mark: m[2], ch } : null;
+}
+// ★v4.0.232(俊克 8/16 pm00:18 バグ1「否定ボタンを押してもFCコメントにならない。しかも否定されない」):
+//   行末の指定のうち、**一般形に均さず、そのまま外へ出すもの**を1つの判定にした。
+//   ①帽子の控え(実物を名乗るのが仕事) ②`not`(向きだけを言う命令で、指数も高さも持たない)。
+//   ★真因は3度目の同じ穴= 外へ出す判定 `isMetex` が **`{…}` の箱を必須**にしていた。`↑not` は箱を持たない
+//   ので行末に取り残され、行末のままでは読む側も見ないので**否定も効かなかった**(v4.0.226の帽子と同じ形)。
+//   ★同じ判断が2か所(`meosRowSplitInline` と `meosMoveSpecsOutOfLine`)にあるので、ここ1つから引く。
+function meosSpecPayloadAsIs(payload) {
+  const p = String(payload == null ? '' : payload).trim();
+  if (!p || !/[↑↓]/.test(p)) return false;
+  if (p.indexOf(MEOS_HAT_MARK) >= 0) return true;                 // 帽子の控え
+  return /not\s*(\([^()]*\))?$/i.test(p);                        // ↑not / ↓not / ↑↓not(色つきも可)
 }
 // 行の直前が `X↑<(..)>` の形か(ボタンを押した時に変換する相手)。基準は**絵文字(サロゲートペア)も1文字**として見る。
 // v4.0.229: **`<( )>` を必須**にした。裸の1文字(`a↑'`)はもう帽子ではない=普通の上付きへ戻る(プライム/度が書ける)。
