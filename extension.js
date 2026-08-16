@@ -14968,7 +14968,12 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       bodySel = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length));
       editor.selection = bodySel;
       editor = await meosFocusBack(editor, bodySel); // v4.0.173
-      return;   // v4.0.210: 引っ越し(meosPushLineSpecsOutOfLine)は要らない。もう指定行に書いてある。
+      // ★v4.0.262(俊克 8/17 am02:07「同じ行に2つ目の取消線を入れると、FCコメントにならない」):
+      //   ★**畳み戻した分の引っ越しが要る**。押す前に `meosEnsureInlineBeforeEdit` がFC行を行末へ戻すので、
+      //   その1つ目は**行末に居るまま**になる。v4.0.210で「もう指定行に書いてあるから要らない」と外したのは、
+      //   **新しく書いた分の話**で、戻した分の話ではなかった(またしても対の片方)。偽エディタで再現・確認。
+      try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
+      return;
     }
     const openPart = wrap ? ('/* ' + prefix + ' */ ') : prefix;
     const tailPart = wrap ? (' /* ' + spec + close + ' */') : (spec + close);
@@ -15241,6 +15246,13 @@ function meosInsertIntoSpecLine(specText, payload, idx) {
 //   ②残ったFC行のせいで「既にFC行が在る=触らない」に当たり、次からは行末形式に戻る。俊克が見たとおり。
 // ★「戻してから触る」なら、**位置も順番も1行の形で自然に決まる**=特別扱いが1つも要らない。
 async function meosEnsureInlineBeforeEdit(editor) {
+  // ★★v4.0.262(俊克 8/17 am02:15「そもそも、なぜ、押す前にFC行を行末へ畳み戻す必要があるんだよ」): ★**やめる**。
+  //   これが今夜の症状の**元凶**だった= ①選択位置がコメントの中へずれる(2つ目の取消線が `<~~!--~~` になる)
+  //   ②畳み戻した1つ目が行末に置き去りになる ③分割が「FC行が無い」と見て素通りする ④戻す時に `not` が落ちる。
+  //   v4.0.159で「触る前に1行の形へ」と入れたが、v4.0.235以降は**書く側が直接FC行へ書く**ので、戻す必要が無い。
+  //   → 何もしない(呼び出し側は全部そのままでよい= 1つの関数を空にするだけで、中間状態が消える)。
+  return false;
+  /* eslint-disable no-unreachable */
   try {
     if (!MEOS_SPEC_LINE || !meosFormatWritesFC() || !editor || !editor.document) return false;
     const doc = editor.document, ln = editor.selection.active.line;
