@@ -15037,7 +15037,10 @@ function meosPullSpecsBackInline(bodyText, specText) {
       const ord = it.nth > 0 ? it.nth : (1 + (spec.fmt.filter(x => x.kind === it.kind).indexOf(it)));
       const hit = ends.find(e => e.kind === it.kind && e.ord === ord);
       if (!hit) return null;                                  // 相手が見つからない=戻さない
-      ins.push({ at: hit.end, text: '<!-- ' + MEOS_MEW_SIG + ' ' + it.kind + ' ' + it.inner + ' -->' });
+      // ★v4.0.261(俊克 8/17 am01:17「not指定が消えているよ」→ ログで確定): **戻す側が `not` を捨てていた**。
+      //   FC行を行末へ畳み戻す時、`kind + 色` だけを書いていたので `***not (白/黄)` が `*** (白/黄)` になっていた。
+      //   上付き側(`meosMetexItemText`)は `not` を付けて戻していたのに、**書式側だけ抜けていた**(またしても片方)。
+      ins.push({ at: hit.end, text: '<!-- ' + MEOS_MEW_SIG + ' ' + it.kind + (it.not ? 'not' : '') + ' ' + it.inner + ' -->' });
     }
     // ② 上付き/下付き= その向きの ord 個目の直後へ
     const toks = meosMeTexTokens(body, spec);
