@@ -23764,8 +23764,14 @@ function meosLogFmt(tag, o) {
 //   私は分割を**太字/斜体の道にだけ**置いていたので、一度も通らなかった。→ **1つの関数にして、両方の入口から呼ぶ**。
 //   (今日ずっと踏んでいる「対になっている片方を見ていない」の、最後の1つ。)
 // 返り値= 分割して書いたら true(呼んだ側はそこで終わる)。
+let _meosSplitBusy = 0; // v4.0.257: 1回のクリックで**3つの入口が同時に呼ぶ**ため、二重に走らせない
 async function meosTrySplitEnclosing(editor, fg, bg) {
   try {
+    // ★★v4.0.257(俊克 8/17 am00:49 ログで確定): **0.003秒差で2回走っていた**(入口3つのうち2つが同時に反応)。
+    //   2回とも**元のテキスト**を読むので、1回目の編集がまだ反映されていない状態で2回目が同じ編集を出し、
+    //   VS Codeは古い前提の編集を**拒否する**(`editor.edit` の戻り値=false。私はそれを見ていなかった)。
+    //   → 1回のクリックでは1回だけ走らせる＋**編集の成否をログに残す**。
+    if (Date.now() < _meosSplitBusy) { meosLogFmt('split-二重', {}); return true; }
     const doc0 = editor.document, sel0 = meosTrimSelection(doc0, editor.selection);
     if (sel0.isEmpty || !meosIsProseDoc(doc0) || sel0.start.line !== sel0.end.line) return false;
     let _b0 = true, _i0 = true, _enc0 = null;   // 「包みthat既に持っているか」だけを見る(何を足したいかは問わない)
@@ -23789,10 +23795,13 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
     const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc0.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';
     const _boxes = []; for (let k = 0; k < _sp.pieces; k++) _boxes.push(k === _sp.midIdx ? _newBox : _origBox);
     const _newFc = _fcText.slice(0, _rg.start) + _boxes.join('') + _fcText.slice(_rg.end);
-    await editor.edit(eb => {
+    _meosSplitBusy = Date.now() + 800;
+    const _okEdit = await editor.edit(eb => {
       eb.replace(doc0.lineAt(_ln).range, _sp.line);
       eb.replace(doc0.lineAt(_fcLn).range, _newFc);
     }, { undoStopBefore: true, undoStopAfter: true });
+    meosLogFmt('split-書いた', { ok: !!_okEdit, body: editor.document.lineAt(_ln).text, fc: editor.document.lineAt(_fcLn).text });
+    if (!_okEdit) { _meosSplitBusy = 0; return false; }
     try { const _p = new vscode.Position(_ln, sel0.start.character); editor.selection = new vscode.Selection(_p, _p); } catch (_) { }
     try { await meosFocusBack(editor, editor.selection); } catch (_) { }
     return true;
