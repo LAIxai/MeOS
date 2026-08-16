@@ -195,7 +195,8 @@ console.log('⑭ 同じ装飾の一部だけ色を変える=外側を割る(v4.0
   const encl = { mk: '***', start: m.start, end: m.end, bodyStart: m.bodyStart, bodyEnd: m.bodyEnd };
   const a = t.indexOf('太字'), b = a + 2;
   const r = T.meosSplitMarkForSegment(t, encl, a, b);
-  ok(!!r && r.line === '***ハイライトと******太字******とイタリックと太字とイタリック***', '真ん中を選ぶと3つに割れる(俊克の(3)そのもの)', r && r.line);
+  // v4.0.263: 区切りに空コメントを挟む(`**` は並べるだけだと入れ子になるため。全記号で同じ形にした)
+  ok(!!r && r.line === '***ハイライトと***<!---->***太字***<!---->***とイタリックと太字とイタリック***', '真ん中を選ぶと3つに割れる(区切りは空コメント)', r && r.line);
   ok(!!r && r.pieces === 3 && r.midIdx === 1, '3つ・真ん中は2番目', r && [r.pieces, r.midIdx]);
   const r2 = T.meosSplitMarkForSegment(t, encl, encl.bodyStart, encl.bodyStart + 6);
   ok(!!r2 && r2.pieces === 2 && r2.midIdx === 0, '先頭を選んだ時は2つ(前が空)', r2 && [r2.pieces, r2.midIdx]);
