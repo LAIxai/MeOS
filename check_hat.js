@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -155,6 +155,14 @@ ok(!!ld('H2not') && ld('H2not').not === true && ld('H2not').level === 2, '`H2not
 ok(!!ld('H2not (白/緑)') && ld('H2not (白/緑)').not === true, '色つきも読める', ld('H2not (白/緑)'));
 ok(!!ld('H2') && ld('H2').not === false, 'notを書かなければ今までどおり見出し', ld('H2'));
 ok(!!ld('-1.H2') && ld('-1.H2').not === false, '番号付き見出しも従来どおり', ld('-1.H2'));
+
+console.log('⑪ リンクの表示文字のnot(v4.0.240)');
+const ls = (t) => T.meosMeLinkSpec(t);
+ok(ls('not(白/紫)(3)').not === true, '`not(白/紫)(3)` を読める', ls('not(白/紫)(3)'));
+ok(ls('not(白/紫)(3)').fg === '白' || !!ls('not(白/紫)(3)').fg, 'notを剥がしても色は読める', ls('not(白/紫)(3)'));
+ok(ls('not(白/紫)(3)').ul === 3, '下線の種類も読める', ls('not(白/紫)(3)').ul);
+ok(ls('(白/紫)(3)').not === false, 'notを書かなければ今までどおり', ls('(白/紫)(3)'));
+ok(ls('(白/紫)//[]tip=notを含む説明').not === false, 'tipの中の not は命令にしない', ls('(白/紫)//[]tip=notを含む説明'));
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);

@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.240(俊克 8/16 pm05:49 バグ1「`Mew!FC [](膜名)not` がまだ穴が開いている。リンクの場合は、[]の中に `*` 指定が入ってしまうからね」): ★**運び屋にした以上、リンクの表示文字の中にも「意味を名乗らせない」口が要る**= `[*どこでもH-TOC*]()` の `*` が斜体のまま残っていた。→ リンクの指定に `not` を書ける= `<!-- Mew!FC [](膜名)not(白/紫)(3) -->`。意味は他と同じ= **表示文字の中の `*` `**` `***` を太字/斜体として読まない**(色と下線は指定が決める)。★`not` を通す口はこれで4つ目(語=`*`一族／行=`H2`／上付き=`↑`／リンク=`[]()`)。**同じ言葉が、記法の全部に届いた**。★tipの中の `not`(`//[]tip=notを含む説明`)は命令にしない(頭の部分だけ見る)。`check_hat.js` に⑪(5項目)を追加。全68項目通過。
 // - v4.0.239(俊克 8/16 pm04:47 バグ1「ハイライトのnot指定は、太字ではないけど斜体が残っている」): ★**フラグを立てないだけでは、消えない**。`not` は `bold=false / italic=false` にするだけだったが、`*…*` `***…***` の斜体は**VS Code内蔵のMarkdown文法(テーマ)が付けている**ので、こちらが何も書かなければそのまま残る(`**` が平気だったのは、テーマがそこを太字にしていなかっただけ)。→ **素に戻す時は「戻す」と明示的に書く**= `font-style: normal` / `font-weight: normal` を装飾に持たせ、**同じCSSを2つ被せる形なので `!important` を付ける**(v4.0.15/3119と同じ穴・4度目。VS Codeの装飾でCSSを注ぐ唯一の口 textDecoration に載せる)。★俊克の結論= **見出しと取消線に not は要らない**(素の `##`/`~~` は既にMeOSが記号を隠して描いているので、運び屋にする必要が無い)。読む側は残すが、ボタンは出さない。
 // - v4.0.238(俊克 8/16 pm03:38〜04:11 Zenn#7の推敲から生まれた設計): ★★**ハイライトを `***` に載せる**= Markdownの標準に無い記号 `==` は、MeOSの外へ出すと丸見えになる。**8月に見出し/太字/斜体/取消線/リンク/上付きを次々と標準の記号へ載せ替えた中で、最後に残っていた1つ**。→ 本文は `***…***`(標準の太字＋斜体)、指定は `***not(白/黄)`。MeOSの中では今までどおりのハイライト、外では太字＋斜体。**どちらでも壊れない**。`==` は読める側に残す(書かなくなるだけ)。★★**`not` = この記号の意味を、MeOSでは名乗らない**。`↑not` と同じ言葉・同じ論理を `*` `**` `***` `~~` と、行の指定 `H2not` にも通した(俊克「どうせなら内部的には `*not` と `**not` も同じ論理なので入れてしまおう」)。→ 太字で書いたものに `not` を付けるだけで、**本文を1文字も触らずに**プレーンへ変えられる(インライン編集の芯)。★注意= **`not` は外の見え方を消さない**(記号は運び屋なので、外では記号どおり)。本当にどこでもやめたいなら記号を消す。`H2not` は `##` が行の構造なので、外では見出しのまま目次に載る=`***not` より副作用が大きい(用途が違う)。★`check_hat.js` に⑨⑩(11項目)を追加。全63項目通過。
 // - v4.0.237(俊克 8/16 pm02:41 バグ1「A↑4の右で上付き→🚫と押すと A↑4 全体が選択状態になり、もう一度押すと A↑4↑2 になる」): ★**解除の後は、上付き/下付きだけ右端にカーソルを置くだけ**にした(俊克案「そうすれば、何度でもやり直せる」)。解除後に本文を選んでおくのは、ハイライト等で別の飾りをすぐ掛け直せるようにするため。しかし v4.0.236 で上付き/下付きは**本文を残す**ようにしたので、残った `A↑4` を選んだままだと、次の一押しでそれ全部が基準文字になってしまった(選択が「相手」を名乗る規則の裏目)。★1つの直しが、対になっているもう片方の前提を崩す= 今日ずっと同じ形。
@@ -23175,10 +23176,16 @@ function meosMeLinkColor(spec) { let fg = null, bg = null; const c = /\(([^)/]*)
 // v4.0.25(俊克 8/6 「どこでもH-TOC」段階A仕上げ): リンクのスペック `(fg/bg)(下線種)//[]tip=説明` を1回で読む。
 // 下線種は**数字**で表す(手打ちせず▾から設定する前提・生データは番号)。0=単線 / 1=二重 / 2=波線 / 3=二重波線。
 // tip側に (3) や // が混ざっても壊さない為、最初の `//` の前(head)だけを色/下線種の解析対象にする。
+// v4.0.240(俊克 8/16 pm05:49 バグ1「リンクの場合は、[]の中に*指定が入ってしまうからね」):
+//   ★リンクの**表示文字の中**にも強調の記号が入る= `[*どこでもH-TOC*]()`。運び屋として使った以上、
+//   そこにも「意味を名乗らせない」口が要る。→ リンクの指定に `not` を書ける= `[](膜名)not(白/紫)(3)`。
+//   意味は他と同じ= **表示文字の中の `*` `**` `***` を、太字/斜体として読まない**(色と下線は指定が決める)。
 function meosMeLinkSpec(spec) {
   const s = String(spec || '');
   const ti = s.indexOf('//');
-  const head = ti >= 0 ? s.slice(0, ti) : s;
+  let head = ti >= 0 ? s.slice(0, ti) : s;
+  const not = /(?:^|[\s)])not(?=[\s(]|$)/.test(head); // v4.0.240
+  if (not) head = head.replace(/(?:^|[\s)])not(?=[\s(]|$)/, (mm) => mm.slice(0, -3));
   let ul = null;
   const headNoUl = head.replace(/\((\d)\)/, (mm, d) => { ul = Number(d); return ''; });
   let fg = null, bg = null;
@@ -23186,7 +23193,7 @@ function meosMeLinkSpec(spec) {
   if (c) { fg = normalizeFgColor(c[1]); bg = normalizeBgColor(c[2]); }
   let tip = '';
   if (ti >= 0) tip = s.slice(ti + 2).replace(/^\s*\[[^\]]*\]/, '').replace(/^\s*tip=/, '').trim(); // `//[]tip=` の飾りを剥がす(ハイライトと同じ流儀)
-  return { fg, bg, ul, tip };
+  return { fg, bg, ul, tip, not }; // v4.0.240: not= 表示文字の中の強調を名乗らせない
 }
 // 下線のCSS。3(二重波線)だけCSSに単独の指定が無いので一工夫=波線(text-decoration)＋もう1本の波をSVG背景で敷く。
 function meosMeLinkUnderline(ul, colorCss) {
@@ -23781,6 +23788,15 @@ function meosApplyBoldDecorations(editor) {
         //   ★flankingは**生の行**(text)で見る= tScanはコードスパンを空白で伏せているso、伏せた字で判定すると
         //     `**`+コードスパン+`**` の太字that消える(実データで1554行)。探すのは伏せた字・成立を決めるのは生の字。
         // v4.0.212: リンクの表示文字の中の装飾は**指定を持たない**so、番号を消費させない(飾りは付ける)。
+        // v4.0.240: この行のリンクのうち、指定が `not` のものの**表示文字の範囲**を集める(その中の強調は素に戻す)。
+        const _plainZones = [];
+        try {
+          for (const b of meosLineEndLinks(text, MEOS_SPEC_LINE ? _fcLinksFor(doc, ln) : null)) {
+            const sp = meosMeLinkSpec(b.spec);
+            if (sp && sp.not) _plainZones.push([b.textStart, b.textEnd]);
+          }
+        } catch (_) { }
+        const _inPlain = (a, b) => _plainZones.some(([x, y]) => a >= x && b <= y);
         const _lbl = [];
         try { const _mm = meosMaskLinkLabels(text); for (let k = 0; k < text.length; k++) if (text.charAt(k) !== _mm.charAt(k)) _lbl.push(k); } catch (_) { }
         const _inLabel = (a, b) => _lbl.length > 0 && _lbl.some(k => k >= a && k < b);
@@ -23798,8 +23814,10 @@ function meosApplyBoldDecorations(editor) {
           hideR.push(new vscode.Range(ln, mk.bodyEnd, ln, mk.end));
           _hideSpecComment(q, mk.end);
           // v4.0.238: `***not(白/黄)` = 記号は運び屋・意味は指定が決める → 太字/斜体を名乗らず、色だけ乗せる(=従来の `==` に相当)。
-          const _nb = (q && q.not) ? false : mk.bold, _ni = (q && q.not) ? false : mk.italic;
-          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', !!(q && q.not));
+          const _pz = _inPlain(mk.bodyStart, mk.bodyEnd);           // v4.0.240: リンクの表示文字の中で not
+          const _no = !!(q && q.not) || _pz;
+          const _nb = _no ? false : mk.bold, _ni = _no ? false : mk.italic;
+          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
         }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
