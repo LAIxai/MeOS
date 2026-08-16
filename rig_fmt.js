@@ -121,4 +121,14 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
   console.log('【ハイライトの道】本文: ' + out[0]);
   console.log('                 FC  : ' + out[1]);
   console.log(out[0] === want ? '  ★ 期待どおり(3分割)' : '  ⚠ 期待と違う');
+
+  // ★本番の形= 指定が**行末に付いた状態**(FC行がまだ無い)。ログで確定した実際の入力。
+  await new Promise(r => setTimeout(r, 900));
+  const inlineText = body + '<!-- Mew! ***not (白/黄) -->\n';
+  CUR = mkEditor(inlineText, new P(0, a), new P(0, b));
+  await T.insertFormatTemplate('highlight', CUR, '白', '青');
+  out = CUR.document.text.split('\n');
+  console.log('【行末コメントの形】本文: ' + out[0]);
+  console.log('                   FC  : ' + (out[1] || '(無し)'));
+  console.log(out[0] === want ? '  ★ 期待どおり(3分割)' : '  ⚠ 期待と違う');
 })();

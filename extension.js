@@ -23775,16 +23775,29 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
     if (Date.now() < _meosSplitBusy) { meosLogFmt('split-二重', {}); return true; }
     const doc0 = editor.document, sel0 = meosTrimSelection(doc0, editor.selection);
     if (sel0.isEmpty || !meosIsProseDoc(doc0) || sel0.start.line !== sel0.end.line) return false;
-    let _b0 = true, _i0 = true, _enc0 = null;   // 「包みthat既に持っているか」だけを見る(何を足したいかは問わない)
-    const _lt = doc0.lineAt(sel0.start.line).text;
-    for (const _m of meosStarMarks(_lt, _lt)) {
+    const _ln = sel0.start.line;
+    const _lt = doc0.lineAt(_ln).text;
+    // ★★v4.0.260: **コメントを外してから印を探す**。行末の `<!-- Mew! ***not (白/黄) -->` の中にも `***` が在るので、
+    //   生の行で数えると**コメントの中の記号を印と数えて**しまい、包みを取り違える(偽エディタで再現・確認)。
+    const _fcLn0 = _ln + 1;
+    let _hasFc = (_fcLn0 < doc0.lineCount) && meosIsSpecLine(doc0.lineAt(_fcLn0).text);
+    let _inlineFc = null, _workLine = _lt;
+    if (!_hasFc) {
+      try {
+        const _mv = meosMoveSpecsOutOfLine(_lt);
+        if (_mv && _mv.spec) { _workLine = _mv.body; _inlineFc = _mv.spec; _hasFc = true; }
+      } catch (_) { }
+    }
+    let _enc0 = null;   // 「包みが既に持っているか」だけを見る(何を足したいかは問わない)
+    for (const _m of meosStarMarks(_workLine, _workLine)) {
       if (sel0.start.character >= _m.bodyStart && sel0.end.character <= _m.bodyEnd) _enc0 = _m;
     }
     if (!_enc0) return false;
-    const _ln = sel0.start.line;
-    const _sp = meosSplitMarkForSegment(_lt, { mk: _enc0.kind, start: _enc0.start, end: _enc0.end, bodyStart: _enc0.bodyStart, bodyEnd: _enc0.bodyEnd }, sel0.start.character, sel0.end.character);
-    const _fcLn = _ln + 1;
-    const _hasFc = (_fcLn < doc0.lineCount) && meosIsSpecLine(doc0.lineAt(_fcLn).text);
+    const _sp = meosSplitMarkForSegment(_workLine, { mk: _enc0.kind, start: _enc0.start, end: _enc0.end, bodyStart: _enc0.bodyStart, bodyEnd: _enc0.bodyEnd }, sel0.start.character, sel0.end.character);
+    // ★★v4.0.260(俊克 8/17 am01:11 実ファイル+ログの突き合わせで確定): **本番は「指定が行末に付いた状態」で押される**。
+    //   ログ= `hasFc=false line="(2) ***…***<!-- Mew! *** (白/黄) -->"`。私は「FC行がある時」しか見ていなかった。
+    //   → 行末に付いている時は、**先に外へ出した形(本文/指定)をメモリで作ってから**割る。文書には最終形だけが出る。
+    const _fcLn = _fcLn0;
     // ★v4.0.259(俊克 8/17 am01:03 ログで確定): **誰も書き戻していないのに、0.9秒後には元の文字列が見える**。
     //   = 消されたのではなく、**私が書いている文書と、俊克が見ている文書が別物**の疑い。
     //   → 文書の身元(uri/version)と、編集する相手がどのエディタかを記録する。
@@ -23794,8 +23807,8 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
       activeVer: vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.version : -1,
       同じか: !!(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document === doc0) });
     if (!_sp || !_hasFc) return false;
-    let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc0.end) _ord++;
-    const _fcText = doc0.lineAt(_fcLn).text;
+    let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_workLine)) if (_mk2.end <= _enc0.end) _ord++;
+    const _fcText = _inlineFc !== null ? _inlineFc : doc0.lineAt(_fcLn).text;
     const _rg = meosSpecLineCommentRange(_fcText, _ord - 1);
     meosLogFmt('split2', { ord: _ord, rg: !!_rg, fc: _fcText, marks: meosRowMarksInOrder(_lt).length }); // v4.0.255
     if (!_rg) return false;
@@ -23804,9 +23817,11 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
     const _boxes = []; for (let k = 0; k < _sp.pieces; k++) _boxes.push(k === _sp.midIdx ? _newBox : _origBox);
     const _newFc = _fcText.slice(0, _rg.start) + _boxes.join('') + _fcText.slice(_rg.end);
     _meosSplitBusy = Date.now() + 800;
+    const _eol = (doc0.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
     const _okEdit = await editor.edit(eb => {
       eb.replace(doc0.lineAt(_ln).range, _sp.line);
-      eb.replace(doc0.lineAt(_fcLn).range, _newFc);
+      if (_inlineFc !== null) eb.insert(new vscode.Position(_ln, _lt.length), _eol + _newFc);   // FC行を新しく足す
+      else eb.replace(doc0.lineAt(_fcLn).range, _newFc);
     }, { undoStopBefore: true, undoStopAfter: true });
     meosLogFmt('split-書いた', { ok: !!_okEdit, ver: editor.document.version, body: editor.document.lineAt(_ln).text, fc: editor.document.lineAt(_fcLn).text,
       画面の方: (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document !== editor.document) ? vscode.window.activeTextEditor.document.lineAt(_ln).text : '(同じ文書)' });
