@@ -1,6 +1,7 @@
 // {* ▼mCN=extension_js // whole extension.js as one membrane (📊⊕0+0D0W) *}
 // {* ▼mCN=0000_HISTORY // changelog / index / preface (📊⊕0+0D0W) [oGJF=h] [tRJF=h] *}
 // 2026.06.22(月)pm00:29.14 GitHub Backup設定で、人間がcmd+Sによってプッシュするテストをした。
+// - v4.0.234(俊克 8/16 pm01:21 バグ1「右を否定し、次に左を否定すると、FCコメントの順番を間違ってしまう」／バグ2「取消で戻そうとしたとき、行末に命令コメントが入った状態が見えた。一発でFCコメントを出すようにしたはずだよね?」): ★**FC行は「本文の印の順」である、という定義**にした(v4.0.208で表の格子に対して決めたのと同じ考え。並べ替えではなく定義なので、既に順どおりなら1文字も動かない)。v4.0.233は押した順に末尾へ足していたので、右→左の順に押すと本文と逆になった。**同じ向きが2つ在る行では相手を取り違える**(読む側は向きごとに出現順で配るため)。→ 新しい命令は**その印の番目に差し込む**(番目= 本文の中でカーソルより前に在る印の数-1)。判定は `meosSpecLineMerge` 1つ。★バグ2= **中間状態を取消で見せない**。命令を本文に入れる編集と、それを外へ出す編集が**別々の取消**になっていた。→ 前者に `undoStopBefore:true / undoStopAfter:false` を付けて**2つで1つの取消**にした(5か所=not/帽子/名乗りだけ/既に上付き/新規)。俊克の言うとおり、押す人から見れば操作は1回なので、取消も1回で戻るべき。★`check_hat.js` に⑧(4項目)を追加。全52項目通過。
 // - v4.0.233(俊克 8/16 pm00:42 バグ1「↓指定がまだ駄目」／改良1「否定ボタンを not↑↓ にしよう」): ★★**同じ行の2つ目の命令が、ずっと行末に取り残されていた**。FC行へ押し出す入口が「**既にFC行が在る=触らない**」で戻っていた。1つ目は出るのに2つ目は出ない= **notに限らずFC方式ぜんぶ**に効く穴で、今回 `A↑B / A↓C` で表に出た。→ **在るなら、その行の末尾に足す**。並びは俊克が手で書いた形と同じ `<!-- Mew!FC ↑not --><!-- Mew!FC ↓not -->`(読む側は出現順に配る)。★測って見つけた= `meosMoveSpecsOutOfLine` を単体で走らせたら `↓not` は**正しく取り出せていた**ので、犯人は取り出しでなく手前の入口だと分かった([[feedback_go_get_the_measurement]])。★改良1= ボタンの面を `not↑↓` に(notだけでは何のnotか分からない)。★`check_hat.js` に⑦(5項目)を追加。全48項目通過。
 // - v4.0.232(俊克 8/16 pm00:18 バグ1「否定ボタンを押してもFCコメントにならない。しかも否定されない」／バグ2「↑指定のときは `Mew! ↑not` にすると決めたよね?」／改良1「否定ボタンが分かりにくい・tipに説明が無い・説明が長過ぎ」): ★★**同じ穴を3度踏んだ**= 行末の指定を外へ出す判定 `isMetex` が **`{…}` の箱を必須**にしていた。`↑not` は箱を持たないので行末に取り残され、**行末のままでは読む側も見ないので否定も効かなかった**(v4.0.226の帽子とまったく同じ形)。→ **均さずそのまま出すもの**の判定を `meosSpecPayloadAsIs` 1つに纏め、2か所(`meosRowSplitInline` / `meosMoveSpecsOutOfLine`)から引く。帽子の控えと not の両方がここから出る。★バグ2= **向きは目の前に在るものが名乗る**。選んでいる時はその字から、選んでいない時は**カーソルの直前**から取る(v4.0.230と同じ形。押し方が違うだけで相手は同じ)。どちらも分からない時だけ `↑↓`(どちらでも)。★改良1= ボタンの面を**素直に `not`** にした(打ち消した A² は『上付きを消す』に見えて紛らわしかった)＋tipを刈り込み、not の説明を入れた。★`check_hat.js` に⑥(8項目)を追加。全43項目通過。
 // - v4.0.231(俊克 8/16 am11:00 バグ1「最初と最後のが駄目。最初のが↑が残ってしまう」): ★**出す側と描く側が揃っていなかった**。①**プライムを operand に入れた**= `a↑'`(a′)・`a↑''`(a″) は数学で最もありふれた上付きなのに、許可リストに `'` `"` が無く、矢印が素通りして `↑` がそのまま見えていた。v4.0.229で「裸の1文字は帽子でなく普通の上付き」に戻した以上、**受ける側にも同じ字を入れないと片手落ち**になる。実データで確認= 影響は今日の試験行11件だけ(古い散文への誤検出0)。②**帽子の控えを指定行で先に判定する**(リンクと同じ扱い)= 項目の文字集合 `[^\s{}<>#()]*` は `<` `(` `)` `>` をわざと外してある(v4.0.222)ため、v4.0.229で名前を `<( )>` に変えた瞬間、控えは `a↑👒` までしか読めず**色が相手に届かなくなっていた**(スクショの `ä` が無色)。★**色は字そのものに乗る**(俊克「文字色は文字そのものの色と解釈した方が良い。そうしないと、わざわざ色指定をしないといけなくなり、二重になってしまう」)= 帽子は本物の字なので、別に飾りを重ねなくてよいのがこの機能の芯。★`check_hat.js` に⑤(6項目)を追加= 今日塞いだ穴がそのまま検査になる。全35項目通過。
@@ -15223,6 +15224,26 @@ function meosSpecPayloadKind(payload) {
   if (one.fmt && one.fmt.length) return one.fmt[0].kind;
   return null;
 }
+// ★v4.0.234(俊克 8/16 pm01:21 バグ1「右を否定し、次に左を否定すると、FCコメントの順番を間違ってしまう」):
+//   ★**FC行は「本文の印の順」である、という定義**にする(v4.0.208で表の格子に対して決めたのと同じ考え。
+//   並べ替えではなく定義so、既に順どおりなら1文字も動かない)。
+//   押した順に末尾へ足すと、右→左の順に押した時に本文と逆になる。同じ向きが2つ在る行では**相手を取り違える**
+//   (読む側は向きごとに出現順で配るため)。→ **新しい命令は、その印の番目に差し込む**。
+//   番目= 本文の中で**カーソルより前に在る印の数**(押した印はカーソルの直前so自分も数に入る)-1。
+function meosSpecLineMerge(fcText, newSpec, bodyText, curCh) {
+  const items = String(fcText == null ? '' : fcText).match(/<!--[^\n]*?-->/g) || [];
+  if (!items.length) return String(fcText == null ? '' : fcText) + newSpec;
+  let k = items.length;
+  try {
+    const marks = meosMeTexTokens(String(bodyText == null ? '' : bodyText), null);
+    if (marks.length) {
+      let n = 0;
+      for (const t of marks) { const at = (t.hides && t.hides[0]) ? t.hides[0][0] : -1; if (at >= 0 && at < curCh) n++; }
+      k = Math.max(0, Math.min(items.length, n - 1));
+    }
+  } catch (_) { }
+  return items.slice(0, k).join('') + newSpec + items.slice(k).join('');
+}
 async function meosPushLineSpecsOutOfLine(editor) {
   if (!editor || !editor.document) return false;
   const doc = editor.document, ln = editor.selection.active.line;
@@ -15244,7 +15265,7 @@ async function meosPushLineSpecsOutOfLine(editor) {
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, r.body);
-    if (_merge) eb.insert(new vscode.Position(ln + 1, doc.lineAt(ln + 1).text.length), r.spec);
+    if (_merge) eb.replace(doc.lineAt(ln + 1).range, meosSpecLineMerge(doc.lineAt(ln + 1).text, r.spec, r.body, keep.active.character)); // v4.0.234: 印の順に差し込む
     else eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + r.spec);
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }          // 挿した本文の選択はそのまま残す
@@ -22755,7 +22776,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
     //   (v4.0.230と同じ形= 押し方が違うだけで、相手は同じ)。どちらも分からない時だけ `↑↓`(どちらでも)。
     const _sTxt = sel.isEmpty ? (MEOS_METEX_TAIL_RE.exec(doc.lineAt(sel.start.line).text.slice(0, sel.start.character)) || [''])[0] : doc.getText(sel);
     const _dir = (_sTxt.indexOf('↑') >= 0) ? '↑' : (_sTxt.indexOf('↓') >= 0 ? '↓' : '↑↓');
-    await editor.edit(eb => eb.insert(sel.end, '<!-- ' + MEOS_MEW_SIG + ' ' + _dir + 'not -->'));
+    await editor.edit(eb => eb.insert(sel.end, '<!-- ' + MEOS_MEW_SIG + ' ' + _dir + 'not -->'), { undoStopBefore: true, undoStopAfter: false });
     try { editor.selection = new vscode.Selection(sel.start, sel.end); } catch (_) { }
     try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
     return;
@@ -22784,7 +22805,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
       const _hs = new vscode.Position(sel.end.line, _hb.start);
       // v4.0.229: 控えは `a↑👒<(..)>` の一択(👒は矢印の直後=先に「これは印だ」と分かってから形の名前が来る)。
       const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + MEOS_HAT_MARK + '<(' + _hb.mark + ')>' + (colorPart ? (' ' + colorPart) : '') + ' -->';
-      await editor.edit(eb => eb.replace(new vscode.Range(_hs, sel.end), _hb.ch + _rec));
+      await editor.edit(eb => eb.replace(new vscode.Range(_hs, sel.end), _hb.ch + _rec), { undoStopBefore: true, undoStopAfter: false });
       try { const _after = _hs.translate(0, _hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
       try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
       return;
@@ -22799,7 +22820,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
     const isSub = selTok.charAt(0) === '↓';
     const pct2 = Math.max(30, Math.min(200, Number(cfg.get(isSub ? 'metexSubScale' : 'metexSuperScale', isSub ? 50 : 150)) || (isSub ? 50 : 150)));
     const spec2 = '<!-- ' + MEOS_MEW_SIG + ' ' + selTok + '{' + pct2 + '%' + colorPart + '} -->';
-    await editor.edit(eb => eb.insert(sel.end, spec2));
+    await editor.edit(eb => eb.insert(sel.end, spec2), { undoStopBefore: true, undoStopAfter: false });
     try { editor.selection = new vscode.Selection(sel.start, sel.end); } catch (_) {} // 選んだ字はそのまま
     try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
     return;
@@ -22815,7 +22836,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
     if (_mt) {
       const _tok = _mt[0], _isSub = _tok.charAt(0) === '↓';
       const _pct = Math.max(30, Math.min(200, Number(cfg.get(_isSub ? 'metexSubScale' : 'metexSuperScale', _isSub ? 50 : 150)) || (_isSub ? 50 : 150)));
-      await editor.edit(eb => eb.insert(sel.end, '<!-- ' + MEOS_MEW_SIG + ' ' + _tok + '{' + _pct + '%' + colorPart + '} -->'));
+      await editor.edit(eb => eb.insert(sel.end, '<!-- ' + MEOS_MEW_SIG + ' ' + _tok + '{' + _pct + '%' + colorPart + '} -->'), { undoStopBefore: true, undoStopAfter: false });
       try { editor.selection = new vscode.Selection(sel.start, sel.start); } catch (_) { }
       try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
       return;
@@ -22825,7 +22846,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot) {
   const _mtxDecl = afterChar ? _prevCh : base; // v4.0.221: 文字の後なら**その字**を書き残す(本文には足さない)
   const _mtxTok = (/^[^\s{}<>]{1,8}$/.test(_mtxDecl) ? _mtxDecl : '') + arrow + exp; // v4.0.145: 読む側は矢印しか見ないので、この形は「書き残す印」
   const spec = '<!-- ' + MEOS_MEW_SIG + ' ' + _mtxTok + '{' + pct + '%' + colorPart + '} -->';
-  await editor.edit(eb => eb.replace(sel, base + arrow + exp + spec));
+  await editor.edit(eb => eb.replace(sel, base + arrow + exp + spec), { undoStopBefore: true, undoStopAfter: false });
   try { const s = sel.start;
     if (empty && !afterChar) editor.selection = new vscode.Selection(s, s.translate(0, 1)); // プレースホルダ 'A' を選択(すぐ基準文字を打てる)
     else { const ep = s.translate(0, base.length + 1); editor.selection = new vscode.Selection(ep, ep.translate(0, exp.length)); } // 指数の桁を選択

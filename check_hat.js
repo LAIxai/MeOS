@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -121,6 +121,18 @@ const merged = '<!-- ' + T.MEOS_MEW_SIG + 'FC ↑not -->' + r2.spec;
 const mp = T.meosParseSpecLine(merged);
 ok(!!mp && mp.metex.length === 2 && mp.metex[0].tok === '↑' && mp.metex[1].tok === '↓', '足した後のFC行は↑と↓の2つとして読める', mp && mp.metex);
 ok(!!mp && mp.metex[0].not && mp.metex[1].not, '2つとも否定として読める', mp && mp.metex.map(x => x.not));
+
+console.log('⑧ FC行は本文の印の順(v4.0.234)');
+const SIG = T.MEOS_MEW_SIG;
+const up = '<!-- ' + SIG + 'FC ↑not -->', dn = '<!-- ' + SIG + 'FC ↓not -->';
+// 本文 `A↑B / A↓C`(↑は1文字目・↓は8文字目)。右(↓C)を先に否定してから、左(↑B)を否定する。
+const body = 'A↑B / A↓C';
+ok(T.meosSpecLineMerge('', dn, body, 10) === dn, '1つ目(右の↓)はそのまま', T.meosSpecLineMerge('', dn, body, 10));
+ok(T.meosSpecLineMerge(dn, up, body, 3) === up + dn, '2つ目(左の↑)は**前に**入る=本文と同じ順', T.meosSpecLineMerge(dn, up, body, 3));
+ok(T.meosSpecLineMerge(up, dn, body, 10) === up + dn, '左→右の順に押した時は末尾に足す(1文字も動かない)', T.meosSpecLineMerge(up, dn, body, 10));
+const b2 = 'A↑B / C↑D';   // 同じ向きが2つ=順番を間違えると相手を取り違える
+const upA = '<!-- ' + SIG + 'FC ↑1(白/緑) -->', upB = '<!-- ' + SIG + 'FC ↑1(白/橙) -->';
+ok(T.meosSpecLineMerge(upB, upA, b2, 3) === upA + upB, '同じ向きが2つでも印の番目に差し込む', T.meosSpecLineMerge(upB, upA, b2, 3));
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);
