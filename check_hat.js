@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -88,5 +88,15 @@ for (const mk of ['..', '.', '--', '-', '^', 'o', 'v', '~', ',', "'"]) {
   const rec = '<!-- ' + T.MEOS_MEW_SIG + ' a↑' + T.MEOS_HAT_MARK + '<(' + mk + ')> (白/橙) -->';
   ok(rec.indexOf('-->') === rec.length - 3, '`<(' + mk + ')>` の控えは末尾まで閉じない', rec);
 }
+console.log('⑤ 描く側(v4.0.231で塞いだ2つの穴)');
+const tk = (t) => T.meosMeTexTokens(t, null);
+ok(tk("a↑'").length === 1, "本文 `a↑'` が上付きとして描かれる(プライム。↑が残らない)", tk("a↑'"));
+ok(tk('a↑\'\'').length === 1, '`a↑\'\'`(二重プライム)も描かれる', tk('a↑\'\''));
+ok(tk('x↑o').length === 1, '`x↑o` は従来どおり', tk('x↑o'));
+const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT_MARK + '<(..)> (白/橙) -->');
+ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '<(..)>', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
+ok(!!sp && /白/.test(sp.metex[0].inner) && /橙/.test(sp.metex[0].inner), '色が帽子に届く(字そのものを塗る)', sp && sp.metex[0].inner);
+ok(!!T.meosHatFromToken(sp.metex[0].tok), '読んだトークンから字を作り直せる', sp && sp.metex[0].tok);
+
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);
