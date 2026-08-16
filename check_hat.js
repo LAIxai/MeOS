@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -64,11 +64,23 @@ ok(hb('a↑(..)') === null, '`a↑(..)` は帽子でない(括弧だけ=累乗 a
 ok(hb('a↓<(,)>') === null, '`a↓<(,)>` は v4.0 では帽子でない(下側はv5.0)', hb('a↓<(,)>'));
 ok(hb('a↑<(zz)>') === null, '知らない名前は何もしない', hb('a↑<(zz)>'));
 
+console.log('④ 既に上付き/下付きそのものなら、書き足さず名乗りだけ出す(v4.0.230)');
+const tail = (s) => { const m = T.MEOS_METEX_TAIL_RE.exec(s); return m ? m[0] : null; };
+ok(tail("a↑'") === "↑'", "`a↑'` の右で押す → 二重にせず `↑'` を名乗る", tail("a↑'"));
+ok(tail('x↑o') === '↑o', '`x↑o` → `↑o` を名乗る', tail('x↑o'));
+ok(tail('10↑-3') === '↑-3', '`10↑-3` → `↑-3` を名乗る', tail('10↑-3'));
+ok(tail('a↑(..)') === '↑(..)', '`a↑(..)` → `↑(..)` を名乗る', tail('a↑(..)'));
+ok(tail('a↓3') === '↓3', '下付きも同じ', tail('a↓3'));
+ok(tail('x') === null, '普通の字の後は今まで通り新しく作る', tail('x'));
+ok(tail('a↑') === null, '矢印だけ(中身なし)は名乗らない', tail('a↑'));
+ok(tail('a↑2 とか b') === null, '離れた上付きは巻き込まない', tail('a↑2 とか b'));
+ok(tail('a↑2とか') === null, '散文が続く時は巻き込まない(ASCIIだけ見る)', tail('a↑2とか'));
+
 console.log('② 控えから読み戻す');
 const ft = (t) => T.meosHatFromToken(t);
 ok(ft('a↑👒<(..)>') && ft('a↑👒<(..)>').ch === 'ä', '新形 `a↑👒<(..)>` → ä', ft('a↑👒<(..)>'));
-ok(ft('a↑^👒') && ft('a↑^👒').ch === 'â', '旧形 `a↑^👒` も読める(v4.0.225の控え)', ft('a↑^👒'));
-ok(ft('a↑(..)👒') && ft('a↑(..)👒').ch === 'ä', '旧形 `a↑(..)👒` も読める(v4.0.227の控え)', ft('a↑(..)👒'));
+ok(ft('a↑^👒') === null, '旧形 `a↑^👒` は読まない(v4.0.230で切り捨て)', ft('a↑^👒'));
+ok(ft('a↑(..)👒') === null, '旧形 `a↑(..)👒` は読まない(v4.0.230で切り捨て)', ft('a↑(..)👒'));
 ok(ft('a↑2') === null, '帽子でない控えは null', ft('a↑2'));
 
 console.log('③ 控えの文字列が自分でコメントを終わらせないか');
