@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -175,6 +175,18 @@ const c3 = lc('[](膜名)(3)(白/紫)//[]tip=');
 ok(!!c3 && c3.mark === '' && c3.target === '膜名', '空の `[]` は従来どおり(まとめて扱う)', c3);
 const c4 = lc('[説明文](膜名)(3)');
 ok(!!c4 && c4.mark === '', '印でない字が入っていても命令にしない(空扱い)', c4);
+
+console.log('⑬ 入れ子の生データ(v4.0.249) — 外側の指定が内側で切れないか');
+const sm = (t) => T.meosStarMarks(t, t).map(m => m.kind + ':' + JSON.stringify(t.slice(m.bodyStart, m.bodyEnd)));
+const bad = '*斜体と***斜体+太字***と太字*';
+const good = '*斜体と**斜体+太字**と太字*';
+ok(sm(bad).length === 3, '既に斜体の中で `***` と書くと3つに割れる(=これを書いてはいけない)', sm(bad));
+const g = T.meosStarMarks(good, good);
+ok(g.length === 2, '`**` なら入れ子=印は2つ', sm(good));
+ok(g[0].kind === '*' && good.slice(g[0].bodyStart, g[0].bodyEnd) === '斜体と**斜体+太字**と太字', '外側の `*` は**全体**を覆う(「斜体と」と「と太字」の両方)', sm(good));
+ok(g[1].kind === '**' && good.slice(g[1].bodyStart, g[1].bodyEnd) === '斜体+太字', '内側の `**` は中だけ', sm(good));
+const ends = T.meosInlineMarkEnds(good);
+ok(ends.filter(e => e.kind === '*').length === 1 && ends.filter(e => e.kind === '**').length === 1, '指定は2本・それぞれ1個目(俊克「一発で通るはず」)', ends.map(e => e.kind + e.ord));
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
 process.exit(ng ? 1 : 0);
