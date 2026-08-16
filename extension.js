@@ -23785,7 +23785,14 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
     const _sp = meosSplitMarkForSegment(_lt, { mk: _enc0.kind, start: _enc0.start, end: _enc0.end, bodyStart: _enc0.bodyStart, bodyEnd: _enc0.bodyEnd }, sel0.start.character, sel0.end.character);
     const _fcLn = _ln + 1;
     const _hasFc = (_fcLn < doc0.lineCount) && meosIsSpecLine(doc0.lineAt(_fcLn).text);
-    meosLogFmt('split', { encl: _enc0.kind, pieces: _sp ? _sp.pieces : 0, hasFc: _hasFc, line: _lt });
+    // ★v4.0.259(俊克 8/17 am01:03 ログで確定): **誰も書き戻していないのに、0.9秒後には元の文字列が見える**。
+    //   = 消されたのではなく、**私が書いている文書と、俊克が見ている文書が別物**の疑い。
+    //   → 文書の身元(uri/version)と、編集する相手がどのエディタかを記録する。
+    meosLogFmt('split', { encl: _enc0.kind, pieces: _sp ? _sp.pieces : 0, hasFc: _hasFc, line: _lt,
+      uri: String(doc0.uri.toString()).slice(-28), ver: doc0.version,
+      active: vscode.window.activeTextEditor ? String(vscode.window.activeTextEditor.document.uri.toString()).slice(-28) : 'なし',
+      activeVer: vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.version : -1,
+      同じか: !!(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document === doc0) });
     if (!_sp || !_hasFc) return false;
     let _ord = 0; for (const _mk2 of meosRowMarksInOrder(_lt)) if (_mk2.end <= _enc0.end) _ord++;
     const _fcText = doc0.lineAt(_fcLn).text;
@@ -23801,7 +23808,8 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
       eb.replace(doc0.lineAt(_ln).range, _sp.line);
       eb.replace(doc0.lineAt(_fcLn).range, _newFc);
     }, { undoStopBefore: true, undoStopAfter: true });
-    meosLogFmt('split-書いた', { ok: !!_okEdit, body: editor.document.lineAt(_ln).text, fc: editor.document.lineAt(_fcLn).text });
+    meosLogFmt('split-書いた', { ok: !!_okEdit, ver: editor.document.version, body: editor.document.lineAt(_ln).text, fc: editor.document.lineAt(_fcLn).text,
+      画面の方: (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document !== editor.document) ? vscode.window.activeTextEditor.document.lineAt(_ln).text : '(同じ文書)' });
     // ★v4.0.258(俊克 8/17 am00:57 ログで確定): **書けている。0.9秒後に元へ戻っている**。
     //   → 書いた直後3秒間、この行への変更を**全部**記録して、消している者を名指しさせる。
     try { _meosSplitWatch = { uri: doc0.uri.toString(), line: _ln, until: Date.now() + 3000 }; } catch (_) { }
