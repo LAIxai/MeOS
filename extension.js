@@ -21312,7 +21312,11 @@ function meosStripHiddenForWidth(s) {
       const toks = meosMeTexTokens(t, null);
       // v4.0.222: √ の括弧も画面では消える= 幅にも数えない(数えないと表thatまた凸凹になる)。
       for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] });
-      { const _lm = meosBigOpLimitSpans(t); if (_lm) for (const h of _lm.hides) toks.push({ hides: [h] }); } // v4.0.273: 上下限の命令も隠れる // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
+      // v4.0.277: 表では**包みだけ**隠して中身は横に出る(描く側と同じ形)。ここは表の幅を測る所so、その形に合わせる。
+      { const _lm = meosBigOpLimitSpans(t); if (_lm) for (const it of _lm.items) {
+          if (it.cs > it.tokStart) toks.push({ hides: [[it.tokStart, it.cs]] });
+          if (it.tokEnd > it.ce) toks.push({ hides: [[it.ce, it.tokEnd]] });
+        } } // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
       if (toks.length) {
         const hid = new Array(t.length).fill(false);
         for (const tk of toks) for (const [s, e] of (tk.hides || [])) for (let i = Math.max(0, s); i < Math.min(t.length, e); i++) hid[i] = true;
@@ -23183,11 +23187,16 @@ function meosHatBarSpans(text) {
 //   ★空行より良い理由= 空行はMarkdownで「段落の区切り」という**意味**を持つthat、FC行は意味を持たない。
 //   数字は下の4つに集めてある(俊克の目で決める所)。
 const MEOS_LIMIT_SCALE = 62;      // 上下限の大きさ(基準の字に対する%)
-const MEOS_LIMIT_UP_EM = 1.30;    // 上限を持ち上げる量(基準の字を1として) v4.0.275: 0.95=Σにくっつき過ぎ(俊克)
+const MEOS_LIMIT_UP_EM = 1.15;    // 上限を持ち上げる量(基準の字を1として) v4.0.275: 0.95=くっつき過ぎ / v4.0.277: 1.30=離れ過ぎ(俊克)
 const MEOS_LIMIT_DOWN_EM = 0.30;  // 下限を下げる量 ★v4.0.275→276(俊克「下側の式をもっとΣに近づければいい。
 //   今は離れ過ぎている」): ★**上下は対称ではない**= 字は基準線の**上**に立つso、上には字の高さ(約0.7em)ぶんの
 //   逃げthat要るthat、下は基準線のすぐ下(下ヒゲの0.2emだけ)で足りる。0.80(上と同じ量)は**離れ過ぎ**だった。
 const MEOS_LIMIT_DROP_EM = 0.25;  // ★全体を下へずらす量(下=FC行の領域を借りる→上に余裕that出る)
+// ★v4.0.277(俊克 8/19 改良2「∫の下側の👒文字が∫にくっついている」): ★**演算子の背は同じではない**。
+//   `∫` は基準線の下まで深く伸びるso、他と同じ量だけ下げると字に触る。→ **背の高い演算子だけ余分に逃がす**。
+//   ここに並べるのは「基準線の上下へ大きくはみ出す字」だけ(Σ/Π/limは並の背so今までどおり)。
+const MEOS_LIMIT_TALL_RE = /[∫∬∭∮∐]/u;
+const MEOS_LIMIT_TALL_EM = 0.30;  // 背の高い演算子で上下に足す逃げ
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
 const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;
 // `↓👒(k=1)` / `↑👒n` の1つ。中身は括弧で囲めば何でも・裸なら空白と矢印までの一続き。
@@ -23208,7 +23217,11 @@ function meosBigOpLimitSpans(text) {
     if (!base) { prevEnd = -1; opStart = -1; continue; }             // 大きな演算子でない= 帽子の道に任せる
     opStart = base[0]; opEnd = base[1]; prevEnd = b;
     hides.push([a, b]);
-    items.push({ dir: (m[1] === '↑') ? 'up' : 'down', text: (m[2] !== undefined ? m[2] : m[3]), at: base[0], end: base[1] });
+    // cs/ce = 中身そのものの位置(表の中では、包みだけ隠して中身は肩/腰として横に置く)
+    const _cs = (m[2] !== undefined) ? (a + m[0].indexOf('(') + 1) : (a + m[0].length - String(m[3]).length);
+    const _ce = (m[2] !== undefined) ? (b - 1) : b;
+    items.push({ dir: (m[1] === '↑') ? 'up' : 'down', text: (m[2] !== undefined ? m[2] : m[3]), at: base[0], end: base[1],
+      tokStart: a, tokEnd: b, cs: _cs, ce: _ce, tall: MEOS_LIMIT_TALL_RE.test(s.slice(base[0], base[1])) });
   }
   return hides.length ? { hides, items } : null;
 }
@@ -23224,9 +23237,10 @@ function meosBigOpLimitSpans(text) {
 //   ①中身の幅を「len 桁」と数えていたthat、62%に縮めて描くので**実際は len×0.62 桁**。
 //   ②演算子の幅を数えていなかった(Σは1桁・`lim` は3桁so、中央の位置that違う)。
 //   → **中央 = 演算子の幅の半分 − 中身の見た目の幅の半分**。これで Σ でも lim でも真ん中に来る。
-function meosLimitCss(dir, len, col, opW) {
+function meosLimitCss(dir, len, col, opW, tall) {
   const sc = MEOS_LIMIT_SCALE / 100;
-  const shift = ((dir === 'up') ? -MEOS_LIMIT_UP_EM : MEOS_LIMIT_DOWN_EM) + MEOS_LIMIT_DROP_EM;
+  const _x = tall ? MEOS_LIMIT_TALL_EM : 0;   // v4.0.277: 背の高い演算子(∫等)は上下とも余分に逃がす
+  const shift = ((dir === 'up') ? -(MEOS_LIMIT_UP_EM + _x) : (MEOS_LIMIT_DOWN_EM + _x)) + MEOS_LIMIT_DROP_EM;
   const _w = Math.max(1, Number(opW) || 1);                       // 演算子の桁数(Σ=1 / lim=3)
   const leftCells = Math.max(-(Number(col) || 0), _w / 2 - (Number(len) || 1) * sc / 2);
   return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
@@ -23462,10 +23476,23 @@ function meosApplyMeTexDecorations(editor) {
         {
           const _lim = meosBigOpLimitSpans(text);
           if (_lim) {
-            for (const h of _lim.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
+            // ★★v4.0.277(俊克 8/19 改良3「表は、横罫線上で重なってしまうね。何か手はある?」): ★**在る**。
+            //   **表の中では横に置く**= LaTeXの「本文中の数式は上下でなく肩/腰へ回す」(インライン様式)と同じ考え。
+            //   行の高さは一律so、表では上下に置く余地that原理的に無い(隣は罫線)。→ 置き場を変える。
+            //   ★書いた形は1文字も変わらない= 同じ生データthat、置ける所では上下・置けない所では肩/腰。
+            const _inTable = MEOS_TABLE_ROW_RE.test(text);
             for (const it of _lim.items) {
+              if (_inTable) {                       // 表= 横に置く(包みだけ隠し、中身は肩/腰の飾りに乗せる)
+                if (it.cs > it.tokStart) hideRanges.push(new vscode.Range(ln, it.tokStart, ln, it.cs));
+                if (it.tokEnd > it.ce) hideRanges.push(new vscode.Range(ln, it.ce, ln, it.tokEnd));
+                const _st = meosMeTexStyle((it.dir === 'up') ? 'sup' : 'sub', (it.dir === 'up') ? gSup : gSub, true, null, null, 1);
+                if (!styleRanges.has(_st)) styleRanges.set(_st, []);
+                styleRanges.get(_st).push(new vscode.Range(ln, it.cs, ln, it.ce));
+                continue;
+              }
+              hideRanges.push(new vscode.Range(ln, it.tokStart, ln, it.tokEnd)); // 上下に置く= 命令を丸ごと隠す
               const _box = { range: new vscode.Range(ln, it.at, ln, it.at),
-                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at, it.end - it.at) } } };
+                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at, it.end - it.at, it.tall) } } };
               (it.dir === 'up' ? limitUpItems : limitDownItems).push(_box); // v4.0.274: 上と下は別の型(同じ場所に2つ置かない)
             }
           }

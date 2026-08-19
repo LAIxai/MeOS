@@ -122,6 +122,19 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
   ok(L('<!-- Mew! Σ↓👒(k=1) -->') === null, '控えの中では描かない', L('<!-- Mew! Σ↓👒(k=1) -->'));
   ok(T.meosHatBeforeCursor('Σ↑👒(-)', '').bigop === true, '★`Σ↑👒(-)` は字にしない(Σ̄ を作らせない)', T.meosHatBeforeCursor('Σ↑👒(-)', ''));
   ok(T.meosHatBeforeCursor('a↑👒(-)', '').ch === 'ā', '字の上なら今まで通り本物の字', T.meosHatBeforeCursor('a↑👒(-)', ''));
+  console.log('   ★v4.0.277= 中身の位置(表では包みだけ隠して横に置く)＋背の高い演算子');
+  {
+    const one = L('Σ↓👒(k=1)↑👒n')[ 'items' ];
+    const src = 'Σ↓👒(k=1)↑👒n';
+    ok(src.slice(one[0].cs, one[0].ce) === 'k=1', '括弧つきの中身は括弧の内側だけ', src.slice(one[0].cs, one[0].ce));
+    ok(src.slice(one[1].cs, one[1].ce) === 'n', '裸の中身もその字だけ', src.slice(one[1].cs, one[1].ce));
+    ok(src.slice(one[0].tokStart, one[0].tokEnd) === '↓👒(k=1)', '命令の全体(上下に置く時はここを丸ごと隠す)', src.slice(one[0].tokStart, one[0].tokEnd));
+    const itg = L('∫↓👒0↑👒1 f(x) dx').items;
+    ok(itg[0].tall === true, '★∫は背の高い演算子(余分に逃がす)', itg[0].tall);
+    ok(L('Σ↓👒(k=1)').items[0].tall === false, 'Σは並の背', L('Σ↓👒(k=1)').items[0].tall);
+    const em = (css) => Number(/top: (-?[\d.]+)em/.exec(css)[1]) * (T.MEOS_LIMIT_SCALE / 100);
+    ok(Math.abs(em(T.meosLimitCss('down', 1, 9, 1, true)) - em(T.meosLimitCss('down', 1, 9, 1, false))) - 0.30 < 0.01, '背の高い演算子は下へ0.30em余分に逃げる', [em(T.meosLimitCss('down', 1, 9, 1, true)), em(T.meosLimitCss('down', 1, 9, 1, false))]);
+  }
   {
     const sc = T.MEOS_LIMIT_SCALE / 100;
     const topEm = (css) => Number(/top: (-?[\d.]+)em/.exec(css)[1]) * sc;   // その字自身のem → 基準の字のem
