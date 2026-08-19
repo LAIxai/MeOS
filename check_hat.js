@@ -1,6 +1,6 @@
 // 開発用ツール(vsix除外): 帽子(印)記法の検査。写経せず extension.js の関数をそのまま呼ぶ。
 //
-// v4.0.229(俊克 8/16 記法確定: `a↑<(..)>` / 控え `a↑👒<(..)>` / 下側はv5.0)
+// v4.0.266(俊克 8/19 記法確定: 入力も控えも `a↑👒(..)` の一択 / `<( )>` は廃止 / 下側はv5.0)
 // 見るのは3つ:
 //   ①押した時に何が起きるか(meosHatBeforeCursor)  ②控えから字を読み戻せるか(meosHatFromToken)
 //   ③控えの文字列that自分でHTMLコメントを終わらせないか(`-->` を含まない)
@@ -50,19 +50,24 @@ let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
 
 console.log('① ボタンを押した時(本文の直前を見る)');
-const hb = (s) => T.meosHatBeforeCursor(s);
-ok(hb('a↑<(..)>') && hb('a↑<(..)>').ch === 'ä', '`a↑<(..)>` → ä', hb('a↑<(..)>'));
-ok(hb('a↑<(--)>') && hb('a↑<(--)>').ch === 'ā', '`a↑<(--)>` → ā', hb('a↑<(--)>'));
-ok(hb('T↑<(^)>') && hb('T↑<(^)>').ch === 'T̂', '`T↑<(^)>` → T̂', hb('T↑<(^)>'));
-ok(hb('θ↑<(^)>') && hb('θ↑<(^)>').base === 'θ', '基準は非ASCIIでもよい(θ)', hb('θ↑<(^)>'));
-ok(hb('文は続く a↑<(o)>') && hb('文は続く a↑<(o)>').ch === 'å', '文の途中でも直前だけ見る', hb('文は続く a↑<(o)>'));
+const hb = (s, after) => T.meosHatBeforeCursor(s, after);
+ok(hb('a↑👒(..)') && hb('a↑👒(..)').ch === 'ä', '`a↑👒(..)` → ä', hb('a↑👒(..)'));
+ok(hb('a↑👒(--)') && hb('a↑👒(--)').ch === 'ā', '`a↑👒(--)` → ā', hb('a↑👒(--)'));
+ok(hb('T↑👒(^)') && hb('T↑👒(^)').ch === 'T̂', '`T↑👒(^)` → T̂', hb('T↑👒(^)'));
+ok(hb('θ↑👒(^)') && hb('θ↑👒(^)').base === 'θ', '基準は非ASCIIでもよい(θ)', hb('θ↑👒(^)'));
+ok(hb('文は続く a↑👒(o)') && hb('文は続く a↑👒(o)').ch === 'å', '文の途中でも直前だけ見る', hb('文は続く a↑👒(o)'));
 console.log('   ★ここから「帽子にしない」= v4.0.229の主役');
 ok(hb("a↑'") === null, "`a↑'` は帽子でない(プライム a′ が書ける)", hb("a↑'"));
 ok(hb('x↑o') === null, '`x↑o` は帽子でない(度 x° が書ける)', hb('x↑o'));
 ok(hb('10↑-') === null, '`10↑-` は帽子でない(負の指数)', hb('10↑-'));
 ok(hb('a↑(..)') === null, '`a↑(..)` は帽子でない(括弧だけ=累乗 a↑(n+1) と同じ形)', hb('a↑(..)'));
-ok(hb('a↓<(,)>') === null, '`a↓<(,)>` は v4.0 では帽子でない(下側はv5.0)', hb('a↓<(,)>'));
-ok(hb('a↑<(zz)>') === null, '知らない名前は何もしない', hb('a↑<(zz)>'));
+ok(hb('a↓👒(,)') === null, '`a↓👒(,)` は v4.0 では帽子でない(下側はv5.0)', hb('a↓👒(,)'));
+ok(hb('a↑👒(zz)') === null, '知らない名前は何もしない', hb('a↑👒(zz)'));
+console.log('   ★v4.0.266= 閉じ括弧の手前(ボタンのひな形を打ち替えた直後)でも押せる');
+ok(hb('a↑👒(^', ')') && hb('a↑👒(^', ')').ch === 'â', '`a↑👒(^|)` で押す → â(tail=1)', hb('a↑👒(^', ')'));
+ok(hb('a↑👒(^', ')').tail === 1, '閉じ括弧の1文字も一緒に食べる', hb('a↑👒(^', ')').tail);
+ok(hb('a↑👒(..)').tail === 0, '閉じ括弧の外で押した時は食べない', hb('a↑👒(..)').tail);
+ok(hb('a↑👒(^', '') === null, '後ろに `)` が無ければ帽子でない(書きかけ)', hb('a↑👒(^', ''));
 
 console.log('④ 既に上付き/下付きそのものなら、書き足さず名乗りだけ出す(v4.0.230)');
 const tail = (s) => { const m = T.MEOS_METEX_TAIL_RE.exec(s); return m ? m[0] : null; };
@@ -78,7 +83,8 @@ ok(tail('a↑2とか') === null, '散文が続く時は巻き込まない(ASCII�
 
 console.log('② 控えから読み戻す');
 const ft = (t) => T.meosHatFromToken(t);
-ok(ft('a↑👒<(..)>') && ft('a↑👒<(..)>').ch === 'ä', '新形 `a↑👒<(..)>` → ä', ft('a↑👒<(..)>'));
+ok(ft('a↑👒(..)') && ft('a↑👒(..)').ch === 'ä', '控えの形 `a↑👒(..)` → ä', ft('a↑👒(..)'));
+ok(ft('a↑👒<(..)>') === null, '旧形 `a↑👒<(..)>` は読まない(v4.0.266で切り捨て)', ft('a↑👒<(..)>'));
 ok(ft('a↑^👒') === null, '旧形 `a↑^👒` は読まない(v4.0.230で切り捨て)', ft('a↑^👒'));
 ok(ft('a↑(..)👒') === null, '旧形 `a↑(..)👒` は読まない(v4.0.230で切り捨て)', ft('a↑(..)👒'));
 ok(ft('a↑2') === null, '帽子でない控えは null', ft('a↑2'));
@@ -86,15 +92,15 @@ ok(ft('a↑2') === null, '帽子でない控えは null', ft('a↑2'));
 console.log('③ 控えの文字列が自分でコメントを終わらせないか');
 for (const mk of ['..', '.', '--', '-', '^', 'o', 'v', '~', ',', "'"]) {
   const rec = '<!-- ' + T.MEOS_MEW_SIG + ' a↑' + T.MEOS_HAT_MARK + '<(' + mk + ')> (白/橙) -->';
-  ok(rec.indexOf('-->') === rec.length - 3, '`<(' + mk + ')>` の控えは末尾まで閉じない', rec);
+  ok(rec.indexOf('-->') === rec.length - 3, '`(' + mk + ')` の控えは末尾まで閉じない', rec);
 }
 console.log('⑤ 描く側(v4.0.231で塞いだ2つの穴)');
 const tk = (t) => T.meosMeTexTokens(t, null);
 ok(tk("a↑'").length === 1, "本文 `a↑'` が上付きとして描かれる(プライム。↑が残らない)", tk("a↑'"));
 ok(tk('a↑\'\'').length === 1, '`a↑\'\'`(二重プライム)も描かれる', tk('a↑\'\''));
 ok(tk('x↑o').length === 1, '`x↑o` は従来どおり', tk('x↑o'));
-const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT_MARK + '<(..)> (白/橙) -->');
-ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '<(..)>', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
+const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT_MARK + '(..) (白/橙) -->');
+ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '(..)', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
 ok(!!sp && /白/.test(sp.metex[0].inner) && /橙/.test(sp.metex[0].inner), '色が帽子に届く(字そのものを塗る)', sp && sp.metex[0].inner);
 ok(!!T.meosHatFromToken(sp.metex[0].tok), '読んだトークンから字を作り直せる', sp && sp.metex[0].tok);
 
@@ -104,7 +110,7 @@ ok(asIs('↑not') === true, '`↑not` は外へ出す(均さない)', asIs('↑n
 ok(asIs('↓not') === true, '`↓not` も同じ', asIs('↓not'));
 ok(asIs('↑↓not') === true, '`↑↓not`(どちらでも)も同じ', asIs('↑↓not'));
 ok(asIs('↑not (白/緑)') === true, '色つきの not も同じ', asIs('↑not (白/緑)'));
-ok(asIs('a↑' + T.MEOS_HAT_MARK + '<(..)> (白/橙)') === true, '帽子の控えも同じ判定から引く', true);
+ok(asIs('a↑' + T.MEOS_HAT_MARK + '(..) (白/橙)') === true, '帽子の控えも同じ判定から引く', true);
 ok(asIs('A↑1{150%(白/緑)}') === false, '普通の上付きは一般形に均す側(ここでは false)', asIs('A↑1{150%(白/緑)}'));
 ok(asIs('H2 (白/緑)') === false, '見出しの指定は関係ない', asIs('H2 (白/緑)'));
 const np = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC ↑not -->');
