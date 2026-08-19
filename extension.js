@@ -21317,6 +21317,8 @@ function meosStripHiddenForWidth(s) {
       for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] });
       // v4.0.277: 表では**包みだけ**隠して中身は横に出る(描く側と同じ形)。ここは表の幅を測る所so、その形に合わせる。
       // v4.0.278: ただし**縦に結合したセル**は上下に置くso、命令を丸ごと隠す(描く側と同じ判定から引く)。
+      // v4.0.283: 積んだ上下付きthat隠れる分(描く側と同じ判定から引く)。
+      { try { const _tk = meosMeTexTokens(t, null); for (const sp of meosMeTexStackPairs(t, _tk)) toks.push({ hides: [[sp.hideFrom, sp.hideTo]] }); } catch (_) { } }
       { const _lm = meosBigOpLimitSpans(t); if (_lm) { const _room = _limRoom;
           for (const it of _lm.items) {
             if (_room && (it.dir === 'up' ? _room.up : _room.down)) { toks.push({ hides: [[it.tokStart, it.tokEnd]] }); continue; }
@@ -22333,7 +22335,12 @@ function meosMeTexTokens(text, specLine) { text = (String(text).indexOf('`') >= 
   //     `🐱↑3<!-- Mew! 🐱↑3{150%(白/緑)} -->`  → 累乗
   //     本文 `🐱↑3` ＋ 真下に `<!-- Mew!FC 🐱↑3{…} -->` → 累乗(指定行でも同じ)
   //   これで**どんな文字でも基準にできて、宣言しない限り何も起きない**。新しい記号も要らない。
-  const MEOS_METEX_BASE_RE = /[0-9A-Za-z\uFF10-\uFF19\uFF21-\uFF3A\uFF41-\uFF5A)\]}\uFF09\uFF3D\uFF5D]/; // 素で書ける基準文字=英数字(半角/全角)と閉じ括弧
+  // ★v4.0.283(俊克 8/20 バグ1「FCコメントが無いと駄目だね。なぜ?」= `∫↑(1)↓(0)` that素では出ない):
+  //   ★**数学の演算子を許可リストに入れていなかった**。`A↑(1)` は通るのに `∫↑(1)` は通らない。
+  //   許可リストthat狭いのは意図的(`🐱↑3` that勝手に累乗にならない安全側)。だthat**演算子は誤解しようthatが無い**=
+  //   `∫↑2` を累乗以外の意味で書く人は居ない。→ 👒で決めた「**基準that決める**」と同じ理屈で通す。
+  //   `lim`/`max` は末尾that英字so元から通っていた(基準の字は `m`)。
+  const MEOS_METEX_BASE_RE = /[0-9A-Za-z\uFF10-\uFF19\uFF21-\uFF3A\uFF41-\uFF5A)\]}\uFF09\uFF3D\uFF5D∑Σ∏Π∐∫∬∭∮⋂⋃⨀⨁⨂⊕⊗]/u; // 素で書ける基準文字=英数字(半角/全角)＋閉じ括弧＋大きな演算子(v4.0.283)
   // v4.0.231(俊克 8/16 am11:00 バグ1「最初のが↑が残ってしまう」): **プライムを operand に入れる**。
   //   `a↑'`(a′)・`a↑''`(a″) は数学で最もありふれた上付きなのに、許可リストに `'` `"` が無く、
   //   矢印が素通りして `↑` がそのまま見えていた。v4.0.229で「裸の1文字は帽子でなく普通の上付き」に戻した以上、
@@ -23296,6 +23303,35 @@ function meosBigOpLimitSpans(text) {
 //   ①中身の幅を「len 桁」と数えていたthat、62%に縮めて描くので**実際は len×0.62 桁**。
 //   ②演算子の幅を数えていなかった(Σは1桁・`lim` は3桁so、中央の位置that違う)。
 //   → **中央 = 演算子の幅の半分 − 中身の見た目の幅の半分**。これで Σ でも lim でも真ん中に来る。
+// ★★v4.0.283(俊克 8/20 バグ1「0の左右位置が直っていない」= `∫↑(1)↓(0)`):
+// ★**上付きと下付きthat続けて書かれたら、横に並べず「積む」**。数学の約束(∫の上下限・x↑2↓1 の添字)。
+//   今までは素直に順番に並べていたので、下付きの基準文字thatが上付きの閉じ括弧 `)` になっていた。
+// ★積む=**2つ目を字の流れから外して**(幅0)、1つ目と同じ位置へ下ろす。上下限(👒)と同じ道具。
+//   ★隠す範囲と描く位置は**この関数1つ**から出す= 描く側と幅を測る側that必ず同じ物を見る。
+// 続けて書かれた対を返す: [{ up, down, at, hideFrom, hideTo, text }]。無ければ []。
+function meosMeTexStackPairs(text, toks) {
+  const out = [];
+  if (!toks || toks.length < 2) return out;
+  const t = String(text == null ? '' : text);
+  for (let i = 0; i + 1 < toks.length; i++) {
+    const a = toks[i], b = toks[i + 1];
+    if (!a || !b || a.kind === b.kind) continue;                 // 上と下の対だけ
+    if (!(b.opStart > a.opEnd)) continue;
+    const gap = t.slice(a.opEnd, b.opStart);
+    if (!/^\)?[↑↓]\(?$/u.test(gap)) continue;                    // 間に在るのは「閉じ括弧・矢印・開き括弧」だけ
+    const closeAfter = (t.charAt(b.opEnd) === ')') ? 1 : 0;
+    out.push({ dir: b.kind === 'sup' ? 'up' : 'down', at: a.opStart, hideFrom: a.opEnd, hideTo: b.opEnd + closeAfter, text: t.slice(b.opStart, b.opEnd) });
+  }
+  return out;
+}
+// 積んだ方(2つ目)を描くCSS。1つ目と同じ位置に左を揃え、上下だけずらす。
+function meosStackCss(dir, scale) {
+  const sc = Math.max(30, Math.min(200, Number(scale) || 62)) / 100;
+  const shift = (dir === 'up') ? -MEOS_LIMIT_UP_EM : MEOS_LIMIT_DOWN_EM;
+  return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
+    + ' font-size: ' + sc + 'em !important; line-height: 0;'
+    + ' top: ' + (Math.round(shift / sc * 1000) / 1000) + 'em;';
+}
 function meosLimitCss(dir, len, col, opW, tall, narrow) {
   const sc = MEOS_LIMIT_SCALE / 100;
   const _x = tall ? ((dir === 'up') ? MEOS_LIMIT_TALL_UP_EM : MEOS_LIMIT_TALL_DOWN_EM) : 0; // v4.0.280: 上と下で別々
@@ -23576,7 +23612,21 @@ function meosApplyMeTexDecorations(editor) {
           for (const c of cuts) { if (c[0] > x) barRanges.push(new vscode.Range(ln, x, ln, c[0])); if (c[1] > x) x = c[1]; }
           if (r.barEnd > x) barRanges.push(new vscode.Range(ln, x, ln, r.barEnd));
         }
+        // v4.0.283: 続けて書かれた上付き/下付きは**積む**(∫↑(1)↓(0) の 0 を 1 の真下へ)。
+        const _stk = meosMeTexStackPairs(text, toks);
+        const _stkHidden = new Set();
+        for (const sp of _stk) {
+          hideRanges.push(new vscode.Range(ln, sp.hideFrom, ln, sp.hideTo));
+          _stkHidden.add(sp.hideFrom + ':' + sp.hideTo);
+          const _sc = (sp.dir === 'up') ? gSup : gSub;
+          (sp.dir === 'up' ? limitUpItems : limitDownItems).push({
+            range: new vscode.Range(ln, sp.at, ln, sp.at),
+            renderOptions: { before: { contentText: sp.text, textDecoration: meosStackCss(sp.dir, Math.round(_sc * 0.68)) } }
+          });
+        }
+        const _stkSkip = new Set(_stk.map(sp => sp.hideFrom + '>' + sp.hideTo));
         for (const t of toks) {
+          if (_stk.some(sp => t.opStart >= sp.hideFrom && t.opEnd <= sp.hideTo)) continue; // 積んだ方は隠したso飾らない
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
           const baseTall = (t.kind === 'sup') ? meosMeTexBaseTall(t.base) : true; // 上付きは基準文字の大小で頭を合わせる

@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -184,6 +184,25 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(px(T.meosLimitCss('down', 1, 9, 1, false, true)) < px(T.meosLimitCss('down', 1, 9, 1, false, false)),
       '細い方that並の字より左に来る', [px(T.meosLimitCss('down', 1, 9, 1, false, true)), px(T.meosLimitCss('down', 1, 9, 1, false, false))]);
   }
+}
+
+console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — ∫↑(1)↓(0)');
+{
+  const P = (x) => T.meosMeTexStackPairs(x, T.meosMeTexTokens(x, null));
+  const src = '∫↑(1)↓(0) f(x) dx';
+  const p1 = P(src);
+  ok(p1.length === 1, '`∫↑(1)↓(0)` を1つの対と読む', p1);
+  ok(p1[0] && p1[0].dir === 'down' && p1[0].text === '0', '2つ目(下付き)を積む・中身は 0', p1[0]);
+  ok(p1[0] && src.slice(p1[0].hideFrom, p1[0].hideTo) === ')↓(0)', '隠すのは「閉じ括弧・矢印・中身・閉じ括弧」', p1[0] && src.slice(p1[0].hideFrom, p1[0].hideTo));
+  ok(p1[0] && src.slice(p1[0].at, p1[0].at + 1) === '1', '描く位置は1つ目の中身と同じ左端', p1[0] && src.slice(p1[0].at, p1[0].at + 1));
+  ok(P('x↑2↓3').length === 1, '括弧なし `x↑2↓3` も積む', P('x↑2↓3'));
+  ok(P('x↓1↑2').length === 1 && P('x↓1↑2')[0].dir === 'up', '下→上の順でも積む', P('x↓1↑2'));
+  ok(P('a↑2 b↓3').length === 0, '★離れていれば積まない(間に字that在る)', P('a↑2 b↓3'));
+  ok(P('a↑2↑3').length === 0, '同じ向きthat続く時は積まない(肩の上の肩)', P('a↑2↑3'));
+  ok(P('A↑1').length === 0, '1つだけなら対にならない', P('A↑1'));
+  ok(T.meosMeTexTokens('∫↑(1)', null).length === 1, '★v4.0.283= ∫も素で基準文字になる(コメント無しで出る)', T.meosMeTexTokens('∫↑(1)', null).length);
+  ok(T.meosMeTexTokens('∑↓(i=1)', null).length === 1, '∑も同じ', T.meosMeTexTokens('∑↓(i=1)', null).length);
+  ok(T.meosMeTexTokens('🐱↑3', null).length === 0, '★知らない字は今までどおり素通り(安全側は変えない)', T.meosMeTexTokens('🐱↑3', null).length);
 }
 
 console.log('⑰ 肩腰/帽子の文字色(v4.0.270) — 明るい背景の上の白は読めない');
