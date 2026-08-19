@@ -23373,6 +23373,11 @@ function meosMeTexStackPairs(text, toks) {
 //   `position: relative; top:` で**その分だけ足す**= 100%の意味を壊さずに離せる。
 //   ★∫のような背の高い字はもっと離す(本来の組版= 上下限は記号の頭と足に付く)= 👒の時と同じ考え・同じ定数。
 const MEOS_STACK_SPREAD_EM = 0.35;   // 積んだ対を上下それぞれに離す量(その字自身のem)
+// ★v4.0.289(俊克 8/20 改良1「積んだ時の下付きは、下過ぎる。0の頭が∫の下端より少しだけ上に来るように」):
+//   スクショをピクセルで測った= 0の頭が∫の下端より1px下 → **0.16 child-em 上げる**と4px上に来る。
+//   ★逃げの量を👒(上下に置く方)と**共有しない**= あちらはv4.0.282で決めた位置so、動かすと巻き添えになる。
+//   同じ「背の高い字」でも、**積む時と上下に置く時では要る逃げthat違う**(積む時は記号の内側に収める)。
+const MEOS_STACK_TALL_EM = { up: 0.20, down: 0.20 }; // 積んだ対で背の高い字(∫等)に足す逃げ
 // 積む対に足すCSS= 1つ目の中身のぶんだけ左へ戻し(2つ目だけ)、上下へ離す(両方)。
 function meosStackCss(baseStyle, backCells, spreadEm) {
   const n = Math.max(0, Number(backCells) || 0);
@@ -23675,7 +23680,7 @@ function meosApplyMeTexDecorations(editor) {
           for (const _t of [sp.first, sp.tok]) {
             if (!_t) continue;
             const _up = (_t.kind === 'sup');
-            const _x = MEOS_STACK_SPREAD_EM + (_tallX ? (_up ? MEOS_LIMIT_TALL_UP_EM : MEOS_LIMIT_TALL_DOWN_EM) : 0);
+            const _x = MEOS_STACK_SPREAD_EM + (_tallX ? (_up ? MEOS_STACK_TALL_EM.up : MEOS_STACK_TALL_EM.down) : 0); // v4.0.289: 積む時専用の逃げ
             _stkSpread.set(_t, _up ? -_x : _x);
           }
         }
