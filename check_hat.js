@@ -122,8 +122,13 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
   ok(L('<!-- Mew! Σ↓👒(k=1) -->') === null, '控えの中では描かない', L('<!-- Mew! Σ↓👒(k=1) -->'));
   ok(T.meosHatBeforeCursor('Σ↑👒(-)', '').bigop === true, '★`Σ↑👒(-)` は字にしない(Σ̄ を作らせない)', T.meosHatBeforeCursor('Σ↑👒(-)', ''));
   ok(T.meosHatBeforeCursor('a↑👒(-)', '').ch === 'ā', '字の上なら今まで通り本物の字', T.meosHatBeforeCursor('a↑👒(-)', ''));
-  ok(/font-size: 0.62em/.test(T.meosLimitCss('up')) && /top: -1\.129em/.test(T.meosLimitCss('up')), '★emはその字自身の大きさ基準so、持ち上げは割ってから渡す', T.meosLimitCss('up'));
-  ok(/top: 1\.694em/.test(T.meosLimitCss('down')), '下限は全体のずらし(0.25em)を足して下げる', T.meosLimitCss('down'));
+  ok(/font-size: 0.62em/.test(T.meosLimitCss('up', 1, 5)) && /top: -1\.129em/.test(T.meosLimitCss('up', 1, 5)), '★emはその字自身の大きさ基準so、持ち上げは割ってから渡す', T.meosLimitCss('up', 1, 5));
+  ok(/top: 1\.694em/.test(T.meosLimitCss('down', 1, 5)), '下限は全体のずらし(0.25em)を足して下げる', T.meosLimitCss('down', 1, 5));
+  console.log('   ★v4.0.274= 左右の位置は数えて出す(行頭より左へ出さない)');
+  ok(/left: 0ch/.test(T.meosLimitCss('down', 3, 0)), '行頭のΣ＋3文字 → 左へ出さない(0ch)=先頭が切れない', T.meosLimitCss('down', 3, 0));
+  ok(/left: 0ch/.test(T.meosLimitCss('up', 1, 0)), '行頭のΣ＋1文字 → 同じく0ch(丸ごと消えない)', T.meosLimitCss('up', 1, 0));
+  ok(/left: -1\.613ch/.test(T.meosLimitCss('down', 3, 9)), '余裕that在れば中央へ寄せる(3文字なら1桁ぶん左)', T.meosLimitCss('down', 3, 9));
+  ok(/left: -0\.806ch/.test(T.meosLimitCss('up', 2, 9)), '2文字なら半桁ぶん左(長さで位置that変わる)', T.meosLimitCss('up', 2, 9));
 }
 
 console.log('⑰ 肩腰/帽子の文字色(v4.0.270) — 明るい背景の上の白は読めない');

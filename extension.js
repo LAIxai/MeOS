@@ -22267,7 +22267,8 @@ function meosApplyImageThumbDecorations(editor) {
 // カーソル行=生表示(編集可)/ Raw時・隔離(MEOS_METEX=false)時はゼロ。HTMLコメント内(Σ↑/🤝↓ 等の計算膜・結合膜マーカー)は対象外。
 let meTexHideDeco = null; // 上/下付き本体の型は meTexTypeCache(scale別)で持つ
 let meTexBarDeco = null; // v4.0.222: √の横棒(overline)。hideDecoの隣に置く=消し忘れない
-let meTexLimitDeco = null; // v4.0.273: Σ/Π/lim の上下限(真上/真下に描く)。中身は範囲ごとのrenderOptionsで
+let meTexLimitDeco = null;  // v4.0.273: Σ/Π/lim の**上**限(真上に描く)。中身は範囲ごとのrenderOptionsで
+let meTexLimitDeco2 = null; // v4.0.274: **下**限。上と同じ場所(空の範囲)に2つ置かないよう型を分ける
 // 行内の <!-- ... --> コメント範囲 [start,end) を集める(この中の ↑↓ は MeTeX 対象外=計算膜/結合膜マーカーを守る)。
 function meosMeTexCommentSpans(text) { const spans = []; const re = /<!--[\s\S]*?-->/g; let m; while ((m = re.exec(text))) spans.push([m.index, m.index + m[0].length]); return spans; }
 // 1行を走査して MeTeX トークンを返す。各トークン: {arrow, kind:'sup'|'sub', hides:[[s,e],...], opStart, opEnd}
@@ -23210,12 +23211,20 @@ function meosBigOpLimitSpans(text) {
   return hides.length ? { hides, items } : null;
 }
 // 上下限を描くCSS(before に注入)。★emは**その字自身の大きさ基準**so、基準の字のemに直してから割る(v4.0.135の癖)。
-function meosLimitCss(dir) {
+// ★★v4.0.274(俊克 8/19 バグ1「上側が表示しない。下側のxがなぜか見えない」):
+//   ★**症状は2つに見えて、原因は1つ**= `left: -0.9em` の**固定値**で行頭より左へ描き、エディタの左端で
+//   切られていた。`k=1` は先頭の `k` だけ欠け、1文字の `n` は丸ごと消える= 見えていた欠け方that証拠。
+//   → **中央寄せは数えて出す**= 演算子の中央(0.5桁)から中身の半分ぶん左へ。**ただし行頭より左へは出さない**
+//   (残っている桁数 col で頭打ち)。★左右の位置に固定値を使わない= 中身の長さthat変われば位置も変わるべき。
+//   ★`ch` は**その字自身の送り幅**so、桁数で動かすには大きさで割る(emと同じ癖・v4.0.135)。
+function meosLimitCss(dir, len, col) {
   const sc = MEOS_LIMIT_SCALE / 100;
   const shift = ((dir === 'up') ? -MEOS_LIMIT_UP_EM : MEOS_LIMIT_DOWN_EM) + MEOS_LIMIT_DROP_EM;
+  const leftCells = Math.max(-(Number(col) || 0), 0.5 - (Number(len) || 1) / 2);
   return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
     + ' font-size: ' + sc + 'em !important; line-height: 0;'
-    + ' top: ' + (Math.round(shift / sc * 1000) / 1000) + 'em; left: -0.9em;';
+    + ' top: ' + (Math.round(shift / sc * 1000) / 1000) + 'em;'
+    + ' left: ' + (Math.round(leftCells / sc * 1000) / 1000) + 'ch;';
 }
 // ===== v4.0.225(俊克 8/15 pm11:00「√のことから、ひらめいた。外国のアルファベットの上に帽子のように付く形…
 //   一々その文字を見つけるのが面倒。だったら、どんなのでも作れるようにすればいい」) =====================
@@ -23417,14 +23426,14 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
 const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
 function meosApplyMeTexDecorations(editor) {
   if (!editor || !editor.document) return;
-  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); if (meTexLimitDeco) editor.setDecorations(meTexLimitDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す
+  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); if (meTexLimitDeco) editor.setDecorations(meTexLimitDeco, []); if (meTexLimitDeco2) editor.setDecorations(meTexLimitDeco2, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す
   if (!MEOS_METEX) { clearAll(); return; }
   if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
     let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 150) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 50) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
-    const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitItems = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitItems = Σの上下限(v4.0.273)
+    const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitUpItems = [], limitDownItems = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitUp|Down = Σの上下限(v4.0.273)
     const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
@@ -23446,10 +23455,11 @@ function meosApplyMeTexDecorations(editor) {
           const _lim = meosBigOpLimitSpans(text);
           if (_lim) {
             for (const h of _lim.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
-            for (const it of _lim.items) limitItems.push({
-              range: new vscode.Range(ln, it.at, ln, it.at),
-              renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir) } }
-            });
+            for (const it of _lim.items) {
+              const _box = { range: new vscode.Range(ln, it.at, ln, it.at),
+                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at) } } };
+              (it.dir === 'up' ? limitUpItems : limitDownItems).push(_box); // v4.0.274: 上と下は別の型(同じ場所に2つ置かない)
+            }
           }
         }
         for (const r of rads) for (const h of r.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
@@ -23493,7 +23503,9 @@ function meosApplyMeTexDecorations(editor) {
     editor.setDecorations(meTexBarDeco, barRanges);
     // v4.0.273: 上下限は**1つの型＋範囲ごとの renderOptions**(中身that行ごとに違うので型は増やさない)。
     if (!meTexLimitDeco) meTexLimitDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    editor.setDecorations(meTexLimitDeco, limitItems);
+    if (!meTexLimitDeco2) meTexLimitDeco2 = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meTexLimitDeco, limitUpItems);
+    editor.setDecorations(meTexLimitDeco2, limitDownItems);
     for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
     for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
