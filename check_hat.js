@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -103,6 +103,28 @@ const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT
 ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '(..)', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
 ok(!!sp && /白/.test(sp.metex[0].inner) && /橙/.test(sp.metex[0].inner), '色が帽子に届く(字そのものを塗る)', sp && sp.metex[0].inner);
 ok(!!T.meosHatFromToken(sp.metex[0].tok), '読んだトークンから字を作り直せる', sp && sp.metex[0].tok);
+
+console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/真下に置く」');
+{
+  const L = (x) => T.meosBigOpLimitSpans(x);
+  const sum = L('Σ↓👒(k=1)↑👒n a↓k');
+  ok(!!sum && sum.items.length === 2, '`Σ↓👒(k=1)↑👒n` を2つ(下と上)読む', sum && sum.items);
+  ok(sum && sum.items[0].dir === 'down' && sum.items[0].text === 'k=1', '下限は k=1', sum && sum.items[0]);
+  ok(sum && sum.items[1].dir === 'up' && sum.items[1].text === 'n', '上限は n(裸の一続きでもよい)', sum && sum.items[1]);
+  ok(sum && sum.items[0].at === 0 && sum.items[1].at === 0, '2つとも同じ演算子(Σ)に効く', sum && [sum.items[0].at, sum.items[1].at]);
+  ok(sum && sum.hides.length === 2, '命令は2つとも隠す', sum && sum.hides);
+  const lim = L('lim↓👒(x→0) f(x)');
+  ok(!!lim && lim.items.length === 1 && lim.items[0].text === 'x→0', '`lim↓👒(x→0)` も演算子(語でもよい)', lim && lim.items);
+  ok(lim && lim.items[0].at === 0, '基準は lim の先頭から', lim && lim.items[0].at);
+  ok(L('Π↓👒(k=1)↑👒n') !== null, 'Π も同じ', !!L('Π↓👒(k=1)↑👒n'));
+  ok(L('a↑👒(..)') === null, '★字の上の印(帽子)はここでは拾わない= 基準that分ける', L('a↑👒(..)'));
+  ok(L('(A ∩ B)↑👒(-)') === null, '群の横棒も拾わない', L('(A ∩ B)↑👒(-)'));
+  ok(L('<!-- Mew! Σ↓👒(k=1) -->') === null, '控えの中では描かない', L('<!-- Mew! Σ↓👒(k=1) -->'));
+  ok(T.meosHatBeforeCursor('Σ↑👒(-)', '').bigop === true, '★`Σ↑👒(-)` は字にしない(Σ̄ を作らせない)', T.meosHatBeforeCursor('Σ↑👒(-)', ''));
+  ok(T.meosHatBeforeCursor('a↑👒(-)', '').ch === 'ā', '字の上なら今まで通り本物の字', T.meosHatBeforeCursor('a↑👒(-)', ''));
+  ok(/font-size: 0.62em/.test(T.meosLimitCss('up')) && /top: -1\.129em/.test(T.meosLimitCss('up')), '★emはその字自身の大きさ基準so、持ち上げは割ってから渡す', T.meosLimitCss('up'));
+  ok(/top: 1\.694em/.test(T.meosLimitCss('down')), '下限は全体のずらし(0.25em)を足して下げる', T.meosLimitCss('down'));
+}
 
 console.log('⑰ 肩腰/帽子の文字色(v4.0.270) — 明るい背景の上の白は読めない');
 {

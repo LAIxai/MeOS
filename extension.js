@@ -21311,7 +21311,8 @@ function meosStripHiddenForWidth(s) {
     try {
       const toks = meosMeTexTokens(t, null);
       // v4.0.222: √ の括弧も画面では消える= 幅にも数えない(数えないと表thatまた凸凹になる)。
-      for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] }); // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
+      for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] });
+      { const _lm = meosBigOpLimitSpans(t); if (_lm) for (const h of _lm.hides) toks.push({ hides: [h] }); } // v4.0.273: 上下限の命令も隠れる // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
       if (toks.length) {
         const hid = new Array(t.length).fill(false);
         for (const tk of toks) for (const [s, e] of (tk.hides || [])) for (let i = Math.max(0, s); i < Math.min(t.length, e); i++) hid[i] = true;
@@ -22266,6 +22267,7 @@ function meosApplyImageThumbDecorations(editor) {
 // カーソル行=生表示(編集可)/ Raw時・隔離(MEOS_METEX=false)時はゼロ。HTMLコメント内(Σ↑/🤝↓ 等の計算膜・結合膜マーカー)は対象外。
 let meTexHideDeco = null; // 上/下付き本体の型は meTexTypeCache(scale別)で持つ
 let meTexBarDeco = null; // v4.0.222: √の横棒(overline)。hideDecoの隣に置く=消し忘れない
+let meTexLimitDeco = null; // v4.0.273: Σ/Π/lim の上下限(真上/真下に描く)。中身は範囲ごとのrenderOptionsで
 // 行内の <!-- ... --> コメント範囲 [start,end) を集める(この中の ↑↓ は MeTeX 対象外=計算膜/結合膜マーカーを守る)。
 function meosMeTexCommentSpans(text) { const spans = []; const re = /<!--[\s\S]*?-->/g; let m; while ((m = re.exec(text))) spans.push([m.index, m.index + m[0].length]); return spans; }
 // 1行を走査して MeTeX トークンを返す。各トークン: {arrow, kind:'sup'|'sub', hides:[[s,e],...], opStart, opEnd}
@@ -23170,6 +23172,51 @@ function meosHatBarSpans(text) {
   }
   return out;
 }
+// ★★v4.0.273(俊克 8/19「Σ↓👒(k=1)↑👒n」＋「下側はFCコメントの領域が使えるよ。その分を合わせて全体の位置を
+//   下にずらせば、上の部分も余裕が出るでしょ」) ============================================================
+// ★★**👒の意味が1つに定まった**= 「肩/腰でなく、**真上/真下に置く**」。帽子(â)も、Σの上下限も、同じ命令。
+//   ★どちらになるかは**基準thatが決める**= 数学の約束と同じ。**大きな演算子の上下には範囲を置き、
+//   文字の上には印を載せる**。so記法を増やさずに済む(俊克の全貌案の芯)。
+// ★余地の作り方(俊克の案): **monacoの行の高さは一律**so、大きく描いても行は広がらない(隣に重なるだけ)。
+//   → 余地はどこかから借りるしかない。**下はFCコメント行の領域を借り、その分だけ全体を下へずらす**。
+//   ★空行より良い理由= 空行はMarkdownで「段落の区切り」という**意味**を持つthat、FC行は意味を持たない。
+//   数字は下の4つに集めてある(俊克の目で決める所)。
+const MEOS_LIMIT_SCALE = 62;      // 上下限の大きさ(基準の字に対する%)
+const MEOS_LIMIT_UP_EM = 0.95;    // 上限を持ち上げる量(基準の字を1として)
+const MEOS_LIMIT_DOWN_EM = 0.80;  // 下限を下げる量
+const MEOS_LIMIT_DROP_EM = 0.25;  // ★全体を下へずらす量(下=FC行の領域を借りる→上に余裕that出る)
+// 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
+const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;
+// `↓👒(k=1)` / `↑👒n` の1つ。中身は括弧で囲めば何でも・裸なら空白と矢印までの一続き。
+const MEOS_LIMIT_TOK_RE = /([↑↓])👒(?:\(([^()\n]{1,40})\)|([^\s↑↓()\n]{1,20}))/gu;
+// 行の中の「大きな演算子＋上下限」を返す。{ hides:[[s,e]…], items:[{dir,text,at,end}…] } / 無ければ null。
+function meosBigOpLimitSpans(text) {
+  const s0 = String(text == null ? '' : text);
+  if (s0.indexOf(MEOS_HAT_MARK) < 0) return null;
+  const s = meosHatScanLine(s0);                 // 控えの中とコードスパンの中は対象外(即変換と同じ物差し)
+  const hides = [], items = [];
+  let m, prevEnd = -1, opStart = -1, opEnd = -1;
+  MEOS_LIMIT_TOK_RE.lastIndex = 0;
+  while ((m = MEOS_LIMIT_TOK_RE.exec(s)) !== null) {
+    const a = m.index, b = a + m[0].length;
+    let base = null;
+    if (a === prevEnd && opStart >= 0) base = [opStart, opEnd];      // 続きの命令= 同じ演算子に効く(Σ↓…↑…)
+    else { const mo = MEOS_BIGOP_RE.exec(s.slice(0, a)); if (mo) base = [a - mo[0].length, a]; }
+    if (!base) { prevEnd = -1; opStart = -1; continue; }             // 大きな演算子でない= 帽子の道に任せる
+    opStart = base[0]; opEnd = base[1]; prevEnd = b;
+    hides.push([a, b]);
+    items.push({ dir: (m[1] === '↑') ? 'up' : 'down', text: (m[2] !== undefined ? m[2] : m[3]), at: base[0], end: base[1] });
+  }
+  return hides.length ? { hides, items } : null;
+}
+// 上下限を描くCSS(before に注入)。★emは**その字自身の大きさ基準**so、基準の字のemに直してから割る(v4.0.135の癖)。
+function meosLimitCss(dir) {
+  const sc = MEOS_LIMIT_SCALE / 100;
+  const shift = ((dir === 'up') ? -MEOS_LIMIT_UP_EM : MEOS_LIMIT_DOWN_EM) + MEOS_LIMIT_DROP_EM;
+  return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
+    + ' font-size: ' + sc + 'em !important; line-height: 0;'
+    + ' top: ' + (Math.round(shift / sc * 1000) / 1000) + 'em; left: -0.9em;';
+}
 // ===== v4.0.225(俊克 8/15 pm11:00「√のことから、ひらめいた。外国のアルファベットの上に帽子のように付く形…
 //   一々その文字を見つけるのが面倒。だったら、どんなのでも作れるようにすればいい」) =====================
 // ★**帽子(ハット)**= `a↑^` と書いてボタンを押すと、本文thatが**本物の字 `â`** になる。
@@ -23271,6 +23318,9 @@ function meosHatBeforeCursor(textBefore, textAfter) {
   //   **まとまりに載せる字は無い**so、線は**引くしかない**(√の横棒とまったく同じ理屈)。
   //   ここで止めないと `)̄`= **閉じ括弧に帽子を載せた字**という珍妙なものthat出来てしまう。
   if (base === ')') return { group: true, base, mark: mp[1], tail, ch: '' };
+  // ★v4.0.273: 基準that**大きな演算子**なら、👒は「上下限を置く」意味so字は作らない(Σ̄ を作らせない)。
+  //   どちらの意味になるかを決めるのは基準= 判定はこの1行と MEOS_BIGOP_RE だけ。
+  if (MEOS_BIGOP_RE.test(s.slice(0, arrowAt))) return { bigop: true, base, mark: mp[1], tail, ch: '' };
   const ch = base ? meosHatCompose(base, mp[1]) : '';
   return ch ? { start: bs, base, arrow: '↑', mark: mp[1], ch, tail } : null;
 }
@@ -23367,14 +23417,14 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
 const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
 function meosApplyMeTexDecorations(editor) {
   if (!editor || !editor.document) return;
-  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す
+  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); if (meTexLimitDeco) editor.setDecorations(meTexLimitDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す
   if (!MEOS_METEX) { clearAll(); return; }
   if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
     let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 150) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 50) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
-    const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = []; // style → ranges[] / barRanges = √の横棒(v4.0.222)
+    const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitItems = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitItems = Σの上下限(v4.0.273)
     const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
@@ -23391,6 +23441,17 @@ function meosApplyMeTexDecorations(editor) {
         //   ★書く側(meosHatApply)も色を書かないので、控えは `<!-- Mew!FC a↑👒(..) -->` だけになる。
         // v4.0.222: √ = 括弧を隠して**横棒**を引く。中身の肩/腰にも overline を持たせて棒を繋ぐ。
         const rads = meosRadicalSpans(text).concat(meosHatBarSpans(text)); // v4.0.269: 群の上の横棒も同じ道具で
+        // v4.0.273: 大きな演算子の上下限。命令は隠し、中身を真上/真下に描く(生データは1文字も変えない)。
+        {
+          const _lim = meosBigOpLimitSpans(text);
+          if (_lim) {
+            for (const h of _lim.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
+            for (const it of _lim.items) limitItems.push({
+              range: new vscode.Range(ln, it.at, ln, it.at),
+              renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir) } }
+            });
+          }
+        }
         for (const r of rads) for (const h of r.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
         // v4.0.138: 直後に指定が無いトークンは、**真下の指定行**から名前＋出現順で受け取る。
         if (MEOS_SPEC_LINE) { try { meosApplySpecLineToTokens(text, toks, meosSpecLineFor(_slLines, ln)); } catch (_) { } }
@@ -23430,6 +23491,9 @@ function meosApplyMeTexDecorations(editor) {
     editor.setDecorations(meTexHideDeco, hideRanges);
     if (!meTexBarDeco) meTexBarDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'overline !important', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.265: 見出しの `text-decoration: none` に負けないよう !important // v4.0.222: √の横棒
     editor.setDecorations(meTexBarDeco, barRanges);
+    // v4.0.273: 上下限は**1つの型＋範囲ごとの renderOptions**(中身that行ごとに違うので型は増やさない)。
+    if (!meTexLimitDeco) meTexLimitDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meTexLimitDeco, limitItems);
     for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
     for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}

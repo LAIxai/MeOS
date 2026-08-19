@@ -99,7 +99,11 @@ function makeEditor(lines) {
 // 「隠す」装飾かどうかは**本体that渡した option**で決める(検証器that勝手に決めない)
 // ★`font-size: 0.68em`(上付/下付)を「隠す」と読まないこと= **0で始まるだけの値**に引っ掛かる(最初の版thatこれで嘘をついた)。
 const isHide = (d) => { const td = String(((d && d.__opts) || {}).textDecoration || ''); return /font-size:\s*0(?:px)?\s*(?:!important)?\s*;/.test(td) || /opacity:\s*0(?!\.)/.test(td) || /display:\s*none/.test(td); };
-const added = (o) => { let s = ''; for (const k of ['before', 'after']) if (o && o[k] && typeof o[k].contentText === 'string') s += o[k].contentText; return s; };
+// v4.0.273: **幅0の付け足しは、画面の桁を1つも使わない**(`width: 0` ＋ position:relative で真上/真下に描く物)。
+//   ★ここを知らないと、Σの上下限を「セルの中に並んだ字」と数えて、整形側と食い違う(実際に食い違った)。
+//   長さを持つラベル(参照符の番号など)は今まで通り数える。
+const _zeroW = (a) => !!a && typeof a.textDecoration === 'string' && /width:\s*0(?!\d)/.test(a.textDecoration);
+const added = (o) => { let s = ''; for (const k of ['before', 'after']) if (o && o[k] && typeof o[k].contentText === 'string' && !_zeroW(o[k])) s += o[k].contentText; return s; };
 
 function screenOf(lines) {
   const ed = makeEditor(lines); T.makeDecorations();
