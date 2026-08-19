@@ -23183,7 +23183,7 @@ function meosHatBarSpans(text) {
 //   ★空行より良い理由= 空行はMarkdownで「段落の区切り」という**意味**を持つthat、FC行は意味を持たない。
 //   数字は下の4つに集めてある(俊克の目で決める所)。
 const MEOS_LIMIT_SCALE = 62;      // 上下限の大きさ(基準の字に対する%)
-const MEOS_LIMIT_UP_EM = 0.95;    // 上限を持ち上げる量(基準の字を1として)
+const MEOS_LIMIT_UP_EM = 1.30;    // 上限を持ち上げる量(基準の字を1として) v4.0.275: 0.95=Σにくっつき過ぎ(俊克)
 const MEOS_LIMIT_DOWN_EM = 0.80;  // 下限を下げる量
 const MEOS_LIMIT_DROP_EM = 0.25;  // ★全体を下へずらす量(下=FC行の領域を借りる→上に余裕that出る)
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
@@ -23217,10 +23217,16 @@ function meosBigOpLimitSpans(text) {
 //   → **中央寄せは数えて出す**= 演算子の中央(0.5桁)から中身の半分ぶん左へ。**ただし行頭より左へは出さない**
 //   (残っている桁数 col で頭打ち)。★左右の位置に固定値を使わない= 中身の長さthat変われば位置も変わるべき。
 //   ★`ch` は**その字自身の送り幅**so、桁数で動かすには大きさで割る(emと同じ癖・v4.0.135)。
-function meosLimitCss(dir, len, col) {
+// ★★v4.0.275(俊克 8/19 改良1「上側の👒は、Σとくっつき過ぎている。そして、中央寄せにしたいね」):
+//   ★**中央寄せの数え方that2つとも間違っていた**=
+//   ①中身の幅を「len 桁」と数えていたthat、62%に縮めて描くので**実際は len×0.62 桁**。
+//   ②演算子の幅を数えていなかった(Σは1桁・`lim` は3桁so、中央の位置that違う)。
+//   → **中央 = 演算子の幅の半分 − 中身の見た目の幅の半分**。これで Σ でも lim でも真ん中に来る。
+function meosLimitCss(dir, len, col, opW) {
   const sc = MEOS_LIMIT_SCALE / 100;
   const shift = ((dir === 'up') ? -MEOS_LIMIT_UP_EM : MEOS_LIMIT_DOWN_EM) + MEOS_LIMIT_DROP_EM;
-  const leftCells = Math.max(-(Number(col) || 0), 0.5 - (Number(len) || 1) / 2);
+  const _w = Math.max(1, Number(opW) || 1);                       // 演算子の桁数(Σ=1 / lim=3)
+  const leftCells = Math.max(-(Number(col) || 0), _w / 2 - (Number(len) || 1) * sc / 2);
   return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
     + ' font-size: ' + sc + 'em !important; line-height: 0;'
     + ' top: ' + (Math.round(shift / sc * 1000) / 1000) + 'em;'
@@ -23457,7 +23463,7 @@ function meosApplyMeTexDecorations(editor) {
             for (const h of _lim.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
             for (const it of _lim.items) {
               const _box = { range: new vscode.Range(ln, it.at, ln, it.at),
-                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at) } } };
+                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at, it.end - it.at) } } };
               (it.dir === 'up' ? limitUpItems : limitDownItems).push(_box); // v4.0.274: 上と下は別の型(同じ場所に2つ置かない)
             }
           }
