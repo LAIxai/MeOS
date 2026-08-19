@@ -203,16 +203,20 @@ console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — �
   ok(T.meosMeTexTokens('∫↑(1)', null).length === 1, '★v4.0.283= ∫も素で基準文字になる(コメント無しで出る)', T.meosMeTexTokens('∫↑(1)', null).length);
   ok(T.meosMeTexTokens('∑↓(i=1)', null).length === 1, '∑も同じ', T.meosMeTexTokens('∑↓(i=1)', null).length);
   ok(T.meosMeTexTokens('🐱↑3', null).length === 0, '★知らない字は今までどおり素通り(安全側は変えない)', T.meosMeTexTokens('🐱↑3', null).length);
-  console.log('   ★v4.0.284= 積んだ方も「普通の上付き/下付きと同じstyle」＋幅0だけ');
+  console.log('   ★v4.0.285= 描き直さない。本物の字のまま左へ戻す');
   {
-    const plain = T.meosMeTexStyle('sub', 50, true, null, null, 1);
-    const stacked = T.meosStackCss(plain);
-    ok(stacked.indexOf(plain) === 0, '普通のstyleをそのまま含む(大きさ・高さ・色は1つの口から)', stacked.slice(0, 60));
-    ok(/width: 0/.test(stacked) && /position: relative/.test(stacked), '足すのは「幅0」と「相対位置」だけ', stacked.slice(-90));
-    const fs = Number(/font-size: ([\d.]+)em/.exec(stacked)[1]);
-    ok(Math.abs(fs - 0.68) < 0.001, '★大きさは0.68em(高さの%を大きさに掛けない= v4.0.283の誤り)', fs);
-    const colored = T.meosStackCss(T.meosMeTexStyle('sub', 50, true, 'black', 'orange', 1));
-    ok(/color:/.test(colored) && /background-color:/.test(colored), '指定行の色that積んだ方にも届く(バグ2)', colored.slice(-120));
+    const src = '∫↑(1)↓(0) f(x) dx';
+    const sp = T.meosMeTexStackPairs(src, T.meosMeTexTokens(src, null))[0];
+    ok(sp.back === 1, '戻す桁数= 1つ目の中身の字数(ここでは `1` の1桁)', sp.back);
+    const src2 = '∫↑(12)↓(0)';
+    const sp2 = T.meosMeTexStackPairs(src2, T.meosMeTexTokens(src2, null))[0];
+    ok(sp2.back === 2, '1つ目that2桁なら2桁戻す', sp2.back);
+    const plain = T.meosMeTexStyle('sub', 100, true, 'black', 'orange', 1);
+    const stacked = T.meosStackCss(plain, 1);
+    ok(stacked.indexOf(plain) === 0, '★普通の上付き/下付きのstyleを1文字も変えない', stacked.slice(0, 40));
+    ok(/left: -1ch/.test(stacked) && /position: relative/.test(stacked), '足すのは「左へ戻す」だけ', stacked.slice(-40));
+    ok(/color:/.test(stacked) && /background-color:/.test(stacked), '色は元のstyleに入っている(手で渡さない)', true);
+    ok(/vertical-align/.test(stacked), '高さも元のstyleのまま(100%が基準値として効く)', true);
   }
 }
 

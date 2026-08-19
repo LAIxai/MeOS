@@ -21317,8 +21317,6 @@ function meosStripHiddenForWidth(s) {
       for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] });
       // v4.0.277: 表では**包みだけ**隠して中身は横に出る(描く側と同じ形)。ここは表の幅を測る所so、その形に合わせる。
       // v4.0.278: ただし**縦に結合したセル**は上下に置くso、命令を丸ごと隠す(描く側と同じ判定から引く)。
-      // v4.0.283: 積んだ上下付きthat隠れる分(描く側と同じ判定から引く)。
-      { try { const _tk = meosMeTexTokens(t, null); for (const sp of meosMeTexStackPairs(t, _tk)) toks.push({ hides: [[sp.hideFrom, sp.hideTo]] }); } catch (_) { } }
       { const _lm = meosBigOpLimitSpans(t); if (_lm) { const _room = _limRoom;
           for (const it of _lm.items) {
             if (_room && (it.dir === 'up' ? _room.up : _room.down)) { toks.push({ hides: [[it.tokStart, it.tokEnd]] }); continue; }
@@ -23320,18 +23318,30 @@ function meosMeTexStackPairs(text, toks) {
     const gap = t.slice(a.opEnd, b.opStart);
     if (!/^\)?[↑↓]\(?$/u.test(gap)) continue;                    // 間に在るのは「閉じ括弧・矢印・開き括弧」だけ
     const closeAfter = (t.charAt(b.opEnd) === ')') ? 1 : 0;
-    out.push({ dir: b.kind === 'sup' ? 'up' : 'down', at: a.opStart, hideFrom: a.opEnd, hideTo: b.opEnd + closeAfter, text: t.slice(b.opStart, b.opEnd), tok: b });
+    out.push({ dir: b.kind === 'sup' ? 'up' : 'down', at: a.opStart, hideFrom: a.opEnd, hideTo: b.opEnd + closeAfter,
+      text: t.slice(b.opStart, b.opEnd), tok: b, back: (a.opEnd - a.opStart) });   // back= 1つ目の中身の字数(その字自身のch)
   }
   return out;
 }
-// ★★v4.0.284(俊克 8/20 バグ1「下側の0thatものすごく小さくなった」＋バグ2「FCコメントthat下側だけ効かない」):
+// ★★★v4.0.285(俊克 8/20 バグ1「100%指定that基準値のはずだthat、そうなっていない」＋バグ2「下側だけ色that付かない」):
+//   ★**作り方そのものthat間違っていた**= `before` の疑似要素で**描き直して**いた。疑似要素は本物の字ではないso、
+//   ①指定行の色を渡す口to通らない ②`vertical-align` の効き方that普通の字と違う(inline-blockの基準線)。
+//   v4.0.284で色は手で渡したthat、**高さは手で渡せない**(俊克「100%that基準値にならない」)。
+//   ★直し= **描き直さない。本物の字のまま、左へ戻す**= 2つ目に `left: -Nch` を足すだけ。
+//     ・色も高さも`{100%}`も**普通の上付き/下付きと1文字も違わない**(同じ道を通るso当然)。
+//     ・隠すのは矢印と括弧だけ(今までどおり)= 幅を測る側は**何も変えなくていい**。
+//   ★Nの出し方= 1つ目の中身の字数。上下とも 0.68em so、**その字自身の ch で数えれば ちょうど1つ目の分**戻る。
+// ↓v4.0.284の記録(取り違えの中身)は残す=
+//   `gSub`(=50)は**高さの%**であって**字の大きさではない**(大きさは0.68em固定)。font-sizeに掛けて0.34emにした。
 //   ★**原因は1つ= 私that「%」を取り違えた**。`gSub`(=50)は**高さの%**(どれだけ下げるか)であって
 //   **字の大きさではない**(大きさは 0.68em 固定)。それを font-size に掛けたので 0.34em の極小になった。
 //   ★しかも自前でCSSを組み立てたso、指定行(FC)の色と高さを**丸ごと捨てていた**=バグ2も同じ根。
 //   → **普通の上付き/下付きと同じ style をそのまま使い、「幅0」だけ足す**。
 //     大きさ・高さ・色は1つの口(meosMeTexStyle)から出る= 積んでも見た目that変わらない。
-function meosStackCss(baseStyle) {
-  return String(baseStyle || 'none;') + ' position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;';
+// 積む2つ目に足すCSS= 1つ目の中身のぶんだけ左へ戻す(字はそのまま・幅もそのまま)。
+function meosStackCss(baseStyle, backCells) {
+  const n = Math.max(0, Number(backCells) || 0);
+  return String(baseStyle || 'none;') + ' position: relative; left: -' + n + 'ch;';
 }
 function meosLimitCss(dir, len, col, opW, tall, narrow) {
   const sc = MEOS_LIMIT_SCALE / 100;
@@ -23613,24 +23623,11 @@ function meosApplyMeTexDecorations(editor) {
           for (const c of cuts) { if (c[0] > x) barRanges.push(new vscode.Range(ln, x, ln, c[0])); if (c[1] > x) x = c[1]; }
           if (r.barEnd > x) barRanges.push(new vscode.Range(ln, x, ln, r.barEnd));
         }
-        // v4.0.283: 続けて書かれた上付き/下付きは**積む**(∫↑(1)↓(0) の 0 を 1 の真下へ)。
-        const _stk = meosMeTexStackPairs(text, toks);
-        const _stkHidden = new Set();
-        for (const sp of _stk) {
-          hideRanges.push(new vscode.Range(ln, sp.hideFrom, ln, sp.hideTo));
-          _stkHidden.add(sp.hideFrom + ':' + sp.hideTo);
-          const _t2 = sp.tok || {};
-          const _sc = Math.max(30, Math.min(200, (_t2.pct != null) ? _t2.pct : ((sp.dir === 'up') ? gSup : gSub)));
-          const _tall = (sp.dir === 'up') ? meosMeTexBaseTall(_t2.base) : true;
-          const _st = meosMeTexStyle((sp.dir === 'up') ? 'sup' : 'sub', _sc, _tall, _t2.fg, _t2.bg, _t2.depth || 1);
-          (sp.dir === 'up' ? limitUpItems : limitDownItems).push({
-            range: new vscode.Range(ln, sp.at, ln, sp.at),
-            renderOptions: { before: { contentText: sp.text, textDecoration: meosStackCss(_st) } }
-          });
-        }
-        const _stkSkip = new Set(_stk.map(sp => sp.hideFrom + '>' + sp.hideTo));
+        // v4.0.283/285: 続けて書かれた上付き/下付きは**積む**(∫↑(1)↓(0) の 0 を 1 の真下へ)。
+        //   本物の字のまま左へ戻すso、ここで持つのは「どのトークンを何桁戻すか」だけ。
+        const _stkBack = new Map();
+        for (const sp of meosMeTexStackPairs(text, toks)) _stkBack.set(sp.tok, sp.back);
         for (const t of toks) {
-          if (_stk.some(sp => t.opStart >= sp.hideFrom && t.opEnd <= sp.hideTo)) continue; // 積んだ方は隠したso飾らない
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
           const baseTall = (t.kind === 'sup') ? meosMeTexBaseTall(t.base) : true; // 上付きは基準文字の大小で頭を合わせる
@@ -23638,7 +23635,8 @@ function meosApplyMeTexDecorations(editor) {
           //   明確にすると言うのが、最大の目的なんだよ。だから、累乗部分は、想像で埋めればいいんだよ」):
           //   ★肩/腰にも overline を持たせると、**その字の高さで棒that引かれて段差になる**(v4.0.222のスクショ)。
           //   棒の役目は**範囲を言うこと**so、肩の上は空けておく。段差より、途切れの方that読める。
-          const style = meosMeTexStyle(t.kind, scale, baseTall, t.fg, t.bg, t.depth); // v4.0.220: 肩の上の肩
+          let style = meosMeTexStyle(t.kind, scale, baseTall, t.fg, t.bg, t.depth); // v4.0.220: 肩の上の肩
+          if (_stkBack.has(t)) style = meosStackCss(style, _stkBack.get(t)); // v4.0.285: 積む=左へ戻すだけ
           if (!styleRanges.has(style)) styleRanges.set(style, []);
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
