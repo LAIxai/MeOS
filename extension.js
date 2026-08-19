@@ -5305,7 +5305,10 @@ function membraneNameRightVirtualSpaceRanges(editor) {
   const ranges = [];
   if (!editor) return ranges;
   const doc = editor.document;
-  for (let line = 0; line < doc.lineCount; line++) {
+  // ★v4.0.271(俊克 8/19 バグ3「bsキーの遅延」の実測): **装飾は見えている所にしか要らない**。
+  //   7/25に gutterLine だけ可視範囲へ絞って 570→142ms にしたのに、**残りは全文のままだった**。
+  //   実データ(174,388行)で計測= ここは全文をなめていた。走査は meosScanSpans(可視±3ページ)に任せる。
+  for (const [_vf, _vt] of meosScanSpans(editor, doc)) for (let line = _vf; line <= _vt; line++) {
     const text = doc.lineAt(line).text || "";
     if (text.indexOf('{') < 0) continue; // v0.9.667: 膜行は必ず '{' を含む。非膜行で重い asRealMembraneSource/membraneLineParts を呼ばない事前フィルタ。
     const open = parseOpenLine(text);
@@ -5328,7 +5331,10 @@ function membraneRightEdgeVirtualSpaceRanges(editor) {
   if (!editor) return ranges;
 
   const doc = editor.document;
-  for (let line = 0; line < doc.lineCount; line++) {
+  // ★v4.0.271(俊克 8/19 バグ3「bsキーの遅延」の実測): **装飾は見えている所にしか要らない**。
+  //   7/25に gutterLine だけ可視範囲へ絞って 570→142ms にしたのに、**残りは全文のままだった**。
+  //   実データ(174,388行)で計測= ここは全文をなめていた。走査は meosScanSpans(可視±3ページ)に任せる。
+  for (const [_vf, _vt] of meosScanSpans(editor, doc)) for (let line = _vf; line <= _vt; line++) {
     const text = doc.lineAt(line).text || "";
     if (text.indexOf('{') < 0) continue; // v0.9.667: 膜行は必ず '{' を含む(事前フィルタ)。
     const open = parseOpenLine(text);
@@ -5384,7 +5390,10 @@ function workingTocHighlightRanges(editor) {
       lineRanges.push(new vscode.Range(line, start, line, end));
     }
   }
-  for (let line = 0; line < doc.lineCount; line++) {
+  // ★v4.0.271(俊克 8/19 バグ3「bsキーの遅延」の実測): **装飾は見えている所にしか要らない**。
+  //   7/25に gutterLine だけ可視範囲へ絞って 570→142ms にしたのに、**残りは全文のままだった**。
+  //   実データ(174,388行)で計測= ここは全文をなめていた。走査は meosScanSpans(可視±3ページ)に任せる。
+  for (const [_vf, _vt] of meosScanSpans(editor, doc)) for (let line = _vf; line <= _vt; line++) {
     const text = doc.lineAt(line).text || '';
     const parts = membraneLineParts(text, 'open');
     if (!parts || !parts.workingTocBiLinkItem) continue;
@@ -11240,7 +11249,10 @@ function computeMembraneBadgeColorRanges(editor) {
     return '';
   }
 
-  for (let line = 0; line < doc.lineCount; line++) {
+  // ★v4.0.271(俊克 8/19 バグ3「bsキーの遅延」の実測): **装飾は見えている所にしか要らない**。
+  //   7/25に gutterLine だけ可視範囲へ絞って 570→142ms にしたのに、**残りは全文のままだった**。
+  //   実データ(174,388行)で計測= ここは全文をなめていた。走査は meosScanSpans(可視±3ページ)に任せる。
+  for (const [_vf, _vt] of meosScanSpans(editor, doc)) for (let line = _vf; line <= _vt; line++) {
     const text = doc.lineAt(line).text || '';
     const open = parseOpenLine(text);
     const close = parseCloseLine(text);
@@ -11285,7 +11297,10 @@ function renderedMembraneRightEdgeSpaceRanges(editor) {
   const ranges = [];
   if (!editor || mSkeletonMode) return ranges;
   const doc = editor.document;
-  for (let i = 0; i < doc.lineCount; i++) {
+  // ★v4.0.271(俊克 8/19 バグ3「bsキーの遅延」の実測): **装飾は見えている所にしか要らない**。
+  //   7/25に gutterLine だけ可視範囲へ絞って 570→142ms にしたのに、**残りは全文のままだった**。
+  //   実データ(174,388行)で計測= ここは全文をなめていた。走査は meosScanSpans(可視±3ページ)に任せる。
+  for (const [_vf, _vt] of meosScanSpans(editor, doc)) for (let i = _vf; i <= _vt; i++) {
     const text = doc.lineAt(i).text || "";
     if (text.indexOf('{') < 0) continue; // v0.9.667: 膜行は必ず '{' を含む(事前フィルタ)。
     const parts = membraneLineParts(text, 'open') || membraneLineParts(text, 'close');
@@ -12371,7 +12386,10 @@ function mstatBadgeIconDoorRanges(editor) {
   const ranges = [];
   if (!editor || !editor.document) return ranges;
   const doc = editor.document;
-  for (let line = 0; line < doc.lineCount; line++) {
+  // ★v4.0.271(俊克 8/19 バグ3「bsキーの遅延」の実測): **装飾は見えている所にしか要らない**。
+  //   7/25に gutterLine だけ可視範囲へ絞って 570→142ms にしたのに、**残りは全文のままだった**。
+  //   実データ(174,388行)で計測= ここは全文をなめていた。走査は meosScanSpans(可視±3ページ)に任せる。
+  for (const [_vf, _vt] of meosScanSpans(editor, doc)) for (let line = _vf; line <= _vt; line++) {
     const text = doc.lineAt(line).text || '';
     const badge = parseMstatBadgeFromText(text);
     if (!badge || !badge.hasIcon) continue;
