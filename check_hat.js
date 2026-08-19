@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -145,6 +145,23 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(T.meosLimitHasRoomInCell('Σ↓👒(k=1)↑👒n') === false, '結合の印that無ければ余地なし', false);
     ok(T.meosLimitHasRoomInCell('x<!-- 🤝 ↓ 1 -->') === false, '1行(=結合していない)は余地なし', false);
     ok(T.meosCellTextAt('| a | b | c |', 6).trim() === 'b', '真ん中のセルも位置で取れる', T.meosCellTextAt('| a | b | c |', 6));
+  }
+  console.log('   ★v4.0.281= 🤝↑N も読む(同じことを反対の端から言っているだけ)');
+  {
+    const R = (c) => T.meosLimitRoomInCell(c);
+    ok(R('<!--🤝↓2-->Σ↓👒(k=1)').down === true && R('<!--🤝↓2-->Σ↓👒(k=1)').up === false, '↓2= 下だけ余地', R('<!--🤝↓2-->Σ↓👒(k=1)'));
+    ok(R('<!--🤝↑2-->Σ↑👒n').up === true && R('<!--🤝↑2-->Σ↑👒n').down === false, '★↑2= 上だけ余地(そのセルの中で宣言できる)', R('<!--🤝↑2-->Σ↑👒n'));
+    ok(R('Σ↓👒(k=1)').up === false && R('Σ↓👒(k=1)').down === false, '印that無ければ余地なし', R('Σ↓👒(k=1)'));
+    ok(R('<!--🤝↑1-->').up === false, '1行(=結合していない)は余地なし', R('<!--🤝↑1-->'));
+    // 罫線を抜く場所: 4行の表(0=見出し,1=区切り,2,3,4) で、4行目に ↑2 → 3行目の下線を抜く
+    const rows = [['見出し'], ['---'], ['a'], ['b'], ['<!--🤝↑2-->c']];
+    const sk = T.meosRowLineSkipSet(rows, 1).vskip;
+    ok(sk.has('3,0') === true, '↑2= 1つ上の行の下線を抜く', Array.from(sk));
+    ok(sk.has('2,0') === false, 'それ以上は抜かない', Array.from(sk));
+    const rows2 = [['見出し'], ['---'], ['<!--🤝↓2-->a'], ['b']];
+    ok(T.meosRowLineSkipSet(rows2, 1).vskip.has('2,0') === true, '↓2は今までどおり(自分の下線を抜く)', true);
+    const rows3 = [['見出し'], ['---'], ['<!--🤝↑3-->a']];
+    ok(T.meosRowLineSkipSet(rows3, 1).vskip.size === 0, '★区切り行は跨がない(見出しと本文は結合しない)', Array.from(T.meosRowLineSkipSet(rows3, 1).vskip));
   }
   {
     const sc = T.MEOS_LIMIT_SCALE / 100;

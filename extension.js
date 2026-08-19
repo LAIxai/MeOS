@@ -21253,7 +21253,7 @@ function meosStripHiddenForWidth(s) {
   let t = String(s == null ? '' : s);
   // ★v4.0.278: 縦結合の印(🤝↓N)は**この後で剥がされる**so、余地の有無は**生のセル**で先に見ておく。
   //   (剥がした後で見ると必ず「結合なし」になり、描く側と食い違う= 検査that実際に捕まえた)
-  const _limRoom = meosLimitHasRoomInCell(t);
+  const _limRoom = meosLimitRoomInCell(t);   // v4.0.281: 向きごと
   // v4.0.93: 足切りに `](` と `][` を入れ忘れると、リンクだけのセルが素通りして幅が合わない(テストで捕まえた)。
   // v4.0.215: 上付/下付の `↑` `↓` も足切りに入れる(入れ忘れると `M↓W` だけのセルthat素通りする=同じ穴)。
   if (!t || (t.indexOf('*') < 0 && t.indexOf('_') < 0 && t.indexOf('=') < 0 && t.indexOf('~') < 0 && t.indexOf('<!--') < 0 && t.indexOf('](') < 0 && t.indexOf('][') < 0 && t.indexOf('\u2191') < 0 && t.indexOf('\u2193') < 0 && t.indexOf('\u221a') < 0)) return t;
@@ -21319,7 +21319,7 @@ function meosStripHiddenForWidth(s) {
       // v4.0.278: ただし**縦に結合したセル**は上下に置くso、命令を丸ごと隠す(描く側と同じ判定から引く)。
       { const _lm = meosBigOpLimitSpans(t); if (_lm) { const _room = _limRoom;
           for (const it of _lm.items) {
-            if (_room) { toks.push({ hides: [[it.tokStart, it.tokEnd]] }); continue; }
+            if (_room && (it.dir === 'up' ? _room.up : _room.down)) { toks.push({ hides: [[it.tokStart, it.tokEnd]] }); continue; }
             if (it.cs > it.tokStart) toks.push({ hides: [[it.tokStart, it.cs]] });
             if (it.tokEnd > it.ce) toks.push({ hides: [[it.ce, it.tokEnd]] });
           } } } // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
@@ -21366,6 +21366,18 @@ function meosRowspanAt(rows, sepIdx, r, c) { const mk = meosMergeAt(rows[r] && r
 // v3.1.9(俊克 7/26「縦結合の行罫線方式」): 縦結合(rowspan)を、テキスト表に無い横罫線を装飾で補い、結合部だけ抜くことで見せる(前人未到)。
 function meosVMergeSpan(cellText) { const m = /<!--\s*🤝\s*↓\s*(\d+)\s*-->/u.exec(String(cellText || '')); return m ? Math.max(1, parseInt(m[1], 10)) : 1; } // 縦結合(🤝↓N)のN。↓でなければ1。
 // 各データ行×列の「下線を抜く」集合を返す=縦結合スパンの内部境界(最終行以外)。hasV=表に縦結合が1つでもあるか(格子はそれがある表だけに描く=抜きが意味を持つ)。
+// ★★v4.0.281(俊克 8/19「🤝↓2でも、🤝↑2でもうまく行くかどうか…でも、どっちでもいいはずだよね?」):
+// ★**その通り**。`🤝↓2`(上の端から数えて2行)と `🤝↑2`(下の端から数えて2行)は、**同じことを反対の端から
+//   言っている**だけ。今まで読んでいたのは ↓ だけなので、対にして完成させる。
+// ★★ただの対称性ではない= **`🤝↑N` は「上の余地」を、そのセル自身の中で宣言できる**。
+//   幅を測る側はセルを１つしか見られないので、上の行に印を書く形では上下限の置き場を決められなかった
+//   (v4.0.279で「上側は結合では余地を作れない」と報告した制約)。↑を読めば、その制約が外れる。
+// ★数を持たない `🤝↓` … `🤝↑` の対(膜の形)は今までどおり= こちらの ↑ は**閉じ役**なので数を持たない。
+//   数の有る ↑ だけを「下の端から数える」と読む(形で見分けが付く)。
+function meosRowspanUpAt(rows, r, c) {
+  const mk = meosMergeAt(rows[r] && rows[r][c]);
+  return (mk && mk.dir === '↑' && mk.n > 0) ? Math.max(1, mk.n) : 1;
+}
 function meosRowLineSkipSet(rows, sepIdx) {
   const vskip = new Set(); let hasV = false;
   for (let r = 0; r < rows.length; r++) {
@@ -21374,6 +21386,9 @@ function meosRowLineSkipSet(rows, sepIdx) {
     for (let c = 0; c < cells.length; c++) {
       const n = meosRowspanAt(rows, sepIdx, r, c); // v3.1.15: 🤝↓N(カウント)と 🤝↓…↑(膜)の両方
       if (n >= 2) { hasV = true; for (let k = 0; k < n - 1; k++) vskip.add((r + k) + ',' + c); } // r..r+n-2 の下線を抜く(最終行 r+n-1 は引く=結合セルの底)
+      // v4.0.281: 🤝↑N= **下の端から数える**。抜くのは r-1 … r-n+1 の下線(区切り行は跨がない)。
+      const u = meosRowspanUpAt(rows, r, c);
+      if (u >= 2) { hasV = true; for (let k = 1; k < u; k++) { const b = r - k; if (b < 0 || b === sepIdx) break; vskip.add(b + ',' + c); } }
     }
   }
   return { vskip, hasV };
@@ -23224,13 +23239,18 @@ function meosCellTextAt(lineText, pos) {
   }
   return t.slice(start);
 }
-// そのセルは縦に結合されているか(=上下に置く余地that在るか)。
-function meosLimitHasRoomInCell(cellText) { return meosVMergeSpan(cellText) >= 2; }
+// そのセルに上下限を置く余地that在るか。**向きごとに**返す(v4.0.281)。
+//   下= `🤝↓N`(N≥2)を書いたセルの下に余地that在る / 上= `🤝↑N`(N≥2)を書いたセルの上に余地that在る。
+function meosLimitRoomInCell(cellText) {
+  const mk = meosMergeAt(cellText);
+  return { up: !!(mk && mk.dir === '↑' && mk.n >= 2), down: meosVMergeSpan(cellText) >= 2 };
+}
+function meosLimitHasRoomInCell(cellText) { const r = meosLimitRoomInCell(cellText); return r.up || r.down; }
 // ★v4.0.280(俊克「∫の上下の👒文字が両方とも離れ過ぎている」): ★**上と下で要る逃げthat違う**。
 //   0.30= 下thatまだ触る / 0.55= 両方離れ過ぎ → 上は0.30で足りていた・下だけ足す、と分けた。
 //   (∫は基準線の下へ深く伸びるthat、上は他の演算子とそれほど変わらない)
-const MEOS_LIMIT_TALL_UP_EM = 0.30;   // 背の高い演算子で**上**に足す逃げ
-const MEOS_LIMIT_TALL_DOWN_EM = 0.42; // 同じく**下**(こちらだけ深い)
+const MEOS_LIMIT_TALL_UP_EM = 0.20;   // 背の高い演算子で**上**に足す逃げ v4.0.281: 0.30=まだ少し離れ過ぎ(俊克)
+const MEOS_LIMIT_TALL_DOWN_EM = 0.36; // 同じく**下**(こちらだけ深い) v4.0.281: 0.42→0.36
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
 const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;
 // `↓👒(k=1)` / `↑👒n` の1つ。中身は括弧で囲めば何でも・裸なら空白と矢印までの一続き。
@@ -23517,7 +23537,9 @@ function meosApplyMeTexDecorations(editor) {
             const _isTableRow = MEOS_TABLE_ROW_RE.test(text);
             for (const it of _lim.items) {
               // v4.0.278: 表でも**縦に結合したセル**なら余地that在る(結合した所は横罫線を引かない)so上下へ置く。
-              const _inTable = _isTableRow && !meosLimitHasRoomInCell(meosCellTextAt(text, it.at));
+              //   ★v4.0.281: **向きごとに見る**= 下だけ結合(🤝↓)なら下限だけthat下へ行き、上限は横へ回る。
+              const _rm = _isTableRow ? meosLimitRoomInCell(meosCellTextAt(text, it.at)) : null;
+              const _inTable = _isTableRow && !(_rm && (it.dir === 'up' ? _rm.up : _rm.down));
               if (_inTable) {                       // 表= 横に置く(包みだけ隠し、中身は肩/腰の飾りに乗せる)
                 if (it.cs > it.tokStart) hideRanges.push(new vscode.Range(ln, it.tokStart, ln, it.cs));
                 if (it.tokEnd > it.ce) hideRanges.push(new vscode.Range(ln, it.ce, ln, it.tokEnd));
