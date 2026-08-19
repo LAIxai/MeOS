@@ -23526,6 +23526,71 @@ function meosHatScanLine(text) {
   if (s.indexOf('<!--') >= 0) s = s.replace(/<!--[\s\S]*?-->/g, (m) => ' '.repeat(m.length));
   return s;
 }
+// ★★v4.0.290(俊克 8/20 改良1「上付きボタンで入れた文字を下付きにするとき、FCコメント内の↑を↓に直すだけで、
+//   本文の矢印も自動で直すようにしよう。さっき変更しようと思ってやった時、面倒くさかったので」):
+//   ★**命令はコメントに書く**のがMeOSの立場so、**コメントを直したら本文that従う**のthat筋。
+//   ★見つけ方= 編集の直後に、指定行の命令と本文のトークンを**描く時と同じ対応付け**で結ぶ。
+//     結べなかった命令that1つ・相手の居ないトークンthat1つ・**向きthat互いに違う**なら、それthat「向きを変えた」印。
+//     → 本文の矢印を1文字だけ書き換える。曖昧な時(2つ以上余る)は何もしない=勝手に直さない。
+//   ★★**本文を直した時は動かない**= 変更that指定行の中で起きた時だけ見る。そうでないと、本文の矢印を
+//     自分で直した瞬間にコメントの側へ引き戻され、書き換えthat打ち消される(向きの取り合いになる)。
+let _meosArrowBusy = false;
+function meosMetexArrowFollow(e) {
+  if (_meosArrowBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
+  const ed = vscode.window.activeTextEditor;
+  const doc = e.document;
+  if (!ed || ed.document !== doc || !meosIsProseDoc(doc) || !MEOS_SPEC_LINE) return false;
+  const ch = e.contentChanges[0];
+  const specLn = ch.range.start.line;                       // 変更that起きた行
+  if (specLn <= 0 || specLn >= doc.lineCount) return false;
+  const specTxt = doc.lineAt(specLn).text;
+  if (!meosIsSpecLine(specTxt)) return false;               // 指定行の中の編集だけ
+  if (String(ch.text || '').indexOf('↑') < 0 && String(ch.text || '').indexOf('↓') < 0) return false; // 矢印を打った時だけ
+  const bodyLn = specLn - 1;
+  const bodyTxt = doc.lineAt(bodyLn).text;
+  const plan = meosMetexArrowFollowPlan(bodyTxt, specTxt);
+  if (!plan) return false;
+  _meosArrowBusy = true; deferRefreshCount++;
+  (async () => {
+    try {
+      await ed.edit(eb => eb.replace(new vscode.Range(bodyLn, plan.at, bodyLn, plan.at + 1), plan.arrow), { undoStopBefore: false, undoStopAfter: false });
+      try { meosDbg('[arrowFollow] 本文の矢印を ' + plan.arrow + ' に合わせた 行=' + bodyLn + ' 位置=' + plan.at); } catch (_) { }
+    } catch (_) { }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosArrowBusy = false; }
+  })();
+  return true;
+}
+// 本文と指定行を見て、「本文の矢印を1文字だけ書き換えるべきか」を返す。{at, arrow} か null。
+// ★ここが判定の全部= 描く時と同じ対応付け(kind＋出現順)で結び、**余りthat1対1で向きthat違う時だけ**動く。
+function meosMetexArrowFollowPlan(bodyTxt, specTxt) {
+  const spec = meosParseSpecLine(specTxt);
+  if (!spec || !spec.metex || !spec.metex.length) return null;
+  const toks = meosMeTexTokens(bodyTxt, null);
+  if (!toks.length) return null;
+  // 描く時と同じ対応付け(kind＋出現順)で結び、余った物を数える。
+  const kindOf = (tok) => { const t = String(tok), u = t.indexOf('↑') >= 0, d = t.indexOf('↓') >= 0; return (u && d) ? 'any' : (u ? 'sup' : (d ? 'sub' : null)); };
+  const used = new Set(); const orphanItems = [];
+  for (const item of spec.metex) {
+    if (String(item.tok || '').indexOf(MEOS_HAT_MARK) >= 0) continue;
+    const kind = kindOf(item.tok); if (!kind) continue;
+    const cands = []; for (let i = 0; i < toks.length; i++) if (kind === 'any' || toks[i].kind === kind) cands.push(i);
+    let pick = -1;
+    if (item.nth > 0) { if (item.nth - 1 < cands.length) pick = cands[item.nth - 1]; }
+    else for (const c of cands) { if (!used.has(c)) { pick = c; break; } }
+    if (pick < 0) { orphanItems.push({ item, kind }); continue; }
+    used.add(pick);
+  }
+  const orphanToks = toks.map((t, i) => i).filter(i => !used.has(i));
+  if (orphanItems.length !== 1 || orphanToks.length !== 1) return null;   // 曖昧= 何もしない
+  const want = orphanItems[0].kind, tk = toks[orphanToks[0]];
+  if (want === 'any' || want === tk.kind) return null;                    // 向きthat同じなら用事は無い
+  // 本文の矢印1文字を書き換える(トークンの矢印は基準文字と肩腰の間に在る)。
+  const arrow = (want === 'sup') ? '↑' : '↓';
+  let at = -1;
+  for (let i = tk.opStart - 1; i >= 0; i--) { const c = bodyTxt.charAt(i); if (c === '↑' || c === '↓') { at = i; break; } if (!/[({\[]/.test(c)) break; }
+  if (at < 0 || bodyTxt.charAt(at) === arrow) return null;
+  return { at, arrow };
+}
 let _meosHatBusy = false;
 // 打った(貼った)直後に形that揃っていれば、その場で字にする。『かかか』の呪文と同じ作り。
 function meosMaybeAutoHat(e) {
@@ -25429,6 +25494,7 @@ makeDecorations();
       //   クリップボード消去は確実な経路に一本化=①🔐施錠後②🔓解錠後(合言葉を残さない)③📋 Copy&auto-clear(秘密を選択→コピー→N秒後消去)。
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
       if (deferRefreshCount === 0 && meosMaybeAutoHat(e)) return;      // v4.0.268: 手書きの `a↑👒(..)` を即、字にする
+      if (deferRefreshCount === 0) { try { meosMetexArrowFollow(e); } catch (_) { } } // v4.0.290: 指定行の矢印を直したら本文も従う
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a

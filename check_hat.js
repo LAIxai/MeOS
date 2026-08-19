@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -184,6 +184,23 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(px(T.meosLimitCss('down', 1, 9, 1, false, true)) < px(T.meosLimitCss('down', 1, 9, 1, false, false)),
       '細い方that並の字より左に来る', [px(T.meosLimitCss('down', 1, 9, 1, false, true)), px(T.meosLimitCss('down', 1, 9, 1, false, false))]);
   }
+}
+
+console.log('㉑ 指定行の矢印を直したら本文も従う(v4.0.290)');
+{
+  const P = (body, spec) => T.meosMetexArrowFollowPlan(body, spec);
+  const body = 'A↑2';
+  const p1 = P(body, '<!-- Mew!FC A↓1{150%(黒/橙)} -->');
+  ok(!!p1 && p1.arrow === '↓', '★コメントを ↓ に直したら本文も ↓ にする', p1);
+  ok(p1 && body.charAt(p1.at) === '↑', '書き換える1文字は本文の矢印そのもの', p1 && body.charAt(p1.at));
+  ok(P('A↓2', '<!-- Mew!FC A↑1{150%} -->') !== null, '逆(↓→↑)も同じ', P('A↓2', '<!-- Mew!FC A↑1{150%} -->'));
+  ok(P('A↑2', '<!-- Mew!FC A↑1{150%} -->') === null, '向きthat同じなら何もしない', P('A↑2', '<!-- Mew!FC A↑1{150%} -->'));
+  ok(P('A↑2 B↑3', '<!-- Mew!FC A↓1{150%} -->') === null, '★余りthat1対1でない時は動かない(勝手に直さない)', P('A↑2 B↑3', '<!-- Mew!FC A↓1{150%} -->'));
+  ok(P('A↑2', '<!-- Mew!FC ↑↓not -->') === null, '`↑↓`(どちらでも)は向きを言っていないso動かない', P('A↑2', '<!-- Mew!FC ↑↓not -->'));
+  ok(P('ä', '<!-- Mew!FC a↑👒(..) -->') === null, '帽子の控えは命令でないso動かない', P('ä', '<!-- Mew!FC a↑👒(..) -->'));
+  ok(P('A↑2', 'ただの行') === null, '指定行でなければ何もしない', P('A↑2', 'ただの行'));
+  const p2 = P('A↑(12)', '<!-- Mew!FC A↓1{150%} -->');
+  ok(p2 && p2.at === 1, '括弧つきでも矢印の位置を正しく指す', p2);
 }
 
 console.log('⑳ 高さの%(v4.0.287) — 100%はブラウザのsuper/sub・それ以外は直線1本');
