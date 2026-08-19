@@ -17760,7 +17760,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
    A2 / not / ä と中身that変わる。min-width では中身次第で伸びるので、**面を固定幅の箱に入れる**=
    何を描いてもボタンの幅that1pxも動かない(↻の連打で位置thatズレない)。 */
-#fmt-metex .mtx-face{display:inline-block;width:34px;text-align:center}
+#fmt-metex .mtx-face{display:inline-block;width:26px;text-align:center}/* v4.0.269(俊克 改良1「少し過剰に長い」): 26px= .fmt-btn の min-width(32px)の内側に収まるso、ボタンの幅は他の兄弟と同じになる(中身thatが変わっても動かない、は据え置き) */
 .fmt-table-cell{margin-left:16px}
 #fmt-table svg{opacity:.9}
 #fmt-table:hover svg{opacity:1}
@@ -18944,7 +18944,7 @@ for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
 top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
+_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(!mtxFg&&mtxBg&&mtxBg!=='なし'){_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
@@ -21255,7 +21255,7 @@ function meosStripHiddenForWidth(s) {
     try {
       const toks = meosMeTexTokens(t, null);
       // v4.0.222: √ の括弧も画面では消える= 幅にも数えない(数えないと表thatまた凸凹になる)。
-      for (const r of meosRadicalSpans(t)) for (const h of r.hides) toks.push({ hides: [h] });
+      for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] }); // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
       if (toks.length) {
         const hid = new Array(t.length).fill(false);
         for (const tk of toks) for (const [s, e] of (tk.hides || [])) for (let i = Math.max(0, s); i < Math.min(t.length, e); i++) hid[i] = true;
@@ -23007,7 +23007,9 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
     // ★ひな形の置き場所は **小文字の `a`**(俊克「ボタンの標示通りに。A↑2 と a↑👒(..) を区別しやすくするため」)。
     const _arrowThere = afterChar && (_prevCh === '↑' || _prevCh === '↓');
     const _b = (empty && !afterChar) ? 'a' : base;
-    const _tok = _b + (_arrowThere ? '' : '↑') + MEOS_HAT_MARK + '(..)';
+    // v4.0.269: 群 `(A ∩ B)` の後ろなら、載せられる印は**横棒だけ**so、最初からその形を入れる。
+    const _nm = (_prevCh === ')') ? '(-)' : '(..)';
+    const _tok = _b + (_arrowThere ? '' : '↑') + MEOS_HAT_MARK + _nm;
     // ★v4.0.268(俊克「âボタンより、äボタンにすべきだね」＋「手書きで入力したら即変換すべき。ボタンはそれを
     //   再現するための物」): **押した瞬間に字になる**。ひな形を組み立てて、**手書きと同じ判定**にかける。
     //   ここで判定を書き写さない= 物差しは meosHatBeforeCursor 1つ [[feedback_one_source_for_mark_count_action]]。
@@ -23083,6 +23085,27 @@ function meosRadicalSpans(text) {
       out.push({ hides: [], barStart: j, barEnd: k });
       i = k - 1;
     }
+  }
+  return out;
+}
+// ★★v4.0.269(俊克 8/19 改良3): **群の上の横棒**= `(A ∩ B)↑👒(-)` → `A ∩ B` の上に線。
+// ★√の横棒と**同じ道具・同じ形**で返す(hides/barStart/barEnd)so、描く側は1行足すだけで済む。
+// ★生データは1文字も変わらない= 字を作れない相手には**装飾で描く**(v4.0.225の裏返し)。
+//   MeOSの外では `(A ∩ B)↑👒(-)` と読める= 括弧thatあるので、意味も崩れない。
+const MEOS_HAT_BAR_RE = /↑👒\((-{1,2}|¯)\)/gu;   // 線に出来る名前だけ(^や..は群には載せられない)
+function meosHatBarSpans(text) {
+  const s0 = String(text == null ? '' : text);
+  if (s0.indexOf(MEOS_HAT_MARK) < 0) return [];
+  const s = meosHatScanLine(s0);                    // 控えの中とコードスパンの中は対象外(即変換と同じ物差し)
+  const out = [];
+  let m; MEOS_HAT_BAR_RE.lastIndex = 0;
+  while ((m = MEOS_HAT_BAR_RE.exec(s)) !== null) {
+    const tokStart = m.index, tokEnd = m.index + m[0].length;
+    if (s.charAt(tokStart - 1) !== ')') continue;   // 1文字の基準は本物の字になる= ここは群だけ
+    let d = 0, k = tokStart - 1;
+    for (; k >= 0; k--) { const c = s.charAt(k); if (c === ')') d++; else if (c === '(') { d--; if (d === 0) break; } }
+    if (k < 0 || k + 1 >= tokStart - 1) continue;   // 開き括弧なし or 中身thatが空
+    out.push({ hides: [[k, k + 1], [tokStart - 1, tokEnd]], barStart: k + 1, barEnd: tokStart - 1 });
   }
   return out;
 }
@@ -23182,6 +23205,11 @@ function meosHatBeforeCursor(textBefore, textAfter) {
   const arrowAt = s.length - (mp[0].length - tail);
   let bs = arrowAt - 1, base = s.charAt(arrowAt - 1);
   if (bs >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(bs - 1) >= '\uD800' && s.charAt(bs - 1) <= '\uDBFF') { bs--; base = s.slice(bs, arrowAt); }
+  // ★v4.0.269(俊克 8/19 改良3「`(A ∩ B)↑👒-` と書くと、A ∩ Bの上に横線を引くようにして欲しい」):
+  //   **基準that括弧のまとまり(群)なら、字は作らない**。Unicodeには1文字に載せる結合文字はあるthat、
+  //   **まとまりに載せる字は無い**so、線は**引くしかない**(√の横棒とまったく同じ理屈)。
+  //   ここで止めないと `)̄`= **閉じ括弧に帽子を載せた字**という珍妙なものthat出来てしまう。
+  if (base === ')') return { group: true, base, mark: mp[1], tail, ch: '' };
   const ch = base ? meosHatCompose(base, mp[1]) : '';
   return ch ? { start: bs, base, arrow: '↑', mark: mp[1], ch, tail } : null;
 }
@@ -23298,7 +23326,11 @@ function meosApplyMeTexDecorations(editor) {
                 if (cc) { fg = normalizeFgColor(cc[1]); bg = normalizeBgColor(cc[2]); }
                 if (!fg && !bg) continue;
                 let st = '';
-                let fgKey = fg; if (bg && !fgKey && DARK_BG_KEYS.has(bg)) fgKey = 'white';
+                // ★v4.0.269(俊克 8/19 改良2「(白/橙)の配色that見えにくいので(黒/橙)にした方が良い」):
+                //   **自動の色合わせthat片側しか無かった**= 暗い背景には白字を当てるのに、明るい背景の時は
+                //   エディタの既定色(暗いテーマでは白)のままso、橙や黄の上で白字になっていた。→ **明るい背景には黒字**。
+                //   色を自分で選んでいる時は、その色that勝つ(ここは「選んでいない時」だけの話)。
+                let fgKey = fg; if (bg && !fgKey) fgKey = DARK_BG_KEYS.has(bg) ? 'white' : 'black';
                 if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) st += ' color: ' + HIGHLIGHT_FG_COLORS[fgKey] + ' !important;';
                 if (bg && HIGHLIGHT_COLORS[bg]) st += ' background-color: ' + HIGHLIGHT_COLORS[bg] + ' !important; border-radius: 3px;';
                 if (!st) continue;
@@ -23310,7 +23342,7 @@ function meosApplyMeTexDecorations(editor) {
           } catch (_) { }
         }
         // v4.0.222: √ = 括弧を隠して**横棒**を引く。中身の肩/腰にも overline を持たせて棒を繋ぐ。
-        const rads = meosRadicalSpans(text);
+        const rads = meosRadicalSpans(text).concat(meosHatBarSpans(text)); // v4.0.269: 群の上の横棒も同じ道具で
         for (const r of rads) for (const h of r.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
         // v4.0.138: 直後に指定が無いトークンは、**真下の指定行**から名前＋出現順で受け取る。
         if (MEOS_SPEC_LINE) { try { meosApplySpecLineToTokens(text, toks, meosSpecLineFor(_slLines, ln)); } catch (_) { } }

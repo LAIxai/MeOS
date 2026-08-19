@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -103,6 +103,21 @@ const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT
 ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '(..)', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
 ok(!!sp && /白/.test(sp.metex[0].inner) && /橙/.test(sp.metex[0].inner), '色が帽子に届く(字そのものを塗る)', sp && sp.metex[0].inner);
 ok(!!T.meosHatFromToken(sp.metex[0].tok), '読んだトークンから字を作り直せる', sp && sp.metex[0].tok);
+
+console.log('⑯ 群の上の横棒(v4.0.269) — 字を作れない相手は装飾で描く');
+{
+  const bar = (x) => T.meosHatBarSpans(x);
+  const one = bar('(A ∩ B)↑👒(-)');
+  ok(one.length === 1, '`(A ∩ B)↑👒(-)` を1つ見つける', one);
+  ok(one[0] && one[0].barStart === 1 && one[0].barEnd === 6, '線は括弧の中身だけ(A ∩ B)', one[0]);
+  ok(one[0] && one[0].hides.length === 2 && one[0].hides[0][0] === 0, '開き括弧と、閉じ括弧＋命令を隠す', one[0] && one[0].hides);
+  ok(bar('a↑👒(-)').length === 0, '1文字の基準は本物の字になる(ここでは拾わない)', bar('a↑👒(-)'));
+  ok(bar('(A ∩ B)↑👒(^)').length === 0, '線に出来ない名前(^)は群には載せない', bar('(A ∩ B)↑👒(^)'));
+  ok(bar('<!-- Mew! (A ∩ B)↑👒(-) -->').length === 0, '控えの中では引かない', bar('<!-- Mew! (A ∩ B)↑👒(-) -->'));
+  ok(T.meosHatBeforeCursor('(A ∩ B)↑👒(-)', '').group === true, '群は字を作らない(`)̄` を作らせない)', T.meosHatBeforeCursor('(A ∩ B)↑👒(-)', ''));
+  const nest = bar('((x+1) ∩ B)↑👒(-)');
+  ok(nest.length === 1 && nest[0].barStart === 1, '内側の括弧は中身の一部(深さを数える)', nest[0]);
+}
 
 console.log('⑮ 即変換(v4.0.268)の伏せ方 — 控えの中とコードスパンの中では変換しない');
 {
