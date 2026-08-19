@@ -17760,7 +17760,8 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
    A2 / not / ä と中身that変わる。min-width では中身次第で伸びるので、**面を固定幅の箱に入れる**=
    何を描いてもボタンの幅that1pxも動かない(↻の連打で位置thatズレない)。 */
-#fmt-metex .mtx-face{display:inline-block;width:26px;text-align:center}/* v4.0.269(俊克 改良1「少し過剰に長い」): 26px= .fmt-btn の min-width(32px)の内側に収まるso、ボタンの幅は他の兄弟と同じになる(中身thatが変わっても動かない、は据え置き) */
+#fmt-metex{min-width:0}/* v4.0.270(俊克「まだ長いので、もう少し短く」): 兄弟と同じ min-width(32px)を外して、面の箱の幅だけで決める */
+#fmt-metex .mtx-face{display:inline-block;width:22px;text-align:center}/* v4.0.269(俊克 改良1「少し過剰に長い」): 26px= .fmt-btn の min-width(32px)の内側に収まるso、ボタンの幅は他の兄弟と同じになる(中身thatが変わっても動かない、は据え置き) */
 .fmt-table-cell{margin-left:16px}
 #fmt-table svg{opacity:.9}
 #fmt-table:hover svg{opacity:1}
@@ -18944,7 +18945,7 @@ for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
 top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(!mtxFg&&mtxBg&&mtxBg!=='なし'){_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
+_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(mtxBg&&mtxBg!=='なし'&&(!mtxFg||mtxFg==='白')){/* v4.0.270(俊克 バグ1「äボタンが白抜きのまま」): 明るい背景の上の白は読めないso黒に(選んでいない時だけでなく、白を選んである時も) */_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
@@ -22979,7 +22980,12 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
   const empty = sel.isEmpty, base = empty ? (afterChar ? '' : 'A') : doc.getText(sel);
   // v4.0.2(俊克): ▾で選んだ肩/腰文字の色を焼き込む(表示名のまま=生データが読みやすい・読取り側で正規化)。
   // v4.0.3(俊克): 色は()付き {150%(白/緑)}(ハイライトと統一)＋記法全体をコメント包み <!-- {…} --> にしてMeOS外では base↑2 だけ見せる。色はexpの後ろ=base/expの位置は不変。
-  const fgW = (fg && normalizeFgColor(fg)) ? fg : '', bgW = (bg && normalizeBgColor(bg)) ? bg : '';
+  let fgW = (fg && normalizeFgColor(fg)) ? fg : ''; const bgW = (bg && normalizeBgColor(bg)) ? bg : '';
+  // v4.0.270: 明るい背景の上の白は読めないso、**書く時に黒へ読み替える**(描く側と同じ1つの規則)。
+  try {
+    const _bk = bgW ? normalizeBgColor(bgW) : '';
+    if (_bk && meosMeTexFgKey(fgW ? normalizeFgColor(fgW) : '', _bk) === 'black' && (!fgW || normalizeFgColor(fgW) === 'white')) fgW = '黒';
+  } catch (_) { }
   const colorPart = (fgW || bgW) ? ('(' + fgW + '/' + bgW + ')') : '';
   // ★v4.0.225(俊克): **帽子**= 直前that `a↑^` の形なら、**本物の字 `â` に変換**して、作り方をコメントに控える。
   //   ここだけ「隠して描く」ではなく「字を作る」= Unicodeの結合文字thatあるものは、標準の字で書くのthat正しい。
@@ -23259,6 +23265,18 @@ function meosMaybeAutoHat(e) {
   })();
   return true;
 }
+// ★v4.0.270(俊克 8/19 バグ1「äボタンが白抜きのままだよ。基本の配色を (黒/橙) にしようよ」):
+// ★**明るい背景の上の「白」は、どう描いても読めない**。暗い背景に白字を当てる自動(v4.0.269)は入れたthat、
+//   **自分で白を選んである時**は素通ししていたので、橙の上の白抜きthatそのまま残っていた。
+// → 上付き/下付き/帽子だけ、**明るい背景の上の白は黒に読み替える**(赤/緑/青/紺/ワインは暗いso白のまま)。
+//   ★ハイライトには入れない= あちらは面を塗る飾りで、白抜きを狙って選ぶことthatある。
+//   肩腰と帽子は**字そのものを塗る**(v4.0.225)ので、読めない色は選べても意味thatが無い。
+// 書く時も同じ読み替えをするso、次に入れた指定は最初から `(黒/橙)` と書かれる(見た目でなく関係を書く)。
+function meosMeTexFgKey(fg, bg) {
+  if (!bg) return fg;
+  if (!fg || fg === 'white') return DARK_BG_KEYS.has(bg) ? 'white' : 'black';
+  return fg;
+}
 function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   const sc = (scale == null) ? 100 : scale;
   const top = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_TOP_EM.supShort : MEOS_METEX_TOP_EM.sup) : MEOS_METEX_TOP_EM.sub;
@@ -23279,7 +23297,7 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   // v4.0.223: 肩/腰は overline を持たない= √の横棒は**その字の上だけ空く**(俊克の判断)。
   let s = 'none; font-size: ' + size + 'em !important; vertical-align: ' + va + 'em; line-height: 0;';
   // v4.0.2(俊克): 肩/腰文字の色。textDecoration文字列にcolor/backgroundを相乗り(font-sizeと同じ注入技法)。暗背景は自動白文字(ハイライトと同じauto-contrast)。
-  let fgKey = fg; if (bg && !fgKey && DARK_BG_KEYS.has(bg)) fgKey = 'white';
+  let fgKey = meosMeTexFgKey(fg, bg); // v4.0.270: 明るい背景の上の白は黒に
   // v4.0.137(俊克 8/12 am07:29): color/background にも !important。font-size と**同じ取り合い**が色でも起きる=
   //   見出しの文字色(装飾の color)が上付きの color に勝ち、**背景の緑は出ているのに文字が緑**=見えない、になっていた。
   //   肩/腰文字に色を**明示した**なら、それが最後の言葉であるべき(周りの見出し色に上書きされない)。
@@ -23330,7 +23348,7 @@ function meosApplyMeTexDecorations(editor) {
                 //   **自動の色合わせthat片側しか無かった**= 暗い背景には白字を当てるのに、明るい背景の時は
                 //   エディタの既定色(暗いテーマでは白)のままso、橙や黄の上で白字になっていた。→ **明るい背景には黒字**。
                 //   色を自分で選んでいる時は、その色that勝つ(ここは「選んでいない時」だけの話)。
-                let fgKey = fg; if (bg && !fgKey) fgKey = DARK_BG_KEYS.has(bg) ? 'white' : 'black';
+                let fgKey = meosMeTexFgKey(fg, bg); // v4.0.270: 帽子も同じ1つの規則から引く
                 if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) st += ' color: ' + HIGHLIGHT_FG_COLORS[fgKey] + ' !important;';
                 if (bg && HIGHLIGHT_COLORS[bg]) st += ' background-color: ' + HIGHLIGHT_COLORS[bg] + ' !important; border-radius: 3px;';
                 if (!st) continue;

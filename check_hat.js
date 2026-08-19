@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -103,6 +103,17 @@ const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT
 ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '(..)', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
 ok(!!sp && /白/.test(sp.metex[0].inner) && /橙/.test(sp.metex[0].inner), '色が帽子に届く(字そのものを塗る)', sp && sp.metex[0].inner);
 ok(!!T.meosHatFromToken(sp.metex[0].tok), '読んだトークンから字を作り直せる', sp && sp.metex[0].tok);
+
+console.log('⑰ 肩腰/帽子の文字色(v4.0.270) — 明るい背景の上の白は読めない');
+{
+  const fk = (fg, bg) => T.meosMeTexFgKey(fg, bg);
+  ok(fk('white', 'orange') === 'black', '白/橙 → 黒/橙(俊克の基本の配色)', fk('white', 'orange'));
+  ok(fk('', 'orange') === 'black', '選んでいない時も、明るい背景には黒', fk('', 'orange'));
+  ok(fk('', 'green') === 'white', '暗い背景には白(従来どおり)', fk('', 'green'));
+  ok(fk('white', 'navy') === 'white', '暗い背景の白はそのまま', fk('white', 'navy'));
+  ok(fk('red', 'orange') === 'red', '自分で選んだ色(白以外)は勝つ', fk('red', 'orange'));
+  ok(fk('white', '') === 'white', '背景that無ければ何も変えない', fk('white', ''));
+}
 
 console.log('⑯ 群の上の横棒(v4.0.269) — 字を作れない相手は装飾で描く');
 {
