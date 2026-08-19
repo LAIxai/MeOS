@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -203,6 +203,17 @@ console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — �
   ok(T.meosMeTexTokens('∫↑(1)', null).length === 1, '★v4.0.283= ∫も素で基準文字になる(コメント無しで出る)', T.meosMeTexTokens('∫↑(1)', null).length);
   ok(T.meosMeTexTokens('∑↓(i=1)', null).length === 1, '∑も同じ', T.meosMeTexTokens('∑↓(i=1)', null).length);
   ok(T.meosMeTexTokens('🐱↑3', null).length === 0, '★知らない字は今までどおり素通り(安全側は変えない)', T.meosMeTexTokens('🐱↑3', null).length);
+  console.log('   ★v4.0.284= 積んだ方も「普通の上付き/下付きと同じstyle」＋幅0だけ');
+  {
+    const plain = T.meosMeTexStyle('sub', 50, true, null, null, 1);
+    const stacked = T.meosStackCss(plain);
+    ok(stacked.indexOf(plain) === 0, '普通のstyleをそのまま含む(大きさ・高さ・色は1つの口から)', stacked.slice(0, 60));
+    ok(/width: 0/.test(stacked) && /position: relative/.test(stacked), '足すのは「幅0」と「相対位置」だけ', stacked.slice(-90));
+    const fs = Number(/font-size: ([\d.]+)em/.exec(stacked)[1]);
+    ok(Math.abs(fs - 0.68) < 0.001, '★大きさは0.68em(高さの%を大きさに掛けない= v4.0.283の誤り)', fs);
+    const colored = T.meosStackCss(T.meosMeTexStyle('sub', 50, true, 'black', 'orange', 1));
+    ok(/color:/.test(colored) && /background-color:/.test(colored), '指定行の色that積んだ方にも届く(バグ2)', colored.slice(-120));
+  }
 }
 
 console.log('⑰ 肩腰/帽子の文字色(v4.0.270) — 明るい背景の上の白は読めない');

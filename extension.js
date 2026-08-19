@@ -23320,17 +23320,18 @@ function meosMeTexStackPairs(text, toks) {
     const gap = t.slice(a.opEnd, b.opStart);
     if (!/^\)?[↑↓]\(?$/u.test(gap)) continue;                    // 間に在るのは「閉じ括弧・矢印・開き括弧」だけ
     const closeAfter = (t.charAt(b.opEnd) === ')') ? 1 : 0;
-    out.push({ dir: b.kind === 'sup' ? 'up' : 'down', at: a.opStart, hideFrom: a.opEnd, hideTo: b.opEnd + closeAfter, text: t.slice(b.opStart, b.opEnd) });
+    out.push({ dir: b.kind === 'sup' ? 'up' : 'down', at: a.opStart, hideFrom: a.opEnd, hideTo: b.opEnd + closeAfter, text: t.slice(b.opStart, b.opEnd), tok: b });
   }
   return out;
 }
-// 積んだ方(2つ目)を描くCSS。1つ目と同じ位置に左を揃え、上下だけずらす。
-function meosStackCss(dir, scale) {
-  const sc = Math.max(30, Math.min(200, Number(scale) || 62)) / 100;
-  const shift = (dir === 'up') ? -MEOS_LIMIT_UP_EM : MEOS_LIMIT_DOWN_EM;
-  return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
-    + ' font-size: ' + sc + 'em !important; line-height: 0;'
-    + ' top: ' + (Math.round(shift / sc * 1000) / 1000) + 'em;';
+// ★★v4.0.284(俊克 8/20 バグ1「下側の0thatものすごく小さくなった」＋バグ2「FCコメントthat下側だけ効かない」):
+//   ★**原因は1つ= 私that「%」を取り違えた**。`gSub`(=50)は**高さの%**(どれだけ下げるか)であって
+//   **字の大きさではない**(大きさは 0.68em 固定)。それを font-size に掛けたので 0.34em の極小になった。
+//   ★しかも自前でCSSを組み立てたso、指定行(FC)の色と高さを**丸ごと捨てていた**=バグ2も同じ根。
+//   → **普通の上付き/下付きと同じ style をそのまま使い、「幅0」だけ足す**。
+//     大きさ・高さ・色は1つの口(meosMeTexStyle)から出る= 積んでも見た目that変わらない。
+function meosStackCss(baseStyle) {
+  return String(baseStyle || 'none;') + ' position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;';
 }
 function meosLimitCss(dir, len, col, opW, tall, narrow) {
   const sc = MEOS_LIMIT_SCALE / 100;
@@ -23618,10 +23619,13 @@ function meosApplyMeTexDecorations(editor) {
         for (const sp of _stk) {
           hideRanges.push(new vscode.Range(ln, sp.hideFrom, ln, sp.hideTo));
           _stkHidden.add(sp.hideFrom + ':' + sp.hideTo);
-          const _sc = (sp.dir === 'up') ? gSup : gSub;
+          const _t2 = sp.tok || {};
+          const _sc = Math.max(30, Math.min(200, (_t2.pct != null) ? _t2.pct : ((sp.dir === 'up') ? gSup : gSub)));
+          const _tall = (sp.dir === 'up') ? meosMeTexBaseTall(_t2.base) : true;
+          const _st = meosMeTexStyle((sp.dir === 'up') ? 'sup' : 'sub', _sc, _tall, _t2.fg, _t2.bg, _t2.depth || 1);
           (sp.dir === 'up' ? limitUpItems : limitDownItems).push({
             range: new vscode.Range(ln, sp.at, ln, sp.at),
-            renderOptions: { before: { contentText: sp.text, textDecoration: meosStackCss(sp.dir, Math.round(_sc * 0.68)) } }
+            renderOptions: { before: { contentText: sp.text, textDecoration: meosStackCss(_st) } }
           });
         }
         const _stkSkip = new Set(_stk.map(sp => sp.hideFrom + '>' + sp.hideTo));
