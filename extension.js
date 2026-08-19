@@ -21182,12 +21182,49 @@ let _meosTableCjkW = 1.67;
 //   関数はどれも速いのに**GCが秒単位でホストを止める**(=計測に映らない固まり方)。
 //   編集していない間(スクロール/カーソル移動)は作り直さない=ごみゼロ。
 let _meosTextCache = { key: '', text: null, lines: null };
+// ★★v4.0.272(俊克 8/19 バグ1「bsだけでなく、最近、改行も1、2拍遅れる」):
+// ★**打鍵ごとに12MBを作り直していた**。行の配列は「版ごとに1回」だけ刻む約束(v4.0.115)だが、
+//   **打てば版が進む**so、1打ごとに `doc.getText()`(12MBの文字列)＋`split`(17万本)を作っては捨てていた。
+//   これは遅いだけでなく**毎打鍵12MBのゴミ**= 8/18以降1448回の [host-blocked](700〜1800ms・heap最大3.4GB)の
+//   心当たりでもある(GCは私の計測の外で走るので「MeOSの時刻に何も無い」ように見えていた)。
+// ★直し= **変更を配列に当てる**。1打の変更は1〜数行so、その行だけ差し替えれば刻み直す必要が無い。
+//   ★安全弁を2つ置く= ①`lines.length === doc.lineCount` ②変更した行を1本だけ実物と突き合わせる。
+//   どちらか合わなければ**捨てる**(次に要る人が刻み直す)= 食い違ったまま走り続けることが原理的に無い。
+function meosPatchDocLines(e) {
+  try {
+    const doc = e && e.document; if (!doc || !e.contentChanges || !e.contentChanges.length) return false;
+    const c = _meosTextCache;
+    if (!c.lines || !c.key || c.key !== (doc.uri.toString() + '@' + (doc.version - 1))) return false; // 直前の版の物でなければ諦める
+    const nl = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+    const lines = c.lines;
+    const chs = e.contentChanges.slice().sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    for (const ch of chs) {
+      const s0 = ch.range.start, e0 = ch.range.end;
+      if (s0.line >= lines.length || e0.line >= lines.length) { _meosTextCache = { key: '', text: null, lines: null }; return false; }
+      const head = String(lines[s0.line]).slice(0, s0.character);
+      const tail = String(lines[e0.line]).slice(e0.character);
+      const mid = (head + String(ch.text || '') + tail).split(nl);
+      if (mid.length > 2000) { _meosTextCache = { key: '', text: null, lines: null }; return false; } // 大きな貼り付けは刻み直す方が安い
+      lines.splice(s0.line, e0.line - s0.line + 1, ...mid);
+    }
+    const probe = Math.max(0, Math.min(doc.lineCount - 1, chs.length ? chs[chs.length - 1].range.start.line : 0));
+    if (lines.length !== doc.lineCount || lines[probe] !== doc.lineAt(probe).text) { // 安全弁
+      _meosTextCache = { key: '', text: null, lines: null };
+      try { meosDbg('[lineCache] 食い違い→捨てた 行数=' + lines.length + '/' + doc.lineCount + ' 見た行=' + probe); } catch (_) { }
+      return false;
+    }
+    _meosTextCache = { key: doc.uri.toString() + '@' + doc.version, text: null, lines }; // 文字列は要る人that作る
+    return true;
+  } catch (_) { _meosTextCache = { key: '', text: null, lines: null }; return false; }
+}
 function _meosTextKey(doc) { return doc.uri.toString() + '@' + doc.version; }
 function meosDocText(doc) {
   const key = _meosTextKey(doc);
   if (_meosTextCache.key === key && _meosTextCache.text != null) return _meosTextCache.text;
   const text = doc.getText();
-  _meosTextCache = { key, text, lines: null };
+  // v4.0.272: 同じ版の行配列that既に在るなら**捨てない**(捨てると次の meosDocLines that刻み直す)。
+  const keep = (_meosTextCache.key === key) ? _meosTextCache.lines : null;
+  _meosTextCache = { key, text, lines: keep };
   return text;
 }
 function meosDocLines(doc) {
@@ -23242,8 +23279,12 @@ function meosHatBeforeCursor(textBefore, textAfter) {
 //   形that揃った瞬間に字になる= 手書きでも、貼り付けでも、ボタンでも、**同じ1つの道**を通る。
 // 字＋控えに置き換える。書く口はここ1つだけ(ボタン/手書きの両方thatここへ来る)。
 async function meosHatApply(editor, line, hb, endCh, colorPart) {
+  // ★v4.0.272(俊克 8/19 改良1「👒指定で、色指定は削除しよう」): ★**帽子は本物の字so、色は他の字と同じ口から掛かる**。
+  //   `**äとa**` にハイライトの指定(白/青)を掛けた時、帽子だけが自分の色(黒/橙)を主張して**囲みの中で1文字だけ
+  //   別の色**になっていた(俊克のスクショ)。字なのに専用の色を持つ、というのが二重だった。
+  //   → 控えに色を書かない。ボタンの面は見やすさのため今のまま(俊克「ボタンは今のままで良い」)。
   const _hs = new vscode.Position(line, hb.start);
-  const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + hb.base + '↑' + MEOS_HAT_MARK + '(' + hb.mark + ')' + (colorPart ? (' ' + colorPart) : '') + ' -->';
+  const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + hb.base + '↑' + MEOS_HAT_MARK + '(' + hb.mark + ')' + ' -->';
   await meosApplySpecEdit(editor, new vscode.Range(_hs, new vscode.Position(line, endCh)), hb.ch + _rec);
   try { const _after = _hs.translate(0, hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
 }
@@ -23343,40 +23384,11 @@ function meosApplyMeTexDecorations(editor) {
         if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
         const text = doc.lineAt(ln).text;
         const toks = meosMeTexTokens(text, MEOS_SPEC_LINE ? meosSpecLineFor(_slLines, ln) : null); // v4.0.142: 指定行で名乗った変わり種の基準文字も通す
-        // v4.0.225: 帽子の控え(`a↑^👒 (白/橙)`)から**その字を見つけて色を塗る**。色は字と背景=従来どおり。
-        //   結び方は他と同じ**出現順**(同じ字が複数あれば、控えの並び順に1つずつ)。
-        if (MEOS_SPEC_LINE) {
-          try {
-            const _sl = meosSpecLineFor(_slLines, ln);
-            const _hats = (_sl && _sl.metex) ? _sl.metex.map(it => ({ h: meosHatFromToken(it.tok), inner: it.inner })).filter(x => x.h) : [];
-            if (_hats.length) {
-              const _used = new Map();
-              for (const it of _hats) {
-                const ch = it.h.ch, n = (_used.get(ch) || 0);
-                let from = -1, seen = -1;
-                while (true) { from = text.indexOf(ch, from + 1); if (from < 0) break; seen++; if (seen === n) break; }
-                _used.set(ch, n + 1);
-                if (from < 0) continue; // 控えと本文that食い違っている(手で書き換えた)= 黙って何もしない
-                let fg = null, bg = null;
-                const cc = /\(([^)/]*)\/([^)]*)\)/.exec(String(it.inner || ''));
-                if (cc) { fg = normalizeFgColor(cc[1]); bg = normalizeBgColor(cc[2]); }
-                if (!fg && !bg) continue;
-                let st = '';
-                // ★v4.0.269(俊克 8/19 改良2「(白/橙)の配色that見えにくいので(黒/橙)にした方が良い」):
-                //   **自動の色合わせthat片側しか無かった**= 暗い背景には白字を当てるのに、明るい背景の時は
-                //   エディタの既定色(暗いテーマでは白)のままso、橙や黄の上で白字になっていた。→ **明るい背景には黒字**。
-                //   色を自分で選んでいる時は、その色that勝つ(ここは「選んでいない時」だけの話)。
-                let fgKey = meosMeTexFgKey(fg, bg); // v4.0.270: 帽子も同じ1つの規則から引く
-                if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) st += ' color: ' + HIGHLIGHT_FG_COLORS[fgKey] + ' !important;';
-                if (bg && HIGHLIGHT_COLORS[bg]) st += ' background-color: ' + HIGHLIGHT_COLORS[bg] + ' !important; border-radius: 3px;';
-                if (!st) continue;
-                const style = 'none;' + st;
-                if (!styleRanges.has(style)) styleRanges.set(style, []);
-                styleRanges.get(style).push(new vscode.Range(ln, from, ln, from + ch.length));
-              }
-            }
-          } catch (_) { }
-        }
+        // {* ▼mCN=hat_color_removed // v4.0.272: **帽子だけを塗る道を撤去**(俊克 8/19 改良1「👒指定で、色指定は削除しよう」)。 *}
+        //   ここに在ったのは「控えの色(黒/橙)を、合成した字を探して塗る」24行。帽子は**本物の字**so、
+        //   色は他の字と同じ口(ハイライト/取消線/見出しの指定)から掛かる。専用の色を持つのが二重だった。
+        //   ★症状= `**äとa**` を(白/青)で囲むと、帽子だけ(黒/橙)を主張して**囲みの中で1文字だけ別の色**。
+        //   ★書く側(meosHatApply)も色を書かないので、控えは `<!-- Mew!FC a↑👒(..) -->` だけになる。
         // v4.0.222: √ = 括弧を隠して**横棒**を引く。中身の肩/腰にも overline を持たせて棒を繋ぐ。
         const rads = meosRadicalSpans(text).concat(meosHatBarSpans(text)); // v4.0.269: 群の上の横棒も同じ道具で
         for (const r of rads) for (const h of r.hides) hideRanges.push(new vscode.Range(ln, h[0], ln, h[1]));
@@ -25083,6 +25095,8 @@ makeDecorations();
       }
     }),
     vscode.workspace.onDidChangeTextDocument(e => {
+      // v4.0.272: **一番先に**行の配列を直す(この後の誰かthat meosDocLines を呼んでも刻み直さない)。
+      try { meosPatchDocLines(e); } catch (_) { }
       // v4.0.258: 分割した行への変更を、理由と中身ごと記録する(誰が消したかを名指しさせる)。
       try {
         if (_meosSplitWatch && Date.now() < _meosSplitWatch.until && e.document.uri.toString() === _meosSplitWatch.uri) {
