@@ -18940,7 +18940,7 @@ for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
 top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){fmtMetex.innerHTML='<span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">â</span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span style="font-size:0.78em;letter-spacing:0.3px">not↑↓</span>';return;}fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
+_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){fmtMetex.innerHTML='<span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">â</span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span style="font-size:0.72em">not</span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
@@ -22985,6 +22985,10 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
     //   (`↑´` を選んでも `a↑´` を選んでも、終わりの手前thatが `a↑´` なら同じこと)。
     const _hb = (sel.start.line === sel.end.line)
       ? meosHatBeforeCursor(doc.lineAt(sel.end.line).text.slice(0, sel.end.character), doc.lineAt(sel.end.line).text.slice(sel.end.character)) : null;
+    if (_hb && _hb.below) { // v4.0.267: 下に被せる印は v5.0(黙って何もしないと、ひな形をもう1つ書いてしまう)
+      vscode.window.setStatusBarMessage('MeTeX: 下に被せる印は v5.0 です(いまは ↑ だけ)', 2500);
+      return;
+    }
     if (_hb) {
       const _hs = new vscode.Position(sel.end.line, _hb.start);
       sel = new vscode.Selection(sel.start, sel.end.translate(0, _hb.tail || 0)); // v4.0.266: 閉じ括弧の手前で押した分
@@ -22999,7 +23003,12 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
   //   運指= 押す→`a↑👒(..)`(名前の `..` を選んだ状態)→名前を打つ→もう一度押す→`ä`＋控え。
   //   ★上の `_hb` を先に見ているので、既に形that揃っていれば**この行に来る前に字になる**(押す口は1つ)。
   if (isHat) {
-    const _tok = base + '↑' + MEOS_HAT_MARK + '(..)';
+    // ★v4.0.267(俊克 8/19 バグ1「a↑の横で押すと a↑↑👒(..) とダブってしまう」):
+    //   **目の前に在る矢印は、その矢印を使う**(v4.0.221の「直前の字that基準文字になる」と同じ約束)。
+    // ★ひな形の置き場所は **小文字の `a`**(俊克「ボタンの標示通りに。A↑2 と a↑👒(..) を区別しやすくするため」)。
+    const _arrowThere = afterChar && (_prevCh === '↑' || _prevCh === '↓');
+    const _b = (empty && !afterChar) ? 'a' : base;
+    const _tok = _b + (_arrowThere ? '' : '↑') + MEOS_HAT_MARK + '(..)';
     await meosApplySpecEdit(editor, sel, _tok);
     try { const _s = sel.start.translate(0, _tok.length - 3); editor.selection = new vscode.Selection(_s, _s.translate(0, 2)); } catch (_) { } // 名前の2文字を選ぶ
     return;
@@ -23154,12 +23163,17 @@ function meosSpecPayloadAsIs(payload) {
 function meosHatBeforeCursor(textBefore, textAfter) {
   const s = String(textBefore == null ? '' : textBefore);
   let tail = 0;
-  let mp = /↑👒\(([^()<>\s]{1,2})\)$/u.exec(s);  // v4.0.266: 入力も控えと同じ `a↑👒(..)`
+  // ★v4.0.267(俊克 8/19 バグ1): **矢印は両方見る**。↓の帽子(下に被せる印)は v5.0 なので字は作らないが、
+  //   「見えていない」ことにすると、押しても何も起きない上に**ひな形をもう1つ書いてしまう**。
+  //   → ここで `below` と名乗って返し、呼ぶ側that一言告げて終わる。
+  let mp = /([↑↓])👒\(([^()<>\s]{1,2})\)$/u.exec(s);  // v4.0.266: 入力も控えと同じ `a↑👒(..)`
   if (!mp && /^\)/.test(String(textAfter == null ? '' : textAfter))) { // 閉じ括弧の手前(ひな形を打ち替えた直後)
-    mp = /↑👒\(([^()<>\s]{1,2})$/u.exec(s);
-    if (mp) { tail = 1; mp = [mp[0] + ')', mp[1]]; }
+    mp = /([↑↓])👒\(([^()<>\s]{1,2})$/u.exec(s);
+    if (mp) { tail = 1; mp = [mp[0] + ')', mp[1], mp[2]]; }
   }
-  if (!mp || !meosHatCodeOf(mp[1])) return null;
+  if (!mp || !meosHatCodeOf(mp[2])) return null;
+  if (mp[1] === '↓') return { below: true, mark: mp[2], tail, ch: '' };   // 下に被せる印は v5.0
+  mp = [mp[0], mp[2]];
   const arrowAt = s.length - (mp[0].length - tail);
   let bs = arrowAt - 1, base = s.charAt(arrowAt - 1);
   if (bs >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(bs - 1) >= '\uD800' && s.charAt(bs - 1) <= '\uDBFF') { bs--; base = s.slice(bs, arrowAt); }
