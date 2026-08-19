@@ -186,23 +186,20 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
   }
 }
 
-console.log('⑳ 高さの%(v4.0.286) — 100%=素の位置・向きごとに直線1本');
+console.log('⑳ 高さの%(v4.0.287) — 100%はブラウザのsuper/sub・それ以外は直線1本');
 {
-  const va = (kind, sc, tall) => {
-    const css = T.meosMeTexStyle(kind, sc, tall !== false, null, null, 1);
-    return Number(/vertical-align: (-?[\d.]+)em/.exec(css)[1]);   // その字自身のem(定数と同じ単位)
-  };
-  ok(Math.abs(va('sup', 100) - T.MEOS_METEX_MID_EM.sup) < 0.01, '★上付き100%= 素の位置(0.60em)', va('sup', 100));
-  ok(Math.abs(va('sup', 150) - T.MEOS_METEX_TOP_EM.sup) < 0.01, '上付き150%= 基準の字の頭(1.05em)', va('sup', 150));
-  ok(Math.abs(va('sub', 100) + T.MEOS_METEX_MID_EM.sub) < 0.01, '★下付き100%= 素の位置(0.33em下)', va('sub', 100));
-  ok(Math.abs(va('sub', 50)) < 0.01, '下付き50%= 基準線(0)', va('sub', 50));
-  // 直線1本= 等間隔の%thatが等間隔の高さになる
-  const d1 = va('sup', 150) - va('sup', 125), d2 = va('sup', 125) - va('sup', 100);
-  ok(Math.abs(d1 - d2) < 0.01, '★上付きは(100,素)〜(150,頭)の直線1本(等間隔)', [d1, d2]);
-  const e1 = va('sub', 100) - va('sub', 75), e2 = va('sub', 75) - va('sub', 50);
-  ok(Math.abs(e1 - e2) < 0.01, '下付きは(50,基準線)〜(100,素)の直線1本', [e1, e2]);
-  ok(Math.abs(va('sub', 200) + 3 * T.MEOS_METEX_MID_EM.sub) < 0.02, '200%まで同じ傾きで伸ばす(素の3倍)', va('sub', 200));
-  ok(va('sup', 100, false) < va('sup', 100, true), '背の低い基準文字(x等)は少し低い位置(今までどおり)', [va('sup', 100, false), va('sup', 100, true)]);
+  const css = (kind, sc, tall) => T.meosMeTexStyle(kind, sc, tall !== false, null, null, 1);
+  const va = (kind, sc, tall) => { const m = /vertical-align: (-?[\d.]+)em/.exec(css(kind, sc, tall)); return m ? Number(m[1]) : null; };
+  ok(/vertical-align: super;/.test(css('sup', 100)), '★上付き100%= ブラウザの super そのもの(数字で近似しない)', css('sup', 100).slice(0, 70));
+  ok(/vertical-align: sub;/.test(css('sub', 100)), '★下付き100%= ブラウザの sub そのもの', css('sub', 100).slice(0, 70));
+  ok(Math.abs(va('sup', 150) - T.MEOS_METEX_TOP_EM.sup) < 0.01, '上付き150%= 上付きの底that基準の字の頭に揃う(俊克の定義)', va('sup', 150));
+  ok(Math.abs(va('sub', 50)) < 0.01, '下付き50%= 基準線', va('sub', 50));
+  const d1 = va('sup', 150) - va('sup', 125), d2 = va('sup', 125) - va('sup', 110);
+  ok(Math.abs(d1 / 25 - d2 / 15) < 0.01, '★100%以外は(100%,super)〜(150%,頭)の直線1本', [d1 / 25, d2 / 15]);
+  const e1 = va('sub', 90) - va('sub', 70), e2 = va('sub', 70) - va('sub', 50);
+  ok(Math.abs(e1 - e2) < 0.01, '下付きは(50%,基準線)〜(100%,sub)の直線1本', [e1, e2]);
+  ok(va('sup', 200) > va('sup', 150), '200%まで同じ傾きで伸ばす', va('sup', 200));
+  ok(/vertical-align: (-?[\d.]+)em/.test(css('sup', 100, true).replace('super', '')) === false, '100%の時はemを書かない', true);
 }
 
 console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — ∫↑(1)↓(0)');

@@ -18961,14 +18961,16 @@ var fmtMetex=document.getElementById('fmt-metex'),fmtMtxCycle=document.getElemen
 metexPop=document.getElementById('metex-pop');var mtxSub=false,mtxNot=false,mtxHat=false,mtxFg=null,mtxBg=null;/* v4.0.222: ↻の3つ目=not(この矢印は上付きにしない) *//* ★v4.0.286: 高さの式。nodeの meosMeTexStyle と**同じ形**(webviewからは関数を呼べないso、ここだけ写す)。
    上付き=(100%,素0.36)〜(150%,頭1.05)の直線 / 下付き=(50%,基準線0)〜(100%,素0.20)の直線。200%まで同じ傾き。
    ★片方だけ直すと面とプレビューthat本文とズレるso、直す時は必ず両方(v4.0.246と同じ穴)。 */
-function mtxVa(sub,p){var top=sub?0.66:1.05,mid=sub?0.33:0.60;
+function mtxVa(sub,p){var top=sub?0.66:1.05,mid=sub?0.29:0.50;
 return Math.round((sub?(mid*(p-50)/50):(mid+(top-mid)*(p-100)/50))*1000)/1000;}
+/* v4.0.287: ちょうど100%はブラウザの super/sub に任せる(nodeと同じ判断)。 */
+function mtxValign(sub,p,neg){return (Math.round(p)===100)?(sub?'sub':'super'):((mtxVa(sub,p)*(neg?-1:1))+'em');}
 function mtxHex(list,name){if(!name)return '';
 for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}function mtxFace(){if(!fmtMetex)return;/* v4.0.0(俊克): カーソルが既存の上付/下付の中なら🚫(再クリックで解除) */if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){fmtMetex.classList.add('fmt-remove');
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
-p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=mtxVa(mtxSub,p)*(neg?-1:1);
+p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=mtxValign(mtxSub,p,neg);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(mtxBg&&mtxBg!=='なし'&&(!mtxFg||mtxFg==='白')){/* v4.0.270(俊克 バグ1「äボタンが白抜きのまま」): 明るい背景の上の白は読めないso黒に(選んでいない時だけでなく、白を選んである時も) */_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
+_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(mtxBg&&mtxBg!=='なし'&&(!mtxFg||mtxFg==='白')){/* v4.0.270(俊克 バグ1「äボタンが白抜きのまま」): 明るい背景の上の白は読めないso黒に(選んでいない時だけでなく、白を選んである時も) */_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+';line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
@@ -18977,8 +18979,8 @@ return;}openFmtPop('metex',fmtMtxCaret);});}/* v4.0.38(俊克): 入力欄は共�
 mtxSubVal=${mtxSub};function mtxSupIn_(){return document.getElementById('mtx-sup-input');}function mtxSubIn_(){return document.getElementById('mtx-sub-input');
 }function mtxSupPrev_(){return document.getElementById('mtx-sup-prev');}function mtxSubPrev_(){return document.getElementById('mtx-sub-prev');
 }function mtxClamp(v){v=parseInt(v,10);if(!(v>=30))v=100;if(v>200)v=200;if(v<30)v=30;return v;}function mtxPrev(){var fgH=mtxHex(FMT_FG,mtxFg),
-bgH=mtxHex(FMT_BG,mtxBg);var pv=function(el,inp,sub,neg){if(!el||!inp)return;var p=mtxClamp(inp.value);var v=mtxVa(sub,p)*(neg?-1:1);
-el.style.fontSize='0.68em';el.style.verticalAlign=v+'em';el.style.lineHeight='0';el.style.color=fgH||'';el.style.background=bgH||'';
+bgH=mtxHex(FMT_BG,mtxBg);var pv=function(el,inp,sub,neg){if(!el||!inp)return;var p=mtxClamp(inp.value);var v=mtxValign(sub,p,neg);
+el.style.fontSize='0.68em';el.style.verticalAlign=v;el.style.lineHeight='0';el.style.color=fgH||'';el.style.background=bgH||'';
 el.style.borderRadius=bgH?'3px':'';el.style.padding=bgH?'0 1px':'';};pv(mtxSupPrev_(),mtxSupIn_(),false,false);pv(mtxSubPrev_(),mtxSubIn_(),true,true);
 }/* v4.0.3(俊克): プレビューにも色(設定済みはボタンが🚫で確認できないから) */mtxPrev();mtxFace();/* v3.1.75: 入力欄が出来た後に外ボタンを実%で再描画 */function mtxSend(){var a=mtxSupIn_(),
 b=mtxSubIn_();var sup=mtxClamp(a?a.value:mtxSupVal),sub=mtxClamp(b?b.value:mtxSubVal);mtxSupVal=sup;mtxSubVal=sub;if(a)a.value=sup;
@@ -22443,10 +22445,12 @@ const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
 //     どちらも200%まで同じ傾きで伸ばす(設定の上限that200%)。
 //   ★★`package.json` の説明文には**最初からそう書いてあった**(「100% is the ordinary superscript —
 //     about 0.36 of a character above the baseline」)。**説明that正しく、実装と既定値that付いてきていなかった**。
-// ★単位は TOP_EM と同じ**その字自身のem**(基準の字では 0.68倍that実寸)。0.60em → 基準の字の約0.41ぶん上=
-//   説明文の「about 0.36 of a character above the baseline」より少しだけ高い(俊克「上付きthatやや下過ぎる」)。
-//   下付きの100%は今までの値(0.33)をそのまま=「基準の字より少し下」で、ここは指摘to無かった。
-const MEOS_METEX_MID_EM = { sup: 0.60, supShort: 0.42, sub: 0.33 }; // 100%=普通の上付き/下付きの位置
+// ★★★v4.0.287(俊克 8/20「supを指定した時の高さが100%なんだよ。だから、100%を指定した時は、
+//   単純にsupに変換すればいいんだよ」): ★**100%は数字で近似しない。ブラウザの `super`/`sub` そのもの**。
+//   ★これで「やや下過ぎる/高過ぎる」を私the目分量で決めなくてよくなる= **定義でそうなる**(フォントthat決める)。
+//   ★150%の意味は俊克the決めたとおり= **上付きの底to基準の字の頭に揃う**(TOP_EM.sup)。
+//   下の数字は100%以外を描く時の近似値(`super`/`sub` に相当するem)= 直線の起点として使うだけ。
+const MEOS_METEX_MID_EM = { sup: 0.50, supShort: 0.35, sub: 0.29 }; // ≒ super/sub(その字自身のem)
 
 // ===== v4.0.138(俊克 8/12 am07:44「Bをやって、それを折り畳む、という最終奥義を実装しましょう」) ==========
 // ★問題= 行末のコメントは**隠れていても桁は食う**(折り返しはモデルのテキストの桁数で決まる=v4.0.93の壁)so、
@@ -23566,7 +23570,9 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   //   **その要素自身の font-size 基準**so、0.68em のはずが 1.2em で解決され、浮き上がりが
   //   1.05x0.68=0.71em → 1.05x1.2=1.26em(ほぼ1行)に膨らむ。v4.0.15(太字)と同じ穴の別の顔。
   // v4.0.223: 肩/腰は overline を持たない= √の横棒は**その字の上だけ空く**(俊克の判断)。
-  let s = 'none; font-size: ' + size + 'em !important; vertical-align: ' + va + 'em; line-height: 0;';
+  // v4.0.287: ちょうど100%(かつ肩の上の肩でない)なら、**ブラウザのsuper/subに任せる**。
+  const _valign = (Math.round(sc) === 100 && d === 1) ? ((kind === 'sup') ? 'super' : 'sub') : (va + 'em');
+  let s = 'none; font-size: ' + size + 'em !important; vertical-align: ' + _valign + '; line-height: 0;';
   // v4.0.2(俊克): 肩/腰文字の色。textDecoration文字列にcolor/backgroundを相乗り(font-sizeと同じ注入技法)。暗背景は自動白文字(ハイライトと同じauto-contrast)。
   let fgKey = meosMeTexFgKey(fg, bg); // v4.0.270: 明るい背景の上の白は黒に
   // v4.0.137(俊克 8/12 am07:29): color/background にも !important。font-size と**同じ取り合い**が色でも起きる=
@@ -23653,7 +23659,10 @@ function meosApplyMeTexDecorations(editor) {
         for (const sp of meosMeTexStackPairs(text, toks)) _stkBack.set(sp.tok, sp.back);
         for (const t of toks) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
-          const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : (t.kind === 'sup' ? gSup : gSub)));
+          // ★v4.0.287(俊克「素の状態でそうなることは想定していなかった」): **素は常に100%**(=普通の上付き/下付き)。
+          //   設定(metexSuperScale/SubScale)thatが決めるのは**ボタンthat書く `{N%}` の値**だけ= 素は設定に引きずられない。
+          //   ★これで設定に 150/50 that書き残されていても、素の字は普通の位置に立つ。
+          const scale = Math.max(30, Math.min(200, (t.pct != null) ? t.pct : 100));
           const baseTall = (t.kind === 'sup') ? meosMeTexBaseTall(t.base) : true; // 上付きは基準文字の大小で頭を合わせる
           // v4.0.223(俊克 8/15 pm08:47「これは、累乗部分は描かないということでいいんじゃないか? これは√の範囲を
           //   明確にすると言うのが、最大の目的なんだよ。だから、累乗部分は、想像で埋めればいいんだよ」):
