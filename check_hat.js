@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -230,7 +230,18 @@ console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — �
     const plain = T.meosMeTexStyle('sub', 100, true, 'black', 'orange', 1);
     const stacked = T.meosStackCss(plain, 1);
     ok(stacked.indexOf(plain) === 0, '★普通の上付き/下付きのstyleを1文字も変えない', stacked.slice(0, 40));
-    ok(/left: -1ch/.test(stacked) && /position: relative/.test(stacked), '足すのは「左へ戻す」だけ', stacked.slice(-40));
+    ok(/left: -1ch/.test(stacked) && /position: relative/.test(stacked), '足すのは「左へ戻す」と「上下へ離す」', stacked.slice(-40));
+    console.log('   ★v4.0.288= 積んだ時だけ上下に離す(super/subは積むことを想定していない)');
+    {
+      const up = T.meosStackCss(T.meosMeTexStyle('sup', 100, true, null, null, 1), 0, -T.MEOS_STACK_SPREAD_EM);
+      const dn = T.meosStackCss(T.meosMeTexStyle('sub', 100, true, null, null, 1), 1, T.MEOS_STACK_SPREAD_EM);
+      ok(/vertical-align: super/.test(up), '★上は super のまま(フォントの位置を捨てない)', up.slice(0, 70));
+      ok(/vertical-align: sub/.test(dn), '下は sub のまま', dn.slice(0, 70));
+      ok(/top: -0\.35em/.test(up), '離す分は top で足す(上は負)', up.slice(-40));
+      ok(/top: 0\.35em/.test(dn), '下は正', dn.slice(-40));
+      const none = T.meosStackCss(T.meosMeTexStyle('sup', 100, true, null, null, 1), 0, 0);
+      ok(!/top:/.test(none), '積んでいない時は top を書かない(今までと1文字も変わらない)', none.slice(-40));
+    }
     ok(/color:/.test(stacked) && /background-color:/.test(stacked), '色は元のstyleに入っている(手で渡さない)', true);
     ok(/vertical-align/.test(stacked), '高さも元のstyleのまま(100%が基準値として効く)', true);
   }

@@ -23344,7 +23344,8 @@ function meosMeTexStackPairs(text, toks) {
     if (!/^\)?[↑↓]\(?$/u.test(gap)) continue;                    // 間に在るのは「閉じ括弧・矢印・開き括弧」だけ
     const closeAfter = (t.charAt(b.opEnd) === ')') ? 1 : 0;
     out.push({ dir: b.kind === 'sup' ? 'up' : 'down', at: a.opStart, hideFrom: a.opEnd, hideTo: b.opEnd + closeAfter,
-      text: t.slice(b.opStart, b.opEnd), tok: b, back: (a.opEnd - a.opStart) });   // back= 1つ目の中身の字数(その字自身のch)
+      text: t.slice(b.opStart, b.opEnd), tok: b, first: a, baseText: String(a.base || ''),
+      back: (a.opEnd - a.opStart) });   // back= 1つ目の中身の字数(その字自身のch)
   }
   return out;
 }
@@ -23363,10 +23364,21 @@ function meosMeTexStackPairs(text, toks) {
 //   ★しかも自前でCSSを組み立てたso、指定行(FC)の色と高さを**丸ごと捨てていた**=バグ2も同じ根。
 //   → **普通の上付き/下付きと同じ style をそのまま使い、「幅0」だけ足す**。
 //     大きさ・高さ・色は1つの口(meosMeTexStyle)から出る= 積んでも見た目that変わらない。
-// 積む2つ目に足すCSS= 1つ目の中身のぶんだけ左へ戻す(字はそのまま・幅もそのまま)。
-function meosStackCss(baseStyle, backCells) {
+// ★★v4.0.288(俊克 8/20「∫で素の高さになっていない。%指定しなくても素の状態でちょうど良くなるはず。
+//   しかし内部で調整していたはずだよね?」):
+//   ★**`super`/`sub` は「単独の上付き/下付き」として正しい高さ**であって、**積むことは想定されていない**。
+//   実測= super の底(+0.34em)と sub の頭(-0.2+0.48=+0.28em)の隙間は **0.06em** しか無い→ 積めば必ず触る。
+//   普通の文書で上付きと下付きが同じ字の上下に積まれることthatないので、フォントthatその間隔を持っていない。
+//   ★直し= **積んだ時だけ、上下に離す**。`vertical-align` は super/sub のまま(フォントの位置を捨てない)、
+//   `position: relative; top:` で**その分だけ足す**= 100%の意味を壊さずに離せる。
+//   ★∫のような背の高い字はもっと離す(本来の組版= 上下限は記号の頭と足に付く)= 👒の時と同じ考え・同じ定数。
+const MEOS_STACK_SPREAD_EM = 0.35;   // 積んだ対を上下それぞれに離す量(その字自身のem)
+// 積む対に足すCSS= 1つ目の中身のぶんだけ左へ戻し(2つ目だけ)、上下へ離す(両方)。
+function meosStackCss(baseStyle, backCells, spreadEm) {
   const n = Math.max(0, Number(backCells) || 0);
-  return String(baseStyle || 'none;') + ' position: relative; left: -' + n + 'ch;';
+  const sp = Math.round((Number(spreadEm) || 0) * 1000) / 1000;
+  return String(baseStyle || 'none;') + ' position: relative;'
+    + (n ? (' left: -' + n + 'ch;') : '') + (sp ? (' top: ' + sp + 'em;') : '');
 }
 function meosLimitCss(dir, len, col, opW, tall, narrow) {
   const sc = MEOS_LIMIT_SCALE / 100;
@@ -23655,8 +23667,18 @@ function meosApplyMeTexDecorations(editor) {
         }
         // v4.0.283/285: 続けて書かれた上付き/下付きは**積む**(∫↑(1)↓(0) の 0 を 1 の真下へ)。
         //   本物の字のまま左へ戻すso、ここで持つのは「どのトークンを何桁戻すか」だけ。
-        const _stkBack = new Map();
-        for (const sp of meosMeTexStackPairs(text, toks)) _stkBack.set(sp.tok, sp.back);
+        const _stkBack = new Map(), _stkSpread = new Map();
+        for (const sp of meosMeTexStackPairs(text, toks)) {
+          _stkBack.set(sp.tok, sp.back);
+          // 離す量= 基本＋背の高い演算子の分。向き(上は負・下は正)は トークンごとに決める。
+          const _tallX = MEOS_LIMIT_TALL_RE.test(String(sp.baseText || '')) ;
+          for (const _t of [sp.first, sp.tok]) {
+            if (!_t) continue;
+            const _up = (_t.kind === 'sup');
+            const _x = MEOS_STACK_SPREAD_EM + (_tallX ? (_up ? MEOS_LIMIT_TALL_UP_EM : MEOS_LIMIT_TALL_DOWN_EM) : 0);
+            _stkSpread.set(_t, _up ? -_x : _x);
+          }
+        }
         for (const t of toks) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           // ★v4.0.287(俊克「素の状態でそうなることは想定していなかった」): **素は常に100%**(=普通の上付き/下付き)。
@@ -23669,7 +23691,8 @@ function meosApplyMeTexDecorations(editor) {
           //   ★肩/腰にも overline を持たせると、**その字の高さで棒that引かれて段差になる**(v4.0.222のスクショ)。
           //   棒の役目は**範囲を言うこと**so、肩の上は空けておく。段差より、途切れの方that読める。
           let style = meosMeTexStyle(t.kind, scale, baseTall, t.fg, t.bg, t.depth); // v4.0.220: 肩の上の肩
-          if (_stkBack.has(t)) style = meosStackCss(style, _stkBack.get(t)); // v4.0.285: 積む=左へ戻すだけ
+          // v4.0.285/288: 積む= 左へ戻す(2つ目)＋上下へ離す(両方)。
+          if (_stkBack.has(t) || _stkSpread.has(t)) style = meosStackCss(style, _stkBack.get(t) || 0, _stkSpread.get(t) || 0);
           if (!styleRanges.has(style)) styleRanges.set(style, []);
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
