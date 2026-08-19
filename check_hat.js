@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -184,6 +184,25 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(px(T.meosLimitCss('down', 1, 9, 1, false, true)) < px(T.meosLimitCss('down', 1, 9, 1, false, false)),
       '細い方that並の字より左に来る', [px(T.meosLimitCss('down', 1, 9, 1, false, true)), px(T.meosLimitCss('down', 1, 9, 1, false, false))]);
   }
+}
+
+console.log('⑳ 高さの%(v4.0.286) — 100%=素の位置・向きごとに直線1本');
+{
+  const va = (kind, sc, tall) => {
+    const css = T.meosMeTexStyle(kind, sc, tall !== false, null, null, 1);
+    return Number(/vertical-align: (-?[\d.]+)em/.exec(css)[1]);   // その字自身のem(定数と同じ単位)
+  };
+  ok(Math.abs(va('sup', 100) - T.MEOS_METEX_MID_EM.sup) < 0.01, '★上付き100%= 素の位置(0.60em)', va('sup', 100));
+  ok(Math.abs(va('sup', 150) - T.MEOS_METEX_TOP_EM.sup) < 0.01, '上付き150%= 基準の字の頭(1.05em)', va('sup', 150));
+  ok(Math.abs(va('sub', 100) + T.MEOS_METEX_MID_EM.sub) < 0.01, '★下付き100%= 素の位置(0.33em下)', va('sub', 100));
+  ok(Math.abs(va('sub', 50)) < 0.01, '下付き50%= 基準線(0)', va('sub', 50));
+  // 直線1本= 等間隔の%thatが等間隔の高さになる
+  const d1 = va('sup', 150) - va('sup', 125), d2 = va('sup', 125) - va('sup', 100);
+  ok(Math.abs(d1 - d2) < 0.01, '★上付きは(100,素)〜(150,頭)の直線1本(等間隔)', [d1, d2]);
+  const e1 = va('sub', 100) - va('sub', 75), e2 = va('sub', 75) - va('sub', 50);
+  ok(Math.abs(e1 - e2) < 0.01, '下付きは(50,基準線)〜(100,素)の直線1本', [e1, e2]);
+  ok(Math.abs(va('sub', 200) + 3 * T.MEOS_METEX_MID_EM.sub) < 0.02, '200%まで同じ傾きで伸ばす(素の3倍)', va('sub', 200));
+  ok(va('sup', 100, false) < va('sup', 100, true), '背の低い基準文字(x等)は少し低い位置(今までどおり)', [va('sup', 100, false), va('sup', 100, true)]);
 }
 
 console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — ∫↑(1)↓(0)');

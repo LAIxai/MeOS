@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. A membrane is just a comment — so it structures, folds, warps, and encrypts your notes and code without touching your data, not by a millimeter. One file, one brain: Hyper TOC warp & bi-directional jump, ✅ searchable checklists, 🐙 one-tap GitHub backup (Octopush), 🔐 AES-256 Encrypt Me. Markdown⊕ — Markdown, plus. MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). ／ それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣",
-  "version": "4.0.285",
+  "version": "4.0.286",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -209,17 +209,17 @@
         },
         "laiMembrane.metexSuperScale": {
           "type": "number",
-          "default": 150,
+          "default": 100,
           "minimum": 30,
           "maximum": 200,
-          "markdownDescription": "MeTeX superscript height. **100% is the ordinary superscript** — where `x²` sits in normal typesetting (about 0.36 of a character above the baseline). **150%** = its bottom reaches the top of the base character (default), so **100–150% is the range worth using**, and the number tells you where between the two you land. Below 100% it drops toward the baseline, which stops looking like a superscript at all — that territory belongs to subscripts. Higher sits higher — the number itself shows how far it differs from 100%. Override a single token inline with `x↑2{150%}`."
+          "markdownDescription": "MeTeX superscript height. **100% is the ordinary superscript** — where `x²` sits in normal typesetting (about 0.36 of a character above the baseline), and it is the default. **150%** = its bottom reaches the top of the base character. The scale is the straight line through those two points, so **100–150% is the range worth using**, and 200% sits higher still. Below 100% it drops toward the baseline, which stops looking like a superscript at all — that territory belongs to subscripts. Override a single token inline with `x↑2{150%}`."
         },
         "laiMembrane.metexSubScale": {
           "type": "number",
-          "default": 50,
+          "default": 100,
           "minimum": 30,
           "maximum": 200,
-          "markdownDescription": "MeTeX subscript depth. **50%** = the script's bottom sits on the baseline — its shallowest, and the subscript's own starting point. **150%** = its bottom drops a full character-height below. **100%** is midway, close to the ordinary subscript of normal typesetting. Default is **50%** — the number itself shows how far it differs from 100%. Override a single token inline with `x↓3{130%}`."
+          "markdownDescription": "MeTeX subscript depth. **100% is the ordinary subscript** — where `x₂` sits in normal typesetting (about 0.2 of a character below the baseline), and it is the default. **50%** = the script's bottom sits on the baseline — its shallowest. The scale is the straight line through those two points, so 150% is twice the ordinary depth and 200% is three times. Override a single token inline with `x↓3{130%}`."
         },
         "laiMembrane.lineColor": {
           "type": "string",

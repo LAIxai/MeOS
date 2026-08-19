@@ -17303,8 +17303,8 @@ function meosExtVersion() {
 function meDockHtml() {
   const initial = meDockModeForEditor(vscode.window.activeTextEditor);
   const _mtxCfg = vscode.workspace.getConfiguration('laiMembrane'); // v3.6.1: MeTeX %メニューの初期値を設定から(保存値の反映)
-  const mtxSup = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSuperScale', 150)) || 150));
-  const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 50)) || 50));
+  const mtxSup = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSuperScale', 100)) || 100));
+  const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 100)) || 100));
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
@@ -18958,10 +18958,15 @@ if(_rc)_rc.style.display='';};if(acToggle)acToggle.addEventListener('click',()=>
 vscode.postMessage({type:'tableToggleWrap'});closeTablePop();});
 /* v3.6.0(俊克): MeTeX A²/A₃ ボタン(Format 4人目)。クリック=選択を上付き/下付きに(↑/↓付与)・↻=A²/A₃切替・▾=高さ%設定 */
 var fmtMetex=document.getElementById('fmt-metex'),fmtMtxCycle=document.getElementById('fmt-mtx-cycle'),fmtMtxCaret=document.getElementById('fmt-mtx-caret'),
-metexPop=document.getElementById('metex-pop');var mtxSub=false,mtxNot=false,mtxHat=false,mtxFg=null,mtxBg=null;/* v4.0.222: ↻の3つ目=not(この矢印は上付きにしない) */function mtxHex(list,name){if(!name)return '';
+metexPop=document.getElementById('metex-pop');var mtxSub=false,mtxNot=false,mtxHat=false,mtxFg=null,mtxBg=null;/* v4.0.222: ↻の3つ目=not(この矢印は上付きにしない) *//* ★v4.0.286: 高さの式。nodeの meosMeTexStyle と**同じ形**(webviewからは関数を呼べないso、ここだけ写す)。
+   上付き=(100%,素0.36)〜(150%,頭1.05)の直線 / 下付き=(50%,基準線0)〜(100%,素0.20)の直線。200%まで同じ傾き。
+   ★片方だけ直すと面とプレビューthat本文とズレるso、直す時は必ず両方(v4.0.246と同じ穴)。 */
+function mtxVa(sub,p){var top=sub?0.66:1.05,mid=sub?0.33:0.60;
+return Math.round((sub?(mid*(p-50)/50):(mid+(top-mid)*(p-100)/50))*1000)/1000;}
+function mtxHex(list,name){if(!name)return '';
 for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}function mtxFace(){if(!fmtMetex)return;/* v4.0.0(俊克): カーソルが既存の上付/下付の中なら🚫(再クリックで解除) */if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){fmtMetex.classList.add('fmt-remove');
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
-top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
+p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=mtxVa(mtxSub,p)*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
 _bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(mtxBg&&mtxBg!=='なし'&&(!mtxFg||mtxFg==='白')){/* v4.0.270(俊克 バグ1「äボタンが白抜きのまま」): 明るい背景の上の白は読めないso黒に(選んでいない時だけでなく、白を選んである時も) */_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
@@ -18972,9 +18977,9 @@ return;}openFmtPop('metex',fmtMtxCaret);});}/* v4.0.38(俊克): 入力欄は共�
 mtxSubVal=${mtxSub};function mtxSupIn_(){return document.getElementById('mtx-sup-input');}function mtxSubIn_(){return document.getElementById('mtx-sub-input');
 }function mtxSupPrev_(){return document.getElementById('mtx-sup-prev');}function mtxSubPrev_(){return document.getElementById('mtx-sub-prev');
 }function mtxClamp(v){v=parseInt(v,10);if(!(v>=30))v=100;if(v>200)v=200;if(v<30)v=30;return v;}function mtxPrev(){var fgH=mtxHex(FMT_FG,mtxFg),
-bgH=mtxHex(FMT_BG,mtxBg);var pv=function(el,inp,top,neg){if(!el||!inp)return;var p=mtxClamp(inp.value);var v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
+bgH=mtxHex(FMT_BG,mtxBg);var pv=function(el,inp,sub,neg){if(!el||!inp)return;var p=mtxClamp(inp.value);var v=mtxVa(sub,p)*(neg?-1:1);
 el.style.fontSize='0.68em';el.style.verticalAlign=v+'em';el.style.lineHeight='0';el.style.color=fgH||'';el.style.background=bgH||'';
-el.style.borderRadius=bgH?'3px':'';el.style.padding=bgH?'0 1px':'';};pv(mtxSupPrev_(),mtxSupIn_(),1.05,false);pv(mtxSubPrev_(),mtxSubIn_(),0.66,true);
+el.style.borderRadius=bgH?'3px':'';el.style.padding=bgH?'0 1px':'';};pv(mtxSupPrev_(),mtxSupIn_(),false,false);pv(mtxSubPrev_(),mtxSubIn_(),true,true);
 }/* v4.0.3(俊克): プレビューにも色(設定済みはボタンが🚫で確認できないから) */mtxPrev();mtxFace();/* v3.1.75: 入力欄が出来た後に外ボタンを実%で再描画 */function mtxSend(){var a=mtxSupIn_(),
 b=mtxSubIn_();var sup=mtxClamp(a?a.value:mtxSupVal),sub=mtxClamp(b?b.value:mtxSubVal);mtxSupVal=sup;mtxSubVal=sub;if(a)a.value=sup;
 if(b)b.value=sub;mtxPrev();mtxFace();vscode.postMessage({type:'metexScale',sup:sup,sub:sub});}/* v4.0.38: 入力欄は動的so共有パネルへ**イベント委譲**(要素を作り直しても効き続ける) */if(fmtPop){fmtPop.addEventListener('change',function(ev){var t=ev.target;
@@ -22427,6 +22432,22 @@ function meosMeTexTokens(text, specLine) { text = (String(text).indexOf('`') >= 
 // v3.5.6(俊克 7/30): 基準文字の大小を自動判定して上付きの頭を合わせる(数式変数はほぼASCII=大文字/数字/記号は背高cap≈0.7・x-height小文字は背低≈0.5)。上に伸びる小文字(bdfhklt)は背高扱い。手動 {N%} は例外用に残る。
 // TOP=150% で上付きの底が一致する頭の高さ(em)。em解決が要素自身の0.68em基準なので 0.68倍を打ち消した値(頭0.7/0.68≈1.03, x-height0.5/0.68≈0.74)。下付きは基準線(50%=0)基準なので大小非依存。
 const MEOS_METEX_TOP_EM = { sup: 1.05, supShort: 0.74, sub: 0.66 };
+// ★★★v4.0.286(俊克 8/20「素の上付き/下付きの高さを貴方は勘違いしている」):
+//   ★**150%/50%は「一番上/基準線」という両端の値**であって、**素の状態thatそこに張り付くのは設計意図と違う**
+//   (俊克「これは%指定した時にそうなるようにしたんだよ。素の状態でそうなることは想定していなかった」)。
+//   ★素は**真ん中(100%)**= 普通の `<sup>`/`<sub>` の位置。それthat「100%の意味」。
+//   ★今まで100%that中途半端だった理由= **上も下も同じ1本の直線(50%→150%)に乗せていた**so、
+//     100%thatただの中間値になっていた。→ 俊克の指示= **向きごとに、意味の在る2点を通る直線1本**。
+//     ・上付き= (100%, 素の位置) と (150%, 一番上=基準の字の頭) を通る直線
+//     ・下付き= (50%, 基準線) と (100%, 素の位置) を通る直線
+//     どちらも200%まで同じ傾きで伸ばす(設定の上限that200%)。
+//   ★★`package.json` の説明文には**最初からそう書いてあった**(「100% is the ordinary superscript —
+//     about 0.36 of a character above the baseline」)。**説明that正しく、実装と既定値that付いてきていなかった**。
+// ★単位は TOP_EM と同じ**その字自身のem**(基準の字では 0.68倍that実寸)。0.60em → 基準の字の約0.41ぶん上=
+//   説明文の「about 0.36 of a character above the baseline」より少しだけ高い(俊克「上付きthatやや下過ぎる」)。
+//   下付きの100%は今までの値(0.33)をそのまま=「基準の字より少し下」で、ここは指摘to無かった。
+const MEOS_METEX_MID_EM = { sup: 0.60, supShort: 0.42, sub: 0.33 }; // 100%=普通の上付き/下付きの位置
+
 // ===== v4.0.138(俊克 8/12 am07:44「Bをやって、それを折り畳む、という最終奥義を実装しましょう」) ==========
 // ★問題= 行末のコメントは**隠れていても桁は食う**(折り返しはモデルのテキストの桁数で決まる=v4.0.93の壁)so、
 //   指定を書くほど**続く文字が次の視覚行へ追い出される**。俊克のスクショ(Heading… が2行目へ落ちる)がそれ。
@@ -23044,7 +23065,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
   //   `Format ▼` のtipは前から「the four buttons」と書いてあった=**UIの約束にコードが追いついていなかった**。
   try { await meosEnsureInlineBeforeEdit(editor); } catch (_) { } // 触る前に1行の形へ
   const doc = editor.document; let sel = meosTrimSelection(editor.document, editor.selection); // v4.0.266: 閉じ括弧の手前で押した時に1文字伸ばすのでlet // v4.0.214: 端の空白は包まない
-  const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = sub ? 50 : 150;
+  const cfg = vscode.workspace.getConfiguration('laiMembrane'), dflt = 100; // v4.0.286: 素も指定も既定は100%(普通の位置)
   const pct = Math.max(30, Math.min(200, Number(cfg.get(sub ? 'metexSubScale' : 'metexSuperScale', dflt)) || dflt));
   const arrow = sub ? '↓' : '↑', exp = sub ? '3' : '2';
   // ★v4.0.221(俊克 8/15 pm07:43「空白のあとで押すと今まで通り A↑2。何かの文字のあとで押すと ↑2 という文字が入ると
@@ -23127,7 +23148,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
   const selTok = (!empty && /^[↑↓][^\s{}<>]*$/u.test(base.trim())) ? base.trim() : null;
   if (selTok) {
     const isSub = selTok.charAt(0) === '↓';
-    const pct2 = Math.max(30, Math.min(200, Number(cfg.get(isSub ? 'metexSubScale' : 'metexSuperScale', isSub ? 50 : 150)) || (isSub ? 50 : 150)));
+    const pct2 = Math.max(30, Math.min(200, Number(cfg.get(isSub ? 'metexSubScale' : 'metexSuperScale', 100)) || 100)); // v4.0.286: 既定は100%
     const spec2 = '<!-- ' + MEOS_MEW_SIG + ' ' + selTok + '{' + pct2 + '%' + colorPart + '} -->';
     await meosApplySpecEdit(editor, new vscode.Range(sel.end, sel.end), spec2); // v4.0.235
     try { editor.selection = new vscode.Selection(sel.start, sel.end); } catch (_) {} // 選んだ字はそのまま
@@ -23143,7 +23164,7 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
     const _mt = MEOS_METEX_TAIL_RE.exec(_pl);
     if (_mt) {
       const _tok = _mt[0], _isSub = _tok.charAt(0) === '↓';
-      const _pct = Math.max(30, Math.min(200, Number(cfg.get(_isSub ? 'metexSubScale' : 'metexSuperScale', _isSub ? 50 : 150)) || (_isSub ? 50 : 150)));
+      const _pct = Math.max(30, Math.min(200, Number(cfg.get(_isSub ? 'metexSubScale' : 'metexSuperScale', 100)) || 100)); // v4.0.286: 既定は100%
       await meosApplySpecEdit(editor, new vscode.Range(sel.end, sel.end), '<!-- ' + MEOS_MEW_SIG + ' ' + _tok + '{' + _pct + '%' + colorPart + '} -->'); // v4.0.235
       try { editor.selection = new vscode.Selection(sel.start, sel.start); } catch (_) { }
       return;
@@ -23527,7 +23548,10 @@ function meosMeTexFgKey(fg, bg) {
 function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   const sc = (scale == null) ? 100 : scale;
   const top = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_TOP_EM.supShort : MEOS_METEX_TOP_EM.sup) : MEOS_METEX_TOP_EM.sub;
-  let va = Math.round(top * (sc - 50) / 100 * 1000) / 1000; // 50%→0(底=基準線) / 150%→頭
+  const mid = (kind === 'sup') ? (baseTall === false ? MEOS_METEX_MID_EM.supShort : MEOS_METEX_MID_EM.sup) : MEOS_METEX_MID_EM.sub;
+  // v4.0.286: 向きごとに直線1本。上付き=(100%,素)〜(150%,頭) / 下付き=(50%,基準線)〜(100%,素)。
+  let va = (kind === 'sup') ? (mid + (top - mid) * (sc - 100) / 50) : (mid * (sc - 50) / 50);
+  va = Math.round(va * 1000) / 1000;
   if (kind === 'sub') va = -va; // 下付きは下向き
   // v4.0.220: **肩の上の肩**(`(x+2)↑2↑2`)。深さdの字は 0.68^d の大きさで、浮き上がりは各段の積み上げ。
   //   ★`vertical-align` の em は**その字自身の大きさ基準**(v4.0.135で判った癖)so、
@@ -23561,7 +23585,7 @@ function meosApplyMeTexDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
-    let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 150) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 50) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
+    let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 100) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 100) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
     const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitUpItems = [], limitDownItems = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitUp|Down = Σの上下限(v4.0.273)
     const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
