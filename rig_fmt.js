@@ -116,7 +116,7 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
   console.log('押す前  本文: ' + body);
   console.log('        FC  : ' + fc);
   console.log('        選択: ' + JSON.stringify(body.slice(a, b)));
-  const want = '**ハイライトと**<!---->**太字**<!---->**とイタリックと太字とイタリック**';
+  const want = '**ハイライトと***太字***とイタリックと太字とイタリック**';  // v4.0.264: 外側は両端に1組・中だけ記号を1つ増やす
   await T.insertBoldItalic(CUR, true, true, '白', '青');        // ☑太字 ☑イタリック で押す
   let out = CUR.document.text.split('\n');
   console.log('【太字/斜体の道】本文: ' + out[0]);

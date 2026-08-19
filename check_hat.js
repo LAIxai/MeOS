@@ -195,8 +195,20 @@ console.log('⑭ 同じ装飾の一部だけ色を変える=外側を割る(v4.0
   const encl = { mk: '***', start: m.start, end: m.end, bodyStart: m.bodyStart, bodyEnd: m.bodyEnd };
   const a = t.indexOf('太字'), b = a + 2;
   const r = T.meosSplitMarkForSegment(t, encl, a, b);
-  // v4.0.263: 区切りに空コメントを挟む(`**` は並べるだけだと入れ子になるため。全記号で同じ形にした)
-  ok(!!r && r.line === '***ハイライトと***<!---->***太字***<!---->***とイタリックと太字とイタリック***', '真ん中を選ぶと3つに割れる(区切りは空コメント)', r && r.line);
+  // v4.0.264(俊克「`**前****中****後**` と言う書き方自体が存在しない」): 区切りの空コメントは撤回。
+  //   `***` は並べるだけで3つに割れる(実測)。`**` の時だけ**中の記号を1つ増やす**= `**前***中***後**`。
+  ok(!!r && r.line === '***ハイライトと******太字******とイタリックと太字とイタリック***', '`***` は並べるだけで3つに割れる', r && r.line);
+  {
+    const t2 = '**ハイライトと太字とイタリック**';
+    const m2 = T.meosStarMarks(t2, t2)[0];
+    const e2 = { mk: '**', start: m2.start, end: m2.end, bodyStart: m2.bodyStart, bodyEnd: m2.bodyEnd };
+    const a2 = t2.indexOf('太字'), b2 = a2 + 2;
+    const r5 = T.meosSplitMarkForSegment(t2, e2, a2, b2);
+    ok(!!r5 && r5.line === '**ハイライトと***太字***とイタリック**', '`**` は外側を両端に1組・中だけ記号を1つ増やす(俊克の書き方)', r5 && r5.line);
+    const mk5 = T.meosStarMarks(r5.line, r5.line).map(m => m.kind);
+    ok(mk5.length === 3 && mk5[0] === '**' && mk5[1] === '*' && mk5[2] === '**', 'MeOSも3つに読む(`**`前 / `*`中 / `**`後)', mk5);
+    ok(r5.midKind === '*', '中の指定は**読まれる種類**で書く(`***`と書くが読みは`*`)', r5.midKind);
+  }
   ok(!!r && r.pieces === 3 && r.midIdx === 1, '3つ・真ん中は2番目', r && [r.pieces, r.midIdx]);
   const r2 = T.meosSplitMarkForSegment(t, encl, encl.bodyStart, encl.bodyStart + 6);
   ok(!!r2 && r2.pieces === 2 && r2.midIdx === 0, '先頭を選んだ時は2つ(前が空)', r2 && [r2.pieces, r2.midIdx]);

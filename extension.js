@@ -23765,11 +23765,22 @@ function meosSplitMarkForSegment(line, encl, selStart, selEnd) {
   parts.push(mid);
   if (after) parts.push(after);
   const midIdx = before ? 1 : 0;
-  // ★v4.0.263(実測): `**前****中****後**` は**入れ子**になって割れない(`<strong>前<strong><strong>中…`)。
-  //   `<!---->` を挟めば3つに割れる(`<strong>前</strong><strong>中</strong><strong>後</strong>`)。
-  //   コメントはMeOSでも外でも見えないので、**見た目を1文字も変えずに境界だけ作れる**。全記号で同じ形にする。
-  const wrapped = parts.map(x => mk + x + mk).join('<!---->');
-  return { line: t.slice(0, encl.start) + wrapped + t.slice(encl.end), pieces: parts.length, midIdx, mk };
+  // ★★v4.0.264(俊克 8/17 am08:06「`**前****中****後**` と言う書き方自体が存在しない。`**前***中***後**` ならあり得る」):
+  //   ★**俊克が正しい。区切りのコメント(v4.0.263)は撤回**。同じ記号を並べる書き方は誰も書かないので、
+  //   CommonMarkも入れ子として畳んでしまう。**外側は両端に1組だけ置き、中だけ記号を1つ増やす**のが自然な書き方。
+  //   実測(本物のCommonMark)= `**前***中***後**` → `<strong>前</strong><em>中</em><strong>後</strong>`= 3つに分かれる。
+  //   ★`***` は記号を増やせないので、従来どおり1つずつ包む(こちらは並べるだけで割れることを実測済み)。
+  //   ★注意= **書く記号と、読まれる種類は違う**。`**前***中***後**` の中は `***` と書くが、
+  //   CommonMarkもMeOSも `<em>`(= `*` の印)として読む。指定を書く時はこの**読まれる種類**を使う。
+  let wrapped, midKind = mk;
+  if (mk === '***') {
+    wrapped = parts.map(x => mk + x + mk).join('');
+  } else {
+    const _mid = mk + '*';                       // `**` → `***` / `*` → `**`
+    wrapped = mk + before + _mid + mid + _mid + after + mk;
+    midKind = (mk === '**') ? '*' : '**';        // 実測= `**…***中***…**` の中は `*`(em)
+  }
+  return { line: t.slice(0, encl.start) + wrapped + t.slice(encl.end), pieces: parts.length, midIdx, mk, midKind };
 }
 // ★v4.0.252(俊克 8/17 am00:14「だったら、どう動くか、ログに出せばいいだろ」): **押した瞬間の実物を書き出す**。
 //   どの関数へ入り、何を見て、どの枝を通り、何を書いたか。推測をやめて、これを読んでから直す。
@@ -23834,7 +23845,7 @@ async function meosTrySplitEnclosing(editor, fg, bg) {
     meosLogFmt('split2', { ord: _ord, rg: !!_rg, fc: _fcText, marks: meosRowMarksInOrder(_lt).length }); // v4.0.255
     if (!_rg) return false;
     const _origBox = _fcText.slice(_rg.start, _rg.end);
-    const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + _enc0.kind + ' (' + (fg || '') + '/' + (bg || '') + ') -->';
+    const _newBox = '<!-- ' + MEOS_MEW_SIG + 'FC ' + (_sp.midKind || _enc0.kind) + ' (' + (fg || '') + '/' + (bg || '') + ') -->'; // v4.0.264: 中は読まれる種類で書く
     const _boxes = []; for (let k = 0; k < _sp.pieces; k++) _boxes.push(k === _sp.midIdx ? _newBox : _origBox);
     const _newFc = _fcText.slice(0, _rg.start) + _boxes.join('') + _fcText.slice(_rg.end);
     _meosSplitBusy = Date.now() + 800;
