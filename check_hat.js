@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -134,6 +134,16 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(L('Σ↓👒(k=1)').items[0].tall === false, 'Σは並の背', L('Σ↓👒(k=1)').items[0].tall);
     const em = (css) => Number(/top: (-?[\d.]+)em/.exec(css)[1]) * (T.MEOS_LIMIT_SCALE / 100);
     ok(Math.abs(em(T.meosLimitCss('down', 1, 9, 1, true)) - em(T.meosLimitCss('down', 1, 9, 1, false))) - 0.30 < 0.01, '背の高い演算子は下へ0.30em余分に逃げる', [em(T.meosLimitCss('down', 1, 9, 1, true)), em(T.meosLimitCss('down', 1, 9, 1, false))]);
+  }
+  console.log('   ★v4.0.278= 表でも「縦に結合したセル」には上下に置く余地that在る(俊克の案)');
+  {
+    const row = '| Σ↓👒(k=1)↑👒n a↓k<!-- 🤝 ↓ 3 --> | 和 |';
+    ok(T.meosCellTextAt(row, 3).indexOf('🤝') >= 0, '式のあるセルを取り出せる', T.meosCellTextAt(row, 3));
+    ok(T.meosLimitHasRoomInCell(T.meosCellTextAt(row, 3)) === true, '3行に結合したセル= 余地が在る(上下へ置く)', true);
+    ok(T.meosLimitHasRoomInCell(T.meosCellTextAt(row, 40)) === false, '隣のセルは結合していない= 横へ回す', false);
+    ok(T.meosLimitHasRoomInCell('Σ↓👒(k=1)↑👒n') === false, '結合の印that無ければ余地なし', false);
+    ok(T.meosLimitHasRoomInCell('x<!-- 🤝 ↓ 1 -->') === false, '1行(=結合していない)は余地なし', false);
+    ok(T.meosCellTextAt('| a | b | c |', 6).trim() === 'b', '真ん中のセルも位置で取れる', T.meosCellTextAt('| a | b | c |', 6));
   }
   {
     const sc = T.MEOS_LIMIT_SCALE / 100;

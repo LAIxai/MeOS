@@ -21251,6 +21251,9 @@ function meosCharWidth(cp) {
 // ★バッククォートの中は「文字そのもの」so手を付けない(v4.0.58の約束)。記法を説明する表が崩れない。
 function meosStripHiddenForWidth(s) {
   let t = String(s == null ? '' : s);
+  // ★v4.0.278: 縦結合の印(🤝↓N)は**この後で剥がされる**so、余地の有無は**生のセル**で先に見ておく。
+  //   (剥がした後で見ると必ず「結合なし」になり、描く側と食い違う= 検査that実際に捕まえた)
+  const _limRoom = meosLimitHasRoomInCell(t);
   // v4.0.93: 足切りに `](` と `][` を入れ忘れると、リンクだけのセルが素通りして幅が合わない(テストで捕まえた)。
   // v4.0.215: 上付/下付の `↑` `↓` も足切りに入れる(入れ忘れると `M↓W` だけのセルthat素通りする=同じ穴)。
   if (!t || (t.indexOf('*') < 0 && t.indexOf('_') < 0 && t.indexOf('=') < 0 && t.indexOf('~') < 0 && t.indexOf('<!--') < 0 && t.indexOf('](') < 0 && t.indexOf('][') < 0 && t.indexOf('\u2191') < 0 && t.indexOf('\u2193') < 0 && t.indexOf('\u221a') < 0)) return t;
@@ -21313,10 +21316,13 @@ function meosStripHiddenForWidth(s) {
       // v4.0.222: √ の括弧も画面では消える= 幅にも数えない(数えないと表thatまた凸凹になる)。
       for (const r of meosRadicalSpans(t).concat(meosHatBarSpans(t))) for (const h of r.hides) toks.push({ hides: [h] });
       // v4.0.277: 表では**包みだけ**隠して中身は横に出る(描く側と同じ形)。ここは表の幅を測る所so、その形に合わせる。
-      { const _lm = meosBigOpLimitSpans(t); if (_lm) for (const it of _lm.items) {
-          if (it.cs > it.tokStart) toks.push({ hides: [[it.tokStart, it.cs]] });
-          if (it.tokEnd > it.ce) toks.push({ hides: [[it.ce, it.tokEnd]] });
-        } } // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
+      // v4.0.278: ただし**縦に結合したセル**は上下に置くso、命令を丸ごと隠す(描く側と同じ判定から引く)。
+      { const _lm = meosBigOpLimitSpans(t); if (_lm) { const _room = _limRoom;
+          for (const it of _lm.items) {
+            if (_room) { toks.push({ hides: [[it.tokStart, it.tokEnd]] }); continue; }
+            if (it.cs > it.tokStart) toks.push({ hides: [[it.tokStart, it.cs]] });
+            if (it.tokEnd > it.ce) toks.push({ hides: [[it.ce, it.tokEnd]] });
+          } } } // v4.0.269: 群の上の横棒で隠れる分も、幅を測る側that同じだけ数える(2つの物差しを合わせる)
       if (toks.length) {
         const hid = new Array(t.length).fill(false);
         for (const tk of toks) for (const [s, e] of (tk.hides || [])) for (let i = Math.max(0, s); i < Math.min(t.length, e); i++) hid[i] = true;
@@ -23196,6 +23202,24 @@ const MEOS_LIMIT_DROP_EM = 0.25;  // ★全体を下へずらす量(下=FC行の
 //   `∫` は基準線の下まで深く伸びるso、他と同じ量だけ下げると字に触る。→ **背の高い演算子だけ余分に逃がす**。
 //   ここに並べるのは「基準線の上下へ大きくはみ出す字」だけ(Σ/Π/limは並の背so今までどおり)。
 const MEOS_LIMIT_TALL_RE = /[∫∬∭∮∐]/u;
+// ★★v4.0.278(俊克 8/19「ひらめいた。テーブルでは、上下のセルを結合して使えばいいんじゃない?」):
+//   ★**余地that在るかどうかを、書き手that結合で宣言できる**。MeOSの縦結合(🤝↓N)は、結合した所の
+//   **横罫線を引かない**so、そのセルには上下に置く余地that生まれる。→ v4.0.277の規則
+//   「置ける所は上下・置けない所は横」に**そのまま乗る**= 規則は1つのまま、答えthat変わる。
+//   ★MeOSthat表を書き換えることはしない(俊克の結合の宣言に従うだけ)。
+// 行の中で pos を含むセルの中身を返す(セルの境目は `|`・`\|` は境目でない)。
+function meosCellTextAt(lineText, pos) {
+  const t = String(lineText == null ? '' : lineText);
+  let start = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (t.charAt(i) !== '|' || (i > 0 && t.charAt(i - 1) === '\\')) continue;
+    if (i >= pos) return t.slice(start, i);
+    start = i + 1;
+  }
+  return t.slice(start);
+}
+// そのセルは縦に結合されているか(=上下に置く余地that在るか)。
+function meosLimitHasRoomInCell(cellText) { return meosVMergeSpan(cellText) >= 2; }
 const MEOS_LIMIT_TALL_EM = 0.30;  // 背の高い演算子で上下に足す逃げ
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
 const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;
@@ -23480,8 +23504,10 @@ function meosApplyMeTexDecorations(editor) {
             //   **表の中では横に置く**= LaTeXの「本文中の数式は上下でなく肩/腰へ回す」(インライン様式)と同じ考え。
             //   行の高さは一律so、表では上下に置く余地that原理的に無い(隣は罫線)。→ 置き場を変える。
             //   ★書いた形は1文字も変わらない= 同じ生データthat、置ける所では上下・置けない所では肩/腰。
-            const _inTable = MEOS_TABLE_ROW_RE.test(text);
+            const _isTableRow = MEOS_TABLE_ROW_RE.test(text);
             for (const it of _lim.items) {
+              // v4.0.278: 表でも**縦に結合したセル**なら余地that在る(結合した所は横罫線を引かない)so上下へ置く。
+              const _inTable = _isTableRow && !meosLimitHasRoomInCell(meosCellTextAt(text, it.at));
               if (_inTable) {                       // 表= 横に置く(包みだけ隠し、中身は肩/腰の飾りに乗せる)
                 if (it.cs > it.tokStart) hideRanges.push(new vscode.Range(ln, it.tokStart, ln, it.cs));
                 if (it.tokEnd > it.ce) hideRanges.push(new vscode.Range(ln, it.ce, ln, it.tokEnd));
