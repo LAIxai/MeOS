@@ -23220,7 +23220,8 @@ function meosCellTextAt(lineText, pos) {
 }
 // そのセルは縦に結合されているか(=上下に置く余地that在るか)。
 function meosLimitHasRoomInCell(cellText) { return meosVMergeSpan(cellText) >= 2; }
-const MEOS_LIMIT_TALL_EM = 0.30;  // 背の高い演算子で上下に足す逃げ
+const MEOS_LIMIT_TALL_EM = 0.55;  // 背の高い演算子で上下に足す逃げ ★v4.0.279: 0.30では∫の下がまだ触っていた(俊克)
+//   ★∫はこのフォントで基準線の下へ約0.5em伸びる= 並の字(下ヒゲ0.2em)の倍以上。目で見て決めるしかない所。
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
 const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;
 // `↓👒(k=1)` / `↑👒n` の1つ。中身は括弧で囲めば何でも・裸なら空白と矢印までの一続き。
