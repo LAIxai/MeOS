@@ -17757,6 +17757,10 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn.fmt-remove{font-size:1.3em;line-height:1;-webkit-text-fill-color:initial}
 .fmt-btn.fmt-remove::before{content:"🚫";position:relative;top:1px}
 #fmt-table{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px}
+/* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
+   A2 / not / ä と中身that変わる。min-width では中身次第で伸びるので、**面を固定幅の箱に入れる**=
+   何を描いてもボタンの幅that1pxも動かない(↻の連打で位置thatズレない)。 */
+#fmt-metex .mtx-face{display:inline-block;width:34px;text-align:center}
 .fmt-table-cell{margin-left:16px}
 #fmt-table svg{opacity:.9}
 #fmt-table:hover svg{opacity:1}
@@ -18002,7 +18006,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-btns">
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (type the URL — or a membrane name to warp there) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · ↻ = A² / not / â · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;â — click to write a↑👒(..), type the name, click again → ä&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · ↻ = A² / not / â · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
 <span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button>
@@ -18940,7 +18944,7 @@ for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var neg=mtxSub,
 top=mtxSub?0.66:1.05,p=mtxClamp(mtxSub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=Math.round(top*(p-50)/100*1000)/1000*(neg?-1:1);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
-_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){fmtMetex.innerHTML='<span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">â</span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span style="font-size:0.72em">not</span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span>';
+_bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face"><span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+'em;line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(mtxSub?'3':'2')+'</span></span>';
 }mtxFace();function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub,fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
@@ -22989,13 +22993,8 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
       vscode.window.setStatusBarMessage('MeTeX: 下に被せる印は v5.0 です(いまは ↑ だけ)', 2500);
       return;
     }
-    if (_hb) {
-      const _hs = new vscode.Position(sel.end.line, _hb.start);
-      sel = new vscode.Selection(sel.start, sel.end.translate(0, _hb.tail || 0)); // v4.0.266: 閉じ括弧の手前で押した分
-      // v4.0.266: 控えは入力と同じ `a↑👒(..)`(貼ればそのまま書き直せる)。
-      const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + _hb.base + _hb.arrow + MEOS_HAT_MARK + '(' + _hb.mark + ')' + (colorPart ? (' ' + colorPart) : '') + ' -->';
-      await meosApplySpecEdit(editor, new vscode.Range(_hs, sel.end), _hb.ch + _rec); // v4.0.235
-      try { const _after = _hs.translate(0, _hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
+    if (_hb) { // v4.0.268: 置き換えは meosHatApply の1か所だけ(手書きと同じ道)
+      await meosHatApply(editor, sel.end.line, _hb, sel.end.character + (_hb.tail || 0), colorPart);
       return;
     }
   }
@@ -23009,8 +23008,14 @@ async function insertMetexScript(editor, sub, fg, bg, isNot, isHat) {
     const _arrowThere = afterChar && (_prevCh === '↑' || _prevCh === '↓');
     const _b = (empty && !afterChar) ? 'a' : base;
     const _tok = _b + (_arrowThere ? '' : '↑') + MEOS_HAT_MARK + '(..)';
-    await meosApplySpecEdit(editor, sel, _tok);
-    try { const _s = sel.start.translate(0, _tok.length - 3); editor.selection = new vscode.Selection(_s, _s.translate(0, 2)); } catch (_) { } // 名前の2文字を選ぶ
+    // ★v4.0.268(俊克「âボタンより、äボタンにすべきだね」＋「手書きで入力したら即変換すべき。ボタンはそれを
+    //   再現するための物」): **押した瞬間に字になる**。ひな形を組み立てて、**手書きと同じ判定**にかける。
+    //   ここで判定を書き写さない= 物差しは meosHatBeforeCursor 1つ [[feedback_one_source_for_mark_count_action]]。
+    const _pre = doc.lineAt(sel.start.line).text.slice(0, sel.start.character);
+    const _hb2 = meosHatBeforeCursor(_pre + _tok, '');
+    if (_hb2 && _hb2.ch) { await meosHatApply(editor, sel.start.line, _hb2, sel.end.character, colorPart); return; }
+    await meosApplySpecEdit(editor, sel, _tok);   // 合成できない時(名前thatが無い等)はひな形だけ置く
+    try { const _s = sel.start.translate(0, _tok.length - 3); editor.selection = new vscode.Selection(_s, _s.translate(0, 2)); } catch (_) { }
     return;
   }
   // ★v4.0.220(俊克 8/15 pm07:14 改良1「`↑3` を選択して上付きボタンを押した時は、FCコメントだけを出すようにしよう」):
@@ -23179,6 +23184,52 @@ function meosHatBeforeCursor(textBefore, textAfter) {
   if (bs >= 1 && base >= '\uDC00' && base <= '\uDFFF' && s.charAt(bs - 1) >= '\uD800' && s.charAt(bs - 1) <= '\uDBFF') { bs--; base = s.slice(bs, arrowAt); }
   const ch = base ? meosHatCompose(base, mp[1]) : '';
   return ch ? { start: bs, base, arrow: '↑', mark: mp[1], ch, tail } : null;
+}
+// ★★v4.0.268(俊克 8/19「そもそも、手書きで a↑👒(..)と入力したら、即、変換するべきなんだよ。
+//   ボタンは、それを再現するための物だからね」): ★**記法that主、ボタンは従**。
+//   形that揃った瞬間に字になる= 手書きでも、貼り付けでも、ボタンでも、**同じ1つの道**を通る。
+// 字＋控えに置き換える。書く口はここ1つだけ(ボタン/手書きの両方thatここへ来る)。
+async function meosHatApply(editor, line, hb, endCh, colorPart) {
+  const _hs = new vscode.Position(line, hb.start);
+  const _rec = '<!-- ' + MEOS_MEW_SIG + ' ' + hb.base + '↑' + MEOS_HAT_MARK + '(' + hb.mark + ')' + (colorPart ? (' ' + colorPart) : '') + ' -->';
+  await meosApplySpecEdit(editor, new vscode.Range(_hs, new vscode.Position(line, endCh)), hb.ch + _rec);
+  try { const _after = _hs.translate(0, hb.ch.length); editor.selection = new vscode.Selection(_after, _after); } catch (_) { }
+}
+// 帽子を探す時に伏せる所= コードスパン(説明として引用した記法)と、コメントの中(控えそのもの)。
+// ★これthat無いと、控え `<!-- Mew! a↑👒(..) -->` を書いた次の打鍵で、控えの中身をまた字にしてしまう。
+function meosHatScanLine(text) {
+  let s = String(text == null ? '' : text);
+  if (s.indexOf('`') >= 0) s = meosMaskCodeSpans(s);
+  if (s.indexOf('<!--') >= 0) s = s.replace(/<!--[\s\S]*?-->/g, (m) => ' '.repeat(m.length));
+  return s;
+}
+let _meosHatBusy = false;
+// 打った(貼った)直後に形that揃っていれば、その場で字にする。『かかか』の呪文と同じ作り。
+function meosMaybeAutoHat(e) {
+  if (_meosHatBusy || !e || !e.contentChanges || !e.contentChanges.length) return false;
+  if (e.contentChanges.length !== 1) return false;              // まとめ編集(整形・置換)は対象外
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || ed.document !== e.document || !meosIsProseDoc(e.document)) return false;
+  const c = e.contentChanges[0];
+  const t = c.text || '';
+  if (!t || t.length > 12 || t.indexOf('\n') >= 0) return false; // 打鍵と小さな貼り付けだけ
+  if (t.indexOf(MEOS_HAT_MARK) < 0 && t.indexOf(')') < 0 && !/[.^ov~,'`"¨¯ˇ˚˙˘´-]/.test(t)) return false; // 形に効く字thatが入っていない
+  const line = c.range.start.line;
+  if (line >= ed.document.lineCount) return false;
+  const raw = ed.document.lineAt(line).text;
+  if (meosIsSpecLine(raw)) return false;                        // 指定行(FC行)は控えの置き場so触らない
+  const endCh = c.range.start.character + t.length;
+  const masked = meosHatScanLine(raw);
+  if (!meosHatBeforeCursor(masked.slice(0, endCh), masked.slice(endCh))) return false; // 伏せた所は対象外
+  const hb = meosHatBeforeCursor(raw.slice(0, endCh), raw.slice(endCh));
+  if (!hb || hb.below || !hb.ch) return false;                  // 下に被せる印(v5.0)はここでは黙る
+  _meosHatBusy = true; deferRefreshCount++;
+  (async () => {
+    try { await meosHatApply(ed, line, hb, endCh + (hb.tail || 0), ''); }
+    catch (_) { }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosHatBusy = false; }
+  })();
+  return true;
 }
 function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
   const sc = (scale == null) ? 100 : scale;
@@ -25007,6 +25058,7 @@ makeDecorations();
       // v0.9.99911: ★ペースト検知方式は撤去(俊克 6/24 am09:14: 環境依存で5回不発・誤爆/混乱)。
       //   クリップボード消去は確実な経路に一本化=①🔐施錠後②🔓解錠後(合言葉を残さない)③📋 Copy&auto-clear(秘密を選択→コピー→N秒後消去)。
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
+      if (deferRefreshCount === 0 && meosMaybeAutoHat(e)) return;      // v4.0.268: 手書きの `a↑👒(..)` を即、字にする
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a

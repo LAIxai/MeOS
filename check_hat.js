@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -103,6 +103,17 @@ const sp = T.meosParseSpecLine('<!-- ' + T.MEOS_MEW_SIG + 'FC a↑' + T.MEOS_HAT
 ok(!!sp && sp.metex.length === 1 && sp.metex[0].tok === 'a↑' + T.MEOS_HAT_MARK + '(..)', '控えの指定行から帽子のトークンを丸ごと読める', sp && sp.metex);
 ok(!!sp && /白/.test(sp.metex[0].inner) && /橙/.test(sp.metex[0].inner), '色が帽子に届く(字そのものを塗る)', sp && sp.metex[0].inner);
 ok(!!T.meosHatFromToken(sp.metex[0].tok), '読んだトークンから字を作り直せる', sp && sp.metex[0].tok);
+
+console.log('⑮ 即変換(v4.0.268)の伏せ方 — 控えの中とコードスパンの中では変換しない');
+{
+  const sc = (x) => T.meosHatScanLine(x);
+  const hit = (x, at) => !!T.meosHatBeforeCursor(sc(x).slice(0, at === undefined ? x.length : at), '');
+  ok(hit('a↑👒(..)'), '素の本文は変換の相手になる', sc('a↑👒(..)'));
+  ok(!hit('<!-- Mew! a↑👒(..) -->'.slice(0, 21) + ' -->', 21), '控えの中では変換しない(コメントは伏せる)', sc('<!-- Mew! a↑👒(..) -->'));
+  ok(!hit('<!-- Mew! a↑👒(..) -->', 18), '控えの `)` の直後でも変換しない', sc('<!-- Mew! a↑👒(..) -->'));
+  ok(!hit('説明: `a↑👒(..)` と書く', 13), 'コードスパンの中では変換しない', sc('説明: `a↑👒(..)` と書く'));
+  ok(sc('ふつうの行 a↑👒(..)').length === 'ふつうの行 a↑👒(..)'.length, '伏せても長さは1文字も変わらない', sc('ふつうの行 a↑👒(..)').length);
+}
 
 console.log('⑥ not(v4.0.232で塞いだ穴 — 箱を持たない命令が行末に取り残されていた)');
 const asIs = (p) => T.meosSpecPayloadAsIs(p);
