@@ -21513,7 +21513,7 @@ function meosFormatTableLines(lines, funcMap) {
       const sp = meosColspanInCells(cells, k); if (sp <= 1) continue;
       const end = Math.min(k + sp - 1, cols - 1);
       let sumCols = 0; for (let j = k; j <= end; j++) sumCols += width[j];
-      const W = meosStrWidth(meosStripMergeMarker(cells[k]));
+      const W = meosStrWidth(cells[k]); // v4.0.280: 測るのは生のセル(印を剥がしてから測ると結合を見落とす)
       // v3.0.2(俊克 7/21 pm04:14「3列目の幅がまだ過剰」): はみ出しは最終被覆列に全部載せず、覆う列で山分け(表の総幅は同じ・特定の1列だけが極端に広がるのを防ぐ)。
       // ※内側の「 | 」は理想側にも同じだけ在るので勘定に入れない(はみ出しの分だけ列を広げるのが数学的な下限)。
       if (W > sumCols) { const add = (W - sumCols) / (end - k + 1); for (let j = k; j <= end; j++) width[j] += add; }
@@ -21576,7 +21576,13 @@ function meosFormatTableLines(lines, funcMap) {
           continue;
         }
         const marker = meosMergeMarker(raw); // 結合マーカー(→/↓)をコメント形式で保持(ゼロ幅で隠す)
-        const body = meosStripMergeMarker(raw), w = meosStrWidth(body);
+        // ★★v4.0.280(俊克 8/19 改良3「79行目と83行目の縦棒の位置だけズレている」): ★**印を剥がしてから測っていた**。
+        //   v4.0.278で「上下限を上下に置くか横に置くか」は**そのセルの結合の印**で決めるようにしたので、
+        //   印を先に外した文字列を測ると「結合なし=横に置く」と読み、**隠れる字の数that画面と食い違う**。
+        //   (このセルは画面では `Σ ak`=4桁so、測る側だけ8桁と思って詰めていた=俊克の見たズレ)
+        //   → **測るのは生のセル**。meosStrWidth は印を自分で剥がすso、結果は今までと1文字も変わらない
+        //   (変わるのは「印を見て決める判断」だけ)。★v4.0.278と同じ穴の3か所目= 見る順番を合わせる。
+        const body = meosStripMergeMarker(raw), w = meosStrWidth(raw);
         const pad = (zero[c] || isHead[c]) ? 0 : Math.max(0, Math.round(P[c] - cur - w));
         const a = align[c] === 'none' ? 'left' : align[c];
         line += marker + ((a === 'right') ? ' '.repeat(pad) + body : (a === 'center') ? ' '.repeat(Math.floor(pad / 2)) + body + ' '.repeat(pad - Math.floor(pad / 2)) : body + ' '.repeat(pad));
@@ -23220,8 +23226,11 @@ function meosCellTextAt(lineText, pos) {
 }
 // そのセルは縦に結合されているか(=上下に置く余地that在るか)。
 function meosLimitHasRoomInCell(cellText) { return meosVMergeSpan(cellText) >= 2; }
-const MEOS_LIMIT_TALL_EM = 0.55;  // 背の高い演算子で上下に足す逃げ ★v4.0.279: 0.30では∫の下がまだ触っていた(俊克)
-//   ★∫はこのフォントで基準線の下へ約0.5em伸びる= 並の字(下ヒゲ0.2em)の倍以上。目で見て決めるしかない所。
+// ★v4.0.280(俊克「∫の上下の👒文字が両方とも離れ過ぎている」): ★**上と下で要る逃げthat違う**。
+//   0.30= 下thatまだ触る / 0.55= 両方離れ過ぎ → 上は0.30で足りていた・下だけ足す、と分けた。
+//   (∫は基準線の下へ深く伸びるthat、上は他の演算子とそれほど変わらない)
+const MEOS_LIMIT_TALL_UP_EM = 0.30;   // 背の高い演算子で**上**に足す逃げ
+const MEOS_LIMIT_TALL_DOWN_EM = 0.42; // 同じく**下**(こちらだけ深い)
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
 const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;
 // `↓👒(k=1)` / `↑👒n` の1つ。中身は括弧で囲めば何でも・裸なら空白と矢印までの一続き。
@@ -23264,7 +23273,7 @@ function meosBigOpLimitSpans(text) {
 //   → **中央 = 演算子の幅の半分 − 中身の見た目の幅の半分**。これで Σ でも lim でも真ん中に来る。
 function meosLimitCss(dir, len, col, opW, tall) {
   const sc = MEOS_LIMIT_SCALE / 100;
-  const _x = tall ? MEOS_LIMIT_TALL_EM : 0;   // v4.0.277: 背の高い演算子(∫等)は上下とも余分に逃がす
+  const _x = tall ? ((dir === 'up') ? MEOS_LIMIT_TALL_UP_EM : MEOS_LIMIT_TALL_DOWN_EM) : 0; // v4.0.280: 上と下で別々
   const shift = ((dir === 'up') ? -(MEOS_LIMIT_UP_EM + _x) : (MEOS_LIMIT_DOWN_EM + _x)) + MEOS_LIMIT_DROP_EM;
   const _w = Math.max(1, Number(opW) || 1);                       // 演算子の桁数(Σ=1 / lim=3)
   const leftCells = Math.max(-(Number(col) || 0), _w / 2 - (Number(len) || 1) * sc / 2);

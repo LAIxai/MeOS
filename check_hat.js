@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_TALL_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -133,7 +133,8 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(itg[0].tall === true, '★∫は背の高い演算子(余分に逃がす)', itg[0].tall);
     ok(L('Σ↓👒(k=1)').items[0].tall === false, 'Σは並の背', L('Σ↓👒(k=1)').items[0].tall);
     const em = (css) => Number(/top: (-?[\d.]+)em/.exec(css)[1]) * (T.MEOS_LIMIT_SCALE / 100);
-    ok(Math.abs((em(T.meosLimitCss('down', 1, 9, 1, true)) - em(T.meosLimitCss('down', 1, 9, 1, false))) - T.MEOS_LIMIT_TALL_EM) < 0.01, '背の高い演算子は下へ余分に逃げる(逃げの量は定数どおり)', [em(T.meosLimitCss('down', 1, 9, 1, true)), em(T.meosLimitCss('down', 1, 9, 1, false)), T.MEOS_LIMIT_TALL_EM]);
+    ok(Math.abs((em(T.meosLimitCss('down', 1, 9, 1, true)) - em(T.meosLimitCss('down', 1, 9, 1, false))) - T.MEOS_LIMIT_TALL_DOWN_EM) < 0.01, '背の高い演算子は下へ余分に逃げる(逃げの量は定数どおり)', [em(T.meosLimitCss('down', 1, 9, 1, true)), em(T.meosLimitCss('down', 1, 9, 1, false)), T.MEOS_LIMIT_TALL_DOWN_EM]);
+    ok(Math.abs((em(T.meosLimitCss('up', 1, 9, 1, false)) - em(T.meosLimitCss('up', 1, 9, 1, true))) - T.MEOS_LIMIT_TALL_UP_EM) < 0.01, '★上と下で逃げの量that違う(∫は下だけ深い)', [T.MEOS_LIMIT_TALL_UP_EM, T.MEOS_LIMIT_TALL_DOWN_EM]);
   }
   console.log('   ★v4.0.278= 表でも「縦に結合したセル」には上下に置く余地that在る(俊克の案)');
   {
