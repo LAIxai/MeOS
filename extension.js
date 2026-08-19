@@ -15553,6 +15553,60 @@ function meosDeleteSpecForMark(we, editor, range) {
     return true;
   } catch (_) { return false; }
 }
+// ★★v4.0.265(俊克 8/19 バグ1「見出しを🚫ボタンで解除したとき、FC膜が削除されない」):
+// ★**行に効く命令(H2 / -1.)には「何個目の印か」という数え方が通じない**。meosDeleteSpecForMark は
+//   本文の印を順に数えて指定行の相手を決めるが、見出し/箇条書きは**印を1つも持たない**(`##` は印として
+//   数えない)ので、通し番号は0のまま `idx-1 = -1` → 相手なしと見て**何もせずに帰っていた**。
+//   だから見出しだけが消え、FC行の `H2 (白/赤)//[]tip=` はそのまま残っていた。
+// ★直し= **行の命令は、行の命令として探す**= FC行のコメントを順に読み、`H2`/`-1.` を名乗るものを落とす。
+//   数え方が違う相手には違う物差しを当てる=[[feedback_one_source_for_mark_count_action]] の裏側。
+// ★見出しだけ外した時に箇条書きの命令が同じコメントに同居していれば(`-1.H2 (色)`)、**その分だけ書き直す**
+//   =本文側の「箇条書きの `- ` は残す(外側から1枚ずつ脱ぐ)」と同じ振舞いに揃える。
+// 真下のFC行から「行に効く命令」を持つコメントを1つ返す。want='head'|'bullet'|null。無ければ null。
+function meosFindLineSpecBelow(doc, ln, want) {
+  try {
+    const fcLn = ln + 1;
+    if (fcLn >= doc.lineCount) return null;
+    const fcText = doc.lineAt(fcLn).text;
+    if (!meosIsSpecLine(fcText)) return null;
+    MEOS_SPEC_LINE_ONE_RE.lastIndex = 0;
+    let m, count = 0, hit = null;
+    while ((m = MEOS_SPEC_LINE_ONE_RE.exec(fcText)) !== null) {
+      count++;
+      if (hit) continue;                                   // 相手は決まった=残りは数えるだけ
+      const md = MEOS_LINE_DIRECTIVE_RE.exec(String(m[2] || ''));
+      if (!md || (!md[1] && !md[2])) continue;              // (色)//tip だけ=行の命令ではない
+      if (want === 'head' && !md[2]) continue;
+      if (want === 'bullet' && !md[1]) continue;
+      hit = {
+        fcLn, fcText, start: m.index, end: m.index + m[0].length,
+        bullet: md[1] || '', head: md[2] || '', not: !!md[3], rest: String(m[2] || '').slice(md[0].length).trim()
+      };
+    }
+    if (hit) hit.count = count;
+    return hit;
+  } catch (_) { return null; }
+}
+// 見出し/箇条書きを🚫で外した時、真下のFC行の相手も一緒に落とす。we に足すだけ(1回の編集で終わる)。
+function meosDeleteLineSpecForMark(we, editor, ln, drop) {
+  try {
+    const doc = editor.document;
+    const hit = meosFindLineSpecBelow(doc, ln, drop);
+    if (!hit) return false;
+    const keep = (drop === 'head') ? hit.bullet : hit.head;   // 同居していた片割れは残す
+    if (keep) {
+      const payload = keep + (hit.not ? 'not' : '') + (hit.rest ? ' ' + hit.rest : '');
+      we.replace(doc.uri, new vscode.Range(hit.fcLn, hit.start, hit.fcLn, hit.end), meosSpecLineBox(payload));
+    } else if (hit.count <= 1) {                              // 最後の1つ=指定行が空になるので行ごと消す
+      if (hit.fcLn + 1 < doc.lineCount) we.delete(doc.uri, new vscode.Range(hit.fcLn, 0, hit.fcLn + 1, 0));
+      else we.delete(doc.uri, new vscode.Range(new vscode.Position(ln, doc.lineAt(ln).text.length), new vscode.Position(hit.fcLn, hit.fcText.length)));
+    } else {
+      we.delete(doc.uri, new vscode.Range(hit.fcLn, hit.start, hit.fcLn, hit.end));
+    }
+    try { meosDbg('[fcDelLine] 落とす=' + drop + ' 残す=' + JSON.stringify(keep) + ' 行=' + ln + ' FC行=' + hit.fcLn + ' 残り=' + hit.count); } catch (_) { }
+    return true;
+  } catch (_) { return false; }
+}
 // 解除後、ハイライト/取消線は本文範囲を選択で返す(範囲を失わず即再装飾可)。見出しは行が対象なので選択不要。
 function formatSpanAtCursor(editor, kind) {
   if (!editor) return null;
@@ -15578,17 +15632,17 @@ function formatSpanAtCursor(editor, kind) {
         if (!mp[3] && _dir && _dir.level) body = body.replace(/^#{1,6}[ \t]*/, ''); // v4.0.63: 空白を書き忘れた `##本文` の # も落とす
         if (mp[3] || (_dir && _dir.level)) { // 見出しあり → #から行末までを本文に置き換え(先頭の `- ` は温存)
           const hs = (mp[1] || '').length + (mp[2] || '').length;
-          return { kind, range: new vscode.Range(line, hs, line, text.length), body };
+          return { kind, drop: 'head', range: new vscode.Range(line, hs, line, text.length), body }; // v4.0.265: 外したのは見出し
         }
-        return { kind, range: new vscode.Range(line, 0, line, text.length), body: (mp[1] || '') + body }; // 箇条書きだけ → マーカーを落とす
+        return { kind, drop: 'bullet', range: new vscode.Range(line, 0, line, text.length), body: (mp[1] || '') + body }; // 箇条書きだけ → マーカーを落とす
       }
       // v4.0.48(俊克): **従来記法の箇条書き**も選択なしで🚫解除(箇条書きは見出しボタンの管轄になったので、同じボタンで外せる)。
       // `- 項目` / `1. 項目` の行にカーソルがあれば、マーカーだけ落として本文を残す(インデントは温存)。散文限定=YAMLやコードの `-` を壊さない。
       // v4.0.53: Me記法の箇条書き膜 -{ } / -1{ } も解除(本文だけ残す)。
       const mMe = MEOS_ME_ITEM_RE.exec(text);
-      if (mMe) return { kind, range: new vscode.Range(line, 0, line, text.length), body: (mMe[1] || '') + String(mMe[3] || '').trim() };
+      if (mMe) return { kind, drop: 'bullet', range: new vscode.Range(line, 0, line, text.length), body: (mMe[1] || '') + String(mMe[3] || '').trim() };
       const mb = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+([\s\S]*)$/.exec(text);
-      if (mb) return { kind, range: new vscode.Range(line, 0, line, text.length), body: mb[1] + mb[2] };
+      if (mb) return { kind, drop: 'bullet', range: new vscode.Range(line, 0, line, text.length), body: mb[1] + mb[2] };
       return null;
     }
     const hs = m[0].indexOf('#'); if (hs < 0) return null;
@@ -15598,7 +15652,7 @@ function formatSpanAtCursor(editor, kind) {
     if (openBr < 0 || closeBr <= openBr) return null;
     const inner = m[0].slice(openBr + 1, closeBr);
     const body = String(parseColorSpec(inner, 'fg', inner).bodyText || inner).trim();
-    return { kind, range: new vscode.Range(line, hs, line, m[0].length), body };
+    return { kind, drop: 'head', range: new vscode.Range(line, hs, line, m[0].length), body };
   }
   // v4.0.29(俊克 バグ5): リンク記法 `<!-- =={ -->[…](…)<!-- (色)//tip}== -->` の中には `=={` と `}==` が居る。
   // ハイライトとして掴むと**マーカーだけ剥がしてリンクを壊す**(俊克「クリアし切れない」の正体)。リンクの中では譲る。
@@ -15642,7 +15696,9 @@ async function removeFormatAtCursor(editor, span) {
   }
   const we = new vscode.WorkspaceEdit();
   we.replace(doc.uri, span.range, span.body);
-  meosDeleteSpecForMark(we, editor, span.range);   // v4.0.213: 表なら指定行の相手も一緒に落とす
+  // v4.0.265: 見出し/箇条書きは**行に効く命令**なので、印の通し番号ではなくFC行の命令そのものを探して落とす。
+  if (span.kind === 'heading') meosDeleteLineSpecForMark(we, editor, span.range.start.line, span.drop || 'head');
+  else meosDeleteSpecForMark(we, editor, span.range);   // v4.0.213: 表なら指定行の相手も一緒に落とす
   await vscode.workspace.applyEdit(we);
   const start = span.range.start;
   // ★v4.0.237(俊克 8/16 pm02:41 バグ1「🚫の後に A↑4 全体が選択状態になり、もう一度押すと A↑4↑2 になる」):
@@ -23203,7 +23259,7 @@ function meosApplyMeTexDecorations(editor) {
       }
     }
     editor.setDecorations(meTexHideDeco, hideRanges);
-    if (!meTexBarDeco) meTexBarDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'overline', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.222: √の横棒
+    if (!meTexBarDeco) meTexBarDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'overline !important', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.265: 見出しの `text-decoration: none` に負けないよう !important // v4.0.222: √の横棒
     editor.setDecorations(meTexBarDeco, barRanges);
     for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
     for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }
