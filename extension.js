@@ -23223,6 +23223,11 @@ const MEOS_LIMIT_DROP_EM = 0.25;  // ★全体を下へずらす量(下=FC行の
 //   `∫` は基準線の下まで深く伸びるso、他と同じ量だけ下げると字に触る。→ **背の高い演算子だけ余分に逃がす**。
 //   ここに並べるのは「基準線の上下へ大きくはみ出す字」だけ(Σ/Π/limは並の背so今までどおり)。
 const MEOS_LIMIT_TALL_RE = /[∫∬∭∮∐]/u;
+// ★v4.0.282(俊克 8/20 改良1「0の方が右に出過ぎている」): ★**細い字は、桁の真ん中に立っていない**。
+//   ∫は縦に長く**横に細い**字で、1桁の左寄りに立つ。so桁の中央(0.5桁)に上下限を置くと右へずれて見える。
+//   → 細い演算子だけ、中央を**字の実際の位置**へ寄せる(桁幅ではなく、その割合で数える)。
+const MEOS_LIMIT_NARROW_RE = /^[∫∬∭∮]+$/u;
+const MEOS_LIMIT_NARROW_W = 0.55;  // 細い演算子の見た目の幅(桁に対する割合)
 // ★★v4.0.278(俊克 8/19「ひらめいた。テーブルでは、上下のセルを結合して使えばいいんじゃない?」):
 //   ★**余地that在るかどうかを、書き手that結合で宣言できる**。MeOSの縦結合(🤝↓N)は、結合した所の
 //   **横罫線を引かない**so、そのセルには上下に置く余地that生まれる。→ v4.0.277の規則
@@ -23275,7 +23280,7 @@ function meosBigOpLimitSpans(text) {
     const _cs = (m[2] !== undefined) ? (a + m[0].indexOf('(') + 1) : (a + m[0].length - String(m[3]).length);
     const _ce = (m[2] !== undefined) ? (b - 1) : b;
     items.push({ dir: (m[1] === '↑') ? 'up' : 'down', text: (m[2] !== undefined ? m[2] : m[3]), at: base[0], end: base[1],
-      tokStart: a, tokEnd: b, cs: _cs, ce: _ce, tall: MEOS_LIMIT_TALL_RE.test(s.slice(base[0], base[1])) });
+      tokStart: a, tokEnd: b, cs: _cs, ce: _ce, tall: MEOS_LIMIT_TALL_RE.test(s.slice(base[0], base[1])), narrow: MEOS_LIMIT_NARROW_RE.test(s.slice(base[0], base[1])) });
   }
   return hides.length ? { hides, items } : null;
 }
@@ -23291,11 +23296,12 @@ function meosBigOpLimitSpans(text) {
 //   ①中身の幅を「len 桁」と数えていたthat、62%に縮めて描くので**実際は len×0.62 桁**。
 //   ②演算子の幅を数えていなかった(Σは1桁・`lim` は3桁so、中央の位置that違う)。
 //   → **中央 = 演算子の幅の半分 − 中身の見た目の幅の半分**。これで Σ でも lim でも真ん中に来る。
-function meosLimitCss(dir, len, col, opW, tall) {
+function meosLimitCss(dir, len, col, opW, tall, narrow) {
   const sc = MEOS_LIMIT_SCALE / 100;
   const _x = tall ? ((dir === 'up') ? MEOS_LIMIT_TALL_UP_EM : MEOS_LIMIT_TALL_DOWN_EM) : 0; // v4.0.280: 上と下で別々
   const shift = ((dir === 'up') ? -(MEOS_LIMIT_UP_EM + _x) : (MEOS_LIMIT_DOWN_EM + _x)) + MEOS_LIMIT_DROP_EM;
-  const _w = Math.max(1, Number(opW) || 1);                       // 演算子の桁数(Σ=1 / lim=3)
+  let _w = Math.max(1, Number(opW) || 1);                         // 演算子の桁数(Σ=1 / lim=3)
+  if (narrow) _w *= MEOS_LIMIT_NARROW_W;                          // v4.0.282: ∫等は桁の左寄りに立つ
   const leftCells = Math.max(-(Number(col) || 0), _w / 2 - (Number(len) || 1) * sc / 2);
   return 'none; position: relative; display: inline-block; width: 0; overflow: visible; white-space: pre;'
     + ' font-size: ' + sc + 'em !important; line-height: 0;'
@@ -23550,7 +23556,7 @@ function meosApplyMeTexDecorations(editor) {
               }
               hideRanges.push(new vscode.Range(ln, it.tokStart, ln, it.tokEnd)); // 上下に置く= 命令を丸ごと隠す
               const _box = { range: new vscode.Range(ln, it.at, ln, it.at),
-                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at, it.end - it.at, it.tall) } } };
+                renderOptions: { before: { contentText: it.text, textDecoration: meosLimitCss(it.dir, it.text.length, it.at, it.end - it.at, it.tall, it.narrow) } } };
               (it.dir === 'up' ? limitUpItems : limitDownItems).push(_box); // v4.0.274: 上と下は別の型(同じ場所に2つ置かない)
             }
           }

@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -179,6 +179,10 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
     ok(Math.abs(px(T.meosLimitCss('down', 3, 9, 1)) - (0.5 - 0.93)) < 0.01, 'Σ(1桁)＋3文字 → 0.43桁だけ左', px(T.meosLimitCss('down', 3, 9, 1)));
     ok(Math.abs(px(T.meosLimitCss('down', 3, 9, 3)) - (1.5 - 0.93)) < 0.01, '★lim(3桁)＋3文字 → 0.57桁だけ右(演算子の幅を数える)', px(T.meosLimitCss('down', 3, 9, 3)));
     ok(px(T.meosLimitCss('down', 3, 0, 1)) === 0, '行頭では左へ出さない(頭打ち)', px(T.meosLimitCss('down', 3, 0, 1)));
+    ok(Math.abs(px(T.meosLimitCss('down', 1, 9, 1, false, true)) - (T.MEOS_LIMIT_NARROW_W / 2 - 0.31)) < 0.01,
+      '★細い演算子(∫)は桁の中央でなく字の位置へ寄せる(v4.0.282)', px(T.meosLimitCss('down', 1, 9, 1, false, true)));
+    ok(px(T.meosLimitCss('down', 1, 9, 1, false, true)) < px(T.meosLimitCss('down', 1, 9, 1, false, false)),
+      '細い方that並の字より左に来る', [px(T.meosLimitCss('down', 1, 9, 1, false, true)), px(T.meosLimitCss('down', 1, 9, 1, false, false))]);
   }
 }
 
