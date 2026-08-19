@@ -23184,7 +23184,9 @@ function meosHatBarSpans(text) {
 //   数字は下の4つに集めてある(俊克の目で決める所)。
 const MEOS_LIMIT_SCALE = 62;      // 上下限の大きさ(基準の字に対する%)
 const MEOS_LIMIT_UP_EM = 1.30;    // 上限を持ち上げる量(基準の字を1として) v4.0.275: 0.95=Σにくっつき過ぎ(俊克)
-const MEOS_LIMIT_DOWN_EM = 0.80;  // 下限を下げる量
+const MEOS_LIMIT_DOWN_EM = 0.30;  // 下限を下げる量 ★v4.0.275→276(俊克「下側の式をもっとΣに近づければいい。
+//   今は離れ過ぎている」): ★**上下は対称ではない**= 字は基準線の**上**に立つso、上には字の高さ(約0.7em)ぶんの
+//   逃げthat要るthat、下は基準線のすぐ下(下ヒゲの0.2emだけ)で足りる。0.80(上と同じ量)は**離れ過ぎ**だった。
 const MEOS_LIMIT_DROP_EM = 0.25;  // ★全体を下へずらす量(下=FC行の領域を借りる→上に余裕that出る)
 // 大きな演算子(上下に範囲を置く相手)。★字の上に印を載せる帽子とは、ここで分かれる。
 const MEOS_BIGOP_RE = /(?:∑|Σ|∏|Π|∐|∫|∬|∭|∮|⋂|⋃|⨀|⨁|⨂|⊕|⊗|lim ?sup|lim ?inf|lim|max|min|sup|inf|arg ?max|arg ?min)$/u;

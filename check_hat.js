@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -122,8 +122,15 @@ console.log('⑱ 大きな演算子の上下限(v4.0.273) — 👒は「真上/�
   ok(L('<!-- Mew! Σ↓👒(k=1) -->') === null, '控えの中では描かない', L('<!-- Mew! Σ↓👒(k=1) -->'));
   ok(T.meosHatBeforeCursor('Σ↑👒(-)', '').bigop === true, '★`Σ↑👒(-)` は字にしない(Σ̄ を作らせない)', T.meosHatBeforeCursor('Σ↑👒(-)', ''));
   ok(T.meosHatBeforeCursor('a↑👒(-)', '').ch === 'ā', '字の上なら今まで通り本物の字', T.meosHatBeforeCursor('a↑👒(-)', ''));
-  ok(/font-size: 0.62em/.test(T.meosLimitCss('up', 1, 5, 1)) && /top: -1\.694em/.test(T.meosLimitCss('up', 1, 5, 1)), '★emはその字自身の大きさ基準so、持ち上げは割ってから渡す', T.meosLimitCss('up', 1, 5, 1));
-  ok(/top: 1\.694em/.test(T.meosLimitCss('down', 1, 5, 1)), '下限は全体のずらし(0.25em)を足して下げる', T.meosLimitCss('down', 1, 5, 1));
+  {
+    const sc = T.MEOS_LIMIT_SCALE / 100;
+    const topEm = (css) => Number(/top: (-?[\d.]+)em/.exec(css)[1]) * sc;   // その字自身のem → 基準の字のem
+    ok(Math.abs(topEm(T.meosLimitCss('up', 1, 5, 1)) - (-T.MEOS_LIMIT_UP_EM + T.MEOS_LIMIT_DROP_EM)) < 0.01,
+      '★emはその字自身の大きさ基準so、割ってから渡す(上=持ち上げ−ずらし)', topEm(T.meosLimitCss('up', 1, 5, 1)));
+    ok(Math.abs(topEm(T.meosLimitCss('down', 1, 5, 1)) - (T.MEOS_LIMIT_DOWN_EM + T.MEOS_LIMIT_DROP_EM)) < 0.01,
+      '下=下げ＋ずらし', topEm(T.meosLimitCss('down', 1, 5, 1)));
+    ok(T.MEOS_LIMIT_DOWN_EM < T.MEOS_LIMIT_UP_EM, '★上下は対称でない(字は基準線の上に立つso、上に逃げthat要る)', [T.MEOS_LIMIT_UP_EM, T.MEOS_LIMIT_DOWN_EM]);
+  }
   console.log('   ★v4.0.275= 中央 = 演算子の幅の半分 − 中身の見た目の幅の半分(縮小率を掛ける)');
   {
     const px = (css) => Number(/left: (-?[\d.]+)ch/.exec(css)[1]) * 0.62;   // 桁に戻す
