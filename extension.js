@@ -26237,6 +26237,19 @@ function activate(context) {
       (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
     return ni;
   };
+  // ★★v4.0.315(俊克 8/21 am00:28「前は、[済]とかなにを書いてもそれだけで、あなたがタイムスタンプを[]の中に
+  //   書き込んでいたはずなんだけどね。最近使ってなかったので、**いつから変わったのか分らない**」):
+  //   ★★**変わっていなかった。相手が居なくなっていた**。この仕掛け(v0.9.99954〜57)が見るのは
+  //   `##[…]##` `##{…}##` `=={…}==` `~~{…}~~` の**殻の中**だけ。v4.0で殻を捨てた時から、
+  //   新しく書いた見出しは**どれにも当たらなくなり**、静かに注入が止まっていた。機能は生きている。
+  //   ★★俊克の記憶は正しかった= ホバーの `✅ Checked: 日時`(v0.9.895/99956)は今も動く。**書く側だけが取り残されていた**。
+  //   ★新形では**時刻の注入だけ**を掛ける。`✅` を本文へ足すのは v4.0.312 で決めた
+  //   「**本文には1文字も足さない**」に反するので、ここではやらない(記録は全部コメントの中で完結する)。
+  const applyCheckStampOnly = (inner) => {
+    if (!HEAD_DONE_TIP_ANY.test(inner) || HEAD_DONE_TIP_OPEN.test(inner)) return inner;   // 注釈が無い/未対応=何もしない
+    return inner.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) =>
+      (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
+  };
   const syncHeadingDoneMarks = (doc) => {
     const edits = [];
     try {
@@ -26254,6 +26267,8 @@ function activate(context) {
         // ハイライト =={…}== / 取消線 ~~{…}~~ (whole form のみ。split `/* =={ */…` は先頭 */ を負の先読みで除外=コードを汚さない)
         out = out.replace(/=={(?!\s*\*\/)([^\n]*?)}==/g, (mm, inner) => '=={' + applyCheckTransform(inner) + '}==');
         out = out.replace(/~~\{(?!\s*\*\/)([^\n]*?)\}~~/g, (mm, inner) => '~~{' + applyCheckTransform(inner) + '}~~');
+        // v4.0.315: v4.0の新形= 指定はFC行か行末のコメントに在る(殻が無い)。コメントの中身に時刻だけ注入する。
+        out = out.replace(/<!--([^\n]*?)-->/g, (mm, inner) => (HEAD_DONE_TIP_ANY.test(inner) ? '<!--' + applyCheckStampOnly(inner) + '-->' : mm));
         if (out === text) continue;
         edits.push(vscode.TextEdit.replace(new vscode.Range(i, 0, i, text.length), out));
       }

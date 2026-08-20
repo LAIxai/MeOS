@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.315 (2026-08-21)
+- **Checking a box records the time again** — write anything into `//[…]tip=` and saving injects the timestamp, so the
+  hover reads `✅ Checked: 2026-08-21 00:34`, matching H-TOC's Checked. Nothing about this feature had changed: it
+  looks inside the old shells (`##[…]##`, `=={…}==`, `~~{…}~~`), and when v4.0 dropped the shells, headings written
+  the new way stopped matching any of them. The reading half never broke — only the writing half was left behind.
+- On the v4.0 form only the timestamp is injected. The `✅` that used to be prepended to the body stays out of it:
+  the body is plain Markdown and gets nothing added, so the whole record lives in the comment.
+
 ### v4.0.314 (2026-08-21)
 - **The heading timestamp is Created, and Created is written once** — it is the day the writer made this heading, the
   same thing H-TOC calls Created, and Bird-EV ToDo needs it. Pressing the heading button again now keeps the original
