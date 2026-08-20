@@ -17675,18 +17675,22 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-left{display:flex;align-items:center;gap:8px;min-width:0}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
-.title-file{position:relative;display:flex;align-items:center;gap:2px;min-width:0}
-.title-file-name{font-size:10px;font-weight:600;opacity:.75;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
-.title-file-caret{font-size:9px;line-height:1;padding:1px 3px;border:1px solid transparent;border-radius:3px;background:transparent;color:inherit;opacity:.55;cursor:pointer}
-.title-file-caret:hover{opacity:1;border-color:var(--meos-frame)}
-.title-file-pop{display:none;position:absolute;top:100%;left:0;z-index:40;min-width:200px;max-width:340px;padding:3px;border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
+/* v4.0.306(俊克「Me Dockに最初に表示しているファイル名はスペースの関係上、小さいのは仕方ない。ただ、**角丸四角で
+   囲って、操作対象だと分かり易く**しようよ」): 名前と▾で1つの押せる箱にする(箱ごと押せる)。 */
+.title-file{position:relative;display:flex;align-items:center;gap:3px;min-width:0;padding:1px 4px 1px 6px;border:1px solid var(--meos-frame);border-radius:6px;cursor:pointer}
+.title-file:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
+.title-file-name{font-size:10px;font-weight:600;opacity:.85;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.title-file-caret{font-size:9px;line-height:1;padding:1px 2px;border:0;border-radius:3px;background:transparent;color:inherit;opacity:.6;cursor:pointer}
+.title-file:hover .title-file-caret{opacity:1}
+/* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
+.title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
 .title-file-row{display:flex;align-items:center;gap:2px;border-radius:3px}
 .title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
-.title-file-item{flex:1;min-width:0;text-align:left;padding:3px 6px;border:0;border-radius:3px;background:transparent;color:inherit;font-size:11px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.8}
+.title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.85}
 .title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
 /* v4.0.304(俊克「VSCmライクに、×で、未保存を●にしよう」): タブと同じ作法= 既定は × / 未保存は ● / ●に触れると × に戻る。 */
-.title-file-x{width:16px;flex:0 0 16px;padding:0;margin-right:3px;border:0;border-radius:3px;background:transparent;color:inherit;font-size:11px;line-height:1;opacity:.5;cursor:pointer}
+.title-file-x{width:20px;flex:0 0 20px;padding:0;margin-right:4px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;line-height:1;opacity:.5;cursor:pointer}
 .title-file-x:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
 /* ★テンプレート文字列の中なので **バックスラッシュのCSSエスケープは書けない**(JSの数値エスケープと取り合いになる)。字そのものを置く。 */
 .title-file-x::before{content:'×'}
@@ -19338,6 +19342,10 @@ if(fp.classList.contains('on')){fp.classList.remove('on');return;}
 fp.classList.add('on');window.__meosRenderRecent();
 /* ★開/未保存は**開いた時に数え直す**(熱い道に印を追いかけさせない)。返事が来たら描き直す。 */
 vscode.postMessage({type:'recentAsk'});});
+/* v4.0.306: 角丸の箱ごと押せる= 見た目が「操作対象」なら、どこを押しても同じことが起きる。
+   ▾自身はここへ伝わらない(caretのhandlerがstopPropagationしている)ので、二重に開閉しない。 */
+var fbox=document.getElementById('title-file');
+if(fbox)fbox.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.title-file-pop'))return;fc.click();});
 fp.addEventListener('click',function(ev){var x=ev.target&&ev.target.closest?ev.target.closest('[data-close]'):null;
 if(x){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'closeRecent',path:x.getAttribute('data-close')});return;}
 var b=ev.target&&ev.target.closest?ev.target.closest('[data-path]'):null;
@@ -20131,6 +20139,7 @@ return;}if(m&&m.type==='diaryTestResult'){if(typeof window.__onDiaryTestResult==
 return;}if(m&&m.type==='dockFile'){/* v4.0.303: 版の右のファイル名と、▾の履歴 */
 var _fn=document.getElementById('title-file-name'),_fp=document.getElementById('title-file-pop'),_fc=document.getElementById('title-file-caret');
 if(_fn){_fn.textContent=m.name||'';_fn.setAttribute('data-tip',m.path||m.name||'');_fn.removeAttribute('title');}
+var _fb=document.getElementById('title-file');if(_fb)_fb.style.display=(m.name?'':'none');/* v4.0.306: 相手が居ない時は箱ごと出さない */
 window.__meosRecent=Array.isArray(m.recent)?m.recent:[];window.__meosCurPath=m.path||'';
 if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */

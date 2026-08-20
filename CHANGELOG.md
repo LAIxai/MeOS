@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.306 (2026-08-20)
+- **The file name is a control, and looks like one** — it sits in a rounded box with the ▾, the whole box opens the
+  menu, and the box hides itself when there is no file. The name stays small because the header has no room to spare.
+- **The menu itself is set larger** — a list you read deserves readable type, and it has room to be generous where
+  the header does not.
+
 ### v4.0.305 (2026-08-20)
 - **Picking a file from ▾ goes back to where that file already lives** — MeOS looks up its tab and reuses that
   editor group instead of opening a second copy somewhere else. Tab groups are consulted rather than visible editors,
