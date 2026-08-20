@@ -775,6 +775,14 @@ console.log('㉚ v4.0.312 見出しの作成時刻は命令へ（H2_TS）— 本
     ok(!!r && r.body === '## Heading', '本文は素のMarkdownだけ', r && r.body);
     ok(!!r && r.spec.indexOf('H2_' + TS) >= 0, '時刻はFC行の命令に入る', r && r.spec);
   }
+  // ★v4.0.313(俊克 バグ1「曜日の括弧の片側を外しても両側外しても、おかしくなる」):
+  //   名札は**中身を読む物ではない**ので、形が崩れていても見出しを殺さない。
+  for (const bad of ['2026.08.20tpm11:57.43JST', '2026.08.20(tpm11:57.43JST', '2026.08.20t)pm11:57.43JST', 'なんでもいい名札']) {
+    const b = T.meosLineDirective('H2_' + bad + ' (白/green)//[]tip=');
+    ok(!!b && b.level === 2 && b.rest === '(白/green)//[]tip=', '名札の形が崩れても見出しは死なない: ' + bad, b && [b.level, b.rest]);
+  }
+  ok(T.meosLineDirective('H2_' + TS + '//[]tip=').rest === '//[]tip=', '色が無くてもtipを食べない', T.meosLineDirective('H2_' + TS + '//[]tip=').rest);
+  ok(T.meosLineDirective('H2_note123 (白/緑)').stamp === 'note123', '名札の途中の not は命令ではない', T.meosLineDirective('H2_note123 (白/緑)').stamp);
   ok(T.MEOS_HEAD_STAMP_RE.test(' ' + TS), '本文に残った旧い時刻は今までどおり剥がせる(形は1か所から)', true);
   ok(!T.MEOS_HEAD_STAMP_RE.test(' 2026.08.20 pm11:29'), '似ているだけの文字列は剥がさない', false);
 }

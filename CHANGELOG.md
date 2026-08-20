@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.313 (2026-08-21)
+- **A malformed timestamp no longer kills the heading** — v4.0.312 matched it against an exact pattern, so deleting one
+  bracket from the weekday left the whole instruction unreadable and the heading lost its colour. But the timestamp is
+  not something MeOS reads: it is a label for `grep`. Anything up to the next space (or `//`) is accepted now, and only
+  a trailing `not` is handed back to the parser. Same question as the unclosed code fence in v4.0.106 — can it stay
+  standing on broken input?
+- The strict pattern stays where it belongs: stripping an old timestamp out of body text, where matching only the real
+  thing is the point. The same value can deserve different strictness when read and when deleted.
+
 ### v4.0.312 (2026-08-20)
 - **A heading's timestamp moves into the instruction** — `## Heading` stays plain Markdown and the time is written as
   `H2_2026.08.20(t)pm11:29.35JST` in the FC line. It was put in the body back when there was no FC line and a comment
