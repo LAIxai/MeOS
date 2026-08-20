@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.316 (2026-08-21)
+- **`✅` is display only, everywhere** — it is drawn in the hover and written nowhere. That was already true of the
+  v4.0 form, but the legacy shell path still stamped a literal `✅` into the raw text on save (and removed it again
+  when unchecked), quietly editing lines written long ago. v4.0 never writes shells, so the only files it could touch
+  were old ones — the worst thing to change silently. Both paths now record the time and nothing else. A `✅`
+  already written stays where it is.
+
 ### v4.0.315 (2026-08-21)
 - **Checking a box records the time again** — write anything into `//[…]tip=` and saving injects the timestamp, so the
   hover reads `✅ Checked: 2026-08-21 00:34`, matching H-TOC's Checked. Nothing about this feature had changed: it

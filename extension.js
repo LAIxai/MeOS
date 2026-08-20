@@ -26229,10 +26229,15 @@ function activate(context) {
   const applyCheckTransform = (inner) => {                      // inner = "本文 (色)//[…]tip="。注釈が無ければ不変。
     if (!HEAD_DONE_TIP_ANY.test(inner)) return inner;
     const checked = !HEAD_DONE_TIP_OPEN.test(inner);           // 対応済 = 未対応でない
-    const hasMark = /^\s*✅/.test(inner);
+    // ★★v4.0.316(俊克 8/21 am00:43「✅は、前から本文には書かれてないよ。『💬 ✅[済]』のようにtipには表示するけど、
+    //   それは本文には書かれてない。コメントにも書かれていない。**見た目だけ**だよ」):
+    //   ★★**そうであるべきだった。だが、コードは書いていた**。v0.9.99954/99963 が殻の中の本文に `✅ ` を刻んでいて、
+    //   **旧形の見出しを含むファイルを保存するたびに生データが変わって**いた（未対応に戻すと消しもした）。
+    //   ★これは「データを1mmも汚さない」に正面から反する。しかも v4.0 は殻を**書かない**ので、触る相手は
+    //   **過去に書いた行だけ**＝ 過去を勝手に変える、という一番やってはいけない形になっていた。
+    //   → **✅ は書かない**。これで旧形も新形も同じ規則＝ **記録は時刻だけ・✅ は見た目だけ**。
+    //   ★既に書かれてしまった `✅` はそのまま残す（過去を一括変換しない）。消したい時は人が消す。
     let ni = inner;
-    if (checked && !hasMark) ni = '✅ ' + ni;                            // v0.9.99963: ✅は絶対先頭に(左paddingスペースより前)→#[✅/=={✅/~~{✅の検索を維持しつつ、左padding空白は背景色に残す
-    else if (!checked && hasMark) ni = ni.replace(/^(\s*)✅[ 　\t]?/, '$1'); // 未対応に戻す→✅除去(左paddingは残す)
     if (checked) ni = ni.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) =>  // 対応済で日時未記録なら注入
       (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
     return ni;
