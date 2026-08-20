@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -756,6 +756,27 @@ console.log('㉙ v4.0.302 FCで記号を打ち替えたら、本文の印も従�
     const p = T.meosFmtKindFollowPlan(L, 1);
     ok(!!p && p.line === 0 && p.to === '~~見出し~~', '塊でない行でも効く', p && [p.line, p.to]);
   }
+}
+
+console.log('㉚ v4.0.312 見出しの作成時刻は命令へ（H2_TS）— 本文には1文字も足さない');
+{
+  const TS = '2026.08.20(t)pm11:29.35JST';
+  const d = T.meosLineDirective('H2_' + TS + ' (白/green)//[]tip=');
+  ok(!!d && d.level === 2, '見出しのレベルは今までどおり読める', d && d.level);
+  ok(!!d && d.stamp === TS, '作成時刻を丸ごと読む(曜日の括弧 (t) で切れない)', d && d.stamp);
+  ok(!!d && d.rest === '(白/green)//[]tip=', '残りは色とtipだけ= 色を取り違えない', d && d.rest);
+  const d2 = T.meosLineDirective('H2_' + TS + 'not (白/緑)');
+  ok(!!d2 && d2.not === true && d2.stamp === TS, '`not` と一緒でも読める', d2 && [d2.not, d2.stamp]);
+  ok(T.meosLineDirective('H2 (白/green)//[]tip=').stamp === '', '時刻が無くても今までどおり', '');
+  ok(T.meosLineDirective('-1.H3_' + TS + ' (白/青)').level === 3, '箇条書きとの合成でも読める', 3);
+  ok(T.meosCarryItemSpec('-1.H2_' + TS + ' (白/黄)//[]tip=') === '-1.H2 (白/黄)//[]tip=', '改行では色だけ持ち越す(時刻は持ち越さない・色も取り違えない)', T.meosCarryItemSpec('-1.H2_' + TS + ' (白/黄)//[]tip='));
+  {
+    const r = T.meosMoveSpecsOutOfLine('## Heading<!-- Mew! H2_' + TS + ' (白/green)//[]tip= -->');
+    ok(!!r && r.body === '## Heading', '本文は素のMarkdownだけ', r && r.body);
+    ok(!!r && r.spec.indexOf('H2_' + TS) >= 0, '時刻はFC行の命令に入る', r && r.spec);
+  }
+  ok(T.MEOS_HEAD_STAMP_RE.test(' ' + TS), '本文に残った旧い時刻は今までどおり剥がせる(形は1か所から)', true);
+  ok(!T.MEOS_HEAD_STAMP_RE.test(' 2026.08.20 pm11:29'), '似ているだけの文字列は剥がさない', false);
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

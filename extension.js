@@ -13384,7 +13384,20 @@ function meosStripMewSignature(payload) { return String(payload == null ? '' : p
 //   ★下位の並びは貪欲に取る=`-1.1` は「`-1.` の後に1」ではなく「`-1` ＋ 数字階層1つ」と読む。
 // v4.0.238: 行の指定にも `not`= `H2not` と書けば「この `##` を、MeOSでは見出しとして読まない」。
 //   ★語に効く `***not` と同じ言葉・同じ論理(記号は運び屋・意味は指定that決める)。読む口だけが別なので、判定は2か所に足す。
-const MEOS_LINE_DIRECTIVE_RE = /^(-?1(?:\.\d+|[a-z])*\.?|-)?[ \t]*(H[1-6]|#{1,6})?[ \t]*(not)?[ \t]*(?:$|(?=\(|\/\/))/;
+// ★★v4.0.312(俊克 8/20 pm11:34「見出しに付けているタイムスタンプは、コメント部分に入れよう。
+//   **そうしないと、1mmも汚さないとは言えない**しね。検索しやすいように、H2見出しなら、**H2_TS** のようにしようか?」):
+//   ★★**俊克が正しい**。v0.9.936で「コメントだと隠れて見えない」からと本文の末尾に置いたが、
+//   **その頃はFC行が無かった**。今はカーソルを置けばFC行が開くので、隠れない＝ 本文へ書き足す理由が消えていた。
+//   ★置き場は**命令トークンの後ろ**＝ `H2_2026.08.20(t)pm11:29.35JST`。理由=
+//     ①俊克の言うとおり **H2_TS の一語**なので grep で `H2_2026.08.20` と探せる
+//     ②`//` の後ろはtip（行末まで伸びる）なので、そこへ置くと**ツールチップに日付が出てしまう**
+//     ③見出しの持ち物（レベル）に、見出しの持ち物（作成時刻）が付く＝ 持ち主が同じ
+//   ★本文には**1文字も足さない**。過去に本文へ書いた分はそのまま（一括変換しない）。
+//   ★★形は**1か所で定義する**= 作成時刻には `(t)` という括弧that入っている(曜日1文字)。
+//     「括弧以外」で雑に取ると **`(t)` で切れて、残りthat色として読まれる**(実測で捕まえた= `rest="(t)pm11:29…"`)。
+//     so `MEOS_HEAD_STAMP_RE` と**同じ形の文字列**から両方を組み立てる。片方だけ直る事故を作らない。
+const MEOS_STAMP_BODY = '\\d{4}\\.\\d{2}\\.\\d{2}\\([SMTWtFs]\\)(?:am|pm)\\d{2}:\\d{2}\\.\\d{2}(?:[A-Za-z]{2,5}(?:[+-]\\d{1,2})?)?';
+const MEOS_LINE_DIRECTIVE_RE = new RegExp('^(-?1(?:\\.\\d+|[a-z])*\\.?|-)?[ \\t]*(H[1-6]|#{1,6})?(_' + MEOS_STAMP_BODY + ')?[ \\t]*(not)?[ \\t]*(?:$|(?=\\(|\\/\\/))');
 // 命令トークン → 階層の並び。[{style:'num'|'alpha'}, …] を返す(長さ=深さ)。深さ1は [{num}]。
 function meosItemLevels(tok) {
   const t = String(tok == null ? '' : tok);
@@ -13419,12 +13432,13 @@ function meosItemNumStep(counts, lv) {
 function meosLineDirective(payload) {
   const s = String(payload == null ? '' : payload);
   const m = MEOS_LINE_DIRECTIVE_RE.exec(s);
-  if (!m || (!m[1] && !m[2] && !m[3])) return null;
+  if (!m || (!m[1] && !m[2] && !m[4])) return null;
   return {
     token: m[1] || '', // v4.0.117: 命令トークンそのもの(階層 `-1.1` / `-1a` を読むため)
     bullet: m[1] ? (m[1] === '-' ? 'bullet' : 'number') : null, // '-'=箇条書き / '1' '1.' '-1' '-1.'=番号付き
     level: m[2] ? (m[2].charAt(0) === 'H' ? parseInt(m[2].slice(1), 10) : m[2].length) : 0, // H2 も ## も同じ
-    not: !!m[3], // v4.0.238: `H2not` = 見出しとして読まない(外では本物の見出しのまま)
+    stamp: m[3] ? m[3].slice(1) : '', // v4.0.312: `H2_2026.08.20(t)pm11:29.35JST` の作成時刻(読むだけ・描かない)
+    not: !!m[4], // v4.0.238: `H2not` = 見出しとして読まない(外では本物の見出しのまま)
     rest: s.slice(m[0].length), // 残り=(色)//tip
   };
 }
@@ -13445,7 +13459,7 @@ function meosLineDirective(payload) {
 //   描画側は既に「有効な色でない `(…)` は本文の一部として温存」と決めているのに、🐱だけ別の基準で
 //   数えていた=[[feedback_one_source_for_mark_count_action]] の同じ穴(印・数字・ボタンは同じ1つの判定から引く)。
 // ★命令トークン(H2 / -1. / == …)がある時と、`//tip` だけの時は従来どおり通す(色が無くても本物の命令)。
-const MEOS_SPEC_SHAPE_RE = /^(-?1(?:\.\d+|[a-z])*\.?|-|H[1-6]|#{1,6}|==|~~|\*{1,3}|_)?[ \t]*((?:\([^()\n]*\)[ \t]*)+)?(\/\/[^\n]*)?$/;
+const MEOS_SPEC_SHAPE_RE = new RegExp('^(-?1(?:\\.\\d+|[a-z])*\\.?|-|H[1-6]|#{1,6}|==|~~|\\*{1,3}|_)?(_' + MEOS_STAMP_BODY + ')?[ \\t]*((?:\\([^()\\n]*\\)[ \\t]*)+)?(\\/\\/[^\\n]*)?$'); // v4.0.312: H2_TS の作成時刻も形として通す(形は MEOS_STAMP_BODY 1つから)
 // `(…)` 1つが本当に色指定か(parseColorSpec と同じ読み方: `fg/bg`・`fg+bg`・単色)。
 function meosParenIsColorSpec(inner) {
   const spec = String(inner == null ? '' : inner).trim();
@@ -13471,8 +13485,8 @@ function meosLooksLikeSpecComment(payload) {
   if (mx) return meosIsMeTexSpec(mx[1]);                              // 上付/下付=中身が {N%} / (fg/bg) の形の時だけ
   const m = MEOS_SPEC_SHAPE_RE.exec(s);
   if (!m) return false;
-  if (m[2]) return meosHasColorSpecParen(m[2]); // `(…)` があるなら、それが**色**でなければただの文
-  return !!m[3];                                // 残るは `//tip` だけの形。命令トークンだけ(無指定)は対象外
+  if (m[3]) return meosHasColorSpecParen(m[3]); // v4.0.312: 群が1つ増えた(H2_TS)ので番号もずらす
+  return !!m[4];                                // 残るは `//tip` だけの形。命令トークンだけ(無指定)は対象外
 }
 // 1行の中から「鳴いていない仕様コメント」の開始位置(`<!--` の直後)を列挙する。
 function meosUnsignedSpecComments(text) {
@@ -14963,7 +14977,7 @@ function meosFormatStamp(d) {
 }
 // v4.0.171: 見出し本文の末尾に付く**可視タイムスタンプ**。押し直した時に古いスタンプを落とすため、
 //   🚫解除(removeFormatAtCursor)と**同じ1つの物差し**を使う= [[feedback_one_source_for_mark_count_action]]。
-const MEOS_HEAD_STAMP_RE = /\s*\d{4}\.\d{2}\.\d{2}\([SMTWtFs]\)(?:am|pm)\d{2}:\d{2}\.\d{2}(?:[A-Za-z]{2,5}(?:[+-]\d{1,2})?)?\s*$/;
+const MEOS_HEAD_STAMP_RE = new RegExp('\\s*' + MEOS_STAMP_BODY + '\\s*$'); // v4.0.312: 形は MEOS_STAMP_BODY 1つから(本文に残った旧い分を剥がす側)
 // v4.0.171(俊克 8/13 pm02:03「見出しボタンも、FC記法にならない件を修正して」): 見出しボタンは行を**組み立て直す**so、
 //   押し直した時に古い指定コメントを本文に飲み込んでいた(`### ## 見出し …<!-- H2 --> …<!-- H3 -->`)。
 // ★落とすのは**行単位の宣言を持つコメントだけ**(`H2` `-1.` `-`)。`== (白/黄)` や `[](行先)` は
@@ -15061,7 +15075,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       editor = await meosFocusBack(editor, editor.selection); // v4.0.173: revealしない＋生きているエディタを受け取り直す
       return;
     }
-    const visibleBody = body + ' ' + stamp; // 本文 + 可視タイムスタンプ
+    const visibleBody = body; // v4.0.312: 本文には1文字も足さない(作成時刻は命令トークンへ= H2_TS)
     const hashes = '#'.repeat(Math.max(1, Math.min(3, Number(level) || 2))); // v0.9.99936: ↻でH1/H2/H3を選んで挿入
     // v4.0.54(俊克): 新形で書く。`## 本文 スタンプ<!-- (色)//tip -->`(＋箇条書きなら行頭に `- `・番号付きは -1 をコメントへ)。
     //   MeOSの外では本物のH2/箇条書きになる。旧形 ##{ }## は読めるだけ(書かない)。
@@ -15072,7 +15086,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const _blt = _mk ? ((_mk === '-1') ? '1. ' : '- ') : ''; // v4.0.61: 番号付きは**本物のMarkdown順序付きリスト**(全部 `1.` と書く=レンダラが振り直す・腐らない)
     const _numMk = (_mk === '-1') ? '-1.' : (_mk ? '-' : ''); // v4.0.61(俊克): コメントには**理想の記法**(-1.)を書き残す。行頭の `1. ` が実務を担う。
     // v4.0.64(俊克 改良1): 見出しレベルもコメントで宣言する(`H2` / `-H2` / `-1.H2`)。`#` の後ろの空白を書き忘れても壊れない。
-    const _dirTag = _numMk + 'H' + Math.max(1, Math.min(3, Number(level) || 2));
+    const _dirTag = _numMk + 'H' + Math.max(1, Math.min(3, Number(level) || 2)) + (stamp ? ('_' + stamp) : ''); // v4.0.312: H2_TS(grepで探せる一語)
     const _prose = meosIsProseDoc(doc);
     const newText = _prose
       ? (_indent + _blt + hashes + ' ' + visibleBody + meosSpecComment(_dirTag, hspec))

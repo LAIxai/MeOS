@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.312 (2026-08-20)
+- **A heading's timestamp moves into the instruction** — `## Heading` stays plain Markdown and the time is written as
+  `H2_2026.08.20(t)pm11:29.35JST` in the FC line. It was put in the body back when there was no FC line and a comment
+  really would have hidden it; now the comment opens under the cursor, so the reason is gone — and "not a millimetre"
+  should mean it. One word, so `grep H2_2026.08.20` finds it. It is not placed after `//`, where the tip runs to the
+  end of the line and the date would surface as a tooltip.
+- The stamp's shape is defined once and used by both the parser and the stripper. Written generically first, it broke
+  on the `(t)` in the weekday — the directive stopped at the bracket and the remainder was read as a colour. Measured,
+  then fixed at the source.
+
 ### v4.0.311 (2026-08-20)
 - **Selecting text no longer gets yanked away** — folding an FC group takes real time on a 140k-line file, and if you
   began selecting during that wait, MeOS put the cursor back where it had been, assuming the fold had moved it. It
