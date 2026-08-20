@@ -4,6 +4,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.324 (2026-08-21)
+- **Delete the line, and its spec goes with it.** An FC group belongs to the body line above it. Remove that line and
+  the specs were left behind — and, because each one looks at the line directly below itself, they silently re-attached
+  to whatever line had moved up into the gap: colours and tips appearing on text that never asked for them. Now, when
+  whole lines are removed and an FC line is sitting at the spot, the run of specs starting there goes too.
+  **Tables and lists are the exception**: the group belongs to the whole block, so deleting one row leaves the owner
+  standing.
+- **Orange means "this line is showing you raw data", and only the cursor's line is orange.** It used to paint the
+  body line and its FC lines together, which said "these two are a pair" — true, but not the thing worth saying every
+  time. What the colour is actually marking is the one line MeOS has stopped rendering so you can edit it. In a table,
+  every other row keeps its proper rendering, which is exactly why the rule reads the same there.
+- **The file menu can be emptied.** Re-posting the Me Dock state no longer re-adds the current file; a file joins the
+  list when you click its tab. Removing the last entry now leaves it empty instead of pulling one back in.
+- **The `▾` tip no longer covers the menu button** it was describing.
+
 ### v4.0.323 (2026-08-21)
 - **Backspace responds again** — the orange pairing added in v4.0.301 asked for the FC blocks on every redraw, and
   that answer comes from scanning the whole file; the cache is keyed by document version, so every keystroke rebuilt

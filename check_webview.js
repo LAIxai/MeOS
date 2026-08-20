@@ -84,7 +84,7 @@ catch (e) { console.log('webview script: SYNTAX ERROR -> ' + e.message + '  (詳
       console.log('  (' + ref + ' には宣言that在りました。消すなら、使っている行も一緒に消してください)');
       process.exitCode = 1;
     } else {
-      console.log('webview refs: OK (宣言that消えて使用thatが残っている識別子は無し / 比較先=' + ref + ')');
+      console.log('webview refs: OK (宣言が消えて使用が残っている識別子は無し / 比較先=' + ref + ')');
     }
   }
 }
@@ -122,7 +122,7 @@ catch (e) { console.log('webview script: SYNTAX ERROR -> ' + e.message + '  (詳
       console.log('  (閉じタグを巻き込んで消した/開きだけ足した可能性thatあります)');
       process.exitCode = 1;
     } else {
-      console.log('webview tags: OK (開き/閉じの釣り合いthat前の版と同じ / 比較先=' + ref2 + ')');
+      console.log('webview tags: OK (開き/閉じの釣り合いが前の版と同じ / 比較先=' + ref2 + ')');
     }
   }
 }

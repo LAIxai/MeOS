@@ -23614,51 +23614,27 @@ function meosFcPairAt(doc, line) {
   } catch (_) { return null; }
 }
 let meosFcRowDeco = null;   // FC行/カーソル行の文字
-let meosFcBarDeco = null;   // 相手の本文行の縦線(表の `|`)
+// v4.0.324: 相手の縦線を塗る型は役目を終えた（橙はカーソル行だけ）
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
   if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  // ★v4.0.303: `color` は**色そのもの**しか受け付けない。`!important` を足すと値that不正になり、
-  //   **その型ごと描かれなくなる**(俊克のスクショ= FC行に居るのに縦線that白いまま、thatその証拠)。
-  //   強くしたい時は `textDecoration` に相乗りさせる(この家で font-size や color を通してきた道と同じ)。
-  if (!meosFcBarDeco) meosFcBarDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: ' + HIGHLIGHT_FG_COLORS.orange + ' !important; font-weight: 700;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  const out = [], bars = [];
+  const out = [];
   try {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
       const line = editor.selection.active.line;
-      const whole = (ln) => new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length);
-      // 表の `|` だけを拾う(`\|` は境目でない=セルの中の縦棒)
-      const barsOf = (ln) => { const t = doc.lineAt(ln).text, r = []; for (let i = 0; i < t.length; i++) { if (t.charAt(i) !== '|' || (i > 0 && t.charAt(i - 1) === '\\')) continue; r.push(new vscode.Range(ln, i, ln, i + 1)); } return r; };
-      {
-        const b = meosFcPairAt(doc, line);                     // v4.0.323: 全文を走らず、カーソルの周りだけ
-        if (!b) { editor.setDecorations(meosFcRowDeco, []); editor.setDecorations(meosFcBarDeco, []); return; }
-        const top = b.top;
-        if (line >= top && line <= b.head) {                   // ① 本文の側に居る= カーソル行は生データなので文字を塗る
-          const sl = b.head + 1 + (line - top);
-          if (sl > b.start && sl <= b.end && sl < doc.lineCount) {
-            out.push(whole(sl));
-            // ★v4.0.303(俊克「**縦線を橙色にすると言ったのは、FC行にいるとき**だよ」):
-            //   本文行に居る時は**文字だけ**を橙にする= 縦線は塗らない。2つの場合の見分けが付くように、
-            //   **縦線が橙なのは「FC行に居る」印**、と1つに決める。→ 縦線を避けて、その間だけ塗る。
-            const t = doc.lineAt(line).text; let from = 0;
-            for (let i = 0; i <= t.length; i++) {
-              const bar = (i < t.length) && (t.charAt(i) === '|') && !(i > 0 && t.charAt(i - 1) === '\\');
-              if (!bar && i < t.length) continue;
-              if (i > from) out.push(new vscode.Range(line, from, line, i));
-              from = i + 1;
-            }
-          }
-        } else if (line > b.head && line <= b.end) {           // ② FC行の側に居る= その行は橙のまま・相手は縦線だけ
-          out.push(whole(line));
-          const bl = top + (line - b.head - 1);
-          if (bl >= top && bl <= b.head && bl < doc.lineCount) for (const r of barsOf(bl)) bars.push(r);
-        }
-      }
+      // ★★v4.0.324(俊克 8/21 am08:09「昨日、一時期、両方を橙色に染めていたでしょ。あれを、**文字カーソルがある行
+      //   だけに適用する**んだよ。つまり、**生データを表示する機能を色ではっきり見せる**と言うことだよ」):
+      //   ★★**橙の意味が変わった**＝「対になっている2つ」を指す印ではなく、
+      //   「**この行は今、生データを見せている**」という印。だからカーソル行だけを塗る。
+      //   ★相手のFC行も、相手の縦線も塗らない（v4.0.301〜303 の対の塗り分けは役目を終えた）。
+      //   ★表も同じ＝ カーソル行以外は正しい姿を見せているので、そこには何も足さない。
+      //   ★v4.0.323で残っていた `b.start`（この物には無い名前）もここで消えた＝ ①の側は実は効いていなかった。
+      const b = meosFcPairAt(doc, line);                     // 全文を走らず、カーソルの周りだけ
+      if (b && line >= b.top && line <= b.end) out.push(new vscode.Range(line, 0, line, doc.lineAt(line).text.length));
     }
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
-  try { editor.setDecorations(meosFcBarDeco, bars); } catch (_) { }
 }
 function meosDefBlockFoldingRanges(document) {
   return meosDefBlocks(document).map(b => new vscode.FoldingRange(b.start, b.end, vscode.FoldingRangeKind.Region));
@@ -24635,6 +24611,48 @@ function meosCheckStampWatch(editor) {
     for (let i = r.from; i <= r.to && !found; i++) found = meosCheckStampPendingAt(doc, i);
     _meosCheckPend = found ? { uri, line: found.line, from: r.from, to: r.to } : null;
   } catch (_) { _meosCheckPend = null; }
+}
+// ★★v4.0.324(俊克 8/21 am08:09 改良2「エディタ上で、**メインの方を削除したら、自動的にFC群も削除**するように
+//   できないか? …そうすれば、メインを消せば、FCコメントも消えると言うのが自然でしょ?
+//   **ただし、テーブルは例外**にしよう」):
+//   ★★**FC群は、その本文行の持ち物**。持ち主が消えたら、残った指定は**誰のものでもない**＝ しかも黙って
+//   **1つ上の行に付き直す**（真下の行を見る作りなので）＝ 見に覚えのない色が別の行に付く、という一番いやな壊れ方。
+//   ★見つけ方＝ **行がまるごと消えた直後に、その位置がFC行になっていたら**、その群は持ち主を失っている。
+//   ★★表と箇条書きは**例外**＝ 群は塊ぜんぶの持ち物なので、1行消えても持ち主は残っている（俊克の指定）。
+//   ★消すのは**その位置から続くFC行だけ**＝ 上に別の群があっても巻き込まない。
+let _meosOrphanFcBusy = false;
+function meosOrphanFcPlan(doc, ln) {
+  try {
+    if (ln < 0 || ln >= doc.lineCount) return null;
+    if (!meosIsSpecLine(doc.lineAt(ln).text)) return null;              // そこthatFC行でなければ用事は無い
+    if (ln > 0 && meosFcIsBlockLine(doc.lineAt(ln - 1).text)) return null; // 表/箇条書きの塊= 持ち主は残っている
+    let end = ln;
+    while (end + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(end + 1).text)) end++;
+    return { from: ln, to: end };
+  } catch (_) { return null; }
+}
+function meosOrphanFcFollow(e) {
+  if (_meosOrphanFcBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
+  const ed = vscode.window.activeTextEditor, doc = e.document;
+  if (!ed || ed.document !== doc || !meosIsProseDoc(doc) || !MEOS_SPEC_LINE) return false;
+  const c = e.contentChanges[0];
+  if (c.range.end.line <= c.range.start.line) return false;             // 行がまるごと消えた時だけ
+  if (String(c.text || '').indexOf('\n') >= 0) return false;            // 入れ替え(貼り付け)は相手にしない
+  const plan = meosOrphanFcPlan(doc, c.range.start.line);
+  if (!plan) return false;
+  _meosOrphanFcBusy = true; deferRefreshCount++;
+  (async () => {
+    try {
+      const last = Math.min(plan.to + 1, doc.lineCount - 1);
+      const r = (plan.to + 1 < doc.lineCount)
+        ? new vscode.Range(plan.from, 0, plan.to + 1, 0)                 // 次の行の頭まで= 行ごと消す
+        : new vscode.Range(Math.max(0, plan.from - 1), doc.lineAt(Math.max(0, plan.from - 1)).text.length, plan.to, doc.lineAt(plan.to).text.length);
+      await ed.edit(eb => eb.delete(r), { undoStopBefore: false, undoStopAfter: false });
+      try { meosDbg('[orphanFC] 持ち主を失った指定行を消した ' + (plan.from + 1) + '..' + (plan.to + 1) + ' last=' + last); } catch (_) { }
+    } catch (_) { }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosOrphanFcBusy = false; }
+  })();
+  return true;
 }
 let _meosHatBusy = false;
 // 打った(貼った)直後に形that揃っていれば、その場で字にする。『かかか』の呪文と同じ作り。
@@ -26718,6 +26736,7 @@ makeDecorations();
       if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
       if (deferRefreshCount === 0) { try { meosLinkUlFollow(e); } catch (_) { } }     // v4.0.298: FC行の(N)を手で直したら、それが最後に決めた下線の種類
       if (deferRefreshCount === 0) { try { meosFmtKindFollow(e); } catch (_) { } }    // v4.0.302: FC行の記号を打ち替えたら、本文の印も従う
+      if (deferRefreshCount === 0) { try { meosOrphanFcFollow(e); } catch (_) { } }   // v4.0.324: 本文を消したら、その指定行も消える
 
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
