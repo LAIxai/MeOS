@@ -8141,6 +8141,7 @@ function postFixedWorkingTocSnapshot() {
   // mMETAを持たないファイルを開くと組込み既定(赤/黄)に戻って見えた=「ファイル毎に初期化される」の正体。
   if (!fmt) { try { fmt = extensionContext && extensionContext.globalState.get('meosFmtUserDefault'); } catch (_) {} }
   meDockPanel.webview.postMessage({ type: 'loadFmt', fmt: fmt || null }); } catch (_) {}
+  try { meDockPanel.webview.postMessage({ type: 'linkUl', ul: meosLinkUlLast() }); } catch (_) {} // v4.0.298: 面の下線も同じ値から
   postBookmarkState(editor); // v0.9.715: 🔖 ボタン状態(個数/満杯)も同期
   // v0.9.976: GitHub ウィザード状態をMe Dockに送信
   try { postGithubWizardState('sync'); } catch (_) {}
@@ -18077,7 +18078,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <!-- {* ▼mCN=dock_format // Format Me の行(== ~~ A2 ## / 表 / 🐱 / Raw) *} -->
 <div class="row format-tools" id="format-tools"><span class="fmt-label"><span class="fmt-me-box">Format</span> Me</span>
 <span class="fmt-btns">
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once (leave □ Link unchecked in the presets; the button shows the underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once, with the underline you last chose (leave □ Link unchecked in the presets; the button shows that underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
@@ -18919,6 +18920,10 @@ document.addEventListener('keyup',function(ev){if(ev.key==='Alt'&&fmtAltDown){fm
 var hlAltW=null;
 function hlAltOn(){return !!(hlAltW&&hlAltW.on());}
 function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
+/* v4.0.298(俊克): 下線の種類は「最後に自分で決めた値」。nodeが覚えていて、開いた時と変わった時に送ってくる。
+   ★webviewは**持ち主ではなく写し**= 面を描くためだけに持つ。書く値を決めるのはnode(口を2つ作らない)。 */
+var fmtLinkUlLast=0;
+function fmtHlUl(){var sp=fmtHlSlots[fmtHlIdx]||{};return sp.link?(Number(sp.ul)||0):fmtLinkUlLast;}
 if(fmtHighlight)fmtHighlight.addEventListener('click',()=>{if(window.__fmtActionable.highlight){const r=window.__fmtRing.highlight||0;
 window.__fmtCyclingKind='highlight';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',
 kind:'highlight',ring:0});}else{const baseW=window.__fmtBaseW.highlight||2;const w=((baseW-1+r)%3)+1;const sp=fmtHlSlots[w-1];
@@ -18927,11 +18932,12 @@ kind:'highlight',ring:w,fg:sp.fg,bg:sp.bg});window.__renderFmtRing('highlight');
 /* v4.0.295: 🔗かどうかは fmtHlLinkOn() 1つから引く(面と同じ物差し=面に下線が出ていればリンクが付く) */
 /* ★v4.0.297(俊克 8/20 pm00:22 改良1「下線を0〜3のどれにするか? 0でいいんじゃないか?」):
    ★**下線の種類は、プリセットthat🔗を名乗っている時だけ、そのプリセットのもの**。
-   🔗にチェックthat無いプリセットは「リンクを作る係」ではないので、そこに残っている下線の値は**ただの前の設定**=
-   Opt+clickでそれを持ち出すと、俊克が見た「なぜか(3)」になる。→ Optionで付けた時は **0(単線)**。
-   ★「最後に設定した種類を使いたい」時の道は**既に在る**= 🔗にチェックを入れて、▾で種類を決めておけばよい。
-   規則は1本のまま= **名乗ったプリセットの値を使う／名乗っていなければ既定**。あとはインラインで数字を打ち替える。 */
-if(fmtHlLinkOn()){vscode.postMessage({type:'insertMeLink',fg:_hs.fg,bg:_hs.bg,ul:_hs.link?(_hs.ul||0):0,bold:!!_hs.bold,italic:!!_hs.italic});
+   🔗にチェックが無いプリセットは「リンクを作る係」ではないので、そこに残っている下線の値は**ただの前の設定**＝
+   Opt+clickでそれを持ち出すと、俊克が見た「なぜか(3)」になる。
+   ★v4.0.298(俊克「Opt+clickで出る下線は、FCで修正した値、あるいは、🔗指定をしたボタンで最後に設定した値」):
+   → 名乗っていない時は **null を送る**＝「最後に自分で決めた値を使ってくれ」。値を持っているのはnode1か所。
+   規則は1本のまま＝ **名乗ったプリセットの値を使う／名乗っていなければ、最後に決めた値**。 */
+if(fmtHlLinkOn()){vscode.postMessage({type:'insertMeLink',fg:_hs.fg,bg:_hs.bg,ul:_hs.link?(_hs.ul||0):null,bold:!!_hs.bold,italic:!!_hs.italic});
 return;}/* v4.0.30(俊克 改良1): リンクでも太字/斜体を捨てない *//* v4.0.26: どこでもH-TOC=リンクを挿入し行先の中で待つ */if(_hs.bold||_hs.italic){vscode.postMessage({type:'insertBold',
 bold:!!_hs.bold,italic:!!_hs.italic,fg:_hs.fg,bg:_hs.bg});return;}vscode.postMessage({type:'insertFormat',kind:'highlight',
 fg:fmtSpec.highlight.fg,bg:fmtSpec.highlight.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtHlIdx];
@@ -18978,7 +18984,7 @@ sp.style.display='inline-block';sp.style.fontWeight=f.b?'900':'';sp.style.fontSt
 if(u===null||u===undefined){el.style.textDecoration='';el.style.textUnderlineOffset='';return;}/* v4.0.34(俊克 改良2): 面でも 2/3 はエディタと同じ**波のSVG**にする(text-decorationのwavyは1〜2文字だと潰れて見える)。 */if(u===2||u===3){el.style.textDecoration='none';
 el.style.backgroundImage=fmtUlWave(col,u===3?2:1);el.style.backgroundRepeat='repeat-x';el.style.backgroundPosition='left calc(100% - 2px)';
 return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.textUnderlineOffset='3px';}function fmtUlCssStr(u,col){return (u===2||u===3)?('text-decoration:none;background-image:'+fmtUlWave(col,u===3?2:1)+';background-repeat:repeat-x;background-position:left calc(100% - 3px);'):('text-decoration:'+(u===1?'underline double':'underline')+';text-underline-offset:3px;');
-}function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?(sp.link?(Number(sp.ul)||0):0):null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる / v4.0.297: 面の下線も**書かれる種類**で描く(名乗っていないプリセットは0=単線) *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
+}function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?fmtHlUl():null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる / v4.0.297→298: 面の下線も**書かれる種類**で描く(名乗っていないプリセットは、最後に自分で決めた値) *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
@@ -19776,7 +19782,7 @@ currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(
 return;}if(m&&m.type==='diarySearchEmpty'){if(typeof window.__dwSearchEmpty==='function')window.__dwSearchEmpty(m.q||'');
 return;}if(m&&m.type==='diaryPattern'){if(typeof window.__onDiaryPattern==='function')window.__onDiaryPattern(m.tpl||'');
 return;}if(m&&m.type==='diaryTestResult'){if(typeof window.__onDiaryTestResult==='function')window.__onDiaryTestResult(m);
-return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
+return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
 if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);
@@ -20460,6 +20466,8 @@ function toggleMeDock(editorOverride) {
         // v4.0.42(俊克「ファイル毎に初期化されるのは使い難い」): Format設定を**ユーザー既定**としてもglobalStateに保存。
         // 住み分け=ノートのmMETA(そのノート固有・他人に渡しても色が travel する)＞globalState(自分の既定)＞組込み既定。
         try { if (extensionContext) extensionContext.globalState.update('meosFmtUserDefault', message.fmt); } catch (_) {}
+        // v4.0.298: 🔗を名乗ったプリセットで下線を決めたら、それが「最後に決めた値」。
+        try { const _hs = (message.fmt.highlight || [])[Math.max(0, Math.min(2, Math.trunc(Number(message.fmt.hlIdx)) || 0))]; if (_hs && _hs.link) meosLinkUlRemember(_hs.ul); } catch (_) {}
         clearTimeout(_fmtWriteTimer);
         _fmtWriteTimer = setTimeout(async () => {
           try { const data = getHyperTocData(doc); data.fmt = _fmtMem.get(doc.uri.toString()); await writeHyperTocToSource(doc, data); } catch (_) {}
@@ -24146,6 +24154,49 @@ function meosLinkTargetIsFile(document, target) {
   }
   return false;
 }
+// ★★v4.0.298(俊克 8/20 pm00:48 改良1「Opt+clickで出る下線は、FCで修正した値、あるいは、🔗指定をしたボタンで
+//   最後に設定した値ということだよ」):
+//   ★★**下線の種類は「最後に自分で決めた値」を覚える**。覚える口は2つ=
+//     ①**FC行の `(N)` を手で直した時**（インライン編集そのものが設定になる＝「記法が主・ボタンは従」と同じ筋）
+//     ②**🔗を名乗ったプリセットで▾から決めた時**（そのプリセットの ul）
+//   ★どちらも「人が下線について意思を示した瞬間」＝ 出どころは違っても意味は1つなので、**覚える場所も1つ**にする。
+//   ★v4.0.297の規則は動かさない= **プリセットが🔗を名乗っていれば、そのプリセットの値が勝つ**。
+//     覚えた値を使うのは **Opt+click（＝名乗っていないプリセット）** の時だけ。
+//   ★面（ボタン）にも同じ値を送る= 押す前の下線と、書かれる下線は同じ1つの出どころから
+//     [[feedback_one_source_for_mark_count_action]]。
+const MEOS_LINK_UL_KEY = 'meosLinkUlLast';
+function meosLinkUlLast() {
+  try { const n = Math.trunc(Number(extensionContext && extensionContext.globalState.get(MEOS_LINK_UL_KEY))); return (n >= 0 && n <= 3) ? n : 0; } catch (_) { return 0; }
+}
+function meosLinkUlRemember(n) {
+  const v = Math.trunc(Number(n));
+  if (!(v >= 0 && v <= 3) || v === meosLinkUlLast()) return;
+  try { if (extensionContext) extensionContext.globalState.update(MEOS_LINK_UL_KEY, v); } catch (_) { }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'linkUl', ul: v }); } catch (_) { }
+}
+// FC行の `(N)` を手で直したか。★形で確かめる= 打った1文字が、**行先の閉じ括弧の直後の `(数字)`** に入った時だけ。
+//   色の `(白/黄)` は1文字にならないので当たらない。曖昧な時は覚えない（黙って設定が変わるのが一番怖い）。
+function meosLinkUlEditAt(text, at, typed) {
+  const t = String(text == null ? '' : text);
+  if (!/^[0-3]$/.test(String(typed || ''))) return null;
+  if (t.charAt(at) !== String(typed)) return null;
+  if (t.charAt(at - 1) !== '(' || t.charAt(at + 1) !== ')') return null;
+  if (t.charAt(at - 2) !== ')') return null;              // 直前が行先の閉じ括弧＝ここが下線の桁
+  return Number(typed);
+}
+function meosLinkUlFollow(e) {
+  try {
+    if (!e || !e.contentChanges || e.contentChanges.length !== 1) return;
+    const c = e.contentChanges[0], t = String(c.text || '');
+    if (t.length !== 1) return;
+    const doc = e.document, ln = c.range.start.line;
+    if (ln < 0 || ln >= doc.lineCount) return;
+    const text = doc.lineAt(ln).text;
+    if (text.indexOf('](') < 0 || !meosIsSpecLine(text)) return;   // 指定行のリンクだけ
+    const v = meosLinkUlEditAt(text, c.range.start.character, t);
+    if (v != null) meosLinkUlRemember(v);
+  } catch (_) { }
+}
 // ★★v4.0.296(俊克 8/20 pm00:12「クリップボードに、URLあるいは、膜名が入っていれば、それを自動でFCに書き込んで下さい」):
 //   ★★**行先は、たいてい直前にコピーしている**。URLをコピー → 文字を選ぶ → Opt+click、これで完成する。
 //   ★ただし**貼るのは、行先だと確かめられた時だけ**。クリップボードには関係ない文字が入っている方が多いので、
@@ -24356,7 +24407,8 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   // 正式膜(**{ }**)でなく素の `**`/`_` にするのは、MeOS外に出た時も [**text**](url) が本物の太字リンクとして生きるから(この記法の趣旨)。
   const label = (bold && italic) ? ('***' + body + '***') : bold ? ('**' + body + '**') : italic ? ('*' + body + '*') : body; // v4.0.169: 斜体は `*`
   const color = '(' + (fg || '') + '/' + (bg || '') + ')';
-  const ulPart = '(' + ((Number(ul) >= 1 && Number(ul) <= 3) ? Number(ul) : 0) + ')'; // v4.0.31(俊克 改良1): 0も明示して書く(インライン編集で数字を打ち替えるだけで線種を変えられる)
+  const _ul = (ul == null) ? meosLinkUlLast() : Number(ul); // v4.0.298: 🔗を名乗っていないプリセット(Opt+click)は、最後に自分で決めた値
+  const ulPart = '(' + ((_ul >= 1 && _ul <= 3) ? _ul : 0) + ')'; // v4.0.31(俊克 改良1): 0も明示して書く(インライン編集で数字を打ち替えるだけで線種を変えられる)
   // v4.0.94(俊克): **行末一括コメント方式**で書く。本文には印 `[表示]()` だけ・指定は**行末**へ。
   //   これで印と後ろの文字の間に何も挟まらない=文字が連続する。指定は `Mew! [](行先)(色)(N)//tip`。
   //   ★カーソルは**行先の中**で待たせる(そのままURLか膜名を打てば完成)=手打ちからの解放は維持。
@@ -25768,6 +25820,7 @@ makeDecorations();
       if (deferRefreshCount === 0 && meosMaybeAutoHat(e)) return;      // v4.0.268: 手書きの `a↑👒(..)` を即、字にする
       if (deferRefreshCount === 0) { try { meosMetexArrowFollow(e); } catch (_) { } } // v4.0.290: 指定行の矢印を直したら本文も従う / v4.0.293: %も向きに付いてくる
       if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
+      if (deferRefreshCount === 0) { try { meosLinkUlFollow(e); } catch (_) { } }     // v4.0.298: FC行の(N)を手で直したら、それが最後に決めた下線の種類
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a

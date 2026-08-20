@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.298 (2026-08-20)
+- **The underline remembers what you chose** — ⌥Option+Click now writes the last underline style you actually
+  decided on. It learns from two places, because both are the same act: correcting the `(N)` by hand in an FC line,
+  and setting it in ▾ on a preset that declares `□ Link`. One value, one store, and the button face previews it, so
+  what you see before pressing is what gets written. A preset that declares the link still wins for its own clicks —
+  the rule from v4.0.297 is unchanged, only the fallback got a memory.
+
 ### v4.0.297 (2026-08-20)
 - **The underline belongs to the preset that asked for it** — a preset with `□ Link` unchecked is not in the link
   business, so the underline value still sitting in it is just an old setting. ⌥Option+Click now writes `(0)`, a plain

@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -534,6 +534,23 @@ console.log('㉔ v4.0.296 クリップボードの行先 — 確かめられた�
     ok(!!m && m[2] === url, '書いた行先を指定の読み口で取り出せる(括弧つきURLでも)', m && m[2]);
     ok(!!m && m[3] === '(0)(白/黄)//[]tip=', '後ろの (N)(色)//tip も巻き込まない', m && m[3]);
   }
+}
+
+console.log('㉕ v4.0.298 FC行の (N) を手で直したら、それが最後に決めた下線の種類');
+{
+  const line = '<!-- Mew!FC [](https://example.com)(3)(白/黄)//[]tip= -->';
+  const at = line.indexOf(')(3)') + 2;
+  ok(T.meosLinkUlEditAt(line, at, '3') === 3, '行先の閉じ括弧の直後の (数字) は下線の桁', T.meosLinkUlEditAt(line, at, '3'));
+  ok(T.meosLinkUlEditAt(line, at, '0') === null, '打った字とその場の字が違えば覚えない(取り違え防止)', T.meosLinkUlEditAt(line, at, '0'));
+  const col = line.indexOf('(白/黄)') + 1;
+  ok(T.meosLinkUlEditAt(line, col, '白') === null, '色の括弧は相手にしない', T.meosLinkUlEditAt(line, col, '白'));
+  const mtx = '<!-- Mew!FC A↑1{150%(黒/橙)} -->';
+  ok(T.meosLinkUlEditAt(mtx, mtx.indexOf('150') , '1') === null, '上付きの高さの数字は下線ではない', T.meosLinkUlEditAt(mtx, mtx.indexOf('150'), '1'));
+  const plain = 'ふつうの文の (3) という数字';
+  ok(T.meosLinkUlEditAt(plain, plain.indexOf('3'), '3') === null, '直前が行先の閉じ括弧でなければ覚えない', T.meosLinkUlEditAt(plain, plain.indexOf('3'), '3'));
+  ok(T.meosLinkUlEditAt(line, at, '9') === null, '0〜3の外は覚えない', T.meosLinkUlEditAt(line, at, '9'));
+  const two = '<!-- Mew!FC [](a)(1)(白/黄)//[]tip= --><!-- Mew!FC [](b)(2)(白/青)//[]tip= -->';
+  ok(T.meosLinkUlEditAt(two, two.indexOf(')(2)') + 2, '2') === 2, '1行に2つ在っても、直した方の桁を覚える', T.meosLinkUlEditAt(two, two.indexOf(')(2)') + 2, '2'));
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
