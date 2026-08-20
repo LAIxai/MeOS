@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.303 (2026-08-20)
+- **The file name lives in Me Dock, next to the version** — editor tabs get buried under every other tool's panes,
+  so the one thing you need to know (which file am I in?) now sits somewhere permanently visible. A ▾ beside it lists
+  the last five files you worked in; pick one to open it.
+- **Orange bars mean "you are in the FC line"** — sitting on a body row tints its text but leaves the `|` alone, so
+  the two cases are told apart at a glance. And the bar tint actually renders now: `color` only accepts a colour, and
+  the `!important` glued onto it made the whole decoration type silently do nothing.
+
 ### v4.0.302 (2026-08-20)
 - **Change the symbol in the FC line and the text follows** — turn a `==` box into `**` and `==apple==` becomes
   `**apple**` in the row above. Instructions live in the comment, so the comment is what you edit. It finds the change
