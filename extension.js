@@ -17625,11 +17625,28 @@ function meosRecentPush(doc) {
 let _meosLastDock = { panel: null, path: null };
 // ★v4.0.304(俊克「VSCmライクに、×で、未保存を●にしようよ」): 開いているか・未保存かは**その場で見る**。
 //   ★見るのは**▾を開いた時だけ**(force)= 未保存の印を追いかけて毎回送ると、また熱い道に仕事を足すことになる。
+// ★★v4.0.309(俊克 8/20 pm08:35 改良1「ファイルメニューの中の**1つだけピン留め**できるようにしよう」):
+//   ★**1つだけ**＝ 選ぶ必要が無いのが良い所。留めた物は**いつも先頭**に出て、5つの押し出しを受けない。
+//   ★留め直しは、別の行の📌を押すだけ（今の留めは自動で外れる）。同じ行を押せば外れる。
+const MEOS_PIN_KEY = 'meosPinnedFile';
+function meosPinned() { try { const o = extensionContext && extensionContext.globalState.get(MEOS_PIN_KEY); return (o && o.path) ? o : null; } catch (_) { return null; } }
+function meosPinToggle(p) {
+  try {
+    const path = String(p || ''); if (!path) return;
+    const cur = meosPinned();
+    const next = (cur && cur.path === path) ? null : { name: path.split(/[\\/]/).pop(), path };
+    if (extensionContext) extensionContext.globalState.update(MEOS_PIN_KEY, next);
+  } catch (_) { }
+}
 function meosRecentWithState() {
   let docs = []; try { docs = vscode.workspace.textDocuments || []; } catch (_) { }
-  return meosRecentList().map(it => {
+  const pin = meosPinned();
+  const base = meosRecentList();
+  // 留めた物は先頭に1つ(履歴に居なくても出す)。以降は履歴の順そのまま。
+  const list = pin ? [pin].concat(base.filter(x => x.path !== pin.path)) : base;
+  return list.map(it => {
     const d = docs.find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === it.path && !x.isClosed; } catch (_) { return false; } });
-    return { name: it.name, path: it.path, open: !!d, dirty: !!(d && d.isDirty) };
+    return { name: it.name, path: it.path, open: !!d, dirty: !!(d && d.isDirty), pinned: !!(pin && pin.path === it.path) };
   });
 }
 // ★★v4.0.305(俊克 8/20 pm07:43 改良2「ファイルメニューで選択すると、そのファイルが今まで表示していたグループとは
@@ -17707,6 +17724,12 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
 .title-file-row{display:flex;align-items:center;gap:2px;border-radius:3px}
+/* v4.0.309: 📌は1つだけ。留めた物は常に先頭・薄く出しておいて、留めた時だけはっきりさせる。 */
+.title-file-pin{width:20px;flex:0 0 20px;padding:0;margin-left:2px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:12px;line-height:1;opacity:0;cursor:pointer}
+.title-file-row:hover .title-file-pin{opacity:.45}
+.title-file-pin.on{opacity:1}
+.title-file-pin:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
+.title-file-pin::before{content:'📌'}
 .title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
 .title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.85}
 .title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
@@ -19353,7 +19376,8 @@ for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPat
    ★**素の title 属性は消す**= ブラウザ標準のツールチップはMeOSから止められず、開いたメニューの真上に出る(v2.0.38と同じ穴)。
    名前は行に出ているので、覆ってまで見せるものが無い。
    ★webviewはテンプレート文字列の中so、コメントにバックティックを書かない(これで5度目) */
-html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
+html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-pin'+(it.pinned?' on':'')+'" data-pin="'+ep+'"></button>'
+ +'<button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
  +(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'):'')+'</div>';}
 fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
@@ -19367,7 +19391,9 @@ vscode.postMessage({type:'recentAsk'});});
    ▾自身はここへ伝わらない(caretのhandlerがstopPropagationしている)ので、二重に開閉しない。 */
 var fbox=document.getElementById('title-file');
 if(fbox)fbox.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.title-file-pop'))return;fc.click();});
-fp.addEventListener('click',function(ev){var x=ev.target&&ev.target.closest?ev.target.closest('[data-close]'):null;
+fp.addEventListener('click',function(ev){var pn=ev.target&&ev.target.closest?ev.target.closest('[data-pin]'):null;
+if(pn){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'pinRecent',path:pn.getAttribute('data-pin')});return;}
+var x=ev.target&&ev.target.closest?ev.target.closest('[data-close]'):null;
 if(x){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'closeRecent',path:x.getAttribute('data-close')});return;}
 var b=ev.target&&ev.target.closest?ev.target.closest('[data-path]'):null;
 if(!b)return;var row=b.closest('.title-file-row');fp.classList.remove('on');if(row&&row.classList.contains('cur'))return;
@@ -20841,6 +20867,10 @@ function toggleMeDock(editorOverride) {
       return;
     }
     // v0.9.99938: Format色設定をmMETAへ随伴保存(in-memory即更新＋800msデバウンスで書込=連続選択を1回にまとめ・undo汚染を抑制)。
+    if (message && message.type === 'pinRecent') { // v4.0.309: 📌= 1つだけ留める(押し直しで外れる)
+      try { meosPinToggle(message.path); postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true); } catch (_) {}
+      return;
+    }
     if (message && message.type === 'recentAsk') { // v4.0.304: ▾を開いた時だけ、開/未保存を数え直して送る
       try { postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true); } catch (_) {}
       return;
@@ -25695,8 +25725,16 @@ function meosLastLineMap() {
   try { const o = extensionContext && extensionContext.globalState.get(MEOS_LASTLINE_KEY); _meosLastLineMem = (o && typeof o === 'object') ? o : {}; } catch (_) { _meosLastLineMem = {}; }
   return _meosLastLineMem;
 }
+// ★★v4.0.309(俊克 8/20 pm08:35 バグ1「インストール直後に、最後にいた行に飛ばなかった。なぜ?」):
+//   ★★**記録が、復元より先に走って上書きしていた**。起動直後にもカーソルの移動は起きる（エディタが開いた・
+//   焦点が戻った）ので、`meosNoteLastLine` が **その時の行（たいてい0行目）で覚え直して**しまい、
+//   2.2秒後に復元が読んだ時には**もう0**。`ln > 0` でないので静かに何もしないで終わっていた。
+//   ★★**覚えるものと戻すものが同じ1つの値なら、順番が要る**＝ **戻し終わるまでは覚えない**。
+//   ★戻す機会が来ないまま終わることもある（散文でない・記憶が無い）ので、20秒の安全弁で必ず覚え始める。
+let _meosLastLineReady = false;
 function meosNoteLastLine(editor) {
   try {
+    if (!_meosLastLineReady) return;                      // 戻す前は覚えない(自分で上書きしない)
     const doc = editor && editor.document;
     if (!doc || doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) return;
     const m = meosLastLineMap();
@@ -25713,22 +25751,25 @@ function meosNoteLastLine(editor) {
   } catch (_) { }
 }
 let _meosLastLineDone = false;
+function meosLastLineFinish(why) {                        // v4.0.309: ここを通ってから覚え始める(口は1つ)
+  _meosLastLineDone = true; _meosLastLineReady = true;
+  try { meosDbg('[lastLine] ' + why); } catch (_) { }
+}
 function meosRestoreLastLineOnStart(attempt) {
   if (_meosLastLineDone) return;
   try {
-    if (!vscode.workspace.getConfiguration('laiMembrane').get('restoreLastLineOnStart', true)) { _meosLastLineDone = true; return; }
+    if (!vscode.workspace.getConfiguration('laiMembrane').get('restoreLastLineOnStart', true)) { meosLastLineFinish('設定でoff'); return; }
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor || (vscode.window.visibleTextEditors || [])[0];
-    if (!ed || !ed.document) { if ((attempt || 0) < 10) setTimeout(() => meosRestoreLastLineOnStart((attempt || 0) + 1), 1500); return; }
+    if (!ed || !ed.document) { if ((attempt || 0) < 10) setTimeout(() => meosRestoreLastLineOnStart((attempt || 0) + 1), 1500); else meosLastLineFinish('エディタが見つからない'); return; }
     const doc = ed.document;
-    if (doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) { _meosLastLineDone = true; return; }
+    if (doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) { meosLastLineFinish('散文のファイルでない'); return; }
     const ln = Math.max(0, Math.min(doc.lineCount - 1, Math.trunc(Number(meosLastLineMap()[doc.uri.fsPath]) || 0)));
-    if (!(ln > 0)) { _meosLastLineDone = true; return; }   // 記憶が無い/先頭= 何もしない(起動時に驚かせない)
-    _meosLastLineDone = true;
+    if (!(ln > 0)) { meosLastLineFinish('記憶が無い(または先頭) ' + doc.uri.fsPath); return; }   // 起動時に驚かせない
     const p = new vscode.Position(ln, 0);
     ed.selection = new vscode.Selection(p, p);             // カーソルを置く= 畳まれていればVS Codeが開いて見せる
     ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
-    try { meosDbg('[lastLine] 行 ' + (ln + 1) + ' へ戻した ' + doc.uri.fsPath); } catch (_) { }
-  } catch (_) { _meosLastLineDone = true; }
+    meosLastLineFinish('行 ' + (ln + 1) + ' へ戻した ' + doc.uri.fsPath);
+  } catch (_) { meosLastLineFinish('例外'); }
 }
 let _autoTodayDone = false;
 function autoWarpToTodayOnStart(attempt, manual) {
@@ -26600,6 +26641,7 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); meosNoteLastLine(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
+  setTimeout(() => { if (!_meosLastLineReady) meosLastLineFinish('安全弁(20秒)'); }, 20000); // v4.0.309: 戻す機会が来なくても、いつかは覚え始める
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、
   // 再インストール/ウィンドウリロードの度に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張側の単一参照
   // meDockPanel がそれを掴めず孤児化→タブが溜まる。単一参照しか見ない toggleMeDock(『みみみ』)は孤児に効かず

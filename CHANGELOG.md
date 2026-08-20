@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.309 (2026-08-20)
+- **Returning to your last line actually works now** — the recorder was running before the restorer and overwriting
+  the very number it was meant to preserve: a cursor event fires as the editor opens, MeOS wrote down line 0, and two
+  seconds later the restore read a 0 and quietly did nothing. When one value is both remembered and restored, order
+  matters: nothing is recorded until the restore has had its turn (with a 20-second backstop).
+- **Pin one file in the ▾ menu** — 📌 keeps it at the top and out of reach of the five-file cutoff. One pin only, so
+  there is nothing to choose: pinning another moves it, pinning the same one releases it.
+
 ### v4.0.308 (2026-08-20)
 - **The last exception is gone: tables and lists write in one edit too** — they used to put the instruction at the end
   of the line and move it afterwards, because that is how the mover learned what had just been added: it read it back
