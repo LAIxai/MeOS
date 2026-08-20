@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.321 (2026-08-21)
+- **A pin can be removed again** — v4.0.320's auto-pin fired whenever nothing was pinned, so releasing one instantly
+  pinned it back and the last remaining file could never be closed. Auto-pinning is a starting value, not a rule: it
+  happens once, and after that the pin is whatever you last decided.
+- Moving the pin stays a single click on the other row. Having decided there is only one pin, choosing a different one
+  should not take two steps, and releasing is still there when you want it.
+
 ### v4.0.320 (2026-08-21)
 - **The heading button is instant again** — last night's check-time watcher asked for the FC block on every cursor
   move, and that answer is computed by scanning the whole file. The cache is keyed by document version, so every

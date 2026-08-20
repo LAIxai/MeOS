@@ -17681,7 +17681,17 @@ function meosRecentPush(doc) {
     //   ★**留めていない状態が、そもそも要らなかった**。1本しか無い時は、それが要のファイルに決まっている。
     //   → 留めが無ければ、**今の1本を留める**。以後は留めが履歴から溢れないので、最後に残るのも自然にそれになる。
     //   ★消したい時は俊克の言うとおり= **📌を外してから×**（外す道は残す＝ 決めるのは人）。
-    try { if (!meosPinned() && extensionContext) extensionContext.globalState.update(MEOS_PIN_KEY, { name, path }); } catch (_) { }
+    //   ★★v4.0.321(俊克「**最後に1つだけ残った時に、ピンを外せないよね**」): ★**外した直後に留め直していた**＝
+    //     📌を押す → 留めが空になる → その場で送り直す（postMeDockFile の force）→ ここが「留めが無い」と見て
+    //     **もう一度留める**。so人には**外せない**ように見えていた。
+    //   ★直し＝ 自動で留めるのは**一度きり**（初期値であって、決まりではない）。以後は**人が最後に決めた通り**。
+    //     → [[project_last_specified_wins]] と同じ筋。外したままにできるので、最後の1本も閉じられる。
+    try {
+      if (extensionContext && !extensionContext.globalState.get(MEOS_PIN_AUTO_KEY)) {
+        extensionContext.globalState.update(MEOS_PIN_AUTO_KEY, true);
+        if (!meosPinned()) extensionContext.globalState.update(MEOS_PIN_KEY, { name, path });
+      }
+    } catch (_) { }
   } catch (_) { }
 }
 // ★これは**カーソルを動かすたびに通る道**(postFixedWorkingTocSnapshot)から呼ばれるので、
@@ -17694,6 +17704,7 @@ let _meosLastDock = { panel: null, path: null };
 //   ★**1つだけ**＝ 選ぶ必要が無いのが良い所。留めた物は**いつも先頭**に出て、5つの押し出しを受けない。
 //   ★留め直しは、別の行の📌を押すだけ（今の留めは自動で外れる）。同じ行を押せば外れる。
 const MEOS_PIN_KEY = 'meosPinnedFile';
+const MEOS_PIN_AUTO_KEY = 'meosPinnedAuto'; // v4.0.321: 自動で留めたことがあるか(初期値は一度きり)
 function meosPinned() { try { const o = extensionContext && extensionContext.globalState.get(MEOS_PIN_KEY); return (o && o.path) ? o : null; } catch (_) { return null; } }
 function meosPinToggle(p) {
   try {
