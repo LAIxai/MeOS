@@ -15532,25 +15532,31 @@ async function meosApplySpecEdit(editor, range, text) {
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
   const merge = !!r && meosIsSpecLine(next);
+  // ★v4.0.308: 塊(表/箇条書き)も**行末へ書いてから引っ越す**のをやめた= 書いたつもりの行を渡して、
+  //   本文とFC群を1回の編集で書く。文書に中間状態が現れない(v4.0.210で決めたことを、最後の例外にも通す)。
+  if (inTable || inList) {
+    try { if (await meosPushLineSpecsOutOfLine(editor, newLine)) return true; } catch (_) { }
+    // 渡した先が受け取らなかった時だけ、従来どおり行末へ書く(指定を落とさない=古い形は読める)。
+  }
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, r ? r.body : newLine);
     if (r && merge) eb.replace(doc.lineAt(ln + 1).range, meosSpecLineMerge(next, r.spec, r.body, range.start.character));
     else if (r) eb.insert(new vscode.Position(ln, lineText.length), eol + r.spec);
   }, { undoStopBefore: true, undoStopAfter: true });
-  if (inTable || inList) { try { await meosPushLineSpecsOutOfLine(editor); } catch (_) { } }
   return true;
 }
-async function meosPushLineSpecsOutOfLine(editor) {
+async function meosPushLineSpecsOutOfLine(editor, overrideLine) {
   if (!editor || !editor.document) return false;
   const doc = editor.document, ln = editor.selection.active.line;
   if (ln < 0 || ln >= doc.lineCount) return false;
   // v4.0.193(俊克「1つのテーブル=1段落」): 表なら**表全体**の指定を集めて、**表の下に1本**置く。
   {
     const _lines = meosDocLines(doc), _blk = meosTableBlockFor(_lines, ln);
-    if (_blk) return await meosPushTableSpecsOutOfLine(editor, _blk);
+    if (_blk) return await meosPushTableSpecsOutOfLine(editor, _blk, overrideLine);
     // v4.0.299: 箇条書きの塊は**塊の下に1本**(表と同じ)。行に効く命令が無ければ、この口は何もしないで戻る。
     const _lb = meosListBlockFor(_lines, ln);
-    if (_lb && _lb.n >= 2 && meosLineDirectiveCommentIn(_lines[ln])) return await meosPushListSpecsOutOfLine(editor, _lb);
+    const _cur0 = (overrideLine == null) ? _lines[ln] : String(overrideLine);
+    if (_lb && _lb.n >= 2 && meosLineDirectiveCommentIn(_cur0)) return await meosPushListSpecsOutOfLine(editor, _lb, overrideLine);
   }
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
   const r = meosMoveSpecsOutOfLine(doc.lineAt(ln).text);
@@ -15735,11 +15741,12 @@ function meosLineDirectiveCommentIn(text) {
 }
 // ★★v4.0.299: 箇条書きの塊の下に、**項目と同じ数の箱**を置く。書く側と読む側で「合っている時だけ配る」を揃える。
 //   ★他の記法（== ~~ 上付き…）の箱は**順番を変えずにそのまま後ろへ残す**＝ 行に効く命令だけを並べ替える。
-async function meosPushListSpecsOutOfLine(editor, blk) {
+async function meosPushListSpecsOutOfLine(editor, blk, overrideLine) {
   const doc = editor.document, lines = meosDocLines(doc);
   const ln = editor.selection.active.line;
   if (!blk || ln < blk.start || ln > blk.end) return false;
-  const hit = meosLineDirectiveCommentIn(lines[ln]);
+  const _cur = (overrideLine == null) ? lines[ln] : String(overrideLine);   // v4.0.308: 書いたつもりの行
+  const hit = meosLineDirectiveCommentIn(_cur);
   if (!hit) return false;                                  // 行に効く命令が無い＝この口の仕事ではない
   const specLns = [];
   for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
@@ -15760,7 +15767,7 @@ async function meosPushListSpecsOutOfLine(editor, blk) {
   for (let i = 0; i < blk.n; i++) boxes.push(dirs[i] || meosListItemDefaultDirective(lines[blk.start + i]) || '-1.');
   boxes[ln - blk.start] = hit.payload;
   const specText = boxes.concat(others).map(meosSpecLineBox).join('');
-  const bodyNew = (lines[ln].slice(0, hit.start) + lines[ln].slice(hit.end)).replace(/[ \t]+$/, '');
+  const bodyNew = (_cur.slice(0, hit.start) + _cur.slice(hit.end)).replace(/[ \t]+$/, '');
   // ★v4.0.300: 箇条書きも**1項目=1本**へ割る(表と同じ1つの口を通す)。
   const _after = lines.slice(); _after[ln] = bodyNew;
   const _rows = meosSpecGroupPerLine(_after, blk, specText);
@@ -15775,11 +15782,19 @@ async function meosPushListSpecsOutOfLine(editor, blk) {
   try { meosDbg('[fcList] 塊=' + (blk.start + 1) + '..' + (blk.end + 1) + ' 項目=' + blk.n + ' 箱=' + boxes.length + '(+他' + others.length + ') 行=' + (ln + 1)); } catch (_) { }
   return true;
 }
-async function meosPushTableSpecsOutOfLine(editor, blk) {
+// ★★v4.0.308(俊克 8/20 pm08:22「それを残してある理由があるのかな? 例えば、そうするのが、安全とか、処理が楽とか」):
+//   ★**原理的な理由は無かった**。依存していたのは1行＝ `meosRowSplitInline(lines[ln])`＝
+//   「今何を足したか」を**文書に書いてから読み返して**知る作り（だから先に行末へ書く必要があった）。
+//   ★楽だったのは本当＝ 足した物を持ち回らずに済み、判定も1つで済む。安全だったのも少しだけ本当＝
+//   引っ越しが失敗しても指定は**行末形で残り**、MeOSは行末形も読めるので壊れずに古い形へ落ちる。
+//   ★→ **書いたつもりの行を渡せばよい**（`overrideLine`）。渡された時は文書を読み返さず、
+//   本文の置き換えとFC行の書き込みを**1回の編集**で済ませる＝ 中間状態が文書に現れない。
+async function meosPushTableSpecsOutOfLine(editor, blk, overrideLine) {
   const doc = editor.document, lines = meosDocLines(doc);
   const ln = editor.selection.active.line;
   if (ln < blk.start || ln > blk.end) return false;
-  const split = meosRowSplitInline(lines[ln]);          // この行に新しく書かれた指定だけを取り出す
+  const _cur = (overrideLine == null) ? lines[ln] : String(overrideLine);
+  const split = meosRowSplitInline(_cur);               // この行に新しく書かれた指定だけを取り出す
   if (!split || !split.items.length) return false;
   // 表の下の指定行(続く限り)。無ければ新しく作る。
   const specLns = [];

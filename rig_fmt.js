@@ -29,7 +29,12 @@ class S extends R {
   constructor(a, b, c, d) { super(a, b, c, d); this.active = this.end; this.anchor = this.start; }
 }
 class Doc {
-  constructor(text) { this.text = text; this.version = 1; this.languageId = 'markdown'; this.eol = 1; this.uri = { toString: () => 'file:///rig.md', fsPath: '/rig.md', scheme: 'file' }; this.isUntitled = false; this.fileName = '/rig.md'; }
+  // ★v4.0.308: **文書ごとに違う名前を持たせる**。行配列は「uri@version」で覚えられているので、
+  //   全部 `rig.md` だと**2本目以降が1本目の中身を掴む**(この偽エディタが今日まで黙って抱えていた穴。
+  //   検査 check_hat.js でも同じ所で1度嵌まった)。
+  constructor(text) { this.text = text; this.version = 1; this.languageId = 'markdown'; this.eol = 1;
+    const _n = '/rig' + (Doc._seq = (Doc._seq || 0) + 1) + '.md';
+    this.uri = { toString: () => 'file://' + _n, fsPath: _n, scheme: 'file' }; this.isUntitled = false; this.fileName = _n; }
   get _l() { return this.text.split('\n'); }
   get lineCount() { return this._l.length; }
   lineAt(i) { const t = this._l[i] == null ? '' : this._l[i]; return { text: t, lineNumber: i, range: new R(i, 0, i, t.length), isEmptyOrWhitespace: !t.trim() }; }
@@ -106,7 +111,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_rig_fmt_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { insertBoldItalic, insertFormatTemplate, meosStarMarks, meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { insertBoldItalic, insertFormatTemplate, meosStarMarks, meosSplitMarkForSegment, meosListBlockFor, meosLineDirectiveCommentIn, meosDocLines, meosEnsureInlineBeforeEdit, meosPushLineSpecsOutOfLine, meosTrySplitEnclosing, meosIsProseDoc, meosWriteMarkAndSpec };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 (async () => {
@@ -165,6 +170,9 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
 //   余計なことをしているのか? それが見えるんだよ。それは廃止すると決めたよね?」) =====
 // ★**押した回数と、途中の姿**を印字する。1回で書けていれば edits=1・途中の姿は最終形だけ。
 (async () => {
+  // ★v4.0.308: 上の一群も async so、**待たずに書くと交互に走る**(1クリック1回の門番 `_meosSplitBusy` に
+  //   引っ掛かって「編集の回数=0」に化けた)。偽エディタでも**順番を作る**。
+  await new Promise(r => setTimeout(r, 4000));
   const run = async (label, text, fn) => {
     const ed = mkEditor(text, new P(0, 0), new P(0, 0));
     CUR = ed;
@@ -176,4 +184,25 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
   };
   await run('見出しボタン(H2)', '見出しにする文字\n', (ed) => T.insertFormatTemplate('heading', ed, '白', 'green', 2, { head: true, bullet: false, blt: '-' }));
   await run('箇条書きボタン(番号なし)', '項目にする文字\n', (ed) => T.insertFormatTemplate('heading', ed, '白', '黄', 2, { head: false, bullet: true, blt: '-' }));
+  // v4.0.308: 塊(表/箇条書き)も1回で書けるか= 最後まで残っていた例外。
+  // ★1クリック1回の門番(_meosSplitBusy)は**時間**で効くので、続けて押すと2回目that二重扱いになる。
+  //   偽エディタでは一瞬で連打しているのと同じso、間を空ける(これで「編集の回数=0」に化けていた)。
+  await new Promise(r => setTimeout(r, 900));   // 門番(1クリック1回)は800ms
+  {
+    const tbl = '| 品目 | 味 |\n| --- | --- |\n| りんご | 甘い |\n| みかん | 酸っぱい |\n';
+    const ed = mkEditor(tbl, new P(2, 2), new P(2, 5));   // 3行目の「りんご」を選ぶ
+    CUR = ed;
+    await T.insertFormatTemplate('highlight', ed, '白', '黄');
+
+    console.log('\n【表のセルにハイライト】編集の回数 = ' + (ed.edits || 0));
+    (ed.snaps || []).forEach((t, i) => console.log('  ' + (i + 1) + '回目:\n' + t.split('\n').map(x => '      ' + x).join('\n')));
+  }
+  {
+    const lst = '1. 一番目\n1. 二番目\n1. 三番目\n<!-- Mew!FC -1. -->\n<!-- Mew!FC -1. -->\n<!-- Mew!FC -1. -->\n';
+    const ed = mkEditor(lst, new P(1, 3), new P(1, 3));   // 2項目目にカーソル
+    CUR = ed;
+    await T.insertFormatTemplate('heading', ed, '白', '青', 3, { head: true, bullet: false, blt: '-' });
+    console.log('\n【箇条書きの塊の中で見出し】編集の回数 = ' + (ed.edits || 0));
+    (ed.snaps || []).forEach((t, i) => console.log('  ' + (i + 1) + '回目:\n' + t.split('\n').map(x => '      ' + x).join('\n')));
+  }
 })();

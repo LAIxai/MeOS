@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.308 (2026-08-20)
+- **The last exception is gone: tables and lists write in one edit too** — they used to put the instruction at the end
+  of the line and move it afterwards, because that is how the mover learned what had just been added: it read it back
+  out of the document. It is now handed the line instead, so body and FC group are written together and the halfway
+  form never reaches the file. Every format button now measures one edit in the fake editor.
+- The fake editor had a bug of its own: every document it made was called `rig.md` at version 1, so the line cache
+  handed back the *previous* test's document. Each one gets its own name now — and its cases are serialised, because
+  the "one click, one action" guard is measured in milliseconds and a rig fires faster than a person can.
+
 ### v4.0.307 (2026-08-20)
 - **The heading button no longer flashes a line-end comment** — v4.0.210 abolished writing the instruction at the end
   of the line and moving it afterwards, and v4.0.235 rebuilt the other buttons around a single edit, but the heading
