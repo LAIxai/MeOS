@@ -6201,17 +6201,23 @@ function applyPrettyLabels(editor) {
       else {
       const _c = text.charCodeAt(0);
       if (_c === 45 || _c === 35 || _c === 32 || _c === 9 || (_c >= 48 && _c <= 57)) { // v4.0.61: 行頭が数字(`1. `)の項目も数える
-        if (MEOS_NUM_ITEM_RE.test(text)) {
-          // v4.0.117: 行末コメントの命令から**深さと書式**を読む(無ければ従来どおり深さ1)。
-          let lv = null;
-          try { const tc = meosTrailingComments(text); for (let i = tc.length - 1; i >= 0; i--) { const d = meosLineDirective(meosStripMewSignature(tc[i].payload)); if (d && d.token) { lv = meosItemLevels(d.token); break; } } } catch (_) { }
+        // v4.0.117: 行末コメントの命令から**深さと書式**を読む(無ければ従来どおり深さ1)。
+        let lv = null, _count = MEOS_NUM_ITEM_RE.test(text);
+        if (_count) { try { const tc = meosTrailingComments(text); for (let i = tc.length - 1; i >= 0; i--) { const d = meosLineDirective(meosStripMewSignature(tc[i].payload)); if (d && d.token) { lv = meosItemLevels(d.token); break; } } } catch (_) { } }
+        // ★v4.0.299: 行末に命令が無い**素の項目**も、FCが名乗っていれば数える。順は「塊の下にまとめた分」→「真下の1行」。
+        //   ★数える側と描く側は**同じ順で同じ物を見る**(片方だけ直すと、番号は出るのに形が違う、が起きる)。
+        if (!_count && MEOS_SPEC_LINE && MEOS_LIST_BLOCK_RE.test(text)) {
+          try {
+            const _ls = meosListLineSpecFor(_allLines, line);
+            let _d = _ls ? _ls.dir : null;
+            if (!_d) { const _sl = meosSpecLineFor(_allLines, line); _d = (_sl && _sl.line) ? meosLineDirective(_sl.line) : null; }
+            if (_d && _d.bullet === 'number') { lv = meosItemLevels(_d.token); _count = true; }
+          } catch (_) { }
+        }
+        if (_count) {
           if (!lv || !lv.length) lv = [{ style: 'num' }];
-          const d = lv.length;
-          if (_numLv.length > d) _numLv.length = d;           // 浅い項目に戻った=深い方は捨てる
-          while (_numLv.length < d) _numLv.push(0);           // 深くなった=その階層を1から
-          _numLv[d - 1] = (_numLv[d - 1] || 0) + 1;
-          _numOf.set(line, meosItemLabel(_numLv, lv));
-          _numIndentOf.set(line, (d - 1) * 2);
+          _numOf.set(line, meosItemNumStep(_numLv, lv));      // v4.0.299: 数え方は1つの関数から(検査も同じ物を呼ぶ)
+          _numIndentOf.set(line, (lv.length - 1) * 2);
         }
       }
       // 空行でない非項目行(普通の文)は**リセットしない**=リストは続いている(v4.0.120)
@@ -6551,10 +6557,15 @@ function applyPrettyLabels(editor) {
       //   位置は「行末の長さゼロのコメント」として渡す=本文の終わりは行末のまま・隠す範囲は空(消す物が無い)。
       if (!dir && MEOS_SPEC_LINE) {
         try {
-          const _sl = meosSpecLineFor(_allLines, line);
-          if (_sl && _sl.line) {
-            const _d = meosLineDirective(_sl.line);
-            if (_d && (_d.level || _d.bullet)) { mCpre = { index: dtext.length, 1: _sl.line }; payloadPre = _sl.line; dir = _d; }
+          // ★v4.0.299: 箇条書きは**塊の下にまとめた指定**を先に見る(表と同じ扱い)。無ければ従来どおり真下の1行。
+          const _ls = meosListLineSpecFor(_allLines, line);
+          if (_ls) { mCpre = { index: dtext.length, 1: _ls.text }; payloadPre = _ls.text; dir = _ls.dir; }
+          else {
+            const _sl = meosSpecLineFor(_allLines, line);
+            if (_sl && _sl.line) {
+              const _d = meosLineDirective(_sl.line);
+              if (_d && (_d.level || _d.bullet)) { mCpre = { index: dtext.length, 1: _sl.line }; payloadPre = _sl.line; dir = _d; }
+            }
           }
         } catch (_) { }
       }
@@ -13389,6 +13400,15 @@ function meosItemLabel(counts, levels) {
   }
   return counts.length === 1 ? out + '.' : out;
 }
+// v4.0.299: 連番の**1歩**。★数え方はここ1つ＝ 描く側も検査も同じ関数を呼ぶ（値を写経しない）。
+//   counts は呼ぶ側が持つ（空行で `[]` に戻す＝リストの区切り）。浅い項目に戻れば深い方は捨てる。
+function meosItemNumStep(counts, lv) {
+  const d = lv.length;
+  if (counts.length > d) counts.length = d;
+  while (counts.length < d) counts.push(0);
+  counts[d - 1] = (counts[d - 1] || 0) + 1;
+  return meosItemLabel(counts, lv);
+}
 function meosLineDirective(payload) {
   const s = String(payload == null ? '' : payload);
   const m = MEOS_LINE_DIRECTIVE_RE.exec(s);
@@ -15388,9 +15408,12 @@ async function meosApplySpecEdit(editor, range, text) {
   const doc = editor.document, ln = range.start.line;
   const lineText = doc.lineAt(ln).text;
   const newLine = lineText.slice(0, range.start.character) + String(text) + lineText.slice(range.end.character);
-  let inTable = false;
+  let inTable = false, inList = false;
   try { inTable = !!meosTableBlockFor(meosDocLines(doc), ln); } catch (_) { }
-  const canFC = MEOS_SPEC_LINE && meosFormatWritesFC() && !inTable;
+  // ★v4.0.299: 箇条書きの塊(2項目以上)に**行に効く命令**を書く時は、表と同じ扱い＝ **塊の下へ1本にまとめる**。
+  //   ★語に効く記法(== ~~ 上付き…)は今までどおり真下のFC行へ＝ 判定は「今書いた物が行の命令か」だけ。
+  try { if (!inTable && meosLineDirectiveCommentIn(newLine)) { const _b = meosListBlockFor(meosDocLines(doc), ln); inList = !!(_b && _b.n >= 2); } } catch (_) { }
+  const canFC = MEOS_SPEC_LINE && meosFormatWritesFC() && !inTable && !inList;
   const r = canFC ? meosMoveSpecsOutOfLine(newLine) : null;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
@@ -15400,7 +15423,7 @@ async function meosApplySpecEdit(editor, range, text) {
     if (r && merge) eb.replace(doc.lineAt(ln + 1).range, meosSpecLineMerge(next, r.spec, r.body, range.start.character));
     else if (r) eb.insert(new vscode.Position(ln, lineText.length), eol + r.spec);
   }, { undoStopBefore: true, undoStopAfter: true });
-  if (inTable) { try { await meosPushLineSpecsOutOfLine(editor); } catch (_) { } }
+  if (inTable || inList) { try { await meosPushLineSpecsOutOfLine(editor); } catch (_) { } }
   return true;
 }
 async function meosPushLineSpecsOutOfLine(editor) {
@@ -15411,6 +15434,9 @@ async function meosPushLineSpecsOutOfLine(editor) {
   {
     const _lines = meosDocLines(doc), _blk = meosTableBlockFor(_lines, ln);
     if (_blk) return await meosPushTableSpecsOutOfLine(editor, _blk);
+    // v4.0.299: 箇条書きの塊は**塊の下に1本**(表と同じ)。行に効く命令が無ければ、この口は何もしないで戻る。
+    const _lb = meosListBlockFor(_lines, ln);
+    if (_lb && _lb.n >= 2 && meosLineDirectiveCommentIn(_lines[ln])) return await meosPushListSpecsOutOfLine(editor, _lb);
   }
   const next = (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : '';
   const r = meosMoveSpecsOutOfLine(doc.lineAt(ln).text);
@@ -15535,6 +15561,60 @@ function meosTableCellRow(lines, blk, ln) {
   return n;
 }
 // 表の全行から指定を集めて、表の下に1本のFC行として置く(既に在れば、そこへ足す)。
+// v4.0.299: 素の項目から「今の形」を命令にする（箱を揃えるための詰め物）。見た目は1文字も変わらない。
+function meosListItemDefaultDirective(text) {
+  const m = /^[ \t]*([-*+]|\d+[.)])[ \t]/.exec(String(text == null ? '' : text));
+  if (!m) return null;
+  return /^[-*+]$/.test(m[1]) ? '-' : '-1.';
+}
+// この行に新しく書かれた「行に効く命令」のコメントを1つ返す。無ければ null。
+function meosLineDirectiveCommentIn(text) {
+  try {
+    const tc = meosTrailingComments(String(text == null ? '' : text));
+    for (let i = tc.length - 1; i >= 0; i--) {
+      const pl = meosStripMewSignature(tc[i].payload);
+      const d = meosLineDirective(pl);
+      if (d && (d.bullet || d.level)) return { payload: pl, start: tc[i].start, end: tc[i].end };
+    }
+  } catch (_) { }
+  return null;
+}
+// ★★v4.0.299: 箇条書きの塊の下に、**項目と同じ数の箱**を置く。書く側と読む側で「合っている時だけ配る」を揃える。
+//   ★他の記法（== ~~ 上付き…）の箱は**順番を変えずにそのまま後ろへ残す**＝ 行に効く命令だけを並べ替える。
+async function meosPushListSpecsOutOfLine(editor, blk) {
+  const doc = editor.document, lines = meosDocLines(doc);
+  const ln = editor.selection.active.line;
+  if (!blk || ln < blk.start || ln > blk.end) return false;
+  const hit = meosLineDirectiveCommentIn(lines[ln]);
+  if (!hit) return false;                                  // 行に効く命令が無い＝この口の仕事ではない
+  const specLns = [];
+  for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
+  // 今ある箱を「行に効く命令」と「それ以外」に分ける（それ以外は順番のまま残す）。
+  const dirs = [], others = [];
+  for (const i of specLns) {
+    const p = meosParseSpecLine(String(lines[i] == null ? '' : lines[i]));
+    if (!p) continue;
+    for (const t of (p.lines || [])) { const d = meosLineDirective(t); if (d && (d.bullet || d.level)) dirs.push(t); else others.push(t); }
+    for (const it of (p.fmt || [])) others.push(it.kind + (it.not ? 'not' : '') + (it.inner || ''));
+    for (const it of (p.metex || [])) others.push(it.tok + (it.inner ? (it.inner.charAt(0) === '(' ? it.inner : '{' + it.inner + '}') : ''));
+    for (const it of (p.link || [])) others.push('[' + (it.mark || '') + '](' + (it.target || '') + ')' + (it.spec || ''));
+  }
+  const boxes = [];
+  for (let i = 0; i < blk.n; i++) boxes.push(dirs[i] || meosListItemDefaultDirective(lines[blk.start + i]) || '-1.');
+  boxes[ln - blk.start] = hit.payload;
+  const specText = boxes.concat(others).map(meosSpecLineBox).join('');
+  const bodyNew = (lines[ln].slice(0, hit.start) + lines[ln].slice(hit.end)).replace(/[ \t]+$/, '');
+  const keep = editor.selection;
+  const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  await editor.edit(eb => {
+    eb.replace(doc.lineAt(ln).range, bodyNew);
+    if (specLns.length) eb.replace(new vscode.Range(specLns[0], 0, specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length), specText);
+    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + specText);
+  }, { undoStopBefore: false, undoStopAfter: false });
+  try { editor.selection = keep; } catch (_) { }
+  try { meosDbg('[fcList] 塊=' + (blk.start + 1) + '..' + (blk.end + 1) + ' 項目=' + blk.n + ' 箱=' + boxes.length + '(+他' + others.length + ') 行=' + (ln + 1)); } catch (_) { }
+  return true;
+}
 async function meosPushTableSpecsOutOfLine(editor, blk) {
   const doc = editor.document, lines = meosDocLines(doc);
   const ln = editor.selection.active.line;
@@ -22693,15 +22773,16 @@ function meosFcFmtIsNot(spec, kind, ord) {
 function meosParseSpecLine(text) {
   const payloads = meosSpecLinePayloads(text);
   if (payloads === null) return null;
-  const _metex = [], _fmt = [], _link = []; let _line = '';
+  const _metex = [], _fmt = [], _link = [], _lines = []; let _line = '';
   for (const _pl of payloads) {
     const one = meosParseSpecPayload(_pl);
     for (const x of one.metex) _metex.push(x);
     for (const x of one.fmt) _fmt.push(x);
     for (const x of (one.link || [])) _link.push(x); // v4.0.190: リンクの指定
+    if (one.line) _lines.push(one.line);             // v4.0.299: 行に効く命令は**全部・出現順**に持つ(箇条書きの塊で配るため)
     if (!_line && one.line) _line = one.line;
   }
-  return { metex: _metex, fmt: _fmt, link: _link, line: _line };
+  return { metex: _metex, fmt: _fmt, link: _link, line: _line, lines: _lines };
 }
 // コメント1つ分の中身を読む。★**項目が1つだけで残りが行の指定でない時は、残りをその項目の中身に足す**
 //   = `~~ (赤/)//[]tip=` の `//tip` が、次の項目や行の指定に流れ込まないようにする(1コメント＝1命令の形の肝)。
@@ -22768,6 +22849,68 @@ function meosTableBlockFor(lines, ln) {
   while (s > 0 && MEOS_TABLE_ROW_RE.test(String(lines[s - 1] == null ? '' : lines[s - 1]))) s--;
   while (e + 1 < lines.length && MEOS_TABLE_ROW_RE.test(String(lines[e + 1] == null ? '' : lines[e + 1]))) e++;
   return { start: s, end: e };
+}
+// ★★v4.0.299(俊克 8/20 pm04:56「番号付きリストのFC形を実装して下さい。テーブルと基本的に同じだから、片手落ちに
+//   なるしね。**それぞれの直下でなく、全体の次の行にまとめよう**か。テーブルでできるのに、これができないのもおかしい」):
+//   ★★**箇条書きも、表と同じ「1つの塊」**。塊の下に指定を1本置き、**上から順に**項目へ配る。
+//     これで「1つの表＝1段落」(v4.0.193)の規則が箇条書きにも伸びる＝ 新しい概念は1つも増えない。
+//   ★項目ごとにFC行を挟む形を既定にしないのは、外のレンダラーで**リストが分断される**から。
+//     塊の下に置けば、リストは1つのまま＝「生データは読めるMarkdown」を守れる。
+//   ★★**配るのは、箱の数と項目の数が合っている時だけ**。合わない時は配らない（今までどおり真下の1行だけが効く）。
+//     ①昔の書き方（項目ごとにFC行）を1文字も壊さない ②書き手はFC行を開けば**数えて確かめられる**
+//     ③足りない時に「どれがどれか」を推測しない。
+//   ★配るのは**行に効く命令だけ**（`-1.` `-1.1` `-` `H2`）。語に効く記法（== ~~ 上付き…）は今までどおり真下を見る
+//     ＝ 既に在る道を1本も曲げない。
+const MEOS_LIST_BLOCK_RE = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/;
+// ★★v4.0.299: **塊は1回だけ数える**。項目ごとに上下へ歩くと、n項目のリストで n×n 回になる。
+//   14万行の実データで測ったら 5項目=41ms / 100項目=253ms / 500項目=1210ms。これは**全行を回るパス**なので、
+//   そのまま入れれば v4.0.113(400ms×回数=40秒の遅延) と v4.0.154(Me Dockが10秒真っ黒) と同じ穴を3度目に掘る
+//   [[feedback_go_get_the_measurement]]。→ **直前に見た塊を1つ覚える**だけでよい(数える側も描く側も上から順に見る
+//   ので、同じ塊が続けて来る)。行配列は版ごとに1回だけ刻んであるので、**配列そのものを鍵にする**と版が変われば自然に捨てられる。
+//   ★★鍵は**配列の同一性だけでは足りない**= 小さな編集では `meosPatchDocLines` が**同じ配列を書き換える**ので、
+//     参照は変わらないまま中身だけ新しくなる。so**版の印(_meosTextCache.key)も一緒に見る**。
+let _meosListBlkCache = { lines: null, key: '', blk: null };
+function _meosLinesKey() { try { return _meosTextCache.key || ''; } catch (_) { return ''; } }
+//   ★★版の印だけにも頼らない= 覚え書きを返す前に、**塊の縁が今も縁か**をその場で確かめる(4回の判定=O(1))。
+//     これで「同じ配列が書き換わった」時も、古い塊を掴んだまま進むことがない。
+function meosListBlockFor(lines, ln) {
+  const c = _meosListBlkCache, k = _meosLinesKey();
+  const _isItem = (i) => MEOS_LIST_BLOCK_RE.test(String(lines[i] == null ? '' : lines[i]));
+  if (c.lines === lines && c.key === k && c.blk && ln >= c.blk.start && ln <= c.blk.end
+      && _isItem(ln) && _isItem(c.blk.end) && !_isItem(c.blk.end + 1)
+      && (c.blk.start === 0 || !_isItem(c.blk.start - 1))) return c.blk; // 同じ塊の続き=歩かない
+  if (!lines || !MEOS_LIST_BLOCK_RE.test(String(lines[ln] == null ? '' : lines[ln]))) return null;
+  let s = ln, e = ln;
+  while (s > 0 && MEOS_LIST_BLOCK_RE.test(String(lines[s - 1] == null ? '' : lines[s - 1]))) s--;
+  while (e + 1 < lines.length && MEOS_LIST_BLOCK_RE.test(String(lines[e + 1] == null ? '' : lines[e + 1]))) e++;
+  const blk = { start: s, end: e, n: e - s + 1 };
+  _meosListBlkCache = { lines, key: k, blk };
+  return blk;
+}
+// 塊の下の指定行(続く限り)から、**行に効く命令**だけを出現順に集める。
+// ★結果は塊に貼って持つ(同じ塊の項目が何度も来るので、下の行を毎回読み直さない)。
+function meosListBlockDirectives(lines, blk) {
+  if (blk && blk._ds && blk._dsLines === lines && blk._dsKey === _meosLinesKey() && blk._dsHead === String(lines[blk.end + 1] == null ? '' : lines[blk.end + 1])) return blk._ds;
+  const out = [];
+  if (!lines || !blk) return out;
+  for (let i = blk.end + 1; i < lines.length; i++) {
+    const p = meosParseSpecLine(String(lines[i] == null ? '' : lines[i]));
+    if (!p) break;
+    for (const t of (p.lines || [])) { const d = meosLineDirective(t); if (d && (d.bullet || d.level)) out.push({ text: t, dir: d }); }
+  }
+  try { blk._ds = out; blk._dsLines = lines; blk._dsKey = _meosLinesKey(); blk._dsHead = String(lines[blk.end + 1] == null ? '' : lines[blk.end + 1]); } catch (_) { }
+  return out;
+}
+// この項目に配られる「行に効く命令」。配らない時は null。{text, dir, blk, idx, all}
+function meosListLineSpecFor(lines, ln) {
+  if (!MEOS_SPEC_LINE || !lines) return null;
+  const blk = meosListBlockFor(lines, ln);
+  if (!blk || blk.n < 2) return null;                 // 1項目の塊＝「真下に置く」形と同じなので今までの道に任せる
+  const ds = meosListBlockDirectives(lines, blk);
+  if (ds.length !== blk.n) return null;               // 箱の数と項目の数が合わない＝配らない
+  const idx = ln - blk.start;
+  const hit = ds[idx];
+  return hit ? { text: hit.text, dir: hit.dir, blk, idx, all: ds } : null;
 }
 // 1行の中に「相手になる印」that種類ごとに何個あるか。**描く側と同じ物差し**から引く
 // (meosInlineMarkEnds=語に効く記法／meosMeTexTokens=上付下付／`[表示]()`=リンク)。

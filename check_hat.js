@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -551,6 +551,75 @@ console.log('㉕ v4.0.298 FC行の (N) を手で直したら、それが最後�
   ok(T.meosLinkUlEditAt(line, at, '9') === null, '0〜3の外は覚えない', T.meosLinkUlEditAt(line, at, '9'));
   const two = '<!-- Mew!FC [](a)(1)(白/黄)//[]tip= --><!-- Mew!FC [](b)(2)(白/青)//[]tip= -->';
   ok(T.meosLinkUlEditAt(two, two.indexOf(')(2)') + 2, '2') === 2, '1行に2つ在っても、直した方の桁を覚える', T.meosLinkUlEditAt(two, two.indexOf(')(2)') + 2, '2'));
+}
+
+console.log('㉖ v4.0.299 番号付きリストのFC形 — 塊の下にまとめる(表と同じ)');
+{
+  // 描く側と同じ順で「この項目の命令」を引く。★写経しない= 実物の関数だけを呼ぶ。
+  const dirFor = (lines, ln) => {
+    const ls = T.meosListLineSpecFor(lines, ln);
+    if (ls) return ls.dir;
+    const sl = T.meosSpecLineFor(lines, ln);
+    return (sl && sl.line) ? T.meosLineDirective(sl.line) : null;
+  };
+  const render = (lines) => {
+    const counts = [], out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const t = lines[i];
+      if (!t.trim()) { counts.length = 0; out.push(''); continue; }
+      if (!T.MEOS_LIST_BLOCK_RE.test(t)) { out.push(null); continue; }
+      let lv = null, count = T.MEOS_NUM_ITEM_RE.test(t);
+      if (count) { const tc = T.meosTrailingComments(t); for (let k = tc.length - 1; k >= 0; k--) { const d = T.meosLineDirective(T.meosStripMewSignature(tc[k].payload)); if (d && d.token) { lv = T.meosItemLevels(d.token); break; } } }
+      if (!count) { const d = dirFor(lines, i); if (d && d.bullet === 'number') { lv = T.meosItemLevels(d.token); count = true; } }
+      if (!count) { out.push('-'); continue; }
+      if (!lv || !lv.length) lv = [{ style: 'num' }];
+      out.push(T.meosItemNumStep(counts, lv));
+    }
+    return out.filter(x => x !== null);
+  };
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  {
+    const r = render(['1. 一番目', '1. 二番目', '1. 三番目', '1. 四番目',
+      '<!-- Mew!FC -1. --><!-- Mew!FC -1.1 --><!-- Mew!FC -1.1 --><!-- Mew!FC -1. -->']);
+    ok(eq(r, ['1.', '1.1', '1.2', '2.']), '記事の例が本当にそうなる(箱4=項目4 → 1. / 1.1 / 1.2 / 2.)', r);
+  }
+  ok(eq(render(['1. 一', '1. 二', '1. 三', '<!-- Mew!FC -1. --><!-- Mew!FC -1a --><!-- Mew!FC -1a -->']), ['1.', '1a', '1b']), '英字の階層も配れる', render(['1. 一', '1. 二', '1. 三', '<!-- Mew!FC -1. --><!-- Mew!FC -1a --><!-- Mew!FC -1a -->']));
+  ok(eq(render(['1. 一番目', '1. 二番目', '<!-- Mew!FC -1.1 -->', '1. 三番目']), ['-', '1.1', '-']), '箱の数が項目の数と合わなければ配らない(昔の書き方を1文字も壊さない)', render(['1. 一番目', '1. 二番目', '<!-- Mew!FC -1.1 -->', '1. 三番目']));
+  ok(eq(render(['1. 一番目', '<!-- Mew!FC -1. -->', '1. 二番目', '<!-- Mew!FC -1.1 -->']), ['1.', '1.1']), '項目ごとにFC行を置く従来の形も数える(v4.0.298までは数えていなかった)', render(['1. 一番目', '<!-- Mew!FC -1. -->', '1. 二番目', '<!-- Mew!FC -1.1 -->']));
+  {
+    const r = render(['1. 一番目', '<!-- Mew!FC -1. -->', '1. 二番目', '<!-- Mew!FC -1.1 -->', '1. 三番目', '<!-- Mew!FC -1.1 -->', '1. 四番目', '<!-- Mew!FC -1. -->']);
+    ok(eq(r, ['1.', '1.1', '1.2', '2.']), '項目ごとに置く形でも、塊にまとめた形と**同じ結果**になる(読む側は2つとも読む)', r);
+  }
+  ok(eq(render(['1. 一番目', '1. 二番目']), ['-', '-']), '指定が無い素のリストには手を出さない', render(['1. 一番目', '1. 二番目']));
+  ok(eq(render(['1. 一', '1. 二', '<!-- Mew!FC -1. --><!-- Mew!FC -1. -->', '', '1. 別のリスト', '1. の続き', '<!-- Mew!FC -1. --><!-- Mew!FC -1. -->']), ['1.', '2.', '', '1.', '2.']), '空行でリストが切れて数え直す', 'ok');
+  // 塊の範囲
+  {
+    const L = ['前の文', '1. 一', '1. 二', '1. 三', '<!-- Mew!FC x -->', '後の文'];
+    const b = T.meosListBlockFor(L, 2);
+    ok(!!b && b.start === 1 && b.end === 3 && b.n === 3, '塊は項目の連なりだけ(前後の文は入らない)', b);
+    ok(T.meosListBlockFor(L, 0) === null, '項目でない行は塊にならない', 'null');
+    ok(T.meosListBlockFor(['- 単独'], 0).n === 1, '1項目でも塊は返す(配るかどうかは別の判定)', 1);
+    ok(T.meosListLineSpecFor(['- 単独', '<!-- Mew!FC - -->'], 0) === null, '1項目の塊には配らない(従来の「真下」の道に任せる)', 'null');
+  }
+  // ★塊の覚え書きが古い中身を返さないこと(小さな編集では同じ配列that書き換わる)。
+  {
+    const L = ['1. 一', '1. 二', '1. 三', '<!-- Mew!FC -1. --><!-- Mew!FC -1.1 --><!-- Mew!FC -1.1 -->'];
+    ok(T.meosListBlockFor(L, 0).n === 3, '3項目の塊', T.meosListBlockFor(L, 0).n);
+    L.splice(2, 1);                                   // 同じ配列のまま1項目消す(patchDocLinesと同じ形)
+    L[2] = '<!-- Mew!FC -1. --><!-- Mew!FC -1.1 -->';
+    ok(T.meosListBlockFor(L, 0).n === 2, '中身が変われば数え直す(覚え書きを持ち越さない)', T.meosListBlockFor(L, 0).n);
+  }
+  // 書く側= 箱を項目の数に揃えるための詰め物
+  ok(T.meosListItemDefaultDirective('1. 一番目') === '-1.', '番号付き項目の詰め物は `-1.`', T.meosListItemDefaultDirective('1. 一番目'));
+  ok(T.meosListItemDefaultDirective('- 項目') === '-', '箇条書き項目の詰め物は `-`', T.meosListItemDefaultDirective('- 項目'));
+  ok(T.meosListItemDefaultDirective('ふつうの文') === null, '項目でなければ詰め物も作らない', 'null');
+  {
+    const t = '1. 一番目<!-- Mew! -1.1 (白/黄)//[]tip= -->';
+    const h = T.meosLineDirectiveCommentIn(t);
+    ok(!!h && h.payload === '-1.1 (白/黄)//[]tip=', '行に効く命令のコメントを取り出せる', h && h.payload);
+    ok(!!h && t.slice(0, h.start) === '1. 一番目', '本文はコメントの手前まで', h && t.slice(0, h.start));
+    ok(T.meosLineDirectiveCommentIn('文 ==光==<!-- Mew! == (白/黄) -->') === null, '語に効く記法は、この口の相手ではない', 'null');
+  }
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

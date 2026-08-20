@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.299 (2026-08-20)
+- **A list is one block, like a table** — put a single FC line under the whole list and its instructions are dealt
+  out to the items in order, so `-1.` / `-1.1` / `-1a` finally produce `1.` / `1.1` / `1a` instead of a column of
+  `1.`s. One comment below the list also keeps the list *one list* in external renderers, which a comment between
+  items does not. Writing follows the same rule: a line-level instruction lands in the block's FC line at the item's
+  position, padding the others with the form they already have.
+- Instructions are dealt out **only when the number of boxes equals the number of items**. Anything else is left
+  alone, so documents written the old way (an FC line under each item — which now counts correctly too) keep working
+  byte for byte, and the writer can open the FC line and simply count.
+- The block is measured **once**, not once per item: walking up and down for every item cost 41ms on a 140k-line
+  document with 5-item lists and 1.2s with 500-item ones — on the pass that visits every line. It is flat now.
+
 ### v4.0.298 (2026-08-20)
 - **The underline remembers what you chose** — ⌥Option+Click now writes the last underline style you actually
   decided on. It learns from two places, because both are the same act: correcting the `(N)` by hand in an FC line,
