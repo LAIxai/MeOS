@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.300 (2026-08-20)
+- **The FC group mirrors the shape of the block** — one FC line per table row, one per list item, so the *n*-th line
+  below matches the *n*-th line above. You do not count boxes any more; you line the two up and read. Lines with
+  nothing to say get a spacer, `<!-- Mew!FC not -->` — the same `not` already used by `H2not`, `***not` and `↑not`,
+  raised one level to mean "nothing to declare about this line". No new word was added to the notation.
+- Reading needed no change at all: FC lines have been read "as far as they continue" since v4.0.147, and matching has
+  always been by document order, so the multi-line form already resolved correctly — measured before writing any code.
+  The single-line form keeps working and is only rewritten when you touch that block.
+- The table writer keeps every bit of its ordering machinery (v4.0.205–208); the new layout is a final, pure step that
+  splits the finished single line into per-row lines. Making it and splitting it stay separate jobs.
+
 ### v4.0.299 (2026-08-20)
 - **A list is one block, like a table** — put a single FC line under the whole list and its instructions are dealt
   out to the items in order, so `-1.` / `-1.1` / `-1a` finally produce `1.` / `1.1` / `1a` instead of a column of

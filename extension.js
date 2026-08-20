@@ -15463,6 +15463,46 @@ async function meosPushLineSpecsOutOfLine(editor) {
 //   これは「並べ替え」ではない= **指定行は格子の順である、という定義**。既に格子順なら1文字も動かない。
 //   俊克の `char(2,4)` そのもの= 表の印を左上から右下へ歩き、その種類の待ち行列から1つずつ取る。
 // ★対応(どの指定thatどの印のものか)は**1つも変えない**= 種類ごとの順番はそのまま。動くのは並びだけ。
+// ★★v4.0.300(俊克 8/20 pm05:16「テーブルのFCコメントも行単位にまとめて、複数行のFC群にすれば、どれが対応するのかが
+//   分かり易くなる。箇条書きは、必ず、1行1項目になる。FC群は、その全体を折り畳めばいい」):
+//   ★★**FC群の形が、塊の形を写す**＝ 塊の n 行目には、FC群の n 行目が対応する。**数えなくても、並べれば分かる**。
+//   ★★読む側は**もう出来ていた**（v4.0.147「FC行は続く限り読む」＋対応は文書順）＝ 実測で、行ごとに分けた形でも
+//     色も番号もそのまま合った。so変えるのは**書く側だけ**。
+//   ★指定の無い行には**置き石** `<!-- Mew!FC not -->` を置いて位置を合わせる。
+//     `not` ＝「この行については名乗らない」＝ `H2not`（この`##`を見出しとして読まない）/ `***not` / `↑not` と
+//     **同じ言葉・同じ仕事**を、行1つぶん上へ広げただけ。**新しい語を1つも増やさない**（`not` は今の文法で既に読める）。
+//   ★俊克案の `Line not` も読む（read-both）。書くのは `not` に統一＝ **位置が「どの行か」を既に言っている**ので、
+//     主語を書き足しても情報が増えない（家の作法＝ `H2` `-1.` `==` と同じ短さ）。
+//   ★★既存の1行形は**読み続ける**。書き直すのは、その塊に手を入れた時だけ（過去を一括変換しない）。
+const MEOS_SPEC_LINE_NONE = 'not';
+const MEOS_SPEC_LINE_NONE_RE = /^(?:Line[ \t]+)?not$/i;   // 置き石。俊克案の `Line not` も読む
+// 1本にまとめた指定を、**塊の行ごとに1本**のFC群へ割る。純関数なので headless で確かめられる。
+function meosSpecGroupPerLine(lines, blk, specText) {
+  const raw = [];
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+  while ((m = MEOS_SPEC_LINE_ONE_RE.exec(String(specText == null ? '' : specText))) !== null) {
+    const pay = (m[2] || '').trim();
+    if (!pay || MEOS_SPEC_LINE_NONE_RE.test(pay)) continue;      // 置き石は毎回置き直す(前の位置を持ち越さない)
+    const d = meosLineDirective(pay);
+    raw.push({ text: m[0], kind: meosSpecPayloadKind(pay), dir: !!(d && (d.bullet || d.level)) });
+  }
+  const dirQ = raw.filter(r => r.dir);
+  const markQ = new Map();
+  for (const r of raw) { if (r.dir) continue; if (!markQ.has(r.kind)) markQ.set(r.kind, []); markQ.get(r.kind).push(r); }
+  const used = new Set(), rows = [];
+  for (let ln = blk.start; ln <= blk.end; ln++) {
+    const box = [];
+    if (dirQ.length) { const d = dirQ.shift(); box.push(d.text); used.add(d); }   // 行に効く命令はその行に1つ
+    for (const mk of meosRowMarksInOrder(String(lines[ln] == null ? '' : lines[ln]))) {
+      const q = markQ.get(mk.kind);
+      if (q && q.length) { const x = q.shift(); box.push(x.text); used.add(x); }
+    }
+    rows.push(box);
+  }
+  if (!rows.length) rows.push([]);
+  for (const r of raw) if (!used.has(r)) rows[rows.length - 1].push(r.text);      // 相手の無い分は捨てずに最後の行へ
+  return rows.map(b => b.length ? b.join('') : meosSpecLineBox(MEOS_SPEC_LINE_NONE));
+}
 function meosSpecLineGridOrder(lines, blk, specText) {
   const t = String(specText == null ? '' : specText);
   const raw = [];
@@ -15589,27 +15629,33 @@ async function meosPushListSpecsOutOfLine(editor, blk) {
   if (!hit) return false;                                  // 行に効く命令が無い＝この口の仕事ではない
   const specLns = [];
   for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; specLns.push(i); }
-  // 今ある箱を「行に効く命令」と「それ以外」に分ける（それ以外は順番のまま残す）。
+  // 今ある箱を「行に効く命令」と「それ以外」に分ける。
+  // ★v4.0.300: **箱は生のまま持つ**（読み直して組み立て直すと、tipや書き方の細かい所が落ちる）。
+  //   置き石(`not`)は毎回置き直すので、ここでは拾わない＝ 押すたびに増えていく事故を作らない。
   const dirs = [], others = [];
   for (const i of specLns) {
-    const p = meosParseSpecLine(String(lines[i] == null ? '' : lines[i]));
-    if (!p) continue;
-    for (const t of (p.lines || [])) { const d = meosLineDirective(t); if (d && (d.bullet || d.level)) dirs.push(t); else others.push(t); }
-    for (const it of (p.fmt || [])) others.push(it.kind + (it.not ? 'not' : '') + (it.inner || ''));
-    for (const it of (p.metex || [])) others.push(it.tok + (it.inner ? (it.inner.charAt(0) === '(' ? it.inner : '{' + it.inner + '}') : ''));
-    for (const it of (p.link || [])) others.push('[' + (it.mark || '') + '](' + (it.target || '') + ')' + (it.spec || ''));
+    MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let bm;
+    while ((bm = MEOS_SPEC_LINE_ONE_RE.exec(String(lines[i] == null ? '' : lines[i]))) !== null) {
+      const pay = (bm[2] || '').trim();
+      if (!pay || MEOS_SPEC_LINE_NONE_RE.test(pay)) continue;
+      const d = meosLineDirective(pay);
+      if (d && (d.bullet || d.level)) dirs.push(pay); else others.push(pay);
+    }
   }
   const boxes = [];
   for (let i = 0; i < blk.n; i++) boxes.push(dirs[i] || meosListItemDefaultDirective(lines[blk.start + i]) || '-1.');
   boxes[ln - blk.start] = hit.payload;
   const specText = boxes.concat(others).map(meosSpecLineBox).join('');
   const bodyNew = (lines[ln].slice(0, hit.start) + lines[ln].slice(hit.end)).replace(/[ \t]+$/, '');
+  // ★v4.0.300: 箇条書きも**1項目=1本**へ割る(表と同じ1つの口を通す)。
+  const _after = lines.slice(); _after[ln] = bodyNew;
+  const _rows = meosSpecGroupPerLine(_after, blk, specText);
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, bodyNew);
-    if (specLns.length) eb.replace(new vscode.Range(specLns[0], 0, specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length), specText);
-    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + specText);
+    if (specLns.length) eb.replace(new vscode.Range(specLns[0], 0, specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length), _rows.join(eol));
+    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + _rows.join(eol));
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }
   try { meosDbg('[fcList] 塊=' + (blk.start + 1) + '..' + (blk.end + 1) + ' 項目=' + blk.n + ' 箱=' + boxes.length + '(+他' + others.length + ') 行=' + (ln + 1)); } catch (_) { }
@@ -15647,20 +15693,15 @@ async function meosPushTableSpecsOutOfLine(editor, blk) {
   try { if (_grid) meosDbg('[fcIns] ★格子順に合わせた: ' + spec + '  →  ' + _gridSpec); } catch (_) { }
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  // ★v4.0.300: 最後に**行ごとへ割る**。挿す位置を決める仕掛け(v4.0.205〜208)はそのまま=
+  //   1本にまとめた形を作ってから、塊の行数に合わせて並べ直すだけ。作る所と割る所を分けてある。
+  const _rows = meosSpecGroupPerLine(_after, blk, _gridSpec);
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, split.body);                   // 行から新しい指定を抜く
-    if (specLns.length === 1 && !_grid) {
-      // v4.0.207: **行を書き直さない**。決めた文字位置へ挿すだけ(後ろから挿せば前の位置thatずれない)。
-      for (const x of _ins.slice().sort((a, b) => b.off - a.off)) eb.insert(new vscode.Position(specLns[0], x.off), x.box);
-    } else if (specLns.length === 1) {
-      // v4.0.208: 挿した結果that格子順でなければ、格子順の行に置き換える(=定義に合わせる)。
-      eb.replace(doc.lineAt(specLns[0]).range, _gridSpec);
-    } else if (specLns.length) {
-      // 指定行that複数行に分かれている時だけ、1本にまとめ直す(元からの畳み込み。ここは書き直す)。
-      eb.replace(doc.lineAt(specLns[0]).range, spec);
-      for (let k = 1; k < specLns.length; k++) eb.delete(new vscode.Range(new vscode.Position(specLns[k - 1], doc.lineAt(specLns[k - 1]).text.length), new vscode.Position(specLns[k], doc.lineAt(specLns[k]).text.length)));
+    if (specLns.length) {
+      eb.replace(new vscode.Range(new vscode.Position(specLns[0], 0), new vscode.Position(specLns[specLns.length - 1], doc.lineAt(specLns[specLns.length - 1]).text.length)), _rows.join(eol));
     } else {
-      eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + _gridSpec);
+      eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + _rows.join(eol));
     }
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }
@@ -22896,7 +22937,7 @@ function meosListBlockDirectives(lines, blk) {
   for (let i = blk.end + 1; i < lines.length; i++) {
     const p = meosParseSpecLine(String(lines[i] == null ? '' : lines[i]));
     if (!p) break;
-    for (const t of (p.lines || [])) { const d = meosLineDirective(t); if (d && (d.bullet || d.level)) out.push({ text: t, dir: d }); }
+    for (const t of (p.lines || [])) { if (MEOS_SPEC_LINE_NONE_RE.test(t)) continue; const d = meosLineDirective(t); if (d && (d.bullet || d.level)) out.push({ text: t, dir: d }); }
   }
   try { blk._ds = out; blk._dsLines = lines; blk._dsKey = _meosLinesKey(); blk._dsHead = String(lines[blk.end + 1] == null ? '' : lines[blk.end + 1]); } catch (_) { }
   return out;

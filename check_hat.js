@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -619,6 +619,58 @@ console.log('㉖ v4.0.299 番号付きリストのFC形 — 塊の下にまと�
     ok(!!h && h.payload === '-1.1 (白/黄)//[]tip=', '行に効く命令のコメントを取り出せる', h && h.payload);
     ok(!!h && t.slice(0, h.start) === '1. 一番目', '本文はコメントの手前まで', h && t.slice(0, h.start));
     ok(T.meosLineDirectiveCommentIn('文 ==光==<!-- Mew! == (白/黄) -->') === null, '語に効く記法は、この口の相手ではない', 'null');
+  }
+}
+
+console.log('㉗ v4.0.300 FC群は塊の形を写す — 1行に1本・指定の無い行は置き石 not');
+{
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  // 表: 1行=1本。ヘッダと区切りは置き石。
+  {
+    const L = ['| 品目 | 備考 |', '| --- | --- |', '| ==りんご== | **甘い** |', '| ~~みかん~~ | ==酸っぱい== |'];
+    const one = '<!-- Mew!FC == (白/黄) --><!-- Mew!FC ** (白/青) --><!-- Mew!FC ~~ (赤/) --><!-- Mew!FC == (白/緑) -->';
+    const r = T.meosSpecGroupPerLine(L, { start: 0, end: 3 }, one);
+    ok(r.length === 4, '塊の行数と同じ本数になる', r.length);
+    ok(r[0] === '<!-- Mew!FC not -->' && r[1] === '<!-- Mew!FC not -->', 'ヘッダと区切りは置き石 not', [r[0], r[1]]);
+    ok(r[2] === '<!-- Mew!FC == (白/黄) --><!-- Mew!FC ** (白/青) -->', '3行目にはその行の印が左から順に', r[2]);
+    ok(r[3] === '<!-- Mew!FC ~~ (赤/) --><!-- Mew!FC == (白/緑) -->', '4行目も同じ', r[3]);
+  }
+  // 箇条書き: 1項目=1本。
+  {
+    const L = ['1. 一番目', '1. 二番目', '1. 三番目', '1. 四番目'];
+    const one = '<!-- Mew!FC -1. --><!-- Mew!FC -1.1 --><!-- Mew!FC -1.1 --><!-- Mew!FC -1. -->';
+    const r = T.meosSpecGroupPerLine(L, { start: 0, end: 3 }, one);
+    ok(eq(r, ['<!-- Mew!FC -1. -->', '<!-- Mew!FC -1.1 -->', '<!-- Mew!FC -1.1 -->', '<!-- Mew!FC -1. -->']), '行に効く命令は1行ずつ、その項目の位置へ', r);
+  }
+  // 行に効く命令＋語に効く記法が同居する項目
+  {
+    const L = ['1. ==光る==項目', '1. ふつうの項目'];
+    const one = '<!-- Mew!FC -1. --><!-- Mew!FC == (白/黄) --><!-- Mew!FC -1. -->';
+    const r = T.meosSpecGroupPerLine(L, { start: 0, end: 1 }, one);
+    ok(r[0] === '<!-- Mew!FC -1. --><!-- Mew!FC == (白/黄) -->', '同じ行の命令は同じ本に並ぶ(行の命令が先)', r[0]);
+    ok(r[1] === '<!-- Mew!FC -1. -->', '次の項目は自分の分だけ', r[1]);
+  }
+  // 置き石は毎回置き直す(前の位置を持ち越さない)
+  {
+    const L = ['| a | b |', '| --- | --- |', '| ==x== | y |'];
+    const before = '<!-- Mew!FC not --><!-- Mew!FC not --><!-- Mew!FC == (白/黄) -->';
+    const r = T.meosSpecGroupPerLine(L, { start: 0, end: 2 }, before);
+    ok(eq(r, ['<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC == (白/黄) -->']), '置き石を含む形を通しても同じ形に落ち着く(何度通しても変わらない)', r);
+  }
+  // 相手の無い箱は捨てない
+  {
+    const L = ['| a |', '| --- |'];
+    const r = T.meosSpecGroupPerLine(L, { start: 0, end: 1 }, '<!-- Mew!FC == (白/黄) -->');
+    ok(r.length === 2 && r[1].indexOf('== (白/黄)') >= 0, '印が見つからない箱は最後の行へ(捨てない)', r);
+  }
+  // 置き石の読み方(俊克案の `Line not` も読む)
+  ok(T.MEOS_SPEC_LINE_NONE_RE.test('not') && T.MEOS_SPEC_LINE_NONE_RE.test('Line not') && T.MEOS_SPEC_LINE_NONE_RE.test('line  not'), '置き石は `not`／俊克案の `Line not` も読む(read-both)', 'ok');
+  ok(!T.MEOS_SPEC_LINE_NONE_RE.test('H2not') && !T.MEOS_SPEC_LINE_NONE_RE.test('***not'), '記号に付いた not は置き石ではない', 'ok');
+  // 置き石that混ざっても、箇条書きの配りは狂わない
+  {
+    const L = ['1. 一', '1. 二', '<!-- Mew!FC -1. -->', '<!-- Mew!FC -1.1 -->'];
+    const ls0 = T.meosListLineSpecFor(L, 0), ls1 = T.meosListLineSpecFor(L, 1);
+    ok(!!ls0 && ls0.text === '-1.' && !!ls1 && ls1.text === '-1.1', '1項目=1本のFC群が、そのまま配られる', [ls0 && ls0.text, ls1 && ls1.text]);
   }
 }
 
