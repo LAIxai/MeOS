@@ -18077,7 +18077,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <!-- {* ▼mCN=dock_format // Format Me の行(== ~~ A2 ## / 表 / 🐱 / Raw) *} -->
 <div class="row format-tools" id="format-tools"><span class="fmt-label"><span class="fmt-me-box">Format</span> Me</span>
 <span class="fmt-btns">
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (type the URL — or a membrane name to warp there) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once (leave □ Link unchecked in the presets; the button shows the underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (type the URL — or a membrane name to warp there) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
@@ -18894,12 +18894,38 @@ if(typeof mtxPrev==='function')mtxPrev();}else if(typeof window.__renderFmtRing=
 pushFmt();return;}});
 document.addEventListener('click',ev=>{if(!fmtPop||!fmtPop.classList.contains('on'))return;if(ev.target.closest&&(ev.target.closest('#fmt-pop')||ev.target.closest('.fmt-caret')))return;
 closeFmtPop();});
+/* ★★v4.0.295(俊克 8/20「残る課題は、ハイライトボタンのOpt+clickによるリンクの付加機能だね。初心者は、メニューで
+   「□ 🔗」にチェックを入れる。慣れてくれば、プリセット3つは、🔗指定無しにしておいて、Opt+clickで機動力を上げる」):
+   ★★**Option＝そのボタンの裏の顔**を、上付きボタン(v4.0.291)だけの話から**全ボタンの規則**にした。
+   だから見張りは**1つにまとめる**= Optionの上下は文書に1組だけ置き、ボタンごとに持つのは
+   「今このボタンの上に居るか」だけ。2つ目の見張りを作ると、押す前の面と押した結果が必ずどこかでズレる
+   [[feedback_one_source_for_mark_count_action]]。
+   ★見張り方は v4.0.291 のまま= **マウスの動きが持っている altKey を読む**(webviewに焦点が無くても届く)。
+   焦点がある時のためにキーの上下も見る。 */
+var fmtAltDown=false,fmtAltRedraws=[];
+function fmtAltRedrawAll(){for(var i=0;i<fmtAltRedraws.length;i++){try{fmtAltRedraws[i]();}catch(_){}}}
+function fmtAltSync(ev){var a=!!(ev&&ev.altKey);if(a!==fmtAltDown){fmtAltDown=a;fmtAltRedrawAll();}}
+function fmtAltWatch(btn,redraw){var st={over:false,on:function(){return false;}};if(!btn)return st;
+st.on=function(){return fmtAltDown&&st.over;};
+btn.addEventListener('mouseenter',function(ev){st.over=true;fmtAltSync(ev);redraw();});
+btn.addEventListener('mousemove',fmtAltSync);
+btn.addEventListener('mouseleave',function(){st.over=false;redraw();});
+fmtAltRedraws.push(redraw);return st;}
+document.addEventListener('keydown',function(ev){if(ev.key==='Alt'&&!fmtAltDown){fmtAltDown=true;fmtAltRedrawAll();}});
+document.addEventListener('keyup',function(ev){if(ev.key==='Alt'&&fmtAltDown){fmtAltDown=false;fmtAltRedrawAll();}});
+/* v4.0.295: ハイライトボタンの裏の顔=🔗。**プリセットの🔗を、その1回だけ裏返す**(設定は書き換えない)。
+   ★裏返しにしたのは、規則が1本で済むから= 🔗無しのプリセット＋Opt=リンクを付ける / 🔗有りのプリセット＋Opt=今回だけ付けない。
+   ★何が起きるかは**押す前に面が名乗る**(リンクなら下線が出る=v4.0.28の見せ方そのまま)。 */
+var hlAltW=null;
+function hlAltOn(){return !!(hlAltW&&hlAltW.on());}
+function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
 if(fmtHighlight)fmtHighlight.addEventListener('click',()=>{if(window.__fmtActionable.highlight){const r=window.__fmtRing.highlight||0;
 window.__fmtCyclingKind='highlight';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',
 kind:'highlight',ring:0});}else{const baseW=window.__fmtBaseW.highlight||2;const w=((baseW-1+r)%3)+1;const sp=fmtHlSlots[w-1];
 window.__fmtBaseW.highlight=w;window.__fmtRing.highlight=0;window.__fmtWasDeco.highlight=true;vscode.postMessage({type:'fmtCycle',
 kind:'highlight',ring:w,fg:sp.fg,bg:sp.bg});window.__renderFmtRing('highlight');}return;}/* v4.0.17(俊克): 現ハイライトプリセットが太字/斜体フラグを持てば太字/斜体記法を出す(統一ボタン) */const _hs=fmtHlSlots[fmtHlIdx];
-if(_hs.link){vscode.postMessage({type:'insertMeLink',fg:_hs.fg,bg:_hs.bg,ul:_hs.ul||0,bold:!!_hs.bold,italic:!!_hs.italic});
+/* v4.0.295: 🔗かどうかは fmtHlLinkOn() 1つから引く(面と同じ物差し=面に下線が出ていればリンクが付く) */
+if(fmtHlLinkOn()){vscode.postMessage({type:'insertMeLink',fg:_hs.fg,bg:_hs.bg,ul:_hs.ul||0,bold:!!_hs.bold,italic:!!_hs.italic});
 return;}/* v4.0.30(俊克 改良1): リンクでも太字/斜体を捨てない *//* v4.0.26: どこでもH-TOC=リンクを挿入し行先の中で待つ */if(_hs.bold||_hs.italic){vscode.postMessage({type:'insertBold',
 bold:!!_hs.bold,italic:!!_hs.italic,fg:_hs.fg,bg:_hs.bg});return;}vscode.postMessage({type:'insertFormat',kind:'highlight',
 fg:fmtSpec.highlight.fg,bg:fmtSpec.highlight.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtHlIdx];
@@ -18946,7 +18972,7 @@ sp.style.display='inline-block';sp.style.fontWeight=f.b?'900':'';sp.style.fontSt
 if(u===null||u===undefined){el.style.textDecoration='';el.style.textUnderlineOffset='';return;}/* v4.0.34(俊克 改良2): 面でも 2/3 はエディタと同じ**波のSVG**にする(text-decorationのwavyは1〜2文字だと潰れて見える)。 */if(u===2||u===3){el.style.textDecoration='none';
 el.style.backgroundImage=fmtUlWave(col,u===3?2:1);el.style.backgroundRepeat='repeat-x';el.style.backgroundPosition='left calc(100% - 2px)';
 return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.textUnderlineOffset='3px';}function fmtUlCssStr(u,col){return (u===2||u===3)?('text-decoration:none;background-image:'+fmtUlWave(col,u===3?2:1)+';background-repeat:repeat-x;background-position:left calc(100% - 3px);'):('text-decoration:'+(u===1?'underline double':'underline')+';text-underline-offset:3px;');
-}function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=sp.link?(Number(sp.ul)||0):null;/* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
+}function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?(Number(sp.ul)||0):null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
@@ -18960,6 +18986,9 @@ const sp=slots[w-1];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.b
 }}else{if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));
 }/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);
 }btn.classList.remove('fmt-remove');}};
+/* v4.0.295: ハイライトボタンのOption見張りを登録。描き直しは既に在る1つの口(__renderFmtRing)へ通す
+   = 🚫の時は面を触らない、というv4.0の作法がそのまま効く(裏の顔を出す口を別に作らない)。 */
+hlAltW=fmtAltWatch(fmtHighlight,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');});
 fmtHlCycle.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
 if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%4;window.__fmtCyclingKind='highlight';
 window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+1)%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];
@@ -19021,8 +19050,9 @@ metexPop=document.getElementById('metex-pop');var mtxSub=false,mtxNot=false,mtxH
    CmdはMacで「別ウインドウで開く」系の意味を持ち、Windowsでは metaKey thatWindowsキーになる。
    ★見張り方= **マウスの動きthat持っている altKey を読む**(webviewに焦点thatが無くても届く)。
    焦点thatある時のためにキーの上下も見る。効くのは普通の状態だけ(not/帽子の時は向きの話ではない)。 */
-var mtxAlt=false,mtxOver=false;
-function mtxAltOn(){return mtxAlt&&mtxOver&&!mtxNot;} /* v4.0.292: 帽子(ä)でも効く= Σの下限に要る。notだけは向きの話でないso効かない *//* v4.0.222: ↻の3つ目=not(この矢印は上付きにしない) *//* ★v4.0.286: 高さの式。nodeの meosMeTexStyle と**同じ形**(webviewからは関数を呼べないso、ここだけ写す)。
+/* v4.0.295: 見張りは fmtAltWatch 1つに集約(v4.0.291の mtxAlt/mtxOver は廃止)。効かないのは not の時だけ=向きの話でないから。 */
+var mtxAltW=null;
+function mtxAltOn(){return !!(mtxAltW&&mtxAltW.on())&&!mtxNot;} /* v4.0.292: 帽子(ä)でも効く= Σの下限に要る。notだけは向きの話でないso効かない *//* v4.0.222: ↻の3つ目=not(この矢印は上付きにしない) *//* ★v4.0.286: 高さの式。nodeの meosMeTexStyle と**同じ形**(webviewからは関数を呼べないso、ここだけ写す)。
    上付き=(100%,素0.36)〜(150%,頭1.05)の直線 / 下付き=(50%,基準線0)〜(100%,素0.20)の直線。200%まで同じ傾き。
    ★片方だけ直すと面とプレビューthat本文とズレるso、直す時は必ず両方(v4.0.246と同じ穴)。 */
 function mtxVa(sub,p){var top=sub?0.66:1.05,mid=sub?0.29:0.50;
@@ -19036,13 +19066,8 @@ p=mtxClamp(_fsub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
 _bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでいない時、明るい背景には黒字(暗い背景の白字と対・nodeのDARK_BG_KEYSと同じ顔ぶれ) */if(mtxBg&&mtxBg!=='なし'&&(!mtxFg||mtxFg==='白')){/* v4.0.270(俊克 バグ1「äボタンが白抜きのまま」): 明るい背景の上の白は読めないso黒に(選んでいない時だけでなく、白を選んである時も) */_fgH=({'赤':1,'緑':1,'青':1,'紺':1,'ワイン':1}[mtxBg])?'#f5f5f5':'#222222';}/* v4.0.266(俊克): 帽子の面は**出来上がりの字**(â)=見た目のままthat一番早い */if(mtxHat){/* v4.0.268(俊克「âボタンより、äボタンにすべきだね」): ひな形の名前that (..) so、面も ä に揃える */fmtMetex.innerHTML='<span class="mtx-face">'+(mtxAltOn()?'<span style="font-size:0.7em">↓</span>':'')+'<span style="letter-spacing:0.3px'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">ä</span></span>';return;}if(mtxNot){/* v4.0.232(俊克「分かりにくい。単にnotでも良いかも知れない」): 面は素直に not と書く。打ち消したA2は"上付きを消す"に見えて紛らわしかった */fmtMetex.innerHTML='<span class="mtx-face"><span style="font-size:0.72em">not</span></span>';return;}/* v4.0.267(俊克 8/19 改良1「↻ボタンを押す度にズレるので連続して押せない」): 面の幅を min-width(32px)の中に収める= 「not↑↓」は幅that溢れてボタンthat伸びていた。向きは文脈that名乗るので、面に ↑↓ を書く必要も無い。 */fmtMetex.innerHTML='<span class="mtx-face">A<span style="font-size:0.68em;vertical-align:'+v+';line-height:0'+(_fgH?';color:'+_fgH:'')+(_bgH?';background:'+_bgH+';border-radius:3px;padding:0 1px':'')+'">'+(_fsub?'3':'2')+'</span></span>';
 }mtxFace();
-/* v4.0.291: Optionの見張り。マウスの動きthat持っている altKey を読む(焦点thatが無くても届く)。 */
-if(fmtMetex){var _mtxAltSync=function(ev){var a=!!(ev&&ev.altKey);if(a!==mtxAlt){mtxAlt=a;mtxFace();}};
-fmtMetex.addEventListener('mouseenter',function(ev){mtxOver=true;_mtxAltSync(ev);});
-fmtMetex.addEventListener('mousemove',_mtxAltSync);
-fmtMetex.addEventListener('mouseleave',function(){mtxOver=false;if(mtxAlt){mtxAlt=false;mtxFace();}});
-document.addEventListener('keydown',function(ev){if(ev.key==='Alt'&&mtxOver&&!mtxAlt){mtxAlt=true;mtxFace();}});
-document.addEventListener('keyup',function(ev){if(ev.key==='Alt'&&mtxAlt){mtxAlt=false;mtxFace();}});}
+/* v4.0.291→295: Optionの見張りは共通の fmtAltWatch へ(ボタンごとに持つのは「上に居るか」だけ)。 */
+mtxAltW=fmtAltWatch(fmtMetex,mtxFace);
 function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(ev){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub||(!!(ev&&ev.altKey)&&!mtxNot),fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();

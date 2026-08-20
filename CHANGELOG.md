@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.295 (2026-08-20)
+- **Option is the button's other face — now a rule, not a one-off** — ⌥Option+Click on the highlight button adds a
+  link this once, flipping the preset's `□ Link` without changing the preset. Beginners tick `□ Link` in the ▾ panel;
+  once it is muscle memory, leave all three presets link-free and reach for Option instead. The button shows the
+  underline *before* you press, so you always know which one you are getting.
+- The Option watcher is now **one** shared piece (`fmtAltWatch`) used by both the highlight and the super/subscript
+  buttons; each button only remembers whether the pointer is over it. Two watchers would eventually disagree about
+  what the face is promising.
+
 ### v4.0.294 (2026-08-20)
 - **Integrals lean — for real this time** — `font-style: italic` never moved the `∫`, and measuring said why:
   Menlo-Italic's integral is the *same glyph* as Menlo-Regular's (symbols are not slanted in an italic face), while
