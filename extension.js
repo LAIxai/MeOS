@@ -17686,12 +17686,11 @@ function meosRecentPush(doc) {
     //     **もう一度留める**。so人には**外せない**ように見えていた。
     //   ★直し＝ 自動で留めるのは**一度きり**（初期値であって、決まりではない）。以後は**人が最後に決めた通り**。
     //     → [[project_last_specified_wins]] と同じ筋。外したままにできるので、最後の1本も閉じられる。
-    try {
-      if (extensionContext && !extensionContext.globalState.get(MEOS_PIN_AUTO_KEY)) {
-        extensionContext.globalState.update(MEOS_PIN_AUTO_KEY, true);
-        if (!meosPinned()) extensionContext.globalState.update(MEOS_PIN_KEY, { name, path });
-      }
-    } catch (_) { }
+    //   ★v4.0.323(俊克 バグ1「最後を消して(履歴なし)になり、そのファイルをまた出すと**ピン留めされていない**」):
+    //     規則を**1つ**にした= **一覧that1本だけなら、それthat要のファイル**。最初の1本も、最後の1本も、
+    //     消してから戻した1本も、同じ理由で留まる（別々の条件を持たない）。
+    //   ★自分で外した後は外れたまま= 📌を押した時は**積み直さない**(v4.0.322の×と同じ作法)。
+    try { if (meosRecentList().length === 1 && !meosPinned() && extensionContext) extensionContext.globalState.update(MEOS_PIN_KEY, { name, path }); } catch (_) { }
   } catch (_) { }
 }
 // ★これは**カーソルを動かすたびに通る道**(postFixedWorkingTocSnapshot)から呼ばれるので、
@@ -20971,7 +20970,7 @@ function toggleMeDock(editorOverride) {
     }
     // v0.9.99938: Format色設定をmMETAへ随伴保存(in-memory即更新＋800msデバウンスで書込=連続選択を1回にまとめ・undo汚染を抑制)。
     if (message && message.type === 'pinRecent') { // v4.0.309: 📌= 1つだけ留める(押し直しで外れる)
-      try { meosPinToggle(message.path); postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true); } catch (_) {}
+      try { meosPinToggle(message.path); postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true, true); } catch (_) {} // v4.0.323: 積み直さない(外した直後に留め直さない)
       return;
     }
     if (message && message.type === 'recentAsk') { // v4.0.304: ▾を開いた時だけ、開/未保存を数え直して送る
@@ -23578,6 +23577,42 @@ function meosDefBlocks(document) {
 //   ★ただし**塗り方は相手によって変える**= カーソル行は生データなので**文字**を塗ってよい。
 //     相手の本文行は装飾が乗っているので、文字を塗ると色を奪う → **縦線(`|`)だけ**を塗る(俊克の指定)。
 //     ★これは「知らせるUIと直すUIを別に作らない」の続き= 同じ1つの対応を、壊さない場所に出す。
+// ★★v4.0.323(俊克 8/21 am02:47 バグ2「bsを押しても1、2秒反応しないときがある」):
+//   ★★**橙の対応(v4.0.301)が、打鍵のたびに全文を走っていた**。`meosApplyFcRowDecorations` は
+//   `refresh()` から呼ばれる＝ 打鍵にも選択の移動にも毎回通る道。そこで `meosFcBlocks`(全文走査・14万行で28ms)を
+//   呼び、覚え書きは「uri@版」so**打つたびに作り直し**。v4.0.320で直したのと**同じ穴の、別の場所**だった。
+//   ★→ 塊は「本文行(表/箇条書きなら塊ぜんぶ)＋続くFC行」so、**カーソルの周りだけ歩けば分かる**。
+//   ★教訓＝ 1か所直しても、**同じ日に同じ物を呼んでいる所が他にもある**。直した時に、呼び元を全部見る。
+// ★塊かどうかは**その1行を見れば分かる**ので、表でも箇条書きでもない時は行配列を作らせない。
+//   （`meosDocLines` は版that変わると全文を刻み直す＝ 打鍵の道で毎回呼ぶ物ではない）
+function meosFcIsBlockLine(t) { return MEOS_TABLE_ROW_RE.test(t) || MEOS_LIST_BLOCK_RE.test(t); }
+function meosFcBodyTop(doc, head) {
+  try {
+    if (!meosFcIsBlockLine(doc.lineAt(head).text)) return head;
+    const lines = meosDocLines(doc);
+    const b = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head);
+    if (b) return b.start;
+  } catch (_) { }
+  return head;
+}
+// カーソルの居る「本文の範囲(top..head)＋FC群(head+1..end)」。対でなければ null。全文は走らない。
+function meosFcPairAt(doc, line) {
+  try {
+    const isSpec = (i) => (i >= 0 && i < doc.lineCount) && meosIsSpecLine(doc.lineAt(i).text);
+    if (isSpec(line)) {                                   // FC行に居る
+      let f = line; while (f > 0 && isSpec(f - 1)) f--;
+      const head = f - 1; if (head < 0) return null;
+      let end = line; while (end + 1 < doc.lineCount && isSpec(end + 1)) end++;
+      return { top: meosFcBodyTop(doc, head), head, end };
+    }
+    let b = null;                                         // 本文の側に居る
+    if (meosFcIsBlockLine(doc.lineAt(line).text)) { const lines = meosDocLines(doc); b = meosTableBlockFor(lines, line) || meosListBlockFor(lines, line); }
+    const head = b ? b.end : line;
+    if (!isSpec(head + 1)) return null;
+    let end = head + 1; while (end + 1 < doc.lineCount && isSpec(end + 1)) end++;
+    return { top: b ? b.start : head, head, end };
+  } catch (_) { return null; }
+}
 let meosFcRowDeco = null;   // FC行/カーソル行の文字
 let meosFcBarDeco = null;   // 相手の本文行の縦線(表の `|`)
 function meosApplyFcRowDecorations(editor) {
@@ -23595,10 +23630,12 @@ function meosApplyFcRowDecorations(editor) {
       const whole = (ln) => new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length);
       // 表の `|` だけを拾う(`\|` は境目でない=セルの中の縦棒)
       const barsOf = (ln) => { const t = doc.lineAt(ln).text, r = []; for (let i = 0; i < t.length; i++) { if (t.charAt(i) !== '|' || (i > 0 && t.charAt(i - 1) === '\\')) continue; r.push(new vscode.Range(ln, i, ln, i + 1)); } return r; };
-      for (const b of meosFcBlocks(doc)) {
-        const top = (b.top == null) ? b.start : b.top;
-        if (line >= top && line <= b.start) {                  // ① 本文の側に居る= カーソル行は生データなので文字を塗る
-          const sl = b.start + 1 + (line - top);
+      {
+        const b = meosFcPairAt(doc, line);                     // v4.0.323: 全文を走らず、カーソルの周りだけ
+        if (!b) { editor.setDecorations(meosFcRowDeco, []); editor.setDecorations(meosFcBarDeco, []); return; }
+        const top = b.top;
+        if (line >= top && line <= b.head) {                   // ① 本文の側に居る= カーソル行は生データなので文字を塗る
+          const sl = b.head + 1 + (line - top);
           if (sl > b.start && sl <= b.end && sl < doc.lineCount) {
             out.push(whole(sl));
             // ★v4.0.303(俊克「**縦線を橙色にすると言ったのは、FC行にいるとき**だよ」):
@@ -23612,13 +23649,10 @@ function meosApplyFcRowDecorations(editor) {
               from = i + 1;
             }
           }
-          break;
-        }
-        if (line > b.start && line <= b.end) {                 // ② FC行の側に居る= その行は橙のまま・相手は縦線だけ
+        } else if (line > b.head && line <= b.end) {           // ② FC行の側に居る= その行は橙のまま・相手は縦線だけ
           out.push(whole(line));
-          const bl = top + (line - b.start - 1);
-          if (bl >= top && bl <= b.start && bl < doc.lineCount) for (const r of barsOf(bl)) bars.push(r);
-          break;
+          const bl = top + (line - b.head - 1);
+          if (bl >= top && bl <= b.head && bl < doc.lineCount) for (const r of barsOf(bl)) bars.push(r);
         }
       }
     }

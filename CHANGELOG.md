@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.323 (2026-08-21)
+- **Backspace responds again** — the orange pairing added in v4.0.301 asked for the FC blocks on every redraw, and
+  that answer comes from scanning the whole file; the cache is keyed by document version, so every keystroke rebuilt
+  it. Same hole as v4.0.320, in a different place: fixing one caller is not the same as checking them all. The pair is
+  the body line (or its whole table/list) plus the FC lines under it — a few steps either way. 29ms per keystroke → 0.
+- **One rule decides the pin: if the menu holds a single entry, that entry is it.** The first file, the last one left,
+  and one re-added after emptying the list all pin for the same reason instead of each needing its own condition.
+  Releasing a pin still sticks, because pressing 📌 no longer re-records the file.
+
 ### v4.0.322 (2026-08-21)
 - **`×` removes the file from the menu** — it used to only close the tab, so the list never shrank and "the last one
   left" could never happen. The list is meant to grow and shrink with what you are working on, so `×` takes the entry
