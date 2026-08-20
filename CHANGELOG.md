@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.305 (2026-08-20)
+- **Picking a file from ▾ goes back to where that file already lives** — MeOS looks up its tab and reuses that
+  editor group instead of opening a second copy somewhere else. Tab groups are consulted rather than visible editors,
+  so a file sitting behind another tab is still found.
+- **No more tooltips over the menu** — the native `title` popups sat right on top of the list they were describing.
+  Gone; the rows say what they are, and the ▾ uses MeOS's own tip, which is dismissed when the menu opens.
+- **Startup returns you to the line you were last on** — instead of pressing Ⓣ for you. It works in any file, needs no
+  date parsing, and opens whatever membrane that line is inside, which is what the Ⓣ trick was really for. One line
+  number per file, written out only once the cursor has been still. The Ⓣ button itself is unchanged.
+
 ### v4.0.304 (2026-08-20)
 - **The recent-files menu behaves like tabs** — an open file carries a `×` to close it, and an unsaved one shows `●`
   instead, turning back into `×` when you point at it. Files that are not open carry no glyph, because there is

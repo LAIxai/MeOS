@@ -17611,6 +17611,32 @@ function meosRecentWithState() {
     return { name: it.name, path: it.path, open: !!d, dirty: !!(d && d.isDirty) };
   });
 }
+// ★★v4.0.305(俊克 8/20 pm07:43 改良2「ファイルメニューで選択すると、そのファイルが今まで表示していたグループとは
+//   違う領域に表示してしまう。**元のところに既に表示しているファイルに切り替えられないか**?」):
+//   ★★**そのファイルの居場所は、開いているタブが知っている**= タブを探して、その**グループへ戻す**。
+//   ★`visibleTextEditors` では足りない= **見えていないタブ**(そのグループで別のタブが前に居る)は入らない。
+//   タブの一覧(`tabGroups`)なら、隠れていても居場所が分かる。だから新しい所に増やしてしまうことがない。
+function meosTabForPath(p) {
+  try {
+    const path = String(p || '');
+    for (const g of ((vscode.window.tabGroups && vscode.window.tabGroups.all) || [])) {
+      for (const t of (g.tabs || [])) {
+        const u = t && t.input && t.input.uri;
+        if (u && u.scheme === 'file' && u.fsPath === path) return t;
+      }
+    }
+  } catch (_) { }
+  return null;
+}
+function meosColumnForPath(p) {
+  try {
+    const t = meosTabForPath(p);
+    if (t && t.group && t.group.viewColumn) return t.group.viewColumn;          // 既に居るグループへ戻す
+    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;       // 無ければ、今ノートを見ている所へ
+    if (ed && ed.viewColumn) return ed.viewColumn;
+  } catch (_) { }
+  return vscode.ViewColumn.One;
+}
 function postMeDockFile(editor, force) {
   try {
     if (!meDockPanel) return;
@@ -18349,7 +18375,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* {* ▲mCN=dock_css *} */
 </style>
 <!-- {* ▼mCN=dock_html // Me Dock のHTML(画面の骨組み) *} -->
-</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" title="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
+</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" data-tip="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -19298,10 +19324,16 @@ window.__meosRenderRecent=function(){if(!fp.classList.contains('on'))return;
 var list=window.__meosRecent||[],html='';
 for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPath),ep=esc(it.path);
 /* v4.0.304: VS Codeのタブと同じ= 開いていれば × / 未保存なら ●(触れると ×)。開いていなければ印は出さない。 */
-html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-item" data-path="'+ep+'" title="'+ep+'">'+esc(it.name)+'</button>'
- +(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'" title="'+(it.dirty?'Unsaved — close (you will be asked to save)':'Close')+'"></button>'):'')+'</div>';}
+/* ★v4.0.305(俊克 改良1「ファイルメニューのところに、tipが覆いかぶさって、何も見えない」):
+   ★**素の title 属性は消す**= ブラウザ標準のツールチップはMeOSから止められず、開いたメニューの真上に出る(v2.0.38と同じ穴)。
+   名前は行に出ているので、覆ってまで見せるものが無い。
+   ★webviewはテンプレート文字列の中so、コメントにバックティックを書かない(これで5度目) */
+html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
+ +(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'):'')+'</div>';}
 fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
+/* v4.0.305: 開く瞬間にtipを消す(家の作法= 副メニューを開く時は必ずこれを呼ぶ) */
+window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
 if(fp.classList.contains('on')){fp.classList.remove('on');return;}
 fp.classList.add('on');window.__meosRenderRecent();
 /* ★開/未保存は**開いた時に数え直す**(熱い道に印を追いかけさせない)。返事が来たら描き直す。 */
@@ -20098,7 +20130,7 @@ return;}if(m&&m.type==='diaryPattern'){if(typeof window.__onDiaryPattern==='func
 return;}if(m&&m.type==='diaryTestResult'){if(typeof window.__onDiaryTestResult==='function')window.__onDiaryTestResult(m);
 return;}if(m&&m.type==='dockFile'){/* v4.0.303: 版の右のファイル名と、▾の履歴 */
 var _fn=document.getElementById('title-file-name'),_fp=document.getElementById('title-file-pop'),_fc=document.getElementById('title-file-caret');
-if(_fn){_fn.textContent=m.name||'';_fn.title=m.path||m.name||'';}
+if(_fn){_fn.textContent=m.name||'';_fn.setAttribute('data-tip',m.path||m.name||'');_fn.removeAttribute('title');}
 window.__meosRecent=Array.isArray(m.recent)?m.recent:[];window.__meosCurPath=m.path||'';
 if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
@@ -20786,14 +20818,19 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'closeRecent') { // v4.0.304: ×= そのファイルを閉じる(未保存ならVS Codeが訊く)
       try {
         const _p = String(message.path || '');
-        const d = (vscode.workspace.textDocuments || []).find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === _p && !x.isClosed; } catch (_) { return false; } });
-        if (d) { await vscode.window.showTextDocument(d, { preview: false }); await vscode.commands.executeCommand('workbench.action.closeActiveEditor'); }
+        const _tab = meosTabForPath(_p);
+        if (_tab && vscode.window.tabGroups && vscode.window.tabGroups.close) await vscode.window.tabGroups.close(_tab, true);
+        else { const d = (vscode.workspace.textDocuments || []).find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === _p && !x.isClosed; } catch (_) { return false; } }); if (d) { await vscode.window.showTextDocument(d, { preview: false }); await vscode.commands.executeCommand('workbench.action.closeActiveEditor'); } }
         postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true);
       } catch (_) {}
       return;
     }
     if (message && message.type === 'openRecent') { // v4.0.303: ▾の履歴から選んだファイルを開く
-      try { const d = await vscode.workspace.openTextDocument(vscode.Uri.file(String(message.path || ''))); await vscode.window.showTextDocument(d, { preview: false }); } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
+      try {
+        const _p = String(message.path || '');
+        const d = await vscode.workspace.openTextDocument(vscode.Uri.file(_p));
+        await vscode.window.showTextDocument(d, { viewColumn: meosColumnForPath(_p), preview: false }); // v4.0.305: 既に開いている所へ戻る
+      } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
       return;
     }
     if (message && message.type === 'saveFmt') {
@@ -25614,6 +25651,55 @@ function meosApplyFuncDecorations(editor) {
 // 起動直後は mSTAT の⊖に従って膜が畳まれた状態で開くので、生涯日記が「全部畳まれている」ように見える。
 // → **Ⓣ(Today)を自動で1回押す**=今日の日記膜へワープして開く(jumpToWorkingTocItem=H-TOCと同じ「開いて最後にいた行へ」)。
 // 今日の日記が無ければ**何もしない**(手動Ⓣと違い通知も出さない=起動時に驚かせない)。設定 laiMembrane.warpToTodayOnStart で無効化可。
+// ★★v4.0.305(俊克 8/20 pm07:43 別件1「インストール直後に、今日の日記を表示するようにしたけど、**単純に、
+//   最後の行を記憶しておいて、その行にジャンプ**するようにしよう」):
+//   ★★**「今日」より「最後に居た所」の方が、いつでも正しい**。日記でないファイルにも効き、日付の解析も要らない。
+//     v4.0.43でⓉを自動で押したのは「畳まれて見える」を直すためだったが、**戻る場所は本人が最後に居た所**でよかった。
+//   ★覚えるのは**カーソルが止まってから**（打鍵のたびに書かない）。書き出すのはファイルごとに数字1つ。
+//   ★Ⓣそのものは残る＝ **自動で押すのをやめただけ**（手で押せば今までどおり今日の日記へ飛ぶ）。
+const MEOS_LASTLINE_KEY = 'meosLastLine';
+const MEOS_LASTLINE_MAX = 200;                  // 覚えるファイル数の上限(古い物から捨てる)
+let _meosLastLineMem = null, _meosLastLineTimer = null;
+function meosLastLineMap() {
+  if (_meosLastLineMem) return _meosLastLineMem;
+  try { const o = extensionContext && extensionContext.globalState.get(MEOS_LASTLINE_KEY); _meosLastLineMem = (o && typeof o === 'object') ? o : {}; } catch (_) { _meosLastLineMem = {}; }
+  return _meosLastLineMem;
+}
+function meosNoteLastLine(editor) {
+  try {
+    const doc = editor && editor.document;
+    if (!doc || doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) return;
+    const m = meosLastLineMap();
+    m[doc.uri.fsPath] = editor.selection.active.line;
+    if (_meosLastLineTimer) return;                       // 書き出しは手が止まってから1回だけ
+    _meosLastLineTimer = setTimeout(() => {
+      _meosLastLineTimer = null;
+      try {
+        const keys = Object.keys(m);
+        if (keys.length > MEOS_LASTLINE_MAX) for (const k of keys.slice(0, keys.length - MEOS_LASTLINE_MAX)) delete m[k];
+        if (extensionContext) extensionContext.globalState.update(MEOS_LASTLINE_KEY, m);
+      } catch (_) { }
+    }, 4000);
+  } catch (_) { }
+}
+let _meosLastLineDone = false;
+function meosRestoreLastLineOnStart(attempt) {
+  if (_meosLastLineDone) return;
+  try {
+    if (!vscode.workspace.getConfiguration('laiMembrane').get('restoreLastLineOnStart', true)) { _meosLastLineDone = true; return; }
+    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor || (vscode.window.visibleTextEditors || [])[0];
+    if (!ed || !ed.document) { if ((attempt || 0) < 10) setTimeout(() => meosRestoreLastLineOnStart((attempt || 0) + 1), 1500); return; }
+    const doc = ed.document;
+    if (doc.uri.scheme !== 'file' || !meosIsProseDoc(doc)) { _meosLastLineDone = true; return; }
+    const ln = Math.max(0, Math.min(doc.lineCount - 1, Math.trunc(Number(meosLastLineMap()[doc.uri.fsPath]) || 0)));
+    if (!(ln > 0)) { _meosLastLineDone = true; return; }   // 記憶が無い/先頭= 何もしない(起動時に驚かせない)
+    _meosLastLineDone = true;
+    const p = new vscode.Position(ln, 0);
+    ed.selection = new vscode.Selection(p, p);             // カーソルを置く= 畳まれていればVS Codeが開いて見せる
+    ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
+    try { meosDbg('[lastLine] 行 ' + (ln + 1) + ' へ戻した ' + doc.uri.fsPath); } catch (_) { }
+  } catch (_) { _meosLastLineDone = true; }
+}
 let _autoTodayDone = false;
 function autoWarpToTodayOnStart(attempt, manual) {
   if (_autoTodayDone && !manual) return;
@@ -26481,9 +26567,9 @@ makeDecorations();
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
-    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録
-    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); if (e && !_autoTodayDone) setTimeout(() => autoWarpToTodayOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
-  setTimeout(() => autoWarpToTodayOnStart(0), 2200); // v4.0.43: 起動して落ち着いた頃にⓉを自動で1回
+    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); meosNoteLastLine(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
+    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
+  setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、
   // 再インストール/ウィンドウリロードの度に VSCode が 'meDock' タブを復元しようとして残骸化し、拡張側の単一参照
   // meDockPanel がそれを掴めず孤児化→タブが溜まる。単一参照しか見ない toggleMeDock(『みみみ』)は孤児に効かず
