@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.314 (2026-08-21)
+- **The heading timestamp is Created, and Created is written once** — it is the day the writer made this heading, the
+  same thing H-TOC calls Created, and Bird-EV ToDo needs it. Pressing the heading button again now keeps the original
+  time instead of stamping today's.
+- **One line-level instruction per line** — pressing again used to leave the old directive in place and append a new
+  one, so a single heading ended up carrying `H2_2020…` and `H3_2026…` side by side. The new one replaces the old, and
+  the old one's Created is carried across first, so replacing loses nothing.
+- v4.0.313 called the timestamp "just a label for grep". That was wrong. Being forgiving about its *shape* is still
+  right — a bad stamp must not kill a heading — but its *content* is data and is never rewritten on its own.
+
 ### v4.0.313 (2026-08-21)
 - **A malformed timestamp no longer kills the heading** — v4.0.312 matched it against an exact pattern, so deleting one
   bracket from the weekday left the whole instruction unreadable and the heading lost its colour. But the timestamp is

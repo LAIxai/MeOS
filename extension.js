@@ -15096,7 +15096,17 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const _blt = _mk ? ((_mk === '-1') ? '1. ' : '- ') : ''; // v4.0.61: 番号付きは**本物のMarkdown順序付きリスト**(全部 `1.` と書く=レンダラが振り直す・腐らない)
     const _numMk = (_mk === '-1') ? '-1.' : (_mk ? '-' : ''); // v4.0.61(俊克): コメントには**理想の記法**(-1.)を書き残す。行頭の `1. ` が実務を担う。
     // v4.0.64(俊克 改良1): 見出しレベルもコメントで宣言する(`H2` / `-H2` / `-1.H2`)。`#` の後ろの空白を書き忘れても壊れない。
-    const _dirTag = _numMk + 'H' + Math.max(1, Math.min(3, Number(level) || 2)) + (stamp ? ('_' + stamp) : ''); // v4.0.312: H2_TS(grepで探せる一語)
+    // ★★v4.0.314: **Createdは一度きり**。既にこの行に作成時刻が在れば、それを引き継ぐ（押し直しで今の時刻に上書きしない）。
+    //   ★見る順は「真下のFC行」→「行末のコメント」＝ 描く時と同じ順（同じ物差しで同じ物を見る）。
+    let _keepStamp = '';
+    try {
+      const _sl0 = MEOS_SPEC_LINE ? meosSpecLineFor(meosDocLines(doc), ln) : null;
+      let _d0 = (_sl0 && _sl0.line) ? meosLineDirective(_sl0.line) : null;
+      if (!_d0 || !_d0.stamp) { const _c0 = meosLineDirectiveCommentIn(doc.lineAt(ln).text); const _d1 = _c0 ? meosLineDirective(_c0.payload) : null; if (_d1 && _d1.stamp) _d0 = _d1; }
+      if (_d0 && _d0.stamp) _keepStamp = _d0.stamp;
+    } catch (_) { }
+    const _stampOut = _keepStamp || stamp;
+    const _dirTag = _numMk + 'H' + Math.max(1, Math.min(3, Number(level) || 2)) + (_stampOut ? ('_' + _stampOut) : ''); // v4.0.312: H2_TS(grepで探せる一語) / v4.0.314: 作成時刻は引き継ぐ
     const _prose = meosIsProseDoc(doc);
     const newText = _prose
       ? (_indent + _blt + hashes + ' ' + visibleBody + meosSpecComment(_dirTag, hspec))
@@ -15522,9 +15532,27 @@ function meosSpecPayloadKind(payload) {
 //   押した順に末尾へ足すと、右→左の順に押した時に本文と逆になる。同じ向きが2つ在る行では**相手を取り違える**
 //   (読む側は向きごとに出現順で配るため)。→ **新しい命令は、その印の番目に差し込む**。
 //   番目= 本文の中で**カーソルより前に在る印の数**(押した印はカーソルの直前so自分も数に入る)-1。
+// ★★v4.0.314(俊克 8/21 am00:11「このタイムスタンプは名札じゃないよ、**書き手がこの見出しを書いた日付を記録する**
+//   ためのものだよ。つまり、**H-TOCのCreatedに相当する**。…これは**Bird-EV ToDoの必要要件**だよ」):
+//   ★★**私の前提が違っていた**。v4.0.313で「grep用のただの名札」と書いたが、これは**読まれるデータ**。
+//   → 形は緩く受ける（壊れても見出しを殺さない）が、**中身は決して勝手に書き換えない**。
+//   ★★測って出たバグ＝ 既にある見出しをもう一度押すと、**古い命令が残ったまま新しい命令が足されて**いた
+//     （`H2_2020.01.01…` と `H3_2026.08.21…` が並ぶ）。**行に効く命令は1行に1つ**なので、置き換える。
+//   ★置き換えても**Createdは失われない**= 呼ぶ側が古い作成時刻を引き継いでから渡す（Createdは一度きり）。
+function meosSpecLineHasLineBox(text) {
+  try {
+    MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+    while ((m = MEOS_SPEC_LINE_ONE_RE.exec(String(text == null ? '' : text))) !== null) {
+      const d = meosLineDirective((m[2] || '').trim());
+      if (d && (d.bullet || d.level)) return true;
+    }
+  } catch (_) { }
+  return false;
+}
 function meosSpecLineMerge(fcText, newSpec, bodyText, curCh) {
-  const items = String(fcText == null ? '' : fcText).match(/<!--[^\n]*?-->/g) || [];
-  if (!items.length) return String(fcText == null ? '' : fcText) + newSpec;
+  let items = String(fcText == null ? '' : fcText).match(/<!--[^\n]*?-->/g) || [];
+  if (meosSpecLineHasLineBox(newSpec)) items = items.filter(t => !meosSpecLineHasLineBox(t)); // v4.0.314: 行の命令は1つ
+  if (!items.length) return newSpec;
   let k = items.length;
   try {
     const marks = meosMeTexTokens(String(bodyText == null ? '' : bodyText), null);
