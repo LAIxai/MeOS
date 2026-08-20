@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -704,6 +704,58 @@ console.log('㉘ v4.0.301 塊のどの行でも開く / 指定行は本文行で
   // 改行で持ち越す命令
   ok(T.meosCarryItemSpec('-1.1 (白/黄)//[]tip=') === '-1.1 (白/黄)//[]tip=', '階層と色は持ち越す(tipは空にして)', T.meosCarryItemSpec('-1.1 (白/黄)//[]tip='));
   ok(T.meosCarryItemSpec('-1.') === '-1.', '骨だけの命令もそのまま持ち越す', T.meosCarryItemSpec('-1.'));
+}
+
+console.log('㉙ v4.0.302 FCで記号を打ち替えたら、本文の印も従う');
+{
+  const tbl = ['| 品目 | 味 |', '| --- | --- |', '| ==りんご== | **甘い** |', '| ~~みかん~~ | ==酸っぱい== |',
+    '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC == (白/黄) --><!-- Mew!FC ** (白/青) -->', '<!-- Mew!FC ~~ (赤/) --><!-- Mew!FC == (白/緑) -->'];
+  // FC行 ↔ 本文行の対応
+  ok(T.meosFcBodyLineFor(tbl, 6) === 2 && T.meosFcBodyLineFor(tbl, 7) === 3, 'FC群の n 本目 ↔ 塊の n 行目', [T.meosFcBodyLineFor(tbl, 6), T.meosFcBodyLineFor(tbl, 7)]);
+  ok(T.meosFcBodyLineFor(tbl, 4) === 0 && T.meosFcBodyLineFor(tbl, 5) === 1, '置き石の行もヘッダ行/区切り行と対応する', [T.meosFcBodyLineFor(tbl, 4), T.meosFcBodyLineFor(tbl, 5)]);
+  ok(T.meosFcBodyLineFor(tbl, 2) === -1, '本文行を渡しても相手にしない', -1);
+  // 印の位置
+  {
+    const sp = T.meosRowMarkSpans('| ==りんご== | **甘い** |');
+    ok(sp.length === 2 && sp[0].kind === '==' && sp[1].kind === '**', '1行の印を左から順に拾う', sp.map(x => x.kind));
+    ok('| ==りんご== | **甘い** |'.slice(sp[0].bodyStart, sp[0].bodyEnd) === 'りんご', '中身の位置も分かる', 'りんご');
+  }
+  // 変えていない時は動かない
+  ok(T.meosFmtKindFollowPlan(tbl, 6) === null && T.meosFmtKindFollowPlan(tbl, 7) === null, '全部合っている時は何もしない', 'null');
+  // == を ** に打ち替えた時
+  {
+    const L = tbl.slice(); L[6] = '<!-- Mew!FC ** (白/黄) --><!-- Mew!FC ** (白/青) -->';
+    const p = T.meosFmtKindFollowPlan(L, 6);
+    ok(!!p && p.line === 2 && p.to === '**りんご**', '`==`→`**` にすると本文も `**りんご**` になる', p && [p.line, p.to]);
+    ok(!!p && L[2].slice(p.start, p.end) === '==りんご==', '書き換える範囲は、その印1つだけ', p && L[2].slice(p.start, p.end));
+  }
+  // 2行目(下の行)でも同じ
+  {
+    const L = tbl.slice(); L[7] = '<!-- Mew!FC ~~ (赤/) --><!-- Mew!FC *** (白/緑) -->';
+    const p = T.meosFmtKindFollowPlan(L, 7);
+    ok(!!p && p.line === 3 && p.to === '***酸っぱい***', '同じ行の2つ目の印にも当たる', p && [p.line, p.to]);
+  }
+  // 曖昧な時は何もしない
+  {
+    const L = tbl.slice(); L[6] = '<!-- Mew!FC ** (白/黄) --><!-- Mew!FC == (白/青) -->';
+    ok(T.meosFmtKindFollowPlan(L, 6) === null, '2つ以上ずれていたら手を出さない', 'null');
+  }
+  {
+    const L = tbl.slice(); L[6] = '<!-- Mew!FC == (白/黄) -->';
+    ok(T.meosFmtKindFollowPlan(L, 6) === null, '箱の数が印の数と合わなければ手を出さない(打っている途中)', 'null');
+  }
+  // 箇条書きでも同じ道
+  {
+    const L = ['1. ==光る==項目', '1. ふつうの項目', '<!-- Mew!FC -1. --><!-- Mew!FC ~~ (白/黄) -->', '<!-- Mew!FC -1. -->'];
+    const p = T.meosFmtKindFollowPlan(L, 2);
+    ok(!!p && p.line === 0 && p.to === '~~光る~~', '箇条書きでも本文が従う(行の命令は数えない)', p && [p.line, p.to]);
+  }
+  // 見出し(塊でない)= 群の1本目だけが真上に効く
+  {
+    const L = ['## ==見出し==', '<!-- Mew!FC ~~ (白/緑) -->'];
+    const p = T.meosFmtKindFollowPlan(L, 1);
+    ok(!!p && p.line === 0 && p.to === '~~見出し~~', '塊でない行でも効く', p && [p.line, p.to]);
+  }
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

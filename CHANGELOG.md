@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.302 (2026-08-20)
+- **Change the symbol in the FC line and the text follows** — turn a `==` box into `**` and `==apple==` becomes
+  `**apple**` in the row above. Instructions live in the comment, so the comment is what you edit. It finds the change
+  without knowing what it used to be: line up the row's marks against that FC line's boxes and act only when exactly
+  one pair disagrees. Half-typed states simply do not match, so nothing happens until the symbol is whole.
+- **The pair is always orange together** — sit on a row and both that row and its FC line are tinted; sit on the FC
+  line and it stays tinted while the row it belongs to gets its `|` bars tinted instead. The row keeps its own
+  colours: the cursor line is raw text and safe to paint, a decorated row is not, so it is marked without being
+  overwritten.
+
 ### v4.0.301 (2026-08-20)
 - **Any line of the block opens the group** — the FC group belongs to the whole table or list, so put the cursor on
   any row and it opens, with only that row showing its raw text. Previously only the last row triggered it, which was

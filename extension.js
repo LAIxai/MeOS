@@ -15345,6 +15345,70 @@ function meosRowMarksInOrder(text) {
   out.sort((a, b) => a.end - b.end);
   return out;
 }
+// ★★v4.0.302(俊克 8/20 pm06:50「FCで `==` を `**` に変更した時、**表の本文の方も書き換える**ようにして下さい。
+//   これができれば、ものすごく使い易くなるよ」):
+//   ★★**命令はコメントに書く**のがMeOSの立場なので、**コメントを直したら本文が従う**のが筋。
+//     v4.0.290で上付き/下付きの**向き**についてやったことを、**語に効く記法の種類**にも広げる。
+//   ★探し方＝ **その行のFC行の箱の並び**と、**その行の印の並び**を突き合わせる。数が同じで、**食い違いがちょうど1つ**
+//     の時だけ動く。曖昧な時（2つ以上ずれている・数が合わない）は何もしない＝ 書き手の字を勝手に壊さない。
+//   ★★**古い値を知らなくても直せる**のが肝＝ 「何から変えたか」ではなく「**今どこが合っていないか**」を見る。
+//     打っている途中（`=` だけ、`*=` など）は形が崩れて数が合わないので、**自然と何も起きない**。
+// 1行の中の印を、位置ごと返す。印の並びは meosRowMarksInOrder と**同じ物差し・同じ順**(end順)。
+function meosRowMarkSpans(text) {
+  const raw = String(text == null ? '' : text);
+  const masked = meosMaskLinkLabels(raw);
+  const out = [];
+  try {
+    for (const [kind, re] of MEOS_INLINE_MARK_RES) {
+      re.lastIndex = 0; let m;
+      while ((m = re.exec(masked)) !== null) {
+        const w = kind.length + ((m[1] !== undefined) ? 1 : 0);   // 旧形 `=={…}==` は括弧のぶん1文字多い
+        out.push({ kind, start: m.index, end: m.index + m[0].length, bodyStart: m.index + w, bodyEnd: m.index + m[0].length - w });
+      }
+    }
+    for (const mk of meosStarMarks(meosScanText(masked), masked)) out.push({ kind: mk.kind, start: mk.start, end: mk.end, bodyStart: mk.bodyStart, bodyEnd: mk.bodyEnd });
+  } catch (_) { }
+  out.sort((a, b) => a.end - b.end);
+  return out;
+}
+const MEOS_FMT_KINDS = new Set(['==', '~~', '***', '**', '*', '_']);
+// FC行 specLn に対応する本文行を返す。塊(表/箇条書き)なら n 行目どうし、そうでなければ真上の1行。
+function meosFcBodyLineFor(lines, specLn) {
+  if (!lines || specLn <= 0 || !meosIsSpecLine(String(lines[specLn] == null ? '' : lines[specLn]))) return -1;
+  let g = specLn;
+  while (g > 0 && meosIsSpecLine(String(lines[g - 1] == null ? '' : lines[g - 1]))) g--;   // FC群の先頭
+  const head = g - 1;
+  if (head < 0) return -1;
+  const blk = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head);
+  if (!blk) return (specLn === g) ? head : -1;                    // 塊でなければ、群の1本目だけが真上に効く
+  const idx = specLn - g;
+  const ln = blk.start + idx;
+  return (ln >= blk.start && ln <= blk.end) ? ln : -1;
+}
+// この行のFC行を見て、本文の印を1つだけ書き換えるべきか。{ line, start, end, to } か null。
+function meosFmtKindFollowPlan(lines, specLn) {
+  const bodyLn = meosFcBodyLineFor(lines, specLn);
+  if (bodyLn < 0) return null;
+  const body = String(lines[bodyLn] == null ? '' : lines[bodyLn]);
+  const marks = meosRowMarkSpans(body).filter(m => MEOS_FMT_KINDS.has(m.kind));
+  if (!marks.length) return null;
+  const boxes = [];
+  MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let bm;
+  while ((bm = MEOS_SPEC_LINE_ONE_RE.exec(String(lines[specLn] == null ? '' : lines[specLn]))) !== null) {
+    const pay = (bm[2] || '').trim();
+    if (!pay || MEOS_SPEC_LINE_NONE_RE.test(pay)) continue;
+    const k = meosSpecPayloadKind(pay);
+    if (MEOS_FMT_KINDS.has(k)) boxes.push(k);
+  }
+  if (boxes.length !== marks.length) return null;                 // 数が合わない＝ 打っている途中/別の形なので何もしない
+  let hit = -1;
+  for (let i = 0; i < marks.length; i++) { if (marks[i].kind === boxes[i]) continue; if (hit >= 0) return null; hit = i; }
+  if (hit < 0) return null;                                       // 全部合っている＝ 用事は無い
+  const m = marks[hit], to = boxes[hit];
+  const inner = body.slice(m.bodyStart, m.bodyEnd);
+  if (!inner.trim()) return null;
+  return { line: bodyLn, start: m.start, end: m.end, to: to + inner + to };
+}
 // 指定行の **idx 番目(0起点)** に payload を1つ挿す。
 // ★★v4.0.205(俊克 8/14 pm07:46「単純に新しいコメントを1つ挿入するだけで、最後にあったのがこんな移動する筈が
 //   ないでしょ。並べ替えって言っていること自体おかしいよ。**これは挿入なんだよ**」):
@@ -23195,25 +23259,46 @@ function meosDefBlocks(document) {
 //   ★★**位置で対応しているのだから、色でもそう言う**。塊の n 行目に居る時、FC群の n 行目だけを色で名指す。
 //   ★これは v4.0.300 の「形が形を写す」の見える化＝ 並べて読めることを、目でも確かめられるようにする。
 //   ★開いている時にしか意味が無いので、Rawの時と、指定行の中に居る時は何もしない(印は1つだけ)。
-let meosFcRowDeco = null;
+// ★★v4.0.302(俊克 8/20 pm06:50 改良1「FCの行にいる時には、**逆に、対応する行の縦線を橙色に**するといいね。
+//   そして、**FCの行にいるときにも、その行の文字色は橙色のまま**のほうが分かりやすいよ。そして、表の1つの行に
+//   カーソルがあって、**生データが見えたときも、その文字を橙色に**する。**対応する2つが橙色で対応している**ことが
+//   分かり易くなるよ」):
+//   ★★**対になっている2つは、いつも一緒に橙**。どちらに居ても、相手が名乗る。
+//   ★ただし**塗り方は相手によって変える**= カーソル行は生データなので**文字**を塗ってよい。
+//     相手の本文行は装飾が乗っているので、文字を塗ると色を奪う → **縦線(`|`)だけ**を塗る(俊克の指定)。
+//     ★これは「知らせるUIと直すUIを別に作らない」の続き= 同じ1つの対応を、壊さない場所に出す。
+let meosFcRowDeco = null;   // FC行/カーソル行の文字
+let meosFcBarDeco = null;   // 相手の本文行の縦線(表の `|`)
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
   if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-  const out = [];
+  if (!meosFcBarDeco) meosFcBarDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange + ' !important', fontWeight: 'bold', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  const out = [], bars = [];
   try {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
       const line = editor.selection.active.line;
+      const whole = (ln) => new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length);
+      // 表の `|` だけを拾う(`\|` は境目でない=セルの中の縦棒)
+      const barsOf = (ln) => { const t = doc.lineAt(ln).text, r = []; for (let i = 0; i < t.length; i++) { if (t.charAt(i) !== '|' || (i > 0 && t.charAt(i - 1) === '\\')) continue; r.push(new vscode.Range(ln, i, ln, i + 1)); } return r; };
       for (const b of meosFcBlocks(doc)) {
         const top = (b.top == null) ? b.start : b.top;
-        if (line < top || line > b.start) continue;            // 本文の側に居る時だけ
-        const sl = b.start + 1 + (line - top);                 // 塊の n 行目 ↔ FC群の n 行目
-        if (sl > b.start && sl <= b.end && sl < doc.lineCount) out.push(new vscode.Range(sl, 0, sl, doc.lineAt(sl).text.length));
-        break;
+        if (line >= top && line <= b.start) {                  // ① 本文の側に居る= カーソル行は生データso文字を塗る
+          const sl = b.start + 1 + (line - top);
+          if (sl > b.start && sl <= b.end && sl < doc.lineCount) { out.push(whole(sl)); out.push(whole(line)); }
+          break;
+        }
+        if (line > b.start && line <= b.end) {                 // ② FC行の側に居る= その行は橙のまま・相手は縦線だけ
+          out.push(whole(line));
+          const bl = top + (line - b.start - 1);
+          if (bl >= top && bl <= b.start && bl < doc.lineCount) for (const r of barsOf(bl)) bars.push(r);
+          break;
+        }
       }
     }
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
+  try { editor.setDecorations(meosFcBarDeco, bars); } catch (_) { }
 }
 function meosDefBlockFoldingRanges(document) {
   return meosDefBlocks(document).map(b => new vscode.FoldingRange(b.start, b.end, vscode.FoldingRangeKind.Region));
@@ -24077,6 +24162,31 @@ function meosLimitArrowSwap(e) {
       try { meosDbg('[limitSwap] もう片方の上下限を ' + plan.arrow + ' に入れ替えた 行=' + ln + ' 位置=' + plan.at); } catch (_) { }
     } catch (_) { }
     finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosLimitSwapBusy = false; }
+  })();
+  return true;
+}
+// v4.0.302: FC行の記号を打ち替えた直後に、本文の印を1つだけ合わせる（v4.0.290の兄弟）。
+let _meosFmtKindBusy = false;
+function meosFmtKindFollow(e) {
+  if (_meosFmtKindBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
+  const ed = vscode.window.activeTextEditor;
+  const doc = e.document;
+  if (!ed || ed.document !== doc || !meosIsProseDoc(doc) || !MEOS_SPEC_LINE) return false;
+  const c = e.contentChanges[0], t = String(c.text || '');
+  if (t.indexOf('\n') >= 0 || t.length > 3) return false;
+  if (!/^[=*~_]*$/.test(t)) return false;                     // 記号を打った(または消した)時だけ
+  const specLn = c.range.start.line;
+  if (specLn < 0 || specLn >= doc.lineCount) return false;
+  if (!meosIsSpecLine(doc.lineAt(specLn).text)) return false; // 指定行の中の編集だけ
+  const plan = meosFmtKindFollowPlan(meosDocLines(doc), specLn);
+  if (!plan) return false;
+  _meosFmtKindBusy = true; deferRefreshCount++;
+  (async () => {
+    try {
+      await ed.edit(eb => eb.replace(new vscode.Range(plan.line, plan.start, plan.line, plan.end), plan.to), { undoStopBefore: false, undoStopAfter: false });
+      try { meosDbg('[fmtFollow] 本文の印を ' + JSON.stringify(plan.to.slice(0, 20)) + ' に合わせた 行=' + (plan.line + 1)); } catch (_) { }
+    } catch (_) { }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosFmtKindBusy = false; }
   })();
   return true;
 }
@@ -26078,6 +26188,7 @@ makeDecorations();
       if (deferRefreshCount === 0) { try { meosMetexArrowFollow(e); } catch (_) { } } // v4.0.290: 指定行の矢印を直したら本文も従う / v4.0.293: %も向きに付いてくる
       if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
       if (deferRefreshCount === 0) { try { meosLinkUlFollow(e); } catch (_) { } }     // v4.0.298: FC行の(N)を手で直したら、それが最後に決めた下線の種類
+      if (deferRefreshCount === 0) { try { meosFmtKindFollow(e); } catch (_) { } }    // v4.0.302: FC行の記号を打ち替えたら、本文の印も従う
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a
