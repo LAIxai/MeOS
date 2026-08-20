@@ -18077,7 +18077,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <!-- {* ▼mCN=dock_format // Format Me の行(== ~~ A2 ## / 表 / 🐱 / Raw) *} -->
 <div class="row format-tools" id="format-tools"><span class="fmt-label"><span class="fmt-me-box">Format</span> Me</span>
 <span class="fmt-btns">
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once (leave □ Link unchecked in the presets; the button shows the underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (type the URL — or a membrane name to warp there) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once (leave □ Link unchecked in the presets; the button shows the underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
@@ -24134,6 +24134,27 @@ function meosLinkTargetIsFile(document, target) {
   }
   return false;
 }
+// ★★v4.0.296(俊克 8/20 pm00:12「クリップボードに、URLあるいは、膜名が入っていれば、それを自動でFCに書き込んで下さい」):
+//   ★★**行先は、たいてい直前にコピーしている**。URLをコピー → 文字を選ぶ → Opt+click、これで完成する。
+//   ★ただし**貼るのは、行先だと確かめられた時だけ**。クリップボードには関係ない文字が入っている方が多いので、
+//     確かめられない物を行先にすると、書き手が気づかないまま死んだリンクが残る(一番たちの悪い壊れ方)。
+//   ★確かめ方は2つだけ= ①http(s)のURL ②**この文書に実在する膜名**。
+//     ②は描く側と同じ `meosMembraneNameSet` から引く= 行先の字にリンクを張るかどうかを決める物差しと同じ1つ
+//     [[feedback_one_source_for_mark_count_action]]。
+//   ★H-TOCの膜名は grep の検索語なので「まだ無い名前」を書けるのが正しい [[reference_htoc_is_a_grep_query]]。
+//     だがそれは**人が書く時**の話で、**こちらから勝手に書く時**は確かめられる物だけにする。
+//   ★どちらでもなければ今までどおり= 空の `()` にカーソルを置いて待つ。何も失わない。
+function meosClipboardLinkTarget(clip, nameSet) {
+  const t = String(clip == null ? '' : clip).trim();
+  if (!t || t.length > 512) return null;
+  // 行先として**書ける形か**を、読む側と同じ約束で確かめる= 括弧は釣り合った1階層まで(v4.0.79)。
+  //   空白を外すのは書く側の都合= 指定は `[](行先)(N)(色)//tip` と続くので、行先に空白が入ると境目が読みにくい。
+  //   `>` を外すのは指定がHTMLコメントの中に居るから= `-->` が混ざるとコメントがそこで終わる。
+  if (!/^(?:[^()<>\s]|\([^()<>\s]*\))+$/.test(t)) return null;
+  if (/^https?:\/\//i.test(t)) return t;                        // ① URL
+  try { if (nameSet && nameSet.has(t)) return t; } catch (_) { } // ② この文書に実在する膜名
+  return null;
+}
 // v4.0.80: 行先の文字そのものにもMeOSのリンクを張る(膜名の時だけ=URLは内蔵/OSに任せて問題ない)。
 // m=正規表現のマッチ・base=マッチ開始のオフセット。行先は `](` の直後から `)` の手前まで。
 function meosTargetLinks(document, m, base, target) {
@@ -24353,11 +24374,21 @@ async function insertMeLinkTemplate(editor, fg, bg, ul, bold, italic) {
   //   あなたも説明で入れているだけでしょ」): ★そのとおり。**記法は `[**]` で、飾りの `` ` `` は要らない**
   //   (説明の中でコード片に見せるために私が付けていたもの)。読む側は付いていても剥がす=read-both。
   const _lblMark = (bold && italic) ? '***' : bold ? '**' : italic ? '*' : '';
-  const payload = '[' + _lblMark + ']()' + ulPart + color + '//[]tip=';
+  // v4.0.296: 行先をクリップボードから(確かめられた時だけ)。読むのはここ1回・判定は meosClipboardLinkTarget 1つ。
+  let _clipTarget = null;
+  try { _clipTarget = meosClipboardLinkTarget(await vscode.env.clipboard.readText(), meosMembraneNameSet(doc)); } catch (_) { }
+  const payload = '[' + _lblMark + '](' + (_clipTarget || '') + ')' + ulPart + color + '//[]tip=';
   const r = await meosWriteMarkAndSpec(editor, sel, mark, 'link', payload);
   // ★カーソルは**行先の中**で待たせる(そのままURLか膜名を打てば完成)=手打ちからの解放は維持。
   //   v4.0.245: 中に足した時は行先を持たない(親のリンクが持っている)ので、カーソルは動かさない。
   if (_insideLabel) { editor = await meosFocusBack(editor, editor.selection); return; }
+  // v4.0.296: 行先が埋まったなら、待たせる用事が無い= カーソルは本文に置いたまま、書き続けられる。
+  //   ★何を貼ったかは**必ず名乗る**(勝手に書いたものが黙って混ざるのが一番怖い)。ステータスバーに数秒。
+  if (_clipTarget) {
+    try { vscode.window.setStatusBarMessage('🔗 ' + _clipTarget, 4000); } catch (_) { }
+    editor = await meosFocusBack(editor, editor.selection);
+    return;
+  }
   try {
     const d2 = editor.document, st = d2.lineAt(r.fcLn).text;
     const k = st.indexOf('[]()');                      // 行先thatまだ空=今書いたもの

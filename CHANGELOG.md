@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.296 (2026-08-20)
+- **The target comes from the clipboard** — copy a URL, select the words, ⌥Option+Click, done. MeOS writes the
+  target into the FC line for you and tells you what it wrote in the status bar. It only does this when the
+  clipboard content is *verifiable*: an http(s) URL, or a membrane name that actually exists in this document
+  (checked against the same name set the renderer uses). Anything else — prose, multiple lines, unbalanced
+  brackets — is left alone and you get the empty `()` with the cursor waiting in it, exactly as before. Writing an
+  unverified target would leave a dead link the writer never noticed, which is the worst way for this to break.
+
 ### v4.0.295 (2026-08-20)
 - **Option is the button's other face — now a rule, not a one-off** — ⌥Option+Click on the highlight button adds a
   link this once, flipping the preset's `□ Link` without changing the preset. Beginners tick `□ Link` in the ▾ panel;

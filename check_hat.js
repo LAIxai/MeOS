@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -435,7 +435,7 @@ console.log('⑭ 同じ装飾の一部だけ色を変える=外側を割る(v4.0
   ok(!!r3 && r3.pieces === 2 && r3.midIdx === 1, '末尾を選んだ時も2つ(後が空)', r3 && [r3.pieces, r3.midIdx]);
 }
 
-console.log('⑯ v4.0.293/294 — ∫の傾き / 積んだ下付きの左寄せ / %の向き追従 / 上下限のスワップ / FCでない見出し');
+console.log('㉓ v4.0.293/294 — ∫の傾き / 積んだ下付きの左寄せ / %の向き追従 / 上下限のスワップ / FCでない見出し');
 {
   // (改良2a) ∫は「式として書いた時」だけ傾ける。素の字は対象外(判定は基準の字1つ)。
   ok(T.MEOS_MATH_SLANT_RE.test('∫') && T.MEOS_MATH_SLANT_RE.test('∮'), '積分記号の仲間は傾ける相手', '∫∮');
@@ -505,6 +505,32 @@ console.log('⑯ v4.0.293/294 — ∫の傾き / 積んだ下付きの左寄せ 
     const unsigned = '### 見出し<!-- H3 (白/青) -->';
     const h2 = T.meosInlineHeadHit(unsigned);
     ok(!!h2 && h2.fc.spec.indexOf('Mew!FC') >= 0, '鳴いていない見出しも、外へ出す時に Mew!FC が付く', h2 && h2.fc.spec);
+  }
+}
+
+console.log('㉔ v4.0.296 クリップボードの行先 — 確かめられた時だけ貼る');
+{
+  const names = new Set(['hT_122105.511', '0100_CORE_STATE']);
+  const T2 = (c) => T.meosClipboardLinkTarget(c, names);
+  ok(T2('https://zenn.dev/laixai/articles/36c6cc3746140e') === 'https://zenn.dev/laixai/articles/36c6cc3746140e', 'URLはそのまま行先になる', T2('https://zenn.dev/x'));
+  ok(T2('  http://example.com/a  ') === 'http://example.com/a', '前後の空白は落とす', T2('  http://example.com/a  '));
+  ok(T2('https://ja.wikipedia.org/wiki/Foo_(bar)') === 'https://ja.wikipedia.org/wiki/Foo_(bar)', '釣り合った括弧1階層は許す(v4.0.79と同じ約束)', T2('https://x/Foo_(bar)'));
+  ok(T2('https://x/a_(b(c))') === null, '2階層の括弧は断る(読む側が読めない)', T2('https://x/a_(b(c))'));
+  ok(T2('https://x/a)b') === null, '釣り合わない括弧も断る', T2('https://x/a)b'));
+  ok(T2('hT_122105.511') === 'hT_122105.511', 'この文書に実在する膜名は行先になる', T2('hT_122105.511'));
+  ok(T2('0100_CORE_STATE') === '0100_CORE_STATE', '膜名は名前の集合から引く(描く側と同じ物差し)', T2('0100_CORE_STATE'));
+  ok(T2('まだ無い膜名') === null, '実在しない名前は貼らない(こちらから書く時は確かめられる物だけ)', T2('まだ無い膜名'));
+  ok(T2('ちょっとメモした文章です') === null, 'ただの散文は行先にしない', T2('ちょっとメモした文章です'));
+  ok(T2('複数行\nのテキスト') === null, '複数行は断る(行が壊れる)', T2('複数行\nのテキスト'));
+  ok(T2('') === null && T2(null) === null && T2('   ') === null, '空なら何もしない(今までどおり空の()で待つ)', 'null');
+  ok(T2('x'.repeat(600)) === null, '長すぎるものは断る', 'null');
+  ok(T2('a<b>c') === null, '`<` `>` は断る(指定はHTMLコメントの中に居る)', T2('a<b>c'));
+  // 貼った行先が、読む側でそのまま読めること(書く形と読む形が噛み合っているか)
+  {
+    const url = 'https://ja.wikipedia.org/wiki/Foo_(bar)';
+    const m = T.MEOS_LINK_SPEC_RE.exec('[](' + url + ')(0)(白/黄)//[]tip=');
+    ok(!!m && m[2] === url, '書いた行先を指定の読み口で取り出せる(括弧つきURLでも)', m && m[2]);
+    ok(!!m && m[3] === '(0)(白/黄)//[]tip=', '後ろの (N)(色)//tip も巻き込まない', m && m[3]);
   }
 }
 
