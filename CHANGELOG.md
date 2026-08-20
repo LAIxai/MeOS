@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.301 (2026-08-20)
+- **Any line of the block opens the group** — the FC group belongs to the whole table or list, so put the cursor on
+  any row and it opens, with only that row showing its raw text. Previously only the last row triggered it, which was
+  the one line nobody thinks to click. The *folding* range is unchanged, so the table itself is never folded away.
+- **The matching FC line is coloured** — sit on the *n*-th row and the *n*-th line below is tinted, so "they line up"
+  is something you see rather than something you count.
+- **A spec line is never a body line** — with multi-line FC groups each FC line suddenly had another FC line beneath
+  it, so the "read the spec below" path picked up its own neighbour and drew a list number on the comment. One guard
+  fixes it. (What looked like "the last comment is missing its `1.`" was the other three wrongly having one.)
+- **Enter inside a block-formed list adds the item inside the block** — the new item lands right under the current
+  one and a matching FC line is inserted at its position in the group, instead of both being appended after the whole
+  group. Ending the list on an empty item drops just that item and its one line.
+
 ### v4.0.300 (2026-08-20)
 - **The FC group mirrors the shape of the block** — one FC line per table row, one per list item, so the *n*-th line
   below matches the *n*-th line above. You do not count boxes any more; you line the two up and read. Lines with

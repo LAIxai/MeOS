@@ -6555,7 +6555,12 @@ function applyPrettyLabels(editor) {
       }
       // v4.0.138: 行末に**行単位の指定が無い**時は、真下の指定行(Mew!^)を読む。
       //   位置は「行末の長さゼロのコメント」として渡す=本文の終わりは行末のまま・隠す範囲は空(消す物が無い)。
-      if (!dir && MEOS_SPEC_LINE) {
+      // ★★v4.0.301(俊克 8/20 pm05:51 バグ1「最後のFCコメントだけ、行頭の「1.」が見えないのも変だよね」):
+      //   ★**逆で、他のFCコメントに `1.` が出ていたのが誤り**。v4.0.300でFC群が複数行になった瞬間、
+      //   **FC行の真下にもFC行that在る**ことになり、「真下の指定行」を読む道that自分自身の隣を拾って、
+      //   コメント行を箇条書きの項目として描いていた(最後の1本だけは下にFC行thatが無いので出なかった＝俊克の見た形)。
+      //   ★直し= **指定行は、本文行ではない**。この1行で足りる(印を出す所も数える所も、同じ物差しに揃う)。
+      if (!dir && MEOS_SPEC_LINE && !meosIsSpecLine(text)) {
         try {
           // ★v4.0.299: 箇条書きは**塊の下にまとめた指定**を先に見る(表と同じ扱い)。無ければ従来どおり真下の1行。
           const _ls = meosListLineSpecFor(_allLines, line);
@@ -11392,6 +11397,7 @@ function _refreshInner(editor) {
   try { meosApplyTableFitDecorations(editor); } catch (_) {} // v4.0.116: 広い表をペイン幅に収める(列ごとに縮小・生データ不変)
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
+  try { meosApplyFcRowDecorations(editor); } catch (_) {} // v4.0.301: 今いる行に対応するFC行を色で名指す
   try { meosApplyMeLinkDecorations(editor); } catch (_) {} // v4.0.8: ノート内リンク(コメント包み)の整形
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
   try { meosApplyBoldDecorations(editor); } catch (_) {} // v3.7.0: 太字/斜体 **text**/***text***(同一行内・Raw/隔離時は解除)
@@ -14029,12 +14035,49 @@ async function meosContinueListOnEnterFC(editor, pos) {
   const indent = m[1], marker = m[2], gap = m[3], body = m[4];
   if (pos.line === bodyLn && pos.character < (indent + marker + gap).length) { _dbg('マーカーの中/左'); return false; } // 既定のEnterに譲る
   _dbg('継続する body=' + bodyLn + ' specEnd=' + specEnd);
+  // ★★v4.0.301(俊克 8/20 pm05:51 バグ2「四番目という行で改行して、五番目という項目を追加しようとすると…」):
+  //   ★**塊の形になっているリストでは、新しい項目は塊の中へ入れる**。今までの作りは「本文＋その真下の指定行」で
+  //   1つの項目という前提so、指定行の**下**に新しい項目を足していた= 五番目とその指定thatFC群の外に出てしまう。
+  //   ★入れる所は2か所= ①本文はこの項目の**すぐ下** ②指定はFC群の**この項目の次の位置**。
+  //   ★どちらも元の行番号で書くso、1回の編集で同時に置ける(位置thatずれない)。
   const specEndText = doc.lineAt(specEnd).text;
-  if (!body.trim()) {                                          // 空項目 → リストを終える(本文と指定行をまとめて畳む)
-    const r = new vscode.Range(new vscode.Position(bodyLn, 0), new vscode.Position(specEnd, specEndText.length));
+  // 塊の形になっているリストなら、この項目に**対応するFC行**が在る。足す時も終える時も、そこを相手にする。
+  const _lsHit = (() => { try { const _l = meosListLineSpecFor(meosDocLines(doc), bodyLn); if (!_l) return null;
+    const _sl = _l.blk.end + 1 + _l.idx;
+    return (_sl < doc.lineCount && meosIsSpecLine(doc.lineAt(_sl).text)) ? { ls: _l, specLn: _sl } : null; } catch (_) { return null; } })();
+  if (!body.trim()) {                                          // 空項目 → リストを終える
+    if (_lsHit) {                                              // ★v4.0.301: 塊の形= **その項目とその1本だけ**を落とす(FC群は残す)
+      await editor.edit(eb => {
+        eb.delete(new vscode.Range(new vscode.Position(bodyLn, 0), new vscode.Position(bodyLn + 1, 0)));
+        eb.delete(new vscode.Range(new vscode.Position(_lsHit.specLn, 0), new vscode.Position(_lsHit.specLn + 1, 0)));
+      });
+      const p0 = new vscode.Position(bodyLn, 0);
+      editor.selection = new vscode.Selection(p0, p0);
+      _dbg('塊から1項目ぶん落とした item=' + (bodyLn + 1) + ' spec=' + (_lsHit.specLn + 1));
+      return true;
+    }
+    const r = new vscode.Range(new vscode.Position(bodyLn, 0), new vscode.Position(specEnd, specEndText.length)); // 本文と指定行をまとめて畳む
     await editor.edit(eb => eb.replace(r, indent));
     const p = new vscode.Position(bodyLn, indent.length);
     editor.selection = new vscode.Selection(p, p);
+    return true;
+  }
+  // ★★v4.0.301(俊克 8/20 pm05:51 バグ2「四番目という行で改行して、五番目という項目を追加しようとすると…」):
+  //   ★**塊の形になっているリストでは、新しい項目は塊の中へ入れる**。今までの作りは「本文＋その真下の指定行」で
+  //   1つの項目という前提なので、指定行の**下**に新しい項目を足していた＝ 五番目とその指定がFC群の外へ出てしまう。
+  //   ★入れる所は2か所＝ ①本文はこの項目の**すぐ下** ②指定はFC群の**この項目の次の位置**。
+  //   ★どちらも元の行番号で書くので、1回の編集で同時に置ける(位置がずれない)。
+  if (_lsHit) {
+    const _carried = meosCarryItemSpec(_lsHit.ls.text || '');
+    const _next = /^\d+[.)]$/.test(marker) ? ('1' + marker.slice(-1)) : marker;
+    const _newItem = indent + _next + gap;
+    await editor.edit(eb => {
+      eb.insert(new vscode.Position(bodyLn, doc.lineAt(bodyLn).text.length), '\n' + _newItem);
+      eb.insert(new vscode.Position(_lsHit.specLn, doc.lineAt(_lsHit.specLn).text.length), '\n' + meosSpecLineBox(_carried || meosListItemDefaultDirective(bodyText) || '-1.'));
+    });
+    const _p = new vscode.Position(bodyLn + 1, _newItem.length);
+    editor.selection = new vscode.Selection(_p, _p);
+    _dbg('塊の中へ足した item=' + (bodyLn + 2) + ' spec=' + (_lsHit.specLn + 2));
     return true;
   }
   const sp = meosSpecLineFor(meosDocLines(doc), bodyLn);
@@ -23135,12 +23178,42 @@ function meosDefBlocks(document) {
       //   (俊克「空行を削除すれば、基準の文字列についた折畳みマークで畳める」= 空行を消さなくても済むようにした)
       let head = ln - 1;
       while (head > 0 && !String(lines[head] || '').trim()) head--;
-      if (!isDef(lines[head])) out.push({ start: head, end: e, fc });
+      // ★★v4.0.301(俊克 8/20 pm05:51 改良1「テーブルもそうなんだけど、**最後の行にカーソルthat入った時だけ**、
+      //   FCコメントthat出る。これthat分かりにくい。**どの行でもFCコメントthat出て、その行だけ生データになるべき**」):
+      //   ★FC群の持ち主は**塊ぜんぶ**(表なら表全体・箇条書きならリスト全体)so、開く合図もそこから出す。
+      //   ★畳む範囲(start..end)は今までどおり= **表そのものを畳んでしまわない**。開く合図の範囲(top)だけを広げる。
+      let top = head;
+      try { const _b = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head); if (_b) top = _b.start; } catch (_) { }
+      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc });
       ln = e;
     }
   } catch (_) { }
   try { const _ms = Date.now() - _t0; if (_ms > 30 && meosIsRealFileDoc(document)) meosDbg('[fcScan] ' + _ms + 'ms lines=' + document.lineCount + ' blocks=' + out.length); } catch (_) { }
   return out;
+}
+// ★v4.0.301(俊克 8/20 pm05:51 改良1の後半「できれば、**その行に対応するFCコメントの文字色を変える**と分りやすい」):
+//   ★★**位置で対応しているのだから、色でもそう言う**。塊の n 行目に居る時、FC群の n 行目だけを色で名指す。
+//   ★これは v4.0.300 の「形が形を写す」の見える化＝ 並べて読めることを、目でも確かめられるようにする。
+//   ★開いている時にしか意味が無いので、Rawの時と、指定行の中に居る時は何もしない(印は1つだけ)。
+let meosFcRowDeco = null;
+function meosApplyFcRowDecorations(editor) {
+  if (!editor || !editor.document) return;
+  if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  const out = [];
+  try {
+    const doc = editor.document;
+    if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
+      const line = editor.selection.active.line;
+      for (const b of meosFcBlocks(doc)) {
+        const top = (b.top == null) ? b.start : b.top;
+        if (line < top || line > b.start) continue;            // 本文の側に居る時だけ
+        const sl = b.start + 1 + (line - top);                 // 塊の n 行目 ↔ FC群の n 行目
+        if (sl > b.start && sl <= b.end && sl < doc.lineCount) out.push(new vscode.Range(sl, 0, sl, doc.lineAt(sl).text.length));
+        break;
+      }
+    }
+  } catch (_) { }
+  try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
 }
 function meosDefBlockFoldingRanges(document) {
   return meosDefBlocks(document).map(b => new vscode.FoldingRange(b.start, b.end, vscode.FoldingRangeKind.Region));
@@ -23285,7 +23358,7 @@ async function meosSyncFcFoldForCursor(editor) {
     //   畳まれていれば**何もしない**(二度打ちthatが膜に化ける事故を、原理的に起こさない)。
     const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
     const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしないで出る
-    const hit = blocks.find(b => line >= b.start && line <= b.end);
+    const hit = blocks.find(b => line >= ((b.top == null) ? b.start : b.top) && line <= b.end); // v4.0.301: 塊のどの行でも開く
     if (hit) {
       if (_meosFcOpen !== hit.start) {
         if (_meosFcOpen != null) await foldIfVisible(_meosFcOpen);

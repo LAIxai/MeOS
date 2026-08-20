@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -672,6 +672,38 @@ console.log('㉗ v4.0.300 FC群は塊の形を写す — 1行に1本・指定の
     const ls0 = T.meosListLineSpecFor(L, 0), ls1 = T.meosListLineSpecFor(L, 1);
     ok(!!ls0 && ls0.text === '-1.' && !!ls1 && ls1.text === '-1.1', '1項目=1本のFC群が、そのまま配られる', [ls0 && ls0.text, ls1 && ls1.text]);
   }
+}
+
+console.log('㉘ v4.0.301 塊のどの行でも開く / 指定行は本文行ではない / 改行は塊の中へ');
+{
+  let _v = 0;
+  // ★行配列は「uri@version」で覚えられているので、検査でも**版を変える**(同じ鍵だと前の文書が返る=一度これで嵌まった)
+  const mkDoc = (L) => ({ lineCount: L.length, isClosed: false, version: ++_v,
+    uri: { toString: () => 'file:///z', scheme: 'file' }, eol: 1,
+    getText: () => L.join('\n'), lineAt: (n) => ({ text: L[n] || '' }) });
+  // 開く合図の範囲= 塊ぜんぶ / 畳む範囲= 今までどおり
+  {
+    const L = ['1. 一', '1. 二', '1. 三', '<!-- Mew!FC -1. -->', '<!-- Mew!FC -1. -->', '<!-- Mew!FC -1. -->'];
+    const b = T.meosDefBlocks(mkDoc(L))[0];
+    ok(!!b && b.top === 0, '開く合図はリストの先頭から(どの項目でも開く)', b && b.top);
+    ok(!!b && b.start === 2 && b.end === 5, '畳む範囲は最後の項目〜FC群の末尾(リスト自体は畳まない)', b && [b.start, b.end]);
+  }
+  {
+    const L = ['| a | b |', '| --- | --- |', '| ==x== | y |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC == (白/黄) -->'];
+    const b = T.meosDefBlocks(mkDoc(L))[0];
+    ok(!!b && b.top === 0 && b.start === 2, '表もヘッダ行から開く', b && [b.top, b.start]);
+  }
+  {
+    const L = ['## 見出し', '<!-- Mew!FC H2 (白/緑) -->'];
+    const b = T.meosDefBlocks(mkDoc(L))[0];
+    ok(!!b && b.top === 0 && b.start === 0, '塊でない行は今までどおり(topとstartが同じ)', b && [b.top, b.start]);
+  }
+  // 指定行は本文行ではない(バグ1の相手)
+  ok(T.meosIsSpecLine('<!-- Mew!FC -1. -->'), 'FC行はFC行と分かる', true);
+  ok(!T.meosIsSpecLine('1. 一番目'), '項目はFC行ではない', false);
+  // 改行で持ち越す命令
+  ok(T.meosCarryItemSpec('-1.1 (白/黄)//[]tip=') === '-1.1 (白/黄)//[]tip=', '階層と色は持ち越す(tipは空にして)', T.meosCarryItemSpec('-1.1 (白/黄)//[]tip='));
+  ok(T.meosCarryItemSpec('-1.') === '-1.', '骨だけの命令もそのまま持ち越す', T.meosCarryItemSpec('-1.'));
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
