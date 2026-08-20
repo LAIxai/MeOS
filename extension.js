@@ -17751,7 +17751,23 @@ function meosColumnForPath(p) {
   } catch (_) { }
   return vscode.ViewColumn.One;
 }
-function postMeDockFile(editor, force) {
+// ★★v4.0.322(俊克 8/21 am02:15「ピンを外して、×ボタンを1つずつ押して行ったが、**メニューからそのファイルが
+//   消えない**。そのため、最後に残ったのに自動でピンが付くかどうか確認できない」):
+//   ★★**× の意味が食い違っていた**。私は「タブを閉じる」と作ったが、俊克の言う「最初に読み込んだ／最後に残った」は
+//   **この一覧that増えたり減ったりする**ことを前提にしている。減らなければ「最後の1つ」は永遠に来ない。
+//   → **× は、この一覧から外す**（開いていればタブも閉じる）。俊克の流れ「📌を外してから×」がそのまま通る。
+//   ★soどの行にも × を出す（留めた行を除く）＝ 閉じる物that無くても「一覧から外す」ことはできる。
+function meosRecentRemove(p) {
+  try {
+    const path = String(p || '');
+    const left = meosRecentList().filter(x => x.path !== path);
+    if (extensionContext) extensionContext.globalState.update(MEOS_RECENT_KEY, left);
+    // ★俊克「**最後に残った1つも、必然的にピン留め**なんだよ」= 1本だけになったら、それthat要のファイル。
+    //   ★留めを自分で外した後は**外れたまま**（v4.0.321）so、外して×を押せば空にできる＝ 行き止まりにならない。
+    if (left.length === 1 && !meosPinned() && extensionContext) extensionContext.globalState.update(MEOS_PIN_KEY, left[0]);
+  } catch (_) { }
+}
+function postMeDockFile(editor, force, skipPush) {
   try {
     if (!meDockPanel) return;
     const doc = editor && editor.document;
@@ -17759,7 +17775,7 @@ function postMeDockFile(editor, force) {
     const path = (doc && doc.uri.scheme === 'file') ? doc.uri.fsPath : '';
     if (!force && _meosLastDock.panel === meDockPanel && _meosLastDock.path === path) return;   // 変わっていない=何もしない
     _meosLastDock = { panel: meDockPanel, path };
-    if (doc) meosRecentPush(doc);
+    if (doc && !skipPush) meosRecentPush(doc); // v4.0.322: ×で外した直後は積み直さない(消したそばから戻る事故)
     meDockPanel.webview.postMessage({ type: 'dockFile', name, path, recent: meosRecentWithState() });
   } catch (_) { }
 }
@@ -19463,8 +19479,9 @@ for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPat
    未保存だけは知りたいので、●は**押せない印**として出す(触れても×に化けない)。 */
 html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-pin'+(it.pinned?' on':'')+'" data-pin="'+ep+'"></button>'
  +'<button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
+/* v4.0.322: ×は「一覧から外す」so、開いていない行にも出す。留めた行だけは出さない(未保存の●は押せない印) */
  +(it.pinned?(it.dirty?'<button class="title-file-x dirty" disabled></button>':'')
-   :(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'):''))+'</div>';}
+   :('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'))+'</div>';}
 fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 /* v4.0.305: 開く瞬間にtipを消す(家の作法= 副メニューを開く時は必ずこれを呼ぶ) */
@@ -20967,7 +20984,8 @@ function toggleMeDock(editorOverride) {
         const _tab = meosTabForPath(_p);
         if (_tab && vscode.window.tabGroups && vscode.window.tabGroups.close) await vscode.window.tabGroups.close(_tab, true);
         else { const d = (vscode.workspace.textDocuments || []).find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === _p && !x.isClosed; } catch (_) { return false; } }); if (d) { await vscode.window.showTextDocument(d, { preview: false }); await vscode.commands.executeCommand('workbench.action.closeActiveEditor'); } }
-        postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true);
+        meosRecentRemove(_p);                                   // v4.0.322: 一覧からも外す(これが×の本体)
+        postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true, true);
       } catch (_) {}
       return;
     }

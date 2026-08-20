@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.322 (2026-08-21)
+- **`×` removes the file from the menu** — it used to only close the tab, so the list never shrank and "the last one
+  left" could never happen. The list is meant to grow and shrink with what you are working on, so `×` takes the entry
+  out (closing the tab too, if it is open) and appears on every row rather than only the open ones.
+- **When one entry remains it becomes the pin**, as with the first file. Releasing a pin still sticks, so unpin then
+  `×` empties the menu — the flow does not dead-end.
+
 ### v4.0.321 (2026-08-21)
 - **A pin can be removed again** — v4.0.320's auto-pin fired whenever nothing was pinned, so releasing one instantly
   pinned it back and the last remaining file could never be closed. Auto-pinning is a starting value, not a rule: it
