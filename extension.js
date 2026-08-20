@@ -17676,6 +17676,12 @@ function meosRecentPush(doc) {
     const list = meosRecentList().filter(x => x.path !== path);
     list.unshift({ name, path });
     if (extensionContext) extensionContext.globalState.update(MEOS_RECENT_KEY, list.slice(0, MEOS_RECENT_MAX));
+    // ★★v4.0.320(俊克 8/21 am01:53「**最初に読み込んだのが先ずはピン留め**だよ。そして、**最後に残った1つも、
+    //   必然的にピン留め**なんだよ。だから、最初も最後もピン留めを自分でする必要がない」):
+    //   ★**留めていない状態が、そもそも要らなかった**。1本しか無い時は、それが要のファイルに決まっている。
+    //   → 留めが無ければ、**今の1本を留める**。以後は留めが履歴から溢れないので、最後に残るのも自然にそれになる。
+    //   ★消したい時は俊克の言うとおり= **📌を外してから×**（外す道は残す＝ 決めるのは人）。
+    try { if (!meosPinned() && extensionContext) extensionContext.globalState.update(MEOS_PIN_KEY, { name, path }); } catch (_) { }
   } catch (_) { }
 }
 // ★これは**カーソルを動かすたびに通る道**(postFixedWorkingTocSnapshot)から呼ばれるので、
@@ -24519,14 +24525,24 @@ function meosCheckStampPendingAt(doc, line) {
   } catch (_) { return null; }
 }
 // カーソルの居る塊の範囲（見出しの本文行＋FC行）。塊でなければその行だけ。
+// ★★v4.0.320(俊克 8/21 am01:53「見出しボタンを押して変換するまでに、**数秒のタイムラグ**がある。前は即変換されていた」):
+//   ★★**私が昨夜入れたこの道が犯人**。v4.0.319 で `meosFcBlocks` を呼んでいたが、それは**全文を走る**。
+//   しかも覚え書きは「uri@版」で持つので、**打つたびに版が変わって作り直し**＝ 14万行で1回28ms を
+//   **選択が動くたびに払う**ことになっていた（実測 5回で169ms）。
+//   ★★**全行を回るパスに何かを足す時は、必ず先に測る**——今日4度目（v4.0.113 / v4.0.154 / v4.0.299 は
+//   測って避けた／ここは測らずに出してしまった）。
+//   → **カーソルの周りだけ見る**。塊は「本文行＋続くFC行」so、上下に数行歩けば分かる（O(数行)）。
 function meosCheckStampRange(doc, line) {
   try {
-    for (const b of meosFcBlocks(doc)) {
-      const top = (b.top == null) ? b.start : b.top;
-      if (line >= top && line <= b.end) return { from: top, to: b.end };
+    let from = line, to = line;
+    while (to + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(to + 1).text)) to++;       // 下へ= 続くFC行
+    if (meosIsSpecLine(doc.lineAt(line).text)) {                                          // FC行に居るなら
+      let f = line;
+      while (f > 0 && meosIsSpecLine(doc.lineAt(f - 1).text)) f--;
+      from = Math.max(0, f - 1);                                                          // 群の1つ上＝本文行
     }
-  } catch (_) { }
-  return { from: line, to: line };
+    return { from, to };
+  } catch (_) { return { from: line, to: line }; }
 }
 function meosCheckStampWatch(editor) {
   if (_meosCheckStampBusy || !editor || !editor.document) return;

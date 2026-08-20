@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.320 (2026-08-21)
+- **The heading button is instant again** — last night's check-time watcher asked for the FC block on every cursor
+  move, and that answer is computed by scanning the whole file. The cache is keyed by document version, so every
+  keystroke threw it away: 28ms per scan, paid over and over (169ms across five moves in a 140k-line test). The block
+  is the body line plus the FC lines under it, which is a few steps up and down — no full scan needed. Measured at 0ms.
+- **The first file you open is pinned for you** — and since a pin never falls out of the list, the last one left is
+  the pinned one. Neither end needs pinning by hand. To close the last one, unpin it first, then `×`.
+
 ### v4.0.319 (2026-08-21)
 - **The check time lands when you leave, not while you type** — v4.0.318 stamped on the first keystroke, which with
   an IME means the first *kana*: typing 済 produced `[す 2026…]`. Waiting for Cmd+S was too late and nobody remembers
