@@ -23345,7 +23345,21 @@ const MEOS_LIMIT_NARROW_W = 0.55;  // 細い演算子の見た目の幅(桁に�
 //   → **式として書いた時だけ傾ける**。「式として書いた」の判定は既に在るものをそのまま使う=
 //     **上下限(👒)か肩/腰(↑↓)を持っている**時。素の文中の `∫` は1文字も変わらない(安全側が既定)。
 //   ★Σ/Πは立った字が正しいので入れない= 傾けるのは積分記号の仲間だけ。
+// ★★v4.0.294(俊克 8/20 バグ1「∫が斜め文字にならないよ。なぜ?」): ★**フォントに頼んでも傾かない**。
+//   測って一発で出た= Menlo-Italic の `∫` は Menlo-Regular と**まったく同じ字形**(外接矩形が1/10ptも違わない)。
+//   同じ測り方で `f` と `A` は別字形になる。→ **記号類は斜体フェースでも傾けない**、というのがフォント側の設計。
+//     U+222B regular x=6.3 w=47.6 | italic x=6.3 w=47.6  同じ=YES
+//     U+0066 regular x=9.5 w=42.4 | italic x=12.9 w=47.9  同じ=no
+//   ★`font-style: italic` は「フォントに斜体の字を出してくれ」と**頼む**命令なので、持っていない相手には効かない。
+//   → **自分で傾ける**(skewX)。字形に頼らないので、どのフォントでも同じだけ傾く。
+//   ★`transform` は**レイアウトを1pxも動かさない**(送り幅も桁位置もそのまま)= 隠す/測る側は何も変えなくていい。
+//   ★中心を軸にする= 頭が右・足が左へ出る。積んだ上限(右上)と下限(左下)の置き方と、向きがそのまま揃う。
+const MEOS_MATH_SLANT_DEG = 12;   // 傾ける角度(数学の組版の積分記号はおよそ10〜15°)
 const MEOS_MATH_SLANT_RE = /^[∫∬∭∮]+$/u;
+// 傾けるCSS。`transform` は inline のままだと効かないので、箱にする(幅も基準線も変わらない)。
+function meosMathSlantCss() {
+  return 'none; display: inline-block; transform: skewX(-' + MEOS_MATH_SLANT_DEG + 'deg); transform-origin: 50% 50%;';
+}
 // ★★v4.0.278(俊克 8/19「ひらめいた。テーブルでは、上下のセルを結合して使えばいいんじゃない?」):
 //   ★**余地that在るかどうかを、書き手that結合で宣言できる**。MeOSの縦結合(🤝↓N)は、結合した所の
 //   **横罫線を引かない**so、そのセルには上下に置く余地that生まれる。→ v4.0.277の規則
@@ -23970,8 +23984,8 @@ function meosApplyMeTexDecorations(editor) {
     if (!meTexLimitDeco2) meTexLimitDeco2 = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meTexLimitDeco, limitUpItems);
     editor.setDecorations(meTexLimitDeco2, limitDownItems);
-    // v4.0.293: 式の∫を傾ける。見出しの装飾と同じspanに乗るので `!important`(v4.0.135と同じ癖)。
-    if (!meTexSlantDeco) meTexSlantDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-style: italic !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    // v4.0.293/294: 式の∫を傾ける。フォントの斜体は効かないので自分で傾ける(meosMathSlantCss)。
+    if (!meTexSlantDeco) meTexSlantDeco = vscode.window.createTextEditorDecorationType({ textDecoration: meosMathSlantCss(), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meTexSlantDeco, slantRanges);
     for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
     for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }

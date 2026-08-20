@@ -4,9 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.294 (2026-08-20)
+- **Integrals lean — for real this time** — `font-style: italic` never moved the `∫`, and measuring said why:
+  Menlo-Italic's integral is the *same glyph* as Menlo-Regular's (symbols are not slanted in an italic face), while
+  `f` and `A` genuinely differ. Asking the font was the wrong move, so MeOS now slants it itself with `skewX(-12°)`
+  about the glyph's centre — head to the right, foot to the left, matching where the two limits sit. `transform`
+  changes no layout at all, so widths, columns and hit-testing are untouched.
+
 ### v4.0.293 (2026-08-20)
 - **Integrals lean** — an `∫` that carries limits (either `∫↑(5)↓(0)` or the `👒` form) is now rendered
-  italic, the way maths is set. A bare `∫` in prose is untouched: the base character declares whether it is a
+  slanted, the way maths is set. A bare `∫` in prose is untouched: the base character declares whether it is a
   formula. The stacked lower limit also shifts slightly left, since a slanted sign puts its foot to the left of its head.
 - **The height follows the direction** — flip `↑` to `↓` in an FC line and the `{N%}` is rewritten to that
   direction's configured default. 150% ("top of the base character") and 50% ("on the baseline") are one-way words;

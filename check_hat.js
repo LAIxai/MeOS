@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -435,7 +435,7 @@ console.log('⑭ 同じ装飾の一部だけ色を変える=外側を割る(v4.0
   ok(!!r3 && r3.pieces === 2 && r3.midIdx === 1, '末尾を選んだ時も2つ(後が空)', r3 && [r3.pieces, r3.midIdx]);
 }
 
-console.log('⑮ v4.0.293 — ∫の傾き / 積んだ下付きの左寄せ / %の向き追従 / 上下限のスワップ / FCでない見出し');
+console.log('⑯ v4.0.293/294 — ∫の傾き / 積んだ下付きの左寄せ / %の向き追従 / 上下限のスワップ / FCでない見出し');
 {
   // (改良2a) ∫は「式として書いた時」だけ傾ける。素の字は対象外(判定は基準の字1つ)。
   ok(T.MEOS_MATH_SLANT_RE.test('∫') && T.MEOS_MATH_SLANT_RE.test('∮'), '積分記号の仲間は傾ける相手', '∫∮');
@@ -447,6 +447,14 @@ console.log('⑮ v4.0.293 — ∫の傾き / 積んだ下付きの左寄せ / %�
     ok(T.MEOS_MATH_SLANT_RE.test(base), '肩/腰を持った ∫ は式=傾ける', base);
     const pairs = T.meosMeTexStackPairs(line, toks);
     ok(pairs.length === 1 && pairs[0].baseText === '∫', '↓と↑が続けて書かれたら積む対になる', pairs.length && pairs[0].baseText);
+  }
+  // (v4.0.294) フォントの斜体は ∫ を傾けない(実測)ので、自分で傾ける。
+  {
+    const css = T.meosMathSlantCss();
+    ok(/skewX\(-12deg\)/.test(css), '角度を書いた skewX で傾ける(フォントに頼まない)', css);
+    ok(/display: inline-block/.test(css), 'transform は inline のままだと効かないので箱にする', css);
+    ok(/transform-origin: 50% 50%/.test(css), '中心を軸に= 頭が右・足が左(上限/下限の置き方と揃う)', css);
+    ok(css.indexOf('font-style') < 0, 'font-style は使わない(Menlo-Italic の ∫ は Regular と同じ字形)', css);
   }
   // (改良2b) 積んだ対の下側だけ左へ寄る。上側(2つ目=戻す方)は今までどおり。
   {
