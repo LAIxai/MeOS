@@ -58,6 +58,9 @@ function mkEditor(text, selStart, selEnd) {
       ops.sort((a, b) => b.s - a.s);
       for (const o of ops) doc.text = doc.text.slice(0, o.s) + o.t + doc.text.slice(o.e);
       doc.version++;
+      // v4.0.307: **書いた回数と、その時の姿**を控える= 「中間状態を一度も書かない」を目で確かめるため。
+      ed.edits = (ed.edits || 0) + 1;
+      (ed.snaps = ed.snaps || []).push(doc.text);
       return Promise.resolve(true);
     },
   };
@@ -156,4 +159,21 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
   console.log('                 本文  : ' + out[0]);
   console.log('                 FC    : ' + (out[1] || '(無し)'));
   console.log(out[0].indexOf('<!--') < 0 ? '  ★ 行末にコメントが残っていない' : '  ⚠ 行末にコメントが残った');
+})();
+
+// ===== v4.0.307(俊克 8/20 pm08:15「なぜ、見出しのFCコメントを付ける時、一旦、行末にコメントを付けると言う
+//   余計なことをしているのか? それが見えるんだよ。それは廃止すると決めたよね?」) =====
+// ★**押した回数と、途中の姿**を印字する。1回で書けていれば edits=1・途中の姿は最終形だけ。
+(async () => {
+  const run = async (label, text, fn) => {
+    const ed = mkEditor(text, new P(0, 0), new P(0, 0));
+    CUR = ed;
+    await fn(ed);
+    console.log('\n【' + label + '】編集の回数 = ' + (ed.edits || 0));
+    (ed.snaps || []).forEach((t, i) => console.log('  ' + (i + 1) + '回目: ' + JSON.stringify(t)));
+    const bad = (ed.snaps || []).some(t => /^[^\n]*<!--[^\n]*-->[^\n]*\n?/.test(t.split('\n')[0]) && t.split('\n')[0].indexOf('<!--') > 0);
+    console.log('  ★ ' + (bad ? 'NG 行末にコメントを書いた姿that文書に現れた' : '中間状態は現れていない'));
+  };
+  await run('見出しボタン(H2)', '見出しにする文字\n', (ed) => T.insertFormatTemplate('heading', ed, '白', 'green', 2, { head: true, bullet: false, blt: '-' }));
+  await run('箇条書きボタン(番号なし)', '項目にする文字\n', (ed) => T.insertFormatTemplate('heading', ed, '白', '黄', 2, { head: false, bullet: true, blt: '-' }));
 })();

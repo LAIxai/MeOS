@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.307 (2026-08-20)
+- **The heading button no longer flashes a line-end comment** — v4.0.210 abolished writing the instruction at the end
+  of the line and moving it afterwards, and v4.0.235 rebuilt the other buttons around a single edit, but the heading
+  and bullet paths were never converted. They are now: the finished line is assembled in memory and body plus FC line
+  are written together, so the document never holds the halfway form. Verified in the fake editor — one edit, and the
+  only snapshot is the final shape.
+
 ### v4.0.306 (2026-08-20)
 - **The file name is a control, and looks like one** — it sits in a rounded box with the ▾, the whole box opens the
   menu, and the box hides itself when there is no file. The name stays small because the header has no room to spare.

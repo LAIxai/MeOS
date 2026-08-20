@@ -15021,6 +15021,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   //   指定するものが無ければ書かない(v4.0.64の約束)= 空の箱を置かない。見出し/リンクは従来どおり。
   const spec = '(' + FG + '/' + BG + ')';
   let bodySel; // 挿入後に選択する本文(プレースホルダ)範囲
+  let _fcWritten = false; // v4.0.307: 本文とFC行を1回の編集で書いたか(書いたなら、後の引っ越しは走らせない)
   if (kind === 'heading') {
     // 見出しは行頭でなければレンダリングされない → 現在行全体を見出しで包む(本文=選択 or 行内容 or 既定)。
     // v0.9.936: 作成日時は「本文末尾に可視」で入れる(俊克 6/17: //コメントだと隠れて見えない)。
@@ -15054,12 +15055,10 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // v4.0.64(俊克): コメント側に「これは箇条書き/番号付きである」を宣言として書き残す(署名 Mew! 付き)。
       const _numTag = (_mk === '-1') ? '-1.' : '-';
       const plain = open + body + meosSpecComment(_numTag, hspec);
-      await editor.edit(eb => eb.replace(doc.lineAt(ln).range, plain));
+      await meosApplySpecEdit(editor, doc.lineAt(ln).range, plain); // v4.0.307: ここも1回の編集で(中間状態を書かない)
       const pb = new vscode.Position(ln, open.length + body.length);
       editor.selection = new vscode.Selection(pb, pb);
       editor = await meosFocusBack(editor, editor.selection); // v4.0.173: revealしない＋生きているエディタを受け取り直す
-      // v4.0.171: 箇条書きだけの道も**早期returnで抜ける**so、抜ける直前に置く(v4.0.158と同じ教訓)。
-      try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
       return;
     }
     const visibleBody = body + ' ' + stamp; // 本文 + 可視タイムスタンプ
@@ -15078,7 +15077,14 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
     const newText = _prose
       ? (_indent + _blt + hashes + ' ' + visibleBody + meosSpecComment(_dirTag, hspec))
       : (_indent + cOpen + hashes + '{' + visibleBody + hspec + '}' + hashes + cClose); // v4.0.53: 箇条書きマーカーは #の直後(##-{ }## / ##-1{ }##) // v4.0.47: 箇条書き接頭辞は見出しの外 // v4.0.46(俊克): 本文の左右padding空白を廃止(従来のMarkdown見出しと違い Me記法は空白を要求しない) // v0.9.99963: 見出し本文の左右にも半角スペースpadding / v4.0.10(俊克): 新形 ##{ }## で書く(他兄弟と統一)
-    await editor.edit(eb => eb.replace(doc.lineAt(ln).range, newText));
+    // ★★v4.0.307(俊克 8/20 pm08:15「なぜ、見出しのFCコメントを付ける時、**一旦、行末にコメントを付ける**と言う
+    //   余計なことをしているのか? **それが見えるんだよ**。それは廃止すると決めたよね?」):
+    //   ★★**俊克が正しい。見出しだけ v4.0.210 の直しから漏れていた**＝ 他のボタンは v4.0.235 で
+    //   「入れたつもりの行をメモリの中で作り、1回の編集で本文とFC行を同時に書く」に直したが、
+    //   **見出しと箇条書きの道だけ**「行末に書く → 後で引っ越す」の2回編集のまま残っていた。
+    //   → 同じ口(`meosApplySpecEdit`)を通す。文書には**最終形しか現れない**。
+    await meosApplySpecEdit(editor, doc.lineAt(ln).range, newText);
+    _fcWritten = true;                                     // 1回の編集で書いたので、後の引っ越しは要らない
     const b = _prose ? (_indent.length + _blt.length + hashes.length + 1) : (_indent.length + cOpen.length + hashes.length + 1); // 本文の先頭 // v4.0.46: #{1,3}{ の直後(左padding空白を廃止so+1)
     bodySel = new vscode.Selection(new vscode.Position(ln, b), new vscode.Position(ln, b)); // v0.9.999132: 見出しは選択しない(適用後カーソルが見出し内→⊘##表示)は残る
   } else {
@@ -15136,7 +15142,7 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
   // ★俊克「見出しなので少し離れて見えるのは悪くはないけど、空けたければ本当の空行を入れればいいだけ」
   //   = **たまたま空いて見えるのと、空けたのは別物**。決めるのは書き手。
   try {
-    if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor);
+    if (!_fcWritten && MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); // v4.0.307: 既に1回で書いた道は通さない
   } catch (_) { }
 }
 // ===== v4.0.156(俊克 8/12 pm03:35「FC方式を一旦解除して、従来の1行方式に戻す。その上で並べ替えや一部削除をする。
