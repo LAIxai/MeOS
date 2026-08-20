@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.318 (2026-08-21)
+- **Checking a box stamps the time immediately** — it used to wait for Cmd+S, which is correct behaviour nobody can
+  be expected to remember; the author had forgotten it himself. Write anything into `//[…]tip=` and the time goes in
+  as you type, like the other instructions that make the text follow. The save-time pass stays for anything that
+  arrives by paste or bulk edit, and it is idempotent, so nothing is written twice.
+- **The tip drops the word "Checked"** — the ✅ already says it. `✅ 2026.08.21(F)am01:10.56JST [済]`.
+
 ### v4.0.317 (2026-08-21)
 - **Checked is written in the same format as Created** — `2026.08.21(F)am00:55.41JST` rather than the old
   `2026-08-21 00:55`. The two sit on the same FC line, so they should read the same way. Records already written in

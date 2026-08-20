@@ -2742,7 +2742,8 @@ function parseColorSpec(content, single, scan) {
         if (_bx) {
           const _tm = _bx.match(MEOS_CHECKED_STAMP_RE); // v4.0.317: MeOSの書式も旧書式も読む(物差しは1つ)
           let _head;
-          if (_tm) { const _rest = _bx.replace(_tm[0], '').trim(); _head = '✅ Checked: ' + _tm[0] + (_rest ? ' [' + _rest + ']' : ''); }
+          // v4.0.318(俊克「tipに Checked: は過剰じゃないか? ✅がそれを視覚的に示しているんだからさ」): 語を落とす。
+          if (_tm) { const _rest = _bx.replace(_tm[0], '').trim(); _head = '✅ ' + _tm[0] + (_rest ? ' [' + _rest + ']' : ''); }
           else _head = '✅[' + _bx + ']';
           _rt = _head + (_rt ? ' ' + _rt : '');
         } else { _rt = '⬜' + (_rt ? ' ' + _rt : ''); }
@@ -24493,6 +24494,40 @@ function meosFmtKindFollow(e) {
   })();
   return true;
 }
+// ★★v4.0.318(俊克 8/21 am01:04「実際には、以下のようにしても、tipにタイムスタンプがまったく表示されないよ。なぜ?」):
+//   ★★**仕掛けは正しく動いていた。ただ、保存を待っていた**（v0.9.99955 は onWillSave が不安定だったので保存後にした）。
+//   俊克の言い方は「**書き込むと、ここにもタイムスタンプが書き込まれる**」＝ 待つ物ではない。
+//   → **箱に何か書いたその場で入れる**。今日作った兄弟（矢印・下線・記号が本文へ従う）と同じ作りにする。
+//   ★保存時の同期はそのまま残す＝ 貼り付けや一括編集で入った分を後から拾う（冪等なので二重にならない）。
+let _meosCheckStampBusy = false;
+function meosCheckStampFollow(e) {
+  if (_meosCheckStampBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
+  const ed = vscode.window.activeTextEditor, doc = e.document;
+  if (!ed || ed.document !== doc || !meosIsProseDoc(doc)) return false;
+  const c = e.contentChanges[0], t = String(c.text || '');
+  if (!t || t.indexOf('\n') >= 0 || t.length > 12) return false;      // 打鍵と小さな貼り付けだけ
+  const ln = c.range.start.line;
+  if (ln < 0 || ln >= doc.lineCount) return false;
+  const text = doc.lineAt(ln).text;
+  if (text.indexOf('tip=') < 0) return false;                        // 安い足切り
+  const m = /(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/.exec(text);
+  if (!m) return false;
+  const box = m[2];
+  if (!box.trim() || MEOS_CHECKED_STAMP_RE.test(box)) return false;   // 未対応/既に記録済み= 用事は無い
+  const bs = m.index + m[1].length, be = bs + box.length;
+  const at = c.range.start.character;
+  if (at < bs || at > be) return false;                              // 箱の中を触った時だけ
+  const ins = box.replace(/\s+$/, '').length + bs;                   // 末尾の空白の手前へ
+  _meosCheckStampBusy = true; deferRefreshCount++;
+  (async () => {
+    try {
+      await ed.edit(eb => eb.insert(new vscode.Position(ln, ins), ' ' + meosFormatStamp(new Date())), { undoStopBefore: false, undoStopAfter: false });
+      try { meosDbg('[checkStamp] 対応済の時刻を入れた 行=' + (ln + 1)); } catch (_) { }
+    } catch (_) { }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosCheckStampBusy = false; }
+  })();
+  return true;
+}
 let _meosHatBusy = false;
 // 打った(貼った)直後に形that揃っていれば、その場で字にする。『かかか』の呪文と同じ作り。
 function meosMaybeAutoHat(e) {
@@ -26575,6 +26610,7 @@ makeDecorations();
       if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
       if (deferRefreshCount === 0) { try { meosLinkUlFollow(e); } catch (_) { } }     // v4.0.298: FC行の(N)を手で直したら、それが最後に決めた下線の種類
       if (deferRefreshCount === 0) { try { meosFmtKindFollow(e); } catch (_) { } }    // v4.0.302: FC行の記号を打ち替えたら、本文の印も従う
+      if (deferRefreshCount === 0) { try { meosCheckStampFollow(e); } catch (_) { } }  // v4.0.318: 箱に書き込んだら、その場で時刻を入れる
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a
