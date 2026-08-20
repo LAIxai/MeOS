@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -459,10 +459,12 @@ console.log('㉓ v4.0.293/294 — ∫の傾き / 積んだ下付きの左寄せ 
   // (改良2b) 積んだ対の下側だけ左へ寄る。上側(2つ目=戻す方)は今までどおり。
   {
     const sub = T.meosStackCss('none;', 0, 0.55, T.MEOS_STACK_TALL_SUB_LEFT_CH);
-    const sup = T.meosStackCss('none;', 1, -0.55, 0);
-    ok(/left: -0\.45ch;/.test(sub), '下側は 0.45ch だけ左へ(∫は右上がりなので足は左)', sub);
-    ok(/left: -1ch;/.test(sup), '上側は1つ目の字数ぶんだけ戻る(今までと同じ)', sup);
+    const sup = T.meosStackCss('none;', 1, -0.55, -T.MEOS_STACK_TALL_SUP_RIGHT_CH);
+    ok(/left: -0\.89ch;/.test(sub), '下側は 0.89ch 左へ(∫は右上がりなので足は左) v4.0.297', sub);
+    ok(/left: -0\.74ch;/.test(sup), '上側は1つ目の字数(1ch)から 0.26ch 戻す=右へ離す v4.0.297', sup);
+    ok(sup.indexOf('--') < 0, '符号を二重に書かない(`left: --0.26ch` を作らない)', sup);
     ok(T.meosStackCss('none;', 0, 0, 0).indexOf('left:') < 0, '寄せる量が0なら left は書かない', T.meosStackCss('none;', 0, 0, 0));
+    ok(T.MEOS_STACK_TALL_SUP_RIGHT_CH > 0 && T.MEOS_STACK_TALL_SUB_LEFT_CH > T.MEOS_STACK_TALL_SUP_RIGHT_CH, '下の方が大きく動く(俊克= 上1〜2px・下2〜3px)', [T.MEOS_STACK_TALL_SUP_RIGHT_CH, T.MEOS_STACK_TALL_SUB_LEFT_CH]);
   }
   // (改良1) FC行で向きを直したら、その命令の {N%} もその向きの既定へ。既定はスタブthat 100 を返す。
   {

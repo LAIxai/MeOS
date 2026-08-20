@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.297 (2026-08-20)
+- **The underline belongs to the preset that asked for it** — a preset with `□ Link` unchecked is not in the link
+  business, so the underline value still sitting in it is just an old setting. ⌥Option+Click now writes `(0)`, a plain
+  underline, and you change the digit inline if you want another. Want a fixed style instead? Tick `□ Link` and pick
+  it in ▾ — that path already existed, so the rule stays single: *the preset's value when it declares the link,
+  otherwise the default.* The button face previews the underline that will actually be written.
+- **The limits follow the lean** — now that `∫` is slanted, the stacked upper limit sits ~1.5px further right and the
+  lower one ~2.5px further left, matching where the head and the foot of the sign have moved. Measured in the
+  script's own `ch`, not pixels, so it holds at any zoom.
+
 ### v4.0.296 (2026-08-20)
 - **The target comes from the clipboard** — copy a URL, select the words, ⌥Option+Click, done. MeOS writes the
   target into the FC line for you and tells you what it wrote in the status bar. It only does this when the

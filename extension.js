@@ -18925,7 +18925,13 @@ kind:'highlight',ring:0});}else{const baseW=window.__fmtBaseW.highlight||2;const
 window.__fmtBaseW.highlight=w;window.__fmtRing.highlight=0;window.__fmtWasDeco.highlight=true;vscode.postMessage({type:'fmtCycle',
 kind:'highlight',ring:w,fg:sp.fg,bg:sp.bg});window.__renderFmtRing('highlight');}return;}/* v4.0.17(俊克): 現ハイライトプリセットが太字/斜体フラグを持てば太字/斜体記法を出す(統一ボタン) */const _hs=fmtHlSlots[fmtHlIdx];
 /* v4.0.295: 🔗かどうかは fmtHlLinkOn() 1つから引く(面と同じ物差し=面に下線が出ていればリンクが付く) */
-if(fmtHlLinkOn()){vscode.postMessage({type:'insertMeLink',fg:_hs.fg,bg:_hs.bg,ul:_hs.ul||0,bold:!!_hs.bold,italic:!!_hs.italic});
+/* ★v4.0.297(俊克 8/20 pm00:22 改良1「下線を0〜3のどれにするか? 0でいいんじゃないか?」):
+   ★**下線の種類は、プリセットthat🔗を名乗っている時だけ、そのプリセットのもの**。
+   🔗にチェックthat無いプリセットは「リンクを作る係」ではないので、そこに残っている下線の値は**ただの前の設定**=
+   Opt+clickでそれを持ち出すと、俊克が見た「なぜか(3)」になる。→ Optionで付けた時は **0(単線)**。
+   ★「最後に設定した種類を使いたい」時の道は**既に在る**= 🔗にチェックを入れて、▾で種類を決めておけばよい。
+   規則は1本のまま= **名乗ったプリセットの値を使う／名乗っていなければ既定**。あとはインラインで数字を打ち替える。 */
+if(fmtHlLinkOn()){vscode.postMessage({type:'insertMeLink',fg:_hs.fg,bg:_hs.bg,ul:_hs.link?(_hs.ul||0):0,bold:!!_hs.bold,italic:!!_hs.italic});
 return;}/* v4.0.30(俊克 改良1): リンクでも太字/斜体を捨てない *//* v4.0.26: どこでもH-TOC=リンクを挿入し行先の中で待つ */if(_hs.bold||_hs.italic){vscode.postMessage({type:'insertBold',
 bold:!!_hs.bold,italic:!!_hs.italic,fg:_hs.fg,bg:_hs.bg});return;}vscode.postMessage({type:'insertFormat',kind:'highlight',
 fg:fmtSpec.highlight.fg,bg:fmtSpec.highlight.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtHlIdx];
@@ -18972,7 +18978,7 @@ sp.style.display='inline-block';sp.style.fontWeight=f.b?'900':'';sp.style.fontSt
 if(u===null||u===undefined){el.style.textDecoration='';el.style.textUnderlineOffset='';return;}/* v4.0.34(俊克 改良2): 面でも 2/3 はエディタと同じ**波のSVG**にする(text-decorationのwavyは1〜2文字だと潰れて見える)。 */if(u===2||u===3){el.style.textDecoration='none';
 el.style.backgroundImage=fmtUlWave(col,u===3?2:1);el.style.backgroundRepeat='repeat-x';el.style.backgroundPosition='left calc(100% - 2px)';
 return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.textUnderlineOffset='3px';}function fmtUlCssStr(u,col){return (u===2||u===3)?('text-decoration:none;background-image:'+fmtUlWave(col,u===3?2:1)+';background-repeat:repeat-x;background-position:left calc(100% - 3px);'):('text-decoration:'+(u===1?'underline double':'underline')+';text-underline-offset:3px;');
-}function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?(Number(sp.ul)||0):null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
+}function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?(sp.link?(Number(sp.ul)||0):0):null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる / v4.0.297: 面の下線も**書かれる種類**で描く(名乗っていないプリセットは0=単線) *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
@@ -23529,13 +23535,19 @@ const MEOS_STACK_TALL_EM = { up: 0.20, down: 0.20 }; // 積んだ対で背の高
 //   ★**∫は傾いた字なので、上端と下端の横位置が違う**(右上がり)。上限は記号の頭=右寄り・下限は足=左寄りに付く、
 //   というのが本来の組版。→ 積んだ対の**下側だけ**を少し左へ寄せる。上側は動かさない(基準はそのまま)。
 //   ★Σ/Πは真っ直ぐ立っている字なので寄せない= 逃げの量と同じく「背の高い字」の時だけ(条件を2つ作らない)。
-const MEOS_STACK_TALL_SUB_LEFT_CH = 0.45; // 積んだ対で背の高い字(∫等)の下側を左へ寄せる量(その字自身のch)
-// 積む対に足すCSS= 1つ目の中身のぶんだけ左へ戻し(2つ目だけ)、上下へ離す(両方)、背の高い字なら下側を少し左へ。
+// ★v4.0.297(俊克 8/20 pm00:22 改良2「∫↓(0)↑(6) の上の文字を1、2ピクセル右に離そう。下を2、3ピクセル左に寄せよう」):
+//   ★**傾きを付けたので、上下の開き方も傾きに合わせる**= 頭が右・足が左へ出た分、そこに付く字も同じ向きへ。
+//   ★単位はピクセルでなく **その字自身の ch**(拡大しても崩れない)。肩/腰は 0.68em なので 1ch ≒ 基準の字の0.68桁
+//     ＝ 14pxの等幅なら約5.7px。so 0.26ch ≒ 1.5px(上)・0.44ch ≒ 2.5px(下)= 俊克の言った幅に収まる。
+const MEOS_STACK_TALL_SUB_LEFT_CH = 0.89; // 積んだ対で背の高い字(∫等)の下側を左へ寄せる量 v4.0.297: 0.45→0.89(+2.5px)
+const MEOS_STACK_TALL_SUP_RIGHT_CH = 0.26; // 同じく上側を右へ離す量 v4.0.297: 新設(+1.5px)
+// 積む対に足すCSS= 1つ目の中身のぶんだけ左へ戻し(2つ目だけ)、上下へ離す(両方)、背の高い字なら下は左・上は右へ。
+// ★extraLeft は**負も取る**(右へ寄せる時)。符号は数のまま書く= `left: --0.26ch` のような壊れた値を作らない。
 function meosStackCss(baseStyle, backCells, spreadEm, extraLeft) {
   const n = Math.round((Math.max(0, Number(backCells) || 0) + (Number(extraLeft) || 0)) * 1000) / 1000;
   const sp = Math.round((Number(spreadEm) || 0) * 1000) / 1000;
   return String(baseStyle || 'none;') + ' position: relative;'
-    + (n ? (' left: -' + n + 'ch;') : '') + (sp ? (' top: ' + sp + 'em;') : '');
+    + (n ? (' left: ' + (-n) + 'ch;') : '') + (sp ? (' top: ' + sp + 'em;') : '');
 }
 function meosLimitCss(dir, len, col, opW, tall, narrow) {
   const sc = MEOS_LIMIT_SCALE / 100;
@@ -23962,7 +23974,7 @@ function meosApplyMeTexDecorations(editor) {
             const _up = (_t.kind === 'sup');
             const _x = MEOS_STACK_SPREAD_EM + (_tallX ? (_up ? MEOS_STACK_TALL_EM.up : MEOS_STACK_TALL_EM.down) : 0); // v4.0.289: 積む時専用の逃げ
             _stkSpread.set(_t, _up ? -_x : _x);
-            if (_tallX && !_up) _stkLeft.set(_t, MEOS_STACK_TALL_SUB_LEFT_CH); // v4.0.293: 傾いた字の足に付くので下側だけ左へ
+            if (_tallX) _stkLeft.set(_t, _up ? -MEOS_STACK_TALL_SUP_RIGHT_CH : MEOS_STACK_TALL_SUB_LEFT_CH); // v4.0.293/297: 傾きに合わせて 上は右・下は左へ
           }
           if (_tallX) { const _b = String(sp.baseText || ''), _a0 = sp.first ? (sp.first.hides[0][0] - _b.length) : -1;
             if (_a0 >= 0 && MEOS_MATH_SLANT_RE.test(_b)) _slant.add(_a0 + ':' + (_a0 + _b.length)); } // v4.0.293
