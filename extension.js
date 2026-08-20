@@ -13689,6 +13689,34 @@ function meosConvertLegacyLine(text) {
   return line.slice(0, h.start) + h.form.mk + body + h.form.mk + meosSpecComment(h.form.mk, spec) + line.slice(h.end);
 }
 const MEOS_MEW_LEGACY_CODE = 'mew-legacy';
+// ===== ★★v4.0.293(俊克 8/20 改良4「FC指定でない見出しも、🐱で見つけようよ。長い見出しだと折り返しがある時のように、
+//   1行が間延びして、膜の縦線も切れてしまうしね。FCの利点は、膜線が切れないことだと、今、気づいたよ」) =========
+// ★**俊克がFCの本当の値打ちを言い当てた**= 行末コメントは隠れていても**桁は食う**(v4.0.93の壁)ため、
+//   長い見出しは折り返して**視覚行が2本**になる。膜の縦線は1行に1本しか引けないので、そこで**切れる**。
+//   FC行へ出せば本文行は素のMarkdownだけになり、折り返さない= **縦線that切れない**。
+// ★だからこれは「新しい形へ揃える」話ではなく、**壊れて見える所を直す**話= 🐱の仕事そのもの。
+// ★対象は**見出しの行だけ**(俊克の指定)。見出しは行末に居るので外へ出しても安全(v4.0.155で「値打ちが小さい」と
+//   見送った判断を、**縦線が切れる**という理由で覆す)。他の記法は今までどおり触らない。
+// ★直し方は既に在る道具1つ= `meosMoveSpecsOutOfLine`(書く側がFC行を作る時と**同じ口**)。
+// ★曖昧な時は手を出さない(いつもの流儀)= ①表の行(行を1本足すと表が割れる) ②真下に既に指定行がある行
+//   (2本目を足すと、どちらの命令が何番目かの数え方が入れ替わる)。印もボタンも、この1つの判定から引く。
+function meosInlineHeadHit(text, nextText) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('<!--') < 0) return null;
+  if (meosIsSpecLine(t)) return null;                            // 指定行そのものは対象外
+  if (MEOS_TABLE_ROW_RE.test(t)) return null;                    // 表は塊ごとに1本なので、行の間に足してはいけない
+  if (nextText != null && meosIsSpecLine(String(nextText))) return null; // 既に指定行がある=順番が決まらない
+  let head = /^[ \t]*#{1,6}[ \t]*\S/.test(t);                    // 素のMarkdownの見出し
+  if (!head) {                                                   // v4.0.63: `#` を書かず命令だけで名乗った見出しも同じ
+    try { for (const c of meosTrailingComments(t)) { const d = meosLineDirective(meosStripMewSignature(c.payload || '')); if (d && d.level) { head = true; break; } } } catch (_) { return null; }
+  }
+  if (!head) return null;
+  const fc = meosMoveSpecsOutOfLine(t);
+  if (!fc) return null;                                          // 外へ出す指定が無い=ただの見出し
+  const i = t.indexOf('<!--');
+  return { start: Math.max(0, i), end: t.length, fc };
+}
+const MEOS_MEW_INLINE_HEAD_CODE = 'mew-inline-head';
 // v4.0.75(俊克 8/8 pm04:14 改良2「次の行が現れた時にやっと0から1になる。遅過ぎる」):
 // ★v4.0.74で端の1行を落としたら、今度は**1行遅く**なった。VS Codeが教えてくれるのは
 //   「1pxでも見えたか」だけなので、こちらで選べるのは「半行早い」か「1行遅い」の二択しかない。
@@ -13788,8 +13816,15 @@ function meosUpdateMewDiagnostics(editor) {
         // → **絵は先読み(±120)で描く/数字は見えている行だけで数える**に戻す。絵が先・数字が後(半行)は許容する
         //   (逆=数字が先に動く方が嘘に見える、というのが俊克の元の指摘)。
         // v4.0.106: 数は常に数える/印(ガター・波線)は**5秒の表示中だけ**。
-        if (hits.length || legacy.length) { if (_reveal) gutter.push(new vscode.Range(ln, 0, ln, 0)); if (inView(ln)) catLines++; }
-        for (const h of (_reveal ? hits : [])) {
+        const inlineHead = meosInlineHeadHit(text, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null); // v4.0.293(俊克 改良4): FC形でない見出し=折り返して膜の縦線が切れる
+        if (hits.length || legacy.length || inlineHead) { if (_reveal) gutter.push(new vscode.Range(ln, 0, ln, 0)); if (inView(ln)) catLines++; }
+        if (inlineHead && _reveal) {
+          const d = new vscode.Diagnostic(new vscode.Range(ln, inlineHead.start, ln, inlineHead.end), '🐱 見出しの指定が行末に居ます(FC行へ出すと折り返さず、膜の縦線が切れません)', vscode.DiagnosticSeverity.Hint);
+          d.code = MEOS_MEW_INLINE_HEAD_CODE; d.source = 'MeOS';
+          items.push(d);
+        }
+        // v4.0.293: FC行へ出す方が決まっている行では、署名の波線は出さない(外へ出す時に Mew!FC が付くので、1行1つの印で足りる)。
+        for (const h of ((_reveal && !inlineHead) ? hits : [])) {
           const d = new vscode.Diagnostic(new vscode.Range(ln, h.start, ln, h.end), '🐱 Me記法のコメントが Mew! と鳴いていません', vscode.DiagnosticSeverity.Hint);
           d.code = MEOS_MEW_DIAG_CODE; d.source = 'MeOS';
           items.push(d);
@@ -13824,6 +13859,20 @@ const meosMewCodeActionProvider = {
         a.diagnostics = [d]; a.isPreferred = true;
         out.push(a);
         break; // 1行に1つ(入れ子は次の周回で1枚ずつ)
+      }
+      // v4.0.293(改良4): FC形でない見出し=指定を真下のFC行へ出す(本文行が素のMarkdownに戻り、折り返さない)。
+      for (const d of (ctx.diagnostics || [])) {
+        if (!d || d.code !== MEOS_MEW_INLINE_HEAD_CODE) continue;
+        const ln = d.range.start.line, text = doc.lineAt(ln).text;
+        const hit = meosInlineHeadHit(text, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null);
+        if (!hit) continue;
+        const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+        const a = new vscode.CodeAction('🐱 見出しの指定をFC行(真下)へ出す', vscode.CodeActionKind.QuickFix);
+        a.edit = new vscode.WorkspaceEdit();
+        a.edit.replace(doc.uri, new vscode.Range(ln, 0, ln, text.length), hit.fc.body + eol + hit.fc.spec);
+        a.diagnostics = [d]; a.isPreferred = true;
+        out.push(a);
+        break; // 1行に1つ
       }
       const mine = (ctx.diagnostics || []).filter(d => d && d.code === MEOS_MEW_DIAG_CODE);
       if (!mine.length) return out;
@@ -13869,7 +13918,8 @@ async function meosMewSignVisible() {
   // → 🐱が付いた行は🐱ボタンで片付く。旧記法は**新形へ変換**・新形の未署名は**Mew!を挿す**。
   //   安全に変換できない行(入れ子・1行に複数)は触らず🐱を残す=あとで人が見る。
   const inserts = [], rewrites = [];
-  let skipped = 0;
+  const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  let skipped = 0, moved = 0;
   for (const [a, b] of spans) {
     for (let ln = a; ln <= b; ln++) {
       const text = doc.lineAt(ln).text;
@@ -13878,6 +13928,9 @@ async function meosMewSignVisible() {
         if (nt != null && nt !== text) { rewrites.push({ ln, text, nt }); continue; } // 行ごと入れ替え(同じ行に挿入も混ぜない)
         skipped++; continue;
       }
+      // v4.0.293(俊克 改良4): FC形でない見出しは、指定を真下のFC行へ出す(印を出す条件と同じ1つの判定から引く)。
+      const _ih = meosInlineHeadHit(text, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null);
+      if (_ih) { rewrites.push({ ln, text, nt: _ih.fc.body + eol + _ih.fc.spec }); moved++; continue; }
       for (const h of meosUnsignedSpecComments(text)) inserts.push(new vscode.Position(ln, h.insertAt));
     }
   }
@@ -13893,7 +13946,8 @@ async function meosMewSignVisible() {
     for (const r of rewrites) eb.replace(new vscode.Range(r.ln, 0, r.ln, r.text.length), r.nt);
   });
   const parts = [];
-  if (rewrites.length) parts.push('新形に' + rewrites.length + '行');
+  if (rewrites.length - moved > 0) parts.push('新形に' + (rewrites.length - moved) + '行');
+  if (moved) parts.push('見出しの指定をFC行へ' + moved + '行'); // v4.0.293
   if (inserts.length) parts.push('Mew!を' + inserts.length + '箇所');
   // v4.0.113(俊克 8/9 pm07:16 改良1「直した行の右に新記法のコメントが丸見えに出る。🐱は1のまま。
   //   カーソルを次の行に移動すると正常化される」): ★自分で書き変えたのだから、自分で描き直す。
@@ -22325,6 +22379,7 @@ let meTexHideDeco = null; // 上/下付き本体の型は meTexTypeCache(scale�
 let meTexBarDeco = null; // v4.0.222: √の横棒(overline)。hideDecoの隣に置く=消し忘れない
 let meTexLimitDeco = null;  // v4.0.273: Σ/Π/lim の**上**限(真上に描く)。中身は範囲ごとのrenderOptionsで
 let meTexLimitDeco2 = null; // v4.0.274: **下**限。上と同じ場所(空の範囲)に2つ置かないよう型を分ける
+let meTexSlantDeco = null;  // v4.0.293: 式として書かれた ∫ を傾ける(字は1文字も変えない=見た目だけ)
 // 行内の <!-- ... --> コメント範囲 [start,end) を集める(この中の ↑↓ は MeTeX 対象外=計算膜/結合膜マーカーを守る)。
 function meosMeTexCommentSpans(text) { const spans = []; const re = /<!--[\s\S]*?-->/g; let m; while ((m = re.exec(text))) spans.push([m.index, m.index + m[0].length]); return spans; }
 // 1行を走査して MeTeX トークンを返す。各トークン: {arrow, kind:'sup'|'sub', hides:[[s,e],...], opStart, opEnd}
@@ -23285,6 +23340,12 @@ const MEOS_LIMIT_TALL_RE = /[∫∬∭∮∐]/u;
 //   → 細い演算子だけ、中央を**字の実際の位置**へ寄せる(桁幅ではなく、その割合で数える)。
 const MEOS_LIMIT_NARROW_RE = /^[∫∬∭∮]+$/u;
 const MEOS_LIMIT_NARROW_W = 0.55;  // 細い演算子の見た目の幅(桁に対する割合)
+// ★v4.0.293(俊克 8/20 改良2「∫を式として書いたとき、これを斜めに傾いた文字に自動でレンダリングして下さい」):
+//   ★**積分記号は本来、傾いた字**(数学の組版では必ず斜体)。しかしエディタの等幅フォントの `∫` は真っ直ぐ立っている。
+//   → **式として書いた時だけ傾ける**。「式として書いた」の判定は既に在るものをそのまま使う=
+//     **上下限(👒)か肩/腰(↑↓)を持っている**時。素の文中の `∫` は1文字も変わらない(安全側が既定)。
+//   ★Σ/Πは立った字が正しいので入れない= 傾けるのは積分記号の仲間だけ。
+const MEOS_MATH_SLANT_RE = /^[∫∬∭∮]+$/u;
 // ★★v4.0.278(俊克 8/19「ひらめいた。テーブルでは、上下のセルを結合して使えばいいんじゃない?」):
 //   ★**余地that在るかどうかを、書き手that結合で宣言できる**。MeOSの縦結合(🤝↓N)は、結合した所の
 //   **横罫線を引かない**so、そのセルには上下に置く余地that生まれる。→ v4.0.277の規則
@@ -23340,6 +23401,26 @@ function meosBigOpLimitSpans(text) {
       tokStart: a, tokEnd: b, cs: _cs, ce: _ce, tall: MEOS_LIMIT_TALL_RE.test(s.slice(base[0], base[1])), narrow: MEOS_LIMIT_NARROW_RE.test(s.slice(base[0], base[1])) });
   }
   return hides.length ? { hides, items } : null;
+}
+// ★★v4.0.293(俊克 8/20 改良3「Σの場合は、↓を↑に変えるとき、↓の方も↑に自動で変えよう。
+//   これは書き間違えた時に、スワップが簡単にできるってことだよ」):
+//   ★**1つの演算子の上下限は、向きが必ず違う**(上に1つ・下に1つ)。だから片方を直して**同じ向きが2つ**になったら、
+//   もう片方の行き先は**空いた方しか無い**= 答えが1つに決まるので、迷わず自動で入れ替えられる。
+//   ★これで上下を書き間違えた時のスワップが**矢印1文字の書き換え**で済む(2か所直さなくてよい)。
+//   ★動くのは「同じ演算子に2つ並んでいて、両方が同じ向きになった時」だけ。3つ以上や、既に向きが違う時は何もしない。
+function meosLimitSwapPlan(text, arrowAt) {
+  const t = String(text == null ? '' : text);
+  const sp = meosBigOpLimitSpans(t);
+  if (!sp) return null;
+  const hit = sp.items.find(it => it.tokStart === arrowAt);     // 今打った矢印が、どの上下限のものか
+  if (!hit) return null;
+  const g = sp.items.filter(it => it.at === hit.at);            // 同じ演算子に付いている仲間
+  if (g.length !== 2) return null;
+  const other = (g[0] === hit) ? g[1] : g[0];
+  if (other.dir !== hit.dir) return null;                       // 既に上下1つずつ=用事は無い
+  const arrow = (hit.dir === 'up') ? '↓' : '↑';
+  if (t.charAt(other.tokStart) === arrow) return null;
+  return { at: other.tokStart, arrow };
 }
 // 上下限を描くCSS(before に注入)。★emは**その字自身の大きさ基準**so、基準の字のemに直してから割る(v4.0.135の癖)。
 // ★★v4.0.274(俊克 8/19 バグ1「上側が表示しない。下側のxがなぜか見えない」):
@@ -23405,9 +23486,14 @@ const MEOS_STACK_SPREAD_EM = 0.35;   // 積んだ対を上下それぞれに離�
 //   ★逃げの量を👒(上下に置く方)と**共有しない**= あちらはv4.0.282で決めた位置so、動かすと巻き添えになる。
 //   同じ「背の高い字」でも、**積む時と上下に置く時では要る逃げthat違う**(積む時は記号の内側に収める)。
 const MEOS_STACK_TALL_EM = { up: 0.20, down: 0.20 }; // 積んだ対で背の高い字(∫等)に足す逃げ
-// 積む対に足すCSS= 1つ目の中身のぶんだけ左へ戻し(2つ目だけ)、上下へ離す(両方)。
-function meosStackCss(baseStyle, backCells, spreadEm) {
-  const n = Math.max(0, Number(backCells) || 0);
+// ★v4.0.293(俊克 8/20 改良2「∫を式として書いたとき…このとき下付きを少し左ずらした方が、それらしくなるよね」):
+//   ★**∫は傾いた字なので、上端と下端の横位置が違う**(右上がり)。上限は記号の頭=右寄り・下限は足=左寄りに付く、
+//   というのが本来の組版。→ 積んだ対の**下側だけ**を少し左へ寄せる。上側は動かさない(基準はそのまま)。
+//   ★Σ/Πは真っ直ぐ立っている字なので寄せない= 逃げの量と同じく「背の高い字」の時だけ(条件を2つ作らない)。
+const MEOS_STACK_TALL_SUB_LEFT_CH = 0.45; // 積んだ対で背の高い字(∫等)の下側を左へ寄せる量(その字自身のch)
+// 積む対に足すCSS= 1つ目の中身のぶんだけ左へ戻し(2つ目だけ)、上下へ離す(両方)、背の高い字なら下側を少し左へ。
+function meosStackCss(baseStyle, backCells, spreadEm, extraLeft) {
+  const n = Math.round((Math.max(0, Number(backCells) || 0) + (Number(extraLeft) || 0)) * 1000) / 1000;
   const sp = Math.round((Number(spreadEm) || 0) * 1000) / 1000;
   return String(baseStyle || 'none;') + ' position: relative;'
     + (n ? (' left: -' + n + 'ch;') : '') + (sp ? (' top: ' + sp + 'em;') : '');
@@ -23576,16 +23662,47 @@ function meosMetexArrowFollow(e) {
   const bodyLn = specLn - 1;
   const bodyTxt = doc.lineAt(bodyLn).text;
   const plan = meosMetexArrowFollowPlan(bodyTxt, specTxt);
-  if (!plan) return false;
+  // v4.0.293: 向きを直したら、その命令の `{N%}` もその向きの既定に付いてくる(改良1)。
+  const _txt = String(ch.text || '');
+  let _pctAt = _txt.indexOf('↑'); if (_pctAt < 0) _pctAt = _txt.indexOf('↓');
+  const pct = (_pctAt >= 0) ? meosMetexPctFollowPlan(specTxt, ch.range.start.character + _pctAt) : null;
+  if (!plan && !pct) return false;
   _meosArrowBusy = true; deferRefreshCount++;
   (async () => {
     try {
-      await ed.edit(eb => eb.replace(new vscode.Range(bodyLn, plan.at, bodyLn, plan.at + 1), plan.arrow), { undoStopBefore: false, undoStopAfter: false });
-      try { meosDbg('[arrowFollow] 本文の矢印を ' + plan.arrow + ' に合わせた 行=' + bodyLn + ' 位置=' + plan.at); } catch (_) { }
+      await ed.edit(eb => {
+        if (plan) eb.replace(new vscode.Range(bodyLn, plan.at, bodyLn, plan.at + 1), plan.arrow);
+        if (pct) eb.replace(new vscode.Range(specLn, pct.start, specLn, pct.end), pct.to);
+      }, { undoStopBefore: false, undoStopAfter: false });
+      try { if (plan) meosDbg('[arrowFollow] 本文の矢印を ' + plan.arrow + ' に合わせた 行=' + bodyLn + ' 位置=' + plan.at); } catch (_) { }
+      try { if (pct) meosDbg('[pctFollow] 高さを ' + pct.to + '% に合わせた 行=' + specLn + ' 位置=' + pct.start); } catch (_) { }
     } catch (_) { }
     finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosArrowBusy = false; }
   })();
   return true;
+}
+// ★★v4.0.293(俊克 8/20 改良1「上付き150%指定で入力した文字がある時、FCで↓に変更すると、プリセットの値が150%の
+//   ままなので、下付きの%値が、デフォルト50%設定のままなら、50%に自動で変更しよう」):
+//   ★**%は向きの持ち物**= 150%は「上付きの底が基準の字の頭に届く」・50%は「下付きの底が基準線に乗る」なので、
+//   同じ数字が向きを跨いで同じ意味になることは**無い**。向きだけ直して%を置き去りにすると、必ず変な高さになる。
+//   → 向きを直したら、%も**その向きの既定**に付いてくる。値は**設定から引く**(ボタンthat書く値と同じ1つの出どころ)。
+//   ★%を書いていない命令には何もしない= 素は常に100%(v4.0.287)なので、直すものが無い。
+function meosMetexPctFollowPlan(specTxt, arrowAt) {
+  const t = String(specTxt == null ? '' : specTxt);
+  const arrow = t.charAt(arrowAt);
+  if (arrow !== '↑' && arrow !== '↓') return null;
+  const stop = t.indexOf('-->', arrowAt);                       // 命令の終わり=1命令1コメントなので、次の箱へは跨がない
+  const open = t.indexOf('{', arrowAt);
+  if (open < 0 || (stop >= 0 && open > stop)) return null;
+  const close = t.indexOf('}', open);
+  if (close < 0 || (stop >= 0 && close > stop)) return null;
+  const pm = /(\d{1,3})[ \t]*%/.exec(t.slice(open + 1, close));
+  if (!pm) return null;                                         // %を書いていない=既定(100%)のままなので触らない
+  let want = 100;
+  try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); want = Math.max(30, Math.min(200, Number(cfg.get(arrow === '↑' ? 'metexSuperScale' : 'metexSubScale', 100)) || 100)); } catch (_) { }
+  if (parseInt(pm[1], 10) === want) return null;
+  const s = open + 1 + pm.index;
+  return { start: s, end: s + pm[1].length, to: String(want) };
 }
 // 本文と指定行を見て、「本文の矢印を1文字だけ書き換えるべきか」を返す。{at, arrow} か null。
 // ★ここが判定の全部= 描く時と同じ対応付け(kind＋出現順)で結び、**余りthat1対1で向きthat違う時だけ**動く。
@@ -23617,6 +23734,35 @@ function meosMetexArrowFollowPlan(bodyTxt, specTxt) {
   for (let i = tk.opStart - 1; i >= 0; i--) { const c = bodyTxt.charAt(i); if (c === '↑' || c === '↓') { at = i; break; } if (!/[({\[]/.test(c)) break; }
   if (at < 0 || bodyTxt.charAt(at) === arrow) return null;
   return { at, arrow };
+}
+// v4.0.293(改良3): 本文の上下限の矢印を打った直後に、同じ演算子のもう片方を入れ替える。
+//   ★指定行の追従(meosMetexArrowFollow)と**同じ作り**= 変更を1つだけ見て、答えが1つに決まる時だけ動く。
+let _meosLimitSwapBusy = false;
+function meosLimitArrowSwap(e) {
+  if (_meosLimitSwapBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
+  const ed = vscode.window.activeTextEditor;
+  const doc = e.document;
+  if (!ed || ed.document !== doc || !meosIsProseDoc(doc)) return false;
+  const c = e.contentChanges[0];
+  const t = String(c.text || '');
+  if (t.indexOf('\n') >= 0) return false;
+  let i = t.indexOf('↑'); if (i < 0) i = t.indexOf('↓');
+  if (i < 0) return false;                                       // 矢印を打った時だけ
+  const ln = c.range.start.line;
+  if (ln < 0 || ln >= doc.lineCount) return false;
+  const text = doc.lineAt(ln).text;
+  if (meosIsSpecLine(text)) return false;                        // 指定行は上下限の置き場ではない
+  const plan = meosLimitSwapPlan(text, c.range.start.character + i);
+  if (!plan) return false;
+  _meosLimitSwapBusy = true; deferRefreshCount++;
+  (async () => {
+    try {
+      await ed.edit(eb => eb.replace(new vscode.Range(ln, plan.at, ln, plan.at + 1), plan.arrow), { undoStopBefore: false, undoStopAfter: false });
+      try { meosDbg('[limitSwap] もう片方の上下限を ' + plan.arrow + ' に入れ替えた 行=' + ln + ' 位置=' + plan.at); } catch (_) { }
+    } catch (_) { }
+    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosLimitSwapBusy = false; }
+  })();
+  return true;
 }
 let _meosHatBusy = false;
 // 打った(貼った)直後に形that揃っていれば、その場で字にする。『かかか』の呪文と同じ作り。
@@ -23694,14 +23840,14 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
 const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
 function meosApplyMeTexDecorations(editor) {
   if (!editor || !editor.document) return;
-  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); if (meTexLimitDeco) editor.setDecorations(meTexLimitDeco, []); if (meTexLimitDeco2) editor.setDecorations(meTexLimitDeco2, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す
+  const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); if (meTexLimitDeco) editor.setDecorations(meTexLimitDeco, []); if (meTexLimitDeco2) editor.setDecorations(meTexLimitDeco2, []); if (meTexSlantDeco) editor.setDecorations(meTexSlantDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す / v4.0.293: ∫の傾きも
   if (!MEOS_METEX) { clearAll(); return; }
   if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
     let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 100) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 100) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
-    const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitUpItems = [], limitDownItems = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitUp|Down = Σの上下限(v4.0.273)
+    const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitUpItems = [], limitDownItems = [], slantRanges = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitUp|Down = Σの上下限(v4.0.273) / slantRanges = 式の∫を傾ける(v4.0.293)
     const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
     const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
@@ -23718,6 +23864,8 @@ function meosApplyMeTexDecorations(editor) {
         //   ★書く側(meosHatApply)も色を書かないので、控えは `<!-- Mew!FC a↑👒(..) -->` だけになる。
         // v4.0.222: √ = 括弧を隠して**横棒**を引く。中身の肩/腰にも overline を持たせて棒を繋ぐ。
         const rads = meosRadicalSpans(text).concat(meosHatBarSpans(text)); // v4.0.269: 群の上の横棒も同じ道具で
+        // v4.0.293: 式として書かれた ∫ を傾ける。同じ字を2度数えないよう、この行のぶんは Set で1つにまとめる。
+        const _slant = new Set();
         // v4.0.273: 大きな演算子の上下限。命令は隠し、中身を真上/真下に描く(生データは1文字も変えない)。
         {
           const _lim = meosBigOpLimitSpans(text);
@@ -23728,6 +23876,7 @@ function meosApplyMeTexDecorations(editor) {
             //   ★書いた形は1文字も変わらない= 同じ生データthat、置ける所では上下・置けない所では肩/腰。
             const _isTableRow = MEOS_TABLE_ROW_RE.test(text);
             for (const it of _lim.items) {
+              if (MEOS_MATH_SLANT_RE.test(text.slice(it.at, it.end))) _slant.add(it.at + ':' + it.end); // v4.0.293: 上下限を持つ ∫ は式なので傾ける
               // v4.0.278: 表でも**縦に結合したセル**なら余地that在る(結合した所は横罫線を引かない)so上下へ置く。
               //   ★v4.0.281: **向きごとに見る**= 下だけ結合(🤝↓)なら下限だけthat下へ行き、上限は横へ回る。
               const _rm = _isTableRow ? meosLimitRoomInCell(meosCellTextAt(text, it.at)) : null;
@@ -23764,7 +23913,7 @@ function meosApplyMeTexDecorations(editor) {
         }
         // v4.0.283/285: 続けて書かれた上付き/下付きは**積む**(∫↑(1)↓(0) の 0 を 1 の真下へ)。
         //   本物の字のまま左へ戻すso、ここで持つのは「どのトークンを何桁戻すか」だけ。
-        const _stkBack = new Map(), _stkSpread = new Map();
+        const _stkBack = new Map(), _stkSpread = new Map(), _stkLeft = new Map();
         for (const sp of meosMeTexStackPairs(text, toks)) {
           _stkBack.set(sp.tok, sp.back);
           // 離す量= 基本＋背の高い演算子の分。向き(上は負・下は正)は トークンごとに決める。
@@ -23774,8 +23923,19 @@ function meosApplyMeTexDecorations(editor) {
             const _up = (_t.kind === 'sup');
             const _x = MEOS_STACK_SPREAD_EM + (_tallX ? (_up ? MEOS_STACK_TALL_EM.up : MEOS_STACK_TALL_EM.down) : 0); // v4.0.289: 積む時専用の逃げ
             _stkSpread.set(_t, _up ? -_x : _x);
+            if (_tallX && !_up) _stkLeft.set(_t, MEOS_STACK_TALL_SUB_LEFT_CH); // v4.0.293: 傾いた字の足に付くので下側だけ左へ
           }
+          if (_tallX) { const _b = String(sp.baseText || ''), _a0 = sp.first ? (sp.first.hides[0][0] - _b.length) : -1;
+            if (_a0 >= 0 && MEOS_MATH_SLANT_RE.test(_b)) _slant.add(_a0 + ':' + (_a0 + _b.length)); } // v4.0.293
         }
+        // v4.0.293: 積んでいない `∫↑2` のような形も、肩/腰を持っていれば式なので傾ける(判定は基準の字1つ)。
+        for (const t of toks) {
+          const _b = String(t.base || '');
+          if (!_b || !MEOS_MATH_SLANT_RE.test(_b)) continue;
+          const _a0 = t.hides[0][0] - _b.length;
+          if (_a0 >= 0) _slant.add(_a0 + ':' + (_a0 + _b.length));
+        }
+        for (const k of _slant) { const p = k.split(':'); slantRanges.push(new vscode.Range(ln, Number(p[0]), ln, Number(p[1]))); }
         for (const t of toks) {
           for (const [s, e] of t.hides) hideRanges.push(new vscode.Range(ln, s, ln, e));
           // ★v4.0.287(俊克「素の状態でそうなることは想定していなかった」): **素は常に100%**(=普通の上付き/下付き)。
@@ -23789,7 +23949,7 @@ function meosApplyMeTexDecorations(editor) {
           //   棒の役目は**範囲を言うこと**so、肩の上は空けておく。段差より、途切れの方that読める。
           let style = meosMeTexStyle(t.kind, scale, baseTall, t.fg, t.bg, t.depth); // v4.0.220: 肩の上の肩
           // v4.0.285/288: 積む= 左へ戻す(2つ目)＋上下へ離す(両方)。
-          if (_stkBack.has(t) || _stkSpread.has(t)) style = meosStackCss(style, _stkBack.get(t) || 0, _stkSpread.get(t) || 0);
+          if (_stkBack.has(t) || _stkSpread.has(t) || _stkLeft.has(t)) style = meosStackCss(style, _stkBack.get(t) || 0, _stkSpread.get(t) || 0, _stkLeft.get(t) || 0);
           if (!styleRanges.has(style)) styleRanges.set(style, []);
           styleRanges.get(style).push(new vscode.Range(ln, t.opStart, ln, t.opEnd));
         }
@@ -23810,6 +23970,9 @@ function meosApplyMeTexDecorations(editor) {
     if (!meTexLimitDeco2) meTexLimitDeco2 = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meTexLimitDeco, limitUpItems);
     editor.setDecorations(meTexLimitDeco2, limitDownItems);
+    // v4.0.293: 式の∫を傾ける。見出しの装飾と同じspanに乗るので `!important`(v4.0.135と同じ癖)。
+    if (!meTexSlantDeco) meTexSlantDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-style: italic !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meTexSlantDeco, slantRanges);
     for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
     for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
@@ -25521,7 +25684,8 @@ makeDecorations();
       //   クリップボード消去は確実な経路に一本化=①🔐施錠後②🔓解錠後(合言葉を残さない)③📋 Copy&auto-clear(秘密を選択→コピー→N秒後消去)。
       if (deferRefreshCount === 0 && maybeHandleRawTrigger(e)) return; // v0.9.724: 『かかか』→Raw自動切替
       if (deferRefreshCount === 0 && meosMaybeAutoHat(e)) return;      // v4.0.268: 手書きの `a↑👒(..)` を即、字にする
-      if (deferRefreshCount === 0) { try { meosMetexArrowFollow(e); } catch (_) { } } // v4.0.290: 指定行の矢印を直したら本文も従う
+      if (deferRefreshCount === 0) { try { meosMetexArrowFollow(e); } catch (_) { } } // v4.0.290: 指定行の矢印を直したら本文も従う / v4.0.293: %も向きに付いてくる
+      if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a

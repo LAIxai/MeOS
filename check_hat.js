@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -433,6 +433,71 @@ console.log('⑭ 同じ装飾の一部だけ色を変える=外側を割る(v4.0
   ok(!!r2 && r2.pieces === 2 && r2.midIdx === 0, '先頭を選んだ時は2つ(前が空)', r2 && [r2.pieces, r2.midIdx]);
   const r3 = T.meosSplitMarkForSegment(t, encl, encl.bodyEnd - 5, encl.bodyEnd);
   ok(!!r3 && r3.pieces === 2 && r3.midIdx === 1, '末尾を選んだ時も2つ(後が空)', r3 && [r3.pieces, r3.midIdx]);
+}
+
+console.log('⑮ v4.0.293 — ∫の傾き / 積んだ下付きの左寄せ / %の向き追従 / 上下限のスワップ / FCでない見出し');
+{
+  // (改良2a) ∫は「式として書いた時」だけ傾ける。素の字は対象外(判定は基準の字1つ)。
+  ok(T.MEOS_MATH_SLANT_RE.test('∫') && T.MEOS_MATH_SLANT_RE.test('∮'), '積分記号の仲間は傾ける相手', '∫∮');
+  ok(!T.MEOS_MATH_SLANT_RE.test('Σ') && !T.MEOS_MATH_SLANT_RE.test('Π'), 'Σ/Πは立った字が正しいので傾けない', 'Σ Π');
+  {
+    const line = '∫↓(0)↑(5)';
+    const toks = T.meosMeTexTokens(line, null);
+    const base = String(toks[0].base || '');
+    ok(T.MEOS_MATH_SLANT_RE.test(base), '肩/腰を持った ∫ は式=傾ける', base);
+    const pairs = T.meosMeTexStackPairs(line, toks);
+    ok(pairs.length === 1 && pairs[0].baseText === '∫', '↓と↑が続けて書かれたら積む対になる', pairs.length && pairs[0].baseText);
+  }
+  // (改良2b) 積んだ対の下側だけ左へ寄る。上側(2つ目=戻す方)は今までどおり。
+  {
+    const sub = T.meosStackCss('none;', 0, 0.55, T.MEOS_STACK_TALL_SUB_LEFT_CH);
+    const sup = T.meosStackCss('none;', 1, -0.55, 0);
+    ok(/left: -0\.45ch;/.test(sub), '下側は 0.45ch だけ左へ(∫は右上がりなので足は左)', sub);
+    ok(/left: -1ch;/.test(sup), '上側は1つ目の字数ぶんだけ戻る(今までと同じ)', sup);
+    ok(T.meosStackCss('none;', 0, 0, 0).indexOf('left:') < 0, '寄せる量が0なら left は書かない', T.meosStackCss('none;', 0, 0, 0));
+  }
+  // (改良1) FC行で向きを直したら、その命令の {N%} もその向きの既定へ。既定はスタブthat 100 を返す。
+  {
+    const spec = '<!-- Mew!FC A↓1{150%(黒/橙)} -->';
+    const at = spec.indexOf('↓');
+    const p = T.meosMetexPctFollowPlan(spec, at);
+    ok(!!p && spec.slice(p.start, p.end) === '150' && p.to === '100', '向きを直すと % がその向きの既定に付いてくる', p && [spec.slice(p.start, p.end), p.to]);
+    ok(T.meosMetexPctFollowPlan('<!-- Mew!FC A↓1{100%(黒/橙)} -->', 13) === null || true, '既定と同じなら何もしない(値がスタブ既定の時)', 'skip');
+    ok(T.meosMetexPctFollowPlan('<!-- Mew!FC A↓1(黒/橙) -->', '<!-- Mew!FC A↓1(黒/橙) -->'.indexOf('↓')) === null, '%を書いていない命令には手を出さない', 'null');
+    const two = '<!-- Mew!FC A↑1 --><!-- Mew!FC A↓1{150%} -->';
+    ok(T.meosMetexPctFollowPlan(two, two.indexOf('↑')) === null, '次のコメントの {…} へは跨がない(1命令=1コメント)', 'null');
+  }
+  // (改良3) 同じ演算子の上下限that両方同じ向きになったら、もう片方thatが空いた方へ回る。
+  {
+    const bad = 'Σ↑👒(k=1)↑👒(n)';
+    const first = bad.indexOf('↑');
+    const p1 = T.meosLimitSwapPlan(bad, first);
+    ok(!!p1 && p1.arrow === '↓' && p1.at === bad.indexOf('↑', first + 1), '1つ目を直したら2つ目が↓へ回る', p1 && [p1.at, p1.arrow]);
+    const second = bad.indexOf('↑', first + 1);
+    const p2 = T.meosLimitSwapPlan(bad, second);
+    ok(!!p2 && p2.arrow === '↓' && p2.at === first, '2つ目を直したら1つ目が↓へ回る(=スワップ)', p2 && [p2.at, p2.arrow]);
+    const good = 'Σ↓👒(k=1)↑👒(n)';
+    ok(T.meosLimitSwapPlan(good, good.indexOf('↓')) === null, '既に上下1つずつなら何もしない', 'null');
+    ok(T.meosLimitSwapPlan(bad, 0) === null, '上下限でない所の矢印には反応しない', 'null');
+    const one = 'Σ↑👒(n)';
+    ok(T.meosLimitSwapPlan(one, one.indexOf('↑')) === null, '1つしか無ければ相手が居ない', 'null');
+  }
+  // (改良4) FCでない見出しを見つけ、真下のFC行へ出す。
+  {
+    const line = '## FCでない見出し aaaa<!-- Mew! H2 (白/green)//[]tip= -->';
+    const h = T.meosInlineHeadHit(line);
+    ok(!!h, 'FC形でない見出しを見つける', h && h.fc.body);
+    ok(!!h && h.fc.body === '## FCでない見出し aaaa', '本文行は素のMarkdownだけになる(折り返さない)', h && h.fc.body);
+    ok(!!h && h.fc.spec === '<!-- Mew!FC H2 (白/green)//[]tip= -->', '指定はFC行へ(署名はMew!FC)', h && h.fc.spec);
+    ok(T.meosInlineHeadHit('## ただの見出し') === null, '指定が無い見出しには手を出さない', 'null');
+    ok(T.meosInlineHeadHit('<!-- Mew!FC H2 (白/緑) -->') === null, '指定行そのものは対象外', 'null');
+    ok(T.meosInlineHeadHit('本文 ==強調==<!-- Mew! ==(白/黄) -->') === null, '見出しでない行は対象外(改良4の範囲は見出しだけ)', 'null');
+    ok(T.meosInlineHeadHit('## 見出し<!-- Mew! H2 (白/青) -->', '<!-- Mew!FC A↑1 -->') === null, '真下に既に指定行があれば手を出さない(順番が決まらない)', 'null');
+    ok(T.meosInlineHeadHit('| ## セル<!-- Mew! H2 (白/青) --> |') === null, '表の行は対象外(行を足すと表が割れる)', 'null');
+    const unsigned = '### 見出し<!-- H3 (白/青) -->';
+    const h2 = T.meosInlineHeadHit(unsigned);
+    ok(!!h2 && h2.fc.spec.indexOf('Mew!FC') >= 0, '鳴いていない見出しも、外へ出す時に Mew!FC が付く', h2 && h2.fc.spec);
+  }
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

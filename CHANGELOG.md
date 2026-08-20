@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.293 (2026-08-20)
+- **Integrals lean** — an `∫` that carries limits (either `∫↑(5)↓(0)` or the `👒` form) is now rendered
+  italic, the way maths is set. A bare `∫` in prose is untouched: the base character declares whether it is a
+  formula. The stacked lower limit also shifts slightly left, since a slanted sign puts its foot to the left of its head.
+- **The height follows the direction** — flip `↑` to `↓` in an FC line and the `{N%}` is rewritten to that
+  direction's configured default. 150% ("top of the base character") and 50% ("on the baseline") are one-way words;
+  carrying one across the flip always looked wrong.
+- **Swap the limits with one arrow** — a big operator's two limits must point opposite ways. Make them match and the
+  other one moves to the free slot, so fixing an upside-down `Σ` is a single-character edit.
+- **🐱 finds headings that are not FC** — a heading whose spec still sits at the end of the line wraps, and a
+  wrapped line breaks the membrane's vertical rule. The cat now marks those lines and moves the spec down to a folded
+  FC line, leaving plain Markdown on the heading itself.
+
 ### v4.0.239 (2026-08-16)
 - **Accents, with the recipe** — `a↑<(..)>` + superscript button → the real letter `ä`. Names draw the shape
   (`<(..)>` `<(.)>` `<(--)>` `<(^)>` `<(o)>` `<(v)>` `<(~)>` `<(')>`), and the recipe stays in the comment
