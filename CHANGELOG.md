@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.310 (2026-08-20)
+- **A pinned file has no close button** — pinning says "keep this one", so a `×` sitting next to it contradicts the
+  gesture. Only the unsaved `●` remains, and on a pinned row it is a plain marker: it does not turn into a `×` and
+  cannot be clicked.
+- **The startup jump says so** — the status bar reports the line for three seconds, because landing on the line you
+  were already looking at is indistinguishable from not moving at all. Still no popup: startup should not startle.
+
 ### v4.0.309 (2026-08-20)
 - **Returning to your last line actually works now** — the recorder was running before the restorer and overwriting
   the very number it was meant to preserve: a cursor event fires as the editor opens, MeOS wrote down line 0, and two

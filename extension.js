@@ -17730,6 +17730,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-pin.on{opacity:1}
 .title-file-pin:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
 .title-file-pin::before{content:'📌'}
+/* v4.0.310: 留めた物の未保存の印= **押せない**(閉じるボタンではない) */
+.title-file-dot{width:20px;flex:0 0 20px;margin-right:4px;font-size:14px;line-height:1;opacity:.6;text-align:center;cursor:default}
+.title-file-dot::before{content:'●'}
 .title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
 .title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.85}
 .title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
@@ -19376,9 +19379,13 @@ for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPat
    ★**素の title 属性は消す**= ブラウザ標準のツールチップはMeOSから止められず、開いたメニューの真上に出る(v2.0.38と同じ穴)。
    名前は行に出ているので、覆ってまで見せるものが無い。
    ★webviewはテンプレート文字列の中so、コメントにバックティックを書かない(これで5度目) */
+/* ★v4.0.310(俊克「ピン留めは、×ボタンがそのままなので、**消せそうで心配**だね。**未保存の●だけ出ればいい**かな」):
+   ★**留めた物には×を出さない**= 留めるのは「消えないでほしい」という意思なので、その隣に閉じるボタンが居るのは矛盾。
+   未保存だけは知りたいので、●は**押せない印**として出す(触れても×に化けない)。 */
 html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-pin'+(it.pinned?' on':'')+'" data-pin="'+ep+'"></button>'
  +'<button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
- +(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'):'')+'</div>';}
+ +(it.pinned?(it.dirty?'<span class="title-file-dot"></span>':'')
+   :(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'):''))+'</div>';}
 fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 /* v4.0.305: 開く瞬間にtipを消す(家の作法= 副メニューを開く時は必ずこれを呼ぶ) */
@@ -25768,6 +25775,9 @@ function meosRestoreLastLineOnStart(attempt) {
     const p = new vscode.Position(ln, 0);
     ed.selection = new vscode.Selection(p, p);             // カーソルを置く= 畳まれていればVS Codeが開いて見せる
     ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
+    // ★v4.0.310(俊克「そのままだったので、**飛んだかどうか分らない**」): 静かに1行だけ名乗る。
+    //   ★通知(ポップアップ)は出さない= 起動時に驚かせない、はv4.0.43の約束のまま。ステータスバーに数秒。
+    try { vscode.window.setStatusBarMessage('MeOS: 最後の行(' + (ln + 1) + ')へ戻りました', 3000); } catch (_) { }
     meosLastLineFinish('行 ' + (ln + 1) + ' へ戻した ' + doc.uri.fsPath);
   } catch (_) { meosLastLineFinish('例外'); }
 }
