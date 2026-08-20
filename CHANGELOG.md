@@ -4,6 +4,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.325 (2026-08-21)
+- **Orange marks the pair again — the line and the spec that belongs to it.** Body line *i* pairs with spec line *i*,
+  in a table, in a list, or on a single heading; the rule reads the same from either side. One line alone could not
+  show a pair, which is half of what the colour is for (the other half being "these two are showing you raw data").
+- **Delete the body and its spec goes with it; delete the spec and the body stays, plain.** The rule is not symmetric
+  on purpose: the spec belongs to the line, not the other way round. In a table or a list, removing one row takes out
+  **one** spec line, not the group; and removing a spec line puts a `not` placeholder back so the count still lines up
+  row for row.
+- **This actually fires now.** v4.0.324 only watched for "a whole line vanished in one edit", but the ordinary way to
+  delete a line is two edits — clear the characters, then backspace the blank line — and neither one matched. A body
+  line going empty now counts as deleted.
+- **`×` in the file menu no longer closes the tab.** The list is a set of bookmarks; throwing one away is no reason to
+  close the file. The tab's own `×` still closes. Removing a file and then clicking its tab puts it back in the list.
+- **The `▾` tip no longer covers the menu button** it describes.
+
 ### v4.0.324 (2026-08-21)
 - **Delete the line, and its spec goes with it.** An FC group belongs to the body line above it. Remove that line and
   the specs were left behind — and, because each one looks at the line directly below itself, they silently re-attached

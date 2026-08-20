@@ -17772,9 +17772,12 @@ function postMeDockFile(editor, force, skipPush) {
     const doc = editor && editor.document;
     const name = (doc && doc.uri.scheme === 'file') ? String(doc.uri.fsPath).split(/[\\/]/).pop() : (doc ? '(untitled)' : '');
     const path = (doc && doc.uri.scheme === 'file') ? doc.uri.fsPath : '';
-    if (!force && _meosLastDock.panel === meDockPanel && _meosLastDock.path === path) return;   // 変わっていない=何もしない
+    // ★★v4.0.325: **積むのは「ファイルが変わった時」だけ**。force は「今の状態をもう一度送る」という意味しか
+    //   持たせない＝ ×で外した直後に、状態の送り直しでそのまま戻ってくる事故が起きない（一覧を空にできる）。
+    const changed = !(_meosLastDock.panel === meDockPanel && _meosLastDock.path === path);
+    if (!force && !changed) return;                                                          // 変わっていない=何もしない
     _meosLastDock = { panel: meDockPanel, path };
-    if (doc && !skipPush) meosRecentPush(doc); // v4.0.322: ×で外した直後は積み直さない(消したそばから戻る事故)
+    if (doc && !skipPush && changed) meosRecentPush(doc); // タブを選び直した時に一覧へ戻る
     meDockPanel.webview.postMessage({ type: 'dockFile', name, path, recent: meosRecentWithState() });
   } catch (_) { }
 }
@@ -18520,7 +18523,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* {* ▲mCN=dock_css *} */
 </style>
 <!-- {* ▼mCN=dock_html // Me Dock のHTML(画面の骨組み) *} -->
-</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" data-tip="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
+</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" title="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -19478,9 +19481,10 @@ for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPat
    未保存だけは知りたいので、●は**押せない印**として出す(触れても×に化けない)。 */
 html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-pin'+(it.pinned?' on':'')+'" data-pin="'+ep+'"></button>'
  +'<button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
-/* v4.0.322: ×は「一覧から外す」so、開いていない行にも出す。留めた行だけは出さない(未保存の●は押せない印) */
+/* v4.0.322: ×は「一覧から外す」ので、開いていない行にも出す。留めた行だけは出さない(未保存の●は押せない印)
+   v4.0.325: ×はタブを閉じない= 一覧とタブは別の物。閉じたい時はタブの×が既に在る。 */
  +(it.pinned?(it.dirty?'<button class="title-file-x dirty" disabled></button>':'')
-   :('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'))+'</div>';}
+   :('<button class="title-file-x'+(it.dirty?' dirty':'')+'" title="Remove from this list (the tab stays open)" data-close="'+ep+'"></button>'))+'</div>';}
 fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 /* v4.0.305: 開く瞬間にtipを消す(家の作法= 副メニューを開く時は必ずこれを呼ぶ) */
@@ -20977,13 +20981,14 @@ function toggleMeDock(editorOverride) {
       try { postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true); } catch (_) {}
       return;
     }
-    if (message && message.type === 'closeRecent') { // v4.0.304: ×= そのファイルを閉じる(未保存ならVS Codeが訊く)
+    // ★★v4.0.325(俊克 8/21 am08:45 改良1「ファイルメニューから削除すると、**タブの方も削除されてしまう**。
+    //   タブは残すことはできないのか?」): ★★**この一覧とタブは別の物**。一覧は「行き先の栞」で、
+    //   栞を捨てても、開いている本を閉じる理由は無い。× は**一覧から外すだけ**にする。
+    //   ★閉じたい時はタブの×が既に在る＝ 同じ仕事の口を2つ作らない。
+    //   ★外した後もタブが残るので、そのタブをクリックすれば一覧に戻る（俊克 v4.0.323 改良1の指定どおり）。
+    if (message && message.type === 'closeRecent') { // v4.0.325: ×= 一覧から外すだけ(タブは触らない)
       try {
-        const _p = String(message.path || '');
-        const _tab = meosTabForPath(_p);
-        if (_tab && vscode.window.tabGroups && vscode.window.tabGroups.close) await vscode.window.tabGroups.close(_tab, true);
-        else { const d = (vscode.workspace.textDocuments || []).find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === _p && !x.isClosed; } catch (_) { return false; } }); if (d) { await vscode.window.showTextDocument(d, { preview: false }); await vscode.commands.executeCommand('workbench.action.closeActiveEditor'); } }
-        meosRecentRemove(_p);                                   // v4.0.322: 一覧からも外す(これが×の本体)
+        meosRecentRemove(String(message.path || ''));
         postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true, true);
       } catch (_) {}
       return;
@@ -23613,8 +23618,19 @@ function meosFcPairAt(doc, line) {
     return { top: b ? b.start : head, head, end };
   } catch (_) { return null; }
 }
-let meosFcRowDeco = null;   // FC行/カーソル行の文字
-// v4.0.324: 相手の縦線を塗る型は役目を終えた（橙はカーソル行だけ）
+let meosFcRowDeco = null;   // 橙に染める2行(カーソルの行と、その相手)
+// ★★v4.0.325(俊克 8/21 am08:45 改良2「橙色は、**メイン行とそれに対応するFCコメントの両方を同時に**橙色に
+//   するってことだよ。今回は、文字カーソルがある方だけ橙色になったけどね」):
+//   ★★橙は「対」の印であり、同時に「この2行は今、生データを見せている」の印。1行だけでは対が見えない。
+//   ★対応は**行の位置どうし**＝ 本文のi行目 ⇔ FC群のi枚目。表でも箇条書きでも同じ1つの規則。
+//   ★相手が居ない時（FC群の方が長い等）は自分だけ染める＝ 無理に相手を作らない。
+function meosFcMate(doc, line) {
+  const b = meosFcPairAt(doc, line);
+  if (!b) return null;
+  const fc0 = b.head + 1, nBody = b.head - b.top + 1, nFc = b.end - b.head;
+  if (line >= fc0) { const j = line - fc0; return { self: line, mate: (j < nBody) ? b.top + j : -1, onFc: true, idx: j, fc0, nBody, nFc, b }; }
+  const j = line - b.top;  return { self: line, mate: (j < nFc)   ? fc0 + j   : -1, onFc: false, idx: j, fc0, nBody, nFc, b };
+}
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
   if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -23622,16 +23638,8 @@ function meosApplyFcRowDecorations(editor) {
   try {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
-      const line = editor.selection.active.line;
-      // ★★v4.0.324(俊克 8/21 am08:09「昨日、一時期、両方を橙色に染めていたでしょ。あれを、**文字カーソルがある行
-      //   だけに適用する**んだよ。つまり、**生データを表示する機能を色ではっきり見せる**と言うことだよ」):
-      //   ★★**橙の意味が変わった**＝「対になっている2つ」を指す印ではなく、
-      //   「**この行は今、生データを見せている**」という印。だからカーソル行だけを塗る。
-      //   ★相手のFC行も、相手の縦線も塗らない（v4.0.301〜303 の対の塗り分けは役目を終えた）。
-      //   ★表も同じ＝ カーソル行以外は正しい姿を見せているので、そこには何も足さない。
-      //   ★v4.0.323で残っていた `b.start`（この物には無い名前）もここで消えた＝ ①の側は実は効いていなかった。
-      const b = meosFcPairAt(doc, line);                     // 全文を走らず、カーソルの周りだけ
-      if (b && line >= b.top && line <= b.end) out.push(new vscode.Range(line, 0, line, doc.lineAt(line).text.length));
+      const m = meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
+      if (m) for (const ln of [m.self, m.mate]) if (ln >= 0 && ln < doc.lineCount) out.push(new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length));
     }
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
@@ -24612,43 +24620,84 @@ function meosCheckStampWatch(editor) {
     _meosCheckPend = found ? { uri, line: found.line, from: r.from, to: r.to } : null;
   } catch (_) { _meosCheckPend = null; }
 }
-// ★★v4.0.324(俊克 8/21 am08:09 改良2「エディタ上で、**メインの方を削除したら、自動的にFC群も削除**するように
-//   できないか? …そうすれば、メインを消せば、FCコメントも消えると言うのが自然でしょ?
-//   **ただし、テーブルは例外**にしよう」):
-//   ★★**FC群は、その本文行の持ち物**。持ち主が消えたら、残った指定は**誰のものでもない**＝ しかも黙って
-//   **1つ上の行に付き直す**（真下の行を見る作りなので）＝ 見に覚えのない色が別の行に付く、という一番いやな壊れ方。
-//   ★見つけ方＝ **行がまるごと消えた直後に、その位置がFC行になっていたら**、その群は持ち主を失っている。
-//   ★★表と箇条書きは**例外**＝ 群は塊ぜんぶの持ち物なので、1行消えても持ち主は残っている（俊克の指定）。
-//   ★消すのは**その位置から続くFC行だけ**＝ 上に別の群があっても巻き込まない。
+// ★★v4.0.325(俊克 8/21 am08:45「橙色のメイン行を削除すれば、それに対応するFC行を自動削除する。でも、**逆は真
+//   ならず**。橙色のFCコメントを削除しても、それに対応していた橙色のメイン行は、削除されないが、普通の色になる。
+//   ただし、**テーブルと箇条書きは、FC not に変わる**。メイン行は素のマークダウンが残るってことだね」
+//   質問1「テーブルと箇条書きは、文字カーソルのある行を削除すれば、それに対応したFCコメント**1行分**は削除する
+//   ってことだよね? 要は、**橙色に染めているものを消す**ってことだね」→ その通り):
+//   ★★規則は1行＝ **橙のうち、本文の側を消せば、相手も消える。FCの側を消しても、本文は残る**。
+//     ・本文が塊(表/箇条書き)なら、消えた行の**枚数分だけ**FCを抜く（群ぜんぶは道連れにしない）。
+//     ・本文が塊でないなら、その群ごと消える（持ち主が居ないFCは、黙って上の行に付き直すのが一番いやな壊れ方）。
+//     ・FCの側が減った時は、塊なら **`not` の置き石**で枚数を戻す＝ 何枚目かがずれない。塊でなければ何もしない。
+//   ★★v4.0.324で効かなかった理由＝ **「1回の編集で行がまるごと消えた時」しか見ていなかった**。
+//     人が行を消す時の普通の手順は「①字を全部消す ②空いた行をbsで畳む」の**2回**で、①も②も型に合わなかった。
+//     → **本文行が空になった時**も、消したと見なす（②を待たない）。
 let _meosOrphanFcBusy = false;
-function meosOrphanFcPlan(doc, ln) {
+function meosFcSpecRun(doc, ln) {                 // lnから下へ続くFC行の枚数
+  let n = 0; while (ln + n < doc.lineCount && meosIsSpecLine(doc.lineAt(ln + n).text)) n++; return n;
+}
+function meosFcBlockAt(doc, ln) {
+  try { if (ln < 0 || ln >= doc.lineCount || !meosFcIsBlockLine(doc.lineAt(ln).text)) return null;
+        const L = meosDocLines(doc); return meosTableBlockFor(L, ln) || meosListBlockFor(L, ln); } catch (_) { return null; }
+}
+// 消えた/空いた位置 P を見て、指定行をどう直すかを決める。{ del:{from,to} } か { ins:{at,n,indent} } か null。
+function meosFcRepairPlan(doc, P) {
   try {
-    if (ln < 0 || ln >= doc.lineCount) return null;
-    if (!meosIsSpecLine(doc.lineAt(ln).text)) return null;              // そこthatFC行でなければ用事は無い
-    if (ln > 0 && meosFcIsBlockLine(doc.lineAt(ln - 1).text)) return null; // 表/箇条書きの塊= 持ち主は残っている
-    let end = ln;
-    while (end + 1 < doc.lineCount && meosIsSpecLine(doc.lineAt(end + 1).text)) end++;
-    return { from: ln, to: end };
-  } catch (_) { return null; }
+    if (P < 0 || P >= doc.lineCount) return null;
+    const specHere = meosIsSpecLine(doc.lineAt(P).text);
+    // ★消えた位置が群の途中のこともある（FC行を抜いた時）ので、まず群を遡って持ち主を見に行く。
+    let blk = null;
+    if (specHere) { const b = meosFcPairAt(doc, P); if (b && meosFcIsBlockLine(doc.lineAt(b.head).text)) blk = { start: b.top, end: b.head }; }
+    if (!blk) blk = meosFcBlockAt(doc, P) || (P > 0 ? meosFcBlockAt(doc, P - 1) : null);
+    if (!blk) {                                                    // ─ 塊でない ─
+      if (!specHere) return null;
+      if (P > 0 && meosFcIsBlockLine(doc.lineAt(P - 1).text)) return null;
+      return { del: { from: P, to: P + meosFcSpecRun(doc, P) - 1 } };  // 持ち主を失った群ごと
+    }
+    const fc0 = blk.end + 1;                                       // ─ 表/箇条書き ─
+    const nFc = meosFcSpecRun(doc, fc0), nBody = blk.end - blk.start + 1;
+    if (!nFc) return null;                                         // 群が無い(元から/全部消した)なら触らない
+    if (nFc > nBody) {                                             // 行が減った= その位置の枚数だけ抜く
+      const j = Math.max(0, Math.min(nFc - 1, (P <= blk.end ? P - blk.start : nBody)));
+      return { del: { from: fc0 + j, to: Math.min(fc0 + nFc - 1, fc0 + j + (nFc - nBody) - 1) } };
+    }
+    if (nFc < nBody) {                                             // FCが減った= 置き石で枚数を戻す
+      const at = (P >= fc0 && P <= fc0 + nFc) ? P : fc0 + nFc;
+      const ind = (doc.lineAt(fc0).text.match(/^[ \t]*/) || [''])[0];
+      return { ins: { at, n: nBody - nFc, indent: ind } };
+    }
+  } catch (_) { }
+  return null;
 }
 function meosOrphanFcFollow(e) {
   if (_meosOrphanFcBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
   const ed = vscode.window.activeTextEditor, doc = e.document;
   if (!ed || ed.document !== doc || !meosIsProseDoc(doc) || !MEOS_SPEC_LINE) return false;
-  const c = e.contentChanges[0];
-  if (c.range.end.line <= c.range.start.line) return false;             // 行がまるごと消えた時だけ
-  if (String(c.text || '').indexOf('\n') >= 0) return false;            // 入れ替え(貼り付け)は相手にしない
-  const plan = meosOrphanFcPlan(doc, c.range.start.line);
+  const c = e.contentChanges[0], t = String(c.text || '');
+  if (t.indexOf('\n') >= 0 || (t && c.range.end.line > c.range.start.line)) return false;  // 貼付/入れ替えは相手にしない
+  const P = c.range.start.line;
+  let plan = null;
+  if (c.range.end.line > c.range.start.line) plan = meosFcRepairPlan(doc, P);              // ① 行がまるごと消えた
+  else if (!t && c.rangeLength > 0 && P < doc.lineCount && !doc.lineAt(P).text.trim()      // ② 本文行が空になった
+           && !meosIsSpecLine(doc.lineAt(P).text)) {
+    const m = meosFcMate(doc, P);
+    if (m && !m.onFc && m.nBody === 1 && m.mate >= 0) plan = { del: { from: m.fc0, to: m.b.end } };
+  }
   if (!plan) return false;
   _meosOrphanFcBusy = true; deferRefreshCount++;
   (async () => {
     try {
-      const last = Math.min(plan.to + 1, doc.lineCount - 1);
-      const r = (plan.to + 1 < doc.lineCount)
-        ? new vscode.Range(plan.from, 0, plan.to + 1, 0)                 // 次の行の頭まで= 行ごと消す
-        : new vscode.Range(Math.max(0, plan.from - 1), doc.lineAt(Math.max(0, plan.from - 1)).text.length, plan.to, doc.lineAt(plan.to).text.length);
-      await ed.edit(eb => eb.delete(r), { undoStopBefore: false, undoStopAfter: false });
-      try { meosDbg('[orphanFC] 持ち主を失った指定行を消した ' + (plan.from + 1) + '..' + (plan.to + 1) + ' last=' + last); } catch (_) { }
+      if (plan.del) {
+        const { from, to } = plan.del;
+        const r = (to + 1 < doc.lineCount) ? new vscode.Range(from, 0, to + 1, 0)
+                : new vscode.Range(Math.max(0, from - 1), doc.lineAt(Math.max(0, from - 1)).text.length, to, doc.lineAt(to).text.length);
+        await ed.edit(eb => eb.delete(r), { undoStopBefore: false, undoStopAfter: false });
+        try { meosDbg('[fcRepair] 相手を失った指定行を消した ' + (from + 1) + '..' + (to + 1)); } catch (_) { }
+      } else {
+        const one = plan.ins.indent + meosSpecLineBox(MEOS_SPEC_LINE_NONE) + '\n';
+        await ed.edit(eb => eb.insert(new vscode.Position(plan.ins.at, 0), one.repeat(plan.ins.n)), { undoStopBefore: false, undoStopAfter: false });
+        try { meosDbg('[fcRepair] 置き石を ' + plan.ins.n + '枚 戻した 行=' + (plan.ins.at + 1)); } catch (_) { }
+      }
     } catch (_) { }
     finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosOrphanFcBusy = false; }
   })();

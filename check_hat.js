@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -813,6 +813,47 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
   ok(T.meosCheckStampPendingAt(mk(['x', '<!-- Mew!FC H2_x (白/green)//[済 2026.08.21(F)am01:10.56JST]tip= -->']), 1) === null, '既に時刻があれば二重に入れない', 'null');
   ok(T.meosCheckStampPendingAt(mk(['x', '<!-- Mew!FC H2_x (白/green)//[]tip= -->']), 1) === null, '未対応(空の箱)には入れない', 'null');
   ok(T.meosCheckStampPendingAt(mk(['x', '<!-- Mew!FC H2_x (白/green) -->']), 1) === null, 'チェックボックスが無い行は相手にしない', 'null');
+}
+
+// ㉝ v4.0.325（俊克 8/21 am08:45）橙は「対」＝ 本文のi行目 ⇔ FC群のi枚目。
+//    消す時の規則は1行= 本文の側を消せば相手も消える／FCの側を消しても本文は残る（塊なら not で枚数を戻す）。
+{
+  console.log('㉝ v4.0.325 橙の対と、消した後の直し方');
+  const FC = (p) => '<!-- Mew!FC ' + p + ' -->';
+  let _fv = 0;
+  const mk = (L) => ({ get lineCount() { return L.length; }, isClosed: false, get version() { return ++_fv; },
+    uri: { toString: () => 'file:///fc' + (++_fv), scheme: 'file' }, eol: 1,
+    getText: () => L.join('\n'), lineAt: (n) => ({ text: L[n] || '' }) });
+  const mate = (L, ln) => { const m = T.meosFcMate(mk(L), ln); return m ? [m.self, m.mate] : null; };
+  const plan = (L, P) => { const p = T.meosFcRepairPlan(mk(L), P); return !p ? 'なし' : p.del ? ('del ' + p.del.from + '..' + p.del.to) : ('ins ' + p.ins.n + '@' + p.ins.at); };
+
+  const H = ['## 見出し', FC('H2_x (白/red)//[]tip='), '次の文'];
+  ok(String(mate(H, 0)) === '0,1', '見出しに居る= 見出しとそのFCの2行', '0,1');
+  ok(String(mate(H, 1)) === '1,0', 'FCに居ても同じ2行（対は向きを持たない）', '1,0');
+  ok(mate(H, 2) === null, '対でない行は染めない', 'null');
+
+  const TB = ['| a |', '| b |', '| c |', FC('not'), FC('== (白/黄)'), FC('not')];
+  ok(String(mate(TB, 1)) === '1,4', '表の2行目 ⇔ FCの2枚目', '1,4');
+  ok(String(mate(TB, 5)) === '5,2', '表のFC3枚目 ⇔ 3行目', '5,2');
+
+  const LS = ['1. 一', '1. 二', FC('-1.'), FC('-1.H3_x (白/blue)')];
+  ok(String(mate(LS, 1)) === '1,3', '箇条書きの2番目 ⇔ FCの2枚目', '1,3');
+
+  ok(plan(['前の文', FC('H2_x (白/red)'), '次の文'], 1) === 'del 1..1', '見出しを消せば、そのFCも消える', 'del 1..1');
+  ok(plan(['## A', FC('H2_a'), FC('H2_b'), '次'], 2) === 'del 2..2', '上に別の群があっても、巻き込まない', 'del 2..2');
+  ok(plan(['| a |', '| b |', '| c |', FC('not'), FC('=='), FC('not'), FC('not')], 1) === 'del 4..4',
+     '表のまん中の行を消せば、対応する1枚だけ抜ける', 'del 4..4');
+  ok(plan(['| a |', '| b |', FC('not'), FC('not'), FC('==')], 2) === 'del 4..4',
+     '表の最後の行を消せば、最後の1枚だけ抜ける', 'del 4..4');
+  ok(plan(['前の文', FC('not'), FC('not'), '次'], 1) === 'del 1..2', '表を丸ごと消せば、群も丸ごと消える', 'del 1..2');
+  ok(plan(['1. 一', '1. 三', FC('-1.'), FC('-1.'), FC('-1.')], 1) === 'del 3..3',
+     '箇条書きの2番目を消せば、対応する1枚だけ抜ける', 'del 3..3');
+  ok(plan(['| a |', '| b |', '| c |', FC('not'), FC('not')], 4) === 'ins 1@4',
+     '★逆は真ならず= 表のFCを1枚消したら、not の置き石で枚数を戻す', 'ins 1@4');
+  ok(plan(['1. 一', '1. 二', FC('-1.')], 2) === 'ins 1@2',
+     '★箇条書きも同じ= 本文は消えず、置き石で枚数だけ戻る', 'ins 1@2');
+  ok(plan(['| a |', '| b |', FC('not'), FC('not')], 1) === 'なし', '枚数が合っていれば何もしない', 'なし');
+  ok(plan(['次の文', 'もう1行'], 0) === 'なし', 'FCと関係ない行は相手にしない', 'なし');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
