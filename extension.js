@@ -17602,16 +17602,25 @@ function meosRecentPush(doc) {
 //   **相手が変わった時だけ**働かせる。毎回globalStateに書くと、v4.0.29で潰した「打つたびに書く」の再来になる。
 //   ★パネルも鍵に入れる= Me Dockを開き直した時は、同じファイルでももう一度送る(webviewの写しが空なので)。
 let _meosLastDock = { panel: null, path: null };
-function postMeDockFile(editor) {
+// ★v4.0.304(俊克「VSCmライクに、×で、未保存を●にしようよ」): 開いているか・未保存かは**その場で見る**。
+//   ★見るのは**▾を開いた時だけ**(force)= 未保存の印を追いかけて毎回送ると、また熱い道に仕事を足すことになる。
+function meosRecentWithState() {
+  let docs = []; try { docs = vscode.workspace.textDocuments || []; } catch (_) { }
+  return meosRecentList().map(it => {
+    const d = docs.find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === it.path && !x.isClosed; } catch (_) { return false; } });
+    return { name: it.name, path: it.path, open: !!d, dirty: !!(d && d.isDirty) };
+  });
+}
+function postMeDockFile(editor, force) {
   try {
     if (!meDockPanel) return;
     const doc = editor && editor.document;
     const name = (doc && doc.uri.scheme === 'file') ? String(doc.uri.fsPath).split(/[\\/]/).pop() : (doc ? '(untitled)' : '');
     const path = (doc && doc.uri.scheme === 'file') ? doc.uri.fsPath : '';
-    if (_meosLastDock.panel === meDockPanel && _meosLastDock.path === path) return;   // 変わっていない=何もしない
+    if (!force && _meosLastDock.panel === meDockPanel && _meosLastDock.path === path) return;   // 変わっていない=何もしない
     _meosLastDock = { panel: meDockPanel, path };
     if (doc) meosRecentPush(doc);
-    meDockPanel.webview.postMessage({ type: 'dockFile', name, path, recent: meosRecentList() });
+    meDockPanel.webview.postMessage({ type: 'dockFile', name, path, recent: meosRecentWithState() });
   } catch (_) { }
 }
 function meosExtVersion() {
@@ -17646,9 +17655,17 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-caret:hover{opacity:1;border-color:var(--meos-frame)}
 .title-file-pop{display:none;position:absolute;top:100%;left:0;z-index:40;min-width:200px;max-width:340px;padding:3px;border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
-.title-file-item{display:block;width:100%;text-align:left;padding:3px 6px;border:0;border-radius:3px;background:transparent;color:inherit;font-size:11px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.title-file-item:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
-.title-file-item.cur{opacity:.55;cursor:default}
+.title-file-row{display:flex;align-items:center;gap:2px;border-radius:3px}
+.title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
+.title-file-item{flex:1;min-width:0;text-align:left;padding:3px 6px;border:0;border-radius:3px;background:transparent;color:inherit;font-size:11px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.8}
+.title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
+/* v4.0.304(俊克「VSCmライクに、×で、未保存を●にしよう」): タブと同じ作法= 既定は × / 未保存は ● / ●に触れると × に戻る。 */
+.title-file-x{width:16px;flex:0 0 16px;padding:0;margin-right:3px;border:0;border-radius:3px;background:transparent;color:inherit;font-size:11px;line-height:1;opacity:.5;cursor:pointer}
+.title-file-x:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
+/* ★テンプレート文字列の中なので **バックスラッシュのCSSエスケープは書けない**(JSの数値エスケープと取り合いになる)。字そのものを置く。 */
+.title-file-x::before{content:'×'}
+.title-file-x.dirty::before{content:'●'}
+.title-file-x.dirty:hover::before{content:'×'}
 .title-actions{display:flex;align-items:center;gap:7px}
 .standards-toggle{border:1px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
 .standards-toggle .standards-switch{width:30px;height:14px;border-radius:999px;background:var(--vscode-input-background);border:1px solid var(--vscode-panel-border);position:relative;box-sizing:border-box;display:inline-block;flex:0 0 auto;transition:background .12s ease,border-color .12s ease}
@@ -19276,14 +19293,23 @@ const sp=slots[w-1];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.b
    ★一覧はnodethat持ち主(globalState)で、ここは写し= 押した時に行き先だけを送り返す。 */
 (function(){var fc=document.getElementById('title-file-caret'),fp=document.getElementById('title-file-pop');
 if(!fc||!fp)return;fc.style.display='none';
+var esc=function(t){return String(t).split('&').join('&amp;').split('<').join('&lt;').split('"').join('&quot;');};
+window.__meosRenderRecent=function(){if(!fp.classList.contains('on'))return;
+var list=window.__meosRecent||[],html='';
+for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPath),ep=esc(it.path);
+/* v4.0.304: VS Codeのタブと同じ= 開いていれば × / 未保存なら ●(触れると ×)。開いていなければ印は出さない。 */
+html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-item" data-path="'+ep+'" title="'+ep+'">'+esc(it.name)+'</button>'
+ +(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'" title="'+(it.dirty?'Unsaved — close (you will be asked to save)':'Close')+'"></button>'):'')+'</div>';}
+fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 if(fp.classList.contains('on')){fp.classList.remove('on');return;}
-var list=window.__meosRecent||[],html='';
-for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPath);
-html+='<button class="title-file-item'+(cur?' cur':'')+'" data-path="'+String(it.path).split('&').join('&amp;').split('"').join('&quot;')+'" title="'+String(it.path).split('&').join('&amp;').split('"').join('&quot;')+'">'+(cur?'● ':'　')+String(it.name).split('&').join('&amp;').split('<').join('&lt;')+'</button>';}
-fp.innerHTML=html||'<div class="title-file-item cur">(履歴なし)</div>';fp.classList.add('on');});
-fp.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest?ev.target.closest('[data-path]'):null;
-if(!b)return;fp.classList.remove('on');if(b.classList.contains('cur'))return;
+fp.classList.add('on');window.__meosRenderRecent();
+/* ★開/未保存は**開いた時に数え直す**(熱い道に印を追いかけさせない)。返事が来たら描き直す。 */
+vscode.postMessage({type:'recentAsk'});});
+fp.addEventListener('click',function(ev){var x=ev.target&&ev.target.closest?ev.target.closest('[data-close]'):null;
+if(x){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'closeRecent',path:x.getAttribute('data-close')});return;}
+var b=ev.target&&ev.target.closest?ev.target.closest('[data-path]'):null;
+if(!b)return;var row=b.closest('.title-file-row');fp.classList.remove('on');if(row&&row.classList.contains('cur'))return;
 vscode.postMessage({type:'openRecent',path:b.getAttribute('data-path')});});
 document.addEventListener('click',function(ev){if(fp.classList.contains('on')&&ev.target.closest&&!ev.target.closest('#title-file'))fp.classList.remove('on');});})();
 /* v4.0.295: ハイライトボタンのOption見張りを登録。描き直しは既に在る1つの口(__renderFmtRing)へ通す
@@ -20075,7 +20101,8 @@ var _fn=document.getElementById('title-file-name'),_fp=document.getElementById('
 if(_fn){_fn.textContent=m.name||'';_fn.title=m.path||m.name||'';}
 window.__meosRecent=Array.isArray(m.recent)?m.recent:[];window.__meosCurPath=m.path||'';
 if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
-if(_fp&&_fp.classList.contains('on'))_fp.classList.remove('on');
+/* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
+if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
 return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
@@ -20752,6 +20779,19 @@ function toggleMeDock(editorOverride) {
       return;
     }
     // v0.9.99938: Format色設定をmMETAへ随伴保存(in-memory即更新＋800msデバウンスで書込=連続選択を1回にまとめ・undo汚染を抑制)。
+    if (message && message.type === 'recentAsk') { // v4.0.304: ▾を開いた時だけ、開/未保存を数え直して送る
+      try { postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true); } catch (_) {}
+      return;
+    }
+    if (message && message.type === 'closeRecent') { // v4.0.304: ×= そのファイルを閉じる(未保存ならVS Codeが訊く)
+      try {
+        const _p = String(message.path || '');
+        const d = (vscode.workspace.textDocuments || []).find(x => { try { return x.uri.scheme === 'file' && x.uri.fsPath === _p && !x.isClosed; } catch (_) { return false; } });
+        if (d) { await vscode.window.showTextDocument(d, { preview: false }); await vscode.commands.executeCommand('workbench.action.closeActiveEditor'); }
+        postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true);
+      } catch (_) {}
+      return;
+    }
     if (message && message.type === 'openRecent') { // v4.0.303: ▾の履歴から選んだファイルを開く
       try { const d = await vscode.workspace.openTextDocument(vscode.Uri.file(String(message.path || ''))); await vscode.window.showTextDocument(d, { preview: false }); } catch (_) { try { vscode.window.showInformationMessage('MeOS: could not open that file.'); } catch (__) {} }
       return;

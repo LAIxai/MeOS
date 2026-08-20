@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.304 (2026-08-20)
+- **The recent-files menu behaves like tabs** — an open file carries a `×` to close it, and an unsaved one shows `●`
+  instead, turning back into `×` when you point at it. Files that are not open carry no glyph, because there is
+  nothing to close. The file you are in is the bold one.
+- Open/unsaved state is counted **when the ▾ is opened**, not tracked continuously — the menu asks for a fresh answer
+  on each open, so nothing extra runs on the paths that fire while you type.
+
 ### v4.0.303 (2026-08-20)
 - **The file name lives in Me Dock, next to the version** — editor tabs get buried under every other tool's panes,
   so the one thing you need to know (which file am I in?) now sits somewhere permanently visible. A ▾ beside it lists
