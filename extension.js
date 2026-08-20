@@ -17730,9 +17730,12 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-pin.on{opacity:1}
 .title-file-pin:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
 .title-file-pin::before{content:'📌'}
-/* v4.0.310: 留めた物の未保存の印= **押せない**(閉じるボタンではない) */
-.title-file-dot{width:20px;flex:0 0 20px;margin-right:4px;font-size:14px;line-height:1;opacity:.6;text-align:center;cursor:default}
-.title-file-dot::before{content:'●'}
+/* ★v4.0.311(俊克「ピン留めの●だけデカいね」): ★**別の部品で描いていたから大きさthat違った**=
+   button はフォントを継承しないので、同じ 14px でも span とは別のフォントで丸を描く。
+   → **同じ部品にする**(留めた行も title-file-x・押せないようにするだけ)。大きさは1か所から出る。 */
+.title-file-x[disabled]{cursor:default;opacity:.5}
+.title-file-x[disabled]:hover{background:transparent;opacity:.5}
+.title-file-x[disabled]:hover::before{content:'●'}
 .title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
 .title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.85}
 .title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
@@ -19384,7 +19387,7 @@ for(var i=0;i<list.length;i++){var it=list[i],cur=(it.path===window.__meosCurPat
    未保存だけは知りたいので、●は**押せない印**として出す(触れても×に化けない)。 */
 html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-pin'+(it.pinned?' on':'')+'" data-pin="'+ep+'"></button>'
  +'<button class="title-file-item" data-path="'+ep+'">'+esc(it.name)+'</button>'
- +(it.pinned?(it.dirty?'<span class="title-file-dot"></span>':'')
+ +(it.pinned?(it.dirty?'<button class="title-file-x dirty" disabled></button>':'')
    :(it.open?('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'):''))+'</div>';}
 fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
@@ -23616,7 +23619,16 @@ function meosRestoreView(editor, topLine, sel, strict) {
       const ln = Math.min(topLine, Math.max(0, editor.document.lineCount - 1));
       editor.revealRange(new vscode.Range(ln, 0, ln, 0), vscode.TextEditorRevealType.AtTop);
     }
-    if (!strict && sel && !editor.selection.isEqual(sel)) editor.selection = sel; // 畳んだ拍子に動いたカーソルを戻す
+    // ★★v4.0.311(俊克 8/20 pm10:31 改良1「FCコメントのある文字を**選択している時**、FCコメントが開いたり
+    //   折り畳んだりして、**文字カーソルの位置が急に飛んでしまう**んだよ。これが使い難い」):
+    //   ★★**選択の上に、控えたカーソルを戻してはいけない**。ここは「畳んだ拍子に動いたカーソルを戻す」ための
+    //   道だが、`editor.fold` は16万行では時間が掛かるので、**その待ちの間に人が選び始める**ことがある。
+    //   すると「動いたのは畳みのせい」と思い込んで、**人の選択を消して1点に戻して**しまう＝ 俊克の言う「急に飛ぶ」。
+    //   ★見分け方は簡単だった＝ **今、選択が在るなら、それは人が作った物**(畳みは選択を作らない・1点に潰すだけ)。
+    if (!strict && sel && !editor.selection.isEqual(sel)) {
+      if (!editor.selection.isEmpty) { try { meosDbg('[fcSync] 選択中なので戻さない'); } catch (_) { } return; }
+      editor.selection = sel; // 畳んだ拍子に動いたカーソルを戻す
+    }
   } catch (_) { }
 }
 async function meosSyncFcFoldForCursor(editor) {
@@ -23645,8 +23657,10 @@ async function meosSyncFcFoldForCursor(editor) {
     const _keep = () => meosRestoreView(editor, _topBefore, _selBefore, false); // 直後so選択ごと戻す
     // v4.0.187: **畳む/開くを実際に打った時だけ**1行出す(推測をやめ、犯人に名乗らせる)。
     const _top = () => { try { return (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; } catch (_) { return -1; } };
-    const fold = async (ls) => { const t0 = _top(); await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] fold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
-    const unfold = async (ls) => { const t0 = _top(); await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] unfold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
+    // v4.0.311: **選択が始まったら、その場で降りる**。畳む/開くは待ちが長いので、動く前に必ず確かめる。
+    const _selecting = () => { try { return (editor.selections || []).some(sl => !sl.isEmpty); } catch (_) { return false; } };
+    const fold = async (ls) => { if (_selecting()) return; const t0 = _top(); await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] fold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
+    const unfold = async (ls) => { if (_selecting()) return; const t0 = _top(); await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] unfold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
     if (raw) { // Raw=生データを全部見せる約束
       if (_meosFcOpen !== 'ALL') { await unfold(blocks.map(b => b.start)); _meosFcOpen = 'ALL'; }
       return;
@@ -23716,6 +23730,8 @@ async function meosAutoFoldSpecLines(editor, force) {
   try { heads = meosDefBlocks(editor.document).filter(b => b.fc).map(b => b.start); } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 相手が居ない=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
   if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
+  // v4.0.311: **選択している間は一括でも畳まない**(v4.0.214で個別の道には入れた門番を、こちらにも)。
+  try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
   _meosFcFolding = true;
   // v4.0.176: **一括で畳むのthat一番画面を動かす**so、ここでも上の行を控えて戻す(俊克「矢印で飛ぶ」の兄弟)。
   const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;

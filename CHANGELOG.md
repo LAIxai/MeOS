@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.311 (2026-08-20)
+- **Selecting text no longer gets yanked away** — folding an FC group takes real time on a 140k-line file, and if you
+  began selecting during that wait, MeOS put the cursor back where it had been, assuming the fold had moved it. It
+  cannot tell the two apart by watching the cursor, but it can by looking at what is there: **a selection is always
+  something a person made** — folding only collapses to a point, it never creates one. So a selection is now left
+  alone, the fold/unfold bails out the moment one appears, and the bulk folder honours the same rule.
+- The pinned row's `●` was drawn larger because it was a different element: buttons do not inherit fonts, so the same
+  14px produced a different glyph. Both are the same component now, the pinned one simply disabled.
+
 ### v4.0.310 (2026-08-20)
 - **A pinned file has no close button** — pinning says "keep this one", so a `×` sitting next to it contradicts the
   gesture. Only the unsaved `●` remains, and on a pinned row it is a plain marker: it does not turn into a `×` and
