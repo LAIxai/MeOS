@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -795,6 +795,24 @@ console.log('㉛ v4.0.317 Checked の書式を Created に揃える（読む方�
   ok(!T.MEOS_CHECKED_STAMP_RE.test('済'), '印だけなら「時刻は未記録」', '済');
   ok(!T.MEOS_CHECKED_STAMP_RE.test('2026.08.21'), '日付だけでは時刻と認めない(注入の取りこぼしを作らない)', '2026.08.21');
   ok(/JST|GMT|UTC|[+-]\d/.test(now) || true, 'Createdと同じ関数から出す(書式は1か所)', now);
+}
+
+console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入れる（打鍵ごとでも、保存待ちでもなく）');
+{
+  let _v = 0;
+  const mk = (L) => ({ lineCount: L.length, isClosed: false, version: ++_v, uri: { toString: () => 'file:///w', scheme: 'file' }, eol: 1,
+    getText: () => L.join('\n'), lineAt: (n) => ({ text: L[n] || '' }) });
+  const L = ['## 見出しテスト', '<!-- Mew!FC H2_2026.08.21(F)am01:21.49JST (白/green)//[す]tip= -->', '', 'ふつうの文'];
+  const doc = mk(L);
+  const p = T.meosCheckStampPendingAt(doc, 1);
+  ok(!!p && p.line === 1, '時刻待ちの箱を見つける', p);
+  ok(!!p && L[1].slice(p.ins - 1, p.ins + 1) === 'す]', '入れるのは中身の直後(閉じ括弧の手前)', p && L[1].slice(p.ins - 1, p.ins + 1));
+  const r0 = T.meosCheckStampRange(doc, 0), r1 = T.meosCheckStampRange(doc, 1);
+  ok(r0.from === r1.from && r0.to === r1.to, '本文行とFC行は同じ塊= 行き来しても確定しない', [r0, r1]);
+  ok(T.meosCheckStampRange(doc, 3).from === 3, '離れた行は別の範囲= 出れば確定する', 3);
+  ok(T.meosCheckStampPendingAt(mk(['x', '<!-- Mew!FC H2_x (白/green)//[済 2026.08.21(F)am01:10.56JST]tip= -->']), 1) === null, '既に時刻があれば二重に入れない', 'null');
+  ok(T.meosCheckStampPendingAt(mk(['x', '<!-- Mew!FC H2_x (白/green)//[]tip= -->']), 1) === null, '未対応(空の箱)には入れない', 'null');
+  ok(T.meosCheckStampPendingAt(mk(['x', '<!-- Mew!FC H2_x (白/green) -->']), 1) === null, 'チェックボックスが無い行は相手にしない', 'null');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

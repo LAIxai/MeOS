@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.319 (2026-08-21)
+- **The check time lands when you leave, not while you type** — v4.0.318 stamped on the first keystroke, which with
+  an IME means the first *kana*: typing 済 produced `[す 2026…]`. Waiting for Cmd+S was too late and nobody remembers
+  it; stamping per keystroke is too early. The right moment was already MeOS's own rule — **raw under the cursor,
+  settled once you leave** — so the time goes in when the cursor leaves the block. Moving between the heading and its
+  FC line is still inside, and the box is re-checked before writing, in case you typed a time yourself on the way out.
+
 ### v4.0.318 (2026-08-21)
 - **Checking a box stamps the time immediately** — it used to wait for Cmd+S, which is correct behaviour nobody can
   be expected to remember; the author had forgotten it himself. Write anything into `//[…]tip=` and the time goes in

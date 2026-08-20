@@ -24494,39 +24494,68 @@ function meosFmtKindFollow(e) {
   })();
   return true;
 }
-// ★★v4.0.318(俊克 8/21 am01:04「実際には、以下のようにしても、tipにタイムスタンプがまったく表示されないよ。なぜ?」):
-//   ★★**仕掛けは正しく動いていた。ただ、保存を待っていた**（v0.9.99955 は onWillSave が不安定だったので保存後にした）。
-//   俊克の言い方は「**書き込むと、ここにもタイムスタンプが書き込まれる**」＝ 待つ物ではない。
-//   → **箱に何か書いたその場で入れる**。今日作った兄弟（矢印・下線・記号が本文へ従う）と同じ作りにする。
-//   ★保存時の同期はそのまま残す＝ 貼り付けや一括編集で入った分を後から拾う（冪等なので二重にならない）。
+// ★★v4.0.319(俊克 8/21 am01:20 改良1「**1文字入れただけでタイムスタンプが入ってしまう**のが駄目だね。
+//   これが嫌だから、cmd+Sにしたんだね。だったら、**文字カーソルを見出しの外に出した時に**、タイムスタンプを
+//   入れようよ。**それが、インライン編集の基本**でしょ」):
+//   ★★俊克の実測that証拠= `[す 2026.08.21…]`。IMEの1打鍵目（「す」）で入ってしまう。
+//   v4.0.318で私は「保存を待つのをやめる」まで進めたthat、**行き過ぎて逆側へ落ちた**。
+//   ★★正しい間合いは、MeOSthat元から持っていた= **カーソルの下は生データ・離れたら確定する**。
+//   保存を待つ（忘れる）でもなく、打鍵ごと（早すぎる）でもなく、**離れた時**。
+//   ★離れたと見なす単位は**塊**（見出しの本文行＋そのFC行）。本文とFCの間を行き来しても確定しない。
+//   ★入れる前に**もう一度確かめる**= 離れる間に人that自分で時刻を書いたかもしれない（二重に入れない）。
 let _meosCheckStampBusy = false;
-function meosCheckStampFollow(e) {
-  if (_meosCheckStampBusy || !e || !e.contentChanges || e.contentChanges.length !== 1) return false;
-  const ed = vscode.window.activeTextEditor, doc = e.document;
-  if (!ed || ed.document !== doc || !meosIsProseDoc(doc)) return false;
-  const c = e.contentChanges[0], t = String(c.text || '');
-  if (!t || t.indexOf('\n') >= 0 || t.length > 12) return false;      // 打鍵と小さな貼り付けだけ
-  const ln = c.range.start.line;
-  if (ln < 0 || ln >= doc.lineCount) return false;
-  const text = doc.lineAt(ln).text;
-  if (text.indexOf('tip=') < 0) return false;                        // 安い足切り
-  const m = /(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/.exec(text);
-  if (!m) return false;
-  const box = m[2];
-  if (!box.trim() || MEOS_CHECKED_STAMP_RE.test(box)) return false;   // 未対応/既に記録済み= 用事は無い
-  const bs = m.index + m[1].length, be = bs + box.length;
-  const at = c.range.start.character;
-  if (at < bs || at > be) return false;                              // 箱の中を触った時だけ
-  const ins = box.replace(/\s+$/, '').length + bs;                   // 末尾の空白の手前へ
-  _meosCheckStampBusy = true; deferRefreshCount++;
-  (async () => {
-    try {
-      await ed.edit(eb => eb.insert(new vscode.Position(ln, ins), ' ' + meosFormatStamp(new Date())), { undoStopBefore: false, undoStopAfter: false });
-      try { meosDbg('[checkStamp] 対応済の時刻を入れた 行=' + (ln + 1)); } catch (_) { }
-    } catch (_) { }
-    finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosCheckStampBusy = false; }
-  })();
-  return true;
+let _meosCheckPend = null; // { uri, line, from, to } 時刻待ちの箱と、その塊の範囲
+// その行に「対応済なのに時刻thatが無い箱」があるか。あれば入れる位置も返す。
+function meosCheckStampPendingAt(doc, line) {
+  try {
+    if (line < 0 || line >= doc.lineCount) return null;
+    const t = doc.lineAt(line).text;
+    if (t.indexOf('tip=') < 0) return null;
+    const m = /(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/.exec(t);
+    if (!m) return null;
+    const box = m[2];
+    if (!box.trim() || MEOS_CHECKED_STAMP_RE.test(box)) return null;
+    return { line, ins: m.index + m[1].length + box.replace(/\s+$/, '').length };
+  } catch (_) { return null; }
+}
+// カーソルの居る塊の範囲（見出しの本文行＋FC行）。塊でなければその行だけ。
+function meosCheckStampRange(doc, line) {
+  try {
+    for (const b of meosFcBlocks(doc)) {
+      const top = (b.top == null) ? b.start : b.top;
+      if (line >= top && line <= b.end) return { from: top, to: b.end };
+    }
+  } catch (_) { }
+  return { from: line, to: line };
+}
+function meosCheckStampWatch(editor) {
+  if (_meosCheckStampBusy || !editor || !editor.document) return;
+  const doc = editor.document;
+  if (!meosIsProseDoc(doc)) return;
+  const uri = doc.uri.toString(), line = editor.selection.active.line;
+  const pend = _meosCheckPend;
+  if (pend && (pend.uri !== uri || line < pend.from || line > pend.to)) {   // 塊から出た= 確定する
+    _meosCheckPend = null;
+    const ed2 = (vscode.window.visibleTextEditors || []).find(e => { try { return e.document.uri.toString() === pend.uri; } catch (_) { return false; } });
+    const hit = ed2 ? meosCheckStampPendingAt(ed2.document, pend.line) : null;  // 離れる間に自分で書いたかも= 確かめ直す
+    if (ed2 && hit) {
+      _meosCheckStampBusy = true; deferRefreshCount++;
+      (async () => {
+        try {
+          await ed2.edit(eb => eb.insert(new vscode.Position(hit.line, hit.ins), ' ' + meosFormatStamp(new Date())), { undoStopBefore: false, undoStopAfter: false });
+          try { meosDbg('[checkStamp] 塊を離れたので時刻を入れた 行=' + (hit.line + 1)); } catch (_) { }
+        } catch (_) { }
+        finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosCheckStampBusy = false; }
+      })();
+    }
+  }
+  // 今いる塊に、時刻待ちの箱があれば覚えておく（出た時に入れる）
+  try {
+    const r = meosCheckStampRange(doc, line);
+    let found = null;
+    for (let i = r.from; i <= r.to && !found; i++) found = meosCheckStampPendingAt(doc, i);
+    _meosCheckPend = found ? { uri, line: found.line, from: r.from, to: r.to } : null;
+  } catch (_) { _meosCheckPend = null; }
 }
 let _meosHatBusy = false;
 // 打った(貼った)直後に形that揃っていれば、その場で字にする。『かかか』の呪文と同じ作り。
@@ -26610,7 +26639,7 @@ makeDecorations();
       if (deferRefreshCount === 0) { try { meosLimitArrowSwap(e); } catch (_) { } }   // v4.0.293: 同じ演算子の上下限が両方同じ向きになったら入れ替える
       if (deferRefreshCount === 0) { try { meosLinkUlFollow(e); } catch (_) { } }     // v4.0.298: FC行の(N)を手で直したら、それが最後に決めた下線の種類
       if (deferRefreshCount === 0) { try { meosFmtKindFollow(e); } catch (_) { } }    // v4.0.302: FC行の記号を打ち替えたら、本文の印も従う
-      if (deferRefreshCount === 0) { try { meosCheckStampFollow(e); } catch (_) { } }  // v4.0.318: 箱に書き込んだら、その場で時刻を入れる
+
       if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a
@@ -26778,7 +26807,7 @@ makeDecorations();
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
-    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); meosNoteLastLine(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
+    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
   setTimeout(() => { if (!_meosLastLineReady) meosLastLineFinish('安全弁(20秒)'); }, 20000); // v4.0.309: 戻す機会が来なくても、いつかは覚え始める
