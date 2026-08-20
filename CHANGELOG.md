@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.317 (2026-08-21)
+- **Checked is written in the same format as Created** — `2026.08.21(F)am00:55.41JST` rather than the old
+  `2026-08-21 00:55`. The two sit on the same FC line, so they should read the same way. Records already written in
+  the old format are still read, and are not rewritten. One expression decides what counts as a recorded time, and
+  both the hover and the injector ask it.
+
 ### v4.0.316 (2026-08-21)
 - **`✅` is display only, everywhere** — it is drawn in the hover and written nowhere. That was already true of the
   v4.0 form, but the legacy shell path still stamped a literal `✅` into the raw text on save (and removed it again

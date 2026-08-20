@@ -2740,7 +2740,7 @@ function parseColorSpec(content, single, scan) {
       if (_marked) {
         const _bx = _box ? _box.trim() : '';
         if (_bx) {
-          const _tm = _bx.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
+          const _tm = _bx.match(MEOS_CHECKED_STAMP_RE); // v4.0.317: MeOSの書式も旧書式も読む(物差しは1つ)
           let _head;
           if (_tm) { const _rest = _bx.replace(_tm[0], '').trim(); _head = '✅ Checked: ' + _tm[0] + (_rest ? ' [' + _rest + ']' : ''); }
           else _head = '✅[' + _bx + ']';
@@ -13407,6 +13407,12 @@ const MEOS_STAMP_BODY = '\\d{4}\\.\\d{2}\\.\\d{2}\\([SMTWtFs]\\)(?:am|pm)\\d{2}:
 //   **壊れた入力で、それでも立っていられるか**。名札1つで見出しを殺さない。
 //   ★剥がす側（本文に残った旧い時刻）は今までどおり厳しい形のまま＝ そちらは**本物だけを消したい**ので、
 //   緩めると本文の似た文字列まで消してしまう。**同じ物でも、読む時と消す時で厳しさが違ってよい**。
+// ★★v4.0.317(俊克 8/21 am00:54「もちろん、書式は揃えるべきだよね」):
+//   ★Created は `2026.08.21(F)am00:54.28JST`、Checked は `2026-08-21 00:54`(v0.9.99956)と**書式が違っていた**。
+//   同じFC行に2つ並ぶので、**書くのはMeOSの書式に統一**する。
+//   ★**読む方は両方読む**（read-both）＝ 既に旧書式で記録された分を、こちらの都合で読めなくしない。
+//   ★見分け方は**この1つ**から引く＝ ホバー（✅ Checked: …）も、注入の要否も、同じ物差し。
+const MEOS_CHECKED_STAMP_RE = new RegExp('(?:' + MEOS_STAMP_BODY + '|\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2})');
 const MEOS_LINE_DIRECTIVE_RE = new RegExp('^(-?1(?:\\.\\d+|[a-z])*\\.?|-)?[ \\t]*(H[1-6]|#{1,6})?(_(?:(?!\\/\\/)(?!not(?:[ \\t]|$|\\())\\S)*)?[ \\t]*(not)?[ \\t]*(?:$|(?=\\(|\\/\\/))');
 // 命令トークン → 階層の並び。[{style:'num'|'alpha'}, …] を返す(長さ=深さ)。深さ1は [{num}]。
 function meosItemLevels(tok) {
@@ -26239,7 +26245,7 @@ function activate(context) {
     //   ★既に書かれてしまった `✅` はそのまま残す（過去を一括変換しない）。消したい時は人が消す。
     let ni = inner;
     if (checked) ni = ni.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) =>  // 対応済で日時未記録なら注入
-      (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
+      (box.trim() && !MEOS_CHECKED_STAMP_RE.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + meosFormatStamp(new Date()) + c : mm); // v4.0.317: 書式はMeOSに統一
     return ni;
   };
   // ★★v4.0.315(俊克 8/21 am00:28「前は、[済]とかなにを書いてもそれだけで、あなたがタイムスタンプを[]の中に
@@ -26253,7 +26259,7 @@ function activate(context) {
   const applyCheckStampOnly = (inner) => {
     if (!HEAD_DONE_TIP_ANY.test(inner) || HEAD_DONE_TIP_OPEN.test(inner)) return inner;   // 注釈が無い/未対応=何もしない
     return inner.replace(/(\)\s*\/\/\[)([^\]\n]*)(\]tip=)/, (mm, a, box, c) =>
-      (box.trim() && !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + pendingStamp() + c : mm);
+      (box.trim() && !MEOS_CHECKED_STAMP_RE.test(box)) ? a + box.replace(/\s+$/, '') + ' ' + meosFormatStamp(new Date()) + c : mm); // v4.0.317
   };
   const syncHeadingDoneMarks = (doc) => {
     const edits = [];

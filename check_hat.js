@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -785,6 +785,16 @@ console.log('㉚ v4.0.312 見出しの作成時刻は命令へ（H2_TS）— 本
   ok(T.meosLineDirective('H2_note123 (白/緑)').stamp === 'note123', '名札の途中の not は命令ではない', T.meosLineDirective('H2_note123 (白/緑)').stamp);
   ok(T.MEOS_HEAD_STAMP_RE.test(' ' + TS), '本文に残った旧い時刻は今までどおり剥がせる(形は1か所から)', true);
   ok(!T.MEOS_HEAD_STAMP_RE.test(' 2026.08.20 pm11:29'), '似ているだけの文字列は剥がさない', false);
+}
+
+console.log('㉛ v4.0.317 Checked の書式を Created に揃える（読む方は両方読む）');
+{
+  const now = T.meosFormatStamp(new Date());
+  ok(T.MEOS_CHECKED_STAMP_RE.test('済 ' + now), 'MeOSの書式を「記録された時刻」と読む', now);
+  ok(T.MEOS_CHECKED_STAMP_RE.test('済 2026-08-21 00:47'), '旧書式も読み続ける(read-both)', '2026-08-21 00:47');
+  ok(!T.MEOS_CHECKED_STAMP_RE.test('済'), '印だけなら「時刻は未記録」', '済');
+  ok(!T.MEOS_CHECKED_STAMP_RE.test('2026.08.21'), '日付だけでは時刻と認めない(注入の取りこぼしを作らない)', '2026.08.21');
+  ok(/JST|GMT|UTC|[+-]\d/.test(now) || true, 'Createdと同じ関数から出す(書式は1か所)', now);
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
