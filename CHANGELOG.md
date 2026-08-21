@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.342 (2026-08-22)
+- **Held arrow keys move straight through a membrane line.** A keybinding's `when` clause reads a context value MeOS
+  sets from the *previous* selection change, and key repeat is faster than that round trip — so during a held key the
+  edge commands were firing from positions that were no longer edges, which is what sent the caret two lines on or
+  back. Each command now checks the real caret position itself and hands the key to plain `cursorLeft` / `cursorRight`
+  / `cursorHome` / `cursorEnd` when the precondition does not hold, so a stale context can only ever produce ordinary
+  movement. The context is a hint; correctness lives in the command.
+- No timers are involved in caret movement any more, in either the keys or the guard.
+
 ### v4.0.341 (2026-08-22)
 - **Entering a membrane line from above is direct too.** v4.0.340 fixed leaving but not arriving, so `→` from the end
   of the line above still touched down left of `▼` before being moved. Leaving and arriving land in the same place,

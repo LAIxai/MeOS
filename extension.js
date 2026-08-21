@@ -26916,48 +26916,65 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { meosUpdateInTableContext(e.textEditor); meosUpdateOnMembraneContext(e.textEditor); }));
-  // v4.0.338: 膜の行の Cmd+→ / End は、見える右端へ一発で置く(後から戻す往復を見せない)
+  // ★★v4.0.342(俊克 am00:09 バグ1「→←キー**押しっぱなし**での移動は、途中でぐるぐる周回して先に進まない。
+  //   これはシフトキー同時押下では起きないので、**タイマーを使用しなければいいんじゃないの? なぜタイマーが
+  //   必要か分らんけど**」):
+  //   ★★**俊克が正しい。タイマーは要らない**。残っていた本当の理由は別だった＝
+  //     **鍵の `when` が見ているのは「1つ前の選択で計算した控え」**(setContext は選択が動くたびに送るが、
+  //     **キーの連射はその送りより速い**)。だから連射中は**古い控えで鍵が発火する**＝
+  //     いま端に居ないのに「端から出る」命令が走り、2行飛んだり戻ったりする＝ 俊克の見た周回。
+  //   ★★直し＝ **命令が自分で今の位置を確かめる**。控えは「たぶんそう」という手掛かりでしかないので、
+  //     **正しさは命令の側で持つ**。条件が合わなければ**素の cursorLeft/Right/Home/End に渡す**＝
+  //     古い控えで発火しても、ただの普通の移動になるだけで、決して飛ばない。
+  //   ★これは [[feedback_one_source_for_mark_count_action]] と同じ形＝ **写しを信じず、出どころに訊く**。
+  //   ★シフト同時押しで起きないのは、選択を作る鍵に MeOS が一切割り込んでいないから(v0.9.216以来)。
+  const _meosCaretNow = (ed) => ({ ln: ed.selection.active.line, ch: ed.selection.active.character });
+  const _meosPass = (cmd) => { vscode.commands.executeCommand(cmd); };
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineEnd', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed) return;
-    const ln = ed.selection.active.line, e = meosVisibleRightEdge(ed.document, ln);
-    if (e < 0) { vscode.commands.executeCommand('cursorEnd'); return; }
+    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorEnd'); return; }
+    const { ln } = _meosCaretNow(ed), e = meosVisibleRightEdge(ed.document, ln);
+    if (e < 0) { _meosPass('cursorEnd'); return; }
     const p = new vscode.Position(ln, e);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.339: 見える左端(名前の頭)へ一発。膜の行でなければ素の Home に任せる。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineStart', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed) return;
-    const ln = ed.selection.active.line, e = meosVisibleLeftEdge(ed.document, ln);
-    if (e < 0) { vscode.commands.executeCommand('cursorHome'); return; }
+    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorHome'); return; }
+    const { ln } = _meosCaretNow(ed), e = meosVisibleLeftEdge(ed.document, ln);
+    if (e < 0) { _meosPass('cursorHome'); return; }
     const p = new vscode.Position(ln, e);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.340: 見える左端から←＝ 前の行の末尾へ直接(▼の左に一瞬着地させない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorLeaveMembraneLeft', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed) return;
-    const ln = ed.selection.active.line;
-    if (ln <= 0) { vscode.commands.executeCommand('cursorLeft'); return; }
+    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorLeft'); return; }
+    const { ln, ch } = _meosCaretNow(ed);
+    if (ln <= 0 || ch !== meosVisibleLeftEdge(ed.document, ln)) { _meosPass('cursorLeft'); return; }  // 今そこに居る時だけ
     const pl = ln - 1, pr = meosVisibleRightEdge(ed.document, pl);
-    const ch = (pr >= 0) ? pr : (ed.document.lineAt(pl).text || '').length;
-    const p = new vscode.Position(pl, ch);
+    const dst = (pr >= 0) ? pr : (ed.document.lineAt(pl).text || '').length;
+    const p = new vscode.Position(pl, dst);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.340/341: →で次の行へ入る。行き先は**その行の見える左端**(膜でなければ行頭)。
   //   出る側(膜の右端から)と入る側(前の行の末尾から)は、着く場所が同じなので**同じ1つの命令**にする。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorLeaveMembraneRight', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed) return;
-    const ln = ed.selection.active.line;
-    if (ln >= ed.document.lineCount - 1) { vscode.commands.executeCommand('cursorRight'); return; }
+    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorRight'); return; }
+    const { ln, ch } = _meosCaretNow(ed);
+    if (ln >= ed.document.lineCount - 1) { _meosPass('cursorRight'); return; }
+    const _r = meosVisibleRightEdge(ed.document, ln);                       // 膜の右端に居る
+    const _atEnd = (_r < 0) && ch === (ed.document.lineAt(ln).text || '').length && meosVisibleLeftEdge(ed.document, ln + 1) >= 0; // 次が膜の行末に居る
+    if (!((_r >= 0 && ch === _r) || _atEnd)) { _meosPass('cursorRight'); return; }
     const le = meosVisibleLeftEdge(ed.document, ln + 1);
     const p = new vscode.Position(ln + 1, le >= 0 ? le : 0);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.339: 行頭から←で戻る時は、1つ上の膜の行の**見える右端**へ一発(隠れた末尾に一旦着地させない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorBackToMembraneEnd', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed) return;
-    const ln = ed.selection.active.line;
+    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorLeft'); return; }
+    const { ln, ch } = _meosCaretNow(ed);
+    if (ch !== 0) { _meosPass('cursorLeft'); return; }                       // 今 行頭に居る時だけ
     const e = (ln > 0) ? meosVisibleRightEdge(ed.document, ln - 1) : -1;
-    if (e < 0) { vscode.commands.executeCommand('cursorLeft'); return; }
+    if (e < 0) { _meosPass('cursorLeft'); return; }
     const p = new vscode.Position(ln - 1, e);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
