@@ -22940,14 +22940,33 @@ function meosVisibleRightEdge(doc, line) {
     return e;
   } catch (_) { return -1; }
 }
+// ★★v4.0.339(俊克 pm11:29 バグ1「Cmd+←で、**行頭に着地しない**ので、同様に直して下さい」
+//   バグ2「右端から→、その後**←キーで戻る時に、ダイレクトに着地しない**。行末の1文字分右に一旦着地してから移動」):
+//   ★★**右だけ直して、左を忘れていた**。膜の行には**見える両端**があるのに、私は片側にしか行き先を与えていない。
+//   ★見える左端＝ 名前の頭(idStart)。見える右端＝ 末尾の手前。**同じ1つの関数から両方を出す**。
+//   ★バグ2は「隣の行から戻る」＝ **相手の行の右端**へ行きたい。だから合図も別に要る
+//     (行頭に居て、1つ上が膜の行)。3つ目の行き先ではなく、**同じ右端をもう1つの口から呼ぶだけ**。
+function meosVisibleLeftEdge(doc, line) {
+  try {
+    const t = doc.lineAt(line).text || '';
+    const parts = membraneLineParts(t, 'open') || membraneLineParts(t, 'close');
+    if (!parts || !(parts.idStart >= 0)) return -1;
+    return parts.idStart;
+  } catch (_) { return -1; }
+}
+let _meosAfterMembraneCtx = false;
 function meosUpdateOnMembraneContext(editor) {
-  let v = false;
+  let v = false, w = false;
   try {
     if (editor && editor.document && editor.selection && editor.selection.isEmpty && !meosRawMode) {
-      v = meosVisibleRightEdge(editor.document, editor.selection.active.line) >= 0;
+      const ln = editor.selection.active.line;
+      v = meosVisibleRightEdge(editor.document, ln) >= 0;
+      // 行頭に居て、1つ上が膜の行＝ ←で戻る先はその行の**見える右端**
+      w = !v && editor.selection.active.character === 0 && ln > 0 && meosVisibleRightEdge(editor.document, ln - 1) >= 0;
     }
   } catch (_) { }
   if (v !== _meosOnMembraneCtx) { _meosOnMembraneCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.onMembraneLine', v); } catch (_) { } }
+  if (w !== _meosAfterMembraneCtx) { _meosAfterMembraneCtx = w; try { vscode.commands.executeCommand('setContext', 'meos.afterMembraneLine', w); } catch (_) { } }
 }
 function meosUpdateInTableContext(editor) {
   let v = false;
@@ -26869,6 +26888,23 @@ function activate(context) {
     const ln = ed.selection.active.line, e = meosVisibleRightEdge(ed.document, ln);
     if (e < 0) { vscode.commands.executeCommand('cursorEnd'); return; }
     const p = new vscode.Position(ln, e);
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+  }));
+  // v4.0.339: 見える左端(名前の頭)へ一発。膜の行でなければ素の Home に任せる。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineStart', () => {
+    const ed = vscode.window.activeTextEditor; if (!ed) return;
+    const ln = ed.selection.active.line, e = meosVisibleLeftEdge(ed.document, ln);
+    if (e < 0) { vscode.commands.executeCommand('cursorHome'); return; }
+    const p = new vscode.Position(ln, e);
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+  }));
+  // v4.0.339: 行頭から←で戻る時は、1つ上の膜の行の**見える右端**へ一発(隠れた末尾に一旦着地させない)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorBackToMembraneEnd', () => {
+    const ed = vscode.window.activeTextEditor; if (!ed) return;
+    const ln = ed.selection.active.line;
+    const e = (ln > 0) ? meosVisibleRightEdge(ed.document, ln - 1) : -1;
+    if (e < 0) { vscode.commands.executeCommand('cursorLeft'); return; }
+    const p = new vscode.Position(ln - 1, e);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));

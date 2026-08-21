@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.339 (2026-08-21)
+- **Both edges of a membrane line now have a destination, not just the right one.** `Cmd+←` lands on the head of the
+  name, and arrowing left back from the line below lands on the visible right edge instead of touching down past the
+  hidden tail first. A membrane line has two visible edges; v4.0.338 gave a destination to one of them.
+- The left and right edges come out of the same pair of functions the guard uses, so the key and the guard can never
+  disagree about where the edge is.
+
 ### v4.0.338 (2026-08-21)
 - **Standing on a spec line shows the line it describes as raw again.** Which lines turn orange and which lines show
   raw source were being decided by two different measures: orange had moved to the pair (body line *i* ↔ spec line
