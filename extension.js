@@ -4138,6 +4138,40 @@ function meosScheduleDepthAudit(editor) {
     setTimeout(() => { try { meosRunDepthAudit(vscode.window.activeTextEditor, false); } catch (_) { } }, 12000);
   } catch (_) { }
 }
+// ★★v4.0.335(俊克 pm05:51 改良1「膜の色がFC化によって、**正しく反映されてない**。Mepyで膜色を変更しても、
+//   Yが変わらない。膜の色も紫色のままだよ。これは、**バッジがFC化したことに対応してない**んじゃないのか?」):
+//   ★★**その通り**。v4.0.330で骨組みだけ入れて、**描画と色の書き込みは▼行を見たまま**にしてあった。
+//   ★症状の読み方＝ 新形の▼行にバッジが無い → 色コードが空 → `colorForDepth` に落ちる
+//     ＝ **深さで決まる色(深さ2=紫)がそのまま出る**。俊克の「紫色のまま」がその証拠。
+//   ★直し＝ **▼行の行番号を渡せば、その膜のバッジが返る**入口を1つ作り、描画も書き込みもそこを通す。
+let _meosPairByStartMemo = { key: '', map: null };
+function meosPairByStart(doc) {
+  const key = _meosTextKey(doc);
+  if (_meosPairByStartMemo.key === key && _meosPairByStartMemo.map) return _meosPairByStartMemo.map;
+  const m = new Map();
+  try { for (const p of collectPairs(doc, { excludeIndex: false })) m.set(p.start, p); } catch (_) { }
+  _meosPairByStartMemo = { key, map: m };
+  return m;
+}
+// 開始膜の行から、その膜のバッジを引く(旧形=▼行 / 新形=▲の次のFC行)。
+function meosBadgeForOpenLine(doc, startLine, openText) {
+  try {
+    const t = (openText != null) ? openText : doc.lineAt(startLine).text;
+    const b = parseMstatBadgeFromText(t);
+    if (b) return b;                                   // 旧形があればそれ
+    const p = meosPairByStart(doc).get(startLine);
+    if (p) return (meosPairBadgeAt(doc, p) || {}).badge || null;
+  } catch (_) { }
+  return null;
+}
+function meosMembraneColorCodeForOpen(doc, startLine, openText) {
+  const b = meosBadgeForOpenLine(doc, startLine, openText);
+  return b ? normalizeMembraneColorCode(b.colorCode) : '';
+}
+function meosMembraneColorForOpen(doc, startLine, openText, fallbackColor) {
+  const c = membraneCssColorForCode(meosMembraneColorCodeForOpen(doc, startLine, openText));
+  return c || fallbackColor;
+}
 function meosPairBadgeLineText(id, indent, badgeText) { return String(indent || '') + meosSpecLineBox('mCN ' + String(badgeText)); }
 function setMstatBadgeColorInText(text, colorCode) {
   const badge = parseMstatBadgeFromText(text);
@@ -4916,7 +4950,7 @@ function computeLineDecorations(document, visibleRanges) {
       // v0.9.504: depthCompressionProxy branch removed.
       const color = isWarning
         ? warningColor
-        : membraneColorForOpenLineText(startText, colorForDepth(depth, cfg)); // v4.0.113: 上で読んだものを使い回す
+        : meosMembraneColorForOpen(document, p.start, startText, colorForDepth(depth, cfg)); // v4.0.113 / v4.0.335: バッジは▲の次にも在る
       const isTerminal = p.warningKind === 'normal' && (line === p.start || line === p.end);
       // v0.9.515: for stealth pairs at open/close lines, skip lane
       // rendering entirely — the ◤◢ markers take the lane's place
@@ -5082,7 +5116,7 @@ function computeGutterLaneDecorations(document, editor) {
       return {
         start: p.start, end: p.end, depth,
         slot: Math.min(depth, GUTTER_SLOT_MAX),
-        color: membraneColorForOpenLineText(document.lineAt(p.start).text, colorForDepth(depth, cfg)),
+        color: meosMembraneColorForOpen(document, p.start, null, colorForDepth(depth, cfg)),   // v4.0.335
         stealth: isStealthMembrane(p, document)
       };
     });
@@ -6853,7 +6887,7 @@ function applyPrettyLabels(editor) {
       // v0.9.504: depth-compression filter removed; all depths render labels.
       const folded = pair ? isPairFolded(editor, pair) : false;
       const fallbackColor = colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'));
-      const color = membraneColorForOpenLineText(text, fallbackColor);
+      const color = meosMembraneColorForOpen(editor.document, (pair ? pair.start : line), (pair && pair.start !== line) ? null : text, fallbackColor); // v4.0.335
       openHide.push({ range: new vscode.Range(line, parts.prefixStart, line, parts.idStart) });
       // v0.9.526/529/538: N0 → hide the membrane name and trailing comment up to the
       // badge (search / Hyper TOC / bi-link jump still resolve via the real name in
@@ -6968,7 +7002,7 @@ function applyPrettyLabels(editor) {
         const closeGlyph = isMntClose ? (baseCloseGlyph + '📒') : baseCloseGlyph;
         closeLabels.push({
           range: new vscode.Range(line, parts.idStart, line, parts.idStart),
-          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : membraneColorForOpenLineText(pair ? editor.document.lineAt(pair.start).text : text, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
+          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosMembraneColorForOpen(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
         });
       }
     } else {
@@ -11428,11 +11462,11 @@ function computeMembraneBadgeColorRanges(editor) {
   const pairByEnd = new Map(pairs.map(p => [p.end, p]));
 
   function colorCodeForLine(line, text, open, close) {
-    if (open) return membraneColorCodeFromText(text);
+    if (open) return meosMembraneColorCodeForOpen(doc, line, text);          // v4.0.335
     if (close) {
       const pair = pairByEnd.get(line);
       if (pair && pair.start >= 0 && pair.start < doc.lineCount) {
-        return membraneColorCodeFromText(doc.lineAt(pair.start).text || '');
+        return meosMembraneColorCodeForOpen(doc, pair.start, null);          // v4.0.335
       }
     }
     return '';
@@ -11926,7 +11960,7 @@ function currentMembraneInfo(editor) {
   try {
     const openText = editor.document.lineAt(cur.start).text;
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
-    mcolor = membraneColorForOpenLineText(openText, colorForDepth(cur.depth || 0, cfg)) || '';
+    mcolor = meosMembraneColorForOpen(editor.document, cur.start, openText, colorForDepth(cur.depth || 0, cfg)) || '';  // v4.0.335
   } catch (_) {}
   let hasImage = false; // v3.4.3(俊克 改良2): 現在膜に画像リンクがあれば Current Me に 🖼 を付ける
   if (MEOS_RELEASE_PHASE >= 5) try { const end = Math.min(cur.end, editor.document.lineCount - 1); for (let ln = cur.start; ln <= end && ln < cur.start + 400; ln++) { if (MEOS_IMG_LINK_RE.test(editor.document.lineAt(ln).text)) { hasImage = true; break; } } } catch (_) {} // v3.0.7: 画像はフェーズ5(隔離)=Current Meの🖼を出さない
@@ -17442,21 +17476,21 @@ function meDockModeForEditor(editor) {
   // via the `inMembrane` flag so the membrane controls still show while you sit inside a membrane.
   if (isCursorOnMembraneLine(editor) || isCursorInsideMembraneName(editor)) {
     const pair = currentMembranePairForRename(editor);
-    const ownColor = pair ? membraneColorCodeFromText(editor.document.lineAt(pair.start).text) : '';
+    const ownColor = pair ? meosMembraneColorCodeForOpen(editor.document, pair.start, null) : '';   // v4.0.335
     return { mode: 'rename', label: 'Rename Me…', value: pair ? pair.id : '', line: meDockCurrentLineNumber(editor), color: ownColor, flipMinusColor: flip.minusColor || ownColor, flipPlusColor: flip.plusColor || ownColor, navDepth: submarineDepthDisplayForEditor(editor) };
   }
   // v0.9.804: when inside a membrane, show ITS colour (innermost enclosing = findCurrentPair) so the
   // colour button matches what the colour picker recolours (v0.9.803). flip.currentColor was the
   // depth-0 ROOT membrane's colour → mismatch (showed root/W instead of the membrane you're in). 俊克.
   const insidePairForColor = findCurrentPair(editor);
-  const insideColor = insidePairForColor ? (membraneColorCodeFromText(editor.document.lineAt(insidePairForColor.start).text) || '') : '';
+  const insideColor = insidePairForColor ? (meosMembraneColorCodeForOpen(editor.document, insidePairForColor.start, null) || '') : '';   // v4.0.335
   return { mode: 'new', label: 'New Me…', value: getDefaultMembraneName(), line: meDockCurrentLineNumber(editor), color: insideColor || flip.currentColor || '', flipMinusColor: flip.minusColor || '', flipPlusColor: flip.plusColor || '', navDepth: submarineDepthDisplayForEditor(editor) };
 }
 
 function lineColorCodeFromOpenLine(document, line) {
   try {
     if (!document || line < 0 || line >= document.lineCount) return '';
-    return membraneColorCodeFromText(document.lineAt(line).text) || '';
+    return meosMembraneColorCodeForOpen(document, line, null) || '';         // v4.0.335
   } catch (_) { return ''; }
 }
 
@@ -17642,19 +17676,29 @@ async function renameMeWithName(nameInput, colorCode = undefined) {
   if (nextName !== pair.id) {
     nextOpenLineText = nextOpenLineText.slice(0, openName.range.start.character) + nextName + nextOpenLineText.slice(openName.range.end.character);
   }
-  if (normalizedColor !== undefined) {
-    nextOpenLineText = setMstatBadgeColorInText(nextOpenLineText, normalizedColor);
+  // ★★v4.0.335: 色は**バッジの居る行**に書く。新形ではバッジは▲の次なので、▼行に書いても誰も読まない
+  //   ＝ 俊克「Mepyで膜色を変更しても、Yが変わらない」の正体。
+  const _at = meosPairBadgeAt(editor.document, pair);
+  let _badgeEdit = null;
+  if (normalizedColor !== undefined && _at && _at.badge) {
+    const _next = formatMstatBadge({ ..._at.badge, colorCode: normalizedColor });
+    if (_next !== _at.badge.raw) _badgeEdit = { line: _at.line, start: _at.badge.start, end: _at.badge.end, text: _next };
+  }
+  if (_badgeEdit && _badgeEdit.line === pair.start) {          // 旧形= 開始行の中で書き換わる
+    nextOpenLineText = nextOpenLineText.slice(0, _badgeEdit.start) + _badgeEdit.text + nextOpenLineText.slice(_badgeEdit.end);
+    _badgeEdit = null;
   }
 
   const closeLineNeedsName = nextName !== pair.id;
   const openLineNeedsReplace = nextOpenLineText !== openLineText;
-  if (!closeLineNeedsName && !openLineNeedsReplace) return;
+  if (!closeLineNeedsName && !openLineNeedsReplace && !_badgeEdit) return;
 
   const ok = await editor.edit(edit => {
     if (closeLineNeedsName) edit.replace(closeName.range, nextName);
     if (openLineNeedsReplace) {
       edit.replace(new vscode.Range(pair.start, 0, pair.start, openLineText.length), nextOpenLineText);
     }
+    if (_badgeEdit) edit.replace(new vscode.Range(_badgeEdit.line, _badgeEdit.start, _badgeEdit.line, _badgeEdit.end), _badgeEdit.text);
   }, { undoStopBefore: true, undoStopAfter: true });
   if (ok) {
     // v0.9.507: post-edit block stripped of dead GPT-era references to

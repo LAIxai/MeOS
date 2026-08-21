@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText , meosNewMembraneCloseBlock, buildMembraneOpenLine, commentSyntaxForDocument, meosDeepenBadgesInText, meosDeepenBadgeEdits, meosDepthAudit, mstatDepthForPair, meosWrapDepthShift };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText , meosNewMembraneCloseBlock, buildMembraneOpenLine, commentSyntaxForDocument, meosDeepenBadgesInText, meosDeepenBadgeEdits, meosDepthAudit, mstatDepthForPair, meosWrapDepthShift, meosMembraneColorCodeForOpen, meosMembraneColorForOpen, membraneCssColorForCode, colorForDepth };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -975,6 +975,20 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
      '★一番外を全部包む＝ 新しい膜が包み膜になるので、中の申告は1つも動かない', '0');
   ok(T.meosWrapDepthShift(mk(NOENV), 0, 2) === -1,
      '一部だけ包む＝ その中は1つ深くなる', '-1');
+
+  // ★v4.0.335（俊克 pm05:51 改良1「膜の色がFC化によって正しく反映されてない。Mepyで膜色を変更しても
+  //   Yが変わらない。膜の色も紫色のまま」）＝ 描画は▼行を見たままだった。
+  const CLR = ['<!-- {* ▼mCN=G // 緑の膜 *} -->', '本文', '<!-- {* ▲mCN=G // *} -->',
+               '<!-- Mew!FC mCN (📊⊕0+0D-2G) -->'];
+  ok(T.meosMembraneColorCodeForOpen(mk(CLR), 0, null) === 'G',
+     '★新形＝ 開始膜の行から引いても、▲の次のバッジの色が返る', 'G');
+  ok(T.meosMembraneColorForOpen(mk(CLR), 0, null, 'FALLBACK') === T.membraneCssColorForCode('G'),
+     '色が引けるので、深さの色（紫）に落ちない', '緑');
+  const OLDC = ['<!-- {* ▼mCN=H // 旧形 (📊0⊕0+0D-2Y) *} -->', '本文', '<!-- {* ▲mCN=H // *} -->'];
+  ok(T.meosMembraneColorCodeForOpen(mk(OLDC), 0, null) === 'Y',
+     '旧形＝ ▼行から引く（read-both）', 'Y');
+  ok(T.meosMembraneColorForOpen(mk(['本文だけ']), 0, null, 'FALLBACK') === 'FALLBACK',
+     '色を持たない膜は、今までどおり深さの色に落ちる', 'FALLBACK');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

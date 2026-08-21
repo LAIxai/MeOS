@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.335 (2026-08-21)
+- **Membrane colour follows the badge to its new home.** v4.0.330 moved the badge but left the drawing and the colour
+  writer reading the opening line, so a new-form membrane had no colour code there, fell back to colour-by-depth, and
+  came out purple — and setting a colour from Mepy wrote it to a line nothing reads. Every place that asks for a
+  membrane's colour now asks by the **opening line's number**, through one entry point that knows the badge may live
+  under the close; the writer edits whichever line actually holds it. Old-form membranes read from the opening line
+  exactly as before.
+
 ### v4.0.334 (2026-08-21)
 - **Wrapping membranes in another membrane corrects the depths inside.** That is the case where a depth actually goes
   stale, and it is the one moment where correcting it costs nothing: wrapping makes everything inside exactly one
