@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.347 (2026-08-22)
+- **Highlight and super/subscript step aside for the caret too.** Only strikethrough started working in v4.0.346
+  because "which lines show raw source" was written out separately in **eight** places — the main decoration pass plus
+  table fit / merge / calc / row-lines, MeTeX, note links, highlight and function membranes — and only the first was
+  changed. All eight now ask the same function. Which one worked and which did not was itself the clue.
+- **Every decoration pass is now timed.** They had no measurement at all, while refresh, folding ranges and document
+  links did — so a slow one could never show up in the log. Anything over 300ms writes a line naming the pass.
+- The harness now fails if any pass goes back to counting cursor lines for itself, or loses its timer.
+
 ### v4.0.346 (2026-08-22)
 - **Standing on a spec line really does show its heading, highlight and strikethrough as raw now.** v4.0.338 claimed
   this and did not deliver: the six places switched to the new measure were the ones that pre-mask the text, while the

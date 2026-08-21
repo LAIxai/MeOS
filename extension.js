@@ -6330,17 +6330,7 @@ function applyPrettyLabels(editor) {
   //     俊克がv4.0.324で言った「橙＝生データを表示する機能を色ではっきり見せる」を、**言葉どおりにする**＝
   //     **橙に染まる行は、生データを見せる行**。
   //   ★膜(▼▲バッジ)の組だけは外す＝ そちらは隠し帯の作りが別なので、対の相手まで生にはしない。
-  const _rawLines = new Set();
-  if (docCursorLine >= 0) {
-    _rawLines.add(docCursorLine);
-    try {
-      // ★v4.0.345(俊克 バグ1「開始膜にカーソルがいるとき、閉じ膜が生データになってないよ」):
-      //   ★橙に染まる行は**全部**生データ。膜は▼▲バッジの3行がひと組(v4.0.332)なので、3行とも生になる。
-      //   v4.0.338で膜だけ除いていたのは、隠し帯を外すのが怖かったから＝ その怖れは v4.0.344 で不要になった。
-      const _m = meosFcMate(editor.document, docCursorLine);
-      if (_m) for (const _l of (_m.lines || [])) if (_l >= 0) _rawLines.add(_l);
-    } catch (_) { }
-  }
+  const _rawLines = (docCursorLine >= 0) ? meosRawLines(editor) : new Set();  // v4.0.347: 物差しは1本
   const _isRawLine = (ln) => _rawLines.has(ln);
   const _rawRangeTouched = (from, to) => { for (const l of _rawLines) if (l >= from && l <= to) return true; return false; };
   // ★★v4.0.346(俊克 am01:24 バグ1「**見出しの修正が元に戻ってしまった**よ。前バージョンでも。つまり、
@@ -22923,6 +22913,8 @@ function meosTableFitScales(colW, target, pipes) {
   });
 }
 function meosApplyTableFitDecorations(editor) {
+  const _t0meosApplyTableFitDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   // v4.0.128(俊克 8/10 am10:58「見えないだけで、リアルタイムにテーブルを整形しようとするルーチンは呼ばれているのかな?」):
   // ★半分は呼ばれていた。v4.0.127の元栓は `meosEnsureTableFitDecos()` の**後ろ**に置いたので、
@@ -22937,7 +22929,7 @@ function meosApplyTableFitDecorations(editor) {
     const target = meosTableFitColumns();
     if (!target || (typeof meosRawMode !== 'undefined' && meosRawMode)) { meosClearTableFitDecos(editor); return; }
     const doc = editor.document;
-    const cursorLines = new Set(); try { for (const sel of editor.selections) { cursorLines.add(sel.active.line); cursorLines.add(sel.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const byPct = new Map(); for (const pct of MEOS_TABLE_FIT_STEPS) byPct.set(pct, []);
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const done = new Set(); // 同じ表を2度measureしない
@@ -22975,8 +22967,11 @@ function meosApplyTableFitDecorations(editor) {
     }
     for (const [pct, ranges] of byPct) editor.setDecorations(tableFitDecoByPct.get(pct), ranges);
   } catch (_) { }
+  } finally { try { const _ms = Date.now() - _t0meosApplyTableFitDecorations; if (_ms > 300) meosDbg('[TableFit] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 function meosApplyTableMergeDecorations(editor) {
+  const _t0meosApplyTableMergeDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   if (MEOS_RELEASE_PHASE < 3) return; // v1.0.0: テーブル未解禁フェーズでは結合装飾を描かない(生GFMのまま表示)
   if (!tableMergeHideDecoration) tableMergeHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 内側パイプ=不可視だが幅維持(桁揃え不変)
@@ -22985,7 +22980,7 @@ function meosApplyTableMergeDecorations(editor) {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableMergeHideDecoration, []); editor.setDecorations(tableCommentHideDecoration, []); return; }
     const doc = editor.document; const pipeRanges = [], commentRanges = [];
     // v0.9.999162(俊克 改良1/3): カーソルがある行はマージ装飾を外して生データ(<!--🤝N-->と|)を見せる=インラインで結合を編集でき、ゼロ幅コメントのカーソルの罠も回避。
-    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
@@ -23009,6 +23004,7 @@ function meosApplyTableMergeDecorations(editor) {
     editor.setDecorations(tableMergeHideDecoration, pipeRanges);
     editor.setDecorations(tableCommentHideDecoration, commentRanges);
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyTableMergeDecorations; if (_ms > 300) meosDbg('[TableMerge] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // v3.0.7.1/v3.1.60(俊克): ★表計算 Σ/Π の装飾。計算マーカー(<!--Σ↑-->等)のコメントをゼロ幅で隠し、セルに焼き込んだ計算結果(過去の値)をそのまま見せる。★v3.1.60=手動計算モード=再計算はここ(装飾)でなく ▦ 整形時のみ(Excelの手動計算+F9と同型)。表示=ファイルの値=MeOS外と常に一致・毎スクロール/毎編集の再計算なし。カーソル行は生表示(マーカーを編集できる)。結合と同じ「生データを汚さず装飾で見せる」層。
@@ -23020,6 +23016,8 @@ function meosTableAutoCalc() { if (_tableAutoCalcCache === null) { try { _tableA
 let _autoCalcLastVals = new Map(), _autoCalcFlashUntil = new Map(), _autoCalcFlashRerenderTimer = null;
 let tableCalcHideDeco = null, tableCalcResultDeco = null;
 function meosApplyTableCalcDecorations(editor) {
+  const _t0meosApplyTableCalcDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   if (MEOS_RELEASE_PHASE < 3 || !MEOS_TABLE_CALC) { if (tableCalcHideDeco) editor.setDecorations(tableCalcHideDeco, []); if (tableCalcResultDeco) editor.setDecorations(tableCalcResultDeco, []); return; }
   if (!tableCalcHideDeco) tableCalcHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // マーカーをゼロ幅で隠す
@@ -23028,7 +23026,7 @@ function meosApplyTableCalcDecorations(editor) {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableCalcHideDeco, []); editor.setDecorations(tableCalcResultDeco, []); return; }
     const auto = meosTableAutoCalc(); // v3.1.67: auto=ライブ表示(画面だけ即再計算)／manual=焼き値をそのまま見せる
     const doc = editor.document; const hideRanges = [], resultOpts = []; let _anyFlash = false, _maxExp = 0; // v3.1.69: auto時の緑フラッシュ
-    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const blockCache = new Map(); // auto時のみ: ブロックごとに resolver をキャッシュ
     function blockFor(ln) {
       const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
@@ -23083,6 +23081,7 @@ function meosApplyTableCalcDecorations(editor) {
     // v3.1.69: 緑フラッシュが残っている間は、期限後に一度だけ再描画して緑を消す。
     if (_anyFlash) { if (_autoCalcFlashRerenderTimer) clearTimeout(_autoCalcFlashRerenderTimer); _autoCalcFlashRerenderTimer = setTimeout(() => { _autoCalcFlashRerenderTimer = null; try { const e2 = vscode.window.activeTextEditor; if (e2 && e2.document === doc) meosApplyTableCalcDecorations(e2); } catch (_) {} }, Math.max(200, _maxExp - Date.now() + 120)); }
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyTableCalcDecorations; if (_ms > 300) meosDbg('[TableCalc] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 // v3.1.61(俊克 7/31): ▦で再計算して焼き値が変わったセルを一時ハイライト(既定5秒)。装飾のみ=ファイルは汚さない。手動計算モードで「押したら何が変わったか(或いは何も変わらなかったか)」を目で確認できる=押し忘れ対策。
 let tableCalcFlashDeco = null, tableCalcFlashTimer = null;
@@ -23104,6 +23103,8 @@ function meosFlashTableCells(editor, ranges, ms) {
 // 格子は縦結合が1つでもある表だけに描く(抜きが意味を持つため=有/無の差で結合を語る)。可視範囲のみ走査(性能)。
 let tableRowLineDeco = null, tableRowLineTopDeco = null, tableRowLineThickDeco = null, tableSepHideDeco = null;
 function meosApplyTableRowLineDecorations(editor) {
+  const _t0meosApplyTableRowLineDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   const clearAll = () => { for (const d of [tableRowLineDeco, tableRowLineTopDeco, tableRowLineThickDeco, tableSepHideDeco]) if (d) editor.setDecorations(d, []); };
   if (MEOS_RELEASE_PHASE < 3) { clearAll(); return; } // テーブル未解禁フェーズでは罫線ゼロ
@@ -23115,7 +23116,7 @@ function meosApplyTableRowLineDecorations(editor) {
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Rawは罫線ゼロ・--- も生表示
     const doc = editor.document; const bottom = [], top = [], thick = [], sepHide = [];
-    const cursorLines = new Set(); try { for (const s of editor.selections) cursorLines.add(s.active.line); } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const blockCache = new Map();
     function blockFor(ln) {
       const blk = meosTableBlockRange(doc, ln); if (!blk) return null;
@@ -23169,11 +23170,14 @@ function meosApplyTableRowLineDecorations(editor) {
     editor.setDecorations(tableRowLineThickDeco, thick);
     editor.setDecorations(tableSepHideDeco, sepHide);
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyTableRowLineDecorations; if (_ms > 300) meosDbg('[TableRowLine] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // v3.4.0/3.4.2(俊克 7/23): ★画像膜マーカー(標準機能)。膜の本文に画像リンクが1つ以上あれば、その膜の**開始行の先頭に 🖼 絵文字**を装飾(contentText)で表示=畳んでも「この膜に絵が入っている」が一目で分かる。★v3.4.0/3.4.1の実画像サムネ(contentIconPath)はサイズ制御が効かず原寸(巨大)になったため、確実・軽量・非破壊(ファイルを汚さない)な絵文字マーカーに切替。可視範囲のみ走査(性能)。
 let imageThumbDecoration = null;
 function meosApplyImageThumbDecorations(editor) {
+  const _t0meosApplyImageThumbDecorations = Date.now();
+  try {
   if (MEOS_RELEASE_PHASE < 5) return; // v3.0.7: 画像/添付はフェーズ5(隔離)。開始行の🖼マーカーを付けない。
   if (!editor || !editor.document) return;
   if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ before: { contentText: '🖼 ', margin: '0 2px 0 0' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -23196,6 +23200,7 @@ function meosApplyImageThumbDecorations(editor) {
     }
     editor.setDecorations(imageThumbDecoration, ranges);
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyImageThumbDecorations; if (_ms > 300) meosDbg('[ImageThumb] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // ===== v3.5.0(俊克 7/30): MeTeX(ミーテックス)— 上付き ↑ / 下付き ↓ の整形 ==========================
@@ -23912,6 +23917,29 @@ function meosFcMate(doc, line) {
   if (line >= fc0) { const j = line - fc0; const m = (j < nBody) ? b.top + j : -1; return { self: line, mate: m, onFc: true, idx: j, fc0, nBody, nFc, b, lines: (m >= 0 ? [line, m] : [line]) }; }
   const j = line - b.top;  const m = (j < nFc) ? fc0 + j : -1;
   return { self: line, mate: m, onFc: false, idx: j, fc0, nBody, nFc, b, lines: (m >= 0 ? [line, m] : [line]) };
+}
+// ★★★v4.0.347(俊克 am01:38 バグ2「**ハイライトが直ってない。上付き/下付きも直ってない**。取消線だけ
+//   直っている」):
+//   ★★★**同じ判定が8か所に別々に書かれていた**。取消線だけ直ったのは、v4.0.346で直したのが
+//     `computeLineDecorations`(取消線などはここ)の1本目だけだったから＝ **俊克の切り分けがその印**。
+//     残りは表の整形/結合/計算/行罫線・MeTeX(上付き下付き)・ノート内リンク・ハイライト(bold)・関数膜の8本。
+//   ★★★物差しは**1本**にする。ここに置いて、全部**同じ物に訊く**。
+//     → [[feedback_one_source_for_mark_count_action]]「印・数字・ボタンは同じ1つの判定から引く」。
+//     今日これで**5度目**＝ 私は「直した」と言う前に、**同じ物を数えている所を全部数える**癖thatまだ無い。
+//   ★中身の規則＝ ①カーソル(と選択の両端)の行 ②その行のFCの**対の相手**(俊克 v4.0.338「橙＝生データ」)。
+function meosRawLines(editor) {
+  const out = new Set();
+  try {
+    if (!editor || !editor.document || !editor.selection) return out;
+    for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
+      out.add(sl.active.line); out.add(sl.anchor.line);
+    }
+    for (const ln of Array.from(out)) {
+      const m = meosFcMate(editor.document, ln);
+      if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
+    }
+  } catch (_) { }
+  return out;
 }
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
@@ -25128,6 +25156,8 @@ function meosMeTexStyle(kind, scale, baseTall, fg, bg, depth) {
 }
 const meTexTypeCache = new Map(); // styleString → decorationType(scale別に上/下付きの型をキャッシュ)
 function meosApplyMeTexDecorations(editor) {
+  const _t0meosApplyMeTexDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   const clearAll = () => { if (meTexHideDeco) editor.setDecorations(meTexHideDeco, []); if (meTexBarDeco) editor.setDecorations(meTexBarDeco, []); if (meTexLimitDeco) editor.setDecorations(meTexLimitDeco, []); if (meTexLimitDeco2) editor.setDecorations(meTexLimitDeco2, []); if (meTexSlantDeco) editor.setDecorations(meTexSlantDeco, []); for (const d of meTexTypeCache.values()) editor.setDecorations(d, []); }; // v4.0.222: 横棒も一緒に消す / v4.0.293: ∫の傾きも
   if (!MEOS_METEX) { clearAll(); return; }
@@ -25138,7 +25168,7 @@ function meosApplyMeTexDecorations(editor) {
     let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 100) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 100) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
     const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitUpItems = [], limitDownItems = [], slantRanges = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitUp|Down = Σの上下限(v4.0.273) / slantRanges = 式の∫を傾ける(v4.0.293)
     const _slLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.138: 指定行(Mew!^)を読むための行配列(版ごとに1回だけ刻んである)
-    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
@@ -25265,6 +25295,7 @@ function meosApplyMeTexDecorations(editor) {
     for (const [style, type] of meTexTypeCache) editor.setDecorations(type, styleRanges.get(style) || []); // 既存の型: 使われた分だけ再適用・未使用は空でクリア
     for (const [style, ranges] of styleRanges) { if (meTexTypeCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meTexTypeCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyMeTexDecorations; if (_ms > 300) meosDbg('[MeTex] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // ===== v4.0.8(俊克 8/2): ノート内リンク(片道切符・テスト実装) ==========================================
@@ -25736,13 +25767,15 @@ function meosFindMembraneLineByName(doc, name) { const needle = String(name || '
 let _meosDockStateTimer = null; // v4.0.236: Me Dockのボタンの姿を計算し直す待ち
 let meLinkHideDeco = null; const meLinkStyleCache = new Map();
 function meosApplyMeLinkDecorations(editor) {
+  const _t0meosApplyMeLinkDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   const clearAll = () => { if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=生表示
     if (!meLinkHideDeco) meLinkHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document, hideRanges = [], styleRanges = new Map();
-    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _lTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _lTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
     for (const vr of vrs) {
@@ -25834,6 +25867,7 @@ function meosApplyMeLinkDecorations(editor) {
     for (const [style, type] of meLinkStyleCache) editor.setDecorations(type, styleRanges.get(style) || []);
     for (const [style, ranges] of styleRanges) { if (meLinkStyleCache.has(style)) continue; const type = vscode.window.createTextEditorDecorationType({ textDecoration: style, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); meLinkStyleCache.set(style, type); editor.setDecorations(type, ranges); }
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyMeLinkDecorations; if (_ms > 300) meosDbg('[MeLink] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // ===== v3.7.0(俊克 7/30): 太字/斜体 — 従来記法 **text**/***text***/*text* を同一行内で描画 ==========================
@@ -26081,6 +26115,10 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain) {
   const t = vscode.window.createTextEditorDecorationType(opt); boldFmtTypeCache.set(key, t); return t;
 }
 function meosApplyBoldDecorations(editor) {
+  // v4.0.347(俊克「見出しが閉じるのが10秒以上かかる」): **この道には計測が1つも無かった**。
+  //   refresh も foldingRanges も測っているのに、描画パスは無測定＝ **網の外**だった(v4.0.112の教訓)。
+  const _t0meosApplyBoldDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   const clearAll = () => { if (boldHideDeco) editor.setDecorations(boldHideDeco, []); for (const d of boldFmtTypeCache.values()) editor.setDecorations(d, []); };
   if (!MEOS_BOLD) { clearAll(); return; }
@@ -26093,7 +26131,7 @@ function meosApplyBoldDecorations(editor) {
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
     let _lnLinks = [];
     const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
-    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _bTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _bTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
     for (const vr of vrs) {
@@ -26189,6 +26227,7 @@ function meosApplyBoldDecorations(editor) {
     editor.setDecorations(boldHideDeco, hideR);
     for (const [t, items] of boldFmtTypeCache.size ? [...boldFmtTypeCache].map(([k, t]) => [t, itemsByType.get(t) || []]) : []) editor.setDecorations(t, items);
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyBoldDecorations; if (_ms > 300) meosDbg('[Bold] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // ===== v3.5.0(俊克 7/30): 関数膜 — 名前つき数式の定義＋呼び出し(関数電卓) ==========================
@@ -26289,6 +26328,8 @@ function meosFuncCallInfo(cellText, funcMap, cellRef) {
 const MEOS_FUNC_CALL_RE = /([A-Za-z][A-Za-z0-9]*)\(([^()]*)\)_(\d[\d.]*)/g; // name(args)_TS
 let funcHideDeco = null, funcResultDeco = null;
 function meosApplyFuncDecorations(editor) {
+  const _t0meosApplyFuncDecorations = Date.now();
+  try {
   if (!editor || !editor.document) return;
   const clearAll = () => { for (const d of [funcHideDeco, funcResultDeco]) if (d) editor.setDecorations(d, []); };
   if (!MEOS_METEX) { clearAll(); return; }
@@ -26298,7 +26339,7 @@ function meosApplyFuncDecorations(editor) {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
     const doc = editor.document; const hideRanges = [], resultOpts = [];
     // 可視範囲に呼び出しトークンが在る時だけレジストリを組む(全文走査を無駄に走らせない)
-    const cursorLines = new Set(); try { for (const s of editor.selections) { cursorLines.add(s.active.line); cursorLines.add(s.anchor.line); } } catch (_) {}
+    const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     let map = null;
     // v3.1.41: 表の中の呼び出しは相対参照(←N 等)を解けるよう、表ブロックのグリッドをキャッシュして cellRef を作る。
@@ -26346,6 +26387,7 @@ function meosApplyFuncDecorations(editor) {
     editor.setDecorations(funcHideDeco, hideRanges);
     editor.setDecorations(funcResultDeco, resultOpts);
   } catch (_) {}
+  } finally { try { const _ms = Date.now() - _t0meosApplyFuncDecorations; if (_ms > 300) meosDbg('[Func] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }
 }
 
 // v4.0.43(俊克 8/7「バージョンアップするとノート全体が畳まれた状態で表示される。Ⓣを自動で押せないか」):
