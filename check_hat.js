@@ -1043,6 +1043,16 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
   const BACK = [OPENL, 'かか'];
   ok(T.meosVisibleRightEdge(mk(BACK), 0) === rEdge,
      '★行頭から←で戻る先は、→の行き先と同じ右端（別の値を作らない）', String(rEdge));
+
+  // ★v4.0.340（俊克 バグ1「行頭、行末から→←キー1回で前後の行に移動する時に、▼▲の左側に一瞬着地する。
+  //   あるいは Comment1 の右端から1文字分右に一瞬着地してから移動する」）
+  //   ＝ 膜の行の「出入り」4つが、これで全部 先決めになった。行き先は同じ2つの関数から引く。
+  const EDGES = (L, ln) => ({ left: T.meosVisibleLeftEdge(mk(L), ln), right: T.meosVisibleRightEdge(mk(L), ln) });
+  const e0 = EDGES([OPENL, 'かか'], 0);
+  ok(e0.left === pp.idStart && e0.right === rEdge,
+     '★出入りの4つは、見える左端と右端の2つの値だけで決まる（値を増やさない）', '2つ');
+  ok(T.meosVisibleRightEdge(mk(['前の文', OPENL]), 0) === -1,
+     '膜でない行の端では横取りしない（素の←→に任せる）', '-1');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

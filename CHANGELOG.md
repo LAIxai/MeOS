@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.340 (2026-08-21)
+- **Leaving a membrane line is direct too.** From the visible left edge, `←` goes straight to the end of the line
+  above; from the visible right edge, `→` goes straight to the start of the line below. Neither touches down in the
+  hidden bytes on the way. That completes the set: arriving at each edge, and leaving from each edge, all four now
+  pick their destination up front — the guard is left to catch arrow-up/down and anything a key cannot decide.
+- All four destinations are computed from the same two functions the guard uses, so a key and the guard can never
+  disagree about where an edge is.
+
 ### v4.0.339 (2026-08-21)
 - **Both edges of a membrane line now have a destination, not just the right one.** `Cmd+←` lands on the head of the
   name, and arrowing left back from the line below lands on the visible right edge instead of touching down past the
