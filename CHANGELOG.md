@@ -4,6 +4,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.338 (2026-08-21)
+- **Standing on a spec line shows the line it describes as raw again.** Which lines turn orange and which lines show
+  raw source were being decided by two different measures: orange had moved to the pair (body line *i* ↔ spec line
+  *i*), while raw was still just "the line the caret is on". So editing a heading's spec left the heading itself
+  decorated — you could not see the thing you were changing. Both now come from the same judgment, which is what the
+  colour was announcing all along: **an orange line is a line showing raw source**. A table still shows only the pair,
+  never the whole block.
+- **Right-arrow off the closing line enters the badge comment**, the same place down-arrow lands. v4.0.336 stepped
+  over the folded group to stop the caret bouncing across `▲`, but the bouncing was the fold restore fixed in
+  v4.0.337, so stepping over is no longer needed — and one destination should not depend on which key you pressed.
+- **Cmd+→ on a membrane line goes straight to the visible edge.** It used to land past the hidden tail and get moved
+  back, which is visible as a flicker whenever the extension host is busy. Anything that corrects after the fact is
+  visible at least once, so that key now picks the right destination up front, the same way table cell movement
+  already does. The general guard stays as the catch-all for arrow-up/down.
+
 ### v4.0.337 (2026-08-21)
 - **The caret stops being dragged back after a fold.** v4.0.326 narrowed the "put the caret back" window to a single
   fold command, but on a 178,000-line file one such command takes hundreds of milliseconds — long enough for several

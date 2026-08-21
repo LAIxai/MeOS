@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText , meosNewMembraneCloseBlock, buildMembraneOpenLine, commentSyntaxForDocument, meosDeepenBadgesInText, meosDeepenBadgeEdits, meosDepthAudit, mstatDepthForPair, meosWrapDepthShift, meosMembraneColorCodeForOpen, meosMembraneColorForOpen, membraneCssColorForCode, colorForDepth, membraneLineParts, meosIsSpecLine };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText , meosNewMembraneCloseBlock, buildMembraneOpenLine, commentSyntaxForDocument, meosDeepenBadgesInText, meosDeepenBadgeEdits, meosDepthAudit, mstatDepthForPair, meosWrapDepthShift, meosMembraneColorCodeForOpen, meosMembraneColorForOpen, membraneCssColorForCode, colorForDepth, membraneLineParts, meosIsSpecLine, meosVisibleRightEdge };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -1011,6 +1011,26 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
   ok(OPENL.length - rEdge === 7 && OPENL.slice(rEdge) === ' *} -->',
      '★見える右端から行末までは「 *} -->」＝ ちょうど7文字（俊克の数えが当たっていた）', '7文字');
   ok(rEdge > pp.idStart, 'ここより右は居場所ではない＝ ↓↑で降りてきたら右端へ寄せる', 'rightEdge');
+
+  // ★v4.0.338（俊克 バグ1「見出しで、FC膜に文字カーソルがあるとき、見出しが生データで表示されなくなった」）
+  //   ＝ 橙に染まる行と、生データを見せる行を別々の物差しで決めていた。同じ1つの判定から引く。
+  const HD = ['## 見出し', '<!-- Mew!FC H2_x (白/red)//[]tip= -->', 'つぎの文'];
+  const rawSet = (ln) => { const m = T.meosFcMate(mk(HD), ln);
+    const s2 = new Set([ln]); if (m && m.b && m.b.open == null && m.mate >= 0) s2.add(m.mate);
+    return [...s2].sort((a, b) => a - b).join(','); };
+  ok(rawSet(1) === '0,1', '★FC行に居ると、見出しの行も生データになる（直している当の物が見える）', '0,1');
+  ok(rawSet(0) === '0,1', '見出しに居ても同じ2行', '0,1');
+  ok(rawSet(2) === '2', '関係ない行は自分だけ', '2');
+  // 表は「カーソルの行と、その1枚」だけ＝ 他の行は正しいレンダリングのまま（v4.0.323の約束）
+  const TB2 = ['| a |', '| b |', '| c |', '<!-- Mew!FC not -->', '<!-- Mew!FC == (白/黄) -->', '<!-- Mew!FC not -->'];
+  const rs2 = (ln) => { const m = T.meosFcMate(mk(TB2), ln);
+    const s2 = new Set([ln]); if (m && m.b && m.b.open == null && m.mate >= 0) s2.add(m.mate);
+    return [...s2].sort((a, b) => a - b).join(','); };
+  ok(rs2(4) === '1,4', '表は 対の2行だけ生データ（他の行は正しい姿のまま）', '1,4');
+
+  // Cmd+→ の行き先＝ 見える右端（後から戻す往復を見せない）
+  ok(T.meosVisibleRightEdge(mk([OPENL]), 0) === rEdge, '★Cmd+→ の行き先は、見張りと同じ右端から引く', String(rEdge));
+  ok(T.meosVisibleRightEdge(mk(['ふつうの文']), 0) === -1, '膜でない行は横取りしない（素のEndに任せる）', '-1');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

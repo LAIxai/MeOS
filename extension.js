@@ -6315,6 +6315,25 @@ function applyPrettyLabels(editor) {
   // その行を全Format(見出し##/💬注釈=ハイライト・取消線/参照符)で一括してチップ描画のまま維持=読む用(インライン編集にしない)。
   if (_refNoRawLine >= 0 && (_refNoRawUri !== editor.document.uri.toString() || docCursorLine !== _refNoRawLine)) { _refNoRawLine = -1; _refNoRawUri = ''; }
   if (_refNoRawLine >= 0 && _refNoRawUri === editor.document.uri.toString() && docCursorLine === _refNoRawLine) docCursorLine = -1;
+  // ★★v4.0.338(俊克 pm11:05 バグ1「見出しで、**FC膜に文字カーソルがあるとき、見出しが生データで表示され
+  //   なくなった**よ。なぜ?」):
+  //   ★★**「橙に染める行」と「生データを見せる行」を、別々の物差しで決めていた**。
+  //     橙は v4.0.325 で「本文のi行目 ⇔ FC群のi枚目」の対から引くようにしたが、生データの方は
+  //     **カーソルの居る1行だけ**のまま(v0.9.659のころの物差し)。だから指定行に降りると、直している当の見出しが
+  //     飾られたままになる＝ 何を直しているのか見えない。
+  //   ★★直し＝ **同じ1つの判定から引く**(→ [[feedback_one_source_for_mark_count_action]])。
+  //     俊克がv4.0.324で言った「橙＝生データを表示する機能を色ではっきり見せる」を、**言葉どおりにする**＝
+  //     **橙に染まる行は、生データを見せる行**。
+  //   ★膜(▼▲バッジ)の組だけは外す＝ そちらは隠し帯の作りが別なので、対の相手まで生にはしない。
+  const _rawLines = new Set();
+  if (docCursorLine >= 0) {
+    _rawLines.add(docCursorLine);
+    try {
+      const _m = meosFcMate(editor.document, docCursorLine);
+      if (_m && _m.b && _m.b.open == null && _m.mate >= 0) _rawLines.add(_m.mate);
+    } catch (_) { }
+  }
+  const _isRawLine = (ln) => _rawLines.has(ln);
   // v0.9.709: 複数行取消線は ~~{…}~~ (波括弧つき) だけに限定し、単独の ~~ では行をまたがない
   // (v705で単独 ~~ が遠くの ~~ まで巻き込んで暴走→誤爆。俊克 am08:40「使い物にならない」)。
   // 起動条件=「~~{ が同一行で }~~ で閉じていない(=複数行に開いた)行」がある時だけ全文走査(性能温存)。
@@ -6379,7 +6398,7 @@ function applyPrettyLabels(editor) {
         if (!disabled) refPointCounts[fam] = (refPointCounts[fam] || 0) + 1;
         const pAll = parseRefPointInner(mRef[3]);
         if (!disabled) refPtAll.push({ line, start: mRef.index, name: pAll.name, fam, desc: pAll.desc }); // Fガター用(生きた符のみ・カーソル行含む)。v99981: descで膜有無を判定
-        if (line === docCursorLine) continue; // カーソル行は生データを見せて編集可能に(v659の思想)。着地の一時抑止行はdocCursorLine=-1化(上)で自動的に抑止される
+        if (_isRawLine(line)) continue;   // v4.0.338: 橙に染まる行=生データを見せる行(対の相手も含む)。元は(v659の思想)。着地の一時抑止行はdocCursorLine=-1化(上)で自動的に抑止される
         const p = pAll;
         if (disabled) {
           // 無効化符=灰色・番号なし・「▷ 記号 : 説明」。説明が消えないので後で復活できる。
@@ -6458,8 +6477,8 @@ function applyPrettyLabels(editor) {
     //   包み記法 `/* =={ */ … /* }== */` も**バッククォートの中は文字そのもの**(v4.0.58の約束)なのに、
     //   ここだけ生の行で探していたので、**記法を説明する表**thatその場で装飾され、幅も見た目も崩れていた。
     //   伏せても長さは変わらないso、以降の位置(range)は1文字もずれない。
-    let dtext = (line !== docCursorLine && text.indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text;
-    if (line !== docCursorLine && dtext.indexOf('/*') >= 0) {
+    let dtext = (!_isRawLine(line) && text.indexOf('`') >= 0) ? meosMaskCodeSpans(text) : text;
+    if (!_isRawLine(line) && dtext.indexOf('/*') >= 0) {
       const blankDt = (s, e) => { dtext = dtext.slice(0, s) + ' '.repeat(e - s) + dtext.slice(e); };
       // ②分割ハイライト /* =={ */ code /* (色)//tip}== */
       const reHiSplit = /(\/\*\s*=={\s*\*\/\s*)([^\n]*?)(\s*\/\*\s*([^\n]*?)\}==\s*\*\/)/g;
@@ -6518,11 +6537,11 @@ function applyPrettyLabels(editor) {
     // `=={` と `}==` が居るので、素のハイライト検出がこれを丸ごと掴み**既定の黄色**を敷いていた。→ リンク範囲を
     // dtext から空白化して以降の検出(ハイライト/取消線/見出し)から隠す。★v4.0.31はこの塊を**取消線の直前**に置いて
     // しまい、既に走り終えたハイライト検出には効かなかった(俊克「まだはみ出ている。なぜ?」)= **順番が全て**。
-    if (line !== docCursorLine && dtext.indexOf('-->[') >= 0) {
+    if (!_isRawLine(line) && dtext.indexOf('-->[') >= 0) {
       MEOS_MELINK_RE.lastIndex = 0; let _mk;
       while ((_mk = MEOS_MELINK_RE.exec(dtext)) !== null) { const _s = _mk.index, _e = _s + _mk[0].length; dtext = dtext.slice(0, _s) + ' '.repeat(_e - _s) + dtext.slice(_e); }
     }
-    if (line !== docCursorLine && dtext.indexOf('`') >= 0) dtext = meosMaskCodeSpans(dtext); // v4.0.58: コードスパンの中は装飾しない
+    if (!_isRawLine(line) && dtext.indexOf('`') >= 0) dtext = meosMaskCodeSpans(dtext); // v4.0.58: コードスパンの中は装飾しない
     // v4.0.133(俊克 8/10 pm02:20 バグ「取消線を2個入れると、2個目が駄目。真中の取り消してないのにも横線が出る」):
     // ★真因=**仕様コメントの中の命令トークンが、素のマーカーとして数えられていた**。
     //   `~~あ~~<!-- Mew! ~~ (赤/紺)//tip -->か~~さ~~<!-- Mew! ~~ … -->` の行には `~~` が**6個**在る。
@@ -6533,7 +6552,7 @@ function applyPrettyLabels(editor) {
     //   `(色)//tip` は残す(meosSpecCommentAfter が読むため)。長さは保つ(位置が1文字もずれない)。
     // ★**必ずハイライト検出の前に置く**=v4.0.31の教訓「順番が全て」(取消線の直前に置くとハイライトに効かない)。
     // v4.0.169: 物差しは1つ(meosMaskSpecTokens)。太字/斜体のパスも同じものを使う。
-    if (line !== docCursorLine) dtext = meosMaskSpecTokens(dtext);
+    if (!_isRawLine(line)) dtext = meosMaskSpecTokens(dtext);
     const jfHideRanges = jumpFlagRangesInText(line, text);
     // v0.9.656/657: ハイライト ==text(色)== を検出（膜行・本文行どちらでも効く）。
     // 同一行に複数可。`==`マーカーは隠す。内側末尾に (色) があればその色の背景にし、
@@ -13173,10 +13192,11 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
       return true;
     }
     if (prevAtRightEdge && nowBeyondRightEdge) {
-      // v4.0.336: 降りる先が**畳まれた指定行(膜のバッジ)**なら、その群を飛び越す。
-      //   畳まれた行にカーソルを置くとVS Codeは開こうとし、FC同期がまた畳む＝ ▲の両側を往復する。
-      let nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
-      try { while (nextLine < editor.document.lineCount - 1 && meosIsSpecLine(editor.document.lineAt(nextLine).text)) nextLine++; } catch (_) { }
+      // ★v4.0.338(俊克 改良2「閉じ膜の右端から、→キー1発で**FCコメントに入りたい**。閉じ膜の途中から
+      //   ↓キー1発でFC膜に着地するので、**その差があるのは駄目**だよね」):
+      //   ★**同じ場所へは、どのキーでも同じ着地**。v4.0.336でここだけ群を飛び越していたが、
+      //     往復の真犯人は畳みの引き戻し(v4.0.337で直した)ので、飛び越す必要はもう無い。
+      const nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
       const p = new vscode.Position(nextLine, 0);
       _meosCaretSetSelf(editor, key, p);
       return true;
@@ -22901,6 +22921,34 @@ async function meosTableNav(editor, dir) {
   editor.revealRange(new vscode.Range(targetLine, p, targetLine, p));
 }
 let _meosInTableCtx = false;
+// ★★v4.0.338(俊克 pm11:05 改良1「Cmd+→で行末に飛んだ時、**一瞬 comment1 より1文字分右に着地して、
+//   comment1 の右に戻るのが見える。0.2秒くらい**。ところが Cmd+← は0.1秒以下。**この違いに違和感がある**」):
+//   ★★**後から直す限り、必ず一度は間違った所に見える**。見張りは「着いてから戻す」作りなので、
+//     拡張ホストが混んでいる時ほど、その往復がはっきり見える。
+//   ★★答えは「速くする」ではなく **その鍵だけ、行き先を最初から正しく決める**＝ 表のセル移動(v0.9.999156)で
+//     既にやっている作法と同じ。膜の行に居る時だけ Cmd+→/End を横取りし、**見える右端へ一発で**置く。
+//   ★見張りは残す＝ ↑↓や飛び込みの受け皿(v4.0.337)。**口は2つでよい・行き先は1つ**
+//     → [[project_last_specified_wins]]「覚える入口は複数でよい。増やしてはいけないのは値の数」。
+let _meosOnMembraneCtx = false;
+function meosVisibleRightEdge(doc, line) {
+  try {
+    const t = doc.lineAt(line).text || '';
+    const parts = membraneLineParts(t, 'open') || membraneLineParts(t, 'close');
+    if (!parts) return -1;
+    let e = (parts.suffixStart >= 0) ? parts.suffixStart : t.length;
+    if (e > 0 && /\s/.test(t.charAt(e - 1))) e -= 1;
+    return e;
+  } catch (_) { return -1; }
+}
+function meosUpdateOnMembraneContext(editor) {
+  let v = false;
+  try {
+    if (editor && editor.document && editor.selection && editor.selection.isEmpty && !meosRawMode) {
+      v = meosVisibleRightEdge(editor.document, editor.selection.active.line) >= 0;
+    }
+  } catch (_) { }
+  if (v !== _meosOnMembraneCtx) { _meosOnMembraneCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.onMembraneLine', v); } catch (_) { } }
+}
 function meosUpdateInTableContext(editor) {
   let v = false;
   try { if (editor && editor.document && editor.selection) v = meosInTable(editor.document, editor.selection.active.line); } catch (_) {}
@@ -26814,7 +26862,15 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { meosUpdateInTableContext(e.textEditor); meosUpdateOnMembraneContext(e.textEditor); }));
+  // v4.0.338: 膜の行の Cmd+→ / End は、見える右端へ一発で置く(後から戻す往復を見せない)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineEnd', () => {
+    const ed = vscode.window.activeTextEditor; if (!ed) return;
+    const ln = ed.selection.active.line, e = meosVisibleRightEdge(ed.document, ln);
+    if (e < 0) { vscode.commands.executeCommand('cursorEnd'); return; }
+    const p = new vscode.Position(ln, e);
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+  }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
