@@ -6342,6 +6342,17 @@ function applyPrettyLabels(editor) {
     } catch (_) { }
   }
   const _isRawLine = (ln) => _rawLines.has(ln);
+  const _rawRangeTouched = (from, to) => { for (const l of _rawLines) if (l >= from && l <= to) return true; return false; };
+  // ★★v4.0.346(俊克 am01:24 バグ1「**見出しの修正が元に戻ってしまった**よ。前バージョンでも。つまり、
+  //   FCコメントにいるとき、**見出しの本体が生データにならない**。ハイライトもそうだね。全部かもね。
+  //   **直してといった後、直してなかったのかな?**」):
+  //   ★★**直っていなかった。私が書き換えたのは、間違った6か所**だった＝ v4.0.338で `_isRawLine` に
+  //     替えたのは**文字を伏せる下ごしらえ**の側で、**本物の門番(装飾を描くかどうか)は別の6行**がまだ
+  //     「カーソルの居る1行だけ」という古い物差しのままだった。
+  //   ★★そして**私の検査がその嘘を通した**＝ ㉞で確かめたのは `meosFcMate`(対の写像)だけで、
+  //     **その答えを誰がどう使うか**を1つも見ていなかった。だから「通った」と報告できてしまった。
+  //   ★教訓＝ **写像を試すだけでは足りない。使う側を数えて、全部通したかを見る**
+  //     (→ [[feedback_one_source_for_mark_count_action]]「呼び元を全部見る」の、判定を配る側の顔)。
   // v0.9.709: 複数行取消線は ~~{…}~~ (波括弧つき) だけに限定し、単独の ~~ では行をまたがない
   // (v705で単独 ~~ が遠くの ~~ まで巻き込んで暴走→誤爆。俊克 am08:40「使い物にならない」)。
   // 起動条件=「~~{ が同一行で }~~ で閉じていない(=複数行に開いた)行」がある時だけ全文走査(性能温存)。
@@ -6566,7 +6577,7 @@ function applyPrettyLabels(editor) {
     // 同一行に複数可。`==`マーカーは隠す。内側末尾に (色) があればその色の背景にし、
     // (色)部分も隠す。色省略 ==text== は yellow。色名は日英両対応(赤/red等)。
     // v0.9.659: カーソル行は生データを見せる（装飾しない）ので検出ごとスキップ。
-    if (line !== docCursorLine) {
+    if (!_isRawLine(line)) {
       // v0.9.695: 統一記法。新形 =={本文(文字色/背景色)//コメント}== — 開き `=={`・閉じ `}==` で
       // 曖昧性なし(従来 ==…== は開閉同記号で曖昧)。旧形 ==本文(色)== も後方互換で温存。色は `/` 区切り
       // (文字色/背景色)、`+` も互換。`//` 以降はコメント(編集者⇄作家の通信、ホバー💬表示。日時も自由記述)。
@@ -6638,7 +6649,7 @@ function applyPrettyLabels(editor) {
     // 本体に赤い line-through。~~ と末尾(日時)は隠す。(日時)があればホバーで「いつ取り消したか」
     // を表示(史上初のタイムスタンプ付き取消線)。タイムスタンプはプレーンテキストとして残る。
     // v0.9.659: カーソル行は生データを見せる（装飾しない）ので検出ごとスキップ。
-    if (line !== docCursorLine) {
+    if (!_isRawLine(line)) {
       // v0.9.699: 新形 ~~{本文(線色/背景色)//コメント}~~ と 旧形 ~~本文~~ / ~~本文(日時//コメント)~~ の両方。
       // ハイライト(=={…}==)と鏡像の記法統一: 開き `~~{`・閉じ `}~~`。線色=fg側(既定 red)、背景色=bg側。
       const reSt = meosPlainStRe(); // v4.0.215: 形は1か所(MEOS_PLAIN_ST_SRC)。
@@ -6711,7 +6722,7 @@ function applyPrettyLabels(editor) {
     //   v0.9.699: 色/コメントを (文字色/背景色)//コメント に統一(ハイライト/取消線と同記法)。
     //     例 ##[見出し(青/黄)//旧題はABC]##  ##[題(/紺)]##(暗背景は白文字auto)  ##[題(紫)]##(文字紫)
     //   #{1,3}[ と ]#{1,3}(と末尾の(色/色)//コメント) は隠す。行頭のみ(空白可)。カーソル行は生データ表示。
-    if (line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && (dtext.indexOf('#[') >= 0 || dtext.indexOf('#{') >= 0 || dtext.indexOf('#-') >= 0)) { // v4.0.10(俊克): 見出し ##[ or ##{ の核だけで足切り(旧 indexOf('[') より狭い=速い+新形{}対応)
+    if (!_isRawLine(line) && !parseOpenLine(text) && !parseCloseLine(text) && (dtext.indexOf('#[') >= 0 || dtext.indexOf('#{') >= 0 || dtext.indexOf('#-') >= 0)) { // v4.0.10(俊克): 見出し ##[ or ##{ の核だけで足切り(旧 indexOf('[') より狭い=速い+新形{}対応)
       // 行頭(空白可) #{1,3} [ 中身 ] #{1,3}(\2で開き#数と一致)。中身は ] / 改行を含まない。
       // v0.9.876: 任意の /* … */ 殻に対応(コメント包み見出し /* ##[本文(色)//tip]## */)。
       const reHeadSq = /^(\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?)(\/\*\s*)?(#{1,3})(-1|-)?\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/; // v4.0.47: 行頭の箇条書き接頭辞(- / 1.)を許す
@@ -6785,7 +6796,7 @@ function applyPrettyLabels(editor) {
     // ★MeOSの外では**本物のH2/箇条書き**として生きる(コメントは消える)。`{ }` は範囲を示す為ではなく色とtipの箱として
     // 要っただけで、行単位のものは**行末が終わり**so閉じ記号が要らない(上付き `A↑2<!-- {…} -->` と同じ原理)。
     // 旧形 `##{ }##` `##[ ]##` `##-{ }##` は read-both で読み続ける(過去は変換しない)。
-    if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text)) {
+    if (_proseDoc && !_inFence && !_isRawLine(line) && !parseOpenLine(text) && !parseCloseLine(text)) {
       const mP = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?(\S[^\n]*?)[ \t]*$/.exec(dtext); // v4.0.61(俊克): 行頭が `1. ` の順序付きリストも項目(MeOS外で本物の番号付きリストになる)
       // v4.0.63(俊克 改良1): 末尾の仕様コメントを**先に**読む。命令トークン(H2 / -H2 / -1.H2)があれば、
       // 行頭のマーカーが不完全でも(例 `##本文` = #の後ろの空白を書き忘れ)、コメント側の宣言で見出しにできる。
@@ -6897,7 +6908,7 @@ function applyPrettyLabels(editor) {
       }
     }
     // v4.0.53(俊克): Me記法の箇条書き膜 -{ 項目 } / -1{ 項目 }。マーカーと閉じ } を隠し、先頭に • / N. を描く。
-    if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text) && dtext.indexOf('-') >= 0) {
+    if (_proseDoc && !_inFence && !_isRawLine(line) && !parseOpenLine(text) && !parseCloseLine(text) && dtext.indexOf('-') >= 0) {
       const mI = MEOS_ME_ITEM_RE.exec(dtext);
       if (mI) {
         const ind = mI[1].length, isNum = !!mI[2], open = ind + (isNum ? 3 : 2), close = dtext.lastIndexOf('}');
@@ -6912,7 +6923,7 @@ function applyPrettyLabels(editor) {
     //   ・`- ` `* ` `+ ` の1文字だけが対象(後ろの空白と本文はそのまま=桁が動かない)
     //   ・`---`(区切り線)や `*強調*` は「マーカー+空白+本文」の形でないので当たらない
     //   ・入れ子で記号は変えない(俊克「子や孫は要らない」)・番号付きは元から正しく見えるので触らない
-    if (_proseDoc && !_inFence && line !== docCursorLine && !parseOpenLine(text) && !parseCloseLine(text)) {
+    if (_proseDoc && !_inFence && !_isRawLine(line) && !parseOpenLine(text) && !parseCloseLine(text)) {
       const mB = bulletHandledLines.has(line) ? null : /^([ \t]*)([-*+])[ \t]+(?=\S)/.exec(dtext); // v4.0.54: 新形ブロックが処理済みの行は二重に描かない
       if (mB) bulletGlyphRanges.push(new vscode.Range(line, mB[1].length, line, mB[1].length + 1));
     }
@@ -7095,7 +7106,7 @@ function applyPrettyLabels(editor) {
       const startPos = editor.document.positionAt(matchStart);
       const endPos = editor.document.positionAt(matchEnd);
       if (endPos.line - startPos.line > 50) continue;        // 暴走防止(巨大化)
-      if (docCursorLine >= startPos.line && docCursorLine <= endPos.line) continue; // 範囲内は編集中→生表示
+      if (_rawRangeTouched(startPos.line, endPos.line)) continue; // v4.0.346: 範囲内に生データの行があれば描かない
       const sp = parseColorSpec(inner, 'fg');
       const lineKey = sp.fgKey || 'red';
       const bgKey = sp.bgKey;
@@ -7131,7 +7142,7 @@ function applyPrettyLabels(editor) {
       const startPos = editor.document.positionAt(matchStart);
       const endPos = editor.document.positionAt(matchEnd);
       if (endPos.line - startPos.line > 50) continue;        // 暴走防止(巨大化)
-      if (docCursorLine >= startPos.line && docCursorLine <= endPos.line) continue; // 範囲内は編集中→生表示
+      if (_rawRangeTouched(startPos.line, endPos.line)) continue; // v4.0.346: 範囲内に生データの行があれば描かない
       const hi = parseColorSpec(inner, 'bg');
       let bgKey = hi.bgKey, fgKey = hi.fgKey;
       const hiComment = hi.comment, bodyLen = hi.bodyLen;

@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.346 (2026-08-22)
+- **Standing on a spec line really does show its heading, highlight and strikethrough as raw now.** v4.0.338 claimed
+  this and did not deliver: the six places switched to the new measure were the ones that pre-mask the text, while the
+  six that actually decide whether to draw the decoration still asked "is this the caret's line". Both sets now go
+  through one judgment, and a multi-line highlight or strikethrough steps aside if any line it covers is raw.
+- **The test that let it through has been replaced by one that counts the users.** v4.0.338's check only proved the
+  pair mapping was right; it never looked at who consumed the answer, so it passed while nothing changed on screen.
+  The harness now fails if any decoration gate is left on the old measure.
+
 ### v4.0.345 (2026-08-22)
 - **The whole membrane goes raw together.** With the caret on the opening line, the closing line and the badge stay
   decorated — but those three lines are one thing, so all three now show raw source. Selecting a membrane name to
