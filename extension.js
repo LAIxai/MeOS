@@ -3999,7 +3999,7 @@ function mntDisplayInfoFromLine(text) {
 //     ▼という**同じ1行から範囲が2つ始まる**＝ 膜の畳みとFCの畳みが狙いを取り合う(v4.0.188の構造版)。
 //   ★★read-both＝ **旧形(▼行のバッジ)は読み続ける。書くのは新形だけ**。過去は1行も書き換えない。
 //     → [[project_now_not_bulk]] / [[project_setting_decides_future_only]]
-const MEOS_PAIR_BADGE_TOKEN_RE = /^m[A-Za-z]{1,4}=\S*/;             // 例 mCN=3129_20260821
+const MEOS_PAIR_BADGE_TOKEN_RE = /^m[A-Za-z]{1,4}(?:=\S*)?(?=[ \t(]|$)/;   // v4.0.332: `mCN` / 旧 `mCN=名前` の両方
 // そのFC行は「膜のバッジ」か(行の指定ではない)= 名乗りが m…= で始まり、mSTATのバッジを含む。
 function meosIsPairBadgeSpec(text) {
   try {
@@ -4026,7 +4026,11 @@ function meosPairBadgeAt(document, pair) {
   return null;
 }
 // 新しい膜に付けるバッジ行(閉じ膜の次の行)。
-function meosPairBadgeLineText(id, indent, badgeText) { return String(indent || '') + meosSpecLineBox('mCN=' + String(id) + ' ' + String(badgeText)); }
+// ★v4.0.332(俊克 pm04:14 改良2「FC膜に膜名を入れなくていい。**操作対象として、mCNを書けばいい**でしょ」):
+//   ★**名前は隣の閉じ膜がもう持っている**。同じ名前を2つ置くと、改名のたびに**両方を直す仕事**が生まれる
+//   ＝ 揃わなくなる口を自分で開けることになる。`mCN` は「これは膜のバッジだ」と名乗るだけでよい。
+//   ★旧い `mCN=名前` も読み続ける(read-both)。
+function meosPairBadgeLineText(id, indent, badgeText) { return String(indent || '') + meosSpecLineBox('mCN ' + String(badgeText)); }
 function setMstatBadgeColorInText(text, colorCode) {
   const badge = parseMstatBadgeFromText(text);
   if (!badge) return String(text || '');
@@ -5226,7 +5230,7 @@ function wrapMembraneCommentText(inner, doc) {
 //   ★直し＝ **閉じ膜とバッジ行を、1つの関数から一緒に出す**。別々に書ける限り、いつか誰かが書き忘れる。
 //   ★開始行は**渡された時だけ**バッジを書く(既定で `(📊⊕0+0)` を足すのをやめた＝ 既定が古い形を復活させていた)。
 function meosNewMembraneCloseBlock(doc, indent, name, comment, badgeText) {
-  return buildMembraneCloseLine(doc, indent, name, comment) + '\n' + meosPairBadgeLineText(name, indent, badgeText || '(⊕0+0)');
+  return buildMembraneCloseLine(doc, indent, name, comment) + '\n' + meosPairBadgeLineText(name, indent, badgeText || '(📊⊕0+0)');
 }
 function buildMembraneOpenLine(doc, indent, name, comment, mstat) {
   const syntax = commentSyntaxForDocument(doc);
@@ -14502,7 +14506,7 @@ function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = 
   //   ★新しい膜は**▼行にバッジを書かない**＝ ▼行は名前とコメントだけ。バッジは閉じ膜の次の行のFCへ。
   //   ★`📊0`(バッジ非表示)も書かなくなる＝ **畳みが隠すので、隠すための設定が要らない**(俊克の狙い)。
   //   ★旧形(▼行のバッジ)は読み続ける＝ 過去のファイルは1行も書き換えない。
-  const badge = `(⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'})`;
+  const badge = `(📊⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'})`;
   if (lang === 'markdown' || lang === 'mdx') {
     return {
       open: `${indent}<!-- {* ▼mCN=${id} // comment1 *} -->`,
@@ -23647,9 +23651,11 @@ function meosDefBlocks(document) {
       //   FCコメントthat出る。これthat分かりにくい。**どの行でもFCコメントthat出て、その行だけ生データになるべき**」):
       //   ★FC群の持ち主は**塊ぜんぶ**(表なら表全体・箇条書きならリスト全体)so、開く合図もそこから出す。
       //   ★畳む範囲(start..end)は今までどおり= **表そのものを畳んでしまわない**。開く合図の範囲(top)だけを広げる。
-      let top = head;
+      let top = head, open = null;
       try { const _b = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head); if (_b) top = _b.start; } catch (_) { }
-      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc });
+      // v4.0.332: 頭が閉じ膜なら、その膜の**開始膜も塊の一部**(俊克「3つは常に1つ」)。本文は入れない。
+      try { const _h = String(lines[head] || ''); if ((_h.indexOf('▲') >= 0 || _h.indexOf('△') >= 0) && parseCloseLine(_h)) { const op = meosMembraneOpenFor(document, head); if (op >= 0) open = op; } } catch (_) { }
+      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open });
       ln = e;
     }
   } catch (_) { }
@@ -23677,6 +23683,20 @@ function meosDefBlocks(document) {
 // ★塊かどうかは**その1行を見れば分かる**ので、表でも箇条書きでもない時は行配列を作らせない。
 //   （`meosDocLines` は版that変わると全文を刻み直す＝ 打鍵の道で毎回呼ぶ物ではない）
 function meosFcIsBlockLine(t) { return MEOS_TABLE_ROW_RE.test(t) || MEOS_LIST_BLOCK_RE.test(t); }
+// ★★v4.0.332(俊克 pm04:14 改良1「開始膜に文字カーソルがある時に、FCコメントが出ない。
+//   **開始膜、閉じ膜、FCコメントの3つは常に1つ**で、橙色で表示する必要がある」):
+//   ★★膜の塊は**構造の3行**＝ ▼・▲・バッジ。**本文は入らない**(本文の中に居る間まで開けっ放しにはしない)。
+//   ★表なら「表ぜんぶ」・箇条書きなら「リストぜんぶ」がその塊だったのと同じで、膜は**▼と▲**が塊の顔。
+function meosMembraneOpenFor(doc, closeLine) {
+  try {
+    const t = doc.lineAt(closeLine).text;
+    if (t.indexOf('▲') < 0 && t.indexOf('△') < 0) return -1;      // 速い足切り(印が無ければ膜ではない)
+    if (!parseCloseLine(t)) return -1;                           // ★`{*`形だけを見る物は使わない(v5.0の `// {▲mCN=` に当たらない)
+    const pairs = collectPairs(doc, { excludeIndex: false });    // 版で覚えているので、ここは引き当てだけ
+    for (const p of pairs) if (p.end === closeLine) return p.start;
+  } catch (_) { }
+  return -1;
+}
 function meosFcBodyTop(doc, head) {
   try {
     if (!meosFcIsBlockLine(doc.lineAt(head).text)) return head;
@@ -23694,14 +23714,29 @@ function meosFcPairAt(doc, line) {
       let f = line; while (f > 0 && isSpec(f - 1)) f--;
       const head = f - 1; if (head < 0) return null;
       let end = line; while (end + 1 < doc.lineCount && isSpec(end + 1)) end++;
-      return { top: meosFcBodyTop(doc, head), head, end };
+      const op = meosMembraneOpenFor(doc, head);                 // v4.0.332: 膜なら ▼ も塊の一部
+      return { top: (op >= 0 ? head : meosFcBodyTop(doc, head)), head, end, open: (op >= 0 ? op : null) };
     }
+    // v4.0.332: 開始膜に居る時は、その膜の閉じ膜の下のバッジ群が相手。
+    try {
+      const _ot = doc.lineAt(line).text;
+      if ((_ot.indexOf('▼') >= 0 || _ot.indexOf('▽') >= 0) && parseOpenLine(_ot)) {
+        const pairs = collectPairs(doc, { excludeIndex: false });
+        for (const p of pairs) if (p.start === line) {
+          if (!isSpec(p.end + 1)) return null;
+          let e = p.end + 1; while (e + 1 < doc.lineCount && isSpec(e + 1)) e++;
+          return { top: p.end, head: p.end, end: e, open: line };
+        }
+        return null;
+      }
+    } catch (_) { }
     let b = null;                                         // 本文の側に居る
     if (meosFcIsBlockLine(doc.lineAt(line).text)) { const lines = meosDocLines(doc); b = meosTableBlockFor(lines, line) || meosListBlockFor(lines, line); }
     const head = b ? b.end : line;
     if (!isSpec(head + 1)) return null;
     let end = head + 1; while (end + 1 < doc.lineCount && isSpec(end + 1)) end++;
-    return { top: b ? b.start : head, head, end };
+    const op2 = b ? -1 : meosMembraneOpenFor(doc, head);   // v4.0.332: 閉じ膜に居る時も、▼を塊に入れる
+    return { top: b ? b.start : head, head, end, open: (op2 >= 0 ? op2 : null) };
   } catch (_) { return null; }
 }
 let meosFcRowDeco = null;   // 橙に染める2行(カーソルの行と、その相手)
@@ -23714,8 +23749,14 @@ function meosFcMate(doc, line) {
   const b = meosFcPairAt(doc, line);
   if (!b) return null;
   const fc0 = b.head + 1, nBody = b.head - b.top + 1, nFc = b.end - b.head;
-  if (line >= fc0) { const j = line - fc0; return { self: line, mate: (j < nBody) ? b.top + j : -1, onFc: true, idx: j, fc0, nBody, nFc, b }; }
-  const j = line - b.top;  return { self: line, mate: (j < nFc)   ? fc0 + j   : -1, onFc: false, idx: j, fc0, nBody, nFc, b };
+  // v4.0.332: 膜は**構造の3行がひと組**= ▼・▲・バッジ。どの1行に居ても、3つとも橙になる。
+  if (b.open != null) {
+    const all = [b.open, b.head]; for (let i = fc0; i <= b.end; i++) all.push(i);
+    return { self: line, mate: (line === b.open ? b.head : b.open), onFc: line >= fc0, idx: 0, fc0, nBody, nFc, b, lines: all };
+  }
+  if (line >= fc0) { const j = line - fc0; const m = (j < nBody) ? b.top + j : -1; return { self: line, mate: m, onFc: true, idx: j, fc0, nBody, nFc, b, lines: (m >= 0 ? [line, m] : [line]) }; }
+  const j = line - b.top;  const m = (j < nFc) ? fc0 + j : -1;
+  return { self: line, mate: m, onFc: false, idx: j, fc0, nBody, nFc, b, lines: (m >= 0 ? [line, m] : [line]) };
 }
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
@@ -23725,7 +23766,7 @@ function meosApplyFcRowDecorations(editor) {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
       const m = meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
-      if (m) for (const ln of [m.self, m.mate]) if (ln >= 0 && ln < doc.lineCount) out.push(new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length));
+      if (m) for (const ln of (m.lines || [m.self, m.mate])) if (ln >= 0 && ln < doc.lineCount) out.push(new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length));
     }
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
@@ -23901,7 +23942,7 @@ async function meosSyncFcFoldForCursor(editor) {
     //   畳まれていれば**何もしない**(二度打ちthatが膜に化ける事故を、原理的に起こさない)。
     const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
     const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしないで出る
-    const hit = blocks.find(b => line >= ((b.top == null) ? b.start : b.top) && line <= b.end); // v4.0.301: 塊のどの行でも開く
+    const hit = blocks.find(b => (b.open != null && line === b.open) || (line >= ((b.top == null) ? b.start : b.top) && line <= b.end)); // v4.0.301: 塊のどの行でも開く / v4.0.332: 膜は開始膜でも開く
     if (hit) {
       if (_meosFcOpen !== hit.start) {
         if (_meosFcOpen != null) await foldIfVisible(_meosFcOpen);
@@ -23963,7 +24004,7 @@ async function meosAutoFoldSpecLines(editor, force) {
   try {
     const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
     const _cur = editor.selection.active.line;
-    const _mine = (b) => (b.start === _meosFcOpen) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end);
+    const _mine = (b) => (b.start === _meosFcOpen) || (b.open != null && _cur === b.open) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end);
     heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end)).map(b => b.start);
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)

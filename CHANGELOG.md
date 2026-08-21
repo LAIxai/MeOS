@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.332 (2026-08-21)
+- **The opening line, the closing line and the badge are one thing.** Put the cursor on any of the three and all three
+  turn orange and the badge opens. The body is deliberately not part of it — a membrane's block is its two structure
+  lines, the way a table's block is its rows.
+- **The badge line no longer repeats the membrane name.** `<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->` — `mCN` only names what
+  kind of thing this is. The name is already on the closing line right above it, and writing it twice would mean a
+  rename has to fix both, which is a way for them to disagree. Old `mCN=name` badges are still read.
+
 ### v4.0.331 (2026-08-21)
 - **Create Me now writes the badge line too.** There are four ways to make a membrane — Add Membrane, Create Me, the
   first membrane in a new .md, and wrapping a table — and v4.0.330 only taught one of them. The fix is not to teach

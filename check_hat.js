@@ -921,6 +921,24 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
      '開始行は、渡されない限りバッジを書かない（既定が古い形を復活させない）', 'null');
   ok(T.parseMstatBadgeFromText(T.buildMembraneOpenLine(dm, '', 'Y_1', 'x', '(📊⊕0+0)')) !== null,
      '旧形を明示で渡した時だけ、開始行に書く（read-both の書き手側）', 'not null');
+
+  // ★v4.0.332（俊克 pm04:14 改良1「開始膜、閉じ膜、FCコメントの3つは常に1つで、橙色で表示する」
+  //   改良2「FC膜に膜名を入れなくていい。操作対象として、mCNを書けばいい」）
+  ok(T.meosIsPairBadgeSpec('<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->') === true,
+     '名前なしの mCN でも、膜のバッジと分かる', 'true');
+  ok(T.meosIsPairBadgeSpec('<!-- Mew!FC mCN=3129_20260821 (⊖9+1D-1W) -->') === true,
+     '旧い mCN=名前 も読み続ける（read-both）', 'true');
+  ok(tpl.badge.indexOf('Z_20260821') < 0 && tpl.badge.indexOf('mCN ') >= 0,
+     '新しい膜のバッジ行に、膜名は書かない（名前は隣の閉じ膜が持っている）', 'mCN のみ');
+
+  const M = ['// {▼mCN=A // 作業ログ}', '本文1', '本文2', '// {▲mCN=A //}',
+             '<!-- Mew!FC mCN (📊⊖9+1D-1W) -->', 'つぎの文'];
+  const at3 = (ln) => { const m = T.meosFcMate(mk(M), ln); return m ? (m.lines || []).slice().sort((a, b) => a - b).join(',') : 'null'; };
+  ok(at3(0) === '0,3,4', '開始膜に居ると、▼▲バッジの3つが橙になる', '0,3,4');
+  ok(at3(3) === '0,3,4', '閉じ膜に居ても、同じ3つ', '0,3,4');
+  ok(at3(4) === '0,3,4', 'バッジ行に居ても、同じ3つ', '0,3,4');
+  ok(at3(1) === 'null', '本文の中は塊に入らない（開けっ放しにしない）', 'null');
+  ok(at3(5) === 'null', '膜の外も入らない', 'null');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
