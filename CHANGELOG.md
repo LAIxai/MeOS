@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.348 (2026-08-22)
+- **A spec group folds again when you leave it.** v4.0.343 stopped folding from the caret path to break a chain of
+  misbehaviour — but that was blunt first aid: the real cause was hidden bytes sitting under the caret, and v4.0.344/345
+  removed that exception entirely. So the behaviour comes back.
+  What was actually being seen in between is worth recording: a group left open only closed when you entered *another*
+  heading, because opening the new one shifted the visible range, which woke the bulk fold pass, which folded every
+  visible open group except the cursor's. It was closing by a different route, late and in batches.
+- Folding still waits for the caret to settle (700ms) while opening happens sooner (260ms), so passing through a group
+  costs nothing — a held arrow key keeps resetting the timer and never changes the fold state at all.
+
 ### v4.0.347 (2026-08-22)
 - **Highlight and super/subscript step aside for the caret too.** Only strikethrough started working in v4.0.346
   because "which lines show raw source" was written out separately in **eight** places — the main decoration pass plus

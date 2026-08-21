@@ -24014,9 +24014,16 @@ function meosScheduleFcCursorSync(editor) {
     if (since < MEOS_FC_TYPING_QUIET_MS) { _meosFcCursorTimer = setTimeout(run, MEOS_FC_TYPING_QUIET_MS - since); return; } // まだ打っている=先送り
     meosSyncFcFoldForCursor(editor);
   };
-  // v4.0.343: 閉じ直さないので「閉じる待ち」は要らない。開くのは**カーソルが止まってから**
-  //   ＝ 押しっぱなしで飛んでいる間は、一度も文書の見え方を変えない。
-  _meosFcCursorTimer = setTimeout(run, 260);
+  // v4.0.348: 開くのは早く(260ms)、**畳むのはゆっくり**(700ms)＝ 通り過ぎるだけの時は畳まない。
+  //   押しっぱなしで飛んでいる間は、この時計が張り替わり続けるので**一度も**文書の見え方を変えない。
+  let _closing = false;
+  try {
+    if (_meosFcOpen != null && _meosFcOpen !== 'ALL') {
+      const b = meosFcPairAt(editor.document, editor.selection.active.line);
+      _closing = !(b && b.head === _meosFcOpen);
+    }
+  } catch (_) { }
+  _meosFcCursorTimer = setTimeout(run, _closing ? 700 : 260);
 }
 // v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」):
 // ★★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、
@@ -24158,10 +24165,27 @@ async function meosSyncFcFoldForCursor(editor) {
     //     **閉じ直す必要はどこにも無かった**＝ 既定の姿は読み込み時に1回作れば足りる。
     //     これで「移動→畳む→画面が動く→また移動」の輪が**原理的に**消える。
     //   ★畳み直したい時は手でできる(`MeOS: Fold the spec lines`)。Rawを切った時の畳み直しはそのまま残す。
+    // ★★v4.0.348(俊克 am01:59 バグ1「**別の見出しにカーソルが入ると、今まで閉じてなかった見出しが
+    //   閉じる**んだよ。本来なら、**見出しから離れれば、閉じるはず**だよね。なぜ?」):
+    //   ★★**私がv4.0.343で「畳むのをやめた」から**。離れても畳まれず、開いたまま残る。
+    //     それが「別の見出しに入った時」だけ閉じて見えたのは、**一括の畳み**(v4.0.327)が拾っていたから＝
+    //     新しい塊が開く → 見えている行が動く → 可視範囲の合図 → 一括の道が「見えていて開いている塊」を
+    //     畳む(カーソルの塊は除く)。つまり**別経路で、遅れて、まとめて**閉じていた＝ 俊克の見た姿。
+    //   ★★v4.0.343で畳むのをやめたのは**乱暴な止血**で、本当の原因は
+    //     「**カーソルの下に隠れ帯が在る**」(v4.0.344/345で例外ごと外した)方だった。だから**戻せる**。
+    //   ★戻すが、畳むのは**カーソルが落ち着いてから**(v4.0.341)＝ 通り過ぎるだけの時は畳まない。
+    const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
+    const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしない
     const hit = blocks.find(b => (b.open != null && line === b.open) || (line >= ((b.top == null) ? b.start : b.top) && line <= b.end)); // v4.0.301: 塊のどの行でも開く / v4.0.332: 膜は開始膜でも開く
-    if (hit && _meosFcOpen !== hit.start) {
-      await unfold([hit.start]);
-      _meosFcOpen = hit.start;
+    if (hit) {
+      if (_meosFcOpen !== hit.start) {
+        if (_meosFcOpen != null) await foldIfVisible(_meosFcOpen);
+        await unfold([hit.start]);
+        _meosFcOpen = hit.start;
+      }
+    } else if (_meosFcOpen != null) {
+      await foldIfVisible(_meosFcOpen);
+      _meosFcOpen = null;
     }
   } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
 }
