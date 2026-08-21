@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.334 (2026-08-21)
+- **Wrapping membranes in another membrane corrects the depths inside.** That is the case where a depth actually goes
+  stale, and it is the one moment where correcting it costs nothing: wrapping makes everything inside exactly one
+  level deeper, so there is no counting to do and the range is precisely the selection — never the whole file. The
+  gauge stays right without the typing path ever paying for it.
+- **Except when the new membrane becomes the file's envelope.** A single membrane wrapping the whole file is already
+  depth-transparent (v0.9.874), so its chapters stay at 0 — wrap everything and nothing inside moves.
+
 ### v4.0.333 (2026-08-21)
 - **Depth is a declaration, not a derived value.** Recomputing it from the nesting would mean walking 178,000 lines,
   which is the very thing that makes backspace stutter — so MeOS does not recompute. What is written is what the

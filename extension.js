@@ -4040,6 +4040,52 @@ function meosPairBadgeAt(document, pair) {
 //     意思は勝手に書き換えない([[project_last_specified_wins]])。**MeOSの仕事は、合っているかを調べること**。
 //   ★調べるのは**人が頼んだ時と、1日1回**。打鍵の道では絶対に走らせない。
 //   ★直すかどうかは人が決める＝ 数えて見せるだけで、黙って書き換えない。
+// ★★v4.0.334(俊克 pm05:30「**一番可能性が高いのは、入れ子になった膜をさらに膜で覆うこと**だよ。
+//   そう言うケースこそ、**D値を自動で修正する**んだよ。ユーザが知りたいのは、**今見ている膜がどの深さに
+//   あるか**ってことなんだよ。深度はそのためのもので、**クロノ腕時計などに内蔵された深度計**なんだよ」):
+//   ★★**深度計は読む物なので、狂ったままにはできない**。かと言って「いつでも数え直す」でもない。
+//     直すべき瞬間は**1つ**＝ **膜で覆った時**。覆えば中の膜は**必ず1つ深くなる**＝ 数えなくても分かる。
+//   ★★そして**範囲が分かっている**＝ 覆った選択の中だけ。15万行は関係ない＝ bs遅延と同じ穴を掘らない。
+//   ★これは [[project_now_not_bulk]] そのもの＝ **人が今やった事の分だけ、その場で直す**。
+//   ★申告を書いていない膜は触らない(申告が無い＝ 直す物が無い)。
+// ★★v4.0.334の穴を先に塞ぐ＝ **覆えば必ず1つ深くなる、とは限らない**。
+//   MeOSには既に**最外核膜(包み膜)ルール**(v0.9.874)がある＝ ファイル全体を1つの膜で包むと、
+//   その膜は**深度透過**になり、直下の章は0のまま。俊克「**ファイル全体を覆う膜は、深度を書かなくて良い**」は
+//   これのこと。だから「今から作る膜が包み膜になる」時だけは、**中の申告は1つも動かない**。
+//   ★ここは膜を作る瞬間(=人が意図して押した1回)なので、全体を1回数えてよい。打鍵の道ではない。
+function meosWrapDepthShift(doc, fromLine, toLine) {
+  try {
+    const pairs = collectPairs(doc, { excludeIndex: false }) || [];
+    if (pairs.some(p => p.isEnvelope)) return -1;                       // 既に包み膜が在る= 中は1つ深くなる
+    const tops = pairs.filter(p => (Number(p.depth) || 0) === 0 && !p.isMnt && !isMetaMembraneId(p.id) && !isIndexMembrane(p.id));
+    if (!tops.length) return -1;
+    return tops.every(p => p.start >= fromLine && p.end <= toLine) ? 0 : -1;  // 一番外を全部包む= 新しい膜が包み膜
+  } catch (_) { return -1; }
+}
+function meosDeepenBadgeEdits(doc, fromLine, toLine, by) {
+  const out = [];
+  if (!by) return out;
+  try {
+    for (let ln = Math.max(0, fromLine); ln <= toLine && ln < doc.lineCount; ln++) {
+      const t = doc.lineAt(ln).text;
+      if (t.indexOf('(') < 0) continue;                       // 速い足切り
+      const b = parseMstatBadgeFromText(t);
+      if (!b || typeof b.depth !== 'number' || !Number.isFinite(b.depth)) continue;
+      out.push({ range: new vscode.Range(ln, b.start, ln, b.end), text: formatMstatBadge({ ...b, depth: b.depth + by }) });
+    }
+  } catch (_) { }
+  return out;
+}
+// 文字列を丸ごと入れ替える道(選択を包み直す)のための、同じ規則。
+function meosDeepenBadgesInText(text, by) {
+  if (!by) return String(text == null ? '' : text);
+  return String(text == null ? '' : text).split('\n').map(t => {
+    if (t.indexOf('(') < 0) return t;
+    const b = parseMstatBadgeFromText(t);
+    if (!b || typeof b.depth !== 'number' || !Number.isFinite(b.depth)) return t;
+    return t.slice(0, b.start) + formatMstatBadge({ ...b, depth: b.depth + by }) + t.slice(b.end);
+  }).join('\n');
+}
 function meosDepthAudit(document) {
   const out = [];
   try {
@@ -14682,6 +14728,8 @@ async function addMembrane() {
         : `\n${close}`;
       editBuilder.insert(new vscode.Position(startLine, 0), wrapInsertedMembraneBlock(doc, startLine, startLine, block));
       editBuilder.insert(new vscode.Position(endLine + 1, 0), wrapInsertedMembraneBlock(doc, endLine + 1, endLine + 1, tail));
+      // v4.0.334: 覆えば中の膜は必ず1つ深くなる。**覆った範囲の中だけ**、同じ1回の編集で直す。
+      for (const e of meosDeepenBadgeEdits(doc, startLine, endLine, meosWrapDepthShift(doc, startLine, endLine))) editBuilder.replace(e.range, e.text);
     } else {
       const block = tpl.markdown
         ? `${open}\n\n${indent}\n\n${close}`
@@ -17541,7 +17589,7 @@ async function addMembraneWithName(nameInput, colorCode = '') {
   const closeLine = template.close;
   const ok = await editor.edit(edit => {
     if (hasSelection) {
-      const selectedText = doc.getText(selection);
+      const selectedText = meosDeepenBadgesInText(doc.getText(selection), meosWrapDepthShift(doc, startLine, endLine)); // v4.0.334
       const wrapped = template.markdown
         ? `${openLine}\n\n${selectedText}\n\n${closeLine}`
         : `${openLine}\n${selectedText}\n${closeLine}`;

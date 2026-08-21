@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText , meosNewMembraneCloseBlock, buildMembraneOpenLine, commentSyntaxForDocument };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText , meosNewMembraneCloseBlock, buildMembraneOpenLine, commentSyntaxForDocument, meosDeepenBadgesInText, meosDeepenBadgeEdits, meosDepthAudit, mstatDepthForPair, meosWrapDepthShift };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -939,6 +939,42 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
   ok(at3(4) === '0,3,4', 'バッジ行に居ても、同じ3つ', '0,3,4');
   ok(at3(1) === 'null', '本文の中は塊に入らない（開けっ放しにしない）', 'null');
   ok(at3(5) === 'null', '膜の外も入らない', 'null');
+
+  // ★v4.0.334（俊克 pm05:30「一番可能性が高いのは、入れ子になった膜をさらに膜で覆うこと。
+  //   そう言うケースこそD値を自動で修正する。ユーザが知りたいのは、今見ている膜がどの深さにあるか」）
+  const inner = ['<!-- {* ▼mCN=P // 外 *} -->',
+                 '<!-- {* ▼mCN=Q // 中 *} -->',
+                 '<!-- {* ▲mCN=Q // *} -->',
+                 '<!-- Mew!FC mCN (📊⊕0+0D-1W) -->',
+                 '<!-- {* ▲mCN=P // *} -->',
+                 '<!-- Mew!FC mCN (📊⊕0+0D0W) -->'].join('\n');
+  const deeper = T.meosDeepenBadgesInText(inner, -1);
+  ok(deeper.indexOf('D-2W') > 0 && deeper.indexOf('D-1W') > 0 && deeper.indexOf('D0W') < 0,
+     '膜で覆うと、中の申告が揃って1つ深くなる（D0→D-1 / D-1→D-2）', 'D-1 と D-2');
+  ok(T.meosDeepenBadgesInText('ふつうの文\n| a |', -1) === 'ふつうの文\n| a |',
+     '申告を持たない行は1文字も変えない', 'そのまま');
+  ok(T.meosDeepenBadgesInText('<!-- Mew!FC mCN (📊⊕0+0W) -->', -1) === '<!-- Mew!FC mCN (📊⊕0+0W) -->',
+     '深さを書いていない膜は触らない（申告が無ければ直す物が無い）', 'そのまま');
+
+  // ★包み膜ルール（v0.9.874）＝ ファイル全体を包む膜は深度透過。俊克「ファイル全体を覆う膜は、深度を
+  //   書かなくて良い」はこれ。だから P=包み膜 / Q=章(D0) / R=その中(D-1)。
+  const AUD = ['<!-- {* ▼mCN=P // 包み *} -->',
+               '<!-- {* ▼mCN=Q // 章 *} -->',
+               '<!-- {* ▼mCN=R // 中 *} -->', '本文', '<!-- {* ▲mCN=R // *} -->',
+               '<!-- Mew!FC mCN (📊⊕0+0D0W) -->',
+               '<!-- {* ▲mCN=Q // *} -->', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->',
+               '<!-- {* ▲mCN=P // *} -->', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->'];
+  const bad = T.meosDepthAudit(mk(AUD));
+  ok(bad.length === 1 && bad[0].id === 'R' && bad[0].wrote === 0 && bad[0].real === -1,
+     '狂っている1つだけ挙がる（R＝申告D0／実際D-1・包み膜と章は無罪）', 'R 1件 D0→D-1');
+  ok(T.meosWrapDepthShift(mk(AUD), 1, 8) === -1,
+     '包み膜の中の一部を包む＝ 中は1つ深くなる', '-1');
+  const NOENV = ['<!-- {* ▼mCN=A // 章1 *} -->', '<!-- {* ▲mCN=A // *} -->', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->',
+                 '<!-- {* ▼mCN=B // 章2 *} -->', '<!-- {* ▲mCN=B // *} -->', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->'];
+  ok(T.meosWrapDepthShift(mk(NOENV), 0, 5) === 0,
+     '★一番外を全部包む＝ 新しい膜が包み膜になるので、中の申告は1つも動かない', '0');
+  ok(T.meosWrapDepthShift(mk(NOENV), 0, 2) === -1,
+     '一部だけ包む＝ その中は1つ深くなる', '-1');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');
