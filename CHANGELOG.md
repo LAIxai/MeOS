@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.345 (2026-08-22)
+- **The whole membrane goes raw together.** With the caret on the opening line, the closing line and the badge stay
+  decorated — but those three lines are one thing, so all three now show raw source. Selecting a membrane name to
+  copy it is ordinary text selection again.
+- **The way back is closed** (at the user's request). Everything built to walk the caret over hidden bytes is gone:
+  the guard's membrane branch, five keybindings, four context keys, and the constant that could have restored the old
+  look. None of it was solving a problem that existed on its own — it was all paying for one exception to the rule
+  that the line under the caret shows raw source.
+
 ### v4.0.344 (2026-08-22)
 - **A membrane line now shows raw source when the caret is on it, like everything else.** This was the one place that
   did not follow MeOS's oldest promise — headings, highlights, strikethrough, tables and folding comments all step

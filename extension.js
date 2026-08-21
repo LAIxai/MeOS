@@ -3029,8 +3029,6 @@ const lastCaretByEditorKey = new Map();
 // v0.9.625: 直前のカーソル行を追跡。エイリアス/注釈膜で
 // 「初回クリック→編集 / 2回目クリック→toggle」を区別するため。
 let prevLineBeforeSelectionChange = -1;
-// ★v4.0.344: 膜の行も「カーソル行は生データ」に従わせる。false に戻せば従来の姿。
-const MEOS_MEMBRANE_RAW_ON_CURSOR = true;
 let caretSkipSuppressUntil = 0;
 // ★★v4.0.336(俊克 pm06:35「→キーをずっと押し続けると、処理が間に合わずに変な動きになる。…閉じ膜まで行って
 //   開始膜に戻ったりする。**閉じ膜の▲の両側を連続して往復するのが10回くらい続く**。どこから始めるかで動きが
@@ -6336,8 +6334,11 @@ function applyPrettyLabels(editor) {
   if (docCursorLine >= 0) {
     _rawLines.add(docCursorLine);
     try {
+      // ★v4.0.345(俊克 バグ1「開始膜にカーソルがいるとき、閉じ膜が生データになってないよ」):
+      //   ★橙に染まる行は**全部**生データ。膜は▼▲バッジの3行がひと組(v4.0.332)なので、3行とも生になる。
+      //   v4.0.338で膜だけ除いていたのは、隠し帯を外すのが怖かったから＝ その怖れは v4.0.344 で不要になった。
       const _m = meosFcMate(editor.document, docCursorLine);
-      if (_m && _m.b && _m.b.open == null && _m.mate >= 0) _rawLines.add(_m.mate);
+      if (_m) for (const _l of (_m.lines || [])) if (_l >= 0) _rawLines.add(_l);
     } catch (_) { }
   }
   const _isRawLine = (ln) => _rawLines.has(ln);
@@ -6927,8 +6928,7 @@ function applyPrettyLabels(editor) {
     //     「隠れ帯を跨がせる」ための仕掛け(見張り・鍵・文脈)が要った＝ v4.0.336〜343の全部がその後始末。
     //     **例外をやめれば、その仕掛けがまるごと要らなくなる**。
     //   ★理由は俊克の推測どおり「形をきれいに見せたかった」だけで、**約束より優先する理由ではなかった**。
-    //   ★戻したい時は、この定数を false にすれば元の姿に戻る(1文字)。
-    if ((open || close) && MEOS_MEMBRANE_RAW_ON_CURSOR && _isRawLine(line)) continue;
+        if ((open || close) && _isRawLine(line)) continue;   // v4.0.345: 退路を断つ(俊克)= 例外はもう作らない
     // v0.9.606: mNT goes through the standard mCN pipeline below. The pair's `isMnt`
     // flag (from collectPairs) is used inside the openLabels/closeLabels push to swap
     // the ▼/▲ glyph for ▼📒/▲📒. Folding behavior, hover tooltip, click-to-toggle,
@@ -13113,123 +13113,16 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
 
 
 
-  const openParts = membraneLineParts(text, 'open');
-  const closeParts = membraneLineParts(text, 'close');
-  const parts = (MEOS_MEMBRANE_RAW_ON_CURSOR ? null : (openParts || closeParts));  // v4.0.344: 生データなら隠れ帯は無い=跨がせる物も無い
-
-  if (!parts) {
-    updateLastCaretForEditor(editor);
-    return false;
-  }
-
-  // v0.9.216:
-  // If ← from next line Col1 lands on this membrane line at/after the hidden brace,
-  // snap to the visible right-edge landing point.
-  let thisRightEdgeForBack = (parts.suffixStart >= 0) ? parts.suffixStart : text.length;
-  if (thisRightEdgeForBack > 0 && /\s/.test(text.charAt(thisRightEdgeForBack - 1))) {
-    thisRightEdgeForBack = thisRightEdgeForBack - 1;
-  }
-  if (
-    thisRightEdgeForBack >= 0 &&
-    prev &&
-    prev.line === pos.line + 1 &&
-    prev.character === 0 &&
-    pos.character >= thisRightEdgeForBack
-  ) {
-    const p = new vscode.Position(pos.line, thisRightEdgeForBack);
-    _meosCaretSetSelf(editor, key, p);
-    return true;
-  }
-
-  const hiddenPrefixStart = Math.max(0, parts.prefixStart || 0);
-  const hiddenPrefixEnd = Math.max(hiddenPrefixStart, parts.idStart || 0);
-
-  // Right boundary:
-  // In the real source a rendered membrane line ends with "}".
-  // The visible membrane text effectively ends immediately before that raw closing brace.
-  // v0.9.216: keep one stable visible landing point at the right edge,
-  // so the caret can appear as ")|" instead of disappearing into the hidden suffix.
-  // v0.9.216:
-  // Use the beginning of the hidden suffix as the visible right edge.
-  // For proto membrane lines this is before ` *}`, not necessarily the final raw `}`.
-  // v0.9.216:
-  // v0.9.216 leaves the real space before `*}` visible as a caret footing.
-  // The visible stop is the position before that footing-space; beyond it should jump next line.
-  let rightEdge = (parts.suffixStart >= 0) ? parts.suffixStart : text.length;
-  if (rightEdge > 0 && /\s/.test(text.charAt(rightEdge - 1))) {
-    rightEdge = rightEdge - 1;
-  }
-  const visibleRightLanding = rightEdge;
-
-  let targetChar = null;
-
-  // ★★v4.0.336(俊克「**本当なら、▼マークの左にカーソルは入らないようにするべき**なんだよ」
-  //   「▼の左から選択してコピーすると『<!-- {* ▼mCN=テスト膜_20260821F』のように**生データがコピーできてしまう**」):
-  //   ★★隠れ帯は**通り道ではなく、1つの場所**にする＝ 帯の中(左端も含む)に居たら、必ず外へ出す。
-  //     前は帯の**内側だけ**を見ていたので、**左端(行頭)には居座れた**＝ そこから選択すると生データが入る。
-  //   ★出る向きは、直前がどこに居たかで決める。名前の側から来たなら**前の行の右端**まで一気に戻す
-  //     (行頭に置くと、そこから選択して生データを掴めてしまうので、置かない)。
-  if (pos.character >= hiddenPrefixStart && pos.character < hiddenPrefixEnd && hiddenPrefixEnd > hiddenPrefixStart) {
-    if (prev && prev.line === pos.line && prev.character >= hiddenPrefixEnd && pos.line > 0) {
-      // 名前の左端から ← ＝ 帯を素通りして、前の行の見える右端へ
-      const pl = pos.line - 1, pt = editor.document.lineAt(pl).text || '';
-      const pp = membraneLineParts(pt, 'open') || membraneLineParts(pt, 'close');
-      let pe = (pp && pp.suffixStart >= 0) ? pp.suffixStart : pt.length;
-      if (pe > 0 && /\s/.test(pt.charAt(pe - 1))) pe -= 1;
-      _meosCaretSetSelf(editor, key, new vscode.Position(pl, pe));
-      return true;
-    }
-    targetChar = hiddenPrefixEnd;    // それ以外は、いつでも名前の頭へ出す
-  }
-
-  // Right hidden raw-suffix zone.
-  // v0.9.216:
-  // Do not consume right-edge keyboard movement.
-  // Enter is disabled on rendered membrane lines, so the hidden final brace is protected.
-  // Let VSCode move normally to the next line when the user presses → past the edge.
-
-  // v0.9.216:
-  // Skip the virtual space after the visible right edge.
-  // v0.9.216 adds a virtual display space so the caret can appear as ")|".
-  // The next → must not stop at that virtual space; it should move to next line head.
-  // v0.9.216:
-  // Right edge one-beat behavior.
-  // Allow `pos.character === rightEdge` to remain visible as `TOC|`.
-  // Only when the caret goes beyond that edge should it move to next line Col1.
-  // ★★v4.0.337(俊克 疑問点1「開始膜、閉じ膜のコメントの右に**見えない7つの文字**がある。この左右位置よりも
-  //   長い文字が前後の行にあるケースで、そこから↓↑キーで移動すると、comment1/comment2より**2文字くらい右に
-  //   着地する**」): ★★**7文字＝ ` *} -->` そのもの**。俊克の数えが当たっている。
-  //   ★正体は「空間がある」のではなく、**VS Codeの↑↓は桁(文字数)を保つ**＝ 長い行の50桁目から降りると、
-  //     この行の50桁目＝ **隠れた末尾の中**に着く。見えないので「右に着地した」ように見える。
-  //   ★v4.0.336で行頭側(▼の左)は塞いだが、**末尾側は塞いでいなかった**＝ 同じ穴の反対側。
-  //   ★→で右端を越える時だけは今までどおり次の行へ。それ以外(↑↓や飛び込み)は**見える右端へ寄せる**。
-  if (targetChar === null && rightEdge >= 0) {
-    const prevAtRightEdge = prev && prev.line === pos.line && prev.character === rightEdge;
-    const nowBeyondRightEdge = pos.character > rightEdge;
-    if (nowBeyondRightEdge && !prevAtRightEdge) {
-      _meosCaretSetSelf(editor, key, new vscode.Position(pos.line, rightEdge));
-      return true;
-    }
-    if (prevAtRightEdge && nowBeyondRightEdge) {
-      // ★v4.0.338(俊克 改良2「閉じ膜の右端から、→キー1発で**FCコメントに入りたい**。閉じ膜の途中から
-      //   ↓キー1発でFC膜に着地するので、**その差があるのは駄目**だよね」):
-      //   ★**同じ場所へは、どのキーでも同じ着地**。v4.0.336でここだけ群を飛び越していたが、
-      //     往復の真犯人は畳みの引き戻し(v4.0.337で直した)ので、飛び越す必要はもう無い。
-      const nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
-      const p = new vscode.Position(nextLine, 0);
-      _meosCaretSetSelf(editor, key, p);
-      return true;
-    }
-  }
-
-  if (targetChar === null) {
-    updateLastCaretForEditor(editor);
-    return false;
-  }
-
-  const p = new vscode.Position(pos.line, targetChar);
-  _meosCaretSetSelf(editor, key, p);
-  return true;
+  // ★★v4.0.345(俊克 am01:03「**単に、膜名をコピーするために選択状態にしたいだけ**なのに、見た目を気にした
+  //   ことが、こんなに無駄なことを強いるというのは皮肉だよね。…**原則を守れば良かった**ね。…**もう元に戻す
+  //   仕組みも要らないよ。退路を断つ**」):
+  //   ★★v4.0.344で膜の行も生データを見せるようになったので、**カーソルの下に隠れ帯が存在しない**。
+  //     跨がせる相手が居ないので、この見張りの膜の部分は**丸ごと要らなくなった**(v4.0.336〜343で足した
+  //     鍵5本・文脈4つも一緒に落とした)。残すのはMarkdown包み(`[//]: # (`)の分だけ。
+  //   ★俊克「**今まで、コメント部分を修正する時もおかしな動きをして、本当に使い難かった**。それも全て、
+  //     原則を曲げていたことのしっぺ返しだったんだね」＝ その通りで、原因は1つだった。
+  updateLastCaretForEditor(editor);
+  return false;
 }
 
 // v0.9.614→615: redirect mouse-clicks on a membrane line's word-wrapped visual
@@ -22940,71 +22833,7 @@ async function meosTableNav(editor, dir) {
   editor.revealRange(new vscode.Range(targetLine, p, targetLine, p));
 }
 let _meosInTableCtx = false;
-// ★★v4.0.338(俊克 pm11:05 改良1「Cmd+→で行末に飛んだ時、**一瞬 comment1 より1文字分右に着地して、
-//   comment1 の右に戻るのが見える。0.2秒くらい**。ところが Cmd+← は0.1秒以下。**この違いに違和感がある**」):
-//   ★★**後から直す限り、必ず一度は間違った所に見える**。見張りは「着いてから戻す」作りなので、
-//     拡張ホストが混んでいる時ほど、その往復がはっきり見える。
-//   ★★答えは「速くする」ではなく **その鍵だけ、行き先を最初から正しく決める**＝ 表のセル移動(v0.9.999156)で
-//     既にやっている作法と同じ。膜の行に居る時だけ Cmd+→/End を横取りし、**見える右端へ一発で**置く。
-//   ★見張りは残す＝ ↑↓や飛び込みの受け皿(v4.0.337)。**口は2つでよい・行き先は1つ**
-//     → [[project_last_specified_wins]]「覚える入口は複数でよい。増やしてはいけないのは値の数」。
-let _meosOnMembraneCtx = false;
-function meosVisibleRightEdge(doc, line) {
-  try {
-    const t = doc.lineAt(line).text || '';
-    const parts = membraneLineParts(t, 'open') || membraneLineParts(t, 'close');
-    if (!parts) return -1;
-    let e = (parts.suffixStart >= 0) ? parts.suffixStart : t.length;
-    if (e > 0 && /\s/.test(t.charAt(e - 1))) e -= 1;
-    return e;
-  } catch (_) { return -1; }
-}
-// ★★v4.0.339(俊克 pm11:29 バグ1「Cmd+←で、**行頭に着地しない**ので、同様に直して下さい」
-//   バグ2「右端から→、その後**←キーで戻る時に、ダイレクトに着地しない**。行末の1文字分右に一旦着地してから移動」):
-//   ★★**右だけ直して、左を忘れていた**。膜の行には**見える両端**があるのに、私は片側にしか行き先を与えていない。
-//   ★見える左端＝ 名前の頭(idStart)。見える右端＝ 末尾の手前。**同じ1つの関数から両方を出す**。
-//   ★バグ2は「隣の行から戻る」＝ **相手の行の右端**へ行きたい。だから合図も別に要る
-//     (行頭に居て、1つ上が膜の行)。3つ目の行き先ではなく、**同じ右端をもう1つの口から呼ぶだけ**。
-function meosVisibleLeftEdge(doc, line) {
-  try {
-    const t = doc.lineAt(line).text || '';
-    const parts = membraneLineParts(t, 'open') || membraneLineParts(t, 'close');
-    if (!parts || !(parts.idStart >= 0)) return -1;
-    return parts.idStart;
-  } catch (_) { return -1; }
-}
-let _meosAfterMembraneCtx = false, _meosLeftEdgeCtx = false, _meosRightEdgeCtx = false, _meosBeforeMembraneCtx = false;
-// ★★v4.0.340(俊克 pm11:40 バグ1「行頭、行末から→、←キー1回で前後の行に移動する時に、**▼、▲の左側に一瞬
-//   着地**してしまう。あるいは**Comment1の右端から1文字分右に一瞬着地**してから移動してしまう」):
-//   ★★**膜の行の「外へ出る」も、行き先を先に決める**＝ 見える端に居る時の →/← は、
-//     隠れ帯を1歩ずつ通らせず、**隣の行へ直接**置く。
-//   ★これで膜の行の出入りは**4つとも先決め**になった＝ 左端へ/右端へ(v4.0.338-339)＋左端から出る/右端から出る。
-//     見張り(v4.0.337)は、↑↓や飛び込みなど**鍵を決められない道**の受け皿として残る。
-//   ★行き先の値は**同じ2つの関数**(見える左端/右端)から引く＝ 鍵と見張りが食い違わない。
-function meosUpdateOnMembraneContext(editor) {
-  let v = false, w = false, le = false, re2 = false, bm = false;
-  try {
-    // v4.0.344: 膜の行が生データなら、端も隠れ帯も無い= 鍵の出番が無い(素のVS Codeに任せる)。
-    if (!MEOS_MEMBRANE_RAW_ON_CURSOR && editor && editor.document && editor.selection && editor.selection.isEmpty && !meosRawMode) {
-      const ln = editor.selection.active.line, ch = editor.selection.active.character;
-      const r = meosVisibleRightEdge(editor.document, ln);
-      v = r >= 0;
-      if (v) { le = (ch === meosVisibleLeftEdge(editor.document, ln)); re2 = (ch === r); }
-      // 行頭に居て、1つ上が膜の行＝ ←で戻る先はその行の**見える右端**
-      w = !v && ch === 0 && ln > 0 && meosVisibleRightEdge(editor.document, ln - 1) >= 0;
-      // ★v4.0.341(俊克 バグ1「前の行から→キーで入る時、▼▲の左に一瞬着地する」):
-      //   行末に居て、1つ下が膜の行＝ →で入る先はその行の**見える左端**。出る側だけ直して、入る側を忘れていた。
-      bm = !v && ch === (editor.document.lineAt(ln).text || '').length && ln < editor.document.lineCount - 1
-           && meosVisibleLeftEdge(editor.document, ln + 1) >= 0;
-    }
-  } catch (_) { }
-  const set = (name, val, cur) => { if (val !== cur) { try { vscode.commands.executeCommand('setContext', name, val); } catch (_) { } } return val; };
-  _meosOnMembraneCtx = set('meos.onMembraneLine', v, _meosOnMembraneCtx);
-  _meosAfterMembraneCtx = set('meos.afterMembraneLine', w, _meosAfterMembraneCtx);
-  _meosLeftEdgeCtx = set('meos.atMembraneLeftEdge', le, _meosLeftEdgeCtx);
-  _meosRightEdgeCtx = set('meos.atMembraneRightEdge', re2, _meosRightEdgeCtx);
-  _meosBeforeMembraneCtx = set('meos.beforeMembraneLine', bm, _meosBeforeMembraneCtx);
-}
+// v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
 function meosUpdateInTableContext(editor) {
   let v = false;
   try { if (editor && editor.document && editor.selection) v = meosInTable(editor.document, editor.selection.active.line); } catch (_) {}
@@ -26934,7 +26763,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { meosUpdateInTableContext(e.textEditor); meosUpdateOnMembraneContext(e.textEditor); }));
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
   // ★★v4.0.342(俊克 am00:09 バグ1「→←キー**押しっぱなし**での移動は、途中でぐるぐる周回して先に進まない。
   //   これはシフトキー同時押下では起きないので、**タイマーを使用しなければいいんじゃないの? なぜタイマーが
   //   必要か分らんけど**」):
@@ -26949,54 +26778,6 @@ function activate(context) {
   //   ★シフト同時押しで起きないのは、選択を作る鍵に MeOS が一切割り込んでいないから(v0.9.216以来)。
   const _meosCaretNow = (ed) => ({ ln: ed.selection.active.line, ch: ed.selection.active.character });
   const _meosPass = (cmd) => { vscode.commands.executeCommand(cmd); };
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineEnd', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorEnd'); return; }
-    const { ln } = _meosCaretNow(ed), e = meosVisibleRightEdge(ed.document, ln);
-    if (e < 0) { _meosPass('cursorEnd'); return; }
-    const p = new vscode.Position(ln, e);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'MembraneLineEnd'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
-  }));
-  // v4.0.339: 見える左端(名前の頭)へ一発。膜の行でなければ素の Home に任せる。
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineStart', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorHome'); return; }
-    const { ln } = _meosCaretNow(ed), e = meosVisibleLeftEdge(ed.document, ln);
-    if (e < 0) { _meosPass('cursorHome'); return; }
-    const p = new vscode.Position(ln, e);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'MembraneLineStart'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
-  }));
-  // v4.0.340: 見える左端から←＝ 前の行の末尾へ直接(▼の左に一瞬着地させない)。
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorLeaveMembraneLeft', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorLeft'); return; }
-    const { ln, ch } = _meosCaretNow(ed);
-    if (ln <= 0 || ch !== meosVisibleLeftEdge(ed.document, ln)) { _meosPass('cursorLeft'); return; }  // 今そこに居る時だけ
-    const pl = ln - 1, pr = meosVisibleRightEdge(ed.document, pl);
-    const dst = (pr >= 0) ? pr : (ed.document.lineAt(pl).text || '').length;
-    const p = new vscode.Position(pl, dst);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'LeaveMembraneLeft'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
-  }));
-  // v4.0.340/341: →で次の行へ入る。行き先は**その行の見える左端**(膜でなければ行頭)。
-  //   出る側(膜の右端から)と入る側(前の行の末尾から)は、着く場所が同じなので**同じ1つの命令**にする。
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorLeaveMembraneRight', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorRight'); return; }
-    const { ln, ch } = _meosCaretNow(ed);
-    if (ln >= ed.document.lineCount - 1) { _meosPass('cursorRight'); return; }
-    const _r = meosVisibleRightEdge(ed.document, ln);                       // 膜の右端に居る
-    const _atEnd = (_r < 0) && ch === (ed.document.lineAt(ln).text || '').length && meosVisibleLeftEdge(ed.document, ln + 1) >= 0; // 次が膜の行末に居る
-    if (!((_r >= 0 && ch === _r) || _atEnd)) { _meosPass('cursorRight'); return; }
-    const le = meosVisibleLeftEdge(ed.document, ln + 1);
-    const p = new vscode.Position(ln + 1, le >= 0 ? le : 0);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'LeaveMembraneRight'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
-  }));
-  // v4.0.339: 行頭から←で戻る時は、1つ上の膜の行の**見える右端**へ一発(隠れた末尾に一旦着地させない)。
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorBackToMembraneEnd', () => {
-    const ed = vscode.window.activeTextEditor; if (!ed || !ed.selection.isEmpty) { _meosPass('cursorLeft'); return; }
-    const { ln, ch } = _meosCaretNow(ed);
-    if (ch !== 0) { _meosPass('cursorLeft'); return; }                       // 今 行頭に居る時だけ
-    const e = (ln > 0) ? meosVisibleRightEdge(ed.document, ln - 1) : -1;
-    if (e < 0) { _meosPass('cursorLeft'); return; }
-    const p = new vscode.Position(ln - 1, e);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'BackToMembraneEnd'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
-  }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
