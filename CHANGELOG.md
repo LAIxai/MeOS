@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.341 (2026-08-22)
+- **Entering a membrane line from above is direct too.** v4.0.340 fixed leaving but not arriving, so `→` from the end
+  of the line above still touched down left of `▼` before being moved. Leaving and arriving land in the same place,
+  so they are now the same command, and it reads the visible left edge from the same function `Cmd+←` uses.
+- **No more pause on the way out.** Stepping off a block was folding its spec group immediately, and the first
+  `editor.fold` on a 178,000-line file takes a few hundred milliseconds while VS Code rebuilds its folding ranges —
+  which is exactly why the pause disappeared after a few tries. Opening still happens at once, because "the line under
+  the cursor shows raw source" cannot wait; closing now waits for the cursor to settle, because passing through is not
+  leaving. Walking `▼` → body → `▲` used to cost two folds and now costs none.
+
 ### v4.0.340 (2026-08-21)
 - **Leaving a membrane line is direct too.** From the visible left edge, `←` goes straight to the end of the line
   above; from the visible right edge, `→` goes straight to the start of the line below. Neither touches down in the

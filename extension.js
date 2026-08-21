@@ -22954,7 +22954,7 @@ function meosVisibleLeftEdge(doc, line) {
     return parts.idStart;
   } catch (_) { return -1; }
 }
-let _meosAfterMembraneCtx = false, _meosLeftEdgeCtx = false, _meosRightEdgeCtx = false;
+let _meosAfterMembraneCtx = false, _meosLeftEdgeCtx = false, _meosRightEdgeCtx = false, _meosBeforeMembraneCtx = false;
 // ★★v4.0.340(俊克 pm11:40 バグ1「行頭、行末から→、←キー1回で前後の行に移動する時に、**▼、▲の左側に一瞬
 //   着地**してしまう。あるいは**Comment1の右端から1文字分右に一瞬着地**してから移動してしまう」):
 //   ★★**膜の行の「外へ出る」も、行き先を先に決める**＝ 見える端に居る時の →/← は、
@@ -22963,7 +22963,7 @@ let _meosAfterMembraneCtx = false, _meosLeftEdgeCtx = false, _meosRightEdgeCtx =
 //     見張り(v4.0.337)は、↑↓や飛び込みなど**鍵を決められない道**の受け皿として残る。
 //   ★行き先の値は**同じ2つの関数**(見える左端/右端)から引く＝ 鍵と見張りが食い違わない。
 function meosUpdateOnMembraneContext(editor) {
-  let v = false, w = false, le = false, re2 = false;
+  let v = false, w = false, le = false, re2 = false, bm = false;
   try {
     if (editor && editor.document && editor.selection && editor.selection.isEmpty && !meosRawMode) {
       const ln = editor.selection.active.line, ch = editor.selection.active.character;
@@ -22972,6 +22972,10 @@ function meosUpdateOnMembraneContext(editor) {
       if (v) { le = (ch === meosVisibleLeftEdge(editor.document, ln)); re2 = (ch === r); }
       // 行頭に居て、1つ上が膜の行＝ ←で戻る先はその行の**見える右端**
       w = !v && ch === 0 && ln > 0 && meosVisibleRightEdge(editor.document, ln - 1) >= 0;
+      // ★v4.0.341(俊克 バグ1「前の行から→キーで入る時、▼▲の左に一瞬着地する」):
+      //   行末に居て、1つ下が膜の行＝ →で入る先はその行の**見える左端**。出る側だけ直して、入る側を忘れていた。
+      bm = !v && ch === (editor.document.lineAt(ln).text || '').length && ln < editor.document.lineCount - 1
+           && meosVisibleLeftEdge(editor.document, ln + 1) >= 0;
     }
   } catch (_) { }
   const set = (name, val, cur) => { if (val !== cur) { try { vscode.commands.executeCommand('setContext', name, val); } catch (_) { } } return val; };
@@ -22979,6 +22983,7 @@ function meosUpdateOnMembraneContext(editor) {
   _meosAfterMembraneCtx = set('meos.afterMembraneLine', w, _meosAfterMembraneCtx);
   _meosLeftEdgeCtx = set('meos.atMembraneLeftEdge', le, _meosLeftEdgeCtx);
   _meosRightEdgeCtx = set('meos.atMembraneRightEdge', re2, _meosRightEdgeCtx);
+  _meosBeforeMembraneCtx = set('meos.beforeMembraneLine', bm, _meosBeforeMembraneCtx);
 }
 function meosUpdateInTableContext(editor) {
   let v = false;
@@ -24103,6 +24108,22 @@ let _meosFcBusy = false;
 let _meosLastEditAt = 0;
 function meosNoteEdit() { _meosLastEditAt = Date.now(); }
 const MEOS_FC_TYPING_QUIET_MS = 350; // 打鍵が止まったと見なすまで
+// ★★v4.0.341(俊克 pm11:59 改良1「開始膜の行末から→キーで出る時、なぜか**0.3秒くらいの間**があって移動する。
+//   ただし、**何度かやっている内に間が無くなる**のが不思議」):
+//   ★★間の正体は**畳み**＝ カーソルが塊を出ると、その群を畳みに行く。`editor.fold` は17万行では
+//     折り畳み範囲の取り直しを伴い、**初回は数百ms**掛かる(2度目以降はVS Code側が覚えているので速い)
+//     ＝ 俊克の「何度かやっている内に間が無くなる」がその証拠。
+//   ★★直し＝ **開くのは速く、畳むのはゆっくり**。開くのは「カーソルの下は生データ」の約束なので待てないが、
+//     畳むのは**通り過ぎただけかもしれない**＝ 落ち着くまで待てばいい。通り抜ける間は一度も畳まない。
+//   ★v4.0.332で▼行も塊に入れたので、▼→本文→▲ と歩くだけで畳み/開きが2回走っていた。これで0回になる。
+const MEOS_FC_CLOSE_DELAY_MS = 700;   // 塊を出た時、畳むまで待つ間(開く時は180ms)
+function meosFcCursorStillInOpenBlock(editor) {
+  try {
+    if (_meosFcOpen == null || _meosFcOpen === 'ALL') return false;
+    const b = meosFcPairAt(editor.document, editor.selection.active.line);
+    return !!b && b.head === _meosFcOpen;
+  } catch (_) { return false; }
+}
 function meosScheduleFcCursorSync(editor) {
   if (!MEOS_SPEC_LINE_AUTOFOLD) return;
   if (_meosFcCursorTimer) clearTimeout(_meosFcCursorTimer);
@@ -24112,7 +24133,8 @@ function meosScheduleFcCursorSync(editor) {
     if (since < MEOS_FC_TYPING_QUIET_MS) { _meosFcCursorTimer = setTimeout(run, MEOS_FC_TYPING_QUIET_MS - since); return; } // まだ打っている=先送り
     meosSyncFcFoldForCursor(editor);
   };
-  _meosFcCursorTimer = setTimeout(run, 180);
+  const closing = (_meosFcOpen != null && _meosFcOpen !== 'ALL' && !meosFcCursorStillInOpenBlock(editor));
+  _meosFcCursorTimer = setTimeout(run, closing ? MEOS_FC_CLOSE_DELAY_MS : 180);
 }
 // v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」):
 // ★★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、
@@ -26920,12 +26942,14 @@ function activate(context) {
     const p = new vscode.Position(pl, ch);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
-  // v4.0.340: 見える右端から→＝ 次の行の頭へ直接(隠れた末尾に一旦着地させない)。
+  // v4.0.340/341: →で次の行へ入る。行き先は**その行の見える左端**(膜でなければ行頭)。
+  //   出る側(膜の右端から)と入る側(前の行の末尾から)は、着く場所が同じなので**同じ1つの命令**にする。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorLeaveMembraneRight', () => {
     const ed = vscode.window.activeTextEditor; if (!ed) return;
     const ln = ed.selection.active.line;
     if (ln >= ed.document.lineCount - 1) { vscode.commands.executeCommand('cursorRight'); return; }
-    const p = new vscode.Position(ln + 1, 0);
+    const le = meosVisibleLeftEdge(ed.document, ln + 1);
+    const p = new vscode.Position(ln + 1, le >= 0 ? le : 0);
     try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.339: 行頭から←で戻る時は、1つ上の膜の行の**見える右端**へ一発(隠れた末尾に一旦着地させない)。
