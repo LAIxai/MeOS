@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.344 (2026-08-22)
+- **A membrane line now shows raw source when the caret is on it, like everything else.** This was the one place that
+  did not follow MeOS's oldest promise — headings, highlights, strikethrough, tables and folding comments all step
+  aside for the caret; membrane lines kept their decoration on. That is why hidden bytes existed *under* the caret at
+  all, and why a guard, five keybindings and four context keys had to exist to walk over them. Removing the exception
+  removes the need for all of it, and arrow keys are plain VS Code again.
+  The guard and the keys are still in the source, switched off by one constant, so the old look can be restored.
+- The original reason appears to have been wanting the membrane to look tidy while the caret sat on it — which was
+  never a reason to outrank the promise.
+
 ### v4.0.343 (2026-08-22)
 - **Moving the caret no longer changes how the document is folded.** That was the reason plain arrowing kept finding
   new ways to misbehave: folding and unfolding are commands to VS Code that take hundreds of milliseconds on a

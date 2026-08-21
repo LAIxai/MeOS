@@ -3029,6 +3029,8 @@ const lastCaretByEditorKey = new Map();
 // v0.9.625: 直前のカーソル行を追跡。エイリアス/注釈膜で
 // 「初回クリック→編集 / 2回目クリック→toggle」を区別するため。
 let prevLineBeforeSelectionChange = -1;
+// ★v4.0.344: 膜の行も「カーソル行は生データ」に従わせる。false に戻せば従来の姿。
+const MEOS_MEMBRANE_RAW_ON_CURSOR = true;
 let caretSkipSuppressUntil = 0;
 // ★★v4.0.336(俊克 pm06:35「→キーをずっと押し続けると、処理が間に合わずに変な動きになる。…閉じ膜まで行って
 //   開始膜に戻ったりする。**閉じ膜の▲の両側を連続して往復するのが10回くらい続く**。どこから始めるかで動きが
@@ -6915,6 +6917,18 @@ function applyPrettyLabels(editor) {
     }
     const open = parseOpenLine(text);
     const close = parseCloseLine(text);
+    // ★★★v4.0.344(俊克 am00:47「そもそも、**開始膜、閉じ膜に入った時に、生データを表示しないのが問題の原因
+    //   じゃないのか?** 他の見出しやハイライトは生データを見せているのにね。**膜の形をきれいに見せておきたいと
+    //   最初思ったから、そうしていただけ**だよね。たぶん」):
+    //   ★★★**俊克が正しい。膜の行だけが、MeOSの根本の約束の例外になっていた**＝
+    //     「**カーソルを置いた行は生データを見せる**」(v0.9.659)。見出しも、ハイライトも、取消線も、表も、
+    //     FCも、全部そうしているのに、**膜の行だけが飾りを掛けたまま**だった。
+    //   ★★★だからカーソルがその行に居る間も**隠れ帯が存在する**ことになり、
+    //     「隠れ帯を跨がせる」ための仕掛け(見張り・鍵・文脈)が要った＝ v4.0.336〜343の全部がその後始末。
+    //     **例外をやめれば、その仕掛けがまるごと要らなくなる**。
+    //   ★理由は俊克の推測どおり「形をきれいに見せたかった」だけで、**約束より優先する理由ではなかった**。
+    //   ★戻したい時は、この定数を false にすれば元の姿に戻る(1文字)。
+    if ((open || close) && MEOS_MEMBRANE_RAW_ON_CURSOR && _isRawLine(line)) continue;
     // v0.9.606: mNT goes through the standard mCN pipeline below. The pair's `isMnt`
     // flag (from collectPairs) is used inside the openLabels/closeLabels push to swap
     // the ▼/▲ glyph for ▼📒/▲📒. Folding behavior, hover tooltip, click-to-toggle,
@@ -13101,7 +13115,7 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
 
   const openParts = membraneLineParts(text, 'open');
   const closeParts = membraneLineParts(text, 'close');
-  const parts = openParts || closeParts;
+  const parts = (MEOS_MEMBRANE_RAW_ON_CURSOR ? null : (openParts || closeParts));  // v4.0.344: 生データなら隠れ帯は無い=跨がせる物も無い
 
   if (!parts) {
     updateLastCaretForEditor(editor);
@@ -22970,7 +22984,8 @@ let _meosAfterMembraneCtx = false, _meosLeftEdgeCtx = false, _meosRightEdgeCtx =
 function meosUpdateOnMembraneContext(editor) {
   let v = false, w = false, le = false, re2 = false, bm = false;
   try {
-    if (editor && editor.document && editor.selection && editor.selection.isEmpty && !meosRawMode) {
+    // v4.0.344: 膜の行が生データなら、端も隠れ帯も無い= 鍵の出番が無い(素のVS Codeに任せる)。
+    if (!MEOS_MEMBRANE_RAW_ON_CURSOR && editor && editor.document && editor.selection && editor.selection.isEmpty && !meosRawMode) {
       const ln = editor.selection.active.line, ch = editor.selection.active.character;
       const r = meosVisibleRightEdge(editor.document, ln);
       v = r >= 0;
