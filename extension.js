@@ -17818,18 +17818,16 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
 .title-file-row{display:flex;align-items:center;gap:2px;border-radius:3px}
+.title-file-hint{margin:3px 4px 1px;padding:4px 6px 1px;border-top:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);font-size:10px;line-height:1.35;opacity:.5;white-space:nowrap}
 /* v4.0.309: 📌は1つだけ。留めた物は常に先頭・薄く出しておいて、留めた時だけはっきりさせる。 */
 .title-file-pin{width:20px;flex:0 0 20px;padding:0;margin-left:2px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:12px;line-height:1;opacity:0;cursor:pointer}
 .title-file-row:hover .title-file-pin{opacity:.45}
 .title-file-pin.on{opacity:1}
 .title-file-pin:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
 .title-file-pin::before{content:'📌'}
-/* ★v4.0.311(俊克「ピン留めの●だけデカいね」): ★**別の部品で描いていたから大きさthat違った**=
+/* ★v4.0.311(俊克「ピン留めの●だけデカいね」): ★**別の部品で描いていたから大きさが違った**=
    button はフォントを継承しないので、同じ 14px でも span とは別のフォントで丸を描く。
    → **同じ部品にする**(留めた行も title-file-x・押せないようにするだけ)。大きさは1か所から出る。 */
-.title-file-x[disabled]{cursor:default;opacity:.5}
-.title-file-x[disabled]:hover{background:transparent;opacity:.5}
-.title-file-x[disabled]:hover::before{content:'●'}
 .title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
 .title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.85}
 .title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
@@ -17840,6 +17838,13 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-x::before{content:'×'}
 .title-file-x.dirty::before{content:'●'}
 .title-file-x.dirty:hover::before{content:'×'}
+/* ★★v4.0.326(俊克 8/21 am09:33 バグ3「📌留めしたメニューの×が**またゾンビのように蘇っている**」):
+   ★★**強さが同じ時は、後に書いた方が勝つ**。押せない印(●)の決まりを先に書いていたので、
+   すぐ下の「dirty:hover→×」に毎回上書きされていた＝ 触ると × に化ける＝ 押せそうに見える。
+   → **押せない物の決まりは、化ける決まりより後に書く**。これで留めた行は触っても●のまま。 */
+.title-file-x[disabled]{cursor:default;opacity:.5}
+.title-file-x[disabled]:hover{background:transparent;opacity:.5}
+.title-file-x[disabled]::before,.title-file-x[disabled]:hover::before{content:'●'}
 .title-actions{display:flex;align-items:center;gap:7px}
 .standards-toggle{border:1px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
 .standards-toggle .standards-switch{width:30px;height:14px;border-radius:999px;background:var(--vscode-input-background);border:1px solid var(--vscode-panel-border);position:relative;box-sizing:border-box;display:inline-block;flex:0 0 auto;transition:background .12s ease,border-color .12s ease}
@@ -18523,7 +18528,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* {* ▲mCN=dock_css *} */
 </style>
 <!-- {* ▼mCN=dock_html // Me Dock のHTML(画面の骨組み) *} -->
-</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" title="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
+</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -19484,8 +19489,13 @@ html+='<div class="title-file-row'+(cur?' cur':'')+'"><button class="title-file-
 /* v4.0.322: ×は「一覧から外す」ので、開いていない行にも出す。留めた行だけは出さない(未保存の●は押せない印)
    v4.0.325: ×はタブを閉じない= 一覧とタブは別の物。閉じたい時はタブの×が既に在る。 */
  +(it.pinned?(it.dirty?'<button class="title-file-x dirty" disabled></button>':'')
-   :('<button class="title-file-x'+(it.dirty?' dirty':'')+'" title="Remove from this list (the tab stays open)" data-close="'+ep+'"></button>'))+'</div>';}
-fp.innerHTML=html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>';};
+   :('<button class="title-file-x'+(it.dirty?' dirty':'')+'" data-close="'+ep+'"></button>'))+'</div>';}
+/* ★★v4.0.326(俊克 8/21 am09:33 バグ1/2「▼ボタンをtipがまだ被っている」「×ボタンのtipも被っている」):
+   ★★**tipは指の下に出る**= MeOS自前のtipでも、ブラウザのtitleでも、**出る場所は同じ**なので
+   v4.0.325の「data-tip→title」は場所を変えていなかった（俊克の「なぜ?」の答え）。
+   ★★小さい部品の説明は、**浮かせずに、その部品の居る箱の中へ**置く＝ 何も覆わない。 */
+fp.innerHTML=(html||'<div class="title-file-row"><span class="title-file-item">(履歴なし)</span></div>')
+ +'<div class="title-file-hint">📌 keep · × remove from this list (the tab stays open)</div>';};
 fc.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 /* v4.0.305: 開く瞬間にtipを消す(家の作法= 副メニューを開く時は必ずこれを呼ぶ) */
 window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
@@ -23745,7 +23755,7 @@ function meosRestoreView(editor, topLine, sel, strict) {
 }
 async function meosSyncFcFoldForCursor(editor) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy) return;
-  let _topBefore = -1, _selBefore = null;
+  let _topBefore = -1;
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
     if (!meosIsRealFileDoc(editor.document)) return; // v4.0.151: 出力チャネル等では走らせない
@@ -23760,19 +23770,36 @@ async function meosSyncFcFoldForCursor(editor) {
     const raw = (typeof meosRawMode !== 'undefined' && meosRawMode);
     _meosFcBusy = true;
     _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
-    _selBefore = editor.selection;
     // v4.0.181(俊克 8/14 am00:31「今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」):
     // ★★**飛んでいるのは分割ではなく、その直後に走るFCの開閉**。割ると**カーソルthat別の塊へ移る**so、
     //   ここthat「前に開いていた塊」を畳みに行く= その塊that画面の外なら、**そこまでスクロールして見せてしまう**。
     //   戻すのは v4.0.176 で入れたthat、**まとめて最後に戻していた**so「飛んで、戻る」thatそのまま見えていた。
     // ★直し= **1回の畳む/開くごとに、その場で戻す**。往復thatひと息の中で終わるso、目には残らない。
-    const _keep = () => meosRestoreView(editor, _topBefore, _selBefore, false); // 直後so選択ごと戻す
+    // ★★v4.0.326(俊克 8/21 am09:33 改良1「見出しや取消線の中を**カーソルを移動したり選択中に、カーソルが飛ぶ**件が
+    //   まだ直ってない。**必ずではなく、そうなる時がある**」):
+    //   ★★**控えるのが早すぎた**。ここは「畳んだ拍子に動いたカーソルを戻す」ための道なのに、控えていたのは
+    //   **この関数に入った時点**の位置。畳む/開くは16万行では待ちが長いので、**その待ちの間に人が動かした分まで
+    //   「畳みのせい」と見なして引き戻していた**＝ 必ずではなく「待ちが長引いた時だけ」起きる＝ 俊克の観察と一致。
+    //   ★★直し＝ **控えるのは、畳む/開くを打つ直前**。その1コマンドの間に動いたのなら畳みのせいと言えるが、
+    //     それより前は人の物。→ [[project_last_specified_wins]] と同じ筋＝ **人が最後に置いた所を勝たせる**。
+    //   ★出る時(finally)は**画面の上端だけ**戻す＝ カーソルには触らない。
+    const _keep = () => meosRestoreView(editor, _topBefore, null, false);       // 画面だけ戻す(カーソルは人の物)
     // v4.0.187: **畳む/開くを実際に打った時だけ**1行出す(推測をやめ、犯人に名乗らせる)。
     const _top = () => { try { return (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; } catch (_) { return -1; } };
     // v4.0.311: **選択が始まったら、その場で降りる**。畳む/開くは待ちが長いので、動く前に必ず確かめる。
     const _selecting = () => { try { return (editor.selections || []).some(sl => !sl.isEmpty); } catch (_) { return false; } };
-    const fold = async (ls) => { if (_selecting()) return; const t0 = _top(); await vscode.commands.executeCommand('editor.fold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] fold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
-    const unfold = async (ls) => { if (_selecting()) return; const t0 = _top(); await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); const t1 = _top(); _keep(); try { meosDbg('[fcSync] unfold ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { } };
+    // その1コマンドの間だけを見張る= 打つ直前の位置を控え、直後に違っていたら戻す(それは畳みが動かした分)。
+    //   選択が在る時は戻さない= 選択は人にしか作れない(畳みは1点に潰すだけ)。
+    const _run = async (cmd, ls) => {
+      if (_selecting()) return;
+      const t0 = _top(), snap = editor.selection;
+      await vscode.commands.executeCommand(cmd, { selectionLines: ls });
+      const t1 = _top(); _keep();
+      try { if (!_selecting() && !editor.selection.isEqual(snap)) editor.selection = snap; } catch (_) { }
+      try { meosDbg('[fcSync] ' + cmd.slice(7) + ' ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { }
+    };
+    const fold = (ls) => _run('editor.fold', ls);
+    const unfold = (ls) => _run('editor.unfold', ls);
     if (raw) { // Raw=生データを全部見せる約束
       if (_meosFcOpen !== 'ALL') { await unfold(blocks.map(b => b.start)); _meosFcOpen = 'ALL'; }
       return;
@@ -23809,7 +23836,7 @@ async function meosSyncFcFoldForCursor(editor) {
       await foldIfVisible(_meosFcOpen);
       _meosFcOpen = null;
     }
-  } catch (_) { } finally { meosRestoreView(editor, _topBefore, _selBefore, false); _meosFcBusy = false; }
+  } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
 }
 const _meosFcFolded = new Set();
 // v4.0.140(俊克 質問1「FC指定なのに、なぜコメントが自動で折り畳まれないのか?」):
@@ -26955,7 +26982,14 @@ makeDecorations();
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
-    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e); if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
+    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e);
+      // ★★v4.0.326(俊克 8/21 am09:33 バグ4「全て削除して(履歴なし)の状態で、**現在表示されているタブを
+      //   クリックしても取り込まれない**。別のタブを選択すると、それは取り込まれる。なぜ?」):
+      //   ★★**積む合図を「別のファイルに変わった時」に結び付けていた**から。今のタブをもう一度クリックしても、
+      //   ファイルは変わっていない＝ 合図が鳴らない。★正しい合図は**人が、そのタブを選んだ時**。
+      //   ★これは鳴っている＝ ×を押した時に居場所はMe Dock(webview)側なので、エディタへ戻る瞬間にこれが発火する。
+      //   （一覧を送る道は「カーソルが動くたび」で、そこは変わった時だけ働かせる＝ 熱い道に仕事を足さない）
+      try { if (e && e.document) meosRecentPush(e.document); } catch (_) { } if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
   setTimeout(() => { if (!_meosLastLineReady) meosLastLineFinish('安全弁(20秒)'); }, 20000); // v4.0.309: 戻す機会が来なくても、いつかは覚え始める
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、

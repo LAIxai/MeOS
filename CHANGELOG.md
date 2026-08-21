@@ -4,6 +4,22 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.326 (2026-08-21)
+- **The caret stops being yanked back.** The fold sync remembered where the caret was **when it started**, then put it
+  back afterwards — so anything you did during the wait (fold and unfold are slow in a 160k-line file) was mistaken for
+  the fold's doing and undone. That is why it happened sometimes and not always: only when the wait ran long. It now
+  takes its snapshot **immediately before each fold command** and restores only what changed during that one command.
+  On the way out it puts back the scroll position and nothing else — the caret is yours.
+- **A pinned row's `●` stays a `●`.** The rule that makes a dirty dot turn into `×` on hover sat *after* the rule for
+  the un-pressable dot, and at equal specificity the later rule wins, so the dot turned into a close button you could
+  not press. The un-pressable rule now comes last.
+- **The hint moved out of the tooltip and into the menu.** Both a MeOS tip and a native `title` pop up under the
+  pointer, which is what was covering the `▾` and the `×` — swapping one for the other in v4.0.325 changed the styling,
+  not the position. A small line at the foot of the menu says what `📌` and `×` do and covers nothing.
+- **Clicking the tab you are already on adds the file back to the list.** Adding was tied to "a different file
+  appeared", so re-choosing the current tab was silent. It now also listens for the editor becoming active, which is
+  what actually fires when you click back from the Me Dock.
+
 ### v4.0.325 (2026-08-21)
 - **Orange marks the pair again — the line and the spec that belongs to it.** Body line *i* pairs with spec line *i*,
   in a table, in a list, or on a single heading; the rule reads the same from either side. One line alone could not
