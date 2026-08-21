@@ -4030,6 +4030,68 @@ function meosPairBadgeAt(document, pair) {
 //   ★**名前は隣の閉じ膜がもう持っている**。同じ名前を2つ置くと、改名のたびに**両方を直す仕事**が生まれる
 //   ＝ 揃わなくなる口を自分で開けることになる。`mCN` は「これは膜のバッジだ」と名乗るだけでよい。
 //   ★旧い `mCN=名前` も読み続ける(read-both)。
+// ★★v4.0.333(俊克 pm05:16「**数え直すと言っても、15万行すべてを数え直すのは、bs遅延と同じ問題をはらんでいる**。
+//   基本はD1を指定して…それを指定すると言うことは、その外側に膜があると理解しているからだよね。
+//   だから、これは**安全弁**と言ってもいいかもしれない。MeOSがやるべきなのは、数え直すことじゃなくて、
+//   **深さが実際の膜の入れ子と合っているかどうかを1日1回くらい調べる**ことだよ」):
+//   ★★**俊克が正しい。私の「毎回数え直す」は、今日3回追いかけた穴と同じ形**だった＝
+//     打鍵の道にO(文書)を足す提案を、私はまたしていた。
+//   ★書かれた深さは**申告**＝「自分は外側に膜があると分かって書いた」という書き手の意思。
+//     意思は勝手に書き換えない([[project_last_specified_wins]])。**MeOSの仕事は、合っているかを調べること**。
+//   ★調べるのは**人が頼んだ時と、1日1回**。打鍵の道では絶対に走らせない。
+//   ★直すかどうかは人が決める＝ 数えて見せるだけで、黙って書き換えない。
+function meosDepthAudit(document) {
+  const out = [];
+  try {
+    const pairs = collectPairs(document, { excludeIndex: false });
+    for (const p of pairs) {
+      const at = meosPairBadgeAt(document, p);
+      if (!at || !at.badge) continue;
+      const d = at.badge.depth;
+      if (typeof d !== 'number' || !Number.isFinite(d)) continue;   // 書いていない= 申告が無い= 用事は無い
+      const real = mstatDepthForPair(p);
+      if (d !== real) out.push({ line: at.line, id: p.id, wrote: d, real });
+    }
+  } catch (_) { }
+  return out;
+}
+const MEOS_DEPTH_AUDIT_KEY = 'meosDepthAuditAt';   // 前に調べた日(1日1回)
+async function meosRunDepthAudit(editor, byHand) {
+  if (!editor || !editor.document) return;
+  const doc = editor.document;
+  if (!meosIsRealFileDoc(doc) || !meosIsProseDoc(doc)) return;
+  const bad = meosDepthAudit(doc);
+  try { meosDbg('[depthAudit] ' + (bad.length ? (bad.length + '件 合っていない: ' + bad.slice(0, 6).map(b => (b.line + 1) + '行 ' + b.id + ' 申告D' + b.wrote + '/実際D' + b.real).join(' / ')) : '全部合っている') + ' lines=' + doc.lineCount); } catch (_) { }
+  if (!bad.length) { if (byHand) { try { vscode.window.showInformationMessage('MeOS: every membrane depth matches its nesting.'); } catch (_) { } } return; }
+  const first = bad[0];
+  const pick = await vscode.window.showInformationMessage(
+    'MeOS: ' + bad.length + ' membrane depth' + (bad.length > 1 ? 's do' : ' does') + " not match the nesting (first: line " + (first.line + 1) + ', D' + first.wrote + ' → D' + first.real + ').',
+    'Go to first', 'Fix all');
+  if (pick === 'Go to first') {
+    try { editor.selection = new vscode.Selection(first.line, 0, first.line, 0); editor.revealRange(new vscode.Range(first.line, 0, first.line, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
+  } else if (pick === 'Fix all') {
+    try {
+      await editor.edit(eb => {
+        for (const b of bad) {
+          const t = doc.lineAt(b.line).text, bg = parseMstatBadgeFromText(t);
+          if (!bg) continue;
+          eb.replace(new vscode.Range(b.line, bg.start, b.line, bg.end), formatMstatBadge({ ...bg, depth: b.real }));
+        }
+      }, { undoStopBefore: true, undoStopAfter: true });
+      vscode.window.showInformationMessage('MeOS: fixed ' + bad.length + ' depth' + (bad.length > 1 ? 's' : '') + '.');
+    } catch (_) { }
+  }
+}
+// 1日1回だけ、自動で調べる(打鍵の道ではなく、落ち着いた頃に1回)。
+function meosScheduleDepthAudit(editor) {
+  try {
+    if (!editor || !extensionContext) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (extensionContext.globalState.get(MEOS_DEPTH_AUDIT_KEY) === today) return;
+    extensionContext.globalState.update(MEOS_DEPTH_AUDIT_KEY, today);
+    setTimeout(() => { try { meosRunDepthAudit(vscode.window.activeTextEditor, false); } catch (_) { } }, 12000);
+  } catch (_) { }
+}
 function meosPairBadgeLineText(id, indent, badgeText) { return String(indent || '') + meosSpecLineBox('mCN ' + String(badgeText)); }
 function setMstatBadgeColorInText(text, colorCode) {
   const badge = parseMstatBadgeFromText(text);
@@ -21978,12 +22040,35 @@ function meosDocText(doc) {
   _meosTextCache = { key, text, lines: keep };
   return text;
 }
+// ★★v4.0.333(俊克 pm05:16「bs遅延がまだ時々あるね。1、2秒くらいの遅延」):
+//   ★★**推測をやめて、取りに行く**([[feedback_go_get_the_measurement]])。既に在るログが語っていたのは
+//   `[host-blocked] 700〜2000ms` で、**同じ時刻にMeOSの計測が1つも無い**＝ 詰めているのはMeOSの計算ではない。
+//   一方で `heap=3003MB` `rss=2769MB` と、**山が3GBまで振れている**＝ ゴミ集めの止まりが疑わしい。
+//   ★では**誰がゴミを作っているのか**。一番大きいのはここ＝ 17万行の文書を刻むと、
+//     文字列(約7MB)＋行配列(17万本)がその版のためだけに生まれ、次の打鍵で丸ごとゴミになる。
+//   ★打鍵の道には `meosPatchDocLines`(その場で1行だけ差し替える)があるので、**普通は刻み直さないはず**。
+//     だから「刻み直しが打鍵ごとに起きているのか」を数えれば、犯人かどうかが1回で決まる。
+//   ★数えるだけ＝ 直す前に、まず**当たっているかを確かめる**。
+let _meosSplitN = 0, _meosSplitMs = 0, _meosSplitReportAt = 0;
 function meosDocLines(doc) {
   const key = _meosTextKey(doc);
   if (_meosTextCache.key === key && _meosTextCache.lines) return _meosTextCache.lines;
+  const _t0 = Date.now();
   const text = meosDocText(doc);
   const lines = text.split((doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n');
   _meosTextCache = { key, text, lines };
+  const _ms = Date.now() - _t0;
+  _meosSplitN++; _meosSplitMs += _ms;
+  try {
+    const now = Date.now();
+    if (lines.length > 20000 && now - _meosSplitReportAt > 10000) {
+      _meosSplitReportAt = now;
+      let mem = '';
+      try { const m = process.memoryUsage(); mem = ' rss=' + Math.round(m.rss / 1048576) + 'MB heap=' + Math.round(m.heapUsed / 1048576) + 'MB'; } catch (_) { }
+      meosDbg('[docLines] 刻み直し ' + _meosSplitN + '回 計' + _meosSplitMs + 'ms (直近' + _ms + 'ms) lines=' + lines.length + mem);
+      _meosSplitN = 0; _meosSplitMs = 0;
+    }
+  } catch (_) { }
   return lines;
 }
 function meosCharWidth(cp) {
@@ -26336,6 +26421,10 @@ function activate(context) {
   // v4.0.140: 起動直後は「まだアクティブでない/範囲が未計算」で空振りしやすいso、間を空けて3回ぶつける(済みなら即returnするso無駄は無い)。
   for (const _ms of [1200, 3000, 6000]) { try { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, _ms); } catch (_) { } }
   // 手で畳み直す/開く口。自動が効かない時と、開いて中身を読みたい時のため。
+  // v4.0.333(俊克「MeOSがやるべきなのは、深さが実際の入れ子と合っているかを1日1回くらい調べること」)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.auditMembraneDepth', async () => {
+    await meosRunDepthAudit(getMeDockTargetEditor() || vscode.window.activeTextEditor, true);
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.foldSpecLines', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!ed || !ed.document) return;
@@ -27153,7 +27242,8 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
       //   一覧を送る側(postMeDockFile)は「**ファイルが変わった時だけ送る**」まま＝ 同じタブへ戻った時は
       //   **積んだのに、送っていない**。2つファイルが在る時に効いて見えたのは、たまたま相手が違ったから。
       //   ★★直し＝ **積んだら、必ず送る**。1つの動きは1つの手で終わらせる(force=送り直す/skipPush=二度積まない)。
-      try { if (e && e.document) { meosRecentPush(e.document); postMeDockFile(e, true, true); } } catch (_) { } if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
+      try { if (e && e.document) { meosRecentPush(e.document); postMeDockFile(e, true, true); } } catch (_) { }
+      try { meosScheduleDepthAudit(e); } catch (_) { }   /* v4.0.333: 1日1回だけ、落ち着いた頃に調べる */ if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
   setTimeout(() => { if (!_meosLastLineReady) meosLastLineFinish('安全弁(20秒)'); }, 20000); // v4.0.309: 戻す機会が来なくても、いつかは覚え始める
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、

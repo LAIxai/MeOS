@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.333 (2026-08-21)
+- **Depth is a declaration, not a derived value.** Recomputing it from the nesting would mean walking 178,000 lines,
+  which is the very thing that makes backspace stutter — so MeOS does not recompute. What is written is what the
+  writer meant ("I know there is a membrane outside me"), and MeOS's job is to **check** it, not to overwrite it.
+  A check runs once a day in the background, and on demand via **MeOS: Check membrane depths against the nesting**;
+  mismatches are reported with the option to jump to the first or fix them all. Nothing is rewritten silently.
+- **Measurement for the backspace stutter.** The log already showed `[host-blocked] 700–2000ms` with no MeOS timing at
+  the same moment and the heap swinging up to 3GB, which points at garbage collection rather than MeOS's own work.
+  The largest thing MeOS allocates is the split of the whole document into lines; the typing path is supposed to patch
+  that array in place instead. It now counts how often it re-splits anyway, with the memory figures, so the next log
+  says plainly whether that is the source.
+
 ### v4.0.332 (2026-08-21)
 - **The opening line, the closing line and the badge are one thing.** Put the cursor on any of the three and all three
   turn orange and the badge opens. The body is deliberately not part of it — a membrane's block is its two structure
