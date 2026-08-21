@@ -3030,6 +3030,25 @@ const lastCaretByEditorKey = new Map();
 // 「初回クリック→編集 / 2回目クリック→toggle」を区別するため。
 let prevLineBeforeSelectionChange = -1;
 let caretSkipSuppressUntil = 0;
+// ★★v4.0.336(俊克 pm06:35「→キーをずっと押し続けると、処理が間に合わずに変な動きになる。…閉じ膜まで行って
+//   開始膜に戻ったりする。**閉じ膜の▲の両側を連続して往復するのが10回くらい続く**。どこから始めるかで動きが
+//   違ってくる。**シフトキーを押して範囲選択する時は、なぜか自然に範囲が広がる**」):
+//   ★★原因は3つ重なっていた。
+//   ①**時間で黙っていた**＝ 自分でカーソルを置くと、この見張りがもう一度呼ばれる。それを避けるために
+//     「25〜35ms は何もしない」と**時計で**逃げていたが、キーの連射は30ms以下なので**連射がその窓を通り抜ける**。
+//     通り抜けた回は隠れ帯の中に素通りし、窓が明けた時には「どっちから来たか」の記録が嘘になっている
+//     ＝ 逆向きに飛ぶ＝ 俊克の「進んだり戻ったり」。
+//     → **時計をやめ、自分が置いた位置そのものを覚えて、それが返ってきた時だけ黙る**。連射でもすり抜けない。
+//   ②**選択している時は、この見張りがそもそも働かない**(v0.9.216からの設計＝ 人の選択は壊さない)。
+//     俊克の「シフトキーだと自然に広がる」がその証拠＝ **選択の方が素のVS Code**。
+//   ③**▲の右端から→で降りる先が、畳まれたバッジ行だった**(v4.0.330で膜の下にFCが付いたのでこうなった)。
+//     畳まれた行へカーソルを置くとVS Codeは開こうとし、MeOSのFC同期がまた畳む＝ **▲の両側を往復**。
+let _meosCaretEcho = null;   // 自分が最後に置いた位置(行,桁)
+function _meosCaretSetSelf(editor, key, p) {
+  try { editor.selection = new vscode.Selection(p, p); } catch (_) { }
+  _meosCaretEcho = { key, line: p.line, character: p.character };
+  try { lastCaretByEditorKey.set(key, { line: p.line, character: p.character }); } catch (_) { }
+}
 
 // Real membrane lines only.
 // v0.9.216: Markdown hidden-comment membranes are normalized internally to
@@ -12999,9 +13018,14 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
     updateLastCaretForEditor(editor);
     return false;
   }
-  if (Date.now() < caretSkipSuppressUntil) {
-    updateLastCaretForEditor(editor);
-    return false;
+  // v4.0.336: **自分が置いた位置がそのまま返ってきた時だけ**黙る(時計では連射がすり抜けた)。
+  {
+    const _k = caretKeyForEditor(editor), _a = editor.selection.active;
+    if (_meosCaretEcho && _meosCaretEcho.key === _k && _meosCaretEcho.line === _a.line && _meosCaretEcho.character === _a.character) {
+      _meosCaretEcho = null;
+      updateLastCaretForEditor(editor);
+      return false;
+    }
   }
   // v0.9.634: never move the caret while the user is actively typing / composing.
   // This hidden-prefix skip exists for ARROW-KEY navigation, which does NOT change
@@ -13036,9 +13060,7 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
       } else {
         target = new vscode.Position(pos.line, mdWrapInfo.wrapperStart);
       }
-      caretSkipSuppressUntil = Date.now() + 25;
-      editor.selection = new vscode.Selection(target, target);
-      lastCaretByEditorKey.set(key, { line: target.line, character: target.character });
+      _meosCaretSetSelf(editor, key, target);
       return true;
     }
 
@@ -13046,9 +13068,7 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
     // If → from wrapperStart, jump directly to innerStart.
     if (pos.character === mdWrapInfo.wrapperStart && prev && prev.line === pos.line && prev.character < mdWrapInfo.wrapperStart) {
       const target = new vscode.Position(pos.line, mdWrapInfo.innerStart);
-      caretSkipSuppressUntil = Date.now() + 25;
-      editor.selection = new vscode.Selection(target, target);
-      lastCaretByEditorKey.set(key, { line: target.line, character: target.character });
+      _meosCaretSetSelf(editor, key, target);
       return true;
     }
   }
@@ -13079,9 +13099,7 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
     pos.character >= thisRightEdgeForBack
   ) {
     const p = new vscode.Position(pos.line, thisRightEdgeForBack);
-    caretSkipSuppressUntil = Date.now() + 25;
-    editor.selection = new vscode.Selection(p, p);
-    lastCaretByEditorKey.set(key, { line: p.line, character: p.character });
+    _meosCaretSetSelf(editor, key, p);
     return true;
   }
 
@@ -13107,17 +13125,23 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
 
   let targetChar = null;
 
-  // Left hidden raw-prefix zone.
-  if (pos.character > hiddenPrefixStart && pos.character < hiddenPrefixEnd) {
-    if (prev && prev.line === pos.line && prev.character >= hiddenPrefixEnd) {
-      targetChar = hiddenPrefixStart;
-    } else if (prev && prev.line === pos.line && prev.character <= hiddenPrefixStart) {
-      targetChar = hiddenPrefixEnd;
-    } else {
-      targetChar = (pos.character - hiddenPrefixStart) <= (hiddenPrefixEnd - pos.character)
-        ? hiddenPrefixStart
-        : hiddenPrefixEnd;
+  // ★★v4.0.336(俊克「**本当なら、▼マークの左にカーソルは入らないようにするべき**なんだよ」
+  //   「▼の左から選択してコピーすると『<!-- {* ▼mCN=テスト膜_20260821F』のように**生データがコピーできてしまう**」):
+  //   ★★隠れ帯は**通り道ではなく、1つの場所**にする＝ 帯の中(左端も含む)に居たら、必ず外へ出す。
+  //     前は帯の**内側だけ**を見ていたので、**左端(行頭)には居座れた**＝ そこから選択すると生データが入る。
+  //   ★出る向きは、直前がどこに居たかで決める。名前の側から来たなら**前の行の右端**まで一気に戻す
+  //     (行頭に置くと、そこから選択して生データを掴めてしまうので、置かない)。
+  if (pos.character >= hiddenPrefixStart && pos.character < hiddenPrefixEnd && hiddenPrefixEnd > hiddenPrefixStart) {
+    if (prev && prev.line === pos.line && prev.character >= hiddenPrefixEnd && pos.line > 0) {
+      // 名前の左端から ← ＝ 帯を素通りして、前の行の見える右端へ
+      const pl = pos.line - 1, pt = editor.document.lineAt(pl).text || '';
+      const pp = membraneLineParts(pt, 'open') || membraneLineParts(pt, 'close');
+      let pe = (pp && pp.suffixStart >= 0) ? pp.suffixStart : pt.length;
+      if (pe > 0 && /\s/.test(pt.charAt(pe - 1))) pe -= 1;
+      _meosCaretSetSelf(editor, key, new vscode.Position(pl, pe));
+      return true;
     }
+    targetChar = hiddenPrefixEnd;    // それ以外は、いつでも名前の頭へ出す
   }
 
   // Right hidden raw-suffix zone.
@@ -13138,11 +13162,12 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
     const prevAtRightEdge = prev && prev.line === pos.line && prev.character === rightEdge;
     const nowBeyondRightEdge = pos.character > rightEdge;
     if (prevAtRightEdge && nowBeyondRightEdge) {
-const nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
+      // v4.0.336: 降りる先が**畳まれた指定行(膜のバッジ)**なら、その群を飛び越す。
+      //   畳まれた行にカーソルを置くとVS Codeは開こうとし、FC同期がまた畳む＝ ▲の両側を往復する。
+      let nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
+      try { while (nextLine < editor.document.lineCount - 1 && meosIsSpecLine(editor.document.lineAt(nextLine).text)) nextLine++; } catch (_) { }
       const p = new vscode.Position(nextLine, 0);
-      caretSkipSuppressUntil = Date.now() + 25;
-      editor.selection = new vscode.Selection(p, p);
-      lastCaretByEditorKey.set(key, { line: p.line, character: p.character });
+      _meosCaretSetSelf(editor, key, p);
       return true;
     }
   }
@@ -13153,9 +13178,7 @@ const nextLine = Math.min(editor.document.lineCount - 1, pos.line + 1);
   }
 
   const p = new vscode.Position(pos.line, targetChar);
-  caretSkipSuppressUntil = Date.now() + 35;
-  editor.selection = new vscode.Selection(p, p);
-  lastCaretByEditorKey.set(key, { line: p.line, character: p.character });
+  _meosCaretSetSelf(editor, key, p);
   return true;
 }
 

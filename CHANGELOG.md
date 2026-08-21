@@ -4,6 +4,22 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.336 (2026-08-21)
+- **Holding the right arrow on a membrane line behaves again.** Three things were stacked here.
+  - The caret guard, which repositions the caret out of the hidden `<!-- {* ▼mCN=` zone, has to ignore the selection
+    change **it itself** causes — and it did that by ignoring everything for 25–35ms. Key repeat is faster than that,
+    so held keys slipped through the window, walked into the hidden zone unguarded, and left the "which way did we
+    come from" record lying, which is what sent the caret backwards. It now remembers the exact position it set and
+    ignores only that, so repeat cannot slip past.
+  - Past the closing line's right edge, the caret was being put on the **next** line — which is now the folded badge
+    line. Landing in a folded region makes VS Code open it and MeOS fold it again: the bouncing across `▲`. The badge
+    group is now stepped over.
+  - The hidden zone was guarded only on its inside, so the caret could still rest at the line head, left of `▼` —
+    where a selection picks up `<!-- {* ▼mCN=…` as raw text. The whole zone is now one place the caret is moved out
+    of, and arrowing left from the name goes straight to the previous line's visible edge.
+- Shift-arrow was never affected because the guard deliberately never touches a non-empty selection — that is why
+  selecting felt natural while plain arrowing did not.
+
 ### v4.0.335 (2026-08-21)
 - **Membrane colour follows the badge to its new home.** v4.0.330 moved the badge but left the drawing and the colour
   writer reading the opening line, so a new-form membrane had no colour code there, fell back to colour-by-depth, and
