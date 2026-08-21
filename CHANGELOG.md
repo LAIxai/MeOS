@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.331 (2026-08-21)
+- **Create Me now writes the badge line too.** There are four ways to make a membrane — Add Membrane, Create Me, the
+  first membrane in a new .md, and wrapping a table — and v4.0.330 only taught one of them. The fix is not to teach
+  the other three: **the closing line and its badge now come out of one function together**, because as long as they
+  can be written separately, sooner or later one caller writes only half. The opening line also stopped defaulting to
+  a badge of its own, which was quietly reviving the old form.
+
 ### v4.0.330 (2026-08-21)
 - **A membrane is a block, so its badge goes under it.** Tables and lists already put their spec on the line after the
   block; a membrane is a block too, so its mSTAT badge moves from the opening line to a folding comment on the line

@@ -5220,9 +5220,17 @@ function wrapMembraneCommentText(inner, doc) {
 }
 
 
+// ★★v4.0.331(俊克 pm00:42 バグ1「膜の**Createボタンを押すと、FCバッジコメントが出てこない**よ」):
+//   ★★**膜を作る道が4つ在って、私は1つしか直していなかった**(v4.0.330で直したのは Add Membrane だけ)。
+//   → [[feedback_one_source_for_mark_count_action]]「呼び元を全部見る」が、今日3度目。
+//   ★直し＝ **閉じ膜とバッジ行を、1つの関数から一緒に出す**。別々に書ける限り、いつか誰かが書き忘れる。
+//   ★開始行は**渡された時だけ**バッジを書く(既定で `(📊⊕0+0)` を足すのをやめた＝ 既定が古い形を復活させていた)。
+function meosNewMembraneCloseBlock(doc, indent, name, comment, badgeText) {
+  return buildMembraneCloseLine(doc, indent, name, comment) + '\n' + meosPairBadgeLineText(name, indent, badgeText || '(⊕0+0)');
+}
 function buildMembraneOpenLine(doc, indent, name, comment, mstat) {
   const syntax = commentSyntaxForDocument(doc);
-  const body = `▼mCN=${name}${comment ? ' // ' + comment : ''} ${mstat || '(📊⊕0+0)'}`;
+  const body = `▼mCN=${name}${comment ? ' // ' + comment : ''}${mstat ? ' ' + mstat : ''}`;
   if (syntax === 'markdown') {
     return `${indent || ''}<!-- {* ${body} *} -->`;
   }
@@ -9064,8 +9072,8 @@ async function createNewMdFile() {
     const name = '' + now.getFullYear() + p(now.getMonth() + 1) + p(now.getDate()) + '_' + p(now.getHours()) + p(now.getMinutes()) + p(now.getSeconds());
     const comment = '🆕 file-membrane';     // 膜のコメント=役割ラベル(俊克 6/23 pm03:16: 日時の二重表記をやめる)
     const tocComment = '今日の課題#1';        // H-TOCのコメント=膜コメントと別の編集可能プレースホルダ(緑部分は編集できると伝える)
-    const openLine = buildMembraneOpenLine(doc, '', name, comment, '(📊⊕0+0)');
-    const closeLine = buildMembraneCloseLine(doc, '', name, '');
+    const openLine = buildMembraneOpenLine(doc, '', name, comment, '');      // v4.0.331: バッジは閉じ膜の次の行へ
+    const closeLine = meosNewMembraneCloseBlock(doc, '', name, '');
     await editor.edit(eb => { eb.insert(new vscode.Position(0, 0), openLine + '\n\n' + closeLine + '\n'); });
     // 開始膜行にカーソルを置き、手動の「Add to Hyper TOC」と同じ経路で目次へ登録。
     editor.selection = new vscode.Selection(0, 0, 0, 0);
@@ -14498,7 +14506,7 @@ function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = 
   if (lang === 'markdown' || lang === 'mdx') {
     return {
       open: `${indent}<!-- {* ▼mCN=${id} // comment1 *} -->`,
-      close: `${indent}<!-- {* ▲mCN=${id} // comment2 *} -->`,
+      close: `${indent}<!-- {* ▲mCN=${id} // comment2 *} -->` + '\n' + meosPairBadgeLineText(id, indent, badge),
       badge: meosPairBadgeLineText(id, indent, badge),
       markdown: true
     };
@@ -14507,7 +14515,7 @@ function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = 
   // Default: existing code-oriented canonical markMup source.
   return {
     open: `${indent}// {* ▼mCN=${id} // comment1 *}`,
-    close: `${indent}// {* ▲mCN=${id} // comment2 *}`,
+    close: `${indent}// {* ▲mCN=${id} // comment2 *}` + '\n' + meosPairBadgeLineText(id, indent, badge),
     badge: meosPairBadgeLineText(id, indent, badge)
   };
 }
@@ -14597,7 +14605,7 @@ async function addMembrane() {
   const indent = lineIndent(doc, startLine);
   const tpl = membraneCommentTemplateForLanguage(doc.languageId, id, indent, 'W', newMembraneDepthForInsertion(doc, startLine));
   const open = tpl.open;
-  const close = tpl.close + (tpl.badge ? ('\n' + tpl.badge) : '');   // v4.0.330: 閉じ膜の次の行にバッジ(FC)
+  const close = tpl.close;                                            // v4.0.331: バッジ行は close が持っている
   const ok = await editor.edit(editBuilder => {
     if (hasSelection) {
       const block = tpl.markdown
@@ -22509,8 +22517,8 @@ async function meosWrapTableMembrane(editor, startLine, endLine) {
   const d = new Date();
   const name = 'table_' + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join('');
   const stamp = (typeof meosFormatStamp === 'function') ? meosFormatStamp(d) : '';
-  const open = buildMembraneOpenLine(doc, indent, name, '📋 表' + (stamp ? ' ' + stamp : ''), '(📊⊕0+0)');
-  const close = buildMembraneCloseLine(doc, indent, name, '');
+  const open = buildMembraneOpenLine(doc, indent, name, '📋 表' + (stamp ? ' ' + stamp : ''), '');  // v4.0.331
+  const close = meosNewMembraneCloseBlock(doc, indent, name, '');
   const we = new vscode.WorkspaceEdit();
   we.insert(doc.uri, new vscode.Position(startLine, 0), open + '\n');
   we.insert(doc.uri, new vscode.Position(endLine, doc.lineAt(endLine).text.length), '\n' + close);
