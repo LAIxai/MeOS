@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.328 (2026-08-21)
+- **The spec no longer folds itself away a second after you reach it.** The signal added in v4.0.327 was being rung by
+  the thing it then undid: the cursor enters a block, the per-cursor pass opens its specs (the standing promise that
+  the line under the cursor shows raw data), opening changes what is on screen, that fires "visible range changed",
+  and 320ms later the bulk pass folded the group that had just been opened for you. **The bulk pass now leaves the
+  cursor's own block alone**, and stands aside entirely while the per-cursor pass is working.
+
 ### v4.0.327 (2026-08-21)
 - **No more jump to the top of the membrane after a fresh install.** `editor.fold` folds the *innermost* range at a
   line — and when that range is already folded, there is no inner one left, so it folds the next one out: the membrane.

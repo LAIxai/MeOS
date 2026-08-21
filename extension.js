@@ -23872,7 +23872,7 @@ function meosIsRealFileDoc(doc) {
 }
 let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二重に畳むのを防ぐ)
 async function meosAutoFoldSpecLines(editor, force) {
-  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding) return;
+  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding || _meosFcBusy) return; // v4.0.328: 個別の道が動いている間は割り込まない
   if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
   // ★★v4.0.327(俊克 8/21 am09:46 バグ1「インストール直後に、元いた行に飛ぶようにしたよね。その直後に、
@@ -23887,10 +23887,19 @@ async function meosAutoFoldSpecLines(editor, force) {
   //     v4.0.188「畳む前に本当に開いているか確かめる」を、こちらにも同じ形で当てる）。
   //     開いているかは**塊の最後の指定行が見えているか**で分かる。畳まれていれば隠れているので見えない。
   //   ★画面の外は畳まない＝ **スクロールして入ってきた時に畳めばいい**（下の可視範囲の合図で、また来る）。
+  // ★★v4.0.328(俊克 8/21 am10:46 バグ1「見出しやハイライトの中に文字カーソルが入ると、**1秒後くらいに
+  //   FCコメントが消えてしまう**ので、修正できないよ。なぜ?」):
+  //   ★★**私が足した合図が、自分の仕事を打ち消していた**＝ カーソルが塊に入る → 個別の道がその群を
+  //   **開く**(「カーソルの下は生データ」の約束) → **開いた分だけ画面の中身が動く** → v4.0.327で足した
+  //   「可視範囲が変わった」の合図が鳴る → 320ms後に一括の道が走る → **今開いたばかりの群を畳む**。
+  //   ★★規則は1行＝ **カーソルの居る群は、一括の道は触らない**。開けているのは偶然ではなく、約束だから。
+  //   ★教訓＝ **合図を足す時は、その合図を鳴らすのが誰かを数える**。ここでは鳴らしていたのが自分だった。
   let heads = [];
   try {
     const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
-    heads = meosDefBlocks(editor.document).filter(b => b.fc && _vis(b.start) && _vis(b.end)).map(b => b.start);
+    const _cur = editor.selection.active.line;
+    const _mine = (b) => (b.start === _meosFcOpen) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end);
+    heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end)).map(b => b.start);
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
   if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
