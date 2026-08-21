@@ -26202,7 +26202,16 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => {
     if (!e || !e.textEditor || e.textEditor !== vscode.window.activeTextEditor) return;
     if (_meosFcScrollTimer) clearTimeout(_meosFcScrollTimer);
-    _meosFcScrollTimer = setTimeout(() => { _meosFcScrollTimer = null; try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { } }, 320);
+    // ★v4.0.329(俊克「bs遅延が時々起きる」): **打っている間は走らせない**。bsで行がずれると可視範囲も動く
+    //   ＝ 打鍵がそのままこの合図を鳴らす。塊の一覧は文書の版で作り直すので、打つたびに全文を刻み直していた。
+    //   → 打鍵が止まってからにする(個別の道と同じ物差し MEOS_FC_TYPING_QUIET_MS を使う=物差しは1つ)。
+    const run = () => {
+      _meosFcScrollTimer = null;
+      const since = Date.now() - _meosLastEditAt;
+      if (since < MEOS_FC_TYPING_QUIET_MS) { _meosFcScrollTimer = setTimeout(run, MEOS_FC_TYPING_QUIET_MS - since); return; }
+      try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
+    };
+    _meosFcScrollTimer = setTimeout(run, 320);
   }));
   context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
   // v4.0.141: カーソルがFCの塊に入ったらそこだけ開く(出たら畳み直す)=「カーソル行は生データ」を折り畳みにも広げる。
@@ -27030,7 +27039,13 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
       //   ファイルは変わっていない＝ 合図が鳴らない。★正しい合図は**人が、そのタブを選んだ時**。
       //   ★これは鳴っている＝ ×を押した時に居場所はMe Dock(webview)側なので、エディタへ戻る瞬間にこれが発火する。
       //   （一覧を送る道は「カーソルが動くたび」で、そこは変わった時だけ働かせる＝ 熱い道に仕事を足さない）
-      try { if (e && e.document) meosRecentPush(e.document); } catch (_) { } if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
+      // ★★v4.0.329(俊克 8/21 am11:02 バグ1「全て削除したあと、**最後に表示していたタブをクリックしても
+      //   追加されない**と言うバグが復活した。なぜ?」):
+      //   ★★**積むのと、見せるのは別の仕事**だった。v4.0.326でここに「積む」を足したが、
+      //   一覧を送る側(postMeDockFile)は「**ファイルが変わった時だけ送る**」まま＝ 同じタブへ戻った時は
+      //   **積んだのに、送っていない**。2つファイルが在る時に効いて見えたのは、たまたま相手が違ったから。
+      //   ★★直し＝ **積んだら、必ず送る**。1つの動きは1つの手で終わらせる(force=送り直す/skipPush=二度積まない)。
+      try { if (e && e.document) { meosRecentPush(e.document); postMeDockFile(e, true, true); } } catch (_) { } if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
   setTimeout(() => { if (!_meosLastLineReady) meosLastLineFinish('安全弁(20秒)'); }, 20000); // v4.0.309: 戻す機会が来なくても、いつかは覚え始める
   // v0.9.970: Me Dock webview のシリアライザ登録(俊克 6/20 am11:10 改良1)。真因=シリアライザ未登録のため、

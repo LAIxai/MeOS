@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.329 (2026-08-21)
+- **Clicking the tab you are already on adds the file back — for real this time.** Recording it and showing it are two
+  different jobs, and v4.0.326 only fixed the first: the list is sent to the Me Dock only when the file changes, so
+  returning to the same tab recorded the file and never sent the list. It looked fixed with two files open because the
+  file happened to differ. Recording now always sends.
+- **The bulk fold stays off the typing path.** Backspacing shifts lines, which moves the visible range, which was
+  ringing the signal added in v4.0.327 — and the block list is rebuilt whenever the document version changes, so every
+  keystroke could re-scan the file. It now waits for typing to stop, using the same quiet-period measure as the
+  per-cursor pass rather than a second one of its own.
+
 ### v4.0.328 (2026-08-21)
 - **The spec no longer folds itself away a second after you reach it.** The signal added in v4.0.327 was being rung by
   the thing it then undid: the cursor enters a block, the per-cursor pass opens its specs (the standing promise that
