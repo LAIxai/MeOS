@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.343 (2026-08-22)
+- **Moving the caret no longer changes how the document is folded.** That was the reason plain arrowing kept finding
+  new ways to misbehave: folding and unfolding are commands to VS Code that take hundreds of milliseconds on a
+  178,000-line file, and while they run the view, the caret and the selection all move. An ordinary editor feels
+  simple because moving the caret changes nothing; MeOS was touching the fold state on every crossing. Closing the
+  patches one at a time (v4.0.336–342) never removed the cause.
+  A spec group still **opens** when the caret settles in it — that is the promise that the line under the caret shows
+  raw source — but it is never folded shut again from the caret path, because the default shape only needs making
+  once, when the file is read. Re-fold by hand with **MeOS: Fold the spec lines (Mew!FC)**; leaving raw mode still
+  restores the folded shape as before.
+- Opening waits for the caret to stop, so a held arrow key changes nothing at all on the way through.
+- When MeOS moves the caret itself, it now records one line in the debug log saying which key did it and from where.
+
 ### v4.0.342 (2026-08-22)
 - **Held arrow keys move straight through a membrane line.** A keybinding's `when` clause reads a context value MeOS
   sets from the *previous* selection change, and key repeat is faster than that round trip — so during a held key the

@@ -3044,7 +3044,12 @@ let caretSkipSuppressUntil = 0;
 //   ③**▲の右端から→で降りる先が、畳まれたバッジ行だった**(v4.0.330で膜の下にFCが付いたのでこうなった)。
 //     畳まれた行へカーソルを置くとVS Codeは開こうとし、MeOSのFC同期がまた畳む＝ **▲の両側を往復**。
 let _meosCaretEcho = null;   // 自分が最後に置いた位置(行,桁)
-function _meosCaretSetSelf(editor, key, p) {
+function _meosCaretSetSelf(editor, key, p, why) {
+  // v4.0.343: **MeOSがカーソルを動かした時だけ**1行残す(素通りは書かない)。次にまだ暴れたら、
+  //   ログを俊克に貼ってもらうのでなく、私が MeOS/meos-debug.log を読みに行く。
+  try {
+    if (why) { const a = editor.selection.active; meosDbg('[caret] ' + why + ' ' + (a.line + 1) + ':' + a.character + ' → ' + (p.line + 1) + ':' + p.character); }
+  } catch (_) { }
   try { editor.selection = new vscode.Selection(p, p); } catch (_) { }
   _meosCaretEcho = { key, line: p.line, character: p.character };
   try { lastCaretByEditorKey.set(key, { line: p.line, character: p.character }); } catch (_) { }
@@ -24116,14 +24121,7 @@ const MEOS_FC_TYPING_QUIET_MS = 350; // 打鍵が止まったと見なすまで
 //   ★★直し＝ **開くのは速く、畳むのはゆっくり**。開くのは「カーソルの下は生データ」の約束なので待てないが、
 //     畳むのは**通り過ぎただけかもしれない**＝ 落ち着くまで待てばいい。通り抜ける間は一度も畳まない。
 //   ★v4.0.332で▼行も塊に入れたので、▼→本文→▲ と歩くだけで畳み/開きが2回走っていた。これで0回になる。
-const MEOS_FC_CLOSE_DELAY_MS = 700;   // 塊を出た時、畳むまで待つ間(開く時は180ms)
-function meosFcCursorStillInOpenBlock(editor) {
-  try {
-    if (_meosFcOpen == null || _meosFcOpen === 'ALL') return false;
-    const b = meosFcPairAt(editor.document, editor.selection.active.line);
-    return !!b && b.head === _meosFcOpen;
-  } catch (_) { return false; }
-}
+// v4.0.343: 「閉じるまで待つ」仕掛けは役目を終えた= カーソルの道では**畳まない**。
 function meosScheduleFcCursorSync(editor) {
   if (!MEOS_SPEC_LINE_AUTOFOLD) return;
   if (_meosFcCursorTimer) clearTimeout(_meosFcCursorTimer);
@@ -24133,8 +24131,9 @@ function meosScheduleFcCursorSync(editor) {
     if (since < MEOS_FC_TYPING_QUIET_MS) { _meosFcCursorTimer = setTimeout(run, MEOS_FC_TYPING_QUIET_MS - since); return; } // まだ打っている=先送り
     meosSyncFcFoldForCursor(editor);
   };
-  const closing = (_meosFcOpen != null && _meosFcOpen !== 'ALL' && !meosFcCursorStillInOpenBlock(editor));
-  _meosFcCursorTimer = setTimeout(run, closing ? MEOS_FC_CLOSE_DELAY_MS : 180);
+  // v4.0.343: 閉じ直さないので「閉じる待ち」は要らない。開くのは**カーソルが止まってから**
+  //   ＝ 押しっぱなしで飛んでいる間は、一度も文書の見え方を変えない。
+  _meosFcCursorTimer = setTimeout(run, 260);
 }
 // v4.0.176(俊克 8/13 pm08:57「今飛んだ。矢印キーでカーソルを移動する時だよ。最近これも多いんだよ」):
 // ★★真因= **畳む/開くは画面を動かす**。`editor.fold` は VS Code に「その行を見せろ」と言う命令でもあるso、
@@ -24263,18 +24262,23 @@ async function meosSyncFcFoldForCursor(editor) {
     //   (ログのC=95296thatその証拠)。**戻す仕掛けthatどれだけ賢くても、畳んだ後では手遅れ**だった。
     // ★直し= **畳む前に「その塊that本当に開いているか」を確かめる**= 塊の最後の指定行that見えていれば開いている。
     //   畳まれていれば**何もしない**(二度打ちthatが膜に化ける事故を、原理的に起こさない)。
-    const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
-    const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしないで出る
+    // ★★★v4.0.343(俊克 am00:40「→キー押しっぱなしは…巡回してしまう。シフト同時押下するともっとおかしな
+    //   現象になる…**これは全て、膜が閉じようとすることに関係するのか?** だったら、**閉じないようにする
+    //   設定**を作って、それをオンにして入るしかないのか? **どうして、こんなカーソル移動という単純なことthatが
+    //   素直に行かないのか**」):
+    //   ★★★**俊克が当てた。原因は畳み**。そして**設定を作るのでなく、原因の側を外す**のthat正しい。
+    //   ★なぜ素直に行かないのか＝ **カーソルを動かすと、MeOSが文書の見え方を変えていた**から。
+    //     畳む/開くはVS Codeへの**命令**で、17万行では数百ms掛かり、その間に**画面もカーソルも選択も動く**。
+    //     普通のエディタが素直なのは「カーソル移動は何も変えない」からで、MeOSは移動のたびに畳みを触っていた。
+    //     だから穴を1つずつ塞いでも(v4.0.336〜342)、**原因の側が残っていた**。
+    //   ★★★直し＝ **カーソルの道から、畳むことをやめる**。開くのは要る(その行を見せる約束)が、
+    //     **閉じ直す必要はどこにも無かった**＝ 既定の姿は読み込み時に1回作れば足りる。
+    //     これで「移動→畳む→画面が動く→また移動」の輪が**原理的に**消える。
+    //   ★畳み直したい時は手でできる(`MeOS: Fold the spec lines`)。Rawを切った時の畳み直しはそのまま残す。
     const hit = blocks.find(b => (b.open != null && line === b.open) || (line >= ((b.top == null) ? b.start : b.top) && line <= b.end)); // v4.0.301: 塊のどの行でも開く / v4.0.332: 膜は開始膜でも開く
-    if (hit) {
-      if (_meosFcOpen !== hit.start) {
-        if (_meosFcOpen != null) await foldIfVisible(_meosFcOpen);
-        await unfold([hit.start]);
-        _meosFcOpen = hit.start;
-      }
-    } else if (_meosFcOpen != null) {
-      await foldIfVisible(_meosFcOpen);
-      _meosFcOpen = null;
+    if (hit && _meosFcOpen !== hit.start) {
+      await unfold([hit.start]);
+      _meosFcOpen = hit.start;
     }
   } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
 }
@@ -26935,7 +26939,7 @@ function activate(context) {
     const { ln } = _meosCaretNow(ed), e = meosVisibleRightEdge(ed.document, ln);
     if (e < 0) { _meosPass('cursorEnd'); return; }
     const p = new vscode.Position(ln, e);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'MembraneLineEnd'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.339: 見える左端(名前の頭)へ一発。膜の行でなければ素の Home に任せる。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorMembraneLineStart', () => {
@@ -26943,7 +26947,7 @@ function activate(context) {
     const { ln } = _meosCaretNow(ed), e = meosVisibleLeftEdge(ed.document, ln);
     if (e < 0) { _meosPass('cursorHome'); return; }
     const p = new vscode.Position(ln, e);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'MembraneLineStart'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.340: 見える左端から←＝ 前の行の末尾へ直接(▼の左に一瞬着地させない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorLeaveMembraneLeft', () => {
@@ -26953,7 +26957,7 @@ function activate(context) {
     const pl = ln - 1, pr = meosVisibleRightEdge(ed.document, pl);
     const dst = (pr >= 0) ? pr : (ed.document.lineAt(pl).text || '').length;
     const p = new vscode.Position(pl, dst);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'LeaveMembraneLeft'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.340/341: →で次の行へ入る。行き先は**その行の見える左端**(膜でなければ行頭)。
   //   出る側(膜の右端から)と入る側(前の行の末尾から)は、着く場所が同じなので**同じ1つの命令**にする。
@@ -26966,7 +26970,7 @@ function activate(context) {
     if (!((_r >= 0 && ch === _r) || _atEnd)) { _meosPass('cursorRight'); return; }
     const le = meosVisibleLeftEdge(ed.document, ln + 1);
     const p = new vscode.Position(ln + 1, le >= 0 ? le : 0);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'LeaveMembraneRight'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   // v4.0.339: 行頭から←で戻る時は、1つ上の膜の行の**見える右端**へ一発(隠れた末尾に一旦着地させない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.cursorBackToMembraneEnd', () => {
@@ -26976,7 +26980,7 @@ function activate(context) {
     const e = (ln > 0) ? meosVisibleRightEdge(ed.document, ln - 1) : -1;
     if (e < 0) { _meosPass('cursorLeft'); return; }
     const p = new vscode.Position(ln - 1, e);
-    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p); } catch (_) { ed.selection = new vscode.Selection(p, p); }
+    try { _meosCaretSetSelf(ed, caretKeyForEditor(ed), p, 'BackToMembraneEnd'); } catch (_) { ed.selection = new vscode.Selection(p, p); }
   }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
