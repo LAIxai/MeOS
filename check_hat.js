@@ -43,7 +43,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_hat_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meosCheckStampPendingAt, meosCheckStampRange, MEOS_CHECKED_STAMP_RE, meosFormatStamp, MEOS_HEAD_STAMP_RE, meosRowMarkSpans, meosFcBodyLineFor, meosFmtKindFollowPlan, meosDefBlocks, meosIsSpecLine, meosCarryItemSpec, meosSpecGroupPerLine, MEOS_SPEC_LINE_NONE_RE, meosItemLevels, meosItemLabel, meosSpecLineFor, meosListBlockFor, meosListBlockDirectives, meosListLineSpecFor, meosItemNumStep, meosListItemDefaultDirective, meosLineDirectiveCommentIn, MEOS_LIST_BLOCK_RE, MEOS_NUM_ITEM_RE, meosLinkUlEditAt, MEOS_STACK_TALL_SUP_RIGHT_CH, meosClipboardLinkTarget, MEOS_LINK_SPEC_RE, meosMathSlantCss, MEOS_MATH_SLANT_DEG, meosLimitSwapPlan, meosMetexPctFollowPlan, meosInlineHeadHit, MEOS_MATH_SLANT_RE, MEOS_STACK_TALL_SUB_LEFT_CH, MEOS_BIGOP_RE, meosMetexArrowFollowPlan, MEOS_STACK_TALL_EM, MEOS_LIMIT_TALL_DOWN_EM, MEOS_STACK_SPREAD_EM, MEOS_METEX_MID_EM, MEOS_METEX_TOP_EM, meosStackCss, meosMeTexStyle, meosMeTexStackPairs, MEOS_LIMIT_NARROW_W, meosRowspanUpAt, meosRowLineSkipSet, meosLimitRoomInCell, MEOS_LIMIT_TALL_UP_EM, MEOS_LIMIT_TALL_DOWN_EM, meosCellTextAt, meosLimitHasRoomInCell, MEOS_LIMIT_SCALE, MEOS_LIMIT_UP_EM, MEOS_LIMIT_DOWN_EM, MEOS_LIMIT_DROP_EM, meosBigOpLimitSpans, meosLimitCss, meosMeTexFgKey, meosHatBarSpans, meosHatScanLine, meosHatBeforeCursor, meosHatFromToken, meosHatCompose, MEOS_HAT_MARK, MEOS_MEW_SIG, MEOS_METEX_TAIL_RE, meosMeTexTokens, meosParseSpecLine, meosSpecPayloadAsIs, meosMoveSpecsOutOfLine, meosIsSpecLine, meosSpecLineMerge, meosFcFmtInner, meosFcFmtIsNot, meosLineDirective, meosMeLinkSpec, meosLinkSpecFromComment, meosStarMarks, meosInlineMarkEnds , meosSplitMarkForSegment, meosFcMate, meosFcRepairPlan, meosIsPairBadgeSpec, meosPairBadgeAt, meosPairBadgeLineText, foldRangeEnd, membraneCommentTemplateForLanguage, parseMstatBadgeFromText };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -854,6 +854,60 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
      '★箇条書きも同じ= 本文は消えず、置き石で枚数だけ戻る', 'ins 1@2');
   ok(plan(['| a |', '| b |', FC('not'), FC('not')], 1) === 'なし', '枚数が合っていれば何もしない', 'なし');
   ok(plan(['次の文', 'もう1行'], 0) === 'なし', 'FCと関係ない行は相手にしない', 'なし');
+}
+
+// ㉞ v4.0.330（俊克 2026.08.21 pm00:14「答えは、膜＝段落＝テーブルだよ。つまり、閉じ膜の次の行に、
+//    バッジを入れたFC膜を置くんだよ」）バッジの引越し。read-both＝旧形も読む・書くのは新形だけ。
+{
+  console.log('㉞ v4.0.330 膜＝段落＝テーブル（バッジは閉じ膜の次の行へ）');
+  let _bv = 0;
+  const mk = (L) => ({ get lineCount() { return L.length; }, isClosed: false, get version() { return ++_bv; },
+    uri: { toString: () => 'file:///pb' + (++_bv), scheme: 'file' }, eol: 1,
+    getText: () => L.join('\n'), lineAt: (n) => ({ text: L[n] || '' }) });
+
+  // --- 名乗りの見分け ---
+  ok(T.meosIsPairBadgeSpec('<!-- Mew!FC mCN=3129_20260821 (⊖9+1D-1W) -->') === true,
+     '膜のバッジ行と分かる（m…= で名乗り、mSTATを持つ）', 'true');
+  ok(T.meosIsPairBadgeSpec('<!-- Mew!FC H2_2026.08.21(F)am09:33.43JST (白/red)//[]tip= -->') === false,
+     '見出しの指定行は、膜のバッジではない', 'false');
+  ok(T.meosIsPairBadgeSpec('<!-- Mew!FC ~~ (赤/紺) -->') === false,
+     '取消線の指定行も、膜のバッジではない（色の括弧に釣られない）', 'false');
+  ok(T.meosIsPairBadgeSpec('<!-- Mew!FC not -->') === false, '置き石も違う', 'false');
+
+  // --- read-both ---
+  const NEW = ['<!-- {* ▼mCN=A // 作業ログ *} -->', '本文', '<!-- {* ▲mCN=A // *} -->',
+               '<!-- Mew!FC mCN=A (⊖9+1D-1W) -->', 'つぎの文'];
+  const OLD = ['<!-- {* ▼mCN=B // 目次 (📊0⊕2+0D0W) *} -->', '本文', '<!-- {* ▲mCN=B // *} -->'];
+  const pN = { start: 0, end: 2 }, pO = { start: 0, end: 2 };
+  const aN = T.meosPairBadgeAt(mk(NEW), pN), aO = T.meosPairBadgeAt(mk(OLD), pO);
+  ok(!!aN && aN.line === 3 && aN.fc === true && aN.badge.symbol === '⊖',
+     '新形＝ 閉じ膜の次の行から読む', 'line3 fc ⊖');
+  ok(!!aN && aN.badge.depth === -1 && aN.badge.colorCode === 'W', '新形でも中身は同じに読める', 'D-1 W');
+  ok(!!aO && aO.line === 0 && aO.fc === false && aO.badge.symbol === '⊕',
+     '旧形＝ ▼行から読む（過去は1行も書き換えない）', 'line0 ⊕');
+  ok(T.meosPairBadgeAt(mk(['<!-- {* ▼mCN=C // x *} -->', '本文', '<!-- {* ▲mCN=C // *} -->']), { start: 0, end: 2 }) === null,
+     'どちらにも無ければ null', 'null');
+
+  // --- 畳み範囲＝ バッジ行まで伸びる（[▼..▲+n] の中に [▲..▲+n] が入れ子で収まる）---
+  ok(T.foldRangeEnd(mk(NEW), pN) === 3, '新形＝ 膜の範囲は ▲ の次のバッジ行まで', '3');
+  ok(T.foldRangeEnd(mk(OLD), pO) === 2, '旧形＝ 膜の範囲は ▲ まで（今までどおり）', '2');
+  ok(T.foldRangeEnd(mk(['▼', '本', '<!-- {* ▲mCN=D // *} -->', '<!-- {* ▼mCN=E // *} -->']), { start: 0, end: 2 }) === 2,
+     '次の膜の ▼ は巻き込まない（v0.9.343の戒め）', '2');
+
+  // --- 削除追従は、バッジ行を道連れにしない（v4.0.325の罠）---
+  ok(T.meosFcRepairPlan(mk(['本文', '<!-- Mew!FC mCN=A (⊖9+1D-1W) -->']), 1) === null,
+     '本文を消しても、膜のバッジは消えない（塊ぜんぶの名札なので）', 'null');
+  ok(T.meosFcRepairPlan(mk(['前の文', '<!-- Mew!FC H2_x (白/red) -->', 'つぎ']), 1) !== null,
+     '見出しの指定は今までどおり消える', 'not null');
+
+  // --- 新しい膜の姿 ---
+  const tpl = T.membraneCommentTemplateForLanguage('markdown', 'Z_20260821', '', 'W', -2);
+  ok(T.parseMstatBadgeFromText(tpl.open) === null, '新しい膜の ▼ 行にバッジは書かない', 'null');
+  ok(tpl.open.indexOf('📊') < 0, '📊0（隠す指定）も書かない＝ 隠すのは畳みの仕事', 'no 📊');
+  ok(T.meosIsPairBadgeSpec(tpl.badge) === true, 'バッジ行は FC の膜バッジとして読める', 'true');
+  const tb = T.parseMstatBadgeFromText(tpl.badge);
+  ok(!!tb && tb.symbol === '⊕' && tb.depth === -2 && tb.colorCode === 'W', 'バッジの中身は今までと同じ', '⊕ D-2 W');
+  console.log('    新しい膜:\n      ' + tpl.open + '\n      ' + tpl.close + '\n      ' + tpl.badge);
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

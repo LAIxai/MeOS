@@ -3986,6 +3986,47 @@ function mntDisplayInfoFromLine(text) {
   }
   return { kind: isOpen ? 'open' : 'close', alias, membraneName: mntDecorateNameWithWeekday(id), comment };
 }
+// ★★v4.0.330(俊克 2026.08.21 pm00:14「答えは、**膜＝段落＝テーブル**だよ。つまり、**閉じ膜の次の行に、
+//   バッジを入れたFC膜を置く**んだよ」＋pm00:02「バッジをFCコメント化する。そうすれば、**丸見えになるのを
+//   見えなくする設定も必要なくなる**」):
+//   ★★**置き場所は、新しく決めるものではなく、もう在る規則から出てくる**。表も箇条書きも、指定は
+//   **塊の次の行**に置く。膜も塊なので、指定は**閉じ膜の次の行**。これで例外が1つも要らない。
+//   ★私は膜を**入れ物**として見て「バッジは中に居なければコピペで置き去りになる」と反対した。
+//     俊克は膜を**塊**として見ていた。塊として見ると、その反対理由は自分で消える＝ 膜の畳み範囲を
+//     FC群の分だけ伸ばせば、[▼..▲+n] の中に [▲..▲+n] が**入れ子**で収まる（重ならない）。
+//     → 畳めばバッジも隠れる／畳んだ膜をコピペすればバッジも一緒に運ばれる（v2.0.46の要件そのまま）。
+//   ★▼の**真下**では駄目だった理由＝ FCの畳み範囲は「指定行の1つ上の本文行」から始まる(meosDefBlocks)ので、
+//     ▼という**同じ1行から範囲が2つ始まる**＝ 膜の畳みとFCの畳みが狙いを取り合う(v4.0.188の構造版)。
+//   ★★read-both＝ **旧形(▼行のバッジ)は読み続ける。書くのは新形だけ**。過去は1行も書き換えない。
+//     → [[project_now_not_bulk]] / [[project_setting_decides_future_only]]
+const MEOS_PAIR_BADGE_TOKEN_RE = /^m[A-Za-z]{1,4}=\S*/;             // 例 mCN=3129_20260821
+// そのFC行は「膜のバッジ」か(行の指定ではない)= 名乗りが m…= で始まり、mSTATのバッジを含む。
+function meosIsPairBadgeSpec(text) {
+  try {
+    const t = String(text || '');
+    if (!t || t.indexOf('<!--') < 0) return false;      // 速い足切り(meosDefBlocks と同じ作法)
+    if (!meosIsSpecLine(t)) return false;
+    const pay = (meosSpecLinePayloads(t) || []).join(' ').trim();
+    return MEOS_PAIR_BADGE_TOKEN_RE.test(pay) && MSTAT_BADGE_RE.test(pay);
+  } catch (_) { return false; }
+}
+// この対のバッジが書かれている場所。新形=▲の次のFC行 / 旧形=▼行。無ければ null。
+function meosPairBadgeAt(document, pair) {
+  try {
+    if (!document || !pair) return null;
+    const openText = document.lineAt(pair.start).text;
+    const ob = parseMstatBadgeFromText(openText);
+    if (ob) return { line: pair.start, text: openText, badge: ob, fc: false };  // 旧形が在ればそれ
+    const ln = pair.end + 1;
+    if (ln >= 0 && ln < document.lineCount) {
+      const t = document.lineAt(ln).text;
+      if (meosIsPairBadgeSpec(t)) { const b = parseMstatBadgeFromText(t); if (b) return { line: ln, text: t, badge: b, fc: true }; }
+    }
+  } catch (_) { }
+  return null;
+}
+// 新しい膜に付けるバッジ行(閉じ膜の次の行)。
+function meosPairBadgeLineText(id, indent, badgeText) { return String(indent || '') + meosSpecLineBox('mCN=' + String(id) + ' ' + String(badgeText)); }
 function setMstatBadgeColorInText(text, colorCode) {
   const badge = parseMstatBadgeFromText(text);
   if (!badge) return String(text || '');
@@ -4011,14 +4052,14 @@ async function ensureMembraneMstatMetadata(editor) {
   const pairs = collectPairs(doc, { excludeIndex: false });
   const edits = [];
   for (const pair of pairs) {
-    const text = doc.lineAt(pair.start).text;
-    const badge = parseMstatBadgeFromText(text);
-    if (!badge) continue;
+    const at = meosPairBadgeAt(doc, pair);                        // v4.0.330: バッジの居る行に書く
+    if (!at) continue;
+    const badge = at.badge;
     const nextColor = normalizeMembraneColorCode(badge.colorCode || '') || 'W';
     const nextDepth = (typeof badge.depth === 'number' && Number.isFinite(badge.depth)) ? badge.depth : mstatDepthForPair(pair);
     if (nextColor === badge.colorCode && nextDepth === badge.depth) continue;
     const formatted = formatMstatBadge({ ...badge, colorCode: nextColor, depth: nextDepth });
-    edits.push({ range: new vscode.Range(pair.start, badge.start, pair.start, badge.end), text: formatted });
+    edits.push({ range: new vscode.Range(at.line, badge.start, at.line, badge.end), text: formatted });
   }
   if (!edits.length) return false;
   mstatsSyncing = true;
@@ -4049,14 +4090,16 @@ function desiredMstatForFoldState(openLineText, folded) {
   if (formatted === badge.raw) return null;
   return { badge, formatted };
 }
-async function replaceOpenLineMstat(editor, pair, formatted, badge) {
+async function replaceOpenLineMstat(editor, pair, formatted, badge, atLine) {
   if (!editor || mstatsSyncing || !pair || !badge) return false;
-  const lineText = editor.document.lineAt(pair.start).text;
+  const ln = (typeof atLine === 'number') ? atLine : pair.start;   // v4.0.330: バッジの居る行に書く
+  if (ln < 0 || ln >= editor.document.lineCount) return false;
+  const lineText = editor.document.lineAt(ln).text;
   if (lineText.slice(badge.start, badge.end) !== badge.raw) return false;
   mstatsSyncing = true;
   try {
     return await editor.edit(editBuilder => {
-      editBuilder.replace(new vscode.Range(pair.start, badge.start, pair.start, badge.end), formatted);
+      editBuilder.replace(new vscode.Range(ln, badge.start, ln, badge.end), formatted);
     }, { undoStopBefore: false, undoStopAfter: false });
   } finally {
     mstatsSyncing = false;
@@ -4064,10 +4107,11 @@ async function replaceOpenLineMstat(editor, pair, formatted, badge) {
 }
 async function syncPairMstatFromFoldState(editor, pair) {
   if (!editor || !pair || mstatsSyncing) return false;
-  const lineText = editor.document.lineAt(pair.start).text;
-  const desired = desiredMstatForFoldState(lineText, isPairFolded(editor, pair));
+  const at = meosPairBadgeAt(editor.document, pair);              // v4.0.330: ▼行か、▲の次のFC行か
+  if (!at) return false;
+  const desired = desiredMstatForFoldState(at.text, isPairFolded(editor, pair));
   if (!desired) return false;
-  return replaceOpenLineMstat(editor, pair, desired.formatted, desired.badge);
+  return replaceOpenLineMstat(editor, pair, desired.formatted, desired.badge, at.line);
 }
 function scheduleMstatsSync(editor) {
   if (!editor || mstatsSyncing) return;
@@ -4175,7 +4219,7 @@ async function reconcilePastedFolds(editor, from, to) {
     const deadline = Date.now() + 4000;
     while (!editor.document.isClosed && Date.now() < deadline) {
       const pairs = collectMembraneStructure(doc).pairs
-        .filter(p => { if (p.start < lo || p.start > hi) return false; let b = null; try { b = parseMstatBadgeFromText(doc.lineAt(p.start).text); } catch (_) {} return b && b.symbol === '⊖'; })
+        .filter(p => { if (p.start < lo || p.start > hi) return false; let b = null; try { b = (meosPairBadgeAt(doc, p) || {}).badge || null; } catch (_) {} return b && b.symbol === '⊖'; })
         .sort((a, b) => a.start - b.start);
       let anyExpanded = false, skipUntil = -1;
       for (const p of pairs) {
@@ -4228,7 +4272,7 @@ async function syncManyMstatsFromTargetStates(editor, items) {
 }
 
 function isMstatFixed(pair, document) {
-  const b = parseMstatBadgeFromText(document.lineAt(pair.start).text);
+  const b = (meosPairBadgeAt(document, pair) || {}).badge || null;
   return !!(b && b.fixed);
 }
 async function restoreMstatsForEditor(editor) {
@@ -4240,7 +4284,7 @@ async function restoreMstatsForEditor(editor) {
   const foldPairs = [];
   const unfoldPairs = [];
   for (const p of pairs) {
-    const b = parseMstatBadgeFromText(editor.document.lineAt(p.start).text);
+    const b = (meosPairBadgeAt(editor.document, p) || {}).badge || null;
     if (!b || b.symbol === '∞') continue;
     if (b.symbol === '⊖') foldPairs.push(p);
     if (b.symbol === '⊕') unfoldPairs.push(p);
@@ -5048,7 +5092,13 @@ function foldRangeEnd(document, pair) {
   // Returning pair.end + 1 accidentally folds the next membrane's start line
   // when formal membranes are adjacent, e.g. ▲0000_HISTORY then ▼0100_CORE_STATE.
   // The range must terminate exactly at the matching close membrane line.
-  return Math.min(document.lineCount - 1, pair.end);
+  // ★★v4.0.330: 閉じ膜の次に**この膜のバッジ行(FC)**that在れば、そこまでを膜の範囲にする。
+  //   これで [▼..▲+n] の中に FCの範囲 [▲..▲+n] が入れ子で収まる＝ 重ならない＝ 両方生きる。
+  //   ★畳めばバッジも隠れる／畳んだ膜をコピペすればバッジも一緒に運ばれる。
+  //   ★伸ばすのは**FC行の間だけ**なので、次の膜の ▼ を巻き込むことは無い(v0.9.343の戒めはそのまま)。
+  let e = Math.min(document.lineCount - 1, pair.end);
+  try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
+  return e;
 }
 function pairStateKey(editor, pair) {
   if (!editor || !pair) return '';
@@ -7027,7 +7077,7 @@ function applyPrettyLabels(editor) {
 function isStealthMembrane(pair, document) {
   if (!pair || !document) return false;
   if (pair.start < 0 || pair.start >= document.lineCount) return false;
-  const badge = parseMstatBadgeFromText(document.lineAt(pair.start).text);
+  const badge = (meosPairBadgeAt(document, pair) || {}).badge || null;
   return !!(badge && badge.stealth);
 }
 
@@ -11885,7 +11935,7 @@ async function unfoldAll() {
 
 function fixedMstatFoldTarget(pair, document) {
   if (!pair || !document) return null;
-  const badge = parseMstatBadgeFromText(document.lineAt(pair.start).text);
+  const badge = (meosPairBadgeAt(document, pair) || {}).badge || null;
   if (!badge || !badge.fixed) return null;
   if (badge.symbol === '⊖') return true;   // ⊖f: always folded
   if (badge.symbol === '⊕') return false;  // ⊕f: always unfolded
@@ -14440,18 +14490,25 @@ function membraneCommentTemplateForLanguage(languageId, id, indent, colorCode = 
 
   // Markdown / MDX: HTML comment wrapper with identical {* ... *} core as TS format.
   // Inner body matches the slash-comment format so the parser pipeline stays common.
+  // ★★v4.0.330(俊克「膜＝段落＝テーブル。閉じ膜の次の行に、バッジを入れたFC膜を置く」):
+  //   ★新しい膜は**▼行にバッジを書かない**＝ ▼行は名前とコメントだけ。バッジは閉じ膜の次の行のFCへ。
+  //   ★`📊0`(バッジ非表示)も書かなくなる＝ **畳みが隠すので、隠すための設定が要らない**(俊克の狙い)。
+  //   ★旧形(▼行のバッジ)は読み続ける＝ 過去のファイルは1行も書き換えない。
+  const badge = `(⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'})`;
   if (lang === 'markdown' || lang === 'mdx') {
     return {
-      open: `${indent}<!-- {* ▼mCN=${id} // comment1 (📊0⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *} -->`,
+      open: `${indent}<!-- {* ▼mCN=${id} // comment1 *} -->`,
       close: `${indent}<!-- {* ▲mCN=${id} // comment2 *} -->`,
+      badge: meosPairBadgeLineText(id, indent, badge),
       markdown: true
     };
   }
 
   // Default: existing code-oriented canonical markMup source.
   return {
-    open: `${indent}// {* ▼mCN=${id} // comment1 (📊0⊕0+0D${Math.trunc(Number(depthValue) || 0)}${normalizeMembraneColorCode(colorCode) || 'W'}) *}`,
-    close: `${indent}// {* ▲mCN=${id} // comment2 *}`
+    open: `${indent}// {* ▼mCN=${id} // comment1 *}`,
+    close: `${indent}// {* ▲mCN=${id} // comment2 *}`,
+    badge: meosPairBadgeLineText(id, indent, badge)
   };
 }
 
@@ -14540,7 +14597,7 @@ async function addMembrane() {
   const indent = lineIndent(doc, startLine);
   const tpl = membraneCommentTemplateForLanguage(doc.languageId, id, indent, 'W', newMembraneDepthForInsertion(doc, startLine));
   const open = tpl.open;
-  const close = tpl.close;
+  const close = tpl.close + (tpl.badge ? ('\n' + tpl.badge) : '');   // v4.0.330: 閉じ膜の次の行にバッジ(FC)
   const ok = await editor.edit(editBuilder => {
     if (hasSelection) {
       const block = tpl.markdown
@@ -17242,7 +17299,7 @@ function submarineDepthDisplayForEditor(editor) {
   const pairs = collectPairs(doc, { excludeIndex: false }) || [];
   const readDepth = (pair) => {
     if (!pair || typeof pair.start !== 'number' || pair.start < 0 || pair.start >= doc.lineCount) return null;
-    const badge = parseMstatBadgeFromText(doc.lineAt(pair.start).text);
+    const badge = (meosPairBadgeAt(doc, pair) || {}).badge || null;
     if (badge && typeof badge.depth === 'number' && Number.isFinite(badge.depth)) return Math.abs(Math.trunc(badge.depth));
     return Math.max(0, Number(pair.depth) || 0);
   };
@@ -24705,6 +24762,8 @@ function meosFcRepairPlan(doc, P) {
   try {
     if (P < 0 || P >= doc.lineCount) return null;
     const specHere = meosIsSpecLine(doc.lineAt(P).text);
+    // v4.0.330: 膜のバッジ行は**本文行の指定ではない**(塊ぜんぶの名札)ので、道連れにしない。
+    if (specHere && meosIsPairBadgeSpec(doc.lineAt(P).text)) return null;
     // ★消えた位置が群の途中のこともある（FC行を抜いた時）ので、まず群を遡って持ち主を見に行く。
     let blk = null;
     if (specHere) { const b = meosFcPairAt(doc, P); if (b && meosFcIsBlockLine(doc.lineAt(b.head).text)) blk = { start: b.top, end: b.head }; }

@@ -4,6 +4,29 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.330 (2026-08-21)
+- **A membrane is a block, so its badge goes under it.** Tables and lists already put their spec on the line after the
+  block; a membrane is a block too, so its mSTAT badge moves from the opening line to a folding comment on the line
+  after the close:
+
+  ```
+  // {▼mCN=3129_20260821 // work log}
+  body…
+  // {▲mCN=3129_20260821 //}
+  <!-- Mew!FC mCN=3129_20260821 (⊖9+1D-1W) -->
+  ```
+
+  The placement is not a new decision — it falls out of a rule that was already there, so there is no exception to
+  remember. Directly *under* the opening line would not work: an FC fold range starts at the body line above the
+  comment, so two ranges would start on the very same line and `editor.fold` would have to choose between them. After
+  the close, the two nest cleanly — the membrane's range now runs `[▼ .. ▲+n]` and contains the FC's `[▲ .. ▲+n]` —
+  which also means folding the membrane hides the badge, and copying a folded membrane carries the badge with it.
+- **Old files are not touched.** The badge is read from wherever it is, through one entry point; only new membranes
+  are written the new way, and `📊0` is no longer written at all — hiding is the fold's job now, not a setting's.
+- The badge line is deliberately *not* a line spec, so v4.0.325's "delete the body, delete its spec" leaves it alone.
+- Groundwork only: the rendering side (colour, `N0`/`N1`, alias, stealth) still reads the opening line, so `📊0/📊1`
+  stays supported until that is joined up.
+
 ### v4.0.329 (2026-08-21)
 - **Clicking the tab you are already on adds the file back — for real this time.** Recording it and showing it are two
   different jobs, and v4.0.326 only fixed the first: the list is sent to the Me Dock only when the file changes, so
