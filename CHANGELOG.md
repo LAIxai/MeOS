@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.327 (2026-08-21)
+- **No more jump to the top of the membrane after a fresh install.** `editor.fold` folds the *innermost* range at a
+  line — and when that range is already folded, there is no inner one left, so it folds the next one out: the membrane.
+  v4.0.188 named this and put a guard on the per-cursor path, but the bulk pass never got one, and a fresh install is
+  exactly when it bites: VS Code remembers fold state per file, so the first pass meets a document full of
+  already-folded blocks. The bulk pass now folds **only blocks that are on screen and actually open** — nothing
+  off screen is touched, so nothing can scroll — and blocks fold as you scroll them into view.
+- **The menu hint is a tip again.** A line that is always there stops being a hint and becomes something else to read;
+  the value of a tip is that it answers only when asked. It now appears on hover of `📌` or `×` — and appears *below*
+  the menu, outside it, so it still covers nothing. The `▾` has its tip back too, placed directly above the button,
+  where the menu hanging below it can never reach.
+
 ### v4.0.326 (2026-08-21)
 - **The caret stops being yanked back.** The fold sync remembered where the caret was **when it started**, then put it
   back afterwards — so anything you did during the wait (fold and unfold are slow in a 160k-line file) was mistaken for

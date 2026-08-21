@@ -17818,7 +17818,18 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
 .title-file-row{display:flex;align-items:center;gap:2px;border-radius:3px}
-.title-file-hint{margin:3px 4px 1px;padding:4px 6px 1px;border-top:1px solid color-mix(in srgb,var(--vscode-foreground) 18%,transparent);font-size:10px;line-height:1.35;opacity:.5;white-space:nowrap}
+/* ★★v4.0.327(俊克 8/21 am09:46 👍1「代わりに、メニューの一番下に説明が入った。やはり、**これが表示されると、
+   気になって読む**よね。それが少し目障りだよね。やはり、この説明はtipにすべきだね」):
+   ★★**常に見えている説明は、説明ではなく本文になる**＝ 読む物が1つ増えている。tipの値打ちは
+   「**訊いた時だけ答える**」ことの方だった。→ **触れた時だけ出す**(tipに戻す)。
+   ★被らない作りは変えない＝ 出す場所は**メニューの外の下**なので、メニューの中身は1行も隠れない。
+   ★家の作法どおり ::after ＝ 座標計算をしない(v3.1.32「これが今後の汎用解=座標地獄を根本回避」)。 */
+.title-file-hint{position:absolute;top:calc(100% + 5px);left:0;z-index:41;padding:3px 7px;border:1px solid var(--vscode-editor-background);border-radius:3px;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);font-size:11px;line-height:1.4;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
+.title-file-pop:has(.title-file-x:hover) .title-file-hint,.title-file-pop:has(.title-file-pin:hover) .title-file-hint{opacity:1}
+/* ▾ のtipは**真上**へ= メニューは下にぶら下がるので、開いていても覆いようが無い。 */
+.title-file-caret[data-tip]{position:relative}
+.title-file-caret[data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 7px);z-index:60;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;line-height:1.4;width:max-content;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
+.title-file-caret[data-tip]:hover::after{opacity:1}
 /* v4.0.309: 📌は1つだけ。留めた物は常に先頭・薄く出しておいて、留めた時だけはっきりさせる。 */
 .title-file-pin{width:20px;flex:0 0 20px;padding:0;margin-left:2px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:12px;line-height:1;opacity:0;cursor:pointer}
 .title-file-row:hover .title-file-pin{opacity:.45}
@@ -18528,7 +18539,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* {* ▲mCN=dock_css *} */
 </style>
 <!-- {* ▼mCN=dock_html // Me Dock のHTML(画面の骨組み) *} -->
-</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
+</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" data-tip="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -20064,7 +20075,7 @@ if(_ghBtnEl){/* v3.1.82(俊克 8/1): 🐙/🔗/✕のtipがボタンに被る(�
 _ghBtnEl.style.position='relative';var _gr=_ghBtnEl.getBoundingClientRect();_ghBtnEl.style.position=_gp;var _gtw=tocTooltip.offsetWidth||120,
 _ghh=tocTooltip.offsetHeight||20;tocTooltip.style.right='auto';var _gl=_gr.right-_gtw;if(_gl+_gtw>window.innerWidth-2)_gl=window.innerWidth-_gtw-2;
 if(_gl<2)_gl=2;tocTooltip.style.left=_gl+'px';var _gt=_gr.top-_ghh-6;if(_gt<2)_gt=_gr.bottom+6;if(_gt+_ghh>window.innerHeight-2)_gt=window.innerHeight-_ghh-2;
-tocTooltip.style.top=_gt+'px';return;}const _baEl=el.closest&&el.closest('.big-action,.nav-center-btn,.me-flip-btn,.eof-badge,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark,.nav-scroll,.me-nav-switch,.head-nav');
+tocTooltip.style.top=_gt+'px';return;}const _baEl=el.closest&&el.closest('.big-action,.nav-center-btn,.me-flip-btn,.eof-badge,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark,.nav-scroll,.me-nav-switch,.head-nav,.title-file-caret');
 if(_baEl){/* v3.1.32-33(俊克): big-action及びNavigate行(Time Machine/Bird-EV/ノブ)のtipは、要素自身の子 ::after(CSSだけ)で表示=同じzoom文脈で本家/VSCodium両方自動的に正位置。JSの共有fixed tooltipは出さない(座標計算を捨てる)。 */hideTocTip();
 return;}const rowEl=(el.closest&&el.closest('.fixed-toc-item,.toc-pin'))||el;/* v3.1.27(俊克の慧眼): mepy(Nice to meet Me)は本家VS Codeでも正位置=基準の membrane-visual が position:relative。崩れる Shed/Encrypt/Navigate は全て position:static。→本家Chromiumが CSS zoom 下で static 要素の getBoundingClientRect を fixed(tooltip)と別座標系で返すのが真因。測定の一瞬だけ対象を position:relative(オフセット無し=見た目1pxも動かない)にして、mepyと同じ座標系で測る。v3.1.26のキャリブレーションは前提が誤りだったので撤去。 */var _mtgt=(rowEl&&rowEl.style)?rowEl:el;
 var _msp=_mtgt.style.position;_mtgt.style.position='relative';const rect=_mtgt.getBoundingClientRect();_mtgt.style.position=_msp;
@@ -23864,17 +23875,30 @@ async function meosAutoFoldSpecLines(editor, force) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding) return;
   if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
-  if (!force && _meosFcFolded.has(key)) return;
+  // ★★v4.0.327(俊克 8/21 am09:46 バグ1「インストール直後に、元いた行に飛ぶようにしたよね。その直後に、
+  //   メインエディタをクリックすると、**膜の先頭に飛んでしまう**んだよ。なぜ?」):
+  //   ★★**v4.0.188で名前の割れた犯人が、ここにだけ残っていた**＝ `editor.fold({selectionLines:[N]})` は
+  //   「N行の**一番内側の折り畳み範囲**」を畳む。**その塊が既に畳まれていると、内側がもう無いので、
+  //   次に外側＝膜を畳む**。だから膜の先頭へ飛ぶ。★VS Codeは**畳んだ状態をファイルごとに覚えている**ので、
+  //   入れ直した直後の1回目は「もう畳まれている塊」だらけ＝ この道が一番当たりやすい。
+  //   ★v4.0.188で個別の道(meosSyncFcFoldForCursor)には門番を入れたが、**一括の道は数え忘れていた**
+  //   ＝ [[feedback_one_source_for_mark_count_action]] の「呼び元を全部見る」が、また同じ形で出た。
+  //   ★★直し＝ **見えていて、かつ開いている塊だけ畳む**（v4.0.186「見えていないものを整える必要は無い」＋
+  //     v4.0.188「畳む前に本当に開いているか確かめる」を、こちらにも同じ形で当てる）。
+  //     開いているかは**塊の最後の指定行が見えているか**で分かる。畳まれていれば隠れているので見えない。
+  //   ★画面の外は畳まない＝ **スクロールして入ってきた時に畳めばいい**（下の可視範囲の合図で、また来る）。
   let heads = [];
-  try { heads = meosDefBlocks(editor.document).filter(b => b.fc).map(b => b.start); } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
-  if (!heads.length) return; // 相手が居ない=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
+  try {
+    const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
+    heads = meosDefBlocks(editor.document).filter(b => b.fc && _vis(b.start) && _vis(b.end)).map(b => b.start);
+  } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
+  if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
   if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
   // v4.0.311: **選択している間は一括でも畳まない**(v4.0.214で個別の道には入れた門番を、こちらにも)。
   try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
   _meosFcFolding = true;
   // v4.0.176: **一括で畳むのthat一番画面を動かす**so、ここでも上の行を控えて戻す(俊克「矢印で飛ぶ」の兄弟)。
   const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
-  const _selBefore = editor.selection;
   try {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -23892,7 +23916,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     }
   }
   try { meosDbg('[fcFold] gave up after 3 attempts (' + heads.length + ' blocks)'); } catch (_) { }
-  } finally { meosRestoreView(editor, _topBefore, _selBefore, true); _meosFcFolding = false; } // 待ちを挟む道=厳しく
+  } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcFolding = false; } // v4.0.327: 画面だけ戻す(カーソルは人の物)
 }
 // v4.0.4(俊克): MeTeXスペックコメント <!-- {150%(白/緑)} --> を検出。基準文字が無く上付/下付が不成立でも「コメント=不可視のbacking data」なので常に隠す(見えるのはバグ)。
 // 誤爆防止=中身は「(数字%)?(fg/bg)?」の形のみ許容(例 <!-- {note: 50% done} --> は形が違うので隠さない)。
@@ -26163,6 +26187,14 @@ function activate(context) {
   //   ★下から上へ書き換える(行を足すと下の行番号がずれるため)。
   // v4.0.139: FC付きの指定行を「開いた時に1回だけ」畳む。手で開いた人と喧嘩しないよう、文書につき1回。
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => { if (ed) setTimeout(() => { try { meosAutoFoldSpecLines(ed); } catch (_) { } }, 400); }));
+  // v4.0.327: 一括で畳むのは**見えている分だけ**になったので、**入ってきた分**を畳む合図をここで受ける。
+  //   スクロール中は連続で鳴るので待ってからにする(熱い道に仕事を足さない・相手が0件なら即帰る作り)。
+  let _meosFcScrollTimer = null;
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => {
+    if (!e || !e.textEditor || e.textEditor !== vscode.window.activeTextEditor) return;
+    if (_meosFcScrollTimer) clearTimeout(_meosFcScrollTimer);
+    _meosFcScrollTimer = setTimeout(() => { _meosFcScrollTimer = null; try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { } }, 320);
+  }));
   context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
   // v4.0.141: カーソルがFCの塊に入ったらそこだけ開く(出たら畳み直す)=「カーソル行は生データ」を折り畳みにも広げる。
   // v4.0.141(俊克 改良1「インストール直後は折り畳まれない。エディタをクリックしてアクティブにすると折り畳まれた」):
