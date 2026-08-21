@@ -1002,6 +1002,15 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
   const CL = ['<!-- {* ▲mCN=テスト膜 // comment2 *} -->', '<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->', 'つぎの文'];
   let nx = 1; while (nx < CL.length - 1 && T.meosIsSpecLine(CL[nx])) nx++;
   ok(nx === 2, '★▲の下が畳まれたバッジ行なら、その群を飛び越して次の本文へ', '2行目でなく3行目');
+
+  // ★v4.0.337（俊克 疑問点1「コメントの右に見えない7つの文字がある。長い行から↓↑で移動すると
+  //   comment1/comment2より2文字くらい右に着地する」）＝ 隠れた末尾 ` *} -->` は7文字。
+  // 見える右端＝ 末尾の手前（`*}` の直前の空白は「カーソルの足場」として1つ残す規則）
+  let rEdge = pp.suffixStart;
+  if (rEdge > 0 && /\s/.test(OPENL.charAt(rEdge - 1))) rEdge -= 1;
+  ok(OPENL.length - rEdge === 7 && OPENL.slice(rEdge) === ' *} -->',
+     '★見える右端から行末までは「 *} -->」＝ ちょうど7文字（俊克の数えが当たっていた）', '7文字');
+  ok(rEdge > pp.idStart, 'ここより右は居場所ではない＝ ↓↑で降りてきたら右端へ寄せる', 'rightEdge');
 }
 
 console.log(ng ? ('NG ' + ng + ' 件') : 'すべて通った');

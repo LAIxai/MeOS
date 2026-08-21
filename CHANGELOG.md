@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.337 (2026-08-21)
+- **The caret stops being dragged back after a fold.** v4.0.326 narrowed the "put the caret back" window to a single
+  fold command, but on a 178,000-line file one such command takes hundreds of milliseconds — long enough for several
+  arrow presses, all of which were then undone. Folding only moves the caret when the caret was *inside* what got
+  folded, and then it lands on the block's first line, so that is now the only case restored. Any other difference is
+  someone moving the caret on purpose, and it is left alone.
+- **The seven invisible characters at the end of a membrane line are no longer a place to stand.** They are ` *} -->`
+  — the count was exactly right. Arrow-up/down in VS Code preserves the column, so coming from a longer line lands the
+  caret inside that hidden tail, which reads as landing a couple of characters past the comment. v4.0.336 closed the
+  head of the line but not the tail; both ends are now handled the same way. Pressing right *past* the edge still
+  moves to the next line as before.
+
 ### v4.0.336 (2026-08-21)
 - **Holding the right arrow on a membrane line behaves again.** Three things were stacked here.
   - The caret guard, which repositions the caret out of the hidden `<!-- {* ▼mCN=` zone, has to ignore the selection

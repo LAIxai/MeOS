@@ -13158,9 +13158,20 @@ function maybeSkipHiddenPrefixOnKeyboard(editor, selectionKind) {
   // Right edge one-beat behavior.
   // Allow `pos.character === rightEdge` to remain visible as `TOC|`.
   // Only when the caret goes beyond that edge should it move to next line Col1.
+  // ★★v4.0.337(俊克 疑問点1「開始膜、閉じ膜のコメントの右に**見えない7つの文字**がある。この左右位置よりも
+  //   長い文字が前後の行にあるケースで、そこから↓↑キーで移動すると、comment1/comment2より**2文字くらい右に
+  //   着地する**」): ★★**7文字＝ ` *} -->` そのもの**。俊克の数えが当たっている。
+  //   ★正体は「空間がある」のではなく、**VS Codeの↑↓は桁(文字数)を保つ**＝ 長い行の50桁目から降りると、
+  //     この行の50桁目＝ **隠れた末尾の中**に着く。見えないので「右に着地した」ように見える。
+  //   ★v4.0.336で行頭側(▼の左)は塞いだが、**末尾側は塞いでいなかった**＝ 同じ穴の反対側。
+  //   ★→で右端を越える時だけは今までどおり次の行へ。それ以外(↑↓や飛び込み)は**見える右端へ寄せる**。
   if (targetChar === null && rightEdge >= 0) {
     const prevAtRightEdge = prev && prev.line === pos.line && prev.character === rightEdge;
     const nowBeyondRightEdge = pos.character > rightEdge;
+    if (nowBeyondRightEdge && !prevAtRightEdge) {
+      _meosCaretSetSelf(editor, key, new vscode.Position(pos.line, rightEdge));
+      return true;
+    }
     if (prevAtRightEdge && nowBeyondRightEdge) {
       // v4.0.336: 降りる先が**畳まれた指定行(膜のバッジ)**なら、その群を飛び越す。
       //   畳まれた行にカーソルを置くとVS Codeは開こうとし、FC同期がまた畳む＝ ▲の両側を往復する。
@@ -24112,7 +24123,18 @@ async function meosSyncFcFoldForCursor(editor) {
       const t0 = _top(), snap = editor.selection;
       await vscode.commands.executeCommand(cmd, { selectionLines: ls });
       const t1 = _top(); _keep();
-      try { if (!_selecting() && !editor.selection.isEqual(snap)) editor.selection = snap; } catch (_) { }
+      // ★★v4.0.337(俊克 pm10:35 バグ1「開始膜のコメントの右端から始めると…そのあと『かか』になぜか戻って
+      //   しまい、その間をぐるぐる周回する」):
+      //   ★★**v4.0.326の直しがまだ緩かった**。控える窓を「1コマンドの間」まで縮めたが、**その1コマンドが
+      //     この文書では数百ms掛かる**ので、その間に押した→の分まで「畳みのせい」と見なして引き戻していた。
+      //   ★★正しい見分け方＝ **畳み/開きがカーソルを動かすのは「畳んだ範囲の中に居た」時だけ**で、
+      //     その時は**塊の先頭行へ寄る**。だから戻していいのは
+      //     **今カーソルが畳んだ塊の先頭行に居て、控えた時はそこに居なかった**時だけ。
+      //     それ以外の食い違いは**人が動かした**＝ 触らない（v4.0.181「誰かが動かしたのなら、それが正しい位置」）。
+      try {
+        const a = editor.selection;
+        if (!_selecting() && !a.isEqual(snap) && ls.indexOf(a.active.line) >= 0 && ls.indexOf(snap.active.line) < 0) editor.selection = snap;
+      } catch (_) { }
       try { meosDbg('[fcSync] ' + cmd.slice(7) + ' ' + ls.map(x => x + 1) + ' 画面上端 ' + t0 + '→' + t1 + '→' + _top()); } catch (_) { }
     };
     const fold = (ls) => _run('editor.fold', ls);
