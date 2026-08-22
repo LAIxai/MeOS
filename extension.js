@@ -9044,6 +9044,25 @@ const MEOS_STAMP_COLORS = [
   'rgba(210, 160, 255, 1)',   // 藤
   'rgba(150, 220, 150, 1)',   // 若草
 ];
+// v4.0.368: 変えてよい所の色。膜名=前景そのまま(本文と同じ=普通に書ける) / コメント=説明の色。
+//   橙(殻)と並べた時に「こっちは触れる」と分かればよいので、色は2つで足りる。
+let meosEditableDecos = null;
+function meosEditableDecoTypes() {
+  if (!meosEditableDecos) {
+    meosEditableDecos = {
+      name: vscode.window.createTextEditorDecorationType({
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        color: new vscode.ThemeColor('editor.foreground'),
+        textDecoration: 'none; font-weight: 600;'
+      }),
+      comment: vscode.window.createTextEditorDecorationType({
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        color: 'rgba(160, 205, 160, 1)'
+      })
+    };
+  }
+  return meosEditableDecos;
+}
 let meosStampDecos = null;
 function meosStampDecoTypes() {
   if (!meosStampDecos) {
@@ -9103,10 +9122,18 @@ function meosVisStampSegments(text) {
 }
 function meosApplyNameStampDecorations(editor) {
   const types = meosStampDecoTypes();
+  const ed2 = meosEditableDecoTypes();
   const buckets = types.map(() => []);
+  const nameRanges = [], cmtRanges = [];
+  let rawSet = new Set();
   try {
     if (!editor || !editor.document) return;
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { types.forEach((t, i) => editor.setDecorations(t, [])); return; }
+    if (typeof meosRawMode !== 'undefined' && meosRawMode) {
+      types.forEach((t) => editor.setDecorations(t, []));
+      editor.setDecorations(ed2.name, []); editor.setDecorations(ed2.comment, []);
+      return;
+    }
+    rawSet = meosRawLines(editor);     // 生データを見せている行(= 橙に染まる行)
     const doc = editor.document;
     const spans = (editor.visibleRanges && editor.visibleRanges.length)
       ? editor.visibleRanges.map(r => [Math.max(0, r.start.line - 60), Math.min(doc.lineCount - 1, r.end.line + 60)])
@@ -9117,28 +9144,23 @@ function meosApplyNameStampDecorations(editor) {
         if (seen.has(ln)) continue;
         seen.add(ln);
         const text = doc.lineAt(ln).text || '';
-        // v4.0.366: 見出し/FCの可視TS(区切り字あり)も同じ色で塗る。行に `.` が無ければ即やめる(安い足切り)。
-        for (const segs of meosVisStampSegments(text)) {
-          for (let i = 0; i < segs.length; i++) {
-            const [from, len] = segs[i];
-            buckets[i % types.length].push(new vscode.Range(ln, from, ln, from + len));
-          }
+        // v4.0.368: 割り方は1か所(meosRawLineRoles)から。橙もモザイクも名前もコメントも同じ物差し。
+        const roles = meosRawLineRoles(doc, ln);
+        for (let i = 0; i < roles.stamps.length; i++) {
+          const [f, t] = roles.stamps[i];
+          buckets[i % types.length].push(new vscode.Range(ln, f, ln, t));
         }
-        if (!MEMBRANE_ARROW_RE.test(text)) continue;        // ここから下は膜の行だけ
-        const info = membraneLineInfo(doc, ln);
-        if (!info || !info.id) continue;
-        const segs = meosStampSegments(info.id);
-        if (!segs) continue;
-        // 名前の実際の開始桁は info.idStart。生データでも飾りでも同じ桁に名前が在る。
-        for (let i = 0; i < segs.length; i++) {
-          const [rel, len] = segs[i];
-          const from = info.idStart + rel;
-          buckets[i % types.length].push(new vscode.Range(ln, from, ln, from + len));
+        // ★変えてよい所を色で言うのは、**生データを見せている行だけ**＝ 飾りの時は今までどおり。
+        //   飾りの行で名前を塗ると、膜の色(深さの色)を潰してしまう。
+        if (rawSet.has(ln)) {
+          for (const [f, t] of roles.name) nameRanges.push(new vscode.Range(ln, f, ln, t));
+          for (const [f, t] of roles.comment) cmtRanges.push(new vscode.Range(ln, f, ln, t));
         }
       }
     }
   } catch (_) { }
   try { types.forEach((t, i) => editor.setDecorations(t, buckets[i])); } catch (_) { }
+  try { editor.setDecorations(ed2.name, nameRanges); editor.setDecorations(ed2.comment, cmtRanges); } catch (_) { }
 }
 // {* ▲mCN=0355_NAME_STAMP_COLORS *}
 function clearForRaw(editor) {
@@ -9147,6 +9169,7 @@ function clearForRaw(editor) {
   clear(editor); // 膜/line/jump系
   const z = (d) => { if (d) { try { editor.setDecorations(d, []); } catch (_) {} } };
   if (meosStampDecos) for (const d of meosStampDecos) z(d);   // v4.0.363: TSの色分けもRawでは外す
+  if (meosEditableDecos) { z(meosEditableDecos.name); z(meosEditableDecos.comment); } // v4.0.368
   if (highlightBodyByColor) for (const d of highlightBodyByColor.values()) z(d);
   if (highlightFgByColor) for (const d of highlightFgByColor.values()) z(d);
   z(highlightMarkerDecoration);
@@ -18551,6 +18574,8 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* v4.0.367(俊克 改良2「Me Dockの更新日は、tipに更新日のコピーを付けよう」): tip(::after)は疑似要素so押せない。
    → **中身自身を押せる物にする**= 日付をクリックすれば「ファイル名 + 更新日時」that手に入る。 */
 .title-file-ud .ud-copy{cursor:pointer;border-radius:3px;padding:0 2px}
+.title-file-ud .ud-flash{margin-left:6px;padding:0 4px;border-radius:3px;background:#3fb950;color:#0b0f0c;font-weight:700;animation:udfade 1.4s ease-out forwards}
+@keyframes udfade{0%{opacity:0}12%{opacity:1}70%{opacity:1}100%{opacity:0}}
 .title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file:hover .title-file-caret{opacity:1}
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
@@ -21098,6 +21123,10 @@ window.__meosRecent=Array.isArray(m.recent)?m.recent:[];window.__meosCurPath=m.p
 if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
 if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
+return;}if(m&&m.type==='copiedUd'){/* v4.0.368: 押した所に合図を出す(画面の隅では気づけない) */
+var _udc=document.getElementById('title-file-ud');
+if(_udc){var _f=document.createElement('span');_f.className='ud-flash';_f.textContent='Copied';_udc.appendChild(_f);
+setTimeout(function(){if(_f&&_f.parentNode)_f.parentNode.removeChild(_f);},1400);}
 return;}if(m&&m.type==='stampChips'){/* v4.0.367: Edit Me の入力枠の中をモザイクに見せる(下に敷いた字) */
 if(typeof window.__meosPaintNameTint==='function')window.__meosPaintNameTint(m.chips);
 return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 と、最後にディスクへ書いた時刻 */
@@ -22091,6 +22120,9 @@ function toggleMeDock(editorOverride) {
         const _txt = (_nm ? _nm : '') + (_ud ? (_nm ? ' ' : '') + 'UD' + _ud : '');
         if (_txt) {
           vscode.env.clipboard.writeText(_txt);
+          // ★v4.0.368(俊克「コピーしたと言うメッセージが、**ウィンドウ下端に出るので、気づきにくい**」):
+          //   合図は**押した所**に出す。画面の隅ではなく、指の下に。→ [[feedback_fix_signal_at_fix_place]]
+          try { meDockPanel.webview.postMessage({ type: 'copiedUd' }); } catch (_) { }
           vscode.window.setStatusBarMessage('MeOS: copied — ' + _txt, 2500);
         }
       } catch (_) { }
@@ -24601,28 +24633,65 @@ function meosRawLines(editor) {
   } catch (_) { }
   return out;
 }
-// v4.0.367: 行全体から「TSの区画」を抜いた範囲を返す。塗る相手を分けるための1つの物差し。
-function meosRangesExcludingStamps(doc, ln) {
+// ★★★v4.0.368(俊克 8/22 pm08:18 👍3「エディタ上の膜の中に文字カーソルが入っても、TSがモザイクに
+//   なったね👍 **これができるなら膜名とコメントも別の色にして、そこが変更できると言うことを教える**
+//   ようにした方がいいね。**直接編集ができるようになったことでもあるしね**。
+//   つまり、**膜名の中のオレンジ色は、変更不可という意味になる**。どうかな?」):
+//   ★★★**橙の意味が一段精密になる**＝ 今までの「生データを見せている」から
+//     「**触ると壊れる所**」へ。そして俊克の添えた一言が肝＝ **v4.0.351 で膜名が直せるように
+//     なったから、初めて「ここは変えてよい」と色で言える**。以前の膜名は"変えると壊れる"側だった。
+//     **機能が変わったので、色の意味を変えられる**＝ 順序が正しい。
+//   ★1行を役割で割る＝ 殻(記法・触るな) / 膜名(変えてよい) / コメント(変えてよい) / TS(日付として読む)。
+//     判定はここ1か所なので、橙もモザイクも名前もコメントも**同じ割り方**から出る。
+function meosRawLineRoles(doc, ln) {
   const text = doc.lineAt(ln).text || '';
+  const roles = { stamps: [], name: [], comment: [], shell: [] };
   const holes = [];
   try {
-    for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) holes.push([f, f + l]);
+    for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) { roles.stamps.push([f, f + l]); holes.push([f, f + l]); }
     const info = membraneLineInfo(doc, ln);
     if (info && info.id) {
-      const ss = meosStampSegments(info.id);
-      if (ss) for (const [rel, l] of ss) holes.push([info.idStart + rel, info.idStart + rel + l]);
+      const nameFrom = info.idStart, nameTo = info.idStart + info.id.length;
+      const ss = meosStampSegments(info.id) || [];
+      for (const [rel, l] of ss) { const f = info.idStart + rel; roles.stamps.push([f, f + l]); holes.push([f, f + l]); }
+      // 膜名のうち、TS を除いた所＝ 人が付けた名前。ここは直せる(閉じ膜がついてくる)。
+      let at = nameFrom;
+      for (const [f, t] of ss.map(([r, l]) => [info.idStart + r, info.idStart + r + l]).sort((a, b) => a[0] - b[0])) {
+        // 名前と TS の間の `_` は**区切り記号**なので、名前側でなく殻側に残す(名前を直す時も残る字)。
+        let end = f;
+        while (end > at && text[end - 1] === '_') end--;
+        if (end > at) roles.name.push([at, end]);
+        at = Math.max(at, t);
+      }
+      if (at < nameTo) roles.name.push([at, nameTo]);
+      for (const r of roles.name) holes.push(r);
+      // コメント本体＝ `// ` の後ろから、閉じの殻の手前まで。`// ` 自体は記法なので殻のまま。
+      const parts = membraneLineParts(text, info.kind);
+      const tailTo = (parts && parts.suffixStart >= 0) ? parts.suffixStart : text.length;
+      if (tailTo > nameTo) {
+        const tail = text.slice(nameTo, tailTo);
+        const m = tail.match(/^[ \t]*\/\/[ \t]*/);
+        if (m && m[0].length < tail.length) {
+          const cf = nameTo + m[0].length;
+          let ct = tailTo;
+          while (ct > cf && /\s/.test(text[ct - 1])) ct--;   // 末尾の空白は殻側(コメントの字ではない)
+          if (ct > cf) { roles.comment.push([cf, ct]); holes.push([cf, ct]); }
+        }
+      }
     }
   } catch (_) { }
-  if (!holes.length) return [new vscode.Range(ln, 0, ln, text.length)];
   holes.sort((a, b) => a[0] - b[0]);
-  const out = [];
   let at = 0;
   for (const [f, t] of holes) {
-    if (f > at) out.push(new vscode.Range(ln, at, ln, f));
+    if (f > at) roles.shell.push([at, f]);
     at = Math.max(at, t);
   }
-  if (at < text.length) out.push(new vscode.Range(ln, at, ln, text.length));
-  return out;
+  if (at < text.length) roles.shell.push([at, text.length]);
+  return roles;
+}
+// 橙(生データを見せている印)that塗る所＝ 殻だけ。
+function meosRangesExcludingStamps(doc, ln) {
+  return meosRawLineRoles(doc, ln).shell.map(([f, t]) => new vscode.Range(ln, f, ln, t));
 }
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;

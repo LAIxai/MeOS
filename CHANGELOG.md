@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.368 (2026-08-22)
+- **Orange now means "don't touch this", and the line says which parts you may.** With the caret on a membrane line,
+  the raw source is split by role: the shell (`<!-- {* ▼mCN=`, `//`, `*} -->`) stays orange, the **name** you gave it
+  is shown in the plain foreground, the **comment** in its own colour, and the timestamp stays tiled. The user's own
+  framing, and the reason it is possible now: the name only became safe to edit in v4.0.351, when the closing
+  membrane started following it. The behaviour changed first; the colour follows.
+- One place decides the split, so the orange, the tiles, the name and the comment can never disagree about where a
+  boundary is — and every character of the line belongs to exactly one role (asserted in the tests).
+- **Copy feedback appears where you pressed.** "Copied" flashes next to the timestamp instead of only in the status
+  bar at the bottom edge of the window.
+
 ### v4.0.367 (2026-08-22)
 - **The tiles survive the orange line — by not fighting for it.** Two decorations were painting the same characters
   and `!important` was not settling it reliably. The orange (which marks "this line is showing raw source") now paints

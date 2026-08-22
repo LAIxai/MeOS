@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -312,8 +312,27 @@ console.log('⑯ 橙はTSを避けて塗る= 同じ字を2つで奪い合わな�
   ok(stampChars > 0, 'TSの字が在る', stampChars);
   ok(overlap === 0, '★★橙の範囲にTSの字が1つも入らない(取り合いが起きない)', overlap);
   ok(covered.has(0) && covered.has(t.length - 1), '★TS以外はちゃんと橙に入る(行頭と行末)', [covered.has(0), covered.has(t.length-1)]);
-  const plain = T.meosRangesExcludingStamps(doc, OPEN_LINE + 1);
-  ok(plain.length === 1 && plain[0].start.character === 0, 'TSが無い行は行まるごと1つの範囲', plain.length);
+  const plainLine = lines.findIndex(x => x === 'なかみ');
+  const plain = T.meosRangesExcludingStamps(doc, plainLine);
+  ok(plain.length === 1 && plain[0].start.character === 0 && plain[0].end.character === lines[plainLine].length,
+     'TSが無い行は行まるごと1つの範囲', plain.length);
+  ok(T.meosRangesExcludingStamps(doc, OPEN_LINE + 1).length === 0, '空行は塗る所が無い(長さ0の範囲を作らない)', T.meosRangesExcludingStamps(doc, OPEN_LINE + 1).length);
+}
+console.log('⑰ 1行を役割で割る= 触れる所と触るなの所(v4.0.368)');
+{
+  const t = lines[OPEN_LINE];
+  const r = T.meosRawLineRoles(doc, OPEN_LINE);
+  const pick = (segs) => segs.map(([a,b]) => t.slice(a,b)).join('|');
+  ok(pick(r.name) === 'テスト膜', '★膜名(TSを除いた人が付けた所)= 変えてよい', pick(r.name));
+  ok(pick(r.comment) === 'comment1', '★コメント本体= 変えてよい', pick(r.comment));
+  ok(/^<!-- \{\* ▼mCN=$/.test(t.slice(r.shell[0][0], r.shell[0][1])), '★先頭の殻= 記法(触るな)', t.slice(r.shell[0][0], r.shell[0][1]));
+  ok(r.shell.some(([a,b]) => t.slice(a,b).indexOf('*} -->') >= 0), '★末尾の殻も記法', r.shell.map(([a,b])=>t.slice(a,b)).join('/'));
+  ok(r.shell.some(([a,b]) => t.slice(a,b).indexOf('//') >= 0), '`//` は記法だから殻の側', true);
+  // 4つの役割は重ならない= 同じ字を2つが塗らない
+  const seen = new Set(); let dup = 0;
+  for (const k of ['stamps','name','comment','shell']) for (const [a,b] of r[k]) for (let c=a;c<b;c++){ if(seen.has(c))dup++; seen.add(c); }
+  ok(dup === 0, '★★役割は重ならない(同じ字を2つが塗らない)', dup);
+  ok(seen.size === t.length, '★★行の字を1つ残らず割り当てている', seen.size + '/' + t.length);
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);
