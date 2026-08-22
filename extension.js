@@ -23014,14 +23014,37 @@ function meosStripHiddenForWidth(s) {
   }
   return t.replace(/\uE000(\d+)\uE000/g, (m, i) => keep[Number(i)] || '');
 }
-function meosStrWidth(s) { let w = 0; for (const ch of meosStripHiddenForWidth(s)) w += meosCharWidth(ch.codePointAt(0)); return w; } // v4.0.74: 隠れるマーカーを外した「見えている幅」で測る
+// ★★★v4.0.378(俊克 8/23 am01:29「分ったよ、**VSCmの機能**だよ。#dc2626という色コードを書くと、勝手に、
+//   表示されて…**これはまさに、昨日、散々苦労した▼マークを飛び越えるのと同じこと**をやっているんだよ。
+//   だから、貴方のコードで、色指定した時は、テーブルでは、**この四角が入ること計算に組み込めばいい**んだよ」):
+//   ★★★**俊克の見立てが正確**＝ VS Code は色コードを見つけると、字の前に**色の四角**を描く
+//     (editor.colorDecorators)。生データには無いのに**画面では幅を持つ**＝ ▼ の印と同じ身分。
+//     表の整形は「画面で見えている幅」で詰める(v4.0.74)ので、**数えなければ `|` がずれる**。
+//   ★数え方は他の隠れ物と同じ列に並ぶ＝ 隠れる字は引き、**描かれる物は足す**。引き算だけ在って
+//     足し算が無かった、というのが今回の穴。
+//   ★設定 `editor.colorDecorators` が切ってあれば四角は出ないので、その時は数えない。
+const MEOS_HEX_COLOR_RE = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-fA-F])/g;
+let _meosColorDecoOn = true;
+function meosReadColorDecoratorSetting() {
+  try { _meosColorDecoOn = vscode.workspace.getConfiguration('editor').get('colorDecorators', true) !== false; } catch (_) { _meosColorDecoOn = true; }
+}
+// 色コード1つにつき四角1つ。幅は半角1つぶんで数える(VS Code の色四角は字とほぼ同じ大きさ)。
+function meosColorChipWidth(text) {
+  if (!_meosColorDecoOn) return 0;
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('#') < 0) return 0;
+  MEOS_HEX_COLOR_RE.lastIndex = 0;
+  const m = t.match(MEOS_HEX_COLOR_RE);
+  return m ? m.length : 0;
+}
+function meosStrWidth(s) { let w = 0; const t = meosStripHiddenForWidth(s); for (const ch of t) w += meosCharWidth(ch.codePointAt(0)); return w + meosColorChipWidth(t); } // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す
 function meosPadCell(s, width, align) {
   const pad = Math.max(0, Math.round(width - meosStrWidth(s))); // 全角が小数幅なので整数スペースに丸める
   if (align === 'right') return ' '.repeat(pad) + s;
   if (align === 'center') { const l = Math.floor(pad / 2); return ' '.repeat(l) + s + ' '.repeat(pad - l); }
   return s + ' '.repeat(pad);
 }
-function meosReadTableCjkWidth() { try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableCjkWidth', 1.67)); if (v >= 1 && v <= 2) _meosTableCjkW = v; } catch (_) {} }
+function meosReadTableCjkWidth() { meosReadColorDecoratorSetting(); try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('tableCjkWidth', 1.67)); if (v >= 1 && v <= 2) _meosTableCjkW = v; } catch (_) {} }
 function meosSplitTableRow(line) {
   let s = line.trim();
   if (s.startsWith('|')) s = s.slice(1);

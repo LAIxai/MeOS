@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.378 (2026-08-23)
+- **Table alignment now counts VS Code's colour swatches.** Writing `#dc2626` makes the editor draw a small colour
+  square before it — nothing in the file, but real width on screen, the same species as the ▼ glyph that cost a day
+  earlier. Table formatting measures *visible* width (v4.0.74), so it has always subtracted the markers MeOS hides;
+  it simply never added the things the editor draws. Now it does: one square per colour code, 3/4/6/8 hex digits,
+  and nothing counted when `editor.colorDecorators` is off.
+- A residual 0.35-character offset on rows with many CJK characters is not this, and is not fixable by padding: CJK
+  is measured at 1.67 (a real measurement for the font pairing), and a fraction of a character cannot be filled with
+  whole spaces. `laiMembrane.tableCjkWidth` exists for anyone whose font wants a different ratio.
+
 ### v4.0.377 (2026-08-22)
 - **One colour table instead of two.** Measured, the dock's copy sat one Tailwind step off the membrane colours —
   O by 32, P by 42, N by 27, W by 79 in RGB distance. Close enough to look right, far enough that grepping one value

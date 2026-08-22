@@ -64,7 +64,7 @@ Module._load = function (request) { if (request === 'vscode') return stub; retur
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_rulers_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosStrWidth, meosCharWidth, meosSplitTableRow, meosIsTableSeparator, meosIsTableLine,
+module.exports.__t = { meosStrWidth, meosCharWidth, meosSplitTableRow, meosIsTableSeparator, meosIsTableLine, meosColorChipWidth, meosFormatTableLines,
   makeDecorations, applyPrettyLabels, meosApplyBoldDecorations, meosApplyMeLinkDecorations, meosApplyMeTexDecorations,
   meosApplyTableMergeDecorations, meosApplyTableCalcDecorations, meosApplyFuncDecorations };
 `, 'utf8');
@@ -174,6 +174,28 @@ for (const [a, b] of blocks) {
       if (Math.abs(A - B) > 1e-9) bad.push({ line: ln + 1, A, B, raw: raw.trim() });
     }
   }
+}
+// ★v4.0.378(俊克「VSCmの機能だよ。#dc2626 と書くと勝手に四角が表示される…この四角が入ることを
+//   計算に組み込めばいい」): VS Code は色コードの前に**色の四角**を描く。生データには無いのに画面では
+//   幅を持つ= ▼ の印と同じ身分なので、整形が数えないと `|` が右へずれる。ここで数え方を測る。
+{
+  let cbad = 0;
+  const cw = (t) => T.meosColorChipWidth(t);
+  const say = (ok2, msg, got) => { console.log((ok2 ? '  ok  ' : '  NG  ') + msg + (ok2 ? '' : '   -> ' + got)); if (!ok2) cbad++; };
+  console.log('色の四角(VS Code が描く物)を幅に数える:');
+  say(cw('#dc2626') === 1, '6桁の色コード= 四角1つ', cw('#dc2626'));
+  say(cw('#fff') === 1, '3桁でも四角1つ', cw('#fff'));
+  say(cw('#dc2626ff') === 1, '8桁(透明度つき)でも1つ', cw('#dc2626ff'));
+  say(cw('#dc2626 と #16a34a') === 2, '2つ在れば2つ', cw('#dc2626 と #16a34a'));
+  say(cw('#12345') === 0, '★5桁は色コードでない= 数えない', cw('#12345'));
+  say(cw('ただの文') === 0, '色コードが無ければ0', cw('ただの文'));
+  say(T.meosStrWidth('#dc2626') === 8, '★幅は 7文字 + 四角1 = 8', T.meosStrWidth('#dc2626'));
+  // 整形した表の各行が、四角ぶんも含めて同じ幅になること(全角の端数を除く)
+  const rows = ['| A | #dc2626 |', '|---|---|', '| B | #16a34a |'];
+  const out = T.meosFormatTableLines(rows.slice(), null);
+  const ws = (out && out.lines ? out.lines : out).map(r => T.meosStrWidth(r));
+  say(ws.every(w => Math.abs(w - ws[0]) < 1e-9), '★★整形すると全行が同じ幅になる(四角ぶんも含めて)', ws.join('/'));
+  if (cbad) { console.log('rulers: 色の四角の数え方に食い違い ' + cbad + ' 件'); process.exit(1); }
 }
 console.log('rulers: 表' + blocks.length + 'ブロック / ' + cells + 'セル を測った (' + (file || '同梱サンプル') + ')');
 if (!bad.length) { console.log('rulers: OK (整形that使う幅 = 画面で見えている幅)'); process.exit(0); }
