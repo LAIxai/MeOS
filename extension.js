@@ -4527,8 +4527,13 @@ async function restoreMstatsForEditor(editor) {
       } catch (_) { }
       await vscode.commands.executeCommand('editor.fold', { selectionLines: _left.map(p => p.start) });
       _rounds++;
-      const _still = _left.filter(p => _pairBodyVisible(editor, p));  // 本文が画面に見えている= まだ開いている
-      if (!_still.length) break;                                      // 見える範囲では全部畳めた
+      // ★★v4.0.357: 畳めたかの物差しを直す。`_pairBodyVisible` は「膜の範囲と画面が**重なるか**」なので、
+      //   6万行の大きな膜は画面がどこに在っても常に true ＝ **畳めても「まだ開いている」と答える**。
+      //   実測ログ `[restore] fold=142 rounds=1 stillOpenOnScreen=142` がその姿(1つも畳めていない訳がない)。
+      //   → **開始行の次が隠れているか**で見る＝ v4.0.349 で作った物差しに合流する(同じ1つの判定)。
+      //   null(画面の外/下端で分らない)は追いかけない＝ 確かめられない物を待たない。
+      const _still = _left.filter(p => meosViewportFoldFactAt(editor, p.start) === false);
+      if (!_still.length) break;                                      // 確かめられる範囲では全部畳めた
       try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
       await new Promise(r => setTimeout(r, 200));
       _left = _still;
@@ -4551,13 +4556,16 @@ async function restoreMstatsForEditor(editor) {
   //     画面だけが違う所を映す＝ 俊克の見た姿(Line欄は正しい値なのに、画面は別の場所)。
   //   ★直し＝ **畳み終えてから、カーソルの居る行を画面の中央へ置き直す**。畳む前に決めた位置は
   //     もう当てにならないので、畳んだ後の姿でもう一度決める。
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
       const _c = editor.selection ? editor.selection.active.line : -1;
       if (_c >= 0 && _c < editor.document.lineCount) {
         editor.revealRange(new vscode.Range(_c, 0, _c, 0), vscode.TextEditorRevealType.InCenter);
       }
     } catch (_) { }
+    // ★v4.0.357(俊克「再起動した時は、エディタをアクティブにできるか?」): 焦点を本文へ返す。
+    //   復元し終えた所を見せるのだから、次の一手が打てる状態で渡すのが筋。
+    try { await vscode.window.showTextDocument(editor.document, editor.viewColumn, false); } catch (_) { }
     refresh(editor); scheduleMstatsSync(editor);
   }, 180);
 }
@@ -27344,9 +27352,21 @@ function activate(context) {
 context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(ev => { try { if (ev.affectsConfiguration('laiMembrane.tableAutoCalc')) { _tableAutoCalcCache = null; const ed = vscode.window.activeTextEditor; if (ed) meosApplyTableCalcDecorations(ed); try { updateMeDockMode(); } catch (_) {} } } catch (_) {} })); // v3.1.70: 設定を直接変更(Settings UI)したらキャッシュ無効化+反映
 makeDecorations();
   syncGutterEditorSettings(); // v0.9.818: hide/restore folding chevrons per gutterLanes setting
-  refresh();
-  setTimeout(() => restoreMstatsForEditor(vscode.window.activeTextEditor), 250);
-  setTimeout(() => autoShowMeDockForEditor(vscode.window.activeTextEditor), 320);
+  // ★★★v4.0.357(俊克 8/22 pm01:51「ただし、エディタがアクティブじゃないので、スクショ1枚目のような
+  //   感じになる。**再起動した時は、エディタをアクティブにできるか?**」＋バグ1「膜のガターメニューは、
+  //   依然として、反応しない。なぜ?」):
+  //   ★★★**俊克の観察が、2つの症状の1つの原因だった**。再起動直後は焦点が Me Dock(webview)に在り、
+  //     その間 `vscode.window.activeTextEditor` は **undefined**。ここで `refresh()` を引数なしで
+  //     呼ぶと `activeEditor = undefined` が焼き付き、以後
+  //       ① 装飾が一度も走らない(スクショの Ln105603 が生データのまま=カーソルは別行に在るのに)
+  //       ② `onDidChangeTextEditorSelection` の1行目 `if (e.textEditor !== activeEditor) return`
+  //          で**クリックが全部捨てられる**(だから [arrow] のログが0件だった)
+  //     ＝ 「ガターメニューが反応しない」は膜の仕組みでなく、**MeOSが寝ていた**だけ。
+  //   ★見えているエディタを相手にする＝ 焦点が無くても、映っているものは在る。
+  const _bootEditor = vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0] || undefined;
+  refresh(_bootEditor);
+  setTimeout(() => restoreMstatsForEditor(vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0]), 250);
+  setTimeout(() => autoShowMeDockForEditor(vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0]), 320);
   const foldingSelector = [
     { scheme: 'file', language: 'markdown' },
     { scheme: 'file', language: 'plaintext' },
@@ -27409,7 +27429,15 @@ makeDecorations();
     //   既に laiMembrane.enterAtCloseRightEdge キーバインドが処理済みで、本横取りの改行分岐はキーボードでは
     //   実質死んでいた。撤去により通常/Raw とも入力が100%ネイティブに(文字喰い解消・IME軽量化)。
     vscode.window.onDidChangeTextEditorSelection(e => {
-      if (e.textEditor !== activeEditor) return;
+      // ★★v4.0.357: 焦点が Me Dock に在る間 activeEditor が空になることがあり、その間**クリックが
+      //   ここで全部捨てられていた**(俊克「ガターメニューが反応しない」/ [arrow] のログが0件)。
+      //   → 空なら、**見えているエディタからのイベントは受けて、そのまま相手にする**。
+      if (e.textEditor !== activeEditor) {
+        if (!activeEditor && vscode.window.visibleTextEditors.indexOf(e.textEditor) >= 0) {
+          activeEditor = e.textEditor;
+          try { meosDbg('[sel] activeEditor was empty → adopted the visible editor'); } catch (_) { }
+        } else return;
+      }
       if (meosRawMode) return; // v0.9.723: Raw中は選択driven refreshを抑止
       // v0.9.625: 前の行を記録（updateLastCaret が上書きする前に）。
       const _prevKey = caretKeyForEditor(e.textEditor);

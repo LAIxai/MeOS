@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.357 (2026-08-22)
+- **"The gutter menu still does nothing" was MeOS being asleep, not the membrane machinery.** The instrumentation
+  added in v4.0.356 logged the ▼ click **zero times**, and the screenshot showed a membrane line rendering as raw
+  source with no caret on it — decorations had never run either. Cause: right after a restart the focus sits in Me
+  Dock (a webview), so `vscode.window.activeTextEditor` is `undefined`; `refresh()` with no argument then burns that
+  `undefined` in, and every selection event is dropped by the `e.textEditor !== activeEditor` guard on line one.
+  Startup now works from the *visible* editor, and a selection event from a visible editor is adopted when the
+  remembered one is empty.
+- **The editor gets focus back after a restore**, as requested — you are handed the restored position ready to type.
+- **Fixed the "did the fold take?" measurement.** It asked whether the membrane's body *overlaps* the viewport, so a
+  60,000-line membrane answered "still open" no matter what — visible in the log as `fold=142 rounds=1
+  stillOpenOnScreen=142`. It now asks whether the line after the opening line is hidden, the same yardstick the ▼▲
+  glyph uses, and does not chase membranes it cannot see.
+
 ### v4.0.356 (2026-08-22)
 - **Instrumenting the ▼ click.** "The tip appears but clicking does nothing" — and five guesses in a row failed to
   explain it, so clicking a membrane line with the mouse now records the three things that decide the outcome: the
