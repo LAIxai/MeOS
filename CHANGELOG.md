@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.369 (2026-08-22)
+- **"Copied" appears in the tooltip itself.** Clicking the timestamp happens while the tooltip is open showing exactly
+  what will be copied, so the tooltip is where the confirmation belongs — *that* is what was copied. The separate
+  badge beside it is gone: two signals for one act is two mouths.
+
 ### v4.0.368 (2026-08-22)
 - **Orange now means "don't touch this", and the line says which parts you may.** With the caret on a membrane line,
   the raw source is split by role: the shell (`<!-- {* ▼mCN=`, `//`, `*} -->`) stays orange, the **name** you gave it

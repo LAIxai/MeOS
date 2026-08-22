@@ -18574,8 +18574,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* v4.0.367(俊克 改良2「Me Dockの更新日は、tipに更新日のコピーを付けよう」): tip(::after)は疑似要素so押せない。
    → **中身自身を押せる物にする**= 日付をクリックすれば「ファイル名 + 更新日時」that手に入る。 */
 .title-file-ud .ud-copy{cursor:pointer;border-radius:3px;padding:0 2px}
-.title-file-ud .ud-flash{margin-left:6px;padding:0 4px;border-radius:3px;background:#3fb950;color:#0b0f0c;font-weight:700;animation:udfade 1.4s ease-out forwards}
-@keyframes udfade{0%{opacity:0}12%{opacity:1}70%{opacity:1}100%{opacity:0}}
+.title-file-ud .ud-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}/* v4.0.369: tipそのものが合図になる */
 .title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file:hover .title-file-caret{opacity:1}
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
@@ -21123,10 +21122,13 @@ window.__meosRecent=Array.isArray(m.recent)?m.recent:[];window.__meosCurPath=m.p
 if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
 if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
-return;}if(m&&m.type==='copiedUd'){/* v4.0.368: 押した所に合図を出す(画面の隅では気づけない) */
-var _udc=document.getElementById('title-file-ud');
-if(_udc){var _f=document.createElement('span');_f.className='ud-flash';_f.textContent='Copied';_udc.appendChild(_f);
-setTimeout(function(){if(_f&&_f.parentNode)_f.parentNode.removeChild(_f);},1400);}
+return;}if(m&&m.type==='copiedUd'){/* ★v4.0.369(俊克「tipを表示したままなら、**tipにCopiedを被せる**ように
+   したほうが、**それがコピーされた**と理解しやすくなるでしょ」): 押した時、tipは出たまま=
+   **その出ている物がコピーされた**と言えばよい。横に別の合図を出すのは、口を2つ作ること。 */
+var _udc=document.querySelector('.title-file-ud .ud-copy');
+if(_udc){var _orig=_udc.getAttribute('data-tip')||'';
+_udc.setAttribute('data-tip','Copied');_udc.classList.add('ud-copied');
+setTimeout(function(){ if(_udc){_udc.setAttribute('data-tip',_orig);_udc.classList.remove('ud-copied');} },1500);}
 return;}if(m&&m.type==='stampChips'){/* v4.0.367: Edit Me の入力枠の中をモザイクに見せる(下に敷いた字) */
 if(typeof window.__meosPaintNameTint==='function')window.__meosPaintNameTint(m.chips);
 return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 と、最後にディスクへ書いた時刻 */
