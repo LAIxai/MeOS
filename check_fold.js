@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -286,6 +286,18 @@ console.log('⑭ 膜名タイムスタンプのモザイク色分け(v4.0.363)')
   // 3色を巡回= 隣り合う区画が必ず違う色に入る
   const groups = seg.map((_, i) => i % 3);
   ok(groups.every((g, i) => i === 0 || g !== groups[i-1]), '★隣り合う区画が必ず違う色(=モザイク)', groups.join(''));
+}
+console.log('⑮ 見出し/FCの可視TSもモザイク(v4.0.366)');
+{
+  const t = '<!-- Mew!FC H2_2026.08.22(s)pm07:07.59JST (白/green)//[]tip= -->';
+  const all = T.meosVisStampSegments(t);
+  ok(all.length === 1, '1行に1つ見つける', all.length);
+  const parts = all[0].map(([a,l]) => t.substr(a,l));
+  ok(parts.join('|') === '2026|08|22|s|pm|07|07|59|JST', '★区切り字は塗らず、読む単位だけ塗る', parts.join('|'));
+  const g = all[0].map((_, i) => i % 3);
+  ok(g.every((x, i) => i === 0 || x !== g[i-1]), '★隣り合う区画が必ず違う色', g.join(''));
+  ok(T.meosVisStampSegments('ただの文 2026年8月22日').length === 0, '形が違う日付は塗らない', T.meosVisStampSegments('ただの文 2026年8月22日').length);
+  ok(T.meosVisStampSegments('').length === 0, '空行で落ちない', 0);
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

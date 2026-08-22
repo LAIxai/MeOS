@@ -9049,8 +9049,12 @@ function meosStampDecoTypes() {
   if (!meosStampDecos) {
     meosStampDecos = MEOS_STAMP_COLORS.map(c => vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-      // 色を注ぐ唯一の口は textDecoration(v4.0.137の教訓)。膜名の色に必ず勝たせる。
-      textDecoration: 'none; color: ' + c + ' !important'
+      // ★v4.0.366(俊克 バグ1「膜に入った時の**橙色の文字表示のときに、モザイクになってない**よ」):
+      //   実測すると範囲は出ていた(飾りでも生データでも16)＝ 負けていたのは**色の取り合い**。
+      //   生データの行は行まるごと橙に染まる(v4.0.324)ので、部分の色は**両方の口から**注いで勝たせる
+      //   ＝ 通常の `color` と、textDecoration に載せた `!important`(v4.0.137/239 の作法・末尾の ; も揃える)。
+      color: c,
+      textDecoration: 'none; color: ' + c + ' !important;'
     }));
   }
   return meosStampDecos;
@@ -9071,6 +9075,32 @@ function meosStampSegments(name) {
   }
   return out.length ? out : null;
 }
+// ★★v4.0.366(俊克 改良1「ハイライトのFCコメントに付けるTSは**文字を詰めてないけど、これもモザイクに
+//   しようよ**」): 詰めていなくても、**日付時刻は同じ読み方をする物**so同じ塗り方にする＝ 揃っていることが
+//   次の物を読む助けになる(俊克「教育的に、日付がモザイクだと教える」)。
+//   ★区切り字(`.` `(` `)` `:`)は塗らない＝ 既に区切りの役をしているものに色を足しても何も増えない。
+//   ★形は見出しの可視TSと同じ1つの物差し(MEOS_STAMP_BODY)から引く。
+const MEOS_VIS_STAMP_RE = new RegExp('(\\d{4})\\.(\\d{2})\\.(\\d{2})\\(([SMTWtFs])\\)(am|pm)(\\d{2}):(\\d{2})\\.(\\d{2})([A-Za-z]{2,5}(?:[+-]\\d{1,2})?)?', 'g');
+function meosVisStampSegments(text) {
+  const out = [];
+  if (!text || text.indexOf('.') < 0) return out;
+  MEOS_VIS_STAMP_RE.lastIndex = 0;
+  let m;
+  while ((m = MEOS_VIS_STAMP_RE.exec(text))) {
+    let at = m.index;
+    const segs = [];
+    for (let g = 1; g <= 9; g++) {
+      const part = m[g];
+      if (part === undefined) continue;
+      const rel = m[0].indexOf(part, at - m.index);      // 区切り字を跨いだ実位置
+      const from = m.index + (rel >= 0 ? rel : 0);
+      segs.push([from, part.length]);
+      at = from + part.length;
+    }
+    out.push(segs);
+  }
+  return out;
+}
 function meosApplyNameStampDecorations(editor) {
   const types = meosStampDecoTypes();
   const buckets = types.map(() => []);
@@ -9087,7 +9117,14 @@ function meosApplyNameStampDecorations(editor) {
         if (seen.has(ln)) continue;
         seen.add(ln);
         const text = doc.lineAt(ln).text || '';
-        if (!MEMBRANE_ARROW_RE.test(text)) continue;        // 膜の行だけ(安い足切り)
+        // v4.0.366: 見出し/FCの可視TS(区切り字あり)も同じ色で塗る。行に `.` が無ければ即やめる(安い足切り)。
+        for (const segs of meosVisStampSegments(text)) {
+          for (let i = 0; i < segs.length; i++) {
+            const [from, len] = segs[i];
+            buckets[i % types.length].push(new vscode.Range(ln, from, ln, from + len));
+          }
+        }
+        if (!MEMBRANE_ARROW_RE.test(text)) continue;        // ここから下は膜の行だけ
         const info = membraneLineInfo(doc, ln);
         if (!info || !info.id) continue;
         const segs = meosStampSegments(info.id);
@@ -18436,6 +18473,23 @@ function meosDockUdLabel(doc) {
     return meosFormatStamp(new Date(st.mtime));
   } catch (_) { return ''; }
 }
+// v4.0.366(俊克「そして、この日付もモザイク化しよう。ここでモザイクになっていることで、**教育的に、
+//   日付がモザイクだと教える**んだよ」): 本文と同じ塗り分けを Me Dock でも見せる。
+//   ★色は node の `MEOS_STAMP_COLORS` 1か所から出す＝ webview に同じ色を書き写さない(値は1つ)。
+function meosStampChips(label) {
+  const txt = String(label || '');
+  const all = meosVisStampSegments(txt);
+  if (!all.length) return [{ t: txt, c: '' }];
+  const out = [];
+  let at = 0, i = 0;
+  for (const [from, len] of all[0]) {
+    if (from > at) out.push({ t: txt.slice(at, from), c: '' });     // 区切り字は塗らない
+    out.push({ t: txt.substr(from, len), c: MEOS_STAMP_COLORS[i % MEOS_STAMP_COLORS.length] });
+    at = from + len; i++;
+  }
+  if (at < txt.length) out.push({ t: txt.slice(at), c: '' });
+  return out;
+}
 let _meosLastUdSig = '';
 function postDockFileUD(editor = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null), force = false) {
   try {
@@ -18447,7 +18501,7 @@ function postDockFileUD(editor = (typeof getMeDockTargetEditor === 'function' ? 
     const sig = (dirty ? '1' : '0') + '|' + ud;
     if (!force && sig === _meosLastUdSig) return;        // 変わっていない= 送らない(打鍵ごとの往復を避ける)
     _meosLastUdSig = sig;
-    meDockPanel.webview.postMessage({ type: 'dockFileUD', dirty, ud });
+    meDockPanel.webview.postMessage({ type: 'dockFileUD', dirty, ud, udChips: meosStampChips(ud) });
   } catch (_) { }
 }
 function meosExtVersion() {
@@ -18472,8 +18526,14 @@ function meDockHtml() {
 :root{color-scheme:light dark}
 body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--vscode-editor-background);color:var(--vscode-editor-foreground);--meos-frame:color-mix(in srgb,var(--vscode-foreground) 50%,transparent)}
 .dock{border:1px solid var(--vscode-panel-border);border-radius:10px;overflow:visible;box-shadow:0 8px 24px rgba(0,0,0,.20);background:var(--vscode-sideBar-background)}
-.title{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;font-size:14px;font-weight:800;letter-spacing:.02em;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 50%,transparent);border-radius:8px}
+.title{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:9px 11px;font-size:14px;font-weight:800;letter-spacing:.02em;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 50%,transparent);border-radius:8px}
 .title-left{display:flex;align-items:center;gap:8px;min-width:0}
+/* ★v4.0.366(俊克 改良2「Me Dockの一番上の領域が混み合って、横幅の調整がしにくいので、ファイルメニューと
+   日付を1段下げようよ。**小さい文字なので、できるだけ高さを抑えて**ね。v4.0.xxxの左に合わせたくらいに
+   インデントしてね」): 1段目=名前と版と操作／2段目=どのファイルか・いつ保存したか。
+   2段目は版番号の左に揃える(4.6em≒「Me Dock 」の幅)。行の高さは詰めて、増えるのは1行ぶんだけ。 */
+.title-row1{display:flex;align-items:center;justify-content:space-between;min-width:0}
+.title-row2{display:flex;align-items:center;min-width:0;padding-left:4.6em;line-height:1.15;font-weight:400}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
 /* v4.0.306(俊克「Me Dockに最初に表示しているファイル名はスペースの関係上、小さいのは仕方ない。ただ、**角丸四角で
@@ -19211,7 +19271,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* {* ▲mCN=dock_css *} */
 </style>
 <!-- {* ▼mCN=dock_html // Me Dock のHTML(画面の骨組み) *} -->
-</head><body><section class="dock"><header class="title"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}<span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" data-tip="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span><span class="title-file-ud" id="title-file-ud"></span></span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
+</head><body><section class="dock"><header class="title"><div class="title-row1"><span class="title-left">Me Dock${meosVer ? ' <span class="title-ver">v' + meosVer + '</span>' : ''}</span><span class="title-actions"><span class="mz-split"><button class="mz-a" id="mz-a" title="Me Dock size · click A = also zoom the note body. Lit = sync ON">A</button><span class="mz-badge mz-tr" id="mz-in" title="Bigger">⊕</span><span class="mz-badge mz-br" id="mz-out" title="Smaller">⊖</span><div class="mz-pop" id="mz-pop"><input type="range" class="mz-slider" id="mz-slider" min="60" max="200" step="5"/><input class="mz-pct" id="mz-pct" inputmode="numeric" spellcheck="false"/></div></span><button class="standards-toggle on" id="standards-toggle" title="Standards ON (default): native &gt; / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control."><span class="standards-label">Standards &gt; v</span><span class="standards-switch" aria-hidden="true"><span class="standards-knob"></span></span></button></span></div><div class="title-row2"><span class="title-file" id="title-file"><span class="title-file-name" id="title-file-name"></span><button class="title-file-caret" id="title-file-caret" data-tip="Recent files (last 5)">&#9662;</button><div class="title-file-pop" id="title-file-pop"></div></span><span class="title-file-ud" id="title-file-ud"></span></div></header><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -21003,7 +21063,11 @@ _dot.textContent=m.dirty?'\u25cf':'\u00d7';
 _dot.style.color=m.dirty?'#e0803a':'#3fb950';
 _dot.setAttribute('data-tip',m.dirty?'Unsaved changes (\u2318S to save)':'Saved');
 _ud.appendChild(_dot);
-if(m.ud){var _t=document.createElement('span');_t.textContent='UD'+m.ud;_t.setAttribute('data-tip','Last updated');_ud.appendChild(_t);}
+if(m.ud){var _t=document.createElement('span');_t.setAttribute('data-tip','Last updated');
+var _u0=document.createElement('span');_u0.textContent='UD';_t.appendChild(_u0);
+var _cs=Array.isArray(m.udChips)?m.udChips:[{t:m.ud,c:''}];
+for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.textContent=_cs[_i].t||'';if(_cs[_i].c)_sp.style.color=_cs[_i].c;_t.appendChild(_sp);}
+_ud.appendChild(_t);}
 }
 return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}

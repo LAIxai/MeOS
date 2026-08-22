@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.366 (2026-08-22)
+- **The colour tiles now survive the orange raw-source line.** Measuring showed the ranges were being produced all
+  along (16 either way) — what failed was the colour contest against the full-line orange. The colour is now poured
+  through both taps: the ordinary `color` and an `!important` one on `textDecoration`.
+- **Readable timestamps get tiled too.** `H2_2026.08.22(s)pm07:07.59JST` is not packed, but a date is read the same
+  way wherever it appears, so it is painted the same way — separators left alone, only the units you actually read.
+  Consistency is what teaches the eye that a tiled thing is a date.
+- **The Me Dock header is two rows.** The top row was getting crowded enough to make the panel hard to resize, so the
+  file name and update time moved down one line, indented to the version number and set on a tight line-height — the
+  header grows by one small row, no more. That timestamp is tiled as well, so the same lesson is visible in the place
+  you look most often. The colours come from the single list in the extension; the webview is not given its own copy.
+
 ### v4.0.365 (2026-08-22)
 - **The saved marker was the wrong way round.** Now **● orange = unsaved** (danger — same direction as VS Code's own
   tab marker, which is already in your hands) and **× green = saved** (safe — nothing left to write).
