@@ -12910,6 +12910,22 @@ function mstatBadgeIconDoorRanges(editor) {
 async function handleMembraneNameSelection(editor, selectionKind) {
   if (!editor) return;
   const now = Date.now();
+  // ★v4.0.356(俊克 8/22 pm01:43「ガターメニューは、スクショ1枚目のように出るが、**それをクリック
+  //   しても反応しない**。以前の表示が違ったように感じたのは、変化しないからかも知れない」):
+  //   ★私はここで5回続けて推測した。**推測をやめて、押した時に何が起きたかを残す**
+  //     → [[feedback_go_get_the_measurement]]。▼/▲ の行をマウスで触った時だけなので、道は重くならない。
+  //   ★見たいのは3つ＝ **カーソルの落ちた桁 / ▼ の在る桁 / 抑止窓に食われていないか**。
+  //     `caretCh` と `idStart` が1つでも違えば、クリックは印の上に落ちていない。
+  if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse) {
+    try {
+      const _i = membraneLineInfo(editor.document, editor.selection.active.line);
+      if (_i) meosDbg('[arrow] line=' + _i.line + ' kind=' + _i.kind + ' idStart=' + _i.idStart
+        + ' caretCh=' + editor.selection.active.character
+        + ' hit=' + (editor.selection.active.character === _i.idStart)
+        + ' emptySel=' + editor.selection.isEmpty
+        + ' suppressed=' + (now < nameJumpSuppressUntil));
+    } catch (_) { }
+  }
   if (now < nameJumpSuppressUntil) return;
 
   // v0.9.216:

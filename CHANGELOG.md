@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.356 (2026-08-22)
+- **Instrumenting the ▼ click.** "The tip appears but clicking does nothing" — and five guesses in a row failed to
+  explain it, so clicking a membrane line with the mouse now records the three things that decide the outcome: the
+  column the caret landed on, the column the ▼ occupies, and whether a suppression window swallowed the event. If
+  `caretCh` and `idStart` differ, the click is not landing on the glyph; if `suppressed=true`, something ate it.
+  Only fires on membrane lines touched by the mouse, so it costs nothing on the typing path.
+
 ### v4.0.355 (2026-08-22)
 - **The restart lands on your line again.** v4.0.353 made the restore actually fold — and folding *shortens the
   document above you*, so the scroll position VS Code restored was pointing somewhere else entirely. The caret was on
