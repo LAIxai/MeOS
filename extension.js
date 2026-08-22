@@ -5325,6 +5325,30 @@ async function syncGutterEditorSettings() {
       }
       await extensionContext.globalState.update(FLAG, false);
     }
+    // ★★v4.0.354(俊克 8/22 pm01:04 バグ1「折り畳むためのガターメニューが最近、出ないんだよ。なぜ?
+    //   もしかして、FC化したせいかな?」):
+    //   ★★**FC化は無罪。原因は設定に残っていた昔の指定**＝ ワークスペースの `.vscode/settings.json` に
+    //     `"editor.showFoldingControls": "never"` が残っていた(MeOS が昔これを書いていた頃の名残)。
+    //     ユーザー設定は "mouseover" でも、**ワークスペース設定が上書きする**ので、そのフォルダを
+    //     開いている間だけ矢印が消える＝ 俊克の「最近」「このフォルダで」に合う。
+    //   ★上の戻す処理は `globalValue` しか見ていないので、**ワークスペース側に書かれた物には届かない**。
+    //     昔の版を使ったことのある人の環境には、今も残っている可能性がある。
+    //   ★勝手に書き換えない＝ **知らせて、押せば直る口を出す**(合図は直す場所に出す)。1回だけ。
+    //     → [[feedback_fix_signal_at_fix_place]]
+    if (ed.get('showFoldingControls') === 'never'
+        && extensionContext && !extensionContext.globalState.get('meosFoldChevronNoticeShown')) {
+      await extensionContext.globalState.update('meosFoldChevronNoticeShown', true);
+      const insp2 = ed.inspect ? ed.inspect('showFoldingControls') : null;
+      const target = (insp2 && insp2.workspaceValue === 'never')
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+      vscode.window.showWarningMessage(
+        'MeOS: the folding arrows in the gutter are turned off by a setting (editor.showFoldingControls = "never").',
+        'Show them'
+      ).then(pick => {
+        if (pick === 'Show them') { try { ed.update('showFoldingControls', 'mouseover', target); } catch (_) { } }
+      }, () => { });
+    }
   } catch (_) {}
 }
 
@@ -5436,7 +5460,20 @@ function isPairFolded(editor, pair, options) {
   if (/▼\s*▲/.test(startSource)) return true;
 
   // mSTAT is source-level state. ⊖ means closed; ⊕ means open.
-  const badge = parseMstatBadgeFromText(startText);
+  // ★★★v4.0.354(俊克 8/22 pm01:04 バグ2「VSCmを再起動すると、**⊖指定が⊕指定に書き変わって**、
+  //   展開されてしまう。貴方は少し勘違いしているが、VSCmを終了させる時は、膜の外にいるよ。
+  //   そして、今し方再起動した時、元いた行に飛ばなかったのに、展開されていた」):
+  //   ★★★**カーソルは無関係だった。ここが真犯人**＝ バッジを読む場所が2つあり、**片方だけが
+  //     新しい置き場に追随していなかった**。v4.0.330 でバッジは「▲の次のFC行」へ移ったのに、
+  //     ここは `parseMstatBadgeFromText(startText)`＝ **開始行しか見ていなかった**。
+  //     だから ⊖ と書いてあるのに「バッジが無い」→ 最後の既定 `return false`(開いている)と答えていた。
+  //   ★★★そこから先は一本道＝ 復元は ⊖ を見て畳む(meosPairBadgeAt は新形を読める) → refresh →
+  //     scheduleMstatsSync が **開いている** と聞いて **⊖ を ⊕ に書き戻す** → その書き込みは
+  //     畳んだ範囲の中(FC行)なので VSCode が折り畳みを計算し直して**開く**(v0.9.906)。
+  //     俊克の見た「⊖が⊕に書き変わって展開される」は、この3手が1つずつ起きていた。
+  //   ★直し＝ **同じ1つの口(meosPairBadgeAt)に訊く**。→ [[feedback_one_source_for_mark_count_action]]
+  //     (v4.0.353 で私が直した順番/カーソル/待ちも要る直しだが、**本体はこれ**だった。)
+  const badge = (meosPairBadgeAt(document, pair) || {}).badge || null;
   if (badge && badge.symbol === '⊖') return true;
   if (badge && badge.symbol === '⊕') return false;
 

@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -192,6 +192,27 @@ console.log('⑨ 復元で畳む前に、カーソルを逃がす先(v4.0.353)')
   ok(F(5, [outer]) === -1, '膜より前に居るなら逃がさない', F(5, [outer]));
   ok(F(-1, [outer]) === -1, 'カーソルが無い時も落ちない', F(-1, [outer]));
   ok(F(50, []) === -1, '畳む膜が無ければ何もしない', F(50, []));
+}
+console.log('⑩ 再起動の朝= 記憶が空・画面も無い。⊖ と書いてあるなら畳んである(v4.0.354)');
+{
+  const FC = CLOSE_LINE + 1;
+  const wasFc = lines[FC];
+  lines[FC] = '<!-- Mew!FC mCN (📊⊖4+0D-2Y) -->';          // 俊克の実データ= 畳んである指定
+  const ed = makeEditor([]);                                // 起動直後= 画面から何も分らない
+  const pair = T.collectPairs(doc, { excludeIndex: false }).find(p => p.start === OPEN_LINE);
+  ok(!!pair, '膜の対が見つかる', pair);
+  ok(T.meosViewportFoldFactAt(ed, OPEN_LINE) === null, '画面からは分らない(だからバッジに訊く)', T.meosViewportFoldFactAt(ed, OPEN_LINE));
+  ok(T.isPairFolded(ed, pair) === true, '★★⊖ を読んで「畳んである」と答える(開始行にバッジが無くても)', T.isPairFolded(ed, pair));
+  ok(T.isPairFolded(ed, pair, { ignoreViewport: true }) === true, '★★バッジを書く道でも同じ答え = ⊖ を ⊕ に書き戻さない', T.isPairFolded(ed, pair, { ignoreViewport: true }));
+
+  const at = T.meosPairBadgeAt(doc, pair);
+  ok(!!at && at.fc === true && at.line === FC, 'バッジの居場所は ▲ の次の FC 行', at && at.line);
+  const desired = T.desiredMstatForFoldState(at.text, T.isPairFolded(ed, pair, { ignoreViewport: true }));
+  ok(desired === null, '★★書き換える必要なし = 再起動で ⊖ が ⊕ に化けない', desired && desired.formatted);
+
+  lines[FC] = '<!-- Mew!FC mCN (📊⊕4+0D-2Y) -->';          // 開いている指定なら
+  ok(T.isPairFolded(ed, pair) === false, '⊕ なら「開いている」と答える', T.isPairFolded(ed, pair));
+  lines[FC] = wasFc;
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

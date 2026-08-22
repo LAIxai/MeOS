@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.354 (2026-08-22)
+- **The real cause of folded membranes re-opening after a restart: MeOS was rewriting its own `⊖` back to `⊕`.**
+  The badge moved to the FC line after ▲ in v4.0.330, but `isPairFolded` still read the *opening* line only — so a
+  membrane marked `⊖` looked badge-less and fell through to the default "open". From there it is one road: restore
+  folds it (that path reads the new location), refresh asks "is it folded?", hears *no*, and writes `⊖` → `⊕` — and
+  because the badge sits inside the fold, that write makes VS Code recompute folding and open it (v0.9.906). The
+  caret was never involved. Both readers now ask the same one place, `meosPairBadgeAt`.
+- **The missing folding arrows in the gutter were a leftover setting, not FC.** A workspace `.vscode/settings.json`
+  still carried `"editor.showFoldingControls": "never"` from when MeOS used to write it; a workspace value overrides
+  the user's `"mouseover"`, so the arrows vanish in that folder only. The old cleanup only ever inspected the *global*
+  value, so it could not reach it. MeOS now says so once, with a button that turns them back on — it does not rewrite
+  the setting behind your back.
+
 ### v4.0.353 (2026-08-22)
 - **Folded membranes stay folded across a restart.** A month-old complaint, and the reporter's own aside pointed
   straight at it: *"when the jump back to the original line fails, it stays folded."* VS Code always reveals the line
