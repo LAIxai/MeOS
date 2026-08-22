@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.363 (2026-08-22)
+- **Membrane-name timestamps are colour-tiled so you can read them.** `_20260822s174435JST` is packed tight because
+  *writing* wants it short, but *reading* wants a date and a time. Adding separators would throw away the compactness,
+  so the separation is shown in colour instead: year / month / day / weekday / hour / minute / second / zone each take
+  the next colour in a three-colour cycle, so neighbouring fields never share one. Variable precision is handled
+  (`Kt_19580126S08JST` splits into five), and a name without the weekday letter is not treated as a timestamp at all —
+  the same guard that keeps `table_143052` from reading as "year 1430, month 52". The colours are applied with
+  `!important` so they survive on top of the orange raw-source rendering, which is where they matter most.
+- **The file menu says whether the file is saved, and when it last was.** `[Kt_1958…▾] ● UD2026.08.22(s)pm05:58.01JST`
+  — a green ● for saved, an orange × the moment you type, and UD = the file's mtime, i.e. the last time it actually
+  reached the disk. The timestamp comes from the same single formatter the headings and membrane names use.
+
 ### v4.0.362 (2026-08-22)
 - **Press ▼ twice in a row.** Clicking the glyph put the caret on that line, and "the line under the caret shows raw
   source" (v4.0.345) turned the mark into plain characters — so the second press had nothing to aim at. The result of

@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -265,6 +265,27 @@ console.log('⑬ ▼ を押した後も、続けて押せる(v4.0.362)');
   const edBack = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);// 戻ってくる
   const g2 = openGlyphAt(edBack, OPEN_LINE);
   ok(g2 === '▼▲' && /Mew!FC/.test(afterAt(edBack, OPEN_LINE)), '★離れて戻れば生データ+FC写し(編集の邪魔をしない)', [g2, afterAt(edBack, OPEN_LINE)]);
+}
+console.log('⑭ 膜名タイムスタンプのモザイク色分け(v4.0.363)');
+{
+  const S = T.meosStampSegments;
+  const seg = S('テスト膜_20260822s174435JST');
+  ok(!!seg && seg.length === 8, '★年/月/日/曜/時/分/秒/TZ の8区画に割れる', seg && seg.length);
+  const name = 'テスト膜_20260822s174435JST';
+  ok(seg && seg.map(([a,l]) => name.substr(a,l)).join('|') === '2026|08|22|s|17|44|35|JST',
+     '★割れ目が意味の区切りと一致する', seg && seg.map(([a,l]) => name.substr(a,l)).join('|'));
+  ok(seg && name[seg[0][0]-1] === '_', '先頭の `_` は塗らない(区切りとして素のまま)', seg && name[seg[0][0]-1]);
+
+  const short = S('Kt_19580126S08JST');   // 可変精度= 時だけ・分秒なし(俊克の日記ファイル名と同じ形)
+  ok(!!short && short.map(([a,l]) => 'Kt_19580126S08JST'.substr(a,l)).join('|') === '1958|01|26|S|08|JST',
+     '★分秒が無くても割れる(可変精度)', short && short.map(([a,l]) => 'Kt_19580126S08JST'.substr(a,l)).join('|'));
+
+  ok(S('table_143052') === null, '曜日字が無い物はTSと見なさない(1430年52月と読める誤爆よけ)', S('table_143052'));
+  ok(S('name') === null && S('') === null, 'TSが無ければ何もしない', [S('name'), S('')]);
+
+  // 3色を巡回= 隣り合う区画が必ず違う色に入る
+  const groups = seg.map((_, i) => i % 3);
+  ok(groups.every((g, i) => i === 0 || g !== groups[i-1]), '★隣り合う区画が必ず違う色(=モザイク)', groups.join(''));
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);
