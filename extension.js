@@ -9064,14 +9064,29 @@ function meosEditableDecoTypes() {
   return meosEditableDecos;
 }
 // v4.0.371: 色指定(`Y` など)を**その色**で出すための入れ物。色は MEMBRANE_BADGE_COLOR_MAP から。
+// 地の色に対して読める字の色(白か黒)を選ぶ。明るさは人の目の感じ方に合わせた重み付けで測る。
+function meosReadableInkFor(css) {
+  try {
+    const m = String(css).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (!m) return '#000';
+    const lum = (0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3]) / 255;
+    return lum > 0.55 ? '#111' : '#fff';
+  } catch (_) { return '#000'; }
+}
 let meosCodedColorDecos = null;
 function meosCodedColorDeco(css) {
   if (!meosCodedColorDecos) meosCodedColorDecos = new Map();
   if (!meosCodedColorDecos.has(css)) {
+    // ★v4.0.372(俊克「**黄色は少し分かりにくいけど、赤ははっきり分るね**」): 字の色だけだと、
+    //   暗い地に暗い色(黄土/紺)が沈む＝ **色そのものを見せたいのに、色によって見え方が変わる**。
+    //   → **小さな色チップにする**(地をその色で塗り、字は地の明るさで白黒を選ぶ)。
+    //   どの色でも同じ強さで読めて、「この膜は何色か」が一目で分かる。
+    const fg = meosReadableInkFor(css);
     meosCodedColorDecos.set(css, vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-      color: css,
-      textDecoration: 'none; color: ' + css + ' !important; font-weight: 800;'
+      backgroundColor: css,
+      color: fg,
+      textDecoration: 'none; color: ' + fg + ' !important; font-weight: 800; border-radius: 2px; padding: 0 1px;'
     }));
   }
   return meosCodedColorDecos.get(css);

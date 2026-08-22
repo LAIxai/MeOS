@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.372 (2026-08-22)
+- **The colour letter is a chip, so every colour reads equally.** Painting the glyph itself meant dark colours sank
+  into a dark background — the one thing you are trying to show is the colour, and it was the colour that decided
+  whether you could see it. The letter now sits on a patch of its own colour with black or white ink chosen by
+  luminance. Yellow reads as clearly as red.
+
 ### v4.0.371 (2026-08-22)
 - **A colour code is drawn in the colour it names.** The badge's interior splits into three — state+count, depth, and
   the colour letter — the first two joining the tile cycle, and the letter shown *in that colour*. `Y` appears yellow,

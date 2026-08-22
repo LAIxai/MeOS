@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles, meosReadableInkFor, membraneCssColorForCode };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -348,6 +348,17 @@ console.log('⑱ バッジの中身も「変えてよい」側(v4.0.370)');
   let seen = new Set(), dup = 0;
   for (const k of ['stamps','name','comment','shell','badge']) for (const seg of r[k]) for (let c=seg[0];c<seg[1];c++){ if(seen.has(c))dup++; seen.add(c); }
   ok(dup === 0 && seen.size === t.length, '★★ここでも役割は重ならず、字を1つ残らず割り当てている', dup + '/' + seen.size + '/' + t.length);
+}
+console.log('⑲ 色指定は色チップ= どの色でも同じ強さで読める(v4.0.372)');
+{
+  const I = T.meosReadableInkFor;
+  ok(I('rgba(180, 150, 0, 1)') === '#111', '★黄(明るい地)には黒い字', I('rgba(180, 150, 0, 1)'));
+  ok(I('rgba(210, 40, 40, 1)') === '#fff', '★赤(暗い地)には白い字', I('rgba(210, 40, 40, 1)'));
+  ok(I('rgba(0, 0, 128, 1)') === '#fff', '★紺にも白い字(沈まない)', I('rgba(0, 0, 128, 1)'));
+  ok(I('rgba(245, 245, 245, 1)') === '#111', '★白い地には黒い字', I('rgba(245, 245, 245, 1)'));
+  ok(I('') === '#000' && I(null) === '#000', '読めない指定でも落ちない', [I(''), I(null)]);
+  const y = T.membraneCssColorForCode('Y'), r = T.membraneCssColorForCode('R');
+  ok(!!y && !!r && y !== r, '色コードは既存の色マップから引く(値は1つ)', [y, r]);
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);
