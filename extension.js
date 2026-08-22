@@ -2982,6 +2982,9 @@ const SCROLL_REFRESH_DEBOUNCE_MS = 100;
 // v0.9.216: fold state must never be inferred from viewport/visibleRanges.
 // This remembers state changes made through the extension and uses mSTAT/source symbols as truth.
 const foldStateByPairKey = new Map();
+// v4.0.349: MeOS 自身が畳む/開く間だけ、画面から読んだ事実を使わないための窓。
+// fold/unfold コマンドが効き終わるまで画面は一手古いので、その間に読むと決めたばかりの状態を巻き戻す。
+let suppressViewportFoldUntil = 0;
 let nameJumpSuppressUntil = 0;
 let lastNameJumpKey = '';
 let lastNameJumpAt = 0;
@@ -4279,7 +4282,8 @@ async function syncPairMstatFromFoldState(editor, pair) {
   if (!editor || !pair || mstatsSyncing) return false;
   const at = meosPairBadgeAt(editor.document, pair);              // v4.0.330: ▼行か、▲の次のFC行か
   if (!at) return false;
-  const desired = desiredMstatForFoldState(at.text, isPairFolded(editor, pair));
+  // v4.0.349: バッジは生データ。画面から読んだ事実(ガター等で畳まれた)では書き換えない。
+  const desired = desiredMstatForFoldState(at.text, isPairFolded(editor, pair, { ignoreViewport: true }));
   if (!desired) return false;
   return replaceOpenLineMstat(editor, pair, desired.formatted, desired.badge, at.line);
 }
@@ -4319,6 +4323,7 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   const suppressMstat = !!options.suppressMstat;
   const key = pairStateKey(editor, pair);
   foldStateByPairKey.set(key, !!folded);
+  suppressViewportFoldUntil = Date.now() + 2500;   // v4.0.349: 効き終わるまで画面を読まない
 
   // v0.9.906: ★mSTATバッジ同期を「折り畳む前(=開いた状態)」に行う。畳んだ後に開始行のバッジを書くと、
   // 折畳んだ行への編集でVSCodeが折畳みを再計算して勝手に展開していた(俊克 6/16 pm06:08: 2〜3秒後に展開・
@@ -4350,6 +4355,7 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
   }
 
   foldStateByPairKey.set(key, !!folded);
+  suppressViewportFoldUntil = Date.now() + 700;    // v4.0.349: 画面が追いつくまでの一手ぶん
 
   // v0.9.906: 折り畳んだ後はドキュメントを編集しない(バッジ同期は上で実施済み)。refreshは装飾のみ＝
   // 折畳みを崩さない。scheduleMstatsSyncは折畳んだ開始行を再編集して展開を招くので呼ばない。
@@ -4459,6 +4465,7 @@ async function restoreMstatsForEditor(editor) {
     if (b.symbol === '⊖') foldPairs.push(p);
     if (b.symbol === '⊕') unfoldPairs.push(p);
   }
+  if (foldPairs.length || unfoldPairs.length) suppressViewportFoldUntil = Date.now() + 1200; // v4.0.349
   if (foldPairs.length) {
     await vscode.commands.executeCommand('editor.fold', { selectionLines: foldPairs.map(p => p.start) });
     for (const p of foldPairs) foldStateByPairKey.set(pairStateKey(editor, p), true);
@@ -5278,7 +5285,41 @@ function rawLineText(document, line) {
   if (!document || typeof line !== 'number' || line < 0 || line >= document.lineCount) return '';
   return document.lineAt(line).text || '';
 }
-function isPairFolded(editor, pair) {
+// v4.0.349: 画面から**確かめられる事実だけ**を拾う。3値 = true(畳んである) / false(開いている) /
+//   null(この画面からは分らない)。visibleRanges に切れ目があるのは折り畳みの時だけなので、
+//   「ある可視範囲の最後の行」と「次の可視範囲の最初の行」が飛んでいれば、その行は畳まれている。
+//   逆に次の行がそのまま見えていれば開いている。可視範囲の一番最後の行だけは、画面の下端で切れた
+//   のか畳んであるのか区別できないので null(= 分らない)にして、従来の記憶/バッジ判定へ委ねる。
+//   visibleRanges は数個しかないので、走査は画面の行数ぶんで済む(スクロール毎に呼ばれても軽い)。
+const _vpFoldFactsCache = new WeakMap();
+function meosViewportFoldFacts(editor) {
+  let vr = null;
+  try { vr = editor && editor.visibleRanges; } catch (_) { vr = null; }
+  if (!vr || !vr.length) return null;
+  const key = vr.map(r => r.start.line + ':' + r.end.line).join(',');
+  const hit = _vpFoldFactsCache.get(editor);
+  if (hit && hit.key === key) return hit;
+  const rs = vr.slice().sort((a, b) => a.start.line - b.start.line);
+  const folded = new Set(), open = new Set();
+  for (let i = 0; i < rs.length; i++) {
+    const a = rs[i], b = rs[i + 1];
+    for (let ln = a.start.line; ln < a.end.line; ln++) open.add(ln);  // 次の行が見えている
+    if (!b) continue;                                                 // 画面の下端 = 分らない
+    if (b.start.line > a.end.line + 1) folded.add(a.end.line);        // 次の行が隠れている
+    else open.add(a.end.line);
+  }
+  const facts = { key, folded, open };
+  _vpFoldFactsCache.set(editor, facts);
+  return facts;
+}
+function meosViewportFoldFactAt(editor, line) {
+  const facts = meosViewportFoldFacts(editor);
+  if (!facts) return null;
+  if (facts.folded.has(line)) return true;
+  if (facts.open.has(line)) return false;
+  return null;
+}
+function isPairFolded(editor, pair, options) {
   // v0.9.216: viewport/visibleRanges must never decide membrane state.
   // Viewport is drawing-only. Folded/open state is judged from source symbols,
   // mSTAT, and the extension's own command-state memory.
@@ -5295,6 +5336,26 @@ function isPairFolded(editor, pair) {
 
   // Horizontal expanded membrane: ▶ ... ◀
   if (/▶/.test(startSource) && /◀/.test(endSource)) return false;
+
+  // v4.0.349(俊克 8/22 改良1「頭に開始膜と同じ▼のみなので、▼▲にしてください」):
+  //   ★畳んだのに ▼ のままだった理由 = MeOS は「自分が畳んだ時の記憶」しか持っておらず、
+  //     ガターの矢印など **MeOS 以外の口で畳まれた時は、誰も知らないまま**だった。
+  //     (この膜はバッジが ▲ の次の FC 行に居るので、開始行を見る下の mSTAT 判定にも掛からず、
+  //      結局いつも「開いている」と答えていた。)
+  //   ★v0.9.216「viewport が膜の状態を決めてはならない」は生きている。あれが禁じたのは
+  //     **画面の外(= 分らない)を「畳んである」と読むこと**。ここで読むのは画面に映っている行だけで、
+  //     「次の行が隠れている」という確かめられた事実しか使わないので、その事故は起きない。
+  //   ★これで印(▼▲)とボタン(トグル)が同じ1つの答えから出る = 「▼▲と出ているのに押すと畳もうとする」
+  //     という食い違いが消える → [[feedback_one_source_for_mark_count_action]]
+  //   ★ただし**生データ(⊕⊖バッジ)には書き戻さない**。バッジは「人が指定した状態」で、画面の事実は
+  //     「今どう見えているか」。畳んだだけでファイルが書き変わるのは非侵襲に反するし、畳んだ範囲の中の
+  //     行を編集すると VSCode が折り畳みを計算し直して勝手に開く(v0.9.906)。バッジを書く道
+  //     (syncPairMstatFromFoldState)だけは ignoreViewport で従来どおりの判定を使う。
+  //     → [[project_setting_decides_future_only]]
+  if (!(options && options.ignoreViewport) && Date.now() >= suppressViewportFoldUntil) {
+    const vpFact = meosViewportFoldFactAt(editor, pair.start);
+    if (typeof vpFact === 'boolean') return vpFact;
+  }
 
   // v0.9.216:
   // Internal command-state is the strongest live state.
@@ -12206,6 +12267,7 @@ async function toggleMeAllMembranes() {
   }
 
   suppressAutoUnfoldUntil = Date.now() + 2000;
+  suppressViewportFoldUntil = Date.now() + 2500;   // v4.0.349: 一括の fold/unfold が効き終わるまで画面を読まない
 
   // Unfold first, then fold. This avoids a parent fold hiding children before an
   // unfold command can reach them. Both commands are bulk operations.
@@ -12219,6 +12281,7 @@ async function toggleMeAllMembranes() {
   for (const item of rememberedTargets) {
     foldStateByPairKey.set(item.key, item.folded);
   }
+  suppressViewportFoldUntil = Date.now() + 700;    // v4.0.349: 画面が追いつくまでの一手ぶん
 
   await syncManyMstatsFromTargetStates(editor, rememberedTargets);
 

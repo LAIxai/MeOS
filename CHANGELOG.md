@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.349 (2026-08-22)
+- **A folded membrane's head now reads ▼▲, whoever folded it.** MeOS only ever remembered the folds *it* made, so a
+  membrane collapsed from the gutter arrow stayed marked ▼ — open. (This membrane's badge lives on the FC line after
+  ▲, inside the fold, so the mSTAT fallback that reads the opening line never saw it either.) The rendered mark and
+  the toggle button now come from one answer: what the screen can actually prove.
+- Only *proof* is used. A gap between two visible ranges happens when — and only when — something is folded, so
+  "the next line is hidden" means folded and "the next line is visible" means open. The last visible line stays
+  **unknown** (it may just be the bottom of the window) and falls back to memory/badge as before. v0.9.216's rule —
+  the viewport must not decide membrane state — was about reading *offscreen* as folded; that cannot happen here.
+- The raw file is left alone: the ⊕/⊖ badge is still written only for folds MeOS itself performs. A badge write
+  inside a folded range would make VS Code recompute folding and pop the membrane open again (v0.9.906).
+- `check_fold.js` (dev only) drives the real `applyPrettyLabels` with a gapped visible range and asserts the glyph.
+
 ### v4.0.348 (2026-08-22)
 - **A spec group folds again when you leave it.** v4.0.343 stopped folding from the caret path to break a chain of
   misbehaviour — but that was blunt first aid: the real cause was hidden bytes sitting under the caret, and v4.0.344/345
