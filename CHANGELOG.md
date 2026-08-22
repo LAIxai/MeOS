@@ -4,6 +4,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.359 (2026-08-22)
+- **The ▼ is clickable again — the target was one column wide.** Six logged clicks landed on columns 9, 11, 12, 15,
+  16 and 20; the hit test accepted only column 13. Worse, the column *moves with the rendering*: while decorated, the
+  ▼ is a decoration and the click lands on `idStart`; while the line shows raw source, the ▼ is a real character
+  several columns to the left. Same mark, same apparent place, different target. The hit area is now **the ▼ through
+  to just before the membrane name**, which is the mark's territory under either rendering. The name and comment to
+  its right keep belonging to jump, unchanged.
+- **Reverted a mistake of mine from v4.0.354.** `showFoldingControls: "never"` in the workspace is not leftover
+  debris — it is the user's own choice, written by Me Dock's `Standards > v` toggle, and MeOS restoring it at startup
+  is correct behaviour. I misread it, deleted the line from their settings, and added a notice offering to turn the
+  arrows back on. The notice is gone. The answer to "I can't fold from the gutter" is to make MeOS's own ▼ clickable,
+  not to switch on chevrons someone deliberately turned off.
+- **Raw view says when it turns on, and how to leave.** Double-clicking a membrane name toggles raw view; it used to
+  do so in complete silence, so it read as breakage with no way back. It now says so, and names the way out.
+
 ### v4.0.358 (2026-08-22)
 - **Focus returns to the editor after a restore — this time for real.** v4.0.357 *awaited* `showTextDocument`, and
   while focus sits in a webview that promise can simply not come back, taking the `refresh()` behind it with it. The

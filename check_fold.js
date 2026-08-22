@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -213,6 +213,22 @@ console.log('⑩ 再起動の朝= 記憶が空・画面も無い。⊖ と書い
   lines[FC] = '<!-- Mew!FC mCN (📊⊕4+0D-2Y) -->';          // 開いている指定なら
   ok(T.isPairFolded(ed, pair) === false, '⊕ なら「開いている」と答える', T.isPairFolded(ed, pair));
   lines[FC] = wasFc;
+}
+console.log('⑪ ▼ を押したら畳める当たり判定(v4.0.359・俊克の実測クリックそのもの)');
+{
+  // 実測ログ: [arrow] line=105602 idStart=13 caretCh=9/11/12/15/16/20/43 hit=false
+  // 生データ `<!-- {* ▼mCN=名前 // comment1 *} -->` = ▼は桁8・膜名は桁13から。
+  const H = (ch) => !!T.meosArrowHitAt(doc, OPEN_LINE, ch);
+  ok(H(8),  '★▼ の字そのもの(生データを見せている時の桁)', H(8));
+  ok(H(9),  '★俊克が実際に押した桁 9 (▼のすぐ右)', H(9));
+  ok(H(11), '★俊克が実際に押した桁 11', H(11));
+  ok(H(12), '★俊克が実際に押した桁 12', H(12));
+  ok(H(13), '★飾りの時の桁(装飾の▼はここに落ちる)', H(13));
+  ok(!H(20), '膜名の中は当たりにしない(ジャンプの領域)', H(20));
+  ok(!H(43), 'コメントの上も当たりにしない', H(43));
+  const C = (ch) => !!T.meosArrowHitAt(doc, CLOSE_LINE, ch);
+  ok(C(8) && C(13), '閉じ膜(▲)でも同じ当たり', [C(8), C(13)]);
+  ok(!T.meosArrowHitAt(doc, OPEN_LINE + 1, 8), '膜でない行は当たらない', T.meosArrowHitAt(doc, OPEN_LINE + 1, 8));
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

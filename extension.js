@@ -5358,30 +5358,16 @@ async function syncGutterEditorSettings() {
       }
       await extensionContext.globalState.update(FLAG, false);
     }
-    // ★★v4.0.354(俊克 8/22 pm01:04 バグ1「折り畳むためのガターメニューが最近、出ないんだよ。なぜ?
-    //   もしかして、FC化したせいかな?」):
-    //   ★★**FC化は無罪。原因は設定に残っていた昔の指定**＝ ワークスペースの `.vscode/settings.json` に
-    //     `"editor.showFoldingControls": "never"` が残っていた(MeOS が昔これを書いていた頃の名残)。
-    //     ユーザー設定は "mouseover" でも、**ワークスペース設定が上書きする**ので、そのフォルダを
-    //     開いている間だけ矢印が消える＝ 俊克の「最近」「このフォルダで」に合う。
-    //   ★上の戻す処理は `globalValue` しか見ていないので、**ワークスペース側に書かれた物には届かない**。
-    //     昔の版を使ったことのある人の環境には、今も残っている可能性がある。
-    //   ★勝手に書き換えない＝ **知らせて、押せば直る口を出す**(合図は直す場所に出す)。1回だけ。
-    //     → [[feedback_fix_signal_at_fix_place]]
-    if (ed.get('showFoldingControls') === 'never'
-        && extensionContext && !extensionContext.globalState.get('meosFoldChevronNoticeShown')) {
-      await extensionContext.globalState.update('meosFoldChevronNoticeShown', true);
-      const insp2 = ed.inspect ? ed.inspect('showFoldingControls') : null;
-      const target = (insp2 && insp2.workspaceValue === 'never')
-        ? vscode.ConfigurationTarget.Workspace
-        : vscode.ConfigurationTarget.Global;
-      vscode.window.showWarningMessage(
-        'MeOS: the folding arrows in the gutter are turned off by a setting (editor.showFoldingControls = "never").',
-        'Show them'
-      ).then(pick => {
-        if (pick === 'Show them') { try { ed.update('showFoldingControls', 'mouseover', target); } catch (_) { } }
-      }, () => { });
-    }
+    // ★★★v4.0.359: **v4.0.354 で私が入れた「矢印を出しますか」の通知を撤去した。あれは誤りだった**。
+    //   ★★★`showFoldingControls: never` は残骸ではなく、**俊克が自分で選んだ設定**だった＝
+    //     Me Dock の `Standards > v` を OFF にすると、この関数の下流(setNativeStandardsDisclosureControls)
+    //     が ワークスペースへ `never` を書く。つまり**あれは指定の記録**で、MeOS が起動時に戻すのは正しい。
+    //     俊克は山形マークを見たくないので消している(v4.0.143 に本人の言が残っている)。
+    //   ★★★私はそれを「昔の名残」と読み違えて、俊克の `.vscode/settings.json` から1行消した上に、
+    //     「押せば出せます」と誘う通知まで足した＝ **人が最後に指定した値を、私が勝手に覆した**。
+    //     → [[project_last_specified_wins]] / [[project_setting_decides_future_only]]
+    //   ★だから「ガターで畳めない」の答えは、山形マークを出すことではない。**MeOS の ▼ の印を
+    //     押せるようにする**方が筋(v4.0.359 の meosArrowHitAt)。設定は俊克の物なので触らない。
   } catch (_) {}
 }
 
@@ -11650,15 +11636,24 @@ function activeGreenHoverMessage(editor, position) {
   }
   return null;
 }
+// ★★v4.0.359(俊克 pm02:23 バグ3「膜から離れても、膜がコメントのままになってしまった。…Wクリックして
+//   見たが、**反応はしなかったが、その後、コメントのままになってしまった**。なぜ? 再起動したら、元に戻った」):
+//   ★★**反応はしていた**＝ Wクリックは生データ表示(M-skeleton)の切り替えなので、押したとおりに入った。
+//     ただ**何も言わずに入る**ので、俊克には「壊れた」ようにしか見えず、**戻し方も分からなかった**
+//     (再起動で戻ったのは、これが画面だけの状態＝ファイルは無傷、という証拠でもある)。
+//   ★入った事と、**戻し方**を、その場で言う。→ [[feedback_fix_signal_at_fix_place]]
 function enterMSkeletonMode(editor) {
   if (!editor || !activeGreenJump) return false;
   mSkeletonMode = true;
   clearMembraneVisualDecorations(editor);
   restoreActiveGreenMarkers(editor);
+  try { vscode.window.setStatusBarMessage('MeOS: raw view ON — double-click the membrane name again to leave', 5000); } catch (_) { }
   return true;
 }
 function exitMSkeletonMode(editor) {
+  const was = mSkeletonMode;
   mSkeletonMode = false;
+  if (was) { try { vscode.window.setStatusBarMessage('MeOS: raw view OFF', 2500); } catch (_) { } }
   setTimeout(() => refresh(editor), 20);
 }
 
@@ -22320,7 +22315,18 @@ function imageMembraneHoverMessage(document, position) {
 function meosArrowHitAt(document, line, character) {
   const info = membraneLineInfo(document, line);
   if (!info) return null;
-  if (character === info.idStart || character === Math.max(0, info.idStart - 1)) return info;
+  // ★★★v4.0.359(俊克 pm02:23「膜のガターメニューは、依然として、反応しない。なぜ?」＋実測):
+  //   ★★★**印が小さすぎた**。実測した6回のクリックは 9/11/12/15/16/20 桁で、当たり判定は 13 の1桁だけ。
+  //     `[arrow] idStart=13 caretCh=9 at="mCN=折り畳ま"` ＝ **押しているのは ▼ の周りなのに、
+  //     効くのは1桁だけ**なので当たらない。人は1桁を狙って押せない。
+  //   ★★★しかも桁は**表示の状態で動く**＝ 飾りの時、▼ は装飾なので当たりは `idStart`(13)／生データを
+  //     見せている時、▼ は**本物の字**なので桁 8。同じ印が同じ場所に見えているのに、当たりが別。
+  //   ★直し＝ **▼ の字から膜名の直前まで、ぜんぶ当たりにする**。これは飾りでも生データでも
+  //     「膜名より左＝印の領域」で一致する。膜名から右はジャンプの領域なので触らない(役割の境目は不変)。
+  const text = document.lineAt(line).text || '';
+  const glyph = text.search(/[▼▽▲△]/);
+  const lo = (glyph >= 0) ? glyph : Math.max(0, info.idStart - 1);
+  if (character >= lo && character <= info.idStart) return info;
   return null;
 }
 function membraneArrowHoverMessage(editor, position) {
