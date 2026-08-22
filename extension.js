@@ -9063,6 +9063,19 @@ function meosEditableDecoTypes() {
   }
   return meosEditableDecos;
 }
+// v4.0.371: 色指定(`Y` など)を**その色**で出すための入れ物。色は MEMBRANE_BADGE_COLOR_MAP から。
+let meosCodedColorDecos = null;
+function meosCodedColorDeco(css) {
+  if (!meosCodedColorDecos) meosCodedColorDecos = new Map();
+  if (!meosCodedColorDecos.has(css)) {
+    meosCodedColorDecos.set(css, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      color: css,
+      textDecoration: 'none; color: ' + css + ' !important; font-weight: 800;'
+    }));
+  }
+  return meosCodedColorDecos.get(css);
+}
 let meosStampDecos = null;
 function meosStampDecoTypes() {
   if (!meosStampDecos) {
@@ -9124,13 +9137,14 @@ function meosApplyNameStampDecorations(editor) {
   const types = meosStampDecoTypes();
   const ed2 = meosEditableDecoTypes();
   const buckets = types.map(() => []);
-  const nameRanges = [], cmtRanges = [];
+  const nameRanges = [], cmtRanges = [], codedRanges = [];
   let rawSet = new Set();
   try {
     if (!editor || !editor.document) return;
     if (typeof meosRawMode !== 'undefined' && meosRawMode) {
       types.forEach((t) => editor.setDecorations(t, []));
       editor.setDecorations(ed2.name, []); editor.setDecorations(ed2.comment, []);
+      if (meosCodedColorDecos) for (const d of meosCodedColorDecos.values()) editor.setDecorations(d, []);
       return;
     }
     rawSet = meosRawLines(editor);     // 生データを見せている行(= 橙に染まる行)
@@ -9156,11 +9170,25 @@ function meosApplyNameStampDecorations(editor) {
           for (const [f, t] of roles.name) nameRanges.push(new vscode.Range(ln, f, ln, t));
           for (const [f, t] of roles.comment) cmtRanges.push(new vscode.Range(ln, f, ln, t));
         }
+        // v4.0.371: バッジの中身。色指定はその色で、他はモザイクと同じ巡回で。飾りの行でも出す
+        //   (バッジは畳んでいる時こそ読む物なので、カーソルが無くても見えていてよい)。
+        for (let i = 0; i < roles.badge.length; i++) {
+          const [f, t, code] = roles.badge[i];
+          const css = (code && code !== -1) ? membraneCssColorForCode(code) : '';
+          if (css) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
+          else buckets[i % types.length].push(new vscode.Range(ln, f, ln, t));
+        }
       }
     }
   } catch (_) { }
   try { types.forEach((t, i) => editor.setDecorations(t, buckets[i])); } catch (_) { }
   try { editor.setDecorations(ed2.name, nameRanges); editor.setDecorations(ed2.comment, cmtRanges); } catch (_) { }
+  try {
+    const byCss = new Map();
+    for (const it of codedRanges) { if (!byCss.has(it.css)) byCss.set(it.css, []); byCss.get(it.css).push(it.range); }
+    if (meosCodedColorDecos) for (const [css, d] of meosCodedColorDecos) if (!byCss.has(css)) editor.setDecorations(d, []);
+    for (const [css, rs] of byCss) editor.setDecorations(meosCodedColorDeco(css), rs);
+  } catch (_) { }
 }
 // {* ▲mCN=0355_NAME_STAMP_COLORS *}
 function clearForRaw(editor) {
@@ -9170,6 +9198,7 @@ function clearForRaw(editor) {
   const z = (d) => { if (d) { try { editor.setDecorations(d, []); } catch (_) {} } };
   if (meosStampDecos) for (const d of meosStampDecos) z(d);   // v4.0.363: TSの色分けもRawでは外す
   if (meosEditableDecos) { z(meosEditableDecos.name); z(meosEditableDecos.comment); } // v4.0.368
+  if (meosCodedColorDecos) for (const d of meosCodedColorDecos.values()) z(d);          // v4.0.371
   if (highlightBodyByColor) for (const d of highlightBodyByColor.values()) z(d);
   if (highlightFgByColor) for (const d of highlightFgByColor.values()) z(d);
   z(highlightMarkerDecoration);
@@ -18574,7 +18603,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* v4.0.367(俊克 改良2「Me Dockの更新日は、tipに更新日のコピーを付けよう」): tip(::after)は疑似要素so押せない。
    → **中身自身を押せる物にする**= 日付をクリックすれば「ファイル名 + 更新日時」that手に入る。 */
 .title-file-ud .ud-copy{cursor:pointer;border-radius:3px;padding:0 2px}
-.title-file-ud .ud-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}/* v4.0.369: tipそのものが合図になる */
+/* v4.0.371(俊克「できれば、前の緑色の方が目立っていいけどね」): 緑にならなかったのは**後から定義された
+   tipの背景に負けていた**から(同じ詳細度は後勝ち)。→ クラスを重ねて詳細度で勝たせる。 */
+.title-file-ud .ud-copy.ud-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}
 .title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file:hover .title-file-caret{opacity:1}
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
@@ -24647,7 +24678,7 @@ function meosRawLines(editor) {
 //     判定はここ1か所なので、橙もモザイクも名前もコメントも**同じ割り方**から出る。
 function meosRawLineRoles(doc, ln) {
   const text = doc.lineAt(ln).text || '';
-  const roles = { stamps: [], name: [], comment: [], shell: [] };
+  const roles = { stamps: [], name: [], comment: [], shell: [], badge: [] };  // badge の3つ目は色コード(無ければ -1)
   const holes = [];
   try {
     for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) { roles.stamps.push([f, f + l]); holes.push([f, f + l]); }
@@ -24664,7 +24695,23 @@ function meosRawLineRoles(doc, ln) {
         const icon = raw.indexOf('📊');
         const from = bd.start + (icon >= 0 ? icon + '📊'.length : (raw[0] === '(' ? 1 : 0));
         const to = bd.end - (raw[raw.length - 1] === ')' ? 1 : 0);
-        if (to > from) { roles.name.push([from, to]); holes.push([from, to]); }
+        if (to > from) {
+          // ★★v4.0.371(俊克「膜のFCコメントは、白色一色なので、**「⊕0+0」「D-2」「Y」の3箇所を
+          //   モザイクにしたい**ね。**最後の色指定は、指定した色にしよう**よ」):
+          //   ★★**色指定は、その色で出す**＝ 見れば分かる物を、字で読ませない。`Y` が黄で出ていれば
+          //     「この膜は黄」と一目で分かる＝ 書いてある通りに見える(記法と見た目が一致する)。
+          //   ★他の2つ(状態+回数 / 深度)はモザイクと同じ巡回に乗せる＝ **同じ物は同じ塗り方**。
+          const inner = text.slice(from, to);                    // 例 "⊕0+0D-2Y"
+          const mm = inner.match(/^(.*?)(D[+-]?\d+)?([A-Z])?$/);
+          if (mm && (mm[2] || mm[3])) {
+            let at = from;
+            if (mm[1]) { roles.badge.push([at, at + mm[1].length, -1]); at += mm[1].length; }
+            if (mm[2]) { roles.badge.push([at, at + mm[2].length, -1]); at += mm[2].length; }
+            if (mm[3]) { roles.badge.push([at, at + mm[3].length, mm[3]]); at += mm[3].length; }
+            for (const [f, t] of roles.badge) holes.push([f, t]);
+            if (at < to) { roles.name.push([at, to]); holes.push([at, to]); }
+          } else { roles.name.push([from, to]); holes.push([from, to]); }
+        }
       }
     } catch (_) { }
     const info = membraneLineInfo(doc, ln);

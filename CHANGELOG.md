@@ -4,7 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
-### v4.0.370 (2026-08-22) — the v4.0 line closes here
+### v4.0.371 (2026-08-22)
+- **A colour code is drawn in the colour it names.** The badge's interior splits into three — state+count, depth, and
+  the colour letter — the first two joining the tile cycle, and the letter shown *in that colour*. `Y` appears yellow,
+  so the notation and what you see agree; you no longer read a letter and translate it.
+- **"Copied" is green again.** It was losing to the tooltip background defined later in the stylesheet — same
+  specificity, so the last one wins. Fixed by stacking a class rather than reordering.
+
+### v4.0.370 (2026-08-22)
 - **The badge's contents are yours too.** I had filed the open-count under "MeOS counts this, editing it is
   meaningless" — wrong: writing `∞` stops the counting, so the number is a specification like the rest. State, count,
   depth and colour all belong to you; only the brackets and the 📊 are notation. Which leaves one rule for the whole
