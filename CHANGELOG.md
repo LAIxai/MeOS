@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.364 (2026-08-22)
+- **The UD tooltip no longer covers the timestamp it describes.** MeOS shows tooltips with `data-tip` + a CSS
+  `::after` that opens *above* the element — the house solution since v3.1.32, precisely to avoid this. I used a
+  plain `title` instead, so the OS tooltip landed on top of the date. It now rides the existing tooltip, and says
+  **"Last updated"** to match the `UD` it labels — "Last written to disk" was my wording, not the user's.
+
 ### v4.0.363 (2026-08-22)
 - **Membrane-name timestamps are colour-tiled so you can read them.** `_20260822s174435JST` is packed tight because
   *writing* wants it short, but *reading* wants a date and a time. Adding separators would throw away the compactness,

@@ -18411,6 +18411,14 @@ function postMeDockFile(editor, force, skipPush) {
     postDockFileUD(editor, true);                                                            // v4.0.363: ●/× と UD
   } catch (_) { }
 }
+// ★v4.0.364(俊克 pm06:11 改良1「**tipが被っている**。**Last updated**の方が良いんじゃないか?
+//   UDと表示しているんだしね」):
+//   ★**家の作法を先に見ていなかった**＝ MeOS の tip は `title` でなく **`data-tip` + CSS `::after`**
+//     (v3.1.32「座標地獄を根本回避する汎用解」)。`::after` は要素の**上**に出るので本体に被らない。
+//     私は `title` を使ったので、OS標準のtipが日時の**上に**出て読めなくした。
+//     → [[feedback_copy_the_house_style_first]]（家の中の同じ役の部品を先に探して真似る）
+//   ★言葉も揃える＝ 表示が `UD` なら tip は `Last updated`（UD = Updated）。
+//     「Last written to disk」は**私の説明**で、**俊克の言葉ではなかった**。
 // ★★v4.0.363(俊克 8/22 pm05:56「ファイルメニューを見る時、それは**保存済かどうかを先ず知りたい**んだ。
 //   次に、いつ更新したか? …今は、1ファイルが基本なので、作成日は必須ではない。それは膜名のTSを簡単に
 //   変更できるからね。あとは、**1ファイルの更新日、特に時間を見たい**んだよ。**いつ最後にCmd+Sしたか**
@@ -18490,9 +18498,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-hint{position:absolute;top:calc(100% + 5px);left:0;z-index:41;padding:3px 7px;border:1px solid var(--vscode-editor-background);border-radius:3px;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);font-size:11px;line-height:1.4;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .title-file-pop:has(.title-file-x:hover) .title-file-hint,.title-file-pop:has(.title-file-pin:hover) .title-file-hint{opacity:1}
 /* ▾ のtipは**真上**へ= メニューは下にぶら下がるので、開いていても覆いようが無い。 */
-.title-file-caret[data-tip]{position:relative}
-.title-file-caret[data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 7px);z-index:60;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;line-height:1.4;width:max-content;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
-.title-file-caret[data-tip]:hover::after{opacity:1}
+.title-file-caret[data-tip],.title-file-ud [data-tip]{position:relative}
+.title-file-caret[data-tip]::after,.title-file-ud [data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 7px);z-index:60;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;line-height:1.4;width:max-content;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
+.title-file-caret[data-tip]:hover::after,.title-file-ud [data-tip]:hover::after{opacity:1}/* v4.0.364: UDも同じtipに乗る(被らない) */
 /* v4.0.309: 📌は1つだけ。留めた物は常に先頭・薄く出しておいて、留めた時だけはっきりさせる。 */
 .title-file-pin{width:20px;flex:0 0 20px;padding:0;margin-left:2px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:12px;line-height:1;opacity:0;cursor:pointer}
 .title-file-row:hover .title-file-pin{opacity:.45}
@@ -20987,9 +20995,9 @@ if(_ud){while(_ud.firstChild)_ud.removeChild(_ud.firstChild);
 var _dot=document.createElement('span');_dot.className='ud-dot';
 _dot.textContent=m.dirty?'\u00d7':'\u25cf';
 _dot.style.color=m.dirty?'#e0803a':'#3fb950';
-_dot.title=m.dirty?'Unsaved changes (\u2318S to save)':'Saved';
+_dot.setAttribute('data-tip',m.dirty?'Unsaved changes (\u2318S to save)':'Saved');
 _ud.appendChild(_dot);
-if(m.ud){var _t=document.createElement('span');_t.textContent='UD'+m.ud;_t.title='Last written to disk';_ud.appendChild(_t);}
+if(m.ud){var _t=document.createElement('span');_t.textContent='UD'+m.ud;_t.setAttribute('data-tip','Last updated');_ud.appendChild(_t);}
 }
 return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
