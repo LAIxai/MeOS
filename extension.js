@@ -23033,7 +23033,15 @@ function meosReadColorDecoratorSetting() {
 const MEOS_COLOR_CHIP_W = 2;
 function meosColorChipWidth(text) {
   if (!_meosColorDecoOn) return 0;
-  const t = String(text == null ? '' : text);
+  let t = String(text == null ? '' : text);
+  if (t.indexOf('#') < 0) return 0;
+  // ★★v4.0.380(俊克 8/23 am02:17「`#dc2626`のようにバッククォートで囲むと、**四角は出ない**よ。
+  //   そこを計算しないと、ズレちゃうよ(ツッコミ)」):
+  //   ★コードスパンの中は「文字そのもの」なので VS Code も色と読まない＝ 四角が出ない。
+  //   ★MeOS は v4.0.58 から**バッククォートの中は手を付けない**と決めている(記法を説明する表が
+  //     崩れないため)。`meosStripHiddenForWidth` はその約束を守っているのに、**今日足した数え方だけ
+  //     素通りしていた**＝ また片方。既にある約束は、新しい計算にも通す。
+  if (t.indexOf('`') >= 0) t = t.replace(/`[^`]*`/g, '');
   if (t.indexOf('#') < 0) return 0;
   MEOS_HEX_COLOR_RE.lastIndex = 0;
   const m = t.match(MEOS_HEX_COLOR_RE);

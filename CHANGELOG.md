@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.380 (2026-08-23)
+- **A colour code inside backticks gets no swatch, so it is no longer counted.** Code spans are "the characters
+  themselves" — VS Code does not read them as colours, and MeOS has held the same rule since v4.0.58 so that tables
+  explaining notation do not collapse. The width-stripping honoured it; the counting added today did not.
+
 ### v4.0.379 (2026-08-23)
 - **The colour swatch counts as two characters, not one.** Measured against the real editor: the square plus the
   space around it takes about two half-widths, so one was never going to close the gap.
