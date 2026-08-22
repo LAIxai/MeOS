@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.377 (2026-08-22)
+- **One colour table instead of two.** Measured, the dock's copy sat one Tailwind step off the membrane colours —
+  O by 32, P by 42, N by 27, W by 79 in RGB distance. Close enough to look right, far enough that grepping one value
+  never finds the other, which is the real cost: *"if the values are the same, they're easy to search."* The dock's
+  table is gone; the membrane colours are converted to hex and handed to it, so changing a membrane colour in one
+  place moves the ball, the letter and the colour menu together.
+
 ### v4.0.376 (2026-08-22)
 - **Mepy's own ball is yellow when it says (Y).** The seventh definition of yellow — `colorHex()` in the dock, where
   `Y` was `#d97706` (amber-600), an orange. What I fixed last round was the colour *menu*; this is the colour the

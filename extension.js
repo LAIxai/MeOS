@@ -18601,6 +18601,20 @@ function postDockFileUD(editor = (typeof getMeDockTargetEditor === 'function' ? 
     meDockPanel.webview.postMessage({ type: 'dockFileUD', dirty, ud, udChips: meosStampChips(ud) });
   } catch (_) { }
 }
+// ★★v4.0.377(俊克「Mepyの橙色の違いは、値的にどのくらいの差なのか? **違ったままより、同じにして
+//   おいた方がいい**よね。**直ぐ忘れる**しね。**同じ値なら、検索しやすい**だろうしね」):
+//   ★★測ったら Tailwind の色番号が1段ずれていた(Mepy=500 / 膜=600)＝ O:32 P:42 N:27 W:79 の差。
+//     見た目は似ているので気づかないが、**値が違えば grep で辿れない**＝ 俊克の言う「検索しやすい」。
+//   ★だから表を2つ持つのをやめ、**膜の色(MEMBRANE_BADGE_COLOR_MAP)から作って webview へ渡す**。
+//     これで「膜の色」を1か所直せば、Mepy の玉も色メニューも一緒に変わる。
+function meosMembraneHexMap() {
+  const out = {};
+  for (const k of Object.keys(MEMBRANE_BADGE_COLOR_MAP)) {
+    const m = String(MEMBRANE_BADGE_COLOR_MAP[k]).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    out[k] = m ? ('#' + [1, 2, 3].map(i => Number(m[i]).toString(16).padStart(2, '0')).join('')) : '#16a34a';
+  }
+  return out;
+}
 function meosExtVersion() {
   try { const fs = require('fs'), path = require('path'); const p = extensionContext && extensionContext.extensionPath; if (p) { const pj = JSON.parse(fs.readFileSync(path.join(p, 'package.json'), 'utf8')); if (pj && pj.version) return String(pj.version); } } catch (_) {}
   try { return String(extensionContext.extension.packageJSON.version || ''); } catch (_) {}
@@ -19546,12 +19560,13 @@ __mzSet(__mdZoom+0.01);__mzPct();}else if(e.key==='ArrowDown'){e.preventDefault(
 const colorChoices=[['R','🟥','Red'],['O','🟧','Orange'],['Y','🟨','Yellow'],['G','🟩','Green'],['B','🟦','Blue'],['P','🟪','Purple'],['N','🟫','Brown'],['W','⬜','White']];
 // {* ▲mCN=dock_js_zoom *}
 // {* ▼mCN=dock_js_membrane // 膜の色/名前/Edit Meパネル(色ボタン・栞ボタン・モード表示) *}
-/* ★v4.0.376(俊克「Mepy自身の色の設定がどこかを探す必要がある」): ここが7か所目の黄だった。
-   #d97706(amber-600)は橙なので、(Y)と書いてあるのに橙の玉が出ていた。膜の色と揃える。
-   ★R/G/Bは元から一致していて、O と Y だけが別の値= どこかで片方だけ触られた跡。
-   Yは今直し、Oは残る(俊克がまだ困っていない)。 */
-function colorHex(code){const c=(code||'G').toUpperCase();return ({R:'#dc2626',O:'#f97316',Y:'#eac21a',G:'#16a34a',B:'#2563eb',
-P:'#a855f7',N:'#8b5e3c',W:'#9ca3af'}[c]||'#16a34a');}
+/* ★★v4.0.377(俊克「違ったままより、同じにしておいた方がいい。直ぐ忘れるしね。同じ値なら、検索しやすい」):
+   Mepy自身の色は、ここに自前の表を持っていた(7か所目の黄・#d97706=橙)。測ると Tailwind の番号が
+   1段ずれていて O:32 P:42 N:27 W:79 の差。見た目は似ているが、値が違えば grep で辿れない。
+   → 表を持つのをやめ、膜の色から作って渡された物(MEOS_MEMBRANE_HEX)を引く。膜の色を1か所直せば
+   玉も色メニューも一緒に変わる。 */
+const MEOS_MEMBRANE_HEX=${JSON.stringify(meosMembraneHexMap())};
+function colorHex(code){const c=(code||'G').toUpperCase();return MEOS_MEMBRANE_HEX[c]||MEOS_MEMBRANE_HEX.G||'#16a34a';}
 function colorEmoji(code){const c=(code||'G').toUpperCase();const hit=colorChoices.find(x=>x[0]===c);return hit?hit[1]:'🟩';
 }
 function colorLabel(code){const c=(code||'G').toUpperCase();return colorEmoji(c)+'('+c+')';}
