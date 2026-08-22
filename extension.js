@@ -5499,6 +5499,14 @@ function isPairFolded(editor, pair, options) {
   // Default: ordinary ▼ ... ▲ vertical membrane is open.
   return false;
 }
+// ★★v4.0.361(俊克 pm05:32「**折り畳んだ膜は、`Toggle ▼▲-Button!`だよ**」):
+//   ★★**印の字を決める場所を1つにする**。畳めば印は ▼▲ に変わるのだから、tip の言葉も ▼▲ に変わる。
+//     字を作る式が描画と tip に別々に在ると、片方だけ直して食い違う＝ 今日それを何度も見た。
+//     → [[feedback_one_source_for_mark_count_action]]
+function meosMembraneGlyph(kind, folded, isToc) {
+  if (kind === 'close') return isToc ? '▲TOC' : '▲';
+  return isToc ? (folded ? '▼▲TOC' : '▼TOC') : (folded ? '▼▲' : '▼');
+}
 function makePrettyLabel(pair, folded) {
   const rawTail = folded ? pair.tail.replace(/⊕/g, '⊖') : pair.tail.replace(/⊖/g, '⊕');
   return `${folded ? '▼▲' : '▼'}${pair.id}${rawTail || ''}`;
@@ -7132,7 +7140,7 @@ function applyPrettyLabels(editor) {
           const fcIndent = (text.match(/^[ \t]*/) || [''])[0].length;
           openLabels.push({
             range: new vscode.Range(line, fcIndent, line, fcIndent),
-            renderOptions: { before: { contentText: '▼▲', color: fcColor, fontWeight: '700', margin: '0 4px 0 0' } }
+            renderOptions: { before: { contentText: meosMembraneGlyph('open', true, false), color: fcColor, fontWeight: '700', margin: '0 4px 0 0' } }
           });
           let fcEcho = '';
           for (let k = fp.end + 1, n = 0; k < _allLines.length && n < 4; k++, n++) {
@@ -7236,7 +7244,7 @@ function applyPrettyLabels(editor) {
       const labelWeight = isToc ? '900' : '700';
       // v0.9.606: mNT envelope marker — append 📒 after the standard ▼/▼▲ glyph.
       const isMnt = !!(pair && pair.isMnt);
-      const baseOpenGlyph = isToc ? (folded ? '▼▲TOC' : '▼TOC') : (folded ? '▼▲' : '▼');
+      const baseOpenGlyph = meosMembraneGlyph('open', folded, isToc);   // v4.0.361: 字は1か所で決める
       // v0.9.609: MD files use word-wrap, so alias as source text wraps to a second
       // visual row (font-size:0 chars still count as columns). For MD files with mNT
       // alias, render alias inside the decoration label and hide the source alias too.
@@ -7280,7 +7288,7 @@ function applyPrettyLabels(editor) {
       if (!folded) {
         // v0.9.606: mNT envelope marker on close — ▲ → ▲📒.
         const isMntClose = !!(pair && pair.isMnt);
-        const baseCloseGlyph = isToc ? '▲TOC' : '▲';
+        const baseCloseGlyph = meosMembraneGlyph('close', false, isToc);  // v4.0.361: 字は1か所で決める
         const closeGlyph = isMntClose ? (baseCloseGlyph + '📒') : baseCloseGlyph;
         closeLabels.push({
           range: new vscode.Range(line, parts.idStart, line, parts.idStart),
@@ -22366,7 +22374,13 @@ function membraneArrowHoverMessage(editor, position) {
     //     俊克がまさにそうした(そして押せず「反応しない」と読んだ)。**どれを押すのかを名指しする**。
     //     → [[feedback_fix_signal_at_fix_place]]
     //   ★開始膜は ▼、閉じ膜は ▲ ＝ 今この行に在る印の名前で言う(見ている物と言葉を合わせる)。
-    return (info.kind === 'close') ? 'Toggle ▲-Button!' : 'Toggle ▼-Button!';
+    //   ★v4.0.361: **今その行に出ている印の字を、そのまま言う**。畳んであれば ▼▲ ＝ 描画と同じ
+    //     `meosMembraneGlyph` に、描画と同じ `isPairFolded` を渡す(字も状態も1か所から引く)。
+    let _pair = null;
+    try { _pair = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === info.line || p.end === info.line) || null; } catch (_) { }
+    const _folded = (info.kind === 'open' && _pair) ? isPairFolded(editor, _pair) : false;
+    const _isToc = !!(_pair && isWorkingTocMembranePair(_pair, editor.document));
+    return 'Toggle ' + meosMembraneGlyph(info.kind, _folded, _isToc) + '-Button!';
   }
   return null;
 }

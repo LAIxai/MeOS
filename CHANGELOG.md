@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.361 (2026-08-22)
+- **A folded membrane's tip says `Toggle ▼▲-Button!`.** The mark changes when you fold, so the words change with it.
+  More to the point, the glyph is now decided in **one function** that both the rendering and the tip read, with both
+  asking the same `isPairFolded` — the split between "what is drawn" and "what is described" is exactly the kind of
+  gap that produced today's earlier mismatches.
+
 ### v4.0.360 (2026-08-22)
 - **The tip now names the thing you press.** "Toggle Me!" is an imperative, so it reads as the press target — and
   tips cannot be pressed. It now says **"Toggle ▼-Button!"** (and "▲" on a closing line), pointing at the mark that
