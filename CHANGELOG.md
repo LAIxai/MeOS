@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.358 (2026-08-22)
+- **Focus returns to the editor after a restore — this time for real.** v4.0.357 *awaited* `showTextDocument`, and
+  while focus sits in a webview that promise can simply not come back, taking the `refresh()` behind it with it. The
+  log proved it: `[sel] activeEditor was empty` still firing 1.7s after the restore finished. Refresh now runs first
+  and focus is handed back without waiting, followed by an explicit focus-editor-group command.
+- **The tip and the click now agree.** Hovering accepted two columns (`idStart` and `idStart - 1`) while the toggle
+  accepted only one — so part of the area that says "Toggle Me!" did nothing when clicked. Both now ask the same
+  function.
+- The `[arrow]` log records the text under the click, and startup records the effective `showFoldingControls` /
+  `folding` / `foldingStrategy` — if the gutter arrows are off, that line says so before anyone blames the membranes.
+
 ### v4.0.357 (2026-08-22)
 - **"The gutter menu still does nothing" was MeOS being asleep, not the membrane machinery.** The instrumentation
   added in v4.0.356 logged the ▼ click **zero times**, and the screenshot showed a membrane line rendering as raw

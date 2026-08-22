@@ -4563,10 +4563,18 @@ async function restoreMstatsForEditor(editor) {
         editor.revealRange(new vscode.Range(_c, 0, _c, 0), vscode.TextEditorRevealType.InCenter);
       }
     } catch (_) { }
-    // ★v4.0.357(俊克「再起動した時は、エディタをアクティブにできるか?」): 焦点を本文へ返す。
-    //   復元し終えた所を見せるのだから、次の一手が打てる状態で渡すのが筋。
-    try { await vscode.window.showTextDocument(editor.document, editor.viewColumn, false); } catch (_) { }
+    // ★★v4.0.358(俊克 pm02:08 バグ1「VSCmを再起動しても、エディタがアクティブにならない。なぜ?」):
+    //   ★★**v4.0.357 の私の書き方が悪かった**＝ `await showTextDocument(...)` で待っていた。
+    //     焦点that webview に在る間、この約束は返ってこないことが在り、**その後ろの `refresh(editor)`
+    //     まで止まる**＝ activeEditor が空のまま(ログの `[sel] activeEditor was empty` that1.7秒後にも
+    //     出ているのが証拠)。→ **待たない**。先に refresh を通し、焦点は投げっぱなしで返す。
+    //   ★焦点は2手＝ ①その文書を見せる ②エディタ群へ焦点を移す標準コマンド。Me Dock の自動表示と
+    //     順番を競うので、確実な方を後に置く。
     refresh(editor); scheduleMstatsSync(editor);
+    const _focusBack = () => { try { vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup'); } catch (_) { } };
+    try {
+      vscode.window.showTextDocument(editor.document, editor.viewColumn, false).then(_focusBack, _focusBack);
+    } catch (_) { _focusBack(); }
   }, 180);
 }
 
@@ -12828,7 +12836,7 @@ function membraneArrowToggleHitInfo(editor) {
   // the ▼ click landing point is back to the standard idStart — no alias-mode special
   // case needed. The alias source span lives at real columns past the hide range, so
   // alias clicks land on those columns naturally and never on idStart.
-  if (sel.active.character === info.idStart) {
+  if (meosArrowHitAt(editor.document, sel.active.line, sel.active.character)) {   // v4.0.358: tip と同じ物差し
     // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
     // before:contentText 全体のクリックが idStart に落ちるため、
     // ▼ だけのクリックと区別できない。
@@ -12931,7 +12939,8 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         + ' caretCh=' + editor.selection.active.character
         + ' hit=' + (editor.selection.active.character === _i.idStart)
         + ' emptySel=' + editor.selection.isEmpty
-        + ' suppressed=' + (now < nameJumpSuppressUntil));
+        + ' suppressed=' + (now < nameJumpSuppressUntil)
+        + ' at=' + JSON.stringify((editor.document.lineAt(_i.line).text || '').substr(editor.selection.active.character, 8)));
     } catch (_) { }
   }
   if (now < nameJumpSuppressUntil) return;
@@ -22304,6 +22313,16 @@ function imageMembraneHoverMessage(document, position) {
     return md;
   } catch (_) { return null; }
 }
+// ★★v4.0.358: **tip が出る所と、押して効く所を、同じ1つの判定から引く**。
+//   これまで tip は `idStart` と `idStart-1` の2桁で出るのに、トグルは `idStart` の1桁だけだった＝
+//   **「Toggle Me!」と出ているのに押しても効かない桁が在った**(俊克「tipは出るが、クリックしても
+//   反応しない」)。印と動作は同じ物差しで決める → [[feedback_one_source_for_mark_count_action]]
+function meosArrowHitAt(document, line, character) {
+  const info = membraneLineInfo(document, line);
+  if (!info) return null;
+  if (character === info.idStart || character === Math.max(0, info.idStart - 1)) return info;
+  return null;
+}
 function membraneArrowHoverMessage(editor, position) {
   if (!editor || !position) return null;
   const info = membraneLineInfo(editor.document, position.line);
@@ -22311,7 +22330,7 @@ function membraneArrowHoverMessage(editor, position) {
   // v0.9.538: alias-mode hover restriction removed — alias is now plain source text
   // sitting at real columns past the hide range, so hover positions on alias never
   // collide with idStart and never trigger the Toggle Me tip.
-  if (position.character === info.idStart || position.character === Math.max(0, info.idStart - 1)) {
+  if (meosArrowHitAt(editor.document, position.line, position.character)) {
     // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
     // before:contentText 全域がこの位置にマップされるため、ラベル全体に
     // "Toggle Me!" ホーバーが出てしまう。カーソルがその行にいるとき
@@ -27365,6 +27384,16 @@ makeDecorations();
   //   ★見えているエディタを相手にする＝ 焦点が無くても、映っているものは在る。
   const _bootEditor = vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0] || undefined;
   refresh(_bootEditor);
+  // v4.0.358: ガターの折り畳み矢印は**設定が決める**。出ない/効かないと言われた時に、
+  //   MeOS を疑う前にここを見る(never なら矢印は描かれない=押しようが無い)。
+  try {
+    const _ec = vscode.workspace.getConfiguration('editor');
+    meosDbg('[boot] showFoldingControls=' + _ec.get('showFoldingControls')
+      + ' folding=' + _ec.get('folding')
+      + ' foldingStrategy=' + _ec.get('foldingStrategy')
+      + ' editorActive=' + (vscode.window.activeTextEditor ? 'yes' : 'no')
+      + ' visible=' + vscode.window.visibleTextEditors.length);
+  } catch (_) { }
   setTimeout(() => restoreMstatsForEditor(vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0]), 250);
   setTimeout(() => autoShowMeDockForEditor(vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0]), 320);
   const foldingSelector = [
