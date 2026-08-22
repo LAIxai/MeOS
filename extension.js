@@ -9081,6 +9081,18 @@ function meosReadableInkFor(css) {
   } catch (_) { return '#000'; }
 }
 let meosCodedColorDecos = null;
+let meosPlainColorDecos = null;
+function meosPlainColorDeco(css) {
+  if (!meosPlainColorDecos) meosPlainColorDecos = new Map();
+  if (!meosPlainColorDecos.has(css)) {
+    meosPlainColorDecos.set(css, vscode.window.createTextEditorDecorationType({
+      rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+      color: css,
+      textDecoration: 'none; color: ' + css + ' !important; font-weight: 700;'
+    }));
+  }
+  return meosPlainColorDecos.get(css);
+}
 function meosCodedColorDeco(css) {
   if (!meosCodedColorDecos) meosCodedColorDecos = new Map();
   if (!meosCodedColorDecos.has(css)) {
@@ -9159,7 +9171,7 @@ function meosApplyNameStampDecorations(editor) {
   const types = meosStampDecoTypes();
   const ed2 = meosEditableDecoTypes();
   const buckets = types.map(() => []);
-  const nameRanges = [], cmtRanges = [], codedRanges = [];
+  const nameRanges = [], cmtRanges = [], codedRanges = [], fgSpecRanges = [];
   let rawSet = new Set();
   try {
     if (!editor || !editor.document) return;
@@ -9167,6 +9179,7 @@ function meosApplyNameStampDecorations(editor) {
       types.forEach((t) => editor.setDecorations(t, []));
       editor.setDecorations(ed2.name, []); editor.setDecorations(ed2.comment, []);
       if (meosCodedColorDecos) for (const d of meosCodedColorDecos.values()) editor.setDecorations(d, []);
+      if (meosPlainColorDecos) for (const d of meosPlainColorDecos.values()) editor.setDecorations(d, []);
       return;
     }
     rawSet = meosRawLines(editor);     // 生データを見せている行(= 橙に染まる行)
@@ -9194,6 +9207,8 @@ function meosApplyNameStampDecorations(editor) {
         }
         // v4.0.371: バッジの中身。色指定はその色で、他はモザイクと同じ巡回で。飾りの行でも出す
         //   (バッジは畳んでいる時こそ読む物なので、カーソルが無くても見えていてよい)。
+        for (const [f, t, css] of roles.colorFg) fgSpecRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
+        for (const [f, t, css] of roles.colorBg) codedRanges.push({ range: new vscode.Range(ln, f, ln, t), css });
         for (let i = 0; i < roles.badge.length; i++) {
           const [f, t, code] = roles.badge[i];
           const css = (code && code !== -1) ? membraneCssColorForCode(code) : '';
@@ -9210,6 +9225,10 @@ function meosApplyNameStampDecorations(editor) {
     for (const it of codedRanges) { if (!byCss.has(it.css)) byCss.set(it.css, []); byCss.get(it.css).push(it.range); }
     if (meosCodedColorDecos) for (const [css, d] of meosCodedColorDecos) if (!byCss.has(css)) editor.setDecorations(d, []);
     for (const [css, rs] of byCss) editor.setDecorations(meosCodedColorDeco(css), rs);
+    const byFg = new Map();
+    for (const it of fgSpecRanges) { if (!byFg.has(it.css)) byFg.set(it.css, []); byFg.get(it.css).push(it.range); }
+    if (meosPlainColorDecos) for (const [css, d] of meosPlainColorDecos) if (!byFg.has(css)) editor.setDecorations(d, []);
+    for (const [css, rs] of byFg) editor.setDecorations(meosPlainColorDeco(css), rs);
   } catch (_) { }
 }
 // {* ▲mCN=0355_NAME_STAMP_COLORS *}
@@ -9221,6 +9240,7 @@ function clearForRaw(editor) {
   if (meosStampDecos) for (const d of meosStampDecos) z(d);   // v4.0.363: TSの色分けもRawでは外す
   if (meosEditableDecos) { z(meosEditableDecos.name); z(meosEditableDecos.comment); } // v4.0.368
   if (meosCodedColorDecos) for (const d of meosCodedColorDecos.values()) z(d);          // v4.0.371
+  if (meosPlainColorDecos) for (const d of meosPlainColorDecos.values()) z(d);          // v4.0.375
   if (highlightBodyByColor) for (const d of highlightBodyByColor.values()) z(d);
   if (highlightFgByColor) for (const d of highlightFgByColor.values()) z(d);
   z(highlightMarkerDecoration);
@@ -20018,7 +20038,7 @@ if(navHeadPrev)navHeadPrev.addEventListener('click',()=>{window.__navOnly='head'
 dir:-1});});
 if(navHeadNext)navHeadNext.addEventListener('click',()=>{window.__navOnly='head';vscode.postMessage({type:'navHeadJump',
 dir:1});});
-const MEOS_KNOB_PAL={red:'rgba(200,40,40,1)',orange:'rgba(210,120,20,1)',yellow:'rgba(180,150,0,1)',green:'rgba(40,150,60,1)',
+const MEOS_KNOB_PAL={red:'rgba(200,40,40,1)',orange:'rgba(210,120,20,1)',yellow:'rgba(234,194,26,1)',/* v4.0.375(俊克「Mepyの色が変わってないよ」): 選ぶ側と描く側が別の値を持っていた。黄を揃える */green:'rgba(40,150,60,1)',
 blue:'rgba(40,110,210,1)',purple:'rgba(150,70,210,1)',pink:'rgba(210,60,150,1)',navy:'rgba(20,30,120,1)',aqua:'rgba(0,160,210,1)',
 maroon:'rgba(150,20,20,1)',white:'#ffffff',black:'#222222'};
 function applyKnobColor(k,fg,bg){if(!k)return;const o=(bg&&MEOS_KNOB_PAL[bg])||'';const i=(fg&&MEOS_KNOB_PAL[fg])||'';if(o)k.style.setProperty('--knob-o',o);
@@ -24700,7 +24720,7 @@ function meosRawLines(editor) {
 //     判定はここ1か所なので、橙もモザイクも名前もコメントも**同じ割り方**から出る。
 function meosRawLineRoles(doc, ln) {
   const text = doc.lineAt(ln).text || '';
-  const roles = { stamps: [], name: [], comment: [], shell: [], badge: [] };  // badge の3つ目は色コード(無ければ -1)
+  const roles = { stamps: [], name: [], comment: [], shell: [], badge: [], colorFg: [], colorBg: [] };  // badge/color の3つ目は色
   const holes = [];
   try {
     for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) { roles.stamps.push([f, f + l]); holes.push([f, f + l]); }
@@ -24736,6 +24756,25 @@ function meosRawLineRoles(doc, ln) {
         }
       }
     } catch (_) { }
+    // ★★v4.0.375(俊克 改良1「ハイライトのFCコメントの中の**色指定も指定した色で表示**しようよ」):
+    //   ★バッジの `Y` と同じ考え＝ **書いてある色で見せる**。`(白/黄)` は「文字色/背景色」なので、
+    //     **文字色はその色の字・背景色はその色の地**にする＝ 指定した通りの姿が、その場に出る。
+    //   ★FC の名乗り(Mew!)が在る行だけ見る＝ ただの括弧を色指定と読み違えない。
+    if (text.indexOf(MEOS_MEW_SIG) >= 0) {
+      const cm = text.match(/[（(]\s*([^/／）)]{1,6})\s*[/／]\s*([^（）()]{1,6}?)\s*[）)]/);
+      if (cm) {
+        const at0 = text.indexOf(cm[0]);
+        // normalizeHighlightColor は未知名を 'yellow' に丸めるので、ここでは**表に在る時だけ**色と読む
+        //   (色でない括弧を黄で塗ってしまわないため)。
+        const key = (w) => HIGHLIGHT_COLOR_ALIASES[String(w).trim()] || HIGHLIGHT_COLOR_ALIASES[String(w).trim().toLowerCase()] || '';
+        const fgCss = key(cm[1]) ? (HIGHLIGHT_FG_COLORS[key(cm[1])] || '') : '';
+        const bgCss = key(cm[2]) ? (HIGHLIGHT_COLORS[key(cm[2])] || '') : '';
+        const f1 = at0 + cm[0].indexOf(cm[1]);
+        if (fgCss) { roles.colorFg.push([f1, f1 + cm[1].length, fgCss]); holes.push([f1, f1 + cm[1].length]); }
+        const f2 = at0 + cm[0].lastIndexOf(cm[2]);
+        if (bgCss) { roles.colorBg.push([f2, f2 + cm[2].length, bgCss]); holes.push([f2, f2 + cm[2].length]); }
+      }
+    }
     const info = membraneLineInfo(doc, ln);
     if (info && info.id) {
       const nameFrom = info.idStart, nameTo = info.idStart + info.id.length;

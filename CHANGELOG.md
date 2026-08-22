@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.375 (2026-08-22)
+- **A colour name is shown in its colour.** In an FC comment, `(白/黄)` means "text colour / background colour", so
+  the first is drawn as text in that colour and the second as a patch of it — the specification looks like what it
+  specifies. Only lines carrying the `Mew!` signature are examined, and a word that is not a colour name is left
+  alone rather than being rounded to yellow.
+- **Mepy's palette now agrees with the membrane it paints.** The colour you pick and the colour that gets drawn were
+  two separate values (a sixth definition of yellow); yellow is now shared. The remaining colours still differ —
+  unifying the two lists is v4.1 work.
+
 ### v4.0.374 (2026-08-22)
 - **The highlight button and the highlight are the same yellow now.** The editor's yellow goes from 55% to 65% opacity
   — enough to read as yellow, still under the point where white text on it stops being legible (#b3a40c, luminance

@@ -360,5 +360,27 @@ console.log('⑲ 色指定は色チップ= どの色でも同じ強さで読め�
   const y = T.membraneCssColorForCode('Y'), r = T.membraneCssColorForCode('R');
   ok(!!y && !!r && y !== r, '色コードは既存の色マップから引く(値は1つ)', [y, r]);
 }
+console.log('⑳ FCの色指定も、その色で見せる(v4.0.375)');
+{
+  const FC2 = lines.length;
+  lines.push('<!-- Mew!FC **not （白/黄） -->');           // 俊克の実データ(全角括弧)
+  doc.lineCount = lines.length;
+  const t = lines[FC2];
+  const r = T.meosRawLineRoles(doc, FC2);
+  ok(r.colorFg.length === 1 && t.slice(r.colorFg[0][0], r.colorFg[0][1]) === '白', '★文字色の指定を拾う', r.colorFg.map(x=>t.slice(x[0],x[1])).join(','));
+  ok(r.colorBg.length === 1 && t.slice(r.colorBg[0][0], r.colorBg[0][1]) === '黄', '★背景色の指定を拾う', r.colorBg.map(x=>t.slice(x[0],x[1])).join(','));
+  ok(!!r.colorFg[0][2] && !!r.colorBg[0][2] && r.colorFg[0][2] !== r.colorBg[0][2], '★それぞれの色を持って出る(字はその色/地はその色)', [r.colorFg[0][2], r.colorBg[0][2]]);
+
+  lines[FC2] = '<!-- Mew!FC **not (白/黄) -->';            // 半角括弧でも同じ
+  ok(T.meosRawLineRoles(doc, FC2).colorFg.length === 1, '半角の括弧でも拾う', T.meosRawLineRoles(doc, FC2).colorFg.length);
+
+  lines[FC2] = 'ただの文 (これ/あれ) です';                  // FCの名乗りが無い行は見ない
+  ok(T.meosRawLineRoles(doc, FC2).colorFg.length === 0, '★FCの名乗りが無い行の括弧は色と読まない', T.meosRawLineRoles(doc, FC2).colorFg.length);
+
+  lines[FC2] = '<!-- Mew!FC **not (ほげ/ふが) -->';         // 色名でない物は塗らない(黄に丸めない)
+  ok(T.meosRawLineRoles(doc, FC2).colorFg.length === 0, '★色名でない語を黄に丸めない', T.meosRawLineRoles(doc, FC2).colorFg.length);
+
+  lines.pop(); doc.lineCount = lines.length;
+}
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);
