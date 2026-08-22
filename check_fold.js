@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -49,11 +49,11 @@ try { T.makeDecorations(); } catch (_) { }
 const lines = [
   '# 見出し',
   '',
-  '<!-- {* ▼mCN=テスト膜_20260822s102301JST // comment1 *} -->',
+  '<!-- {* ▼mCN=テスト膜_20260822s105259JST // comment1 *} -->',
   '',
   'なかみ',
   '',
-  '<!-- {* ▲mCN=テスト膜_20260822s102301JST // comment2 *} -->',
+  '<!-- {* ▲mCN=テスト膜_20260822s105259JST // comment2 *} -->',
   '<!-- Mew!FC mCN (📊⊕1+0D-2Y) -->',
   '',
   'あとの本文',
@@ -153,6 +153,31 @@ console.log('⑥ 開いている膜の開始行にカーソルが入った = 何
   ok(g === '(無し)', '印を足さない(FC 行は下に本物が見えている)', g);
   const a = afterAt(ed, OPEN_LINE);
   ok(a === '(無し)', 'FC の写しも足さない', a);
+}
+console.log('⑦ 膜名を直に打ち替えた = 閉じ膜へ届ける1つの書き換えが出る(v4.0.351)');
+{
+  const before = lines[OPEN_LINE];
+  const w = { uri: uri.toString(), openLine: OPEN_LINE, closeLine: CLOSE_LINE, oldName: 'テスト膜_20260822s105259JST' };
+  ok(T.meosMembraneNameEditFor(doc, w) === null, '名前を変えていない間は何も出ない(打つたびに書き換えない)', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
+
+  lines[OPEN_LINE] = before.replace('テスト膜_20260822s105259JST', '新しい名前_20260822s110000JST');   // 開始行だけ直に打ち替えた
+  const one = T.meosMembraneNameEditFor(doc, w);
+  ok(!!one, '★閉じ膜への書き換えが1つ出る', JSON.stringify(one));
+  ok(one && one.text === '新しい名前_20260822s110000JST', '★新しい名前が入る', one && one.text);
+  ok(one && one.range.start.line === CLOSE_LINE, '★書き換える先は閉じ行だけ', one && one.range.start.line);
+
+  const cl = T.membraneNameRangeForRenameOnLine(doc, CLOSE_LINE, 'close');
+  const applied = lines[CLOSE_LINE].slice(0, cl.range.start.character) + one.text + lines[CLOSE_LINE].slice(cl.range.end.character);
+  ok(/▲mCN=新しい名前_20260822s110000JST \/\/ comment2/.test(applied), '★当てると閉じ膜が揃う(コメントは残る)', applied);
+
+  lines[CLOSE_LINE] = applied;
+  ok(T.meosMembraneNameEditFor(doc, w) === null, '揃った後はもう何も出ない(繰り返し書かない)', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
+  lines[OPEN_LINE] = before; lines[CLOSE_LINE] = lines[CLOSE_LINE].replace('新しい名前_20260822s110000JST', 'テスト膜_20260822s105259JST');
+}
+console.log('⑧ 閉じ行が控えた名前でない = 触らない(誰かが先に直した後)');
+{
+  const w = { uri: uri.toString(), openLine: OPEN_LINE, closeLine: CLOSE_LINE, oldName: '別の名前_20260101s000000JST' };
+  ok(T.meosMembraneNameEditFor(doc, w) === null, '控えと違う閉じ行には書かない', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

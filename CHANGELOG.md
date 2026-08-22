@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.351 (2026-08-22)
+- **Rename a membrane by just typing over its name.** No Edit Me needed: type the new name on the opening line, and
+  when you leave that line MeOS carries it to the closing line in **one** edit (one undo). Renaming used to break the
+  pair, because pairs are matched *by name* — so the moment you changed it, the closing line was orphaned. The fix is
+  to note the old name and the closing line's number **on entry**, while the pair is still intact.
+- Only the line you left is touched, and only if the closing line still holds the noted name — if something else
+  already changed it, MeOS keeps its hands off. If the membrane was folded, it is folded back after the edit
+  (writing inside a fold makes VS Code recompute folding and pop it open — v0.9.906).
+- **The FC echo is blue now.** It is a picture, not text: the real FC line lives after ▲, inside the fold, so no
+  arrow key reaches it. Orange means "these characters are yours to edit"; the echo is aqua to say the opposite
+  before you try.
+
 ### v4.0.350 (2026-08-22)
 - **Put the caret in a folded membrane and it no longer looks open.** The opening line shows raw source while the
   caret sits on it (v4.0.345), and raw source carries a single ▼ — so a folded membrane read as an open one. Two

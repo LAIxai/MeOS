@@ -7016,9 +7016,15 @@ function applyPrettyLabels(editor) {
             if (!meosIsSpecLine(ft)) break;
             fcEcho += (fcEcho ? '   ' : '') + ft.trim();
           }
+          // ★v4.0.351(俊克 8/22「入れないことを、色を青とかに変えて、警告するといいかもよ。
+          //   ただし、なぜFCを変更できないか?、というのは疑問だけどね」):
+          //   ★行末に出しているのは**絵であって、字ではない**(装飾＝仮想テキスト)。本物のFC行は
+          //     閉じ膜の次＝畳んだ中に居るので、そこへは→キーでも入れない。だから直せない。
+          //   ★俊克の言うとおり、**入れない事は色で先に言う**＝ 生データの橙とはっきり違う青にする
+          //     (触れる字は橙／触れない写しは青)。→ [[feedback_fix_signal_at_fix_place]]
           if (fcEcho) openLabels.push({
             range: new vscode.Range(line, text.length, line, text.length),
-            renderOptions: { after: { contentText: '   ' + fcEcho, color: fcColor, fontStyle: 'italic', fontWeight: '600' } }
+            renderOptions: { after: { contentText: '   ' + fcEcho, color: HIGHLIGHT_FG_COLORS.aqua, fontStyle: 'italic', fontWeight: '600' } }
           });
         }
       }
@@ -15062,6 +15068,77 @@ function membraneNameRangeForRenameOnLine(document, line, expectedKind, expected
   };
 }
 
+// ★★v4.0.351(俊克 8/22「膜名を直接変えると、閉じ膜と違うので、おかしくなるという経験は以前から
+//   経験している。でも、直接変えたくなるよね。Edit Meを使わずに、直接、膜名の編集は可能か?」):
+//   ★★**可能。開始膜の名前をそのまま打ち直せばよく、閉じ膜は MeOS が後から揃える**。
+//   ★揃える瞬間は**その行を離れた時の1回だけ**。打つたびに閉じ膜も書き換えると、打鍵の道に文書の編集を
+//     足すことになり([[project_meos_freeze_pattern]]の穴)、取り消しも1文字ずつに割れる。
+//     「行を離れたら直す」は MeOS の既定の作法(v0.9.618)。
+//   ★★入った時の名前と閉じ行の番号を**先に控える**。名前を打ち替えた瞬間に対は壊れる(対は名前で照合して
+//     いるので)＝ 控えが無ければ、離れた時にはもう相手が分からない。俊克の「おかしくなる」はこの状態。
+//   ★閉じ行が控えた名前のままの時だけ書き換える。既に違う名前なら、誰かが直した後なので触らない。
+//   ★畳んだまま名前を直すこともある(俊克「折り畳んであっても、comment1は修正できる」)＝ 閉じ行は畳んだ中に
+//     居るので、書き換えると VSCode が折り畳みを計算し直して開いてしまう(v0.9.906)。**畳み直して返す**。
+let _meosNameWatch = null;   // { uri, openLine, closeLine, oldName }
+function meosNoteMembraneNameEdit(editor) {
+  try {
+    if (!editor || !editor.document || !editor.selection) return;
+    const doc = editor.document;
+    const uri = String(doc.uri);
+    const line = editor.selection.active.line;
+    const w = _meosNameWatch;
+    if (w && (w.uri !== uri || w.openLine !== line)) {   // 見ていた行を離れた
+      _meosNameWatch = null;
+      meosApplyMembraneNameEdit(w);                      // 待たない(カーソルの道を止めない)
+    }
+    if (line < 0 || line >= doc.lineCount) return;
+    if (_meosNameWatch && _meosNameWatch.uri === uri && _meosNameWatch.openLine === line) return; // もう見ている
+    const nm = membraneNameRangeForRenameOnLine(doc, line, 'open');
+    if (!nm || !nm.id) return;                           // 膜の開始行でなければ何もしない(ここで足切り)
+    const pair = collectPairs(doc, { excludeIndex: false }).find(p => p.start === line && p.id === nm.id);
+    if (!pair || pair.end <= pair.start) return;
+    _meosNameWatch = { uri, openLine: line, closeLine: pair.end, oldName: nm.id };
+  } catch (_) { }
+}
+// 控えと今の文書を見て、閉じ行に必要な1つの書き換えを返す(無ければ null)。判定はここ1つだけ。
+function meosMembraneNameEditFor(doc, w) {
+  if (!doc || !w) return null;
+  if (w.openLine < 0 || w.openLine >= doc.lineCount) return null;
+  if (w.closeLine <= w.openLine || w.closeLine >= doc.lineCount) return null;
+  const now = membraneNameRangeForRenameOnLine(doc, w.openLine, 'open');
+  if (!now || !now.id) return null;              // 開始行の形が壊れている = 触らない
+  if (now.id === w.oldName) return null;         // 名前は変わっていない
+  const cl = membraneNameRangeForRenameOnLine(doc, w.closeLine, 'close', w.oldName);
+  if (!cl) return null;                          // 閉じ行が控えた名前でない = 触らない
+  return { range: cl.range, text: now.id };
+}
+// 畳んだ中を書き換えると VSCode が折り畳みを計算し直して開く(v0.9.906)ので、畳み直して返す。
+function meosRefoldAfterNameEdit(ed, openLine) {
+  suppressViewportFoldUntil = Date.now() + 1500;
+  try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
+  setTimeout(() => {
+    try {
+      vscode.commands.executeCommand('editor.fold', { selectionLines: [openLine] })
+        .then(() => { try { refresh(ed); } catch (_) { } }, () => { });
+    } catch (_) { }
+  }, 220);
+}
+async function meosApplyMembraneNameEdit(w) {
+  try {
+    if (!w) return;
+    const ed = vscode.window.visibleTextEditors.find(e => String(e.document.uri) === w.uri);
+    if (!ed || !ed.document || ed.document.isClosed) return;
+    const one = meosMembraneNameEditFor(ed.document, w);
+    if (!one) return;
+    const pairNow = collectPairs(ed.document, { excludeIndex: false }).find(p => p.start === w.openLine);
+    const wasFolded = pairNow ? isPairFolded(ed, pairNow) : false;
+    const okd = await ed.edit(e => { e.replace(one.range, one.text); }, { undoStopBefore: true, undoStopAfter: true });
+    if (!okd) return;
+    if (wasFolded) meosRefoldAfterNameEdit(ed, w.openLine);
+    try { vscode.window.setStatusBarMessage('MeOS: closing membrane renamed → ' + one.text, 2500); } catch (_) { }
+    setTimeout(() => { try { refresh(ed); } catch (_) { } }, 60);
+  } catch (_) { }
+}
 function currentMembranePairForRename(editor) {
   if (!editor) return null;
   const doc = editor.document;
@@ -26675,6 +26752,7 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
     try { meosScheduleFcCursorSync(e.textEditor); } catch (_) { }
+    try { meosNoteMembraneNameEdit(e.textEditor); } catch (_) { }   // v4.0.351: 膜名を直に直せるようにする
   }));
   context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st && st.focused) setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 500); }));
   // v4.0.140: 起動直後は「まだアクティブでない/範囲が未計算」で空振りしやすいso、間を空けて3回ぶつける(済みなら即returnするso無駄は無い)。
@@ -27158,7 +27236,10 @@ makeDecorations();
         return undefined;
       }
     }),
-    vscode.window.onDidChangeActiveTextEditor(e => { composingLine = -1; if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; } updateLastCaretForEditor(e); refresh(e); updateMembraneStatusBar(e); setTimeout(() => restoreMstatsForEditor(e), 250); autoShowMeDockForEditor(e); }),
+    vscode.window.onDidChangeActiveTextEditor(e => { composingLine = -1; if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+      // v4.0.351: 別のタブへ移る時も、控えていた膜名の直しを閉じ膜へ届けてから移る。
+      try { if (_meosNameWatch) { const _w = _meosNameWatch; _meosNameWatch = null; meosApplyMembraneNameEdit(_w); } } catch (_) { }
+      updateLastCaretForEditor(e); refresh(e); updateMembraneStatusBar(e); setTimeout(() => restoreMstatsForEditor(e), 250); autoShowMeDockForEditor(e); }),
     vscode.window.onDidChangeTextEditorVisibleRanges(e => {
       // v0.9.676: DEBOUNCE the scroll-driven refresh. onDidChangeTextEditorVisibleRanges fires
       // continuously through a scroll gesture; the old code ran the heavy refresh SYNCHRONOUSLY
