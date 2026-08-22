@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.365 (2026-08-22)
+- **The saved marker was the wrong way round.** Now **● orange = unsaved** (danger — same direction as VS Code's own
+  tab marker, which is already in your hands) and **× green = saved** (safe — nothing left to write).
+- **One tooltip, not two.** Elements drawn with the CSS `::after` tooltip must be excluded from the JavaScript one —
+  the rule set for `.big-action` back in v3.1.32. I added the CSS half and left the JS half firing, so both appeared.
+  Two tooltips means two mouths.
+- The tooltip sits closer to what it labels, and opens from the left edge instead of the right.
+
 ### v4.0.364 (2026-08-22)
 - **The UD tooltip no longer covers the timestamp it describes.** MeOS shows tooltips with `data-tip` + a CSS
   `::after` that opens *above* the element — the house solution since v3.1.32, precisely to avoid this. I used a

@@ -18484,6 +18484,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-caret{font-size:9px;line-height:1;padding:1px 2px;border:0;border-radius:3px;background:transparent;color:inherit;opacity:.6;cursor:pointer}
 .title-file-ud{margin-left:6px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
+.title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0}/* v4.0.365: 離れ過ぎを詰める */
 .title-file:hover .title-file-caret{opacity:1}
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
@@ -20688,7 +20689,10 @@ if(_tpo&&_tpo.classList.contains('on')&&!(ev&&ev.target&&ev.target.closest&&ev.t
 return;}}if(window.__refDeciding){hideTocTip();return;}/* v0.9.99988: セグメント決定中はtip抑制(俊克) *//* v0.9.805: H-TOC項目のコメント編集中(toc-valueにフォーカス)はtip非表示=編集の邪魔をしない。 */{const ae=document.activeElement;
 if(ae&&ae.classList&&ae.classList.contains('toc-value')){hideTocTip();return;}}
 /* v2.0.37(俊克): 基準点入力枠(#dw-base-input)が開いている間はホバーtipを抑止=入力枠のtitle「Base point…」が赤ヒント(#dw-hint)を上書きする件を根治。 */
-{var _dwbi=document.getElementById('dw-base-input');if(_dwbi&&_dwbi.classList.contains('on')){hideTocTip();return;}}const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;
+{var _dwbi=document.getElementById('dw-base-input');if(_dwbi&&_dwbi.classList.contains('on')){hideTocTip();return;}}/* v4.0.365(俊克「tipが重複している。これは、初めて見たね」): CSS ::after で出す物は、JS側は出さない
+   = v3.1.32 で .big-action に決めた作法と同じ。2つ出るのは、口が2つ在るから。 */
+{var _udt=(ev&&ev.target&&ev.target.closest)?ev.target.closest('.title-file-ud'):null;if(_udt){hideTocTip();return;}}
+const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;
 /* v0.9.712: native title を data-tip に遅延移行(ネイティブtipを抑止し共通の左伸ばしtipに一本化)。JSが.titleを再設定しても次のhoverで反映。 */if(el&&el.hasAttribute('title')){const tt=el.getAttribute('title');
 if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();
 return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));
@@ -20993,7 +20997,9 @@ return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 �
 var _ud=document.getElementById('title-file-ud');
 if(_ud){while(_ud.firstChild)_ud.removeChild(_ud.firstChild);
 var _dot=document.createElement('span');_dot.className='ud-dot';
-_dot.textContent=m.dirty?'\u00d7':'\u25cf';
+/* v4.0.365(俊克「印が逆。**保存済みの×は緑色(安全)、未保存の●は橙色あるいは赤色(危険)**にすべき」)
+   ●=未保存 は VS Code のタブと同じ向き= 体に入っている方に合わせる。×=もう書く物が無い(閉じてよい)。 */
+_dot.textContent=m.dirty?'\u25cf':'\u00d7';
 _dot.style.color=m.dirty?'#e0803a':'#3fb950';
 _dot.setAttribute('data-tip',m.dirty?'Unsaved changes (\u2318S to save)':'Saved');
 _ud.appendChild(_dot);
