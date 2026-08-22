@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -247,6 +247,24 @@ console.log('⑫ tip は「どれを押すのか」を名指しする(v4.0.360)'
   ok(openGlyphAt(edF, OPEN_LINE) === T.meosMembraneGlyph('open', true, false), '★描画の印と tip の字が同じ物から出ている', openGlyphAt(edF, OPEN_LINE));
   ok(P(OPEN_LINE, 30) === null, '膜名の上では出さない(そこはジャンプの領域)', P(OPEN_LINE, 30));
   ok(P(OPEN_LINE + 1, 0) === null, '膜でない行では出さない', P(OPEN_LINE + 1, 0));
+}
+console.log('⑬ ▼ を押した後も、続けて押せる(v4.0.362)');
+{
+  // 押した結果が、次に押す物を消してはいけない= ▼ を押すとカーソルがその行に乗るが、
+  // それは「編集しに来た」のでなく「ボタンを押した」だけなので、生データにしない。
+  const ed = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);   // 畳んだ直後= カーソルは開始行
+  T.setRefNoRaw(doc, OPEN_LINE);                                    // ▼クリックが張る抑止
+  const g = openGlyphAt(ed, OPEN_LINE);
+  ok(g === '▼▲', '★★印は出たまま(生データに化けない)= もう一度押せる', g);
+  ok(afterAt(ed, OPEN_LINE) === '(無し)', 'FCの写しも出ない(飾りのままなので写しは要らない)', afterAt(ed, OPEN_LINE));
+
+  // 抑止は「その行に居る間」だけ= 離れて戻れば、いつもどおり生データが出る
+  T.setRefNoRaw(doc, OPEN_LINE);
+  const edAway = makeEditor([R(0, OPEN_LINE), R(8, 10)], 9);        // 一度離れる
+  openGlyphAt(edAway, OPEN_LINE);                                   // ここで抑止が解ける
+  const edBack = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);// 戻ってくる
+  const g2 = openGlyphAt(edBack, OPEN_LINE);
+  ok(g2 === '▼▲' && /Mew!FC/.test(afterAt(edBack, OPEN_LINE)), '★離れて戻れば生データ+FC写し(編集の邪魔をしない)', [g2, afterAt(edBack, OPEN_LINE)]);
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

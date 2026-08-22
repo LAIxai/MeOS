@@ -12869,7 +12869,21 @@ async function toggleMembraneFromArrowHit(editor, info) {
   if (!editor || !info) return false;
   const matched = pairedMembraneForLine(editor.document, info.line);
   if (!matched || !matched.pair) return false;
+  // ★★v4.0.362(俊克 pm05:35 改良1「『Toggle ▼-Button!』などに従って、クリックすると、膜がコメント化して
+  //   しまうので、**連続操作ができない**。なので、この処理のときは、**膜をクリックしたと見なさないように
+  //   しよう**。そこが『▼⇄▼▲』ボタンとの違いで、こっちは、何度でも押せるからね」):
+  //   ★★**押した結果が、次に押す物を消していた**＝ ▼ を押すとカーソルがその行に乗り、
+  //     「カーソルを置いた行は生データ」(v4.0.345)で印が生の字に化ける＝ **2度目が押せない**。
+  //     俊克の言うとおり、これは「その行を編集しに来た」のではなく「ボタンを押した」だけなので、
+  //     **膜をクリックしたと見なさない**のが正しい。
+  //   ★直しは既にある仕掛けに乗るだけ＝ `setRefNoRaw`(着地の一時raw抑止・v1.0.11)。
+  //     乗っている間はカーソル行扱いを外し、**その行を離れたら解除**するので、
+  //     印は出たまま何度でも押せて、編集したい時は一度離れて戻ればよい(生データはそこで出る)。
+  //   ★畳むとカーソルは開始行へ退避する(v0.9.905)ので、抑止するのは常に開始行。
+  setRefNoRaw(editor.document, matched.pair.start);
   await setPairFoldStateAndMstat(editor, matched.pair, !isPairFolded(editor, matched.pair));
+  setRefNoRaw(editor.document, matched.pair.start);   // トグル中の refresh で解けていても張り直す
+  refresh(editor);
   nameJumpSuppressUntil = Date.now() + 250;
   return true;
 }

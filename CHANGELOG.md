@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.362 (2026-08-22)
+- **Press ▼ twice in a row.** Clicking the glyph put the caret on that line, and "the line under the caret shows raw
+  source" (v4.0.345) turned the mark into plain characters — so the second press had nothing to aim at. The result of
+  pressing was erasing the thing you press next. Clicking a button is not "I came here to edit this line", so the
+  click no longer counts as landing on the membrane: it reuses the existing landing-suppression (`setRefNoRaw`,
+  v1.0.11), which holds only while the caret stays on that line. The mark stays visible and takes press after press,
+  exactly like Me Dock's ▼⇄▼▲ — and moving away and coming back still shows the raw source for editing.
+
 ### v4.0.361 (2026-08-22)
 - **A folded membrane's tip says `Toggle ▼▲-Button!`.** The mark changes when you fold, so the words change with it.
   More to the point, the glyph is now decided in **one function** that both the rendering and the tip read, with both
