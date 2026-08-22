@@ -334,5 +334,19 @@ console.log('⑰ 1行を役割で割る= 触れる所と触るなの所(v4.0.368
   ok(dup === 0, '★★役割は重ならない(同じ字を2つが塗らない)', dup);
   ok(seen.size === t.length, '★★行の字を1つ残らず割り当てている', seen.size + '/' + t.length);
 }
+console.log('⑱ バッジの中身も「変えてよい」側(v4.0.370)');
+{
+  const FC = CLOSE_LINE + 1;
+  const t = lines[FC];                                  // <!-- Mew!FC mCN (📊⊕1+0D-2Y) -->
+  const r = T.meosRawLineRoles(doc, FC);
+  const inside = r.name.map(([a,b]) => t.slice(a,b)).join('|');
+  ok(inside === '⊕1+0D-2Y', '★中身(状態/回数/深度/色)は全部あなたが決める値', inside);
+  const shell = r.shell.map(([a,b]) => t.slice(a,b)).join('');
+  ok(shell.indexOf('📊') >= 0 && shell.indexOf('(') >= 0 && shell.indexOf(')') >= 0, '★括弧と📊は記法だから殻の側', shell);
+  ok(shell.indexOf('Mew!FC') >= 0, 'FCの名乗りも記法', true);
+  let seen = new Set(), dup = 0;
+  for (const k of ['stamps','name','comment','shell']) for (const [a,b] of r[k]) for (let c=a;c<b;c++){ if(seen.has(c))dup++; seen.add(c); }
+  ok(dup === 0 && seen.size === t.length, '★★ここでも役割は重ならず、字を1つ残らず割り当てている', dup + '/' + seen.size + '/' + t.length);
+}
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

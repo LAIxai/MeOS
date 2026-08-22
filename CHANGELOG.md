@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.370 (2026-08-22) — the v4.0 line closes here
+- **The badge's contents are yours too.** I had filed the open-count under "MeOS counts this, editing it is
+  meaningless" — wrong: writing `∞` stops the counting, so the number is a specification like the rest. State, count,
+  depth and colour all belong to you; only the brackets and the 📊 are notation. Which leaves one rule for the whole
+  line: **orange means don't touch, everything else is yours** — the user's own phrasing, widened from the membrane
+  name to every character.
+
 ### v4.0.369 (2026-08-22)
 - **"Copied" appears in the tooltip itself.** Clicking the timestamp happens while the tooltip is open showing exactly
   what will be copied, so the tooltip is where the confirmation belongs — *that* is what was copied. The separate

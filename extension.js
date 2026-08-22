@@ -24651,6 +24651,22 @@ function meosRawLineRoles(doc, ln) {
   const holes = [];
   try {
     for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) { roles.stamps.push([f, f + l]); holes.push([f, f + l]); }
+    // ★★v4.0.370(俊克 pm08:51「**開いた回数も、∞を指定して数えるのを止めるというアルゴリズムも
+    //   付いている**んだよ。だから、それも編集可能だよ」):
+    //   ★★私は「回数は MeOS が数えるので触っても意味がない」と分けたが、**間違い**だった＝
+    //     `∞` と書けば数えるのを止められる＝ **数字も人の指定**。バッジの中身は全部、人が決める値。
+    //   ★だから規則は1つで足りる＝ **橙以外は触れる**。括弧と 📊 は記法なので殻、中身は「変えてよい」側。
+    //     (俊克の元の言葉「膜名の中のオレンジ色は、変更不可という意味になる」を、行の全部へ広げた形)
+    try {
+      const bd = parseMstatBadgeFromText(text);
+      if (bd && bd.end > bd.start) {
+        const raw = text.slice(bd.start, bd.end);
+        const icon = raw.indexOf('📊');
+        const from = bd.start + (icon >= 0 ? icon + '📊'.length : (raw[0] === '(' ? 1 : 0));
+        const to = bd.end - (raw[raw.length - 1] === ')' ? 1 : 0);
+        if (to > from) { roles.name.push([from, to]); holes.push([from, to]); }
+      }
+    } catch (_) { }
     const info = membraneLineInfo(doc, ln);
     if (info && info.id) {
       const nameFrom = info.idStart, nameTo = info.idStart + info.id.length;
