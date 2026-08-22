@@ -19546,7 +19546,11 @@ __mzSet(__mdZoom+0.01);__mzPct();}else if(e.key==='ArrowDown'){e.preventDefault(
 const colorChoices=[['R','🟥','Red'],['O','🟧','Orange'],['Y','🟨','Yellow'],['G','🟩','Green'],['B','🟦','Blue'],['P','🟪','Purple'],['N','🟫','Brown'],['W','⬜','White']];
 // {* ▲mCN=dock_js_zoom *}
 // {* ▼mCN=dock_js_membrane // 膜の色/名前/Edit Meパネル(色ボタン・栞ボタン・モード表示) *}
-function colorHex(code){const c=(code||'G').toUpperCase();return ({R:'#dc2626',O:'#f97316',Y:'#d97706',G:'#16a34a',B:'#2563eb',
+/* ★v4.0.376(俊克「Mepy自身の色の設定がどこかを探す必要がある」): ここが7か所目の黄だった。
+   #d97706(amber-600)は橙なので、(Y)と書いてあるのに橙の玉が出ていた。膜の色と揃える。
+   ★R/G/Bは元から一致していて、O と Y だけが別の値= どこかで片方だけ触られた跡。
+   Yは今直し、Oは残る(俊克がまだ困っていない)。 */
+function colorHex(code){const c=(code||'G').toUpperCase();return ({R:'#dc2626',O:'#f97316',Y:'#eac21a',G:'#16a34a',B:'#2563eb',
 P:'#a855f7',N:'#8b5e3c',W:'#9ca3af'}[c]||'#16a34a');}
 function colorEmoji(code){const c=(code||'G').toUpperCase();const hit=colorChoices.find(x=>x[0]===c);return hit?hit[1]:'🟩';
 }

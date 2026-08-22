@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.376 (2026-08-22)
+- **Mepy's own ball is yellow when it says (Y).** The seventh definition of yellow — `colorHex()` in the dock, where
+  `Y` was `#d97706` (amber-600), an orange. What I fixed last round was the colour *menu*; this is the colour the
+  membrane itself is shown in. Notably R, G and B in that table already match the membrane colours exactly — only O
+  and Y drifted, which is the signature of one side being edited alone. Y is aligned now; O still differs.
+
 ### v4.0.375 (2026-08-22)
 - **A colour name is shown in its colour.** In an FC comment, `(白/黄)` means "text colour / background colour", so
   the first is drawn as text in that colour and the second as a patch of it — the specification looks like what it
