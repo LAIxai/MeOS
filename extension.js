@@ -4464,6 +4464,16 @@ function isMstatFixed(pair, document) {
   const b = (meosPairBadgeAt(document, pair) || {}).badge || null;
   return !!(b && b.fixed);
 }
+// v4.0.353: 畳む前に、カーソルを逃がす先の行を決める(-1 = 逃がす必要が無い)。
+// 畳む範囲の中に居るなら、**一番外側**の膜の開始行へ。入れ子の内側へ逃がすと、その親を畳んだ時に
+// 結局また隠れてしまう＝ 一度で済ませるには外側を選ぶ。
+function meosCaretEscapeLineForFolds(caret, foldPairs) {
+  if (typeof caret !== 'number' || caret < 0 || !Array.isArray(foldPairs)) return -1;
+  const cover = foldPairs
+    .filter(p => p && caret > p.start && caret <= p.end)
+    .sort((a, b) => a.start - b.start)[0];
+  return cover ? cover.start : -1;
+}
 async function restoreMstatsForEditor(editor) {
   if (!editor) return;
   const key = String(editor.document.uri);
@@ -4478,15 +4488,60 @@ async function restoreMstatsForEditor(editor) {
     if (b.symbol === '⊖') foldPairs.push(p);
     if (b.symbol === '⊕') unfoldPairs.push(p);
   }
-  if (foldPairs.length || unfoldPairs.length) suppressViewportFoldUntil = Date.now() + 1200; // v4.0.349
-  if (foldPairs.length) {
-    await vscode.commands.executeCommand('editor.fold', { selectionLines: foldPairs.map(p => p.start) });
-    for (const p of foldPairs) foldStateByPairKey.set(pairStateKey(editor, p), true);
-  }
+  // ★★★v4.0.353(俊克 8/22 pm00:34「膜が折畳まれた状態で、VSCmを再起動すると、展開されてしまう。
+  //   これは1ヶ月以上、ずっと、そうなんだよ。そろそろ、これに決着をつけよう。**ただし、元の行に
+  //   ジャンプするのが失敗すると、なぜか折り畳まれている**。それも不思議なんだよ」):
+  //   ★★★**俊克の「不思議」が、そのまま答えを指していた**＝ カーソルが復元先(=畳む範囲の中)へ
+  //     着いた時だけ展開される。VSCode は**カーソルの居る行を必ず見せる**ので、畳んでも即座に開く。
+  //     ジャンプが失敗した時＝ カーソルが中に来なかった時だけ、畳んだままで居られた。
+  //     これは v0.9.905 で一度塞いだ穴と同じ形で、**復元の道にだけ塞ぎ忘れが残っていた**。
+  //   ★★もう1つ、順番が逆だった＝ **畳んでから開いていた**。子の ⊕ を後から開くと、
+  //     `editor.unfold` はその行を見せるために**畳んだばかりの親まで開く**。Me All は
+  //     「開いてから畳む」と書いてある(v0.9.345)のに、復元だけ逆順のままだった。
+  //   ★provider の準備を待つ＝ 14万行では折り畳み範囲の再計算が間に合わず、1回きりの `editor.fold`
+  //     は空振りする。**畳めるまで細かく試す**(v2.0.48 の貼付と同じ作法)。
+  if (foldPairs.length || unfoldPairs.length) suppressViewportFoldUntil = Date.now() + 9000; // v4.0.349/353
+  // ① 開くのが先(親を畳む前に子へ届かせる)
   if (unfoldPairs.length) {
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldPairs.map(p => p.start) });
     for (const p of unfoldPairs) foldStateByPairKey.set(pairStateKey(editor, p), false);
   }
+  let _rounds = 0, _leftVisible = 0;
+  if (foldPairs.length) {
+    suppressAutoUnfoldUntil = Date.now() + 9000;
+    // ②③ カーソルを畳む範囲の外へ逃がしてから畳む。逃がし先は**一番外側の膜の開始行**＝ 畳んだ後も
+    //   見える行(畳んである膜の中に居たのだから、再開時にその膜の頭に立つのが素直な着地)。
+    //   ★毎回のラウンドで逃がし直す＝ **VSCode のカーソル位置の復元は、こちらより後から来ることがある**。
+    //     一度きり逃がしても、後から中へ戻されれば、そこでまた開いてしまう。
+    //   ★畳めるまで細かく試す＝ 14万行では provider の再計算が間に合わず1回目は空振りする(v2.0.48)。
+    const _deadline = Date.now() + 6000;
+    let _left = foldPairs.slice();
+    while (_left.length && Date.now() < _deadline && !editor.document.isClosed) {
+      try {
+        const _caret = editor.selection ? editor.selection.active.line : -1;
+        const _esc = meosCaretEscapeLineForFolds(_caret, _left);
+        if (_esc >= 0) {
+          editor.selection = new vscode.Selection(_esc, 0, _esc, 0);
+          editor.revealRange(new vscode.Range(_esc, 0, _esc, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        }
+      } catch (_) { }
+      await vscode.commands.executeCommand('editor.fold', { selectionLines: _left.map(p => p.start) });
+      _rounds++;
+      const _still = _left.filter(p => _pairBodyVisible(editor, p));  // 本文が画面に見えている= まだ開いている
+      if (!_still.length) break;                                      // 見える範囲では全部畳めた
+      try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
+      await new Promise(r => setTimeout(r, 200));
+      _left = _still;
+    }
+    _leftVisible = _left.length;
+    for (const p of foldPairs) foldStateByPairKey.set(pairStateKey(editor, p), true);
+  }
+  suppressViewportFoldUntil = Date.now() + 500;   // 復元は終わり= 画面の事実を読んでよい
+  try {
+    meosDbg('[restore] fold=' + foldPairs.length + ' unfold=' + unfoldPairs.length
+      + ' rounds=' + _rounds + ' stillOpenOnScreen=' + _leftVisible
+      + ' lines=' + editor.document.lineCount);
+  } catch (_) { }
   setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
 }
 

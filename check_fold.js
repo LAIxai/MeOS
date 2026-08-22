@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -178,6 +178,20 @@ console.log('⑧ 閉じ行が控えた名前でない = 触らない(誰かが�
 {
   const w = { uri: uri.toString(), openLine: OPEN_LINE, closeLine: CLOSE_LINE, oldName: '別の名前_20260101s000000JST' };
   ok(T.meosMembraneNameEditFor(doc, w) === null, '控えと違う閉じ行には書かない', JSON.stringify(T.meosMembraneNameEditFor(doc, w)));
+}
+console.log('⑨ 復元で畳む前に、カーソルを逃がす先(v4.0.353)');
+{
+  const outer = { start: 10, end: 100 };   // 外側の膜
+  const inner = { start: 40, end: 60 };    // その中の膜
+  const F = T.meosCaretEscapeLineForFolds;
+  ok(F(50, [outer, inner]) === 10, '★入れ子の中に居たら**一番外側**の開始行へ逃がす(内側だと親を畳んだ時にまた隠れる)', F(50, [outer, inner]));
+  ok(F(45, [inner, outer]) === 10, '渡す順番が違っても答えは同じ', F(45, [inner, outer]));
+  ok(F(10, [outer]) === -1, '開始行に居るなら逃がさない(畳んでも見える行)', F(10, [outer]));
+  ok(F(100, [outer]) === 10, '閉じ行に居たら逃がす(閉じ行は畳むと隠れる)', F(100, [outer]));
+  ok(F(101, [outer]) === -1, '膜の外に居るなら逃がさない', F(101, [outer]));
+  ok(F(5, [outer]) === -1, '膜より前に居るなら逃がさない', F(5, [outer]));
+  ok(F(-1, [outer]) === -1, 'カーソルが無い時も落ちない', F(-1, [outer]));
+  ok(F(50, []) === -1, '畳む膜が無ければ何もしない', F(50, []));
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

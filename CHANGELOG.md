@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.353 (2026-08-22)
+- **Folded membranes stay folded across a restart.** A month-old complaint, and the reporter's own aside pointed
+  straight at it: *"when the jump back to the original line fails, it stays folded."* VS Code always reveals the line
+  the caret is on — so when the restored caret landed inside a membrane, folding it immediately un-folded it again.
+  When the jump failed, the caret never landed inside, and the fold survived. This is the same hole v0.9.905 closed
+  for the toggle path; the restore path never got the patch.
+- Restore now (1) **unfolds first, then folds** — it was the other way round, so re-opening a child `⊕` re-opened the
+  `⊖` parent that had just been folded (Me All has said "unfold first" since v0.9.345); (2) **moves the caret out of
+  every range about to be folded**, to the *outermost* opening line — and re-checks each round, because VS Code's own
+  caret restore can arrive after ours; (3) **keeps trying until the fold takes** (up to 6s), since on a 140k-line file
+  the folding provider is not ready 250ms in and a single `editor.fold` silently does nothing.
+- The restore writes one line to the debug log — how many were folded, how many rounds it took, how many were still
+  open on screen at the end.
+
 ### v4.0.352 (2026-08-22)
 - **A measurement, not a fix.** A membrane folded right after being created once showed decorated text with the caret
   on it, where raw source was due — and it did not reproduce. Rather than guess, folding now writes one line to the
