@@ -4,6 +4,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.367 (2026-08-22)
+- **The tiles survive the orange line — by not fighting for it.** Two decorations were painting the same characters
+  and `!important` was not settling it reliably. The orange (which marks "this line is showing raw source") now paints
+  *around* the timestamp instead. A date is read as a date before it is read as raw source, and the orange's message
+  is about the line, not each character.
+- **Tooltips show the content, not a description.** The file name and the update time are set in small type, so their
+  tooltips now repeat them at a readable size — a tooltip as a magnifier, not a caption.
+- **Click the update time to copy** "filename + UD…" to the clipboard. A CSS `::after` tooltip cannot hold a button
+  (a pseudo-element is not clickable), so the thing you press is the text itself.
+- **Edit Me's name field is tiled inside the box.** An `<input>`'s value is a string and cannot hold per-character
+  colour — `::selection` looks like an exception but is a browser-drawn state, not an addressable range. So the input's
+  own glyphs are made transparent and the same string is laid underneath in colour, copying the field's font, padding
+  and horizontal scroll. Selecting text still reveals it normally. The splitting is done in the one place that already
+  does it; the webview does not get a second copy of the rule.
+
 ### v4.0.366 (2026-08-22)
 - **The colour tiles now survive the orange raw-source line.** Measuring showed the ranges were being produced all
   along (16 either way) — what failed was the colour contest against the full-line orange. The colour is now poured

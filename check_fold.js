@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -298,6 +298,22 @@ console.log('⑮ 見出し/FCの可視TSもモザイク(v4.0.366)');
   ok(g.every((x, i) => i === 0 || x !== g[i-1]), '★隣り合う区画が必ず違う色', g.join(''));
   ok(T.meosVisStampSegments('ただの文 2026年8月22日').length === 0, '形が違う日付は塗らない', T.meosVisStampSegments('ただの文 2026年8月22日').length);
   ok(T.meosVisStampSegments('').length === 0, '空行で落ちない', 0);
+}
+console.log('⑯ 橙はTSを避けて塗る= 同じ字を2つで奪い合わない(v4.0.367)');
+{
+  const rs = T.meosRangesExcludingStamps(doc, OPEN_LINE);
+  const t = lines[OPEN_LINE];
+  const covered = new Set();
+  for (const r of rs) for (let c = r.start.character; c < r.end.character; c++) covered.add(c);
+  const seg = T.meosStampSegments(t.match(/mCN=([^ ]+)/)[1]);
+  const info = { idStart: t.indexOf('テスト膜') };
+  let stampChars = 0, overlap = 0;
+  for (const [rel, len] of seg) for (let k = 0; k < len; k++) { stampChars++; if (covered.has(info.idStart + rel + k)) overlap++; }
+  ok(stampChars > 0, 'TSの字が在る', stampChars);
+  ok(overlap === 0, '★★橙の範囲にTSの字が1つも入らない(取り合いが起きない)', overlap);
+  ok(covered.has(0) && covered.has(t.length - 1), '★TS以外はちゃんと橙に入る(行頭と行末)', [covered.has(0), covered.has(t.length-1)]);
+  const plain = T.meosRangesExcludingStamps(doc, OPEN_LINE + 1);
+  ok(plain.length === 1 && plain[0].start.character === 0, 'TSが無い行は行まるごと1つの範囲', plain.length);
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

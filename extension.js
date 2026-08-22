@@ -18478,11 +18478,14 @@ function meosDockUdLabel(doc) {
 //   ★色は node の `MEOS_STAMP_COLORS` 1か所から出す＝ webview に同じ色を書き写さない(値は1つ)。
 function meosStampChips(label) {
   const txt = String(label || '');
+  // v4.0.367: 可視形(区切り字あり)と、膜名の詰めた形の**両方**をここで扱う＝ 割り方の口は1つ。
   const all = meosVisStampSegments(txt);
-  if (!all.length) return [{ t: txt, c: '' }];
+  let segs = all.length ? all[0] : null;
+  if (!segs) segs = meosStampSegments(txt);
+  if (!segs || !segs.length) return [{ t: txt, c: '' }];
   const out = [];
   let at = 0, i = 0;
-  for (const [from, len] of all[0]) {
+  for (const [from, len] of segs) {
     if (from > at) out.push({ t: txt.slice(at, from), c: '' });     // 区切り字は塗らない
     out.push({ t: txt.substr(from, len), c: MEOS_STAMP_COLORS[i % MEOS_STAMP_COLORS.length] });
     at = from + len; i++;
@@ -18544,7 +18547,11 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-caret{font-size:9px;line-height:1;padding:1px 2px;border:0;border-radius:3px;background:transparent;color:inherit;opacity:.6;cursor:pointer}
 .title-file-ud{margin-left:6px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
-.title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0}/* v4.0.365: 離れ過ぎを詰める */
+.title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0;font-size:12px}/* v4.0.365/367: 詰める＋読める大きさに */
+/* v4.0.367(俊克 改良2「Me Dockの更新日は、tipに更新日のコピーを付けよう」): tip(::after)は疑似要素so押せない。
+   → **中身自身を押せる物にする**= 日付をクリックすれば「ファイル名 + 更新日時」that手に入る。 */
+.title-file-ud .ud-copy{cursor:pointer;border-radius:3px;padding:0 2px}
+.title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file:hover .title-file-caret{opacity:1}
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
@@ -18713,8 +18720,18 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .big-action.hidden{display:none}
 input{box-sizing:border-box;border:1.5px solid var(--vscode-focusBorder,#3794ff);background:var(--vscode-input-background);color:var(--vscode-input-foreground);border-radius:5px;padding:5px 6px;font-size:12px;outline:1px solid rgba(55,148,255,.18)}
 input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
-.name-input{width:100%}
-.name-input::selection{background:var(--me-sel,#2563eb);color:#fff}
+.name-input{width:100%;position:relative;background:transparent;color:transparent;caret-color:var(--vscode-input-foreground,var(--vscode-foreground))}
+/* ★★v4.0.367(俊克 改良3「Edit Meの所の膜名でも、TSをモザイク化しよう」→ 追い問い「一部を選択すると
+   赤色に変わるよね。だから、モザイクも可能じゃないの?」):
+   ★俊克の観察は鋭いが、::selection は**ブラウザが選択範囲にだけ効かせる特別な擬似要素**で、
+     任意の区画を別々に塗る口ではない(input の value は文字列なので、中に要素を持てない)。
+   ★だから**入力欄の字を透明にして、真下に同じ字を色付きで敷く**= 見た目は「枠の中がモザイク」。
+     選択時は ::selection が色を戻すので、選んだ所は今までどおり見える。
+     横に長い名前でもずれないよう、入力欄の横スクロールに敷いた字を追従させる。 */
+.me-name-wrap{position:relative}
+.name-tint{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;overflow:hidden;white-space:pre;display:flex;align-items:center}
+.name-tint>span{white-space:pre}
+.name-input::selection{background:var(--me-sel,#2563eb);color:#fff}/* 選ぶと字が戻る= 俊克の見た挙動はそのまま */
 .line-row{display:flex;align-items:center;gap:6px}
 .line-meter{font-size:11px;line-height:1;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;user-select:none}
 .time-machine-trigger{min-width:48px;text-align:center;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums;padding-left:5px;padding-right:5px}
@@ -19307,7 +19324,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 
 <div class="inline-panel" id="new-rename-panel">
   <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button></div>
-  <div class="me-name-wrap" id="me-name-wrap"><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
+  <div class="me-name-wrap" id="me-name-wrap"><div class="name-tint" id="me-name-tint" aria-hidden="true"></div><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
@@ -19352,7 +19369,7 @@ let meScope='me';
 const closeButton=document.querySelector('.close'),standardsToggle=document.getElementById('standards-toggle'),title=document.getElementById('inline-title'),
 editModeSelect=document.getElementById('edit-mode-select'),zoomScopeIndicator=document.getElementById('zoom-scope-indicator'),
 zoomMePanel=document.getElementById('zoom-me-panel'),topButtons=document.getElementById('top-buttons'),colorRow=document.getElementById('color-row'),
-nameWrap=document.getElementById('me-name-wrap'),input=document.getElementById('me-name-input'),lineBtn=document.getElementById('line-btn'),
+nameWrap=document.getElementById('me-name-wrap'),input=document.getElementById('me-name-input'),nameTint=document.getElementById('me-name-tint'),lineBtn=document.getElementById('line-btn'),
 lineMeter=document.getElementById('time-machine-trigger'),timeMachineTrigger=document.getElementById('time-machine-trigger'),
 timeMachinePanel=document.getElementById('time-machine-panel'),timeMachineSliderReal=document.getElementById('time-machine-slider-real'),
 timeMachineSliderReinc=document.getElementById('time-machine-slider-reinc'),tmWorldReal=document.getElementById('tm-world-real'),
@@ -19380,6 +19397,32 @@ meCheck=document.getElementById('me-check'),contentsCheck=document.getElementByI
 opToggle=document.getElementById('op-toggle'),opRemove=document.getElementById('op-remove'),opCopy=document.getElementById('op-copy'),
 opSelect=document.getElementById('op-select'),opDuplicate=document.getElementById('op-duplicate');
 let __mdZoom=${mdZoom},__mdSync=${mdSync ? 'true' : 'false'};
+/* ★v4.0.367(俊克 改良3): Edit Me の入力枠の中をモザイクに見せる。
+   字を透明にした入力欄の下に、同じ字を色付きで敷く= 枠の中が色分けされて見える。
+   ①敷く字は入力欄と同じ字体/余白/行の高さでなければ1桁もずれる → 実物から写す。
+   ②横に長い名前は入力欄が横スクロールするので、敷いた字も同じだけ動かす。
+   ③割るのは node の1か所(meosStampChips)。webviewに同じ式を書き写さない。 */
+window.__meosPaintNameTint=function(chips){
+  if(!nameTint||!input)return;
+  while(nameTint.firstChild)nameTint.removeChild(nameTint.firstChild);
+  var cs=window.getComputedStyle(input);
+  nameTint.style.font=cs.font;nameTint.style.letterSpacing=cs.letterSpacing;
+  nameTint.style.paddingLeft=cs.paddingLeft;nameTint.style.paddingRight=cs.paddingRight;
+  nameTint.style.color=cs.caretColor||'';
+  var cc=Array.isArray(chips)?chips:[{t:input.value,c:''}];
+  for(var i=0;i<cc.length;i++){var sp=document.createElement('span');sp.textContent=cc[i].t||'';if(cc[i].c)sp.style.color=cc[i].c;nameTint.appendChild(sp);}
+  window.__meosSyncNameTint();
+};
+window.__meosSyncNameTint=function(){ if(nameTint&&input)nameTint.style.transform='translateX('+(-input.scrollLeft)+'px)'; };
+window.__meosAskNameTint=function(){ try{vscode.postMessage({type:'stampChipsReq',text:input?input.value:''});}catch(e){} };
+if(input){
+  var _tintT=null;
+  input.addEventListener('input',function(){ if(_tintT)clearTimeout(_tintT); _tintT=setTimeout(window.__meosAskNameTint,90); });
+  input.addEventListener('scroll',window.__meosSyncNameTint);
+  input.addEventListener('keyup',window.__meosSyncNameTint);
+  input.addEventListener('click',window.__meosSyncNameTint);
+  setTimeout(window.__meosAskNameTint,0);
+}
 // {* ▲mCN=dock_js_elements *}
 // {* ▼mCN=dock_js_zoom // Me Dock自体のズーム(⊕/⊖・本家VS CodeのCSS zoom対策) *}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
@@ -20925,7 +20968,7 @@ histForward.addEventListener('click',()=>vscode.postMessage({type:'lineHistoryFo
 lineBtn.addEventListener('click',()=>vscode.postMessage({type:'toggleLineMarker'}));
 refreshBtn.addEventListener('click',()=>{window.__editTsRefresh=true;/* v0.9.999105: 更新後にTS部分のみ選択(下記modeハンドラで) */vscode.postMessage({type:'refreshTimestamp',
 mode:currentMode,value:input.value});});
-resetBtn.addEventListener('click',()=>{draftName=currentValue||'';draftDirty=false;draftColor=currentColor||'';input.value=draftName;
+resetBtn.addEventListener('click',()=>{draftName=currentValue||'';draftDirty=false;draftColor=currentColor||'';input.value=draftName;if(typeof window.__meosAskNameTint==='function')window.__meosAskNameTint();
 lineInput.value=currentLine||'';renderColorButton();vscode.postMessage({type:'resetPanel'});});
 // {* ▲mCN=dock_js_toctip *}
 // {* ▼mCN=dock_js_tabs // タブの改名/新規/並べ替えと、履歴のホットキー *}
@@ -21047,12 +21090,16 @@ return;}if(m&&m.type==='diaryPattern'){if(typeof window.__onDiaryPattern==='func
 return;}if(m&&m.type==='diaryTestResult'){if(typeof window.__onDiaryTestResult==='function')window.__onDiaryTestResult(m);
 return;}if(m&&m.type==='dockFile'){/* v4.0.303: 版の右のファイル名と、▾の履歴 */
 var _fn=document.getElementById('title-file-name'),_fp=document.getElementById('title-file-pop'),_fc=document.getElementById('title-file-caret');
-if(_fn){_fn.textContent=m.name||'';_fn.setAttribute('data-tip',m.path||m.name||'');_fn.removeAttribute('title');}
+/* v4.0.367(俊克 改良1「Me Dockのファイル名と日付のtipは、**説明ではなく、ファイル名と日付を出す**。
+   これは**小さくて読み難いことの代替え**です」): tipは大きい字で読み直すための窓なので、中身をそのまま出す。 */
+if(_fn){_fn.textContent=m.name||'';_fn.setAttribute('data-tip',m.name||'');_fn.removeAttribute('title');}
 var _fb=document.getElementById('title-file');if(_fb)_fb.style.display=(m.name?'':'none');/* v4.0.306: 相手が居ない時は箱ごと出さない */
 window.__meosRecent=Array.isArray(m.recent)?m.recent:[];window.__meosCurPath=m.path||'';
 if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
 if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
+return;}if(m&&m.type==='stampChips'){/* v4.0.367: Edit Me の入力枠の中をモザイクに見せる(下に敷いた字) */
+if(typeof window.__meosPaintNameTint==='function')window.__meosPaintNameTint(m.chips);
 return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 と、最後にディスクへ書いた時刻 */
 var _ud=document.getElementById('title-file-ud');
 if(_ud){while(_ud.firstChild)_ud.removeChild(_ud.firstChild);
@@ -21063,10 +21110,11 @@ _dot.textContent=m.dirty?'\u25cf':'\u00d7';
 _dot.style.color=m.dirty?'#e0803a':'#3fb950';
 _dot.setAttribute('data-tip',m.dirty?'Unsaved changes (\u2318S to save)':'Saved');
 _ud.appendChild(_dot);
-if(m.ud){var _t=document.createElement('span');_t.setAttribute('data-tip','Last updated');
+if(m.ud){var _t=document.createElement('span');_t.setAttribute('data-tip','UD'+m.ud);_t.className='ud-copy';
 var _u0=document.createElement('span');_u0.textContent='UD';_t.appendChild(_u0);
 var _cs=Array.isArray(m.udChips)?m.udChips:[{t:m.ud,c:''}];
 for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.textContent=_cs[_i].t||'';if(_cs[_i].c)_sp.style.color=_cs[_i].c;_t.appendChild(_sp);}
+_t.addEventListener('click',function(){try{vscode.postMessage({type:'copyFileAndUd'});}catch(_e){}});
 _ud.appendChild(_t);}
 }
 return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
@@ -22028,6 +22076,24 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'navCenterBidi') {
       await navCenterBidiClick(getMeDockTargetEditor());
       updateMeDockMode();
+      return;
+    }
+    if (message && message.type === 'stampChipsReq') {   // v4.0.367(俊克 改良3): Edit Me の膜名もモザイクに
+      try { meDockPanel.webview.postMessage({ type: 'stampChips', chips: meosStampChips(String(message.text || '')) }); } catch (_) { }
+      return;
+    }
+    if (message && message.type === 'copyFileAndUd') {   // v4.0.367(俊克 改良2): 押せば手に入る
+      try {
+        const _ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+        const _doc = _ed && _ed.document;
+        const _nm = (_doc && _doc.uri.scheme === 'file') ? String(_doc.uri.fsPath).split(/[\\/]/).pop() : '';
+        const _ud = meosDockUdLabel(_doc);
+        const _txt = (_nm ? _nm : '') + (_ud ? (_nm ? ' ' : '') + 'UD' + _ud : '');
+        if (_txt) {
+          vscode.env.clipboard.writeText(_txt);
+          vscode.window.setStatusBarMessage('MeOS: copied — ' + _txt, 2500);
+        }
+      } catch (_) { }
       return;
     }
     if (message && message.type === 'jumpLine') {
@@ -24535,6 +24601,29 @@ function meosRawLines(editor) {
   } catch (_) { }
   return out;
 }
+// v4.0.367: 行全体から「TSの区画」を抜いた範囲を返す。塗る相手を分けるための1つの物差し。
+function meosRangesExcludingStamps(doc, ln) {
+  const text = doc.lineAt(ln).text || '';
+  const holes = [];
+  try {
+    for (const segs of meosVisStampSegments(text)) for (const [f, l] of segs) holes.push([f, f + l]);
+    const info = membraneLineInfo(doc, ln);
+    if (info && info.id) {
+      const ss = meosStampSegments(info.id);
+      if (ss) for (const [rel, l] of ss) holes.push([info.idStart + rel, info.idStart + rel + l]);
+    }
+  } catch (_) { }
+  if (!holes.length) return [new vscode.Range(ln, 0, ln, text.length)];
+  holes.sort((a, b) => a[0] - b[0]);
+  const out = [];
+  let at = 0;
+  for (const [f, t] of holes) {
+    if (f > at) out.push(new vscode.Range(ln, at, ln, f));
+    at = Math.max(at, t);
+  }
+  if (at < text.length) out.push(new vscode.Range(ln, at, ln, text.length));
+  return out;
+}
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
   if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -24543,7 +24632,15 @@ function meosApplyFcRowDecorations(editor) {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
       const m = meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
-      if (m) for (const ln of (m.lines || [m.self, m.mate])) if (ln >= 0 && ln < doc.lineCount) out.push(new vscode.Range(ln, 0, ln, doc.lineAt(ln).text.length));
+      // ★★★v4.0.367(俊克 pm07:34 質問1「やはり、**橙色文字表示の所は、無理なのか?**」):
+      //   ★★★**無理ではない。取り合いをやめれば済む**。v4.0.366では橙(行全体)とモザイク(区画)が同じ字を
+      //     奪い合い、!important を足しても勝ち切れなかった。**同じ場所を2つが塗り合う限り、勝敗は
+      //     いつ壊れてもおかしくない**(今日それを何度も見た)。→ **橙はTSを避けて塗る**。
+      //   ★これは順位付けでもある＝ 日付は「橙(生データを見せている)」より先に「日付として読む物」。
+      //     橙が伝えたいのは行の身分で、字の1つ1つではない。
+      if (m) for (const ln of (m.lines || [m.self, m.mate])) if (ln >= 0 && ln < doc.lineCount) {
+        for (const r of meosRangesExcludingStamps(doc, ln)) out.push(r);
+      }
     }
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
