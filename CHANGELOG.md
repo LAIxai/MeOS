@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.360 (2026-08-22)
+- **The tip now names the thing you press.** "Toggle Me!" is an imperative, so it reads as the press target — and
+  tips cannot be pressed. It now says **"Toggle ▼-Button!"** (and "▲" on a closing line), pointing at the mark that
+  actually responds. The mark's own hit area was widened in v4.0.359; the wording was the other half of the problem.
+- **Removed a tip that described a feature that no longer exists.** Hovering a membrane name promised "double-click
+  to jump between the opening and closing membrane" — that route became the raw-view toggle back in v0.9.584. An
+  explanation that is not true is worth deleting, not rewording.
+- **Body double-click no longer enters raw view.** It entered in complete silence, which read as "the membrane got
+  stuck as a comment" with no way back. Raw view keeps its one deliberate entrance: Me Dock's 👁Raw. Single-click
+  jump (open ⇄ close) is untouched.
+
 ### v4.0.359 (2026-08-22)
 - **The ▼ is clickable again — the target was one column wide.** Six logged clicks landed on columns 9, 11, 12, 15,
   16 and 20; the hit test accepted only column 13. Worse, the column *moves with the rendering*: while decorated, the

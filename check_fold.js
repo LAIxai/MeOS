@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -229,6 +229,15 @@ console.log('⑪ ▼ を押したら畳める当たり判定(v4.0.359・俊克�
   const C = (ch) => !!T.meosArrowHitAt(doc, CLOSE_LINE, ch);
   ok(C(8) && C(13), '閉じ膜(▲)でも同じ当たり', [C(8), C(13)]);
   ok(!T.meosArrowHitAt(doc, OPEN_LINE + 1, 8), '膜でない行は当たらない', T.meosArrowHitAt(doc, OPEN_LINE + 1, 8));
+}
+console.log('⑫ tip は「どれを押すのか」を名指しする(v4.0.360)');
+{
+  const ed = makeEditor([R(0, 10)]);
+  const P = (line, ch) => T.membraneArrowHoverMessage(ed, new stub.Position(line, ch));
+  ok(P(OPEN_LINE, 13) === 'Toggle ▼-Button!', '★開始膜の印の上= ▼ボタンを名指しする(tip自身は押せない)', P(OPEN_LINE, 13));
+  ok(P(CLOSE_LINE, 13) === 'Toggle ▲-Button!', '★閉じ膜では ▲ と言う(見ている印と言葉を合わせる)', P(CLOSE_LINE, 13));
+  ok(P(OPEN_LINE, 30) === null, '膜名の上では出さない(そこはジャンプの領域)', P(OPEN_LINE, 30));
+  ok(P(OPEN_LINE + 1, 0) === null, '膜でない行では出さない', P(OPEN_LINE + 1, 0));
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

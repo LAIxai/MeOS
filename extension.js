@@ -11630,9 +11630,14 @@ function activeGreenHoverMessage(editor, position) {
       rememberGreenHover(editor, r);
       return null; // tip comes from the decoration itself in v0.9.487
     }
-    if (position.line === r.start.line && position.character >= r.start.character && position.character < r.end.character) {
-      return new vscode.MarkdownString('Membrane name area — click to select the pair / double-click to jump between the opening and closing membrane');
-    }
+    // ★v4.0.360(俊克 pm05:22 バグ1「スクショ1枚目のtipは、**昔の仕様のまま残っている**ので、削除した方が
+    //   いいね。しかも、Wクリックすると、…膜を離れても膜がコメントのままになってしまうと言うバグになる
+    //   からだ。**この処理も削除した方がいいね**」):
+    //   ★このtipは「Wクリックで開始⇄閉じへ飛ぶ」と案内していたが、その道はもう無い(v0.9.584でWクリックは
+    //     生データ表示の切替になった)＝ **説明が実物と違う**。しかもそのWクリックこそがバグの入口だった。
+    //   ★**言っていることが本当でない案内は、直すより消す**。膜名の役目(クリックで対を選ぶ)は
+    //     ▼ の tip と Me Dock が語る。
+    // (tip 撤去・v4.0.360)
   }
   return null;
 }
@@ -12969,6 +12974,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   // v0.9.584: unified click semantics across the whole system —
   //   S-click (single click) = JUMP  (navCenterMeDoubleClick: open ⇔ close)
   //   W-click (double click) = RAW   (navCenterMeSingleClick: mSkeletonMode toggle)
+  // ★v4.0.360: **本文からの W-click=RAW は撤去した**(俊克「この処理も削除した方がいいね」)。
+  //   入った事に気づけず「膜がコメントのままになった」と見えるため。生データを見る口は
+  //   Me Dock の 👁Raw ひとつ＝ 押した所に結果が出る。上の S=JUMP はそのまま生きている。
   // Was reversed (S-click=raw / W-click=jump) since v0.9.474 to match the
   // earlier "W-click jumps like Me Dock W-click" design. User v0.9.583_pm07:47
   // request: 「いっそのこと、全体で、S-clickをジャンプ、Wクリックを生データ
@@ -12989,7 +12997,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       pendingBodyGreenClickTimer = null;
       pendingBodyGreenClickKey = '';
       lastGreenHoverHit = null;
-      navCenterMeSingleClick(editor);
+      // v4.0.360(俊克「この処理も削除した方がいいね」): 本文のWクリックから生データ表示へ入る道を塞ぐ。
+      //   入った事に気づけず「膜がコメントのままになった」と見える(戻し方も分からない)。
+      //   生データを見たい時は Me Dock の 👁Raw を押す＝ **口は1つでよい**。
       return;
     }
     if (pendingBodyGreenClickTimer) {
@@ -13083,7 +13093,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       pendingBodyGreenClickTimer = null;
       pendingBodyGreenClickKey = '';
       lastGreenHoverHit = null;
-      navCenterMeSingleClick(editor);
+      // v4.0.360(俊克「この処理も削除した方がいいね」): 本文のWクリックから生データ表示へ入る道を塞ぐ。
+      //   入った事に気づけず「膜がコメントのままになった」と見える(戻し方も分からない)。
+      //   生データを見たい時は Me Dock の 👁Raw を押す＝ **口は1つでよい**。
       return;
     }
     if (isMouseSelection && selectionHitsActiveGreen(editor)) {
@@ -13095,10 +13107,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         pendingBodyGreenClickKey = '';
       }
       lastGreenHoverHit = null;
-      // v0.9.584: this branch fires on W-click that selected the 🟢 emoji
-      // itself (non-empty selection). Under the unified S=JUMP / W=RAW scheme,
-      // W-click → RAW toggle.
-      navCenterMeSingleClick(editor);
+      // v4.0.360: 同上= Wクリックから生データ表示へ入らない(口は Me Dock の 👁Raw ひとつ)。
       return;
     }
     // v0.9.454 Bug 2 fix: W-click on body <span class="sRJF=v">🔴</span> selects
@@ -13240,11 +13249,11 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     return;
   }
 
-  // 🟢 button behavior / M-skeleton Mode:
+  // 🟢 button behavior:
   if (isMouseSelection && selectionHitsActiveGreen(editor)) {
+    // v4.0.360: ここも生データ表示の切替をやめる(俊克「この処理も削除した方がいいね」)。
+    //   カーソルは膜名の中へ戻すだけ＝ 押した結果が見えないまま画面が変わる、を無くす。
     const anchorRange = greenToggleAnchorRange(editor);
-    if (mSkeletonMode) exitMSkeletonMode(editor);
-    else enterMSkeletonMode(editor);
     lastGreenHoverHit = null;
     restoreCursorInsideMembraneName(editor, anchorRange);
     return;
@@ -22351,7 +22360,13 @@ function membraneArrowHoverMessage(editor, position) {
         if (cursorLine !== position.line) return null;
       }
     }
-    return 'Toggle Me!';
+    // ★v4.0.360(俊克 pm05:22 👍1「私は勘違いしていた。…tipで『Toggle Me!』と出ると、**tipを押したくなる**
+    //   ので、**『Toggle ▼-Button!』と書いた方がいい**ね」):
+    //   ★★**tip は押せない。押すのは印の方**。「Toggle Me!」は命令形なので tip 自身が押し場所に見える＝
+    //     俊克がまさにそうした(そして押せず「反応しない」と読んだ)。**どれを押すのかを名指しする**。
+    //     → [[feedback_fix_signal_at_fix_place]]
+    //   ★開始膜は ▼、閉じ膜は ▲ ＝ 今この行に在る印の名前で言う(見ている物と言葉を合わせる)。
+    return (info.kind === 'close') ? 'Toggle ▲-Button!' : 'Toggle ▼-Button!';
   }
   return null;
 }
