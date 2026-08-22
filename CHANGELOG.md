@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.379 (2026-08-23)
+- **The colour swatch counts as two characters, not one.** Measured against the real editor: the square plus the
+  space around it takes about two half-widths, so one was never going to close the gap.
+
 ### v4.0.378 (2026-08-23)
 - **Table alignment now counts VS Code's colour swatches.** Writing `#dc2626` makes the editor draw a small colour
   square before it — nothing in the file, but real width on screen, the same species as the ▼ glyph that cost a day

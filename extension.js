@@ -23028,14 +23028,16 @@ let _meosColorDecoOn = true;
 function meosReadColorDecoratorSetting() {
   try { _meosColorDecoOn = vscode.workspace.getConfiguration('editor').get('colorDecorators', true) !== false; } catch (_) { _meosColorDecoOn = true; }
 }
-// 色コード1つにつき四角1つ。幅は半角1つぶんで数える(VS Code の色四角は字とほぼ同じ大きさ)。
+// 色コード1つにつき四角1つ。幅は**半角2つぶん**(v4.0.379 俊克「四角の幅の評価を今の倍にすればいい」＝
+//   実物を見ての判断。四角そのものに加えて前後の余白が入るので、字1つぶんでは足りなかった)。
+const MEOS_COLOR_CHIP_W = 2;
 function meosColorChipWidth(text) {
   if (!_meosColorDecoOn) return 0;
   const t = String(text == null ? '' : text);
   if (t.indexOf('#') < 0) return 0;
   MEOS_HEX_COLOR_RE.lastIndex = 0;
   const m = t.match(MEOS_HEX_COLOR_RE);
-  return m ? m.length : 0;
+  return m ? m.length * MEOS_COLOR_CHIP_W : 0;
 }
 function meosStrWidth(s) { let w = 0; const t = meosStripHiddenForWidth(s); for (const ch of t) w += meosCharWidth(ch.codePointAt(0)); return w + meosColorChipWidth(t); } // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す
 function meosPadCell(s, width, align) {

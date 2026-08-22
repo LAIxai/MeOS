@@ -183,13 +183,13 @@ for (const [a, b] of blocks) {
   const cw = (t) => T.meosColorChipWidth(t);
   const say = (ok2, msg, got) => { console.log((ok2 ? '  ok  ' : '  NG  ') + msg + (ok2 ? '' : '   -> ' + got)); if (!ok2) cbad++; };
   console.log('色の四角(VS Code が描く物)を幅に数える:');
-  say(cw('#dc2626') === 1, '6桁の色コード= 四角1つ', cw('#dc2626'));
-  say(cw('#fff') === 1, '3桁でも四角1つ', cw('#fff'));
-  say(cw('#dc2626ff') === 1, '8桁(透明度つき)でも1つ', cw('#dc2626ff'));
-  say(cw('#dc2626 と #16a34a') === 2, '2つ在れば2つ', cw('#dc2626 と #16a34a'));
+  say(cw('#dc2626') === 2, '6桁の色コード= 四角1つ(幅は半角2つぶん)', cw('#dc2626'));
+  say(cw('#fff') === 2, '3桁でも四角1つ', cw('#fff'));
+  say(cw('#dc2626ff') === 2, '8桁(透明度つき)でも1つ', cw('#dc2626ff'));
+  say(cw('#dc2626 と #16a34a') === 4, '2つ在れば2つぶん', cw('#dc2626 と #16a34a'));
   say(cw('#12345') === 0, '★5桁は色コードでない= 数えない', cw('#12345'));
   say(cw('ただの文') === 0, '色コードが無ければ0', cw('ただの文'));
-  say(T.meosStrWidth('#dc2626') === 8, '★幅は 7文字 + 四角1 = 8', T.meosStrWidth('#dc2626'));
+  say(T.meosStrWidth('#dc2626') === 9, '★幅は 7文字 + 四角2 = 9', T.meosStrWidth('#dc2626'));
   // 整形した表の各行が、四角ぶんも含めて同じ幅になること(全角の端数を除く)
   const rows = ['| A | #dc2626 |', '|---|---|', '| B | #16a34a |'];
   const out = T.meosFormatTableLines(rows.slice(), null);
