@@ -4542,7 +4542,24 @@ async function restoreMstatsForEditor(editor) {
       + ' rounds=' + _rounds + ' stillOpenOnScreen=' + _leftVisible
       + ' lines=' + editor.document.lineCount);
   } catch (_) { }
-  setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
+  // ★★v4.0.355(俊克 8/22 pm01:32 バグ2「VSCmを再起動すると、元いた行に移動しない。変な位置に
+  //   ジャンプしている。(👍1)ただし、折り畳まれた膜は、そのままだった。ただ、それが、元の行に
+  //   ジャンプしないからなのかが分らない」):
+  //   ★★**逆で、畳めるようになったから、ずれた**＝ v4.0.353 で「畳めるまで試す」ようにするまでは
+  //     復元の fold は空振りしていた(だから位置は保たれていた)。**畳めば行が詰まる**ので、
+  //     VSCode が復元したスクロール位置は、もう別の場所を指している。カーソルは正しい行に居るのに、
+  //     画面だけが違う所を映す＝ 俊克の見た姿(Line欄は正しい値なのに、画面は別の場所)。
+  //   ★直し＝ **畳み終えてから、カーソルの居る行を画面の中央へ置き直す**。畳む前に決めた位置は
+  //     もう当てにならないので、畳んだ後の姿でもう一度決める。
+  setTimeout(() => {
+    try {
+      const _c = editor.selection ? editor.selection.active.line : -1;
+      if (_c >= 0 && _c < editor.document.lineCount) {
+        editor.revealRange(new vscode.Range(_c, 0, _c, 0), vscode.TextEditorRevealType.InCenter);
+      }
+    } catch (_) { }
+    refresh(editor); scheduleMstatsSync(editor);
+  }, 180);
 }
 
 // {* ▲mCN=0300_MSTATS // end [cGJF=h] *}
@@ -17347,6 +17364,14 @@ function jumpMeDockTargetLine(lineInput, quiet = true) {
   const targetLine = Math.min(Math.max(n, 1), editor.document.lineCount) - 1;
   const fromLine = editor.selection.active.line;
   if (targetLine === editor.selection.active.line) {
+    // ★★v4.0.355(俊克 8/22 pm01:32「Navigate Me!のLineには正しい値が入っているが、そこに入って、
+    //   改行keyを押しても、反応しなかった。これが原因かもね。でも、なぜ?」):
+    //   ★★**同じ行に居ても、画面がそこを映しているとは限らない**。折り畳みで行が詰まると、
+    //     カーソルは正しい行に居るのに、画面は別の場所を映している(まさに今回の姿)。
+    //     ここは「同じ行だから何もしない」と黙って返していたので、**押しても反応しない**ように見えた。
+    //   ★**指定したのだから、見せる**。行き先が同じでも、見せる仕事は残っている。
+    //     → [[project_last_specified_wins]]
+    editor.revealRange(new vscode.Range(targetLine, 0, targetLine, 0), vscode.TextEditorRevealType.InCenter);
     ensureMeDockLineHistoryCurrent(editor);
     updateMeDockCurrentLineMarker();
     return true;

@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.355 (2026-08-22)
+- **The restart lands on your line again.** v4.0.353 made the restore actually fold — and folding *shortens the
+  document above you*, so the scroll position VS Code restored was pointing somewhere else entirely. The caret was on
+  the right line the whole time; only the view was wrong. The restore now re-centres on the caret **after** the folds
+  land, instead of trusting a position decided before them.
+- **The Line box responds even when you are already on that line.** It used to return silently when the target
+  equalled the current line — which is exactly the case above: right line, wrong view, and pressing Enter appeared to
+  do nothing. Naming a line is a request to *see* it, so it now reveals regardless.
+
 ### v4.0.354 (2026-08-22)
 - **The real cause of folded membranes re-opening after a restart: MeOS was rewriting its own `⊖` back to `⊕`.**
   The badge moved to the FC line after ▲ in v4.0.330, but `isPairFolded` still read the *opening* line only — so a
