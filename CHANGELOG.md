@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.374 (2026-08-22)
+- **The highlight button and the highlight are the same yellow now.** The editor's yellow goes from 55% to 65% opacity
+  — enough to read as yellow, still under the point where white text on it stops being legible (#b3a40c, luminance
+  0.593) — and the button drops from a fully opaque `#ffe600`, which was too bright to read white text on, to that
+  same resolved colour. A button is a preview of a result; showing a brighter colour than the result was a false
+  preview. (A fifth definition of "yellow" lived in the webview's palette; it is the one that changed.)
+
 ### v4.0.373 (2026-08-22)
 - **Yellow looks yellow.** "Yellow" was defined in four places with four different values, and two of them were not
   yellow: the membrane/badge `Y` was `#CA8A04` — an orange — and the text/heading yellow was an olive `(180,150,0)`.

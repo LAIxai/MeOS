@@ -2618,7 +2618,12 @@ let homeBookmarkDecoration; // v0.9.99975: Home栞(緑地・白H=home.svg・ボ�
 const HIGHLIGHT_COLORS = {
   red:    'rgba(225, 55, 55, 0.90)',   // 本物の赤(濃)→白文字
   orange: 'rgba(255, 160, 40, 0.55)',
-  yellow: 'rgba(255, 230, 0, 0.55)',
+  // ★v4.0.374(俊克「ハイライトボタンの黄色は明る過ぎて、白文字が見えにくいので、**エディタの透明度を
+  //   若干変えてもう少し黄色っぽく**しようよ。**それで統一する**」): 0.55→0.65。
+  //   Monokai の地に重ねると #b3a40c(輝度0.593)＝ 黄と分かる所まで上げつつ、白文字がまだ読める上限。
+  //   ★ボタン側(FMT_BG)は**この重ねた結果の色**を持つ＝ 予告と実物が一致する。片方は「重ねる前の値」、
+  //     もう片方は「地の上での結果」なので、値が2つに見えるが**指すものは1つ**。
+  yellow: 'rgba(255, 230, 0, 0.65)',
   green:  'rgba(55, 165, 70, 0.88)',   // 本物の緑(濃)→白文字
   blue:   'rgba(60, 125, 235, 0.90)',  // 本物の青(濃)→白文字
   purple: 'rgba(190, 130, 245, 0.50)',
@@ -20164,7 +20169,7 @@ const fmtSpec={highlight:fmtHlSlots[0],strike:fmtStSlots[0],heading:fmtHeadingCo
 hlIdx:fmtHlIdx,strike:fmtStSlots,stIdx:fmtStIdx,heading:fmtHeadingColors,level:fmtHeadingLevel,bold:(typeof mbCombo!=='undefined'?mbCombo:undefined),
 metexFg:(typeof mtxFg!=='undefined'?mtxFg:null),metexBg:(typeof mtxBg!=='undefined'?mtxBg:null)}});}catch(_){}}/* v3.1.74(俊克): 太字色(mbCombo)もmMETAへ随伴保存(再インストールで無地に戻る件の修正) / v4.0.7(俊克): 上付/下付の色(mtxFg/mtxBg)も保存(再インストールで色なしに戻る件) */
 const FMT_FG=[['赤','#d22828'],['橙','#d77814'],['黄','#b49600'],['緑','#28963c'],['青','#286ed2'],['紫','#9646d2'],['桃','#d23c96'],['黒','#222222'],['白','#f5f5f5'],['灰','#828282'],['紺','#000080'],['水','#00bfff'],['ワイン','#800000']];
-const FMT_BG=[['なし',''],['赤','#e13737'],['橙','#ffa028'],['黄','#ffe600'],['緑','#37a546'],['青','#3c7deb'],['紫','#be82f5'],['桃','#ff82c8'],['紺','#192387'],['水','#2dbef0'],['ワイン','#96232d']];
+const FMT_BG=[['なし',''],['赤','#e13737'],['橙','#ffa028'],['黄','#b3a40c'],['緑','#37a546'],['青','#3c7deb'],['紫','#be82f5'],['桃','#ff82c8'],['紺','#192387'],['水','#2dbef0'],['ワイン','#96232d']];
 const FMT_EN={'赤':'red','橙':'orange','黄':'yellow','緑':'green','青':'blue','紫':'purple','桃':'pink','黒':'black','白':'white',
 '灰':'gray','紺':'navy','水':'aqua','ワイン':'maroon','なし':'none'}; /* v0.9.934: tip英語名は小文字(入力しやすい正準形・大文字も通る) */
 const fmtHexFg=w=>{const e=FMT_FG.find(x=>x[0]===w);return e?e[1]:'#888';};
