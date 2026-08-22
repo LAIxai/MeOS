@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.350 (2026-08-22)
+- **Put the caret in a folded membrane and it no longer looks open.** The opening line shows raw source while the
+  caret sits on it (v4.0.345), and raw source carries a single ▼ — so a folded membrane read as an open one. Two
+  marks are now *added* on top of the raw line, hiding nothing: a **▼▲** at the head, and an echo of the **FC
+  comment** at the end of the line.
+- The echo is needed because the FC line lives after ▲ — inside the fold — so while a membrane is folded its badge is
+  invisible. Now the folded look and the caret-on-it look say the same thing. The echo is italic: it is a copy, not
+  the editable line (open the fold to edit it).
+
 ### v4.0.349 (2026-08-22)
 - **A folded membrane's head now reads ▼▲, whoever folded it.** MeOS only ever remembered the folds *it* made, so a
   membrane collapsed from the gutter arrow stayed marked ▼ — open. (This membrane's badge lives on the FC line after

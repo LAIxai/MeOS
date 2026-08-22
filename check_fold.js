@@ -68,18 +68,21 @@ const doc = {
   getText: (r) => r ? lines.slice(r.start.line, r.end.line + 1).join('\n') : lines.join('\n'),
   positionAt: () => new stub.Position(0, 0), offsetAt: () => 0,
 };
-function makeEditor(visibleRanges) {
-  const cur = new stub.Position(9, 0); // カーソルは膜の行から離す(v4.0.345: 居る行は生データ)
+function makeEditor(visibleRanges, curLine) {
+  const cur = new stub.Position(typeof curLine === 'number' ? curLine : 9, 0); // 既定はカーソルを膜の行から離す(v4.0.345: 居る行は生データ)
   const ed = {
     document: doc, options: {},
     selection: { active: cur, anchor: cur, isEmpty: true, start: cur, end: cur },
     selections: [], visibleRanges,
-    __labels: [],
+    __labels: [], __after: [],
     setDecorations(type, ranges) {
       if (!Array.isArray(ranges)) return;
       for (const r of ranges) {
-        const t = r && r.renderOptions && r.renderOptions.before && r.renderOptions.before.contentText;
-        if (typeof t === 'string' && /[▼▲]/.test(t)) ed.__labels.push({ line: r.range.start.line, text: t });
+        const ro = r && r.renderOptions;
+        const b = ro && ro.before && ro.before.contentText;
+        if (typeof b === 'string' && /[▼▲]/.test(b)) ed.__labels.push({ line: r.range.start.line, text: b });
+        const a = ro && ro.after && ro.after.contentText;
+        if (typeof a === 'string' && a.trim()) ed.__after.push({ line: r.range.start.line, text: a.trim() });
       }
     },
   };
@@ -87,9 +90,13 @@ function makeEditor(visibleRanges) {
   return ed;
 }
 function openGlyphAt(ed, line) {
-  ed.__labels.length = 0;
+  ed.__labels.length = 0; ed.__after.length = 0;
   T.applyPrettyLabels(ed);
   const hit = ed.__labels.filter(l => l.line === line).map(l => l.text);
+  return hit.length ? hit.join('|') : '(無し)';
+}
+function afterAt(ed, line) {
+  const hit = ed.__after.filter(l => l.line === line).map(l => l.text);
   return hit.length ? hit.join('|') : '(無し)';
 }
 let ng = 0;
@@ -130,6 +137,22 @@ console.log('④ 画面が無い(visibleRanges 空)');
   ok(T.meosViewportFoldFactAt(ed, OPEN_LINE) === null, '事実 = null', T.meosViewportFoldFactAt(ed, OPEN_LINE));
   const g = openGlyphAt(ed, OPEN_LINE);
   ok(g === '▼', '落ちずに ▼', g);
+}
+console.log('⑤ 畳んである膜の開始行にカーソルが入った(= 生データを見せる行)');
+{
+  const ed = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);
+  const g = openGlyphAt(ed, OPEN_LINE);
+  ok(g === '▼▲', '★生データのままで、頭に ▼▲ が付く(開始膜に見えない)', g);
+  const a = afterAt(ed, OPEN_LINE);
+  ok(/Mew!FC/.test(a) && /📊⊕1\+0D-2Y/.test(a), '★畳んだ中に居る FC コメント(バッジごと)が行末に見える', a);
+}
+console.log('⑥ 開いている膜の開始行にカーソルが入った = 何も足さない(生データそのまま)');
+{
+  const ed = makeEditor([R(0, 10)], OPEN_LINE);
+  const g = openGlyphAt(ed, OPEN_LINE);
+  ok(g === '(無し)', '印を足さない(FC 行は下に本物が見えている)', g);
+  const a = afterAt(ed, OPEN_LINE);
+  ok(a === '(無し)', 'FC の写しも足さない', a);
 }
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

@@ -6990,7 +6990,40 @@ function applyPrettyLabels(editor) {
     //     「隠れ帯を跨がせる」ための仕掛け(見張り・鍵・文脈)が要った＝ v4.0.336〜343の全部がその後始末。
     //     **例外をやめれば、その仕掛けがまるごと要らなくなる**。
     //   ★理由は俊克の推測どおり「形をきれいに見せたかった」だけで、**約束より優先する理由ではなかった**。
-        if ((open || close) && _isRawLine(line)) continue;   // v4.0.345: 退路を断つ(俊克)= 例外はもう作らない
+        if ((open || close) && _isRawLine(line)) {   // v4.0.345: 退路を断つ(俊克)= 例外はもう作らない
+      // ★v4.0.350(俊克 8/22 改良1「その中にカーソルが入った時に、開始膜のように見えてしまう。
+      //   そして、FCコメントも表示しない。なので、ここでも頭に▼▲を付けて表示し、FCコメントも表示しよう」):
+      //   ★生データは1文字も隠さない(v4.0.345の約束はそのまま)。**足すだけ**＝
+      //     ①頭に ▼▲ の印 = 畳んである、と分かる(生データの中の ▼ だけでは開始膜に見える)
+      //     ②畳んだ中に居るFC行の写しを行末に = バッジが読める
+      //   ★②が要る理由 = FC行は閉じ膜の次(つまり畳んだ範囲の中)に居るので、畳んでいる間は
+      //     バッジごと見えなくなる([[project_membrane_is_a_block]])。畳んだ膜の見た目と、
+      //     そこへカーソルを置いた時の見た目が食い違わないよう、同じ物を見せる。
+      //   ★写しなので編集はできない(本物は畳みを開けば出てくる)。斜体で写しだと分かるようにする。
+      if (open) {
+        const fp = byStart.get(line);
+        if (fp && isPairFolded(editor, fp)) {
+          const fcCfg = vscode.workspace.getConfiguration('laiMembrane');
+          const fcColor = meosMembraneColorForOpen(editor.document, fp.start, text, colorForDepth(fp.depth || 0, fcCfg));
+          const fcIndent = (text.match(/^[ \t]*/) || [''])[0].length;
+          openLabels.push({
+            range: new vscode.Range(line, fcIndent, line, fcIndent),
+            renderOptions: { before: { contentText: '▼▲', color: fcColor, fontWeight: '700', margin: '0 4px 0 0' } }
+          });
+          let fcEcho = '';
+          for (let k = fp.end + 1, n = 0; k < _allLines.length && n < 4; k++, n++) {
+            const ft = _allLines[k];
+            if (!meosIsSpecLine(ft)) break;
+            fcEcho += (fcEcho ? '   ' : '') + ft.trim();
+          }
+          if (fcEcho) openLabels.push({
+            range: new vscode.Range(line, text.length, line, text.length),
+            renderOptions: { after: { contentText: '   ' + fcEcho, color: fcColor, fontStyle: 'italic', fontWeight: '600' } }
+          });
+        }
+      }
+      continue;
+    }
     // v0.9.606: mNT goes through the standard mCN pipeline below. The pair's `isMnt`
     // flag (from collectPairs) is used inside the openLabels/closeLabels push to swap
     // the ▼/▲ glyph for ▼📒/▲📒. Folding behavior, hover tooltip, click-to-toggle,
