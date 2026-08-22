@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.352 (2026-08-22)
+- **A measurement, not a fix.** A membrane folded right after being created once showed decorated text with the caret
+  on it, where raw source was due — and it did not reproduce. Rather than guess, folding now writes one line to the
+  MeOS Debug log (and `meos-debug.log`): which line was folded, where the caret ended up, and whether that line was
+  counted as a raw-source line. If the two disagree, the next occurrence will say so instead of us re-deriving it.
+  Folding is a rare action, so the line costs nothing on the typing path.
+
 ### v4.0.351 (2026-08-22)
 - **Rename a membrane by just typing over its name.** No Edit Me needed: type the new name on the opening line, and
   when you leave that line MeOS carries it to the closing line in **one** edit (one undo). Renaming used to break the

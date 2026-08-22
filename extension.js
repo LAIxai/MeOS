@@ -4363,6 +4363,19 @@ async function setPairFoldStateAndMstat(editor, pair, folded, options = {}) {
     refresh(editor);
     updateMeDockMode();
   }
+  // v4.0.352(俊克 8/22「新規に膜を作成した直ぐ後に『▼⇄▼▲』で畳むと、文字カーソルが入っているのに
+  //   生データにならない。さっきはそう見えた…再テストすると生データで表示される。分らん」):
+  //   ★再現しない物を推測で直さない。**次に起きた時に、何が起きていたかが残るようにしておく**
+  //     → [[feedback_go_get_the_measurement]]。畳む/開くは滅多に押さないので、1行書いても道は重くならない。
+  //   ★見たいのは1つ＝ **畳んだ後にカーソルが居る行と、その行を「生データを見せる行」と数えたかどうか**。
+  //     食い違っていれば(居るのに数えていない)、それが俊克の見た姿。
+  try {
+    const _cl = (editor.selection ? editor.selection.active.line : -1);
+    const _raw = meosRawLines(editor);
+    meosDbg('[fold] ' + (folded ? 'fold' : 'unfold') + ' start=' + pair.start + ' end=' + pair.end
+      + ' caret=' + _cl + ' rawHasCaret=' + _raw.has(_cl) + ' rawHasStart=' + _raw.has(pair.start)
+      + (_cl === pair.start ? '' : '  ← カーソルが開始行に戻っていない'));
+  } catch (_) { }
 }
 
 // v2.0.46(俊克): 折畳み膜(⊖バッジ)を貼り付け/挿入した時、その範囲の"見える最前線"の⊖膜だけを実フォールドして着地させる。
