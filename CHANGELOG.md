@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.373 (2026-08-22)
+- **Yellow looks yellow.** "Yellow" was defined in four places with four different values, and two of them were not
+  yellow: the membrane/badge `Y` was `#CA8A04` — an orange — and the text/heading yellow was an olive `(180,150,0)`.
+  Both are now a colour a person would call yellow, and the text and heading share one value instead of two.
+- Worth recording why the highlight button looks brighter than the highlight does: that yellow is 55% opaque, so on
+  Monokai's background it resolves to `(158,144,15)`. Same value, different ground, different colour. Left alone for
+  now — white text is written on top of it in existing notes, and raising the opacity would make those unreadable.
+
 ### v4.0.372 (2026-08-22)
 - **The colour letter is a chip, so every colour reads equally.** Painting the glyph itself meant dark colours sank
   into a dark background — the one thing you are trying to show is the colour, and it was the colour that decided

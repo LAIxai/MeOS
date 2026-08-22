@@ -2634,7 +2634,8 @@ const DARK_BG_KEYS = new Set(['red', 'green', 'blue', 'navy', 'maroon']);
 const HIGHLIGHT_FG_COLORS = {
   red:    'rgba(210, 40, 40, 1)',
   orange: 'rgba(215, 120, 20, 1)',
-  yellow: 'rgba(180, 150, 0, 1)',
+  yellow: 'rgba(214, 178, 24, 1)',   // v4.0.373: (180,150,0)は黄土なので、黄と分かる明るさへ
+
   green:  'rgba(40, 150, 60, 1)',
   blue:   'rgba(40, 110, 210, 1)',
   purple: 'rgba(150, 70, 210, 1)',
@@ -2780,7 +2781,8 @@ const HEADING_SIZE = { 1: '1.3em', 2: '1.2em', 3: '1.1em' };
 const HEADING_TEXT_COLORS = {
   red:    'rgba(200, 40, 40, 1)',
   orange: 'rgba(210, 120, 20, 1)',
-  yellow: 'rgba(180, 150, 0, 1)',
+  yellow: 'rgba(214, 178, 24, 1)',   // v4.0.373: 文字色の黄と揃える(同じ「黄」が2つの値を持たない)
+
   green:  'rgba(40, 150, 60, 1)',
   blue:   'rgba(40, 110, 210, 1)',
   purple: 'rgba(150, 70, 210, 1)',
@@ -3398,7 +3400,7 @@ function colorForDepth(depth, cfg) {
 const MEMBRANE_BADGE_COLOR_MAP = {
   R: 'rgba(220, 38, 38, 0.98)',
   O: 'rgba(234, 88, 12, 0.98)',
-  Y: 'rgba(202, 138, 4, 0.98)',
+  Y: 'rgba(234, 194, 26, 0.98)',   // v4.0.373(俊克「色自体は橙色なのは従来と変わらない」): #CA8A04 は黄でなく橙だった
   G: 'rgba(22, 163, 74, 0.98)',
   B: 'rgba(37, 99, 235, 0.98)',
   P: 'rgba(147, 51, 234, 0.98)',
