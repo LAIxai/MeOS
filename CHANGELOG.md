@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.397 (2026-08-23)
+- **No tooltip while the ΔChar settings panel is open.** Moving onto the panel brought a tooltip across it. The table
+  menu already had this guard, but it lets tooltips show inside itself because its items need explaining; this panel
+  is three buttons and a field, so there is nothing to read and the tooltip is only in the way — it is suppressed
+  inside and outside alike, before the tooltip is even assembled.
+
 ### v4.0.396 (2026-08-23)
 - **Typing does not schedule the bulk fold at all — deferring it was the wrong answer.** Backspace and forward-delete
   create no FC blocks, so there was never a reason to tie folding to a keystroke. v4.0.395 only postponed the work,

@@ -80,5 +80,16 @@ console.log('④ 選んだ所の字の色は、背景の明るさから決める
   ok(/--me-sel-fg/.test(js), '値を配るのは applyMode(膜の色と一緒に)', true);
 }
 
+console.log('⑤ 設定パネル(ΔChar)が開いている間はtipを出さない(v4.0.397 俊克「パネルに被さるのが邪魔」)');
+{
+  const a = js.indexOf('function showTocTip(');
+  const b = js.indexOf('function hideTocTip(', a);
+  const body = js.slice(a, b > a ? b : a + 6000);
+  const m = /me-char-pop[\s\S]{0,120}?hideTocTip\(\);return;/.exec(body);
+  ok(!!m, '★#me-char-pop が開いていたら即 hideTocTip して帰る', m && m[0].slice(0, 110));
+  ok(body.indexOf('me-char-pop') < body.indexOf("closest('[data-tip],[title]')"), 'tipを組み立てる前に帰る(中でも外でも出さない)', true);
+  ok(/table-pop/.test(body), '表の▾の門番は今までどおり残っている(中の項目tipは出す)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

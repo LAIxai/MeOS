@@ -21216,7 +21216,12 @@ function showTocTip(ev){if(!tocTooltip)return;if(window.__tocChildOpen)return;/*
 return;}/* v0.9.999123: 副メニュー表示中はtip抑止 */if(window.__headWrapUntil&&Date.now()<window.__headWrapUntil){hideTocTip();return;
 }/* v3.0.4(俊克 改良1): 表の▾メニュー(table-pop)が開いている間はメニュー外要素(表ボタン/▾自身/他の書式ボタン)のtipを出さない=開いたメニューを覆わない。メニュー内の項目tipは.bm-pop.on分岐が担当。 */{var _tpo=document.getElementById('table-pop');
 if(_tpo&&_tpo.classList.contains('on')&&!(ev&&ev.target&&ev.target.closest&&ev.target.closest('#table-pop'))){hideTocTip();
-return;}}if(window.__refDeciding){hideTocTip();return;}/* v0.9.99988: セグメント決定中はtip抑制(俊克) *//* v0.9.805: H-TOC項目のコメント編集中(toc-valueにフォーカス)はtip非表示=編集の邪魔をしない。 */{const ae=document.activeElement;
+return;}}/* ★v4.0.397(俊克 8/23 pm09:47「ΔCharをクリックすると出る設定パネルの上に行くと、tipがパネルに被さるのが邪魔だよ」):
+   ★設定パネル(#me-char-pop)が開いている間は、**中でも外でもtipを出さない**。表の▾(#table-pop)は
+     項目の説明が要るので中だけ許すが、こちらは3つのボタンと入力枠だけで、読む物が無い。
+   ★開いたパネルを覆うtipは、どの道でも邪魔＝ 門番を足すのではなく、**開いている物の一覧に足す**。 */
+{var _mcp=document.getElementById('me-char-pop');if(_mcp&&_mcp.classList.contains('on')){hideTocTip();return;}}
+if(window.__refDeciding){hideTocTip();return;}/* v0.9.99988: セグメント決定中はtip抑制(俊克) *//* v0.9.805: H-TOC項目のコメント編集中(toc-valueにフォーカス)はtip非表示=編集の邪魔をしない。 */{const ae=document.activeElement;
 if(ae&&ae.classList&&ae.classList.contains('toc-value')){hideTocTip();return;}}
 /* v2.0.37(俊克): 基準点入力枠(#dw-base-input)が開いている間はホバーtipを抑止=入力枠のtitle「Base point…」が赤ヒント(#dw-hint)を上書きする件を根治。 */
 {var _dwbi=document.getElementById('dw-base-input');if(_dwbi&&_dwbi.classList.contains('on')){hideTocTip();return;}}/* v4.0.365(俊克「tipが重複している。これは、初めて見たね」): CSS ::after で出す物は、JS側は出さない
