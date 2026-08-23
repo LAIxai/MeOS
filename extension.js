@@ -4072,23 +4072,16 @@ function meosPairBlockEnd(document, pair) {
   try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
   return e;
 }
-// FC行から、その行が属している膜(対)を引く。
-// ★**速い足切りを先に置く**＝ その行がバッジ行でなければ1行の正規表現で終わる(打鍵の道に走査を足さない)。
-//   → [[project_meos_freeze_pattern]]
-function meosPairForBadgeLine(document, line) {
-  try {
-    if (!document || line <= 0 || line >= document.lineCount) return null;
-    if (!meosIsPairBadgeSpec(document.lineAt(line).text)) return null;
-    let e = line;                                   // 連なるFC行の先頭まで遡る(バッジ行that複数在ってもよい)
-    while (e - 1 >= 0 && meosIsPairBadgeSpec(document.lineAt(e - 1).text)) e--;
-    const closeLine = e - 1;
-    if (closeLine < 0) return null;
-    const info = membraneLineInfo(document, closeLine);
-    if (!info || info.kind !== 'close') return null; // 真上が閉じ膜でなければ、膜のバッジ行ではない
-    return collectPairs(document, { excludeIndex: false }).find(p => p.end === closeLine && p.id === info.id) || null;
-  } catch (_) { }
-  return null;
-}
+// ★★v4.0.387(俊克 8/23 am11:33「**新しい判定をなぜ今更入れるの?** 今までバッジが開始膜に入っていたので、
+//   それを含めて膜と判定していたんだよね? FC化した膜では、その判定を、**バッジがFC化されているというだけの
+//   違い**です。開始膜かどうかは、**mCNなどの部分を見れば分る**はず。そもそも**バッジがあるかどうかは、
+//   膜であることの必須条件ではない**よね」):
+//   ★★**俊克が正しい。私は判定を1つ増やしていた**。v4.0.381 で私は「FC行から上へ遡って親の膜を探す」
+//     専用の関数を書いたが、そんな探索は要らない。膜の範囲は **▼ … 塊の終わり(meosPairBlockEnd)** の
+//     1本だけで、「この行はこの膜の中か」は今まで通り **start <= line <= 終わり** で足りる。
+//   ★膜かどうかを決めるのは昔から **mCN**(OPEN_RE)であって、バッジではない。バッジは行の末尾の文字列に
+//     過ぎず、FC化はそれが隣の行へ移っただけ。判定の**種類**は1つも増えない。
+//   → [[feedback_one_source_for_mark_count_action]]
 // 新しい膜に付けるバッジ行(閉じ膜の次の行)。
 // ★v4.0.332(俊克 pm04:14 改良2「FC膜に膜名を入れなくていい。**操作対象として、mCNを書けばいい**でしょ」):
 //   ★**名前は隣の閉じ膜がもう持っている**。同じ名前を2つ置くと、改名のたびに**両方を直す仕事**が生まれる
@@ -12228,8 +12221,13 @@ function _refreshInner(editor) {
 function findCurrentPair(editor) {
   if (!editor) return null;
   const line = editor.selection.active.line;
-  return collectPairs(editor.document, { excludeIndex: false })
-    .filter(p => p.start <= line && line <= p.end)
+  const doc = editor.document;
+  // ★v4.0.387(俊克): 膜の範囲は ▼ … 塊の終わり(▲＋その膜のバッジ行)の1本だけ。判定は今まで通り
+  //   start <= line <= 終わり。★終わりを伸ばして見るのは**カーソルがバッジ行に居る時だけ**＝
+  //   打鍵の道では1行の足切りで終わる(全部の膜に対して終わりを数え直さない)。
+  const onBadge = (() => { try { return meosIsPairBadgeSpec(doc.lineAt(line).text); } catch (_) { return false; } })();
+  return collectPairs(doc, { excludeIndex: false })
+    .filter(p => p.start <= line && line <= (onBadge ? meosPairBlockEnd(doc, p) : p.end))
     .sort((a, b) => (a.end - a.start) - (b.end - b.start))[0] || null;
 }
 // v0.9.850: ★膜ごとに「最後に文字カーソルがあった行」を記憶し、その膜へジャンプした時に自動で戻る
@@ -15338,8 +15336,9 @@ function isCursorOnMembraneLine(editor) {
   // Only the line that actually contains a membrane marker is treated as Rename Me.
   // This intentionally includes Col 1 / left side of ▼/▲ on that same line.
   if (/[▼▲]/.test(text) && !!(parseOpenLine(text) || parseCloseLine(text))) return true;
-  // ★v4.0.381(俊克): FC化した膜では、閉じ膜の次のバッジ行もこの膜の行(塊の一部)。
-  return !!meosPairForBadgeLine(editor.document, pos.line);
+  // ★v4.0.387(俊克「mCNなどの部分を見れば分るはず」): FC化した膜のバッジ行も、mCN と名乗っているので膜の行。
+  //   どの膜かは、今まで通り「その行を含む膜」(findCurrentPair)が答える。ここで探し回らない。
+  return meosIsPairBadgeSpec(text);
 }
 
 function isCursorInsideMembraneName(editor) {
@@ -15718,11 +15717,7 @@ function currentMembranePairForRename(editor) {
     if (pair) return pair;
   }
 
-  // ★v4.0.381(俊克): FCバッジ行の上なら、その行が属している膜を返す(畳み範囲と同じ物差し)。
-  const fcPair = meosPairForBadgeLine(doc, line);
-  if (fcPair) return fcPair;
-
-  return findCurrentPair(editor);
+  return findCurrentPair(editor);   // v4.0.387: FCバッジ行もここで答えが出る(専用の枝は要らない)
 }
 
 async function renameMe() {
@@ -18180,8 +18175,8 @@ function submarineDepthDisplayForEditor(editor) {
   let pair = null;
   if (info && info.kind === 'open') pair = pairs.find(p => p.start === line && p.id === info.id) || pairs.find(p => p.start === line) || null;
   else if (info && info.kind === 'close') pair = pairs.find(p => p.end === line && p.id === info.id) || pairs.find(p => p.end === line) || null;
-  else pair = meosPairForBadgeLine(doc, line)                                      // v4.0.381: FCバッジ行はその膜の行
-    || pairs.filter(p => p.start < line && line < p.end).sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null;
+  else { const _b = meosIsPairBadgeSpec(doc.lineAt(line).text);                    // v4.0.387: 範囲は▼…塊の終わり(1本)
+    pair = pairs.filter(p => p.start < line && line <= (_b ? meosPairBlockEnd(doc, p) : p.end - 1)).sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null; }
   const d = readDepth(pair);
   return Number.isFinite(d) ? Math.max(0, Math.min(99, d)) : 0;
 }

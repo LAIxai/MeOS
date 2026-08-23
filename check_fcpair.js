@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -94,7 +94,7 @@ console.log('④ 畳む範囲と「膜の中か」の物差しが同じ1つ');
   const pair = T.collectPairs(doc, { excludeIndex: false })[0];
   ok(T.foldRangeEnd(doc, pair) === 3, '畳みはFC行まで', T.foldRangeEnd(doc, pair));
   ok(T.meosPairBlockEnd(doc, pair) === 3, '塊の最後もFC行', T.meosPairBlockEnd(doc, pair));
-  ok((T.meosPairForBadgeLine(doc, 3) || {}).id === NAME, 'FC行→膜が引ける', T.meosPairForBadgeLine(doc, 3));
+  ok((T.findCurrentPair(mkEd(FC, 3, 5)) || {}).id === NAME, 'FC行に居れば、その膜が「今の膜」', T.findCurrentPair(mkEd(FC, 3, 5)));
 }
 console.log('⑤ 巻き添えが無いこと — 膜のバッジでないFC行は膜と認めない');
 {
@@ -103,7 +103,8 @@ console.log('⑤ 巻き添えが無いこと — 膜のバッジでないFC行�
   ok(!T.isCursorOnMembraneLine(ed), '見出しのFC行は膜の行でない', true);
   ok(T.meDockModeForEditor(ed).mode === 'new', 'mode=new のまま', T.meDockModeForEditor(ed).mode);
   const L2 = ['ただの段落', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->'];
-  ok(T.meosPairForBadgeLine(makeDoc(L2), 1) === null, '真上が閉じ膜でなければ引かない', T.meosPairForBadgeLine(makeDoc(L2), 1));
+  ok(T.findCurrentPair(mkEd(L2, 1, 5)) === null, '膜が無ければ「今の膜」も無い(名前は空)', T.findCurrentPair(mkEd(L2, 1, 5)));
+  ok(T.meDockModeForEditor(mkEd(L2, 1, 5)).value === '', '持ち主の居ないバッジ行では名前を出さない', T.meDockModeForEditor(mkEd(L2, 1, 5)).value);
 }
 console.log('⑥ 旧形(▼行にバッジ)は1行も変わらない');
 {
@@ -119,7 +120,7 @@ console.log('⑥ 旧形(▼行にバッジ)は1行も変わらない');
 console.log('⑦ FC行が2本続いても、下の1本から膜を引ける');
 {
   const L = FC.slice(0, 4).concat(['<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->']);
-  ok((T.meosPairForBadgeLine(makeDoc(L), 4) || {}).id === NAME, '2本目のFC行→同じ膜', T.meosPairForBadgeLine(makeDoc(L), 4));
+  ok((T.findCurrentPair(mkEd(L, 4, 5)) || {}).id === NAME, '2本目のFC行でも同じ膜', T.findCurrentPair(mkEd(L, 4, 5)));
   ok(T.meosPairBlockEnd(makeDoc(L), T.collectPairs(makeDoc(L), { excludeIndex: false })[0]) === 4, '塊は2本目まで', true);
 }
 
@@ -363,7 +364,7 @@ console.log('㉕ 2つの編集を実際に当てると、膜を作った時と�
   ];
   ok(ed.__lines.join('\n') === want.join('\n'), '新形の膜になる', ed.__lines);
   const doc2 = makeDoc(ed.__lines);
-  ok((T.meosPairForBadgeLine(doc2, 3) || {}).id === NAME, 'FC行から膜が引ける', T.meosPairForBadgeLine(doc2, 3));
+  ok((T.findCurrentPair(mkEd(ed.__lines, 3, 5)) || {}).id === NAME, 'FC行に居れば、その膜が「今の膜」', T.findCurrentPair(mkEd(ed.__lines, 3, 5)));
   ok(T.meosLegacyPairBadgeHit(doc2, 0) === null, '🐱はもう鳴かない', true);
 }
 

@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.387 (2026-08-23)
+- **One range, not a new judgment.** v4.0.381 added a dedicated function that walked up from an FC badge line to
+  find its parent membrane. That was a second kind of judgment, and it was unnecessary: what makes a line a membrane
+  line has always been `mCN`, never the badge — the badge is just trailing text, and FC form only moved it to the
+  next line. The range is now the single span `▼ … meosPairBlockEnd`, and "is this line in this membrane?" stays the
+  plain `start <= line <= end` it always was. The end is only recomputed when the cursor actually sits on a badge
+  line, so the typing path still ends at one line test.
+
 ### v4.0.386 (2026-08-23)
 - **The name field follows the cursor again.** "Is the person typing right now?" was measured with
   `document.activeElement` alone, but that keeps pointing at the last focused element even after the document
