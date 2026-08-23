@@ -18575,6 +18575,34 @@ function applyEncDecorations(editor) {
     editor.setDecorations(encLabelDecoration, labelRanges);
   } catch (_) {}
 }
+// ★★v4.0.393(俊克 8/23 pm08:11「そもそも、なぜbs押下で、全ファイルをスキャンするの? それを止めようよ。
+//   普通に考えれば、その段落だけの問題でしょ。リターンキーもまったく同様だよね?」):
+//   ★★**実データで測った**(俊克の日記 Kt_…md 182,940行・打鍵1回あたり)＝
+//     打鍵ごとの follow群 0.03〜1.0ms ／ refresh 1.3〜7.3ms ／ 行配列の刻み直し 0.0ms（無罪）に対し、
+//     **選択ハンドラ(updateMeDockMode ほか)だけが 16〜50ms** ＝ ここだけが全183,000行を数え直していた。
+//   ★★**打鍵はカーソルも動かす**ので、`onDidChangeTextEditorSelection` が毎打鍵走る。その中で
+//     「今どの膜に居るか／深さは／色は」を訊き、`collectPairs` が全行を走る。
+//     同じ道に `updateMembraneStatusBar` と `recordMeCursor` も居て、どちらも同じ質問をしていた。
+//   ★★**そして「直したのに復活する」の正体**＝ 構造キャッシュの鍵が `document.version` なので、
+//     **1打鍵で必ず死ぬ**。だから「今どの膜に居るか」を訊く機能を新しく足すたびに、遅延that戻ってくる。
+//     私は毎回「今その質問をしている人」だけを直していて、**質問そのものが高い**構造を直していなかった。
+//   ★ここでは第一段＝ **連打を1回に畳む**。手が止まってから1回だけ走る。単発のカーソル移動は今までどおり
+//     即座(先頭は通す)なので、Me Dock の追従は遅くならない。→ [[project_meos_freeze_pattern]]
+//   ★第二段(根治)＝ 変わった行に ▼▲ が無ければ、前の版の構造を次の版へ持ち越す(行番号のずれだけ直す)。
+//     俊克の「その段落だけの問題でしょ」が、そのまま設計になる。
+let _meDockSelTimer = null, _meDockSelAt = 0;
+const MEOS_DOCK_SEL_MS = 120;
+function meosCursorFollowWork(editor) {
+  try { updateMeDockMode(); } catch (_) { }
+  try { updateMembraneStatusBar(editor); } catch (_) { }
+  try { recordMeCursor(editor); } catch (_) { }
+}
+function scheduleCursorFollow(editor) {
+  const now = Date.now();
+  if (_meDockSelTimer) { clearTimeout(_meDockSelTimer); _meDockSelTimer = null; }
+  if (now - _meDockSelAt >= MEOS_DOCK_SEL_MS) { _meDockSelAt = now; meosCursorFollowWork(editor); return; }
+  _meDockSelTimer = setTimeout(() => { _meDockSelTimer = null; _meDockSelAt = Date.now(); meosCursorFollowWork(editor); }, MEOS_DOCK_SEL_MS);
+}
 function updateMeDockMode() {
   if (!meDockPanel) return;
   const editor = getMeDockTargetEditor();
@@ -28664,7 +28692,8 @@ makeDecorations();
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
-    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); updateMeDockMode(); updateMembraneStatusBar(e.textEditor); recordMeCursor(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
+    // v4.0.393: 膜の位置を訊く3つ(Me Dock/ステータスバー/カーソル記憶)は連打を1回に畳む。軽い2つは今までどおり即座。
+    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); scheduleCursorFollow(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
     vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e);
       // ★★v4.0.326(俊克 8/21 am09:33 バグ4「全て削除して(履歴なし)の状態で、**現在表示されているタブを
       //   クリックしても取り込まれない**。別のタブを選択すると、それは取り込まれる。なぜ?」):

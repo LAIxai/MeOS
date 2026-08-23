@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.393 (2026-08-23)
+- **Typing no longer pays for a full-document scan on every key.** Measured on the real 182,940-line diary, per
+  keystroke: the eleven follow handlers cost 0.03–1.0 ms, `refresh` 1.3–7.3 ms, and re-slicing the line array 0.0 ms —
+  all innocent. The selection handler cost **16–50 ms**, and it alone walked all 183,000 lines. A keystroke moves the
+  caret too, so `updateMeDockMode`, `updateMembraneStatusBar` and `recordMeCursor` each asked "which membrane am I in?"
+  on every key. Those three now collapse a burst into one run (a lone caret move still updates immediately).
+  The deeper cause is recorded here for the next person: the membrane-structure cache is keyed on `document.version`,
+  so **one keystroke always kills it** — which is why this delay comes back whenever a new feature asks that question.
+  The next version removes the question's cost instead of its callers.
+
 ### v4.0.392 (2026-08-23)
 - **The exception list is gone; only "no base" remains.** Stopping the arrow after punctuation or an opening bracket
   was a list I had counted up, and a list has to be memorised before the notation can be used — `not` already says
