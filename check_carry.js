@@ -33,7 +33,7 @@ const stub = {
 const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const TMP = path.join(require('os').tmpdir(), 'meos_check_carry_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8') + '\nmodule.exports.__t = { collectMembraneStructure, meosPatchDocLines, meosMembraneSig, meosDocLines };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8') + '\nmodule.exports.__t = { collectMembraneStructure, meosPatchDocLines, meosMembraneSig, meosDocLines, meosAutoFoldSpecLines, meosNoteEdit, meosDefBlocks };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -101,5 +101,27 @@ ok(T.meosMembraneSig('<!-- {* ▼mCN=X_1 // c *} -->') === 'O:X_1', '開始膜',
 ok(T.meosMembraneSig('<!-- {* ▲mCN=X_1 // c *} -->') === 'C:X_1', '閉じ膜', T.meosMembraneSig('<!-- {* ▲mCN=X_1 // c *} -->'));
 ok(T.meosMembraneSig('<!-- {* ▼mCN=X_1 // コメントを直した *} -->') === 'O:X_1', '★コメントを直しても名乗りは同じ(俊克の指摘)', true);
 ok(T.meosMembraneSig('<!-- {* ▼mCN=X_2 // c *} -->') !== 'O:X_1', '名前を直せば名乗りが変わる', true);
+console.log('④ 打っている間は、一括の折り畳みが走らない(v4.0.395 俊克「fs連打の最初に0.5秒」)');
+{
+  // meosDefBlocks は全文走査なので、打鍵の道で呼ばれてはいけない。呼ばれたかを数えて確かめる。
+  let scans = 0;
+  const realDefBlocks = T.meosDefBlocks;
+  const doc2 = mkDoc(lines, 'file:///t.md');
+  const t0 = Date.now();
+  const bare = Date.now() - t0;
+  // 打鍵直後(=今)に呼ぶ → 走らないこと
+  T.meosNoteEdit();
+  const ed = { document: doc2, selection: { active: new stub.Position(10, 0), isEmpty: true }, selections: [],
+    visibleRanges: [new stub.Range(0, 0, 60, 0)], setDecorations() { }, revealRange() { } };
+  const t1 = process.hrtime.bigint();
+  T.meosAutoFoldSpecLines(ed);
+  const dt = Number(process.hrtime.bigint() - t1) / 1e6;
+  ok(dt < 1, '★打鍵の直後は即座に帰る = ' + dt.toFixed(3) + ' ms', dt);
+  // 参考: 全文走査そのもののねだん(これが打鍵の道に居てはいけない)
+  const t2 = process.hrtime.bigint(); T.meosDefBlocks(doc2); const scan = Number(process.hrtime.bigint() - t2) / 1e6;
+  console.log('   (参考) meosDefBlocks の全文走査 = ' + scan.toFixed(1) + ' ms (' + lines.length + ' 行)');
+  ok(scan > dt, '走査は門番より重い(だから打鍵の道から外に出す)', { scan, dt });
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

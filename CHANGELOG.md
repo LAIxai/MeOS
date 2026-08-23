@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.395 (2026-08-23)
+- **The bulk FC fold no longer runs on the keystroke path.** v4.0.329 put a "not while typing" guard on the scroll
+  trigger, but `onDidChangeTextEditorSelection` called `meosAutoFoldSpecLines` directly with no guard — and a keystroke
+  moves the caret, so every key ran it. It walks the whole document (`meosDefBlocks`), then awaits up to three 150 ms
+  rounds and a fold command. Keys 2..n of a burst are turned away by the in-progress flag, so **only the first key of
+  a burst pays for all of it** — which is why backspace repeat felt clean but starting a new repeat right after it
+  stalled for about half a second. The guard now lives inside the function, so it holds for every caller, and instead
+  of dropping the request it comes back on its own once typing settles.
+
 ### v4.0.394 (2026-08-23)
 - **A keystroke no longer throws away the membrane structure.** The cache was keyed on `document.version`, so every
   key killed it and the next "which membrane am I in?" walked all 183,000 lines — which is exactly why this delay came

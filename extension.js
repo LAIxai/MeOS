@@ -25535,8 +25535,30 @@ function meosIsRealFileDoc(doc) {
   try { return !!doc && !doc.isClosed && (doc.uri.scheme === 'file' || doc.uri.scheme === 'untitled'); } catch (_) { return false; }
 }
 let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二重に畳むのを防ぐ)
+// ★★v4.0.395(俊克 8/23 pm09:06 改良1「bs連打に間髪を入れずに、fsを連打すると、**最初に0.5秒くらいの間が
+//   開く**。これは、MeOSを無効化すると、間が開かない」):
+//   ★★**呼び元を全部見ていなかった**(今日3度目の同じ形)。v4.0.329 で「打っている間は走らせない」門番を
+//     入れたのは**スクロールの合図の方だけ**で、`onDidChangeTextEditorSelection` から直に呼ぶ道は素通しだった。
+//     打鍵はカーソルを動かすので、**1打ごとにここが同期で走る**。
+//   ★中身は軽くない＝ `meosDefBlocks` が全文を走査し、その後 `await 150ms × 最大3回` と `editor.fold`。
+//     連打の**2打目以降**は `_meosFcFolding` で弾かれるので、**burstの1打目だけが全部払う**＝
+//     俊克の見た「最初に0.5秒」そのもの。bs連打が終わって次のburstに移ると、また1打目が払う。
+//   ★★直し＝ **門番を関数の中に置く**。呼び元がいくつ在っても、打っている間は走らない。
+//     ただし黙って捨てない＝ 静かになる頃にもう一度自分で来る(合図を失わない)。
+//     → [[feedback_one_source_for_mark_count_action]]「印もボタンも同じ1つの判定から引く」の兄弟＝
+//       **同じ門番を、呼び元の数だけ書かない**。
+let _meosFcQuietTimer = null;
 async function meosAutoFoldSpecLines(editor, force) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding || _meosFcBusy) return; // v4.0.328: 個別の道が動いている間は割り込まない
+  { // v4.0.395: 打鍵の道には決して置かない(呼び元がどこであっても)
+    const since = Date.now() - _meosLastEditAt;
+    if (since < MEOS_FC_TYPING_QUIET_MS) {
+      if (_meosFcQuietTimer) clearTimeout(_meosFcQuietTimer);
+      const _ed = editor, _f = force;
+      _meosFcQuietTimer = setTimeout(() => { _meosFcQuietTimer = null; try { meosAutoFoldSpecLines(_ed, _f); } catch (_) { } }, MEOS_FC_TYPING_QUIET_MS - since + 20);
+      return;
+    }
+  }
   if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
   // ★★v4.0.327(俊克 8/21 am09:46 バグ1「インストール直後に、元いた行に飛ぶようにしたよね。その直後に、
