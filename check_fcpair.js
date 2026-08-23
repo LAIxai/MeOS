@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -442,6 +442,23 @@ console.log('㉙ 外へ出せない行は、今までどおり行末に残す(v4
   ok(T.meosFcSplitForLine('本文<!-- Mew! ** (白/黄) -->', '<!-- Mew!FC == (白/黄) -->') === null, '真下に既に指定行がある行は触らない', true);
   ok(T.meosFcSplitForLine('<!-- Mew!FC H2 (白/赤) -->', '') === null, '指定行そのものは対象外', true);
   ok(T.meosFcSplitForLine('ただの本文', '') === null, '出す指定が無ければ何もしない', true);
+}
+
+console.log('㉚ 上付きの土台 — 数えるのをやめて形で決める(v4.0.391 俊克「一般的な^に制限はない」)');
+{
+  const sup = (t) => (T.meosMeTexTokens(t, false) || []).length > 0;
+  ok(sup('🐱↑3'), '★絵文字も土台になる(俊克の困りごと)', sup('🐱↑3'));
+  ok(sup('🐱↓3'), '★下付きも同じ', sup('🐱↓3'));
+  ok(sup('x↑2') && sup('A↑B') && sup('(a+b)↑2'), '今までの土台はそのまま', [sup('x↑2'), sup('A↑B'), sup('(a+b)↑2')]);
+  ok(sup('∫↑2'), '大きな演算子もそのまま(v4.0.283)', sup('∫↑2'));
+  ok(sup('あ↑2'), '日本語の字も土台になる', sup('あ↑2'));
+  // 実データで測った「本当に困る29件」の形＝土台が無い所に書いた矢印
+  ok(!sup('- ↑OKならコミット'), '★空白の後の矢印は上付きにしない', sup('- ↑OKならコミット'));
+  ok(!sup('↑(minus) → 前の開始膜'), '★行頭の矢印は上付きにしない', sup('↑(minus) → 前の開始膜'));
+  ok(!sup('、↑3割の伸び'), '★句読点の後の矢印は上付きにしない', sup('、↑3割の伸び'));
+  ok(!sup('「↑2」と書く'), '★開き括弧の後も同じ', sup('「↑2」と書く'));
+  ok(!sup('気温↑ です'), '土台が在っても、後ろに何も無ければ何も起きない', sup('気温↑ です'));
+  ok(!sup('`🐱↑3`'), 'コードスパンの中は今までどおり触らない(v4.0.58)', sup('`🐱↑3`'));
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

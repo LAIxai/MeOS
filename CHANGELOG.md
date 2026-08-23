@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.391 (2026-08-23)
+- **Anything can carry a superscript now — the allow-list is gone.** `^` in ordinary maths notation puts no condition
+  on what it attaches to, and MeOS had been growing a list of permitted base characters one kind at a time
+  (alphanumerics, then closing brackets, then big operators); counting characters guarantees the next one is always
+  missing. What the list actually protected was an arrow written as an arrow. Measured on the real 182,940-line diary,
+  outside code spans and fences, dropping the restriction newly raises 138 spots — and the 29 that genuinely hurt all
+  share one shape: the arrow follows a space, a line start, or a punctuation mark, i.e. **there is no base under it**.
+  So the rule is inverted: only characters that cannot be a base are listed. `🐱↑3` works; `- ↑OK` stays an arrow.
+
 ### v4.0.390 (2026-08-23)
 - **🐱 converts old notation all the way to FC form, in one press.** v4.0.192 settled that MeOS writes only FC, and
   the format buttons have gone through `meosFormatWritesFC()` ever since — but the 🐱 legacy conversion still wrote a

@@ -247,7 +247,10 @@ console.log('⑲ 続けて書いた上付き/下付きは積む(v4.0.283) — �
   ok(P('A↑1').length === 0, '1つだけなら対にならない', P('A↑1'));
   ok(T.meosMeTexTokens('∫↑(1)', null).length === 1, '★v4.0.283= ∫も素で基準文字になる(コメント無しで出る)', T.meosMeTexTokens('∫↑(1)', null).length);
   ok(T.meosMeTexTokens('∑↓(i=1)', null).length === 1, '∑も同じ', T.meosMeTexTokens('∑↓(i=1)', null).length);
-  ok(T.meosMeTexTokens('🐱↑3', null).length === 0, '★知らない字は今までどおり素通り(安全側は変えない)', T.meosMeTexTokens('🐱↑3', null).length);
+  // ★v4.0.391(俊克「🐱↑2が上付きにならないのが使い難い。一般的な^にそんな制限はないよね?」):
+  //   許可リストをやめ、**土台になれない字だけ**を決めた。守るのは「矢印として書いた↑」＝土台が無い所。
+  ok(T.meosMeTexTokens('🐱↑3', null).length === 1, '★絵文字も土台になる(v4.0.391で許可リストを撤去)', T.meosMeTexTokens('🐱↑3', null).length);
+  ok(T.meosMeTexTokens('- ↑OKなら', null).length === 0, '★土台が無い矢印は今までどおり素通り(守る所は変えない)', T.meosMeTexTokens('- ↑OKなら', null).length);
   console.log('   ★v4.0.285= 描き直さない。本物の字のまま左へ戻す');
   {
     const src = '∫↑(1)↓(0) f(x) dx';
