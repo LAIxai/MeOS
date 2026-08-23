@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.394 (2026-08-23)
+- **A keystroke no longer throws away the membrane structure.** The cache was keyed on `document.version`, so every
+  key killed it and the next "which membrane am I in?" walked all 183,000 lines — which is exactly why this delay came
+  back each time a new feature asked that question. Editing a membrane's *comment* changes no opening line, no closing
+  line and no name, so the structure is identical; only line numbers move. Two one-line tests decide it: an edit that
+  keeps the line count carries over when that line's signature (open/close + name) is unchanged, and an edit that
+  adds or removes lines carries over when no membrane line sits in the moved range. The previous structure is then
+  shifted, which costs the number of membranes, not the length of the file. Measured against a from-scratch rescan
+  over 300 random edits including edits on membrane lines: **identical every time, 0.16 ms instead of 14.7 ms.**
+- **Nothing synchronous is left on the keystroke path.** v4.0.393 still ran the cursor-follow work inline whenever
+  120 ms had passed, so pausing mid-burst and resuming paid it on the next key — the 0.2 s hitch. While the document
+  is being edited it is now always deferred; a plain caret move still updates immediately.
+
 ### v4.0.393 (2026-08-23)
 - **Typing no longer pays for a full-document scan on every key.** Measured on the real 182,940-line diary, per
   keystroke: the eleven follow handlers cost 0.03–1.0 ms, `refresh` 1.3–7.3 ms, and re-slicing the line array 0.0 ms —

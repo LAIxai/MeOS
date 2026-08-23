@@ -4666,6 +4666,18 @@ function collectMembraneStructure(document, options = {}) {
   const cacheKey = `${document.version}::${excludeIndex ? 1 : 0}`;
   const cached = _membraneStructureCache.get(document);
   if (cached && cached.key === cacheKey) return cached.value;
+  // ★v4.0.394(俊克): 膜の並びが変わっていない打鍵なら、前の版の構造をずらして渡す(数え直さない)。
+  try {
+    const c = _meosStructCarry;
+    if (cached && c && c.uri === document.uri.toString()
+      && cached.key === (c.baseVersion + '::' + (excludeIndex ? 1 : 0))
+      && cacheKey === (c.toVersion + '::' + (excludeIndex ? 1 : 0))) {
+      const carried = meosShiftStructure(cached.value, c.shifts);
+      _membraneStructureCache.set(document, { key: cacheKey, value: carried });
+      _meosStructCarry = { uri: c.uri, baseVersion: c.toVersion, toVersion: c.toVersion, shifts: [] }; // ここから先を積み直す
+      return carried;
+    }
+  } catch (_) { }
 
   const stack = [];
   const pairs = [];
@@ -18597,10 +18609,17 @@ function meosCursorFollowWork(editor) {
   try { updateMembraneStatusBar(editor); } catch (_) { }
   try { recordMeCursor(editor); } catch (_) { }
 }
+// ★★v4.0.394(俊克 8/23 pm08:35「前よりは良いようだが、bsを連打して見ると、**時々一瞬0.2秒くらい詰まる**
+//   感じがする。MeOSを無効化すると完全にクリアにbsの連打ができる。これと同じ反応になるのが理想」):
+//   ★★**v4.0.393の入れ方が悪かった**＝「前回から120ms以上空いていたら**その場で走る**」にしたので、
+//     連打の合間に少し手が止まると、**次の1打で16〜50msを同期で払う**。それが0.2秒の正体。
+//   ★**打鍵の道には、決して同期の仕事を置かない**。文書が今まさに変わった直後(=打っている)なら、
+//     必ず後回しにする。ただのカーソル移動(クリック/矢印)は今までどおり即座＝ 追従は遅くならない。
 function scheduleCursorFollow(editor) {
   const now = Date.now();
   if (_meDockSelTimer) { clearTimeout(_meDockSelTimer); _meDockSelTimer = null; }
-  if (now - _meDockSelAt >= MEOS_DOCK_SEL_MS) { _meDockSelAt = now; meosCursorFollowWork(editor); return; }
+  const typing = (now - lastDocChangeAt) < 400;   // 打鍵で動いたカーソルか、人が動かしたカーソルか
+  if (!typing && now - _meDockSelAt >= MEOS_DOCK_SEL_MS) { _meDockSelAt = now; meosCursorFollowWork(editor); return; }
   _meDockSelTimer = setTimeout(() => { _meDockSelTimer = null; _meDockSelAt = Date.now(); meosCursorFollowWork(editor); }, MEOS_DOCK_SEL_MS);
 }
 function updateMeDockMode() {
@@ -23149,24 +23168,79 @@ function meosPatchDocLines(e) {
     const nl = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
     const lines = c.lines;
     const chs = e.contentChanges.slice().sort((a, b) => (b.range.start.line - a.range.start.line) || (b.range.start.character - a.range.start.character));
+    let carry = (chs.length === 1) ? null : false;   // v4.0.394: 1つの変更の時だけ持ち越しを見る(false=諦める)
     for (const ch of chs) {
       const s0 = ch.range.start, e0 = ch.range.end;
-      if (s0.line >= lines.length || e0.line >= lines.length) { _meosTextCache = { key: '', text: null, lines: null }; return false; }
+      if (s0.line >= lines.length || e0.line >= lines.length) { _meosTextCache = { key: '', text: null, lines: null }; meosCarryReset(); return false; }
       const head = String(lines[s0.line]).slice(0, s0.character);
       const tail = String(lines[e0.line]).slice(e0.character);
       const mid = (head + String(ch.text || '') + tail).split(nl);
-      if (mid.length > 2000) { _meosTextCache = { key: '', text: null, lines: null }; return false; } // 大きな貼り付けは刻み直す方が安い
+      if (mid.length > 2000) { _meosTextCache = { key: '', text: null, lines: null }; meosCarryReset(); return false; } // 大きな貼り付けは刻み直す方が安い
+      if (carry === null) {                          // v4.0.394: 膜の並びが変わらない編集か
+        const oldSeg = lines.slice(s0.line, e0.line + 1);
+        const delta = mid.length - oldSeg.length;
+        if (delta === 0 && oldSeg.length === 1) {
+          carry = (meosMembraneSig(oldSeg[0]) === meosMembraneSig(mid[0])) ? [e0.line, 0] : false;   // ①名乗りが同じ
+        } else {
+          const none = (arr) => arr.every(t => meosMembraneSig(t) === '');
+          carry = (none(oldSeg) && none(mid)) ? [e0.line, delta] : false;                            // ②動いた範囲に膜の行が無い
+        }
+      }
       lines.splice(s0.line, e0.line - s0.line + 1, ...mid);
     }
     const probe = Math.max(0, Math.min(doc.lineCount - 1, chs.length ? chs[chs.length - 1].range.start.line : 0));
     if (lines.length !== doc.lineCount || lines[probe] !== doc.lineAt(probe).text) { // 安全弁
       _meosTextCache = { key: '', text: null, lines: null };
+      meosCarryReset();
       try { meosDbg('[lineCache] 食い違い→捨てた 行数=' + lines.length + '/' + doc.lineCount + ' 見た行=' + probe); } catch (_) { }
       return false;
     }
-    _meosTextCache = { key: doc.uri.toString() + '@' + doc.version, text: null, lines }; // 文字列は要る人that作る
+    _meosTextCache = { key: doc.uri.toString() + '@' + doc.version, text: null, lines }; // 文字列は要る人が作る
+    if (carry) meosCarryNote(doc, carry[0], carry[1]); else meosCarryReset();   // v4.0.394
     return true;
-  } catch (_) { _meosTextCache = { key: '', text: null, lines: null }; return false; }
+  } catch (_) { _meosTextCache = { key: '', text: null, lines: null }; meosCarryReset(); return false; }
+}
+// ★★v4.0.394(俊克「▼がある時と言っていたけど、**膜のコメントや膜名を編集する時のbsキー押下は、
+//   通常の段落と違いはないはず**だよね?」＋ pm08:11「普通に考えれば、**その段落だけの問題**でしょ」):
+//   ★★**俊克が正しい**。膜のコメントを直しても、開始行・閉じ行・名前は1つも変わらない＝ 構造は同じ。
+//     数え直す理由が無い。★これが「直したのに復活する」の根治＝ 構造キャッシュの鍵が
+//     `document.version` なので**1打鍵で必ず死ぬ**。so「今どの膜に居るか」を訊く機能を足すたびに
+//     全走査が戻ってきた。→ **鍵を版でなく「膜の行が変わったか」にする**。
+//   ★持ち越せる条件は2つだけ(どちらも1行を見るだけで決まる)＝
+//     ①**行数that変わらない編集**(段落の中の1文字・膜のコメントの1文字)で、その行の**名乗り(開/閉+名前)が同じ**
+//     ②**行数that変わる編集**(Enter/行頭bs)で、**動いた範囲に膜の行が1本も無い**
+//   どちらも「膜の並びは同じ・行番号だけずれる」so、前の版の構造を**ずらして**渡せば足りる。
+//   ★ずらすのは膜の本数ぶんの足し算so、文書の長さに依らない(17万行でも0.1ms未満)。
+//   ★連打で誰も構造を訊かないまま版が進む時は、ずれを**順に積む**(積み過ぎたら諦めて数え直す)。
+let _meosStructCarry = null; // { uri, baseVersion, toVersion, shifts: [[atLine, delta], ...] }
+const MEOS_CARRY_MAX = 300;
+// その行の「名乗り」= 開/閉 と 名前。膜の行でなければ空文字。▼▲を持たない行は1回のindexOfで終わる。
+function meosMembraneSig(text) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('▼') < 0 && t.indexOf('▲') < 0 && t.indexOf('▽') < 0 && t.indexOf('△') < 0) return '';
+  try {
+    const o = parseOpenLine(t); if (o) return 'O:' + o.id;
+    const c = parseCloseLine(t); if (c) return 'C:' + c.id;
+  } catch (_) { }
+  return '';
+}
+function meosCarryReset() { _meosStructCarry = null; }
+function meosCarryNote(doc, atLine, delta) {
+  const uri = doc.uri.toString(), v = doc.version;
+  const c = _meosStructCarry;
+  if (c && c.uri === uri && c.toVersion === v - 1 && c.shifts.length < MEOS_CARRY_MAX) { c.shifts.push([atLine, delta]); c.toVersion = v; return; }
+  _meosStructCarry = { uri, baseVersion: v - 1, toVersion: v, shifts: [[atLine, delta]] };
+}
+function meosShiftStructure(value, shifts) {
+  let pairs = value.pairs, uo = value.unclosedOpens, oc = value.orphanCloses;
+  for (const [at, delta] of shifts) {
+    if (!delta) continue;
+    const f = (n) => (n > at ? n + delta : n);
+    pairs = pairs.map(p => ({ ...p, start: f(p.start), end: f(p.end) }));
+    uo = uo.map(o => ({ ...o, start: f(o.start) }));
+    oc = oc.map(o => ({ ...o, line: f(o.line) }));
+  }
+  return (pairs === value.pairs) ? value : { pairs, unclosedOpens: uo, orphanCloses: oc };
 }
 function _meosTextKey(doc) { return doc.uri.toString() + '@' + doc.version; }
 function meosDocText(doc) {
