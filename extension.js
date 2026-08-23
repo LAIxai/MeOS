@@ -15121,6 +15121,62 @@ function refreshTrailingTimestamp(name) {
   return (base || 'name') + '_' + fresh;
 }
 
+// ★★v4.0.383(俊克 8/23 am10:35「MepyのCopy/Duplicateで前から気になっていたんだけど、**タイムスタンプだけ
+//   現在時刻にした方がいい**のではないか? Copyしたあとに、別のところでペーストすると、**まったく同じ膜が
+//   存在することになってしまう**からだ。…macで同じファイル名をFinderに入れる時に、別名にするか?と
+//   聞かれることと同じだよね。だからMeOSでは、**タイムスタンプを変えればいい**んだよ。**その選択肢しか
+//   ないんだよ**。と言うか、**これがタイムスタンプの利点でもある**」):
+//   ★★**複製とは、同じ物をもう1つ作ることではなく、別の物を作ること**。膜の名前は番地(ワープ先)なので、
+//     同じ名前が2つ在ると、どちらへ飛ぶかを誰も決められない。Finderの「別名にするか?」と同じ問いに、
+//     MeOSは**問わずに答えられる**＝ 名前のうち機械が付けた部分(TS)だけを打ち直せばよい。
+//   ★**人が付けた部分は1文字も触らない**。変えるのはTSだけ。→ [[project_last_specified_wins]]
+//   ★**TSを持っていない名前は触らない**＝ 打ち直す物が無い(構造膜のような手書きの名前に、勝手にTSを
+//     生やさない)。→ [[project_now_not_bulk]] / [[project_setting_decides_future_only]]
+//   ★**入れ子の膜も全部打ち直す**＝ 中の膜も一緒に運ばれるので、外だけ直すと中が衝突する。
+//   ★**開き膜と閉じ膜は同じ新しい名前**にする(対は名前で照合しているので、片方だけ変えると対が壊れる)。
+//   ★同じ秒に何本も打つと新しい名前どうしが衝突するので、埋まっていたら1秒ずつ進める。
+function meosRestampMembraneBlock(lines) {
+  const src = Array.isArray(lines) ? lines.slice() : [];
+  const kinds = [];
+  const ids = [];
+  for (const t of src) {
+    const o = parseOpenLine(t);
+    const c = o ? null : parseCloseLine(t);
+    kinds.push(o ? 'open' : (c ? 'close' : null));
+    const id = (o && o.id) || (c && c.id) || '';
+    if (id && MEOS_NAME_TS_RE.test(id) && ids.indexOf(id) < 0) ids.push(id);  // TSを持つ名前だけ
+  }
+  if (!ids.length) return src;
+  const used = new Set();
+  const map = new Map();
+  const base = Date.now();
+  for (const id of ids) {
+    let next = refreshTrailingTimestamp(id);
+    for (let k = 1; used.has(next) && k <= 600; k++) {
+      const stem = next.replace(MEOS_NAME_TS_RE, '').replace(/_+$/, '') || 'name';
+      next = stem + '_' + meosMembraneStamp(new Date(base + k * 1000));
+    }
+    used.add(next);
+    map.set(id, next);
+  }
+  for (let i = 0; i < src.length; i++) {
+    if (kinds[i]) {
+      const parts = membraneLineParts(src[i], kinds[i]);
+      const next = parts ? map.get(parts.id) : null;
+      if (next && typeof parts.idStart === 'number' && typeof parts.idEnd === 'number') {
+        src[i] = src[i].slice(0, parts.idStart) + next + src[i].slice(parts.idEnd);
+      }
+      continue;
+    }
+    if (meosIsPairBadgeSpec(src[i])) {                    // v4.0.330-331 の旧形バッジ行(mCN=名前)も揃える
+      for (const [oldId, next] of map) {
+        if (src[i].indexOf('mCN=' + oldId) >= 0) { src[i] = src[i].split('mCN=' + oldId).join('mCN=' + next); break; }
+      }
+    }
+  }
+  return src;
+}
+
 function lineIndent(document, line) {
   if (!document || line < 0 || line >= document.lineCount) return '';
   const m = document.lineAt(line).text.match(/^\s*/);
@@ -15325,8 +15381,9 @@ async function copyMe(editor) {
   const endLine = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
   const lines = [];
   for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
-  await vscode.env.clipboard.writeText(lines.join('\n'));
-  meosOpFeedback('Copied membrane (' + (endLine - pair.start + 1) + ' lines)');
+  const out = meosRestampMembraneBlock(lines);            // v4.0.383: 貼った先で番地が重ならないよう、TSだけ打ち直す
+  await vscode.env.clipboard.writeText(out.join('\n'));
+  meosOpFeedback('Copied membrane (' + (endLine - pair.start + 1) + ' lines, timestamps refreshed)');
 }
 
 // 膜の中身のCopy — 開始膜行と閉じ膜行を除いた中身だけをクリップボードへ。
@@ -15344,7 +15401,8 @@ async function copyMyContents(editor) {
   }
   const lines = [];
   for (let i = first; i <= last; i++) lines.push(doc.lineAt(i).text);
-  await vscode.env.clipboard.writeText(lines.join('\n'));
+  const out = meosRestampMembraneBlock(lines);            // v4.0.383: 中に入れ子の膜が在れば、それも打ち直す
+  await vscode.env.clipboard.writeText(out.join('\n'));
   meosOpFeedback('Copied membrane contents (' + (last - first + 1) + ' lines)');
 }
 
@@ -15378,14 +15436,14 @@ async function duplicateMe(editor) {
   const endLine = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
   const lines = [];
   for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
-  const block = lines.join('\n');
+  const block = meosRestampMembraneBlock(lines).join('\n');   // v4.0.383: 複製は別の物なので、TSだけ打ち直す
   // 閉じ膜行の末尾に改行＋ブロックを挿入。末尾行(EOFに改行なし)でも安全に動くよう
   // 行末位置に '\n' + block を入れる。
   const insertPos = new vscode.Position(endLine, doc.lineAt(endLine).text.length);
   await editor.edit(edit => {
     edit.insert(insertPos, '\n' + block);
   });
-  meosOpFeedback('Duplicated membrane (' + lines.length + ' lines)');
+  meosOpFeedback('Duplicated membrane (' + lines.length + ' lines, timestamps refreshed)');
 }
 // {* ▲mCN=0860_MEOS_MENU_STUBS // end [cGJF=h] *}
 
@@ -19507,9 +19565,9 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
       <button class="big-action" id="op-add-toc">Add to <span class="toc-word">Hyper TOC</span></button>
       <button class="big-action" id="op-toggle">Toggle</button>
       <button class="big-action remove" id="op-remove" data-tip="Shed the membrane shell — contents stay intact">Shed Me</button>
-      <button class="big-action hidden" id="op-copy" data-tip="Copy to clipboard. Me+Contents = whole membrane (paste elsewhere with Cmd+V) / Contents only = inner contents">Copy</button>
+      <button class="big-action hidden" id="op-copy" data-tip="Copy to clipboard. Me+Contents = whole membrane incl. its badge line / Contents only = inner contents. Membrane names get a fresh timestamp so the copy is its own address">Copy</button>
       <button class="big-action hidden" id="op-select" data-tip="Select the membrane contents (excluding the open/close lines) in the editor">Select</button>
-      <button class="big-action hidden" id="op-duplicate" data-tip="Duplicate the whole membrane (open line through close line) right below itself">Duplicate</button>
+      <button class="big-action hidden" id="op-duplicate" data-tip="Duplicate the whole membrane (open line through its badge line) right below itself. Names get a fresh timestamp so the copy is its own address">Duplicate</button>
     </div>
   </div>
 </div>

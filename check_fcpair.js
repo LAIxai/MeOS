@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -218,6 +218,58 @@ console.log('⑭ FCバッジ行がファイルの最終行でも、Duplicate Me 
   const ed = mkEdEdit(L, 0, 20);
   T.duplicateMe(ed);
   ok(ed.__lines.length === 8 && T.meosIsPairBadgeSpec(ed.__lines[7]), '4行が増え、最後はバッジ行', ed.__lines);
+}
+
+console.log('⑮ Copy は膜名のTSだけを今の時刻に打ち直す(人が付けた部分は不変・対は揃う)');
+{
+  const ed = mkEdEdit(BODY, 0, 20);
+  CLIP = '';
+  T.copyMe(ed);
+  const out = CLIP.split('\n');
+  const openId = /▼mCN=([^ ]+) /.exec(out[0])[1];
+  const closeId = /▲mCN=([^ ]+) /.exec(out[3])[1];
+  ok(openId !== NAME, '元と同じ名前ではない', openId);
+  ok(openId.indexOf('テスト膜2_') === 0, '人が付けた部分は不変', openId);
+  ok(openId === closeId, '開き膜と閉じ膜が同じ新しい名前', [openId, closeId]);
+  ok(T.MEOS_NAME_TS_RE.test(openId), '末尾は正しいTS', openId);
+  ok(ed.__lines.join('\n') === BODY.join('\n'), '元の文書は1文字も変わらない', ed.__lines);
+}
+console.log('⑯ Duplicate も同じ(元は不変・複製だけ新しい名前)');
+{
+  const ed = mkEdEdit(BODY, 0, 20);
+  T.duplicateMe(ed);
+  const out = ed.__lines;
+  ok(/▼mCN=テスト膜2_20260823S093551JST /.test(out[0]), '元の膜はそのまま', out[0]);
+  const dupOpen = /▼mCN=([^ ]+) /.exec(out[5])[1];
+  const dupClose = /▲mCN=([^ ]+) /.exec(out[8])[1];
+  ok(dupOpen !== NAME && dupOpen === dupClose, '複製は別の名前で対が揃う', [dupOpen, dupClose]);
+}
+console.log('⑰ 入れ子の膜も全部打ち直し、同じ名前どうしは別のTSになる');
+{
+  const IN = [
+    '<!-- {* ▼mCN=親_20260823S090000JST // p *} -->',
+    '<!-- {* ▼mCN=子_20260823S090100JST // a *} -->',
+    '<!-- {* ▲mCN=子_20260823S090100JST // a *} -->',
+    '<!-- {* ▼mCN=子_20260823S090200JST // b *} -->',
+    '<!-- {* ▲mCN=子_20260823S090200JST // b *} -->',
+    '<!-- {* ▲mCN=親_20260823S090000JST // p *} -->',
+  ];
+  const out = T.meosRestampMembraneBlock(IN);
+  const ids = out.map(t => (/[▼▲]mCN=([^ ]+) /.exec(t) || [])[1]);
+  ok(ids[0] === ids[5] && ids[1] === ids[2] && ids[3] === ids[4], '3つの対が全部揃う', ids);
+  ok(new Set([ids[0], ids[1], ids[3]]).size === 3, '3つとも別の名前', [ids[0], ids[1], ids[3]]);
+  ok(ids[1] !== ids[3], '同名の子2つが衝突しない(1秒ずらす)', [ids[1], ids[3]]);
+  ok(IN[0].indexOf('090000') > 0, '入力側の配列は壊さない', IN[0]);
+}
+console.log('⑱ TSを持たない名前には、勝手にTSを生やさない');
+{
+  const L = ['<!-- {* ▼mCN=0866_INLINE_NEW_RENAME // x *} -->', '本文', '<!-- {* ▲mCN=0866_INLINE_NEW_RENAME // end *} -->'];
+  ok(T.meosRestampMembraneBlock(L).join('\n') === L.join('\n'), '1文字も変わらない', T.meosRestampMembraneBlock(L));
+}
+console.log('⑲ 膜が1つも無いテキストはそのまま返す');
+{
+  const L = ['本文A', '<!-- Mew!FC H2 (白/赤) -->', '本文B'];
+  ok(T.meosRestampMembraneBlock(L).join('\n') === L.join('\n'), '素通り', T.meosRestampMembraneBlock(L));
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.383 (2026-08-23)
+- **A copy is a different membrane, so it gets a fresh timestamp.** A membrane name is an address you warp to;
+  two identical names and nothing can decide where the jump lands. Finder asks "keep both or rename?" — MeOS can
+  answer without asking, because the machine-written half of the name is exactly the part that may change. Copy Me,
+  Copy My contents and Duplicate Me now restamp every membrane name in the block: the human-written stem is untouched,
+  open and close lines get the same new name, nested membranes are restamped too, and colliding names step one second
+  apart. Names that carry no timestamp are left alone — there is nothing to restamp, and MeOS does not grow one.
+
 ### v4.0.382 (2026-08-23)
 - **Copy Me, Duplicate Me and Shed Me now reach the FC badge line too.** The badge belongs to the membrane, so
   carrying the membrane without it drops depth, colour and fold state at the paste site — and shedding the shell
