@@ -15174,6 +15174,19 @@ const MEOS_NAME_TS_RE = /_((?:BC\d{1,12}|\d{8}[SMTWtFs](?:\d{2}(?:\d{2}(?:\d{2})
 function getDefaultMembraneName() {
   return 'name_' + meosMembraneStamp(new Date());
 }
+// ★★v4.0.389(俊克 8/23 pm01:16 バグ1「Edit Meの新規作成用の膜名のTSは、文字カーソルが移動する毎に
+//   書き変わる。ただし、しばらく置いてCreateを押すと、本来なら**現在時刻に更新してから膜に入れるべき**
+//   なんだけど、古い時刻が書き込まれてしまう。これではリアルタイムなタイムスタンプとは言えないよね」):
+//   ★★**TSが指すのは「入力欄に出た時刻」ではなく「膜が生まれた時刻」**。入力欄の値は画面の下書きで、
+//     カーソルが止まっていれば古いまま残る。so**押した瞬間に打ち直す**のが正しい。
+//   ★変えるのはTSだけ＝ 人が打った部分は1文字も触らない([[project_last_specified_wins]])。
+//   ★**TSを持たない名前には生やさない**＝ ここは「打ち直す」場所であって、付ける場所ではない
+//     (付けるのはコピーの時だけ= v4.0.384 俊克「ただし、これはコピーする時だけだよ」)。
+function meosRestampNameForCreate(name) {
+  const raw = String(name == null ? '' : name).trim();
+  if (!raw) return raw;
+  return MEOS_NAME_TS_RE.test(raw) ? refreshTrailingTimestamp(raw) : raw;
+}
 
 function refreshTrailingTimestamp(name) {
   const raw = String(name || '').trim();
@@ -15367,7 +15380,7 @@ async function addMembrane() {
     placeHolder: 'Example: My First Me_105844.503 / 私 第一膜_105844.503'
   });
   if (idInput === undefined) return;
-  const id = normalizeMembraneId(idInput);
+  const id = normalizeMembraneId(meosRestampNameForCreate(idInput));   // v4.0.389: 押した瞬間の時刻で刻む
   const sel = editor.selection;
   const doc = editor.document;
   const hasSelection = !sel.isEmpty;
@@ -18324,7 +18337,7 @@ async function addMembraneWithName(nameInput, colorCode = '') {
     vscode.window.showWarningMessage('New Me cannot be inserted inside a membrane name. Use Rename Me instead.');
     return;
   }
-  const name = normalizeMembraneId(nameInput || getDefaultMembraneName());
+  const name = normalizeMembraneId(meosRestampNameForCreate(nameInput) || getDefaultMembraneName()); // v4.0.389
   if (!name) {
     vscode.window.showWarningMessage('New Me: membrane name cannot be empty.');
     return;
@@ -19030,7 +19043,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .me-name-wrap{position:relative}
 .name-tint{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;overflow:hidden;white-space:pre;display:flex;align-items:center}
 .name-tint>span{white-space:pre}
-.name-input::selection{background:var(--me-sel,#2563eb);color:#fff}/* 選ぶと字が戻る= 俊克の見た挙動はそのまま */
+.name-input::selection{background:var(--me-sel,#2563eb);color:var(--me-sel-fg,#fff)}/* 選ぶと字が戻る= 俊克の見た挙動はそのまま */
 .line-row{display:flex;align-items:center;gap:6px}
 .line-meter{font-size:11px;line-height:1;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;user-select:none}
 .time-machine-trigger{min-width:48px;text-align:center;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums;padding-left:5px;padding-right:5px}
@@ -19755,6 +19768,13 @@ const colorChoices=[['R','🟥','Red'],['O','🟧','Orange'],['Y','🟨','Yellow
    玉も色メニューも一緒に変わる。 */
 const MEOS_MEMBRANE_HEX=${JSON.stringify(meosMembraneHexMap())};
 function colorHex(code){const c=(code||'G').toUpperCase();return MEOS_MEMBRANE_HEX[c]||MEOS_MEMBRANE_HEX.G||'#16a34a';}
+/* ★v4.0.389(俊克 質問1「この黄色は明る過ぎて、字が読み難いよ」): 選んだ所の字の色を**背景の明るさ**から決める。
+   白1色で塗ると、黄(Y)のような明るい膜色の上で字が沈む。submarineTextColor と同じ考え方(=明るい所には黒)。 */
+function meDockReadableOn(hex){try{var h=String(hex||'').replace('#','');
+if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+if(!isFinite(r)||!isFinite(g)||!isFinite(b))return '#fff';
+return (0.299*r+0.587*g+0.114*b)>150?'#111827':'#fff';}catch(_){return '#fff';}}
 function colorEmoji(code){const c=(code||'G').toUpperCase();const hit=colorChoices.find(x=>x[0]===c);return hit?hit[1]:'🟩';
 }
 function colorLabel(code){const c=(code||'G').toUpperCase();return colorEmoji(c)+'('+c+')';}
@@ -19922,7 +19942,8 @@ function applyMode(mode,value,force,line,nextMarkerOn,nextHistory,nextColor,next
 const nextValue=value||'';const modeChanged=nextMode!==currentMode;currentMode=nextMode;currentValue=nextValue;currentLine=line||'';
 if(typeof nextMarkerOn==='boolean')markerOn=nextMarkerOn;if(nextHistory)historyState=nextHistory;if(force||modeChanged||!draftDirty){currentColor=(nextColor||'');
 draftColor=currentColor;}flipMinusColor=nextFlipMinusColor||'';flipPlusColor=nextFlipPlusColor||'';if(typeof nextNavDepth==='number'&&Number.isFinite(nextNavDepth)){navMeDepthValue=Math.max(0,Math.min(99,Math.trunc(nextNavDepth)));
-}if(input)input.style.setProperty('--me-sel',colorHex(draftColor||currentColor||'G'));/* v0.9.999105: 名前選択色を膜の色に同期(俊克) */renderColorButton();
+}if(input){const _sel=colorHex(draftColor||currentColor||'G');input.style.setProperty('--me-sel',_sel);
+input.style.setProperty('--me-sel-fg',meDockReadableOn(_sel));}/* v0.9.999105: 名前選択色を膜の色に同期(俊克) / v4.0.389: 字の色は背景の明るさから決める */renderColorButton();
 renderAnchorButton(nextAnchor);const r=currentMode==='rename';if(meTitleWord){meTitleWord.classList.toggle('pending',!r);
 meTitleWord.style.color=r?colorHex(draftColor||currentColor||'G'):'';}if(membranePanel)membranePanel.classList.toggle('hidden',!r&&!inMembraneState);
 if(colorRow)colorRow.classList.toggle('hidden',!r&&!inMembraneState);renderMembraneTargetPanel();if(setBtn)setBtn.textContent=r?'Set':'Create';

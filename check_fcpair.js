@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -398,6 +398,19 @@ console.log('㉖ Create の後、カーソルが乗るのは開始膜の行(v4.0
     ok(T.meDockModeForEditor(mkEd(r.out, at, 20)).value === ID, 'その行で Edit Me は膜名を出す', true);
   }
   ok(T.findNewMembraneOpenerLineAfterInsert(makeDoc(['本文', 'ただの行']), ID, 0) === 0, '見つからない時は近い行を返す(落ちない)', true);
+}
+
+console.log('㉗ Create を押した瞬間の時刻で刻む(v4.0.389 俊克 バグ1)');
+{
+  const old = 'name_20260823S090000JST';                     // しばらく前に入力欄に出た値
+  const now = T.meosRestampNameForCreate(old);
+  ok(now !== old, '古い時刻のままにしない', now);
+  ok(/^name_\d{8}[SMTWtFs]\d{6}[A-Z]{0,5}$/.test(now), '完全形のTSが付く', now);
+  ok(now.slice(0, 5) === 'name_', '人が付けた部分は不変', now);
+  const mine = T.meosRestampNameForCreate('テスト膜#1_20260823S090000JST');
+  ok(mine.indexOf('テスト膜#1_') === 0 && !/090000/.test(mine), '自分で付けた名前でもTSだけ入れ替わる', mine);
+  ok(T.meosRestampNameForCreate('0866_INLINE_NEW_RENAME') === '0866_INLINE_NEW_RENAME', '★TSが無い名前には生やさない(付けるのはコピーの時だけ)', T.meosRestampNameForCreate('0866_INLINE_NEW_RENAME'));
+  ok(T.meosRestampNameForCreate('') === '', '空はそのまま(既定名の生成に任せる)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -66,5 +66,19 @@ console.log('③ 枠の中の字(写し)は、値を書いた所で必ず塗り�
   ok(/m\.text!=null&&input&&String\(m\.text\)!==input\.value/.test(js), '古い写しは捨てる(値と合う時だけ塗る)', true);
 }
 
+console.log('④ 選んだ所の字の色は、背景の明るさから決める(v4.0.389 俊克 質問1「黄色は明る過ぎて字が読み難い」)');
+{
+  const m = /function meDockReadableOn\(hex\)\{[\s\S]*?catch\(_\)\{return '#fff';\}\}/.exec(js);
+  ok(!!m, '関数が実ソースに在る', m && m[0].slice(0, 60));
+  const ctx = {}; vm.createContext(ctx); vm.runInContext(m[0], ctx);
+  const call = (h) => vm.runInContext('meDockReadableOn(' + JSON.stringify(h) + ')', ctx);
+  ok(call('#eac21a') === '#111827', '★明るい黄(膜色Y)の上は黒い字', call('#eac21a'));
+  ok(call('#2563eb') === '#fff', '濃い青の上は白い字', call('#2563eb'));
+  ok(call('#16a34a') === '#fff', '緑の上は白い字', call('#16a34a'));
+  ok(call('') === '#fff', '読めない値でも落ちない', call(''));
+  ok(/\.name-input::selection\{background:var\(--me-sel,#2563eb\);color:var\(--me-sel-fg,#fff\)\}/.test(src), 'CSSがその色を使う', /\.name-input::selection[^}]*\}/.exec(src));
+  ok(/--me-sel-fg/.test(js), '値を配るのは applyMode(膜の色と一緒に)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

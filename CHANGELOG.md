@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.389 (2026-08-23)
+- **Create stamps the moment you press it.** The timestamp names when the membrane was born, not when the default
+  name happened to appear in the box. Leave the cursor still for a while and the box keeps an old time, which then
+  got written into the membrane. Create now refreshes the trailing timestamp at the instant it runs — the part a
+  person wrote is untouched, and a name carrying no timestamp does not grow one (that only happens when copying).
+- **The selected name is readable on a bright membrane colour.** The selection background follows the membrane's
+  colour and the text was always white, so a yellow membrane left white letters on near-white. The text colour is
+  now chosen from the background's luminance, the same way the submarine depth badge already did it.
+
 ### v4.0.388 (2026-08-23)
 - **What you see in the name box is the tint layer, not the input.** v4.0.367 made the input text transparent and
   painted a coloured copy underneath, but the copy was only repainted when a person typed, on Reset, and at startup —
