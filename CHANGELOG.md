@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.396 (2026-08-23)
+- **Typing does not schedule the bulk fold at all — deferring it was the wrong answer.** Backspace and forward-delete
+  create no FC blocks, so there was never a reason to tie folding to a keystroke. v4.0.395 only postponed the work,
+  and postponed work lands **in the gap between two key repeats** — which is what "backspace repeat, then forward
+  delete, then backspace again, and it stops for a second or two" was. The request is now dropped rather than
+  re-armed, in three places: the guard inside the function, the scroll signal (a visible range that moved because
+  lines shifted is not scrolling), and the selection signal, which now fires only for a file whose first fold has not
+  happened yet — the one case v4.0.141 added it for. A block created while typing still folds when the caret leaves
+  it, through the per-cursor path that already exists.
+
 ### v4.0.395 (2026-08-23)
 - **The bulk FC fold no longer runs on the keystroke path.** v4.0.329 put a "not while typing" guard on the scroll
   trigger, but `onDidChangeTextEditorSelection` called `meosAutoFoldSpecLines` directly with no guard — and a keystroke

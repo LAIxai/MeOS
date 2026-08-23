@@ -117,6 +117,16 @@ console.log('④ 打っている間は、一括の折り畳みが走らない(v4
   T.meosAutoFoldSpecLines(ed);
   const dt = Number(process.hrtime.bigint() - t1) / 1e6;
   ok(dt < 1, '★打鍵の直後は即座に帰る = ' + dt.toFixed(3) + ' ms', dt);
+  // ★v4.0.396(俊克「そもそも、なぜbs、fsキーに遅延の処理を残す必要があるのか?」):
+  //   遅らせるのではなく**捨てる**。so打鍵の後に自分で戻ってこない(連打の合間に落ちない)。
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const fn = src.slice(src.indexOf('async function meosAutoFoldSpecLines'), src.indexOf('async function meosAutoFoldSpecLines') + 1800);
+  ok(/MEOS_FC_EDIT_QUIET_MS\) return;/.test(fn), '★打鍵由来は捨てる(returnで終わる)', fn.match(/_meosLastEditAt[^;]{0,60};/));
+  ok(!/_meosFcQuietTimer/.test(src), '再武装のタイマーが残っていない', true);
+  const scroll = src.slice(src.indexOf('let _meosFcScrollTimer'), src.indexOf('onDidChangeVisibleTextEditors'));
+  ok(!/MEOS_FC_TYPING_QUIET_MS/.test(scroll) || !/setTimeout\(run/.test(scroll), 'スクロールの合図も再武装しない(一括の折り畳みは打鍵で走らない)', scroll.slice(-260));
+  const sel = src.slice(src.indexOf('onDidChangeTextEditorSelection(e => {', src.indexOf('meosScheduleFcCursorSync(e.textEditor)') - 900));
+  ok(/_meosFcFolded\.has/.test(sel.slice(0, 400)), '★選択の合図は「まだ畳んでいないファイル」の時だけ', sel.slice(0, 300));
   // 参考: 全文走査そのもののねだん(これが打鍵の道に居てはいけない)
   const t2 = process.hrtime.bigint(); T.meosDefBlocks(doc2); const scan = Number(process.hrtime.bigint() - t2) / 1e6;
   console.log('   (参考) meosDefBlocks の全文走査 = ' + scan.toFixed(1) + ' ms (' + lines.length + ' 行)');

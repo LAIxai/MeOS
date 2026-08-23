@@ -25547,18 +25547,20 @@ let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二�
 //     ただし黙って捨てない＝ 静かになる頃にもう一度自分で来る(合図を失わない)。
 //     → [[feedback_one_source_for_mark_count_action]]「印もボタンも同じ1つの判定から引く」の兄弟＝
 //       **同じ門番を、呼び元の数だけ書かない**。
-let _meosFcQuietTimer = null;
+const MEOS_FC_EDIT_QUIET_MS = 700;   // v4.0.396: 打鍵で動いた画面のためには畳み直さない
 async function meosAutoFoldSpecLines(editor, force) {
   if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding || _meosFcBusy) return; // v4.0.328: 個別の道が動いている間は割り込まない
-  { // v4.0.395: 打鍵の道には決して置かない(呼び元がどこであっても)
-    const since = Date.now() - _meosLastEditAt;
-    if (since < MEOS_FC_TYPING_QUIET_MS) {
-      if (_meosFcQuietTimer) clearTimeout(_meosFcQuietTimer);
-      const _ed = editor, _f = force;
-      _meosFcQuietTimer = setTimeout(() => { _meosFcQuietTimer = null; try { meosAutoFoldSpecLines(_ed, _f); } catch (_) { } }, MEOS_FC_TYPING_QUIET_MS - since + 20);
-      return;
-    }
-  }
+  // ★★v4.0.396(俊克 8/23 pm09:17「bs連打→fs連打→bs連打のとき1、2秒止まる。**そもそも、なぜbs、fsキーに
+  //   遅延の処理を残す必要があるのか?**」):
+  //   ★★**俊克が正しい。残す必要は無い**。bs/fs は **FCの塊を1つも作らない**ので、畳む仕事を打鍵に
+  //     結び付ける理由が最初から無かった。v4.0.395 の私は「遅らせる」で止めたが、遅らせた物は
+  //     **連打と連打の合間に落ちる**＝ 俊克の「bs→fs→bs で1、2秒」はそれ。
+  //   ★★だから**遅らせるのをやめて、捨てる**。打鍵で動いた画面のために畳み直す必要は無い。
+  //     打っている間に出来た塊は、**カーソルがその塊を出た時**に個別の道(meosScheduleFcCursorSync)が畳む
+  //     ＝ 合図はもう在る。無ければ、次の本物のスクロール/焦点/ファイル切替で来る。
+  //   ★重いのは走査(8.7ms)ではなく、**中の `await 150ms` と `editor.fold`(折り畳み範囲の作り直し)**。
+  //     だから「軽くする」ではなく「**打鍵では呼ばない**」が正しい直し。
+  if (!force && (Date.now() - _meosLastEditAt) < MEOS_FC_EDIT_QUIET_MS) return;   // 打鍵由来=捨てる(遅らせない)
   if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
   // ★★v4.0.327(俊克 8/21 am09:46 バグ1「インストール直後に、元いた行に飛ぶようにしたよね。その直後に、
@@ -27907,13 +27909,8 @@ function activate(context) {
     // ★v4.0.329(俊克「bs遅延が時々起きる」): **打っている間は走らせない**。bsで行がずれると可視範囲も動く
     //   ＝ 打鍵がそのままこの合図を鳴らす。塊の一覧は文書の版で作り直すので、打つたびに全文を刻み直していた。
     //   → 打鍵が止まってからにする(個別の道と同じ物差し MEOS_FC_TYPING_QUIET_MS を使う=物差しは1つ)。
-    const run = () => {
-      _meosFcScrollTimer = null;
-      const since = Date.now() - _meosLastEditAt;
-      if (since < MEOS_FC_TYPING_QUIET_MS) { _meosFcScrollTimer = setTimeout(run, MEOS_FC_TYPING_QUIET_MS - since); return; }
-      try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
-    };
-    _meosFcScrollTimer = setTimeout(run, 320);
+    // v4.0.396: 再武装をやめた。打鍵で画面が動いただけなら、関数の中の門番が捨てる(合間に落ちない)。
+    _meosFcScrollTimer = setTimeout(() => { _meosFcScrollTimer = null; try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { } }, 320);
   }));
   context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
   // v4.0.141: カーソルがFCの塊に入ったらそこだけ開く(出たら畳み直す)=「カーソル行は生データ」を折り畳みにも広げる。
@@ -27923,7 +27920,9 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
-    try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
+    // ★v4.0.396: ここは v4.0.141 の「入れ直した直後、人が最初にクリックした時に1回だけ畳む」ための道。
+    //   **まだ畳んでいないファイルの時だけ**呼ぶ(steady stateの打鍵では一切呼ばない)。
+    try { if (e.textEditor && e.textEditor.document && !_meosFcFolded.has(String(e.textEditor.document.uri || ''))) meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
     try { meosScheduleFcCursorSync(e.textEditor); } catch (_) { }
     try { meosNoteMembraneNameEdit(e.textEditor); } catch (_) { }   // v4.0.351: 膜名を直に直せるようにする
   }));
