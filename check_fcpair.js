@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -289,6 +289,82 @@ console.log('⑲ 膜が1つも無いテキストはそのまま返す');
 {
   const L = ['本文A', '<!-- Mew!FC H2 (白/赤) -->', '本文B'];
   ok(T.meosRestampMembraneBlock(L).join('\n') === L.join('\n'), '素通り', T.meosRestampMembraneBlock(L));
+}
+
+console.log('⑳ 🐱が旧形の膜(▼行にバッジ)を捕まえ、閉じ膜の下のFC行へ出す(v4.0.385 俊克)');
+{
+  const L = [
+    '<!-- {* ▼mCN=' + NAME + ' // comment1 (📊⊕0+0D-2Y) *} -->',
+    '本文A',
+    '<!-- {* ▲mCN=' + NAME + ' // comment2 *} -->',
+    '外の行',
+  ];
+  const doc = makeDoc(L);
+  const hit = T.meosLegacyPairBadgeHit(doc, 0);
+  ok(!!hit, '旧形の膜を捕まえる', hit);
+  ok(T.meosLegacyPairBadgeHit(doc, 1) === null && T.meosLegacyPairBadgeHit(doc, 2) === null, '本文と閉じ膜は捕まえない', true);
+  const fix = T.meosLegacyPairBadgeFix(doc, hit);
+  ok(fix.openNext === '<!-- {* ▼mCN=' + NAME + ' // comment1 *} -->', '▼行からバッジだけ落ちる', fix.openNext);
+  ok(fix.closeLn === 2, '置き場所は閉じ膜の行の下', fix.closeLn);
+  ok(fix.fcLine === '<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->', '膜を作る時と同じ形のFC行', fix.fcLine);
+}
+console.log('㉑ 直した後の膜は、新形として最初から読める(捕まえ直さない)');
+{
+  const AFTER = [
+    '<!-- {* ▼mCN=' + NAME + ' // comment1 *} -->',
+    '本文A',
+    '<!-- {* ▲mCN=' + NAME + ' // comment2 *} -->',
+    '<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->',
+  ];
+  const doc = makeDoc(AFTER);
+  ok(T.meosLegacyPairBadgeHit(doc, 0) === null, '2度目は捕まえない(🐱が消える)', T.meosLegacyPairBadgeHit(doc, 0));
+  const pair = T.collectPairs(doc, { excludeIndex: false })[0];
+  ok(T.meosPairBlockEnd(doc, pair) === 3, '塊はFC行まで', T.meosPairBlockEnd(doc, pair));
+}
+console.log('㉒ 手を出さない所 — ▼行にバッジが在っても、既にFC行を持つ膜は触らない');
+{
+  const L = [
+    '<!-- {* ▼mCN=' + NAME + ' // c1 (📊⊕0+0D0W) *} -->', '本文', '<!-- {* ▲mCN=' + NAME + ' // c2 *} -->',
+    '<!-- Mew!FC mCN (📊⊕0+0D0W) -->',
+  ];
+  ok(T.meosLegacyPairBadgeHit(makeDoc(L), 0) === null, '2本目を足さない', T.meosLegacyPairBadgeHit(makeDoc(L), 0));
+}
+console.log('㉓ 手を出さない所 — mTC/mNT と、対になっていない膜行');
+{
+  const TC = ['<!-- {* ▼mTC=目次_20260823S090000JST // t (📊⊕0+0D0W) *} -->', '<!-- {* ▲mTC=目次_20260823S090000JST // t *} -->'];
+  ok(T.meosLegacyPairBadgeHit(makeDoc(TC), 0) === null, 'mTCは対象外', T.meosLegacyPairBadgeHit(makeDoc(TC), 0));
+  const OR = ['<!-- {* ▼mCN=' + NAME + ' // c1 (📊⊕0+0D0W) *} -->', '本文だけで閉じ膜が無い'];
+  ok(T.meosLegacyPairBadgeHit(makeDoc(OR), 0) === null, '対になっていなければ触らない', T.meosLegacyPairBadgeHit(makeDoc(OR), 0));
+  const PLAIN = ['ただの行 (📊⊕0+0D0W) と書いただけ'];
+  ok(T.meosLegacyPairBadgeHit(makeDoc(PLAIN), 0) === null, '膜行でなければ触らない', T.meosLegacyPairBadgeHit(makeDoc(PLAIN), 0));
+}
+console.log('㉔ コメントが無い膜でも、余分な空白を残さない');
+{
+  const L = ['<!-- {* ▼mCN=' + NAME + ' (📊⊕0+0D0W) *} -->', '本文', '<!-- {* ▲mCN=' + NAME + ' *} -->'];
+  const doc = makeDoc(L);
+  const fix = T.meosLegacyPairBadgeFix(doc, T.meosLegacyPairBadgeHit(doc, 0));
+  ok(fix.openNext === '<!-- {* ▼mCN=' + NAME + ' *} -->', '二重空白にならない', fix.openNext);
+}
+
+console.log('㉕ 2つの編集を実際に当てると、膜を作った時と同じ姿になる');
+{
+  const L = [
+    '<!-- {* ▼mCN=' + NAME + ' // comment1 (📊⊕0+0D-2Y) *} -->', '本文A', '<!-- {* ▲mCN=' + NAME + ' // comment2 *} -->', '外の行',
+  ];
+  const ed = mkEdEdit(L, 0, 0);
+  const fix = T.meosLegacyPairBadgeFix(ed.document, T.meosLegacyPairBadgeHit(ed.document, 0));
+  ed.edit((eb) => {
+    eb.replace(new stub.Range(fix.openLn, 0, fix.openLn, fix.openText.length), fix.openNext);
+    eb.insert(new stub.Position(fix.closeLn, fix.closeText.length), '\n' + fix.fcLine);
+  });
+  const want = [
+    '<!-- {* ▼mCN=' + NAME + ' // comment1 *} -->', '本文A', '<!-- {* ▲mCN=' + NAME + ' // comment2 *} -->',
+    '<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->', '外の行',
+  ];
+  ok(ed.__lines.join('\n') === want.join('\n'), '新形の膜になる', ed.__lines);
+  const doc2 = makeDoc(ed.__lines);
+  ok((T.meosPairForBadgeLine(doc2, 3) || {}).id === NAME, 'FC行から膜が引ける', T.meosPairForBadgeLine(doc2, 3));
+  ok(T.meosLegacyPairBadgeHit(doc2, 0) === null, '🐱はもう鳴かない', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.385 (2026-08-23)
+- **🐱 now catches old-form membranes and moves their badge to an FC line.** Read-both means MeOS never rewrites the
+  past on its own — it does not mean the past cannot be fixed. A person presses the button, so only the membrane on
+  screen moves. The badge leaves the `▼` line and lands one line under `▲`, written by the same
+  `meosPairBadgeLineText` that creates a new membrane, so a converted membrane and a fresh one are identical.
+  It stays out of ambiguous cases: plain `mCN` membranes only, never a membrane that already has an FC badge line,
+  never an unpaired membrane line, and never a line another fix is already touching this round.
+
 ### v4.0.384 (2026-08-23)
 - **No timestamp, or an incomplete one, gets a full-spec one — but only in the copy.** A timestamp is not decoration;
   it is what makes the name a proper noun, so "it has none, therefore leave it" was backwards. Copy Me, Copy My contents

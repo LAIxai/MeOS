@@ -14467,6 +14467,45 @@ function meosInlineHeadHit(text, nextText) {
   return { start: Math.max(0, i), end: t.length, fc };
 }
 const MEOS_MEW_INLINE_HEAD_CODE = 'mew-inline-head';
+// ===== ★★v4.0.385(俊克 8/23 am10:55「**旧形式の膜についても、🐱でキャッチして、🐱ボタンを押せば、
+//   FC化できるようにしよう**よ」) =========================================================
+// ★★**read-both は「勝手に書き換えない」であって「直せない」ではない**。押すのは人なので、
+//   [[project_now_not_bulk]] のまま＝ 今見ている膜だけが動く。過去のファイルは開いても1行も変わらない。
+// ★直し方は**膜を作る時と同じ口**＝ ▼行からバッジを外し、閉じ膜の次の行に meosPairBadgeLineText を置く。
+//   置き場所を決める関数が1つなので、作った膜と直した膜の形が違うことがない。
+//   → [[feedback_one_source_for_mark_count_action]] / [[project_membrane_is_a_block]]
+// ★曖昧な時は手を出さない(いつもの流儀)＝ ①通常膜(mCN)だけ(mTC/mNTはバッジの名乗りが別)
+//   ②既にFCバッジ行を持つ膜(2本目を足さない) ③対になっていない膜行。
+const MEOS_MEW_LEGACY_PAIR_CODE = 'mew-legacy-pair-badge';
+function meosLegacyPairBadgeHit(doc, ln) {
+  try {
+    if (!doc || ln < 0 || ln >= doc.lineCount) return null;
+    const text = doc.lineAt(ln).text;
+    if (text.indexOf('▼') < 0 && text.indexOf('▽') < 0) return null;   // 速い足切り(開始膜行だけ)
+    if (text.indexOf('(') < 0) return null;
+    const badge = parseMstatBadgeFromText(text);
+    if (!badge) return null;                                            // 旧形のバッジが▼行に無い
+    if (!/[▼▽][ \t]*mCN[ \t]*=/.test(normalizeProtoMembraneLineText(text))) return null; // 通常膜だけ
+    const pair = meosPairByStart(doc).get(ln);
+    if (!pair || pair.end <= pair.start || pair.end >= doc.lineCount) return null;
+    if (meosPairBlockEnd(doc, pair) > pair.end) return null;            // 既にFCバッジ行が在る
+    return { start: badge.start, end: badge.end, badge, pair };
+  } catch (_) { return null; }
+}
+// 1つの膜を旧形→FC形へ。▼行の新しい文字列と、▲行の下に置く1行を返す。
+function meosLegacyPairBadgeFix(doc, hit) {
+  try {
+    if (!hit || !hit.pair) return null;
+    const openLn = hit.pair.start, closeLn = hit.pair.end;
+    const text = doc.lineAt(openLn).text;
+    const head = text.slice(0, hit.start).replace(/[ \t]+$/, '');
+    const tail = text.slice(hit.end).replace(/^[ \t]+/, '');
+    const openNext = head + (tail ? ' ' + tail : '');
+    if (openNext === text) return null;
+    const fcLine = meosPairBadgeLineText(hit.pair.id, lineIndent(doc, closeLn), hit.badge.raw);
+    return { openLn, openText: text, openNext, closeLn, closeText: doc.lineAt(closeLn).text, fcLine };
+  } catch (_) { return null; }
+}
 // v4.0.75(俊克 8/8 pm04:14 改良2「次の行が現れた時にやっと0から1になる。遅過ぎる」):
 // ★v4.0.74で端の1行を落としたら、今度は**1行遅く**なった。VS Codeが教えてくれるのは
 //   「1pxでも見えたか」だけなので、こちらで選べるのは「半行早い」か「1行遅い」の二択しかない。
@@ -14567,7 +14606,13 @@ function meosUpdateMewDiagnostics(editor) {
         //   (逆=数字が先に動く方が嘘に見える、というのが俊克の元の指摘)。
         // v4.0.106: 数は常に数える/印(ガター・波線)は**5秒の表示中だけ**。
         const inlineHead = meosInlineHeadHit(text, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null); // v4.0.293(俊克 改良4): FC形でない見出し=折り返して膜の縦線が切れる
-        if (hits.length || legacy.length || inlineHead) { if (_reveal) gutter.push(new vscode.Range(ln, 0, ln, 0)); if (inView(ln)) catLines++; }
+        const legacyPair = meosLegacyPairBadgeHit(doc, ln); // v4.0.385(俊克): 旧形の膜(▼行にバッジ)もFC化できる
+        if (hits.length || legacy.length || inlineHead || legacyPair) { if (_reveal) gutter.push(new vscode.Range(ln, 0, ln, 0)); if (inView(ln)) catLines++; }
+        if (legacyPair && _reveal) {
+          const d = new vscode.Diagnostic(new vscode.Range(ln, legacyPair.start, ln, legacyPair.end), '🐱 旧形の膜です(バッジを閉じ膜の次のFC行へ出せます)', vscode.DiagnosticSeverity.Hint);
+          d.code = MEOS_MEW_LEGACY_PAIR_CODE; d.source = 'MeOS';
+          items.push(d);
+        }
         if (inlineHead && _reveal) {
           const d = new vscode.Diagnostic(new vscode.Range(ln, inlineHead.start, ln, inlineHead.end), '🐱 見出しの指定が行末に居ます(FC行へ出すと折り返さず、膜の縦線が切れません)', vscode.DiagnosticSeverity.Hint);
           d.code = MEOS_MEW_INLINE_HEAD_CODE; d.source = 'MeOS';
@@ -14624,6 +14669,20 @@ const meosMewCodeActionProvider = {
         out.push(a);
         break; // 1行に1つ
       }
+      // v4.0.385(俊克): 旧形の膜=▼行のバッジを外し、閉じ膜の次の行にFCバッジ行を置く(2行を1回の編集で)。
+      for (const d of (ctx.diagnostics || [])) {
+        if (!d || d.code !== MEOS_MEW_LEGACY_PAIR_CODE) continue;
+        const fix = meosLegacyPairBadgeFix(doc, meosLegacyPairBadgeHit(doc, d.range.start.line));
+        if (!fix) continue;
+        const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+        const a2 = new vscode.CodeAction('🐱 膜のバッジを閉じ膜の下のFC行へ出す', vscode.CodeActionKind.QuickFix);
+        a2.edit = new vscode.WorkspaceEdit();
+        a2.edit.replace(doc.uri, new vscode.Range(fix.openLn, 0, fix.openLn, fix.openText.length), fix.openNext);
+        a2.edit.insert(doc.uri, new vscode.Position(fix.closeLn, fix.closeText.length), eol + fix.fcLine);
+        a2.diagnostics = [d]; a2.isPreferred = true;
+        out.push(a2);
+        break; // 1回に1つ(次の周回で次の膜)
+      }
       const mine = (ctx.diagnostics || []).filter(d => d && d.code === MEOS_MEW_DIAG_CODE);
       if (!mine.length) return out;
       for (const d of mine) {
@@ -14667,7 +14726,7 @@ async function meosMewSignVisible() {
   //   ★教訓(v4.0.68と同じ形)=**印を付ける条件とボタンが直す条件は、必ず同じ1つの判定から引く**。
   // → 🐱が付いた行は🐱ボタンで片付く。旧記法は**新形へ変換**・新形の未署名は**Mew!を挿す**。
   //   安全に変換できない行(入れ子・1行に複数)は触らず🐱を残す=あとで人が見る。
-  const inserts = [], rewrites = [];
+  const inserts = [], rewrites = [], pairFixes = [];
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   let skipped = 0, moved = 0;
   for (const [a, b] of spans) {
@@ -14681,10 +14740,19 @@ async function meosMewSignVisible() {
       // v4.0.293(俊克 改良4): FC形でない見出しは、指定を真下のFC行へ出す(印を出す条件と同じ1つの判定から引く)。
       const _ih = meosInlineHeadHit(text, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null);
       if (_ih) { rewrites.push({ ln, text, nt: _ih.fc.body + eol + _ih.fc.spec }); moved++; continue; }
+      // v4.0.385(俊克): 旧形の膜は、▼行のバッジを閉じ膜の下のFC行へ出す(印を出す条件と同じ1つの判定から引く)。
+      //   ★閉じ膜は画面の外に居ることがある。それでも動かすのは、置き場所がその膜の真下1行に決まっていて
+      //     迷いが無いから。何本直したかは終わりの通知で名指しする(黙って遠くを変えない)。
+      const _lp = meosLegacyPairBadgeFix(doc, meosLegacyPairBadgeHit(doc, ln));
+      if (_lp) { pairFixes.push(_lp); continue; }
       for (const h of meosUnsignedSpecComments(text)) inserts.push(new vscode.Position(ln, h.insertAt));
     }
   }
-  if (!inserts.length && !rewrites.length) {
+  // 同じ行を2つの直しが触らないようにする(閉じ膜の行に別の直しが乗っていたら、その膜は次の周回に回す)。
+  const _busy = new Set(rewrites.map(r => r.ln).concat(inserts.map(p => p.line)));
+  const _pairs = pairFixes.filter(f => !_busy.has(f.openLn) && !_busy.has(f.closeLn));
+  pairFixes.length = 0; for (const f of _pairs) pairFixes.push(f);
+  if (!inserts.length && !rewrites.length && !pairFixes.length) {
     vscode.window.showInformationMessage(skipped
       ? ('🐱 残り' + skipped + '行は入れ子so自動では直しません(手で書き直してください)')
       : '🐱 この画面のMe記法は全部 Mew! と鳴いています');
@@ -14694,10 +14762,15 @@ async function meosMewSignVisible() {
   await editor.edit(eb => {
     for (const p of inserts) eb.insert(p, MEOS_MEW_SIG + ' ');
     for (const r of rewrites) eb.replace(new vscode.Range(r.ln, 0, r.ln, r.text.length), r.nt);
+    for (const f of pairFixes) {                      // v4.0.385: ▼行からバッジを外し、▲行の下へ置く
+      eb.replace(new vscode.Range(f.openLn, 0, f.openLn, f.openText.length), f.openNext);
+      eb.insert(new vscode.Position(f.closeLn, f.closeText.length), eol + f.fcLine);
+    }
   });
   const parts = [];
   if (rewrites.length - moved > 0) parts.push('新形に' + (rewrites.length - moved) + '行');
   if (moved) parts.push('見出しの指定をFC行へ' + moved + '行'); // v4.0.293
+  if (pairFixes.length) parts.push('膜のバッジをFC行へ' + pairFixes.length + '個(閉じ膜の下)'); // v4.0.385
   if (inserts.length) parts.push('Mew!を' + inserts.length + '箇所');
   // v4.0.113(俊克 8/9 pm07:16 改良1「直した行の右に新記法のコメントが丸見えに出る。🐱は1のまま。
   //   カーソルを次の行に移動すると正常化される」): ★自分で書き変えたのだから、自分で描き直す。
