@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.384 (2026-08-23)
+- **No timestamp, or an incomplete one, gets a full-spec one — but only in the copy.** A timestamp is not decoration;
+  it is what makes the name a proper noun, so "it has none, therefore leave it" was backwards. Copy Me, Copy My contents
+  and Duplicate Me now restamp every membrane name in the block: a name with no timestamp gains a full one, and an old
+  partial form (`_143052.J07`, or a date with no time) is replaced by `YYYYMMDD<weekday>HHMMSS<TZ>`. The original
+  document is never touched — past membranes nobody reads stay exactly as they are.
+
 ### v4.0.383 (2026-08-23)
 - **A copy is a different membrane, so it gets a fresh timestamp.** A membrane name is an address you warp to;
   two identical names and nothing can decide where the jump lands. Finder asks "keep both or rename?" — MeOS can

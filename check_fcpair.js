@@ -261,10 +261,29 @@ console.log('⑰ 入れ子の膜も全部打ち直し、同じ名前どうしは
   ok(ids[1] !== ids[3], '同名の子2つが衝突しない(1秒ずらす)', [ids[1], ids[3]]);
   ok(IN[0].indexOf('090000') > 0, '入力側の配列は壊さない', IN[0]);
 }
-console.log('⑱ TSを持たない名前には、勝手にTSを生やさない');
+console.log('⑱ TSが無い名前・不完全なTSには、フルスペックのTSを付ける(v4.0.384 俊克)');
 {
   const L = ['<!-- {* ▼mCN=0866_INLINE_NEW_RENAME // x *} -->', '本文', '<!-- {* ▲mCN=0866_INLINE_NEW_RENAME // end *} -->'];
-  ok(T.meosRestampMembraneBlock(L).join('\n') === L.join('\n'), '1文字も変わらない', T.meosRestampMembraneBlock(L));
+  const out = T.meosRestampMembraneBlock(L);
+  const o = /▼mCN=([^ ]+) /.exec(out[0])[1], c = /▲mCN=([^ ]+) /.exec(out[2])[1];
+  ok(o.indexOf('0866_INLINE_NEW_RENAME_') === 0, '人が付けた名前はそのまま残る', o);
+  ok(T.MEOS_NAME_TS_RE.test(o), 'フルスペックのTSが付く', o);
+  ok(o === c, '対は揃う', [o, c]);
+  ok(L[0].indexOf('0866_INLINE_NEW_RENAME //') > 0, '入力側は壊さない(元の膜は不変)', L[0]);
+}
+console.log('⑱b 不完全なTS(年が無い旧形)はフルスペックへ入れ替わる');
+{
+  const L = ['<!-- {* ▼mCN=表_143052.J07 // x *} -->', '<!-- {* ▲mCN=表_143052.J07 // end *} -->'];
+  const out = T.meosRestampMembraneBlock(L);
+  const o = /▼mCN=([^ ]+) /.exec(out[0])[1];
+  ok(o.indexOf('表_') === 0 && !/143052/.test(o), '旧形のTSは残らない', o);
+  ok(T.MEOS_NAME_TS_RE.test(o) && /\d{8}[SMTWtFs]\d{6}/.test(o), '年月日+曜日+時刻の完全形', o);
+}
+console.log('⑱c 日付だけの不完全な完全形も、時刻まで入る');
+{
+  const L = ['<!-- {* ▼mCN=日記_20260623T // x *} -->', '<!-- {* ▲mCN=日記_20260623T // end *} -->'];
+  const o = /▼mCN=([^ ]+) /.exec(T.meosRestampMembraneBlock(L)[0])[1];
+  ok(/^日記_\d{8}[SMTWtFs]\d{6}[A-Z]{0,5}$/.test(o), '時刻とTZまで揃う', o);
 }
 console.log('⑲ 膜が1つも無いテキストはそのまま返す');
 {

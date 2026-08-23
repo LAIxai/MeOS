@@ -15130,8 +15130,15 @@ function refreshTrailingTimestamp(name) {
 //     同じ名前が2つ在ると、どちらへ飛ぶかを誰も決められない。Finderの「別名にするか?」と同じ問いに、
 //     MeOSは**問わずに答えられる**＝ 名前のうち機械が付けた部分(TS)だけを打ち直せばよい。
 //   ★**人が付けた部分は1文字も触らない**。変えるのはTSだけ。→ [[project_last_specified_wins]]
-//   ★**TSを持っていない名前は触らない**＝ 打ち直す物が無い(構造膜のような手書きの名前に、勝手にTSを
-//     生やさない)。→ [[project_now_not_bulk]] / [[project_setting_decides_future_only]]
+//   ★★v4.0.384(俊克 am10:48「**不完全なタイムスタンプも昔あったよね。年がないやつね**。でも、
+//     **タイムスタンプが完全にない膜は存在しない**よね。それでは、**固有名詞にならない**からね。
+//     ともかく、不完全なタイムスタンプや、仮に、タイムスタンプがないものをコピーしようとした時は、
+//     **フルスペックのタイムスタンプを付ければいい**んだよ。**ただし、これはコピーする時だけ**だよ。
+//     **読まない過去の膜は、そのままでいい**」):
+//     ★★**TSは飾りでなく、固有名詞であるための条件**。so「TSが無いから打ち直さない」は逆で、
+//       **無いなら付ける**のが正しい(不完全な旧形 `_HHMMSS.MDD` も、フルスペックへ入れ替える)。
+//     ★★そして**効くのはコピーする時だけ**＝ 元の膜も、読まない過去の膜も、1文字も変えない。
+//       人が今やった事の分だけ、その場で直す。→ [[project_now_not_bulk]]
 //   ★**入れ子の膜も全部打ち直す**＝ 中の膜も一緒に運ばれるので、外だけ直すと中が衝突する。
 //   ★**開き膜と閉じ膜は同じ新しい名前**にする(対は名前で照合しているので、片方だけ変えると対が壊れる)。
 //   ★同じ秒に何本も打つと新しい名前どうしが衝突するので、埋まっていたら1秒ずつ進める。
@@ -15140,11 +15147,12 @@ function meosRestampMembraneBlock(lines) {
   const kinds = [];
   const ids = [];
   for (const t of src) {
+    if (t.indexOf('▼') < 0 && t.indexOf('▲') < 0 && t.indexOf('▽') < 0 && t.indexOf('△') < 0) { kinds.push(null); continue; } // 速い足切り(巨大な膜を運ぶ時の為)
     const o = parseOpenLine(t);
     const c = o ? null : parseCloseLine(t);
     kinds.push(o ? 'open' : (c ? 'close' : null));
     const id = (o && o.id) || (c && c.id) || '';
-    if (id && MEOS_NAME_TS_RE.test(id) && ids.indexOf(id) < 0) ids.push(id);  // TSを持つ名前だけ
+    if (id && ids.indexOf(id) < 0) ids.push(id);   // v4.0.384: 不完全なTSも、TSが無い名前も対象(無いなら付ける)
   }
   if (!ids.length) return src;
   const used = new Set();
