@@ -15397,10 +15397,14 @@ async function addMembrane() {
     }
   }, { undoStopBefore: true, undoStopAfter: true });
   if (ok) {
-    // v0.9.391: no-search correction.
-    // Empty insertion always creates a blank line at the original cursor line,
-    // so the new opener is displayed on current line + 1.
-    const targetLineNo = hasSelection ? startLine : Math.min(startLine + 1, editor.document.lineCount - 1);
+    // ★★v4.0.388(俊克 8/23 pm00:46 バグ1「Createボタンを押すと、Edit Meの入力枠に訳の分らない文字列が入る」):
+    //   ★★**開始膜の行を当てずっぽうで数えていた**。挿入した塊の前に空行を1本足すかどうか
+    //     (wrapInsertedMembraneBlock)で開始膜の行は前後するのに、v0.9.391 は `+1` と決め打ちしていた。
+    //     soカーソルが開始膜の**1行下**に落ち、Edit Me は「膜の中」= New Me と読んで、新しい既定名を出していた。
+    //   ★★**答えを出す関数は既に在った**= findNewMembraneOpenerLineAfterInsert(v0.9.391が
+    //     「Do not guess with +1 only」と書いて用意したもの)。**一度も呼ばれていなかった**。
+    //     数えるのをやめて、**書いた物を探す**。→ [[feedback_one_source_for_mark_count_action]]
+    const targetLineNo = findNewMembraneOpenerLineAfterInsert(editor.document, id, startLine);
     editor.selection = new vscode.Selection(targetLineNo, indent.length, targetLineNo, indent.length);
     editor.revealRange(new vscode.Range(targetLineNo, 0, targetLineNo, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     setTimeout(() => { refresh(editor); ensureMembraneMstatMetadata(editor); }, 80);
@@ -15759,8 +15763,8 @@ async function renameMe() {
 
   if (ok) {
     // v0.9.387: put the cursor on the actual newly-created opener line.
-    const insertedLeadingBlank = !hasSelection && startLine > 0 && !isBlankDocumentLine(doc, startLine - 1);
-    const openerLineNo = hasSelection ? startLine : startLine + (insertedLeadingBlank ? 1 : 0);
+    // v4.0.388: 数え方が3通りに散っていた。開始膜の行を決めるのは findNewMembraneOpenerLineAfterInsert 1つだけ。
+    const openerLineNo = findNewMembraneOpenerLineAfterInsert(doc, nextName, startLine);
     editor.selection = new vscode.Selection(openerLineNo, indent.length, openerLineNo, indent.length);
     editor.revealRange(new vscode.Range(openerLineNo, 0, openerLineNo, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(openerLineNo + 1) });
@@ -18349,10 +18353,14 @@ async function addMembraneWithName(nameInput, colorCode = '') {
     }
   }, { undoStopBefore: true, undoStopAfter: true });
   if (ok) {
-    // v0.9.391: no-search correction.
-    // Empty insertion always creates a blank line at the original cursor line,
-    // so the new opener is displayed on current line + 1.
-    const openerLineNo = hasSelection ? startLine : Math.min(startLine + 1, editor.document.lineCount - 1);
+    // ★★v4.0.388(俊克 8/23 pm00:46 バグ1「Createボタンを押すと、Edit Meの入力枠に訳の分らない文字列が入る」):
+    //   ★★**開始膜の行を当てずっぽうで数えていた**。挿入した塊の前に空行を1本足すかどうか
+    //     (wrapInsertedMembraneBlock)で開始膜の行は前後するのに、v0.9.391 は `+1` と決め打ちしていた。
+    //     soカーソルが開始膜の**1行下**に落ち、Edit Me は「膜の中」= New Me と読んで、新しい既定名を出していた。
+    //   ★★**答えを出す関数は既に在った**= findNewMembraneOpenerLineAfterInsert(v0.9.391が
+    //     「Do not guess with +1 only」と書いて用意したもの)。**一度も呼ばれていなかった**。
+    //     数えるのをやめて、**書いた物を探す**。→ [[feedback_one_source_for_mark_count_action]]
+    const openerLineNo = findNewMembraneOpenerLineAfterInsert(editor.document, name, startLine);
     editor.selection = new vscode.Selection(openerLineNo, indent.length, openerLineNo, indent.length);
     editor.revealRange(new vscode.Range(openerLineNo, 0, openerLineNo, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(openerLineNo + 1) });
@@ -19898,6 +19906,18 @@ function renderTimeMachineInsertionMarks(){renderTimeMachineWorldLines();}
    ★打った字を守るのは今までどおり draftDirty。ここで守るのは「選択が消えないこと」だけなので、
      hasFocus が使えない環境でも失うものは無い(打った字は draftDirty が守る)。 */
 function meDockIsTyping(el){try{return document.activeElement===el&&document.hasFocus();}catch(_){return document.activeElement===el;}}
+/* ★★v4.0.388(俊克 8/23 pm00:46 バグ1/2/3「Createを押すと入力枠に訳の分らない文字列が入り、黄色いハイライトが
+   光っている」「膜の外へ出ても、さっき作った膜名のまま」「再起動後、膜の上にカーソルを置いても膜名が
+   取り込まれない」):
+   ★★**枠の中に見えている字は input.value ではない**。v4.0.367 で入力欄の字を透明にし、真下に色付きの
+     写し(name-tint)を敷いた。so**見えるのは写しだけ**。ところが写しを塗り直す口は「人が打った時」
+     「Reset」「起動時」の3つしか無く、**カーソルで値が変わった時に塗り直していなかった**。
+   ★v4.0.386 で値がカーソルに追いつくようになったので、値と写しの食い違いthatそのまま画面に出た＝
+     俊克の見た3つは全部これ1つ。選択中だけ ::selection で本物の字が見えるので、Createの直後は
+     **新しい値(選択されて黄色)＋古い写しの尻尾**が並んで見えていた。
+   ★直し＝**値を書く口を1つにして、そこで必ず写しも塗り直す**。→ [[feedback_one_source_for_mark_count_action]] */
+function meDockSetNameValue(v){ if(!input)return; const t=(v==null?'':String(v)); if(input.value!==t)input.value=t;
+try{if(typeof window.__meosAskNameTint==='function')window.__meosAskNameTint();}catch(_){} }
 function applyMode(mode,value,force,line,nextMarkerOn,nextHistory,nextColor,nextFlipMinusColor,nextFlipPlusColor,nextNavDepth,nextAnchor){const nextMode=mode||'new';
 const nextValue=value||'';const modeChanged=nextMode!==currentMode;currentMode=nextMode;currentValue=nextValue;currentLine=line||'';
 if(typeof nextMarkerOn==='boolean')markerOn=nextMarkerOn;if(nextHistory)historyState=nextHistory;if(force||modeChanged||!draftDirty){currentColor=(nextColor||'');
@@ -19913,8 +19933,8 @@ timeMachineIndex.value=String(Math.max(n,1));timeMachineIndex.disabled=total<=0;
 }if(timeMachineClear){timeMachineClear.disabled=total<=0;timeMachineClear.classList.toggle('disabled',timeMachineClear.disabled);
 }const _ht=((historyState&&historyState.total)||0);if(histBack){histBack.disabled=_ht<2;histBack.classList.toggle('wrap-edge',_ht>=2&&!(historyState&&historyState.canBack));
 }if(histForward){histForward.disabled=_ht<2;histForward.classList.toggle('wrap-edge',_ht>=2&&!(historyState&&historyState.canForward));
-}if(force||modeChanged||!draftDirty){draftName=currentValue||'';draftDirty=false;if(!meDockIsTyping(input)||force||modeChanged)input.value=draftName;
-}else if(!meDockIsTyping(input)){input.value=draftName;}if(force||!meDockIsTyping(lineInput))lineInput.value=currentLine||'';
+}if(force||modeChanged||!draftDirty){draftName=currentValue||'';draftDirty=false;if(!meDockIsTyping(input)||force||modeChanged)meDockSetNameValue(draftName);
+}else if(!meDockIsTyping(input)){meDockSetNameValue(draftName);}if(force||!meDockIsTyping(lineInput))lineInput.value=currentLine||'';
 if(typeof renderEditPanelMode==='function')renderEditPanelMode();}
 // {* ▲mCN=dock_js_mode *}
 // {* ▼mCN=dock_js_htoc // H-TOC(タブ・一覧・ピン・子膜フライアウト・標準記法トグル) *}
@@ -21276,7 +21296,7 @@ histForward.addEventListener('click',()=>vscode.postMessage({type:'lineHistoryFo
 lineBtn.addEventListener('click',()=>vscode.postMessage({type:'toggleLineMarker'}));
 refreshBtn.addEventListener('click',()=>{window.__editTsRefresh=true;/* v0.9.999105: 更新後にTS部分のみ選択(下記modeハンドラで) */vscode.postMessage({type:'refreshTimestamp',
 mode:currentMode,value:input.value});});
-resetBtn.addEventListener('click',()=>{draftName=currentValue||'';draftDirty=false;draftColor=currentColor||'';input.value=draftName;if(typeof window.__meosAskNameTint==='function')window.__meosAskNameTint();
+resetBtn.addEventListener('click',()=>{draftName=currentValue||'';draftDirty=false;draftColor=currentColor||'';meDockSetNameValue(draftName);
 lineInput.value=currentLine||'';renderColorButton();vscode.postMessage({type:'resetPanel'});});
 // {* ▲mCN=dock_js_toctip *}
 // {* ▼mCN=dock_js_tabs // タブの改名/新規/並べ替えと、履歴のホットキー *}
@@ -21414,6 +21434,7 @@ if(_udc){var _orig=_udc.getAttribute('data-tip')||'';
 _udc.setAttribute('data-tip','Copied');_udc.classList.add('ud-copied');
 setTimeout(function(){ if(_udc){_udc.setAttribute('data-tip',_orig);_udc.classList.remove('ud-copied');} },1500);}
 return;}if(m&&m.type==='stampChips'){/* v4.0.367: Edit Me の入力枠の中をモザイクに見せる(下に敷いた字) */
+if(m.text!=null&&input&&String(m.text)!==input.value)return;/* v4.0.388: 今の値の写しでなければ塗らない */
 if(typeof window.__meosPaintNameTint==='function')window.__meosPaintNameTint(m.chips);
 return;}if(m&&m.type==='dockFileUD'){/* v4.0.363: ●=保存済 / ×=未保存 と、最後にディスクへ書いた時刻 */
 var _ud=document.getElementById('title-file-ud');
@@ -22394,7 +22415,8 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'stampChipsReq') {   // v4.0.367(俊克 改良3): Edit Me の膜名もモザイクに
-      try { meDockPanel.webview.postMessage({ type: 'stampChips', chips: meosStampChips(String(message.text || '')) }); } catch (_) { }
+      // v4.0.388: どの字に対する写しかを一緒に返す(遅れて届いた古い写しで、今の値を塗らない)。
+      try { meDockPanel.webview.postMessage({ type: 'stampChips', text: String(message.text || ''), chips: meosStampChips(String(message.text || '')) }); } catch (_) { }
       return;
     }
     if (message && message.type === 'copyFileAndUd') {   // v4.0.367(俊克 改良2): 押せば手に入る
@@ -22584,10 +22606,9 @@ function toggleMeDock(editorOverride) {
       // Do not restore the pre-create line; update the real editor cursor and Webview Line value together.
       const editorAfter = getMeDockTargetEditor() || editorBefore;
       if (editorAfter && modeToRun !== 'rename' && typeof targetLineBeforeRun === 'number') {
-        const targetLine = Math.min(targetLineBeforeRun + 1, Math.max(0, editorAfter.document.lineCount - 1));
-        const pos = new vscode.Position(targetLine, 0);
-        editorAfter.selection = new vscode.Selection(pos, pos);
-        editorAfter.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        // ★v4.0.388(俊克): ここでも `+1` と数え直していた(3つ目)。カーソルは addMembraneWithName が
+        //   **書いた開始膜を探して**既に置いている。数え直さず、置かれた行をそのまま読む。
+        const targetLine = (editorAfter.selection ? editorAfter.selection.active.line : targetLineBeforeRun);
         if (meDockPanel) meDockPanel.webview.postMessage({ type: 'setLineValue', value: String(targetLine + 1) });
       } else if (editorAfter && modeToRun === 'rename' && typeof targetLineBeforeRun === 'number' && targetLineBeforeRun >= 0 && targetLineBeforeRun < editorAfter.document.lineCount) {
         const pos = new vscode.Position(targetLineBeforeRun, 0);

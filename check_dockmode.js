@@ -50,5 +50,21 @@ console.log('② applyMode に古い物差しが残っていない(名前欄・�
   ok((body.match(/meDockIsTyping\(/g) || []).length === 3, '新しい物差しを3か所で使う', (body.match(/meDockIsTyping\(/g) || []).length);
   ok(/draftDirty/.test(body), '打った字を守る draftDirty は残っている', true);
 }
+console.log('③ 枠の中の字(写し)は、値を書いた所で必ず塗り直す(v4.0.388 俊克 バグ1/2/3)');
+{
+  const a = js.indexOf('function applyMode(');
+  const b = js.indexOf('function escText(', a);
+  const body = js.slice(a, b > a ? b : a + 4000);
+  ok(!/input\.value\s*=/.test(body), 'applyMode が input.value を直に書かない', body.match(/input\.value[^;]{0,30}/g));
+  ok((body.match(/meDockSetNameValue\(/g) || []).length === 2, '値を書く口は meDockSetNameValue の2か所', (body.match(/meDockSetNameValue\(/g) || []).length);
+  const setter = /function meDockSetNameValue\([\s\S]*?\n[\s\S]*?\n/.exec(js);
+  ok(!!setter && /__meosAskNameTint/.test(setter[0]), '★その口の中で必ず写しを塗り直す', setter && setter[0]);
+  // Reset も同じ口から(2つの書き方を残さない)
+  const reset = /resetBtn\.addEventListener\([\s\S]{0,260}/.exec(js);
+  ok(!!reset && /meDockSetNameValue\(/.test(reset[0]), 'Reset も同じ口から', reset && reset[0].slice(0, 160));
+  // 遅れて届いた写しで今の値を塗らない
+  ok(/m\.text!=null&&input&&String\(m\.text\)!==input\.value/.test(js), '古い写しは捨てる(値と合う時だけ塗る)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

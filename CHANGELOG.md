@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.388 (2026-08-23)
+- **What you see in the name box is the tint layer, not the input.** v4.0.367 made the input text transparent and
+  painted a coloured copy underneath, but the copy was only repainted when a person typed, on Reset, and at startup —
+  never when the cursor changed the value. v4.0.386 made the value follow the cursor, so the disagreement became
+  visible: a fresh default name selected in yellow with the tail of the old copy sticking out, a stale membrane name
+  after stepping outside, and nothing picked up after a restart. All three were this one gap. The value is now written
+  in a single place that always repaints the copy, and a late reply that no longer matches the value is dropped.
+- **The cursor lands on the opener line after Create.** The opener's line number was guessed as `+1`, but the block
+  gains a leading blank line only sometimes, so the cursor fell one line *inside* the membrane and Edit Me correctly
+  reported New Me — with a default name nobody asked for. `findNewMembraneOpenerLineAfterInsert`, written for exactly
+  this in v0.9.391 and never once called, now decides it, for all three sites that were counting on their own.
+
 ### v4.0.387 (2026-08-23)
 - **One range, not a new judgment.** v4.0.381 added a dedicated function that walked up from an FC badge line to
   find its parent membrane. That was a second kind of judgment, and it was unnecessary: what makes a line a membrane

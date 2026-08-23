@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -366,6 +366,38 @@ console.log('㉕ 2つの編集を実際に当てると、膜を作った時と�
   const doc2 = makeDoc(ed.__lines);
   ok((T.findCurrentPair(mkEd(ed.__lines, 3, 5)) || {}).id === NAME, 'FC行に居れば、その膜が「今の膜」', T.findCurrentPair(mkEd(ed.__lines, 3, 5)));
   ok(T.meosLegacyPairBadgeHit(doc2, 0) === null, '🐱はもう鳴かない', true);
+}
+
+console.log('㉖ Create の後、カーソルが乗るのは開始膜の行(v4.0.388 俊克 バグ1)');
+{
+  // 実物と同じ道具で「Createが書く物」を組み立て、書いた後の文書から開始膜の行を探す。
+  const ID = 'テスト膜#1_20260823S114440JST';
+  const tpl = T.membraneCommentTemplateForLanguage('markdown', ID, '', 'W', 0);
+  const mk = (before) => {
+    const doc0 = makeDoc(before.slice());
+    const startLine = before.length - 1;                       // 末尾の空行にカーソルが居る
+    const block = tpl.open + '\n\n' + '' + '\n\n' + tpl.close;
+    const wrapped = T.wrapInsertedMembraneBlock(doc0, startLine, startLine, block);
+    const out = before.slice(0, startLine).concat(wrapped.split('\n'), before.slice(startLine + 1));
+    return { out, startLine };
+  };
+  // (a) 1つ上が空行= 前に空行を足さない → 開始膜は startLine のまま(俊克の実機と同じ形)
+  {
+    const r = mk(['本文', '', '']);
+    const at = T.findNewMembraneOpenerLineAfterInsert(makeDoc(r.out), ID, r.startLine);
+    ok(r.out[at].indexOf('▼mCN=' + ID) > 0, '探して当てる= 開始膜の行', [at, r.out[at]]);
+    ok(at === r.startLine, '★この形では +1 ではない(旧コードのずれ)', [at, r.startLine]);
+    ok(T.meDockModeForEditor(mkEd(r.out, at, 20)).value === ID, 'その行で Edit Me は膜名を出す', T.meDockModeForEditor(mkEd(r.out, at, 20)).value);
+    ok(T.meDockModeForEditor(mkEd(r.out, r.startLine + 1, 0)).mode === 'new', '1行下は New Me(俊克の見た画面)', true);
+  }
+  // (b) 1つ上が本文= 前に空行を1本足す → 開始膜は startLine+1(こちらは +1 が正しい)
+  {
+    const r = mk(['本文', '']);
+    const at = T.findNewMembraneOpenerLineAfterInsert(makeDoc(r.out), ID, r.startLine);
+    ok(r.out[at].indexOf('▼mCN=' + ID) > 0, '空行を足した時も、探して当てる', [at, r.out[at]]);
+    ok(T.meDockModeForEditor(mkEd(r.out, at, 20)).value === ID, 'その行で Edit Me は膜名を出す', true);
+  }
+  ok(T.findNewMembraneOpenerLineAfterInsert(makeDoc(['本文', 'ただの行']), ID, 0) === 0, '見つからない時は近い行を返す(落ちない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
