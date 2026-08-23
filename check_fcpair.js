@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairForBadgeLine, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -122,5 +122,103 @@ console.log('⑦ FC行が2本続いても、下の1本から膜を引ける');
   ok((T.meosPairForBadgeLine(makeDoc(L), 4) || {}).id === NAME, '2本目のFC行→同じ膜', T.meosPairForBadgeLine(makeDoc(L), 4));
   ok(T.meosPairBlockEnd(makeDoc(L), T.collectPairs(makeDoc(L), { excludeIndex: false })[0]) === 4, '塊は2本目まで', true);
 }
+
+// ここから先は、実際に編集を当てて結果を文字列で見る(Copy/Duplicate/Shed)。
+let CLIP = '';
+stub.env.clipboard.writeText = (t) => { CLIP = String(t); return Promise.resolve(); };
+function mkEdEdit(lines, l, c) {
+  const cur = lines.slice();
+  const doc = makeDoc(cur);
+  doc.lineCount = cur.length;
+  const p = new stub.Position(l, c || 0);
+  const ed = {
+    document: doc, viewColumn: 1,
+    selection: { active: p, anchor: p, start: p, end: p, isEmpty: true }, selections: [],
+    revealRange() { },
+    edit: (fn) => {
+      const edits = [];
+      fn({
+        insert: (pos, text) => edits.push({ s: pos, e: pos, t: text }),
+        delete: (r) => edits.push({ s: r.start, e: r.end, t: '' }),
+        replace: (r, t) => edits.push({ s: r.start, e: r.end, t }),
+      });
+      edits.sort((a, b) => (b.s.line - a.s.line) || (b.s.character - a.s.character));
+      for (const e of edits) {
+        const merged = cur[e.s.line].slice(0, e.s.character) + e.t + (cur[e.e.line] || '').slice(e.e.character);
+        cur.splice(e.s.line, e.e.line - e.s.line + 1, ...merged.split('\n'));
+      }
+      doc.lineCount = cur.length;
+      return Promise.resolve(true);
+    },
+    __lines: cur,
+  };
+  return ed;
+}
+const BODY = [
+  '<!-- {* ▼mCN=' + NAME + ' // comment1 *} -->',
+  '本文A',
+  '本文B',
+  '<!-- {* ▲mCN=' + NAME + ' // comment2 *} -->',
+  '<!-- Mew!FC mCN (📊⊕0+0D-2Y) -->',
+  '膜の外の行',
+];
+
+console.log('⑧ Copy Me(□Me＋□contents) はFCバッジ行まで運ぶ');
+{
+  const ed = mkEdEdit(BODY, 0, 20);
+  CLIP = '';
+  T.copyMe(ed);
+  ok(CLIP.split('\n').length === 5, '5行(▼〜FC行)', CLIP.split('\n').length);
+  ok(/Mew!FC mCN/.test(CLIP), 'バッジ行が入っている', CLIP);
+  ok(!/膜の外の行/.test(CLIP), '膜の外は巻き込まない', CLIP);
+}
+console.log('⑨ Copy My contents(□contentsだけ) は中身のまま(バッジは殻なので入らない)');
+{
+  const ed = mkEdEdit(BODY, 1, 0);
+  CLIP = '';
+  T.copyMyContents(ed);
+  ok(CLIP === '本文A\n本文B', '中身だけ', CLIP);
+}
+console.log('⑩ Duplicate Me はFCバッジ行ごと複製し、塊の直後へ置く');
+{
+  const ed = mkEdEdit(BODY, 0, 20);
+  T.duplicateMe(ed);
+  const out = ed.__lines;
+  ok(out.length === 11, '5行が増える', out.length);
+  ok(T.meosIsPairBadgeSpec(out[4]) && T.meosIsPairBadgeSpec(out[9]), 'バッジ行が2本になる', [out[4], out[9]]);
+  ok(out[5].indexOf('▼mCN=') >= 0, '複製はバッジ行の次から始まる', out[5]);
+  ok(out[10] === '膜の外の行', '膜の外の行はそのまま最後に', out[10]);
+}
+console.log('⑪ Shed Me は殻(▼/▲/FCバッジ行)だけ落とし、中身は1行も触らない');
+{
+  const ed = mkEdEdit(BODY, 1, 0);
+  T.shedCurrentMembrane(ed);
+  ok(ed.__lines.join('\n') === '本文A\n本文B\n膜の外の行', '中身と外だけが残る', ed.__lines);
+}
+console.log('⑫ 旧形のShed Meは今まで通り(落とすのは▼と▲の2行だけ)');
+{
+  const OLDB = [
+    '<!-- {* ▼mCN=' + NAME + ' // c1 (📊⊕0+0D-2Y) *} -->', '本文A', '<!-- {* ▲mCN=' + NAME + ' // c2 *} -->', '膜の外の行',
+  ];
+  const ed = mkEdEdit(OLDB, 1, 0);
+  T.shedCurrentMembrane(ed);
+  ok(ed.__lines.join('\n') === '本文A\n膜の外の行', '2行だけ落ちる', ed.__lines);
+}
+
+console.log('⑬ FCバッジ行がファイルの最終行でも、Shed Me が壊れない');
+{
+  const L = ['<!-- {* ▼mCN=' + NAME + ' // c1 *} -->', '本文A', '<!-- {* ▲mCN=' + NAME + ' // c2 *} -->', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->'];
+  const ed = mkEdEdit(L, 1, 0);
+  T.shedCurrentMembrane(ed);
+  ok(ed.__lines.join('\n') === '本文A', '本文だけが残る(空行を残さない)', ed.__lines);
+}
+console.log('⑭ FCバッジ行がファイルの最終行でも、Duplicate Me が壊れない');
+{
+  const L = ['<!-- {* ▼mCN=' + NAME + ' // c1 *} -->', '本文A', '<!-- {* ▲mCN=' + NAME + ' // c2 *} -->', '<!-- Mew!FC mCN (📊⊕0+0D0W) -->'];
+  const ed = mkEdEdit(L, 0, 20);
+  T.duplicateMe(ed);
+  ok(ed.__lines.length === 8 && T.meosIsPairBadgeSpec(ed.__lines[7]), '4行が増え、最後はバッジ行', ed.__lines);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

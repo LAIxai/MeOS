@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.382 (2026-08-23)
+- **Copy Me, Duplicate Me and Shed Me now reach the FC badge line too.** The badge belongs to the membrane, so
+  carrying the membrane without it drops depth, colour and fold state at the paste site — and shedding the shell
+  without it leaves a spec line whose owner is gone. All three read `meosPairBlockEnd`, the same ruler folding and
+  Edit Me use. Copy My contents / Select My contents are unchanged: the badge is shell, not contents.
+
 ### v4.0.381 (2026-08-23)
 - **A membrane's FC badge line belongs to that membrane.** Since v4.0.330 the fold range has run
   `▼ … ▲` plus the trailing FC badge line(s), but the pair range used by every "am I in this membrane?"

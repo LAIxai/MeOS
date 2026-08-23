@@ -15312,12 +15312,17 @@ function meosOpFeedback(msg) {
 
 // 膜のCopy — 膜全体(開始膜行〜閉じ膜行を含む)をクリップボードへ。
 // v0.9.664: editor 引数対応(Me Dock からは getMeDockTargetEditor() を渡す)。
+// ★v4.0.382(俊克 8/23 am10:19「Mepyの□Meと□contentsを両方✓にした時のCopyとDuplicateも同様だよ。
+//   現状ではCopyされるのは閉じ膜まで。つまりFCコメントがコピーされない」):
+//   ★**膜1つを運ぶなら、バッジも一緒に運ぶ**。バッジはこの膜の持ち物なので、置いていくと
+//     貼った先で深さも色も畳みも失われる(v2.0.46「畳んだ膜をコピペすれば⊖も一緒に運ばれる」の要件)。
+//   ★終わりの行は meosPairBlockEnd 1つから引く(畳み/Edit Me/Copy が同じ物差し)。
 async function copyMe(editor) {
   editor = editor || vscode.window.activeTextEditor;
   const pair = meosCurrentPairOrWarn(editor, 'Copy Me');
   if (!pair) return;
   const doc = editor.document;
-  const endLine = Math.min(pair.end, doc.lineCount - 1);
+  const endLine = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
   const lines = [];
   for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
   await vscode.env.clipboard.writeText(lines.join('\n'));
@@ -15363,13 +15368,14 @@ async function selectMyContents(editor) {
   meosOpFeedback('Selected membrane contents (' + (last - first + 1) + ' lines)');
 }
 
-// 膜の複製 — 膜全体(開始膜行〜閉じ膜行)を閉じ膜行の直後に挿入する。
+// 膜の複製 — 膜全体(開始膜行〜閉じ膜行＋そのFCバッジ行)を塊の直後に挿入する。
+// ★v4.0.382(俊克): Copy と同じ理由で、複製もバッジまでを1つの塊として運ぶ。
 async function duplicateMe(editor) {
   editor = editor || vscode.window.activeTextEditor;
   const pair = meosCurrentPairOrWarn(editor, 'Duplicate Me');
   if (!pair) return;
   const doc = editor.document;
-  const endLine = Math.min(pair.end, doc.lineCount - 1);
+  const endLine = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
   const lines = [];
   for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
   const block = lines.join('\n');
@@ -18302,11 +18308,15 @@ async function shedCurrentMembrane(editor) {
   const doc = editor.document;
   const openLine = pair.start;
   const closeLine = pair.end;
+  // ★v4.0.382(俊克 8/23「同様に、Shed Meは、FCコメントを取りこぼしてしまう」):
+  //   ★**脱皮で落とすのは殻**＝ ▼ / ▲ ／ そして▲の次のバッジ行(FC)。バッジは殻の一部なので、
+  //     残すと持ち主を失った指定だけが本文に取り残される。中身(▼と▲の間)は1行も触らない。
+  const shellEnd = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
   if (openLine === closeLine) {
     vscode.window.showWarningMessage('Shed Me: cannot shed a single-line membrane.');
     return false;
   }
-  if (openLine < 0 || closeLine >= doc.lineCount) {
+  if (openLine < 0 || shellEnd >= doc.lineCount) {
     vscode.window.showWarningMessage('Shed Me: membrane pair lines out of range.');
     return false;
   }
@@ -18315,11 +18325,11 @@ async function shedCurrentMembrane(editor) {
   // the document, there is no trailing newline to consume — instead, eat
   // the preceding line's terminator by extending the range backward.
   const ok = await editor.edit(edit => {
-    if (closeLine + 1 < doc.lineCount) {
-      edit.delete(new vscode.Range(closeLine, 0, closeLine + 1, 0));
+    if (shellEnd + 1 < doc.lineCount) {
+      edit.delete(new vscode.Range(closeLine, 0, shellEnd + 1, 0));
     } else {
       const prevText = doc.lineAt(closeLine - 1).text;
-      edit.delete(new vscode.Range(closeLine - 1, prevText.length, closeLine, doc.lineAt(closeLine).text.length));
+      edit.delete(new vscode.Range(closeLine - 1, prevText.length, shellEnd, doc.lineAt(shellEnd).text.length));
     }
     // Open line is never the last (it has a close line after it).
     edit.delete(new vscode.Range(openLine, 0, openLine + 1, 0));
