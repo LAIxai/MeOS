@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.392 (2026-08-23)
+- **The exception list is gone; only "no base" remains.** Stopping the arrow after punctuation or an opening bracket
+  was a list I had counted up, and a list has to be memorised before the notation can be used — `not` already says
+  "do not read this mark as such" for `H2not`, `***not` and `↑not`, so it says it here too. What stays is not an
+  exception: a superscript rides on the character before it, and after a space or at the start of a line there is
+  nothing to ride on. That is the rule MeOS already set — a superscript is a relation, so it requires a base; allowing
+  it to stand alone puts appearance above structure. The whole rule is now one sentence: **a superscript rides the
+  character before it; with no character there, nothing happens; to stop it, say `not`.**
+
 ### v4.0.391 (2026-08-23)
 - **Anything can carry a superscript now — the allow-list is gone.** `^` in ordinary maths notation puts no condition
   on what it attaches to, and MeOS had been growing a list of permitted base characters one kind at a time
