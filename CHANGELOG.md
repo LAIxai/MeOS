@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.381 (2026-08-23)
+- **A membrane's FC badge line belongs to that membrane.** Since v4.0.330 the fold range has run
+  `▼ … ▲` plus the trailing FC badge line(s), but the pair range used by every "am I in this membrane?"
+  question still stopped at `▲`. Sitting on the badge line therefore lost the membrane: Edit Me fell back to
+  New Me and showed a fresh default name instead of the name to re-set. The block end is now decided in one
+  place (`meosPairBlockEnd`), and folding, `isCursorOnMembraneLine`, `currentMembranePairForRename` and the depth
+  meter all read it. Old-form membranes (badge on the `▼` line) are untouched.
+
 ### v4.0.380 (2026-08-23)
 - **A colour code inside backticks gets no swatch, so it is no longer counted.** Code spans are "the characters
   themselves" — VS Code does not read them as colours, and MeOS has held the same rule since v4.0.58 so that tables

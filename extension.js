@@ -4059,6 +4059,36 @@ function meosPairBadgeAt(document, pair) {
   } catch (_) { }
   return null;
 }
+// ★★v4.0.381(俊克 8/23 am10:04「従来は、開始膜、あるいは閉じ膜の中だった。**FC化した膜の場合は、
+//   FCコメントの中も当然含まれる**」＋ am09:51「Edit Meの膜の作成/再設定ツールが、再設定がFCタイプを
+//   認識しない」):
+//   ★★**膜の範囲が2つに割れていた**。v4.0.330 で畳む側(foldRangeEnd)は「▲＋続くFC行まで」に伸ばしたのに、
+//     判定側(collectPairs の pair.end)は▲行のままだった＝ **畳みでは中なのに、Edit Meでは外**。
+//     だからFC行にカーソルを置くと Edit Me は膜を見失い、膜名を出さず New Me に戻っていた。
+//   ★直しは**範囲を1つにする**こと＝ 塊の最後の行は meosPairBlockEnd だけが決め、畳みも「膜の中か」も
+//     そこから引く。→ [[feedback_one_source_for_mark_count_action]] / [[project_membrane_is_a_block]]
+function meosPairBlockEnd(document, pair) {
+  let e = Math.min(document.lineCount - 1, pair.end);
+  try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
+  return e;
+}
+// FC行から、その行が属している膜(対)を引く。
+// ★**速い足切りを先に置く**＝ その行がバッジ行でなければ1行の正規表現で終わる(打鍵の道に走査を足さない)。
+//   → [[project_meos_freeze_pattern]]
+function meosPairForBadgeLine(document, line) {
+  try {
+    if (!document || line <= 0 || line >= document.lineCount) return null;
+    if (!meosIsPairBadgeSpec(document.lineAt(line).text)) return null;
+    let e = line;                                   // 連なるFC行の先頭まで遡る(バッジ行that複数在ってもよい)
+    while (e - 1 >= 0 && meosIsPairBadgeSpec(document.lineAt(e - 1).text)) e--;
+    const closeLine = e - 1;
+    if (closeLine < 0) return null;
+    const info = membraneLineInfo(document, closeLine);
+    if (!info || info.kind !== 'close') return null; // 真上が閉じ膜でなければ、膜のバッジ行ではない
+    return collectPairs(document, { excludeIndex: false }).find(p => p.end === closeLine && p.id === info.id) || null;
+  } catch (_) { }
+  return null;
+}
 // 新しい膜に付けるバッジ行(閉じ膜の次の行)。
 // ★v4.0.332(俊克 pm04:14 改良2「FC膜に膜名を入れなくていい。**操作対象として、mCNを書けばいい**でしょ」):
 //   ★**名前は隣の閉じ膜がもう持っている**。同じ名前を2つ置くと、改名のたびに**両方を直す仕事**が生まれる
@@ -5391,9 +5421,8 @@ function foldRangeEnd(document, pair) {
   //   これで [▼..▲+n] の中に FCの範囲 [▲..▲+n] が入れ子で収まる＝ 重ならない＝ 両方生きる。
   //   ★畳めばバッジも隠れる／畳んだ膜をコピペすればバッジも一緒に運ばれる。
   //   ★伸ばすのは**FC行の間だけ**なので、次の膜の ▼ を巻き込むことは無い(v0.9.343の戒めはそのまま)。
-  let e = Math.min(document.lineCount - 1, pair.end);
-  try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
-  return e;
+  // ★v4.0.381: 塊の最後の行を決めるのは meosPairBlockEnd 1つだけ(畳みも「膜の中か」も同じ物差しから引く)。
+  return meosPairBlockEnd(document, pair);
 }
 function pairStateKey(editor, pair) {
   if (!editor || !pair) return '';
@@ -15171,7 +15200,9 @@ function isCursorOnMembraneLine(editor) {
   // Strict physical-line detection:
   // Only the line that actually contains a membrane marker is treated as Rename Me.
   // This intentionally includes Col 1 / left side of ▼/▲ on that same line.
-  return /[▼▲]/.test(text) && !!(parseOpenLine(text) || parseCloseLine(text));
+  if (/[▼▲]/.test(text) && !!(parseOpenLine(text) || parseCloseLine(text))) return true;
+  // ★v4.0.381(俊克): FC化した膜では、閉じ膜の次のバッジ行もこの膜の行(塊の一部)。
+  return !!meosPairForBadgeLine(editor.document, pos.line);
 }
 
 function isCursorInsideMembraneName(editor) {
@@ -15541,6 +15572,10 @@ function currentMembranePairForRename(editor) {
     });
     if (pair) return pair;
   }
+
+  // ★v4.0.381(俊克): FCバッジ行の上なら、その行が属している膜を返す(畳み範囲と同じ物差し)。
+  const fcPair = meosPairForBadgeLine(doc, line);
+  if (fcPair) return fcPair;
 
   return findCurrentPair(editor);
 }
@@ -18000,7 +18035,8 @@ function submarineDepthDisplayForEditor(editor) {
   let pair = null;
   if (info && info.kind === 'open') pair = pairs.find(p => p.start === line && p.id === info.id) || pairs.find(p => p.start === line) || null;
   else if (info && info.kind === 'close') pair = pairs.find(p => p.end === line && p.id === info.id) || pairs.find(p => p.end === line) || null;
-  else pair = pairs.filter(p => p.start < line && line < p.end).sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null;
+  else pair = meosPairForBadgeLine(doc, line)                                      // v4.0.381: FCバッジ行はその膜の行
+    || pairs.filter(p => p.start < line && line < p.end).sort((a,b)=>(b.start-a.start) || (a.end-b.end))[0] || null;
   const d = readDepth(pair);
   return Number.isFinite(d) ? Math.max(0, Math.min(99, d)) : 0;
 }
