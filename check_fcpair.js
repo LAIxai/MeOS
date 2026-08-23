@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -411,6 +411,37 @@ console.log('㉗ Create を押した瞬間の時刻で刻む(v4.0.389 俊克 バ
   ok(mine.indexOf('テスト膜#1_') === 0 && !/090000/.test(mine), '自分で付けた名前でもTSだけ入れ替わる', mine);
   ok(T.meosRestampNameForCreate('0866_INLINE_NEW_RENAME') === '0866_INLINE_NEW_RENAME', '★TSが無い名前には生やさない(付けるのはコピーの時だけ)', T.meosRestampNameForCreate('0866_INLINE_NEW_RENAME'));
   ok(T.meosRestampNameForCreate('') === '', '空はそのまま(既定名の生成に任せる)', true);
+}
+
+console.log('㉘ 旧記法は🐱1回でFC形まで行く(v4.0.390 俊克 バグ1)');
+{
+  // 🐱ボタンと同じ順で1行を処理する(旧記法→新形→外へ出せるならFC行へ)。
+  const press = (line, next) => {
+    if (!T.meosLegacyHits(line).length) return null;
+    const nt = T.meosConvertLegacyLine(line);
+    if (nt == null || nt === line) return null;
+    const fc = T.meosFcSplitForLine(nt, next == null ? null : next);
+    return fc ? { body: fc.body, spec: fc.spec } : { body: nt, spec: null };
+  };
+  const hi = press('これは =={旧ハイライト (白/黄)//tip}== を含む行です。', '');
+  ok(hi && hi.spec !== null, '★ハイライトもFC形になる(見出しだけではない)', hi);
+  ok(hi.body === 'これは ==旧ハイライト== を含む行です。', '本文は素のMarkdownだけ', hi.body);
+  ok(hi.spec === '<!-- Mew!FC == (白/黄)//tip -->', '指定はFC行へ', hi.spec);
+  const bo = press('これは **{旧太字 (白/緑)}** を含む行です。', '');
+  ok(bo && bo.spec === '<!-- Mew!FC ** (白/緑) -->', '★太字もFC形になる', bo);
+  const hd = press('##[ 旧見出し (白/赤)//tip ]##', '');
+  ok(hd && hd.body === '## 旧見出し' && hd.spec === '<!-- Mew!FC H2 (白/赤)//tip -->', '見出しは今まで通り', hd);
+  // 1回で終わっている= 直した後の行に、もう🐱の仕事が残っていない
+  for (const r of [hi, bo, hd]) {
+    ok(!T.meosLegacyHits(r.body).length && !T.meosInlineHeadHit(r.body, r.spec), '★2回目に残る仕事が無い', r.body);
+  }
+}
+console.log('㉙ 外へ出せない行は、今までどおり行末に残す(v4.0.192「置ける行はFC・表の途中は行末」)');
+{
+  ok(T.meosFcSplitForLine('| **セル** |<!-- Mew! ** (白/黄) -->', '') === null, '表の行には足さない', T.meosFcSplitForLine('| **セル** |<!-- Mew! ** (白/黄) -->', ''));
+  ok(T.meosFcSplitForLine('本文<!-- Mew! ** (白/黄) -->', '<!-- Mew!FC == (白/黄) -->') === null, '真下に既に指定行がある行は触らない', true);
+  ok(T.meosFcSplitForLine('<!-- Mew!FC H2 (白/赤) -->', '') === null, '指定行そのものは対象外', true);
+  ok(T.meosFcSplitForLine('ただの本文', '') === null, '出す指定が無ければ何もしない', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

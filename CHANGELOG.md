@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.390 (2026-08-23)
+- **🐱 converts old notation all the way to FC form, in one press.** v4.0.192 settled that MeOS writes only FC, and
+  the format buttons have gone through `meosFormatWritesFC()` ever since — but the 🐱 legacy conversion still wrote a
+  trailing comment, the shape it had back in v4.0.62–93. So one press produced a line that was "new form" by signature
+  yet a different shape from what a button writes, and a second press moved only headings out (v4.0.293 limited that
+  step to headings), leaving highlights and bold inline forever while 🐱 fell silent. The judgement of whether a line's
+  specs can go out to an FC line now lives in one place, `meosFcSplitForLine`, and the legacy conversion, the heading
+  extraction and the 💡 quick fix all read it. Lines that cannot take an FC line — table rows, a line whose next line is
+  already a spec line — keep their trailing comment exactly as before.
+
 ### v4.0.389 (2026-08-23)
 - **Create stamps the moment you press it.** The timestamp names when the membrane was born, not when the default
   name happened to appear in the box. Leave the cursor still for a while and the box keeps an old time, which then

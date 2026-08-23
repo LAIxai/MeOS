@@ -14448,6 +14448,28 @@ const MEOS_MEW_LEGACY_CODE = 'mew-legacy';
 // ★直し方は既に在る道具1つ= `meosMoveSpecsOutOfLine`(書く側がFC行を作る時と**同じ口**)。
 // ★曖昧な時は手を出さない(いつもの流儀)= ①表の行(行を1本足すと表が割れる) ②真下に既に指定行がある行
 //   (2本目を足すと、どちらの命令が何番目かの数え方が入れ替わる)。印もボタンも、この1つの判定から引く。
+// ★★v4.0.390(俊克 8/23 pm07:22 バグ1「『C. 膜ではない旧記法』がうまく変換できない。🐱ボタン1回目で
+//   🐱↑3 ⇒ 🐱↑1 になって、**1発で全部変換されない**。しかも**FC形にならない**。2回目で3つ目の項目だけ
+//   FC型になる。1つ目と2つ目はFC型でないのに、🐱が正しいと思い込んでいる」):
+//   ★★**書く形が2つに割れていた**。v4.0.192 で俊克は「FC一択」と決め、書式ボタンは `meosFormatWritesFC()`
+//     を通して**必ずFC行へ書く**ようになった。ところが🐱の旧記法変換だけは v4.0.62〜93 の頃のまま
+//     **行末コメントを書いていた**＝ 同じ「新形」を名乗りながら、ボタンと🐱で形が違っていた。
+//   ★**1発で終わらなかった理由も同じ**＝ 旧記法を行末形に直す(1回目) → 次の周回でやっと見出しだけFCへ出す
+//     (2回目)、と**2つの仕事に割れていた**。しかも2つ目の仕事は v4.0.293 で**見出しの行に限って**いたので、
+//     ハイライトと太字は永遠にFC形にならず、それでも署名は付いているので🐱は黙る＝ 俊克の見たとおり。
+//   ★直し＝ **外へ出せるかを決める判断を1つにして**(meosFcSplitForLine)、旧記法の変換も、見出しの取り出しも、
+//     同じ1つから引く。旧記法は**1回の書き換えで FC形まで**行く。
+//   ★置ける行かどうかの見極めは今までどおり＝ 指定行そのもの／表の行／真下に既に指定行がある行は触らない
+//     (v4.0.192「置ける行はFC・表の途中は行末」の判断をそのまま使う)。
+//   → [[feedback_one_source_for_mark_count_action]] / [[project_out_of_line_and_fold]]
+function meosFcSplitForLine(text, nextText) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('<!--') < 0) return null;
+  if (meosIsSpecLine(t)) return null;                            // 指定行そのものは対象外
+  if (MEOS_TABLE_ROW_RE.test(t)) return null;                    // 表は塊ごとに1本なので、行の間に足してはいけない
+  if (nextText != null && meosIsSpecLine(String(nextText))) return null; // 既に指定行がある=順番が決まらない
+  return meosMoveSpecsOutOfLine(t);
+}
 function meosInlineHeadHit(text, nextText) {
   const t = String(text == null ? '' : text);
   if (t.indexOf('<!--') < 0) return null;
@@ -14459,7 +14481,7 @@ function meosInlineHeadHit(text, nextText) {
     try { for (const c of meosTrailingComments(t)) { const d = meosLineDirective(meosStripMewSignature(c.payload || '')); if (d && d.level) { head = true; break; } } } catch (_) { return null; }
   }
   if (!head) return null;
-  const fc = meosMoveSpecsOutOfLine(t);
+  const fc = meosFcSplitForLine(t, nextText);                    // v4.0.390: 外へ出せるかの判断は1つ
   if (!fc) return null;                                          // 外へ出す指定が無い=ただの見出し
   const i = t.indexOf('<!--');
   return { start: Math.max(0, i), end: t.length, fc };
@@ -14646,9 +14668,12 @@ const meosMewCodeActionProvider = {
         const ln = d.range.start.line, text = doc.lineAt(ln).text;
         const nt = meosConvertLegacyLine(text);
         if (nt == null || nt === text) continue;
+        // v4.0.390: 🐱ボタンと同じ形で書く(旧記法→新形→FC行までを1回で)。
+        const _fc = meosFcSplitForLine(nt, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null);
+        const _eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
         const a = new vscode.CodeAction('🐱 Markdown＋Mew! の新形に直す', vscode.CodeActionKind.QuickFix);
         a.edit = new vscode.WorkspaceEdit();
-        a.edit.replace(doc.uri, new vscode.Range(ln, 0, ln, text.length), nt);
+        a.edit.replace(doc.uri, new vscode.Range(ln, 0, ln, text.length), _fc ? (_fc.body + _eol + _fc.spec) : nt);
         a.diagnostics = [d]; a.isPreferred = true;
         out.push(a);
         break; // 1行に1つ(入れ子は次の周回で1枚ずつ)
@@ -14726,13 +14751,19 @@ async function meosMewSignVisible() {
   //   安全に変換できない行(入れ子・1行に複数)は触らず🐱を残す=あとで人が見る。
   const inserts = [], rewrites = [], pairFixes = [];
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
-  let skipped = 0, moved = 0;
+  let skipped = 0, moved = 0, legacyFc = 0;   // v4.0.390: 旧記法のうち、FC行まで出せた数
   for (const [a, b] of spans) {
     for (let ln = a; ln <= b; ln++) {
       const text = doc.lineAt(ln).text;
       if (meosLegacyHits(text).length) {
         const nt = meosConvertLegacyLine(text);
-        if (nt != null && nt !== text) { rewrites.push({ ln, text, nt }); continue; } // 行ごと入れ替え(同じ行に挿入も混ぜない)
+        if (nt != null && nt !== text) {
+          // v4.0.390(俊克): 旧記法は**1回の書き換えでFC形まで**行く(ボタンと同じ形で書く)。
+          const _fc = meosFcSplitForLine(nt, (ln + 1 < doc.lineCount) ? doc.lineAt(ln + 1).text : null);
+          if (_fc) { rewrites.push({ ln, text, nt: _fc.body + eol + _fc.spec }); legacyFc++; }
+          else rewrites.push({ ln, text, nt });
+          continue; // 行ごと入れ替え(同じ行に挿入も混ぜない)
+        }
         skipped++; continue;
       }
       // v4.0.293(俊克 改良4): FC形でない見出しは、指定を真下のFC行へ出す(印を出す条件と同じ1つの判定から引く)。
@@ -14766,7 +14797,7 @@ async function meosMewSignVisible() {
     }
   });
   const parts = [];
-  if (rewrites.length - moved > 0) parts.push('新形に' + (rewrites.length - moved) + '行');
+  if (rewrites.length - moved > 0) parts.push('新形に' + (rewrites.length - moved) + '行' + (legacyFc ? '(うち' + legacyFc + '行は指定をFC行へ)' : '')); // v4.0.390
   if (moved) parts.push('見出しの指定をFC行へ' + moved + '行'); // v4.0.293
   if (pairFixes.length) parts.push('膜のバッジをFC行へ' + pairFixes.length + '個(閉じ膜の下)'); // v4.0.385
   if (inserts.length) parts.push('Mew!を' + inserts.length + '箇所');
