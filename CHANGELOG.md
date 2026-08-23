@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.386 (2026-08-23)
+- **The name field follows the cursor again.** "Is the person typing right now?" was measured with
+  `document.activeElement` alone, but that keeps pointing at the last focused element even after the document
+  loses focus. Create sends focus into the name box (v0.9.391), so from then on the panel believed the user was
+  still in the box and stopped mirroring the membrane under the cursor — walking into another membrane showed the
+  old name. The question now needs two answers: this document has focus, and the box is the focused element inside
+  it. One helper, used by both the name field and the line field. Typed text is still guarded by `draftDirty`.
+
 ### v4.0.385 (2026-08-23)
 - **🐱 now catches old-form membranes and moves their badge to an FC line.** Read-both means MeOS never rewrites the
   past on its own — it does not mean the past cannot be fixed. A person presses the button, so only the membrane on

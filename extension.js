@@ -19891,6 +19891,18 @@ function renderTimeMachineWorldLines(){
 function renderTimeMachineInsertionMarks(){renderTimeMachineWorldLines();}
 // {* ▲mCN=dock_js_timemachine *}
 // {* ▼mCN=dock_js_mode // applyMode = nodeから来たモードを画面に適用する *}
+/* ★★v4.0.386(俊克 8/23 am11:08 バグ1「Edit Meで膜名を変えてからCreateボタンを押す。すると、その膜から
+   外に出たのに、Edit Meの表示が初期化されない。**別の開始膜に入っても、その膜名を表示しない**。
+   この基本的なアルゴリズムがなぜ修正されていないんだ?」):
+   ★★**「今この人が打っているか」を activeElement だけで測っていたのが誤り**。
+     document.activeElement は**この文書が焦点を失っても、最後に焦点が在った要素を指したまま**。
+     Create の直後に focusName で入力欄へ焦点を送っている(v0.9.391)ので、以後エディタを触っていても
+     「入力欄に居る」と読めてしまい、名前欄だけがカーソルに追いつかなくなっていた。
+   ★★測るものは2つ= **この文書に焦点が在るか(document.hasFocus)** ＋ **その中で入力欄に居るか**。
+     → 測る装置が嘘をついていた。物差しは1つの関数に置き、名前欄も行番号欄も同じ物から引く。
+   ★打った字を守るのは今までどおり draftDirty。ここで守るのは「選択が消えないこと」だけなので、
+     hasFocus が使えない環境でも失うものは無い(打った字は draftDirty が守る)。 */
+function meDockIsTyping(el){try{return document.activeElement===el&&document.hasFocus();}catch(_){return document.activeElement===el;}}
 function applyMode(mode,value,force,line,nextMarkerOn,nextHistory,nextColor,nextFlipMinusColor,nextFlipPlusColor,nextNavDepth,nextAnchor){const nextMode=mode||'new';
 const nextValue=value||'';const modeChanged=nextMode!==currentMode;currentMode=nextMode;currentValue=nextValue;currentLine=line||'';
 if(typeof nextMarkerOn==='boolean')markerOn=nextMarkerOn;if(nextHistory)historyState=nextHistory;if(force||modeChanged||!draftDirty){currentColor=(nextColor||'');
@@ -19906,8 +19918,8 @@ timeMachineIndex.value=String(Math.max(n,1));timeMachineIndex.disabled=total<=0;
 }if(timeMachineClear){timeMachineClear.disabled=total<=0;timeMachineClear.classList.toggle('disabled',timeMachineClear.disabled);
 }const _ht=((historyState&&historyState.total)||0);if(histBack){histBack.disabled=_ht<2;histBack.classList.toggle('wrap-edge',_ht>=2&&!(historyState&&historyState.canBack));
 }if(histForward){histForward.disabled=_ht<2;histForward.classList.toggle('wrap-edge',_ht>=2&&!(historyState&&historyState.canForward));
-}if(force||modeChanged||!draftDirty){draftName=currentValue||'';draftDirty=false;if(document.activeElement!==input||force||modeChanged)input.value=draftName;
-}else if(document.activeElement!==input){input.value=draftName;}if(force||document.activeElement!==lineInput)lineInput.value=currentLine||'';
+}if(force||modeChanged||!draftDirty){draftName=currentValue||'';draftDirty=false;if(!meDockIsTyping(input)||force||modeChanged)input.value=draftName;
+}else if(!meDockIsTyping(input)){input.value=draftName;}if(force||!meDockIsTyping(lineInput))lineInput.value=currentLine||'';
 if(typeof renderEditPanelMode==='function')renderEditPanelMode();}
 // {* ▲mCN=dock_js_mode *}
 // {* ▼mCN=dock_js_htoc // H-TOC(タブ・一覧・ピン・子膜フライアウト・標準記法トグル) *}
