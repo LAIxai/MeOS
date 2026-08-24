@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.398 (2026-08-24)
+- **Decorating a table row now writes the whole FC group, placeholders and all.** Highlighting a cell on the third
+  row produced a single FC line, so the group no longer matched the table row for row and the orange pairing went
+  quiet. Testing on the first row hides this — index 0 lines up with the first FC line by accident. The cause: when
+  v4.0.210 moved highlight, strike, bold/italic and links onto the no-intermediate-state writer, that writer did not
+  know about blocks and emitted one line, while the older push-out path already had `meosSpecGroupPerLine` to split
+  a group across the rows of a block. One job was written twice. The writer now builds the merged form and hands it
+  to that same function, which fills in the `not` placeholders for rows with no marks. Placeholders are stripped
+  before the insertion index is applied — they are boxes too, and counting them shifted every later spec by one.
+
 ### v4.0.397 (2026-08-23)
 - **No tooltip while the ΔChar settings panel is open.** Moving onto the panel brought a tooltip across it. The table
   menu already had this guard, but it lets tooltips show inside itself because its items need explaining; this panel

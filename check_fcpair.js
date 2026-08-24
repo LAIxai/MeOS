@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -461,6 +461,30 @@ console.log('㉚ 上付きの土台 — 数えるのをやめて形で決める(
   ok(sup('「↑2」と書く'), '開き括弧も同じ', sup('「↑2」と書く'));
   ok(!sup('気温↑ です'), '土台が在っても、後ろに何も無ければ何も起きない', sup('気温↑ です'));
   ok(!sup('`🐱↑3`'), 'コードスパンの中は今までどおり触らない(v4.0.58)', sup('`🐱↑3`'));
+}
+
+console.log('㉛ 表に修飾を付けると、FC群が折り返しの数だけ並ぶ(v4.0.398 俊克)');
+{
+  // meosWriteMarkAndSpec と同じ手順を、実物の道具で組み立てる。
+  const strip = (t) => { let o = ''; T.MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m;
+    while ((m = T.MEOS_SPEC_LINE_ONE_RE.exec(String(t || ''))) !== null) { const p = (m[2] || '').trim(); if (p && !T.MEOS_SPEC_LINE_NONE_RE.test(p)) o += m[0]; } return o; };
+  const put = (body, cur, payload, idx) => { const b = T.meosTableBlockFor(body, 2);
+    return T.meosSpecGroupPerLine(body, b, T.meosSpecLineGridOrder(body, b, T.meosInsertIntoSpecLine(strip(cur), payload, idx))); };
+  // 素の表 →「りんご」(折り返し3)にハイライト
+  const P1 = ['| 品目   | 備考  |', '| ----- | ----- |', '| **りんご** | みかん |', '| ぶどう | もも   |'];
+  const r1 = put(P1, '', '**not (白/黄)', 0);
+  ok(r1.length === 4, '★折り返しの数だけFC行が並ぶ(1本にならない)', r1.length);
+  ok(/not -->$/.test(r1[0]) && /not -->$/.test(r1[1]), '★折り返し1と2に置き石が入る(俊克の指摘)', [r1[0], r1[1]]);
+  ok(/\*\*not \(白\/黄\)/.test(r1[2]), '3本目が「りんご」の指定', r1[2]);
+  // 続けて「ぶどう」(折り返し4)にも
+  const P2 = ['| 品目   | 備考  |', '| ----- | ----- |', '| **りんご** | みかん |', '| **ぶどう** | もも   |'];
+  const r2 = put(P2, r1.join(''), '** (白/青)', 1);
+  ok(/\*\*not \(白\/黄\)/.test(r2[2]) && /\*\* \(白\/青\)/.test(r2[3]), '★2つ目を足しても入れ替わらない(置き石を数えない)', [r2[2], r2[3]]);
+  ok(r2.length === 4 && /not -->$/.test(r2[0]) && /not -->$/.test(r2[1]), '置き石は残る', r2);
+  // 折り返し1に入れた時も同じ(ここだけで確かめると誤解する=俊克の指摘)
+  const P3 = ['| **品目**   | 備考  |', '| ----- | ----- |', '| りんご | みかん |', '| ぶどう | もも   |'];
+  const r3 = put(P3, '', '**not (白/黄)', 0);
+  ok(/\*\*not/.test(r3[0]) && r3.length === 4, '折り返し1でも4本(偶然合っていた道も同じ形に)', r3);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

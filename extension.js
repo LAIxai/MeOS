@@ -16720,6 +16720,31 @@ async function meosWriteMarkAndSpec(editor, sel, markText, kind, payload) {
   const box = '<!-- ' + MEOS_MEW_SIG + 'FC ' + String(payload).trim() + ' -->';
   const off = hasFc ? meosSpecLineInsertOffset(doc.lineAt(fcLn).text, idx - 1) : 0;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
+  // ★★v4.0.398(俊克 8/24 am09:26「素のテーブルに、最初に入れたのはハイライトだよ。**折り返し1、2用の
+  //   FC not が入らない**から、橙色の同期ができないんだよ。…**折り返し1列目にハイライトを入れるテストだけ
+  //   すれば、正しく動作しているように誤解してしまう**んだよ」):
+  //   ★★**俊克の切り分けがそのまま診断だった**。折り返し1に入れると通し番号0とFC1本目が偶然一致するので、
+  //     私はそれで確かめて「動いている」と思っていた。3本目に入れて初めて、群が1本しか無いことが表に出る。
+  //   ★★真因＝ v4.0.210 で「中間状態を作らない」に切り替えた時、ハイライト/取消線・太字/斜体・リンクを
+  //     この口(meosWriteMarkAndSpec)へ移したが、**この口は塊のことを知らなかった**＝ 1本のFC行しか書かない。
+  //     押し出しの道(meosPushTableSpecsOutOfLine)には**塊の行数に合わせて割る**仕掛け(meosSpecGroupPerLine)
+  //     が既に在ったのに、こちらからは呼んでいなかった＝ **同じ仕事を2つの口が別々に書いていた**。
+  //   ★直し＝ **割るのは1つの関数だけ**。ここでも1本にまとめた形を作ってから meosSpecGroupPerLine に渡す。
+  //     置き石の `not` も、その中で塊の行数ぶん自動で入る(手で数えない)。
+  //   → [[feedback_one_source_for_mark_count_action]]
+  const _specLns = [];
+  for (let i = blk.end + 1; i < doc.lineCount; i++) { if (!meosIsSpecLine(String(lines[i] == null ? '' : lines[i]))) break; _specLns.push(i); }
+  //   ★★置き石(`not`)は**数える前に外す**＝ 通し番号(idx)は**本文の印**を数えた物なので、
+  //     置き石がボックスとして混ざっていると1つずつずれる(実測で2つ目が入れ替わった)。
+  //     置き石は meosSpecGroupPerLine が塊の行数ぶん置き直すので、ここで持ち越す必要が無い。
+  //   ★並びは最後に**格子の順**で確かめる(押し出しの道 v4.0.208 と同じ物差しを、この口でも通す)。
+  let _cur = '';
+  { const _t = _specLns.map(i => String(lines[i] == null ? '' : lines[i])).join('');
+    MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let _m;
+    while ((_m = MEOS_SPEC_LINE_ONE_RE.exec(_t)) !== null) { const _p = (_m[2] || '').trim(); if (_p && !MEOS_SPEC_LINE_NONE_RE.test(_p)) _cur += _m[0]; } }
+  const _after = lines.slice(); _after[ln] = newLine;
+  const _merged = meosSpecLineGridOrder(_after, blk, meosInsertIntoSpecLine(_cur, String(payload).trim(), idx - 1));
+  const _rows = meosSpecGroupPerLine(_after, blk, _merged).join(eol);
   // v4.0.211: **俊克に手間をかけずに測る**= 出力パネルを開いてもらう代わりに、ファイルへ1行追記する。
   //   私thatそのファイルを直接読める= 「ログを貼ってください」を無くす。
   try {
@@ -16734,8 +16759,9 @@ async function meosWriteMarkAndSpec(editor, sel, markText, kind, payload) {
   try { meosDbg('[fcWrite] ' + kind + ' セル=(' + meosTableCellRow(lines, blk, ln) + '行,' + meosTableCellCol(newLine, markEnd) + '列) 通し番号=' + idx + ' 挿す位置=' + off + (hasFc ? '' : ' (指定行を新規)')); } catch (_) { }
   await editor.edit(eb => {
     eb.replace(sel, markText);
-    if (hasFc) eb.insert(new vscode.Position(fcLn, off), box);
-    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + box);
+    // v4.0.398: 群ぜんぶを、塊の行数に合わせた形で置く(置き石の not もここで入る)
+    if (_specLns.length) eb.replace(new vscode.Range(new vscode.Position(_specLns[0], 0), new vscode.Position(_specLns[_specLns.length - 1], doc.lineAt(_specLns[_specLns.length - 1]).text.length)), _rows);
+    else eb.insert(new vscode.Position(blk.end, doc.lineAt(blk.end).text.length), eol + _rows);
   }, { undoStopBefore: true, undoStopAfter: false });
   return { markEnd, fcLn: hasFc ? fcLn : (blk.end + 1) };
 }
