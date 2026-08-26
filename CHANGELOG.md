@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.441 (2026-08-27)
+- **One button, three faces.** The two separate toggles turn out to have been a single three-way switch all along:
+  👁🥩 Normal, Raw🥩, Pseudo👁. Normal is not "neither" — it is one of the three, so it gets a mark of its own.
+  One axis runs through all three: *how much raw data you are shown* — a whole membrane, one line, or none.
+  Click steps along it; Option-click steps back. Three clicks always bring you home.
+- **Raw is now per-membrane, not per-file.** It used to flip the entire document, which was both wasteful and a
+  second code path that bypassed the twelve per-line decorators. Raw is now a *band* added to the one place that
+  already answers "which lines show their raw data" — so all twelve follow at once, and the whole-file shortcut
+  (and the "remember to clear this decoration too" contract that came with it) is gone.
+- **Pseudo-WYSIWYG hides plain strikethrough too**, the way 👻 already did. A strikethrough says "I removed this,
+  and I am showing you that I removed it" — a writer's working mark. A reader has no use for it. `~~not` is left
+  alone: it never claimed to be a strikethrough, it only carries a colour.
+
 ### v4.0.440 (2026-08-27)
 - **Option-click on this button swaps which button it is, and nothing more.** Unlike the format buttons, this one is
   already a toggle in its own right — pressing enters a view, pressing again leaves it — so asking Option to also

@@ -701,7 +701,7 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   const g3 = T.meosParseSpecLine('<!-- Mew!FC ~~ (赤/紺)//[]tip= -->');
   ok(T.meosFcFmtIsGhost(g3, '~~', 1) === false && T.meosFcFmtInner(g3, '~~', 1) === T.meosFcFmtInner(g2, '~~', 1),
      '★★👻を消すと、色はそのまま普通の取消線になる', true);
-  ok(/if \(_fcGhost\) \{ strikeMarkerRanges\.push\(\{ range: new vscode\.Range\(line, openStart, line, closeEnd\) \}\); continue; \}/.test(src),
+  ok(/if \(_fcGhost \|\| \(meosReadMode && !_fcNot\)\) \{ strikeMarkerRanges\.push\(/.test(src),
      '★★描く側は印ごと丸ごと消す(本文だけでなく `~~` も)', true);
   ok(/bg:fmtSpec\.strike\.bg,ghost:fmtStGhostOn\(\)\}\)/.test(src),
      '★★どちらを書くかは1つの判定(fmtStGhostOn)が決める(v4.0.432)', true);
@@ -860,36 +860,64 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   ok(/window\.__renderWarn\(m\.warn\)/.test(src), '★状態が変わるたびに面を描き直す', true);
 }
 
-console.log('㊹ 読書モード= 生データを1行も見せない(v4.0.438 俊克)');
+console.log('㊹ 3モードボタン= 通常 / Raw(膜単位) / Pseudo-WYSIWYG(v4.0.441 俊克)');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  // (1) 物差しは1本 — meosRawLines が「どの行を生データで見せるか」を全部決める
   ok(/if \(meosReadMode\) return out;   \/\/ v4\.0\.438/.test(src),
      '★★口は1つ= meosRawLines が空を返せば12か所すべてが従う', true);
   const n = (src.match(/meosRawLines\(/g) || []).length;
   ok(n >= 10, '★その口を引いている所が10か所以上ある(だから1行で効く)', n);
-  ok(/if \(meosReadMode\) \{   \/\/ v4\.0\.440[\s\S]{0,200}if \(hit\) await foldIfVisible\(hit\.start\);\n      return;/.test(src),
-     '★★読書モードは「開かない・畳む方は通す」(v4.0.440 貼り付けで増えた分も閉じる)', true);
-  ok(/const _mine = \(b\) => meosReadMode \? false :/.test(src),
-     '★一括の畳みも、読書モードではカーソルの塊を除けない', true);
-  ok(/if \(meosReadMode\) _meosFcOpen = 'ALL';/.test(src),
+  // (2) Raw= 膜単位。ファイル全部をひっくり返す「2本目の道」は閉じた
+  ok(/if \(meosRawMode\) out\.band = meosRawBand\(editor\);/.test(src),
+     '★★Rawは同じ口に「帯」を足すだけ(膜まるごと=カーソルの居る一番内側の膜)', true);
+  ok(/class MeosRawLineSet extends Set/.test(src) && /touches\(from, to\)/.test(src),
+     '★14万行を1つずつ数えない(帯は始まりと終わりで持ち、has\(\)が両方を見る)', true);
+  ok(!/if \(meosRawMode\) \{ clearForRaw\(editor\); return; \}/.test(src),
+     '★★refreshの入口でファイル全部を止める道が消えている(道は1本)', true);
+  const leftovers = (src.match(/if \(typeof meosRawMode !== 'undefined' && meosRawMode\) \{ (?:clearAll\(\); return;|editor\.setDecorations)/g) || []).length;
+  ok(leftovers === 0, '★装飾ごとの「Rawなら全部やめる」門番が1つも残っていない(帯が代わりに効く)', leftovers);
+  ok(/const _rawRangeTouched = \(from, to\) => _rawLines\.touches\(from, to\);/.test(src),
+     '★範囲で訊く所も帯を見る(集合だけ数えて取りこぼさない)', true);
+  ok(!/if \(meosRawMode\) return; \/\/ v0\.9\.723/.test(src),
+     '★★Rawでもrefreshは止めない(帯はカーソルに従って動くので、止めると付いて来ない)', true);
+  // (3) Pseudo-WYSIWYG= 生データを1行も見せない + 取消線も消える
+  ok(/if \(meosReadMode\) \{ strikeMarkerRanges\.push\(\{ range: new vscode\.Range\(line, openStart, line, closeEnd\) \}\); continue; \}/.test(src),
+     '★★新形 ~~{…}~~ も Pseudo では丸ごと消える(俊克「通常の取消線も、👻同様に」)', true);
+  ok(/meosReadMode && !_fcNot/.test(src),
+     '★★`~~not` は消さない= 取消線を名乗っていない(色だけの運び屋)', true);
+  ok(/if \(next === 'pseudo'\) _meosFcOpen = 'ALL';/.test(src),
      '★入る時は既存の道に畳み直させる(畳む口を2つ作らない)', true);
-  ok(/if \(meosReadMode && meosRawMode\) \{ meosRawMode = false;/.test(src)
-     && /if \(meosRawMode && meosReadMode\) \{ meosReadMode = false;/.test(src),
-     '★★Rawと同時には立たない(逆の意味なので、両方はあり得ない)', true);
-  ok(/registerCommand\('lai-membrane\.toggleReadMode'/.test(src), '★コマンドも在る(ショートカット割当可)', true);
-  // ★v4.0.440(俊克): この駒はそれ自身がトグルなので、Optは「入る/出る」でなく**面の切替だけ**
-  ok(/if\(ev&&ev\.altKey\)\{if\(readOn\)vscode\.postMessage\(\{type:'toggleRead'\}\);else if\(rawOn\)vscode\.postMessage\(\{type:'toggleRaw'\}\);\nrawFace=/.test(src),
-     '★★⌥Optクリック= 面の切替だけ(今のモードは降りる= モードからモードへ飛ばない)', true);
-  ok(/vscode\.postMessage\(\{type:\(rawFace==='read'\)\?'toggleRead':'toggleRaw'\}\);\}\);/.test(src),
-     '★素のクリック= 立っている面のモードに入る/出る', true);
-  ok(/function rawFaceNow\(\)\{return rawAltOn\(\)\?\(rawFace==='raw'\?'read':'raw'\):rawFace;\}/.test(src),
-     '★Optを押している間は予告(押せば、その顔に切り替わる)', true);
-  ok(/\.fmt-btn\.raw-toggle\{[^}]*background:rgba\(127,127,127,\.07\)/.test(src), '★通常は薄い(どのモードでもない)', true);
-  ok(/\.fmt-btn\.raw-toggle\.read-on\{background:#1e4f8a/.test(src), '★読書モードは青', true);
-  ok(/\.fmt-btn\.raw-toggle\.on\{background:#7a4f00/.test(src), '★Rawは従来の茶(色が今の状態を言う)', true);
-  ok(/rawToggle\.textContent=\(f==='read'\)\?'📖 Read':'👁 Raw';/.test(src), '★面もRawの裏の顔として切り替わる', true);
+  ok(/const _mine = \(b\) => meosReadMode \? false :/.test(src),
+     '★一括の畳みも、Pseudoではカーソルの塊を除けない', true);
+  // (4) 決める口は1つ。2つの真偽値は、その1つから書かれる
+  ok(/function meosViewMode\(\) \{ return meosRawMode \? 'raw' : \(meosReadMode \? 'pseudo' : 'normal'\); \}/.test(src),
+     '★★今どのモードかを言う口は1つ', true);
+  ok(/meosRawMode = \(next === 'raw'\);\n  meosReadMode = \(next === 'pseudo'\);/.test(src),
+     '★★同時には立ち得ない(1つの値から2つの真偽値を書くので、原理的に起きない)', true);
+  ok(/async function toggleRawMode\(\) \{ return meosSetViewMode\(meosRawMode \? 'normal' : 'raw'\); \}/.test(src)
+     && /async function toggleReadMode\(\) \{ return meosSetViewMode\(meosReadMode \? 'normal' : 'pseudo'\); \}/.test(src),
+     '★旧名は残る(コマンド/呪文の呼び元を折らない)', true);
+  ok(/registerCommand\('lai-membrane\.toggleReadMode'/.test(src)
+     && /registerCommand\('lai-membrane\.cycleViewMode'/.test(src), '★コマンドも在る(ショートカット割当可)', true);
+  // (5) ボタンは3面。面は「今どこに居るか」を出す
+  ok(/var VM_ORDER=\['normal','raw','pseudo'\];/.test(src),
+     '★★進む向きは「生データが多い→少ない」の1本道(3回押せば必ず元へ戻る)', true);
+  ok(/rawToggle\.textContent=VM_FACE\[viewMode\];/.test(src),
+     '★★面は今のモードを出す(モードボタンは状態を名乗る物)', true);
+  ok(/VM_FACE=\{normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'\}/.test(src), '★俊克の3つの印そのまま', true);
+  ok(/vscode\.postMessage\(\{type:'viewMode',step:\(ev&&ev\.altKey\)\?-1:1\}\);/.test(src),
+     '★★クリック=次へ / ⌥Opt=1つ戻る(Optは「今の逆」1本)', true);
+  ok(/message\.type === 'viewMode'/.test(src) && /meosCycleViewMode\(message\.step\)/.test(src),
+     '★受ける側も口は1つ', true);
+  ok(/if\(m&&m\.type==='viewMode'\)\{viewMode=m\.mode\|\|'normal';/.test(src),
+     '★状態が変わったら面を描き直す(readState/rawStateの2本立ては畳んだ)', true);
+  ok(!/type:\s*'(?:readState|rawState)'/.test(src), '★2本立ての名残が1つも残っていない(送る側も受ける側も)', true);
+  ok(/setTimeout\(\(\) => meosPostViewMode\(\), 80\)/.test(src),
+     '★開いた時にも今のモードを名乗らせる(面と中身をずらさない)', true);
   ok(/rawAltW=fmtAltWatch\(rawToggle,/.test(src), '★Optの見張りは1つのまま(名乗るだけ)', true);
-  ok(/m\.type==='readState'/.test(src), '★状態が変わったら面を描き直す', true);
+  ok(/\.fmt-btn\.raw-toggle\.read-on\{background:#1e4f8a/.test(src), '★Pseudoは青', true);
+  ok(/\.fmt-btn\.raw-toggle\.on\{background:#7a4f00/.test(src), '★Rawは従来の茶(色が今の状態を言う)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -6656,9 +6656,9 @@ function applyPrettyLabels(editor) {
   //     俊克がv4.0.324で言った「橙＝生データを表示する機能を色ではっきり見せる」を、**言葉どおりにする**＝
   //     **橙に染まる行は、生データを見せる行**。
   //   ★膜(▼▲バッジ)の組だけは外す＝ そちらは隠し帯の作りが別なので、対の相手まで生にはしない。
-  const _rawLines = (docCursorLine >= 0) ? meosRawLines(editor) : new Set();  // v4.0.347: 物差しは1本
+  const _rawLines = (docCursorLine >= 0 || meosRawMode) ? meosRawLines(editor) : new MeosRawLineSet();  // v4.0.347: 物差しは1本 / v4.0.441: Rawの帯は着地抑止より強い(膜まるごと生so、そこだけ飾ると食い違う)
   const _isRawLine = (ln) => _rawLines.has(ln);
-  const _rawRangeTouched = (from, to) => { for (const l of _rawLines) if (l >= from && l <= to) return true; return false; };
+  const _rawRangeTouched = (from, to) => _rawLines.touches(from, to);   // v4.0.441: 帯も一緒に見る
   // ★★v4.0.346(俊克 am01:24 バグ1「**見出しの修正が元に戻ってしまった**よ。前バージョンでも。つまり、
   //   FCコメントにいるとき、**見出しの本体が生データにならない**。ハイライトもそうだね。全部かもね。
   //   **直してといった後、直してなかったのかな?**」):
@@ -6986,6 +6986,11 @@ function applyPrettyLabels(editor) {
         const inner = stBraced ? mSt[1] : mSt[2];
         const closeEnd = innerStart + inner.length + (stBraced ? 3 : 2); // '}~~' or '~~'
         if (stBraced) {
+          // ★★v4.0.441(俊克 8/27 am08:35「**通常の取消線も、👻同様に、見えなくする**」):
+          //   ★★Pseudo-WYSIWYG では取消線は**消える**。取消線は「消した、と見せている」＝ **書き手の作業の跡**so、
+          //     読者の目には要らない。読んでいる時に見えているのは、**残した文だけ**になる。
+          //   ★👻(意図して隠した物)と姿が揃う＝ 隠し方の口を2つ作らない。生データは1文字も動かない。
+          if (meosReadMode) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, closeEnd) }); continue; }
           // 新形: (線色/背景色)//コメント。暗い背景色なら本文を自動で白文字に(auto-contrast)。
           const sp = parseColorSpec(inner, 'fg');
           const lineKey = sp.fgKey || 'red';
@@ -7020,7 +7025,10 @@ function applyPrettyLabels(editor) {
           // ★★v4.0.416: 👻= **印ごと丸ごと消す**。取消線が「消したが見える」なら、👻は「見えない」。
           //   ★取り戻す入口は**生表示の行**＝ その行にカーソルを置けば元どおり見える(この枝は生表示では通らない)。
           //     真下のFC行(`<!-- Mew!FC ~~👻 -->`)も残っているので、**どこに何が居るかは辿れる**。
-          if (_fcGhost) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, closeEnd) }); continue; }
+          //   ★v4.0.441: Pseudo-WYSIWYG も同じ枝へ合流(俊克「通常の取消線も、👻同様に、見えなくする」)。
+          //     ただし `~~not` は**取消線を名乗っていない**(色だけの運び屋・v4.0.238)so消さない＝
+          //     消してよいのは「取り消した」と言っている印だけ。直後の仕様コメントも一緒に伏せる。
+          if (_fcGhost || (meosReadMode && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
@@ -9333,13 +9341,6 @@ function meosApplyNameStampDecorations(editor) {
   let rawSet = new Set();
   try {
     if (!editor || !editor.document) return;
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) {
-      types.forEach((t) => editor.setDecorations(t, []));
-      editor.setDecorations(ed2.name, []); editor.setDecorations(ed2.comment, []);
-      if (meosCodedColorDecos) for (const d of meosCodedColorDecos.values()) editor.setDecorations(d, []);
-      if (meosPlainColorDecos) for (const d of meosPlainColorDecos.values()) editor.setDecorations(d, []);
-      return;
-    }
     rawSet = meosRawLines(editor);     // 生データを見せている行(= 橙に染まる行)
     const doc = editor.document;
     const spans = (editor.visibleRanges && editor.visibleRanges.length)
@@ -9390,52 +9391,61 @@ function meosApplyNameStampDecorations(editor) {
   } catch (_) { }
 }
 // {* ▲mCN=0355_NAME_STAMP_COLORS *}
-function clearForRaw(editor) {
-  try { meosClearTableFitDecos(editor); } catch (_) {} // v4.0.116: Rawでは縮小もやめる(生データを原寸で見せる)
-  if (!editor) return;
-  clear(editor); // 膜/line/jump系
-  const z = (d) => { if (d) { try { editor.setDecorations(d, []); } catch (_) {} } };
-  if (meosStampDecos) for (const d of meosStampDecos) z(d);   // v4.0.363: TSの色分けもRawでは外す
-  if (meosEditableDecos) { z(meosEditableDecos.name); z(meosEditableDecos.comment); } // v4.0.368
-  if (meosCodedColorDecos) for (const d of meosCodedColorDecos.values()) z(d);          // v4.0.371
-  if (meosPlainColorDecos) for (const d of meosPlainColorDecos.values()) z(d);          // v4.0.375
-  if (highlightBodyByColor) for (const d of highlightBodyByColor.values()) z(d);
-  if (highlightFgByColor) for (const d of highlightFgByColor.values()) z(d);
-  z(highlightMarkerDecoration);
-  z(strikeBodyDecoration); z(strikeMarkerDecoration); z(strikeFaintBgDecoration);
-  if (strikeColorByKey) for (const d of strikeColorByKey.values()) z(d);
-  if (headingSizeByLevel) for (const d of headingSizeByLevel.values()) z(d);
-  if (headingColorByKey) for (const d of headingColorByKey.values()) z(d);
-  z(headingMarkerDecoration);
-  z(bulletGlyphDecoration); z(meItemHideDecoration); z(meItemLabelDecoration); // v4.0.52/53: 新しい装飾を足したらRawの消し忘れに注意 // v4.0.52(俊克「生データモードでも戻らない。なぜ?」): ★Rawで消す装飾の一覧に入れ忘れ。生データは変えていない(装飾のみ)が、Rawで `•` が残ると「データが書き変わった」ようにしか見えない。
-  z(encHideDecoration); z(encLabelDecoration); // v0.9.9997: Rawでは生の暗号文(base64)を見せる(俊克 6/24: かかかで暗号が見えなかった)
-  z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); z(refFrontPlainGutterDecoration); z(refSatPlainGutterDecoration); z(refSatDocGutterDecoration); z(refSatPendGutterDecoration); // v0.9.99972/99981/99993/99994: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
-  // bookmark は残す(IMEに無害・ナビ有用)
+// {* ▼mCN=0357_CLEARFORRAW_REMOVED // v4.0.441: 退路を断つ *}
+// ★★v4.0.441: **退路を断った**＝ Rawがファイル全体を止める道(refresh の入口の clearForRaw)を閉じ、
+//   帯(meosRawLines)へ一本化したので、ここに在った clearForRaw(全装飾を一斉に外す約20行)は
+//   **呼び元that1つも無くなった**。残すと「新しい装飾を足したら clearForRaw にも足す」という
+//   **古い約束that腐って**、次に触る人を迷わせる(v4.0.52 の教訓は、もう別の形をしている)。
+// ★今の約束は1つだけ＝ **新しい装飾を足したら meosRawLines に訊く**
+//   (`const cursorLines = meosRawLines(editor); … if (cursorLines.has(ln)) continue;`)。
+//   → [[feedback_one_source_for_mark_count_action]]「印・数字・ボタンは同じ1つの判定から引く」
+// {* ▲mCN=0357_CLEARFORRAW_REMOVED *}
+// {* ▼mCN=0356_VIEW_MODES // 3つの見え方(通常 / Raw / Pseudo-WYSIWYG) (📊⊕0+0D0W) *}
+// ★★v4.0.441(俊克 8/27 am08:35「早速、**3モードボタン**を実装しよう。こんなマークにしたらどうか?
+//   👁🥩 通常モード / Raw🥩 Rawモード / Pseudo👁 ほぼWYSIWYGモード(Pseudo-WYSIWYG)」):
+//   ★★★**2つのトグルは、実は1つの3面ボタンだった**。v4.0.438〜440 では Raw と Read を「表と裏」に置き、
+//     ⌥Opt で面を替えていたが、**俊克の並べた3つの印がその設計を上書きする**＝
+//     **通常にも印が在る**。通常は「どちらでもない」ではなく、**3つのうちの1つ**だった。
+//   ★★意味の軸は1本＝ **どれだけ生データを見せるか**。Raw=膜まるごと / 通常=カーソルの行だけ /
+//     Pseudo=1行も見せない。so並びも 全部→行→ゼロ の一方向で決まる(⌥Optは逆回り＝v4.0.418「今の逆」)。
+//   ★面は「これから書く物」でなく **今どこに居るか** を出す＝ モードボタンは**状態を名乗る物**
+//     (書式ボタンが「これから書く物」を出すのは、あちらが**状態を持たない**から。面の意味はボタンの役で決まる)。
+//   ★状態は今までどおり2つの真偽値で持つ(呼び元が12か所ある)。**決める口だけを1つにする**。
+const MEOS_VIEW_MODES = ['normal', 'raw', 'pseudo'];
+const MEOS_VIEW_MODE_BAR = {
+  normal: 'Normal view 👁🥩 — decorated, and the caret line shows its raw data',
+  raw: 'Raw view Raw🥩 — the membrane under the caret shows its raw data',
+  pseudo: 'Pseudo-WYSIWYG 👁 — nothing raw, nothing crossed out. The finished text only.'
+};
+function meosViewMode() { return meosRawMode ? 'raw' : (meosReadMode ? 'pseudo' : 'normal'); }
+function meosPostViewMode() {
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'viewMode', mode: meosViewMode() }); } catch (_) { }
 }
-// v4.0.438: 読書モード。Rawと**同時には立たない**(逆の意味なので、両方はあり得ない)。
-async function toggleReadMode() {
-  meosReadMode = !meosReadMode;
-  if (meosReadMode && meosRawMode) { meosRawMode = false; try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'rawState', on: false }); } catch (_) { } }
+async function meosSetViewMode(mode) {
+  const next = (MEOS_VIEW_MODES.indexOf(mode) >= 0) ? mode : 'normal';
+  if (next === meosViewMode()) { meosPostViewMode(); return next; }
+  meosRawMode = (next === 'raw');
+  meosReadMode = (next === 'pseudo');
   const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (ed) refresh(ed);
-  // 入る時は「全部開いている」ことにして、既存の道に畳み直させる(畳む口を2つ作らない)。
-  if (meosReadMode) _meosFcOpen = 'ALL';
+  // v4.0.141/438: 畳みは**既存の道1本**に任せる＝ Raw は meosSyncFcFoldForCursor が自分で見て全部開く。
+  //   Pseudo に入る時は「全部開いている」ことにして、その道に畳み直させる(畳む口を2つ作らない)。
+  if (next === 'pseudo') _meosFcOpen = 'ALL';
   try { if (ed) await meosSyncFcFoldForCursor(ed); } catch (_) { }
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'readState', on: meosReadMode }); } catch (_) { }
-  vscode.window.setStatusBarMessage('MeOS: Reading view ' + (meosReadMode ? 'ON — the finished text only, nothing raw' : 'OFF'), 1800);
+  meosPostViewMode();
+  vscode.window.setStatusBarMessage('MeOS: ' + MEOS_VIEW_MODE_BAR[next], 1800);
+  return next;
 }
-async function toggleRawMode() {
-  meosRawMode = !meosRawMode;
-  if (meosRawMode && meosReadMode) { meosReadMode = false; try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'readState', on: false }); } catch (_) { } } // v4.0.438: 逆なので同時には立たない
-  const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
-  if (ed) refresh(ed);
-  // v4.0.141(俊克 改良2「生モードにしてもコメントが見えない」): Rawは**生データを全部見せる**約束so、
-  //   装飾だけでなく**折り畳みも解く**(切った時は畳み直す)。Rawボタンは焦点がMe Dockに在るまま押されるが、
-  //   meosSyncFcFoldForCursor はアクティブなエディタを見て動くso、そのまま呼べる。
-  try { if (ed) await meosSyncFcFoldForCursor(ed); } catch (_) { }
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'rawState', on: meosRawMode }); } catch (_) {}
-  vscode.window.setStatusBarMessage('MeOS: Raw view ' + (meosRawMode ? 'ON (rendering off — plain editor)' : 'OFF'), 1800);
+// クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道。
+async function meosCycleViewMode(step) {
+  const n = MEOS_VIEW_MODES.length;
+  const i = Math.max(0, MEOS_VIEW_MODES.indexOf(meosViewMode()));
+  return meosSetViewMode(MEOS_VIEW_MODES[(i + (Number(step) < 0 ? n - 1 : 1)) % n]);
 }
+// 旧名は残す(コマンド/呪文/他の呼び元が使っている)＝ 「そのモードに入る/出る」の意味。
+async function toggleRawMode() { return meosSetViewMode(meosRawMode ? 'normal' : 'raw'); }
+async function toggleReadMode() { return meosSetViewMode(meosReadMode ? 'normal' : 'pseudo'); }
+// {* ▲mCN=0356_VIEW_MODES *}
 // v0.9.973: GitHub自動sync — Cmd+S連動ON/OFFトグル(俊克 6/22 am02:17: Evernote方式の強制syncは嫌・自分でコントロールしたい)
 // 🐙ボタン = auto sync ON/OFF切替。ONの時だけCmd+S(保存)でpush。OFFは保存のみ普通に。
 let githubAutoSync = false; // デフォルトOFF=安全側
@@ -12323,7 +12333,8 @@ function _refreshInner(editor) {
   restoreActiveGreenJumpFromJumpFlags(editor);
   const cfg = vscode.workspace.getConfiguration('laiMembrane');
   if (!cfg.get('enabled', true)) { clear(editor); return; }
-  if (meosRawMode) { clearForRaw(editor); return; } // v0.9.723: Raw=MeOS休眠
+  // v4.0.441: Rawの入口でファイル全部をひっくり返すのはやめた(=2本目の道)。今は meosRawLines の帯が
+  //   12か所の装飾へ同じ答えを配るので、ここは素通りしてよい(→ mCN=0357_CLEARFORRAW_REMOVED)。
   if (mSkeletonMode && activeGreenJump && activeGreenJump.uri === editor.document.uri.toString()) {
     // M-skeleton Mode: show the real raw source for every membrane line,
     // while keeping only the selected open/close pair marked with 🟢.
@@ -18822,7 +18833,10 @@ function isCurrentMembraneEncrypted(editor) {
 function applyEncDecorations(editor) {
   if (!editor || !encHideDecoration || !encLabelDecoration) return;
   try {
-    if (meosRawMode) { editor.setDecorations(encHideDecoration, []); editor.setDecorations(encLabelDecoration, []); return; }
+    // v4.0.441: 生の暗号文(base64)を見せるのは**Rawの帯の中だけ**＝ 通常モードの見え方は1mmも変えない
+    //   (カーソルを置いただけで長いblobが出ると、行の形が動いて読めなくなる)。
+    const _encBand = meosRawMode ? meosRawBand(editor) : null;
+    const _inEncBand = (ln) => !!(_encBand && ln >= _encBand.from && ln <= _encBand.to);
     const doc = editor.document;
     const hideRanges = [];
     const labelRanges = [];
@@ -18833,7 +18847,7 @@ function applyEncDecorations(editor) {
         if (seen.has(i)) continue; seen.add(i);
         const text = doc.lineAt(i).text || '';
         const idx = text.indexOf(_MEOS_ENC_PREFIX);
-        if (idx < 0) continue;
+        if (idx < 0 || _inEncBand(i)) continue;
         hideRanges.push(new vscode.Range(i, idx, i, text.length)); // 🔒MeOS-enc:v1 + base64 を透明化
         labelRanges.push({ range: new vscode.Range(i, idx, i, idx), renderOptions: { before: { contentText: '🔐 Locked — press 🔓 to view', color: '#d2691e', fontWeight: '700' } } });
       }
@@ -19730,7 +19744,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
 .row.format-tools{justify-content:flex-start;flex-wrap:wrap}
-.fmt-btn.raw-toggle{margin-left:auto;font-family:inherit;font-weight:700;font-size:11px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-descriptionForeground)}/* v4.0.440(俊克): 通常は薄い= どのモードでもないことを色で言う */
+.fmt-btn.raw-toggle{margin-left:auto;font-family:inherit;font-weight:700;font-size:12px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-foreground)}/* v4.0.441(俊克): 通常も3つのうちの1つ= 薄くしない(消灯ではなく、素の面) */
 /* v4.0.67(俊克): 🐱=この画面に「Mew!と鳴いていないMe記法」が居る時だけ色が点く。位置は固定(現れたり消えたりすると隣のボタンが動く)＝MeOS既存の流儀(2個未満で無効化半透明)に合わせる。 */.fmt-btn.mew-btn{font-family:inherit;min-width:auto;padding:1px 7px;font-size:15px;line-height:1.3;margin-left:16px;opacity:.42;filter:grayscale(1)}
 /* v4.0.90(俊克「🐱もかなり暗いけどね」): 消えている時も「居る」と分かる明るさに(.28→.42)。点灯時は背景を濃くする。 */.fmt-btn.mew-btn.on{opacity:1;filter:none;background:rgba(210,132,0,.34);border-color:#e09a1a}
 /* v4.0.106(俊克): 🐱の右肩に↻。印を5秒だけ出す。消灯中でも**数字は読める**(何個あるかは常に分かる)。 */.mew-cell{position:relative;display:inline-flex;margin-left:16px}
@@ -19972,7 +19986,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button>
+<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -21130,25 +21144,31 @@ warnBtn.setAttribute('data-tip',t);};
 if(warnBtn)warnBtn.addEventListener('click',function(){if(warnBtn.disabled||!warnEnds.length)return;
 warnAt=(warnAt+1)%(warnEnds.length*2);var w=warnEnds[Math.floor(warnAt/2)];
 vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
-/* ★★v4.0.438(俊克): 読書モードは **Rawの裏の顔**= Rawは「全部見せる」・Readは「何も見せない」でちょうど逆。
-   ★押す時の決まりは他のボタンと同じ= ⌥Optで裏の顔・点いている物を押せば消える。 */
+/* ★★v4.0.441(俊克 8/27 am08:35): 3モードボタン= 👁🥩 通常 / Raw🥩 Raw / Pseudo👁 Pseudo-WYSIWYG。
+   ★★面は**今居るモード**を出す= モードボタンは**状態を名乗る物**(書式ボタンが「これから書く物」を出すのは、
+     あちらが状態を持たないから。面の意味は、そのボタンの役で決まる)。
+   ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
+     3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var rawBaseTip=rawToggle?(rawToggle.getAttribute('data-tip')||''):'';
-var readOn=false,rawOn=false,rawFace='raw',rawAltW=null;
+var viewMode='normal',rawAltW=null;
+var VM_ORDER=['normal','raw','pseudo'];
+var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
+var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
+var VM_TIP={
+normal:'Normal view 👁🥩 | Decorated, and the one line your caret sits on shows its raw data \u2014 you read and write in the same place.',
+raw:'Raw view Raw🥩 | The membrane your caret is in shows its raw data; the rest of the file stays decorated \u2014 you unwrap only what you are looking at.',
+pseudo:'Pseudo-WYSIWYG Pseudo👁 | Nothing raw at all: the caret stops opening the raw data, 👻 stays hidden, and even a plain strikethrough disappears. Read a draft the way a reader will meet it.'};
 function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
-function rawFaceNow(){return rawAltOn()?(rawFace==='raw'?'read':'raw'):rawFace;}   /* Optを押している間は予告 */
-window.__renderRaw=function(){if(!rawToggle)return;var f=rawFaceNow();
-rawToggle.textContent=(f==='read')?'📖 Read':'👁 Raw';
-rawToggle.classList.toggle('read-on',!!readOn);rawToggle.classList.toggle('on',!!rawOn);
-rawToggle.setAttribute('data-tip',(f==='read')
-?('Reading view | The finished text only \u2014 the caret no longer opens the raw data, and \ud83d\udc7b stays hidden. Read a draft the way a reader will meet it.'+String.fromCharCode(10)+'Click to turn it on, click again to leave. \u2325 Opt-click swaps this button back to \ud83d\udc41 Raw.')
-:(rawBaseTip+String.fromCharCode(10)+'\u2325 Opt-click swaps this button to \ud83d\udcd6 Reading view (the opposite: nothing raw at all).'));};
-/* v4.0.440: ⌥Optクリック=ボタンの切替だけ。素のクリック=そのモードに入る/出る。面を切り替える時は今のモードを降りる。 */
-if(rawToggle)rawToggle.addEventListener('click',(ev)=>{
-if(ev&&ev.altKey){if(readOn)vscode.postMessage({type:'toggleRead'});else if(rawOn)vscode.postMessage({type:'toggleRaw'});
-rawFace=(rawFace==='raw')?'read':'raw';window.__renderRaw();return;}
-vscode.postMessage({type:(rawFace==='read')?'toggleRead':'toggleRaw'});});
+window.__renderRaw=function(){if(!rawToggle)return;
+var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
+var nx=VM_ORDER[(i+(rawAltOn()?2:1))%3];
+rawToggle.textContent=VM_FACE[viewMode];
+rawToggle.classList.toggle('on',viewMode==='raw');
+rawToggle.classList.toggle('read-on',viewMode==='pseudo');
+rawToggle.setAttribute('data-tip',VM_TIP[viewMode]+String.fromCharCode(10)+'Click \u2192 '+VM_NAME[nx]+'.'+String.fromCharCode(10)+'\u2325 Opt-click goes round the other way.');};
+if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 if(rawToggle)rawAltW=fmtAltWatch(rawToggle,function(){if(typeof window.__renderRaw==='function')window.__renderRaw();});
+window.__renderRaw();
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();
 vscode.postMessage({type:'mewReveal'});});/* v4.0.106: ↻=印を5秒だけ出す */
@@ -21912,9 +21932,8 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='readState'){readOn=!!m.on;if(typeof window.__renderRaw==='function')window.__renderRaw();return;}/* v4.0.438 */
-if(m&&m.type==='rawState'){rawOn=!!m.on;if(typeof window.__renderRaw==='function')window.__renderRaw();if(rawToggle)rawToggle.classList.toggle('on',!!m.on);
-return;}if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){viewMode=m.mode||'normal';if(typeof window.__renderRaw==='function')window.__renderRaw();
+return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
 return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;
 window.__tableWrapped=m.tableWrap;/* v3.0.3(俊克): 「✓ 膜化する」チェック表示用。null=表の外/false=素の表/true=膜化済み。メニューが開いていれば即反映。 */if(typeof window.__renderTableWrapCheck==='function')window.__renderTableWrapCheck();
@@ -22461,6 +22480,7 @@ function toggleMeDock(editorOverride) {
   meDockCurrentLineMarkerActive = true;
   updateMeDockCurrentLineMarker();
   setTimeout(() => { updateMeDockMode(); updateMeDockCurrentLineMarker(); }, 80);
+  setTimeout(() => meosPostViewMode(), 80);   // v4.0.441: 開いた時にも今のモードを名乗らせる(ボタンの面と中身をずらさない)
 
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // v3.1.16(俊克): Me Dock全体ズームの永続化＋「本文も同期」トグルでエディタのフォントズームも連動。
@@ -22737,6 +22757,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'openGithubTokens') { try { await vscode.env.openExternal(vscode.Uri.parse(MEOS_GH_TOKENS_URL)); } catch (_) { } return; } // v4.0.83
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
+    if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン
     if (message && message.type === 'mewReveal') { meosMewReveal(); return; } // v4.0.106: ↻=5秒だけ印を出す
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
@@ -24591,7 +24612,7 @@ function meosApplyTableFitDecorations(editor) {
   meosEnsureTableFitDecos();
   try {
     const target = meosTableFitColumns();
-    if (!target || (typeof meosRawMode !== 'undefined' && meosRawMode)) { meosClearTableFitDecos(editor); return; }
+    if (!target) { meosClearTableFitDecos(editor); return; }   // v4.0.441: Rawは帯(cursorLines)が行ごとに効く
     const doc = editor.document;
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const byPct = new Map(); for (const pct of MEOS_TABLE_FIT_STEPS) byPct.set(pct, []);
@@ -24641,7 +24662,6 @@ function meosApplyTableMergeDecorations(editor) {
   if (!tableMergeHideDecoration) tableMergeHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 内側パイプ=不可視だが幅維持(桁揃え不変)
   if (!tableCommentHideDecoration) tableCommentHideDecoration = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 🤝Nコメント=ゼロ幅で完全に消す(内容はoutW幅に整形済みなので桁は揃う)
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableMergeHideDecoration, []); editor.setDecorations(tableCommentHideDecoration, []); return; }
     const doc = editor.document; const pipeRanges = [], commentRanges = [];
     // v0.9.999162(俊克 改良1/3): カーソルがある行はマージ装飾を外して生データ(<!--🤝N-->と|)を見せる=インラインで結合を編集でき、ゼロ幅コメントのカーソルの罠も回避。
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
@@ -24687,7 +24707,6 @@ function meosApplyTableCalcDecorations(editor) {
   if (!tableCalcHideDeco) tableCalcHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // マーカーをゼロ幅で隠す
   if (!tableCalcResultDeco) tableCalcResultDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 計算結果を after で描画(per-range renderOptions)
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(tableCalcHideDeco, []); editor.setDecorations(tableCalcResultDeco, []); return; }
     const auto = meosTableAutoCalc(); // v3.1.67: auto=ライブ表示(画面だけ即再計算)／manual=焼き値をそのまま見せる
     const doc = editor.document; const hideRanges = [], resultOpts = []; let _anyFlash = false, _maxExp = 0; // v3.1.69: auto時の緑フラッシュ
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
@@ -24778,7 +24797,6 @@ function meosApplyTableRowLineDecorations(editor) {
   if (!tableRowLineThickDeco) tableRowLineThickDeco = vscode.window.createTextEditorDecorationType({ borderStyle: 'solid', borderWidth: '0 0 3px 0', borderColor: new vscode.ThemeColor('foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v3.1.14(俊克): 太い仕切りを区切り行の下端に。ヘッダ行と区切り行を縦結合して見せ、その底が太線=ヘッダ/データの境界。
   if (!tableSepHideDeco) tableSepHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // 改良3: 区切り行の --- を見えなくする(データは消さない=GFM仕様のまま)
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Rawは罫線ゼロ・--- も生表示
     const doc = editor.document; const bottom = [], top = [], thick = [], sepHide = [];
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const blockCache = new Map();
@@ -24846,12 +24864,14 @@ function meosApplyImageThumbDecorations(editor) {
   if (!editor || !editor.document) return;
   if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ before: { contentText: '🖼 ', margin: '0 2px 0 0' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { editor.setDecorations(imageThumbDecoration, []); return; }
     const doc = editor.document; const ranges = [];
+    const _imgBand = meosRawMode ? meosRawBand(editor) : null;   // v4.0.441: 帯の中は生データso🖼を足さない
+    const _inImgBand = (ln) => !!(_imgBand && ln >= _imgBand.from && ln <= _imgBand.to);
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
+        if (_inImgBand(ln)) continue;   // v4.0.441: 帯の中は生データ= 飾りを足さない
         const open = parseOpenLine(doc.lineAt(ln).text); if (!open) continue; // 開始膜行だけ
         let has = false;
         for (let bl = ln + 1; bl < doc.lineCount && bl < ln + 400; bl++) { // 本文に画像リンクが1つでもあれば付ける
@@ -25701,10 +25721,45 @@ function meosFcMate(doc, line) {
 //     → [[feedback_one_source_for_mark_count_action]]「印・数字・ボタンは同じ1つの判定から引く」。
 //     今日これで**5度目**＝ 私は「直した」と言う前に、**同じ物を数えている所を全部数える**癖thatまだ無い。
 //   ★中身の規則＝ ①カーソル(と選択の両端)の行 ②その行のFCの**対の相手**(俊克 v4.0.338「橙＝生データ」)。
-function meosRawLines(editor) {
-  const out = new Set();
+// ★★★v4.0.441(俊克 8/27 am08:35「今まで、Rawはファイル全体を変化させていたが、これを**膜単位**に
+//   変更しよう。だって、全部変換しても、見ないしね。無駄だよ」):
+//   ★★★**Rawは「モード」ではなく「範囲」だった**。今までのRawは refresh の入口で clearForRaw して
+//     引き返す作り＝ **ファイル全部を一度にひっくり返す**もので、しかもそれは
+//     12か所の per-line 判定を素通りする**2本目の道**でもあった([[project_setting_decides_future_only]]
+//     と同じ形の間違い＝ 同じ仕事に口を2つ作った)。
+//   ★★★→ **道を1本に戻す**＝ Rawは **ここに「帯」を1つ足すだけ**にする。すると
+//     12か所の装飾が**同時に**膜単位で従う(v4.0.347で口を1つに集めてあったから、これで足りる)。
+//     v4.0.438の読書モードが1行で入ったのと、まったく同じ理由。
+//   ★★14万行を1つずつ数えない＝ 帯は**始まりと終わり**で持ち、has() が集合と帯の両方を見る
+//     (集合＝カーソルとその対 / 帯＝カーソルの居る膜)。
+//   ★中身の規則＝ ①カーソル(と選択の両端)の行 ②その行のFCの**対の相手** ③Rawなら**カーソルを包む膜**。
+class MeosRawLineSet extends Set {
+  constructor() { super(); this.band = null; }   // band = {from,to} / null
+  has(ln) { const b = this.band; if (b && ln >= b.from && ln <= b.to) return true; return Set.prototype.has.call(this, ln); }
+  touches(from, to) { const b = this.band; if (b && !(to < b.from || from > b.to)) return true; for (const l of this) if (l >= from && l <= to) return true; return false; }
+}
+// Rawの帯 ＝ カーソルを包む**一番内側の膜**(開始行と閉じ行も含む＝ 膜の記法そのものも生で見える)。
+//   膜の外に居る時だけ、今までどおり文書ぜんぶ＝ 膜を1つも書いていない .md でもRawは効く。
+let _meosRawBandCache = null;   // { key, band } — 1回のrefreshで12か所が同じ答えを引くので、版と行で覚える
+function meosRawBand(editor) {
   try {
-    if (meosReadMode) return out;   // v4.0.438: 読書モード= 生データを見せる行は1行も無い
+    const doc = editor.document;
+    const ln = editor.selection.active.line;
+    const key = doc.uri.toString() + '::' + doc.version + '::' + ln;
+    if (_meosRawBandCache && _meosRawBandCache.key === key) return _meosRawBandCache.band;
+    let best = null;
+    for (const p of collectPairs(doc, { excludeIndex: false })) {
+      if (p.start <= ln && ln <= p.end && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
+    }
+    const band = best ? { from: best.start, to: best.end } : { from: 0, to: Math.max(0, doc.lineCount - 1) };
+    _meosRawBandCache = { key, band };
+    return band;
+  } catch (_) { return null; }
+}
+function meosRawLines(editor) {
+  const out = new MeosRawLineSet();
+  try {
+    if (meosReadMode) return out;   // v4.0.438: Pseudo-WYSIWYG= 生データを見せる行は1行も無い
     if (!editor || !editor.document || !editor.selection) return out;
     for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
       out.add(sl.active.line); out.add(sl.anchor.line);
@@ -25713,6 +25768,7 @@ function meosRawLines(editor) {
       const m = meosFcMate(editor.document, ln);
       if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
     }
+    if (meosRawMode) out.band = meosRawBand(editor);   // v4.0.441: Raw= カーソルの居る膜まるごと
   } catch (_) { }
   return out;
 }
@@ -25840,7 +25896,7 @@ function meosApplyFcRowDecorations(editor) {
   const out = [];
   try {
     const doc = editor.document;
-    if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
+    if (meosIsProseDoc(doc)) {   // v4.0.441: Rawでも橙は出す= 橙は「対だ」の印so、帯まるごとを染める物ではない
       // ★v4.0.401(俊克): 段落なら**印1つ ⇄ FC1個**で細かく染める。出来ない時だけ行ぜんぶ。
       // ★v4.0.411: 段落なら**印1つ ⇄ FC1個**。対が無ければ**何も塗らない**(空配列)。
       //   null(=段落と分からない=表/箇条書き/膜)の時だけ、今までどおり行ぜんぶ。
@@ -27126,7 +27182,6 @@ function meosApplyMeTexDecorations(editor) {
   if (!MEOS_METEX) { clearAll(); return; }
   if (!meTexHideDeco) meTexHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=MeOS休眠(生の ↑2/↓3)
     // v3.5.1: グローバル既定の高さ%(1トークンの {N%} が無い時に使う)。設定で自分好みに(将来Format A↑ボタンから書く)。
     let gSup = 100, gSub = 100; try { const cfg = vscode.workspace.getConfiguration('laiMembrane'); gSup = Math.max(30, Math.min(200, cfg.get('metexSuperScale', 100) | 0)); gSub = Math.max(30, Math.min(200, cfg.get('metexSubScale', 100) | 0)); /* v4.0.41: 設定が無い時のフォールバックもpackage.jsonの宣言(150/50)に揃える */ } catch (_) {}
     const doc = editor.document; const hideRanges = [], styleRanges = new Map(), barRanges = [], limitUpItems = [], limitDownItems = [], slantRanges = []; // style → ranges[] / barRanges = √の横棒(v4.0.222) / limitUp|Down = Σの上下限(v4.0.273) / slantRanges = 式の∫を傾ける(v4.0.293)
@@ -27735,7 +27790,6 @@ function meosApplyMeLinkDecorations(editor) {
   if (!editor || !editor.document) return;
   const clearAll = () => { if (meLinkHideDeco) editor.setDecorations(meLinkHideDeco, []); for (const d of meLinkStyleCache.values()) editor.setDecorations(d, []); };
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; } // Raw=生表示
     if (!meLinkHideDeco) meLinkHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document, hideRanges = [], styleRanges = new Map();
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
@@ -28099,7 +28153,6 @@ function meosApplyBoldDecorations(editor) {
   if (!MEOS_BOLD) { clearAll(); return; }
   if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.15(俊克): font-sizeに!important=見出し内(font-size:大)でも太字/斜体膜のマーカーが確実に畳まれる(前後の空白バグ修正)
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
     const doc = editor.document; const hideRAll = []; const itemsByType = new Map();
     const _bLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.152: 語に効く記法のFC指定行を引くための行配列(版ごとに1回だけ刻んである)
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
@@ -28347,7 +28400,6 @@ function meosApplyFuncDecorations(editor) {
   if (!funcHideDeco) funcHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   if (!funcResultDeco) funcResultDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
-    if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
     const doc = editor.document; const hideRanges = [], resultOpts = [];
     // 可視範囲に呼び出しトークンが在る時だけレジストリを組む(全文走査を無駄に走らせない)
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
@@ -28884,6 +28936,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemovePendingAt', (line) => bookmarkRemovePending(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.837: 💤ホバーのResolve
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973
@@ -29135,7 +29188,7 @@ makeDecorations();
           try { meosDbg('[sel] activeEditor was empty → adopted the visible editor'); } catch (_) { }
         } else return;
       }
-      if (meosRawMode) return; // v0.9.723: Raw中は選択driven refreshを抑止
+      // v4.0.441: Rawでも選択driven refreshは止めない= 帯(カーソルの居る膜)がカーソルに従って動くため。
       // v0.9.625: 前の行を記録（updateLastCaret が上書きする前に）。
       const _prevKey = caretKeyForEditor(e.textEditor);
       const _prevCaret = lastCaretByEditorKey.get(_prevKey);
@@ -29286,7 +29339,7 @@ makeDecorations();
       if (deferRefreshCount === 0) { try { meosFmtKindFollow(e); } catch (_) { } }    // v4.0.302: FC行の記号を打ち替えたら、本文の印も従う
       if (deferRefreshCount === 0) { try { meosOrphanFcFollow(e); } catch (_) { } }   // v4.0.324: 本文を消したら、その指定行も消える
 
-      if (meosRawMode) return; // v0.9.723: Raw中は編集driven refresh/editを抑止(IME保護)
+      // v4.0.441: Rawでも編集driven refreshは止めない(v0.9.928でtype横取りを撤去済so、入力は両モードとも100%ネイティブ)。
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
       // active-doc gate) is removed — it did its job: it proved the ")"-eating was a
       // refresh()→setDecorations interrupt fired from the selection handler's immediate
