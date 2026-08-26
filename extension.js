@@ -2624,6 +2624,11 @@ const HIGHLIGHT_COLORS = {
   //   ★ボタン側(FMT_BG)は**この重ねた結果の色**を持つ＝ 予告と実物が一致する。片方は「重ねる前の値」、
   //     もう片方は「地の上での結果」なので、値が2つに見えるが**指すものは1つ**。
   yellow: 'rgba(255, 230, 0, 0.65)',
+  // ★v4.0.406(俊克 8/26 改良1「ハイライトボタンのプリセットとして、(白/黄)を選んだ時と、(黒/黄)を選んだ時に、
+  //   黄色の色を自動で切り替えるようにしようよ」): 白い字が乗る黄だけ、少し暗い黄にする。
+  //   ★**名前を持たせない**＝ 記法に書く色ではなく、MeOSが読む時に選ぶ濃さ。なので人が `(白/黄深)` とは書けない
+  //     ＝ 生データは今までどおり `(白/黄)` のまま(1文字も増えない)。
+  yellowDeep: 'rgba(196, 164, 0, 0.85)',
   green:  'rgba(55, 165, 70, 0.88)',   // 本物の緑(濃)→白文字
   blue:   'rgba(60, 125, 235, 0.90)',  // 本物の青(濃)→白文字
   purple: 'rgba(190, 130, 245, 0.50)',
@@ -6829,7 +6834,6 @@ function applyPrettyLabels(editor) {
           // v0.9.698: 暗い背景色で文字色未指定なら自動で白文字(auto-contrast)。黒文字では読めないため。
           // v0.9.854: 逆に明るい背景色で文字色未指定なら黒文字に固定(俊克 6/14 ダーク対応)。従来はテーマ前景色
           // 任せで、ダークテーマだと黄等の明背景に薄文字が沈んでいた。背景色は不変なので文字色も背景明暗で固定。
-          if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
         } else {
           bgKey = 'yellow'; fgKey = null; hiComment = ''; bodyLen = content.length;
           // v4.0.56: 素の `==本文==` の直後に仕様コメントがあれば、それを色/tipとして使う(新形)。
@@ -6841,11 +6845,18 @@ function applyPrettyLabels(editor) {
             if (hi2.bgKey || hi2.fgKey || hi2.comment) {
               bgKey = hi2.bgKey || null; fgKey = hi2.fgKey || null; hiComment = hi2.comment || '';
               if (!bgKey && !fgKey) bgKey = 'yellow';
-              if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
             }
             if (_sc) highlightMarkerRanges.push({ range: new vscode.Range(line, closeEnd, line, _sc.end) }); // v4.0.154: FC行から引いた時は _sc が無い(隠すコメントも無い)
           }
         }
+        // ★★v4.0.406(俊克 8/26 バグ1「==指定のハイライトが(白/黄)のままだよ。なぜ?」):
+        //   ★★**指定を1つも持たない `==…==` では、文字色を決める行が一度も通っていなかった**。
+        //     `=={…}==`(braced)の枝と、指定コメントが在る枝には自動コントラストが書いてあったが、
+        //     素の `==…==` は `fgKey = null` のまま抜けるので、**テーマの既定(ダークなら白)が残る**
+        //     ＝ 俊克の見た (白/黄)。
+        //   ★★**同じ規則が2か所に書いてあり、3つ目の道だけ抜けていた**＝ [[feedback_one_source_for_mark_count_action]]。
+        //     → **if/else の外に1本だけ置く**。どの道を通っても必ずここを通る。
+        if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
         const bodyEnd = innerStart + bodyLen;
         highlightMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
         if (bodyEnd > innerStart) {
@@ -7446,6 +7457,25 @@ function applyPrettyLabels(editor) {
   setDecoCached(editor, openLineLabelDecoration, 'openLabel', openLabels);
   setDecoCached(editor, closeLineHideDecoration, 'closeHide', closeHide);
   setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', closeLabels);
+  // ★★v4.0.406(俊克 改良1): 黄は**文字色で濃さを変える**。白い字が乗っている黄だけ、少し暗い黄へ移す。
+  //   ★★**移すのは「押し込む所」ではなく「配る直前の1か所」**＝ 背景を押し込む口は11か所在るので、
+  //     そこを11回直すと、次に1つ増えた時にまた抜ける。→ [[feedback_one_source_for_mark_count_action]]
+  //   ★重なりで見る＝ 背景の範囲は `==` の記号ぶん左から始まり、文字色の範囲は中身だけなので、
+  //     端は一致しない。**同じ行で重なっていれば、その黄には白い字が乗っている**。
+  try {
+    const _wh = (highlightFgRangesByColor.white || []);
+    if (_wh.length && (highlightBodyRangesByColor.yellow || []).length) {
+      const _byLine = new Map();
+      for (const w of _wh) { const l = w.range.start.line; if (!_byLine.has(l)) _byLine.set(l, []); _byLine.get(l).push(w.range); }
+      const _keep = [], _deep = (highlightBodyRangesByColor.yellowDeep = highlightBodyRangesByColor.yellowDeep || []);
+      for (const it of highlightBodyRangesByColor.yellow) {
+        const r = it.range, ws = _byLine.get(r.start.line);
+        const hit = ws && ws.some(w => w.start.character < r.end.character && w.end.character > r.start.character);
+        (hit ? _deep : _keep).push(it);
+      }
+      highlightBodyRangesByColor.yellow = _keep;
+    }
+  } catch (_) { }
   // v0.9.656/657: ハイライト ==text(色)== 適用（色ごとの本体背景＋マーカー==/(色)隠し）
   if (highlightBodyByColor) {
     for (const key of Object.keys(HIGHLIGHT_COLORS)) {

@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.406 (2026-08-26)
+- **A bare `==…==` finally gets its black text.** The auto-contrast rule — light background, black text — was written
+  in the `=={…}==` branch and again in the branch that finds a spec comment, but a `==…==` carrying no spec at all
+  left through a third path where the foreground was never decided, so the theme's own colour (white, in a dark theme)
+  stayed on the yellow. The rule now sits once, after the branch, where every path must pass it.
+- **Yellow deepens when white text sits on it.** With a `(白/黄)` preset the bright yellow is too close to the text;
+  with `(黒/黄)` it should stay bright. The shade is chosen while reading, not written into the file — the raw data
+  stays `(白/黄)` and nobody can spell the deeper yellow, because it has no name. The move happens once, just before
+  the decorations are handed over, rather than at the eleven places a highlight background is collected.
+
 ### v4.0.405 (2026-08-26)
 - **Backspace is only intercepted at the start of a line, Delete only at the end.** v4.0.400 gated the three keys on
   whether an FC line, membrane, table or list was near, but reading the handlers shows they are far narrower than

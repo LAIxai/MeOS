@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -581,6 +581,27 @@ console.log('㊲ プレーンのハイライトは「太字かつ斜体」の全
   // 過去の `**not` も読める(read-both)
   const O = ['あ**旧ハイライト**い', '<!-- Mew!FC **not (白/黄) -->', ''];
   ok(T.meosFcMarkPairRanges(makeDoc(O), 0, 4) !== null, '★過去の `**not` も今までどおり対応が取れる', true);
+}
+
+console.log('㊳ 素の ==…== は (黒/黄)・白い字が乗る黄は少し暗い黄(v4.0.406 俊克)');
+{
+  // 読む側の規則をそのまま当てる(素/指定あり の両方)
+  const resolve = (spec) => { const hi = T.parseColorSpec(spec, 'bg'); let bg = hi.bgKey, fg = hi.fgKey;
+    if (!bg && !fg) bg = 'yellow'; if (bg && !fg) fg = T.DARK_BG_KEYS.has(bg) ? 'white' : 'black'; return fg + '/' + bg; };
+  ok(resolve('') === 'black/yellow', '★素の ==…== は 黒/黄', resolve(''));
+  ok(resolve('(白/黄)') === 'white/yellow', '(白/黄)と書けばそのまま', resolve('(白/黄)'));
+  ok(!T.DARK_BG_KEYS.has('yellow'), '黄は「暗い背景」ではない', true);
+  // ★規則が if/else の外に1本だけ在ること(3つ目の道で抜けていたのが今回のバグ)
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const i = src.indexOf('let bgKey, fgKey, hiComment, bodyLen;');
+  const blk = src.slice(i, src.indexOf('const bodyEnd = innerStart + bodyLen;', i));
+  const n = (blk.match(/DARK_BG_KEYS\.has\(bgKey\) \? 'white' : 'black'/g) || []).length;
+  ok(n === 1, '★自動コントラストは if/else の外に1本だけ', n);
+  ok(blk.lastIndexOf('} else {') < blk.lastIndexOf("DARK_BG_KEYS.has(bgKey)"), '★その1本は else の後(どの道も必ず通る)', true);
+  // ★暗い黄= 名前を持たない(人が書けない)
+  ok(!!T.HIGHLIGHT_COLORS.yellowDeep, '少し暗い黄が在る', T.HIGHLIGHT_COLORS.yellowDeep);
+  ok(T.parseColorSpec('(白/黄深)', 'bg').bgKey !== 'yellowDeep', '★名前が無いので生データには書けない', T.parseColorSpec('(白/黄深)', 'bg').bgKey);
+  ok(/highlightBodyRangesByColor\.yellow = _keep/.test(src), '移すのは配る直前の1か所(押し込む口11か所は触らない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
