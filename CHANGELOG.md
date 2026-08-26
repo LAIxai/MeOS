@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.414 (2026-08-26)
+- **The background hugs the content; only the colour reaches the markers.** Painting the whole mark on the raw line
+  stretched the highlight box past the text it highlights. A background says *this is lit up*, so it belongs to the
+  content. The markers needed one thing only — to stop being split into two colours by the theme — and that is the
+  colour, not the background.
+
 ### v4.0.413 (2026-08-26)
 - **On the raw line the whole mark is painted, markers included.** The markers had never been given a colour because
   they are normally hidden — there was nothing to colour. Once the caret's line stopped hiding them, the theme's own

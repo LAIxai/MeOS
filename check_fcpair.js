@@ -640,10 +640,11 @@ console.log('㊴ 印と印の間の字を、素に戻す(v4.0.409 俊克 バグ2
   ok(/const _raw = cursorLines\.has\(ln\);/.test(src) && /const hideR = _raw \? \[\] : hideRAll;/.test(src),
      '★生表示で違うのは記号を隠さないことだけ(色は同じ道)', true);
   // ★v4.0.413: 隠さない以上、記号も塗らないと**テーマの塗り分け**が出る
-  ok(/pushStyle\(ln, _raw \? mk\.start : mk\.bodyStart, _raw \? mk\.end : mk\.bodyEnd/.test(src),
-     '★生表示では印を丸ごと塗る(記号も中身も同じ色)', true);
-  ok((src.match(/pushStyle\(ln, _raw \?/g) || []).length >= 5,
-     '★旧形(**{…}** / *{…}* / _…_)も同じ筋で丸ごと', (src.match(/pushStyle\(ln, _raw \?/g) || []).length);
+  // ★v4.0.414: 背景は中身だけ・色は印ぜんぶ
+  ok(/const _rawMark = \(a, b, bold, italic, fgKey, plain\) => \{ if \(_raw && b > a\) pushStyle\(ln, a, b, bold, italic, fgKey, null,/.test(src),
+     '★生表示の記号は色だけ乗せる(背景は渡さない)', true);
+  ok(!/pushStyle\(ln, _raw \?/.test(src), '★中身の塗りは生表示でも中身のまま(背景が広がらない)', true);
+  ok((src.match(/_rawMark\(/g) || []).length >= 9, '★旧形(**{…}** / *{…}* / _…_)も同じ筋', (src.match(/_rawMark\(/g) || []).length);
 }
 
 console.log('㊵ 段落: 修飾の外は橙にしない/境界は閉じ記号の手前(v4.0.411 俊克)');
