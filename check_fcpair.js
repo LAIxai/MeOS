@@ -709,8 +709,8 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
      '★★H1は - / H2は 1. / H3は予約(nullで変身しない)', true);
   ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltMode\(\)\)\{/.test(src),
      '★★押す前の面が、押した結果を見せる', true);
-  ok(/ev\.altKey&&hdAltMode\(\)\)\{[\s\S]{0,300}head:!_on,bullet:_on/.test(src),
-     '★Optは付ける/外すのどちらかを書く', true);
+  ok(/ev\.altKey&&hdAltMode\(\)\)\{[\s\S]{0,600}head:!_on,bullet:_on/.test(src),
+     '★Optは付ける/外す/足すのどれかを書く', true);
   ok(!/ev\.altKey&&hdAltMode\(\)\)\{[\s\S]{0,300}_hs\.bullet=/.test(src),
      '★Optはプリセットを変えない(1回きりの裏の顔)', true);
   // ★v4.0.420: `-` だけでは箇条書きではない= 印の一部の空白は落とさない
