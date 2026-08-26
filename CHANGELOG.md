@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.416 (2026-08-26)
+- **👻 Comment out.** Opt-click the strikethrough button and the text stays in the file but is not shown at all —
+  for the passage you are not using today and will use tomorrow. Strikethrough crosses something out and still shows
+  it; this is the other half of that choice.
+- It rides the notation already there: the text is plain `~~…~~` and the folding comment below says `👻`. The symbol
+  carries, the instruction decides — the same rule `not` follows. Outside MeOS it renders as a strikethrough, which
+  is the honest reading of *set aside for now*.
+- Two ways back: put the caret on the line and the raw text appears as written, and the `<!-- Mew!FC ~~👻 -->` line
+  underneath stays visible, so nothing is hidden without a trace. `~~#3👻` names the third one on the line.
+
 ### v4.0.415 (2026-08-26)
 - **The raw line carries no colour and no background.** v4.0.412 through v4.0.414 kept moving toward painting the
   mark; the line under the caret is there to show the data as written, and decoration does not belong on it. Killing

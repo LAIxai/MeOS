@@ -6946,8 +6946,12 @@ function applyPrettyLabels(editor) {
           const _sc = meosSpecCommentAfter(dtext, closeEnd);
           // v4.0.152(俊克「FC方式が本当に欲しいのは取消線」): 直後にコメントが無ければ、真下の指定行から引く。
           // v4.0.238: `~~not` = 取消線を名乗らない(色だけ乗せる)。兄弟(`*` `**` `***`)を1つだけ外さない。
-          let _fcRaw = null, _fcNot = false;
-          if (_sc) { _fcSt++; } else { const _o = _fcN('~~', ++_fcSt); _fcRaw = meosFcFmtInner(_fcL(), '~~', _o); _fcNot = meosFcFmtIsNot(_fcL(), '~~', _o); }
+          let _fcRaw = null, _fcNot = false, _fcGhost = false;
+          if (_sc) { _fcSt++; } else { const _o = _fcN('~~', ++_fcSt); _fcRaw = meosFcFmtInner(_fcL(), '~~', _o); _fcNot = meosFcFmtIsNot(_fcL(), '~~', _o); _fcGhost = meosFcFmtIsGhost(_fcL(), '~~', _o); }
+          // ★★v4.0.416: 👻= **印ごと丸ごと消す**。取消線が「消したが見える」なら、👻は「見えない」。
+          //   ★取り戻す入口は**生表示の行**＝ その行にカーソルを置けば元どおり見える(この枝は生表示では通らない)。
+          //     真下のFC行(`<!-- Mew!FC ~~👻 -->`)も残っているので、**どこに何が居るかは辿れる**。
+          if (_fcGhost) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, closeEnd) }); continue; }
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
@@ -16204,10 +16208,12 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       //     外では太字として強調している」で、**外での見え方が「太字」→「太字＋斜体」に変わる**のが対価。
       //   ★読む側は元から `***`/`***not` を読める(v4.0.238〜247)ので、**過去の `**not` もそのまま読める**(read-both)。
       const mk = (kind === 'highlight') ? '***' : '~~';
-      const _dir = (kind === 'highlight') ? '***not' : '~~';
+      // v4.0.416: Opt押しの取消ボタン= 👻(コメント化)。色は持たない= 見えない物に色は要らない。
+      const _ghost = !!(opt && opt.ghost) && kind === 'strike';
+      const _dir = _ghost ? '~~👻' : (kind === 'highlight') ? '***not' : '~~';
       // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
       const _mark = mk + body + mk;
-      await meosWriteMarkAndSpec(editor, sel, _mark, mk, _dir + ' ' + spec);
+      await meosWriteMarkAndSpec(editor, sel, _mark, mk, _ghost ? _dir : (_dir + ' ' + spec));
       const bs = new vscode.Position(sel.start.line, sel.start.character + mk.length);
       bodySel = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length));
       editor.selection = bodySel;
@@ -16291,12 +16297,12 @@ function meosPullSpecsBackInline(bodyText, specText) {
       // ★v4.0.261(俊克 8/17 am01:17「not指定が消えているよ」→ ログで確定): **戻す側が `not` を捨てていた**。
       //   FC行を行末へ畳み戻す時、`kind + 色` だけを書いていたので `***not (白/黄)` が `*** (白/黄)` になっていた。
       //   上付き側(`meosMetexItemText`)は `not` を付けて戻していたのに、**書式側だけ抜けていた**(またしても片方)。
-      ins.push({ at: hit.end, text: '<!-- ' + MEOS_MEW_SIG + ' ' + it.kind + (it.not ? 'not' : '') + ' ' + it.inner + ' -->' });
+      ins.push({ at: hit.end, text: '<!-- ' + MEOS_MEW_SIG + ' ' + it.kind + (it.not ? 'not' : (it.ghost ? '👻' : '')) + ' ' + it.inner + ' -->' });
     }
     // ② 上付き/下付き= その向きの ord 個目の直後へ
     const toks = meosMeTexTokens(body, spec);
     for (const it of spec.metex || []) {
-      if (it.not) return null;                                // not は行末形式に相当する形が無い=戻さない
+      if (it.not || it.ghost) return null;                    // not / 👻 は行末形式に相当する形が無い=戻さない
       const kind = String(it.tok).indexOf('↑') >= 0 ? 'sup' : 'sub';
       const cands = toks.filter(t => t.kind === kind);
       const ord = it.nth > 0 ? it.nth : (1 + (spec.metex.filter(x => (String(x.tok).indexOf('↑') >= 0 ? 'sup' : 'sub') === kind).indexOf(it)));
@@ -19822,7 +19828,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <div class="row format-tools" id="format-tools"><span class="fmt-label"><span class="fmt-me-box">Format</span> Me</span>
 <span class="fmt-btns">
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once, with the underline you last chose (leave □ Link unchecked in the presets; the button shows that underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;⌥ Opt-click → 👻 Comment out: the text stays in the file but is not shown at all. Put the caret on that line to see it again. Outside MeOS it is still a strikethrough.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
@@ -20749,7 +20755,9 @@ bold:!!_hs.bold,italic:!!_hs.italic,fg:_hs.fg,bg:_hs.bg});return;}vscode.postMes
 fg:fmtSpec.highlight.fg,bg:fmtSpec.highlight.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtHlIdx];
 window.__fmtActionable.highlight=true;window.__fmtBaseW.highlight=_w;window.__fmtRing.highlight=0;window.__fmtWasDeco.highlight=true;
 window.__fmtCyclingKind='highlight';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');}});
-if(fmtStrike)fmtStrike.addEventListener('click',()=>{if(window.__fmtActionable.strike){const r=window.__fmtRing.strike||0;
+if(fmtStrike)fmtStrike.addEventListener('click',(ev)=>{/* v4.0.416(俊克): Opt押し=👻(コメント化)。取り消して見せるのでなく、完全に見えなくする。↻リングより先に見る=Optは別の道 */
+if(ev&&ev.altKey){vscode.postMessage({type:'insertFormat',kind:'strike',ghost:true});return;}
+if(window.__fmtActionable.strike){const r=window.__fmtRing.strike||0;
 window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',kind:'strike',
 ring:0});}else{const baseW=window.__fmtBaseW.strike||2;const w=((baseW-1+r)%3)+1;const sp=fmtStSlots[w-1];window.__fmtBaseW.strike=w;
 window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;vscode.postMessage({type:'fmtCycle',kind:'strike',ring:w,fg:sp.fg,
@@ -22276,7 +22284,7 @@ function toggleMeDock(editorOverride) {
     // v0.9.707: Me Dock の書式ボタン(== ハイライト / ~~ 取消線 / ## 見出し)。選択を記法で包んで挿入。
     if (message && message.type === 'insertMeLink') { try { await insertMeLinkTemplate(getMeDockTargetEditor() || vscode.window.activeTextEditor, message.fg, message.bg, message.ul, message.bold, message.italic); } catch (_) {} return; } // v4.0.26: 統一ボタン□Link=リンクを挿入し行先の中で待つ
     if (message && message.type === 'insertFormat') {
-      await insertFormatTemplate(message.kind, getMeDockTargetEditor() || vscode.window.activeTextEditor, message.fg, message.bg, message.level, { head: message.head !== false, bullet: !!message.bullet, blt: message.blt || '-' }); // v4.0.47: 見出し=□見出し□箇条書きの合成
+      await insertFormatTemplate(message.kind, getMeDockTargetEditor() || vscode.window.activeTextEditor, message.fg, message.bg, message.level, { head: message.head !== false, bullet: !!message.bullet, blt: message.blt || '-', ghost: !!message.ghost }); // v4.0.47: 見出し=□見出し□箇条書きの合成 / v4.0.416: Opt押し=👻
       return;
     }
     // v4.0.160→164: Me Dock の Format ▼ メニュー。パレットと**同じ道**を通す(口を2つ作らない)。
@@ -24844,7 +24852,13 @@ const MEOS_SPEC_ITEM_RE = /([^\s{}<>#()]*[↑↓][^\s{}<>#()]*)(?:#(\d{1,3}))?[ 
 // v4.0.169: 斜体の一択が `*` になったので、単一 `*` も種類として名乗れる(長い方から並べる=`***`→`**`→`*`)。
 // v4.0.238(俊克 8/16 pm03:47〜03:56): 記号の後ろに `not` を書けるようにした= `***not(白/黄)`。
 //   ★**not = この記号の意味を、MeOSでは名乗らない**。`↑not` と同じ言葉・同じ論理を、`*` `**` `***` `~~` `==` にも通す。
-const MEOS_SPEC_FMT_RE = /(?:^|[\s])(={2}|~{2}|\*{3}|\*{2}|\*|_)(?:#(\d{1,3}))?[ \t]*(not)?[ \t]*(?:\{([^}]*)\}|(\([^()\n]*\)))?/g;
+// ★★v4.0.416(俊克 8/26「取消線を使っていて、ひらめいた。**コメント化**だよ。…今日は使わないけど、明日は使う、
+//   みたいな内容の時に便利なんだよ。…取消ボタンで、Opt押しの時に、👻に変身する。**取り消して、見える形にするのか、
+//   それとも、完全に見えなくするのか**、と言うことだよ」):
+//   ★★`not` と同じ筋で入る＝ **記号は運び屋・意味は指定が決める**。本文は素の `~~…~~` のまま、FCが `👻` と言えば消える。
+//     MeOSの外(GitHub/Zenn)では**取消線として残る**＝「今は使わない」という意味が最も正直に落ちる形。
+//   ★グループの数は増やさない(`(not|👻)?` のまま3番)＝ 下流の `ft[4]`/`ft[5]` と replace のコールバックが動かない。
+const MEOS_SPEC_FMT_RE = /(?:^|[\s])(={2}|~{2}|\*{3}|\*{2}|\*|_)(?:#(\d{1,3}))?[ \t]*(not|👻)?[ \t]*(?:\{([^}]*)\}|(\([^()\n]*\)))?/g;
 // 指定行から「この行の kind の ord 個目」の中身を引く。無ければ null。
 function meosFcFmtInner(spec, kind, ord) {
   if (!spec || !spec.fmt || !spec.fmt.length) return null;
@@ -24858,6 +24872,18 @@ function meosFcFmtInner(spec, kind, ord) {
   return null;
 }
 // v4.0.238: 色と同じ数え方で「この記号のord個目は not か」を引く。数え方を2つ作らない。
+// v4.0.416: 「この記号は 👻(完全に見えなくする)か」。meosFcFmtIsNot と同じ数え方なので、対で置く。
+function meosFcFmtIsGhost(spec, kind, ord) {
+  if (!spec || !spec.fmt || !spec.fmt.length) return false;
+  let n = 0;
+  for (const it of spec.fmt) {
+    if (it.kind !== kind) continue;
+    if (it.nth > 0) { if (it.nth === ord) return !!it.ghost; continue; }
+    n++;
+    if (n === ord) return !!it.ghost;
+  }
+  return false;
+}
 function meosFcFmtIsNot(spec, kind, ord) {
   if (!spec || !spec.fmt || !spec.fmt.length) return false;
   let n = 0;
@@ -24918,10 +24944,11 @@ function meosParseSpecPayload(payload) {
   const fmt = []; let ft;
   MEOS_SPEC_FMT_RE.lastIndex = 0;
   while ((ft = MEOS_SPEC_FMT_RE.exec(rest)) !== null) {
-    const _not = !!ft[3];                       // v4.0.238: `***not` = この記号の意味を名乗らない
+    const _not = ft[3] === 'not';               // v4.0.238: `***not` = この記号の意味を名乗らない
+    const _ghost = ft[3] === '👻';              // v4.0.416: `~~👻` = 完全に見えなくする(コメント化)
     const inner = (ft[4] !== undefined ? ft[4] : (ft[5] || ''));
-    if (!inner && !_not) continue;              // 中身が無いものは項目にしない(行単位の指定を巻き込まない)。notは中身無しでも命令
-    fmt.push({ kind: ft[1], nth: ft[2] ? parseInt(ft[2], 10) : 0, inner, not: _not });
+    if (!inner && !_not && !_ghost) continue;   // 中身が無いものは項目にしない(行単位の指定を巻き込まない)。not/👻は中身無しでも命令
+    fmt.push({ kind: ft[1], nth: ft[2] ? parseInt(ft[2], 10) : 0, inner, not: _not, ghost: _ghost });
   }
   if (fmt.length) rest = rest.replace(MEOS_SPEC_FMT_RE, (mm, k, n, nt, br, pa) => (br !== undefined || pa || nt) ? ' ' : mm);
   rest = rest.trim();

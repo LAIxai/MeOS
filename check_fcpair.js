@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -667,6 +667,38 @@ console.log('㊵ 段落: 修飾の外は橙にしない/境界は閉じ記号の
   ok(at(46) === 'none', '★最後の「と」も外', at(46));
   ok(at(38) === '***ハイライト***#2', '★2つ目の中身は2つ目のFCと対', at(38));
   ok(at(5) === 'none', '★相手のFCが無い印も外(対にならない)', at(5));
+}
+
+console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊克「取消線を使っていて、ひらめいた」)');
+{
+  const g = T.meosParseSpecLine('<!-- Mew!FC ~~👻 -->');
+  ok(g && g.fmt.length === 1 && g.fmt[0].ghost === true && g.fmt[0].not === false,
+     '★`~~👻` は 👻 の命令として読める(中身が無くても命令)', g && g.fmt);
+  ok(T.meosFcFmtIsGhost(g, '~~', 1) === true && T.meosFcFmtIsNot(g, '~~', 1) === false,
+     '★👻 と not は別物(取り違えない)', true);
+  const n = T.meosParseSpecLine('<!-- Mew!FC ~~not (赤/) -->');
+  ok(n.fmt[0].not === true && n.fmt[0].ghost === false && T.meosFcFmtInner(n, '~~', 1) === '(赤/)',
+     '★`~~not` は今までどおり(色も引ける)', n.fmt[0]);
+  const h = T.meosParseSpecLine('<!-- Mew!FC ***not (白/黄) -->');
+  ok(T.meosFcFmtIsNot(h, '***', 1) === true && T.meosFcFmtInner(h, '***', 1) === '(白/黄)',
+     '★ハイライト(***not)は1文字も変わらない', true);
+  const two = T.meosParseSpecLine('<!-- Mew!FC ~~ (赤/) --><!-- Mew!FC ~~👻 -->');
+  ok(T.meosFcFmtIsGhost(two, '~~', 1) === false && T.meosFcFmtIsGhost(two, '~~', 2) === true,
+     '★同じ行に2つあれば、2つ目だけが 👻', true);
+  const nth = T.meosParseSpecLine('<!-- Mew!FC ~~#3👻 -->');
+  ok(T.meosFcFmtIsGhost(nth, '~~', 3) === true && T.meosFcFmtIsGhost(nth, '~~', 1) === false,
+     '★番号指定(`~~#3👻`)も効く', true);
+  // 書く側と描く側
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/const _ghost = !!\(opt && opt\.ghost\) && kind === 'strike';/.test(src) && /_ghost \? '~~👻'/.test(src),
+     '★Opt押しの取消ボタンは `~~👻` を書く', true);
+  ok(/meosWriteMarkAndSpec\(editor, sel, _mark, mk, _ghost \? _dir : \(_dir \+ ' ' \+ spec\)\)/.test(src),
+     '★👻 に色は付けない(見えない物に色は要らない)', true);
+  ok(/if \(_fcGhost\) \{ strikeMarkerRanges\.push\(\{ range: new vscode\.Range\(line, openStart, line, closeEnd\) \}\); continue; \}/.test(src),
+     '★★描く側は印ごと丸ごと消す(本文だけでなく `~~` も)', true);
+  ok(/ev\.altKey\)\{vscode\.postMessage\(\{type:'insertFormat',kind:'strike',ghost:true\}\)/.test(src),
+     '★Optは↻リングより先に見る(別の道)', true);
+  ok(/if \(it\.not \|\| it\.ghost\) return null;/.test(src), '★👻 は行末形式へ戻さない(notと同じ)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
