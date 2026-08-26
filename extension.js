@@ -9419,10 +9419,78 @@ const MEOS_VIEW_MODE_BAR = {
 };
 function meosViewMode() { return meosRawMode ? 'raw' : (meosReadMode ? 'pseudo' : 'normal'); }
 function meosPostViewMode() {
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'viewMode', mode: meosViewMode() }); } catch (_) { }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'viewMode', mode: meosViewMode(), until: meosPseudoUntil }); } catch (_) { }
+}
+// ★★★v4.0.442(俊克 8/27 am08:35「そして、ひらめいた。特に、Pseudo👁で、**タイマー機能**を付ける。
+//   たとえば、**テスト用紙にできる**。50分間、通常モードに戻れなくする。**答えが👻に入っているので、
+//   テスト終了と同時に、自己採点できる**。その後は、そのテストを自習に何度でも使える。
+//   あるいは、いわゆる**暗記シート**のように使える」):
+//   ★★★**1つのファイルが、問題用紙にも答案にも解答にもなる**。👻は「見えないメモ用紙」で、
+//     しかも**その場所に居る**so、Scrivener等の別枠保存と違って**どこに書いたか見失うことが原理的に無い**
+//     (俊克)。答えを別ファイルに逃がさないから、時間が来ればその場で答え合わせが始まる。
+//   ★★時間が閉めるのは**出口だけ**＝ 見え方には一切触れない。終われば出口that戻る。
+//     終わった時にモードを勝手に変えない＝ **人that最後に指定した物を勝たせる**
+//     (→ [[project_last_specified_wins]])。答え合わせは、本人の1クリックから始まる。
+//   ★止める道は残す＝ 掛けた本人that「今やめる」と言えない錠は、**守れない約束**(拡張を切れば消える)。
+//     ただし**うっかりでは外れない**(⏱から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
+let meosPseudoUntil = 0;          // 0=掛かっていない / それ以外=出口that戻る時刻(ms)
+let _meosPseudoTimeout = null;
+function meosPseudoLeft() { return meosPseudoUntil ? Math.max(0, meosPseudoUntil - Date.now()) : 0; }
+function meosMmSs(ms) { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+function meosClearPseudoTimer() { if (_meosPseudoTimeout) { clearTimeout(_meosPseudoTimeout); _meosPseudoTimeout = null; } meosPseudoUntil = 0; }
+function meosPseudoTimeUp() {
+  meosClearPseudoTimer();
+  meosPostViewMode();
+  vscode.window.showInformationMessage('MeOS: Time is up. Press \u{1F441}\u{1F969} to bring the raw data back \u2014 your \u{1F47B} answers are exactly where you wrote them.');
+}
+async function meosStartPseudoTimer(minutes) {
+  const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
+  meosClearPseudoTimer();
+  meosPseudoUntil = Date.now() + m * 60000;
+  _meosPseudoTimeout = setTimeout(() => meosPseudoTimeUp(), m * 60000 + 250);
+  await meosSetViewMode('pseudo');
+  meosPostViewMode();
+  vscode.window.setStatusBarMessage('MeOS: Pseudo-WYSIWYG held for ' + m + ' min \u2014 the way out comes back when the time is up.', 3000);
+}
+// ⏱ = 時間を選ぶ。走っている間は「今やめる」だけを出す(選択肢that1つなら、迷う所thatない)。
+async function meosPseudoTimerMenu() {
+  if (meosPseudoLeft() > 0) {
+    const pick = await vscode.window.showQuickPick(
+      [{ label: '\u23f9 End the timer now', description: meosMmSs(meosPseudoLeft()) + ' left', detail: 'The way out comes back straight away. The view itself does not change.' }],
+      { title: 'MeOS \u2014 Pseudo-WYSIWYG is held', placeHolder: 'Press Esc to leave the timer running' });
+    if (!pick) return;
+    const yes = await vscode.window.showWarningMessage('End the timer now? The point of the timer is that you cannot get out early.', { modal: true }, 'End it');
+    if (yes !== 'End it') return;
+    meosClearPseudoTimer(); meosPostViewMode();
+    vscode.window.setStatusBarMessage('MeOS: timer ended \u2014 you can leave Pseudo-WYSIWYG again.', 2500);
+    return;
+  }
+  const items = [
+    { label: '10 minutes', m: 10 }, { label: '25 minutes', m: 25 },
+    { label: '50 minutes', m: 50, description: 'one class hour' }, { label: '90 minutes', m: 90 },
+    { label: 'Custom\u2026', m: 0 }
+  ];
+  const pick = await vscode.window.showQuickPick(items, {
+    title: 'MeOS \u2014 hold Pseudo-WYSIWYG for a while',
+    placeHolder: 'Nothing raw, nothing crossed out, and no way out until the time is up'
+  });
+  if (!pick) return;
+  let m = pick.m;
+  if (!m) {
+    const t = await vscode.window.showInputBox({ title: 'MeOS \u2014 how many minutes?', value: '50', validateInput: (v) => (/^\d{1,3}$/.test(String(v||'').trim()) && +v >= 1 && +v <= 600) ? null : '1 to 600' });
+    if (!t) return;
+    m = parseInt(t, 10);
+  }
+  await meosStartPseudoTimer(m);
 }
 async function meosSetViewMode(mode) {
   const next = (MEOS_VIEW_MODES.indexOf(mode) >= 0) ? mode : 'normal';
+  // 錠that掛かっている間は、Pseudoから出る道だけをふさぐ(入る道と、見え方には触れない)。
+  if (meosPseudoLeft() > 0 && meosReadMode && next !== 'pseudo') {
+    vscode.window.setStatusBarMessage('MeOS: Pseudo-WYSIWYG is held for another ' + meosMmSs(meosPseudoLeft()) + ' \u2014 \u23f1 to end it early.', 2500);
+    meosPostViewMode();
+    return 'pseudo';
+  }
   if (next === meosViewMode()) { meosPostViewMode(); return next; }
   meosRawMode = (next === 'raw');
   meosReadMode = (next === 'pseudo');
@@ -19744,7 +19812,10 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
 .row.format-tools{justify-content:flex-start;flex-wrap:wrap}
-.fmt-btn.raw-toggle{margin-left:auto;font-family:inherit;font-weight:700;font-size:12px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-foreground)}/* v4.0.441(俊克): 通常も3つのうちの1つ= 薄くしない(消灯ではなく、素の面) */
+.fmt-btn.raw-toggle{font-family:inherit;font-weight:700;font-size:12px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-foreground)}/* v4.0.441(俊克): 通常も3つのうちの1つ= 薄くしない(消灯ではなく、素の面) */
+.raw-cell{margin-left:auto;position:relative;display:inline-flex}/* v4.0.442: 右端固定は「駒」でなく「枡」that持つ(⏱that右肩に乗るため) */
+.fmt-lvl.raw-timer{cursor:pointer;background:#6b4ea8}/* v4.0.442: ⏱は青紫= Pseudoの青の一族(茶=Rawとは別の家) */
+.fmt-btn.raw-toggle.held{border-color:#7a1f1f;box-shadow:inset 0 0 0 1px rgba(200,60,60,.55)}/* v4.0.442: 錠that掛かっている間は縁that赤い= 出口that無いことを、押す前に言う */
 /* v4.0.67(俊克): 🐱=この画面に「Mew!と鳴いていないMe記法」が居る時だけ色が点く。位置は固定(現れたり消えたりすると隣のボタンが動く)＝MeOS既存の流儀(2個未満で無効化半透明)に合わせる。 */.fmt-btn.mew-btn{font-family:inherit;min-width:auto;padding:1px 7px;font-size:15px;line-height:1.3;margin-left:16px;opacity:.42;filter:grayscale(1)}
 /* v4.0.90(俊克「🐱もかなり暗いけどね」): 消えている時も「居る」と分かる明るさに(.28→.42)。点灯時は背景を濃くする。 */.fmt-btn.mew-btn.on{opacity:1;filter:none;background:rgba(210,132,0,.34);border-color:#e09a1a}
 /* v4.0.106(俊克): 🐱の右肩に↻。印を5秒だけ出す。消灯中でも**数字は読める**(何個あるかは常に分かる)。 */.mew-cell{position:relative;display:inline-flex;margin-left:16px}
@@ -19986,7 +20057,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button>
+<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><span class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="fmt-lvl raw-timer" id="raw-timer" data-tip="Hold Pseudo👁 for a while | Turn this file into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9201;</span></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -21150,7 +21221,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',rawAltW=null;
+var viewMode='normal',rawAltW=null,vmUntil=0,vmTick=null;
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -21159,14 +21230,28 @@ normal:'Normal view 👁🥩 | Decorated, and the one line your caret sits on sh
 raw:'Raw view Raw🥩 | The membrane your caret is in shows its raw data; the rest of the file stays decorated \u2014 you unwrap only what you are looking at.',
 pseudo:'Pseudo-WYSIWYG Pseudo👁 | Nothing raw at all: the caret stops opening the raw data, 👻 stays hidden, and even a plain strikethrough disappears. Read a draft the way a reader will meet it.'};
 function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
+/* ★★v4.0.442(俊克): ⏱=テスト用紙。残り時間は**webviewthat数える**(nodeは終わりの時刻を1回渡すだけ)=
+   1秒ごとの往復を作らない。錠that掛かっている間は、面that残り時間を出す= 何分残っているかを見るために
+   別の物を開かなくてよい。 */
+function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}
+function vmMmSs(ms){var t=Math.ceil(ms/1000);var ss=String(t%60);return Math.floor(t/60)+':'+(ss.length<2?'0'+ss:ss);}
 window.__renderRaw=function(){if(!rawToggle)return;
 var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
 var nx=VM_ORDER[(i+(rawAltOn()?2:1))%3];
-rawToggle.textContent=VM_FACE[viewMode];
+var left=vmLeft(),held=(left>0&&viewMode==='pseudo');
+rawToggle.textContent=VM_FACE[viewMode]+(held?(' '+vmMmSs(left)):'');
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
-rawToggle.setAttribute('data-tip',VM_TIP[viewMode]+String.fromCharCode(10)+'Click \u2192 '+VM_NAME[nx]+'.'+String.fromCharCode(10)+'\u2325 Opt-click goes round the other way.');};
+rawToggle.classList.toggle('held',held);
+rawToggle.setAttribute('data-tip',VM_TIP[viewMode]+String.fromCharCode(10)+(held
+?('\u23f1 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f1 if you really must stop it early.')
+:('Click \u2192 '+VM_NAME[nx]+'.'+String.fromCharCode(10)+'\u2325 Opt-click goes round the other way.')));
+if(held&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
+if(!held&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
+var rawTimerBtn=document.getElementById('raw-timer');
+if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
+if(typeof hideTocTip==='function')hideTocTip();vscode.postMessage({type:'pseudoTimer'});});
 if(rawToggle)rawAltW=fmtAltWatch(rawToggle,function(){if(typeof window.__renderRaw==='function')window.__renderRaw();});
 window.__renderRaw();
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
@@ -21932,7 +22017,7 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){viewMode=m.mode||'normal';if(typeof window.__renderRaw==='function')window.__renderRaw();
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;if(typeof window.__renderRaw==='function')window.__renderRaw();
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
 return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;
@@ -22758,6 +22843,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン
+    if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }           // v4.0.442: ⏱=テスト用紙
     if (message && message.type === 'mewReveal') { meosMewReveal(); return; } // v4.0.106: ↻=5秒だけ印を出す
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
@@ -28937,6 +29023,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));  // v4.0.442: Pseudoを時間で押さえる(テスト用紙/暗記シート)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973

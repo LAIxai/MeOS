@@ -903,7 +903,7 @@ console.log('㊹ 3モードボタン= 通常 / Raw(膜単位) / Pseudo-WYSIWYG(v
   // (5) ボタンは3面。面は「今どこに居るか」を出す
   ok(/var VM_ORDER=\['normal','raw','pseudo'\];/.test(src),
      '★★進む向きは「生データが多い→少ない」の1本道(3回押せば必ず元へ戻る)', true);
-  ok(/rawToggle\.textContent=VM_FACE\[viewMode\];/.test(src),
+  ok(/rawToggle\.textContent=VM_FACE\[viewMode\]/.test(src),
      '★★面は今のモードを出す(モードボタンは状態を名乗る物)', true);
   ok(/VM_FACE=\{normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'\}/.test(src), '★俊克の3つの印そのまま', true);
   ok(/vscode\.postMessage\(\{type:'viewMode',step:\(ev&&ev\.altKey\)\?-1:1\}\);/.test(src),
@@ -918,6 +918,31 @@ console.log('㊹ 3モードボタン= 通常 / Raw(膜単位) / Pseudo-WYSIWYG(v
   ok(/rawAltW=fmtAltWatch\(rawToggle,/.test(src), '★Optの見張りは1つのまま(名乗るだけ)', true);
   ok(/\.fmt-btn\.raw-toggle\.read-on\{background:#1e4f8a/.test(src), '★Pseudoは青', true);
   ok(/\.fmt-btn\.raw-toggle\.on\{background:#7a4f00/.test(src), '★Rawは従来の茶(色が今の状態を言う)', true);
+}
+
+console.log('㊺ Pseudoのタイマー= テスト用紙/暗記シート(v4.0.442 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/if \(meosPseudoLeft\(\) > 0 && meosReadMode && next !== 'pseudo'\) \{/.test(src),
+     '★★閉めるのは出口だけ(入る道と見え方には触れない)', true);
+  ok(/_meosPseudoTimeout = setTimeout\(\(\) => meosPseudoTimeUp\(\), m \* 60000 \+ 250\);/.test(src),
+     '★終わりは1つのタイマーthat告げる', true);
+  ok(!/meosSetViewMode\('normal'\)[^\n]*meosPseudoTimeUp|function meosPseudoTimeUp\(\) \{[\s\S]{0,200}meosSetViewMode/.test(src),
+     '★★終わってもモードは勝手に変えない(人が最後に指定した物を勝たせる)', true);
+  ok(/meosClearPseudoTimer\(\); meosPostViewMode\(\);/.test(src) && /'End it'/.test(src),
+     '★止める道は在るthat、うっかりでは外れない(⏱→選ぶ→はい/いいえ)', true);
+  ok(/type: 'viewMode', mode: meosViewMode\(\), until: meosPseudoUntil/.test(src),
+     '★★nodeは終わりの時刻を1回渡すだけ(1秒ごとの往復を作らない)', true);
+  ok(/if\(held&&!vmTick\)vmTick=setInterval\(/.test(src) && /if\(!held&&vmTick\)\{clearInterval\(vmTick\);vmTick=null;\}/.test(src),
+     '★数えるのはwebview側・要らなくなったら必ず止める', true);
+  ok(/rawToggle\.textContent=VM_FACE\[viewMode\]\+\(held\?\(' '\+vmMmSs\(left\)\):''\);/.test(src),
+     '★★残り時間は面に出る(何分残っているか見るのに別の物を開かない)', true);
+  ok(/rawToggle\.classList\.toggle\('held',held\);/.test(src) && /\.fmt-btn\.raw-toggle\.held\{border-color:#7a1f1f/.test(src),
+     '★錠が掛かっている間は縁が赤い(押す前に、出口が無いと言う)', true);
+  ok(/id="raw-timer"/.test(src) && /\.raw-cell\{margin-left:auto/.test(src),
+     '★★⏱は🐱の↻と同じ作り(右肩のバッジ)・右端固定は枡が持つ', true);
+  ok(/message\.type === 'pseudoTimer'/.test(src) && /registerCommand\('lai-membrane\.pseudoTimer'/.test(src),
+     '★Me Dockからもコマンドからも同じ1つの口', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.442 (2026-08-27)
+- **A timer for Pseudo-WYSIWYG — the file becomes a test paper.** Hold the view for 10 / 25 / 50 / 90 minutes
+  (or your own number) and there is no way out until the time is up. The answers are already in the file, hidden
+  in 👻, so the moment it ends you mark your own work — and the same file can be sat again tomorrow, or used as a
+  memory sheet. A ghost is an invisible sheet of scrap paper that never leaves the spot it was written on: unlike
+  a separate notes pane, you cannot lose track of where an answer lives.
+- **The time closes the exit, not the view.** When it ends, nothing switches on your behalf — the way out simply
+  comes back, and checking your answers starts with your own click.
+- **There is a way to stop it early, but not by accident**: ⏱ → pick → confirm. A lock its own owner cannot
+  release is a promise the software cannot keep anyway.
+- The remaining time is counted in the panel and shown on the button face (`Pseudo👁 49:12`), so nothing has to be
+  opened to see it, and there is no per-second traffic.
+
 ### v4.0.441 (2026-08-27)
 - **One button, three faces.** The two separate toggles turn out to have been a single three-way switch all along:
   👁🥩 Normal, Raw🥩, Pseudo👁. Normal is not "neither" — it is one of the three, so it gets a mark of its own.
