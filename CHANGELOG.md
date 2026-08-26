@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.437 (2026-08-27)
+- **The `□ ~~` tip opens upward again** — below, it covered the panel it belongs to.
+- **It is no longer see-through.** The tip was never transparent: an unchecked box is dimmed with `opacity`, and a
+  pseudo-element cannot escape its parent's opacity. Only the label is dimmed now, so the tip is drawn at full
+  strength while the box looks exactly as it did.
+
 ### v4.0.436 (2026-08-27)
 - **Tips inside the ▾ panel appear at once.** The `□ ~~` was not in the family whose tips are drawn in CSS, so it
   fell back to the shared tooltip that has to be placed by arithmetic and takes a moment to arrive. It sits in the

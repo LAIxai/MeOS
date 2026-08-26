@@ -19341,10 +19341,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .nav-center-btn,.me-flip-btn,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark,.warn-btn,.fmt-bi{position:relative}
 .fmt-bi[data-tip]::after,.warn-btn[data-tip]::after,.nav-center-btn[data-tip]::after,.me-flip-btn[data-tip]::after,.eof-badge[data-tip]::after,.line-btn[data-tip]::after,.time-machine-trigger[data-tip]::after,.time-machine-clear[data-tip]::after,.tm-world-row[data-tip]::after,.bird-ev-label[data-tip]::after,.nss-head[data-tip]::after,.nss-mark[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;letter-spacing:normal;text-transform:none;line-height:1.4;width:max-content;max-width:200px;white-space:normal;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .bird-ev-label[data-tip]::after{left:auto;right:0;transform:none}
-/* v4.0.436(俊克「▼ボタンでパネルが出たとき、□ ~~ にtipがなかなか出てこない。なぜ?」)=
-   CSSのtipの家に入っていなかったので共有のJS製tipに落ちていた(出るまで間が空く)。家に入れる。
-   ★パネルの上端の項目なので、tipは**下へ**出す(上はパネルの外=画面の端に近い)。 */
-.fmt-bi[data-tip]::after{bottom:auto;top:calc(100% + 6px)}
+/* v4.0.436(俊克「□ ~~ にtipがなかなか出てこない」)= CSSのtipの家に入っていなかったので共有のJS製tipに
+   落ちていた(出るまで間が空く)。家に入れた。
+   ★v4.0.437(俊克「tipが被っている。**上の方が良いよ**」)= 下に出すとパネルの中身を覆う。家の既定(上)へ戻す。 */
 .nss-head[data-tip]::after,.nss-mark[data-tip]::after{left:auto;right:calc(100% + 8px);bottom:auto;top:50%;transform:translateY(-50%)}
 /* v3.1.35(俊克 v3.1.34直し残し): .head-nav容器内のボタン(#箱/💬箱の↑↓=長いtipで右端見切れ・(4/4)のBack/Forward=TOPに被る)は右寄せで左へ伸ばす=見切れ/被り解消。 */
 .head-nav .nav-center-btn[data-tip]::after{left:auto;right:0;transform:none}
@@ -20807,7 +20806,10 @@ html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-si
 /* v4.0.26(俊克 どこでもH-TOC): □Linkの時だけ下線種を選ぶ(0=単線/1=二重/2=波線/3=二重波線)。生データは番号so手打ち不要・UIは実物の下線でプレビュー。 */if(spec.link){const _ulc=fmtHexFg(spec.fg);
 const _uls=[[0,'Solid'],[1,'Double'],[2,'Wavy'],[3,'Double wavy']];html+='<div style="display:flex;justify-content:center;gap:6px;padding:0 0 7px;font-size:12px">'+_uls.map(u=>'<span class="fmt-ul" data-ul="'+u[0]+'" title="'+u[1]+' underline"'+' style="cursor:pointer;display:inline-block;text-align:center;padding:1px 5px 3px;border-radius:5px;'+((Number(spec.ul)||0)===u[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'"><span style="display:inline-block;width:20px;padding-bottom:6px;'+fmtUlCssStr(u[0],_ulc)+'">'+u[0]+'</span></span>').join('')+'</div>';
 }}/* v4.0.432(俊克): 取消線の▾に □ ~~ = 従来方式に戻す設定。既定はオフ＝👻。 */if(fmtPopKind==='strike'){const _tt=escText(spec.tilde?'Strikethrough | Crossed out, and still visible. Uncheck to comment out with \ud83d\udc7b instead \u2014 hidden, not deleted.':'Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again; outside MeOS it is a strikethrough. Check this to go back to a plain strikethrough.');
-const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" data-tip="'+_tt+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px;'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
+/* ★★v4.0.437(俊克「半透明で読み難いよ」): ★★**tipが半透明だったのではなく、□がオフの時の opacity:.55 を
+   ::after が受け継いでいた**(CSSのopacityは親に掛けると子から戻せない)。→ **薄くするのは中身だけ**にして、
+   tipを載せる外側は素のままにする。見た目の薄さは変わらない。 */
+const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" data-tip="'+_tt+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px">'+'<span style="'+(on?'':'opacity:.55')+'"><span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span></span>';
 /* v4.0.433(俊克「設定パネルに説明は要らないよ。左が切れているしね。出すなら、tipで」)= 説明は**読みたい時に読む物**so
    パネルに常に置かない(常に見える説明は本文になる)。□ ~~ 自身のtipへ。 */
 html+='<div style="display:flex;justify-content:center;padding:2px 0 7px;font-size:12px">'+_tb('tilde','~~',!!spec.tilde)+'</div>';

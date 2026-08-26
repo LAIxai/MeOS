@@ -712,7 +712,9 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/data-tip="'\+_tt\+'"/.test(src), '★★説明は □ ~~ 自身のtipに(常に見える説明は本文になる)', true);
   // ★v4.0.436: ▾の中の項目もCSSのtipの家へ(共有のJS製に落ちると出るまで間が空く)
   ok(/\.fmt-bi\[data-tip\]::after,\.warn-btn\[data-tip\]::after/.test(src), '★★▾の項目もCSSのtipの家に居る', true);
-  ok(/\.fmt-bi\[data-tip\]::after\{bottom:auto;top:calc\(100% \+ 6px\)\}/.test(src), '★パネルの上端なのでtipは下へ', true);
+  ok(!/\.fmt-bi\[data-tip\]::after\{bottom:auto/.test(src), '★tipは上へ(下だとパネルを覆う・v4.0.437)', true);
+  ok(/style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px">'\+'<span style="'\+\(on\?'':'opacity:\.55'\)/.test(src),
+     '★★薄くするのは中身だけ(外側の opacity を ::after が受け継いで半透明になっていた)', true);
   ok(/,\.fmt-bi\{position:relative\}/.test(src), '★::afterの基準は項目自身', true);
   ok(!/text-align:center;padding:0 6px 7px;font-size:11px;opacity:\.75/.test(src), '★パネルの常設の説明は撤去した', true);
   ok(/btn\.classList\.add\('ghost-face'\)/.test(src) && /\.fmt-btn\.ghost-face\{font-size:17px/.test(src),
