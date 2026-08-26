@@ -796,6 +796,18 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   ok(/id="nav-me-plus"[^<]*>↓<\/button><\/span><button class="warn-btn" id="warn-btn"/.test(src),
      '★★⚠️はWarpの隣に居る(どこへ行くかの道具なので、動く所に置く)', true);
   ok(!/id="me-title-word">Me<\/span><button class="warn-btn"/.test(src), '★Edit Meの側には置かない', true);
+  // ★v4.0.428: 件数は上付き・ガターにも印・枠は横長
+  ok(/id="warn-n"/.test(src) && /\.warn-btn \.warn-n\{font-size:10px;font-weight:900/.test(src),
+     '★★件数は🐱と同じ流儀(上付きの数字)', true);
+  ok(/if\(_wn\)_wn\.textContent=\(n>1\?String\(n\):''\)/.test(src), '★1個の時は数字を出さない(2個以上だけ)', true);
+  ok(/function meosWarnGutterLines\(document\)/.test(src) && /out\.add\(w\.aReal \? w\.a : w\.b\)/.test(src),
+     '★★ガターの印は「実在する端」に出す(直す場所に合図)', true);
+  ok(/if \(_warnLines && _warnLines\.has\(line\)\) continue;/.test(src),
+     '★★その行は膜線が場所を譲る(グリフマージンは1行1アイコン)', true);
+  ok(/editor\.setDecorations\(meosWarnGutterDecoration, _wl\);/.test(src), '★膜線と同じ1回の走査で置く', true);
+  ok(/'warn\.svg'/.test(src), '★栞・🐱と同じ gutterIconPath 方式', true);
+  ok(/\.warn-btn\{margin-left:8px;padding:1px 10px;border[^}]*border-radius:9px/.test(src),
+     '★枠は横長(隣の駒と同じ丸み)', true);
   ok(/warnAt=\(warnAt\+1\)%\(warnEnds\.length\*2\);/.test(src), '★★押す毎に両端を交互に行く', true);
   ok(/vscode\.postMessage\(\{type:'warnGoto',line:\(\(warnAt%2\)===0\?w\.a:w\.b\)\}\);/.test(src), '★偶数=片方・奇数=もう片方', true);
   ok(/message\.type === 'warnGoto'/.test(src) && /executeCommand\('laiMembrane\.jumpToLine'/.test(src),

@@ -5382,6 +5382,7 @@ function computeGutterLaneDecorations(document, editor) {
   // (the bookmark "pierces" the lane) instead of both icons overlapping (俊克 pm08:49).
   let bmLines = null;
   try { const bm = getBookmarks(document); if (bm && bm.marks && bm.marks.length) bmLines = new Set(bm.marks); } catch (_) {}
+  const _warnLines = meosWarnGutterLines(document);   // v4.0.428
   // v0.9.940: 現在行マーカー(LineボタンON)の行も膜線をスキップ→左ガターの矢印が膜縦線に上書きされない。
   //   refresh(=applyGutterLane)は元々カーソル移動毎に走り、構造はversionキャッシュ済→追加コストは行ループのみ。
   let curLine = -1;
@@ -5403,6 +5404,7 @@ function computeGutterLaneDecorations(document, editor) {
   for (const _sp of _spans) {
   for (let line = _sp[0]; line <= _sp[1]; line++) {
     if (bmLines && bmLines.has(line)) continue;
+    if (_warnLines && _warnLines.has(line)) continue;   // v4.0.428: ⚠️の行は膜線が譲る(1行1アイコン)
     if (line === curLine) continue; // v0.9.940: 現在行は膜線スキップ(矢印マーカーが貫く)
     const stack = [];
     const seen = new Set();
@@ -5437,6 +5439,13 @@ function computeGutterLaneDecorations(document, editor) {
 function applyGutterLaneDecorations(editor) {
   if (!editor) return;
   const byKey = computeGutterLaneDecorations(editor.document, editor);
+  // v4.0.428: ⚠️のガター印。膜線と同じ1回の走査の中で置く(別の道を作らない)。
+  try {
+    if (!meosWarnGutterDecoration) meosCreateWarnGutterDecoration();
+    const _wl = [];
+    for (const ln of meosWarnGutterLines(editor.document)) _wl.push(new vscode.Range(ln, 0, ln, 0));
+    editor.setDecorations(meosWarnGutterDecoration, _wl);
+  } catch (_) { }
   // Pool hygiene: a colourful document can mint many signatures over a session; past 400
   // dispose everything and rebuild from the current frame (a one-frame repaint at worst).
   if (_gutterLaneTypePool.size > 400) clearGutterLaneDecorations(null, true);
@@ -14484,6 +14493,28 @@ function meosCreateMewGutterDecoration() {
   if (!opts.gutterIconPath) opts.before = { contentText: '🐱', margin: '0 3px 0 0' };
   meosMewGutterDecoration = vscode.window.createTextEditorDecorationType(opts);
 }
+// ★★v4.0.428(俊克 8/26 pm11:59「**ガターに⚠️マークを出せば、なおよい**」):
+//   ★栞・🐱と同じ流儀(gutterIconPath)。グリフマージンは**1行1アイコンの共有資源**so、
+//     その行だけ膜線が場所を譲る(v0.9.819の栞と同じ作法)。[[feedback_copy_the_house_style_first]]
+//   ★出す行は**壊れた膜の実在する端**＝ 直す場所に、直す合図を出す。
+let meosWarnGutterDecoration = null;
+function meosCreateWarnGutterDecoration() {
+  const opts = {
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    overviewRulerColor: 'rgba(224, 58, 58, 0.9)',
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+    gutterIconSize: 'contain'
+  };
+  try { if (extensionContext && extensionContext.extensionUri) opts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'warn.svg'); } catch (_) { }
+  if (!opts.gutterIconPath) opts.before = { contentText: '⚠️', margin: '0 3px 0 0' };
+  meosWarnGutterDecoration = vscode.window.createTextEditorDecorationType(opts);
+}
+// 壊れた膜の「実在する端」の行(ガターの印と、膜線に譲らせる行の**両方が同じ1つから引く**)
+function meosWarnGutterLines(document) {
+  const out = new Set();
+  try { for (const w of meosWarningEnds(document)) out.add(w.aReal ? w.a : w.b); } catch (_) { }
+  return out;
+}
 // ===== v4.0.69(俊克 8/8 am11:22 バグ1「完全に古い形式は、🐱判定できていない」) =====================
 // ★v4.0.66で「新形なのに鳴いていないコメント」だけを対象にしていた(旧形は対象外と宣言した)が、
 //   俊克の日記では旧形こそが本体(##{ }## 3,500行 / =={ }== 1,475 / ~~{ }~~ 623 / **{ }** 247)。
@@ -19226,7 +19257,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* v4.0.426(俊克): 壊れた膜の警告ボタン。押せる時だけ目に入る= 押せない時は素の灰色で黙っている。
    v4.0.427(俊克「⚠️ボタンは、Navigate Me!のWarpの右に移動しよう」)= 行き先を決める道具の並びへ移した
    ＝ これは**どこへ行くかの道具**so、名前を直す所(Edit Me)ではなく、動く所に置く。 */
-.warn-btn{margin-left:6px;padding:0 5px;border:1px solid transparent;border-radius:4px;background:transparent;font-size:12px;line-height:16px;cursor:pointer;opacity:.28;filter:grayscale(1);}
+/* v4.0.428(俊克「四角枠が妙に縦長なので横長にした方が、落ち着く」)= 隣の丸い駒と同じ背丈・同じ丸みで、横に広く。 */
+.warn-btn{margin-left:8px;padding:1px 10px;border:1px solid transparent;border-radius:9px;background:transparent;font-size:11px;line-height:15px;cursor:pointer;opacity:.28;filter:grayscale(1);white-space:nowrap;}
+.warn-btn .warn-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super}
 .warn-btn:not([disabled]){opacity:1;filter:none;background:rgba(255,64,64,.16);border-color:rgba(255,64,64,.55);}
 .warn-btn:not([disabled]):hover{background:rgba(255,64,64,.30);}
 .warn-btn[disabled]{cursor:default;}
@@ -19926,7 +19959,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
     <div class="nav-scroll" id="nav-scroll" data-tip="Bird-EV ToDo (bird's-eye view) — left: every heading · right: every unresolved review note. Clear the right side = project done. Drag a handle to jump."><div class="nav-ticks nav-ticks-head" id="nav-ticks-head"></div><div class="nav-ticks nav-ticks-mark" id="nav-ticks-mark"></div><span class="nss nss-head" id="nav-scroll-head"></span><span class="nss nss-mark" id="nav-scroll-mark"></span></div>
-    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️</button></span><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
+    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
     <div class="nav-center-row line-row"><span class="head-nav line-hist"><button class="cancel nav-center-btn head-nav-btn" id="hist-back" data-tip="Back">←</button><button class="cancel time-machine-trigger head-nav-center" id="time-machine-trigger" data-tip="Time Machine Me">(0/0)</button><button class="cancel nav-center-btn head-nav-btn" id="hist-forward" data-tip="Forward">→</button></span><button class="cancel line-btn ${meDockCurrentLineMarkerActive?'on':''}" id="line-btn" data-tip="Toggle line marker">Line</button><input class="line-input" id="line-input" value="${esc(initial.line || '')}" inputmode="numeric"/><span class="head-nav mark-nav" data-tip="Jump between highlights / strikethroughs in the current membrane — editor ⇄ author review notes."><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-prev" data-tip="Previous highlight / strikethrough (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-mark-label">💬</span><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-next" data-tip="Next highlight / strikethrough (below ↓)">↓</button></div>
     <div class="time-machine-panel" id="time-machine-panel"><div class="time-machine-title">Time Machine Me</div><div class="time-machine-main"><div class="tm-world-box"><div class="tm-world-row real active" id="tm-world-real" data-tip="Real world line"><div class="tm-world-label">Real</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-real"></div><input class="time-machine-slider" id="time-machine-slider-real" type="range" min="1" max="1" value="1"/></div></div><div class="tm-world-row reinc" id="tm-world-reinc" data-tip="REinc world line"><div class="tm-world-label">REinc</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-reinc"></div><input class="time-machine-slider" id="time-machine-slider-reinc" type="range" min="1" max="1" value="1"/></div></div></div><div class="time-machine-side"><input class="time-machine-index" id="time-machine-index" type="number" min="1" value="1"/><span class="line-meter" id="time-machine-total">/ 0</span><button class="cancel time-machine-clear" id="time-machine-clear" data-tip="Clear current Line history">Clear</button></div></div></div>
     <!-- v0.9.690: Navigate Me の Bi-direction Jump バー(nav-anchor🟢/nav-bidi🔴/nav-clear)を撤去 — Current Me に統合(俊克 am11:25)。参照JSは全て if(...) ガード済みなので要素削除で安全。 -->
@@ -21025,8 +21058,9 @@ const sp=fmtSpec[k];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.b
    ★片側しか無い時も**両端を見せる**= もう一方は Line 1 か EOF＝ 赤い線がどこまで伸びているかが体で分かる。 */
 var warnBtn=document.getElementById('warn-btn');var warnEnds=[];var warnAt=-1;
 window.__renderWarn=function(list){warnEnds=Array.isArray(list)?list:[];if(!warnBtn)return;
-var n=warnEnds.length;if(!n){warnBtn.disabled=true;warnAt=-1;warnBtn.setAttribute('data-tip','No broken membrane in this file.');return;}
-warnBtn.disabled=false;
+var n=warnEnds.length;var _wn=document.getElementById('warn-n');
+if(!n){warnBtn.disabled=true;warnAt=-1;if(_wn)_wn.textContent='';warnBtn.setAttribute('data-tip','No broken membrane in this file.');return;}
+warnBtn.disabled=false;if(_wn)_wn.textContent=(n>1?String(n):'');   /* v4.0.428(俊克): 2個以上なら件数を上付きで(🐱と同じ流儀) */
 var w=warnEnds[0];var t=(n>1?(n+' broken membranes | '):'Broken membrane | ')
 +(w.kind==='unclosed'?('no closing membrane for '+w.id):('no opening membrane for '+w.id))
 +String.fromCharCode(10)+'Click to walk its two ends: Ln '+(w.a+1)+(w.aReal?'':' (start of file)')+' and Ln '+(w.b+1)+(w.bReal?'':' (end of file)')

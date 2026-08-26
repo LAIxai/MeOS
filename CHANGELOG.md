@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.428 (2026-08-27)
+- **⚠️ carries its count** as a raised number, the way 🐱 does — shown from two upward, since one needs no counting.
+- **A ⚠️ appears in the gutter** on the end that still exists, so the place to fix it is marked, not just tallied.
+  The membrane lane yields that one line, the way it already does for a bookmark: the glyph margin holds one icon.
+- The button is a wider, rounder pill, matching the pieces beside it.
+
 ### v4.0.427 (2026-08-26)
 - **⚠️ moves next to Warp** in Navigate Me!. It is a way of getting somewhere, so it belongs among the things that
   move you, not beside the field that renames what you are standing in.
