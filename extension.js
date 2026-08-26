@@ -21553,7 +21553,16 @@ if(ae&&ae.classList&&ae.classList.contains('toc-value')){hideTocTip();return;}}
 /* v2.0.37(俊克): 基準点入力枠(#dw-base-input)が開いている間はホバーtipを抑止=入力枠のtitle「Base point…」が赤ヒント(#dw-hint)を上書きする件を根治。 */
 {var _dwbi=document.getElementById('dw-base-input');if(_dwbi&&_dwbi.classList.contains('on')){hideTocTip();return;}}/* v4.0.365(俊克「tipが重複している。これは、初めて見たね」): CSS ::after で出す物は、JS側は出さない
    = v3.1.32 で .big-action に決めた作法と同じ。2つ出るのは、口が2つ在るから。 */
-{var _udt=(ev&&ev.target&&ev.target.closest)?ev.target.closest('.title-file-ud'):null;if(_udt){hideTocTip();return;}}
+/* ★★v4.0.430(俊克 8/27 am00:18「tipが2個重複?。**前にもそんなことがあったね**」):
+   ★★**前にもあった=一覧に足す直し方が間違っている**。v3.1.32(.big-action)・v4.0.365(.title-file-ud)・今回(.warn-btn)と
+     3度とも「CSSで出す物を、JS側の除外リストに書き足す」で済ませたので、**新しいボタンを作るたびに再発する**。
+   ★★so**名前で覚えるのをやめて、その場で見る**＝ そのボタンがCSSの ::after で**同じ字**を既に出しているなら、
+     JS側は出さない。CSSは content:attr(data-tip) で出しているので、出ている字とdata-tipが一致するかを直接確かめられる。
+     → 一覧は要らない・書き足す所も無い・次に足すボタンでも自動で効く。 */
+{var _ct=(ev&&ev.target&&ev.target.closest)?ev.target.closest('[data-tip]'):null;
+if(_ct){try{var _cc=window.getComputedStyle(_ct,'::after').content||'';var _tt=String(_ct.getAttribute('data-tip')||'');
+var _n=function(x){return String(x).replace(/[^0-9A-Za-z]/g,'').slice(0,14);};
+if(_tt&&_cc&&_cc!=='none'&&_cc!=='normal'&&_n(_tt).length>3&&_n(_cc)===_n(_tt)){hideTocTip();return;}}catch(_){}}}
 const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;
 /* v0.9.712: native title を data-tip に遅延移行(ネイティブtipを抑止し共通の左伸ばしtipに一本化)。JSが.titleを再設定しても次のhoverで反映。 */if(el&&el.hasAttribute('title')){const tt=el.getAttribute('title');
 if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();

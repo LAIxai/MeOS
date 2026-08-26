@@ -818,6 +818,12 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   const warn = fs.readFileSync(path.join(__dirname, 'warn.svg'), 'utf8');
   ok(/fill="#f0be14"/.test(warn), '★warn.svg も黄(絵文字の⚠️に合わせる)', warn.slice(0, 90));
   ok(!/#e03a3a/.test(warn), '★赤は残っていない', true);
+  // ★v4.0.430: tipが2つ出るのは口が2つ在るから。一覧でなく規則1本で塞ぐ
+  ok(/getComputedStyle\(_ct,'::after'\)\.content/.test(src),
+     '★★CSSが同じ字を出しているならJSは出さない(その場で見る)', true);
+  ok(/_n\(_cc\)===_n\(_tt\)/.test(src), '★出ている字とdata-tipが一致するかで決める', true);
+  ok(!/closest\('\.title-file-ud'\):null;if\(_udt\)/.test(src), '★★名前の一覧は撤去した(足し忘れが再発しない)', true);
+  ok(/closest\('\[data-tip\]'\)/.test(src), '★対象はdata-tipを持つ物すべて(次に足すボタンでも効く)', true);
   ok(/warnAt=\(warnAt\+1\)%\(warnEnds\.length\*2\);/.test(src), '★★押す毎に両端を交互に行く', true);
   ok(/vscode\.postMessage\(\{type:'warnGoto',line:\(\(warnAt%2\)===0\?w\.a:w\.b\)\}\);/.test(src), '★偶数=片方・奇数=もう片方', true);
   ok(/message\.type === 'warnGoto'/.test(src) && /executeCommand\('laiMembrane\.jumpToLine'/.test(src),

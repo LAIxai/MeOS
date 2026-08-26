@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.430 (2026-08-27)
+- **Two tips at once, for the third time — fixed as a rule instead of a list.** Twice before, a button whose tip is
+  drawn in CSS was added to a list of names the JavaScript tooltip skips; every new button reopened the hole. The
+  JavaScript now looks at the button in front of it: if CSS is already showing the same words, it stays quiet. No
+  list to keep, and buttons added later are covered without anyone remembering to.
+
 ### v4.0.429 (2026-08-27)
 - **The ⚠️ tip appears where the button is.** It had fallen back to the shared tooltip that is positioned by
   arithmetic, and landed a panel away. It now uses the same CSS the buttons beside it use, drawn as a child of the
