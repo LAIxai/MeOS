@@ -692,8 +692,15 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
   ok(/const _ghost = !!\(opt && opt\.ghost\) && kind === 'strike';/.test(src) && /_ghost \? '~~👻'/.test(src),
      '★Opt押しの取消ボタンは `~~👻` を書く', true);
-  ok(/meosWriteMarkAndSpec\(editor, sel, _mark, mk, _ghost \? _dir : \(_dir \+ ' ' \+ spec\)\)/.test(src),
-     '★👻 に色は付けない(見えない物に色は要らない)', true);
+  // ★v4.0.434(俊克): 👻にも色を付ける= 👻の2文字を消すだけで普通の取消線に戻る
+  ok(/await meosWriteMarkAndSpec\(editor, sel, _mark, mk, _dir \+ ' ' \+ spec\);/.test(src),
+     '★★👻にも色を付ける(戻る道を1手にする)', true);
+  const g2 = T.meosParseSpecLine('<!-- Mew!FC ~~👻 (赤/紺)//[]tip= -->');
+  ok(T.meosFcFmtIsGhost(g2, '~~', 1) === true && /^\(赤\/紺\)/.test(T.meosFcFmtInner(g2, '~~', 1) || ''),
+     '★色つきでも 👻 は読める', T.meosFcFmtInner(g2, '~~', 1));
+  const g3 = T.meosParseSpecLine('<!-- Mew!FC ~~ (赤/紺)//[]tip= -->');
+  ok(T.meosFcFmtIsGhost(g3, '~~', 1) === false && T.meosFcFmtInner(g3, '~~', 1) === T.meosFcFmtInner(g2, '~~', 1),
+     '★★👻を消すと、色はそのまま普通の取消線になる', true);
   ok(/if \(_fcGhost\) \{ strikeMarkerRanges\.push\(\{ range: new vscode\.Range\(line, openStart, line, closeEnd\) \}\); continue; \}/.test(src),
      '★★描く側は印ごと丸ごと消す(本文だけでなく `~~` も)', true);
   ok(/bg:fmtSpec\.strike\.bg,ghost:fmtStGhostOn\(\)\}\)/.test(src),

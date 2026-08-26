@@ -16307,7 +16307,11 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       const _dir = _ghost ? '~~👻' : (kind === 'highlight') ? '***not' : '~~';
       // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
       const _mark = mk + body + mk;
-      await meosWriteMarkAndSpec(editor, sel, _mark, mk, _ghost ? _dir : (_dir + ' ' + spec));
+      // ★★v4.0.434(俊克 8/27 am01:42「**お化けにも、色指定を付けておく**。そうすれば、FCコメントで👻を消せば、
+      //   通常の取消線に変身できる」): ★★**戻る道を1手にする**。色を落とすと、普通の取消線にしたい時に
+      //   色を選び直すことになる。命令はコメントに書いてあるので、**👻の2文字を消すだけで戻れる**のが筋。
+      //   ★v4.0.416で「見えない物に色は要らない」と落としたのは、**見えない間のことしか考えていなかった**。
+      await meosWriteMarkAndSpec(editor, sel, _mark, mk, _dir + ' ' + spec);
       const bs = new vscode.Position(sel.start.line, sel.start.character + mk.length);
       bodySel = new vscode.Selection(bs, new vscode.Position(sel.start.line, sel.start.character + mk.length + body.length));
       editor.selection = bodySel;

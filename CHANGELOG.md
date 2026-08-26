@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.434 (2026-08-27)
+- **A ghost keeps its colour.** Deleting the 👻 from the folding comment now leaves a finished, coloured
+  strikethrough — one edit, nothing to choose again. v4.0.416 dropped the colour on the grounds that something
+  invisible has no use for one, which only considered the time it spends invisible.
+
 ### v4.0.433 (2026-08-27)
 - **The explanation moved out of the ▾ panel and onto the `□ ~~` itself.** Wording that is always on screen stops
   being help and becomes part of the furniture — and it was running off the left edge besides. It is there when
