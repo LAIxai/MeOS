@@ -4,6 +4,23 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.400 (2026-08-26)
+- **Backspace, Enter and Delete are only intercepted where MeOS has something to do.** Those three keys are exactly
+  the three MeOS binds, and their conditions named no language and no place, so every press anywhere went renderer →
+  extension host → MeOS's check → back to the renderer for `deleteLeft`: **two round trips before the character moves**,
+  which is why a single press hurt more than a repeat (a repeat gets coalesced). A `meos.fcKeys` context key now gates
+  all three; on an ordinary prose line with no FC line, membrane line, table or list within two lines, the key never
+  reaches the extension at all. The predicate is deliberately generous — two lines of radius, and true whenever it
+  cannot tell — because `setContext` is asynchronous and a value that flips on a single cursor move would drop the
+  first keystroke.
+- Measured on the real 190,380-line diary with the extension activated: the synchronous path is 0.0–0.8 ms per key
+  (key intercept, document change, cursor), and `refresh` is 21–28 ms — the earlier "refresh is innocent" reading came
+  from a harness that never called `activate`, so most decorations were never built.
+- The decoration signature cache stays off. Re-enabling it for everything but the membrane lane was tried and
+  withdrawn the same hour: `check_fold.js` caught that decorations cleared outside the cache — Raw mode,
+  `clearMembraneVisualDecorations`, a re-render — never come back, which is the very reason v0.9.636 switched it off.
+  Re-enabling requires routing every clearing site through the cache first.
+
 ### v4.0.399 (2026-08-26)
 - **One missing null-check stopped the whole extension from starting.** Headings stayed as `##`, the spells did
   nothing, and Backspace and Enter reported `command 'laiMembrane.backspaceJoinSpecLines' not found`. All three were

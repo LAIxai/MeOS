@@ -101,5 +101,20 @@ console.log('③ 装飾が落ちても、拡張は生き残る(refresh を activ
   ok(/catch \(e\) \{/.test(body) && /_refreshInner\(editor\)/.test(body), '★refresh が例外を捕まえる', body.slice(0, 120));
   ok(/REFRESH-ERROR/.test(body), '捕まえた例外は名前を残す(黙って消さない)', true);
 }
+console.log('④ bs/改行/fs は、出番がある場所でだけ横取りする(v4.0.400 俊克)');
+{
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+  const want = ['laiMembrane.enterAtCloseRightEdge', 'laiMembrane.backspaceJoinSpecLines', 'laiMembrane.deleteJoinSpecLines'];
+  for (const c of want) {
+    const k = pkg.contributes.keybindings.find(x => x.command === c);
+    ok(!!k && /meos\.fcKeys/.test(k.when || ''), '★' + k.key + ' は meos.fcKeys が立っている時だけ', k && k.when);
+  }
+  // 文脈キーの判定そのもの(実物を呼ぶ)
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/function meosFcKeysNeeded/.test(src), '判定は1つの関数に在る', true);
+  ok(/setContext', 'meos\.fcKeys'/.test(src), 'カーソルが動いた時に送る', true);
+  ok(/catch \(_\) \{ return true; \}/.test(src.slice(src.indexOf('function meosFcKeysNeeded'), src.indexOf('let _meosInTableCtx'))), '★分からない時は横取りする(機能を落とさない)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

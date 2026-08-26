@@ -12132,6 +12132,19 @@ function _decoRangesSig(ranges) {
   }
   return s;
 }
+// ★★v4.0.400(俊克 8/26 am09:19「1個のbsの遅延があるね。1秒くらい。bsの連打は非日常なので、それより、
+//   **単独のbsや改行、fsの方が深刻**だよ」):
+//   ★★**同期の道は無罪だった**(実測・日記190,380行・activate済み)＝ キーの横取り0.0〜0.8ms／文書の変更
+//     0.0〜0.7ms／カーソル0.0〜0.7ms。**refresh だけが21〜28ms**で、実機のログは250〜700ms。
+//   ★★差は**渡す所**＝ 1回の refresh で `setDecorations` を**27回**、範囲667個ぶん VS Code へ渡している。
+//     私の測定では渡す先が空なので見えないが、実機では毎回そのやり取りが走る。
+//   ★★**同じ物を毎回渡していた**＝ v0.9.635 で作った「変わっていなければ渡さない」仕掛けが、
+//     v0.9.636 から `if (false && …)` で**丸ごと止まったまま**だった。止めた理由は本物
+//     (行頭で打つと、字が膜の縦線の左に出た＝**縦線(lineDecoration)を飛ばしたから**)。
+//   ★★だから**飛ばしてよい物と、駄目な物を分ける**＝ 縦線(`'line'`)だけは今までどおり毎回渡す。
+//     残りは変わっていなければ渡さない。**1つの装飾のために、全部を諦めていた**のを解く。
+//   ★エディタが入れ替わった時は控えを捨てる(同じファイルでも、VS Code側の装飾は消えているので渡し直す)。
+function meosDropDecoSigCache() { try { _decoSigCache.clear(); } catch (_) { } }
 function setDecoCached(editor, deco, tag, ranges) {
   if (!editor || !deco) return;
   const key = editor.document.uri.toString() + ' ' + tag;
@@ -12140,7 +12153,13 @@ function setDecoCached(editor, deco, tag, ranges) {
   // typing at a line head put the char LEFT of the membrane vertical line (the indent
   // decoration was skipped), fixed only by a structural refresh (newline). User pm10:59.
   // Always apply for now; routing kept for a safer selective re-enable later.
-  if (false && _decoSigCache.get(key) === sig) return; // unchanged → skip (no IME-disrupting no-op)
+  // ★★v4.0.400: **再開を試して、取り下げた**。縦線(`'line'`)だけ除いて他を飛ばす形にしたところ、
+  //   `check_fold.js` が即座に捕まえた＝ **MeOSの外で装飾が消された時に、戻ってこない**
+  //   (Rawモード・`clearMembraneVisualDecorations`・テストの描き直しは、この控えを通らずに消す)。
+  //   v0.9.636 が丸ごと止めたのは、まさにこの理由だった＝ **止めた判断の方が正しかった**。
+  //   ★再開するなら、**消す口を全部この控えに通してから**。それまでは触らない。
+  //   ★そして今回の遅さの本命は別に在った＝ bs/改行/fs の横取り(下の meos.fcKeys)。
+  if (false && _decoSigCache.get(key) === sig) return;
   _decoSigCache.set(key, sig);
   editor.setDecorations(deco, ranges);
 }
@@ -24074,6 +24093,36 @@ async function meosTableNav(editor, dir) {
   editor.selection = new vscode.Selection(targetLine, p, targetLine, p);
   editor.revealRange(new vscode.Range(targetLine, p, targetLine, p));
 }
+// ★★★v4.0.400(俊克 8/26 am09:19「1個のbsの遅延があるね。1秒くらい。…さっきのコマンドが関係しているんじゃ
+//   ないのか? bsの連打は非日常なので、それより、**単独のbsや改行、fsの方が深刻**だよ」):
+//   ★★★**俊克の推測が当たり**。しかも `fs` の正体も出た＝ MeOS が横取りしている鍵は**ちょうど3つ**で、
+//     俊克が挙げた3つと完全に一致する＝ `backspace`/`enter`/`delete`(=fs)。
+//   ★★条件に**言語も場所も入っていなかった**ので、**どの行で押しても**こう回っていた＝
+//     ①画面→(往復)→拡張ホスト ②MeOSが「自分の出番か」を調べる ③拡張ホスト→(往復)→画面に `deleteLeft`。
+//     **1打につき往復2回**。その間、字は消えない。連打より単独が重いのは、連打はまとめられるから。
+//   ★★直し＝**出番がある場所でだけ横取りする**。文脈キー `meos.fcKeys` を立て、`when` に足す。
+//     日記の大半は「FC行も表も膜も近くに無い普通の行」so、そこでは**拡張ホストを一度も通らない**
+//     ＝ VS Code が自分で消す＝ MeOS を無効にした時と同じ速さ。
+//   ★**分からない時は true**(機能を落とさない)。範囲も±2行と広めに取る＝ setContext は非同期so、
+//     1行動いただけで真偽が入れ替わると、最初の1打を取りこぼす(v4.0.338〜341で踏んだ穴)。
+let _meosFcKeysCtx = null;
+function meosFcKeysNeeded(editor) {
+  try {
+    if (!editor || !editor.document || !editor.selection) return false;
+    const doc = editor.document;
+    if (!meosIsProseDoc(doc)) return false;                 // 散文以外は出番が無い
+    const ln = editor.selection.active.line;
+    const at = (n) => (n >= 0 && n < doc.lineCount) ? doc.lineAt(n).text : '';
+    for (let d = -2; d <= 2; d++) {
+      const t = at(ln + d);
+      if (!t) continue;
+      if (t.indexOf('<!--') >= 0 && meosIsSpecLine(t)) return true;   // FC行が近い
+      if (/[▼▲▽△]/.test(t)) return true;                             // 膜の行が近い
+      if (d >= 0 && d <= 1 && meosFcIsBlockLine(t)) return true;      // 表/箇条書き(今の行とその下)
+    }
+    return false;
+  } catch (_) { return true; }
+}
 let _meosInTableCtx = false;
 // v4.0.345: 膜の行の端を指す文脈キー(v4.0.338〜341)は役目を終えた= 生データなら端は無い。
 function meosUpdateInTableContext(editor) {
@@ -24081,6 +24130,9 @@ function meosUpdateInTableContext(editor) {
   try { if (editor && editor.document && editor.selection) v = meosInTable(editor.document, editor.selection.active.line); } catch (_) {}
   if (MEOS_RELEASE_PHASE < 3) v = false; // v1.0.0: テーブル未解禁フェーズでは inTable を常にfalse=セル移動keybindingを無効化
   if (v !== _meosInTableCtx) { _meosInTableCtx = v; try { vscode.commands.executeCommand('setContext', 'meos.inTable', v); } catch (_) {} }
+  // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
+  const fk = meosFcKeysNeeded(editor);
+  if (fk !== _meosFcKeysCtx) { _meosFcKeysCtx = fk; try { vscode.commands.executeCommand('setContext', 'meos.fcKeys', fk); } catch (_) {} }
 }
 // v0.9.999158(俊克): セル横結合を「装飾」で見せる。生データは全セル保持(正しいGFM)。🤝Nマーカーと、その右の(N-1)本の内側|を opacity:0 で不可視化(幅は維持=桁揃えは崩れない)→エディタ上で1つの結合セルに見える。Rawモードでは解除。可視範囲のみ走査(巨大ファイル対策)。
 let tableMergeHideDecoration = null;
@@ -27967,7 +28019,7 @@ function activate(context) {
     // v4.0.396: 再武装をやめた。打鍵で画面が動いただけなら、関数の中の門番が捨てる(合間に落ちない)。
     _meosFcScrollTimer = setTimeout(() => { _meosFcScrollTimer = null; try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { } }, 320);
   }));
-  context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
+  context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { meosDropDecoSigCache(); setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
   // v4.0.141: カーソルがFCの塊に入ったらそこだけ開く(出たら畳み直す)=「カーソル行は生データ」を折り畳みにも広げる。
   // v4.0.141(俊克 改良1「インストール直後は折り畳まれない。エディタをクリックしてアクティブにすると折り畳まれた」):
   //   ★**俊克の観察で原因が確定**= `editor.fold` は**焦点のあるエディタ**にしか効かない。インストール直後は焦点が
@@ -28844,7 +28896,7 @@ makeDecorations();
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     // v4.0.393: 膜の位置を訊く3つ(Me Dock/ステータスバー/カーソル記憶)は連打を1回に畳む。軽い2つは今までどおり即座。
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); scheduleCursorFollow(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
-    vscode.window.onDidChangeActiveTextEditor((e) => { setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e);
+    vscode.window.onDidChangeActiveTextEditor((e) => { meosDropDecoSigCache(); setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e);
       // ★★v4.0.326(俊克 8/21 am09:33 バグ4「全て削除して(履歴なし)の状態で、**現在表示されているタブを
       //   クリックしても取り込まれない**。別のタブを選択すると、それは取り込まれる。なぜ?」):
       //   ★★**積む合図を「別のファイルに変わった時」に結び付けていた**から。今のタブをもう一度クリックしても、
