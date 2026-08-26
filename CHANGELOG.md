@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.420 (2026-08-26)
+- **A bullet keeps its space.** Pressing Opt-# on an empty line left `-` with nothing after it, so the first thing
+  typed stuck to the dash. In Markdown the mark is `- `, space included — the space was never trailing whitespace to
+  be tidied away. Fixed where it was being dropped rather than added back afterwards, and in both places that make
+  the same decision.
+- **The face shows the colour it will apply**: `- A`, with A wearing the preset's text and background colour. If the
+  colour turns out not to be wanted, deleting the folding comment is the whole undo.
+
 ### v4.0.419 (2026-08-26)
 - **Hold Option and the heading button becomes a bullet.** `#` offers `-`, `##` offers `1.`, `###` is held in
   reserve and does not transform — an empty promise is worse than none. Heading and bullet were already the two axes

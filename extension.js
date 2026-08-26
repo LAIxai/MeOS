@@ -16418,7 +16418,14 @@ function meosRowSplitInline(text) {
     prev = b;
   }
   body += t.slice(prev);
+  // ★★v4.0.420(俊克 8/26 pm06:31 改良1「空白を入れ忘れて、文字を入力すると、`-`が文字の頭に付いてしまう。
+  //   このケースでは、自動補正して、空白を入れるのが親切だね」):
+  //   ★★**`-` だけでは箇条書きではない**＝ Markdownで印になるのは `- `(空白まで)。so、行末の空白を落とす時、
+  //     残りが箇条書きの印だけなら、その空白は**余りではなく印の一部**なので落とさない。
+  //   ★直す場所は「後で足す」ではなく**落としている所**＝ 落とさなければ、補正も要らない。
+  //   ★同じ判断が2か所にある(meosRowSplitInline と meosMoveSpecsOutOfLine)ので、両方に入れる。
   body = body.replace(/[ \t]+$/, '');
+  if (/^[ \t]*(?:[-*+]|\d+[.)])$/.test(body)) body += ' ';
   if (!body.trim()) return null;
   return { body, items: payloads.map((x, i) => ({ payload: x, kind: meosSpecPayloadKind(x), at: at[i] })) };
 }
@@ -20822,7 +20829,10 @@ b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else 
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
 if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
-if(kind==='heading'&&hdAltOn()&&hdAltBlt()){btn.textContent=hdAltBlt();btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
+if(kind==='heading'&&hdAltOn()&&hdAltBlt()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
+var _hc=fmtHeadingColors[fmtHeadingLevel]||{};var _hbg=_hc.bg?fmtHexBg(_hc.bg):'';
+btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';
+btn.innerHTML=hdAltBlt()+' <span style="color:'+fmtHexFg(_hc.fg)+';background-color:'+_hbg+';padding:0 2px;border-radius:2px">A</span>';return;}const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
 btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));}/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();
 fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);}btn.classList.remove('fmt-remove');return;}if(window.__fmtActionable[kind]){let r=window.__fmtRing[kind]||0;
 r=((r%4)+4)%4;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;const w=(r===0)?baseW:(((baseW-1+r)%3)+1);const isRemove=(r===0);
@@ -25220,7 +25230,14 @@ function meosMoveSpecsOutOfLine(text) {
     prev = b;
   }
   body += t.slice(prev);
+  // ★★v4.0.420(俊克 8/26 pm06:31 改良1「空白を入れ忘れて、文字を入力すると、`-`が文字の頭に付いてしまう。
+  //   このケースでは、自動補正して、空白を入れるのが親切だね」):
+  //   ★★**`-` だけでは箇条書きではない**＝ Markdownで印になるのは `- `(空白まで)。so、行末の空白を落とす時、
+  //     残りが箇条書きの印だけなら、その空白は**余りではなく印の一部**なので落とさない。
+  //   ★直す場所は「後で足す」ではなく**落としている所**＝ 落とさなければ、補正も要らない。
+  //   ★同じ判断が2か所にある(meosRowSplitInline と meosMoveSpecsOutOfLine)ので、両方に入れる。
   body = body.replace(/[ \t]+$/, '');
+  if (/^[ \t]*(?:[-*+]|\d+[.)])$/.test(body)) body += ' ';
   if (!body.trim()) return null;                              // 本文が消えるなら何もしない(コメントだけの行)
   return { body, spec: _spec }; // v4.0.157: 1命令=1コメント(箱の数=命令の数)
 }

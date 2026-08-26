@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -707,12 +707,22 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/hdAltW=fmtAltWatch\(fmtHeading,/.test(src), '★見出しボタンもOptionの見張りに名乗る', true);
   ok(/function hdAltBlt\(\)\{return \(fmtHeadingLevel===1\)\?'-':\(fmtHeadingLevel===2\)\?'1\.':null;\}/.test(src),
      '★★H1は - / H2は 1. / H3は予約(nullで変身しない)', true);
-  ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltBlt\(\)\)\{btn\.textContent=hdAltBlt\(\);/.test(src),
+  ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltBlt\(\)\)\{/.test(src),
      '★★押す前の面が、押した結果を見せる', true);
   ok(/ev\.altKey&&hdAltBlt\(\)\)\{[\s\S]{0,260}head:false,bullet:true,blt:hdAltBlt\(\)\}\);return;\}/.test(src),
      '★Optは見出しを名乗らず箇条書きだけ書く', true);
   ok(!/ev\.altKey&&hdAltBlt\(\)\)\{[\s\S]{0,260}_hs\.bullet=/.test(src),
      '★Optはプリセットを変えない(1回きりの裏の顔)', true);
+  // ★v4.0.420: `-` だけでは箇条書きではない= 印の一部の空白は落とさない
+  const mv = (x) => { const r = T.meosMoveSpecsOutOfLine(x); return r && r.body; };
+  ok(mv('- <!-- Mew! - (白/purple)//[]tip= -->') === '- ', '★★印だけが残る時は空白を落とさない(- )', mv('- <!-- Mew! - (白/purple)//[]tip= -->'));
+  ok(mv('1. <!-- Mew! -1. (白/green)//[]tip= -->') === '1. ', '★数字付きも同じ(1. )', mv('1. <!-- Mew! -1. (白/green)//[]tip= -->'));
+  ok(mv('- りんご <!-- Mew! - (白/purple)//[]tip= -->') === '- りんご', '★本文があれば今までどおり落とす', mv('- りんご <!-- Mew! - (白/purple)//[]tip= -->'));
+  ok(mv('ふつうの文 <!-- Mew! ~~ (赤/) -->') === 'ふつうの文', '★箇条書き以外は1文字も変わらない', mv('ふつうの文 <!-- Mew! ~~ (赤/) -->'));
+  ok((src.match(/if \(\/\^\[ \\t\]\*\(\?:\[-\*\+\]\|\\d\+\[\.\)\]\)\$\/\.test\(body\)\) body \+= ' ';/g) || []).length === 2,
+     '★同じ判断が在る2か所(切り出しと引っ越し)の両方に入れた', (src.match(/body \+= ' ';/g) || []).length);
+  ok(/btn\.innerHTML=hdAltBlt\(\)\+' <span style="color:'\+fmtHexFg\(_hc\.fg\)/.test(src),
+     '★面は - A(Aにプリセットの色)= 押した結果がそのまま見える', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
