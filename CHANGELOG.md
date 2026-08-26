@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.418 (2026-08-26)
+- Shorter tip on the strikethrough button.
+
 ### v4.0.417 (2026-08-26)
 - **Hold Option and the strikethrough button turns into 👻.** Option showing a button's other face is already the
   rule — the highlight button takes on a link, the superscript button becomes subscript. v4.0.416 taught the button
