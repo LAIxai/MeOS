@@ -733,6 +733,9 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
      '★★戻ったら色を塗り直すまでが1組(2つのボタンとも)', true);
   ok((src.match(/setAttribute\('data-tip','Heading \(H'/g) || []).length === 0,
      '★tipを作る所は1つ(fmtHeadTip)', true);
+  // ★v4.0.424: tipの1行目は、その面が今なんであるかを言う
+  ok(/var head1=\(_h\.head===false\)\?\('Bullet list \('/.test(src) && /_h\.bullet\?\(' with a bullet \('/.test(src),
+     '★★tipの1行目も面と同じ3通り(見出し/見出し+箇条書き/箇条書きだけ)', true);
   // ★v4.0.422: Optは「今の逆」。逆の答えが無い時は変身しない
   ok(/if\(h\.head===false\)return h\.bullet\?'h2':null;[\s\S]{0,120}if\(h\.bullet\)return 'off';[\s\S]{0,120}return hdAltBlt\(\)\?'on':null;/.test(src),
      '★★Optは今の逆: 箇条書きが無ければ付ける・在れば外す・箇条書きだけなら見出し(H2)を足す', true);

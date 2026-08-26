@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.424 (2026-08-26)
+- **The tip's first line says what the button currently is.** It was hard-wired to announce a heading, so a
+  bullet-only preset was introduced as "Heading (H3)" while showing a dash. It now reads from the same three cases
+  the face does: heading, heading with a bullet, or bullet alone.
+
 ### v4.0.423 (2026-08-26)
 - **A bullet-only preset gains a heading under Option** — H2, the level most used. What it lacks is a heading, so
   that is its other answer.

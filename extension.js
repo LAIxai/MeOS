@@ -20775,7 +20775,12 @@ return hdAltBlt()?'on':null;}                  /* H3は予約 */
      塗り直す者が居なかった(色は renderFmtBtnColors が持っている)。→ 戻ったら塗り直しまでを1組にする。 */
 function fmtHeadTip(){var hh='#'.repeat(fmtHeadingLevel);var b=hdAltBlt();
 var m=hdAltMode();
-return 'Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'\u2325 Opt \u2192 heading only (drops the bullet)':m==='h2'?'\u2325 Opt \u2192 add a heading (H2); change it in the folding comment for H1 or H3':m==='on'?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing here (H3 is kept in reserve)');}
+/* ★v4.0.424(俊克 8/26 pm08:13 バグ1「通常###指定のプリセットで、箇条書きのみを設定すると、tipの表示が
+   合ってない」): ★**tipの1行目は、その面が今なんであるかを言う**。見出しだと決め打ちしていたので、
+   箇条書きだけの設定でも「Heading (H3)」と名乗っていた。→ 面と同じ3通りから引く。 */
+var _h=fmtHeadingColors[fmtHeadingLevel]||{};var _hb=(_h.blt||'-');
+var head1=(_h.head===false)?('Bullet list ('+_hb+' ) | '+_hb+' text'):('Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+(_h.bullet?(' with a bullet ('+_hb+' )'):''));
+return head1+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'\u2325 Opt \u2192 heading only (drops the bullet)':m==='h2'?'\u2325 Opt \u2192 add a heading (H2); change it in the folding comment for H1 or H3':m==='on'?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing here (H3 is kept in reserve)');}
 function fmtHeadAltTip(){var b=hdAltBlt();var h=fmtHeadingColors[fmtHeadingLevel]||{};
 if(hdAltMode()==='h2')return 'Add a heading (H2) | The preset is a bullet on its own, so \u2325 Opt gives it a heading. H2 because it is the one most used.'+String.fromCharCode(10)+'Want H1 or H3 instead? Change the H2 in the folding comment underneath.';
 if(hdAltMode()==='off')return 'Heading only | The preset carries a bullet; \u2325 Opt writes it without one. Let go of \u2325 Opt to go back.'+String.fromCharCode(10)+'\u2325 Opt is always the other answer: no bullet yet, add one \u2014 already a bullet, drop it.';
