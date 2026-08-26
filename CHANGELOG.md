@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.426 (2026-08-26)
+- **A ⚠️ button next to Edit Me.** Live only when a membrane in this file is broken; each press walks to the next of
+  its two ends. The hover added in v4.0.425 could never have worked — decoration hovers answer over the text, and
+  the red bar people point at lives in the gutter, so the answer was parked where the question is not asked.
+- **Both ends are always shown, even when only one is real.** A membrane with no closing half runs to the end of the
+  file, one with no opening half runs back to the start; being taken there says how far the red bar reaches better
+  than the word "missing" does.
+- The warning cache is now written by the renderer that actually draws the bar, which is why v4.0.425 found nothing.
+
 ### v4.0.425 (2026-08-26)
 - **The red warning bar now answers when you hover it.** A membrane missing its other half draws a thick red line
   down the gutter, but finding the break in a 150,000-line file was another matter. Hovering any line the red bar

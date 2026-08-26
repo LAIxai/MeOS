@@ -5021,6 +5021,29 @@ function warningHoverMessage(warnings) {
 }
 
 let meosWarnCache = { key: '', list: [] };   // v4.0.425: 直近に描いた警告(ホバーが引く)
+// ★★v4.0.426(俊克 8/26 pm11:31「太い赤い縦線がガターの左端に描かれている。でも、貴方が言うような表示は無い。
+//   そこで、**Edit Meの右に警告ボタン⚠️を付けよう**。それが押せる状態であれば、どこかで膜が壊れている。
+//   それを押す毎に、**両端を交互に移動**する。片側だけなら、端はLine0から伸びているか、EOFから伸びているはず。
+//   **なので、それを見せるのも意味があるので、片側だけ残っていても、両端を見せる**」):
+//   ★★**行けない所にも意味がある**＝ 「無い」と字で言うより、**Line0/EOFへ連れて行く方が、赤い線の伸び方を
+//     体で分からせる**。so端は必ず2つ返す(片方が実在の膜行・もう片方が文書の端)。
+//   ★ホバー(v4.0.425)は**ガターの上には出せなかった**= VS Codeの装飾のホバーは本文の上でしか働かない。
+//     俊克が指すのはガターの赤い線なので、届かない場所に置いていた。→ **押せる所に置き直す**。
+function meosWarningEnds(document) {
+  const out = [];
+  try {
+    if (!document) return out;
+    const key = document.uri.toString() + '@' + document.version;
+    const list = (meosWarnCache.key === key) ? meosWarnCache.list : null;
+    if (!list) return out;
+    const last = Math.max(0, document.lineCount - 1);
+    for (const w of list) {
+      if (w.warningKind === 'unclosed') out.push({ id: w.id, kind: 'unclosed', a: w.start, b: last, aReal: true, bReal: false });
+      else if (w.warningKind === 'orphan') { const l = (w.endLine !== undefined ? w.endLine : w.start); out.push({ id: w.id, kind: 'orphan', a: 0, b: l, aReal: false, bReal: true }); }
+    }
+  } catch (_) { }
+  return out;
+}
 // v4.0.425: この行に掛かっている警告を返す。赤い線が出ている行なら、必ず1つは返る(線と同じ物差し)。
 function meosWarningsAtLine(document, line) {
   try {
@@ -5352,6 +5375,9 @@ function computeGutterLaneDecorations(document, editor) {
       };
     });
   const warnings = selectDisplayedWarnings(structure);
+  // ★v4.0.426: **描いた物と、ボタンが言う物を同じ1つから引く**。v4.0.425では控えを片方(旧レンダラ)にしか
+  //   置いていなかったので、今使っているガターの道では**空のまま**だった＝ ホバーが何も出なかった真因。
+  try { meosWarnCache = { key: document.uri.toString() + '@' + document.version, list: warnings }; } catch (_) { }
   // v0.9.819: bookmark lines keep their 🔖/🚩 gutter icon — the lane skips that one line
   // (the bookmark "pierces" the lane) instead of both icons overlapping (俊克 pm08:49).
   let bmLines = null;
@@ -18826,7 +18852,7 @@ function updateMeDockMode() {
       if (metexSpanAtCursor(editor)) fmtCtx.metex = 'deco'; else if (!_empty) fmtCtx.metex = 'sel';
     }
   } catch (_) {}
-  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
+  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, warn: (editor ? meosWarningEnds(editor.document) : []), tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
   try { meosPostMewState(Math.max(0, meosMewLastCount), true); } catch (_) {} // v4.0.68: Me Dockが開き直した時に🐱の現状を必ず同期(件数の計算はしない=キャッシュを送るだけ)
   try { postMeDockImageMembrane(editor); } catch (_) {} // v3.2.0: 画像膜にカーソルが来たらMe Dockに画像ビューアをオーバーレイ(離れたら閉じる)
   meDockPanel.webview.postMessage({ type: 'encState', onMembrane: state.mode === 'rename', encrypted: isCurrentMembraneEncrypted(editor) }); // v0.9.9994: Create/Set(rename=膜の上)に同期。膜の上=平文→🔐橙/暗号→🔓白/それ以外=灰
@@ -19197,6 +19223,11 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .zoom-scope-indicator .zoom-scope-name{color:var(--vscode-editor-foreground);font-weight:900}
 .inline-title .me-word{font-weight:900}
 .inline-title .me-word.pending{color:#b8bcc2}
+/* v4.0.426(俊克): 壊れた膜の警告ボタン。押せる時だけ目に入る= 押せない時は素の灰色で黙っている。 */
+.warn-btn{margin-left:6px;padding:0 5px;border:1px solid transparent;border-radius:4px;background:transparent;font-size:12px;line-height:16px;cursor:pointer;opacity:.28;filter:grayscale(1);}
+.warn-btn:not([disabled]){opacity:1;filter:none;background:rgba(255,64,64,.16);border-color:rgba(255,64,64,.55);}
+.warn-btn:not([disabled]):hover{background:rgba(255,64,64,.30);}
+.warn-btn[disabled]{cursor:default;}
 .new-md-btn{flex:none;font-size:11px;font-weight:800;padding:2px 9px;border:1px solid #116329;border-radius:6px;background:#1a7f37;color:#fff;cursor:pointer;line-height:1.3;white-space:nowrap}
 .new-md-btn:hover{background:#2da44e}
 .new-md-btn:active{background:#116329}
@@ -19883,7 +19914,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 
 
 <div class="inline-panel" id="new-rename-panel">
-  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button></div>
+  <div class="inline-title-row"><div class="inline-title" id="inline-title"><select class="edit-mode-select" id="edit-mode-select" title="Edit / Zoom / Reference"><option value="edit" selected>Edit</option><option value="zoom">Zoom</option><option value="reference">Reference</option></select><span class="me-word" id="me-title-word">Me</span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️</button></div><div class="zoom-scope-indicator" id="zoom-scope-indicator" title="Current Zoom scope"><span class="zoom-scope-label">Zoom : ${esc(zoomMeLastLoadedLabel || '1〜EOF')}</span></div><button class="new-md-btn" id="new-md-btn" data-tip="New .md file | One click opens a fresh Markdown file to start writing — no menus. Save it (Cmd+S) to name and place it.">📝 New .md</button></div>
   <div class="me-name-wrap" id="me-name-wrap"><div class="name-tint" id="me-name-tint" aria-hidden="true"></div><input class="name-input" id="me-name-input" value="${esc(initial.value)}"/></div>
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
@@ -20988,6 +21019,20 @@ if(fmtToolsEl)fmtToolsEl.addEventListener('mouseleave',function(){window.__fmtTi
 /* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){const ap=(btn,k)=>{if(!btn)return;
 const sp=fmtSpec[k];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.bg):'';btn.style.backgroundColor=bg;btn.style.borderColor=bg||'';
 };ap(fmtHighlight,'highlight');ap(fmtStrike,'strike');ap(fmtHeading,'heading');}renderFmtBtnColors();
+/* ★★v4.0.426(俊克): 壊れた膜の警告ボタン。押せる状態＝どこかで膜が壊れている。押す毎に両端を交互に行く。
+   ★片側しか無い時も**両端を見せる**= もう一方は Line 1 か EOF＝ 赤い線がどこまで伸びているかが体で分かる。 */
+var warnBtn=document.getElementById('warn-btn');var warnEnds=[];var warnAt=-1;
+window.__renderWarn=function(list){warnEnds=Array.isArray(list)?list:[];if(!warnBtn)return;
+var n=warnEnds.length;if(!n){warnBtn.disabled=true;warnAt=-1;warnBtn.setAttribute('data-tip','No broken membrane in this file.');return;}
+warnBtn.disabled=false;
+var w=warnEnds[0];var t=(n>1?(n+' broken membranes | '):'Broken membrane | ')
++(w.kind==='unclosed'?('no closing membrane for '+w.id):('no opening membrane for '+w.id))
++String.fromCharCode(10)+'Click to walk its two ends: Ln '+(w.a+1)+(w.aReal?'':' (start of file)')+' and Ln '+(w.b+1)+(w.bReal?'':' (end of file)')
++String.fromCharCode(10)+'The end that is not real shows how far the red bar reaches.';
+warnBtn.setAttribute('data-tip',t);};
+if(warnBtn)warnBtn.addEventListener('click',function(){if(warnBtn.disabled||!warnEnds.length)return;
+warnAt=(warnAt+1)%(warnEnds.length*2);var w=warnEnds[Math.floor(warnAt/2)];
+vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
 const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.addEventListener('click',()=>vscode.postMessage({type:'toggleRaw'}));
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();
@@ -21752,7 +21797,8 @@ window.__tableAutoCalc=m.tableAutoCalc;/* v3.1.68(俊克): Auto-calcチェック
 applyMode(m.mode,m.value,!!m.force,m.line,m.markerOn,m.history,m.color,m.flipMinusColor,m.flipPlusColor,m.navDepth,m.anchor);
 if(typeof m.standardsOn==='boolean'&&m.standardsOn!==standardsOn){standardsOn=m.standardsOn;renderStandardsToggle();}if(m.headNav)renderHeadNav(m.headNav);
 if(m.markNav)renderMarkNav(m.markNav);/* v0.9.999106(俊克): カーソルが参照符上→編集モード自動オープン/外れたら復帰 */if(m.refEdit){if(typeof window.__refEnterEdit==='function')window.__refEnterEdit(m.refEdit);
-}else if(window.__refEditMode){if(typeof window.__refExitEdit==='function')window.__refExitEdit();}/* v0.9.999132(俊克): 3兄弟すべて↻リングの文脈(fmtCtx)で表示 */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){for(const _k of ['highlight','strike','heading']){const _c=m.fmtCtx[_k];
+}else if(window.__refEditMode){if(typeof window.__refExitEdit==='function')window.__refExitEdit();}
+if(typeof window.__renderWarn==='function')window.__renderWarn(m.warn);   /* v4.0.426 *//* v0.9.999132(俊克): 3兄弟すべて↻リングの文脈(fmtCtx)で表示 */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){for(const _k of ['highlight','strike','heading']){const _c=m.fmtCtx[_k];
 const _nowDeco=(_c==='deco');if(_nowDeco){if(!window.__fmtActionable[_k]){window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
 }window.__fmtActionable[_k]=true;}else{window.__fmtActionable[_k]=false;window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
 }if(typeof window.__renderFmtRing==='function')window.__renderFmtRing(_k);}}/* v4.0.0(俊克): 太字/斜体・上付/下付もfmtCtxで🚫化(3兄弟と同じ流儀) */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){window.__fmtActionable.bold=(m.fmtCtx.bold==='deco');
@@ -22395,6 +22441,11 @@ function toggleMeDock(editorOverride) {
     }
     // v0.9.707: Me Dock の書式ボタン(== ハイライト / ~~ 取消線 / ## 見出し)。選択を記法で包んで挿入。
     if (message && message.type === 'insertMeLink') { try { await insertMeLinkTemplate(getMeDockTargetEditor() || vscode.window.activeTextEditor, message.fg, message.bg, message.ul, message.bold, message.italic); } catch (_) {} return; } // v4.0.26: 統一ボタン□Link=リンクを挿入し行先の中で待つ
+    // v4.0.426: 警告ボタン= その行へ飛ぶだけ(どの端かはwebviewが数えている= 数える所を2つ作らない)
+    if (message && message.type === 'warnGoto') {
+      try { await vscode.commands.executeCommand('laiMembrane.jumpToLine', Number(message.line) || 0); } catch (_) { }
+      return;
+    }
     if (message && message.type === 'insertFormat') {
       await insertFormatTemplate(message.kind, getMeDockTargetEditor() || vscode.window.activeTextEditor, message.fg, message.bg, message.level, { head: message.head !== false, bullet: !!message.bullet, blt: message.blt || '-', ghost: !!message.ghost }); // v4.0.47: 見出し=□見出し□箇条書きの合成 / v4.0.416: Opt押し=👻
       return;

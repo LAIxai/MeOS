@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine, warningHoverMessage, selectDisplayedWarnings };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine, warningHoverMessage, selectDisplayedWarnings, meosWarningEnds };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -777,6 +777,26 @@ console.log('㊷ 赤い警告線にホーバー= 行番号とワープの口(v4.
      '★ホーバーのたびに全文を数え直さない(版で古くなる控え)', true);
   ok(/const pick = await vscode\.window\.showWarningMessage\(\n    'MeOS: ' \+ bad\.length/.test(src),
      '★深さの知らせは自分で消えない(警告にした)', true);
+}
+
+console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.426 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  // ★描いた物とボタンが言う物を同じ1つから引く(v4.0.425の穴)
+  ok((src.match(/meosWarnCache = \{ key: document\.uri\.toString\(\) \+ '@' \+ document\.version/g) || []).length === 2,
+     '★★描く道が2つあるので、控えも両方に置く(v4.0.425は片方だけで空だった)', (src.match(/meosWarnCache = \{/g) || []).length);
+  ok(/function meosWarningEnds\(document\)/.test(src), '★両端を出す口が在る', true);
+  ok(/out\.push\(\{ id: w\.id, kind: 'unclosed', a: w\.start, b: last, aReal: true, bReal: false \}\)/.test(src),
+     '★★閉じ膜が無い= 端は「開始膜」と「EOF」(片側だけでも両端を見せる)', true);
+  ok(/kind: 'orphan', a: 0, b: l, aReal: false, bReal: true/.test(src),
+     '★★開始膜が無い= 端は「Line0」と「閉じ膜」', true);
+  ok(/warn: \(editor \? meosWarningEnds\(editor\.document\) : \[\]\)/.test(src), '★Me Dockへ状態を送る', true);
+  ok(/id="warn-btn" disabled/.test(src), '★既定は押せない(壊れていなければ黙っている)', true);
+  ok(/warnAt=\(warnAt\+1\)%\(warnEnds\.length\*2\);/.test(src), '★★押す毎に両端を交互に行く', true);
+  ok(/vscode\.postMessage\(\{type:'warnGoto',line:\(\(warnAt%2\)===0\?w\.a:w\.b\)\}\);/.test(src), '★偶数=片方・奇数=もう片方', true);
+  ok(/message\.type === 'warnGoto'/.test(src) && /executeCommand\('laiMembrane\.jumpToLine'/.test(src),
+     '★飛ぶのは既に在る口を使う(道を2つ作らない)', true);
+  ok(/window\.__renderWarn\(m\.warn\)/.test(src), '★状態が変わるたびに面を描き直す', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
