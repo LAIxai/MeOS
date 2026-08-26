@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.433 (2026-08-27)
+- **The explanation moved out of the ▾ panel and onto the `□ ~~` itself.** Wording that is always on screen stops
+  being help and becomes part of the furniture — and it was running off the left edge besides. It is there when
+  someone hovers the thing they are wondering about.
+- The 👻 on the button is about a third larger, the same way 🚫 is.
+
 ### v4.0.432 (2026-08-27)
 - **Strikethrough now hides by default.** The button is 👻; a `□ ~~` in its ▾ menu brings the classic behaviour
   back, and Option still gives whichever one you are not set to. Same shape as the highlight button's `□ 🔗`.

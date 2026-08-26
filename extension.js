@@ -19687,6 +19687,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-swatch.active{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}
 .fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}
 .fmt-btn.fmt-remove{font-size:1.3em;line-height:1;-webkit-text-fill-color:initial}
+.fmt-btn.ghost-face{font-size:17px;line-height:1}/* v4.0.433(俊克): 👻は1.3倍(13→17px)。🚫と同じ手 */
 .fmt-btn.fmt-remove::before{content:"🚫";position:relative;top:1px}
 #fmt-table{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px}
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
@@ -20797,9 +20798,11 @@ html+=_row('Super %','mtx-sup-input','mtx-sup-prev','2',(typeof mtxSupVal!=='und
 html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-size:12px">'+_bi('bold','Bold',spec.bold)+_bi('italic','Italic',spec.italic)+_bi('link','🔗',spec.link)+'</div>';
 /* v4.0.26(俊克 どこでもH-TOC): □Linkの時だけ下線種を選ぶ(0=単線/1=二重/2=波線/3=二重波線)。生データは番号so手打ち不要・UIは実物の下線でプレビュー。 */if(spec.link){const _ulc=fmtHexFg(spec.fg);
 const _uls=[[0,'Solid'],[1,'Double'],[2,'Wavy'],[3,'Double wavy']];html+='<div style="display:flex;justify-content:center;gap:6px;padding:0 0 7px;font-size:12px">'+_uls.map(u=>'<span class="fmt-ul" data-ul="'+u[0]+'" title="'+u[1]+' underline"'+' style="cursor:pointer;display:inline-block;text-align:center;padding:1px 5px 3px;border-radius:5px;'+((Number(spec.ul)||0)===u[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'"><span style="display:inline-block;width:20px;padding-bottom:6px;'+fmtUlCssStr(u[0],_ulc)+'">'+u[0]+'</span></span>').join('')+'</div>';
-}}/* v4.0.432(俊克): 取消線の▾に □ ~~ = 従来方式に戻す設定。既定はオフ＝👻。 */if(fmtPopKind==='strike'){const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px;'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
-html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-size:12px">'+_tb('tilde','~~',!!spec.tilde)+'</div>';
-html+='<div style="text-align:center;padding:0 6px 7px;font-size:11px;opacity:.75;line-height:1.45">'+(spec.tilde?'Strikethrough — crossed out, still visible.':'Comment out (\ud83d\udc7b) — hidden, not deleted. Caret on the line brings it back; outside MeOS it is a strikethrough.')+'</div>';
+}}/* v4.0.432(俊克): 取消線の▾に □ ~~ = 従来方式に戻す設定。既定はオフ＝👻。 */if(fmtPopKind==='strike'){const _tt=escText(spec.tilde?'Strikethrough | Crossed out, and still visible. Uncheck to comment out with \ud83d\udc7b instead \u2014 hidden, not deleted.':'Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again; outside MeOS it is a strikethrough. Check this to go back to a plain strikethrough.');
+const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" data-tip="'+_tt+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px;'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
+/* v4.0.433(俊克「設定パネルに説明は要らないよ。左が切れているしね。出すなら、tipで」)= 説明は**読みたい時に読む物**so
+   パネルに常に置かない(常に見える説明は本文になる)。□ ~~ 自身のtipへ。 */
+html+='<div style="display:flex;justify-content:center;padding:2px 0 7px;font-size:12px">'+_tb('tilde','~~',!!spec.tilde)+'</div>';
 }if(fmtPopCh){const ch=fmtPopCh,list=(ch==='fg')?((fmtPopKind==='metex')?[['なし','']].concat(FMT_FG):FMT_FG):FMT_BG,cur=spec[ch];
 html+='<div class="fmt-pop-head">'+fmtChLabel(fmtPopKind,ch)+'</div><div class="fmt-grid">'+list.map(([w,hex])=>{const active=(w==='なし')?!cur:(w===cur);
 return '<button class="fmt-swatch'+(active?' active':'')+'" data-color="'+w+'" title="'+(FMT_EN[w]||w)+', '+w+'"><span class="fmt-ball'+(hex?'':' none')+'" style="background:'+(hex||'transparent')+'"></span></button>';
@@ -20980,9 +20983,10 @@ b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else 
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
 /* v4.0.432: 取消線の面は**これから書く物**を見せる= 既定は👻。🚫(解除)の時は今までどおりリングに任せる。 */
-if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';
+if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';btn.classList.add('ghost-face');
 btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough. \u2325 Opt \u2192 plain strikethrough \u00b7 \u25be turns it off for good.');
 btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
+if(kind==='strike')btn.classList.remove('ghost-face');   /* v4.0.433: 👻でない時は素の大きさへ戻す */
 if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udc7b comment out');
 if(kind==='heading'&&hdAltOn()&&hdAltMode()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
 btn.classList.remove('fmt-remove');

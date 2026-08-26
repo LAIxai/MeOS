@@ -701,6 +701,12 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/function fmtStTildeOn\(\)\{var sp=fmtStSlots\[fmtStIdx\]\|\|\{\};return stAltOn\(\)\?!sp\.tilde:!!sp\.tilde;\}/.test(src),
      '★★既定は👻・□~~で従来方式・Optは今の逆(🔗と同じ形)', true);
   ok(/_tb\('tilde','~~',!!spec\.tilde\)/.test(src), '★▾に □ ~~ が在る(初めての人の入口)', true);
+  // ★v4.0.433: 説明はtipへ／👻は1.3倍
+  ok(/data-tip="'\+_tt\+'"/.test(src), '★★説明は □ ~~ 自身のtipに(常に見える説明は本文になる)', true);
+  ok(!/text-align:center;padding:0 6px 7px;font-size:11px;opacity:\.75/.test(src), '★パネルの常設の説明は撤去した', true);
+  ok(/btn\.classList\.add\('ghost-face'\)/.test(src) && /\.fmt-btn\.ghost-face\{font-size:17px/.test(src),
+     '★👻は1.3倍(13→17px・🚫と同じ手)', true);
+  ok(/if\(kind==='strike'\)btn\.classList\.remove\('ghost-face'\);/.test(src), '★👻でない時は素の大きさへ戻す', true);
   ok(/if \(it\.not \|\| it\.ghost\) return null;/.test(src), '★👻 は行末形式へ戻さない(notと同じ)', true);
   // ★v4.0.417: 押す前の面と押した結果は同じ物を指す(Option=裏の顔)
   ok(/stAltW=fmtAltWatch\(fmtStrike,/.test(src), '★取消線ボタンもOptionの見張りに名乗る', true);
