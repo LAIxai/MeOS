@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.410 (2026-08-26)
+- **The gap between two marks is plain on the raw line as well.** v4.0.409 wrote it back to plain only where MeOS
+  renders; the line under the caret shows raw data and is skipped whole, so `、そして` stayed blue exactly where it
+  was being looked at. MeOS already paints the orange pair on that line, so it is already a place where MeOS speaks
+  about colour — the clean-up belongs there too. Only the gaps are touched; the marks themselves, brackets included,
+  are left as written.
+- **The reset does not shout.** Carrying `!important` on the colour would have made it fight the orange pair, which
+  is the stronger signal — it says which two things belong together. A decoration already beats the theme's own
+  colouring without it, so the reset now uses the editor's foreground plainly and yields to anything MeOS said on
+  purpose.
+
 ### v4.0.409 (2026-08-26)
 - **The deeper yellow is the old one again.** What was liked all along was the classic `rgba(255,230,0,.65)` as it
   composites over a dark editor — (176,160,10). The replacement, (161,133,2), carried more red (R/G 1.22 against the

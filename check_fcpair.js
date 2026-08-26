@@ -628,9 +628,12 @@ console.log('㊴ 印と印の間の字を、素に戻す(v4.0.409 俊克 バグ2
   ok(/pushStyle\(ln, gs, ge, false, false, null, null, '', true\)/.test(src), '★間は太字/斜体/色を素に戻す(plain)', true);
   // plain は色も戻す。ただしMeOSが色を言っている時は言った色が勝つ。
   const i = src.indexOf('if (plain && !bold && !italic)');
-  const body = src.slice(i, i + 420);
-  ok(/color: var\(--vscode-editor-foreground\) !important/.test(body), '★素に戻す時は色も戻す(テーマの青を消す)', body.slice(0, 200));
-  ok(/fgKey \? '' :/.test(body), '★MeOSが色を言っている時は、その色が勝つ', true);
+  const body = src.slice(i, i + 900);
+  ok(/ThemeColor\('editor\.foreground'\)/.test(body), '★素に戻す時は色も戻す(テーマの青を消す)', body.slice(0, 260));
+  ok(/if \(!fgKey\)/.test(body), '★MeOSが色を言っている時は、その色が勝つ', true);
+  ok(!/color:[^;]*!important/.test(body), '★色には !important を付けない(橙=対の印を勝たせる)', body.slice(0, 260));
+  // ★生データの行でも間を素に戻す(v4.0.410)
+  ok(/if \(!cursorLines\.has\(ln\)\) continue;/.test(src), '★生データの行だけを回す別の道が在る', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

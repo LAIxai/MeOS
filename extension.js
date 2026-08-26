@@ -27718,9 +27718,12 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain) {
   if (italic) opt.fontStyle = 'italic';
   if (plain && !bold && !italic) { // v4.0.239: not= テーマが付けた太字/斜体まで戻す
     opt.fontStyle = 'normal'; opt.fontWeight = 'normal';
-    // ★v4.0.409: 色も戻す。**ただしMeOSが色を言っていない時だけ**(言っている時は opt.color が勝つべき)。
-    opt.textDecoration = 'none; font-style: normal !important; font-weight: normal !important;'
-      + (fgKey ? '' : ' color: var(--vscode-editor-foreground) !important;');
+    opt.textDecoration = 'none; font-style: normal !important; font-weight: normal !important;';
+    // ★★v4.0.410: 色も戻す。**ただし `!important` は付けない**＝ 装飾はテーマの色付けには黙って勝つが、
+    //   `!important` を付けると**橙(対の印)とも喧嘩する**。橙は「今この2つが対だ」という強い合図なので、
+    //   そちらを勝たせる。→ 素に戻すのはテーマに対してだけ。
+    //   ★MeOSが色を言っている時(fgKey)は、その色が下で上書きする。
+    if (!fgKey) { try { opt.color = new vscode.ThemeColor('editor.foreground'); } catch (_) { } }
   }
   if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) opt.color = HIGHLIGHT_FG_COLORS[fgKey];
   if (bgKey && HIGHLIGHT_COLORS[bgKey]) { opt.backgroundColor = HIGHLIGHT_COLORS[bgKey]; opt.borderRadius = '2px'; } // v4.0.70(俊克 改良3): ハイライトと同じ角丸に(真四角だと隣り合う別設定の境が分からない)
@@ -27849,6 +27852,24 @@ function meosApplyBoldDecorations(editor) {
         const reI1p = _prose ? meosPlainItUsRe() : null; // v4.0.215: 形は1か所(MEOS_PLAIN_IT_US_SRC)。
         while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.169/189: **これからの斜体は `*本文*`**(`_本文_` は read-both で上に残す)。単一 `*` は上の走査that一緒に拾う。
+      }
+    }
+    // ★★v4.0.410(俊克 8/26 pm03:49 バグ1「スクショ1枚目も2枚目でも、**『、そして』が白くなるべき**なんだよ。
+    //   最後の『と』は正しく白になっている」):
+    //   ★★**生データの行では、v4.0.409の後始末が一度も走っていなかった**＝ 上の走査は
+    //     `if (cursorLines.has(ln)) continue;` で**行ごと飛ばす**ので、間を素に戻す所まで届かない。
+    //     俊克の「1枚目でも」はカーソルの居る行(生表示)のこと。
+    //   ★**生データの行でも、MeOSは既に橙を塗っている**＝ そこは既にMeOSが色を言っている場なので、
+    //     間の後始末も同じ場でやるのが筋。触るのは**間だけ**(印の中＝記号を含む所には手を出さない)。
+    for (const vr of vrs) {
+      for (let ln = vr[0]; ln <= vr[1]; ln++) {
+        if (!cursorLines.has(ln)) continue;
+        const _t = doc.lineAt(ln).text;
+        if (_t.indexOf('*') < 0) continue;
+        let _s2 = _t; if (_s2.indexOf('`') >= 0) _s2 = meosMaskCodeSpans(_s2);
+        const _sp = [];
+        try { for (const mk of meosStarMarks(_s2, _t)) _sp.push([mk.start, mk.end]); } catch (_) { }
+        for (let i = 1; i < _sp.length; i++) { const gs = _sp[i - 1][1], ge = _sp[i][0]; if (ge > gs) pushStyle(ln, gs, ge, false, false, null, null, '', true); }
       }
     }
     editor.setDecorations(boldHideDeco, hideR);
