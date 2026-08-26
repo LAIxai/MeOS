@@ -734,8 +734,12 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok((src.match(/setAttribute\('data-tip','Heading \(H'/g) || []).length === 0,
      '★tipを作る所は1つ(fmtHeadTip)', true);
   // ★v4.0.422: Optは「今の逆」。逆の答えが無い時は変身しない
-  ok(/if\(h\.head===false\)return null;[\s\S]{0,90}if\(h\.bullet\)return 'off';[\s\S]{0,80}return hdAltBlt\(\)\?'on':null;/.test(src),
-     '★★箇条書きが無ければ付ける・在れば外す・箇条書きだけの設定は無視', true);
+  ok(/if\(h\.head===false\)return h\.bullet\?'h2':null;[\s\S]{0,120}if\(h\.bullet\)return 'off';[\s\S]{0,120}return hdAltBlt\(\)\?'on':null;/.test(src),
+     '★★Optは今の逆: 箇条書きが無ければ付ける・在れば外す・箇条書きだけなら見出し(H2)を足す', true);
+  ok(/if\(_m==='h2'\)\{vscode\.postMessage\(\{type:'insertFormat',kind:'heading',[^}]*level:2,head:true,bullet:true/.test(src),
+     '★★H2で書く(選べないなら一番使う物を出し、後からFCで直せる)', true);
+  ok(/else if\(hdAltMode\(\)==='h2'\)\{[\s\S]{0,160}\+' ##';\}/.test(src),
+     '★面は「- ##」= 足した姿がそのまま見える', true);
   ok(/head:!_on,bullet:_on,blt:_on\?hdAltBlt\(\):\(_h\.blt\|\|'-'\)/.test(src),
      '★外す時は見出しだけを書く(head:true,bullet:false)', true);
   ok(/if\(hdAltMode\(\)==='off'\)\{[\s\S]{0,120}btn\.textContent='#'\.repeat\(fmtHeadingLevel\);\}/.test(src),

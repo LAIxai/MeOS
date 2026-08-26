@@ -20757,14 +20757,17 @@ function hdAltBlt(){return (fmtHeadingLevel===1)?'-':(fmtHeadingLevel===2)?'1.':
 /* ★★v4.0.422(俊克 8/26 pm07:52「プリセットで既に箇条書きがセットされたケースのOpt押しでは、どうしようか?
    **逆に、箇条書きを外すのthatいいね**」／pm07:54「ただし、**箇条書きだけの設定のときは、無視する**」):
    ★★**裏の顔は「今の逆」**＝ 1本の規則。箇条書きが無ければ付ける・在れば外す。
-   ★**箇条書きだけの設定は裏の顔を持たない**＝ 外したら何も残らない＝ 逆の答えが存在しない。
-     ★俊克「あるいは、見出しを付けるほうがいいかもと思ったけど、**H1〜H3のどれか選択できない**ので、
-       やはり無視で良いかな」＝ **Optは1つの答えしか運べない**。選ばせたいものはOptに載せない。
-     こういう時は**変身しない**(空約束をしない・H3の予約と同じ扱い)。 */
+   ★★箇条書きだけの設定は「見出しが欠けている」＝ 逆の答えは**見出しを足すこと**。
+     ★一度は「H1〜H3のどれか選択できないので無視」と決めたが、俊克がその先を出した(pm07:59)＝
+       「**私はH2を多用しているので、H2を付加するようにしよう。もし、H1やH3に変えたければ、
+       FCコメントでH2の部分を変更すればいい**。これで汎用性が可能でしょ」。
+     ★★**選べないなら、一番使う物を出して、後からFCで直せばいい**＝ ボタンは1つの答えしか運べないが、
+       **命令はコメントに書いてある**ので、直す口が既に在る。so「選ばせられない」は諦める理由にならない。
+   ★H3(見出しのみ)は今も予約＝ そこはまだ何も名乗っていない。 */
 function hdAltMode(){var h=fmtHeadingColors[fmtHeadingLevel]||{};
-if(h.head===false)return null;          /* 箇条書きだけの設定= 逆の答えが無い */
-if(h.bullet)return 'off';               /* 既に箇条書き= 外すのが逆 */
-return hdAltBlt()?'on':null;}           /* H3は予約 */
+if(h.head===false)return h.bullet?'h2':null;   /* 箇条書きだけ= 見出し(H2)を足すのが逆 */
+if(h.bullet)return 'off';                      /* 既に箇条書き= 外すのが逆 */
+return hdAltBlt()?'on':null;}                  /* H3は予約 */
 /* ★★v4.0.421(俊克 8/26 pm07:43 改良1「tipに説明that無い」・改良2「Optで変身した後、何もしないで離れると、
    ##ボタンthat色無しになってしまう」):
    ★★**tipは面の一部**＝ 変身したら tip も一緒に変わり、戻ったら一緒に戻る。1つの関数が両方を持つ。
@@ -20772,8 +20775,9 @@ return hdAltBlt()?'on':null;}           /* H3は予約 */
      塗り直す者が居なかった(色は renderFmtBtnColors が持っている)。→ 戻ったら塗り直しまでを1組にする。 */
 function fmtHeadTip(){var hh='#'.repeat(fmtHeadingLevel);var b=hdAltBlt();
 var m=hdAltMode();
-return 'Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'\u2325 Opt \u2192 heading only (drops the bullet)':m==='on'?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing here (H3 is in reserve; a bullet-only preset has no other answer)');}
-function fmtHeadAltTip(){var b=hdAltBlt();
+return 'Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'\u2325 Opt \u2192 heading only (drops the bullet)':m==='h2'?'\u2325 Opt \u2192 add a heading (H2); change it in the folding comment for H1 or H3':m==='on'?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing here (H3 is kept in reserve)');}
+function fmtHeadAltTip(){var b=hdAltBlt();var h=fmtHeadingColors[fmtHeadingLevel]||{};
+if(hdAltMode()==='h2')return 'Add a heading (H2) | The preset is a bullet on its own, so \u2325 Opt gives it a heading. H2 because it is the one most used.'+String.fromCharCode(10)+'Want H1 or H3 instead? Change the H2 in the folding comment underneath.';
 if(hdAltMode()==='off')return 'Heading only | The preset carries a bullet; \u2325 Opt writes it without one. Let go of \u2325 Opt to go back.'+String.fromCharCode(10)+'\u2325 Opt is always the other answer: no bullet yet, add one \u2014 already a bullet, drop it.';
 return 'Bullet list ('+b+' ) | Writes one item with the preset color. Let go of \u2325 Opt to go back to the heading.'+String.fromCharCode(10)+'Do not want the color? Delete the folding comment underneath \u2014 that is the whole undo.';}
 var stBaseTip='';
@@ -20812,7 +20816,10 @@ bg:fmtSpec.strike.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=
 window.__fmtBaseW.strike=_w;window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;
 window.__renderFmtRing('strike');}});
 if(fmtHeading)fmtHeading.addEventListener('click',(ev)=>{/* v4.0.419(俊克): Opt押し=箇条書き。H1は - / H2は 1. / H3は予約。↻リングより先に見る=Optは別の道 */
-if(ev&&ev.altKey&&hdAltMode()){const _h=fmtHeadingColors[fmtHeadingLevel]||{};const _on=(hdAltMode()==='on');
+if(ev&&ev.altKey&&hdAltMode()){const _h=fmtHeadingColors[fmtHeadingLevel]||{};const _m=hdAltMode();
+/* v4.0.423: 箇条書きだけの設定には**見出し(H2)を足す**。H1/H3にしたければFCコメントのH2を直す */
+if(_m==='h2'){vscode.postMessage({type:'insertFormat',kind:'heading',fg:fmtSpec.heading.fg,bg:fmtSpec.heading.bg,level:2,head:true,bullet:true,blt:(_h.blt||'-')});return;}
+const _on=(_m==='on');
 vscode.postMessage({type:'insertFormat',kind:'heading',fg:fmtSpec.heading.fg,bg:fmtSpec.heading.bg,level:fmtHeadingLevel,head:!_on,bullet:_on,blt:_on?hdAltBlt():(_h.blt||'-')});return;}
 if(window.__fmtActionable.heading){const r=window.__fmtRing.heading||0;
 window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',
@@ -20857,6 +20864,8 @@ if(kind==='heading'&&hdAltOn()&&hdAltMode()){/* v4.0.420(俊克 改良2): 面は
 btn.classList.remove('fmt-remove');
 if(hdAltMode()==='off'){/* v4.0.422: 既に箇条書き= 外した姿(見出しだけ)を見せる。色はボタンが着ているまま */
 btn.textContent='#'.repeat(fmtHeadingLevel);}
+else if(hdAltMode()==='h2'){/* v4.0.423: 箇条書きだけ= 見出し(H2)を足した姿を見せる */
+btn.textContent=((fmtHeadingColors[fmtHeadingLevel]||{}).blt||'-')+' ##';}
 else{var _hc=fmtHeadingColors[fmtHeadingLevel]||{};var _hbg=_hc.bg?fmtHexBg(_hc.bg):'';
 btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';
 btn.innerHTML=hdAltBlt()+' <span style="color:'+fmtHexFg(_hc.fg)+';background-color:'+_hbg+';padding:0 2px;border-radius:2px">A</span>';}
