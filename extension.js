@@ -16229,10 +16229,10 @@ function meosInlineMarkEnds(text) {
   const out = [];
   for (const [kind, re] of MEOS_INLINE_MARK_RES) {
     re.lastIndex = 0; let m, ord = 0;
-    while ((m = re.exec(t)) !== null) { ord++; out.push({ kind, ord, end: m.index + m[0].length }); }
+    while ((m = re.exec(t)) !== null) { ord++; out.push({ kind, ord, start: m.index, end: m.index + m[0].length }); } // v4.0.401: start も持つ(橙の1:1に要る)
   }
   const nth = {};
-  for (const mk of meosStarMarks(meosScanText(t), t)) { nth[mk.kind] = (nth[mk.kind] || 0) + 1; out.push({ kind: mk.kind, ord: nth[mk.kind], end: mk.end }); }
+  for (const mk of meosStarMarks(meosScanText(t), t)) { nth[mk.kind] = (nth[mk.kind] || 0) + 1; out.push({ kind: mk.kind, ord: nth[mk.kind], start: mk.start, end: mk.end }); }
   return out;
 }
 // FC行を本文の行末形式へ戻す。{ line } か null(戻せない/戻すと壊れる時)。
@@ -16398,15 +16398,15 @@ function meosRowMarksInOrder(text) {
   const raw = String(text == null ? '' : text), out = [];
   const masked = meosMaskLinkLabels(raw);   // v4.0.212: ラベルの中の装飾は指定を持たないso数えない
   try {
-    for (const e of meosInlineMarkEnds(masked)) out.push({ kind: e.kind, end: e.end });
-    for (const tk of (meosMeTexTokens(masked, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', end: tk.opEnd });
+    for (const e of meosInlineMarkEnds(masked)) out.push({ kind: e.kind, start: e.start, end: e.end });
+    for (const tk of (meosMeTexTokens(masked, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', start: (typeof tk.tokStart === 'number' ? tk.tokStart : tk.opStart), end: tk.opEnd });
     if (raw.indexOf(']()') >= 0) {
       let t = raw;
       if (t.indexOf('`') >= 0) t = meosMaskCodeSpans(t);
       if (t.indexOf('-->[') >= 0) { MEOS_MELINK_RE.lastIndex = 0; let w; while ((w = MEOS_MELINK_RE.exec(t)) !== null) { const a = w.index, b = a + w[0].length; t = t.slice(0, a) + ' '.repeat(b - a) + t.slice(b); } }
       for (const c of meosTrailingComments(t)) t = t.slice(0, c.start) + ' '.repeat(c.end - c.start) + t.slice(c.end);
       let m; MEOS_EMPTY_LINK_RE.lastIndex = 0;
-      while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) out.push({ kind: 'link', end: m.index + m[0].length });
+      while ((m = MEOS_EMPTY_LINK_RE.exec(t)) !== null) out.push({ kind: 'link', start: m.index, end: m.index + m[0].length });
     }
   } catch (_) { }
   out.sort((a, b) => a.end - b.end);
@@ -25211,6 +25211,48 @@ function meosFcPairAt(doc, line) {
     return { top: b ? b.start : head, head, end, open: (op2 >= 0 ? op2 : null) };
   } catch (_) { return null; }
 }
+// ★★★v4.0.401(俊克 8/26 am09:52「(1)テーブルの橙色の1:1対応はテーブルとしては良い。
+//   (2)**折り返しのある段落では、個々の修飾(ハイライト、取消線、上付き/下付き)毎に、1:1対応の橙色文字**に
+//   する。この2つが揃っていることが大切だよ。つまり、**修飾のない部分は普通の色**なので、文字カーソルが
+//   入っている修飾に対して、どのFCかがはっきり分る。逆に、1つのFCの中に入った時も、どの部分かが分る」):
+//   ★★**同じ「1:1」を、塊の形に合わせて細かさだけ変える**＝ 表は横一列どうし(今までどおり)、
+//     段落は**印1つ ⇄ FC1個**。塊の単位が違うだけで、規則は1つ。
+//   ★対応の決め方は**書く側と同じ**＝ 同じ種類の待ち行列から順に取る(`meosSpecGroupPerLine` と同じ)。
+//     読む所と書く所で数え方を変えない。→ [[feedback_one_source_for_mark_count_action]]
+//   ★置き石(`not` だけの箱)は相手にしない＝ 名乗る物が無い箱に、対応する印は無い。
+//   ★見つからない時は今までどおり行ぜんぶ＝ **細かくできる時だけ細かくする**(何も見えなくならない)。
+function meosFcMarkPairRanges(doc, line, ch) {
+  try {
+    const b = meosFcPairAt(doc, line);
+    if (!b || b.open != null) return null;                 // 膜の3行組は対象外
+    if (b.head - b.top !== 0) return null;                 // 表/箇条書き(本文が複数行)は行どうしのまま
+    const bodyLn = b.top, fc0 = b.head + 1;
+    const marks = (meosRowMarksInOrder(doc.lineAt(bodyLn).text) || []).filter(m => typeof m.start === 'number' && m.end > m.start);
+    if (!marks.length) return null;
+    const boxes = [];
+    for (let ln = fc0; ln <= b.end; ln++) {
+      const t = doc.lineAt(ln).text;
+      MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let mm;
+      while ((mm = MEOS_SPEC_LINE_ONE_RE.exec(t)) !== null) {
+        const pay = (mm[2] || '').trim();
+        if (!pay || MEOS_SPEC_LINE_NONE_RE.test(pay)) continue;      // 置き石は数えない
+        boxes.push({ line: ln, start: mm.index, end: mm.index + mm[0].length, kind: meosSpecPayloadKind(pay) });
+      }
+    }
+    if (!boxes.length) return null;
+    const q = new Map();
+    for (const bx of boxes) { if (!q.has(bx.kind)) q.set(bx.kind, []); q.get(bx.kind).push(bx); }
+    const pairs = [];
+    for (const mk of marks) { const a2 = q.get(mk.kind); if (a2 && a2.length) pairs.push({ mk, bx: a2.shift() }); }
+    if (!pairs.length) return null;
+    const hit = (line === bodyLn)
+      ? pairs.find(p => ch >= p.mk.start && ch <= p.mk.end)
+      : pairs.find(p => p.bx.line === line && ch >= p.bx.start && ch <= p.bx.end);
+    if (!hit) return null;
+    return [new vscode.Range(bodyLn, hit.mk.start, bodyLn, hit.mk.end),
+            new vscode.Range(hit.bx.line, hit.bx.start, hit.bx.line, hit.bx.end)];
+  } catch (_) { return null; }
+}
 let meosFcRowDeco = null;   // 橙に染める2行(カーソルの行と、その相手)
 // ★★v4.0.325(俊克 8/21 am08:45 改良2「橙色は、**メイン行とそれに対応するFCコメントの両方を同時に**橙色に
 //   するってことだよ。今回は、文字カーソルがある方だけ橙色になったけどね」):
@@ -25371,7 +25413,10 @@ function meosApplyFcRowDecorations(editor) {
   try {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
-      const m = meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
+      // ★v4.0.401(俊克): 段落なら**印1つ ⇄ FC1個**で細かく染める。出来ない時だけ行ぜんぶ。
+      const _fine = meosFcMarkPairRanges(doc, editor.selection.active.line, editor.selection.active.character);
+      if (_fine) { for (const r of _fine) out.push(r); }
+      const m = _fine ? null : meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
       // ★★★v4.0.367(俊克 pm07:34 質問1「やはり、**橙色文字表示の所は、無理なのか?**」):
       //   ★★★**無理ではない。取り合いをやめれば済む**。v4.0.366では橙(行全体)とモザイク(区画)が同じ字を
       //     奪い合い、!important を足しても勝ち切れなかった。**同じ場所を2つが塗り合う限り、勝敗は

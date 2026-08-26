@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -485,6 +485,27 @@ console.log('㉛ 表に修飾を付けると、FC群が折り返しの数だけ�
   const P3 = ['| **品目**   | 備考  |', '| ----- | ----- |', '| りんご | みかん |', '| ぶどう | もも   |'];
   const r3 = put(P3, '', '**not (白/黄)', 0);
   ok(/\*\*not/.test(r3[0]) && r3.length === 4, '折り返し1でも4本(偶然合っていた道も同じ形に)', r3);
+}
+
+console.log('㉜ 段落は「印1つ ⇄ FC1個」で橙(v4.0.401 俊克)');
+{
+  const P = ['**りんご**を食べて、~~みかん~~も食べなかった。--------[***ぶどう***]()とももも',
+    '<!-- Mew!FC **not (白/黄) -->', '<!-- Mew!FC ~~ (赤/紺) -->', '<!-- Mew!FC [***]()(3)(白/紫)//[]tip= -->'];
+  const d = makeDoc(P);
+  const seg = (r, i) => P[r[i].start.line].slice(r[i].start.character, r[i].end.character);
+  const at = (ln, ch) => T.meosFcMarkPairRanges(d, ln, ch);
+  const hi = at(0, 2);
+  ok(!!hi && seg(hi, 0) === '**りんご**' && /\*\*not/.test(seg(hi, 1)), '★ハイライト ⇄ 1本目', hi && [seg(hi, 0), seg(hi, 1)]);
+  const st = at(0, P[0].indexOf('みかん') + 1);
+  ok(!!st && seg(st, 0) === '~~みかん~~' && /~~ \(赤/.test(seg(st, 1)), '★取消線 ⇄ 2本目', st && [seg(st, 0), seg(st, 1)]);
+  const lk = at(0, P[0].indexOf('ぶどう') + 1);
+  ok(!!lk && seg(lk, 0) === '[***ぶどう***]()' && /\[\*\*\*\]\(\)/.test(seg(lk, 1)), '★リンク ⇄ 3本目', lk && [seg(lk, 0), seg(lk, 1)]);
+  const back = at(3, 10);
+  ok(!!back && seg(back, 0) === '[***ぶどう***]()', '★FC側から本文へも同じ対応(逆向き)', back && seg(back, 0));
+  ok(at(0, P[0].indexOf('食べて') + 1) === null, '修飾のない所では細かくしない(行ぜんぶの橙に戻る)', true);
+  // 表は今までどおり「横一列どうし」= 細かくしない
+  const TB = ['| 品目 | 備考 |', '| --- | --- |', '| **りんご** | みかん |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC **not (白/黄) -->'];
+  ok(T.meosFcMarkPairRanges(makeDoc(TB), 2, 4) === null, '★表は横一列どうしのまま(俊克「表としては良い」)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

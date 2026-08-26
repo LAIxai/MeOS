@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.401 (2026-08-26)
+- **In a paragraph the orange pairing is per decoration, not per line.** A table pairs a row with its FC line and that
+  reads well; a wrapped paragraph turned the whole line orange, so with three marks and three FC lines nothing said
+  which went with which. Put the caret in one highlight and only that `**…**` and its one FC box turn orange — and
+  from inside an FC box, only its own mark in the body. Undecorated text stays its normal colour, which is what makes
+  the pair legible. The pairing is decided the same way the writer decides it — the next box of the same kind — so the
+  colour cannot disagree with what the file means, and `not` placeholders are skipped because nothing points at them.
+  Tables keep pairing row to row, and a caret on undecorated text still falls back to the whole-line orange that says
+  "these two lines are showing raw data".
+
 ### v4.0.400 (2026-08-26)
 - **Backspace, Enter and Delete are only intercepted where MeOS has something to do.** Those three keys are exactly
   the three MeOS binds, and their conditions named no language and no place, so every press anywhere went renderer →
