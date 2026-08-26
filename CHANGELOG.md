@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.407 (2026-08-26)
+- **The highlighter yellow is actually yellow now, and the two yellows are told apart.** At 0.65 alpha the yellow
+  composited over a dark editor to (176,160,10) — olive, not a highlighter. And the deeper yellow added in v4.0.406
+  landed at (172,143,4), near enough to the first that moving a span between them changed nothing on screen: the
+  routing worked, the colours did not. Both are now painted near-opaque and set far apart — black on (244,222,40) at
+  15.3:1, white on (161,133,2) at 3.6:1, with the two backgrounds 2.9× apart in luminance. The check computes those
+  numbers from the values themselves, so a future tweak that makes them converge again fails the test.
+
 ### v4.0.406 (2026-08-26)
 - **A bare `==…==` finally gets its black text.** The auto-contrast rule — light background, black text — was written
   in the `=={…}==` branch and again in the branch that finds a spec comment, but a `==…==` carrying no spec at all

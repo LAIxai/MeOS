@@ -599,7 +599,17 @@ console.log('㊳ 素の ==…== は (黒/黄)・白い字が乗る黄は少し�
   ok(n === 1, '★自動コントラストは if/else の外に1本だけ', n);
   ok(blk.lastIndexOf('} else {') < blk.lastIndexOf("DARK_BG_KEYS.has(bgKey)"), '★その1本は else の後(どの道も必ず通る)', true);
   // ★暗い黄= 名前を持たない(人が書けない)
+  // ★v4.0.407: 2つの黄が**目で見分けられる**こと(v4.0.406では色が近すぎて移しても分からなかった)
+  const rgba = (t) => (String(t).match(/[\d.]+/g) || []).map(Number);
+  const over = (c) => { const [r, g, b, a] = c; return [r, g, b].map(v => Math.round(a * v + (1 - a) * 30)); };
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const cr = (a2, b2) => { const L = [lum(a2), lum(b2)].sort((x, y) => y - x); return (L[0] + 0.05) / (L[1] + 0.05); };
   ok(!!T.HIGHLIGHT_COLORS.yellowDeep, '少し暗い黄が在る', T.HIGHLIGHT_COLORS.yellowDeep);
+  const Y = over(rgba(T.HIGHLIGHT_COLORS.yellow)), YD = over(rgba(T.HIGHLIGHT_COLORS.yellowDeep));
+  ok(cr(Y, [0, 0, 0]) > 12, '★明るい黄 × 黒字 = 蛍光ペンの読みやすさ(' + cr(Y, [0, 0, 0]).toFixed(1) + ':1)', Y);
+  ok(cr(YD, [255, 255, 255]) > 3, '★落とした黄 × 白字 も読める(' + cr(YD, [255, 255, 255]).toFixed(1) + ':1)', YD);
+  ok(lum(Y) / lum(YD) > 2, '★2つの黄は目で見分けられる(明るさ ' + (lum(Y) / lum(YD)).toFixed(1) + ' 倍)', [Y, YD]);
   ok(T.parseColorSpec('(白/黄深)', 'bg').bgKey !== 'yellowDeep', '★名前が無いので生データには書けない', T.parseColorSpec('(白/黄深)', 'bg').bgKey);
   ok(/highlightBodyRangesByColor\.yellow = _keep/.test(src), '移すのは配る直前の1か所(押し込む口11か所は触らない)', true);
 }
