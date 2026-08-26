@@ -21136,14 +21136,17 @@ const rawToggle=document.getElementById('raw-toggle');
 var rawBaseTip=rawToggle?(rawToggle.getAttribute('data-tip')||''):'';
 var readOn=false,rawAltW=null;
 function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
-window.__renderRaw=function(){if(!rawToggle)return;var face=(readOn||rawAltOn());
+/* ★v4.0.439(俊克「Readボタンが、Opt押しで、Rawに変身しないよ。なぜ?」)= 面を「読書中 **または** Opt」で
+   決めていたので、読書中はOptを押しても常にReadのままだった。裏の顔は**今の逆**so、**どちらか一方**で決める。 */
+window.__renderRaw=function(){if(!rawToggle)return;var face=(readOn!==rawAltOn());
 rawToggle.textContent=face?'📖 Read':'👁 Raw';
 rawToggle.classList.toggle('read-on',!!readOn);
 rawToggle.setAttribute('data-tip',face
 ?('Reading view | The finished text only \u2014 the caret no longer opens the raw data, and \ud83d\udc7b stays hidden. For reading a draft the way a reader will see it.'+String.fromCharCode(10)+'Press again to leave. \u2325 Opt over the button shows this face; Raw is the opposite \u2014 it shows everything.')
 :(rawBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udcd6 Reading view (the opposite: nothing raw at all)'));};
-if(rawToggle)rawToggle.addEventListener('click',(ev)=>{if(readOn||(ev&&ev.altKey)){vscode.postMessage({type:'toggleRead'});return;}
-vscode.postMessage({type:'toggleRaw'});});
+/* v4.0.439: 押した結果は**面に出ている物**＝ 面がReadならRead・面がRawならRaw。4通りとも面と一致する。 */
+if(rawToggle)rawToggle.addEventListener('click',(ev)=>{var _alt=!!(ev&&ev.altKey);
+vscode.postMessage({type:(readOn!==_alt)?'toggleRead':'toggleRaw'});});
 if(rawToggle)rawAltW=fmtAltWatch(rawToggle,function(){if(typeof window.__renderRaw==='function')window.__renderRaw();});
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();

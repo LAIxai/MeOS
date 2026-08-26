@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.439 (2026-08-27)
+- **In Reading view, Option shows 👁 Raw again.** The face was decided by "reading *or* Option held", so once
+  reading was on there was nothing left for Option to say. The other face is whatever the current one is not, so it
+  is decided by one or the other, never both — and pressing the button now does exactly what its face says, in all
+  four combinations.
+
 ### v4.0.438 (2026-08-27)
 - **Reading view** — the finished text and nothing else. The caret stops opening the raw data as it moves, the
   folding comments stay closed, and anything commented out with 👻 stays gone. A draft can be read the way a reader

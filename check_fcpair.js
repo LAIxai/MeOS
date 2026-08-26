@@ -875,8 +875,10 @@ console.log('㊹ 読書モード= 生データを1行も見せない(v4.0.438 �
      && /if \(meosRawMode && meosReadMode\) \{ meosReadMode = false;/.test(src),
      '★★Rawと同時には立たない(逆の意味なので、両方はあり得ない)', true);
   ok(/registerCommand\('lai-membrane\.toggleReadMode'/.test(src), '★コマンドも在る(ショートカット割当可)', true);
-  ok(/if\(readOn\|\|\(ev&&ev\.altKey\)\)\{vscode\.postMessage\(\{type:'toggleRead'\}\);return;\}/.test(src),
-     '★★押す決まりは他と同じ(⌥Optで裏の顔・点いている物を押せば消える)', true);
+  ok(/var face=\(readOn!==rawAltOn\(\)\);/.test(src),
+     '★★裏の顔は「今の逆」= どちらか一方で決める(v4.0.439)', true);
+  ok(/vscode\.postMessage\(\{type:\(readOn!==_alt\)\?'toggleRead':'toggleRaw'\}\);/.test(src),
+     '★★押した結果は面に出ている物と同じ(4通りとも一致)', true);
   ok(/rawToggle\.textContent=face\?'📖 Read':'👁 Raw';/.test(src), '★面もRawの裏の顔として切り替わる', true);
   ok(/rawAltW=fmtAltWatch\(rawToggle,/.test(src), '★Optの見張りは1つのまま(名乗るだけ)', true);
   ok(/m\.type==='readState'/.test(src), '★状態が変わったら面を描き直す', true);
