@@ -867,19 +867,27 @@ console.log('㊹ 読書モード= 生データを1行も見せない(v4.0.438 �
      '★★口は1つ= meosRawLines が空を返せば12か所すべてが従う', true);
   const n = (src.match(/meosRawLines\(/g) || []).length;
   ok(n >= 10, '★その口を引いている所が10か所以上ある(だから1行で効く)', n);
-  ok(/if \(meosReadMode\) return;\n    const line = editor\.selection\.active\.line;/.test(src),
-     '★★畳みも同じ筋= カーソルの居るFC群も開かない(読む時に命令は要らない)', true);
+  ok(/if \(meosReadMode\) \{   \/\/ v4\.0\.440[\s\S]{0,200}if \(hit\) await foldIfVisible\(hit\.start\);\n      return;/.test(src),
+     '★★読書モードは「開かない・畳む方は通す」(v4.0.440 貼り付けで増えた分も閉じる)', true);
+  ok(/const _mine = \(b\) => meosReadMode \? false :/.test(src),
+     '★一括の畳みも、読書モードではカーソルの塊を除けない', true);
   ok(/if \(meosReadMode\) _meosFcOpen = 'ALL';/.test(src),
      '★入る時は既存の道に畳み直させる(畳む口を2つ作らない)', true);
   ok(/if \(meosReadMode && meosRawMode\) \{ meosRawMode = false;/.test(src)
      && /if \(meosRawMode && meosReadMode\) \{ meosReadMode = false;/.test(src),
      '★★Rawと同時には立たない(逆の意味なので、両方はあり得ない)', true);
   ok(/registerCommand\('lai-membrane\.toggleReadMode'/.test(src), '★コマンドも在る(ショートカット割当可)', true);
-  ok(/var face=\(readOn!==rawAltOn\(\)\);/.test(src),
-     '★★裏の顔は「今の逆」= どちらか一方で決める(v4.0.439)', true);
-  ok(/vscode\.postMessage\(\{type:\(readOn!==_alt\)\?'toggleRead':'toggleRaw'\}\);/.test(src),
-     '★★押した結果は面に出ている物と同じ(4通りとも一致)', true);
-  ok(/rawToggle\.textContent=face\?'📖 Read':'👁 Raw';/.test(src), '★面もRawの裏の顔として切り替わる', true);
+  // ★v4.0.440(俊克): この駒はそれ自身がトグルなので、Optは「入る/出る」でなく**面の切替だけ**
+  ok(/if\(ev&&ev\.altKey\)\{if\(readOn\)vscode\.postMessage\(\{type:'toggleRead'\}\);else if\(rawOn\)vscode\.postMessage\(\{type:'toggleRaw'\}\);\nrawFace=/.test(src),
+     '★★⌥Optクリック= 面の切替だけ(今のモードは降りる= モードからモードへ飛ばない)', true);
+  ok(/vscode\.postMessage\(\{type:\(rawFace==='read'\)\?'toggleRead':'toggleRaw'\}\);\}\);/.test(src),
+     '★素のクリック= 立っている面のモードに入る/出る', true);
+  ok(/function rawFaceNow\(\)\{return rawAltOn\(\)\?\(rawFace==='raw'\?'read':'raw'\):rawFace;\}/.test(src),
+     '★Optを押している間は予告(押せば、その顔に切り替わる)', true);
+  ok(/\.fmt-btn\.raw-toggle\{[^}]*background:rgba\(127,127,127,\.07\)/.test(src), '★通常は薄い(どのモードでもない)', true);
+  ok(/\.fmt-btn\.raw-toggle\.read-on\{background:#1e4f8a/.test(src), '★読書モードは青', true);
+  ok(/\.fmt-btn\.raw-toggle\.on\{background:#7a4f00/.test(src), '★Rawは従来の茶(色が今の状態を言う)', true);
+  ok(/rawToggle\.textContent=\(f==='read'\)\?'📖 Read':'👁 Raw';/.test(src), '★面もRawの裏の顔として切り替わる', true);
   ok(/rawAltW=fmtAltWatch\(rawToggle,/.test(src), '★Optの見張りは1つのまま(名乗るだけ)', true);
   ok(/m\.type==='readState'/.test(src), '★状態が変わったら面を描き直す', true);
 }

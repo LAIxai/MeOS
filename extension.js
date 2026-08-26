@@ -19716,7 +19716,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}
 .fmt-btn.fmt-remove{font-size:1.3em;line-height:1;-webkit-text-fill-color:initial}
 .fmt-btn.ghost-face{font-size:17px;line-height:1}/* v4.0.433(俊克): 👻は1.3倍(13→17px)。🚫と同じ手 */
-.fmt-btn.read-on{background:rgba(40,150,60,.28);border-color:rgba(40,150,60,.75)}/* v4.0.438: 読書モード中は点灯(緑=読む) */
+.fmt-btn.raw-toggle.read-on{background:#1e4f8a;color:#e6f0ff;border-color:#16396b}/* v4.0.440(俊克): 読書モード中は青 */
 .fmt-btn.fmt-remove::before{content:"🚫";position:relative;top:1px}
 #fmt-table{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px}
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
@@ -19730,7 +19730,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
 .row.format-tools{justify-content:flex-start;flex-wrap:wrap}
-.fmt-btn.raw-toggle{margin-left:auto;font-family:inherit;font-weight:700;font-size:11px}
+.fmt-btn.raw-toggle{margin-left:auto;font-family:inherit;font-weight:700;font-size:11px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-descriptionForeground)}/* v4.0.440(俊克): 通常は薄い= どのモードでもないことを色で言う */
 /* v4.0.67(俊克): 🐱=この画面に「Mew!と鳴いていないMe記法」が居る時だけ色が点く。位置は固定(現れたり消えたりすると隣のボタンが動く)＝MeOS既存の流儀(2個未満で無効化半透明)に合わせる。 */.fmt-btn.mew-btn{font-family:inherit;min-width:auto;padding:1px 7px;font-size:15px;line-height:1.3;margin-left:16px;opacity:.42;filter:grayscale(1)}
 /* v4.0.90(俊克「🐱もかなり暗いけどね」): 消えている時も「居る」と分かる明るさに(.28→.42)。点灯時は背景を濃くする。 */.fmt-btn.mew-btn.on{opacity:1;filter:none;background:rgba(210,132,0,.34);border-color:#e09a1a}
 /* v4.0.106(俊克): 🐱の右肩に↻。印を5秒だけ出す。消灯中でも**数字は読める**(何個あるかは常に分かる)。 */.mew-cell{position:relative;display:inline-flex;margin-left:16px}
@@ -21134,19 +21134,20 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★押す時の決まりは他のボタンと同じ= ⌥Optで裏の顔・点いている物を押せば消える。 */
 const rawToggle=document.getElementById('raw-toggle');
 var rawBaseTip=rawToggle?(rawToggle.getAttribute('data-tip')||''):'';
-var readOn=false,rawAltW=null;
+var readOn=false,rawOn=false,rawFace='raw',rawAltW=null;
 function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
-/* ★v4.0.439(俊克「Readボタンが、Opt押しで、Rawに変身しないよ。なぜ?」)= 面を「読書中 **または** Opt」で
-   決めていたので、読書中はOptを押しても常にReadのままだった。裏の顔は**今の逆**so、**どちらか一方**で決める。 */
-window.__renderRaw=function(){if(!rawToggle)return;var face=(readOn!==rawAltOn());
-rawToggle.textContent=face?'📖 Read':'👁 Raw';
-rawToggle.classList.toggle('read-on',!!readOn);
-rawToggle.setAttribute('data-tip',face
-?('Reading view | The finished text only \u2014 the caret no longer opens the raw data, and \ud83d\udc7b stays hidden. For reading a draft the way a reader will see it.'+String.fromCharCode(10)+'Press again to leave. \u2325 Opt over the button shows this face; Raw is the opposite \u2014 it shows everything.')
-:(rawBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udcd6 Reading view (the opposite: nothing raw at all)'));};
-/* v4.0.439: 押した結果は**面に出ている物**＝ 面がReadならRead・面がRawならRaw。4通りとも面と一致する。 */
-if(rawToggle)rawToggle.addEventListener('click',(ev)=>{var _alt=!!(ev&&ev.altKey);
-vscode.postMessage({type:(readOn!==_alt)?'toggleRead':'toggleRaw'});});
+function rawFaceNow(){return rawAltOn()?(rawFace==='raw'?'read':'raw'):rawFace;}   /* Optを押している間は予告 */
+window.__renderRaw=function(){if(!rawToggle)return;var f=rawFaceNow();
+rawToggle.textContent=(f==='read')?'📖 Read':'👁 Raw';
+rawToggle.classList.toggle('read-on',!!readOn);rawToggle.classList.toggle('on',!!rawOn);
+rawToggle.setAttribute('data-tip',(f==='read')
+?('Reading view | The finished text only \u2014 the caret no longer opens the raw data, and \ud83d\udc7b stays hidden. Read a draft the way a reader will meet it.'+String.fromCharCode(10)+'Click to turn it on, click again to leave. \u2325 Opt-click swaps this button back to \ud83d\udc41 Raw.')
+:(rawBaseTip+String.fromCharCode(10)+'\u2325 Opt-click swaps this button to \ud83d\udcd6 Reading view (the opposite: nothing raw at all).'));};
+/* v4.0.440: ⌥Optクリック=ボタンの切替だけ。素のクリック=そのモードに入る/出る。面を切り替える時は今のモードを降りる。 */
+if(rawToggle)rawToggle.addEventListener('click',(ev)=>{
+if(ev&&ev.altKey){if(readOn)vscode.postMessage({type:'toggleRead'});else if(rawOn)vscode.postMessage({type:'toggleRaw'});
+rawFace=(rawFace==='raw')?'read':'raw';window.__renderRaw();return;}
+vscode.postMessage({type:(rawFace==='read')?'toggleRead':'toggleRaw'});});
 if(rawToggle)rawAltW=fmtAltWatch(rawToggle,function(){if(typeof window.__renderRaw==='function')window.__renderRaw();});
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();
@@ -21912,7 +21913,7 @@ if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof w
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='readState'){readOn=!!m.on;if(typeof window.__renderRaw==='function')window.__renderRaw();return;}/* v4.0.438 */
-if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);
+if(m&&m.type==='rawState'){rawOn=!!m.on;if(typeof window.__renderRaw==='function')window.__renderRaw();if(rawToggle)rawToggle.classList.toggle('on',!!m.on);
 return;}if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
 return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;
@@ -26039,9 +26040,6 @@ async function meosSyncFcFoldForCursor(editor) {
       return;
     }
     if (_meosFcOpen === 'ALL') { await fold(blocks.map(b => b.start)); _meosFcOpen = null; } // Rawが切れた=畳み直す
-    // v4.0.438: 読書モード= カーソルの居るFC群も開かない(読む時に命令は要らない)。
-    //   入る時は toggleReadMode が _meosFcOpen='ALL' を立てるので、上の1行が全部畳んでから、ここで降りる。
-    if (meosReadMode) return;
     const line = editor.selection.active.line;
     // v4.0.186(俊克 8/14 am01:38「見出しの先頭で改行すると、ジャンプして戻ると言う動きをする。
     //   その処理に入った時、何もしないで出るようにできないのか? bsキーのときは、一瞬再描画されるのも、今一」):
@@ -26084,7 +26082,15 @@ async function meosSyncFcFoldForCursor(editor) {
     //   ★戻すが、畳むのは**カーソルが落ち着いてから**(v4.0.341)＝ 通り過ぎるだけの時は畳まない。
     const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
     const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしない
+    // ★★v4.0.440(俊克 8/27 バグ1「読書モードで、見出しやハイライトを**コピペすると、FCコメントが見えちゃう**」):
+    //   ★★v4.0.438では読書モードで**この道ごと降りていた**ので、貼り付けで増えたFC行を畳む者が居なかった。
+    //     降りるのではなく、**開くのをやめて、畳む方だけ通す**のが正しい＝ 読む時に命令は要らない。
     const hit = blocks.find(b => (b.open != null && line === b.open) || (line >= ((b.top == null) ? b.start : b.top) && line <= b.end)); // v4.0.301: 塊のどの行でも開く / v4.0.332: 膜は開始膜でも開く
+    if (meosReadMode) {   // v4.0.440: 読書モード= 開かない。カーソルの塊も畳む(貼り付けで増えた分もここで閉じる)
+      if (_meosFcOpen != null) { await foldIfVisible(_meosFcOpen); _meosFcOpen = null; }
+      if (hit) await foldIfVisible(hit.start);
+      return;
+    }
     if (hit) {
       if (_meosFcOpen !== hit.start) {
         if (_meosFcOpen != null) await foldIfVisible(_meosFcOpen);
@@ -26170,7 +26176,8 @@ async function meosAutoFoldSpecLines(editor, force) {
   try {
     const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
     const _cur = editor.selection.active.line;
-    const _mine = (b) => (b.start === _meosFcOpen) || (b.open != null && _cur === b.open) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end);
+    // v4.0.440: 読書モードでは**カーソルの塊も畳む相手**(除ける理由=「そこは生データを見せている」が消えるので)
+    const _mine = (b) => meosReadMode ? false : ((b.start === _meosFcOpen) || (b.open != null && _cur === b.open) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end));
     heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end)).map(b => b.start);
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)

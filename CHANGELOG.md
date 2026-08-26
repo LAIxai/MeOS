@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.440 (2026-08-27)
+- **Option-click on this button swaps which button it is, and nothing more.** Unlike the format buttons, this one is
+  already a toggle in its own right — pressing enters a view, pressing again leaves it — so asking Option to also
+  mean enter/leave made the gesture say two things at once. Plain click works the face that is showing; Option-click
+  changes which face that is, stepping out of whatever view is on rather than jumping across to the other one.
+- **The colour says which view you are in**: pale when neither, brown for Raw, blue for Reading.
+- **Pasting in Reading view no longer reveals a folding comment.** v4.0.438 left the folding path entirely in
+  reading view, so a comment arriving with pasted text had nobody to close it. Reading view now skips only the
+  opening; the closing still runs.
+
 ### v4.0.439 (2026-08-27)
 - **In Reading view, Option shows 👁 Raw again.** The face was decided by "reading *or* Option held", so once
   reading was on there was nothing left for Option to say. The other face is whatever the current one is not, so it
