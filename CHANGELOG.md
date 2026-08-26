@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.409 (2026-08-26)
+- **The deeper yellow is the old one again.** What was liked all along was the classic `rgba(255,230,0,.65)` as it
+  composites over a dark editor — (176,160,10). The replacement, (161,133,2), carried more red (R/G 1.22 against the
+  original 1.10) and read as ochre. That exact colour is now painted opaque, so it looks the same whatever it sits on,
+  and the check watches the R/G ratio so a future tweak cannot drift back toward brown.
+- **Text between two marks is written back to plain.** In `***A***、そして***B***` the words in the middle came out
+  blue and italic. MeOS reads the marks correctly — measured, both spans exact — but VS Code's own Markdown grammar
+  pairs asterisk runs loosely and takes the gap for emphasis. While the `***` are visible a reader can blame the
+  grammar; once MeOS hides them it looks like MeOS got it wrong, so MeOS cleans up after it: the stretch between two
+  marks belongs to no mark, and is reset to normal weight, normal style and the editor's own colour. A colour MeOS
+  itself specified still wins.
+
 ### v4.0.408 (2026-08-26)
 - **Only `(白/黄)` deepens now — the shade is decided where the colour is decided.** v4.0.406/407 looked for yellow
   backgrounds that overlapped a white foreground range, but a `***not (白/黄)` span is not painted through the

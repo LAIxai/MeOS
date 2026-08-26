@@ -2634,7 +2634,11 @@ const HIGHLIGHT_COLORS = {
   //   ★★v4.0.406で足した暗い黄 `rgba(196,164,0,0.85)` は **(172,143,4)** ＝ 元の黄とほぼ同じ色だった
   //     ＝ 移してはいたが、**見分けがつかなかった**。俊克の「真中だけ暗めになる」が出なかった理由。
   //     → 2つを**はっきり離す**(明るさで2.9倍・白字とのコントラスト 3.6)。
-  yellowDeep: 'rgba(168, 138, 0, 0.95)',
+  //   ★★v4.0.409(俊克 バグ1「暗めの黄色は、今までの色と違うよ。今回の黄色はより黄土色みたいだね」):
+  //     ★俊克が好きなのは **従来の `rgba(255,230,0,0.65)` が暗い背景に重なった姿** ＝ (176,160,10)。
+  //       私の (161,133,2) は赤みが強く(R/G=1.22 対 従来1.10)、黄土に寄っていた。
+  //     → **その色をそのまま置く**(不透明なので、背景に関わらず同じ姿になる)。
+  yellowDeep: 'rgba(176, 160, 10, 1)',
   green:  'rgba(55, 165, 70, 0.88)',   // 本物の緑(濃)→白文字
   blue:   'rgba(60, 125, 235, 0.90)',  // 本物の青(濃)→白文字
   purple: 'rgba(190, 130, 245, 0.50)',
@@ -27714,7 +27718,9 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain) {
   if (italic) opt.fontStyle = 'italic';
   if (plain && !bold && !italic) { // v4.0.239: not= テーマが付けた太字/斜体まで戻す
     opt.fontStyle = 'normal'; opt.fontWeight = 'normal';
-    opt.textDecoration = 'none; font-style: normal !important; font-weight: normal !important;';
+    // ★v4.0.409: 色も戻す。**ただしMeOSが色を言っていない時だけ**(言っている時は opt.color が勝つべき)。
+    opt.textDecoration = 'none; font-style: normal !important; font-weight: normal !important;'
+      + (fgKey ? '' : ' color: var(--vscode-editor-foreground) !important;');
   }
   if (fgKey && HIGHLIGHT_FG_COLORS[fgKey]) opt.color = HIGHLIGHT_FG_COLORS[fgKey];
   if (bgKey && HIGHLIGHT_COLORS[bgKey]) { opt.backgroundColor = HIGHLIGHT_COLORS[bgKey]; opt.borderRadius = '2px'; } // v4.0.70(俊克 改良3): ハイライトと同じ角丸に(真四角だと隣り合う別設定の境が分からない)
@@ -27804,6 +27810,7 @@ function meosApplyBoldDecorations(editor) {
         const _lbl = [];
         try { const _mm = meosMaskLinkLabels(text); for (let k = 0; k < text.length; k++) if (text.charAt(k) !== _mm.charAt(k)) _lbl.push(k); } catch (_) { }
         const _inLabel = (a, b) => _lbl.length > 0 && _lbl.some(k => k >= a && k < b);
+        const _starSpans = [];   // v4.0.409: 印の位置(間の字を素に戻すため)
         for (const mk of meosStarMarks(tScan, text)) {
           if (mk.kind === '*' && !_prose) continue;   // 素の単一 `*` は散文だけ(コードの掛け算/ワイルドカードを拾わない)
           // ★v4.0.247(俊克 8/16 pm08:13「v4.1に回すほど複雑ではないと思うけど」): ★**そのとおりだった**。
@@ -27821,6 +27828,20 @@ function meosApplyBoldDecorations(editor) {
           const _no = !!(q && q.not) || _pz;
           const _nb = _no ? false : mk.bold, _ni = _no ? false : mk.italic;
           pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
+          _starSpans.push([mk.start, mk.end]);
+        }
+        // ★★v4.0.409(俊克 バグ2「段落にすると、**間の文字を誤認識している**」):
+        //   ★★**誤認識しているのは MeOS ではなく VS Code の Markdown文法**。`***A***、そして***B***` のような
+        //     並びで、TextMate文法は `***` を雑に対応付け、**間の `、そして` まで強調と読む**(青い斜体)。
+        //     MeOSの印の検出は正しい(実測= 2つとも位置ぴったり)。
+        //   ★★**MeOSが `***` を隠しているせいで、それが表に出る**＝ 記号が見えていれば人は「文法の都合」と
+        //     読めるが、隠した後は「MeOSが間違えた」ようにしか見えない。だから**MeOSが後始末をする**。
+        //   ★直し＝ v4.0.239 と同じ言葉＝ **素に戻す時は「戻す」と明示的に書く**。印と印の**間**は
+        //     どの印にも属さないので、太字/斜体/色を素に戻す。
+        //   ★間だけを触る＝ 印の中は今までどおり(そこは MeOS が持ち主)。
+        for (let i = 1; i < _starSpans.length; i++) {
+          const gs = _starSpans[i - 1][1], ge = _starSpans[i][0];
+          if (ge > gs) pushStyle(ln, gs, ge, false, false, null, null, '', true);
         }
         // v4.0.20(俊克 8/6): Markdown基本記法の斜体 _text_ も描画(=={}==/**{}**/~~{}~~と同じ「{}が外れた素の記法も読める」)。
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。

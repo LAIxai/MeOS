@@ -608,13 +608,29 @@ console.log('㊳ 素の ==…== は (黒/黄)・白い字が乗る黄は少し�
   ok(!!T.HIGHLIGHT_COLORS.yellowDeep, '少し暗い黄が在る', T.HIGHLIGHT_COLORS.yellowDeep);
   const Y = over(rgba(T.HIGHLIGHT_COLORS.yellow)), YD = over(rgba(T.HIGHLIGHT_COLORS.yellowDeep));
   ok(cr(Y, [0, 0, 0]) > 12, '★明るい黄 × 黒字 = 蛍光ペンの読みやすさ(' + cr(Y, [0, 0, 0]).toFixed(1) + ':1)', Y);
-  ok(cr(YD, [255, 255, 255]) > 3, '★落とした黄 × 白字 も読める(' + cr(YD, [255, 255, 255]).toFixed(1) + ':1)', YD);
-  ok(lum(Y) / lum(YD) > 2, '★2つの黄は目で見分けられる(明るさ ' + (lum(Y) / lum(YD)).toFixed(1) + ' 倍)', [Y, YD]);
+  // ★v4.0.409(俊克 バグ1「暗めの黄色は、今までの色と違うよ。今回のはより黄土色みたいだね」):
+  //   俊克が選んだのは**従来の姿 (176,160,10)**。赤みが強いと黄土に寄るので、R/G比で見張る。
+  ok(YD[0] === 176 && YD[1] === 160 && YD[2] === 10, '★落とした黄は従来の姿そのもの(176,160,10)', YD);
+  ok(YD[0] / YD[1] < 1.15, '★黄土に寄っていない(R/G ' + (YD[0] / YD[1]).toFixed(2) + ' < 1.15)', YD);
+  ok(lum(Y) / lum(YD) > 1.8, '★2つの黄は目で見分けられる(明るさ ' + (lum(Y) / lum(YD)).toFixed(1) + ' 倍)', [Y, YD]);
   ok(T.parseColorSpec('(白/黄深)', 'bg').bgKey !== 'yellowDeep', '★名前が無いので生データには書けない', T.parseColorSpec('(白/黄深)', 'bg').bgKey);
   // ★v4.0.408: 濃さは**色を決めている所**で決める(重なりで探すのは当たらなかった)。判定は1つの関数。
   ok(/function meosHiBgKey/.test(src), '★濃さの判定は1つの関数(meosHiBgKey)', true);
   ok((src.match(/= meosHiBgKey\(bgKey, fgKey\)/g) || []).length === 2, '★塗る口2つ(==の層 と pushStyle)の両方から引く', (src.match(/= meosHiBgKey\(bgKey, fgKey\)/g) || []).length);
   ok(!/highlightBodyRangesByColor\.yellow = _keep/.test(src), '重なりで探す仕掛けは撤去した(当たらなかった)', true);
+}
+
+console.log('㊴ 印と印の間の字を、素に戻す(v4.0.409 俊克 バグ2)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/_starSpans\.push\(\[mk\.start, mk\.end\]\)/.test(src), '印の位置を控える', true);
+  ok(/for \(let i = 1; i < _starSpans\.length; i\+\+\)/.test(src), '★間(印と印のあいだ)を回す', true);
+  ok(/pushStyle\(ln, gs, ge, false, false, null, null, '', true\)/.test(src), '★間は太字/斜体/色を素に戻す(plain)', true);
+  // plain は色も戻す。ただしMeOSが色を言っている時は言った色が勝つ。
+  const i = src.indexOf('if (plain && !bold && !italic)');
+  const body = src.slice(i, i + 420);
+  ok(/color: var\(--vscode-editor-foreground\) !important/.test(body), '★素に戻す時は色も戻す(テーマの青を消す)', body.slice(0, 200));
+  ok(/fgKey \? '' :/.test(body), '★MeOSが色を言っている時は、その色が勝つ', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
