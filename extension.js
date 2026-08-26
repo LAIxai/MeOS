@@ -25329,10 +25329,10 @@ function meosFcMarkPairRanges(doc, line, ch) {
     //     範囲を記号の外側まで取っていたから。→ `bodyStart..bodyEnd` で見る。
     //   ★見つからない時は **空の配列**を返す＝ 「段落だと分かった。だが対は無い」を、
     //     「段落かどうか分からない(null)」と区別する。呼ぶ側は空なら何も塗らない。
-    //   ★境界は**開きの頭から、中身の尻まで**。左は記号を含める(=印に触った瞬間から光る)、
-    //     右は閉じ記号の手前で切る(=俊克「右端でもハイライトと認識している。でも、そこは外側だよね」)。
-    //     読む向きに合わせた形＝ 入る時は入口から、出る時は中身が終わった所で出る。
-    const _in = (m, x) => { const b2 = (typeof m.bodyEnd === 'number') ? m.bodyEnd : m.end; return x >= m.start && x <= b2; };
+    //   ★★境界は**記号の内側だけ**＝ 両端とも記号の上は外側(v4.0.412 俊克「『、』の左から『て』の右までが
+    //     外側だよ」＝『て』の右は次の印の開き記号の頭なので、そこはまだ外)。
+    //     →「素の字＝外」と「印の中＝橙」が、字1つのずれもなく背中合わせになる。
+    const _in = (m, x) => x > m.start && x < m.end;
     const hit = (line === bodyLn)
       ? pairs.find(p => _in(p.mk, ch))
       : pairs.find(p => p.bx.line === line && ch >= p.bx.start && ch <= p.bx.end);
@@ -27760,7 +27760,7 @@ function meosApplyBoldDecorations(editor) {
   if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.15(俊克): font-sizeに!important=見出し内(font-size:大)でも太字/斜体膜のマーカーが確実に畳まれる(前後の空白バグ修正)
   try {
     if (typeof meosRawMode !== 'undefined' && meosRawMode) { clearAll(); return; }
-    const doc = editor.document; const hideR = []; const itemsByType = new Map();
+    const doc = editor.document; const hideRAll = []; const itemsByType = new Map();
     const _bLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.152: 語に効く記法のFC指定行を引くための行配列(版ごとに1回だけ刻んである)
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
@@ -27772,7 +27772,16 @@ function meosApplyBoldDecorations(editor) {
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
       for (let ln = from; ln <= to; ln++) {
-        if (cursorLines.has(ln)) continue; // カーソル行=生表示(編集可)
+        // ★★v4.0.412(俊克 8/26 pm04:33「『イト***』の一番右端の『*』が白いのはおかしいでしょ。
+        //   …『(プレーン)==と***ハイ』の『と』の直後の『*』が白いのもおかしいでしょ」):
+        //   ★★白いのはMeOSの塗り残しではなく、**テーマが `***` の記号を2種類に塗り分けている**から
+        //     ＝ 外の `*`(斜体の印)と内の `**`(太字の印)が別の色。v4.0.409で間を素に戻したので、
+        //     その塗り分けがむき出しになった。テーマの読み違いではなく、テーマの流儀。
+        //   ★★so **印はMeOSが1つの色で塗る**。生表示の行で今までと違うのは**記号を隠さないことだけ**に揃える
+        //     ＝ 色は今までと同じ1つの道(pushStyle)から出す。行ごと飛ばすのをやめ、**隠す物だけ捨てる**。
+        //   ★これで v4.0.410 で足した「生データの行だけを回す2本目の道」は要らなくなる(口を1つに戻す)。
+        const _raw = cursorLines.has(ln);
+        const hideR = _raw ? [] : hideRAll;   // 生表示= 隠さない。色(itemsByType)はそのまま入る
         const text = doc.lineAt(ln).text;
         if (text.indexOf('*') < 0 && (_prose ? text.indexOf('_') < 0 : text.indexOf('_{') < 0)) continue;
         // v4.0.58: コードスパンの中は装飾しない / v4.0.169: 仕様コメントの中の命令トークンも隠す
@@ -27874,25 +27883,9 @@ function meosApplyBoldDecorations(editor) {
         // v4.0.169/189: **これからの斜体は `*本文*`**(`_本文_` は read-both で上に残す)。単一 `*` は上の走査that一緒に拾う。
       }
     }
-    // ★★v4.0.410(俊克 8/26 pm03:49 バグ1「スクショ1枚目も2枚目でも、**『、そして』が白くなるべき**なんだよ。
-    //   最後の『と』は正しく白になっている」):
-    //   ★★**生データの行では、v4.0.409の後始末が一度も走っていなかった**＝ 上の走査は
-    //     `if (cursorLines.has(ln)) continue;` で**行ごと飛ばす**ので、間を素に戻す所まで届かない。
-    //     俊克の「1枚目でも」はカーソルの居る行(生表示)のこと。
-    //   ★**生データの行でも、MeOSは既に橙を塗っている**＝ そこは既にMeOSが色を言っている場なので、
-    //     間の後始末も同じ場でやるのが筋。触るのは**間だけ**(印の中＝記号を含む所には手を出さない)。
-    for (const vr of vrs) {
-      for (let ln = vr[0]; ln <= vr[1]; ln++) {
-        if (!cursorLines.has(ln)) continue;
-        const _t = doc.lineAt(ln).text;
-        if (_t.indexOf('*') < 0) continue;
-        let _s2 = _t; if (_s2.indexOf('`') >= 0) _s2 = meosMaskCodeSpans(_s2);
-        const _sp = [];
-        try { for (const mk of meosStarMarks(_s2, _t)) _sp.push([mk.start, mk.end]); } catch (_) { }
-        for (let i = 1; i < _sp.length; i++) { const gs = _sp[i - 1][1], ge = _sp[i][0]; if (ge > gs) pushStyle(ln, gs, ge, false, false, null, null, '', true); }
-      }
-    }
-    editor.setDecorations(boldHideDeco, hideR);
+    // ★v4.0.412: v4.0.410の「生データの行だけを回す2本目の道」は撤去した。
+    //   上の走査が生表示の行も回すようになったので、間を素に戻すのも同じ1つの道で足りる。
+    editor.setDecorations(boldHideDeco, hideRAll);
     for (const [t, items] of boldFmtTypeCache.size ? [...boldFmtTypeCache].map(([k, t]) => [t, itemsByType.get(t) || []]) : []) editor.setDecorations(t, items);
   } catch (_) {}
   } finally { try { const _ms = Date.now() - _t0meosApplyBoldDecorations; if (_ms > 300) meosDbg('[Bold] ' + _ms + 'ms lines=' + (editor && editor.document ? editor.document.lineCount : 0)); } catch (_) { } }

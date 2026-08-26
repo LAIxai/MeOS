@@ -635,7 +635,10 @@ console.log('㊴ 印と印の間の字を、素に戻す(v4.0.409 俊克 バグ2
   ok(/if \(!fgKey\)/.test(body), '★MeOSが色を言っている時は、その色が勝つ', true);
   ok(!/color:[^;]*!important/.test(body), '★色には !important を付けない(橙=対の印を勝たせる)', body.slice(0, 260));
   // ★生データの行でも間を素に戻す(v4.0.410)
-  ok(/if \(!cursorLines\.has\(ln\)\) continue;/.test(src), '★生データの行だけを回す別の道が在る', true);
+  // ★v4.0.412: 2本目の道は撤去し、生表示の行も同じ走査が回る(隠す物だけ捨てる)
+  ok(!/if \(!cursorLines\.has\(ln\)\) continue;/.test(src), '★2本目の道(生データ専用)は撤去した', true);
+  ok(/const _raw = cursorLines\.has\(ln\);/.test(src) && /const hideR = _raw \? \[\] : hideRAll;/.test(src),
+     '★生表示で違うのは記号を隠さないことだけ(色は同じ道)', true);
 }
 
 console.log('㊵ 段落: 修飾の外は橙にしない/境界は閉じ記号の手前(v4.0.411 俊克)');
@@ -646,9 +649,10 @@ console.log('㊵ 段落: 修飾の外は橙にしない/境界は閉じ記号の
   const at = (ch) => { const r = T.meosFcMarkPairRanges(d, 0, ch); return r === null ? 'null' : (r.length === 0 ? 'none' : B.slice(r[0].start.character, r[0].end.character) + '#' + r[1].start.line); };
   const mk = T.meosRowMarksInOrder(B);
   ok(mk[1].bodyStart === 23 && mk[1].bodyEnd === 28, '★印は中身の範囲も持つ(入れ直しで落とさない)', JSON.stringify(mk[1]));
-  ok(at(20) === '***ハイライト***#1', '★開き記号の頭=中(印に触った瞬間から光る)', at(20));
-  ok(at(28) === '***ハイライト***#1', '★中身の尻=中', at(28));
-  ok(at(29) === 'none', '★閉じ記号の上=外', at(29));
+  ok(at(20) === 'none', '★開き記号の頭=外(v4.0.412 俊克「て」の右はまだ外)', at(20));
+  ok(at(21) === '***ハイライト***#1', '★開き記号の内側=中', at(21));
+  ok(at(30) === '***ハイライト***#1', '★閉じ記号の内側=中', at(30));
+  ok(at(35) === 'none', '★★次の印の開き記号の頭=外(スクショ3枚目)', at(35));
   ok(at(31) === 'none', '★印の右端=外(俊克「そこは外側だよね」)', at(31));
   ok(at(33) === 'none', '★★修飾の外(、そして)は何も橙にしない', at(33));
   ok(at(46) === 'none', '★最後の「と」も外', at(46));

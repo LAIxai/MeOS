@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.412 (2026-08-26)
+- **A mark is painted in one colour on the raw line.** The odd white asterisk was not a gap left unpainted — the
+  theme colours the two halves of `***` differently (the outer `*` is italic punctuation, the inner `**` is bold
+  punctuation). Resetting the space between marks simply left that split exposed. Now the only thing the caret's
+  line does differently is *show the symbols*; the colour comes from the same single path as everywhere else.
+- **The second path added in v4.0.410 is gone.** With the ordinary pass now covering the caret's line, resetting the
+  space between marks needs no separate route.
+- **The boundary is the inside of the markers, on both ends.** Standing on either `***` counts as outside, so plain
+  text and the orange pair meet back to back without a character of overlap.
+
 ### v4.0.411 (2026-08-26)
 - **Outside a mark, nothing turns orange.** The orange says *these two belong together*, so it must not glow where no
   pair exists. In a paragraph the caret used to fall back to lighting the whole body line and the whole FC group —
