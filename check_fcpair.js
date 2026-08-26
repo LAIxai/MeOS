@@ -714,6 +714,11 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/btn\.classList\.add\('ghost-face'\)/.test(src) && /\.fmt-btn\.ghost-face\{font-size:17px/.test(src),
      '★👻は1.3倍(13→17px・🚫と同じ手)', true);
   ok(/if\(kind==='strike'\)btn\.classList\.remove\('ghost-face'\);/.test(src), '★👻でない時は素の大きさへ戻す', true);
+  // ★v4.0.435: 👻の面も設定の色を着る(2つの口が同じ値を塗る)
+  ok(/var _ss=fmtSpec\.strike\|\|\{\};var _sbg=_ss\.bg\?fmtHexBg\(_ss\.bg\):'';btn\.style\.color=fmtHexFg\(_ss\.fg\);btn\.style\.backgroundColor=_sbg/.test(src),
+     '★★👻の面も設定の色を塗る(renderFmtBtnColorsと同じ値なので、どちらが後でも同じ)', true);
+  ok(!/btn\.textContent='👻';btn\.classList\.add\('ghost-face'\);[\s\S]{0,700}btn\.style\.backgroundColor='';/.test(src),
+     '★もう色を消さない(出たり出なかったりの真因)', true);
   ok(/if \(it\.not \|\| it\.ghost\) return null;/.test(src), '★👻 は行末形式へ戻さない(notと同じ)', true);
   // ★v4.0.417: 押す前の面と押した結果は同じ物を指す(Option=裏の顔)
   ok(/stAltW=fmtAltWatch\(fmtStrike,/.test(src), '★取消線ボタンもOptionの見張りに名乗る', true);

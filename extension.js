@@ -20989,7 +20989,13 @@ if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見�
 /* v4.0.432: 取消線の面は**これから書く物**を見せる= 既定は👻。🚫(解除)の時は今までどおりリングに任せる。 */
 if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';btn.classList.add('ghost-face');
 btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough. \u2325 Opt \u2192 plain strikethrough \u00b7 \u25be turns it off for good.');
-btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
+btn.classList.remove('fmt-remove');
+/* ★★v4.0.434b→435(俊克「指定した背景色が👻の背景に出る時と出ない時がある。…設定した色を見せておくことも大事」):
+   ★★出たり出なかったりは、**面を描く口と色を塗る口が別**だったから(v4.0.421と同じ穴・2度目)＝ここで色を消して
+     いたので、renderFmtBtnColors とどちらが後に走るかで変わっていた。→ **同じ値を塗る**(消さない)。
+   ★👻は絵文字なので文字色は変えられないが、**背景は設定どおりに見せられる**＝押す前に、書かれる色が分かる。 */
+{var _ss=fmtSpec.strike||{};var _sbg=_ss.bg?fmtHexBg(_ss.bg):'';btn.style.color=fmtHexFg(_ss.fg);btn.style.backgroundColor=_sbg;btn.style.borderColor=_sbg||'';}
+return;}
 if(kind==='strike')btn.classList.remove('ghost-face');   /* v4.0.433: 👻でない時は素の大きさへ戻す */
 if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udc7b comment out');
 if(kind==='heading'&&hdAltOn()&&hdAltMode()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */

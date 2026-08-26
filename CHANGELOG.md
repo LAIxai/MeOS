@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.435 (2026-08-27)
+- **The 👻 button wears the colour it will write.** It was appearing and disappearing because two different hands
+  painted that button and one of them was wiping it clean — the same split fixed in v4.0.421, in a second place.
+  Both now paint the same value, so it no longer matters which runs last. The glyph is an emoji and keeps its own
+  colours, but the background is the one that was chosen.
+
 ### v4.0.434 (2026-08-27)
 - **A ghost keeps its colour.** Deleting the 👻 from the folding comment now leaves a finished, coloured
   strikethrough — one edit, nothing to choose again. v4.0.416 dropped the colour on the grounds that something
