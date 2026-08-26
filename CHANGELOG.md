@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.432 (2026-08-27)
+- **Strikethrough now hides by default.** The button is 👻; a `□ ~~` in its ▾ menu brings the classic behaviour
+  back, and Option still gives whichever one you are not set to. Same shape as the highlight button's `□ 🔗`.
+- Text struck out in a diary is text you have finished with — crossing it out keeps showing you what you are done
+  looking at. Hidden is the better default; the file keeps every character, and outside MeOS it is a strikethrough
+  as before.
+- The ▾ is where someone meeting 👻 for the first time finds out what it is: `□ ~~` sitting beside it says which
+  family it belongs to.
+
 ### v4.0.431 (2026-08-27)
 - The ⚠️ on the button is about a third larger; the count keeps its size, so the pill stays the height it was.
 

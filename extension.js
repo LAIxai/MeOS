@@ -20752,6 +20752,16 @@ const fmtHeadingColors={1:{fg:'白',bg:'緑',head:true,bullet:false,blt:'-'},2:{
 const fmtHlSlots=[{fg:'白',bg:'黄',bold:false,italic:false,link:false,ul:1},{fg:'白',bg:'紫',bold:true,italic:false,link:false,
 ul:1},{fg:'白',bg:'青',bold:false,italic:true,link:false,ul:1}];let fmtHlIdx=0;/* v4.0.17(俊克): 統一ボタン化=各ハイライトプリセットが太字/斜体フラグを持つ。B/I無=ハイライト・有=太字/斜体記法を出す。 */
 const fmtStSlots=[{fg:'赤',bg:''},{fg:'赤',bg:''},{fg:'赤',bg:''}];let fmtStIdx=0;
+/* ★★v4.0.432(俊克 8/27 am01:23「**逆にしようよ**。□ ~~ という設定を入れる。つまり、基本は👻で、従来方式に
+   したい人は □ ~~ に✓を入れる。…初めて👻ボタンを見た人は、▾ボタンを押すことで、それが取消線と関係すること
+   に気づく。そして、実際に使って見て、いなくなっちゃった! おもしれー! ってな感じになる」):
+   ★★**取消線の基本を 👻 にする**。俊克の使い方＝日々の違いを書き換えるために取消線を使う＝消した方はもう
+     読み返さない。だから「消したが見える」より「見えない」が既定にふさわしい。
+   ★私は「初めての人が驚く」を理由に既定の据え置きを勧めたが、俊克の答えが上を行った＝ **▾が入口になる**
+     (👻の隣に □ ~~ が在れば、それが取消線の仲間だと分かる)。驚きは事故ではなく、**発見**になる。
+   ★形はハイライトの □ 🔗 の写し(v4.0.295)＝ プリセットが名乗り、Optは今までどおり「今の逆」。 */
+function fmtStTildeOn(){var sp=fmtStSlots[fmtStIdx]||{};return stAltOn()?!sp.tilde:!!sp.tilde;}
+function fmtStGhostOn(){return !fmtStTildeOn();}
 const fmtSpec={highlight:fmtHlSlots[0],strike:fmtStSlots[0],heading:fmtHeadingColors[2],/* v4.0.38(俊克「上付きの▾パネルを他と同じに」): 上付/下付も共有パネル(fmt-pop)を使う。値の実体は従来どおり mtxFg/mtxBg so既存コードは無傷。 */metex:{get fg(){return (typeof mtxFg!=='undefined')?mtxFg:null;
 },set fg(v){mtxFg=v||null;},get bg(){return (typeof mtxBg!=='undefined')?mtxBg:null;},set bg(v){mtxBg=v||null;}}};
 /* v0.9.99938: Format色設定をmMETAへ随伴保存(変更のたびにnodeへ送る) */function pushFmt(){try{vscode.postMessage({type:'saveFmt',fmt:{highlight:fmtHlSlots,
@@ -20787,7 +20797,10 @@ html+=_row('Super %','mtx-sup-input','mtx-sup-prev','2',(typeof mtxSupVal!=='und
 html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-size:12px">'+_bi('bold','Bold',spec.bold)+_bi('italic','Italic',spec.italic)+_bi('link','🔗',spec.link)+'</div>';
 /* v4.0.26(俊克 どこでもH-TOC): □Linkの時だけ下線種を選ぶ(0=単線/1=二重/2=波線/3=二重波線)。生データは番号so手打ち不要・UIは実物の下線でプレビュー。 */if(spec.link){const _ulc=fmtHexFg(spec.fg);
 const _uls=[[0,'Solid'],[1,'Double'],[2,'Wavy'],[3,'Double wavy']];html+='<div style="display:flex;justify-content:center;gap:6px;padding:0 0 7px;font-size:12px">'+_uls.map(u=>'<span class="fmt-ul" data-ul="'+u[0]+'" title="'+u[1]+' underline"'+' style="cursor:pointer;display:inline-block;text-align:center;padding:1px 5px 3px;border-radius:5px;'+((Number(spec.ul)||0)===u[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'"><span style="display:inline-block;width:20px;padding-bottom:6px;'+fmtUlCssStr(u[0],_ulc)+'">'+u[0]+'</span></span>').join('')+'</div>';
-}}if(fmtPopCh){const ch=fmtPopCh,list=(ch==='fg')?((fmtPopKind==='metex')?[['なし','']].concat(FMT_FG):FMT_FG):FMT_BG,cur=spec[ch];
+}}/* v4.0.432(俊克): 取消線の▾に □ ~~ = 従来方式に戻す設定。既定はオフ＝👻。 */if(fmtPopKind==='strike'){const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px;'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
+html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-size:12px">'+_tb('tilde','~~',!!spec.tilde)+'</div>';
+html+='<div style="text-align:center;padding:0 6px 7px;font-size:11px;opacity:.75;line-height:1.45">'+(spec.tilde?'Strikethrough — crossed out, still visible.':'Comment out (\ud83d\udc7b) — hidden, not deleted. Caret on the line brings it back; outside MeOS it is a strikethrough.')+'</div>';
+}if(fmtPopCh){const ch=fmtPopCh,list=(ch==='fg')?((fmtPopKind==='metex')?[['なし','']].concat(FMT_FG):FMT_FG):FMT_BG,cur=spec[ch];
 html+='<div class="fmt-pop-head">'+fmtChLabel(fmtPopKind,ch)+'</div><div class="fmt-grid">'+list.map(([w,hex])=>{const active=(w==='なし')?!cur:(w===cur);
 return '<button class="fmt-swatch'+(active?' active':'')+'" data-color="'+w+'" title="'+(FMT_EN[w]||w)+', '+w+'"><span class="fmt-ball'+(hex?'':' none')+'" style="background:'+(hex||'transparent')+'"></span></button>';
 }).join('')+'</div>';}const fgD=(fmtPopCh&&fmtPopCh!=='fg')?' dim':'',bgD=(fmtPopCh&&fmtPopCh!=='bg')?' dim':'';html+='<div class="fmt-slots"><button class="fmt-slot'+(fmtPopCh==='fg'?' active':'')+fgD+'" data-ch="fg" title="'+fmtChLabel(fmtPopKind,'fg')+(spec.fg?' — '+(FMT_EN[spec.fg]||spec.fg)+', '+spec.fg:'')+'"><span class="fmt-ball" style="background:'+fmtHexFg(spec.fg)+'"></span></button><span class="fmt-slot-sep">/</span><button class="fmt-slot'+(fmtPopCh==='bg'?' active':'')+bgD+'" data-ch="bg" title="Background color'+(spec.bg?' — '+(FMT_EN[spec.bg]||spec.bg)+', '+spec.bg:' — none, なし')+'"><span class="fmt-ball'+(spec.bg?'':' none')+'" style="background:'+fmtHexBg(spec.bg)+'"></span></button></div>';
@@ -20913,14 +20926,14 @@ bold:!!_hs.bold,italic:!!_hs.italic,fg:_hs.fg,bg:_hs.bg});return;}vscode.postMes
 fg:fmtSpec.highlight.fg,bg:fmtSpec.highlight.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtHlIdx];
 window.__fmtActionable.highlight=true;window.__fmtBaseW.highlight=_w;window.__fmtRing.highlight=0;window.__fmtWasDeco.highlight=true;
 window.__fmtCyclingKind='highlight';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');}});
-if(fmtStrike)fmtStrike.addEventListener('click',(ev)=>{/* v4.0.416(俊克): Opt押し=👻(コメント化)。取り消して見せるのでなく、完全に見えなくする。↻リングより先に見る=Optは別の道 */
-if(ev&&ev.altKey){vscode.postMessage({type:'insertFormat',kind:'strike',ghost:true});return;}
+if(fmtStrike)fmtStrike.addEventListener('click',(ev)=>{/* v4.0.416(俊克): 👻(コメント化)=取り消して見せるのでなく、完全に見えなくする。
+   v4.0.432: どちらを書くかは **fmtStGhostOn() 1つ**が決める(プリセットの □ ~~ と Optの「今の逆」を1本にまとめた)。 */
 if(window.__fmtActionable.strike){const r=window.__fmtRing.strike||0;
 window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',kind:'strike',
 ring:0});}else{const baseW=window.__fmtBaseW.strike||2;const w=((baseW-1+r)%3)+1;const sp=fmtStSlots[w-1];window.__fmtBaseW.strike=w;
 window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;vscode.postMessage({type:'fmtCycle',kind:'strike',ring:w,fg:sp.fg,
 bg:sp.bg});window.__renderFmtRing('strike');}return;}vscode.postMessage({type:'insertFormat',kind:'strike',fg:fmtSpec.strike.fg,
-bg:fmtSpec.strike.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtStIdx];window.__fmtActionable.strike=true;
+bg:fmtSpec.strike.bg,ghost:fmtStGhostOn()});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtStIdx];window.__fmtActionable.strike=true;
 window.__fmtBaseW.strike=_w;window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;
 window.__renderFmtRing('strike');}});
 if(fmtHeading)fmtHeading.addEventListener('click',(ev)=>{/* v4.0.419(俊克): Opt押し=箇条書き。H1は - / H2は 1. / H3は予約。↻リングより先に見る=Optは別の道 */
@@ -20966,8 +20979,11 @@ return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
-if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again. Let go of \u2325 Opt to go back to strikethrough.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough.');btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
-if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip);
+/* v4.0.432: 取消線の面は**これから書く物**を見せる= 既定は👻。🚫(解除)の時は今までどおりリングに任せる。 */
+if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';
+btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough. \u2325 Opt \u2192 plain strikethrough \u00b7 \u25be turns it off for good.');
+btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
+if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udc7b comment out');
 if(kind==='heading'&&hdAltOn()&&hdAltMode()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
 btn.classList.remove('fmt-remove');
 if(hdAltMode()==='off'){/* v4.0.422: 既に箇条書き= 外した姿(見出しだけ)を見せる。色はボタンが着ているまま */

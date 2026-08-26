@@ -696,12 +696,16 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
      '★👻 に色は付けない(見えない物に色は要らない)', true);
   ok(/if \(_fcGhost\) \{ strikeMarkerRanges\.push\(\{ range: new vscode\.Range\(line, openStart, line, closeEnd\) \}\); continue; \}/.test(src),
      '★★描く側は印ごと丸ごと消す(本文だけでなく `~~` も)', true);
-  ok(/ev\.altKey\)\{vscode\.postMessage\(\{type:'insertFormat',kind:'strike',ghost:true\}\)/.test(src),
-     '★Optは↻リングより先に見る(別の道)', true);
+  ok(/bg:fmtSpec\.strike\.bg,ghost:fmtStGhostOn\(\)\}\)/.test(src),
+     '★★どちらを書くかは1つの判定(fmtStGhostOn)が決める(v4.0.432)', true);
+  ok(/function fmtStTildeOn\(\)\{var sp=fmtStSlots\[fmtStIdx\]\|\|\{\};return stAltOn\(\)\?!sp\.tilde:!!sp\.tilde;\}/.test(src),
+     '★★既定は👻・□~~で従来方式・Optは今の逆(🔗と同じ形)', true);
+  ok(/_tb\('tilde','~~',!!spec\.tilde\)/.test(src), '★▾に □ ~~ が在る(初めての人の入口)', true);
   ok(/if \(it\.not \|\| it\.ghost\) return null;/.test(src), '★👻 は行末形式へ戻さない(notと同じ)', true);
   // ★v4.0.417: 押す前の面と押した結果は同じ物を指す(Option=裏の顔)
   ok(/stAltW=fmtAltWatch\(fmtStrike,/.test(src), '★取消線ボタンもOptionの見張りに名乗る', true);
-  ok(/if\(kind==='strike'&&stAltOn\(\)\)\{btn\.textContent='👻';/.test(src), '★★Optionを押すと取消線ボタンが👻に変身する', true);
+  ok(/if\(kind==='strike'&&!window\.__fmtActionable\.strike&&fmtStGhostOn\(\)\)\{btn\.textContent='👻';/.test(src),
+     '★★面は「これから書く物」を見せる(既定=👻・🚫の時はリングに任せる)', true);
   ok(!/fmtAltDown=[^;]*;[\s\S]{0,80}var fmtAltDown/.test(src), '★見張りは1つのまま(2つ目を作らない)', true);
   // ★v4.0.419: 見出しの裏の顔=箇条書き(既に在る軸のもう一方)
   ok(/hdAltW=fmtAltWatch\(fmtHeading,/.test(src), '★見出しボタンもOptionの見張りに名乗る', true);
@@ -726,8 +730,8 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   // ★v4.0.421: tipは面の一部/戻ったら色も戻る
   ok(/btn\.setAttribute\('data-tip',fmtHeadAltTip\(\)\);return;\}/.test(src) && /if\(kind==='heading'\)btn\.setAttribute\('data-tip',fmtHeadTip\(\)\);/.test(src),
      '★★見出し: 変身でtipも変わり、戻ればtipも戻る', true);
-  ok(/if\(kind==='strike'&&stBaseTip\)btn\.setAttribute\('data-tip',stBaseTip\);/.test(src),
-     '★取消線も同じ(素のtipを控えて戻す)', true);
+  ok(/if\(kind==='strike'&&stBaseTip\)btn\.setAttribute\('data-tip',stBaseTip\+String\.fromCharCode\(10\)/.test(src),
+     '★取消線も同じ(素のtipを控えて戻す＋Optの案内を足す)', true);
   ok((src.match(/if\(!hdAltOn\(\)&&typeof renderFmtBtnColors==='function'\)renderFmtBtnColors\(\);/g) || []).length === 1
      && (src.match(/if\(!stAltOn\(\)&&typeof renderFmtBtnColors==='function'\)renderFmtBtnColors\(\);/g) || []).length === 1,
      '★★戻ったら色を塗り直すまでが1組(2つのボタンとも)', true);
