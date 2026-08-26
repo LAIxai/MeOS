@@ -703,6 +703,16 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/stAltW=fmtAltWatch\(fmtStrike,/.test(src), '★取消線ボタンもOptionの見張りに名乗る', true);
   ok(/if\(kind==='strike'&&stAltOn\(\)\)\{btn\.textContent='👻';/.test(src), '★★Optionを押すと取消線ボタンが👻に変身する', true);
   ok(!/fmtAltDown=[^;]*;[\s\S]{0,80}var fmtAltDown/.test(src), '★見張りは1つのまま(2つ目を作らない)', true);
+  // ★v4.0.419: 見出しの裏の顔=箇条書き(既に在る軸のもう一方)
+  ok(/hdAltW=fmtAltWatch\(fmtHeading,/.test(src), '★見出しボタンもOptionの見張りに名乗る', true);
+  ok(/function hdAltBlt\(\)\{return \(fmtHeadingLevel===1\)\?'-':\(fmtHeadingLevel===2\)\?'1\.':null;\}/.test(src),
+     '★★H1は - / H2は 1. / H3は予約(nullで変身しない)', true);
+  ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltBlt\(\)\)\{btn\.textContent=hdAltBlt\(\);/.test(src),
+     '★★押す前の面が、押した結果を見せる', true);
+  ok(/ev\.altKey&&hdAltBlt\(\)\)\{[\s\S]{0,260}head:false,bullet:true,blt:hdAltBlt\(\)\}\);return;\}/.test(src),
+     '★Optは見出しを名乗らず箇条書きだけ書く', true);
+  ok(!/ev\.altKey&&hdAltBlt\(\)\)\{[\s\S]{0,260}_hs\.bullet=/.test(src),
+     '★Optはプリセットを変えない(1回きりの裏の顔)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

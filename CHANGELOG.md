@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.419 (2026-08-26)
+- **Hold Option and the heading button becomes a bullet.** `#` offers `-`, `##` offers `1.`, `###` is held in
+  reserve and does not transform — an empty promise is worse than none. Heading and bullet were already the two axes
+  of this button, so this is the axis it already had, reached the quick way instead of through the menu.
+- Option here is a one-shot: the preset stays a heading, which is what it is used for.
+- Every Format button now has a second face under Option.
+
 ### v4.0.418 (2026-08-26)
 - Shorter tip on the strikethrough button.
 

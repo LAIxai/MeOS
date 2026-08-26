@@ -19830,7 +19830,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once, with the underline you last chose (leave □ Link unchecked in the presets; the button shows that underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;⌥ Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
 <span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="Raw view | MeOS rendering OFF = plain editor (IME-friendly). Also bindable: command MeOS: Toggle Raw View.">👁 Raw</button>
 <!-- {* ▲mCN=dock_format *} -->
@@ -20737,6 +20737,16 @@ function hlAltOn(){return !!(hlAltW&&hlAltW.on());}
    仕事(👻を書く)を先に足して、面を足し忘れていた。**押す前の面と押した結果は同じ物を指す**。 */
 var stAltW=null;
 function stAltOn(){return !!(stAltW&&stAltW.on());}
+/* ★★v4.0.419(俊克 8/26 pm05:59「膜は操作ボタンがあるしね。…通常は見出しの方が使うので、見出しとして
+   プリセットに入れておく。そして、Opt押しのときは、H1は箇条書き(-)、H2は数字付き箇条書き(1.)、
+   H3は予約。このほうが自然だし、使いやすいでしょ」):
+   ★★**裏の顔は、そのボタンが既に持っている軸の、もう一方の答え**。見出しは v4.0.47 から
+   「□見出し □箇条書き」の2軸を持っていた＝ 箇条書きは**新しい機能でなく、既に在る軸**。
+   ★so Optは**プリセットを変えない**＝ 1回きりの裏の顔(押した後も面は見出しのまま)。
+   ★H3は**まだ何も名乗らない**＝ Optを押しても変身しない(空約束をしない)。 */
+var hdAltW=null;
+function hdAltOn(){return !!(hdAltW&&hdAltW.on());}
+function hdAltBlt(){return (fmtHeadingLevel===1)?'-':(fmtHeadingLevel===2)?'1.':null;}
 function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
 /* v4.0.298(俊克): 下線の種類は「最後に自分で決めた値」。nodeが覚えていて、開いた時と変わった時に送ってくる。
    ★webviewは**持ち主ではなく写し**= 面を描くためだけに持つ。書く値を決めるのはnode(口を2つ作らない)。 */
@@ -20771,7 +20781,10 @@ bg:sp.bg});window.__renderFmtRing('strike');}return;}vscode.postMessage({type:'i
 bg:fmtSpec.strike.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtStIdx];window.__fmtActionable.strike=true;
 window.__fmtBaseW.strike=_w;window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;
 window.__renderFmtRing('strike');}});
-if(fmtHeading)fmtHeading.addEventListener('click',()=>{if(window.__fmtActionable.heading){const r=window.__fmtRing.heading||0;
+if(fmtHeading)fmtHeading.addEventListener('click',(ev)=>{/* v4.0.419(俊克): Opt押し=箇条書き。H1は - / H2は 1. / H3は予約。↻リングより先に見る=Optは別の道 */
+if(ev&&ev.altKey&&hdAltBlt()){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
+vscode.postMessage({type:'insertFormat',kind:'heading',fg:fmtSpec.heading.fg,bg:fmtSpec.heading.bg,level:fmtHeadingLevel,head:false,bullet:true,blt:hdAltBlt()});return;}
+if(window.__fmtActionable.heading){const r=window.__fmtRing.heading||0;
 window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',
 kind:'heading',ring:0});}else{const baseW=window.__fmtBaseW.heading||2;const w=((baseW-1+r)%3)+1;const hc=fmtHeadingColors[w];
 window.__fmtBaseW.heading=w;window.__fmtRing.heading=0;window.__fmtWasDeco.heading=true;vscode.postMessage({type:'fmtCycle',
@@ -20808,7 +20821,8 @@ return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
-if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
+if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
+if(kind==='heading'&&hdAltOn()&&hdAltBlt()){btn.textContent=hdAltBlt();btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
 btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));}/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();
 fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);}btn.classList.remove('fmt-remove');return;}if(window.__fmtActionable[kind]){let r=window.__fmtRing[kind]||0;
 r=((r%4)+4)%4;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;const w=(r===0)?baseW:(((baseW-1+r)%3)+1);const isRemove=(r===0);
@@ -20870,6 +20884,7 @@ document.addEventListener('click',function(ev){if(fp.classList.contains('on')&&e
    = 🚫の時は面を触らない、というv4.0の作法がそのまま効く(裏の顔を出す口を別に作らない)。 */
 hlAltW=fmtAltWatch(fmtHighlight,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');});
 stAltW=fmtAltWatch(fmtStrike,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');});
+hdAltW=fmtAltWatch(fmtHeading,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('heading');});
 fmtHlCycle.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
 if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%4;window.__fmtCyclingKind='highlight';
 window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+1)%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];
