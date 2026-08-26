@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.405 (2026-08-26)
+- **Backspace is only intercepted at the start of a line, Delete only at the end.** v4.0.400 gated the three keys on
+  whether an FC line, membrane, table or list was near, but reading the handlers shows they are far narrower than
+  that: `meosJoinSpecsOnBackspace` returns immediately unless the caret is at column 0, and the Delete handler only
+  acts at a line end. So backspace in the middle of a paragraph that happens to carry an FC line still paid two round
+  trips to do nothing — the one or two seconds that remained. Columns cannot be written in a `when` clause, so two
+  more context keys carry them, with one column of slack because `setContext` is asynchronous and a key that flips
+  exactly at column 0 would drop the first press.
+
 ### v4.0.404 (2026-08-26)
 - **A plain highlight is now the full negation of bold-and-italic: `***…***` with `***not`.** "Plain" is only fully
   stated when both axes are denied — `**not` denies bold and says nothing about italic, so the declaration was half

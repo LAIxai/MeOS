@@ -24126,7 +24126,7 @@ async function meosTableNav(editor, dir) {
 //     ＝ VS Code が自分で消す＝ MeOS を無効にした時と同じ速さ。
 //   ★**分からない時は true**(機能を落とさない)。範囲も±2行と広めに取る＝ setContext は非同期so、
 //     1行動いただけで真偽が入れ替わると、最初の1打を取りこぼす(v4.0.338〜341で踏んだ穴)。
-let _meosFcKeysCtx = null;
+let _meosFcKeysCtx = null, _meosFcBsCtx = null, _meosFcDelCtx = null;
 function meosFcKeysNeeded(editor) {
   try {
     if (!editor || !editor.document || !editor.selection) return false;
@@ -24154,6 +24154,25 @@ function meosUpdateInTableContext(editor) {
   // v4.0.400: bs/改行/fs を横取りするかどうか。変わった時だけ送る(打鍵の道に仕事を足さない)。
   const fk = meosFcKeysNeeded(editor);
   if (fk !== _meosFcKeysCtx) { _meosFcKeysCtx = fk; try { vscode.commands.executeCommand('setContext', 'meos.fcKeys', fk); } catch (_) {} }
+  // ★★v4.0.405(俊克 8/26 am11:09 改良1「bs1回が1、2秒遅延することがまだある。何とかならないか?」):
+  //   ★★**bs と fs は、もっと狭くてよかった**。中を読むと
+  //     `meosJoinSpecsOnBackspace` は **桁0の時だけ**(`pos.character !== 0` で即 return)、
+  //     `handleDeleteJoinSpecLines` は **行の端の時だけ**しか働かない。
+  //     だから行の途中のbsは、**MeOSが何もしないのに往復2回**払っていた＝ 俊克の1〜2秒。
+  //   ★桁で決まる話なので `when` では書けない。→ **桁を見る文脈キーを別に立てる**。
+  //   ★1桁ぶん余裕を持たせる＝ `setContext` は非同期なので、桁1で既に true にしておかないと
+  //     桁0へ動いた直後の1打を取りこぼす(v4.0.400と同じ用心)。
+  let bs = false, dl = false;
+  try {
+    if (fk && editor && editor.document && editor.selection && editor.selection.isEmpty) {
+      const ln = editor.selection.active.line, ch = editor.selection.active.character;
+      const len = editor.document.lineAt(ln).text.length;
+      bs = (ln > 0 && ch <= 1);          // 行頭で前の行と結ぶ時だけ(1桁の余裕)
+      dl = (ch >= len - 1);              // 行末で次の行と結ぶ時だけ(1桁の余裕)
+    }
+  } catch (_) { bs = dl = fk; }
+  if (bs !== _meosFcBsCtx) { _meosFcBsCtx = bs; try { vscode.commands.executeCommand('setContext', 'meos.fcBs', bs); } catch (_) {} }
+  if (dl !== _meosFcDelCtx) { _meosFcDelCtx = dl; try { vscode.commands.executeCommand('setContext', 'meos.fcDel', dl); } catch (_) {} }
 }
 // v0.9.999158(俊克): セル横結合を「装飾」で見せる。生データは全セル保持(正しいGFM)。🤝Nマーカーと、その右の(N-1)本の内側|を opacity:0 で不可視化(幅は維持=桁揃えは崩れない)→エディタ上で1つの結合セルに見える。Rawモードでは解除。可視範囲のみ走査(巨大ファイル対策)。
 let tableMergeHideDecoration = null;

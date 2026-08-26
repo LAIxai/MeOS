@@ -114,6 +114,15 @@ console.log('④ bs/改行/fs は、出番がある場所でだけ横取りす�
   ok(/function meosFcKeysNeeded/.test(src), '判定は1つの関数に在る', true);
   ok(/setContext', 'meos\.fcKeys'/.test(src), 'カーソルが動いた時に送る', true);
   ok(/catch \(_\) \{ return true; \}/.test(src.slice(src.indexOf('function meosFcKeysNeeded'), src.indexOf('let _meosInTableCtx'))), '★分からない時は横取りする(機能を落とさない)', true);
+  // ★v4.0.405(俊克「bs1回が1、2秒遅延することがまだある」): bs/fs は桁でも絞る。
+  //   中を読むと meosJoinSpecsOnBackspace は桁0だけ・handleDeleteJoinSpecLines は行の端だけしか働かない。
+  const bsK = pkg.contributes.keybindings.find(x => x.command === 'laiMembrane.backspaceJoinSpecLines');
+  const dlK = pkg.contributes.keybindings.find(x => x.command === 'laiMembrane.deleteJoinSpecLines');
+  ok(/meos\.fcBs/.test(bsK.when), '★backspace は行頭の時だけ(meos.fcBs)', bsK.when);
+  ok(/meos\.fcDel/.test(dlK.when), '★delete は行末の時だけ(meos.fcDel)', dlK.when);
+  ok(/pos\.character !== 0/.test(src), '中身も桁0だけ(門番と実体が同じ条件)', true);
+  ok(/setContext', 'meos\.fcBs'/.test(src) && /setContext', 'meos\.fcDel'/.test(src), 'カーソルが動いた時に送る', true);
+  ok(/ch <= 1/.test(src) && /ch >= len - 1/.test(src), '★1桁の余裕を持たせる(setContextは非同期なので最初の1打を落とさない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
