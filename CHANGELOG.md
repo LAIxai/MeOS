@@ -4,6 +4,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.399 (2026-08-26)
+- **One missing null-check stopped the whole extension from starting.** Headings stayed as `##`, the spells did
+  nothing, and Backspace and Enter reported `command 'laiMembrane.backspaceJoinSpecLines' not found`. All three were
+  the same event: `activate` calls `refresh`, `applyPrettyLabels` threw, and every command registered after that point
+  never existed — 44 of 64. The extension host log named it exactly: `TypeError: Cannot read properties of null
+  (reading '1') at applyPrettyLabels`. `mP` comes from a regex that requires a non-space character, so it is null on a
+  blank line, while `dir` can arrive from the FC line *below*; a blank body line under an FC line declaring a heading
+  or a bullet reached the null. The line eight below already guarded `mP` — the guard was missing in exactly one spot.
+- **A decoration failure can no longer take the extension down with it.** `refresh` now catches, records the stack in
+  the profile log and a status-bar note, and returns; everything else keeps working. Reproduced against the previous
+  build (44 commands, both reported commands absent) and verified on this one (64, both present), by `check_activate.js`.
+- **The structure shift builds one object per membrane, not one per membrane per keystroke.** v4.0.394 rebuilt the
+  arrays once per accumulated shift: measured on the real diary (1,787 membranes) a 300-shift burst created 536,100
+  objects in a single call. The line numbers are now summed as numbers and wrapped once — 1,787.
+
 ### v4.0.398 (2026-08-24)
 - **Decorating a table row now writes the whole FC group, placeholders and all.** Highlighting a cell on the third
   row produced a single FC line, so the group no longer matched the table row for row and the orange pairing went

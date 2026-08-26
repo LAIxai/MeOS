@@ -7061,7 +7061,20 @@ function applyPrettyLabels(editor) {
         } catch (_) { }
       }
       // コメントの宣言だけで成立させるのは「本文がある行」に限る(`<!-- Mew! H2 -->` だけの行を丸ごと消さない)。
-      const _dirOnly = !!(dir && (dir.level || dir.bullet) && mCpre.index > mP[1].length);
+      // ★★★v4.0.399(俊克 8/26 am08:56「MeOSの動きがおかしくなった。見出しが##のまま。呪文も効かない。
+      //   bsや改行で `command 'laiMembrane.backspaceJoinSpecLines' not found`。システム再起動しても駄目」):
+      //   ★★★**拡張の起動が、この1行で死んでいた**。拡張ホストのログが名指ししていた＝
+      //     `TypeError: Cannot read properties of null (reading '1') at applyPrettyLabels (7064)
+      //      ← _refreshInner ← refresh ← activate`
+      //   ★`mP` は 7024行の `.exec()` の結果so、正規表現が `(\S…)` を要求する＝ **空行では null**。
+      //     ところが `dir` は**真下のFC行**からも来る(その枝は mP を見ていない)ので、
+      //     **本文が空 ＋ 真下にH2や箇条書きを名乗るFC行**、という形で null を触った。
+      //     俊克がまさに作る形＝ 見出しの字を消して、FC行だけが残った瞬間。
+      //   ★すぐ下の 7070行は `if (mP && …)` と守ってある＝ **守り忘れが1行だけ**だった。
+      //   ★★そして本当の問題は**壊れ方の大きさ**＝ 装飾の1行のバグで、**拡張ぜんぶが起動しなくなる**。
+      //     見出しが素のまま／呪文が効かない／コマンドが無い、の3つは全部これ1つ。→ refresh を activate から
+      //     切り離す(下の v4.0.399 参照)。
+      const _dirOnly = !!(mP && mCpre && dir && (dir.level || dir.bullet) && mCpre.index > mP[1].length);
       // v4.0.121(俊克 8/10 am00:35 バグ1「箇条書きで、バックスラッシュで囲まれた文字列が表示されない」):
       // ★行頭マーカーは**生データ**で測る。dtextはコードスパンを空白に潰しているので、`- ` の後ろの `[ \t]+` が
       //   その空白を貪欲に飲み込み、`- \`Cmd + Shift + P\` ` を丸ごとマーカー扱いして隠していた。
@@ -12137,7 +12150,17 @@ function refresh(editor = vscode.window.activeTextEditor) {
   // 実測では俊克の日記(149,530行/11MB)でも MeOS の走査は全部ミリ秒台so、ここが秒を出すなら別の犯人が居る。
   // 300ms を超えた時だけ MeOS Debug に1行。数えるだけなので動作は変わらない。
   const _rt0 = Date.now();
+  // ★★★v4.0.399: **装飾の失敗で、拡張ぜんぶを道連れにしない**。
+  //   refresh は activate からも呼ばれるので、ここで例外が抜けると**そこから先のコマンドが1つも登録されない**
+  //   ＝ 見出しが素のまま・呪文が効かない・`command not found`。俊克の3つの症状は、全部この経路だった。
+  //   ★飲み込むのではなく、**名前を残して**次へ進む(黙って消すと、次に同じ穴を掘る)。
   try { return _refreshInner(editor); }
+  catch (e) {
+    try { meosDbg('[refresh] ★例外: ' + (e && e.stack ? e.stack : String(e))); } catch (_) { }
+    try { require('fs').appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' REFRESH-ERROR ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : String(e)) + '\n'); } catch (_) { }
+    try { vscode.window.setStatusBarMessage('MeOS: refresh error (see MeOS Debug) — 他の機能は動きます', 4000); } catch (_) { }
+    return undefined;
+  }
   finally { try { const _ms = Date.now() - _rt0; if (_ms > 300) meosDbg('[refresh] ' + _ms + 'ms lines=' + ((editor && editor.document) ? editor.document.lineCount : -1)); } catch (_) {} }
 }
 function _refreshInner(editor) {
@@ -23262,16 +23285,17 @@ function meosCarryNote(doc, atLine, delta) {
   if (c && c.uri === uri && c.toVersion === v - 1 && c.shifts.length < MEOS_CARRY_MAX) { c.shifts.push([atLine, delta]); c.toVersion = v; return; }
   _meosStructCarry = { uri, baseVersion: v - 1, toVersion: v, shifts: [[atLine, delta]] };
 }
+// ★v4.0.399: ずらしを**1回で当てる**。v4.0.394 は shifts の数だけ配列を作り直していたので、
+//   膜1,787対の日記で300回ぶん溜まると **53万個**のオブジェクトを1回の呼び出しで作っていた(実測)。
+//   答えは同じで、作る物は1,787個だけで済む＝ 行番号は数値のまま順に足してから、最後に1回だけ包む。
 function meosShiftStructure(value, shifts) {
-  let pairs = value.pairs, uo = value.unclosedOpens, oc = value.orphanCloses;
-  for (const [at, delta] of shifts) {
-    if (!delta) continue;
-    const f = (n) => (n > at ? n + delta : n);
-    pairs = pairs.map(p => ({ ...p, start: f(p.start), end: f(p.end) }));
-    uo = uo.map(o => ({ ...o, start: f(o.start) }));
-    oc = oc.map(o => ({ ...o, line: f(o.line) }));
-  }
-  return (pairs === value.pairs) ? value : { pairs, unclosedOpens: uo, orphanCloses: oc };
+  if (!shifts || !shifts.length || !shifts.some(s => s[1])) return value;
+  const f = (n) => { for (let i = 0; i < shifts.length; i++) { const d = shifts[i][1]; if (d && n > shifts[i][0]) n += d; } return n; };
+  return {
+    pairs: value.pairs.map(p => ({ ...p, start: f(p.start), end: f(p.end) })),
+    unclosedOpens: value.unclosedOpens.map(o => ({ ...o, start: f(o.start) })),
+    orphanCloses: value.orphanCloses.map(o => ({ ...o, line: f(o.line) })),
+  };
 }
 function _meosTextKey(doc) { return doc.uri.toString() + '@' + doc.version; }
 function meosDocText(doc) {
