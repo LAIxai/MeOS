@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.436 (2026-08-27)
+- **Tips inside the ▾ panel appear at once.** The `□ ~~` was not in the family whose tips are drawn in CSS, so it
+  fell back to the shared tooltip that has to be placed by arithmetic and takes a moment to arrive. It sits in the
+  family now, and opens downward — it lives at the top of the panel, where there is no room above.
+
 ### v4.0.435 (2026-08-27)
 - **The 👻 button wears the colour it will write.** It was appearing and disappearing because two different hands
   painted that button and one of them was wiping it clean — the same split fixed in v4.0.421, in a second place.

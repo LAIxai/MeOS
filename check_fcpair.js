@@ -710,6 +710,10 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/_tb\('tilde','~~',!!spec\.tilde\)/.test(src), '★▾に □ ~~ が在る(初めての人の入口)', true);
   // ★v4.0.433: 説明はtipへ／👻は1.3倍
   ok(/data-tip="'\+_tt\+'"/.test(src), '★★説明は □ ~~ 自身のtipに(常に見える説明は本文になる)', true);
+  // ★v4.0.436: ▾の中の項目もCSSのtipの家へ(共有のJS製に落ちると出るまで間が空く)
+  ok(/\.fmt-bi\[data-tip\]::after,\.warn-btn\[data-tip\]::after/.test(src), '★★▾の項目もCSSのtipの家に居る', true);
+  ok(/\.fmt-bi\[data-tip\]::after\{bottom:auto;top:calc\(100% \+ 6px\)\}/.test(src), '★パネルの上端なのでtipは下へ', true);
+  ok(/,\.fmt-bi\{position:relative\}/.test(src), '★::afterの基準は項目自身', true);
   ok(!/text-align:center;padding:0 6px 7px;font-size:11px;opacity:\.75/.test(src), '★パネルの常設の説明は撤去した', true);
   ok(/btn\.classList\.add\('ghost-face'\)/.test(src) && /\.fmt-btn\.ghost-face\{font-size:17px/.test(src),
      '★👻は1.3倍(13→17px・🚫と同じ手)', true);
@@ -835,7 +839,7 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   ok(/\.warn-btn\[data-tip\]::after,\.nav-center-btn\[data-tip\]::after/.test(src),
      '★★tipは隣の駒と同じCSSの家に居る(座標を計算しない=v3.1.34の汎用解)', true);
   ok(/\.warn-btn\[data-tip\]:hover::after,/.test(src), '★出す条件も同じ家から', true);
-  ok(/,\.warn-btn\{position:relative\}/.test(src), '★::afterの基準もボタン自身', true);
+  ok(/,\.warn-btn,\.fmt-bi\{position:relative\}/.test(src), '★::afterの基準もボタン自身', true);
   ok(/vertical-align:super;color:#fff\}/.test(src), '★件数は白', true);
   ok(/overviewRulerColor: 'rgba\(240, 190, 20, 0\.95\)'/.test(src), '★★ガターの印はボタンと同じ黄(範囲=赤／印=黄)', true);
   const warn = fs.readFileSync(path.join(__dirname, 'warn.svg'), 'utf8');
