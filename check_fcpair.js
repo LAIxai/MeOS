@@ -538,5 +538,27 @@ console.log('㉞ 橙はカーソルが動いた所で塗る(v4.0.402 改良2)');
   ok(/meosApplyFcRowDecorations\(editor\)/.test(src), 'refresh からも今までどおり塗る(両方の口が在る)', true);
 }
 
+console.log('㉟ 段落では、本文1行とFC群ぜんぶが1つの組(v4.0.403 バグ1)');
+{
+  const P = ['見出し', 'しううし**とんしう**といんし~~とうかい~~てしん', '<!-- Mew!FC **not (白/黄) -->', '<!-- Mew!FC ~~ (赤/紺) -->', ''];
+  const d = makeDoc(P);
+  for (const [ln, lbl] of [[1, '本文'], [2, 'FC1本目'], [3, 'FC2本目']]) {
+    const m = T.meosFcMate(d, ln);
+    ok(!!m && JSON.stringify(m.lines) === '[1,2,3]', '★' + lbl + 'に居ても、橙は本文＋FC群ぜんぶ', m && m.lines);
+  }
+  // 表は今までどおり「i行目 ⇄ i本目」
+  const TB = ['| a | b |', '| --- | --- |', '| **x** | y |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC **not (白/黄) -->'];
+  const mt = T.meosFcMate(makeDoc(TB), 2);
+  ok(!!mt && JSON.stringify(mt.lines) === '[2,5]', '★表は3行目 ⇄ FC3本目のまま', mt && mt.lines);
+}
+console.log('㊱ 橙は !important で塗る — 印自身の色に負けない(v4.0.403 バグ2)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const i = src.indexOf('meosFcRowDeco = vscode.window.createTextEditorDecorationType');
+  const body = src.slice(i, i + 240);
+  ok(/!important/.test(body), '★橙に !important が付いている(v4.0.137の教訓・5度目)', body.slice(0, 160));
+  ok(/textDecoration/.test(body), 'CSSを注ぐ口は textDecoration(MeOSの作法)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

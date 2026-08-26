@@ -25280,6 +25280,15 @@ function meosFcMate(doc, line) {
     const all = [b.open, b.head]; for (let i = fc0; i <= b.end; i++) all.push(i);
     return { self: line, mate: (line === b.open ? b.head : b.open), onFc: line >= fc0, idx: 0, fc0, nBody, nFc, b, lines: all };
   }
+  // ★★v4.0.403(俊克 8/26 am10:24 バグ1「修飾外のときに、**橙色の後半部分が橙色になっていない**」):
+  //   ★★**表の規則をそのまま段落に当てていた**＝ 「本文i行目 ⇄ FC群i本目」は本文とFCの本数が同じ表の話。
+  //     段落は**本文1行に対してFC群がN本**なので、i番目を探すと1本目しか当たらない(俊克の見た「後半が橙で
+  //     ない」＝ 2本目以降)。→ **本文1行の時は、群ぜんぶがその行の相手**。
+  //   ★細かい1:1(印⇄箱)は meosFcMarkPairRanges が担う。ここは「どの2つが生データを見せているか」の側。
+  if (nBody === 1) {
+    const all = [b.top]; for (let i = fc0; i <= b.end; i++) all.push(i);
+    return { self: line, mate: (line === b.top ? fc0 : b.top), onFc: line >= fc0, idx: (line >= fc0 ? line - fc0 : 0), fc0, nBody, nFc, b, lines: all };
+  }
   if (line >= fc0) { const j = line - fc0; const m = (j < nBody) ? b.top + j : -1; return { self: line, mate: m, onFc: true, idx: j, fc0, nBody, nFc, b, lines: (m >= 0 ? [line, m] : [line]) }; }
   const j = line - b.top;  const m = (j < nFc) ? fc0 + j : -1;
   return { self: line, mate: m, onFc: false, idx: j, fc0, nBody, nFc, b, lines: (m >= 0 ? [line, m] : [line]) };
@@ -25420,7 +25429,14 @@ function meosRangesExcludingStamps(doc, ln) {
 }
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
-  if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ color: HIGHLIGHT_FG_COLORS.orange, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+  // ★★v4.0.403(俊克 バグ2「FC2行目にいると、それに対応する部分だけ橙色にできていない」):
+  //   ★★**塗り合いに負けていた**。1:1の計算は当たっていた(実測)が、本文の `~~とうかい~~` は
+  //     MeOS自身の装飾が `color: … !important` で塗っている(v4.0.137の教訓)ので、
+  //     `!important` を持たない橙が上書きできなかった。
+  //   ★カーソルが本文に在る時だけ正しく見えたのは、その行が生データ表示なので**相手が居なかった**から。
+  //   ★★**同じ穴の5度目**＝「装飾で同じCSSを2つ被せたら、後から乗る方は必ず `!important`」
+  //     (v4.0.15→v4.0.135→v4.0.137→v4.0.239→今回)。→ 橙にも付ける。
+  if (!meosFcRowDeco) meosFcRowDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: ' + HIGHLIGHT_FG_COLORS.orange + ' !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   const out = [];
   try {
     const doc = editor.document;

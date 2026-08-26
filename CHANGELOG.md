@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.403 (2026-08-26)
+- **In a paragraph the whole FC group belongs to the one body line.** "Row i pairs with FC line i" is the table's
+  rule, where the two counts match; a paragraph is one body line against N FC lines, so looking for the i-th found
+  only the first — the second box onward never turned orange. With the caret on undecorated text, or anywhere in the
+  group, the body line and every FC line now light together. Tables still pair row to row.
+- **The orange wins the colour again.** The 1:1 pairing was computing the right span all along, but the body's own
+  mark is painted `color: … !important` (v4.0.137), and the orange carried no `!important`, so from inside an FC box
+  the body text kept its own colour. It only looked right with the caret on the body line, because that line renders
+  raw and nothing was competing. Same hole for the fifth time — v4.0.15, v4.0.135, v4.0.137, v4.0.239 — whenever two
+  decorations set the same CSS property, the one applied later needs `!important`.
+
 ### v4.0.402 (2026-08-26)
 - **A paragraph's FC group is one box per line.** The same idea as the table, one step finer: a table row is a row,
   and in a paragraph one decoration is the row. Boxes packed onto a single line can wrap out of sight at a narrower
