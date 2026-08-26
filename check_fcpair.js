@@ -860,5 +860,27 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   ok(/window\.__renderWarn\(m\.warn\)/.test(src), '★状態が変わるたびに面を描き直す', true);
 }
 
+console.log('㊹ 読書モード= 生データを1行も見せない(v4.0.438 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/if \(meosReadMode\) return out;   \/\/ v4\.0\.438/.test(src),
+     '★★口は1つ= meosRawLines が空を返せば12か所すべてが従う', true);
+  const n = (src.match(/meosRawLines\(/g) || []).length;
+  ok(n >= 10, '★その口を引いている所が10か所以上ある(だから1行で効く)', n);
+  ok(/if \(meosReadMode\) return;\n    const line = editor\.selection\.active\.line;/.test(src),
+     '★★畳みも同じ筋= カーソルの居るFC群も開かない(読む時に命令は要らない)', true);
+  ok(/if \(meosReadMode\) _meosFcOpen = 'ALL';/.test(src),
+     '★入る時は既存の道に畳み直させる(畳む口を2つ作らない)', true);
+  ok(/if \(meosReadMode && meosRawMode\) \{ meosRawMode = false;/.test(src)
+     && /if \(meosRawMode && meosReadMode\) \{ meosReadMode = false;/.test(src),
+     '★★Rawと同時には立たない(逆の意味なので、両方はあり得ない)', true);
+  ok(/registerCommand\('lai-membrane\.toggleReadMode'/.test(src), '★コマンドも在る(ショートカット割当可)', true);
+  ok(/if\(readOn\|\|\(ev&&ev\.altKey\)\)\{vscode\.postMessage\(\{type:'toggleRead'\}\);return;\}/.test(src),
+     '★★押す決まりは他と同じ(⌥Optで裏の顔・点いている物を押せば消える)', true);
+  ok(/rawToggle\.textContent=face\?'📖 Read':'👁 Raw';/.test(src), '★面もRawの裏の顔として切り替わる', true);
+  ok(/rawAltW=fmtAltWatch\(rawToggle,/.test(src), '★Optの見張りは1つのまま(名乗るだけ)', true);
+  ok(/m\.type==='readState'/.test(src), '★状態が変わったら面を描き直す', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

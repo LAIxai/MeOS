@@ -9186,6 +9186,14 @@ async function controlMePanel() {
 // {* ▲mCN=0850_CONTROL_ME // end [cGJF=h] *}
 
 let meosRawMode = false; // v0.9.723: Raw(MeOS休眠)モード — 全装飾OFF＋編集/refresh抑止でプレーンエディタ化(日本語入力対策)
+// ★★v4.0.438(俊克 8/27 am03:00「**読書モードボタンを導入しよう**。文字カーソルが入っても、生データが見えない
+//   モードだよ。これは、👻で添削を隠して、**最終原稿を読む形**にする。作家や編集者にも好評になるはずだよ」):
+//   ★★**Rawの裏の顔**＝ Rawは「全部見せる」・Readは「何も見せない」で、ちょうど逆。so同じボタンの表と裏に置く。
+//   ★★実装が1行で済むのは、**「どの行を生データで見せるか」を1つの口(meosRawLines)に集めてあったから**
+//     (v4.0.347)。そこが空を返せば、12か所の装飾すべてが同時に従う。口を1つにしておくと、
+//     後から「全部やめる」が言えるようになる。
+//   ★畳みも同じ筋＝ カーソルの居るFC群を開かない(読む時に命令は要らない)。
+let meosReadMode = false;
 
 // {* ▼mCN=0355_NAME_STAMP_COLORS // 膜名タイムスタンプのモザイク色分け (📊⊕0+0D0W) *}
 // ★★v4.0.363(俊克 8/22 pm05:56「**タイムスタンプをモザイク状に色分けしよう**。TSはコンパクトにするため
@@ -9404,8 +9412,21 @@ function clearForRaw(editor) {
   z(refPointHideDecoration); z(refPointLabelDecoration); z(refFrontGutterDecoration); z(refFrontPendingGutterDecoration); z(refFrontPlainGutterDecoration); z(refSatPlainGutterDecoration); z(refSatDocGutterDecoration); z(refSatPendGutterDecoration); // v0.9.99972/99981/99993/99994: Rawでは参照符の生データ {* ▶◀mRn=… *} を見せる(俊克バグ2)
   // bookmark は残す(IMEに無害・ナビ有用)
 }
+// v4.0.438: 読書モード。Rawと**同時には立たない**(逆の意味なので、両方はあり得ない)。
+async function toggleReadMode() {
+  meosReadMode = !meosReadMode;
+  if (meosReadMode && meosRawMode) { meosRawMode = false; try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'rawState', on: false }); } catch (_) { } }
+  const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+  if (ed) refresh(ed);
+  // 入る時は「全部開いている」ことにして、既存の道に畳み直させる(畳む口を2つ作らない)。
+  if (meosReadMode) _meosFcOpen = 'ALL';
+  try { if (ed) await meosSyncFcFoldForCursor(ed); } catch (_) { }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'readState', on: meosReadMode }); } catch (_) { }
+  vscode.window.setStatusBarMessage('MeOS: Reading view ' + (meosReadMode ? 'ON — the finished text only, nothing raw' : 'OFF'), 1800);
+}
 async function toggleRawMode() {
   meosRawMode = !meosRawMode;
+  if (meosRawMode && meosReadMode) { meosReadMode = false; try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'readState', on: false }); } catch (_) { } } // v4.0.438: 逆なので同時には立たない
   const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
   if (ed) refresh(ed);
   // v4.0.141(俊克 改良2「生モードにしてもコメントが見えない」): Rawは**生データを全部見せる**約束so、
@@ -19695,6 +19716,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}
 .fmt-btn.fmt-remove{font-size:1.3em;line-height:1;-webkit-text-fill-color:initial}
 .fmt-btn.ghost-face{font-size:17px;line-height:1}/* v4.0.433(俊克): 👻は1.3倍(13→17px)。🚫と同じ手 */
+.fmt-btn.read-on{background:rgba(40,150,60,.28);border-color:rgba(40,150,60,.75)}/* v4.0.438: 読書モード中は点灯(緑=読む) */
 .fmt-btn.fmt-remove::before{content:"🚫";position:relative;top:1px}
 #fmt-table{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px}
 /* v4.0.268(俊克 8/19 改良1「一番横幅が長いのが not なので、この長さに合わせようよ」): 上付き/下付きボタンの面は
@@ -21108,7 +21130,21 @@ warnBtn.setAttribute('data-tip',t);};
 if(warnBtn)warnBtn.addEventListener('click',function(){if(warnBtn.disabled||!warnEnds.length)return;
 warnAt=(warnAt+1)%(warnEnds.length*2);var w=warnEnds[Math.floor(warnAt/2)];
 vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
-const rawToggle=document.getElementById('raw-toggle');if(rawToggle)rawToggle.addEventListener('click',()=>vscode.postMessage({type:'toggleRaw'}));
+/* ★★v4.0.438(俊克): 読書モードは **Rawの裏の顔**= Rawは「全部見せる」・Readは「何も見せない」でちょうど逆。
+   ★押す時の決まりは他のボタンと同じ= ⌥Optで裏の顔・点いている物を押せば消える。 */
+const rawToggle=document.getElementById('raw-toggle');
+var rawBaseTip=rawToggle?(rawToggle.getAttribute('data-tip')||''):'';
+var readOn=false,rawAltW=null;
+function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
+window.__renderRaw=function(){if(!rawToggle)return;var face=(readOn||rawAltOn());
+rawToggle.textContent=face?'📖 Read':'👁 Raw';
+rawToggle.classList.toggle('read-on',!!readOn);
+rawToggle.setAttribute('data-tip',face
+?('Reading view | The finished text only \u2014 the caret no longer opens the raw data, and \ud83d\udc7b stays hidden. For reading a draft the way a reader will see it.'+String.fromCharCode(10)+'Press again to leave. \u2325 Opt over the button shows this face; Raw is the opposite \u2014 it shows everything.')
+:(rawBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udcd6 Reading view (the opposite: nothing raw at all)'));};
+if(rawToggle)rawToggle.addEventListener('click',(ev)=>{if(readOn||(ev&&ev.altKey)){vscode.postMessage({type:'toggleRead'});return;}
+vscode.postMessage({type:'toggleRaw'});});
+if(rawToggle)rawAltW=fmtAltWatch(rawToggle,function(){if(typeof window.__renderRaw==='function')window.__renderRaw();});
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();
 vscode.postMessage({type:'mewReveal'});});/* v4.0.106: ↻=印を5秒だけ出す */
@@ -21872,7 +21908,8 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='readState'){readOn=!!m.on;if(typeof window.__renderRaw==='function')window.__renderRaw();return;}/* v4.0.438 */
+if(m&&m.type==='rawState'){if(rawToggle)rawToggle.classList.toggle('on',!!m.on);
 return;}if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
 return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;
@@ -22695,6 +22732,7 @@ function toggleMeDock(editorOverride) {
     }
     if (message && message.type === 'openGithubTokens') { try { await vscode.env.openExternal(vscode.Uri.parse(MEOS_GH_TOKENS_URL)); } catch (_) { } return; } // v4.0.83
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
+    if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'mewReveal') { meosMewReveal(); return; } // v4.0.106: ↻=5秒だけ印を出す
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
@@ -25662,6 +25700,7 @@ function meosFcMate(doc, line) {
 function meosRawLines(editor) {
   const out = new Set();
   try {
+    if (meosReadMode) return out;   // v4.0.438: 読書モード= 生データを見せる行は1行も無い
     if (!editor || !editor.document || !editor.selection) return out;
     for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
       out.add(sl.active.line); out.add(sl.anchor.line);
@@ -25997,6 +26036,9 @@ async function meosSyncFcFoldForCursor(editor) {
       return;
     }
     if (_meosFcOpen === 'ALL') { await fold(blocks.map(b => b.start)); _meosFcOpen = null; } // Rawが切れた=畳み直す
+    // v4.0.438: 読書モード= カーソルの居るFC群も開かない(読む時に命令は要らない)。
+    //   入る時は toggleReadMode が _meosFcOpen='ALL' を立てるので、上の1行が全部畳んでから、ここで降りる。
+    if (meosReadMode) return;
     const line = editor.selection.active.line;
     // v4.0.186(俊克 8/14 am01:38「見出しの先頭で改行すると、ジャンプして戻ると言う動きをする。
     //   その処理に入った時、何もしないで出るようにできないのか? bsキーのときは、一瞬再描画されるのも、今一」):
@@ -28831,6 +28873,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkSetPendingFrontAt', (line) => bookmarkSetPendingFront(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.897
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemovePendingAt', (line) => bookmarkRemovePending(vscode.window.activeTextEditor || getMeDockTargetEditor(), line))); // v0.9.837: 💤ホバーのResolve
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973

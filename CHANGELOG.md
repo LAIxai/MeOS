@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.438 (2026-08-27)
+- **Reading view** — the finished text and nothing else. The caret stops opening the raw data as it moves, the
+  folding comments stay closed, and anything commented out with 👻 stays gone. A draft can be read the way a reader
+  will meet it, with the edits taken out of sight rather than out of the file.
+- It is the other face of `👁 Raw`, reached with ⌥ Opt: Raw shows everything, Reading shows nothing. The two are
+  opposites, so they cannot both be on.
+- Also on the command palette as **MeOS: Toggle Reading View**, for anyone who wants it on a key.
+
 ### v4.0.437 (2026-08-27)
 - **The `□ ~~` tip opens upward again** — below, it covered the panel it belongs to.
 - **It is no longer see-through.** The tip was never transparent: an unchecked box is dimmed with `opacity`, and a
