@@ -27725,9 +27725,14 @@ let boldHideDeco = null; const boldFmtTypeCache = new Map(); // key: 太字/斜�
 //   そのまま残る。→ **素に戻す時は「戻す」と明示的に書く**(font-style:normal / font-weight:normal)。
 //   ★装飾で同じCSSを2つ被せたら、後から乗る方は `!important` が要る(v4.0.15/3119と同じ穴・4度目)。
 //   VS Codeの装飾でCSSを注ぐ唯一の口は textDecoration なので、そこに載せる。
-function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain) {
+// ★★v4.0.415(俊克 8/26 pm05:10「まったく直ってないよ」): ★★**生表示に色も背景も付けてはいけない**。
+//   v4.0.412〜414で私は「印を塗る」方へ進んだが、俊克が言っていたのは逆で、生表示は**編集のための生データ**so
+//   装飾を持ち込まない。記号の塗り分け(外の `*`＝斜体の印／内の `**`＝太字の印)を消すのに要るのは
+//   **地の色で塗ること**だけ＝ 色を「足す」のでなく、テーマが足した差を**無くす**。
+//   ★色指定(黒など)を生表示に持ち込むのも危険＝ 背景を外した黒い字は、暗い地に沈んで読めなくなる。
+function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain, rawFg) {
   if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black'; // 暗背景は自動白文字(ハイライトと同じauto-contrast)
-  const key = (bold ? 'b' : '') + (italic ? 'i' : '') + '|' + (fgKey || '') + '|' + (bgKey || '') + (noStroke ? '|ns' : '') + (plain ? '|p' : '');
+  const key = (bold ? 'b' : '') + (italic ? 'i' : '') + '|' + (fgKey || '') + '|' + (bgKey || '') + (noStroke ? '|ns' : '') + (plain ? '|p' : '') + (rawFg ? '|r' : '');
   if (boldFmtTypeCache.has(key)) return boldFmtTypeCache.get(key);
   const opt = { rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed };
   // v4.0.31(俊克 考察1「太字の部分が下線がつかない/イタリックはつく」): 太字の縁取りは `text-decoration` を運び屋に
@@ -27736,6 +27741,8 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain) {
   // 縁取りを諦めて下線を優先する(noStroke)。太さは fontWeight:900 のまま。
   if (bold) { opt.fontWeight = '900'; if (!noStroke) opt.textDecoration = 'none; -webkit-text-stroke: 0.5px currentColor;'; } // v3.7.1(俊克): Menloの900はBold止まりで弱い→縁取りstrokeでハッキリ太く(既存の矢印グリフ太字と同技法)
   if (italic) opt.fontStyle = 'italic';
+  // v4.0.415: 生表示= 地の色で塗るだけ(テーマの塗り分けを消す)。`!important` は付けない= 橙を勝たせる。
+  if (rawFg && !fgKey) { try { opt.color = new vscode.ThemeColor('editor.foreground'); } catch (_) { } }
   if (plain && !bold && !italic) { // v4.0.239: not= テーマが付けた太字/斜体まで戻す
     opt.fontStyle = 'normal'; opt.fontWeight = 'normal';
     opt.textDecoration = 'none; font-style: normal !important; font-weight: normal !important;';
@@ -27765,7 +27772,7 @@ function meosApplyBoldDecorations(editor) {
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
     let _lnLinks = [];
-    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain) => { if (e <= s) return; bgKey = meosHiBgKey(bgKey, fgKey); /* v4.0.408: 白い字が乗る黄だけ、落とした黄に */ const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
+    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain, rawFg) => { if (e <= s) return; bgKey = meosHiBgKey(bgKey, fgKey); /* v4.0.408: 白い字が乗る黄だけ、落とした黄に */ const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain, rawFg); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _bTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _bTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
@@ -27783,10 +27790,10 @@ function meosApplyBoldDecorations(editor) {
         const _raw = cursorLines.has(ln);
         const hideR = _raw ? [] : hideRAll;   // 生表示= 隠さない。色(itemsByType)はそのまま入る
         // ★★v4.0.414(俊克 8/26 pm04:59「インラインの時に、ハイライトが付いちゃってるよ」):
-        //   ★★**背景は中身だけ・色は印ぜんぶ**。v4.0.413で印を丸ごと塗ったら、背景まで記号に広がって
-        //     ハイライトの箱が中身より大きくなった。背景は「どこが光っているか」を言う物なので中身に添う。
-        //     記号に要るのは**色を揃えること**だけ(テーマの塗り分けを消す)＝ 色だけ乗せ、背景は乗せない。
-        const _rawMark = (a, b, bold, italic, fgKey, plain) => { if (_raw && b > a) pushStyle(ln, a, b, bold, italic, fgKey, null, '', plain); };
+        //   ★★**生表示には色も背景も付けない**。ここは編集のための生データを見せる場なので、装飾を持ち込まない。
+        //     要るのは**テーマが足した差を無くすこと**だけ＝ 印ぜんぶ(記号も中身も)を**地の色**で塗る。
+        //   ★色指定を持ち込まないのは安全のためでもある＝ 背景を外した黒い字は、暗い地に沈んで読めない。
+        const _rawWhole = (a, b, bold, italic, plain) => { if (_raw && b > a) pushStyle(ln, a, b, bold, italic, null, null, '', plain, true); };
         const text = doc.lineAt(ln).text;
         if (text.indexOf('*') < 0 && (_prose ? text.indexOf('_') < 0 : text.indexOf('_{') < 0)) continue;
         // v4.0.58: コードスパンの中は装飾しない / v4.0.169: 仕様コメントの中の命令トークンも隠す
@@ -27799,12 +27806,12 @@ function meosApplyBoldDecorations(editor) {
         let m;
         // 正式膜(色/tip): **{ 本文(白/黄)//tip }** = 太字 / __{ 本文(色)//tip }__ = 斜体。入れ子は各scanが独立に効くので太字×斜体が両立。
         const reBF = /\*\*\{([^\n]*?)\}\*\*/g; reBF.lastIndex = 0;
-        while ((m = reBF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); _rawMark(s, innerStart, true, false, sp.fgKey); _rawMark(bodyEnd, close + 3, true, false, sp.fgKey); }
+        while ((m = reBF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); if (_raw) _rawWhole(s, close + 3, true, false); else pushStyle(ln, innerStart, bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); }
         const reIF = /__\{([^\n]*?)\}__/g; reIF.lastIndex = 0;
-        while ((m = reIF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); _rawMark(s, innerStart, false, true, sp.fgKey); _rawMark(bodyEnd, close + 3, false, true, sp.fgKey); }
+        while ((m = reIF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); if (_raw) _rawWhole(s, close + 3, false, true); else pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.16(俊克): 単一下線の斜体膜 _{ 本文(色)//tip }_(新形)。(?<!_)/(?!_) で二重 __{ }__ の内側に誤マッチしない。__{ ではない `x_{sub}` 等はLaTeXに閉じ`_`が無いので無反応。
         const reIF1 = /(?<!_)_\{([^\n]*?)\}_(?!_)/g; reIF1.lastIndex = 0;
-        while ((m = reIF1.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); _rawMark(s, innerStart, false, true, sp.fgKey); _rawMark(bodyEnd, close + 2, false, true, sp.fgKey); }
+        while ((m = reIF1.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); if (_raw) _rawWhole(s, close + 2, false, true); else pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.57(俊克): 素の記法の直後に仕様コメントがあれば色/tipとして使い、コメントは隠す(新形)。
         //   `**本文**<!-- (白/青)//[]tip= -->` — MeOS外では本物の太字。旧 `**{ }**` は read-both。
         // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の kind」を引く。
@@ -27868,9 +27875,8 @@ function meosApplyBoldDecorations(editor) {
           //   ＝ 普段は**隠す**ので色を付ける必要が無かった。生表示では隠さないので、テーマの塗り分け
           //   (外の `*`＝斜体の印／内の `**`＝太字の印)がそのまま出る。
           //   → **生表示では印を丸ごと塗る**(記号も中身も同じ色)。隠す時は今までどおり中身だけでよい。
-          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
-          _rawMark(mk.start, mk.bodyStart, _nb, _ni, q && q.cs.fgKey, _no);   // 生表示: 記号は色だけ(背景なし)
-          _rawMark(mk.bodyEnd, mk.end, _nb, _ni, q && q.cs.fgKey, _no);
+          if (_raw) _rawWhole(mk.start, mk.end, _nb, _ni, _no);   // 生表示: 印ぜんぶを地の色で(色も背景も付けない)
+          else pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
           _starSpans.push([mk.start, mk.end]);
         }
         // ★★v4.0.409(俊克 バグ2「段落にすると、**間の文字を誤認識している**」):
@@ -27890,7 +27896,7 @@ function meosApplyBoldDecorations(editor) {
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
         const reI1p = _prose ? meosPlainItUsRe() : null; // v4.0.215: 形は1か所(MEOS_PLAIN_IT_US_SRC)。
-        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); _rawMark(s, s + 1, false, true, q && q.cs.fgKey); _rawMark(e - 1, e, false, true, q && q.cs.fgKey); }
+        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); if (_raw) _rawWhole(s, e, false, true); else pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.169/189: **これからの斜体は `*本文*`**(`_本文_` は read-both で上に残す)。単一 `*` は上の走査that一緒に拾う。
       }
     }

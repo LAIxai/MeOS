@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.415 (2026-08-26)
+- **The raw line carries no colour and no background.** v4.0.412 through v4.0.414 kept moving toward painting the
+  mark; the line under the caret is there to show the data as written, and decoration does not belong on it. Killing
+  the theme's two-tone treatment of `***` needs one thing only: paint the whole mark — markers and content alike — in
+  the editor's own foreground. Not adding a colour, but removing the difference the theme added.
+- Keeping a specified colour out of the raw line also keeps it readable: black text with its background taken away
+  disappears into a dark editor.
+
 ### v4.0.414 (2026-08-26)
 - **The background hugs the content; only the colour reaches the markers.** Painting the whole mark on the raw line
   stretched the highlight box past the text it highlights. A background says *this is lit up*, so it belongs to the
