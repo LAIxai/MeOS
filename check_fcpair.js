@@ -792,6 +792,10 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
      '★★開始膜が無い= 端は「Line0」と「閉じ膜」', true);
   ok(/warn: \(editor \? meosWarningEnds\(editor\.document\) : \[\]\)/.test(src), '★Me Dockへ状態を送る', true);
   ok(/id="warn-btn" disabled/.test(src), '★既定は押せない(壊れていなければ黙っている)', true);
+  // ★v4.0.427: 置き場所=行き先を決める道具の並び(Navigate Me! の Warp の右)
+  ok(/id="nav-me-plus"[^<]*>↓<\/button><\/span><button class="warn-btn" id="warn-btn"/.test(src),
+     '★★⚠️はWarpの隣に居る(どこへ行くかの道具なので、動く所に置く)', true);
+  ok(!/id="me-title-word">Me<\/span><button class="warn-btn"/.test(src), '★Edit Meの側には置かない', true);
   ok(/warnAt=\(warnAt\+1\)%\(warnEnds\.length\*2\);/.test(src), '★★押す毎に両端を交互に行く', true);
   ok(/vscode\.postMessage\(\{type:'warnGoto',line:\(\(warnAt%2\)===0\?w\.a:w\.b\)\}\);/.test(src), '★偶数=片方・奇数=もう片方', true);
   ok(/message\.type === 'warnGoto'/.test(src) && /executeCommand\('laiMembrane\.jumpToLine'/.test(src),

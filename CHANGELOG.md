@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.427 (2026-08-26)
+- **⚠️ moves next to Warp** in Navigate Me!. It is a way of getting somewhere, so it belongs among the things that
+  move you, not beside the field that renames what you are standing in.
+
 ### v4.0.426 (2026-08-26)
 - **A ⚠️ button next to Edit Me.** Live only when a membrane in this file is broken; each press walks to the next of
   its two ends. The hover added in v4.0.425 could never have worked — decoration hovers answer over the text, and
