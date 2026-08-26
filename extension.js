@@ -20754,6 +20754,16 @@ function stAltOn(){return !!(stAltW&&stAltW.on());}
 var hdAltW=null;
 function hdAltOn(){return !!(hdAltW&&hdAltW.on());}
 function hdAltBlt(){return (fmtHeadingLevel===1)?'-':(fmtHeadingLevel===2)?'1.':null;}
+/* ★★v4.0.421(俊克 8/26 pm07:43 改良1「tipに説明that無い」・改良2「Optで変身した後、何もしないで離れると、
+   ##ボタンthat色無しになってしまう」):
+   ★★**tipは面の一部**＝ 変身したら tip も一緒に変わり、戻ったら一緒に戻る。1つの関数が両方を持つ。
+   ★★色が消えたのは、**面を描く口と色を塗る口が別だった**から＝ 変身の時に色を消したが、戻る時に
+     塗り直す者が居なかった(色は renderFmtBtnColors が持っている)。→ 戻ったら塗り直しまでを1組にする。 */
+function fmtHeadTip(){var hh='#'.repeat(fmtHeadingLevel);var b=hdAltBlt();
+return 'Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(b?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing yet on H3 (kept in reserve)');}
+function fmtHeadAltTip(){var b=hdAltBlt();
+return 'Bullet list ('+b+' ) | Writes one item with the preset color. Let go of \u2325 Opt to go back to the heading.'+String.fromCharCode(10)+'Do not want the color? Delete the folding comment underneath \u2014 that is the whole undo.';}
+var stBaseTip='';
 function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
 /* v4.0.298(俊克): 下線の種類は「最後に自分で決めた値」。nodeが覚えていて、開いた時と変わった時に送ってくる。
    ★webviewは**持ち主ではなく写し**= 面を描くためだけに持つ。書く値を決めるのはnode(口を2つ作らない)。 */
@@ -20807,7 +20817,7 @@ const fmtHeadCycle=document.getElementById('fmt-head-cycle');if(fmtHeadCycle)fmt
 ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.heading){window.__fmtRing.heading=((window.__fmtRing.heading||0)+1)%4;
 window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('heading');return;}fmtHeadingLevel=(fmtHeadingLevel%3)+1;
 fmtSpec.heading=fmtHeadingColors[fmtHeadingLevel];const hh='#'.repeat(fmtHeadingLevel);if(fmtHeading){fmtHeading.textContent=hh;
-fmtHeading.setAttribute('data-tip','Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' — ▾ picks color · ↻ cycles # → ## → ###');
+fmtHeading.setAttribute('data-tip',fmtHeadTip());   /* v4.0.421: tipを作る所は1つ */
 }renderFmtBtnColors();pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='heading')renderFmtPop();});
 /* v0.9.99939: ==・~~ も↻で3スロット色を循環 */
 const fmtHlCycle=document.getElementById('fmt-hl-cycle');if(fmtHlCycle)window.__fmtRing={highlight:0,strike:0,heading:0};
@@ -20828,11 +20838,13 @@ return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
-if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
+if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again. Let go of \u2325 Opt to go back to strikethrough.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough.');btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
+if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip);
 if(kind==='heading'&&hdAltOn()&&hdAltBlt()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
 var _hc=fmtHeadingColors[fmtHeadingLevel]||{};var _hbg=_hc.bg?fmtHexBg(_hc.bg):'';
 btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';
-btn.innerHTML=hdAltBlt()+' <span style="color:'+fmtHexFg(_hc.fg)+';background-color:'+_hbg+';padding:0 2px;border-radius:2px">A</span>';return;}const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
+btn.innerHTML=hdAltBlt()+' <span style="color:'+fmtHexFg(_hc.fg)+';background-color:'+_hbg+';padding:0 2px;border-radius:2px">A</span>';btn.setAttribute('data-tip',fmtHeadAltTip());return;}
+if(kind==='heading')btn.setAttribute('data-tip',fmtHeadTip());   /* v4.0.421: 戻ったらtipも戻る(面の一部) */const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
 btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));}/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();
 fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);}btn.classList.remove('fmt-remove');return;}if(window.__fmtActionable[kind]){let r=window.__fmtRing[kind]||0;
 r=((r%4)+4)%4;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;const w=(r===0)?baseW:(((baseW-1+r)%3)+1);const isRemove=(r===0);
@@ -20893,8 +20905,10 @@ document.addEventListener('click',function(ev){if(fp.classList.contains('on')&&e
 /* v4.0.295: ハイライトボタンのOption見張りを登録。描き直しは既に在る1つの口(__renderFmtRing)へ通す
    = 🚫の時は面を触らない、というv4.0の作法がそのまま効く(裏の顔を出す口を別に作らない)。 */
 hlAltW=fmtAltWatch(fmtHighlight,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');});
-stAltW=fmtAltWatch(fmtStrike,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');});
-hdAltW=fmtAltWatch(fmtHeading,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('heading');});
+if(fmtStrike)stBaseTip=fmtStrike.getAttribute('data-tip')||'';
+/* v4.0.421: 戻ったら**色を塗り直すまで**が1組(面を描く口と色を塗る口が別なので、片方だけでは戻らない) */
+stAltW=fmtAltWatch(fmtStrike,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');if(!stAltOn()&&typeof renderFmtBtnColors==='function')renderFmtBtnColors();});
+hdAltW=fmtAltWatch(fmtHeading,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('heading');if(!hdAltOn()&&typeof renderFmtBtnColors==='function')renderFmtBtnColors();});
 fmtHlCycle.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
 if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%4;window.__fmtCyclingKind='highlight';
 window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+1)%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];

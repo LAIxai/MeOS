@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.421 (2026-08-26)
+- **The tip belongs to the face.** A button that has changed into something else was still explaining its old self.
+  Now the second face brings its own tip and hands the first one back on release — one function owning both, for the
+  heading and for strikethrough.
+- **The heading button keeps its colour.** Changing face cleared the button's colours and nothing put them back,
+  because drawing the face and painting the colours were two different hands. Coming back now includes the repaint.
+
 ### v4.0.420 (2026-08-26)
 - **A bullet keeps its space.** Pressing Opt-# on an empty line left `-` with nothing after it, so the first thing
   typed stuck to the dash. In Markdown the mark is `- `, space included — the space was never trailing whitespace to

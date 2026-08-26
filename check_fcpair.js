@@ -723,6 +723,16 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
      '★同じ判断が在る2か所(切り出しと引っ越し)の両方に入れた', (src.match(/body \+= ' ';/g) || []).length);
   ok(/btn\.innerHTML=hdAltBlt\(\)\+' <span style="color:'\+fmtHexFg\(_hc\.fg\)/.test(src),
      '★面は - A(Aにプリセットの色)= 押した結果がそのまま見える', true);
+  // ★v4.0.421: tipは面の一部/戻ったら色も戻る
+  ok(/btn\.setAttribute\('data-tip',fmtHeadAltTip\(\)\);return;\}/.test(src) && /if\(kind==='heading'\)btn\.setAttribute\('data-tip',fmtHeadTip\(\)\);/.test(src),
+     '★★見出し: 変身でtipも変わり、戻ればtipも戻る', true);
+  ok(/if\(kind==='strike'&&stBaseTip\)btn\.setAttribute\('data-tip',stBaseTip\);/.test(src),
+     '★取消線も同じ(素のtipを控えて戻す)', true);
+  ok((src.match(/if\(!hdAltOn\(\)&&typeof renderFmtBtnColors==='function'\)renderFmtBtnColors\(\);/g) || []).length === 1
+     && (src.match(/if\(!stAltOn\(\)&&typeof renderFmtBtnColors==='function'\)renderFmtBtnColors\(\);/g) || []).length === 1,
+     '★★戻ったら色を塗り直すまでが1組(2つのボタンとも)', true);
+  ok((src.match(/setAttribute\('data-tip','Heading \(H'/g) || []).length === 0,
+     '★tipを作る所は1つ(fmtHeadTip)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
