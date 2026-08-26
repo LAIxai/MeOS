@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.413 (2026-08-26)
+- **On the raw line the whole mark is painted, markers included.** The markers had never been given a colour because
+  they are normally hidden — there was nothing to colour. Once the caret's line stopped hiding them, the theme's own
+  split (outer `*` as italic punctuation, inner `**` as bold) showed through. The mark is one thing, so it is painted
+  as one thing. Where the markers are hidden, painting the content alone is still enough.
+- The older bracketed forms are widened the same way.
+
 ### v4.0.412 (2026-08-26)
 - **A mark is painted in one colour on the raw line.** The odd white asterisk was not a gap left unpainted — the
   theme colours the two halves of `***` differently (the outer `*` is italic punctuation, the inner `**` is bold

@@ -27794,12 +27794,12 @@ function meosApplyBoldDecorations(editor) {
         let m;
         // 正式膜(色/tip): **{ 本文(白/黄)//tip }** = 太字 / __{ 本文(色)//tip }__ = 斜体。入れ子は各scanが独立に効くので太字×斜体が両立。
         const reBF = /\*\*\{([^\n]*?)\}\*\*/g; reBF.lastIndex = 0;
-        while ((m = reBF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); }
+        while ((m = reBF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'bg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, _raw ? s : innerStart, _raw ? close + 3 : bodyEnd, true, false, sp.fgKey, sp.bgKey, sp.comment); }
         const reIF = /__\{([^\n]*?)\}__/g; reIF.lastIndex = 0;
-        while ((m = reIF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
+        while ((m = reIF.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 3, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 3)); pushStyle(ln, _raw ? s : innerStart, _raw ? close + 3 : bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.16(俊克): 単一下線の斜体膜 _{ 本文(色)//tip }_(新形)。(?<!_)/(?!_) で二重 __{ }__ の内側に誤マッチしない。__{ ではない `x_{sub}` 等はLaTeXに閉じ`_`が無いので無反応。
         const reIF1 = /(?<!_)_\{([^\n]*?)\}_(?!_)/g; reIF1.lastIndex = 0;
-        while ((m = reIF1.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); pushStyle(ln, innerStart, bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
+        while ((m = reIF1.exec(tScan))) { const s = m.index, inner = m[1], innerStart = s + 2, close = innerStart + inner.length; const sp = parseColorSpec(inner, 'fg'); const bodyEnd = innerStart + (sp.bodyLen != null ? sp.bodyLen : inner.length); hideR.push(new vscode.Range(ln, s, ln, innerStart)); hideR.push(new vscode.Range(ln, bodyEnd, ln, close + 2)); pushStyle(ln, _raw ? s : innerStart, _raw ? close + 2 : bodyEnd, false, true, sp.fgKey, sp.bgKey, sp.comment); }
         // v4.0.57(俊克): 素の記法の直後に仕様コメントがあれば色/tipとして使い、コメントは隠す(新形)。
         //   `**本文**<!-- (白/青)//[]tip= -->` — MeOS外では本物の太字。旧 `**{ }**` は read-both。
         // v4.0.152: 直後にコメントが無ければ、真下の指定行から「この行の N 個目の kind」を引く。
@@ -27859,7 +27859,11 @@ function meosApplyBoldDecorations(editor) {
           const _pz = _inPlain(mk.bodyStart, mk.bodyEnd, mk.kind);  // v4.0.240/243: リンクの表示文字の中で not
           const _no = !!(q && q.not) || _pz;
           const _nb = _no ? false : mk.bold, _ni = _no ? false : mk.italic;
-          pushStyle(ln, mk.bodyStart, mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
+          // ★★v4.0.413(俊克 8/26 pm04:44「まだ2箇所おかしい」): 記号(`***`)自体はMeOSが塗っていなかった
+          //   ＝ 普段は**隠す**ので色を付ける必要が無かった。生表示では隠さないので、テーマの塗り分け
+          //   (外の `*`＝斜体の印／内の `**`＝太字の印)がそのまま出る。
+          //   → **生表示では印を丸ごと塗る**(記号も中身も同じ色)。隠す時は今までどおり中身だけでよい。
+          pushStyle(ln, _raw ? mk.start : mk.bodyStart, _raw ? mk.end : mk.bodyEnd, _nb, _ni, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || '', _no);
           _starSpans.push([mk.start, mk.end]);
         }
         // ★★v4.0.409(俊克 バグ2「段落にすると、**間の文字を誤認識している**」):
@@ -27879,7 +27883,7 @@ function meosApplyBoldDecorations(editor) {
         // ★語中の `_` は斜体にしない(CommonMark同様)=前が英数/`_`/`*` なら不発 so log_3110_20260801 や [[project_meos_freeze_pattern]] は無傷。
         // 開き `_` の直後が `{` なら正式膜 _{ }_ 側の仕事so見送り。中身の前後に空白は置けない(_ x _ は不発)。
         const reI1p = _prose ? meosPlainItUsRe() : null; // v4.0.215: 形は1か所(MEOS_PLAIN_IT_US_SRC)。
-        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, s + 1, e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
+        while (reI1p && (m = reI1p.exec(tScan))) { const s = m.index, e = s + m[0].length; const q = _spec(e, '_'); hideR.push(new vscode.Range(ln, s, ln, s + 1)); hideR.push(new vscode.Range(ln, e - 1, ln, e)); _hideSpecComment(q, e); pushStyle(ln, _raw ? s : s + 1, _raw ? e : e - 1, false, true, q && q.cs.fgKey, q && q.cs.bgKey, (q && q.cs.comment) || ''); }
         // v4.0.169/189: **これからの斜体は `*本文*`**(`_本文_` は read-both で上に残す)。単一 `*` は上の走査that一緒に拾う。
       }
     }
