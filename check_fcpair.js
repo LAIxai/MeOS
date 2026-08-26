@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -558,6 +558,29 @@ console.log('㊱ 橙は !important で塗る — 印自身の色に負けない(
   const body = src.slice(i, i + 240);
   ok(/!important/.test(body), '★橙に !important が付いている(v4.0.137の教訓・5度目)', body.slice(0, 160));
   ok(/textDecoration/.test(body), 'CSSを注ぐ口は textDecoration(MeOSの作法)', true);
+}
+
+console.log('㊲ プレーンのハイライトは「太字かつ斜体」の全否定(v4.0.404 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const hits = src.match(/\(kind === 'highlight'\) \? '\*+'/g) || [];
+  ok(hits.length === 2 && hits.every(h => /'\*\*\*'/.test(h)), '★書く場所は2つとも `***`(v4.0.246の教訓)', hits);
+  const dirs = src.match(/\(kind === 'highlight'\) \? '\*+not'/g) || [];
+  ok(dirs.length === 2 && dirs.every(h => /'\*\*\*not'/.test(h)), '★指定も2つとも `***not`(全否定)', dirs);
+  // ★効き=ハイライト/太字/取消線が別の種類になり、待ち行列を取り合わない
+  const kinds = T.meosRowMarksInOrder('あ***ハイライト***い**太字**う~~取消~~え').map(m => m.kind);
+  ok(JSON.stringify(kinds) === '["***","**","~~"]', '★3つとも別の種類(前は ** を取り合っていた)', kinds);
+  ok(T.meosSpecPayloadKind('***not (白/黄)') === '***' && T.meosSpecPayloadKind('** (白/青)') === '**', '指定の種類も分かれる', true);
+  // 1:1 が正しく当たる
+  const P = ['あ***ハイライト***い**太字**う~~取消~~え', '<!-- Mew!FC ***not (白/黄) -->', '<!-- Mew!FC ** (白/青) -->', '<!-- Mew!FC ~~ (赤/紺) -->', ''];
+  const d = makeDoc(P);
+  const seg = (r) => P[r[0].start.line].slice(r[0].start.character, r[0].end.character);
+  ok(seg(T.meosFcMarkPairRanges(d, 0, 4)) === '***ハイライト***', 'ハイライト ⇄ 1本目', true);
+  ok(T.meosFcMarkPairRanges(d, 0, P[0].indexOf('太字') + 1)[1].start.line === 2, '太字 ⇄ 2本目', true);
+  ok(T.meosFcMarkPairRanges(d, 0, P[0].indexOf('取消') + 1)[1].start.line === 3, '取消線 ⇄ 3本目', true);
+  // 過去の `**not` も読める(read-both)
+  const O = ['あ**旧ハイライト**い', '<!-- Mew!FC **not (白/黄) -->', ''];
+  ok(T.meosFcMarkPairRanges(makeDoc(O), 0, 4) !== null, '★過去の `**not` も今までどおり対応が取れる', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

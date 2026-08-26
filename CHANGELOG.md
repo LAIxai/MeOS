@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.404 (2026-08-26)
+- **A plain highlight is now the full negation of bold-and-italic: `***…***` with `***not`.** "Plain" is only fully
+  stated when both axes are denied — `**not` denies bold and says nothing about italic, so the declaration was half
+  written. This reverses v4.0.263, which chose `**` because it is the mark one writes most often and reads as emphasis
+  outside MeOS; the cost of the change is that outside MeOS the span now reads as bold *and* italic. It also separates
+  three kinds that used to share two: a highlight and a real bold were both `**`, drawing from the same queue when a
+  spec is matched to a mark; now highlight is `***`, bold is `**` and strike is `~~`, each with its own line. Both
+  writers were changed (v4.0.246's lesson), and `**not` written before today still reads exactly as it did.
+
 ### v4.0.403 (2026-08-26)
 - **In a paragraph the whole FC group belongs to the one body line.** "Row i pairs with FC line i" is the table's
   rule, where the two counts match; a paragraph is one body line against N FC lines, so looking for the i-th found
