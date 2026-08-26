@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.422 (2026-08-26)
+- **Option is always the other answer.** No bullet on the preset, and it adds one; a bullet already there, and it
+  takes it away and writes the heading alone. One rule instead of two.
+- **A bullet-only preset does not transform.** Take its bullet away and nothing is left, so there is no other answer
+  to offer — and offering a heading instead would mean choosing H1, H2 or H3, which Option cannot say. A button that
+  has nothing to switch to stays as it is.
+
 ### v4.0.421 (2026-08-26)
 - **The tip belongs to the face.** A button that has changed into something else was still explaining its old self.
   Now the second face brings its own tip and hands the first one back on release — one function owning both, for the

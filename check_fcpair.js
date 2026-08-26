@@ -707,11 +707,11 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/hdAltW=fmtAltWatch\(fmtHeading,/.test(src), '★見出しボタンもOptionの見張りに名乗る', true);
   ok(/function hdAltBlt\(\)\{return \(fmtHeadingLevel===1\)\?'-':\(fmtHeadingLevel===2\)\?'1\.':null;\}/.test(src),
      '★★H1は - / H2は 1. / H3は予約(nullで変身しない)', true);
-  ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltBlt\(\)\)\{/.test(src),
+  ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltMode\(\)\)\{/.test(src),
      '★★押す前の面が、押した結果を見せる', true);
-  ok(/ev\.altKey&&hdAltBlt\(\)\)\{[\s\S]{0,260}head:false,bullet:true,blt:hdAltBlt\(\)\}\);return;\}/.test(src),
-     '★Optは見出しを名乗らず箇条書きだけ書く', true);
-  ok(!/ev\.altKey&&hdAltBlt\(\)\)\{[\s\S]{0,260}_hs\.bullet=/.test(src),
+  ok(/ev\.altKey&&hdAltMode\(\)\)\{[\s\S]{0,300}head:!_on,bullet:_on/.test(src),
+     '★Optは付ける/外すのどちらかを書く', true);
+  ok(!/ev\.altKey&&hdAltMode\(\)\)\{[\s\S]{0,300}_hs\.bullet=/.test(src),
      '★Optはプリセットを変えない(1回きりの裏の顔)', true);
   // ★v4.0.420: `-` だけでは箇条書きではない= 印の一部の空白は落とさない
   const mv = (x) => { const r = T.meosMoveSpecsOutOfLine(x); return r && r.body; };
@@ -733,6 +733,17 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
      '★★戻ったら色を塗り直すまでが1組(2つのボタンとも)', true);
   ok((src.match(/setAttribute\('data-tip','Heading \(H'/g) || []).length === 0,
      '★tipを作る所は1つ(fmtHeadTip)', true);
+  // ★v4.0.422: Optは「今の逆」。逆の答えが無い時は変身しない
+  ok(/if\(h\.head===false\)return null;[\s\S]{0,90}if\(h\.bullet\)return 'off';[\s\S]{0,80}return hdAltBlt\(\)\?'on':null;/.test(src),
+     '★★箇条書きが無ければ付ける・在れば外す・箇条書きだけの設定は無視', true);
+  ok(/head:!_on,bullet:_on,blt:_on\?hdAltBlt\(\):\(_h\.blt\|\|'-'\)/.test(src),
+     '★外す時は見出しだけを書く(head:true,bullet:false)', true);
+  ok(/if\(hdAltMode\(\)==='off'\)\{[\s\S]{0,120}btn\.textContent='#'\.repeat\(fmtHeadingLevel\);\}/.test(src),
+     '★外す時の面は「#だけ」= 押した結果がそのまま見える', true);
+  ok(!/if\(hdAltMode\(\)==='off'\)\{[\s\S]{0,120}btn\.style\.backgroundColor=''/.test(src),
+     '★外す時はボタンの色を消さない(色は変わらないから)', true);
+  ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltMode\(\)\)/.test(src) && !/hdAltOn\(\)&&hdAltBlt\(\)\)/.test(src),
+     '★変身するかの判定は1つ(hdAltMode)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

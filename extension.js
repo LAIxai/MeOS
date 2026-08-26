@@ -20754,14 +20754,27 @@ function stAltOn(){return !!(stAltW&&stAltW.on());}
 var hdAltW=null;
 function hdAltOn(){return !!(hdAltW&&hdAltW.on());}
 function hdAltBlt(){return (fmtHeadingLevel===1)?'-':(fmtHeadingLevel===2)?'1.':null;}
+/* ★★v4.0.422(俊克 8/26 pm07:52「プリセットで既に箇条書きがセットされたケースのOpt押しでは、どうしようか?
+   **逆に、箇条書きを外すのthatいいね**」／pm07:54「ただし、**箇条書きだけの設定のときは、無視する**」):
+   ★★**裏の顔は「今の逆」**＝ 1本の規則。箇条書きが無ければ付ける・在れば外す。
+   ★**箇条書きだけの設定は裏の顔を持たない**＝ 外したら何も残らない＝ 逆の答えが存在しない。
+     ★俊克「あるいは、見出しを付けるほうがいいかもと思ったけど、**H1〜H3のどれか選択できない**ので、
+       やはり無視で良いかな」＝ **Optは1つの答えしか運べない**。選ばせたいものはOptに載せない。
+     こういう時は**変身しない**(空約束をしない・H3の予約と同じ扱い)。 */
+function hdAltMode(){var h=fmtHeadingColors[fmtHeadingLevel]||{};
+if(h.head===false)return null;          /* 箇条書きだけの設定= 逆の答えが無い */
+if(h.bullet)return 'off';               /* 既に箇条書き= 外すのが逆 */
+return hdAltBlt()?'on':null;}           /* H3は予約 */
 /* ★★v4.0.421(俊克 8/26 pm07:43 改良1「tipに説明that無い」・改良2「Optで変身した後、何もしないで離れると、
    ##ボタンthat色無しになってしまう」):
    ★★**tipは面の一部**＝ 変身したら tip も一緒に変わり、戻ったら一緒に戻る。1つの関数が両方を持つ。
    ★★色が消えたのは、**面を描く口と色を塗る口が別だった**から＝ 変身の時に色を消したが、戻る時に
      塗り直す者が居なかった(色は renderFmtBtnColors が持っている)。→ 戻ったら塗り直しまでを1組にする。 */
 function fmtHeadTip(){var hh='#'.repeat(fmtHeadingLevel);var b=hdAltBlt();
-return 'Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(b?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing yet on H3 (kept in reserve)');}
+var m=hdAltMode();
+return 'Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'\u2325 Opt \u2192 heading only (drops the bullet)':m==='on'?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing here (H3 is in reserve; a bullet-only preset has no other answer)');}
 function fmtHeadAltTip(){var b=hdAltBlt();
+if(hdAltMode()==='off')return 'Heading only | The preset carries a bullet; \u2325 Opt writes it without one. Let go of \u2325 Opt to go back.'+String.fromCharCode(10)+'\u2325 Opt is always the other answer: no bullet yet, add one \u2014 already a bullet, drop it.';
 return 'Bullet list ('+b+' ) | Writes one item with the preset color. Let go of \u2325 Opt to go back to the heading.'+String.fromCharCode(10)+'Do not want the color? Delete the folding comment underneath \u2014 that is the whole undo.';}
 var stBaseTip='';
 function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
@@ -20799,8 +20812,8 @@ bg:fmtSpec.strike.bg});if((Number(document.body.dataset.phase||1))>=4){const _w=
 window.__fmtBaseW.strike=_w;window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;
 window.__renderFmtRing('strike');}});
 if(fmtHeading)fmtHeading.addEventListener('click',(ev)=>{/* v4.0.419(俊克): Opt押し=箇条書き。H1は - / H2は 1. / H3は予約。↻リングより先に見る=Optは別の道 */
-if(ev&&ev.altKey&&hdAltBlt()){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
-vscode.postMessage({type:'insertFormat',kind:'heading',fg:fmtSpec.heading.fg,bg:fmtSpec.heading.bg,level:fmtHeadingLevel,head:false,bullet:true,blt:hdAltBlt()});return;}
+if(ev&&ev.altKey&&hdAltMode()){const _h=fmtHeadingColors[fmtHeadingLevel]||{};const _on=(hdAltMode()==='on');
+vscode.postMessage({type:'insertFormat',kind:'heading',fg:fmtSpec.heading.fg,bg:fmtSpec.heading.bg,level:fmtHeadingLevel,head:!_on,bullet:_on,blt:_on?hdAltBlt():(_h.blt||'-')});return;}
 if(window.__fmtActionable.heading){const r=window.__fmtRing.heading||0;
 window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',
 kind:'heading',ring:0});}else{const baseW=window.__fmtBaseW.heading||2;const w=((baseW-1+r)%3)+1;const hc=fmtHeadingColors[w];
@@ -20840,10 +20853,14 @@ b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else 
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
 if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again. Let go of \u2325 Opt to go back to strikethrough.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough.');btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}
 if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip);
-if(kind==='heading'&&hdAltOn()&&hdAltBlt()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
-var _hc=fmtHeadingColors[fmtHeadingLevel]||{};var _hbg=_hc.bg?fmtHexBg(_hc.bg):'';
-btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';
-btn.innerHTML=hdAltBlt()+' <span style="color:'+fmtHexFg(_hc.fg)+';background-color:'+_hbg+';padding:0 2px;border-radius:2px">A</span>';btn.setAttribute('data-tip',fmtHeadAltTip());return;}
+if(kind==='heading'&&hdAltOn()&&hdAltMode()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
+btn.classList.remove('fmt-remove');
+if(hdAltMode()==='off'){/* v4.0.422: 既に箇条書き= 外した姿(見出しだけ)を見せる。色はボタンが着ているまま */
+btn.textContent='#'.repeat(fmtHeadingLevel);}
+else{var _hc=fmtHeadingColors[fmtHeadingLevel]||{};var _hbg=_hc.bg?fmtHexBg(_hc.bg):'';
+btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';
+btn.innerHTML=hdAltBlt()+' <span style="color:'+fmtHexFg(_hc.fg)+';background-color:'+_hbg+';padding:0 2px;border-radius:2px">A</span>';}
+btn.setAttribute('data-tip',fmtHeadAltTip());return;}
 if(kind==='heading')btn.setAttribute('data-tip',fmtHeadTip());   /* v4.0.421: 戻ったらtipも戻る(面の一部) */const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
 btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));}/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();
 fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);}btn.classList.remove('fmt-remove');return;}if(window.__fmtActionable[kind]){let r=window.__fmtRing[kind]||0;
