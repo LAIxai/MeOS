@@ -4190,7 +4190,9 @@ async function meosRunDepthAudit(editor, byHand) {
   try { meosDbg('[depthAudit] ' + (bad.length ? (bad.length + '件 合っていない: ' + bad.slice(0, 6).map(b => (b.line + 1) + '行 ' + b.id + ' 申告D' + b.wrote + '/実際D' + b.real).join(' / ')) : '全部合っている') + ' lines=' + doc.lineCount); } catch (_) { }
   if (!bad.length) { if (byHand) { try { vscode.window.showInformationMessage('MeOS: every membrane depth matches its nesting.'); } catch (_) { } } return; }
   const first = bad[0];
-  const pick = await vscode.window.showInformationMessage(
+  // ★v4.0.425(俊克「警告は直ぐに消えて、何が書いて在ったか読めない」): **知らせを消さない**。
+  //   VS Codeの情報の知らせは自分で消えるが、警告の知らせは押すまで居座る。読める物にするのが先。
+  const pick = await vscode.window.showWarningMessage(
     'MeOS: ' + bad.length + ' membrane depth' + (bad.length > 1 ? 's do' : ' does') + " not match the nesting (first: line " + (first.line + 1) + ', D' + first.wrote + ' → D' + first.real + ').',
     'Go to first', 'Fix all');
   if (pick === 'Go to first') {
@@ -4987,22 +4989,52 @@ function warningSegmentLayout(kind, line, startLine, endLine) {
 }
 
 
+// ★★v4.0.425(俊克 8/26 pm08:32「今朝、何回か、警告が出た。**警告は直ぐに消えて、何が書いて在ったか読めない**。
+//   **太い警告線にホーバーしたら、欠けている両端にワープできるようにしたい**よね」):
+//   ★★**消える知らせは、無いのと同じ**。150k行の中で「どこか壊れている」とだけ言われても辿り着けない。
+//     → 知らせを**居座る所**へ置く＝ 赤い線はずっと出ているので、**その線に行番号とワープの口を持たせる**。
+//   ★[[feedback_fix_signal_at_fix_place]]＝ 直す場所に、直す合図を出す。
+//   ★**在る方の端は行番号で名指しして飛べる。無い方は「無い」と言い切る**(探させない)。
+function meosWarnJumpLink(line0, label) {
+  const href = 'command:laiMembrane.jumpToLine?' + encodeURIComponent(JSON.stringify([line0]));
+  return '[' + label + ' Ln ' + (line0 + 1) + '](' + href + ')';
+}
 function warningHoverMessage(warnings) {
   if (!warnings || !warnings.length) return undefined;
   const lines = [];
   for (const w of warnings) {
     if (w.warningKind === 'unclosed') {
-      lines.push(`⚠️ 閉じ膜がありません: ${w.id}`);
+      lines.push('⚠️ **閉じ膜がありません**: `' + w.id + '`'
+        + '\n\n' + meosWarnJumpLink(w.start, '▼ 開始膜へ') + '　／　▲ 閉じ膜 — **無い**'
+        + '\n\nここから下は、ずっとこの膜の中として読まれます。');
     } else if (w.warningKind === 'orphan') {
-      lines.push(`⚠️ 対応する開始膜がありません: ${w.id}`);
+      const _l = (w.endLine !== undefined ? w.endLine : w.start);
+      lines.push('⚠️ **対応する開始膜がありません**: `' + w.id + '`'
+        + '\n\n▼ 開始膜 — **無い**　／　' + meosWarnJumpLink(_l, '▲ 閉じ膜へ')
+        + '\n\nここより上が、ずっとこの膜の中として読まれています。');
     }
   }
   if (!lines.length) return undefined;
-  const md = new vscode.MarkdownString(lines.join('\n\n'));
-  md.isTrusted = false;
+  const md = new vscode.MarkdownString(lines.join('\n\n---\n\n'));
+  md.isTrusted = true;   // ワープの口(command:)を効かせるため
   return md;
 }
 
+let meosWarnCache = { key: '', list: [] };   // v4.0.425: 直近に描いた警告(ホバーが引く)
+// v4.0.425: この行に掛かっている警告を返す。赤い線が出ている行なら、必ず1つは返る(線と同じ物差し)。
+function meosWarningsAtLine(document, line) {
+  try {
+    if (!document) return [];
+    const key = document.uri.toString() + '@' + document.version;
+    const list = (meosWarnCache.key === key) ? meosWarnCache.list : null;
+    if (!list || !list.length) return [];
+    return list.filter(w => {
+      if (w.warningKind === 'unclosed') return w.start <= line;
+      if (w.warningKind === 'orphan') return line <= (w.endLine !== undefined ? w.endLine : w.start);
+      return false;
+    });
+  } catch (_) { return []; }
+}
 function selectDisplayedWarnings(structure) {
   // Choose the two visible diagnostics once for the whole document.
   // This prevents hidden 3rd+ warnings from leaking into hover text and keeps
@@ -5069,6 +5101,8 @@ function computeLineDecorations(document, visibleRanges) {
     if (isStealthMembrane(p, document)) isStealthByStartLine.set(p.start, true);
   }
   const displayedWarnings = selectDisplayedWarnings(structure);
+  // v4.0.425: 直近の答えを控える= ホバーのたびに全文を数え直さない(版が変われば自然に古くなる)
+  try { meosWarnCache = { key: document.uri.toString() + '@' + document.version, list: displayedWarnings }; } catch (_) { }
   const warningColor = 'rgba(255, 64, 64, 0.96)';
   const warningWidth = 3;
   // v0.9.216: shift the raw-text baseline 10px to the right and use the
@@ -28538,6 +28572,17 @@ function activate(context) {
       return links;
     }
   }));
+  // v4.0.425: 行へ飛ぶだけの口。警告ホバーのワープに使う(段階の門番は付けない= 壊れている時はいつでも要る)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.jumpToLine', (line0) => {
+    try {
+      const editor = vscode.window.activeTextEditor || getMeDockTargetEditor(); if (!editor || typeof line0 !== 'number') return;
+      const ln = Math.max(0, Math.min(line0, editor.document.lineCount - 1));
+      const pos = new vscode.Position(ln, 0);
+      editor.selection = new vscode.Selection(pos, pos);
+      try { vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }
+      editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.jumpToImageLine', (line0) => {
     try {
       if (MEOS_RELEASE_PHASE < 5) return; // v3.0.7: 画像/添付はフェーズ5(隔離)
@@ -28846,6 +28891,12 @@ makeDecorations();
         // (combined with green's strict end-exclusion in v0.9.486) keeps
         // the tooltip aligned with the visible glyph the user is hovering.
         // v0.9.353: 🔴 and 🟢 have separated hitboxes; no priority stealing.
+        // ★v4.0.425(俊克): 赤い警告線が出ている行は、**どこを指しても**警告を出す。
+        //   ★一番先に見る＝ 壊れている時は、他の何より先にそれを言うべき。
+        try {
+          const _wm = warningHoverMessage(meosWarningsAtLine(document, position.line));
+          if (_wm) return new vscode.Hover(_wm);
+        } catch (_) { }
         const redMsg = redJumpHoverMessage(editor, position);
         if (redMsg) return new vscode.Hover(redMsg);
         const greenMsg = activeGreenHoverMessage(editor, position);

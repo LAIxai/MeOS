@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.425 (2026-08-26)
+- **The red warning bar now answers when you hover it.** A membrane missing its other half draws a thick red line
+  down the gutter, but finding the break in a 150,000-line file was another matter. Hovering any line the red bar
+  reaches names the membrane, gives the line number of the end that exists as a link to jump to, and says plainly
+  that the other end is missing.
+- **A notice you cannot read is no notice at all.** The depth-mismatch message announced itself and vanished before
+  it could be read; it now stays until dismissed.
+
 ### v4.0.424 (2026-08-26)
 - **The tip's first line says what the button currently is.** It was hard-wired to announce a heading, so a
   bullet-only preset was introduced as "Heading (H3)" while showing a dash. It now reads from the same three cases

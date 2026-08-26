@@ -42,7 +42,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_fcpair_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { meDockModeForEditor, isCursorOnMembraneLine, currentMembranePairForRename, meosPairBlockEnd, foldRangeEnd, collectPairs, meosIsPairBadgeSpec, meosRestampMembraneBlock, findCurrentPair, findNewMembraneOpenerLineAfterInsert, meosRestampNameForCreate, meosMembraneStamp, meosFcMarkPairRanges, meosFcMate, meosSpecPayloadKind, meosRowMarksInOrder, parseColorSpec, DARK_BG_KEYS, HIGHLIGHT_COLORS, meosTableBlockFor, meosSpecGroupPerLine, meosInsertIntoSpecLine, meosSpecLineGridOrder, MEOS_SPEC_LINE_ONE_RE, MEOS_SPEC_LINE_NONE_RE, meosMeTexTokens, meosConvertLegacyLine, meosLegacyHits, meosFcSplitForLine, meosInlineHeadHit, wrapInsertedMembraneBlock, membraneCommentTemplateForLanguage, meosLegacyPairBadgeHit, meosLegacyPairBadgeFix, refreshTrailingTimestamp, MEOS_NAME_TS_RE, copyMe, duplicateMe, shedCurrentMembrane, copyMyContents, meosParseSpecLine, meosFcFmtIsGhost, meosFcFmtIsNot, meosFcFmtInner, meosMoveSpecsOutOfLine, warningHoverMessage, selectDisplayedWarnings };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 let ng = 0;
@@ -751,6 +751,32 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
      '★外す時はボタンの色を消さない(色は変わらないから)', true);
   ok(/if\(kind==='heading'&&hdAltOn\(\)&&hdAltMode\(\)\)/.test(src) && !/hdAltOn\(\)&&hdAltBlt\(\)\)/.test(src),
      '★変身するかの判定は1つ(hdAltMode)', true);
+}
+
+console.log('㊷ 赤い警告線にホーバー= 行番号とワープの口(v4.0.425 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const w = T.selectDisplayedWarnings({ unclosedOpens: [{ id: 'A_2026', start: 1548, depth: 0 }], orphanCloses: [{ id: 'B_2026', line: 9001, depth: 0 }] });
+  ok(w.length === 2 && w[0].warningKind === 'unclosed' && w[1].warningKind === 'orphan', '★2種類の警告が並ぶ', w.map(x => x.warningKind));
+  const md = T.warningHoverMessage(w);
+  const v = md && md.value;
+  ok(/Ln 1549/.test(v), '★★開始膜の行番号を名指しする(1から数える)', v && v.slice(0, 120));
+  ok(/Ln 9002/.test(v), '★★閉じ膜の行番号も名指しする', true);
+  ok(/command:laiMembrane\.jumpToLine\?%5B1548%5D/.test(v), '★★そこへ飛べる(ワープの口)', true);
+  ok(/command:laiMembrane\.jumpToLine\?%5B9001%5D/.test(v), '★もう一方へも飛べる', true);
+  ok(md.isTrusted === true, '★ワープの口を効かせる(isTrusted)', md.isTrusted);
+  ok(/▲ 閉じ膜 — \*\*無い\*\*/.test(v) && /▼ 開始膜 — \*\*無い\*\*/.test(v), '★無い方は「無い」と言い切る(探させない)', true);
+  ok(!T.warningHoverMessage([]), '★壊れていなければ何も出さない', true);
+  // 口と物差し
+  ok(/const _wm = warningHoverMessage\(meosWarningsAtLine\(document, position\.line\)\);/.test(src),
+     '★★赤い線が出ている行なら、どこを指しても出る', true);
+  ok(/if \(w\.warningKind === 'unclosed'\) return w\.start <= line;[\s\S]{0,200}return line <= \(w\.endLine/.test(src),
+     '★ホーバーの範囲は線と同じ物差し', true);
+  ok(/registerCommand\('laiMembrane\.jumpToLine'/.test(src), '★行へ飛ぶ口が在る', true);
+  ok(/meosWarnCache = \{ key: document\.uri\.toString\(\) \+ '@' \+ document\.version/.test(src),
+     '★ホーバーのたびに全文を数え直さない(版で古くなる控え)', true);
+  ok(/const pick = await vscode\.window\.showWarningMessage\(\n    'MeOS: ' \+ bad\.length/.test(src),
+     '★深さの知らせは自分で消えない(警告にした)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
