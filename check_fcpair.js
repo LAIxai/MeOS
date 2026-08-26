@@ -502,7 +502,9 @@ console.log('㉜ 段落は「印1つ ⇄ FC1個」で橙(v4.0.401 俊克)');
   ok(!!lk && seg(lk, 0) === '[***ぶどう***]()' && /\[\*\*\*\]\(\)/.test(seg(lk, 1)), '★リンク ⇄ 3本目', lk && [seg(lk, 0), seg(lk, 1)]);
   const back = at(3, 10);
   ok(!!back && seg(back, 0) === '[***ぶどう***]()', '★FC側から本文へも同じ対応(逆向き)', back && seg(back, 0));
-  ok(at(0, P[0].indexOf('食べて') + 1) === null, '修飾のない所では細かくしない(行ぜんぶの橙に戻る)', true);
+  // ★v4.0.411(俊克)= 修飾の外では**何も橙にしない**(行ぜんぶを橙にするのは「表全部をオレンジ」と同じ論理矛盾)
+  const _out = at(0, P[0].indexOf('食べて') + 1);
+  ok(Array.isArray(_out) && _out.length === 0, '★修飾の外では何も橙にしない(v4.0.411)', _out);
   // 表は今までどおり「横一列どうし」= 細かくしない
   const TB = ['| 品目 | 備考 |', '| --- | --- |', '| **りんご** | みかん |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC **not (白/黄) -->'];
   ok(T.meosFcMarkPairRanges(makeDoc(TB), 2, 4) === null, '★表は横一列どうしのまま(俊克「表としては良い」)', true);
@@ -634,6 +636,24 @@ console.log('㊴ 印と印の間の字を、素に戻す(v4.0.409 俊克 バグ2
   ok(!/color:[^;]*!important/.test(body), '★色には !important を付けない(橙=対の印を勝たせる)', body.slice(0, 260));
   // ★生データの行でも間を素に戻す(v4.0.410)
   ok(/if \(!cursorLines\.has\(ln\)\) continue;/.test(src), '★生データの行だけを回す別の道が在る', true);
+}
+
+console.log('㊵ 段落: 修飾の外は橙にしない/境界は閉じ記号の手前(v4.0.411 俊克)');
+{
+  const B = '==一般的なハイライト(プレーン)==と***ハイライト***、そして***ハイライト***と';
+  const P = [B, '<!-- Mew!FC ***not (白/黄) -->', '<!-- Mew!FC ***not (黒/黄) -->', ''];
+  const d = makeDoc(P);
+  const at = (ch) => { const r = T.meosFcMarkPairRanges(d, 0, ch); return r === null ? 'null' : (r.length === 0 ? 'none' : B.slice(r[0].start.character, r[0].end.character) + '#' + r[1].start.line); };
+  const mk = T.meosRowMarksInOrder(B);
+  ok(mk[1].bodyStart === 23 && mk[1].bodyEnd === 28, '★印は中身の範囲も持つ(入れ直しで落とさない)', JSON.stringify(mk[1]));
+  ok(at(20) === '***ハイライト***#1', '★開き記号の頭=中(印に触った瞬間から光る)', at(20));
+  ok(at(28) === '***ハイライト***#1', '★中身の尻=中', at(28));
+  ok(at(29) === 'none', '★閉じ記号の上=外', at(29));
+  ok(at(31) === 'none', '★印の右端=外(俊克「そこは外側だよね」)', at(31));
+  ok(at(33) === 'none', '★★修飾の外(、そして)は何も橙にしない', at(33));
+  ok(at(46) === 'none', '★最後の「と」も外', at(46));
+  ok(at(38) === '***ハイライト***#2', '★2つ目の中身は2つ目のFCと対', at(38));
+  ok(at(5) === 'none', '★相手のFCが無い印も外(対にならない)', at(5));
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

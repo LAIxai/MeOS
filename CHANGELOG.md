@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.411 (2026-08-26)
+- **Outside a mark, nothing turns orange.** The orange says *these two belong together*, so it must not glow where no
+  pair exists. In a paragraph the caret used to fall back to lighting the whole body line and the whole FC group —
+  the same thing as turning an entire table orange because the caret sits in one cell. A table's unit really is the
+  whole row; a paragraph's unit is one mark, and that is where the two differ.
+- **The boundary now ends before the closing marker.** Being just past a highlight counted as being inside it. Inside
+  runs from the head of the opening marker to the end of its content: you enter at the door and leave when the
+  content ends, which is the direction the line is read in.
+
 ### v4.0.410 (2026-08-26)
 - **The gap between two marks is plain on the raw line as well.** v4.0.409 wrote it back to plain only where MeOS
   renders; the line under the caret shows raw data and is skipped whole, so `、そして` stayed blue exactly where it

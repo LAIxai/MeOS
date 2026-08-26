@@ -16267,10 +16267,12 @@ function meosInlineMarkEnds(text) {
   const out = [];
   for (const [kind, re] of MEOS_INLINE_MARK_RES) {
     re.lastIndex = 0; let m, ord = 0;
-    while ((m = re.exec(t)) !== null) { ord++; out.push({ kind, ord, start: m.index, end: m.index + m[0].length }); } // v4.0.401: start も持つ(橙の1:1に要る)
+    // v4.0.411: 記号の内側(中身)も持つ= 橙の「中に居るか」は中身で決める(記号の上は外側)。
+    while ((m = re.exec(t)) !== null) { ord++; const _s = m.index, _e = _s + m[0].length, _k = String(kind).length;
+      out.push({ kind, ord, start: _s, end: _e, bodyStart: Math.min(_s + _k, _e), bodyEnd: Math.max(_e - _k, _s) }); } // v4.0.401: start も持つ(橙の1:1に要る)
   }
   const nth = {};
-  for (const mk of meosStarMarks(meosScanText(t), t)) { nth[mk.kind] = (nth[mk.kind] || 0) + 1; out.push({ kind: mk.kind, ord: nth[mk.kind], start: mk.start, end: mk.end }); }
+  for (const mk of meosStarMarks(meosScanText(t), t)) { nth[mk.kind] = (nth[mk.kind] || 0) + 1; out.push({ kind: mk.kind, ord: nth[mk.kind], start: mk.start, end: mk.end, bodyStart: mk.bodyStart, bodyEnd: mk.bodyEnd }); }
   return out;
 }
 // FC行を本文の行末形式へ戻す。{ line } か null(戻せない/戻すと壊れる時)。
@@ -16436,7 +16438,9 @@ function meosRowMarksInOrder(text) {
   const raw = String(text == null ? '' : text), out = [];
   const masked = meosMaskLinkLabels(raw);   // v4.0.212: ラベルの中の装飾は指定を持たないso数えない
   try {
-    for (const e of meosInlineMarkEnds(masked)) out.push({ kind: e.kind, start: e.start, end: e.end });
+    // v4.0.411: 中身の範囲(bodyStart/bodyEnd)も持って行く= ここで入れ直す時に落とすと、
+    //   橙の「中に居るか」が記号の外側まで広がってしまう。
+    for (const e of meosInlineMarkEnds(masked)) out.push({ kind: e.kind, start: e.start, end: e.end, bodyStart: e.bodyStart, bodyEnd: e.bodyEnd });
     for (const tk of (meosMeTexTokens(masked, null) || [])) out.push({ kind: (tk.kind === 'sup') ? 'sup' : 'sub', start: (typeof tk.tokStart === 'number' ? tk.tokStart : tk.opStart), end: tk.opEnd });
     if (raw.indexOf(']()') >= 0) {
       let t = raw;
@@ -25315,10 +25319,24 @@ function meosFcMarkPairRanges(doc, line, ch) {
     const pairs = [];
     for (const mk of marks) { const a2 = q.get(mk.kind); if (a2 && a2.length) pairs.push({ mk, bx: a2.shift() }); }
     if (!pairs.length) return null;
+    // ★★v4.0.411(俊克 8/26 pm03:56 改良1「1行の中に複数のハイライトや取消線があるとき、**修飾以外のところに
+    //   文字カーソルがあるときは、FC行が橙色になるのは論理矛盾**。…テーブルで言えば、今の実装は
+    //   **テーブル全部をオレンジ色にするようなもの**。…今は、**右端でもハイライトと認識している。でも、
+    //   そこは外側**だよね」):
+    //   ★★**橙は「この2つが対だ」の印**so、対that決まらない場所で光ってはいけない。段落で修飾の外に居る時は
+    //     **何も橙にしない**(表は横一列が塊なので全部橙で正しいが、段落の塊は印1つ＝そこが違う)。
+    //   ★★境界は**中身で決める**＝ 記号(`***`/`==`/`~~`)の上は**外側**。俊克の「右端でも認識している」は、
+    //     範囲を記号の外側まで取っていたから。→ `bodyStart..bodyEnd` で見る。
+    //   ★見つからない時は **空の配列**を返す＝ 「段落だと分かった。だが対は無い」を、
+    //     「段落かどうか分からない(null)」と区別する。呼ぶ側は空なら何も塗らない。
+    //   ★境界は**開きの頭から、中身の尻まで**。左は記号を含める(=印に触った瞬間から光る)、
+    //     右は閉じ記号の手前で切る(=俊克「右端でもハイライトと認識している。でも、そこは外側だよね」)。
+    //     読む向きに合わせた形＝ 入る時は入口から、出る時は中身が終わった所で出る。
+    const _in = (m, x) => { const b2 = (typeof m.bodyEnd === 'number') ? m.bodyEnd : m.end; return x >= m.start && x <= b2; };
     const hit = (line === bodyLn)
-      ? pairs.find(p => ch >= p.mk.start && ch <= p.mk.end)
+      ? pairs.find(p => _in(p.mk, ch))
       : pairs.find(p => p.bx.line === line && ch >= p.bx.start && ch <= p.bx.end);
-    if (!hit) return null;
+    if (!hit) return [];   // 段落だが、カーソルの下に対が無い= 何も塗らない
     return [new vscode.Range(bodyLn, hit.mk.start, bodyLn, hit.mk.end),
             new vscode.Range(hit.bx.line, hit.bx.start, hit.bx.line, hit.bx.end)];
   } catch (_) { return null; }
@@ -25500,6 +25518,8 @@ function meosApplyFcRowDecorations(editor) {
     const doc = editor.document;
     if (!(typeof meosRawMode !== 'undefined' && meosRawMode) && meosIsProseDoc(doc)) {
       // ★v4.0.401(俊克): 段落なら**印1つ ⇄ FC1個**で細かく染める。出来ない時だけ行ぜんぶ。
+      // ★v4.0.411: 段落なら**印1つ ⇄ FC1個**。対が無ければ**何も塗らない**(空配列)。
+      //   null(=段落と分からない=表/箇条書き/膜)の時だけ、今までどおり行ぜんぶ。
       const _fine = meosFcMarkPairRanges(doc, editor.selection.active.line, editor.selection.active.character);
       if (_fine) { for (const r of _fine) out.push(r); }
       const m = _fine ? null : meosFcMate(doc, editor.selection.active.line);   // 全文を走らず、カーソルの周りだけ
