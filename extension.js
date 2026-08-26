@@ -19261,7 +19261,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    v4.0.427(俊克「⚠️ボタンは、Navigate Me!のWarpの右に移動しよう」)= 行き先を決める道具の並びへ移した
    ＝ これは**どこへ行くかの道具**so、名前を直す所(Edit Me)ではなく、動く所に置く。 */
 /* v4.0.428(俊克「四角枠が妙に縦長なので横長にした方が、落ち着く」)= 隣の丸い駒と同じ背丈・同じ丸みで、横に広く。 */
-.warn-btn{margin-left:8px;padding:1px 10px;border:1px solid transparent;border-radius:9px;background:transparent;font-size:11px;line-height:15px;cursor:pointer;opacity:.28;filter:grayscale(1);white-space:nowrap;}
+.warn-btn{margin-left:8px;padding:1px 9px;border:1px solid transparent;border-radius:9px;background:transparent;font-size:14px;line-height:15px;cursor:pointer;opacity:.28;filter:grayscale(1);white-space:nowrap;}/* v4.0.431(俊克): ⚠️は1.3倍(11→14px)。件数は10px固定なので一緒に太らない=背丈は変えずに印だけ大きく */
 .warn-btn .warn-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super;color:#fff}/* v4.0.429(俊克): 黒より白 */
 .warn-btn:not([disabled]){opacity:1;filter:none;background:rgba(255,64,64,.16);border-color:rgba(255,64,64,.55);}
 .warn-btn:not([disabled]):hover{background:rgba(255,64,64,.30);}

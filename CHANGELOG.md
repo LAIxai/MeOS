@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.431 (2026-08-27)
+- The ⚠️ on the button is about a third larger; the count keeps its size, so the pill stays the height it was.
+
 ### v4.0.430 (2026-08-27)
 - **Two tips at once, for the third time — fixed as a rule instead of a list.** Twice before, a button whose tip is
   drawn in CSS was added to a list of names the JavaScript tooltip skips; every new button reopened the hole. The

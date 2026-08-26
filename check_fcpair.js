@@ -806,8 +806,9 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
      '★★その行は膜線が場所を譲る(グリフマージンは1行1アイコン)', true);
   ok(/editor\.setDecorations\(meosWarnGutterDecoration, _wl\);/.test(src), '★膜線と同じ1回の走査で置く', true);
   ok(/'warn\.svg'/.test(src), '★栞・🐱と同じ gutterIconPath 方式', true);
-  ok(/\.warn-btn\{margin-left:8px;padding:1px 10px;border[^}]*border-radius:9px/.test(src),
+  ok(/\.warn-btn\{margin-left:8px;padding:1px 9px;border[^}]*border-radius:9px/.test(src),
      '★枠は横長(隣の駒と同じ丸み)', true);
+  ok(/\.warn-btn\{[^}]*font-size:14px;line-height:15px/.test(src), '★⚠️は1.3倍・背丈は据え置き(v4.0.431)', true);
   // ★v4.0.429: tipは隣の駒と同じ家(CSS ::after)・件数は白・ガターはボタンと同じ黄
   ok(/\.warn-btn\[data-tip\]::after,\.nav-center-btn\[data-tip\]::after/.test(src),
      '★★tipは隣の駒と同じCSSの家に居る(座標を計算しない=v3.1.34の汎用解)', true);
