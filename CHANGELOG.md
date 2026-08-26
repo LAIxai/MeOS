@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.417 (2026-08-26)
+- **Hold Option and the strikethrough button turns into 👻.** Option showing a button's other face is already the
+  rule — the highlight button takes on a link, the superscript button becomes subscript. v4.0.416 taught the button
+  the new job but not the new face, so what it would do was invisible until it was done. One watcher still, shared by
+  every button.
+
 ### v4.0.416 (2026-08-26)
 - **👻 Comment out.** Opt-click the strikethrough button and the text stays in the file but is not shown at all —
   for the passage you are not using today and will use tomorrow. Strikethrough crosses something out and still shows

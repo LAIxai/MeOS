@@ -20731,6 +20731,12 @@ document.addEventListener('keyup',function(ev){if(ev.key==='Alt'&&fmtAltDown){fm
    ★何が起きるかは**押す前に面が名乗る**(リンクなら下線が出る=v4.0.28の見せ方そのまま)。 */
 var hlAltW=null;
 function hlAltOn(){return !!(hlAltW&&hlAltW.on());}
+/* ★v4.0.417(俊克 8/26 pm05:44「変身しないよ。私が変身と言ったのは、ハイライトボタンがリンク付きに変身したり、
+   上付きボタンが下付きボタンに変身するように、**取消線ボタンが👻に変身する**んだよ」):
+   ★**Option＝そのボタンの裏の顔**は既に全ボタンの規則(v4.0.295)。取消線だけ名乗っていなかった＝
+   仕事(👻を書く)を先に足して、面を足し忘れていた。**押す前の面と押した結果は同じ物を指す**。 */
+var stAltW=null;
+function stAltOn(){return !!(stAltW&&stAltW.on());}
 function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
 /* v4.0.298(俊克): 下線の種類は「最後に自分で決めた値」。nodeが覚えていて、開いた時と変わった時に送ってくる。
    ★webviewは**持ち主ではなく写し**= 面を描くためだけに持つ。書く値を決めるのはnode(口を2つ作らない)。 */
@@ -20801,7 +20807,8 @@ return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.
 }function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?fmtHlUl():null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる / v4.0.297→298: 面の下線も**書かれる種類**で描く(名乗っていないプリセットは、最後に自分で決めた値) *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
 }return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
-if(!btn)return;const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
+if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
+if(kind==='strike'&&stAltOn()){btn.textContent='👻';btn.classList.remove('fmt-remove');btn.style.color='';btn.style.backgroundColor='';btn.style.borderColor='';return;}const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
 btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));}/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();
 fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);}btn.classList.remove('fmt-remove');return;}if(window.__fmtActionable[kind]){let r=window.__fmtRing[kind]||0;
 r=((r%4)+4)%4;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;const w=(r===0)?baseW:(((baseW-1+r)%3)+1);const isRemove=(r===0);
@@ -20862,6 +20869,7 @@ document.addEventListener('click',function(ev){if(fp.classList.contains('on')&&e
 /* v4.0.295: ハイライトボタンのOption見張りを登録。描き直しは既に在る1つの口(__renderFmtRing)へ通す
    = 🚫の時は面を触らない、というv4.0の作法がそのまま効く(裏の顔を出す口を別に作らない)。 */
 hlAltW=fmtAltWatch(fmtHighlight,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');});
+stAltW=fmtAltWatch(fmtStrike,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');});
 fmtHlCycle.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
 if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%4;window.__fmtCyclingKind='highlight';
 window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+1)%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];

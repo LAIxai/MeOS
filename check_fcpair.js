@@ -699,6 +699,10 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   ok(/ev\.altKey\)\{vscode\.postMessage\(\{type:'insertFormat',kind:'strike',ghost:true\}\)/.test(src),
      '★Optは↻リングより先に見る(別の道)', true);
   ok(/if \(it\.not \|\| it\.ghost\) return null;/.test(src), '★👻 は行末形式へ戻さない(notと同じ)', true);
+  // ★v4.0.417: 押す前の面と押した結果は同じ物を指す(Option=裏の顔)
+  ok(/stAltW=fmtAltWatch\(fmtStrike,/.test(src), '★取消線ボタンもOptionの見張りに名乗る', true);
+  ok(/if\(kind==='strike'&&stAltOn\(\)\)\{btn\.textContent='👻';/.test(src), '★★Optionを押すと取消線ボタンが👻に変身する', true);
+  ok(!/fmtAltDown=[^;]*;[\s\S]{0,80}var fmtAltDown/.test(src), '★見張りは1つのまま(2つ目を作らない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
