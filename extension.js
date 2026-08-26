@@ -14501,7 +14501,10 @@ let meosWarnGutterDecoration = null;
 function meosCreateWarnGutterDecoration() {
   const opts = {
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    overviewRulerColor: 'rgba(224, 58, 58, 0.9)',
+    // v4.0.429(俊克「ガター⚠️は、赤色にしたのは、警告色だからか? ボタンが黄色なので、やや違和感がある」):
+    //   ★**同じ物を指す印は、同じ色で**。ボタンの面は絵文字の⚠️(黄と黒)なので、ガターもそれに合わせる。
+    //   赤は「膜が壊れている範囲」を示す縦線が既に使っている＝ 色で役割を分ける(範囲=赤／印=黄)。
+    overviewRulerColor: 'rgba(240, 190, 20, 0.95)',
     overviewRulerLane: vscode.OverviewRulerLane.Left,
     gutterIconSize: 'contain'
   };
@@ -19259,7 +19262,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ＝ これは**どこへ行くかの道具**so、名前を直す所(Edit Me)ではなく、動く所に置く。 */
 /* v4.0.428(俊克「四角枠が妙に縦長なので横長にした方が、落ち着く」)= 隣の丸い駒と同じ背丈・同じ丸みで、横に広く。 */
 .warn-btn{margin-left:8px;padding:1px 10px;border:1px solid transparent;border-radius:9px;background:transparent;font-size:11px;line-height:15px;cursor:pointer;opacity:.28;filter:grayscale(1);white-space:nowrap;}
-.warn-btn .warn-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super}
+.warn-btn .warn-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super;color:#fff}/* v4.0.429(俊克): 黒より白 */
 .warn-btn:not([disabled]){opacity:1;filter:none;background:rgba(255,64,64,.16);border-color:rgba(255,64,64,.55);}
 .warn-btn:not([disabled]):hover{background:rgba(255,64,64,.30);}
 .warn-btn[disabled]{cursor:default;}
@@ -19331,15 +19334,15 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .big-action[data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 6px);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;letter-spacing:normal;text-transform:none;line-height:1.4;width:max-content;max-width:230px;white-space:normal;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .big-action[data-tip]:hover::after{opacity:1}
 /* v3.1.34(俊克 v3.1.33 OK&NG): (改良1)::afterがボタンの太字(800/900)を継承→font-weight:normalで通常太さに。(バグ1)nav-scroll(縦全高トラック)のtipを撤去=右端に触れると出っぱなし解消(Bird-EV説明はbird-ev-labelに残す)。(バグ2)細いノブのtipが上端で切れる→ノブtipはノブの左・縦中央に出す。 */
-.nav-center-btn,.me-flip-btn,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark{position:relative}
-.nav-center-btn[data-tip]::after,.me-flip-btn[data-tip]::after,.eof-badge[data-tip]::after,.line-btn[data-tip]::after,.time-machine-trigger[data-tip]::after,.time-machine-clear[data-tip]::after,.tm-world-row[data-tip]::after,.bird-ev-label[data-tip]::after,.nss-head[data-tip]::after,.nss-mark[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;letter-spacing:normal;text-transform:none;line-height:1.4;width:max-content;max-width:200px;white-space:normal;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
+.nav-center-btn,.me-flip-btn,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark,.warn-btn{position:relative}
+.warn-btn[data-tip]::after,.nav-center-btn[data-tip]::after,.me-flip-btn[data-tip]::after,.eof-badge[data-tip]::after,.line-btn[data-tip]::after,.time-machine-trigger[data-tip]::after,.time-machine-clear[data-tip]::after,.tm-world-row[data-tip]::after,.bird-ev-label[data-tip]::after,.nss-head[data-tip]::after,.nss-mark[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;letter-spacing:normal;text-transform:none;line-height:1.4;width:max-content;max-width:200px;white-space:normal;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .bird-ev-label[data-tip]::after{left:auto;right:0;transform:none}
 .nss-head[data-tip]::after,.nss-mark[data-tip]::after{left:auto;right:calc(100% + 8px);bottom:auto;top:50%;transform:translateY(-50%)}
 /* v3.1.35(俊克 v3.1.34直し残し): .head-nav容器内のボタン(#箱/💬箱の↑↓=長いtipで右端見切れ・(4/4)のBack/Forward=TOPに被る)は右寄せで左へ伸ばす=見切れ/被り解消。 */
 .head-nav .nav-center-btn[data-tip]::after{left:auto;right:0;transform:none}
 /* v3.1.37(俊克 個別): head-nav-btn(Back/Forward等17px円ボタン=font-weight:900)のtipだけ太字が残る→最高特異度で普通体を強制。 */
 .head-nav .head-nav-btn[data-tip]::after,.head-nav .head-nav-btn[data-tip]::before{font-weight:400!important}
-.nav-center-btn[data-tip]:hover::after,.me-flip-btn[data-tip]:hover::after,.eof-badge[data-tip]:hover::after,.line-btn[data-tip]:hover::after,.time-machine-trigger[data-tip]:hover::after,.time-machine-clear[data-tip]:hover::after,.tm-world-row[data-tip]:hover::after,.bird-ev-label[data-tip]:hover::after,.nss-head[data-tip]:hover::after,.nss-mark[data-tip]:hover::after{opacity:1}
+.warn-btn[data-tip]:hover::after,.nav-center-btn[data-tip]:hover::after,.me-flip-btn[data-tip]:hover::after,.eof-badge[data-tip]:hover::after,.line-btn[data-tip]:hover::after,.time-machine-trigger[data-tip]:hover::after,.time-machine-clear[data-tip]:hover::after,.tm-world-row[data-tip]:hover::after,.bird-ev-label[data-tip]:hover::after,.nss-head[data-tip]:hover::after,.nss-mark[data-tip]:hover::after{opacity:1}
 .big-action:hover{filter:brightness(1.06)}
 .big-action .toc-word{color:#d18400}
 .big-action.remove{font-size:12px}

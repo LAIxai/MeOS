@@ -808,6 +808,16 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   ok(/'warn\.svg'/.test(src), '★栞・🐱と同じ gutterIconPath 方式', true);
   ok(/\.warn-btn\{margin-left:8px;padding:1px 10px;border[^}]*border-radius:9px/.test(src),
      '★枠は横長(隣の駒と同じ丸み)', true);
+  // ★v4.0.429: tipは隣の駒と同じ家(CSS ::after)・件数は白・ガターはボタンと同じ黄
+  ok(/\.warn-btn\[data-tip\]::after,\.nav-center-btn\[data-tip\]::after/.test(src),
+     '★★tipは隣の駒と同じCSSの家に居る(座標を計算しない=v3.1.34の汎用解)', true);
+  ok(/\.warn-btn\[data-tip\]:hover::after,/.test(src), '★出す条件も同じ家から', true);
+  ok(/,\.warn-btn\{position:relative\}/.test(src), '★::afterの基準もボタン自身', true);
+  ok(/vertical-align:super;color:#fff\}/.test(src), '★件数は白', true);
+  ok(/overviewRulerColor: 'rgba\(240, 190, 20, 0\.95\)'/.test(src), '★★ガターの印はボタンと同じ黄(範囲=赤／印=黄)', true);
+  const warn = fs.readFileSync(path.join(__dirname, 'warn.svg'), 'utf8');
+  ok(/fill="#f0be14"/.test(warn), '★warn.svg も黄(絵文字の⚠️に合わせる)', warn.slice(0, 90));
+  ok(!/#e03a3a/.test(warn), '★赤は残っていない', true);
   ok(/warnAt=\(warnAt\+1\)%\(warnEnds\.length\*2\);/.test(src), '★★押す毎に両端を交互に行く', true);
   ok(/vscode\.postMessage\(\{type:'warnGoto',line:\(\(warnAt%2\)===0\?w\.a:w\.b\)\}\);/.test(src), '★偶数=片方・奇数=もう片方', true);
   ok(/message\.type === 'warnGoto'/.test(src) && /executeCommand\('laiMembrane\.jumpToLine'/.test(src),

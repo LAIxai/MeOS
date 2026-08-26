@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.429 (2026-08-27)
+- **The ⚠️ tip appears where the button is.** It had fallen back to the shared tooltip that is positioned by
+  arithmetic, and landed a panel away. It now uses the same CSS the buttons beside it use, drawn as a child of the
+  button itself — nothing to calculate, nothing to get wrong.
+- The count is white.
+- **The gutter ⚠️ is yellow, like the button.** Two marks for the same thing should be the same colour; red already
+  has a job here — it is the bar showing how far the broken membrane reaches. Extent in red, mark in yellow.
+
 ### v4.0.428 (2026-08-27)
 - **⚠️ carries its count** as a raised number, the way 🐱 does — shown from two upward, since one needs no counting.
 - **A ⚠️ appears in the gutter** on the end that still exists, so the place to fix it is marked, not just tallied.
