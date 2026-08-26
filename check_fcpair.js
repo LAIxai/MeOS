@@ -508,5 +508,35 @@ console.log('㉜ 段落は「印1つ ⇄ FC1個」で橙(v4.0.401 俊克)');
   ok(T.meosFcMarkPairRanges(makeDoc(TB), 2, 4) === null, '★表は横一列どうしのまま(俊克「表としては良い」)', true);
 }
 
+console.log('㉝ 段落のFC群は「1つの修飾＝1行」(v4.0.402 俊克)');
+{
+  const P = ['しううし**とんしう**といんしと~~とうかい~~てしんうとかい'];
+  const blk = { start: 0, end: 0 };
+  const spec = T.meosSpecLineGridOrder(P, blk, T.meosInsertIntoSpecLine('<!-- Mew!FC **not (白/黄) -->', '~~ (赤/紺)', 1));
+  const r = T.meosSpecGroupPerLine(P, blk, spec);
+  ok(r.length === 2, '★印2つ → FC行2本(1行にまとめない)', r);
+  ok(/\*\*not/.test(r[0]) && /~~ \(赤/.test(r[1]), '順番は本文の印の順', r);
+  ok((r[0].match(/<!--/g) || []).length === 1 && (r[1].match(/<!--/g) || []).length === 1, '1行に箱は1個', r);
+  // 表は今までどおり(横一列に複数の印は1行のまま)
+  const TB = ['| 品目 | 備考 |', '| --- | --- |', '| **りんご** | ~~みかん~~ |'];
+  const rt = T.meosSpecGroupPerLine(TB, T.meosTableBlockFor(TB, 2), '<!-- Mew!FC **not (白/黄) --><!-- Mew!FC ~~ (赤/紺) -->');
+  ok(rt.length === 3 && (rt[2].match(/<!--/g) || []).length === 2, '★表は横一列どうしのまま(俊克「表としては良い」)', rt);
+  // 割っても 1:1 の橙は同じ相手を指す
+  const P2 = P.concat(['<!-- Mew!FC **not (白/黄) -->', '<!-- Mew!FC ~~ (赤/紺) -->']);
+  const d2 = makeDoc(P2);
+  const g = T.meosFcMarkPairRanges(d2, 0, 6);
+  ok(!!g && g[1].start.line === 1, '★1本目に割れていても、ハイライトは1本目を指す', g && g[1].start.line);
+  const g2 = T.meosFcMarkPairRanges(d2, 0, P2[0].indexOf('とうかい') + 1);
+  ok(!!g2 && g2[1].start.line === 2, '取消線は2本目', g2 && g2[1].start.line);
+}
+console.log('㉞ 橙はカーソルが動いた所で塗る(v4.0.402 改良2)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const i = src.indexOf('meosUpdateInTableContext(e.textEditor);');
+  const body = src.slice(Math.max(0, i - 400), i + 300);
+  ok(/onDidChangeTextEditorSelection/.test(body) && /meosApplyFcRowDecorations\(e\.textEditor\)/.test(body), '★選択が変わった所で橙を塗り直す', body.slice(-220));
+  ok(/meosApplyFcRowDecorations\(editor\)/.test(src), 'refresh からも今までどおり塗る(両方の口が在る)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

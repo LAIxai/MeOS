@@ -16643,13 +16643,17 @@ async function meosPushLineSpecsOutOfLine(editor, overrideLine) {
   //   ここは「既にFC行が在る=触らない」で戻っていた。1つ目は出るのに2つ目は出ない=同じ行に2つ目の命令を
   //   足した瞬間に必ず起きる(notに限らずFC方式ぜんぶ)。→ **在るなら、その行の末尾に足す**。
   //   並べ方は俊克が手で書いた形と同じ= `<!-- Mew!FC ↑not --><!-- Mew!FC ↓not -->`(読む側は出現順に配る)。
+  // v4.0.402: 段落のFCも1個ずつ別の行へ(表と同じ「1つの塊=1行」の考え方)。
+  const _splitBoxes = (t) => { const o = []; MEOS_SPEC_LINE_ONE_RE.lastIndex = 0; let m2;
+    while ((m2 = MEOS_SPEC_LINE_ONE_RE.exec(String(t || ''))) !== null) o.push(m2[0]);
+    return o.length ? o : [String(t || '')]; };
   const _merge = meosIsSpecLine(next);
   const keep = editor.selection;
   const eol = (doc.eol === vscode.EndOfLine.CRLF) ? '\r\n' : '\n';
   await editor.edit(eb => {
     eb.replace(doc.lineAt(ln).range, r.body);
     if (_merge) eb.replace(doc.lineAt(ln + 1).range, meosSpecLineMerge(doc.lineAt(ln + 1).text, r.spec, r.body, keep.active.character)); // v4.0.234: 印の順に差し込む
-    else eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + r.spec);
+    else eb.insert(new vscode.Position(ln, doc.lineAt(ln).text.length), eol + _splitBoxes(r.spec).join(eol));
   }, { undoStopBefore: false, undoStopAfter: false });
   try { editor.selection = keep; } catch (_) { }          // 挿した本文の選択はそのまま残す
   return true;
@@ -16699,6 +16703,14 @@ function meosSpecGroupPerLine(lines, blk, specText) {
   }
   if (!rows.length) rows.push([]);
   for (const r of raw) if (!used.has(r)) rows[rows.length - 1].push(r.text);      // 相手の無い分は捨てずに最後の行へ
+  // ★★v4.0.402(俊克 8/26 am10:09 改良1「行の場合にも、FCコメントは、1個単位で改行しよう。折り返しがあると、
+  //   表示幅によっては**見えないことがある**からだよ。…ある意味、**テーブルの横一列が、段落では、
+  //   1つの修飾が横一列に相当する**って感じだよ」):
+  //   ★★**塊の単位が違うだけ、という見立てがここでも効く**＝ 表は「横一列＝1行」、段落は「1つの修飾＝1行」。
+  //     だから段落(本文1行)の時は、箱を**1個ずつ別の行**に置く。
+  //   ★利点は3つ(俊克)＝ ①折り返しても隠れない ②1:1が並べて見える ③FCを直す時に触りやすい。
+  //   ★読む側は元から「FC行は続く限り読む・対応は文書順」(v4.0.147)so、割っても意味は1文字も変わらない。
+  if (blk.end - blk.start === 0 && rows[0] && rows[0].length > 1) return rows[0].slice();
   return rows.map(b => b.length ? b.join('') : meosSpecLineBox(MEOS_SPEC_LINE_NONE));
 }
 function meosSpecLineGridOrder(lines, blk, specText) {
@@ -28338,7 +28350,17 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellDown', () => meosTableNav(vscode.window.activeTextEditor, 'down')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellUp', () => meosTableNav(vscode.window.activeTextEditor, 'up')));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => meosUpdateInTableContext(e.textEditor)));
+  // ★★v4.0.402(俊克 8/26 am10:09 改良2「橙色の表示が切り替わるのに、3、4秒かかるのが良くない。
+  //   **即座に反応してほしい**」):
+  //   ★★**橙は `refresh` からしか塗り直していなかった**。カーソルを動かしただけでは refresh は走らない
+  //     (v0.9.637以来、打鍵と構造の変化でしか走らせない)ので、**他の何かが走るまで古いまま**だった。
+  //     俊克の見た3〜4秒は、次に何かが動くまでの待ち時間そのもの。
+  //   ★橙はカーソルの答えなので、**カーソルが動いた所で塗る**。中身はカーソルの周りしか見ないので軽い
+  //     (実測0.1ms未満)＝ 打鍵の道に置いても v4.0.393 の轍は踏まない。
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+    meosUpdateInTableContext(e.textEditor);
+    try { meosApplyFcRowDecorations(e.textEditor); } catch (_) { }
+  }));
   // ★★v4.0.342(俊克 am00:09 バグ1「→←キー**押しっぱなし**での移動は、途中でぐるぐる周回して先に進まない。
   //   これはシフトキー同時押下では起きないので、**タイマーを使用しなければいいんじゃないの? なぜタイマーが
   //   必要か分らんけど**」):

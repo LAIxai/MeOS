@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.402 (2026-08-26)
+- **A paragraph's FC group is one box per line.** The same idea as the table, one step finer: a table row is a row,
+  and in a paragraph one decoration is the row. Boxes packed onto a single line can wrap out of sight at a narrower
+  width, the pairing has to be counted rather than seen, and editing one of them means picking it out of a crowded
+  line. More lines fold away, and all three problems go. The reader already took FC lines "as long as they continue"
+  in document order, so splitting changes nothing about what the file means. Tables keep their row on one line.
+- **The orange pair repaints the moment the caret moves.** It was painted only from `refresh`, which by design does
+  not run on a plain cursor move, so the pairing sat stale until something else happened — the three or four seconds.
+  It is now painted from the selection handler as well; measured at 0.002–0.010 ms on the 190,380-line diary, since it
+  only ever looks around the caret.
+
 ### v4.0.401 (2026-08-26)
 - **In a paragraph the orange pairing is per decoration, not per line.** A table pairs a row with its FC line and that
   reads well; a wrapped paragraph turned the whole line orange, so with three marks and three FC lines nothing said
