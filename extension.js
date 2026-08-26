@@ -2645,6 +2645,14 @@ const HIGHLIGHT_COLORS = {
 };
 // v0.9.698: 暗い背景色。文字色未指定なら自動で白文字にして可読化する(auto-contrast)。
 const DARK_BG_KEYS = new Set(['red', 'green', 'blue', 'navy', 'maroon']);
+// ★★v4.0.408(俊克 8/26 バグ1「FC指定の(白/黄)だけ暗めにするって言ったのに」):
+//   ★★**v4.0.406/407で私が当てた場所が違った**＝「白い字の範囲と重なる黄を移す」にしたが、
+//     `***not (白/黄)` の背景は `highlightBodyRangesByColor` を通らず、太字/斜体の口(`pushStyle`)が
+//     自前の装飾で塗っている。だから重なりを探しても**そこには居なかった**。
+//   ★★**推測でなく、色を決めている所で決める**＝ 黄に白い字を乗せると決めた、その場で濃さも決める。
+//     塗る口は2つ(`==` の層と `pushStyle`)なので、**判定は1つの関数**にして両方から引く。
+//     → [[feedback_one_source_for_mark_count_action]]
+function meosHiBgKey(bgKey, fgKey) { return (bgKey === 'yellow' && fgKey === 'white') ? 'yellowDeep' : bgKey; }
 // v0.9.661: 文字色(前景)用の色。==語(文字色+背景色)== の文字色側。背景7色＋
 // 文筆で頻出の黒/白/グレー。不透明寄りで文字としてくっきり。
 const HIGHLIGHT_FG_COLORS = {
@@ -6863,6 +6871,7 @@ function applyPrettyLabels(editor) {
         //   ★★**同じ規則が2か所に書いてあり、3つ目の道だけ抜けていた**＝ [[feedback_one_source_for_mark_count_action]]。
         //     → **if/else の外に1本だけ置く**。どの道を通っても必ずここを通る。
         if (bgKey && !fgKey) fgKey = DARK_BG_KEYS.has(bgKey) ? 'white' : 'black';
+        bgKey = meosHiBgKey(bgKey, fgKey);   // v4.0.408: 白い字が乗る黄だけ、落とした黄に
         const bodyEnd = innerStart + bodyLen;
         highlightMarkerRanges.push({ range: new vscode.Range(line, openStart, line, innerStart) });
         if (bodyEnd > innerStart) {
@@ -7463,25 +7472,6 @@ function applyPrettyLabels(editor) {
   setDecoCached(editor, openLineLabelDecoration, 'openLabel', openLabels);
   setDecoCached(editor, closeLineHideDecoration, 'closeHide', closeHide);
   setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', closeLabels);
-  // ★★v4.0.406(俊克 改良1): 黄は**文字色で濃さを変える**。白い字が乗っている黄だけ、少し暗い黄へ移す。
-  //   ★★**移すのは「押し込む所」ではなく「配る直前の1か所」**＝ 背景を押し込む口は11か所在るので、
-  //     そこを11回直すと、次に1つ増えた時にまた抜ける。→ [[feedback_one_source_for_mark_count_action]]
-  //   ★重なりで見る＝ 背景の範囲は `==` の記号ぶん左から始まり、文字色の範囲は中身だけなので、
-  //     端は一致しない。**同じ行で重なっていれば、その黄には白い字が乗っている**。
-  try {
-    const _wh = (highlightFgRangesByColor.white || []);
-    if (_wh.length && (highlightBodyRangesByColor.yellow || []).length) {
-      const _byLine = new Map();
-      for (const w of _wh) { const l = w.range.start.line; if (!_byLine.has(l)) _byLine.set(l, []); _byLine.get(l).push(w.range); }
-      const _keep = [], _deep = (highlightBodyRangesByColor.yellowDeep = highlightBodyRangesByColor.yellowDeep || []);
-      for (const it of highlightBodyRangesByColor.yellow) {
-        const r = it.range, ws = _byLine.get(r.start.line);
-        const hit = ws && ws.some(w => w.start.character < r.end.character && w.end.character > r.start.character);
-        (hit ? _deep : _keep).push(it);
-      }
-      highlightBodyRangesByColor.yellow = _keep;
-    }
-  } catch (_) { }
   // v0.9.656/657: ハイライト ==text(色)== 適用（色ごとの本体背景＋マーカー==/(色)隠し）
   if (highlightBodyByColor) {
     for (const key of Object.keys(HIGHLIGHT_COLORS)) {
@@ -27746,7 +27736,7 @@ function meosApplyBoldDecorations(editor) {
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
     let _lnLinks = [];
-    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain) => { if (e <= s) return; const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
+    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain) => { if (e <= s) return; bgKey = meosHiBgKey(bgKey, fgKey); /* v4.0.408: 白い字が乗る黄だけ、落とした黄に */ const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _bTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _bTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする

@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.408 (2026-08-26)
+- **Only `(白/黄)` deepens now — the shade is decided where the colour is decided.** v4.0.406/407 looked for yellow
+  backgrounds that overlapped a white foreground range, but a `***not (白/黄)` span is not painted through the
+  highlight background layer at all: bold and italic have their own writer, `pushStyle`, with its own decoration
+  types. Searching for an overlap there found nothing, so the deeper yellow never appeared. There are two writers,
+  so there is now one function they both ask, called at the moment fg and bg are settled rather than after the fact.
+
 ### v4.0.407 (2026-08-26)
 - **The highlighter yellow is actually yellow now, and the two yellows are told apart.** At 0.65 alpha the yellow
   composited over a dark editor to (176,160,10) — olive, not a highlighter. And the deeper yellow added in v4.0.406

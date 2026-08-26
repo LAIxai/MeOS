@@ -611,7 +611,10 @@ console.log('㊳ 素の ==…== は (黒/黄)・白い字が乗る黄は少し�
   ok(cr(YD, [255, 255, 255]) > 3, '★落とした黄 × 白字 も読める(' + cr(YD, [255, 255, 255]).toFixed(1) + ':1)', YD);
   ok(lum(Y) / lum(YD) > 2, '★2つの黄は目で見分けられる(明るさ ' + (lum(Y) / lum(YD)).toFixed(1) + ' 倍)', [Y, YD]);
   ok(T.parseColorSpec('(白/黄深)', 'bg').bgKey !== 'yellowDeep', '★名前が無いので生データには書けない', T.parseColorSpec('(白/黄深)', 'bg').bgKey);
-  ok(/highlightBodyRangesByColor\.yellow = _keep/.test(src), '移すのは配る直前の1か所(押し込む口11か所は触らない)', true);
+  // ★v4.0.408: 濃さは**色を決めている所**で決める(重なりで探すのは当たらなかった)。判定は1つの関数。
+  ok(/function meosHiBgKey/.test(src), '★濃さの判定は1つの関数(meosHiBgKey)', true);
+  ok((src.match(/= meosHiBgKey\(bgKey, fgKey\)/g) || []).length === 2, '★塗る口2つ(==の層 と pushStyle)の両方から引く', (src.match(/= meosHiBgKey\(bgKey, fgKey\)/g) || []).length);
+  ok(!/highlightBodyRangesByColor\.yellow = _keep/.test(src), '重なりで探す仕掛けは撤去した(当たらなかった)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
