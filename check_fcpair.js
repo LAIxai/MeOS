@@ -886,12 +886,15 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
   ok(/const key = uri \+ '::' \+ doc\.version \+ '::' \+ _meosModeEpoch;/.test(src),
      '★地図は版と設定の世代で覚える(打鍵ごとに数え直さない)', true);
   // (2) ボタンthat効く相手 = カーソルを包む一番内側の膜
-  ok(/function meosModeScope\(editor\)/.test(src) && /if \(next === 'normal'\) delete view\[scope\.key\]; else view\[scope\.key\] = next;/.test(src),
+  ok(/function meosModeScope\(editor\)/.test(src) && /return meosApplyModeToScope\(scope\.doc, scope\.key, next, scope\.name\);/.test(src),
      '★★ボタンの意味は1行= 今カーソルの居る膜の設定を変える', true);
-  ok(/if \(next === 'normal'\) delete view\[scope\.key\]/.test(src),
+  ok(/if \(next === 'normal'\) delete view\[key\]; else view\[key\] = next;/.test(src),
      '★通常に戻したら**持たない**(既定は書かない)', true);
-  ok(/meosScheduleViewMetaWrite\(scope\.doc\);/.test(src),
+  ok(/meosScheduleViewMetaWrite\(doc\);/.test(src),
      '★★人that入れた物は人that出す= 覚えたら、次に開いた時も同じ姿(俊克「いつ戻すのかが分かりにくくなる」)', true);
+  // v4.0.447: 設定を当てる所は1つ= ボタンからも、タイマーの終わりの知らせからも、同じ関数を通る
+  ok((src.match(/meosApplyModeToScope\(/g) || []).length >= 3,
+     '★★★設定を当てる口は1つ(ボタンと、時間切れの知らせthat同じ道を通る)', (src.match(/meosApplyModeToScope\(/g) || []).length);
   // (3) 描く側は行ごとに訊く
   ok(/has\(ln\) \{ if \(this\.doc && meosModeAtLine\(this\.doc, ln\) === 'raw'\) return true;/.test(src),
      '★★帯(1本の範囲)ではなく行ごとに訊く= 入れ子で穴that空くため', true);
@@ -947,6 +950,26 @@ console.log('㊺ ●/× は門より前(v4.0.446 俊克 改良1)');
      '★Me Dockthat見ている当のファイルの時だけ出す(裏のファイルの状態で上書きしない)', true);
   ok(/_dot\.textContent=m\.dirty\?'\\u25cf':'\\u00d7';/.test(src),
      '★●=未保存(橙) / ×=保存済(緑) の向きは v4.0.365 のまま', true);
+}
+
+console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を付ける(v4.0.447 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/if \(meosModeAtLine\(document, line\) === 'raw'\) continue;/.test(src),
+     '★★Rawの膜では膜線も引かない(生データを見せている所に飾りを足さない)', true);
+  const lane = src.indexOf('if (bmLines && bmLines.has(line)) continue;');
+  const rawSkip = src.indexOf("if (meosModeAtLine(document, line) === 'raw') continue;", lane);
+  const cur = src.indexOf('if (line === curLine) continue;', lane);
+  ok(lane >= 0 && rawSkip > lane && cur > rawSkip,
+     '★カーソル行が線を譲るのと同じ場所・同じ理由で譲る', [rawSkip - lane, cur - lane]);
+  ok(/'Show the answers'\);/.test(src) && /if \(pick !== 'Show the answers' \|\| !scope\) return;/.test(src),
+     '★★★知らせに出口そのものを付ける(知らせるUIと直すUIを別に作らない)', true);
+  ok(/const doc = vscode\.workspace\.textDocuments\.find\(d => d\.uri\.toString\(\) === scope\.uri\);/.test(src),
+     '★50分後でも引き直せるようスコープはuriを持つ(古いdocを掴んだままにしない)', true);
+  ok(/setTimeout\(\(\) => meosPseudoTimeUp\(lk, scope\), m \* 60000 \+ 250\)/.test(src),
+     '★終わりの知らせは、掛けた時のスコープをそのまま持って行く', true);
+  ok(src.indexOf('⏱') < 0, '★⏱ は1つも残っていない(俊克 改良1: ⏳ に)', true);
+  ok(/id="raw-timer"[^>]*>&#9203;</.test(src), '★⏳(U+23F3) を使う= 俊克thatが名指しした字', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

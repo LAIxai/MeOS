@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.447 (2026-08-27)
+- **Raw draws nothing — including the membrane lanes.** The vertical membrane bars kept showing inside a Raw
+  membrane. Raw promises that MeOS puts nothing on the page; the old whole-file Raw cleared the lanes with
+  everything else, and when Raw became per-membrane this one path was left behind. A Raw line now yields its lane
+  for exactly the reason the caret line already does: nothing decorative goes where the raw data is showing.
+- **When the timer ends, the notice carries the way out.** Time running out unlocks the exit but deliberately
+  does not change the view — which is right, except the notice was a piece of paper that vanishes: once you
+  dismissed it, nothing on screen said you were still in Pseudo-WYSIWYG or how to see the answers. The notice now
+  offers **Show the answers**, which returns that one membrane to Normal. What a person switched on, a person
+  still switches off — this just hands them the handle.
+- The timer glyph is now ⏳ instead of ⏱.
+
 ### v4.0.446 (2026-08-27)
 - **The saved/unsaved dot now reacts to MeOS's own edits.** Setting a view mode writes to the mMETA membrane, so
   the file becomes dirty — but the dot stayed on the green × as if nothing had happened, and nothing prompted a
