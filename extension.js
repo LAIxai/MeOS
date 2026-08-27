@@ -9516,32 +9516,67 @@ function meosViewMode(editor) {
 //   (俊克「このようにしないと、テスト用紙膜だけ『ほぼWYSIWYG』でタイマーをかけることもできない」)。
 const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
 const _meosPseudoTimers = new Map();    // key → timeout
+const _meosPseudoScopes = new Map();    // key → 掛けた時のスコープ(50分後にも引き直せるように)
+// ★★v4.0.448(俊克 改良3「タイムアップになった時…ボタンを押し忘れると、開かない」):
+//   ★★**Pseudoは、その人that選んだ物ではなく、タイマーthat連れてきた物**。so時間that終われば、
+//     **掛ける前の姿へ返す**のthat筋＝ 押し忘れという事故thatそもそも起こらない。
+//   ★「人that最後に指定した物を勝たせる」は変わっていない＝ 掛ける前に自分でPseudoにしていた人は、
+//     Pseudoのまま返る(タイマーのPseudoは**タイマーの持ち物**で、その人の指定ではない)。
+const _meosPseudoPrev = new Map();      // key → 掛ける前のモード
+// ★v4.0.448(俊克 改良2「残りタイムを表示する」): 面に出る残り時間は**その膜に居る時だけ**so、
+//   離れると分からなかった。→ ステータスバーに1つ出す＝ **どこに居ても、動いている物that見える**。
+let _meosTimerBar = null, _meosTimerTick = null;
+function meosUpdateTimerBar() {
+  try {
+    let best = null;
+    for (const [k, until] of _meosPseudoUntil) if (!best || until < best.until) best = { k, until };
+    if (!best) {
+      if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
+      if (_meosTimerBar) _meosTimerBar.hide();
+      return;
+    }
+    if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    const sc = _meosPseudoScopes.get(best.k);
+    _meosTimerBar.text = '⏰ ' + meosMmSs(Math.max(0, best.until - Date.now())) + (sc && sc.name ? ('  ' + sc.name) : '');
+    _meosTimerBar.tooltip = 'MeOS: this membrane is held in Pseudo-WYSIWYG. When the time is up it goes back on its own.';
+    _meosTimerBar.command = 'lai-membrane.pseudoTimer';
+    _meosTimerBar.show();
+    if (!_meosTimerTick) _meosTimerTick = setInterval(() => meosUpdateTimerBar(), 1000);
+  } catch (_) { }
+}
 function meosLockKey(scope) { try { return scope.doc.uri.toString() + ' ' + scope.key; } catch (_) { return ' ' + (scope && scope.key); } }
 function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; return t ? Math.max(0, t - Date.now()) : 0; }
 function meosMmSs(ms) { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 function meosClearPseudoTimer(key) {
   const h = _meosPseudoTimers.get(key); if (h) clearTimeout(h);
   _meosPseudoTimers.delete(key); _meosPseudoUntil.delete(key);
+  meosUpdateTimerBar();
 }
-// ★★v4.0.447(俊克 8/27 pm05:10 バグ1「タイマーがタイムアップになったとメッセージが出た後も、
-//   お化け設定の文字に文字カーソルを入れても、**FCコメントが出てこない**。なぜ?」):
-//   ★★**時間that終わっても、その膜はまだ Pseudo のまま**(「時間が閉めるのは出口だけ」=v4.0.442の設計)。
-//     設計としては正しいthat、**知らせthat消える紙**だった＝ 俊克thatその紙を閉じた後には、
-//     「まだ Pseudo に居る」ことも「どうすれば答えthat見えるか」も、どこにも残っていなかった。
-//   ★★直し＝ **知らせに、出口そのものを付ける**。押せば、その膜だけthat通常へ戻る＝
-//     「人that入れた物は、人that出す」は変えずに、**その手を1つ差し出す**。
-//     → [[feedback_fix_signal_at_fix_place]]「知らせるUIと直すUIを別に作らない」。
-//   ★消えても困らない＝ 膜に入れば面that Pseudo👁 と名乗るので、ボタンでいつでも出られる。
-async function meosPseudoTimeUp(key, scope) {
+// 時間that終わった(または人that止めた)＝ **掛ける前の姿へ返す**。口は1つ。
+async function meosEndPseudoTimer(key) {
+  const scope = _meosPseudoScopes.get(key);
+  const prev = _meosPseudoPrev.get(key) || 'normal';
   meosClearPseudoTimer(key);
-  meosPostViewMode();
-  const name = scope && scope.name;
-  const pick = await vscode.window.showInformationMessage(
-    'MeOS: Time is up' + (name ? ' — ' + name : '') + '. Your 👻 answers are exactly where you wrote them.',
-    'Show the answers');
-  if (pick !== 'Show the answers' || !scope) return;
+  _meosPseudoScopes.delete(key); _meosPseudoPrev.delete(key);
+  if (!scope) { meosPostViewMode(); return null; }
   const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri);
-  if (doc) await meosApplyModeToScope(doc, scope.key, 'normal', name);
+  if (doc) await meosApplyModeToScope(doc, scope.key, prev, scope.name);
+  else meosPostViewMode();
+  return scope;
+}
+// ★★★v4.0.447/448(俊克 pm05:10 バグ1「タイムアップのメッセージthat出た後も、お化け設定の文字に
+//   カーソルを入れてもFCコメントthat出てこない」→ pm05:49 改良3「警告パネルのボタンを押すと答えthat見える。
+//   でも、**それを押し忘れると、開かない**」):
+//   ★★★v4.0.447では**知らせに出口を付けた**that、俊克の言うとおり**押し忘れthat残る**。
+//     so一段深く考え直す＝ **その人thatが選んだのは「50分のテスト」であって、「Pseudoで居ること」ではない**。
+//     Pseudoは**タイマーthat連れてきた物**so、タイマーthat終われば**掛ける前の姿へ返る**のthat筋。
+//   ★これは「人that最後に指定した物を勝たせる」と矛盾しない＝ 返す先は**その人thatが最後に指定した姿**
+//     (掛ける前に自分でPseudoにしていたなら、Pseudoのまま返る)。→ [[project_last_specified_wins]]
+//   ★知らせにボタンthat要らなくなった＝ 押す物thatが無ければ、押し忘れも無い。
+async function meosPseudoTimeUp(key) {
+  const scope = await meosEndPseudoTimer(key);
+  const name = scope && scope.name;
+  vscode.window.showInformationMessage('MeOS: Time is up' + (name ? ' \u2014 ' + name : '') + '. The membrane is back the way it was \u2014 your 👻 answers are exactly where you wrote them.');
 }
 function meosPostViewMode() {
   try {
@@ -9578,7 +9613,7 @@ async function meosSetViewMode(mode) {
   const lk = meosLockKey(scope);
   // 錠が掛かっている間は、Pseudoから出る道だけをふさぐ(入る道と、見え方には触れない)。
   if (cur === 'pseudo' && meosPseudoLeftFor(lk) > 0 && next !== 'pseudo') {
-    vscode.window.setStatusBarMessage('MeOS: this membrane is held in Pseudo-WYSIWYG for another ' + meosMmSs(meosPseudoLeftFor(lk)) + ' — ⏳ to end it early.', 2500);
+    vscode.window.setStatusBarMessage('MeOS: this membrane is held in Pseudo-WYSIWYG for another ' + meosMmSs(meosPseudoLeftFor(lk)) + ' — ⏰ to end it early.', 2500);
     meosPostViewMode();
     return 'pseudo';
   }
@@ -9615,20 +9650,23 @@ async function meosCycleViewMode(step) {
 // 旧名は残す(コマンド/呪文の呼び元)＝ 「この膜をそのモードにする/やめる」の意味。
 async function toggleRawMode() { return meosSetViewMode(meosViewMode() === 'raw' ? 'normal' : 'raw'); }
 async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pseudo' ? 'normal' : 'pseudo'); }
-// ★★★v4.0.442/444: ⏳ = テスト用紙。**その膜だけ**を時間で押さえる(俊克 8/27 am08:35)。
+// ★★★v4.0.442/448: ⏰ = テスト用紙。**その膜だけ**を時間で押さえる(俊克 8/27 am08:35)。
 //   ★時間が閉めるのは**出口だけ**＝ 見え方には触れない。終わってもモードは勝手に変えない
 //     ＝ **人が最後に指定した物を勝たせる**(→ [[project_last_specified_wins]])。答え合わせは本人の1クリックから。
 //   ★止める道は残す＝ 掛けた本人が「今やめる」と言えない錠は**守れない約束**(拡張を切れば消える)。
-//     ただし**うっかりでは外れない**(⏳から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
+//     ただし**うっかりでは外れない**(⏰から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
 async function meosStartPseudoTimer(minutes) {
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
   const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
   const lk = meosLockKey(scope);
   meosClearPseudoTimer(lk);
+  _meosPseudoPrev.set(lk, meosScopeMode(scope));      // 掛ける前の姿を控える(返す先)
+  _meosPseudoScopes.set(lk, scope);
   _meosPseudoUntil.set(lk, Date.now() + m * 60000);
-  _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk, scope), m * 60000 + 250));
+  _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk), m * 60000 + 250));
   await meosSetViewMode('pseudo');
+  meosUpdateTimerBar();
   meosPostViewMode();
   vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' held in Pseudo-WYSIWYG for ' + m + ' min — the way out comes back when the time is up.', 3000);
 }
@@ -9644,8 +9682,8 @@ async function meosPseudoTimerMenu() {
     if (!pick) return;
     const yes = await vscode.window.showWarningMessage('End the timer now? The point of the timer is that you cannot get out early.', { modal: true }, 'End it');
     if (yes !== 'End it') return;
-    meosClearPseudoTimer(lk); meosPostViewMode();
-    vscode.window.setStatusBarMessage('MeOS: timer ended — you can leave Pseudo-WYSIWYG again.', 2500);
+    await meosEndPseudoTimer(lk);                     // 終わり方は1つ= 掛ける前の姿へ返す
+    vscode.window.setStatusBarMessage('MeOS: timer ended — the membrane is back the way it was.', 2500);
     return;
   }
   const items = [
@@ -19968,8 +20006,11 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-btn:active{background:rgba(210,132,0,.30)}
 .row.format-tools{justify-content:flex-start;flex-wrap:wrap}
 .fmt-btn.raw-toggle{font-family:inherit;font-weight:700;font-size:12px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-foreground)}/* v4.0.441(俊克): 通常も3つのうちの1つ= 薄くしない(消灯ではなく、素の面) */
-.raw-cell{margin-left:auto;position:relative;display:inline-flex}/* v4.0.442: 右端固定は「駒」でなく「枡」that持つ(⏳that右肩に乗るため) */
-.fmt-lvl.raw-timer{cursor:pointer;background:#6b4ea8}/* v4.0.442/447: ⏳は青紫= Pseudoの青の一族(茶=Rawとは別の家) */
+.raw-cell{margin-left:auto;position:relative;display:inline-flex}/* v4.0.442: 右端固定は「駒」でなく「枡」that持つ(⏰that右肩に乗るため) */
+/* ★v4.0.448(俊克 改良1「⏰の方が白地の円の中に入れれば、目立つはずだよ」): 小さい絵文字は**地that暗いと沈む**。
+   → 地を白にして、字を置く。⏰は俊克thatが名指しした字。走っている間は赤い縁で「今動いている」と言う。 */
+.fmt-lvl.raw-timer{cursor:pointer;background:#ffffff;color:#111;font-size:11px;box-shadow:0 1px 2px rgba(0,0,0,.55)}
+.fmt-lvl.raw-timer.running{box-shadow:0 0 0 2px rgba(224,128,58,.95),0 1px 2px rgba(0,0,0,.55)}
 .fmt-btn.raw-toggle.held{border-color:#7a1f1f;box-shadow:inset 0 0 0 1px rgba(200,60,60,.55)}/* v4.0.442: 錠that掛かっている間は縁that赤い= 出口that無いことを、押す前に言う */
 /* v4.0.67(俊克): 🐱=この画面に「Mew!と鳴いていないMe記法」が居る時だけ色が点く。位置は固定(現れたり消えたりすると隣のボタンが動く)＝MeOS既存の流儀(2個未満で無効化半透明)に合わせる。 */.fmt-btn.mew-btn{font-family:inherit;min-width:auto;padding:1px 7px;font-size:15px;line-height:1.3;margin-left:16px;opacity:.42;filter:grayscale(1)}
 /* v4.0.90(俊克「🐱もかなり暗いけどね」): 消えている時も「居る」と分かる明るさに(.28→.42)。点灯時は背景を濃くする。 */.fmt-btn.mew-btn.on{opacity:1;filter:none;background:rgba(210,132,0,.34);border-color:#e09a1a}
@@ -20007,8 +20048,13 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 #refresh-btn{background:#a8730e;border-color:#a8730e;color:#fff}
 #reset-btn{background:#c0392b;border-color:#c0392b;color:#fff}
 #set-btn{background:#1f9d57;border-color:#1f9d57;color:#fff}
-#raw-toggle{background:#cd8a5c;border-color:#cd8a5c;color:#fff;text-shadow:0 0 1px rgba(0,0,0,.4)}
-.fmt-btn.raw-toggle.on{background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
+/* ★★★v4.0.448(俊克 疑問1「見た目でRawかどうかが、何も修飾がない範囲とか、開始膜、閉じ膜が見えない場所なら、
+   Rawかどうかが区別できないね」): ★★★**区別する物は在ったthat、死んでいた**＝ ここに #raw-toggle(id)の
+   色指定that残っていて、.fmt-btn.raw-toggle.on(class×3)より**強い**ので、v4.0.440で入れた「色that今の状態を
+   言う」は**一度も出ていなかった**(ボタンはいつも同じ茶)。→ id の指定を捨て、面の色は class 1本で決める。
+   ★教訓＝ **後から乗せる方that勝つとは限らない**。CSSは「後」ではなく「強さ」で決まる(装飾の important と同じ話を、
+   webview側で踏んだ)。★色は俊克thatRawとして見慣れた茶(#cd8a5c)を**本当のRaw**に充てる。 */
+.fmt-btn.raw-toggle.on{background:#cd8a5c;color:#fff;border-color:#b3724a;text-shadow:0 0 1px rgba(0,0,0,.4)}
 .fmt-btn.gh-push.gh-on{background:#1a7f37;border-color:#116329;color:#fff}
 .fmt-btn.gh-push.gh-on:hover{background:#2da44e}
 .gh-wizard{margin:5px 8px;border:1px solid rgba(26,127,55,.4);border-radius:7px;background:rgba(26,127,55,.06);overflow:hidden}
@@ -20212,7 +20258,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><span class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="fmt-lvl raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9203;</span></span>
+<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><span class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="fmt-lvl raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;</span></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -21387,7 +21433,7 @@ pseudo:'Pseudo-WYSIWYG Pseudo👁 | Nothing raw at all: the caret stops opening 
 /* ★★v4.0.444(俊克): 設定は**膜が持つ**= このボタンが変えるのは「今カーソルの居る膜」だけ。
    別の膜へ移れば、その膜の設定that面に出る。既定は通常so、何も設定していない膜は今までどおり。 */
 function vmWho(){return vmScope?('\u3010'+vmScope+'\u3011'):'\u3010outside every membrane\u3011';}
-/* ★★v4.0.442/447(俊克): ⏳=テスト用紙。残り時間は**webviewthat数える**(nodeは終わりの時刻を1回渡すだけ)=
+/* ★★v4.0.442/447(俊克): ⏰=テスト用紙。残り時間は**webviewthat数える**(nodeは終わりの時刻を1回渡すだけ)=
    1秒ごとの往復を作らない。錠that掛かっている間は、面that残り時間を出す= 何分残っているかを見るために
    別の物を開かなくてよい。 */
 function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}
@@ -21404,8 +21450,9 @@ rawToggle.textContent=VM_FACE[viewMode]+(held?(' '+vmMmSs(left)):'');
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
+var _rt=document.getElementById('raw-timer');if(_rt)_rt.classList.toggle('running',left>0);
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
-?('\u23f3 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f3 if you really must stop it early.')
+?('\u23f0 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f0 if you really must stop it early.')
 :('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'\u2325 Opt-click \u2192 '+VM_NAME[back]
 +String.fromCharCode(10)+'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.')));
 if(held&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
@@ -23006,7 +23053,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン
-    if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }           // v4.0.442/447: ⏳=テスト用紙
+    if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }           // v4.0.442/448: ⏰=テスト用紙
     if (message && message.type === 'mewReveal') { meosMewReveal(); return; } // v4.0.106: ↻=5秒だけ印を出す
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }

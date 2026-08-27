@@ -962,14 +962,33 @@ console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を
   const cur = src.indexOf('if (line === curLine) continue;', lane);
   ok(lane >= 0 && rawSkip > lane && cur > rawSkip,
      '★カーソル行が線を譲るのと同じ場所・同じ理由で譲る', [rawSkip - lane, cur - lane]);
-  ok(/'Show the answers'\);/.test(src) && /if \(pick !== 'Show the answers' \|\| !scope\) return;/.test(src),
-     '★★★知らせに出口そのものを付ける(知らせるUIと直すUIを別に作らない)', true);
+  ok(/async function meosEndPseudoTimer\(key\)/.test(src) && /if \(doc\) await meosApplyModeToScope\(doc, scope\.key, prev, scope\.name\);/.test(src),
+     '★★★時間が終わったら**掛ける前の姿へ返る**= 押し忘れという事故that起こらない(v4.0.448)', true);
+  ok(/_meosPseudoPrev\.set\(lk, meosScopeMode\(scope\)\);/.test(src),
+     '★★返す先は「その人that最後に指定した姿」(タイマーのPseudoはタイマーの持ち物)', true);
+  ok(!/'Show the answers'/.test(src),
+     '★知らせに押す物that無い= 押し忘れも無い', true);
+  ok((src.match(/meosEndPseudoTimer\(/g) || []).length >= 3,
+     '★終わり方の口は1つ(時間切れも、人that止めた時も、同じ道)', (src.match(/meosEndPseudoTimer\(/g) || []).length);
   ok(/const doc = vscode\.workspace\.textDocuments\.find\(d => d\.uri\.toString\(\) === scope\.uri\);/.test(src),
      '★50分後でも引き直せるようスコープはuriを持つ(古いdocを掴んだままにしない)', true);
-  ok(/setTimeout\(\(\) => meosPseudoTimeUp\(lk, scope\), m \* 60000 \+ 250\)/.test(src),
+  ok(/_meosPseudoScopes\.set\(lk, scope\);/.test(src),
      '★終わりの知らせは、掛けた時のスコープをそのまま持って行く', true);
-  ok(src.indexOf('⏱') < 0, '★⏱ は1つも残っていない(俊克 改良1: ⏳ に)', true);
-  ok(/id="raw-timer"[^>]*>&#9203;</.test(src), '★⏳(U+23F3) を使う= 俊克thatが名指しした字', true);
+  ok(/function meosUpdateTimerBar\(\)/.test(src) && /_meosTimerBar\.text = /.test(src),
+     '★★残り時間はステータスバーにも出す= どこに居ても、動いている物that見える(俊克 改良2)', true);
+  ok(/if \(_meosTimerTick\) \{ clearInterval\(_meosTimerTick\); _meosTimerTick = null; \}/.test(src),
+     '★動いている物that無くなったら、時計も止める', true);
+  ok(src.indexOf('⏱') < 0 && src.indexOf('⏳') < 0, '★⏱ も ⏳ も残っていない(俊克 改良1: ⏰ に)', true);
+  ok(/id="raw-timer"[^>]*>&#9200;</.test(src), '★⏰(U+23F0) を使う= 俊克thatが名指しした字(v4.0.448)', true);
+  ok(/\.fmt-lvl\.raw-timer\{cursor:pointer;background:#ffffff;color:#111/.test(src),
+     '★★白地の円に置く= 小さい絵文字は地that暗いと沈む(俊克 改良1)', true);
+  // ★★★v4.0.448: 面の色thatCSSのidに負けていた(v4.0.440から一度も出ていなかった)
+  ok(!/#raw-toggle\{background:/.test(src),
+     '★★★id の色指定that消えている= 面の色は class 1本で決まる(CSSは「後」でなく「強さ」)', true);
+  ok(/\.fmt-btn\.raw-toggle\.on\{background:#cd8a5c/.test(src),
+     '★Raw= 俊克thatRawとして見慣れた茶', true);
+  ok(!/\\\\U0001F47B/.test(src),
+     '★JSに \\\\U エスケープは無い(字thatそのまま出てしまう)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

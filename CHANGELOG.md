@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.448 (2026-08-27)
+- **The colour that was supposed to tell you the mode had never once appeared.** An old `#raw-toggle` id rule sat
+  further down the stylesheet painting the button the same tan whatever mode it was in, and an id beats three
+  classes — so v4.0.440's "the colour says which view you are in" was dead on arrival. CSS resolves by strength,
+  not by order. The id rule is gone; the face is decided by one class rule, and Raw takes the tan that has meant
+  Raw in MeOS all along.
+- **When the time is up, the membrane goes back on its own.** Pressing ⏰ chooses *a fifty-minute test*, not
+  *being in Pseudo-WYSIWYG* — the view was the timer's, not yours. So the timer now restores whatever the
+  membrane was before it started, and there is no button left to forget. If you had deliberately set that
+  membrane to Pseudo yourself, that is what it returns to.
+- **The remaining time is visible from anywhere** — a status bar entry, not just the button face, which only
+  showed while the caret sat inside that membrane. Click it to open the timer menu.
+- The timer badge is ⏰ on white; a small emoji on a dark disc simply sinks.
+
 ### v4.0.447 (2026-08-27)
 - **Raw draws nothing — including the membrane lanes.** The vertical membrane bars kept showing inside a Raw
   membrane. Raw promises that MeOS puts nothing on the page; the old whole-file Raw cleared the lanes with
