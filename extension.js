@@ -8134,6 +8134,7 @@ function flushHtocSelIntoData(document, data) {
   const f = _fmtMem.get(document.uri.toString()); if (f) data.fmt = f; // v0.9.99938: Format色もmMETAへ随伴
   const rm = _refMem.get(document.uri.toString()); if (rm) data.ref = rm; // v0.9.99968: 参照符設定もmMETAへ随伴
   const vw = _meosViewMem.get(document.uri.toString()); if (vw) data.view = vw; // v4.0.445: 膜ごとの見え方もmMETAへ随伴(他の書き手that落とさない)
+  const cl = _meosClockMem.get(document.uri.toString()); if (cl) data.clock = cl; // v4.0.460: ⏰の予定もmMETAへ随伴
   if (!Array.isArray(data.tabs)) return;
   const map = _htocSelMem.get(document.uri.toString());
   if (!map) return;
@@ -9552,6 +9553,68 @@ function meosViewMode(editor) {
 }
 // ★★★v4.0.444: 錠も膜ごと。so「テスト用紙の膜だけ50分ロック、他の膜は普通に書ける」が成り立つ
 //   (俊克「このようにしないと、テスト用紙膜だけ『ほぼWYSIWYG』でタイマーをかけることもできない」)。
+// ★★★v4.0.460(俊克 改良1「VSCmを再起動すると、⏰thatが止まる。やはり、**メタデータに保存してない**から?」):
+//   ★★★**そのとおり**。時計はメモリにしか無かったので、閉じれば消えていた＝ **予定として使えない**
+//     (v4.0.453で「予定もその場所に居る」と言ったのに、居たのはセッションの中だけだった)。
+//   ★★見え方の設定と**同じ道**でメタ膜(mMETA)へ＝ 新しい入れ物を作らない。形は
+//     `{ '膜名': { at: 解ける時刻(ms), hold: 押さえているか } }`。**ファイルと一緒に旅する**so、
+//     別のマシンで開いても、その予定は生きている。
+//   ★★開き直した時、**過ぎていた予定をどう扱うか**＝ 5分以内なら普通に鳴らす(呼びに行く)、
+//     それより古ければ**鳴らさずに「過ぎています」と言う**＝ 何時間も前の「今すぐ来い」で人を連れ回さない。
+//     押さえ(hold)はどちらでも解ける＝ 時間はもう過ぎているのだから。
+const _meosClockMem = new Map();       // uriString -> { 膜名: {at, hold} }
+let _meosClockWriteTimer = null;
+const _meosClockLoaded = new Set();    // 一度読んだファイル(開くたびに二重に仕掛けない)
+function meosClockMeta(doc) {
+  const k = doc.uri.toString();
+  let v = _meosClockMem.get(k);
+  if (!v) {
+    let d = null; try { d = getHyperTocData(doc); } catch (_) { }
+    v = (d && d.clock && typeof d.clock === 'object') ? d.clock : {};
+    _meosClockMem.set(k, v);
+  }
+  return v;
+}
+function meosScheduleClockMetaWrite(doc) {
+  if (_meosClockWriteTimer) clearTimeout(_meosClockWriteTimer);
+  _meosClockWriteTimer = setTimeout(async () => {
+    _meosClockWriteTimer = null;
+    try {
+      const v = meosClockMeta(doc);
+      const data = await ensureHyperTocData(doc);
+      if (data) { data.clock = v; await writeHyperTocToSource(doc, data); }
+    } catch (_) { }
+  }, 400);
+}
+// 開いた時に、書いてある予定を仕掛け直す。一度だけ(同じファイルを何度開いても二重にしない)。
+async function meosLoadClocksFor(doc) {
+  try {
+    if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return;
+    const uri = doc.uri.toString();
+    if (_meosClockLoaded.has(uri)) return;
+    _meosClockLoaded.add(uri);
+    const v = meosClockMeta(doc);
+    const names = Object.keys(v || {});
+    if (!names.length) return;
+    const now = Date.now(); const missed = [];
+    for (const name of names) {
+      const row = v[name] || {};
+      const at = Number(row.at) || 0;
+      if (!at) { delete v[name]; continue; }
+      const scope = { uri, key: name, name, hold: !!row.hold };
+      const lk = uri + ' ' + name;
+      _meosPseudoScopes.set(lk, scope);
+      const left = at - now;
+      if (left > 0) { _meosPseudoUntil.set(lk, at); meosArmPseudoTimer(lk, left + 250); continue; }
+      if (left > -5 * 60000) { _meosPseudoUntil.set(lk, at); meosArmPseudoTimer(lk, 250); continue; } // 5分以内=普通に鳴らす
+      await meosEndPseudoTimer(lk);                                   // 古い= 鳴らさずに畳む(押さえは解く)
+      missed.push(name);
+    }
+    meosScheduleClockMetaWrite(doc);
+    meosUpdateTimerBar();
+    if (missed.length) vscode.window.showInformationMessage('MeOS: ' + missed.length + ' clock' + (missed.length > 1 ? 's have' : ' has') + ' already passed \u2014 ' + missed.join(', ') + '. Nothing is held any more.');
+  } catch (_) { }
+}
 const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
 const _meosPseudoTimers = new Map();    // key → timeout
 const _meosPseudoScopes = new Map();    // key → 掛けた時のスコープ(50分後にも引き直せるように)
@@ -9704,6 +9767,7 @@ async function meosEndPseudoTimer(key) {
   _meosPseudoScopes.delete(key);
   if (!scope) { meosPostViewMode(); return null; }
   const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri);
+  try { if (doc) { delete meosClockMeta(doc)[scope.key]; meosScheduleClockMetaWrite(doc); } } catch (_) { }   // v4.0.460: 済んだ予定は残さない
   // v4.0.453: 押さえていた時だけ、押さえを解いて通常へ返す。ただの呼び鈴は**見え方に触れない**。
   if (doc && scope.hold) await meosApplyModeToScope(doc, scope.key, 'normal', scope.name);
   else meosPostViewMode();
@@ -9903,8 +9967,10 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   //   それ以外で掛ければ「呼び鈴」(見え方には触れない)。人に問いを1つも足さずに、2つの使い方thatが分かれる。
   const hold = (meosScopeMode(scope) === 'pseudo');
   _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold });
-  _meosPseudoUntil.set(lk, Date.now() + ms);
+  const _at = Date.now() + ms;
+  _meosPseudoUntil.set(lk, _at);
   meosArmPseudoTimer(lk, ms + 250);
+  try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { }   // v4.0.460: 予定はファイルに残る
   meosUpdateTimerBar();
   meosPostViewMode();
   // 遠い予定は mm:ss では読めないso、**指した日時そのもの**を言う(MeOSの日時を作る1つの口から)。
@@ -29241,6 +29307,9 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st && st.focused) setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 500); }));
   // v4.0.140: 起動直後は「まだアクティブでない/範囲が未計算」で空振りしやすいso、間を空けて3回ぶつける(済みなら即returnするso無駄は無い)。
   for (const _ms of [1200, 3000, 6000]) { try { setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, _ms); } catch (_) { } }
+  // ★v4.0.460: 起動時に**もう開いているファイル**の予定も仕掛け直す(タブの復元は onDidOpenTextDocument より前に済んでいることthatある)。
+  //   読んだ印(_meosClockLoaded)thatあるので、二重には仕掛からない。
+  setTimeout(() => { try { for (const d of (vscode.workspace.textDocuments || [])) meosLoadClocksFor(d); } catch (_) { } }, 1500);
   // 手で畳み直す/開く口。自動が効かない時と、開いて中身を読みたい時のため。
   // v4.0.333(俊克「MeOSがやるべきなのは、深さが実際の入れ子と合っているかを1日1回くらい調べること」)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.auditMembraneDepth', async () => {
@@ -29775,7 +29844,9 @@ makeDecorations();
         return undefined;
       }
     }),
+    vscode.workspace.onDidOpenTextDocument(d => { try { meosLoadClocksFor(d); } catch (_) { } }),   // v4.0.460: 書いてある予定を仕掛け直す
     vscode.window.onDidChangeActiveTextEditor(e => { composingLine = -1; if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
+      try { if (e && e.document) meosLoadClocksFor(e.document); } catch (_) { }   // v4.0.460: 既に開いていたファイルもここで拾う
       // v4.0.351: 別のタブへ移る時も、控えていた膜名の直しを閉じ膜へ届けてから移る。
       try { if (_meosNameWatch) { const _w = _meosNameWatch; _meosNameWatch = null; meosApplyMembraneNameEdit(_w); } } catch (_) { }
       updateLastCaretForEditor(e); refresh(e); updateMembraneStatusBar(e); setTimeout(() => restoreMstatsForEditor(e), 250); autoShowMeDockForEditor(e); }),

@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.460 (2026-08-28)
+- **A clock now survives a restart** — it is kept in the file's own mMETA membrane, beside the view modes, so it
+  travels with the file and is still waiting on another machine. Until now it lived only in memory: closing the
+  editor lost it, which meant it could not really be used as a plan.
+- **What happens to a clock that ran out while you were away**: if it passed within the last five minutes it
+  simply rings, as it would have. Older than that and it is quietly wound down — nothing stays held — and MeOS
+  tells you which ones you missed. Nobody wants to be marched off to a membrane because of an alarm that went
+  off three hours ago.
+
 ### v4.0.459 (2026-08-28)
 - **⏰ grows as its time approaches.** The remaining time was already in three places, and all three had to be
   *read*. Size does not have to be read — it arrives on its own. Under five minutes the clock swells; under one

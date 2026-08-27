@@ -1157,5 +1157,31 @@ console.log('(53) 近づくと⏰thatが大きくなる — 読ませずに気�
      '★過ぎたら元に戻す(undefinedで消す)', true);
 }
 
+console.log('(54) ⏰の予定はメタ膜に残る(v4.0.460 俊克)  ※振る舞いの実測は check_clock.js');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/const _meosClockMem = new Map\(\);/.test(src) && /function meosClockMeta\(doc\)/.test(src),
+     '★★★時計もメタ膜へ= 見え方の設定と**同じ道**(新しい入れ物を作らない)', true);
+  ok(/data\.clock = v; await writeHyperTocToSource\(doc, data\);/.test(src),
+     '★書くのは人that仕掛けた時だけ(まとめて1回)', true);
+  ok(/const cl = _meosClockMem\.get\(document\.uri\.toString\(\)\); if \(cl\) data\.clock = cl;/.test(src),
+     '★他の書き手that clock を落とさない(mMETAを触る道は1本)', true);
+  ok(/if \(left > -5 \* 60000\) \{ _meosPseudoUntil\.set\(lk, at\); meosArmPseudoTimer\(lk, 250\); continue; \}/.test(src),
+     '★★5分以内に過ぎた予定は普通に鳴らす(呼びに行く)', true);
+  ok(/await meosEndPseudoTimer\(lk\);                                   \/\/ 古い= 鳴らさずに畳む/.test(src),
+     '★★何時間も前の「今すぐ来い」で人を連れ回さない(押さえは解く)', true);
+  ok(/missed\.push\(name\)/.test(src) && /already passed/.test(src),
+     '★でも「過ぎています」とは言う(黙って消さない)', true);
+  ok(/if \(_meosClockLoaded\.has\(uri\)\) return;/.test(src),
+     '★同じファイルを何度開いても二重に仕掛からない', true);
+  ok(/onDidOpenTextDocument\(d => \{ try \{ meosLoadClocksFor\(d\); \} catch \(_\) \{ \} \}\)/.test(src)
+     && /for \(const d of \(vscode\.workspace\.textDocuments \|\| \[\]\)\) meosLoadClocksFor\(d\)/.test(src),
+     '★★開いた時と、起動時に既に開いている分と、両方から拾う(タブの復元は合図より前に済むことthatある)', true);
+  ok(/meosClockMeta\(scope\.doc\)\[scope\.key\] = \{ at: _at, hold \}/.test(src),
+     '★押さえていたかも覚える(掛けた時の役thatが復元される)', true);
+  ok(/delete meosClockMeta\(doc\)\[scope\.key\]; meosScheduleClockMetaWrite\(doc\);/.test(src),
+     '★済んだ予定は残さない', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);
