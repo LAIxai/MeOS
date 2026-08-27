@@ -15,7 +15,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const TMP = '/tmp/meos_vm444_' + process.pid + '.js';
 fs.writeFileSync(TMP, fs.readFileSync(path.join(SRCDIR, 'extension.js'), 'utf8')
-  + '\nmodule.exports.__t={_meosMemberMode,meosModeKey,meosModeAtLine,meosModeScope,meosRawLines,meosFcWantsOpen,meosDefBlocks,collectPairs,bump:()=>{_meosModeEpoch++;}};\n');
+  + '\nmodule.exports.__t={_meosViewMem,meosViewMeta,meosModeAtLine,meosModeScope,meosScopeMode,meosRawLines,meosFcWantsOpen,meosDefBlocks,collectPairs,bump:()=>{_meosModeEpoch++;}};\n');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 const lines = fs.readFileSync('/Volumes/T7_SSD2TB/Claude Code/MeOS/viewmode-test_v4.0.442.md', 'utf8').split('\n');
@@ -25,8 +25,9 @@ const doc = {
   getText: () => lines.join('\n'), eol: 1, fileName: '/v.md', isClosed: false, version: 1
 };
 const ed = (l) => { const p = new stub.Position(l, 0); return { document: doc, selection: { active: p, anchor: p, start: p, end: p, isEmpty: true }, selections: [], visibleRanges: [new stub.Range(0, 0, lines.length - 1, 0)] }; };
-const set = (name, mode) => { T._meosMemberMode.set(T.meosModeKey(doc, name), mode); T.bump(); };
-const clr = () => { T._meosMemberMode.clear(); T.bump(); };
+// 設定の入れ物は mMETA 随伴の per-file オブジェクト(v4.0.445)。ここではその中身を直に置いて確かめる。
+const set = (name, mode) => { T.meosViewMeta(doc)[name] = mode; T.bump(); };
+const clr = () => { T._meosViewMem.clear(); T.bump(); };
 const OUT = '修飾の見本_20260827t103815JST', IN = '入れ子の膜_20260827t103820JST', Q = '小テスト_20260827t103830JST';
 let ng = 0;
 const ok = (c, label, got) => { console.log((c ? '  ok  ' : ' NG   ') + label + (c ? '' : '   <- ' + JSON.stringify(got))); if (!c) ng++; };
@@ -36,6 +37,7 @@ console.log('(1) 何も設定していなければ、全部 normal');
 clr();
 ok(modes([5, 36, 95, 112, 137]) === 'normal,normal,normal,normal,normal', '既定は通常', modes([5, 36, 95, 112, 137]));
 ok(T.meosModeAtLine(doc, 36) === 'normal', '地図をそもそも作らない(fast path)', true);
+ok(T.meosScopeMode(T.meosModeScope(ed(35))) === 'normal', 'スコープの既定も通常', true);
 
 console.log('(2) 外側の膜だけ Raw = その膜だけ。他の膜と膜の外は通常');
 clr(); set(OUT, 'raw');
@@ -82,6 +84,13 @@ clr();
 ok(T.meosModeScope(ed(94)).name === IN, '入れ子の中 -> 入れ子', T.meosModeScope(ed(94)).name);
 ok(T.meosModeScope(ed(35)).name === OUT, '膜Aの中 -> 膜A', T.meosModeScope(ed(35)).name);
 ok(T.meosModeScope(ed(5)).name === '', '膜の外 -> 地', T.meosModeScope(ed(5)).name);
+ok(T.meosModeScope(ed(35)).key === OUT, 'キーは膜名そのもの(mMETAにそのまま書ける形)', T.meosModeScope(ed(35)).key);
+
+console.log('(10) 覚えた物は mMETA の形(膜名 -> モード)で残る = ファイルと一緒に旅する');
+clr(); set(OUT, 'raw'); set(Q, 'pseudo');
+const meta = T.meosViewMeta(doc);
+ok(meta[OUT] === 'raw' && meta[Q] === 'pseudo' && Object.keys(meta).length === 2,
+   '通常の膜は1つも書かれていない(既定は書かない)', JSON.stringify(meta));
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

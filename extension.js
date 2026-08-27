@@ -8128,6 +8128,7 @@ function flushHtocSelIntoData(document, data) {
   if (!document || !data) return;
   const f = _fmtMem.get(document.uri.toString()); if (f) data.fmt = f; // v0.9.99938: Format色もmMETAへ随伴
   const rm = _refMem.get(document.uri.toString()); if (rm) data.ref = rm; // v0.9.99968: 参照符設定もmMETAへ随伴
+  const vw = _meosViewMem.get(document.uri.toString()); if (vw) data.view = vw; // v4.0.445: 膜ごとの見え方もmMETAへ随伴(他の書き手that落とさない)
   if (!Array.isArray(data.tabs)) return;
   const map = _htocSelMem.get(document.uri.toString());
   if (!map) return;
@@ -9419,23 +9420,56 @@ const MEOS_VIEW_MODE_BAR = {
   raw: 'Raw view Raw🥩 — this membrane shows its raw data',
   pseudo: 'Pseudo-WYSIWYG 👁 — nothing raw, nothing crossed out. The finished text only.'
 };
-// key = uri + " " + 膜名 ('' = 膜の外＝ファイルの地) → 'raw' | 'pseudo'。**通常は持たない**(消す)。
-//   ★既定しか無いファイルでは地図をそもそも作らない＝ 今までと1mmも変わらない(速さも)。
-const _meosMemberMode = new Map();
+// ★★★v4.0.445(俊克 8/27 pm00:31「Rawとほぼ WYSIWYG の設定は、**メタ膜に保存される**ということだよね?
+//   …Rawは一時的と言っても、**いつの時点で通常モードに戻すのかが分かりにくくなる**。Rawで見たいと思った膜は、
+//   その中に入ると、ボタンがRawに切り替わって、Rawだと分るし、エディターを見ても分る。だから、通常モードに
+//   戻したい時は、**ボタンで切り替える方が分かりやすい**よ」):
+//   ★★★**「Rawは一時的」という私の分け方が間違っていた**。一時的な物には**終わりを誰かが決めねばならず**、
+//     それを機械が勝手に決めると「いつ戻ったのか分からない」になる。**人が入れた物は、人が出す**＝
+//     それなら見えている物(ボタンの面)と、覚えている物が、いつでも一致する。
+//   ★★so2つとも同じ扱いにする＝ **メタ膜(mMETA)に随伴**。Format色(v0.9.99938)・参照符(v0.9.99968)と
+//     同じ道so、新しい入れ物を作らない。globalStateでなくmMETA＝ **ファイルと一緒に旅する**
+//     (Git越しに生きる・マシンを替えても消える事故that無い)。俊克の「テストを何度でも使える」もこれで叶う。
+//   ★形＝ `{ '膜名': 'raw'|'pseudo', '': 'raw' }`('' ＝ 膜の外＝ファイルの地)。**通常は書かない**(消す)。
+const _meosViewMem = new Map();  // uriString -> { 膜名: 'raw'|'pseudo' }
 let _meosModeEpoch = 0;          // 設定が変わるたびに増える(地図の作り直しの合図)
 let _meosModeMapCache = null;
-function meosModeKey(doc, name) { return String(doc && doc.uri ? doc.uri.toString() : '') + ' ' + String(name || ''); }
+let _meosViewWriteTimer = null;
+function meosViewMeta(doc) {
+  const k = doc.uri.toString();
+  let v = _meosViewMem.get(k);
+  if (!v) {
+    let d = null; try { d = getHyperTocData(doc); } catch (_) { }
+    v = (d && d.view && typeof d.view === 'object') ? d.view : {};
+    _meosViewMem.set(k, v);
+  }
+  return v;
+}
+// 書くのは**人that設定を変えた時だけ**。連打を1回にまとめる(Format色と同じ流儀)。
+function meosScheduleViewMetaWrite(doc) {
+  if (_meosViewWriteTimer) clearTimeout(_meosViewWriteTimer);
+  _meosViewWriteTimer = setTimeout(async () => {
+    _meosViewWriteTimer = null;
+    try {
+      const v = meosViewMeta(doc);
+      const data = await ensureHyperTocData(doc);
+      if (data) { data.view = v; await writeHyperTocToSource(doc, data); }
+    } catch (_) { }
+  }, 400);
+}
 // 行 → モード の地図。**内側(狭い膜)から先に**並べるので、最初に当たった物が答え＝ レキシカルスコープ。
 function meosDocModes(doc) {
   try {
-    if (!doc || !doc.uri || !_meosMemberMode.size) return null;
+    if (!doc || !doc.uri) return null;
     const uri = doc.uri.toString();
     const key = uri + '::' + doc.version + '::' + _meosModeEpoch;
     if (_meosModeMapCache && _meosModeMapCache.key === key) return _meosModeMapCache.value;
-    const fileMode = _meosMemberMode.get(uri + ' ') || 'normal';
+    const view = meosViewMeta(doc);
+    if (!view || !Object.keys(view).length) { _meosModeMapCache = { key, value: null }; return null; }
+    const fileMode = view[''] || 'normal';
     const ranges = [];
     for (const p of collectPairs(doc, { excludeIndex: false })) {
-      const m = _meosMemberMode.get(uri + ' ' + p.id);
+      const m = view[p.id];
       if (m) ranges.push({ from: p.start, to: p.end, mode: m, id: p.id });
     }
     ranges.sort((a, b) => (a.to - a.from) - (b.to - b.from));
@@ -9457,13 +9491,15 @@ function meosModeScope(editor) {
     const doc = editor.document, ln = editor.selection.active.line;
     let best = null;
     for (const p of collectPairs(doc, { excludeIndex: false })) {
+      if (isMetaMembraneId(p.id)) continue;   // v4.0.445: mMETAは設定の入れ物so、設定の相手にはしない
       if (p.start <= ln && ln <= p.end && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
     }
     return best
-      ? { key: meosModeKey(doc, best.id), name: best.id, from: best.start, to: best.end }
-      : { key: meosModeKey(doc, ''), name: '', from: 0, to: Math.max(0, doc.lineCount - 1) };
+      ? { doc, key: best.id, name: best.id, from: best.start, to: best.end }
+      : { doc, key: '', name: '', from: 0, to: Math.max(0, doc.lineCount - 1) };
   } catch (_) { return null; }
 }
+function meosScopeMode(scope) { try { return meosViewMeta(scope.doc)[scope.key] || 'normal'; } catch (_) { return 'normal'; } }
 function meosCurrentEditor() { return (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor; }
 function meosViewMode(editor) {
   const ed = editor || meosCurrentEditor();
@@ -9474,6 +9510,7 @@ function meosViewMode(editor) {
 //   (俊克「このようにしないと、テスト用紙膜だけ『ほぼWYSIWYG』でタイマーをかけることもできない」)。
 const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
 const _meosPseudoTimers = new Map();    // key → timeout
+function meosLockKey(scope) { try { return scope.doc.uri.toString() + ' ' + scope.key; } catch (_) { return ' ' + (scope && scope.key); } }
 function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; return t ? Math.max(0, t - Date.now()) : 0; }
 function meosMmSs(ms) { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 function meosClearPseudoTimer(key) {
@@ -9492,8 +9529,8 @@ function meosPostViewMode() {
     const sc = ed ? meosModeScope(ed) : null;
     meDockPanel.webview.postMessage({
       type: 'viewMode',
-      mode: (sc ? (_meosMemberMode.get(sc.key) || 'normal') : 'normal'),
-      until: (sc ? (_meosPseudoUntil.get(sc.key) || 0) : 0),
+      mode: (sc ? meosScopeMode(sc) : 'normal'),
+      until: (sc ? (_meosPseudoUntil.get(meosLockKey(sc)) || 0) : 0),
       scope: (sc ? (sc.name || '') : '')
     });
   } catch (_) { }
@@ -9516,16 +9553,19 @@ async function meosSetViewMode(mode) {
   const scope = meosModeScope(ed);
   if (!scope) return 'normal';
   const next = (MEOS_VIEW_MODES.indexOf(mode) >= 0) ? mode : 'normal';
-  const cur = _meosMemberMode.get(scope.key) || 'normal';
+  const cur = meosScopeMode(scope);
+  const lk = meosLockKey(scope);
   // 錠が掛かっている間は、Pseudoから出る道だけをふさぐ(入る道と、見え方には触れない)。
-  if (cur === 'pseudo' && meosPseudoLeftFor(scope.key) > 0 && next !== 'pseudo') {
-    vscode.window.setStatusBarMessage('MeOS: this membrane is held in Pseudo-WYSIWYG for another ' + meosMmSs(meosPseudoLeftFor(scope.key)) + ' — ⏱ to end it early.', 2500);
+  if (cur === 'pseudo' && meosPseudoLeftFor(lk) > 0 && next !== 'pseudo') {
+    vscode.window.setStatusBarMessage('MeOS: this membrane is held in Pseudo-WYSIWYG for another ' + meosMmSs(meosPseudoLeftFor(lk)) + ' — ⏱ to end it early.', 2500);
     meosPostViewMode();
     return 'pseudo';
   }
   if (next === cur) { meosPostViewMode(); return next; }
-  if (next === 'normal') _meosMemberMode.delete(scope.key); else _meosMemberMode.set(scope.key, next);
+  const view = meosViewMeta(scope.doc);
+  if (next === 'normal') delete view[scope.key]; else view[scope.key] = next;
   _meosModeEpoch++;
+  meosScheduleViewMetaWrite(scope.doc);   // v4.0.445: 覚えるのはメタ膜(ファイルと一緒に旅する)
   refresh(ed);
   // ★★v4.0.443(俊克「切替ボタンを押したとき、**フォーカスをエディタに切り替えると良いのかも知れない**」):
   //   畳む/開くは**焦点のあるエディタにしか効かない**(v4.0.141)ので、焦点がMe Dockに在る間、畳みの同期は
@@ -9556,9 +9596,10 @@ async function meosStartPseudoTimer(minutes) {
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
   const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
-  meosClearPseudoTimer(scope.key);
-  _meosPseudoUntil.set(scope.key, Date.now() + m * 60000);
-  _meosPseudoTimers.set(scope.key, setTimeout(() => meosPseudoTimeUp(scope.key, scope.name), m * 60000 + 250));
+  const lk = meosLockKey(scope);
+  meosClearPseudoTimer(lk);
+  _meosPseudoUntil.set(lk, Date.now() + m * 60000);
+  _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk, scope.name), m * 60000 + 250));
   await meosSetViewMode('pseudo');
   meosPostViewMode();
   vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' held in Pseudo-WYSIWYG for ' + m + ' min — the way out comes back when the time is up.', 3000);
@@ -9567,14 +9608,15 @@ async function meosPseudoTimerMenu() {
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
   const who = scope.name || 'this file (outside every membrane)';
-  if (meosPseudoLeftFor(scope.key) > 0) {
+  const lk = meosLockKey(scope);
+  if (meosPseudoLeftFor(lk) > 0) {
     const pick = await vscode.window.showQuickPick(
-      [{ label: '⏹ End the timer now', description: meosMmSs(meosPseudoLeftFor(scope.key)) + ' left', detail: 'The way out comes back straight away. The view itself does not change.' }],
+      [{ label: '⏹ End the timer now', description: meosMmSs(meosPseudoLeftFor(lk)) + ' left', detail: 'The way out comes back straight away. The view itself does not change.' }],
       { title: 'MeOS — ' + who + ' is held', placeHolder: 'Press Esc to leave the timer running' });
     if (!pick) return;
     const yes = await vscode.window.showWarningMessage('End the timer now? The point of the timer is that you cannot get out early.', { modal: true }, 'End it');
     if (yes !== 'End it') return;
-    meosClearPseudoTimer(scope.key); meosPostViewMode();
+    meosClearPseudoTimer(lk); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: timer ended — you can leave Pseudo-WYSIWYG again.', 2500);
     return;
   }
@@ -21306,7 +21348,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',rawAltW=null,vmUntil=0,vmTick=null,vmScope='',vmSig='';
+var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='';
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -21317,7 +21359,6 @@ pseudo:'Pseudo-WYSIWYG Pseudo👁 | Nothing raw at all: the caret stops opening 
 /* ★★v4.0.444(俊克): 設定は**膜が持つ**= このボタンが変えるのは「今カーソルの居る膜」だけ。
    別の膜へ移れば、その膜の設定that面に出る。既定は通常so、何も設定していない膜は今までどおり。 */
 function vmWho(){return vmScope?('\u3010'+vmScope+'\u3011'):'\u3010outside every membrane\u3011';}
-function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
 /* ★★v4.0.442(俊克): ⏱=テスト用紙。残り時間は**webviewthat数える**(nodeは終わりの時刻を1回渡すだけ)=
    1秒ごとの往復を作らない。錠that掛かっている間は、面that残り時間を出す= 何分残っているかを見るために
    別の物を開かなくてよい。 */
@@ -21325,7 +21366,11 @@ function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}
 function vmMmSs(ms){var t=Math.ceil(ms/1000);var ss=String(t%60);return Math.floor(t/60)+':'+(ss.length<2?'0'+ss:ss);}
 window.__renderRaw=function(){if(!rawToggle)return;
 var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
-var nx=VM_ORDER[(i+(rawAltOn()?2:1))%3];
+/* ★v4.0.445(俊克 改良1「Opt押しで、Raw→通常モードのように逆順になると便利だよ。2回押さなくても通常モードに
+   切り替えることができる」): **その動きは既に在る**(クリック=次へ / ⌥Opt=1つ戻る)that、tipthat
+   「goes round the other way」としか言っていなかった＝ **行き先を名指ししていなかった**。
+   → 2つとも名前で出す。押す前に、どちらthat何になるかthat読める。 */
+var fwd=VM_ORDER[(i+1)%3],back=VM_ORDER[(i+2)%3];
 var left=vmLeft(),held=(left>0&&viewMode==='pseudo');
 rawToggle.textContent=VM_FACE[viewMode]+(held?(' '+vmMmSs(left)):'');
 rawToggle.classList.toggle('on',viewMode==='raw');
@@ -21333,14 +21378,14 @@ rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f1 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f1 if you really must stop it early.')
-:('Click \u2192 '+VM_NAME[nx]+' for this membrane only.'+String.fromCharCode(10)+'\u2325 Opt-click goes round the other way. Every membrane keeps its own setting.')));
+:('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'\u2325 Opt-click \u2192 '+VM_NAME[back]
++String.fromCharCode(10)+'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.')));
 if(held&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
 if(!held&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 var rawTimerBtn=document.getElementById('raw-timer');
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 if(typeof hideTocTip==='function')hideTocTip();vscode.postMessage({type:'pseudoTimer'});});
-if(rawToggle)rawAltW=fmtAltWatch(rawToggle,function(){if(typeof window.__renderRaw==='function')window.__renderRaw();});
 window.__renderRaw();
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();

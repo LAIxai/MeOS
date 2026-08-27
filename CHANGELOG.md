@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.445 (2026-08-27)
+- **A membrane's view mode is saved in the file, in its mMETA membrane** — the same place Format colours and
+  reference settings already live, so it travels with the file through Git and does not evaporate when you switch
+  machines. Yesterday's test paper is still a test paper tomorrow.
+- Calling Raw "temporary" was the wrong split. Anything temporary needs *someone* to decide when it ends, and a
+  machine deciding that means you can never tell when it went back. **What a person switched on, a person switches
+  off** — then what the button shows and what is remembered always agree. Only membranes you actually set are
+  written; a membrane left on Normal writes nothing at all.
+- **The tip now names both destinations.** Click and Option-click already went forward and backward round the
+  three modes — so from Raw, one Option-click returns you to Normal — but the tip only said "goes round the other
+  way", which does not tell you what you will get. It now reads `Click → Raw view Raw🥩` /
+  `⌥ Opt-click → Normal view 👁🥩`, for the membrane you are in.
+
 ### v4.0.444 (2026-08-27)
 - **A view mode is a property of a membrane, not a state of the editor.** Until now one session held a single
   "current mode" and worked out the range from where the caret happened to be — so the setting followed the caret

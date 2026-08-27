@@ -866,19 +866,32 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
   // (1) 「今どのモードか」を言う口は1つ = 膜ごとの地図
   ok(!/\blet meosRawMode\b|\blet meosReadMode\b/.test(src),
      '★★★セッションが1つ持っていた meosRawMode / meosReadMode が撤去されている(口を2つ作らない)', true);
+  // (0) 覚える場所は mMETA = ファイルと一緒に旅する(v4.0.445 俊克)
+  ok(/const _meosViewMem = new Map\(\);/.test(src) && /function meosViewMeta\(doc\)/.test(src),
+     '★★★設定はメタ膜(mMETA)に随伴= Format色/参照符と同じ道(新しい入れ物を作らない)', true);
+  ok(/const data = await ensureHyperTocData\(doc\);\n      if \(data\) \{ data\.view = v; await writeHyperTocToSource\(doc, data\); \}/.test(src),
+     '★書くのは人that設定を変えた時だけ(連打は1回にまとめる)', true);
+  ok(/const vw = _meosViewMem\.get\(document\.uri\.toString\(\)\); if \(vw\) data\.view = vw;/.test(src),
+     '★★他の書き手that view を落とさない(mMETAを触る道は1本に合流している)', true);
+  ok(/if \(isMetaMembraneId\(p\.id\)\) continue;/.test(src),
+     '★mMETAは設定の入れ物so、設定の相手にはしない', true);
+  ok(/function meosLockKey\(scope\)/.test(src),
+     '★錠のキーはファイルを含む(別のファイルの同名の膜と混ざらない)', true);
   ok(/function meosModeAtLine\(doc, line\) \{[\s\S]{0,240}for \(const r of m\.ranges\) if \(line >= r\.from && line <= r\.to\) return r\.mode;[\s\S]{0,60}return m\.fileMode;/.test(src),
      '★★規則は3行= その膜の設定に従う / 無ければ外側の膜 / 最後は通常(レキシカルスコープ)', true);
   ok(/ranges\.sort\(\(a, b\) => \(a\.to - a\.from\) - \(b\.to - b\.from\)\);/.test(src),
      '★内側(狭い膜)から先に並べるので、最初に当たった物that答え= 入れ子は自動的に正しくなる', true);
-  ok(/if \(!doc \|\| !doc\.uri \|\| !_meosMemberMode\.size\) return null;/.test(src),
+  ok(/if \(!view \|\| !Object\.keys\(view\)\.length\) \{ _meosModeMapCache = \{ key, value: null \}; return null; \}/.test(src),
      '★既定しか無いファイルでは地図をそもそも作らない(今までと1mmも変わらない)', true);
   ok(/const key = uri \+ '::' \+ doc\.version \+ '::' \+ _meosModeEpoch;/.test(src),
      '★地図は版と設定の世代で覚える(打鍵ごとに数え直さない)', true);
   // (2) ボタンthat効く相手 = カーソルを包む一番内側の膜
-  ok(/function meosModeScope\(editor\)/.test(src) && /_meosMemberMode\.delete\(scope\.key\); else _meosMemberMode\.set\(scope\.key, next\);/.test(src),
+  ok(/function meosModeScope\(editor\)/.test(src) && /if \(next === 'normal'\) delete view\[scope\.key\]; else view\[scope\.key\] = next;/.test(src),
      '★★ボタンの意味は1行= 今カーソルの居る膜の設定を変える', true);
-  ok(/if \(next === 'normal'\) _meosMemberMode\.delete\(scope\.key\)/.test(src),
+  ok(/if \(next === 'normal'\) delete view\[scope\.key\]/.test(src),
      '★通常に戻したら**持たない**(既定は書かない)', true);
+  ok(/meosScheduleViewMetaWrite\(scope\.doc\);/.test(src),
+     '★★人that入れた物は人that出す= 覚えたら、次に開いた時も同じ姿(俊克「いつ戻すのかが分かりにくくなる」)', true);
   // (3) 描く側は行ごとに訊く
   ok(/has\(ln\) \{ if \(this\.doc && meosModeAtLine\(this\.doc, ln\) === 'raw'\) return true;/.test(src),
      '★★帯(1本の範囲)ではなく行ごとに訊く= 入れ子で穴that空くため', true);
@@ -904,7 +917,7 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
   // (5) 錠も膜ごと = 俊克の目的
   ok(/const _meosPseudoUntil = new Map\(\);/.test(src) && /function meosPseudoLeftFor\(key\)/.test(src),
      '★★★テスト用紙の膜だけ50分ロック、他の膜は普通に書ける(俊克の目的)', true);
-  ok(/if \(cur === 'pseudo' && meosPseudoLeftFor\(scope\.key\) > 0 && next !== 'pseudo'\)/.test(src),
+  ok(/if \(cur === 'pseudo' && meosPseudoLeftFor\(lk\) > 0 && next !== 'pseudo'\)/.test(src),
      '★閉めるのは、その膜の出口だけ', true);
   // (6) 面は「今カーソルの居る膜」を出す
   ok(/try \{ meosPostViewMode\(\); \} catch \(_\) \{ \}\n  const editor = getMeDockTargetEditor\(\);/.test(src),
@@ -913,6 +926,11 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
      '★同じなら描き直さない(毎selection来るため)', true);
   ok(/function vmWho\(\)\{return vmScope\?/.test(src),
      '★tipthatどの膜の話かを名指しする', true);
+  // (7) 改良1: 行き先を両方とも名指しする(俊克 v4.0.445)
+  ok(/var fwd=VM_ORDER\[\(i\+1\)%3\],back=VM_ORDER\[\(i\+2\)%3\];/.test(src),
+     '★★クリック=次へ / ⌥Opt=1つ戻る= Rawから1回で通常へ戻れる(俊克 改良1)', true);
+  ok(src.indexOf("+VM_NAME[fwd]+String.fromCharCode(10)+") >= 0 && src.indexOf("Opt-click ") >= 0 && src.indexOf("+VM_NAME[back]") >= 0,
+     '★★★tipは行き先を**両方とも名指しする**(「the other way」では何になるか読めない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
