@@ -1054,5 +1054,22 @@ console.log('㊽ 時計は呼び鈴でもある — 鳴ったらその膜へ／�
      '★呼び鈴は掛けても見え方を変えない(Pseudoへ勝手に入れない)', true);
 }
 
+console.log('㊾ 連れ出したのはMeOSso、帰り道もMeOSthat出す(v4.0.454 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/let _meosReturnMark = null;/.test(src) && /function meosNoteReturnMark\(editor, name\)/.test(src),
+     '★★連れ出す前に、居た所を控える', true);
+  ok(src.indexOf(String.raw`_meosTimerBar.text = '\u21a9 Back'`) >= 0,
+     '★★★帰り道は**時計thatが立っていたのと同じ枡**に出す(鐘の直前まで目thatそこに在った)', true);
+  ok(/_meosTimerBar\.command = 'lai-membrane\.alarmReturn';/.test(src) && /registerCommand\('lai-membrane\.alarmReturn'/.test(src),
+     '★押せる= 1手で戻れる', true);
+  ok(/const mk = _meosReturnMark;\n  _meosReturnMark = null;/.test(src),
+     '★戻ったら控えは消す(帰り道は1回きり)', true);
+  ok(/function meosMembraneNameAtLine\(doc, line\)/.test(src),
+     '★名札は膜の名前= 人は行番号でなく名前で場所を思い出す', true);
+  ok(/\|\| await vscode\.workspace\.openTextDocument\(vscode\.Uri\.parse\(mk\.uri\)\)/.test(src),
+     '★タブを閉じていても開き直して戻れる', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

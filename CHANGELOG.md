@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.454 (2026-08-27)
+- **MeOS carried you off, so MeOS hands you the way back.** After the bell takes you to a membrane, the status
+  bar slot that was counting down turns into **↩ Back**, naming the membrane you were in. One press returns you
+  to the exact line — reopening the file if you closed the tab. It stays until you press it, because "you can go
+  back" stays true until you do. (The line history ◀ still works; it was simply never in front of your eyes at
+  the moment you needed it.)
+
 ### v4.0.453 (2026-08-27)
 - **The clock stops being only a lock and becomes a bell.** When the time comes, MeOS now takes you to the
   membrane. Write the next job inside a membrane, set a time on it, and it comes and finds you — the schedule

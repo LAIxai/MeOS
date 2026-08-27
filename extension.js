@@ -9558,6 +9558,35 @@ const _meosPseudoScopes = new Map();    // key → 掛けた時のスコープ(5
 // ★v4.0.448(俊克 改良2「残りタイムを表示する」): 面に出る残り時間は**その膜に居る時だけ**so、
 //   離れると分からなかった。→ ステータスバーに1つ出す＝ **どこに居ても、動いている物that見える**。
 let _meosTimerBar = null, _meosTimerTick = null;
+// ★★★v4.0.454(俊克「勝手に飛ぶのも、自分で飛ぶのも、**元いた場所に戻るのは、少し面倒**だね?」):
+//   ★★★**連れ出したのはMeOSso、帰り道もMeOSthat出す**。◀(Line history)は在ったthat、
+//     **押す物thatが目に入らない**＝ 呼ばれた人は「戻れる」ことを思い出さねばならなかった。
+//   ★★置き場所は**時計thatが立っていたのと同じ所**(ステータスバー)＝ 鐘の直前まで目thatそこに在った。
+//     新しい面を作らず、**同じ枡の中身が「残り時間」から「戻る」へ入れ替わる**。
+//   ★消えない＝ 押すまで残る。「戻れる」は押すまで本当のままso、勝手に取り下げない。
+let _meosReturnMark = null;   // { uri, line, name }
+function meosNoteReturnMark(editor, name) {
+  try {
+    if (!editor || !editor.document || !editor.selection) return;
+    _meosReturnMark = { uri: editor.document.uri.toString(), line: editor.selection.active.line, name: name || '' };
+  } catch (_) { }
+}
+async function meosGoBackFromAlarm() {
+  const mk = _meosReturnMark;
+  _meosReturnMark = null;
+  meosUpdateTimerBar();
+  if (!mk) return;
+  try {
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === mk.uri)
+      || await vscode.workspace.openTextDocument(vscode.Uri.parse(mk.uri));
+    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
+    const ln = Math.max(0, Math.min(mk.line, doc.lineCount - 1));
+    const pos = new vscode.Position(ln, 0);
+    ed.selection = new vscode.Selection(pos, pos);
+    try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }
+    ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+  } catch (_) { }
+}
 // ★★★v4.0.449(俊克 改良1「タイマーをかけるの1つとは限らないので、**残りタイマーは、膜毎に必要**だ。
 //   **閉じ膜のコメント部分に表示**しようか。ここはあまり使われないしね。問題を解いて、膜の最後まで来ると、
 //   残り時間that見える」):
@@ -9614,8 +9643,15 @@ function meosUpdateTimerBar() {
     for (const [k, until] of _meosPseudoUntil) if (!best || until < best.until) best = { k, until };
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
-      if (_meosTimerBar) _meosTimerBar.hide();
       meosTickTimerLines();
+      // 時計thatが止んだ後、連れ出したままなら、同じ枡に**帰り道**を出す。
+      if (_meosReturnMark) {
+        if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+        _meosTimerBar.text = '\u21a9 Back' + (_meosReturnMark.name ? ('  ' + _meosReturnMark.name) : '');
+        _meosTimerBar.tooltip = 'MeOS: go back to what you were doing when the bell rang.';
+        _meosTimerBar.command = 'lai-membrane.alarmReturn';
+        _meosTimerBar.show();
+      } else if (_meosTimerBar) _meosTimerBar.hide();
       return;
     }
     if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -9676,6 +9712,17 @@ async function meosEndPseudoTimer(key) {
 //   ★**呼ばれることに同意しているのは、時計を掛けた本人**so、ここは焦点を取ってよい
 //     (v4.0.141「焦点は奪わない」は、人that頼んでいない時の話)。
 //   ★元居た所へは ◀(Line history)で戻れるよう、飛ぶ前に今の行を積む。
+// 帰り道の名札= 元居た所を包んでいた膜の名前(無ければ空)。人は行番号でなく名前で場所を思い出す。
+function meosMembraneNameAtLine(doc, line) {
+  try {
+    let best = null;
+    for (const p of collectPairs(doc, { excludeIndex: false })) {
+      if (isMetaMembraneId(p.id)) continue;
+      if (p.start <= line && line <= p.end && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
+    }
+    return best ? best.id : '';
+  } catch (_) { return ''; }
+}
 async function meosJumpToScope(scope) {
   try {
     if (!scope) return;
@@ -9683,6 +9730,8 @@ async function meosJumpToScope(scope) {
     if (!doc) return;
     const rng = meosScopeRangeNow(doc, scope.key);
     if (!rng) return;
+    const from = vscode.window.activeTextEditor;
+    try { if (from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
     try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
     const ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
@@ -29392,7 +29441,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleRaw', () => toggleRawMode())); // v0.9.723: Raw切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
-  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));  // v4.0.442: Pseudoを時間で押さえる(テスト用紙/暗記シート)
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.alarmReturn', () => meosGoBackFromAlarm())); // v4.0.454: 鐘で連れ出された所へ戻る  // v4.0.442: Pseudoを時間で押さえる(テスト用紙/暗記シート)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973
