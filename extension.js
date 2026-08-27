@@ -9544,10 +9544,16 @@ function meosApplyTimerLineDecorations(editor) {
         for (const pr of collectPairs(doc, { excludeIndex: false })) {
           const until = byId.get(pr.id);
           if (until == null) continue;
+          // ★★v4.0.450(俊克 改良1「comment2の**右ではなく、左側**に挿入する形にしようよ」):
+          //   ★★**コメントの長さで居場所that変わってはいけない**＝ 右に付けると、コメントthat長い膜では
+          //     時計thatが遠くへ流れ、短い膜では近くに来る。膜名の直後なら**どの膜でも同じ所**に出る。
+          //   ★閉じ膜の中身の並びは1か所(membraneLineParts)から引く＝ 殻の書き方(md/コード)that違っても崩れない。
           const ln = pr.end, text = doc.lineAt(ln).text || '';
+          const parts = membraneLineParts(text, 'close');
+          const at = (parts && parts.idEnd >= 0) ? parts.idEnd : text.length;
           items.push({
-            range: new vscode.Range(ln, text.length, ln, text.length),
-            renderOptions: { after: { contentText: '   \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())), color: '#e0803a', fontWeight: '800' } }
+            range: new vscode.Range(ln, at, ln, at),
+            renderOptions: { after: { contentText: '  \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())) + ' ', color: '#e0803a', fontWeight: '800' } }
           });
         }
       }

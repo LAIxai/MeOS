@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.450 (2026-08-27)
+- **The countdown now sits immediately after the membrane's name**, before its closing comment rather than after
+  it. Put on the right, the clock drifts far out on a membrane with a long comment and sits close in on one with
+  a short comment — its position tells you about the comment instead of about the timer. After the name it lands
+  in the same place on every membrane.
+
 ### v4.0.449 (2026-08-27)
 - **The remaining time now sits on the membrane's own closing line.** One status bar entry could not say *which*
   membrane it belonged to, and a second timer pushed the first one off. A membrane's things belong on the
