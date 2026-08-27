@@ -9723,15 +9723,18 @@ function meosMembraneNameAtLine(doc, line) {
     return best ? best.id : '';
   } catch (_) { return ''; }
 }
-async function meosJumpToScope(scope) {
+// byBell=true のときだけ帰り道を控える＝ **連れ出したのがMeOSの時だけ、MeOSthat帰り道を出す**。
+//   自分で選んで飛んだ時は、来た道を知っているのは本人so、Line history(◀)に任せる。
+async function meosJumpToScope(scope, byBell) {
   try {
     if (!scope) return;
-    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri);
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri)
+      || await vscode.workspace.openTextDocument(vscode.Uri.parse(scope.uri));   // 閉じていても開いて行ける
     if (!doc) return;
     const rng = meosScopeRangeNow(doc, scope.key);
     if (!rng) return;
     const from = vscode.window.activeTextEditor;
-    try { if (from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
+    try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
     try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
     const ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
@@ -9744,7 +9747,7 @@ async function meosJumpToScope(scope) {
 async function meosPseudoTimeUp(key) {
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
-  await meosJumpToScope(scope);
+  await meosJumpToScope(scope, true);
   const name = scope.name || 'this file';
   vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + (scope.hold
     ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'
@@ -9859,36 +9862,67 @@ async function meosStartPseudoTimer(minutes, untilMs) {
   vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + meosMmSs(ms)
     + (hold ? ' held in Pseudo-WYSIWYG; the way out comes back when the time is up.' : ' until MeOS brings you back here.'), 3000);
 }
+// ★★★v4.0.457(俊克「⏰ボタンに日記ボタンのように、**⏰登録した膜のリストを表示して、その膜に行ける**ように
+//   しておくと使い易くなるよね」):
+//   ★★★**掛けた時計は「予定」so、一覧できないと予定表にならない**。1つなら覚えていられるthat、
+//     2つ3つ掛けた途端に「どこに何を仕掛けたか」thatが見えなくなる＝ 俊克の言うとおり。
+//   ★★置き場所は**新しく作らない**＝ ⏰ を押せば元から menu that開くso、**その menu の一番上に並べる**。
+//     選べばその膜へ行く。ステータスバーの ⏰ を押しても同じ menu that出る(入口は2つ、口は1つ)。
+//   ★自分で選んで飛んだ時は帰り道(↩)を出さない＝ **来た道を知っているのは本人**(◀ に任せる)。
+function meosRunningTimerItems() {
+  const out = [];
+  try {
+    const rows = [];
+    for (const [k, until] of _meosPseudoUntil) rows.push({ k, until, sc: _meosPseudoScopes.get(k) });
+    rows.sort((a, b) => a.until - b.until);            // 早く終わる物that上
+    for (const r of rows) {
+      if (!r.sc) continue;
+      let file = '';
+      try { file = String(r.sc.uri).split('/').pop(); } catch (_) { }
+      out.push({
+        label: '⏰ ' + meosMmSs(Math.max(0, r.until - Date.now())) + '   ' + (r.sc.name || '(outside every membrane)'),
+        description: file,
+        detail: r.sc.hold ? 'Held in Pseudo-WYSIWYG — go there' : 'A bell is set here — go there',
+        _go: r.sc
+      });
+    }
+  } catch (_) { }
+  return out;
+}
 async function meosPseudoTimerMenu() {
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
   const who = scope.name || 'this file (outside every membrane)';
   const lk = meosLockKey(scope);
+  const running = meosRunningTimerItems();
   if (meosPseudoLeftFor(lk) > 0) {
-    const pick = await vscode.window.showQuickPick(
-      [{ label: '⏹ End the timer now', description: meosMmSs(meosPseudoLeftFor(lk)) + ' left', detail: 'The way out comes back straight away. The view itself does not change.' }],
-      { title: 'MeOS — ' + who + ' is held', placeHolder: 'Press Esc to leave the timer running' });
+    const items = running.concat([{ label: '⏹ End the timer now', description: meosMmSs(meosPseudoLeftFor(lk)) + ' left', detail: 'The way out comes back straight away, and the membrane returns to normal.', _end: true }]);
+    const pick = await vscode.window.showQuickPick(items,
+      { title: 'MeOS — ' + who + ' is held', placeHolder: 'Pick a clock to go to it, or end this one. Esc leaves everything running.' });
     if (!pick) return;
+    if (pick._go) { await meosJumpToScope(pick._go); return; }
     const yes = await vscode.window.showWarningMessage('End the timer now? The point of the timer is that you cannot get out early.', { modal: true }, 'End it');
     if (yes !== 'End it') return;
-    await meosEndPseudoTimer(lk);                     // 終わり方は1つ= 掛ける前の姿へ返す
+    await meosEndPseudoTimer(lk);                     // 終わり方は1つ= 通常へ返す
     vscode.window.setStatusBarMessage('MeOS: timer ended — the membrane is back the way it was.', 2500);
     return;
   }
   const hold = (meosScopeMode(scope) === 'pseudo');
-  const items = [
+  const items = running.concat([
     { label: '10 minutes', m: 10 }, { label: '25 minutes', m: 25 },
     { label: '50 minutes', m: 50, description: 'one class hour' }, { label: '90 minutes', m: 90 },
     { label: 'Custom…', m: 0 },
     { label: 'At a time…', m: -1, description: 'e.g. 18:30 — the end of a period, a hand-over' }
-  ];
+  ]);
   const pick = await vscode.window.showQuickPick(items, {
     title: 'MeOS — ' + (hold ? 'hold ' + who + ' in Pseudo-WYSIWYG' : 'ring here: ' + who),
-    placeHolder: hold
-      ? 'Nothing raw, nothing crossed out, and no way out until the time is up'
-      : 'MeOS brings you back to this membrane when the time comes; nothing about the view changes'
+    placeHolder: (running.length ? (running.length + ' clock' + (running.length > 1 ? 's' : '') + ' running — pick one to go there, or set a new one. ') : '')
+      + (hold
+        ? 'Nothing raw, nothing crossed out, and no way out until the time is up'
+        : 'MeOS brings you back to this membrane when the time comes; nothing about the view changes')
   });
   if (!pick) return;
+  if (pick._go) { await meosJumpToScope(pick._go); return; }     // 一覧from選んだ= その膜へ行く
   if (pick.m === -1) {
     const t = await vscode.window.showInputBox({
       title: 'MeOS — at what time?', value: '18:30', prompt: '24-hour clock. A time already past means tomorrow.',

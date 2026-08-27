@@ -1036,9 +1036,9 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
 console.log('㊽ 時計は呼び鈴でもある — 鳴ったらその膜へ／時刻でも掛かる(v4.0.453 俊克 進化1)');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  ok(/async function meosJumpToScope\(scope\)/.test(src),
+  ok(/async function meosJumpToScope\(scope, byBell\)/.test(src),
      '★★★鳴ったら**その膜thatが呼ぶ**(予定も、その場所に居る)', true);
-  ok(/const scope = await meosEndPseudoTimer\(key\);\n  if \(!scope\) return;\n  await meosJumpToScope\(scope\);/.test(src),
+  ok(/const scope = await meosEndPseudoTimer\(key\);\n  if \(!scope\) return;\n  await meosJumpToScope\(scope, true\);/.test(src),
      '★終わってから飛ぶ(押さえを解いてから呼ぶ= 順番that1つ)', true);
   ok(/pushMeDockLineHistory\(ed, ed\.selection\.active\.line\)/.test(src),
      '★★飛ぶ前に今の行を積む= ◀ で元居た所へ戻れる(呼ばれた人を迷子にしない)', true);
@@ -1097,6 +1097,29 @@ console.log('㊿ モードの駒と⏰は ⚠️ の右・2つに分ける(v4.0.
      '★分けたので、モードの駒は自分で左の間合いを持つ', true);
   ok((src.match(/id="raw-timer"/g) || []).length === 1,
      '★駒は1つだけ(移したつもりで置き去りthat無い)', (src.match(/id="raw-timer"/g) || []).length);
+}
+
+console.log('(51) ⏰ に「走っている時計の一覧」= 予定表になる(v4.0.457 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/function meosRunningTimerItems\(\)/.test(src),
+     '★★★掛けた時計は「予定」so、一覧できないと予定表にならない', true);
+  ok(/rows\.sort\(\(a, b\) => a\.until - b\.until\);/.test(src),
+     '★早く終わる物that上(次に来る物から読む)', true);
+  ok(/if \(pick\._go\) \{ await meosJumpToScope\(pick\._go\); return; \}/.test(src)
+     && (src.match(/pick\._go/g) || []).length >= 2,
+     '★★選べばその膜へ行く(押さえている時の menu でも、掛ける時の menu でも)', true);
+  ok(/const items = running\.concat\(\[/.test(src),
+     '★★置き場所は新しく作らない= ⏰ を押せば元から開く menu の一番上に並べる', true);
+  ok(/async function meosJumpToScope\(scope, byBell\)/.test(src)
+     && /if \(byBell && from\) meosNoteReturnMark/.test(src),
+     '★★★帰り道(↩)を出すのは**鐘で連れ出した時だけ**= 自分で選んで飛んだ時は来た道を本人that知っている', true);
+  ok(/\|\| await vscode\.workspace\.openTextDocument\(vscode\.Uri\.parse\(scope\.uri\)\)/.test(src),
+     '★閉じているファイルの時計にも行ける(開いて行く)', true);
+  ok(/detail: r\.sc\.hold \? 'Held in Pseudo-WYSIWYG/.test(src),
+     '★一覧that「押さえている物」と「ただの呼び鈴」を言い分ける', true);
+  ok(/_meosTimerBar\.command = 'lai-membrane\.pseudoTimer';/.test(src),
+     '★ステータスバーの⏰を押しても同じ menu(入口は2つ、口は1つ)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.457 (2026-08-28)
+- **⏰ lists every clock you have running, and takes you to any of them.** A clock you set is a plan, and a plan
+  you cannot see a list of is not a schedule — one is easy to hold in your head, three are not. The list sits at
+  the top of the menu ⏰ already opened, soonest first, saying for each whether it is holding that membrane or
+  only ringing; pick one and you are there, opening the file if it was closed. The ⏰ in the status bar opens the
+  same menu, so there are two doors and one room.
+- Choosing a membrane yourself does **not** put up the ↩ Back marker — that is reserved for when the bell moved
+  you. When you went on purpose, you know where you came from, and the ◀ line history is already there.
+
 ### v4.0.456 (2026-08-28)
 - **⏰ is its own button now**, standing beside 👁🥩 to the right of ⚠️. A 15px badge on a button's shoulder stays
   a 15px badge however you paint it — v4.0.448 made it white and it still sank. As a piece in its own right it
