@@ -15,7 +15,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const TMP = '/tmp/meos_vm444_' + process.pid + '.js';
 fs.writeFileSync(TMP, fs.readFileSync(path.join(SRCDIR, 'extension.js'), 'utf8')
-  + '\nmodule.exports.__t={_meosViewMem,meosViewMeta,meosModeAtLine,meosModeScope,meosScopeMode,meosRawLines,meosFcWantsOpen,meosDefBlocks,collectPairs,bump:()=>{_meosModeEpoch++;}};\n');
+  + '\nmodule.exports.__t={_meosViewMem,meosViewMeta,meosModeAtLine,meosModeScope,meosScopeMode,meosInheritedMode,meosScopeHasOwn,meosRawLines,meosFcWantsOpen,meosDefBlocks,collectPairs,bump:()=>{_meosModeEpoch++;}};\n');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 
 const lines = fs.readFileSync('/Volumes/T7_SSD2TB/Claude Code/MeOS/viewmode-test_v4.0.442.md', 'utf8').split('\n');
@@ -91,6 +91,25 @@ clr(); set(OUT, 'raw'); set(Q, 'pseudo');
 const meta = T.meosViewMeta(doc);
 ok(meta[OUT] === 'raw' && meta[Q] === 'pseudo' && Object.keys(meta).length === 2,
    '通常の膜は1つも書かれていない(既定は書かない)', JSON.stringify(meta));
+
+console.log('(11) 中に含まれるすべてに適用される = レキシカルスコープ(v4.0.452 俊克 改良1)');
+clr(); set(OUT, 'raw');
+ok(T.meosScopeMode(T.meosModeScope(ed(94))) === 'raw',
+   '★★★子膜は自分の設定を持たなくても、外側の言い分を受け継ぐ(面もそう言う)', T.meosScopeMode(T.meosModeScope(ed(94))));
+ok(T.meosScopeHasOwn(T.meosModeScope(ed(94))) === false,
+   '★受け継ぎだと分かる(面のtipが「外から来た」と言える)', true);
+ok(T.meosInheritedMode(doc, IN) === 'raw', '外側の言い分は raw', T.meosInheritedMode(doc, IN));
+clr(); set('', 'raw');
+ok(modes([5, 36, 95, 112, 137]) === 'raw,raw,raw,raw,raw',
+   '★★地を設定すれば、従来の「ファイル全体」と同じ形になる(俊克)', modes([5, 36, 95, 112, 137]));
+ok(T.meosInheritedMode(doc, '') === 'normal', '地より外は無い', T.meosInheritedMode(doc, ''));
+
+console.log('(12) 外がRawでも、子膜だけ通常にできる = 書くのは外側と違う時だけ');
+clr(); set(OUT, 'raw'); set(IN, 'normal');
+ok(T.meosModeAtLine(doc, 94) === 'normal' && T.meosModeAtLine(doc, 35) === 'raw',
+   '★★★外=Raw の中で、子膜だけ通常(明示した normal that受け継ぎに勝つ)', modes([36, 95]));
+ok(T.meosInheritedMode(doc, IN) === 'raw' && T.meosScopeMode(T.meosModeScope(ed(94))) === 'normal',
+   '★受け継ぎは raw のまま・効いている値は normal', true);
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

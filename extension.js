@@ -9505,7 +9505,45 @@ function meosModeScope(editor) {
       : { doc, uri, key: '', name: '', from: 0, to: Math.max(0, doc.lineCount - 1) };
   } catch (_) { return null; }
 }
-function meosScopeMode(scope) { try { return meosViewMeta(scope.doc)[scope.key] || 'normal'; } catch (_) { return 'normal'; } }
+// ★★★v4.0.452(俊克 改良1「3ボタンの効果は、小膜、孫膜などを含む膜に対して設定した時、
+//   **中に含まれるすべてに適用する**方が使いやすいのではないか? これは、従来ファイル全体に適用していた
+//   ことに近い」):
+//   ★★★**もうそうなっている**＝ 規則(v4.0.444)thatレキシカルスコープso、自分の設定を持たない子膜・孫膜は
+//     **外側の言い分をそのまま受け継ぐ**。俊克の言う「ファイル全体」も、膜の外(地)を設定すれば同じ形になる。
+//   ★★★**that、ボタンの面thatそれを言えていなかった**＝ 面は「その膜**自身**の設定」だけを読んでいたので、
+//     受け継いでRawに見えている子膜の中で `通常` と名乗っていた＝ **見えている物と、面that食い違う**。
+//     → 面は**効いている値**(受け継ぎ込み)を出す。押した時も、そこから回る。
+//   ★★そして、それをやると**新しい問いthat出る**＝ 外側thatRawの中で、子膜だけ通常にできるか?
+//     → **書くのは、外側と違う時だけ**にすれば全部そろう(v4.0.445「既定は書かない」の一般形)。
+//     外側と同じ値を選んだら**消す**(＝受け継ぎに戻る)、違う値なら**書く**(＝ここだけ別)。
+function meosScopeRangeNow(doc, key) {
+  try {
+    if (!key) return { from: 0, to: Math.max(0, doc.lineCount - 1) };
+    const p = collectPairs(doc, { excludeIndex: false }).find(q => q.id === key);
+    return p ? { from: p.start, to: p.end } : null;
+  } catch (_) { return null; }
+}
+// この膜thatが自分の設定を持たなかったら、何になるか(＝外側の言い分)。
+function meosInheritedMode(doc, key) {
+  const m = meosDocModes(doc);
+  if (!m) return 'normal';
+  if (!key) return 'normal';                       // 地より外は無い
+  const rng = meosScopeRangeNow(doc, key);
+  if (!rng) return m.fileMode;
+  for (const r of m.ranges) {                      // ranges は内側that先
+    if (r.id === key) continue;                    // 自分は数えない
+    if (rng.from >= r.from && rng.to <= r.to) return r.mode;
+  }
+  return m.fileMode;
+}
+// 今その膜で**効いている**値(自分の設定 → 無ければ受け継ぎ)。
+function meosScopeMode(scope) {
+  try {
+    const own = meosViewMeta(scope.doc)[scope.key];
+    return own || meosInheritedMode(scope.doc, scope.key);
+  } catch (_) { return 'normal'; }
+}
+function meosScopeHasOwn(scope) { try { return !!meosViewMeta(scope.doc)[scope.key]; } catch (_) { return false; } }
 function meosCurrentEditor() { return (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor; }
 function meosViewMode(editor) {
   const ed = editor || meosCurrentEditor();
@@ -9641,7 +9679,8 @@ function meosPostViewMode() {
       type: 'viewMode',
       mode: (sc ? meosScopeMode(sc) : 'normal'),
       until: (sc ? (_meosPseudoUntil.get(meosLockKey(sc)) || 0) : 0),
-      scope: (sc ? (sc.name || '') : '')
+      scope: (sc ? (sc.name || '') : ''),
+      own: (sc ? meosScopeHasOwn(sc) : true)   // v4.0.452: false= 外側から受け継いでいる
     });
   } catch (_) { }
 }
@@ -9677,9 +9716,11 @@ async function meosSetViewMode(mode) {
 async function meosApplyModeToScope(doc, key, next, name) {
   if (!doc) return 'normal';
   const view = meosViewMeta(doc);
-  const cur = view[key] || 'normal';
-  if (next === cur) { meosPostViewMode(); return next; }
-  if (next === 'normal') delete view[key]; else view[key] = next;
+  const inh = meosInheritedMode(doc, key);
+  const cur = view[key] || inh;                    // 今効いている値
+  // ★書くのは、外側と違う時だけ＝ 同じ値を選んだら消す(受け継ぎに戻る)。ファイルに要らない行を残さない。
+  if (next === inh) delete view[key]; else view[key] = next;
+  if (next === cur) { meosPostViewMode(); return next; }   // 見え方that変わらない= 描き直さない
   _meosModeEpoch++;
   meosScheduleViewMetaWrite(doc);   // v4.0.445: 覚えるのはメタ膜(ファイルと一緒に旅する)
   const ed = vscode.window.visibleTextEditors.find(v => v.document === doc) || meosCurrentEditor();
@@ -21476,7 +21517,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='';
+var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true;
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -21512,7 +21553,9 @@ if(_rt){_rt.classList.toggle('running',left>0);_rt.style.display=(viewMode==='ps
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f0 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f0 if you really must stop it early.')
 :('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'\u2325 Opt-click \u2192 '+VM_NAME[back]
-+String.fromCharCode(10)+'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.')));
++String.fromCharCode(10)+(vmOwn
+?'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.'
+:'Handed down from the membrane outside this one \u2014 a membrane with no setting of its own follows whatever encloses it. Clicking gives this one a setting of its own; land back on the inherited value and it goes back to following.'))));
 if(held&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
 if(!held&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
@@ -22283,8 +22326,8 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'');
-if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0');
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);

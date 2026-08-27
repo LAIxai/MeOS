@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.452 (2026-08-27)
+- **A setting on an outer membrane already reaches everything inside it** — that is what lexical scope means, and
+  setting the ground outside every membrane reproduces the old whole-file behaviour. **But the button was not
+  saying so**: it read only a membrane's *own* setting, so standing inside a child that was showing Raw by
+  inheritance it announced "Normal". The face now shows the mode that is actually in force, and clicking cycles
+  from there.
+- That raised the question the old face hid: **can a child be Normal inside a Raw parent?** It can now. The rule
+  generalises "don't write the default" — **write only when it differs from what encloses it**. Choose the value
+  you would have inherited and the entry is removed (back to following); choose a different one and it is
+  written. So a membrane can opt out of its parent in either direction, and the file keeps no redundant entries.
+- The tip says when a mode was handed down from outside.
+
 ### v4.0.451 (2026-08-27)
 - **The countdown stands inside the closing comment**, right after the `//`: `▲name // ⏰ 0:33 comment2`. The
   space to the right of `//` is the part a person types into and rarely fills on a closing membrane — so the

@@ -888,8 +888,14 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
   // (2) ボタンthat効く相手 = カーソルを包む一番内側の膜
   ok(/function meosModeScope\(editor\)/.test(src) && /return meosApplyModeToScope\(scope\.doc, scope\.key, next, scope\.name\);/.test(src),
      '★★ボタンの意味は1行= 今カーソルの居る膜の設定を変える', true);
-  ok(/if \(next === 'normal'\) delete view\[key\]; else view\[key\] = next;/.test(src),
-     '★通常に戻したら**持たない**(既定は書かない)', true);
+  ok(/if \(next === inh\) delete view\[key\]; else view\[key\] = next;/.test(src),
+     '★★★書くのは、外側と違う時だけ(同じ値を選んだら消す= 受け継ぎに戻る / v4.0.452)', true);
+  ok(/function meosInheritedMode\(doc, key\)/.test(src) && /if \(r\.id === key\) continue;/.test(src),
+     '★★「自分の設定thatが無かったら何になるか」を言う口(自分は数えない)', true);
+  ok(/const own = meosViewMeta\(scope\.doc\)\[scope\.key\];\n    return own \|\| meosInheritedMode\(scope\.doc, scope\.key\);/.test(src),
+     '★★★面は**効いている値**を出す(受け継いでRawに見えている膜で「通常」と名乗らない)', true);
+  ok(/own: \(sc \? meosScopeHasOwn\(sc\) : true\)/.test(src) && /vmOwn=\(m\.own!==false\)/.test(src),
+     '★受け継ぎかどうかも渡す= tipthat「外から来た」と言える', true);
   ok(/meosScheduleViewMetaWrite\(doc\);/.test(src),
      '★★人that入れた物は人that出す= 覚えたら、次に開いた時も同じ姿(俊克「いつ戻すのかが分かりにくくなる」)', true);
   // v4.0.447: 設定を当てる所は1つ= ボタンからも、タイマーの終わりの知らせからも、同じ関数を通る
