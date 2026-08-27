@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.449 (2026-08-27)
+- **The remaining time now sits on the membrane's own closing line.** One status bar entry could not say *which*
+  membrane it belonged to, and a second timer pushed the first one off. A membrane's things belong on the
+  membrane — and the closing line is exactly where someone who has finished the questions arrives. The line is
+  looked up by name each tick, so it follows the membrane as the file is edited. The status bar stays as the
+  summary and now says how many other timers are running.
+- **⏰ only appears while you are in a Pseudo-WYSIWYG membrane.** The timer belongs to that view; a button that
+  cannot mean anything where it is standing should not be standing there.
+- **When the time is up the membrane goes to Normal**, not back to whatever it was. With ⏰ living in Pseudo, "what
+  it was" is always Pseudo — so the answers would never come back. The bell rings, and the answers show.
+- **Clicking the `⋯` of a folded spec block in a Pseudo membrane re-folds immediately** instead of after a second.
+  That `⋯` is VS Code's own "this is folded" marker and clicking it means unfold, so the flash cannot be removed
+  entirely — but the wait was ours, and it is gone.
+
 ### v4.0.448 (2026-08-27)
 - **The colour that was supposed to tell you the mode had never once appeared.** An old `#raw-toggle` id rule sat
   further down the stylesheet painting the button the same tan whatever mode it was in, and an id beats three

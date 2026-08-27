@@ -962,10 +962,10 @@ console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を
   const cur = src.indexOf('if (line === curLine) continue;', lane);
   ok(lane >= 0 && rawSkip > lane && cur > rawSkip,
      '★カーソル行が線を譲るのと同じ場所・同じ理由で譲る', [rawSkip - lane, cur - lane]);
-  ok(/async function meosEndPseudoTimer\(key\)/.test(src) && /if \(doc\) await meosApplyModeToScope\(doc, scope\.key, prev, scope\.name\);/.test(src),
-     '★★★時間が終わったら**掛ける前の姿へ返る**= 押し忘れという事故that起こらない(v4.0.448)', true);
-  ok(/_meosPseudoPrev\.set\(lk, meosScopeMode\(scope\)\);/.test(src),
-     '★★返す先は「その人that最後に指定した姿」(タイマーのPseudoはタイマーの持ち物)', true);
+  ok(/async function meosEndPseudoTimer\(key\)/.test(src) && /if \(doc\) await meosApplyModeToScope\(doc, scope\.key, 'normal', scope\.name\);/.test(src),
+     '★★★時間that終わったら**通常へ返る**= 鐘that鳴る→答えthat出る(v4.0.449 俊克 改良3)', true);
+  ok(!/_meosPseudoPrev/.test(src),
+     '★★「掛ける前の姿へ返す」は捨てた= ⏰thatPseudoでしか出ない以上、返す先は必ずPseudoになってしまう', true);
   ok(!/'Show the answers'/.test(src),
      '★知らせに押す物that無い= 押し忘れも無い', true);
   ok((src.match(/meosEndPseudoTimer\(/g) || []).length >= 3,
@@ -989,6 +989,34 @@ console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を
      '★Raw= 俊克thatRawとして見慣れた茶', true);
   ok(!/\\\\U0001F47B/.test(src),
      '★JSに \\\\U エスケープは無い(字thatそのまま出てしまう)', true);
+}
+
+console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後をその場で畳む(v4.0.449 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  // 改良1: 置き場所that意味を決める= 閉じ膜の行
+  ok(/function meosApplyTimerLineDecorations\(editor\)/.test(src),
+     '★★★残り時間は**その膜の閉じ膜の行**に出す(膜の物は膜に置く)', true);
+  ok(/const ln = pr\.end, text = doc\.lineAt\(ln\)\.text \|\| '';/.test(src),
+     '★行は名前から引き直す(掛けた時の行番号は、書いている内にずれる)', true);
+  ok(/try \{ meosApplyTimerLineDecorations\(editor\); \} catch \(_\) \{\}/.test(src),
+     '★描き直しの列に並べる(別の道を作らない)', true);
+  ok(/function meosTickTimerLines\(\)/.test(src) && /meosTickTimerLines\(\);\n    if \(!_meosTimerTick\)/.test(src),
+     '★1秒ごとに、見えているエディタぜんぶへ', true);
+  ok(/\(n > 1 \? \('  \+' \+ \(n - 1\)\) : ''\)/.test(src),
+     '★ステータスバーは「一番早く終わる物 ＋ 残り何本」(1つとは限らない)', true);
+  // 改良2: ⏰ は Pseudo の持ち物
+  ok(/_rt\.style\.display=\(viewMode==='pseudo'\)\?'':'none';/.test(src),
+     '★★⏰はPseudoの膜に居る時だけ出す(押しても意味that無い物は見せない)', true);
+  // 改良4: 『⋯』の後を、待たずに畳み直す
+  ok(/async function meosFoldPseudoOpened\(editor\)/.test(src),
+     '★★Pseudoの膜で開いてしまった塊を、その場で畳み直す', true);
+  ok(/try \{ meosFoldPseudoOpened\(e\.textEditor\); \} catch \(_\) \{ \}\n    _meosFcScrollTimer = setTimeout\(/.test(src),
+     '★320msを待たない(待たせているのはこちら側だった)', true);
+  ok(/const hits = blocks\.filter\(b => meosModeAtLine\(doc, b\.start\) === 'pseudo' && _vis\(b\.start\) && _vis\(b\.end\)\)/.test(src),
+     '★畳むのは見えていて、かつ開いている物だけ(畳まれた塊を畳むと膜に化ける= v4.0.188)', true);
+  ok(/if \(!meosDocModes\(editor\.document\)\) return;/.test(src),
+     '★設定that1つも無いファイルでは何もしない(今までと1mmも変わらない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -9517,15 +9517,47 @@ function meosViewMode(editor) {
 const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
 const _meosPseudoTimers = new Map();    // key → timeout
 const _meosPseudoScopes = new Map();    // key → 掛けた時のスコープ(50分後にも引き直せるように)
-// ★★v4.0.448(俊克 改良3「タイムアップになった時…ボタンを押し忘れると、開かない」):
-//   ★★**Pseudoは、その人that選んだ物ではなく、タイマーthat連れてきた物**。so時間that終われば、
-//     **掛ける前の姿へ返す**のthat筋＝ 押し忘れという事故thatそもそも起こらない。
-//   ★「人that最後に指定した物を勝たせる」は変わっていない＝ 掛ける前に自分でPseudoにしていた人は、
-//     Pseudoのまま返る(タイマーのPseudoは**タイマーの持ち物**で、その人の指定ではない)。
-const _meosPseudoPrev = new Map();      // key → 掛ける前のモード
 // ★v4.0.448(俊克 改良2「残りタイムを表示する」): 面に出る残り時間は**その膜に居る時だけ**so、
 //   離れると分からなかった。→ ステータスバーに1つ出す＝ **どこに居ても、動いている物that見える**。
 let _meosTimerBar = null, _meosTimerTick = null;
+// ★★★v4.0.449(俊克 改良1「タイマーをかけるの1つとは限らないので、**残りタイマーは、膜毎に必要**だ。
+//   **閉じ膜のコメント部分に表示**しようか。ここはあまり使われないしね。問題を解いて、膜の最後まで来ると、
+//   残り時間that見える」):
+//   ★★★**置き場所thatが意味を決める**＝ 閉じ膜は「その膜の終わり」so、**解き終わった人thatが必ず通る所**。
+//     ステータスバー1つでは「どの膜の残りか」thatが言えず、2つ掛けたら片方thatが消える。膜の物は膜に置く。
+//   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
+let meosTimerLineDeco = null;
+function meosApplyTimerLineDecorations(editor) {
+  try {
+    if (!editor || !editor.document) return;
+    if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    const doc = editor.document;
+    const items = [];
+    if (_meosPseudoUntil.size) {
+      const uri = doc.uri.toString();
+      const byId = new Map();
+      for (const [k, until] of _meosPseudoUntil) {
+        const sc = _meosPseudoScopes.get(k);
+        if (sc && sc.uri === uri && sc.key) byId.set(sc.key, until);
+      }
+      if (byId.size) {
+        for (const pr of collectPairs(doc, { excludeIndex: false })) {
+          const until = byId.get(pr.id);
+          if (until == null) continue;
+          const ln = pr.end, text = doc.lineAt(ln).text || '';
+          items.push({
+            range: new vscode.Range(ln, text.length, ln, text.length),
+            renderOptions: { after: { contentText: '   \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())), color: '#e0803a', fontWeight: '800' } }
+          });
+        }
+      }
+    }
+    editor.setDecorations(meosTimerLineDeco, items);
+  } catch (_) { }
+}
+function meosTickTimerLines() {
+  try { for (const ed of (vscode.window.visibleTextEditors || [])) meosApplyTimerLineDecorations(ed); } catch (_) { }
+}
 function meosUpdateTimerBar() {
   try {
     let best = null;
@@ -9533,14 +9565,17 @@ function meosUpdateTimerBar() {
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
       if (_meosTimerBar) _meosTimerBar.hide();
+      meosTickTimerLines();
       return;
     }
     if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     const sc = _meosPseudoScopes.get(best.k);
-    _meosTimerBar.text = '⏰ ' + meosMmSs(Math.max(0, best.until - Date.now())) + (sc && sc.name ? ('  ' + sc.name) : '');
+    const n = _meosPseudoUntil.size;
+    _meosTimerBar.text = '⏰ ' + meosMmSs(Math.max(0, best.until - Date.now())) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
     _meosTimerBar.tooltip = 'MeOS: this membrane is held in Pseudo-WYSIWYG. When the time is up it goes back on its own.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
     _meosTimerBar.show();
+    meosTickTimerLines();
     if (!_meosTimerTick) _meosTimerTick = setInterval(() => meosUpdateTimerBar(), 1000);
   } catch (_) { }
 }
@@ -9552,15 +9587,22 @@ function meosClearPseudoTimer(key) {
   _meosPseudoTimers.delete(key); _meosPseudoUntil.delete(key);
   meosUpdateTimerBar();
 }
-// 時間that終わった(または人that止めた)＝ **掛ける前の姿へ返す**。口は1つ。
+// ★★★v4.0.449(俊克 改良3「答え合わせをするのには、**タイムアップ後に、通常モードに切り替えた方が
+//   分かりやすい**よ」):
+//   ★★★**v4.0.448の「掛ける前の姿へ返す」は、改良2と噛み合わない**＝ ⏰をPseudoでしか出さないなら、
+//     掛ける前は**必ずPseudo**so、返す先も必ずPseudo＝ **答えthat永遠に出ない**。
+//     俊克thatが先に気づいた。→ **終わりの行き先は「通常」1つ**にする。
+//   ★これで話thatが一直線になる＝ 鐘thatが鳴る → 答案から手を離す → **答えthat出る**。
+//     「人that最後に指定した物を勝たせる」とも矛盾しない＝ その人thatが指定したのは「50分のテスト」で、
+//     テストの終わりとは**答え合わせthat始まること**だから。
+// 時間that終わった(または人that止めた)＝ **通常へ返す**。口は1つ。
 async function meosEndPseudoTimer(key) {
   const scope = _meosPseudoScopes.get(key);
-  const prev = _meosPseudoPrev.get(key) || 'normal';
   meosClearPseudoTimer(key);
-  _meosPseudoScopes.delete(key); _meosPseudoPrev.delete(key);
+  _meosPseudoScopes.delete(key);
   if (!scope) { meosPostViewMode(); return null; }
   const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri);
-  if (doc) await meosApplyModeToScope(doc, scope.key, prev, scope.name);
+  if (doc) await meosApplyModeToScope(doc, scope.key, 'normal', scope.name);
   else meosPostViewMode();
   return scope;
 }
@@ -9576,7 +9618,7 @@ async function meosEndPseudoTimer(key) {
 async function meosPseudoTimeUp(key) {
   const scope = await meosEndPseudoTimer(key);
   const name = scope && scope.name;
-  vscode.window.showInformationMessage('MeOS: Time is up' + (name ? ' \u2014 ' + name : '') + '. The membrane is back the way it was \u2014 your 👻 answers are exactly where you wrote them.');
+  vscode.window.showInformationMessage('MeOS: Time is up' + (name ? ' \u2014 ' + name : '') + '. Back to the normal view \u2014 your 👻 answers are showing again, exactly where you wrote them.');
 }
 function meosPostViewMode() {
   try {
@@ -9661,7 +9703,6 @@ async function meosStartPseudoTimer(minutes) {
   const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
   const lk = meosLockKey(scope);
   meosClearPseudoTimer(lk);
-  _meosPseudoPrev.set(lk, meosScopeMode(scope));      // 掛ける前の姿を控える(返す先)
   _meosPseudoScopes.set(lk, scope);
   _meosPseudoUntil.set(lk, Date.now() + m * 60000);
   _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk), m * 60000 + 250));
@@ -12584,6 +12625,7 @@ function _refreshInner(editor) {
   try { meosApplyImageThumbDecorations(editor); } catch (_) {} // v3.4.0: 画像膜の額縁サムネ(開始行の先頭)
   try { meosApplyMeTexDecorations(editor); } catch (_) {} // v3.5.0: MeTeX 上付き↑/下付き↓ の整形(Raw/隔離時は関数内で解除)
   try { meosApplyFcRowDecorations(editor); } catch (_) {} // v4.0.301: 今いる行に対応するFC行を色で名指す
+  try { meosApplyTimerLineDecorations(editor); } catch (_) {} // v4.0.449: 残り時間は、その膜の閉じ膜の行に
   try { meosApplyNameStampDecorations(editor); } catch (_) {} // v4.0.363: 膜名TSのモザイク色分け(詰めた数字を読めるように)
   try { meosApplyMeLinkDecorations(editor); } catch (_) {} // v4.0.8: ノート内リンク(コメント包み)の整形
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
@@ -21450,7 +21492,11 @@ rawToggle.textContent=VM_FACE[viewMode]+(held?(' '+vmMmSs(left)):'');
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
-var _rt=document.getElementById('raw-timer');if(_rt)_rt.classList.toggle('running',left>0);
+/* ★★v4.0.449(俊克 改良2「タイマーは『ほぼWYSIWYG』で起動するので、Rawモードと通常モードでは、
+   目覚ましボタンは非表示にした方が良いんじゃない?」): ★★**⏰はPseudoの持ち物**so、Pseudoの膜に居る時
+   だけ出す。持ち主thatが決まっている物を、関係の無い所に置かない(押しても意味thatが無い物は、見せない)。 */
+var _rt=document.getElementById('raw-timer');
+if(_rt){_rt.classList.toggle('running',left>0);_rt.style.display=(viewMode==='pseudo')?'':'none';}
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f0 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f0 if you really must stop it early.')
 :('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'\u2325 Opt-click \u2192 '+VM_NAME[back]
@@ -26422,6 +26468,25 @@ async function meosSyncFcFoldForCursor(editor) {
     return;
   } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
 }
+// v4.0.449: Pseudoの膜の中で開いてしまった塊を、その場で畳み直す(『⋯』を押した時の1秒を消すため)。
+//   畳むのは**見えていて、かつ開いている物だけ**(v4.0.188)＝ 畳まれた塊を畳むと膜に化ける。
+async function meosFoldPseudoOpened(editor) {
+  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy || _meosFcFolding) return;
+  try {
+    if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
+    if (!meosDocModes(editor.document)) return;                       // 設定that1つも無いファイル= 何もしない
+    if ((editor.selections || []).some(sl => !sl.isEmpty)) return;    // 選択中は畳まない(v4.0.214)
+    const doc = editor.document;
+    const blocks = meosFcBlocks(doc);
+    if (!blocks.length) return;
+    const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
+    const hits = blocks.filter(b => meosModeAtLine(doc, b.start) === 'pseudo' && _vis(b.start) && _vis(b.end)).map(b => b.start);
+    if (!hits.length) return;
+    _meosFcBusy = true;
+    try { await vscode.commands.executeCommand('editor.fold', { selectionLines: hits }); } catch (_) { }
+    finally { _meosFcBusy = false; }
+  } catch (_) { _meosFcBusy = false; }
+}
 const _meosFcFolded = new Set();
 // v4.0.140(俊克 質問1「FC指定なのに、なぜコメントが自動で折り畳まれないのか?」):
 // ★スクショ2枚目で**折り畳みマーク(>)は出ていた**=**範囲の提供は正しく、失敗しているのは「畳む」動作だけ**と絞れた。
@@ -28866,6 +28931,12 @@ function activate(context) {
     //   ＝ 打鍵がそのままこの合図を鳴らす。塊の一覧は文書の版で作り直すので、打つたびに全文を刻み直していた。
     //   → 打鍵が止まってからにする(個別の道と同じ物差し MEOS_FC_TYPING_QUIET_MS を使う=物差しは1つ)。
     // v4.0.396: 再武装をやめた。打鍵で画面が動いただけなら、関数の中の門番が捨てる(合間に落ちない)。
+    // ★★v4.0.449(俊克 改良4「Pseudoの膜の中で、お化けを設定した行の右端の『⋯』を押すと、1秒くらい
+    //   FCコメントthatが出てしまう。これはどうしてなのか? これを抑えることは可能なのか?」):
+    //   ★★**その『⋯』はVS Code自身の「畳んである」印**で、押す＝ **開く**。soMeOSは畳み直す＝
+    //     出てしまうのは避けられないthat、**待たせているのはこちらの320ms**。→ Pseudoの膜の中だけ、
+    //     **待たずにその場で畳み直す**(1秒 → ひと呼吸)。完全に消せないのは、開く命令thatVS Codeの物だから。
+    try { meosFoldPseudoOpened(e.textEditor); } catch (_) { }
     _meosFcScrollTimer = setTimeout(() => { _meosFcScrollTimer = null; try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { } }, 320);
   }));
   context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { meosDropDecoSigCache(); setTimeout(() => { try { meosAutoFoldSpecLines(vscode.window.activeTextEditor); } catch (_) { } }, 600); }));
