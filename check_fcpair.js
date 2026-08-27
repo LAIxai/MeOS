@@ -926,7 +926,7 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
   // (5) 錠も膜ごと = 俊克の目的
   ok(/const _meosPseudoUntil = new Map\(\);/.test(src) && /function meosPseudoLeftFor\(key\)/.test(src),
      '★★★テスト用紙の膜だけ50分ロック、他の膜は普通に書ける(俊克の目的)', true);
-  ok(/if \(cur === 'pseudo' && meosPseudoLeftFor\(lk\) > 0 && next !== 'pseudo'\)/.test(src),
+  ok(/meosPseudoLeftFor\(lk\) > 0 && next !== 'pseudo'\)/.test(src),
      '★閉めるのは、その膜の出口だけ', true);
   // (6) 面は「今カーソルの居る膜」を出す
   ok(/try \{ meosPostViewMode\(\); \} catch \(_\) \{ \}\n  const editor = getMeDockTargetEditor\(\);/.test(src),
@@ -968,8 +968,8 @@ console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を
   const cur = src.indexOf('if (line === curLine) continue;', lane);
   ok(lane >= 0 && rawSkip > lane && cur > rawSkip,
      '★カーソル行が線を譲るのと同じ場所・同じ理由で譲る', [rawSkip - lane, cur - lane]);
-  ok(/async function meosEndPseudoTimer\(key\)/.test(src) && /if \(doc\) await meosApplyModeToScope\(doc, scope\.key, 'normal', scope\.name\);/.test(src),
-     '★★★時間that終わったら**通常へ返る**= 鐘that鳴る→答えthat出る(v4.0.449 俊克 改良3)', true);
+  ok(/async function meosEndPseudoTimer\(key\)/.test(src) && /if \(doc && scope\.hold\) await meosApplyModeToScope\(doc, scope\.key, 'normal', scope\.name\);/.test(src),
+     '★★★押さえていた時だけ通常へ返る= 鐘that鳴る→答えthat出る / ただの呼び鈴は見え方に触れない', true);
   ok(!/_meosPseudoPrev/.test(src),
      '★★「掛ける前の姿へ返す」は捨てた= ⏰thatPseudoでしか出ない以上、返す先は必ずPseudoになってしまう', true);
   ok(!/'Show the answers'/.test(src),
@@ -978,8 +978,8 @@ console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を
      '★終わり方の口は1つ(時間切れも、人that止めた時も、同じ道)', (src.match(/meosEndPseudoTimer\(/g) || []).length);
   ok(/const doc = vscode\.workspace\.textDocuments\.find\(d => d\.uri\.toString\(\) === scope\.uri\);/.test(src),
      '★50分後でも引き直せるようスコープはuriを持つ(古いdocを掴んだままにしない)', true);
-  ok(/_meosPseudoScopes\.set\(lk, scope\);/.test(src),
-     '★終わりの知らせは、掛けた時のスコープをそのまま持って行く', true);
+  ok(/_meosPseudoScopes\.set\(lk, \{ doc: scope\.doc, uri: scope\.uri, key: scope\.key, name: scope\.name, hold \}\);/.test(src),
+     '★終わりの知らせは、掛けた時のスコープ(と役)をそのまま持って行く', true);
   ok(/function meosUpdateTimerBar\(\)/.test(src) && /_meosTimerBar\.text = /.test(src),
      '★★残り時間はステータスバーにも出す= どこに居ても、動いている物that見える(俊克 改良2)', true);
   ok(/if \(_meosTimerTick\) \{ clearInterval\(_meosTimerTick\); _meosTimerTick = null; \}/.test(src),
@@ -1018,8 +1018,10 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
   ok(/\(n > 1 \? \('  \+' \+ \(n - 1\)\) : ''\)/.test(src),
      '★ステータスバーは「一番早く終わる物 ＋ 残り何本」(1つとは限らない)', true);
   // 改良2: ⏰ は Pseudo の持ち物
-  ok(/_rt\.style\.display=\(viewMode==='pseudo'\)\?'':'none';/.test(src),
-     '★★⏰はPseudoの膜に居る時だけ出す(押しても意味that無い物は見せない)', true);
+  ok(!/_rt\.style\.display=/.test(src),
+     '★★★⏰はどこでも押せる(v4.0.453: 時計that「錠」だけでなく「呼び鈴」になったため)', true);
+  ok(/const hold = \(meosScopeMode\(scope\) === 'pseudo'\);/.test(src),
+     '★★掛けた時のモードthat時計の役を決める= Pseudoなら押さえる / それ以外なら呼ぶだけ', true);
   // 改良4: 『⋯』の後を、待たずに畳み直す
   ok(/async function meosFoldPseudoOpened\(editor\)/.test(src),
      '★★Pseudoの膜で開いてしまった塊を、その場で畳み直す', true);
@@ -1029,6 +1031,27 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
      '★畳むのは見えていて、かつ開いている物だけ(畳まれた塊を畳むと膜に化ける= v4.0.188)', true);
   ok(/if \(!meosDocModes\(editor\.document\)\) return;/.test(src),
      '★設定that1つも無いファイルでは何もしない(今までと1mmも変わらない)', true);
+}
+
+console.log('㊽ 時計は呼び鈴でもある — 鳴ったらその膜へ／時刻でも掛かる(v4.0.453 俊克 進化1)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/async function meosJumpToScope\(scope\)/.test(src),
+     '★★★鳴ったら**その膜thatが呼ぶ**(予定も、その場所に居る)', true);
+  ok(/const scope = await meosEndPseudoTimer\(key\);\n  if \(!scope\) return;\n  await meosJumpToScope\(scope\);/.test(src),
+     '★終わってから飛ぶ(押さえを解いてから呼ぶ= 順番that1つ)', true);
+  ok(/pushMeDockLineHistory\(ed, ed\.selection\.active\.line\)/.test(src),
+     '★★飛ぶ前に今の行を積む= ◀ で元居た所へ戻れる(呼ばれた人を迷子にしない)', true);
+  ok(/function meosMsUntilClock\(txt\)/.test(src) && /if \(t\.getTime\(\) <= now\.getTime\(\)\) t\.setDate\(t\.getDate\(\) \+ 1\);/.test(src),
+     '★★時刻でも掛かる(過ぎていれば明日の同じ時刻)= 俊克「1時限目の終りの時刻」', true);
+  ok(/\{ label: 'At a time…', m: -1/.test(src),
+     '★メニューに「時刻で」that在る', true);
+  ok(/const ms = untilMs \? Math\.max\(1000, untilMs\) :/.test(src),
+     '★分でも時刻でも、中では同じ1つの物(ms)になる', true);
+  ok(/const _held = _meosPseudoScopes\.get\(lk\);\n  if \(cur === 'pseudo' && _held && _held\.hold/.test(src),
+     '★出口を閉めるのは、押さえた時計だけ(呼び鈴は閉めない)', true);
+  ok(!/await meosSetViewMode\('pseudo'\);\n  meosUpdateTimerBar/.test(src),
+     '★呼び鈴は掛けても見え方を変えない(Pseudoへ勝手に入れない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

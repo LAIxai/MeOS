@@ -9652,7 +9652,8 @@ async function meosEndPseudoTimer(key) {
   _meosPseudoScopes.delete(key);
   if (!scope) { meosPostViewMode(); return null; }
   const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri);
-  if (doc) await meosApplyModeToScope(doc, scope.key, 'normal', scope.name);
+  // v4.0.453: 押さえていた時だけ、押さえを解いて通常へ返す。ただの呼び鈴は**見え方に触れない**。
+  if (doc && scope.hold) await meosApplyModeToScope(doc, scope.key, 'normal', scope.name);
   else meosPostViewMode();
   return scope;
 }
@@ -9665,10 +9666,40 @@ async function meosEndPseudoTimer(key) {
 //   ★これは「人that最後に指定した物を勝たせる」と矛盾しない＝ 返す先は**その人thatが最後に指定した姿**
 //     (掛ける前に自分でPseudoにしていたなら、Pseudoのまま返る)。→ [[project_last_specified_wins]]
 //   ★知らせにボタンthat要らなくなった＝ 押す物thatが無ければ、押し忘れも無い。
+// ★★★v4.0.453(俊克 進化1「タイムアップしたら、**その膜にジャンプする**機能を付ければ、他で作業を
+//   しているときに、**次の作業を書いた膜に、作業指示を書いておけば**、スケジュール管理と、実行記録も取れる。
+//   残り時間を設定したけど、**1時限目の終りの時刻**を設定しておいたり、作業の切り替え時刻を設定したりできる」):
+//   ★★★**時計thatが「錠」から「呼び鈴」になる**＝ 今までは「その膜を押さえる物」だったthat、
+//     俊克の言うとおり**時刻に、その場所を呼び出す物**でもある。so鳴ったら**こちらthat行くのでなく、
+//     向こうthatが呼ぶ**。👻thatが「その場所に居る」のと同じ筋＝ **予定も、その場所に居る**
+//     (どこに書いたか思い出す仕事thatが消える)。実行記録は、呼ばれた先にそのまま書けばよい＝ 新しい入れ物は要らない。
+//   ★**呼ばれることに同意しているのは、時計を掛けた本人**so、ここは焦点を取ってよい
+//     (v4.0.141「焦点は奪わない」は、人that頼んでいない時の話)。
+//   ★元居た所へは ◀(Line history)で戻れるよう、飛ぶ前に今の行を積む。
+async function meosJumpToScope(scope) {
+  try {
+    if (!scope) return;
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri);
+    if (!doc) return;
+    const rng = meosScopeRangeNow(doc, scope.key);
+    if (!rng) return;
+    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
+    try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
+    const ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
+    const pos = new vscode.Position(ln, 0);
+    ed.selection = new vscode.Selection(pos, pos);
+    try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }
+    ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+  } catch (_) { }
+}
 async function meosPseudoTimeUp(key) {
   const scope = await meosEndPseudoTimer(key);
-  const name = scope && scope.name;
-  vscode.window.showInformationMessage('MeOS: Time is up' + (name ? ' \u2014 ' + name : '') + '. Back to the normal view \u2014 your 👻 answers are showing again, exactly where you wrote them.');
+  if (!scope) return;
+  await meosJumpToScope(scope);
+  const name = scope.name || 'this file';
+  vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + (scope.hold
+    ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'
+    : ' Here is the membrane you asked for.'));
 }
 function meosPostViewMode() {
   try {
@@ -9705,7 +9736,8 @@ async function meosSetViewMode(mode) {
   const cur = meosScopeMode(scope);
   const lk = meosLockKey(scope);
   // 錠が掛かっている間は、Pseudoから出る道だけをふさぐ(入る道と、見え方には触れない)。
-  if (cur === 'pseudo' && meosPseudoLeftFor(lk) > 0 && next !== 'pseudo') {
+  const _held = _meosPseudoScopes.get(lk);
+  if (cur === 'pseudo' && _held && _held.hold && meosPseudoLeftFor(lk) > 0 && next !== 'pseudo') {
     vscode.window.setStatusBarMessage('MeOS: this membrane is held in Pseudo-WYSIWYG for another ' + meosMmSs(meosPseudoLeftFor(lk)) + ' — ⏰ to end it early.', 2500);
     meosPostViewMode();
     return 'pseudo';
@@ -9750,19 +9782,33 @@ async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pse
 //     ＝ **人が最後に指定した物を勝たせる**(→ [[project_last_specified_wins]])。答え合わせは本人の1クリックから。
 //   ★止める道は残す＝ 掛けた本人が「今やめる」と言えない錠は**守れない約束**(拡張を切れば消える)。
 //     ただし**うっかりでは外れない**(⏰から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
-async function meosStartPseudoTimer(minutes) {
+// 「18:30」「1830」→ その時刻までの ms。過ぎていれば明日の同じ時刻(俊克「1時限目の終りの時刻」)。
+function meosMsUntilClock(txt) {
+  const m = /^\s*(\d{1,2})\s*[:：]?\s*(\d{2})\s*$/.exec(String(txt || ''));
+  if (!m) return 0;
+  const hh = +m[1], mm = +m[2];
+  if (hh > 23 || mm > 59) return 0;
+  const now = new Date();
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  if (t.getTime() <= now.getTime()) t.setDate(t.getDate() + 1);
+  return t.getTime() - now.getTime();
+}
+async function meosStartPseudoTimer(minutes, untilMs) {
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
-  const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
+  const ms = untilMs ? Math.max(1000, untilMs) : Math.max(1, Math.min(600, Math.round(Number(minutes) || 0))) * 60000;
   const lk = meosLockKey(scope);
   meosClearPseudoTimer(lk);
-  _meosPseudoScopes.set(lk, scope);
-  _meosPseudoUntil.set(lk, Date.now() + m * 60000);
-  _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk), m * 60000 + 250));
-  await meosSetViewMode('pseudo');
+  // ★★v4.0.453: **掛けた時のモードthat、時計の役を決める**＝ Pseudoで掛ければ「押さえる」(テスト用紙)、
+  //   それ以外で掛ければ「呼び鈴」(見え方には触れない)。人に問いを1つも足さずに、2つの使い方thatが分かれる。
+  const hold = (meosScopeMode(scope) === 'pseudo');
+  _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold });
+  _meosPseudoUntil.set(lk, Date.now() + ms);
+  _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk), ms + 250));
   meosUpdateTimerBar();
   meosPostViewMode();
-  vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' held in Pseudo-WYSIWYG for ' + m + ' min — the way out comes back when the time is up.', 3000);
+  vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + meosMmSs(ms)
+    + (hold ? ' held in Pseudo-WYSIWYG; the way out comes back when the time is up.' : ' until MeOS brings you back here.'), 3000);
 }
 async function meosPseudoTimerMenu() {
   const ed = meosCurrentEditor(); if (!ed) return;
@@ -9780,16 +9826,29 @@ async function meosPseudoTimerMenu() {
     vscode.window.setStatusBarMessage('MeOS: timer ended — the membrane is back the way it was.', 2500);
     return;
   }
+  const hold = (meosScopeMode(scope) === 'pseudo');
   const items = [
     { label: '10 minutes', m: 10 }, { label: '25 minutes', m: 25 },
     { label: '50 minutes', m: 50, description: 'one class hour' }, { label: '90 minutes', m: 90 },
-    { label: 'Custom…', m: 0 }
+    { label: 'Custom…', m: 0 },
+    { label: 'At a time…', m: -1, description: 'e.g. 18:30 — the end of a period, a hand-over' }
   ];
   const pick = await vscode.window.showQuickPick(items, {
-    title: 'MeOS — hold ' + who + ' in Pseudo-WYSIWYG',
-    placeHolder: 'Nothing raw, nothing crossed out, and no way out until the time is up'
+    title: 'MeOS — ' + (hold ? 'hold ' + who + ' in Pseudo-WYSIWYG' : 'ring here: ' + who),
+    placeHolder: hold
+      ? 'Nothing raw, nothing crossed out, and no way out until the time is up'
+      : 'MeOS brings you back to this membrane when the time comes; nothing about the view changes'
   });
   if (!pick) return;
+  if (pick.m === -1) {
+    const t = await vscode.window.showInputBox({
+      title: 'MeOS — at what time?', value: '18:30', prompt: '24-hour clock. A time already past means tomorrow.',
+      validateInput: (v) => meosMsUntilClock(v) ? null : 'HH:MM (e.g. 18:30)'
+    });
+    if (!t) return;
+    await meosStartPseudoTimer(0, meosMsUntilClock(t));
+    return;
+  }
   let m = pick.m;
   if (!m) {
     const t = await vscode.window.showInputBox({ title: 'MeOS — how many minutes?', value: '50', validateInput: (v) => (/^\d{1,3}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 600) ? null : '1 to 600' });
@@ -21545,11 +21604,16 @@ rawToggle.textContent=VM_FACE[viewMode]+(held?(' '+vmMmSs(left)):'');
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
-/* ★★v4.0.449(俊克 改良2「タイマーは『ほぼWYSIWYG』で起動するので、Rawモードと通常モードでは、
-   目覚ましボタンは非表示にした方が良いんじゃない?」): ★★**⏰はPseudoの持ち物**so、Pseudoの膜に居る時
-   だけ出す。持ち主thatが決まっている物を、関係の無い所に置かない(押しても意味thatが無い物は、見せない)。 */
+/* ★★★v4.0.453(俊克 進化1「タイムアップしたら、その膜にジャンプする機能を付ければ…スケジュール管理と、
+   実行記録も取れる」): ★★★**v4.0.449の改良2(⏰はPseudoでだけ出す)を、俊克自身thatが越えた**＝
+   時計thatが「錠」だけでなく「呼び鈴」になったso、Pseudo以外でも掛けられないと使えない。→ **どこでも出す**。
+   ★代わりに、**掛けた時のモードthat時計の役を決める**= Pseudoなら押さえる/それ以外なら呼ぶだけ。
+   人に問いを足さずに、2つの使い方thatが分かれる。tipthatどちらになるかを先に言う。 */
 var _rt=document.getElementById('raw-timer');
-if(_rt){_rt.classList.toggle('running',left>0);_rt.style.display=(viewMode==='pseudo')?'':'none';}
+if(_rt){_rt.classList.toggle('running',left>0);
+_rt.setAttribute('data-tip',(viewMode==='pseudo')
+?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
+:('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f0 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f0 if you really must stop it early.')
 :('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'\u2325 Opt-click \u2192 '+VM_NAME[back]

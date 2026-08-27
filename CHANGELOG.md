@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.453 (2026-08-27)
+- **The clock stops being only a lock and becomes a bell.** When the time comes, MeOS now takes you to the
+  membrane. Write the next job inside a membrane, set a time on it, and it comes and finds you — the schedule
+  lives in the place it is about, the way a 👻 note does, so there is nothing to remember about where you put it.
+  Whatever you then write there is the record; no separate log is needed.
+- **A clock time works as well as a duration** — "18:30", for the end of a period or a hand-over. A time already
+  past means tomorrow.
+- **What the clock does is decided by the view you set it from**: from Pseudo-WYSIWYG it holds the membrane (the
+  test paper — no way out, then back to Normal when it rings); from anywhere else it is only a bell and touches
+  nothing. So ⏰ is available in every view again — v4.0.449 hid it outside Pseudo, and this use outgrew that.
+- Your position is pushed to the line history before the jump, so ◀ takes you back to what you were doing.
+
 ### v4.0.452 (2026-08-27)
 - **A setting on an outer membrane already reaches everything inside it** — that is what lexical scope means, and
   setting the ground outside every membrane reproduces the old whole-file behaviour. **But the button was not
