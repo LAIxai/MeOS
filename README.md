@@ -102,6 +102,19 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
 - **Your token, watched** — the GitHub push row shows how many days your access token has left, at the right
   edge where you can see it **even with the panel folded**. When it expires, the disconnect button turns into
   a one-press fix.
+- **Three ways to look at a membrane — and a clock on it** — every membrane decides for itself how much of the
+  raw source it shows: 👁🥩 **Normal** (decorated, and the line under your caret opens up raw), **Raw🥩** (*this*
+  membrane shows its raw data, while the rest of the file stays exactly as it was), **Pseudo👁 Pseudo-WYSIWYG**
+  (nothing raw at all — the caret stops opening the source, 👻 stays hidden, and even a plain strikethrough
+  disappears: the finished text, the way a reader will meet it). A membrane that says nothing follows the one
+  around it, so a setting on the outermost membrane reaches everything inside — and the choice is saved in the
+  file's own mMETA membrane, so it travels with the file and is still there tomorrow.
+  Then put **⏰** on a membrane: minutes, or a time such as `18:30`. Set from Pseudo-WYSIWYG it **holds** that
+  membrane — no way out until the time is up — and the answers are already in the file, hidden in 👻, so the
+  moment the bell rings you mark your own work: **one file is the question paper, the answer sheet and the
+  answer key**, and it can be sat again tomorrow. Set from any other view it is simply a **bell** — write the
+  next job inside a membrane and MeOS brings you to it when the time comes. The schedule lives in the place it
+  is about, the way a 👻 note does; **↩ Back** returns you to whatever you were doing.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once - MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
@@ -351,7 +364,8 @@ MeOS stands on the shoulders of:
 - **Writer formatting** — highlight / strikethrough / headings with text & background colors and `//comments` (editor⇄author notes), via one-tap buttons.
 - **🔖 Bookmarks — leap there, and back** — up to 3 "place" bookmarks with a one-click **Front Anchor** (the line you're writing right now). Two bookmarks make a **bidirectional jump**: there, and back, again and again. A safety net so you never lose your home.
 - **▶◀ Reference marks (point membranes)** — named, grouped, grep-able in-text bookmarks that live in your text and travel with Git. Create a group via **Edit▾ → Reference** (pick a canonical symbol: ※ † ‡ * §), issue marks with the **💤 button** (one click parks a "do it later" point; the new mark becomes **F**), and cycle a group with the **※ button** (one click jumps to F, click again to walk the group). Footnotes (†n) are simply the most classic use of reference marks — the mark sits in the text, the explanation lives with the mark.
-- **Raw view (👁 button or type `kakaka`)** — toggle all rendering off to read the plain markup, or for a distraction-free editor. Cast the spell again to restore MeOS. *(CJK input is already smooth — decorations live in the gutter — so you rarely need this.)*
+- **Three views, one per membrane** — 👁🥩 **Normal** (decorated; the caret line shows its raw data) · **Raw🥩** (*this* membrane shows its raw source — membrane lanes and all decoration step aside — while every other membrane keeps its own setting) · **Pseudo👁 Pseudo-WYSIWYG** (nothing raw at all; 👻 and plain strikethroughs disappear, so a draft reads the way a reader will meet it). A membrane with no setting of its own follows the one enclosing it, and a setting is only written when it differs from what encloses it. Saved in the file's own **mMETA** membrane, so it travels with the file through Git. *(The `kakaka` spell still works — it now toggles Raw for the membrane you are in.)*
+- **⏰ A clock on a membrane** — minutes, or a clock time such as `18:30`. From **Pseudo-WYSIWYG** it **holds** the membrane: no way out until the time is up, and because the answers are already in the file — hidden in 👻, exactly where you wrote them — **one file becomes the question paper, the answer sheet and the answer key**. The bell rings, the membrane returns to Normal, and you mark your own work; tomorrow the same file is a test again, or a memory sheet. From **any other view** it is a bell instead: write the next job inside a membrane, set a time, and MeOS brings you to it — the schedule lives in the place it is about, and **↩ Back** takes you home. The countdown shows in the membrane's own closing comment, so it is waiting for you exactly where you finish.
 
 > ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`
 > Keeps wrapped lines flush, so they sit cleanly next to the gutter membrane lanes.
