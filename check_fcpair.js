@@ -986,8 +986,8 @@ console.log('㊻ Rawは何も描かない／時間切れの知らせに出口を
      '★動いている物that無くなったら、時計も止める', true);
   ok(src.indexOf('⏱') < 0 && src.indexOf('⏳') < 0, '★⏱ も ⏳ も残っていない(俊克 改良1: ⏰ に)', true);
   ok(/id="raw-timer"[^>]*>&#9200;</.test(src), '★⏰(U+23F0) を使う= 俊克thatが名指しした字(v4.0.448)', true);
-  ok(/\.fmt-lvl\.raw-timer\{cursor:pointer;background:#ffffff;color:#111/.test(src),
-     '★★白地の円に置く= 小さい絵文字は地that暗いと沈む(俊克 改良1)', true);
+  ok(/\.warn-btn\.raw-timer\{opacity:\.45/.test(src),
+     '★★v4.0.456で白地の円をやめ、⚠️と同じ駒の作りへ(円のままでは目立たない)', true);
   // ★★★v4.0.448: 面の色thatCSSのidに負けていた(v4.0.440から一度も出ていなかった)
   ok(!/#raw-toggle\{background:/.test(src),
      '★★★id の色指定that消えている= 面の色は class 1本で決まる(CSSは「後」でなく「強さ」)', true);
@@ -1071,24 +1071,32 @@ console.log('㊾ 連れ出したのはMeOSso、帰り道もMeOSthat出す(v4.0.4
      '★タブを閉じていても開き直して戻れる', true);
 }
 
-console.log('㊿ 3モードボタンと⏰は Navigate Me! の ⚠️ の右へ(v4.0.455 俊克)');
+console.log('㊿ モードの駒と⏰は ⚠️ の右・2つに分ける(v4.0.455/456 俊克)');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  const warn = src.indexOf('id="warn-n"></span></button></span><span class="fmt-cell-head raw-cell">');
+  const warn = src.indexOf('id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle"');
   ok(warn >= 0, '★★★⚠️ の**すぐ右**に立つ(今この膜はどうなっているか、を言う列)', true);
   const fmtRow = src.indexOf('id="mew-cycle"');
   const fmtEnd = src.indexOf('mCN=dock_format', fmtRow);
-  ok(fmtRow >= 0 && fmtEnd > fmtRow && src.slice(fmtRow, fmtEnd).indexOf('raw-cell') < 0,
+  ok(fmtRow >= 0 && fmtEnd > fmtRow && src.slice(fmtRow, fmtEnd).indexOf('raw-toggle') < 0,
      '★Format Me の中には残っていない(そこだけ1文字も書かない駒thatだった)', true);
   ok(/id="raw-toggle"/.test(src) && /id="raw-timer"/.test(src),
      '★idは変えない= webview側の配線(getElementById)はそのまま生きる', true);
-  ok(src.indexOf('class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle"') >= 0
-     && src.indexOf('id="raw-toggle"') < src.indexOf('id="raw-timer"'),
-     '★★モードボタンと⏰は1つの枡のまま(掛けた時のモードthat⏰の役を決めるので、隣に居ることthat意味を持つ)', true);
-  ok(/\.raw-cell\{margin-left:8px;position:relative;display:inline-flex;align-items:center\}/.test(src),
-     '★右端固定(margin-left:auto)をやめた= ⚠️ の隣に立つため', true);
-  ok((src.match(/class="fmt-cell-head raw-cell"/g) || []).length === 1,
-     '★枡は1つだけ(移したつもりで置き去りthat無い)', (src.match(/class="fmt-cell-head raw-cell"/g) || []).length);
+  // ★v4.0.456: ⏰ を独り立ちさせる
+  ok(/<button class="warn-btn raw-timer" id="raw-timer"/.test(src),
+     '★★★⏰は独り立ちした駒(右肩の15pxのバッジでは、どう塗っても目立たない)', true);
+  ok(!/fmt-lvl raw-timer/.test(src),
+     '★バッジの名残thatが無い', true);
+  ok(/\.warn-btn\.raw-timer\{opacity:\.45/.test(src) && /\.warn-btn\.raw-timer\.running\{opacity:1/.test(src),
+     '★★隣の ⚠️ と同じ作り(家の中の同じ役の部品を真似る)・走れば点く', true);
+  ok(/rawToggle\.textContent=VM_FACE\[viewMode\];/.test(src),
+     '★★★面はモードだけを言う= **1つの駒は1つのことを言う**(残り時間は⏰の持ち物)', true);
+  ok(/if\(_rn\)_rn\.textContent=\(left>0\)\?vmMmSs\(left\):'';/.test(src),
+     '★残り時間は⏰の中に出る(走っていなければ何も出さない)', true);
+  ok(/\.fmt-btn\.raw-toggle\{margin-left:8px\}/.test(src),
+     '★分けたので、モードの駒は自分で左の間合いを持つ', true);
+  ok((src.match(/id="raw-timer"/g) || []).length === 1,
+     '★駒は1つだけ(移したつもりで置き去りthat無い)', (src.match(/id="raw-timer"/g) || []).length);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

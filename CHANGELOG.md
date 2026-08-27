@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.456 (2026-08-28)
+- **⏰ is its own button now**, standing beside 👁🥩 to the right of ⚠️. A 15px badge on a button's shoulder stays
+  a 15px badge however you paint it — v4.0.448 made it white and it still sank. As a piece in its own right it
+  is built like its neighbour ⚠️: grey while nothing is running, lit orange while it is.
+- Splitting it settled something else: **one piece says one thing.** The face now reports only the view mode;
+  the remaining time lives in ⏰, where it belongs. Until now the mode button carried both.
+
 ### v4.0.455 (2026-08-28)
 - **The view-mode button and its ⏰ have moved to Navigate Me!, immediately right of ⚠️.** In Format Me every
   other control writes something — `==`, 👻, `A²`, `##`, ▦, 🐱 all put characters in the file — and this one
