@@ -701,7 +701,7 @@ console.log('㊶ 👻 コメント化=完全に見えなくする(v4.0.416 俊�
   const g3 = T.meosParseSpecLine('<!-- Mew!FC ~~ (赤/紺)//[]tip= -->');
   ok(T.meosFcFmtIsGhost(g3, '~~', 1) === false && T.meosFcFmtInner(g3, '~~', 1) === T.meosFcFmtInner(g2, '~~', 1),
      '★★👻を消すと、色はそのまま普通の取消線になる', true);
-  ok(/if \(_fcGhost \|\| \(meosReadMode && !_fcNot\)\) \{ strikeMarkerRanges\.push\(/.test(src),
+  ok(/if \(_fcGhost \|\| \(_pseudoLine\(line\) && !_fcNot\)\) \{ strikeMarkerRanges\.push\(/.test(src),
      '★★描く側は印ごと丸ごと消す(本文だけでなく `~~` も)', true);
   ok(/bg:fmtSpec\.strike\.bg,ghost:fmtStGhostOn\(\)\}\)/.test(src),
      '★★どちらを書くかは1つの判定(fmtStGhostOn)が決める(v4.0.432)', true);
@@ -860,119 +860,59 @@ console.log('㊸ ⚠️ボタン= 壊れた膜の両端を交互に行く(v4.0.4
   ok(/window\.__renderWarn\(m\.warn\)/.test(src), '★状態が変わるたびに面を描き直す', true);
 }
 
-console.log('㊹ 3モードボタン= 通常 / Raw(膜単位) / Pseudo-WYSIWYG(v4.0.441 俊克)');
+console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞いの実測は check_viewmode.js');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  // (1) 物差しは1本 — meosRawLines が「どの行を生データで見せるか」を全部決める
-  ok(/if \(meosReadMode\) return out;   \/\/ v4\.0\.438/.test(src),
-     '★★口は1つ= meosRawLines が空を返せば12か所すべてが従う', true);
-  const n = (src.match(/meosRawLines\(/g) || []).length;
-  ok(n >= 10, '★その口を引いている所が10か所以上ある(だから1行で効く)', n);
-  // (2) Raw= 膜単位。ファイル全部をひっくり返す「2本目の道」は閉じた
-  ok(/if \(meosRawMode\) out\.band = meosRawBand\(editor\);/.test(src),
-     '★★Rawは同じ口に「帯」を足すだけ(膜まるごと=カーソルの居る一番内側の膜)', true);
-  ok(/class MeosRawLineSet extends Set/.test(src) && /touches\(from, to\)/.test(src),
-     '★14万行を1つずつ数えない(帯は始まりと終わりで持ち、has\(\)が両方を見る)', true);
-  ok(!/if \(meosRawMode\) \{ clearForRaw\(editor\); return; \}/.test(src),
-     '★★refreshの入口でファイル全部を止める道が消えている(道は1本)', true);
-  const leftovers = (src.match(/if \(typeof meosRawMode !== 'undefined' && meosRawMode\) \{ (?:clearAll\(\); return;|editor\.setDecorations)/g) || []).length;
-  ok(leftovers === 0, '★装飾ごとの「Rawなら全部やめる」門番が1つも残っていない(帯が代わりに効く)', leftovers);
-  ok(/const _rawRangeTouched = \(from, to\) => _rawLines\.touches\(from, to\);/.test(src),
-     '★範囲で訊く所も帯を見る(集合だけ数えて取りこぼさない)', true);
-  ok(!/if \(meosRawMode\) return; \/\/ v0\.9\.723/.test(src),
-     '★★Rawでもrefreshは止めない(帯はカーソルに従って動くので、止めると付いて来ない)', true);
-  // (3) Pseudo-WYSIWYG= 生データを1行も見せない + 取消線も消える
-  ok(/if \(meosReadMode\) \{ strikeMarkerRanges\.push\(\{ range: new vscode\.Range\(line, openStart, line, closeEnd\) \}\); continue; \}/.test(src),
-     '★★新形 ~~{…}~~ も Pseudo では丸ごと消える(俊克「通常の取消線も、👻同様に」)', true);
-  ok(/meosReadMode && !_fcNot/.test(src),
-     '★★`~~not` は消さない= 取消線を名乗っていない(色だけの運び屋)', true);
-  ok(/if \(next === 'pseudo'\) _meosFcOpen = 'ALL';/.test(src),
-     '★入る時は既存の道に畳み直させる(畳む口を2つ作らない)', true);
-  ok(/const _mine = \(b\) => meosReadMode \? false :/.test(src),
-     '★一括の畳みも、Pseudoではカーソルの塊を除けない', true);
-  // (4) 決める口は1つ。2つの真偽値は、その1つから書かれる
-  ok(/function meosViewMode\(\) \{ return meosRawMode \? 'raw' : \(meosReadMode \? 'pseudo' : 'normal'\); \}/.test(src),
-     '★★今どのモードかを言う口は1つ', true);
-  ok(/meosRawMode = \(next === 'raw'\);\n  meosReadMode = \(next === 'pseudo'\);/.test(src),
-     '★★同時には立ち得ない(1つの値から2つの真偽値を書くので、原理的に起きない)', true);
-  ok(/async function toggleRawMode\(\) \{ return meosSetViewMode\(meosRawMode \? 'normal' : 'raw'\); \}/.test(src)
-     && /async function toggleReadMode\(\) \{ return meosSetViewMode\(meosReadMode \? 'normal' : 'pseudo'\); \}/.test(src),
-     '★旧名は残る(コマンド/呪文の呼び元を折らない)', true);
-  ok(/registerCommand\('lai-membrane\.toggleReadMode'/.test(src)
-     && /registerCommand\('lai-membrane\.cycleViewMode'/.test(src), '★コマンドも在る(ショートカット割当可)', true);
-  // (5) ボタンは3面。面は「今どこに居るか」を出す
-  ok(/var VM_ORDER=\['normal','raw','pseudo'\];/.test(src),
-     '★★進む向きは「生データが多い→少ない」の1本道(3回押せば必ず元へ戻る)', true);
-  ok(/rawToggle\.textContent=VM_FACE\[viewMode\]/.test(src),
-     '★★面は今のモードを出す(モードボタンは状態を名乗る物)', true);
-  ok(/VM_FACE=\{normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'\}/.test(src), '★俊克の3つの印そのまま', true);
-  ok(/vscode\.postMessage\(\{type:'viewMode',step:\(ev&&ev\.altKey\)\?-1:1\}\);/.test(src),
-     '★★クリック=次へ / ⌥Opt=1つ戻る(Optは「今の逆」1本)', true);
-  ok(/message\.type === 'viewMode'/.test(src) && /meosCycleViewMode\(message\.step\)/.test(src),
-     '★受ける側も口は1つ', true);
-  ok(/if\(m&&m\.type==='viewMode'\)\{viewMode=m\.mode\|\|'normal';/.test(src),
-     '★状態が変わったら面を描き直す(readState/rawStateの2本立ては畳んだ)', true);
-  ok(!/type:\s*'(?:readState|rawState)'/.test(src), '★2本立ての名残が1つも残っていない(送る側も受ける側も)', true);
-  ok(/setTimeout\(\(\) => meosPostViewMode\(\), 80\)/.test(src),
-     '★開いた時にも今のモードを名乗らせる(面と中身をずらさない)', true);
-  ok(/rawAltW=fmtAltWatch\(rawToggle,/.test(src), '★Optの見張りは1つのまま(名乗るだけ)', true);
-  ok(/\.fmt-btn\.raw-toggle\.read-on\{background:#1e4f8a/.test(src), '★Pseudoは青', true);
-  ok(/\.fmt-btn\.raw-toggle\.on\{background:#7a4f00/.test(src), '★Rawは従来の茶(色が今の状態を言う)', true);
-}
-
-console.log('㊺ Pseudoのタイマー= テスト用紙/暗記シート(v4.0.442 俊克)');
-{
-  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  ok(/if \(meosPseudoLeft\(\) > 0 && meosReadMode && next !== 'pseudo'\) \{/.test(src),
-     '★★閉めるのは出口だけ(入る道と見え方には触れない)', true);
-  ok(/_meosPseudoTimeout = setTimeout\(\(\) => meosPseudoTimeUp\(\), m \* 60000 \+ 250\);/.test(src),
-     '★終わりは1つのタイマーthat告げる', true);
-  ok(!/meosSetViewMode\('normal'\)[^\n]*meosPseudoTimeUp|function meosPseudoTimeUp\(\) \{[\s\S]{0,200}meosSetViewMode/.test(src),
-     '★★終わってもモードは勝手に変えない(人が最後に指定した物を勝たせる)', true);
-  ok(/meosClearPseudoTimer\(\); meosPostViewMode\(\);/.test(src) && /'End it'/.test(src),
-     '★止める道は在るthat、うっかりでは外れない(⏱→選ぶ→はい/いいえ)', true);
-  ok(/type: 'viewMode', mode: meosViewMode\(\), until: meosPseudoUntil/.test(src),
-     '★★nodeは終わりの時刻を1回渡すだけ(1秒ごとの往復を作らない)', true);
-  ok(/if\(held&&!vmTick\)vmTick=setInterval\(/.test(src) && /if\(!held&&vmTick\)\{clearInterval\(vmTick\);vmTick=null;\}/.test(src),
-     '★数えるのはwebview側・要らなくなったら必ず止める', true);
-  ok(/rawToggle\.textContent=VM_FACE\[viewMode\]\+\(held\?\(' '\+vmMmSs\(left\)\):''\);/.test(src),
-     '★★残り時間は面に出る(何分残っているか見るのに別の物を開かない)', true);
-  ok(/rawToggle\.classList\.toggle\('held',held\);/.test(src) && /\.fmt-btn\.raw-toggle\.held\{border-color:#7a1f1f/.test(src),
-     '★錠が掛かっている間は縁が赤い(押す前に、出口が無いと言う)', true);
-  ok(/id="raw-timer"/.test(src) && /\.raw-cell\{margin-left:auto/.test(src),
-     '★★⏱は🐱の↻と同じ作り(右肩のバッジ)・右端固定は枡が持つ', true);
-  ok(/message\.type === 'pseudoTimer'/.test(src) && /registerCommand\('lai-membrane\.pseudoTimer'/.test(src),
-     '★Me Dockからもコマンドからも同じ1つの口', true);
-}
-
-console.log('㊻ Rawの帯に、畳みの2本の道を合わせる(v4.0.443 俊克 バグ1〜3)');
-{
-  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  ok(/function meosFcInBand\(band, line\) \{ return !!\(band && line >= band\.from && line <= band\.to\); \}/.test(src),
-     '★★「帯の中か」を言う口は1つ(2本の道that同じ物に訊く)', true);
-  const uses = (src.match(/meosFcInBand\(/g) || []).length;
-  ok(uses >= 4, '★個別の道・一括の道の両方that引いている', uses);
-  ok(!/if \(_meosFcOpen !== 'ALL'\) \{ await unfold\(blocks\.map/.test(src),
-     '★★Rawで「ファイル中のFCを全部開く」道that消えている(バグ3の元)', true);
-  ok(/const open = blocks\.filter\(b => meosFcInBand\(band, b\.start\)\)\.map\(b => b\.start\);/.test(src),
-     '★★開くのは帯の中の塊だけ', true);
-  ok(/for \(const b of blocks\) if \(!meosFcInBand\(band, b\.start\)\) await foldIfVisible\(b\.start\);/.test(src),
-     '★前の帯の名残は畳む(ただし見えていて開いている物だけ)', true);
+  // (1) 「今どのモードか」を言う口は1つ = 膜ごとの地図
+  ok(!/\blet meosRawMode\b|\blet meosReadMode\b/.test(src),
+     '★★★セッションが1つ持っていた meosRawMode / meosReadMode が撤去されている(口を2つ作らない)', true);
+  ok(/function meosModeAtLine\(doc, line\) \{[\s\S]{0,240}for \(const r of m\.ranges\) if \(line >= r\.from && line <= r\.to\) return r\.mode;[\s\S]{0,60}return m\.fileMode;/.test(src),
+     '★★規則は3行= その膜の設定に従う / 無ければ外側の膜 / 最後は通常(レキシカルスコープ)', true);
+  ok(/ranges\.sort\(\(a, b\) => \(a\.to - a\.from\) - \(b\.to - b\.from\)\);/.test(src),
+     '★内側(狭い膜)から先に並べるので、最初に当たった物that答え= 入れ子は自動的に正しくなる', true);
+  ok(/if \(!doc \|\| !doc\.uri \|\| !_meosMemberMode\.size\) return null;/.test(src),
+     '★既定しか無いファイルでは地図をそもそも作らない(今までと1mmも変わらない)', true);
+  ok(/const key = uri \+ '::' \+ doc\.version \+ '::' \+ _meosModeEpoch;/.test(src),
+     '★地図は版と設定の世代で覚える(打鍵ごとに数え直さない)', true);
+  // (2) ボタンthat効く相手 = カーソルを包む一番内側の膜
+  ok(/function meosModeScope\(editor\)/.test(src) && /_meosMemberMode\.delete\(scope\.key\); else _meosMemberMode\.set\(scope\.key, next\);/.test(src),
+     '★★ボタンの意味は1行= 今カーソルの居る膜の設定を変える', true);
+  ok(/if \(next === 'normal'\) _meosMemberMode\.delete\(scope\.key\)/.test(src),
+     '★通常に戻したら**持たない**(既定は書かない)', true);
+  // (3) 描く側は行ごとに訊く
+  ok(/has\(ln\) \{ if \(this\.doc && meosModeAtLine\(this\.doc, ln\) === 'raw'\) return true;/.test(src),
+     '★★帯(1本の範囲)ではなく行ごとに訊く= 入れ子で穴that空くため', true);
+  ok(/const _pseudoLine = \(ln\) => meosModeAtLine\(editor\.document, ln\) === 'pseudo';/.test(src),
+     '★★Pseudoも行ごとの性質(取消線を消すのは、その膜の中だけ)', true);
+  ok(/if \(_pseudoLine\(line\)\) \{ strikeMarkerRanges\.push/.test(src) && /_fcGhost \|\| \(_pseudoLine\(line\) && !_fcNot\)/.test(src),
+     '★取消線の2つの枝that両方とも行ごとの判定を通る', true);
+  ok(/if \(meosModeAtLine\(editor\.document, editor\.selection\.active\.line\) !== 'normal'\) return out;/.test(src),
+     '★★カーソル行を生で見せる特例thatが要るのは、通常の膜の中に居る時だけ', true);
+  // (4) 畳みの2本の道that同じ物に訊く
+  ok(/function meosFcWantsOpen\(doc, block, caretLine\)/.test(src),
+     '★★★「その塊は開いているべきか」を言う口は1つ', true);
+  const wants = (src.match(/meosFcWantsOpen\(/g) || []).length;
+  ok(wants >= 3, '★個別の道・一括の道の両方that引いている', wants);
+  ok(/const _mine = \(b\) => meosFcWantsOpen\(editor\.document, b, _cur\);/.test(src),
+     '★★一括の道は自前で数えない(v4.0.443の穴を、判定ごと差し替えた)', true);
+  ok(/for \(const st of Array\.from\(_meosFcOpenSet\)\) if \(!want\.has\(st\)\) \{ await foldIfVisible\(st\); _meosFcOpenSet\.delete\(st\); \}/.test(src),
+     '★★★望む姿を毎回ぜんぶ言って、今の姿との差だけを当てる(場合分けthatゼロ)', true);
+  ok(!/_meosFcOpen\b(?!Set)/.test(src),
+     '★番兵(行番号 / ALL / RAW:…)の1変数that消えている= 場合thatが増えるたびに穴the開く作りをやめた', true);
   ok(!/await fold\(blocks\.map\(b => b\.start\)\)/.test(src),
-     '★★★裸の fold(全部) that1つも残っていない= 畳まれた塊を畳むと膜に化ける(v4.0.188 / バグ2の元)', true);
-  ok(/if \(typeof _meosFcOpen === 'string'\) \{ for \(const b of blocks\) await foldIfVisible\(b\.start\); _meosFcOpen = null; \}/.test(src),
-     '★Raw/Pseudoを降りた時の畳み直しも foldIfVisible を通る', true);
-  ok(/const _band = \(typeof meosRawMode !== 'undefined' && meosRawMode\) \? meosRawBand\(editor\) : null;/.test(src)
-     && /const _mine = \(b\) => meosReadMode \? false : \(meosFcInBand\(_band, b\.start\) \|\|/.test(src),
-     '★★★一括の道も帯の中には手を出さない(バグ1の元= 開いた端から畳んでいた)', true);
-  ok(/if \(typeof _meosFcOpen === 'number'\) \{/.test(src),
-     '★番兵(ALL / RAW:…)を行番号と読み違えない', true);
-  ok(/edA = \(await vscode\.window\.showTextDocument\(ed\.document, \{ viewColumn: ed\.viewColumn, preserveFocus: false, preview: false \}\)\) \|\| ed;/.test(src),
-     '★★押した結果はその場で全部起きる(畳むのは焦点のあるエディタにしか効かない= 俊克の提案)', true);
-  ok(/const _visible = \(ln\)[\s\S]{0,400}const _openNow[\s\S]{0,200}const foldIfVisible[\s\S]{0,900}if \(raw\) \{/.test(src),
-     '★門番はRawの枝より前に置く(前は下に在って、Rawからは使えなかった)', true);
-  const dup = (src.match(/const foldIfVisible = async/g) || []).length;
-  ok(dup === 1, '★同じ門番が2つ無い(どちらthat効くか分からない状態を作らない)', dup);
+     '★★裸の fold(全部) that1つも残っていない= 畳まれた塊を畳むと膜に化ける(v4.0.188)', true);
+  // (5) 錠も膜ごと = 俊克の目的
+  ok(/const _meosPseudoUntil = new Map\(\);/.test(src) && /function meosPseudoLeftFor\(key\)/.test(src),
+     '★★★テスト用紙の膜だけ50分ロック、他の膜は普通に書ける(俊克の目的)', true);
+  ok(/if \(cur === 'pseudo' && meosPseudoLeftFor\(scope\.key\) > 0 && next !== 'pseudo'\)/.test(src),
+     '★閉めるのは、その膜の出口だけ', true);
+  // (6) 面は「今カーソルの居る膜」を出す
+  ok(/try \{ meosPostViewMode\(\); \} catch \(_\) \{ \}\n  const editor = getMeDockTargetEditor\(\);/.test(src),
+     '★★カーソルthat別の膜へ移れば面も変わる(毎selection走る既存の道に相乗り= 合図を足さない)', true);
+  ok(/if\(_sg!==vmSig\)\{vmSig=_sg;/.test(src),
+     '★同じなら描き直さない(毎selection来るため)', true);
+  ok(/function vmWho\(\)\{return vmScope\?/.test(src),
+     '★tipthatどの膜の話かを名指しする', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

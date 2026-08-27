@@ -6656,8 +6656,9 @@ function applyPrettyLabels(editor) {
   //     俊克がv4.0.324で言った「橙＝生データを表示する機能を色ではっきり見せる」を、**言葉どおりにする**＝
   //     **橙に染まる行は、生データを見せる行**。
   //   ★膜(▼▲バッジ)の組だけは外す＝ そちらは隠し帯の作りが別なので、対の相手まで生にはしない。
-  const _rawLines = (docCursorLine >= 0 || meosRawMode) ? meosRawLines(editor) : new MeosRawLineSet();  // v4.0.347: 物差しは1本 / v4.0.441: Rawの帯は着地抑止より強い(膜まるごと生so、そこだけ飾ると食い違う)
+  const _rawLines = meosRawLines(editor, docCursorLine < 0);  // v4.0.347: 物差しは1本 / v4.0.444: 着地抑止はカーソル行の特例だけを止める(Rawの膜はそのまま)
   const _isRawLine = (ln) => _rawLines.has(ln);
+  const _pseudoLine = (ln) => meosModeAtLine(editor.document, ln) === 'pseudo';   // v4.0.444: Pseudoも行ごとの性質
   const _rawRangeTouched = (from, to) => _rawLines.touches(from, to);   // v4.0.441: 帯も一緒に見る
   // ★★v4.0.346(俊克 am01:24 バグ1「**見出しの修正が元に戻ってしまった**よ。前バージョンでも。つまり、
   //   FCコメントにいるとき、**見出しの本体が生データにならない**。ハイライトもそうだね。全部かもね。
@@ -6990,7 +6991,7 @@ function applyPrettyLabels(editor) {
           //   ★★Pseudo-WYSIWYG では取消線は**消える**。取消線は「消した、と見せている」＝ **書き手の作業の跡**so、
           //     読者の目には要らない。読んでいる時に見えているのは、**残した文だけ**になる。
           //   ★👻(意図して隠した物)と姿が揃う＝ 隠し方の口を2つ作らない。生データは1文字も動かない。
-          if (meosReadMode) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, closeEnd) }); continue; }
+          if (_pseudoLine(line)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, closeEnd) }); continue; }
           // 新形: (線色/背景色)//コメント。暗い背景色なら本文を自動で白文字に(auto-contrast)。
           const sp = parseColorSpec(inner, 'fg');
           const lineKey = sp.fgKey || 'red';
@@ -7028,7 +7029,7 @@ function applyPrettyLabels(editor) {
           //   ★v4.0.441: Pseudo-WYSIWYG も同じ枝へ合流(俊克「通常の取消線も、👻同様に、見えなくする」)。
           //     ただし `~~not` は**取消線を名乗っていない**(色だけの運び屋・v4.0.238)so消さない＝
           //     消してよいのは「取り消した」と言っている印だけ。直後の仕様コメントも一緒に伏せる。
-          if (_fcGhost || (meosReadMode && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
+          if (_fcGhost || (_pseudoLine(line) && !_fcNot)) { strikeMarkerRanges.push({ range: new vscode.Range(line, openStart, line, (_sc ? _sc.end : closeEnd)) }); continue; }
           const _st = (_sc || _fcRaw) ? parseColorSpec(_sc ? _sc.raw : _fcRaw, 'fg', _sc ? _sc.raw : _fcRaw) : null;
           if (bodyEnd > innerStart) {
             const _r = new vscode.Range(line, innerStart, line, bodyEnd);
@@ -9193,7 +9194,9 @@ async function controlMePanel() {
 }
 // {* ▲mCN=0850_CONTROL_ME // end [cGJF=h] *}
 
-let meosRawMode = false; // v0.9.723: Raw(MeOS休眠)モード — 全装飾OFF＋編集/refresh抑止でプレーンエディタ化(日本語入力対策)
+// v4.0.444: セッションが1つ持っていた meosRawMode / meosReadMode は撤去した。
+//   モードは**膜の性質**になったので、答えは `meosModeAtLine(doc, line)` が持つ(→ mCN=0356_VIEW_MODES)。
+//   ★残すと「今どのモードか」を言う口が2つになる＝ そこから v4.0.441〜443 のバグ群が出た。
 // ★★v4.0.438(俊克 8/27 am03:00「**読書モードボタンを導入しよう**。文字カーソルが入っても、生データが見えない
 //   モードだよ。これは、👻で添削を隠して、**最終原稿を読む形**にする。作家や編集者にも好評になるはずだよ」):
 //   ★★**Rawの裏の顔**＝ Rawは「全部見せる」・Readは「何も見せない」で、ちょうど逆。so同じボタンの表と裏に置く。
@@ -9201,7 +9204,6 @@ let meosRawMode = false; // v0.9.723: Raw(MeOS休眠)モード — 全装飾OFF�
 //     (v4.0.347)。そこが空を返せば、12か所の装飾すべてが同時に従う。口を1つにしておくと、
 //     後から「全部やめる」が言えるようになる。
 //   ★畳みも同じ筋＝ カーソルの居るFC群を開かない(読む時に命令は要らない)。
-let meosReadMode = false;
 
 // {* ▼mCN=0355_NAME_STAMP_COLORS // 膜名タイムスタンプのモザイク色分け (📊⊕0+0D0W) *}
 // ★★v4.0.363(俊克 8/22 pm05:56「**タイムスタンプをモザイク状に色分けしよう**。TSはコンパクトにするため
@@ -9414,102 +9416,126 @@ function meosApplyNameStampDecorations(editor) {
 const MEOS_VIEW_MODES = ['normal', 'raw', 'pseudo'];
 const MEOS_VIEW_MODE_BAR = {
   normal: 'Normal view 👁🥩 — decorated, and the caret line shows its raw data',
-  raw: 'Raw view Raw🥩 — the membrane under the caret shows its raw data',
+  raw: 'Raw view Raw🥩 — this membrane shows its raw data',
   pseudo: 'Pseudo-WYSIWYG 👁 — nothing raw, nothing crossed out. The finished text only.'
 };
-function meosViewMode() { return meosRawMode ? 'raw' : (meosReadMode ? 'pseudo' : 'normal'); }
-function meosPostViewMode() {
-  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'viewMode', mode: meosViewMode(), until: meosPseudoUntil }); } catch (_) { }
+// key = uri + " " + 膜名 ('' = 膜の外＝ファイルの地) → 'raw' | 'pseudo'。**通常は持たない**(消す)。
+//   ★既定しか無いファイルでは地図をそもそも作らない＝ 今までと1mmも変わらない(速さも)。
+const _meosMemberMode = new Map();
+let _meosModeEpoch = 0;          // 設定が変わるたびに増える(地図の作り直しの合図)
+let _meosModeMapCache = null;
+function meosModeKey(doc, name) { return String(doc && doc.uri ? doc.uri.toString() : '') + ' ' + String(name || ''); }
+// 行 → モード の地図。**内側(狭い膜)から先に**並べるので、最初に当たった物が答え＝ レキシカルスコープ。
+function meosDocModes(doc) {
+  try {
+    if (!doc || !doc.uri || !_meosMemberMode.size) return null;
+    const uri = doc.uri.toString();
+    const key = uri + '::' + doc.version + '::' + _meosModeEpoch;
+    if (_meosModeMapCache && _meosModeMapCache.key === key) return _meosModeMapCache.value;
+    const fileMode = _meosMemberMode.get(uri + ' ') || 'normal';
+    const ranges = [];
+    for (const p of collectPairs(doc, { excludeIndex: false })) {
+      const m = _meosMemberMode.get(uri + ' ' + p.id);
+      if (m) ranges.push({ from: p.start, to: p.end, mode: m, id: p.id });
+    }
+    ranges.sort((a, b) => (a.to - a.from) - (b.to - b.from));
+    const value = (ranges.length || fileMode !== 'normal') ? { ranges, fileMode } : null;
+    _meosModeMapCache = { key, value };
+    return value;
+  } catch (_) { return null; }
 }
-// ★★★v4.0.442(俊克 8/27 am08:35「そして、ひらめいた。特に、Pseudo👁で、**タイマー機能**を付ける。
-//   たとえば、**テスト用紙にできる**。50分間、通常モードに戻れなくする。**答えが👻に入っているので、
-//   テスト終了と同時に、自己採点できる**。その後は、そのテストを自習に何度でも使える。
-//   あるいは、いわゆる**暗記シート**のように使える」):
-//   ★★★**1つのファイルが、問題用紙にも答案にも解答にもなる**。👻は「見えないメモ用紙」で、
-//     しかも**その場所に居る**so、Scrivener等の別枠保存と違って**どこに書いたか見失うことが原理的に無い**
-//     (俊克)。答えを別ファイルに逃がさないから、時間が来ればその場で答え合わせが始まる。
-//   ★★時間が閉めるのは**出口だけ**＝ 見え方には一切触れない。終われば出口that戻る。
-//     終わった時にモードを勝手に変えない＝ **人that最後に指定した物を勝たせる**
-//     (→ [[project_last_specified_wins]])。答え合わせは、本人の1クリックから始まる。
-//   ★止める道は残す＝ 掛けた本人that「今やめる」と言えない錠は、**守れない約束**(拡張を切れば消える)。
-//     ただし**うっかりでは外れない**(⏱から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
-let meosPseudoUntil = 0;          // 0=掛かっていない / それ以外=出口that戻る時刻(ms)
-let _meosPseudoTimeout = null;
-function meosPseudoLeft() { return meosPseudoUntil ? Math.max(0, meosPseudoUntil - Date.now()) : 0; }
+// ★★規則はこの3行だけ＝ **その膜の設定に従う。無ければ外側の膜。最後は通常**。
+function meosModeAtLine(doc, line) {
+  const m = meosDocModes(doc);
+  if (!m) return 'normal';
+  for (const r of m.ranges) if (line >= r.from && line <= r.to) return r.mode;
+  return m.fileMode;
+}
+// ボタンが効く相手＝ カーソルを包む**一番内側の膜**(無ければファイルの地)。設定の有無は問わない。
+function meosModeScope(editor) {
+  try {
+    const doc = editor.document, ln = editor.selection.active.line;
+    let best = null;
+    for (const p of collectPairs(doc, { excludeIndex: false })) {
+      if (p.start <= ln && ln <= p.end && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
+    }
+    return best
+      ? { key: meosModeKey(doc, best.id), name: best.id, from: best.start, to: best.end }
+      : { key: meosModeKey(doc, ''), name: '', from: 0, to: Math.max(0, doc.lineCount - 1) };
+  } catch (_) { return null; }
+}
+function meosCurrentEditor() { return (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor; }
+function meosViewMode(editor) {
+  const ed = editor || meosCurrentEditor();
+  if (!ed || !ed.document || !ed.selection) return 'normal';
+  return meosModeAtLine(ed.document, ed.selection.active.line);
+}
+// ★★★v4.0.444: 錠も膜ごと。so「テスト用紙の膜だけ50分ロック、他の膜は普通に書ける」が成り立つ
+//   (俊克「このようにしないと、テスト用紙膜だけ『ほぼWYSIWYG』でタイマーをかけることもできない」)。
+const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
+const _meosPseudoTimers = new Map();    // key → timeout
+function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; return t ? Math.max(0, t - Date.now()) : 0; }
 function meosMmSs(ms) { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
-function meosClearPseudoTimer() { if (_meosPseudoTimeout) { clearTimeout(_meosPseudoTimeout); _meosPseudoTimeout = null; } meosPseudoUntil = 0; }
-function meosPseudoTimeUp() {
-  meosClearPseudoTimer();
+function meosClearPseudoTimer(key) {
+  const h = _meosPseudoTimers.get(key); if (h) clearTimeout(h);
+  _meosPseudoTimers.delete(key); _meosPseudoUntil.delete(key);
+}
+function meosPseudoTimeUp(key, name) {
+  meosClearPseudoTimer(key);
   meosPostViewMode();
-  vscode.window.showInformationMessage('MeOS: Time is up. Press \u{1F441}\u{1F969} to bring the raw data back \u2014 your \u{1F47B} answers are exactly where you wrote them.');
+  vscode.window.showInformationMessage('MeOS: Time is up' + (name ? ' — ' + name : '') + '. Press 👁🥩 to bring the raw data back — your 👻 answers are exactly where you wrote them.');
 }
-async function meosStartPseudoTimer(minutes) {
-  const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
-  meosClearPseudoTimer();
-  meosPseudoUntil = Date.now() + m * 60000;
-  _meosPseudoTimeout = setTimeout(() => meosPseudoTimeUp(), m * 60000 + 250);
-  await meosSetViewMode('pseudo');
-  meosPostViewMode();
-  vscode.window.setStatusBarMessage('MeOS: Pseudo-WYSIWYG held for ' + m + ' min \u2014 the way out comes back when the time is up.', 3000);
+function meosPostViewMode() {
+  try {
+    if (!meDockPanel) return;
+    const ed = meosCurrentEditor();
+    const sc = ed ? meosModeScope(ed) : null;
+    meDockPanel.webview.postMessage({
+      type: 'viewMode',
+      mode: (sc ? (_meosMemberMode.get(sc.key) || 'normal') : 'normal'),
+      until: (sc ? (_meosPseudoUntil.get(sc.key) || 0) : 0),
+      scope: (sc ? (sc.name || '') : '')
+    });
+  } catch (_) { }
 }
-// ⏱ = 時間を選ぶ。走っている間は「今やめる」だけを出す(選択肢that1つなら、迷う所thatない)。
-async function meosPseudoTimerMenu() {
-  if (meosPseudoLeft() > 0) {
-    const pick = await vscode.window.showQuickPick(
-      [{ label: '\u23f9 End the timer now', description: meosMmSs(meosPseudoLeft()) + ' left', detail: 'The way out comes back straight away. The view itself does not change.' }],
-      { title: 'MeOS \u2014 Pseudo-WYSIWYG is held', placeHolder: 'Press Esc to leave the timer running' });
-    if (!pick) return;
-    const yes = await vscode.window.showWarningMessage('End the timer now? The point of the timer is that you cannot get out early.', { modal: true }, 'End it');
-    if (yes !== 'End it') return;
-    meosClearPseudoTimer(); meosPostViewMode();
-    vscode.window.setStatusBarMessage('MeOS: timer ended \u2014 you can leave Pseudo-WYSIWYG again.', 2500);
-    return;
-  }
-  const items = [
-    { label: '10 minutes', m: 10 }, { label: '25 minutes', m: 25 },
-    { label: '50 minutes', m: 50, description: 'one class hour' }, { label: '90 minutes', m: 90 },
-    { label: 'Custom\u2026', m: 0 }
-  ];
-  const pick = await vscode.window.showQuickPick(items, {
-    title: 'MeOS \u2014 hold Pseudo-WYSIWYG for a while',
-    placeHolder: 'Nothing raw, nothing crossed out, and no way out until the time is up'
-  });
-  if (!pick) return;
-  let m = pick.m;
-  if (!m) {
-    const t = await vscode.window.showInputBox({ title: 'MeOS \u2014 how many minutes?', value: '50', validateInput: (v) => (/^\d{1,3}$/.test(String(v||'').trim()) && +v >= 1 && +v <= 600) ? null : '1 to 600' });
-    if (!t) return;
-    m = parseInt(t, 10);
-  }
-  await meosStartPseudoTimer(m);
-}
+// ★★★v4.0.444(俊克 8/27 pm00:03「Rawとほぼ WYSIWYG 設定は、**膜毎にその設定を保持する**ようにする。
+//   つまり、基本は、通常モードである。入れ子の膜であろうと、別の膜であろうと、その中にいるとき、Rawに
+//   切り替えると、**その膜だけが**生データが表示される。スクロールしても、その他の膜は、通常モードのまま。
+//   別の膜の中をクリックすると、その膜が既定のままなら、通常モードで表示される。
+//   **このようにしないと、テスト用紙膜だけ「ほぼWYSIWYG」でタイマーをかけることもできない**よ」):
+//   ★★★**モードは、エディタの状態ではなく、膜の性質だった**。v4.0.441〜443 の私は「今どのモードか」を
+//     セッションが1つだけ持ち、カーソルの居場所から範囲を計算していた。だから設定が**カーソルに付いて回り**、
+//     1つのファイルの中で「ここはテスト用紙・ここは下書き」と言えなかった。
+//   ★★★俊克の言い方に直すと規則は1行＝ **その膜の設定に従う。無ければ外側の膜。最後は通常**
+//     ＝ レキシカルスコープ(参照グループ v0.9.99972 と同じ考え方)。so入れ子は**自動的に**正しくなる＝
+//     内側が何も言っていなければ外側の言い分が届き、内側が言えば内側が勝つ。
+//   ★★ボタンの意味も1行になる＝ **今カーソルの居る膜の設定を変える**。
 async function meosSetViewMode(mode) {
+  const ed = meosCurrentEditor();
+  if (!ed || !ed.document) return 'normal';
+  const scope = meosModeScope(ed);
+  if (!scope) return 'normal';
   const next = (MEOS_VIEW_MODES.indexOf(mode) >= 0) ? mode : 'normal';
-  // 錠that掛かっている間は、Pseudoから出る道だけをふさぐ(入る道と、見え方には触れない)。
-  if (meosPseudoLeft() > 0 && meosReadMode && next !== 'pseudo') {
-    vscode.window.setStatusBarMessage('MeOS: Pseudo-WYSIWYG is held for another ' + meosMmSs(meosPseudoLeft()) + ' \u2014 \u23f1 to end it early.', 2500);
+  const cur = _meosMemberMode.get(scope.key) || 'normal';
+  // 錠が掛かっている間は、Pseudoから出る道だけをふさぐ(入る道と、見え方には触れない)。
+  if (cur === 'pseudo' && meosPseudoLeftFor(scope.key) > 0 && next !== 'pseudo') {
+    vscode.window.setStatusBarMessage('MeOS: this membrane is held in Pseudo-WYSIWYG for another ' + meosMmSs(meosPseudoLeftFor(scope.key)) + ' — ⏱ to end it early.', 2500);
     meosPostViewMode();
     return 'pseudo';
   }
-  if (next === meosViewMode()) { meosPostViewMode(); return next; }
-  meosRawMode = (next === 'raw');
-  meosReadMode = (next === 'pseudo');
-  const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
-  if (ed) refresh(ed);
-  // v4.0.141/438: 畳みは**既存の道1本**に任せる＝ Raw は meosSyncFcFoldForCursor が自分で見て全部開く。
-  //   Pseudo に入る時は「全部開いている」ことにして、その道に畳み直させる(畳む口を2つ作らない)。
-  if (next === 'pseudo') _meosFcOpen = 'ALL';
+  if (next === cur) { meosPostViewMode(); return next; }
+  if (next === 'normal') _meosMemberMode.delete(scope.key); else _meosMemberMode.set(scope.key, next);
+  _meosModeEpoch++;
+  refresh(ed);
   // ★★v4.0.443(俊克「切替ボタンを押したとき、**フォーカスをエディタに切り替えると良いのかも知れない**」):
-  //   ★★**そのとおりだった**＝ 畳む/開くは**焦点のあるエディタにしか効かない**(v4.0.141)ので、焦点that
-  //     Me Dockに在る間、畳みの同期は**何もせずに帰っていた**。だからボタンの効き目that「押した時」と
-  //     「次にエディタをクリックした時」の2回に割れて見えていた。
-  //   ★v4.0.141の「焦点は奪わない」は**起動時**の話＝ 人that読んでいる所から勝手に飛ばすのは行儀that悪い。
-  //     **人that自分でボタンを押した時は別**＝ 押した結果は、その場で全部起きるべき。
+  //   畳む/開くは**焦点のあるエディタにしか効かない**(v4.0.141)ので、焦点がMe Dockに在る間、畳みの同期は
+  //   何もせずに帰っていた＝ ボタンの効き目が「押した時」と「次にクリックした時」の2回に割れていた。
+  //   v4.0.141の「焦点は奪わない」は**起動時**の話で、人が自分でボタンを押した時は別。
   let edA = ed;
-  try { if (ed && ed !== vscode.window.activeTextEditor) edA = (await vscode.window.showTextDocument(ed.document, { viewColumn: ed.viewColumn, preserveFocus: false, preview: false })) || ed; } catch (_) { }
+  try { if (ed !== vscode.window.activeTextEditor) edA = (await vscode.window.showTextDocument(ed.document, { viewColumn: ed.viewColumn, preserveFocus: false, preview: false })) || ed; } catch (_) { }
   try { if (edA) await meosSyncFcFoldForCursor(edA); } catch (_) { }
   meosPostViewMode();
-  vscode.window.setStatusBarMessage('MeOS: ' + MEOS_VIEW_MODE_BAR[next], 1800);
+  vscode.window.setStatusBarMessage('MeOS: ' + (scope.name ? (scope.name + ' — ') : '') + MEOS_VIEW_MODE_BAR[next], 2200);
   return next;
 }
 // クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道。
@@ -9518,9 +9544,58 @@ async function meosCycleViewMode(step) {
   const i = Math.max(0, MEOS_VIEW_MODES.indexOf(meosViewMode()));
   return meosSetViewMode(MEOS_VIEW_MODES[(i + (Number(step) < 0 ? n - 1 : 1)) % n]);
 }
-// 旧名は残す(コマンド/呪文/他の呼び元が使っている)＝ 「そのモードに入る/出る」の意味。
-async function toggleRawMode() { return meosSetViewMode(meosRawMode ? 'normal' : 'raw'); }
-async function toggleReadMode() { return meosSetViewMode(meosReadMode ? 'normal' : 'pseudo'); }
+// 旧名は残す(コマンド/呪文の呼び元)＝ 「この膜をそのモードにする/やめる」の意味。
+async function toggleRawMode() { return meosSetViewMode(meosViewMode() === 'raw' ? 'normal' : 'raw'); }
+async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pseudo' ? 'normal' : 'pseudo'); }
+// ★★★v4.0.442/444: ⏱ = テスト用紙。**その膜だけ**を時間で押さえる(俊克 8/27 am08:35)。
+//   ★時間が閉めるのは**出口だけ**＝ 見え方には触れない。終わってもモードは勝手に変えない
+//     ＝ **人が最後に指定した物を勝たせる**(→ [[project_last_specified_wins]])。答え合わせは本人の1クリックから。
+//   ★止める道は残す＝ 掛けた本人が「今やめる」と言えない錠は**守れない約束**(拡張を切れば消える)。
+//     ただし**うっかりでは外れない**(⏱から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
+async function meosStartPseudoTimer(minutes) {
+  const ed = meosCurrentEditor(); if (!ed) return;
+  const scope = meosModeScope(ed); if (!scope) return;
+  const m = Math.max(1, Math.min(600, Math.round(Number(minutes) || 0)));
+  meosClearPseudoTimer(scope.key);
+  _meosPseudoUntil.set(scope.key, Date.now() + m * 60000);
+  _meosPseudoTimers.set(scope.key, setTimeout(() => meosPseudoTimeUp(scope.key, scope.name), m * 60000 + 250));
+  await meosSetViewMode('pseudo');
+  meosPostViewMode();
+  vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' held in Pseudo-WYSIWYG for ' + m + ' min — the way out comes back when the time is up.', 3000);
+}
+async function meosPseudoTimerMenu() {
+  const ed = meosCurrentEditor(); if (!ed) return;
+  const scope = meosModeScope(ed); if (!scope) return;
+  const who = scope.name || 'this file (outside every membrane)';
+  if (meosPseudoLeftFor(scope.key) > 0) {
+    const pick = await vscode.window.showQuickPick(
+      [{ label: '⏹ End the timer now', description: meosMmSs(meosPseudoLeftFor(scope.key)) + ' left', detail: 'The way out comes back straight away. The view itself does not change.' }],
+      { title: 'MeOS — ' + who + ' is held', placeHolder: 'Press Esc to leave the timer running' });
+    if (!pick) return;
+    const yes = await vscode.window.showWarningMessage('End the timer now? The point of the timer is that you cannot get out early.', { modal: true }, 'End it');
+    if (yes !== 'End it') return;
+    meosClearPseudoTimer(scope.key); meosPostViewMode();
+    vscode.window.setStatusBarMessage('MeOS: timer ended — you can leave Pseudo-WYSIWYG again.', 2500);
+    return;
+  }
+  const items = [
+    { label: '10 minutes', m: 10 }, { label: '25 minutes', m: 25 },
+    { label: '50 minutes', m: 50, description: 'one class hour' }, { label: '90 minutes', m: 90 },
+    { label: 'Custom…', m: 0 }
+  ];
+  const pick = await vscode.window.showQuickPick(items, {
+    title: 'MeOS — hold ' + who + ' in Pseudo-WYSIWYG',
+    placeHolder: 'Nothing raw, nothing crossed out, and no way out until the time is up'
+  });
+  if (!pick) return;
+  let m = pick.m;
+  if (!m) {
+    const t = await vscode.window.showInputBox({ title: 'MeOS — how many minutes?', value: '50', validateInput: (v) => (/^\d{1,3}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 600) ? null : '1 to 600' });
+    if (!t) return;
+    m = parseInt(t, 10);
+  }
+  await meosStartPseudoTimer(m);
+}
 // {* ▲mCN=0356_VIEW_MODES *}
 // v0.9.973: GitHub自動sync — Cmd+S連動ON/OFFトグル(俊克 6/22 am02:17: Evernote方式の強制syncは嫌・自分でコントロールしたい)
 // 🐙ボタン = auto sync ON/OFF切替。ONの時だけCmd+S(保存)でpush。OFFは保存のみ普通に。
@@ -18911,9 +18986,8 @@ function applyEncDecorations(editor) {
   try {
     // v4.0.441: 生の暗号文(base64)を見せるのは**Rawの帯の中だけ**＝ 通常モードの見え方は1mmも変えない
     //   (カーソルを置いただけで長いblobが出ると、行の形が動いて読めなくなる)。
-    const _encBand = meosRawMode ? meosRawBand(editor) : null;
-    const _inEncBand = (ln) => !!(_encBand && ln >= _encBand.from && ln <= _encBand.to);
     const doc = editor.document;
+    const _inEncBand = (ln) => meosModeAtLine(doc, ln) === 'raw';   // v4.0.444: Rawの膜の中だけ生の暗号文
     const hideRanges = [];
     const labelRanges = [];
     const seen = new Set();
@@ -18969,6 +19043,9 @@ function scheduleCursorFollow(editor) {
 }
 function updateMeDockMode() {
   if (!meDockPanel) return;
+  // ★v4.0.444: モードは**膜の性質**so、カーソルが別の膜へ移れば面も変わる。ここは毎selection走る道
+  //   (v3.1.6)なので、他に合図を足さない＝ 口を2つ作らない。
+  try { meosPostViewMode(); } catch (_) { }
   const editor = getMeDockTargetEditor();
   const state = meDockModeForEditor(editor);
   // v0.9.999106(俊克): カーソルが参照符の上なら Reference パネルを編集モードで開くためのデータを同送。
@@ -20065,7 +20142,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><span class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="fmt-lvl raw-timer" id="raw-timer" data-tip="Hold Pseudo👁 for a while | Turn this file into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9201;</span></span>
+<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span><span class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="fmt-lvl raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9201;</span></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -21229,14 +21306,17 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',rawAltW=null,vmUntil=0,vmTick=null;
+var viewMode='normal',rawAltW=null,vmUntil=0,vmTick=null,vmScope='',vmSig='';
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
 var VM_TIP={
 normal:'Normal view 👁🥩 | Decorated, and the one line your caret sits on shows its raw data \u2014 you read and write in the same place.',
-raw:'Raw view Raw🥩 | The membrane your caret is in shows its raw data; the rest of the file stays decorated \u2014 you unwrap only what you are looking at.',
+raw:'Raw view Raw🥩 | This membrane shows its raw data. Every other membrane keeps its own setting \u2014 you unwrap only what you are looking at.',
 pseudo:'Pseudo-WYSIWYG Pseudo👁 | Nothing raw at all: the caret stops opening the raw data, 👻 stays hidden, and even a plain strikethrough disappears. Read a draft the way a reader will meet it.'};
+/* ★★v4.0.444(俊克): 設定は**膜が持つ**= このボタンが変えるのは「今カーソルの居る膜」だけ。
+   別の膜へ移れば、その膜の設定that面に出る。既定は通常so、何も設定していない膜は今までどおり。 */
+function vmWho(){return vmScope?('\u3010'+vmScope+'\u3011'):'\u3010outside every membrane\u3011';}
 function rawAltOn(){return !!(rawAltW&&rawAltW.on());}
 /* ★★v4.0.442(俊克): ⏱=テスト用紙。残り時間は**webviewthat数える**(nodeは終わりの時刻を1回渡すだけ)=
    1秒ごとの往復を作らない。錠that掛かっている間は、面that残り時間を出す= 何分残っているかを見るために
@@ -21251,9 +21331,9 @@ rawToggle.textContent=VM_FACE[viewMode]+(held?(' '+vmMmSs(left)):'');
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
-rawToggle.setAttribute('data-tip',VM_TIP[viewMode]+String.fromCharCode(10)+(held
+rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f1 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f1 if you really must stop it early.')
-:('Click \u2192 '+VM_NAME[nx]+'.'+String.fromCharCode(10)+'\u2325 Opt-click goes round the other way.')));
+:('Click \u2192 '+VM_NAME[nx]+' for this membrane only.'+String.fromCharCode(10)+'\u2325 Opt-click goes round the other way. Every membrane keeps its own setting.')));
 if(held&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
 if(!held&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
@@ -22025,7 +22105,9 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;if(typeof window.__renderRaw==='function')window.__renderRaw();
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'');
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';
+if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
 return;}if(m&&m.type==='mode'){/* v0.9.822: inMembraneをwebview状態として保持(applyMode/renderEditPanelModeが共通参照)。旧v801/802の事後remove('hidden')行は撤去=どの再描画経路でも消えない。 */inMembraneState=!!m.inMembrane;
@@ -24959,8 +25041,7 @@ function meosApplyImageThumbDecorations(editor) {
   if (!imageThumbDecoration) imageThumbDecoration = vscode.window.createTextEditorDecorationType({ before: { contentText: '🖼 ', margin: '0 2px 0 0' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
   try {
     const doc = editor.document; const ranges = [];
-    const _imgBand = meosRawMode ? meosRawBand(editor) : null;   // v4.0.441: 帯の中は生データso🖼を足さない
-    const _inImgBand = (ln) => !!(_imgBand && ln >= _imgBand.from && ln <= _imgBand.to);
+    const _inImgBand = (ln) => meosModeAtLine(doc, ln) === 'raw';   // v4.0.444: Rawの膜の中は生データso🖼を足さない
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     for (const vr of vrs) {
       const from = vr[0], to = vr[1];
@@ -25828,38 +25909,45 @@ function meosFcMate(doc, line) {
 //     (集合＝カーソルとその対 / 帯＝カーソルの居る膜)。
 //   ★中身の規則＝ ①カーソル(と選択の両端)の行 ②その行のFCの**対の相手** ③Rawなら**カーソルを包む膜**。
 class MeosRawLineSet extends Set {
-  constructor() { super(); this.band = null; }   // band = {from,to} / null
-  has(ln) { const b = this.band; if (b && ln >= b.from && ln <= b.to) return true; return Set.prototype.has.call(this, ln); }
-  touches(from, to) { const b = this.band; if (b && !(to < b.from || from > b.to)) return true; for (const l of this) if (l >= from && l <= to) return true; return false; }
-}
-// Rawの帯 ＝ カーソルを包む**一番内側の膜**(開始行と閉じ行も含む＝ 膜の記法そのものも生で見える)。
-//   膜の外に居る時だけ、今までどおり文書ぜんぶ＝ 膜を1つも書いていない .md でもRawは効く。
-let _meosRawBandCache = null;   // { key, band } — 1回のrefreshで12か所が同じ答えを引くので、版と行で覚える
-function meosRawBand(editor) {
-  try {
-    const doc = editor.document;
-    const ln = editor.selection.active.line;
-    const key = doc.uri.toString() + '::' + doc.version + '::' + ln;
-    if (_meosRawBandCache && _meosRawBandCache.key === key) return _meosRawBandCache.band;
-    let best = null;
-    for (const p of collectPairs(doc, { excludeIndex: false })) {
-      if (p.start <= ln && ln <= p.end && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
+  constructor() { super(); this.doc = null; }
+  // v4.0.444: 帯(1本の範囲)ではなく**行ごとに訊く**= 入れ子で穴が空くため
+  //   (外側がRawでも、内側の膜が通常と言っていれば、そこは通常)。
+  has(ln) { if (this.doc && meosModeAtLine(this.doc, ln) === 'raw') return true; return Set.prototype.has.call(this, ln); }
+  touches(from, to) {
+    if (this.doc) {
+      const m = meosDocModes(this.doc);
+      if (m) {
+        if (m.fileMode === 'raw') return true;
+        for (const r of m.ranges) if (r.mode === 'raw' && !(to < r.from || from > r.to)) return true;
+      }
     }
-    const band = best ? { from: best.start, to: best.end } : { from: 0, to: Math.max(0, doc.lineCount - 1) };
-    _meosRawBandCache = { key, band };
-    return band;
-  } catch (_) { return null; }
+    for (const l of this) if (l >= from && l <= to) return true;
+    return false;
+  }
 }
-// ★★★v4.0.443: **帯の中のFC行は「開いているのが約束」**。この1行を、畳みの2本の道
-//   (個別=meosSyncFcFoldForCursor / 一括=meosAutoFoldSpecLines)が**同じように**引く。
+// ★★★v4.0.443/444: **その塊は開いているべきか**を言う口は1つ。畳みの2本の道
+//   (個別=meosSyncFcFoldForCursor / 一括=meosAutoFoldSpecLines)が**同じようにここへ訊く**。
 //   v4.0.441で帯を入れた時、私は「どの行を生で見せるか」だけを新しくし、**畳みの道は古い言葉のまま**
 //   置き去りにした ＝ 俊克のバグ1〜3は、その1つの穴から出ていた。
-function meosFcInBand(band, line) { return !!(band && line >= band.from && line <= band.to); }
-function meosRawLines(editor) {
+//   ①Rawの膜の中の塊は開く ②Pseudoの膜の中は開かない ③通常の膜では、カーソルの居る塊だけ開く。
+function meosFcWantsOpen(doc, block, caretLine) {
+  const m = meosModeAtLine(doc, block.start);
+  if (m === 'raw') return true;
+  if (m === 'pseudo') return false;
+  if (!(caretLine >= 0)) return false;
+  if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
+  const top = (block.top == null) ? block.start : block.top;
+  return (block.open != null && caretLine === block.open) || (caretLine >= top && caretLine <= block.end);
+}
+function meosRawLines(editor, skipCaret) {
   const out = new MeosRawLineSet();
   try {
-    if (meosReadMode) return out;   // v4.0.438: Pseudo-WYSIWYG= 生データを見せる行は1行も無い
     if (!editor || !editor.document || !editor.selection) return out;
+    out.doc = editor.document;                       // v4.0.444: Rawの膜は has() が行ごとに答える
+    if (skipCaret) return out;
+    // カーソル行を生で見せる特例が要るのは**通常の膜の中に居る時だけ**。
+    //   Rawの膜の中では既に全部が生／Pseudoの膜の中では1行も生にしない、という約束が上にある。
+    if (meosModeAtLine(editor.document, editor.selection.active.line) !== 'normal') return out;
     for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
       out.add(sl.active.line); out.add(sl.anchor.line);
     }
@@ -25867,7 +25955,6 @@ function meosRawLines(editor) {
       const m = meosFcMate(editor.document, ln);
       if (m) for (const l of (m.lines || [])) if (l >= 0) out.add(l);
     }
-    if (meosRawMode) out.band = meosRawBand(editor);   // v4.0.441: Raw= カーソルの居る膜まるごと
   } catch (_) { }
   return out;
 }
@@ -25995,7 +26082,7 @@ function meosApplyFcRowDecorations(editor) {
   const out = [];
   try {
     const doc = editor.document;
-    if (meosIsProseDoc(doc)) {   // v4.0.441: Rawでも橙は出す= 橙は「対だ」の印so、帯まるごとを染める物ではない
+    if (meosIsProseDoc(doc) && meosModeAtLine(doc, editor.selection.active.line) === 'normal') {   // v4.0.444: 橙は「対だ」の印so、通常の膜の中でだけ
       // ★v4.0.401(俊克): 段落なら**印1つ ⇄ FC1個**で細かく染める。出来ない時だけ行ぜんぶ。
       // ★v4.0.411: 段落なら**印1つ ⇄ FC1個**。対が無ければ**何も塗らない**(空配列)。
       //   null(=段落と分からない=表/箇条書き/膜)の時だけ、今までどおり行ぜんぶ。
@@ -26045,7 +26132,9 @@ function meosFcBlocks(document) {
     return blocks;
   } catch (_) { return []; }
 }
-let _meosFcOpen = null;      // 今カーソル(またはRaw)のために開けている物: 行番号 / 'ALL' / null
+// v4.0.444: こちらの都合で開けてある塊の先頭行。番兵('ALL'/'RAW:…')は要らなくなった＝
+//   開くべき物は毎回 meosFcWantsOpen が全部言うので、**今の姿と望む姿の差だけ**を当てればよい。
+const _meosFcOpenSet = new Set();
 let _meosFcCursorTimer = null;
 let _meosFcBusy = false;
 // v4.0.223(俊克 8/15 pm08:47 疑問1「最近、文字入力の反応が遅くなっている。特にbsキーで1つ前の文字を消そうとする
@@ -26079,9 +26168,9 @@ function meosScheduleFcCursorSync(editor) {
   //   押しっぱなしで飛んでいる間は、この時計が張り替わり続けるので**一度も**文書の見え方を変えない。
   let _closing = false;
   try {
-    if (typeof _meosFcOpen === 'number') {   // v4.0.443: 番兵('ALL' / 'RAW:…')は行番号ではない
+    if (_meosFcOpenSet.size) {
       const b = meosFcPairAt(editor.document, editor.selection.active.line);
-      _closing = !(b && b.head === _meosFcOpen);
+      _closing = !(b && _meosFcOpenSet.has(b.head));
     }
   } catch (_) { }
   _meosFcCursorTimer = setTimeout(run, _closing ? 700 : 260);
@@ -26146,7 +26235,6 @@ async function meosSyncFcFoldForCursor(editor) {
     try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
     const blocks = meosFcBlocks(editor.document);
     if (!blocks.length) return;
-    const raw = (typeof meosRawMode !== 'undefined' && meosRawMode);
     _meosFcBusy = true;
     _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
     // v4.0.181(俊克 8/14 am00:31「今の分割をすると、なぜかジャンプして、元の位置に戻ってくるんだよ」):
@@ -26195,90 +26283,23 @@ async function meosSyncFcFoldForCursor(editor) {
     const _visible = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return true; } };
     const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
     const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしない
-    // ★★★v4.0.443(俊克 8/27 am11:16 バグ1「Rawに切り替えた膜の中をクリックすると、**順々にFCが折り畳まれて
-    //   行ってしまう**」/ バグ2「エディタ上をクリックすると、**なぜか膜の先頭にワープする**ことが時々ある」/
-    //   バグ3「**入れ子や別の膜も従来通り生に変わってしまう**」):
-    //   ★★★**3つは1つの穴**だった＝ v4.0.441で「Rawは膜単位」に変えたのは `meosRawLines`(どの行を生で
-    //     見せるか)だけで、**FC行を開く/畳む2本の道は、今も『Rawならファイル全部』と言っていた**。
-    //     ① ここthatファイル中のFCを全部開く → 俊克の見た「別の膜も生に変わる」(バグ3)
-    //     ② 開いた分だけ画面that動く → 可視範囲の合図 → 一括の道that「見えていて開いている塊」を順に畳む
-    //        → 「順々に折り畳まれて行く」(バグ1)
-    //     ③ その畳みthat既に畳まれた塊に当たると、内側thatもう無いので**外側=膜**を畳む(v4.0.188)
-    //        → 「膜の先頭へワープ」(バグ2)
-    //   ★★直し＝ **開く範囲も帯に合わせる**。そして**一括の道にも同じ判定を配る**(口は1つ)。
-    //     → [[feedback_one_source_for_mark_count_action]]「呼び元を全部見る」。今日もこの形で出た。
-    if (raw) {
-      const band = meosRawBand(editor);
-      const key = band ? ('RAW:' + band.from + '-' + band.to) : 'RAW:none';
-      if (_meosFcOpen !== key) {
-        for (const b of blocks) if (!meosFcInBand(band, b.start)) await foldIfVisible(b.start); // 前の帯の名残を畳む
-        const open = blocks.filter(b => meosFcInBand(band, b.start)).map(b => b.start);
-        if (open.length) await unfold(open);
-        _meosFcOpen = key;
-      }
-      return;
-    }
-    // Raw/Pseudoが切れた=畳み直す。**裸の fold をやめる**(既に畳まれている物を畳むと膜に化ける=v4.0.188)。
-    if (typeof _meosFcOpen === 'string') { for (const b of blocks) await foldIfVisible(b.start); _meosFcOpen = null; }
+    // ★★★v4.0.443/444(俊克 8/27 am11:16 バグ1〜3 → pm00:03「膜毎にその設定を保持する」):
+    //   ★★★**望む姿を毎回ぜんぶ言って、今の姿との差だけを当てる**。前は「今どこを開けているか」を
+    //     1つの変数(行番号 / 'ALL' / 'RAW:…')で覚え、場合分けで動かしていた＝ **場合が増えるたびに穴が開く**
+    //     (バグ1〜3はそこから出た)。差分で当てれば、モードが膜ごとに違っても場合分けが1つも要らない。
+    //   ★開くべきかを言うのは meosFcWantsOpen ただ1つ＝ 一括の道も同じ物に訊く(口は1つ)。
+    //   ★畳むのは**見えていて、かつ開いている物だけ**(v4.0.186/188)＝ 既に畳まれた塊を畳むと
+    //     内側がもう無いので**外側=膜**が畳まれ、膜の先頭へワープする(俊克のバグ2)。
     const line = editor.selection.active.line;
-    // v4.0.186(俊克 8/14 am01:38「見出しの先頭で改行すると、ジャンプして戻ると言う動きをする。
-    //   その処理に入った時、何もしないで出るようにできないのか? bsキーのときは、一瞬再描画されるのも、今一」):
-    // ★★**できる。しかも「戻す」より正しい**= 飛ぶのは**画面の外の塊を畳みに行く**時だけ。
-    //   `editor.fold` は畳む相手を見せに行くso、**画面の外なら必ず飛ぶ**。戻しても「飛んで戻る」thatが見える。
-    // ★so**画面の外の塊は、そもそも畳まない**。畳み忘れではない= その塊thatが画面に入ってきた時に畳めばいい
-    //   (カーソルthat近づけばこの同期thatまた走る)。**見えていないものを整える必要は無い**。
-    // ★開く方(unfold)はカーソルの居る塊=**必ず画面の中**so、元から飛ばない。
-    // v4.0.443: _visible / _openNow / foldIfVisible は上へ引き上げた(Rawの枝でも同じ物を使うため)。
-    // v4.0.188(俊克 8/14 am02:18 の実測ログ): ★★**犯人that名乗った**= `[fcSync] fold 96666 画面上端 96660→95296→95296`。
-    //   96666は**画面の中**(上端96660)なのに、畳んだ瞬間に**1364行も上の95296**へ飛んだ。95296は**膜の先頭**。
-    // ★真因= `editor.fold({selectionLines:[N]})` は「N行の**一番内側の折り畳み範囲**」を畳む。
-    //   **その塊thatすでに畳まれていると、内側thatもう無いso、次に外側=膜を畳む**。so膜の先頭へ飛ぶ。
-    //   俊克thatずっと言っていた「膜の始めにジャンプ」は、**比喩ではなく文字どおり膜を畳んでいた**。
-    // ★戻せなかった理由も同じ= 膜thatが畳まれた後は、元の行(96660)は**隠れている**so revealで戻れない
-    //   (ログのC=95296thatその証拠)。**戻す仕掛けthatどれだけ賢くても、畳んだ後では手遅れ**だった。
-    // ★直し= **畳む前に「その塊that本当に開いているか」を確かめる**= 塊の最後の指定行that見えていれば開いている。
-    //   畳まれていれば**何もしない**(二度打ちthatが膜に化ける事故を、原理的に起こさない)。
-    // ★★★v4.0.343(俊克 am00:40「→キー押しっぱなしは…巡回してしまう。シフト同時押下するともっとおかしな
-    //   現象になる…**これは全て、膜が閉じようとすることに関係するのか?** だったら、**閉じないようにする
-    //   設定**を作って、それをオンにして入るしかないのか? **どうして、こんなカーソル移動という単純なことthatが
-    //   素直に行かないのか**」):
-    //   ★★★**俊克が当てた。原因は畳み**。そして**設定を作るのでなく、原因の側を外す**のthat正しい。
-    //   ★なぜ素直に行かないのか＝ **カーソルを動かすと、MeOSが文書の見え方を変えていた**から。
-    //     畳む/開くはVS Codeへの**命令**で、17万行では数百ms掛かり、その間に**画面もカーソルも選択も動く**。
-    //     普通のエディタが素直なのは「カーソル移動は何も変えない」からで、MeOSは移動のたびに畳みを触っていた。
-    //     だから穴を1つずつ塞いでも(v4.0.336〜342)、**原因の側が残っていた**。
-    //   ★★★直し＝ **カーソルの道から、畳むことをやめる**。開くのは要る(その行を見せる約束)が、
-    //     **閉じ直す必要はどこにも無かった**＝ 既定の姿は読み込み時に1回作れば足りる。
-    //     これで「移動→畳む→画面が動く→また移動」の輪が**原理的に**消える。
-    //   ★畳み直したい時は手でできる(`MeOS: Fold the spec lines`)。Rawを切った時の畳み直しはそのまま残す。
-    // ★★v4.0.348(俊克 am01:59 バグ1「**別の見出しにカーソルが入ると、今まで閉じてなかった見出しが
-    //   閉じる**んだよ。本来なら、**見出しから離れれば、閉じるはず**だよね。なぜ?」):
-    //   ★★**私がv4.0.343で「畳むのをやめた」から**。離れても畳まれず、開いたまま残る。
-    //     それが「別の見出しに入った時」だけ閉じて見えたのは、**一括の畳み**(v4.0.327)が拾っていたから＝
-    //     新しい塊が開く → 見えている行が動く → 可視範囲の合図 → 一括の道が「見えていて開いている塊」を
-    //     畳む(カーソルの塊は除く)。つまり**別経路で、遅れて、まとめて**閉じていた＝ 俊克の見た姿。
-    //   ★★v4.0.343で畳むのをやめたのは**乱暴な止血**で、本当の原因は
-    //     「**カーソルの下に隠れ帯が在る**」(v4.0.344/345で例外ごと外した)方だった。だから**戻せる**。
-    //   ★戻すが、畳むのは**カーソルが落ち着いてから**(v4.0.341)＝ 通り過ぎるだけの時は畳まない。
-    // ★★v4.0.440(俊克 8/27 バグ1「読書モードで、見出しやハイライトを**コピペすると、FCコメントが見えちゃう**」):
-    //   ★★v4.0.438では読書モードで**この道ごと降りていた**ので、貼り付けで増えたFC行を畳む者が居なかった。
-    //     降りるのではなく、**開くのをやめて、畳む方だけ通す**のが正しい＝ 読む時に命令は要らない。
-    const hit = blocks.find(b => (b.open != null && line === b.open) || (line >= ((b.top == null) ? b.start : b.top) && line <= b.end)); // v4.0.301: 塊のどの行でも開く / v4.0.332: 膜は開始膜でも開く
-    if (meosReadMode) {   // v4.0.440: 読書モード= 開かない。カーソルの塊も畳む(貼り付けで増えた分もここで閉じる)
-      if (_meosFcOpen != null) { await foldIfVisible(_meosFcOpen); _meosFcOpen = null; }
-      if (hit) await foldIfVisible(hit.start);
-      return;
-    }
-    if (hit) {
-      if (_meosFcOpen !== hit.start) {
-        if (_meosFcOpen != null) await foldIfVisible(_meosFcOpen);
-        await unfold([hit.start]);
-        _meosFcOpen = hit.start;
-      }
-    } else if (_meosFcOpen != null) {
-      await foldIfVisible(_meosFcOpen);
-      _meosFcOpen = null;
-    }
+    const want = new Set();
+    for (const b of blocks) if (meosFcWantsOpen(editor.document, b, line)) want.add(b.start);
+    for (const st of Array.from(_meosFcOpenSet)) if (!want.has(st)) { await foldIfVisible(st); _meosFcOpenSet.delete(st); }
+    const toOpen = Array.from(want).filter(st => !_meosFcOpenSet.has(st));
+    if (toOpen.length) { await unfold(toOpen); for (const st of toOpen) _meosFcOpenSet.add(st); }
+    // ★v4.0.440(俊克「読書モードで、見出しやハイライトをコピペすると、FCコメントが見えちゃう」):
+    //   Pseudoの膜の中は、**誰が開けた物でも**畳む(貼り付けで増えた分もここで閉じる)。
+    for (const b of blocks) if (meosModeAtLine(editor.document, b.start) === 'pseudo') await foldIfVisible(b.start);
+    return;
   } catch (_) { } finally { meosRestoreView(editor, _topBefore, null, false); _meosFcBusy = false; } // v4.0.326: 出る時はカーソルに触らない
 }
 const _meosFcFolded = new Set();
@@ -26355,10 +26376,9 @@ async function meosAutoFoldSpecLines(editor, force) {
     const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
     const _cur = editor.selection.active.line;
     // v4.0.440: 読書モードでは**カーソルの塊も畳む相手**(除ける理由=「そこは生データを見せている」が消えるので)
-    // ★★v4.0.443: **帯の中の塊は、一括の道も触らない**＝ 開けているのは偶然ではなく、Rawの約束だから
-    //   (v4.0.328「カーソルの居る群は触らない」と同じ理由を、帯にも当てる)。判定は1つ(meosFcInBand)。
-    const _band = (typeof meosRawMode !== 'undefined' && meosRawMode) ? meosRawBand(editor) : null;
-    const _mine = (b) => meosReadMode ? false : (meosFcInBand(_band, b.start) || (b.start === _meosFcOpen) || (b.open != null && _cur === b.open) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end));
+    // ★★v4.0.443/444: **開いているべき塊は、一括の道も触らない**＝ 開けているのは偶然ではなく約束だから
+    //   (v4.0.328「カーソルの居る群は触らない」を、Rawの膜にもそのまま当てる)。判定は1つ(meosFcWantsOpen)。
+    const _mine = (b) => meosFcWantsOpen(editor.document, b, _cur);
     heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end)).map(b => b.start);
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)

@@ -4,6 +4,22 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.444 (2026-08-27)
+- **A view mode is a property of a membrane, not a state of the editor.** Until now one session held a single
+  "current mode" and worked out the range from where the caret happened to be — so the setting followed the caret
+  around and one file could never say *this part is a test paper, this part is a draft*. Now each membrane keeps
+  its own setting, and the rule is one line: **use this membrane's setting; if it has none, the membrane outside
+  it; failing that, normal.** Lexical scope, so nesting is right for free — an inner membrane that says nothing
+  inherits, and an inner membrane that speaks wins.
+- **The button means one thing**: set the mode of the membrane the caret is in. Move to another membrane and the
+  face shows *that* membrane's setting. Scroll all you like — nothing else changes.
+- **The timer is per membrane too**, which is what makes the test paper work: hold one membrane in
+  Pseudo-WYSIWYG for fifty minutes while the rest of the file stays perfectly writable.
+- Internally this removed the last of the special cases. The two folding paths no longer track "what is open"
+  in a sentinel that grows a new value per mode; they state the desired shape in full every time and apply only
+  the difference. Zero branches on mode, so the class of bug behind v4.0.441–443 cannot recur.
+- A file with no membrane set to anything builds no map at all — identical behaviour and cost to before.
+
 ### v4.0.443 (2026-08-27)
 - **Three reported bugs, one hole.** When Raw became per-membrane in v4.0.441, only the place that answers
   *which lines show their raw data* learned the new meaning. The two paths that **fold and unfold the FC lines**
