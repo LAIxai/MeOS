@@ -412,15 +412,15 @@ And this is a fact: **one AI wrote this membrane-structured code, and another AI
 
 ### 🥷 魔法の呪文『かかか』(kakaka)
 
-**`かかか`**（`kakaka` でも可）と打つ。それだけで Raw モード ―― **素のエディタ**に切り替わる。打った文字は自ら消える。
+**`かかか`**（`kakaka` でも可）と打つ。それだけで、**今カーソルのいる膜**が Raw ―― 生データに切り替わる。打った文字は自ら消える。
 
-**生のマークアップを覗きたいとき**、あるいは**装飾を消して集中したいとき**に。**呪文をもう一度**唱えれば、MeOS の全機能が戻ってくる。
+**生のマークアップを覗きたいとき**に。**呪文をもう一度**唱えれば、その膜は元に戻る。膜の外で唱えれば、ファイルの地が切り替わる ―― 従来どおりの「全体を素のエディタに」も、そのまま生きている。
 
 そして ―― **かな漢字変換は、Raw モードにするまでもなく快適だ。** 装飾はすべてガター（行番号の脇）に描かれ、本文に指一本触れない。**東アジア圏（CJK）の積年の悩み**は、もう終わっている。
 
 ボタンも、メニューも、ショートカットもいらない。**ストレスフリー！**
 
-*Type `kakaka` for a plain editor — to read the raw markup, or to focus with all decorations off. Cast it again to bring MeOS back. (CJK input is already smooth without it: decorations live in the gutter, never touching your text.)*
+*Type `kakaka` to show the raw source of the membrane you are in — cast it again to put it back. Outside every membrane it switches the whole file, exactly as it always did. (CJK input is already smooth without it: decorations live in the gutter, never touching your text.)*
 
 ## Changelog
 
