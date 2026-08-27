@@ -1122,5 +1122,22 @@ console.log('(51) ⏰ に「走っている時計の一覧」= 予定表にな�
      '★ステータスバーの⏰を押しても同じ menu(入口は2つ、口は1つ)', true);
 }
 
+console.log('(52) ⏰ は年月日も受ける／長い待ちは刻んで継ぐ(v4.0.458 俊克)  ※読み取りの実測は check_when.js');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/function meosParseWhen\(txt\)/.test(src),
+     '★★★「いつ」を読む口は1つ(時刻 / 月日 / 年月日)', true);
+  ok(/if \(t\.getTime\(\) <= now\.getTime\(\)\) return null;                   \/\/ 過ぎた指定は誤り/.test(src),
+     '★★年まで書いた指定は送らない(過ぎていれば誤りと言う= 黙って来年にしない)', true);
+  ok(/if \(t\.getMonth\(\) !== mo - 1 \|\| t\.getDate\(\) !== d\) return null;/.test(src),
+     '★2/30 のような日を見抜く(Datethat繰り上げるのを、そのまま通さない)', true);
+  ok(/const MEOS_TIMER_CHUNK = 20 \* 24 \* 60 \* 60 \* 1000;/.test(src) && /function meosArmPseudoTimer\(key, ms\)/.test(src),
+     '★★★setTimeoutは約24.8日で溢れて**即発火**するso、長い待ちは刻んで継ぐ(年月日を許した以上、必ず来る)', true);
+  ok(/if \(left > 500\) \{ meosArmPseudoTimer\(key, left\); return; \}/.test(src),
+     '★継ぐ時は残りを見て決める(刻みの回数を数えない)', true);
+  ok(src.indexOf('atDate ? (') >= 0 && src.indexOf('meosFormatStamp(atDate)') >= 0,
+     '★★遠い予定は mm:ss では読めないso、指した日時そのものを言う(日時を作る口は1つ)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

@@ -9668,6 +9668,16 @@ function meosUpdateTimerBar() {
 function meosLockKey(scope) { try { return scope.doc.uri.toString() + ' ' + scope.key; } catch (_) { return ' ' + (scope && scope.key); } }
 function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; return t ? Math.max(0, t - Date.now()) : 0; }
 function meosMmSs(ms) { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+// setTimeout は約24.8日(2^31ms)で溢れて**即発火**するso、長い待ちは刻んで継ぐ(年月日を許した以上、必ず来る)。
+const MEOS_TIMER_CHUNK = 20 * 24 * 60 * 60 * 1000;
+function meosArmPseudoTimer(key, ms) {
+  const step = Math.min(ms, MEOS_TIMER_CHUNK);
+  _meosPseudoTimers.set(key, setTimeout(() => {
+    const left = (_meosPseudoUntil.get(key) || 0) - Date.now();
+    if (left > 500) { meosArmPseudoTimer(key, left); return; }   // まだ先= 継ぐ
+    meosPseudoTimeUp(key);
+  }, step));
+}
 function meosClearPseudoTimer(key) {
   const h = _meosPseudoTimers.get(key); if (h) clearTimeout(h);
   _meosPseudoTimers.delete(key); _meosPseudoUntil.delete(key);
@@ -9834,18 +9844,50 @@ async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pse
 //     ＝ **人が最後に指定した物を勝たせる**(→ [[project_last_specified_wins]])。答え合わせは本人の1クリックから。
 //   ★止める道は残す＝ 掛けた本人が「今やめる」と言えない錠は**守れない約束**(拡張を切れば消える)。
 //     ただし**うっかりでは外れない**(⏰から選び、はい/いいえを1回答える)＝ 試験の要件はそれで足りる。
-// 「18:30」「1830」→ その時刻までの ms。過ぎていれば明日の同じ時刻(俊克「1時限目の終りの時刻」)。
-function meosMsUntilClock(txt) {
-  const m = /^\s*(\d{1,2})\s*[:：]?\s*(\d{2})\s*$/.exec(String(txt || ''));
-  if (!m) return 0;
-  const hh = +m[1], mm = +m[2];
-  if (hh > 23 || mm > 59) return 0;
+// ★★★v4.0.458(俊克「⏰は、**年月日も指定できる**ようにしよう。基本は毎日の時刻指定」):
+//   ★★★**指定の細かさthatが、その予定の周期を言っている**＝ 時刻だけなら「今日か明日のその時刻」、
+//     月日を足せば「今年のその日」、年まで書けば「その1日」。**書いた分だけ遠くを指す**so、
+//     人に「毎日か、1回きりか」を別に訊く必要thatが無い(問いを足さない)。
+//   ★過ぎていれば1つ先へ送る＝ 時刻だけ→明日 / 月日→来年 / 年つき→送らない(過ぎた指定は誤り)。
+//   ★時刻を省いた日付は**その日の始まり(00:00)**＝ 一日を指したのだから、その一日の頭。
+//   受ける形: 18:30 / 1830 / 9/1 18:30 / 09-01 1830 / 2026/9/1 18:30 / 2026-09-01 / 20260901 1830
+function meosParseWhen(txt) {
+  const raw = String(txt || '').trim().replace(/[：]/g, ':').replace(/[／]/g, '/');
+  if (!raw) return null;
   const now = new Date();
-  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-  if (t.getTime() <= now.getTime()) t.setDate(t.getDate() + 1);
-  return t.getTime() - now.getTime();
+  let y = null, mo = null, d = null, hh = null, mi = null;
+  let m;
+  if ((m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(raw))) {
+    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5];
+  } else if ((m = /^(\d{4})(\d{2})(\d{2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(raw))) {
+    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5];
+  } else if ((m = /^(\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(raw))) {
+    mo = +m[1]; d = +m[2]; hh = m[3] == null ? 0 : +m[3]; mi = m[4] == null ? 0 : +m[4];
+  } else if ((m = /^(\d{1,2}):(\d{2})$/.exec(raw)) || (m = /^(\d{1,2})(\d{2})$/.exec(raw))) {
+    hh = +m[1]; mi = +m[2];
+  } else return null;
+  if (hh > 23 || mi > 59) return null;
+  if (mo != null && (mo < 1 || mo > 12 || d < 1 || d > 31)) return null;
+  let t;
+  if (y != null) {                                   // 年まで書いた= その1日。送らない
+    t = new Date(y, mo - 1, d, hh, mi, 0, 0);
+    if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;   // 2/30 のような日
+    if (t.getTime() <= now.getTime()) return null;                   // 過ぎた指定は誤り
+  } else if (mo != null) {                           // 月日だけ= 今年。過ぎていれば来年
+    t = new Date(now.getFullYear(), mo - 1, d, hh, mi, 0, 0);
+    if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;
+    if (t.getTime() <= now.getTime()) {
+      t = new Date(now.getFullYear() + 1, mo - 1, d, hh, mi, 0, 0);
+      if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;
+    }
+  } else {                                           // 時刻だけ= 今日。過ぎていれば明日(基本の使い方)
+    t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mi, 0, 0);
+    if (t.getTime() <= now.getTime()) t.setDate(t.getDate() + 1);
+  }
+  return { at: t, ms: t.getTime() - now.getTime() };
 }
-async function meosStartPseudoTimer(minutes, untilMs) {
+function meosMsUntilClock(txt) { const w = meosParseWhen(txt); return w ? w.ms : 0; }
+async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
   const ms = untilMs ? Math.max(1000, untilMs) : Math.max(1, Math.min(600, Math.round(Number(minutes) || 0))) * 60000;
@@ -9856,11 +9898,13 @@ async function meosStartPseudoTimer(minutes, untilMs) {
   const hold = (meosScopeMode(scope) === 'pseudo');
   _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold });
   _meosPseudoUntil.set(lk, Date.now() + ms);
-  _meosPseudoTimers.set(lk, setTimeout(() => meosPseudoTimeUp(lk), ms + 250));
+  meosArmPseudoTimer(lk, ms + 250);
   meosUpdateTimerBar();
   meosPostViewMode();
-  vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + meosMmSs(ms)
-    + (hold ? ' held in Pseudo-WYSIWYG; the way out comes back when the time is up.' : ' until MeOS brings you back here.'), 3000);
+  // 遠い予定は mm:ss では読めないso、**指した日時そのもの**を言う(MeOSの日時を作る1つの口から)。
+  const when = atDate ? (' \u2014 ' + meosFormatStamp(atDate)) : (' \u2014 ' + meosMmSs(ms));
+  vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + when
+    + (hold ? ' \u2014 held in Pseudo-WYSIWYG; the way out comes back when the time is up.' : ' \u2014 until MeOS brings you back here.'), 4000);
 }
 // ★★★v4.0.457(俊克「⏰ボタンに日記ボタンのように、**⏰登録した膜のリストを表示して、その膜に行ける**ように
 //   しておくと使い易くなるよね」):
@@ -9925,11 +9969,14 @@ async function meosPseudoTimerMenu() {
   if (pick._go) { await meosJumpToScope(pick._go); return; }     // 一覧from選んだ= その膜へ行く
   if (pick.m === -1) {
     const t = await vscode.window.showInputBox({
-      title: 'MeOS — at what time?', value: '18:30', prompt: '24-hour clock. A time already past means tomorrow.',
-      validateInput: (v) => meosMsUntilClock(v) ? null : 'HH:MM (e.g. 18:30)'
+      title: 'MeOS — when?', value: '18:30',
+      prompt: '18:30 = today, or tomorrow if it has passed · 9/1 18:30 = this year · 2026-09-01 18:30 = that one day · a date with no time means its 00:00',
+      validateInput: (v) => { const w = meosParseWhen(v); return w ? null : '18:30 / 9/1 18:30 / 2026-09-01 18:30'; }
     });
     if (!t) return;
-    await meosStartPseudoTimer(0, meosMsUntilClock(t));
+    const w = meosParseWhen(t);
+    if (!w) return;
+    await meosStartPseudoTimer(0, w.ms, w.at);
     return;
   }
   let m = pick.m;

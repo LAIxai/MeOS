@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.458 (2026-08-28)
+- **⏰ takes a date as well as a time.** `18:30` · `9/1 18:30` · `2026-09-01 18:30` — and **how precisely you
+  write it says what kind of plan it is**: a time alone means today, or tomorrow if it has passed; adding a day
+  and month means this year; writing the year means that one day. So MeOS never has to ask whether you meant
+  "every day" or "just once" — you already said. A date with no time means that day's 00:00, and a date that has
+  already gone by is reported as a mistake rather than quietly moved to next year.
+- A far-off plan is announced by **the date it points at**, not as mm:ss, which nobody can read.
+- Long waits are armed in chunks: `setTimeout` overflows at about 24.8 days and fires **immediately**, which
+  would have made every plan more than a month away go off at once.
+
 ### v4.0.457 (2026-08-28)
 - **⏰ lists every clock you have running, and takes you to any of them.** A clock you set is a plan, and a plan
   you cannot see a list of is not a schedule — one is easy to hold in your head, three are not. The list sits at
