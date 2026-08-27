@@ -999,8 +999,10 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
      '★★★残り時間は**その膜の閉じ膜の行**に出す(膜の物は膜に置く)', true);
   ok(/const ln = pr\.end, text = doc\.lineAt\(ln\)\.text \|\| '';/.test(src),
      '★行は名前から引き直す(掛けた時の行番号は、書いている内にずれる)', true);
-  ok(/const at = \(parts && parts\.idEnd >= 0\) \? parts\.idEnd : text\.length;/.test(src),
-     '★★出るのは**膜名の直後**= コメントの長さで居場所that変わらない(俊克 v4.0.450 改良1)', true);
+  ok(/if \(m\) \{ at = parts\.idEnd \+ m\[1\]\.length; pre = ''; \}/.test(src),
+     '★★★出るのは **// の右= コメント欄の先頭**(俊克 v4.0.451「あくまでも、コメント入力領域を利用するので」)', true);
+  ok(src.indexOf(String.raw`^(\s*\/\/[ \t]?)`) >= 0,
+     '★`//` とその後ろの空白1つまでを飛ばす= コメントthat有っても無くても同じ桁', true);
   ok(/const parts = membraneLineParts\(text, 'close'\);/.test(src),
      '★閉じ膜の並びは1か所(membraneLineParts)から引く= 殻の書き方that違っても崩れない', true);
   ok(/try \{ meosApplyTimerLineDecorations\(editor\); \} catch \(_\) \{\}/.test(src),

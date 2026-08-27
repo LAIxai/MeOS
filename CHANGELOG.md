@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.451 (2026-08-27)
+- **The countdown stands inside the closing comment**, right after the `//`: `▲name // ⏰ 0:33 comment2`. The
+  space to the right of `//` is the part a person types into and rarely fills on a closing membrane — so the
+  clock borrows it rather than claiming a place of its own, and lands in the same column whether that comment is
+  long, short, or absent. v4.0.450 put it just left of the `//`, which was still outside the comment.
+
 ### v4.0.450 (2026-08-27)
 - **The countdown now sits immediately after the membrane's name**, before its closing comment rather than after
   it. Put on the right, the clock drifts far out on a membrane with a long comment and sits close in on one with
