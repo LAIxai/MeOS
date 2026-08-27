@@ -9499,7 +9499,15 @@ async function meosSetViewMode(mode) {
   // v4.0.141/438: 畳みは**既存の道1本**に任せる＝ Raw は meosSyncFcFoldForCursor が自分で見て全部開く。
   //   Pseudo に入る時は「全部開いている」ことにして、その道に畳み直させる(畳む口を2つ作らない)。
   if (next === 'pseudo') _meosFcOpen = 'ALL';
-  try { if (ed) await meosSyncFcFoldForCursor(ed); } catch (_) { }
+  // ★★v4.0.443(俊克「切替ボタンを押したとき、**フォーカスをエディタに切り替えると良いのかも知れない**」):
+  //   ★★**そのとおりだった**＝ 畳む/開くは**焦点のあるエディタにしか効かない**(v4.0.141)ので、焦点that
+  //     Me Dockに在る間、畳みの同期は**何もせずに帰っていた**。だからボタンの効き目that「押した時」と
+  //     「次にエディタをクリックした時」の2回に割れて見えていた。
+  //   ★v4.0.141の「焦点は奪わない」は**起動時**の話＝ 人that読んでいる所から勝手に飛ばすのは行儀that悪い。
+  //     **人that自分でボタンを押した時は別**＝ 押した結果は、その場で全部起きるべき。
+  let edA = ed;
+  try { if (ed && ed !== vscode.window.activeTextEditor) edA = (await vscode.window.showTextDocument(ed.document, { viewColumn: ed.viewColumn, preserveFocus: false, preview: false })) || ed; } catch (_) { }
+  try { if (edA) await meosSyncFcFoldForCursor(edA); } catch (_) { }
   meosPostViewMode();
   vscode.window.setStatusBarMessage('MeOS: ' + MEOS_VIEW_MODE_BAR[next], 1800);
   return next;
@@ -25842,6 +25850,11 @@ function meosRawBand(editor) {
     return band;
   } catch (_) { return null; }
 }
+// ★★★v4.0.443: **帯の中のFC行は「開いているのが約束」**。この1行を、畳みの2本の道
+//   (個別=meosSyncFcFoldForCursor / 一括=meosAutoFoldSpecLines)が**同じように**引く。
+//   v4.0.441で帯を入れた時、私は「どの行を生で見せるか」だけを新しくし、**畳みの道は古い言葉のまま**
+//   置き去りにした ＝ 俊克のバグ1〜3は、その1つの穴から出ていた。
+function meosFcInBand(band, line) { return !!(band && line >= band.from && line <= band.to); }
 function meosRawLines(editor) {
   const out = new MeosRawLineSet();
   try {
@@ -26066,7 +26079,7 @@ function meosScheduleFcCursorSync(editor) {
   //   押しっぱなしで飛んでいる間は、この時計が張り替わり続けるので**一度も**文書の見え方を変えない。
   let _closing = false;
   try {
-    if (_meosFcOpen != null && _meosFcOpen !== 'ALL') {
+    if (typeof _meosFcOpen === 'number') {   // v4.0.443: 番兵('ALL' / 'RAW:…')は行番号ではない
       const b = meosFcPairAt(editor.document, editor.selection.active.line);
       _closing = !(b && b.head === _meosFcOpen);
     }
@@ -26177,11 +26190,36 @@ async function meosSyncFcFoldForCursor(editor) {
     };
     const fold = (ls) => _run('editor.fold', ls);
     const unfold = (ls) => _run('editor.unfold', ls);
-    if (raw) { // Raw=生データを全部見せる約束
-      if (_meosFcOpen !== 'ALL') { await unfold(blocks.map(b => b.start)); _meosFcOpen = 'ALL'; }
+    // v4.0.443: 畳む相手は**見えていて、かつ開いている物だけ**(v4.0.186/188)。この3つはRawの枝でも要るので
+    //   ここへ引き上げた(前は下に在って、Rawの枝からは使えず、**裸の fold that残っていた**)。
+    const _visible = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return true; } };
+    const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
+    const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしない
+    // ★★★v4.0.443(俊克 8/27 am11:16 バグ1「Rawに切り替えた膜の中をクリックすると、**順々にFCが折り畳まれて
+    //   行ってしまう**」/ バグ2「エディタ上をクリックすると、**なぜか膜の先頭にワープする**ことが時々ある」/
+    //   バグ3「**入れ子や別の膜も従来通り生に変わってしまう**」):
+    //   ★★★**3つは1つの穴**だった＝ v4.0.441で「Rawは膜単位」に変えたのは `meosRawLines`(どの行を生で
+    //     見せるか)だけで、**FC行を開く/畳む2本の道は、今も『Rawならファイル全部』と言っていた**。
+    //     ① ここthatファイル中のFCを全部開く → 俊克の見た「別の膜も生に変わる」(バグ3)
+    //     ② 開いた分だけ画面that動く → 可視範囲の合図 → 一括の道that「見えていて開いている塊」を順に畳む
+    //        → 「順々に折り畳まれて行く」(バグ1)
+    //     ③ その畳みthat既に畳まれた塊に当たると、内側thatもう無いので**外側=膜**を畳む(v4.0.188)
+    //        → 「膜の先頭へワープ」(バグ2)
+    //   ★★直し＝ **開く範囲も帯に合わせる**。そして**一括の道にも同じ判定を配る**(口は1つ)。
+    //     → [[feedback_one_source_for_mark_count_action]]「呼び元を全部見る」。今日もこの形で出た。
+    if (raw) {
+      const band = meosRawBand(editor);
+      const key = band ? ('RAW:' + band.from + '-' + band.to) : 'RAW:none';
+      if (_meosFcOpen !== key) {
+        for (const b of blocks) if (!meosFcInBand(band, b.start)) await foldIfVisible(b.start); // 前の帯の名残を畳む
+        const open = blocks.filter(b => meosFcInBand(band, b.start)).map(b => b.start);
+        if (open.length) await unfold(open);
+        _meosFcOpen = key;
+      }
       return;
     }
-    if (_meosFcOpen === 'ALL') { await fold(blocks.map(b => b.start)); _meosFcOpen = null; } // Rawが切れた=畳み直す
+    // Raw/Pseudoが切れた=畳み直す。**裸の fold をやめる**(既に畳まれている物を畳むと膜に化ける=v4.0.188)。
+    if (typeof _meosFcOpen === 'string') { for (const b of blocks) await foldIfVisible(b.start); _meosFcOpen = null; }
     const line = editor.selection.active.line;
     // v4.0.186(俊克 8/14 am01:38「見出しの先頭で改行すると、ジャンプして戻ると言う動きをする。
     //   その処理に入った時、何もしないで出るようにできないのか? bsキーのときは、一瞬再描画されるのも、今一」):
@@ -26190,7 +26228,7 @@ async function meosSyncFcFoldForCursor(editor) {
     // ★so**画面の外の塊は、そもそも畳まない**。畳み忘れではない= その塊thatが画面に入ってきた時に畳めばいい
     //   (カーソルthat近づけばこの同期thatまた走る)。**見えていないものを整える必要は無い**。
     // ★開く方(unfold)はカーソルの居る塊=**必ず画面の中**so、元から飛ばない。
-    const _visible = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return true; } };
+    // v4.0.443: _visible / _openNow / foldIfVisible は上へ引き上げた(Rawの枝でも同じ物を使うため)。
     // v4.0.188(俊克 8/14 am02:18 の実測ログ): ★★**犯人that名乗った**= `[fcSync] fold 96666 画面上端 96660→95296→95296`。
     //   96666は**画面の中**(上端96660)なのに、畳んだ瞬間に**1364行も上の95296**へ飛んだ。95296は**膜の先頭**。
     // ★真因= `editor.fold({selectionLines:[N]})` は「N行の**一番内側の折り畳み範囲**」を畳む。
@@ -26222,8 +26260,6 @@ async function meosSyncFcFoldForCursor(editor) {
     //   ★★v4.0.343で畳むのをやめたのは**乱暴な止血**で、本当の原因は
     //     「**カーソルの下に隠れ帯が在る**」(v4.0.344/345で例外ごと外した)方だった。だから**戻せる**。
     //   ★戻すが、畳むのは**カーソルが落ち着いてから**(v4.0.341)＝ 通り過ぎるだけの時は畳まない。
-    const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
-    const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしない
     // ★★v4.0.440(俊克 8/27 バグ1「読書モードで、見出しやハイライトを**コピペすると、FCコメントが見えちゃう**」):
     //   ★★v4.0.438では読書モードで**この道ごと降りていた**ので、貼り付けで増えたFC行を畳む者が居なかった。
     //     降りるのではなく、**開くのをやめて、畳む方だけ通す**のが正しい＝ 読む時に命令は要らない。
@@ -26319,7 +26355,10 @@ async function meosAutoFoldSpecLines(editor, force) {
     const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
     const _cur = editor.selection.active.line;
     // v4.0.440: 読書モードでは**カーソルの塊も畳む相手**(除ける理由=「そこは生データを見せている」が消えるので)
-    const _mine = (b) => meosReadMode ? false : ((b.start === _meosFcOpen) || (b.open != null && _cur === b.open) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end));
+    // ★★v4.0.443: **帯の中の塊は、一括の道も触らない**＝ 開けているのは偶然ではなく、Rawの約束だから
+    //   (v4.0.328「カーソルの居る群は触らない」と同じ理由を、帯にも当てる)。判定は1つ(meosFcInBand)。
+    const _band = (typeof meosRawMode !== 'undefined' && meosRawMode) ? meosRawBand(editor) : null;
+    const _mine = (b) => meosReadMode ? false : (meosFcInBand(_band, b.start) || (b.start === _meosFcOpen) || (b.open != null && _cur === b.open) || (_cur >= ((b.top == null) ? b.start : b.top) && _cur <= b.end));
     heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end)).map(b => b.start);
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)

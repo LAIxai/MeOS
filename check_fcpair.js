@@ -945,5 +945,35 @@ console.log('㊺ Pseudoのタイマー= テスト用紙/暗記シート(v4.0.442
      '★Me Dockからもコマンドからも同じ1つの口', true);
 }
 
+console.log('㊻ Rawの帯に、畳みの2本の道を合わせる(v4.0.443 俊克 バグ1〜3)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/function meosFcInBand\(band, line\) \{ return !!\(band && line >= band\.from && line <= band\.to\); \}/.test(src),
+     '★★「帯の中か」を言う口は1つ(2本の道that同じ物に訊く)', true);
+  const uses = (src.match(/meosFcInBand\(/g) || []).length;
+  ok(uses >= 4, '★個別の道・一括の道の両方that引いている', uses);
+  ok(!/if \(_meosFcOpen !== 'ALL'\) \{ await unfold\(blocks\.map/.test(src),
+     '★★Rawで「ファイル中のFCを全部開く」道that消えている(バグ3の元)', true);
+  ok(/const open = blocks\.filter\(b => meosFcInBand\(band, b\.start\)\)\.map\(b => b\.start\);/.test(src),
+     '★★開くのは帯の中の塊だけ', true);
+  ok(/for \(const b of blocks\) if \(!meosFcInBand\(band, b\.start\)\) await foldIfVisible\(b\.start\);/.test(src),
+     '★前の帯の名残は畳む(ただし見えていて開いている物だけ)', true);
+  ok(!/await fold\(blocks\.map\(b => b\.start\)\)/.test(src),
+     '★★★裸の fold(全部) that1つも残っていない= 畳まれた塊を畳むと膜に化ける(v4.0.188 / バグ2の元)', true);
+  ok(/if \(typeof _meosFcOpen === 'string'\) \{ for \(const b of blocks\) await foldIfVisible\(b\.start\); _meosFcOpen = null; \}/.test(src),
+     '★Raw/Pseudoを降りた時の畳み直しも foldIfVisible を通る', true);
+  ok(/const _band = \(typeof meosRawMode !== 'undefined' && meosRawMode\) \? meosRawBand\(editor\) : null;/.test(src)
+     && /const _mine = \(b\) => meosReadMode \? false : \(meosFcInBand\(_band, b\.start\) \|\|/.test(src),
+     '★★★一括の道も帯の中には手を出さない(バグ1の元= 開いた端から畳んでいた)', true);
+  ok(/if \(typeof _meosFcOpen === 'number'\) \{/.test(src),
+     '★番兵(ALL / RAW:…)を行番号と読み違えない', true);
+  ok(/edA = \(await vscode\.window\.showTextDocument\(ed\.document, \{ viewColumn: ed\.viewColumn, preserveFocus: false, preview: false \}\)\) \|\| ed;/.test(src),
+     '★★押した結果はその場で全部起きる(畳むのは焦点のあるエディタにしか効かない= 俊克の提案)', true);
+  ok(/const _visible = \(ln\)[\s\S]{0,400}const _openNow[\s\S]{0,200}const foldIfVisible[\s\S]{0,900}if \(raw\) \{/.test(src),
+     '★門番はRawの枝より前に置く(前は下に在って、Rawからは使えなかった)', true);
+  const dup = (src.match(/const foldIfVisible = async/g) || []).length;
+  ok(dup === 1, '★同じ門番が2つ無い(どちらthat効くか分からない状態を作らない)', dup);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

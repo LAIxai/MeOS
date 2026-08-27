@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.443 (2026-08-27)
+- **Three reported bugs, one hole.** When Raw became per-membrane in v4.0.441, only the place that answers
+  *which lines show their raw data* learned the new meaning. The two paths that **fold and unfold the FC lines**
+  were left speaking the old language — "if Raw, the whole file". So entering Raw threw every FC block in the
+  file open (looked like other membranes had gone raw), the screen moved, the batch folder woke up and shut them
+  again one at a time, and each fold that landed on an already-folded block folded the **membrane** instead and
+  jumped to its head. Opening scope now follows the band, and the batch path asks the same single question.
+- **No bare `fold(everything)` is left.** Folding a block that is already folded is what warps the caret to the
+  top of a membrane (known since v4.0.188); every fold now goes through the "visible and actually open" guard.
+- **Pressing the button now finishes the job on the spot.** Fold and unfold only work on the focused editor, so
+  while focus sat in Me Dock the fold half of a mode change quietly did nothing and only happened on your next
+  click. Switching a mode now returns focus to the editor first. (Not stealing focus is a rule about *startup* —
+  when a person presses a button themselves, the whole result should happen at once.)
+
 ### v4.0.442 (2026-08-27)
 - **A timer for Pseudo-WYSIWYG — the file becomes a test paper.** Hold the view for 10 / 25 / 50 / 90 minutes
   (or your own number) and there is no way out until the time is up. The answers are already in the file, hidden
