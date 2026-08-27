@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.455 (2026-08-28)
+- **The view-mode button and its ⏰ have moved to Navigate Me!, immediately right of ⚠️.** In Format Me every
+  other control writes something — `==`, 👻, `A²`, `##`, ▦, 🐱 all put characters in the file — and this one
+  writes nothing at all; that was the misfit. Next to ⚠️ it joins the row that reports **what the membrane you
+  are in is like**: ⚠️ says it is broken, 🥩 says it is showing its raw data. The ⏰ travels with it, because the
+  view you set it from is what decides whether it locks or merely rings — a link you can only read while the two
+  stand together.
+
 ### v4.0.454 (2026-08-27)
 - **MeOS carried you off, so MeOS hands you the way back.** After the bell takes you to a membrane, the status
   bar slot that was counting down turns into **↩ Back**, naming the membrane you were in. One press returns you

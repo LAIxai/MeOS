@@ -1071,5 +1071,25 @@ console.log('㊾ 連れ出したのはMeOSso、帰り道もMeOSthat出す(v4.0.4
      '★タブを閉じていても開き直して戻れる', true);
 }
 
+console.log('㊿ 3モードボタンと⏰は Navigate Me! の ⚠️ の右へ(v4.0.455 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const warn = src.indexOf('id="warn-n"></span></button></span><span class="fmt-cell-head raw-cell">');
+  ok(warn >= 0, '★★★⚠️ の**すぐ右**に立つ(今この膜はどうなっているか、を言う列)', true);
+  const fmtRow = src.indexOf('id="mew-cycle"');
+  const fmtEnd = src.indexOf('mCN=dock_format', fmtRow);
+  ok(fmtRow >= 0 && fmtEnd > fmtRow && src.slice(fmtRow, fmtEnd).indexOf('raw-cell') < 0,
+     '★Format Me の中には残っていない(そこだけ1文字も書かない駒thatだった)', true);
+  ok(/id="raw-toggle"/.test(src) && /id="raw-timer"/.test(src),
+     '★idは変えない= webview側の配線(getElementById)はそのまま生きる', true);
+  ok(src.indexOf('class="fmt-cell-head raw-cell"><button class="fmt-btn raw-toggle"') >= 0
+     && src.indexOf('id="raw-toggle"') < src.indexOf('id="raw-timer"'),
+     '★★モードボタンと⏰は1つの枡のまま(掛けた時のモードthat⏰の役を決めるので、隣に居ることthat意味を持つ)', true);
+  ok(/\.raw-cell\{margin-left:8px;position:relative;display:inline-flex;align-items:center\}/.test(src),
+     '★右端固定(margin-left:auto)をやめた= ⚠️ の隣に立つため', true);
+  ok((src.match(/class="fmt-cell-head raw-cell"/g) || []).length === 1,
+     '★枡は1つだけ(移したつもりで置き去りthat無い)', (src.match(/class="fmt-cell-head raw-cell"/g) || []).length);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);
