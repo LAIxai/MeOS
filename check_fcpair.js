@@ -933,5 +933,21 @@ console.log('㊹ 3つの見え方は膜の性質(v4.0.444 俊克)  ※振る舞�
      '★★★tipは行き先を**両方とも名指しする**(「the other way」では何になるか読めない)', true);
 }
 
+console.log('㊺ ●/× は門より前(v4.0.446 俊克 改良1)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const h = src.indexOf('vscode.workspace.onDidChangeTextDocument(e => {');
+  const ud = src.indexOf('postDockFileUD(_dockEd)', h);
+  const gate = src.indexOf('if (deferRefreshCount > 0) {', h);
+  ok(h >= 0 && ud > h && gate > ud,
+     '★★★保存済みかどうかは「事実」so、描き直しを止める門より**前**に置く', [ud - h, gate - h]);
+  ok((src.match(/postDockFileUD\(activeEditor\)/g) || []).length === 0,
+     '★2つ目の口を残さない(門の後ろの古い呼び出しthat消えている)', true);
+  ok(/_dockEd\.document === e\.document/.test(src),
+     '★Me Dockthat見ている当のファイルの時だけ出す(裏のファイルの状態で上書きしない)', true);
+  ok(/_dot\.textContent=m\.dirty\?'\\u25cf':'\\u00d7';/.test(src),
+     '★●=未保存(橙) / ×=保存済(緑) の向きは v4.0.365 のまま', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

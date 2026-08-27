@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.446 (2026-08-27)
+- **The saved/unsaved dot now reacts to MeOS's own edits.** Setting a view mode writes to the mMETA membrane, so
+  the file becomes dirty — but the dot stayed on the green × as if nothing had happened, and nothing prompted a
+  ⌘S. The dot was being posted from below the gate that suppresses redraws during MeOS's own batch edits, so
+  every edit MeOS made on its own left the mark behind. Whether a file is saved is a **fact**, not a redraw; it
+  now goes out ahead of that gate, from a single place, no matter who did the writing.
+
 ### v4.0.445 (2026-08-27)
 - **A membrane's view mode is saved in the file, in its mMETA membrane** — the same place Format colours and
   reference settings already live, so it travels with the file through Git and does not evaporate when you switch

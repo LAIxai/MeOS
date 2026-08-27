@@ -29478,6 +29478,20 @@ makeDecorations();
       }
     }),
     vscode.workspace.onDidChangeTextDocument(e => {
+      // ★★★v4.0.446(俊克 8/27 pm00:45 改良1「今回のRaw設定などでメタ膜が変更したのに、Me Dockの
+      //   ファイル名ボタンの右のマークが×のままだね。やはり、**●表示にして、Cmd+Sをするように
+      //   気づかせる**方が良いよね?」):
+      //   ★★★**門の後ろに置いていた**。●/× は v4.0.363 からこの関数の**下の方**に在り、その手前には
+      //     `if (deferRefreshCount > 0) return;`(＝ MeOS自身のバッチ編集の間は描き直しを止める門)が在る。
+      //     soメタ膜の書き込みのように **MeOSだけが編集した時**は、印が×のまま取り残されていた。
+      //   ★★★**保存済みかどうかは「事実」であって「描き直し」ではない**。deferRefreshCount が守っている
+      //     のはIMEと再描画の競合so、1つの印を出すことまで止める理由は無かった。→ **門より前へ出す**。
+      //   ★誰が書いたかを問わない＝ 人の打鍵でも、MeOSのメタ膜でも、同じ1か所から同じ印that出る
+      //     (→ [[feedback_one_source_for_mark_count_action]]「印・数字・ボタンは同じ1つの判定から引く」)。
+      try {
+        const _dockEd = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+        if (_dockEd && _dockEd.document === e.document) postDockFileUD(_dockEd);
+      } catch (_) { }
       // v4.0.272: **一番先に**行の配列を直す(この後の誰かthat meosDocLines を呼んでも刻み直さない)。
       try { meosPatchDocLines(e); } catch (_) { }
       // v4.0.258: 分割した行への変更を、理由と中身ごと記録する(誰が消したかを名指しさせる)。
@@ -29570,7 +29584,7 @@ makeDecorations();
       // edits) only run after typing pauses ~220ms — by which point the IME has
       // committed. The extension's own batch edits still bypass via deferRefreshCount.
       lastDocChangeAt = Date.now();
-      try { postDockFileUD(activeEditor); } catch (_) { }   // v4.0.363: ● → × は最初の1打鍵で。同じなら送らない
+      // v4.0.446: ●/× はこの関数の**先頭**へ移した(門より前)。ここに2つ目の口を残さない。
       // v4.0.74(俊克 8/8 pm04:01 改良2「1行を貼り付けても🐱カウンターが1のまま。カーソルを動かすと2になる」):
       // ★真因=**1行だけの編集は refresh を丸ごと止めている**(v0.9.637のIME保護=「ひらがな入力中は膜線を止め、
       //   改行で整える」)。so貼り付けた行の🐱は、次に構造編集かカーソル移動が起きるまで出てこなかった。
