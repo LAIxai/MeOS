@@ -1139,5 +1139,23 @@ console.log('(52) ⏰ は年月日も受ける／長い待ちは刻んで継ぐ(
      '★★遠い予定は mm:ss では読めないso、指した日時そのものを言う(日時を作る口は1つ)', true);
 }
 
+console.log('(53) 近づくと⏰thatが大きくなる — 読ませずに気づかせる(v4.0.459 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/var _near=\(left>0&&left<=5\*60000\),_imm=\(left>0&&left<=60000\);/.test(src),
+     '★★近さは**残り時間の絶対値**で測る(割合ではない= 5分前は、どの予定でも5分前)', true);
+  ok(/\.warn-btn\.raw-timer\.near\{transform:scale\(1\.18\)/.test(src)
+     && /\.warn-btn\.raw-timer\.imminent\{transform:scale\(1\.38\)/.test(src),
+     '★★★大きくするのは transform:scale = **枡の大きさは変わらない**(右隣は1pxも動かない)', true);
+  ok(/@keyframes meosClockBreath/.test(src),
+     '★1分を切ったら息をする(点滅でなく、opacityの呼吸)', true);
+  ok(/if\(left>0&&!vmTick\)vmTick=setInterval/.test(src) && !/if\(held&&!vmTick\)/.test(src),
+     '★★★秒読みthatPseudo条件から外れた= **ただの呼び鈴でも数字that出る**(v4.0.453の取り残し)', true);
+  ok(/statusBarItem\.warningBackground/.test(src),
+     '★★最後の1分はステータスバーの地that変わる= Me Dockを閉じていても目に入る(標準の色so、MeOSthat色を発明しない)', true);
+  ok(/_meosTimerBar\.backgroundColor = \(_left <= 60000\) \? new vscode\.ThemeColor/.test(src),
+     '★過ぎたら元に戻す(undefinedで消す)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

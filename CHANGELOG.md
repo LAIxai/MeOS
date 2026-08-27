@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.459 (2026-08-28)
+- **⏰ grows as its time approaches.** The remaining time was already in three places, and all three had to be
+  *read*. Size does not have to be read — it arrives on its own. Under five minutes the clock swells; under one
+  minute it swells further and breathes. It grows with `transform`, so its **box never changes size** and the
+  buttons beside it do not shift — a control that moves is a control you cannot hit.
+- Nearness is measured in **actual time left**, not as a fraction: five minutes before the end is five minutes,
+  whether the plan was ten minutes or next month.
+- In the last minute the **status bar entry turns warning-coloured**, using VS Code's own colour — visible even
+  with Me Dock closed.
+- Fixed: the countdown was still gated on Pseudo-WYSIWYG, so **a plain bell showed no numbers at all** — left
+  over from when ⏰ could be set from any view.
+
 ### v4.0.458 (2026-08-28)
 - **⏰ takes a date as well as a time.** `18:30` · `9/1 18:30` · `2026-09-01 18:30` — and **how precisely you
   write it says what kind of plan it is**: a time alone means today, or tomorrow if it has passed; adding a day

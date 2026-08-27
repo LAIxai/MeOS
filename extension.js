@@ -9658,8 +9658,14 @@ function meosUpdateTimerBar() {
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
     _meosTimerBar.text = '⏰ ' + meosMmSs(Math.max(0, best.until - Date.now())) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
-    _meosTimerBar.tooltip = 'MeOS: this membrane is held in Pseudo-WYSIWYG. When the time is up it goes back on its own.';
+    _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
+    // ★v4.0.459: 最後の1分は**地の色that変わる**= Me Dockを閉じていても目に入る(VS Code標準の警告色so、
+    //   MeOSthat色を発明しない)。俊克の「枠を飛び出す」の狙いは、**動かさずに**これで足りる。
+    try {
+      const _left = Math.max(0, best.until - Date.now());
+      _meosTimerBar.backgroundColor = (_left <= 60000) ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+    } catch (_) { }
     _meosTimerBar.show();
     meosTickTimerLines();
     if (!_meosTimerTick) _meosTimerTick = setInterval(() => meosUpdateTimerBar(), 1000);
@@ -20306,6 +20312,11 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .warn-btn.raw-timer{opacity:.45;filter:none;font-size:14px}
 .warn-btn.raw-timer:hover{background:rgba(224,128,58,.18);border-color:rgba(224,128,58,.55)}
 .warn-btn.raw-timer.running{opacity:1;background:rgba(224,128,58,.18);border-color:rgba(224,128,58,.75)}
+/* ★v4.0.459: 近づくと大きくなる。transform なので**枡の大きさは変わらない**= 右隣は1pxも動かない。 */
+.warn-btn.raw-timer{transform-origin:center;transition:transform .5s ease}
+.warn-btn.raw-timer.near{transform:scale(1.18);background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
+.warn-btn.raw-timer.imminent{transform:scale(1.38);background:rgba(230,70,50,.34);border-color:rgba(230,70,50,1);animation:meosClockBreath 1.6s ease-in-out infinite}
+@keyframes meosClockBreath{0%,100%{opacity:1}50%{opacity:.55}}
 .warn-btn.raw-timer .raw-t{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:3px;color:#e0803a;vertical-align:1px}
 .fmt-btn.raw-toggle.held{border-color:#7a1f1f;box-shadow:inset 0 0 0 1px rgba(200,60,60,.55)}/* v4.0.442: 錠that掛かっている間は縁that赤い= 出口that無いことを、押す前に言う */
 /* v4.0.67(俊克): 🐱=この画面に「Mew!と鳴いていないMe記法」が居る時だけ色が点く。位置は固定(現れたり消えたりすると隣のボタンが動く)＝MeOS既存の流儀(2個未満で無効化半透明)に合わせる。 */.fmt-btn.mew-btn{font-family:inherit;min-width:auto;padding:1px 7px;font-size:15px;line-height:1.3;margin-left:16px;opacity:.42;filter:grayscale(1)}
@@ -21752,9 +21763,20 @@ rawToggle.classList.toggle('held',held);
    時計thatが「錠」だけでなく「呼び鈴」になったso、Pseudo以外でも掛けられないと使えない。→ **どこでも出す**。
    ★代わりに、**掛けた時のモードthat時計の役を決める**= Pseudoなら押さえる/それ以外なら呼ぶだけ。
    人に問いを足さずに、2つの使い方thatが分かれる。tipthatどちらになるかを先に言う。 */
+/* ★★★v4.0.459(俊克「**予定時刻に近づくと、⏰ボタンの大きさが拡大して行く**、というのはどうか?」):
+   ★★★**読ませずに気づかせる**= 数字は読まないと分からないthat、大きさは見なくても目に入る。
+     残り時間は3か所(⏰/閉じ膜/ステータスバー)に出ているのに、**どれも「読む」物**だった。
+   ★★大きくするのは transform:scale で= **枡の大きさは変えない**。幅that変わると右隣(↑#↓)that動き、
+     押そうとした物that逃げる([[project_direct_manipulation_mark]]「当たりthat表示の状態で動かない」)。
+   ★近さは**残り時間の絶対値**で測る= 「近づく」は割合でなく時計の話(10分の予定でも1か月先の予定でも、
+     5分前は5分前)。5分を切ったら大きく、1分を切ったら息をする。
+   ★v4.0.459 バグ直し= 秒読みthat held(Pseudo)条件に縛られていたので、**ただの呼び鈴では数字thatが出ていなかった**
+     (v4.0.453で⏰をどのモードでも掛けられるようにした時の取り残し)。時計は掛かっていれば動く。 */
 var _rt=document.getElementById('raw-timer'),_rn=document.getElementById('raw-t');
+var _near=(left>0&&left<=5*60000),_imm=(left>0&&left<=60000);
 if(_rn)_rn.textContent=(left>0)?vmMmSs(left):'';
 if(_rt){_rt.classList.toggle('running',left>0);
+_rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
@@ -21764,8 +21786,8 @@ rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCo
 +String.fromCharCode(10)+(vmOwn
 ?'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.'
 :'Handed down from the membrane outside this one \u2014 a membrane with no setting of its own follows whatever encloses it. Clicking gives this one a setting of its own; land back on the inherited value and it goes back to following.'))));
-if(held&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
-if(!held&&vmTick){clearInterval(vmTick);vmTick=null;}};
+if(left>0&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
+if(left<=0&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 var rawTimerBtn=document.getElementById('raw-timer');
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
