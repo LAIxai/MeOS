@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.463 (2026-08-28)
+- **⏰ and its ▾ are one piece again** — adjoining corners squared off, one line between them, like every other
+  split button.
+- **Two things that appeared miles from where they belonged now appear where they belong.** The view-mode tip and
+  the clock panel were both being placed by measuring coordinates in JavaScript, and Me Dock lives under the
+  host's CSS zoom, where those measurements do not line up. The house had already solved this once: **do not
+  measure — let the thing be a child of the button and let CSS put it there.** The panel is now a child of ▾, and
+  the mode tip joins the same `::after` family as ⚠️ and TOP. No coordinate arithmetic is left in either path.
+- **The pickers are wheels now**: three rows, the middle one twice the size, and it is the middle row that is
+  selected — so the frame you look at never moves and only the numbers travel under it. Scroll-snap does the
+  work, so there is no inertia to tune, and a blank row above and below lets the first and last values reach the
+  middle too.
+
 ### v4.0.462 (2026-08-28)
 - **⏰ has a ▾ of its own**: a date on top (year · month · day), a time below (hour · minute), each a scrolling
   column **and** a box you can type into. The columns and the box read the same value, so choosing in one writes

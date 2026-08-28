@@ -1218,8 +1218,28 @@ console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手
      '★★読む口は meosParseWhen 1つ(menu と▾that同じ物に訊く)', true);
   ok(/if\(clkPop&&clkPop\.classList\.contains\('on'\)&&!clkPop\.contains\(ev\.target\)&&ev\.target!==clkCaret\)closeClkPop\(\);/.test(src),
      '★外を押したら閉じる(自分の門番を持つ= 表の▾の状態に相乗りしない)', true);
-  ok(/clkPop\.style\.top=Math\.max\(6,r\.top-h-6\)/.test(src),
-     '★位置決めは表の▾と同じ形(家の作法を真似る)', true);
+  // ★★★v4.0.463: 座標計算をやめる(Me DockのCSS zoom下では噛み合わない= v3.1.32で家that出した答え)
+  ok(!/clkPop\.style\.top=/.test(src) && !/clkPop\.getBoundingClientRect|clkCaret\.getBoundingClientRect/.test(src),
+     '★★★JSで座標を計算する所that1つも残っていない', true);
+  ok(/\.bm-pop\.clk-pop\{position:absolute;right:0;bottom:calc\(100% \+ 8px\)/.test(src),
+     '★★パネルは▾の子= CSSだけで置く(同じzoom文脈so、どの倍率でも正しい所に出る)', true);
+  ok(/<span class="clk-wrap">/.test(src) && /\.clk-wrap \.warn-btn\.raw-timer\{margin-left:0;border-radius:9px 0 0 9px/.test(src),
+     '★★⏰と▾は1つの駒(隣り合う角を落として境目を1本の線に)= 俊克 改良1', true);
+  ok(/\.fmt-btn\.raw-toggle\[data-tip\]::after/.test(src) && /white-space:pre-line/.test(src),
+     '★★★3モードの駒のtipもCSSの::afterで出す= 座標を使わない(俊克 改良2)', true);
+  ok(/var _ckp=document\.getElementById\('clk-pop'\);if\(_ckp&&_ckp\.classList\.contains\('on'\)\)\{hideTocTip\(\);return;\}/.test(src),
+     '★開いたパネルを覆うtipを出さない(家の作法に合流)', true);
+  // ★★★改良4: 3段の輪。真ん中thatが選んでいる値
+  ok(/scroll-snap-type:y mandatory/.test(src) && /scroll-snap-align:center/.test(src),
+     '★★★止まった所に一番近い段that答え(慣性も物理も要らない)', true);
+  ok(/\.clk-col div\.sel\{font-size:19px/.test(src) && /\.clk-col div\{height:22px/.test(src),
+     '★★真ん中だけ字that大きい(11px→19px)= 選んでいる値は真ん中に居る', true);
+  ok(/\.clk-col::before,\.clk-col::after\{content:'';display:block;height:22px\}/.test(src),
+     '★上下に1段ぶんの余白= 最初と最後の値も真ん中に来られる', true);
+  ok(/\.clk-cols::before\{content:'';position:absolute;left:0;right:0;top:22px;height:22px/.test(src),
+     '★★窓(選択の枠)は動かない= 動くのは数字の側', true);
+  ok(/function clkCenter\(el\)/.test(src) && /function clkWatch\(el,onPick\)/.test(src),
+     '★指を離した所で決まる(110msで落ち着きを見る)', true);
   ok(/data-m="10"/.test(src) && /data-m="90"/.test(src),
      '★よく使う分(10/25/50/90)は1押しのまま', true);
 }

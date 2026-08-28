@@ -20011,6 +20011,14 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .nav-center-btn,.me-flip-btn,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark,.warn-btn,.fmt-bi{position:relative}
 .fmt-bi[data-tip]::after,.warn-btn[data-tip]::after,.nav-center-btn[data-tip]::after,.me-flip-btn[data-tip]::after,.eof-badge[data-tip]::after,.line-btn[data-tip]::after,.time-machine-trigger[data-tip]::after,.time-machine-clear[data-tip]::after,.tm-world-row[data-tip]::after,.bird-ev-label[data-tip]::after,.nss-head[data-tip]::after,.nss-mark[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;letter-spacing:normal;text-transform:none;line-height:1.4;width:max-content;max-width:200px;white-space:normal;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .bird-ev-label[data-tip]::after{left:auto;right:0;transform:none}
+/* ★★★v4.0.463(俊克 改良2「3モードボタンのtipthatものすごく離れた位置に出る」):
+   ★★★**JSで座標を計算する道に落ちていた**＝ ⚠️(.warn-btn)や TOP(.nav-center-btn)はCSSの::afterで出すのに、
+     3モードの駒だけ .fmt-btn so、その一覧に入っていなかった。Me DockのCSS zoomの下では、
+     マウスの座標と、置く先の座標系thatが食い違う(v3.1.32で分かっていたこと)。
+   ★→ **同じ一覧に入れる**。字は複数行so white-space:pre-line で改行を生かす。 */
+.fmt-btn.raw-toggle[data-tip],.fmt-caret.clk-caret[data-tip]{position:relative}
+.fmt-btn.raw-toggle[data-tip]::after,.fmt-caret.clk-caret[data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 6px);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;line-height:1.4;width:max-content;max-width:240px;white-space:pre-line;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
+.fmt-btn.raw-toggle[data-tip]:hover::after,.fmt-caret.clk-caret[data-tip]:hover::after{opacity:1}
 /* v4.0.436(俊克「□ ~~ にtipがなかなか出てこない」)= CSSのtipの家に入っていなかったので共有のJS製tipに
    落ちていた(出るまで間が空く)。家に入れた。
    ★v4.0.437(俊克「tipが被っている。**上の方が良いよ**」)= 下に出すとパネルの中身を覆う。家の既定(上)へ戻す。 */
@@ -20401,16 +20409,35 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    ★★家の中の同じ役の部品を真似る= 開き方・位置決め・閉じ方は表の▾(table-pop)と**同じ形**。
    ★スクロールの列は「輪」ではなく**ただの縦の一覧**= 目で追えて、指1本で選べる(輪は勢いthat要る)。
    ★日付を空にできる= **空 = 毎日の時刻**(俊克「基本は毎日の時刻指定」)。clear thatその口。 */
-.fmt-caret.clk-caret{border-radius:0 9px 9px 0;border-color:rgba(224,128,58,.55);margin-left:-1px}
-.clk-pop{width:236px;gap:3px}
+/* ★★v4.0.463(俊克 改良1「▼ボタンthat分離している。他のと同じように合体して下さい」):
+   ★⏰と▾は**1つの駒**so、隣り合う角を落として境目を1本の線にする(書式ボタンの▾と同じ形)。
+   ★★改良3「今回のパネルもかなり離れた位置に出る」: ★★★**座標を計算するのをやめる**＝
+     v3.1.32で家thatが一度出した答え(Me Dockは本家のCSS zoomの下に居るので、getBoundingClientRect と
+     position:fixed の座標系thatが噛み合わない)。→ パネルを**▾の子**にして、CSSだけで置く。
+     同じzoom文脈に居るので、計算も基準要素も要らず、どの倍率でも正しい所に出る。 */
+.clk-wrap{display:inline-flex;align-items:stretch;margin-left:8px}
+.clk-wrap .warn-btn.raw-timer{margin-left:0;border-radius:9px 0 0 9px;position:relative}
+.fmt-caret.clk-caret{position:relative;border-radius:0 9px 9px 0;border-color:rgba(224,128,58,.55);margin-left:-1px;font-family:inherit}
+.bm-pop.clk-pop{position:absolute;right:0;bottom:calc(100% + 8px);left:auto;top:auto;width:236px;gap:3px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default}
 .clk-row{display:flex;align-items:baseline;justify-content:space-between}
 .clk-lab{font-size:11px;font-weight:800;color:var(--vscode-foreground)}
 .clk-hint{font-size:9px;opacity:.6}
+/* ★★★v4.0.463(俊克 改良4「スクロール式は3段あれば十分かな。そして、**2段目だけ文字を2倍にして、
+   その部分を固定して、スクロールする**。タイマーでよくあるタイプの方式だね」):
+   ★★★**選んでいる値は、真ん中に居る**＝ 目を止める場所thatが1つに決まる。動くのは数字の側で、
+     枠(選択の窓)は動かない([[project_direct_manipulation_mark]]「当たりthat動かない」の輪版)。
+   ★実装は scroll-snap= 慣性も物理も要らない。止まった所に一番近い段thatが答え。
+   ★上下に1段ぶんの余白(::before/::after)を足すso、**最初と最後の値も真ん中に来られる**。 */
 .clk-cols{display:flex;gap:3px;align-items:stretch}
-.clk-col{flex:1;height:84px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:thin}
-.clk-col div{font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;padding:2px 0;cursor:pointer;border-radius:3px}
-.clk-col div:hover{background:rgba(224,128,58,.20)}
-.clk-col div.sel{background:rgba(224,128,58,.85);color:#fff;font-weight:900}
+.clk-col{position:relative;flex:1;height:66px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;scroll-snap-type:y mandatory;-ms-overflow-style:none}
+.clk-col::-webkit-scrollbar{display:none}
+.clk-col::before,.clk-col::after{content:'';display:block;height:22px}
+.clk-col div{height:22px;line-height:22px;font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;scroll-snap-align:center;opacity:.45;transition:font-size .12s,opacity .12s}
+.clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
+.clk-cols{position:relative}
+/* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
+.clk-col .clk-win{display:none}
+.clk-cols::before{content:'';position:absolute;left:0;right:0;top:22px;height:22px;border-top:1px solid rgba(224,128,58,.55);border-bottom:1px solid rgba(224,128,58,.55);pointer-events:none;z-index:1}
 .clk-clear{flex:none;align-self:flex-start;font-size:9px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
 .clk-in{width:100%;box-sizing:border-box;font-size:11px;font-family:ui-monospace,Menlo,monospace;padding:3px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .clk-when{font-size:10px;min-height:13px;color:#e0803a;font-weight:700;text-align:center}
@@ -20691,7 +20718,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
     <div class="nav-scroll" id="nav-scroll" data-tip="Bird-EV ToDo (bird's-eye view) — left: every heading · right: every unresolved review note. Clear the right side = project done. Drag a handle to jump."><div class="nav-ticks nav-ticks-head" id="nav-ticks-head"></div><div class="nav-ticks nav-ticks-mark" id="nav-ticks-mark"></div><span class="nss nss-head" id="nav-scroll-head"></span><span class="nss nss-mark" id="nav-scroll-mark"></span></div>
-    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><span class="fmt-caret clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</span>
+    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><span class="fmt-caret clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;
 <div class="bm-pop clk-pop" id="clk-pop">
   <div class="clk-row"><span class="clk-lab">Date</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col" id="clk-y"></div><div class="clk-col" id="clk-mo"></div><div class="clk-col" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
@@ -20702,7 +20729,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
   <input class="clk-in" id="clk-tin" placeholder="18:30" spellcheck="false">
   <div class="clk-when" id="clk-when"></div>
   <div class="clk-foot"><span class="clk-mins" id="clk-mins"></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
-</div><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
+</div></span></span><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
     <div class="nav-center-row line-row"><span class="head-nav line-hist"><button class="cancel nav-center-btn head-nav-btn" id="hist-back" data-tip="Back">←</button><button class="cancel time-machine-trigger head-nav-center" id="time-machine-trigger" data-tip="Time Machine Me">(0/0)</button><button class="cancel nav-center-btn head-nav-btn" id="hist-forward" data-tip="Forward">→</button></span><button class="cancel line-btn ${meDockCurrentLineMarkerActive?'on':''}" id="line-btn" data-tip="Toggle line marker">Line</button><input class="line-input" id="line-input" value="${esc(initial.line || '')}" inputmode="numeric"/><span class="head-nav mark-nav" data-tip="Jump between highlights / strikethroughs in the current membrane — editor ⇄ author review notes."><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-prev" data-tip="Previous highlight / strikethrough (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-mark-label">💬</span><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-next" data-tip="Next highlight / strikethrough (below ↓)">↓</button></div>
     <div class="time-machine-panel" id="time-machine-panel"><div class="time-machine-title">Time Machine Me</div><div class="time-machine-main"><div class="tm-world-box"><div class="tm-world-row real active" id="tm-world-real" data-tip="Real world line"><div class="tm-world-label">Real</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-real"></div><input class="time-machine-slider" id="time-machine-slider-real" type="range" min="1" max="1" value="1"/></div></div><div class="tm-world-row reinc" id="tm-world-reinc" data-tip="REinc world line"><div class="tm-world-label">REinc</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-reinc"></div><input class="time-machine-slider" id="time-machine-slider-reinc" type="range" min="1" max="1" value="1"/></div></div></div><div class="time-machine-side"><input class="time-machine-index" id="time-machine-index" type="number" min="1" value="1"/><span class="line-meter" id="time-machine-total">/ 0</span><button class="cancel time-machine-clear" id="time-machine-clear" data-tip="Clear current Line history">Clear</button></div></div></div>
     <!-- v0.9.690: Navigate Me の Bi-direction Jump バー(nav-anchor🟢/nav-bidi🔴/nav-clear)を撤去 — Current Me に統合(俊克 am11:25)。参照JSは全て if(...) ガード済みなので要素削除で安全。 -->
@@ -21917,7 +21944,14 @@ var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getEleme
 function closeClkPop(){if(clkPop)clkPop.classList.remove('on');}
 function clkPad(n){return (n<10?'0':'')+n;}
 function clkFill(el,from,to,pad){if(!el)return;var h='';for(var i=from;i<=to;i++)h+='<div data-v="'+i+'">'+(pad?clkPad(i):i)+'</div>';el.innerHTML=h;}
-function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++){var on=(String(a[i].getAttribute('data-v'))===String(v));a[i].classList.toggle('sel',on);if(on)el.scrollTop=Math.max(0,a[i].offsetTop-el.clientHeight/2+a[i].offsetHeight/2);}}
+function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++){var on=(String(a[i].getAttribute('data-v'))===String(v));a[i].classList.toggle('sel',on);
+if(on)el.scrollTop=Math.max(0,a[i].offsetTop-el.clientHeight/2+a[i].offsetHeight/2);}}
+/* 止まった所に一番近い段thatが答え= 真ん中の窓に居る物を選ぶ。 */
+function clkCenter(el){if(!el)return;var mid=el.scrollTop+el.clientHeight/2,best=null,bd=1e9;
+for(var i=0;i<el.children.length;i++){var c=el.children[i],d=Math.abs(c.offsetTop+c.offsetHeight/2-mid);if(d<bd){bd=d;best=c;}}
+if(!best)return;for(var j=0;j<el.children.length;j++)el.children[j].classList.toggle('sel',el.children[j]===best);}
+function clkWatch(el,onPick){if(!el)return;var t=null;
+el.addEventListener('scroll',function(){if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);});}
 function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?Number(s.getAttribute('data-v')):null;}
 function clkSyncFromCols(){var y=clkPick(document.getElementById('clk-y')),mo=clkPick(document.getElementById('clk-mo')),d=clkPick(document.getElementById('clk-d'));
 var din=document.getElementById('clk-din');if(din&&y&&mo&&d)din.value=y+'-'+clkPad(mo)+'-'+clkPad(d);
@@ -21937,6 +21971,7 @@ if(clkCaret&&clkPop){
  clkFill(document.getElementById('clk-mo'),1,12,true);clkFill(document.getElementById('clk-d'),1,31,true);
  clkFill(document.getElementById('clk-h'),0,23,true);clkFill(document.getElementById('clk-mi'),0,59,true);
  var mins=document.getElementById('clk-mins');if(mins)mins.innerHTML='<button data-m="10">10</button><button data-m="25">25</button><button data-m="50">50</button><button data-m="90">90</button>';
+ ['clk-y','clk-mo','clk-d','clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
   if(col){clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}
@@ -21952,18 +21987,15 @@ if(clkCaret&&clkPop){
  if(di0)di0.addEventListener('input',clkSyncFromBox);if(ti0)ti0.addEventListener('input',clkSyncFromBox);
  if(di0)di0.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=clkText();if(v)vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();}});
  if(ti0)ti0.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=clkText();if(v)vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();}});
+ /* v4.0.463: 置き場所はCSSthat決める(▾の子)so、ここでは開け閉めと中身の初期値だけ。 */
  clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
   var willOpen=!clkPop.classList.contains('on');
   if(willOpen&&typeof hideTocTip==='function')hideTocTip();
   clkPop.classList.toggle('on',willOpen);if(!willOpen)return;
-  var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の切りのよい時刻 */
+  var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の時刻 */
   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
   var ti=document.getElementById('clk-tin');if(ti)ti.value=clkPad(n2.getHours())+':'+clkPad(n2.getMinutes());
   clkEcho();
-  var r=clkCaret.getBoundingClientRect();
-  requestAnimationFrame(function(){var h=clkPop.offsetHeight||300,w=clkPop.offsetWidth||236;
-   var left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;
-   clkPop.style.left=left+'px';clkPop.style.top=Math.max(6,r.top-h-6)+'px';});
  });
 }
 window.__renderRaw();
@@ -22444,6 +22476,8 @@ return;}}/* ★v4.0.397(俊克 8/23 pm09:47「ΔCharをクリックすると出�
      項目の説明が要るので中だけ許すが、こちらは3つのボタンと入力枠だけで、読む物が無い。
    ★開いたパネルを覆うtipは、どの道でも邪魔＝ 門番を足すのではなく、**開いている物の一覧に足す**。 */
 {var _mcp=document.getElementById('me-char-pop');if(_mcp&&_mcp.classList.contains('on')){hideTocTip();return;}}
+/* v4.0.463: ⏰の▾も同じ= 中は自分で名前を書いてあるso、読む物thatが無い。開いた物を覆わない。 */
+{var _ckp=document.getElementById('clk-pop');if(_ckp&&_ckp.classList.contains('on')){hideTocTip();return;}}
 if(window.__refDeciding){hideTocTip();return;}/* v0.9.99988: セグメント決定中はtip抑制(俊克) *//* v0.9.805: H-TOC項目のコメント編集中(toc-valueにフォーカス)はtip非表示=編集の邪魔をしない。 */{const ae=document.activeElement;
 if(ae&&ae.classList&&ae.classList.contains('toc-value')){hideTocTip();return;}}
 /* v2.0.37(俊克): 基準点入力枠(#dw-base-input)が開いている間はホバーtipを抑止=入力枠のtitle「Base point…」が赤ヒント(#dw-hint)を上書きする件を根治。 */
