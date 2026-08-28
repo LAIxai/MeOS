@@ -21992,6 +21992,24 @@ var stop=function(){try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop
 if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},60);};
 el.addEventListener('pointerdown',stop,{passive:true});
 el.addEventListener('mousedown',stop,{passive:true});
+/* ★★★v4.0.467(俊克「00分から、最速で1スクロールすると、6のときもあるけど、**29くらい進む時もある**。
+   これが安定すると良いんだけどね」): ★★★**ばらつきの正体はOSの加速**= macOSは指that速いほど1回の合図の
+   deltaY を何倍にも膨らませる。so同じ指の動きでも6段にも29段にもなる。
+   ★★→ **1回の合図＝多くても1段**にする。加速は「合図の中身」を膨らませるthatが、**合図の数**は
+     膨らませないso、進む量thatが**指の動いた距離**に比例するようになる(速さには比例しない)。
+   ★俊克thatが良いと言った所(00→59 to 2スクロール)は保たれる= 長く撫でれば合図の数thatが増えるから。
+   ★段の高さで割り切った所へ置く= 常に段の真ん中に居る(窓と数字thatずれない)。 */
+var wacc=0;
+el.addEventListener('wheel',function(e){
+ e.preventDefault();
+ wacc+=e.deltaY;
+ if(Math.abs(wacc)<12)return;                       /* 細かい合図は溜める */
+ var dir=wacc>0?1:-1; wacc=0;
+ var H=22;                                          /* 1段の高さ(CSSと同じ) */
+ el.style.scrollBehavior='auto';
+ el.scrollTop=Math.round(el.scrollTop/H)*H+dir*H;   /* 1回で1段だけ */
+ if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},60);
+},{passive:false});
 el.addEventListener('scroll',function(){if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);});}
 function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?Number(s.getAttribute('data-v')):null;}
 function clkSyncFromCols(){var y=clkPick(document.getElementById('clk-y')),mo=clkPick(document.getElementById('clk-mo')),d=clkPick(document.getElementById('clk-d'));

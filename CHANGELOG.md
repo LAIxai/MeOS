@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.467 (2026-08-28)
+- **One notch of the wheel moves one row, every time.** The same flick used to travel six rows or twenty-nine,
+  because macOS inflates the size of each scroll message the faster your fingers move. Taking one row per message
+  removes that entirely: acceleration swells what each message *says*, but not how many messages arrive, so
+  distance now follows how far your fingers travelled rather than how fast. Sweeping from 00 to 59 in a couple of
+  passes still works — a longer sweep simply sends more messages.
+
 ### v4.0.466 (2026-08-28)
 - **The jump to the top of a membrane is fixed, and this time it was measured rather than guessed.** The log
   caught it: two folding paths folded the same block 2 ms apart. The first fold was correct; the second landed on

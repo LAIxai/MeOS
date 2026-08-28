@@ -1264,6 +1264,13 @@ console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊�
      '★★★触れた瞬間に今の位置を書き戻す= その一筆that慣性を打ち切る(触れば止まる)', true);
   ok(/addEventListener\('mousedown',stop/.test(src),
      '★指でもマウスでも同じ(片方だけ効く物を作らない)', true);
+  // ★★★v4.0.467: ばらつきの正体はOSの加速= 1回の合図＝多くても1段にすれば消える
+  ok(/el\.scrollTop=Math\.round\(el\.scrollTop\/H\)\*H\+dir\*H;   \/\* 1回で1段だけ \*\//.test(src),
+     '★★★1回の合図＝1段= 進む量that**指の動いた距離**に比例する(速さには比例しない)', true);
+  ok(/if\(Math\.abs\(wacc\)<12\)return;/.test(src),
+     '★細かい合図は溜める(トラックパッドの小さな刻みでも動く)', true);
+  ok(/addEventListener\('wheel',function\(e\)\{\n e\.preventDefault\(\);/.test(src) && /\{passive:false\}\);/.test(src),
+     '★既定の動きを止めてから置く(加速thatが入る前に取り上げる)', true);
 }
 
 console.log('(58) 膜の先頭へ跳ぶ = 2つの道that同じ塊を2回畳んでいた(v4.0.466 俊克・計測で確定)');
