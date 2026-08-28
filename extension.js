@@ -20619,13 +20619,14 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    した方thatいいよね」): ★★引っ越した先の作法に合わせる= Hyper IDX の姉妹は **角5px・padding 3px 6px・
    13px・塗りつぶし**(🏠=緑 / 🔖=茶 / 参照=白)。⏰も同じ形にして、色だけ時計の橙にする。
    ★★[[feedback_copy_the_house_style_first]]= 家の中の同じ役の部品を先に探して真似る。 */
-.toc-tools .warn-btn.raw-timer{opacity:1;filter:none;font-size:13px;line-height:15px;padding:3px 6px;border-radius:5px 0 0 5px;background:#a8481a;color:#fff;border-color:#6b2d0e}
-.toc-tools .warn-btn.raw-timer:hover{background:#c05621;border-color:#7c2d12}
-.toc-tools .warn-btn.raw-timer.running{background:#e0803a;border-color:#ffc59a;color:#231206}
-.toc-tools .warn-btn.raw-timer .raw-t{color:#ffe6d5}
-.toc-tools .warn-btn.raw-timer.running .raw-t{color:#231206}
-.toc-tools .fmt-caret.clk-caret{font-size:10px;line-height:15px;padding:3px 5px;min-width:14px;border-left:0;border-radius:0 5px 5px 0;background:#a8481a;color:#fff;border-color:#6b2d0e}
-.toc-tools .fmt-caret.clk-caret:hover{background:#c05621;border-color:#7c2d12}
+.toc-tools .warn-btn.raw-timer{opacity:1;filter:none;font-size:14px;line-height:15px;padding:3px 8px;border-radius:5px 0 0 5px;background:#ffffff;color:#1e293b;border-color:#94a3b8}
+/* ★★v4.1.7-2(俊克 改良2「赤い⏰に対して、橙背景は禁句だよね。白にしよう」): ★★★**印の色と地の色that近いと、
+   印that消える**= 赤い時計を橙の上に置いていた。→ 地は白(参照グループと同じ)。走っている合図は
+   **地でなく縁**thatが持つ= 白のまま橙の輪thatつく(地で言うと、また印と喧嘩する)。 */
+.toc-tools .warn-btn.raw-timer:hover{background:#f1f5f9;border-color:#64748b}
+.toc-tools .warn-btn.raw-timer.running{background:#ffffff;border-color:#e0803a;box-shadow:0 0 0 2px rgba(224,128,58,.55);color:#1e293b}
+.toc-tools .warn-btn.raw-timer .raw-t{color:#1e293b}
+.toc-tools .warn-btn.raw-timer.running .raw-t{color:#c05621}
 /* ★v4.0.459: 近づくと大きくなる。transform なので**枡の大きさは変わらない**= 右隣は1pxも動かない。 */
 /* ★★v4.0.462(俊克「⏰の▼ボタンで、下側に時分、上側に年月日のスクロール式+手入力ボックスを出す」):
    ★★家の中の同じ役の部品を真似る= 開き方・位置決め・閉じ方は表の▾(table-pop)と**同じ形**。
@@ -20879,9 +20880,16 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .toc-tools .home-btn.zero:hover{background:#1a1a1a}
 .toc-tools .home-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#16a34a;color:#fff;border-color:#14532d}
 .toc-tools .home-menu-btn:hover{background:#22c55e}
-.toc-tools .bm-cycle{font-size:13px;padding:3px 6px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
+.toc-tools .bm-cycle{font-size:14px;padding:3px 8px;border-top-right-radius:0;border-bottom-right-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
 .toc-tools .bm-cycle:hover{background:#9a6500}
 .toc-tools .bm-menu-btn{font-size:10px;padding:3px 5px;min-width:14px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;background:#7a4f00;color:#fff3d6;border-color:#5c3b00}
+/* ★★v4.1.7-2(俊克 改良1「▼ボタンの背景は白色にしよう。参照グループボタンのようにね。同様に、栞ボタンの
+   ▼部分も統一しよう」＋ 改良2「▼that他に比べて妙に小さいので、これも統一しよう」):
+   ★★★**3つの▾を1つの決まりから引く**= 今までは同じ数字を3箇所に書いていたので、隣の背丈that違うだけで
+   大きさthatずれた。→ 白・同じ字・同じ当たりを**1本の規則**で書き、主のボタンの背丈も揃える
+   ([[feedback_one_source_for_mark_count_action]])。 */
+.toc-tools .bm-pending-menu-btn,.toc-tools .bm-menu-btn,.toc-tools .fmt-caret.clk-caret{font-size:12px;line-height:16px;padding:3px 6px;min-width:17px;text-align:center;border-left:0;border-radius:0 5px 5px 0;background:#ffffff;color:#1e293b;border-color:#94a3b8}
+.toc-tools .bm-pending-menu-btn:hover,.toc-tools .bm-menu-btn:hover,.toc-tools .fmt-caret.clk-caret:hover{background:#f1f5f9;border-color:#64748b}
 .toc-tools .bm-menu-btn:hover{background:#9a6500}
 .toc-tools .bm-cycle.zero,.toc-tools .bm-menu-btn.zero{background:#0a0a0a;border-color:#000;color:#fff}
 .toc-tools .bm-cycle.zero:hover,.toc-tools .bm-menu-btn.zero:hover{background:#1a1a1a}

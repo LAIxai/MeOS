@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.8 (2026-08-29)
+- **White under the clock.** A red ⏰ on an orange fill loses the very mark it is made of. The button is white
+  now, like the reference group, and a running clock is said by the ring around it rather than by the fill.
+- **The three ▾ menus are cut from one rule.** Same white, same glyph, same target — and the buttons they hang
+  off share a height, so a ▾ can no longer come out smaller than its sisters'.
+
 ### v4.1.7 (2026-08-29)
 - **The clock is no longer drawn faint.** Faint used to mean "no clock on the membrane you are standing in" —
   a leftover from when ⏰ was a mode tool. It is a doorway to your clocks now, and worth the same from
