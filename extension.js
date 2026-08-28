@@ -20568,7 +20568,10 @@ background:color-mix(in srgb,var(--vscode-editor-foreground) 12%,var(--vscode-ed
 border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 38%,transparent);
 box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .bm-pop.clk-pop.hist-only{width:236px}
-.bm-pop.clk-pop.set-only{width:172px}
+/* ★v4.1.3(俊克 改良1「年が大文字になって見て、右が欠けることが分った。so横幅を少し大きくする
+   必要があるね」): 選んだ数字は19px= 年は4文字で約46px要る。列は3つ＋clearで割るので、
+   172px では足りなかった。224px で1列あたり約53px(=年が収まる)。 */
+.bm-pop.clk-pop.set-only{width:224px}
 .clk-pop.hist-only .clk-row,.clk-pop.hist-only .clk-cols,.clk-pop.hist-only .clk-in,.clk-pop.hist-only .clk-when,.clk-pop.hist-only .clk-foot,.clk-pop.hist-only .clk-sep{display:none}
 .clk-pop.set-only .clk-list{display:none}
 .clk-pop.hist-only .clk-list{max-height:160px}
@@ -20611,7 +20614,11 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 /* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
 .clk-col .clk-win{display:none}
 .clk-cols::before{content:'';position:absolute;left:0;right:0;top:22px;height:22px;border-top:1px solid rgba(224,128,58,.55);border-bottom:1px solid rgba(224,128,58,.55);pointer-events:none;z-index:1}
-.clk-clear{flex:none;align-self:flex-start;font-size:9px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer}
+/* ★v4.1.3(俊克「clearボタンは、ボタンらしく、角丸四角で囲ってボタンらしくしようよ」):
+   縁が地に溶けていた= 押せる物に見えていなかった。地を持たせ、縁を立て、押せば沈む。 */
+.clk-clear{flex:none;align-self:flex-start;font-size:10px;font-weight:700;padding:3px 8px;border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 45%,transparent);border-radius:6px;background:rgba(127,127,127,.16);color:var(--vscode-editor-foreground);cursor:pointer}
+.clk-clear:hover{background:rgba(224,128,58,.22);border-color:rgba(224,128,58,.75)}
+.clk-clear:active{transform:translateY(1px)}
 .clk-in{width:100%;box-sizing:border-box;font-size:11px;font-family:ui-monospace,Menlo,monospace;padding:3px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 /* ★★★v4.1.2(俊克 改良1「下の白い20:00と橙色の『→20:00』が重複している。Date下端の2026-09-01も削除して、
    両方の合体として、一番下に → 2026-09-01 20:00 と表示して、20:00だけ橙色にすればいい。
@@ -20625,8 +20632,8 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-when{display:flex;align-items:baseline;justify-content:center;gap:5px;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;min-height:20px;padding:2px 5px;border:1px solid transparent;border-radius:5px;cursor:text;color:var(--vscode-editor-foreground)}
 .clk-when:hover{border-color:var(--vscode-panel-border);background:rgba(127,127,127,.08)}
 .clk-when .cw-a{color:#e0803a;font-weight:900}
-.clk-when .cw-d,.clk-when .cw-t{opacity:.55}
-.clk-when .cw-d.fix,.clk-when .cw-t.fix{opacity:1;color:#e0803a}
+.clk-when .cw-d{opacity:.55}
+.clk-when .cw-d.fix,.clk-when .cw-t{opacity:1;color:#e0803a}
 .clk-edit{display:none}
 .clk-pop.editing .clk-when{display:none}
 .clk-pop.editing .clk-edit{display:block}
@@ -22194,7 +22201,10 @@ el.addEventListener('wheel',function(e){
 el.addEventListener('scroll',function(){if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);});}
 function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?Number(s.getAttribute('data-v')):null;}
 /* ★★★v4.1.2: 値を持つのは**ホイールと2つの旗**だけ(箱は持たない)。橙にするかどうかは旗が決める。 */
-var clkFixD=false,clkFixT=false;                       /* 旗= 日付/時刻を**自分で指定したか** */
+/* ★★★v4.1.3(俊克 バグ2「少なくとも初期値は、プリセットではなく、当日/明日の設定なので、
+   時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
+   旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
+var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -22206,26 +22216,30 @@ var t=clkDerived();return t.getFullYear()+'-'+clkPad(t.getMonth()+1)+'-'+clkPad(
 function clkTimeStr(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
 return clkPad(h||0)+':'+clkPad(mi||0);}
 function clkSyncFromCols(){clkEcho();}
+/* ★日付の「空」の姿= 何も選ばず、頭まで巻き戻す。clear と 開く時の両方that、ここ1つを呼ぶ。 */
+function clkDateEmpty(){clkFixD=false;['clk-y','clk-mo','clk-d'].forEach(function(id){var el=document.getElementById(id);if(!el)return;
+for(var i=0;i<el.children.length;i++)el.children[i].classList.remove('sel');
+try{el.style.scrollBehavior='auto';el.scrollTop=0;}catch(e){}});}
 /* ★Set に渡すのは、日付を指定していなければ**時刻だけ**= 今日か明日かは node に決めさせる
    (こちらで日付を書いて渡すと、開いたまま日をまたいだ時に古い日を掛けてしまう)。 */
 function clkText(){return (clkFixD?(clkDateStr()+' '):'')+clkTimeStr();}
-/* ★★合体1行= 日付と時刻を1つ並べ、**指定した方だけ橙**。日付を触っていない間は、窓の中身も
-   導かれた日に合わせる(行と窓が食い違わない)。 */
+/* ★★合体1行= 日付と時刻を1つ並べ、**指定した所だけ橙**。
+   ★★★v4.1.3(俊克 バグ1「Dateのデフォルトはemptyのはずなのに、オレンジ色の大きな表示になっている。
+     しかも、clearボタンを押しても駄目」): ★★★**行を描くために窓を動かしてはいけなかった**=
+     v4.1.2 は「行と窓が食い違わないように」と導いた日をホイールに置いたが、ホイールで大きな橙は
+     **選んだという意味**so、置いた瞬間に「日付を指定した」と嘘をつき、clear も即座に上書きされていた。
+     → 日付を触っていない間、ホイールは**何も選んでいない姿のまま**。導いた日は行にだけ、灰で出す。 */
 function clkEcho(){var wd=document.getElementById('clk-wd'),wt=document.getElementById('clk-wt');if(!wd||!wt)return;
-if(!clkFixD){var t=clkDerived(),cy=document.getElementById('clk-y'),cm=document.getElementById('clk-mo'),cd=document.getElementById('clk-d');
-if(clkPick(cy)!==t.getFullYear())clkSel(cy,t.getFullYear());
-if(clkPick(cm)!==t.getMonth()+1)clkSel(cm,t.getMonth()+1);
-if(clkPick(cd)!==t.getDate())clkSel(cd,t.getDate());}
 wd.textContent=clkDateStr();wt.textContent=clkTimeStr();
-wd.classList.toggle('fix',clkFixD);wt.classList.toggle('fix',clkFixT);}
+wd.classList.toggle('fix',clkFixD);}
 /* 打ち込みの口は1つ= 合体行を押すと、この箱が同じ場所に出る。 */
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
 var v=(e.value||'').trim().replace(/[\uFF1A]/g,':').replace(/[\uFF0F]/g,'/');
 var m=/^(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(v);
 if(m){clkFixD=true;clkSel(document.getElementById('clk-y'),+m[1]);clkSel(document.getElementById('clk-mo'),+m[2]);clkSel(document.getElementById('clk-d'),+m[3]);
- if(m[4]!=null){clkFixT=true;clkSel(document.getElementById('clk-h'),+m[4]);clkSel(document.getElementById('clk-mi'),+m[5]);}return;}
+ if(m[4]!=null){clkSel(document.getElementById('clk-h'),+m[4]);clkSel(document.getElementById('clk-mi'),+m[5]);}return;}
 var t=/^(\d{1,2}):?(\d{2})$/.exec(v);
-if(t){clkFixT=true;clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
+if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
 /* v4.1.0: 一覧の1行= 「時刻・年月日 + 膜名」。今日なら時刻だけ、他の日なら月日も添える
    (**日付は、違う時にだけ言う**= 同じ日の予定に今日の日付を並べても、読む物that増えるだけ)。 */
 function clkWhenLabel(ms){var d=new Date(ms),n=new Date(),p=function(x){return (x<10?'0':'')+x;};
@@ -22250,15 +22264,15 @@ if(clkCaret&&clkPop){
  clkFill(document.getElementById('clk-h'),0,23,true);clkFill(document.getElementById('clk-mi'),0,59,true);
  var mins=document.getElementById('clk-mins');if(mins)mins.innerHTML='<button data-m="10">10</button><button data-m="25">25</button><button data-m="50">50</button><button data-m="90">90</button>';
  ['clk-y','clk-mo','clk-d'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixD=true;});});
- ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixT=true;});});
+ ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
    if(c)vscode.postMessage({type:'clockGoto',uri:c.uri,key:c.key,name:c.name});closeClkPop();return;}
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
-  if(col){if(col.id==='clk-y'||col.id==='clk-mo'||col.id==='clk-d')clkFixD=true;else clkFixT=true;
+  if(col){if(col.id==='clk-y'||col.id==='clk-mo'||col.id==='clk-d')clkFixD=true;
    clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}
-  if(ev.target&&ev.target.id==='clk-dclr'){clkFixD=false;clkEcho();return;}
+  if(ev.target&&ev.target.id==='clk-dclr'){clkDateEmpty();clkEcho();return;}
   var mb=ev.target&&ev.target.getAttribute?ev.target.getAttribute('data-m'):null;
   if(mb){vscode.postMessage({type:'pseudoTimerSet',minutes:Number(mb)});closeClkPop();return;}
   if(ev.target&&ev.target.id==='clk-set'){var v=clkText();if(!v)return;vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();return;}
@@ -22286,7 +22300,7 @@ if(clkCaret&&clkPop){
   if(!willOpen)return;
   clkPop.classList.remove('editing');
   if(mode==='hist'){clkRenderList();return;}
-  clkFixD=false;clkFixT=false;                                /* ★開いた時は、まだ何も**指定していない**= 全部灰 */
+  clkDateEmpty();                                             /* ★開いた時、日付は**空**(時刻は常に橙) */
   var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の時刻(こちらの提案なので灰のまま) */
   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
   clkEcho();};

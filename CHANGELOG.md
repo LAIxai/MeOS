@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.3 (2026-08-28)
+- **The date starts empty again, and clear works.** Drawing the summary line must not move the wheels: a big
+  orange number on a wheel means *you chose this*, so putting the worked-out day there told a lie — and it
+  overwrote clear the instant you pressed it.
+- **The time is always orange.** A time is always used, so there is no unset state for it. Only the date can
+  be empty, so only the date turns grey.
+- Wider clock panel, so a selected year is not clipped. clear now looks like a button.
+
 ### v4.1.2 (2026-08-28)
 - **One line at the bottom of the clock, instead of three places showing the same thing.** The date box, the
   time box and the echo line all carried the same value. Now a single line says what happens when you press
