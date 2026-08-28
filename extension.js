@@ -9891,7 +9891,10 @@ function meosPlayChime() {
 //   ★ただし**永久には鳴らさない**= 席を外している人の機械thatが鳴り続けるのは事故。上限を置く(既定5分)。
 let _meosRingTimer = null, _meosRingUntil = 0, _meosRingName = '';
 function meosRingSeconds() {
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 3)); return (isFinite(n) && n >= 0) ? n : 3; } catch (_) { return 3; }
+  // ★v4.0.473(俊克「⏰音は、間を置かずに、**連続的に**鳴らせないかな?」): 小数を受ける=
+  //   0.6 なら音thatほぼ途切れない。0 は「1回だけ」の意味so残す。下限0.3(それより短いと afplay that
+  //   積み上がるだけで、音は大きくならない)。
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; return (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; } catch (_) { return 1; }
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
@@ -9908,7 +9911,7 @@ function meosStartRinging(name) {
   _meosRingTimer = setInterval(() => {
     if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; }
     meosPlayChime();
-  }, Math.max(1, every) * 1000);
+  }, Math.round(every * 1000));
   meosUpdateTimerBar(); meosPostViewMode();
 }
 function meosIsRinging() { return !!_meosRingTimer; }
@@ -20510,7 +20513,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    ★実装は scroll-snap= 慣性も物理も要らない。止まった所に一番近い段thatが答え。
    ★上下に1段ぶんの余白(::before/::after)を足すso、**最初と最後の値も真ん中に来られる**。 */
 .clk-cols{display:flex;gap:3px;align-items:stretch}
-.clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;scroll-snap-type:y mandatory;-ms-overflow-style:none}
+.clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 .clk-col::before,.clk-col::after{content:'';display:block;height:22px}
 /* ★★v4.0.465(俊克 改良2「スクロールすると慣性で加速するんだけど、**クリックで停止しない**よ。なぜ?」):
@@ -20518,7 +20521,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      クリックthat効かないのは、慣性はOS/ブラウザ側の動きで、click では止まらないから。
    ★→ ①1段ずつしか進めなくする(scroll-snap-stop:always)= 飛ばない ②指を置いた瞬間に**今の位置を書き戻す**
      (scrollTop=scrollTop)= その一筆that慣性を打ち切る。触れば止まる、を体で分かる形にする。 */
-.clk-col div{height:22px;line-height:22px;font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;scroll-snap-align:center;scroll-snap-stop:always;opacity:.45;transition:font-size .12s,opacity .12s}
+.clk-col div{height:22px;line-height:22px;font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;opacity:.45;transition:font-size .12s,opacity .12s}
 .clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
 .clk-cols{position:relative}
 /* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
@@ -22049,9 +22052,13 @@ el.scrollTop=Math.max(0,c.offsetTop-(el.clientHeight-c.offsetHeight)/2);}
 function clkIdx(el){if(!el)return 0;var a=el.children;for(var i=0;i<a.length;i++)if(a[i].classList.contains('sel'))return i;return 0;}
 function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++)if(String(a[i].getAttribute('data-v'))===String(v)){clkGoto(el,i,false);return;}}
 /* 止まった所に一番近い段thatが答え= 真ん中の窓に居る物を選ぶ。 */
-function clkCenter(el){if(!el)return;var mid=el.scrollTop+el.clientHeight/2,bi=-1,bd=1e9;
+function clkNearest(el){var mid=el.scrollTop+el.clientHeight/2,bi=-1,bd=1e9;
 for(var i=0;i<el.children.length;i++){var c=el.children[i],d=Math.abs(c.offsetTop+c.offsetHeight/2-mid);if(d<bd){bd=d;bi=i;}}
-if(bi<0)return;clkGoto(el,bi,true);}   /* v4.0.470: 印だけでなく**位置も収める**(手を離したら真ん中へ) */
+return bi;}
+/* v4.0.473: 動いている間は**印だけ**動かす(位置は触らない)= 大きな字that指に付いてくる。 */
+function clkMark(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;
+for(var i=0;i<el.children.length;i++)el.children[i].classList.toggle('sel',i===bi);}
+function clkCenter(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;clkGoto(el,bi,true);}   /* v4.0.470: 印だけでなく**位置も収める**(手を離したら真ん中へ) */
 function clkWatch(el,onPick){if(!el)return;var t=null;
 /* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
 var stop=function(){try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop;}catch(e){}
@@ -22065,19 +22072,19 @@ el.addEventListener('mousedown',stop,{passive:true});
      膨らませないso、進む量thatが**指の動いた距離**に比例するようになる(速さには比例しない)。
    ★俊克thatが良いと言った所(00→59 to 2スクロール)は保たれる= 長く撫でれば合図の数thatが増えるから。
    ★段の高さで割り切った所へ置く= 常に段の真ん中に居る(窓と数字thatずれない)。 */
-var wacc=0;
 el.addEventListener('wheel',function(e){
  e.preventDefault();
- wacc+=e.deltaY;
- /* ★★v4.0.472(俊克「1分変えたいのに**2分変わってしまう**。ここは、**指の動きを大ざっぱに**読み取って
-    欲しい」): ★★敷居を上げるthatが、速い動きは遅くならない= OSの加速thatが**速い時だけ**1回の合図を
-    大きくするので、同じ敷居でも**速い時は1回で越え、遅い時は数回ぶん溜めないと越えない**。
-    → 敷居1つで「ゆっくり=1段ずつ / 速く=どんどん」thatが両立する(v4.0.467で見つけた加速の性質を、
-    今度は**味方に使う**)。6では小さな一撫でthat2段になっていた。 */
- if(Math.abs(wacc)<14)return;
- var dir=wacc>0?1:-1; wacc=0;
- clkGoto(el,clkIdx(el)+dir,false);                  /* 1回で1段だけ・段の番号で数える */
- if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},60);
+ /* ★★★v4.0.473(俊克「最初のように**少し途中まで進む**ような形の方that良い。今のように、カチッと
+    切り替わるのは、違和感thatある。**手を放した時、その値に確定している**ので、問題無い」):
+    ★★★**カチッの正体は scroll-snap: mandatory**= 動かすたびにブラウザthat段へ吸い付けるので、
+      途中thatが存在しなかった。→ **吸い付けをやめて、画素で動かす**(数字thatが指に付いてくる)。
+    ★★段へ収めるのは**手を放した時だけ**(v4.0.470の clkCenter)= 俊克の言うとおり、
+      **確定thatが離した時に起きるなら、途中は自由でよい**。
+    ★指の速さは 0.5 に薄める= 加速thatが乗った合図をそのまま流すと飛びすぎる(v4.0.467の29段)。 */
+ el.style.scrollBehavior='auto';
+ el.scrollTop+=e.deltaY*0.5;
+ clkMark(el);                                       /* 動いている間も、大きな字that付いてくる */
+ if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);
 },{passive:false});
 el.addEventListener('scroll',function(){if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);});}
 function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?Number(s.getAttribute('data-v')):null;}

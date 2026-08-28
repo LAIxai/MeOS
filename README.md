@@ -43,14 +43,15 @@ comment**, which MeOS keeps folded out of sight, so your sentence stays whole an
 ```md
 ## Morning  2026.08.09
 <!-- Mew!FC H2 (white/green)//[]tip= -->
-1. first item
+- first item
+<!-- Mew!FC - (white/purple)//[]tip= -->
 1. second item
 <!-- Mew!FC -1.(white/green)//[]tip= -->
 Warp to [the design note]() from any word.
 <!-- Mew!FC [](design_20260809S101533JST) -->
 ```
 
-*(Those comment lines are folded away as you read; the numbered list needs one comment, not one per item.)*
+*(Those comment lines are folded away as you read — each says what the line above it is, and nothing else.)*
 
 Open that file anywhere else and you get an H2, an ordered list, and a link label. Nothing is broken,
 nothing is proprietary. Open it in MeOS and the comments disappear: you read prose, and the words are live.

@@ -4,6 +4,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.473 (2026-08-28)
+- **The wheel follows your fingers again, and only lands when you let go.** The click-to-click feel came from
+  snap points, which pulled every movement onto a row and left no in-between — so the picture disagreed with the
+  hand. The snapping is gone; the numbers now move by pixels, the enlarged figure keeps up as they pass, and the
+  nearest row is taken **when you lift your fingers**. Since the value is settled on release, the journey is free
+  to be analogue.
+- **The alarm can ring without a gap** — `laiMembrane.clockRepeatSeconds` takes decimals now, so 0.6 is
+  effectively continuous. 0 still means one chime.
+- The README's opening example gives a plain bullet its own folding comment too, so each line's instruction sits
+  under it and says only what that line is.
+
 ### v4.0.472 (2026-08-28)
 - **A careful stroke moves one row, not two.** The step threshold is raised — and raising it does not slow a fast
   sweep, because the operating system enlarges each scroll message *only* when your fingers move quickly. One

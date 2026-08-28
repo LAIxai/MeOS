@@ -1235,8 +1235,8 @@ console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手
      && /document\.body\.classList\.remove\('clk-open'\)/.test(src),
      '★開け閉めの両方で印を置く/外す', true);
   // ★★★改良4: 3段の輪。真ん中thatが選んでいる値
-  ok(/scroll-snap-type:y mandatory/.test(src) && /scroll-snap-align:center/.test(src),
-     '★★★止まった所に一番近い段that答え(慣性も物理も要らない)', true);
+  ok(!/scroll-snap-type:y mandatory/.test(src) && !/scroll-snap-align:center/.test(src),
+     '★★★吸い付け(mandatory snap)をやめた= 途中thatが存在するようになった(v4.0.473 俊克「カチッと切り替わるのは違和感」)', true);
   ok(/\.clk-col div\.sel\{font-size:19px/.test(src) && /\.clk-col div\{height:22px/.test(src),
      '★★真ん中だけ字that大きい(11px→19px)= 選んでいる値は真ん中に居る', true);
   ok(/\.clk-col::before,\.clk-col::after\{content:'';display:block;height:22px\}/.test(src),
@@ -1258,26 +1258,26 @@ console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊�
      '★OSの音を借りる(鳴らす物を自分で抱えない= vsixも増えない)', true);
   ok(/if \(!name\) return;                                   \/\/ 空= 鳴らさない/.test(src),
      '★空にすれば鳴らない(要らない人は黙らせられる)', true);
-  ok(/scroll-snap-stop:always/.test(src),
-     '★★1段ずつしか進めない= 慣性で飛ばない(俊克 改良2)', true);
+  ok(/el\.scrollTop\+=e\.deltaY\*0\.5;/.test(src),
+     '★★画素で動かす= 数字that指に付いてくる(段へ収めるのは手を放した時だけ)', true);
   ok(/el\.scrollTop=el\.scrollTop;/.test(src) && /addEventListener\('pointerdown',stop/.test(src),
      '★★★触れた瞬間に今の位置を書き戻す= その一筆that慣性を打ち切る(触れば止まる)', true);
   ok(/addEventListener\('mousedown',stop/.test(src),
      '★指でもマウスでも同じ(片方だけ効く物を作らない)', true);
   // ★★★v4.0.467: ばらつきの正体はOSの加速= 1回の合図＝多くても1段にすれば消える
-  ok(/clkGoto\(el,clkIdx\(el\)\+dir,false\);                  \/\* 1回で1段だけ・段の番号で数える \*\//.test(src),
-     '★★★1回の合図＝1段= 進む量that**指の動いた距離**に比例する(速さには比例しない)', true);
+  ok(/if\(t\)clearTimeout\(t\);t=setTimeout\(function\(\)\{t=null;clkCenter\(el\);onPick\(\);\},110\);/.test(src),
+     '★★★確定that離した時に起きるなら、途中は自由でよい(俊克)', true);
   // ★★★v4.0.470: 画素でなく「何段目か」で数える／手を離したら必ず収める
   ok(/function clkGoto\(el,idx,smooth\)/.test(src) && /el\.scrollTop=Math\.max\(0,c\.offsetTop-\(el\.clientHeight-c\.offsetHeight\)\/2\);/.test(src),
      '★★★置く所は段自身の位置から出す= どんな高さの箱でも真ん中に来る(22px決め打ちをやめた)', true);
   ok(/if\(bi<0\)return;clkGoto\(el,bi,true\);/.test(src),
      '★★★手を離したら**位置も収める**(今までは印を付け替えるだけだった)', true);
-  ok(/if\(Math\.abs\(wacc\)<14\)return;/.test(src),
-     '★★敷居1つで「ゆっくり=1段ずつ / 速く=どんどん」that両立する(加速を味方に使う・v4.0.472)', true);
+  ok(/e\.deltaY\*0\.5/.test(src) && !/wacc/.test(src),
+     '★指の速さは薄める(加速that乗った合図をそのまま流すと飛びすぎる)', true);
   ok(/\.clk-col\{box-sizing:border-box;/.test(src),
      '★箱の高さの数え方を揃える(枠線ぶんでずれない)', true);
-  ok(/wacc\+=e\.deltaY;/.test(src),
-     '★細かい合図は溜める(トラックパッドの小さな刻みでも動く)', true);
+  ok(/el\.scrollTop\+=e\.deltaY\*0\.5;/.test(src) && /clkMark\(el\);                                       \/\* 動いている間も/.test(src),
+     '★★★吸い付けをやめて画素で動かす= 途中thatが見える／大きな字も指に付いてくる(v4.0.473)', true);
   ok(/addEventListener\('wheel',function\(e\)\{\n e\.preventDefault\(\);/.test(src) && /\{passive:false\}\);/.test(src),
      '★既定の動きを止めてから置く(加速thatが入る前に取り上げる)', true);
 }
@@ -1320,8 +1320,8 @@ console.log('(59) 鐘は鳴り続け、⏰を押すと止まる(v4.0.469 俊克)
      '★★★止める口は⏰そのもの(鳴っている時はメニューを開かない= 押した人that求めているのは静けさ)', true);
   ok(/_meosRingUntil = Date\.now\(\) \+ 5 \* 60000;/.test(src),
      '★★永久には鳴らさない= 席を外している人の機械that鳴り続けるのは事故(上限5分)', true);
-  ok(/function meosRingSeconds\(\)/.test(src) && /get\('clockRepeatSeconds', 3\)/.test(src),
-     '★間隔は設定で決まる(0なら1回だけ)', true);
+  ok(/function meosRingSeconds\(\)/.test(src) && /get\('clockRepeatSeconds', 1\)/.test(src) && /Math\.max\(0\.3, n\)/.test(src),
+     '★★間隔は小数で決まる= 0.6なら音thatほぼ途切れない(0なら1回だけ・下限0.3)', true);
   ok(/if \(meosIsRinging\(\)\) \{                               \/\/ v4\.0\.469: 鳴っている間は、それthatが一番言うべきこと/.test(src),
      '★ステータスバーは鳴っていることを最優先で出す(そこも押せば止まる)', true);
   ok(/_rn\.textContent=vmRing\?'stop':/.test(src) && /\.warn-btn\.raw-timer\.ringing\{/.test(src),
