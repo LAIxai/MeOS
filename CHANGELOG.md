@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.464 (2026-08-28)
+- **While the ⏰ panel is open, no tooltip appears at all.** The panel labels itself, so an explanation laid over
+  it is only in the way. The JavaScript tips were already held back; the CSS ones fire on `:hover` alone and
+  needed their own stop — a single marker on the document while the panel is open turns every one of them off,
+  so nothing has to be listed button by button and a button added later is covered without thinking about it.
+
 ### v4.0.463 (2026-08-28)
 - **⏰ and its ▾ are one piece again** — adjoining corners squared off, one line between them, like every other
   split button.

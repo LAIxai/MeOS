@@ -20019,6 +20019,12 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .fmt-btn.raw-toggle[data-tip],.fmt-caret.clk-caret[data-tip]{position:relative}
 .fmt-btn.raw-toggle[data-tip]::after,.fmt-caret.clk-caret[data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 6px);z-index:9999;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;line-height:1.4;width:max-content;max-width:240px;white-space:pre-line;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .fmt-btn.raw-toggle[data-tip]:hover::after,.fmt-caret.clk-caret[data-tip]:hover::after{opacity:1}
+/* ★★v4.0.464(俊克 改良1「⏰メニューを出した後、tipthat邪魔なので、**いっさい出さなくて良い**よ。
+   見れば分るでしょ」): ★★**開いた物の上に、説明を重ねない**。JS側は既に止めていたthat、
+   CSSの::afterは:hoverだけで出るso別の栓thatが要る。→ 開いている間は**body に印**を1つ置き、
+   そこから全部の::afterを止める(ボタンごとに書き足さない= 次に足す駒でも自動で効く)。
+   ★俊克の理由thatが正しい= パネルは自分で名前を書いてある。読む物thatが既に在る所に、説明は要らない。 */
+body.clk-open [data-tip]::after{display:none!important}
 /* v4.0.436(俊克「□ ~~ にtipがなかなか出てこない」)= CSSのtipの家に入っていなかったので共有のJS製tipに
    落ちていた(出るまで間が空く)。家に入れた。
    ★v4.0.437(俊克「tipが被っている。**上の方が良いよ**」)= 下に出すとパネルの中身を覆う。家の既定(上)へ戻す。 */
@@ -21941,7 +21947,7 @@ if(typeof hideTocTip==='function')hideTocTip();vscode.postMessage({type:'pseudoT
    ★日付を空にすれば「毎日の時刻」= 俊克の基本の使い方。clear thatその口。
    ★開き方・位置決め・外を押したら閉じる、は表の▾と同じ形(家の作法を真似る)。 */
 var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getElementById('clk-pop');
-function closeClkPop(){if(clkPop)clkPop.classList.remove('on');}
+function closeClkPop(){if(clkPop)clkPop.classList.remove('on');try{document.body.classList.remove('clk-open');}catch(e){}}
 function clkPad(n){return (n<10?'0':'')+n;}
 function clkFill(el,from,to,pad){if(!el)return;var h='';for(var i=from;i<=to;i++)h+='<div data-v="'+i+'">'+(pad?clkPad(i):i)+'</div>';el.innerHTML=h;}
 function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++){var on=(String(a[i].getAttribute('data-v'))===String(v));a[i].classList.toggle('sel',on);
@@ -21991,7 +21997,9 @@ if(clkCaret&&clkPop){
  clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
   var willOpen=!clkPop.classList.contains('on');
   if(willOpen&&typeof hideTocTip==='function')hideTocTip();
-  clkPop.classList.toggle('on',willOpen);if(!willOpen)return;
+  clkPop.classList.toggle('on',willOpen);
+  try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}   /* v4.0.464: 開いている間はtipを1つも出さない */
+  if(!willOpen)return;
   var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の時刻 */
   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
   var ti=document.getElementById('clk-tin');if(ti)ti.value=clkPad(n2.getHours())+':'+clkPad(n2.getMinutes());

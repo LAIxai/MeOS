@@ -1228,7 +1228,12 @@ console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手
   ok(/\.fmt-btn\.raw-toggle\[data-tip\]::after/.test(src) && /white-space:pre-line/.test(src),
      '★★★3モードの駒のtipもCSSの::afterで出す= 座標を使わない(俊克 改良2)', true);
   ok(/var _ckp=document\.getElementById\('clk-pop'\);if\(_ckp&&_ckp\.classList\.contains\('on'\)\)\{hideTocTip\(\);return;\}/.test(src),
-     '★開いたパネルを覆うtipを出さない(家の作法に合流)', true);
+     '★開いたパネルを覆うtipを出さない(JS側の口)', true);
+  ok(/body\.clk-open \[data-tip\]::after\{display:none!important\}/.test(src),
+     '★★★CSSの::afterも止める= 栓は**bodyに印1つ**(ボタンごとに書き足さない/次に足す駒でも効く)', true);
+  ok(/document\.body\.classList\.toggle\('clk-open',willOpen\)/.test(src)
+     && /document\.body\.classList\.remove\('clk-open'\)/.test(src),
+     '★開け閉めの両方で印を置く/外す', true);
   // ★★★改良4: 3段の輪。真ん中thatが選んでいる値
   ok(/scroll-snap-type:y mandatory/.test(src) && /scroll-snap-align:center/.test(src),
      '★★★止まった所に一番近い段that答え(慣性も物理も要らない)', true);
