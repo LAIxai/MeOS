@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.471 (2026-08-28)
+- **The clock rings loud enough to wake you.** Glass is a courtesy; an alarm has a job. The default is Sosumi now,
+  and `laiMembrane.clockVolume` amplifies it past the file's own level (Basso, Funk and Submarine also carry;
+  Ping and Tink stay gentle).
+- **The README's opening example was teaching the superseded form.** It showed the instruction at the end of the
+  line, which v4.0 moved *below* the line as a folding comment — the whole point being that a sentence keeps its
+  own line and the page reads clean. The example and the sentence above it now show what MeOS actually writes.
+- The two newest entries in the feature list carry the same `(v4.0)` mark as the rest of what is new.
+
 ### v4.0.470 (2026-08-28)
 - **Lift your fingers and the number settles into the window by itself.** Until now the wheel repainted which row
   was chosen but never corrected where it sat, so the enlarged figure could come to rest half-way across the

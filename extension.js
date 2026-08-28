@@ -9861,14 +9861,20 @@ async function meosJumpToScope(scope, byBell) {
 //   ★設定 laiMembrane.clockSound を空にすれば鳴らない(要らない人thatは黙らせられる)。
 function meosPlayChime() {
   try {
-    let name = 'Glass';
-    try { name = String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'Glass') || '').trim(); } catch (_) { }
+    // ★v4.0.471(俊克「やさしすぎる音だね。**寝ていたら気づかない**」): 目覚ましは**起こす**物so、
+    //   ①既定を鋭い音(Sosumi)にし ②大きさを設定で上げられるようにする(afplay -v は1.0を超えると増幅する)。
+    let name = 'Sosumi', vol = 2;
+    try {
+      const cfg = vscode.workspace.getConfiguration('laiMembrane');
+      name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
+      const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
+    } catch (_) { }
     if (!name) return;                                   // 空= 鳴らさない
     const { exec } = require('child_process');
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') {
       const f = name.indexOf('/') >= 0 ? name : ('/System/Library/Sounds/' + name + '.aiff');
-      exec('afplay ' + q(f), () => { });
+      exec('afplay -v ' + vol + ' ' + q(f), () => { });
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
     } else {
