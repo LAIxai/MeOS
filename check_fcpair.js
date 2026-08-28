@@ -1272,8 +1272,8 @@ console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊�
      '★★★置く所は段自身の位置から出す= どんな高さの箱でも真ん中に来る(22px決め打ちをやめた)', true);
   ok(/if\(bi<0\)return;clkGoto\(el,bi,true\);/.test(src),
      '★★★手を離したら**位置も収める**(今までは印を付け替えるだけだった)', true);
-  ok(/if\(Math\.abs\(wacc\)<6\)return;/.test(src),
-     '★敷居を下げた= ゆっくり撫でても動く(俊克「少しスクロールしても動かない感じ」)', true);
+  ok(/if\(Math\.abs\(wacc\)<14\)return;/.test(src),
+     '★★敷居1つで「ゆっくり=1段ずつ / 速く=どんどん」that両立する(加速を味方に使う・v4.0.472)', true);
   ok(/\.clk-col\{box-sizing:border-box;/.test(src),
      '★箱の高さの数え方を揃える(枠線ぶんでずれない)', true);
   ok(/wacc\+=e\.deltaY;/.test(src),

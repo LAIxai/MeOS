@@ -22069,7 +22069,12 @@ var wacc=0;
 el.addEventListener('wheel',function(e){
  e.preventDefault();
  wacc+=e.deltaY;
- if(Math.abs(wacc)<6)return;                        /* v4.0.470: 敷居を下げる(ゆっくり撫でても動く) */
+ /* ★★v4.0.472(俊克「1分変えたいのに**2分変わってしまう**。ここは、**指の動きを大ざっぱに**読み取って
+    欲しい」): ★★敷居を上げるthatが、速い動きは遅くならない= OSの加速thatが**速い時だけ**1回の合図を
+    大きくするので、同じ敷居でも**速い時は1回で越え、遅い時は数回ぶん溜めないと越えない**。
+    → 敷居1つで「ゆっくり=1段ずつ / 速く=どんどん」thatが両立する(v4.0.467で見つけた加速の性質を、
+    今度は**味方に使う**)。6では小さな一撫でthat2段になっていた。 */
+ if(Math.abs(wacc)<14)return;
  var dir=wacc>0?1:-1; wacc=0;
  clkGoto(el,clkIdx(el)+dir,false);                  /* 1回で1段だけ・段の番号で数える */
  if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},60);

@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.472 (2026-08-28)
+- **A careful stroke moves one row, not two.** The step threshold is raised — and raising it does not slow a fast
+  sweep, because the operating system enlarges each scroll message *only* when your fingers move quickly. One
+  threshold therefore gives both: crawl and it takes several messages to cross, sweep and every message crosses
+  on its own. The same acceleration that caused the trouble in v4.0.467 is doing the work here.
+
 ### v4.0.471 (2026-08-28)
 - **The clock rings loud enough to wake you.** Glass is a courtesy; an alarm has a job. The default is Sosumi now,
   and `laiMembrane.clockVolume` amplifies it past the file's own level (Basso, Funk and Submarine also carry;
