@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.468 (2026-08-28)
+- **There were more than two paths that fold.** v4.0.466 fixed the two that the log caught in the act; counting
+  every caller turned up a third that runs on the scroll signal — which is exactly what a click in the editor
+  produces, and therefore the likeliest cause of the case reported as "just clicking in the editor". It now
+  consults the same shared note, and writes to it before folding, like the other two. The hand-invoked "fold the
+  spec lines" command was given the same courtesy, so pressing it twice cannot fold a membrane.
+
 ### v4.0.467 (2026-08-28)
 - **One notch of the wheel moves one row, every time.** The same flick used to travel six rows or twenty-nine,
   because macOS inflates the size of each scroll message the faster your fingers move. Taking one row per message

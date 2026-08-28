@@ -1027,8 +1027,8 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
      '★★Pseudoの膜で開いてしまった塊を、その場で畳み直す', true);
   ok(/try \{ meosFoldPseudoOpened\(e\.textEditor\); \} catch \(_\) \{ \}\n    _meosFcScrollTimer = setTimeout\(/.test(src),
      '★320msを待たない(待たせているのはこちら側だった)', true);
-  ok(/const hits = blocks\.filter\(b => meosModeAtLine\(doc, b\.start\) === 'pseudo' && _vis\(b\.start\) && _vis\(b\.end\)\)/.test(src),
-     '★畳むのは見えていて、かつ開いている物だけ(畳まれた塊を畳むと膜に化ける= v4.0.188)', true);
+  ok(/const hits = blocks\.filter\(b => meosModeAtLine\(doc, b\.start\) === 'pseudo' && _vis\(b\.start\) && _vis\(b\.end\) && !meosFcRecentlyFolded\(b\.start\)\)/.test(src),
+     '★畳むのは見えていて、開いていて、まだ畳んでいない物だけ(v4.0.188/466/468)', true);
   ok(/if \(!meosDocModes\(editor\.document\)\) return;/.test(src),
      '★設定that1つも無いファイルでは何もしない(今までと1mmも変わらない)', true);
 }
@@ -1291,6 +1291,15 @@ console.log('(58) 膜の先頭へ跳ぶ = 2つの道that同じ塊を2回畳ん�
      '★★畳む物を**先に**覚える(相手thatが2ms後に来ても、もう分かっている)', true);
   ok(/const MEOS_FC_JUST_MS = 2000;/.test(src),
      '★覚えているのは2秒だけ(人that自分で開き直した後まで縛らない)', true);
+  // ★★★v4.0.468: 呼び元を全部見る= editor.fold を呼ぶ道は2本ではなかった
+  const noted = (src.match(/meosFcNoteFolded\(/g) || []).length;
+  ok(noted >= 4, '★★★畳む道that全部、同じ記録に書いてから畳む', noted);
+  const asked = (src.match(/meosFcRecentlyFolded\(/g) || []).length;
+  ok(asked >= 4, '★★畳む道that全部、同じ記録に訊いてから畳む', asked);
+  ok(/meosModeAtLine\(doc, b\.start\) === 'pseudo' && _vis\(b\.start\) && _vis\(b\.end\) && !meosFcRecentlyFolded\(b\.start\)/.test(src),
+     '★★★3本目(Pseudoの即畳み直し)も塞いだ= スクロールの合図so、クリックでも走る道', true);
+  ok(/filter\(b => b\.fc && !meosFcRecentlyFolded\(b\.start\)\)/.test(src),
+     '★手で押す「FC行を畳む」も同じ記録に訊く(二度押しthat膜を畳まない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

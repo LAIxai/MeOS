@@ -27056,9 +27056,14 @@ async function meosFoldPseudoOpened(editor) {
     const blocks = meosFcBlocks(doc);
     if (!blocks.length) return;
     const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
-    const hits = blocks.filter(b => meosModeAtLine(doc, b.start) === 'pseudo' && _vis(b.start) && _vis(b.end)).map(b => b.start);
+    // ★★★v4.0.468: **呼び元を全部見た**= v4.0.466で直したのは2本thatが、`editor.fold` を呼ぶ道は
+    //   もう1本ここに在った(v4.0.449で足した、Pseudoの即畳み直し)。**スクロールの合図で動く**so、
+    //   クリックでも走る＝ 俊克の言う「単にエディターをクリックした時」に一番当たりやすい道。
+    //   → 同じ1つの記録に訊き、畳む物は先に覚える(2本の時と同じ作法)。
+    const hits = blocks.filter(b => meosModeAtLine(doc, b.start) === 'pseudo' && _vis(b.start) && _vis(b.end) && !meosFcRecentlyFolded(b.start)).map(b => b.start);
     if (!hits.length) return;
     _meosFcBusy = true;
+    try { for (const _h of hits) meosFcNoteFolded(_h); } catch (_) { }
     try { await vscode.commands.executeCommand('editor.fold', { selectionLines: hits }); } catch (_) { }
     finally { _meosFcBusy = false; }
   } catch (_) { _meosFcBusy = false; }
@@ -29556,8 +29561,9 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.foldSpecLines', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!ed || !ed.document) return;
-    const heads = meosDefBlocks(ed.document).filter(b => b.fc).map(b => b.start);
+    const heads = meosDefBlocks(ed.document).filter(b => b.fc && !meosFcRecentlyFolded(b.start)).map(b => b.start);   // v4.0.468: 二度押しthat膜を畳まないように
     if (!heads.length) { vscode.window.showInformationMessage('MeOS: no folding comment (Mew!FC) lines here.'); return; }
+    try { for (const _h of heads) meosFcNoteFolded(_h); } catch (_) { }
     try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
     await new Promise(r => setTimeout(r, 120));
     await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
