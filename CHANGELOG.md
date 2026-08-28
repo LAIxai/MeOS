@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.470 (2026-08-28)
+- **Lift your fingers and the number settles into the window by itself.** Until now the wheel repainted which row
+  was chosen but never corrected where it sat, so the enlarged figure could come to rest half-way across the
+  frame. It now glides into place, which is what makes "it landed" visible.
+- The positions were being worked out from a hard-coded row height, so a border or a box-sizing difference of a
+  pixel or two accumulated into exactly that drift. **Rows are counted by index now**, and each is placed from
+  its own measured position, so any height of column centres correctly.
+- The threshold for a step is lower, so a slow, careful stroke moves the wheel instead of feeling stuck.
+
 ### v4.0.469 (2026-08-28)
 - **⏰ keeps ringing until you stop it**, the way an alarm clock does. A single chime can be missed and leaves
   nobody any the wiser; a sound that stops only when someone stops it *is* the proof that someone noticed. Press

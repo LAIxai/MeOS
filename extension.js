@@ -20504,7 +20504,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    ★実装は scroll-snap= 慣性も物理も要らない。止まった所に一番近い段thatが答え。
    ★上下に1段ぶんの余白(::before/::after)を足すso、**最初と最後の値も真ん中に来られる**。 */
 .clk-cols{display:flex;gap:3px;align-items:stretch}
-.clk-col{position:relative;flex:1;height:66px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;scroll-snap-type:y mandatory;-ms-overflow-style:none}
+.clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;scroll-snap-type:y mandatory;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 .clk-col::before,.clk-col::after{content:'';display:block;height:22px}
 /* ★★v4.0.465(俊克 改良2「スクロールすると慣性で加速するんだけど、**クリックで停止しない**よ。なぜ?」):
@@ -22027,12 +22027,25 @@ var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getEleme
 function closeClkPop(){if(clkPop)clkPop.classList.remove('on');try{document.body.classList.remove('clk-open');}catch(e){}}
 function clkPad(n){return (n<10?'0':'')+n;}
 function clkFill(el,from,to,pad){if(!el)return;var h='';for(var i=from;i<=to;i++)h+='<div data-v="'+i+'">'+(pad?clkPad(i):i)+'</div>';el.innerHTML=h;}
-function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++){var on=(String(a[i].getAttribute('data-v'))===String(v));a[i].classList.toggle('sel',on);
-if(on)el.scrollTop=Math.max(0,a[i].offsetTop-el.clientHeight/2+a[i].offsetHeight/2);}}
+/* ★★★v4.0.470(俊克「少しスクロールしても動かない感じ。**大きな字that途中で止まってしまう**。
+   手を離すと、大きな文字that自動で正しい位置に収まるようにしたいね」):
+   ★★★**段の高さ(22px)を決め打ちで数えていた**のthat原因= 枠線や box-sizing で箱の高さthat1〜2px違うと、
+     1段ごとにずれthat溜まり、大きな字thatが窓の途中で止まる。
+   ★★→ **画素でなく「何段目か」で数える**。置く所も、その段自身の位置から出す
+     (offsetTop - (箱の高さ - 段の高さ)/2)＝ どんな高さの箱でも真ん中に来る。
+   ★★そして**手を離したら、必ず収める**= 今までは印(.sel)を付け替えるだけで、位置は直していなかった。
+     滑らかに寄せるso「収まった」thatが目で分かる。 */
+function clkGoto(el,idx,smooth){if(!el)return;var a=el.children;if(!a.length)return;
+idx=Math.max(0,Math.min(a.length-1,idx));var c=a[idx];
+for(var i=0;i<a.length;i++)a[i].classList.toggle('sel',i===idx);
+try{el.style.scrollBehavior=smooth?'smooth':'auto';}catch(e){}
+el.scrollTop=Math.max(0,c.offsetTop-(el.clientHeight-c.offsetHeight)/2);}
+function clkIdx(el){if(!el)return 0;var a=el.children;for(var i=0;i<a.length;i++)if(a[i].classList.contains('sel'))return i;return 0;}
+function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++)if(String(a[i].getAttribute('data-v'))===String(v)){clkGoto(el,i,false);return;}}
 /* 止まった所に一番近い段thatが答え= 真ん中の窓に居る物を選ぶ。 */
-function clkCenter(el){if(!el)return;var mid=el.scrollTop+el.clientHeight/2,best=null,bd=1e9;
-for(var i=0;i<el.children.length;i++){var c=el.children[i],d=Math.abs(c.offsetTop+c.offsetHeight/2-mid);if(d<bd){bd=d;best=c;}}
-if(!best)return;for(var j=0;j<el.children.length;j++)el.children[j].classList.toggle('sel',el.children[j]===best);}
+function clkCenter(el){if(!el)return;var mid=el.scrollTop+el.clientHeight/2,bi=-1,bd=1e9;
+for(var i=0;i<el.children.length;i++){var c=el.children[i],d=Math.abs(c.offsetTop+c.offsetHeight/2-mid);if(d<bd){bd=d;bi=i;}}
+if(bi<0)return;clkGoto(el,bi,true);}   /* v4.0.470: 印だけでなく**位置も収める**(手を離したら真ん中へ) */
 function clkWatch(el,onPick){if(!el)return;var t=null;
 /* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
 var stop=function(){try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop;}catch(e){}
@@ -22050,11 +22063,9 @@ var wacc=0;
 el.addEventListener('wheel',function(e){
  e.preventDefault();
  wacc+=e.deltaY;
- if(Math.abs(wacc)<12)return;                       /* 細かい合図は溜める */
+ if(Math.abs(wacc)<6)return;                        /* v4.0.470: 敷居を下げる(ゆっくり撫でても動く) */
  var dir=wacc>0?1:-1; wacc=0;
- var H=22;                                          /* 1段の高さ(CSSと同じ) */
- el.style.scrollBehavior='auto';
- el.scrollTop=Math.round(el.scrollTop/H)*H+dir*H;   /* 1回で1段だけ */
+ clkGoto(el,clkIdx(el)+dir,false);                  /* 1回で1段だけ・段の番号で数える */
  if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},60);
 },{passive:false});
 el.addEventListener('scroll',function(){if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);});}

@@ -1265,9 +1265,18 @@ console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊�
   ok(/addEventListener\('mousedown',stop/.test(src),
      '★指でもマウスでも同じ(片方だけ効く物を作らない)', true);
   // ★★★v4.0.467: ばらつきの正体はOSの加速= 1回の合図＝多くても1段にすれば消える
-  ok(/el\.scrollTop=Math\.round\(el\.scrollTop\/H\)\*H\+dir\*H;   \/\* 1回で1段だけ \*\//.test(src),
+  ok(/clkGoto\(el,clkIdx\(el\)\+dir,false\);                  \/\* 1回で1段だけ・段の番号で数える \*\//.test(src),
      '★★★1回の合図＝1段= 進む量that**指の動いた距離**に比例する(速さには比例しない)', true);
-  ok(/if\(Math\.abs\(wacc\)<12\)return;/.test(src),
+  // ★★★v4.0.470: 画素でなく「何段目か」で数える／手を離したら必ず収める
+  ok(/function clkGoto\(el,idx,smooth\)/.test(src) && /el\.scrollTop=Math\.max\(0,c\.offsetTop-\(el\.clientHeight-c\.offsetHeight\)\/2\);/.test(src),
+     '★★★置く所は段自身の位置から出す= どんな高さの箱でも真ん中に来る(22px決め打ちをやめた)', true);
+  ok(/if\(bi<0\)return;clkGoto\(el,bi,true\);/.test(src),
+     '★★★手を離したら**位置も収める**(今までは印を付け替えるだけだった)', true);
+  ok(/if\(Math\.abs\(wacc\)<6\)return;/.test(src),
+     '★敷居を下げた= ゆっくり撫でても動く(俊克「少しスクロールしても動かない感じ」)', true);
+  ok(/\.clk-col\{box-sizing:border-box;/.test(src),
+     '★箱の高さの数え方を揃える(枠線ぶんでずれない)', true);
+  ok(/wacc\+=e\.deltaY;/.test(src),
      '★細かい合図は溜める(トラックパッドの小さな刻みでも動く)', true);
   ok(/addEventListener\('wheel',function\(e\)\{\n e\.preventDefault\(\);/.test(src) && /\{passive:false\}\);/.test(src),
      '★既定の動きを止めてから置く(加速thatが入る前に取り上げる)', true);
