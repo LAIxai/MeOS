@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.10 (2026-08-29)
+- **The history opens under the clock, not off to the left.** It was lining up with the ⏰ half rather than the
+  whole key, and it was measured the instant it opened — before its contents were in it. It now lines up with
+  the pair, and places itself again on the next frame, once it knows its real size.
+
 ### v4.1.9 (2026-08-29)
 - **The clock now measures up to the sisters it stands with.** Their height comes from one shared rule that the
   clock was missing from, and their ▾ is a button — which does not inherit a font — while the clock's was a

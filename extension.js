@@ -22443,19 +22443,28 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  if(mode==='hist'){clkRenderList();clkPlace(mode);return;}
+  if(mode==='hist'){clkRenderList();clkPlace();return;}
   clkDateEmpty();                                             /* ★開いた時、日付は**空**(時刻は常に橙) */
   clkLock=false;var lkb=document.getElementById('clk-lock');                /* ★錠は開く度に外れる= 掛けっぱなしの錠で人を閉じ込めない */
   if(lkb){lkb.textContent='\ud83d\udd13';lkb.classList.remove('on');}
   var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の時刻(こちらの提案なので灰のまま) */
   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
-  clkEcho();clkPlace(mode);};
- /* 置き方は栞メニューと同じ= 押した物の右端に揃えて、その上に出す(画面からはみ出さない)。 */
- function clkPlace(mode){var btn=document.getElementById(mode==='hist'?'raw-timer':'raw-timer-caret');if(!btn)return;
-  var r=btn.getBoundingClientRect();
-  requestAnimationFrame(function(){var h=clkPop.offsetHeight||140,w=clkPop.offsetWidth||224;
+  clkEcho();clkPlace();};
+ /* ★★★v4.1.10(俊克 改良1「⏰履歴の位置that左にかなり離れているね」):
+    ★★★**測る相手と、測る時が、どちらも1つずれていた**。
+      ①相手= ⏰の**主のボタン**の右端に揃えていたので、▾のぶん(約22px)だけ左に寄っていた。
+        → 揃える相手は**駒ひとつ(⏰＋▾)の右端**= .clk-wrap。人が見ているのはこの1つの塊。
+      ②時= 開いた直後に幅を測っていたので、**中身that入る前の幅**で場所を決めていた。
+        → 置くのを**2度**行う(今すぐ／次の画面)。2度目は中身thatが入った後の幅で置き直る。
+    ★上に出せない時だけ下へ回す(画面の外に出さない)。 */
+ function clkPlace(){
+  var anchor=document.querySelector('.clk-wrap')||document.getElementById('raw-timer');if(!anchor||!clkPop)return;
+  var put=function(){var r=anchor.getBoundingClientRect();
+   var w=clkPop.offsetWidth||236,h=clkPop.offsetHeight||140;
    var left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;
-   clkPop.style.left=left+'px';clkPop.style.top=Math.max(6,r.top-h-6)+'px';});}
+   var top=r.top-h-6;if(top<6)top=Math.min(Math.max(6,window.innerHeight-h-6),r.bottom+6);
+   clkPop.style.left=left+'px';clkPop.style.top=top+'px';};
+  put();requestAnimationFrame(put);}
  clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__clkOpen('set');});
 }
 window.__renderRaw();
