@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.9 (2026-08-29)
+- **The clock now measures up to the sisters it stands with.** Their height comes from one shared rule that the
+  clock was missing from, and their ▾ is a button — which does not inherit a font — while the clock's was a
+  span, so the same character came out smaller. Both are fixed at the source rather than patched with numbers.
+- **The hairline between a button and its ▾ is back.** It is the main button's own right edge, and the clock
+  had been covering it — invisible while the fill was orange, and sorely missed once both halves went white.
+
 ### v4.1.8 (2026-08-29)
 - **White under the clock.** A red ⏰ on an orange fill loses the very mark it is made of. The button is white
   now, like the reference group, and a running clock is said by the ring around it rather than by the fill.
