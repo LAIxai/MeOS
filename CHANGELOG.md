@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.5 (2026-08-28)
+- **Any clock can be dropped — including one that is running.** Starting the wrong clock happens to everyone.
+  × stops it first, then forgets it, and it takes you to the membrane before either.
+- **A lock, for when you do mean a test paper.** 🔓/🔒 next to Set. Locked clocks cannot be dropped until the
+  time is up, and their row shows 🔒 instead of ×. The choice applies to the clock you set next and goes back
+  to off every time the panel opens, so a lock can never be left lying across your day.
+- The × is drawn as a button now, not a faint mark.
+
 ### v4.1.4 (2026-08-28)
 - **The clock history survives a restart.** It was kept in memory only, so closing the window — or installing
   the next build — emptied it. A list that dies is a state, not a history. It is stored with you now, not in
