@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.2 (2026-08-28)
+- **One line at the bottom of the clock, instead of three places showing the same thing.** The date box, the
+  time box and the echo line all carried the same value. Now a single line says what happens when you press
+  Set — and you click that line to type it in, so the place you read is the place you write.
+- **Orange is what you set, grey is what MeOS worked out.** Leave the date alone and it shows the day your
+  time actually lands on — today, or tomorrow if that time has gone by — in grey. Touch a wheel and that
+  half turns orange. (The old grey date was a sample string baked into the box, not a real date.)
+
 ### v4.1.1 (2026-08-28)
 - **Going to a membrane opens it in the editor, not beside Me Dock.** Without naming a column, VS Code opens a
   document wherever you pressed — and you pressed inside the dock, which lives in the column next to the text.
