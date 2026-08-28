@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.6 (2026-08-29)
+- **The clock moved into Hyper IDX, right of 🏠.** A clock is no longer a way to hold Pseudo👁 — it is a place
+  you decided to come back to, which is what the four sisters are. ⏰ goes there, ▾ sets one, and the countdown
+  travels with them.
+- **A clock that has rung stays in the file.** It used to be deleted, so the list depended entirely on storage
+  kept beside the app. Now the file remembers its last few, the way it already remembered the ones still
+  running — open the file and the history comes back, whatever happened to the app.
+
 ### v4.1.5 (2026-08-28)
 - **Any clock can be dropped — including one that is running.** Starting the wrong clock happens to everyone.
   × stops it first, then forgets it, and it takes you to the membrane before either.
