@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.469 (2026-08-28)
+- **⏰ keeps ringing until you stop it**, the way an alarm clock does. A single chime can be missed and leaves
+  nobody any the wiser; a sound that stops only when someone stops it *is* the proof that someone noticed. Press
+  ⏰ — while it is ringing that is what the button does, and it does not open the menu, because what you want at
+  that moment is quiet. The status bar entry stops it too. It gives up on its own after five minutes, so a
+  machine left alone does not ring forever, and `laiMembrane.clockRepeatSeconds: 0` goes back to one chime.
+
 ### v4.0.468 (2026-08-28)
 - **There were more than two paths that fold.** v4.0.466 fixed the two that the log caught in the act; counting
   every caller turned up a third that runs on the scroll signal — which is exactly what a click in the editor

@@ -1091,8 +1091,8 @@ console.log('㊿ モードの駒と⏰は ⚠️ の右・2つに分ける(v4.0.
      '★★隣の ⚠️ と同じ作り(家の中の同じ役の部品を真似る)・走れば点く', true);
   ok(/rawToggle\.textContent=VM_FACE\[viewMode\];/.test(src),
      '★★★面はモードだけを言う= **1つの駒は1つのことを言う**(残り時間は⏰の持ち物)', true);
-  ok(/if\(_rn\)_rn\.textContent=\(left>0\)\?vmMmSs\(left\):'';/.test(src),
-     '★残り時間は⏰の中に出る(走っていなければ何も出さない)', true);
+  ok(/_rn\.textContent=vmRing\?'stop':\(\(left>0\)\?vmMmSs\(left\):''\);/.test(src),
+     '★残り時間は⏰の中に出る(鳴っている時は stop)', true);
   ok(/\.fmt-btn\.raw-toggle\{margin-left:8px\}/.test(src),
      '★分けたので、モードの駒は自分で左の間合いを持つ', true);
   ok((src.match(/id="raw-timer"/g) || []).length === 1,
@@ -1252,7 +1252,7 @@ console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手
 console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊克)');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  ok(/function meosPlayChime\(\)/.test(src) && /meosPlayChime\(\);                                       \/\/ 先に鳴らす/.test(src),
+  ok(/function meosPlayChime\(\)/.test(src) && /meosStartRinging\(_sc0 && _sc0\.name\);                   \/\/ 先に鳴らす/.test(src),
      '★★★鐘は見ていなくても届く= 時計を掛ける理由は「その時まで別のことをしている」から', true);
   ok(/'\/System\/Library\/Sounds\/' \+ name \+ '\.aiff'/.test(src) && /\[console\]::beep/.test(src),
      '★OSの音を借りる(鳴らす物を自分で抱えない= vsixも増えない)', true);
@@ -1300,6 +1300,25 @@ console.log('(58) 膜の先頭へ跳ぶ = 2つの道that同じ塊を2回畳ん�
      '★★★3本目(Pseudoの即畳み直し)も塞いだ= スクロールの合図so、クリックでも走る道', true);
   ok(/filter\(b => b\.fc && !meosFcRecentlyFolded\(b\.start\)\)/.test(src),
      '★手で押す「FC行を畳む」も同じ記録に訊く(二度押しthat膜を畳まない)', true);
+}
+
+console.log('(59) 鐘は鳴り続け、⏰を押すと止まる(v4.0.469 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/function meosStartRinging\(name\)/.test(src) && /_meosRingTimer = setInterval\(/.test(src),
+     '★★★1回の音は聞き逃せる= 鳴り止むことthatが「気づいた」の合図になる', true);
+  ok(/if \(meosIsRinging\(\)\) \{ meosStopRinging\(\); vscode\.window\.setStatusBarMessage\('MeOS: alarm stopped\.', 2000\); return; \}/.test(src),
+     '★★★止める口は⏰そのもの(鳴っている時はメニューを開かない= 押した人that求めているのは静けさ)', true);
+  ok(/_meosRingUntil = Date\.now\(\) \+ 5 \* 60000;/.test(src),
+     '★★永久には鳴らさない= 席を外している人の機械that鳴り続けるのは事故(上限5分)', true);
+  ok(/function meosRingSeconds\(\)/.test(src) && /get\('clockRepeatSeconds', 3\)/.test(src),
+     '★間隔は設定で決まる(0なら1回だけ)', true);
+  ok(/if \(meosIsRinging\(\)\) \{                               \/\/ v4\.0\.469: 鳴っている間は、それthatが一番言うべきこと/.test(src),
+     '★ステータスバーは鳴っていることを最優先で出す(そこも押せば止まる)', true);
+  ok(/_rn\.textContent=vmRing\?'stop':/.test(src) && /\.warn-btn\.raw-timer\.ringing\{/.test(src),
+     '★★面も「止める駒」に変わる= 押せば止まる、を色と字that言う', true);
+  ok(/ringing: meosIsRinging\(\)/.test(src),
+     '★鳴っているかどうかも、モードと同じ1つの便りで運ぶ(合図を足さない)', true);
 }
 
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

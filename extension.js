@@ -9722,6 +9722,16 @@ function meosUpdateTimerBar() {
   try {
     let best = null;
     for (const [k, until] of _meosPseudoUntil) if (!best || until < best.until) best = { k, until };
+    if (meosIsRinging()) {                               // v4.0.469: 鳴っている間は、それthatが一番言うべきこと
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+      _meosTimerBar.text = '\u23f0 ringing' + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
+      _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
+      _meosTimerBar.command = 'lai-membrane.pseudoTimer';
+      try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); } catch (_) { }
+      _meosTimerBar.show();
+      meosTickTimerLines();
+      return;
+    }
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
       meosTickTimerLines();
@@ -9866,8 +9876,39 @@ function meosPlayChime() {
     }
   } catch (_) { }
 }
+// ★★★v4.0.469(俊克「1回だけなんだね。**ずっと鳴りつづける**って設定はできないかな? 鳴り続けて、
+//   ⏰ボタンを押すと、鳴り止むようにする。**リアルな目覚まし時計のようにね**」):
+//   ★★★**1回の音は、聞き逃せる**。目覚ましthat鳴り続けるのは、**止めた人thatが居ることを確かめる**ため＝
+//     鳴り止むことthatが「気づいた」の合図になる。1回だけだと、鳴ったのか鳴らなかったのthatか誰にも分からない。
+//   ★止める口は**⏰そのもの**＝ 鳴っている時に押せば止まる(メニューは開かない)。
+//     知らせるUIと直すUIを別に作らない([[feedback_fix_signal_at_fix_place]])。
+//   ★ただし**永久には鳴らさない**= 席を外している人の機械thatが鳴り続けるのは事故。上限を置く(既定5分)。
+let _meosRingTimer = null, _meosRingUntil = 0, _meosRingName = '';
+function meosRingSeconds() {
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 3)); return (isFinite(n) && n >= 0) ? n : 3; } catch (_) { return 3; }
+}
+function meosStopRinging() {
+  if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
+  _meosRingUntil = 0; _meosRingName = '';
+  meosUpdateTimerBar(); meosPostViewMode();
+}
+function meosStartRinging(name) {
+  const every = meosRingSeconds();
+  meosPlayChime();
+  if (!every) return;                                    // 0= 1回だけ
+  _meosRingName = name || '';
+  _meosRingUntil = Date.now() + 5 * 60000;               // 上限5分= 席を外していても止まる
+  if (_meosRingTimer) clearInterval(_meosRingTimer);
+  _meosRingTimer = setInterval(() => {
+    if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; }
+    meosPlayChime();
+  }, Math.max(1, every) * 1000);
+  meosUpdateTimerBar(); meosPostViewMode();
+}
+function meosIsRinging() { return !!_meosRingTimer; }
 async function meosPseudoTimeUp(key) {
-  meosPlayChime();                                       // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  const _sc0 = _meosPseudoScopes.get(key);
+  meosStartRinging(_sc0 && _sc0.name);                   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   await meosJumpToScope(scope, true);
@@ -9886,7 +9927,8 @@ function meosPostViewMode() {
       mode: (sc ? meosScopeMode(sc) : 'normal'),
       until: (sc ? (_meosPseudoUntil.get(meosLockKey(sc)) || 0) : 0),
       scope: (sc ? (sc.name || '') : ''),
-      own: (sc ? meosScopeHasOwn(sc) : true)   // v4.0.452: false= 外側から受け継いでいる
+      own: (sc ? meosScopeHasOwn(sc) : true),  // v4.0.452: false= 外側から受け継いでいる
+      ringing: meosIsRinging()                 // v4.0.469: 鳴っている間は⏰thatが「止める駒」になる
     });
   } catch (_) { }
 }
@@ -10049,6 +10091,8 @@ function meosRunningTimerItems() {
   return out;
 }
 async function meosPseudoTimerMenu() {
+  // ★v4.0.469: 鳴っている間は、⏰は**止める駒**。押した人thatが求めているのは静けさで、メニューではない。
+  if (meosIsRinging()) { meosStopRinging(); vscode.window.setStatusBarMessage('MeOS: alarm stopped.', 2000); return; }
   const ed = meosCurrentEditor(); if (!ed) return;
   const scope = meosModeScope(ed); if (!scope) return;
   const who = scope.name || 'this file (outside every membrane)';
@@ -20484,6 +20528,9 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-set{font-size:11px;font-weight:800;padding:3px 9px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-foreground);cursor:pointer}
 .warn-btn.raw-timer{transform-origin:center;transition:transform .5s ease}
 .warn-btn.raw-timer.near{transform:scale(1.18);background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
+/* ★v4.0.469: 鳴っている間は赤く息をする= 押せば止まる、を色と動きthat言う。 */
+.warn-btn.raw-timer.ringing{transform:scale(1.30);background:rgba(230,70,50,.42);border-color:rgba(230,70,50,1);animation:meosClockBreath .8s ease-in-out infinite}
+.warn-btn.raw-timer.ringing .raw-t{font-size:9px;color:#fff}
 .warn-btn.raw-timer.imminent{transform:scale(1.38);background:rgba(230,70,50,.34);border-color:rgba(230,70,50,1);animation:meosClockBreath 1.6s ease-in-out infinite}
 @keyframes meosClockBreath{0%,100%{opacity:1}50%{opacity:.55}}
 .warn-btn.raw-timer .raw-t{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:3px;color:#e0803a;vertical-align:1px}
@@ -21909,7 +21956,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true;
+var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false;
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -21954,8 +22001,8 @@ rawToggle.classList.toggle('held',held);
      (v4.0.453で⏰をどのモードでも掛けられるようにした時の取り残し)。時計は掛かっていれば動く。 */
 var _rt=document.getElementById('raw-timer'),_rn=document.getElementById('raw-t');
 var _near=(left>0&&left<=5*60000),_imm=(left>0&&left<=60000);
-if(_rn)_rn.textContent=(left>0)?vmMmSs(left):'';
-if(_rt){_rt.classList.toggle('running',left>0);
+if(_rn)_rn.textContent=vmRing?'stop':((left>0)?vmMmSs(left):'');   /* v4.0.469: 鳴っている間は「止める駒」 */
+if(_rt){_rt.classList.toggle('running',left>0||vmRing);_rt.classList.toggle('ringing',vmRing);
 _rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
@@ -22827,8 +22874,8 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0');
-if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'');
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
