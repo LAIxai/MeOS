@@ -9645,16 +9645,43 @@ const _meosPseudoScopes = new Map();    // key → 掛けた時のスコープ(5
 //     (面とステータスバーは残り時間のまま= 今どれだけ待つかの物)。
 const _meosClockHistory = [];          // 新しい順 { uri, key, name, at, hold }
 const MEOS_CLOCK_HISTORY_MAX = 12;     // 覚える数(出すのは5個)
+// ★★★v4.1.4(俊克 バグ1「タイムアウトした後、履歴から消えてしまう。あるいは、アンインストールして、
+//   次のバージョンをインストールしたせいかな?」): ★★★**後者that正しい**= 時間切れで消す処理はどこにも無く、
+//   履歴は**メモリの中だけ**に在った。so拡張that入れ替わる/窓を閉じるだけで、全部消えていた。
+//   ★★**消えるなら、それは履歴ではなく状態**(v4.1.0で自分で書いた線)。→ globalStateへ残す。
+//   ★ファイルの中(mMETA)ではなく人の側に置く= 履歴は**その人that後で戻ると決めた場所**の並びで、
+//     ファイルの中身ではない(mMETAに在るのは「まだ鳴っていない予定」だけ)。
+const MEOS_CLOCK_HISTORY_KEY = 'meos.clock.history';
+let _meosClockHistoryLoaded = false;
+function meosClockHistoryLoad() {
+  if (_meosClockHistoryLoaded) return; _meosClockHistoryLoaded = true;
+  try {
+    const a = extensionContext && extensionContext.globalState.get(MEOS_CLOCK_HISTORY_KEY);
+    if (Array.isArray(a)) for (const r of a) { if (r && r.uri && r.key) _meosClockHistory.push({ uri: r.uri, key: r.key, name: r.name || '', at: Number(r.at) || 0, hold: !!r.hold }); }
+  } catch (_) { }
+}
+function meosClockHistorySave() {
+  try { if (extensionContext) extensionContext.globalState.update(MEOS_CLOCK_HISTORY_KEY, _meosClockHistory.slice(0, MEOS_CLOCK_HISTORY_MAX)); } catch (_) { }
+}
+// ★v4.1.4(俊克 改良1): 一覧の×= **その膜へ連れて行ってから**、覚えを1つ外す(間違えても、もうそこに立っている)。
+function meosClockForget(uri, key) {
+  meosClockHistoryLoad();
+  const i = _meosClockHistory.findIndex(r => r.uri === uri && r.key === key);
+  if (i >= 0) { _meosClockHistory.splice(i, 1); meosClockHistorySave(); }
+}
 function meosNoteClockHistory(scope, at) {
+  meosClockHistoryLoad();
   try {
     const i = _meosClockHistory.findIndex(r => r.uri === scope.uri && r.key === scope.key);
     if (i >= 0) _meosClockHistory.splice(i, 1);
     _meosClockHistory.unshift({ uri: scope.uri, key: scope.key, name: scope.name, at, hold: !!scope.hold });
     while (_meosClockHistory.length > MEOS_CLOCK_HISTORY_MAX) _meosClockHistory.pop();
+    meosClockHistorySave();
   } catch (_) { }
 }
 // 一覧に出す形。走っている物that先(残り時刻も添える)、そのあと掛けた順。
 function meosClockList(limit) {
+  meosClockHistoryLoad();
   const out = [], seen = new Set();
   const push = (r, running) => {
     const k = r.uri + ' ' + r.key;
@@ -20589,6 +20616,11 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
 .clk-item .ci-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+/* ★v4.1.4: ×は**最初から見えている**(hoverで初めて現れる物は、在ることに気づけない)。
+   薄い→濃いは「押せる」の合図で、押す所は数字1文字より広く取る。 */
+.clk-item .ci-x{flex:none;font-size:11px;font-weight:900;line-height:1;padding:1px 4px;border-radius:4px;opacity:.40;cursor:pointer}
+.clk-item:hover .ci-x{opacity:.65}
+.clk-item .ci-x:hover{opacity:1;background:rgba(230,70,50,.35)}
 .clk-sep{border-top:1px solid var(--vscode-panel-border);margin:2px 0}
 .clk-row{display:flex;align-items:baseline;justify-content:space-between}
 .clk-lab{font-size:11px;font-weight:800;color:#7fd4e8}
@@ -22255,7 +22287,12 @@ var row=document.createElement('div');row.className='clk-item'+(c.running?' live
 row.setAttribute('data-i',String(i));
 var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'')+clkWhenLabel(c.at);
 var n=document.createElement('span');n.className='ci-n';n.textContent=c.name||'(outside every membrane)';
-row.appendChild(t);row.appendChild(n);el.appendChild(row);}
+row.appendChild(t);row.appendChild(n);
+/* ★v4.1.4: ×= 覚えを外す。**走っている時計には出さない**= 走っている物は履歴でなく今の状態で、
+   外すべき物は覚えではなく時計そのもの(⏰=テスト用紙so、途中で降りる口は作らない)。 */
+if(!c.running){var x=document.createElement('span');x.className='ci-x';x.textContent='\u00d7';
+x.title='Forget this one \u2014 MeOS takes you there first, in case you did not mean it.';row.appendChild(x);}
+el.appendChild(row);}
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
 if(clkCaret&&clkPop){
  var now=new Date();
@@ -22268,7 +22305,12 @@ if(clkCaret&&clkPop){
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
-   if(c)vscode.postMessage({type:'clockGoto',uri:c.uri,key:c.key,name:c.name});closeClkPop();return;}
+   /* ★★v4.1.4(俊克 改良1「削除する前に、その膜へ移動する。間違って、削除したときのために」):
+      ★★**連れて行ってから外す**= 消えた物を探しに行かなくていい。もうその場に立っている。 */
+   var isX=!!(ev.target&&ev.target.classList&&ev.target.classList.contains('ci-x'));
+   if(c){vscode.postMessage({type:'clockGoto',uri:c.uri,key:c.key,name:c.name});
+    if(isX)vscode.postMessage({type:'clockForget',uri:c.uri,key:c.key});}
+   closeClkPop();return;}
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
   if(col){if(col.id==='clk-y'||col.id==='clk-mo'||col.id==='clk-d')clkFixD=true;
    clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}
@@ -23906,6 +23948,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }
     // v4.1.0: 一覧from選んだ= その膜へ行く(飛ぶ口は meosJumpToScope 1つ)。
     if (message && message.type === 'clockGoto') { await meosJumpToScope({ uri: message.uri, key: message.key, name: message.name }); return; }
+    if (message && message.type === 'clockForget') { meosClockForget(message.uri, message.key); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.4: 一覧の×
     if (message && message.type === 'clockStop') { if (meosIsRinging()) meosStopRinging(); return; }
     // v4.0.462: ▾から来た一発指定(分 or いつ)。読む口は meosParseWhen 1つ(menu と同じ物に訊く)。
     if (message && message.type === 'pseudoTimerSet') {

@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.4 (2026-08-28)
+- **The clock history survives a restart.** It was kept in memory only, so closing the window — or installing
+  the next build — emptied it. A list that dies is a state, not a history. It is stored with you now, not in
+  the file: the file only carries a clock that has yet to ring.
+- **× on a row forgets it — after taking you there.** You land on the membrane first, so if you did not mean
+  it you are already standing where you can set it again. Running clocks have no ×: what you would want to
+  drop there is the clock, not the memory of it, and a clock in progress has no way out by design.
+
 ### v4.1.3 (2026-08-28)
 - **The date starts empty again, and clear works.** Drawing the summary line must not move the wheels: a big
   orange number on a wheel means *you chose this*, so putting the worked-out day there told a lie — and it
