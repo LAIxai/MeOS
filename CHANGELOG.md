@@ -2,7 +2,7 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
-## v4.0 era — highlights (2026-08 →)
+## v4.1 era — highlights (2026-08 →)
 
 ### v4.1.1 (2026-08-28)
 - **Going to a membrane opens it in the editor, not beside Me Dock.** Without naming a column, VS Code opens a
@@ -28,6 +28,8 @@ _Detailed per-version development notes. Moved here from README to keep the READ
   down; those answer a different question — how long until I am wanted.)
 - The panel is narrower: 190px instead of 236. What set the old width was the four digits of the year.
 
+
+## v4.0 era — highlights (2026-08 →)
 
 ### v4.0.474 (2026-08-28)
 - One more description of the superseded form removed from the feature list: MeOS reads its settings from a
