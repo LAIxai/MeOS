@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.7 (2026-08-29)
+- **The clock is no longer drawn faint.** Faint used to mean "no clock on the membrane you are standing in" —
+  a leftover from when ⏰ was a mode tool. It is a doorway to your clocks now, and worth the same from
+  anywhere. It lights up whenever a clock is running, wherever it was set.
+- **It is shaped like its neighbours.** Same corners, size and fill as the four sisters it now stands with,
+  in the clock's own orange.
+
 ### v4.1.6 (2026-08-29)
 - **The clock moved into Hyper IDX, right of 🏠.** A clock is no longer a way to hold Pseudo👁 — it is a place
   you decided to come back to, which is what the four sisters are. ⏰ goes there, ▾ sets one, and the countdown

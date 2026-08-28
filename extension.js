@@ -20607,9 +20607,25 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    ★★分けたことで、**1つの駒が1つのことを言う**ようになった＝ 面(モード)は「どう見えているか」、
      ⏰は「あと何分か」。今までモードの面に残り時間を相乗りさせていたのは、2つのことを1つの駒に言わせていた。
    ★消えている時は灰(⚠️と同じ)＝ **押せるthat、今は何も起きていない**。走れば橙で点く。 */
-.warn-btn.raw-timer{opacity:.45;filter:none;font-size:14px}
+/* ★★v4.1.7(俊克 改良1「⏰that走っているのに、薄く表示している。なぜ? 終わった履歴だけのケースでも、
+   薄くすべきでは無いよね。純粋に、何も登録してない時は、薄くしても良いけど、現実的には、何かを入れるので、
+   最初から濃いままでもいいよね」): ★★★**薄いのは「今居る膜に時計that掛かっていない」という意味だった**=
+   ⏰thatモードの道具だった頃の名残り。今の⏰は**履歴へ行く入口**so、どの膜に立っていても同じ値打ちthat在る。
+   → 常に濃い。走っている時は色thatさらに立つ(薄い↔濃いではなく、濃い↔灯る)。 */
+.warn-btn.raw-timer{opacity:1;filter:none;font-size:14px}
 .warn-btn.raw-timer:hover{background:rgba(224,128,58,.18);border-color:rgba(224,128,58,.55)}
 .warn-btn.raw-timer.running{opacity:1;background:rgba(224,128,58,.18);border-color:rgba(224,128,58,.75)}
+/* ★★v4.1.7(俊克 改良2「他のボタンに比べて、⏰だけ、角丸四角の角の丸みthat異なるので、他と同じに
+   した方thatいいよね」): ★★引っ越した先の作法に合わせる= Hyper IDX の姉妹は **角5px・padding 3px 6px・
+   13px・塗りつぶし**(🏠=緑 / 🔖=茶 / 参照=白)。⏰も同じ形にして、色だけ時計の橙にする。
+   ★★[[feedback_copy_the_house_style_first]]= 家の中の同じ役の部品を先に探して真似る。 */
+.toc-tools .warn-btn.raw-timer{opacity:1;filter:none;font-size:13px;line-height:15px;padding:3px 6px;border-radius:5px 0 0 5px;background:#a8481a;color:#fff;border-color:#6b2d0e}
+.toc-tools .warn-btn.raw-timer:hover{background:#c05621;border-color:#7c2d12}
+.toc-tools .warn-btn.raw-timer.running{background:#e0803a;border-color:#ffc59a;color:#231206}
+.toc-tools .warn-btn.raw-timer .raw-t{color:#ffe6d5}
+.toc-tools .warn-btn.raw-timer.running .raw-t{color:#231206}
+.toc-tools .fmt-caret.clk-caret{font-size:10px;line-height:15px;padding:3px 5px;min-width:14px;border-left:0;border-radius:0 5px 5px 0;background:#a8481a;color:#fff;border-color:#6b2d0e}
+.toc-tools .fmt-caret.clk-caret:hover{background:#c05621;border-color:#7c2d12}
 /* ★v4.0.459: 近づくと大きくなる。transform なので**枡の大きさは変わらない**= 右隣は1pxも動かない。 */
 /* ★★v4.0.462(俊克「⏰の▼ボタンで、下側に時分、上側に年月日のスクロール式+手入力ボックスを出す」):
    ★★家の中の同じ役の部品を真似る= 開き方・位置決め・閉じ方は表の▾(table-pop)と**同じ形**。
@@ -22207,7 +22223,10 @@ rawToggle.classList.toggle('held',held);
 var _rt=document.getElementById('raw-timer'),_rn=document.getElementById('raw-t');
 var _near=(left>0&&left<=5*60000),_imm=(left>0&&left<=60000);
 if(_rn)_rn.textContent=vmRing?'stop':((left>0)?vmMmSs(left):'');   /* v4.0.469: 鳴っている間は「止める駒」 */
-if(_rt){_rt.classList.toggle('running',left>0||vmRing);_rt.classList.toggle('ringing',vmRing);
+/* ★v4.1.7: 灯るのは**どこかで時計that走っている時**(今居る膜だけの話ではない)= ⏰は膜のモードの駒でなく、
+   時計の一族の入口になった。数字は今居る膜の残り(どこに居ても見える物はステータスバーthat持つ)。 */
+var _anyRun=false;try{for(var _ci=0;_ci<vmClocks.length;_ci++)if(vmClocks[_ci].running){_anyRun=true;break;}}catch(e){}
+if(_rt){_rt.classList.toggle('running',left>0||vmRing||_anyRun);_rt.classList.toggle('ringing',vmRing);
 _rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
