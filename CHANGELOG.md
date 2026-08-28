@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.462 (2026-08-28)
+- **⏰ has a ▾ of its own**: a date on top (year · month · day), a time below (hour · minute), each a scrolling
+  column **and** a box you can type into. The columns and the box read the same value, so choosing in one writes
+  the other — there is never a second version of the truth. Leave the date empty and the time means today, or
+  tomorrow if it has passed, which is the everyday case. `clear` empties it again. The four common durations
+  stay one press away.
+- It opens, positions and closes exactly like the table ▾ — the same furniture, not a new invention — but it
+  keeps its own outside-click guard rather than riding on the other menu's state.
+
 ### v4.0.461 (2026-08-28)
 - **The diagnostic log is off by default, and no longer carries a hard-coded path.** Two absolute paths from the
   author's own machine had been shipping inside the extension, so every install was firing failed file writes at

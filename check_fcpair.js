@@ -1200,5 +1200,29 @@ console.log('(55) 計測は既定で書かない — 出荷版に私の絶対パ
      '★設定を変えたら見直す(開け閉めthat即効く)', true);
 }
 
+console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手入力)(v4.0.462 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/id="raw-timer-caret"/.test(src) && /id="clk-pop"/.test(src),
+     '★★⏰の右に▾、その中に一枚のパネル', true);
+  const pop = src.indexOf('id="clk-pop"');
+  const dsec = src.indexOf('id="clk-y"', pop), tsec = src.indexOf('id="clk-h"', pop);
+  ok(dsec > 0 && tsec > dsec, '★★★上that年月日・下that時分(俊克の並びどおり)', [dsec - pop, tsec - pop]);
+  ok(/id="clk-din"/.test(src) && /id="clk-tin"/.test(src),
+     '★どちらにも手入力の箱that在る', true);
+  ok(/function clkSyncFromCols\(\)/.test(src) && /function clkSyncFromBox\(\)/.test(src),
+     '★★★列と箱は同じ1つの値を見る(列を選べば箱that書き変わり、箱に打てば列that合う)', true);
+  ok(/id="clk-dclr"/.test(src) && /clk-hint">empty = today \/ tomorrow/.test(src),
+     '★★日付を空にできる= 空 = 毎日の時刻(俊克の基本の使い方)', true);
+  ok(/message\.type === 'pseudoTimerSet'/.test(src) && /const w = meosParseWhen\(message\.when\);/.test(src),
+     '★★読む口は meosParseWhen 1つ(menu と▾that同じ物に訊く)', true);
+  ok(/if\(clkPop&&clkPop\.classList\.contains\('on'\)&&!clkPop\.contains\(ev\.target\)&&ev\.target!==clkCaret\)closeClkPop\(\);/.test(src),
+     '★外を押したら閉じる(自分の門番を持つ= 表の▾の状態に相乗りしない)', true);
+  ok(/clkPop\.style\.top=Math\.max\(6,r\.top-h-6\)/.test(src),
+     '★位置決めは表の▾と同じ形(家の作法を真似る)', true);
+  ok(/data-m="10"/.test(src) && /data-m="90"/.test(src),
+     '★よく使う分(10/25/50/90)は1押しのまま', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

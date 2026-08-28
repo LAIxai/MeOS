@@ -20397,6 +20397,28 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .warn-btn.raw-timer:hover{background:rgba(224,128,58,.18);border-color:rgba(224,128,58,.55)}
 .warn-btn.raw-timer.running{opacity:1;background:rgba(224,128,58,.18);border-color:rgba(224,128,58,.75)}
 /* ★v4.0.459: 近づくと大きくなる。transform なので**枡の大きさは変わらない**= 右隣は1pxも動かない。 */
+/* ★★v4.0.462(俊克「⏰の▼ボタンで、下側に時分、上側に年月日のスクロール式+手入力ボックスを出す」):
+   ★★家の中の同じ役の部品を真似る= 開き方・位置決め・閉じ方は表の▾(table-pop)と**同じ形**。
+   ★スクロールの列は「輪」ではなく**ただの縦の一覧**= 目で追えて、指1本で選べる(輪は勢いthat要る)。
+   ★日付を空にできる= **空 = 毎日の時刻**(俊克「基本は毎日の時刻指定」)。clear thatその口。 */
+.fmt-caret.clk-caret{border-radius:0 9px 9px 0;border-color:rgba(224,128,58,.55);margin-left:-1px}
+.clk-pop{width:236px;gap:3px}
+.clk-row{display:flex;align-items:baseline;justify-content:space-between}
+.clk-lab{font-size:11px;font-weight:800;color:var(--vscode-foreground)}
+.clk-hint{font-size:9px;opacity:.6}
+.clk-cols{display:flex;gap:3px;align-items:stretch}
+.clk-col{flex:1;height:84px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:thin}
+.clk-col div{font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;padding:2px 0;cursor:pointer;border-radius:3px}
+.clk-col div:hover{background:rgba(224,128,58,.20)}
+.clk-col div.sel{background:rgba(224,128,58,.85);color:#fff;font-weight:900}
+.clk-clear{flex:none;align-self:flex-start;font-size:9px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
+.clk-in{width:100%;box-sizing:border-box;font-size:11px;font-family:ui-monospace,Menlo,monospace;padding:3px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
+.clk-when{font-size:10px;min-height:13px;color:#e0803a;font-weight:700;text-align:center}
+.clk-foot{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.clk-mins{display:flex;gap:3px}
+.clk-mins button{font-size:10px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
+.clk-mins button:hover{background:rgba(224,128,58,.20)}
+.clk-set{font-size:11px;font-weight:800;padding:3px 9px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-foreground);cursor:pointer}
 .warn-btn.raw-timer{transform-origin:center;transition:transform .5s ease}
 .warn-btn.raw-timer.near{transform:scale(1.18);background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
 .warn-btn.raw-timer.imminent{transform:scale(1.38);background:rgba(230,70,50,.34);border-color:rgba(230,70,50,1);animation:meosClockBreath 1.6s ease-in-out infinite}
@@ -20669,7 +20691,18 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
     <div class="nav-scroll" id="nav-scroll" data-tip="Bird-EV ToDo (bird's-eye view) — left: every heading · right: every unresolved review note. Clear the right side = project done. Drag a handle to jump."><div class="nav-ticks nav-ticks-head" id="nav-ticks-head"></div><div class="nav-ticks nav-ticks-mark" id="nav-ticks-mark"></div><span class="nss nss-head" id="nav-scroll-head"></span><span class="nss nss-mark" id="nav-scroll-mark"></span></div>
-    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
+    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><span class="fmt-caret clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</span>
+<div class="bm-pop clk-pop" id="clk-pop">
+  <div class="clk-row"><span class="clk-lab">Date</span><span class="clk-hint">empty = today / tomorrow</span></div>
+  <div class="clk-cols"><div class="clk-col" id="clk-y"></div><div class="clk-col" id="clk-mo"></div><div class="clk-col" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
+  <input class="clk-in" id="clk-din" placeholder="2026-09-01" spellcheck="false">
+  <div style="border-top:1px solid var(--vscode-panel-border);margin:3px 0"></div>
+  <div class="clk-row"><span class="clk-lab">Time</span><span class="clk-hint">24-hour</span></div>
+  <div class="clk-cols"><div class="clk-col" id="clk-h"></div><div class="clk-col" id="clk-mi"></div></div>
+  <input class="clk-in" id="clk-tin" placeholder="18:30" spellcheck="false">
+  <div class="clk-when" id="clk-when"></div>
+  <div class="clk-foot"><span class="clk-mins" id="clk-mins"></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
+</div><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
     <div class="nav-center-row line-row"><span class="head-nav line-hist"><button class="cancel nav-center-btn head-nav-btn" id="hist-back" data-tip="Back">←</button><button class="cancel time-machine-trigger head-nav-center" id="time-machine-trigger" data-tip="Time Machine Me">(0/0)</button><button class="cancel nav-center-btn head-nav-btn" id="hist-forward" data-tip="Forward">→</button></span><button class="cancel line-btn ${meDockCurrentLineMarkerActive?'on':''}" id="line-btn" data-tip="Toggle line marker">Line</button><input class="line-input" id="line-input" value="${esc(initial.line || '')}" inputmode="numeric"/><span class="head-nav mark-nav" data-tip="Jump between highlights / strikethroughs in the current membrane — editor ⇄ author review notes."><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-prev" data-tip="Previous highlight / strikethrough (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-mark-label">💬</span><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-next" data-tip="Next highlight / strikethrough (below ↓)">↓</button></div>
     <div class="time-machine-panel" id="time-machine-panel"><div class="time-machine-title">Time Machine Me</div><div class="time-machine-main"><div class="tm-world-box"><div class="tm-world-row real active" id="tm-world-real" data-tip="Real world line"><div class="tm-world-label">Real</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-real"></div><input class="time-machine-slider" id="time-machine-slider-real" type="range" min="1" max="1" value="1"/></div></div><div class="tm-world-row reinc" id="tm-world-reinc" data-tip="REinc world line"><div class="tm-world-label">REinc</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-reinc"></div><input class="time-machine-slider" id="time-machine-slider-reinc" type="range" min="1" max="1" value="1"/></div></div></div><div class="time-machine-side"><input class="time-machine-index" id="time-machine-index" type="number" min="1" value="1"/><span class="line-meter" id="time-machine-total">/ 0</span><button class="cancel time-machine-clear" id="time-machine-clear" data-tip="Clear current Line history">Clear</button></div></div></div>
     <!-- v0.9.690: Navigate Me の Bi-direction Jump バー(nav-anchor🟢/nav-bidi🔴/nav-clear)を撤去 — Current Me に統合(俊克 am11:25)。参照JSは全て if(...) ガード済みなので要素削除で安全。 -->
@@ -21876,6 +21909,63 @@ if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:
 var rawTimerBtn=document.getElementById('raw-timer');
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 if(typeof hideTocTip==='function')hideTocTip();vscode.postMessage({type:'pseudoTimer'});});
+/* ★★v4.0.462(俊克): ⏰の▾= 上に年月日、下に時分。どちらも**スクロールの列 + 手入力の箱**。
+   ★列と箱は**同じ1つの値**を見る= 列を選べば箱that書き変わり、箱に打てば列that合う(2つの真実を作らない)。
+   ★日付を空にすれば「毎日の時刻」= 俊克の基本の使い方。clear thatその口。
+   ★開き方・位置決め・外を押したら閉じる、は表の▾と同じ形(家の作法を真似る)。 */
+var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getElementById('clk-pop');
+function closeClkPop(){if(clkPop)clkPop.classList.remove('on');}
+function clkPad(n){return (n<10?'0':'')+n;}
+function clkFill(el,from,to,pad){if(!el)return;var h='';for(var i=from;i<=to;i++)h+='<div data-v="'+i+'">'+(pad?clkPad(i):i)+'</div>';el.innerHTML=h;}
+function clkSel(el,v){if(!el)return;var a=el.children;for(var i=0;i<a.length;i++){var on=(String(a[i].getAttribute('data-v'))===String(v));a[i].classList.toggle('sel',on);if(on)el.scrollTop=Math.max(0,a[i].offsetTop-el.clientHeight/2+a[i].offsetHeight/2);}}
+function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?Number(s.getAttribute('data-v')):null;}
+function clkSyncFromCols(){var y=clkPick(document.getElementById('clk-y')),mo=clkPick(document.getElementById('clk-mo')),d=clkPick(document.getElementById('clk-d'));
+var din=document.getElementById('clk-din');if(din&&y&&mo&&d)din.value=y+'-'+clkPad(mo)+'-'+clkPad(d);
+var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
+var tin=document.getElementById('clk-tin');if(tin&&h!==null&&mi!==null)tin.value=clkPad(h)+':'+clkPad(mi);clkEcho();}
+function clkSyncFromBox(){var din=document.getElementById('clk-din'),tin=document.getElementById('clk-tin');
+var m=din?/^\s*(\d{4})\D(\d{1,2})\D(\d{1,2})\s*$/.exec(din.value||''):null;
+if(m){clkSel(document.getElementById('clk-y'),+m[1]);clkSel(document.getElementById('clk-mo'),+m[2]);clkSel(document.getElementById('clk-d'),+m[3]);}
+var t=tin?/^\s*(\d{1,2})\D?(\d{2})\s*$/.exec(tin.value||''):null;
+if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}clkEcho();}
+function clkText(){var din=document.getElementById('clk-din'),tin=document.getElementById('clk-tin');
+var d=(din&&din.value||'').trim(),t=(tin&&tin.value||'').trim();return d?(d+(t?(' '+t):'')):t;}
+function clkEcho(){var e=document.getElementById('clk-when');if(!e)return;var v=clkText();e.textContent=v?('\u2192 '+v):'\u2192 pick a time';}
+if(clkCaret&&clkPop){
+ var now=new Date();
+ clkFill(document.getElementById('clk-y'),now.getFullYear(),now.getFullYear()+3,false);
+ clkFill(document.getElementById('clk-mo'),1,12,true);clkFill(document.getElementById('clk-d'),1,31,true);
+ clkFill(document.getElementById('clk-h'),0,23,true);clkFill(document.getElementById('clk-mi'),0,59,true);
+ var mins=document.getElementById('clk-mins');if(mins)mins.innerHTML='<button data-m="10">10</button><button data-m="25">25</button><button data-m="50">50</button><button data-m="90">90</button>';
+ clkPop.addEventListener('click',function(ev){ev.stopPropagation();
+  var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
+  if(col){clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}
+  if(ev.target&&ev.target.id==='clk-dclr'){var di=document.getElementById('clk-din');if(di)di.value='';
+   var yy=document.getElementById('clk-y');if(yy)for(var i=0;i<yy.children.length;i++)yy.children[i].classList.remove('sel');
+   var mm2=document.getElementById('clk-mo');if(mm2)for(var j=0;j<mm2.children.length;j++)mm2.children[j].classList.remove('sel');
+   var dd=document.getElementById('clk-d');if(dd)for(var k=0;k<dd.children.length;k++)dd.children[k].classList.remove('sel');clkEcho();return;}
+  var mb=ev.target&&ev.target.getAttribute?ev.target.getAttribute('data-m'):null;
+  if(mb){vscode.postMessage({type:'pseudoTimerSet',minutes:Number(mb)});closeClkPop();return;}
+  if(ev.target&&ev.target.id==='clk-set'){var v=clkText();if(!v)return;vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();return;}
+ });
+ var di0=document.getElementById('clk-din'),ti0=document.getElementById('clk-tin');
+ if(di0)di0.addEventListener('input',clkSyncFromBox);if(ti0)ti0.addEventListener('input',clkSyncFromBox);
+ if(di0)di0.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=clkText();if(v)vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();}});
+ if(ti0)ti0.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=clkText();if(v)vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();}});
+ clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
+  var willOpen=!clkPop.classList.contains('on');
+  if(willOpen&&typeof hideTocTip==='function')hideTocTip();
+  clkPop.classList.toggle('on',willOpen);if(!willOpen)return;
+  var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の切りのよい時刻 */
+  clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
+  var ti=document.getElementById('clk-tin');if(ti)ti.value=clkPad(n2.getHours())+':'+clkPad(n2.getMinutes());
+  clkEcho();
+  var r=clkCaret.getBoundingClientRect();
+  requestAnimationFrame(function(){var h=clkPop.offsetHeight||300,w=clkPop.offsetWidth||236;
+   var left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;
+   clkPop.style.left=left+'px';clkPop.style.top=Math.max(6,r.top-h-6)+'px';});
+ });
+}
 window.__renderRaw();
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));
 const mewCycle=document.getElementById('mew-cycle');if(mewCycle)mewCycle.addEventListener('click',(e)=>{e.stopPropagation();
@@ -21887,7 +21977,7 @@ b.classList.toggle('on',c>0);/* v4.0.111(俊克): 点灯=直すものが在る�
 if(s)s.textContent=c>0?String(c):'';};
 const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBtn.addEventListener('click',()=>vscode.postMessage({type:'formatTable'}));
 /* v0.9.999150: 表整形ボタン */
-const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(tablePop)tablePop.classList.remove('on');
+const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
 }if(fmtTableCaret&&tablePop){fmtTableCaret.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const willOpen=!tablePop.classList.contains('on');
 if(willOpen&&typeof window.__renderTableWrapCheck==='function')window.__renderTableWrapCheck();if(willOpen&&typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 if(willOpen&&typeof hideTocTip==='function')hideTocTip();/* v3.0.5(俊克 改良1): メニューを開いた瞬間に、既に表示中の▼のtipを消す(クリックしてもマウス静止だとshowTocTipが再発火せずtipが残っていた)。 */tablePop.classList.toggle('on',willOpen);
@@ -22006,7 +22096,9 @@ boldPop.style.top=Math.max(6,r.top-h-6)+'px';});});}
 document.addEventListener('click',function(ev){if(boldPop&&boldPop.classList.contains('on')&&ev.target.closest&&!ev.target.closest('#bold-pop')&&!ev.target.closest('#fmt-bold-caret'))closeBoldPop();
 });
 [['table-recalc-all','recalcAll'],['table-dup-row','tableDupRow'],['table-del-row','tableDelRow'],['table-dup-col','tableDupCol'],['table-del-col','tableDelCol']].forEach(([id,ty])=>{const b=document.getElementById(id);
-if(b)b.addEventListener('click',()=>{vscode.postMessage({type:ty});closeTablePop();});});/* v0.9.999165: 行/列の複製・削除 */document.addEventListener('click',ev=>{if(tablePop.classList.contains('on')&&!tablePop.contains(ev.target)&&ev.target!==fmtTableCaret)closeTablePop();
+if(b)b.addEventListener('click',()=>{vscode.postMessage({type:ty});closeTablePop();});});/* v0.9.999165: 行/列の複製・削除 *//* v4.0.462: ⏰の▾も、外を押したら閉じる(表の▾と同じ作法。ただし自分の門番を持つ= 相手の状態に相乗りしない) */
+document.addEventListener('click',ev=>{if(clkPop&&clkPop.classList.contains('on')&&!clkPop.contains(ev.target)&&ev.target!==clkCaret)closeClkPop();});
+document.addEventListener('click',ev=>{if(tablePop.classList.contains('on')&&!tablePop.contains(ev.target)&&ev.target!==fmtTableCaret)closeTablePop();
 },true);}/* v0.9.999154: テーブル膜メニュー(膜化/解除) */
 /* v0.9.99914: 合言葉入力を暗号3兄弟の下(enc-pass-row)に表示。🔐/🔓で出し、Enter/Goで送信、Esc/✕で閉じ、👁で表示切替。 */
 const encPassRow=document.getElementById('enc-pass-row'),encPassInput=document.getElementById('enc-pass-input'),encPassLabel=document.getElementById('enc-pass-label'),
@@ -23468,7 +23560,15 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン
-    if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }           // v4.0.442/448: ⏰=テスト用紙
+    if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }
+    // v4.0.462: ▾から来た一発指定(分 or いつ)。読む口は meosParseWhen 1つ(menu と同じ物に訊く)。
+    if (message && message.type === 'pseudoTimerSet') {
+      if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes)); return; }
+      const w = meosParseWhen(message.when);
+      if (!w) { vscode.window.setStatusBarMessage('MeOS: 18:30 / 9/1 18:30 / 2026-09-01 18:30', 3000); return; }
+      await meosStartPseudoTimer(0, w.ms, w.at);
+      return;
+    }           // v4.0.442/448: ⏰=テスト用紙
     if (message && message.type === 'mewReveal') { meosMewReveal(); return; } // v4.0.106: ↻=5秒だけ印を出す
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
