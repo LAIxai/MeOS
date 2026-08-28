@@ -357,7 +357,7 @@ MeOS stands on the shoulders of:
 ## Features
 
 - **Plain Markdown, always (v4.0)** — headings, lists, bold, highlight, strikethrough and links are written as
-  real Markdown; MeOS reads its own settings from a comment at the end of the line. Your file renders correctly
+  real Markdown; MeOS reads its own settings from a folding comment on the line below. Your file renders correctly
   on GitHub, in any editor, and in any Markdown tool — with or without MeOS installed.
 - **Warp anywhere (v4.0)** — turn any word into a jump to a membrane by name, or to a URL, without putting the
   destination in the middle of your sentence.

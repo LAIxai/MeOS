@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.474 (2026-08-28)
+- One more description of the superseded form removed from the feature list: MeOS reads its settings from a
+  folding comment on the line below, not from the end of the line.
+
 ### v4.0.473 (2026-08-28)
 - **The wheel follows your fingers again, and only lands when you let go.** The click-to-click feel came from
   snap points, which pulled every movement onto a row and left no in-between — so the picture disagreed with the
