@@ -9842,7 +9842,32 @@ async function meosJumpToScope(scope, byBell) {
     ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
   } catch (_) { }
 }
+// ★★★v4.0.465(俊克「やはり、**警告音は必要**だね」):
+//   ★★★**鐘は、見ていなくても届かねばならない**。今の知らせ(飛ぶ/知らせの窓/ステータスバー)は
+//     ぜんぶ**見ている人**にしか届かない。時計を掛ける理由は「その時まで**別のことをしている**」so、
+//     目を離している人に届く道thatが1本要る＝ それthat音。
+//   ★MeOSは音を持たない＝ **OSの音を借りる**(mac=/System/Library/Sounds の名前・win=beep)。
+//     鳴らす物を自分で抱えないso、vsixも増えず、人thatが好きな音に替えられる。
+//   ★設定 laiMembrane.clockSound を空にすれば鳴らない(要らない人thatは黙らせられる)。
+function meosPlayChime() {
+  try {
+    let name = 'Glass';
+    try { name = String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'Glass') || '').trim(); } catch (_) { }
+    if (!name) return;                                   // 空= 鳴らさない
+    const { exec } = require('child_process');
+    const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+    if (process.platform === 'darwin') {
+      const f = name.indexOf('/') >= 0 ? name : ('/System/Library/Sounds/' + name + '.aiff');
+      exec('afplay ' + q(f), () => { });
+    } else if (process.platform === 'win32') {
+      exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
+    } else {
+      exec('paplay /usr/share/sounds/freedesktop/stereo/complete.oga || printf "\\a"', () => { });
+    }
+  } catch (_) { }
+}
 async function meosPseudoTimeUp(key) {
+  meosPlayChime();                                       // 先に鳴らす= 飛ぶ前に「来た」と分かる
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   await meosJumpToScope(scope, true);
@@ -20438,7 +20463,12 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-col{position:relative;flex:1;height:66px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;scroll-snap-type:y mandatory;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 .clk-col::before,.clk-col::after{content:'';display:block;height:22px}
-.clk-col div{height:22px;line-height:22px;font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;scroll-snap-align:center;opacity:.45;transition:font-size .12s,opacity .12s}
+/* ★★v4.0.465(俊克 改良2「スクロールすると慣性で加速するんだけど、**クリックで停止しない**よ。なぜ?」):
+   ★★理由= scroll-snap は**止まった後**に効く決まりso、慣性で飛んでいる間は素通りする。
+     クリックthat効かないのは、慣性はOS/ブラウザ側の動きで、click では止まらないから。
+   ★→ ①1段ずつしか進めなくする(scroll-snap-stop:always)= 飛ばない ②指を置いた瞬間に**今の位置を書き戻す**
+     (scrollTop=scrollTop)= その一筆that慣性を打ち切る。触れば止まる、を体で分かる形にする。 */
+.clk-col div{height:22px;line-height:22px;font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;scroll-snap-align:center;scroll-snap-stop:always;opacity:.45;transition:font-size .12s,opacity .12s}
 .clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
 .clk-cols{position:relative}
 /* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
@@ -21957,6 +21987,11 @@ function clkCenter(el){if(!el)return;var mid=el.scrollTop+el.clientHeight/2,best
 for(var i=0;i<el.children.length;i++){var c=el.children[i],d=Math.abs(c.offsetTop+c.offsetHeight/2-mid);if(d<bd){bd=d;best=c;}}
 if(!best)return;for(var j=0;j<el.children.length;j++)el.children[j].classList.toggle('sel',el.children[j]===best);}
 function clkWatch(el,onPick){if(!el)return;var t=null;
+/* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
+var stop=function(){try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop;}catch(e){}
+if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},60);};
+el.addEventListener('pointerdown',stop,{passive:true});
+el.addEventListener('mousedown',stop,{passive:true});
 el.addEventListener('scroll',function(){if(t)clearTimeout(t);t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);});}
 function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?Number(s.getAttribute('data-v')):null;}
 function clkSyncFromCols(){var y=clkPick(document.getElementById('clk-y')),mo=clkPick(document.getElementById('clk-mo')),d=clkPick(document.getElementById('clk-d'));

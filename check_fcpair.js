@@ -1249,5 +1249,22 @@ console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手
      '★よく使う分(10/25/50/90)は1押しのまま', true);
 }
 
+console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/function meosPlayChime\(\)/.test(src) && /meosPlayChime\(\);                                       \/\/ 先に鳴らす/.test(src),
+     '★★★鐘は見ていなくても届く= 時計を掛ける理由は「その時まで別のことをしている」から', true);
+  ok(/'\/System\/Library\/Sounds\/' \+ name \+ '\.aiff'/.test(src) && /\[console\]::beep/.test(src),
+     '★OSの音を借りる(鳴らす物を自分で抱えない= vsixも増えない)', true);
+  ok(/if \(!name\) return;                                   \/\/ 空= 鳴らさない/.test(src),
+     '★空にすれば鳴らない(要らない人は黙らせられる)', true);
+  ok(/scroll-snap-stop:always/.test(src),
+     '★★1段ずつしか進めない= 慣性で飛ばない(俊克 改良2)', true);
+  ok(/el\.scrollTop=el\.scrollTop;/.test(src) && /addEventListener\('pointerdown',stop/.test(src),
+     '★★★触れた瞬間に今の位置を書き戻す= その一筆that慣性を打ち切る(触れば止まる)', true);
+  ok(/addEventListener\('mousedown',stop/.test(src),
+     '★指でもマウスでも同じ(片方だけ効く物を作らない)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

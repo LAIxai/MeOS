@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.465 (2026-08-28)
+- **⏰ makes a sound.** Every other signal it had — the jump, the notice, the status bar — only reaches someone who
+  is looking, and the whole reason to set a clock is that you are doing something else until it rings. MeOS
+  borrows the operating system's own sound rather than shipping one (`laiMembrane.clockSound`: a name from
+  /System/Library/Sounds on macOS, a beep on Windows; empty for silence).
+- **The wheels stop when you touch them.** Snap points only take effect once scrolling has stopped, so a flick
+  used to sail past them, and a click could not halt it because the momentum belongs to the OS, not to the page.
+  Now each item is a hard stop, so a flick moves one step at a time — and touching a column writes its own
+  position back, which cuts the momentum dead. Touch it and it stops.
+
 ### v4.0.464 (2026-08-28)
 - **While the ⏰ panel is open, no tooltip appears at all.** The panel labels itself, so an explanation laid over
   it is only in the way. The JavaScript tips were already held back; the CSS ones fire on `:hover` alone and
