@@ -1343,10 +1343,28 @@ console.log('(60) ⏰の一覧はMe Dockの中／履歴5個／時刻で出す(v4
      '★★★出すのは**時刻・年月日**= 予定は時刻で覚えている(日付は違う時にだけ言う)', true);
   ok(/message\.type === 'clockGoto'/.test(src) && /await meosJumpToScope\(\{ uri: message\.uri, key: message\.key, name: message\.name \}\);/.test(src),
      '★★押せばその膜へ飛ぶ(飛ぶ口は meosJumpToScope 1つ)', true);
-  ok(/if\(vmRing\)\{vscode\.postMessage\(\{type:'clockStop'\}\);return;\}\nif\(clkCaret\)clkCaret\.click\(\);/.test(src),
-     '★★★⏰thatパネルを開く= Me Dockの中で完結する(鳴っている時だけは止める駒)', true);
-  ok(/\.bm-pop\.clk-pop\{[^}]*width:190px/.test(src),
-     '★幅を詰めた(236→190・決めていたのは年の桁)', true);
+  ok(/if\(vmRing\)\{vscode\.postMessage\(\{type:'clockStop'\}\);return;\}\nif\(window\.__clkOpen\)window\.__clkOpen\('hist'\);/.test(src),
+     '★★★⏰=履歴・▾=設定= 1つの駒は1つの仕事(v4.1.1 俊克 改良2)', true);
+  ok(/window\.__clkOpen=function\(mode\)/.test(src) && /clkPop\.classList\.remove\('hist-only','set-only'\);clkPop\.classList\.add\(want\);/.test(src),
+     '★同じ枠に**役を着せる**(枠を2つ作らない)', true);
+  ok(/window\.__clkOpen\('set'\);/.test(src),
+     '★▾は設定を開く', true);
+  ok(/\.clk-pop\.hist-only \.clk-row,/.test(src) && /\.clk-pop\.set-only \.clk-list\{display:none\}/.test(src),
+     '★役ごとに、要らない段が消える', true);
+  ok(/\.clk-pop\.hist-only \.clk-list:empty::after\{content:'No clock set yet\.'/.test(src),
+     '★履歴that空でも、空の枠でなく理由を出す', true);
+  ok(/\.bm-pop\.clk-pop\.set-only\{width:172px\}/.test(src) && /\.bm-pop\.clk-pop\.hist-only\{width:236px\}/.test(src),
+     '★★幅は役ごとに決まる(設定=172 / 履歴=236・膜名thatが読める幅)', true);
+  ok(/background:color-mix\(in srgb,var\(--vscode-editor-foreground\) 12%,var\(--vscode-editor-background\)\)/.test(src),
+     '★★★地を一段持ち上げる= Me Dockと同じ色では境目that見えない(俊克 改良3)', true);
+  ok(/\.clk-lab\{font-size:11px;font-weight:800;color:#7fd4e8\}/.test(src),
+     '★Date/Timeの見出しは水色= 橙(時計の値)と役that違うので、色も分ける', true);
+  ok(!/color:var\(--vscode-descriptionForeground\)\}\n?\.clk-item/.test(src) && /\.clk-item \.ci-t\{[^}]*color:var\(--vscode-editor-foreground\)\}/.test(src),
+     '★橙以外の字は前景そのまま(薄い灰をやめた)', true);
+  ok(/function meosEditorColumn\(doc\)/.test(src) && /viewColumn: meosEditorColumn\(doc\)/.test(src),
+     '★★★飛ぶ先は本文の列= 列を言わないと「押した場所」に開く(俊克 改良1)', true);
+  ok((src.match(/viewColumn: meosEditorColumn\(doc\)/g) || []).length >= 2,
+     '★行く時も戻る時も同じ列(片方だけ直さない)', (src.match(/viewColumn: meosEditorColumn\(doc\)/g) || []).length);
   ok(/\.clk-list:empty\{display:none\}/.test(src),
      '★履歴that無い時は段そのものthat出ない(空の枠を見せない)', true);
 }

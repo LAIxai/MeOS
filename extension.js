@@ -9694,7 +9694,7 @@ async function meosGoBackFromAlarm() {
   try {
     const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === mk.uri)
       || await vscode.workspace.openTextDocument(vscode.Uri.parse(mk.uri));
-    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
+    const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
     const ln = Math.max(0, Math.min(mk.line, doc.lineCount - 1));
     const pos = new vscode.Position(ln, 0);
     ed.selection = new vscode.Selection(pos, pos);
@@ -9867,6 +9867,23 @@ function meosMembraneNameAtLine(doc, line) {
 }
 // byBell=true のときだけ帰り道を控える＝ **連れ出したのがMeOSの時だけ、MeOSthat帰り道を出す**。
 //   自分で選んで飛んだ時は、来た道を知っているのは本人so、Line history(◀)に任せる。
+// ★★★v4.1.1(俊克 改良1「⏰履歴をクリックすると、**Me Dock側にエディターが開いてしまう**。
+//   左側のメインエディタの方で移動するようにして下さい」):
+//   ★★★**列を言わないと、押した場所に開く**＝ 押したのは Me Dock(webviewは Beside の列に居る)so、
+//     VS Code は「今いる列」に文書を開いた。本文は**左の列の持ち物**なのに。
+//   ★★どの列かは**探すのでなく、既に知っている**＝ その文書thatが今開いている列 → Me Dockthat見ている
+//     エディタの列 → それも無ければ最初の列。**推測の順に3つ**並べれば、必ず本文側に着く。
+function meosEditorColumn(doc) {
+  try {
+    const same = (vscode.window.visibleTextEditors || []).find(e => e.document === doc);
+    if (same && same.viewColumn) return same.viewColumn;
+    const t = (typeof getMeDockTargetEditor === 'function') ? getMeDockTargetEditor() : null;
+    if (t && t.viewColumn) return t.viewColumn;
+    const any = (vscode.window.visibleTextEditors || []).find(e => e.viewColumn);
+    if (any) return any.viewColumn;
+  } catch (_) { }
+  return vscode.ViewColumn.One;
+}
 async function meosJumpToScope(scope, byBell) {
   try {
     if (!scope) return;
@@ -9877,7 +9894,7 @@ async function meosJumpToScope(scope, byBell) {
     if (!rng) return;
     const from = vscode.window.activeTextEditor;
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
-    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false, preview: false });
+    const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
     try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
     const ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
     const pos = new vscode.Position(ln, 0);
@@ -20357,7 +20374,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-tab:hover{background:rgba(255,213,92,.18)}
 .toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
 .toc-tab-ops{margin-left:auto;display:inline-flex;gap:2px;align-items:center;padding-bottom:2px}
-.toc-tab-btn{font-size:13px;line-height:1;padding:2px 7px;border:1px solid rgba(210,140,0,.35);border-radius:4px;background:rgba(255,213,92,.10);color:var(--vscode-foreground);cursor:pointer}
+.toc-tab-btn{font-size:13px;line-height:1;padding:2px 7px;border:1px solid rgba(210,140,0,.35);border-radius:4px;background:rgba(255,213,92,.10);color:var(--vscode-editor-foreground);cursor:pointer}
 #toc-tab-add{color:#16a34a;border-color:rgba(22,163,74,.5);background:rgba(22,163,74,.12)}
 #toc-tab-add:hover{background:rgba(22,163,74,.22)}
 #toc-tab-del{color:#dc2626;border-color:rgba(220,38,38,.5);background:rgba(220,38,38,.12)}
@@ -20479,7 +20496,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* v3.1.74(俊克): 𝗕は最大2文字(BI)so固定30px(===等の44pxより狭く・B/I/BIで幅不変so↻連打可) */
 /* v3.1.77(俊克): v3.1.76の#fmt-metexパディング(↻で高さが微妙に変わる)を撤去しv3.1.75に戻す=はみ出しOK(上付き=上/下付き=下に延びて、高さ変化が見た目で分かる方が良い) */.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}
 .fmt-slots{display:flex;align-items:center;gap:6px;justify-content:center}
-.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground);cursor:pointer}
+.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-editor-foreground);cursor:pointer}
 .fmt-slot:hover{filter:brightness(1.1)}
 .fmt-slot.dim{opacity:.35}
 .fmt-slot-sep{font-weight:900;opacity:.55}
@@ -20538,25 +20555,41 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-wrap{display:inline-flex;align-items:stretch;margin-left:8px}
 .clk-wrap .warn-btn.raw-timer{margin-left:0;border-radius:9px 0 0 9px;position:relative}
 .fmt-caret.clk-caret{position:relative;border-radius:0 9px 9px 0;border-color:rgba(224,128,58,.55);margin-left:-1px;font-family:inherit}
-/* ★v4.1.0(俊克「パネルの横幅をもっとコンパクトに」): 幅を決めていたのは**年の桁**(2026)so、
-   数字の字を少し詰め、余白と隙間を削る。236 → 190。 */
-.bm-pop.clk-pop{position:absolute;right:0;bottom:calc(100% + 8px);left:auto;top:auto;width:190px;gap:2px;padding:5px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default}
+/* ★★v4.1.1(俊克 改良2「⏰ボタンを押すと**履歴だけ**を表示しよう。そうすれば、設定パネルをもう少し
+   横幅をコンパクトにできる。**▼ボタンの意味thatが無くなる**からね」):
+   ★★★**1つの駒は1つの仕事**＝ ⏰も▾も同じ物を開いていたので、▾thatが余っていた。
+     → ⏰=**履歴**(行って戻る)／▾=**設定**(これから掛ける)。役thatが分かれると、幅もそれぞれの物で決まる。
+   ★★改良3「背景thatMe Dockのダーク色と同じで、境目thatが分かりにくい。橙以外の字thatが薄い」:
+     → 地を**一段持ち上げ**(前景を12%混ぜる)、縁と影を強くし、字は前景そのままの白に。
+     Date/Time の見出しだけ**水色**＝ 橙(時計の値)と役thatが違うので、色も分ける。 */
+.bm-pop.clk-pop{position:absolute;right:0;bottom:calc(100% + 8px);left:auto;top:auto;gap:2px;padding:6px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default;
+color:var(--vscode-editor-foreground);
+background:color-mix(in srgb,var(--vscode-editor-foreground) 12%,var(--vscode-editor-background));
+border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 38%,transparent);
+box-shadow:0 8px 26px rgba(0,0,0,.55)}
+.bm-pop.clk-pop.hist-only{width:236px}
+.bm-pop.clk-pop.set-only{width:172px}
+.clk-pop.hist-only .clk-row,.clk-pop.hist-only .clk-cols,.clk-pop.hist-only .clk-in,.clk-pop.hist-only .clk-when,.clk-pop.hist-only .clk-foot,.clk-pop.hist-only .clk-sep{display:none}
+.clk-pop.set-only .clk-list{display:none}
+.clk-pop.hist-only .clk-list{max-height:160px}
+.clk-pop.hist-only .clk-list:empty{display:block}
+.clk-pop.hist-only .clk-list:empty::after{content:'No clock set yet.';display:block;padding:3px 4px;opacity:.75;font-size:10px}
 /* ★★★v4.1.0(俊克「⏰ボタンを押した時に、**最大5個の履歴**をリストにして、そこをクリックすると、
    **その膜に飛ぶ**」): ★★★時計を掛けた膜は、その人that「後で戻る」と決めた場所so、鳴り終わった後も
    値打ちthat残る。★出すのは**時刻・年月日**(予定は時刻で覚えている)。走っている物は橙で上に。 */
 .clk-list{display:flex;flex-direction:column;gap:1px;max-height:96px;overflow-y:auto;scrollbar-width:none}
 .clk-list::-webkit-scrollbar{display:none}
 .clk-list:empty{display:none}
-.clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.72}
+.clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
 .clk-item.live{opacity:1}
-.clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-descriptionForeground)}
+.clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
 .clk-item .ci-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
 .clk-sep{border-top:1px solid var(--vscode-panel-border);margin:2px 0}
 .clk-row{display:flex;align-items:baseline;justify-content:space-between}
-.clk-lab{font-size:11px;font-weight:800;color:var(--vscode-foreground)}
-.clk-hint{font-size:9px;opacity:.6}
+.clk-lab{font-size:11px;font-weight:800;color:#7fd4e8}
+.clk-hint{font-size:9px;opacity:.85;color:var(--vscode-editor-foreground)}
 /* ★★★v4.0.463(俊克 改良4「スクロール式は3段あれば十分かな。そして、**2段目だけ文字を2倍にして、
    その部分を固定して、スクロールする**。タイマーでよくあるタイプの方式だね」):
    ★★★**選んでいる値は、真ん中に居る**＝ 目を止める場所thatが1つに決まる。動くのは数字の側で、
@@ -20572,20 +20605,20 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      クリックthat効かないのは、慣性はOS/ブラウザ側の動きで、click では止まらないから。
    ★→ ①1段ずつしか進めなくする(scroll-snap-stop:always)= 飛ばない ②指を置いた瞬間に**今の位置を書き戻す**
      (scrollTop=scrollTop)= その一筆that慣性を打ち切る。触れば止まる、を体で分かる形にする。 */
-.clk-col div{height:22px;line-height:22px;font-size:10px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;opacity:.45;transition:font-size .12s,opacity .12s}
+.clk-col div{height:22px;line-height:22px;font-size:10px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;color:var(--vscode-editor-foreground);opacity:.8;transition:font-size .12s,opacity .12s}
 .clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
 .clk-cols{position:relative}
 /* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
 .clk-col .clk-win{display:none}
 .clk-cols::before{content:'';position:absolute;left:0;right:0;top:22px;height:22px;border-top:1px solid rgba(224,128,58,.55);border-bottom:1px solid rgba(224,128,58,.55);pointer-events:none;z-index:1}
-.clk-clear{flex:none;align-self:flex-start;font-size:9px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
+.clk-clear{flex:none;align-self:flex-start;font-size:9px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer}
 .clk-in{width:100%;box-sizing:border-box;font-size:11px;font-family:ui-monospace,Menlo,monospace;padding:3px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .clk-when{font-size:10px;min-height:13px;color:#e0803a;font-weight:700;text-align:center}
 .clk-foot{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .clk-mins{display:flex;gap:3px}
-.clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
+.clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer}
 .clk-mins button:hover{background:rgba(224,128,58,.20)}
-.clk-set{font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-foreground);cursor:pointer}
+.clk-set{font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer}
 .warn-btn.raw-timer{transform-origin:center;transition:transform .5s ease}
 .warn-btn.raw-timer.near{transform:scale(1.18);background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
 /* ★v4.0.469: 鳴っている間は赤く息をする= 押せば止まる、を色と動きthat言う。 */
@@ -22083,7 +22116,7 @@ var rawTimerBtn=document.getElementById('raw-timer');
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 if(typeof hideTocTip==='function')hideTocTip();
 if(vmRing){vscode.postMessage({type:'clockStop'});return;}
-if(clkCaret)clkCaret.click();});
+if(window.__clkOpen)window.__clkOpen('hist');});
 /* ★★v4.0.462(俊克): ⏰の▾= 上に年月日、下に時分。どちらも**スクロールの列 + 手入力の箱**。
    ★列と箱は**同じ1つの値**を見る= 列を選べば箱that書き変わり、箱に打てば列that合う(2つの真実を作らない)。
    ★日付を空にすれば「毎日の時刻」= 俊克の基本の使い方。clear thatその口。
@@ -22199,17 +22232,21 @@ if(clkCaret&&clkPop){
  if(di0)di0.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=clkText();if(v)vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();}});
  if(ti0)ti0.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=clkText();if(v)vscode.postMessage({type:'pseudoTimerSet',when:v});closeClkPop();}});
  /* v4.0.463: 置き場所はCSSthat決める(▾の子)so、ここでは開け閉めと中身の初期値だけ。 */
- clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
-  var willOpen=!clkPop.classList.contains('on');
+ /* ★★v4.1.1: ▾=設定だけ / ⏰=履歴だけ。開く時に**役を着せる**(同じ枠を2つの役で使う)。 */
+ window.__clkOpen=function(mode){
+  var want=(mode==='hist')?'hist-only':'set-only';
+  var willOpen=!(clkPop.classList.contains('on')&&clkPop.classList.contains(want));
+  clkPop.classList.remove('hist-only','set-only');clkPop.classList.add(want);
   if(willOpen&&typeof hideTocTip==='function')hideTocTip();
   clkPop.classList.toggle('on',willOpen);
-  try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}   /* v4.0.464: 開いている間はtipを1つも出さない */
+  try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
+  if(mode==='hist'){clkRenderList();return;}
   var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の時刻 */
   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
   var ti=document.getElementById('clk-tin');if(ti)ti.value=clkPad(n2.getHours())+':'+clkPad(n2.getMinutes());
-  clkEcho();
- });
+  clkEcho();};
+ clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__clkOpen('set');});
 }
 window.__renderRaw();
 const mewBtn=document.getElementById('mew-btn');if(mewBtn)mewBtn.addEventListener('click',()=>vscode.postMessage({type:'mewSignVisible'}));

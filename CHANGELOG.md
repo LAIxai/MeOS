@@ -4,6 +4,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.1.1 (2026-08-28)
+- **Going to a membrane opens it in the editor, not beside Me Dock.** Without naming a column, VS Code opens a
+  document wherever you pressed — and you pressed inside the dock, which lives in the column next to the text.
+  The column is not something to search for: the document is already open in one, or Me Dock is already watching
+  one; failing both, the first.
+- **⏰ shows the history, ▾ sets a clock.** They were opening the same panel, which left ▾ with nothing of its
+  own to do. Now each has one job — and each gets the width its job needs (236 for names you can read, 172 for
+  the wheels).
+- **The panel stands away from Me Dock.** Its background was the dock's own dark, so the edge was invisible; it
+  is lifted a step now, with a stronger border. Everything that is not the orange of a clock reads in the
+  editor's own foreground instead of a faint grey, and the Date / Time headings take aqua — a different job from
+  the clock values, so a different colour.
+
 ### v4.1.0 (2026-08-28)
 - **⏰ opens inside Me Dock now, and it opens onto a list.** Up to five clocks you have set — the running ones
   first, in orange, then the rest in the order you set them. Click one and you are at that membrane. A clock you
