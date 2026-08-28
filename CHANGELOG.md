@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.461 (2026-08-28)
+- **The diagnostic log is off by default, and no longer carries a hard-coded path.** Two absolute paths from the
+  author's own machine had been shipping inside the extension, so every install was firing failed file writes at
+  a folder that does not exist on it. On the author's machine, where the path *does* exist, it was writing
+  thousands of lines a week to a disk with 9 GiB free and keeping every one of them in the extension host's
+  memory — the instrument was adding to the very slowness it was measuring. Set `laiMembrane.debugLogPath` to a
+  file when you are chasing something; leave it empty and MeOS writes nothing and keeps nothing.
+
 ### v4.0.460 (2026-08-28)
 - **A clock now survives a restart** — it is kept in the file's own mMETA membrane, beside the view modes, so it
   travels with the file and is still waiting on another machine. Until now it lived only in memory: closing the

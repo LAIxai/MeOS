@@ -1183,5 +1183,22 @@ console.log('(54) ⏰の予定はメタ膜に残る(v4.0.460 俊克)  ※振る�
      '★済んだ予定は残さない', true);
 }
 
+console.log('(55) 計測は既定で書かない — 出荷版に私の絶対パスthat入っていた(v4.0.461)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  const abs = (src.match(/T7_SSD2TB/g) || []).length;
+  ok(abs <= 1, '★★★出荷されるコードに私の機械の絶対パスthat残っていない(コメント1行を除く)', abs);
+  ok(/function meosDbgPath\(\)/.test(src) && /getConfiguration\('laiMembrane'\)\.get\('debugLogPath', ''\)/.test(src),
+     '★★書き先は設定に人that入れた時だけ', true);
+  ok(/const _p = meosDbgPath\(\);\n  if \(!_p\) return;/.test(src),
+     '★★★栓that閉じている間は**1行も作らない**(出力チャンネルにも溜めない= 拡張ホストのメモリを食わない)', true);
+  ok(/if \(!_p\) \{ _prof = null; return; \}/.test(src),
+     '★refreshの計測も同じ栓の先', true);
+  ok((src.match(/appendFileSync\(MEOS_PROFILE_LOG|appendFileSync\(MEOS_DEBUG_LOG/g) || []).length === 0,
+     '★古い書き手that1つも残っていない', true);
+  ok(/meosDbgReset\(\)/.test(src) && /onDidChangeConfiguration\(e => \{ try \{ meosDbgReset\(\); \}/.test(src),
+     '★設定を変えたら見直す(開け閉めthat即効く)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

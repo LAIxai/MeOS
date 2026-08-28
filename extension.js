@@ -2908,9 +2908,23 @@ const MEOS_BOLD = true;
 const MEOS_PROSE_LANGS = new Set(['markdown', 'plaintext', 'mdx', 'quarto', 'rmd']);
 function meosIsProseDoc(doc) { try { return !!doc && MEOS_PROSE_LANGS.has(doc.languageId); } catch (_) { return false; } }
 // ★★TEMP v3.1(俊克 7/25 pm07:07「遅延問題に取り掛かろう」): 巨大日記の refresh 遅延を計測する仮の仕掛け。refresh()の各装飾ブロックの所要msを測り、total>=40msの時だけログファイルへ1行追記(貼付→Claudeがログ直読み=転記不要)。真犯人を数字で確定したら、可視範囲化を実装→この計測ブロックは撤去する。false or 削除で無効化。
-const MEOS_PROFILE_REFRESH = true;
-const MEOS_PROFILE_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/refresh-prof.log';
-const MEOS_DEBUG_LOG = '/Volumes/T7_SSD2TB/Claude Code/MeOS/meos-debug.log'; // v4.0.253: MeOS Debug と同じ中身(私が読む側)
+// ★★★v4.0.461: **私の計測が、出荷版に入ったままだった**。
+//   ①vsix の中に **私の機械の絶対パス**(/Volumes/T7_SSD2TB/…)that2か所。世界中のMeOSthat、
+//     自分の機械に無いパスへ毎回 appendFileSync を投げて失敗していた(捕まえているthat、無駄)。
+//   ②俊克の機械では**本当に書けてしまう**so、**空きthat9GiBしか無いディスクへ、1週間で11,284行**を書き、
+//     同じ物を出力チャンネル(＝拡張ホストのメモリ)にも溜めていた。**計測thatが症状を重くしていた**。
+//   ★v3.1の申し送り「公開時には計測ブロックを撤去すること」thatが、ずっと守られていなかった。
+//   ★★直し＝ **既定は書かない**。書き先は設定 `laiMembrane.debugLogPath` に人that入れた時だけ。
+//     出力チャンネルも同じ栓の先so、普段は1行も溜まらない。困った時だけ開ける(→ 私はそのファイルを読みに行く)。
+let _meosDbgPath = null;            // null=未確認 / ''=止まっている / それ以外=書き先
+function meosDbgPath() {
+  if (_meosDbgPath !== null) return _meosDbgPath;
+  try { _meosDbgPath = String(vscode.workspace.getConfiguration('laiMembrane').get('debugLogPath', '') || '').trim(); }
+  catch (_) { _meosDbgPath = ''; }
+  return _meosDbgPath;
+}
+function meosDbgReset() { _meosDbgPath = null; }
+const MEOS_PROFILE_REFRESH = true;  // 計測そのものは軽い(Date.now)。**書くかどうか**を上の栓that決める。
 let _prof = null;
 // v3.1.5(俊克 7/25「しばらく使って10秒遅延が起きたら通知」): 計測を"静かな見張り番"に。普段(通常refresh 142ms)は無記録。異常のみ記録=①SLOW: 1回のrefreshが250ms超(全文スキャンの残り) ②BURST: refreshが連射して累計1.5秒超(×N連射の暴走=10秒遅延の正体候補)。実使用で間欠10秒を自動捕捉→1回の巨大スキャンか多数連射かを区別。★公開v3.1では計測ブロック(MEOS_PROFILE_*/_ck/_profFlush/refresh内フック)を撤去すること。
 let _burstN = 0, _burstMs = 0, _burstT0 = 0, _burstLogged = false, _lastRefreshEnd = 0;
@@ -2922,9 +2936,11 @@ function _profFlush() {
     if (now - _lastRefreshEnd < 400) { _burstN++; _burstMs += total; } else { _burstN = 1; _burstMs = total; _burstT0 = now - total; _burstLogged = false; }
     _lastRefreshEnd = now;
     const detail = 'lines=' + _prof.lines + ' total=' + total + ' | ' + _prof.rows.join(' ');
+    const _p = meosDbgPath();
+    if (!_p) { _prof = null; return; }                     // v4.0.461: 既定は書かない
     const fs = require('fs');
-    if (total >= 250) fs.appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' SLOW ' + detail + '\n');
-    if (_burstMs >= 1500 && !_burstLogged) { _burstLogged = true; fs.appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' BURST n=' + _burstN + ' burstMs=' + _burstMs + ' window=' + (now - _burstT0) + ' | ' + detail + '\n'); }
+    if (total >= 250) fs.appendFileSync(_p, new Date().toISOString() + ' SLOW ' + detail + '\n');
+    if (_burstMs >= 1500 && !_burstLogged) { _burstLogged = true; fs.appendFileSync(_p, new Date().toISOString() + ' BURST n=' + _burstN + ' burstMs=' + _burstMs + ' window=' + (now - _burstT0) + ' | ' + detail + '\n'); }
   } catch (_) {}
   _prof = null;
 }
@@ -2942,6 +2958,8 @@ let pinJumpToSelected = false;
 // extension-host verbose logging. Open via View > Output, then select "MeOS Debug".
 let meosDebugChannel = null;
 function meosDbg(msg) {
+  const _p = meosDbgPath();
+  if (!_p) return;                                          // v4.0.461: 栓that閉じている間は1行も作らない
   if (!meosDebugChannel) {
     try { meosDebugChannel = vscode.window.createOutputChannel('MeOS Debug'); } catch (_) {}
   }
@@ -2951,7 +2969,7 @@ function meosDbg(msg) {
   // ★v4.0.253(俊克 8/17 am00:24「MeOS Debugになぜ入れない。自分で読みに行くって言ってたでしょ」):
   //   出力チャンネルは**俊克の画面にしか出ない**(私からは読めない)。→ **同じものをファイルにも書く**。
   //   俊克は「MeOS Debug」で見て、私は MeOS/meos-debug.log を読む。同じ1行を2つの目が見る。
-  try { require('fs').appendFileSync(MEOS_DEBUG_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch (_) {}
+  try { require('fs').appendFileSync(_p, `[${new Date().toISOString()}] ${msg}\n`); } catch (_) {}
 }
 let suppressAutoUnfoldUntil = 0;
 let disposables = [];
@@ -12924,7 +12942,7 @@ function refresh(editor = vscode.window.activeTextEditor) {
   try { return _refreshInner(editor); }
   catch (e) {
     try { meosDbg('[refresh] ★例外: ' + (e && e.stack ? e.stack : String(e))); } catch (_) { }
-    try { require('fs').appendFileSync(MEOS_PROFILE_LOG, new Date().toISOString() + ' REFRESH-ERROR ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : String(e)) + '\n'); } catch (_) { }
+    try { if (meosDbgPath()) require('fs').appendFileSync(meosDbgPath(), new Date().toISOString() + ' REFRESH-ERROR ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : String(e)) + '\n'); } catch (_) { }
     try { vscode.window.setStatusBarMessage('MeOS: refresh error (see MeOS Debug) — 他の機能は動きます', 4000); } catch (_) { }
     return undefined;
   }
@@ -17608,7 +17626,7 @@ async function meosWriteMarkAndSpec(editor, sel, markText, kind, payload) {
       + ' 既存=' + (hasFc ? ((doc.lineAt(fcLn).text.match(/<!--/g) || []).length) : 0)
       + ' 前の行=' + JSON.stringify((() => { const a2 = []; for (let i = blk.start; i < ln; i++) a2.push(meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length); return a2; })())
       + ' 本文=' + JSON.stringify(newLine.slice(0, 70)) + '\n';
-    require('fs').appendFileSync(MEOS_PROFILE_LOG, _l);
+    if (meosDbgPath()) require('fs').appendFileSync(meosDbgPath(), _l);
   } catch (_) { }
   try { meosDbg('[fcWrite] ' + kind + ' セル=(' + meosTableCellRow(lines, blk, ln) + '行,' + meosTableCellCol(newLine, markEnd) + '列) 通し番号=' + idx + ' 挿す位置=' + off + (hasFc ? '' : ' (指定行を新規)')); } catch (_) { }
   await editor.edit(eb => {
@@ -17788,7 +17806,7 @@ function meosDeleteSpecForMark(we, editor, range) {
     } else {
       we.delete(doc.uri, new vscode.Range(fcLn, r.start, fcLn, r.end));
     }
-    try { require('fs').appendFileSync(MEOS_PROFILE_LOG, '[fcDel] ' + new Date().toISOString() + ' 通し番号=' + idx + ' 残り=' + r.count + ' 行=' + ln + '\n'); } catch (_) { }
+    try { if (meosDbgPath()) require('fs').appendFileSync(meosDbgPath(), '[fcDel] ' + new Date().toISOString() + ' 通し番号=' + idx + ' 残り=' + r.count + ' 行=' + ln + '\n'); } catch (_) { }
     return true;
   } catch (_) { return false; }
 }
@@ -29572,7 +29590,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableDupCol', () => meosTableColOp(vscode.window.activeTextEditor || getMeDockTargetEditor(), 'dup')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableDelCol', () => meosTableColOp(vscode.window.activeTextEditor || getMeDockTargetEditor(), 'del')));
   try { meosReadTableCjkWidth(); } catch (_) {} // v0.9.999164: テーブルの全角幅係数を設定から読む
-  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('laiMembrane.tableCjkWidth')) { try { meosReadTableCjkWidth(); refresh(vscode.window.activeTextEditor); } catch (_) {} } }));
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { try { meosDbgReset(); } catch (_) { } if (e.affectsConfiguration('laiMembrane.tableCjkWidth')) { try { meosReadTableCjkWidth(); refresh(vscode.window.activeTextEditor); } catch (_) {} } }));
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
