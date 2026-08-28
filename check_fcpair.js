@@ -1266,5 +1266,25 @@ console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊�
      '★指でもマウスでも同じ(片方だけ効く物を作らない)', true);
 }
 
+console.log('(58) 膜の先頭へ跳ぶ = 2つの道that同じ塊を2回畳んでいた(v4.0.466 俊克・計測で確定)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/if \(!MEOS_SPEC_LINE_AUTOFOLD \|\| _meosFcBusy \|\| _meosFcFolding\) return;/.test(src),
+     '★★★門番は両側= 個別の道も一括を見る(v4.0.328は片側だけだった)', true);
+  const g1 = (src.match(/_meosFcBusy \|\| _meosFcFolding/g) || []).length;
+  const g2 = (src.match(/_meosFcFolding \|\| _meosFcBusy/g) || []).length;
+  ok(g1 >= 1 && g2 >= 1, '★どちらの道も、相手thatが動いていたら手を出さない', [g1, g2]);
+  ok(/const _meosFcJustFolded = new Map\(\);/.test(src) && /function meosFcRecentlyFolded\(ln\)/.test(src),
+     '★★★畳んだ物はしばらく覚える= 可視範囲は畳んだ直後には古い(2msでは間に合わない)', true);
+  ok(/const foldIfVisible = async \(ln\) => \{ if \(meosFcRecentlyFolded\(ln\)\) return;/.test(src),
+     '★個別の道that畳む前に訊く', true);
+  ok(/&& !meosFcRecentlyFolded\(b\.start\)\)\.map\(b => b\.start\)/.test(src),
+     '★一括の道も同じ1つに訊く', true);
+  ok(/for \(const _h of heads\) meosFcNoteFolded\(_h\);/.test(src),
+     '★★畳む物を**先に**覚える(相手thatが2ms後に来ても、もう分かっている)', true);
+  ok(/const MEOS_FC_JUST_MS = 2000;/.test(src),
+     '★覚えているのは2秒だけ(人that自分で開き直した後まで縛らない)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

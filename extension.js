@@ -26934,7 +26934,18 @@ function meosRestoreView(editor, topLine, sel, strict) {
   } catch (_) { }
 }
 async function meosSyncFcFoldForCursor(editor) {
-  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy) return;
+  // ★★★v4.0.466(俊克 8/28 am10:24「Cmd+← で行頭に飛ぼうとしたら、膜の先頭に跳んだよ」= 計測で確定):
+  //   ★★★**門番that片側にしか居なかった**。一括の道は「個別thatが動いていたら割り込まない」と見ていた(v4.0.328)のに、
+  //     **個別の道は一括を見ていなかった**。so一括that畳んだ2ms後に個別thatが同じ塊をもう一度畳み、
+  //     **既に畳まれた塊を畳む=外側(膜)thatが畳まれて先頭へ跳ぶ**(v4.0.188で名前の割れた形)。
+  //   ★ログthatそのまま語っている＝
+  //     01:23:08.016 [fcFold] ★一括で畳んだ blocks=1 画面上端 108944→105729
+  //     01:23:08.018 [fcSync] fold 108959      画面上端 108944→105729→105729
+  //     **2ms差で同じ塊を2回**。1回目は正しく畳み、2回目thatが膜を畳んだ。
+  //   ★v4.0.443の門番(見えていて、かつ開いている物だけ)thatが効かなかったのは、**畳んだ直後の
+  //     editor.visibleRanges thatまだ古い**から(VS Codeは次の描画で更新する)。目で確かめる物は、
+  //     2msでは間に合わない。→ **自分thatが何を畳んだかを覚える**方に替える(下の _meosFcJustFolded)。
+  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcBusy || _meosFcFolding) return;
   let _topBefore = -1;
   try {
     if (!editor || !editor.document || editor !== vscode.window.activeTextEditor) return;
@@ -26994,7 +27005,8 @@ async function meosSyncFcFoldForCursor(editor) {
     //   ここへ引き上げた(前は下に在って、Rawの枝からは使えず、**裸の fold that残っていた**)。
     const _visible = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return true; } };
     const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
-    const foldIfVisible = async (ln) => { if (_visible(ln) && _openNow(ln)) await fold([ln]); }; // 見えていない/既に畳まれている=何もしない
+    // v4.0.466: 目で確かめる(可視範囲)だけでは足りないso、**今しがた畳んだ物**にも訊く。
+    const foldIfVisible = async (ln) => { if (meosFcRecentlyFolded(ln)) return; if (_visible(ln) && _openNow(ln)) { meosFcNoteFolded(ln); await fold([ln]); } };
     // ★★★v4.0.443/444(俊克 8/27 am11:16 バグ1〜3 → pm00:03「膜毎にその設定を保持する」):
     //   ★★★**望む姿を毎回ぜんぶ言って、今の姿との差だけを当てる**。前は「今どこを開けているか」を
     //     1つの変数(行番号 / 'ALL' / 'RAW:…')で覚え、場合分けで動かしていた＝ **場合が増えるたびに穴が開く**
@@ -27055,6 +27067,18 @@ function meosIsRealFileDoc(doc) {
   try { return !!doc && !doc.isClosed && (doc.uri.scheme === 'file' || doc.uri.scheme === 'untitled'); } catch (_) { return false; }
 }
 let _meosFcFolding = false; // 進行中(起動時の3連発が競合して二重に畳むのを防ぐ)
+// ★★★v4.0.466: **畳んだ物は、しばらく覚えておく**。可視範囲は畳んだ直後には古いままso、
+//   「見えているか」では二度打ちを防げない。**自分thatが何を畳んだか**なら、その場で分かる。
+//   2つの道that同じこの1つに訊く= どちらthat先でも、同じ塊は1度しか畳まれない。
+const _meosFcJustFolded = new Map();   // 先頭行 → 畳んだ時刻(ms)
+const MEOS_FC_JUST_MS = 2000;
+function meosFcNoteFolded(ln) { _meosFcJustFolded.set(ln, Date.now()); }
+function meosFcRecentlyFolded(ln) {
+  const t = _meosFcJustFolded.get(ln);
+  if (!t) return false;
+  if (Date.now() - t > MEOS_FC_JUST_MS) { _meosFcJustFolded.delete(ln); return false; }
+  return true;
+}
 // ★★v4.0.395(俊克 8/23 pm09:06 改良1「bs連打に間髪を入れずに、fsを連打すると、**最初に0.5秒くらいの間が
 //   開く**。これは、MeOSを無効化すると、間が開かない」):
 //   ★★**呼び元を全部見ていなかった**(今日3度目の同じ形)。v4.0.329 で「打っている間は走らせない」門番を
@@ -27110,13 +27134,14 @@ async function meosAutoFoldSpecLines(editor, force) {
     // ★★v4.0.443/444: **開いているべき塊は、一括の道も触らない**＝ 開けているのは偶然ではなく約束だから
     //   (v4.0.328「カーソルの居る群は触らない」を、Rawの膜にもそのまま当てる)。判定は1つ(meosFcWantsOpen)。
     const _mine = (b) => meosFcWantsOpen(editor.document, b, _cur);
-    heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end)).map(b => b.start);
+    heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end) && !meosFcRecentlyFolded(b.start)).map(b => b.start);   // v4.0.466: 今しがた畳んだ物は二度畳まない
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
   if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
   // v4.0.311: **選択している間は一括でも畳まない**(v4.0.214で個別の道には入れた門番を、こちらにも)。
   try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
   _meosFcFolding = true;
+  try { for (const _h of heads) meosFcNoteFolded(_h); } catch (_) { }   // v4.0.466: 畳む物を先に覚える(個別の道that二度畳まない)
   // v4.0.176: **一括で畳むのthat一番画面を動かす**so、ここでも上の行を控えて戻す(俊克「矢印で飛ぶ」の兄弟)。
   const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
   try {

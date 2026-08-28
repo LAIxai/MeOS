@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.0.466 (2026-08-28)
+- **The jump to the top of a membrane is fixed, and this time it was measured rather than guessed.** The log
+  caught it: two folding paths folded the same block 2 ms apart. The first fold was correct; the second landed on
+  a block that was already folded, and folding an already-folded block folds the **enclosing membrane** instead —
+  which is why the view leapt three thousand lines to its head.
+- The reason both ran is that **the guard only faced one way**: the batch path stood down while the per-caret
+  path was working, but not the other way round. It faces both ways now.
+- And the older guard — "only fold what is visible and actually open" — could not help here, because
+  `visibleRanges` is still stale two milliseconds after a fold. Checking with your eyes cannot beat two
+  milliseconds. So both paths now consult **a shared note of what was just folded**, written before folding
+  rather than after; whichever path arrives second already knows.
+
 ### v4.0.465 (2026-08-28)
 - **⏰ makes a sound.** Every other signal it had — the jump, the notice, the status bar — only reaches someone who
   is looking, and the whole reason to set a clock is that you are doing something else until it rings. MeOS
