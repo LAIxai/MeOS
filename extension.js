@@ -20662,11 +20662,22 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      Date/Time の見出しだけ**水色**＝ 橙(時計の値)と役thatが違うので、色も分ける。 */
 /* ★★v4.1.6: Hyper IDX(.fixed-toc)は overflow:hidden so、absolute のままでは**外に出た所that切られる**。
    → 姉妹のメニューと同じ **position:fixed ＋ 開く時に置き直す**(.bm-pop の作りをそのまま使う)。 */
-.bm-pop.clk-pop{gap:2px;padding:6px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default;
+/* ★★★v4.1.10-2(俊克 バグ1「これを制御できないなんて、あり得ないでしょ。⏰ボタン+▼ボタンの右端と
+   設定パネルの右端、履歴の右端をどうして一致できないのか?」):
+   ★★★**私が座標を計算していたのが間違い**= 幅も画面幅も、測る時によって違う値が出る。
+     → ブラウザに合わせてもらう(CSS anchor positioning)= 駒に錨を打ち、パネルには右端を錨の
+     右端に合わせよと書くだけ。**右端は定義から一致する**(誰がいつ測っても同じ)。
+   ★JSの計算は、錨を知らない古い版のためだけに残す(下の clkPlace)。 */
+.clk-wrap{anchor-name:--meos-clk}
+.bm-pop.clk-pop{position-anchor:--meos-clk;gap:2px;padding:6px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default;
 color:var(--vscode-editor-foreground);
 background:color-mix(in srgb,var(--vscode-editor-foreground) 12%,var(--vscode-editor-background));
 border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 38%,transparent);
 box-shadow:0 8px 26px rgba(0,0,0,.55)}
+@supports (anchor-name:--a){
+ /* 駒の右端に右端を揃え、駒の上に出す。画面から出そうなら下へ回してもらう。 */
+ .bm-pop.clk-pop{right:anchor(right);bottom:anchor(top);left:auto;top:auto;margin-bottom:8px;position-try-fallbacks:flip-block}
+}
 .bm-pop.clk-pop.hist-only{width:236px}
 /* ★v4.1.3(俊克 改良1「年が大文字になって見て、右が欠けることが分った。so横幅を少し大きくする
    必要があるね」): 選んだ数字は19px= 年は4文字で約46px要る。列は3つ＋clearで割るので、
@@ -22457,8 +22468,13 @@ if(clkCaret&&clkPop){
       ②時= 開いた直後に幅を測っていたので、**中身that入る前の幅**で場所を決めていた。
         → 置くのを**2度**行う(今すぐ／次の画面)。2度目は中身thatが入った後の幅で置き直る。
     ★上に出せない時だけ下へ回す(画面の外に出さない)。 */
+ /* ★★★v4.1.10-2: 置き場所は**CSSの錨that決める**(上の @supports)。ここは錨を知らない古い版のための道。
+    ★錨that効く時にJSが left/top を書くと、そちらthat勝ってしまうので、**書いた物を消してから帰る**。 */
+ var clkHasAnchor=(function(){try{return !!(window.CSS&&CSS.supports&&CSS.supports('anchor-name','--a'));}catch(e){return false;}})();
  function clkPlace(){
-  var anchor=document.querySelector('.clk-wrap')||document.getElementById('raw-timer');if(!anchor||!clkPop)return;
+  if(!clkPop)return;
+  if(clkHasAnchor){clkPop.style.left='';clkPop.style.top='';return;}
+  var anchor=document.querySelector('.clk-wrap')||document.getElementById('raw-timer');if(!anchor)return;
   var put=function(){var r=anchor.getBoundingClientRect();
    var w=clkPop.offsetWidth||236,h=clkPop.offsetHeight||140;
    var left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;

@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.11 (2026-08-29)
+- **Both clock panels line up with the clock, by definition.** Their right edge is now declared to be the
+  right edge of the ⏰▾ key itself, rather than worked out in arithmetic that depended on when it was measured.
+  Nothing is computed, so nothing can drift — the history and the settings panel land in the same place.
+
 ### v4.1.10 (2026-08-29)
 - **The history opens under the clock, not off to the left.** It was lining up with the ⏰ half rather than the
   whole key, and it was measured the instant it opened — before its contents were in it. It now lines up with
