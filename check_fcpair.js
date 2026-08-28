@@ -1330,5 +1330,26 @@ console.log('(59) 鐘は鳴り続け、⏰を押すと止まる(v4.0.469 俊克)
      '★鳴っているかどうかも、モードと同じ1つの便りで運ぶ(合図を足さない)', true);
 }
 
+console.log('(60) ⏰の一覧はMe Dockの中／履歴5個／時刻で出す(v4.1.0 俊克)');
+{
+  const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
+  ok(/const _meosClockHistory = \[\];/.test(src) && /function meosNoteClockHistory\(scope, at\)/.test(src),
+     '★★★掛けた膜は「後で戻ると決めた場所」so、鳴り終わった後も覚える(状態でなく履歴)', true);
+  ok(/function meosClockList\(limit\)/.test(src) && /for \(const r of live\) push\(r, true\);/.test(src),
+     '★走っている物that上・そのあと掛けた順', true);
+  ok(/clocks: meosClockList\(5\)/.test(src),
+     '★最大5個(覚えるのは12・出すのは5)', true);
+  ok(/function clkWhenLabel\(ms\)/.test(src) && /if\(d\.getFullYear\(\)===n\.getFullYear\(\)&&d\.getMonth\(\)===n\.getMonth\(\)&&d\.getDate\(\)===n\.getDate\(\)\)return hm;/.test(src),
+     '★★★出すのは**時刻・年月日**= 予定は時刻で覚えている(日付は違う時にだけ言う)', true);
+  ok(/message\.type === 'clockGoto'/.test(src) && /await meosJumpToScope\(\{ uri: message\.uri, key: message\.key, name: message\.name \}\);/.test(src),
+     '★★押せばその膜へ飛ぶ(飛ぶ口は meosJumpToScope 1つ)', true);
+  ok(/if\(vmRing\)\{vscode\.postMessage\(\{type:'clockStop'\}\);return;\}\nif\(clkCaret\)clkCaret\.click\(\);/.test(src),
+     '★★★⏰thatパネルを開く= Me Dockの中で完結する(鳴っている時だけは止める駒)', true);
+  ok(/\.bm-pop\.clk-pop\{[^}]*width:190px/.test(src),
+     '★幅を詰めた(236→190・決めていたのは年の桁)', true);
+  ok(/\.clk-list:empty\{display:none\}/.test(src),
+     '★履歴that無い時は段そのものthat出ない(空の枠を見せない)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

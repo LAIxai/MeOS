@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.0 era — highlights (2026-08 →)
 
+### v4.1.0 (2026-08-28)
+- **⏰ opens inside Me Dock now, and it opens onto a list.** Up to five clocks you have set — the running ones
+  first, in orange, then the rest in the order you set them. Click one and you are at that membrane. A clock you
+  set marks a place you decided to come back to, so it keeps its worth after it has rung: what was there before
+  was a *status*, this is a *history*.
+- **The list says the time, not what is left of it.** A plan is remembered as "18:30"; the remaining time is a
+  subtraction you do on the spot, and subtractions do not line up next to each other. The date appears only when
+  it is not today — a date you already know adds nothing to read. (The face and the status bar keep counting
+  down; those answer a different question — how long until I am wanted.)
+- The panel is narrower: 190px instead of 236. What set the old width was the four digits of the year.
+
+
 ### v4.0.474 (2026-08-28)
 - One more description of the superseded form removed from the feature list: MeOS reads its settings from a
   folding comment on the line below, not from the end of the line.

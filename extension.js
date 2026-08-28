@@ -9623,6 +9623,7 @@ async function meosLoadClocksFor(doc) {
       const lk = uri + ' ' + name;
       _meosPseudoScopes.set(lk, scope);
       const left = at - now;
+      meosNoteClockHistory(scope, at);                                  // v4.1.0: 開き直した予定も履歴へ
       if (left > 0) { _meosPseudoUntil.set(lk, at); meosArmPseudoTimer(lk, left + 250); continue; }
       if (left > -5 * 60000) { _meosPseudoUntil.set(lk, at); meosArmPseudoTimer(lk, 250); continue; } // 5分以内=普通に鳴らす
       await meosEndPseudoTimer(lk);                                   // 古い= 鳴らさずに畳む(押さえは解く)
@@ -9636,6 +9637,39 @@ async function meosLoadClocksFor(doc) {
 const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
 const _meosPseudoTimers = new Map();    // key → timeout
 const _meosPseudoScopes = new Map();    // key → 掛けた時のスコープ(50分後にも引き直せるように)
+// ★★★v4.1.0(俊克「⏰ボタンを押した時に、**最大5個の履歴**をリストにして、そこをクリックすると、
+//   **その膜に飛ぶ**」＋ v4.0.457の宿題「一覧は**時刻・年月日**で出す」):
+//   ★★★**時計を掛けた膜は、その人that「後で戻る」と決めた場所**so、鳴り終わった後も値打ちthat残る。
+//     走っている物だけの一覧は**状態**であって、**履歴**ではない。→ 掛けた順に覚え、走っている物を上へ。
+//   ★出すのは**時刻・年月日**＝ 予定は時刻で覚えている。残り時間はその場の引き算so、並べても繋がらない
+//     (面とステータスバーは残り時間のまま= 今どれだけ待つかの物)。
+const _meosClockHistory = [];          // 新しい順 { uri, key, name, at, hold }
+const MEOS_CLOCK_HISTORY_MAX = 12;     // 覚える数(出すのは5個)
+function meosNoteClockHistory(scope, at) {
+  try {
+    const i = _meosClockHistory.findIndex(r => r.uri === scope.uri && r.key === scope.key);
+    if (i >= 0) _meosClockHistory.splice(i, 1);
+    _meosClockHistory.unshift({ uri: scope.uri, key: scope.key, name: scope.name, at, hold: !!scope.hold });
+    while (_meosClockHistory.length > MEOS_CLOCK_HISTORY_MAX) _meosClockHistory.pop();
+  } catch (_) { }
+}
+// 一覧に出す形。走っている物that先(残り時刻も添える)、そのあと掛けた順。
+function meosClockList(limit) {
+  const out = [], seen = new Set();
+  const push = (r, running) => {
+    const k = r.uri + ' ' + r.key;
+    if (seen.has(k)) return; seen.add(k);
+    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, running: !!running });
+  };
+  try {
+    const live = [];
+    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold }); }
+    live.sort((a, b) => a.at - b.at);
+    for (const r of live) push(r, true);
+    for (const r of _meosClockHistory) push(r, false);
+  } catch (_) { }
+  return out.slice(0, limit || 5);
+}
 // ★v4.0.448(俊克 改良2「残りタイムを表示する」): 面に出る残り時間は**その膜に居る時だけ**so、
 //   離れると分からなかった。→ ステータスバーに1つ出す＝ **どこに居ても、動いている物that見える**。
 let _meosTimerBar = null, _meosTimerTick = null;
@@ -9937,7 +9971,8 @@ function meosPostViewMode() {
       until: (sc ? (_meosPseudoUntil.get(meosLockKey(sc)) || 0) : 0),
       scope: (sc ? (sc.name || '') : ''),
       own: (sc ? meosScopeHasOwn(sc) : true),  // v4.0.452: false= 外側から受け継いでいる
-      ringing: meosIsRinging()                 // v4.0.469: 鳴っている間は⏰thatが「止める駒」になる
+      ringing: meosIsRinging(),                // v4.0.469: 鳴っている間は⏰thatが「止める駒」になる
+      clocks: meosClockList(5)                 // v4.1.0: 最大5個の履歴(走っている物that上)
     });
   } catch (_) { }
 }
@@ -10065,6 +10100,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   _meosPseudoUntil.set(lk, _at);
   meosArmPseudoTimer(lk, ms + 250);
   try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { }   // v4.0.460: 予定はファイルに残る
+  meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
   meosUpdateTimerBar();
   meosPostViewMode();
   // 遠い予定は mm:ss では読めないso、**指した日時そのもの**を言う(MeOSの日時を作る1つの口から)。
@@ -20502,7 +20538,22 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-wrap{display:inline-flex;align-items:stretch;margin-left:8px}
 .clk-wrap .warn-btn.raw-timer{margin-left:0;border-radius:9px 0 0 9px;position:relative}
 .fmt-caret.clk-caret{position:relative;border-radius:0 9px 9px 0;border-color:rgba(224,128,58,.55);margin-left:-1px;font-family:inherit}
-.bm-pop.clk-pop{position:absolute;right:0;bottom:calc(100% + 8px);left:auto;top:auto;width:236px;gap:3px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default}
+/* ★v4.1.0(俊克「パネルの横幅をもっとコンパクトに」): 幅を決めていたのは**年の桁**(2026)so、
+   数字の字を少し詰め、余白と隙間を削る。236 → 190。 */
+.bm-pop.clk-pop{position:absolute;right:0;bottom:calc(100% + 8px);left:auto;top:auto;width:190px;gap:2px;padding:5px;text-align:left;font-family:var(--vscode-font-family);font-size:11px;font-weight:400;cursor:default}
+/* ★★★v4.1.0(俊克「⏰ボタンを押した時に、**最大5個の履歴**をリストにして、そこをクリックすると、
+   **その膜に飛ぶ**」): ★★★時計を掛けた膜は、その人that「後で戻る」と決めた場所so、鳴り終わった後も
+   値打ちthat残る。★出すのは**時刻・年月日**(予定は時刻で覚えている)。走っている物は橙で上に。 */
+.clk-list{display:flex;flex-direction:column;gap:1px;max-height:96px;overflow-y:auto;scrollbar-width:none}
+.clk-list::-webkit-scrollbar{display:none}
+.clk-list:empty{display:none}
+.clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.72}
+.clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
+.clk-item.live{opacity:1}
+.clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-descriptionForeground)}
+.clk-item.live .ci-t{color:#e0803a}
+.clk-item .ci-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.clk-sep{border-top:1px solid var(--vscode-panel-border);margin:2px 0}
 .clk-row{display:flex;align-items:baseline;justify-content:space-between}
 .clk-lab{font-size:11px;font-weight:800;color:var(--vscode-foreground)}
 .clk-hint{font-size:9px;opacity:.6}
@@ -20512,7 +20563,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      枠(選択の窓)は動かない([[project_direct_manipulation_mark]]「当たりthat動かない」の輪版)。
    ★実装は scroll-snap= 慣性も物理も要らない。止まった所に一番近い段thatが答え。
    ★上下に1段ぶんの余白(::before/::after)を足すso、**最初と最後の値も真ん中に来られる**。 */
-.clk-cols{display:flex;gap:3px;align-items:stretch}
+.clk-cols{display:flex;gap:2px;align-items:stretch}
 .clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 .clk-col::before,.clk-col::after{content:'';display:block;height:22px}
@@ -20521,7 +20572,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      クリックthat効かないのは、慣性はOS/ブラウザ側の動きで、click では止まらないから。
    ★→ ①1段ずつしか進めなくする(scroll-snap-stop:always)= 飛ばない ②指を置いた瞬間に**今の位置を書き戻す**
      (scrollTop=scrollTop)= その一筆that慣性を打ち切る。触れば止まる、を体で分かる形にする。 */
-.clk-col div{height:22px;line-height:22px;font-size:11px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;opacity:.45;transition:font-size .12s,opacity .12s}
+.clk-col div{height:22px;line-height:22px;font-size:10px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;opacity:.45;transition:font-size .12s,opacity .12s}
 .clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
 .clk-cols{position:relative}
 /* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
@@ -20532,9 +20583,9 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-when{font-size:10px;min-height:13px;color:#e0803a;font-weight:700;text-align:center}
 .clk-foot{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .clk-mins{display:flex;gap:3px}
-.clk-mins button{font-size:10px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
+.clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer}
 .clk-mins button:hover{background:rgba(224,128,58,.20)}
-.clk-set{font-size:11px;font-weight:800;padding:3px 9px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-foreground);cursor:pointer}
+.clk-set{font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-foreground);cursor:pointer}
 .warn-btn.raw-timer{transform-origin:center;transition:transform .5s ease}
 .warn-btn.raw-timer.near{transform:scale(1.18);background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
 /* ★v4.0.469: 鳴っている間は赤く息をする= 押せば止まる、を色と動きthat言う。 */
@@ -20812,6 +20863,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
     <div class="nav-scroll" id="nav-scroll" data-tip="Bird-EV ToDo (bird's-eye view) — left: every heading · right: every unresolved review note. Clear the right side = project done. Drag a handle to jump."><div class="nav-ticks nav-ticks-head" id="nav-ticks-head"></div><div class="nav-ticks nav-ticks-mark" id="nav-ticks-mark"></div><span class="nss nss-head" id="nav-scroll-head"></span><span class="nss nss-mark" id="nav-scroll-mark"></span></div>
     <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><span class="fmt-caret clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;
 <div class="bm-pop clk-pop" id="clk-pop">
+  <div class="clk-list" id="clk-list"></div>
   <div class="clk-row"><span class="clk-lab">Date</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col" id="clk-y"></div><div class="clk-col" id="clk-mo"></div><div class="clk-col" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
   <input class="clk-in" id="clk-din" placeholder="2026-09-01" spellcheck="false">
@@ -21965,7 +22017,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false;
+var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[];
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -22026,8 +22078,12 @@ if(left>0&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(v
 if(left<=0&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 var rawTimerBtn=document.getElementById('raw-timer');
+/* ★★v4.1.0(俊克「⏰ボタンを押した時に…リストにして」): ⏰thatパネルを開く= **Me Dockの中で完結する**
+   (VS Codeの選択パネルへ出ない)。鳴っている時だけは「止める駒」so、そちらthat先。 */
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
-if(typeof hideTocTip==='function')hideTocTip();vscode.postMessage({type:'pseudoTimer'});});
+if(typeof hideTocTip==='function')hideTocTip();
+if(vmRing){vscode.postMessage({type:'clockStop'});return;}
+if(clkCaret)clkCaret.click();});
 /* ★★v4.0.462(俊克): ⏰の▾= 上に年月日、下に時分。どちらも**スクロールの列 + 手入力の箱**。
    ★列と箱は**同じ1つの値**を見る= 列を選べば箱that書き変わり、箱に打てば列that合う(2つの真実を作らない)。
    ★日付を空にすれば「毎日の時刻」= 俊克の基本の使い方。clear thatその口。
@@ -22097,6 +22153,23 @@ var m=din?/^\s*(\d{4})\D(\d{1,2})\D(\d{1,2})\s*$/.exec(din.value||''):null;
 if(m){clkSel(document.getElementById('clk-y'),+m[1]);clkSel(document.getElementById('clk-mo'),+m[2]);clkSel(document.getElementById('clk-d'),+m[3]);}
 var t=tin?/^\s*(\d{1,2})\D?(\d{2})\s*$/.exec(tin.value||''):null;
 if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}clkEcho();}
+/* v4.1.0: 一覧の1行= 「時刻・年月日 + 膜名」。今日なら時刻だけ、他の日なら月日も添える
+   (**日付は、違う時にだけ言う**= 同じ日の予定に今日の日付を並べても、読む物that増えるだけ)。 */
+function clkWhenLabel(ms){var d=new Date(ms),n=new Date(),p=function(x){return (x<10?'0':'')+x;};
+var hm=p(d.getHours())+':'+p(d.getMinutes());
+if(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate())return hm;
+if(d.getFullYear()===n.getFullYear())return p(d.getMonth()+1)+'/'+p(d.getDate())+' '+hm;
+return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate())+' '+hm;}
+function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
+while(el.firstChild)el.removeChild(el.firstChild);
+if(!vmClocks||!vmClocks.length)return;
+for(var i=0;i<vmClocks.length;i++){var c=vmClocks[i];
+var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'');
+row.setAttribute('data-i',String(i));
+var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'')+clkWhenLabel(c.at);
+var n=document.createElement('span');n.className='ci-n';n.textContent=c.name||'(outside every membrane)';
+row.appendChild(t);row.appendChild(n);el.appendChild(row);}
+var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
 function clkText(){var din=document.getElementById('clk-din'),tin=document.getElementById('clk-tin');
 var d=(din&&din.value||'').trim(),t=(tin&&tin.value||'').trim();return d?(d+(t?(' '+t):'')):t;}
 function clkEcho(){var e=document.getElementById('clk-when');if(!e)return;var v=clkText();e.textContent=v?('\u2192 '+v):'\u2192 pick a time';}
@@ -22108,6 +22181,9 @@ if(clkCaret&&clkPop){
  var mins=document.getElementById('clk-mins');if(mins)mins.innerHTML='<button data-m="10">10</button><button data-m="25">25</button><button data-m="50">50</button><button data-m="90">90</button>';
  ['clk-y','clk-mo','clk-d','clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
+  var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
+  if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
+   if(c)vscode.postMessage({type:'clockGoto',uri:c.uri,key:c.key,name:c.name});closeClkPop();return;}
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
   if(col){clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}
   if(ev.target&&ev.target.id==='clk-dclr'){var di=document.getElementById('clk-din');if(di)di.value='';
@@ -22904,7 +22980,8 @@ if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof w
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'');
-if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
+if(typeof clkRenderList==='function')clkRenderList();
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 return;}if(m&&m.type==='anchorState'){renderAnchorButton(m.anchor);if(m.bidi)renderBidiButton(m.bidi);return;}if(m&&m.type==='bidiState'){renderBidiButton(m.bidi);
@@ -23732,6 +23809,9 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン
     if (message && message.type === 'pseudoTimer') { await meosPseudoTimerMenu(); return; }
+    // v4.1.0: 一覧from選んだ= その膜へ行く(飛ぶ口は meosJumpToScope 1つ)。
+    if (message && message.type === 'clockGoto') { await meosJumpToScope({ uri: message.uri, key: message.key, name: message.name }); return; }
+    if (message && message.type === 'clockStop') { if (meosIsRinging()) meosStopRinging(); return; }
     // v4.0.462: ▾から来た一発指定(分 or いつ)。読む口は meosParseWhen 1つ(menu と同じ物に訊く)。
     if (message && message.type === 'pseudoTimerSet') {
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes)); return; }
