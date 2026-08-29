@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.15 (2026-08-29)
+- **Fixed: a membrane with a clock folded itself when you left it.** Its fold and the fold of the comments
+  beneath it had come to overlap without nesting, and an overlap sends the fold outwards — onto the membrane.
+  The clock line now belongs to the membrane, so the two nest again. It also means the clock travels with the
+  membrane when you copy it.
+- **One clock face, on the membrane header.** The time left was showing twice; and folding hides everything
+  except the header, so the header is the one place that is always there.
+- The ✓ turns white only while the cursor is in that membrane — where the line is showing raw in orange.
+
 ### v4.1.14 (2026-08-29)
 - **The countdown now shows on the clock line as well.** Fold a membrane and its closing line goes with it,
   taking the time left along. The ⏰ line stays behind, so the clock now wears its face there too.

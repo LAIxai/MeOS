@@ -4108,9 +4108,24 @@ function meosPairBadgeAt(document, pair) {
 //     だからFC行にカーソルを置くと Edit Me は膜を見失い、膜名を出さず New Me に戻っていた。
 //   ★直しは**範囲を1つにする**こと＝ 塊の最後の行は meosPairBlockEnd だけが決め、畳みも「膜の中か」も
 //     そこから引く。→ [[feedback_one_source_for_mark_count_action]] / [[project_membrane_is_a_block]]
+// ★★★v4.1.15(俊克 質問1「⏰を設定した膜が、なぜか、文字カーソルを外に出すと、勝手に折り畳まれてしまう。
+//   なぜ?」＋ 改良1「Mepyの膜と中身のコピーで、FC⏰コメントがコピーされない」):
+//   ★★★**測ったら、畳み範囲が交差していた**=
+//     ⏰なし: 膜 1..4 / FCの塊 3..4  → 入れ子で収まる
+//     ⏰あり: 膜 1..4 / FCの塊 3..5  → **膜からはみ出す**
+//   交差した範囲を `editor.fold` に渡すと、内側が無いと見なされて**外側(膜)が畳まれる**。
+//   これは v4.0.330 で「入れ子で収まる＝重ならない＝両方生きる」と書いた線を、⏰行が越えていたから。
+//   ★→ **塊の終わりに ⏰ 行も含める**。入れ子に戻り、畳みも直り、コピー(copyMeはここを使う)にも入る。
+//   ★代わりに、畳むと ⏰ 行も隠れる。so残り時間の顔は**開始膜の行**へ移す(畳んでも残る場所は、そこ1つ)。
 function meosPairBlockEnd(document, pair) {
   let e = Math.min(document.lineCount - 1, pair.end);
-  try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
+  try {
+    while (e + 1 < document.lineCount) {
+      const t = document.lineAt(e + 1).text;
+      if (meosIsPairBadgeSpec(t) || (meosClockFcParse(t) && meosClockFcParse(t).when)) { e++; continue; }
+      break;
+    }
+  } catch (_) { }
   return e;
 }
 // ★★v4.0.387(俊克 8/23 am11:33「**新しい判定をなぜ今更入れるの?** 今までバッジが開始膜に入っていたので、
@@ -9874,11 +9889,13 @@ async function meosGoBackFromAlarm() {
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosTimerLineDeco = null;
 let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で浮かせる
-// ★★v4.1.14(俊克 改良1「⏰を起動した膜を折り畳むと、閉じ膜が見えないので、残時間が見えない。
-//   そこで、FC膜の方に残タイマを表示するようにしよう」＋ 改良2「✓の色をオレンジ色でない色に。白色がいいかな」):
-//   ★★★**畳んだ時に残るのはFC行の方**= 閉じ膜は畳みの中へ入ってしまう。so時計の顔を両方に置く。
-//   ★走るのは**見えている範囲だけ**= 14万行を毎秒なぞらない([[project_meos_freeze_pattern]])。
-//   ★✓は白= 生表示の行は全部橙so、その中で**済んだ印だけが浮く**。
+// ★★★v4.1.15(俊克 バグ1「残タイマの表示が、閉じ膜とFC膜の両方に重複している。閉じ膜の表示は廃止でいいよね」
+//   ＋ 改良2「終了項目の✓を白色と言ったのは、膜にカーソルが入ったときの橙色文字になるときのことだよ」):
+//   ★★★**時計の顔は1つ**= 出す場所を**開始膜の行**に決めた。理由は畳みにある=
+//     ⏰行は膜の塊の中(v4.1.15で入れ子に戻した)so、畳めば一緒に隠れる。閉じ膜も畳みの中。
+//     **畳んでも残るのは開始膜の行だけ**= そこが、いつでも見える唯一の場所。
+//   ★★✓は、**その膜にカーソルが居る時だけ白**= 生で見えている(橙になっている)時に浮かせたいので。
+//     畳まれている/離れている時は、他のFC行と同じ静かな色のままでよい。
 function meosApplyTimerLineDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
@@ -9886,66 +9903,50 @@ function meosApplyTimerLineDecorations(editor) {
     if (!meosClockDoneDeco) meosClockDoneDeco = vscode.window.createTextEditorDecorationType({ color: '#ffffff', fontWeight: '800' });
     const doc = editor.document;
     const items = [], dones = [];
-    if (_meosPseudoUntil.size) {
-      const uri = doc.uri.toString();
-      const byId = new Map();
-      for (const [k, until] of _meosPseudoUntil) {
-        const sc = _meosPseudoScopes.get(k);
-        if (sc && sc.uri === uri && sc.key) byId.set(sc.key, until);
-      }
-      if (byId.size) {
-        for (const pr of collectPairs(doc, { excludeIndex: false })) {
-          const until = byId.get(pr.id);
-          if (until == null) continue;
-          // ★★★v4.0.451(俊克「『膜名 // ⏰ 0:33 comment2』のようにするんだよ。**あくまでも、コメント入力領域を
-          //   利用するので**」): ★★★**時計はコメント欄の中に立つ**＝ `//` の右は「人that書く所」so、
-          //     そこの**先頭**に置けば、コメントthat有っても無くても、長くても短くても、**同じ1つの桁**に出る。
-          //     v4.0.450 で膜名の直後(= `//` の左)へ置いたのは、まだ「コメントの外」だった。
-          //   ★俊克の理由thatが設計そのもの＝ **借りるのは、あまり使われない入力領域**。新しい場所を作らない。
-          //   ★閉じ膜の中身の並びは1か所(membraneLineParts)から引く＝ 殻の書き方(md/コード)that違っても崩れない。
-          const ln = pr.end, text = doc.lineAt(ln).text || '';
-          const parts = membraneLineParts(text, 'close');
-          let at = (parts && parts.idEnd >= 0) ? parts.idEnd : text.length, pre = '  ';
-          if (parts && parts.idEnd >= 0) {
-            const m = /^(\s*\/\/[ \t]?)/.exec(text.slice(parts.idEnd, parts.suffixStart >= 0 ? parts.suffixStart : text.length));
-            if (m) { at = parts.idEnd + m[1].length; pre = ''; }   // `//` の右= コメント欄の先頭
-          }
-          items.push({
-            range: new vscode.Range(ln, at, ln, at),
-            renderOptions: { after: { contentText: pre + '\u23f0 ' + meosMmSs(Math.max(0, until - Date.now())) + ' ', color: '#e0803a', fontWeight: '800' } }
-          });
+    const uri = doc.uri.toString();
+    const byId = new Map();
+    for (const [k, until] of _meosPseudoUntil) {
+      const sc = _meosPseudoScopes.get(k);
+      if (sc && sc.uri === uri && sc.key) byId.set(sc.key, until);
+    }
+    let cur = -1; try { cur = editor.selection.active.line; } catch (_) { }
+    let pairs = null;
+    const _pairs = () => { if (!pairs) { try { pairs = collectPairs(doc, { excludeIndex: false }); } catch (_) { pairs = []; } } return pairs; };
+    if (byId.size) {
+      for (const pr of _pairs()) {
+        const until = byId.get(pr.id);
+        if (until == null) continue;
+        // ★v4.0.451の作法はそのまま= **コメント欄の先頭**に立てる(`//` の右)。場所だけ閉じ膜から開始膜へ。
+        const ln = pr.start, text = doc.lineAt(ln).text || '';
+        const parts = membraneLineParts(text, 'open');
+        let at = (parts && parts.idEnd >= 0) ? parts.idEnd : text.length, pre = '  ';
+        if (parts && parts.idEnd >= 0) {
+          const m = /^(\s*\/\/[ \t]?)/.exec(text.slice(parts.idEnd, parts.suffixStart >= 0 ? parts.suffixStart : text.length));
+          if (m) { at = parts.idEnd + m[1].length; pre = ''; }
         }
+        items.push({
+          range: new vscode.Range(ln, at, ln, at),
+          renderOptions: { after: { contentText: pre + '\u23f0 ' + meosMmSs(Math.max(0, until - Date.now())) + ' ', color: '#e0803a', fontWeight: '800' } }
+        });
       }
     }
-    // ★見えている範囲の ⏰ FC行に、残り時間(走っている物)と ✓(済んだ物)を出す。
+    // ✓ を白で浮かせる。走るのは**見えている範囲だけ**(14万行を毎秒なぞらない)。
     try {
-      const uri2 = doc.uri.toString();
-      const byId2 = new Map();
-      for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc && sc.uri === uri2 && sc.key) byId2.set(sc.key, until); }
-      let pairs2 = null;
       for (const r of (editor.visibleRanges || [])) {
         for (let i = r.start.line; i <= r.end.line && i < doc.lineCount; i++) {
           const txt = doc.lineAt(i).text || '';
           if (txt.indexOf('\u23f0') < 0) continue;
           const c = meosClockFcParse(txt);
-          if (!c || !c.when) continue;
-          if (c.done) {                                            // ✓ を白で浮かせる
-            const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
-            if (at >= 0) dones.push(new vscode.Range(i, at, i, at + 1));
-            continue;
-          }
-          if (!byId2.size) continue;
-          if (!pairs2) { try { pairs2 = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { pairs2 = []; } }
+          if (!c || !c.done) continue;
+          const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
+          if (at < 0) continue;
           let j = i - 1;
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
-          let owner = pairs2.find(p => p.end === j) || null;
-          if (!owner) for (const p of pairs2) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-          const until = byId2.get(owner ? owner.id : '');
-          if (until == null) continue;
-          items.push({
-            range: new vscode.Range(i, txt.length, i, txt.length),
-            renderOptions: { after: { contentText: '  \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())), color: '#e0803a', fontWeight: '800' } }
-          });
+          let owner = _pairs().find(p => p.end === j) || null;
+          if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+          if (!owner) continue;
+          if (cur < owner.start || cur > meosPairBlockEnd(doc, owner)) continue;   // カーソルが居る膜だけ
+          dones.push(new vscode.Range(i, at, i, at + 1));
         }
       }
     } catch (_) { }
