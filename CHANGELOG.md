@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.13 (2026-08-29)
+- **The ⏰ button now writes the clock into the text.** Setting one leaves `<!-- Mew!FC ⏰ 2026-09-01 20:05 -->`
+  under the membrane, where you can see it, search it and edit it by hand. The button writes an absolute time —
+  "in 50 minutes" cannot survive being read back tomorrow. Written by hand, the short `23:00` still works.
+- When it rings, a ✓ is written where the clock was. Dropping a clock removes the line.
+- **Fixed: a clock was not attached to its membrane** when anything sat between them — a badge comment, for
+  instance. Instructions stack under a block, so the search now steps over them to find the membrane.
+
 ### v4.1.12 (2026-08-29)
 - **A clock can be written as text now.** `<!-- Mew!FC ⏰ 23:00 -->` under a membrane sets a clock on it —
   no Me Dock, no buttons. Write it in any editor, on any device, and MeOS picks it up when you open or save

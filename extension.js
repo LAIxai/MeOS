@@ -9615,7 +9615,8 @@ function meosScheduleClockMetaWrite(doc) {
 //     ただし**読む方は寛容に**= 膜の中に書いてあっても、その膜の予定として拾う
 //     ([[project_notation_v4]]「読める形は増やし、書く形は絞る」)。
 //   ★この版は**読む側だけ**。書く側(Setボタン)は今までどおり mMETA so、二重に書く道は作らない。
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*(\ud83d\udd12)?[ \t]*([^\n<]*?)[ \t]*-->/;
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd12\ud83d\udc41\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
+// \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
 const MEOS_CLOCK_DONE_RE = /[\u2713\u2714\u2705]\ufe0f?$|\u6e08$/;
 function meosClockFcParse(text) {
   const t = String(text == null ? '' : text);
@@ -9624,7 +9625,8 @@ function meosClockFcParse(text) {
   if (!m) return null;
   let body = String(m[2] || '').trim(), done = false;
   if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
-  return { lock: !!m[1], done, when: body };
+  const face = String(m[1] || '');
+  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, done, when: body };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 function meosClockFcScan(doc) {
@@ -9636,11 +9638,55 @@ function meosClockFcScan(doc) {
     let txt = ''; try { txt = doc.lineAt(i).text; } catch (_) { continue; }
     const c = meosClockFcParse(txt);
     if (!c || !c.when) continue;
-    let owner = pairs.find(p => p.end === i - 1) || null;
+    // ★★v4.1.13(俊克 バグ1の実物): 閉じ膜と ⏰ の間には、**バッジなど他のFC行が積まれる**。
+    //   ので「直前の行」ではなく、**指定行を飛び越えて上の閉じ膜**を探す(指定は塊の下に積み上がる物)。
+    let j = i - 1;
+    while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
+    let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, done: c.done });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, done: c.done });
   }
   return out;
+}
+// ★★★v4.1.13(俊克 バグ1「⏰ボタンから従来通り設定しても、FC膜が出てこないよ。なぜ?」):
+//   ★★★**書く側も本文へ移した**。v4.1.12は読む側だけで、ボタンは今までどおり見えない所(mMETA)へ
+//     書いていた。ので「押しても何も現れない」= 俊克の言うとおり、半分しか引っ越していなかった。
+//   ★ボタンが書くのは**絶対時刻**(YYYY-MM-DD HH:MM)= 「50分後」は書けない
+//     (読み直した時、いつからの50分か分からなくなる。[[project_link_notation_v41]]の「腐らない番号」と同じ)。
+//     手で書く時は `23:00` の短い形でよい= **読める形は増やし、書く形は絞る**。
+function meosClockFcStamp(at) {
+  const d = (at instanceof Date) ? at : new Date(Number(at) || Date.now());
+  const p = (x) => (x < 10 ? '0' : '') + x;
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+// 同じ膜の ⏰ 行が在れば書き替え、無ければ**閉じ膜の下(積まれた指定行の一番下)**へ足す。spec=null で消す。
+async function meosClockFcSet(doc, key, spec) {
+  try {
+    if (!doc || !doc.uri) return false;
+    const line = spec
+      ? ('<!-- ' + MEOS_MEW_SIG + 'FC \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
+        + ' ' + String(spec.when || '').trim() + (spec.done ? '\u2713' : '') + ' -->')
+      : '';
+    const hit = meosClockFcScan(doc).find(c => c.key === key);
+    const ed = new vscode.WorkspaceEdit();
+    if (hit) {
+      if (spec) ed.replace(doc.uri, doc.lineAt(hit.line).range, line);
+      else {
+        const from = new vscode.Position(hit.line, 0);
+        const to = (hit.line + 1 < doc.lineCount) ? new vscode.Position(hit.line + 1, 0) : doc.lineAt(hit.line).range.end;
+        ed.delete(doc.uri, new vscode.Range(from, to));
+      }
+    } else if (spec) {
+      let at = -1;
+      try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; break; } } catch (_) { }
+      if (at < 0) return false;                                    // 膜の外(ファイル全体)には書かない
+      let ln = at + 1;
+      while (ln < doc.lineCount && meosIsSpecLine(doc.lineAt(ln).text)) ln++;
+      if (ln < doc.lineCount) ed.insert(doc.uri, new vscode.Position(ln, 0), line + '\n');
+      else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + line);
+    } else return false;
+    return await vscode.workspace.applyEdit(ed);
+  } catch (_) { return false; }
 }
 // 書いてある ⏰ を仕掛ける。既に走っている物には触らない(mMETA由来が先に居れば、そちらを立てる)。
 function meosArmClockFcFor(doc) {
@@ -9654,7 +9700,7 @@ function meosArmClockFcFor(doc) {
       if (c.done) { meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, Date.now()); continue; } // 済み= 履歴だけ
       const w = meosParseWhen(c.when);
       if (!w) continue;                                             // 読めない書き方は、黙って無視(本文を汚さない)
-      const scope = { doc, uri, key: c.key, name: c.name, hold: false, lock: !!c.lock };
+      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock };
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
@@ -9748,6 +9794,8 @@ async function meosClockDrop(uri, key) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) { vscode.window.setStatusBarMessage('MeOS: \ud83d\udd12 ' + (sc.name || 'this clock') + ' \u2014 locked until the time is up.', 3000); return false; }
     await meosEndPseudoTimer(lk);
+    // ★v4.1.13: 外したなら、本文の ⏰ 行も消す(残すと、開き直した時にまた仕掛かる)。
+    try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri); if (d) await meosClockFcSet(d, key, null); } catch (_) { }
   }
   meosClockForget(uri, key);
   return true;
@@ -9951,9 +9999,19 @@ async function meosEndPseudoTimer(key) {
   //   ★★→ **過ぎた時計も、ファイルに残す**(past印を付けるだけ・書き込みは今までと同じ1回)。
   //     これで履歴も**ファイルと一緒に旅する**= 拡張を入れ替えても、開けば戻る(走っている物と同じ道)。
   //   ★ファイルが太らないように、過ぎた物は新しい方から MEOS_CLOCK_PAST_MAX 個だけ残す。
-  try { if (doc) { const _m = meosClockMeta(doc); const _r = _m[scope.key] || {};
-    _m[scope.key] = { at: Number(_r.at) || Date.now(), hold: !!scope.hold, past: true };
-    meosPruneClockPast(_m); meosScheduleClockMetaWrite(doc); } } catch (_) { }   // v4.0.460/4.1.6
+  // ★v4.1.13: 本文に書いてある予定なら、そこへ \u2713 を書き戻す= **鳴ったことが現場に残る**。
+  //   旧ファイル(mMETAに予定が在る物)は、今までどおり past 印で残す。
+  try {
+    if (doc) {
+      const _hit = meosClockFcScan(doc).find(c => c.key === scope.key && !c.done);
+      if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, done: true }); }
+      else {
+        const _m = meosClockMeta(doc); const _r = _m[scope.key];
+        if (_r) { _m[scope.key] = { at: Number(_r.at) || Date.now(), hold: !!scope.hold, past: true };
+          meosPruneClockPast(_m); meosScheduleClockMetaWrite(doc); }
+      }
+    }
+  } catch (_) { }   // v4.0.460/4.1.6/4.1.13
   // v4.0.453: 押さえていた時だけ、押さえを解いて通常へ返す。ただの呼び鈴は**見え方に触れない**。
   if (doc && scope.hold) await meosApplyModeToScope(doc, scope.key, 'normal', scope.name);
   else meosPostViewMode();
@@ -10246,7 +10304,10 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   const _at = Date.now() + ms;
   _meosPseudoUntil.set(lk, _at);
   meosArmPseudoTimer(lk, ms + 250);
-  try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { }   // v4.0.460: 予定はファイルに残る
+  // ★v4.1.13: 予定は**本文のFC行**に書く(見える・検索できる・Me Dock無しでも直せる)。
+  //   膜の外(ファイル全体)に掛けた時だけは書く所が無いので、今までどおり mMETA に置く。
+  if (scope.key) { try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock }); } catch (_) { } }
+  else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
   meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
   meosUpdateTimerBar();
   meosPostViewMode();
