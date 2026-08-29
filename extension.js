@@ -9617,6 +9617,7 @@ function meosScheduleClockMetaWrite(doc) {
 //   ★この版は**読む側だけ**。書く側(Setボタン)は今までどおり mMETA so、二重に書く道は作らない。
 const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd12\ud83d\udc41\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
+const MEOS_CLOCK_DONE_MARK_RE = /[\u2713\u2714\u2705]/;
 const MEOS_CLOCK_DONE_RE = /[\u2713\u2714\u2705]\ufe0f?$|\u6e08$/;
 function meosClockFcParse(text) {
   const t = String(text == null ? '' : text);
@@ -9872,12 +9873,19 @@ async function meosGoBackFromAlarm() {
 //     ステータスバー1つでは「どの膜の残りか」thatが言えず、2つ掛けたら片方thatが消える。膜の物は膜に置く。
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosTimerLineDeco = null;
+let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で浮かせる
+// ★★v4.1.14(俊克 改良1「⏰を起動した膜を折り畳むと、閉じ膜が見えないので、残時間が見えない。
+//   そこで、FC膜の方に残タイマを表示するようにしよう」＋ 改良2「✓の色をオレンジ色でない色に。白色がいいかな」):
+//   ★★★**畳んだ時に残るのはFC行の方**= 閉じ膜は畳みの中へ入ってしまう。so時計の顔を両方に置く。
+//   ★走るのは**見えている範囲だけ**= 14万行を毎秒なぞらない([[project_meos_freeze_pattern]])。
+//   ★✓は白= 生表示の行は全部橙so、その中で**済んだ印だけが浮く**。
 function meosApplyTimerLineDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (!meosClockDoneDeco) meosClockDoneDeco = vscode.window.createTextEditorDecorationType({ color: '#ffffff', fontWeight: '800' });
     const doc = editor.document;
-    const items = [];
+    const items = [], dones = [];
     if (_meosPseudoUntil.size) {
       const uri = doc.uri.toString();
       const byId = new Map();
@@ -9909,7 +9917,40 @@ function meosApplyTimerLineDecorations(editor) {
         }
       }
     }
+    // ★見えている範囲の ⏰ FC行に、残り時間(走っている物)と ✓(済んだ物)を出す。
+    try {
+      const uri2 = doc.uri.toString();
+      const byId2 = new Map();
+      for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc && sc.uri === uri2 && sc.key) byId2.set(sc.key, until); }
+      let pairs2 = null;
+      for (const r of (editor.visibleRanges || [])) {
+        for (let i = r.start.line; i <= r.end.line && i < doc.lineCount; i++) {
+          const txt = doc.lineAt(i).text || '';
+          if (txt.indexOf('\u23f0') < 0) continue;
+          const c = meosClockFcParse(txt);
+          if (!c || !c.when) continue;
+          if (c.done) {                                            // ✓ を白で浮かせる
+            const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
+            if (at >= 0) dones.push(new vscode.Range(i, at, i, at + 1));
+            continue;
+          }
+          if (!byId2.size) continue;
+          if (!pairs2) { try { pairs2 = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { pairs2 = []; } }
+          let j = i - 1;
+          while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
+          let owner = pairs2.find(p => p.end === j) || null;
+          if (!owner) for (const p of pairs2) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+          const until = byId2.get(owner ? owner.id : '');
+          if (until == null) continue;
+          items.push({
+            range: new vscode.Range(i, txt.length, i, txt.length),
+            renderOptions: { after: { contentText: '  \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())), color: '#e0803a', fontWeight: '800' } }
+          });
+        }
+      }
+    } catch (_) { }
     editor.setDecorations(meosTimerLineDeco, items);
+    editor.setDecorations(meosClockDoneDeco, dones);
   } catch (_) { }
 }
 function meosTickTimerLines() {
@@ -9961,7 +10002,14 @@ function meosUpdateTimerBar() {
 }
 function meosLockKey(scope) { try { return scope.doc.uri.toString() + ' ' + scope.key; } catch (_) { return ' ' + (scope && scope.key); } }
 function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; return t ? Math.max(0, t - Date.now()) : 0; }
-function meosMmSs(ms) { const t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+// ★v4.1.14(俊克 改良3「残タイマー表示は、60分以上なら、1:20.55のように、時分秒にしようよ。
+//   450.34と表示されても、イメージが付かないよ」): ★**桁が増えると、人は読めなくなる**。
+//   1時間を越えたら 時:分.秒 に切り替える(450:34 は 7時間半だが、そうは見えない)。
+function meosMmSs(ms) {
+  const t = Math.ceil(Math.max(0, ms) / 1000), p = (x) => String(x).padStart(2, '0');
+  if (t >= 3600) return Math.floor(t / 3600) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
+  return Math.floor(t / 60) + ':' + p(t % 60);
+}
 // setTimeout は約24.8日(2^31ms)で溢れて**即発火**するso、長い待ちは刻んで継ぐ(年月日を許した以上、必ず来る)。
 const MEOS_TIMER_CHUNK = 20 * 24 * 60 * 60 * 1000;
 function meosArmPseudoTimer(key, ms) {
@@ -22346,7 +22394,10 @@ function vmWho(){return vmScope?('\u3010'+vmScope+'\u3011'):'\u3010outside every
    1秒ごとの往復を作らない。錠that掛かっている間は、面that残り時間を出す= 何分残っているかを見るために
    別の物を開かなくてよい。 */
 function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}
-function vmMmSs(ms){var t=Math.ceil(ms/1000);var ss=String(t%60);return Math.floor(t/60)+':'+(ss.length<2?'0'+ss:ss);}
+/* v4.1.14: 面の残り時間も node と同じ形(1時間を越えたら 時:分.秒)= 同じ値を2つの形で出さない。 */
+function vmMmSs(ms){var t=Math.ceil(ms/1000),p=function(x){x=String(x);return x.length<2?'0'+x:x;};
+if(t>=3600)return Math.floor(t/3600)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
+return Math.floor(t/60)+':'+p(t%60);}
 window.__renderRaw=function(){if(!rawToggle)return;
 var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
 /* ★v4.0.445(俊克 改良1「Opt押しで、Raw→通常モードのように逆順になると便利だよ。2回押さなくても通常モードに

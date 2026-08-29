@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.14 (2026-08-29)
+- **The countdown now shows on the clock line as well.** Fold a membrane and its closing line goes with it,
+  taking the time left along. The ⏰ line stays behind, so the clock now wears its face there too.
+- **Past an hour, the time reads as hours.** `7:30.00` instead of `450:30` — a number you can picture.
+- The ✓ on a clock that has rung is drawn in white, so it stands out on a line of orange raw text.
+
 ### v4.1.13 (2026-08-29)
 - **The ⏰ button now writes the clock into the text.** Setting one leaves `<!-- Mew!FC ⏰ 2026-09-01 20:05 -->`
   under the membrane, where you can see it, search it and edit it by hand. The button writes an absolute time —
