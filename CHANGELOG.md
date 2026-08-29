@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.12 (2026-08-29)
+- **A clock can be written as text now.** `<!-- Mew!FC ⏰ 23:00 -->` under a membrane sets a clock on it —
+  no Me Dock, no buttons. Write it in any editor, on any device, and MeOS picks it up when you open or save
+  the file. Add 🔒 to lock it; a ✓ marks one that has already rung.
+- Until now a clock lived inside the meta membrane, where you could neither see it nor search for it. In the
+  text, it is visible where it applies, and `Mew!FC ⏰` finds every one you have set.
+- Reading is generous, writing stays narrow: the line belongs to the membrane that closes just above it, but a
+  clock written inside a membrane is understood too. Buttons still write to the old place for now.
+
 ### v4.1.11 (2026-08-29)
 - **Both clock panels line up with the clock, by definition.** Their right edge is now declared to be the
   right edge of the ⏰▾ key itself, rather than worked out in arithmetic that depended on when it was measured.

@@ -9604,6 +9604,67 @@ function meosScheduleClockMetaWrite(doc) {
     } catch (_) { }
   }, 400);
 }
+// ★★★v4.1.12(俊克 2026.08.29「⏰は、今は、閉じ膜は表示だけで、設定ができないので、設定をFCコメントで
+//   書くようにすればいいんじゃないかな? それはパソコンで使っているときにも便利でしょ?」＋
+//   スマホの話「Me Dock無しで、FCコメントを直接書くことで、機能を絞って提供できる可能性はあるよね?」):
+//   ★★★**⏰の住所を、見えない所(mMETA)から、本文の中(FCコメント)へ移す**。
+//     今までの予定は mMETA の中の JSON に居たので、**人には見えず、grepもできなかった**。
+//     FCコメントなら ①その場で見える ②`Mew!FC ⏰` を検索すれば予定表になる
+//     ③**Me Dockが無くても書ける**= スマホの素のエディタからでも予定を置ける(PCで開いた時に仕掛かる)。
+//   ★置き場所は**閉じ膜の次の行**= 膜も塊so、指定は塊の次の行([[project_membrane_is_a_block]])。
+//     ただし**読む方は寛容に**= 膜の中に書いてあっても、その膜の予定として拾う
+//     ([[project_notation_v4]]「読める形は増やし、書く形は絞る」)。
+//   ★この版は**読む側だけ**。書く側(Setボタン)は今までどおり mMETA so、二重に書く道は作らない。
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*(\ud83d\udd12)?[ \t]*([^\n<]*?)[ \t]*-->/;
+const MEOS_CLOCK_DONE_RE = /[\u2713\u2714\u2705]\ufe0f?$|\u6e08$/;
+function meosClockFcParse(text) {
+  const t = String(text == null ? '' : text);
+  if (t.indexOf('\u23f0') < 0) return null;
+  const m = MEOS_CLOCK_FC_RE.exec(t);
+  if (!m) return null;
+  let body = String(m[2] || '').trim(), done = false;
+  if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
+  return { lock: !!m[1], done, when: body };
+}
+// 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
+function meosClockFcScan(doc) {
+  const out = [];
+  if (!doc || !doc.lineCount) return out;
+  let pairs = [];
+  try { pairs = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
+  for (let i = 0; i < doc.lineCount; i++) {
+    let txt = ''; try { txt = doc.lineAt(i).text; } catch (_) { continue; }
+    const c = meosClockFcParse(txt);
+    if (!c || !c.when) continue;
+    let owner = pairs.find(p => p.end === i - 1) || null;
+    if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, done: c.done });
+  }
+  return out;
+}
+// 書いてある ⏰ を仕掛ける。既に走っている物には触らない(mMETA由来が先に居れば、そちらを立てる)。
+function meosArmClockFcFor(doc) {
+  try {
+    if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
+    const uri = doc.uri.toString();
+    let n = 0;
+    for (const c of meosClockFcScan(doc)) {
+      const lk = uri + ' ' + c.key;
+      if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
+      if (c.done) { meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, Date.now()); continue; } // 済み= 履歴だけ
+      const w = meosParseWhen(c.when);
+      if (!w) continue;                                             // 読めない書き方は、黙って無視(本文を汚さない)
+      const scope = { doc, uri, key: c.key, name: c.name, hold: false, lock: !!c.lock };
+      _meosPseudoScopes.set(lk, scope);
+      _meosPseudoUntil.set(lk, w.at.getTime());
+      meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
+      meosNoteClockHistory(scope, w.at.getTime());
+      n++;
+    }
+    if (n) { meosUpdateTimerBar(); meosPostViewMode(); }
+    return n;
+  } catch (_) { return 0; }
+}
 // 開いた時に、書いてある予定を仕掛け直す。一度だけ(同じファイルを何度開いても二重にしない)。
 async function meosLoadClocksFor(doc) {
   try {
@@ -9613,7 +9674,7 @@ async function meosLoadClocksFor(doc) {
     _meosClockLoaded.add(uri);
     const v = meosClockMeta(doc);
     const names = Object.keys(v || {});
-    if (!names.length) return;
+    if (!names.length) { meosArmClockFcFor(doc); meosUpdateTimerBar(); return; }   // v4.1.12: mMETAが空でも本文は読む
     const now = Date.now(); const missed = [];
     for (const name of names) {
       const row = v[name] || {};
@@ -9632,6 +9693,7 @@ async function meosLoadClocksFor(doc) {
       missed.push(name);
     }
     meosScheduleClockMetaWrite(doc);
+    meosArmClockFcFor(doc);                                       // v4.1.12: 本文に書かれた ⏰ も読む
     meosUpdateTimerBar();
     if (missed.length) vscode.window.showInformationMessage('MeOS: ' + missed.length + ' clock' + (missed.length > 1 ? 's have' : ' has') + ' already passed \u2014 ' + missed.join(', ') + '. Nothing is held any more.');
   } catch (_) { }
@@ -30375,6 +30437,9 @@ function activate(context) {
   };
   const __headDoneResaving = new Set(); // v0.9.99955: 再保存中のuri(再入=Octopush二重発火/無限ループ防止)
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    // ★v4.1.12: 保存した瞬間に、本文に書かれた ⏰ を拾う= **書いて Cmd+S すれば仕掛かる**。
+    //   (開いた時だけだと、書き足しても開き直すまで動かない=「書いたのに何も起きない」になる)
+    try { meosArmClockFcFor(doc); } catch (_) { }
     // v4.0.363: 保存した瞬間が ●/UD の出番(俊克「いつ最後にCmd+Sしたか」)。mtimeが書かれた後に読む。
     try { setTimeout(() => { const _e = vscode.window.visibleTextEditors.find(v => v.document === doc); if (_e) postDockFileUD(_e, true); }, 60); } catch (_) { }
     // v0.9.99955: ✅同期はonWillSaveのwaitUntilが不安定(適用されない)ため、保存"後"にapplyEdit→再保存で確実に生データへ刻む。
