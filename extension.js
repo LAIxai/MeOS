@@ -4119,10 +4119,21 @@ function meosPairBadgeAt(document, pair) {
 //   ★代わりに、畳むと ⏰ 行も隠れる。so残り時間の顔は**開始膜の行**へ移す(畳んでも残る場所は、そこ1つ)。
 function meosPairBlockEnd(document, pair) {
   let e = Math.min(document.lineCount - 1, pair.end);
+  try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
+  return e;
+}
+// ★★★v4.1.16(俊克「開始膜に残時間が表示されるようになった。膜を閉じても見えるけど、私が言ったことと違う」):
+//   ★★★**⏰行は『畳まない物』**= 予定は、見えていることが仕事so、他のFC行と同じに畳んではいけない。
+//     → 畳みの範囲(meosPairBlockEnd)には入れない。FCの塊(meosDefBlocks)にも入れない。
+//     こうすると膜 1..4 / FCの塊 3..4 で**交差が起きず**(v4.1.15の真因)、⏰行は常に見える。
+//   ★ただし**運ぶ時は一緒に行く**= コピー/複製は膜の持ち物として ⏰ 行も連れて行く(下の meosBlockEndForCarry)。
+//     畳みの範囲とコピーの範囲が分かれるのは、**畳む理由と運ぶ理由が違う**から。
+function meosBlockEndForCarry(document, pair) {
+  let e = meosPairBlockEnd(document, pair);
   try {
     while (e + 1 < document.lineCount) {
-      const t = document.lineAt(e + 1).text;
-      if (meosIsPairBadgeSpec(t) || (meosClockFcParse(t) && meosClockFcParse(t).when)) { e++; continue; }
+      const c = meosClockFcParse(document.lineAt(e + 1).text);
+      if (c && c.when) { e++; continue; }
       break;
     }
   } catch (_) { }
@@ -9716,7 +9727,7 @@ function meosArmClockFcFor(doc) {
       if (c.done) { meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, Date.now()); continue; } // 済み= 履歴だけ
       const w = meosParseWhen(c.when);
       if (!w) continue;                                             // 読めない書き方は、黙って無視(本文を汚さない)
-      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock };
+      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true };   // v4.1.16: 本文由来
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
@@ -9744,7 +9755,7 @@ async function meosLoadClocksFor(doc) {
       if (!at) { delete v[name]; continue; }
       // v4.1.6: past= もう鳴った物。仕掛け直さず、履歴にだけ戻す(=一覧に「過去」が並ぶ)。
       if (row.past) { meosNoteClockHistory({ uri, key: name, name, hold: !!row.hold }, at); continue; }
-      const scope = { uri, key: name, name, hold: !!row.hold, lock: !!row.lock };   // v4.1.5: 錠も一緒に戻る
+      const scope = { uri, key: name, name, hold: !!row.hold, lock: !!row.lock, fc: false };   // v4.1.5: 錠も一緒に戻る / v4.1.16: 旧mMETA由来
       const lk = uri + ' ' + name;
       _meosPseudoScopes.set(lk, scope);
       const left = at - now;
@@ -9889,13 +9900,11 @@ async function meosGoBackFromAlarm() {
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosTimerLineDeco = null;
 let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で浮かせる
-// ★★★v4.1.15(俊克 バグ1「残タイマの表示が、閉じ膜とFC膜の両方に重複している。閉じ膜の表示は廃止でいいよね」
-//   ＋ 改良2「終了項目の✓を白色と言ったのは、膜にカーソルが入ったときの橙色文字になるときのことだよ」):
-//   ★★★**時計の顔は1つ**= 出す場所を**開始膜の行**に決めた。理由は畳みにある=
-//     ⏰行は膜の塊の中(v4.1.15で入れ子に戻した)so、畳めば一緒に隠れる。閉じ膜も畳みの中。
-//     **畳んでも残るのは開始膜の行だけ**= そこが、いつでも見える唯一の場所。
-//   ★★✓は、**その膜にカーソルが居る時だけ白**= 生で見えている(橙になっている)時に浮かせたいので。
-//     畳まれている/離れている時は、他のFC行と同じ静かな色のままでよい。
+// ★★★v4.1.16(俊克「開始膜に残時間が表示されるようになったよ。膜を閉じても見えるけど、私が言ったことと
+//   違うよね」): ★★★**時計の顔は ⏰ 行に立つ**。v4.1.15で開始膜へ移したのは、⏰行を畳みの中に入れた
+//   からで、その前提の方を直した(v4.1.16=⏰行は畳まない物)。so顔は俊克の指したとおり ⏰ 行へ戻る。
+//   ★旧い予定(mMETAに書いてある物)には ⏰ 行that無いので、そちらだけ今までどおり閉じ膜のコメント欄に出す。
+//   ★走るのは見えている範囲だけ(14万行を毎秒なぞらない)。
 function meosApplyTimerLineDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
@@ -9904,21 +9913,23 @@ function meosApplyTimerLineDecorations(editor) {
     const doc = editor.document;
     const items = [], dones = [];
     const uri = doc.uri.toString();
-    const byId = new Map();
+    const byId = new Map(), legacy = new Map();
     for (const [k, until] of _meosPseudoUntil) {
       const sc = _meosPseudoScopes.get(k);
-      if (sc && sc.uri === uri && sc.key) byId.set(sc.key, until);
+      if (!sc || sc.uri !== uri || !sc.key) continue;
+      byId.set(sc.key, until);
+      if (sc.fc === false) legacy.set(sc.key, until);
     }
     let cur = -1; try { cur = editor.selection.active.line; } catch (_) { }
     let pairs = null;
     const _pairs = () => { if (!pairs) { try { pairs = collectPairs(doc, { excludeIndex: false }); } catch (_) { pairs = []; } } return pairs; };
-    if (byId.size) {
+    // 旧い予定= 閉じ膜のコメント欄に立てる(v4.0.451の作法のまま)。
+    if (legacy.size) {
       for (const pr of _pairs()) {
-        const until = byId.get(pr.id);
+        const until = legacy.get(pr.id);
         if (until == null) continue;
-        // ★v4.0.451の作法はそのまま= **コメント欄の先頭**に立てる(`//` の右)。場所だけ閉じ膜から開始膜へ。
-        const ln = pr.start, text = doc.lineAt(ln).text || '';
-        const parts = membraneLineParts(text, 'open');
+        const ln = pr.end, text = doc.lineAt(ln).text || '';
+        const parts = membraneLineParts(text, 'close');
         let at = (parts && parts.idEnd >= 0) ? parts.idEnd : text.length, pre = '  ';
         if (parts && parts.idEnd >= 0) {
           const m = /^(\s*\/\/[ \t]?)/.exec(text.slice(parts.idEnd, parts.suffixStart >= 0 ? parts.suffixStart : text.length));
@@ -9930,23 +9941,31 @@ function meosApplyTimerLineDecorations(editor) {
         });
       }
     }
-    // ✓ を白で浮かせる。走るのは**見えている範囲だけ**(14万行を毎秒なぞらない)。
+    // 本文に書いてある予定= その ⏰ 行の右に立てる。済んだ物(✓)は、カーソルがその膜に居る時だけ白。
     try {
       for (const r of (editor.visibleRanges || [])) {
         for (let i = r.start.line; i <= r.end.line && i < doc.lineCount; i++) {
           const txt = doc.lineAt(i).text || '';
           if (txt.indexOf('\u23f0') < 0) continue;
           const c = meosClockFcParse(txt);
-          if (!c || !c.done) continue;
-          const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
-          if (at < 0) continue;
+          if (!c || !c.when) continue;
           let j = i - 1;
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
           let owner = _pairs().find(p => p.end === j) || null;
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-          if (!owner) continue;
-          if (cur < owner.start || cur > meosPairBlockEnd(doc, owner)) continue;   // カーソルが居る膜だけ
-          dones.push(new vscode.Range(i, at, i, at + 1));
+          if (c.done) {
+            const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
+            if (at < 0 || !owner) continue;
+            if (cur < owner.start || cur > meosBlockEndForCarry(doc, owner)) continue;   // カーソルが居る膜だけ
+            dones.push(new vscode.Range(i, at, i, at + 1));
+            continue;
+          }
+          const until = byId.get(owner ? owner.id : '');
+          if (until == null) continue;
+          items.push({
+            range: new vscode.Range(i, txt.length, i, txt.length),
+            renderOptions: { after: { contentText: '  \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())), color: '#e0803a', fontWeight: '800' } }
+          });
         }
       }
     } catch (_) { }
@@ -10349,7 +10368,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   //   掛け違いは誰にでも在るので、普通の時計は一覧の×で外せる。降りられない答案にしたい人は、
   //   掛ける前に🔒を選ぶ。★hold(押さえ)とは別物= holdは**見え方**、lockは**外せるかどうか**。
   const lock = !!_meosClockLockNext; _meosClockLockNext = false;   // 読んだ所で降ろす= この1つにだけ効く
-  _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold, lock });
+  _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold, lock, fc: !!scope.key });   // v4.1.16: 膜に掛けた物は本文へ書く
   const _at = Date.now() + ms;
   _meosPseudoUntil.set(lk, _at);
   meosArmPseudoTimer(lk, ms + 250);
@@ -16725,7 +16744,7 @@ async function copyMe(editor) {
   const pair = meosCurrentPairOrWarn(editor, 'Copy Me');
   if (!pair) return;
   const doc = editor.document;
-  const endLine = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
+  const endLine = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1);   // v4.1.16: ⏰も膜の持ち物so一緒に運ぶ
   const lines = [];
   for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
   const out = meosRestampMembraneBlock(lines);            // v4.0.383: 貼った先で番地が重ならないよう、TSだけ打ち直す
@@ -16780,7 +16799,7 @@ async function duplicateMe(editor) {
   const pair = meosCurrentPairOrWarn(editor, 'Duplicate Me');
   if (!pair) return;
   const doc = editor.document;
-  const endLine = Math.min(meosPairBlockEnd(doc, pair), doc.lineCount - 1);
+  const endLine = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1);   // v4.1.16: ⏰も一緒に複製する
   const lines = [];
   for (let i = pair.start; i <= endLine; i++) lines.push(doc.lineAt(i).text);
   const block = meosRestampMembraneBlock(lines).join('\n');   // v4.0.383: 複製は別の物なので、TSだけ打ち直す
@@ -27036,7 +27055,8 @@ function meosDefBlocks(document) {
   const _t0 = Date.now(); // v4.0.150: **走査そのもの**を計測する(前は畳むコマンドしか測っていなかった=15万行の本当の負担が映らない)
   try {
     const lines = meosDocLines(document), n = Math.min(document.lineCount, lines.length);
-    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t);
+    // v4.1.16: ⏰行は畳まない物so、FCの塊に数えない(数えると膜の範囲からはみ出して交差する)。
+    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t) && !(t.indexOf('\u23f0') >= 0 && (meosClockFcParse(t) || {}).when);
     const isDef = (t) => isSpec(t) || (!!t && t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t));
     for (let ln = 1; ln < n; ln++) {
       if (!isDef(lines[ln])) continue;
