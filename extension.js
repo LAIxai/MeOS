@@ -9980,6 +9980,9 @@ function meosApplyTimerLineDecorations(editor) {
           let owner = _pairs().find(p => p.end === j) || null;
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
           if (c.done) {
+            // ★v4.1.20(俊克 改良1「STOPボタンの点滅と同期して、白い✓が点滅すると分かりやすい」):
+            //   鳴っている間だけ、1秒ごとに白を消す= 鐘と同じ拍で✓が瞬く(新しい時計は増やさない)。
+            if (meosIsRinging() && (Math.floor(Date.now() / 1000) % 2 === 1)) continue;
             const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
             if (at < 0 || !owner) continue;
             if (cur < owner.start || cur > meosBlockEndForCarry(doc, owner)) continue;   // カーソルが居る膜だけ
@@ -9988,9 +9991,13 @@ function meosApplyTimerLineDecorations(editor) {
           }
           const until = byId.get(owner ? owner.id : '');
           if (until == null) continue;
+          // ★v4.1.20(俊克 改良2「コメントの外に残時間を表示する必要はないよね。コメント内部に表示すればいい」):
+          //   ★**時計はコメント欄の中に立つ**= v4.0.451で閉じ膜に決めた作法と同じ。`-->` の手前に置く。
+          const _cl = txt.lastIndexOf('-->');
+          const _at2 = (_cl > 0) ? _cl : txt.length;
           items.push({
-            range: new vscode.Range(i, txt.length, i, txt.length),
-            renderOptions: { after: { contentText: '  \u23f0 ' + meosMmSs(Math.max(0, until - Date.now())), color: '#e0803a', fontWeight: '800' } }
+            range: new vscode.Range(i, _at2, i, _at2),
+            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(Math.max(0, until - Date.now())) + ' ', color: '#e0803a', fontWeight: '800' } }
           });
         }
       }

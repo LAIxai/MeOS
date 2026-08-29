@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.20 (2026-08-30)
+- **The time left stands inside the comment**, just before the `-->`, the way the clock has always stood
+  inside the comment field of a membrane line.
+- **While a clock is ringing, its ✓ blinks** in step with the button — no new timer, just the beat that is
+  already there.
+
 ### v4.1.19 (2026-08-30)
 - **The ✓ is white — by making room for it, not by painting over it.** Two builds tried to win the colour
   fight; both lost, because whoever wins depends on which decoration was created first. The orange now skips
