@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.23 (2026-08-30)
+- **Repeating clocks.** `<!-- Mew!UFC ⏰ 2026-08-30 01:40 ↻05 -->` rings every five minutes. Several intervals
+  alternate: `↻50/10` is fifty minutes, then ten, then fifty again. The order itself is the state — each time
+  it rings, the first step moves to the back, so there is nothing else to keep track of.
+- A repeating clock never gets a ✓; it is not finished. It keeps its time up to date and stays UFC.
+- Away for a while? It skips the rounds you missed and sets the next one.
+- **Seconds.** `09:30:15` as a time, and `↻30s` / `↻15s` as intervals — for the calls that come in the last
+  minute. Written back only when there are seconds to write.
+
 ### v4.1.22 (2026-08-30)
 - **The ✓ blinks in time with the button now.** It was drawn once a second, so a blink took two — while the
   button breathes in 0.8. The redraw runs faster while a clock is ringing, and goes back to its usual pace

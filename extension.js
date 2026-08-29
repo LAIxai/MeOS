@@ -9667,8 +9667,19 @@ function meosClockFcParse(text) {
   if (!m) return null;
   let body = String(m[2] || '').trim(), done = false;
   if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
+  // ★★★v4.1.23(俊克「今、一番使いたいのは、目薬を5分置きにつけるときに、05/00という設定にすること」):
+  //   ★★★**繰返しは『次の間隔』の並びで書く**= `\u21bb05` なら5分ごと、`\u21bb50/10` なら50分と10分の交互。
+  //     単位は既定が分(プリセットと同じ数の読み方)、`s`=秒 / `h`=時。
+  //   ★★**並びが状態を持つ**= 鳴ったら先頭を末尾へ回す。別に「今どこか」を覚えなくてよい
+  //     ([[project_link_notation_v41]]「腐らない番号」と同じ考え= 覚えを持たない物は狂わない)。
+  let cycle = null;
+  const cm = /\u21bb\s*([0-9]+\s*[smhSMH]?(?:\s*\/\s*[0-9]+\s*[smhSMH]?)*)\s*$/.exec(body);
+  if (cm) {
+    body = body.slice(0, cm.index).trim();
+    cycle = String(cm[1]).split('/').map(x => String(x).trim()).filter(Boolean);
+  }
   const face = String(m[1] || '');
-  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, done, when: body, ufc: meosIsUnfoldingSpecLine(t) };
+  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, done, when: body, cycle, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 function meosClockFcScan(doc) {
@@ -9686,7 +9697,7 @@ function meosClockFcScan(doc) {
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, done: c.done, ufc: c.ufc });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, done: c.done, cycle: c.cycle, ufc: c.ufc });
   }
   return out;
 }
@@ -9696,10 +9707,31 @@ function meosClockFcScan(doc) {
 //   ★ボタンが書くのは**絶対時刻**(YYYY-MM-DD HH:MM)= 「50分後」は書けない
 //     (読み直した時、いつからの50分か分からなくなる。[[project_link_notation_v41]]の「腐らない番号」と同じ)。
 //     手で書く時は `23:00` の短い形でよい= **読める形は増やし、書く形は絞る**。
+// 輪の1つ分(`05`=5分 / `30s`=30秒 / `2h`=2時間)をミリ秒に。読めない物は0。
+function meosCycleMs(step) {
+  const m = /^([0-9]+)\s*([smhSMH]?)$/.exec(String(step || '').trim());
+  if (!m) return 0;
+  const n = Number(m[1]) || 0, u = String(m[2] || 'm').toLowerCase();
+  return n * (u === 's' ? 1000 : u === 'h' ? 3600000 : 60000);
+}
+// 鳴った後の姿= 先頭を末尾へ回す(並びが「次はどれか」を語る)。
+function meosCycleRotate(cycle) {
+  if (!Array.isArray(cycle) || cycle.length < 2) return cycle;
+  return cycle.slice(1).concat(cycle.slice(0, 1));
+}
 function meosClockFcStamp(at) {
   const d = (at instanceof Date) ? at : new Date(Number(at) || Date.now());
   const p = (x) => (x < 10 ? '0' : '') + x;
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  const sec = d.getSeconds();
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())
+    + (sec ? (':' + p(sec)) : '');            // v4.1.23: 秒は在る時だけ書く(いつもは今までと同じ姿)
+}
+// 過ぎた時刻でも読む。**輪を次へ進める時にだけ**使う(普段の読みは meosParseWhen 1つ=過ぎた指定は誤り)。
+function meosParseStampLoose(txt) {
+  const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(txt || '').trim());
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] == null ? 0 : +m[6], 0);
+  return isNaN(d.getTime()) ? null : d;
 }
 // 同じ膜の ⏰ 行が在れば書き替え、無ければ**閉じ膜の下(積まれた指定行の一番下)**へ足す。spec=null で消す。
 async function meosClockFcSet(doc, key, spec) {
@@ -9708,7 +9740,9 @@ async function meosClockFcSet(doc, key, spec) {
     const line = spec
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
-        + ' ' + String(spec.when || '').trim() + (spec.done ? '\u2713' : '') + ' -->')
+        + ' ' + String(spec.when || '').trim()
+        + (Array.isArray(spec.cycle) && spec.cycle.length ? (' \u21bb' + spec.cycle.join('/')) : '')
+        + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     const hit = meosClockFcScan(doc).find(c => c.key === key);
     const ed = new vscode.WorkspaceEdit();
@@ -9741,7 +9775,17 @@ function meosArmClockFcFor(doc) {
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
       if (c.done) { meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, Date.now()); continue; } // 済み= 履歴だけ
-      const w = meosParseWhen(c.when);
+      let w = meosParseWhen(c.when);
+      if (!w && Array.isArray(c.cycle) && c.cycle.length) {
+        // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
+        const base = meosParseStampLoose(c.when), step = meosCycleMs(c.cycle[0]);
+        if (base && step > 0) {
+          let next = base.getTime(), guard = 0;
+          while (next <= Date.now() && guard++ < 10000) next += step;
+          w = { at: new Date(next), ms: next - Date.now() };
+          try { meosClockFcSet(doc, c.key, { when: meosClockFcStamp(new Date(next)), hold: c.hold, lock: c.lock, cycle: c.cycle, done: false }); } catch (_) { }
+        }
+      }
       if (!w) continue;                                             // 読めない書き方は、黙って無視(本文を汚さない)
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true };   // v4.1.16: 本文由来
       _meosPseudoScopes.set(lk, scope);
@@ -9750,7 +9794,7 @@ function meosArmClockFcFor(doc) {
       meosNoteClockHistory(scope, w.at.getTime());
       // ★v4.1.18(俊克 👍2「✓を外し、新しい時刻を設定して保存すると再起動する。FCに変わるようになった時には、
       //   再起動でUFCに再び戻る必要がある」): これから鳴る物は見えていなければならないので、名前を戻す。
-      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, done: false }); } catch (_) { } }
+      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, done: false }); } catch (_) { } }
       n++;
     }
     if (n) { meosUpdateTimerBar(); meosPostViewMode(); }
@@ -10107,6 +10151,7 @@ function meosClearPseudoTimer(key) {
 // 時間that終わった(または人that止めた)＝ **通常へ返す**。口は1つ。
 async function meosEndPseudoTimer(key) {
   const scope = _meosPseudoScopes.get(key);
+  const _firedAt = _meosPseudoUntil.get(key) || Date.now();   // v4.1.23: 輪を次へ進める起点(消す前に控える)
   meosClearPseudoTimer(key);
   _meosPseudoScopes.delete(key);
   if (!scope) { meosPostViewMode(); return null; }
@@ -10123,7 +10168,18 @@ async function meosEndPseudoTimer(key) {
   try {
     if (doc) {
       const _hit = meosClockFcScan(doc).find(c => c.key === scope.key && !c.done);
-      if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, done: true }); }
+      if (_hit && Array.isArray(_hit.cycle) && _hit.cycle.length) {
+        // ★★★v4.1.23: 繰返しは**✓を付けない**= 終わっていないから。次の時刻へ進め、並びを回して、また掛ける。
+        //   俊克「繰返し設定の場合は、UFCのまま」= 次が在る限り、見えていなければならない。
+        const step = meosCycleMs(_hit.cycle[0]);
+        let next = (meosParseStampLoose(_hit.when) || new Date(_firedAt)).getTime() + (step || 0);
+        if (step > 0) { let guard = 0; while (next <= Date.now() && guard++ < 10000) next += step; }   // 留守の間に過ぎた分は飛ばす
+        if (step > 0) {
+          await meosClockFcSet(doc, scope.key, { when: meosClockFcStamp(new Date(next)), hold: _hit.hold, lock: _hit.lock, cycle: meosCycleRotate(_hit.cycle), done: false });
+          try { meosArmClockFcFor(doc); } catch (_) { }
+        }
+      }
+      else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, done: true }); }
       else {
         const _m = meosClockMeta(doc); const _r = _m[scope.key];
         if (_r) { _m[scope.key] = { at: Number(_r.at) || Date.now(), hold: !!scope.hold, past: true };
@@ -10374,31 +10430,38 @@ function meosParseWhen(txt) {
   const now = new Date();
   let y = null, mo = null, d = null, hh = null, mi = null;
   let m;
-  if ((m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(raw))) {
-    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5];
-  } else if ((m = /^(\d{4})(\d{2})(\d{2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(raw))) {
-    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5];
-  } else if ((m = /^(\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(raw))) {
-    mo = +m[1]; d = +m[2]; hh = m[3] == null ? 0 : +m[3]; mi = m[4] == null ? 0 : +m[4];
+  // ★★v4.1.23(俊克「アーチェリー部のタイマー担当をした時、1分前・30秒前・15秒前を合言葉で伝えた。
+  //   そう言うためには、秒指定もできると良い」): ★**秒まで読む**= 分より短い合図が要る場面が在る。
+  //   書き方は今までの後ろに `:ss` を足すだけ(読める形を増やす)。
+  let ss = 0;
+  if ((m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2})(?::(\d{2}))?)?$/.exec(raw))) {
+    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5]; ss = m[6] == null ? 0 : +m[6];
+  } else if ((m = /^(\d{4})(\d{2})(\d{2})(?:\s+(\d{1,2}):?(\d{2})(?::(\d{2}))?)?$/.exec(raw))) {
+    y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5]; ss = m[6] == null ? 0 : +m[6];
+  } else if ((m = /^(\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2})(?::(\d{2}))?)?$/.exec(raw))) {
+    mo = +m[1]; d = +m[2]; hh = m[3] == null ? 0 : +m[3]; mi = m[4] == null ? 0 : +m[4]; ss = m[5] == null ? 0 : +m[5];
+  } else if ((m = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(raw))) {
+    hh = +m[1]; mi = +m[2]; ss = +m[3];
   } else if ((m = /^(\d{1,2}):(\d{2})$/.exec(raw)) || (m = /^(\d{1,2})(\d{2})$/.exec(raw))) {
     hh = +m[1]; mi = +m[2];
   } else return null;
+  if (ss > 59) return null;
   if (hh > 23 || mi > 59) return null;
   if (mo != null && (mo < 1 || mo > 12 || d < 1 || d > 31)) return null;
   let t;
   if (y != null) {                                   // 年まで書いた= その1日。送らない
-    t = new Date(y, mo - 1, d, hh, mi, 0, 0);
+    t = new Date(y, mo - 1, d, hh, mi, ss, 0);
     if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;   // 2/30 のような日
     if (t.getTime() <= now.getTime()) return null;                   // 過ぎた指定は誤り
   } else if (mo != null) {                           // 月日だけ= 今年。過ぎていれば来年
-    t = new Date(now.getFullYear(), mo - 1, d, hh, mi, 0, 0);
+    t = new Date(now.getFullYear(), mo - 1, d, hh, mi, ss, 0);
     if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;
     if (t.getTime() <= now.getTime()) {
-      t = new Date(now.getFullYear() + 1, mo - 1, d, hh, mi, 0, 0);
+      t = new Date(now.getFullYear() + 1, mo - 1, d, hh, mi, ss, 0);
       if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;
     }
   } else {                                           // 時刻だけ= 今日。過ぎていれば明日(基本の使い方)
-    t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mi, 0, 0);
+    t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mi, ss, 0);
     if (t.getTime() <= now.getTime()) t.setDate(t.getDate() + 1);
   }
   return { at: t, ms: t.getTime() - now.getTime() };
