@@ -9889,7 +9889,13 @@ function meosClockList(limit) {
 }
 // ★v4.0.448(俊克 改良2「残りタイムを表示する」): 面に出る残り時間は**その膜に居る時だけ**so、
 //   離れると分からなかった。→ ステータスバーに1つ出す＝ **どこに居ても、動いている物that見える**。
-let _meosTimerBar = null, _meosTimerTick = null;
+// ★★v4.1.22(俊克 改良1「タイムアップした後の✓の点滅間隔は遅い。⏰ボタンの点滅の半分くらいのペース。なぜ?」):
+//   ★★**描画の拍が1秒なので、それより速く瞬けなかった**= 1秒ごとに白を消す＝1往復2秒。
+//     ⏰ボタンの息(meosClockBreath)は0.8秒で、こちらだけ2.5倍遅い。
+//   → 鳴っている間だけ拍を0.4秒にする(1往復0.8秒＝息と同じ)。鳴り止めば元の1秒へ戻す。
+//   ★描き直すのは**見えている範囲の⏰行だけ**so、速くしても負担は増えない。
+let _meosTimerBar = null, _meosTimerTick = null, _meosRingBlink = null;
+const MEOS_RING_BLINK_MS = 400;   // 息(0.8秒)の半分= 白が点いて消えて1往復
 // ★★★v4.0.454(俊克「勝手に飛ぶのも、自分で飛ぶのも、**元いた場所に戻るのは、少し面倒**だね?」):
 //   ★★★**連れ出したのはMeOSso、帰り道もMeOSthat出す**。◀(Line history)は在ったthat、
 //     **押す物thatが目に入らない**＝ 呼ばれた人は「戻れる」ことを思い出さねばならなかった。
@@ -9982,7 +9988,7 @@ function meosApplyTimerLineDecorations(editor) {
           if (c.done) {
             // ★v4.1.20(俊克 改良1「STOPボタンの点滅と同期して、白い✓が点滅すると分かりやすい」):
             //   鳴っている間だけ、1秒ごとに白を消す= 鐘と同じ拍で✓が瞬く(新しい時計は増やさない)。
-            if (meosIsRinging() && (Math.floor(Date.now() / 1000) % 2 === 1)) continue;
+            if (meosIsRinging() && (Math.floor(Date.now() / MEOS_RING_BLINK_MS) % 2 === 1)) continue;
             const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
             if (at < 0 || !owner) continue;
             if (cur < owner.start || cur > meosBlockEndForCarry(doc, owner)) continue;   // カーソルが居る膜だけ
@@ -10031,8 +10037,10 @@ function meosUpdateTimerBar() {
       try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); } catch (_) { }
       _meosTimerBar.show();
       meosTickTimerLines();
+      if (!_meosRingBlink) _meosRingBlink = setInterval(() => meosTickTimerLines(), MEOS_RING_BLINK_MS);   // v4.1.22: 鳴っている間だけ速い拍
       return;
     }
+    if (_meosRingBlink) { clearInterval(_meosRingBlink); _meosRingBlink = null; }   // v4.1.22: 鳴り止んだら元の拍へ
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
       meosTickTimerLines();

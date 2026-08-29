@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.22 (2026-08-30)
+- **The ✓ blinks in time with the button now.** It was drawn once a second, so a blink took two — while the
+  button breathes in 0.8. The redraw runs faster while a clock is ringing, and goes back to its usual pace
+  when the ringing stops.
+
 ### v4.1.21 (2026-08-30)
 - **Fixed: folded comments that would not open again.** Click the membrane header and its comments should
   unfold. They did not, because the pass that folds them in bulk never told MeOS it had folded them — so MeOS
