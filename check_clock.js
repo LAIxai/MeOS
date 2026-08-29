@@ -141,5 +141,15 @@ const dLive=mkL('<!-- Mew!UFC \u23f0 2026-12-31 23:00 -->','file:///j.md');
 const prL=X.collectPairs(dLive,{excludeIndex:false})[0];
 ok(X.foldRangeEnd(dLive,prL)===4, '\u2605これから鳴る\u23f0(UFC)は膜の塊の外=畳まれない', X.foldRangeEnd(dLive,prL));
 
+// v4.1.21(俊克「開始膜か閉じ膜をクリックしてもFC群が折り畳まれたまま。標準の折畳みボタンでしか戻らない」):
+//   ★真因= 一括の道が畳んでも _meosFcOpenSet(開けている物の覚え)から外していなかった。
+//   壊れ方から逆算した検査= **畳む道は、必ず覚えからも外す**。
+console.log('\u246d 畳んだら、覚えからも外す(開き直せる)');
+const SRC2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+const _bulk=SRC2.slice(SRC2.indexOf('function meosAutoFoldSpecLines'), SRC2.indexOf('function meosAutoFoldSpecLines')+6000);
+ok(/_meosFcOpenSet\.delete/.test(_bulk), '\u2605\u2605一括の道が覚えから外している', /_meosFcOpenSet\.delete/.test(_bulk));
+const _one=SRC2.slice(SRC2.indexOf('function meosSyncFcFoldForCursor'), SRC2.indexOf('function meosSyncFcFoldForCursor')+6000);
+ok(/_meosFcOpenSet\.delete/.test(_one), '  個別の道も外している(対の両側)', true);
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

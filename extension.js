@@ -27878,7 +27878,15 @@ async function meosAutoFoldSpecLines(editor, force) {
   // v4.0.311: **選択している間は一括でも畳まない**(v4.0.214で個別の道には入れた門番を、こちらにも)。
   try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
   _meosFcFolding = true;
-  try { for (const _h of heads) meosFcNoteFolded(_h); } catch (_) { }   // v4.0.466: 畳む物を先に覚える(個別の道that二度畳まない)
+  // ★★★v4.1.21(俊克「開始膜か閉じ膜をクリックした時に、バッジやFC群が折り畳まれたままになっている。
+  //   VSCm標準の折畳みボタンを使わないと回復しない」):
+  //   ★★★**一括の道が、覚えを更新していなかった**= MeOSは「今どの塊を自分で開けているか」を
+  //     _meosFcOpenSet で覚えていて、個別の道は開く前に「もう開けている物は触らない」と見る。
+  //     ところが**一括の道は畳んでも覚えから外していなかった**ので、
+  //     畳んだ後も「開いている」ことになり、次にカーソルが来ても開きに行かなかった。
+  //   ★★これは v4.0.466 で入れた門番を**片側にしか置かなかった**のと同じ形= 対の片方を見ていない。
+  //   → 畳んだ物は、覚えからも外す。
+  try { for (const _h of heads) { meosFcNoteFolded(_h); _meosFcOpenSet.delete(_h); } } catch (_) { }   // v4.0.466/4.1.21
   // v4.0.176: **一括で畳むのthat一番画面を動かす**so、ここでも上の行を控えて戻す(俊克「矢印で飛ぶ」の兄弟)。
   const _topBefore = (editor.visibleRanges && editor.visibleRanges.length) ? editor.visibleRanges[0].start.line : -1;
   try {

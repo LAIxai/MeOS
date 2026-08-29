@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.21 (2026-08-30)
+- **Fixed: folded comments that would not open again.** Click the membrane header and its comments should
+  unfold. They did not, because the pass that folds them in bulk never told MeOS it had folded them — so MeOS
+  went on believing they were open and never opened them. Only the editor’s own fold arrow could recover.
+
 ### v4.1.20 (2026-08-30)
 - **The time left stands inside the comment**, just before the `-->`, the way the clock has always stood
   inside the comment field of a membrane line.
