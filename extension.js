@@ -4132,8 +4132,10 @@ function meosBlockEndForCarry(document, pair) {
   let e = meosPairBlockEnd(document, pair);
   try {
     while (e + 1 < document.lineCount) {
-      const c = meosClockFcParse(document.lineAt(e + 1).text);
-      if (c && c.when) { e++; continue; }
+      const t = document.lineAt(e + 1).text;
+      // v4.1.17: 畳まない指定行(UFC)＝ 畳みの範囲には入らないが、膜の持ち物なので運ぶ時は一緒に行く。
+      //   旧い版が書いた `Mew!FC ⏰` も同じ扱い(読める形は増やす)。
+      if (meosIsUnfoldingSpecLine(t) || ((meosClockFcParse(t) || {}).when)) { e++; continue; }
       break;
     }
   } catch (_) { }
@@ -9641,7 +9643,7 @@ function meosScheduleClockMetaWrite(doc) {
 //     ただし**読む方は寛容に**= 膜の中に書いてあっても、その膜の予定として拾う
 //     ([[project_notation_v4]]「読める形は増やし、書く形は絞る」)。
 //   ★この版は**読む側だけ**。書く側(Setボタン)は今までどおり mMETA so、二重に書く道は作らない。
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd12\ud83d\udc41\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd12\ud83d\udc41\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
 const MEOS_CLOCK_DONE_MARK_RE = /[\u2713\u2714\u2705]/;
 const MEOS_CLOCK_DONE_RE = /[\u2713\u2714\u2705]\ufe0f?$|\u6e08$/;
@@ -9691,7 +9693,7 @@ async function meosClockFcSet(doc, key, spec) {
   try {
     if (!doc || !doc.uri) return false;
     const line = spec
-      ? ('<!-- ' + MEOS_MEW_SIG + 'FC \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
+      ? ('<!-- ' + MEOS_MEW_SIG + 'UFC \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
         + ' ' + String(spec.when || '').trim() + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     const hit = meosClockFcScan(doc).find(c => c.key === key);
@@ -20951,7 +20953,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-mins{display:flex;gap:3px}
 .clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer}
 .clk-mins button:hover{background:rgba(224,128,58,.20)}
-/* ★v4.1.5: 🔓/🔒= 掛ける前に選ぶ。押した姿that答えso、チェック箱は要らない(印は形that語る)。 */
+/* ★v4.1.5: 🔓/🔒= 掛ける前に選ぶ。押した姿that答えso、チェック箱は要らない(印は形が語る)。 */
 .clk-lock{flex:none;font-size:11px;line-height:1;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:6px;background:transparent;cursor:pointer;opacity:.7}
 .clk-lock:hover{opacity:1}
 .clk-lock.on{opacity:1;border-color:rgba(224,128,58,.85);background:rgba(224,128,58,.22)}
@@ -22696,7 +22698,7 @@ if(!willOpen)return;const r=fmtTableCaret.getBoundingClientRect();requestAnimati
 w=tablePop.offsetWidth||190;let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;tablePop.style.left=left+'px';
 tablePop.style.top=Math.max(6,r.top-h-6)+'px';});});/* v4.0.160(俊克 8/12 pm06:52 改良1「⑫⑬はパレットではなく、Me Dockに切り替え用のチェックメニューを付けた方が良い」):
    ★パレットは「知っている人しか辿り着けない」so、Me Dock に置く。作りは表の▾メニューと**同じ**(新しい見た目を発明しない)。
-   ★置き場所は🐱のセル= Mew!FC は Mew! の一族so、意味の上でも隣にいるのが自然。(webviewの中にバックティックを書くとテンプレート文字列が壊れる=v4.0.50/90の事故。ここでも1度やった) */
+   ★置き場所は🐱のセル= Mew!FC は Mew! の一族なので、意味の上でも隣にいるのが自然。(webviewの中にバックティックを書くとテンプレート文字列が壊れる=v4.0.50/90の事故。ここでも1度やった) */
 // {* ▼mCN=dock_fc_removed // v4.0.197: Format ▼ のメニュー(FC below)を丸ごと外した=FC一択。ここに在ったのは ①▼のクリック処理 ②チェックの描画 ③チェックのクリック の3つ。宣言も使用も、この5行に閉じている。 *}
 // {* ▲mCN=dock_fc_removed *}
 /* v4.0.164(俊克 pm11:46「すでに書かれたものは救わない。救うとすれば🐱だよ。だからMove out to FC⇩もBring back inline⇧も要らない。
@@ -26646,7 +26648,15 @@ const MEOS_SPEC_LINE_AUTOFOLD = true; // FC付きの指定行を開いた時に1
 // ★これは緩めではなく**read-both**の続き= `^` を読み続けるのと同じ。書く側は今までどおり全部に `FC` を付ける
 //   (`meosMoveSpecsOutOfLine`)so、一度でも押し直せば**自分で揃う**。
 // ★FCthat1つも無い行は今までどおり**指定行ではない**(俊克「FCを書かなければ、エディタ上ではコメントが見える」)。
-const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(FC|fc|\^)?[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
+// ★★★v4.1.17(俊克 改良1「畳まないので、UFCというコメントを新設しよう」):
+//   ★★★**畳むかどうかを、名前が語る**= FC(Folding Comment)=畳まれる / UFC(Unfolding Comment)=畳まれない。
+//     ⏰だけの例外にするのではなく、**畳まない指定行という種類**を作る。読む人も、次に足す物も、
+//     名前を見れば分かる([[project_direct_manipulation_mark]]「印は形が語る」の記法版)。
+//   ★UFCも Mew! の一族なので、`Mew!` の検索で一緒に出る。畳みの判定(meosDefBlocks)だけが見分ける。
+const MEOS_SPEC_LINE_ONE_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(UFC|ufc|FC|fc|\^)?[ \t]*((?:(?!-->)[^\n])*?)[ \t]*-->/g;
+const MEOS_SPEC_UFC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc)[ \t]/;
+// この行は「畳まない指定行(UFC)」か。1つでもUFCが在れば、その行は畳まない。
+function meosIsUnfoldingSpecLine(text) { const t = String(text || ''); return t.indexOf('<!--') >= 0 && MEOS_SPEC_UFC_RE.test(t); }
 // 行全体が Mew!FC コメント(1つ以上)だけで出来ている時、その中身を全部つないで返す。そうでなければ null。
 // v4.0.157(俊克 8/12 pm06:15「1行ずつFCコメントを並べるのは美しいが、何個並んでいるかすぐには分らない。
 //   (a)だから1行に並べる。(b)あるいはコメント1つの中に命令を並べる。個数を簡単に把握できるのは(a)だよね」):
@@ -27055,8 +27065,10 @@ function meosDefBlocks(document) {
   const _t0 = Date.now(); // v4.0.150: **走査そのもの**を計測する(前は畳むコマンドしか測っていなかった=15万行の本当の負担が映らない)
   try {
     const lines = meosDocLines(document), n = Math.min(document.lineCount, lines.length);
-    // v4.1.16: ⏰行は畳まない物so、FCの塊に数えない(数えると膜の範囲からはみ出して交差する)。
-    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t) && !(t.indexOf('\u23f0') >= 0 && (meosClockFcParse(t) || {}).when);
+    // v4.1.16/4.1.17: UFC(畳まない指定行)は塊に数えない(数えると膜の範囲からはみ出して交差する)。
+    //   ★旧い版が書いた `Mew!FC \u23f0` も畳まない= 既に書かれた物を置いていかない(読める形は増やす)。
+    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t)
+      && !meosIsUnfoldingSpecLine(t) && !((t.indexOf('\u23f0') >= 0) && (meosClockFcParse(t) || {}).when);
     const isDef = (t) => isSpec(t) || (!!t && t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t));
     for (let ln = 1; ln < n; ln++) {
       if (!isDef(lines[ln])) continue;

@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.17 (2026-08-29)
+- **UFC — a comment that does not fold.** `FC` is a Folding Comment; `UFC` is an Unfolding one. A clock is
+  written as `<!-- Mew!UFC ⏰ 2026-09-01 20:05 -->` now, and the name itself says why it stays visible. It is
+  a kind, not an exception for the clock: anything that has to stay in sight can wear it.
+- Both are read. Clocks written by earlier builds as `Mew!FC ⏰` keep working, and keep staying open.
+
 ### v4.1.16 (2026-08-29)
 - **The time left shows on the clock line itself.** A schedule earns its keep by being visible, so the ⏰ line
   is now one MeOS never folds — which is also what stops it from crossing the membrane fold that made the
