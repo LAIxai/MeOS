@@ -4117,9 +4117,22 @@ function meosPairBadgeAt(document, pair) {
 //   これは v4.0.330 で「入れ子で収まる＝重ならない＝両方生きる」と書いた線を、⏰行が越えていたから。
 //   ★→ **塊の終わりに ⏰ 行も含める**。入れ子に戻り、畳みも直り、コピー(copyMeはここを使う)にも入る。
 //   ★代わりに、畳むと ⏰ 行も隠れる。so残り時間の顔は**開始膜の行**へ移す(畳んでも残る場所は、そこ1つ)。
+// ★★v4.1.19(俊克 バグ2「FCに切り替えたのに、折り畳まれない」):
+//   ★★★**畳みの範囲が追いついていなかった**= 済んだ⏰はFCになって「畳まれる仲間」に戻ったのに、
+//     膜の塊はバッジ行までしか数えていなかった。そのためFCの塊(3..5)が膜(1..4)からはみ出し、
+//     交差した範囲は畳めない(v4.1.15と同じ形)。
+//   ★→ 塊の終わりも**UFCでない指定行**まで伸ばす。畳む物は膜の中、畳まない物(UFC)は外。
+//     境目を決めるのは、ここでも**UFCの一言だけ**。
 function meosPairBlockEnd(document, pair) {
   let e = Math.min(document.lineCount - 1, pair.end);
-  try { while (e + 1 < document.lineCount && meosIsPairBadgeSpec(document.lineAt(e + 1).text)) e++; } catch (_) { }
+  try {
+    while (e + 1 < document.lineCount) {
+      const t = document.lineAt(e + 1).text;
+      if (meosIsPairBadgeSpec(t)) { e++; continue; }
+      if (meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t) && (meosClockFcParse(t) || {}).when) { e++; continue; }
+      break;
+    }
+  } catch (_) { }
   return e;
 }
 // ★★★v4.1.16(俊克「開始膜に残時間が表示されるようになった。膜を閉じても見えるけど、私が言ったことと違う」):
@@ -27497,6 +27510,32 @@ function meosApplyFcRowDecorations(editor) {
         for (const r of meosRangesExcludingStamps(doc, ln)) out.push(r);
       }
     }
+  } catch (_) { }
+  // ★★★v4.1.19(俊克 バグ1「✓を白くすることができてない」・2版続けて失敗):
+  //   ★★★**上に乗せようとしたのが間違い**= 相手も `!important` なので、どちらが勝つかは作られた順で決まる。
+  //     順に頼る直し方は、次に何かが増えた時にまた崩れる。
+  //   ★★→ **外側を割る**(俊克 v4.0.250の手)= 橙を塗る範囲から、✓の1文字だけ抜く。
+  //     場所が空けば、取り合いが起きない。白は普通に置くだけで済む。
+  try {
+    const doc2 = editor.document, carved = [];
+    for (const r of out) {
+      let ok = false;
+      try {
+        if (r.start.line === r.end.line) {
+          const ln = r.start.line, txt = doc2.lineAt(ln).text || '';
+          if (txt.indexOf('\u23f0') >= 0 && (meosClockFcParse(txt) || {}).done) {
+            const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
+            if (at >= r.start.character && at < r.end.character) {
+              if (at > r.start.character) carved.push(new vscode.Range(ln, r.start.character, ln, at));
+              if (at + 1 < r.end.character) carved.push(new vscode.Range(ln, at + 1, ln, r.end.character));
+              ok = true;
+            }
+          }
+        }
+      } catch (_) { }
+      if (!ok) carved.push(r);
+    }
+    out.length = 0; for (const r of carved) out.push(r);
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
 }

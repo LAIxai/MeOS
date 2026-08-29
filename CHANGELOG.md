@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.19 (2026-08-30)
+- **The ✓ is white — by making room for it, not by painting over it.** Two builds tried to win the colour
+  fight; both lost, because whoever wins depends on which decoration was created first. The orange now skips
+  that one character instead.
+- **A spent clock folds away as it should.** Turning it back into an FC was not enough: the membrane still
+  ended at its badge, so the comments below reached past it and a crossing pair of folds cannot fold. The
+  membrane now ends where the folding comments end — and UFC, which never folds, stays outside.
+
 ### v4.1.18 (2026-08-29)
 - **A clock that has rung becomes an FC again, and folds away.** UFC while it still has to be seen, FC once it
   is spent — the name carries the state. Clear the ✓, give it a new time, save: it starts again and takes its

@@ -126,5 +126,20 @@ const d5=mk5('file:///h.md'), pr5=X.collectPairs(d5,{excludeIndex:false})[0];
 ok(Math.max(...X.meosDefBlocks(d5).map(b=>b.end))<=X.foldRangeEnd(d5,pr5), '\u2605\u2605UFCでも交差しない', true);
 ok(X.meosBlockEndForCarry(d5,pr5)===5, '\u2605UFCも膜と一緒に運ばれる', X.meosBlockEndForCarry(d5,pr5));
 
+// v4.1.19(俊克 バグ2「FCに切り替えたのに、折り畳まれない」): 済んだ⏰(FC)は膜の塊に入り、
+//   これから鳴る⏰(UFC)は外に残る。どちらでもFCの塊が膜からはみ出さない=交差しない。
+console.log('\u246c 済んだ⏰は畳まれる仲間に戻る');
+const mkL=(last,uri)=>{const L=['# t','<!-- {* \u25bcmCN=F_1 *} -->','x','<!-- {* \u25b2mCN=F_1 *} -->',
+ '<!-- Mew!FC mCN (\ud83d\udcca\u22950+0D-2Y) -->',last];
+ return {uri:{toString:()=>uri,fsPath:'/v.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+ lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/v.md',isClosed:false,version:1};};
+const dDone=mkL('<!-- Mew!FC \u23f0 2026-08-30 00:04\u2713 -->','file:///i.md');
+const prD=X.collectPairs(dDone,{excludeIndex:false})[0];
+ok(X.foldRangeEnd(dDone,prD)===5, '\u2605\u2605済んだ\u23f0(FC)は膜の塊に入る=畳まれる', X.foldRangeEnd(dDone,prD));
+ok(Math.max(...X.meosDefBlocks(dDone).map(b=>b.end))<=X.foldRangeEnd(dDone,prD), '\u2605\u2605\u2605それでも交差しない', true);
+const dLive=mkL('<!-- Mew!UFC \u23f0 2026-12-31 23:00 -->','file:///j.md');
+const prL=X.collectPairs(dLive,{excludeIndex:false})[0];
+ok(X.foldRangeEnd(dLive,prL)===4, '\u2605これから鳴る\u23f0(UFC)は膜の塊の外=畳まれない', X.foldRangeEnd(dLive,prL));
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
