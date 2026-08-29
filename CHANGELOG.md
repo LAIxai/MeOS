@@ -4,6 +4,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.18 (2026-08-29)
+- **A clock that has rung becomes an FC again, and folds away.** UFC while it still has to be seen, FC once it
+  is spent — the name carries the state. Clear the ✓, give it a new time, save: it starts again and takes its
+  UFC back.
+- The ✓ is white even on an orange line now. The orange was painted with `!important`, so white had to be too.
+- **Dropping a clock from the history really drops it.** The line, the old entry in the file’s meta, and the
+  remembered list — all three. One of them used to survive and put the clock back every time the file opened.
+- The ⏰ and its ▾ grow together when a clock is ringing.
+
 ### v4.1.17 (2026-08-29)
 - **UFC — a comment that does not fold.** `FC` is a Folding Comment; `UFC` is an Unfolding one. A clock is
   written as `<!-- Mew!UFC ⏰ 2026-09-01 20:05 -->` now, and the name itself says why it stays visible. It is

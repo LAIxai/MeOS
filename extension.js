@@ -9655,7 +9655,7 @@ function meosClockFcParse(text) {
   let body = String(m[2] || '').trim(), done = false;
   if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
   const face = String(m[1] || '');
-  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, done, when: body };
+  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, done, when: body, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 function meosClockFcScan(doc) {
@@ -9673,7 +9673,7 @@ function meosClockFcScan(doc) {
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, done: c.done });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, done: c.done, ufc: c.ufc });
   }
   return out;
 }
@@ -9693,7 +9693,8 @@ async function meosClockFcSet(doc, key, spec) {
   try {
     if (!doc || !doc.uri) return false;
     const line = spec
-      ? ('<!-- ' + MEOS_MEW_SIG + 'UFC \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
+      // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
+      ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
         + ' ' + String(spec.when || '').trim() + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     const hit = meosClockFcScan(doc).find(c => c.key === key);
@@ -9734,6 +9735,9 @@ function meosArmClockFcFor(doc) {
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
       meosNoteClockHistory(scope, w.at.getTime());
+      // ★v4.1.18(俊克 👍2「✓を外し、新しい時刻を設定して保存すると再起動する。FCに変わるようになった時には、
+      //   再起動でUFCに再び戻る必要がある」): これから鳴る物は見えていなければならないので、名前を戻す。
+      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, done: false }); } catch (_) { } }
       n++;
     }
     if (n) { meosUpdateTimerBar(); meosPostViewMode(); }
@@ -9826,6 +9830,14 @@ async function meosClockDrop(uri, key) {
     // ★v4.1.13: 外したなら、本文の ⏰ 行も消す(残すと、開き直した時にまた仕掛かる)。
     try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri); if (d) await meosClockFcSet(d, key, null); } catch (_) { }
   }
+  // ★★v4.1.18(俊克 バグ1「⏰履歴で×ボタンを消しても、5個目のリストとして居座ってしまう」):
+  //   ★★★**消したのは覚えの方だけで、元が残っていた**= 旧い版が mMETA に書いた記録(past)。
+  //     ファイルを開くたびに、そこから履歴へ戻されるので、何度消しても帰ってくる。
+  //   → ×は**元も消す**。本文の行(v4.1.13)＋ mMETAの記録＋ 覚え(globalState)の3つ全部。
+  try {
+    const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri);
+    if (d) { const m = meosClockMeta(d); if (m && m[key]) { delete m[key]; meosScheduleClockMetaWrite(d); } }
+  } catch (_) { }
   meosClockForget(uri, key);
   return true;
 }
@@ -9911,7 +9923,6 @@ function meosApplyTimerLineDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    if (!meosClockDoneDeco) meosClockDoneDeco = vscode.window.createTextEditorDecorationType({ color: '#ffffff', fontWeight: '800' });
     const doc = editor.document;
     const items = [], dones = [];
     const uri = doc.uri.toString();
@@ -9971,8 +9982,18 @@ function meosApplyTimerLineDecorations(editor) {
         }
       }
     } catch (_) { }
+    // ★★v4.1.18(俊克 バグ1「Time UPしたあと、橙色文字のときに、✓が白になっていない」):
+    //   ★★★**負けていた**= 対応FC行を橙にする装飾(meosFcRowDeco)は `!important` で塗っているので、
+    //     普通の color では勝てない。→ こちらも同じ手で塗る。
+    //   ★作るのは**実際に出す時**= その頃には橙の型が先に出来ているので、後から作られたこちらが上に乗る。
+    if (dones.length && !meosClockDoneDeco) {
+      meosClockDoneDeco = vscode.window.createTextEditorDecorationType({
+        textDecoration: 'none; color: #ffffff !important; font-weight: 900;',
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+      });
+    }
     editor.setDecorations(meosTimerLineDeco, items);
-    editor.setDecorations(meosClockDoneDeco, dones);
+    if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
   } catch (_) { }
 }
 function meosTickTimerLines() {
@@ -20958,12 +20979,19 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-lock:hover{opacity:1}
 .clk-lock.on{opacity:1;border-color:rgba(224,128,58,.85);background:rgba(224,128,58,.22)}
 .clk-set{font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer}
-.warn-btn.raw-timer{transform-origin:center;transition:transform .5s ease}
-.warn-btn.raw-timer.near{transform:scale(1.18);background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
+/* ★★v4.1.18(俊克 改良3「STOPで点滅している時の⏰ボタンは、大きくなっているのはいいんだけど、
+   ▼ボタンが元の大きさなので、少し間抜けに見える」): ★★**大きくするのは駒ごと**= ⏰と▼は1つの駒なので、
+   片方だけ育つと形が壊れる。→ 拡大は .clk-wrap に掛け、色は今までどおり⏰の面が持つ。 */
+.clk-wrap{transform-origin:center;transition:transform .5s ease}
+.clk-wrap.near{transform:scale(1.18)}
+.clk-wrap.imminent{transform:scale(1.38)}
+.clk-wrap.ringing{transform:scale(1.30)}
+.warn-btn.raw-timer{transform-origin:center}
+.warn-btn.raw-timer.near{background:rgba(224,128,58,.30);border-color:rgba(224,128,58,.95)}
 /* ★v4.0.469: 鳴っている間は赤く息をする= 押せば止まる、を色と動きthat言う。 */
-.warn-btn.raw-timer.ringing{transform:scale(1.30);background:rgba(230,70,50,.42);border-color:rgba(230,70,50,1);animation:meosClockBreath .8s ease-in-out infinite}
+.warn-btn.raw-timer.ringing{background:rgba(230,70,50,.42);border-color:rgba(230,70,50,1);animation:meosClockBreath .8s ease-in-out infinite}
 .warn-btn.raw-timer.ringing .raw-t{font-size:9px;color:#fff}
-.warn-btn.raw-timer.imminent{transform:scale(1.38);background:rgba(230,70,50,.34);border-color:rgba(230,70,50,1);animation:meosClockBreath 1.6s ease-in-out infinite}
+.warn-btn.raw-timer.imminent{background:rgba(230,70,50,.34);border-color:rgba(230,70,50,1);animation:meosClockBreath 1.6s ease-in-out infinite}
 @keyframes meosClockBreath{0%,100%{opacity:1}50%{opacity:.55}}
 .warn-btn.raw-timer .raw-t{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:3px;color:#e0803a;vertical-align:1px}
 .fmt-btn.raw-toggle.held{border-color:#7a1f1f;box-shadow:inset 0 0 0 1px rgba(200,60,60,.55)}/* v4.0.442: 錠that掛かっている間は縁that赤い= 出口that無いことを、押す前に言う */
@@ -22455,6 +22483,9 @@ if(_rn)_rn.textContent=vmRing?'stop':((left>0)?vmMmSs(left):'');   /* v4.0.469: 
 var _anyRun=false;try{for(var _ci=0;_ci<vmClocks.length;_ci++)if(vmClocks[_ci].running){_anyRun=true;break;}}catch(e){}
 if(_rt){_rt.classList.toggle('running',left>0||vmRing||_anyRun);_rt.classList.toggle('ringing',vmRing);
 _rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
+/* v4.1.18: 大きさは駒(⏰＋▼)ごと= 同じ合図を親にも着せる(片方だけ育たない)。 */
+var _wrp=_rt.parentElement;if(_wrp&&_wrp.classList.contains('clk-wrap')){
+ _wrp.classList.toggle('ringing',vmRing);_wrp.classList.toggle('near',_near&&!_imm);_wrp.classList.toggle('imminent',_imm);}
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
@@ -27066,9 +27097,9 @@ function meosDefBlocks(document) {
   try {
     const lines = meosDocLines(document), n = Math.min(document.lineCount, lines.length);
     // v4.1.16/4.1.17: UFC(畳まない指定行)は塊に数えない(数えると膜の範囲からはみ出して交差する)。
-    //   ★旧い版が書いた `Mew!FC \u23f0` も畳まない= 既に書かれた物を置いていかない(読める形は増やす)。
-    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t)
-      && !meosIsUnfoldingSpecLine(t) && !((t.indexOf('\u23f0') >= 0) && (meosClockFcParse(t) || {}).when);
+    //   ★v4.1.18(俊克 改良2「Time UPしたものは、自動的にUFC→FCに変更する」): 済んだ予定は畳んでよい
+    //     ＝ 見えている必要が無くなった物なので、名前(FC)が変わり、畳みの仲間に戻る。判定はUFCの一言だけ。
+    const isSpec = (t) => !!t && t.indexOf('<!--') >= 0 && meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t);
     const isDef = (t) => isSpec(t) || (!!t && t.indexOf(']') >= 0 && MEOS_DEF_LINK_RE.test(t));
     for (let ln = 1; ln < n; ln++) {
       if (!isDef(lines[ln])) continue;
