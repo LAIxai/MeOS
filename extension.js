@@ -9752,6 +9752,21 @@ async function meosClockFcSet(doc, key, spec) {
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     const hit = meosClockFcScan(doc).find(c => c.key === key);
+    // ★★★v4.1.29(俊克 バグ1「×で削除すると HH表示thatおかしな値になる」の計測):
+    //   ★★**推測で直さない**= スクショの `634119:32.07` は「2099年の時計の残り時間」so、面は正しい。
+    //     分からないのは**なぜ或る膜の⏰that2099年になったのか**。ソースに 2099 は1つも無い。
+    //   → ⏰行を書き替える所は**ここ1つ**so、ここで**前と後**を記録する([[feedback_go_get_the_measurement]])。
+    //     `laiMembrane.debugLogPath` を入れておけば、次に起きた時に犯人that行番号ごと残る。
+    //   ★遠すぎる予定は**その場で目にも見せる**= 記録は後で読む物so、気づく手thatも要る。
+    try {
+      const _old = hit ? doc.lineAt(hit.line).text : '(none)';
+      if (_old !== line) meosDbg('[clockFcSet] key=' + key + ' old=' + _old + ' new=' + (line || '(delete)'));
+      const _w = spec ? meosParseStampLoose(String(spec.when || '')) : null;
+      if (_w && _w.getTime() - Date.now() > 5 * 365 * 24 * 3600e3) {
+        vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + key + ' \u2014 set to ' + spec.when + '. That is a long way off \u2014 is it what you meant?', 6000);
+        meosDbg('[clockFcSet] FAR FUTURE key=' + key + ' when=' + spec.when + ' old=' + _old);
+      }
+    } catch (_) { }
     const ed = new vscode.WorkspaceEdit();
     if (hit) {
       if (spec) ed.replace(doc.uri, doc.lineAt(hit.line).range, line);
@@ -22802,7 +22817,24 @@ if(y&&mo&&d)return y+'-'+clkPad(mo)+'-'+clkPad(d);}
 var t=clkDerived();return t.getFullYear()+'-'+clkPad(t.getMonth()+1)+'-'+clkPad(t.getDate());}
 function clkTimeStr(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
 return clkPad(h||0)+':'+clkPad(mi||0);}
-function clkSyncFromCols(){clkEcho();}
+/* ★★★v4.1.29(俊克 バグ2「2月は29〜31の表示を閏年を計算して正しくスキップして下さい。
+   他の大の月/小の月も」): ★★★**日数を数えない**= new Date(y, mo, 0).getDate() は
+   「その月の0日＝前月の末日」so、閏年も大小の月もブラウザthat答えを持っている。
+   ★閏年の規則(4で割れて100で割れず400で割れる)をここに写さない= 写せば、いつか本物とずれる。
+   ★詰め直すのは**年か月that変わった時だけ**= 日の列を回している間は触らない(足元thatが動かない)。 */
+var _clkDimSig='';
+function clkFitDays(){var ey=document.getElementById('clk-y'),em=document.getElementById('clk-mo'),ed=document.getElementById('clk-d');
+if(!ey||!em||!ed)return;
+var y=clkPick(ey),mo=clkPick(em),t0=new Date();
+if(y==null)y=t0.getFullYear();if(mo==null)mo=t0.getMonth()+1;
+var dim=new Date(y,mo,0).getDate(),sig=y+'/'+mo;
+if(sig===_clkDimSig&&ed.children.length===dim)return;
+_clkDimSig=sig;
+var was=clkPick(ed);                                  /* 選んでいなければ null= 空の姿のまま詰め直す */
+clkFill(ed,1,dim,true);
+if(was!=null)clkSel(ed,Math.min(was,dim));            /* 31日を選んだまま2月へ動かしたら、末日へ寄せる */
+}
+function clkSyncFromCols(){clkFitDays();clkEcho();}
 /* ★日付の「空」の姿= 何も選ばず、頭まで巻き戻す。clear と 開く時の両方that、ここ1つを呼ぶ。 */
 function clkDateEmpty(){clkFixD=false;['clk-y','clk-mo','clk-d'].forEach(function(id){var el=document.getElementById(id);if(!el)return;
 for(var i=0;i<el.children.length;i++)el.children[i].classList.remove('sel');
@@ -22872,6 +22904,7 @@ if(clkCaret&&clkPop){
  clkFill(document.getElementById('clk-y'),now.getFullYear(),now.getFullYear()+3,false);
  clkFill(document.getElementById('clk-mo'),1,12,true);clkFill(document.getElementById('clk-d'),1,31,true);
  clkFill(document.getElementById('clk-h'),0,23,true);clkFill(document.getElementById('clk-mi'),0,59,true);
+ clkFitDays();   /* v4.1.29: 開いた時も、その月の日数に合わせる */
  var mins=document.getElementById('clk-mins');if(mins)mins.innerHTML='<button data-m="10">10</button><button data-m="25">25</button><button data-m="50">50</button><button data-m="90">90</button>';
  ['clk-y','clk-mo','clk-d'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixD=true;});});
  ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
@@ -22887,7 +22920,12 @@ if(clkCaret&&clkPop){
    var isX=!!(ev.target&&ev.target.classList&&ev.target.classList.contains('ci-x'));
    if(c){vscode.postMessage({type:'clockGoto',uri:c.uri,key:c.key,name:c.name});
     if(isX)vscode.postMessage({type:'clockForget',uri:c.uri,key:c.key});}
-   closeClkPop();return;}
+   /* ★★v4.1.29(俊克 改良1「×ボタンで削除すると、リストが見えなくなってしまう。
+      これは**削除後のリストを見たい**ので、そのままにして下さい」):
+      ★★**×は片付けの手so、片付けた後の姿thatが見えないと終われない**。行を選ぶ(=そこへ行く)のは
+      「出て行く」動きso閉じる。×は「ここで整える」動きso閉じない。同じ行の上でも、狙いthat違う。 */
+   if(!isX)closeClkPop();
+   return;}
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
   if(col){if(col.id==='clk-y'||col.id==='clk-mo'||col.id==='clk-d')clkFixD=true;
    clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}

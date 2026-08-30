@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.29 (2026-08-30)
+- **The × no longer closes the list.** Clearing something out is tidying, and you cannot finish tidying if the
+  shelf disappears as you work. Choosing a row still closes the panel — that one means "take me there".
+- **The day column now follows the month, leap years included.** February offers 28 days, or 29 in a leap year;
+  the short months stop at 30. Nothing counts the days and no leap-year rule is written down — the date object
+  already knows, and a rule copied here is a rule that drifts from the real one eventually. Pick the 31st and
+  then move to February and the day settles onto the last one there is.
+- Groundwork for a clock that landed seventy years in the future: every rewrite of a clock's line is now
+  recorded, before and after, and a clock set more than five years out says so on the status bar as it happens.
+
 ### v4.1.28 (2026-08-30)
 - **A clock's name is now shortened from the middle, never from the end.** Membranes copied with Mepy share a
   name and differ only in the minutes and seconds at the tail, so cutting the tail made every copy look
