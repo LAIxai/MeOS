@@ -10020,6 +10020,29 @@ function meosClockRollToNextDay(when) {
   while (t.getTime() <= Date.now() && g++ < 4000) t.setDate(t.getDate() + 1);
   return t.getTime() > Date.now() ? meosClockFcStamp(t) : null;
 }
+// ★★★v4.1.35(俊克「⏰の履歴リストで目薬のだけに\u2713を残したら、一番下に例の膜that再び現れた。
+//   やはり、膜を旧式から新式に直さないと駄目なんじゃない? **だって、基本は、UFCにタイマーを表示するのに、
+//   未定義の旧式だからね**。メタ膜を掃除できないかな?」):
+//   ★★★**俊克thatが正しい。原因は「休み」を書く場所thatが無かったこと**=
+//     \u2610 は本文の \u23f8 に書く決まりso、**本文に⏰行thatが無い旧式では、どこにも残らない**。
+//     止まるのはこの窓の中だけで、開き直せば mMETA の記録thatまた立ち上がる。
+//   ★★→ **触った時に、その1つだけ本文へ移す**([[project_now_not_bulk]] 一括変換はしない)。
+//     移してしまえば、以後は \u23f8 も \u2713 も普通に書ける= 口thatが1つになる([[project_clock_in_the_text]])。
+//   ★移すのは**押した時だけ**= ファイルを開いただけでは1文字も書かない。
+async function meosClockMigrateToFc(doc, key) {
+  try {
+    const m = meosClockMeta(doc); const r = m && m[key];
+    if (!r) return false;
+    const at = Number(r.at) || 0;
+    if (!at) { delete m[key]; await meosFlushClockMetaWrite(doc); return false; }
+    const ok = await meosClockFcSet(doc, key, { when: meosClockFcStamp(new Date(at)), hold: !!r.hold, lock: !!r.lock, done: !!r.past, off: false });
+    if (!ok) return false;                                   // 膜thatが無い= 移せない(本文を汚さない)
+    delete m[key];
+    await meosFlushClockMetaWrite(doc);
+    meosDbg('[clockMigrate] key=' + key + ' at=' + new Date(at).toISOString());
+    return true;
+  } catch (_) { return false; }
+}
 async function meosClockSetEnabled(uri, key, on) {
   let doc = null;
   try {
@@ -10028,7 +10051,9 @@ async function meosClockSetEnabled(uri, key, on) {
   } catch (_) { }
   if (!doc) { vscode.window.setStatusBarMessage('MeOS: \u23f0 could not open that file.', 3000); return false; }
   const lk = uri + ' ' + key;
-  const hit = meosClockFcScan(doc).find(c => c.key === key);
+  let hit = meosClockFcScan(doc).find(c => c.key === key);
+  // ★v4.1.35: 本文に⏰行thatが無い(=旧式)なら、まずこの1つを本文へ移してから効かせる。
+  if (!hit) { if (await meosClockMigrateToFc(doc, key)) hit = meosClockFcScan(doc).find(c => c.key === key); }
   if (!on) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) {
@@ -30616,6 +30641,40 @@ function activate(context) {
   // v4.0.333(俊克「MeOSがやるべきなのは、深さが実際の入れ子と合っているかを1日1回くらい調べること」)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.auditMembraneDepth', async () => {
     await meosRunDepthAudit(getMeDockTargetEditor() || vscode.window.activeTextEditor, true);
+  }));
+  // ★★★v4.1.35(俊克「**メタ膜を掃除できないかな?**」): 旧式の⏰(mMETA)を本文へ移し、メタ膜を空にする。
+  //   ★**一括変換は自動ではやらない**([[project_now_not_bulk]])that、**人that呼んだ時だけ**やる口は在っていい
+  //     (🐱と同じ立て付け= 変えるかどうかを決めるのは人)。数を見せてから書く。
+  //   ★移せない物(膜thatもう無い/時刻thatが読めない)は**捨てる**= 行き先の無い予定は予定ではない。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.sweepClockMeta', async () => {
+    const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+    if (!ed || !ed.document) { vscode.window.showInformationMessage('MeOS: open a file first.'); return; }
+    const doc = ed.document;
+    const m = meosClockMeta(doc) || {};
+    const keys = Object.keys(m);
+    if (!keys.length) { vscode.window.showInformationMessage('MeOS: \u23f0 the mMETA membrane holds no old clock records \u2014 nothing to sweep.'); return; }
+    let ids = new Set();
+    try { for (const p of collectPairs(doc, { excludeIndex: false })) ids.add(p.id); } catch (_) { }
+    const inText = new Set(meosClockFcScan(doc).map(c => c.key));
+    const move = [], dropOrphan = [], dropDup = [];
+    for (const k of keys) {
+      if (inText.has(k)) { dropDup.push(k); continue; }        // 本文thatもう持っている= メタ膜の方thatが余り
+      if (!ids.has(k) || !(Number((m[k] || {}).at) || 0)) { dropOrphan.push(k); continue; }
+      move.push(k);
+    }
+    const pick = await vscode.window.showInformationMessage(
+      'MeOS \u23f0 sweep the mMETA membrane: ' + move.length + ' to move into the text, '
+      + dropDup.length + ' already there, ' + dropOrphan.length + ' with nowhere to go. Write the changes?',
+      { modal: true }, 'Sweep');
+    if (pick !== 'Sweep') return;
+    let moved = 0;
+    for (const k of move) { if (await meosClockMigrateToFc(doc, k)) moved++; }
+    for (const k of dropDup.concat(dropOrphan)) delete m[k];
+    await meosFlushClockMetaWrite(doc);
+    try { for (const k of keys) meosClockForget(doc.uri.toString(), k); } catch (_) { }
+    try { meosArmClockFcFor(doc); updateMeDockMode(); } catch (_) { }
+    vscode.window.showInformationMessage('MeOS: \u23f0 moved ' + moved + ' into the text, cleared ' + (dropDup.length + dropOrphan.length)
+      + ' stale record' + ((dropDup.length + dropOrphan.length) === 1 ? '' : 's') + '. Press \u2318S to save.');
   }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.foldSpecLines', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;

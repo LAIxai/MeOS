@@ -28,6 +28,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.35 (2026-08-30)
+- **Unticking a clock set before v4.1.12 now sticks.** Resting a clock is recorded as a ⏸ on its line in the
+  text — and a clock from the older scheme has no line, so the rest was recorded nowhere at all. It stopped for
+  as long as the window stayed open, then the record in the file's mMETA membrane raised it again. Touching such
+  a clock now moves that one clock into the text first, and from then on it behaves like any other. Nothing is
+  written by merely opening a file: only the clock you actually press.
+- **New command — MeOS: Sweep old ⏰ records out of mMETA.** It moves every remaining old record onto its own
+  membrane in the text and clears the ones with nowhere to go, so the file ends up with a single place where a
+  clock can live. It counts them for you first and waits for a yes; converting in bulk is a decision for a
+  person to make, never something to do behind their back.
+
 ### v4.1.31 (2026-08-30)
 - **Dropping a clock now clears every line that belongs to it, not just the first one found.** A membrane can
   end up carrying more than one clock line — inside a very large membrane, any clock line that is not directly
