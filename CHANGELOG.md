@@ -28,6 +28,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.37 (2026-08-31)
+- **A colon now only ever separates hours from minutes.** Past an hour the countdown read `18:26.07` — colon
+  between hours and minutes, full stop between minutes and seconds — but under an hour it read `18:07`, putting
+  a colon where the full stop belonged. The same mark meant two different things depending on how long the
+  number happened to be, so a short one read as hours and minutes. Minutes and seconds are now always joined by
+  a full stop: `18.07`. You can read it without counting the fields.
+- **The number on ⏰ is the clock that rings next.** The button lit up whenever a clock was running anywhere,
+  but the number beside it belonged to the membrane the caret happened to be in — one button answering from two
+  different questions, which is how a clock nearly nineteen hours out came to be shown while a twenty-minute one
+  was the one being waited on. Each membrane's own countdown was never lost: it sits on that membrane's closing
+  line, where it has been since v4.0.451. The clock grows as that next one approaches, too.
+
 ### v4.1.36 (2026-08-31)
 - **The orange ring on a running clock now goes round the whole control, not half of it.** It was drawn on the
   ⏰ face alone, so it stopped at the seam and left the ▾ standing outside — the outline of one piece broke in

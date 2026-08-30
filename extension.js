@@ -10316,10 +10316,16 @@ function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; retu
 // ★v4.1.14(俊克 改良3「残タイマー表示は、60分以上なら、1:20.55のように、時分秒にしようよ。
 //   450.34と表示されても、イメージが付かないよ」): ★**桁が増えると、人は読めなくなる**。
 //   1時間を越えたら 時:分.秒 に切り替える(450:34 は 7時間半だが、そうは見えない)。
+/* ★★★v4.1.37(俊克「一般的にはHH:MM:SSと表示するthat、これは私はおかしいと思う。
+   **MM:SSと書いた時、時分のように見えてしまう**からだ。so私は **HH:MM.SS** と表示するようにしている」):
+   ★★★**同じ「:」that2つの意味を持っていた**= 1時間を越えた時は `時:分.秒`(:=時と分 / .=分と秒)なのに、
+     1時間未満では `分:秒` と**「:」を分と秒の間に使っていた**。so短い方を見た人は、それを時分と読む。
+   ★→ **「:」は時と分の間だけ**。分と秒は必ず「.」。1時間未満は `分.秒`。
+     記号that位置でなく**役**で決まる= 桁数を数えなくても読める。 */
 function meosMmSs(ms) {
   const t = Math.ceil(Math.max(0, ms) / 1000), p = (x) => String(x).padStart(2, '0');
   if (t >= 3600) return Math.floor(t / 3600) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
-  return Math.floor(t / 60) + ':' + p(t % 60);
+  return Math.floor(t / 60) + '.' + p(t % 60);
 }
 // setTimeout は約24.8日(2^31ms)で溢れて**即発火**するso、長い待ちは刻んで継ぐ(年月日を許した以上、必ず来る)。
 const MEOS_TIMER_CHUNK = 20 * 24 * 60 * 60 * 1000;
@@ -10538,7 +10544,12 @@ function meosPostViewMode() {
     meDockPanel.webview.postMessage({
       type: 'viewMode',
       mode: (sc ? meosScopeMode(sc) : 'normal'),
-      until: (sc ? (_meosPseudoUntil.get(meosLockKey(sc)) || 0) : 0),
+      until: (sc ? (_meosPseudoUntil.get(meosLockKey(sc)) || 0) : 0),   // 押さえの判定用(今居る膜)
+      // ★★★v4.1.37: 面に出す数字は**次に鳴る物**。灯るのthat「どこかで走っている時」なのに、
+      //   数字だけthat「今居る膜」だった= **1つのボタンthatが2つの判定から引いていた**
+      //   ([[feedback_one_source_for_mark_count_action]])。so今日2度、俊克thatが面の数字に驚いた。
+      //   ★膜ごとの残りは**閉じ膜の行thatもう出している**(v4.0.449〜451)so、面のそれは重複だった。
+      nextUntil: (() => { let b = 0; for (const [, u] of _meosPseudoUntil) if (!b || u < b) b = u; return b; })(),
       scope: (sc ? (sc.name || '') : ''),
       own: (sc ? meosScopeHasOwn(sc) : true),  // v4.0.452: false= 外側から受け継いでいる
       ringing: meosIsRinging(),                // v4.0.469: 鳴っている間は⏰thatが「止める駒」になる
@@ -22764,7 +22775,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[];
+var viewMode='normal',vmUntil=0,vmNextUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[];/* v4.1.37: 面の数字=次に鳴る物 */
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -22778,11 +22789,12 @@ function vmWho(){return vmScope?('\u3010'+vmScope+'\u3011'):'\u3010outside every
 /* ★★v4.0.442/447(俊克): ⏰=テスト用紙。残り時間は**webviewthat数える**(nodeは終わりの時刻を1回渡すだけ)=
    1秒ごとの往復を作らない。錠that掛かっている間は、面that残り時間を出す= 何分残っているかを見るために
    別の物を開かなくてよい。 */
-function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}
+function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}          /* 押さえの判定(今居る膜) */
+function vmNextLeft(){return vmNextUntil?Math.max(0,vmNextUntil-Date.now()):0;} /* v4.1.37: 面に出す数字(次に鳴る物) */
 /* v4.1.14: 面の残り時間も node と同じ形(1時間を越えたら 時:分.秒)= 同じ値を2つの形で出さない。 */
 function vmMmSs(ms){var t=Math.ceil(ms/1000),p=function(x){x=String(x);return x.length<2?'0'+x:x;};
 if(t>=3600)return Math.floor(t/3600)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
-return Math.floor(t/60)+':'+p(t%60);}
+return Math.floor(t/60)+'.'+p(t%60);}   /* v4.1.37: 「:」は時と分の間だけ。分と秒は「.」 */
 window.__renderRaw=function(){if(!rawToggle)return;
 var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
 /* ★v4.0.445(俊克 改良1「Opt押しで、Raw→通常モードのように逆順になると便利だよ。2回押さなくても通常モードに
@@ -22811,17 +22823,18 @@ rawToggle.classList.toggle('held',held);
    ★v4.0.459 バグ直し= 秒読みthat held(Pseudo)条件に縛られていたので、**ただの呼び鈴では数字thatが出ていなかった**
      (v4.0.453で⏰をどのモードでも掛けられるようにした時の取り残し)。時計は掛かっていれば動く。 */
 var _rt=document.getElementById('raw-timer'),_rn=document.getElementById('raw-t');
-var _near=(left>0&&left<=5*60000),_imm=(left>0&&left<=60000);
-if(_rn)_rn.textContent=vmRing?'stop':((left>0)?vmMmSs(left):'');   /* v4.0.469: 鳴っている間は「止める駒」 */
+var _nl=vmNextLeft();   /* v4.1.37: 面に出すのは次に鳴る物の残り */
+var _near=(_nl>0&&_nl<=5*60000),_imm=(_nl>0&&_nl<=60000);
+if(_rn)_rn.textContent=vmRing?'stop':((_nl>0)?vmMmSs(_nl):'');   /* v4.0.469: 鳴っている間は「止める駒」 */
 /* ★v4.1.7: 灯るのは**どこかで時計that走っている時**(今居る膜だけの話ではない)= ⏰は膜のモードの駒でなく、
    時計の一族の入口になった。数字は今居る膜の残り(どこに居ても見える物はステータスバーthat持つ)。 */
 var _anyRun=false;try{for(var _ci=0;_ci<vmClocks.length;_ci++)if(vmClocks[_ci].running){_anyRun=true;break;}}catch(e){}
-if(_rt){_rt.classList.toggle('running',left>0||vmRing||_anyRun);_rt.classList.toggle('ringing',vmRing);
+if(_rt){_rt.classList.toggle('running',_nl>0||vmRing||_anyRun);_rt.classList.toggle('ringing',vmRing);
 _rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
 /* v4.1.18: 大きさは駒(⏰＋▼)ごと= 同じ合図を親にも着せる(片方だけ育たない)。 */
 var _wrp=_rt.parentElement;if(_wrp&&_wrp.classList.contains('clk-wrap')){
  _wrp.classList.toggle('ringing',vmRing);_wrp.classList.toggle('near',_near&&!_imm);_wrp.classList.toggle('imminent',_imm);
- _wrp.classList.toggle('running',left>0||vmRing||_anyRun);}   /* v4.1.36: 輪も駒ごと */
+ _wrp.classList.toggle('running',_nl>0||vmRing||_anyRun);}   /* v4.1.36: 輪も駒ごと */
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
@@ -23868,8 +23881,8 @@ if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof w
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
-var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
-if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
+var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
 if(typeof clkRenderList==='function')clkRenderList();
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
