@@ -9781,7 +9781,14 @@ function meosArmClockFcFor(doc) {
     for (const c of meosClockFcScan(doc)) {
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
-      if (c.done) { meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, Date.now()); continue; } // 済み= 履歴だけ
+      // ★★★v4.1.26(俊克のスクショで判明): **済んだ物の時刻that嘘をついていた**= 一覧に出ていたのは
+      //   `Date.now()`(=ファイルを開いた時刻)so、\u2610 の行thatどれも同じ「16:34」で並んでいた。
+      //   → 出すのは**本文に書いてある時刻**= いつ鳴ったのかthat読める([[project_clock_list_v41]] 一覧は時刻で出す)。
+      if (c.done) {
+        const _d = meosParseStampLoose(c.when);
+        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, _d ? _d.getTime() : Date.now());
+        continue;                                                   // 済み= 履歴だけ
+      }
       // ★★★v4.1.24: \u23f8(休み)は**仕掛けない**。ただし一覧には出す= 休んでいる物が見えないと、戻せない。
       //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
       if (c.off) {

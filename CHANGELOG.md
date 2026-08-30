@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.26 (2026-08-30)
+- **A finished clock in the list was showing the wrong time** — the moment the file happened to be opened,
+  not the moment it rang, which is why every unticked row read the same time as every other. It now shows the
+  time written on the membrane, so the list says when each one actually went off.
+
 ### v4.1.25 (2026-08-30)
 - **Ticking a clock back on now starts it.** v4.1.24 answered "that time has passed" and stopped there, which
   was the wrong reply: someone who ticks the box has already decided to use it. The clock keeps the time of day
