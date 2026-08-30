@@ -9711,8 +9711,21 @@ function meosClockFcScan(doc) {
   if (!doc || !doc.lineCount) return out;
   let pairs = [];
   try { pairs = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
+  // ★★★v4.1.39(俊克「なんてこった。**あんたthatせっせと仕込んでいた**んだよ。貴方の説明をコピーして、
+  //   それを私thatペーストする。すると、復活したように見えた」):
+  //   ★★★**私の説明文that、貼られた瞬間に本物の予定になっていた**= ⏰の拾い読みthatコードフェンスも
+  //     バッククォートも見ていなかったので、``` で囲った見本の行を**掛かっている時計として読み**、
+  //     残り時間まで書き込んでいた(実物= 109858〜109860 に見本、109859に `\u23f0 17:20.11`)。
+  //   ★★これは v4.0.58 で立てた約束 **「バッククォートの中は文字そのもの」の4つ目の破れ**
+  //     (前の3つ= 包み記法/MeTeXのコメント/参照符。log_3124で塞いだ所と同じ形)。
+  //   ★★★**記法を引用しても、本物にならない**= これthat守れないと、**MeOSの説明thatMeOSで書けない**。
+  //     ドッグフーディングの前提so、ここは例外を作らない。
+  let inFence = false;
   for (let i = 0; i < doc.lineCount; i++) {
     let txt = ''; try { txt = doc.lineAt(i).text; } catch (_) { continue; }
+    if (/^\s*(?:```|~~~)/.test(txt)) { inFence = !inFence; continue; }   // 囲いの行そのものも読まない
+    if (inFence) continue;                                               // 囲いの中は、ぜんぶ文字
+    if (txt.indexOf('`') >= 0) { const _m = meosMaskCodeSpans(txt); if (!meosClockFcParse(_m)) continue; }  // 行中の ` … ` も文字
     const c = meosClockFcParse(txt);
     if (!c || !c.when) continue;
     // ★★v4.1.13(俊克 バグ1の実物): 閉じ膜と ⏰ の間には、**バッジなど他のFC行が積まれる**。

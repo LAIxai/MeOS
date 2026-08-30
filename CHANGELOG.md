@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.39 (2026-08-31)
+- **A clock written inside a code block is text, and MeOS now leaves it alone.** Quoting the notation in a
+  fenced block — the way anyone documents it — was enough to arm a real clock, because the reader that finds
+  clocks never looked for backticks. It went further and wrote the countdown into the sample line. The rule
+  that a backtick makes what it holds into plain characters was settled in v4.0.58; this is the fourth place
+  it had not reached. Without it, MeOS cannot be used to write about MeOS.
+
 ### v4.1.38 (2026-08-31)
 - **Choosing a clock from the list takes you to the clock, not to the top of the membrane it belongs to.** A
   membrane can run to tens of thousands of lines, and arriving at its head told you nothing about where the

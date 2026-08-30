@@ -249,5 +249,20 @@ ok(/_cc\.key/.test(_sig), '  どの膜かも合図に効く(入れ替わりを�
 const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+4200);
 ok(/if \(n \|\| _seen\)/.test(_arm), '\u2605掛かった数that0でも、\u23f0を見つけたら知らせる', /_seen/.test(_arm));
 
+// v4.1.39(俊克「あんたがせっせと仕込んでいたんだよ。貴方の説明をコピーして、それを私がペーストする」)
+console.log('\u2472 引用した\u23f0は、本物にならない');
+{
+ const L=['# t','<!-- {* \u25bcmCN=Q_1 // c *} -->','見本を書く:','```','<!-- Mew!UFC \u23f0 2099-01-01 09:30 -->','```',
+          '行の中の `<!-- Mew!UFC \u23f0 2099-02-02 10:00 -->` も文字。','<!-- {* \u25b2mCN=Q_1 // c *} -->',
+          '<!-- Mew!UFC \u23f0 2099-03-03 11:00 -->'];
+ const D={uri:{toString:()=>'file:///quote.md',fsPath:'/q.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/q.md',isClosed:false,version:1};
+ const got=X.meosClockFcScan(D);
+ ok(got.length===1, '\u2605\u2605\u2605拾うのは本物の1本だけ(見本2本は数えない)', got.map(c=>[c.line+1,c.when]));
+ ok(got.length===1 && got[0].when==='2099-03-03 11:00', '  拾ったのthat閉じ膜の下の本物', got.map(c=>c.when));
+ ok(!got.some(c=>c.when==='2099-01-01 09:30'), '\u2605``` の中は文字そのもの', true);
+ ok(!got.some(c=>c.when==='2099-02-02 10:00'), '\u2605行中の ` … ` も文字そのもの', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
