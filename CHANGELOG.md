@@ -4,6 +4,20 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.24 (2026-08-30)
+- **A checkbox at the left of every clock in the list — which timers are in use.** Twenty years ago the same
+  switch sat on a countdown timer written in BTRON's scripting language, and it is the piece the list was
+  missing: a plan you are not running today is not a plan you want to throw away.
+- **Resting is not deleting.** The × forgets a clock — the line goes, and it does not come back. A rest keeps
+  the time exactly where it is written and simply stops it ringing, so one click brings it back at the same
+  time. Skipping today's eye drops should not cost you the setting.
+- The rest is written **in the text**, as `⏸` on the clock's own line, beside 🔒 and 👁. Keeping it anywhere
+  else would mean the clock arms itself again the next time the file is opened.
+- Ticking a clock back on **does not ask you for a time**: it uses the one already written. If that moment has
+  gone, a repeating clock (`↻`) moves to its next round, and a one-off says so instead of guessing.
+- The checkbox neither jumps nor closes the panel — it is there to pick several. 🔒 clocks cannot be rested,
+  for the same reason they cannot be dropped.
+
 ### v4.1.23 (2026-08-30)
 - **Repeating clocks.** `<!-- Mew!UFC ⏰ 2026-08-30 01:40 ↻05 -->` rings every five minutes. Several intervals
   alternate: `↻50/10` is fifty minutes, then ten, then fifty again. The order itself is the state — each time

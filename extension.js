@@ -9656,8 +9656,15 @@ function meosScheduleClockMetaWrite(doc) {
 //     ただし**読む方は寛容に**= 膜の中に書いてあっても、その膜の予定として拾う
 //     ([[project_notation_v4]]「読める形は増やし、書く形は絞る」)。
 //   ★この版は**読む側だけ**。書く側(Setボタン)は今までどおり mMETA so、二重に書く道は作らない。
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd12\ud83d\udc41\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd12\ud83d\udc41\u23f8\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
+// \u23f8=休み(予定は書いたまま、鳴らないでいる)
+// ★★★v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを
+//   選べるようにしよう。これは BTRON のスクリプト言語で20年以上前に作って活用していた逆算タイマーにも
+//   つけた機能だよ」):
+//   ★★**消すのと休ませるのは別**= × は覚えごと消す(戻ってこない)。休みは書いた予定をそのまま残すので、
+//     いつでも同じ時刻で戻せる。今日は目薬を差さない、という日が在っても、設定を捨てなくていい。
+//   ★休みは**本文に書く**([[project_clock_in_the_text]])。覚えの側に置くと、開き直した時にまた仕掛かる。
 const MEOS_CLOCK_DONE_MARK_RE = /[\u2713\u2714\u2705]/;
 const MEOS_CLOCK_DONE_RE = /[\u2713\u2714\u2705]\ufe0f?$|\u6e08$/;
 function meosClockFcParse(text) {
@@ -9679,7 +9686,7 @@ function meosClockFcParse(text) {
     cycle = String(cm[1]).split('/').map(x => String(x).trim()).filter(Boolean);
   }
   const face = String(m[1] || '');
-  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, done, when: body, cycle, ufc: meosIsUnfoldingSpecLine(t) };
+  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 function meosClockFcScan(doc) {
@@ -9697,7 +9704,7 @@ function meosClockFcScan(doc) {
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, done: c.done, cycle: c.cycle, ufc: c.ufc });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, ufc: c.ufc });
   }
   return out;
 }
@@ -9739,7 +9746,7 @@ async function meosClockFcSet(doc, key, spec) {
     if (!doc || !doc.uri) return false;
     const line = spec
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
-      ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '')
+      ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '') + (spec.off ? '\u23f8' : '')
         + ' ' + String(spec.when || '').trim()
         + (Array.isArray(spec.cycle) && spec.cycle.length ? (' \u21bb' + spec.cycle.join('/')) : '')
         + (spec.done ? '\u2713' : '') + ' -->')
@@ -9775,6 +9782,13 @@ function meosArmClockFcFor(doc) {
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
       if (c.done) { meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, Date.now()); continue; } // 済み= 履歴だけ
+      // ★★★v4.1.24: \u23f8(休み)は**仕掛けない**。ただし一覧には出す= 休んでいる物が見えないと、戻せない。
+      //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
+      if (c.off) {
+        const _w = meosParseStampLoose(c.when);
+        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _w ? _w.getTime() : Date.now());
+        continue;
+      }
       let w = meosParseWhen(c.when);
       if (!w && Array.isArray(c.cycle) && c.cycle.length) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
@@ -9902,6 +9916,51 @@ function meosClockForget(uri, key) {
   meosClockHistoryLoad();
   const i = _meosClockHistory.findIndex(r => r.uri === uri && r.key === key);
   if (i >= 0) { _meosClockHistory.splice(i, 1); meosClockHistorySave(); }
+}
+// ★★★v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、**どのタイマーを使用できるか**を
+//   選べるようにしよう。これは BTRON のスクリプト言語で20年以上前に作って活用していた**逆算タイマー**にも
+//   つけた機能だよ」):
+//   ★★★**☑/☐ = 使う/休む**。× とは別の物= × は覚えごと消す(戻ってこない)。休みは**予定を書いたまま**
+//     鳴らないでいるので、いつでも同じ時刻で戻せる。
+//   ★休みの印は**本文の \u23f8**([[project_clock_in_the_text]])= 覚えの側に置くと、開き直した時にまた仕掛かる。
+//   ★☑に戻す時は、**時刻を訊かない**= 書いてある物をそのまま掛け直す([[project_last_specified_wins]])。
+//     過ぎていれば、輪(\u21bb)が在る物は次の回へ進む(meosArmClockFcFor の中の道)。無ければ、その旨だけ言う。
+//   ★錠(\ud83d\udd12)が掛かっている物は休めない= × と同じ理屈で、途中では降りられない。
+async function meosClockSetEnabled(uri, key, on) {
+  let doc = null;
+  try {
+    doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri)
+      || await vscode.workspace.openTextDocument(vscode.Uri.parse(uri));
+  } catch (_) { }
+  if (!doc) { vscode.window.setStatusBarMessage('MeOS: \u23f0 could not open that file.', 3000); return false; }
+  const lk = uri + ' ' + key;
+  const hit = meosClockFcScan(doc).find(c => c.key === key);
+  if (!on) {
+    const sc = _meosPseudoScopes.get(lk);
+    if (sc && sc.lock) {
+      vscode.window.setStatusBarMessage('MeOS: \ud83d\udd12 ' + (sc.name || 'this clock') + ' \u2014 locked until the time is up.', 3000);
+      return false;
+    }
+    if (_meosPseudoUntil.has(lk)) {
+      // ★鳴ったのではなく**人が休ませた**so、meosEndPseudoTimer は通さない(あれは \u2713 を書き、輪を回す)。
+      meosClearPseudoTimer(lk);
+      _meosPseudoScopes.delete(lk);
+      if (sc && sc.hold) { try { await meosApplyModeToScope(doc, key, 'normal', sc.name); } catch (_) { } }
+    }
+    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, done: false, off: true });
+  } else {
+    if (!hit) {
+      vscode.window.setStatusBarMessage('MeOS: \u23f0 nothing is written on that membrane \u2014 set a time from \u25be.', 4000);
+      return false;
+    }
+    await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, done: false, off: false });
+    try { meosArmClockFcFor(doc); } catch (_) { }
+    if (!_meosPseudoUntil.has(lk)) {
+      vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 that time has passed. Pick a new one from \u25be.', 4000);
+    }
+  }
+  meosUpdateTimerBar(); meosPostViewMode();
+  return true;
 }
 function meosNoteClockHistory(scope, at) {
   meosClockHistoryLoad();
@@ -21013,6 +21072,12 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item .ci-x:hover{background:rgba(230,70,50,.42);border-color:rgba(230,70,50,.95)}
 .clk-item .ci-x:active{transform:translateY(1px)}
 .clk-item .ci-lock{cursor:default;opacity:.9;border:1px solid transparent}
+/* ★★★v4.1.24: 一覧の左端の \u2611/\u2610 = **使う/休む**。押す所は字より広く取る
+   ([[project_direct_manipulation_mark]] 印は押せる大きさ)。使っている物だけが橙= 面が状態を語る。 */
+.clk-item .ci-ck{flex:none;font-size:12px;line-height:1;padding:2px 4px;border-radius:5px;cursor:pointer;color:var(--vscode-editor-foreground);opacity:.55}
+.clk-item .ci-ck:hover{background:rgba(224,128,58,.28);opacity:1}
+.clk-item .ci-ck.on{opacity:1;color:#e0803a}
+.clk-item .ci-ck:active{transform:translateY(1px)}
 .clk-sep{border-top:1px solid var(--vscode-panel-border);margin:2px 0}
 .clk-row{display:flex;align-items:baseline;justify-content:space-between}
 .clk-lab{font-size:11px;font-weight:800;color:#7fd4e8}
@@ -22711,6 +22776,10 @@ if(!vmClocks||!vmClocks.length)return;
 for(var i=0;i<vmClocks.length;i++){var c=vmClocks[i];
 var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'');
 row.setAttribute('data-i',String(i));
+/* v4.1.24: 左端の\u2611/\u2610= 使う/休む。走っている物that\u2611。 */
+var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');ck.textContent=c.running?'\u2611':'\u2610';
+ck.title=c.running?'In use \u2014 click to let it rest. The time stays written on the membrane (\u23f8), so you can bring it back.':'Resting \u2014 click to use it again, at the time written on the membrane.';
+row.appendChild(ck);
 var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'')+clkWhenLabel(c.at);
 var n=document.createElement('span');n.className='ci-n';n.textContent=c.name||'(outside every membrane)';
 row.appendChild(t);row.appendChild(n);
@@ -22736,6 +22805,10 @@ if(clkCaret&&clkPop){
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
    /* ★★v4.1.4(俊克 改良1「削除する前に、その膜へ移動する。間違って、削除したときのために」):
       ★★**連れて行ってから外す**= 消えた物を探しに行かなくていい。もうその場に立っている。 */
+   /* ★★v4.1.24: \u2611/\u2610 は**飛ばないし、閉じない**= 何本かまとめて選ぶための物so、
+      1つ押すたびに膜へ連れて行かれ、パネルthat閉じては使えない(×とは狙いthat違う)。 */
+   var isCk=!!(ev.target&&ev.target.classList&&ev.target.classList.contains('ci-ck'));
+   if(isCk){if(c)vscode.postMessage({type:'clockEnable',uri:c.uri,key:c.key,on:!c.running});return;}
    var isX=!!(ev.target&&ev.target.classList&&ev.target.classList.contains('ci-x'));
    if(c){vscode.postMessage({type:'clockGoto',uri:c.uri,key:c.key,name:c.name});
     if(isX)vscode.postMessage({type:'clockForget',uri:c.uri,key:c.key});}
@@ -24402,6 +24475,7 @@ function toggleMeDock(editorOverride) {
     // v4.1.0: 一覧from選んだ= その膜へ行く(飛ぶ口は meosJumpToScope 1つ)。
     if (message && message.type === 'clockGoto') { await meosJumpToScope({ uri: message.uri, key: message.key, name: message.name }); return; }
     if (message && message.type === 'clockForget') { await meosClockDrop(message.uri, message.key); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.4/4.1.5: 一覧の×(走っていれば止めてから外す)
+    if (message && message.type === 'clockEnable') { await meosClockSetEnabled(message.uri, message.key, !!message.on); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.24: 一覧の\u2611/\u2610(使う/休む)
     if (message && message.type === 'clockStop') { if (meosIsRinging()) meosStopRinging(); return; }
     // v4.0.462: ▾から来た一発指定(分 or いつ)。読む口は meosParseWhen 1つ(menu と同じ物に訊く)。
     if (message && message.type === 'pseudoTimerSet') {

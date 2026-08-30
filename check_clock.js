@@ -168,5 +168,26 @@ ok(!!w1 && w1.at.getSeconds()===15, '\u2605秒まで読む', w1 && w1.at.toStrin
 ok(X.meosClockFcStamp2(new Date(2026,7,30,1,40,0))==='2026-08-30 01:40', '秒が0なら今までと同じ姿', X.meosClockFcStamp2(new Date(2026,7,30,1,40,0)));
 ok(X.meosClockFcStamp2(new Date(2026,7,30,1,40,15))==='2026-08-30 01:40:15', '秒が在る時だけ足す', X.meosClockFcStamp2(new Date(2026,7,30,1,40,15)));
 
+// v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを選べるように」)
+console.log('\u246f \u23f8 休み(\u2611/\u2610)');
+const P3=X.meosClockFcParse;
+const f1=P3('<!-- Mew!UFC \u23f0\u23f8 2099-01-01 09:30 -->');
+ok(!!f1 && f1.off===true, '\u2605\u23f8 を休みとして読む', f1);
+ok(!!f1 && f1.when==='2099-01-01 09:30', '  時刻は今までどおり読める(印は顔の側)', f1 && f1.when);
+const f2=P3('<!-- Mew!UFC \u23f0 2099-01-01 09:30 -->');
+ok(!!f2 && f2.off===false, '  \u23f8 が無ければ休みではない', f2 && f2.off);
+const f3=P3('<!-- Mew!UFC \u23f0\ud83d\udd12\u23f8 2099-01-01 09:30 \u21bb05 -->');
+ok(!!f3 && f3.off===true && f3.lock===true && String(f3.cycle)==='05', '\u2605\u2605錠\u30fb輪と混ぜても全部読める', f3);
+
+// 休みは**仕掛けない**。ただし一覧には出す。
+const OFFDOC=(()=>{const L=['# t','<!-- {* \u25bcmCN=Z_1 // c *} -->','x','<!-- {* \u25b2mCN=Z_1 // c *} -->','<!-- Mew!UFC \u23f0\u23f8 2099-01-01 09:30 -->'];
+ return {uri:{toString:()=>'file:///off.md',fsPath:'/off.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/off.md',isClosed:false,version:1};})();
+const scanned=X.meosClockFcScan(OFFDOC);
+ok(scanned.length===1 && scanned[0].off===true, '  scan も休みを持ち上げる', scanned);
+X.meosArmClockFcFor(OFFDOC);
+ok(!X._meosPseudoUntil.has('file:///off.md Z_1'), '\u2605\u2605\u2605休みは仕掛からない(\u2610 のまま)', [...X._meosPseudoUntil.keys()]);
+ok(X.meosClockList(9).some(r=>r.uri==='file:///off.md'&&r.key==='Z_1'&&!r.running), '\u2605\u2605休んでいても一覧には出る(見えないと戻せない)', X.meosClockList(9));
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
