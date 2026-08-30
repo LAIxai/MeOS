@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosClockRollToNextDay,meosParseStampLoose,meosNoteClockHistory,_meosClockHistory,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -188,6 +188,36 @@ ok(scanned.length===1 && scanned[0].off===true, '  scan も休みを持ち上げ
 X.meosArmClockFcFor(OFFDOC);
 ok(!X._meosPseudoUntil.has('file:///off.md Z_1'), '\u2605\u2605\u2605休みは仕掛からない(\u2610 のまま)', [...X._meosPseudoUntil.keys()]);
 ok(X.meosClockList(9).some(r=>r.uri==='file:///off.md'&&r.key==='Z_1'&&!r.running), '\u2605\u2605休んでいても一覧には出る(見えないと戻せない)', X.meosClockList(9));
+
+// v4.1.25(俊克 バグ1「\u2610をクリックすると…\u23f0リストから消えてしまう。膜の方は、タイマーが起動しない」)
+console.log('\u2470 \u2611 を入れ直した時(過ぎた時刻)');
+
+// ① 過ぎた時刻は「同じ時刻のまま、次に来る日」へ送られる
+const R=X.meosClockRollToNextDay('2026-08-29 23:00');
+ok(typeof R==='string' && /23:00$/.test(R), '\u2605\u2605時刻はそのまま(23:00 のまま)', R);
+ok(!!R && X.meosParseStampLoose(R).getTime()>Date.now(), '\u2605\u2605\u2605送り先は必ず未来', R);
+ok(X.meosClockRollToNextDay('2099-01-01 09:30')==='2099-01-01 09:30', '  まだ来ていない物は動かさない', X.meosClockRollToNextDay('2099-01-01 09:30'));
+ok(X.meosClockRollToNextDay('ぐにゃ')===null, '  読めない物は送らない(本文を汚さない)', X.meosClockRollToNextDay('ぐにゃ'));
+
+// ② 掛かっていなくても一覧に残る(バグ1の本体)
+const PASTDOC=(()=>{const L=['# t','<!-- {* \u25bcmCN=P_1 // c *} -->','x','<!-- {* \u25b2mCN=P_1 // c *} -->','<!-- Mew!UFC \u23f0 2026-08-29 23:00 -->'];
+ return {uri:{toString:()=>'file:///past.md',fsPath:'/past.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/past.md',isClosed:false,version:1};})();
+X.meosArmClockFcFor(PASTDOC);
+ok(!X._meosPseudoUntil.has('file:///past.md P_1'), '  過ぎた一度きりの予定は掛からない(今までどおり)', true);
+const inList=X.meosClockList(99).some(r=>r.uri==='file:///past.md'&&r.key==='P_1');
+ok(inList, '\u2605\u2605\u2605掛かっていなくても一覧に残る(v4.1.24は消えた)', X.meosClockList(99).map(r=>r.key));
+
+// ③ 次に鳴る1つだけに印(前の節that仕掛けた物は片付けてから測る)
+X._meosPseudoUntil.clear(); X._meosPseudoScopes.clear();
+X._meosPseudoUntil.set('file:///n1.md N_1', Date.now()+9e6);
+X._meosPseudoScopes.set('file:///n1.md N_1',{uri:'file:///n1.md',key:'N_1',name:'N_1'});
+X._meosPseudoUntil.set('file:///n2.md N_2', Date.now()+3e6);
+X._meosPseudoScopes.set('file:///n2.md N_2',{uri:'file:///n2.md',key:'N_2',name:'N_2'});
+const _L25=X.meosClockList(99), nx=_L25.filter(r=>r.next);
+ok(nx.length===1, '\u2605印が付くのは1つだけ', nx.map(r=>r.key));
+ok(nx.length===1 && nx[0].key==='N_2', '\u2605\u2605\u2605印が付くのは**次に鳴る物**(一番近い)', nx.map(r=>[r.key,r.at]));
+ok(_L25.filter(r=>r.running).length>=2 && _L25.find(r=>r.running).next===true, '  走っている物の先頭that次に鳴る物', true);
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

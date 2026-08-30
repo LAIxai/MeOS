@@ -4,6 +4,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.25 (2026-08-30)
+- **Ticking a clock back on now starts it.** v4.1.24 answered "that time has passed" and stopped there, which
+  was the wrong reply: someone who ticks the box has already decided to use it. The clock keeps the time of day
+  it was given and moves to the next day that time comes round — the rule MeOS already had for a bare `18:30`,
+  applied to a written date as well. The new date is written back into the line, so the page and the file agree.
+  A repeating clock (`↻`) is left alone; it already knows how to find its next round.
+- **A clock written on a membrane stays in the list even when it is not running.** Only finished and running
+  clocks were being remembered, so a clock that was neither quietly slid out of the five-row window as the
+  others refreshed — which is why unticking, then looking again, showed nothing to tick back on.
+- **The clock that rings next is marked** — one row, a bar down its left edge and a faint wash. Only one, so
+  there is a single place for the eye to land.
+
 ### v4.1.24 (2026-08-30)
 - **A checkbox at the left of every clock in the list — which timers are in use.** Twenty years ago the same
   switch sat on a countdown timer written in BTRON's scripting language, and it is the piece the list was

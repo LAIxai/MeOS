@@ -9800,7 +9800,15 @@ function meosArmClockFcFor(doc) {
           try { meosClockFcSet(doc, c.key, { when: meosClockFcStamp(new Date(next)), hold: c.hold, lock: c.lock, cycle: c.cycle, done: false }); } catch (_) { }
         }
       }
-      if (!w) continue;                                             // 読めない書き方は、黙って無視(本文を汚さない)
+      if (!w) {
+        // ★★★v4.1.25(俊克 バグ1「☐をクリックすると…⏰リストから消えてしまう」):
+        //   ★★★**一覧に出るのは「済み」と「走っている物」だけだった**= 書いてあるのに掛かっていない物は
+        //     誰も覚えに載せないので、他の物that前に詰めた分だけ押し出されて、5件の窓から落ちる。
+        //   → **書いてある⏰は、掛かっていなくても一覧に出す**。見えない物は戻せない。
+        const _p = meosParseStampLoose(c.when);
+        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _p ? _p.getTime() : Date.now());
+        continue;                                                   // 読めない書き方は、黙って無視(本文を汚さない)
+      }
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true };   // v4.1.16: 本文由来
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
@@ -9926,6 +9934,16 @@ function meosClockForget(uri, key) {
 //   ★☑に戻す時は、**時刻を訊かない**= 書いてある物をそのまま掛け直す([[project_last_specified_wins]])。
 //     過ぎていれば、輪(\u21bb)が在る物は次の回へ進む(meosArmClockFcFor の中の道)。無ければ、その旨だけ言う。
 //   ★錠(\ud83d\udd12)が掛かっている物は休めない= × と同じ理屈で、途中では降りられない。
+// ★v4.1.25: 過ぎた時刻を**同じ時刻のまま、次に来る日**へ送る(\u2611 を入れ直した時の行き先)。
+//   MeOSに既に在る規則(`18:30`だけなら今日、過ぎていれば明日)を、年月日まで書いてある物へ広げただけ。
+function meosClockRollToNextDay(when) {
+  const b = meosParseStampLoose(when);
+  if (!b) return null;
+  const t = new Date(b.getTime());
+  let g = 0;
+  while (t.getTime() <= Date.now() && g++ < 4000) t.setDate(t.getDate() + 1);
+  return t.getTime() > Date.now() ? meosClockFcStamp(t) : null;
+}
 async function meosClockSetEnabled(uri, key, on) {
   let doc = null;
   try {
@@ -9953,10 +9971,25 @@ async function meosClockSetEnabled(uri, key, on) {
       vscode.window.setStatusBarMessage('MeOS: \u23f0 nothing is written on that membrane \u2014 set a time from \u25be.', 4000);
       return false;
     }
-    await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, done: false, off: false });
+    // ★★★v4.1.25(俊克「私が\u23f0リストの\u2610に求めるのは、**それに\u2713を入れたタイマーが起動して**、
+    //   次にタイムアップするものをハイライトすること」):
+    //   ★★★**\u2611 は必ず起動する**。v4.1.24は「その時刻は過ぎています」と言って終わっていたが、
+    //     人that\u2611を入れたのは「使う」と決めたということなので、断る場面ではない。
+    //   ★★送り先は**同じ時刻のまま、次に来る日**= MeOSに既に在る規則(`18:30`だけなら今日、過ぎていれば明日)を
+    //     年月日まで書いてある物にも広げただけ。新しい規則を足していない。
+    //   ★送ったら**本文にも書き戻す**= 画面と本文that食い違わない。輪(\u21bb)が在る物は触らない
+    //     (meosArmClockFcFor の中に、輪を次の回へ進める道that既に在る)。
+    let _when = hit.when, _rolled = false;
+    if (!meosParseWhen(_when) && !(Array.isArray(hit.cycle) && hit.cycle.length)) {
+      const _r = meosClockRollToNextDay(_when);
+      if (_r) { _when = _r; _rolled = true; }
+    }
+    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, done: false, off: false });
     try { meosArmClockFcFor(doc); } catch (_) { }
-    if (!_meosPseudoUntil.has(lk)) {
-      vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 that time has passed. Pick a new one from \u25be.', 4000);
+    if (_meosPseudoUntil.has(lk)) {
+      if (_rolled) vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 that time had gone, so it is set for ' + _when + '.', 4000);
+    } else {
+      vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 could not read the time written there. Pick one from \u25be.', 4000);
     }
   }
   meosUpdateTimerBar(); meosPostViewMode();
@@ -9988,6 +10021,9 @@ function meosClockList(limit) {
     for (const r of live) push(r, true);
     for (const r of _meosClockHistory) push(r, false);
   } catch (_) { }
+  // ★★v4.1.25(俊克「**次にタイムアップするものをハイライトする**こと」): 走っている物は近い順に並べてあるので、
+  //   その先頭that「次に鳴る物」。1つだけ印を付ける= 目that最初に行く所を1箇所に決める。
+  try { const _nx = out.find(r => r.running); if (_nx) _nx.next = true; } catch (_) { }
   return out.slice(0, limit || 5);
 }
 // ★v4.0.448(俊克 改良2「残りタイムを表示する」): 面に出る残り時間は**その膜に居る時だけ**so、
@@ -21061,6 +21097,10 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
 .clk-item.live{opacity:1}
+/* ★★v4.1.25: **次に鳴る物**を1つだけ際立たせる。色を足すのではなく、左に柱を立てて地を薄く染める
+   = 走っている物(橙の字)との違いを、色の強さでなく形で出す([[feedback_copy_the_house_style_first]])。 */
+.clk-item.next{background:rgba(224,128,58,.16);box-shadow:inset 2px 0 0 #e0803a}
+.clk-item.next:hover{background:rgba(224,128,58,.28)}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
 .clk-item .ci-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
@@ -22774,7 +22814,7 @@ function clkRenderList(){var el=document.getElementById('clk-list');if(!el)retur
 while(el.firstChild)el.removeChild(el.firstChild);
 if(!vmClocks||!vmClocks.length)return;
 for(var i=0;i<vmClocks.length;i++){var c=vmClocks[i];
-var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'');
+var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'');/* v4.1.25: 次に鳴る1つ */
 row.setAttribute('data-i',String(i));
 /* v4.1.24: 左端の\u2611/\u2610= 使う/休む。走っている物that\u2611。 */
 var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');ck.textContent=c.running?'\u2611':'\u2610';
