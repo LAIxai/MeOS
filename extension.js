@@ -9981,7 +9981,29 @@ async function meosClockDrop(uri, key) {
   //     状態で振る舞いthatが変わってはいけない。
   //   ★★★**×は一発で消す。段取りを増やさない**(俊克)= 過ぎた予定を未来へ送ってから消す、という
   //     2段構えは煩わしい。**戻したければ、飛んだ先で掛け直せばいい**。飛ぶのはそのため。
-  try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri); if (d) await meosClockFcSet(d, key, null); } catch (_) { }
+  try {
+    const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri);
+    if (d) {
+      await meosClockFcSet(d, key, null);
+      // ★★★v4.1.41(俊克 改良1「UFCがある行に飛ぶので、それを削除すると、膜that折畳まれた状態になって、
+      //   その次の行に文字カーソルthat着地してしまう。そこで、**文字カーソルの位置を1行上に自動で移動**して、
+      //   閉じ膜の中あるいはバッジコメントに入るようにする。それで、**UFC\u23f0コメントthat削除されることを
+      //   直ぐに確認できる**」):
+      //   ★★★**消した後に立つ場所thatが、消えたことを見せる場所でなければならない**= 行thatが1本消えると、
+      //     下の行thatが繰り上がってカーソルの下に来るので、そこは**膜の外**。外からでは何thatが消えたのか見えない。
+      //   ★★1行上へ戻すと、閉じ膜かバッジのFC行に入る= その場でFCの畳みthat開き、**残っている指定行thatが並ぶ**。
+      //     ⏰thatが居ないことを、目で確かめられる。→ [[feedback_fix_signal_at_fix_place]] 直す場所に結果を出す。
+      try {
+        const ed2 = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === uri);
+        if (ed2 && ed2.selection) {
+          const ln2 = Math.max(0, ed2.selection.active.line - 1);
+          const p2 = new vscode.Position(ln2, 0);
+          ed2.selection = new vscode.Selection(p2, p2);
+          ed2.revealRange(new vscode.Range(p2, p2), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        }
+      } catch (_) { }
+    }
+  } catch (_) { }
   // ★★v4.1.18(俊克 バグ1「⏰履歴で×ボタンを消しても、5個目のリストとして居座ってしまう」):
   //   ★★★**消したのは覚えの方だけで、元が残っていた**= 旧い版が mMETA に書いた記録(past)。
   //     ファイルを開くたびに、そこから履歴へ戻されるので、何度消しても帰ってくる。

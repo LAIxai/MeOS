@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.41 (2026-08-31)
+- **After the × takes the line away, the caret steps up one line.** Removing a line pulls the one below it up
+  under the caret — and that line is outside the membrane, where nothing shows you what just happened. A line
+  higher puts you on the closing membrane or its badge comment, which unfolds where you stand and lists the
+  spec lines that are left, so you can see for yourself that the ⏰ is no longer among them.
+
 ### v4.1.40 (2026-08-31)
 - **The × removes a clock's line whether or not it is still running.** Deleting the line lived inside the branch
   that stops a running timer, so a clock whose time had passed lost its place in the list and kept its line —
