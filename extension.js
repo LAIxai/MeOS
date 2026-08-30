@@ -9777,8 +9777,9 @@ function meosArmClockFcFor(doc) {
   try {
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
     const uri = doc.uri.toString();
-    let n = 0;
+    let n = 0, _seen = 0;
     for (const c of meosClockFcScan(doc)) {
+      _seen++;
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
       // ★★★v4.1.26(俊克のスクショで判明): **済んだ物の時刻that嘘をついていた**= 一覧に出ていたのは
@@ -9826,7 +9827,9 @@ function meosArmClockFcFor(doc) {
       if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, done: false }); } catch (_) { } }
       n++;
     }
-    if (n) { meosUpdateTimerBar(); meosPostViewMode(); }
+    // ★v4.1.27: 掛かった数that0でも、**書いてある⏰を見つけたなら一覧thatが変わり得る**
+    //   (時刻を書き替えた/\u23f8を外した等)。so、見つけた時は必ず知らせる。
+    if (n || _seen) { meosUpdateTimerBar(); meosPostViewMode(); }
     return n;
   } catch (_) { return 0; }
 }
@@ -23689,7 +23692,8 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'');
+if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
+var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
 if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
 if(typeof clkRenderList==='function')clkRenderList();
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */

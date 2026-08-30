@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.27 (2026-08-30)
+- **Edit a clock's time in the text, save, and the list now says so.** The timer was restarting correctly all
+  along; the list simply never redrew. The guard that decides whether to redraw was built from five things —
+  mode, time left, scope, inheritance, ringing — and the clock list was not one of them, so however much the
+  list changed, an unchanged guard meant an unchanged panel. Worse, "time left" belongs to the membrane the
+  caret is in, and a clock's line sits *below* its closing membrane, so editing one leaves that number at zero.
+  What gets drawn is now part of deciding whether to draw.
+
 ### v4.1.26 (2026-08-30)
 - **A finished clock in the list was showing the wrong time** — the moment the file happened to be opened,
   not the moment it rang, which is why every unticked row read the same time as every other. It now shows the
