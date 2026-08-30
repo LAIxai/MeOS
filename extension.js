@@ -21173,13 +21173,24 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
 .clk-item.live{opacity:1}
-/* ★★★v4.1.32(俊克 改良1「左端に少し食み出した形thatが、少し野暮ったく見える。ハイライトを
-   もう少しはっきりした方thatがいい」): ★★★**柱は角丸から食み出す**= v4.1.25 は inset の左柱を
-   立てたthat、行は角丸so、まっすぐな柱の端thatが丸みの外へ出て、貼り付けた紙のように見えていた。
-   ★★→ **輪で囲む**(inset 0 0 0 1px)= 輪は角丸に沿うので食み出さない。地も濃くして、はっきり。
+/* ★★★v4.1.32→33(俊克 改良1「左端に少し食み出した形thatが、少し野暮ったく見える」→
+   「⏰という文字を使うと目立たなくなるので、**オレンジの縁で、中を白く塗りつぶし、文字を橙色にする**。
+   これで、**ライトモードでも橙の縁で**とりあえず目立つでしょ」):
+   ★★★**柱は角丸から食み出す**= v4.1.25 の左柱は、行thatが角丸なのでまっすぐな端thatが丸みの外へ出て、
+     貼り付けた紙のように見えた。→ **輪**(inset 0 0 0 1px)は角丸に沿うので食み出さない。
+   ★★★**橙で塗り潰すと⏰thatが沈む**= 行の中に赤い⏰の絵thatが居るので、地を橙にすると絵と喧嘩する。
+     → **地は白・縁は橙・字も橙**。⏰の絵thatは白の上で一番よく見える。
+   ★★**縁が効くので、明るい地の下でも見つかる**(俊克)= 白い地は暗い所でこそ目立つthat、
+     明るい所では地thatが効かない。その時に働くのthatが縁= **2つの見え方に、1つずつ担当thatが居る**。
+   ★★★**字は橙にしない**(俊克「橙が赤系なので、どうしても⏰を目立たなくさせてしまう」)=
+     行の主役は⏰の絵so、周りthatが同じ赤系だと絵thatが埋もれる。→ 字は中立な灰(#333)。
+     **色を持つのは縁だけ**= 1つの行に、色で語る役thatは1人でいい。
    ★輪は枠線ではなく影so、**桁も高さも1pxたりとも動かない**(押す物that動かない= 直接操作の条件)。 */
-.clk-item.next{background:rgba(224,128,58,.30);box-shadow:inset 0 0 0 1px rgba(224,128,58,.95)}
-.clk-item.next:hover{background:rgba(224,128,58,.42)}
+.clk-item.next{background:#fff;box-shadow:inset 0 0 0 1px #e0803a}
+.clk-item.next:hover{background:#fff6ec}
+.clk-item.next .ci-t,.clk-item.next .ci-n,.clk-item.next .ci-nh,.clk-item.next .ci-nt,
+.clk-item.next .ci-ck,.clk-item.next .ci-x{color:#333}
+.clk-item.next .ci-x{background:transparent;border-color:#e0803a}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
 .clk-item .ci-n{flex:1;min-width:0;display:flex;overflow:hidden;white-space:nowrap;font-size:10px}

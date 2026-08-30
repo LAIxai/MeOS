@@ -10,6 +10,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
   follows the corner, so nothing juts out, and the wash behind it is stronger now so the row is easy to find.
   The ring is a shadow rather than a border, so no column and no height moves by even a pixel.
 
+### v4.1.33 (2026-08-30)
+- **The clock that rings next is marked by a white row inside an orange ring, with plain dark text.** Three
+  passes got here. A bar down the edge met the rounded corner badly and stood outside the curve. Filling the row
+  with orange was clear but swallowed the ⏰ sitting in it — an alarm clock is red, and so is orange. So the fill
+  is white, where that little red clock shows best, and only the ring carries colour: one thing in a row should
+  speak in colour, not three. The white does the work against a dark theme; against a light one the ring does.
+- The ring is a shadow, not a border, so no column and no height shifts by a pixel.
+
 ### v4.1.31 (2026-08-30)
 - **Dropping a clock now clears every line that belongs to it, not just the first one found.** A membrane can
   end up carrying more than one clock line — inside a very large membrane, any clock line that is not directly
