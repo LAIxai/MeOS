@@ -9768,7 +9768,11 @@ async function meosClockFcSet(doc, key, spec) {
         + (Array.isArray(spec.cycle) && spec.cycle.length ? (' \u21bb' + spec.cycle.join('/')) : '')
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
-    const hit = meosClockFcScan(doc).find(c => c.key === key);
+    // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
+    //   85,821行のような大きい膜では、閉じ膜の直後でない⏰行も「一番内側の膜」の持ち物として拾われる
+    //   (meosClockFcScan の後半の道)so、知らないうちに2本目that増えることthatある。→ **消す時は全部消す**。
+    const hits = meosClockFcScan(doc).filter(c => c.key === key);
+    const hit = hits[0] || null;
     // ★★★v4.1.29(俊克 バグ1「×で削除すると HH表示thatおかしな値になる」の計測):
     //   ★★**推測で直さない**= スクショの `634119:32.07` は「2099年の時計の残り時間」so、面は正しい。
     //     分からないのは**なぜ或る膜の⏰that2099年になったのか**。ソースに 2099 は1つも無い。
@@ -9788,9 +9792,11 @@ async function meosClockFcSet(doc, key, spec) {
     if (hit) {
       if (spec) ed.replace(doc.uri, doc.lineAt(hit.line).range, line);
       else {
-        const from = new vscode.Position(hit.line, 0);
-        const to = (hit.line + 1 < doc.lineCount) ? new vscode.Position(hit.line + 1, 0) : doc.lineAt(hit.line).range.end;
-        ed.delete(doc.uri, new vscode.Range(from, to));
+        for (const h of hits) {                                     // v4.1.31: 1本目だけでなく、全部
+          const from = new vscode.Position(h.line, 0);
+          const to = (h.line + 1 < doc.lineCount) ? new vscode.Position(h.line + 1, 0) : doc.lineAt(h.line).range.end;
+          ed.delete(doc.uri, new vscode.Range(from, to));
+        }
       }
     } else if (spec) {
       let at = -1;
@@ -9970,6 +9976,23 @@ async function meosClockDrop(uri, key) {
     }
   } catch (_) { }
   meosClockForget(uri, key);
+  // ★★★v4.1.31(俊克「×を押しCmd+Sで保存しても、再び復活してしまう。3、4回やったが駄目。**なぜ?**」):
+  //   ★★★**推測を重ねても外すso、消した側に喋らせる**([[feedback_go_get_the_measurement]])。
+  //   ⏰の居場所は3つ(本文のFC行 / mMETA / 覚え)。どれthat残ったのかthat見えれば、犯人thatは1つに絞れる。
+  try {
+    const _d2 = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri);
+    const _fc = _d2 ? meosClockFcScan(_d2).filter(c => c.key === key) : [];
+    const _mm = _d2 ? !!(meosClockMeta(_d2) || {})[key] : null;
+    const _hi = _meosClockHistory.some(r => r.uri === uri && r.key === key);
+    const _rn = _meosPseudoUntil.has(uri + ' ' + key);
+    const _msg = '\u23f0 ' + key + ' \u2014 after \u00d7:  text=' + (_fc.length ? ('LINE ' + _fc.map(c => c.line + 1).join(',')) : 'gone')
+      + '  mMETA=' + (_mm === null ? '?' : (_mm ? 'STILL' : 'gone'))
+      + '  list=' + (_hi ? 'STILL' : 'gone')
+      + '  running=' + (_rn ? 'STILL' : 'no')
+      + (_d2 && _d2.isDirty ? '  \u2014 \u2318S' : '');
+    meosDbg('[clockDrop] ' + _msg);
+    vscode.window.setStatusBarMessage('MeOS: ' + _msg, 15000);
+  } catch (_) { }
   return true;
 }
 function meosClockForget(uri, key) {

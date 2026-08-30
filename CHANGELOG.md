@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.31 (2026-08-30)
+- **Dropping a clock now clears every line that belongs to it, not just the first one found.** A membrane can
+  end up carrying more than one clock line — inside a very large membrane, any clock line that is not directly
+  under a closing membrane is taken as that membrane's — and the × was only ever removing the first.
+- **The × now says what it actually removed**: the text line, the mMETA record, the list, and whether it is
+  still running. A clock lives in three places, so seeing which one survived names the culprit instead of
+  leaving it to guesswork.
+
 ### v4.1.30 (2026-08-30)
 - **A clock on an older membrane no longer comes back after you drop it.** Clocks set before v4.1.12 live in the
   file's own mMETA membrane rather than on a line of text, and the × was only asking for that record to be
