@@ -21113,7 +21113,10 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item.next:hover{background:rgba(224,128,58,.28)}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
-.clk-item .ci-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.clk-item .ci-n{flex:1;min-width:0;display:flex;overflow:hidden;white-space:nowrap;font-size:10px}
+/* v4.1.28: 頭は縮む(…that出る)・尾は縮まない= 「テスト3_2…829s193443JST」の形になる。 */
+.clk-item .ci-nh{flex:0 9999 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clk-item .ci-nt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
 /* ★★v4.1.5(俊克 疑問1「薄く×って、どこの話し?」): ★★**薄い印は無いのと同じ**= v4.1.4は opacity .40 で
    置いたので、在ることに気づけなかった。→ 縁を持たせて、字の濃さで置く(押せる物の顔)。
    ★押す所は字より広く= 1桁の当たりでは狙えない([[project_direct_manipulation_mark]])。 */
@@ -22765,6 +22768,17 @@ el.addEventListener('wheel',function(e){
     ★★段へ収めるのは**手を放した時だけ**(v4.0.470の clkCenter)= 俊克の言うとおり、
       **確定thatが離した時に起きるなら、途中は自由でよい**。
     ★指の速さは 0.5 に薄める= 加速thatが乗った合図をそのまま流すと飛びすぎる(v4.0.467の29段)。 */
+ /* ★★★v4.1.28(俊克 改良2「分を00から59まで進んだら、**一旦停止して、次に進むと00に巻き戻る**
+    ようにする。他も同様」): ★★★**「一旦停止」の合図は、もう在った**= 収める timer(t)that鳴り終わって
+    いれば、指thatは一度離れている。so新しい旗を立てず、**t===null** を「間thatが空いた」と読む。
+    ★★続けて撫でている間(t!==null)は巻き戻らない= 端で止まる。止まってから撫でれば、反対の端へ。
+    ★上端でも同じ= 00で止まり、次に戻せば59へ。 */
+ var _mx=el.scrollHeight-el.clientHeight;
+ if(t===null&&_mx>1){
+  var _wrap=(e.deltaY>0&&el.scrollTop>=_mx-1)?0:((e.deltaY<0&&el.scrollTop<=1)?el.children.length-1:-1);
+  if(_wrap>=0){clkGoto(el,_wrap,false);clkMark(el);
+   t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);return;}
+ }
  el.style.scrollBehavior='auto';
  el.scrollTop+=e.deltaY*0.5;
  clkMark(el);                                       /* 動いている間も、大きな字that付いてくる */
@@ -22831,7 +22845,18 @@ var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');
 ck.title=c.running?'In use \u2014 click to let it rest. The time stays written on the membrane (\u23f8), so you can bring it back.':'Resting \u2014 click to use it again, at the time written on the membrane.';
 row.appendChild(ck);
 var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'')+clkWhenLabel(c.at);
-var n=document.createElement('span');n.className='ci-n';n.textContent=c.name||'(outside every membrane)';
+/* ★★★v4.1.28(俊克 改良1「横幅that狭いので省略する時は、**膜名の最後を残す形**で、
+   「テスト3_2...43JST」のようにすればいい」): ★★★**見分けthat最後に在る**=
+   Mepyで写した膜は名前thatが同じで、時分秒だけthat違う。頭から詰めて後ろを切ると、全部同じ字面になる。
+   ★残す長さは**9文字**= 時分秒(6)＋TZ(3)。数えて決めた値ではなく、**MeOSの膜名の作りthatそのまま**。
+   ★★切るのはCSSに任せる= 頭は縮む箱(ellipsis)、尾は縮まない箱。幅を測る計算thatどこにも要らない
+     ([[project_position_by_definition]] 位置合わせは計算でなく定義)。 */
+var n=document.createElement('span');n.className='ci-n';
+var _nm=c.name||'(outside every membrane)';
+if(_nm.length>9){var _nh=document.createElement('span');_nh.className='ci-nh';_nh.textContent=_nm.slice(0,_nm.length-9);
+var _nt=document.createElement('span');_nt.className='ci-nt';_nt.textContent=_nm.slice(-9);
+n.appendChild(_nh);n.appendChild(_nt);}else n.textContent=_nm;
+n.title=_nm;
 row.appendChild(t);row.appendChild(n);
 /* ★★v4.1.5(俊克「テスト用紙だから駄目というのはおかしい。これはテスト用紙専用ではないからだよ。
    間違ってスタートした時もあるよ」): ★★**走っている時計も外せる**= 掛け違いは誰にでも在る。

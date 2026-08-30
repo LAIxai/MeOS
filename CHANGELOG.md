@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.28 (2026-08-30)
+- **A clock's name is now shortened from the middle, never from the end.** Membranes copied with Mepy share a
+  name and differ only in the minutes and seconds at the tail, so cutting the tail made every copy look
+  identical. The last nine characters — hours, minutes, seconds and the zone, which is simply how a MeOS name
+  is built — always survive; the head gives way first, then the tail if the panel is narrower still. No width
+  is measured anywhere: one box shrinks, the other does not, and CSS settles it.
+- **The scrolling columns stop at their ends, and the next stroke wraps around.** Reach 59 and it stays at 59;
+  pause, stroke again, and it comes round to 00. The signal for "paused" was already there — the timer that
+  settles the column onto a row — so nothing new had to be remembered.
+
 ### v4.1.27 (2026-08-30)
 - **Edit a clock's time in the text, save, and the list now says so.** The timer was restarting correctly all
   along; the list simply never redrew. The guard that decides whether to redraw was built from five things —
