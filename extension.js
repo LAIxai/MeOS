@@ -9970,9 +9970,18 @@ async function meosClockDrop(uri, key) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) { vscode.window.setStatusBarMessage('MeOS: \ud83d\udd12 ' + (sc.name || 'this clock') + ' \u2014 locked until the time is up.', 3000); return false; }
     await meosEndPseudoTimer(lk);
-    // ★v4.1.13: 外したなら、本文の ⏰ 行も消す(残すと、開き直した時にまた仕掛かる)。
-    try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri); if (d) await meosClockFcSet(d, key, null); } catch (_) { }
   }
+  // ★★★v4.1.40(俊克「×ボタンを押すと…なのにリストから外れる事もあるthat、VSCmを再起動すると、
+  //   そのリストthat復活してしまう」＋「**最初から×ボタン一発でUFCを削除して、その現場に飛ぶ**んだよ。
+  //   そして、元に戻したければ、その現場で、再度、⏰を設定すればいい。**その方that単純でしょ。
+  //   そのために、飛ぶんだから**」):
+  //   ★★★**行を消す処理that「走っている時」の中に入っていた**= 過ぎた予定(走っていない)を×しても
+  //     本文の行thatが残り、開き直せばそこからまた一覧へ戻っていた。俊克の言う「復活」の正体。
+  //   ★★→ **走っていても、いなくても、行は消す**。×は「この予定を無かったことにする」1つの意味so、
+  //     状態で振る舞いthatが変わってはいけない。
+  //   ★★★**×は一発で消す。段取りを増やさない**(俊克)= 過ぎた予定を未来へ送ってから消す、という
+  //     2段構えは煩わしい。**戻したければ、飛んだ先で掛け直せばいい**。飛ぶのはそのため。
+  try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri); if (d) await meosClockFcSet(d, key, null); } catch (_) { }
   // ★★v4.1.18(俊克 バグ1「⏰履歴で×ボタンを消しても、5個目のリストとして居座ってしまう」):
   //   ★★★**消したのは覚えの方だけで、元が残っていた**= 旧い版が mMETA に書いた記録(past)。
   //     ファイルを開くたびに、そこから履歴へ戻されるので、何度消しても帰ってくる。

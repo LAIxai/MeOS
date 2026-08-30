@@ -28,6 +28,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.40 (2026-08-31)
+- **The × removes a clock's line whether or not it is still running.** Deleting the line lived inside the branch
+  that stops a running timer, so a clock whose time had passed lost its place in the list and kept its line —
+  and the next time the file was opened, the line put it straight back. That is where "it came back after a
+  restart" was coming from. The × means one thing, so it should not behave differently depending on state.
+- One press is the whole of it: the line goes, and you are standing where it was. Want it back? Set a clock
+  there again — that is what the jump is for.
+
 ### v4.1.39 (2026-08-31)
 - **A clock written inside a code block is text, and MeOS now leaves it alone.** Quoting the notation in a
   fenced block — the way anyone documents it — was enough to arm a real clock, because the reader that finds

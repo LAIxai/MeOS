@@ -264,5 +264,18 @@ console.log('\u2472 引用した\u23f0は、本物にならない');
  ok(!got.some(c=>c.when==='2099-02-02 10:00'), '\u2605行中の ` … ` も文字そのもの', true);
 }
 
+// v4.1.40(俊克「×ボタンを押すと…VSCmを再起動すると、そのリストが復活してしまう」)
+console.log('\u2473 \u00d7 は走っていなくても行を消す');
+{
+ const SRC4=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _drop=SRC4.slice(SRC4.indexOf('async function meosClockDrop'), SRC4.indexOf('async function meosClockDrop')+3000);
+ const _ifBody=_drop.slice(_drop.indexOf('if (lk) {'), _drop.indexOf('}', _drop.indexOf('await meosEndPseudoTimer')));
+ ok(!/meosClockFcSet\([^)]*null\)/.test(_ifBody), '\u2605\u2605\u2605行を消す処理that「走っている時」の中に無い', _ifBody.length);
+ ok(/meosClockFcSet\(d, key, null\)/.test(_drop), '  \u00d7 は本文の行を消す(常に通る道に在る)', true);
+ const _after=_drop.slice(_drop.indexOf('if (lk) {'));
+ const _i1=_after.indexOf('meosEndPseudoTimer'), _i2=_after.indexOf('meosClockFcSet(d, key, null)');
+ ok(_i1>=0&&_i2>=0&&_i2>_i1, '  止めてから消す(順番)', [_i1,_i2]);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
