@@ -10455,7 +10455,16 @@ async function meosJumpToScope(scope, byBell) {
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
     try { if (ed && ed.selection) pushMeDockLineHistory(ed, ed.selection.active.line); } catch (_) { }
-    const ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
+    // ★★★v4.1.38(俊克「なぜ、⏰リストをクリックして、その**間違って設定した場所にワープしない**のか?
+    //   なぜ検索して見つけないといけないのか? **誰でも、このミスを犯すことがある**からね」):
+    //   ★★★**一覧は時計の話so、時計の在る所へ連れて行く**。今までは膜の頭へ降りていたthat、
+    //     85,821行の膜では頭に着いても⏰行thatどこに在るか分からない= 探させていた。
+    //   ★★これは [[feedback_fix_signal_at_fix_place]] と同じ穴= **知らせる場所と直す場所thatが離れていた**。
+    //     一覧は「在る」と言うだけで、直せる所へは運んでくれなかった。
+    //   ★鐘に呼ばれた時(byBell)は今までどおり**膜の頭**= あちらは「次の仕事を読む」ための移動so、
+    //     行き先thatが違って当たり前(v4.0.453)。**同じ移動に見えて、狙いthatが2つ在る**。
+    let ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
+    if (!byBell) { try { const _c = meosClockFcScan(doc).find(x => x.key === scope.key); if (_c && _c.line >= 0) ln = Math.min(_c.line, doc.lineCount - 1); } catch (_) { } }
     const pos = new vscode.Position(ln, 0);
     ed.selection = new vscode.Selection(pos, pos);
     try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }

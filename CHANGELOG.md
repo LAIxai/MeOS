@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.38 (2026-08-31)
+- **Choosing a clock from the list takes you to the clock, not to the top of the membrane it belongs to.** A
+  membrane can run to tens of thousands of lines, and arriving at its head told you nothing about where the
+  clock line actually was — so a clock set somewhere by mistake had to be hunted for with a search. The list is
+  about clocks; it now lands on the line the clock is written on, where you can read it, change it or delete it.
+  Anyone can set one by accident, and finding it should not be a search.
+- Being fetched by the bell still takes you to the head of the membrane: that journey is for reading what you
+  left there, which is a different errand.
+
 ### v4.1.37 (2026-08-31)
 - **A colon now only ever separates hours from minutes.** Past an hour the countdown read `18:26.07` — colon
   between hours and minutes, full stop between minutes and seconds — but under an hour it read `18:07`, putting
