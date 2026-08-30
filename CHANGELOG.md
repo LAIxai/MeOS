@@ -18,6 +18,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
   speak in colour, not three. The white does the work against a dark theme; against a light one the ring does.
 - The ring is a shadow, not a border, so no column and no height shifts by a pixel.
 
+### v4.1.34 (2026-08-30)
+- **The tail of a clock's name sat slightly high, as if it were a superscript.** A name is shown in two pieces so
+  the end always survives, and each piece hides its own overflow — which, inside a flex row, costs a box its
+  baseline: what gets used instead is the bottom of the box. Two boxes of different heights therefore sit at
+  different levels, and the heights did differ, because a Japanese head and a digits-only tail are drawn in
+  different faces. Both pieces now have the same stated line height, so whatever face is used the two boxes
+  match. The row asks for baselines as well.
+- The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
+  around it was the same family of colour, which took the eye off the little clock the row is about.
+
 ### v4.1.31 (2026-08-30)
 - **Dropping a clock now clears every line that belongs to it, not just the first one found.** A membrane can
   end up carrying more than one clock line — inside a very large membrane, any clock line that is not directly

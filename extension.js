@@ -21183,20 +21183,33 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    ★★**縁が効くので、明るい地の下でも見つかる**(俊克)= 白い地は暗い所でこそ目立つthat、
      明るい所では地thatが効かない。その時に働くのthatが縁= **2つの見え方に、1つずつ担当thatが居る**。
    ★★★**字は橙にしない**(俊克「橙が赤系なので、どうしても⏰を目立たなくさせてしまう」)=
-     行の主役は⏰の絵so、周りthatが同じ赤系だと絵thatが埋もれる。→ 字は中立な灰(#333)。
+     行の主役は⏰の絵so、周りthatが同じ赤系だと絵thatが埋もれる。→ 字は中立な黒(#111)。
      **色を持つのは縁だけ**= 1つの行に、色で語る役thatは1人でいい。
    ★輪は枠線ではなく影so、**桁も高さも1pxたりとも動かない**(押す物that動かない= 直接操作の条件)。 */
 .clk-item.next{background:#fff;box-shadow:inset 0 0 0 1px #e0803a}
 .clk-item.next:hover{background:#fff6ec}
 .clk-item.next .ci-t,.clk-item.next .ci-n,.clk-item.next .ci-nh,.clk-item.next .ci-nt,
-.clk-item.next .ci-ck,.clk-item.next .ci-x{color:#333}
+.clk-item.next .ci-ck,.clk-item.next .ci-x{color:#111}
 .clk-item.next .ci-x{background:transparent;border-color:#e0803a}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
-.clk-item .ci-n{flex:1;min-width:0;display:flex;overflow:hidden;white-space:nowrap;font-size:10px}
-/* v4.1.28: 頭は縮む(…that出る)・尾は縮まない= 「テスト3_2…829s193443JST」の形になる。 */
-.clk-item .ci-nh{flex:0 9999 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.clk-item .ci-nt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
+/* ★★★v4.1.34(俊克「『…』までの高さより、その右の『232310JST』that上付きになっている。なぜ?」):
+   ★★★**伸ばされた箱の、上に字that乗っていた**= .ci-n は flex の箱so、既定(stretch)では
+     頭と尾thatどちらも箱の高さいっぱいに伸びる。頭は日本語で背thatが高く、尾は数字だけで低い。
+     伸びた箱の中で字は**上に付く**so、尾thatだけ持ち上がって見えた。
+   ★★→ **baseline で揃える**= 2つは1つの名前の続きなので、揃えるべきは箱の縁ではなく**字の足元**。
+   ★行そのもの(.clk-item)は最初から align-items:baseline だった= 中の箱にも同じ規則を通す。 */
+.clk-item .ci-n{flex:1;min-width:0;display:flex;align-items:baseline;overflow:hidden;white-space:nowrap;font-size:10px;line-height:15px}
+/* v4.1.28: 頭は縮む(…that出る)・尾は縮まない= 「テスト3_2…829s193443JST」の形になる。
+   ★★★v4.1.34(俊克「テスト画面では問題無い。**実際にインストールすると上付きになる**」):
+     ★★★**overflow:hidden の箱は、字の足元を持たない**= flex の中では「箱の下端」that足元の代わりになる。
+       so2つの箱の**高さthat違えば、そのまま段違いになる**。
+     ★★★私のテスト台で出なかった理由thatこれ= あちらでは2つの高さthatたまたま揃っていた。
+       実機は日本語の頭と数字だけの尾で**使う書体thatが違い、行の高さthatずれる**。
+     ★★→ **高さを固定する**(line-height を同じ値で明に書く)= 書体thatが何であれ箱の高さthat揃うので、
+       どの環境でも段違いにならない。★推測でなく「環境で変わる物を、変わらなくする」直し方。 */
+.clk-item .ci-nh{flex:0 9999 auto;min-width:0;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clk-item .ci-nt{flex:0 1 auto;min-width:0;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
 /* ★★v4.1.5(俊克 疑問1「薄く×って、どこの話し?」): ★★**薄い印は無いのと同じ**= v4.1.4は opacity .40 で
    置いたので、在ることに気づけなかった。→ 縁を持たせて、字の濃さで置く(押せる物の顔)。
    ★押す所は字より広く= 1桁の当たりでは狙えない([[project_direct_manipulation_mark]])。 */
