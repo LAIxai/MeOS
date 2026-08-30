@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.32 (2026-08-30)
+- **The mark on the clock that rings next is a ring around the row, not a bar down its edge.** A straight bar
+  meets a rounded corner badly — its ends stood outside the curve, like a strip of paper stuck on. A ring
+  follows the corner, so nothing juts out, and the wash behind it is stronger now so the row is easy to find.
+  The ring is a shadow rather than a border, so no column and no height moves by even a pixel.
+
 ### v4.1.31 (2026-08-30)
 - **Dropping a clock now clears every line that belongs to it, not just the first one found.** A membrane can
   end up carrying more than one clock line — inside a very large membrane, any clock line that is not directly

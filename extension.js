@@ -21173,10 +21173,13 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
 .clk-item.live{opacity:1}
-/* ★★v4.1.25: **次に鳴る物**を1つだけ際立たせる。色を足すのではなく、左に柱を立てて地を薄く染める
-   = 走っている物(橙の字)との違いを、色の強さでなく形で出す([[feedback_copy_the_house_style_first]])。 */
-.clk-item.next{background:rgba(224,128,58,.16);box-shadow:inset 2px 0 0 #e0803a}
-.clk-item.next:hover{background:rgba(224,128,58,.28)}
+/* ★★★v4.1.32(俊克 改良1「左端に少し食み出した形thatが、少し野暮ったく見える。ハイライトを
+   もう少しはっきりした方thatがいい」): ★★★**柱は角丸から食み出す**= v4.1.25 は inset の左柱を
+   立てたthat、行は角丸so、まっすぐな柱の端thatが丸みの外へ出て、貼り付けた紙のように見えていた。
+   ★★→ **輪で囲む**(inset 0 0 0 1px)= 輪は角丸に沿うので食み出さない。地も濃くして、はっきり。
+   ★輪は枠線ではなく影so、**桁も高さも1pxたりとも動かない**(押す物that動かない= 直接操作の条件)。 */
+.clk-item.next{background:rgba(224,128,58,.30);box-shadow:inset 0 0 0 1px rgba(224,128,58,.95)}
+.clk-item.next:hover{background:rgba(224,128,58,.42)}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 .clk-item.live .ci-t{color:#e0803a}
 .clk-item .ci-n{flex:1;min-width:0;display:flex;overflow:hidden;white-space:nowrap;font-size:10px}
