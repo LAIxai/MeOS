@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.30 (2026-08-30)
+- **A clock on an older membrane no longer comes back after you drop it.** Clocks set before v4.1.12 live in the
+  file's own mMETA membrane rather than on a line of text, and the × was only asking for that record to be
+  written out "in a moment". Reload inside that moment and the request was gone, so the clock reappeared at the
+  top of the list with nothing in the text to explain it. The × now writes straight away, and this window also
+  remembers what you dropped, so a record that has not reached the disk yet cannot bring it back either.
+- Because mMETA lives inside the file, dropping such a clock leaves the file unsaved — the × now says so.
+
 ### v4.1.29 (2026-08-30)
 - **The × no longer closes the list.** Clearing something out is tidying, and you cannot finish tidying if the
   shelf disappears as you work. Choosing a row still closes the panel — that one means "take me there".

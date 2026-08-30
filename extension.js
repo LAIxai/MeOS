@@ -9624,6 +9624,7 @@ function meosViewMode(editor) {
 const _meosClockMem = new Map();       // uriString -> { 膜名: {at, hold} }
 let _meosClockWriteTimer = null;
 const _meosClockLoaded = new Set();    // 一度読んだファイル(開くたびに二重に仕掛けない)
+const _meosClockDropped = new Set();   // v4.1.30: この窓で×した物(uri+key)= mMETAに残っていても戻さない
 function meosClockMeta(doc) {
   const k = doc.uri.toString();
   let v = _meosClockMem.get(k);
@@ -9633,6 +9634,22 @@ function meosClockMeta(doc) {
     _meosClockMem.set(k, v);
   }
   return v;
+}
+// ★★★v4.1.30(俊克 質問1「バッジが開始膜にある**旧タイプ**の膜。×で削除しても、膜にはFCもUFCも
+//   ないのに、一旦リストから消えた後、**何かの切っ掛けでリストの先頭に復活**してしまう」):
+//   ★★★**旧タイプの予定はmMETA(ファイルの中)に在る**= 消したのは覚え(globalState)と本文だけで、
+//     mMETAの方は「400ms後に書く」予約だった。その前に窓thatが読み直されれば、予約は消える。
+//   ★★→ ×の時だけは**待たずに書く**。片付けは、待たせる仕事ではない。
+//   ★★★ただしmMETAはファイルの中so、**書いても保存するまではディスクに残る**([[project_now_not_bulk]]の
+//     裏返し= MeOSは勝手に保存しない)。so×の後は保存の印(●)that点く。⌘Sで初めて本当に消える。
+async function meosFlushClockMetaWrite(doc) {
+  if (_meosClockWriteTimer) { clearTimeout(_meosClockWriteTimer); _meosClockWriteTimer = null; }
+  try {
+    const v = meosClockMeta(doc);
+    const data = await ensureHyperTocData(doc);
+    if (data) { data.clock = v; await writeHyperTocToSource(doc, data); return true; }
+  } catch (_) { }
+  return false;
 }
 function meosScheduleClockMetaWrite(doc) {
   if (_meosClockWriteTimer) clearTimeout(_meosClockWriteTimer);
@@ -9864,6 +9881,9 @@ async function meosLoadClocksFor(doc) {
       const at = Number(row.at) || 0;
       if (!at) { delete v[name]; continue; }
       // v4.1.6: past= もう鳴った物。仕掛け直さず、履歴にだけ戻す(=一覧に「過去」が並ぶ)。
+      // ★v4.1.30: この窓で×した物は、mMETAにまだ残っていても拾い直さない
+      //   (保存前に読み直された時の戻りを止める= 人that消したという事実の方that新しい)。
+      if (_meosClockDropped.has(uri + ' ' + name)) { delete v[name]; continue; }
       if (row.past) { meosNoteClockHistory({ uri, key: name, name, hold: !!row.hold }, at); continue; }
       const scope = { uri, key: name, name, hold: !!row.hold, lock: !!row.lock, fc: false };   // v4.1.5: 錠も一緒に戻る / v4.1.16: 旧mMETA由来
       const lk = uri + ' ' + name;
@@ -9940,12 +9960,20 @@ async function meosClockDrop(uri, key) {
   //   → ×は**元も消す**。本文の行(v4.1.13)＋ mMETAの記録＋ 覚え(globalState)の3つ全部。
   try {
     const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri);
-    if (d) { const m = meosClockMeta(d); if (m && m[key]) { delete m[key]; meosScheduleClockMetaWrite(d); } }
+    if (d) {
+      const m = meosClockMeta(d);
+      if (m && m[key]) {
+        delete m[key];
+        await meosFlushClockMetaWrite(d);              // v4.1.30: 待たずに書く(読み直されたら予約は消える)
+        if (d.isDirty) vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + key + ' removed \u2014 press \u2318S to make it stick.', 5000);
+      }
+    }
   } catch (_) { }
   meosClockForget(uri, key);
   return true;
 }
 function meosClockForget(uri, key) {
+  try { _meosClockDropped.add(uri + ' ' + key); } catch (_) { }   // v4.1.30: 消したことを、この窓は覚えておく
   meosClockHistoryLoad();
   const i = _meosClockHistory.findIndex(r => r.uri === uri && r.key === key);
   if (i >= 0) { _meosClockHistory.splice(i, 1); meosClockHistorySave(); }

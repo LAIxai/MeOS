@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosClockRollToNextDay,meosParseStampLoose,meosNoteClockHistory,_meosClockHistory,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -214,6 +214,22 @@ X._meosPseudoUntil.set('file:///n1.md N_1', Date.now()+9e6);
 X._meosPseudoScopes.set('file:///n1.md N_1',{uri:'file:///n1.md',key:'N_1',name:'N_1'});
 X._meosPseudoUntil.set('file:///n2.md N_2', Date.now()+3e6);
 X._meosPseudoScopes.set('file:///n2.md N_2',{uri:'file:///n2.md',key:'N_2',name:'N_2'});
+// v4.1.30(俊克 質問1「×で削除しても、何かの切っ掛けでリストの先頭に復活してしまう」)
+{
+ const U='file:///old.md';
+ X._meosClockMem.set(U,{ 'DL_1': { at: Date.now()-3600e3, hold:false, past:true } });
+ X._meosClockLoaded.delete(U);
+ const L=['# t','<!-- {* \u25bcmCN=DL_1 // c *} -->','x','<!-- {* \u25b2mCN=DL_1 // c *} -->'];
+ const D={uri:{toString:()=>U,fsPath:'/old.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/old.md',isClosed:false,version:1};
+ X.meosClockForget(U,'DL_1');                       /* ×= 覚えから外し、消したことを窓が覚える */
+ X._meosClockLoaded.delete(U);
+ X.meosLoadClocksFor(D);                            /* 読み直し= 旧タイプはここで戻ってきていた */
+ const back=X.meosClockList(99).some(r=>r.uri===U&&r.key==='DL_1');
+ ok(!back, '\u2605\u2605\u2605\u00d7した旧タイプ(mMETA)の予定は、読み直しても戻らない', X.meosClockList(99).map(r=>r.key));
+ ok(!(X._meosClockMem.get(U)||{})['DL_1'], '  mMETAの記録も落ちている', X._meosClockMem.get(U));
+}
+
 const _L25=X.meosClockList(99), nx=_L25.filter(r=>r.next);
 ok(nx.length===1, '\u2605印が付くのは1つだけ', nx.map(r=>r.key));
 ok(nx.length===1 && nx[0].key==='N_2', '\u2605\u2605\u2605印が付くのは**次に鳴る物**(一番近い)', nx.map(r=>[r.key,r.at]));
