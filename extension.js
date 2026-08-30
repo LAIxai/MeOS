@@ -21125,7 +21125,15 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    印that消える**= 赤い時計を橙の上に置いていた。→ 地は白(参照グループと同じ)。走っている合図は
    **地でなく縁**thatが持つ= 白のまま橙の輪thatつく(地で言うと、また印と喧嘩する)。 */
 .toc-tools .warn-btn.raw-timer:hover{background:#f1f5f9;border-color:#64748b}
-.toc-tools .warn-btn.raw-timer.running{background:#ffffff;border-color:#e0803a;box-shadow:0 0 0 2px rgba(224,128,58,.55);color:#1e293b}
+/* ★★★v4.1.36(俊克 改良1「⏰ボタンの外を囲う橙色の縁に対して、▼ボタンの外を囲う縁thatが無い。
+   そこthatちょっと今一。▼ボタンの縁を黒かやや灰色にして、**輪郭that連続する**ようにしよう」):
+   ★★★**輪thatが半分にしか掛かっていなかった**= 走っている印(橙の輪)を⏰の面だけに付けていたので、
+     輪thatが駒の途中で切れ、▼thatが外に置き去りになっていた。
+   ★★→ **輪は駒ごと**(.clk-wrap)。v4.1.18で「大きくするのは駒ごと」と決めた時と**同じ規則**=
+     ⏰と▼は1つの駒so、駒に起きることは駒に掛ける。私はそこで拡大だけを移し、輪を置き忘れていた。
+   ★2つの面の縁は**同じ灰**にして、白い1つの錠剤に見せる(色を語るのは輪だけ)。 */
+.toc-tools .warn-btn.raw-timer.running{background:#ffffff;border-color:#94a3b8;color:#1e293b}
+.clk-wrap.running{border-radius:9px 5px 5px 9px;box-shadow:0 0 0 2px rgba(224,128,58,.55)}
 .toc-tools .warn-btn.raw-timer .raw-t{color:#1e293b}
 /* ★v4.1.9: 数字が無い間は席も取らない(空の span の margin が、姉妹より数px太らせていた)。 */
 .warn-btn.raw-timer .raw-t:empty{display:none}
@@ -22812,7 +22820,8 @@ if(_rt){_rt.classList.toggle('running',left>0||vmRing||_anyRun);_rt.classList.to
 _rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
 /* v4.1.18: 大きさは駒(⏰＋▼)ごと= 同じ合図を親にも着せる(片方だけ育たない)。 */
 var _wrp=_rt.parentElement;if(_wrp&&_wrp.classList.contains('clk-wrap')){
- _wrp.classList.toggle('ringing',vmRing);_wrp.classList.toggle('near',_near&&!_imm);_wrp.classList.toggle('imminent',_imm);}
+ _wrp.classList.toggle('ringing',vmRing);_wrp.classList.toggle('near',_near&&!_imm);_wrp.classList.toggle('imminent',_imm);
+ _wrp.classList.toggle('running',left>0||vmRing||_anyRun);}   /* v4.1.36: 輪も駒ごと */
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}

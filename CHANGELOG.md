@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.36 (2026-08-31)
+- **The orange ring on a running clock now goes round the whole control, not half of it.** It was drawn on the
+  ⏰ face alone, so it stopped at the seam and left the ▾ standing outside — the outline of one piece broke in
+  the middle. v4.1.18 had already settled this question for size: ⏰ and its ▾ are one piece, so what happens to
+  the piece is applied to the piece. The ring simply never got moved across with it. Both faces now carry the
+  same grey edge and read as a single white pill; only the ring speaks in colour.
+
 ### v4.1.35 (2026-08-30)
 - **Unticking a clock set before v4.1.12 now sticks.** Resting a clock is recorded as a ⏸ on its line in the
   text — and a clock from the older scheme has no line, so the rest was recorded nowhere at all. It stopped for
