@@ -28,6 +28,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.53 (2026-08-31)
+- **While the clock is ringing it shows what it is waiting for as well as how to stop it** — `Stop` above, the
+  time until the next ring below. With a repeat, the ringing is exactly when you most want to know how long is
+  left, and the face was giving that space to the word `Stop` alone. One control can say two things.
+- **What the bell did is now always written to the MeOS Debug output channel**, whether or not the debug log is
+  switched on. The notice that carried it disappears on its own, and a thing being chased must not vanish while
+  you are looking at it. It still reaches the log file too, when a path is set.
+
 ### v4.1.52 (2026-08-31)
 - **Setting a new time no longer wipes a repeat.** The panel wrote the time, the hold and the lock, and nothing
   else — so a `↻` typed onto the line disappeared the moment a time was set from the panel, and what looked like

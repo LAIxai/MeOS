@@ -2957,6 +2957,18 @@ let pinJumpToSelected = false;
 // v0.9.561: dedicated OutputChannel so debug logs are visible without enabling
 // extension-host verbose logging. Open via View > Output, then select "MeOS Debug".
 let meosDebugChannel = null;
+// ★★★v4.1.53(俊克 改良2「2度、元の位置に飛んだthat、errorを開く前に消えてしまった。
+//   **ログファイルに記録して**よ」): ★★★知らせの窓は消えるので、**残る所に置く**。
+//   ★普段の計測は栓(debugLogPath)that閉じていれば1行も書かない(v4.0.461)that、
+//     **鐘の計測だけは常に「MeOS Debug」出力チャンネルへ書く**= 追っている最中の物so、消してはいけない。
+//   ★ファイルへも書く= 栓that開いていれば。**俊克はチャンネルで見て、私はファイルを読む**(v4.0.253と同じ形)。
+function meosBellDbg(msg) {
+  try {
+    if (!meosDebugChannel) meosDebugChannel = vscode.window.createOutputChannel('MeOS Debug');
+    if (meosDebugChannel) meosDebugChannel.appendLine('[' + new Date().toLocaleTimeString('ja-JP') + '] ' + msg);
+  } catch (_) { }
+  try { const _p = meosDbgPath(); if (_p) require('fs').appendFileSync(_p, '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch (_) { }
+}
 function meosDbg(msg) {
   const _p = meosDbgPath();
   if (!_p) return;                                          // v4.0.461: 栓that閉じている間は1行も作らない
@@ -10648,14 +10660,14 @@ function meosIsRinging() { return !!_meosRingTimer; }
 function meosWatchCaretAfterBell(uri, line) {
   try {
     const t0 = Date.now(), KIND = { 1: 'Keyboard', 2: 'Mouse', 3: 'Command' };
-    meosDbg('[bellCaret] jumped to line=' + (line + 1));
+    meosBellDbg('[bellCaret] jumped to line=' + (line + 1));
     const d = vscode.window.onDidChangeTextEditorSelection((e) => {
       try {
         if (!e || !e.textEditor || !e.textEditor.document) return;
         if (e.textEditor.document.uri.toString() !== uri) return;
         const ln = (e.selections && e.selections[0]) ? e.selections[0].active.line : -1;
         const msg = '\u23f0 caret +' + (Date.now() - t0) + 'ms  line ' + (ln + 1) + '  by ' + (KIND[e.kind] || ('kind=' + e.kind));
-        meosDbg('[bellCaret] ' + msg);
+        meosBellDbg('[bellCaret] ' + msg);
         vscode.window.setStatusBarMessage('MeOS: ' + msg, 10000);
       } catch (_) { }
     });
@@ -10685,6 +10697,7 @@ async function meosPseudoTimeUp(key) {
       + '\u2192' + (_ed2 && _ed2.selection ? (_ed2.selection.active.line + 1) : '?')
       + ' ' + (_av && _av.document ? (_av.document.uri.toString() === scope.uri ? 'same' : 'OTHER') : 'none') + '\u3011';
   } catch (_) { }
+  try { meosBellDbg('[timeUp] ' + (scope.name || '') + _dg); } catch (_) { }   // v4.1.53: 窓thatが消えても残る
   const name = scope.name || 'this file';
   vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + _dg + (scope.hold
     ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'
@@ -21313,6 +21326,8 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .toc-tools .warn-btn.raw-timer .raw-t{color:#1e293b}
 /* ★v4.1.9: 数字が無い間は席も取らない(空の span の margin が、姉妹より数px太らせていた)。 */
 .warn-btn.raw-timer .raw-t:empty{display:none}
+/* v4.1.53: 鳴っている間は Stop と残り時間を上下に(1つの駒that2つのことを言う場面) */
+.warn-btn.raw-timer .raw-t.two{display:inline-flex;flex-direction:column;align-items:center;line-height:1.05;font-size:9px;font-weight:800}
 .toc-tools .warn-btn.raw-timer.running .raw-t{color:#c05621}
 /* ★v4.0.459: 近づくと大きくなる。transform なので**枡の大きさは変わらない**= 右隣は1pxも動かない。 */
 /* ★★v4.0.462(俊克「⏰の▼ボタンで、下側に時分、上側に年月日のスクロール式+手入力ボックスを出す」):
@@ -23012,7 +23027,17 @@ rawToggle.classList.toggle('held',held);
 var _rt=document.getElementById('raw-timer'),_rn=document.getElementById('raw-t');
 var _nl=vmNextLeft();   /* v4.1.37: 面に出すのは次に鳴る物の残り */
 var _near=(_nl>0&&_nl<=5*60000),_imm=(_nl>0&&_nl<=60000);
-if(_rn)_rn.textContent=vmRing?'stop':((_nl>0)?vmMmSs(_nl):'');   /* v4.0.469: 鳴っている間は「止める駒」 */
+/* ★★★v4.1.53(俊克 改良1「10秒前に鳴り出して、Stop表示のままというのは分かりにくい。
+   特に、5分間鳴り続ける仕様so、1分間隔でループすると、**0秒になるまでの残り時間の表示that出ないのは駄目**。
+   タイマー値も出しつつStopボタンだと見せるようにしよう」):
+   ★★★**鳴っている間thatが一番「あと何分か」を知りたい時**= 繰返しでは、鳴りながら次の回that近づく。
+     v4.0.469は「鳴っている時の⏰は止める駒so、面は stop だけ」と決めたthat、
+     **役to数字は同居できる**= 押す物の名前(Stop)と、待ち時間(0.09)を上下に置く。 */
+if(_rn){if(vmRing){_rn.textContent='';_rn.classList.add('two');
+ var _s1=document.createElement('span');_s1.textContent='Stop';
+ var _s2=document.createElement('span');_s2.textContent=(_nl>0)?vmMmSs(_nl):'';
+ _rn.appendChild(_s1);_rn.appendChild(_s2);}
+ else{_rn.classList.remove('two');_rn.textContent=(_nl>0)?vmMmSs(_nl):'';}}
 /* ★v4.1.7: 灯るのは**どこかで時計that走っている時**(今居る膜だけの話ではない)= ⏰は膜のモードの駒でなく、
    時計の一族の入口になった。数字は今居る膜の残り(どこに居ても見える物はステータスバーthat持つ)。 */
 var _anyRun=false;try{for(var _ci=0;_ci<vmClocks.length;_ci++)if(vmClocks[_ci].running){_anyRun=true;break;}}catch(e){}
