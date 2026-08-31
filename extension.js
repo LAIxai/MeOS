@@ -10680,10 +10680,10 @@ async function meosPseudoTimeUp(key) {
   try {
     const _ed2 = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === scope.uri);
     const _av = vscode.window.activeTextEditor;
-    _dg = '   \u3010' + (_meosLastJump || 'no jump')
-      + ' / caret=' + (_ed2 && _ed2.selection ? (_ed2.selection.active.line + 1) : '?')
-      + ' / active=' + (_av && _av.document ? (_av.document.uri.toString() === scope.uri ? 'same' : 'OTHER') : 'none')
-      + ' / cycle=' + (scope.cycle ? 'yes' : 'no') + '\u3011';
+    // v4.1.52: 知らせの窓は開かないと全文that読めないso、**短くして1行に収める**。
+    _dg = ' \u3010' + (_meosLastJump || 'no jump').replace('went to line ', 'L')
+      + '\u2192' + (_ed2 && _ed2.selection ? (_ed2.selection.active.line + 1) : '?')
+      + ' ' + (_av && _av.document ? (_av.document.uri.toString() === scope.uri ? 'same' : 'OTHER') : 'none') + '\u3011';
   } catch (_) { }
   const name = scope.name || 'this file';
   vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + _dg + (scope.hold
@@ -10849,7 +10849,18 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   meosArmPseudoTimer(lk, ms + 250);
   // ★v4.1.13: 予定は**本文のFC行**に書く(見える・検索できる・Me Dock無しでも直せる)。
   //   膜の外(ファイル全体)に掛けた時だけは書く所が無いので、今までどおり mMETA に置く。
-  if (scope.key) { try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock }); } catch (_) { } }
+  // ★★★v4.1.52(俊克 改良1「繰返し指定を試したthat、1分を設定しても、**10分になってしまう**」):
+  //   ★★★**掛け直すと ↻ that消えていた**= Set は時刻/押さえ/錠だけを書き、**繰返しを渡していなかった**。
+  //     so手で `\u21bb01` と書いた行に Set を押すと、その1文字ごと消えて、ただの一度きりに戻る。
+  //   ★★**時刻を決め直すことと、繰返しをやめることは別の意志**so、勝手に道連れにしない
+  //     ([[project_last_specified_wins]] 人that最後に指定した物を残す)。→ 在れば持ち越す。
+  if (scope.key) {
+    try {
+      let _cy = null;
+      try { const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key); if (_h && Array.isArray(_h.cycle) && _h.cycle.length) _cy = _h.cycle; } catch (_) { }
+      await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: _cy });
+    } catch (_) { }
+  }
   else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
   meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
   meosUpdateTimerBar();
@@ -21320,7 +21331,12 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      (Ⓣ Today / 💤 参照 / 🔖 栞 / 🏠 Home)と同じ**帰る場所**の一族。3モードボタンの隣を離れる。
    ★形も姉妹に揃う= **押す物＋▾** の対(🔖/▾ や 💤/▾ と同じ)。⏰=行く(履歴)、▾=決める(設定)。
    ★残り時間の数字(raw-t)も一緒に連れて行く= 飛ぶ場所と数字を別々の所に散らさない。 */
-.clk-wrap{display:inline-flex;align-items:stretch;margin-left:6px}
+/* ★★v4.1.52(俊克 バグ1「⏰ボタンthat鳴ると大きくなるthat、左隣の🏠ボタンに**突き刺さっている**」):
+   ★★**transform で膨らむ物は、場所を取らずに膨らむ**= 大きくしても箱は元のままso、隣に被る。
+   ★→ **膨らむ分の場所を、初めから空けておく**(margin)。常に空いているso、鳴った時に何も動かない
+     ([[project_direct_manipulation_mark]] 当たりthat表示の状態で動かない)。
+   ★併せて上に重ねる= 被った時に、下に潜って切れて見えない。 */
+.clk-wrap{display:inline-flex;align-items:stretch;margin:0 9px 0 13px;position:relative;z-index:3}
 .clk-wrap .warn-btn.raw-timer{margin-left:0;border-radius:9px 0 0 9px;position:relative}
 /* ★★v4.1.9(俊克「メインボタンと▼ボタンの間に、非常に狭いギャップが参照グループにはあるよね。それも
    再現してよ。特に、白に白だから、このギャップが重要なんだよ」):

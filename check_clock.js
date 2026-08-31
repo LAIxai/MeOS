@@ -361,5 +361,19 @@ console.log('\u3256 残り時間の段');
  ok(/\.\d\d$/.test(M(730*86400*S)), '\u2605\u2605\u2605秒thatは「動いている」を言う桁so、どこでも落とさない', M(730*86400*S));
 }
 
+// v4.1.52(俊克 改良1「繰返し指定を試したけど、1分を設定しても、10分になってしまう」)
+console.log('\u3257 掛け直しても \u21bb thatが消えない');
+{
+ const M=X.meosCycleMs, P=X.meosClockFcParse;
+ ok(M('01')===60000&&M('1')===60000, '  \u21bb01 も \u21bb1 も 1分(パーサは元から正しい)', [M('01'),M('1')]);
+ ok((P('<!-- Mew!UFC \u23f0 2026-08-31 19:00 \u21bb01 -->')||{}).cycle[0]==='01', '  行からも 01 と読める', true);
+ const SRC10=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _set=SRC10.slice(SRC10.indexOf('if (scope.key) {\n    try {\n      let _cy'), SRC10.indexOf('if (scope.key) {\n    try {\n      let _cy')+700);
+ ok(/cycle: _cy/.test(_set), '\u2605\u2605\u2605Set thatが書く時に繰返しを渡している', /_cy/.test(_set));
+ ok(/meosClockFcScan\(scope\.doc\)/.test(_set), '  在れば本文から読んで持ち越す', true);
+ ok(!/meosClockFcSet\(scope\.doc, scope\.key, \{ when: meosClockFcStamp\(_at\), hold, lock \}\)/.test(SRC10),
+    '\u2605\u21bb を渡さない古い書き方that残っていない', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

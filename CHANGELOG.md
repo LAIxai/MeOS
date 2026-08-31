@@ -28,6 +28,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.52 (2026-08-31)
+- **Setting a new time no longer wipes a repeat.** The panel wrote the time, the hold and the lock, and nothing
+  else — so a `↻` typed onto the line disappeared the moment a time was set from the panel, and what looked like
+  a one-minute repeat came back as whatever the panel had. Deciding a new time and giving up on repeating are
+  two different intentions; one no longer drags the other along.
+- **A ringing ⏰ stops leaning on the 🏠 beside it.** It swells with a transform, which costs no space, so it
+  simply grew over its neighbour. The room it needs is now kept free from the start — nothing moves when it
+  rings, and nothing is overlapped.
+- The line the bell reports is shortened so it can be read without expanding the notice.
+
 ### v4.1.50 (2026-08-31)
 - Groundwork for a report that the bell moves you to the membrane and then something moves you straight back:
   for six seconds after the bell has taken you somewhere, any move of the caret is recorded with how long after,
