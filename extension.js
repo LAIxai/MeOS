@@ -10636,6 +10636,30 @@ function meosStartRinging(name) {
   meosUpdateTimerBar(); meosPostViewMode();
 }
 function meosIsRinging() { return !!_meosRingTimer; }
+// ★★★v4.1.50(俊克 バグ1「タイムアップした時、その膜にワープするんだけど、**直ぐにさっきいた場所に
+//   戻ってきてしまう**。最初に実装した時は、ちゃんと移動したままだったのに、いつからそうなったか
+//   気づかなかった」): ★★★**推測で直さない**([[feedback_go_get_the_measurement]])。
+//   カーソルを動かす口はソースに20箇所以上在るので、読んで当てるより**誰thatが動かしたかを記録する**方that速い。
+//   ★VS Codeは選択that変わった理由(kind)を教えてくれる= **Command なら誰かのコマンド / Keyboard・Mouse なら人**。
+//     これで「MeOSthat戻している」のか「エディタの復元」なのか、一発で分かれる。
+//   ★鐘で飛んだ後の6秒だけ見張る= 常時は聞かない(重くしない)。
+function meosWatchCaretAfterBell(uri, line) {
+  try {
+    const t0 = Date.now(), KIND = { 1: 'Keyboard', 2: 'Mouse', 3: 'Command' };
+    meosDbg('[bellCaret] jumped to line=' + (line + 1));
+    const d = vscode.window.onDidChangeTextEditorSelection((e) => {
+      try {
+        if (!e || !e.textEditor || !e.textEditor.document) return;
+        if (e.textEditor.document.uri.toString() !== uri) return;
+        const ln = (e.selections && e.selections[0]) ? e.selections[0].active.line : -1;
+        const msg = '\u23f0 caret +' + (Date.now() - t0) + 'ms  line ' + (ln + 1) + '  by ' + (KIND[e.kind] || ('kind=' + e.kind));
+        meosDbg('[bellCaret] ' + msg);
+        vscode.window.setStatusBarMessage('MeOS: ' + msg, 10000);
+      } catch (_) { }
+    });
+    setTimeout(() => { try { d.dispose(); } catch (_) { } }, 6000);
+  } catch (_) { }
+}
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
   // v4.1.44: 10秒前に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
@@ -10643,6 +10667,11 @@ async function meosPseudoTimeUp(key) {
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   await meosJumpToScope(scope, true);
+  // v4.1.50: 飛んだ直後から6秒、カーソルthat動いたら「いつ・どこへ・誰that」を残す。
+  try {
+    const _ed = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === scope.uri);
+    meosWatchCaretAfterBell(scope.uri, _ed && _ed.selection ? _ed.selection.active.line : -1);
+  } catch (_) { }
   const name = scope.name || 'this file';
   vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + (scope.hold
     ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'

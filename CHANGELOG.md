@@ -28,6 +28,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.50 (2026-08-31)
+- Groundwork for a report that the bell moves you to the membrane and then something moves you straight back:
+  for six seconds after the bell has taken you somewhere, any move of the caret is recorded with how long after,
+  which line, and — the part that settles it — whether a command did it or a hand did.
+
 ### v4.1.49 (2026-08-31)
 - **The highlight button keeps its height whether or not it carries an underline.** Room for the line was being
   added only when a line was there, so the underlined face stood four pixels taller than its neighbours. The
