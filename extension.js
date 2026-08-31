@@ -22897,8 +22897,16 @@ rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCo
 +String.fromCharCode(10)+(vmOwn
 ?'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.'
 :'Handed down from the membrane outside this one \u2014 a membrane with no setting of its own follows whatever encloses it. Clicking gives this one a setting of its own; land back on the inherited value and it goes back to following.'))));
-if(left>0&&!vmTick)vmTick=setInterval(function(){if(vmLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
-if(left<=0&&vmTick){clearInterval(vmTick);vmTick=null;}};
+/* ★★★v4.1.42(俊克「なぜ、実行中の⏰膜を離れると、⏰ボタンの残時間that止まるのか?」):
+   ★★★**昨日の直し残し**= v4.1.37で**出す数字**を「次に鳴る物」へ移したthat、
+     **描き直しを続けるかどうかの判定**は「今居る膜」のままだった。so膜を出た瞬間に拍that止まり、
+     数字thatその場で凍る(値は正しいthat、更新thatが来ない)。
+   ★★★**直したはずの穴の、片側だけを直していた**= v4.1.37で私that名指しした
+     「1つのボタンthatが2つの判定から引いていた」を、**自分でもう一度やっていた**
+     ([[feedback_one_source_for_mark_count_action]])。
+   ★→ 拍も **次に鳴る物** で回す= 出す数字と、出し続ける理由thatが同じ1つから来る。 */
+if(_nl>0&&!vmTick)vmTick=setInterval(function(){if(vmNextLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
+if(_nl<=0&&vmTick){clearInterval(vmTick);vmTick=null;}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 var rawTimerBtn=document.getElementById('raw-timer');
 /* ★★v4.1.0(俊克「⏰ボタンを押した時に…リストにして」): ⏰thatパネルを開く= **Me Dockの中で完結する**

@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.42 (2026-08-31)
+- **The countdown on ⏰ keeps running once you leave the membrane it belongs to.** v4.1.37 moved *which* number
+  is shown to the clock that rings next, but what decided whether to keep redrawing was still the membrane the
+  caret sat in — so stepping out stopped the beat and the figure froze where it stood. Both now come from the
+  same place: the number shown and the reason to keep showing it.
+
 ### v4.1.41 (2026-08-31)
 - **After the × takes the line away, the caret steps up one line.** Removing a line pulls the one below it up
   under the caret — and that line is outside the membrane, where nothing shows you what just happened. A line

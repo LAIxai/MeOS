@@ -277,5 +277,16 @@ console.log('\u2473 \u00d7 は走っていなくても行を消す');
  ok(_i1>=0&&_i2>=0&&_i2>_i1, '  止めてから消す(順番)', [_i1,_i2]);
 }
 
+// v4.1.42(俊克「実行中の⏰膜を離れると、⏰ボタンの残時間が止まる」)
+console.log('\u3251 面の拍も「次に鳴る物」で回る');
+{
+ const SRC5=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _rr=SRC5.slice(SRC5.indexOf('window.__renderRaw=function'), SRC5.indexOf('window.__renderRaw=function')+9000);
+ const _tick=_rr.slice(_rr.indexOf('vmTick=setInterval')-40, _rr.indexOf('vmTick=setInterval')+220);
+ ok(/_nl>0&&!vmTick/.test(_tick), '\u2605\u2605\u2605拍を始める判定that「次に鳴る物」(今居る膜ではない)', _tick.slice(0,60));
+ ok(/vmNextLeft\(\)<=0/.test(_tick), '  拍を止める判定も同じ物から引く', true);
+ ok(!/if\(left>0&&!vmTick\)/.test(_rr), '  「今居る膜」で拍を回す古い道that残っていない', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
