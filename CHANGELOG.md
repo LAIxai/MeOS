@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.48 (2026-08-31)
+- **The seconds stay, however far off the time is.** v4.1.47 dropped them past a year on the grounds that they
+  carry no information at that distance — but the seconds are not there to say how many; they are there to say
+  the thing is running. Take them away and a live countdown is indistinguishable from a frozen one, which is
+  exactly the fault found earlier today. Larger units are added in front; nothing below is ever removed.
+
 ### v4.1.47 (2026-08-31)
 - **A countdown longer than a day is counted in days, and one longer than a year in years.** Everything above an
   hour was being given in hours, so a month away read `720:00.00`. It now reads `30d 00:00.00`, and two years

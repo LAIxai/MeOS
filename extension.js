@@ -10393,7 +10393,12 @@ function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; retu
 const MEOS_T_DAY = 86400, MEOS_T_YEAR = 365 * 86400;
 function meosMmSs(ms) {
   const t = Math.ceil(Math.max(0, ms) / 1000), p = (x) => String(x).padStart(2, '0');
-  if (t >= MEOS_T_YEAR) return Math.floor(t / MEOS_T_YEAR) + 'y ' + Math.floor((t % MEOS_T_YEAR) / MEOS_T_DAY) + 'd';
+  // ★★★v4.1.48(俊克「そうじゃないよ。**時分秒、特に秒は必須**だよ。それthat無かったら、**変化that見えない**でしょ?」):
+  //   ★★★**秒は「今いくつか」ではなく「動いている」を言う桁**= 落とすと、止まっているのと区別thatつかない。
+  //     今朝まさに、拍that止まって数字thatが凍った時、俊克はそれを一目で見抜いた。**秒thatその目印だった**。
+  //   ★→ どの段でも **HH:MM.SS を必ず付ける**。大きい単位は前へ足すだけで、下は削らない。
+  if (t >= MEOS_T_YEAR) return Math.floor(t / MEOS_T_YEAR) + 'y ' + Math.floor((t % MEOS_T_YEAR) / MEOS_T_DAY) + 'd '
+    + p(Math.floor(t / 3600) % 24) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   if (t >= MEOS_T_DAY) return Math.floor(t / MEOS_T_DAY) + 'd ' + p(Math.floor(t / 3600) % 24) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   if (t >= 3600) return Math.floor(t / 3600) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   return Math.floor(t / 60) + '.' + p(t % 60);
@@ -22908,7 +22913,7 @@ function vmNextLeft(){return vmNextUntil?Math.max(0,vmNextUntil-Date.now()):0;} 
 function vmMmSs(ms){var t=Math.ceil(ms/1000),p=function(x){x=String(x);return x.length<2?'0'+x:x;};
 /* v4.1.47: node の meosMmSs と同じ段(24時間以上は日、1年以上は年と日) */
 var D=86400,Y=365*86400;
-if(t>=Y)return Math.floor(t/Y)+'y '+Math.floor((t%Y)/D)+'d';
+if(t>=Y)return Math.floor(t/Y)+'y '+Math.floor((t%Y)/D)+'d '+p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);/* v4.1.48: 秒は必須(動いていることthatが見える) */
 if(t>=D)return Math.floor(t/D)+'d '+p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
 if(t>=3600)return Math.floor(t/3600)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
 return Math.floor(t/60)+'.'+p(t%60);}   /* v4.1.37: 「:」は時と分の間だけ。分と秒は「.」 */
