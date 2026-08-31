@@ -10545,6 +10545,7 @@ function meosEditorColumn(doc) {
   } catch (_) { }
   return vscode.ViewColumn.One;
 }
+let _meosLastJump = '';   // v4.1.51: 直前の移動that何をしたか(計測)
 async function meosJumpToScope(scope, byBell) {
   try {
     if (!scope) return;
@@ -10552,7 +10553,7 @@ async function meosJumpToScope(scope, byBell) {
       || await vscode.workspace.openTextDocument(vscode.Uri.parse(scope.uri));   // 閉じていても開いて行ける
     if (!doc) return;
     const rng = meosScopeRangeNow(doc, scope.key);
-    if (!rng) return;
+    if (!rng) { _meosLastJump = 'NO RANGE (key=' + scope.key + ')'; return; }
     const from = vscode.window.activeTextEditor;
     try { if (byBell && from) meosNoteReturnMark(from, meosMembraneNameAtLine(from.document, from.selection.active.line)); } catch (_) { }
     const ed = await vscode.window.showTextDocument(doc, { viewColumn: meosEditorColumn(doc), preserveFocus: false, preview: false });
@@ -10571,7 +10572,8 @@ async function meosJumpToScope(scope, byBell) {
     ed.selection = new vscode.Selection(pos, pos);
     try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }
     ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
-  } catch (_) { }
+    _meosLastJump = 'went to line ' + (ln + 1);
+  } catch (e) { _meosLastJump = 'THREW: ' + (e && e.message ? e.message : String(e)); }
 }
 // ★★★v4.0.465(俊克「やはり、**警告音は必要**だね」):
 //   ★★★**鐘は、見ていなくても届かねばならない**。今の知らせ(飛ぶ/知らせの窓/ステータスバー)は
@@ -10672,8 +10674,19 @@ async function meosPseudoTimeUp(key) {
     const _ed = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === scope.uri);
     meosWatchCaretAfterBell(scope.uri, _ed && _ed.selection ? _ed.selection.active.line : -1);
   } catch (_) { }
+  // ★★★v4.1.51(俊克「そのメッセージthat出てこないよ」): ステータスバーは鐘の表示に押し出されていた。
+  //   → **必ず読まれる所**(「時間です」の知らせ)に載せる。
+  let _dg = '';
+  try {
+    const _ed2 = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === scope.uri);
+    const _av = vscode.window.activeTextEditor;
+    _dg = '   \u3010' + (_meosLastJump || 'no jump')
+      + ' / caret=' + (_ed2 && _ed2.selection ? (_ed2.selection.active.line + 1) : '?')
+      + ' / active=' + (_av && _av.document ? (_av.document.uri.toString() === scope.uri ? 'same' : 'OTHER') : 'none')
+      + ' / cycle=' + (scope.cycle ? 'yes' : 'no') + '\u3011';
+  } catch (_) { }
   const name = scope.name || 'this file';
-  vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + (scope.hold
+  vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + _dg + (scope.hold
     ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'
     : ' Here is the membrane you asked for.'));
 }
