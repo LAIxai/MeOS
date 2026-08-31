@@ -10386,8 +10386,15 @@ function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; retu
      1時間未満では `分:秒` と**「:」を分と秒の間に使っていた**。so短い方を見た人は、それを時分と読む。
    ★→ **「:」は時と分の間だけ**。分と秒は必ず「.」。1時間未満は `分.秒`。
      記号that位置でなく**役**で決まる= 桁数を数えなくても読める。 */
+//   ★★★v4.1.47(俊克「24時間以上のときは、残り時間は **DD HH:MM.SS** にしよう。
+//     3ヶ月後、2年後のときは、**それなりに**」): 1時間で切り上げていたので、30日thatが `720:00.00` になっていた。
+//     ★段の作り= **一番大きい単位から3〜4つ**。単位thatが上がるほど、下の桁は意味を失うので落とす。
+//       「:」は時と分の間だけ / 「.」は分と秒の間 / 日と年は**空白**で切る(別の種類の区切りso混ざらない)。
+const MEOS_T_DAY = 86400, MEOS_T_YEAR = 365 * 86400;
 function meosMmSs(ms) {
   const t = Math.ceil(Math.max(0, ms) / 1000), p = (x) => String(x).padStart(2, '0');
+  if (t >= MEOS_T_YEAR) return Math.floor(t / MEOS_T_YEAR) + 'y ' + Math.floor((t % MEOS_T_YEAR) / MEOS_T_DAY) + 'd';
+  if (t >= MEOS_T_DAY) return Math.floor(t / MEOS_T_DAY) + 'd ' + p(Math.floor(t / 3600) % 24) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   if (t >= 3600) return Math.floor(t / 3600) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   return Math.floor(t / 60) + '.' + p(t % 60);
 }
@@ -22899,6 +22906,10 @@ function vmLeft(){return vmUntil?Math.max(0,vmUntil-Date.now()):0;}          /* 
 function vmNextLeft(){return vmNextUntil?Math.max(0,vmNextUntil-Date.now()):0;} /* v4.1.37: 面に出す数字(次に鳴る物) */
 /* v4.1.14: 面の残り時間も node と同じ形(1時間を越えたら 時:分.秒)= 同じ値を2つの形で出さない。 */
 function vmMmSs(ms){var t=Math.ceil(ms/1000),p=function(x){x=String(x);return x.length<2?'0'+x:x;};
+/* v4.1.47: node の meosMmSs と同じ段(24時間以上は日、1年以上は年と日) */
+var D=86400,Y=365*86400;
+if(t>=Y)return Math.floor(t/Y)+'y '+Math.floor((t%Y)/D)+'d';
+if(t>=D)return Math.floor(t/D)+'d '+p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
 if(t>=3600)return Math.floor(t/3600)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
 return Math.floor(t/60)+'.'+p(t%60);}   /* v4.1.37: 「:」は時と分の間だけ。分と秒は「.」 */
 window.__renderRaw=function(){if(!rawToggle)return;

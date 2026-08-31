@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.47 (2026-08-31)
+- **A countdown longer than a day is counted in days, and one longer than a year in years.** Everything above an
+  hour was being given in hours, so a month away read `720:00.00`. It now reads `30d 00:00.00`, and two years
+  reads `2y 12d` — past a year, hours and seconds tell you nothing. The separators keep their jobs: a colon
+  between hours and minutes, a full stop between minutes and seconds, and a space wherever a larger unit begins.
+
 ### v4.1.46 (2026-08-31)
 - **The date wheels stay white until you choose a date, like the line beneath them.** v4.1.45 put today into the
   wheels and let the confirmed line say, in white, that no date had been chosen — but the wheels themselves went
