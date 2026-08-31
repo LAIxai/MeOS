@@ -10309,6 +10309,26 @@ function meosApplyTimerLineDecorations(editor) {
 function meosTickTimerLines() {
   try { for (const ed of (vscode.window.visibleTextEditors || [])) meosApplyTimerLineDecorations(ed); } catch (_) { }
 }
+// ★★★v4.1.43(俊克「⏰膜を離れても残り時間は動いている。ただし**完全に同期はしてない**。1秒差。
+//   これを完全同期できるの?」):
+//   ★★★**2つの拍that別々の位相で回っていた**= 行(node)と面(webview)thatどちらも「自分that始まった時刻から
+//     1秒ごと」so、秒の変わり目を跨ぐ順番thatずれる。値はどちらも**その瞬間には正しい**that、
+//     見比べると1秒違って見える時間帯that毎秒生まれる。
+//   ★★→ **1秒ごとに数えるのをやめ、「数字that変わる瞬間」に合わせる**=
+//     残り時間を1000で割った余りthat次の変わり目までの時間so、そこへ置く。
+//     両方that同じ `at` から同じ余りを出すso、**同じ瞬間に書き換わる**= 位相thatが揃う。
+//   ★これは [[project_position_by_definition]] の時間版= **間隔を数えず、変わり目を定義する**。
+function meosNextTickDelay(at) {
+  const rem = at - Date.now();
+  return (((rem % 1000) + 1000) % 1000) + 8;   // +8ms= 変わり目を**過ぎて**から描く(切り上げthat確実に落ちる)
+}
+function meosScheduleTimerTick() {
+  if (_meosTimerTick) { clearTimeout(_meosTimerTick); _meosTimerTick = null; }
+  let best = 0;
+  for (const [, u] of _meosPseudoUntil) if (!best || u < best) best = u;
+  if (!best) return;
+  _meosTimerTick = setTimeout(() => { _meosTimerTick = null; meosUpdateTimerBar(); }, meosNextTickDelay(best));
+}
 function meosUpdateTimerBar() {
   try {
     let best = null;
@@ -10352,7 +10372,7 @@ function meosUpdateTimerBar() {
     } catch (_) { }
     _meosTimerBar.show();
     meosTickTimerLines();
-    if (!_meosTimerTick) _meosTimerTick = setInterval(() => meosUpdateTimerBar(), 1000);
+    meosScheduleTimerTick();
   } catch (_) { }
 }
 function meosLockKey(scope) { try { return scope.doc.uri.toString() + ' ' + scope.key; } catch (_) { return ' ' + (scope && scope.key); } }
@@ -22905,8 +22925,12 @@ rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCo
      「1つのボタンthatが2つの判定から引いていた」を、**自分でもう一度やっていた**
      ([[feedback_one_source_for_mark_count_action]])。
    ★→ 拍も **次に鳴る物** で回す= 出す数字と、出し続ける理由thatが同じ1つから来る。 */
-if(_nl>0&&!vmTick)vmTick=setInterval(function(){if(vmNextLeft()<=0){clearInterval(vmTick);vmTick=null;}window.__renderRaw();},1000);
-if(_nl<=0&&vmTick){clearInterval(vmTick);vmTick=null;}};
+/* ★★★v4.1.43: 拍は**秒の変わり目**へ置く(node の meosScheduleTimerTick と同じ規則)=
+   1秒ごとに数えると、始めた時刻の分だけ位相thatずれ、行と面that1秒違って見える。
+   同じ at から同じ余りを出せば、**同じ瞬間に書き換わる**。 */
+if(vmTick){clearTimeout(vmTick);vmTick=null;}
+if(_nl>0){var _d=(((vmNextUntil-Date.now())%1000)+1000)%1000+8;
+ vmTick=setTimeout(function(){vmTick=null;window.__renderRaw();},_d);}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 var rawTimerBtn=document.getElementById('raw-timer');
 /* ★★v4.1.0(俊克「⏰ボタンを押した時に…リストにして」): ⏰thatパネルを開く= **Me Dockの中で完結する**

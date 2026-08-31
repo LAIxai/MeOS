@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -282,10 +282,27 @@ console.log('\u3251 面の拍も「次に鳴る物」で回る');
 {
  const SRC5=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  const _rr=SRC5.slice(SRC5.indexOf('window.__renderRaw=function'), SRC5.indexOf('window.__renderRaw=function')+9000);
- const _tick=_rr.slice(_rr.indexOf('vmTick=setInterval')-40, _rr.indexOf('vmTick=setInterval')+220);
- ok(/_nl>0&&!vmTick/.test(_tick), '\u2605\u2605\u2605拍を始める判定that「次に鳴る物」(今居る膜ではない)', _tick.slice(0,60));
- ok(/vmNextLeft\(\)<=0/.test(_tick), '  拍を止める判定も同じ物から引く', true);
+ const _arm=_rr.slice(_rr.indexOf('if(vmTick){clearTimeout'), _rr.indexOf('if(vmTick){clearTimeout')+260);
+ ok(/if\(_nl>0\)/.test(_arm), '\u2605\u2605\u2605拍を始める判定that「次に鳴る物」(_nl)', _arm.slice(0,90));
+ ok(/vmNextUntil/.test(_arm), '  変わり目の計算も「次に鳴る物」から引く', true);
  ok(!/if\(left>0&&!vmTick\)/.test(_rr), '  「今居る膜」で拍を回す古い道that残っていない', true);
+ ok(!/vmLeft\(\)<=0/.test(_arm), '  止める判定にも「今居る膜」thatが混ざっていない', true);
+}
+
+// v4.1.43(俊克「完全に同期はしてない。1秒差。これを完全同期できるの?」)
+console.log('\u3252 拍は「秒の変わり目」に置く');
+{
+ const at=Date.now()+12345;   // 残り12.345秒
+ const d=X.meosNextTickDelay(at);
+ ok(d>=8&&d<=1008, '\u2605次の変わり目までの時間を返す(0〜1秒＋余裕)', d);
+ ok(Math.abs(d-(345+8))<3, '\u2605\u2605\u2605余り345msなら 353ms 後(1000msではない)', d);
+ const at2=Date.now()+12000;  // ちょうど変わり目
+ ok(X.meosNextTickDelay(at2)<=1008, '  ちょうどの時も1秒以内に次that来る', X.meosNextTickDelay(at2));
+ // 2つの表示that同じ at から出せば、同じ瞬間に書き換わる
+ ok(X.meosNextTickDelay(at)===X.meosNextTickDelay(at), '\u2605\u2605同じ at からは同じ答え= 行と面that揃う', true);
+ const SRC6=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(!/_meosTimerTick = setInterval/.test(SRC6), '\u2605node側に「1秒ごと」の古い拍that残っていない', true);
+ ok(!/vmTick=setInterval/.test(SRC6), '\u2605webview側にも残っていない', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.43 (2026-08-31)
+- **The countdown on the membrane's line and the one on ⏰ now change in the same instant.** Each was counting a
+  second at a time from whenever it happened to start, so the two crossed the second boundary at different
+  moments and could be seen a second apart. Neither was wrong — each was right when it was drawn. They no longer
+  count intervals at all: both are scheduled onto the moment the figure actually changes, worked out from the
+  same target time, so they turn over together.
+
 ### v4.1.42 (2026-08-31)
 - **The countdown on ⏰ keeps running once you leave the membrane it belongs to.** v4.1.37 moved *which* number
   is shown to the clock that rings next, but what decided whether to keep redrawing was still the membrane the
