@@ -319,7 +319,13 @@ console.log('\u3253 秒読みは3段(アーチェリー式)');
  ok(/ms - marks\[i\]\[0\]/.test(_arm), '\u2605\u2605次の印の時刻で起きる(1秒ごとに数えない)', true);
  ok(!/meosJumpToScope/.test(_arm), '  印の枝に移動thatが混ざっていない', true);
  const _up=SRC7.slice(SRC7.indexOf('async function meosPseudoTimeUp'), SRC7.indexOf('async function meosPseudoTimeUp')+1600);
- ok(/if \(_cyc > 0\) \{ try \{ meosRingFor\(_sc0 && _sc0\.name, 900\);/.test(_up), '\u2605\u2605\u26050秒は「ホイッスル」= 短く1回鳴らして止める(黙るのではない)', true);
+ ok(/meosStopRinging\(\); meosPlayWhistle\(\);/.test(_up), '\u2605\u2605\u26050秒= 秒読みを止め、3秒の高音を1つ(黙るのではない)', true);
+ const SRC13=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _w=SRC13.slice(SRC13.indexOf('function meosWhistlePath'), SRC13.indexOf('function meosWhistlePath')+1200);
+ ok(/meosWhistlePath\(1760, 3\)/.test(SRC13), '\u2605\u26051760Hz(A6)を3秒= OSの音には無い「続く音」so自分で作る', true);
+ ok(/Math\.min\(1, t \* 25, \(secs - t\) \* 25\)/.test(_w), '\u2605端を丸める(矩形に切るとプツッと言う)', true);
+ ok(/if \(!name\) return;/.test(SRC13.slice(SRC13.indexOf('function meosPlayWhistle'), SRC13.indexOf('function meosPlayWhistle')+800)),
+    '  音を空にしている人には鳴らさない', true);
  const SRC12=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  const _rv=SRC12.slice(SRC12.indexOf('function meosRevealAgainAfterBell'), SRC12.indexOf('function meosRevealAgainAfterBell')+1400);
  ok(/setTimeout\(\(\) => again\('t\+300'\), 300\)/.test(_rv)&&/again\('t\+900'\), 900\)/.test(_rv), '\u2605飛んだ後、落ち着いてから2度見せ直す', true);

@@ -10668,6 +10668,49 @@ function meosStopRinging() {
   _meosRingUntil = 0; _meosRingName = '';
   meosUpdateTimerBar(); meosPostViewMode();
 }
+// ★★★v4.1.57(俊克「もう少し**高音で3秒間、ピーって**鳴らそうよ」):
+//   ★★★**OSの音には「ピー」that無い**= /System/Library/Sounds は全部**短い一撃**(Sosumi/Ping/Glass…)so、
+//     並べても「ポポポ」にしかならない。**続く音**は、無いなら作るしかない。
+//   ★★→ **正弦波の3秒を1つ作って鳴らす**(1760Hz=A6・22.05kHz/16bit/モノラル)。作るのは初回だけ、
+//     以後は使い回す。端は40msで立ち上げ/落とす= **プツッと言わない**(矩形に切ると耳に痛い)。
+//   ★秒読み(OSの短い音を繰り返す)と、合図(自前の続く高音)that**音の形からして別物**になる=
+//     俊克thatアーチェリーでやっていた「カウントは声・開始は笛」と同じ分け方。
+//   ★音を空にしている人には鳴らさない(clockSound が空= 黙らせたい人の意思)。
+let _meosWhistleFile = null;
+function meosWhistlePath(hz, secs) {
+  if (_meosWhistleFile) return _meosWhistleFile;
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 22050, n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      const env = Math.max(0, Math.min(1, t * 25, (secs - t) * 25));   // 端を丸める
+      buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * hz * t) * env * 22000), 44 + i * 2);
+    }
+    const f = path.join(os.tmpdir(), 'meos-whistle-' + hz + '-' + secs + '.wav');
+    fs.writeFileSync(f, buf); _meosWhistleFile = f; return f;
+  } catch (_) { return null; }
+}
+function meosPlayWhistle() {
+  try {
+    let name = 'Sosumi', vol = 2;
+    try {
+      const cfg = vscode.workspace.getConfiguration('laiMembrane');
+      name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
+      const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
+    } catch (_) { }
+    if (!name) return;                                   // 空= 鳴らさない(人の意思)
+    if (process.platform !== 'darwin') { meosPlayChime(); return; }
+    const f = meosWhistlePath(1760, 3);
+    if (!f) { meosPlayChime(); return; }
+    const { exec } = require('child_process');
+    exec("afplay -v " + vol + " '" + String(f).replace(/'/g, "'\\''") + "'", () => { });
+  } catch (_) { }
+}
 function meosStartRinging(name) {
   const every = meosRingSeconds();
   meosPlayChime();
@@ -10749,7 +10792,7 @@ async function meosPseudoTimeUp(key) {
   //   ★★★**秒読みの最後には「発射」の合図that要る**= v4.1.55は0秒で黙らせたthat、
   //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
   //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
-  if (_cyc > 0) { try { meosRingFor(_sc0 && _sc0.name, 900); } catch (_) { } }
+  if (_cyc > 0) { try { meosStopRinging(); meosPlayWhistle(); } catch (_) { } }   // v4.1.57: 秒読みを止め、3秒の高音1つ
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   await meosJumpToScope(scope, true);

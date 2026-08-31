@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.57 (2026-08-31)
+- **The whistle is a real whistle now** — three seconds of a high, steady tone. The system sounds are all single
+  strikes, so no arrangement of them makes a sound that *holds*; MeOS builds the tone itself the first time it
+  is needed and keeps it. Its ends are faded over a few hundredths of a second so it opens and closes instead of
+  cracking. The count and the moment now differ in the shape of the sound, not only in its timing — short beats
+  against one long note.
+
 ### v4.1.56 (2026-08-31)
 - **The moment itself gets a whistle.** v4.1.55 had the ringing stop as the time arrived, but going quiet cannot
   say "now" — and with the view already there, nothing at all appeared to happen. The count is a sound that
