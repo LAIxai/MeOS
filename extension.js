@@ -22761,7 +22761,14 @@ heading:false};/* v0.9.999137(俊克 7/9 バグ1再修正): ↻リング=4状態
 };var svg="<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'>"+(n===2?(wv(2)+wv(4)):wv(4))+"</svg>";var e=encodeURIComponent(svg).split("'").join('%27').split('(').join('%28').split(')').join('%29');
 return 'url(data:image/svg+xml,'+e.split('COL').join(c)+')';}/* v4.0.32(俊克): ★webview(ボタン面/▾)は **text-decoration のままでよい**。面の太字は fontWeight で出しており、エディタのような『縁取りの運び屋 vs 下線』の衝突が無いから。CSSに単独指定が無い 3(二重波線) だけ背景SVG。さらに面は style.background(ショートハンド)で色を塗るので、background-image を使うと消し合う=その点でも安全。 *//* v4.0.35(俊克 改良3「面の波がボタン幅いっぱいになるのはなぜ?」): 背景は**要素の幅**に敷かれるから。→ 面の文字を内側spanで包み、そのspanにだけ下線を引く=文字の幅ぶんになる(エディタと同じ見え方)。 */function fmtSetHlFace(btn,f){if(!btn)return;
 btn.textContent='';btn.style.fontWeight='';btn.style.fontStyle='';var sp=document.createElement('span');sp.textContent=f.t;
-sp.style.display='inline-block';sp.style.fontWeight=f.b?'900':'';sp.style.fontStyle=f.i?'italic':'';sp.style.paddingBottom=(f.u===null||f.u===undefined)?'':'4px';
+sp.style.display='inline-block';sp.style.fontWeight=f.b?'900':'';sp.style.fontStyle=f.i?'italic':'';
+/* ★★★v4.1.49(俊克「ハイライトボタンの高さとOptで下線を付けたボタンの高さthat異なる。
+   ここだけthat異なることに気づかなかったよ」): ★★★**線のための余白thatボタンを伸ばしていた**=
+   v4.0.37で「下線thatある時だけ余白を足す」と決めたので、**下線の有無thatそのまま高さの差**になった。
+   ★★→ 余白は**常に確保**し、外への張り出しだけを負の余白で打ち消す= 波を敷く場所は残るthat、
+     ボタンの背丈は変わらない。★**押す物の大きさthat状態で変わってはいけない**
+     ([[project_direct_manipulation_mark]] 当たりthat表示の状態で動かない)。 */
+sp.style.paddingBottom='4px';sp.style.marginBottom='-4px';
 /* v4.0.37(俊克 改良3): 下線が無い時に余白を入れると文字が上に寄って間が抜ける。下線がある時だけ、控えめに。 */btn.appendChild(sp);fmtUlApply(sp,f.u,fmtHexFg((fmtHlSlots[fmtHlIdx]||{}).fg));
 }function fmtUlApply(el,u,col){if(!el)return;el.style.backgroundImage='';el.style.backgroundRepeat='';el.style.backgroundPosition='';
 if(u===null||u===undefined){el.style.textDecoration='';el.style.textUnderlineOffset='';return;}/* v4.0.34(俊克 改良2): 面でも 2/3 はエディタと同じ**波のSVG**にする(text-decorationのwavyは1〜2文字だと潰れて見える)。 */if(u===2||u===3){el.style.textDecoration='none';

@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.49 (2026-08-31)
+- **The highlight button keeps its height whether or not it carries an underline.** Room for the line was being
+  added only when a line was there, so the underlined face stood four pixels taller than its neighbours. The
+  room is now always reserved and the growth cancelled, which leaves somewhere for the wave to be drawn without
+  the button changing size. A control that changes size is a control that moves under your finger.
+
 ### v4.1.48 (2026-08-31)
 - **The seconds stay, however far off the time is.** v4.1.47 dropped them past a year on the grounds that they
   carry no information at that distance — but the seconds are not there to say how many; they are there to say
