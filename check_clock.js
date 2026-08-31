@@ -306,19 +306,23 @@ console.log('\u3252 拍は「秒の変わり目」に置く');
 }
 
 // v4.1.44(俊克「アラームが鳴ってワープした瞬間に、文字変換していて、ワープ先に文字が入ってしまった」)
-console.log('\u3253 鐘thatが先、移動thatが後');
+console.log('\u3253 秒読みは3段(アーチェリー式)');
 {
  const SRC7=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _arm=SRC7.slice(SRC7.indexOf('function meosArmPseudoTimer'), SRC7.indexOf('function meosArmPseudoTimer')+1400);
- ok(/step = ms - lead/.test(_arm), '\u2605\u2605\u2605鐘の時刻(at-lead)で一度起きる', /lead/.test(_arm));
- ok(/meosStartRinging\(sc && sc\.name\)/.test(_arm), '\u2605\u2605その時は**鳴らすだけ**(飛ばない)', true);
- ok(!/meosJumpToScope/.test(_arm), '  先鐘の枝に移動thatが混ざっていない', true);
+ ok(/MEOS_BELL_MARKS = \[\[60000, 3000\], \[30000, 5000\], \[10000, 0\]\]/.test(SRC7),
+    '\u2605\u2605\u26051分前=3秒 / 30秒前=5秒 / 10秒前=鳴り続ける(0)', true);
+ const _mf=SRC7.slice(SRC7.indexOf('function meosBellMarksFor'), SRC7.indexOf('function meosBellMarksFor')+220);
+ ok(/m\[0\] < cycleStep/.test(_mf), '\u2605繰返しの間隔より遠い印は出さない(1分周期に「1分前」は無い)', true);
+ const _rf=SRC7.slice(SRC7.indexOf('function meosRingFor'), SRC7.indexOf('function meosRingFor')+320);
+ ok(/meosStartRinging\(name\)/.test(_rf)&&/meosStopRinging/.test(_rf), '  N秒だけ鳴らして止める口that在る', true);
+ const _arm=SRC7.slice(SRC7.indexOf('function meosArmPseudoTimer'), SRC7.indexOf('function meosArmPseudoTimer')+1200);
+ ok(/ms - marks\[i\]\[0\]/.test(_arm), '\u2605\u2605次の印の時刻で起きる(1秒ごとに数えない)', true);
+ ok(!/meosJumpToScope/.test(_arm), '  印の枝に移動thatが混ざっていない', true);
  const _up=SRC7.slice(SRC7.indexOf('async function meosPseudoTimeUp'), SRC7.indexOf('async function meosPseudoTimeUp')+1600);
- ok(/_meosPreBell\.delete\(key\)/.test(_up), '\u2605時刻ちょうどは、鳴らし直さずに移動する(鐘は1つ)', true);
+ ok(/if \(_cyc > 0\) \{ try \{ meosStopRinging\(\);/.test(_up), '\u2605\u2605繰返しの鐘は時刻ちょうどで止まる(黙る時間を作る)', true);
  ok(/meosJumpToScope\(scope, true\)/.test(_up), '  移動thatは時刻ちょうどの方に在る', true);
- const _clr=SRC7.slice(SRC7.indexOf('function meosClearPseudoTimer'), SRC7.indexOf('function meosClearPseudoTimer')+260);
- ok(/_meosPreBell\.delete\(key\)/.test(_clr), '  止めたら先鐘の覚えも外す(次に掛けた時また鳴る)', true);
 }
+
 
 // v4.1.45(俊克 改良2「初期値、およびClearボタンを押した時は、今日の年月日を表示すべき」)
 console.log('\u3254 日付の輪は今日から始まる');
@@ -373,18 +377,6 @@ console.log('\u3257 掛け直しても \u21bb thatが消えない');
  ok(/meosClockFcScan\(scope\.doc\)/.test(_set), '  在れば本文から読んで持ち越す', true);
  ok(!/meosClockFcSet\(scope\.doc, scope\.key, \{ when: meosClockFcStamp\(_at\), hold, lock \}\)/.test(SRC10),
     '\u2605\u21bb を渡さない古い書き方that残っていない', true);
-}
-
-// v4.1.54(俊克「1分繰返しのときは30秒前、2分以上の繰返しのときは1分前で鳴らし始める」)
-console.log('\u3258 先鐘の長さは繰返しの間隔that決める');
-{
- const SRC11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _ld=SRC11.slice(SRC11.indexOf('function meosClockLeadMs('), SRC11.indexOf('function meosClockLeadMs(')+420);
- ok(/cycleStep <= 60000 \? 30000 : 60000/.test(_ld), '\u2605\u2605\u26051分以内=30秒前 / それ以上=1分前', true);
- ok(/clockLeadSeconds/.test(_ld), '  繰返しthat無い時は今までどおり設定値(既定10秒)', true);
- const _up=SRC11.slice(SRC11.indexOf('async function meosPseudoTimeUp'), SRC11.indexOf('async function meosPseudoTimeUp')+1600);
- ok(/if \(_cyc > 0\) \{ try \{ meosStopRinging\(\);/.test(_up), '\u2605\u2605繰返しの鐘は時刻ちょうどで止まる(黙る時間を作る)', true);
- ok(!/if \(_cyc > 0\)[\s\S]{0,80}meosJumpToScope/.test(_up), '  止めるのthat移動を邪魔していない', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

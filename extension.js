@@ -10427,17 +10427,24 @@ const MEOS_TIMER_CHUNK = 20 * 24 * 60 * 60 * 1000;
 //     (v4.0.459で「大きさで気づかせる」を足したのと同じ= **移動の前に、気づく時間を置く**)。
 //   ★秒数は `laiMembrane.clockLeadSeconds`(既定10・0で今までどおり同時)。
 const _meosPreBell = new Set();     // 先に鳴らし終えた鍵(二度鳴らさない)
-// ★★★v4.1.54(俊克「**1分繰返しのときは30秒前**に警告音を鳴らし始める。**2分以上の繰返しのときは1分前**で
-//   鳴らし始める。こうすれば、**ずっと鳴り続けることthat無いので、減り張りthat付く**」):
-//   ★★★**繰返しでは「止めるまで鳴る」that成り立たない**= 1分ごとに人that手で止めるなら、それはもう
-//     知らせではなく仕事。v4.0.469の「止めるまで鳴り続ける」は**一度きりの鐘の話**だった。
-//   ★★→ **繰返しの鐘は、鳴る時間と黙る時間を持つ**= 先鐘から時刻ちょうどまで鳴って、そこで止まる。
-//     1分周期なら 30秒鳴って30秒黙る。2分以上なら 1分鳴って残りは黙る。**間thatあるから、次thatが届く**。
-//   ★一度きりの鐘は今までどおり(既定10秒前・止めるまで鳴る)= 相手that1回so、止める手も1回で済む。
-function meosClockLeadMs(cycleStep) {
-  if (cycleStep > 0) return cycleStep <= 60000 ? 30000 : 60000;   // 1分以内=30秒前 / それ以上=1分前
-  try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockLeadSeconds', 10)); return (isFinite(v) && v > 0) ? Math.min(v, 600) * 1000 : 0; }
-  catch (_) { return 10000; }
+// ★★★v4.1.55(俊克「**1分前の警告音は3秒間だけ、30秒前に5秒間鳴らし、10秒前から鳴り続ける**。
+//   これthat、アーチェリー式だね」): ★★★**秒読みは、近づくほど濃くなる**=
+//   遠い印は短く1回(在ることを知らせるだけ)、近い印は長く、最後は途切れない。
+//   ★★人that手を止めるのは「鳴った瞬間」ではなく「**あと少しだ**と分かった時」so、
+//     鐘は1回でなく**3回、濃さを変えて**来る。俊克thatアーチェリー部でやっていた合図そのもの。
+//   ★★★**間thatあるから、次that届く**= 3秒鳴って57秒黙る、5秒鳴って20秒黙る、そして最後は鳴り続ける。
+//     鳴りっぱなしの音は10分で聞こえなくなる(v4.1.54で分けた「鳴る時間と黙る時間」の完成形)。
+//   ★繰返しの間隔より遠い印は出さない= 1分周期に「1分前」は在り得ない(前の回と重なる)。
+const MEOS_BELL_MARKS = [[60000, 3000], [30000, 5000], [10000, 0]];   // [何秒前, 何ms鳴らす(0=時刻まで)]
+const _meosBellDone = new Map();       // key → 次に鳴らす印の番号
+let _meosMarkStop = null;              // 「N秒だけ鳴らす」の止め役
+function meosBellMarksFor(cycleStep) {
+  return (cycleStep > 0) ? MEOS_BELL_MARKS.filter(m => m[0] < cycleStep) : MEOS_BELL_MARKS.slice();
+}
+function meosRingFor(name, ms) {
+  meosStartRinging(name);
+  if (_meosMarkStop) { clearTimeout(_meosMarkStop); _meosMarkStop = null; }
+  if (ms > 0) _meosMarkStop = setTimeout(() => { _meosMarkStop = null; try { meosStopRinging(); } catch (_) { } }, ms);
 }
 // その鍵の繰返し間隔(ms)。無ければ0。
 function meosCycleStepFor(key) {
@@ -10449,26 +10456,34 @@ function meosCycleStepFor(key) {
   } catch (_) { return 0; }
 }
 function meosArmPseudoTimer(key, ms) {
-  const lead = meosClockLeadMs(meosCycleStepFor(key));
-  let step = ms;
-  if (lead > 0 && ms > lead && !_meosPreBell.has(key)) step = ms - lead;   // 先に**鐘の時刻**で起きる
-  step = Math.min(step, MEOS_TIMER_CHUNK);
+  const marks = meosBellMarksFor(meosCycleStepFor(key));
+  let i = _meosBellDone.get(key) || 0;
+  while (i < marks.length && ms <= marks[i][0]) i++;      // もう過ぎている印は出さない(短い予定など)
+  _meosBellDone.set(key, i);
+  let step = (i < marks.length) ? (ms - marks[i][0]) : ms;   // 次の印の時刻で起きる
+  step = Math.min(Math.max(step, 0), MEOS_TIMER_CHUNK);
   _meosPseudoTimers.set(key, setTimeout(() => {
     const left = (_meosPseudoUntil.get(key) || 0) - Date.now();
     if (left > 500) {
-      if (lead > 0 && left <= lead + 500 && !_meosPreBell.has(key)) {
-        _meosPreBell.add(key);
-        const sc = _meosPseudoScopes.get(key);
-        meosStartRinging(sc && sc.name);          // 鳴らすthatが、まだ飛ばない
-        meosUpdateTimerBar();
+      const mk = meosBellMarksFor(meosCycleStepFor(key));
+      let j = _meosBellDone.get(key) || 0;
+      while (j < mk.length && left <= mk[j][0] + 600) {
+        if (left >= mk[j][0] - 1500) {                    // その印のために起きた= 鳴らす
+          const sc = _meosPseudoScopes.get(key);
+          meosRingFor(sc && sc.name, mk[j][1]);
+          meosUpdateTimerBar();
+        }
+        j++;
       }
-      meosArmPseudoTimer(key, left); return;   // まだ先= 継ぐ
+      _meosBellDone.set(key, j);
+      meosArmPseudoTimer(key, left); return;              // まだ先= 継ぐ
     }
     meosPseudoTimeUp(key);
   }, step));
 }
+
 function meosClearPseudoTimer(key) {
-  _meosPreBell.delete(key);                              // v4.1.44
+  _meosPreBell.delete(key); _meosBellDone.delete(key);    // v4.1.44 / v4.1.55
   const h = _meosPseudoTimers.get(key); if (h) clearTimeout(h);
   _meosPseudoTimers.delete(key); _meosPseudoUntil.delete(key);
   meosUpdateTimerBar();
@@ -10694,7 +10709,7 @@ function meosWatchCaretAfterBell(uri, line) {
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
-  const _pre = _meosPreBell.delete(key);
+  const _pre = (_meosBellDone.get(key) || 0) > 0; _meosBellDone.delete(key); _meosPreBell.delete(key);
   const _cyc = meosCycleStepFor(key);
   if (!_pre) meosStartRinging(_sc0 && _sc0.name);   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。

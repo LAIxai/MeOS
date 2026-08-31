@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.55 (2026-08-31)
+- **The warning is now a countdown in three stages, the way it is called at an archery line.** Three seconds of
+  sound a minute out, five seconds at thirty, and from ten seconds it does not stop until the time arrives.
+  Near is louder than far, and the silences in between are what let each one land — a sound with nothing around
+  it stops being heard within minutes. Stages closer together than the repeat itself are left out: a clock that
+  comes round every minute has no "one minute to go".
+
 ### v4.1.54 (2026-08-31)
 - **A repeating clock rings for a while and then goes quiet, instead of never stopping.** The warning starts
   thirty seconds ahead when the repeat is a minute or less, a minute ahead when it is longer, and the ringing
