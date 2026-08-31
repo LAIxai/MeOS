@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.46 (2026-08-31)
+- **The date wheels stay white until you choose a date, like the line beneath them.** v4.1.45 put today into the
+  wheels and let the confirmed line say, in white, that no date had been chosen — but the wheels themselves went
+  on showing today in orange. Orange had come to mean "chosen", so the same screen was using one colour for two
+  things. The time columns are always orange, because a time is always used; only the date starts out white.
+
 ### v4.1.45 (2026-08-31)
 - **The date wheels start on today, and Clear returns them to today.** They used to be left blank to say "no
   date chosen", which meant anyone wanting a date had nothing to adjust from — shifting by one day began with

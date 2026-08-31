@@ -333,5 +333,19 @@ console.log('\u3254 日付の輪は今日から始まる');
  ok(/data-v="'\+i\+'"/.test(_fill), '  clkFill thatが書く data-v は素の数値(突き合わせの根拠)', true);
 }
 
+// v4.1.46(俊克「確定値の年月日が白色なら、上の年月日スクロールの部分も白色にしないとね」)
+console.log('\u3255 色の意味は1つ(指定した=橙)');
+{
+ const SRC9=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/\.clk-pop:not\(\.dfix\) \.clk-col\.dcol div\.sel\{color:var\(--vscode-editor-foreground\)\}/.test(SRC9),
+    '\u2605\u2605\u2605指定していない間は日付の輪も白', true);
+ ok(/class="clk-col dcol" id="clk-y"/.test(SRC9)&&/class="clk-col dcol" id="clk-mo"/.test(SRC9)&&/class="clk-col dcol" id="clk-d"/.test(SRC9),
+    '  白くするのは**日付の3列だけ**(時刻は常に橙)', true);
+ ok(!/class="clk-col dcol" id="clk-h"/.test(SRC9)&&!/class="clk-col dcol" id="clk-mi"/.test(SRC9),
+    '  時分の列には印を付けない(指定しない状態that無い)', true);
+ const _e=SRC9.slice(SRC9.indexOf('function clkEcho()'), SRC9.indexOf('function clkEcho()')+420);
+ ok(/clkPop\.classList\.toggle\('dfix',clkFixD\)/.test(_e), '\u2605\u2605下の行と輪that**同じ旗**から色を決める', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

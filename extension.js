@@ -21389,6 +21389,12 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
      (scrollTop=scrollTop)= その一筆that慣性を打ち切る。触れば止まる、を体で分かる形にする。 */
 .clk-col div{height:22px;line-height:22px;font-size:10px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;color:var(--vscode-editor-foreground);opacity:.8;transition:font-size .12s,opacity .12s}
 .clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
+/* ★★★v4.1.46(俊克 バグ1「確定値(→ …)の年月日that白色なら、上の年月日スクロールの部分の
+   今日の年月日も、橙色でなくて、白色にしないとね」):
+   ★★★**色that「指定した」という意味を持つなら、それはどこでも同じ意味でなければならない**=
+     v4.1.45で下の行を白にしたのに、輪だけ橙のままにした= **同じ画面で色that2つの意味を持っていた**。
+   ★時刻の列は常に橙(時刻は必ず使われる= 指定しない状態thatが無い)。日付の列だけthat白から始まる。 */
+.clk-pop:not(.dfix) .clk-col.dcol div.sel{color:var(--vscode-editor-foreground)}
 .clk-cols{position:relative}
 /* 真ん中の窓= 動かない枠。数字thatその下を通る。 */
 .clk-col .clk-win{display:none}
@@ -21682,7 +21688,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 <div class="bm-pop clk-pop" id="clk-pop">
   <div class="clk-list" id="clk-list"></div>
   <div class="clk-row"><span class="clk-lab">Date</span><span class="clk-hint">empty = today / tomorrow</span></div>
-  <div class="clk-cols"><div class="clk-col" id="clk-y"></div><div class="clk-col" id="clk-mo"></div><div class="clk-col" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
+  <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
   <div style="border-top:1px solid var(--vscode-panel-border);margin:3px 0"></div>
   <div class="clk-row"><span class="clk-lab">Time</span><span class="clk-hint">24-hour</span></div>
   <div class="clk-cols"><div class="clk-col" id="clk-h"></div><div class="clk-col" id="clk-mi"></div></div>
@@ -23098,7 +23104,9 @@ function clkText(){return (clkFixD?(clkDateStr()+' '):'')+clkTimeStr();}
      → 日付を触っていない間、ホイールは**何も選んでいない姿のまま**。導いた日は行にだけ、灰で出す。 */
 function clkEcho(){var wd=document.getElementById('clk-wd'),wt=document.getElementById('clk-wt');if(!wd||!wt)return;
 wd.textContent=clkDateStr();wt.textContent=clkTimeStr();
-wd.classList.toggle('fix',clkFixD);}
+wd.classList.toggle('fix',clkFixD);
+/* v4.1.46: 同じ旗を輪にも渡す= 下の行と輪that同じことを言う(色の意味は1つ) */
+if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
 /* 打ち込みの口は1つ= 合体行を押すと、この箱が同じ場所に出る。 */
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
 var v=(e.value||'').trim().replace(/[\uFF1A]/g,':').replace(/[\uFF0F]/g,'/');
