@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.56 (2026-08-31)
+- **The moment itself gets a whistle.** v4.1.55 had the ringing stop as the time arrived, but going quiet cannot
+  say "now" — and with the view already there, nothing at all appeared to happen. The count is a sound that
+  continues; the moment is a sound that ends. They should not be the same sound.
+- **Being pulled back after the bell has moved you.** The report was that the screen sometimes flickers and stays
+  where it was, which says the jump does happen and something undoes it afterwards — the view, not the caret,
+  which is why watching the caret found nothing. The membrane is shown again once things have settled, and only
+  if it has actually gone off screen. What the view was doing is recorded either way.
+
 ### v4.1.55 (2026-08-31)
 - **The warning is now a countdown in three stages, the way it is called at an archery line.** Three seconds of
   sound a minute out, five seconds at thirty, and from ten seconds it does not stop until the time arrives.

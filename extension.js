@@ -10706,6 +10706,37 @@ function meosWatchCaretAfterBell(uri, line) {
     setTimeout(() => { try { d.dispose(); } catch (_) { } }, 6000);
   } catch (_) { }
 }
+// v4.1.56: 鐘で飛んだ後、畳み直し等that表示を戻すことthat在るので、落ち着いてから見せ直す。
+function meosRevealAgainAfterBell(uri, key) {
+  const shot = (tag) => {
+    try {
+      const ed = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === uri);
+      if (!ed) { meosBellDbg('[reveal] ' + tag + ' no editor'); return null; }
+      const vr = ed.visibleRanges && ed.visibleRanges[0];
+      meosBellDbg('[reveal] ' + tag + ' caret=' + (ed.selection.active.line + 1)
+        + ' view=' + (vr ? (vr.start.line + 1) + '-' + (vr.end.line + 1) : '?'));
+      return ed;
+    } catch (_) { return null; }
+  };
+  const again = (tag) => {
+    const ed = shot(tag);
+    if (!ed) return;
+    try {
+      const rng = meosScopeRangeNow(ed.document, key);
+      if (!rng) return;
+      const ln = Math.max(0, Math.min(rng.from, ed.document.lineCount - 1));
+      const vr = ed.visibleRanges && ed.visibleRanges[0];
+      if (vr && ln >= vr.start.line && ln <= vr.end.line) return;      // 見えている= 触らない
+      const p = new vscode.Position(ln, 0);
+      ed.selection = new vscode.Selection(p, p);
+      ed.revealRange(new vscode.Range(p, p), vscode.TextEditorRevealType.InCenter);
+      meosBellDbg('[reveal] ' + tag + ' PULLED BACK \u2192 showed line ' + (ln + 1) + ' again');
+    } catch (_) { }
+  };
+  shot('t0');
+  setTimeout(() => again('t+300'), 300);
+  setTimeout(() => again('t+900'), 900);
+}
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
@@ -10714,7 +10745,11 @@ async function meosPseudoTimeUp(key) {
   if (!_pre) meosStartRinging(_sc0 && _sc0.name);   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
   //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。
-  if (_cyc > 0) { try { meosStopRinging(); } catch (_) { } }
+  // ★★★v4.1.56(俊克「アーチェリーでタイムアップのときは、警告音というか、**ホイッスル**を鳴らしていたね」):
+  //   ★★★**秒読みの最後には「発射」の合図that要る**= v4.1.55は0秒で黙らせたthat、
+  //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
+  //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
+  if (_cyc > 0) { try { meosRingFor(_sc0 && _sc0.name, 900); } catch (_) { } }
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   await meosJumpToScope(scope, true);
@@ -10723,6 +10758,13 @@ async function meosPseudoTimeUp(key) {
     const _ed = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === scope.uri);
     meosWatchCaretAfterBell(scope.uri, _ed && _ed.selection ? _ed.selection.active.line : -1);
   } catch (_) { }
+  // ★★★v4.1.56(俊克「飛ぶ時と飛ばない時thatある。**飛ばない時でも、ちらつきthatある**」):
+  //   ★★★**ちらつきthat答え**= 飛んではいる。**その後で画面thatが戻されている**。
+  //     戻しているのはカーソルではなく**表示位置**so、選択の見張りには映らなかった。
+  //   ★犯人の第一候補= 鐘that書いた⏰行(次の時刻/✓)の**文書変更→畳み直し**。畳みは表示範囲を動かす。
+  //   ★★→ **落ち着いてから、もう一度そこを見せる**。畳み直しの後に上書きするので、どちらthat先でも勝てる。
+  //     ついでに、その時の**見えている範囲**を記録する= 戻されたかどうかthat数字で残る。
+  try { meosRevealAgainAfterBell(scope.uri, scope.key); } catch (_) { }
   // ★★★v4.1.51(俊克「そのメッセージthat出てこないよ」): ステータスバーは鐘の表示に押し出されていた。
   //   → **必ず読まれる所**(「時間です」の知らせ)に載せる。
   let _dg = '';
