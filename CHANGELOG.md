@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.45 (2026-08-31)
+- **The date wheels start on today, and Clear returns them to today.** They used to be left blank to say "no
+  date chosen", which meant anyone wanting a date had nothing to adjust from — shifting by one day began with
+  setting all three columns. Today is now sitting there as the ground to move from. Whether a date has actually
+  been chosen is said by the line below instead: white until you touch it, orange once you have. One thing said
+  in one place.
+- This also closes a hole the day column opened: refilling it for a new month could clear the chosen day, and
+  the confirmed line quietly fell back to a derived date. With today always selected, there is nothing to lose.
+
 ### v4.1.44 (2026-08-31)
 - **⏰ rings ten seconds before it moves you.** The bell and the journey were the same instant, and a hand is
   still moving when a bell goes — mid-composition, with characters not yet committed. The view jumped, and what

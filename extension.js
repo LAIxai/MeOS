@@ -23073,9 +23073,20 @@ if(was!=null)clkSel(ed,Math.min(was,dim));            /* 31日を選んだまま
 }
 function clkSyncFromCols(){clkFitDays();clkEcho();}
 /* ★日付の「空」の姿= 何も選ばず、頭まで巻き戻す。clear と 開く時の両方that、ここ1つを呼ぶ。 */
-function clkDateEmpty(){clkFixD=false;['clk-y','clk-mo','clk-d'].forEach(function(id){var el=document.getElementById(id);if(!el)return;
-for(var i=0;i<el.children.length;i++)el.children[i].classList.remove('sel');
-try{el.style.scrollBehavior='auto';el.scrollTop=0;}catch(e){}});}
+/* ★★★v4.1.45(俊克 改良2「年月日that下の『→』の確定値に反映されない。**初期値、および、Clearボタンを
+   押した時は、今日の年月日を表示すべき**だよね。それを基準にして修正したいと思うのthat普通でしょ?
+   Clearボタンを押したときは、確定値の年月日は、**白色文字**なのは当然としてね」):
+   ★★★**「指定していない」を、輪を空にすることで表していた**(v4.1.3)= so直したい人thatが
+     **足場を持てなかった**。今日から1日ずらしたいだけでも、まず年月日を3つとも選び直す所から始まる。
+   ★★→ **輪には今日を置く。指定したかどうかは、下の行の色thatが言う**(白=まだ / 橙=指定した)。
+     ★意味を運ぶ役を**輪から色へ**渡した= 1つのことを2箇所で言わない。
+   ★これで日の列の詰め直し(v4.1.29)でも選びthat消えない= 確定値thatが空に落ちる穴も同時に塞がる。 */
+function clkDateEmpty(){clkFixD=false;
+var t=new Date();
+clkSel(document.getElementById('clk-y'),t.getFullYear());
+clkSel(document.getElementById('clk-mo'),t.getMonth()+1);   /* data-v は 1..12(0詰めしない) */
+clkFitDays();
+clkSel(document.getElementById('clk-d'),t.getDate());}
 /* ★Set に渡すのは、日付を指定していなければ**時刻だけ**= 今日か明日かは node に決めさせる
    (こちらで日付を書いて渡すと、開いたまま日をまたいだ時に古い日を掛けてしまう)。 */
 function clkText(){return (clkFixD?(clkDateStr()+' '):'')+clkTimeStr();}

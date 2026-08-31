@@ -320,5 +320,18 @@ console.log('\u3253 鐘thatが先、移動thatが後');
  ok(/_meosPreBell\.delete\(key\)/.test(_clr), '  止めたら先鐘の覚えも外す(次に掛けた時また鳴る)', true);
 }
 
+// v4.1.45(俊克 改良2「初期値、およびClearボタンを押した時は、今日の年月日を表示すべき」)
+console.log('\u3254 日付の輪は今日から始まる');
+{
+ const SRC8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _de=SRC8.slice(SRC8.indexOf('function clkDateEmpty()'), SRC8.indexOf('function clkDateEmpty()')+420);
+ ok(/clkFixD=false/.test(_de), '\u2605指定した印(clkFixD)は false のまま= 下の行は白', true);
+ ok(/clkSel\(document\.getElementById\('clk-y'\)/.test(_de), '\u2605\u2605\u2605輪には今日を置く(空にしない)', true);
+ ok(/getMonth\(\)\+1\)/.test(_de)&&!/clkPad\(/.test(_de), '\u2605\u2605data-v は素の数値so 0詰めしない(01では当たらない)', !/clkPad\(/.test(_de));
+ ok(/clkFitDays\(\)/.test(_de), '  日を選ぶ前に、その月の日数へ詰め直す(2月に31日を置かない)', true);
+ const _fill=SRC8.slice(SRC8.indexOf('function clkFill('), SRC8.indexOf('function clkFill(')+200);
+ ok(/data-v="'\+i\+'"/.test(_fill), '  clkFill thatが書く data-v は素の数値(突き合わせの根拠)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
