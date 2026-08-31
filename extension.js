@@ -10427,12 +10427,29 @@ const MEOS_TIMER_CHUNK = 20 * 24 * 60 * 60 * 1000;
 //     (v4.0.459で「大きさで気づかせる」を足したのと同じ= **移動の前に、気づく時間を置く**)。
 //   ★秒数は `laiMembrane.clockLeadSeconds`(既定10・0で今までどおり同時)。
 const _meosPreBell = new Set();     // 先に鳴らし終えた鍵(二度鳴らさない)
-function meosClockLeadMs() {
+// ★★★v4.1.54(俊克「**1分繰返しのときは30秒前**に警告音を鳴らし始める。**2分以上の繰返しのときは1分前**で
+//   鳴らし始める。こうすれば、**ずっと鳴り続けることthat無いので、減り張りthat付く**」):
+//   ★★★**繰返しでは「止めるまで鳴る」that成り立たない**= 1分ごとに人that手で止めるなら、それはもう
+//     知らせではなく仕事。v4.0.469の「止めるまで鳴り続ける」は**一度きりの鐘の話**だった。
+//   ★★→ **繰返しの鐘は、鳴る時間と黙る時間を持つ**= 先鐘から時刻ちょうどまで鳴って、そこで止まる。
+//     1分周期なら 30秒鳴って30秒黙る。2分以上なら 1分鳴って残りは黙る。**間thatあるから、次thatが届く**。
+//   ★一度きりの鐘は今までどおり(既定10秒前・止めるまで鳴る)= 相手that1回so、止める手も1回で済む。
+function meosClockLeadMs(cycleStep) {
+  if (cycleStep > 0) return cycleStep <= 60000 ? 30000 : 60000;   // 1分以内=30秒前 / それ以上=1分前
   try { const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockLeadSeconds', 10)); return (isFinite(v) && v > 0) ? Math.min(v, 600) * 1000 : 0; }
   catch (_) { return 10000; }
 }
+// その鍵の繰返し間隔(ms)。無ければ0。
+function meosCycleStepFor(key) {
+  try {
+    const sc = _meosPseudoScopes.get(key); if (!sc) return 0;
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri); if (!doc) return 0;
+    const hit = meosClockFcScan(doc).find(c => c.key === sc.key);
+    return (hit && Array.isArray(hit.cycle) && hit.cycle.length) ? meosCycleMs(hit.cycle[0]) : 0;
+  } catch (_) { return 0; }
+}
 function meosArmPseudoTimer(key, ms) {
-  const lead = meosClockLeadMs();
+  const lead = meosClockLeadMs(meosCycleStepFor(key));
   let step = ms;
   if (lead > 0 && ms > lead && !_meosPreBell.has(key)) step = ms - lead;   // 先に**鐘の時刻**で起きる
   step = Math.min(step, MEOS_TIMER_CHUNK);
@@ -10676,8 +10693,13 @@ function meosWatchCaretAfterBell(uri, line) {
 }
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
-  // v4.1.44: 10秒前に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
-  if (!_meosPreBell.delete(key)) meosStartRinging(_sc0 && _sc0.name);   // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
+  const _pre = _meosPreBell.delete(key);
+  const _cyc = meosCycleStepFor(key);
+  if (!_pre) meosStartRinging(_sc0 && _sc0.name);   // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
+  //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。
+  if (_cyc > 0) { try { meosStopRinging(); } catch (_) { } }
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   await meosJumpToScope(scope, true);

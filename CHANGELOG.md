@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.54 (2026-08-31)
+- **A repeating clock rings for a while and then goes quiet, instead of never stopping.** The warning starts
+  thirty seconds ahead when the repeat is a minute or less, a minute ahead when it is longer, and the ringing
+  ends when the time arrives. "Rings until you stop it" was decided for a bell that rings once; asked of a clock
+  that returns every minute it becomes a chore, and a sound with no silence around it stops being a signal.
+  A single, non-repeating clock keeps the old behaviour, warning ten seconds ahead.
+
 ### v4.1.53 (2026-08-31)
 - **While the clock is ringing it shows what it is waiting for as well as how to stop it** — `Stop` above, the
   time until the next ring below. With a repeat, the ringing is exactly when you most want to know how long is
