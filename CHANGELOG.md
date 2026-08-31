@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.44 (2026-08-31)
+- **⏰ rings ten seconds before it moves you.** The bell and the journey were the same instant, and a hand is
+  still moving when a bell goes — mid-composition, with characters not yet committed. The view jumped, and what
+  was being typed landed in the membrane it arrived at. Ringing first gives you the moment to stop; the move
+  happens at the appointed time, as before. `laiMembrane.clockLeadSeconds` sets the warning (10 by default,
+  0 for the old behaviour).
+
 ### v4.1.43 (2026-08-31)
 - **The countdown on the membrane's line and the one on ⏰ now change in the same instant.** Each was counting a
   second at a time from whenever it happened to start, so the two crossed the second boundary at different

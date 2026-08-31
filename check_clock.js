@@ -305,5 +305,20 @@ console.log('\u3252 拍は「秒の変わり目」に置く');
  ok(!/vmTick=setInterval/.test(SRC6), '\u2605webview側にも残っていない', true);
 }
 
+// v4.1.44(俊克「アラームが鳴ってワープした瞬間に、文字変換していて、ワープ先に文字が入ってしまった」)
+console.log('\u3253 鐘thatが先、移動thatが後');
+{
+ const SRC7=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _arm=SRC7.slice(SRC7.indexOf('function meosArmPseudoTimer'), SRC7.indexOf('function meosArmPseudoTimer')+1400);
+ ok(/step = ms - lead/.test(_arm), '\u2605\u2605\u2605鐘の時刻(at-lead)で一度起きる', /lead/.test(_arm));
+ ok(/meosStartRinging\(sc && sc\.name\)/.test(_arm), '\u2605\u2605その時は**鳴らすだけ**(飛ばない)', true);
+ ok(!/meosJumpToScope/.test(_arm), '  先鐘の枝に移動thatが混ざっていない', true);
+ const _up=SRC7.slice(SRC7.indexOf('async function meosPseudoTimeUp'), SRC7.indexOf('async function meosPseudoTimeUp')+500);
+ ok(/_meosPreBell\.delete\(key\)/.test(_up), '\u2605時刻ちょうどは、鳴らし直さずに移動する(鐘は1つ)', true);
+ ok(/meosJumpToScope\(scope, true\)/.test(_up), '  移動thatは時刻ちょうどの方に在る', true);
+ const _clr=SRC7.slice(SRC7.indexOf('function meosClearPseudoTimer'), SRC7.indexOf('function meosClearPseudoTimer')+260);
+ ok(/_meosPreBell\.delete\(key\)/.test(_clr), '  止めたら先鐘の覚えも外す(次に掛けた時また鳴る)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
