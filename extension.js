@@ -10792,6 +10792,23 @@ function meosRevealAgainAfterBell(uri, key) {
   setTimeout(() => again('t+300'), 300);
   setTimeout(() => again('t+900'), 900);
 }
+// v4.1.59: Stopで止めた物を1分だけ覚え、押し直しで戻す(Stop \u21c4 Undo)。
+let _meosLastStopped = null;
+function meosStopUndoAt() { return (_meosLastStopped && Date.now() <= _meosLastStopped.until) ? _meosLastStopped.at : 0; }
+async function meosClockUndoStop() {
+  const r = _meosLastStopped;
+  if (!r || Date.now() > r.until) { _meosLastStopped = null; return false; }
+  _meosLastStopped = null;
+  try {
+    const doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === r.scope.uri);
+    if (doc && r.when) await meosClockFcSet(doc, r.scope.key, { when: r.when, hold: r.hold, lock: r.lock, cycle: r.cycle, done: false });
+    _meosPseudoScopes.set(r.key, r.scope);
+    _meosPseudoUntil.set(r.key, r.at);
+    meosArmPseudoTimer(r.key, Math.max(250, r.at - Date.now() + 250));
+    meosUpdateTimerBar(); meosPostViewMode();
+    return true;
+  } catch (_) { return false; }
+}
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
@@ -10851,6 +10868,7 @@ function meosPostViewMode() {
       //   ([[feedback_one_source_for_mark_count_action]])。so今日2度、俊克thatが面の数字に驚いた。
       //   ★膜ごとの残りは**閉じ膜の行thatもう出している**(v4.0.449〜451)so、面のそれは重複だった。
       nextUntil: (() => { let b = 0; for (const [, u] of _meosPseudoUntil) if (!b || u < b) b = u; return b; })(),
+      stopUndo: meosStopUndoAt(),          // v4.1.59: 直前に止めた物(1分だけ戻せる)
       scope: (sc ? (sc.name || '') : ''),
       own: (sc ? meosScopeHasOwn(sc) : true),  // v4.0.452: false= 外側から受け継いでいる
       ringing: meosIsRinging(),                // v4.0.469: 鳴っている間は⏰thatが「止める駒」になる
@@ -23107,7 +23125,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmNextUntil=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[];/* v4.1.37: 面の数字=次に鳴る物 */
+var viewMode='normal',vmUntil=0,vmNextUntil=0,vmStopUndo=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[];/* v4.1.37: 面の数字=次に鳴る物 */
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -23175,10 +23193,12 @@ var _near=(_nl>0&&_nl<=5*60000),_imm=(_nl>0&&_nl<=60000);
      私は「鳴っている間だけ止める駒」と読み、音に紐付けた。so秒読みthat途切れる区間で消え、
      押しても**音を黙らせるだけ**で予定は止まらなかった。**表示that約束を破っていた**。
    ★★→ **残り1分を切ったら、鳴っていなくても出す**。そして押したら**この回を本当に終わらせる**。 */
-var _stopMode=(vmRing||(_nl>0&&_nl<=60000));window.__clkStopMode=_stopMode;
+/* v4.1.59: 止めた直後の1分は「Undo」= 押し間違いthat取り返せる。 */
+var _undoLeft=vmStopUndo?Math.max(0,vmStopUndo-Date.now()):0;
+var _stopMode=(vmRing||(_nl>0&&_nl<=60000)||_undoLeft>0);window.__clkStopMode=_stopMode;
 if(_rn){if(_stopMode){_rn.textContent='';_rn.classList.add('two');
- var _s1=document.createElement('span');_s1.textContent='Stop';
- var _s2=document.createElement('span');_s2.textContent=(_nl>0)?vmMmSs(_nl):'';   /* v4.1.58: 鳴っていなくても残りを出す */
+ var _s1=document.createElement('span');_s1.textContent=(_undoLeft>0)?'Undo':'Stop';
+ var _s2=document.createElement('span');_s2.textContent=(_undoLeft>0)?vmMmSs(_undoLeft):((_nl>0)?vmMmSs(_nl):'');
  _rn.appendChild(_s1);_rn.appendChild(_s2);}
  else{_rn.classList.remove('two');_rn.textContent=(_nl>0)?vmMmSs(_nl):'';}}
 /* ★v4.1.7: 灯るのは**どこかで時計that走っている時**(今居る膜だけの話ではない)= ⏰は膜のモードの駒でなく、
@@ -24261,8 +24281,8 @@ if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof w
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
-var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
-if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
+var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(Number(m.stopUndo)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmStopUndo=Number(m.stopUndo)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
 if(typeof clkRenderList==='function')clkRenderList();
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
@@ -25100,11 +25120,25 @@ function toggleMeDock(editorOverride) {
     //     どちらも「この回は終わり」という1つの意味。目薬を先に差した時に押す物so、それthat自然。
     //   ★遠い時計を巻き込まないように、90秒以内の物だけを対象にする(面thatStopを出す条件と揃える)。
     if (message && message.type === 'clockStop') {
+      // ★★★v4.1.59(俊克「残り1分以内なら、**何度でもやり直せる**ようにしよう」):
+      //   ★★★**止めるのthat取り返しのつかない操作であってはいけない**= 押し間違いは誰にでも在る
+      //     ([[project_direct_manipulation_mark]] ×を一覧で外せるようにしたのと同じ理屈)。
+      //   ★★→ 止めた物を**1分だけ覚えて**おき、もう一度押せば元に戻す。Stop ⇄ Undo that行き来する。
+      //     覚えは1分で消える= 遠い過去の取り消しは意味thatないので、抱え込まない。
+      if (await meosClockUndoStop()) { try { updateMeDockMode(); } catch (_) { } return; }
       try { if (meosIsRinging()) meosStopRinging(); } catch (_) { }
       try {
         let best = null;
         for (const [k, u] of _meosPseudoUntil) if (!best || u < best.u) best = { k, u };
-        if (best && (best.u - Date.now()) <= 90000) await meosEndPseudoTimer(best.k);
+        if (best && (best.u - Date.now()) <= 90000) {
+          const sc = _meosPseudoScopes.get(best.k);
+          let hit = null;
+          try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === (sc && sc.uri)); if (d && sc) hit = meosClockFcScan(d).find(c => c.key === sc.key); } catch (_) { }
+          await meosEndPseudoTimer(best.k);
+          if (sc) _meosLastStopped = { key: best.k, at: best.u, scope: sc, when: hit ? hit.when : null,
+            hold: hit ? hit.hold : !!sc.hold, lock: hit ? hit.lock : !!sc.lock, cycle: hit ? hit.cycle : null,
+            until: Date.now() + 60000 };
+        }
       } catch (_) { }
       try { updateMeDockMode(); } catch (_) { }
       return;

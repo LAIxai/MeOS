@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.59 (2026-09-02)
+- **Stopping can be taken back.** For a minute afterwards the button reads `Undo`, and pressing it puts the
+  clock back exactly as it was — so the two can be pressed back and forth as often as you like. Stopping a
+  clock is not the sort of thing that should be unrecoverable; anyone can press the wrong button, which is why
+  the × in the list stops a running clock instead of refusing. The offer expires after a minute, because
+  undoing something from long ago means nothing.
+
 ### v4.1.58 (2026-09-02)
 - **A repeat is written `↺` now — anticlockwise, because the count runs backwards.** The arrow says which way
   time is going, so there is nothing to memorise. `↻` is still read, so nothing already written breaks; the

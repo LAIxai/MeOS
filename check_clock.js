@@ -403,9 +403,12 @@ console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
  ok(C('1M')===60000, '  M は単位にしない(mと同じ分として読む= 月ではない)', C('1M'));
  const SRC14=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/' \\u21ba' \+ spec\.cycle\.join/.test(SRC14)||/\u21ba' \+ spec\.cycle\.join/.test(SRC14), '\u2605\u2605書く時は \u21ba', true);
- ok(/var _stopMode=\(vmRing\|\|\(_nl>0&&_nl<=60000\)\)/.test(SRC14), '\u2605\u2605\u2605残り1分以内は、鳴っていなくてもStopを出す', true);
+ ok(/_nl>0&&_nl<=60000/.test(SRC14), '\u2605\u2605\u2605残り1分以内は、鳴っていなくてもStopを出す', true);
+ ok(/_s1\.textContent=\(_undoLeft>0\)\?'Undo':'Stop'/.test(SRC14), '\u2605\u2605\u2605止めた直後の1分は Undo(押し間違いthat取り返せる)', true);
+ ok(/if \(await meosClockUndoStop\(\)\)/.test(SRC14), '\u2605\u2605もう一度押せば戻る= Stop \u21c4 Undo that行き来する', true);
+ ok(/until: Date\.now\(\) \+ 60000/.test(SRC14), '  覚えは1分で消える(遠い過去の取り消しは抱え込まない)', true);
  ok(/if\(vmRing\|\|window\.__clkStopMode\)/.test(SRC14), '\u2605\u2605出している間は、押せば止まる(表示that約束を守る)', true);
- const _cs=SRC14.slice(SRC14.indexOf("message.type === 'clockStop'"), SRC14.indexOf("message.type === 'clockStop'")+700);
+ const _cs=SRC14.slice(SRC14.indexOf("message.type === 'clockStop'"), SRC14.indexOf("message.type === 'clockStop'")+1600);
  ok(/meosEndPseudoTimer\(best\.k\)/.test(_cs), '\u2605\u2605\u2605Stopは音を黙らせるだけでなく、この回を終わらせる', true);
  ok(/<= 90000/.test(_cs), '  遠い時計を巻き込まない(90秒以内だけ)', true);
 }
