@@ -28,6 +28,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.60 (2026-09-02)
+- **`↻` is a stopwatch now — the same clock, read the other way round.** `↻15` counts *up* from zero for
+  fifteen minutes, goes back to zero, and measures again; `↺15` counts *down* to the same instant. The arrow
+  says which way time is running, so there is nothing to memorise, and there is only one engine underneath:
+  what is elapsed is simply the interval minus what is left. Nothing extra is stored — no lap number, no
+  separate start — because a second thing to remember is a second thing that can disagree with the clock.
+- **Neither kind stops on its own.** A countdown may be a weekly thing, and a wristwatch's stopwatch runs
+  until you stop it, so both run until stopped: the × in the list, or `Stop` in the last minute.
+- The status bar puts `↻` before the figure, since a membrane name is all the context it has; the list marks
+  the row the same way. On the ⏰ line itself the figure is left bare — the `↻15` is right there beside it.
+- Written by hand on the UFC line for now — put `↻15` at the end of the clock line, where `↺15` would go;
+  the button that writes repeats is still to come.
+
 ### v4.1.59 (2026-09-02)
 - **Stopping can be taken back.** For a minute afterwards the button reads `Undo`, and pressing it puts the
   clock back exactly as it was — so the two can be pressed back and forth as often as you like. Stopping a

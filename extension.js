@@ -9708,19 +9708,24 @@ function meosClockFcParse(text) {
   //     単位は既定が分(プリセットと同じ数の読み方)、`s`=秒 / `h`=時。
   //   ★★**並びが状態を持つ**= 鳴ったら先頭を末尾へ回す。別に「今どこか」を覚えなくてよい
   //     ([[project_link_notation_v41]]「腐らない番号」と同じ考え= 覚えを持たない物は狂わない)。
-  let cycle = null;
+  let cycle = null, up = false;
   // ★★★v4.1.58(俊克「(1) \u21bb指定を\u21ba指定に変更する。これthat逆算タイマー」):
   //   ★★★**矢印の向きthat時間の向きを言う**= \u21ba(反時計回り)=戻る=逆算 / \u21bb(時計回り)=進む=経過。
   //     覚える必要thatない([[project_direct_manipulation_mark]] 印は形that語る)。
   //   ★\u21bb も読み続ける= 既に書かれた物を壊さない([[project_notation_v4]]「読める形は増やし、書く形は絞る」)。
   //     書く時は \u21ba(meosClockFcSet)。次に鳴った時、静かに新しい形へ移る。
-  const cm = /[\u21ba\u21bb]\s*([0-9]+\s*[smhdwySMHDWY]?(?:\s*\/\s*[0-9]+\s*[smhdwySMHDWY]?)*)\s*$/.exec(body);
+  // ★★★v4.1.60(俊克 2026.09.02「15分間隔のストップウォッチとは何か? それは逆算タイマーの
+  //   逆バージョンだよ。15分間、ストップウォッチ時間は進んでいく。そして15分後に、0に戻って測り直す」):
+  //   ★★★**矢印の向きだけが違う**= \u21ba(反時計回り)=残りを数える逆算 /
+  //     \u21bb(時計回り)=経過を数えるストップウォッチ。仕掛けも鐘も書く物も同じso、エンジンは2本作らない。
+  const cm = /([\u21ba\u21bb])\s*([0-9]+\s*[smhdwySMHDWY]?(?:\s*\/\s*[0-9]+\s*[smhdwySMHDWY]?)*)\s*$/.exec(body);
   if (cm) {
     body = body.slice(0, cm.index).trim();
-    cycle = String(cm[1]).split('/').map(x => String(x).trim()).filter(Boolean);
+    up = (cm[1] === '\u21bb');
+    cycle = String(cm[2]).split('/').map(x => String(x).trim()).filter(Boolean);
   }
   const face = String(m[1] || '');
-  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, ufc: meosIsUnfoldingSpecLine(t) };
+  return { lock: face.indexOf('\ud83d\udd12') >= 0, hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, up, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 function meosClockFcScan(doc) {
@@ -9751,7 +9756,7 @@ function meosClockFcScan(doc) {
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, ufc: c.ufc });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, ufc: c.ufc });
   }
   return out;
 }
@@ -9802,7 +9807,7 @@ async function meosClockFcSet(doc, key, spec) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '') + (spec.off ? '\u23f8' : '')
         + ' ' + String(spec.when || '').trim()
-        + (Array.isArray(spec.cycle) && spec.cycle.length ? (' \u21ba' + spec.cycle.join('/')) : '')   // v4.1.58: 書く時は \u21ba
+        + (Array.isArray(spec.cycle) && spec.cycle.length ? ((spec.up ? ' \u21bb' : ' \u21ba') + spec.cycle.join('/')) : '')   // v4.1.60: \u21bbはそのまま残す   // v4.1.58: 書く時は \u21ba
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
@@ -9880,7 +9885,7 @@ function meosArmClockFcFor(doc) {
           let next = base.getTime(), guard = 0;
           while (next <= Date.now() && guard++ < 10000) next += step;
           w = { at: new Date(next), ms: next - Date.now() };
-          try { meosClockFcSet(doc, c.key, { when: meosClockFcStamp(new Date(next)), hold: c.hold, lock: c.lock, cycle: c.cycle, done: false }); } catch (_) { }
+          try { meosClockFcSet(doc, c.key, { when: meosClockFcStamp(new Date(next)), hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, done: false }); } catch (_) { }
         }
       }
       if (!w) {
@@ -9892,14 +9897,18 @@ function meosArmClockFcFor(doc) {
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _p ? _p.getTime() : Date.now());
         continue;                                                   // 読めない書き方は、黙って無視(本文を汚さない)
       }
-      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true };   // v4.1.16: 本文由来
+      // v4.1.60: 向きと間隔を**掛けた時に**控える= 面は毎秒描く物so、その度に14万行をなぞらない
+      //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
+      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
+        up: !!(c.up && Array.isArray(c.cycle) && c.cycle.length),
+        step: (Array.isArray(c.cycle) && c.cycle.length) ? meosCycleMs(c.cycle[0]) : 0 };   // v4.1.16: 本文由来
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
       meosNoteClockHistory(scope, w.at.getTime());
       // ★v4.1.18(俊克 👍2「✓を外し、新しい時刻を設定して保存すると再起動する。FCに変わるようになった時には、
       //   再起動でUFCに再び戻る必要がある」): これから鳴る物は見えていなければならないので、名前を戻す。
-      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, done: false }); } catch (_) { } }
+      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, done: false }); } catch (_) { } }
       n++;
     }
     // ★v4.1.27: 掛かった数that0でも、**書いてある⏰を見つけたなら一覧thatが変わり得る**
@@ -10134,7 +10143,7 @@ async function meosClockSetEnabled(uri, key, on) {
       _meosPseudoScopes.delete(lk);
       if (sc && sc.hold) { try { await meosApplyModeToScope(doc, key, 'normal', sc.name); } catch (_) { } }
     }
-    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, done: false, off: true });
+    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, done: false, off: true });
   } else {
     if (!hit) {
       vscode.window.setStatusBarMessage('MeOS: \u23f0 nothing is written on that membrane \u2014 set a time from \u25be.', 4000);
@@ -10153,7 +10162,7 @@ async function meosClockSetEnabled(uri, key, on) {
       const _r = meosClockRollToNextDay(_when);
       if (_r) { _when = _r; _rolled = true; }
     }
-    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, done: false, off: false });
+    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, done: false, off: false });
     try { meosArmClockFcFor(doc); } catch (_) { }
     if (_meosPseudoUntil.has(lk)) {
       if (_rolled) vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 that time had gone, so it is set for ' + _when + '.', 4000);
@@ -10181,11 +10190,11 @@ function meosClockList(limit) {
   const push = (r, running) => {
     const k = r.uri + ' ' + r.key;
     if (seen.has(k)) return; seen.add(k);
-    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, running: !!running });
+    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, running: !!running });
   };
   try {
     const live = [];
-    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock }); }
+    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock, up: sc.up }); }
     live.sort((a, b) => a.at - b.at);
     for (const r of live) push(r, true);
     for (const r of _meosClockHistory) push(r, false);
@@ -10253,11 +10262,11 @@ function meosApplyTimerLineDecorations(editor) {
     const doc = editor.document;
     const items = [], dones = [];
     const uri = doc.uri.toString();
-    const byId = new Map(), legacy = new Map();
+    const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
     for (const [k, until] of _meosPseudoUntil) {
       const sc = _meosPseudoScopes.get(k);
       if (!sc || sc.uri !== uri || !sc.key) continue;
-      byId.set(sc.key, until);
+      byId.set(sc.key, until); scById.set(sc.key, sc);
       if (sc.fc === false) legacy.set(sc.key, until);
     }
     let cur = -1; try { cur = editor.selection.active.line; } catch (_) { }
@@ -10311,7 +10320,8 @@ function meosApplyTimerLineDecorations(editor) {
           const _at2 = (_cl > 0) ? _cl : txt.length;
           items.push({
             range: new vscode.Range(i, _at2, i, _at2),
-            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(Math.max(0, until - Date.now())) + ' ', color: '#e0803a', fontWeight: '800' } }
+            // v4.1.60: ここだけは\u21bbを添えない= **同じ行に `\u21bb15` が書いてある**so、向きはもう目に入っている。
+            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceMs(until, scById.get(owner ? owner.id : ''))) + ' ', color: '#e0803a', fontWeight: '800' } }
           });
         }
       }
@@ -10385,7 +10395,8 @@ function meosUpdateTimerBar() {
     if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
-    _meosTimerBar.text = '⏰ ' + meosMmSs(Math.max(0, best.until - Date.now())) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
+    // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
+    _meosTimerBar.text = '⏰ ' + (sc && sc.up ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
     _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
     // ★v4.0.459: 最後の1分は**地の色that変わる**= Me Dockを閉じていても目に入る(VS Code標準の警告色so、
@@ -10398,6 +10409,23 @@ function meosUpdateTimerBar() {
     meosTickTimerLines();
     meosScheduleTimerTick();
   } catch (_) { }
+}
+// ★★★v4.1.60(俊克「逆算タイマーの逆バージョンだよ」):
+//   ★★★**違うのは面に出す数字だけ**= 残り(\u21ba)か、経過(\u21bb)か。
+//     経過 = 間隔 − 残り so、**覚えを1つも増やさない**
+//     ([[project_clock_todo_v41]]「保存するのは開始時刻だけでいい」と同じ形)。
+//   ★終端は置かない(俊克 2026.09.02「実際、腕時計は、延々、ストップウォッチが止まらないからね」)=
+//     逆算もストップウォッチも**止めるまで続く**。1週間に1回の予定が日を跨ぐのと同じ理屈。
+function meosClockFaceMs(until, sc) {
+  const left = Math.max(0, until - Date.now());
+  if (sc && sc.up && sc.step > 0) return Math.max(0, Math.min(sc.step, sc.step - left));
+  return left;
+}
+// 次に鳴る1つの掛け主(面もステータスバーもここから引く= 1つのボタンは1つの判定から)。
+function meosNextClockScope() {
+  let bk = null, b = 0;
+  for (const [k, u] of _meosPseudoUntil) if (!b || u < b) { b = u; bk = k; }
+  return bk ? (_meosPseudoScopes.get(bk) || null) : null;
 }
 function meosLockKey(scope) { try { return scope.doc.uri.toString() + ' ' + scope.key; } catch (_) { return ' ' + (scope && scope.key); } }
 function meosPseudoLeftFor(key) { const t = _meosPseudoUntil.get(key) || 0; return t ? Math.max(0, t - Date.now()) : 0; }
@@ -10535,7 +10563,7 @@ async function meosEndPseudoTimer(key) {
         let next = (meosParseStampLoose(_hit.when) || new Date(_firedAt)).getTime() + (step || 0);
         if (step > 0) { let guard = 0; while (next <= Date.now() && guard++ < 10000) next += step; }   // 留守の間に過ぎた分は飛ばす
         if (step > 0) {
-          await meosClockFcSet(doc, scope.key, { when: meosClockFcStamp(new Date(next)), hold: _hit.hold, lock: _hit.lock, cycle: meosCycleRotate(_hit.cycle), done: false });
+          await meosClockFcSet(doc, scope.key, { when: meosClockFcStamp(new Date(next)), hold: _hit.hold, lock: _hit.lock, cycle: meosCycleRotate(_hit.cycle), up: _hit.up, done: false });
           try { meosArmClockFcFor(doc); } catch (_) { }
         }
       }
@@ -10801,7 +10829,7 @@ async function meosClockUndoStop() {
   _meosLastStopped = null;
   try {
     const doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === r.scope.uri);
-    if (doc && r.when) await meosClockFcSet(doc, r.scope.key, { when: r.when, hold: r.hold, lock: r.lock, cycle: r.cycle, done: false });
+    if (doc && r.when) await meosClockFcSet(doc, r.scope.key, { when: r.when, hold: r.hold, lock: r.lock, cycle: r.cycle, up: r.up, done: false });
     _meosPseudoScopes.set(r.key, r.scope);
     _meosPseudoUntil.set(r.key, r.at);
     meosArmPseudoTimer(r.key, Math.max(250, r.at - Date.now() + 250));
@@ -10868,6 +10896,9 @@ function meosPostViewMode() {
       //   ([[feedback_one_source_for_mark_count_action]])。so今日2度、俊克thatが面の数字に驚いた。
       //   ★膜ごとの残りは**閉じ膜の行thatもう出している**(v4.0.449〜451)so、面のそれは重複だった。
       nextUntil: (() => { let b = 0; for (const [, u] of _meosPseudoUntil) if (!b || u < b) b = u; return b; })(),
+      // v4.1.60: 面に出すのが経過なのか残りなのかは、**次に鳴る物**が決める(数字と同じ1つから引く)。
+      nextUp: (() => { const s = meosNextClockScope(); return !!(s && s.up); })(),
+      nextStep: (() => { const s = meosNextClockScope(); return (s && s.step) || 0; })(),
       stopUndo: meosStopUndoAt(),          // v4.1.59: 直前に止めた物(1分だけ戻せる)
       scope: (sc ? (sc.name || '') : ''),
       own: (sc ? meosScopeHasOwn(sc) : true),  // v4.0.452: false= 外側から受け継いでいる
@@ -11021,9 +11052,9 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate) {
   //     ([[project_last_specified_wins]] 人that最後に指定した物を残す)。→ 在れば持ち越す。
   if (scope.key) {
     try {
-      let _cy = null;
-      try { const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key); if (_h && Array.isArray(_h.cycle) && _h.cycle.length) _cy = _h.cycle; } catch (_) { }
-      await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: _cy });
+      let _cy = null, _up = false;
+      try { const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key); if (_h && Array.isArray(_h.cycle) && _h.cycle.length) { _cy = _h.cycle; _up = !!_h.up; } } catch (_) { }
+      await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: _cy, up: _up });
     } catch (_) { }
   }
   else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
@@ -23125,7 +23156,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmNextUntil=0,vmStopUndo=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[];/* v4.1.37: 面の数字=次に鳴る物 */
+var viewMode='normal',vmUntil=0,vmNextUntil=0,vmStopUndo=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[],vmNextUp=false,vmNextStep=0;/* v4.1.60: \u21bb=経過 *//* v4.1.37: 面の数字=次に鳴る物 */
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -23178,6 +23209,9 @@ rawToggle.classList.toggle('held',held);
      (v4.0.453で⏰をどのモードでも掛けられるようにした時の取り残し)。時計は掛かっていれば動く。 */
 var _rt=document.getElementById('raw-timer'),_rn=document.getElementById('raw-t');
 var _nl=vmNextLeft();   /* v4.1.37: 面に出すのは次に鳴る物の残り */
+/* ★★★v4.1.60: \u21bb(ストップウォッチ)は**数字だけを裏返す**= 経過 = 間隔 − 残り。
+   ★近さ(near/imminent)と Stop の判定は**残り時間のまま**= 「鳴るまであと少し」は向きによらない。 */
+var _fv=(vmNextUp&&vmNextStep>0)?Math.max(0,Math.min(vmNextStep,vmNextStep-_nl)):_nl;
 var _near=(_nl>0&&_nl<=5*60000),_imm=(_nl>0&&_nl<=60000);
 /* ★★★v4.1.53(俊克 改良1「10秒前に鳴り出して、Stop表示のままというのは分かりにくい。
    特に、5分間鳴り続ける仕様so、1分間隔でループすると、**0秒になるまでの残り時間の表示that出ないのは駄目**。
@@ -23198,9 +23232,9 @@ var _undoLeft=vmStopUndo?Math.max(0,vmStopUndo-Date.now()):0;
 var _stopMode=(vmRing||(_nl>0&&_nl<=60000)||_undoLeft>0);window.__clkStopMode=_stopMode;
 if(_rn){if(_stopMode){_rn.textContent='';_rn.classList.add('two');
  var _s1=document.createElement('span');_s1.textContent=(_undoLeft>0)?'Undo':'Stop';
- var _s2=document.createElement('span');_s2.textContent=(_undoLeft>0)?vmMmSs(_undoLeft):((_nl>0)?vmMmSs(_nl):'');
+ var _s2=document.createElement('span');_s2.textContent=(_undoLeft>0)?vmMmSs(_undoLeft):((_nl>0)?vmMmSs(_fv):'');
  _rn.appendChild(_s1);_rn.appendChild(_s2);}
- else{_rn.classList.remove('two');_rn.textContent=(_nl>0)?vmMmSs(_nl):'';}}
+ else{_rn.classList.remove('two');_rn.textContent=(_nl>0)?vmMmSs(_fv):'';}}
 /* ★v4.1.7: 灯るのは**どこかで時計that走っている時**(今居る膜だけの話ではない)= ⏰は膜のモードの駒でなく、
    時計の一族の入口になった。数字は今居る膜の残り(どこに居ても見える物はステータスバーthat持つ)。 */
 var _anyRun=false;try{for(var _ci=0;_ci<vmClocks.length;_ci++)if(vmClocks[_ci].running){_anyRun=true;break;}}catch(e){}
@@ -23401,7 +23435,8 @@ row.setAttribute('data-i',String(i));
 var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');ck.textContent=c.running?'\u2611':'\u2610';
 ck.title=c.running?'In use \u2014 click to let it rest. The time stays written on the membrane (\u23f8), so you can bring it back.':'Resting \u2014 click to use it again, at the time written on the membrane.';
 row.appendChild(ck);
-var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'')+clkWhenLabel(c.at);
+/* v4.1.60: \u21bb= ストップウォッチ(増える)。出す時刻はどちらも**次の区切り**= 一覧は時刻で出す。 */
+var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'')+(c.up?'\u21bb ':'')+clkWhenLabel(c.at);
 /* ★★★v4.1.28(俊克 改良1「横幅that狭いので省略する時は、**膜名の最後を残す形**で、
    「テスト3_2...43JST」のようにすればいい」): ★★★**見分けthat最後に在る**=
    Mepyで写した膜は名前thatが同じで、時分秒だけthat違う。頭から詰めて後ろを切ると、全部同じ字面になる。
@@ -24282,7 +24317,7 @@ if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof w
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
 var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(Number(m.stopUndo)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
-if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmStopUndo=Number(m.stopUndo)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
+if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmNextUp=!!m.nextUp;vmNextStep=Number(m.nextStep)||0;vmStopUndo=Number(m.stopUndo)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
 if(typeof clkRenderList==='function')clkRenderList();
 if(typeof window.__renderRaw==='function')window.__renderRaw();}/* v4.0.444: 同じなら描き直さない(毎selection来るため) */
 return;}/* v4.0.441: 3モードボタン= 口は1つ(readState/rawStateの2本立てを畳んだ) */if(m&&m.type==='tableAutoCalcState'){window.__tableAutoCalc=!!m.on;if(typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
@@ -25136,7 +25171,7 @@ function toggleMeDock(editorOverride) {
           try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === (sc && sc.uri)); if (d && sc) hit = meosClockFcScan(d).find(c => c.key === sc.key); } catch (_) { }
           await meosEndPseudoTimer(best.k);
           if (sc) _meosLastStopped = { key: best.k, at: best.u, scope: sc, when: hit ? hit.when : null,
-            hold: hit ? hit.hold : !!sc.hold, lock: hit ? hit.lock : !!sc.lock, cycle: hit ? hit.cycle : null,
+            hold: hit ? hit.hold : !!sc.hold, lock: hit ? hit.lock : !!sc.lock, cycle: hit ? hit.cycle : null, up: hit ? hit.up : !!sc.up,
             until: Date.now() + 60000 };
         }
       } catch (_) { }

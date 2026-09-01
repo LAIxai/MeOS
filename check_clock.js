@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -402,7 +402,7 @@ console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
  ok(C('1y')===365*86400000, '\u2605y(年)= 365日', C('1y'));
  ok(C('1M')===60000, '  M は単位にしない(mと同じ分として読む= 月ではない)', C('1M'));
  const SRC14=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/' \\u21ba' \+ spec\.cycle\.join/.test(SRC14)||/\u21ba' \+ spec\.cycle\.join/.test(SRC14), '\u2605\u2605書く時は \u21ba', true);
+ ok(/spec\.up \? ' \\u21bb' : ' \\u21ba'/.test(SRC14), '\u2605\u2605書く時は \u21ba、ストップウォッチだけ \u21bb', true);
  ok(/_nl>0&&_nl<=60000/.test(SRC14), '\u2605\u2605\u2605残り1分以内は、鳴っていなくてもStopを出す', true);
  ok(/_s1\.textContent=\(_undoLeft>0\)\?'Undo':'Stop'/.test(SRC14), '\u2605\u2605\u2605止めた直後の1分は Undo(押し間違いthat取り返せる)', true);
  ok(/if \(await meosClockUndoStop\(\)\)/.test(SRC14), '\u2605\u2605もう一度押せば戻る= Stop \u21c4 Undo that行き来する', true);
@@ -411,6 +411,31 @@ console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
  const _cs=SRC14.slice(SRC14.indexOf("message.type === 'clockStop'"), SRC14.indexOf("message.type === 'clockStop'")+1600);
  ok(/meosEndPseudoTimer\(best\.k\)/.test(_cs), '\u2605\u2605\u2605Stopは音を黙らせるだけでなく、この回を終わらせる', true);
  ok(/<= 90000/.test(_cs), '  遠い時計を巻き込まない(90秒以内だけ)', true);
+}
+
+// v4.1.60(俊克 2026.09.02「15分間隔のストップウォッチとは何か? それは逆算タイマーの逆バージョンだよ。
+//   15分間、ストップウォッチ時間は進んでいく。そして15分後に、0に戻って測り直す」
+//   ＋(確認1の答え)「逆算タイマーは、止めるまで続ける方がいいかな。実際、腕時計は、延々、
+//   ストップウォッチが止まらないからね」)
+console.log('\u325a \u21bb(\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1)= \u9006\u7b97\u306e\u9006\u30d0\u30fc\u30b8\u30e7\u30f3');
+{
+ const P=X.meosClockFcParse, F=X.meosClockFaceMs;
+ const a=P('<!-- Mew!UFC \u23f0 2026-09-02 09:00 \u21bb15 -->');
+ const b=P('<!-- Mew!UFC \u23f0 2026-09-02 09:00 \u21ba15 -->');
+ ok(!!a && a.up===true && String(a.cycle)==='15', '\u2605\u2605\u2605\u21bb15= 15\u5206\u306e\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1(\u5897\u3048\u308b)', a && [a.up,a.cycle]);
+ ok(!!b && b.up===false && String(b.cycle)==='15', '\u2605\u21ba15= 15\u5206\u306e\u9006\u7b97\u30bf\u30a4\u30de\u30fc(\u6e1b\u308b)', b && [b.up,b.cycle]);
+ ok((P('<!-- Mew!UFC \u23f0 2026-09-02 09:00 -->')||{}).up===false, '  \u8f2a\u304c\u7121\u3051\u308c\u3070\u5411\u304d\u3082\u7121\u3044(\u4e00\u5ea6\u304d\u308a)', true);
+ ok(String((P('<!-- Mew!UFC \u23f0 12:00 \u21bb50/10 -->')||{}).cycle)==='50,10', '  \u21bb\u3067\u3082\u4e26\u3073\u306f\u540c\u3058\u3088\u3046\u306b\u8aad\u3080', true);
+ const now=Date.now(), step=15*60000;
+ ok(F(now+step, {up:true,step})===0, '\u2605\u2605\u2605\u9418\u306e\u76f4\u5f8c= 0(\u6e2c\u308a\u76f4\u3057\u306e\u5f62)', F(now+step,{up:true,step}));
+ ok(Math.round(F(now+step-4*60000,{up:true,step})/60000)===4, '\u2605\u2605\u7d4c\u904e4\u5206= \u6b8b\u308a11\u5206\u306e\u88cf\u8fd4\u3057', F(now+step-4*60000,{up:true,step}));
+ ok(Math.round(F(now+step-4*60000,{up:false,step})/60000)===11, '\u2605\u9006\u7b97\u306f\u4eca\u307e\u3067\u3069\u304a\u308a\u6b8b\u308a\u3092\u51fa\u3059', F(now+step-4*60000,{up:false,step}));
+ ok(F(now+step,{up:true,step:0})>0, '  \u9593\u9694\u304c\u7121\u3044\u7269\u306f\u6b8b\u308a\u306e\u307e\u307e(\u5d29\u308c\u306a\u3044)', true);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/up: !!\(c\.up && Array\.isArray\(c\.cycle\)/.test(S), '\u2605\u2605\u5411\u304d\u3068\u9593\u9694\u306f\u639b\u3051\u305f\u6642\u306b\u63a7\u3048\u308b(\u9762\u306e\u6bce\u79d2\u306b14\u4e07\u884c\u3092\u306a\u305e\u3089\u306a\u3044)', true);
+ ok(/nextUp: \(\(\) => \{ const s = meosNextClockScope\(\)/.test(S), '\u2605\u9762\u306e\u6570\u5b57\u3068\u5411\u304d\u306f\u540c\u3058\u300c\u6b21\u306b\u9cf4\u308b\u7269\u300d\u304b\u3089\u5f15\u304f', true);
+ ok(/var _fv=\(vmNextUp&&vmNextStep>0\)/.test(S), '\u2605\u9762\u3082\u540c\u3058\u5f0f\u3067\u88cf\u8fd4\u3059(node\u3068\u4e8c\u91cd\u306b\u6301\u305f\u306a\u3044)', true);
+ ok(!/MEOS_STOPWATCH_MAX|MEOS_CYCLE_MAX/.test(S), '\u2605\u2605\u7d42\u7aef\u3092\u7f6e\u304b\u306a\u3044= \u6b62\u3081\u308b\u307e\u3067\u7d9a\u304f(\u8155\u6642\u8a08\u306e\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1\u306f\u6b62\u307e\u3089\u306a\u3044)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
