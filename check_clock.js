@@ -390,5 +390,25 @@ console.log('\u3257 掛け直しても \u21bb thatが消えない');
     '\u2605\u21bb を渡さない古い書き方that残っていない', true);
 }
 
+// v4.1.58(俊克「(1)\u21bb指定を\u21ba指定に / (2)単位に d w y / (3)Stopという表示が嘘を付いている」)
+console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
+{
+ const P=X.meosClockFcParse, C=X.meosCycleMs;
+ const cyc=(l)=>{const c=P('<!-- Mew!UFC \u23f0 2099-01-01 09:00 '+l+' -->');return c&&c.cycle;};
+ ok(String(cyc('\u21ba8h'))==='8h', '\u2605\u2605\u2605\u21ba(反時計回り)= 逆算タイマー', cyc('\u21ba8h'));
+ ok(String(cyc('\u21bb8h'))==='8h', '\u2605\u21bb も読み続ける(既に書かれた物を壊さない)', cyc('\u21bb8h'));
+ ok(C('30d')===30*86400000, '\u2605d(日)', C('30d'));
+ ok(C('2w')===2*604800000, '\u2605w(週)', C('2w'));
+ ok(C('1y')===365*86400000, '\u2605y(年)= 365日', C('1y'));
+ ok(C('1M')===60000, '  M は単位にしない(mと同じ分として読む= 月ではない)', C('1M'));
+ const SRC14=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/' \\u21ba' \+ spec\.cycle\.join/.test(SRC14)||/\u21ba' \+ spec\.cycle\.join/.test(SRC14), '\u2605\u2605書く時は \u21ba', true);
+ ok(/var _stopMode=\(vmRing\|\|\(_nl>0&&_nl<=60000\)\)/.test(SRC14), '\u2605\u2605\u2605残り1分以内は、鳴っていなくてもStopを出す', true);
+ ok(/if\(vmRing\|\|window\.__clkStopMode\)/.test(SRC14), '\u2605\u2605出している間は、押せば止まる(表示that約束を守る)', true);
+ const _cs=SRC14.slice(SRC14.indexOf("message.type === 'clockStop'"), SRC14.indexOf("message.type === 'clockStop'")+700);
+ ok(/meosEndPseudoTimer\(best\.k\)/.test(_cs), '\u2605\u2605\u2605Stopは音を黙らせるだけでなく、この回を終わらせる', true);
+ ok(/<= 90000/.test(_cs), '  遠い時計を巻き込まない(90秒以内だけ)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

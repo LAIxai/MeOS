@@ -9709,7 +9709,12 @@ function meosClockFcParse(text) {
   //   ★★**並びが状態を持つ**= 鳴ったら先頭を末尾へ回す。別に「今どこか」を覚えなくてよい
   //     ([[project_link_notation_v41]]「腐らない番号」と同じ考え= 覚えを持たない物は狂わない)。
   let cycle = null;
-  const cm = /\u21bb\s*([0-9]+\s*[smhSMH]?(?:\s*\/\s*[0-9]+\s*[smhSMH]?)*)\s*$/.exec(body);
+  // ★★★v4.1.58(俊克「(1) \u21bb指定を\u21ba指定に変更する。これthat逆算タイマー」):
+  //   ★★★**矢印の向きthat時間の向きを言う**= \u21ba(反時計回り)=戻る=逆算 / \u21bb(時計回り)=進む=経過。
+  //     覚える必要thatない([[project_direct_manipulation_mark]] 印は形that語る)。
+  //   ★\u21bb も読み続ける= 既に書かれた物を壊さない([[project_notation_v4]]「読める形は増やし、書く形は絞る」)。
+  //     書く時は \u21ba(meosClockFcSet)。次に鳴った時、静かに新しい形へ移る。
+  const cm = /[\u21ba\u21bb]\s*([0-9]+\s*[smhdwySMHDWY]?(?:\s*\/\s*[0-9]+\s*[smhdwySMHDWY]?)*)\s*$/.exec(body);
   if (cm) {
     body = body.slice(0, cm.index).trim();
     cycle = String(cm[1]).split('/').map(x => String(x).trim()).filter(Boolean);
@@ -9757,11 +9762,18 @@ function meosClockFcScan(doc) {
 //     (読み直した時、いつからの50分か分からなくなる。[[project_link_notation_v41]]の「腐らない番号」と同じ)。
 //     手で書く時は `23:00` の短い形でよい= **読める形は増やし、書く形は絞る**。
 // 輪の1つ分(`05`=5分 / `30s`=30秒 / `2h`=2時間)をミリ秒に。読めない物は0。
+// ★★v4.1.58(俊克「(2) 単位に d(日) w(週) y(年) を足す」):
+//   ★**M(月)は足さない**= 月は間隔ではなく**暦の規則**so、足し算の欄に入れると嘘になる
+//     (大の月/小の月/2月/閏年)。「5週ごと」なら 5w thatそのまま言える。
+//     「毎月15日」のような物は、v4.2で**字で始まる暦の規則**として別に持つ。
+//   ★y は 365日として足す= 4年に1日ずれるthat、年単位の予定でその1日は問題にならない。
+//     暦どおりの「来年の同じ日」thatが要る時も、v4.2の暦の規則の側で持つ。
+const MEOS_CYCLE_UNIT = { s: 1000, m: 60000, h: 3600000, d: 86400000, w: 604800000, y: 365 * 86400000 };
 function meosCycleMs(step) {
-  const m = /^([0-9]+)\s*([smhSMH]?)$/.exec(String(step || '').trim());
+  const m = /^([0-9]+)\s*([smhdwySMHDWY]?)$/.exec(String(step || '').trim());
   if (!m) return 0;
   const n = Number(m[1]) || 0, u = String(m[2] || 'm').toLowerCase();
-  return n * (u === 's' ? 1000 : u === 'h' ? 3600000 : 60000);
+  return n * (MEOS_CYCLE_UNIT[u] || 60000);
 }
 // 鳴った後の姿= 先頭を末尾へ回す(並びが「次はどれか」を語る)。
 function meosCycleRotate(cycle) {
@@ -9790,7 +9802,7 @@ async function meosClockFcSet(doc, key, spec) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd12' : '') + (spec.off ? '\u23f8' : '')
         + ' ' + String(spec.when || '').trim()
-        + (Array.isArray(spec.cycle) && spec.cycle.length ? (' \u21bb' + spec.cycle.join('/')) : '')
+        + (Array.isArray(spec.cycle) && spec.cycle.length ? (' \u21ba' + spec.cycle.join('/')) : '')   // v4.1.58: 書く時は \u21ba
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
@@ -23155,9 +23167,18 @@ var _near=(_nl>0&&_nl<=5*60000),_imm=(_nl>0&&_nl<=60000);
    ★★★**鳴っている間thatが一番「あと何分か」を知りたい時**= 繰返しでは、鳴りながら次の回that近づく。
      v4.0.469は「鳴っている時の⏰は止める駒so、面は stop だけ」と決めたthat、
      **役to数字は同居できる**= 押す物の名前(Stop)と、待ち時間(0.09)を上下に置く。 */
-if(_rn){if(vmRing){_rn.textContent='';_rn.classList.add('two');
+/* ★★★v4.1.58(俊克「(3) 残り1分以内になったら、警告音を出すのとは関係なく (⏰Stop 0.59) のように
+   **常にStopを表示**して。…しかも警告音を出していない区間では、Stopを表示していない。なぜ?
+   特に10秒以内のとき、当然このボタンを押せば停止すると思っていたのに停止しない。
+   **Stopという表示that嘘を付いている**」):
+   ★★★**Stopは「音that鳴っている」ではなく「止められる」を言う言葉**だった=
+     私は「鳴っている間だけ止める駒」と読み、音に紐付けた。so秒読みthat途切れる区間で消え、
+     押しても**音を黙らせるだけ**で予定は止まらなかった。**表示that約束を破っていた**。
+   ★★→ **残り1分を切ったら、鳴っていなくても出す**。そして押したら**この回を本当に終わらせる**。 */
+var _stopMode=(vmRing||(_nl>0&&_nl<=60000));window.__clkStopMode=_stopMode;
+if(_rn){if(_stopMode){_rn.textContent='';_rn.classList.add('two');
  var _s1=document.createElement('span');_s1.textContent='Stop';
- var _s2=document.createElement('span');_s2.textContent=(_nl>0)?vmMmSs(_nl):'';
+ var _s2=document.createElement('span');_s2.textContent=(_nl>0)?vmMmSs(_nl):'';   /* v4.1.58: 鳴っていなくても残りを出す */
  _rn.appendChild(_s1);_rn.appendChild(_s2);}
  else{_rn.classList.remove('two');_rn.textContent=(_nl>0)?vmMmSs(_nl):'';}}
 /* ★v4.1.7: 灯るのは**どこかで時計that走っている時**(今居る膜だけの話ではない)= ⏰は膜のモードの駒でなく、
@@ -23198,7 +23219,7 @@ var rawTimerBtn=document.getElementById('raw-timer');
    (VS Codeの選択パネルへ出ない)。鳴っている時だけは「止める駒」so、そちらthat先。 */
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 if(typeof hideTocTip==='function')hideTocTip();
-if(vmRing){vscode.postMessage({type:'clockStop'});return;}
+if(vmRing||window.__clkStopMode){vscode.postMessage({type:'clockStop'});return;}   /* v4.1.58: 出している間は、押せば止まる */
 if(window.__clkOpen)window.__clkOpen('hist');});
 /* ★★v4.0.462(俊克): ⏰の▾= 上に年月日、下に時分。どちらも**スクロールの列 + 手入力の箱**。
    ★列と箱は**同じ1つの値**を見る= 列を選べば箱that書き変わり、箱に打てば列that合う(2つの真実を作らない)。
@@ -25074,7 +25095,20 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'clockGoto') { await meosJumpToScope({ uri: message.uri, key: message.key, name: message.name }); return; }
     if (message && message.type === 'clockForget') { await meosClockDrop(message.uri, message.key); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.4/4.1.5: 一覧の×(走っていれば止めてから外す)
     if (message && message.type === 'clockEnable') { await meosClockSetEnabled(message.uri, message.key, !!message.on); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.24: 一覧の\u2611/\u2610(使う/休む)
-    if (message && message.type === 'clockStop') { if (meosIsRinging()) meosStopRinging(); return; }
+    // ★★★v4.1.58: Stop= **音を黙らせる**だけでなく、**この回を終わらせる**。
+    //   ★一度きりの時計なら済み(✓)に、繰返しなら**この回を飛ばして次を仕掛ける**=
+    //     どちらも「この回は終わり」という1つの意味。目薬を先に差した時に押す物so、それthat自然。
+    //   ★遠い時計を巻き込まないように、90秒以内の物だけを対象にする(面thatStopを出す条件と揃える)。
+    if (message && message.type === 'clockStop') {
+      try { if (meosIsRinging()) meosStopRinging(); } catch (_) { }
+      try {
+        let best = null;
+        for (const [k, u] of _meosPseudoUntil) if (!best || u < best.u) best = { k, u };
+        if (best && (best.u - Date.now()) <= 90000) await meosEndPseudoTimer(best.k);
+      } catch (_) { }
+      try { updateMeDockMode(); } catch (_) { }
+      return;
+    }
     // v4.0.462: ▾から来た一発指定(分 or いつ)。読む口は meosParseWhen 1つ(menu と同じ物に訊く)。
     if (message && message.type === 'pseudoTimerSet') {
       _meosClockLockNext = !!message.lock;                                   // v4.1.5: パネルの🔒

@@ -42,12 +42,12 @@ on the membrane itself:
 ```md
 <!-- Mew!UFC ⏰ 18:30 -->
 <!-- Mew!UFC ⏰ 2026-09-27 09:00 -->
-<!-- Mew!UFC ⏰ 09:00 ↻5 -->
+<!-- Mew!UFC ⏰ 09:00 ↺5m -->
 ```
 
 **How precisely you write it says what kind of plan it is.** A time alone means today — or tomorrow if it has
-gone. A date means that day. Add `↻` and it repeats: `↻5` every five minutes, `↻50/10` alternating fifty and
-ten. Nothing has to be remembered about where you put it, because it is written where it belongs, and it
+gone. A date means that day. Add `↺` and it repeats: `↺5m` every five minutes, `↺8h` every eight hours, `↺30d` every thirty days,
+`↺50/10` alternating fifty minutes and ten. The arrow turns anticlockwise because the count runs backwards. Nothing has to be remembered about where you put it, because it is written where it belongs, and it
 travels with the file.
 
 When the time comes MeOS **brings you to that membrane**, so write the next job inside it. Set from
@@ -389,7 +389,7 @@ MeOS stands on the shoulders of:
   real Markdown; MeOS reads its own settings from a folding comment on the line below. Your file renders correctly
   on GitHub, in any editor, and in any Markdown tool — with or without MeOS installed.
 - **A clock on a membrane (v4.1)** — write `<!-- Mew!UFC ⏰ 18:30 -->` under a membrane and MeOS brings you
-  back to it at that time; add `↻5` and it returns every five minutes. The schedule lives in the place it is
+  back to it at that time; add `↺5m` and it returns every five minutes. The schedule lives in the place it is
   about, so there is nothing to remember about where you filed it, and it travels with the file. The countdown
   is called in stages, like an archery line.
 - **Warp anywhere (v4.0)** — turn any word into a jump to a membrane by name, or to a URL, without putting the

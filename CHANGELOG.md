@@ -28,6 +28,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.58 (2026-09-02)
+- **A repeat is written `↺` now — anticlockwise, because the count runs backwards.** The arrow says which way
+  time is going, so there is nothing to memorise. `↻` is still read, so nothing already written breaks; the
+  clockwise arrow is being kept for counting *up*.
+- **Intervals take days, weeks and years**: `↺30d`, `↺2w`, `↺1y`. There is deliberately no month — a month is
+  not a length, it is a rule about a calendar, and putting it in a column of lengths would make it a lie.
+  Five weeks is `↺5w`; "the 15th of every month" belongs with the other calendar rules, later.
+- **`Stop` no longer says something it will not do.** It appeared only while a sound was actually playing —
+  so it vanished in the gaps of the countdown — and pressing it merely silenced the alarm while the clock went
+  on to fire. It now appears for the whole of the last minute, with the time remaining beneath it, and pressing
+  it ends that round: a one-off is marked done, a repeat moves on to its next turn.
+
 ### v4.1.57 (2026-08-31)
 - **The whistle is a real whistle now** — three seconds of a high, steady tone. The system sounds are all single
   strikes, so no arrangement of them makes a sound that *holds*; MeOS builds the tone itself the first time it
