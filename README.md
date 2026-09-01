@@ -34,6 +34,35 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 >
 > ## **You(AI) & I(LAI) 🐔**
 
+### NEW in v4.1 — hang a clock on a membrane, and it comes to find you
+
+A membrane is a place you decided to come back to. **v4.1 lets you write the time you meant to come back**,
+on the membrane itself:
+
+```md
+<!-- Mew!UFC ⏰ 18:30 -->
+<!-- Mew!UFC ⏰ 2026-09-27 09:00 -->
+<!-- Mew!UFC ⏰ 09:00 ↻5 -->
+```
+
+**How precisely you write it says what kind of plan it is.** A time alone means today — or tomorrow if it has
+gone. A date means that day. Add `↻` and it repeats: `↻5` every five minutes, `↻50/10` alternating fifty and
+ten. Nothing has to be remembered about where you put it, because it is written where it belongs, and it
+travels with the file.
+
+When the time comes MeOS **brings you to that membrane**, so write the next job inside it. Set from
+Pseudo-WYSIWYG it holds the membrane shut instead — a test paper you cannot walk out of, with your own 👻
+answers waiting in the file. **↩ Back** returns you to whatever you were doing.
+
+**The bell counts you down the way it is called at an archery line.** Three seconds of sound a minute out,
+five at thirty, and from ten seconds it does not stop — then a high, clear tone at the moment itself. Near is
+louder than far, and the silences between are what let each one land. A repeating clock goes quiet after it
+rings, so a bell every minute never becomes a bell that never stops.
+
+⏰ also keeps **a list of every clock you have set**. The one that rings next is marked; ☑ and ☐ let a clock
+rest without losing what it was set for; and choosing a row takes you to the line the clock is written on —
+because anyone can set one by accident, and finding it should not be a search.
+
 ### NEW in v4.0 — your data is plain Markdown; the instructions live in comments
 
 v4.0 finishes the idea. **Every mark you write is real Markdown** — headings, lists, bold, highlight,
@@ -359,6 +388,10 @@ MeOS stands on the shoulders of:
 - **Plain Markdown, always (v4.0)** — headings, lists, bold, highlight, strikethrough and links are written as
   real Markdown; MeOS reads its own settings from a folding comment on the line below. Your file renders correctly
   on GitHub, in any editor, and in any Markdown tool — with or without MeOS installed.
+- **A clock on a membrane (v4.1)** — write `<!-- Mew!UFC ⏰ 18:30 -->` under a membrane and MeOS brings you
+  back to it at that time; add `↻5` and it returns every five minutes. The schedule lives in the place it is
+  about, so there is nothing to remember about where you filed it, and it travels with the file. The countdown
+  is called in stages, like an archery line.
 - **Warp anywhere (v4.0)** — turn any word into a jump to a membrane by name, or to a URL, without putting the
   destination in the middle of your sentence.
 - **Mew! 🐱 (v4.0)** — one signature makes every MeOS comment grep-able, and the cat converts old notation
@@ -427,6 +460,19 @@ And this is a fact: **one AI wrote this membrane-structured code, and another AI
 ボタンも、メニューも、ショートカットもいらない。**ストレスフリー！**
 
 *Type `kakaka` to show the raw source of the membrane you are in — cast it again to put it back. Outside every membrane it switches the whole file, exactly as it always did. (CJK input is already smooth without it: decorations live in the gutter, never touching your text.)*
+
+## Reading — the story so far
+
+MeOS is being built in the open, one idea at a time. Each of these is a short piece on one thing it does and
+why it does it that way.
+
+- 🧬 [Markdown救済計画 — 命令はコメントに書く（Mew!FC編）](https://zenn.dev/laixai/articles/984be096ecd321) — v4.0の記法そのもの
+- 🧬 [Markdownの表計算 — GFM完全準拠](https://zenn.dev/laixai/articles/36c6cc3746140e)
+- 🧬 [Markdownのテーブルで「セル結合」はあきらめない](https://zenn.dev/laixai/articles/35886fef09ed26)
+- 🧬 [生涯日記を、たった1つのボタンで操る](https://zenn.dev/laixai/articles/d4a0d7449c4352)
+- 🧬 [89,000行の生涯日記でも「続き」を見失わない — 並行作業に1発ワープ](https://zenn.dev/laixai/articles/12a332c9b1e2c7)
+- 🧬 [VSCodiumを天下無双のノートアプリに変える](https://zenn.dev/laixai/articles/f1da74585be091)
+- 🧬 [Membrane OS for VSCm — まず全体像](https://zenn.dev/laixai/articles/9e8ea3740bd4ac)
 
 ## Changelog
 
