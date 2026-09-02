@@ -28,6 +28,22 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.64 (2026-09-02)
+- **The ⏰ ▾ panel now sets which way the clock runs.** `☐ ↺ countdown` is the default; press it and it becomes
+  `☑ ↻ stopwatch`. Both ring at the same instants — only the figure is read the other way round.
+- **What the columns set is the origin — the point the clock is counted from — and with a repeat it may be in
+  the past.** "A time that has gone is a mistake" was only ever true of a one-off.
+- **Repeat is typed, not picked**: `10m 3h 00 90m 1d` — `00` says the list ends there, so anything after it is
+  kept but not used, which makes the box a place to leave a draft. Put `00` first to take the repeat off, so
+  removing it needs no separate button. Units are s m h d w y, and a bare number means minutes. Leave the box
+  empty and whatever is already written is left alone — setting a time and dropping a repeat are two different
+  intentions. This replaces the one-tap 10 / 25 / 50 / 90 minutes.
+- **The lock is now the same unit as Encrypt Me**: 🔐 with 🔓 on its shoulder, sitting beside the boxed
+  `→ 2026-09-02 16:38`. Press whichever is lit — 🔐 to lock, the shoulder 🔓 to unlock — then Set.
+- **On the line itself, only the locked state is written** (`⏰🔐`, the same character Encrypt Me uses; the old
+  🔒 is still read). When it is not locked a dim 🔓 is *drawn* beside the ⏰ rather than written, since a mark
+  you cannot press has no business becoming text you would then have to work out how to delete.
+
 ### v4.1.63 (2026-09-02)
 - **The time written on a repeating clock is where it began, and it no longer moves.** It used to be rewritten
   at every bell, so after a few rounds there was nothing left to say when the thing had been started. It is

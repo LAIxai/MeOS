@@ -1246,8 +1246,8 @@ console.log('(56) ⏰の▾ = 上に年月日・下に時分(スクロール+手
      '★★窓(選択の枠)は動かない= 動くのは数字の側', true);
   ok(/function clkCenter\(el\)/.test(src) && /function clkWatch\(el,onPick\)/.test(src),
      '★指を離した所で決まる(110msで落ち着きを見る)', true);
-  ok(/data-m="10"/.test(src) && /data-m="90"/.test(src),
-     '★よく使う分(10/25/50/90)は1押しのまま', true);
+  ok(/id="clk-cyc"/.test(src) && /placeholder="10m 3h 00 90m 1d"/.test(src),
+     '★v4.1.64(俊克 改良4): 分のプリセット(10/25/50/90)は**繰返しの入力箱**へ入れ替わった', true);
 }
 
 console.log('(57) 鐘は音でも鳴る／輪は触れば止まる(v4.0.465 俊克)');
