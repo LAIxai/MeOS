@@ -9917,7 +9917,8 @@ function meosClockFcStamp(at) {
 }
 // 過ぎた時刻でも読む。**輪を次へ進める時にだけ**使う(普段の読みは meosParseWhen 1つ=過ぎた指定は誤り)。
 function meosParseStampLoose(txt) {
-  const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(txt || '').trim());
+  // v4.1.77: 手で `2026-09-03(t) 09:00` と書いても読む(曜日は見ない= 日付that真実)。
+  const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s*\([SMTWtFs]\))?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(txt || '').trim());
   if (!m) return null;
   const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] == null ? 0 : +m[6], 0);
   return isNaN(d.getTime()) ? null : d;
@@ -10487,6 +10488,18 @@ function meosApplyTimerLineDecorations(editor) {
             const _ar = meosClockArrowAt(txt);
             if (_ar >= 0) (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
           }
+          // ★v4.1.77: 日付の右に曜日を**描く**= 本文には1文字も増やさない(出す物と、覚える物を分ける)。
+          try {
+            const _dm = /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/.exec(txt);
+            if (_dm && txt.charAt(_dm.index + _dm[0].length) !== '(') {
+              const _dd = new Date(+_dm[1], +_dm[2] - 1, +_dm[3]);
+              if (!isNaN(_dd.getTime())) {
+                const _p = _dm.index + _dm[0].length;
+                items.push({ range: new vscode.Range(i, _p, i, _p),
+                  renderOptions: { after: { contentText: '(' + MNT_WEEKDAY_CHARS[_dd.getDay()] + ')', color: '#7fd4e8', fontWeight: '800' } } });
+              }
+            }
+          } catch (_) { }
           if (!c.done && !c.lock) {
             const _a = txt.indexOf('\u23f0');
             if (_a >= 0) {
@@ -11231,7 +11244,9 @@ async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pse
 //   ★時刻を省いた日付は**その日の始まり(00:00)**＝ 一日を指したのだから、その一日の頭。
 //   受ける形: 18:30 / 1830 / 9/1 18:30 / 09-01 1830 / 2026/9/1 18:30 / 2026-09-01 / 20260901 1830
 function meosParseWhen(txt) {
-  const raw = String(txt || '').trim().replace(/[：]/g, ':').replace(/[／]/g, '/');
+  // v4.1.77: 手で書いた曜日 `(t)` は**読んで捨てる**= 曜日は年月日から出る物so、真実は日付の方。
+  const raw = String(txt || '').trim().replace(/[：]/g, ':').replace(/[／]/g, '/')
+    .replace(/(\d)\s*\([SMTWtFs]\)/, '$1');
   if (!raw) return null;
   const now = new Date();
   let y = null, mo = null, d = null, hh = null, mi = null;
@@ -23776,7 +23791,11 @@ function clkText(){return (clkFixD?(clkDateStr()+' '):'')+clkTimeStr();}
      **選んだという意味**so、置いた瞬間に「日付を指定した」と嘘をつき、clear も即座に上書きされていた。
      → 日付を触っていない間、ホイールは**何も選んでいない姿のまま**。導いた日は行にだけ、灰で出す。 */
 function clkEcho(){var wd=document.getElementById('clk-wd'),wt=document.getElementById('clk-wt');if(!wd||!wt)return;
-wd.textContent=clkDateStr();wt.textContent=clkTimeStr();
+/* v4.1.77: 起点を決める面so、ここにも曜日= 何曜日に始まるのかthat決める前に見える。 */
+var _ds=clkDateStr();
+try{var _m=/^(\d{4})\D(\d{1,2})\D(\d{1,2})$/.exec(_ds);
+ if(_m)_ds=_ds+'('+clkW(new Date(+_m[1],+_m[2]-1,+_m[3]))+')';}catch(e){}
+wd.textContent=_ds;wt.textContent=clkTimeStr();
 wd.classList.toggle('fix',clkFixD);
 /* v4.1.46: 同じ旗を輪にも渡す= 下の行と輪that同じことを言う(色の意味は1つ) */
 if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
@@ -23790,11 +23809,17 @@ var t=/^(\d{1,2}):?(\d{2})$/.exec(v);
 if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
 /* v4.1.0: 一覧の1行= 「時刻・年月日 + 膜名」。今日なら時刻だけ、他の日なら月日も添える
    (**日付は、違う時にだけ言う**= 同じ日の予定に今日の日付を並べても、読む物that増えるだけ)。 */
+/* ★★★v4.1.77(俊克 2026.08.29「**曜日は大事。スケジュールにとってね**」= \u23f0の残り仕事\u2462):
+   ★★★**曜日は年月日から出る物so、書かない。出すだけ**= 書けば、手で打った曜日と日付that
+     いつか食い違う(今日、同じ形の穴を何度も塞いだ)。俊克自身 v4.0.71 で
+     「年月日thatあれば曜日は計算できる」と設計に使っている。
+   ★字は S-M-T-W-t-F-s(火T/木t・日S/土s)= 家に既に在る綴り。\u2192 [[project_weekday_notation]] */
+function clkW(d){return ['S','M','T','W','t','F','s'][d.getDay()];}
 function clkWhenLabel(ms){var d=new Date(ms),n=new Date(),p=function(x){return (x<10?'0':'')+x;};
 var hm=p(d.getHours())+':'+p(d.getMinutes());
 if(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate())return hm;
-if(d.getFullYear()===n.getFullYear())return p(d.getMonth()+1)+'/'+p(d.getDate())+' '+hm;
-return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate())+' '+hm;}
+if(d.getFullYear()===n.getFullYear())return p(d.getMonth()+1)+'/'+p(d.getDate())+'('+clkW(d)+') '+hm;
+return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate())+'('+clkW(d)+') '+hm;}
 /* v4.1.68: 断りの札。押した行に赤い縁を付け、外し方を書いて、しばらく置く。 */
 var clkWarnT=null;
 function clkWarnOff(){var w=document.getElementById('clk-warn');if(w){w.classList.remove('on');w.textContent='';}

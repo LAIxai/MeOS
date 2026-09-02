@@ -358,7 +358,7 @@ console.log('\u3255 色の意味は1つ(指定した=橙)');
     '  白くするのは**日付の3列だけ**(時刻は常に橙)', true);
  ok(!/class="clk-col dcol" id="clk-h"/.test(SRC9)&&!/class="clk-col dcol" id="clk-mi"/.test(SRC9),
     '  時分の列には印を付けない(指定しない状態that無い)', true);
- const _e=SRC9.slice(SRC9.indexOf('function clkEcho()'), SRC9.indexOf('function clkEcho()')+420);
+ const _e=SRC9.slice(SRC9.indexOf('function clkEcho()'), SRC9.indexOf('function clkEcho()')+760);
  ok(/clkPop\.classList\.toggle\('dfix',clkFixD\)/.test(_e), '\u2605\u2605下の行と輪that**同じ旗**から色を決める', true);
 }
 
@@ -793,6 +793,29 @@ console.log('\u3268 \u90e8\u5c4b\u306e\u6e90\u3082\u9001\u308a\u76f4\u3059 / \u5
     '\u2605\u2605\u2605\u540d\u524d\u306e\u5e8a\u306f**\u4e00\u89a7\u306b\u3082**\u6577\u304f(\u540c\u3058\u540d\u524d\u3092\u51fa\u3059\u6240\u3067\u8aad\u307f\u65b9that\u5909\u308f\u3089\u306a\u3044)', true);
  ok(/\.clk-item \.ci-n\{flex:1;min-width:0;[^}]*overflow:hidden/.test(S),
     '  \u306f\u307f\u51fa\u3057\u306f\u540d\u524d\u306e\u7bb1\u306e\u4e2d\u3067\u5207\u308c\u308b(\u00d7 \u306f\u62bc\u3057\u51fa\u3055\u308c\u306a\u3044)', true);
+}
+
+// v4.1.77(俊克 2026.08.29「曜日は大事。スケジュールにとってね」= ⏰の残り仕事③)
+console.log('\u3269 \u66dc\u65e5\u306f**\u5e74\u6708\u65e5\u304b\u3089\u51fa\u308b**so\u3001\u66f8\u304b\u306a\u3044\u30fb\u51fa\u3059\u3060\u3051');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/function clkW\(d\)\{return \['S','M','T','W','t','F','s'\]\[d\.getDay\(\)\];\}/.test(S),
+    '\u2605\u5b57\u306f S-M-T-W-t-F-s(\u5bb6\u306b\u65e2\u306b\u5728\u308b\u7db4\u308a)', true);
+ ok(/p\(d\.getDate\(\)\)\+'\('\+clkW\(d\)\+'\) '\+hm/.test(S),
+    '\u2605\u2605\u2605\u4e00\u89a7\u306e\u5e74\u6708\u65e5\u306b\u66dc\u65e5(\u4e88\u5b9a\u8868\u306a\u306e\u3060\u304b\u3089)', true);
+ ok(/_ds=_ds\+'\('\+clkW\(new Date/.test(S), '\u2605\u8d77\u70b9\u3092\u6c7a\u3081\u308b\u9762\u306b\u3082\u66dc\u65e5(\u6c7a\u3081\u308b\u524d\u306b\u898b\u3048\u308b)', true);
+ ok(/contentText: '\(' \+ MNT_WEEKDAY_CHARS\[_dd\.getDay\(\)\] \+ '\)'/.test(S),
+    '\u2605\u2605\u2605\u23f0\u884c\u306e\u65e5\u4ed8\u306e\u53f3\u306b**\u63cf\u304f**(\u672c\u6587\u306b\u306f1\u6587\u5b57\u3082\u5897\u3084\u3055\u306a\u3044)', true);
+ ok(/txt\.charAt\(_dm\.index \+ _dm\[0\]\.length\) !== '\('/.test(S),
+    '  \u624b\u3067\u66f8\u3044\u3066\u3042\u308b\u306a\u3089\u91cd\u306d\u306a\u3044', true);
+ // 手で書いた曜日を読める(見ないで捨てる)
+ const P=X.meosParseStampLoose, W=X.meosParseWhen;
+ ok(!!P('2099-01-03(s) 09:00')&&P('2099-01-03(s) 09:00').getDate()===3,
+    '\u2605\u2605\u624b\u3067 (t) \u3068\u66f8\u3044\u3066\u3082\u8aad\u3080', true);
+ ok(!!W('2099-01-03(s) 09:00'), '  \u639b\u3051\u308b\u53e3\u3082\u540c\u3058', true);
+ ok(!!P('2099-01-03 09:00'), '  \u4eca\u307e\u3067\u306e\u5f62\u3082\u305d\u306e\u307e\u307e', true);
+ ok(!/meosClockFcStamp[^]{0,300}WEEKDAY/.test(S),
+    '\u2605\u2605\u2605**\u66f8\u304f\u5074\u306b\u306f\u5165\u308c\u306a\u3044**= 2\u3064\u6301\u3066\u3070\u3044\u3064\u304b\u98df\u3044\u9055\u3046', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

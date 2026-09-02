@@ -28,6 +28,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.77 (2026-09-03)
+- **Dates on a clock carry their weekday** — `09/03(t)` — in the list, on the ⏰ line, and in the ▾ panel while
+  you are choosing the start. A weekday is the thing a plan is actually remembered by.
+- It is **worked out, not written**: the date is the truth and the day follows from it, so there is no second
+  copy to fall out of step. On the line it is drawn beside the date rather than added to it, and if you type a
+  day yourself it is read and then ignored, and not drawn twice. Letters are S-M-T-W-t-F-s, the spelling MeOS
+  already uses in membrane names.
+
 ### v4.1.76 (2026-09-03)
 - **Ticking a box in Tag & Go now shows the tick.** The clock really did start, but that room was built once,
   when its door was pressed, and nothing rebuilt it afterwards — so the mark never moved while the thing it
