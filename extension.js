@@ -9735,6 +9735,45 @@ function meosClockFcParse(text) {
   const face = String(m[1] || '');
   return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, up, tags, ufc: meosIsUnfoldingSpecLine(t) };
 }
+// ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
+//   いいんだよね? でも、⏰リストには何も出ないよ」):
+//   ★★★**札は予定の持ち物ではなく、膜の持ち物だった**= 「目薬の膜」であることは、時計が在ろうと無かろうと
+//     変わらない。so住所は**開始膜のコメント**= 人that普段から書いている所。
+//   ★私は⏰行に置いた= 時計に付いて回る札so、時計を消せば札も消える。俊克の書き方の方that正しい。
+//   ★⏰行に書いた物も読み続ける(v4.1.70で書いた分を置いていかない)。
+const MEOS_TAG_RE = /(^|\s)#([^\s#<>*}]+)/g;
+function meosMembraneTags(doc, line) {
+  const out = [];
+  try {
+    const t = String(doc.lineAt(line).text || '');
+    const i = t.indexOf('//');
+    if (i < 0) return out;
+    const body = t.slice(i + 2);
+    let m; MEOS_TAG_RE.lastIndex = 0;
+    while ((m = MEOS_TAG_RE.exec(body))) if (out.indexOf(m[2]) < 0) out.push(m[2]);
+  } catch (_) { }
+  return out;
+}
+// 開始膜のコメントの札を書き替える。**触るのはコメントの中だけ**= 膜の名前も閉じの印も動かさない。
+async function meosSetMembraneTags(doc, line, tags) {
+  try {
+    const txt = String(doc.lineAt(line).text || '');
+    const i = txt.indexOf('//');
+    if (i < 0) return false;                                  // `//` の無い形には書かない(形を作り替えない)
+    const head = txt.slice(0, i + 2);
+    const rest = txt.slice(i + 2);
+    const m = /(\s*(?:\*\s*\}|\*\/|-->)\s*)$/.exec(rest);
+    const tail = m ? m[1] : '';
+    let mid = m ? rest.slice(0, rest.length - tail.length) : rest;
+    mid = mid.replace(/(^|\s)#[^\s#<>*}]+/g, '').replace(/\s+$/, '');
+    const add = (Array.isArray(tags) && tags.length) ? (' ' + tags.map(x => '#' + x).join(' ')) : '';
+    const line2 = head + mid + add + tail;
+    if (line2 === txt) return true;
+    const ed = new vscode.WorkspaceEdit();
+    ed.replace(doc.uri, doc.lineAt(line).range, line2);
+    return await vscode.workspace.applyEdit(ed);
+  } catch (_) { return false; }
+}
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 // v4.1.66: 走り読みの結果(生きている⏰の行)を版ごとに控える= **描く側と掛ける側that同じ1つから引く**
 //   ([[feedback_one_source_for_mark_count_action]])。控えは掛け直しの時にだけ作られるso、毎秒は走らない。
@@ -9782,8 +9821,11 @@ function meosClockFcScan(doc) {
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+    // v4.1.71: 札は**膜のコメント**から。⏰行に書いた物も足す(v4.1.70の分を置いていかない)。
+    const _tags = (c.tags || []).slice();
+    if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, tags: c.tags, ufc: c.ufc });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, tags: _tags, ufc: c.ufc });
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   return out;
@@ -9888,7 +9930,6 @@ async function meosClockFcSet(doc, key, spec) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? '\u23f8' : '')
         + ' ' + String(spec.when || '').trim()
-        + ((Array.isArray(spec.tags) && spec.tags.length) ? (' ' + spec.tags.map(x => '#' + x).join(' ')) : '')   // v4.1.70: 札
         + (Array.isArray(spec.cycle) && spec.cycle.length ? ((spec.up ? ' \u21bb' : ' \u21ba') + spec.cycle.join('/')) : '')   // v4.1.60: \u21bbはそのまま残す   // v4.1.58: 書く時は \u21ba
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
@@ -11232,7 +11273,8 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   if (scope.key && _cy0) {
     const _org = atDate ? ((atDate instanceof Date) ? atDate : new Date(Number(atDate))) : new Date(Date.now() + ms);
     _meosPseudoScopes.delete(lk);
-    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, cycle: _cy0, up: _up0, tags: _tg0 });
+    if (opts && opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
+    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, cycle: _cy0, up: _up0 });
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + (_up0 ? '\u21bb' : '\u21ba') + _cy0.join('/')
@@ -11251,7 +11293,8 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   //   ★★**時刻を決め直すことと、繰返しをやめることは別の意志**so、勝手に道連れにしない
   //     ([[project_last_specified_wins]] 人that最後に指定した物を残す)。→ 在れば持ち越す。
   if (scope.key) {
-    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: false, tags: _tg0 }); } catch (_) { }
+    if (opts && opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
+    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: false }); } catch (_) { }
   }
   else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
   meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
@@ -22211,7 +22254,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
   <div class="clk-whenrow"><div class="clk-when" id="clk-when" data-tip="Where the clock starts from \u2014 with a repeat this may be in the past, and the bells are counted on from it. Click the line to type it in: 20:00, or 2026-09-01 20:00. Orange = what you set. Grey = what MeOS worked out for you."><span class="cw-a">\u2192</span><span class="cw-d" id="clk-wd"></span><span class="cw-t" id="clk-wt"></span></div><span class="clk-lockunit" id="clk-lockunit"><button class="clk-lockmain" id="clk-lock" data-tip="Lock \ud83d\udd10 | A test paper you cannot walk out of \u2014 it cannot be dropped from the list until the time is up. Click the bright one; the shoulder \ud83d\udd13 lights up instead, and clicking that unlocks again. Choose, then press Set.">\ud83d\udd10</button><button class="clk-lockbadge" id="clk-unlock" data-tip="Unlock \ud83d\udd13 | Bright on the shoulder when this clock is set to lock. Click it to go back to a clock you can drop at any time.">\ud83d\udd13</button></span></div>
   <input class="clk-in clk-edit" id="clk-edit" placeholder="20:00 / 2026-09-01 20:00" spellcheck="false">
   <div class="clk-row"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
-  <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this clock \u2014 it is written on the line itself (#\u76ee\u85ac), so it can be grepped and typed by hand. The bar under the list filters by these.">
+  <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint">00 ends the list</span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="10m 3h 00 90m 1d" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-dir" id="clk-dir" data-tip="Which way time runs | \u21ba countdown \u2014 the figure falls to the bell. \u21bb stopwatch \u2014 it climbs from zero and starts over each turn. Both ring at the same instants; only the figure is read the other way round.">\u2610 \u21ba countdown</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
@@ -25563,6 +25606,7 @@ function toggleMeDock(editorOverride) {
           const _h = meosClockFcScan(_sc.doc).find(c => c.key === _sc.key);
           if (_h && Array.isArray(_h.cycle) && _h.cycle.length) { _cyc = _h.cycle.join(' '); _up = !!_h.up; }
           if (_h && Array.isArray(_h.tags) && _h.tags.length) _tag = _h.tags.join(' ');
+          else { const _r = meosScopeRangeNow(_sc.doc, _sc.key); if (_r) { const _mt = meosMembraneTags(_sc.doc, _r.from); if (_mt.length) _tag = _mt.join(' '); } }
         }
         if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockCurrent', cycle: _cyc, up: _up, tag: _tag });
       } catch (_) { }

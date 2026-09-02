@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.71 (2026-09-02)
+- **A tag belongs to the membrane, not to the clock** — so it is read from the comment after the `//` on the
+  opening line, which is where you are writing anyway. Being "the eyedrops membrane" is true whether a clock is
+  set on it or not; hanging the label off the clock meant deleting the clock deleted the label too. Tags
+  written on the ⏰ line by v4.1.70 are still read, but nothing is written there any more: one home, so the two
+  can never disagree.
+- The ▾ panel's **Tag** field writes into that comment, touching only the comment — never the membrane's name
+  or its closing marks.
+
 ### v4.1.70 (2026-09-02)
 - **Clocks can be tagged, and the bar under the list filters by tag.** A tag is written on the clock line
   itself — `#eyedrops` after the time — so it can be grepped, typed by hand, and travels with the file; nothing

@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -667,8 +667,8 @@ console.log('\u3263 \u672d(#tag)= \u672c\u6587\u306b\u4f4f\u307f\u3001\u4e00\u89
  ok(String(T('#\u76ee\u85ac \u671d'))==='\u76ee\u85ac,\u671d'&&String(T('  '))==='',
     '\u2605# \u306f\u5728\u3063\u3066\u3082\u7121\u304f\u3066\u3082\u826f\u3044(\u4eba that\u6253\u3064\u7269so\u53b3\u3057\u304f\u3057\u306a\u3044)', T('#\u76ee\u85ac \u671d'));
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/\(\(Array\.isArray\(spec\.tags\) && spec\.tags\.length\) \? \(' ' \+ spec\.tags\.map/.test(S),
-    '\u2605\u2605\u672d\u3082**\u672c\u6587\u306b\u66f8\u304f**= grep \u3067\u304d\u308b\u30fbMe Dock\u7121\u3057\u3067\u3082\u4ed8\u3051\u3089\u308c\u308b', true);
+ ok(/async function meosSetMembraneTags\(doc, line, tags\)/.test(S)&&/function meosMembraneTags\(doc, line\)/.test(S),
+    '\u2605\u2605\u2605\u672d\u306e\u4f4f\u6240\u306f**\u958b\u59cb\u819c\u306e // \u306e\u5f8c\u308d**(\u4eba that\u666e\u6bb5\u66f8\u3044\u3066\u3044\u308b\u6240)', true);
  ok(/id="clk-tags"/.test(S)&&/function clkRenderTags\(\)/.test(S),
     '\u2605\u2605\u2605\u672d\u306e\u6bb5\u306f**\u4e00\u89a7\u306e\u6700\u4e0b\u6bb5**(\u584a\u306e\u6b21\u306e\u884c)', true);
  ok(/if\(clkTagSel&&\(c\.tags\|\|\[\]\)\.indexOf\(clkTagSel\)<0\)continue;/.test(S),
@@ -680,6 +680,31 @@ console.log('\u3263 \u672d(#tag)= \u672c\u6587\u306b\u4f4f\u307f\u3001\u4e00\u89
  ok(/id="clk-tagin"/.test(S)&&/tags:tg\?tg\.value:''/.test(S),
     '  \u25be\u304b\u3089\u3082\u4ed8\u3051\u3089\u308c\u308b(\u958b\u3051\u3070\u4eca\u306e\u672d that\u5165\u3063\u3066\u3044\u308b)', true);
  ok(/\.clk-item \.ci-tag\{/.test(S), '  \u884c\u306b\u3082\u672d\u3092\u5c0f\u3055\u304f\u51fa\u3059', true);
+}
+
+// v4.1.71(俊克 バグ1「基本は、開始膜の // の後ろのコメント書き込み部分に #タグを入れればいいんだよね?
+//   でも、⏰リストには何も出ないよ」)
+console.log('\u3264 \u672d\u306f**\u819c\u306e\u6301\u3061\u7269**= \u958b\u59cb\u819c\u306e // \u306e\u5f8c\u308d\u306b\u4f4f\u3080');
+{
+ const L=['# t',
+  '<!-- {\u25bcmCN=\u76ee\u85ac_1 // #\u75c5\u6c17 * } -->',
+  'x',
+  '<!-- {\u25b2mCN=\u76ee\u85ac_1 // c *} -->',
+  '<!-- Mew!UFC \u23f0 2099-01-01 09:00 \u21ba05 -->'];
+ const d={uri:{toString:()=>'file:///tg.md',fsPath:'/tg.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/tg.md',isClosed:false,version:1};
+ ok(String(X.meosMembraneTags(d,1))==='\u75c5\u6c17', '\u2605\u2605\u2605\u958b\u59cb\u819c\u306e // \u306e\u5f8c\u308d\u304b\u3089\u672d\u3092\u8aad\u3080', X.meosMembraneTags(d,1));
+ const got=X.meosClockFcScan(d);
+ ok(got.length===1&&String(got[0].tags)==='\u75c5\u6c17', '\u2605\u2605\u2605\u23f0\u306e\u884c\u306b\u66f8\u304b\u306a\u304f\u3066\u3082\u3001\u819c\u306e\u672d that\u4e00\u89a7\u3078\u5c4a\u304f', got[0]&&got[0].tags);
+ ok(String(X.meosMembraneTags(d,3))==='', '  \u9589\u3058\u819c\u306e\u5074\u306f\u898b\u306a\u3044(\u6301\u3061\u4e3b\u306f\u958b\u59cb\u819c)', X.meosMembraneTags(d,3));
+ const L2=['<!-- {\u25bcmCN=a_1 // comment1 #\u671d #\u76ee\u85ac * } -->'];
+ const d2={uri:{toString:()=>'file:///t2.md',fsPath:'/t2.md',scheme:'file'},lineCount:1,
+  lineAt:n=>({text:L2[n],range:new stub.Range(n,0,n,L2[n].length)}),getText:()=>L2[0],version:1};
+ ok(String(X.meosMembraneTags(d2,0))==='\u671d,\u76ee\u85ac', '\u2605\u4f55\u679a\u3067\u3082\u30fb\u666e\u901a\u306e\u30b3\u30e1\u30f3\u30c8\u3068\u4e26\u3079\u3089\u308c\u308b', X.meosMembraneTags(d2,0));
+ const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(!/spec\.tags\.map\(x => '#' \+ x\)/.test(S2), '\u2605\u2605\u66f8\u304f\u5148\u306f1\u3064\u3060\u3051= \u23f0\u884c\u306b\u306f\u3082\u3046\u66f8\u304b\u306a\u3044(2\u3064\u6301\u3066\u3070\u98df\u3044\u9055\u3046)', true);
+ ok(/mid = mid\.replace\(\/\(\^\|\\s\)#\[\^\\s#<>\*\}\]\+\/g, ''\)/.test(S2),
+    '\u2605\u89e6\u308b\u306e\u306f\u30b3\u30e1\u30f3\u30c8\u306e\u4e2d\u3060\u3051(\u819c\u306e\u540d\u524d\u3082\u9589\u3058\u306e\u5370\u3082\u52d5\u304b\u3055\u306a\u3044)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
