@@ -246,7 +246,7 @@ const _sig=SRC3.slice(SRC3.indexOf("if(m&&m.type==='viewMode')"), SRC3.indexOf("
 ok(/_sg=.*\+'\|'\+_cs/.test(_sig), '\u2605\u2605\u2605合図に一覧thatが入っている(描く物を、描くかどうかの判断に入れる)', /_cs/.test(_sig));
 ok(/_cc\.at/.test(_sig)&&/_cc\.running/.test(_sig)&&/_cc\.next/.test(_sig), '  時刻\u30fb走っているか\u30fb次かthat全部合図に効く', true);
 ok(/_cc\.key/.test(_sig), '  どの膜かも合図に効く(入れ替わりを見逃さない)', true);
-const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+4200);
+const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+6000);
 ok(/if \(n \|\| _seen\)/.test(_arm), '\u2605掛かった数that0でも、\u23f0を見つけたら知らせる', /_seen/.test(_arm));
 
 // v4.1.39(俊克「あんたがせっせと仕込んでいたんだよ。貴方の説明をコピーして、それを私がペーストする」)
@@ -458,7 +458,7 @@ console.log('\u325b \u23f8\u306e\u8272 / Opt \u3067\u4e00\u89a7 / \u5909\u308f\u
  /* v4.1.64: 見せかけの \ud83d\udd13 は色を持たない項目so、数える前に外す(見るのは \u23f8 の色だけ)。 */
  /* v4.1.66: 同じ行に輪の印の色(緑)と見せかけの\ud83d\udd13 も乗るso、\u23f8 の色だけを見る。 */
  const col=(g)=>g.filter(x=>/#ffffff|#ff4d4d/.test(x[0]||'')).map(x=>/#ffffff/.test(x[0])?'white':'red').join(',');
- ok(col(inHere)==='white', '\u2605\u2605\u2605\u884c\u304c\u6a59\u306b\u67d3\u307e\u3063\u3066\u3044\u308b\u6642\u306e \u23f8 \u306f\u767d(\u4ed6\u304c\u6a59so\u76ee\u7acb\u3064)', col(inHere));
+ ok(col(inHere)==='red'&&col(outside)==='red', '\u2605\u2605\u2605v4.1.67: \u23f8 \u306f**\u3044\u3064\u3082\u8d64**(\u540c\u3058\u610f\u5473\u306e\u7269that\u5834\u6240\u3067\u8272\u3092\u5909\u3048\u306a\u3044)', [col(inHere),col(outside)]);
  ok(col(outside)==='red', '\u2605\u2605\u2605\u6a59\u3067\u306a\u3051\u308c\u3070 \u23f8 \u306f\u8d64(\u819c\u304c\u901a\u5e38\u306e\u72b6\u614b)', col(outside));
  ok(col(inHere).split(',').length===1&&col(outside).split(',').length===1, '  \u5857\u308b\u306e\u306f1\u6587\u5b57\u3060\u3051(\u884c\u5168\u4f53\u306f\u6a59\u306e\u307e\u307e)', [inHere.length,outside.length]);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
@@ -537,7 +537,7 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u306a\u3044\u6642\u306e \ud83d\udd13 \u306f**\u63cf\u304f\u3060\u3051**(\u898b\u305b\u304b\u3051\u306e\u8868\u793a)', true);
  ok(/clkBox\(b,clkDir,clkDir\?'\\u21bb stopwatch':'\\u21ba countdown'\)/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
  ok(/clkDir=false;clkRep=false;/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc\u30fb\u7e70\u8fd4\u3057\u7121\u3057(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
- ok(/clkLock=\(ev\.target\.id==='clk-lock'\)/.test(S), '\u2605\u660e\u308b\u3044\u65b9\u3092\u62bc\u3059= \ud83d\udd10\u3067\u639b\u304b\u308a\u3001\u80a9\u306e\ud83d\udd13\u3067\u5916\u308c\u308b', true);
+ ok(/if\(_id==='clk-lock'\|\|_id==='clk-unlock'\)\{clkLock=\(_id==='clk-lock'\)/.test(S), '\u2605\u660e\u308b\u3044\u65b9\u3092\u62bc\u3059= \ud83d\udd10\u3067\u639b\u304b\u308a\u3001\u80a9\u306e\ud83d\udd13\u3067\u5916\u308c\u308b', true);
  ok(!/data-m=/.test(S), '  \u5206\u306e\u30d7\u30ea\u30bb\u30c3\u30c8(10 25 50 90)\u306f\u7e70\u8fd4\u3057\u306e\u7bb1\u3078\u5165\u308c\u66ff\u308f\u3063\u305f', true);
  ok(/const _org = w \? w\.at : \(\(_opts\.cycle && _opts\.cycle\.length\)/.test(S),
     '\u2605\u2605\u2605\u7e70\u8fd4\u3057\u304c\u5728\u308b\u306a\u3089\u8d77\u70b9\u306f\u904e\u53bb\u3067\u3082\u3088\u3044(\u4e00\u5ea6\u304d\u308a\u306e\u4e88\u5b9a\u3060\u3051\u672a\u6765\u9650\u5b9a)', true);
@@ -608,6 +608,28 @@ console.log('\u3260 \u56f2\u3044\u306e\u4e2d\u306f\u6587\u5b57 / \u672c\u6587tha
     '\u2605\u62bc\u3057\u3066\u3044\u306a\u3044\u6642\u3082\u89d2\u4e38\u306e\u7bb1that\u898b\u3048\u308b(\u7bb1\u306f\u300c\u62bc\u305b\u308b\u300d\u3092\u8a00\u3046)', true);
  ok(/\.clk-ck\{font-size:18px/.test(S), '\u2605\u2610 \u306f 13px \u00d7 1.4 \u2248 18px', true);
  ok(/function clkBox\(b,on,label\)/.test(S), '  \u7bb1\u3068\u5b57\u3092\u5225\u306e\u5b50\u306b\u3059\u308b(\u5927\u304d\u3055\u3092\u5225\u3005\u306b\u6c7a\u3081\u3089\u308c\u308b)', true);
+}
+
+// v4.1.67(俊克 CN=v4.1.66_0649)
+//   改良1「⏸は赤で統一した方が分かりやすい。統一感が無いね」
+//   (なぜ?)「リストでは水色の↻、本体では緑色の↺になっているのはなぜだろう?」
+//   改良2「Repeatは□の部分をクリックしても反応しない」 改良3「時分は現在時刻を既定に」
+console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5199\u3057\u3092\u65b0\u3057\u304f\u3059\u308b / \u2610\u3092\u62bc\u3057\u3066\u3082\u52b9\u304f');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/pausesOut\.push\(new vscode\.Range\(i, at, i, at \+ len\)\);/.test(S)&&!/orange\.has\(i\) \? pausesIn/.test(S),
+    '\u2605\u2605\u2605\u23f8 \u306f\u5834\u6240\u3067\u8272\u3092\u5909\u3048\u306a\u3044(\u610f\u5473that\u540c\u3058\u306a\u3089\u8272\u3082\u540c\u3058)', true);
+ ok(/_s\.up = !!\(c\.up && Array\.isArray\(c\.cycle\)/.test(S),
+    '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u308b\u7269\u306e**\u898b\u305f\u76ee\u306e\u63a7\u3048**\u3092\u6bce\u56de\u65b0\u3057\u304f\u3059\u308b(\u4e00\u89a7\u3068\u884c\u304cが\u98df\u3044\u9055\u308f\u306a\u3044)', true);
+ const _arm2=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+6000);
+ ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\)[^]{0,200}_meosPseudoUntil\.set/.test(_arm2),
+    '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
+ ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
+    '\u2605\u2605\u6253\u9375that\u843d\u3061\u7740\u3044\u305f\u3089 \u23f0 \u3082\u8aad\u307f\u76f4\u3059= \u56f2\u3044\u3078\u5165\u308c\u305f\u898b\u672c\u304c\u4fdd\u5b58\u3092\u5f85\u305f\u305a\u306b\u843d\u3061\u308b', true);
+ ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-set'\)/.test(S),
+    '\u2605\u2605\u2605\u898b\u3048\u3066\u3044\u308b\u7bb1\u306e\u4e2d\u306f\u3069\u3053\u3067\u3082\u5f53\u305f\u308a(\u2610 \u3092\u62bc\u3057\u3066\u3082\u52b9\u304f)', true);
+ ok(/var n2=new Date\(\);/.test(S)&&!/var n2=new Date\(Date\.now\(\)\+30\*60000\)/.test(S),
+    '\u2605\u6642\u5206\u306e\u65e2\u5b9a\u306f**\u4eca**(30\u5206\u5f8c\u306f\u79c1\u306e\u63d0\u6848\u3067\u3057\u304b\u306a\u304b\u3063\u305f)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

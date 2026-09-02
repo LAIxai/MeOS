@@ -1002,7 +1002,7 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
   // 改良1: 置き場所that意味を決める= 閉じ膜の行
-  ok(/function meosApplyTimerLineDecorations\(editor, orangeLines\)/.test(src),
+  ok(/function meosApplyTimerLineDecorations\(editor\)/.test(src),
      '★★★残り時間は**その膜の閉じ膜の行**に出す(膜の物は膜に置く)', true);
   ok(/const ln = pr\.end, text = doc\.lineAt\(ln\)\.text \|\| '';/.test(src),
      '★行は名前から引き直す(掛けた時の行番号は、書いている内にずれる)', true);

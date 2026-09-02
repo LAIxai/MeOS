@@ -9927,7 +9927,23 @@ function meosArmClockFcFor(doc) {
     for (const c of meosClockFcScan(doc)) {
       _seen++; _seenKeys.add(c.key);
       const lk = uri + ' ' + c.key;
-      if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
+      if (_meosPseudoUntil.has(lk)) {
+        // ★★★v4.1.67(俊克「貴方that仕込んだタイマーが、**リストでは水色の\u21bb、本体では緑色の\u21ba**に
+        //   なっているのはなぜだろう?」): ★★★**掛かった時の写しthat、そのまま古びていた**=
+        //   一覧は控え(scope)から、行は本文から引くso、本文を直しても一覧だけthat昔の姿を言い続ける。
+        //   ★これthat私自身の言葉の通りの事故= 「2つ持てば、いつか食い違う」。
+        //   ★→ 既に掛かっている物も、**見た目の控えだけは毎回writeし直す**(時刻と輪は触らない=
+        //     鳴る時刻thatずれない)。控えは本文の写しso、本文to一緒に新しくなる。
+        try {
+          const _s = _meosPseudoScopes.get(lk);
+          if (_s) {
+            _s.up = !!(c.up && Array.isArray(c.cycle) && c.cycle.length);
+            if (Array.isArray(c.cycle) && c.cycle.length) _s.step = meosCycleMs(c.cycle[0]);
+            _s.name = c.name || _s.name;
+          }
+        } catch (_) { }
+        continue;                                                   // 既に仕掛かっている
+      }
       // ★★★v4.1.26(俊克のスクショで判明): **済んだ物の時刻that嘘をついていた**= 一覧に出ていたのは
       //   `Date.now()`(=ファイルを開いた時刻)so、\u2610 の行thatどれも同じ「16:34」で並んでいた。
       //   → 出すのは**本文に書いてある時刻**= いつ鳴ったのかthat読める([[project_clock_list_v41]] 一覧は時刻で出す)。
@@ -10338,7 +10354,7 @@ let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で�
 //   ★★★**休みは、そこに居る間は知らせで、離れた後は警告**= 自分で休ませた直後は覚えている(白=ただ見える)が、
 //     離れてしまえば**止まっていることその物を忘れる**(赤=目が拾う)。
 //   ★✓(済み)と同じ作法= 膜の中か外かで塗り分ける・`!important` で橙のFC行に勝つ。
-let meosClockPauseInDeco = null, meosClockPauseOutDeco = null;
+let meosClockPauseOutDeco = null;   // v4.1.67: ⏸ は場所で色を変えないso1つ
 // ★★★v4.1.66(俊克 改良3「**私that本当に色を付けたかったのは、UFC内の繰返し文字の↻と↺なんだよ**」):
 //   ★★★**色は面のボタンではなく、本文の字に要った**= 人that見ているのは書いてある物の方。
 //     v4.1.65の私は面だけ塗って、肝心の所を塗っていなかった。
@@ -10355,14 +10371,12 @@ function meosClockArrowAt(txt) {
 //   からで、その前提の方を直した(v4.1.16=⏰行は畳まない物)。so顔は俊克の指したとおり ⏰ 行へ戻る。
 //   ★旧い予定(mMETAに書いてある物)には ⏰ 行that無いので、そちらだけ今までどおり閉じ膜のコメント欄に出す。
 //   ★走るのは見えている範囲だけ(14万行を毎秒なぞらない)。
-// v4.1.62: 橙の行は外から渡せる(既定は同じ1つの口)= 検証台thatこの色分けを実際に塗らせて確かめられる。
-function meosApplyTimerLineDecorations(editor, orangeLines) {
+function meosApplyTimerLineDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesIn = [], pausesOut = [], dirDown = [], dirUp = [];
-    const orange = orangeLines || meosFcOrangeLines(editor);   // v4.1.62: 橙に染まる行(塗る側と同じ1つの口から)
+    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [];
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
     for (const [k, until] of _meosPseudoUntil) {
@@ -10438,8 +10452,11 @@ function meosApplyTimerLineDecorations(editor, orangeLines) {
             const at = txt.indexOf('\u23f8');
             if (at < 0) continue;
             const len = (txt.charCodeAt(at + 1) === 0xfe0f) ? 2 : 1;   // 絵文字の尾も一緒に塗る
-            // v4.1.62: 白= その行that今橙に染まっている時 / 赤= それ以外(膜that通常の状態)。
-            (orange.has(i) ? pausesIn : pausesOut).push(new vscode.Range(i, at, i, at + len));
+            // ★v4.1.67(俊克「\u23f8 を赤/白にしたthat、**赤で統一した方that分かりやすい**かも知れないね。
+            //   当初は橙と同系統so赤だと目立ち難いかと思ったthat、**統一感that無い**ね」):
+            //   ★**同じ意味の物that場所で色を変えると、色thatが意味を失う**= 休みは休みso、いつも赤。
+            //   ★v4.1.66で \u21ba\u21bb に色を入れた今、行の上には既に色that在る= 赤は埋もれない。
+            pausesOut.push(new vscode.Range(i, at, i, at + len));
             continue;
           }
           const until = byId.get(owner ? owner.id : '');
@@ -10470,13 +10487,10 @@ function meosApplyTimerLineDecorations(editor, orangeLines) {
       textDecoration: 'none; color: ' + MEOS_CLOCK_DIR_DOWN + ' !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (dirUp.length && !meosClockDirUpDeco) meosClockDirUpDeco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; color: ' + MEOS_CLOCK_DIR_UP + ' !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-    if (pausesIn.length && !meosClockPauseInDeco) meosClockPauseInDeco = vscode.window.createTextEditorDecorationType({
-      textDecoration: 'none; color: #ffffff !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (pausesOut.length && !meosClockPauseOutDeco) meosClockPauseOutDeco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; color: #ff4d4d !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosTimerLineDeco, items);
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
-    if (meosClockPauseInDeco) editor.setDecorations(meosClockPauseInDeco, pausesIn);
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
     if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
@@ -23701,11 +23715,17 @@ if(clkCaret&&clkPop){
   if(ev.target&&ev.target.id==='clk-dclr'){clkDateEmpty();clkEcho();return;}
   /* v4.1.64: 錠は**明るい方を押す**= \ud83d\udd10 を押せば掛かり、肩の \ud83d\udd13 that明るくなる。その \ud83d\udd13 を押せば外れる。
      \u2605Encrypt Me と同じ形so、覚え直すことthat無い(\u5bb6\u306e\u4f5c\u6cd5)。 */
-  if(ev.target&&(ev.target.id==='clk-lock'||ev.target.id==='clk-unlock')){clkLock=(ev.target.id==='clk-lock');clkPaintLock();return;}
-  if(ev.target&&ev.target.id==='clk-rep'){clkRep=!clkRep;clkPaintRep();return;}
-  if(ev.target&&ev.target.id==='clk-dir'){if(!clkRep){clkRep=true;clkPaintRep();}clkDir=!clkDir;clkPaintDir();return;}
-  if(ev.target&&ev.target.id==='clk-cyc')return;                    /* 箱は押しても閉じない */
-  if(ev.target&&ev.target.id==='clk-set'){clkFire();return;}
+  /* ★★v4.1.67(俊克 改良2「Repeatは、□の部分をクリックしても反応しない。これは分かりにくい」):
+     ★★★**当たりthat見えている物より小さかった**= □ は子の span so、id で見ていた私の枝を素通りしていた。
+     ★→ **押した物の上をたどって、どのボタンの中かを訊く**= 見えている箱の中は、どこでも当たり
+     ([[project_direct_manipulation_mark]] 印は押せる大きさ／当たりthat表示と一致する)。 */
+  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-set'):null;
+  var _id=_hit?_hit.id:'';
+  if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();return;}
+  if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();return;}
+  if(_id==='clk-dir'){if(!clkRep){clkRep=true;clkPaintRep();}clkDir=!clkDir;clkPaintDir();return;}
+  if(_id==='clk-cyc')return;                                       /* 箱は押しても閉じない */
+  if(_id==='clk-set'){clkFire();return;}
  });
  /* ★★v4.1.2: 合体行を押す→同じ場所に箱が出る→ Enter で掛ける / Esc でやめる。
     出て行く時(blur)は書いた物を拾う= 押した先が Set でも値が生きる。 */
@@ -23759,7 +23779,9 @@ if(clkCaret&&clkPop){
   var cyb=document.getElementById('clk-cyc');if(cyb)cyb.value='';
   clkPaintRep();
   vscode.postMessage({type:'clockAskCurrent'});               /* v4.1.65: 今の膜の姿を見せてから直させる */
-  var n2=new Date(Date.now()+30*60000);                       /* 既定= 30分後の時刻(こちらの提案なので灰のまま) */
+  /* ★v4.1.67(俊克 改良3「時分は、**現在時刻を既定**にしようよ」): ★起点を決める面so、
+     出すべきは**今**= 人that見ている時計と同じ数字thatが最初に在る(30分後は私の提案でしかなかった)。 */
+  var n2=new Date();                                          /* 既定= 今の時刻 */
   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
   clkEcho();clkPlace();};
  /* ★★★v4.1.10(俊克 改良1「⏰履歴の位置that左にかなり離れているね」):
@@ -28608,26 +28630,6 @@ function meosRawLineRoles(doc, ln) {
 function meosRangesExcludingStamps(doc, ln) {
   return meosRawLineRoles(doc, ln).shell.map(([f, t]) => new vscode.Range(ln, f, ln, t));
 }
-// ★★★v4.1.62(俊克 バグ6「膜の内部に入ると、なぜか、UFCの⏸が白色になってしまう。ここは、赤文字に
-//   すべきだよね。**膜が通常の状態だからね**」／バグ7「本来白色になるべき、開始膜や閉じ膜の中に文字
-//   カーソルがあるときの橙色表示のときに、UFCの⏸が橙色になってしまう」):
-//   ★★★**分かれ目は「膜の中に居るか」ではなく「その行が今、橙に染まっているか」だった**。
-//     俊克の元の言葉thatそう言っていた= 「**他が橙色なので**、そこthat目立つように」。
-//     私はそれを「膜の中/外」と読み替えてしまった= **言われた条件でなく、自分の要約を実装した**。
-//   ★so判定は**橙を塗るのと同じ1つの口**から引く。→ [[feedback_one_source_for_mark_count_action]]
-function meosFcOrangeLines(editor) {
-  const set = new Set();
-  try {
-    if (!editor || !editor.document || !editor.selection) return set;
-    const doc = editor.document, cur = editor.selection.active.line;
-    if (!meosIsProseDoc(doc) || meosModeAtLine(doc, cur) !== 'normal') return set;
-    const fine = meosFcMarkPairRanges(doc, cur, editor.selection.active.character);
-    if (fine) { for (const r of fine) set.add(r.start.line); return set; }
-    const m = meosFcMate(doc, cur);
-    if (m) for (const ln of (m.lines || [m.self, m.mate])) if (ln >= 0 && ln < doc.lineCount) set.add(ln);
-  } catch (_) { }
-  return set;
-}
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
   // ★★v4.0.403(俊克 バグ2「FC2行目にいると、それに対応する部分だけ橙色にできていない」):
@@ -32292,6 +32294,9 @@ makeDecorations();
         meosMewEditTimer = null;
         // v4.0.113: ここも activeTextEditor 直読みだった(Me Dockに焦点があると数が更新されない)。
         try { const _e = meosMewTargetEditor(getMeDockTargetEditor()); if (_e && _e.document === e.document) meosUpdateMewDiagnostics(_e); } catch (_) { }
+        // ★★v4.1.67: ⏰も同じ拍で読み直す= **囲いへ入れた見本thatその場で落ちる**(保存を待たない)し、
+        //   一覧の写しも本文to揃う。テキストは1文字も触らないsoIMEと競合しない(v4.0.74の乗り合い)。
+        try { meosArmClockFcFor(e.document); } catch (_) { }
       }, 400);
       // Cancel any pending repaint / edit so nothing fires mid-composition.
       if (mstatMetaTimer) { clearTimeout(mstatMetaTimer); mstatMetaTimer = null; }

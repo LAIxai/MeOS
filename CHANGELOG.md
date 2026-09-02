@@ -28,6 +28,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.67 (2026-09-02)
+- **A paused ⏸ is always red.** It used to be white where the line was orange and red elsewhere, which meant
+  the same thing wore two colours depending on where you stood. Now that the ↺ and ↻ carry colour on the line,
+  red is easy enough to find without the switch.
+- **The list and the line no longer disagree about which way a clock runs.** A running clock kept the copy it
+  was armed with, so editing ↻ to ↺ in the text left the list still saying ↻ — exactly the "hold two and one
+  day they differ" this whole clock was built to avoid. The copy is now refreshed on every re-read; the time
+  it rings at is not touched.
+- **Clocks are re-read once typing settles**, on the same 400ms beat that already updates the 🐱 count and
+  touches no text. Putting a sample inside a code fence now drops it there and then, instead of waiting for a
+  save.
+- **The ☐ itself is clickable.** It is a child of the button, so clicks on it were falling straight through —
+  anywhere inside the visible box now counts, which is what a box is for.
+- **The hour and minute open at the current time** rather than half an hour ahead.
+
 ### v4.1.66 (2026-09-02)
 - **A sample inside a code fence became a real, locked clock again.** Two holes, both now shut. The fence
   guard only *counted* fence lines, so one unmatched ``` anywhere above turned every fence below it inside
