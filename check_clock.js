@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -166,7 +166,7 @@ ok(!!r2 && String(r2.cycle)==='50,10', '\u2605\u2605並びで交互(50\u219210\u
 ok(X.meosCycleMs('05')===300000, '既定は分', X.meosCycleMs('05'));
 ok(X.meosCycleMs('30s')===30000, '\u2605s=秒(15秒前の合図が書ける)', X.meosCycleMs('30s'));
 ok(X.meosCycleMs('2h')===7200000, 'h=時', X.meosCycleMs('2h'));
-ok(String(X.meosCycleRotate(['50','10','30']))==='10,30,50', '\u2605\u2605鳴ったら先頭を末尾へ回す(覚えを持たない)', X.meosCycleRotate(['50','10','30']));
+ok(String(X.meosCycleSeriesNext(Date.parse('2026-09-02T09:00:00'),['50','10'],Date.parse('2026-09-02T09:55:00')).at)===String(Date.parse('2026-09-02T10:00:00')), '\u2605\u2605交互(50/10)は**並びの順のまま**起点から数える(回転を書かない)', new Date(X.meosCycleSeriesNext(Date.parse('2026-09-02T09:00:00'),['50','10'],Date.parse('2026-09-02T09:55:00')).at).toString());
 const w1=X.meosParseWhen('2099-01-01 09:30:15');
 ok(!!w1 && w1.at.getSeconds()===15, '\u2605秒まで読む', w1 && w1.at.toString());
 ok(X.meosClockFcStamp2(new Date(2026,7,30,1,40,0))==='2026-08-30 01:40', '秒が0なら今までと同じ姿', X.meosClockFcStamp2(new Date(2026,7,30,1,40,0)));
@@ -488,6 +488,27 @@ console.log('\u325c Stop=\u4e00\u6642\u505c\u6b62 / \u4f11\u307f\u306f\u4e88\u5b
  const order=X.meosClockList(12).map(r=>r.key).join(',');
  ok(order.indexOf('REST')<order.indexOf('OLD1'), '\u2605\u2605\u2605\u4f11\u3093\u3067\u3044\u308b\u7269\u306f**\u4e88\u5b9a**so\u3001\u5c65\u6b74\u306b\u62bc\u3057\u51fa\u3055\u308c\u306a\u3044', order);
  ok((X.meosClockList(12).find(r=>r.key==='REST')||{}).off===true, '  \u4f11\u307f\u3067\u3042\u308b\u3053\u3068\u3082\u9762\u3078\u6e21\u308b', true);
+}
+
+// v4.1.63(俊克 バグ1「UFCに記録している年月日時分秒は開始点のまま固定という仕様に決めたはずだが、
+//   最初の目標時刻を過ぎると…14:49に変わってしまう。これでは、いつから始めたかという記録が失われてしまう」)
+console.log('\u325d \u672c\u6587\u306e\u6642\u523b\u306f**\u8d77\u70b9**= \u9418\u306f\u305d\u3053\u304b\u3089\u6570\u3048\u308b(\u66f8\u304d\u66ff\u3048\u306a\u3044)');
+{
+ const N=X.meosCycleSeriesNext, T=(h)=>Date.parse('2026-09-02T'+h);
+ ok(N(T('14:47:00'),['02'],T('14:47:30')).at===T('14:49:00'), '\u2605\u2605\u260514:47\u306e\u8d77\u70b9\u306f\u52d5\u304b\u305a\u3001\u6b21\u306e\u9418\u3060\u3051\u304c14:49\u3078\u9032\u3080', new Date(N(T('14:47:00'),['02'],T('14:47:30')).at).toString());
+ ok(N(T('14:47:00'),['02'],T('15:00:10')).at===T('15:01:00'), '\u2605\u2605\u4f55\u5468\u56de\u3063\u3066\u3082\u3001\u6570\u3048\u308b\u306e\u306f\u540c\u3058\u8d77\u70b9\u304b\u3089', new Date(N(T('14:47:00'),['02'],T('15:00:10')).at).toString());
+ ok(N(T('15:00:00'),['05'],T('14:00:00')).at===T('15:00:00'), '\u2605\u8d77\u70b9\u304c\u307e\u3060\u5148\u306a\u3089\u3001\u305d\u308c\u304c\u6700\u521d\u306e\u9418', true);
+ ok(N(T('14:47:00'),['02'],T('14:47:30')).step===120000, '  \u4eca\u306e\u56de\u306e\u9577\u3055\u3082\u6570\u3048\u305f\u6642\u306b\u5206\u304b\u308b(\u7d4c\u904e\u8868\u793a\u3068\u79d2\u8aad\u307f\u304c\u4f7f\u3046)', N(T('14:47:00'),['02'],T('14:47:30')).step);
+ // 1年前に始めた5分ごとでも、輪を10万回は回さない(O(1))
+ const t0=Date.now(), far=N(Date.now()-365*86400000,['05'],Date.now());
+ ok(far && far.at>Date.now() && far.at-Date.now()<=300000, '\u2605\u2605\u26051\u5e74\u524d\u306e\u8d77\u70b9\u3067\u3082\u6b63\u3057\u304f\u3001\u305d\u3057\u3066\u901f\u3044', (Date.now()-t0)+'ms');
+ ok(Date.now()-t0<50, '  \u6570\u3048\u308b\u306e\u306b\u6642\u9593\u3092\u639b\u3051\u306a\u3044(1\u5468\u3076\u3093\u305a\u3064\u98db\u3070\u3059)', (Date.now()-t0)+'ms');
+ ok(N(0,[],Date.now())===null&&N(NaN,['05'],Date.now())===null, '  \u8aad\u3081\u306a\u3044\u7269\u306f null(\u672c\u6587\u3092\u6c5a\u3055\u306a\u3044)', true);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const _ep=S.slice(S.indexOf('async function meosEndPseudoTimer'), S.indexOf('async function meosEndPseudoTimer')+2600);
+ ok(!/meosClockFcSet\(doc, scope\.key, \{ when: meosClockFcStamp/.test(_ep), '\u2605\u2605\u2605\u9cf4\u3063\u3066\u3082\u672c\u6587\u306e\u6642\u523b\u3092\u66f8\u304d\u66ff\u3048\u306a\u3044(\u8d77\u70b9\u304c\u6b8b\u308b)', true);
+ ok(!/meosCycleRotate/.test(S), '\u2605\u4e26\u3073\u306e\u56de\u8ee2\u3082\u66f8\u304b\u306a\u3044= \u72b6\u614b\u3092\u6301\u3064\u7269\u304c1\u3064\u6e1b\u3063\u305f', true);
+ ok(/if \(sc\.step > 0\) return sc\.step;/.test(S), '  \u79d2\u8aad\u307f\u306e\u9593\u9694\u3082\u63a7\u3048\u305f\u7269\u304b\u3089(\u6bce\u56de14\u4e07\u884c\u3092\u8aad\u307e\u306a\u3044)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

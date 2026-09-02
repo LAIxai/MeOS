@@ -9780,10 +9780,33 @@ function meosCycleMs(step) {
   const n = Number(m[1]) || 0, u = String(m[2] || 'm').toLowerCase();
   return n * (MEOS_CYCLE_UNIT[u] || 60000);
 }
-// 鳴った後の姿= 先頭を末尾へ回す(並びが「次はどれか」を語る)。
-function meosCycleRotate(cycle) {
-  if (!Array.isArray(cycle) || cycle.length < 2) return cycle;
-  return cycle.slice(1).concat(cycle.slice(0, 1));
+// ★★★v4.1.63(俊克 バグ1「UFCに記録している年月日時分秒は**開始点のまま固定**という仕様に決めたはずだが、
+//   最初の目標時刻を過ぎると…14:49に変わってしまう。これでは、**いつから始めたかという記録that失われて**
+//   しまう。これは再開の度に再計算するのは無駄なので、内部的に、次の目標時刻を…保存しておけばいいんじゃないか?」):
+//   ★★★**本文に書いてある時刻は「起点」であって「次の鐘」ではない**= 鳴る度に書き替えていたので、
+//     何度か回った後には**いつ始めたのかthatどこにも残っていなかった**。
+//   ★★★**鐘の時刻は起点から数えれば出る**so、覚えを持たない= 起点だけthat真実
+//     ([[project_clock_todo_v41]] 俊克「保存するのは開始時刻だけでいい」)。
+//     内部の控えは**既に在る**= 掛かっている物の `_meosPseudoUntil`。so新しい覚えは1つも足さない
+//     (2つ持てば、いつか食い違う)。
+//   ★★並びの回転(`50/10` の交互)も、**もう本文に書かない**= 何周目かthat起点から分かるので、
+//     並びは**書いたままの順**で足りる。v4.1.23の「並びthat状態を持つ」は、起点thatが動かない今、
+//     「起点thatが状態を持つ」に畳まれた= 状態を持つ物thatが1つ減った。
+//   ★数え方は O(1)= 1周ぶん(並びの合計)でまとめて飛ばし、残りだけ歩く
+//     (1年前に始めた5分ごとの予定でも、輪を10万回は回さない)。
+// 起点 origin から数えて、from より後の最初の鐘。step= その鐘で終わる回の長さ(経過表示と秒読みthat使う)。
+function meosCycleSeriesNext(origin, cycle, from) {
+  const steps = (Array.isArray(cycle) ? cycle : []).map(meosCycleMs).filter(x => x > 0);
+  const len = steps.length;
+  if (!len || !isFinite(origin)) return null;
+  const round = steps.reduce((a, b) => a + b, 0);
+  let t = origin, i = 0, last = steps[0];
+  if (t > from) return { at: t, step: last };
+  const k = Math.floor((from - t) / round);
+  if (k > 0) t += k * round;                       // 1周ぶんずつ飛ばす(並びの位置は変わらない)
+  let guard = 0;
+  while (t <= from && guard++ < len * 3 + 4) { last = steps[i % len]; t += last; i++; }
+  return { at: t, step: last };
 }
 function meosClockFcStamp(at) {
   const d = (at instanceof Date) ? at : new Date(Number(at) || Date.now());
@@ -9877,16 +9900,13 @@ function meosArmClockFcFor(doc) {
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
       }
-      let w = meosParseWhen(c.when);
-      if (!w && Array.isArray(c.cycle) && c.cycle.length) {
+      let w = meosParseWhen(c.when), _step = 0;
+      if (Array.isArray(c.cycle) && c.cycle.length) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
-        const base = meosParseStampLoose(c.when), step = meosCycleMs(c.cycle[0]);
-        if (base && step > 0) {
-          let next = base.getTime(), guard = 0;
-          while (next <= Date.now() && guard++ < 10000) next += step;
-          w = { at: new Date(next), ms: next - Date.now() };
-          try { meosClockFcSet(doc, c.key, { when: meosClockFcStamp(new Date(next)), hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, done: false }); } catch (_) { }
-        }
+        // ★v4.1.63: **数えるだけ**= 本文(起点)には触らない。いつ始めたのかthatそこに残る。
+        const _b = meosParseStampLoose(c.when) || (w && w.at) || null;
+        const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, Date.now()) : null;
+        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; }
       }
       if (!w) {
         // ★★★v4.1.25(俊克 バグ1「☐をクリックすると…⏰リストから消えてしまう」):
@@ -9901,7 +9921,7 @@ function meosArmClockFcFor(doc) {
       //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
         up: !!(c.up && Array.isArray(c.cycle) && c.cycle.length),
-        step: (Array.isArray(c.cycle) && c.cycle.length) ? meosCycleMs(c.cycle[0]) : 0 };   // v4.1.16: 本文由来
+        step: _step };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
@@ -10521,6 +10541,7 @@ function meosRingFor(name, ms) {
 function meosCycleStepFor(key) {
   try {
     const sc = _meosPseudoScopes.get(key); if (!sc) return 0;
+    if (sc.step > 0) return sc.step;   // v4.1.63: 掛けた時に控えてある(数えた所と同じ1つから引く)
     const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri); if (!doc) return 0;
     const hit = meosClockFcScan(doc).find(c => c.key === sc.key);
     return (hit && Array.isArray(hit.cycle) && hit.cycle.length) ? meosCycleMs(hit.cycle[0]) : 0;
@@ -10570,7 +10591,6 @@ function meosClearPseudoTimer(key) {
 // 時間that終わった(または人that止めた)＝ **通常へ返す**。口は1つ。
 async function meosEndPseudoTimer(key) {
   const scope = _meosPseudoScopes.get(key);
-  const _firedAt = _meosPseudoUntil.get(key) || Date.now();   // v4.1.23: 輪を次へ進める起点(消す前に控える)
   meosClearPseudoTimer(key);
   _meosPseudoScopes.delete(key);
   if (!scope) { meosPostViewMode(); return null; }
@@ -10588,15 +10608,11 @@ async function meosEndPseudoTimer(key) {
     if (doc) {
       const _hit = meosClockFcScan(doc).find(c => c.key === scope.key && !c.done);
       if (_hit && Array.isArray(_hit.cycle) && _hit.cycle.length) {
-        // ★★★v4.1.23: 繰返しは**✓を付けない**= 終わっていないから。次の時刻へ進め、並びを回して、また掛ける。
+        // ★★★v4.1.23: 繰返しは**✓を付けない**= 終わっていないから。
         //   俊克「繰返し設定の場合は、UFCのまま」= 次が在る限り、見えていなければならない。
-        const step = meosCycleMs(_hit.cycle[0]);
-        let next = (meosParseStampLoose(_hit.when) || new Date(_firedAt)).getTime() + (step || 0);
-        if (step > 0) { let guard = 0; while (next <= Date.now() && guard++ < 10000) next += step; }   // 留守の間に過ぎた分は飛ばす
-        if (step > 0) {
-          await meosClockFcSet(doc, scope.key, { when: meosClockFcStamp(new Date(next)), hold: _hit.hold, lock: _hit.lock, cycle: meosCycleRotate(_hit.cycle), up: _hit.up, done: false });
-          try { meosArmClockFcFor(doc); } catch (_) { }
-        }
+        // ★★★v4.1.63: **本文を1文字も書き替えずに、掛け直す**= 次の鐘は起点から数えれば出る。
+        //   so鳴る度にファイルthat汚れることもなくなった(●thatが点かない)。
+        try { meosArmClockFcFor(doc); } catch (_) { }
       }
       else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, done: true }); }
       else {

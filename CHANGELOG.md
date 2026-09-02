@@ -28,6 +28,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.63 (2026-09-02)
+- **The time written on a repeating clock is where it began, and it no longer moves.** It used to be rewritten
+  at every bell, so after a few rounds there was nothing left to say when the thing had been started. It is
+  now the origin of the series and stays put; each bell is worked out from it, which takes an arithmetic step
+  and no stored state — so there is only ever one thing to be true, and no second copy to fall out of step
+  with it. As a side effect a repeat no longer dirties the file every time it rings.
+- **The order of an alternating repeat (`↺50/10`) is no longer rewritten either.** Which turn is next follows
+  from the origin, so the numbers stay in the order they were written. One more thing that used to hold state
+  now doesn't.
+- Counting is done in constant time — whole rounds are skipped in one step — so a five-minute repeat begun a
+  year ago is worked out without spinning through a hundred thousand turns.
+
 ### v4.1.62 (2026-09-02)
 - **`Stop` pauses a clock; it does not end its round.** It used to move a repeat on to its next turn and set it
   going again, so the figure fell back to zero, the count carried on, and the bell still rang at the time that
