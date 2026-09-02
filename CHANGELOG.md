@@ -28,6 +28,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.65 (2026-09-02)
+- **`☐ Repeat` is how a repeat is taken off.** The panel had no such state: an empty box meant "leave whatever
+  is written alone", so there was nowhere to say "none". The panel now shows what the membrane already has when
+  it opens — the repeat, its turns, and which way it runs — and Set writes back what you see. Changing the
+  thing in front of you is the whole of it.
+- **↺ is green and ↻ is cyan.** Orange belongs to the clock itself and blue to unlocking, so those were the
+  free colours: green for a countdown (there is still time; the face turns orange then red when there isn't),
+  cyan for a stopwatch, which only measures. The ↻ in the list is the same cyan — one thing, one colour. The
+  two mode buttons went from 10px to 13px.
+- **The lock lights the way Encrypt Me does**: orange 🔐 to lock, and once locked the shoulder 🔓 comes up in
+  blue rather than staying grey.
+- **A locked clock can be unlocked** — ⌥ Option-click the 🔐 in the list, which is where the lock is visible in
+  the first place, and the tooltip there says so. Option is required so it cannot come off by a slip. Deleting
+  the 🔐 from the line by hand works too; the clock lives in the text.
+
 ### v4.1.64 (2026-09-02)
 - **The ⏰ ▾ panel now sets which way the clock runs.** `☐ ↺ countdown` is the default; press it and it becomes
   `☑ ↻ stopwatch`. Both ring at the same instants — only the figure is read the other way round.

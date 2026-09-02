@@ -535,11 +535,40 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
  ok(/if \(!c\.done && !c\.lock\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u306a\u3044\u6642\u306e \ud83d\udd13 \u306f**\u63cf\u304f\u3060\u3051**(\u898b\u305b\u304b\u3051\u306e\u8868\u793a)', true);
  ok(/b\.textContent=clkDir\?'\\u2611 \\u21bb stopwatch':'\\u2610 \\u21ba countdown'/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
- ok(/clkDir=false;clkPaintDir\(\)/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
+ ok(/clkDir=false;clkRep=false;/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc\u30fb\u7e70\u8fd4\u3057\u7121\u3057(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
  ok(/clkLock=\(ev\.target\.id==='clk-lock'\)/.test(S), '\u2605\u660e\u308b\u3044\u65b9\u3092\u62bc\u3059= \ud83d\udd10\u3067\u639b\u304b\u308a\u3001\u80a9\u306e\ud83d\udd13\u3067\u5916\u308c\u308b', true);
  ok(!/data-m=/.test(S), '  \u5206\u306e\u30d7\u30ea\u30bb\u30c3\u30c8(10 25 50 90)\u306f\u7e70\u8fd4\u3057\u306e\u7bb1\u3078\u5165\u308c\u66ff\u308f\u3063\u305f', true);
  ok(/const _org = w \? w\.at : \(\(_opts\.cycle && _opts\.cycle\.length\)/.test(S),
     '\u2605\u2605\u2605\u7e70\u8fd4\u3057\u304c\u5728\u308b\u306a\u3089\u8d77\u70b9\u306f\u904e\u53bb\u3067\u3082\u3088\u3044(\u4e00\u5ea6\u304d\u308a\u306e\u4e88\u5b9a\u3060\u3051\u672a\u6765\u9650\u5b9a)', true);
+}
+
+// v4.1.65(俊克 CN=v4.1.64_0516)
+//   改良1「リピート無しの設定がなかったね」＋「☐↺countdownの字が小さ過ぎるので1.3倍に」
+//   改良2「↻と↺が見た目で気づき難いので色を変えよう(逆算↺=緑・ストップウォッチ↻=水色)」
+//   改良2'「🔐を押した時に🔓の色が薄い」 質問1「ロックをかけた予定のロックの外し方が分らない」
+console.log('\u325f Repeat\u306e\u2610 / \u5411\u304d\u306e\u8272 / \u9320\u306e\u660e\u6697 / \u9320\u306e\u5916\u3057\u65b9');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/id="clk-rep"/.test(S)&&/b\.textContent=clkRep\?'\\u2611 Repeat':'\\u2610 Repeat'/.test(S),
+    '\u2605\u2605\u2605\u2610 Repeat that**\u7e70\u8fd4\u3057\u7121\u3057**\u306e\u59ff(\u5916\u3059\u53e3\u304c\u9762\u306b\u51fa\u305f)', true);
+ ok(/cycle: _rep \? meosParseCycleInput\(message\.cycle\) : \[\]/.test(S)&&/hasCycle: true/.test(S),
+    '\u2605\u2605\u2610 \u306e\u307e\u307e Set \u3059\u308c\u3070**\u7e70\u8fd4\u3057\u304c\u5916\u308c\u308b**(\u7a7a\u6b04=\u89e6\u3089\u306a\u3044\u3001\u306f\u7121\u304f\u306a\u3063\u305f)', true);
+ ok(/type: 'clockCurrent', cycle: _cyc, up: _up/.test(S)&&/postMessage\(\{type:'clockAskCurrent'\}\)/.test(S),
+    '\u2605\u2605\u2605\u9762\u306f**\u4eca\u306e\u819c\u306e\u59ff\u3092\u898b\u305b\u3066\u304b\u3089**\u76f4\u3055\u305b\u308b(\u898b\u3048\u3066\u3044\u308b\u7269\u3092\u5909\u3048\u308b)', true);
+ ok(/if \(message && message\.type === 'clockAskCurrent'\)/.test(S)&&!/clocks: meosClockList\(12\)[^]{0,400}clockAskCurrent/.test(S),
+    '  \u8a0a\u304b\u308c\u305f\u6642\u3060\u3051\u8d70\u308b(\u30ab\u30fc\u30bd\u30eb\u6bce\u306b14\u4e07\u884c\u3092\u8aad\u307e\u306a\u3044)', true);
+ ok(/\.clk-dir,\.clk-rep\{font-size:13px/.test(S), '\u2605\u5b57\u306f 10px \u2192 13px(1.3\u500d)', true);
+ ok(/\.clk-dir\{color:#3fb950\}/.test(S)&&/\.clk-dir\.on\{color:#56d4dd\}/.test(S),
+    '\u2605\u2605\u21ba\u9006\u7b97=\u7dd1 / \u21bb\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1=\u6c34\u8272', true);
+ ok(/\.clk-item \.ci-up\{color:#56d4dd/.test(S), '  \u4e00\u89a7\u306e \u21bb \u3082\u540c\u3058\u6c34\u8272(\u540c\u3058\u7269\u306f\u540c\u3058\u8272)', true);
+ ok(/\.clk-lockunit\.on \.clk-lockbadge\{filter:none;background:#2f80b8/.test(S),
+    '\u2605\u2605\u2605\u639b\u3051\u305f\u5f8c\u306e \ud83d\udd13 \u306f\u30d6\u30eb\u30fc\u3067\u70b9\u706f= \u65bd\u9320\u30aa\u30ec\u30f3\u30b8 \u21c4 \u89e3\u9320\u30d6\u30eb\u30fc(Encrypt Me \u3068\u540c\u3058)', true);
+ ok(/\.clk-lockmain\{[^}]*background:#d2691e/.test(S), '  \u639b\u3051\u308b\u524d\u306e \ud83d\udd10 \u306f\u30aa\u30ec\u30f3\u30b8\u3067\u660e\u308b\u3044', true);
+ ok(/if\(isLk\)\{if\(c&&ev\.altKey\)vscode\.postMessage\(\{type:'clockUnlock'/.test(S),
+    '\u2605\u2605\u2605\u9320\u306e\u5916\u3057\u65b9\u306f**\u9320that\u898b\u3048\u3066\u3044\u308b\u5834\u6240**\u306b(\u4e00\u89a7\u306e\ud83d\udd10\u3092 \u2325 \u30af\u30ea\u30c3\u30af)', true);
+ ok(/Option-click to take the lock off/.test(S), '\u2605tip that\u305d\u306e\u5834\u3067\u5916\u3057\u65b9\u3092\u8a00\u3046(\u63a2\u3055\u305b\u306a\u3044)', true);
+ ok(/type === 'clockUnlock'/.test(S)&&/lock: false, cycle: hit\.cycle/.test(S),
+    '  \u5916\u3059\u306e\u306f \ud83d\udd10 \u4e00\u6587\u5b57\u3060\u3051(\u6642\u523b\u3082\u8f2a\u3082\u4f11\u307f\u3082\u305d\u306e\u307e\u307e)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
