@@ -777,5 +777,23 @@ console.log('\u3267 \u63cf\u3044\u305f\u6e90\u3068\u3001\u62bc\u3057\u305f\u6642
     '\u2605\u672d\u306f\u540d\u524d\u3088\u308a\u5148\u306b\u7e2e\u3080(\u8aad\u307f\u305f\u3044\u306e\u306f\u819c\u306e\u540d\u524d)', true);
 }
 
+// v4.1.76(俊克 CN=v4.1.75_0125)
+//   バグ1「タグリストの□をクリックしてもチェックが付かない。しかし、動いている」
+//   バグ2「メインリストでの膜名の表示がまだおかしい。タグリストでは正しいのに、なぜ?」
+console.log('\u3268 \u90e8\u5c4b\u306e\u6e90\u3082\u9001\u308a\u76f4\u3059 / \u540d\u524d\u306e\u5e8a\u306f\u4e21\u65b9\u306b\u6577\u304f');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/function meosPostTagList\(\)/.test(S),
+    '\u2605\u2605\u90e8\u5c4b\u306e\u5206\u3092\u9001\u308b\u53e3\u3092**1\u3064\u306e\u95a2\u6570**\u306b(\u9001\u308a\u5fd8\u308c\u3092\u4f5c\u3089\u306a\u3044)', true);
+ ok(/clockEnable'\) \{ await meosClockSetEnabled\(message\.uri, message\.key, !!message\.on\); meosPostTagList\(\);/.test(S),
+    '\u2605\u2605\u2605\u2611\u2610 \u306e\u5f8c\u3067**\u90e8\u5c4b\u3082\u65b0\u3057\u304f\u306a\u308b**(\u52d5\u3044\u3066\u3044\u308b\u306e\u306b\u5370that\u5909\u308f\u3089\u306a\u3044\u3001\u304c\u7121\u304f\u306a\u308b)', true);
+ ok(/meosPostViewMode\(\); meosPostTagList\(\); try \{ updateMeDockMode/.test(S),
+    '  \u9320\u5916\u3057\u30fb\u672d\u306e\u4ed8\u3051\u5916\u3057\u306e\u5f8c\u3082\u540c\u3058', true);
+ ok(/\.clk-item \.ci-nh\{flex:0 9999 auto;min-width:4\.4em/.test(S)&&/\.clk-item \.ci-nt\{flex:0 1 auto;min-width:4\.6em/.test(S),
+    '\u2605\u2605\u2605\u540d\u524d\u306e\u5e8a\u306f**\u4e00\u89a7\u306b\u3082**\u6577\u304f(\u540c\u3058\u540d\u524d\u3092\u51fa\u3059\u6240\u3067\u8aad\u307f\u65b9that\u5909\u308f\u3089\u306a\u3044)', true);
+ ok(/\.clk-item \.ci-n\{flex:1;min-width:0;[^}]*overflow:hidden/.test(S),
+    '  \u306f\u307f\u51fa\u3057\u306f\u540d\u524d\u306e\u7bb1\u306e\u4e2d\u3067\u5207\u308c\u308b(\u00d7 \u306f\u62bc\u3057\u51fa\u3055\u308c\u306a\u3044)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

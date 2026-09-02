@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.76 (2026-09-03)
+- **Ticking a box in Tag & Go now shows the tick.** The clock really did start, but that room was built once,
+  when its door was pressed, and nothing rebuilt it afterwards — so the mark never moved while the thing it
+  marks did. Every hand that changes a clock now refreshes that room as well, from one function, so there is
+  no place left to forget.
+- **Names read the same in both places.** v4.1.75 gave the name a floor only inside Tag & Go; the list showing
+  the same names had none. Both have it now, and tag chips stay in the room — the list is about times, so the
+  whole width goes to the name, which is the shape from v4.1.28 with a floor added.
+
 ### v4.1.75 (2026-09-03)
 - **Membrane names are readable in Tag & Go.** v4.1.74 only freed width when a tag was selected, which is not
   the state you are in when you walk into the room. Both ends of the name now have a floor they cannot be

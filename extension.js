@@ -11098,6 +11098,39 @@ async function meosPseudoTimeUp(key) {
     ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'
     : ' Here is the membrane you asked for.'));
 }
+// ★★★v4.1.76(俊克 バグ1「タグリストの一番上の\u2610をクリックしても、チェックthat付かない。
+//   オンオフできない。**しかし、動いている**。\u2190でメインリストに戻ってみると、正しく動作していて、
+//   そこから再びタグリストに行くと、チェックthat付いている」):
+//   ★★★**部屋の源だけthat古いままだった**= 一覧(vmClocks)は変わる度に送り直しているのに、
+//     部屋(vmTagItems)は**入口を叩いた時にしか作っていなかった**。so中で何をしても姿that変わらない。
+//   ★→ 予定を触る口(\u2611/\u2610・錠外し・札の付け外し)の後で、**部屋の分も送り直す**。
+//     送るのは口の中so、順番thatが必ず「変えてから送る」になる。
+function meosPostTagList() {
+      try {
+        const _e = meosCurrentEditor(); const _d = _e && _e.document;
+        const _items = [];
+        if (_d) {
+          const _uri = _d.uri.toString();
+          let _pairs = [];
+          try { _pairs = collectPairs(_d, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
+          const _clk = new Map();
+          try { for (const c of meosClockFcScan(_d)) if (c.key) _clk.set(c.key, c); } catch (_) { }
+          for (const p of _pairs) {
+            const _tg = meosMembraneTags(_d, p.start);
+            if (!_tg.length) continue;
+            const _c = _clk.get(p.id) || null;
+            const _run = _meosPseudoUntil.get(_uri + ' ' + p.id) || 0;
+            let _at = _run;
+            if (!_at && _c) { const _w = meosParseStampLoose(_c.when); if (_w) _at = _w.getTime(); }
+            _items.push({ uri: _uri, key: p.id, name: p.id, tags: _tg, line: p.start,
+              has: !!_c, at: _at, running: !!_run, off: !!(_c && _c.off), up: !!(_c && _c.up) });
+          }
+          // 時刻を持つ物that先(近い順)、その後は書いてある順= 探し物の並びも「時刻の近い順」から外れない。
+          _items.sort((a, b) => (a.at && b.at) ? (a.at - b.at) : (a.at ? -1 : (b.at ? 1 : (a.line - b.line))));
+        }
+        if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockTags', items: _items });
+      } catch (_) { }
+}
 function meosPostViewMode() {
   try {
     if (!meDockPanel) return;
@@ -21858,8 +21891,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    ★★★**Tag&Go は名前を読むための部屋**= 頭that1文字まで潰れては、探し物にならない。
      → 頭に**床**を敷く(min-width)= どれだけ狭くても、頭の数文字は必ず残る。
    ★一覧(時刻の側)は今までどおり= あちらは時刻を読む所so、v4.1.28の姿を変えない。 */
-.clk-item.tagrow .ci-nh{min-width:5.2em}
-.clk-item.tagrow .ci-nt{min-width:4.6em}          /* 頭も尾も床を持つ= 名前の両端that残る */
+.clk-item.tagrow .ci-nh{min-width:5.2em}          /* 部屋は名前を読む所so、床thatが少し高い */
 .clk-item.tagrow .ci-tag{max-width:22%}
 .clk-item.tagrow .ci-t{opacity:.85;font-size:9px}
 /* v4.1.74: 札は名前より先に縮む= 読みたいのは膜の名前so、そちらに幅を譲る。 */
@@ -21903,8 +21935,12 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
        実機は日本語の頭と数字だけの尾で**使う書体thatが違い、行の高さthatずれる**。
      ★★→ **高さを固定する**(line-height を同じ値で明に書く)= 書体thatが何であれ箱の高さthat揃うので、
        どの環境でも段違いにならない。★推測でなく「環境で変わる物を、変わらなくする」直し方。 */
-.clk-item .ci-nh{flex:0 9999 auto;min-width:0;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.clk-item .ci-nt{flex:0 1 auto;min-width:0;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
+/* ★★v4.1.76(俊克 バグ2「メインリストでの、この5分タイマーの膜名の表示thatまだおかしい。
+   **タグリストでは正しく表示しているのに、なぜ?**」): ★★★**床を部屋にだけ敷いていた**=
+   同じ名前を出す2つの場所で、片方だけ直していた。名前の読み方は場所で変わらない。
+   ★.ci-n は overflow:hidden so、床を敷いても × は押し出されない(はみ出しは名前の箱の中で切れる)。 */
+.clk-item .ci-nh{flex:0 9999 auto;min-width:4.4em;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clk-item .ci-nt{flex:0 1 auto;min-width:4.6em;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
 /* ★★v4.1.5(俊克 疑問1「薄く×って、どこの話し?」): ★★**薄い印は無いのと同じ**= v4.1.4は opacity .40 で
    置いたので、在ることに気づけなかった。→ 縁を持たせて、字の濃さで置く(押せる物の顔)。
    ★押す所は字より広く= 1桁の当たりでは狙えない([[project_direct_manipulation_mark]])。 */
@@ -23828,8 +23864,9 @@ n.appendChild(_nh);n.appendChild(_nt);}else n.textContent=_nm;
 n.title=_nm;
 row.appendChild(t);row.appendChild(n);
 /* v4.1.70: 行にも札を小さく= どの札の物かthat一覧のまま読める。 */
-/* v4.1.74: 選んでいる札は行に出さない= 同じ事を2度言わない。名前に幅that戻る。 */
-try{var _tg=c.tags||[];for(var _k=0;_k<_tg.length;_k++){if(clkTagSel&&_tg[_k]===clkTagSel)continue;
+/* ★★v4.1.76: 札のチップは**部屋の中だけ**= 一覧は時刻を読む所so、名前に幅を全部渡す。
+   ★俊克 v4.1.28 で決めた「頭は縮む箱・尾は縮まない箱」の姿thatそのまま戻る(そこへ床を足しただけ)。 */
+try{var _tg=clkTagMode?(c.tags||[]):[];for(var _k=0;_k<_tg.length;_k++){if(clkTagSel&&_tg[_k]===clkTagSel)continue;
  var _tc=document.createElement('span');_tc.className='ci-tag';_tc.textContent='#'+_tg[_k];row.appendChild(_tc);}}catch(e){}
 /* ★★v4.1.5(俊克「テスト用紙だから駄目というのはおかしい。これはテスト用紙専用ではないからだよ。
    間違ってスタートした時もあるよ」): ★★**走っている時計も外せる**= 掛け違いは誰にでも在る。
@@ -25618,7 +25655,7 @@ function toggleMeDock(editorOverride) {
     // v4.1.0: 一覧from選んだ= その膜へ行く(飛ぶ口は meosJumpToScope 1つ)。
     if (message && message.type === 'clockGoto') { await meosJumpToScope({ uri: message.uri, key: message.key, name: message.name }); return; }
     if (message && message.type === 'clockForget') { await meosClockDrop(message.uri, message.key); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.4/4.1.5: 一覧の×(走っていれば止めてから外す)
-    if (message && message.type === 'clockEnable') { await meosClockSetEnabled(message.uri, message.key, !!message.on); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.24: 一覧の\u2611/\u2610(使う/休む)
+    if (message && message.type === 'clockEnable') { await meosClockSetEnabled(message.uri, message.key, !!message.on); meosPostTagList(); try { updateMeDockMode(); } catch (_) { } return; }   // v4.1.76: 部屋の分も送り直す  // v4.1.24: 一覧の\u2611/\u2610(使う/休む)
     // ★★★v4.1.58: Stop= **音を黙らせる**だけでなく、**この回を終わらせる**。
     //   ★一度きりの時計なら済み(✓)に、繰返しなら**この回を飛ばして次を仕掛ける**=
     //     どちらも「この回は終わり」という1つの意味。目薬を先に差した時に押す物so、それthat自然。
@@ -25688,33 +25725,7 @@ function toggleMeDock(editorOverride) {
     //     (私は『ピン留め』を勧めたthat、俊克の形の方that規則を1つに保つ)。
     //   ★★★探す相手は**膜**であって時計ではない= ⏰の無い膜も出す。行って、そこで掛ければよい。
     //   ★訊かれた時だけ走る(入口を叩いた時)so、カーソル毎に全部の膜を読まない。
-    if (message && message.type === 'clockTagList') {
-      try {
-        const _e = meosCurrentEditor(); const _d = _e && _e.document;
-        const _items = [];
-        if (_d) {
-          const _uri = _d.uri.toString();
-          let _pairs = [];
-          try { _pairs = collectPairs(_d, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
-          const _clk = new Map();
-          try { for (const c of meosClockFcScan(_d)) if (c.key) _clk.set(c.key, c); } catch (_) { }
-          for (const p of _pairs) {
-            const _tg = meosMembraneTags(_d, p.start);
-            if (!_tg.length) continue;
-            const _c = _clk.get(p.id) || null;
-            const _run = _meosPseudoUntil.get(_uri + ' ' + p.id) || 0;
-            let _at = _run;
-            if (!_at && _c) { const _w = meosParseStampLoose(_c.when); if (_w) _at = _w.getTime(); }
-            _items.push({ uri: _uri, key: p.id, name: p.id, tags: _tg, line: p.start,
-              has: !!_c, at: _at, running: !!_run, off: !!(_c && _c.off), up: !!(_c && _c.up) });
-          }
-          // 時刻を持つ物that先(近い順)、その後は書いてある順= 探し物の並びも「時刻の近い順」から外れない。
-          _items.sort((a, b) => (a.at && b.at) ? (a.at - b.at) : (a.at ? -1 : (b.at ? 1 : (a.line - b.line))));
-        }
-        if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockTags', items: _items });
-      } catch (_) { }
-      return;
-    }
+    if (message && message.type === 'clockTagList') { meosPostTagList(); return; }
     // ★★★v4.1.72(俊克 改良1「**任意のタグを入力できるようにしよう**。そして、既定のタグとして
     //   #tag0 ボタンを置いて、これを押すと、**現在文字カーソルが入っている膜にそのタグが入る**ように
     //   する。これで、初心者でも、このタグでまとめられる」):
@@ -25737,7 +25748,7 @@ function toggleMeDock(editorOverride) {
         const _ok = await meosSetMembraneTags(_sc.doc, _r.from, _next);
         if (_ok) {
           try { meosArmClockFcFor(_sc.doc); } catch (_) { }
-          meosPostViewMode(); try { updateMeDockMode(); } catch (_) { }
+          meosPostViewMode(); meosPostTagList(); try { updateMeDockMode(); } catch (_) { }
           vscode.window.setStatusBarMessage('MeOS: ' + (_sc.name || 'this membrane') + ' \u2014 '
             + (_off.length ? ('#' + _off.join(' #') + ' off') : ('#' + _want.join(' #') + ' on')), 3000);
         } else {
@@ -25754,7 +25765,7 @@ function toggleMeDock(editorOverride) {
         if (doc && hit) {
           await meosClockFcSet(doc, message.key, { when: hit.when, hold: hit.hold, lock: false, cycle: hit.cycle, up: hit.up, tags: hit.tags, done: false, off: hit.off });
           const _s = _meosPseudoScopes.get(message.uri + ' ' + message.key); if (_s) _s.lock = false;
-          meosUpdateTimerBar(); meosPostViewMode(); try { updateMeDockMode(); } catch (_) { }
+          meosUpdateTimerBar(); meosPostViewMode(); meosPostTagList(); try { updateMeDockMode(); } catch (_) { }
           vscode.window.setStatusBarMessage('MeOS: \ud83d\udd13 ' + (hit.name || message.key) + ' \u2014 the lock is off; it can be dropped again.', 3000);
         }
       } catch (_) { }
