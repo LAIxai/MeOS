@@ -1350,7 +1350,7 @@ console.log('(60) ⏰の一覧はMe Dockの中／履歴5個／時刻で出す(v4
      '★同じ枠に**役を着せる**(枠を2つ作らない)', true);
   ok(/window\.__clkOpen\('set'\);/.test(src),
      '★▾は設定を開く', true);
-  ok(/\.clk-pop\.hist-only \.clk-row,/.test(src) && /\.clk-pop\.set-only \.clk-list\{display:none\}/.test(src),
+  ok(/\.clk-pop\.hist-only \.clk-row,/.test(src) && /\.clk-pop\.set-only \.clk-list,\.clk-pop\.set-only \.clk-tags\{display:none\}/.test(src),
      '★役ごとに、要らない段が消える', true);
   ok(/\.clk-pop\.hist-only \.clk-list:empty::after\{content:'No clock set yet\.'/.test(src),
      '★履歴that空でも、空の枠でなく理由を出す', true);

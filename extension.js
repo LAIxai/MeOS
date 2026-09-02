@@ -9726,8 +9726,14 @@ function meosClockFcParse(text) {
     up = (cm[1] === '\u21bb');
     cycle = String(cm[2]).split('/').map(x => String(x).trim()).filter(Boolean);
   }
+  // ★★★v4.1.70(俊克「⏰リスト最下段に**タグ用の入口**を作ることだね」):
+  //   ★★★**札も本文に住む**= `#目薬` のように⏰行へ書く。so grep できるし、Me Dock無しでも付けられる
+  //     ([[project_clock_in_the_text]] ⏰の住所は本文)。覚えの側に持たせない= 予定と札that離れない。
+  //   ★1枚とは限らない= 札は入れ物ではなく**目印**so、何枚でも重なってよい。
+  const tags = [];
+  body = body.replace(/(^|\s)#([^\s#<>]+)/g, (mm, sp, tg) => { tags.push(tg); return sp ? ' ' : ''; }).trim();
   const face = String(m[1] || '');
-  return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, up, ufc: meosIsUnfoldingSpecLine(t) };
+  return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, up, tags, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
 // v4.1.66: 走り読みの結果(生きている⏰の行)を版ごとに控える= **描く側と掛ける側that同じ1つから引く**
@@ -9777,7 +9783,7 @@ function meosClockFcScan(doc) {
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, ufc: c.ufc });
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, tags: c.tags, ufc: c.ufc });
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   return out;
@@ -9829,6 +9835,15 @@ function meosCycleMs(step) {
 //   「10m 3h 00 90m 1d」のように指定する。4つ繰り返す時は「10m 3h 5m 90m 00」のようにする」):
 //   ★★**`00` は終端の印**= その先は書いてあっても使わない(消さずに残せる= 下書きthatそのまま置ける)。
 //   ★先頭that `00` なら**繰返し無し**= 消す口も同じ箱に在る(消すための別のボタンを作らない)。
+// v4.1.70: 札の書き方= 空白で区切る。`#` は在っても無くてもよい(人that打つ物so、厳しくしない)。
+function meosParseTagInput(txt) {
+  const out = [];
+  for (const w of String(txt == null ? '' : txt).trim().split(/[\s,]+/)) {
+    const t = w.replace(/^#+/, '').replace(/[<>#]/g, '');
+    if (t) out.push(t);
+  }
+  return out;
+}
 function meosParseCycleInput(txt) {
   const out = [];
   for (const w of String(txt == null ? '' : txt).trim().split(/[\s,\/]+/)) {
@@ -9873,6 +9888,7 @@ async function meosClockFcSet(doc, key, spec) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? '\u23f8' : '')
         + ' ' + String(spec.when || '').trim()
+        + ((Array.isArray(spec.tags) && spec.tags.length) ? (' ' + spec.tags.map(x => '#' + x).join(' ')) : '')   // v4.1.70: 札
         + (Array.isArray(spec.cycle) && spec.cycle.length ? ((spec.up ? ' \u21bb' : ' \u21ba') + spec.cycle.join('/')) : '')   // v4.1.60: \u21bbはそのまま残す   // v4.1.58: 書く時は \u21ba
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
@@ -9940,6 +9956,7 @@ function meosArmClockFcFor(doc) {
             _s.up = !!(c.up && Array.isArray(c.cycle) && c.cycle.length);
             if (Array.isArray(c.cycle) && c.cycle.length) _s.step = meosCycleMs(c.cycle[0]);
             _s.name = c.name || _s.name;
+            _s.tags = c.tags || [];                                 // v4.1.70: 札も本文to一緒に新しくする
           }
         } catch (_) { }
         continue;                                                   // 既に仕掛かっている
@@ -9956,7 +9973,7 @@ function meosArmClockFcFor(doc) {
       //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
       if (c.off) {
         const _w = meosParseStampLoose(c.when);
-        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
+        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
       }
       let w = meosParseWhen(c.when), _step = 0;
@@ -9980,6 +9997,7 @@ function meosArmClockFcFor(doc) {
       //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
         up: !!(c.up && Array.isArray(c.cycle) && c.cycle.length),
+        tags: c.tags || [],
         step: _step };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
@@ -9987,7 +10005,7 @@ function meosArmClockFcFor(doc) {
       meosNoteClockHistory(scope, w.at.getTime());
       // ★v4.1.18(俊克 👍2「✓を外し、新しい時刻を設定して保存すると再起動する。FCに変わるようになった時には、
       //   再起動でUFCに再び戻る必要がある」): これから鳴る物は見えていなければならないので、名前を戻す。
-      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, done: false }); } catch (_) { } }
+      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, tags: c.tags, done: false }); } catch (_) { } }
       n++;
     }
     // ★★★v4.1.66(俊克 問題1): **本文that言わなくなった物は、ここで落とす**=
@@ -10237,7 +10255,7 @@ async function meosClockSetEnabled(uri, key, on) {
       _meosPseudoScopes.delete(lk);
       if (sc && sc.hold) { try { await meosApplyModeToScope(doc, key, 'normal', sc.name); } catch (_) { } }
     }
-    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, done: false, off: true });
+    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, tags: hit.tags, done: false, off: true });
     // ★★★v4.1.62(俊克 バグ4「リストの✓ボタンを押して…止めた後で、リストから無くなってしまう。
     //   **これは残しておくべきだよ**。貴方は、Stopしたら、リストから消すようなことを書いていたよね。
     //   それは間違いだよ」): ★★★**休んでいる物は「予定」であって「履歴」ではない**=
@@ -10262,7 +10280,7 @@ async function meosClockSetEnabled(uri, key, on) {
       const _r = meosClockRollToNextDay(_when);
       if (_r) { _when = _r; _rolled = true; }
     }
-    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, done: false, off: false });
+    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, tags: hit.tags, done: false, off: false });
     try { meosArmClockFcFor(doc); } catch (_) { }
     if (_meosPseudoUntil.has(lk)) {
       if (_rolled) vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 that time had gone, so it is set for ' + _when + '.', 4000);
@@ -10278,7 +10296,7 @@ function meosNoteClockHistory(scope, at, off) {
   try {
     const i = _meosClockHistory.findIndex(r => r.uri === scope.uri && r.key === scope.key);
     if (i >= 0) _meosClockHistory.splice(i, 1);
-    _meosClockHistory.unshift({ uri: scope.uri, key: scope.key, name: scope.name, at, hold: !!scope.hold, off: !!off });
+    _meosClockHistory.unshift({ uri: scope.uri, key: scope.key, name: scope.name, at, hold: !!scope.hold, off: !!off, tags: Array.isArray(scope.tags) ? scope.tags : [] });
     while (_meosClockHistory.length > MEOS_CLOCK_HISTORY_MAX) _meosClockHistory.pop();
     meosClockHistorySave();
   } catch (_) { }
@@ -10290,11 +10308,11 @@ function meosClockList(limit) {
   const push = (r, running) => {
     const k = r.uri + ' ' + r.key;
     if (seen.has(k)) return; seen.add(k);
-    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, off: !!r.off, running: !!running });
+    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, off: !!r.off, tags: Array.isArray(r.tags) ? r.tags : [], running: !!running });
   };
   try {
     const live = [];
-    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock, up: sc.up }); }
+    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock, up: sc.up, tags: sc.tags }); }
     live.sort((a, b) => a.at - b.at);
     for (const r of live) push(r, true);
     // v4.1.62: 走っている物 → **休んでいる物(予定)** → 鳴り終わった物。予定は履歴に押し出されない。
@@ -10722,7 +10740,7 @@ async function meosEndPseudoTimer(key) {
         //   so鳴る度にファイルthat汚れることもなくなった(●thatが点かない)。
         try { meosArmClockFcFor(doc); } catch (_) { }
       }
-      else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, done: true }); }
+      else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, tags: _hit.tags, done: true }); }
       else {
         const _m = meosClockMeta(doc); const _r = _m[scope.key];
         if (_r) { _m[scope.key] = { at: Number(_r.at) || Date.now(), hold: !!scope.hold, past: true };
@@ -11202,15 +11220,19 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   //   掛ける前に🔒を選ぶ。★hold(押さえ)とは別物= holdは**見え方**、lockは**外せるかどうか**。
   const lock = !!_meosClockLockNext; _meosClockLockNext = false;   // 読んだ所で降ろす= この1つにだけ効く
   // v4.1.64: 繰返しthat在る時は、本文へ**起点**を書いて、掛けるのは meosArmClockFcFor に任せる(道を1本に)。
-  let _cy0 = null, _up0 = false;
+  let _cy0 = null, _up0 = false, _tg0 = null;
   if (scope.key) {
-    try { const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key); if (_h && Array.isArray(_h.cycle) && _h.cycle.length) { _cy0 = _h.cycle; _up0 = !!_h.up; } } catch (_) { }
+    try {
+      const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key);
+      if (_h) { if (Array.isArray(_h.cycle) && _h.cycle.length) { _cy0 = _h.cycle; _up0 = !!_h.up; } _tg0 = _h.tags || null; }
+    } catch (_) { }
     if (opts && opts.hasCycle) { _cy0 = (opts.cycle && opts.cycle.length) ? opts.cycle : null; _up0 = !!(opts.up && _cy0); }
+    if (opts && opts.tags) _tg0 = opts.tags;                       // v4.1.70: 面that言った札that勝つ
   }
   if (scope.key && _cy0) {
     const _org = atDate ? ((atDate instanceof Date) ? atDate : new Date(Number(atDate))) : new Date(Date.now() + ms);
     _meosPseudoScopes.delete(lk);
-    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, cycle: _cy0, up: _up0 });
+    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, cycle: _cy0, up: _up0, tags: _tg0 });
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + (_up0 ? '\u21bb' : '\u21ba') + _cy0.join('/')
@@ -11229,7 +11251,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   //   ★★**時刻を決め直すことと、繰返しをやめることは別の意志**so、勝手に道連れにしない
   //     ([[project_last_specified_wins]] 人that最後に指定した物を残す)。→ 在れば持ち越す。
   if (scope.key) {
-    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: false }); } catch (_) { }
+    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: false, tags: _tg0 }); } catch (_) { }
   }
   else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
   meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
@@ -21745,8 +21767,8 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    必要があるね」): 選んだ数字は19px= 年は4文字で約46px要る。列は3つ＋clearで割るので、
    172px では足りなかった。224px で1列あたり約53px(=年が収まる)。 */
 .bm-pop.clk-pop.set-only{width:224px}
-.clk-pop.hist-only .clk-row,.clk-pop.hist-only .clk-cols,.clk-pop.hist-only .clk-in,.clk-pop.hist-only .clk-when,.clk-pop.hist-only .clk-whenrow,.clk-pop.hist-only .clk-foot,.clk-pop.hist-only .clk-sep{display:none}
-.clk-pop.set-only .clk-list{display:none}
+.clk-pop.hist-only .clk-row,.clk-pop.hist-only .clk-cols,.clk-pop.hist-only .clk-in,.clk-pop.hist-only .clk-tagin,.clk-pop.hist-only .clk-when,.clk-pop.hist-only .clk-whenrow,.clk-pop.hist-only .clk-foot,.clk-pop.hist-only .clk-sep{display:none}
+.clk-pop.set-only .clk-list,.clk-pop.set-only .clk-tags{display:none}
 .clk-pop.hist-only .clk-list{max-height:160px}
 .clk-pop.hist-only .clk-list:empty{display:block}
 .clk-pop.hist-only .clk-list:empty::after{content:'No clock set yet.';display:block;padding:3px 4px;opacity:.75;font-size:10px}
@@ -21765,6 +21787,19 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4;cursor:pointer}
 .clk-warn:hover{background:rgba(209,52,56,.26)}
 .clk-warn.on{display:block}
+/* ★★★v4.1.70(俊克「⏰リスト最下段に**タグ用の入口**を作ることだね」):
+   ★★★**札の並びthat一覧の最下段に立つ**= 一覧を見ている目that、そのまま次の段で絞り込める。
+     置き場所は決めるものでなく、**もう在る規則から出てくる**= 塊(一覧)の次の行
+     ([[project_membrane_is_a_block]])。
+   ★選ぶのは1枚だけ= 押した札だけthat残る。もう一度押せば all に戻る(モードを覚えない)。 */
+.clk-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;padding-top:4px;border-top:1px dashed rgba(127,127,127,.35)}
+.clk-tags:empty{display:none}
+.clk-tag{font-size:10px;font-weight:700;line-height:1;padding:2px 6px;border:1px solid rgba(127,212,232,.55);border-radius:9px;background:transparent;color:#7fd4e8;cursor:pointer;white-space:nowrap}
+.clk-tag:hover{background:rgba(127,212,232,.16)}
+.clk-tag.on{background:rgba(127,212,232,.26);border-color:#7fd4e8;color:#cdeff8}
+.clk-tag.all{color:var(--vscode-editor-foreground);border-color:var(--vscode-panel-border)}
+.clk-tag.all.on{background:rgba(224,128,58,.22);border-color:rgba(224,128,58,.85);color:var(--vscode-editor-foreground)}
+.clk-item .ci-tag{flex:none;font-size:9px;font-weight:700;line-height:1;padding:1px 4px;border-radius:8px;background:rgba(127,212,232,.18);color:#7fd4e8;margin-left:3px}
 .clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
@@ -22166,6 +22201,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><button class="cancel clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</button></span>
 <div class="bm-pop clk-pop" id="clk-pop">
   <div class="clk-list" id="clk-list"></div>
+  <div class="clk-tags" id="clk-tags"></div>
   <div class="clk-warn" id="clk-warn"></div>
   <div class="clk-row"><span class="clk-lab">Origin</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
@@ -22174,6 +22210,8 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
   <div class="clk-cols"><div class="clk-col" id="clk-h"></div><div class="clk-col" id="clk-mi"></div></div>
   <div class="clk-whenrow"><div class="clk-when" id="clk-when" data-tip="Where the clock starts from \u2014 with a repeat this may be in the past, and the bells are counted on from it. Click the line to type it in: 20:00, or 2026-09-01 20:00. Orange = what you set. Grey = what MeOS worked out for you."><span class="cw-a">\u2192</span><span class="cw-d" id="clk-wd"></span><span class="cw-t" id="clk-wt"></span></div><span class="clk-lockunit" id="clk-lockunit"><button class="clk-lockmain" id="clk-lock" data-tip="Lock \ud83d\udd10 | A test paper you cannot walk out of \u2014 it cannot be dropped from the list until the time is up. Click the bright one; the shoulder \ud83d\udd13 lights up instead, and clicking that unlocks again. Choose, then press Set.">\ud83d\udd10</button><button class="clk-lockbadge" id="clk-unlock" data-tip="Unlock \ud83d\udd13 | Bright on the shoulder when this clock is set to lock. Click it to go back to a clock you can drop at any time.">\ud83d\udd13</button></span></div>
   <input class="clk-in clk-edit" id="clk-edit" placeholder="20:00 / 2026-09-01 20:00" spellcheck="false">
+  <div class="clk-row"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
+  <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this clock \u2014 it is written on the line itself (#\u76ee\u85ac), so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint">00 ends the list</span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="10m 3h 00 90m 1d" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-dir" id="clk-dir" data-tip="Which way time runs | \u21ba countdown \u2014 the figure falls to the bell. \u21bb stopwatch \u2014 it climbs from zero and starts over each turn. Both ring at the same instants; only the figure is read the other way round.">\u2610 \u21ba countdown</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
@@ -23583,7 +23621,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
-var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagSel='';var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -23667,10 +23705,25 @@ function clkWarn(text,key){var w=document.getElementById('clk-warn');if(!w)retur
   for(var i=0;i<rs.length;i++){var c=vmClocks[Number(rs[i].getAttribute('data-i'))];
    rs[i].classList.toggle('refused',!!(c&&c.key===key));}}catch(e){}
  if(clkWarnT)clearTimeout(clkWarnT);clkWarnT=setTimeout(function(){clkWarnT=null;clkWarnOff();},9000);}
+/* v4.1.70: 札の段= 一覧に**今在る札**だけを出す(使っていない札は並べない= 目印は現実の写し)。 */
+function clkRenderTags(){var bar=document.getElementById('clk-tags');if(!bar)return;
+ while(bar.firstChild)bar.removeChild(bar.firstChild);
+ var seen=[],i,j;
+ try{for(i=0;i<vmClocks.length;i++){var ts=vmClocks[i].tags||[];
+  for(j=0;j<ts.length;j++)if(seen.indexOf(ts[j])<0)seen.push(ts[j]);}}catch(e){}
+ if(!seen.length){clkTagSel='';return;}
+ if(clkTagSel&&seen.indexOf(clkTagSel)<0)clkTagSel='';   /* 消えた札を選び続けない */
+ var mk=function(label,val){var b=document.createElement('span');
+  b.className='clk-tag'+(val?'':' all')+((clkTagSel===val)?' on':'');
+  b.textContent=label;b.setAttribute('data-tag',val);return b;};
+ bar.appendChild(mk('all',''));
+ for(i=0;i<seen.length;i++)bar.appendChild(mk('#'+seen[i],seen[i]));}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
+clkRenderTags();
 if(!vmClocks||!vmClocks.length)return;
 for(var i=0;i<vmClocks.length;i++){var c=vmClocks[i];
+if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;   /* v4.1.70: 選んだ札の物だけ */
 var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'');/* v4.1.25: 次に鳴る1つ */
 row.setAttribute('data-i',String(i));
 /* v4.1.24: 左端の\u2611/\u2610= 使う/休む。走っている物that\u2611。 */
@@ -23694,6 +23747,9 @@ var _nt=document.createElement('span');_nt.className='ci-nt';_nt.textContent=_nm
 n.appendChild(_nh);n.appendChild(_nt);}else n.textContent=_nm;
 n.title=_nm;
 row.appendChild(t);row.appendChild(n);
+/* v4.1.70: 行にも札を小さく= どの札の物かthat一覧のまま読める。 */
+try{var _tg=c.tags||[];for(var _k=0;_k<_tg.length;_k++){var _tc=document.createElement('span');
+ _tc.className='ci-tag';_tc.textContent='#'+_tg[_k];row.appendChild(_tc);}}catch(e){}
 /* ★★v4.1.5(俊克「テスト用紙だから駄目というのはおかしい。これはテスト用紙専用ではないからだよ。
    間違ってスタートした時もあるよ」): ★★**走っている時計も外せる**= 掛け違いは誰にでも在る。
    ×は走っている物なら**止めてから**外す。外せないのは🔒を選んで掛けた物だけ(そこは印that🔒に変わる)。 */
@@ -23714,6 +23770,10 @@ if(clkCaret&&clkPop){
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
   /* v4.1.68b: 断りの札を押したら、その場で下ろす(閉じない= 一覧はそのまま見ていられる)。 */
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-warn')){clkWarnOff();return;}
+  /* v4.1.70: 札を押したら絞る。同じ札をもう一度押せば all に戻る(覚えを増やさない)。 */
+  var _tb=(ev.target&&ev.target.closest)?ev.target.closest('.clk-tag'):null;
+  if(_tb){var _tv=_tb.getAttribute('data-tag')||'';clkTagSel=(clkTagSel===_tv)?'':_tv;
+   clkWarnOff();clkRenderList();clkPlace();return;}
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
    clkWarnOff();                                                  /* v4.1.68: 次を押したら前の断りは下ろす */
@@ -23748,12 +23808,12 @@ if(clkCaret&&clkPop){
      ★★★**当たりthat見えている物より小さかった**= □ は子の span so、id で見ていた私の枝を素通りしていた。
      ★→ **押した物の上をたどって、どのボタンの中かを訊く**= 見えている箱の中は、どこでも当たり
      ([[project_direct_manipulation_mark]] 印は押せる大きさ／当たりthat表示と一致する)。 */
-  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-set'):null;
+  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-set'):null;
   var _id=_hit?_hit.id:'';
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();return;}
   if(_id==='clk-dir'){if(!clkRep){clkRep=true;clkPaintRep();}clkDir=!clkDir;clkPaintDir();return;}
-  if(_id==='clk-cyc')return;                                       /* 箱は押しても閉じない */
+  if(_id==='clk-cyc'||_id==='clk-tagin')return;                    /* 箱は押しても閉じない */
   if(_id==='clk-set'){clkFire();return;}
  });
  /* ★★v4.1.2: 合体行を押す→同じ場所に箱が出る→ Enter で掛ける / Esc でやめる。
@@ -23776,11 +23836,15 @@ if(clkCaret&&clkPop){
   try{clkPop.classList.toggle('norepeat',!clkRep);}catch(e){}
   var cy=document.getElementById('clk-cyc');if(cy)cy.disabled=!clkRep;clkPaintDir();}
  function clkFire(){var v=clkText();if(!v)return;var cy=document.getElementById('clk-cyc');
+  var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
-  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,rep:clkRep,up:clkDir,cycle:(clkRep&&cy)?cy.value:''});closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,rep:clkRep,up:clkDir,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:''});closeClkPop();}
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
+  if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
+ var clkTagEl=document.getElementById('clk-tagin');
+ if(clkTagEl)clkTagEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  function clkEditOn(){if(!clkEditEl)return;clkEditEl.value=clkText();clkPop.classList.add('editing');
   try{clkEditEl.focus();clkEditEl.select();}catch(e){}}
@@ -23806,6 +23870,7 @@ if(clkCaret&&clkPop){
   clkLock=false;clkPaintLock();                               /* ★錠は開く度に外れる= 掛けっぱなしの錠で人を閉じ込めない */
   clkDir=false;clkRep=false;                                  /* v4.1.64: 既定は逆算タイマー */
   var cyb=document.getElementById('clk-cyc');if(cyb)cyb.value='';
+  var tgb=document.getElementById('clk-tagin');if(tgb)tgb.value='';
   clkPaintRep();
   vscode.postMessage({type:'clockAskCurrent'});               /* v4.1.65: 今の膜の姿を見せてから直させる */
   /* ★v4.1.67(俊克 改良3「時分は、**現在時刻を既定**にしようよ」): ★起点を決める面so、
@@ -24608,6 +24673,7 @@ if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
   clkRep=!!(m.cycle&&m.cycle.length);clkDir=!!m.up;
   var _cy=document.getElementById('clk-cyc');if(_cy)_cy.value=m.cycle||'';
+  var _tg=document.getElementById('clk-tagin');if(_tg)_tg.value=m.tag||'';   /* v4.1.70 */
   clkPaintRep();}}catch(e){}return;}
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
 var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(Number(m.stopUndo)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
@@ -25478,7 +25544,8 @@ function toggleMeDock(editorOverride) {
       // v4.1.65: 面that今の姿を見せた上で押されるso、**面の言い分that常に最後の指定**(空欄=触らない、は無い)。
       const _rep = (message.rep !== undefined) ? !!message.rep
         : (message.cycle != null && String(message.cycle).trim() !== '');   // 古い面から来た時のため
-      const _opts = { hasCycle: true, cycle: _rep ? meosParseCycleInput(message.cycle) : [], up: !!message.up };
+      const _opts = { hasCycle: true, cycle: _rep ? meosParseCycleInput(message.cycle) : [], up: !!message.up,
+        tags: (message.tags != null) ? meosParseTagInput(message.tags) : null };
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。一度きりの予定だけは今までどおり未来だけ。
@@ -25491,12 +25558,13 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'clockAskCurrent') {
       try {
         const _e = meosCurrentEditor(); const _sc = _e ? meosModeScope(_e) : null;
-        let _cyc = '', _up = false;
+        let _cyc = '', _up = false, _tag = '';
         if (_sc && _sc.key && _sc.doc) {
           const _h = meosClockFcScan(_sc.doc).find(c => c.key === _sc.key);
           if (_h && Array.isArray(_h.cycle) && _h.cycle.length) { _cyc = _h.cycle.join(' '); _up = !!_h.up; }
+          if (_h && Array.isArray(_h.tags) && _h.tags.length) _tag = _h.tags.join(' ');
         }
-        if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockCurrent', cycle: _cyc, up: _up });
+        if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockCurrent', cycle: _cyc, up: _up, tag: _tag });
       } catch (_) { }
       return;
     }
@@ -25506,7 +25574,7 @@ function toggleMeDock(editorOverride) {
         const doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === message.uri);
         const hit = doc ? meosClockFcScan(doc).find(c => c.key === message.key) : null;
         if (doc && hit) {
-          await meosClockFcSet(doc, message.key, { when: hit.when, hold: hit.hold, lock: false, cycle: hit.cycle, up: hit.up, done: false, off: hit.off });
+          await meosClockFcSet(doc, message.key, { when: hit.when, hold: hit.hold, lock: false, cycle: hit.cycle, up: hit.up, tags: hit.tags, done: false, off: hit.off });
           const _s = _meosPseudoScopes.get(message.uri + ' ' + message.key); if (_s) _s.lock = false;
           meosUpdateTimerBar(); meosPostViewMode(); try { updateMeDockMode(); } catch (_) { }
           vscode.window.setStatusBarMessage('MeOS: \ud83d\udd13 ' + (hit.name || message.key) + ' \u2014 the lock is off; it can be dropped again.', 3000);

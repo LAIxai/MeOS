@@ -28,6 +28,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.70 (2026-09-02)
+- **Clocks can be tagged, and the bar under the list filters by tag.** A tag is written on the clock line
+  itself — `#eyedrops` after the time — so it can be grepped, typed by hand, and travels with the file; nothing
+  is kept on the side where the plan and its label could drift apart. A clock may carry as many as you like: a
+  tag is a mark, not a box, so they are allowed to overlap.
+- The bar shows only the tags actually in use, with `all` at its head. Pressing one narrows the list; pressing
+  the same one again goes back to `all`, so there is no mode to remember, and a tag that stops being used stops
+  being selected rather than leaving an empty list.
+- Each row shows its tags, and the ▾ panel has a **Tag** field — opening it shows what the membrane already
+  carries, and clearing it takes the tags off.
+
 ### v4.1.69 (2026-09-02)
 - **Clicking the red warning dismisses it.** Waiting is only for before it has been read; once it has, the
   reader should be able to say so. The list stays open — only the card goes.

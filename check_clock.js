@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -383,7 +383,7 @@ console.log('\u3257 掛け直しても \u21bb thatが消えない');
  ok(M('01')===60000&&M('1')===60000, '  \u21bb01 も \u21bb1 も 1分(パーサは元から正しい)', [M('01'),M('1')]);
  ok((P('<!-- Mew!UFC \u23f0 2026-08-31 19:00 \u21bb01 -->')||{}).cycle[0]==='01', '  行からも 01 と読める', true);
  const SRC10=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false;');
+ const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false, _tg0 = null;');
  const _set=SRC10.slice(_i0, _i0+1200);
  ok(/cycle: _cy0, up: _up0/.test(_set), '\u2605\u2605\u2605Set thatが書く時に繰返しと向きを渡している', true);
  ok(/meosClockFcScan\(scope\.doc\)/.test(_set), '  在れば本文から読んで持ち越す', true);
@@ -626,7 +626,7 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
     '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
  ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
     '\u2605\u2605\u6253\u9375that\u843d\u3061\u7740\u3044\u305f\u3089 \u23f0 \u3082\u8aad\u307f\u76f4\u3059= \u56f2\u3044\u3078\u5165\u308c\u305f\u898b\u672c\u304c\u4fdd\u5b58\u3092\u5f85\u305f\u305a\u306b\u843d\u3061\u308b', true);
- ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-set'\)/.test(S),
+ ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-set'\)/.test(S),
     '\u2605\u2605\u2605\u898b\u3048\u3066\u3044\u308b\u7bb1\u306e\u4e2d\u306f\u3069\u3053\u3067\u3082\u5f53\u305f\u308a(\u2610 \u3092\u62bc\u3057\u3066\u3082\u52b9\u304f)', true);
  ok(/var n2=new Date\(\);/.test(S)&&!/var n2=new Date\(Date\.now\(\)\+30\*60000\)/.test(S),
     '\u2605\u6642\u5206\u306e\u65e2\u5b9a\u306f**\u4eca**(30\u5206\u5f8c\u306f\u79c1\u306e\u63d0\u6848\u3067\u3057\u304b\u306a\u304b\u3063\u305f)', true);
@@ -651,6 +651,35 @@ console.log('\u3262 \u65ad\u308a\u306f\u62bc\u3057\u305f\u5834\u6240\u306e\u96a3
  ok(/w\.title='Click to dismiss'/.test(S), '  \u62bc\u305b\u308b\u3053\u3068\u3092\u672d\u81ea\u8eab\u304c\u8a00\u3046', true);
  ok(/if\(it\)\{var c=vmClocks\[Number\(it\.getAttribute\('data-i'\)\)\];\n   clkWarnOff\(\);/.test(S),
     '  \u6b21\u306e\u884c\u3092\u62bc\u3057\u305f\u3089\u524d\u306e\u65ad\u308a\u306f\u4e0b\u308a\u308b', true);
+}
+
+// v4.1.70(俊克 CN=v4.1.69_0803「(残る課題)⏰リスト最下段にタグ用の入口を作ることだね」)
+console.log('\u3263 \u672d(#tag)= \u672c\u6587\u306b\u4f4f\u307f\u3001\u4e00\u89a7\u306e\u6700\u4e0b\u6bb5\u3067\u7d5e\u308b');
+{
+ const P=X.meosClockFcParse, T=X.meosParseTagInput;
+ const a=P('<!-- Mew!UFC \u23f0 2026-09-03 19:22 #\u76ee\u85ac \u21ba05 -->');
+ ok(!!a && String(a.tags)==='\u76ee\u85ac' && a.when==='2026-09-03 19:22',
+    '\u2605\u2605\u2605\u672d\u3092\u5207\u308a\u5206\u3051\u3066\u8aad\u3080(\u6642\u523b\u306b\u6df7\u3056\u3089\u306a\u3044)', a && [a.tags, a.when]);
+ const b=P('<!-- Mew!UFC \u23f0 2026-09-03 19:22 #\u76ee\u85ac #\u671d \u21bb15 -->');
+ ok(!!b && String(b.tags)==='\u76ee\u85ac,\u671d' && String(b.cycle)==='15' && b.up===true,
+    '\u2605\u2605\u4f55\u679a\u3067\u3082\u8cbc\u308c\u308b\u30fb\u8f2a\u3068\u3082\u4e26\u3079\u3089\u308c\u308b', b && [b.tags, b.cycle, b.up]);
+ ok(String((P('<!-- Mew!UFC \u23f0 2026-09-03 19:22 -->')||{}).tags)==='', '  \u7121\u3051\u308c\u3070\u7a7a', true);
+ ok(String(T('#\u76ee\u85ac \u671d'))==='\u76ee\u85ac,\u671d'&&String(T('  '))==='',
+    '\u2605# \u306f\u5728\u3063\u3066\u3082\u7121\u304f\u3066\u3082\u826f\u3044(\u4eba that\u6253\u3064\u7269so\u53b3\u3057\u304f\u3057\u306a\u3044)', T('#\u76ee\u85ac \u671d'));
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/\(\(Array\.isArray\(spec\.tags\) && spec\.tags\.length\) \? \(' ' \+ spec\.tags\.map/.test(S),
+    '\u2605\u2605\u672d\u3082**\u672c\u6587\u306b\u66f8\u304f**= grep \u3067\u304d\u308b\u30fbMe Dock\u7121\u3057\u3067\u3082\u4ed8\u3051\u3089\u308c\u308b', true);
+ ok(/id="clk-tags"/.test(S)&&/function clkRenderTags\(\)/.test(S),
+    '\u2605\u2605\u2605\u672d\u306e\u6bb5\u306f**\u4e00\u89a7\u306e\u6700\u4e0b\u6bb5**(\u584a\u306e\u6b21\u306e\u884c)', true);
+ ok(/if\(clkTagSel&&\(c\.tags\|\|\[\]\)\.indexOf\(clkTagSel\)<0\)continue;/.test(S),
+    '\u2605\u9078\u3093\u3060\u672d\u306e\u7269\u3060\u3051\u51fa\u3059', true);
+ ok(/clkTagSel=\(clkTagSel===_tv\)\?'':_tv;/.test(S),
+    '\u2605\u540c\u3058\u672d\u3092\u3082\u3046\u4e00\u5ea6\u62bc\u305b\u3070 all \u3078\u623b\u308b(\u30e2\u30fc\u30c9\u3092\u899a\u3048\u306a\u3044)', true);
+ ok(/if\(clkTagSel&&seen\.indexOf\(clkTagSel\)<0\)clkTagSel='';/.test(S),
+    '  \u6d88\u3048\u305f\u672d\u3092\u9078\u3073\u7d9a\u3051\u306a\u3044(\u7a7a\u306e\u4e00\u89a7\u3092\u898b\u305b\u306a\u3044)', true);
+ ok(/id="clk-tagin"/.test(S)&&/tags:tg\?tg\.value:''/.test(S),
+    '  \u25be\u304b\u3089\u3082\u4ed8\u3051\u3089\u308c\u308b(\u958b\u3051\u3070\u4eca\u306e\u672d that\u5165\u3063\u3066\u3044\u308b)', true);
+ ok(/\.clk-item \.ci-tag\{/.test(S), '  \u884c\u306b\u3082\u672d\u3092\u5c0f\u3055\u304f\u51fa\u3059', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
