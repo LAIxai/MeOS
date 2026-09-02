@@ -649,7 +649,7 @@ console.log('\u3262 \u65ad\u308a\u306f\u62bc\u3057\u305f\u5834\u6240\u306e\u96a3
  ok(/closest\('#clk-warn'\)\)\{clkWarnOff\(\);return;\}/.test(S)&&/\.clk-warn\{[^}]*cursor:pointer/.test(S),
     '\u2605\u2605v4.1.68b: \u672d\u3092\u62bc\u305b\u3070\u305d\u306e\u5834\u3067\u4e0b\u308a\u308b(\u8aad\u307f\u7d42\u308f\u3063\u305f\u4eba\u304c\u305d\u3046\u8a00\u3048\u308b)', true);
  ok(/w\.title='Click to dismiss'/.test(S), '  \u62bc\u305b\u308b\u3053\u3068\u3092\u672d\u81ea\u8eab\u304c\u8a00\u3046', true);
- ok(/if\(it\)\{var c=vmClocks\[Number\(it\.getAttribute\('data-i'\)\)\];\n   clkWarnOff\(\);/.test(S),
+ ok(/var c=_lst\[Number\(it\.getAttribute\('data-i'\)\)\];\n   clkWarnOff\(\);/.test(S),
     '  \u6b21\u306e\u884c\u3092\u62bc\u3057\u305f\u3089\u524d\u306e\u65ad\u308a\u306f\u4e0b\u308a\u308b', true);
 }
 
@@ -760,6 +760,21 @@ console.log('\u3266 Tag&Go= \u63a2\u3059\u306e\u306f\u819c\u30fb\u76ee\u7684\u30
  ok(/postMessage\(\{type:'clockTagList'\}\)/.test(S)&&/\u53e9\u304b\u308c\u305f\u6642\u3060\u3051\u63a2\u3057\u306b\u884c\u304f/.test(S),
     '  \u53e9\u304b\u308c\u305f\u6642\u3060\u3051\u5168\u3066\u306e\u819c\u3092\u8aad\u3080', true);
  ok(/Tag & Go/.test(S), '  \u5165\u53e3\u306e\u540d\u524d\u3082\u305d\u3046\u8a00\u3046', true);
+}
+
+// v4.1.74(俊克 CN=v4.1.73_0045 バグ1「1番目の膜名がまったく間違っている」
+//   「1番目のリストをクリックすると…飛んでしまうんだよ。なぜ?」)
+console.log('\u3267 \u63cf\u3044\u305f\u6e90\u3068\u3001\u62bc\u3057\u305f\u6642\u306b\u5f15\u304f\u6e90\u306f\u540c\u30581\u3064');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/var _lst=clkTagMode\?vmTagItems:vmClocks;var c=_lst\[Number\(it\.getAttribute\('data-i'\)\)\]/.test(S),
+    '\u2605\u2605\u2605\u62bc\u3057\u305f\u884c\u306f**\u63cf\u3044\u305f\u540c\u3058\u4e26\u3073**\u304b\u3089\u5f15\u304f(Tag&Go \u3067\u3082)', true);
+ ok(!/var c=vmClocks\[Number\(it\.getAttribute/.test(S),
+    '\u2605\u53e4\u3044\u5f15\u304d\u65b9(\u5e38\u306b vmClocks)\u306f\u6b8b\u3063\u3066\u3044\u306a\u3044', true);
+ ok(/if\(clkTagSel&&_tg\[_k\]===clkTagSel\)continue;/.test(S),
+    '\u2605\u9078\u3093\u3067\u3044\u308b\u672d\u306f\u884c\u306b\u51fa\u3055\u306a\u3044(\u540c\u3058\u4e8b\u30922\u5ea6\u8a00\u308f\u306a\u3044\u30fb\u540d\u524d\u306b\u5e45that\u623b\u308b)', true);
+ ok(/\.clk-item \.ci-tag\{flex:0 1 auto/.test(S),
+    '\u2605\u672d\u306f\u540d\u524d\u3088\u308a\u5148\u306b\u7e2e\u3080(\u8aad\u307f\u305f\u3044\u306e\u306f\u819c\u306e\u540d\u524d)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

@@ -21853,7 +21853,8 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-tagadd .clk-in{flex:1;min-width:0;font-size:10px;padding:2px 5px}
 .clk-tag0{flex:none;font-size:10px;font-weight:800;line-height:1;padding:3px 7px;border:1px solid rgba(224,128,58,.85);border-radius:9px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap}
 .clk-tag0:hover{background:rgba(224,128,58,.34)}
-.clk-item .ci-tag{flex:none;font-size:9px;font-weight:700;line-height:1;padding:1px 4px;border-radius:8px;background:rgba(127,212,232,.18);color:#7fd4e8;margin-left:3px}
+/* v4.1.74: 札は名前より先に縮む= 読みたいのは膜の名前so、そちらに幅を譲る。 */
+.clk-item .ci-tag{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:38%;font-size:9px;font-weight:700;line-height:1;padding:1px 4px;border-radius:8px;background:rgba(127,212,232,.18);color:#7fd4e8;margin-left:3px}
 .clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
@@ -23816,8 +23817,9 @@ n.appendChild(_nh);n.appendChild(_nt);}else n.textContent=_nm;
 n.title=_nm;
 row.appendChild(t);row.appendChild(n);
 /* v4.1.70: 行にも札を小さく= どの札の物かthat一覧のまま読める。 */
-try{var _tg=c.tags||[];for(var _k=0;_k<_tg.length;_k++){var _tc=document.createElement('span');
- _tc.className='ci-tag';_tc.textContent='#'+_tg[_k];row.appendChild(_tc);}}catch(e){}
+/* v4.1.74: 選んでいる札は行に出さない= 同じ事を2度言わない。名前に幅that戻る。 */
+try{var _tg=c.tags||[];for(var _k=0;_k<_tg.length;_k++){if(clkTagSel&&_tg[_k]===clkTagSel)continue;
+ var _tc=document.createElement('span');_tc.className='ci-tag';_tc.textContent='#'+_tg[_k];row.appendChild(_tc);}}catch(e){}
 /* ★★v4.1.5(俊克「テスト用紙だから駄目というのはおかしい。これはテスト用紙専用ではないからだよ。
    間違ってスタートした時もあるよ」): ★★**走っている時計も外せる**= 掛け違いは誰にでも在る。
    ×は走っている物なら**止めてから**外す。外せないのは🔒を選んで掛けた物だけ(そこは印that🔒に変わる)。 */
@@ -23856,8 +23858,14 @@ if(clkCaret&&clkPop){
   var _tb=(ev.target&&ev.target.closest)?ev.target.closest('.clk-tag'):null;
   if(_tb&&_tb.hasAttribute('data-tag')){var _tv=_tb.getAttribute('data-tag')||'';clkTagSel=(clkTagSel===_tv)?'':_tv;
    clkWarnOff();clkRenderList();clkPlace();return;}
+  /* ★★★v4.1.74(俊克 バグ1「1番目の膜名thatまったく間違っている」「1番目のリストをクリックすると
+     …飛んでしまうんだよ。なぜ?」): ★★★**描いた源と、押した時に引く源that違っていた**=
+     Tag&Go の行は vmTagItems から描いているのに、押した時は vmClocks の同じ番号を引いていた。
+     so1番目を押すと、**一覧の1番目(目薬)へ飛ぶ**。名前thatが読めないのも同じ所から来ている。
+     ★今日3度目の同じ穴= [[feedback_one_source_for_mark_count_action]]
+     **印・数字・ボタンは同じ1つの判定/単位/範囲から引く**。 */
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
-  if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
+  if(it){var _lst=clkTagMode?vmTagItems:vmClocks;var c=_lst[Number(it.getAttribute('data-i'))];
    clkWarnOff();                                                  /* v4.1.68: 次を押したら前の断りは下ろす */
    /* ★★v4.1.4(俊克 改良1「削除する前に、その膜へ移動する。間違って、削除したときのために」):
       ★★**連れて行ってから外す**= 消えた物を探しに行かなくていい。もうその場に立っている。 */

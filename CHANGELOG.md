@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.74 (2026-09-03)
+- **A row in Tag & Go warped to the wrong membrane.** The rows were drawn from the tag search but the click
+  looked the same position up in the clock list, so pressing the first row went to the first clock. Both now
+  read the same list — the third time today that a mark and its action were drawn from two places.
+- Names are readable again in that room: the tag you are filtering by is not repeated on every row, and a tag
+  chip gives up its width to the membrane name rather than the other way round.
+
 ### v4.1.73 (2026-09-03)
 - **Tag & Go.** The room behind the sixth row lists *membranes* carrying a tag — with a clock or without one.
   Click a row and you warp there. Tick the box and a clock already written on that membrane starts, after
