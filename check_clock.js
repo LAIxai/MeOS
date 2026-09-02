@@ -406,10 +406,10 @@ console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
  ok(/_nl>0&&_nl<=60000/.test(SRC14), '\u2605\u2605\u2605残り1分以内は、鳴っていなくてもStopを出す', true);
  ok(/_s1\.textContent=\(_undoLeft>0\)\?'Undo':'Stop'/.test(SRC14), '\u2605\u2605\u2605止めた直後の1分は Undo(押し間違いthat取り返せる)', true);
  ok(/if \(await meosClockUndoStop\(\)\)/.test(SRC14), '\u2605\u2605もう一度押せば戻る= Stop \u21c4 Undo that行き来する', true);
- ok(/until: Date\.now\(\) \+ 60000/.test(SRC14), '  覚えは1分で消える(遠い過去の取り消しは抱え込まない)', true);
+ ok(/until: best\.u \}/.test(SRC14), '  Undo \u306e\u7a93\u306f**\u5143\u306e\u6642\u523b\u307e\u3067**', true);
  ok(/if\(!\(ev&&ev\.altKey\)&&\(vmRing\|\|window\.__clkStopMode\)\)/.test(SRC14), '\u2605\u2605出している間は、押せば止まる(Opt を添えた時だけ一覧へ)', true);
  const _cs=SRC14.slice(SRC14.indexOf("message.type === 'clockStop'"), SRC14.indexOf("message.type === 'clockStop'")+1600);
- ok(/meosEndPseudoTimer\(best\.k\)/.test(_cs), '\u2605\u2605\u2605Stopは音を黙らせるだけでなく、この回を終わらせる', true);
+ ok(/meosClockSetEnabled\(sc\.uri, sc\.key, false\)/.test(_cs), '\u2605\u2605\u2605Stop \u306f**\u4e00\u6642\u505c\u6b62**= \u23f8 \u3092\u66f8\u3044\u3066\u639b\u304b\u308a\u3092\u89e3\u304f\u3060\u3051', true);
  ok(/<= 90000/.test(_cs), '  遠い時計を巻き込まない(90秒以内だけ)', true);
 }
 
@@ -447,14 +447,15 @@ console.log('\u325b \u23f8\u306e\u8272 / Opt \u3067\u4e00\u89a7 / \u5909\u308f\u
           '<!-- Mew!UFC \u23f0\u23f8 2099-01-01 09:30 \u21ba05 -->'];
  const d={uri:{toString:()=>'file:///p.md',fsPath:'/p.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
   lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/p.md',isClosed:false,version:1};
- const paint=(curLine)=>{const got=[];
-  const e={document:d,selection:{active:new stub.Position(curLine,0)},
+ /* v4.1.62: 分かれ目は「膜の中に居るか」でなく「その行が今橙に染まっているか」。 */
+ const paint=(orange)=>{const got=[];
+  const e={document:d,selection:{active:new stub.Position(2,0)},
    visibleRanges:[new stub.Range(0,0,L.length-1,0)],setDecorations:(t,r)=>{if(r&&r.length)got.push([t&&t.__opts&&t.__opts.textDecoration||'',r.length]);}};
-  X.meosApplyTimerLineDecorations(e); return got;};
- const inHere=paint(2), outside=paint(0);
+  X.meosApplyTimerLineDecorations(e,orange); return got;};
+ const inHere=paint(new Set([4])), outside=paint(new Set());
  const col=(g)=>g.map(x=>/#ffffff/.test(x[0])?'white':(/#ff4d4d/.test(x[0])?'red':'other')).join(',');
- ok(col(inHere)==='white', '\u2605\u2605\u2605\u819c\u306e\u4e2d\u306b\u5c45\u308b\u9593\u306e \u23f8 \u306f\u767d(\u6a59\u306e\u4e2d\u3067\u76ee\u7acb\u3064)', col(inHere));
- ok(col(outside)==='red', '\u2605\u2605\u2605\u819c\u3092\u96e2\u308c\u305f\u3089 \u23f8 \u306f\u8d64(\u6b62\u307e\u3063\u3066\u3044\u308b\u3053\u3068\u3092\u5fd8\u308c\u3055\u305b\u306a\u3044)', col(outside));
+ ok(col(inHere)==='white', '\u2605\u2605\u2605\u884c\u304c\u6a59\u306b\u67d3\u307e\u3063\u3066\u3044\u308b\u6642\u306e \u23f8 \u306f\u767d(\u4ed6\u304c\u6a59so\u76ee\u7acb\u3064)', col(inHere));
+ ok(col(outside)==='red', '\u2605\u2605\u2605\u6a59\u3067\u306a\u3051\u308c\u3070 \u23f8 \u306f\u8d64(\u819c\u304c\u901a\u5e38\u306e\u72b6\u614b)', col(outside));
  ok(inHere.length===1&&outside.length===1, '  \u5857\u308b\u306e\u306f1\u6587\u5b57\u3060\u3051(\u884c\u5168\u4f53\u306f\u6a59\u306e\u307e\u307e)', [inHere.length,outside.length]);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/var _stopMode=\(!vmAlt\)&&/.test(S), '\u2605\u2605Opt \u3092\u62bc\u3057\u3066\u3044\u308b\u9593\u306f Stop \u3092\u9000\u3051\u308b', true);
@@ -464,6 +465,29 @@ console.log('\u325b \u23f8\u306e\u8272 / Opt \u3067\u4e00\u89a7 / \u5909\u308f\u
  ok(/if \(d\.isDirty\) \{ __cleanSaveStat\.delete\(k\); return; \}/.test(S), '\u2605\u2605\u5224\u5b9a\u306f\u6c5a\u308c\u3066\u3044\u308b\u304b1\u3064(140k\u884c\u3092\u6bd4\u3079\u76f4\u3055\u306a\u3044)', true);
  ok(/utimesSync\(doc\.uri\.fsPath, _st\.atime, _st\.mtime\)/.test(S), '\u2605\u2605\u2605\u5909\u308f\u3089\u306a\u3044\u4fdd\u5b58\u306a\u3089\u3001\u66f4\u65b0\u65e5\u3092\u5143\u3078\u623b\u3059', true);
  ok(S.indexOf('utimesSync')<S.indexOf('postDockFileUD(_e, true); }, 60)'), '\u2605UD \u3092\u8aad\u3080\u524d\u306b\u623b\u3059(\u9806\u756a\u304c\u9006\u306a\u3089\u53e4\u3044\u65e5\u4ed8\u304c\u898b\u3048\u306a\u3044)', true);
+}
+
+// v4.1.62(俊克 v4.1.61テスト CN=v4.1.61_0226)
+//   バグ1〜3「Stopを押すとUFCは値0になって中断する。なぜ0なのか?途中で止まった値のままでいい」
+//   バグ4「リストの✓を押して止めた後で、リストから無くなってしまう。これは残しておくべきだよ」
+//   バグ5〜7「⏸が橙になったり白になったり」「膜の内部では赤にすべき(膜が通常の状態だからね)」
+console.log('\u325c Stop=\u4e00\u6642\u505c\u6b62 / \u4f11\u307f\u306f\u4e88\u5b9a\u306e\u6bb5 / \u23f8 \u306f\u53d6\u308a\u5408\u3044\u3092\u3057\u306a\u3044');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/return await meosClockSetEnabled\(r\.uri, r\.key, true\)/.test(S), '\u2605\u2605\u2605Undo \u306f \u2611 \u306b\u623b\u3059\u3060\u3051(\u904e\u304e\u3066\u3044\u308c\u3070\u6b21\u306e\u56de\u3078= \u518d\u8a08\u7b97)', true);
+ ok(!/await meosEndPseudoTimer\(best\.k\)/.test(S), '\u2605\u2605Stop \u304b\u3089\u300c\u7d42\u308f\u3089\u305b\u308b\u9053\u300d\u304c\u6d88\u3048\u3066\u3044\u308b(\u8f2a\u3092\u56de\u3055\u306a\u3044)', true);
+ ok(/const _paused = sc \? await meosClockSetEnabled/.test(S), '  \ud83d\udd12 \u306a\u3089\u4f11\u307e\u305b\u306a\u3044(\u4e00\u89a7\u306e \u2610 \u3068\u540c\u3058\u8fd4\u4e8b)', true);
+ ok(/const _cc = \(txt\.indexOf\('\\u23f0'\) >= 0\)/.test(S)&&/_cc\.done \|\| _cc\.off/.test(S),
+    '\u2605\u2605\u2605\u6a59\u306e\u7bc4\u56f2\u304b\u3089 \u23f8 \u3092\u629c\u304f(v4.1.19\u306e\u300c\u5916\u5074\u3092\u5272\u308b\u300d\u3092\u518d\u3073)', true);
+ ok(/clocks: meosClockList\(12\)/.test(S), '  \u4e00\u89a7\u306e\u7a93\u3092\u5e83\u3052\u308b(CSS \u304c\u9ad8\u3055\u3092\u6b62\u3081\u3066\u5dfb\u304f)', true);
+ // 休んでいる物は、鳴り終わった物より先に出る(押し出されない)
+ X._meosClockHistory.length=0;
+ X._meosClockHistory.push({uri:'file:///z.md',key:'OLD1',name:'OLD1',at:1,hold:false});
+ X._meosClockHistory.push({uri:'file:///z.md',key:'OLD2',name:'OLD2',at:2,hold:false});
+ X._meosClockHistory.push({uri:'file:///z.md',key:'REST',name:'REST',at:3,hold:false,off:true});
+ const order=X.meosClockList(12).map(r=>r.key).join(',');
+ ok(order.indexOf('REST')<order.indexOf('OLD1'), '\u2605\u2605\u2605\u4f11\u3093\u3067\u3044\u308b\u7269\u306f**\u4e88\u5b9a**so\u3001\u5c65\u6b74\u306b\u62bc\u3057\u51fa\u3055\u308c\u306a\u3044', order);
+ ok((X.meosClockList(12).find(r=>r.key==='REST')||{}).off===true, '  \u4f11\u307f\u3067\u3042\u308b\u3053\u3068\u3082\u9762\u3078\u6e21\u308b', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

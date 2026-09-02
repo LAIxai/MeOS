@@ -28,6 +28,21 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.62 (2026-09-02)
+- **`Stop` pauses a clock; it does not end its round.** It used to move a repeat on to its next turn and set it
+  going again, so the figure fell back to zero, the count carried on, and the bell still rang at the time that
+  had supposedly been stopped. Stop now does what the ⏸ in the list has always done: the written time is left
+  exactly as it was, ⏸ goes on the line, and the row unchecks. `Undo` simply checks it again — and if the time
+  has gone by while it rested, it is worked out afresh onto the next turn. Nothing restarts on its own; only
+  Undo restarts it. A clock locked with 🔒 refuses to rest, the same answer the list's ☐ gives.
+- **A resting clock stays in the list.** It is a plan, not a memory, so it now sits with the running ones
+  instead of being pushed out by them, and the list holds more rows (it scrolls, as it always did).
+- **The ⏸ is white where the line is orange, and red everywhere else.** The distinction is the line's colour,
+  not where the cursor happens to be — which is what "the rest is orange, so make it stand out" meant in the
+  first place. And the white is no longer laid *over* the orange, where whichever was built first would win
+  and the same line would come out white one moment and orange the next: the orange range now has that one
+  character cut out of it, as was already done for the ✓.
+
 ### v4.1.61 (2026-09-02)
 - **A resting clock's ⏸ is white while you are inside its membrane, and red once you leave.** Everything else
   on the line is orange, so the pause had nothing to distinguish it. White is enough while you are standing

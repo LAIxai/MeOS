@@ -9874,7 +9874,7 @@ function meosArmClockFcFor(doc) {
       //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
       if (c.off) {
         const _w = meosParseStampLoose(c.when);
-        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _w ? _w.getTime() : Date.now());
+        meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
       }
       let w = meosParseWhen(c.when);
@@ -10144,6 +10144,12 @@ async function meosClockSetEnabled(uri, key, on) {
       if (sc && sc.hold) { try { await meosApplyModeToScope(doc, key, 'normal', sc.name); } catch (_) { } }
     }
     if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, done: false, off: true });
+    // ★★★v4.1.62(俊克 バグ4「リストの✓ボタンを押して…止めた後で、リストから無くなってしまう。
+    //   **これは残しておくべきだよ**。貴方は、Stopしたら、リストから消すようなことを書いていたよね。
+    //   それは間違いだよ」): ★★★**休んでいる物は「予定」であって「履歴」ではない**=
+    //   走っている物と同じ段に置く。見えない物は戻せない(v4.1.25 で一度通った所)。
+    try { meosNoteClockHistory({ uri, key, name: (hit && hit.name) || key, hold: !!(hit && hit.hold) },
+      (meosParseStampLoose((hit && hit.when) || '') || new Date()).getTime(), true); } catch (_) { }
   } else {
     if (!hit) {
       vscode.window.setStatusBarMessage('MeOS: \u23f0 nothing is written on that membrane \u2014 set a time from \u25be.', 4000);
@@ -10173,12 +10179,12 @@ async function meosClockSetEnabled(uri, key, on) {
   meosUpdateTimerBar(); meosPostViewMode();
   return true;
 }
-function meosNoteClockHistory(scope, at) {
+function meosNoteClockHistory(scope, at, off) {
   meosClockHistoryLoad();
   try {
     const i = _meosClockHistory.findIndex(r => r.uri === scope.uri && r.key === scope.key);
     if (i >= 0) _meosClockHistory.splice(i, 1);
-    _meosClockHistory.unshift({ uri: scope.uri, key: scope.key, name: scope.name, at, hold: !!scope.hold });
+    _meosClockHistory.unshift({ uri: scope.uri, key: scope.key, name: scope.name, at, hold: !!scope.hold, off: !!off });
     while (_meosClockHistory.length > MEOS_CLOCK_HISTORY_MAX) _meosClockHistory.pop();
     meosClockHistorySave();
   } catch (_) { }
@@ -10190,14 +10196,16 @@ function meosClockList(limit) {
   const push = (r, running) => {
     const k = r.uri + ' ' + r.key;
     if (seen.has(k)) return; seen.add(k);
-    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, running: !!running });
+    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, off: !!r.off, running: !!running });
   };
   try {
     const live = [];
     for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock, up: sc.up }); }
     live.sort((a, b) => a.at - b.at);
     for (const r of live) push(r, true);
-    for (const r of _meosClockHistory) push(r, false);
+    // v4.1.62: 走っている物 → **休んでいる物(予定)** → 鳴り終わった物。予定は履歴に押し出されない。
+    for (const r of _meosClockHistory) if (r.off) push(r, false);
+    for (const r of _meosClockHistory) if (!r.off) push(r, false);
   } catch (_) { }
   // ★★v4.1.25(俊克「**次にタイムアップするものをハイライトする**こと」): 走っている物は近い順に並べてあるので、
   //   その先頭that「次に鳴る物」。1つだけ印を付ける= 目that最初に行く所を1箇所に決める。
@@ -10261,12 +10269,14 @@ let meosClockPauseInDeco = null, meosClockPauseOutDeco = null;
 //   からで、その前提の方を直した(v4.1.16=⏰行は畳まない物)。so顔は俊克の指したとおり ⏰ 行へ戻る。
 //   ★旧い予定(mMETAに書いてある物)には ⏰ 行that無いので、そちらだけ今までどおり閉じ膜のコメント欄に出す。
 //   ★走るのは見えている範囲だけ(14万行を毎秒なぞらない)。
-function meosApplyTimerLineDecorations(editor) {
+// v4.1.62: 橙の行は外から渡せる(既定は同じ1つの口)= 検証台thatこの色分けを実際に塗らせて確かめられる。
+function meosApplyTimerLineDecorations(editor, orangeLines) {
   try {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesIn = [], pausesOut = [];
+    const orange = orangeLines || meosFcOrangeLines(editor);   // v4.1.62: 橙に染まる行(塗る側と同じ1つの口から)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
     for (const [k, until] of _meosPseudoUntil) {
@@ -10321,10 +10331,10 @@ function meosApplyTimerLineDecorations(editor) {
           // v4.1.61: ⏸(休み)= 掛かっていないso byId には居ない。印だけは出す。
           if (c.off) {
             const at = txt.indexOf('\u23f8');
-            if (at < 0 || !owner) continue;
+            if (at < 0) continue;
             const len = (txt.charCodeAt(at + 1) === 0xfe0f) ? 2 : 1;   // 絵文字の尾も一緒に塗る
-            const inHere = (cur >= owner.start && cur <= meosBlockEndForCarry(doc, owner));
-            (inHere ? pausesIn : pausesOut).push(new vscode.Range(i, at, i, at + len));
+            // v4.1.62: 白= その行that今橙に染まっている時 / 赤= それ以外(膜that通常の状態)。
+            (orange.has(i) ? pausesIn : pausesOut).push(new vscode.Range(i, at, i, at + len));
             continue;
           }
           const until = byId.get(owner ? owner.id : '');
@@ -10841,22 +10851,24 @@ function meosRevealAgainAfterBell(uri, key) {
   setTimeout(() => again('t+300'), 300);
   setTimeout(() => again('t+900'), 900);
 }
-// v4.1.59: Stopで止めた物を1分だけ覚え、押し直しで戻す(Stop \u21c4 Undo)。
+// ★★★v4.1.62(俊克 バグ1〜3「Stopを押すと、UFCは値0になって中断する。**なぜ0なのか?途中で止まった値の
+//   ままでいい**」「中断したのに、Undoの下の値that止まらない。⏸thatUFCに入らない」「止めたはずの予定that
+//   予定時間になると、再び、再開してしまって」＋総括「一時停止すると、UFCは止めた値のままにして、⏸を付け、
+//   リスト上でも☐のように✓を外し、…Undoボタンを押すと、再計算して…✓を入れ直す。
+//   **Undoのまま予定時間を過ぎても自動で再開しない**」):
+//   ★★★**Stop は「この回を終わらせる」ではなく「一時停止」だった**。v4.1.58 の私は終わらせる方に読み、
+//     輪を次の回へ回して掛け直していたso、①値that0に戻り ②走り続け ③時刻thatが来れば鳴った。
+//   ★★★**そして休ませる仕組みは既に在った**= ⏸(v4.1.24 の一覧の☑/☐)。
+//     新しい道を作らず、**Stop を同じ口に繋ぐ**= 休みの意味が2つに割れない。
+//     → [[feedback_copy_the_house_style_first]] 家の中の同じ役の部品を先に探して真似る
+//   ★Undo は **☑ に戻すだけ**= 時刻thatが過ぎていれば `meosArmClockFcFor` that次の回へ送る(=俊克の「再計算」)。
 let _meosLastStopped = null;
 function meosStopUndoAt() { return (_meosLastStopped && Date.now() <= _meosLastStopped.until) ? _meosLastStopped.at : 0; }
 async function meosClockUndoStop() {
   const r = _meosLastStopped;
   if (!r || Date.now() > r.until) { _meosLastStopped = null; return false; }
   _meosLastStopped = null;
-  try {
-    const doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === r.scope.uri);
-    if (doc && r.when) await meosClockFcSet(doc, r.scope.key, { when: r.when, hold: r.hold, lock: r.lock, cycle: r.cycle, up: r.up, done: false });
-    _meosPseudoScopes.set(r.key, r.scope);
-    _meosPseudoUntil.set(r.key, r.at);
-    meosArmPseudoTimer(r.key, Math.max(250, r.at - Date.now() + 250));
-    meosUpdateTimerBar(); meosPostViewMode();
-    return true;
-  } catch (_) { return false; }
+  try { return await meosClockSetEnabled(r.uri, r.key, true); } catch (_) { return false; }
 }
 async function meosPseudoTimeUp(key) {
   const _sc0 = _meosPseudoScopes.get(key);
@@ -10924,7 +10936,7 @@ function meosPostViewMode() {
       scope: (sc ? (sc.name || '') : ''),
       own: (sc ? meosScopeHasOwn(sc) : true),  // v4.0.452: false= 外側から受け継いでいる
       ringing: meosIsRinging(),                // v4.0.469: 鳴っている間は⏰thatが「止める駒」になる
-      clocks: meosClockList(5)                 // v4.1.0: 最大5個の履歴(走っている物that上)
+      clocks: meosClockList(12)                // v4.1.0: 走っている物that上 / v4.1.62: 一覧は畳まれず流れる(CSSthat高さを止めて巻く)
     });
   } catch (_) { }
 }
@@ -25204,12 +25216,11 @@ function toggleMeDock(editorOverride) {
         for (const [k, u] of _meosPseudoUntil) if (!best || u < best.u) best = { k, u };
         if (best && (best.u - Date.now()) <= 90000) {
           const sc = _meosPseudoScopes.get(best.k);
-          let hit = null;
-          try { const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === (sc && sc.uri)); if (d && sc) hit = meosClockFcScan(d).find(c => c.key === sc.key); } catch (_) { }
-          await meosEndPseudoTimer(best.k);
-          if (sc) _meosLastStopped = { key: best.k, at: best.u, scope: sc, when: hit ? hit.when : null,
-            hold: hit ? hit.hold : !!sc.hold, lock: hit ? hit.lock : !!sc.lock, cycle: hit ? hit.cycle : null, up: hit ? hit.up : !!sc.up,
-            until: Date.now() + 60000 };
+          // v4.1.62: 止めるのは**休ませること**= ⏸ を書いて掛かりを解くだけ。時刻も輪も触らない。
+          //   🔒 を選んで掛けた物は休ませない= 一覧の ☐ と同じ返事(止め方の口を2つ作らない)。
+          const _paused = sc ? await meosClockSetEnabled(sc.uri, sc.key, false) : false;
+          // Undo の窓は**元の時刻まで**= 面that Undo を出す条件(残りthat0より大きい)と同じ物を見る。
+          if (_paused) _meosLastStopped = { key: best.k, uri: sc.uri, name: sc.name, at: best.u, until: best.u };
         }
       } catch (_) { }
       try { updateMeDockMode(); } catch (_) { }
@@ -28370,6 +28381,26 @@ function meosRawLineRoles(doc, ln) {
 function meosRangesExcludingStamps(doc, ln) {
   return meosRawLineRoles(doc, ln).shell.map(([f, t]) => new vscode.Range(ln, f, ln, t));
 }
+// ★★★v4.1.62(俊克 バグ6「膜の内部に入ると、なぜか、UFCの⏸が白色になってしまう。ここは、赤文字に
+//   すべきだよね。**膜が通常の状態だからね**」／バグ7「本来白色になるべき、開始膜や閉じ膜の中に文字
+//   カーソルがあるときの橙色表示のときに、UFCの⏸が橙色になってしまう」):
+//   ★★★**分かれ目は「膜の中に居るか」ではなく「その行が今、橙に染まっているか」だった**。
+//     俊克の元の言葉thatそう言っていた= 「**他が橙色なので**、そこthat目立つように」。
+//     私はそれを「膜の中/外」と読み替えてしまった= **言われた条件でなく、自分の要約を実装した**。
+//   ★so判定は**橙を塗るのと同じ1つの口**から引く。→ [[feedback_one_source_for_mark_count_action]]
+function meosFcOrangeLines(editor) {
+  const set = new Set();
+  try {
+    if (!editor || !editor.document || !editor.selection) return set;
+    const doc = editor.document, cur = editor.selection.active.line;
+    if (!meosIsProseDoc(doc) || meosModeAtLine(doc, cur) !== 'normal') return set;
+    const fine = meosFcMarkPairRanges(doc, cur, editor.selection.active.character);
+    if (fine) { for (const r of fine) set.add(r.start.line); return set; }
+    const m = meosFcMate(doc, cur);
+    if (m) for (const ln of (m.lines || [m.self, m.mate])) if (ln >= 0 && ln < doc.lineCount) set.add(ln);
+  } catch (_) { }
+  return set;
+}
 function meosApplyFcRowDecorations(editor) {
   if (!editor || !editor.document) return;
   // ★★v4.0.403(俊克 バグ2「FC2行目にいると、それに対応する部分だけ橙色にできていない」):
@@ -28413,8 +28444,13 @@ function meosApplyFcRowDecorations(editor) {
       try {
         if (r.start.line === r.end.line) {
           const ln = r.start.line, txt = doc2.lineAt(ln).text || '';
-          if (txt.indexOf('\u23f0') >= 0 && (meosClockFcParse(txt) || {}).done) {
-            const at = txt.search(MEOS_CLOCK_DONE_MARK_RE);
+          // v4.1.62: ✓ と同じく ⏸ も**橙の範囲から抜く**= 場所that空けば、白/赤は取り合いをしない。
+          //   ★★★v4.1.61 の私は白を**上に乗せた**so、どちらthat勝つかthat作られた順で決まり、
+          //     同じ行thatが白になったり橙になったりした(俊克 バグ5/7 の揺らぎ)。
+          //     ★**v4.1.19 で自分that書いた「外側を割る」を、次の版で忘れていた**。
+          const _cc = (txt.indexOf('\u23f0') >= 0) ? (meosClockFcParse(txt) || {}) : {};
+          if (_cc.done || _cc.off) {
+            const at = _cc.done ? txt.search(MEOS_CLOCK_DONE_MARK_RE) : txt.indexOf('\u23f8');
             if (at >= r.start.character && at < r.end.character) {
               if (at > r.start.character) carved.push(new vscode.Range(ln, r.start.character, ln, at));
               if (at + 1 < r.end.character) carved.push(new vscode.Range(ln, at + 1, ln, r.end.character));

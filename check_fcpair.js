@@ -1002,7 +1002,7 @@ console.log('㊼ 残り時間は膜ごと／⏰はPseudoの持ち物／⋯の後
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
   // 改良1: 置き場所that意味を決める= 閉じ膜の行
-  ok(/function meosApplyTimerLineDecorations\(editor\)/.test(src),
+  ok(/function meosApplyTimerLineDecorations\(editor, orangeLines\)/.test(src),
      '★★★残り時間は**その膜の閉じ膜の行**に出す(膜の物は膜に置く)', true);
   ok(/const ln = pr\.end, text = doc\.lineAt\(ln\)\.text \|\| '';/.test(src),
      '★行は名前から引き直す(掛けた時の行番号は、書いている内にずれる)', true);
@@ -1334,12 +1334,12 @@ console.log('(59) 鐘は鳴り続け、⏰を押すと止まる(v4.0.469 俊克)
 console.log('(60) ⏰の一覧はMe Dockの中／履歴5個／時刻で出す(v4.1.0 俊克)');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  ok(/const _meosClockHistory = \[\];/.test(src) && /function meosNoteClockHistory\(scope, at\)/.test(src),
+  ok(/const _meosClockHistory = \[\];/.test(src) && /function meosNoteClockHistory\(scope, at, off\)/.test(src),
      '★★★掛けた膜は「後で戻ると決めた場所」so、鳴り終わった後も覚える(状態でなく履歴)', true);
   ok(/function meosClockList\(limit\)/.test(src) && /for \(const r of live\) push\(r, true\);/.test(src),
      '★走っている物that上・そのあと掛けた順', true);
-  ok(/clocks: meosClockList\(5\)/.test(src),
-     '★最大5個(覚えるのは12・出すのは5)', true);
+  ok(/clocks: meosClockList\(12\)/.test(src),
+     '★v4.1.62: 一覧は予定表so、休んでいる物も入る幅を取る(高さはCSSが止めて巻く)', true);
   ok(/function clkWhenLabel\(ms\)/.test(src) && /if\(d\.getFullYear\(\)===n\.getFullYear\(\)&&d\.getMonth\(\)===n\.getMonth\(\)&&d\.getDate\(\)===n\.getDate\(\)\)return hm;/.test(src),
      '★★★出すのは**時刻・年月日**= 予定は時刻で覚えている(日付は違う時にだけ言う)', true);
   ok(/message\.type === 'clockGoto'/.test(src) && /await meosJumpToScope\(\{ uri: message\.uri, key: message\.key, name: message\.name \}\);/.test(src),
