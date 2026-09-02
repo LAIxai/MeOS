@@ -21842,6 +21842,17 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-tag.on{background:rgba(127,212,232,.26);border-color:#7fd4e8;color:#cdeff8}
 .clk-tag.all{color:var(--vscode-editor-foreground);border-color:var(--vscode-panel-border)}
 .clk-tag.all.on{background:rgba(224,128,58,.22);border-color:rgba(224,128,58,.85);color:var(--vscode-editor-foreground)}
+/* ★★★v4.1.72(俊克 改良2「当初の想定は、5個までthat直近のスケジュールで、**6番目の入口を叩くと**
+   別リストthat出て、そこにタグでリストを作るんだよ。つまり、**普段は見せない**」):
+   ★★★**一覧は「直近5つ」で足りる**= 予定表として毎日見る物so、短くなければ読まれない。
+     札で束ねた眺めは**別の部屋**= 入口を1つ置いて、要る時だけ入る。
+   ★入口は**6番目の行**= 5つの続きに立つso、目that自然にそこへ落ちる(新しい場所を作らない)。 */
+.clk-door{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;border:1px dashed rgba(127,212,232,.5);color:#7fd4e8;font-size:10px;font-weight:700;cursor:pointer}
+.clk-door:hover{background:rgba(127,212,232,.14)}
+.clk-tagadd{display:flex;align-items:center;gap:4px;margin-top:3px}
+.clk-tagadd .clk-in{flex:1;min-width:0;font-size:10px;padding:2px 5px}
+.clk-tag0{flex:none;font-size:10px;font-weight:800;line-height:1;padding:3px 7px;border:1px solid rgba(224,128,58,.85);border-radius:9px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap}
+.clk-tag0:hover{background:rgba(224,128,58,.34)}
 .clk-item .ci-tag{flex:none;font-size:9px;font-weight:700;line-height:1;padding:1px 4px;border-radius:8px;background:rgba(127,212,232,.18);color:#7fd4e8;margin-left:3px}
 .clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
@@ -22245,6 +22256,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 <div class="bm-pop clk-pop" id="clk-pop">
   <div class="clk-list" id="clk-list"></div>
   <div class="clk-tags" id="clk-tags"></div>
+  <div class="clk-tagadd" id="clk-tagadd" style="display:none"><input class="clk-in" id="clk-tagnew" placeholder="\u4efb\u610f\u306e\u30bf\u30b0" spellcheck="false" data-tip="Type any tag and press Enter \u2014 it goes into the membrane the cursor is in, in the comment after the //. Typing one it already has takes it off again."><button class="clk-tag0" id="clk-tag0" data-tip="#tag0 | One press puts this tag on the membrane the cursor is in \u2014 press again to take it off. The plainest way to start: mark a few membranes with it and they gather here.">#tag0</button></div>
   <div class="clk-warn" id="clk-warn"></div>
   <div class="clk-row"><span class="clk-lab">Origin</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
@@ -23664,7 +23676,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
-var clkTagSel='';var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagSel='';var clkTagMode=false;var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -23749,24 +23761,32 @@ function clkWarn(text,key){var w=document.getElementById('clk-warn');if(!w)retur
    rs[i].classList.toggle('refused',!!(c&&c.key===key));}}catch(e){}
  if(clkWarnT)clearTimeout(clkWarnT);clkWarnT=setTimeout(function(){clkWarnT=null;clkWarnOff();},9000);}
 /* v4.1.70: 札の段= 一覧に**今在る札**だけを出す(使っていない札は並べない= 目印は現実の写し)。 */
-function clkRenderTags(){var bar=document.getElementById('clk-tags');if(!bar)return;
+function clkRenderTags(){var bar=document.getElementById('clk-tags'),add=document.getElementById('clk-tagadd');
+ if(!bar)return;
  while(bar.firstChild)bar.removeChild(bar.firstChild);
+ if(add)add.style.display=clkTagMode?'flex':'none';
+ if(!clkTagMode){clkTagSel='';return;}                    /* v4.1.72: 普段は見せない */
  var seen=[],i,j;
  try{for(i=0;i<vmClocks.length;i++){var ts=vmClocks[i].tags||[];
   for(j=0;j<ts.length;j++)if(seen.indexOf(ts[j])<0)seen.push(ts[j]);}}catch(e){}
- if(!seen.length){clkTagSel='';return;}
  if(clkTagSel&&seen.indexOf(clkTagSel)<0)clkTagSel='';   /* 消えた札を選び続けない */
- var mk=function(label,val){var b=document.createElement('span');
-  b.className='clk-tag'+(val?'':' all')+((clkTagSel===val)?' on':'');
-  b.textContent=label;b.setAttribute('data-tag',val);return b;};
- bar.appendChild(mk('all',''));
+ var mk=function(label,val,cls){var b=document.createElement('span');
+  b.className='clk-tag'+(cls||'')+((clkTagSel===val&&val!==null)?' on':'');
+  b.textContent=label;if(val!==null)b.setAttribute('data-tag',val);return b;};
+ var back=mk('\u2190','',' all');back.removeAttribute('data-tag');back.id='clk-tagback';
+ back.title='Back to the next five';bar.appendChild(back);
+ bar.appendChild(mk('all','',' all'));
  for(i=0;i<seen.length;i++)bar.appendChild(mk('#'+seen[i],seen[i]));}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
 clkRenderTags();
 if(!vmClocks||!vmClocks.length)return;
+/* v4.1.72: 普段は**直近5つ**。札の部屋では、選んだ札の物を全部。 */
+var _shown=0;
 for(var i=0;i<vmClocks.length;i++){var c=vmClocks[i];
-if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;   /* v4.1.70: 選んだ札の物だけ */
+if(clkTagMode){if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;}
+else if(_shown>=5)break;
+_shown++;
 var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'');/* v4.1.25: 次に鳴る1つ */
 row.setAttribute('data-i',String(i));
 /* v4.1.24: 左端の\u2611/\u2610= 使う/休む。走っている物that\u2611。 */
@@ -23801,6 +23821,11 @@ lk.title='Locked \u2014 this one cannot be dropped until the time is up. \u2325 
 else{var x=document.createElement('span');x.className='ci-x';x.textContent='\u00d7';
 x.title=(c.running?'Stop and forget this one':'Forget this one')+' \u2014 MeOS takes you there first, in case you did not mean it.';row.appendChild(x);}
 el.appendChild(row);}
+/* ★v4.1.72: **6番目の行thatが入口**= 5つの続きに立つso、目that自然にそこへ落ちる。 */
+if(!clkTagMode){var dr=document.createElement('div');dr.className='clk-door';dr.id='clk-door';
+ dr.textContent='#\u2026 tags'+((vmClocks.length>5)?('  \u00b7  +'+(vmClocks.length-5)):'');
+ dr.title='Gather by tag \u2014 the rest of the clocks, grouped by the tags written on their membranes.';
+ el.appendChild(dr);}
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
 if(clkCaret&&clkPop){
  var now=new Date();
@@ -23814,8 +23839,15 @@ if(clkCaret&&clkPop){
   /* v4.1.68b: 断りの札を押したら、その場で下ろす(閉じない= 一覧はそのまま見ていられる)。 */
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-warn')){clkWarnOff();return;}
   /* v4.1.70: 札を押したら絞る。同じ札をもう一度押せば all に戻る(覚えを増やさない)。 */
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-door')){clkTagMode=true;clkTagSel='';
+   clkWarnOff();clkRenderList();clkPlace();return;}
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tagback')){clkTagMode=false;clkTagSel='';
+   clkWarnOff();clkRenderList();clkPlace();return;}
+  if(ev.target&&ev.target.id==='clk-tagnew')return;                /* 箱は押しても閉じない */
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tag0')){
+   vscode.postMessage({type:'clockTagAdd',tag:'tag0'});return;}
   var _tb=(ev.target&&ev.target.closest)?ev.target.closest('.clk-tag'):null;
-  if(_tb){var _tv=_tb.getAttribute('data-tag')||'';clkTagSel=(clkTagSel===_tv)?'':_tv;
+  if(_tb&&_tb.hasAttribute('data-tag')){var _tv=_tb.getAttribute('data-tag')||'';clkTagSel=(clkTagSel===_tv)?'':_tv;
    clkWarnOff();clkRenderList();clkPlace();return;}
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
@@ -23886,6 +23918,11 @@ if(clkCaret&&clkPop){
  var clkCycEl=document.getElementById('clk-cyc');
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
+ var clkTagNew=document.getElementById('clk-tagnew');
+ if(clkTagNew)clkTagNew.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){e.stopPropagation();var v=(clkTagNew.value||'').trim();
+   if(v){vscode.postMessage({type:'clockTagAdd',tag:v});clkTagNew.value='';}}
+  if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  var clkTagEl=document.getElementById('clk-tagin');
  if(clkTagEl)clkTagEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
@@ -23908,7 +23945,7 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  if(mode==='hist'){clkRenderList();clkPlace();return;}
+  if(mode==='hist'){clkTagMode=false;clkTagSel='';clkRenderList();clkPlace();return;}   /* v4.1.72: 開く時は直近5つ */
   clkDateEmpty();                                             /* ★開いた時、日付は**空**(時刻は常に橙) */
   clkLock=false;clkPaintLock();                               /* ★錠は開く度に外れる= 掛けっぱなしの錠で人を閉じ込めない */
   clkDir=false;clkRep=false;                                  /* v4.1.64: 既定は逆算タイマー */
@@ -25609,6 +25646,37 @@ function toggleMeDock(editorOverride) {
           else { const _r = meosScopeRangeNow(_sc.doc, _sc.key); if (_r) { const _mt = meosMembraneTags(_sc.doc, _r.from); if (_mt.length) _tag = _mt.join(' '); } }
         }
         if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockCurrent', cycle: _cyc, up: _up, tag: _tag });
+      } catch (_) { }
+      return;
+    }
+    // ★★★v4.1.72(俊克 改良1「**任意のタグを入力できるようにしよう**。そして、既定のタグとして
+    //   #tag0 ボタンを置いて、これを押すと、**現在文字カーソルが入っている膜にそのタグが入る**ように
+    //   する。これで、初心者でも、このタグでまとめられる」):
+    //   ★★**1つのボタンthat付けると外すの両方をする**= 押した物that既に在れば外す。
+    //     覚える操作thatが1つで済み、間違えても同じボタンで戻せる。
+    //   ★書く先は**開始膜のコメント**1つ= 面から書いても手で書いても、同じ場所に集まる。
+    if (message && message.type === 'clockTagAdd') {
+      try {
+        const _e = meosCurrentEditor(); const _sc = _e ? meosModeScope(_e) : null;
+        if (!_sc || !_sc.key || !_sc.doc) {
+          vscode.window.setStatusBarMessage('MeOS: put the cursor inside a membrane first \u2014 a tag belongs to a membrane.', 4000);
+          return;
+        }
+        const _r = meosScopeRangeNow(_sc.doc, _sc.key);
+        const _want = meosParseTagInput(message.tag);
+        if (!_r || !_want.length) return;
+        const _now = meosMembraneTags(_sc.doc, _r.from), _next = _now.slice();
+        const _off = [];
+        for (const _t of _want) { const _i = _next.indexOf(_t); if (_i >= 0) { _next.splice(_i, 1); _off.push(_t); } else _next.push(_t); }
+        const _ok = await meosSetMembraneTags(_sc.doc, _r.from, _next);
+        if (_ok) {
+          try { meosArmClockFcFor(_sc.doc); } catch (_) { }
+          meosPostViewMode(); try { updateMeDockMode(); } catch (_) { }
+          vscode.window.setStatusBarMessage('MeOS: ' + (_sc.name || 'this membrane') + ' \u2014 '
+            + (_off.length ? ('#' + _off.join(' #') + ' off') : ('#' + _want.join(' #') + ' on')), 3000);
+        } else {
+          vscode.window.setStatusBarMessage('MeOS: no // comment on that membrane line \u2014 a tag is written there.', 4000);
+        }
       } catch (_) { }
       return;
     }

@@ -28,6 +28,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.72 (2026-09-02)
+- **The list is back to the next five, with a sixth row as the door.** A list you read every day has to be
+  short or it stops being read; gathering by tag is a different room, so it gets an entrance instead of being
+  spread over the everyday view. The door sits where the sixth row would be, so the eye falls on it without
+  being sent anywhere new, and it says how many are behind it. ⏰ always opens on the five.
+- **`#tag0` puts a tag on the membrane the cursor is in, in one press** — and a second press takes it off, so
+  the same button is both, and a mistake is undone by the hand that made it. It is the plainest way to begin:
+  mark a few membranes and they gather.
+- **Any tag can be typed** into the box beside it and entered the same way.
+
 ### v4.1.71 (2026-09-02)
 - **A tag belongs to the membrane, not to the clock** — so it is read from the comment after the `//` on the
   opening line, which is where you are writing anyway. Being "the eyedrops membrane" is true whether a clock is

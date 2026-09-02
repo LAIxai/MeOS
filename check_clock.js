@@ -707,5 +707,35 @@ console.log('\u3264 \u672d\u306f**\u819c\u306e\u6301\u3061\u7269**= \u958b\u59cb
     '\u2605\u89e6\u308b\u306e\u306f\u30b3\u30e1\u30f3\u30c8\u306e\u4e2d\u3060\u3051(\u819c\u306e\u540d\u524d\u3082\u9589\u3058\u306e\u5370\u3082\u52d5\u304b\u3055\u306a\u3044)', true);
 }
 
+// v4.1.72(俊克 CN=v4.1.71_0910)
+//   改良1「任意のタグを入力できるように。既定のタグとして #tag0 ボタンを置いて、押すと現在カーソルが
+//         入っている膜にそのタグが入るようにする。これで初心者でもこのタグでまとめられる」
+//   改良2「5個までが直近のスケジュール。6番目の入口を叩くと別リストが出て、そこにタグでリストを作る。
+//         つまり、普段は見せない」
+console.log('\u3265 \u666e\u6bb5\u306f\u76f4\u8fd15\u3064 / 6\u756a\u76ee\u306e\u5165\u53e3\u306e\u5411\u3053\u3046\u306b\u672d\u306e\u90e8\u5c4b');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/else if\(_shown>=5\)break;/.test(S),
+    '\u2605\u2605\u2605\u666e\u6bb5\u306e\u4e00\u89a7\u306f**\u76f4\u8fd15\u3064**(\u77ed\u304f\u306a\u3051\u308c\u3070\u6bce\u65e5\u306f\u8aad\u307e\u308c\u306a\u3044)', true);
+ ok(/if\(!clkTagMode\)\{clkTagSel='';return;\}/.test(S),
+    '\u2605\u2605\u672d\u306e\u6bb5\u306f**\u666e\u6bb5\u898b\u305b\u306a\u3044**', true);
+ ok(/dr\.className='clk-door';dr\.id='clk-door'/.test(S)&&/clkTagMode=true;clkTagSel='';/.test(S),
+    '\u2605\u2605\u2605\u5165\u53e3\u306f**6\u756a\u76ee\u306e\u884c**= 5\u3064\u306e\u7d9a\u304d\u306b\u7acb\u3064', true);
+ ok(/back\.id='clk-tagback'/.test(S)&&/closest\('#clk-tagback'\)\)\{clkTagMode=false/.test(S),
+    '  \u623b\u308b\u53e3\u3082\u540c\u3058\u6bb5\u306b(\u5165\u3063\u305f\u9053\u3092\u623b\u308b)', true);
+ ok(/if\(mode==='hist'\)\{clkTagMode=false;clkTagSel='';/.test(S),
+    '  \u23f0 \u3092\u62bc\u3057\u305f\u6642\u306f\u5fc5\u305a\u76f4\u8fd15\u3064\u306e\u9854(\u30e2\u30fc\u30c9\u3092\u899a\u3048\u306a\u3044)', true);
+ ok(/id="clk-tag0"/.test(S)&&/postMessage\(\{type:'clockTagAdd',tag:'tag0'\}\)/.test(S),
+    '\u2605\u2605#tag0 \u306e\u4e00\u62bc\u3057\u3067\u3001\u30ab\u30fc\u30bd\u30eb\u306e\u819c\u306b\u672d that\u4ed8\u304f', true);
+ ok(/id="clk-tagnew"/.test(S)&&/postMessage\(\{type:'clockTagAdd',tag:v\}\)/.test(S),
+    '\u2605\u4efb\u610f\u306e\u672d\u3082\u6253\u3066\u308b(Enter)', true);
+ ok(/const _i = _next\.indexOf\(_t\); if \(_i >= 0\) \{ _next\.splice\(_i, 1\)/.test(S),
+    '\u2605\u2605\u540c\u3058\u30dc\u30bf\u30f3that\u4ed8\u3051\u308b\u3068\u5916\u3059\u306e\u4e21\u65b9\u3092\u3059\u308b(\u9593\u9055\u3048\u3066\u3082\u540c\u3058\u624b\u3067\u623b\u305b\u308b)', true);
+ ok(/put the cursor inside a membrane first/.test(S),
+    '  \u819c\u306e\u5916\u306a\u3089\u3001\u4f55\u3082\u305b\u305a\u306b\u305d\u3046\u8a00\u3046(\u672d\u306f\u819c\u306e\u6301\u3061\u7269)', true);
+ ok(/if \(_ok\) \{[^]{0,120}meosArmClockFcFor\(_sc\.doc\)/.test(S),
+    '  \u4ed8\u3051\u305f\u3089\u305d\u306e\u5834\u3067\u4e00\u89a7that\u65b0\u3057\u304f\u306a\u308b', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
