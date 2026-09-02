@@ -21760,7 +21760,10 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    しまう。**赤色tipで警告した方that良い**よ」): ★★★**断りは、押した場所の隣に出す**=
    画面の一番下は、押した指から一番遠い所so、目that行かないうちに消える。
    ★★断るだけでなく**外し方も同じ札に書く**([[feedback_fix_signal_at_fix_place]] 直す場所に直す合図)。 */
-.clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4}
+/* v4.1.68b(俊克 改良1「警告の部分をクリックしたら、警告が消えるようにしよう」):
+   ★読み終わった人that、読み終わったと言える口= 待たされるのは、読む前だけでいい。 */
+.clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4;cursor:pointer}
+.clk-warn:hover{background:rgba(209,52,56,.26)}
 .clk-warn.on{display:block}
 .clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
@@ -23659,6 +23662,7 @@ function clkWarnOff(){var w=document.getElementById('clk-warn');if(w){w.classLis
  try{var rs=document.querySelectorAll('#clk-list .clk-item');for(var i=0;i<rs.length;i++)rs[i].classList.remove('refused');}catch(e){}}
 function clkWarn(text,key){var w=document.getElementById('clk-warn');if(!w)return;
  w.textContent=text||'';w.classList.add('on');
+ w.title='Click to dismiss';
  try{var rs=document.querySelectorAll('#clk-list .clk-item');
   for(var i=0;i<rs.length;i++){var c=vmClocks[Number(rs[i].getAttribute('data-i'))];
    rs[i].classList.toggle('refused',!!(c&&c.key===key));}}catch(e){}
@@ -23708,6 +23712,8 @@ if(clkCaret&&clkPop){
  ['clk-y','clk-mo','clk-d'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixD=true;});});
  ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
+  /* v4.1.68b: 断りの札を押したら、その場で下ろす(閉じない= 一覧はそのまま見ていられる)。 */
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-warn')){clkWarnOff();return;}
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
    clkWarnOff();                                                  /* v4.1.68: 次を押したら前の断りは下ろす */

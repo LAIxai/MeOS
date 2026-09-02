@@ -28,6 +28,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.69 (2026-09-02)
+- **Clicking the red warning dismisses it.** Waiting is only for before it has been read; once it has, the
+  reader should be able to say so. The list stays open — only the card goes.
+
 ### v4.1.68 (2026-09-02)
 - **Refusing to rest a locked clock now says so next to the list, in red, and stays there.** It used to be one
   line along the bottom edge of the window — the furthest point from the finger that had just clicked — and it

@@ -646,6 +646,9 @@ console.log('\u3262 \u65ad\u308a\u306f\u62bc\u3057\u305f\u5834\u6240\u306e\u96a3
  ok(/\.clk-item\.refused\{box-shadow/.test(S), '  \u62bc\u3057\u305f\u884c\u306b\u8d64\u3044\u7e01(\u3069\u308c\u306e\u8a71\u304b\u304c\u5206\u304b\u308b)', true);
  ok(/clkWarnT=setTimeout\(function\(\)\{clkWarnT=null;clkWarnOff\(\);\},9000\)/.test(S),
     '  \u3059\u3050\u306b\u306f\u6d88\u3048\u306a\u3044(9\u79d2)\u30fb\u6b21\u3092\u62bc\u305b\u3070\u4e0b\u308a\u308b', true);
+ ok(/closest\('#clk-warn'\)\)\{clkWarnOff\(\);return;\}/.test(S)&&/\.clk-warn\{[^}]*cursor:pointer/.test(S),
+    '\u2605\u2605v4.1.68b: \u672d\u3092\u62bc\u305b\u3070\u305d\u306e\u5834\u3067\u4e0b\u308a\u308b(\u8aad\u307f\u7d42\u308f\u3063\u305f\u4eba\u304c\u305d\u3046\u8a00\u3048\u308b)', true);
+ ok(/w\.title='Click to dismiss'/.test(S), '  \u62bc\u305b\u308b\u3053\u3068\u3092\u672d\u81ea\u8eab\u304c\u8a00\u3046', true);
  ok(/if\(it\)\{var c=vmClocks\[Number\(it\.getAttribute\('data-i'\)\)\];\n   clkWarnOff\(\);/.test(S),
     '  \u6b21\u306e\u884c\u3092\u62bc\u3057\u305f\u3089\u524d\u306e\u65ad\u308a\u306f\u4e0b\u308a\u308b', true);
 }
