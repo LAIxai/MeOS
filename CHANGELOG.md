@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.73 (2026-09-03)
+- **Tag & Go.** The room behind the sixth row lists *membranes* carrying a tag — with a clock or without one.
+  Click a row and you warp there. Tick the box and a clock already written on that membrane starts, after
+  which it appears in the list by the one rule the list has always had: soonest first. Nothing is ever put
+  into the list by hand, so there is still only one answer to "why is this here?".
+- A membrane with no clock shows no time and no box to tick; click it, warp, and set one from ▾. Nothing is
+  deleted from this room — it is where you look for something, not where you tidy up.
+- The whole search runs only when the door is pressed, so no cursor movement pays for it.
+
 ### v4.1.72 (2026-09-02)
 - **The list is back to the next five, with a sixth row as the door.** A list you read every day has to be
   short or it stops being read; gathering by tag is a different room, so it gets an entrance instead of being

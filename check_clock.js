@@ -737,5 +737,30 @@ console.log('\u3265 \u666e\u6bb5\u306f\u76f4\u8fd15\u3064 / 6\u756a\u76ee\u306e\
     '  \u4ed8\u3051\u305f\u3089\u305d\u306e\u5834\u3067\u4e00\u89a7that\u65b0\u3057\u304f\u306a\u308b', true);
 }
 
+// v4.1.73(俊克 2026.09.03 am00:26「タグ検索する。その中には、⏰設定しているものと、してないものがある。
+//   どっちにしろ、そこからワープできる。つまり、タグ検索&ワープ機能だよ。…決して、タイマーが主ではない。
+//   ただし、見た目は、タイマーの方が分りやすい。だから、⏰という仮面を被った Tag&Go なんだよ」)
+console.log('\u3266 Tag&Go= \u63a2\u3059\u306e\u306f\u819c\u30fb\u76ee\u7684\u306f\u30ef\u30fc\u30d7\u304b\u8d77\u52d5');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/message\.type === 'clockTagList'/.test(S)&&/collectPairs\(_d, \{ excludeIndex: false \}\)/.test(S),
+    '\u2605\u2605\u2605\u63a2\u3059\u76f8\u624b\u306f**\u819c**\u3067\u3042\u3063\u3066\u6642\u8a08\u3067\u306f\u306a\u3044(\u23f0\u306e\u7121\u3044\u819c\u3082\u51fa\u3059)', true);
+ ok(/has: !!_c/.test(S)&&/tags: _tg/.test(S), '  \u23f0 that\u5728\u308b\u304b\u3069\u3046\u304b\u3082\u4e00\u7dd2\u306b\u6e21\u3059', true);
+ ok(/var _src=clkTagMode\?vmTagItems:vmClocks/.test(S),
+    '\u2605\u2605\u90e8\u5c4b\u306e\u4e2d\u3068\u666e\u6bb5\u306f**\u5225\u306e\u6e90**\u304b\u3089\u63cf\u304f', true);
+ ok(/else if\(_shown>=5\)break;/.test(S)&&!/pin/i.test(S.slice(S.indexOf('function clkRenderList'), S.indexOf('function clkRenderList')+2000)),
+    '\u2605\u2605\u2605\u4e00\u89a7\u306f**\u624b\u3067\u8db3\u3059\u9053\u3092\u4f5c\u3089\u306a\u3044**= \u898f\u5247\u306f\u300c\u6642\u523b\u306e\u8fd1\u3044\u9806\u300d1\u3064\u306e\u307e\u307e', true);
+ ok(/ck\.textContent=\(clkTagMode&&!c\.has\)\?'\\u00b7'/.test(S),
+    '\u2605\u23f0\u306e\u7121\u3044\u819c\u306b\u306f\u8d77\u3053\u3059\u5370\u3092\u7f6e\u304b\u306a\u3044', true);
+ ok(/No clock is written on this membrane yet/.test(S),
+    '\u2605\u62bc\u3055\u308c\u305f\u3089\u3001\u4f55\u3092\u3059\u308c\u3070\u3088\u3044\u304b\u3092\u305d\u306e\u5834\u3067\u8a00\u3046(\u30ef\u30fc\u30d7\u3057\u3066\u25be\u3067\u639b\u3051\u308b)', true);
+ ok(/clockGoto/.test(S), '\u2605\u2605\u884c\u3092\u62bc\u305b\u3070\u30ef\u30fc\u30d7(\u23f0\u306e\u6709\u7121\u306b\u62d8\u3089\u306a\u3044)', true);
+ ok(/if\(clkTagMode\)\{\/\* \u63a2\u3057\u7269\u306e\u6bb5\u3067\u306f \u00d7 \u3092\u51fa\u3055\u306a\u3044/.test(S),
+    '  \u63a2\u3059\u6240\u3067\u306f\u7247\u4ed8\u3051\u306a\u3044(\u00d7 \u3092\u51fa\u3055\u306a\u3044)', true);
+ ok(/postMessage\(\{type:'clockTagList'\}\)/.test(S)&&/\u53e9\u304b\u308c\u305f\u6642\u3060\u3051\u63a2\u3057\u306b\u884c\u304f/.test(S),
+    '  \u53e9\u304b\u308c\u305f\u6642\u3060\u3051\u5168\u3066\u306e\u819c\u3092\u8aad\u3080', true);
+ ok(/Tag & Go/.test(S), '  \u5165\u53e3\u306e\u540d\u524d\u3082\u305d\u3046\u8a00\u3046', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

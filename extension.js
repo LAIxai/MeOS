@@ -23676,7 +23676,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
-var clkTagSel='';var clkTagMode=false;var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagSel='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -23766,8 +23766,8 @@ function clkRenderTags(){var bar=document.getElementById('clk-tags'),add=documen
  while(bar.firstChild)bar.removeChild(bar.firstChild);
  if(add)add.style.display=clkTagMode?'flex':'none';
  if(!clkTagMode){clkTagSel='';return;}                    /* v4.1.72: 普段は見せない */
- var seen=[],i,j;
- try{for(i=0;i<vmClocks.length;i++){var ts=vmClocks[i].tags||[];
+ var seen=[],i,j,src=vmTagItems;
+ try{for(i=0;i<src.length;i++){var ts=src[i].tags||[];
   for(j=0;j<ts.length;j++)if(seen.indexOf(ts[j])<0)seen.push(ts[j]);}}catch(e){}
  if(clkTagSel&&seen.indexOf(clkTagSel)<0)clkTagSel='';   /* 消えた札を選び続けない */
  var mk=function(label,val,cls){var b=document.createElement('span');
@@ -23781,22 +23781,27 @@ function clkRenderList(){var el=document.getElementById('clk-list');if(!el)retur
 while(el.firstChild)el.removeChild(el.firstChild);
 clkRenderTags();
 if(!vmClocks||!vmClocks.length)return;
-/* v4.1.72: 普段は**直近5つ**。札の部屋では、選んだ札の物を全部。 */
-var _shown=0;
-for(var i=0;i<vmClocks.length;i++){var c=vmClocks[i];
+/* ★★★v4.1.73: 部屋の中に並ぶのは**札の付いた膜**= ⏰の無い膜も出る(行って、そこで掛ければよい)。
+   普段の一覧は今までどおり時計の**直近5つ**= 手で足す道は作らない(規則は1つのまま)。 */
+var _src=clkTagMode?vmTagItems:vmClocks,_shown=0;
+if(clkTagMode&&!_src.length){var _em=document.createElement('div');_em.className='clk-door';
+ _em.textContent='no tagged membrane in this file';el.appendChild(_em);}
+for(var i=0;i<_src.length;i++){var c=_src[i];
 if(clkTagMode){if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;}
 else if(_shown>=5)break;
 _shown++;
 var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'');/* v4.1.25: 次に鳴る1つ */
 row.setAttribute('data-i',String(i));
 /* v4.1.24: 左端の\u2611/\u2610= 使う/休む。走っている物that\u2611。 */
-var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');ck.textContent=c.running?'\u2611':'\u2610';
+var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');
+/* v4.1.73: ⏰の無い膜には枠を出さない= 起こす物that無いのに、起こす印は置かない。 */
+ck.textContent=(clkTagMode&&!c.has)?'\u00b7':(c.running?'\u2611':'\u2610');
 ck.title=c.running?'In use \u2014 click to let it rest. The time stays written on the membrane (\u23f8), so you can bring it back.':'Resting \u2014 click to use it again, at the time written on the membrane.';
 row.appendChild(ck);
 /* v4.1.60: \u21bb= ストップウォッチ(増える)。出す時刻はどちらも**次の区切り**= 一覧は時刻で出す。 */
 var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'');
 if(c.up){var _u=document.createElement('span');_u.className='ci-up';_u.textContent='\u21bb ';t.appendChild(_u);}  /* v4.1.65: 面のボタンと同じ水色 */
-t.appendChild(document.createTextNode(clkWhenLabel(c.at)));
+t.appendChild(document.createTextNode(c.at?clkWhenLabel(c.at):'\u2014'));
 /* ★★★v4.1.28(俊克 改良1「横幅that狭いので省略する時は、**膜名の最後を残す形**で、
    「テスト3_2...43JST」のようにすればいい」): ★★★**見分けthat最後に在る**=
    Mepyで写した膜は名前thatが同じで、時分秒だけthat違う。頭から詰めて後ろを切ると、全部同じ字面になる。
@@ -23816,15 +23821,16 @@ try{var _tg=c.tags||[];for(var _k=0;_k<_tg.length;_k++){var _tc=document.createE
 /* ★★v4.1.5(俊克「テスト用紙だから駄目というのはおかしい。これはテスト用紙専用ではないからだよ。
    間違ってスタートした時もあるよ」): ★★**走っている時計も外せる**= 掛け違いは誰にでも在る。
    ×は走っている物なら**止めてから**外す。外せないのは🔒を選んで掛けた物だけ(そこは印that🔒に変わる)。 */
-if(c.running&&c.lock){var lk=document.createElement('span');lk.className='ci-lock';lk.textContent='\ud83d\udd10';
+if(clkTagMode){/* 探し物の段では × を出さない= ここは探す所で、片付ける所ではない */}
+else if(c.running&&c.lock){var lk=document.createElement('span');lk.className='ci-lock';lk.textContent='\ud83d\udd10';
 lk.title='Locked \u2014 this one cannot be dropped until the time is up. \u2325 Option-click to take the lock off.';row.appendChild(lk);}
 else{var x=document.createElement('span');x.className='ci-x';x.textContent='\u00d7';
 x.title=(c.running?'Stop and forget this one':'Forget this one')+' \u2014 MeOS takes you there first, in case you did not mean it.';row.appendChild(x);}
 el.appendChild(row);}
 /* ★v4.1.72: **6番目の行thatが入口**= 5つの続きに立つso、目that自然にそこへ落ちる。 */
 if(!clkTagMode){var dr=document.createElement('div');dr.className='clk-door';dr.id='clk-door';
- dr.textContent='#\u2026 tags'+((vmClocks.length>5)?('  \u00b7  +'+(vmClocks.length-5)):'');
- dr.title='Gather by tag \u2014 the rest of the clocks, grouped by the tags written on their membranes.';
+ dr.textContent='#  Tag & Go'+((vmClocks.length>5)?('  \u00b7  +'+(vmClocks.length-5)):'');
+ dr.title='Tag & Go \u2014 find a membrane by the tags written on it, with or without a clock. Click a row to warp there; tick the box to start a clock that is already written.';
  el.appendChild(dr);}
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
 if(clkCaret&&clkPop){
@@ -23840,6 +23846,7 @@ if(clkCaret&&clkPop){
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-warn')){clkWarnOff();return;}
   /* v4.1.70: 札を押したら絞る。同じ札をもう一度押せば all に戻る(覚えを増やさない)。 */
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-door')){clkTagMode=true;clkTagSel='';
+   vscode.postMessage({type:'clockTagList'});                     /* v4.1.73: 叩かれた時だけ探しに行く */
    clkWarnOff();clkRenderList();clkPlace();return;}
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tagback')){clkTagMode=false;clkTagSel='';
    clkWarnOff();clkRenderList();clkPlace();return;}
@@ -23857,7 +23864,8 @@ if(clkCaret&&clkPop){
    /* ★★v4.1.24: \u2611/\u2610 は**飛ばないし、閉じない**= 何本かまとめて選ぶための物so、
       1つ押すたびに膜へ連れて行かれ、パネルthat閉じては使えない(×とは狙いthat違う)。 */
    var isCk=!!(ev.target&&ev.target.classList&&ev.target.classList.contains('ci-ck'));
-   if(isCk){if(c)vscode.postMessage({type:'clockEnable',uri:c.uri,key:c.key,on:!c.running});return;}
+   if(isCk){if(clkTagMode&&!c.has){clkWarn('\u23f0 No clock is written on this membrane yet \u2014 click the row to warp there, then set one from \u25be.',c.key);return;}
+    if(c)vscode.postMessage({type:'clockEnable',uri:c.uri,key:c.key,on:!c.running});return;}
    /* ★★v4.1.65(俊克 質問1「ロックをかけた予定をロックの外し方that分らない」):
       ★★**直す場所に直す合図を出す**= 錠that見えているのは一覧のこの印so、外し方もここに在るべき
       ([[feedback_fix_signal_at_fix_place]])。★\u2325 を要るのは、滑って外れては錠の意味that無いから。
@@ -24748,6 +24756,8 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
+if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
+ try{if(clkTagMode){clkRenderList();clkPlace();}}catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
@@ -25646,6 +25656,43 @@ function toggleMeDock(editorOverride) {
           else { const _r = meosScopeRangeNow(_sc.doc, _sc.key); if (_r) { const _mt = meosMembraneTags(_sc.doc, _r.from); if (_mt.length) _tag = _mt.join(' '); } }
         }
         if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockCurrent', cycle: _cyc, up: _up, tag: _tag });
+      } catch (_) { }
+      return;
+    }
+    // ★★★v4.1.73(俊克 2026.09.03 am00:26「タグ検索する。その中には、⏰設定しているものと、してないものthat
+    //   ある。**どっちにしろ、そこからワープできる**。つまり、タグ検索&ワープ機能だよ。…
+    //   要は、タイマーを起動するため、あるいは、目的の膜を見つけて、そこにワープするために、この
+    //   タグ検索thatあるということだよ。…**決して、タイマーthat主ではない**。ただし、見た目は、タイマーの
+    //   方that分りやすい。だから、**⏰という仮面を被った Tag&Go** なんだよ」):
+    //   ★★★**探した物を一覧へ**移すのではない= 探すのは**行くため**か**起こすため**。
+    //     so一覧は今までどおり「時刻の近い順」1つの規則から出たまま= 手で足す道を作らずに済んだ
+    //     (私は『ピン留め』を勧めたthat、俊克の形の方that規則を1つに保つ)。
+    //   ★★★探す相手は**膜**であって時計ではない= ⏰の無い膜も出す。行って、そこで掛ければよい。
+    //   ★訊かれた時だけ走る(入口を叩いた時)so、カーソル毎に全部の膜を読まない。
+    if (message && message.type === 'clockTagList') {
+      try {
+        const _e = meosCurrentEditor(); const _d = _e && _e.document;
+        const _items = [];
+        if (_d) {
+          const _uri = _d.uri.toString();
+          let _pairs = [];
+          try { _pairs = collectPairs(_d, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
+          const _clk = new Map();
+          try { for (const c of meosClockFcScan(_d)) if (c.key) _clk.set(c.key, c); } catch (_) { }
+          for (const p of _pairs) {
+            const _tg = meosMembraneTags(_d, p.start);
+            if (!_tg.length) continue;
+            const _c = _clk.get(p.id) || null;
+            const _run = _meosPseudoUntil.get(_uri + ' ' + p.id) || 0;
+            let _at = _run;
+            if (!_at && _c) { const _w = meosParseStampLoose(_c.when); if (_w) _at = _w.getTime(); }
+            _items.push({ uri: _uri, key: p.id, name: p.id, tags: _tg, line: p.start,
+              has: !!_c, at: _at, running: !!_run, off: !!(_c && _c.off), up: !!(_c && _c.up) });
+          }
+          // 時刻を持つ物that先(近い順)、その後は書いてある順= 探し物の並びも「時刻の近い順」から外れない。
+          _items.sort((a, b) => (a.at && b.at) ? (a.at - b.at) : (a.at ? -1 : (b.at ? 1 : (a.line - b.line))));
+        }
+        if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockTags', items: _items });
       } catch (_) { }
       return;
     }
