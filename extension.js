@@ -10225,7 +10225,10 @@ async function meosClockSetEnabled(uri, key, on) {
   if (!on) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) {
-      vscode.window.setStatusBarMessage('MeOS: \ud83d\udd12 ' + (sc.name || 'this clock') + ' \u2014 locked until the time is up.', 3000);
+      // v4.1.68: 面にも出す= 押した指の隣で、赤く、外し方まで言う(下端の一行は消えるthat早い)。
+      const _msg = '\ud83d\udd10 Locked \u2014 this one stays until the time is up. \u2325 Option-click the \ud83d\udd10 to take the lock off.';
+      vscode.window.setStatusBarMessage('MeOS: \ud83d\udd10 ' + (sc.name || 'this clock') + ' \u2014 ' + _msg, 6000);
+      try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockRefused', key: sc.key, text: _msg }); } catch (_) { }
       return false;
     }
     if (_meosPseudoUntil.has(lk)) {
@@ -21753,6 +21756,13 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-list{display:flex;flex-direction:column;gap:1px;max-height:96px;overflow-y:auto;scrollbar-width:none}
 .clk-list::-webkit-scrollbar{display:none}
 .clk-list:empty{display:none}
+/* ★★v4.1.68(俊克 改良1「リストの✓を外そうとすると、ウィンドウ下端に警告が出るthat、**直ぐに消えて**
+   しまう。**赤色tipで警告した方that良い**よ」): ★★★**断りは、押した場所の隣に出す**=
+   画面の一番下は、押した指から一番遠い所so、目that行かないうちに消える。
+   ★★断るだけでなく**外し方も同じ札に書く**([[feedback_fix_signal_at_fix_place]] 直す場所に直す合図)。 */
+.clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4}
+.clk-warn.on{display:block}
+.clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
 .clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
 .clk-item.live{opacity:1}
@@ -22153,6 +22163,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><button class="cancel clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</button></span>
 <div class="bm-pop clk-pop" id="clk-pop">
   <div class="clk-list" id="clk-list"></div>
+  <div class="clk-warn" id="clk-warn"></div>
   <div class="clk-row"><span class="clk-lab">Origin</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
   <div style="border-top:1px solid var(--vscode-panel-border);margin:3px 0"></div>
@@ -23496,7 +23507,8 @@ if(window.__clkOpen)window.__clkOpen('hist');});
    ★日付を空にすれば「毎日の時刻」= 俊克の基本の使い方。clear thatその口。
    ★開き方・位置決め・外を押したら閉じる、は表の▾と同じ形(家の作法を真似る)。 */
 var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getElementById('clk-pop');
-function closeClkPop(){if(clkPop)clkPop.classList.remove('on');try{document.body.classList.remove('clk-open');}catch(e){}}
+function closeClkPop(){if(clkPop)clkPop.classList.remove('on');try{document.body.classList.remove('clk-open');}catch(e){}
+ try{clkWarnOff();}catch(e){}}
 function clkPad(n){return (n<10?'0':'')+n;}
 function clkFill(el,from,to,pad){if(!el)return;var h='';for(var i=from;i<=to;i++)h+='<div data-v="'+i+'">'+(pad?clkPad(i):i)+'</div>';el.innerHTML=h;}
 /* ★★★v4.0.470(俊克「少しスクロールしても動かない感じ。**大きな字that途中で止まってしまう**。
@@ -23641,6 +23653,16 @@ var hm=p(d.getHours())+':'+p(d.getMinutes());
 if(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate())return hm;
 if(d.getFullYear()===n.getFullYear())return p(d.getMonth()+1)+'/'+p(d.getDate())+' '+hm;
 return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate())+' '+hm;}
+/* v4.1.68: 断りの札。押した行に赤い縁を付け、外し方を書いて、しばらく置く。 */
+var clkWarnT=null;
+function clkWarnOff(){var w=document.getElementById('clk-warn');if(w){w.classList.remove('on');w.textContent='';}
+ try{var rs=document.querySelectorAll('#clk-list .clk-item');for(var i=0;i<rs.length;i++)rs[i].classList.remove('refused');}catch(e){}}
+function clkWarn(text,key){var w=document.getElementById('clk-warn');if(!w)return;
+ w.textContent=text||'';w.classList.add('on');
+ try{var rs=document.querySelectorAll('#clk-list .clk-item');
+  for(var i=0;i<rs.length;i++){var c=vmClocks[Number(rs[i].getAttribute('data-i'))];
+   rs[i].classList.toggle('refused',!!(c&&c.key===key));}}catch(e){}
+ if(clkWarnT)clearTimeout(clkWarnT);clkWarnT=setTimeout(function(){clkWarnT=null;clkWarnOff();},9000);}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
 if(!vmClocks||!vmClocks.length)return;
@@ -23688,6 +23710,7 @@ if(clkCaret&&clkPop){
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
   var it=ev.target&&ev.target.closest?ev.target.closest('.clk-item'):null;
   if(it){var c=vmClocks[Number(it.getAttribute('data-i'))];
+   clkWarnOff();                                                  /* v4.1.68: 次を押したら前の断りは下ろす */
    /* ★★v4.1.4(俊克 改良1「削除する前に、その膜へ移動する。間違って、削除したときのために」):
       ★★**連れて行ってから外す**= 消えた物を探しに行かなくていい。もうその場に立っている。 */
    /* ★★v4.1.24: \u2611/\u2610 は**飛ばないし、閉じない**= 何本かまとめて選ぶための物so、
@@ -24574,6 +24597,7 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
+if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
   clkRep=!!(m.cycle&&m.cycle.length);clkDir=!!m.up;

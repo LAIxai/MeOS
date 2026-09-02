@@ -632,5 +632,23 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
     '\u2605\u6642\u5206\u306e\u65e2\u5b9a\u306f**\u4eca**(30\u5206\u5f8c\u306f\u79c1\u306e\u63d0\u6848\u3067\u3057\u304b\u306a\u304b\u3063\u305f)', true);
 }
 
+// v4.1.68(俊克 CN=v4.1.67_0736 改良1「リストの✓を外そうとすると、ウィンドウ下端に警告が出るが、
+//   直ぐに消えてしまう。赤色tipで、警告した方が良いよ」)
+console.log('\u3262 \u65ad\u308a\u306f\u62bc\u3057\u305f\u5834\u6240\u306e\u96a3\u3067\u3001\u8d64\u304f\u3001\u5916\u3057\u65b9\u307e\u3067');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/id="clk-warn"/.test(S)&&/\.clk-warn\{[^}]*border:1px solid #d13438/.test(S),
+    '\u2605\u2605\u2605\u65ad\u308a\u306f**\u4e00\u89a7\u306e\u96a3**\u306b\u8d64\u304f\u51fa\u308b(\u753b\u9762\u306e\u4e0b\u7aef\u306f\u6307\u304b\u3089\u9060\u3044)', true);
+ ok(/Option-click the \\ud83d\\udd10 to take the lock off/.test(S),
+    '\u2605\u2605\u65ad\u308b\u3060\u3051\u3067\u306a\u304f**\u5916\u3057\u65b9\u3082\u540c\u3058\u672d\u306b\u66f8\u304f**', true);
+ ok(/postMessage\(\{ type: 'clockRefused', key: sc\.key, text: _msg \}\)/.test(S),
+    '  \u65ad\u3063\u305f\u5074that\u3001\u3069\u306e\u884c\u304b\u3092\u540d\u6307\u3057\u3057\u3066\u77e5\u3089\u305b\u308b', true);
+ ok(/\.clk-item\.refused\{box-shadow/.test(S), '  \u62bc\u3057\u305f\u884c\u306b\u8d64\u3044\u7e01(\u3069\u308c\u306e\u8a71\u304b\u304c\u5206\u304b\u308b)', true);
+ ok(/clkWarnT=setTimeout\(function\(\)\{clkWarnT=null;clkWarnOff\(\);\},9000\)/.test(S),
+    '  \u3059\u3050\u306b\u306f\u6d88\u3048\u306a\u3044(9\u79d2)\u30fb\u6b21\u3092\u62bc\u305b\u3070\u4e0b\u308a\u308b', true);
+ ok(/if\(it\)\{var c=vmClocks\[Number\(it\.getAttribute\('data-i'\)\)\];\n   clkWarnOff\(\);/.test(S),
+    '  \u6b21\u306e\u884c\u3092\u62bc\u3057\u305f\u3089\u524d\u306e\u65ad\u308a\u306f\u4e0b\u308a\u308b', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

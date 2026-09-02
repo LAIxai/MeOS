@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.68 (2026-09-02)
+- **Refusing to rest a locked clock now says so next to the list, in red, and stays there.** It used to be one
+  line along the bottom edge of the window — the furthest point from the finger that had just clicked — and it
+  was gone before the eye arrived. The card names the row it is about (red outline) and holds for nine seconds
+  or until the next click. It also carries the way out: ⌥ Option-click the 🔐. A refusal that does not say what
+  to do instead is only half an answer.
+
 ### v4.1.67 (2026-09-02)
 - **A paused ⏸ is always red.** It used to be white where the line was orange and red elsewhere, which meant
   the same thing wore two colours depending on where you stood. Now that the ↺ and ↻ carry colour on the line,
