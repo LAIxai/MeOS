@@ -21853,6 +21853,15 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-tagadd .clk-in{flex:1;min-width:0;font-size:10px;padding:2px 5px}
 .clk-tag0{flex:none;font-size:10px;font-weight:800;line-height:1;padding:3px 7px;border:1px solid rgba(224,128,58,.85);border-radius:9px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap}
 .clk-tag0:hover{background:rgba(224,128,58,.34)}
+/* ★★v4.1.75(俊克「まったく直ってないよ」= v4.1.74は**選んだ札を隠す**だけso、
+   何も選んでいない時(部屋に入った直後)は幅that戻らなかった):
+   ★★★**Tag&Go は名前を読むための部屋**= 頭that1文字まで潰れては、探し物にならない。
+     → 頭に**床**を敷く(min-width)= どれだけ狭くても、頭の数文字は必ず残る。
+   ★一覧(時刻の側)は今までどおり= あちらは時刻を読む所so、v4.1.28の姿を変えない。 */
+.clk-item.tagrow .ci-nh{min-width:5.2em}
+.clk-item.tagrow .ci-nt{min-width:4.6em}          /* 頭も尾も床を持つ= 名前の両端that残る */
+.clk-item.tagrow .ci-tag{max-width:22%}
+.clk-item.tagrow .ci-t{opacity:.85;font-size:9px}
 /* v4.1.74: 札は名前より先に縮む= 読みたいのは膜の名前so、そちらに幅を譲る。 */
 .clk-item .ci-tag{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:38%;font-size:9px;font-weight:700;line-height:1;padding:1px 4px;border-radius:8px;background:rgba(127,212,232,.18);color:#7fd4e8;margin-left:3px}
 .clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
@@ -23791,7 +23800,7 @@ for(var i=0;i<_src.length;i++){var c=_src[i];
 if(clkTagMode){if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;}
 else if(_shown>=5)break;
 _shown++;
-var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'');/* v4.1.25: 次に鳴る1つ */
+var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'')+(clkTagMode?' tagrow':'');/* v4.1.25: 次に鳴る1つ */
 row.setAttribute('data-i',String(i));
 /* v4.1.24: 左端の\u2611/\u2610= 使う/休む。走っている物that\u2611。 */
 var ck=document.createElement('span');ck.className='ci-ck'+(c.running?' on':'');
@@ -23800,7 +23809,9 @@ ck.textContent=(clkTagMode&&!c.has)?'\u00b7':(c.running?'\u2611':'\u2610');
 ck.title=c.running?'In use \u2014 click to let it rest. The time stays written on the membrane (\u23f8), so you can bring it back.':'Resting \u2014 click to use it again, at the time written on the membrane.';
 row.appendChild(ck);
 /* v4.1.60: \u21bb= ストップウォッチ(増える)。出す時刻はどちらも**次の区切り**= 一覧は時刻で出す。 */
-var t=document.createElement('span');t.className='ci-t';t.textContent=(c.running?'\u23f0 ':'');
+var t=document.createElement('span');t.className='ci-t';
+/* v4.1.75: 部屋では \u23f0 の絵を出さない= ここは膜を探す所so、その幅は名前に回す。 */
+t.textContent=(c.running&&!clkTagMode)?'\u23f0 ':'';
 if(c.up){var _u=document.createElement('span');_u.className='ci-up';_u.textContent='\u21bb ';t.appendChild(_u);}  /* v4.1.65: 面のボタンと同じ水色 */
 t.appendChild(document.createTextNode(c.at?clkWhenLabel(c.at):'\u2014'));
 /* ★★★v4.1.28(俊克 改良1「横幅that狭いので省略する時は、**膜名の最後を残す形**で、

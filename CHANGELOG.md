@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.75 (2026-09-03)
+- **Membrane names are readable in Tag & Go.** v4.1.74 only freed width when a tag was selected, which is not
+  the state you are in when you walk into the room. Both ends of the name now have a floor they cannot be
+  squeezed below, the ⏰ glyph is dropped there (that room is about membranes, not clocks) and the time is set
+  smaller, so what is left goes to the name.
+
 ### v4.1.74 (2026-09-03)
 - **A row in Tag & Go warped to the wrong membrane.** The rows were drawn from the tag search but the click
   looked the same position up in the clock list, so pressing the first row went to the first clock. Both now
