@@ -28,6 +28,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.66 (2026-09-02)
+- **A sample inside a code fence became a real, locked clock again.** Two holes, both now shut. The fence
+  guard only *counted* fence lines, so one unmatched ``` anywhere above turned every fence below it inside
+  out; fences are now paired by marker and length the way CommonMark does it, and a ~~~ inside a ``` block is
+  just text. And a clock, once armed, was never let go — catching the line for one instant while it was being
+  pasted was enough to keep it alive forever. Re-arming now drops anything the text no longer states.
+- Marks are no longer painted on clock lines inside a fence either: what is drawn and what is armed come from
+  the same reading.
+- **↺ is green and ↻ is cyan on the line itself** — which is where the colour was wanted. It is cut out of the
+  orange first, as the ✓ and the ⏸ already were, so there is no contest over the character.
+- The two mode buttons keep their rounded box when they are not checked — a box says a thing can be pressed,
+  not that it is on — and the ☐ itself is about 1.4× larger.
+
 ### v4.1.65 (2026-09-02)
 - **`☐ Repeat` is how a repeat is taken off.** The panel had no such state: an empty box meant "leave whatever
   is written alone", so there was nowhere to say "none". The panel now shows what the membrane already has when

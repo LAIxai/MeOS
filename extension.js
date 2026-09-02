@@ -9730,8 +9730,12 @@ function meosClockFcParse(text) {
   return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, up, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // 本文に書かれた ⏰ を全部拾う。持ち主= **直前の行で閉じた膜**。無ければ、その行を含む一番内側の膜。
+// v4.1.66: 走り読みの結果(生きている⏰の行)を版ごとに控える= **描く側と掛ける側that同じ1つから引く**
+//   ([[feedback_one_source_for_mark_count_action]])。控えは掛け直しの時にだけ作られるso、毎秒は走らない。
+const _meosClockLinesMem = new Map();   // uri -> { version, lines:Set }
 function meosClockFcScan(doc) {
   const out = [];
+  const _lines = new Set();
   if (!doc || !doc.lineCount) return out;
   let pairs = [];
   try { pairs = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
@@ -9744,11 +9748,25 @@ function meosClockFcScan(doc) {
   //     (前の3つ= 包み記法/MeTeXのコメント/参照符。log_3124で塞いだ所と同じ形)。
   //   ★★★**記法を引用しても、本物にならない**= これthat守れないと、**MeOSの説明thatMeOSで書けない**。
   //     ドッグフーディングの前提so、ここは例外を作らない。
-  let inFence = false;
+  // ★★★v4.1.66(俊克 問題1「**貴方の説明の中に書いたものが、ロックされた予定として出てしまった**」
+  //   = v4.1.39 で塞いだはずの穴that、また開いていた):
+  //   ★★★**囲いの数を数えていただけso、1つずれると以後ぜんぶ裏返る**= 116,938行目の見本that
+  //     「囲いの外」と読まれていた。★→ **印の種類(` か ~)と長さで対を合わせる**=
+  //     ``` の中の ~~~ はただの文字so数えない。閉じる印は開いた印と同じ字で、同じ長さ以上。
+  //   ★★もう1つの穴は [[project_clock_todo_v41]] の下に書いた= **一度掛かった物は、
+  //     本文that変わっても外れなかった**。貼っている途中の一瞬を捕まえると、そのまま生き続ける。
+  //     → 掛け直しの度に、本文that言わなくなった物を落とす(この関数の呼び手側)。
+  let fence = null;                    // { ch, len } 開いている囲い
   for (let i = 0; i < doc.lineCount; i++) {
     let txt = ''; try { txt = doc.lineAt(i).text; } catch (_) { continue; }
-    if (/^\s*(?:```|~~~)/.test(txt)) { inFence = !inFence; continue; }   // 囲いの行そのものも読まない
-    if (inFence) continue;                                               // 囲いの中は、ぜんぶ文字
+    const _fm = /^\s*(`{3,}|~{3,})/.exec(txt);
+    if (_fm) {
+      const _ch = _fm[1][0], _len = _fm[1].length;
+      if (!fence) { fence = { ch: _ch, len: _len }; continue; }
+      if (_ch === fence.ch && _len >= fence.len) { fence = null; continue; }
+      // 開いている囲いの中の、別の種類の印は本文の一部so、数えない
+    }
+    if (fence) continue;                                                 // 囲いの中は、ぜんぶ文字
     if (txt.indexOf('`') >= 0) { const _m = meosMaskCodeSpans(txt); if (!meosClockFcParse(_m)) continue; }  // 行中の ` … ` も文字
     const c = meosClockFcParse(txt);
     if (!c || !c.when) continue;
@@ -9758,9 +9776,19 @@ function meosClockFcScan(doc) {
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
     let owner = pairs.find(p => p.end === j) || null;
     if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+    _lines.add(i);
     out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, ufc: c.ufc });
   }
+  try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   return out;
+}
+// その行thatが「生きている⏰」かどうか。控えthat古ければ、今までどおり(印だけthat少し余分に出る)。
+function meosClockLineIsLive(doc, i) {
+  try {
+    const m = _meosClockLinesMem.get(doc.uri.toString());
+    if (!m || m.version !== doc.version) return true;
+    return m.lines.has(i);
+  } catch (_) { return true; }
 }
 // ★★★v4.1.13(俊克 バグ1「⏰ボタンから従来通り設定しても、FC膜が出てこないよ。なぜ?」):
 //   ★★★**書く側も本文へ移した**。v4.1.12は読む側だけで、ボタンは今までどおり見えない所(mMETA)へ
@@ -9895,9 +9923,9 @@ function meosArmClockFcFor(doc) {
   try {
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
     const uri = doc.uri.toString();
-    let n = 0, _seen = 0;
+    let n = 0, _seen = 0; const _seenKeys = new Set();
     for (const c of meosClockFcScan(doc)) {
-      _seen++;
+      _seen++; _seenKeys.add(c.key);
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) continue;                       // 既に仕掛かっている
       // ★★★v4.1.26(俊克のスクショで判明): **済んだ物の時刻that嘘をついていた**= 一覧に出ていたのは
@@ -9946,6 +9974,18 @@ function meosArmClockFcFor(doc) {
       if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, done: false }); } catch (_) { } }
       n++;
     }
+    // ★★★v4.1.66(俊克 問題1): **本文that言わなくなった物は、ここで落とす**=
+    //   囲いの中へ入った/行を消した/貼り直した、のどれでも同じ答えになる。
+    //   ★掛かりっぱなしを許すと、**一度でも捕まえた見本that永久に生き続ける**(今回の実物)。
+    try {
+      const _live = new Set(); for (const c of _seenKeys) _live.add(c);
+      for (const [k, sc] of Array.from(_meosPseudoScopes)) {
+        if (!sc || sc.uri !== uri || sc.fc === false) continue;   // 旧式(mMETA)の物は触らない
+        if (_live.has(sc.key)) continue;
+        meosClearPseudoTimer(k); _meosPseudoScopes.delete(k);
+        meosDbg('[armClock] dropped (no longer written) key=' + sc.key);
+      }
+    } catch (_) { }
     // ★v4.1.27: 掛かった数that0でも、**書いてある⏰を見つけたなら一覧thatが変わり得る**
     //   (時刻を書き替えた/\u23f8を外した等)。so、見つけた時は必ず知らせる。
     if (n || _seen) { meosUpdateTimerBar(); meosPostViewMode(); }
@@ -10299,6 +10339,17 @@ let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で�
 //     離れてしまえば**止まっていることその物を忘れる**(赤=目が拾う)。
 //   ★✓(済み)と同じ作法= 膜の中か外かで塗り分ける・`!important` で橙のFC行に勝つ。
 let meosClockPauseInDeco = null, meosClockPauseOutDeco = null;
+// ★★★v4.1.66(俊克 改良3「**私that本当に色を付けたかったのは、UFC内の繰返し文字の↻と↺なんだよ**」):
+//   ★★★**色は面のボタンではなく、本文の字に要った**= 人that見ているのは書いてある物の方。
+//     v4.1.65の私は面だけ塗って、肝心の所を塗っていなかった。
+//   ★塗り方は ✓ / \u23f8 と同じ= **橙の範囲から抜いてから置く**(v4.1.19「外側を割る」)。
+let meosClockDirDownDeco = null, meosClockDirUpDeco = null;
+const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd';   // \u21ba=緑 / \u21bb=水色
+// 行の中の輪の印(\u21ba/\u21bb)の位置。無ければ -1。橙を割る側と、色を置く側that同じ1つから引く。
+function meosClockArrowAt(txt) {
+  const a = txt.lastIndexOf('\u21ba'), b = txt.lastIndexOf('\u21bb');
+  return Math.max(a, b);
+}
 // ★★★v4.1.16(俊克「開始膜に残時間が表示されるようになったよ。膜を閉じても見えるけど、私が言ったことと
 //   違うよね」): ★★★**時計の顔は ⏰ 行に立つ**。v4.1.15で開始膜へ移したのは、⏰行を畳みの中に入れた
 //   からで、その前提の方を直した(v4.1.16=⏰行は畳まない物)。so顔は俊克の指したとおり ⏰ 行へ戻る。
@@ -10310,7 +10361,7 @@ function meosApplyTimerLineDecorations(editor, orangeLines) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesIn = [], pausesOut = [];
+    const items = [], dones = [], pausesIn = [], pausesOut = [], dirDown = [], dirUp = [];
     const orange = orangeLines || meosFcOrangeLines(editor);   // v4.1.62: 橙に染まる行(塗る側と同じ1つの口から)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -10349,11 +10400,17 @@ function meosApplyTimerLineDecorations(editor, orangeLines) {
           if (txt.indexOf('\u23f0') < 0) continue;
           const c = meosClockFcParse(txt);
           if (!c || !c.when) continue;
+          if (!meosClockLineIsLive(doc, i)) continue;   // v4.1.66: 囲いの中の見本には印を出さない
           // ★★★v4.1.64(俊克 改良3「UFCには、ロックされていれば\ud83d\udd10を表示し、ロックされていなければ\ud83d\udd13を表示する。
           //   ただし、\ud83d\udd10の部分をインラインで変更できない。**ここは、見せかけの表示にする**」):
           //   ★★★**掛かっている方だけを字にする**= 錠は \ud83d\udd10 を本文に書き、掛かっていない時の \ud83d\udd13 は**描くだけ**。
           //     押せない印を本文に置くと、消し方thatが分からない字thatが全ての行に増える。
           //     ★見えは2つ、書く物は1つ= [[project_relation_over_appearance]] の当て方(見た目でなく関係を書く)。
+          // v4.1.66: 輪の印に色。\u21ba=緑(まだ余裕thatある) / \u21bb=水色(ただ測るだけ)。
+          if (Array.isArray(c.cycle) && c.cycle.length) {
+            const _ar = meosClockArrowAt(txt);
+            if (_ar >= 0) (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
+          }
           if (!c.done && !c.lock) {
             const _a = txt.indexOf('\u23f0');
             if (_a >= 0) {
@@ -10409,6 +10466,10 @@ function meosApplyTimerLineDecorations(editor, orangeLines) {
         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
       });
     }
+    if (dirDown.length && !meosClockDirDownDeco) meosClockDirDownDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: ' + MEOS_CLOCK_DIR_DOWN + ' !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (dirUp.length && !meosClockDirUpDeco) meosClockDirUpDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: ' + MEOS_CLOCK_DIR_UP + ' !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (pausesIn.length && !meosClockPauseInDeco) meosClockPauseInDeco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; color: #ffffff !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (pausesOut.length && !meosClockPauseOutDeco) meosClockPauseOutDeco = vscode.window.createTextEditorDecorationType({
@@ -10417,6 +10478,8 @@ function meosApplyTimerLineDecorations(editor, orangeLines) {
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
     if (meosClockPauseInDeco) editor.setDecorations(meosClockPauseInDeco, pausesIn);
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
+    if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
+    if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
   } catch (_) { }
 }
 function meosTickTimerLines() {
@@ -21808,7 +21871,11 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    \u2605\u21ba逆算=緑(まだ余裕がある・急ぐ時は面that橙\u2192赤へ変わる) / \u21bbストップウォッチ=水色(ただ測るだけ)。
    \u2605水色は見出し(#7fd4e8)より濃い#56d4dd= 同じ面の中で混ざらない。 */
 .clk-modes{display:flex;align-items:center;gap:5px}
-.clk-dir,.clk-rep{font-size:13px;font-weight:700;padding:2px 6px;border:1px solid var(--vscode-panel-border);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap}
+/* \u2605v4.1.66(俊克 改良1「\u2610 countdown の時に**角丸四角で囲われないのthat分かりにくい**」):
+   \u2605**箱は状態でなく「押せる物である」ことを言う**so、押していない時も見えていなければならない。
+   \u2605\u2605v4.1.66(俊克 改良2「チェックボックスの \u2610 that小さ過ぎるので約1.4倍に」): 13px \u00d7 1.4 \u2248 18px。 */
+.clk-dir,.clk-rep{font-size:13px;font-weight:700;padding:2px 7px;border:1px solid rgba(224,128,58,.55);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.clk-ck{font-size:18px;line-height:1}
 .clk-dir{color:#3fb950}
 .clk-dir.on{color:#56d4dd}
 .clk-dir.on,.clk-rep.on{border-color:rgba(224,128,58,.85);background:rgba(224,128,58,.22)}
@@ -23644,15 +23711,19 @@ if(clkCaret&&clkPop){
     出て行く時(blur)は書いた物を拾う= 押した先が Set でも値が生きる。 */
  /* v4.1.64: \u2610 \u21ba countdown \u21c4 \u2611 \u21bb stopwatch。**既定は逆算タイマー**(俊克 改良1)。 */
  function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);}
+ /* v4.1.66: \u2610 だけ大きく出せるように、箱と字を別の子にする。 */
+ function clkBox(b,on,label){while(b.firstChild)b.removeChild(b.firstChild);
+  var k=document.createElement('span');k.className='clk-ck';k.textContent=on?'\u2611':'\u2610';
+  b.appendChild(k);b.appendChild(document.createTextNode(label));}
  function clkPaintDir(){var b=document.getElementById('clk-dir');if(!b)return;b.classList.toggle('on',clkDir);
   b.classList.toggle('off',!clkRep);                                   /* v4.1.65: 繰返しthat無ければ向きは効かない */
-  b.textContent=clkDir?'\u2611 \u21bb stopwatch':'\u2610 \u21ba countdown';}
+  clkBox(b,clkDir,clkDir?'\u21bb stopwatch':'\u21ba countdown');}
  /* ★★★v4.1.65(俊克 改良1「**リピート無しの設定thatなかったね**。『\u2610 Repeat \u2610 countdown』という状態that
     リピートなし」): ★★★**「触らない」を「無し」の代わりにしていた**= v4.1.64は箱that空なら今の指定を残す
     という決まりso、**外す口thatどこにも無かった**(00 を打つ道は在ったthat、それは書き方の話で、面の話ではない)。
     ★→ 面that**今の姿を見せて**、その姿を変えて Set する= 見えている物を変える、という当たり前の形。 */
  function clkPaintRep(){var b=document.getElementById('clk-rep');if(b){b.classList.toggle('on',clkRep);
-   b.textContent=clkRep?'\u2611 Repeat':'\u2610 Repeat';}
+   clkBox(b,clkRep,'Repeat');}
   try{clkPop.classList.toggle('norepeat',!clkRep);}catch(e){}
   var cy=document.getElementById('clk-cyc');if(cy)cy.disabled=!clkRep;clkPaintDir();}
  function clkFire(){var v=clkText();if(!v)return;var cy=document.getElementById('clk-cyc');
@@ -28605,13 +28676,17 @@ function meosApplyFcRowDecorations(editor) {
           //     同じ行thatが白になったり橙になったりした(俊克 バグ5/7 の揺らぎ)。
           //     ★**v4.1.19 で自分that書いた「外側を割る」を、次の版で忘れていた**。
           const _cc = (txt.indexOf('\u23f0') >= 0) ? (meosClockFcParse(txt) || {}) : {};
-          if (_cc.done || _cc.off) {
-            const at = _cc.done ? txt.search(MEOS_CLOCK_DONE_MARK_RE) : txt.indexOf('\u23f8');
-            if (at >= r.start.character && at < r.end.character) {
-              if (at > r.start.character) carved.push(new vscode.Range(ln, r.start.character, ln, at));
-              if (at + 1 < r.end.character) carved.push(new vscode.Range(ln, at + 1, ln, r.end.character));
-              ok = true;
-            }
+          // v4.1.66: 抜く所that2つ以上に増えた(\u2713 / \u23f8 / 輪の印)so、**位置の並びで割る**。
+          const _cut = [];
+          if (_cc.done) { const a = txt.search(MEOS_CLOCK_DONE_MARK_RE); if (a >= 0) _cut.push(a); }
+          if (_cc.off) { const a = txt.indexOf('\u23f8'); if (a >= 0) _cut.push(a); }
+          if (_cc.cycle && _cc.cycle.length) { const a = meosClockArrowAt(txt); if (a >= 0) _cut.push(a); }
+          const _in = _cut.filter(a => a >= r.start.character && a < r.end.character).sort((x, y) => x - y);
+          if (_in.length) {
+            let at = r.start.character;
+            for (const p of _in) { if (p > at) carved.push(new vscode.Range(ln, at, ln, p)); at = p + 1; }
+            if (at < r.end.character) carved.push(new vscode.Range(ln, at, ln, r.end.character));
+            ok = true;
           }
         }
       } catch (_) { }

@@ -456,10 +456,11 @@ console.log('\u325b \u23f8\u306e\u8272 / Opt \u3067\u4e00\u89a7 / \u5909\u308f\u
   X.meosApplyTimerLineDecorations(e,orange); return got;};
  const inHere=paint(new Set([4])), outside=paint(new Set());
  /* v4.1.64: 見せかけの \ud83d\udd13 は色を持たない項目so、数える前に外す(見るのは \u23f8 の色だけ)。 */
- const col=(g)=>g.filter(x=>x[0]).map(x=>/#ffffff/.test(x[0])?'white':(/#ff4d4d/.test(x[0])?'red':'other')).join(',');
+ /* v4.1.66: 同じ行に輪の印の色(緑)と見せかけの\ud83d\udd13 も乗るso、\u23f8 の色だけを見る。 */
+ const col=(g)=>g.filter(x=>/#ffffff|#ff4d4d/.test(x[0]||'')).map(x=>/#ffffff/.test(x[0])?'white':'red').join(',');
  ok(col(inHere)==='white', '\u2605\u2605\u2605\u884c\u304c\u6a59\u306b\u67d3\u307e\u3063\u3066\u3044\u308b\u6642\u306e \u23f8 \u306f\u767d(\u4ed6\u304c\u6a59so\u76ee\u7acb\u3064)', col(inHere));
  ok(col(outside)==='red', '\u2605\u2605\u2605\u6a59\u3067\u306a\u3051\u308c\u3070 \u23f8 \u306f\u8d64(\u819c\u304c\u901a\u5e38\u306e\u72b6\u614b)', col(outside));
- ok(inHere.filter(x=>x[0]).length===1&&outside.filter(x=>x[0]).length===1, '  \u5857\u308b\u306e\u306f1\u6587\u5b57\u3060\u3051(\u884c\u5168\u4f53\u306f\u6a59\u306e\u307e\u307e)', [inHere.length,outside.length]);
+ ok(col(inHere).split(',').length===1&&col(outside).split(',').length===1, '  \u5857\u308b\u306e\u306f1\u6587\u5b57\u3060\u3051(\u884c\u5168\u4f53\u306f\u6a59\u306e\u307e\u307e)', [inHere.length,outside.length]);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/var _stopMode=\(!vmAlt\)&&/.test(S), '\u2605\u2605Opt \u3092\u62bc\u3057\u3066\u3044\u308b\u9593\u306f Stop \u3092\u9000\u3051\u308b', true);
  ok(/document\.addEventListener\('mousemove',function\(e\)\{vmSetAlt/.test(S), '\u2605\u9375\u76e4\u306e\u7126\u70b9\u304c\u7121\u3044\u6642\u3067\u3082\u5206\u304b\u308b(\u30de\u30a6\u30b9\u304c altKey \u3092\u9023\u308c\u3066\u6765\u308b)', true);
@@ -480,8 +481,8 @@ console.log('\u325c Stop=\u4e00\u6642\u505c\u6b62 / \u4f11\u307f\u306f\u4e88\u5b
  ok(/return await meosClockSetEnabled\(r\.uri, r\.key, true\)/.test(S), '\u2605\u2605\u2605Undo \u306f \u2611 \u306b\u623b\u3059\u3060\u3051(\u904e\u304e\u3066\u3044\u308c\u3070\u6b21\u306e\u56de\u3078= \u518d\u8a08\u7b97)', true);
  ok(!/await meosEndPseudoTimer\(best\.k\)/.test(S), '\u2605\u2605Stop \u304b\u3089\u300c\u7d42\u308f\u3089\u305b\u308b\u9053\u300d\u304c\u6d88\u3048\u3066\u3044\u308b(\u8f2a\u3092\u56de\u3055\u306a\u3044)', true);
  ok(/const _paused = sc \? await meosClockSetEnabled/.test(S), '  \ud83d\udd12 \u306a\u3089\u4f11\u307e\u305b\u306a\u3044(\u4e00\u89a7\u306e \u2610 \u3068\u540c\u3058\u8fd4\u4e8b)', true);
- ok(/const _cc = \(txt\.indexOf\('\\u23f0'\) >= 0\)/.test(S)&&/_cc\.done \|\| _cc\.off/.test(S),
-    '\u2605\u2605\u2605\u6a59\u306e\u7bc4\u56f2\u304b\u3089 \u23f8 \u3092\u629c\u304f(v4.1.19\u306e\u300c\u5916\u5074\u3092\u5272\u308b\u300d\u3092\u518d\u3073)', true);
+ ok(/const _cut = \[\];/.test(S)&&/if \(_cc\.cycle && _cc\.cycle\.length\) \{ const a = meosClockArrowAt/.test(S),
+    '\u2605\u2605\u2605\u6a59\u306e\u7bc4\u56f2\u304b\u3089 \u2713/\u23f8/\u8f2a\u306e\u5370 \u3092\u629c\u304f(v4.1.19\u306e\u300c\u5916\u5074\u3092\u5272\u308b\u300d)', true);
  ok(/clocks: meosClockList\(12\)/.test(S), '  \u4e00\u89a7\u306e\u7a93\u3092\u5e83\u3052\u308b(CSS \u304c\u9ad8\u3055\u3092\u6b62\u3081\u3066\u5dfb\u304f)', true);
  // 休んでいる物は、鳴り終わった物より先に出る(押し出されない)
  X._meosClockHistory.length=0;
@@ -534,7 +535,7 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
  ok(/\(spec\.lock \? '\\ud83d\\udd10' : ''\)/.test(S), '\u2605\u66f8\u304f\u306e\u306f\u639b\u304b\u3063\u3066\u3044\u308b\u6642\u3060\u3051(\ud83d\udd13 \u306f\u5b57\u306b\u3057\u306a\u3044)', true);
  ok(/if \(!c\.done && !c\.lock\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u306a\u3044\u6642\u306e \ud83d\udd13 \u306f**\u63cf\u304f\u3060\u3051**(\u898b\u305b\u304b\u3051\u306e\u8868\u793a)', true);
- ok(/b\.textContent=clkDir\?'\\u2611 \\u21bb stopwatch':'\\u2610 \\u21ba countdown'/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
+ ok(/clkBox\(b,clkDir,clkDir\?'\\u21bb stopwatch':'\\u21ba countdown'\)/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
  ok(/clkDir=false;clkRep=false;/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc\u30fb\u7e70\u8fd4\u3057\u7121\u3057(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
  ok(/clkLock=\(ev\.target\.id==='clk-lock'\)/.test(S), '\u2605\u660e\u308b\u3044\u65b9\u3092\u62bc\u3059= \ud83d\udd10\u3067\u639b\u304b\u308a\u3001\u80a9\u306e\ud83d\udd13\u3067\u5916\u308c\u308b', true);
  ok(!/data-m=/.test(S), '  \u5206\u306e\u30d7\u30ea\u30bb\u30c3\u30c8(10 25 50 90)\u306f\u7e70\u8fd4\u3057\u306e\u7bb1\u3078\u5165\u308c\u66ff\u308f\u3063\u305f', true);
@@ -549,7 +550,7 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
 console.log('\u325f Repeat\u306e\u2610 / \u5411\u304d\u306e\u8272 / \u9320\u306e\u660e\u6697 / \u9320\u306e\u5916\u3057\u65b9');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/id="clk-rep"/.test(S)&&/b\.textContent=clkRep\?'\\u2611 Repeat':'\\u2610 Repeat'/.test(S),
+ ok(/id="clk-rep"/.test(S)&&/clkBox\(b,clkRep,'Repeat'\)/.test(S),
     '\u2605\u2605\u2605\u2610 Repeat that**\u7e70\u8fd4\u3057\u7121\u3057**\u306e\u59ff(\u5916\u3059\u53e3\u304c\u9762\u306b\u51fa\u305f)', true);
  ok(/cycle: _rep \? meosParseCycleInput\(message\.cycle\) : \[\]/.test(S)&&/hasCycle: true/.test(S),
     '\u2605\u2605\u2610 \u306e\u307e\u307e Set \u3059\u308c\u3070**\u7e70\u8fd4\u3057\u304c\u5916\u308c\u308b**(\u7a7a\u6b04=\u89e6\u3089\u306a\u3044\u3001\u306f\u7121\u304f\u306a\u3063\u305f)', true);
@@ -569,6 +570,44 @@ console.log('\u325f Repeat\u306e\u2610 / \u5411\u304d\u306e\u8272 / \u9320\u306e
  ok(/Option-click to take the lock off/.test(S), '\u2605tip that\u305d\u306e\u5834\u3067\u5916\u3057\u65b9\u3092\u8a00\u3046(\u63a2\u3055\u305b\u306a\u3044)', true);
  ok(/type === 'clockUnlock'/.test(S)&&/lock: false, cycle: hit\.cycle/.test(S),
     '  \u5916\u3059\u306e\u306f \ud83d\udd10 \u4e00\u6587\u5b57\u3060\u3051(\u6642\u523b\u3082\u8f2a\u3082\u4f11\u307f\u3082\u305d\u306e\u307e\u307e)', true);
+}
+
+// v4.1.66(俊克 CN=v4.1.65_0614)
+//   問題1「貴方の説明の中に書いたものが、ロックされた予定として出てしまった」= v4.1.39の穴が再び
+//   改良1「☐ countdown の時に角丸四角で囲われないのが分かりにくい」
+//   改良2「チェックボックスの□が小さ過ぎるので約1.4倍に」
+//   改良3「私が本当に色を付けたかったのは、UFC内の繰返し文字の↻と↺なんだよ」
+console.log('\u3260 \u56f2\u3044\u306e\u4e2d\u306f\u6587\u5b57 / \u672c\u6587that\u8a00\u308f\u306a\u304f\u306a\u3063\u305f\u7269\u306f\u843d\u3068\u3059 / \u8f2a\u306e\u5370\u306e\u8272');
+{
+ const CLK='<!-- Mew!UFC \u23f0\ud83d\udd10 2099-01-01 09:00 \u21bb10m/1m -->';
+ const mkDoc=(L,uri)=>({uri:{toString:()=>uri,fsPath:'/f.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/f.md',isClosed:false,version:1});
+ const M=['# t','<!-- {* \u25bcmCN=F_1 // c *} -->','x','<!-- {* \u25b2mCN=F_1 // c *} -->'];
+ const bare=mkDoc(M.concat([CLK]),'file:///bare.md');
+ const fenced=mkDoc(M.concat(['```',CLK,'```']),'file:///fenced.md');
+ const nested=mkDoc(M.concat(['```','~~~',CLK,'```']),'file:///nested.md');
+ ok(X.meosClockFcScan(bare).length===1, '  \u56f2\u3044\u304c\u7121\u3051\u308c\u3070\u666e\u901a\u306b\u62fe\u3046', X.meosClockFcScan(bare).length);
+ ok(X.meosClockFcScan(fenced).length===0, '\u2605\u2605\u2605``` \u306e\u4e2d\u306e\u898b\u672c\u306f**\u4e88\u5b9a\u306b\u306a\u3089\u306a\u3044**', X.meosClockFcScan(fenced).length);
+ ok(X.meosClockFcScan(nested).length===0, '\u2605\u2605\u2605``` \u306e\u4e2d\u306e ~~~ \u306f\u305f\u3060\u306e\u6587\u5b57= \u6570\u3048\u306a\u3044(\u5411\u304d\u304cが\u88cf\u8fd4\u3089\u306a\u3044)', X.meosClockFcScan(nested).length);
+ // 一度掛かった物も、本文that言わなくなれば落ちる
+ const lk='file:///fenced.md F_1';
+ X._meosPseudoScopes.set(lk,{uri:'file:///fenced.md',key:'F_1',name:'F_1',fc:true,hold:false,lock:false,step:0});
+ X._meosPseudoUntil.set(lk, Date.now()+3600e3);
+ X.meosArmClockFcFor(fenced);
+ ok(!X._meosPseudoUntil.has(lk)&&!X._meosPseudoScopes.has(lk),
+    '\u2605\u2605\u2605\u8cab\u3063\u3066\u3044\u305f\u7269\u3082\u3001\u672c\u6587that\u8a00\u308f\u306a\u304f\u306a\u308c\u3070\u843d\u3061\u308b(\u30be\u30f3\u30d3\u306e\u6839\u3092\u65ad\u3064)', [...X._meosPseudoUntil.keys()]);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/if \(_ch === fence\.ch && _len >= fence\.len\)/.test(S), '\u2605\u5370\u306e\u7a2e\u985e\u3068\u9577\u3055\u3067\u5bfe\u3092\u5408\u308f\u305b\u308b(CommonMark\u306e\u898f\u5247)', true);
+ ok(/if \(!meosClockLineIsLive\(doc, i\)\) continue;/.test(S), '\u2605\u56f2\u3044\u306e\u4e2d\u306e\u884c\u306b\u306f\u5370\u3082\u51fa\u3055\u306a\u3044(\u63cf\u304f\u5074\u3082\u540c\u30581\u3064\u304b\u3089)', true);
+ // 改良3: 輪の印の色
+ ok(/MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd'/.test(S),
+    '\u2605\u2605\u2605UFC\u306e \u21ba \u306f\u7dd1\u30fb\u21bb \u306f\u6c34\u8272(\u8272\u3092\u4ed8\u3051\u305f\u304b\u3063\u305f\u306e\u306f\u3053\u3053)', true);
+ ok(/\(c\.up \? dirUp : dirDown\)\.push/.test(S), '  \u5411\u304d\u3067\u5857\u308a\u5206\u3051\u308b', true);
+ // 改良1/2
+ ok(/\.clk-dir,\.clk-rep\{[^}]*border:1px solid rgba\(224,128,58,\.55\)/.test(S),
+    '\u2605\u62bc\u3057\u3066\u3044\u306a\u3044\u6642\u3082\u89d2\u4e38\u306e\u7bb1that\u898b\u3048\u308b(\u7bb1\u306f\u300c\u62bc\u305b\u308b\u300d\u3092\u8a00\u3046)', true);
+ ok(/\.clk-ck\{font-size:18px/.test(S), '\u2605\u2610 \u306f 13px \u00d7 1.4 \u2248 18px', true);
+ ok(/function clkBox\(b,on,label\)/.test(S), '  \u7bb1\u3068\u5b57\u3092\u5225\u306e\u5b50\u306b\u3059\u308b(\u5927\u304d\u3055\u3092\u5225\u3005\u306b\u6c7a\u3081\u3089\u308c\u308b)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
