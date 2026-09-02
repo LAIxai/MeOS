@@ -10250,6 +10250,12 @@ async function meosGoBackFromAlarm() {
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosTimerLineDeco = null;
 let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で浮かせる
+// ★★★v4.1.61(俊克 改良1「UFCでの一時停止表示⏸の文字色を白色にしよう。他が橙色なので、
+//   そこが目立つようにね。ただし、その膜を離れた時は、⏸を赤文字にする」):
+//   ★★★**休みは、そこに居る間は知らせで、離れた後は警告**= 自分で休ませた直後は覚えている(白=ただ見える)が、
+//     離れてしまえば**止まっていることその物を忘れる**(赤=目が拾う)。
+//   ★✓(済み)と同じ作法= 膜の中か外かで塗り分ける・`!important` で橙のFC行に勝つ。
+let meosClockPauseInDeco = null, meosClockPauseOutDeco = null;
 // ★★★v4.1.16(俊克「開始膜に残時間が表示されるようになったよ。膜を閉じても見えるけど、私が言ったことと
 //   違うよね」): ★★★**時計の顔は ⏰ 行に立つ**。v4.1.15で開始膜へ移したのは、⏰行を畳みの中に入れた
 //   からで、その前提の方を直した(v4.1.16=⏰行は畳まない物)。so顔は俊克の指したとおり ⏰ 行へ戻る。
@@ -10260,7 +10266,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [];
+    const items = [], dones = [], pausesIn = [], pausesOut = [];
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
     for (const [k, until] of _meosPseudoUntil) {
@@ -10312,6 +10318,15 @@ function meosApplyTimerLineDecorations(editor) {
             dones.push(new vscode.Range(i, at, i, at + 1));
             continue;
           }
+          // v4.1.61: ⏸(休み)= 掛かっていないso byId には居ない。印だけは出す。
+          if (c.off) {
+            const at = txt.indexOf('\u23f8');
+            if (at < 0 || !owner) continue;
+            const len = (txt.charCodeAt(at + 1) === 0xfe0f) ? 2 : 1;   // 絵文字の尾も一緒に塗る
+            const inHere = (cur >= owner.start && cur <= meosBlockEndForCarry(doc, owner));
+            (inHere ? pausesIn : pausesOut).push(new vscode.Range(i, at, i, at + len));
+            continue;
+          }
           const until = byId.get(owner ? owner.id : '');
           if (until == null) continue;
           // ★v4.1.20(俊克 改良2「コメントの外に残時間を表示する必要はないよね。コメント内部に表示すればいい」):
@@ -10336,8 +10351,14 @@ function meosApplyTimerLineDecorations(editor) {
         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
       });
     }
+    if (pausesIn.length && !meosClockPauseInDeco) meosClockPauseInDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: #ffffff !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (pausesOut.length && !meosClockPauseOutDeco) meosClockPauseOutDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: #ff4d4d !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosTimerLineDeco, items);
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
+    if (meosClockPauseInDeco) editor.setDecorations(meosClockPauseInDeco, pausesIn);
+    if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
   } catch (_) { }
 }
 function meosTickTimerLines() {
@@ -23156,7 +23177,7 @@ vscode.postMessage({type:'warnGoto',line:((warnAt%2)===0?w.a:w.b)});});
    ★クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道so、
      3回押せば必ず元へ戻る= どこに居ても出口が見えている。 */
 const rawToggle=document.getElementById('raw-toggle');
-var viewMode='normal',vmUntil=0,vmNextUntil=0,vmStopUndo=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[],vmNextUp=false,vmNextStep=0;/* v4.1.60: \u21bb=経過 *//* v4.1.37: 面の数字=次に鳴る物 */
+var viewMode='normal',vmUntil=0,vmNextUntil=0,vmStopUndo=0,vmTick=null,vmScope='',vmSig='',vmOwn=true,vmRing=false,vmClocks=[],vmNextUp=false,vmNextStep=0,vmAlt=false;/* v4.1.61: Optを押している間 *//* v4.1.60: \u21bb=経過 *//* v4.1.37: 面の数字=次に鳴る物 */
 var VM_ORDER=['normal','raw','pseudo'];
 var VM_FACE={normal:'👁🥩',raw:'Raw🥩',pseudo:'Pseudo👁'};
 var VM_NAME={normal:'Normal view 👁🥩',raw:'Raw view Raw🥩',pseudo:'Pseudo-WYSIWYG Pseudo👁'};
@@ -23229,7 +23250,14 @@ var _near=(_nl>0&&_nl<=5*60000),_imm=(_nl>0&&_nl<=60000);
    ★★→ **残り1分を切ったら、鳴っていなくても出す**。そして押したら**この回を本当に終わらせる**。 */
 /* v4.1.59: 止めた直後の1分は「Undo」= 押し間違いthat取り返せる。 */
 var _undoLeft=vmStopUndo?Math.max(0,vmStopUndo-Date.now()):0;
-var _stopMode=(vmRing||(_nl>0&&_nl<=60000)||_undoLeft>0);window.__clkStopMode=_stopMode;
+/* ★★★v4.1.61(俊克 改良2「Stop表示の時に、リストを表示できないので、その時は、Optを押すと、
+   Stop表示を止めて、リストを表示できるようにする。リストを表示した後に、Optキーから手を離せば、
+   Stop表示に戻す。**これは実際に使ってみないと分らなかった**んだよね」):
+   ★★★**1つのボタンが2つの役を持つ時、役を選ぶ口が要る**= Stop が出ている間、一覧への道が塵々塗り潰されていた。
+     最も一覧を見たいのは、まさに鳴る寸前(他に何が控えているか)なのso、ここを塞いではいけない。
+   ★Opt は家の作法= 見方ボタンも書式ボタンも「もう一つの意味」はOpt。→ [[feedback_copy_the_house_style_first]]
+   ★押している間だけ= 離せば戻るのso、覚えを作らない(モードを増やさない)。 */
+var _stopMode=(!vmAlt)&&(vmRing||(_nl>0&&_nl<=60000)||_undoLeft>0);window.__clkStopMode=_stopMode;
 if(_rn){if(_stopMode){_rn.textContent='';_rn.classList.add('two');
  var _s1=document.createElement('span');_s1.textContent=(_undoLeft>0)?'Undo':'Stop';
  var _s2=document.createElement('span');_s2.textContent=(_undoLeft>0)?vmMmSs(_undoLeft):((_nl>0)?vmMmSs(_fv):'');
@@ -23268,12 +23296,21 @@ if(vmTick){clearTimeout(vmTick);vmTick=null;}
 if(_nl>0){var _d=(((vmNextUntil-Date.now())%1000)+1000)%1000+8;
  vmTick=setTimeout(function(){vmTick=null;window.__renderRaw();},_d);}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
+/* v4.1.61: Opt の上げ下げを見る。★鍵盤の事件は**この面に焦点が来ている時だけ**届くso、
+   マウスの動き(altKey を連れて来る)も見る= 本文を書きながら Opt を押してボタンへ手を伸ばしても変わる。 */
+function vmSetAlt(a){a=!!a;if(a===vmAlt)return;vmAlt=a;try{if(window.__renderRaw)window.__renderRaw();}catch(e){}}
+document.addEventListener('keydown',function(e){vmSetAlt(e.altKey);},true);
+document.addEventListener('keyup',function(e){vmSetAlt(e.altKey);},true);
+document.addEventListener('mousemove',function(e){vmSetAlt(e.altKey);},true);
+window.addEventListener('blur',function(){vmSetAlt(false);});
 var rawTimerBtn=document.getElementById('raw-timer');
 /* ★★v4.1.0(俊克「⏰ボタンを押した時に…リストにして」): ⏰thatパネルを開く= **Me Dockの中で完結する**
    (VS Codeの選択パネルへ出ない)。鳴っている時だけは「止める駒」so、そちらthat先。 */
 if(rawTimerBtn)rawTimerBtn.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();
 if(typeof hideTocTip==='function')hideTocTip();
-if(vmRing||window.__clkStopMode){vscode.postMessage({type:'clockStop'});return;}   /* v4.1.58: 出している間は、押せば止まる */
+/* v4.1.61: Opt を添えて押せば、鳴っていても一覧へ。最後の拠り所は**そのクリック自身の altKey**=
+   見た目の書き換えが間に合わなくても、押した結果は必ず人の指と合う。 */
+if(!(ev&&ev.altKey)&&(vmRing||window.__clkStopMode)){vscode.postMessage({type:'clockStop'});return;}   /* v4.1.58: 出している間は、押せば止まる */
 if(window.__clkOpen)window.__clkOpen('hist');});
 /* ★★v4.0.462(俊克): ⏰の▾= 上に年月日、下に時分。どちらも**スクロールの列 + 手入力の箱**。
    ★列と箱は**同じ1つの値**を見る= 列を選べば箱that書き変わり、箱に打てば列that合う(2つの真実を作らない)。
@@ -31546,7 +31583,32 @@ function activate(context) {
     return edits;
   };
   const __headDoneResaving = new Set(); // v0.9.99955: 再保存中のuri(再入=Octopush二重発火/無限ループ防止)
+  // ★★★v4.1.61(俊克 バグ1「Cmd+Sで保存した時、**内容が変わらないのに**、Me Dockの更新日が
+  //   変化するのは駄目だね」):
+  //   ★★★**真因= Cmd+S は汚れていなくても書く**(VS Code の手動保存は force)。
+  //     同じ字を書き直すだけなのに、ディスクの mtime は進むso、UD だけが動いていた。
+  //   ★★★**UD が言うべきは「いつ書いたか」ではなく「いつ変わったか」**= 変わっていない保存で動く日付は、
+  //     見る人に嘘をつく(「ここから先は直したはず」と読めなくなる)。
+  //   ★★判定は**汚れているかどうか1つ**= 汚れていなければ中身はディスクと同じと確定するso、
+  //     中身を比べ直す(=140k行を毎回読む)必要がない。→ [[project_meos_freeze_pattern]]
+  //   ★戻すのは**日付だけ**= 保存その物は普通にやらせる(人の Cmd+S を握り潰さない)。
+  const __cleanSaveStat = new Map();   // uri -> 保存前の stat(汚れていなかった時だけ)
+  context.subscriptions.push(vscode.workspace.onWillSaveTextDocument((e) => {
+    try {
+      const d = e && e.document;
+      if (!d || !d.uri || d.uri.scheme !== 'file') return;
+      const k = d.uri.toString();
+      if (d.isDirty) { __cleanSaveStat.delete(k); return; }
+      __cleanSaveStat.set(k, require('fs').statSync(d.uri.fsPath));
+    } catch (_) { }
+  }));
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    // v4.1.61: 変わっていない保存なら、更新日を元へ戻す(UD を読む前に、ここで)。
+    try {
+      const _k0 = (doc && doc.uri) ? doc.uri.toString() : '';
+      const _st = _k0 ? __cleanSaveStat.get(_k0) : null;
+      if (_st) { __cleanSaveStat.delete(_k0); require('fs').utimesSync(doc.uri.fsPath, _st.atime, _st.mtime); }
+    } catch (_) { }
     // ★v4.1.12: 保存した瞬間に、本文に書かれた ⏰ を拾う= **書いて Cmd+S すれば仕掛かる**。
     //   (開いた時だけだと、書き足しても開き直すまで動かない=「書いたのに何も起きない」になる)
     try { meosArmClockFcFor(doc); } catch (_) { }

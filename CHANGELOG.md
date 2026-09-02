@@ -28,6 +28,22 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.61 (2026-09-02)
+- **A resting clock's ⏸ is white while you are inside its membrane, and red once you leave.** Everything else
+  on the line is orange, so the pause had nothing to distinguish it. White is enough while you are standing
+  there — you have only just set it down. Red is for afterwards, when the thing you are apt to forget is that
+  it is stopped at all.
+- **Holding ⌥ Option puts `Stop` aside so the list can be opened.** The moment you most want to see what else
+  is queued is the minute before a bell, which is exactly when the button had turned into `Stop` and the way
+  in was painted over. Option stands the button down while it is held and gives it back the moment it is
+  released — nothing is remembered, so there is no new mode. The click itself reads Option directly, so the
+  press always matches the finger even if the redraw has not caught up.
+- **A save that changes nothing no longer moves the update date.** Cmd+S writes the file whether or not it is
+  dirty, and the date shown in Me Dock came from the file's timestamp, so pressing save twice moved it with
+  nothing behind it. What that date is for is *when the content last changed*, so when the document is not
+  dirty — which settles the question outright, with nothing to compare — the old timestamp is put back after
+  the save.
+
 ### v4.1.60 (2026-09-02)
 - **`↻` is a stopwatch now — the same clock, read the other way round.** `↻15` counts *up* from zero for
   fifteen minutes, goes back to zero, and measures again; `↺15` counts *down* to the same instant. The arrow

@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleRotate,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -407,7 +407,7 @@ console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
  ok(/_s1\.textContent=\(_undoLeft>0\)\?'Undo':'Stop'/.test(SRC14), '\u2605\u2605\u2605止めた直後の1分は Undo(押し間違いthat取り返せる)', true);
  ok(/if \(await meosClockUndoStop\(\)\)/.test(SRC14), '\u2605\u2605もう一度押せば戻る= Stop \u21c4 Undo that行き来する', true);
  ok(/until: Date\.now\(\) \+ 60000/.test(SRC14), '  覚えは1分で消える(遠い過去の取り消しは抱え込まない)', true);
- ok(/if\(vmRing\|\|window\.__clkStopMode\)/.test(SRC14), '\u2605\u2605出している間は、押せば止まる(表示that約束を守る)', true);
+ ok(/if\(!\(ev&&ev\.altKey\)&&\(vmRing\|\|window\.__clkStopMode\)\)/.test(SRC14), '\u2605\u2605出している間は、押せば止まる(Opt を添えた時だけ一覧へ)', true);
  const _cs=SRC14.slice(SRC14.indexOf("message.type === 'clockStop'"), SRC14.indexOf("message.type === 'clockStop'")+1600);
  ok(/meosEndPseudoTimer\(best\.k\)/.test(_cs), '\u2605\u2605\u2605Stopは音を黙らせるだけでなく、この回を終わらせる', true);
  ok(/<= 90000/.test(_cs), '  遠い時計を巻き込まない(90秒以内だけ)', true);
@@ -436,6 +436,34 @@ console.log('\u325a \u21bb(\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1)= \u
  ok(/nextUp: \(\(\) => \{ const s = meosNextClockScope\(\)/.test(S), '\u2605\u9762\u306e\u6570\u5b57\u3068\u5411\u304d\u306f\u540c\u3058\u300c\u6b21\u306b\u9cf4\u308b\u7269\u300d\u304b\u3089\u5f15\u304f', true);
  ok(/var _fv=\(vmNextUp&&vmNextStep>0\)/.test(S), '\u2605\u9762\u3082\u540c\u3058\u5f0f\u3067\u88cf\u8fd4\u3059(node\u3068\u4e8c\u91cd\u306b\u6301\u305f\u306a\u3044)', true);
  ok(!/MEOS_STOPWATCH_MAX|MEOS_CYCLE_MAX/.test(S), '\u2605\u2605\u7d42\u7aef\u3092\u7f6e\u304b\u306a\u3044= \u6b62\u3081\u308b\u307e\u3067\u7d9a\u304f(\u8155\u6642\u8a08\u306e\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1\u306f\u6b62\u307e\u3089\u306a\u3044)', true);
+}
+
+// v4.1.61(俊克 改良1「⏸の文字色を白に。ただし、その膜を離れた時は、⏸を赤文字にする」
+//   改良2「Stop表示の時に、リストを表示できないので、Optを押すとStop表示を止めてリストを表示できる」
+//   バグ1「Cmd+Sで保存した時、内容が変わらないのに、Me Dockの更新日が変化するのは駄目だね」)
+console.log('\u325b \u23f8\u306e\u8272 / Opt \u3067\u4e00\u89a7 / \u5909\u308f\u3089\u306a\u3044\u4fdd\u5b58\u306f\u65e5\u4ed8\u3092\u52d5\u304b\u3055\u306a\u3044');
+{
+ const L=['# t','<!-- {* \u25bcmCN=P_1 // c *} -->','x','<!-- {* \u25b2mCN=P_1 // c *} -->',
+          '<!-- Mew!UFC \u23f0\u23f8 2099-01-01 09:30 \u21ba05 -->'];
+ const d={uri:{toString:()=>'file:///p.md',fsPath:'/p.md',scheme:'file'},languageId:'markdown',lineCount:L.length,
+  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/p.md',isClosed:false,version:1};
+ const paint=(curLine)=>{const got=[];
+  const e={document:d,selection:{active:new stub.Position(curLine,0)},
+   visibleRanges:[new stub.Range(0,0,L.length-1,0)],setDecorations:(t,r)=>{if(r&&r.length)got.push([t&&t.__opts&&t.__opts.textDecoration||'',r.length]);}};
+  X.meosApplyTimerLineDecorations(e); return got;};
+ const inHere=paint(2), outside=paint(0);
+ const col=(g)=>g.map(x=>/#ffffff/.test(x[0])?'white':(/#ff4d4d/.test(x[0])?'red':'other')).join(',');
+ ok(col(inHere)==='white', '\u2605\u2605\u2605\u819c\u306e\u4e2d\u306b\u5c45\u308b\u9593\u306e \u23f8 \u306f\u767d(\u6a59\u306e\u4e2d\u3067\u76ee\u7acb\u3064)', col(inHere));
+ ok(col(outside)==='red', '\u2605\u2605\u2605\u819c\u3092\u96e2\u308c\u305f\u3089 \u23f8 \u306f\u8d64(\u6b62\u307e\u3063\u3066\u3044\u308b\u3053\u3068\u3092\u5fd8\u308c\u3055\u305b\u306a\u3044)', col(outside));
+ ok(inHere.length===1&&outside.length===1, '  \u5857\u308b\u306e\u306f1\u6587\u5b57\u3060\u3051(\u884c\u5168\u4f53\u306f\u6a59\u306e\u307e\u307e)', [inHere.length,outside.length]);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/var _stopMode=\(!vmAlt\)&&/.test(S), '\u2605\u2605Opt \u3092\u62bc\u3057\u3066\u3044\u308b\u9593\u306f Stop \u3092\u9000\u3051\u308b', true);
+ ok(/document\.addEventListener\('mousemove',function\(e\)\{vmSetAlt/.test(S), '\u2605\u9375\u76e4\u306e\u7126\u70b9\u304c\u7121\u3044\u6642\u3067\u3082\u5206\u304b\u308b(\u30de\u30a6\u30b9\u304c altKey \u3092\u9023\u308c\u3066\u6765\u308b)', true);
+ ok(/window\.addEventListener\('blur',function\(\)\{vmSetAlt\(false\)/.test(S), '  \u9762\u3092\u96e2\u308c\u305f\u3089\u5fd8\u308c\u308b(\u62bc\u3057\u3063\u653e\u3057\u306b\u3057\u306a\u3044)', true);
+ ok(/onWillSaveTextDocument\(\(e\) => \{/.test(S), '\u2605\u2605\u2605\u4fdd\u5b58\u306e**\u524d**\u306b\u3001\u6c5a\u308c\u3066\u3044\u306a\u3044\u304b\u3092\u898b\u308b', true);
+ ok(/if \(d\.isDirty\) \{ __cleanSaveStat\.delete\(k\); return; \}/.test(S), '\u2605\u2605\u5224\u5b9a\u306f\u6c5a\u308c\u3066\u3044\u308b\u304b1\u3064(140k\u884c\u3092\u6bd4\u3079\u76f4\u3055\u306a\u3044)', true);
+ ok(/utimesSync\(doc\.uri\.fsPath, _st\.atime, _st\.mtime\)/.test(S), '\u2605\u2605\u2605\u5909\u308f\u3089\u306a\u3044\u4fdd\u5b58\u306a\u3089\u3001\u66f4\u65b0\u65e5\u3092\u5143\u3078\u623b\u3059', true);
+ ok(S.indexOf('utimesSync')<S.indexOf('postDockFileUD(_e, true); }, 60)'), '\u2605UD \u3092\u8aad\u3080\u524d\u306b\u623b\u3059(\u9806\u756a\u304c\u9006\u306a\u3089\u53e4\u3044\u65e5\u4ed8\u304c\u898b\u3048\u306a\u3044)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

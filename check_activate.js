@@ -36,6 +36,7 @@ const stub = {
     getConfiguration: () => ({ get: (k, d) => d, update() { return Promise.resolve(); }, has: () => false }),
     textDocuments: [], workspaceFolders: [], fs: { readFile: () => Promise.resolve(new Uint8Array()) },
     onDidChangeTextDocument: () => D(), onDidSaveTextDocument: () => D(), onDidOpenTextDocument: () => D(),
+    onWillSaveTextDocument: () => D(),   // v4.1.61: 変わっていない保存で更新日を動かさない口
     onDidCloseTextDocument: () => D(), onDidChangeConfiguration: () => D(), onDidChangeWorkspaceFolders: () => D(),
     openTextDocument: () => Promise.resolve({}), applyEdit: () => Promise.resolve(true), registerFileSystemProvider: () => D(),
     createFileSystemWatcher: () => ({ onDidChange: () => D(), onDidCreate: () => D(), onDidDelete: () => D(), dispose() { } }),
