@@ -7384,8 +7384,18 @@ function applyPrettyLabels(editor) {
             range: new vscode.Range(line, fcIndent, line, fcIndent),
             renderOptions: { before: { contentText: meosMembraneGlyph('open', true, false), color: fcColor, fontWeight: '700', margin: '0 4px 0 0' } }
           });
+          // ★★v4.1.103(俊克 9/4 am08:06 バグ1「同じUFCが2つ同時に重複して表示されているでしょ。
+          //   この点だけでも矛盾しているのは明らかだよね」):
+          //   ★★**写してよいのは、畳みが隠した行だけ**。UFC(畳まない指定行)は畳んでも本物that見えている
+          //     ので、写すと**同じ⏰が2つ**並ぶ(俊克の見た形)。
+          //   ★真因＝ 写す終わりを**自分で数えていた**(`n < 4` ＝ 指定行thatが続く限り4本まで)。
+          //     畳みの終わりは `meosPairBlockEnd` that決めているのに、写しはそれを見ずに別の物差しで数えていた。
+          //   ★直し＝ **終わりを決める物差しを1つにする**＝ 畳みと同じ `meosPairBlockEnd` まで。
+          //     UFCはそこで止まる(v4.1.16でそう決めた)ので、写しに入らない。
+          //     → [[feedback_one_source_for_mark_count_action]]
           let fcEcho = '';
-          for (let k = fp.end + 1, n = 0; k < _allLines.length && n < 4; k++, n++) {
+          const _echoEnd = meosPairBlockEnd(editor.document, fp);
+          for (let k = fp.end + 1; k <= _echoEnd && k < _allLines.length; k++) {
             const ft = _allLines[k];
             if (!meosIsSpecLine(ft)) break;
             fcEcho += (fcEcho ? '   ' : '') + ft.trim();

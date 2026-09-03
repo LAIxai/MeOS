@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.103 (2026-09-04)
+- **The echo stops where the fold stops** — a folded membrane echoes its FC line at the end of the row, but it counted its own way (up to 4 spec lines) instead of asking the fold. A UFC (⏰) line is never folded, so it stayed visible *and* got echoed: the same alarm twice. The echo now ends at `meosPairBlockEnd`, the one ruler that decides what the fold hides.
+
 ### v4.1.102 (2026-09-03)
 - **The ↩ goes 1px down** — 6, then 3, then 0, and one pixel is what was left.
 
