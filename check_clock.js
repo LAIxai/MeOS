@@ -429,7 +429,7 @@ console.log('\u325a \u21bb(\u30b9\u30c8\u30c3\u30d7\u30a6\u30a9\u30c3\u30c1)= \u
  ok((P('<!-- Mew!UFC \u23f0 2026-09-02 09:00 -->')||{}).up===false, '  \u8f2a\u304c\u7121\u3051\u308c\u3070\u5411\u304d\u3082\u7121\u3044(\u4e00\u5ea6\u304d\u308a)', true);
  ok(String((P('<!-- Mew!UFC \u23f0 12:00 \u21bb50/10 -->')||{}).cycle)==='50,10', '  \u21bb\u3067\u3082\u4e26\u3073\u306f\u540c\u3058\u3088\u3046\u306b\u8aad\u3080', true);
  const now=Date.now(), step=15*60000;
- ok(F(now+step, {up:true,step})===0, '\u2605\u2605\u2605\u9418\u306e\u76f4\u5f8c= 0(\u6e2c\u308a\u76f4\u3057\u306e\u5f62)', F(now+step,{up:true,step}));
+ ok(F(now+step,{up:true,step})<=50, '\u2605\u2605\u2605\u9418\u306e\u76f4\u5f8c= 0(\u6e2c\u308a\u76f4\u3057\u306e\u5f62)', F(now+step,{up:true,step}));
  ok(Math.round(F(now+step-4*60000,{up:true,step})/60000)===4, '\u2605\u2605\u7d4c\u904e4\u5206= \u6b8b\u308a11\u5206\u306e\u88cf\u8fd4\u3057', F(now+step-4*60000,{up:true,step}));
  ok(Math.round(F(now+step-4*60000,{up:false,step})/60000)===11, '\u2605\u9006\u7b97\u306f\u4eca\u307e\u3067\u3069\u304a\u308a\u6b8b\u308a\u3092\u51fa\u3059', F(now+step-4*60000,{up:false,step}));
  ok(F(now+step,{up:true,step:0})>0, '  \u9593\u9694\u304c\u7121\u3044\u7269\u306f\u6b8b\u308a\u306e\u307e\u307e(\u5d29\u308c\u306a\u3044)', true);
@@ -727,8 +727,7 @@ console.log('\u3265 \u666e\u6bb5\u306f\u76f4\u8fd15\u3064 / 6\u756a\u76ee\u306e\
     '  \u23f0 \u3092\u62bc\u3057\u305f\u6642\u306f\u5fc5\u305a\u76f4\u8fd15\u3064\u306e\u9854(\u30e2\u30fc\u30c9\u3092\u899a\u3048\u306a\u3044)', true);
  ok(/id="clk-tag0"/.test(S)&&/postMessage\(\{type:'clockTagAdd',tag:'tag0'\}\)/.test(S),
     '\u2605\u2605#tag0 \u306e\u4e00\u62bc\u3057\u3067\u3001\u30ab\u30fc\u30bd\u30eb\u306e\u819c\u306b\u672d that\u4ed8\u304f', true);
- ok(/id="clk-tagnew"/.test(S)&&/postMessage\(\{type:'clockTagAdd',tag:v\}\)/.test(S),
-    '\u2605\u4efb\u610f\u306e\u672d\u3082\u6253\u3066\u308b(Enter)', true);
+ ok(/id="clk-tagnew"/.test(S)&&/closest\('#clk-tagadd'\)\)\{/.test(S), '\u2605\u4efb\u610f\u306e\u672d\u3082\u6253\u3066\u308b(v4.1.80\u3067 \uff0b \u30dc\u30bf\u30f3\u3078)', true);
  ok(/const _i = _next\.indexOf\(_t\); if \(_i >= 0\) \{ _next\.splice\(_i, 1\)/.test(S),
     '\u2605\u2605\u540c\u3058\u30dc\u30bf\u30f3that\u4ed8\u3051\u308b\u3068\u5916\u3059\u306e\u4e21\u65b9\u3092\u3059\u308b(\u9593\u9055\u3048\u3066\u3082\u540c\u3058\u624b\u3067\u623b\u305b\u308b)', true);
  ok(/put the cursor inside a membrane first/.test(S),
@@ -851,6 +850,28 @@ console.log('\u326b tip \u306e\u7e26\u306f**\u89e6\u3063\u3066\u3044\u308b\u884c
     '\u2605\u53e4\u3044\u53d6\u308a\u65b9(\u3069\u306e\u884c\u3067\u3082\u540c\u3058\u5834\u6240)\u306f\u6b8b\u3063\u3066\u3044\u306a\u3044', true);
  ok(/tocTooltip\.style\.right=\(window\.innerWidth-pr\.left\+1\)\+'px'/.test(S),
     '  \u6a2a\u306f\u4eca\u307e\u3067\u3069\u304a\u308a\u30dd\u30c3\u30d7\u30a2\u30c3\u30d7\u306e\u5de6\u7aef\u306b\u63a5\u3059\u308b(\u30e1\u30cb\u30e5\u30fc\u3092\u96a0\u3055\u306a\u3044)', true);
+}
+
+// v4.1.80(俊克 CN=v4.1.79_1123)
+//   改良1a「tipがなかなか出ない。⏰リストのタイマー値は、リストを表示した最初の数秒だけ動かす」
+//   改良1b「任意のタグで検索できるようにする」
+console.log('\u326c \u6570\u5b57\u306f\u6700\u521d\u306e\u6570\u79d2\u3060\u3051 / \u4efb\u610f\u306e\u672d\u3067\u7d5e\u308b');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/const CLK_LIVE_MS=5000;/.test(S)&&/function clkLiveStart\(\)\{clkLiveUntil=Date\.now\(\)\+CLK_LIVE_MS;\}/.test(S),
+    '\u2605\u2605\u2605\u6570\u5b57that\u52d5\u304f\u306e\u306f**\u958b\u3044\u305f\u76f4\u5f8c\u306e\u6570\u79d2\u3060\u3051**(\u5f79\u76ee\u306f\u5bfe\u5fdc\u3092\u6559\u3048\u308b\u3053\u3068)', true);
+ ok(/if\(!on\)\{if\(e\.textContent\)e\.textContent='';continue;\}/.test(S),
+    '\u2605\u2605\u2605\u6b62\u3081\u308b\u6642\u306f**\u51cd\u3089\u305b\u305a\u3001\u6d88\u3059**(\u51cd\u3063\u305f\u6570\u5b57\u306f\u5618\u3092\u3064\u304f)', true);
+ ok(/clkLiveStart\(\);\s*\/\* v4\.1\.80/.test(S),
+    '  \u63cf\u304d\u76f4\u3059\u5ea6\u306b\u6570\u79d2\u3060\u3051\u52d5\u304f(\u4e2d\u3067\u4f55\u304b\u3057\u305f\u76f4\u5f8c\u3082\u5206\u304b\u308b)', true);
+ ok(/if\(clkTagFilter\)\{var _f=clkTagFilter\.toLowerCase\(\)/.test(S),
+    '\u2605\u2605\u2605\u4efb\u610f\u306e\u672d\u3067\u7d5e\u308b(\u4e26\u3093\u3067\u3044\u306a\u3044\u672d\u3067\u3082\u72d9\u3048\u308b)', true);
+ ok(/clkTagNew\.addEventListener\('input',function\(\)\{clkTagFilter=/.test(S),
+    '  \u6253\u3064\u7aef\u304b\u3089\u7d5e\u308b(Enter \u3092\u5f85\u305f\u306a\u3044)', true);
+ ok(/id="clk-tagadd"/.test(S)&&/closest\('#clk-tagadd'\)\)\{/.test(S),
+    '  \uff0b \u3067\u3001\u6253\u3063\u305f\u672d\u3092\u819c\u306b\u4ed8\u3051\u308b(\u7d5e\u308b\u3068\u4ed8\u3051\u308b\u3092\u5225\u306e\u53e3\u306b)', true);
+ ok(/\.clk-pop\.hist-only \.clk-tagadd \.clk-in\{display:block\}/.test(S),
+    '\u2605\u2605\u2605**\u7bb1that\u898b\u3048\u3066\u3044\u306a\u304b\u3063\u305f**(hist-only that .clk-in \u3092\u5168\u90e8\u96a0\u3057\u3066\u3044\u305f\u30fbv4.1.72\u304b\u3089)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

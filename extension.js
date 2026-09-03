@@ -21902,6 +21902,11 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-door{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;border:1px dashed rgba(127,212,232,.5);color:#7fd4e8;font-size:10px;font-weight:700;cursor:pointer}
 .clk-door:hover{background:rgba(127,212,232,.14)}
 .clk-tagadd{display:flex;align-items:center;gap:4px;margin-top:3px}
+/* ★★★v4.1.80: **札の箱that見えていなかった**= 一覧の役(hist-only)は設定側の .clk-in を全部隠すso、
+   同じ着物を着ていたこの箱も一緒に消えていた(v4.1.72から)。俊克that「任意のタグを」と2度言ったのは、
+   作っていない物を頼んだのではなく、**作った物that見えていなかった**からだった。
+   ★→ この箱だけ例外にする(役で隠す規則は残したまま、名指しで戻す)。 */
+.clk-pop.hist-only .clk-tagadd .clk-in{display:block}
 .clk-tagadd .clk-in{flex:1;min-width:0;font-size:10px;padding:2px 5px}
 .clk-tag0{flex:none;font-size:10px;font-weight:800;line-height:1;padding:3px 7px;border:1px solid rgba(224,128,58,.85);border-radius:9px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap}
 .clk-tag0:hover{background:rgba(224,128,58,.34)}
@@ -22324,7 +22329,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 <div class="bm-pop clk-pop" id="clk-pop">
   <div class="clk-list" id="clk-list"></div>
   <div class="clk-tags" id="clk-tags"></div>
-  <div class="clk-tagadd" id="clk-tagadd" style="display:none"><input class="clk-in" id="clk-tagnew" placeholder="\u4efb\u610f\u306e\u30bf\u30b0" spellcheck="false" data-tip="Type any tag and press Enter \u2014 it goes into the membrane the cursor is in, in the comment after the //. Typing one it already has takes it off again."><button class="clk-tag0" id="clk-tag0" data-tip="#tag0 | One press puts this tag on the membrane the cursor is in \u2014 press again to take it off. The plainest way to start: mark a few membranes with it and they gather here.">#tag0</button></div>
+  <div class="clk-tagadd" id="clk-tagadd" style="display:none"><input class="clk-in" id="clk-tagnew" placeholder="\u30bf\u30b0\u3067\u7d5e\u308b" spellcheck="false" data-tip="Type to narrow this list by tag \u2014 any tag, not only the ones on the bar. Press \uff0b to put what you typed on the membrane the cursor is in (typing one it already has takes it off)."><button class="clk-tag0" id="clk-tagadd" data-tip="\uff0b | Put what is typed in the box on the membrane the cursor is in \u2014 press again to take it off.">\uff0b</button><button class="clk-tag0" id="clk-tag0" data-tip="#tag0 | One press puts this tag on the membrane the cursor is in \u2014 press again to take it off. The plainest way to start: mark a few membranes with it and they gather here.">#tag0</button></div>
   <div class="clk-warn" id="clk-warn"></div>
   <div class="clk-row"><span class="clk-lab">Origin</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
@@ -23745,7 +23750,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
-var clkTagSel='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -23860,12 +23865,26 @@ function clkRenderTags(){var bar=document.getElementById('clk-tags'),add=documen
 function clkLiveVal(c){var left=Math.max(0,(c.at||0)-Date.now());
  if(c.up&&c.step>0)return vmMmSs(Math.max(0,Math.min(c.step,c.step-left)));
  return vmMmSs(left);}
+/* ★★★v4.1.80(俊克「tipthatなかなか出ない時thatある。残タイマー表示の更新に喰われているのかな?
+   ⏰リストの左端に表示されるタイマー値は、**リストを表示した最初の数秒だけ動かす**。
+   それでタイマーボタンの値とどれthat対応するかは十分分る」):
+   ★★★**数字の役目は「対応を教える」ことだけ**= 教え終われば、動き続ける理由thatない。
+     残り時間を読む所は面(⏰ボタン)と閉じ膜の行so、一覧のそれは案内板だった。
+   ★★止める時は**凍らせず、消す**= 凍った数字は嘘をつく(俊克「Stopという表示that嘘を付いている」の教訓)。
+     消えれば名前に全幅that戻るso、一覧はむしろ読みやすくなる。
+   ★数え直しは**開き直した時と、中で何かした時**= 対応を知りたいのはその瞬間so、そこで数秒だけ動く。 */
+var clkLiveUntil=0;
+const CLK_LIVE_MS=5000;
+function clkLiveStart(){clkLiveUntil=Date.now()+CLK_LIVE_MS;}
 /* 毎秒、**中身だけ**書き替える= 行を組み直さないso、押そうとした物that動かない。 */
-function clkTickRows(){try{var ns=document.querySelectorAll('#clk-list .ci-live');
+function clkTickRows(){try{var on=(Date.now()<clkLiveUntil);
+ var ns=document.querySelectorAll('#clk-list .ci-live');
  for(var i=0;i<ns.length;i++){var e=ns[i];
+  if(!on){if(e.textContent)e.textContent='';continue;}
   e.textContent=clkLiveVal({at:+e.getAttribute('data-at'),step:+e.getAttribute('data-step'),up:e.getAttribute('data-up')==='1'});}}catch(e){}}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
+clkLiveStart();                                    /* v4.1.80: 描き直す度に、数秒だけ動く */
 clkRenderTags();
 if(!vmClocks||!vmClocks.length)return;
 /* ★★★v4.1.73: 部屋の中に並ぶのは**札の付いた膜**= ⏰の無い膜も出る(行って、そこで掛ければよい)。
@@ -23874,7 +23893,12 @@ var _src=clkTagMode?vmTagItems:vmClocks,_shown=0;
 if(clkTagMode&&!_src.length){var _em=document.createElement('div');_em.className='clk-door';
  _em.textContent='no tagged membrane in this file';el.appendChild(_em);}
 for(var i=0;i<_src.length;i++){var c=_src[i];
-if(clkTagMode){if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;}
+if(clkTagMode){if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;
+ /* ★v4.1.80(俊克「任意のタグで検索できるようにする」): 打った字で絞る= 並んでいない札でも狙える。
+    ★合わせるのは**札だけ**= ここは Tag&Go so、名前で探す道は別に在る(H-TOC/grep)。 */
+ if(clkTagFilter){var _f=clkTagFilter.toLowerCase(),_hit=false,_ts=c.tags||[];
+  for(var _q=0;_q<_ts.length;_q++)if(String(_ts[_q]).toLowerCase().indexOf(_f)>=0){_hit=true;break;}
+  if(!_hit)continue;}}
 else if(_shown>=5)break;
 _shown++;
 var row=document.createElement('div');row.className='clk-item'+(c.running?' live':'')+(c.next?' next':'')+(clkTagMode?' tagrow':'');/* v4.1.25: 次に鳴る1つ */
@@ -23950,14 +23974,18 @@ if(clkCaret&&clkPop){
   /* v4.1.68b: 断りの札を押したら、その場で下ろす(閉じない= 一覧はそのまま見ていられる)。 */
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-warn')){clkWarnOff();return;}
   /* v4.1.70: 札を押したら絞る。同じ札をもう一度押せば all に戻る(覚えを増やさない)。 */
-  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-door')){clkTagMode=true;clkTagSel='';
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-door')){clkTagMode=true;clkTagSel='';clkTagFilter='';
    vscode.postMessage({type:'clockTagList'});                     /* v4.1.73: 叩かれた時だけ探しに行く */
    clkWarnOff();clkRenderList();clkPlace();return;}
-  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tagback')){clkTagMode=false;clkTagSel='';
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tagback')){clkTagMode=false;clkTagSel='';clkTagFilter='';
+   try{var _tn=document.getElementById('clk-tagnew');if(_tn)_tn.value='';}catch(e){}
    clkWarnOff();clkRenderList();clkPlace();return;}
   if(ev.target&&ev.target.id==='clk-tagnew')return;                /* 箱は押しても閉じない */
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tag0')){
    vscode.postMessage({type:'clockTagAdd',tag:'tag0'});return;}
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-tagadd')){
+   var _nb=document.getElementById('clk-tagnew'),_nv=_nb?(_nb.value||'').trim():'';
+   if(_nv)vscode.postMessage({type:'clockTagAdd',tag:_nv});return;}
   var _tb=(ev.target&&ev.target.closest)?ev.target.closest('.clk-tag'):null;
   if(_tb&&_tb.hasAttribute('data-tag')){var _tv=_tb.getAttribute('data-tag')||'';clkTagSel=(clkTagSel===_tv)?'':_tv;
    clkWarnOff();clkRenderList();clkPlace();return;}
@@ -24007,7 +24035,7 @@ if(clkCaret&&clkPop){
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();return;}
   if(_id==='clk-dir'){if(!clkRep){clkRep=true;clkPaintRep();}clkDir=!clkDir;clkPaintDir();return;}
-  if(_id==='clk-cyc'||_id==='clk-tagin')return;                    /* 箱は押しても閉じない */
+  if(_id==='clk-cyc'||_id==='clk-tagin'||_id==='clk-tagnew')return;   /* 箱は押しても閉じない */
   if(_id==='clk-set'){clkFire();return;}
  });
  /* ★★v4.1.2: 合体行を押す→同じ場所に箱が出る→ Enter で掛ける / Esc でやめる。
@@ -24038,10 +24066,12 @@ if(clkCaret&&clkPop){
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  var clkTagNew=document.getElementById('clk-tagnew');
- if(clkTagNew)clkTagNew.addEventListener('keydown',function(e){
-  if(e.key==='Enter'){e.stopPropagation();var v=(clkTagNew.value||'').trim();
-   if(v){vscode.postMessage({type:'clockTagAdd',tag:v});clkTagNew.value='';}}
-  if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
+ if(clkTagNew){clkTagNew.addEventListener('input',function(){clkTagFilter=(clkTagNew.value||'').trim();
+   clkRenderList();clkPlace();});                              /* v4.1.80: 打つ端から絞る */
+  clkTagNew.addEventListener('keydown',function(e){
+   if(e.key==='Enter'){e.stopPropagation();}
+   if(e.key==='Escape'){e.stopPropagation();
+    if(clkTagFilter){clkTagNew.value='';clkTagFilter='';clkRenderList();clkPlace();}else closeClkPop();}});}
  var clkTagEl=document.getElementById('clk-tagin');
  if(clkTagEl)clkTagEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
@@ -24064,7 +24094,9 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  if(mode==='hist'){clkTagMode=false;clkTagSel='';clkRenderList();clkPlace();return;}   /* v4.1.72: 開く時は直近5つ */
+  if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
+   try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
+   clkRenderList();clkPlace();return;}   /* v4.1.72: 開く時は直近5つ */
   clkDateEmpty();                                             /* ★開いた時、日付は**空**(時刻は常に橙) */
   clkLock=false;clkPaintLock();                               /* ★錠は開く度に外れる= 掛けっぱなしの錠で人を閉じ込めない */
   clkDir=false;clkRep=false;                                  /* v4.1.64: 既定は逆算タイマー */

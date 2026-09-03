@@ -28,6 +28,18 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.80 (2026-09-03)
+- **The figures in the list run for a few seconds, then go.** Their job is to say which row the ⏰ button's
+  number belongs to; once that is said there is no reason to keep moving, and the constant repainting was
+  getting in the way of tooltips. They are **removed rather than frozen** — a frozen countdown would be a lie —
+  which also hands the width back to the name. Opening the list, or doing anything in it, starts the few
+  seconds again.
+- **Any tag can be typed to narrow the list**, not only the ones on the bar; it filters as you type. A separate
+  **＋** puts what you typed on the membrane the cursor is in, so narrowing and labelling are two buttons
+  rather than one with two meanings.
+- That box has in fact been invisible since v4.1.72: the list role hides every settings field, and the box was
+  wearing the same class. It is exempted now.
+
 ### v4.1.79 (2026-09-03)
 - **A tooltip in a popup list now appears beside the row you are pointing at.** It was never missing on the
   other rows — it was always drawn at the popup's top edge, which happens to be where the first row is, so
