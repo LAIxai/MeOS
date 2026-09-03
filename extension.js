@@ -10385,8 +10385,14 @@ function meosClockList(limit) {
     live.sort((a, b) => a.at - b.at);
     for (const r of live) push(r, true);
     // v4.1.62: 走っている物 → **休んでいる物(予定)** → 鳴り終わった物。予定は履歴に押し出されない。
-    for (const r of _meosClockHistory) if (r.off) push(r, false);
-    for (const r of _meosClockHistory) if (!r.off) push(r, false);
+    // ★★v4.1.91(俊克 バグ1「New .mdボタンで新規にファイルを作ったのに、⏰が初期化されない」):
+    //   ★★★**閉じた untitled は二度と開けない**so、そこへ掛けた時計は**行き先の無い覚え**になる。
+    //     New .md を繰り返すと、その残骸that5つの枠を埋め、新しいファイルが「初期化されない」ように見えていた。
+    //   ★一覧に並べるのは**行ける所だけ**= 行けない物を覚えていても、呼べない。
+    //   ★覚えは消さない(まだ開いている untitled は今までどおり出る)= 消すのは人の×だけ。
+    const _alive = (u) => { try { return !String(u).startsWith('untitled:') || vscode.workspace.textDocuments.some(d => d.uri.toString() === u); } catch (_) { return true; } };
+    for (const r of _meosClockHistory) if (r.off && _alive(r.uri)) push(r, false);
+    for (const r of _meosClockHistory) if (!r.off && _alive(r.uri)) push(r, false);
   } catch (_) { }
   // ★★v4.1.25(俊克「**次にタイムアップするものをハイライトする**こと」): 走っている物は近い順に並べてあるので、
   //   その先頭that「次に鳴る物」。1つだけ印を付ける= 目that最初に行く所を1箇所に決める。
@@ -23989,6 +23995,7 @@ function clkTickRows(){try{var on=(Date.now()<clkLiveUntil);
   /* v4.1.81: 面に出ている1つだけは、数秒を過ぎても動き続ける(それthat知りたい事so)。 */
   if(!on&&e.getAttribute('data-next')!=='1'){if(e.textContent)e.textContent='';continue;}
   e.textContent=clkLiveVal({at:+e.getAttribute('data-at'),step:+e.getAttribute('data-step'),up:e.getAttribute('data-up')==='1'});}}catch(e){}}
+function clkDoorLabel(){return '#  Tag & Go'+((vmTagItems&&vmTagItems.length)?('  \u00b7  '+vmTagItems.length):'');}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
 clkLiveStart();                                    /* v4.1.80: 描き直す度に、数秒だけ動く */
@@ -24075,7 +24082,11 @@ x.title=(c.running?'Stop and forget this one':'Forget this one')+' \u2014 MeOS t
 el.appendChild(row);}
 /* ★v4.1.72: **6番目の行thatが入口**= 5つの続きに立つso、目that自然にそこへ落ちる。 */
 if(!clkTagMode){var dr=document.createElement('div');dr.className='clk-door';dr.id='clk-door';
- dr.textContent='#  Tag & Go'+((vmClocks.length>5)?('  \u00b7  +'+(vmClocks.length-5)):'');
+ /* ★★★v4.1.91(俊克「『Tag & Go · +7』の+7って何?」): ★★★**扉の数字that、扉の向こうを数えていなかった**=
+    +7は「一覧に載り切らなかった時計」の数だったが、扉の向こうに居るのは**このファイルの札付き膜**so、
+    押してもその7つは出て来ない(どこからも行けない数字だった)。
+    ★数字は**その扉that開ける物**を数える([[feedback_one_source_for_mark_count_action]])。0なら何も出さない。 */
+ dr.textContent=clkDoorLabel();
  dr.title='Tag & Go \u2014 find a membrane by the tags written on it, with or without a clock. Click a row to warp there; tick the box to start a clock that is already written.';
  el.appendChild(dr);}
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
@@ -24263,6 +24274,7 @@ if(clkCaret&&clkPop){
   clkPop.classList.remove('editing');
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
+   vscode.postMessage({type:'clockTagList'});   /* v4.1.91: 扉の数字を今のファイルで数え直す(開く時に1回だけ) */
    clkRenderList();clkPlace();return;}   /* v4.1.72: 開く時は直近5つ */
   /* ★★★v4.1.86(俊克「連続して未来の設定をすることも確かにあるので、**1分以上経ったら、現在の時刻に
      戻す**。これで、両立できる」): ★★★**続けているのか、出直したのかを、間で見分ける**=
@@ -25086,7 +25098,9 @@ if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof w
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
 if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
- try{if(clkTagMode){clkRenderList();clkPlace();}}catch(e){}return;}
+ try{if(clkTagMode){clkRenderList();clkPlace();}
+  else{var _dr=document.getElementById('clk-door');if(_dr)_dr.textContent=clkDoorLabel();}   /* v4.1.91: 一覧は描き直さず、扉の数字だけ書き直す(生きた数字を跨がない) */
+ }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){

@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.91 (2026-09-03)
+- **The number on a door counts what the door opens.** `Tag & Go · +7` was counting the clocks that did not
+  fit in the five rows above it — but behind that door are the *tagged membranes of this file*, so those seven
+  were never there. A number nobody could reach. The door now shows how many membranes it will list, and
+  nothing when there are none.
+- **A clock left on a closed untitled file is dropped from the list.** An untitled document cannot be reopened,
+  so a clock hung on one becomes an address with no house. Pressing **New .md** a few times filled all five
+  rows with those ghosts, which is why a brand-new file looked like it had never been reset. The list now
+  shows only what you can still travel to; nothing is erased — a still-open untitled file is listed as before.
+
 ### v4.1.32 (2026-08-30)
 - **The mark on the clock that rings next is a ring around the row, not a bar down its edge.** A straight bar
   meets a rounded corner badly — its ends stood outside the curve, like a strip of paper stuck on. A ring
