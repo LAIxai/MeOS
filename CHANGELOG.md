@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.98 (2026-09-03)
+- **The ↩ sits 3px lower in its circle.** The glyph's own metrics carried it high; the circle itself is
+  unchanged (the padding is taken out of the content height, so the outer 17px stays the same).
+
 ### v4.1.97 (2026-09-03)
 - **Inside the pinned file, the 📌 becomes ↩ — the way back.** One circle carries both directions: press it
   anywhere to reach the pinned file, press it there to return to the file you came from. The way back is read

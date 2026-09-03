@@ -21281,7 +21281,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
      そこへ**帰り道**を置けば、1つの円that行きと帰りの両方になる(押す物を増やさない)。
    ★字は ↩ = ステータスバーの ↩ Back(v4.0.454)と同じ字so、家の中で帰り道の顔は1つ。(webviewの中soバックティック禁止)
    ★戻り先は**履歴の2番目**= 留めの次に新しい物that「さっきまで居た所」。覚えを新しく作らない。 */
-.title-file-jump.back{font-size:10px;font-weight:800}
+.title-file-jump.back{font-size:10px;font-weight:800;padding-top:6px;height:9px}/* v4.1.97b(俊克 改良1「↩記号thatやや上に寄っているので約3ピクセル下」)= 字だけを下げる。地の box は content-box so、上に6px足して背を9pxに縮めれば**外側17pxは変わらない**(円は同じ大きさのまま中身thatが3px下がる)。 */
 .title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
