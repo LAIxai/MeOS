@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.93 (2026-09-03)
+- **A 📌 on the shoulder of the file name takes you straight to the pinned file.** One click — no dropdown.
+  It rides the corner of the box the way the ⊕/⊖ badges ride the A button, so it costs the name no width,
+  and it appears only when there is somewhere to go: no pin, or you are already there, and it stays away.
+
 ### v4.1.92 (2026-09-03)
 - **The clock list is about the file you have open.** A clock lives in a membrane, and a membrane lives in a
   file — so switching files switches the list, exactly like the H-TOC and the Tag & Go room in the same panel.
