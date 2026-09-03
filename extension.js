@@ -21915,6 +21915,19 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4;cursor:pointer}
 .clk-warn:hover{background:rgba(209,52,56,.26)}
 .clk-warn.on{display:block}
+/* ★★★v4.1.89(俊克 バグ1「さっきタグとタイマーを登録した膜だけthat、tipthat出る」＋
+   改良1「パネルの上端ギリギリの位置に。邪魔にならなく、固定位置で」):
+   ★★★**共有のtip機構に頼るのをやめた**= v4.1.79→88 と2度、出る/出ないを読みだけで直そうとして外した。
+     700行の分岐の中で誰thatどの枝を通るかを当て続けるより、**この面のtipは自分で描く**方that短い。
+   ★★置き場所は**パネルの真上**(bottom:100%)= どの行を指しても同じ場所・**何も覆わない**。
+     位置は計算せず、CSSで**パネルに貼り付ける**([[project_position_by_definition]])。
+   ★1行目は膜名の全部= 一覧で切れた分thatここで読める。 */
+.clk-tip{position:absolute;left:0;right:0;bottom:calc(100% + 5px);display:none;z-index:70;
+box-sizing:border-box;padding:4px 7px;border-radius:5px;white-space:pre-line;line-height:1.4;
+font-size:11px;font-weight:600;pointer-events:none;
+background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));
+color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
+.clk-tip.on{display:block}
 /* ★★★v4.1.70(俊克「⏰リスト最下段に**タグ用の入口**を作ることだね」):
    ★★★**札の並びthat一覧の最下段に立つ**= 一覧を見ている目that、そのまま次の段で絞り込める。
      置き場所は決めるものでなく、**もう在る規則から出てくる**= 塊(一覧)の次の行
@@ -22374,6 +22387,7 @@ color:#ffffff;z-index:4;padding:0}
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc" id="fixed-toc"><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><button class="cancel clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</button></span>
 <div class="bm-pop clk-pop" id="clk-pop">
+  <div class="clk-tip" id="clk-tip"></div>
   <div class="clk-list" id="clk-list"></div>
   <div class="clk-tags" id="clk-tags"></div>
   <div class="clk-tagadd" id="clk-tagadd" style="display:none"><input class="clk-in" id="clk-tagnew" placeholder="\u30bf\u30b0\u3067\u7d5e\u308b" spellcheck="false" data-tip="Type to narrow this list by tag \u2014 any tag, not only the ones on the bar. Press \uff0b to put what you typed on the membrane the cursor is in (typing one it already has takes it off)."><button class="clk-tag0" id="clk-tagadd" data-tip="\uff0b | Put what is typed in the box on the membrane the cursor is in \u2014 press again to take it off.">\uff0b</button><button class="clk-tag0" id="clk-tag0" data-tip="#tag0 | One press puts this tag on the membrane the cursor is in \u2014 press again to take it off. The plainest way to start: mark a few membranes with it and they gather here.">#tag0</button></div>
@@ -23725,7 +23739,8 @@ if(window.__clkOpen)window.__clkOpen('hist');});
    ★開き方・位置決め・外を押したら閉じる、は表の▾と同じ形(家の作法を真似る)。 */
 var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getElementById('clk-pop');
 function closeClkPop(){if(clkPop)clkPop.classList.remove('on');try{document.body.classList.remove('clk-open');}catch(e){}
- try{clkWarnOff();}catch(e){}}
+ try{clkWarnOff();}catch(e){}
+ try{var _tp=document.getElementById('clk-tip');if(_tp){_tp.classList.remove('on');_tp.textContent='';}}catch(e){}}
 function clkPad(n){return (n<10?'0':'')+n;}
 function clkFill(el,from,to,pad){if(!el)return;var h='';for(var i=from;i<=to;i++)h+='<div data-v="'+i+'">'+(pad?clkPad(i):i)+'</div>';el.innerHTML=h;}
 /* ★★★v4.0.470(俊克「少しスクロールしても動かない感じ。**大きな字that途中で止まってしまう**。
@@ -23909,6 +23924,10 @@ var hm=p(d.getHours())+':'+p(d.getMinutes());
 if(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate())return hm;
 if(d.getFullYear()===n.getFullYear())return p(d.getMonth()+1)+'/'+p(d.getDate())+'('+clkW(d)+') '+hm;
 return d.getFullYear()+'/'+p(d.getMonth()+1)+'/'+p(d.getDate())+'('+clkW(d)+') '+hm;}
+/* v4.1.89: 行に触れたら、パネルの上の帯へ。離れたら消す。**指の下では何も動かない**。 */
+function clkTipShow(txt){var e=document.getElementById('clk-tip');if(!e)return;
+ if(!txt){e.classList.remove('on');e.textContent='';return;}
+ e.textContent=txt;e.classList.add('on');}
 /* v4.1.68: 断りの札。押した行に赤い縁を付け、外し方を書いて、しばらく置く。 */
 var clkWarnT=null;
 function clkWarnOff(){var w=document.getElementById('clk-warn');if(w){w.classList.remove('on');w.textContent='';}
@@ -24037,7 +24056,8 @@ var _tip=_nm;
 if(c.at)_tip+=String.fromCharCode(10)+clkWhenLabel(c.at);
 if(c.cyc)_tip+=String.fromCharCode(10)+c.cyc;
 if(clkTagMode&&!c.has)_tip+=String.fromCharCode(10)+'no clock yet';
-n.title=_tip;row.title=_tip;
+/* v4.1.89: 共有tipにも素のtipにも渡さない= この面のtipは下の clk-tip that1つで描く。 */
+row.setAttribute('data-full',_tip);
 row.appendChild(t);row.appendChild(n);
 /* v4.1.70: 行にも札を小さく= どの札の物かthat一覧のまま読める。 */
 /* ★★v4.1.76: 札のチップは**部屋の中だけ**= 一覧は時刻を読む所so、名前に幅を全部渡す。
@@ -24059,6 +24079,13 @@ if(!clkTagMode){var dr=document.createElement('div');dr.className='clk-door';dr.
  dr.title='Tag & Go \u2014 find a membrane by the tags written on it, with or without a clock. Click a row to warp there; tick the box to start a clock that is already written.';
  el.appendChild(dr);}
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
+if(clkPop){
+ /* v4.1.89: 一覧の上で動いたら、その行の全部を帯に出す(行の外へ出れば消す)。 */
+ clkPop.addEventListener('mousemove',function(ev){
+  var it=(ev.target&&ev.target.closest)?ev.target.closest('.clk-item'):null;
+  clkTipShow(it?(it.getAttribute('data-full')||''):'');},true);
+ clkPop.addEventListener('mouseleave',function(){clkTipShow('');});
+}
 if(clkCaret&&clkPop){
  var now=new Date();
  /* v4.1.83: 年の窓は**その年代の10年**= 離せばこの中を回る(端で止まり、次で巻き戻る)。 */
@@ -24772,23 +24799,7 @@ const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):
 if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();
 return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));
 /* v0.9.686: grow the tip LEFT from the cursor (Me Dock sits at the screen's right edge, so a right-growing tip clips); wrap to 2+ lines. Anchor the tip's RIGHT edge ~12px left of the cursor. */tocTooltip.style.display='block';
-tocTooltip.style.maxWidth='';tocTooltip.style.width='';/* v1.0.7: 既定幅(CSS 260px)に戻す。bm-pop.on分岐だけが左逃がし用に一時的に幅を詰める。v1.0.23: widthも毎回リセット(バッジ分岐が固定widthを置くため)。 *//* v0.9.99981(改良1 俊克): 開いているプルダウン(.bm-pop.on)内の項目tipは、マウスX追従をやめて ポップアップ左端に接した固定位置に出す(メニューを隠さない)。縦は項目に合わせる。 *//* ★★★v4.1.88(俊克「\u23f0膜で、tipthatまったく出なくなった。基本は膜名なので、tipで膜名をフルで
-   見せた方thatいいでしょ。できれば、**パネルの上端ギリギリの位置に出そうよ。邪魔にならなく、固定位置で**」):
-   ★★★**tipを行に付いて回らせたのthat間違いだった**(v4.1.79)= 行の隣に出せば、必ずどこかの行を覆う。
-     一覧は**読みながら指を動かす**面so、覆われた瞬間に読めなくなる。
-   ★★→ **パネルの外側・上端に固定**する。どの行を指しても同じ場所so、目that探さない。
-     上に余地thatが無い時だけ下へ回す(画面の外に出さない)。
-   ★中身の1行目は**膜名の全部**= 一覧で切れた分thatここで読める。 */
-{const _clkEl=el.closest&&el.closest('.clk-pop');
-if(_clkEl&&_clkEl.classList.contains('on')&&el.closest('.clk-item')){
- const pr=_clkEl.getBoundingClientRect();
- tocTooltip.style.maxWidth='300px';tocTooltip.style.width='';
- tocTooltip.style.left='auto';tocTooltip.style.right=Math.max(2,window.innerWidth-pr.right)+'px';
- const h=tocTooltip.offsetHeight||20;
- let top=pr.top-h-4;if(top<2)top=pr.bottom+4;
- if(top+h>window.innerHeight-2)top=Math.max(2,window.innerHeight-h-2);
- tocTooltip.style.top=top+'px';return;}}
-{const _popEl=el.closest&&el.closest('.bm-pop');
+tocTooltip.style.maxWidth='';tocTooltip.style.width='';/* v1.0.7: 既定幅(CSS 260px)に戻す。bm-pop.on分岐だけが左逃がし用に一時的に幅を詰める。v1.0.23: widthも毎回リセット(バッジ分岐が固定widthを置くため)。 *//* v0.9.99981(改良1 俊克): 開いているプルダウン(.bm-pop.on)内の項目tipは、マウスX追従をやめて ポップアップ左端に接した固定位置に出す(メニューを隠さない)。縦は項目に合わせる。 */{const _popEl=el.closest&&el.closest('.bm-pop');
 if(_popEl&&_popEl.classList.contains('on')){const pr=_popEl.getBoundingClientRect();/* v1.0.7(俊克 改良2): 大ポップアップ(参照メニュー等)のtipは下に落ちてボタンを隠しがち→左に余地(≥120px)があれば幅をその余地に詰めて左へ逃がす。Me Dockが狭く左に余地が無い時だけ従来の上/下フォールバック。 */const avail=pr.left-6;
 if(avail>=120){tocTooltip.style.maxWidth=Math.min(260,avail)+'px';const h=tocTooltip.offsetHeight||20;tocTooltip.style.left='auto';
 /* ★★★v4.1.79(俊克「メインリストで、2番目以降のtipthat出ない。タグリストも一番上の項目しか出ない。なぜ?」):

@@ -831,7 +831,7 @@ console.log('\u326a \u4e00\u89a7\u306e\u57fa\u672c\u306f**\u819c\u540d** / \u52d
     '\u2605\u21bb \u306f\u7d4c\u904e\u30fb\u21ba \u306f\u6b8b\u308a= \u9762\u3068\u540c\u3058\u5f0f(\u4e8c\u91cd\u306b\u6301\u305f\u306a\u3044)', true);
  ok(/function clkTickRows\(\)/.test(S)&&/clkPop\.classList\.contains\('on'\)\)clkTickRows\(\)/.test(S),
     '\u2605\u2605\u6bce\u79d2**\u4e2d\u8eab\u3060\u3051**\u66f8\u304d\u66ff\u3048\u308b(\u884c\u3092\u7d44\u307f\u76f4\u3055\u306a\u3044so\u3001\u62bc\u305d\u3046\u3068\u3057\u305f\u7269that\u9003\u3052\u306a\u3044)', true);
- ok(/n\.title=_tip;row\.title=_tip;/.test(S)&&/if\(c\.cyc\)_tip\+=/.test(S),
+ ok(/row\.setAttribute\('data-full',_tip\);/.test(S)&&/if\(c\.cyc\)_tip\+=/.test(S),
     '\u2605\u2605tip \u306f\u305d\u306e\u884c\u306e**\u5168\u90e8**(\u5168\u540d\u30fb\u4e88\u5b9a\u65e5\u6642\u30fb\u7e70\u8fd4\u3057)', true);
  ok(/cyc: \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)/.test(S),
     '  \u7e70\u8fd4\u3057\u306e\u66f8\u304d\u65b9\u3082\u884c\u3078\u6e21\u308b(\u3069\u3093\u306a\u30bf\u30a4\u30de\u30fc\u304b that\u5206\u304b\u308b)', true);
@@ -976,12 +976,12 @@ console.log('\u3271 \u672d\u306f**\u30b3\u30e1\u30f3\u30c8\u306e\u4e2d**\u3078(\
 console.log('\u3272 tip \u306f\u30d1\u30cd\u30eb\u306e\u5916\u5074\u30fb\u4e0a\u7aef\u306b\u56fa\u5b9a / \u672d\u306e\u6bb5\u306f10\u679a\u307e\u3067');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/const _clkEl=el\.closest&&el\.closest\('\.clk-pop'\);/.test(S)&&/el\.closest\('\.clk-item'\)\)\{/.test(S),
-    '\u2605\u2605\u2605\u4e00\u89a7\u306e\u884c\u306e tip \u306f\u5c02\u7528\u306e\u9053\u3092\u901a\u308b(\u884c\u306b\u4ed8\u3044\u3066\u56de\u3089\u306a\u3044)', true);
- ok(/let top=pr\.top-h-4;if\(top<2\)top=pr\.bottom\+4;/.test(S),
-    '\u2605\u2605**\u30d1\u30cd\u30eb\u306e\u5916\u5074\u30fb\u4e0a\u7aef**\u306b\u56fa\u5b9a(\u4e0a\u306b\u4f59\u5730that\u7121\u3051\u308c\u3070\u4e0b\u3078)', true);
- ok(/tocTooltip\.style\.right=Math\.max\(2,window\.innerWidth-pr\.right\)\+'px'/.test(S),
-    '  \u6a2a\u306f\u30d1\u30cd\u30eb\u306e\u53f3\u7aef\u63c3\u3048(\u3069\u306e\u884c\u3092\u6307\u3057\u3066\u3082\u540c\u3058\u5834\u6240)', true);
+ ok(/function clkTipShow\(txt\)/.test(S)&&/clkPop\.addEventListener\('mousemove'/.test(S),
+    '\u2605\u2605\u2605\u3053\u306e\u9762\u306e tip \u306f**\u81ea\u5206\u3067\u63cf\u304f**(\u5171\u6709\u306etip\u6a5f\u69cb\u306b\u983c\u3089\u306a\u3044)', true);
+ ok(/\.clk-tip\{position:absolute;left:0;right:0;bottom:calc\(100% \+ 5px\)/.test(S),
+    '\u2605\u2605**\u30d1\u30cd\u30eb\u306e\u771f\u4e0a**\u306b\u8cab\u308a\u4ed8\u304f(\u4f4d\u7f6e\u306f\u8a08\u7b97\u3067\u306a\u304fCSS\u3067\u5b9a\u7fa9)', true);
+ ok(/pointer-events:none/.test(S)&&/\.clk-tip\.on\{display:block\}/.test(S),
+    '  \u4f55\u3082\u899a\u308f\u306a\u3044\u30fb\u4f55\u3082\u8986\u308f\u306a\u3044(\u5e2f\u306f\u62bc\u305b\u306a\u3044)', true);
  ok(/if\(seen\.length>10\)\{var _keep=seen\.slice\(0,10\);/.test(S),
     '\u2605\u2605\u2605\u672d\u306e\u6bb5\u306f**10\u679a\u307e\u3067**(\u305d\u306e\u5148\u306f\u7bb1\u3067\u547c\u3076)', true);
  ok(/if\(clkTagSel&&_keep\.indexOf\(clkTagSel\)<0\)\{_keep\.pop\(\);_keep\.push\(clkTagSel\);\}/.test(S),

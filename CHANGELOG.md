@@ -28,6 +28,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.89 (2026-09-03)
+- **The clock list draws its own tooltip.** Twice now the shared one showed for some rows and not others, and
+  twice I tried to fix it by reading the code and guessed wrong; a panel that needs one line of text does not
+  need seven hundred lines of placement logic. The strip is glued to the top of the panel by CSS — the same
+  place for every row, above everything, and it cannot be clicked. Its first line is the membrane's whole name.
+
 ### v4.1.88 (2026-09-03)
 - **A row's tooltip sits just above the panel, always in the same place.** Following the row was the mistake:
   beside a row it always covers another one, and a list is read with the finger moving. Outside the panel and
