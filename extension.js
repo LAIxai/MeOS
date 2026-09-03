@@ -22024,10 +22024,13 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    入力できるようにしよう」): ★**回すのは探す動き・打つのは決まっている時の動き**=
    2035年のように遠い値は、探すより言う方that速い。箱は**真ん中の段にぴたりと重ねる**
    ([[project_position_by_definition]] 位置は計算でなく定義)。 */
+/* v4.1.84(俊克「Wクリックした直後の橙色の選択状態は視認性that悪いので、白文字にしようよ」):
+   ★選ばれている字は**白**= 橙の上に橙では読めない。枠と背は橙のまま(どこを打つのかは枠that言う)。 */
 .clk-colin{position:absolute;left:2px;right:2px;top:23px;height:22px;box-sizing:border-box;
 font-size:12px;font-weight:800;font-family:ui-monospace,Menlo,monospace;text-align:center;
 border:1px solid rgba(224,128,58,.85);border-radius:4px;background:var(--vscode-input-background);
-color:#e0803a;z-index:4;padding:0}
+color:#ffffff;z-index:4;padding:0}
+.clk-colin::selection{background:rgba(224,128,58,.75);color:#ffffff}
 .clk-colin:focus{outline:none}
 .clk-col::before,.clk-col::after{content:'';display:block;height:22px}
 /* ★★v4.0.465(俊克 改良2「スクロールすると慣性で加速するんだけど、**クリックで停止しない**よ。なぜ?」):
@@ -23737,7 +23740,9 @@ return bi;}
 function clkMark(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;
 for(var i=0;i<el.children.length;i++)el.children[i].classList.toggle('sel',i===bi);}
 function clkCenter(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;clkGoto(el,bi,true);}   /* v4.0.470: 印だけでなく**位置も収める**(手を離したら真ん中へ) */
-const CLK_ALT_STEP=90;   /* v4.1.83: この画素ぶん貯まって1年(ゆっくり) */
+/* v4.1.84(俊克「Optのときのスクロール量that大き過ぎる。なかなか動き出さないので、前回との中間値くらいに」):
+   1(v4.1.82=速すぎ) \u2194 90(v4.1.83=重すぎ) の間= 45。指の実感は端でなく真ん中に在る。 */
+const CLK_ALT_STEP=45;
 function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;var _altAcc=0;
 /* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
 /* ★v4.1.2: **人が触った合図はここだけ**(scroll は clkSel の置き直しでも鳴るので数えない)。 */

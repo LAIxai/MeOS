@@ -906,7 +906,7 @@ console.log('\u326e \u9060\u3044\u4e88\u5b9a\u306f\u300c\u7d04N\u5e74\u300d\u306
  ok(/sig: String\(c\.when\)/.test(S2), '  \u639b\u3051\u305f\u6642\u306e\u5b57\u3092\u63a7\u3048\u3066\u304a\u304f', true);
  ok(/if\(e\.altKey&&el\.id==='clk-y'\)\{/.test(S2)&&/if\(_b1!==_b0\)clkFill\(el,_b1,_b1\+9,false\)/.test(S2),
     '\u2605\u2605\u2605Opt \u3067\u5e74\u4ee3\u3092\u307e\u305f\u3050(\u7a93\u306f**\u305d\u306e\u5e74\u4ee3\u306e10\u5e74**)', true);
- ok(/_altAcc\+=e\.deltaY;if\(Math\.abs\(_altAcc\)<CLK_ALT_STEP\)return;/.test(S2)&&/const CLK_ALT_STEP=90;/.test(S2),
+ ok(/_altAcc\+=e\.deltaY;if\(Math\.abs\(_altAcc\)<CLK_ALT_STEP\)return;/.test(S2)&&/const CLK_ALT_STEP=45;/.test(S2),
     '\u2605\u2605\u3086\u3063\u304f\u308a= \u5408\u56f3\u3092\u8caf\u3081\u3066\u3001\u8caf\u307e\u3063\u305f\u5206\u3060\u30511\u5e74(macOS\u306e\u52a0\u901f\u306b\u6d41\u3055\u308c\u306a\u3044)', true);
 }
 
@@ -926,6 +926,8 @@ console.log('\u326f \u5e74\u306e\u7a93\u306f**\u5e74\u4ee3** / \u30c9\u30e9\u30e
     '\u2605\u2605\u6253\u3063\u305f\u5f8c\u3082**\u305d\u306e\u5e74\u4ee3\u306e\u4e2d**\u3092\u56de\u308b(Opt \u3068\u540c\u3058\u7740\u5730)', true);
  ok(/\.clk-colin\{position:absolute;left:2px;right:2px;top:23px;height:22px/.test(S),
     '  \u7bb1\u306f\u771f\u3093\u4e2d\u306e\u6bb5\u306b\u3074\u305f\u308a\u91cd\u306a\u308b(\u4f4d\u7f6e\u306f\u8a08\u7b97\u3067\u306a\u304f\u5b9a\u7fa9)', true);
+ ok(/\.clk-colin\{[^}]*color:#ffffff/.test(S)&&/\.clk-colin::selection\{background:rgba\(224,128,58,\.75\);color:#ffffff\}/.test(S),
+    '\u2605v4.1.84: \u9078\u3070\u308c\u3066\u3044\u308b\u5b57\u306f**\u767d**(\u6a59\u306e\u4e0a\u306b\u6a59\u3067\u306f\u8aad\u3081\u306a\u3044)', true);
  ok(/if\(e\.key==='Escape'\)\{e\.preventDefault\(\);done\(false\);\}/.test(S),
     '  Enter \u3067\u6c7a\u3081\u3001Esc \u3067\u3084\u3081\u308b(\u5916\u3078\u51fa\u3066\u3082\u6c7a\u307e\u308b)', true);
 }

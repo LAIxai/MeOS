@@ -28,6 +28,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.84 (2026-09-03)
+- ⌥ Option on the year drum takes half as much of a push to move: 90 was as far past comfortable as 1 was
+  short of it, so it sits between them at 45.
+- The value you type into a drum is white while it is selected — orange on orange could not be read.
+
 ### v4.1.83 (2026-09-03)
 - **The year drum shows a decade.** Ten years at a time, so plain scrolling turns within that decade and you
   can always see which ten you are in; ⌥ Option crosses into the next one, and the window follows. Option now
