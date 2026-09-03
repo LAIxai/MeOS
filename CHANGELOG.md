@@ -28,6 +28,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.86 (2026-09-03)
+- **Reopening ⏰▾ comes back to today** — unless the last one was set less than a minute ago, in which case
+  everything is left as it was. Setting several things for next month in a row means your finger has not
+  stopped; leaving it a minute means a different errand. It is the same minute `Stop ⇄ Undo` uses: the
+  interval says what you meant.
+- Underneath was a leftover from v4.1.83: with the year drum showing a decade, "go back to today" could not
+  find this year inside the 2030s and silently stayed put. Going back now moves the window first.
+
 ### v4.1.85 (2026-09-03)
 - README — the store page — now describes what v4.1 actually became: the stopwatch, the origin that does not
   move, the ⏰▾ panel, the list of the next five, and Tag & Go.

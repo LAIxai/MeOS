@@ -932,5 +932,19 @@ console.log('\u326f \u5e74\u306e\u7a93\u306f**\u5e74\u4ee3** / \u30c9\u30e9\u30e
     '  Enter \u3067\u6c7a\u3081\u3001Esc \u3067\u3084\u3081\u308b(\u5916\u3078\u51fa\u3066\u3082\u6c7a\u307e\u308b)', true);
 }
 
+// v4.1.86(俊克 CN=v4.1.85_0153 改良1「未来を設定したあと、再度開き直すと、さっきの未来値(特に年)が
+//   そのままになっている。…連続して未来の設定をすることも確かにあるので、1分以上経ったら、
+//   現在の時刻に戻す。これで、両立できる」)
+console.log('\u3270 \u958b\u3051\u76f4\u305b\u3070\u4eca\u3078\u623b\u308b / \u305f\u3060\u30571\u5206\u4ee5\u5185\u306f\u7d9a\u304d');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/var _yb=Math\.floor\(t\.getFullYear\(\)\/10\)\*10;\nclkFill\(document\.getElementById\('clk-y'\),_yb,_yb\+9,false\);/.test(S),
+    '\u2605\u2605\u2605\u4eca\u65e5\u3078\u623b\u3059\u6642\u306f**\u7a93\u3054\u3068\u4eca\u65e5\u306e\u5e74\u4ee3\u3078**(\u9078\u3076\u524d\u306b\u3001\u5c45\u5834\u6240\u3092\u4f5c\u308b)', true);
+ ok(/var _keep=\(Date\.now\(\)-clkLastSet<60000\);/.test(S)&&/if\(!_keep\)\{/.test(S),
+    '\u2605\u2605\u2605\u7d9a\u3051\u3066\u3044\u308b\u306e\u304b\u3001\u51fa\u76f4\u3057\u305f\u306e\u304b\u3092**\u9593\u3067\u898b\u5206\u3051\u308b**(1\u5206)', true);
+ ok(/clkLastSet=Date\.now\(\);/.test(S), '  Set \u3057\u305f\u6642\u306b\u899a\u3048\u308b(\u958b\u3044\u305f\u3060\u3051\u3067\u306f\u899a\u3048\u306a\u3044)', true);
+ ok(/if\(!_keep\)\{var n2=new Date\(\);/.test(S), '  \u6642\u5206\u3082\u540c\u3058\u898f\u5247\u3067\u623b\u308b', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

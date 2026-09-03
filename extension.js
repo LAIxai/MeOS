@@ -23809,7 +23809,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
-var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -23847,8 +23847,14 @@ function clkSyncFromCols(){clkFitDays();clkEcho();}
    ★★→ **輪には今日を置く。指定したかどうかは、下の行の色thatが言う**(白=まだ / 橙=指定した)。
      ★意味を運ぶ役を**輪から色へ**渡した= 1つのことを2箇所で言わない。
    ★これで日の列の詰め直し(v4.1.29)でも選びthat消えない= 確定値thatが空に落ちる穴も同時に塞がる。 */
+/* ★★v4.1.86(俊克 改良1「未来を設定したあと、再度開き直すと、さっきの未来値(特に年)thatそのままに
+   なっている」): ★★★**v4.1.83で窓を『年代』にした時の取り残し**= 窓that2030年代なら、
+   その中に2026は居ないso、今日を選ぼうとしても**選べずに黙って留まっていた**。
+   → 今日へ戻す時は、**窓ごと今日の年代へ**張り直す(選ぶ前に、居場所を作る)。 */
 function clkDateEmpty(){clkFixD=false;
 var t=new Date();
+var _yb=Math.floor(t.getFullYear()/10)*10;
+clkFill(document.getElementById('clk-y'),_yb,_yb+9,false);
 clkSel(document.getElementById('clk-y'),t.getFullYear());
 clkSel(document.getElementById('clk-mo'),t.getMonth()+1);   /* data-v は 1..12(0詰めしない) */
 clkFitDays();
@@ -24156,6 +24162,7 @@ if(clkCaret&&clkPop){
  function clkFire(){var v=clkText();if(!v)return;var cy=document.getElementById('clk-cyc');
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
+  clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
   vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,rep:clkRep,up:clkDir,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:''});closeClkPop();}
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -24193,17 +24200,24 @@ if(clkCaret&&clkPop){
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
    clkRenderList();clkPlace();return;}   /* v4.1.72: 開く時は直近5つ */
-  clkDateEmpty();                                             /* ★開いた時、日付は**空**(時刻は常に橙) */
-  clkLock=false;clkPaintLock();                               /* ★錠は開く度に外れる= 掛けっぱなしの錠で人を閉じ込めない */
-  clkDir=false;clkRep=false;                                  /* v4.1.64: 既定は逆算タイマー */
-  var cyb=document.getElementById('clk-cyc');if(cyb)cyb.value='';
-  var tgb=document.getElementById('clk-tagin');if(tgb)tgb.value='';
-  clkPaintRep();
+  /* ★★★v4.1.86(俊克「連続して未来の設定をすることも確かにあるので、**1分以上経ったら、現在の時刻に
+     戻す**。これで、両立できる」): ★★★**続けているのか、出直したのかを、間で見分ける**=
+       立て続けに掛ける時は指that止まっていないso、さっきの値thatが要る。1分も置いたなら、それは別の用事。
+     ★同じ考えは家に在る= Stop\u21c4Undo の1分(v4.1.59)。**時間that意図を語る**。 */
+  var _keep=(Date.now()-clkLastSet<60000);
+  if(!_keep){
+   clkDateEmpty();                                            /* ★開いた時、日付は**空**(時刻は常に橙) */
+   clkLock=false;clkPaintLock();                              /* ★錠は開く度に外れる= 掛けっぱなしの錠で人を閉じ込めない */
+   clkDir=false;clkRep=false;                                 /* v4.1.64: 既定は逆算タイマー */
+   var cyb=document.getElementById('clk-cyc');if(cyb)cyb.value='';
+   var tgb=document.getElementById('clk-tagin');if(tgb)tgb.value='';
+   clkPaintRep();
+  }
   vscode.postMessage({type:'clockAskCurrent'});               /* v4.1.65: 今の膜の姿を見せてから直させる */
   /* ★v4.1.67(俊克 改良3「時分は、**現在時刻を既定**にしようよ」): ★起点を決める面so、
      出すべきは**今**= 人that見ている時計と同じ数字thatが最初に在る(30分後は私の提案でしかなかった)。 */
-  var n2=new Date();                                          /* 既定= 今の時刻 */
-  clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());
+  if(!_keep){var n2=new Date();                               /* 既定= 今の時刻 */
+   clkSel(document.getElementById('clk-h'),n2.getHours());clkSel(document.getElementById('clk-mi'),n2.getMinutes());}
   clkEcho();clkPlace();};
  /* ★★★v4.1.10(俊克 改良1「⏰履歴の位置that左にかなり離れているね」):
     ★★★**測る相手と、測る時が、どちらも1つずれていた**。
