@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.101 (2026-09-03)
+- **The ↩ moves up 3px** — with the glyph in a span of its own, its resting place is already lower than it
+  used to be, so no nudge is the right nudge.
+
 ### v4.1.100 (2026-09-03)
 - **The ↩ settles halfway.** Centred was too high, 6px dropped it onto the rim; 3px is where it reads as
   being in the middle of the circle.
