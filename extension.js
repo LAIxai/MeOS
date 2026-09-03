@@ -5595,7 +5595,19 @@ function foldRangeEnd(document, pair) {
   //   ★畳めばバッジも隠れる／畳んだ膜をコピペすればバッジも一緒に運ばれる。
   //   ★伸ばすのは**FC行の間だけ**なので、次の膜の ▼ を巻き込むことは無い(v0.9.343の戒めはそのまま)。
   // ★v4.0.381: 塊の最後の行を決めるのは meosPairBlockEnd 1つだけ(畳みも「膜の中か」も同じ物差しから引く)。
-  return meosPairBlockEnd(document, pair);
+  // ★★★v4.1.104(俊克 9/4 am08:32「折り畳んでいる時に、バッジが膜の直下に表示しないことが矛盾している。
+  //   今の実装は、まるで、昔、バッジを開始膜の右に表示していた時のようだよ。**FC/UFCは、膜の直下に
+  //   表示するというのが、共通のルールになった**んだからね」):
+  //   ★★★**俊克が正しい。バッジだけが共通のルールの外に居た**＝ ⏰(UFC)は畳んでも膜の直下に出るのに、
+  //     バッジは畳むと消え、代わりに**開始膜の右**へ写しが出ていた(v4.0.350)。それはFC化する前の姿。
+  //   ★★→ **畳むのは▲まで**。バッジ行と⏰行は畳みの外＝ 畳んでいようといまいと、膜の直下に本物that出る。
+  //     写し(v4.0.350/351)は要らなくなるので消した。**触れない青い写し**も無くなり、バッジは直せる字になる。
+  //   ★交差は起きない＝ 膜(▼..▲)の**外**でFCの塊が始まるので、2つの範囲は離れている(`( ) [ ]`)。
+  //     v4.1.15/4.1.19 で踏んだ `( [ ) ]` の形は、塊の頭を膜の外へ出したことで消えた。
+  //   ★**膜の範囲(この行は膜の中か／運ぶ範囲)は1文字も変えていない**＝ meosPairBlockEnd /
+  //     meosBlockEndForCarry のまま。v4.0.381 が直した「Edit Meが膜を見失う」は起きない。
+  //     畳む理由(本文でない物を隠す)と、膜の持ち物の範囲は別＝ v4.1.16 が ⏰ で既にそう言っている。
+  return Math.min(document.lineCount - 1, pair.end);
 }
 function pairStateKey(editor, pair) {
   if (!editor || !pair) return '';
@@ -7370,10 +7382,8 @@ function applyPrettyLabels(editor) {
       //   ★生データは1文字も隠さない(v4.0.345の約束はそのまま)。**足すだけ**＝
       //     ①頭に ▼▲ の印 = 畳んである、と分かる(生データの中の ▼ だけでは開始膜に見える)
       //     ②畳んだ中に居るFC行の写しを行末に = バッジが読める
-      //   ★②が要る理由 = FC行は閉じ膜の次(つまり畳んだ範囲の中)に居るので、畳んでいる間は
-      //     バッジごと見えなくなる([[project_membrane_is_a_block]])。畳んだ膜の見た目と、
-      //     そこへカーソルを置いた時の見た目が食い違わないよう、同じ物を見せる。
-      //   ★写しなので編集はできない(本物は畳みを開けば出てくる)。斜体で写しだと分かるようにする。
+      //   ★v4.1.104: **②は廃止**。バッジ行を畳みの外へ出したので、畳んでいても膜の直下に本物that見える
+      //     ＝ 写す相手thatもう居ない。残るのは①の▼▲だけ。
       if (open) {
         const fp = byStart.get(line);
         if (fp && isPairFolded(editor, fp)) {
@@ -7384,32 +7394,9 @@ function applyPrettyLabels(editor) {
             range: new vscode.Range(line, fcIndent, line, fcIndent),
             renderOptions: { before: { contentText: meosMembraneGlyph('open', true, false), color: fcColor, fontWeight: '700', margin: '0 4px 0 0' } }
           });
-          // ★★v4.1.103(俊克 9/4 am08:06 バグ1「同じUFCが2つ同時に重複して表示されているでしょ。
-          //   この点だけでも矛盾しているのは明らかだよね」):
-          //   ★★**写してよいのは、畳みが隠した行だけ**。UFC(畳まない指定行)は畳んでも本物that見えている
-          //     ので、写すと**同じ⏰が2つ**並ぶ(俊克の見た形)。
-          //   ★真因＝ 写す終わりを**自分で数えていた**(`n < 4` ＝ 指定行thatが続く限り4本まで)。
-          //     畳みの終わりは `meosPairBlockEnd` that決めているのに、写しはそれを見ずに別の物差しで数えていた。
-          //   ★直し＝ **終わりを決める物差しを1つにする**＝ 畳みと同じ `meosPairBlockEnd` まで。
-          //     UFCはそこで止まる(v4.1.16でそう決めた)ので、写しに入らない。
-          //     → [[feedback_one_source_for_mark_count_action]]
-          let fcEcho = '';
-          const _echoEnd = meosPairBlockEnd(editor.document, fp);
-          for (let k = fp.end + 1; k <= _echoEnd && k < _allLines.length; k++) {
-            const ft = _allLines[k];
-            if (!meosIsSpecLine(ft)) break;
-            fcEcho += (fcEcho ? '   ' : '') + ft.trim();
-          }
-          // ★v4.0.351(俊克 8/22「入れないことを、色を青とかに変えて、警告するといいかもよ。
-          //   ただし、なぜFCを変更できないか?、というのは疑問だけどね」):
-          //   ★行末に出しているのは**絵であって、字ではない**(装飾＝仮想テキスト)。本物のFC行は
-          //     閉じ膜の次＝畳んだ中に居るので、そこへは→キーでも入れない。だから直せない。
-          //   ★俊克の言うとおり、**入れない事は色で先に言う**＝ 生データの橙とはっきり違う青にする
-          //     (触れる字は橙／触れない写しは青)。→ [[feedback_fix_signal_at_fix_place]]
-          if (fcEcho) openLabels.push({
-            range: new vscode.Range(line, text.length, line, text.length),
-            renderOptions: { after: { contentText: '   ' + fcEcho, color: HIGHLIGHT_FG_COLORS.aqua, fontStyle: 'italic', fontWeight: '600' } }
-          });
+          // ★★★v4.1.104(俊克 9/4 am08:32): **写しは廃止**＝ バッジ行は畳みの外へ出したので、
+          //   畳んでいても膜の直下に本物that出ている。同じ物を2か所に描かない。
+          //   (v4.0.350の写し／v4.0.351の「触れない青」／v4.1.103の写す終わりの直し、全部ここで役目を終えた)
         }
       }
       continue;
@@ -28946,6 +28933,12 @@ function meosDefBlocks(document) {
       try { const _b = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head); if (_b) top = _b.start; } catch (_) { }
       // v4.0.332: 頭が閉じ膜なら、その膜の**開始膜も塊の一部**(俊克「3つは常に1つ」)。本文は入れない。
       try { const _h = String(lines[head] || ''); if ((_h.indexOf('▲') >= 0 || _h.indexOf('△') >= 0) && parseCloseLine(_h)) { const op = meosMembraneOpenFor(document, head); if (op >= 0) open = op; } } catch (_) { }
+      // ★★★v4.1.104: 頭が閉じ膜の時は、**塊の頭を膜の外へ出す**＝ 頭は畳んでも隠れない行なので、
+      //   膜の直下の1行目(=バッジ行)が頭になれば、そこは必ず見える＝ 俊克の言う共通のルールが成立する。
+      //   ★これで膜(▼..▲)と塊(バッジ..)は**離れた2本**になり、交差(`( [ ) ]`)that起きない。
+      //   ★頭の下に続く行that無ければ塊にしない(畳む中身that無い)＝ バッジ行だけの時は範囲を渡さない。
+      //   ★`open >= 0` と書くと `null >= 0` that true になり、表も箇条書きもここへ落ちる(v4.1.104で1度踏んだ)。
+      if (open !== null) { if (e > ln) out.push({ start: ln, top: ln, end: e, fc, open: null }); ln = e; continue; }
       if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open });
       ln = e;
     }

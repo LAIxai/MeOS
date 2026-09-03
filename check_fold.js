@@ -144,7 +144,8 @@ console.log('⑤ 畳んである膜の開始行にカーソルが入った(= 生
   const g = openGlyphAt(ed, OPEN_LINE);
   ok(g === '▼▲', '★生データのままで、頭に ▼▲ が付く(開始膜に見えない)', g);
   const a = afterAt(ed, OPEN_LINE);
-  ok(/Mew!FC/.test(a) && /📊⊕1\+0D-2Y/.test(a), '★畳んだ中に居る FC コメント(バッジごと)が行末に見える', a);
+  // v4.1.104: 写しは廃止= バッジ行は畳みの外なので、畳んでいても膜の直下に本物が見えている。
+  ok(a === '(無し)', '★★★行末に写しを出さない(同じ物を2か所に描かない)', a);
 }
 console.log('⑥ 開いている膜の開始行にカーソルが入った = 何も足さない(生データそのまま)');
 {
@@ -264,7 +265,7 @@ console.log('⑬ ▼ を押した後も、続けて押せる(v4.0.362)');
   openGlyphAt(edAway, OPEN_LINE);                                   // ここで抑止が解ける
   const edBack = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);// 戻ってくる
   const g2 = openGlyphAt(edBack, OPEN_LINE);
-  ok(g2 === '▼▲' && /Mew!FC/.test(afterAt(edBack, OPEN_LINE)), '★離れて戻れば生データ+FC写し(編集の邪魔をしない)', [g2, afterAt(edBack, OPEN_LINE)]);
+  ok(g2 === '▼▲' && afterAt(edBack, OPEN_LINE) === '(無し)', '★離れて戻れば生データ+▼▲だけ(v4.1.104で写しは廃止)', [g2, afterAt(edBack, OPEN_LINE)]);
 }
 console.log('⑭ 膜名タイムスタンプのモザイク色分け(v4.0.363)');
 {

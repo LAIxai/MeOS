@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.104 (2026-09-04)
+- **The badge line moves out of the fold** — FC and UFC lines both live directly under the membrane, but only the ⏰ line survived folding; the badge went back to the right of the open membrane as a blue italic copy, which is the shape MeOS abandoned when badges became FC lines. The membrane now folds up to ▲ only, so the badge line stays where it belongs, folded or not — and it is real text, so it can be edited. The copy is gone.
+- A fold needs a head line, and a head line is never hidden. Putting the block's head below ▲ is also what keeps the two ranges apart, so nothing crosses.
+
 ### v4.1.103 (2026-09-04)
 - **The echo stops where the fold stops** — a folded membrane echoes its FC line at the end of the row, but it counted its own way (up to 4 spec lines) instead of asking the fold. A UFC (⏰) line is never folded, so it stayed visible *and* got echoed: the same alarm twice. The echo now ends at `meosPairBlockEnd`, the one ruler that decides what the fold hides.
 
