@@ -840,5 +840,18 @@ console.log('\u326a \u4e00\u89a7\u306e\u57fa\u672c\u306f**\u819c\u540d** / \u52d
     '  \u6570\u5b57\u306f\u23f0\u306e\u8272\u30fb\u7a7a\u306e\u679d\u306f\u5834\u6240\u3092\u53d6\u3089\u306a\u3044', true);
 }
 
+// v4.1.79(俊克 CN=v4.1.78_1109 改良1「メインリストで、2番目以降のtipが出ない。
+//   タグリストも一番上の項目しか、tipが出ない。なぜ?」)
+console.log('\u326b tip \u306e\u7e26\u306f**\u89e6\u3063\u3066\u3044\u308b\u884c**\u306b\u4ed8\u3044\u3066\u884c\u304f');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/const _ir=\(el&&el\.getBoundingClientRect\)\?el\.getBoundingClientRect\(\):pr;/.test(S)&&/let top=_ir\.top;/.test(S),
+    '\u2605\u2605\u2605\u7e26\u306f**\u89e6\u3063\u3066\u3044\u308b\u7269**\u304b\u3089\u53d6\u308b(\u30dd\u30c3\u30d7\u30a2\u30c3\u30d7\u306e\u4e0a\u7aef\u3067\u306f\u306a\u304f)', true);
+ ok(!/tocTooltip\.style\.right=\(window\.innerWidth-pr\.left\+1\)\+'px';let top=pr\.top;/.test(S),
+    '\u2605\u53e4\u3044\u53d6\u308a\u65b9(\u3069\u306e\u884c\u3067\u3082\u540c\u3058\u5834\u6240)\u306f\u6b8b\u3063\u3066\u3044\u306a\u3044', true);
+ ok(/tocTooltip\.style\.right=\(window\.innerWidth-pr\.left\+1\)\+'px'/.test(S),
+    '  \u6a2a\u306f\u4eca\u307e\u3067\u3069\u304a\u308a\u30dd\u30c3\u30d7\u30a2\u30c3\u30d7\u306e\u5de6\u7aef\u306b\u63a5\u3059\u308b(\u30e1\u30cb\u30e5\u30fc\u3092\u96a0\u3055\u306a\u3044)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

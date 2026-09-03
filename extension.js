@@ -24602,7 +24602,14 @@ return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto
 tocTooltip.style.maxWidth='';tocTooltip.style.width='';/* v1.0.7: 既定幅(CSS 260px)に戻す。bm-pop.on分岐だけが左逃がし用に一時的に幅を詰める。v1.0.23: widthも毎回リセット(バッジ分岐が固定widthを置くため)。 *//* v0.9.99981(改良1 俊克): 開いているプルダウン(.bm-pop.on)内の項目tipは、マウスX追従をやめて ポップアップ左端に接した固定位置に出す(メニューを隠さない)。縦は項目に合わせる。 */{const _popEl=el.closest&&el.closest('.bm-pop');
 if(_popEl&&_popEl.classList.contains('on')){const pr=_popEl.getBoundingClientRect();/* v1.0.7(俊克 改良2): 大ポップアップ(参照メニュー等)のtipは下に落ちてボタンを隠しがち→左に余地(≥120px)があれば幅をその余地に詰めて左へ逃がす。Me Dockが狭く左に余地が無い時だけ従来の上/下フォールバック。 */const avail=pr.left-6;
 if(avail>=120){tocTooltip.style.maxWidth=Math.min(260,avail)+'px';const h=tocTooltip.offsetHeight||20;tocTooltip.style.left='auto';
-tocTooltip.style.right=(window.innerWidth-pr.left+1)+'px';let top=pr.top;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;
+/* ★★★v4.1.79(俊克「メインリストで、2番目以降のtipthat出ない。タグリストも一番上の項目しか出ない。なぜ?」):
+   ★★★**出ていなかったのではなく、いつも「一番上」に出ていた**= 縦の位置を**ポップアップの上端**
+     (pr.top)から取っていたso、どの行に触れても同じ場所= 1行目の隣にしか現れない。
+   ★v0.9.99981のコメントは「縦は項目に追従」と書いてあった= **書いた通りに動いていなかった**
+     (説明と実装that食い違う= 今日ずっと塞いできたのと同じ形)。
+   ★→ 縦は**触っている物**の上端から取る。横は今までどおりポップアップの左端に接する。 */
+const _ir=(el&&el.getBoundingClientRect)?el.getBoundingClientRect():pr;
+tocTooltip.style.right=(window.innerWidth-pr.left+1)+'px';let top=_ir.top;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;
 if(top<2)top=2;tocTooltip.style.top=top+'px';}else{tocTooltip.style.maxWidth='';const tw=tocTooltip.offsetWidth||160,h=tocTooltip.offsetHeight||20;
 tocTooltip.style.right='auto';let left=pr.left;if(left+tw>window.innerWidth-2)left=window.innerWidth-tw-2;if(left<2)left=2;
 tocTooltip.style.left=left+'px';let top=pr.top-h-1;if(top<2)top=pr.bottom+1;tocTooltip.style.top=top+'px';}return;}}/* v0.9.769: タブのtipは常に"上空"に出す(ドラッグ中にドロップ位置を隠さないため)。タブ左に揃え、上に余地が無ければ下。 */const _tabEl=el.closest&&el.closest('.toc-tab');

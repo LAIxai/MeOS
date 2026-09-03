@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.79 (2026-09-03)
+- **A tooltip in a popup list now appears beside the row you are pointing at.** It was never missing on the
+  other rows — it was always drawn at the popup's top edge, which happens to be where the first row is, so
+  every row's tip looked like the first row's. The comment above that code said the tip followed the item;
+  the code took the popup's rectangle instead. It takes the hovered element's now. This mends every list in
+  Me Dock, not only the clocks.
+
 ### v4.1.78 (2026-09-03)
 - **A row in the clock list is the membrane's name.** The name looked cluttered because the date and time were
   eating the width; moving them into the tooltip hands the whole row to the name, which is the thing that says
