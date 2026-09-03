@@ -21290,7 +21290,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ★★直し= **字だけを動かす**= 中に一枚 span を敷いて、それを下げる。箱には一切触らないso、
      どんな box-sizing でも丸は丸のまま。 */
 .title-file-jump .jf{display:block;line-height:1}
-.title-file-jump.back .jf{position:relative;top:0}   /* v4.1.101: 3=まだ下寄り so 0(span を敷いて line-height:1 にした時点で、素の位置that既に下がっている= 昔の0とは別の0) */
+.title-file-jump.back .jf{position:relative;top:1px}   /* v4.1.102: 6→3→0 と降りて、素の位置から**1px だけ**下(俊克の目盛りで決めた最終値) */
 .title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
