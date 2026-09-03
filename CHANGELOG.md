@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.95 (2026-09-03)
+- **The 📌 sits 5px higher**, so the white circle only just bites into the corner of the file-name box
+  instead of resting on top of it.
+
 ### v4.1.94 (2026-09-03)
 - **The 📌 shoulder is always there once a file is pinned.** In v4.1.93 it hid itself whenever there was
   nowhere to go — which meant it disappeared exactly when you were sitting in the pinned file, and a button

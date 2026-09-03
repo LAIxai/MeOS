@@ -21254,7 +21254,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ★白地の円= 留めた1本は**他の何とも競らない**so、自分の地を持ってよい。
    ★出るのは**行ける時だけ**= 留めthat無い / もうそこに居る、なら出さない
      (▾that1本の時に消えるのと同じ規則= 押しても何も起きない駒を置かない)。 */
-.title-file-jump{position:absolute;top:0;right:0;transform:translate(50%,-50%);width:15px;height:15px;display:none;align-items:center;justify-content:center;padding:0;border:1px solid rgba(0,0,0,.35);border-radius:50%;background:#fff;color:#111;font-size:9px;line-height:1;cursor:pointer;z-index:5}
+.title-file-jump{position:absolute;top:0;right:0;transform:translate(50%,calc(-50% - 5px));/* v4.1.95(俊克 改良1「上方約-5ピクセル。白い円がファイル名の角丸四角に少しだけ食い込むくらい」)= 角のど真ん中(mz-badgeの立ち方)では、背の低い箱には乗り過ぎる。円は肩に**掛ける**物so、5px上げて爪先だけ乗せる。 */width:15px;height:15px;display:none;align-items:center;justify-content:center;padding:0;border:1px solid rgba(0,0,0,.35);border-radius:50%;background:#fff;color:#111;font-size:9px;line-height:1;cursor:pointer;z-index:5}
 .title-file-jump.on{display:flex}
 /* ★★v4.1.94(俊克 バグ1「📌ボタンが付いてないよ。なぜ?」): ★★★**私that「行ける時だけ出す」という条件を
    足していた**= 留めた1本の中に居ると消える。so「そこに居る」時ほど、ボタンthatが無くなっていた。
