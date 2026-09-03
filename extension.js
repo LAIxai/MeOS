@@ -23820,7 +23820,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    時分だけは最初に橙色にすべきだね」): ★★★**時刻は常に確定**= 必ず使われる値で、指定しない状態が無い。
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
-var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -23929,6 +23929,17 @@ function clkRenderTags(){var bar=document.getElementById('clk-tags'),add=documen
  var seen=[],i,j,src=vmTagItems;
  try{for(i=0;i<src.length;i++){var ts=src[i].tags||[];
   for(j=0;j<ts.length;j++)if(seen.indexOf(ts[j])<0)seen.push(ts[j]);}}catch(e){}
+ /* ★★v4.1.88(俊克「タグthat無数に増えた時のことを考えて、**最近使った10個を限度**にしよう。
+    あとは、タグ名を入力して検索すればいい」):
+    ★★★**並べる物には限りthatあるthat、探せる物には限りthatない**= 段は10枚まで、その先は箱で呼ぶ。
+    ★『最近使った』は**押した順**で覚える(この面の中だけ・ファイルには書かない=
+      札そのものは本文の物so、順番は覚えでよい)。
+    ★今選んでいる札は、10枚から溢れても必ず残す(押した物that消えるのは嘘)。 */
+ try{seen.sort(function(a,b){var ia=clkTagMRU.indexOf(a),ib=clkTagMRU.indexOf(b);
+  if(ia<0)ia=9999;if(ib<0)ib=9999;return ia-ib;});}catch(e){}
+ if(seen.length>10){var _keep=seen.slice(0,10);
+  if(clkTagSel&&_keep.indexOf(clkTagSel)<0){_keep.pop();_keep.push(clkTagSel);}
+  seen=_keep;}
  if(clkTagSel&&seen.indexOf(clkTagSel)<0)clkTagSel='';   /* 消えた札を選び続けない */
  var mk=function(label,val,cls){var b=document.createElement('span');
   b.className='clk-tag'+(cls||'')+((clkTagSel===val&&val!==null)?' on':'');
@@ -24100,6 +24111,8 @@ if(clkCaret&&clkPop){
    if(_nv)vscode.postMessage({type:'clockTagAdd',tag:_nv});return;}
   var _tb=(ev.target&&ev.target.closest)?ev.target.closest('.clk-tag'):null;
   if(_tb&&_tb.hasAttribute('data-tag')){var _tv=_tb.getAttribute('data-tag')||'';clkTagSel=(clkTagSel===_tv)?'':_tv;
+   if(_tv){var _mi=clkTagMRU.indexOf(_tv);if(_mi>=0)clkTagMRU.splice(_mi,1);clkTagMRU.unshift(_tv);
+    if(clkTagMRU.length>30)clkTagMRU.pop();}                     /* v4.1.88: 押した順に覚える */
    clkWarnOff();clkRenderList();clkPlace();return;}
   /* ★★★v4.1.74(俊克 バグ1「1番目の膜名thatまったく間違っている」「1番目のリストをクリックすると
      …飛んでしまうんだよ。なぜ?」): ★★★**描いた源と、押した時に引く源that違っていた**=
@@ -24759,7 +24772,23 @@ const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):
 if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();
 return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));
 /* v0.9.686: grow the tip LEFT from the cursor (Me Dock sits at the screen's right edge, so a right-growing tip clips); wrap to 2+ lines. Anchor the tip's RIGHT edge ~12px left of the cursor. */tocTooltip.style.display='block';
-tocTooltip.style.maxWidth='';tocTooltip.style.width='';/* v1.0.7: 既定幅(CSS 260px)に戻す。bm-pop.on分岐だけが左逃がし用に一時的に幅を詰める。v1.0.23: widthも毎回リセット(バッジ分岐が固定widthを置くため)。 *//* v0.9.99981(改良1 俊克): 開いているプルダウン(.bm-pop.on)内の項目tipは、マウスX追従をやめて ポップアップ左端に接した固定位置に出す(メニューを隠さない)。縦は項目に合わせる。 */{const _popEl=el.closest&&el.closest('.bm-pop');
+tocTooltip.style.maxWidth='';tocTooltip.style.width='';/* v1.0.7: 既定幅(CSS 260px)に戻す。bm-pop.on分岐だけが左逃がし用に一時的に幅を詰める。v1.0.23: widthも毎回リセット(バッジ分岐が固定widthを置くため)。 *//* v0.9.99981(改良1 俊克): 開いているプルダウン(.bm-pop.on)内の項目tipは、マウスX追従をやめて ポップアップ左端に接した固定位置に出す(メニューを隠さない)。縦は項目に合わせる。 *//* ★★★v4.1.88(俊克「\u23f0膜で、tipthatまったく出なくなった。基本は膜名なので、tipで膜名をフルで
+   見せた方thatいいでしょ。できれば、**パネルの上端ギリギリの位置に出そうよ。邪魔にならなく、固定位置で**」):
+   ★★★**tipを行に付いて回らせたのthat間違いだった**(v4.1.79)= 行の隣に出せば、必ずどこかの行を覆う。
+     一覧は**読みながら指を動かす**面so、覆われた瞬間に読めなくなる。
+   ★★→ **パネルの外側・上端に固定**する。どの行を指しても同じ場所so、目that探さない。
+     上に余地thatが無い時だけ下へ回す(画面の外に出さない)。
+   ★中身の1行目は**膜名の全部**= 一覧で切れた分thatここで読める。 */
+{const _clkEl=el.closest&&el.closest('.clk-pop');
+if(_clkEl&&_clkEl.classList.contains('on')&&el.closest('.clk-item')){
+ const pr=_clkEl.getBoundingClientRect();
+ tocTooltip.style.maxWidth='300px';tocTooltip.style.width='';
+ tocTooltip.style.left='auto';tocTooltip.style.right=Math.max(2,window.innerWidth-pr.right)+'px';
+ const h=tocTooltip.offsetHeight||20;
+ let top=pr.top-h-4;if(top<2)top=pr.bottom+4;
+ if(top+h>window.innerHeight-2)top=Math.max(2,window.innerHeight-h-2);
+ tocTooltip.style.top=top+'px';return;}}
+{const _popEl=el.closest&&el.closest('.bm-pop');
 if(_popEl&&_popEl.classList.contains('on')){const pr=_popEl.getBoundingClientRect();/* v1.0.7(俊克 改良2): 大ポップアップ(参照メニュー等)のtipは下に落ちてボタンを隠しがち→左に余地(≥120px)があれば幅をその余地に詰めて左へ逃がす。Me Dockが狭く左に余地が無い時だけ従来の上/下フォールバック。 */const avail=pr.left-6;
 if(avail>=120){tocTooltip.style.maxWidth=Math.min(260,avail)+'px';const h=tocTooltip.offsetHeight||20;tocTooltip.style.left='auto';
 /* ★★★v4.1.79(俊克「メインリストで、2番目以降のtipthat出ない。タグリストも一番上の項目しか出ない。なぜ?」):

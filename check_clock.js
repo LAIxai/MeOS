@@ -970,5 +970,25 @@ console.log('\u3271 \u672d\u306f**\u30b3\u30e1\u30f3\u30c8\u306e\u4e2d**\u3078(\
     '\u2605\u2605\u2605Tag \u306e\u7bb1\u3067\u306f Enter \u3067\u639b\u3051\u306a\u3044(\u639b\u3051\u308b\u306e\u306f Set \u3092\u62bc\u3057\u305f\u6642\u3060\u3051)', true);
 }
 
+// v4.1.88(俊克 2026.09.03 pm02:56)
+//   改良1「tipで膜名をフルで見せた方がいい。パネルの上端ギリギリの位置に。邪魔にならなく、固定位置で」
+//   改良2「タグが無数に増えた時のことを考えて、最近使った10個を限度に。あとは入力して検索」
+console.log('\u3272 tip \u306f\u30d1\u30cd\u30eb\u306e\u5916\u5074\u30fb\u4e0a\u7aef\u306b\u56fa\u5b9a / \u672d\u306e\u6bb5\u306f10\u679a\u307e\u3067');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/const _clkEl=el\.closest&&el\.closest\('\.clk-pop'\);/.test(S)&&/el\.closest\('\.clk-item'\)\)\{/.test(S),
+    '\u2605\u2605\u2605\u4e00\u89a7\u306e\u884c\u306e tip \u306f\u5c02\u7528\u306e\u9053\u3092\u901a\u308b(\u884c\u306b\u4ed8\u3044\u3066\u56de\u3089\u306a\u3044)', true);
+ ok(/let top=pr\.top-h-4;if\(top<2\)top=pr\.bottom\+4;/.test(S),
+    '\u2605\u2605**\u30d1\u30cd\u30eb\u306e\u5916\u5074\u30fb\u4e0a\u7aef**\u306b\u56fa\u5b9a(\u4e0a\u306b\u4f59\u5730that\u7121\u3051\u308c\u3070\u4e0b\u3078)', true);
+ ok(/tocTooltip\.style\.right=Math\.max\(2,window\.innerWidth-pr\.right\)\+'px'/.test(S),
+    '  \u6a2a\u306f\u30d1\u30cd\u30eb\u306e\u53f3\u7aef\u63c3\u3048(\u3069\u306e\u884c\u3092\u6307\u3057\u3066\u3082\u540c\u3058\u5834\u6240)', true);
+ ok(/if\(seen\.length>10\)\{var _keep=seen\.slice\(0,10\);/.test(S),
+    '\u2605\u2605\u2605\u672d\u306e\u6bb5\u306f**10\u679a\u307e\u3067**(\u305d\u306e\u5148\u306f\u7bb1\u3067\u547c\u3076)', true);
+ ok(/if\(clkTagSel&&_keep\.indexOf\(clkTagSel\)<0\)\{_keep\.pop\(\);_keep\.push\(clkTagSel\);\}/.test(S),
+    '\u2605\u4eca\u9078\u3093\u3067\u3044\u308b\u672d\u306f\u5fc5\u305a\u6b8b\u3059(\u62bc\u3057\u305f\u7269that\u6d88\u3048\u308b\u306e\u306f\u5618)', true);
+ ok(/if\(_mi>=0\)clkTagMRU\.splice\(_mi,1\);clkTagMRU\.unshift\(_tv\);/.test(S),
+    '  \u300c\u6700\u8fd1\u4f7f\u3063\u305f\u300d\u306f**\u62bc\u3057\u305f\u9806**(\u3053\u306e\u9762\u306e\u4e2d\u3060\u3051\u30fb\u672c\u6587\u306b\u306f\u66f8\u304b\u306a\u3044)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

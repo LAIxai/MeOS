@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.88 (2026-09-03)
+- **A row's tooltip sits just above the panel, always in the same place.** Following the row was the mistake:
+  beside a row it always covers another one, and a list is read with the finger moving. Outside the panel and
+  pinned to its top edge, it never covers anything and the eye never hunts for it. Its first line is the
+  membrane's whole name, which is what the row had to shorten.
+- **The tag bar holds ten**, most recently pressed first; the box finds the rest. What can be laid out has a
+  limit, what can be searched does not. A tag you have selected is always kept on the bar even if it falls
+  past the tenth, because a thing you just pressed should not vanish.
+
 ### v4.1.87 (2026-09-03)
 - **A tag written from the panel landed outside the membrane and broke it.** The end of `… // comment *} -->`
   is two closing marks working as one, and only the last was being treated as the end — so the tag went in
