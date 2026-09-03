@@ -28,6 +28,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.85 (2026-09-03)
+- README — the store page — now describes what v4.1 actually became: the stopwatch, the origin that does not
+  move, the ⏰▾ panel, the list of the next five, and Tag & Go.
+
 ### v4.1.84 (2026-09-03)
 - ⌥ Option on the year drum takes half as much of a push to move: 90 was as far past comfortable as 1 was
   short of it, so it sits between them at 45.

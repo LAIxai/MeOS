@@ -43,24 +43,12 @@ on the membrane itself:
 <!-- Mew!UFC ⏰ 18:30 -->
 <!-- Mew!UFC ⏰ 2026-09-27 09:00 -->
 <!-- Mew!UFC ⏰ 09:00 ↺5m -->
-<!-- Mew!UFC ⏰🔐 2026-09-03 12:10 ↻15 -->
 ```
 
 **How precisely you write it says what kind of plan it is.** A time alone means today — or tomorrow if it has
-gone. A date means that day. Nothing has to be remembered about where you put it, because it is written where
-it belongs, and it travels with the file.
-
-**Add an arrow and it repeats — and the arrow says which way time runs.** `↺` turns anticlockwise for a
-countdown: `↺5m` every five minutes, `↺8h` every eight hours, `↺30d` every thirty days, `↺50/10` alternating
-fifty minutes and ten. `↻` turns clockwise for a **stopwatch**: `↻15` climbs from zero for fifteen minutes,
-goes back to zero and measures again. Both ring at the same instants; only the figure is read the other way
-round, and neither stops until you stop it. The time you write is the **origin** and never moves — every bell
-is counted on from it, so nothing is stored twice and the day you started stays in the file.
-
-**Setting one is a small panel under ⏰▾**: the origin (with its weekday, and it may be in the past for a
-repeat), how long each turn lasts, which way it runs, and 🔐 if this one must not be droppable. Turn the drums,
-or double-click one and type. Everything the panel writes goes on the line, where you can also just type it
-by hand — on a phone, in any editor, with no MeOS at all.
+gone. A date means that day. Add `↺` and it repeats: `↺5m` every five minutes, `↺8h` every eight hours, `↺30d` every thirty days,
+`↺50/10` alternating fifty minutes and ten. The arrow turns anticlockwise because the count runs backwards. Nothing has to be remembered about where you put it, because it is written where it belongs, and it
+travels with the file.
 
 When the time comes MeOS **brings you to that membrane**, so write the next job inside it. Set from
 Pseudo-WYSIWYG it holds the membrane shut instead — a test paper you cannot walk out of, with your own 👻
@@ -71,20 +59,9 @@ five at thirty, and from ten seconds it does not stop — then a high, clear ton
 louder than far, and the silences between are what let each one land. A repeating clock goes quiet after it
 rings, so a bell every minute never becomes a bell that never stops.
 
-⏰ also keeps **the next five clocks**, soonest first. A row is the membrane's name — choose it and you are
-there, on the line the clock is written on, because anyone can set one by accident and finding it should not
-be a search. The one the ⏰ button is counting keeps its figure beside it so you can see which row that number
-belongs to. ☑ and ☐ let a clock rest without losing what it was set for, `Stop` in the last minute is a pause
-and not an ending, and `Undo` puts it straight back. Times far off read `≈4y 23:55.17` — roughly when, and
-still alive; that is all a four-year plan needs to say.
-
-**Tag & Go** — the sixth row is a door. Write `#eyedrops` in the comment on a membrane's opening line, where
-you are writing anyway, and every membrane wearing that tag gathers behind the door, clock or no clock.
-Choose one and you warp there; tick its box and a clock already written on it starts, after which it appears
-in the list by the one rule the list has ever had. Nothing is ever put into that list by hand.
-
-*So the ⏰ is a mask.* Underneath it is a way of finding a place in your own writing and being taken there —
-which is harder to explain than a timer, and easier to use once you have one.
+⏰ also keeps **a list of every clock you have set**. The one that rings next is marked; ☑ and ☐ let a clock
+rest without losing what it was set for; and choosing a row takes you to the line the clock is written on —
+because anyone can set one by accident, and finding it should not be a search.
 
 ### NEW in v4.0 — your data is plain Markdown; the instructions live in comments
 
@@ -412,12 +389,9 @@ MeOS stands on the shoulders of:
   real Markdown; MeOS reads its own settings from a folding comment on the line below. Your file renders correctly
   on GitHub, in any editor, and in any Markdown tool — with or without MeOS installed.
 - **A clock on a membrane (v4.1)** — write `<!-- Mew!UFC ⏰ 18:30 -->` under a membrane and MeOS brings you
-  back to it at that time; `↺5m` returns every five minutes, `↻15` measures fifteen and starts again. The
-  schedule lives in the place it is about, so there is nothing to remember about where you filed it, and it
-  travels with the file. The countdown is called in stages, like an archery line.
-- **Tag & Go (v4.1)** — put `#eyedrops` in a membrane's opening comment and it joins that tag's list, clock or
-  no clock; choose a row to warp there, tick its box to start the clock written on it. The ⏰ is the face of it
-  because a clock explains itself; what is underneath is a way back into your own writing.
+  back to it at that time; add `↺5m` and it returns every five minutes. The schedule lives in the place it is
+  about, so there is nothing to remember about where you filed it, and it travels with the file. The countdown
+  is called in stages, like an archery line.
 - **Warp anywhere (v4.0)** — turn any word into a jump to a membrane by name, or to a URL, without putting the
   destination in the middle of your sentence.
 - **Mew! 🐱 (v4.0)** — one signature makes every MeOS comment grep-able, and the cat converts old notation

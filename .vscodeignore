@@ -3,6 +3,7 @@
 .gitignore
 **/*.bak
 extension.js.pre*
+README.md.pre*
 引継時のextension/**
 **/*.vsix
 **/.DS_Store
