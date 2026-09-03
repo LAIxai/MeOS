@@ -28,6 +28,15 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.90 (2026-09-03)
+- **Found why the tooltips were missing**: v4.0.463 turns the shared tooltip off entirely while the ⏰ panel is
+  open, and it does so long before any of the placement code — so the two attempts to fix the placement were
+  edits to lines that never ran. The rule stays, because the shared tooltip really would cover the panel; the
+  reason is now written where the next reader will meet it.
+- **The panel's own strip takes over everything in it** — rows, buttons and boxes alike. A plain `title` is
+  moved into the strip and removed, so the operating system's own tooltip cannot appear beside it: one panel,
+  one place where writing appears.
+
 ### v4.1.89 (2026-09-03)
 - **The clock list draws its own tooltip.** Twice now the shared one showed for some rows and not others, and
   twice I tried to fix it by reading the code and guessed wrong; a panel that needs one line of text does not

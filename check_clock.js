@@ -990,5 +990,19 @@ console.log('\u3272 tip \u306f\u30d1\u30cd\u30eb\u306e\u5916\u5074\u30fb\u4e0a\u
     '  \u300c\u6700\u8fd1\u4f7f\u3063\u305f\u300d\u306f**\u62bc\u3057\u305f\u9806**(\u3053\u306e\u9762\u306e\u4e2d\u3060\u3051\u30fb\u672c\u6587\u306b\u306f\u66f8\u304b\u306a\u3044)', true);
 }
 
+// v4.1.90(俊克「以前、tipが邪魔だから出ないようにと言って加えた処理がどこかにあるはずだよ」= v4.0.463)
+console.log('\u3273 \u2b50\u898b\u3064\u304b\u3063\u305f= v4.0.463 that\u3053\u306e\u9762\u306e tip \u3092\u5168\u90e8\u6b62\u3081\u3066\u3044\u305f');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/\{var _ckp=document\.getElementById\('clk-pop'\);if\(_ckp&&_ckp\.classList\.contains\('on'\)\)\{hideTocTip\(\);return;\}\}/.test(S),
+    '\u2605\u2605\u2605v4.0.463 \u306f**\u6b8b\u3059**(\u5171\u6709\u306etip\u306f\u3053\u306e\u9762\u3092\u8986\u3046\u5f62so\u3001\u51fa\u3055\u306a\u3044\u306e that\u6b63\u3057\u3044)', true);
+ ok(/\u79c1\u306f2\u5ea6\u3001\u901a\u3089\u306a\u3044\u30b3\u30fc\u30c9\u3092\u76f4\u3057\u3066\u3044\u305f/.test(S),
+    '\u2605\u306a\u305c2\u5ea6\u5916\u3057\u305f\u304b\u3092\u3001\u305d\u306e\u5834\u306b\u66f8\u304d\u6b8b\u3059', true);
+ ok(/closest\('\[data-full\],\[data-tip\],\[title\]'\)/.test(S),
+    '\u2605\u2605\u5e2f\u306f**\u3053\u306e\u9762\u306e\u8aad\u3080\u7269\u3092\u5168\u90e8**\u5f15\u304d\u53d7\u3051\u308b(\u884c\u3082\u30fb\u99d2\u3082\u30fb\u7bb1\u3082)', true);
+ ok(/if\(_t0\)e0\.setAttribute\('data-full',_t0\);e0\.removeAttribute\('title'\);/.test(S),
+    '\u2605\u2605\u7d20\u306e title \u306f\u5e2f\u3078\u79fb\u3057\u3066\u5916\u3059(OS\u6a19\u6e96\u306etip\u3068\u306e\u4e8c\u91cd\u51fa\u3057\u3092\u65ad\u3064)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

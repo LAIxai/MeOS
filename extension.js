@@ -24081,9 +24081,15 @@ if(!clkTagMode){var dr=document.createElement('div');dr.className='clk-door';dr.
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
 if(clkPop){
  /* v4.1.89: 一覧の上で動いたら、その行の全部を帯に出す(行の外へ出れば消す)。 */
+ /* ★★v4.1.90: 帯は**この面の中の読む物を全部**引き受ける= 行も、駒も、箱も。
+    ★素の title は**帯へ移して外す**= OS標準のtipとの二重出しを断つ(showTocTip と同じ手)。
+    ★共有のtipは v4.0.463 でこの面では止まっているso、出す口は**この帯1つだけ**になる。 */
  clkPop.addEventListener('mousemove',function(ev){
-  var it=(ev.target&&ev.target.closest)?ev.target.closest('.clk-item'):null;
-  clkTipShow(it?(it.getAttribute('data-full')||''):'');},true);
+  var e0=(ev.target&&ev.target.closest)?ev.target.closest('[data-full],[data-tip],[title]'):null;
+  if(e0&&e0.hasAttribute&&e0.hasAttribute('title')){var _t0=e0.getAttribute('title');
+   if(_t0)e0.setAttribute('data-full',_t0);e0.removeAttribute('title');}
+  var _tx=e0?(e0.getAttribute('data-full')||e0.getAttribute('data-tip')||''):'';
+  clkTipShow(_tx?String(_tx).split(' | ').join(String.fromCharCode(10)):'');},true);
  clkPop.addEventListener('mouseleave',function(){clkTipShow('');});
 }
 if(clkCaret&&clkPop){
@@ -24778,6 +24784,11 @@ return;}}/* ★v4.0.397(俊克 8/23 pm09:47「ΔCharをクリックすると出�
    ★開いたパネルを覆うtipは、どの道でも邪魔＝ 門番を足すのではなく、**開いている物の一覧に足す**。 */
 {var _mcp=document.getElementById('me-char-pop');if(_mcp&&_mcp.classList.contains('on')){hideTocTip();return;}}
 /* v4.0.463: ⏰の▾も同じ= 中は自分で名前を書いてあるso、読む物thatが無い。開いた物を覆わない。 */
+/* ★★★v4.1.90(俊克「以前、tipthat邪魔だから出ないようにと言って加えた処理thatどこかにあるはずだよ」= これ):
+   ★★★**私は2度、通らないコードを直していた**(v4.1.79/4.1.88)= この行thatずっと手前で全部止めていた。
+     俊克の記憶thatコードより正確だった。★これthat「読みだけで直そうとして2度外した」の答え。
+   ★この規則は**残す**= 共有のtipは今もこの面を覆う形so、出さないのthat正しい。
+     代わりに、この面のtipは**自前の帯**(clk-tip・パネルの真上・何も覆わない)that引き受ける(v4.1.89)。 */
 {var _ckp=document.getElementById('clk-pop');if(_ckp&&_ckp.classList.contains('on')){hideTocTip();return;}}
 if(window.__refDeciding){hideTocTip();return;}/* v0.9.99988: セグメント決定中はtip抑制(俊克) *//* v0.9.805: H-TOC項目のコメント編集中(toc-valueにフォーカス)はtip非表示=編集の邪魔をしない。 */{const ae=document.activeElement;
 if(ae&&ae.classList&&ae.classList.contains('toc-value')){hideTocTip();return;}}
