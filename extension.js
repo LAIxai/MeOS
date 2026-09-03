@@ -9754,20 +9754,31 @@ function meosMembraneTags(doc, line) {
   } catch (_) { }
   return out;
 }
+// ★★★v4.1.87(俊克 バグ1「Tagの書き込み位置を間違えているため、**膜that壊れたと見なされる**。
+//   しかも、FCthat追加されない」): ★★★**閉じの印を1つしか見ていなかった**=
+//     `… // comment1 *} -->` の尾は **`*}` と `-->` の2つで1組**なのに、末尾の `-->` だけを尾と見て、
+//     その手前(= `*}` の外)へ札を置いていた。so `*}` thatが行の途中に来て、膜の形that壊れた。
+//   ★★→ 尾は**閉じの印の並びごと**取る。札はいつでも**コメントの中**へ入る。
+//   ★行の作り替えは**純粋な関数**に切り出す= 文字列だけで確かめられる(実物のファイルを壊さずに測れる)。
+function meosMembraneTagsLine(txt, tags) {
+  const t = String(txt == null ? '' : txt);
+  const i = t.indexOf('//');
+  if (i < 0) return null;                                   // `//` の無い形には書かない(形を作り替えない)
+  const head = t.slice(0, i + 2);
+  const rest = t.slice(i + 2);
+  const m = /(\s*(?:\*\s*\}|\*\/)\s*(?:-->)?\s*|\s*-->\s*)$/.exec(rest);
+  const tail = (m && m[1]) ? m[1] : '';
+  let mid = tail ? rest.slice(0, rest.length - tail.length) : rest;
+  mid = mid.replace(/(^|\s)#[^\s#<>*}]+/g, '').replace(/\s+$/, '');
+  const add = (Array.isArray(tags) && tags.length) ? (' ' + tags.map(x => '#' + x).join(' ')) : '';
+  return head + mid + add + tail;
+}
 // 開始膜のコメントの札を書き替える。**触るのはコメントの中だけ**= 膜の名前も閉じの印も動かさない。
 async function meosSetMembraneTags(doc, line, tags) {
   try {
     const txt = String(doc.lineAt(line).text || '');
-    const i = txt.indexOf('//');
-    if (i < 0) return false;                                  // `//` の無い形には書かない(形を作り替えない)
-    const head = txt.slice(0, i + 2);
-    const rest = txt.slice(i + 2);
-    const m = /(\s*(?:\*\s*\}|\*\/|-->)\s*)$/.exec(rest);
-    const tail = m ? m[1] : '';
-    let mid = m ? rest.slice(0, rest.length - tail.length) : rest;
-    mid = mid.replace(/(^|\s)#[^\s#<>*}]+/g, '').replace(/\s+$/, '');
-    const add = (Array.isArray(tags) && tags.length) ? (' ' + tags.map(x => '#' + x).join(' ')) : '';
-    const line2 = head + mid + add + tail;
+    const line2 = meosMembraneTagsLine(txt, tags);
+    if (line2 == null) return false;
     if (line2 === txt) return true;
     const ed = new vscode.WorkspaceEdit();
     ed.replace(doc.uri, doc.lineAt(line).range, line2);
@@ -24166,7 +24177,9 @@ if(clkCaret&&clkPop){
   vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,rep:clkRep,up:clkDir,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:''});closeClkPop();}
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
- if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
+ function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
+ if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!clkComposing(e)){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  var clkTagNew=document.getElementById('clk-tagnew');
  if(clkTagNew){clkTagNew.addEventListener('input',function(){clkTagFilter=(clkTagNew.value||'').trim();
@@ -24176,14 +24189,19 @@ if(clkCaret&&clkPop){
    if(e.key==='Escape'){e.stopPropagation();
     if(clkTagFilter){clkTagNew.value='';clkTagFilter='';clkRenderList();clkPlace();}else closeClkPop();}});}
  var clkTagEl=document.getElementById('clk-tagin');
- if(clkTagEl)clkTagEl.addEventListener('keydown',function(e){if(e.key==='Enter'){e.stopPropagation();clkFire();}
+ /* ★★v4.1.87(俊克「Tagを入力するとき、**かな漢字変換で確定をリターンを押すと Set that反応**して
+    しまうので、Setボタンは、クリックした時だけにしよう」):
+    ★★★**変換の確定と、決定の Enter は、同じ鍵から出る別の合図**= 日本語を打つ箱では見分けられない。
+      → Tag の箱では Enter で掛けない(掛けるのは Set を押した時だけ)。
+    ★他の箱(時刻・繰返し)も、**変換中の Enter は無視**する= 根の方も塞ぐ(isComposing/229)。 */
+ if(clkTagEl)clkTagEl.addEventListener('keydown',function(e){
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  function clkEditOn(){if(!clkEditEl)return;clkEditEl.value=clkText();clkPop.classList.add('editing');
   try{clkEditEl.focus();clkEditEl.select();}catch(e){}}
  function clkEditOff(apply){if(!clkEditEl)return;if(apply)clkSyncFromBox();clkPop.classList.remove('editing');clkEcho();}
  if(clkWhenEl)clkWhenEl.addEventListener('click',function(ev){ev.stopPropagation();clkEditOn();});
  if(clkEditEl){clkEditEl.addEventListener('keydown',function(e){
-  if(e.key==='Enter'){clkEditOff(true);clkFire();return;}
+  if(e.key==='Enter'){if(clkComposing(e))return;clkEditOff(true);clkFire();return;}
   if(e.key==='Escape'){e.stopPropagation();clkEditOff(false);}});
   clkEditEl.addEventListener('blur',function(){if(clkPop.classList.contains('editing'))clkEditOff(true);});}
  /* v4.0.463: 置き場所はCSSthat決める(▾の子)so、ここでは開け閉めと中身の初期値だけ。 */

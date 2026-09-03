@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -944,6 +944,30 @@ console.log('\u3270 \u958b\u3051\u76f4\u305b\u3070\u4eca\u3078\u623b\u308b / \u3
     '\u2605\u2605\u2605\u7d9a\u3051\u3066\u3044\u308b\u306e\u304b\u3001\u51fa\u76f4\u3057\u305f\u306e\u304b\u3092**\u9593\u3067\u898b\u5206\u3051\u308b**(1\u5206)', true);
  ok(/clkLastSet=Date\.now\(\);/.test(S), '  Set \u3057\u305f\u6642\u306b\u899a\u3048\u308b(\u958b\u3044\u305f\u3060\u3051\u3067\u306f\u899a\u3048\u306a\u3044)', true);
  ok(/if\(!_keep\)\{var n2=new Date\(\);/.test(S), '  \u6642\u5206\u3082\u540c\u3058\u898f\u5247\u3067\u623b\u308b', true);
+}
+
+// v4.1.87(俊克 CN=v4.1.86_0220)
+//   バグ1「Tagの書き込み位置を間違えているため、膜が壊れたと見なされる。しかもFCが追加されない」
+//   改良1「かな漢字変換で確定のリターンを押すとSetボタンが反応してしまう」
+console.log('\u3271 \u672d\u306f**\u30b3\u30e1\u30f3\u30c8\u306e\u4e2d**\u3078(\u9589\u3058\u306e\u5370\u306e\u4e26\u3073\u3054\u3068\u5c3e\u3092\u53d6\u308b)');
+{
+ const L=X.meosMembraneTagsLine;
+ const a='<!-- {* \u25bcmCN=\u30c6\u30b9\u30c8\u819c_20260903t140222JST // comment1 *} -->';
+ ok(L(a,['\u30c6\u30b9\u30c8'])==='<!-- {* \u25bcmCN=\u30c6\u30b9\u30c8\u819c_20260903t140222JST // comment1 #\u30c6\u30b9\u30c8 *} -->',
+    '\u2605\u2605\u2605`*}` \u3068 `-->` \u306f**2\u3064\u30671\u7d44**= \u672d\u306f\u305d\u306e\u5185\u5074\u3078', L(a,['\u30c6\u30b9\u30c8']));
+ ok(L(a,[])===a, '  \u672d\u3092\u5916\u3057\u305f\u3089\u5143\u306e\u884c\u306b\u623b\u308b(\u4f59\u5206\u306a\u5b57\u3092\u6b8b\u3055\u306a\u3044)', L(a,[]));
+ const b='<!-- {* \u25bcmCN=a_1 // c *} -->';
+ ok(L(L(b,['x']),['y'])==='<!-- {* \u25bcmCN=a_1 // c #y *} -->', '\u2605\u66f8\u304d\u63db\u3048\u3066\u3082\u5f62that\u5d29\u308c\u306a\u3044(\u4f55\u5ea6\u3067\u3082)', L(L(b,['x']),['y']));
+ const c='// {* \u25bcmCN=a_1 // c *}';
+ ok(L(c,['z'])==='// {* \u25bcmCN=a_1 #z *}'||L(c,['z']).indexOf('*}')>0, '  `-->` \u306e\u7121\u3044\u5f62\u3067\u3082\u9589\u3058\u306e\u5185\u5074\u3078', L(c,['z']));
+ ok(L('\u25bc\u76ee\u85ac_1  // #\u75c5\u6c17',['\u75c5\u6c17','\u671d'])==='\u25bc\u76ee\u85ac_1  // #\u75c5\u6c17 #\u671d',
+    '  \u9589\u3058\u306e\u5370that\u7121\u3044\u884c\u306f\u672b\u5c3e\u3078', L('\u25bc\u76ee\u85ac_1  // #\u75c5\u6c17',['\u75c5\u6c17','\u671d']));
+ ok(L('no slashes here',['x'])===null, '  `//` \u306e\u7121\u3044\u5f62\u306b\u306f\u66f8\u304b\u306a\u3044(\u5f62\u3092\u4f5c\u308a\u66ff\u3048\u306a\u3044)', true);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/function clkComposing\(e\)\{return !!\(e\.isComposing\|\|e\.keyCode===229\);\}/.test(S),
+    '\u2605\u2605\u5909\u63db\u4e2d\u306e Enter \u306f\u7121\u8996\u3059\u308b(\u6839\u306e\u65b9\u3082\u585e\u3050)', true);
+ ok(/if\(clkTagEl\)clkTagEl\.addEventListener\('keydown',function\(e\)\{\n  if\(e\.key==='Escape'\)/.test(S),
+    '\u2605\u2605\u2605Tag \u306e\u7bb1\u3067\u306f Enter \u3067\u639b\u3051\u306a\u3044(\u639b\u3051\u308b\u306e\u306f Set \u3092\u62bc\u3057\u305f\u6642\u3060\u3051)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

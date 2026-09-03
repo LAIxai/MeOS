@@ -28,6 +28,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.87 (2026-09-03)
+- **A tag written from the panel landed outside the membrane and broke it.** The end of `… // comment *} -->`
+  is two closing marks working as one, and only the last was being treated as the end — so the tag went in
+  between them, putting `*}` in the middle of the line. The whole run of closing marks is taken as the end now,
+  and a tag always lands inside the comment. The line rewriting is a plain function of the text, so it can be
+  checked as strings.
+- **Enter no longer fires Set from the Tag box.** Confirming a kana-kanji conversion and pressing Enter to mean
+  "do it" come from the same key, and in a box that takes Japanese they cannot be told apart — so that box
+  commits only when Set is pressed. Elsewhere an Enter arriving mid-conversion is ignored.
+
 ### v4.1.86 (2026-09-03)
 - **Reopening ⏰▾ comes back to today** — unless the last one was set less than a minute ago, in which case
   everything is left as it was. Setting several things for next month in a row means your finger has not
