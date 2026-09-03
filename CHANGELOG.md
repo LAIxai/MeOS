@@ -28,6 +28,17 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.78 (2026-09-03)
+- **A row in the clock list is the membrane's name.** The name looked cluttered because the date and time were
+  eating the width; moving them into the tooltip hands the whole row to the name, which is the thing that says
+  which membrane this is. The tooltip carries all of it — full name, the time it is set for, and how it repeats
+  (`↺5m`), so you can see what kind of timer it is without opening anything.
+- **A running clock shows its figure instead**, ticking, in the ⏰ colour — the same number the ⏰ button is
+  showing, so the row it belongs to is obvious. This matters most in Tag & Go, where rows carry no highlight.
+  The name stays beside it: the figure is short, and several clocks running at once should not become several
+  anonymous numbers.
+- Only the figure is rewritten each second, not the row, so nothing moves under a finger reaching for it.
+
 ### v4.1.77 (2026-09-03)
 - **Dates on a clock carry their weekday** — `09/03(t)` — in the list, on the ⏰ line, and in the ▾ panel while
   you are choosing the start. A weekday is the thing a plan is actually remembered by.

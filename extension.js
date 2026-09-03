@@ -9996,7 +9996,7 @@ function meosArmClockFcFor(doc) {
           const _s = _meosPseudoScopes.get(lk);
           if (_s) {
             _s.up = !!(c.up && Array.isArray(c.cycle) && c.cycle.length);
-            if (Array.isArray(c.cycle) && c.cycle.length) _s.step = meosCycleMs(c.cycle[0]);
+            if (Array.isArray(c.cycle) && c.cycle.length) { _s.step = meosCycleMs(c.cycle[0]); _s.cyc = (c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/'); }
             _s.name = c.name || _s.name;
             _s.tags = c.tags || [];                                 // v4.1.70: 札も本文to一緒に新しくする
           }
@@ -10040,6 +10040,7 @@ function meosArmClockFcFor(doc) {
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
         up: !!(c.up && Array.isArray(c.cycle) && c.cycle.length),
         tags: c.tags || [],
+        cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
         step: _step };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
@@ -10350,11 +10351,11 @@ function meosClockList(limit) {
   const push = (r, running) => {
     const k = r.uri + ' ' + r.key;
     if (seen.has(k)) return; seen.add(k);
-    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, off: !!r.off, tags: Array.isArray(r.tags) ? r.tags : [], running: !!running });
+    out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, off: !!r.off, tags: Array.isArray(r.tags) ? r.tags : [], step: r.step || 0, cyc: r.cyc || '', running: !!running });
   };
   try {
     const live = [];
-    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock, up: sc.up, tags: sc.tags }); }
+    for (const [k, until] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (sc) live.push({ uri: sc.uri, key: sc.key, name: sc.name, at: until, hold: sc.hold, lock: sc.lock, up: sc.up, tags: sc.tags, step: sc.step, cyc: sc.cyc }); }
     live.sort((a, b) => a.at - b.at);
     for (const r of live) push(r, true);
     // v4.1.62: 走っている物 → **休んでいる物(予定)** → 鳴り終わった物。予定は履歴に押し出されない。
@@ -11135,8 +11136,11 @@ function meosPostTagList() {
             const _run = _meosPseudoUntil.get(_uri + ' ' + p.id) || 0;
             let _at = _run;
             if (!_at && _c) { const _w = meosParseStampLoose(_c.when); if (_w) _at = _w.getTime(); }
+            const _sc2 = _meosPseudoScopes.get(_uri + ' ' + p.id) || null;
             _items.push({ uri: _uri, key: p.id, name: p.id, tags: _tg, line: p.start,
-              has: !!_c, at: _at, running: !!_run, off: !!(_c && _c.off), up: !!(_c && _c.up) });
+              has: !!_c, at: _at, running: !!_run, off: !!(_c && _c.off), up: !!(_c && _c.up),
+              step: (_sc2 && _sc2.step) || 0,
+              cyc: (_c && Array.isArray(_c.cycle) && _c.cycle.length) ? ((_c.up ? '\u21bb' : '\u21ba') + _c.cycle.join('/')) : '' });
           }
           // 時刻を持つ物that先(近い順)、その後は書いてある順= 探し物の並びも「時刻の近い順」から外れない。
           _items.sort((a, b) => (a.at && b.at) ? (a.at - b.at) : (a.at ? -1 : (b.at ? 1 : (a.line - b.line))));
@@ -21934,6 +21938,9 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item.next .ci-ck,.clk-item.next .ci-x{color:#111}
 .clk-item.next .ci-x{background:transparent;border-color:#e0803a}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
+/* v4.1.78: 動いている物の数字は\u23f0の色= 面のボタンに出ている値と同じ物だと目that分かる。 */
+.clk-item .ci-t.ci-live{color:#e0803a}
+.clk-item .ci-t:empty{display:none}
 .clk-item.live .ci-t{color:#e0803a}
 /* ★★★v4.1.34(俊克「『…』までの高さより、その右の『232310JST』that上付きになっている。なぜ?」):
    ★★★**伸ばされた箱の、上に字that乗っていた**= .ci-n は flex の箱so、既定(stretch)では
@@ -23619,6 +23626,7 @@ _rt.classList.toggle('near',_near&&!_imm);_rt.classList.toggle('imminent',_imm);
 var _wrp=_rt.parentElement;if(_wrp&&_wrp.classList.contains('clk-wrap')){
  _wrp.classList.toggle('ringing',vmRing);_wrp.classList.toggle('near',_near&&!_imm);_wrp.classList.toggle('imminent',_imm);
  _wrp.classList.toggle('running',_nl>0||vmRing||_anyRun);}   /* v4.1.36: 輪も駒ごと */
+try{if(clkPop&&clkPop.classList.contains('on'))clkTickRows();}catch(e){}   /* v4.1.78: 一覧の生きた数字も同じ拍で */
 _rt.setAttribute('data-tip',(viewMode==='pseudo')
 ?('Hold this membrane, then ring \u23f0 | Nothing raw, nothing crossed out, and no way out until the time is up \u2014 a test paper. When it ends, the membrane goes back to normal and MeOS brings you here.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30.')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
@@ -23848,6 +23856,14 @@ function clkRenderTags(){var bar=document.getElementById('clk-tags'),add=documen
  back.title='Back to the next five';bar.appendChild(back);
  bar.appendChild(mk('all','',' all'));
  for(i=0;i<seen.length;i++)bar.appendChild(mk('#'+seen[i],seen[i]));}
+/* v4.1.78: 生きた数字。\u21bb は経過(= 間隔 \u2212 残り)、\u21ba は残り= 面と同じ式(二重に持たない)。 */
+function clkLiveVal(c){var left=Math.max(0,(c.at||0)-Date.now());
+ if(c.up&&c.step>0)return vmMmSs(Math.max(0,Math.min(c.step,c.step-left)));
+ return vmMmSs(left);}
+/* 毎秒、**中身だけ**書き替える= 行を組み直さないso、押そうとした物that動かない。 */
+function clkTickRows(){try{var ns=document.querySelectorAll('#clk-list .ci-live');
+ for(var i=0;i<ns.length;i++){var e=ns[i];
+  e.textContent=clkLiveVal({at:+e.getAttribute('data-at'),step:+e.getAttribute('data-step'),up:e.getAttribute('data-up')==='1'});}}catch(e){}}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
 clkRenderTags();
@@ -23870,11 +23886,20 @@ ck.textContent=(clkTagMode&&!c.has)?'\u00b7':(c.running?'\u2611':'\u2610');
 ck.title=c.running?'In use \u2014 click to let it rest. The time stays written on the membrane (\u23f8), so you can bring it back.':'Resting \u2014 click to use it again, at the time written on the membrane.';
 row.appendChild(ck);
 /* v4.1.60: \u21bb= ストップウォッチ(増える)。出す時刻はどちらも**次の区切り**= 一覧は時刻で出す。 */
+/* ★★★v4.1.78(俊克 2026.09.03 am10:50「⏰リストthat予定時刻で汚れ、名前thatタイムスタンプthat2重に
+   なって汚れている。(1)⏰リストの基本は**膜名**。このときのtipは予定日時、あるいは繰返し指定。
+   (2)タイマーthat動作している時、残りタイマー、あるいはストップウォッチの値を表示する」):
+   ★★★**名前thatが汚れて見えた根本は、時刻that横幅を食っていたこと**= 切り詰め方を工夫するのではなく、
+     時刻を tip へ送れば**名前に全幅that渡る**。原因を消す方that正しい。
+   ★★止まっている物= **名前だけ**(予定はtipに) / 動いている物= **数字thatが先、名前thatが後**。
+     数字は短いso両方入る= ⏰ボタンの値と対応が取れて、なおどの膜かも分かる
+     (俊克の案は数字だけthatが、何本も動くと『番号のない数字』that並ぶので、名前を残した)。 */
 var t=document.createElement('span');t.className='ci-t';
-/* v4.1.75: 部屋では \u23f0 の絵を出さない= ここは膜を探す所so、その幅は名前に回す。 */
-t.textContent=(c.running&&!clkTagMode)?'\u23f0 ':'';
-if(c.up){var _u=document.createElement('span');_u.className='ci-up';_u.textContent='\u21bb ';t.appendChild(_u);}  /* v4.1.65: 面のボタンと同じ水色 */
-t.appendChild(document.createTextNode(c.at?clkWhenLabel(c.at):'\u2014'));
+if(c.running){t.classList.add('ci-live');
+ t.setAttribute('data-at',String(c.at||0));t.setAttribute('data-step',String(c.step||0));
+ t.setAttribute('data-up',c.up?'1':'');t.textContent=clkLiveVal(c);}
+else if(clkTagMode&&!c.has)t.textContent='';                    /* \u23f0 の無い膜= 出す物that無い */
+else t.textContent='';
 /* ★★★v4.1.28(俊克 改良1「横幅that狭いので省略する時は、**膜名の最後を残す形**で、
    「テスト3_2...43JST」のようにすればいい」): ★★★**見分けthat最後に在る**=
    Mepyで写した膜は名前thatが同じで、時分秒だけthat違う。頭から詰めて後ろを切ると、全部同じ字面になる。
@@ -23886,7 +23911,12 @@ var _nm=c.name||'(outside every membrane)';
 if(_nm.length>9){var _nh=document.createElement('span');_nh.className='ci-nh';_nh.textContent=_nm.slice(0,_nm.length-9);
 var _nt=document.createElement('span');_nt.className='ci-nt';_nt.textContent=_nm.slice(-9);
 n.appendChild(_nh);n.appendChild(_nt);}else n.textContent=_nm;
-n.title=_nm;
+/* v4.1.78: tip は**その行の全部**= 全名・予定日時・繰返し。狭い所で切れた分thatここで読める。 */
+var _tip=_nm;
+if(c.at)_tip+=String.fromCharCode(10)+clkWhenLabel(c.at);
+if(c.cyc)_tip+=String.fromCharCode(10)+c.cyc;
+if(clkTagMode&&!c.has)_tip+=String.fromCharCode(10)+'no clock yet';
+n.title=_tip;row.title=_tip;
 row.appendChild(t);row.appendChild(n);
 /* v4.1.70: 行にも札を小さく= どの札の物かthat一覧のまま読める。 */
 /* ★★v4.1.76: 札のチップは**部屋の中だけ**= 一覧は時刻を読む所so、名前に幅を全部渡す。

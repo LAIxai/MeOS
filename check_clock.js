@@ -818,5 +818,27 @@ console.log('\u3269 \u66dc\u65e5\u306f**\u5e74\u6708\u65e5\u304b\u3089\u51fa\u30
     '\u2605\u2605\u2605**\u66f8\u304f\u5074\u306b\u306f\u5165\u308c\u306a\u3044**= 2\u3064\u6301\u3066\u3070\u3044\u3064\u304b\u98df\u3044\u9055\u3046', true);
 }
 
+// v4.1.78(俊克 2026.09.03 am10:50「⏰リストが予定時刻で汚れ、名前がタイムスタンプが2重になって汚れている。
+//   (1)⏰リストの基本は膜名。tipは予定日時、あるいは繰返し指定。
+//   (2)タイマーが動作している時、残りタイマー、あるいはストップウォッチの値を表示する」)
+console.log('\u326a \u4e00\u89a7\u306e\u57fa\u672c\u306f**\u819c\u540d** / \u52d5\u3044\u3066\u3044\u308b\u7269\u306f\u6570\u5b57that\u5148');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/else if\(clkTagMode&&!c\.has\)t\.textContent='';[^]{0,60}else t\.textContent='';/.test(S),
+    '\u2605\u2605\u2605\u6b62\u307e\u3063\u3066\u3044\u308b\u7269\u306f**\u540d\u524d\u3060\u3051**(\u4e88\u5b9a\u306f tip \u3078)= \u540d\u524d\u306b\u5168\u5e45that\u6e21\u308b', true);
+ ok(/if\(c\.running\)\{t\.classList\.add\('ci-live'\)/.test(S)&&/t\.textContent=clkLiveVal\(c\)/.test(S),
+    '\u2605\u2605\u2605\u52d5\u3044\u3066\u3044\u308b\u7269\u306f**\u751f\u304d\u305f\u6570\u5b57**(\u23f0\u30dc\u30bf\u30f3\u306e\u5024\u3068\u5bfe\u5fdc that\u53d6\u308c\u308b)', true);
+ ok(/function clkLiveVal\(c\)\{var left=Math\.max\(0,\(c\.at\|\|0\)-Date\.now\(\)\);/.test(S)&&/c\.up&&c\.step>0/.test(S),
+    '\u2605\u21bb \u306f\u7d4c\u904e\u30fb\u21ba \u306f\u6b8b\u308a= \u9762\u3068\u540c\u3058\u5f0f(\u4e8c\u91cd\u306b\u6301\u305f\u306a\u3044)', true);
+ ok(/function clkTickRows\(\)/.test(S)&&/clkPop\.classList\.contains\('on'\)\)clkTickRows\(\)/.test(S),
+    '\u2605\u2605\u6bce\u79d2**\u4e2d\u8eab\u3060\u3051**\u66f8\u304d\u66ff\u3048\u308b(\u884c\u3092\u7d44\u307f\u76f4\u3055\u306a\u3044so\u3001\u62bc\u305d\u3046\u3068\u3057\u305f\u7269that\u9003\u3052\u306a\u3044)', true);
+ ok(/n\.title=_tip;row\.title=_tip;/.test(S)&&/if\(c\.cyc\)_tip\+=/.test(S),
+    '\u2605\u2605tip \u306f\u305d\u306e\u884c\u306e**\u5168\u90e8**(\u5168\u540d\u30fb\u4e88\u5b9a\u65e5\u6642\u30fb\u7e70\u8fd4\u3057)', true);
+ ok(/cyc: \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)/.test(S),
+    '  \u7e70\u8fd4\u3057\u306e\u66f8\u304d\u65b9\u3082\u884c\u3078\u6e21\u308b(\u3069\u3093\u306a\u30bf\u30a4\u30de\u30fc\u304b that\u5206\u304b\u308b)', true);
+ ok(/\.clk-item \.ci-t\.ci-live\{color:#e0803a\}/.test(S)&&/\.clk-item \.ci-t:empty\{display:none\}/.test(S),
+    '  \u6570\u5b57\u306f\u23f0\u306e\u8272\u30fb\u7a7a\u306e\u679d\u306f\u5834\u6240\u3092\u53d6\u3089\u306a\u3044', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
