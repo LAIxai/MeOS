@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.100 (2026-09-03)
+- **The ↩ settles halfway.** Centred was too high, 6px dropped it onto the rim; 3px is where it reads as
+  being in the middle of the circle.
+
 ### v4.1.99 (2026-09-03)
 - **The circle is a circle again.** v4.1.98 moved the glyph by shrinking the button's height — but a webview
   is served with the host's own `box-sizing: border-box`, so that height became the outer height and the

@@ -21290,7 +21290,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ★★直し= **字だけを動かす**= 中に一枚 span を敷いて、それを下げる。箱には一切触らないso、
      どんな box-sizing でも丸は丸のまま。 */
 .title-file-jump .jf{display:block;line-height:1}
-.title-file-jump.back .jf{position:relative;top:6px}   /* v4.1.99: 俊克「もう少し下だね。3ピクセルかな」= 3→6px(↩は字の上側that空いている) */
+.title-file-jump.back .jf{position:relative;top:3px}   /* v4.1.100: 0=高過ぎ / 6=行き過ぎ(円の下端へ落ちた) so、俊克「ほぼ中間値」= 3px */
 .title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
