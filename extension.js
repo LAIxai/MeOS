@@ -10374,7 +10374,15 @@ function meosNoteClockHistory(scope, at, off) {
 function meosClockList(limit) {
   meosClockHistoryLoad();
   const out = [], seen = new Set();
+  // ★★★v4.1.92(俊克 改良1「⏰はファイルの中の膜にあるので、ファイルを切り替えたら、⏰も切り替わるべきだよね?」):
+  //   ★★★**時計の住まいはファイルの中の膜**so、一覧も**今開いているファイルの物**。
+  //     同じ面(Me Dock)に並ぶ H-TOC も Tag&Go も、とうにそうだった= ここだけthat機械ぜんぶを見ていた。
+  //   ★他のファイルで走っている物を見失いはしない= **ステータスバーthatが機械ぜんぶの係**
+  //     (次に鳴る物＋`+N`／押せば全部の一覧that出て、そこへ行ける・v4.0.448/469)。
+  //     so**跨ぐ道は既に1本在る**= 一覧はファイルの物に戻してよい。
+  let _cur = ''; try { const _e = meosCurrentEditor(); if (_e && _e.document) _cur = _e.document.uri.toString(); } catch (_) { }
   const push = (r, running) => {
+    if (_cur && r.uri !== _cur) return;          // v4.1.92: 今のファイルの物だけ
     const k = r.uri + ' ' + r.key;
     if (seen.has(k)) return; seen.add(k);
     out.push({ uri: r.uri, key: r.key, name: r.name || '', at: r.at, hold: !!r.hold, lock: !!r.lock, up: !!r.up, off: !!r.off, tags: Array.isArray(r.tags) ? r.tags : [], step: r.step || 0, cyc: r.cyc || '', running: !!running });
@@ -10390,9 +10398,9 @@ function meosClockList(limit) {
     //     New .md を繰り返すと、その残骸that5つの枠を埋め、新しいファイルが「初期化されない」ように見えていた。
     //   ★一覧に並べるのは**行ける所だけ**= 行けない物を覚えていても、呼べない。
     //   ★覚えは消さない(まだ開いている untitled は今までどおり出る)= 消すのは人の×だけ。
-    const _alive = (u) => { try { return !String(u).startsWith('untitled:') || vscode.workspace.textDocuments.some(d => d.uri.toString() === u); } catch (_) { return true; } };
-    for (const r of _meosClockHistory) if (r.off && _alive(r.uri)) push(r, false);
-    for (const r of _meosClockHistory) if (!r.off && _alive(r.uri)) push(r, false);
+    // ★v4.1.92: 閉じた untitled の残骸(v4.1.91)は、ファイルで絞った時点で出て来ない= 見張りは1つで足りる。
+    for (const r of _meosClockHistory) if (r.off) push(r, false);
+    for (const r of _meosClockHistory) if (!r.off) push(r, false);
   } catch (_) { }
   // ★★v4.1.25(俊克「**次にタイムアップするものをハイライトする**こと」): 走っている物は近い順に並べてあるので、
   //   その先頭that「次に鳴る物」。1つだけ印を付ける= 目that最初に行く所を1箇所に決める。
@@ -11159,6 +11167,7 @@ async function meosPseudoTimeUp(key) {
 //   ★→ 予定を触る口(\u2611/\u2610・錠外し・札の付け外し)の後で、**部屋の分も送り直す**。
 //     送るのは口の中so、順番thatが必ず「変えてから送る」になる。
 function meosPostTagList() {
+      if (!meDockPanel) return;                 // v4.1.92: 面that無ければ数えない(閉じている時に膜を数えに行かない)
       try {
         const _e = meosCurrentEditor(); const _d = _e && _e.document;
         const _items = [];
@@ -24000,12 +24009,13 @@ function clkRenderList(){var el=document.getElementById('clk-list');if(!el)retur
 while(el.firstChild)el.removeChild(el.firstChild);
 clkLiveStart();                                    /* v4.1.80: 描き直す度に、数秒だけ動く */
 clkRenderTags();
-if(!vmClocks||!vmClocks.length)return;
+/* ★★v4.1.92: 時計that1つも無くても、**扉は立てる**= Tag&Go はこのファイルの札の道so、時計の有無に依らない。
+   (v4.1.91まではここで帰っていたので、新しいファイルでは扉ごと消えていた) */
 /* ★★★v4.1.73: 部屋の中に並ぶのは**札の付いた膜**= ⏰の無い膜も出る(行って、そこで掛ければよい)。
    普段の一覧は今までどおり時計の**直近5つ**= 手で足す道は作らない(規則は1つのまま)。 */
 var _src=clkTagMode?vmTagItems:vmClocks,_shown=0;
-if(clkTagMode&&!_src.length){var _em=document.createElement('div');_em.className='clk-door';
- _em.textContent='no tagged membrane in this file';el.appendChild(_em);}
+if(!_src.length){var _em=document.createElement('div');_em.className='clk-door';
+ _em.textContent=clkTagMode?'no tagged membrane in this file':'no clock in this file';el.appendChild(_em);}
 for(var i=0;i<_src.length;i++){var c=_src[i];
 if(clkTagMode){if(clkTagSel&&(c.tags||[]).indexOf(clkTagSel)<0)continue;
  /* ★v4.1.80(俊克「任意のタグで検索できるようにする」): 打った字で絞る= 並んでいない札でも狙える。
@@ -32988,6 +32998,9 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
       //   **積んだのに、送っていない**。2つファイルが在る時に効いて見えたのは、たまたま相手が違ったから。
       //   ★★直し＝ **積んだら、必ず送る**。1つの動きは1つの手で終わらせる(force=送り直す/skipPush=二度積まない)。
       try { if (e && e.document) { meosRecentPush(e.document); postMeDockFile(e, true, true); } } catch (_) { }
+      // ★v4.1.92: ⏰の一覧that「今のファイルの物」になったso、**部屋(Tag&Go)と扉の数字も同じ足で動く**。
+      //   ファイルthat変わった時の1回だけ= カーソルが動くたびの熱い道には足さない。
+      try { meosPostTagList(); } catch (_) { }
       try { meosScheduleDepthAudit(e); } catch (_) { }   /* v4.0.333: 1日1回だけ、落ち着いた頃に調べる */ if (e && !_meosLastLineDone) setTimeout(() => meosRestoreLastLineOnStart(0), 400); }));/* v4.0.45(俊克): 起動時の時間切れで諦めないよう、最初にエディタがアクティブになった時にも1回だけ試す(_autoTodayDoneで二重実行しない) */
   setTimeout(() => meosRestoreLastLineOnStart(0), 2200); // v4.0.43→305: 起動して落ち着いた頃に**最後に居た行**へ戻す(Ⓣの自動押しは廃止・手動Ⓣは残る)
   setTimeout(() => { if (!_meosLastLineReady) meosLastLineFinish('安全弁(20秒)'); }, 20000); // v4.0.309: 戻す機会が来なくても、いつかは覚え始める

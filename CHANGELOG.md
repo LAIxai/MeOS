@@ -4,6 +4,14 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.92 (2026-09-03)
+- **The clock list is about the file you have open.** A clock lives in a membrane, and a membrane lives in a
+  file — so switching files switches the list, exactly like the H-TOC and the Tag & Go room in the same panel.
+  Clocks running in other files are not lost: the status bar has always been the machine-wide one (the next
+  bell, its name, `+N` for the rest, and one click gives you all of them with a way to go there).
+- The **Tag & Go door now stands even when the file has no clock** — the room is about tags, not about clocks.
+- The room and the door's count follow the file too, refreshed once when the file changes.
+
 ### v4.1.91 (2026-09-03)
 - **The number on a door counts what the door opens.** `Tag & Go · +7` was counting the clocks that did not
   fit in the five rows above it — but behind that door are the *tagged membranes of this file*, so those seven

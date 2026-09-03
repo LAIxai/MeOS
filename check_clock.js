@@ -1004,5 +1004,23 @@ console.log('\u3273 \u2b50\u898b\u3064\u304b\u3063\u305f= v4.0.463 that\u3053\u3
     '\u2605\u2605\u7d20\u306e title \u306f\u5e2f\u3078\u79fb\u3057\u3066\u5916\u3059(OS\u6a19\u6e96\u306etip\u3068\u306e\u4e8c\u91cd\u51fa\u3057\u3092\u65ad\u3064)', true);
 }
 
+// v4.1.91/92(俊克「『Tag & Go · +7』の+7って何?」「ファイルを切り替えたら、⏰も切り替わるべきだよね?」)
+console.log('㉴ ⏰の一覧は**今のファイルの物** / 扉の数字は**扉の向こう**を数える');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/if \(_cur && r\.uri !== _cur\) return;/.test(S),
+    '★★★一覧に並ぶのは今開いているファイルの時計だけ', true);
+ ok(/const push = \(r, running\) => \{[\s\S]{0,40}if \(_cur/.test(S),
+    '★見張りは push の中1つ(走っている物も履歴も同じ規則)', true);
+ ok(/function clkDoorLabel\(\)\{return '#  Tag & Go'\+\(\(vmTagItems&&vmTagItems\.length\)/.test(S),
+    '★★★扉の数字は**その扉that開ける物**を数える(+Nではない)', true);
+ ok(/dr\.textContent=clkDoorLabel\(\);/.test(S)&&/if\(_dr\)_dr\.textContent=clkDoorLabel\(\);/.test(S),
+    '  名札の出どころは1つ(描き直しと書き直しで別の式を持たない)', true);
+ ok(/_em\.textContent=clkTagMode\?'no tagged membrane in this file':'no clock in this file';/.test(S),
+    '★時計that無くても**扉は立てる**(Tag&Go は時計の有無に依らない)', true);
+ ok(/if \(!meDockPanel\) return;\s+\/\/ v4\.1\.92/.test(S),
+    '  面that閉じている間は膜を数えに行かない', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
