@@ -904,9 +904,30 @@ console.log('\u326e \u9060\u3044\u4e88\u5b9a\u306f\u300c\u7d04N\u5e74\u300d\u306
  ok(/\u898b\u5206\u3051\u306f\*\*\u66f8\u3044\u3066\u3042\u308b\u5b57\u305d\u306e\u3082\u306e\*\*/.test(S2),
     '  \u898b\u5206\u3051\u306f\u5b57\u305d\u306e\u3082\u306e(\u8a08\u7b97\u3057\u76f4\u3059\u3068 `23:00` that\u63fa\u308c\u3066\u6b62\u307e\u3089\u306a\u304f\u306a\u308b)', true);
  ok(/sig: String\(c\.when\)/.test(S2), '  \u639b\u3051\u305f\u6642\u306e\u5b57\u3092\u63a7\u3048\u3066\u304a\u304f', true);
- ok(/if\(e\.altKey&&el\.id==='clk-y'\)\{var _cy=clkPick\(el\)/.test(S2)&&/clkFill\(el,_ny-2,_ny\+3,false\)/.test(S2),
-    '\u2605\u2605\u2605Opt \u3067\u56de\u305b\u3070\u5e74\u306f\u9650\u308a\u306a\u304f\u9032\u3080(\u7a93\u306f\u72ed\u3044\u307e\u307e\u3001\u7a93\u3054\u3068\u52d5\u304b\u3059)', true);
- ok(/_ny=_cy\+\(\(e\.deltaY>0\)\?1:-1\)/.test(S2), '  1\u56de\u306e\u5408\u56f3\u3067 1\u5e74(\u52a0\u901f\u306b\u6d41\u3055\u308c\u306a\u3044)', true);
+ ok(/if\(e\.altKey&&el\.id==='clk-y'\)\{/.test(S2)&&/if\(_b1!==_b0\)clkFill\(el,_b1,_b1\+9,false\)/.test(S2),
+    '\u2605\u2605\u2605Opt \u3067\u5e74\u4ee3\u3092\u307e\u305f\u3050(\u7a93\u306f**\u305d\u306e\u5e74\u4ee3\u306e10\u5e74**)', true);
+ ok(/_altAcc\+=e\.deltaY;if\(Math\.abs\(_altAcc\)<CLK_ALT_STEP\)return;/.test(S2)&&/const CLK_ALT_STEP=90;/.test(S2),
+    '\u2605\u2605\u3086\u3063\u304f\u308a= \u5408\u56f3\u3092\u8caf\u3081\u3066\u3001\u8caf\u307e\u3063\u305f\u5206\u3060\u30511\u5e74(macOS\u306e\u52a0\u901f\u306b\u6d41\u3055\u308c\u306a\u3044)', true);
+}
+
+// v4.1.83(俊克 CN=v4.1.82_0049)
+//   改良1「Optの時の動きが速過ぎる。ゆっくりと。2030にしたあとは、Optを離すと2030年台の10年間の中を
+//         ぐるぐる回転する」／改良2「回転ドラムの大きな橙色の部分をWクリックすると直接値を入力できる」
+console.log('\u326f \u5e74\u306e\u7a93\u306f**\u5e74\u4ee3** / \u30c9\u30e9\u30e0\u3092W\u30af\u30ea\u30c3\u30af\u3067\u76f4\u63a5\u6253\u3064');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/var _yb=Math\.floor\(now\.getFullYear\(\)\/10\)\*10;/.test(S)&&/clkFill\(document\.getElementById\('clk-y'\),_yb,_yb\+9,false\)/.test(S),
+    '\u2605\u2605\u2605\u5e74\u306e\u7a93\u306f**\u305d\u306e\u5e74\u4ee3\u306e10\u5e74**(\u96e2\u305b\u3070\u3053\u306e\u4e2d\u3092\u56de\u308b)', true);
+ ok(/function clkTypeIn\(col\)/.test(S)&&/addEventListener\('dblclick'/.test(S),
+    '\u2605\u2605\u2605W\u30af\u30ea\u30c3\u30af\u3067\u3001\u305d\u306e\u6bb5\u306b\u7bb1that\u51fa\u3066\u76f4\u63a5\u6253\u3066\u308b', true);
+ ok(/'clk-y':\[1,9999\],'clk-mo':\[1,12\],'clk-d':\[1,31\],'clk-h':\[0,23\],'clk-mi':\[0,59\]/.test(S),
+    '\u2605\u306f\u307f\u51fa\u3057\u305f\u5024\u306f\u7aef\u3067\u6b62\u3081\u308b(\u5618\u306e\u5024\u3092\u4f5c\u3089\u306a\u3044)', true);
+ ok(/if\(id==='clk-y'\)\{var _b=Math\.floor\(v\/10\)\*10;clkFill\(col,_b,_b\+9,false\);/.test(S),
+    '\u2605\u2605\u6253\u3063\u305f\u5f8c\u3082**\u305d\u306e\u5e74\u4ee3\u306e\u4e2d**\u3092\u56de\u308b(Opt \u3068\u540c\u3058\u7740\u5730)', true);
+ ok(/\.clk-colin\{position:absolute;left:2px;right:2px;top:23px;height:22px/.test(S),
+    '  \u7bb1\u306f\u771f\u3093\u4e2d\u306e\u6bb5\u306b\u3074\u305f\u308a\u91cd\u306a\u308b(\u4f4d\u7f6e\u306f\u8a08\u7b97\u3067\u306a\u304f\u5b9a\u7fa9)', true);
+ ok(/if\(e\.key==='Escape'\)\{e\.preventDefault\(\);done\(false\);\}/.test(S),
+    '  Enter \u3067\u6c7a\u3081\u3001Esc \u3067\u3084\u3081\u308b(\u5916\u3078\u51fa\u3066\u3082\u6c7a\u307e\u308b)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

@@ -28,6 +28,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.83 (2026-09-03)
+- **The year drum shows a decade.** Ten years at a time, so plain scrolling turns within that decade and you
+  can always see which ten you are in; ⌥ Option crosses into the next one, and the window follows. Option now
+  moves slowly — the wheel's deltas are accumulated and spent a year at a time — instead of racing away with
+  the trackpad's acceleration.
+- **Double-click a drum and type the value.** Turning is for looking; typing is for when you already know, and
+  2035 is faster said than found. Enter takes it, Escape drops it, and a year typed brings its decade with it,
+  so you land where Option would have left you. Values outside a column's range stop at its ends rather than
+  inventing one.
+
 ### v4.1.82 (2026-09-03)
 - **A clock years away reads `≈4y 23:55.17`.** Nobody reads "0 days and 23 hours" about something four years
   off; what is wanted is roughly when, and whether it is still alive — so the days are dropped, the years are

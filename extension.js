@@ -22020,6 +22020,15 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-cols{display:flex;gap:2px;align-items:stretch}
 .clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
+/* ★★v4.1.83(俊克 改良2「この回転ドラムの大きな橙色の部分をWクリックすると、そこに直接値を
+   入力できるようにしよう」): ★**回すのは探す動き・打つのは決まっている時の動き**=
+   2035年のように遠い値は、探すより言う方that速い。箱は**真ん中の段にぴたりと重ねる**
+   ([[project_position_by_definition]] 位置は計算でなく定義)。 */
+.clk-colin{position:absolute;left:2px;right:2px;top:23px;height:22px;box-sizing:border-box;
+font-size:12px;font-weight:800;font-family:ui-monospace,Menlo,monospace;text-align:center;
+border:1px solid rgba(224,128,58,.85);border-radius:4px;background:var(--vscode-input-background);
+color:#e0803a;z-index:4;padding:0}
+.clk-colin:focus{outline:none}
 .clk-col::before,.clk-col::after{content:'';display:block;height:22px}
 /* ★★v4.0.465(俊克 改良2「スクロールすると慣性で加速するんだけど、**クリックで停止しない**よ。なぜ?」):
    ★★理由= scroll-snap は**止まった後**に効く決まりso、慣性で飛んでいる間は素通りする。
@@ -23728,7 +23737,8 @@ return bi;}
 function clkMark(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;
 for(var i=0;i<el.children.length;i++)el.children[i].classList.toggle('sel',i===bi);}
 function clkCenter(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;clkGoto(el,bi,true);}   /* v4.0.470: 印だけでなく**位置も収める**(手を離したら真ん中へ) */
-function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;
+const CLK_ALT_STEP=90;   /* v4.1.83: この画素ぶん貯まって1年(ゆっくり) */
+function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;var _altAcc=0;
 /* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
 /* ★v4.1.2: **人が触った合図はここだけ**(scroll は clkSel の置き直しでも鳴るので数えない)。 */
 var stop=function(){if(onTouch)onTouch();try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop;}catch(e){}
@@ -23750,9 +23760,19 @@ el.addEventListener('wheel',function(e){
       窓を広げれば毎日の操作that重くなるso、窓は狭いまま、**窓ごと動かす**。
     ★Opt は家の作法= 「もう一つの意味」を足す鍵(見方ボタン・Stop・書式)と同じ。
     ★1回の合図で1年= 加速に流されない(v4.0.467で分に決めたのと同じ扱い)。 */
- if(e.altKey&&el.id==='clk-y'){var _cy=clkPick(el)||new Date().getFullYear();
-  var _ny=_cy+((e.deltaY>0)?1:-1);if(_ny<1)_ny=1;
-  clkFill(el,_ny-2,_ny+3,false);clkSel(el,_ny);clkMark(el);
+ /* ★★v4.1.83(俊克「Optの時の動きthat速過ぎる。ゆっくりと。そして2030にしたあとは、Optを離すと、
+    **2030年台の10年間の中をぐるぐる回転する**。こうでなくちゃね」):
+    ★★★**窓は『年代』**= 10年ぶんthat1枚。Optで年代をまたぎ、離せばその年代の中を回る。
+      so「今どの10年を見ているか」thatが常にはっきりする(窓の中身thatが年代そのもの)。
+    ★ゆっくり= 合図の deltaY を貯めて、貯まった分だけ1年動く(macOSの加速に流されない)。 */
+ if(e.altKey&&el.id==='clk-y'){
+  _altAcc+=e.deltaY;if(Math.abs(_altAcc)<CLK_ALT_STEP)return;
+  var _dy=(_altAcc>0)?1:-1;_altAcc=0;
+  var _cy=clkPick(el)||new Date().getFullYear();
+  var _ny=_cy+_dy;if(_ny<1)_ny=1;
+  var _b0=Math.floor(_cy/10)*10,_b1=Math.floor(_ny/10)*10;
+  if(_b1!==_b0)clkFill(el,_b1,_b1+9,false);          /* 年代をまたいだ時だけ窓を張り直す */
+  clkSel(el,_ny);clkMark(el);
   if(t)clearTimeout(t);t=setTimeout(function(){t=null;onPick();},110);return;}
  /* ★★★v4.0.473(俊克「最初のように**少し途中まで進む**ような形の方that良い。今のように、カチッと
     切り替わるのは、違和感thatある。**手を放した時、その値に確定している**ので、問題無い」):
@@ -24008,10 +24028,36 @@ if(!clkTagMode){var dr=document.createElement('div');dr.className='clk-door';dr.
 var sep=document.createElement('div');sep.className='clk-sep';el.appendChild(sep);}
 if(clkCaret&&clkPop){
  var now=new Date();
- clkFill(document.getElementById('clk-y'),now.getFullYear(),now.getFullYear()+3,false);
+ /* v4.1.83: 年の窓は**その年代の10年**= 離せばこの中を回る(端で止まり、次で巻き戻る)。 */
+ var _yb=Math.floor(now.getFullYear()/10)*10;
+ clkFill(document.getElementById('clk-y'),_yb,_yb+9,false);
  clkFill(document.getElementById('clk-mo'),1,12,true);clkFill(document.getElementById('clk-d'),1,31,true);
  clkFill(document.getElementById('clk-h'),0,23,true);clkFill(document.getElementById('clk-mi'),0,59,true);
  clkFitDays();   /* v4.1.29: 開いた時も、その月の日数に合わせる */
+ /* ★★★v4.1.83: ドラムを**Wクリック**すると、その段に箱that出て直接打てる。
+    ★年は打った値の**年代**へ窓を張り直す= 打った後は、その10年の中を回る(Optと同じ着地)。
+    ★他の列は輪that決まっている(月1-12/日/時/分)so、はみ出した値は端で止める= 嘘の値を作らない。 */
+ function clkTypeIn(col){if(!col)return;
+  if(col.querySelector('.clk-colin'))return;
+  var id=col.id,cur=clkPick(col),lim={'clk-y':[1,9999],'clk-mo':[1,12],'clk-d':[1,31],'clk-h':[0,23],'clk-mi':[0,59]}[id];
+  if(!lim)return;
+  var b=document.createElement('input');b.className='clk-colin';b.type='text';b.spellcheck=false;
+  b.value=(cur==null?'':String(cur));
+  var done=function(apply){var v=parseInt(b.value,10);
+   try{col.removeChild(b);}catch(e){}
+   if(!apply||isNaN(v))return;
+   if(v<lim[0])v=lim[0];if(v>lim[1])v=lim[1];
+   if(id==='clk-y'){var _b=Math.floor(v/10)*10;clkFill(col,_b,_b+9,false);clkFixD=true;}
+   else if(id==='clk-mo'||id==='clk-d')clkFixD=true;
+   clkSel(col,v);clkMark(col);clkSyncFromCols();};
+  b.addEventListener('keydown',function(e){e.stopPropagation();
+   if(e.key==='Enter'){e.preventDefault();done(true);}
+   if(e.key==='Escape'){e.preventDefault();done(false);}});
+  b.addEventListener('blur',function(){done(true);});
+  b.addEventListener('click',function(e){e.stopPropagation();});
+  col.appendChild(b);try{b.focus();b.select();}catch(e){}}
+ ['clk-y','clk-mo','clk-d','clk-h','clk-mi'].forEach(function(id){var _c=document.getElementById(id);
+  if(_c)_c.addEventListener('dblclick',function(e){e.preventDefault();e.stopPropagation();clkTypeIn(_c);});});
  ['clk-y','clk-mo','clk-d'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixD=true;});});
  ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
@@ -24064,6 +24110,7 @@ if(clkCaret&&clkPop){
       「出て行く」動きso閉じる。×は「ここで整える」動きso閉じない。同じ行の上でも、狙いthat違う。 */
    if(!isX)closeClkPop();
    return;}
+  if(ev.target&&ev.target.classList&&ev.target.classList.contains('clk-colin'))return;   /* v4.1.83: 打ち込み中は閉じない */
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
   if(col){if(col.id==='clk-y'||col.id==='clk-mo'||col.id==='clk-d')clkFixD=true;
    clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();return;}
