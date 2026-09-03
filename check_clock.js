@@ -860,8 +860,8 @@ console.log('\u326c \u6570\u5b57\u306f\u6700\u521d\u306e\u6570\u79d2\u3060\u3051
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/const CLK_LIVE_MS=5000;/.test(S)&&/function clkLiveStart\(\)\{clkLiveUntil=Date\.now\(\)\+CLK_LIVE_MS;\}/.test(S),
     '\u2605\u2605\u2605\u6570\u5b57that\u52d5\u304f\u306e\u306f**\u958b\u3044\u305f\u76f4\u5f8c\u306e\u6570\u79d2\u3060\u3051**(\u5f79\u76ee\u306f\u5bfe\u5fdc\u3092\u6559\u3048\u308b\u3053\u3068)', true);
- ok(/if\(!on\)\{if\(e\.textContent\)e\.textContent='';continue;\}/.test(S),
-    '\u2605\u2605\u2605\u6b62\u3081\u308b\u6642\u306f**\u51cd\u3089\u305b\u305a\u3001\u6d88\u3059**(\u51cd\u3063\u305f\u6570\u5b57\u306f\u5618\u3092\u3064\u304f)', true);
+ ok(/if\(!on&&e\.getAttribute\('data-next'\)!=='1'\)\{if\(e\.textContent\)e\.textContent='';continue;\}/.test(S),
+    '\u2605\u2605\u2605\u6b62\u3081\u308b\u6642\u306f**\u51cd\u3089\u305b\u305a\u3001\u6d88\u3059**(\u9762\u306b\u51fa\u3066\u3044\u308b1\u3064\u3092\u9664\u3044\u3066)', true);
  ok(/clkLiveStart\(\);\s*\/\* v4\.1\.80/.test(S),
     '  \u63cf\u304d\u76f4\u3059\u5ea6\u306b\u6570\u79d2\u3060\u3051\u52d5\u304f(\u4e2d\u3067\u4f55\u304b\u3057\u305f\u76f4\u5f8c\u3082\u5206\u304b\u308b)', true);
  ok(/if\(clkTagFilter\)\{var _f=clkTagFilter\.toLowerCase\(\)/.test(S),
@@ -872,6 +872,21 @@ console.log('\u326c \u6570\u5b57\u306f\u6700\u521d\u306e\u6570\u79d2\u3060\u3051
     '  \uff0b \u3067\u3001\u6253\u3063\u305f\u672d\u3092\u819c\u306b\u4ed8\u3051\u308b(\u7d5e\u308b\u3068\u4ed8\u3051\u308b\u3092\u5225\u306e\u53e3\u306b)', true);
  ok(/\.clk-pop\.hist-only \.clk-tagadd \.clk-in\{display:block\}/.test(S),
     '\u2605\u2605\u2605**\u7bb1that\u898b\u3048\u3066\u3044\u306a\u304b\u3063\u305f**(hist-only that .clk-in \u3092\u5168\u90e8\u96a0\u3057\u3066\u3044\u305f\u30fbv4.1.72\u304b\u3089)', true);
+}
+
+// v4.1.81(俊克「現在⏰ボタンにタイム値をしている項目だけ、タグリスト上で、止めたタイマー表示を残す。
+//   これが最終的に、知りたいことなんだよ。一目瞭然にね」)
+console.log('\u326d \u9762\u306b\u51fa\u3066\u3044\u308b\u6570\u5b57\u306f**\u3069\u308c\u306e\u7269\u304b**\u3001\u305d\u308c\u3060\u3051that\u6b8b\u308b');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/if\(vmNextUntil&&c\.at===vmNextUntil\)\{t\.setAttribute\('data-next','1'\);t\.classList\.add\('ci-onface'\);\}/.test(S),
+    '\u2605\u2605\u2605\u898b\u5206\u3051\u306f vmNextUntil= **\u9762\u306e\u6570\u5b57\u3092\u4f5c\u3063\u3066\u3044\u308b\u306e\u3068\u540c\u30581\u3064\u306e\u6e90**', true);
+ ok(/if\(!on&&e\.getAttribute\('data-next'\)!=='1'\)/.test(S),
+    '\u2605\u2605\u6570\u79d2\u3092\u904e\u304e\u3066\u3082\u3001\u9762\u306b\u51fa\u3066\u3044\u308b1\u3064\u3060\u3051\u306f\u52d5\u304d\u7d9a\u3051\u308b', true);
+ ok(/\.clk-item \.ci-t\.ci-onface\{background:rgba\(224,128,58,\.20\)/.test(S),
+    '\u2605\u8584\u3044\u6a59\u306e\u5ea7\u5e03\u56e3\u3067\u300c\u3053\u308cthat\u305d\u308c\u300d\u3068\u8a00\u3046(\u4e00\u76ee\u77ad\u7136)', true);
+ ok(/\u52d5\u304f\u306e\u306f1\u3064\u3060\u3051so\u3001tip\u306e\u90aa\u9b54\u306b\u3082\u306a\u3089\u306a\u3044/.test(S),
+    '  \u6bce\u79d2\u66f8\u304d\u66ff\u3048\u308b\u306e\u306f1\u3064\u3060\u3051(tip \u306e\u90aa\u9b54\u3092\u3057\u306a\u3044)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

@@ -28,6 +28,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.81 (2026-09-03)
+- **One figure stays: the one the ⏰ button is showing.** That is the thing you actually want to know — which
+  row the number on the button belongs to — and the other figures were only there to help say it, so they go
+  after a few seconds and this one remains, still running, on a faint orange cushion. It is picked by the same
+  value the button itself is drawn from, so the two can never point at different rows. Only one element is
+  rewritten each second, which is what tooltips wanted anyway.
+
 ### v4.1.80 (2026-09-03)
 - **The figures in the list run for a few seconds, then go.** Their job is to say which row the ⏰ button's
   number belongs to; once that is said there is no reason to keep moving, and the constant repainting was

@@ -21945,6 +21945,8 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-item .ci-t{flex:none;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:var(--vscode-editor-foreground)}
 /* v4.1.78: 動いている物の数字は\u23f0の色= 面のボタンに出ている値と同じ物だと目that分かる。 */
 .clk-item .ci-t.ci-live{color:#e0803a}
+/* v4.1.81: 面(\u23f0ボタン)に出ている数字と同じ物= 薄い橙の座布団で「これthatそれ」と言う。 */
+.clk-item .ci-t.ci-onface{background:rgba(224,128,58,.20);border-radius:4px;padding:0 3px}
 .clk-item .ci-t:empty{display:none}
 .clk-item.live .ci-t{color:#e0803a}
 /* ★★★v4.1.34(俊克「『…』までの高さより、その右の『232310JST』that上付きになっている。なぜ?」):
@@ -23880,7 +23882,8 @@ function clkLiveStart(){clkLiveUntil=Date.now()+CLK_LIVE_MS;}
 function clkTickRows(){try{var on=(Date.now()<clkLiveUntil);
  var ns=document.querySelectorAll('#clk-list .ci-live');
  for(var i=0;i<ns.length;i++){var e=ns[i];
-  if(!on){if(e.textContent)e.textContent='';continue;}
+  /* v4.1.81: 面に出ている1つだけは、数秒を過ぎても動き続ける(それthat知りたい事so)。 */
+  if(!on&&e.getAttribute('data-next')!=='1'){if(e.textContent)e.textContent='';continue;}
   e.textContent=clkLiveVal({at:+e.getAttribute('data-at'),step:+e.getAttribute('data-step'),up:e.getAttribute('data-up')==='1'});}}catch(e){}}
 function clkRenderList(){var el=document.getElementById('clk-list');if(!el)return;
 while(el.firstChild)el.removeChild(el.firstChild);
@@ -23919,9 +23922,18 @@ row.appendChild(ck);
      数字は短いso両方入る= ⏰ボタンの値と対応が取れて、なおどの膜かも分かる
      (俊克の案は数字だけthatが、何本も動くと『番号のない数字』that並ぶので、名前を残した)。 */
 var t=document.createElement('span');t.className='ci-t';
+/* ★★★v4.1.81(俊克「現在⏰ボタンにタイム値をしている項目だけ、タグリスト上で、止めたタイマー表示を
+   残す。**これが最終的に、知りたいことなんだよ。一目瞭然にね**」):
+   ★★★**知りたいのは『今、面に出ている数字は、どれの物か』1つだけ**= 他の数字は、
+     それを言うための道連れだった。so数秒で役目を終え、**その1つだけthat残る**。
+   ★見分けは vmNextUntil と同じ値かどうか= **面の数字を作っているのと同じ1つの源**から引く
+     ([[feedback_one_source_for_mark_count_action]])。
+   ★残す物は**動かし続ける**= 凍らせれば嘘になる。動くのは1つだけso、tipの邪魔にもならない。 */
 if(c.running){t.classList.add('ci-live');
  t.setAttribute('data-at',String(c.at||0));t.setAttribute('data-step',String(c.step||0));
- t.setAttribute('data-up',c.up?'1':'');t.textContent=clkLiveVal(c);}
+ t.setAttribute('data-up',c.up?'1':'');
+ if(vmNextUntil&&c.at===vmNextUntil){t.setAttribute('data-next','1');t.classList.add('ci-onface');}
+ t.textContent=clkLiveVal(c);}
 else if(clkTagMode&&!c.has)t.textContent='';                    /* \u23f0 の無い膜= 出す物that無い */
 else t.textContent='';
 /* ★★★v4.1.28(俊克 改良1「横幅that狭いので省略する時は、**膜名の最後を残す形**で、
