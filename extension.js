@@ -21281,7 +21281,16 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
      そこへ**帰り道**を置けば、1つの円that行きと帰りの両方になる(押す物を増やさない)。
    ★字は ↩ = ステータスバーの ↩ Back(v4.0.454)と同じ字so、家の中で帰り道の顔は1つ。(webviewの中soバックティック禁止)
    ★戻り先は**履歴の2番目**= 留めの次に新しい物that「さっきまで居た所」。覚えを新しく作らない。 */
-.title-file-jump.back{font-size:10px;font-weight:800;padding-top:6px;height:9px}/* v4.1.97b(俊克 改良1「↩記号thatやや上に寄っているので約3ピクセル下」)= 字だけを下げる。地の box は content-box so、上に6px足して背を9pxに縮めれば**外側17pxは変わらない**(円は同じ大きさのまま中身thatが3px下がる)。 */
+.title-file-jump.back{font-size:10px;font-weight:800}
+/* ★★★v4.1.99(俊克 バグ1「わざと白丸を楕円にしたの? 今一やね」): ★★★**箱を触って字を動かそうとした**のthat間違い=
+   v4.1.98で padding-top:6px + height:9px と書いたthat、webview の地には VS Code that入れる
+   星印の box-sizing:border-box that効いているので、9px は**外寸**になり、17×9 の楕円になった。(webviewの中soバックティック禁止= 7度目)
+   ★私の検証台には**その地の1行thatが無かった**so、そこでは丸のまま= **台thatが嘘をついた**
+     ([[reference_meos_devcheck_harness]] に地の1行を足した)。
+   ★★直し= **字だけを動かす**= 中に一枚 span を敷いて、それを下げる。箱には一切触らないso、
+     どんな box-sizing でも丸は丸のまま。 */
+.title-file-jump .jf{display:block;line-height:1}
+.title-file-jump.back .jf{position:relative;top:6px}   /* v4.1.99: 俊克「もう少し下だね。3ピクセルかな」= 3→6px(↩は字の上側that空いている) */
 .title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
@@ -25207,7 +25216,10 @@ if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
   _fj.classList.toggle('on',!!_pin);                      /* 留めthat在れば、いつも出す */
   _fj.classList.toggle('here',_here&&!_prev);             /* 帰り先も無い時だけ、薄いまま */
   _fj.classList.toggle('back',!!(_here&&_prev));
-  _fj.textContent=(_here&&_prev)?'↩':'📌';
+  /* v4.1.99: 字は**一枚敷いた span の中**= 下げるのは字だけ(箱は丸のまま) */
+  while(_fj.firstChild)_fj.removeChild(_fj.firstChild);
+  {var _jf=document.createElement('span');_jf.className='jf';
+   _jf.textContent=(_here&&_prev)?'↩':'📌';_fj.appendChild(_jf);}
   _fj.setAttribute('data-jump',_go?_go.path:'');
   _fj.setAttribute('data-tip',_pin?((_here&&_prev)?('↩ back to '+(_prev.name||''))
    :(_here?'📌 you are here — '+(_pin.name||''):'📌 '+(_pin.name||''))):'');}}
