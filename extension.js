@@ -21256,7 +21256,12 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
      (▾that1本の時に消えるのと同じ規則= 押しても何も起きない駒を置かない)。 */
 .title-file-jump{position:absolute;top:0;right:0;transform:translate(50%,-50%);width:15px;height:15px;display:none;align-items:center;justify-content:center;padding:0;border:1px solid rgba(0,0,0,.35);border-radius:50%;background:#fff;color:#111;font-size:9px;line-height:1;cursor:pointer;z-index:5}
 .title-file-jump.on{display:flex}
-.title-file-jump:hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
+/* ★★v4.1.94(俊克 バグ1「📌ボタンが付いてないよ。なぜ?」): ★★★**私that「行ける時だけ出す」という条件を
+   足していた**= 留めた1本の中に居ると消える。so「そこに居る」時ほど、ボタンthatが無くなっていた。
+   ★俊克thatが頼んだのは「付けよう」で、条件ではない。**在る物は在ると見えていなければ、押しようがない**。
+   → 留めthat在れば**いつも出す**。今そこに居る時は**薄く**= 形は同じまま、明るさthatが「ここに居る」と言う。 */
+.title-file-jump.here{opacity:.42;cursor:default}
+.title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
 .title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0;font-size:12px}/* v4.0.365/367: 詰める＋読める大きさに */
@@ -25173,10 +25178,11 @@ if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 {var _fj=document.getElementById('title-file-jump');
  if(_fj){var _pin=null,_rl=window.__meosRecent;
   for(var _pi=0;_pi<_rl.length;_pi++){if(_rl[_pi]&&_rl[_pi].pinned){_pin=_rl[_pi];break;}}
-  var _cango=!!(_pin&&_pin.path&&_pin.path!==window.__meosCurPath);
-  _fj.classList.toggle('on',_cango);
-  _fj.setAttribute('data-jump',_cango?_pin.path:'');
-  if(_cango)_fj.setAttribute('data-tip','📌 '+(_pin.name||''));else _fj.removeAttribute('data-tip');}}
+  var _here=!!(_pin&&_pin.path===window.__meosCurPath);   /* v4.1.94: もうそこに居る */
+  _fj.classList.toggle('on',!!_pin);                      /* 留めthat在れば、いつも出す */
+  _fj.classList.toggle('here',_here);
+  _fj.setAttribute('data-jump',(_pin&&!_here)?_pin.path:'');
+  _fj.setAttribute('data-tip',_pin?((_here?'📌 you are here — ':'📌 ')+(_pin.name||'')):'');}}
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
 if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
 return;}if(m&&m.type==='copiedUd'){/* ★v4.0.369(俊克「tipを表示したままなら、**tipにCopiedを被せる**ように

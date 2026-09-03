@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.94 (2026-09-03)
+- **The 📌 shoulder is always there once a file is pinned.** In v4.1.93 it hid itself whenever there was
+  nowhere to go — which meant it disappeared exactly when you were sitting in the pinned file, and a button
+  you cannot see is a button you cannot learn. It now stays, and simply dims to say *you are here*.
+
 ### v4.1.93 (2026-09-03)
 - **A 📌 on the shoulder of the file name takes you straight to the pinned file.** One click — no dropdown.
   It rides the corner of the box the way the ⊕/⊖ badges ride the A button, so it costs the name no width,
