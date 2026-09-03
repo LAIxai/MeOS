@@ -9992,8 +9992,21 @@ function meosArmClockFcFor(doc) {
         //   ★これthat私自身の言葉の通りの事故= 「2つ持てば、いつか食い違う」。
         //   ★→ 既に掛かっている物も、**見た目の控えだけは毎回writeし直す**(時刻と輪は触らない=
         //     鳴る時刻thatずれない)。控えは本文の写しso、本文to一緒に新しくなる。
+        // ★★★v4.1.82(俊克 バグ1「4年後なのに 3y 0d と出る」の真因): ★★★**手で書き替えた時刻に、
+        //   掛かっている物that付いて行かなかった**= ▾で2029年に掛けた後、本文を2030年へ直しても、
+        //   掛かりは2029年のまま= 本文と控えthat食い違う(今日ずっと塞いできたのと同じ形)。
+        //   ★v4.1.67で「控えを新しくしても**鳴る時刻は触らない**」と決めたのは、**同じ字を読み直した時**の話。
+        //     字that変わったのなら、追わなければ嘘になる。→ **書いてある物that変わった時だけ**掛け直す。
+        //   ★見分けは**書いてある字そのもの**= 計算し直して比べると、`23:00` のような短い形that
+        //     今日/明日で揺れて、掛け直しthat止まらなくなる。
+        const _sig = String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : '');
+        const _sc0 = _meosPseudoScopes.get(lk);
+        if (_sc0 && _sc0.sig && _sc0.sig !== _sig) {
+          meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
+          meosDbg('[armClock] rewritten \u2192 re-arm key=' + c.key + ' ' + _sc0.sig + ' \u2192 ' + _sig);
+        } else {
         try {
-          const _s = _meosPseudoScopes.get(lk);
+          const _s = _sc0;
           if (_s) {
             _s.up = !!(c.up && Array.isArray(c.cycle) && c.cycle.length);
             if (Array.isArray(c.cycle) && c.cycle.length) { _s.step = meosCycleMs(c.cycle[0]); _s.cyc = (c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/'); }
@@ -10002,6 +10015,7 @@ function meosArmClockFcFor(doc) {
           }
         } catch (_) { }
         continue;                                                   // 既に仕掛かっている
+        }
       }
       // ★★★v4.1.26(俊克のスクショで判明): **済んだ物の時刻that嘘をついていた**= 一覧に出ていたのは
       //   `Date.now()`(=ファイルを開いた時刻)so、\u2610 の行thatどれも同じ「16:34」で並んでいた。
@@ -10038,6 +10052,7 @@ function meosArmClockFcFor(doc) {
       // v4.1.60: 向きと間隔を**掛けた時に**控える= 面は毎秒描く物so、その度に14万行をなぞらない
       //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
+        sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : ''),   // v4.1.82
         up: !!(c.up && Array.isArray(c.cycle) && c.cycle.length),
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
@@ -10681,7 +10696,14 @@ function meosMmSs(ms) {
   //   ★★★**秒は「今いくつか」ではなく「動いている」を言う桁**= 落とすと、止まっているのと区別thatつかない。
   //     今朝まさに、拍that止まって数字thatが凍った時、俊克はそれを一目で見抜いた。**秒thatその目印だった**。
   //   ★→ どの段でも **HH:MM.SS を必ず付ける**。大きい単位は前へ足すだけで、下は削らない。
-  if (t >= MEOS_T_YEAR) return Math.floor(t / MEOS_T_YEAR) + 'y ' + Math.floor((t % MEOS_T_YEAR) / MEOS_T_DAY) + 'd '
+  // ★★★v4.1.82(俊克「4年後なら **≈4y 23:55.17** のように表示しよう。つまり、約4年ってことだよ。
+  //   別に364dとか、200dと分っても意味ないしね。約4年後ということを示し、このタイマーthat動いていることを
+  //   秒の動きを見て知る。それで十分だよ」):
+  //   ★★★**遠い予定に細かい桁は要らない**= 4年先の『0日と23時間』を読む人は居ない。
+  //     要るのは①だいたいいつか(≈4y) ②生きているか(秒that動く)の2つだけ。
+  //   ★\u2248 を付けるのは**四捨五入した数だと言うため**= 丸めた数を、丸めたと言わずに出さない。
+  //   ★1年を切れば日数に戻る= そこからは日が意味を持ち始める(俊克 v4.1.47の決め)。
+  if (t >= MEOS_T_YEAR) return '\u2248' + Math.round(t / MEOS_T_YEAR) + 'y '
     + p(Math.floor(t / 3600) % 24) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   if (t >= MEOS_T_DAY) return Math.floor(t / MEOS_T_DAY) + 'd ' + p(Math.floor(t / 3600) % 24) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
   if (t >= 3600) return Math.floor(t / 3600) + ':' + p(Math.floor(t / 60) % 60) + '.' + p(t % 60);
@@ -23558,7 +23580,7 @@ function vmNextLeft(){return vmNextUntil?Math.max(0,vmNextUntil-Date.now()):0;} 
 function vmMmSs(ms){var t=Math.ceil(ms/1000),p=function(x){x=String(x);return x.length<2?'0'+x:x;};
 /* v4.1.47: node の meosMmSs と同じ段(24時間以上は日、1年以上は年と日) */
 var D=86400,Y=365*86400;
-if(t>=Y)return Math.floor(t/Y)+'y '+Math.floor((t%Y)/D)+'d '+p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);/* v4.1.48: 秒は必須(動いていることthatが見える) */
+if(t>=Y)return '\u2248'+Math.round(t/Y)+'y '+p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);/* v4.1.82: 遠い予定は「約N年」と秒だけ *//* v4.1.48: 秒は必須(動いていることthatが見える) */
 if(t>=D)return Math.floor(t/D)+'d '+p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
 if(t>=3600)return Math.floor(t/3600)+':'+p(Math.floor(t/60)%60)+'.'+p(t%60);
 return Math.floor(t/60)+'.'+p(t%60);}   /* v4.1.37: 「:」は時と分の間だけ。分と秒は「.」 */
@@ -23722,6 +23744,16 @@ el.addEventListener('mousedown',stop,{passive:true});
    ★段の高さで割り切った所へ置く= 常に段の真ん中に居る(窓と数字thatずれない)。 */
 el.addEventListener('wheel',function(e){
  e.preventDefault();if(onTouch)onTouch();
+ /* ★★★v4.1.82(俊克「年that2020年代の10年分なので、2030を設定するにはインライン編集するしかない。
+    この10年に絞っているのは確かにいい。そこで、**Optを押しながら回すと、無限に進み、戻る**ように
+    しよう」): ★★★**狭さは正しい。足りないのは『その先へ行く道』だけ**=
+      窓を広げれば毎日の操作that重くなるso、窓は狭いまま、**窓ごと動かす**。
+    ★Opt は家の作法= 「もう一つの意味」を足す鍵(見方ボタン・Stop・書式)と同じ。
+    ★1回の合図で1年= 加速に流されない(v4.0.467で分に決めたのと同じ扱い)。 */
+ if(e.altKey&&el.id==='clk-y'){var _cy=clkPick(el)||new Date().getFullYear();
+  var _ny=_cy+((e.deltaY>0)?1:-1);if(_ny<1)_ny=1;
+  clkFill(el,_ny-2,_ny+3,false);clkSel(el,_ny);clkMark(el);
+  if(t)clearTimeout(t);t=setTimeout(function(){t=null;onPick();},110);return;}
  /* ★★★v4.0.473(俊克「最初のように**少し途中まで進む**ような形の方that良い。今のように、カチッと
     切り替わるのは、違和感thatある。**手を放した時、その値に確定している**ので、問題無い」):
     ★★★**カチッの正体は scroll-snap: mandatory**= 動かすたびにブラウザthat段へ吸い付けるので、

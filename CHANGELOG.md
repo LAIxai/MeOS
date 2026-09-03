@@ -28,6 +28,19 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 - The mark for the clock that rings next now uses plain black text: an alarm clock is red, and orange lettering
   around it was the same family of colour, which took the eye off the little clock the row is about.
 
+### v4.1.82 (2026-09-03)
+- **A clock years away reads `≈4y 23:55.17`.** Nobody reads "0 days and 23 hours" about something four years
+  off; what is wanted is roughly when, and whether it is still alive — so the days are dropped, the years are
+  rounded, and `≈` says the number was rounded rather than pretending otherwise. Under a year it goes back to
+  days, where days start to mean something again.
+- **Rewriting the time by hand now moves the clock.** Setting 2029 from ▾ and then typing 2030 into the line
+  left the clock still counting to 2029 — the text said one thing and the armed copy another. Only a change in
+  what is *written* re-arms it, compared as text: recomputing would make a short form like `23:00` drift
+  between today and tomorrow and never settle.
+- **⌥ Option-scroll on the year runs past the end of the list**, a year per notch, in both directions. The
+  short list is right for everyday use; what was missing was a way out of it, so the window moves instead of
+  growing.
+
 ### v4.1.81 (2026-09-03)
 - **One figure stays: the one the ⏰ button is showing.** That is the thing you actually want to know — which
   row the number on the button belongs to — and the other figures were only there to help say it, so they go
