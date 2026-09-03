@@ -4,6 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.96 (2026-09-03)
+- **Setting a membrane colour now creates the badge if the membrane has not got one.** A colour lives in the
+  membrane's badge (the `Mew!FC mCN (…)` line after the closing line). A membrane written by hand — or made
+  by an older version — has no badge, so choosing a colour in Mepy did nothing at all, silently, and the
+  membrane kept the colour its depth gives it. MeOS now writes the badge in the same shape it writes for its
+  own membranes. Clearing a colour still creates nothing.
+
 ### v4.1.95 (2026-09-03)
 - **The 📌 sits 5px higher**, so the white circle only just bites into the corner of the file-name box
   instead of resting on top of it.

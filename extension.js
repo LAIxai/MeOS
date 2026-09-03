@@ -20767,10 +20767,22 @@ async function renameMeWithName(nameInput, colorCode = undefined) {
   // ★★v4.0.335: 色は**バッジの居る行**に書く。新形ではバッジは▲の次なので、▼行に書いても誰も読まない
   //   ＝ 俊克「Mepyで膜色を変更しても、Yが変わらない」の正体。
   const _at = meosPairBadgeAt(editor.document, pair);
-  let _badgeEdit = null;
+  let _badgeEdit = null, _badgeInsert = null;
   if (normalizedColor !== undefined && _at && _at.badge) {
     const _next = formatMstatBadge({ ..._at.badge, colorCode: normalizedColor });
     if (_next !== _at.badge.raw) _badgeEdit = { line: _at.line, start: _at.badge.start, end: _at.badge.end, text: _next };
+  }
+  // ★★★v4.1.96(俊克 バグ1「膜の色がMepyは緑と言っているのに、実際は紫。しかもMepyで色が変わらない。なぜ?」):
+  //   ★★★**色の住所はバッジso、バッジthat無い膜には書く所thatが無かった**= 何も起きずに終わっていた
+  //     (v4.0.335で「バッジの居る行に書く」と直した時、**バッジthat無い場合を置いていった**)。
+  //   ★手で書いた膜・古い版で作った膜には、閉じ膜の次のFC行thatが無い。so色を選んでも黙って空振りし、
+  //     見えている紫は colorForDepth(深さ2)のまま= 面と本文that食い違って見える。
+  //   ★直し= **無ければ作る**。作る形は家の1つ(meosPairBadgeLineText + 既定 `(📊⊕0+0)` に色を足す)so、
+  //     MeOSが自分で作った膜と、手で書いた膜thatが同じ姿になる。
+  //   ★色を**外す**時(空)には作らない= 何も無い所から、何も無い印を生やさない。
+  if (normalizedColor && !(_at && _at.badge)) {
+    const _bt = meosPairBadgeLineText(pair.id, lineIndent(editor.document, pair.end), formatMstatBadge({ symbol: '\u2295', n: 0, pow: 0, colorCode: normalizedColor }));
+    _badgeInsert = { line: pair.end, text: '\n' + _bt };
   }
   if (_badgeEdit && _badgeEdit.line === pair.start) {          // 旧形= 開始行の中で書き換わる
     nextOpenLineText = nextOpenLineText.slice(0, _badgeEdit.start) + _badgeEdit.text + nextOpenLineText.slice(_badgeEdit.end);
@@ -20779,7 +20791,7 @@ async function renameMeWithName(nameInput, colorCode = undefined) {
 
   const closeLineNeedsName = nextName !== pair.id;
   const openLineNeedsReplace = nextOpenLineText !== openLineText;
-  if (!closeLineNeedsName && !openLineNeedsReplace && !_badgeEdit) return;
+  if (!closeLineNeedsName && !openLineNeedsReplace && !_badgeEdit && !_badgeInsert) return;
 
   const ok = await editor.edit(edit => {
     if (closeLineNeedsName) edit.replace(closeName.range, nextName);
@@ -20787,6 +20799,8 @@ async function renameMeWithName(nameInput, colorCode = undefined) {
       edit.replace(new vscode.Range(pair.start, 0, pair.start, openLineText.length), nextOpenLineText);
     }
     if (_badgeEdit) edit.replace(new vscode.Range(_badgeEdit.line, _badgeEdit.start, _badgeEdit.line, _badgeEdit.end), _badgeEdit.text);
+    // v4.1.96: 閉じ膜の**次の行**へ生やす(行末に足す= 末尾の膜でも行番号that溢れない)
+    if (_badgeInsert) { try { edit.insert(new vscode.Position(_badgeInsert.line, editor.document.lineAt(_badgeInsert.line).text.length), _badgeInsert.text); } catch (_) { } }
   }, { undoStopBefore: true, undoStopAfter: true });
   if (ok) {
     // v0.9.507: post-edit block stripped of dead GPT-era references to
