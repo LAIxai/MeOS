@@ -21275,6 +21275,13 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ★俊克thatが頼んだのは「付けよう」で、条件ではない。**在る物は在ると見えていなければ、押しようがない**。
    → 留めthat在れば**いつも出す**。今そこに居る時は**薄く**= 形は同じまま、明るさthatが「ここに居る」と言う。 */
 .title-file-jump.here{opacity:.42;cursor:default}
+/* ★★★v4.1.97(俊克 改良1「📌ボタンが半透明になっている部分に、**戻るボタン**をつけよう。
+   自分以外のファイルは任意の物が選択できるので、その選択したものから戻って来たら、再度押せば、そこに戻れる」):
+   ★★★**薄い円は「何もしない」だった**= 留めの中に居る間、同じ場所thatただ死んでいた。
+     そこへ**帰り道**を置けば、1つの円that行きと帰りの両方になる(押す物を増やさない)。
+   ★字は ↩ = ステータスバーの ↩ Back(v4.0.454)と同じ字so、家の中で帰り道の顔は1つ。(webviewの中soバックティック禁止)
+   ★戻り先は**履歴の2番目**= 留めの次に新しい物that「さっきまで居た所」。覚えを新しく作らない。 */
+.title-file-jump.back{font-size:10px;font-weight:800}
 .title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
@@ -25193,10 +25200,17 @@ if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
  if(_fj){var _pin=null,_rl=window.__meosRecent;
   for(var _pi=0;_pi<_rl.length;_pi++){if(_rl[_pi]&&_rl[_pi].pinned){_pin=_rl[_pi];break;}}
   var _here=!!(_pin&&_pin.path===window.__meosCurPath);   /* v4.1.94: もうそこに居る */
+  /* v4.1.97: 留めの中に居る時の行き先= **履歴の2番目**(さっきまで居た所)。覚えを新しく作らない。 */
+  var _prev=null;if(_here){for(var _qi=0;_qi<_rl.length;_qi++){var _r=_rl[_qi];
+   if(_r&&_r.path&&_r.path!==window.__meosCurPath){_prev=_r;break;}}}
+  var _go=_here?_prev:_pin;
   _fj.classList.toggle('on',!!_pin);                      /* 留めthat在れば、いつも出す */
-  _fj.classList.toggle('here',_here);
-  _fj.setAttribute('data-jump',(_pin&&!_here)?_pin.path:'');
-  _fj.setAttribute('data-tip',_pin?((_here?'📌 you are here — ':'📌 ')+(_pin.name||'')):'');}}
+  _fj.classList.toggle('here',_here&&!_prev);             /* 帰り先も無い時だけ、薄いまま */
+  _fj.classList.toggle('back',!!(_here&&_prev));
+  _fj.textContent=(_here&&_prev)?'↩':'📌';
+  _fj.setAttribute('data-jump',_go?_go.path:'');
+  _fj.setAttribute('data-tip',_pin?((_here&&_prev)?('↩ back to '+(_prev.name||''))
+   :(_here?'📌 you are here — '+(_pin.name||''):'📌 '+(_pin.name||''))):'');}}
 /* v4.0.304: ▾を開いたままでも、返事が来たら**その場で描き直す**(× / ● がその時の姿になる) */
 if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
 return;}if(m&&m.type==='copiedUd'){/* ★v4.0.369(俊克「tipを表示したままなら、**tipにCopiedを被せる**ように

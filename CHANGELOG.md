@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.97 (2026-09-03)
+- **Inside the pinned file, the 📌 becomes ↩ — the way back.** One circle carries both directions: press it
+  anywhere to reach the pinned file, press it there to return to the file you came from. The way back is read
+  from the recent list (the entry under the pin), so nothing new is remembered. With no file to go back to it
+  stays the dimmed 📌 saying *you are here*.
+
 ### v4.1.96 (2026-09-03)
 - **Setting a membrane colour now creates the badge if the membrane has not got one.** A colour lives in the
   membrane's badge (the `Mew!FC mCN (…)` line after the closing line). A membrane written by hand — or made
