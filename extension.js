@@ -7442,7 +7442,13 @@ function applyPrettyLabels(editor) {
           //     **同じ物that2つ**になり(本物の▼＋飾りの▼▲)、しかも押せない印that行の外に立つ。
           //   ★生データは1文字も隠さない/変えない(v4.0.345)＝ 足すのは ▲ の1文字だけ。
           //   ★畳んでいる事を言う口はここ1つ＝ [[feedback_fix_signal_at_fix_place]]。
-          const _g = text.search(/[▼▽]/);
+          // ★★★v4.1.1103(俊克 9/4 am11:17「Rawモードでも、見えるのはどうなんだろう? MeOSを無効化すれば、
+          //   見えなくなるからね。**本来は、無効化した時と同じに見えるのが、Rawモードのはず**だよね?」):
+          //   ★★★**俊克thatが正しい。生表示には2種類あり、意味that違う**＝
+          //     ①**カーソル行の生表示**＝ 直すために一時的に開けた窓。畳んでいる事を言う ▲ は要る(v4.1.1102)。
+          //     ②**Rawモード**＝ 「MeOSthat無い時の姿を見せる」と宣言した場。so**1文字も足さない**。
+          //   ★区別する物差しは既にある(meosModeAtLine)＝ 新しい判定は増やさない。
+          const _g = (meosModeAtLine(editor.document, line) === 'raw') ? -1 : text.search(/[▼▽]/);
           if (_g >= 0) openLabels.push({
             range: new vscode.Range(line, _g + 1, line, _g + 1),
             renderOptions: { before: { contentText: '▲', color: fcColor, fontWeight: '700' } }

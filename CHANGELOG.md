@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1103 (2026-09-04)
+- **Raw mode adds nothing** — there are two kinds of raw and they mean different things. A caret line is a window opened to edit through, and it still says ▲ when the membrane is folded. Raw mode is a declaration that this is how the file looks without MeOS, so not one character is added there.
+
 ### v4.1.1102 (2026-09-04)
 - **The mark goes where the mark is** — a folded membrane shown as raw carried a ▼▲ at the head of the line, next to the real ▼ already there in the comment: two of the same thing, one of them a glyph standing outside the text that cannot be pressed. The ▲ now sits directly after the real ▼ inside the comment, so it reads `<!-- {* ▼▲mCN=…` — still raw data, one character added, and folded still says so.
 
