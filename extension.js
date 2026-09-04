@@ -11317,6 +11317,9 @@ async function meosApplyModeToScope(doc, key, next, name) {
   if (next === cur) { meosPostViewMode(); return next; }   // 見え方that変わらない= 描き直さない
   _meosModeEpoch++;
   meosScheduleViewMetaWrite(doc);   // v4.0.445: 覚えるのはメタ膜(ファイルと一緒に旅する)
+  // ★v4.1.1104: **モードthat変わった事を名乗らせる**。今日、私はモードの効き目を3度推測して外した。
+  //   書くのは栓(debugLogPath)を開けている時だけ＝ 普段は1行も作らない。
+  try { meosDbg('[viewmode] key="' + String(key || '(地)') + '" name="' + String(name || '') + '" ' + cur + '→' + next + ' inh=' + inh + ' lines=' + doc.lineCount); } catch (_) { }
   const ed = vscode.window.visibleTextEditors.find(v => v.document === doc) || meosCurrentEditor();
   if (ed) refresh(ed);
   // ★★v4.0.443(俊克「切替ボタンを押したとき、**フォーカスをエディタに切り替えると良いのかも知れない**」):
@@ -11326,9 +11329,45 @@ async function meosApplyModeToScope(doc, key, next, name) {
   let edA = ed;
   try { if (ed && ed !== vscode.window.activeTextEditor) edA = (await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, preview: false })) || ed; } catch (_) { }
   try { if (edA) await meosSyncFcFoldForCursor(edA); } catch (_) { }
+  try { if (edA) await meosApplyFoldForMode(edA, key, next, cur); } catch (_) { }   // v4.1.1104
   meosPostViewMode();
   vscode.window.setStatusBarMessage('MeOS: ' + (name ? (name + ' — ') : '') + MEOS_VIEW_MODE_BAR[next], 2200);
   return next;
+}
+// ★★★v4.1.1104(俊克 9/4 pm00:03 バグ1「折り畳まれた膜thatRawモードでコメント化しない。
+//   正しくは、折り畳まれていた膜も、Rawモードでは、**コメント化され、かつ、展開されてる**べきだよね。
+//   ここでも、インラインのときに折り畳まれたままにしているのとは、異なるということだね」):
+//   ★★★**畳みだけthatモードの外に居た**＝ v4.0.444でモードを膜の性質にした時、私は「どの行を生で
+//     見せるか」と「FCの塊を開くか」までは繋いだthat、**膜そのものの畳みは繋がなかった**。
+//     soRawモードでも膜は畳まれたままで、生データthat畳みの下に隠れる＝ 「全部見える」と言いながら見えない。
+//   ★★規則は1行＝ **Rawに入ったらその膜の中の膜を全部開く。Rawを出たらバッジ(⊖/⊕)の言うとおりに戻す**。
+//     戻す時の物差しは新しく作らない＝ 起動時の復元(restoreMstatsForEditor)と**同じバッジ**を見る。
+//   ★カーソル行の生表示(インライン)は**畳みに触らない**＝ そちらは「直すための窓」so、
+//     開けると読んでいた場所thatが動いてしまう。俊克の言う「異なる」は、ここの線引き。
+async function meosApplyFoldForMode(editor, key, next, prev) {
+  if (!editor || !editor.document) return;
+  if (next !== 'raw' && prev !== 'raw') return;                  // Rawの出入りだけthat畳みを動かす
+  const doc = editor.document;
+  const pairs = collectPairs(doc, { excludeIndex: false });
+  let from = 0, to = Math.max(0, doc.lineCount - 1);
+  if (key) { const sc = pairs.find(p => String(p.id) === String(key)); if (!sc) return; from = sc.start; to = meosBlockEndForCarry(doc, sc); }
+  const inScope = pairs.filter(p => p.start >= from && p.start <= to && String(p.id) !== String(key));
+  if (!inScope.length) return;
+  try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
+  await new Promise(r => setTimeout(r, 150));
+  if (next === 'raw') {
+    const ls = inScope.map(p => p.start);
+    try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); } catch (_) { }
+    for (const p of inScope) { try { foldStateByPairKey.set(pairStateKey(editor, p), false); } catch (_) { } }
+    try { meosDbg('[viewmode] Rawで開いた 膜=' + ls.length + ' 範囲=' + (from + 1) + '-' + (to + 1)); } catch (_) { }
+    return;
+  }
+  // Rawを出た＝ バッジの言うとおりに戻す(⊖だけ畳む。⊕は今開いている)
+  const back = inScope.filter(p => { const b = (meosPairBadgeAt(doc, p) || {}).badge || null; return !!b && b.symbol === '⊖'; });
+  if (!back.length) return;
+  try { await vscode.commands.executeCommand('editor.fold', { selectionLines: back.map(p => p.start) }); } catch (_) { }
+  for (const p of back) { try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) { } }
+  try { meosDbg('[viewmode] Rawを出て畳み直した 膜=' + back.length); } catch (_) { }
 }
 // クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道。
 async function meosCycleViewMode(step) {

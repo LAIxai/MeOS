@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1104 (2026-09-04)
+- **Raw mode opens the membranes inside it** — folding was the one thing left outside the mode. v4.0.444 made the mode a property of the membrane and wired up which lines show raw and which spec groups open, but never the membrane's own fold, so raw data stayed hidden under it. Entering raw now opens every membrane in scope; leaving raw puts them back the way the badges say, reading the same badges the startup restore reads. The caret-line raw display still leaves folds alone — that one is a window for editing, not a declaration.
+- The mode change writes a line to the debug log, so what a press actually did is a fact rather than a guess.
+
 ### v4.1.1103 (2026-09-04)
 - **Raw mode adds nothing** — there are two kinds of raw and they mean different things. A caret line is a window opened to edit through, and it still says ▲ when the membrane is folded. Raw mode is a declaration that this is how the file looks without MeOS, so not one character is added there.
 
