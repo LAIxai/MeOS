@@ -10165,7 +10165,7 @@ function meosArmClockFcFor(doc) {
       //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : ''),   // v4.1.82
-        up: !!(c.up && Array.isArray(c.cycle) && c.cycle.length),
+        up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
         step: _step };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている
@@ -11514,9 +11514,9 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   if (scope.key) {
     try {
       const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key);
-      if (_h) { if (Array.isArray(_h.cycle) && _h.cycle.length) { _cy0 = _h.cycle; _up0 = !!_h.up; } _tg0 = _h.tags || null; }
+      if (_h) { if (Array.isArray(_h.cycle) && _h.cycle.length) _cy0 = _h.cycle; _up0 = !!_h.up; _tg0 = _h.tags || null; }   // v4.1.1109: 向きは周期と別
     } catch (_) { }
-    if (opts && opts.hasCycle) { _cy0 = (opts.cycle && opts.cycle.length) ? opts.cycle : null; _up0 = !!(opts.up && _cy0); }
+    if (opts && opts.hasCycle) { _cy0 = (opts.cycle && opts.cycle.length) ? opts.cycle : null; _up0 = !!opts.up; }   // v4.1.1109: 面that言った向きは、周期の有無に依らず生きる
     if (opts && opts.tags) _tg0 = opts.tags;                       // v4.1.70: 面that言った札that勝つ
   }
   if (scope.key && _cy0) {
@@ -11543,7 +11543,10 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   //     ([[project_last_specified_wins]] 人that最後に指定した物を残す)。→ 在れば持ち越す。
   if (scope.key) {
     if (opts && opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
-    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: false }); } catch (_) { }
+    // ★★★v4.1.1109(俊克 バグ1「ストップウォッチを設定したはずなのに、UFCは↺になってしまう」):
+    //   ★★★**ここthat向きを捨てていた**= 一度きりの道は `up: false` を打ち込んでいたので、
+    //     面で↻を選んでも、本文には必ず↺と書かれていた。
+    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: _up0 }); } catch (_) { }
   }
   else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
   meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
@@ -24431,7 +24434,10 @@ if(clkCaret&&clkPop){
   var _id=_hit?_hit.id:'';
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();return;}
-  if(_id==='clk-dir'){if(!clkRep){clkRep=true;clkPaintRep();}clkDir=!clkDir;clkPaintDir();return;}
+  /* ★★★v4.1.1109(俊克 9/4 pm11:57 改良1「countdownボタンを押すと、なぜか、一緒にRepeatにも
+     チェックが入ってしまう」): ★★★**向きと繰返しは独立している**(v4.1.1108で矢印が
+     周期と別に書けるようになった)。v4.1.65の道連れは、その前の世界の残り。 */
+  if(_id==='clk-dir'){clkDir=!clkDir;clkPaintDir();return;}
   if(_id==='clk-cyc'||_id==='clk-tagin'||_id==='clk-tagnew')return;   /* 箱は押しても閉じない */
   if(_id==='clk-set'){clkFire();return;}
  });
@@ -24444,7 +24450,7 @@ if(clkCaret&&clkPop){
   var k=document.createElement('span');k.className='clk-ck';k.textContent=on?'\u2611':'\u2610';
   b.appendChild(k);b.appendChild(document.createTextNode(label));}
  function clkPaintDir(){var b=document.getElementById('clk-dir');if(!b)return;b.classList.toggle('on',clkDir);
-  b.classList.toggle('off',!clkRep);                                   /* v4.1.65: 繰返しthat無ければ向きは効かない */
+  /* v4.1.1109: 繰返しthat無くても向きは効く(一度きりのストップウォッチthat書ける)。 */
   clkBox(b,clkDir,clkDir?'\u21bb stopwatch':'\u21ba countdown');}
  /* ★★★v4.1.65(俊克 改良1「**リピート無しの設定thatなかったね**。『\u2610 Repeat \u2610 countdown』という状態that
     リピートなし」): ★★★**「触らない」を「無し」の代わりにしていた**= v4.1.64は箱that空なら今の指定を残す
@@ -26240,7 +26246,8 @@ function toggleMeDock(editorOverride) {
         let _cyc = '', _up = false, _tag = '';
         if (_sc && _sc.key && _sc.doc) {
           const _h = meosClockFcScan(_sc.doc).find(c => c.key === _sc.key);
-          if (_h && Array.isArray(_h.cycle) && _h.cycle.length) { _cyc = _h.cycle.join(' '); _up = !!_h.up; }
+          if (_h && Array.isArray(_h.cycle) && _h.cycle.length) _cyc = _h.cycle.join(' ');
+          if (_h) _up = !!_h.up;                                  // v4.1.1109: 向きは周期と別(一度きりでも名乗る)
           if (_h && Array.isArray(_h.tags) && _h.tags.length) _tag = _h.tags.join(' ');
           else { const _r = meosScopeRangeNow(_sc.doc, _sc.key); if (_r) { const _mt = meosMembraneTags(_sc.doc, _r.from); if (_mt.length) _tag = _mt.join(' '); } }
         }

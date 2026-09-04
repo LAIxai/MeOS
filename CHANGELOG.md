@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1109 (2026-09-05)
+- **Direction and repeat are independent** — pressing the direction button switched Repeat on as well, and six places in the code threw the direction away whenever there was no cycle: the panel's answer, the arm-from-text path, and the one-shot write which simply passed `up: false`. So a stopwatch chosen in the panel was written as ↺, and even a hand-typed ↻ was discarded on the way back in. v4.1.1108 gave the arrow its own meaning; this gives it its own life.
+
 ### v4.1.1108 (2026-09-04)
 - **The arrow is the direction, the number is the cycle** — a one-shot stopwatch could be chosen in the panel and was gone the moment it was written: the arrow was only ever written alongside a repeat, and reading a line without one always came back "countdown". Two facts now have two marks, and a clock line says what it is without anyone knowing a default. Lines already written keep working: no arrow still reads as countdown.
 
