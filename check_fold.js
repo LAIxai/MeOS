@@ -383,5 +383,24 @@ console.log('⑳ FCの色指定も、その色で見せる(v4.0.375)');
 
   lines.pop(); doc.lineCount = lines.length;
 }
+// ★★★v4.1.109(俊克 9/4 am10:27 質問1「コメントの中に、起動できるボタンというのは、
+//   普通はないよね…コメントは、編集する対象であって、起動ボタンではない」):
+//   飾りの時＝印(押す) / 生データの時＝字(直す)。同じ場所に2つの意味を重ねない。
+console.log('\u246f コメント化した膜の ▼ はボタンではない');
+{
+  const away = makeEditor([R(0, 10)], 9);          // カーソルは膜の外 = 飾り
+  const on   = makeEditor([R(0, 10)], OPEN_LINE);  // カーソルがその行 = 生データ
+  const idStart = lines[OPEN_LINE].indexOf('テスト膜');
+  const glyph = lines[OPEN_LINE].indexOf('▼');
+  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, idStart, away), '\u2605飾りの時は今までどおり押せる(v4.0.359の広い当たり)', !!T.meosArrowHitAt(doc, OPEN_LINE, idStart, away));
+  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, glyph, away), '\u2605飾りの時は ▼ の字の上でも押せる', !!T.meosArrowHitAt(doc, OPEN_LINE, glyph, away));
+  ok(T.meosArrowHitAt(doc, OPEN_LINE, idStart, on) === null, '\u2605\u2605\u2605生データの行では膜名の1文字目を押しても何も起きない(俊克のバグ)', T.meosArrowHitAt(doc, OPEN_LINE, idStart, on));
+  ok(T.meosArrowHitAt(doc, OPEN_LINE, glyph, on) === null, '\u2605\u2605\u2605生データの行では ▼ の字もボタンではない(コメントは編集する対象)', T.meosArrowHitAt(doc, OPEN_LINE, glyph, on));
+  ok(T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)) === null, '\u2605\u2605押せない物に「押せ」と言わない(tipも同じ物差しを見る)', T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)));
+  T.setRefNoRaw(doc, OPEN_LINE);                   // ▼ を押した直後の拑止(v4.0.362)
+  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, idStart, on), '\u2605\u2605押した直後は飾りのまま＝ 連続で押せる道は塞がらない', !!T.meosArrowHitAt(doc, OPEN_LINE, idStart, on));
+}
+
+
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

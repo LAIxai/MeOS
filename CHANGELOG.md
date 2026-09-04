@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.109 (2026-09-04)
+- **A comment is not a button** — v4.1.108 only narrowed the ▼ target on raw lines; it still left a button inside a comment. There is no mark on that line at all: the ▼ you see in raw data is one character of a comment, not a decoration. Decorated means mark (press it); raw means text (edit it). The tip follows the same ruler, so nothing says "press me" where nothing can be pressed.
+- The hit test now asks the same question the renderer asks, landing suppression included — otherwise pressing ▼ would make the line look raw and the second press would do nothing.
+
 ### v4.1.108 (2026-09-04)
 - **The ▼ hit area follows the display state** — a membrane kept folding and unfolding "by itself" on ordinary clicks. The log named it: the click was on the ▼ button, but the finger was on the first character of the membrane name. v4.0.359 widened the target from the ▼ glyph to just before the name, which is right while the line is decorated — the hidden `<!-- {* ▼mCN=` columns all land there. On a line showing raw data those columns are real characters, and the last one is the name's first letter, the very character v4.0.368 colored as editable. Raw lines now hit only the mark itself.
 

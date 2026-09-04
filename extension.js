@@ -6091,6 +6091,20 @@ const REF_PENDING_FAM = 'P';
 let _refNoRawUri = '';
 let _refNoRawLine = -1;
 function setRefNoRaw(doc, line) { try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
+// ★★v4.1.109: 「今その行は生データを見せているか」を訊く口を1つにする。
+//   描画は `meosRawLines(editor, docCursorLine < 0)` で、**着地の一時抑止(setRefNoRaw)thatが効いている間は
+//   カーソル行の特例を外す**(v1.0.11/12)。クリックの当たりも**同じ答え**を見なければ、
+//   ▼を押した直後に「生データの行」と見えてしまい、**2度目that押せなくなる**(v4.0.362の逆戻り)。
+//   ★ここでは読むだけ＝ 抑止を解くのは描画の道(refresh)の仕事(触ると片方だけ進む)。
+function meosRawSuppressedAt(editor) {
+  try {
+    const cur = (editor && editor.selection) ? editor.selection.active.line : -1;
+    return _refNoRawLine >= 0 && _refNoRawUri === editor.document.uri.toString() && cur === _refNoRawLine;
+  } catch (_) { return false; }
+}
+function meosShowsRawLine(editor, line) {
+  try { return meosRawLines(editor, meosRawSuppressedAt(editor)).has(line); } catch (_) { return false; }
+}
 function isPendingFam(fam) { return fam === 'P'; }
 function refFamilySymbol(fam, custom) {
   if (isPendingFam(fam)) return '💤';
@@ -26905,14 +26919,17 @@ function meosArrowHitAt(document, line, character, editor) {
   //     飾りなら隠れた `<!-- {* ▼mCN=` の桁that全部そこへ落ちるので、広く取らないと押せない。
   //     ところthat**生データを見せている行では、その範囲は本物の字**で、idStartは膜名の1文字目＝
   //     v4.0.368で「変えてよい」と色で言った、まさにその字。so名前を直そうとして畳んでしまう。
-  //   ★★→ **当たりは表示の状態で決まる**(そう書いてあった=[[project_direct_manipulation_mark]])＝
-  //     飾り＝広く / 生＝**印の字そのものだけ**。▼を押す口は生でも残る(字の上を押せばよい)。
+  // ★★★v4.1.109(俊克 9/4 am10:27 質問1「私は、コメント化した膜の▼はもうボタンとして機能しないと
+  //   思っていた。論理的に言っても、**コメントの中に、起動できるボタンというのは、普通はない**よね。
+  //   …**コメントは、編集する対象であって、起動ボタンではない**からだよ」):
+  //   ★★★**俊克thatが正しい。v4.1.108の私は当たりを狭めただけで、まだボタンを置いていた**。
+  //     当たりの広さの話ではなく、**その行に印というものthat居ない**という話だった＝
+  //     生データの行に見えている `▼` は**装飾ではなく、コメントの中の1文字**so、押す物ではない。
+  //   ★これで役割thatが1行で言える＝ **飾りの時＝印(押す) / 生データの時＝字(直す)**。同じ場所に
+  //     2つの意味を重ねない。tip(Toggle ▼-Button!)も同じ物差しを見ているので、一緒に出なくなる
+  //     ＝ 押せない物を「押せ」と言わない。→ [[feedback_fix_signal_at_fix_place]]
   //   ★▼を押した直後は setRefNoRaw that生を抑えている(v4.0.362)ので、連続で押す道は塞thatがらない。
-  if (glyph >= 0 && editor) {
-    let _raw = false;
-    try { _raw = meosRawLines(editor).has(line); } catch (_) { _raw = false; }
-    if (_raw) return (character >= glyph && character <= glyph + 1) ? info : null;
-  }
+  if (editor && meosShowsRawLine(editor, line)) return null;
   const lo = (glyph >= 0) ? glyph : Math.max(0, info.idStart - 1);
   if (character >= lo && character <= info.idStart) return info;
   return null;
