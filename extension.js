@@ -6105,6 +6105,22 @@ function meosRawSuppressedAt(editor) {
 function meosShowsRawLine(editor, line) {
   try { return meosRawLines(editor, meosRawSuppressedAt(editor)).has(line); } catch (_) { return false; }
 }
+// ★★★v4.1.110(俊克 9/4 am10:35 バグ1「コメント化してない時の▼や▼▲を押しても、閉じたり開いたり
+//   できなくなってしまった」):
+//   ★★★**私は「押した後」を見て決めていた**＝ ▼を押すとカーソルthatその行に乗り、
+//     「カーソルを置いた行は生データ」(v4.0.345)で**その行は生になる**。so押した瞬間に訊けば、
+//     どんな時でも「生データの行」と答えthat返る＝ 1つも押せなくなる。俊克のバグはこれ。
+//   ★★訊くべきは**押す直前にその行thatが生だったか**＝ 理由は2つしかない＝
+//     ①カーソルthatが居なくても生で見せている(Rawの膜/Pseudo) → 印は最初から居ない
+//     ②**既にその行に居た**(prevLine) → その行は生を見せていた＝ 字を直しに来たクリック
+//     どちらでもなければ、そのクリックは**飾りの上に落ちた**＝ ボタン押し。
+//   ★②の例外＝ ▼を押した直後は setRefNoRaw that生を抑えている(v4.0.362)ので、居座っても飾りのまま
+//     ＝ 何度でも押せる。抑止を見落とすと2度目that押せない(v4.1.109の検査⑯that捕まえた退行)。
+function meosArrowPressBlocked(editor, line, prevLine) {
+  try { if (meosRawLines(editor, true).has(line)) return true; }  catch (_) { }   // ①
+  try { if (prevLine === line && !meosRawSuppressedAt(editor)) return true; } catch (_) { }  // ②
+  return false;
+}
 function isPendingFam(fam) { return fam === 'P'; }
 function refFamilySymbol(fam, custom) {
   if (isPendingFam(fam)) return '💤';
@@ -15333,7 +15349,8 @@ function membraneArrowToggleHitInfo(editor) {
   // the ▼ click landing point is back to the standard idStart — no alias-mode special
   // case needed. The alias source span lives at real columns past the hide range, so
   // alias clicks land on those columns naturally and never on idStart.
-  if (meosArrowHitAt(editor.document, sel.active.line, sel.active.character, editor)) {   // v4.0.358: tip と同じ物差し
+  if (meosArrowPressBlocked(editor, sel.active.line, prevLineBeforeSelectionChange)) return null;  // v4.1.110: コメントは編集する対象
+  if (meosArrowHitAt(editor.document, sel.active.line, sel.active.character)) {   // v4.0.358: tip と同じ物差し
     // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
     // before:contentText 全体のクリックが idStart に落ちるため、
     // ▼ だけのクリックと区別できない。
@@ -26897,7 +26914,7 @@ function imageMembraneHoverMessage(document, position) {
 //   これまで tip は `idStart` と `idStart-1` の2桁で出るのに、トグルは `idStart` の1桁だけだった＝
 //   **「Toggle Me!」と出ているのに押しても効かない桁が在った**(俊克「tipは出るが、クリックしても
 //   反応しない」)。印と動作は同じ物差しで決める → [[feedback_one_source_for_mark_count_action]]
-function meosArrowHitAt(document, line, character, editor) {
+function meosArrowHitAt(document, line, character) {
   const info = membraneLineInfo(document, line);
   if (!info) return null;
   // ★★★v4.0.359(俊克 pm02:23「膜のガターメニューは、依然として、反応しない。なぜ?」＋実測):
@@ -26919,17 +26936,8 @@ function meosArrowHitAt(document, line, character, editor) {
   //     飾りなら隠れた `<!-- {* ▼mCN=` の桁that全部そこへ落ちるので、広く取らないと押せない。
   //     ところthat**生データを見せている行では、その範囲は本物の字**で、idStartは膜名の1文字目＝
   //     v4.0.368で「変えてよい」と色で言った、まさにその字。so名前を直そうとして畳んでしまう。
-  // ★★★v4.1.109(俊克 9/4 am10:27 質問1「私は、コメント化した膜の▼はもうボタンとして機能しないと
-  //   思っていた。論理的に言っても、**コメントの中に、起動できるボタンというのは、普通はない**よね。
-  //   …**コメントは、編集する対象であって、起動ボタンではない**からだよ」):
-  //   ★★★**俊克thatが正しい。v4.1.108の私は当たりを狭めただけで、まだボタンを置いていた**。
-  //     当たりの広さの話ではなく、**その行に印というものthat居ない**という話だった＝
-  //     生データの行に見えている `▼` は**装飾ではなく、コメントの中の1文字**so、押す物ではない。
-  //   ★これで役割thatが1行で言える＝ **飾りの時＝印(押す) / 生データの時＝字(直す)**。同じ場所に
-  //     2つの意味を重ねない。tip(Toggle ▼-Button!)も同じ物差しを見ているので、一緒に出なくなる
-  //     ＝ 押せない物を「押せ」と言わない。→ [[feedback_fix_signal_at_fix_place]]
-  //   ★▼を押した直後は setRefNoRaw that生を抑えている(v4.0.362)ので、連続で押す道は塞thatがらない。
-  if (editor && meosShowsRawLine(editor, line)) return null;
+  // ★v4.1.109/110: 「その行に印that居るか」はここでは決めない(下の meosArrowPressBlocked / tip側)。
+  //   ここは**桁の物差しだけ**＝ ▼の字から膜名の直前まで。
   const lo = (glyph >= 0) ? glyph : Math.max(0, info.idStart - 1);
   if (character >= lo && character <= info.idStart) return info;
   return null;
@@ -26941,7 +26949,8 @@ function membraneArrowHoverMessage(editor, position) {
   // v0.9.538: alias-mode hover restriction removed — alias is now plain source text
   // sitting at real columns past the hide range, so hover positions on alias never
   // collide with idStart and never trigger the Toggle Me tip.
-  if (meosArrowHitAt(editor.document, position.line, position.character, editor)) {
+  if (meosShowsRawLine(editor, position.line)) return null;   // v4.1.109: 押せない物に「押せ」と言わない
+  if (meosArrowHitAt(editor.document, position.line, position.character)) {
     // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
     // before:contentText 全域がこの位置にマップされるため、ラベル全体に
     // "Toggle Me!" ホーバーが出てしまう。カーソルがその行にいるとき

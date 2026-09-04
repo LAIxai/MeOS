@@ -41,7 +41,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles, meosReadableInkFor, membraneCssColorForCode };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, meosArrowPressBlocked, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles, meosReadableInkFor, membraneCssColorForCode };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -392,13 +392,16 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
   const on   = makeEditor([R(0, 10)], OPEN_LINE);  // カーソルがその行 = 生データ
   const idStart = lines[OPEN_LINE].indexOf('テスト膜');
   const glyph = lines[OPEN_LINE].indexOf('▼');
-  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, idStart, away), '\u2605飾りの時は今までどおり押せる(v4.0.359の広い当たり)', !!T.meosArrowHitAt(doc, OPEN_LINE, idStart, away));
-  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, glyph, away), '\u2605飾りの時は ▼ の字の上でも押せる', !!T.meosArrowHitAt(doc, OPEN_LINE, glyph, away));
-  ok(T.meosArrowHitAt(doc, OPEN_LINE, idStart, on) === null, '\u2605\u2605\u2605生データの行では膜名の1文字目を押しても何も起きない(俊克のバグ)', T.meosArrowHitAt(doc, OPEN_LINE, idStart, on));
-  ok(T.meosArrowHitAt(doc, OPEN_LINE, glyph, on) === null, '\u2605\u2605\u2605生データの行では ▼ の字もボタンではない(コメントは編集する対象)', T.meosArrowHitAt(doc, OPEN_LINE, glyph, on));
-  ok(T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)) === null, '\u2605\u2605押せない物に「押せ」と言わない(tipも同じ物差しを見る)', T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)));
-  T.setRefNoRaw(doc, OPEN_LINE);                   // ▼ を押した直後の拑止(v4.0.362)
-  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, idStart, on), '\u2605\u2605押した直後は飾りのまま＝ 連続で押せる道は塞がらない', !!T.meosArrowHitAt(doc, OPEN_LINE, idStart, on));
+  // \u2605v4.1.110: クリックそのものがその行を生にするので、訊くのは**押す直前に生だったか**。
+  //   prevLine = そのクリックの前にカーソルが居た行。
+  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, idStart), '\u2605桁の当たりは ▼ 〜膜名の直前(v4.0.359の広い当たり)', !!T.meosArrowHitAt(doc, OPEN_LINE, idStart));
+  ok(!!T.meosArrowHitAt(doc, OPEN_LINE, glyph), '\u2605 ▼ の字の上も当たり', !!T.meosArrowHitAt(doc, OPEN_LINE, glyph));
+  ok(T.meosArrowPressBlocked(on, OPEN_LINE, 9) === false, '\u2605\u2605\u2605外からの1回目のクリックは押せる(飾りの上に落ちた)', T.meosArrowPressBlocked(on, OPEN_LINE, 9));
+  ok(T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE) === true, '\u2605\u2605\u2605既にその行に居た2回目は押せない(字を直しに来た)', T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE));
+  ok(T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)) === null, '\u2605\u2605生データの行に tip を出さない(押せない物に「押せ」と言わない)', T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)));
+  ok(!!T.membraneArrowHoverMessage(away, new stub.Position(OPEN_LINE, idStart)), '\u2605飾りの行には tip を出す', !!T.membraneArrowHoverMessage(away, new stub.Position(OPEN_LINE, idStart)));
+  T.setRefNoRaw(doc, OPEN_LINE);                   // \u25bc を押した直後の拑止(v4.0.362)
+  ok(T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE) === false, '\u2605\u2605押した直後は飾りのまま＝ 連続で押せる道は塞がらない', T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE));
 }
 
 

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.110 (2026-09-04)
+- **Ask whether the line was raw *before* the click** — v4.1.109 asked after, and pressing ▼ puts the caret on that line, which is what makes a line raw. So every press answered "this is raw" and no membrane could be toggled at all. A line counts as text only if it was already raw: either it shows raw with no caret on it (a Raw membrane), or the caret was already sitting there. Anything else is a click that landed on the decoration — a button press.
+
 ### v4.1.109 (2026-09-04)
 - **A comment is not a button** — v4.1.108 only narrowed the ▼ target on raw lines; it still left a button inside a comment. There is no mark on that line at all: the ▼ you see in raw data is one character of a comment, not a decoration. Decorated means mark (press it); raw means text (edit it). The tip follows the same ruler, so nothing says "press me" where nothing can be pressed.
 - The hit test now asks the same question the renderer asks, landing suppression included — otherwise pressing ▼ would make the line look raw and the second press would do nothing.
