@@ -7434,10 +7434,18 @@ function applyPrettyLabels(editor) {
         if (fp && isPairFolded(editor, fp)) {
           const fcCfg = vscode.workspace.getConfiguration('laiMembrane');
           const fcColor = meosMembraneColorForOpen(editor.document, fp.start, text, colorForDepth(fp.depth || 0, fcCfg));
-          const fcIndent = (text.match(/^[ \t]*/) || [''])[0].length;
-          openLabels.push({
-            range: new vscode.Range(line, fcIndent, line, fcIndent),
-            renderOptions: { before: { contentText: meosMembraneGlyph('open', true, false), color: fcColor, fontWeight: '700', margin: '0 4px 0 0' } }
+          // ★★★v4.1.1102(俊克 9/4 am11:01 バグ1「折り畳まれた膜thatコメント化したとき、**膜の頭に ▼▲ that
+          //   残っている**」＋ am11:10「このときコメント内の ▼ を ▼▲ にして下さい。そうしないと、
+          //   折り畳まれていることthat分らないからね」):
+          //   ★★★**印は行の頭ではなく、印の在る所に出す**＝ 生データの行では ▼ は**コメントの中の本物の字**so、
+          //     その字のすぐ隣に ▲ を足す＝ `<!-- {* ▼▲mCN=…` と読める。行の頭に別の ▼▲ を置くと、
+          //     **同じ物that2つ**になり(本物の▼＋飾りの▼▲)、しかも押せない印that行の外に立つ。
+          //   ★生データは1文字も隠さない/変えない(v4.0.345)＝ 足すのは ▲ の1文字だけ。
+          //   ★畳んでいる事を言う口はここ1つ＝ [[feedback_fix_signal_at_fix_place]]。
+          const _g = text.search(/[▼▽]/);
+          if (_g >= 0) openLabels.push({
+            range: new vscode.Range(line, _g + 1, line, _g + 1),
+            renderOptions: { before: { contentText: '▲', color: fcColor, fontWeight: '700' } }
           });
           // ★★★v4.1.104(俊克 9/4 am08:32): **写しは廃止**＝ バッジ行は畳みの外へ出したので、
           //   畳んでいても膜の直下に本物that出ている。同じ物を2か所に描かない。

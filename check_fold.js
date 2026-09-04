@@ -80,7 +80,7 @@ function makeEditor(visibleRanges, curLine) {
       for (const r of ranges) {
         const ro = r && r.renderOptions;
         const b = ro && ro.before && ro.before.contentText;
-        if (typeof b === 'string' && /[▼▲]/.test(b)) ed.__labels.push({ line: r.range.start.line, text: b });
+        if (typeof b === 'string' && /[▼▲]/.test(b)) ed.__labels.push({ line: r.range.start.line, ch: r.range.start.character, text: b });
         const a = ro && ro.after && ro.after.contentText;
         if (typeof a === 'string' && a.trim()) ed.__after.push({ line: r.range.start.line, text: a.trim() });
       }
@@ -142,7 +142,9 @@ console.log('⑤ 畳んである膜の開始行にカーソルが入った(= 生
 {
   const ed = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);
   const g = openGlyphAt(ed, OPEN_LINE);
-  ok(g === '▼▲', '★生データのままで、頭に ▼▲ が付く(開始膜に見えない)', g);
+  // ★v4.1.1102(俊克「このときコメント内の ▼ を ▼▲ にして下さい」): 印は**印の在る所**に出す。
+  ok(g === '▲', '\u2605\u2605\u2605生データのままで、コメントの中の ▼ の隣に ▲ を足す(= ▼▲ と読める)', g);
+  ok(ed.__labels.filter(l => l.line === OPEN_LINE).every(l => l.ch === lines[OPEN_LINE].indexOf('▼') + 1), '\u2605\u2605行の頭でなく ▼ のすぐ隣に出す(同じ物を2つ立てない)', ed.__labels.filter(l => l.line === OPEN_LINE).map(l => l.ch));
   const a = afterAt(ed, OPEN_LINE);
   // v4.1.104: 写しは廃止= バッジ行は畳みの外なので、畳んでいても膜の直下に本物が見えている。
   ok(a === '(無し)', '★★★行末に写しを出さない(同じ物を2か所に描かない)', a);
@@ -265,7 +267,7 @@ console.log('⑬ ▼ を押した後も、続けて押せる(v4.0.362)');
   openGlyphAt(edAway, OPEN_LINE);                                   // ここで抑止が解ける
   const edBack = makeEditor([R(0, OPEN_LINE), R(8, 10)], OPEN_LINE);// 戻ってくる
   const g2 = openGlyphAt(edBack, OPEN_LINE);
-  ok(g2 === '▼▲' && afterAt(edBack, OPEN_LINE) === '(無し)', '★離れて戻れば生データ+▼▲だけ(v4.1.104で写しは廃止)', [g2, afterAt(edBack, OPEN_LINE)]);
+  ok(g2 === '▲' && afterAt(edBack, OPEN_LINE) === '(無し)', '\u2605離れて戻れば生データ+ ▼ の隣の ▲ だけ(写しは廃止)', [g2, afterAt(edBack, OPEN_LINE)]);
 }
 console.log('⑭ 膜名タイムスタンプのモザイク色分け(v4.0.363)');
 {

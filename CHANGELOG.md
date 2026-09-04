@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1102 (2026-09-04)
+- **The mark goes where the mark is** — a folded membrane shown as raw carried a ▼▲ at the head of the line, next to the real ▼ already there in the comment: two of the same thing, one of them a glyph standing outside the text that cannot be pressed. The ▲ now sits directly after the real ▼ inside the comment, so it reads `<!-- {* ▼▲mCN=…` — still raw data, one character added, and folded still says so.
+
 ### v4.1.1101 (2026-09-04)
 - **Three lines are one thing** — the ▼ became a button again whenever the caret sat on ▲ or on the badge line. A line shows raw data not only when the caret is on it: ▼, ▲ and the badge are one group, so the caret on any of them puts all three into raw. Asking "was the caret on this exact line" missed that. It now asks the real question — at the caret position just before the click, was this line showing raw data — by passing that position to the same function the renderer uses.
 
