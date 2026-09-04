@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.108 (2026-09-04)
+- **The ▼ hit area follows the display state** — a membrane kept folding and unfolding "by itself" on ordinary clicks. The log named it: the click was on the ▼ button, but the finger was on the first character of the membrane name. v4.0.359 widened the target from the ▼ glyph to just before the name, which is right while the line is decorated — the hidden `<!-- {* ▼mCN=` columns all land there. On a line showing raw data those columns are real characters, and the last one is the name's first letter, the very character v4.0.368 colored as editable. Raw lines now hit only the mark itself.
+
 ### v4.1.107 (2026-09-04)
 - **Aim the fold at the badge line, not at ▲** — an open membrane closed itself once, and never again. It is a race, not a mystery: leaving the membrane asks VS Code for new ranges, waits 150 ms, then folds at ▲ — and if the new ranges have not landed, no range starts at ▲, so the fold takes the innermost one that contains it, which is the membrane. The badge line only sits inside a range in the settled shape, so folding there either folds the badge group or does nothing at all. Either way it cannot reach the membrane.
 

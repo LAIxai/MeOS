@@ -15319,7 +15319,7 @@ function membraneArrowToggleHitInfo(editor) {
   // the ▼ click landing point is back to the standard idStart — no alias-mode special
   // case needed. The alias source span lives at real columns past the hide range, so
   // alias clicks land on those columns naturally and never on idStart.
-  if (meosArrowHitAt(editor.document, sel.active.line, sel.active.character)) {   // v4.0.358: tip と同じ物差し
+  if (meosArrowHitAt(editor.document, sel.active.line, sel.active.character, editor)) {   // v4.0.358: tip と同じ物差し
     // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
     // before:contentText 全体のクリックが idStart に落ちるため、
     // ▼ だけのクリックと区別できない。
@@ -26883,7 +26883,7 @@ function imageMembraneHoverMessage(document, position) {
 //   これまで tip は `idStart` と `idStart-1` の2桁で出るのに、トグルは `idStart` の1桁だけだった＝
 //   **「Toggle Me!」と出ているのに押しても効かない桁が在った**(俊克「tipは出るが、クリックしても
 //   反応しない」)。印と動作は同じ物差しで決める → [[feedback_one_source_for_mark_count_action]]
-function meosArrowHitAt(document, line, character) {
+function meosArrowHitAt(document, line, character, editor) {
   const info = membraneLineInfo(document, line);
   if (!info) return null;
   // ★★★v4.0.359(俊克 pm02:23「膜のガターメニューは、依然として、反応しない。なぜ?」＋実測):
@@ -26896,6 +26896,23 @@ function meosArrowHitAt(document, line, character) {
   //     「膜名より左＝印の領域」で一致する。膜名から右はジャンプの領域なので触らない(役割の境目は不変)。
   const text = document.lineAt(line).text || '';
   const glyph = text.search(/[▼▽▲△]/);
+  // ★★★v4.1.108(俊克 9/4 am10:06「折り畳んだ膜や⏰UFCをクリックしただけで、膜that展開されてしまう。
+  //   ▼▲ボタンをクリックしている訳じゃないのに」＋ ログthat名指しした):
+  //     [arrow] line=114171 idStart=13 caretCh=13 hit=true at="⏰付き膜2_20"
+  //     [fold]  fold start=114171 … rawHasStart=true
+  //   ★★★**押していたのは ▼ ボタンだった。ただし指は膜名の1文字目に落ちている**＝
+  //     v4.0.359 で広げた当たり(▼の字〜膜名の直前=idStartを含む)は、**飾りの時だけ正しい**。
+  //     飾りなら隠れた `<!-- {* ▼mCN=` の桁that全部そこへ落ちるので、広く取らないと押せない。
+  //     ところthat**生データを見せている行では、その範囲は本物の字**で、idStartは膜名の1文字目＝
+  //     v4.0.368で「変えてよい」と色で言った、まさにその字。so名前を直そうとして畳んでしまう。
+  //   ★★→ **当たりは表示の状態で決まる**(そう書いてあった=[[project_direct_manipulation_mark]])＝
+  //     飾り＝広く / 生＝**印の字そのものだけ**。▼を押す口は生でも残る(字の上を押せばよい)。
+  //   ★▼を押した直後は setRefNoRaw that生を抑えている(v4.0.362)ので、連続で押す道は塞thatがらない。
+  if (glyph >= 0 && editor) {
+    let _raw = false;
+    try { _raw = meosRawLines(editor).has(line); } catch (_) { _raw = false; }
+    if (_raw) return (character >= glyph && character <= glyph + 1) ? info : null;
+  }
   const lo = (glyph >= 0) ? glyph : Math.max(0, info.idStart - 1);
   if (character >= lo && character <= info.idStart) return info;
   return null;
@@ -26907,7 +26924,7 @@ function membraneArrowHoverMessage(editor, position) {
   // v0.9.538: alias-mode hover restriction removed — alias is now plain source text
   // sitting at real columns past the hide range, so hover positions on alias never
   // collide with idStart and never trigger the Toggle Me tip.
-  if (meosArrowHitAt(editor.document, position.line, position.character)) {
+  if (meosArrowHitAt(editor.document, position.line, position.character, editor)) {
     // v0.9.625: MD でエイリアス/注釈がラベルに埋め込まれている場合、
     // before:contentText 全域がこの位置にマップされるため、ラベル全体に
     // "Toggle Me!" ホーバーが出てしまう。カーソルがその行にいるとき
