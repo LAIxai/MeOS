@@ -28945,7 +28945,15 @@ function meosDefBlocks(document) {
       try { const _b = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head); if (_b) top = _b.start; } catch (_) { }
       // v4.0.332: 頭が閉じ膜なら、その膜の**開始膜も塊の一部**(俊克「3つは常に1つ」)。本文は入れない。
       try { const _h = String(lines[head] || ''); if ((_h.indexOf('▲') >= 0 || _h.indexOf('△') >= 0) && parseCloseLine(_h)) { const op = meosMembraneOpenFor(document, head); if (op >= 0) open = op; } } catch (_) { }
-      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open });
+      // ★★★v4.1.106(俊克 9/4 am09:45 バグ2「折り畳まれた膜の⏰UFCの行をクリックした時も、本来それは
+      //   膜の行をクリックした時のように、バッジFCを表示するべき」):
+      //   ★★★**膜の持ち物は4つになった**＝ ▼・▲・バッジ・⏰。v4.0.332で「3つは常に1つ」と決めた時、
+      //     ⏰行はまだ畳みの外に無かった。畳まない行(UFC)も**同じ塊の一員**so、そこに居る間も開けておく。
+      //   ★畳む範囲(start..end)は1行も伸ばさない＝ 伸ばすと⏰thatが畳まれてしまう(v4.1.16)。
+      //     伸ばすのは**開く合図の範囲(openEnd)だけ**＝ v4.0.301で表や箇条書きに入れたのと同じ手。
+      let openEnd = e;
+      if (open != null) { try { while (openEnd + 1 < n && meosIsUnfoldingSpecLine(lines[openEnd + 1])) openEnd++; } catch (_) { } }
+      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open, openEnd });
       ln = e;
     }
   } catch (_) { }
@@ -29163,7 +29171,8 @@ function meosFcWantsOpen(doc, block, caretLine) {
   if (!(caretLine >= 0)) return false;
   if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
   const top = (block.top == null) ? block.start : block.top;
-  return (block.open != null && caretLine === block.open) || (caretLine >= top && caretLine <= block.end);
+  const end = (block.openEnd == null) ? block.end : block.openEnd;   // v4.1.106: ⏰(UFC)行も塊の一員
+  return (block.open != null && caretLine === block.open) || (caretLine >= top && caretLine <= end);
 }
 function meosRawLines(editor, skipCaret) {
   const out = new MeosRawLineSet();
@@ -29602,9 +29611,21 @@ async function meosSyncFcFoldForCursor(editor) {
     // ★★★v4.1.105: **形と宛先を同じ1つの答えから引く**(meosFcFoldShape)。カーソルthat膜の中に居る間は
     //   塊の頭that▲からバッジ行へずれるので、そのまま▲へ「開け」と打つと、▲は畳んだ膜の中に居る＝
     //   **膜そのものthatが開いてしまう**。宛先も形と一緒に動かす。
+    // ★★★v4.1.106(俊克 9/4 am09:45 バグ1「一旦、開始膜に入ると、そのあと膜の外へ出てもバッジFCが
+    //   折り畳まれない。最初に膜を生成したときは正しく折り畳まれる」):
+    //   ★★★**覚えの鍵を、形と一緒に動かしてしまった**のが真因＝ カーソルthat膜に入ると範囲thatが消える
+    //     (バッジ行が畳みの外へ出る)ので、私は「開いた物」として何も覚えなかった。so外へ出て範囲that
+    //     戻ってきた時、**誰も畳みに行かなかった**(戻ってきた範囲は開いた姿で生まれる)。
+    //   ★★→ **覚えの鍵はいつも▲(canonical)**。形thatずれても鍵は動かさない。動かすのは**打つ相手**だけ。
+    //     これで「開けた物は、開けたと覚える／要らなくなったら畳む」thatが、形に関係なく成り立つ。
     const _shape = meosFcFoldShape(editor.document, line);
     _headEnd = new Map();
-    for (const it of _shape) { if (!it.hasRange) continue; _headEnd.set(it.head, it.end); if (it.open) want.add(it.head); }
+    const _target = new Map();                                    // 覚えの鍵(▲) → 今打つ相手の行(-1=打つ物that無い)
+    for (const it of _shape) {
+      if (it.hasRange) { _headEnd.set(it.b.start, it.end); _target.set(it.b.start, it.head); }
+      else _target.set(it.b.start, -1);                           // 範囲that無い= バッジ行はもう畳みの外
+      if (it.open) want.add(it.b.start);
+    }
     // ★畳みの形that変わった時だけ、VS Codeに範囲を取り直させる(カーソルthat膜を出入りした時だけ走る)。
     try {
       const _k = _shape.filter(it => it.shift).map(it => it.b.open).sort((a, b) => a - b).join(',');
@@ -29616,7 +29637,18 @@ async function meosSyncFcFoldForCursor(editor) {
     } catch (_) { }
     for (const st of Array.from(_meosFcOpenSet)) if (!want.has(st)) { await foldIfVisible(st); _meosFcOpenSet.delete(st); }
     const toOpen = Array.from(want).filter(st => !_meosFcOpenSet.has(st));
-    if (toOpen.length) { await unfold(toOpen); for (const st of toOpen) _meosFcOpenSet.add(st); }
+    if (toOpen.length) {
+      // ★★★v4.1.106(俊克 9/4 am09:45 バグ3「折り畳まれた膜や⏰UFCをクリックしただけで、膜が展開されて
+      //   しまう。▼▲ボタンをクリックしている訳じゃないのに」):
+      //   ★★★**見えていない行へ「開け」と打つと、開くのは膜になる**＝ その行thatが隠れているという事は、
+      //     外側thatが畳まれているという事so、VS Codeは**外側を開けて**その行を見せに行く。
+      //   ★畳む側には v4.0.186/188 でこの門番thatが在った(`foldIfVisible`)。**対の片側にしか置いていなかった**
+      //     ＝ 今日3度目の同じ形。→ 開く側にも同じ門番を置く。
+      //   ★開けなかった塊は覚えにも入れない(次にその行thatが見えた時、また開きに行ける)。
+      const _tg = toOpen.map(st => _target.get(st)).filter(h => h >= 0 && _visible(h));
+      if (_tg.length) await unfold(_tg);
+      for (const st of toOpen) { const h = _target.get(st); if (h < 0 || _visible(h)) _meosFcOpenSet.add(st); }
+    }
     // ★v4.0.440(俊克「読書モードで、見出しやハイライトをコピペすると、FCコメントが見えちゃう」):
     //   Pseudoの膜の中は、**誰が開けた物でも**畳む(貼り付けで増えた分もここで閉じる)。
     for (const b of blocks) if (meosModeAtLine(editor.document, b.start) === 'pseudo') await foldIfVisible(b.start);

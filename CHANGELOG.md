@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.106 (2026-09-04)
+- **The badge folds back after the caret has been inside** — entering the membrane makes the badge's fold range vanish, and a range that vanishes comes back expanded, so nothing folded it again. The bookkeeping key now stays on ▲ whatever the shape does; only the command target moves.
+- **The ⏰ line counts as part of the membrane** — ▼, ▲, badge and ⏰ are one group of four, so clicking the ⏰ line keeps the badge open. Only the open signal reaches it; the fold range still stops short, or the ⏰ would fold.
+- **Never aim "unfold" at a hidden line** — a hidden line means something outside it is collapsed, so VS Code opens that instead: click a folded membrane, watch it expand. The fold side has had this guard since v4.0.186; the open side never did.
+
 ### v4.1.105 (2026-09-04)
 - **The fold shape follows the caret** — v4.1.104 took the badge line out of the fold for good, so it stayed visible even with the caret outside; but FC means folding comment, so out means folded. Now the membrane folds up to ▲ only while the caret is inside it, and goes back to swallowing the badge line when the caret leaves. Neither moment crosses.
 - One function decides the shape, and the open/close commands aim at the head it names. Shift the head without moving the target and "open the badge" becomes "open the membrane".
