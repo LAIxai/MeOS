@@ -9808,11 +9808,21 @@ function meosClockFcParse(text) {
   //   逆バージョンだよ。15分間、ストップウォッチ時間は進んでいく。そして15分後に、0に戻って測り直す」):
   //   ★★★**矢印の向きだけが違う**= \u21ba(反時計回り)=残りを数える逆算 /
   //     \u21bb(時計回り)=経過を数えるストップウォッチ。仕掛けも鐘も書く物も同じso、エンジンは2本作らない。
-  const cm = /([\u21ba\u21bb])\s*([0-9]+\s*[smhdwySMHDWY]?(?:\s*\/\s*[0-9]+\s*[smhdwySMHDWY]?)*)\s*$/.exec(body);
+  // ★★★v4.1.1108(俊克 9/4 pm11:24「一度きりの逆算も↺を入れようよ。**数字thatが無いのは周期thatが無い＝単発**
+  //   ということだからね。**↺は方向だけを示している**」):
+  //   ★★★**矢印＝向き / 数字＝周期**。役thatが2つに分かれ、行thatが自分で名乗るようになる。
+  //   ★★それまでは「矢印thatが無ければ逆算」という**暗黙の既定**で、**一度きりのストップウォッチは
+  //     書いた瞬間に失われていた**(書く側thatが繰返しの時しか矢印を書かず、読む側は up=false で始まる)。
+  //     読む人that既定を知らなくて済む形の方that強い＝ 今日バッジと畳みで同じ穴を踏んだばかり。
+  //   ★数字は**省略可**にするだけ＝ 新しい記法は1つも増えない。
+  //   ★矢印の無い古い行は今までどおり逆算として読む(read-both・過去は一括変換しない
+  //     [[project_now_not_bulk]])。書く形だけthatが揃う。
+  const cm = /([\u21ba\u21bb])\s*([0-9]+\s*[smhdwySMHDWY]?(?:\s*\/\s*[0-9]+\s*[smhdwySMHDWY]?)*)?\s*$/.exec(body);
   if (cm) {
     body = body.slice(0, cm.index).trim();
     up = (cm[1] === '\u21bb');
-    cycle = String(cm[2]).split('/').map(x => String(x).trim()).filter(Boolean);
+    const _cy = (cm[2] == null) ? '' : String(cm[2]).trim();
+    cycle = _cy ? _cy.split('/').map(x => String(x).trim()).filter(Boolean) : null;   // 数字が無い= 単発(向きだけ)
   }
   // ★★★v4.1.70(俊克「⏰リスト最下段に**タグ用の入口**を作ることだね」):
   //   ★★★**札も本文に住む**= `#目薬` のように⏰行へ書く。so grep できるし、Me Dock無しでも付けられる
@@ -10030,7 +10040,10 @@ async function meosClockFcSet(doc, key, spec) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? '\u23f8' : '')
         + ' ' + String(spec.when || '').trim()
-        + (Array.isArray(spec.cycle) && spec.cycle.length ? ((spec.up ? ' \u21bb' : ' \u21ba') + spec.cycle.join('/')) : '')   // v4.1.60: \u21bbはそのまま残す   // v4.1.58: 書く時は \u21ba
+        // ★★★v4.1.1108: **向きは必ず書く。周期は在る時だけ書く**(俊克「↺は方向だけを示している」)。
+        //   繰返しthat無くても矢印を書くので、**一度きりのストップウォッチthat生データに残る**。
+        //   v4.1.60: \u21bbはそのまま残す / v4.1.58: 書く時は \u21ba
+        + (spec.up ? ' \u21bb' : ' \u21ba') + (Array.isArray(spec.cycle) && spec.cycle.length ? spec.cycle.join('/') : '')
         + (spec.done ? '\u2713' : '') + ' -->')
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。

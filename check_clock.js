@@ -122,6 +122,27 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1108(俊克 9/4 pm11:24「一度きりの逆算も↺を入れようよ。
+//   **数字が無いのは周期が無い＝単発**ということだからね。**↺は方向だけを示している**」):
+//   矢印＝向き / 数字＝周期。役が2つに分かれ、行が自分で名乗る。
+console.log('\u2470 矢印＝向き / 数字＝周期');
+{
+  const P = (t) => X.meosClockFcParse('<!-- Mew!UFC ' + t + ' -->');
+  const a = P('\u23f0 2026-09-04 23:59 \u21bb');
+  ok(a && a.up === true && a.cycle === null, '\u2605\u2605\u2605一度きりのストップウォッチが書ける(\u21bbだけ)', a && [a.up, a.cycle]);
+  const b = P('\u23f0 2026-09-04 23:59 \u21ba');
+  ok(b && b.up === false && b.cycle === null, '\u2605\u2605一度きりの逆算も向きを名乗る(\u21baだけ)', b && [b.up, b.cycle]);
+  const c = P('\u23f0 2026-09-04 23:59');
+  ok(c && c.up === false && c.cycle === null, '\u2605矢印の無い古い行は今までどおり逆算(read-both)', c && [c.up, c.cycle]);
+  const d = P('\u23f0 2026-09-04 23:59 \u21ba15m');
+  ok(d && d.up === false && Array.isArray(d.cycle) && d.cycle[0] === '15m', '\u2605繰返しの逆算は今までどおり', d && [d.up, d.cycle]);
+  const e = P('\u23f0 2026-09-04 23:59 \u21bb50/10');
+  ok(e && e.up === true && e.cycle.join('/') === '50/10', '\u2605繰返しのストップウォッチも今までどおり', e && [e.up, e.cycle]);
+  const f = P('\u23f0 2026-09-04 23:59 \u21ba #健康');
+  ok(f && f.cycle === null && f.tags.join() === '健康', '\u2605札とも並べられる', f && [f.cycle, f.tags]);
+  ok(P('\u23f0 2026-09-04 23:59 \u21bb').when === '2026-09-04 23:59', '\u2605\u2605矢印を時刻の一部と読まない', P('\u23f0 2026-09-04 23:59 \u21bb').when);
+}
+
 // ★★★v4.1.107(俊克 9/4 am10:01「1回だけ、開いていた⏰膜で、膜が閉じてしまった」):
 //   なぜ膜の塊だけ「終わりの行」へ打つのかを、形で確かめる。
 //   元の形(カーソルが外)では ▲..バッジ が範囲＝ バッジ行はその中。
