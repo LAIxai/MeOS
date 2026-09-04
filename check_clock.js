@@ -122,6 +122,18 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.107(俊克 9/4 am10:01「1回だけ、開いていた⏰膜で、膜が閉じてしまった」):
+//   なぜ膜の塊だけ「終わりの行」へ打つのかを、形で確かめる。
+//   元の形(カーソルが外)では ▲..バッジ が範囲＝ バッジ行はその中。
+//   ずれた形(カーソルが中)では膜は▲で止まり＝ バッジ行は**どの範囲にも入らない**＝ 打っても何も起きない。
+console.log('\u246e 膜の塊を畳む相手は終わりの行(膜に当てない)');
+{
+  const _sOut=X.meosFcFoldShape(d4,-1)[0], _sIn=X.meosFcFoldShape(d4,1)[0];
+  ok(_sOut.head===3&&_sOut.end===4&&_sOut.hasRange, '\u2605カーソルが外= ▲..バッジが範囲(バッジ行は中に居る)', [_sOut.head,_sOut.end]);
+  ok(!_sIn.hasRange, '\u2605\u2605\u2605ずれた形ではバッジ行はどの範囲にも入らない(打っても膜に当たらない)', _sIn.hasRange);
+  ok(X.foldRangeEnd(d4,pr4,true)===3&&_sOut.end>3, '\u2605\u2605終わりの行は、ずれた形の膜の範囲より外', [X.foldRangeEnd(d4,pr4,true),_sOut.end]);
+}
+
 // ★★★v4.1.106(俊克 9/4 am09:45 バグ2「折り畳まれた膜の⏰UFCの行をクリックした時も、
 //   本来それは膜の行をクリックした時のように、バッジFCを表示するべき」):
 //   膜の持ち物は4つ(▼/▲/バッジ/⏰)。開く合図の範囲(openEnd)だけを伸ばし、畳む範囲(end)は伸ばさない。

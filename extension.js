@@ -29596,9 +29596,22 @@ async function meosSyncFcFoldForCursor(editor) {
     //   ここへ引き上げた(前は下に在って、Rawの枝からは使えず、**裸の fold that残っていた**)。
     const _visible = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return true; } };
     let _headEnd = new Map();                                     // v4.1.105: 頭 → 終わり(形は下で作る)
+    let _foldAt = new Map();                                      // v4.1.107: 頭 → 「畳め」と打つ相手の行
     const _openNow = (start) => { const e = _headEnd.get(start); return e != null && _visible(e); };
     // v4.0.466: 目で確かめる(可視範囲)だけでは足りないso、**今しがた畳んだ物**にも訊く。
-    const foldIfVisible = async (ln) => { if (meosFcRecentlyFolded(ln)) return; if (_visible(ln) && _openNow(ln)) { meosFcNoteFolded(ln); await fold([ln]); } };
+    // ★★★v4.1.107(俊克 9/4 am10:01「1回だけ、開いていた⏰膜で、膜that閉じてしまったことthatあった。
+    //   今、何度試しても、再現できなかった」):
+    //   ★★★**再現しないのは、時間で決まる負けだから**＝ カーソルthat膜を出ると、私は「範囲を取り直して」と
+    //     頼んで150ms待ち、それから▲へ「畳め」と打つ。VS Codethatまだ取り直していないと、その瞬間
+    //     **▲から始まる範囲は存在しない**(形thatずれたまま)ので、`editor.fold` は▲を含む**一番内側**＝
+    //     **膜そのもの**を畳む。俊克の見た「開いていた膜that閉じた」はこの形。
+    //   ★★→ **待ちで勝とうとしない。打つ相手を変えて、競争そのものを消す**＝ 膜の塊は**終わりの行
+    //     (バッジ行)**へ打つ。バッジ行は**元の形でだけ範囲の中に居る**ので、
+    //     ・取り直し済み → [▲..バッジ]の中 → その塊thatが畳まれる(正しい)
+    //     ・まだ古い形  → どの範囲にも入っていない → **何も起きない**(次の合図でまた来る)
+    //     どちらに転んでも膜には当たらない。→ [[feedback_root_cause_before_patching]]
+    //   ★覚えの鍵は▲のまま(v4.1.106)。動かすのは打つ相手だけ、というのは開く側と同じ作法。
+    const foldIfVisible = async (ln) => { if (meosFcRecentlyFolded(ln)) return; if (_visible(ln) && _openNow(ln)) { meosFcNoteFolded(ln); await fold([_foldAt.has(ln) ? _foldAt.get(ln) : ln]); } };
     // ★★★v4.0.443/444(俊克 8/27 am11:16 バグ1〜3 → pm00:03「膜毎にその設定を保持する」):
     //   ★★★**望む姿を毎回ぜんぶ言って、今の姿との差だけを当てる**。前は「今どこを開けているか」を
     //     1つの変数(行番号 / 'ALL' / 'RAW:…')で覚え、場合分けで動かしていた＝ **場合が増えるたびに穴が開く**
@@ -29622,7 +29635,11 @@ async function meosSyncFcFoldForCursor(editor) {
     _headEnd = new Map();
     const _target = new Map();                                    // 覚えの鍵(▲) → 今打つ相手の行(-1=打つ物that無い)
     for (const it of _shape) {
-      if (it.hasRange) { _headEnd.set(it.b.start, it.end); _target.set(it.b.start, it.head); }
+      if (it.hasRange) {
+        _headEnd.set(it.b.start, it.end); _target.set(it.b.start, it.head);
+        // v4.1.107: 膜の塊だけは**終わりの行**へ打つ(古い形の時に膜を畳まないため)。他の塊は今までどおり頭へ。
+        _foldAt.set(it.b.start, (it.b.open != null) ? it.end : it.b.start);
+      }
       else _target.set(it.b.start, -1);                           // 範囲that無い= バッジ行はもう畳みの外
       if (it.open) want.add(it.b.start);
     }

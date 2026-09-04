@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.107 (2026-09-04)
+- **Aim the fold at the badge line, not at ▲** — an open membrane closed itself once, and never again. It is a race, not a mystery: leaving the membrane asks VS Code for new ranges, waits 150 ms, then folds at ▲ — and if the new ranges have not landed, no range starts at ▲, so the fold takes the innermost one that contains it, which is the membrane. The badge line only sits inside a range in the settled shape, so folding there either folds the badge group or does nothing at all. Either way it cannot reach the membrane.
+
 ### v4.1.106 (2026-09-04)
 - **The badge folds back after the caret has been inside** — entering the membrane makes the badge's fold range vanish, and a range that vanishes comes back expanded, so nothing folded it again. The bookkeeping key now stays on ▲ whatever the shape does; only the command target moves.
 - **The ⏰ line counts as part of the membrane** — ▼, ▲, badge and ⏰ are one group of four, so clicking the ⏰ line keeps the badge open. Only the open signal reaches it; the fold range still stops short, or the ⏰ would fold.
