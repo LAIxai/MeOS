@@ -4426,10 +4426,25 @@ async function syncPairMstatFromFoldState(editor, pair) {
   try { if (_r) meosDbg('[mstat] バッジを書き換えた 行=' + (at.line + 1) + ' 膜="' + String(pair.id || '') + '" → ' + desired.formatted); } catch (_) { }
   return _r;
 }
+// ★★★v4.1.1106(俊克 9/4 pm00:44 バグ1「Rawから通常モードに戻すと折り畳まれない。⊕指定に
+//   書き変わっているのが原因だね。なぜ?」):
+//   ★★★**バッジを書く時計(120ms)thatが、私の畳み直し(1秒以上)より先に鳴っていた**＝
+//     Rawを出た瞬間、モードはもう normal so v4.1.1105 の門番は効かない。ところthat膜はまだ開いたまま
+//     ＝ 同期thatその姿を見て「開いている」を⊕として書き込む。**私thatが畳み直すより先に**。
+//   ★★→ 規則を1行にする＝ **MeOSthat自分の都合で畳みを動かしている間は、バッジを書かない**。
+//     バッジは人の意思so、動かしている途中の姿は意思ではない(v4.1.1105の続き)。
+//   ★同じ穴は**起動時の復元**にも在る(俊克「1ヶ月以上、再起動のときに展開されてしまう」)＝
+//     復元は「バッジのとおりに畳む」道なのに、その途中の姿を同期thatバッジへ書き戻せば、
+//     **復元that自分の教科書を書き換える**。so復元の間も同じ栓を閉める。
+let _mstatHoldUntil = 0;
+function meosHoldMstatSync(ms) { _mstatHoldUntil = Math.max(_mstatHoldUntil, Date.now() + (Number(ms) || 0)); }
+function meosReleaseMstatSync() { _mstatHoldUntil = 0; }
 function scheduleMstatsSync(editor) {
+  if (Date.now() < _mstatHoldUntil) return;      // v4.1.1106: 畳みを動かしている最中は記録しない
   if (!editor || mstatsSyncing) return;
   if (mstatsSyncTimer) clearTimeout(mstatsSyncTimer);
   mstatsSyncTimer = setTimeout(async () => {
+    if (Date.now() < _mstatHoldUntil) return;    // v4.1.1106: 待っている間に動き出したら書かない
     if (!editor || editor !== vscode.window.activeTextEditor || mstatsSyncing) return;
     const pairs = collectPairs(editor.document, { excludeIndex: false });
     for (const pair of pairs) {
@@ -4640,6 +4655,9 @@ async function restoreMstatsForEditor(editor) {
   //   ★provider の準備を待つ＝ 14万行では折り畳み範囲の再計算が間に合わず、1回きりの `editor.fold`
   //     は空振りする。**畳めるまで細かく試す**(v2.0.48 の貼付と同じ作法)。
   if (foldPairs.length || unfoldPairs.length) suppressViewportFoldUntil = Date.now() + 9000; // v4.0.349/353
+  // v4.1.1106: 復元は「バッジのとおりに畳む」道so、その途中の姿をバッジへ書き戻してはいけない
+  //   (書き戻すと**復元that自分の教科書を書き換える**= 俊克の「再起動で展開される」の形)。
+  if (foldPairs.length || unfoldPairs.length) meosHoldMstatSync(12000);
   // ① 開くのが先(親を畳む前に子へ届かせる)
   if (unfoldPairs.length) {
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldPairs.map(p => p.start) });
@@ -4681,6 +4699,7 @@ async function restoreMstatsForEditor(editor) {
     for (const p of foldPairs) foldStateByPairKey.set(pairStateKey(editor, p), true);
   }
   suppressViewportFoldUntil = Date.now() + 500;   // 復元は終わり= 画面の事実を読んでよい
+  meosReleaseMstatSync();                        // v4.1.1106: 復元that終わった= ここから先の姿は人の意思
   try {
     meosDbg('[restore] fold=' + foldPairs.length + ' unfold=' + unfoldPairs.length
       + ' rounds=' + _rounds + ' stillOpenOnScreen=' + _leftVisible
@@ -11322,6 +11341,7 @@ async function meosSetViewMode(mode) {
 // v4.0.447: 設定を当てる所は1つ。ボタンからも、タイマーの終わりの知らせからも、ここを通る。
 async function meosApplyModeToScope(doc, key, next, name) {
   if (!doc) return 'normal';
+  meosHoldMstatSync(20000);        // v4.1.1106: 描き直し〜畳み直しthat終わるまで、バッジは書かない
   const view = meosViewMeta(doc);
   const inh = meosInheritedMode(doc, key);
   const cur = view[key] || inh;                    // 今効いている値
@@ -11343,6 +11363,7 @@ async function meosApplyModeToScope(doc, key, next, name) {
   try { if (ed && ed !== vscode.window.activeTextEditor) edA = (await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, preview: false })) || ed; } catch (_) { }
   try { if (edA) await meosSyncFcFoldForCursor(edA); } catch (_) { }
   try { if (edA) await meosApplyFoldForMode(edA, key, next, cur); } catch (_) { }   // v4.1.1104
+  meosReleaseMstatSync();          // v4.1.1106: 畳みthat落ち着いた= ここから先の姿は人の意思
   meosPostViewMode();
   vscode.window.setStatusBarMessage('MeOS: ' + (name ? (name + ' — ') : '') + MEOS_VIEW_MODE_BAR[next], 2200);
   return next;

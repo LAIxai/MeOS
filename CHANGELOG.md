@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1106 (2026-09-04)
+- **Don't write the badge while MeOS is moving the folds** — leaving raw mode wrote ⊕ over every ⊖ before the re-fold could run: the badge sync fires on a 120 ms timer, the re-fold of 600 membranes takes seconds, and by then the mode is already normal so v4.1.1105's guard no longer applied. The badge is intent, and a shape caught mid-move is not intent. The same hold now covers the startup restore, which is the path that folds *by* the badges — without it, the restore was free to overwrite its own instructions on the way.
+
 ### v4.1.1105 (2026-09-04)
 - **The badge records intent, not what the screen happens to show** — raw mode opened the membranes and the badge sync wrote ⊕ over every ⊖, erasing the decision to keep them folded. Leaving raw then had nothing to restore. A membrane in raw mode no longer has its badge rewritten, and any rewrite that does happen now says so in the debug log — the month-old "my folded membranes keep expanding" has a trail to follow.
 - **Redraw after the fold changes** — decorations are only applied to visible lines, so lines coming out from under a fold arrive still wearing what they wore while hidden. The redraw ran before the unfold, so it never reached them.
