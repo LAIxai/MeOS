@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1105 (2026-09-04)
+- **The badge records intent, not what the screen happens to show** — raw mode opened the membranes and the badge sync wrote ⊕ over every ⊖, erasing the decision to keep them folded. Leaving raw then had nothing to restore. A membrane in raw mode no longer has its badge rewritten, and any rewrite that does happen now says so in the debug log — the month-old "my folded membranes keep expanding" has a trail to follow.
+- **Redraw after the fold changes** — decorations are only applied to visible lines, so lines coming out from under a fold arrive still wearing what they wore while hidden. The redraw ran before the unfold, so it never reached them.
+
 ### v4.1.1104 (2026-09-04)
 - **Raw mode opens the membranes inside it** — folding was the one thing left outside the mode. v4.0.444 made the mode a property of the membrane and wired up which lines show raw and which spec groups open, but never the membrane's own fold, so raw data stayed hidden under it. Entering raw now opens every membrane in scope; leaving raw puts them back the way the badges say, reading the same badges the startup restore reads. The caret-line raw display still leaves folds alone — that one is a window for editing, not a declaration.
 - The mode change writes a line to the debug log, so what a press actually did is a fact rather than a guess.

@@ -4406,12 +4406,25 @@ async function replaceOpenLineMstat(editor, pair, formatted, badge, atLine) {
 }
 async function syncPairMstatFromFoldState(editor, pair) {
   if (!editor || !pair || mstatsSyncing) return false;
+  // ★★★v4.1.1105(俊克 9/4 pm00:34 バグ1「バッジを見ると ⊕(展開)に書き変わってしまっている。ここは、
+  //   **⊖のままにして、表示上は、展開したように見せる**べき」＋「1ヶ月以上、折り畳まれた膜thatバージョン
+  //   アップや再起動のときに展開されてしまうことに困惑していたのは、この動きthat原因だったんだね」):
+  //   ★★★**バッジは人の意思で、画面の今の姿ではない**。Rawモードは「今だけ全部見せて」という**見方**so、
+  //     そこで開いた事をバッジに書くと、**人が畳んでおいた意思that消える**＝ 次に開いた時に全部展開される。
+  //   ★★→ **Rawの膜のバッジは書き換えない**。Rawを出れば、書き換えられていないバッジthatそのまま
+  //     元の姿へ戻す(v4.1.1104の畳み直しthat読むのも、このバッジ)。
+  //   ★俊克の1ヶ月の困惑の答えthatこれなら、同じ形は他にも在る＝ **MeOSthat自分の都合で開いた物は、
+  //     どれもバッジに書いてはいけない**。書き換えた時は名乗らせる(下の meosDbg)ので、次は事実で分かる。
+  try { if (meosModeAtLine(editor.document, pair.start) === 'raw') return false; } catch (_) { }
   const at = meosPairBadgeAt(editor.document, pair);              // v4.0.330: ▼行か、▲の次のFC行か
   if (!at) return false;
   // v4.0.349: バッジは生データ。画面から読んだ事実(ガター等で畳まれた)では書き換えない。
   const desired = desiredMstatForFoldState(at.text, isPairFolded(editor, pair, { ignoreViewport: true }));
   if (!desired) return false;
-  return replaceOpenLineMstat(editor, pair, desired.formatted, desired.badge, at.line);
+  const _r = await replaceOpenLineMstat(editor, pair, desired.formatted, desired.badge, at.line);
+  // v4.1.1105: 書き換えたら名乗る(「勝手に展開される」の追跡はここから始まる)。
+  try { if (_r) meosDbg('[mstat] バッジを書き換えた 行=' + (at.line + 1) + ' 膜="' + String(pair.id || '') + '" → ' + desired.formatted); } catch (_) { }
+  return _r;
 }
 function scheduleMstatsSync(editor) {
   if (!editor || mstatsSyncing) return;
@@ -11360,6 +11373,12 @@ async function meosApplyFoldForMode(editor, key, next, prev) {
     try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: ls }); } catch (_) { }
     for (const p of inScope) { try { foldStateByPairKey.set(pairStateKey(editor, p), false); } catch (_) { } }
     try { meosDbg('[viewmode] Rawで開いた 膜=' + ls.length + ' 範囲=' + (from + 1) + '-' + (to + 1)); } catch (_) { }
+    // ★★★v4.1.1105(俊克 バグ1「膜that展開されるようになったthat、コメント化しない」):
+    //   ★★★**開いてから描き直していなかった**＝ 装飾は**見えている行にしか**掛けない(v4.0.271)ので、
+    //     畳みの下から出てきた行は、畳まれていた頃の飾りを着たまま現れる。モードを変えた時の refresh は
+    //     **開く前**に走っていたso、新しく見えた10万行には一度も届いていなかった。
+    //   ★→ 見える物that変わったら、もう一度描き直す(畳み直した時も同じ)。
+    try { refresh(editor); } catch (_) { }
     return;
   }
   // Rawを出た＝ バッジの言うとおりに戻す(⊖だけ畳む。⊕は今開いている)
@@ -11368,6 +11387,7 @@ async function meosApplyFoldForMode(editor, key, next, prev) {
   try { await vscode.commands.executeCommand('editor.fold', { selectionLines: back.map(p => p.start) }); } catch (_) { }
   for (const p of back) { try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) { } }
   try { meosDbg('[viewmode] Rawを出て畳み直した 膜=' + back.length); } catch (_) { }
+  try { refresh(editor); } catch (_) { }        // v4.1.1105: 見える物that変わったら描き直す
 }
 // クリック=次へ / ⌥Opt-クリック=1つ戻る。進む向きは「生データが多い→少ない」の1本道。
 async function meosCycleViewMode(step) {
