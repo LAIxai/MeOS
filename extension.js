@@ -22098,6 +22098,20 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
 .clk-pop.hist-only .clk-list{max-height:160px}
 .clk-pop.hist-only .clk-list:empty{display:block}
 .clk-pop.hist-only .clk-list:empty::after{content:'No clock set yet.';display:block;padding:3px 4px;opacity:.75;font-size:10px}
+/* ★★v4.1.1107(俊克 9/4 pm06:00「Tag&Goのパネルにスクロールバーを表示して下さい」):
+   ★★**部屋(Tag&Go)と一覧(⏰)は、読む物that違う**= 一覧は短くて数えられるthat、
+     部屋は**探し物の場**so「どこまで続いているか」と「今どこを見ているか」thatが要る。
+     棒はその2つを一度に言う= so部屋にだけ出す(一覧は v4.1.28 の姿のまま隠す)。
+   ★色は**VS Codeの物を借りる**(scrollbarSlider)= 面に新しい色を持ち込まない。
+     地は透明= 棒thatが在る時だけ線that見える([[feedback_copy_the_house_style_first]])。
+   ★8px分だけ名前の幅that減るthat、頭の床(min-width:5.2em・v4.1.75)は動かないので、
+     どれだけ狭くても頭の数文字は残る。 */
+.clk-pop.hist-only .clk-list{scrollbar-width:thin;scrollbar-color:var(--vscode-scrollbarSlider-background) transparent}
+.clk-pop.hist-only .clk-list::-webkit-scrollbar{display:block;width:8px}
+.clk-pop.hist-only .clk-list::-webkit-scrollbar-track{background:transparent}
+.clk-pop.hist-only .clk-list::-webkit-scrollbar-thumb{background:var(--vscode-scrollbarSlider-background);border-radius:4px}
+.clk-pop.hist-only .clk-list::-webkit-scrollbar-thumb:hover{background:var(--vscode-scrollbarSlider-hoverBackground)}
+.clk-pop.hist-only .clk-list::-webkit-scrollbar-thumb:active{background:var(--vscode-scrollbarSlider-activeBackground)}
 /* ★★★v4.1.0(俊克「⏰ボタンを押した時に、**最大5個の履歴**をリストにして、そこをクリックすると、
    **その膜に飛ぶ**」): ★★★時計を掛けた膜は、その人that「後で戻る」と決めた場所so、鳴り終わった後も
    値打ちthat残る。★出すのは**時刻・年月日**(予定は時刻で覚えている)。走っている物は橙で上に。 */

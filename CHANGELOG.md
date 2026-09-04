@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1107 (2026-09-04)
+- **A scrollbar in the Tag&Go room** — the clock list is short enough to take in at a glance, but Tag&Go is where you go looking for something, and there you need to know how much further it runs and where in it you are. One bar says both. It borrows VS Code's own slider colours over a transparent track, so the panel gains no new colour, and the clock list keeps its hidden bar.
+
 ### v4.1.1106 (2026-09-04)
 - **Don't write the badge while MeOS is moving the folds** — leaving raw mode wrote ⊕ over every ⊖ before the re-fold could run: the badge sync fires on a 120 ms timer, the re-fold of 600 membranes takes seconds, and by then the mode is already normal so v4.1.1105's guard no longer applied. The badge is intent, and a shape caught mid-move is not intent. The same hold now covers the startup restore, which is the path that folds *by* the badges — without it, the restore was free to overwrite its own instructions on the way.
 
