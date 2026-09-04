@@ -5584,7 +5584,7 @@ async function syncGutterEditorSettings() {
 function lineVisible(editor, line) {
   return !!editor && line >= 0 && line < editor.document.lineCount && editor.visibleRanges.some(r => r.start.line <= line && line <= r.end.line);
 }
-function foldRangeEnd(document, pair) {
+function foldRangeEnd(document, pair, fcOut) {
   // v0.9.343:
   // VS Code FoldingRange.end is already the last line included in the fold.
   // Returning pair.end + 1 accidentally folds the next membrane's start line
@@ -5607,7 +5607,16 @@ function foldRangeEnd(document, pair) {
   //   ★**膜の範囲(この行は膜の中か／運ぶ範囲)は1文字も変えていない**＝ meosPairBlockEnd /
   //     meosBlockEndForCarry のまま。v4.0.381 が直した「Edit Meが膜を見失う」は起きない。
   //     畳む理由(本文でない物を隠す)と、膜の持ち物の範囲は別＝ v4.1.16 が ⏰ で既にそう言っている。
-  return Math.min(document.lineCount - 1, pair.end);
+  // ★★★v4.1.105(俊克 9/4 am09:02 バグ1「膜の外に文字カーソルが出ている状態では、バッジFCは、
+  //   その名の通り、**折り畳むのがルール**なので、まだルール違反」):
+  //   ★★★**v4.1.104は行き過ぎだった**＝ バッジ行を**いつでも**畳みの外へ出したので、カーソルが外に居る
+  //     時まで見えていた。FCは「畳まれるべきコメント」と名乗る印(v4.0.139)so、カーソルthat外なら畳む。
+  //   ★★→ **形はカーソルで変わる**＝ カーソルthat膜の中に居る間だけ、畳みを▲で止めてバッジ行を外へ出す。
+  //     外に出れば元の形(バッジ行まで畳む)へ戻る。どちらの瞬間も交差は起きない。
+  //   ★開くか畳むかを言うのは meosFcWantsOpen ただ1つ＝ **畳みの形も、開閉の宛先も、同じ答えから引く**
+  //     (meosFcFoldShape)。→ [[feedback_one_source_for_mark_count_action]]
+  if (fcOut) return Math.min(document.lineCount - 1, pair.end);   // カーソルthat中= バッジ行は畳みの外
+  return meosPairBlockEnd(document, pair);                        // カーソルthat外= 今までどおり畳みの中
 }
 function pairStateKey(editor, pair) {
   if (!editor || !pair) return '';
@@ -26607,10 +26616,13 @@ class MembraneFoldingProvider {
     const _t0 = Date.now();
     try {
       // v4.0.138: 膜の折り畳みに加えて、**行の外へ出した指定行/定義行**も畳める範囲として返す。
+      // v4.1.105: 畳みの形はカーソルで変わる(バッジ行が畳みの中か外か)ので、ここで一度だけ訊く。
+      const _caret = meosCaretLineForDoc(document);
+      const _out = meosFcOutMembranes(document, _caret);
       return collectPairs(document, { excludeIndex: false })
         .filter(p => p.end > p.start)
-        .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p), vscode.FoldingRangeKind.Region))
-        .concat(meosDefBlockFoldingRanges(document))
+        .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p, _out.has(p.start)), vscode.FoldingRangeKind.Region))
+        .concat(meosDefBlockFoldingRanges(document, _caret))
         .sort((a, b) => a.start - b.start); // v4.0.140: 開始行で並べて返す(混ぜた順のまま渡さない)
     } finally { try { const _ms = Date.now() - _t0; if (_ms > 300) meosDbg('[foldingRanges] ' + _ms + 'ms lines=' + document.lineCount); } catch (_) {} }
   }
@@ -28933,12 +28945,6 @@ function meosDefBlocks(document) {
       try { const _b = meosTableBlockFor(lines, head) || meosListBlockFor(lines, head); if (_b) top = _b.start; } catch (_) { }
       // v4.0.332: 頭が閉じ膜なら、その膜の**開始膜も塊の一部**(俊克「3つは常に1つ」)。本文は入れない。
       try { const _h = String(lines[head] || ''); if ((_h.indexOf('▲') >= 0 || _h.indexOf('△') >= 0) && parseCloseLine(_h)) { const op = meosMembraneOpenFor(document, head); if (op >= 0) open = op; } } catch (_) { }
-      // ★★★v4.1.104: 頭が閉じ膜の時は、**塊の頭を膜の外へ出す**＝ 頭は畳んでも隠れない行なので、
-      //   膜の直下の1行目(=バッジ行)が頭になれば、そこは必ず見える＝ 俊克の言う共通のルールが成立する。
-      //   ★これで膜(▼..▲)と塊(バッジ..)は**離れた2本**になり、交差(`( [ ) ]`)that起きない。
-      //   ★頭の下に続く行that無ければ塊にしない(畳む中身that無い)＝ バッジ行だけの時は範囲を渡さない。
-      //   ★`open >= 0` と書くと `null >= 0` that true になり、表も箇条書きもここへ落ちる(v4.1.104で1度踏んだ)。
-      if (open !== null) { if (e > ln) out.push({ start: ln, top: ln, end: e, fc, open: null }); ln = e; continue; }
       if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open });
       ln = e;
     }
@@ -29357,8 +29363,40 @@ function meosApplyFcRowDecorations(editor) {
   } catch (_) { }
   try { editor.setDecorations(meosFcRowDeco, out); } catch (_) { }
 }
-function meosDefBlockFoldingRanges(document) {
-  return meosDefBlocks(document).map(b => new vscode.FoldingRange(b.start, b.end, vscode.FoldingRangeKind.Region));
+// ★★★v4.1.105: **畳みの形を決める場所は、ここ1つ**。
+//   塊ごとに「頭の行」と「畳む中身thatが在るか」を返す。膜の塊(open != null)でカーソルthat中に居る時だけ、
+//   頭を▲からバッジ行へずらす＝ **頭は畳んでも隠れない**ので、膜を畳んでいてもバッジthat膜の直下に見える。
+//   ★ずらすと「開く/畳む」の宛先も変わる。so範囲を渡す側(provider)と、開閉を打つ側(fcSync)は
+//     **必ずこの1つの関数から引く**。別々に数えると、開けるつもりで膜を開いてしまう。
+function meosFcFoldShape(document, caretLine) {
+  const out = [];
+  try {
+    for (const b of meosDefBlocks(document)) {
+      const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
+      const shift = open && (b.open != null);
+      const head = shift ? b.start + 1 : b.start;
+      out.push({ b, head, end: b.end, shift, open, hasRange: b.end > head });
+    }
+  } catch (_) { }
+  return out;
+}
+// その文書で、いまバッジ行を畳みの外へ出している膜(▼の行)。
+function meosFcOutMembranes(document, caretLine) {
+  const out = new Set();
+  try { for (const it of meosFcFoldShape(document, caretLine)) if (it.shift) out.add(it.b.open); } catch (_) { }
+  return out;
+}
+function meosCaretLineForDoc(document) {
+  try {
+    const ed = vscode.window.activeTextEditor;
+    if (ed && ed.document === document && ed.selection) return ed.selection.active.line;
+  } catch (_) { }
+  return -1;
+}
+function meosDefBlockFoldingRanges(document, caretLine) {
+  return meosFcFoldShape(document, caretLine)
+    .filter(it => it.hasRange)
+    .map(it => new vscode.FoldingRange(it.head, it.end, vscode.FoldingRangeKind.Region));
 }
 // v4.0.140: リンクの定義行だけの塊も畳みたい時は、塊の先頭に **`<!-- Mew!FC -->`(中身なし)** を1行置く。
 //   これで「FCと書いてあれば畳む/書かなければ見える」という**1つの規則**のまま、リンクにも効く(新しい記法は要らない)。
@@ -29390,6 +29428,7 @@ function meosFcBlocks(document) {
 // v4.0.444: こちらの都合で開けてある塊の先頭行。番兵('ALL'/'RAW:…')は要らなくなった＝
 //   開くべき物は毎回 meosFcWantsOpen が全部言うので、**今の姿と望む姿の差だけ**を当てればよい。
 const _meosFcOpenSet = new Set();
+let _meosFcShapeKey = '';        // v4.1.105: 今VS Codeへ渡してある畳みの形(バッジ行を外へ出している膜)
 let _meosFcCursorTimer = null;
 let _meosFcBusy = false;
 // v4.0.223(俊克 8/15 pm08:47 疑問1「最近、文字入力の反応が遅くなっている。特にbsキーで1つ前の文字を消そうとする
@@ -29547,7 +29586,8 @@ async function meosSyncFcFoldForCursor(editor) {
     // v4.0.443: 畳む相手は**見えていて、かつ開いている物だけ**(v4.0.186/188)。この3つはRawの枝でも要るので
     //   ここへ引き上げた(前は下に在って、Rawの枝からは使えず、**裸の fold that残っていた**)。
     const _visible = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return true; } };
-    const _openNow = (start) => { const b = blocks.find(x => x.start === start); return !!b && _visible(b.end); };
+    let _headEnd = new Map();                                     // v4.1.105: 頭 → 終わり(形は下で作る)
+    const _openNow = (start) => { const e = _headEnd.get(start); return e != null && _visible(e); };
     // v4.0.466: 目で確かめる(可視範囲)だけでは足りないso、**今しがた畳んだ物**にも訊く。
     const foldIfVisible = async (ln) => { if (meosFcRecentlyFolded(ln)) return; if (_visible(ln) && _openNow(ln)) { meosFcNoteFolded(ln); await fold([ln]); } };
     // ★★★v4.0.443/444(俊克 8/27 am11:16 バグ1〜3 → pm00:03「膜毎にその設定を保持する」):
@@ -29559,7 +29599,21 @@ async function meosSyncFcFoldForCursor(editor) {
     //     内側がもう無いので**外側=膜**が畳まれ、膜の先頭へワープする(俊克のバグ2)。
     const line = editor.selection.active.line;
     const want = new Set();
-    for (const b of blocks) if (meosFcWantsOpen(editor.document, b, line)) want.add(b.start);
+    // ★★★v4.1.105: **形と宛先を同じ1つの答えから引く**(meosFcFoldShape)。カーソルthat膜の中に居る間は
+    //   塊の頭that▲からバッジ行へずれるので、そのまま▲へ「開け」と打つと、▲は畳んだ膜の中に居る＝
+    //   **膜そのものthatが開いてしまう**。宛先も形と一緒に動かす。
+    const _shape = meosFcFoldShape(editor.document, line);
+    _headEnd = new Map();
+    for (const it of _shape) { if (!it.hasRange) continue; _headEnd.set(it.head, it.end); if (it.open) want.add(it.head); }
+    // ★畳みの形that変わった時だけ、VS Codeに範囲を取り直させる(カーソルthat膜を出入りした時だけ走る)。
+    try {
+      const _k = _shape.filter(it => it.shift).map(it => it.b.open).sort((a, b) => a - b).join(',');
+      if (_k !== _meosFcShapeKey) {
+        _meosFcShapeKey = _k;
+        if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged();
+        await new Promise(r => setTimeout(r, 150));                // 範囲の取り直しを待つ(v0.9.961の作法)
+      }
+    } catch (_) { }
     for (const st of Array.from(_meosFcOpenSet)) if (!want.has(st)) { await foldIfVisible(st); _meosFcOpenSet.delete(st); }
     const toOpen = Array.from(want).filter(st => !_meosFcOpenSet.has(st));
     if (toOpen.length) { await unfold(toOpen); for (const st of toOpen) _meosFcOpenSet.add(st); }
@@ -32128,7 +32182,9 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.foldSpecLines', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!ed || !ed.document) return;
-    const heads = meosDefBlocks(ed.document).filter(b => b.fc && !meosFcRecentlyFolded(b.start)).map(b => b.start);   // v4.0.468: 二度押しthat膜を畳まないように
+    // v4.1.105: 宛先も形から引く(カーソルthat膜の中なら頭はバッジ行)。▲へ打つと膜thatが畳まれる。
+    const heads = meosFcFoldShape(ed.document, (ed.selection ? ed.selection.active.line : -1))
+      .filter(it => it.hasRange && it.b.fc && !meosFcRecentlyFolded(it.head)).map(it => it.head);   // v4.0.468: 二度押しthat膜を畳まないように
     if (!heads.length) { vscode.window.showInformationMessage('MeOS: no folding comment (Mew!FC) lines here.'); return; }
     try { for (const _h of heads) meosFcNoteFolded(_h); } catch (_) { }
     try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
@@ -32139,7 +32195,9 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.unfoldSpecLines', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!ed || !ed.document) return;
-    const heads = meosDefBlocks(ed.document).filter(b => b.fc).map(b => b.start);
+    const heads = meosFcFoldShape(ed.document, (ed.selection ? ed.selection.active.line : -1))
+      .filter(it => it.hasRange && it.b.fc).map(it => it.head);   // v4.1.105: 宛先は形から
+
     if (!heads.length) return;
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: heads });
   }));

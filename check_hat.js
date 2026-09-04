@@ -893,8 +893,9 @@ console.log('㉜ v4.0.319 チェックの時刻は「塊を離れた時」に入
 
   // --- v4.1.104: 畳むのは▲まで。バッジ行は畳みの外＝ 膜の直下に見える（FC/UFC共通のルール）---
   //   ★畳む範囲(foldRangeEnd)と、膜の持ち物の範囲(meosPairBlockEnd)は別の物差し。両方を見張る。
-  ok(T.foldRangeEnd(mk(NEW), pN) === 2, '新形＝ 畳むのは ▲ まで(バッジ行は畳まない)', '2');
-  ok(T.meosPairBlockEnd(mk(NEW), pN) === 3, '新形＝ 膜の持ち物は ▲ の次のバッジ行まで(畳みとは別)', '3');
+  ok(T.foldRangeEnd(mk(NEW), pN) === 3, '新形＝ カーソルが外なら ▲ の次のバッジ行まで畳む', '3');
+  ok(T.foldRangeEnd(mk(NEW), pN, true) === 2, '新形＝ カーソルが中なら ▲ まで(バッジ行は膜の直下に見える)', '2');
+  ok(T.meosPairBlockEnd(mk(NEW), pN) === 3, '膜の持ち物は ▲ の次のバッジ行まで(畳みの形とは別の物差し)', '3');
   ok(T.foldRangeEnd(mk(OLD), pO) === 2, '旧形＝ 膜の範囲は ▲ まで（今までどおり）', '2');
   ok(T.foldRangeEnd(mk(['▼', '本', '<!-- {* ▲mCN=D // *} -->', '<!-- {* ▼mCN=E // *} -->']), { start: 0, end: 2 }) === 2,
      '次の膜の ▼ は巻き込まない（v0.9.343の戒め）', '2');

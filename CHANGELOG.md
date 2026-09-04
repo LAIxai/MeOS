@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.105 (2026-09-04)
+- **The fold shape follows the caret** — v4.1.104 took the badge line out of the fold for good, so it stayed visible even with the caret outside; but FC means folding comment, so out means folded. Now the membrane folds up to ▲ only while the caret is inside it, and goes back to swallowing the badge line when the caret leaves. Neither moment crosses.
+- One function decides the shape, and the open/close commands aim at the head it names. Shift the head without moving the target and "open the badge" becomes "open the membrane".
+
 ### v4.1.104 (2026-09-04)
 - **The badge line moves out of the fold** — FC and UFC lines both live directly under the membrane, but only the ⏰ line survived folding; the badge went back to the right of the open membrane as a blue italic copy, which is the shape MeOS abandoned when badges became FC lines. The membrane now folds up to ▲ only, so the badge line stays where it belongs, folded or not — and it is real text, so it can be edited. The copy is gone.
 - A fold needs a head line, and a head line is never hidden. Putting the block's head below ▲ is also what keeps the two ranges apart, so nothing crosses.

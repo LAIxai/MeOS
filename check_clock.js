@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -112,11 +112,14 @@ const mk4=(uri)=>({uri:{toString:()=>uri,fsPath:'/f.md',scheme:'file'},languageI
  lineAt:n=>({text:L3[n],range:new stub.Range(n,0,n,L3[n].length)}),getText:()=>L3.join('\n'),eol:1,fileName:'/f.md',isClosed:false,version:1});
 const d4=mk4('file:///g.md'), pr4=X.collectPairs(d4,{excludeIndex:false})[0];
 const mEnd=X.foldRangeEnd(d4,pr4), fcEnd=Math.max(...X.meosDefBlocks(d4).map(b=>b.end));
-// ★★★v4.1.104(俊克 9/4 am08:32「FC/UFCは、膜の直下に表示するのが共通のルール」):
-//   畚むのは▲まで。バッジ行も⏰行も畚みの外へ出たので、入れ子でなく**離れている**のが新しい不変式。
-ok(X.meosDefBlocks(d4).every(b=>b.start>mEnd), '\u2605\u2605\u2605膜とFCの塊が交差しない(塊は膜の外で始まる)', [fcEnd,mEnd]);
-ok(mEnd===3, '\u2605\u2605\u2605畚むのは▲まで= バッジ行も⏰行も膜の直下に見える', mEnd);
-ok(X.meosDefBlocks(d4).length===0, '\u2605バッジ行だけなら塊にしない(畚む中身が無い)', X.meosDefBlocks(d4).length);
+// ★★★v4.1.105(俊克 9/4 am09:02「膜の外にカーソルが出ている状態では、バッジFCは折り畳むのがルール」):
+//   形はカーソルで変わる。外= 膜がバッジ行まで畳む(入れ子) / 中= 畳みは▲で止まり塊の頭がバッジ行へずれる(離れる)。
+//   どちらの瞬間も交差しないことを、両方見張る。
+ok(fcEnd<=mEnd, '\u2605\u2605\u2605カーソルが外= 塊は膜の中(入れ子で収まる)', [fcEnd,mEnd]);
+ok(mEnd===4, '\u2605カーソルが外= バッジ行まで畳む(FC=畳まれるべきコメント)', mEnd);
+ok(X.foldRangeEnd(d4,pr4,true)===3, '\u2605\u2605\u2605カーソルが中= 畳むのは▲まで(バッジ行は膜の直下に見える)', X.foldRangeEnd(d4,pr4,true));
+ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d4,pr4,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(塊の頭は膜の外)', X.meosFcFoldShape(d4,1).map(it=>[it.head,it.end,it.hasRange]));
+ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
 // v4.1.17(俊克 改良1「畳まないので、UFCというコメントを新設しよう」)
@@ -130,7 +133,8 @@ const L4=['# t','<!-- {* \u25bcmCN=E_1 *} -->','x','<!-- {* \u25b2mCN=E_1 *} -->
 const mk5=(uri)=>({uri:{toString:()=>uri,fsPath:'/u.md',scheme:'file'},languageId:'markdown',lineCount:L4.length,
  lineAt:n=>({text:L4[n],range:new stub.Range(n,0,n,L4[n].length)}),getText:()=>L4.join('\n'),eol:1,fileName:'/u.md',isClosed:false,version:1});
 const d5=mk5('file:///h.md'), pr5=X.collectPairs(d5,{excludeIndex:false})[0];
-ok(X.meosDefBlocks(d5).every(b=>b.start>X.foldRangeEnd(d5,pr5)), '\u2605\u2605UFCでも交差しない(膜と塊が離れている)', true);
+ok(Math.max(...X.meosDefBlocks(d5).map(b=>b.end))<=X.foldRangeEnd(d5,pr5), '\u2605\u2605UFCでも交差しない(カーソルが外= 入れ子)', true);
+ok(X.meosFcFoldShape(d5,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d5,pr5,true)), '\u2605\u2605UFCでも交差しない(カーソルが中= 離れている)', true);
 ok(X.meosBlockEndForCarry(d5,pr5)===5, '\u2605UFCも膜と一緒に運ばれる', X.meosBlockEndForCarry(d5,pr5));
 
 // v4.1.19(俊克 バグ2「FCに切り替えたのに、折り畳まれない」): 済んだ⏰(FC)は膜の塊に入り、
@@ -142,13 +146,15 @@ const mkL=(last,uri)=>{const L=['# t','<!-- {* \u25bcmCN=F_1 *} -->','x','<!-- {
  lineAt:n=>({text:L[n],range:new stub.Range(n,0,n,L[n].length)}),getText:()=>L.join('\n'),eol:1,fileName:'/v.md',isClosed:false,version:1};};
 const dDone=mkL('<!-- Mew!FC \u23f0 2026-08-30 00:04\u2713 -->','file:///i.md');
 const prD=X.collectPairs(dDone,{excludeIndex:false})[0];
-const bD=X.meosDefBlocks(dDone);
-ok(X.foldRangeEnd(dDone,prD)===3, '\u2605\u2605畚むのは▲まで(済んだ⏰があっても膜の畚みは伸びない)', X.foldRangeEnd(dDone,prD));
-ok(bD.length===1&&bD[0].start===4&&bD[0].end===5, '\u2605\u2605済んだ\u23f0(FC)は畚まれる= 塊の頭はバッジ行(頭は隠れない)', bD);
-ok(bD.every(b=>b.start>X.foldRangeEnd(dDone,prD)), '\u2605\u2605\u2605それでも交差しない(離れている)', true);
+const bD=X.meosDefBlocks(dDone), shD=X.meosFcFoldShape(dDone,1).filter(it=>it.hasRange);
+ok(X.foldRangeEnd(dDone,prD)===5, '\u2605\u2605済んだ⏰(FC)はカーソルが外なら膜と一緒に畳まれる', X.foldRangeEnd(dDone,prD));
+ok(Math.max(...bD.map(b=>b.end))<=X.foldRangeEnd(dDone,prD), '\u2605\u2605\u2605カーソルが外= 入れ子で収まる', true);
+ok(shD.length===1&&shD[0].head===4&&shD[0].end===5, '\u2605\u2605カーソルが中= 塊の頭はバッジ行(頭は隠れない)', shD.map(it=>[it.head,it.end]));
+ok(shD.every(it=>it.head>X.foldRangeEnd(dDone,prD,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(離れている)', true);
 const dLive=mkL('<!-- Mew!UFC \u23f0 2026-12-31 23:00 -->','file:///j.md');
 const prL=X.collectPairs(dLive,{excludeIndex:false})[0];
-ok(X.foldRangeEnd(dLive,prL)===3&&X.meosDefBlocks(dLive).length===0, '\u2605これから鳴る\u23f0(UFC)は畳まない(塊にも入らない)', [X.foldRangeEnd(dLive,prL),X.meosDefBlocks(dLive).length]);
+ok(X.foldRangeEnd(dLive,prL)===4&&X.foldRangeEnd(dLive,prL,true)===3, '\u2605これから鳴る\u23f0(UFC)はどちらの形でも膜の畳みの外', [X.foldRangeEnd(dLive,prL),X.foldRangeEnd(dLive,prL,true)]);
+ok(X.meosFcFoldShape(dLive,1).filter(it=>it.hasRange).length===0, '\u2605カーソルが中= バッジ行だけなら範囲を渡さない', X.meosFcFoldShape(dLive,1).length);
 
 // v4.1.21(俊克「開始膜か閉じ膜をクリックしてもFC群が折り畳まれたまま。標準の折畳みボタンでしか戻らない」):
 //   ★真因= 一括の道が畳んでも _meosFcOpenSet(開けている物の覚え)から外していなかった。
@@ -157,7 +163,7 @@ console.log('\u246d 畳んだら、覚えからも外す(開き直せる)');
 const SRC2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
 const _bulk=SRC2.slice(SRC2.indexOf('function meosAutoFoldSpecLines'), SRC2.indexOf('function meosAutoFoldSpecLines')+6000);
 ok(/_meosFcOpenSet\.delete/.test(_bulk), '\u2605\u2605一括の道が覚えから外している', /_meosFcOpenSet\.delete/.test(_bulk));
-const _one=SRC2.slice(SRC2.indexOf('function meosSyncFcFoldForCursor'), SRC2.indexOf('function meosSyncFcFoldForCursor')+6000);
+const _one=SRC2.slice(SRC2.indexOf('function meosSyncFcFoldForCursor'), SRC2.indexOf('function meosSyncFcFoldForCursor')+9000);
 ok(/_meosFcOpenSet\.delete/.test(_one), '  個別の道も外している(対の両側)', true);
 
 // v4.1.23(俊克「目薬を5分置きにつけるときに、05/00という設定にすること」＋アーチェリーの秒読み)
