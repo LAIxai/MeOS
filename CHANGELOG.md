@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1101 (2026-09-04)
+- **Three lines are one thing** — the ▼ became a button again whenever the caret sat on ▲ or on the badge line. A line shows raw data not only when the caret is on it: ▼, ▲ and the badge are one group, so the caret on any of them puts all three into raw. Asking "was the caret on this exact line" missed that. It now asks the real question — at the caret position just before the click, was this line showing raw data — by passing that position to the same function the renderer uses.
+
 ### v4.1.110 (2026-09-04)
 - **Ask whether the line was raw *before* the click** — v4.1.109 asked after, and pressing ▼ puts the caret on that line, which is what makes a line raw. So every press answered "this is raw" and no membrane could be toggled at all. A line counts as text only if it was already raw: either it shows raw with no caret on it (a Raw membrane), or the caret was already sitting there. Anything else is a click that landed on the decoration — a button press.
 

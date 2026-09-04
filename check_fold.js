@@ -400,6 +400,10 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
   ok(T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE) === true, '\u2605\u2605\u2605既にその行に居た2回目は押せない(字を直しに来た)', T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE));
   ok(T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)) === null, '\u2605\u2605生データの行に tip を出さない(押せない物に「押せ」と言わない)', T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)));
   ok(!!T.membraneArrowHoverMessage(away, new stub.Position(OPEN_LINE, idStart)), '\u2605飾りの行には tip を出す', !!T.membraneArrowHoverMessage(away, new stub.Position(OPEN_LINE, idStart)));
+  // \u2605\u2605\u2605v4.1.1101: 生を見せる行はカーソル行だけではない― ▼・▲・バッジは3つで1つ(v4.0.332)。
+  //   ▲やバッジに居る間も ▼ の行は生を見せているので、そこへのクリックはボタンではない。
+  ok(T.meosArrowPressBlocked(makeEditor([R(0,10)], CLOSE_LINE), OPEN_LINE, CLOSE_LINE) === true, '\u2605\u2605\u2605▲に居たまま ▼ を押してもボタンにならない(3つで1つ)', T.meosArrowPressBlocked(makeEditor([R(0,10)], CLOSE_LINE), OPEN_LINE, CLOSE_LINE));
+  ok(T.meosArrowPressBlocked(makeEditor([R(0,10)], 7), OPEN_LINE, 7) === true, '\u2605\u2605バッジ行に居たままでも同じ', T.meosArrowPressBlocked(makeEditor([R(0,10)], 7), OPEN_LINE, 7));
   T.setRefNoRaw(doc, OPEN_LINE);                   // \u25bc を押した直後の拑止(v4.0.362)
   ok(T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE) === false, '\u2605\u2605押した直後は飾りのまま＝ 連続で押せる道は塞がらない', T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE));
 }

@@ -6116,9 +6116,15 @@ function meosShowsRawLine(editor, line) {
 //     どちらでもなければ、そのクリックは**飾りの上に落ちた**＝ ボタン押し。
 //   ★②の例外＝ ▼を押した直後は setRefNoRaw that生を抑えている(v4.0.362)ので、居座っても飾りのまま
 //     ＝ 何度でも押せる。抑止を見落とすと2度目that押せない(v4.1.109の検査⑯that捕まえた退行)。
+// ★★★v4.1.1101(俊克 9/4 am10:46 バグ1「コメント化した▼that復活してしまった」):
+//   ★★★**②が狭すぎた**＝ 私は「同じ行に居たか」しか見ていなthatthat、生データを見せる行は
+//     カーソル行**だけではない**＝ ▼・▲・バッジは**3つで1つ**(v4.0.332)so、▲やバッジに居る間、
+//     ▼の行も生を見せている。そこへクリックすると prevLine ≠ ▼行 so「飾りの上」と誤って読んだ。
+//   ★★→ 訊き方を変える＝ **押す直前のカーソル位置で、その行は生を見せていたか**。
+//     同じ `meosRawLines` に「いつの話か」を渡すだけ(枝を写経しない)。
 function meosArrowPressBlocked(editor, line, prevLine) {
-  try { if (meosRawLines(editor, true).has(line)) return true; }  catch (_) { }   // ①
-  try { if (prevLine === line && !meosRawSuppressedAt(editor)) return true; } catch (_) { }  // ②
+  try { if (meosRawLines(editor, true).has(line)) return true; }  catch (_) { }   // ①Rawの膜= 印は最初から居ない
+  try { if (!meosRawSuppressedAt(editor) && meosRawLines(editor, false, prevLine).has(line)) return true; } catch (_) { }  // ②押す直前に生だった
   return false;
 }
 function isPendingFam(fam) { return fam === 'P'; }
@@ -29217,16 +29223,22 @@ function meosFcWantsOpen(doc, block, caretLine) {
   const end = (block.openEnd == null) ? block.end : block.openEnd;   // v4.1.106: ⏰(UFC)行も塊の一員
   return (block.open != null && caretLine === block.open) || (caretLine >= top && caretLine <= end);
 }
-function meosRawLines(editor, skipCaret) {
+// ★v4.1.1101: 第3引数 `caretAt` ＝ **カーソルthatその行に在ったとしたら**の答えを返す(既定＝今の位置)。
+//   「押す直前はどうだったか」を訊くために要る。**物差しを2本にしないための引数**＝
+//   同じ関数に「いつの話か」だけを渡す(枝を写経すると、片方だけ直る日that来る)。
+function meosRawLines(editor, skipCaret, caretAt) {
   const out = new MeosRawLineSet();
   try {
     if (!editor || !editor.document || !editor.selection) return out;
     out.doc = editor.document;                       // v4.0.444: Rawの膜は has() が行ごとに答える
     if (skipCaret) return out;
+    const _at = (typeof caretAt === 'number');
+    if (_at && !(caretAt >= 0)) return out;
     // カーソル行を生で見せる特例が要るのは**通常の膜の中に居る時だけ**。
     //   Rawの膜の中では既に全部が生／Pseudoの膜の中では1行も生にしない、という約束が上にある。
-    if (meosModeAtLine(editor.document, editor.selection.active.line) !== 'normal') return out;
-    for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
+    if (meosModeAtLine(editor.document, _at ? caretAt : editor.selection.active.line) !== 'normal') return out;
+    if (_at) out.add(caretAt);
+    else for (const sl of (editor.selections && editor.selections.length ? editor.selections : [editor.selection])) {
       out.add(sl.active.line); out.add(sl.anchor.line);
     }
     for (const ln of Array.from(out)) {
