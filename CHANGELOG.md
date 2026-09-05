@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.146 (2026-09-05)
+- **`(…)×N` — a repeat that knows when to stop.** Three rules now cover every clock: **the arrow is the direction, the number is how long one turn lasts, and `(…)×N` is how many turns** (leave it off for endless). `(↺↻3m/1m)×3` is three boxing rounds; `(↻15m)×1` is the one thing the notation could not say before — a stopwatch that runs once, because a stopwatch counts *length minus remaining* and so needs a length.
+- **It closes itself.** When the last turn ends, the clock writes its own ✓, folds away, and the next booking below it moves up into the live seat — the same rule that already governed one-shot clocks.
+- **`×2/3` while it runs**, so you can read how many turns are left, not just how many have passed.
+- **The panel takes the same notation.** Type `3m/1m×3` into the Repeat box; no new control, because the box was already the place that asks how long a turn is. Parentheses are accepted, and `x` for `×`. MeOS reads all three shapes and always writes the one with parentheses.
+
 ### v4.1.145 (2026-09-05)
 - **The panel opens downward by definition, not by accident.** It had always been told to open *upward* (`bottom:anchor(top)`) with a flip to below when there was no room — so it appeared below only because it was too tall to fit above. v4.1.143 stopped the footer wrapping, the panel got shorter, it fitted above, and up it went. (The v4.1.143 note below has the causality backwards.) Now `top:anchor(bottom)`, and the JS path for hosts without anchor positioning tries below first too; the flip stays as the escape.
 - **Ticking Repeat asks for the length.** Checking `□ Repeat ↺↻` now focuses the cycle box and takes `Set ⏰` back out of reach until something is typed there. A tick with an empty box used to set a clock with no repeat at all — the tick said one thing and the clock did another.

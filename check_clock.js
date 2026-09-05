@@ -130,7 +130,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   const S11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(!/id="clk-dir"/.test(S11), '\u2605\u2605\u2605向きの駒は面から消えた(選ばせない)', true);
   ok(/dual:true,cycle:/.test(S11), '\u2605\u2605\u2605面は常に \u21ba\u21bb を頼む', true);
-  ok(/dual: _dl0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
+  ok(/dual: _dl0, rounds: _rd0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
   ok(/pointer-events:none/.test(S11) && /\.clk-set\.on\{/.test(S11),
      '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
@@ -153,10 +153,10 @@ console.log('\u247d ↺↻ = 1行に顔が2つ');
   const one=P('\u23f0 2026-09-05 17:30 \u21bb3m/1m');
   ok(one && one.dual===false && one.up===true, '\u2605片方だけは今までどおり', one && [one.dual, one.up]);
   const S10=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(/spec\.dual \? ' \\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
+  ok(/spec\.dual \? '\\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
   ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
      '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
-  ok(/dual: c\.dual, tags: _tags, ufc: c\.ufc/.test(S10),
+  ok(/dual: c\.dual, rounds: c\.rounds, tags: _tags, ufc: c\.ufc/.test(S10),
      '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
 }
 
@@ -229,7 +229,7 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
      '\u2605\u2605\u2605`\|\| 1` は 0 を 1 に化けさせる(\u00d70 that出なかった正体)', true);
   ok(/renderOptions: c\.dual/.test(S8) && !/for \(let _fi = 0/.test(S8),
      '\u2605\u2605\u26051つの駒に2つの顔(before\u2192after)= 描く順が決まる(交互に入れ替わらない)', true);
-  ok(/_rnd0\(_sc7\)\) \? \('\\u00d7' \+ _sc7\.round\)/.test(S8),
+  ok(/_rnd0\(_sc7\)\)\s*\?\s*\('\\u00d7' \+ _sc7\.round \+ \(c\.rounds > 0 \? \('\/' \+ c\.rounds\) : ''\)\)/.test(S8),
      '\u2605\u2605繰返しの時だけ \u00d7N(N周目)を数字の後ろへ', true);
 }
 
@@ -287,7 +287,7 @@ console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2�
   /* \u2605v4.1.1119: 同じ起点の行は同じ時計so、済みも一緒。繰返しは付けない。 */
   ok(/const _same = _hits2\.filter\(h => String\(h\.when\) === String\(_hit\.when\) && !\(Array\.isArray\(h\.cycle\)/.test(E5),
      '\u2605\u2605\u2605同じ起点の行は一緒に済みになる(繰返しは除く)', true);
-  const A5=S5.slice(S5.indexOf('function meosArmClockFcFor'), S5.indexOf('function meosArmClockFcFor')+10000);
+  const A5=S5.slice(S5.indexOf('function meosArmClockFcFor'), S5.indexOf('function meosArmClockFcFor')+14000);
   ok(/line: c\.line,/.test(A5) && /_s\.line = c\.line;/.test(A5),
      '\u2605\u2605控えは行も持ち、毎回読み直す', true);
   /* \u2605\u2605\u2605v4.1.1119(俊克 pm01:10): 鳴る時刻が同じ行は「同じ1つの時計の別の顔」so、並べて出す。 */
@@ -341,7 +341,7 @@ console.log('\u2475 新しい予定は足す、名指しされた1本は直す')
 console.log('\u2474 今の回の長さ / 顔の \u2713 は休み');
 {
   const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const A2=S2.slice(S2.indexOf('function meosArmClockFcFor'), S2.indexOf('function meosArmClockFcFor')+10000);
+  const A2=S2.slice(S2.indexOf('function meosArmClockFcFor'), S2.indexOf('function meosArmClockFcFor')+14000);
   ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\); _s\.cyc/.test(A2),
      '\u2605\u2605\u2605並びの先頭を入れ続けない(1mの回でstep=3mなら 3-1=2.00 から始まる)', true);
   ok(/meosCycleSeriesNext\(_b\.getTime\(\), c\.cycle, _u - 1\)/.test(A2),
@@ -387,12 +387,12 @@ console.log('\u2473 並びのどれが今なのかを、並びそのものが言
 console.log('\u2471 動くのは直下の1本だけ');
 {
   const S0=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const A=S0.slice(S0.indexOf('function meosArmClockFcFor'), S0.indexOf('function meosArmClockFcFor')+10000);
+  const A=S0.slice(S0.indexOf('function meosArmClockFcFor'), S0.indexOf('function meosArmClockFcFor')+14000);
   ok(/const _liveTaken = new Set\(\)/.test(A), '\u2605生きている1本を覚える席が在る', true);
   /* \u2605v4.1.1112: 席を譲るのは「済み」だけ。「休み」(⏸)は席を保つ。 */
   ok(/if \(!c\.done\) \{ if \(_liveTaken\.has\(c\.key\)\) continue; _liveTaken\.add\(c\.key\); \}/.test(A),
      '\u2605\u2605\u2605二本目以降は仕掛けない(済んだ物だけが席を譲る)', true);
-  ok(!/!c\.done && !c\.off/.test(A), '\u2605\u2605休み(\u23f8)は席を保つ(一時停止は順番を譲らない)', true);
+  ok(!/if \(!c\.done && !c\.off\) \{ if \(_liveTaken/.test(A), '\u2605\u2605休み(\u23f8)は席を保つ(一時停止は順番を譲らない)', true);
   ok(/if \(c\.ufc\) \{ try \{ meosClockFcSet\(doc, c\.key, \{[^}]*done: true/.test(A),
      '\u2605\u2605手で \u2713 を書いたらFC化する(名前は状態の写し)', true);
   ok(A.indexOf('_liveTaken') < A.indexOf('_meosPseudoUntil.has(lk)'),
@@ -582,7 +582,7 @@ const _sig=SRC3.slice(SRC3.indexOf("if(m&&m.type==='viewMode')"), SRC3.indexOf("
 ok(/_sg=.*\+'\|'\+_cs/.test(_sig), '\u2605\u2605\u2605合図に一覧thatが入っている(描く物を、描くかどうかの判断に入れる)', /_cs/.test(_sig));
 ok(/_cc\.at/.test(_sig)&&/_cc\.running/.test(_sig)&&/_cc\.next/.test(_sig), '  時刻\u30fb走っているか\u30fb次かthat全部合図に効く', true);
 ok(/_cc\.key/.test(_sig), '  どの膜かも合図に効く(入れ替わりを見逃さない)', true);
-const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+10000);
+const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+14000);
 ok(/if \(n \|\| _seen\)/.test(_arm), '\u2605掛かった数that0でも、\u23f0を見つけたら知らせる', /_seen/.test(_arm));
 
 // v4.1.39(俊克「あんたがせっせと仕込んでいたんだよ。貴方の説明をコピーして、それを私がペーストする」)
@@ -719,8 +719,8 @@ console.log('\u3257 掛け直しても \u21bb thatが消えない');
  ok(M('01')===60000&&M('1')===60000, '  \u21bb01 も \u21bb1 も 1分(パーサは元から正しい)', [M('01'),M('1')]);
  ok((P('<!-- Mew!UFC \u23f0 2026-08-31 19:00 \u21bb01 -->')||{}).cycle[0]==='01', '  行からも 01 と読める', true);
  const SRC10=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false, _tg0 = null, _dl0 = false;');
- const _set=SRC10.slice(_i0, _i0+1200);
+ const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false, _tg0 = null, _dl0 = false');
+ const _set=SRC10.slice(_i0, _i0+2200);
  ok(/cycle: _cy0, up: _up0, dual: _dl0/.test(_set), '\u2605\u2605\u2605Set thatが書く時に繰返しと向きを渡している', true);
  ok(/meosClockFcScan\(scope\.doc\)/.test(_set), '  在れば本文から読んで持ち越す', true);
  ok(/if \(opts && opts\.hasCycle\)/.test(_set), '  箱に書いた時だけ触る(空なら今の指定that残る)', true);
@@ -740,7 +740,7 @@ console.log('\u3259 \u21ba(逆算) と d/w/y と、嘘をつかないStop');
  ok(C('1y')===365*86400000, '\u2605y(年)= 365日', C('1y'));
  ok(C('1M')===60000, '  M は単位にしない(mと同じ分として読む= 月ではない)', C('1M'));
  const SRC14=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/spec\.up \? ' \\u21bb' : ' \\u21ba'/.test(SRC14), '\u2605\u2605書く時は \u21ba、ストップウォッチだけ \u21bb', true);
+ ok(/spec\.up \? '\\u21bb' : '\\u21ba'/.test(SRC14), '\u2605\u2605書く時は \u21ba、ストップウォッチだけ \u21bb', true);
  ok(/_nl>0&&_nl<=60000/.test(SRC14), '\u2605\u2605\u2605残り1分以内は、鳴っていなくてもStopを出す', true);
  ok(/_s1\.textContent=\(_undoLeft>0\)\?'Undo':'Stop'/.test(SRC14), '\u2605\u2605\u2605止めた直後の1分は Undo(押し間違いthat取り返せる)', true);
  ok(/if \(await meosClockUndoStop\(\)\)/.test(SRC14), '\u2605\u2605もう一度押せば戻る= Stop \u21c4 Undo that行き来する', true);
@@ -963,7 +963,7 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
  /* \u2605v4.1.1110: 向きは周期と別(v4.1.1109/1110)。控えを毎回新しくする、という意図はそのまま。 */
  ok(/_s\.up = !!c\.up;/.test(S) && /_s\.tags = c\.tags/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u308b\u7269\u306e**\u898b\u305f\u76ee\u306e\u63a7\u3048**\u3092\u6bce\u56de\u65b0\u3057\u304f\u3059\u308b(\u4e00\u89a7\u3068\u884c\u304cが\u98df\u3044\u9055\u308f\u306a\u3044)', true);
- const _arm2=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+10000);
+ const _arm2=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+14000);
  ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\)[^]{0,200}_meosPseudoUntil\.set/.test(_arm2),
     '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
  ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
@@ -1362,6 +1362,47 @@ console.log('㉴ ⏰の一覧は**今のファイルの物** / 扉の数字は**
     '★時計that無くても**扉は立てる**(Tag&Go は時計の有無に依らない)', true);
  ok(/if \(!meDockPanel\) return;\s+\/\/ v4\.1\.92/.test(S),
     '  面that閉じている間は膜を数えに行かない', true);
+}
+
+// ★★★v4.1.146(俊克 9/5 am02:55 で確定・pm08:00「周期の掛け算記法は、どうしようか?」で着手):
+//   **矢印＝向き / 数字＝1回分の長さ / (…)×N＝回数**(省略＝無限)。
+//   ★これthat無いと**一度きりのストップウォッチthat書けない**= SWは「長さ − 残り」で出すso長さthat要る。
+console.log('⑩ (…)×N 回数の記法');
+{
+ const P=X.meosClockFcParse, N=X.meosCycleSeriesNext, CI=X.meosParseCycleInput;
+ const L=(sp)=>'<!-- Mew!UFC ⏰ 2026-09-05 20:00 '+sp+' -->';
+ /* ① 読む= 括弧有り・無し・x の3通り(read-both) */
+ ok((P(L('(↻3m/1m)×3'))||{}).rounds===3, '★★括弧つき `(↻3m/1m)×3` を読む', (P(L('(↻3m/1m)×3'))||{}).rounds);
+ ok((P(L('↻3m/1m×3'))||{}).rounds===3, '  括弧無し `↻3m/1m×3` も読む', true);
+ ok((P(L('↻3m/1mx3'))||{}).rounds===3, '  `x` でも読む(× を打ちにくい日ある)', true);
+ ok((P(L('↺↻3m/1m'))||{}).rounds===null, '★回数が無ければ無限(null)', (P(L('↺↻3m/1m'))||{}).rounds);
+ /* ② 長さと向きを壊していない= ×N を足しても今までの読みthat変わらない */
+ {const c=P(L('(↺↻3m/1m)×3'))||{};
+  ok(c.dual===true&&Array.isArray(c.cycle)&&c.cycle.join('/')==='3m/1m',
+     '★★★回数を足しても、向きと長さはそのまま', [c.dual, c.cycle&&c.cycle.join('/')]);}
+ /* ③ 長さthat無ければ回数は意味を持たない= 「何を3回?」に答えられない */
+ ok((P(L('↺×3'))||{}).rounds===null, '★★長さの無い `↺×3` は回数を持たない', (P(L('↺×3'))||{}).rounds);
+ /* ④ 数える= N周を終えたら round が N を超える(終わりを判定できる) */
+ {const org=new Date(2026,8,5,20,0,0).getTime(), step=4*60000;   // 3m+1m = 1周4分
+  const r1=N(org,['3m','1m'],org+30000), r3=N(org,['3m','1m'],org+step*2+30000), r4=N(org,['3m','1m'],org+step*3+30000);
+  ok(r1.round===1, '  1周目は 1', r1.round);
+  ok(r3.round===3, '  3周目は 3', r3.round);
+  ok(r4.round===4&&r4.round>3, '★★★3周で終わる時計は、4周目に入った瞬間「済み」と判る', r4.round);
+  ok(N(org,['3m','1m'],org-1000).round===0, '★ゴング前は 0 周目(×0)', true);}
+ /* ⑤ 面の箱にも同じ記法を打てる= 長さと回数を取り違えない */
+ ok(CI('3m/1m×3').join('/')==='3m/1m', '★★面の箱の `×3` は長さに混ざらない', CI('3m/1m×3'));
+ ok(CI('(3m/1m)×3').join('/')==='3m/1m', '  括弧も長さに混ざらない', CI('(3m/1m)×3'));
+ /* ⑥ 書く形は括弧の1つに絞る(read-both / write-one) */
+ {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(/_rn \? \('\(' \+ _ar \+ _cy \+ '\)\\u00d7' \+ _rn\)/.test(S),
+     '★★★書く時は必ず括弧 `(↺↻3m/1m)×3`(読む形は3通り、書く形は1つ)', true);
+  ok(/const _rn = \(spec\.rounds > 0 && _cy\) \? Math\.floor\(spec\.rounds\) : 0;/.test(S),
+     '★長さの無い時は回数を書かない(読みと揃える)', true);
+  const A=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+14000);
+  ok(/_rn\.round > c\.rounds/.test(A), '★★★数え直しは meosCycleSeriesNext 1本(新しい数えを作らない)', true);
+  ok(/rounds done key=/.test(A), '  終わったことをログへ残す', true);
+  ok(A.indexOf('_rn.round > c.rounds') < A.indexOf('if (_meosPseudoUntil.has(lk))'),
+     '★★★回数の終わりは「掛かっているか」を見る前に見る(掛かったままの物もここで終れる)', true);}
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
