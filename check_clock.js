@@ -170,6 +170,9 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
 {
   const base=new Date(2026,8,5,14,20).getTime();
   const R=(ms)=>X.meosCycleSeriesNext(base,['3m','1m'],base+ms).round;
+  /* ★v4.1.137: 待ちは0周目(ゴングで1周目が始まる)。 */
+  {const base2=new Date(2026,8,5,14,20).getTime();
+   ok(X.meosCycleSeriesNext(base2,['3m','1m'],base2-60000).round===0, '\u2605\u2605\u2605ゴング前は0周目(まだ始まっていない)', X.meosCycleSeriesNext(base2,['3m','1m'],base2-60000).round);}
   ok(R(1)===1, '\u2605起点直後は1周目', R(1));
   ok(R(210000)===1, '\u26053.5分後(1mの回)もまだ1周目', R(210000));
   ok(R(240001)===2, '\u2605\u2605\u26054分を過ぎたら2周目(3m+1mで一周)', R(240001));

@@ -10028,7 +10028,9 @@ function meosCycleSeriesNext(origin, cycle, from) {
   // ★★v4.1.132(俊克 9/5 pm02:56 改良2「繰り返した回数も表示しようよ。ボクシングタイマーのとき、
   //   **何ラウンドかthat分る**からね」): ★★**周回数も、同じ1回の計算で出る**= 飛ばした周 `k` と、
   //   その後に進めた歩数から数えられるso、新しい走査は要らない。1周目を 1 と数える。
-  if (t > from) return { at: t, step: last, idx: 0, round: 1 };
+  // ★v4.1.137(俊克 9/5 pm05:13 改良1「規定時刻までの回数は「×0」にしようよ」):
+  //   ★**待ちは0周目**= ゴングthat鳴って初めて1周目that始まる。数字thatそのまま「まだ始まっていない」と言う。
+  if (t > from) return { at: t, step: last, idx: 0, round: 0 };
   const k = Math.floor((from - t) / round);
   if (k > 0) t += k * round;                       // 1周ぶんずつ飛ばす(並びの位置は変わらない)
   let guard = 0, hit = 0;
@@ -10863,7 +10865,7 @@ function meosApplyTimerLineDecorations(editor) {
             //     数字にも回すso、**色を1つも増やさずに**、数字だけで向きthat読める。
             renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceForLine(until, c, scById.get(owner ? owner.id : ''), _nowAll))
               // ★v4.1.132: 何周目か= 繰返しthat在る時だけ、数字の後ろに小さく `\u00d7N`(N周目)。
-              + (((Array.isArray(c.cycle) && c.cycle.length) && (scById.get(owner ? owner.id : '') || {}).round > 0)
+              + (((Array.isArray(c.cycle) && c.cycle.length) && (scById.get(owner ? owner.id : '') || {}).round >= 0)
                  ? ('\u00d7' + (scById.get(owner ? owner.id : '') || {}).round) : '') + ' ', color: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN), fontWeight: '800' } }
           });
         }
