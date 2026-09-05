@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.135 (2026-09-05)
+- **The panel's footer wraps** — a fourth control pushed Set ⏰ off the edge. The row now folds instead of the panel growing, and copy ⏰ sits with the other switches so that the only thing standing on the right is the one that starts a clock.
+- Its tip is a sentence shorter; the old one ran off the top of the strip.
+
 ### v4.1.134 (2026-09-05)
 - **copy ⏰ actually responds** — the button existed and the branch that answers it existed, but the panel finds out which button was pressed by walking up from the click through a list of ids, and the new one was not on the list. A branch nobody can reach looks exactly like a branch that does nothing.
 
