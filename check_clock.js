@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -148,8 +148,19 @@ console.log('\u2478 持ち主は閉じ膜だけ / A + B = 1回分の長さ');
   ok(!/if \(!owner\) for \(const p of pairs\)/.test(C6),
      '\u2605\u2605膜の中のどこに在っても持ち主を作る道は無い', true);
   const F6=S6.slice(S6.indexOf('function meosClockFaceForLine'), S6.indexOf('function meosClockFaceForLine')+2000);
-  ok(/const shown = Math\.floor\(left \/ 1000\) \* 1000;/.test(F6) && /step - shown/.test(F6),
-     '\u2605\u2605\u2605経過は**切り捨てた残り**から引く(足して1秒足りなくならない)', true);
+  /* ★★★v4.1.131: 形でなく**数**で確かめる= 2つの顔を同じ「今」で出して、足して長さになるか。 */
+  {
+    const step=180000, until=Date.now()+150400;   /* 3分の回・残り2:30.4 */
+    const now=Date.now();
+    const cd={when:'2026-09-05 14:20',up:false,cycle:['3m','1m']};
+    const sw={when:'2026-09-05 14:20',up:true, cycle:['3m','1m']};
+    const sc={when:'2026-09-05 14:20',step:step};
+    const a=X.meosMmSs(X.meosClockFaceForLine(until,cd,sc,now));
+    const b=X.meosMmSs(X.meosClockFaceForLine(until,sw,sc,now));
+    const sec=(t)=>{const m=/^(?:(\d+):)?(\d+)\.(\d+)$/.exec(t); return m?((+(m[1]||0))*3600+(+m[2])*60+(+m[3])):-1;};
+    ok(sec(a)+sec(b)===step/1000, '\u2605\u2605\u2605A + B = 1回分の長さ(画面に出る数で確かめる)', a+' + '+b+' = '+(sec(a)+sec(b))+'s');
+    ok(sec(a)>0&&sec(b)>0, '\u2605両方とも動いている数that出る', [a,b]);
+  }
 }
 
 // ★★★v4.1.1118(俊克 9/5 pm01:05 バグ1「反対の逆算タイマーを追加したら、2つとも逆算で

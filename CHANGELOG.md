@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.131 (2026-09-05)
+- **The subtraction now uses the same rounding as the display** — remaining time is shown rounded up, and elapsed was being worked out from a rounded-down figure, so the pair came to a second over. The check for this is arithmetic rather than shape: it renders both faces from one instant and asserts they add to the length of the turn.
+
 ### v4.1.130 (2026-09-05)
 - Version numbering settles back down: 1101–1120 were twenty steps past 110, so this is 130.
 - **A clock with no membrane above it colours nothing** — it is just text now, so it no longer claims the line above as its partner.
