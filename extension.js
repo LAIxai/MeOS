@@ -10110,7 +10110,12 @@ function meosArmClockFcFor(doc) {
     const _liveTaken = new Set();
     for (const c of meosClockFcScan(doc)) {
       _seen++; _seenKeys.add(c.key);
-      if (!c.done && !c.off) { if (_liveTaken.has(c.key)) continue; _liveTaken.add(c.key); }
+      // ★★v4.1.1112(俊克 9/5 am10:04「⏰ボタンを押して一時停止したり、⏰リストで✓を外しても、
+      //   同様に実装してください」): ★★**席を譲るのは「済み」だけ。「休み」は席を保つ**＝
+      //   一時停止は「また自分that動く」という意思so、順番を譲るのはおかしい。
+      //   ★⏰ボタンもリストの✓外しも、本文へ書くのは同じ `⏸` so、**3つの口that自動的に揃う**
+      //     ([[feedback_one_source_for_mark_count_action]] 1つの規則を3か所に書かない)。
+      if (!c.done) { if (_liveTaken.has(c.key)) continue; _liveTaken.add(c.key); }
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) {
         // ★★★v4.1.67(俊克「貴方that仕込んだタイマーが、**リストでは水色の\u21bb、本体では緑色の\u21ba**に
@@ -10148,6 +10153,12 @@ function meosArmClockFcFor(doc) {
       //   `Date.now()`(=ファイルを開いた時刻)so、\u2610 の行thatどれも同じ「16:34」で並んでいた。
       //   → 出すのは**本文に書いてある時刻**= いつ鳴ったのかthat読める([[project_clock_list_v41]] 一覧は時刻で出す)。
       if (c.done) {
+        // ★★v4.1.1112(俊克 9/5 am09:46「これは、チェックを入れたタイマーはFC化すべきだろうか?」＝ そのとおり):
+        //   ★★**名前は状態の写し**(v4.1.18「鳴り終わった物=FC」)so、人that手で ✓ を書いたら、
+        //     MeOSthat名前も揃える= 畳まれて視界から消え、次の1本that直下に来る。
+        //   ★逆向き(手でFCと書く)は読まない= `FC かつ ✓なし` は v4.1.18で「✓を外した=もう一度走らせたい」
+        //     と決めた字so、同じ字に2つの意図は持たせられない。**止めるのは ✓ か ⏸ の1本道**。
+        if (c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, tags: c.tags, done: true }); } catch (_) { } }
         const _d = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, _d ? _d.getTime() : Date.now());
         continue;                                                   // 済み= 履歴だけ

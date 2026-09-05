@@ -148,8 +148,12 @@ console.log('\u2471 動くのは直下の1本だけ');
   const S0=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   const A=S0.slice(S0.indexOf('function meosArmClockFcFor'), S0.indexOf('function meosArmClockFcFor')+10000);
   ok(/const _liveTaken = new Set\(\)/.test(A), '\u2605生きている1本を覚える席が在る', true);
-  ok(/if \(!c\.done && !c\.off\) \{ if \(_liveTaken\.has\(c\.key\)\) continue; _liveTaken\.add\(c\.key\); \}/.test(A),
-     '\u2605\u2605\u2605二本目以降は仕掛けない(済んだ物は席を取らない)', true);
+  /* \u2605v4.1.1112: 席を譲るのは「済み」だけ。「休み」(⏸)は席を保つ。 */
+  ok(/if \(!c\.done\) \{ if \(_liveTaken\.has\(c\.key\)\) continue; _liveTaken\.add\(c\.key\); \}/.test(A),
+     '\u2605\u2605\u2605二本目以降は仕掛けない(済んだ物だけが席を譲る)', true);
+  ok(!/!c\.done && !c\.off/.test(A), '\u2605\u2605休み(\u23f8)は席を保つ(一時停止は順番を譲らない)', true);
+  ok(/if \(c\.ufc\) \{ try \{ meosClockFcSet\(doc, c\.key, \{[^}]*done: true/.test(A),
+     '\u2605\u2605手で \u2713 を書いたらFC化する(名前は状態の写し)', true);
   ok(A.indexOf('_liveTaken') < A.indexOf('_meosPseudoUntil.has(lk)'),
      '\u2605\u2605門番は「既に掛かっているか」より**先**(後の1本が控えを上書きしない)', true);
   ok(/when: String\(c\.when \|\| ''\)/.test(A), '\u2605掛かっているのはどの行かを控える', true);

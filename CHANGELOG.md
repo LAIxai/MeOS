@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1112 (2026-09-05)
+- **Only a finished clock gives up its place** — a paused one keeps it. Pausing says "I will run again", so it has no business handing the turn to the clock below. The ⏰ button and the list's checkbox both write the same ⏸ into the text, so all three doors agree without the rule being written three times.
+- **A ✓ written by hand renames the line to FC** — the name is a copy of the state, so the state should carry it. The line then folds away and the next one moves up. The reverse is not read: FC without a ✓ was already given a meaning in v4.1.18 ("the ✓ was removed, run it again"), and one string cannot hold two intentions. Stopping a clock is ✓ or ⏸, and nothing else.
+
 ### v4.1.1111 (2026-09-05)
 - **The series says which turn it is on** — with `↻3m/1m`, the part being counted right now is drawn in the editor's own foreground colour, so the pair itself shows where you are. Nothing is added to the line; the mark sits on the thing it describes.
 - **The figure is no longer orange** — inside a membrane the whole line turns orange, and the countdown disappeared into it. It now takes the editor foreground, so what is running stands out from what is written.
