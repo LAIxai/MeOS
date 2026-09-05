@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -121,6 +121,29 @@ ok(X.foldRangeEnd(d4,pr4,true)===3, '\u2605\u2605\u2605カーソルが中= 畳�
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d4,pr4,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(塊の頭は膜の外)', X.meosFcFoldShape(d4,1).map(it=>[it.head,it.end,it.hasRange]));
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
+
+// ★★★v4.1.136(俊克 9/5 pm04:43「ストップウォッチは、タイマを起動した時からの経過時間だよ。
+//   スタート時点からどれだけ経過したかを知るためだよ。それだけ」):
+console.log('\u247c ゴング前 — 逆算は残り / ストップウォッチは掛けてからの経過');
+{
+  const now=Date.now(), origin=now+600000;          /* 起点は10分後 */
+  const cd={when:X.meosClockFcStamp(origin),up:false,cycle:['3m','1m']};
+  const sw={when:X.meosClockFcStamp(origin),up:true, cycle:['3m','1m']};
+  const sc={when:cd.when, step:180000, armedAt: now-90000};   /* 1分30秒前に掛けた */
+  const a=X.meosClockFaceForLine(origin,cd,sc,now);
+  const b=X.meosClockFaceForLine(origin,sw,sc,now);
+  ok(Math.round(a/1000)===600, '\u2605\u2605逆算はゴングまでの残り(10分)', Math.round(a/1000)+'s');
+  ok(Math.round(b/1000)===90, '\u2605\u2605\u2605ストップウォッチは掛けてからの経過(1分30秒)= 0.00で止まらない', Math.round(b/1000)+'s');
+  /* ゴングを過ぎたら、今までどおり回の中の話に戻る */
+  const past=now-600000;
+  const cd2={when:X.meosClockFcStamp(past),up:false,cycle:['3m','1m']};
+  const sw2={when:X.meosClockFcStamp(past),up:true, cycle:['3m','1m']};
+  const sc2={when:cd2.when, step:180000, armedAt: now-90000};
+  const u2=now+150400;
+  const a2=X.meosMmSs(X.meosClockFaceForLine(u2,cd2,sc2,now)), b2=X.meosMmSs(X.meosClockFaceForLine(u2,sw2,sc2,now));
+  const sec=(t)=>{const m=/^(?:(\d+):)?(\d+)\.(\d+)$/.exec(t); return m?((+(m[1]||0))*3600+(+m[2])*60+(+m[3])):-1;};
+  ok(sec(a2)+sec(b2)===180, '\u2605\u2605\u2605ゴングの後は A + B = 1回分の長さ(今までどおり)', a2+' + '+b2);
+}
 
 // ★★v4.1.133(俊克 9/5 pm02:56 改良3「copy ⏰ ボタン」＋ pm03:12「既存の膜の直下にペーストするのが
 //   目的so、膜の同時生成は不要」):

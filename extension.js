@@ -10206,6 +10206,7 @@ function meosArmClockFcFor(doc) {
               if (!_ok) _s.step = meosCycleMs(c.cycle[0]);           // 読めない時だけ、今までどおり先頭
             }
             _s.line = c.line;                              // v4.1.1118: 行は毎回読み直す(編集でずれるので覚え込まない)
+            if (!_s.armedAt) _s.armedAt = Date.now();      // v4.1.136: 掛けた時刻は触らない(掛け直した訳ではない)
             _s.name = c.name || _s.name;
             _s.tags = c.tags || [];                                 // v4.1.70: 札も本文to一緒に新しくする
           }
@@ -10259,6 +10260,7 @@ function meosArmClockFcFor(doc) {
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : ''),   // v4.1.82
         when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
+        armedAt: Date.now(),                           // ★v4.1.136: 掛けた時刻(ストップウォッチは、ここからの経過)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
@@ -10981,6 +10983,20 @@ function meosClockFaceForLine(until, c, sc, now) {
     //   ★俊克の不変式 A + B = 1回分の長さ は、**同じ「今」から出した2つ**でしか成り立たない。
     const _now = (typeof now === 'number') ? now : Date.now();
     const left = Math.max(0, until - _now);
+    // ★★★v4.1.136(俊克 9/5 pm04:43「**ストップウォッチは、タイマを起動した時からの経過時間**だよ。
+    //   スタート時点からどれだけ経過したかを知るためだよ。それだけ」):
+    //   ★★★**起点thatまだ来ていない間**(ボクシングのゴング前)は、回thatまだ始まっていない。
+    //     ★逆算は**ゴングまでの残り**を出す(今までどおり)。
+    //     ★ストップウォッチは**掛けた時からの経過**を出す= 0.00 で止まらない。
+    //   ★ゴングを過ぎたら、今までどおり回の中の残り／経過に分かれる。
+    try {
+      const _o = meosParseStampLoose(c && c.when);
+      if (_o && _o.getTime() > _now) {
+        if (!c || !c.up) return left;                              // ゴングまでの残り
+        const _a = (sc && sc.armedAt) ? sc.armedAt : _now;
+        return Math.max(0, _now - _a);                             // 掛けてからの経過
+      }
+    } catch (_) { }
     if (!c || !c.up) return left;                                  // \u21ba(または矢印なし)= 残り
     let step = 0;
     if (Array.isArray(c.cycle) && c.cycle.length) {

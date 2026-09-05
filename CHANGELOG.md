@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.136 (2026-09-05)
+- **Before the gong there are no rounds to count, only time to measure** — an hour's wait on a four-minute cycle is not fifteen cycles; it is one wait. The countdown shows how long until the start, the stopwatch how long since the timer was set, and the round stays at 1. When the start time passes, 3m/1m begins and the two go back to sharing the round between them.
+
 ### v4.1.135 (2026-09-05)
 - **The panel's footer wraps** — a fourth control pushed Set ⏰ off the edge. The row now folds instead of the panel growing, and copy ⏰ sits with the other switches so that the only thing standing on the right is the one that starts a clock.
 - Its tip is a sentence shorter; the old one ran off the top of the strip.
