@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.132 (2026-09-05)
+- **The figure takes the arrow's colour** — ↺ green for time left, ↻ cyan for time elapsed. The colours already existed on the arrows; carrying them to the numbers means the direction can be read from the number alone, without adding a colour to the page.
+- **A repeating clock says which round it is on** — `×3` after the figure, counted in the same pass that works out the next bell. For a 3m/1m pair a round is the pair, which is how a boxing round is counted.
+
 ### v4.1.131 (2026-09-05)
 - **The subtraction now uses the same rounding as the display** — remaining time is shown rounded up, and elapsed was being worked out from a rounded-down figure, so the pair came to a second over. The check for this is arithmetic rather than shape: it renders both faces from one instant and asserts they add to the length of the turn.
 

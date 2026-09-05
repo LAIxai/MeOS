@@ -122,6 +122,23 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★v4.1.132(俊克 9/5 pm02:56 改良1「残り時間の数字も緑色にし、ストップウォッチの数字を水色に」
+//   改良2「繰り返した回数も表示しようよ。ボクシングタイマーのとき、何ラウンドかが分るからね」):
+console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
+{
+  const base=new Date(2026,8,5,14,20).getTime();
+  const R=(ms)=>X.meosCycleSeriesNext(base,['3m','1m'],base+ms).round;
+  ok(R(1)===1, '\u2605起点直後は1周目', R(1));
+  ok(R(210000)===1, '\u26053.5分後(1mの回)もまだ1周目', R(210000));
+  ok(R(240001)===2, '\u2605\u2605\u26054分を過ぎたら2周目(3m+1mで一周)', R(240001));
+  ok(R(480001)===3, '\u2605\u26058分を過ぎたら3周目', R(480001));
+  const S8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(/color: \(c\.up \? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN\)/.test(S8),
+     '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
+  ok(/'\\u00d7' \+ \(scById\.get\(owner \? owner\.id : ''\) \|\| \{\}\)\.round/.test(S8),
+     '\u2605\u2605繰返しの時だけ \u00d7N(N周目)を数字の後ろへ', true);
+}
+
 // ★★★v4.1.130(俊克 9/5 pm02:10 バグ1「UFCだけ入れても1つ前の行の文字を含めてオレンジ色になる」
 //   バグ2「同時起点の2つのタイマ値がまだ一致しない」バグ3「×で未来の予定も削除されてしまう」):
 console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回に1つ / × は走っている1本');

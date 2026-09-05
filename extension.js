@@ -10025,12 +10025,15 @@ function meosCycleSeriesNext(origin, cycle, from) {
   const round = steps.reduce((a, b) => a + b, 0);
   let t = origin, i = 0, last = steps[0];
   // v4.1.1111: **並びの何番目を走っているか**も返す(俊克 改良1= 動いている側を白くする)。
-  if (t > from) return { at: t, step: last, idx: 0 };
+  // ★★v4.1.132(俊克 9/5 pm02:56 改良2「繰り返した回数も表示しようよ。ボクシングタイマーのとき、
+  //   **何ラウンドかthat分る**からね」): ★★**周回数も、同じ1回の計算で出る**= 飛ばした周 `k` と、
+  //   その後に進めた歩数から数えられるso、新しい走査は要らない。1周目を 1 と数える。
+  if (t > from) return { at: t, step: last, idx: 0, round: 1 };
   const k = Math.floor((from - t) / round);
   if (k > 0) t += k * round;                       // 1周ぶんずつ飛ばす(並びの位置は変わらない)
   let guard = 0, hit = 0;
   while (t <= from && guard++ < len * 3 + 4) { hit = i % len; last = steps[hit]; t += last; i++; }
-  return { at: t, step: last, idx: hit };
+  return { at: t, step: last, idx: hit, round: k + Math.floor((i > 0 ? i - 1 : 0) / len) + 1 };
 }
 function meosClockFcStamp(at) {
   const d = (at instanceof Date) ? at : new Date(Number(at) || Date.now());
@@ -10198,7 +10201,7 @@ function meosArmClockFcFor(doc) {
               try {
                 const _u = _meosPseudoUntil.get(lk), _b = meosParseStampLoose(c.when);
                 const _nx2 = (_u && _b) ? meosCycleSeriesNext(_b.getTime(), c.cycle, _u - 1) : null;
-                if (_nx2) { _s.step = _nx2.step; _s.cidx = _nx2.idx || 0; _ok = true; }
+                if (_nx2) { _s.step = _nx2.step; _s.cidx = _nx2.idx || 0; _s.round = _nx2.round || 1; _ok = true; }
               } catch (_) { }
               if (!_ok) _s.step = meosCycleMs(c.cycle[0]);           // 読めない時だけ、今までどおり先頭
             }
@@ -10233,13 +10236,13 @@ function meosArmClockFcFor(doc) {
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
       }
-      let w = meosParseWhen(c.when), _step = 0, _cidx = 0;
+      let w = meosParseWhen(c.when), _step = 0, _cidx = 0, _crnd = 1;
       if (Array.isArray(c.cycle) && c.cycle.length) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
         // ★v4.1.63: **数えるだけ**= 本文(起点)には触らない。いつ始めたのかthatそこに残る。
         const _b = meosParseStampLoose(c.when) || (w && w.at) || null;
         const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, Date.now()) : null;
-        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; }   // v4.1.1111
+        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; _crnd = _nx.round || 1; }   // v4.1.1111 / v4.1.132
       }
       if (!w) {
         // ★★★v4.1.25(俊克 バグ1「☐をクリックすると…⏰リストから消えてしまう」):
@@ -10259,7 +10262,7 @@ function meosArmClockFcFor(doc) {
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
-        step: _step, cidx: _cidx };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている / v4.1.1111: 今の回は並びの何番目か
+        step: _step, cidx: _cidx, round: _crnd };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている / v4.1.1111: 今の回は並びの何番目か
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
@@ -10851,10 +10854,15 @@ function meosApplyTimerLineDecorations(editor) {
           items.push({
             range: new vscode.Range(i, _at2, i, _at2),
             // v4.1.60: ここだけは\u21bbを添えない= **同じ行に `\u21bb15` が書いてある**so、向きはもう目に入っている。
-            // ★v4.1.1111(俊克 改良2「残タイマー値も橙色は止めて白色にしようよ。**膜の中に入った時に、
-            //   他も橙色になるので、今までは目立たなかった**」): ★行ぜんぶthat橙に染まる場面thatあるので、
-            //   **数字だけthat地の色と違う**ようにする= 動いている物thatひと目で分かる。
-            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceForLine(until, c, scById.get(owner ? owner.id : ''), _nowAll)) + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
+            // ★v4.1.1111(俊克「残タイマー値も橙色は止めて白色に」)→ ★★v4.1.132(俊克 9/5 pm02:56 改良1
+            //   「UFCの残り時間の数字も緑色にし、ストップウォッチの数字の色を水色にしよう。
+            //   **数字を見ただけで、分かりやすい**」):
+            //   ★★**矢印と数字thatが同じ色で対になる**= ↺=緑(残り) / ↻=水色(経過)。v4.1.66で矢印に入れた色を
+            //     数字にも回すso、**色を1つも増やさずに**、数字だけで向きthat読める。
+            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceForLine(until, c, scById.get(owner ? owner.id : ''), _nowAll))
+              // ★v4.1.132: 何周目か= 繰返しthat在る時だけ、数字の後ろに小さく `\u00d7N`(N周目)。
+              + (((Array.isArray(c.cycle) && c.cycle.length) && (scById.get(owner ? owner.id : '') || {}).round > 0)
+                 ? ('\u00d7' + (scById.get(owner ? owner.id : '') || {}).round) : '') + ' ', color: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN), fontWeight: '800' } }
           });
         }
       }
