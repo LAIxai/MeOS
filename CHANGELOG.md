@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.143 (2026-09-05)
+- **Arrows are coloured whether or not there is a repeat** — the colouring, and the cutting of them out of the orange, sat inside the branch for repeating clocks, so a line carrying only `↺↻` was left orange inside the membrane and colourless outside it. v4.1.1108 separated the arrow from the cycle in the notation; the drawing had not caught up.
+- **The panel drops back below the button** — it had grown a wrapping footer and no longer fit underneath, so it flipped above and took its tip off the top of the view. With the direction switch gone there are three controls again, and no need to wrap.
+
 ### v4.1.142 (2026-09-05)
 - **Both faces by default** — the direction switch is gone from the panel; a clock set here always gets `↺↻`, so remaining and elapsed both appear. Anyone who wants one face deletes one arrow in the text, which still reads. One control fewer, one thing fewer to know.
 - **Set ⏰ waits until you have said something** — it sits at the right, pale and unclickable until a date, a time, a repeat, a tag or a lock has been touched, and then it darkens. Nobody opens this panel to press Set on what is already there.

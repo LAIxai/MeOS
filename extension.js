@@ -10775,7 +10775,11 @@ function meosApplyTimerLineDecorations(editor) {
           //     押せない印を本文に置くと、消し方thatが分からない字thatが全ての行に増える。
           //     ★見えは2つ、書く物は1つ= [[project_relation_over_appearance]] の当て方(見た目でなく関係を書く)。
           // v4.1.66: 輪の印に色。\u21ba=緑(まだ余裕thatある) / \u21bb=水色(ただ測るだけ)。
-          if (Array.isArray(c.cycle) && c.cycle.length) {
+          // ★★★v4.1.143(俊克 バグ2「膜の中に入った時 `\u21ba\u21bb` thatが再びオレンジ色に。外に出ると色無しに」):
+          //   ★★★**矢印の色付けthat「周期that在る時」の枝の中に在った**= `\u21ba\u21bb` だけの行(繰返し無し)では
+          //     色も付かず、橙からも抜かれない。**矢印は周期と関係なく在る**so、枝の外へ出す。
+          //   ★v4.1.1108で「矢印＝向き / 数字＝周期」と分けたのに、**描く側thatまだ一緒にしていた**。
+          {
             const _ar = meosClockArrowAt(txt);
             // ★★v4.1.139(俊克 9/5 pm05:37 バグ1「\u21ba\u21bb のそれぞれの文字色that間違っている」):
             //   ★★**色は「字そのもの」から決める**= 私は `c.up`(両方の時は false)で選んでいたので、
@@ -22637,8 +22641,11 @@ color:#ffffff;z-index:4;padding:0}
 /* ★★v4.1.135(俊克 9/5 pm03:59 バグ3「Set⏰ボタンthatはみ出ている」):
    ★★**駒that1つ増えたら、足元は折り返す**= 幅を広げるのでなく、入り切らない物を下の段へ回す。
    ★copy は左の組へ入れる= 右に立つのは「掛ける(Set)」だけ。 */
-.clk-foot{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;row-gap:5px}
-.clk-foot .clk-modes{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
+/* ★v4.1.143(俊克 9/5 pm07:11 バグ1「▼を押した時に、パネルthat上に出るようになったので、tipthat切れる」):
+   ★**背thatが伸びたので、下に入らなくなって反転していた**(v4.1.135で折り返せるようにした分)。
+   向きの駒を外して3つに減った今、折り返しは要らない= 元の高さに戻れば、下に出る。 */
+.clk-foot{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.clk-foot .clk-modes{display:flex;align-items:center;gap:4px;min-width:0}
 .clk-mins{display:flex;gap:3px}
 .clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer}
 .clk-mins button:hover{background:rgba(224,128,58,.20)}
@@ -29902,7 +29909,9 @@ function meosApplyFcRowDecorations(editor) {
           const _cut = [];
           if (_cc.done) { const a = txt.search(MEOS_CLOCK_DONE_MARK_RE); if (a >= 0) _cut.push([a, a + 1]); }
           if (_cc.off) { const a = txt.indexOf('\u23f8'); if (a >= 0) _cut.push([a, a + 1]); }
-          if (_cc.cycle && _cc.cycle.length) {
+          // ★v4.1.143: 抜くのも**矢印that在れば**= 繰返し無し(`\u21ba\u21bb` だけ)の行も橙から抜く。
+          //   走っている桁を白くするのは、繰返しthat在る時だけ(桁thatその時しか無い)。
+          {
             // ★★v4.1.140(俊克 9/5 pm05:53 バグ1「膜名の中に入った時、↺文字だけthat橙色になってしまう」):
             //   ★★**抜いていたのthat最後の矢印1つだけ**= `↺↻` の1文字目thatが橙のまま残っていた。
             //     2文字とも抜く= 色を置く側と、場所を空ける側thatが同じ数を見る。
@@ -29913,7 +29922,7 @@ function meosApplyFcRowDecorations(editor) {
             }
             // 今その回を走っている桁も抜く= 白thatそのまま置ける(描く側と、抜く側thatが同じ答えから引く)。
             try {
-              const _own = meosClockOwnerScopeAt(doc2, ln);
+              const _own = (_cc.cycle && _cc.cycle.length) ? meosClockOwnerScopeAt(doc2, ln) : null;
               if (a >= 0 && _own) { const _sp = meosCycleElemSpan(txt, a, _own.cidx || 0); if (_sp) _cut.push(_sp); }
             } catch (_) { }
           }
