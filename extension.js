@@ -10672,18 +10672,6 @@ function meosApplyTimerLineDecorations(editor) {
           if (Array.isArray(c.cycle) && c.cycle.length) {
             const _ar = meosClockArrowAt(txt);
             if (_ar >= 0) (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
-            // ★★v4.1.1111(俊克 改良1「↻3m/1m のようなケースで、**3m側that動作している時は、3mを白色に**しよう」):
-            //   ★★**並びのどれthat今なのかを、並びそのものthat言う**= 数字を足さずに、走っている側を白くするだけ。
-            //     ⏰の繰返しは「並びthat状態を持つ」(v4.1.57)ので、その状態を**その場に**出す
-            //     ([[feedback_fix_signal_at_fix_place]] 知らせるUIを別に作らない)。
-            //   ★出すのは**掛かっている1本の、今の回**だけ(待機中の行や、済んだ行には出さない)。
-            try {
-              const _sc8 = scById.get(owner ? owner.id : '');
-              if (_ar >= 0 && _sc8 && _sc8.when && String(c.when) === String(_sc8.when)) {
-                const _sp = meosCycleElemSpan(txt, _ar, _sc8.cidx || 0);
-                if (_sp) cycNow.push(new vscode.Range(i, _sp[0], i, _sp[1]));
-              }
-            } catch (_) { }
           }
           // ★v4.1.77: 日付の右に曜日を**描く**= 本文には1文字も増やさない(出す物と、覚える物を分ける)。
           try {
@@ -10741,6 +10729,23 @@ function meosApplyTimerLineDecorations(editor) {
             const _cw = (meosClockFcParse(txt) || {}).when;
             if (_sc9 && _sc9.when && _cw && String(_cw) !== String(_sc9.when)) continue;
           } catch (_) { }
+          // ★★★v4.1.1113(俊克 9/5 am10:27 バグ1「単発の↻1mの「1m」thatが白色になっていない。
+          //   肝心の連動型も同様」): ★★★**v4.1.1111は一度も走っていなかった**=
+          //     私は `owner` を**その宣言より前**で読んでいた(TDZ)ので ReferenceError thatが出て、
+          //     自分で書いた `try/catch` thatそれを飲み、**何も描かれず、何も言わない**状態になっていた。
+          //   ★★これは v4.0.225 で自分で書いた教訓と同じ穴＝ **宣言より前に分岐を書かない**。
+          //     ★捕まえたのは俊克の目so、**catchは黙って握り潰す**という事実の方も残す
+          //     (計測が無い所では、握り潰しは「動いているように見える」を作る)。
+          //   ★正しい置き場所はここ＝ owner thatが決まり、**掛かっている1本**だと分かった後
+          //     (待機中の行と済んだ行は、上の門番thatもう落としている)。
+          if (Array.isArray(c.cycle) && c.cycle.length) {
+            const _ar2 = meosClockArrowAt(txt);
+            const _sc8 = scById.get(owner ? owner.id : '');
+            if (_ar2 >= 0 && _sc8) {
+              const _sp = meosCycleElemSpan(txt, _ar2, _sc8.cidx || 0);
+              if (_sp) cycNow.push(new vscode.Range(i, _sp[0], i, _sp[1]));
+            }
+          }
           // ★v4.1.20(俊克 改良2「コメントの外に残時間を表示する必要はないよね。コメント内部に表示すればいい」):
           //   ★**時計はコメント欄の中に立つ**= v4.0.451で閉じ膜に決めた作法と同じ。`-->` の手前に置く。
           const _cl = txt.lastIndexOf('-->');
@@ -10774,7 +10779,8 @@ function meosApplyTimerLineDecorations(editor) {
       textDecoration: 'none; color: #ff4d4d !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     // v4.1.1111: 走っている側は**地の色と違う**だけでよい(色を1つ増やさない= editor.foreground を借りる)。
     if (cycNow.length && !meosClockCycNowDeco) meosClockCycNowDeco = vscode.window.createTextEditorDecorationType({
-      textDecoration: 'none; color: var(--vscode-editor-foreground) !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // v4.1.1113: 変数that解けなかった時のために、素の白を控えに置く(黙って何も塗らない、を作らない)。
+      textDecoration: 'none; color: var(--vscode-editor-foreground, #ffffff) !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosTimerLineDeco, items);
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);

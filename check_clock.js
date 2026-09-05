@@ -138,6 +138,12 @@ console.log('\u2473 並びのどれが今なのかを、並びそのものが言
   ok(n0.idx===0, '\u2605\u2605\u2605起点直後は 3m を走っている', n0.idx);
   ok(n1.idx===1, '\u2605\u2605\u26053.5分後は 1m を走っている', n1.idx);
   ok(n2.idx===0, '\u2605\u2605一周したら 3m へ戻る(並びthat状態を持つ)', n2.idx);
+  /* \u2605\u2605\u2605v4.1.1113: **宣言より前で読まない**(TDZ= try/catch that黙って握り潰す)。
+     v4.1.1111はこれで一度も走っていなかった= 俊克の目that捕まえるまで、誰も気づけなかった。 */
+  const S1=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const D=S1.slice(S1.indexOf('function meosApplyTimerLineDecorations'), S1.indexOf('function meosApplyTimerLineDecorations')+14000);
+  ok(D.indexOf('let owner = _pairs()') >= 0 && D.indexOf('cycNow.push') > D.indexOf('let owner = _pairs()'),
+     '\u2605\u2605\u2605owner の宣言より**後ろ**で使う(TDZ を作らない)', [D.indexOf('let owner = _pairs()'), D.indexOf('cycNow.push')]);
 }
 
 // ★★★v4.1.1110(俊克 9/5 am08:49「直下のUFCタイマーのみを動かす」):
