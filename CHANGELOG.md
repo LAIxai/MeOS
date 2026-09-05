@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1118 (2026-09-05)
+- **Finishing a clock no longer flips its direction** — the write that marks one done passed the time, the hold and the lock, but not the direction or the cycle, so a stopwatch came back as `↺✓`. The omission was always there; it only became visible once the arrow was always written.
+- **Two clocks set for the same minute are told apart by line** — the running line was identified by its time, which two bookings can share, and then both showed a figure and both took the direction of whichever one was armed.
+
 ### v4.1.1117 (2026-09-05)
 - **One door builds the record** — a one-shot set from the panel built its own half-formed record, with no `when`, no signature and no position in the series. Without a `when` the guard that shows the figure on the running line only could not tell the lines apart, so both counted; without a signature the text could never re-arm it; and when it rang, it could not say which line had rung, so the ✓ landed on the first one. Membrane clocks are written into the text and left to the arming pass, the way repeating ones already were. Only a clock on the file itself, which has nowhere to be written, still keeps its own record.
 - **The ✓ goes on the line that rang** — found by the record's `when` rather than by taking the first one that is not done.

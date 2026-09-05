@@ -122,6 +122,23 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1118(俊克 9/5 pm01:05 バグ1「反対の逆算タイマーを追加したら、2つとも逆算で
+//   起動してしまった。完了したら、↻だったのに、↺✓に変わってしまった」):
+console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2本を行で見分ける');
+{
+  const S5=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const E5=S5.slice(S5.indexOf('async function meosEndPseudoTimer'), S5.indexOf('async function meosEndPseudoTimer')+4000);
+  ok(/done: true \}, _hit\.line\)/.test(E5) && /cycle: _hit\.cycle, up: _hit\.up/.test(E5),
+     '\u2605\u2605\u2605済みにする時も向きと周期をそのまま返す(\u21bb が \u21ba に化けない)', true);
+  ok(/typeof scope\.line === 'number' \? _hits2\.find\(c => c\.line === scope\.line\)/.test(E5),
+     '\u2605\u2605鳴った1本は**行**で名指しする(時刻は控え)', true);
+  const A5=S5.slice(S5.indexOf('function meosArmClockFcFor'), S5.indexOf('function meosArmClockFcFor')+10000);
+  ok(/line: c\.line,/.test(A5) && /_s\.line = c\.line;/.test(A5),
+     '\u2605\u2605控えは行も持ち、毎回読み直す', true);
+  ok(/if \(_sc9 && typeof _sc9\.line === 'number'\) \{ if \(i !== _sc9\.line\) continue; \}/.test(S5),
+     '\u2605\u2605\u2605同じ時刻の2本も行で見分ける(数字は1本にだけ)', true);
+}
+
 // ★★★v4.1.1117(俊克 9/5 pm00:22 バグ1「⏸を削除して再開したが、2つが同時に動いている
 //   …2番目の単発タイマが終了したのに、FC化しない」):
 //   控えを作るのは armClock ただ 1 つ。膜に掛ける物は手で作らない。

@@ -10193,6 +10193,7 @@ function meosArmClockFcFor(doc) {
               } catch (_) { }
               if (!_ok) _s.step = meosCycleMs(c.cycle[0]);           // 読めない時だけ、今までどおり先頭
             }
+            _s.line = c.line;                              // v4.1.1118: 行は毎回読み直す(編集でずれるので覚え込まない)
             _s.name = c.name || _s.name;
             _s.tags = c.tags || [];                                 // v4.1.70: 札も本文to一緒に新しくする
           }
@@ -10245,6 +10246,7 @@ function meosArmClockFcFor(doc) {
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : ''),   // v4.1.82
         when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
+        line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
@@ -10801,8 +10803,10 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★見分けは**書いてある時刻**= 控えた `when` と、この行の `when` thatが同じ物だけthat現役。
           try {
             const _sc9 = scById.get(owner ? owner.id : '');
-            const _cw = (meosClockFcParse(txt) || {}).when;
-            if (_sc9 && _sc9.when && _cw && String(_cw) !== String(_sc9.when)) continue;
+            // ★v4.1.1118: **同じ時刻の2本thatが在り得る**(俊克 pm01:05「偶然同じ時刻」)so、
+            //   行thatが分かるなら行で見分ける。分からない時だけ時刻で見る。
+            if (_sc9 && typeof _sc9.line === 'number') { if (i !== _sc9.line) continue; }
+            else { const _cw = (meosClockFcParse(txt) || {}).when; if (_sc9 && _sc9.when && _cw && String(_cw) !== String(_sc9.when)) continue; }
           } catch (_) { }
           // ★★★v4.1.1113(俊克 9/5 am10:27 バグ1「単発の↻1mの「1m」thatが白色になっていない。
           //   肝心の連動型も同様」): ★★★**v4.1.1111は一度も走っていなかった**=
@@ -11089,7 +11093,8 @@ async function meosEndPseudoTimer(key) {
       // ★★v4.1.1117: **鳴ったのはどの行か**を控えの `when` で名指しする(先頭のを掴まない)。
       //   一度きりthatが2番目に在る時、✓ thatが1番目に付いていた(俊克「FC化しない」)。
       const _hits2 = meosClockFcScan(doc).filter(c => c.key === scope.key && !c.done);
-      const _hit = (scope.when ? _hits2.find(c => String(c.when) === String(scope.when)) : null) || _hits2[0] || null;
+      const _hit = (typeof scope.line === 'number' ? _hits2.find(c => c.line === scope.line) : null)
+        || (scope.when ? _hits2.find(c => String(c.when) === String(scope.when)) : null) || _hits2[0] || null;   // v4.1.1118: 行が先
       if (_hit && Array.isArray(_hit.cycle) && _hit.cycle.length) {
         // ★★★v4.1.23: 繰返しは**✓を付けない**= 終わっていないから。
         //   俊克「繰返し設定の場合は、UFCのまま」= 次が在る限り、見えていなければならない。
@@ -11097,7 +11102,12 @@ async function meosEndPseudoTimer(key) {
         //   so鳴る度にファイルthat汚れることもなくなった(●thatが点かない)。
         try { meosArmClockFcFor(doc); } catch (_) { }
       }
-      else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, tags: _hit.tags, done: true }, _hit.line); }
+      // ★★★v4.1.1118(俊克 9/5 pm01:05 バグ1「完了したら、↻だったのに、↺✓に変わってしまった」):
+      //   ★★★**書き戻しthat向きと周期を渡していなかった**= `up` thatundefinedso、v4.1.1108で
+      //     「向きは必ず書く」にした今は **↺ と書かれる**。1108より前は矢印を書かなかったので、
+      //     この落とし物thatが表に出ていなかった＝ **前から在った穴that、正しくしたことで見えた**。
+      //   ★書き戻しは「済みにする」だけの用so、**それ以外は読んだ物をそのまま返す**。
+      else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, cycle: _hit.cycle, up: _hit.up, tags: _hit.tags, done: true }, _hit.line); }
       else {
         const _m = meosClockMeta(doc); const _r = _m[scope.key];
         if (_r) { _m[scope.key] = { at: Number(_r.at) || Date.now(), hold: !!scope.hold, past: true };
