@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.149 (2026-09-06)
+- **The clock row shows the appointment, not the envelope.** `<!-- Mew!UFC` and ` -->` are MeOS addressing itself, not something to read, so they are collapsed away and the row reads `⏰🔒 2026-09-05(s) 20:05 ↺↻3m/1m` from column 0. Together with the badge row above it, both rows now start at the head and neither can be cut off by a narrow window.
+- **Put the caret in the row and the raw line comes back, whole** — nothing is hidden on a row you are editing. The collapse is zero-width, not `display:none`, so every character keeps its place in the line: the colours, the weekday, the white running element and the figures all still land on the same columns.
+
 ### v4.1.148 (2026-09-06)
 - **The figures start at the head of the line.** v4.1.147 put them at the right-hand end of the badge row, which does not solve the problem it was meant to solve — narrow the window and they are the first thing cut off. The badge row now lends its space rather than sharing it: its own text is collapsed to zero width and the clock's figures stand at column 0, so they survive any width. On a row shown raw (the caret's line, Raw mode) nothing is collapsed — that row is there to be edited — and the figures simply sit at its head.
 

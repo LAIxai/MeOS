@@ -10885,6 +10885,27 @@ function meosApplyTimerLineDecorations(editor) {
           const c = meosClockFcParse(txt);
           if (!c || !c.when) continue;
           if (!meosClockLineIsLive(doc, i)) continue;   // v4.1.66: 囲いの中の見本には印を出さない
+          // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
+          //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
+          //   **これですべてthatすっきりする**よ」):
+          //   ★★★**包み(`<!-- Mew!UFC` と ` -->`)は、人に読ませるための字ではない**= MeOSthat自分に宛てた宛名so、
+          //     飾りの行では消してよい。残すのは**予定そのもの**だけ。
+          //   ★★これでバッジ行(数字)と⏰行(予定)the2行thatどちらも行頭から始まり、幅に負けない姿で揃う。
+          //   ★カーソルthat入った行では**1文字も消さない**= そこは直すための窓
+          //     ([[project_raw_line_is_not_for_decoration]] / v4.1.1103「Rawは無効化した時と同じ姿」)。
+          //   ★消し方は幅ごと畳む `opacity:0; font-size:0`(v0.9.479)= **文字は並びに残る**so、
+          //     色も数字も今までどおり同じ桁に当たる(位置を数え直さない)。
+          try {
+            if (!meosShowsRawLine(editor, i)) {
+              const _p0 = txt.indexOf('\u23f0');
+              if (_p0 > 0) badgeHide.push(new vscode.Range(i, 0, i, _p0));         // `<!-- Mew!UFC ` を消す
+              const _c9 = txt.lastIndexOf('-->');
+              if (_c9 > 0) {
+                let _k9 = _c9; while (_k9 > 0 && txt.charAt(_k9 - 1) === ' ') _k9--;
+                badgeHide.push(new vscode.Range(i, _k9, i, txt.length));           // ` -->` を消す
+              }
+            }
+          } catch (_) { }
           // ★★★v4.1.64(俊克 改良3「UFCには、ロックされていれば\ud83d\udd10を表示し、ロックされていなければ\ud83d\udd13を表示する。
           //   ただし、\ud83d\udd10の部分をインラインで変更できない。**ここは、見せかけの表示にする**」):
           //   ★★★**掛かっている方だけを字にする**= 錠は \ud83d\udd10 を本文に書き、掛かっていない時の \ud83d\udd13 は**描くだけ**。
@@ -11005,7 +11026,9 @@ function meosApplyTimerLineDecorations(editor) {
           // ★v4.1.20(俊克 改良2「コメントの外に残時間を表示する必要はないよね。コメント内部に表示すればいい」):
           //   ★**時計はコメント欄の中に立つ**= v4.0.451で閉じ膜に決めた作法と同じ。`-->` の手前に置く。
           const _cl = txt.lastIndexOf('-->');
-          const _at2 = (_cl > 0) ? _cl : txt.length;
+          // v4.1.149: 包みを消すso、数字は**消える手前**へ置く(隠した所に物を置かない)。
+          let _at2 = (_cl > 0) ? _cl : txt.length;
+          while (_at2 > 0 && txt.charAt(_at2 - 1) === ' ') _at2--;
           // ★★★v4.1.138(俊克 9/5 pm05:27「SW/CD同時記法を `\u21ba\u21bb3m/1m` にしようよ」):
           //   ★★★**1行に顔that2つ**= `\u21ba\u21bb` なら、残り(緑)と経過(水色)を並べて出す。
           //     色は矢印から借りるso、どちらthatどちらかは字を読まなくても分かる(v4.1.132の続き)。

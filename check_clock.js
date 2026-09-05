@@ -1459,5 +1459,22 @@ console.log('\u246b \u23f82= 休んだ時に何周終えていたか');
     '\u2605\u2605\u2605生データは1行のまま(2行に割らない= UFC1行のコピペthatそのまま時計になる)', true);
 }
 
+// v4.1.149(俊克 9/6 am00:12「2行目も『⏰🔒 2026-09-05(s) 20:05 ↺↻3m/1m』だけを見せかけ表示しよう。
+//   文字カーソルthat入った時に生データthat見えればいい。これですべてthatすっきりする」):
+console.log('\u246c \u23f0行も包みを消す(飾りの行は予定だけ)');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/badgeHide\.push\(new vscode\.Range\(i, 0, i, _p0\)\)/.test(S),
+    '\u2605\u2605頭の包み(<!-- Mew!UFC )を消す', true);
+ ok(/badgeHide\.push\(new vscode\.Range\(i, _k9, i, txt\.length\)\)/.test(S),
+    '\u2605\u2605尾の包み( -->)を消す', true);
+ ok(/if \(!meosShowsRawLine\(editor, i\)\) \{\s*\n\s*const _p0/.test(S),
+    '\u2605\u2605\u2605カーソルthat入った行では1文字も消さない(そこは直すための窓)', true);
+ ok(/textDecoration: 'none; opacity: 0; font-size: 0;'/.test(S),
+    '\u2605\u2605消し方は幅ごと畳む(文字は並びに残るso、色も数字も同じ桁に当たる)', true);
+ ok(/let _at2 = \(_cl > 0\) \? _cl : txt\.length;\s*\n\s*while \(_at2 > 0 && txt\.charAt\(_at2 - 1\) === ' '\) _at2--;/.test(S),
+    '\u2605数字は消える手前へ置く(隠した所に物を置かない)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
