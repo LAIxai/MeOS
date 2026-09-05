@@ -10979,14 +10979,17 @@ function meosApplyTimerLineDecorations(editor) {
             //   場所は走っている時と同じ(バッジ行の右端)= 止めた瞬間に数字that飛ばない。
             if (c.pausedRound > 0) {
               const _bg3 = meosClockBadgeRowForLine(doc, i);
-              let _pl = i, _pat = (txt.lastIndexOf('-->') > 0) ? txt.lastIndexOf('-->') : txt.length;
+              let _pl = i, _pat = (txt.lastIndexOf('-->') > 0) ? txt.lastIndexOf('-->') : txt.length, _pAfter = false;
               if (_bg3 >= 0) {                            // v4.1.148: 休んでいる時も**行頭**(場所thatが飛ばない)
                 let _l3 = 0; try { _l3 = doc.lineAt(_bg3).text.length; } catch (_) { }
-                _pl = _bg3; _pat = 0;
+                _pl = _bg3; _pat = _l3; _pAfter = true;   // v4.1.150: 走っている時と同じ置き方
                 try { if (_l3 && !meosShowsRawLine(editor, _bg3)) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3)); } catch (_) { }
               }
+              const _pt9 = '\u00d7' + c.pausedRound + (c.rounds > 0 ? ('/' + c.rounds) : '');
               rounds.push({ range: new vscode.Range(_pl, _pat, _pl, _pat),
-                renderOptions: { before: { contentText: '\u00d7' + c.pausedRound + (c.rounds > 0 ? ('/' + c.rounds) : '') + ' ', color: '#e0803a', fontWeight: '800' } } });
+                renderOptions: _pAfter
+                  ? { after: { contentText: '  ' + _pt9, color: '#e0803a', fontWeight: '800' } }
+                  : { before: { contentText: _pt9 + ' ', color: '#e0803a', fontWeight: '800' } } });
             }
             continue;
           }
@@ -11058,12 +11061,19 @@ function meosApplyTimerLineDecorations(editor) {
           //     ([[project_raw_line_is_not_for_decoration]])。数字だけは俊克thatが認めた例外(v4.1.1103)so、
           //     頭に置いたまま、字は字で見せる。
           const _bg2 = meosClockBadgeRowForLine(doc, i);
-          let _fl = i, _at1 = (_at2 > 0) ? (_at2 - 1) : _at2, _fat2 = _at2;
+          let _fl = i, _at1 = (_at2 > 0) ? (_at2 - 1) : _at2, _fat2 = _at2, _rndAfter = false;
           if (_bg2 >= 0) {
             let _blen = 0; try { _blen = doc.lineAt(_bg2).text.length; } catch (_) { }
             _fl = _bg2;
             _at1 = 0;                                    // 顔は**行頭**
-            _fat2 = Math.min(1, _blen);                  // 周回数はその1つ隣(同じ所に2つ置かない= v4.1.139)
+            // ★★★v4.1.150(俊克 9/6 am00:25 改良1「\u00d70/12 も残り時間などの右に見せかけで出すように」
+            //   = v4.1.148で列1に置いた \u00d7N thatが**一度も出ていなかった**):
+            //   ★★★**隠した範囲の内側に置いた物は、一緒に畳まれる**= 幅0にしているのは字so、
+            //     その字の**間**へ差し込んだ物も幅0になる。列0の顔thatが生きていたのは、
+            //     そこthatが隠した範囲の**外側(手前)**だから。
+            //   ★★→ 周回数は**行末(隠した範囲の向こう側)**へ `after` で置く= 顔(列0の before)と
+            //     鏡写しso、描く順も決まる(同じ所に2つ置かない= v4.1.139)。
+            _fat2 = _blen; _rndAfter = true;
             try { if (_blen && !meosShowsRawLine(editor, _bg2)) badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen)); } catch (_) { }
           }
           items.push({
@@ -11082,7 +11092,9 @@ function meosApplyTimerLineDecorations(editor) {
             // ★v4.1.142(俊克 9/5 pm06:46 改良1「オレンジ一色に近い中、重要な回数that同じオレンジ色では
             //   目立たない」): ★橙は**地の色**so、その上に置く物には使えない。緑と水色は顔that持っている
             //   so、周回数は**地でも顔でもない白**= 3つthat互いに違う。
-            renderOptions: { before: { contentText: _rnd + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } } });
+            renderOptions: _rndAfter
+              ? { after: { contentText: '  ' + _rnd, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
+              : { before: { contentText: _rnd + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } } });
         }
       }
     } catch (_) { }

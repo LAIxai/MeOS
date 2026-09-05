@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.150 (2026-09-06)
+- **`×0/12` shows up next to the figures.** It had been anchored one column in from the head — inside the collapsed badge text — and was collapsed along with it. Injected content survives at the edges of a hidden run, not inside it, which is why the figures at column 0 came through and the round count did not. The count now sits at the far end of the row, mirroring the figures, so the draw order stays fixed.
+
 ### v4.1.149 (2026-09-06)
 - **The clock row shows the appointment, not the envelope.** `<!-- Mew!UFC` and ` -->` are MeOS addressing itself, not something to read, so they are collapsed away and the row reads `⏰🔒 2026-09-05(s) 20:05 ↺↻3m/1m` from column 0. Together with the badge row above it, both rows now start at the head and neither can be cut off by a narrow window.
 - **Put the caret in the row and the raw line comes back, whole** — nothing is hidden on a row you are editing. The collapse is zero-width, not `display:none`, so every character keeps its place in the line: the colours, the weekday, the white running element and the figures all still land on the same columns.

@@ -236,13 +236,14 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   /* ★★v4.1.141: 時計はコメントの中に立つ(v4.1.20)。顔は `-->` の1つ手前、周回数は `-->` の直前。 */
   ok(/rounds\.push\(\{ range: new vscode\.Range\(_fl, _fat2, _fl, _fat2\)/.test(S8) && /color: '#e0803a'/.test(S8),
      '\u2605\u2605\u00d7N は別の駒・別の色で、コメントの**中**に立つ', true);
-  ok(/let _fl = i, _at1 = \(_at2 > 0\) \? \(_at2 - 1\) : _at2, _fat2 = _at2;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
+  ok(/let _fl = i, _at1 = \(_at2 > 0\) \? \(_at2 - 1\) : _at2, _fat2 = _at2, _rndAfter = false;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
      '\u2605\u2605\u2605場所を1つずらして順番を決める(同じ所に2つ置かない)', true);
   /* \u2605\u2605\u2605v4.1.147: 数字はすぐ上のバッジ行へ出す(生データは1文字も動かさない= UFC1行のコピペthat時計になる)。 */
   /* ★★★v4.1.148(俊克 9/6 am00:07「**行頭からタイマ数値that見えることthat目的**だよ」):
      右端では窓を狭めた瞬間に切れる= 幅に負けないためには行頭でなければ意味thatない。 */
-  ok(/const _bg2 = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /_at1 = 0;\s+\/\/ 顔は\*\*行頭\*\*/.test(S8),
-     '\u2605\u2605\u2605動く数字はバッジ行の**行頭**へ(幅に負けない)', true);
+  ok(/const _bg2 = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /_at1 = 0;\s+\/\/ 顔は\*\*行頭\*\*/.test(S8)
+     && /_fat2 = _blen; _rndAfter = true;/.test(S8) && /renderOptions: _rndAfter/.test(S8),
+     '\u2605\u2605\u2605動く数字はバッジ行の**行頭**へ／\u00d7N は行末の外側(隠した範囲の内側に置くと一緒に畳まれる)', true);
   ok(/badgeHide\.push\(new vscode\.Range\(_bg2, 0, _bg2, _blen\)\)/.test(S8) && /opacity: 0; font-size: 0;/.test(S8),
      '\u2605\u2605バッジ行は**中身を消して場所だけ借りる**(数字thatが行頭に立つ)', true);
   ok(/!meosShowsRawLine\(editor, _bg2\)/.test(S8),
