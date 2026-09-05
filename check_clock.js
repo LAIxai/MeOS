@@ -122,6 +122,27 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1114(俊克 9/5 am10:54 バグ2「1mに切り替わったあと、2.00から始まってしまう」
+//   改良1「⏸が表示する部分に✓を書き込むと、それを⏸に書き直してくれる」):
+console.log('\u2474 今の回の長さ / 顔の \u2713 は休み');
+{
+  const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const A2=S2.slice(S2.indexOf('function meosArmClockFcFor'), S2.indexOf('function meosArmClockFcFor')+10000);
+  ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\); _s\.cyc/.test(A2),
+     '\u2605\u2605\u2605並びの先頭を入れ続けない(1mの回でstep=3mなら 3-1=2.00 から始まる)', true);
+  ok(/meosCycleSeriesNext\(_b\.getTime\(\), c\.cycle, _u - 1\)/.test(A2),
+     '\u2605\u2605until で終わる回を訊いて、今の長さと番号を控える', true);
+  /* 顔の \u2713 = 休み */
+  const P2=(t)=>X.meosClockFcParse(t);
+  const a2=P2('<!-- Mew!UFC \u23f0\u2713 2026-09-05 10:16 \u21bb3m/1m -->');
+  ok(a2 && a2.off===true && a2.done===false && a2.when==='2026-09-05 10:16',
+     '\u2605\u2605\u2605顔の \u2713 は「休み」(時刻はそのまま読める)', a2 && [a2.off, a2.done, a2.when]);
+  const b2=P2('<!-- Mew!FC \u23f0 2026-09-05 10:16 \u21bb3m/1m\u2713 -->');
+  ok(b2 && b2.done===true && b2.off===false, '\u2605末尾の \u2713 は今までどおり「済み」', b2 && [b2.off, b2.done]);
+  const c2=P2('<!-- Mew!UFC \u23f0\u23f8 2026-09-05 10:16 -->');
+  ok(c2 && c2.off===true, '\u2605\u23f8 も今までどおり休み', c2 && c2.off);
+}
+
 // ★★v4.1.1111(俊克 9/5 改良1「↻3m/1m のようなケースで、3m側が動作している時は、3mを白色にしよう」):
 console.log('\u2473 並びのどれが今なのかを、並びそのものが言う');
 {
@@ -584,7 +605,8 @@ console.log('\u325c Stop=\u4e00\u6642\u505c\u6b62 / \u4f11\u307f\u306f\u4e88\u5b
  ok(/return await meosClockSetEnabled\(r\.uri, r\.key, true\)/.test(S), '\u2605\u2605\u2605Undo \u306f \u2611 \u306b\u623b\u3059\u3060\u3051(\u904e\u304e\u3066\u3044\u308c\u3070\u6b21\u306e\u56de\u3078= \u518d\u8a08\u7b97)', true);
  ok(!/await meosEndPseudoTimer\(best\.k\)/.test(S), '\u2605\u2605Stop \u304b\u3089\u300c\u7d42\u308f\u3089\u305b\u308b\u9053\u300d\u304c\u6d88\u3048\u3066\u3044\u308b(\u8f2a\u3092\u56de\u3055\u306a\u3044)', true);
  ok(/const _paused = sc \? await meosClockSetEnabled/.test(S), '  \ud83d\udd12 \u306a\u3089\u4f11\u307e\u305b\u306a\u3044(\u4e00\u89a7\u306e \u2610 \u3068\u540c\u3058\u8fd4\u4e8b)', true);
- ok(/const _cut = \[\];/.test(S)&&/if \(_cc\.cycle && _cc\.cycle\.length\) \{ const a = meosClockArrowAt/.test(S),
+ /* \u2605v4.1.1114: 抜く物は[始まり,終わり]の対(`3m`のような広い桁も抜ける)。 */
+ ok(/const _cut = \[\];/.test(S)&&/_cut\.push\(\[a, a \+ 1\]\)/.test(S)&&/_cut\.push\(_sp\)/.test(S),
     '\u2605\u2605\u2605\u6a59\u306e\u7bc4\u56f2\u304b\u3089 \u2713/\u23f8/\u8f2a\u306e\u5370 \u3092\u629c\u304f(v4.1.19\u306e\u300c\u5916\u5074\u3092\u5272\u308b\u300d)', true);
  ok(/clocks: meosClockList\(12\)/.test(S), '  \u4e00\u89a7\u306e\u7a93\u3092\u5e83\u3052\u308b(CSS \u304c\u9ad8\u3055\u3092\u6b62\u3081\u3066\u5dfb\u304f)', true);
  // 休んでいる物は、鳴り終わった物より先に出る(押し出されない)

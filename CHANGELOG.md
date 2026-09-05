@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1114 (2026-09-05)
+- **The turn's own length** — with `↻3m/1m`, the first entry of the series was written into the state every pass, so on the 1-minute turn the length was still 3 minutes and the elapsed figure started at 2.00. It now asks which turn ends at the time it is waiting for, and keeps that length and that position.
+- **White survives inside the membrane** — the orange row paints with `!important`, so a colour laid on top only wins by creation order. The running part is cut out of the orange range instead, the way ✓ and ⏸ already were; the cut now takes a span, not a single character.
+- **A ✓ where ⏸ belongs means paused** — the list's ☑ means running and the trailing ✓ means finished, which are opposite senses of one tick. Position decides: a ✓ in the face reads as paused and is rewritten to ⏸. Anyone who can type ⏸ still can.
+
 ### v4.1.1113 (2026-09-05)
 - **v4.1.1111 had never run once** — it read `owner` above the line that declares it, so every pass threw a ReferenceError straight into the try/catch wrapped around it: nothing drawn, nothing said. The code now sits where `owner` exists and where the line is already known to be the running one. A check watches the order, because a swallowed error looks exactly like working code.
 

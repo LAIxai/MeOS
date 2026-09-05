@@ -9775,7 +9775,12 @@ function meosScheduleClockMetaWrite(doc) {
 //   ★この版は**読む側だけ**。書く側(Setボタン)は今までどおり mMETA so、二重に書く道は作らない。
 // v4.1.64: 錠は \ud83d\udd10(\u9375\u4ed8\u304d)\u3092\u66f8\u304f= Encrypt Me \u3068\u540c\u3058\u5b57\u3002\u65e7\u3044 \ud83d\udd12 \u3082\u8aad\u307f\u7d9a\u3051\u308b\u3057\u3001
 //   \u624b\u3067\u66f8\u304b\u308c\u305f \ud83d\udd13(\u958b\u9320)\u3082\u9ed9\u3063\u3066\u53d7\u3051\u308b(\u610f\u5473\u306f\u300c\u639b\u3051\u3066\u3044\u306a\u3044\u300d= \u7121\u5370\u3068\u540c\u3058)\u3002
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u23f8\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
+// ★★v4.1.1114(俊克 9/5 am10:54 改良1「✓は、⏰リストの✓と意味that反対で矛盾するので…
+//   **⏸that表示する部分に✓を書き込むと、それを⏸に書き直してくれる**ようにする」):
+//   ★★**⏰リストの ☑ は「動いている」、本文末尾の ✓ は「済み」**so、意味that逆さまだった。
+//     俊克の答えは**位置で決める**= 顔(⏰の直後)に書いた ✓ は「休み」＝ ⏸ と読み、⏸ へ書き直す。
+//     打ちにくい ⏸ を打てる人はそのまま打てばよく、✓ でも通る= **読める形は増やし、書く形は絞る**。
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u23f8\u2713\u2714\u2705\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
 // \u23f8=休み(予定は書いたまま、鳴らないでいる)
 // ★★★v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを
@@ -9831,7 +9836,7 @@ function meosClockFcParse(text) {
   const tags = [];
   body = body.replace(/(^|\s)#([^\s#<>]+)/g, (mm, sp, tg) => { tags.push(tg); return sp ? ' ' : ''; }).trim();
   const face = String(m[1] || '');
-  return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: face.indexOf('\u23f8') >= 0, done, when: body, cycle, up, tags, ufc: meosIsUnfoldingSpecLine(t) };
+  return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, tags, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10141,7 +10146,24 @@ function meosArmClockFcFor(doc) {
           const _s = _sc0;
           if (_s) {
             _s.up = !!c.up;                                 // v4.1.1110: 向きは周期と別(v4.1.1109の取り残し)
-            if (Array.isArray(c.cycle) && c.cycle.length) { _s.step = meosCycleMs(c.cycle[0]); _s.cyc = (c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/'); }
+            // ★★★v4.1.1114(俊克 9/5 am10:54 バグ2「1mに切り替わったあと、なぜか2.00から始まってしまう。
+            //   ここは0.00〜1.00を表示しなければならない」):
+            //   ★★★**並びの先頭を入れ続けていた**= `c.cycle[0]` は常に 3m so、1mの回でも step=3分。
+            //     経過は `step − 残り` で出すので、1mの回の始めは 3−1=**2.00** から始まっていた
+            //     ＝ 俊克の見た数字そのもの。until(鳴る時刻)だけthat次の回へ進み、**長さthatが前の回のまま**。
+            //   ★★→ **今の回を数え直して控える**= until で終わる回を `meosCycleSeriesNext` に訊く。
+            //     v4.1.67の「控えを新しくしても鳴る時刻は触らない」はそのまま(untilは読むだけ)。
+            //   ★同じ所で `cidx`(今は並びの何番目か)も新しくなる= 白くする桁と、数字thatが1つの答えから出る。
+            if (Array.isArray(c.cycle) && c.cycle.length) {
+              _s.cyc = (c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/');
+              let _ok = false;
+              try {
+                const _u = _meosPseudoUntil.get(lk), _b = meosParseStampLoose(c.when);
+                const _nx2 = (_u && _b) ? meosCycleSeriesNext(_b.getTime(), c.cycle, _u - 1) : null;
+                if (_nx2) { _s.step = _nx2.step; _s.cidx = _nx2.idx || 0; _ok = true; }
+              } catch (_) { }
+              if (!_ok) _s.step = meosCycleMs(c.cycle[0]);           // 読めない時だけ、今までどおり先頭
+            }
             _s.name = c.name || _s.name;
             _s.tags = c.tags || [];                                 // v4.1.70: 札も本文to一緒に新しくする
           }
@@ -10166,6 +10188,8 @@ function meosArmClockFcFor(doc) {
       // ★★★v4.1.24: \u23f8(休み)は**仕掛けない**。ただし一覧には出す= 休んでいる物が見えないと、戻せない。
       //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
       if (c.off) {
+        // v4.1.1114: 顔に ✓ で書かれていたら ⏸ へ書き直す= 意味は変えず、字だけ揃える(名前は状態の写し)。
+        try { if (MEOS_CLOCK_DONE_MARK_RE.test(String(meosClockFaceOf(doc.lineAt(c.line).text) || ''))) meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, tags: c.tags, done: false, off: true }); } catch (_) { }
         const _w = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
@@ -10609,6 +10633,28 @@ function meosCycleElemSpan(txt, arrowAt, idx) {
     const raw = parts[idx], lead = raw.length - raw.replace(/^\s+/, '').length;
     return [at + lead, at + raw.replace(/\s+$/, '').length];
   } catch (_) { return null; }
+}
+// v4.1.1114: その⏰行の持ち主(膜)の、掛かっている控えを引く。無ければ null。
+//   ★描く側(meosApplyTimerLineDecorations)と、橙を割る側(meosApplyFcRowDecorations)thatが
+//     **同じ答え**を見るための口= 2か所で数え直さない。
+function meosClockOwnerScopeAt(doc, line) {
+  try {
+    const uri = doc.uri.toString();
+    let best = null;
+    for (const p of collectPairs(doc, { excludeIndex: false })) {
+      if (p.start <= line && line <= meosBlockEndForCarry(doc, p) && (!best || (p.end - p.start) < (best.end - best.start))) best = p;
+    }
+    if (!best) return null;
+    const sc = _meosPseudoScopes.get(uri + ' ' + best.id);
+    if (!sc || !sc.when) return null;
+    const c = meosClockFcParse(doc.lineAt(line).text || '');
+    if (!c || String(c.when) !== String(sc.when)) return null;      // 掛かっている1本だけ
+    return sc;
+  } catch (_) { return null; }
+}
+// v4.1.1114: ⏰行の「顔」(⏰の直後の印の並び)だけを返す。無ければ ''。
+function meosClockFaceOf(text) {
+  try { const m = MEOS_CLOCK_FC_RE.exec(String(text == null ? '' : text)); return m ? String(m[1] || '') : ''; } catch (_) { return ''; }
 }
 function meosClockArrowAt(txt) {
   const a = txt.lastIndexOf('\u21ba'), b = txt.lastIndexOf('\u21bb');
@@ -29612,14 +29658,25 @@ function meosApplyFcRowDecorations(editor) {
           //     ★**v4.1.19 で自分that書いた「外側を割る」を、次の版で忘れていた**。
           const _cc = (txt.indexOf('\u23f0') >= 0) ? (meosClockFcParse(txt) || {}) : {};
           // v4.1.66: 抜く所that2つ以上に増えた(\u2713 / \u23f8 / 輪の印)so、**位置の並びで割る**。
+          // ★★★v4.1.1114(俊克 9/5 am10:54 バグ1「膜の中に入ると、『3m』that白色になっていない」):
+          //   ★★★**膜の中では橙thatが `!important` で塗るので、白は乗らない**= v4.1.19/4.1.61で2度踏んだ形。
+          //     答えは同じ= **外側を割る**。ただし ✓/⏸/矢印は1文字so点で割れたthat、`3m` は**桁が広い**。
+          //   ★★→ 抜く物を**[始まり, 終わり]の対**にする(1文字の物は [a, a+1] と書けば同じ道を通る)。
           const _cut = [];
-          if (_cc.done) { const a = txt.search(MEOS_CLOCK_DONE_MARK_RE); if (a >= 0) _cut.push(a); }
-          if (_cc.off) { const a = txt.indexOf('\u23f8'); if (a >= 0) _cut.push(a); }
-          if (_cc.cycle && _cc.cycle.length) { const a = meosClockArrowAt(txt); if (a >= 0) _cut.push(a); }
-          const _in = _cut.filter(a => a >= r.start.character && a < r.end.character).sort((x, y) => x - y);
+          if (_cc.done) { const a = txt.search(MEOS_CLOCK_DONE_MARK_RE); if (a >= 0) _cut.push([a, a + 1]); }
+          if (_cc.off) { const a = txt.indexOf('\u23f8'); if (a >= 0) _cut.push([a, a + 1]); }
+          if (_cc.cycle && _cc.cycle.length) {
+            const a = meosClockArrowAt(txt); if (a >= 0) _cut.push([a, a + 1]);
+            // 今その回を走っている桁も抜く= 白thatそのまま置ける(描く側と、抜く側thatが同じ答えから引く)。
+            try {
+              const _own = meosClockOwnerScopeAt(doc2, ln);
+              if (a >= 0 && _own) { const _sp = meosCycleElemSpan(txt, a, _own.cidx || 0); if (_sp) _cut.push(_sp); }
+            } catch (_) { }
+          }
+          const _in = _cut.filter(a => a[0] >= r.start.character && a[0] < r.end.character).sort((x, y) => x[0] - y[0]);
           if (_in.length) {
             let at = r.start.character;
-            for (const p of _in) { if (p > at) carved.push(new vscode.Range(ln, at, ln, p)); at = p + 1; }
+            for (const p of _in) { if (p[0] > at) carved.push(new vscode.Range(ln, at, ln, p[0])); at = Math.max(at, p[1]); }
             if (at < r.end.character) carved.push(new vscode.Range(ln, at, ln, r.end.character));
             ok = true;
           }
