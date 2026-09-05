@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -121,6 +121,24 @@ ok(X.foldRangeEnd(d4,pr4,true)===3, '\u2605\u2605\u2605カーソルが中= 畳�
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d4,pr4,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(塊の頭は膜の外)', X.meosFcFoldShape(d4,1).map(it=>[it.head,it.end,it.hasRange]));
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
+
+// ★★v4.1.1111(俊克 9/5 改良1「↻3m/1m のようなケースで、3m側が動作している時は、3mを白色にしよう」):
+console.log('\u2473 並びのどれが今なのかを、並びそのものが言う');
+{
+  const T='<!-- Mew!UFC \u23f0 2026-09-05 09:15 \u21bb3m/1m -->';
+  const a=X.meosClockArrowAt(T);
+  const s0=X.meosCycleElemSpan(T,a,0), s1=X.meosCycleElemSpan(T,a,1);
+  ok(T.slice(s0[0],s0[1])==='3m', '\u2605\u26050番目は 3m', T.slice(s0[0],s0[1]));
+  ok(T.slice(s1[0],s1[1])==='1m', '\u2605\u26051番目は 1m', T.slice(s1[0],s1[1]));
+  ok(X.meosCycleElemSpan(T,a,2)===null, '\u2605無い番号は null(描かない)', X.meosCycleElemSpan(T,a,2));
+  const base=new Date(2026,8,5,9,15).getTime();
+  const n0=X.meosCycleSeriesNext(base,['3m','1m'],base+1000);
+  const n1=X.meosCycleSeriesNext(base,['3m','1m'],base+3.5*60000);   /* 3分〜4分の間= 1m の回の中 */
+  const n2=X.meosCycleSeriesNext(base,['3m','1m'],base+4*60000);     /* ちょうど4分= 2周目の 3m に入った所 */
+  ok(n0.idx===0, '\u2605\u2605\u2605起点直後は 3m を走っている', n0.idx);
+  ok(n1.idx===1, '\u2605\u2605\u26053.5分後は 1m を走っている', n1.idx);
+  ok(n2.idx===0, '\u2605\u2605一周したら 3m へ戻る(並びthat状態を持つ)', n2.idx);
+}
 
 // ★★★v4.1.1110(俊克 9/5 am08:49「直下のUFCタイマーのみを動かす」):
 //   同じ膜に⏰が2本在る時、動くのは直下(一番上)の生きた1本だけ。

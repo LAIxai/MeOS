@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1111 (2026-09-05)
+- **The series says which turn it is on** — with `↻3m/1m`, the part being counted right now is drawn in the editor's own foreground colour, so the pair itself shows where you are. Nothing is added to the line; the mark sits on the thing it describes.
+- **The figure is no longer orange** — inside a membrane the whole line turns orange, and the countdown disappeared into it. It now takes the editor foreground, so what is running stands out from what is written.
+
 ### v4.1.1110 (2026-09-05)
 - **Only the clock directly under the membrane runs** — two ⏰ lines on one membrane were fighting over one timer: the state is keyed by file and membrane, so both showed the same figure, the later one armed, and the ✓ landed on the first line instead. The clock nearest the membrane is the one that runs; the ones below it are bookings, and a booking has no figure, arms nothing, and can be edited without waking anything. A finished clock gives up its place, so when a one-shot is done the next line simply becomes the one that runs — no reordering, nothing remembered.
 

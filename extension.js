@@ -10010,12 +10010,13 @@ function meosCycleSeriesNext(origin, cycle, from) {
   if (!len || !isFinite(origin)) return null;
   const round = steps.reduce((a, b) => a + b, 0);
   let t = origin, i = 0, last = steps[0];
-  if (t > from) return { at: t, step: last };
+  // v4.1.1111: **並びの何番目を走っているか**も返す(俊克 改良1= 動いている側を白くする)。
+  if (t > from) return { at: t, step: last, idx: 0 };
   const k = Math.floor((from - t) / round);
   if (k > 0) t += k * round;                       // 1周ぶんずつ飛ばす(並びの位置は変わらない)
-  let guard = 0;
-  while (t <= from && guard++ < len * 3 + 4) { last = steps[i % len]; t += last; i++; }
-  return { at: t, step: last };
+  let guard = 0, hit = 0;
+  while (t <= from && guard++ < len * 3 + 4) { hit = i % len; last = steps[hit]; t += last; i++; }
+  return { at: t, step: last, idx: hit };
 }
 function meosClockFcStamp(at) {
   const d = (at instanceof Date) ? at : new Date(Number(at) || Date.now());
@@ -10158,13 +10159,13 @@ function meosArmClockFcFor(doc) {
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
       }
-      let w = meosParseWhen(c.when), _step = 0;
+      let w = meosParseWhen(c.when), _step = 0, _cidx = 0;
       if (Array.isArray(c.cycle) && c.cycle.length) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
         // ★v4.1.63: **数えるだけ**= 本文(起点)には触らない。いつ始めたのかthatそこに残る。
         const _b = meosParseStampLoose(c.when) || (w && w.at) || null;
         const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, Date.now()) : null;
-        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; }
+        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; }   // v4.1.1111
       }
       if (!w) {
         // ★★★v4.1.25(俊克 バグ1「☐をクリックすると…⏰リストから消えてしまう」):
@@ -10183,7 +10184,7 @@ function meosArmClockFcFor(doc) {
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
-        step: _step };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている
+        step: _step, cidx: _cidx };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている / v4.1.1111: 今の回は並びの何番目か
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
@@ -10580,8 +10581,24 @@ let meosClockPauseOutDeco = null;   // v4.1.67: ⏸ は場所で色を変えな�
 //     v4.1.65の私は面だけ塗って、肝心の所を塗っていなかった。
 //   ★塗り方は ✓ / \u23f8 と同じ= **橙の範囲から抜いてから置く**(v4.1.19「外側を割る」)。
 let meosClockDirDownDeco = null, meosClockDirUpDeco = null;
+let meosClockCycNowDeco = null;   // v4.1.1111: 今その回を走っている側(3m/1m の片方)
 const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd';   // \u21ba=緑 / \u21bb=水色
 // 行の中の輪の印(\u21ba/\u21bb)の位置。無ければ -1。橙を割る側と、色を置く側that同じ1つから引く。
+// v4.1.1111: 矢印の後ろの並び(`3m/1m`)の、idx番目の桁を返す。無ければ null。
+//   ★数える所は1つ= 読む正規表現と同じ形を見る(写経しない)。
+function meosCycleElemSpan(txt, arrowAt, idx) {
+  try {
+    const m = /^\s*([0-9]+\s*[smhdwySMHDWY]?(?:\s*\/\s*[0-9]+\s*[smhdwySMHDWY]?)*)/.exec(String(txt).slice(arrowAt + 1));
+    if (!m) return null;
+    const base = arrowAt + 1 + m.index + (m[0].length - m[1].length);   // 先頭の空白を飛ばす
+    const parts = m[1].split('/');
+    if (!(idx >= 0) || idx >= parts.length) return null;
+    let at = base;
+    for (let k = 0; k < idx; k++) at += parts[k].length + 1;            // +1 = `/`
+    const raw = parts[idx], lead = raw.length - raw.replace(/^\s+/, '').length;
+    return [at + lead, at + raw.replace(/\s+$/, '').length];
+  } catch (_) { return null; }
+}
 function meosClockArrowAt(txt) {
   const a = txt.lastIndexOf('\u21ba'), b = txt.lastIndexOf('\u21bb');
   return Math.max(a, b);
@@ -10596,7 +10613,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [];
+    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [];
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
     for (const [k, until] of _meosPseudoUntil) {
@@ -10644,6 +10661,18 @@ function meosApplyTimerLineDecorations(editor) {
           if (Array.isArray(c.cycle) && c.cycle.length) {
             const _ar = meosClockArrowAt(txt);
             if (_ar >= 0) (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
+            // ★★v4.1.1111(俊克 改良1「↻3m/1m のようなケースで、**3m側that動作している時は、3mを白色に**しよう」):
+            //   ★★**並びのどれthat今なのかを、並びそのものthat言う**= 数字を足さずに、走っている側を白くするだけ。
+            //     ⏰の繰返しは「並びthat状態を持つ」(v4.1.57)ので、その状態を**その場に**出す
+            //     ([[feedback_fix_signal_at_fix_place]] 知らせるUIを別に作らない)。
+            //   ★出すのは**掛かっている1本の、今の回**だけ(待機中の行や、済んだ行には出さない)。
+            try {
+              const _sc8 = scById.get(owner ? owner.id : '');
+              if (_ar >= 0 && _sc8 && _sc8.when && String(c.when) === String(_sc8.when)) {
+                const _sp = meosCycleElemSpan(txt, _ar, _sc8.cidx || 0);
+                if (_sp) cycNow.push(new vscode.Range(i, _sp[0], i, _sp[1]));
+              }
+            } catch (_) { }
           }
           // ★v4.1.77: 日付の右に曜日を**描く**= 本文には1文字も増やさない(出す物と、覚える物を分ける)。
           try {
@@ -10708,7 +10737,10 @@ function meosApplyTimerLineDecorations(editor) {
           items.push({
             range: new vscode.Range(i, _at2, i, _at2),
             // v4.1.60: ここだけは\u21bbを添えない= **同じ行に `\u21bb15` が書いてある**so、向きはもう目に入っている。
-            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceMs(until, scById.get(owner ? owner.id : ''))) + ' ', color: '#e0803a', fontWeight: '800' } }
+            // ★v4.1.1111(俊克 改良2「残タイマー値も橙色は止めて白色にしようよ。**膜の中に入った時に、
+            //   他も橙色になるので、今までは目立たなかった**」): ★行ぜんぶthat橙に染まる場面thatあるので、
+            //   **数字だけthat地の色と違う**ようにする= 動いている物thatひと目で分かる。
+            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceMs(until, scById.get(owner ? owner.id : ''))) + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
           });
         }
       }
@@ -10729,11 +10761,15 @@ function meosApplyTimerLineDecorations(editor) {
       textDecoration: 'none; color: ' + MEOS_CLOCK_DIR_UP + ' !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (pausesOut.length && !meosClockPauseOutDeco) meosClockPauseOutDeco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; color: #ff4d4d !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    // v4.1.1111: 走っている側は**地の色と違う**だけでよい(色を1つ増やさない= editor.foreground を借りる)。
+    if (cycNow.length && !meosClockCycNowDeco) meosClockCycNowDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: var(--vscode-editor-foreground) !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosTimerLineDeco, items);
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
     if (meosClockDirUpDeco) editor.setDecorations(meosClockDirUpDeco, dirUp);
+    if (meosClockCycNowDeco) editor.setDecorations(meosClockCycNowDeco, cycNow);
   } catch (_) { }
 }
 function meosTickTimerLines() {
