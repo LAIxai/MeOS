@@ -122,6 +122,24 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.142(俊克 9/5 pm06:46 改良1「回数が同じオレンジ色では目立たない」改良2「常に同時起動にして
+//   『□ Repeat ↺↻』の1つボタンに。史上初のデフォルトで同時表示タイマーってね」
+//   改良3「Set⏰は右端。未設定では押せなくして、何かを設定したら押せるように」):
+console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
+{
+  const S11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(!/id="clk-dir"/.test(S11), '\u2605\u2605\u2605向きの駒は面から消えた(選ばせない)', true);
+  ok(/dual:true,cycle:/.test(S11), '\u2605\u2605\u2605面は常に \u21ba\u21bb を頼む', true);
+  ok(/dual: _dl0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
+  ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
+  ok(/pointer-events:none/.test(S11) && /\.clk-set\.on\{/.test(S11),
+     '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
+  ok(/function clkTouch\(\)/.test(S11) && /clkDirty=false;clkPaintSet\(\)/.test(S11),
+     '\u2605\u2605開いた時は未設定から始まる', true);
+  ok(/color: new vscode\.ThemeColor\('editor\.foreground'\), fontWeight: '800' \} \} \}\);/.test(S11),
+     '\u2605\u2605周回数は地(橙)でも顔(緑/水色)でもない色', true);
+}
+
 // ★★★v4.1.138(俊克 9/5 pm05:27「SW/CD同時記法を `↺↻3m/1m` にしようよ。こうすれば、
 //   さっきの私の入力ミスは起きない」): 1行にすれば、2本がずれる余地が消える。
 console.log('\u247d ↺↻ = 1行に顔が2つ');
@@ -701,9 +719,9 @@ console.log('\u3257 掛け直しても \u21bb thatが消えない');
  ok(M('01')===60000&&M('1')===60000, '  \u21bb01 も \u21bb1 も 1分(パーサは元から正しい)', [M('01'),M('1')]);
  ok((P('<!-- Mew!UFC \u23f0 2026-08-31 19:00 \u21bb01 -->')||{}).cycle[0]==='01', '  行からも 01 と読める', true);
  const SRC10=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false, _tg0 = null;');
+ const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false, _tg0 = null, _dl0 = false;');
  const _set=SRC10.slice(_i0, _i0+1200);
- ok(/cycle: _cy0, up: _up0/.test(_set), '\u2605\u2605\u2605Set thatが書く時に繰返しと向きを渡している', true);
+ ok(/cycle: _cy0, up: _up0, dual: _dl0/.test(_set), '\u2605\u2605\u2605Set thatが書く時に繰返しと向きを渡している', true);
  ok(/meosClockFcScan\(scope\.doc\)/.test(_set), '  在れば本文から読んで持ち越す', true);
  ok(/if \(opts && opts\.hasCycle\)/.test(_set), '  箱に書いた時だけ触る(空なら今の指定that残る)', true);
  ok(!/meosClockFcSet\(scope\.doc, scope\.key, \{ when: meosClockFcStamp\(_at\), hold, lock \}\)/.test(SRC10),
@@ -871,7 +889,8 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
 console.log('\u325f Repeat\u306e\u2610 / \u5411\u304d\u306e\u8272 / \u9320\u306e\u660e\u6697 / \u9320\u306e\u5916\u3057\u65b9');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/id="clk-rep"/.test(S)&&/clkBox\(b,clkRep,'Repeat'\)/.test(S),
+ /* ★★★v4.1.142(俊克 改良2「常に同時起動にして『□ Repeat ↺↻』の1つボタンに」): 向きの駒は外した。 */
+ ok(/id="clk-rep"/.test(S)&&/clkBox\(b,clkRep,'Repeat \\u21ba\\u21bb'\)/.test(S),
     '\u2605\u2605\u2605\u2610 Repeat that**\u7e70\u8fd4\u3057\u7121\u3057**\u306e\u59ff(\u5916\u3059\u53e3\u304c\u9762\u306b\u51fa\u305f)', true);
  ok(/cycle: _rep \? meosParseCycleInput\(message\.cycle\) : \[\]/.test(S)&&/hasCycle: true/.test(S),
     '\u2605\u2605\u2610 \u306e\u307e\u307e Set \u3059\u308c\u3070**\u7e70\u8fd4\u3057\u304c\u5916\u308c\u308b**(\u7a7a\u6b04=\u89e6\u3089\u306a\u3044\u3001\u306f\u7121\u304f\u306a\u3063\u305f)', true);
