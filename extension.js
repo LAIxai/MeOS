@@ -10788,7 +10788,10 @@ let meosClockPauseOutDeco = null;   // v4.1.67: ⏸ は場所で色を変えな�
 //   ★塗り方は ✓ / \u23f8 と同じ= **橙の範囲から抜いてから置く**(v4.1.19「外側を割る」)。
 let meosClockDirDownDeco = null, meosClockDirUpDeco = null;
 let meosClockCycNowDeco = null;   // v4.1.1111: 今その回を走っている側(3m/1m の片方)
-let meosClockRoundDeco = null;    // v4.1.140: 何周目か(顔とは別の役so、別の駒)
+let meosClockRoundDeco = null;
+// v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
+//   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
+let meosClockBadgeHideDeco = null;    // v4.1.140: 何周目か(顔とは別の役so、別の駒)
 const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd';   // \u21ba=緑 / \u21bb=水色
 // 行の中の輪の印(\u21ba/\u21bb)の位置。無ければ -1。橙を割る側と、色を置く側that同じ1つから引く。
 // v4.1.1111: 矢印の後ろの並び(`3m/1m`)の、idx番目の桁を返す。無ければ null。
@@ -10842,7 +10845,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [];
+    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [];   // v4.1.148
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -10956,7 +10959,11 @@ function meosApplyTimerLineDecorations(editor) {
             if (c.pausedRound > 0) {
               const _bg3 = meosClockBadgeRowForLine(doc, i);
               let _pl = i, _pat = (txt.lastIndexOf('-->') > 0) ? txt.lastIndexOf('-->') : txt.length;
-              if (_bg3 >= 0) { try { const _b3 = doc.lineAt(_bg3).text; const _c3 = _b3.lastIndexOf('-->'); _pl = _bg3; _pat = (_c3 > 0) ? _c3 : _b3.length; } catch (_) { } }
+              if (_bg3 >= 0) {                            // v4.1.148: 休んでいる時も**行頭**(場所thatが飛ばない)
+                let _l3 = 0; try { _l3 = doc.lineAt(_bg3).text.length; } catch (_) { }
+                _pl = _bg3; _pat = 0;
+                try { if (_l3 && !meosShowsRawLine(editor, _bg3)) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3)); } catch (_) { }
+              }
               rounds.push({ range: new vscode.Range(_pl, _pat, _pl, _pat),
                 renderOptions: { before: { contentText: '\u00d7' + c.pausedRound + (c.rounds > 0 ? ('/' + c.rounds) : '') + ' ', color: '#e0803a', fontWeight: '800' } } });
             }
@@ -11019,10 +11026,23 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★★**動く数字は、すぐ上のバッジ行の右端へ出す**= 書いた物(いつ・どう回るか)は⏰行に据え置き。
           //     so生データは1文字も動かず、**UFC1行のコピペがthatそのまま時計になる**(⏰の一番の値打ち)。
           //   ★出し先that無い(バッジ行の無い膜)時は、今までどおり⏰行の中へ。
+          // ★★★v4.1.148(俊克 9/6 am00:07「**行頭からタイマ数値that見えることthat目的**だよ」):
+          //   ★★★**右端では、窓を狭めた瞬間に切れる**= 幅に負けないためには行頭でなければ意味thatない。
+          //     v4.1.147は「バッジ行の右端」に置いたのでthat、幅の問題を解いていなかった。
+          //   ★★→ バッジ行は**中身を消して場所だけ借りる**= 数字thatその行の頭に立つ。
+          //     バッジは畳まれている時と同じく見えない(元々畳まれる行so、失う物thatが無い)。
+          //   ★生を見せている行(カーソル行/Raw)では消さない= そこは直すための窓
+          //     ([[project_raw_line_is_not_for_decoration]])。数字だけは俊克thatが認めた例外(v4.1.1103)so、
+          //     頭に置いたまま、字は字で見せる。
           const _bg2 = meosClockBadgeRowForLine(doc, i);
-          let _fl = i, _fat2 = _at2;
-          if (_bg2 >= 0) { try { const _bt = doc.lineAt(_bg2).text; const _bc = _bt.lastIndexOf('-->'); _fl = _bg2; _fat2 = (_bc > 0) ? _bc : _bt.length; } catch (_) { } }
-          const _at1 = (_fat2 > 0) ? (_fat2 - 1) : _fat2;
+          let _fl = i, _at1 = (_at2 > 0) ? (_at2 - 1) : _at2, _fat2 = _at2;
+          if (_bg2 >= 0) {
+            let _blen = 0; try { _blen = doc.lineAt(_bg2).text.length; } catch (_) { }
+            _fl = _bg2;
+            _at1 = 0;                                    // 顔は**行頭**
+            _fat2 = Math.min(1, _blen);                  // 周回数はその1つ隣(同じ所に2つ置かない= v4.1.139)
+            try { if (_blen && !meosShowsRawLine(editor, _bg2)) badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen)); } catch (_) { }
+          }
           items.push({
             range: new vscode.Range(_fl, _at1, _fl, _at1),
             renderOptions: c.dual
@@ -11063,6 +11083,10 @@ function meosApplyTimerLineDecorations(editor) {
     if (cycNow.length && !meosClockCycNowDeco) meosClockCycNowDeco = vscode.window.createTextEditorDecorationType({
       // v4.1.1113: 変数that解けなかった時のために、素の白を控えに置く(黙って何も塗らない、を作らない)。
       textDecoration: 'none; color: var(--vscode-editor-foreground, #ffffff) !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    // v4.1.148: 場所を借りたバッジ行は中身を消す(幅ごと畳む= 数字thatが行頭に立つ)。
+    if (badgeHide.length && !meosClockBadgeHideDeco) meosClockBadgeHideDeco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockRoundDeco, rounds);   // v4.1.140: 周回数は別の駒(色も場所も顔と分ける)

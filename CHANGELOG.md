@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.148 (2026-09-06)
+- **The figures start at the head of the line.** v4.1.147 put them at the right-hand end of the badge row, which does not solve the problem it was meant to solve — narrow the window and they are the first thing cut off. The badge row now lends its space rather than sharing it: its own text is collapsed to zero width and the clock's figures stand at column 0, so they survive any width. On a row shown raw (the caret's line, Raw mode) nothing is collapsed — that row is there to be edited — and the figures simply sit at its head.
+
 ### v4.1.147 (2026-09-06)
 - **The clock reads as two rows, and the data stays one line.** With remaining and elapsed shown together the ⏰ line had grown wide. The badge row directly above it is now kept unfolded whenever the membrane has a live clock, and the running figures (`⏰ 5.37 0.41 ×0`) are drawn there instead — what is *written* never moves. Splitting the source into two lines was the obvious fix and the wrong one: a clock spread over two lines can no longer be pasted as one, and pasting one UFC line to turn any membrane into a timer is the whole point of putting the clock in the text.
 - **A paused clock keeps its count.** Pausing now writes it into the comment as `⏸2` — two turns done. It cannot be recomputed later: the origin grid keeps advancing while the clock is stopped, so the number is only true at the moment you stop. The count also stays on screen while paused.
