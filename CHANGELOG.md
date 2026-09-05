@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1117 (2026-09-05)
+- **One door builds the record** — a one-shot set from the panel built its own half-formed record, with no `when`, no signature and no position in the series. Without a `when` the guard that shows the figure on the running line only could not tell the lines apart, so both counted; without a signature the text could never re-arm it; and when it rang, it could not say which line had rung, so the ✓ landed on the first one. Membrane clocks are written into the text and left to the arming pass, the way repeating ones already were. Only a clock on the file itself, which has nowhere to be written, still keeps its own record.
+- **The ✓ goes on the line that rang** — found by the record's `when` rather than by taking the first one that is not done.
+
 ### v4.1.1116 (2026-09-05)
 - **The second booking now lands** — the append wrote a newline onto the end of the previous line, while the branch right below it, which has always worked, inserts at the start of the next one. It now uses that shape. The status bar reports a set clock whether or not the write succeeded, so a failed write said nothing at all; a write that comes back false now says so in the log.
 

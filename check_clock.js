@@ -122,6 +122,22 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1117(俊克 9/5 pm00:22 バグ1「⏸を削除して再開したが、2つが同時に動いている
+//   …2番目の単発タイマが終了したのに、FC化しない」):
+//   控えを作るのは armClock ただ 1 つ。膜に掛ける物は手で作らない。
+console.log('\u2476 控えを作る口は 1 つ');
+{
+  const S4=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const T4=S4.slice(S4.indexOf('async function meosStartPseudoTimer'), S4.indexOf('async function meosStartPseudoTimer')+9000);
+  ok(/if \(scope\.key\) \{[^]{0,600}meosArmClockFcFor\(scope\.doc\)/.test(T4),
+     '\u2605\u2605\u2605膜に掛ける物は本文へ書いて armClock に任せる', true);
+  ok(/_meosPseudoScopes\.set\(lk, \{ doc: scope\.doc[^]{0,200}fc: !!scope\.key \}\)/.test(T4),
+     '\u2605膜の外(mMETA)だけは今までどおり自前', true);
+  const E4=S4.slice(S4.indexOf('async function meosEndPseudoTimer'), S4.indexOf('async function meosEndPseudoTimer')+3000);
+  ok(/scope\.when \? _hits2\.find\(c => String\(c\.when\) === String\(scope\.when\)\)/.test(E4),
+     '\u2605\u2605\u2605鳴ったのはどの行かを控えの when で名指しする', true);
+}
+
 // ★★★v4.1.1115(俊克 9/5 am11:38 バグ1「⏰▼パネルで設定すると、UFCコメントが
 //   上書きされてしまう。今表示しているUFC群の次の行に追加する形にしようよ」):
 console.log('\u2475 新しい予定は足す、名指しされた1本は直す');

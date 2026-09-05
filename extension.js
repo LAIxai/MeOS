@@ -11086,7 +11086,10 @@ async function meosEndPseudoTimer(key) {
   //   旧ファイル(mMETAに予定が在る物)は、今までどおり past 印で残す。
   try {
     if (doc) {
-      const _hit = meosClockFcScan(doc).find(c => c.key === scope.key && !c.done);
+      // ★★v4.1.1117: **鳴ったのはどの行か**を控えの `when` で名指しする(先頭のを掴まない)。
+      //   一度きりthatが2番目に在る時、✓ thatが1番目に付いていた(俊克「FC化しない」)。
+      const _hits2 = meosClockFcScan(doc).filter(c => c.key === scope.key && !c.done);
+      const _hit = (scope.when ? _hits2.find(c => String(c.when) === String(scope.when)) : null) || _hits2[0] || null;
       if (_hit && Array.isArray(_hit.cycle) && _hit.cycle.length) {
         // ★★★v4.1.23: 繰返しは**✓を付けない**= 終わっていないから。
         //   俊克「繰返し設定の場合は、UFCのまま」= 次が在る限り、見えていなければならない。
@@ -11681,8 +11684,30 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
       + ' from ' + meosClockFcStamp(_org) + (lock ? ' \ud83d\udd10' : ''), 4000);
     return;
   }
-  _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold, lock, fc: !!scope.key });   // v4.1.16: 膜に掛けた物は本文へ書く
+  // ★★★v4.1.1117(俊克 9/5 pm00:22 バグ1「⏸を削除して再開したthat、2つthat同時に動いている…
+  //   2番目の単発タイマthat終了したのに、FC化しない」):
+  //   ★★★**一度きりの道だけthat、控えを自分の手で作っていた**= `when` も `sig` も `cidx` も持たない
+  //     半分の控えthatできるので、
+  //     ①「掛かっている行だけに数字を出す」門番(v4.1.1110)thatが効かず、**両方に数字thatが出る**
+  //     ②`sig` thatが無いので、本文から掛け直す道にも入らない(いつまでも半分のまま)
+  //     ③終わった時に「どの行か」を言えない → ✓ thatが別の行に付く
+  //   ★★→ **繰返しの道と同じ口を通す**(v4.1.64「本文へ書いて meosArmClockFcFor に任せる」)＝
+  //     膜に掛ける物は、控えを手で作らない。作るのは armClock ただ1つ。
+  //     ★膜の外(ファイル全体)に掛けた物だけは、書く所thatが無いので今までどおり自前(mMETA)。
   const _at = Date.now() + ms;
+  if (scope.key) {
+    _meosPseudoScopes.delete(lk);
+    if (opts && opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
+    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: _up0 }); } catch (_) { }
+    try { meosArmClockFcFor(scope.doc); } catch (_) { }
+    meosUpdateTimerBar(); meosPostViewMode();
+    const _wn = atDate ? (' \u2014 ' + meosFormatStamp(atDate)) : (' \u2014 ' + meosMmSs(ms));
+    vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + _wn
+      + (hold ? ' \u2014 held in Pseudo-WYSIWYG; the way out comes back when the time is up.' : ' \u2014 until MeOS brings you back here.')
+      + (lock ? ' \ud83d\udd12' : ''), 4000);
+    return;
+  }
+  _meosPseudoScopes.set(lk, { doc: scope.doc, uri: scope.uri, key: scope.key, name: scope.name, hold, lock, fc: !!scope.key });   // v4.1.16: 膜に掛けた物は本文へ書く
   _meosPseudoUntil.set(lk, _at);
   meosArmPseudoTimer(lk, ms + 250);
   // ★v4.1.13: 予定は**本文のFC行**に書く(見える・検索できる・Me Dock無しでも直せる)。
