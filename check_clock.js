@@ -122,6 +122,24 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1115(俊克 9/5 am11:38 バグ1「⏰▼パネルで設定すると、UFCコメントが
+//   上書きされてしまう。今表示しているUFC群の次の行に追加する形にしようよ」):
+console.log('\u2475 新しい予定は足す、名指しされた1本は直す');
+{
+  const S3=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const F=S3.slice(S3.indexOf('async function meosClockFcSet'), S3.indexOf('async function meosClockFcSet')+6000);
+  ok(/async function meosClockFcSet\(doc, key, spec, atLine\)/.test(F), '\u2605どの行の話かを言える', true);
+  ok(/const _named = \(typeof atLine === 'number'/.test(F), '\u2605\u2605名指しされた1本を探す', true);
+  ok(/\} else if \(hit && spec\) \{[^]{0,400}ed\.insert\(doc\.uri/.test(F),
+     '\u2605\u2605\u2605名指しが無ければ**群の次の行に足す**(走っている物を消さない)', true);
+  ok(/ed\.insert\(doc\.uri, new vscode\.Position\(_last\.line/.test(F), '\u2605足すのは群の**最後**の行の下', true);
+  /* 「その1本」を意味する呼び手は行番号を渡している */
+  ok(/done: true \}, c\.line\)/.test(S3) && /off: true \}, c\.line\)/.test(S3) && /done: false \}, c\.line\)/.test(S3),
+     '\u2605\u2605済み/休み/名前戻しは行を名指しする', true);
+  ok(/off: true \}, hit\.line\)/.test(S3) && /off: false \}, hit\.line\)/.test(S3),
+     '\u2605一覧の休み/戻しも行を名指しする', true);
+}
+
 // ★★★v4.1.1114(俊克 9/5 am10:54 バグ2「1mに切り替わったあと、2.00から始まってしまう」
 //   改良1「⏸が表示する部分に✓を書き込むと、それを⏸に書き直してくれる」):
 console.log('\u2474 今の回の長さ / 顔の \u2713 は休み');

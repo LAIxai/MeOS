@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1115 (2026-09-05)
+- **A new booking is added, not written over the running one** — setting a clock from the panel replaced the first ⏰ line of the membrane, so the clock that was running vanished as you booked the next one. Callers that mean one particular clock — done, paused, renamed, resumed — now say which line they mean; the panel, which means "a new one", adds a line under the group.
+- Both clock logs name the line they touched, so the next thing that goes wrong here can be read instead of guessed.
+
 ### v4.1.1114 (2026-09-05)
 - **The turn's own length** — with `↻3m/1m`, the first entry of the series was written into the state every pass, so on the 1-minute turn the length was still 3 minutes and the elapsed figure started at 2.00. It now asks which turn ends at the time it is waiting for, and keeps that length and that position.
 - **White survives inside the membrane** — the orange row paints with `!important`, so a colour laid on top only wins by creation order. The running part is cut out of the orange range instead, the way ✓ and ⏸ already were; the cut now takes a span, not a single character.
