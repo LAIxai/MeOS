@@ -122,6 +122,21 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★v4.1.133(俊克 9/5 pm02:56 改良3「copy ⏰ ボタン」＋ pm03:12「既存の膜の直下にペーストするのが
+//   目的so、膜の同時生成は不要」):
+console.log('\u247b copy \u23f0 は ⏰行だけを写す');
+{
+  const S9=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const K9=S9.slice(S9.indexOf("message.type === 'clockCopy'"), S9.indexOf("message.type === 'clockCopy'")+1400);
+  ok(/meosClockFcScan\(_sc\.doc\)\.filter\(c => c\.key === _sc\.key\)/.test(K9),
+     '\u2605\u2605\u2605写すのはその膜の ⏰行だけ(バッジは連れて行かない)', true);
+  ok(/_sc\.doc\.lineAt\(r\.line\)\.text/.test(K9) && /join\('\\n'\)/.test(K9),
+     '\u2605行はそのままの字で写す(貼れば貼り先の膜の時計になる)', true);
+  ok(/vscode\.env\.clipboard\.writeText\(_txt\)/.test(K9), '\u2605クリップボードへ置くだけ(貼る先も時も人の物)', true);
+  ok(!/meosNewMembrane|buildMembraneOpenLine/.test(K9), '\u2605\u2605膜は作らない(俊克 pm03:12)', true);
+  ok(/id="clk-copy"/.test(S9) && /_id==='clk-copy'/.test(S9), '\u2605面にボタンが在り、押すと node へ届く', true);
+}
+
 // ★★v4.1.132(俊克 9/5 pm02:56 改良1「残り時間の数字も緑色にし、ストップウォッチの数字を水色に」
 //   改良2「繰り返した回数も表示しようよ。ボクシングタイマーのとき、何ラウンドかが分るからね」):
 console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');

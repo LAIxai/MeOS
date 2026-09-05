@@ -22609,6 +22609,10 @@ color:#ffffff;z-index:4;padding:0}
 .clk-pop.norepeat .clk-cyc{opacity:.38}
 .clk-item .ci-up{color:#56d4dd;font-weight:900}
 .clk-set{font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.75);border-radius:6px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer}
+/* ★v4.1.133(俊克 9/5 pm03:12「これは、既存の膜の直下にペーストするのが目的so、膜の同時生成は不要」):
+   ★copy は Set と同じ駒の形で、**色は控えめ**= 掛ける(Set)が主役、写す(copy)は脇役。 */
+.clk-copy{font-size:11px;font-weight:800;padding:2px 7px;margin-right:4px;border:1px solid rgba(224,128,58,.45);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer;opacity:.9}
+.clk-copy:hover{background:rgba(224,128,58,.16);opacity:1}
 /* ★★v4.1.18(俊克 改良3「STOPで点滅している時の⏰ボタンは、大きくなっているのはいいんだけど、
    ▼ボタンが元の大きさなので、少し間抜けに見える」): ★★**大きくするのは駒ごと**= ⏰と▼は1つの駒なので、
    片方だけ育つと形が壊れる。→ 拡大は .clk-wrap に掛け、色は今までどおり⏰の面が持つ。 */
@@ -22880,7 +22884,7 @@ color:#ffffff;z-index:4;padding:0}
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint">00 ends the list</span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="10m 3h 00 90m 1d" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
-  <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-dir" id="clk-dir" data-tip="Which way time runs | \u21ba countdown \u2014 the figure falls to the bell. \u21bb stopwatch \u2014 it climbs from zero and starts over each turn. Both ring at the same instants; only the figure is read the other way round.">\u2610 \u21ba countdown</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
+  <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-dir" id="clk-dir" data-tip="Which way time runs | \u21ba countdown \u2014 the figure falls to the bell. \u21bb stopwatch \u2014 it climbs from zero and starts over each turn. Both ring at the same instants; only the figure is read the other way round.">\u2610 \u21ba countdown</button></span><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | Copies this membrane&#39;s \u23f0 lines and nothing else \u2014 the badge stays behind. Paste them under another membrane&#39;s closing line and that membrane keeps the same clocks.">copy \u23f0</button><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
 <!-- {* ▲mCN=dock_toc *} -->
 <div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="ref-new-group" data-tip="Create a new reference group here (pick a symbol, name it, add an optional note). The Edit dropdown Reference does the same.">✚ New reference group…</button><button class="bm-pop-item" id="ref-toggle-disabled" data-tip="Put the text cursor ON a reference mark, then run this: a live mark ▶◀ becomes dormant ▷◁ (grey, kept out of numbering/cycling but the note survives), and a dormant ▷◁ becomes live ▶◀ again. Reversible alternative to Delete.">◻ Disable / Enable (mark at cursor)</button><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too). Permanent.">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button><button class="bm-pop-item" id="ref-jump-note" data-tip="Same as ⌘/Ctrl-click on the reference button: Annotated group → jump to its note · Marks / Pending → jump straight to the Front (F). Clicking here does it too.">📖 Jump to note</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="bm-pending-list" id="ref-group-list"></div><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-mode-toggle" data-tip="Switch the working reference between a 💤 pending group and a normal reference group.">⇄ Select 💤 or Normal Ref</button></div>
@@ -24688,6 +24692,7 @@ if(clkCaret&&clkPop){
      周期と別に書けるようになった)。v4.1.65の道連れは、その前の世界の残り。 */
   if(_id==='clk-dir'){clkDir=!clkDir;clkPaintDir();return;}
   if(_id==='clk-cyc'||_id==='clk-tagin'||_id==='clk-tagnew')return;   /* 箱は押しても閉じない */
+  if(_id==='clk-copy'){vscode.postMessage({type:'clockCopy'});return;}   /* v4.1.133 */
   if(_id==='clk-set'){clkFire();return;}
  });
  /* ★★v4.1.2: 合体行を押す→同じ場所に箱が出る→ Enter で掛ける / Esc でやめる。
@@ -26489,6 +26494,26 @@ function toggleMeDock(editorOverride) {
       return;
     }           // v4.0.442/448: ⏰=テスト用紙
     // v4.1.65: ▾を開いた時だけ訊かれる= カーソルthat動く度に14万行を読まない。
+    // ★★v4.1.133(俊克 9/5 pm02:56 改良3「このFCコメントをコピーするボタンを付けよう。『copy ⏰』
+    //   ボタンかな。これで、UFC群すべてをコピーする」＋ pm03:12「**既存の膜の直下にペーストするのthat目的so、
+    //   膜の同時生成は不要**」):
+    //   ★★**写すのは⏰行だけ**= バッジ(Mew!FC mCN …)は膜の持ち物so連れて行かない。連れて行くと、
+    //     貼り先に**他の膜のバッジ**thatが現れる。
+    //   ★行はそのままの字so、貼れば貼り先の膜の時計になる(持ち主は位置that決める= v4.1.1120)。
+    //   ★選ぶ手間を省くだけの道具so、貼る先も、貼る時も、人の物。
+    if (message && message.type === 'clockCopy') {
+      try {
+        const _e = meosCurrentEditor(); const _sc = _e ? meosModeScope(_e) : null;
+        if (!_sc || !_sc.key || !_sc.doc) { vscode.window.setStatusBarMessage('MeOS: \u23f0 no membrane here to copy from.', 3000); return; }
+        const _rows = meosClockFcScan(_sc.doc).filter(c => c.key === _sc.key);
+        if (!_rows.length) { vscode.window.setStatusBarMessage('MeOS: \u23f0 this membrane has no clock lines yet.', 3000); return; }
+        const _txt = _rows.map(r => { try { return _sc.doc.lineAt(r.line).text; } catch (_) { return ''; } }).filter(Boolean).join('\n');
+        await vscode.env.clipboard.writeText(_txt);
+        vscode.window.setStatusBarMessage('MeOS: \u23f0 copied ' + _rows.length + ' clock line' + (_rows.length === 1 ? '' : 's')
+          + ' \u2014 paste under another membrane\u2019s closing line.', 4000);
+      } catch (_) { }
+      return;
+    }
     if (message && message.type === 'clockAskCurrent') {
       try {
         const _e = meosCurrentEditor(); const _sc = _e ? meosModeScope(_e) : null;

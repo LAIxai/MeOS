@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.133 (2026-09-05)
+- **copy ⏰** — takes the membrane's clock lines, and only those; the badge stays where it belongs. Paste them under another membrane's closing line and that membrane has the same clocks, because a clock belongs to whatever closes above it. No membrane is created and nothing is pasted for you: the button only saves the selecting.
+
 ### v4.1.132 (2026-09-05)
 - **The figure takes the arrow's colour** — ↺ green for time left, ↻ cyan for time elapsed. The colours already existed on the arrows; carrying them to the numbers means the direction can be read from the number alone, without adding a colour to the page.
 - **A repeating clock says which round it is on** — `×3` after the figure, counted in the same pass that works out the next bell. For a 3m/1m pair a round is the pair, which is how a boxing round is counted.
