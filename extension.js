@@ -22414,10 +22414,14 @@ background:color-mix(in srgb,var(--vscode-editor-foreground) 12%,var(--vscode-ed
 border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 38%,transparent);
 box-shadow:0 8px 26px rgba(0,0,0,.55)}
 @supports (anchor-name:--a){
- /* ★★v4.1.144(俊克 9/5 pm07:23 バグ1「設定パネルを下側に出すというのthat直ってない」):
-    ★★**背の高さの話ではなく、ここで「上に出す」と書いてあった**(bottom:anchor(top))。
-      私はv4.1.143で高さを疑って直したthat、指定その物を読んでいなかった。
-    ★→ 駒の**下**へ出す(プルダウン)。入り切らない時だけ上へ回してもらう(flip-block はそのまま)。 */
+ /* ★★★v4.1.144-2(俊克 9/5 pm07:49「パネルはさっきの版まで下に出ていた。
+      それは貴方that気を利かせてそうしたと思っていた」):
+    ★★★**下に出ていたのは設計ではなく「上に入り切らなかった」から**=
+      ここは元々 bottom:anchor(top)(上に出す)＋flip-block(入らなければ下へ回る)so、
+      v4.1.143でフッターの折り返しを止めて背that縮んだ瞬間、上に入るようになって上へ行った。
+      ★私はv4.1.143で「背that高くて下に入らないから上へ逃げた」と逆に書いた。事実は反対。
+    ★→ **下を既定にする**(top:anchor(bottom))= 下に出るのを偶然でなく定義にする。
+      flip-block は残す＝ 下に入らない時だけ上へ回る逃げ道。JS側(clkPlace)も同じ順に揃えた。 */
  .bm-pop.clk-pop{right:anchor(right);top:anchor(bottom);left:auto;bottom:auto;margin-top:8px;position-try-fallbacks:flip-block}
 }
 .bm-pop.clk-pop.hist-only{width:236px}
@@ -24900,7 +24904,8 @@ if(clkCaret&&clkPop){
   var put=function(){var r=anchor.getBoundingClientRect();
    var w=clkPop.offsetWidth||236,h=clkPop.offsetHeight||140;
    var left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;
-   var top=r.top-h-6;if(top<6)top=Math.min(Math.max(6,window.innerHeight-h-6),r.bottom+6);
+   /* v4.1.144-2: 錨を知らない古い版でも**まず下**(CSS側と同じ順)。下に入らない時だけ上へ。 */
+   var top=r.bottom+6;if(top+h>window.innerHeight-6){var _up=r.top-h-6;top=(_up>=6)?_up:Math.max(6,window.innerHeight-h-6);}
    clkPop.style.left=left+'px';clkPop.style.top=top+'px';};
   put();requestAnimationFrame(put);}
  clkCaret.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();window.__clkOpen('set');});

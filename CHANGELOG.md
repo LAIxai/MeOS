@@ -4,13 +4,13 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
-### v4.1.144 (2026-09-05)
-- **The panel opens downward — it was told to open upward.** v4.1.143 blamed the panel's height and trimmed the footer; the rule itself said `bottom:anchor(top)`, i.e. *put it above the button*. Now `top:anchor(bottom)`, with the flip kept as the escape for when there is no room below. The height was never the point.
+### v4.1.145 (2026-09-05)
+- **The panel opens downward by definition, not by accident.** It had always been told to open *upward* (`bottom:anchor(top)`) with a flip to below when there was no room — so it appeared below only because it was too tall to fit above. v4.1.143 stopped the footer wrapping, the panel got shorter, it fitted above, and up it went. (The v4.1.143 note below has the causality backwards.) Now `top:anchor(bottom)`, and the JS path for hosts without anchor positioning tries below first too; the flip stays as the escape.
 - **Ticking Repeat asks for the length.** Checking `□ Repeat ↺↻` now focuses the cycle box and takes `Set ⏰` back out of reach until something is typed there. A tick with an empty box used to set a clock with no repeat at all — the tick said one thing and the clock did another.
 
 ### v4.1.143 (2026-09-05)
 - **Arrows are coloured whether or not there is a repeat** — the colouring, and the cutting of them out of the orange, sat inside the branch for repeating clocks, so a line carrying only `↺↻` was left orange inside the membrane and colourless outside it. v4.1.1108 separated the arrow from the cycle in the notation; the drawing had not caught up.
-- **The panel drops back below the button** — it had grown a wrapping footer and no longer fit underneath, so it flipped above and took its tip off the top of the view. With the direction switch gone there are three controls again, and no need to wrap.
+- **The footer stops wrapping** — with the direction switch gone there are three controls again, so the row fits on one line. (This note originally claimed it put the panel back below the button; it did the opposite. See v4.1.144.)
 
 ### v4.1.142 (2026-09-05)
 - **Both faces by default** — the direction switch is gone from the panel; a clock set here always gets `↺↻`, so remaining and elapsed both appear. Anyone who wants one face deletes one arrow in the text, which still reads. One control fewer, one thing fewer to know.
