@@ -10803,10 +10803,14 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★見分けは**書いてある時刻**= 控えた `when` と、この行の `when` thatが同じ物だけthat現役。
           try {
             const _sc9 = scById.get(owner ? owner.id : '');
-            // ★v4.1.1118: **同じ時刻の2本thatが在り得る**(俊克 pm01:05「偶然同じ時刻」)so、
-            //   行thatが分かるなら行で見分ける。分からない時だけ時刻で見る。
-            if (_sc9 && typeof _sc9.line === 'number') { if (i !== _sc9.line) continue; }
-            else { const _cw = (meosClockFcParse(txt) || {}).when; if (_sc9 && _sc9.when && _cw && String(_cw) !== String(_sc9.when)) continue; }
+            // ★★★v4.1.1119(俊克 9/5 pm01:10「まったく同じ起点で…カウントダウンで見るのthat普通だけど、
+            //   同時に、ストップウォッチと並べて見たいということthatある」):
+            //   ★★★**鳴る時刻that同じ行は、別々の時計ではない。同じ1つの時計の、別の顔だ**＝
+            //     昨夜の `A + B = 1回分の長さ` をそのまま延ばした形(1つの区間を両端から見ている)。
+            //     soボクシングの「残り」と「経過」は**並べて出る**のthat正しい。
+            //   ★★→ 判定は**起点(when)thatが同じか**。行の一致は要らない(v4.1.1118はここthat行き過ぎた)。
+            //     鳴る時刻that違う行は別の予定so、今までどおり直下の1本だけ(v4.1.1110)。
+            if (_sc9 && _sc9.when && String(c.when) !== String(_sc9.when)) continue;
           } catch (_) { }
           // ★★★v4.1.1113(俊克 9/5 am10:27 バグ1「単発の↻1mの「1m」thatが白色になっていない。
           //   肝心の連動型も同様」): ★★★**v4.1.1111は一度も走っていなかった**=
@@ -10835,7 +10839,7 @@ function meosApplyTimerLineDecorations(editor) {
             // ★v4.1.1111(俊克 改良2「残タイマー値も橙色は止めて白色にしようよ。**膜の中に入った時に、
             //   他も橙色になるので、今までは目立たなかった**」): ★行ぜんぶthat橙に染まる場面thatあるので、
             //   **数字だけthat地の色と違う**ようにする= 動いている物thatひと目で分かる。
-            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceMs(until, scById.get(owner ? owner.id : ''))) + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
+            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceForLine(until, c, scById.get(owner ? owner.id : ''))) + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
           });
         }
       }
@@ -10944,6 +10948,20 @@ function meosUpdateTimerBar() {
 //     ([[project_clock_todo_v41]]「保存するのは開始時刻だけでいい」と同じ形)。
 //   ★終端は置かない(俊克 2026.09.02「実際、腕時計は、延々、ストップウォッチが止まらないからね」)=
 //     逆算もストップウォッチも**止めるまで続く**。1週間に1回の予定が日を跨ぐのと同じ理屈。
+// ★★v4.1.1119: **顔はその行から出す**= 同じ時計を2つの顔で見る時、向きも長さも行thatが持っている。
+//   控え(sc)は「今どの回か」を数え直さないための控えso、行と食い違ったら**行thatが正しい**。
+function meosClockFaceForLine(until, c, sc) {
+  try {
+    const left = Math.max(0, until - Date.now());
+    if (!c || !c.up) return left;                                  // \u21ba(または矢印なし)= 残り
+    let step = 0;
+    if (Array.isArray(c.cycle) && c.cycle.length) {
+      if (sc && sc.step > 0 && String(sc.when || '') === String(c.when || '')) step = sc.step;   // 控えthat在れば使う
+      else { const b = meosParseStampLoose(c.when); const nx = b ? meosCycleSeriesNext(b.getTime(), c.cycle, until - 1) : null; if (nx) step = nx.step; }
+    }
+    return (step > 0) ? Math.max(0, Math.min(step, step - left)) : left;   // 長さthat無ければ数えられない
+  } catch (_) { return Math.max(0, until - Date.now()); }
+}
 function meosClockFaceMs(until, sc) {
   const left = Math.max(0, until - Date.now());
   if (sc && sc.up && sc.step > 0) return Math.max(0, Math.min(sc.step, sc.step - left));
@@ -11107,7 +11125,14 @@ async function meosEndPseudoTimer(key) {
       //     「向きは必ず書く」にした今は **↺ と書かれる**。1108より前は矢印を書かなかったので、
       //     この落とし物thatが表に出ていなかった＝ **前から在った穴that、正しくしたことで見えた**。
       //   ★書き戻しは「済みにする」だけの用so、**それ以外は読んだ物をそのまま返す**。
-      else if (_hit) { await meosClockFcSet(doc, scope.key, { when: _hit.when, hold: _hit.hold, lock: _hit.lock, cycle: _hit.cycle, up: _hit.up, tags: _hit.tags, done: true }, _hit.line); }
+      else if (_hit) {
+        // ★★v4.1.1119: **同じ起点の行は、同じ1つの時計**so、済みも一緒に付く(顔thatが2つ在っただけ)。
+        //   ★繰返しの行は付けない= まだ終わっていない(v4.1.23)。
+        const _same = _hits2.filter(h => String(h.when) === String(_hit.when) && !(Array.isArray(h.cycle) && h.cycle.length));
+        for (const h of (_same.length ? _same : [_hit])) {
+          await meosClockFcSet(doc, scope.key, { when: h.when, hold: h.hold, lock: h.lock, cycle: h.cycle, up: h.up, tags: h.tags, done: true }, h.line);
+        }
+      }
       else {
         const _m = meosClockMeta(doc); const _r = _m[scope.key];
         if (_r) { _m[scope.key] = { at: Number(_r.at) || Date.now(), hold: !!scope.hold, past: true };

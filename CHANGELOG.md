@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1119 (2026-09-05)
+- **Clocks set on the same instant are one clock with two faces** — a round can be watched as time remaining and as time elapsed at once, which is not two timers but one interval read from both ends. Lines sharing a start time all show a figure, each in its own direction; lines with a different time are separate bookings, so only the one nearest the membrane runs. The figure is now worked out from the line rather than from the record, since the direction and the length belong to the line.
+- When the bell goes, every line on that same instant is marked done together. Repeating ones are left alone; they have not finished.
+
 ### v4.1.1118 (2026-09-05)
 - **Finishing a clock no longer flips its direction** — the write that marks one done passed the time, the hold and the lock, but not the direction or the cycle, so a stopwatch came back as `↺✓`. The omission was always there; it only became visible once the arrow was always written.
 - **Two clocks set for the same minute are told apart by line** — the running line was identified by its time, which two bookings can share, and then both showed a figure and both took the direction of whichever one was armed.

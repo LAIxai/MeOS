@@ -128,15 +128,21 @@ console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2�
 {
   const S5=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   const E5=S5.slice(S5.indexOf('async function meosEndPseudoTimer'), S5.indexOf('async function meosEndPseudoTimer')+4000);
-  ok(/done: true \}, _hit\.line\)/.test(E5) && /cycle: _hit\.cycle, up: _hit\.up/.test(E5),
+  ok(/done: true \}, h\.line\)/.test(E5) && /cycle: h\.cycle, up: h\.up/.test(E5),
      '\u2605\u2605\u2605済みにする時も向きと周期をそのまま返す(\u21bb が \u21ba に化けない)', true);
   ok(/typeof scope\.line === 'number' \? _hits2\.find\(c => c\.line === scope\.line\)/.test(E5),
      '\u2605\u2605鳴った1本は**行**で名指しする(時刻は控え)', true);
+  /* \u2605v4.1.1119: 同じ起点の行は同じ時計so、済みも一緒。繰返しは付けない。 */
+  ok(/const _same = _hits2\.filter\(h => String\(h\.when\) === String\(_hit\.when\) && !\(Array\.isArray\(h\.cycle\)/.test(E5),
+     '\u2605\u2605\u2605同じ起点の行は一緒に済みになる(繰返しは除く)', true);
   const A5=S5.slice(S5.indexOf('function meosArmClockFcFor'), S5.indexOf('function meosArmClockFcFor')+10000);
   ok(/line: c\.line,/.test(A5) && /_s\.line = c\.line;/.test(A5),
      '\u2605\u2605控えは行も持ち、毎回読み直す', true);
-  ok(/if \(_sc9 && typeof _sc9\.line === 'number'\) \{ if \(i !== _sc9\.line\) continue; \}/.test(S5),
-     '\u2605\u2605\u2605同じ時刻の2本も行で見分ける(数字は1本にだけ)', true);
+  /* \u2605\u2605\u2605v4.1.1119(俊克 pm01:10): 鳴る時刻が同じ行は「同じ1つの時計の別の顔」so、並べて出す。 */
+  ok(/if \(_sc9 && _sc9\.when && String\(c\.when\) !== String\(_sc9\.when\)\) continue;/.test(S5),
+     '\u2605\u2605\u2605同じ起点なら何本でも出す / 違えば出さない', true);
+  ok(/function meosClockFaceForLine\(until, c, sc\)/.test(S5) && /if \(!c \|\| !c\.up\) return left;/.test(S5),
+     '\u2605\u2605\u2605顔は**その行**の向きで出す(片方が\u21ba、片方が\u21bb)', true);
 }
 
 // ★★★v4.1.1117(俊克 9/5 pm00:22 バグ1「⏸を削除して再開したが、2つが同時に動いている
@@ -240,8 +246,8 @@ console.log('\u2471 動くのは直下の1本だけ');
   ok(A.indexOf('_liveTaken') < A.indexOf('_meosPseudoUntil.has(lk)'),
      '\u2605\u2605門番は「既に掛かっているか」より**先**(後の1本が控えを上書きしない)', true);
   ok(/when: String\(c\.when \|\| ''\)/.test(A), '\u2605掛かっているのはどの行かを控える', true);
-  ok(/_sc9 && _sc9\.when && _cw && String\(_cw\) !== String\(_sc9\.when\)/.test(S0),
-     '\u2605\u2605待機中の行には数字を出さない(下書きは残り時間を持たない)', true);
+  ok(/_sc9 && _sc9\.when && String\(c\.when\) !== String\(_sc9\.when\)/.test(S0),
+     '\u2605\u2605待機中の行(違う時刻)には数字を出さない', true);
 }
 
 // ★★★v4.1.1108(俊克 9/4 pm11:24「一度きりの逆算も↺を入れようよ。
