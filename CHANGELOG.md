@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.138 (2026-09-05)
+- **`↺↻3m/1m` puts both faces on one line** — remaining in green and elapsed in cyan, from one start time. Two separate lines could drift apart the moment one of the times was edited; with one line there is nothing to keep in step, because there is only one time to write. The round is shown once, since both faces are watching the same round.
+- The direction is carried through every rewrite, the scan included, so pausing or finishing a clock cannot quietly reduce it to a single arrow.
+
 ### v4.1.137 (2026-09-05)
 - **The wait is round zero** — `×0` until the start time, so the number itself says nothing has begun. The first round starts at the gong.
 

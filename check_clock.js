@@ -122,6 +122,26 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.138(俊克 9/5 pm05:27「SW/CD同時記法を `↺↻3m/1m` にしようよ。こうすれば、
+//   さっきの私の入力ミスは起きない」): 1行にすれば、2本がずれる余地が消える。
+console.log('\u247d ↺↻ = 1行に顔が2つ');
+{
+  const P=(t)=>X.meosClockFcParse('<!-- Mew!UFC ' + t + ' -->');
+  const d=P('\u23f0 2026-09-05 17:30 \u21ba\u21bb3m/1m');
+  ok(d && d.dual===true && d.cycle.join('/')==='3m/1m', '\u2605\u2605\u2605\u21ba\u21bb を読む(周期はそのまま)', d && [d.dual, d.cycle]);
+  ok(d && d.when==='2026-09-05 17:30', '\u2605\u2605起点は1つ= ずれようが無い', d && d.when);
+  const r=P('\u23f0 2026-09-05 17:30 \u21bb\u21ba3m/1m');
+  ok(r && r.dual===true, '\u2605並びが逆でも読む(\u21bb\u21ba)', r && r.dual);
+  const one=P('\u23f0 2026-09-05 17:30 \u21bb3m/1m');
+  ok(one && one.dual===false && one.up===true, '\u2605片方だけは今までどおり', one && [one.dual, one.up]);
+  const S10=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(/spec\.dual \? ' \\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
+  ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
+     '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
+  ok(/dual: c\.dual, tags: _tags, ufc: c\.ufc/.test(S10),
+     '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
+}
+
 // ★★★v4.1.136(俊克 9/5 pm04:43「ストップウォッチは、タイマを起動した時からの経過時間だよ。
 //   スタート時点からどれだけ経過したかを知るためだよ。それだけ」):
 console.log('\u247c ゴング前 — 逆算は残り / ストップウォッチは掛けてからの経過');
@@ -178,9 +198,9 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   ok(R(240001)===2, '\u2605\u2605\u26054分を過ぎたら2周目(3m+1mで一周)', R(240001));
   ok(R(480001)===3, '\u2605\u26058分を過ぎたら3周目', R(480001));
   const S8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(/color: \(c\.up \? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN\)/.test(S8),
+  ok(/col: MEOS_CLOCK_DIR_DOWN \}, \{ up: true, col: MEOS_CLOCK_DIR_UP \}/.test(S8) && /color: _f\.col/.test(S8),
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
-  ok(/'\\u00d7' \+ \(scById\.get\(owner \? owner\.id : ''\) \|\| \{\}\)\.round/.test(S8),
+  ok(/_rnd0\(_sc7\)\) \? \('\\u00d7' \+ _sc7\.round\)/.test(S8),
      '\u2605\u2605繰返しの時だけ \u00d7N(N周目)を数字の後ろへ', true);
 }
 
@@ -193,7 +213,7 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
   const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+14000);
-  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, c, scById\.get\(owner \? owner\.id : ''\), _nowAll\)/.test(D7),
+  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: _f\.up, cycle: c\.cycle \}, _sc7, _nowAll\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
      '\u2605渡されなければ今までどおり自分で見る', true);
