@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.144 (2026-09-05)
+- **The panel opens downward — it was told to open upward.** v4.1.143 blamed the panel's height and trimmed the footer; the rule itself said `bottom:anchor(top)`, i.e. *put it above the button*. Now `top:anchor(bottom)`, with the flip kept as the escape for when there is no room below. The height was never the point.
+- **Ticking Repeat asks for the length.** Checking `□ Repeat ↺↻` now focuses the cycle box and takes `Set ⏰` back out of reach until something is typed there. A tick with an empty box used to set a clock with no repeat at all — the tick said one thing and the clock did another.
+
 ### v4.1.143 (2026-09-05)
 - **Arrows are coloured whether or not there is a repeat** — the colouring, and the cutting of them out of the orange, sat inside the branch for repeating clocks, so a line carrying only `↺↻` was left orange inside the membrane and colourless outside it. v4.1.1108 separated the arrow from the cycle in the notation; the drawing had not caught up.
 - **The panel drops back below the button** — it had grown a wrapping footer and no longer fit underneath, so it flipped above and took its tip off the top of the view. With the direction switch gone there are three controls again, and no need to wrap.

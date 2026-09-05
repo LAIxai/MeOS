@@ -22414,8 +22414,11 @@ background:color-mix(in srgb,var(--vscode-editor-foreground) 12%,var(--vscode-ed
 border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 38%,transparent);
 box-shadow:0 8px 26px rgba(0,0,0,.55)}
 @supports (anchor-name:--a){
- /* 駒の右端に右端を揃え、駒の上に出す。画面から出そうなら下へ回してもらう。 */
- .bm-pop.clk-pop{right:anchor(right);bottom:anchor(top);left:auto;top:auto;margin-bottom:8px;position-try-fallbacks:flip-block}
+ /* ★★v4.1.144(俊克 9/5 pm07:23 バグ1「設定パネルを下側に出すというのthat直ってない」):
+    ★★**背の高さの話ではなく、ここで「上に出す」と書いてあった**(bottom:anchor(top))。
+      私はv4.1.143で高さを疑って直したthat、指定その物を読んでいなかった。
+    ★→ 駒の**下**へ出す(プルダウン)。入り切らない時だけ上へ回してもらう(flip-block はそのまま)。 */
+ .bm-pop.clk-pop{right:anchor(right);top:anchor(bottom);left:auto;bottom:auto;margin-top:8px;position-try-fallbacks:flip-block}
 }
 .bm-pop.clk-pop.hist-only{width:236px}
 /* ★v4.1.3(俊克 改良1「年が大文字になって見て、右が欠けることが分った。so横幅を少し大きくする
@@ -24763,7 +24766,9 @@ if(clkCaret&&clkPop){
   var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'):null;
   var _id=_hit?_hit.id:'';
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();clkTouch();return;}
-  if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();return;}
+  if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
+   if(clkRep){try{var _cy9=document.getElementById('clk-cyc');if(_cy9){_cy9.focus();_cy9.select&&_cy9.select();}}catch(e){}}   /* v4.1.144: 打つ所へ連れて行く */
+   return;}
   /* ★★★v4.1.1109(俊克 9/4 pm11:57 改良1「countdownボタンを押すと、なぜか、一緒にRepeatにも
      チェックが入ってしまう」): ★★★**向きと繰返しは独立している**(v4.1.1108で矢印が
      周期と別に書けるようになった)。v4.1.65の道連れは、その前の世界の残り。 */
@@ -24777,7 +24782,15 @@ if(clkCaret&&clkPop){
  /* v4.1.64: \u2610 \u21ba countdown \u21c4 \u2611 \u21bb stopwatch。**既定は逆算タイマー**(俊克 改良1)。 */
  /* v4.1.142: 押せる時だけ押せる顔をする。指定that1つでも入ったら濃くなる。 */
  function clkTouch(){if(clkDirty)return;clkDirty=true;clkPaintSet();}
- function clkPaintSet(){var b=document.getElementById('clk-set');if(b)b.classList.toggle('on',clkDirty);}
+ /* ★★★v4.1.144(俊克 改良1「『□ Repeat ↺↻』をクリックして✓を入れた時、Repeatの入力ボックスを
+    入力可状態にして入力を促そう。そこを入力して初めて Set ボタンを押せるようにする。つまり、
+    クリックした時点で Set を一旦押せなくする」):
+    ★★★**✓は「繰返す」と言うだけで、長さは箱that持つ**= 箱that空のままでは、✓thatが嘘になる
+      (今日それで『どっちも同じ』thatが起きた)。→ **言い切るまで、決めさせない**。 */
+ function clkPaintSet(){var b=document.getElementById('clk-set');if(!b)return;
+  var cy=document.getElementById('clk-cyc');
+  var need=(clkRep&&(!cy||!String(cy.value||'').trim()));   /* ✓なのに長さthat空= まだ言い切っていない */
+  b.classList.toggle('on',clkDirty&&!need);}
  function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);}
  /* v4.1.66: \u2610 だけ大きく出せるように、箱と字を別の子にする。 */
  function clkBox(b,on,label){while(b.firstChild)b.removeChild(b.firstChild);
@@ -24807,7 +24820,7 @@ if(clkCaret&&clkPop){
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
- if(clkCycEl)clkCycEl.addEventListener('input',clkTouch);
+ if(clkCycEl)clkCycEl.addEventListener('input',function(){clkTouch();clkPaintSet();});   /* v4.1.144 */
  if(clkTagEl0())clkTagEl0().addEventListener('input',clkTouch);
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!clkComposing(e)){e.stopPropagation();clkFire();}
