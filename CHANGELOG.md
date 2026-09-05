@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1120 (2026-09-05)
+- **A clock belongs to the membrane that closes above it, or to nothing** — a ⏰ line anywhere inside a membrane was being adopted by it, which contradicts the notation: these lines are stacked under the closing membrane. So a line pasted into the middle of some text became the outer membrane's booking, and ringing jumped to the top of that membrane. A line with no closing membrane above it is now just text.
+- **The two faces add up** — remaining and elapsed were each rounded down, so together they came to a second short of the round. Elapsed is now taken from the remaining figure as shown, which keeps A + B equal to the length of the turn on screen as well as in principle.
+
 ### v4.1.1119 (2026-09-05)
 - **Clocks set on the same instant are one clock with two faces** — a round can be watched as time remaining and as time elapsed at once, which is not two timers but one interval read from both ends. Lines sharing a start time all show a figure, each in its own direction; lines with a different time are separate bookings, so only the one nearest the membrane runs. The figure is now worked out from the line rather than from the record, since the direction and the length belong to the line.
 - When the bell goes, every line on that same instant is marked done together. Repeating ones are left alone; they have not finished.

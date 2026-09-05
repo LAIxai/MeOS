@@ -9933,8 +9933,17 @@ function meosClockFcScan(doc) {
     //   ので「直前の行」ではなく、**指定行を飛び越えて上の閉じ膜**を探す(指定は塊の下に積み上がる物)。
     let j = i - 1;
     while (j >= 0) { let t = ''; try { t = doc.lineAt(j).text; } catch (_) { break; } if (meosIsSpecLine(t)) { j--; continue; } break; }
-    let owner = pairs.find(p => p.end === j) || null;
-    if (!owner) for (const p of pairs) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+    // ★★★v4.1.1120(俊克 9/5 pm02:02 疑問点1「膜の内部に書いた時、それを膜全体に属すると解釈するのは
+    //   おかしいよね。**直前に閉じ膜thatなければ、無視するべき**だよね」):
+    //   ★★★**俊克thatが正しい。予備の道that記法と矛盾していた**= ⏰は「閉じ膜の直下に積む」と決めた物
+    //     ([[project_clock_in_the_text]] / CN=2548)なのに、**膜の中のどこに在っても持ち主を作って**いた。
+    //     so本文の途中に貼った⏰thatが外側の膜の予定になり、鳴ると**その膜の頭へ飛ぶ**(俊克 バグ2)。
+    //     橙にならないのも、パネルthatが2番目に足したのも、同じ所から出ている
+    //     (その膜の⏰を1本しか数えていなかった)。
+    //   ★★→ **直前の閉じ膜thatが無ければ、時計として読まない**。持ち主の無い⏰は、ただの字。
+    //     ★これで「どこに書いてよいか」thatが1つに決まる= 迷う所thatが無くなる。
+    const owner = pairs.find(p => p.end === j) || null;
+    if (!owner) continue;                                              // v4.1.1120: 持ち主thatが無い⏰は読まない
     // v4.1.71: 札は**膜のコメント**から。⏰行に書いた物も足す(v4.1.70の分を置いていかない)。
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
@@ -10959,7 +10968,12 @@ function meosClockFaceForLine(until, c, sc) {
       if (sc && sc.step > 0 && String(sc.when || '') === String(c.when || '')) step = sc.step;   // 控えthat在れば使う
       else { const b = meosParseStampLoose(c.when); const nx = b ? meosCycleSeriesNext(b.getTime(), c.cycle, until - 1) : null; if (nx) step = nx.step; }
     }
-    return (step > 0) ? Math.max(0, Math.min(step, step - left)) : left;   // 長さthat無ければ数えられない
+    // ★★v4.1.1120(俊克 バグ1「同時起点の2つthat、1秒ズレているね」):
+    //   ★★**両方とも切り捨てて出すので、足すと1秒足りない**(残り2:30.4→"2.30" / 経過0:29.6→"0.29")。
+    //   ★→ 経過は**残りの表示から引く**= `長さ − 切り捨てた残り`。これで **A + B = 1回分の長さ**
+    //     (俊克thatが昨夜立てた不変式)thatが、画面の上でも必ず成り立つ。
+    const shown = Math.floor(left / 1000) * 1000;
+    return (step > 0) ? Math.max(0, Math.min(step, step - shown)) : left;   // 長さthat無ければ数えられない
   } catch (_) { return Math.max(0, until - Date.now()); }
 }
 function meosClockFaceMs(until, sc) {

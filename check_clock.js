@@ -122,6 +122,21 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1120(俊克 9/5 pm02:02 疑問点1「直前に閉じ膜がなければ、無視するべきだよね」
+//   バグ1「同時起点の2つが、1秒ズレている」):
+console.log('\u2478 持ち主は閉じ膜だけ / A + B = 1回分の長さ');
+{
+  const S6=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const C6=S6.slice(S6.indexOf('function meosClockFcScan'), S6.indexOf('function meosClockFcScan')+9000);
+  ok(/const owner = pairs\.find\(p => p\.end === j\) \|\| null;/.test(C6) && /if \(!owner\) continue;/.test(C6),
+     '\u2605\u2605\u2605直前の閉じ膜が無ければ読まない(予備の道を外した)', true);
+  ok(!/if \(!owner\) for \(const p of pairs\)/.test(C6),
+     '\u2605\u2605膜の中のどこに在っても持ち主を作る道は無い', true);
+  const F6=S6.slice(S6.indexOf('function meosClockFaceForLine'), S6.indexOf('function meosClockFaceForLine')+2000);
+  ok(/const shown = Math\.floor\(left \/ 1000\) \* 1000;/.test(F6) && /step - shown/.test(F6),
+     '\u2605\u2605\u2605経過は**切り捨てた残り**から引く(足して1秒足りなくならない)', true);
+}
+
 // ★★★v4.1.1118(俊克 9/5 pm01:05 バグ1「反対の逆算タイマーを追加したら、2つとも逆算で
 //   起動してしまった。完了したら、↻だったのに、↺✓に変わってしまった」):
 console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2本を行で見分ける');
