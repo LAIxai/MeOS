@@ -10776,10 +10776,17 @@ function meosApplyTimerLineDecorations(editor) {
           // v4.1.66: 輪の印に色。\u21ba=緑(まだ余裕thatある) / \u21bb=水色(ただ測るだけ)。
           if (Array.isArray(c.cycle) && c.cycle.length) {
             const _ar = meosClockArrowAt(txt);
-            // ★v4.1.138: `\u21ba\u21bb` は**2文字とも**それぞれの色に(顔の色と揃う)。
+            // ★★v4.1.139(俊克 9/5 pm05:37 バグ1「\u21ba\u21bb のそれぞれの文字色that間違っている」):
+            //   ★★**色は「字そのもの」から決める**= 私は `c.up`(両方の時は false)で選んでいたので、
+            //     2文字目の \u21bb まで緑になっていた。字を見れば `\u21bb\u21ba` の順でも正しい
+            //     (俊克「どっちも良いね」への答えthatこれ= 並びを覚えなくてよい)。
             if (_ar >= 0) {
-              (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
-              if (c.dual && _ar > 0 && txt.charAt(_ar - 1) === '\u21ba') dirDown.push(new vscode.Range(i, _ar - 1, i, _ar));
+              const _c1 = txt.charAt(_ar);
+              (_c1 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
+              if (c.dual && _ar > 0) {
+                const _c0 = txt.charAt(_ar - 1);
+                if (_c0 === '\u21ba' || _c0 === '\u21bb') (_c0 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar - 1, i, _ar));
+              }
             }
           }
           // ★v4.1.77: 日付の右に曜日を**描く**= 本文には1文字も増やさない(出す物と、覚える物を分ける)。
@@ -10871,18 +10878,20 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★周回数(\u00d7N)は**1つ**= 同じ回を2つの顔で見ているだけso、2度言わない。
           const _sc7 = scById.get(owner ? owner.id : '') || {};
           const _rnd = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7)) ? ('\u00d7' + _sc7.round) : '';
-          const _faces = c.dual
-            ? [{ up: false, col: MEOS_CLOCK_DIR_DOWN }, { up: true, col: MEOS_CLOCK_DIR_UP }]
-            : [{ up: !!c.up, col: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN) }];
-          for (let _fi = 0; _fi < _faces.length; _fi++) {
-            const _f = _faces[_fi];
-            const _ms = meosClockFaceForLine(until, { when: c.when, up: _f.up, cycle: c.cycle }, _sc7, _nowAll);
-            items.push({
-              range: new vscode.Range(i, _at2, i, _at2),
-              renderOptions: { after: { contentText: (_fi === 0 ? '\u23f0 ' : '') + meosMmSs(_ms) + (_fi === _faces.length - 1 ? (_rnd + ' ') : ' '),
-                color: _f.col, fontWeight: '800' } }
-            });
-          }
+          // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
+          //   ★★★**同じ位置に、同じ種類の装飾を2つ置いた**= VS Codeは描く順を約束しないので、
+          //     秒ごとに前後thatが入れ替わっていた。
+          //   ★★→ **1つの装飾の `before` と `after`** に分ける= 順番thatが決まる(before→after)し、
+          //     色は別々に持てる。**駒を2つ置かず、1つの駒に2つの顔を持たせる**。
+          const _face = (u) => meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
+          items.push({
+            range: new vscode.Range(i, _at2, i, _at2),
+            renderOptions: c.dual
+              ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },
+                  after: { contentText: _face(true) + _rnd + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
+              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + _rnd + ' ',
+                  color: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN), fontWeight: '800' } }
+          });
         }
       }
     } catch (_) { }

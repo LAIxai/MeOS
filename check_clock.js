@@ -198,8 +198,11 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   ok(R(240001)===2, '\u2605\u2605\u26054分を過ぎたら2周目(3m+1mで一周)', R(240001));
   ok(R(480001)===3, '\u2605\u26058分を過ぎたら3周目', R(480001));
   const S8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(/col: MEOS_CLOCK_DIR_DOWN \}, \{ up: true, col: MEOS_CLOCK_DIR_UP \}/.test(S8) && /color: _f\.col/.test(S8),
+  ok(/before: \{ contentText: '\\u23f0 ' \+ _face\(false\) \+ ' ', color: MEOS_CLOCK_DIR_DOWN/.test(S8)
+     && /after: \{ contentText: _face\(true\) \+ _rnd \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
+  ok(/renderOptions: c\.dual/.test(S8) && !/for \(let _fi = 0/.test(S8),
+     '\u2605\u2605\u26051つの駒に2つの顔(before\u2192after)= 描く順が決まる(交互に入れ替わらない)', true);
   ok(/_rnd0\(_sc7\)\) \? \('\\u00d7' \+ _sc7\.round\)/.test(S8),
      '\u2605\u2605繰返しの時だけ \u00d7N(N周目)を数字の後ろへ', true);
 }
@@ -213,7 +216,7 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
   const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+14000);
-  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: _f\.up, cycle: c\.cycle \}, _sc7, _nowAll\)/.test(D7),
+  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle \}, _sc7, _nowAll\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
      '\u2605渡されなければ今までどおり自分で見る', true);
@@ -912,7 +915,8 @@ console.log('\u3260 \u56f2\u3044\u306e\u4e2d\u306f\u6587\u5b57 / \u672c\u6587tha
  // 改良3: 輪の印の色
  ok(/MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd'/.test(S),
     '\u2605\u2605\u2605UFC\u306e \u21ba \u306f\u7dd1\u30fb\u21bb \u306f\u6c34\u8272(\u8272\u3092\u4ed8\u3051\u305f\u304b\u3063\u305f\u306e\u306f\u3053\u3053)', true);
- ok(/\(c\.up \? dirUp : dirDown\)\.push/.test(S), '  \u5411\u304d\u3067\u5857\u308a\u5206\u3051\u308b', true);
+ /* ★v4.1.139: 色は「字そのもの」から決める(↻↺ の順でも正しい)。 */
+ ok(/\(_c1 === '\\u21bb' \? dirUp : dirDown\)\.push/.test(S), '  \u5411\u304d\u3067\u5857\u308a\u5206\u3051\u308b(\u5b57\u305d\u306e\u3082\u306e\u3092\u898b\u308b)', true);
  // 改良1/2
  ok(/\.clk-dir,\.clk-rep\{[^}]*border:1px solid rgba\(224,128,58,\.55\)/.test(S),
     '\u2605\u62bc\u3057\u3066\u3044\u306a\u3044\u6642\u3082\u89d2\u4e38\u306e\u7bb1that\u898b\u3048\u308b(\u7bb1\u306f\u300c\u62bc\u305b\u308b\u300d\u3092\u8a00\u3046)', true);

@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.139 (2026-09-05)
+- **Each arrow takes its own colour** — the pair was coloured from the line's single direction, which for a two-faced line is neither of them, so both came out green. Reading the character itself also means `↻↺` works as well as `↺↻`: the order does not have to be remembered.
+- **The two figures stop swapping places** — they were two decorations of the same kind at the same spot, and nothing decides which is drawn first. One decoration carrying a `before` and an `after` has an order by definition, and still holds two colours.
+
 ### v4.1.138 (2026-09-05)
 - **`↺↻3m/1m` puts both faces on one line** — remaining in green and elapsed in cyan, from one start time. Two separate lines could drift apart the moment one of the times was edited; with one line there is nothing to keep in step, because there is only one time to write. The round is shown once, since both faces are watching the same round.
 - The direction is carried through every rewrite, the scan included, so pausing or finishing a clock cannot quietly reduce it to a single arrow.
