@@ -24683,7 +24683,7 @@ if(clkCaret&&clkPop){
      ★★★**当たりthat見えている物より小さかった**= □ は子の span so、id で見ていた私の枝を素通りしていた。
      ★→ **押した物の上をたどって、どのボタンの中かを訊く**= 見えている箱の中は、どこでも当たり
      ([[project_direct_manipulation_mark]] 印は押せる大きさ／当たりthat表示と一致する)。 */
-  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-set'):null;
+  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'):null;
   var _id=_hit?_hit.id:'';
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();return;}

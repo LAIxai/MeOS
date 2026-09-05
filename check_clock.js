@@ -135,6 +135,10 @@ console.log('\u247b copy \u23f0 は ⏰行だけを写す');
   ok(/vscode\.env\.clipboard\.writeText\(_txt\)/.test(K9), '\u2605クリップボードへ置くだけ(貼る先も時も人の物)', true);
   ok(!/meosNewMembrane|buildMembraneOpenLine/.test(K9), '\u2605\u2605膜は作らない(俊克 pm03:12)', true);
   ok(/id="clk-copy"/.test(S9) && /_id==='clk-copy'/.test(S9), '\u2605面にボタンが在り、押すと node へ届く', true);
+  /* ★★★v4.1.134(俊克 質問1「copy ⏰ ボタンは表示されるけど、動作はしてないよね?」):
+     枝を足しても、**扉の名簿に入れなければ通らない**(closest の選択子)。 */
+  ok(/closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'\)/.test(S9),
+     '\u2605\u2605\u2605押した物をたどる名簿に copy が入っている(枝だけ足しても通らない)', true);
 }
 
 // ★★v4.1.132(俊克 9/5 pm02:56 改良1「残り時間の数字も緑色にし、ストップウォッチの数字を水色に」
@@ -887,7 +891,7 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
     '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
  ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
     '\u2605\u2605\u6253\u9375that\u843d\u3061\u7740\u3044\u305f\u3089 \u23f0 \u3082\u8aad\u307f\u76f4\u3059= \u56f2\u3044\u3078\u5165\u308c\u305f\u898b\u672c\u304c\u4fdd\u5b58\u3092\u5f85\u305f\u305a\u306b\u843d\u3061\u308b', true);
- ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-set'\)/.test(S),
+ ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'\)/.test(S),
     '\u2605\u2605\u2605\u898b\u3048\u3066\u3044\u308b\u7bb1\u306e\u4e2d\u306f\u3069\u3053\u3067\u3082\u5f53\u305f\u308a(\u2610 \u3092\u62bc\u3057\u3066\u3082\u52b9\u304f)', true);
  ok(/var n2=new Date\(\);/.test(S)&&!/var n2=new Date\(Date\.now\(\)\+30\*60000\)/.test(S),
     '\u2605\u6642\u5206\u306e\u65e2\u5b9a\u306f**\u4eca**(30\u5206\u5f8c\u306f\u79c1\u306e\u63d0\u6848\u3067\u3057\u304b\u306a\u304b\u3063\u305f)', true);

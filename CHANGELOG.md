@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.134 (2026-09-05)
+- **copy ⏰ actually responds** — the button existed and the branch that answers it existed, but the panel finds out which button was pressed by walking up from the click through a list of ids, and the new one was not on the list. A branch nobody can reach looks exactly like a branch that does nothing.
+
 ### v4.1.133 (2026-09-05)
 - **copy ⏰** — takes the membrane's clock lines, and only those; the badge stays where it belongs. Paste them under another membrane's closing line and that membrane has the same clocks, because a clock belongs to whatever closes above it. No membrane is created and nothing is pasted for you: the button only saves the selecting.
 
