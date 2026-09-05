@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.1116 (2026-09-05)
+- **The second booking now lands** — the append wrote a newline onto the end of the previous line, while the branch right below it, which has always worked, inserts at the start of the next one. It now uses that shape. The status bar reports a set clock whether or not the write succeeded, so a failed write said nothing at all; a write that comes back false now says so in the log.
+
 ### v4.1.1115 (2026-09-05)
 - **A new booking is added, not written over the running one** — setting a clock from the panel replaced the first ⏰ line of the membrane, so the clock that was running vanished as you booked the next one. Callers that mean one particular clock — done, paused, renamed, resumed — now say which line they mean; the panel, which means "a new one", adds a line under the group.
 - Both clock logs name the line they touched, so the next thing that goes wrong here can be read instead of guessed.

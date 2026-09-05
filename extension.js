@@ -10098,8 +10098,15 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       }
     } else if (hit && spec) {
       // v4.1.1115: 名指しthat無い= 新しい予定so、**群の次の行に足す**(走っている物を消さない)。
+      // ★★★v4.1.1116(俊克 9/5 pm00:16 バグ1「2つ目の予約を追加できない。ウィンドウ最下段には
+      //   追加したような表示that出る」): ★★★**同じ関数の中に、実績のある書き方that既に在った**=
+      //     下の「1本も無い時」の枝は `(行, 0)` へ `line + '\n'` を入れる。私はそれと違う形
+      //     (前の行の末尾へ `'\n' + line`)を新しく書いていた。**家の中の同じ役の部品を先に探す**
+      //     ([[feedback_copy_the_house_style_first]])。
       const _last = hits[hits.length - 1];
-      ed.insert(doc.uri, new vscode.Position(_last.line, doc.lineAt(_last.line).text.length), '\n' + line);
+      const _ln2 = Math.min(_last.line + 1, doc.lineCount);
+      if (_ln2 < doc.lineCount) ed.insert(doc.uri, new vscode.Position(_ln2, 0), line + '\n');
+      else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + line);
     } else if (spec) {
       let at = -1;
       try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; break; } } catch (_) { }
@@ -10109,7 +10116,11 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       if (ln < doc.lineCount) ed.insert(doc.uri, new vscode.Position(ln, 0), line + '\n');
       else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + line);
     } else return false;
-    return await vscode.workspace.applyEdit(ed);
+    // ★v4.1.1116: **書けたかどうかを名乗らせる**= ステータスバーは書けても書けなくても出るので、
+    //   `false` thatが黙って返ると「掛けたのに何も起きない」になる(俊克 バグ1の見え方)。
+    const _applied = await vscode.workspace.applyEdit(ed);
+    try { if (!_applied) meosDbg('[clockFcSet] ★書けなかった key=' + key + ' 名指し=' + ((typeof atLine === 'number') ? (atLine + 1) : 'なし') + ' 本数=' + hits.length + ' new=' + (line || '(delete)')); } catch (_) { }
+    return _applied;
   } catch (_) { return false; }
 }
 // 書いてある ⏰ を仕掛ける。既に走っている物には触らない(mMETA由来が先に居れば、そちらを立てる)。

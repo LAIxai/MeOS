@@ -127,12 +127,17 @@ ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に�
 console.log('\u2475 新しい予定は足す、名指しされた1本は直す');
 {
   const S3=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const F=S3.slice(S3.indexOf('async function meosClockFcSet'), S3.indexOf('async function meosClockFcSet')+6000);
+  const F=S3.slice(S3.indexOf('async function meosClockFcSet'), S3.indexOf('async function meosClockFcSet')+9000);
   ok(/async function meosClockFcSet\(doc, key, spec, atLine\)/.test(F), '\u2605どの行の話かを言える', true);
   ok(/const _named = \(typeof atLine === 'number'/.test(F), '\u2605\u2605名指しされた1本を探す', true);
-  ok(/\} else if \(hit && spec\) \{[^]{0,400}ed\.insert\(doc\.uri/.test(F),
+  ok(/\} else if \(hit && spec\) \{[^]{0,900}ed\.insert\(doc\.uri/.test(F),
      '\u2605\u2605\u2605名指しが無ければ**群の次の行に足す**(走っている物を消さない)', true);
-  ok(/ed\.insert\(doc\.uri, new vscode\.Position\(_last\.line/.test(F), '\u2605足すのは群の**最後**の行の下', true);
+  /* \u2605v4.1.1116: 足し方は**下の枝と同じ形**((行,0) へ line+改行)= 家の中の同じ役の部品を真似る。 */
+  ok(/const _ln2 = Math\.min\(_last\.line \+ 1, doc\.lineCount\)/.test(F), '\u2605足すのは群の**最後**の行の下', true);
+  ok(/if \(_ln2 < doc\.lineCount\) ed\.insert\(doc\.uri, new vscode\.Position\(_ln2, 0\), line \+ '\\n'\)/.test(F),
+     '\u2605\u2605実績のある書き方と揃える((行,0) へ line+改行)', true);
+  ok(/const _applied = await vscode\.workspace\.applyEdit\(ed\)/.test(F) && /書けなかった/.test(F),
+     '\u2605\u2605\u2605書けなかった時は名乗る(黙って false を返さない)', true);
   /* 「その1本」を意味する呼び手は行番号を渡している */
   ok(/done: true \}, c\.line\)/.test(S3) && /off: true \}, c\.line\)/.test(S3) && /done: false \}, c\.line\)/.test(S3),
      '\u2605\u2605済み/休み/名前戻しは行を名指しする', true);
