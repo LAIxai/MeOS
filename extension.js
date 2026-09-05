@@ -10885,8 +10885,13 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★→ **1つの装飾の `before` と `after`** に分ける= 順番thatが決まる(before→after)し、
           //     色は別々に持てる。**駒を2つ置かず、1つの駒に2つの顔を持たせる**。
           const _face = (u) => meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
+          // ★★v4.1.141(俊克 9/5 pm06:18 バグ1「×0thatコメントの外に出ちゃったよ」):
+          //   ★★**時計はコメントの中に立つ**(v4.1.20 俊克)= `-->` の手前。私は行の右端(外)へ置いていた。
+          //   ★★→ 中に入れたまま順番も決める= **場所を1つずらす**。顔は `-->` の1つ手前に、
+          //     周回数は `-->` の直前に置く。位置that違えば、描く順は位置that決める(同じ所に2つ置かない)。
+          const _at1 = (_at2 > 0) ? (_at2 - 1) : _at2;
           items.push({
-            range: new vscode.Range(i, _at2, i, _at2),
+            range: new vscode.Range(i, _at1, i, _at1),
             renderOptions: c.dual
               ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },
                   after: { contentText: _face(true) + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
@@ -10897,8 +10902,8 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★**周回数は顔ではない**= 残り/経過は「今この回のどこか」、周回数は「何回目か」so、役that違う。
           //     → 色も置き場所も分ける= **行の右端**(`-->` の外)に、橙で。
           //   ★位置thatが違うので、描く順の取り合いも起きない(v4.1.139で踏んだ穴を作らない)。
-          if (_rnd) rounds.push({ range: new vscode.Range(i, txt.length, i, txt.length),
-            renderOptions: { after: { contentText: '  ' + _rnd, color: '#e0803a', fontWeight: '800' } } });
+          if (_rnd) rounds.push({ range: new vscode.Range(i, _at2, i, _at2),
+            renderOptions: { before: { contentText: _rnd + ' ', color: '#e0803a', fontWeight: '800' } } });
         }
       }
     } catch (_) { }

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.141 (2026-09-05)
+- **The round number comes back inside the comment** — a clock stands inside its comment, before the `-->`; the amber ×N had been put at the end of the line, outside it. Keeping the two apart without leaving the comment just needs one character of distance: the figures sit one place before the `-->`, the round immediately before it. Different places, so the order is settled by the places.
+
 ### v4.1.140 (2026-09-05)
 - **×0 shows again** — the round was read as `round || 1`, and `||` turns a legitimate 0 into 1, so the wait always claimed to be the first round.
 - **Both arrows are cut out of the orange** — only the last one was, leaving the first still orange whenever the membrane's lines turn raw.

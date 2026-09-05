@@ -202,9 +202,11 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
      && /after: \{ contentText: _face\(true\) \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
   /* ★v4.1.140: 周回数は顔と役が違うので、色も場所も分ける(行の右端・橙)。 */
-  ok(/rounds\.push\(\{ range: new vscode\.Range\(i, txt\.length, i, txt\.length\)/.test(S8)
-     && /color: '#e0803a'/.test(S8),
-     '\u2605\u2605\u00d7N は別の駒・別の色・行の右端(描く順の取り合いも起きない)', true);
+  /* ★★v4.1.141: 時計はコメントの中に立つ(v4.1.20)。顔は `-->` の1つ手前、周回数は `-->` の直前。 */
+  ok(/rounds\.push\(\{ range: new vscode\.Range\(i, _at2, i, _at2\)/.test(S8) && /color: '#e0803a'/.test(S8),
+     '\u2605\u2605\u00d7N は別の駒・別の色で、コメントの**中**に立つ', true);
+  ok(/const _at1 = \(_at2 > 0\) \? \(_at2 - 1\) : _at2;/.test(S8) && /range: new vscode\.Range\(i, _at1, i, _at1\)/.test(S8),
+     '\u2605\u2605\u2605場所を1つずらして順番を決める(同じ所に2つ置かない)', true);
   ok(/\(typeof _nx\.round === 'number'\) \? _nx\.round : 1/.test(S8) && !/_nx\.round \|\| 1/.test(S8),
      '\u2605\u2605\u2605`\|\| 1` は 0 を 1 に化けさせる(\u00d70 that出なかった正体)', true);
   ok(/renderOptions: c\.dual/.test(S8) && !/for \(let _fi = 0/.test(S8),
