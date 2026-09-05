@@ -199,8 +199,14 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   ok(R(480001)===3, '\u2605\u26058分を過ぎたら3周目', R(480001));
   const S8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(/before: \{ contentText: '\\u23f0 ' \+ _face\(false\) \+ ' ', color: MEOS_CLOCK_DIR_DOWN/.test(S8)
-     && /after: \{ contentText: _face\(true\) \+ _rnd \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
+     && /after: \{ contentText: _face\(true\) \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
+  /* ★v4.1.140: 周回数は顔と役が違うので、色も場所も分ける(行の右端・橙)。 */
+  ok(/rounds\.push\(\{ range: new vscode\.Range\(i, txt\.length, i, txt\.length\)/.test(S8)
+     && /color: '#e0803a'/.test(S8),
+     '\u2605\u2605\u00d7N は別の駒・別の色・行の右端(描く順の取り合いも起きない)', true);
+  ok(/\(typeof _nx\.round === 'number'\) \? _nx\.round : 1/.test(S8) && !/_nx\.round \|\| 1/.test(S8),
+     '\u2605\u2605\u2605`\|\| 1` は 0 を 1 に化けさせる(\u00d70 that出なかった正体)', true);
   ok(/renderOptions: c\.dual/.test(S8) && !/for \(let _fi = 0/.test(S8),
      '\u2605\u2605\u26051つの駒に2つの顔(before\u2192after)= 描く順が決まる(交互に入れ替わらない)', true);
   ok(/_rnd0\(_sc7\)\) \? \('\\u00d7' \+ _sc7\.round\)/.test(S8),

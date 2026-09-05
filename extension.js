@@ -10209,7 +10209,7 @@ function meosArmClockFcFor(doc) {
               try {
                 const _u = _meosPseudoUntil.get(lk), _b = meosParseStampLoose(c.when);
                 const _nx2 = (_u && _b) ? meosCycleSeriesNext(_b.getTime(), c.cycle, _u - 1) : null;
-                if (_nx2) { _s.step = _nx2.step; _s.cidx = _nx2.idx || 0; _s.round = _nx2.round || 1; _ok = true; }
+                if (_nx2) { _s.step = _nx2.step; _s.cidx = _nx2.idx || 0; _s.round = (typeof _nx2.round === 'number') ? _nx2.round : 1; _ok = true; }   // ★v4.1.140: 0 を落とさない
               } catch (_) { }
               if (!_ok) _s.step = meosCycleMs(c.cycle[0]);           // 読めない時だけ、今までどおり先頭
             }
@@ -10251,7 +10251,7 @@ function meosArmClockFcFor(doc) {
         // ★v4.1.63: **数えるだけ**= 本文(起点)には触らない。いつ始めたのかthatそこに残る。
         const _b = meosParseStampLoose(c.when) || (w && w.at) || null;
         const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, Date.now()) : null;
-        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; _crnd = _nx.round || 1; }   // v4.1.1111 / v4.1.132
+        if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; _crnd = (typeof _nx.round === 'number') ? _nx.round : 1; }   // v4.1.1111 / v4.1.132 / ★v4.1.140: `|| 1` は 0 を 1 に化けさせる
       }
       if (!w) {
         // ★★★v4.1.25(俊克 バグ1「☐をクリックすると…⏰リストから消えてしまう」):
@@ -10675,6 +10675,7 @@ let meosClockPauseOutDeco = null;   // v4.1.67: ⏸ は場所で色を変えな�
 //   ★塗り方は ✓ / \u23f8 と同じ= **橙の範囲から抜いてから置く**(v4.1.19「外側を割る」)。
 let meosClockDirDownDeco = null, meosClockDirUpDeco = null;
 let meosClockCycNowDeco = null;   // v4.1.1111: 今その回を走っている側(3m/1m の片方)
+let meosClockRoundDeco = null;    // v4.1.140: 何周目か(顔とは別の役so、別の駒)
 const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd';   // \u21ba=緑 / \u21bb=水色
 // 行の中の輪の印(\u21ba/\u21bb)の位置。無ければ -1。橙を割る側と、色を置く側that同じ1つから引く。
 // v4.1.1111: 矢印の後ろの並び(`3m/1m`)の、idx番目の桁を返す。無ければ null。
@@ -10728,7 +10729,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [];
+    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [];
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -10888,10 +10889,16 @@ function meosApplyTimerLineDecorations(editor) {
             range: new vscode.Range(i, _at2, i, _at2),
             renderOptions: c.dual
               ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },
-                  after: { contentText: _face(true) + _rnd + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
-              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + _rnd + ' ',
+                  after: { contentText: _face(true) + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
+              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + ' ',
                   color: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN), fontWeight: '800' } }
           });
+          // ★★v4.1.140(俊克 改良3「\u00d7N は別の色にしようよ」):
+          //   ★★**周回数は顔ではない**= 残り/経過は「今この回のどこか」、周回数は「何回目か」so、役that違う。
+          //     → 色も置き場所も分ける= **行の右端**(`-->` の外)に、橙で。
+          //   ★位置thatが違うので、描く順の取り合いも起きない(v4.1.139で踏んだ穴を作らない)。
+          if (_rnd) rounds.push({ range: new vscode.Range(i, txt.length, i, txt.length),
+            renderOptions: { after: { contentText: '  ' + _rnd, color: '#e0803a', fontWeight: '800' } } });
         }
       }
     } catch (_) { }
@@ -10916,6 +10923,8 @@ function meosApplyTimerLineDecorations(editor) {
       // v4.1.1113: 変数that解けなかった時のために、素の白を控えに置く(黙って何も塗らない、を作らない)。
       textDecoration: 'none; color: var(--vscode-editor-foreground, #ffffff) !important; font-weight: 900;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosTimerLineDeco, items);
+    if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosClockRoundDeco, rounds);   // v4.1.140: 周回数は別の駒(色も場所も顔と分ける)
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
@@ -29869,7 +29878,14 @@ function meosApplyFcRowDecorations(editor) {
           if (_cc.done) { const a = txt.search(MEOS_CLOCK_DONE_MARK_RE); if (a >= 0) _cut.push([a, a + 1]); }
           if (_cc.off) { const a = txt.indexOf('\u23f8'); if (a >= 0) _cut.push([a, a + 1]); }
           if (_cc.cycle && _cc.cycle.length) {
-            const a = meosClockArrowAt(txt); if (a >= 0) _cut.push([a, a + 1]);
+            // ★★v4.1.140(俊克 9/5 pm05:53 バグ1「膜名の中に入った時、↺文字だけthat橙色になってしまう」):
+            //   ★★**抜いていたのthat最後の矢印1つだけ**= `↺↻` の1文字目thatが橙のまま残っていた。
+            //     2文字とも抜く= 色を置く側と、場所を空ける側thatが同じ数を見る。
+            const a = meosClockArrowAt(txt);
+            if (a >= 0) {
+              _cut.push([a, a + 1]);
+              if (a > 0 && (txt.charAt(a - 1) === '\u21ba' || txt.charAt(a - 1) === '\u21bb')) _cut.push([a - 1, a]);
+            }
             // 今その回を走っている桁も抜く= 白thatそのまま置ける(描く側と、抜く側thatが同じ答えから引く)。
             try {
               const _own = meosClockOwnerScopeAt(doc2, ln);

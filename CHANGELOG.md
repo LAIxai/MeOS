@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.140 (2026-09-05)
+- **×0 shows again** — the round was read as `round || 1`, and `||` turns a legitimate 0 into 1, so the wait always claimed to be the first round.
+- **Both arrows are cut out of the orange** — only the last one was, leaving the first still orange whenever the membrane's lines turn raw.
+- **The round has its own colour and its own place** — remaining and elapsed say where you are inside a round; the round number says which round. Different jobs, so it sits at the end of the line in amber, as a decoration of its own. Being somewhere else also means it cannot get into a drawing-order argument with the figures.
+
 ### v4.1.139 (2026-09-05)
 - **Each arrow takes its own colour** — the pair was coloured from the line's single direction, which for a two-faced line is neither of them, so both came out green. Reading the character itself also means `↻↺` works as well as `↺↻`: the order does not have to be remembered.
 - **The two figures stop swapping places** — they were two decorations of the same kind at the same spot, and nothing decides which is drawn first. One decoration carrying a `before` and an `after` has an order by definition, and still holds two colours.
