@@ -10369,9 +10369,14 @@ let _meosClockLockNext = false;                 // v4.1.5: 次に掛ける時計
 async function meosClockDrop(uri, key) {
   let lk = null;
   try { for (const [k, sc] of _meosPseudoScopes) { if (sc && sc.uri === uri && sc.key === key) { lk = k; break; } } } catch (_) { }
+  // ★★v4.1.130(俊克 9/5 pm02:10 バグ3「×ボタンで削除すると、**動作中だけthat削除して欲しい**んだけど
+  //   未来の予定も削除されてしまう」): ★★**消す前に「どの行か」を控える**= 1膜1時計の頃は
+  //   「その膜の⏰」で足りたthat、今は何本でも並ぶ。走っている1本thatが×の相手。
+  let _dropLine;
   if (lk) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) { vscode.window.setStatusBarMessage('MeOS: \ud83d\udd12 ' + (sc.name || 'this clock') + ' \u2014 locked until the time is up.', 3000); return false; }
+    if (sc && typeof sc.line === 'number') _dropLine = sc.line;
     await meosEndPseudoTimer(lk);
   }
   // ★★★v4.1.40(俊克「×ボタンを押すと…なのにリストから外れる事もあるthat、VSCmを再起動すると、
@@ -10387,7 +10392,7 @@ async function meosClockDrop(uri, key) {
   try {
     const d = vscode.workspace.textDocuments.find(x => x.uri.toString() === uri);
     if (d) {
-      await meosClockFcSet(d, key, null);
+      await meosClockFcSet(d, key, null, _dropLine);   // v4.1.130: 走っている1本だけ(控えthat無ければ今までどおり全部)
       // ★★★v4.1.41(俊克 改良1「UFCがある行に飛ぶので、それを削除すると、膜that折畳まれた状態になって、
       //   その次の行に文字カーソルthat着地してしまう。そこで、**文字カーソルの位置を1行上に自動で移動**して、
       //   閉じ膜の中あるいはバッジコメントに入るようにする。それで、**UFC\u23f0コメントthat削除されることを
@@ -10711,6 +10716,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [];
+    const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
     for (const [k, until] of _meosPseudoUntil) {
@@ -10848,7 +10854,7 @@ function meosApplyTimerLineDecorations(editor) {
             // ★v4.1.1111(俊克 改良2「残タイマー値も橙色は止めて白色にしようよ。**膜の中に入った時に、
             //   他も橙色になるので、今までは目立たなかった**」): ★行ぜんぶthat橙に染まる場面thatあるので、
             //   **数字だけthat地の色と違う**ようにする= 動いている物thatひと目で分かる。
-            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceForLine(until, c, scById.get(owner ? owner.id : ''))) + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
+            renderOptions: { after: { contentText: '\u23f0 ' + meosMmSs(meosClockFaceForLine(until, c, scById.get(owner ? owner.id : ''), _nowAll)) + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
           });
         }
       }
@@ -10959,9 +10965,14 @@ function meosUpdateTimerBar() {
 //     逆算もストップウォッチも**止めるまで続く**。1週間に1回の予定が日を跨ぐのと同じ理屈。
 // ★★v4.1.1119: **顔はその行から出す**= 同じ時計を2つの顔で見る時、向きも長さも行thatが持っている。
 //   控え(sc)は「今どの回か」を数え直さないための控えso、行と食い違ったら**行thatが正しい**。
-function meosClockFaceForLine(until, c, sc) {
+function meosClockFaceForLine(until, c, sc, now) {
   try {
-    const left = Math.max(0, until - Date.now());
+    // ★★★v4.1.130(俊克 9/5 pm02:10 バグ2「同時起点の2つのタイマ値thatまだ一致しない」):
+    //   ★★★**2つの顔that、それぞれ別に `Date.now()` を呼んでいた**= 数msずれた2回の呼び出しthat
+    //     秒の境目をまたぐと、片方だけthat1秒進む。**同じ一回の描画の「今」は1つ**でなければならない。
+    //   ★俊克の不変式 A + B = 1回分の長さ は、**同じ「今」から出した2つ**でしか成り立たない。
+    const _now = (typeof now === 'number') ? now : Date.now();
+    const left = Math.max(0, until - _now);
     if (!c || !c.up) return left;                                  // \u21ba(または矢印なし)= 残り
     let step = 0;
     if (Array.isArray(c.cycle) && c.cycle.length) {
@@ -29409,7 +29420,11 @@ function meosFcBodyTop(doc, head) {
 // カーソルの居る「本文の範囲(top..head)＋FC群(head+1..end)」。対でなければ null。全文は走らない。
 function meosFcPairAt(doc, line) {
   try {
-    const isSpec = (i) => (i >= 0 && i < doc.lineCount) && meosIsSpecLine(doc.lineAt(i).text);
+    // ★★v4.1.130(俊克 9/5 pm02:10 バグ1「UFCだけ入れても⏰は起動しないthat、**1つ前の行の文字を
+    //   含めてオレンジ色になる**」): ★★**持ち主の無い⏰は、ただの字**(v4.1.1120)so、
+    //   橙の対応(本文行 ⇄ 指定行)にも入れない。入れると、関係の無い行thatが「対だ」と名乗ってしまう。
+    const _orphanClock = (i) => { try { const t = doc.lineAt(i).text; return !!(t.indexOf('\u23f0') >= 0 && meosClockFcParse(t)) && !meosClockLineIsLive(doc, i); } catch (_) { return false; } };
+    const isSpec = (i) => (i >= 0 && i < doc.lineCount) && meosIsSpecLine(doc.lineAt(i).text) && !_orphanClock(i);
     if (isSpec(line)) {                                   // FC行に居る
       let f = line; while (f > 0 && isSpec(f - 1)) f--;
       const head = f - 1; if (head < 0) return null;

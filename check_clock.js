@@ -122,6 +122,21 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.130(俊克 9/5 pm02:10 バグ1「UFCだけ入れても1つ前の行の文字を含めてオレンジ色になる」
+//   バグ2「同時起点の2つのタイマ値がまだ一致しない」バグ3「×で未来の予定も削除されてしまう」):
+console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回に1つ / × は走っている1本');
+{
+  const S7=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const P7=S7.slice(S7.indexOf('function meosFcPairAt'), S7.indexOf('function meosFcPairAt')+2500);
+  ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
+     '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
+  const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+14000);
+  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, c, scById\.get\(owner \? owner\.id : ''\), _nowAll\)/.test(D7),
+     '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
+  ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
+     '\u2605渡されなければ今までどおり自分で見る', true);
+}
+
 // ★★★v4.1.1120(俊克 9/5 pm02:02 疑問点1「直前に閉じ膜がなければ、無視するべきだよね」
 //   バグ1「同時起点の2つが、1秒ズレている」):
 console.log('\u2478 持ち主は閉じ膜だけ / A + B = 1回分の長さ');
@@ -156,7 +171,7 @@ console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2�
   /* \u2605\u2605\u2605v4.1.1119(俊克 pm01:10): 鳴る時刻が同じ行は「同じ1つの時計の別の顔」so、並べて出す。 */
   ok(/if \(_sc9 && _sc9\.when && String\(c\.when\) !== String\(_sc9\.when\)\) continue;/.test(S5),
      '\u2605\u2605\u2605同じ起点なら何本でも出す / 違えば出さない', true);
-  ok(/function meosClockFaceForLine\(until, c, sc\)/.test(S5) && /if \(!c \|\| !c\.up\) return left;/.test(S5),
+  ok(/function meosClockFaceForLine\(until, c, sc, now\)/.test(S5) && /if \(!c \|\| !c\.up\) return left;/.test(S5),
      '\u2605\u2605\u2605顔は**その行**の向きで出す(片方が\u21ba、片方が\u21bb)', true);
 }
 
@@ -470,9 +485,9 @@ console.log('\u2473 \u00d7 は走っていなくても行を消す');
  const _drop=SRC4.slice(SRC4.indexOf('async function meosClockDrop'), SRC4.indexOf('async function meosClockDrop')+3000);
  const _ifBody=_drop.slice(_drop.indexOf('if (lk) {'), _drop.indexOf('}', _drop.indexOf('await meosEndPseudoTimer')));
  ok(!/meosClockFcSet\([^)]*null\)/.test(_ifBody), '\u2605\u2605\u2605行を消す処理that「走っている時」の中に無い', _ifBody.length);
- ok(/meosClockFcSet\(d, key, null\)/.test(_drop), '  \u00d7 は本文の行を消す(常に通る道に在る)', true);
+ ok(/meosClockFcSet\(d, key, null, _dropLine\)/.test(_drop), '  \u00d7 は本文の行を消す(走っている1本を名指し)', true);
  const _after=_drop.slice(_drop.indexOf('if (lk) {'));
- const _i1=_after.indexOf('meosEndPseudoTimer'), _i2=_after.indexOf('meosClockFcSet(d, key, null)');
+ const _i1=_after.indexOf('meosEndPseudoTimer'), _i2=_after.indexOf('meosClockFcSet(d, key, null, _dropLine)');
  ok(_i1>=0&&_i2>=0&&_i2>_i1, '  止めてから消す(順番)', [_i1,_i2]);
 }
 

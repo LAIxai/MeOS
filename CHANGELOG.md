@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.130 (2026-09-05)
+- Version numbering settles back down: 1101–1120 were twenty steps past 110, so this is 130.
+- **A clock with no membrane above it colours nothing** — it is just text now, so it no longer claims the line above as its partner.
+- **Both faces read the same instant** — each was calling for the time of day on its own, and two calls a few milliseconds apart can fall either side of a second. One reading per repaint, so A + B stays equal to the length of the turn.
+- **× removes the clock that is running** — a membrane can hold several now, and deleting one booking should not take the ones waiting behind it.
+
 ### v4.1.1120 (2026-09-05)
 - **A clock belongs to the membrane that closes above it, or to nothing** — a ⏰ line anywhere inside a membrane was being adopted by it, which contradicts the notation: these lines are stacked under the closing membrane. So a line pasted into the middle of some text became the outer membrane's booking, and ringing jumped to the top of that membrane. A line with no closing membrane above it is now just text.
 - **The two faces add up** — remaining and elapsed were each rounded down, so together they came to a second short of the round. Elapsed is now taken from the remaining figure as shown, which keeps A + B equal to the length of the turn on screen as well as in principle.
