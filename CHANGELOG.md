@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.151 (2026-09-06)
+- **Raw rows get their raw text back, and nothing else.** With the caret in the block, or in Raw mode, the badge row was still carrying the clock's figures and the round count had escaped past the closing `-->`. Not collapsing the row on a raw line was only half the rule — the figures also had to stop being *placed* there. When any row involved is shown raw, the membrane does not borrow: the badge row is just the badge, and the figures return to their old place inside the ⏰ line's own comment. Raw means what MeOS looks like switched off, so the difference between the two views is visible again.
+
 ### v4.1.150 (2026-09-06)
 - **`×0/12` shows up next to the figures.** It had been anchored one column in from the head — inside the collapsed badge text — and was collapsed along with it. Injected content survives at the edges of a hidden run, not inside it, which is why the figures at column 0 came through and the round count did not. The count now sits at the far end of the row, mirroring the figures, so the draw order stays fixed.
 

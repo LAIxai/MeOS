@@ -241,13 +241,17 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   /* \u2605\u2605\u2605v4.1.147: 数字はすぐ上のバッジ行へ出す(生データは1文字も動かさない= UFC1行のコピペthat時計になる)。 */
   /* ★★★v4.1.148(俊克 9/6 am00:07「**行頭からタイマ数値that見えることthat目的**だよ」):
      右端では窓を狭めた瞬間に切れる= 幅に負けないためには行頭でなければ意味thatない。 */
-  ok(/const _bg2 = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /_at1 = 0;\s+\/\/ 顔は\*\*行頭\*\*/.test(S8)
+  ok(/const _bgRaw = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /_at1 = 0;\s+\/\/ 顔は\*\*行頭\*\*/.test(S8)
      && /_fat2 = _blen; _rndAfter = true;/.test(S8) && /renderOptions: _rndAfter/.test(S8),
      '\u2605\u2605\u2605動く数字はバッジ行の**行頭**へ／\u00d7N は行末の外側(隠した範囲の内側に置くと一緒に畳まれる)', true);
   ok(/badgeHide\.push\(new vscode\.Range\(_bg2, 0, _bg2, _blen\)\)/.test(S8) && /opacity: 0; font-size: 0;/.test(S8),
      '\u2605\u2605バッジ行は**中身を消して場所だけ借りる**(数字thatが行頭に立つ)', true);
-  ok(/!meosShowsRawLine\(editor, _bg2\)/.test(S8),
-     '\u2605生を見せている行では消さない(そこは直すための窓)', true);
+  /* \u2605\u2605\u2605v4.1.151(俊克 バグ1/2): 生を見せている行thatあるなら、その膜では**借りない**=
+     消さないだけでなく**置かない**。数字は⏰行のコメントの内側へ戻る(昨日と同じ轍を踏まない)。 */
+  ok(/\(_bgRaw >= 0 && !meosShowsRawLine\(editor, _bgRaw\) && !meosShowsRawLine\(editor, i\)\) \? _bgRaw : -1/.test(S8),
+     '\u2605\u2605\u2605生を見せている行thatあれば借りない(消さないだけでなく置かない)', true);
+  ok(/if \(_blen\) badgeHide\.push/.test(S8),
+     '  借りると決めた行は必ず消す(判定は1か所で済ませる)', true);
   ok(/\(typeof _nx\.round === 'number'\) \? _nx\.round : 1/.test(S8) && !/_nx\.round \|\| 1/.test(S8),
      '\u2605\u2605\u2605`\|\| 1` は 0 を 1 に化けさせる(\u00d70 that出なかった正体)', true);
   ok(/renderOptions: c\.dual/.test(S8) && !/for \(let _fi = 0/.test(S8),
@@ -1454,7 +1458,7 @@ console.log('\u246b \u23f82= 休んだ時に何周終えていたか');
     '\u2605\u2605書く時も \u23f8N で書き戻す', true);
  ok(/const _pr9 = \(sc && typeof sc\.round === 'number' && sc\.round > 0\) \? sc\.round/.test(S),
     '\u2605\u2605\u2605止める**その時**の周回数を控えから読む(消える前に)', true);
- ok(/if \(c\.pausedRound > 0\) \{/.test(S) && /_bg3 = meosClockBadgeRowForLine/.test(S),
+ ok(/if \(c\.pausedRound > 0\) \{/.test(S) && /_bg3r = meosClockBadgeRowForLine/.test(S) && /_bg3r >= 0 && !meosShowsRawLine\(editor, _bg3r\)/.test(S),
     '\u2605休んでいても \u00d7N を出す(場所は走っている時と同じバッジ行)', true);
  ok(!/meosClockTailParse/.test(S) && /const line = spec/.test(S) && !/const _blk = spec/.test(S),
     '\u2605\u2605\u2605生データは1行のまま(2行に割らない= UFC1行のコピペthatそのまま時計になる)', true);

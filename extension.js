@@ -10978,12 +10978,14 @@ function meosApplyTimerLineDecorations(editor) {
             // v4.1.147(俊克 改良2): 休んでいても**何周終えたか**は出す= 結果は情報so、消さない。
             //   場所は走っている時と同じ(バッジ行の右端)= 止めた瞬間に数字that飛ばない。
             if (c.pausedRound > 0) {
-              const _bg3 = meosClockBadgeRowForLine(doc, i);
+              const _bg3r = meosClockBadgeRowForLine(doc, i);
+              let _bg3 = -1;
+              try { _bg3 = (_bg3r >= 0 && !meosShowsRawLine(editor, _bg3r) && !meosShowsRawLine(editor, i)) ? _bg3r : -1; } catch (_) { _bg3 = _bg3r; }
               let _pl = i, _pat = (txt.lastIndexOf('-->') > 0) ? txt.lastIndexOf('-->') : txt.length, _pAfter = false;
               if (_bg3 >= 0) {                            // v4.1.148: 休んでいる時も**行頭**(場所thatが飛ばない)
                 let _l3 = 0; try { _l3 = doc.lineAt(_bg3).text.length; } catch (_) { }
                 _pl = _bg3; _pat = _l3; _pAfter = true;   // v4.1.150: 走っている時と同じ置き方
-                try { if (_l3 && !meosShowsRawLine(editor, _bg3)) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3)); } catch (_) { }
+                if (_l3) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3));   // v4.1.151
               }
               const _pt9 = '\u00d7' + c.pausedRound + (c.rounds > 0 ? ('/' + c.rounds) : '');
               rounds.push({ range: new vscode.Range(_pl, _pat, _pl, _pat),
@@ -11060,7 +11062,18 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★生を見せている行(カーソル行/Raw)では消さない= そこは直すための窓
           //     ([[project_raw_line_is_not_for_decoration]])。数字だけは俊克thatが認めた例外(v4.1.1103)so、
           //     頭に置いたまま、字は字で見せる。
-          const _bg2 = meosClockBadgeRowForLine(doc, i);
+          // ★★★v4.1.151(俊克 9/6 am00:40 バグ1「インライン編集のときも、Rawモードでも、\u23f0表示thatそのまま
+          //   見えるのはおかしい。**1行目はバッジのみ、2行目に\u23f0UFCthat従来通りに**見えなければ」
+          //   ＋ バグ2「\u00d70/12 thatRawモードでコメントの外側に出ているのは駄目。**昨日と同じ轍**」):
+          //   ★★★**私は「消さない」だけで止めて、「置かない」を忘れていた**= 生の行では隠すのをやめたthat、
+          //     数字はそのまま置き続けたので、**生データの行に飾りthat居座り**、\u00d7N は行末の外
+          //     (`-->` の向こう)へはみ出した(v4.1.140で一度直した所= 昨日と同じ轍)。
+          //   ★★→ **生を見せている行thatあるなら、その膜では借りない**。数字は⏰行の
+          //     **コメントの内側**へ戻す(v4.1.20 俊克「コメントの外に出す必要はない」)。
+          //   ★これで生データと通常表示の違いthat見える= Rawは「MeOSthat無い時の姿」(v4.1.1103)。
+          const _bgRaw = meosClockBadgeRowForLine(doc, i);
+          let _bg2 = -1;
+          try { _bg2 = (_bgRaw >= 0 && !meosShowsRawLine(editor, _bgRaw) && !meosShowsRawLine(editor, i)) ? _bgRaw : -1; } catch (_) { _bg2 = _bgRaw; }
           let _fl = i, _at1 = (_at2 > 0) ? (_at2 - 1) : _at2, _fat2 = _at2, _rndAfter = false;
           if (_bg2 >= 0) {
             let _blen = 0; try { _blen = doc.lineAt(_bg2).text.length; } catch (_) { }
@@ -11074,7 +11087,7 @@ function meosApplyTimerLineDecorations(editor) {
             //   ★★→ 周回数は**行末(隠した範囲の向こう側)**へ `after` で置く= 顔(列0の before)と
             //     鏡写しso、描く順も決まる(同じ所に2つ置かない= v4.1.139)。
             _fat2 = _blen; _rndAfter = true;
-            try { if (_blen && !meosShowsRawLine(editor, _bg2)) badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen)); } catch (_) { }
+            if (_blen) badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen));   // v4.1.151: 借りると決めた行so、必ず消す
           }
           items.push({
             range: new vscode.Range(_fl, _at1, _fl, _at1),
