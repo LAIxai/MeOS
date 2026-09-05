@@ -10094,8 +10094,22 @@ function meosArmClockFcFor(doc) {
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
     const uri = doc.uri.toString();
     let n = 0, _seen = 0; const _seenKeys = new Set();
+    // ★★★v4.1.1110(俊克 9/5 am08:49「**直下のUFCタイマーのみを動かす**…1回切りのタイマーなら、
+    //   終了と同時にFC化し見えなくなる」＋ am08:56「1つだけ起動する利点は、**⏰リストの項目を増やさないで
+    //   いいこと**。2番目以降は、追加や修正をすることもあるので、その度に起動していたらやり難い」):
+    //   ★★★**同じ膜に⏰thatが2本在ると、1つの時計を取り合っていた**= 覚え(_meosPseudoUntil)の鍵は
+    //     「ファイル＋膜」so膜ごとに1つしか持てない。so①2本that同じ数字を出し
+    //     ②掛かるのは後の1本・書き換わるのは `hits[0]`(一番上)＝ **別の行**、という食い違いthat起きた
+    //     (俊克のスクショ= 鳴ったのは下なのに、✓thatが上に付いた)。
+    //   ★★→ **動くのは直下(一番上)の生きた1本だけ**。下に並ぶ物は**予約であり下書き**so、
+    //     仕掛けない・数字も出さない・一覧にも出さない。編集しても何も起きない(v4.1.27の再起動も起きない)。
+    //   ★★★済んだ物(done)は席を取らない= **一度きりthat終わってFC化すると、次の1本that自動的に直下になる**
+    //     ＝ 俊克の(3)は、この1行で成立する(並べ替えも覚えも要らない)。
+    //   ★これは⏰の繰返しと同じ作法= **並びthat状態を持つ**([[project_clock_in_the_text]] v4.1.57)。
+    const _liveTaken = new Set();
     for (const c of meosClockFcScan(doc)) {
       _seen++; _seenKeys.add(c.key);
+      if (!c.done && !c.off) { if (_liveTaken.has(c.key)) continue; _liveTaken.add(c.key); }
       const lk = uri + ' ' + c.key;
       if (_meosPseudoUntil.has(lk)) {
         // ★★★v4.1.67(俊克「貴方that仕込んだタイマーが、**リストでは水色の\u21bb、本体では緑色の\u21ba**に
@@ -10120,7 +10134,7 @@ function meosArmClockFcFor(doc) {
         try {
           const _s = _sc0;
           if (_s) {
-            _s.up = !!(c.up && Array.isArray(c.cycle) && c.cycle.length);
+            _s.up = !!c.up;                                 // v4.1.1110: 向きは周期と別(v4.1.1109の取り残し)
             if (Array.isArray(c.cycle) && c.cycle.length) { _s.step = meosCycleMs(c.cycle[0]); _s.cyc = (c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/'); }
             _s.name = c.name || _s.name;
             _s.tags = c.tags || [];                                 // v4.1.70: 札も本文to一緒に新しくする
@@ -10165,6 +10179,7 @@ function meosArmClockFcFor(doc) {
       //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
       const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, fc: true,
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : ''),   // v4.1.82
+        when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
@@ -10678,6 +10693,14 @@ function meosApplyTimerLineDecorations(editor) {
           }
           const until = byId.get(owner ? owner.id : '');
           if (until == null) continue;
+          // ★★v4.1.1110: 数字を出すのは**掛かっている1本だけ**= 同じ膜に⏰that2本在る時、
+          //   下の行は予約(下書き)so、残り時間も経過時間も持たない。
+          //   ★見分けは**書いてある時刻**= 控えた `when` と、この行の `when` thatが同じ物だけthat現役。
+          try {
+            const _sc9 = scById.get(owner ? owner.id : '');
+            const _cw = (meosClockFcParse(txt) || {}).when;
+            if (_sc9 && _sc9.when && _cw && String(_cw) !== String(_sc9.when)) continue;
+          } catch (_) { }
           // ★v4.1.20(俊克 改良2「コメントの外に残時間を表示する必要はないよね。コメント内部に表示すればいい」):
           //   ★**時計はコメント欄の中に立つ**= v4.0.451で閉じ膜に決めた作法と同じ。`-->` の手前に置く。
           const _cl = txt.lastIndexOf('-->');

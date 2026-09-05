@@ -122,6 +122,23 @@ ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRange
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
 ok(X.meosBlockEndForCarry(d4,pr4)===5, '\u2605\u2605でも運ぶ時は一緒に行く(コピー/複製に⏰が入る)', X.meosBlockEndForCarry(d4,pr4));
 
+// ★★★v4.1.1110(俊克 9/5 am08:49「直下のUFCタイマーのみを動かす」):
+//   同じ膜に⏰が2本在る時、動くのは直下(一番上)の生きた1本だけ。
+//   済んだ物(done)は席を取らない＝ 一度きりが終われば次の1本が自動で直下になる。
+console.log('\u2471 動くのは直下の1本だけ');
+{
+  const S0=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  const A=S0.slice(S0.indexOf('function meosArmClockFcFor'), S0.indexOf('function meosArmClockFcFor')+10000);
+  ok(/const _liveTaken = new Set\(\)/.test(A), '\u2605生きている1本を覚える席が在る', true);
+  ok(/if \(!c\.done && !c\.off\) \{ if \(_liveTaken\.has\(c\.key\)\) continue; _liveTaken\.add\(c\.key\); \}/.test(A),
+     '\u2605\u2605\u2605二本目以降は仕掛けない(済んだ物は席を取らない)', true);
+  ok(A.indexOf('_liveTaken') < A.indexOf('_meosPseudoUntil.has(lk)'),
+     '\u2605\u2605門番は「既に掛かっているか」より**先**(後の1本が控えを上書きしない)', true);
+  ok(/when: String\(c\.when \|\| ''\)/.test(A), '\u2605掛かっているのはどの行かを控える', true);
+  ok(/_sc9 && _sc9\.when && _cw && String\(_cw\) !== String\(_sc9\.when\)/.test(S0),
+     '\u2605\u2605待機中の行には数字を出さない(下書きは残り時間を持たない)', true);
+}
+
 // ★★★v4.1.1108(俊克 9/4 pm11:24「一度きりの逆算も↺を入れようよ。
 //   **数字が無いのは周期が無い＝単発**ということだからね。**↺は方向だけを示している**」):
 //   矢印＝向き / 数字＝周期。役が2つに分かれ、行が自分で名乗る。
@@ -302,7 +319,7 @@ const _sig=SRC3.slice(SRC3.indexOf("if(m&&m.type==='viewMode')"), SRC3.indexOf("
 ok(/_sg=.*\+'\|'\+_cs/.test(_sig), '\u2605\u2605\u2605合図に一覧thatが入っている(描く物を、描くかどうかの判断に入れる)', /_cs/.test(_sig));
 ok(/_cc\.at/.test(_sig)&&/_cc\.running/.test(_sig)&&/_cc\.next/.test(_sig), '  時刻\u30fb走っているか\u30fb次かthat全部合図に効く', true);
 ok(/_cc\.key/.test(_sig), '  どの膜かも合図に効く(入れ替わりを見逃さない)', true);
-const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+6000);
+const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+10000);
 ok(/if \(n \|\| _seen\)/.test(_arm), '\u2605掛かった数that0でも、\u23f0を見つけたら知らせる', /_seen/.test(_arm));
 
 // v4.1.39(俊克「あんたがせっせと仕込んでいたんだよ。貴方の説明をコピーして、それを私がペーストする」)
@@ -677,9 +694,10 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/pausesOut\.push\(new vscode\.Range\(i, at, i, at \+ len\)\);/.test(S)&&!/orange\.has\(i\) \? pausesIn/.test(S),
     '\u2605\u2605\u2605\u23f8 \u306f\u5834\u6240\u3067\u8272\u3092\u5909\u3048\u306a\u3044(\u610f\u5473that\u540c\u3058\u306a\u3089\u8272\u3082\u540c\u3058)', true);
- ok(/_s\.up = !!\(c\.up && Array\.isArray\(c\.cycle\)/.test(S),
+ /* \u2605v4.1.1110: 向きは周期と別(v4.1.1109/1110)。控えを毎回新しくする、という意図はそのまま。 */
+ ok(/_s\.up = !!c\.up;/.test(S) && /_s\.tags = c\.tags/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u308b\u7269\u306e**\u898b\u305f\u76ee\u306e\u63a7\u3048**\u3092\u6bce\u56de\u65b0\u3057\u304f\u3059\u308b(\u4e00\u89a7\u3068\u884c\u304cが\u98df\u3044\u9055\u308f\u306a\u3044)', true);
- const _arm2=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+6000);
+ const _arm2=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+10000);
  ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\)[^]{0,200}_meosPseudoUntil\.set/.test(_arm2),
     '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
  ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
