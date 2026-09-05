@@ -4135,6 +4135,50 @@ function meosPairBadgeAt(document, pair) {
 //     交差した範囲は畳めない(v4.1.15と同じ形)。
 //   ★→ 塊の終わりも**UFCでない指定行**まで伸ばす。畳む物は膜の中、畳まない物(UFC)は外。
 //     境目を決めるのは、ここでも**UFCの一言だけ**。
+// ★★★v4.1.147(俊克 9/5 pm11:49「UFCのデータとしては今まで通り1行にして、**バッジの部分を折り畳まずに、
+//   その2行を使って見せかけで2行に分割したように見せれば**いいんじゃないか?」):
+//   ★★★**私は生データを2行に割ろうとしていた。それは⏰の一番の値打ちを壊す**=
+//     俊克thatその朝に言った「**UFCをコピペするだけで任意の膜をタイマー化できる**」thatが、
+//     1本の時計that2行になった瞬間に成り立たなくなる(1行コピーでは時計にならない)。
+//   ★★★→ **データは1行のまま。増やすのは「見せる場所」だけ**= すぐ上のバッジ行thatもう在るso、
+//     それを畳まずに残し、動く数字(\u23f0 5.37 0.41 \u00d70)だけそこへ出す。
+//     ★書いた物(いつ・どう回るか)は⏰行に据え置き= **生データは1文字も動かない**
+//       ([[project_raw_line_is_not_for_decoration]] の逆側= 飾りは飾りの行へ)。
+//   ★条件は**生きている⏰thatあること**だけ= 時計の無い膜のバッジは今までどおり畳む
+//     (見せる物thatが無いのに行を1つ増やさない)。
+// 返り値= 畳まずに残すバッジ行(無ければ -1)。畳みと装飾は**この1つの判定**から引く
+//   ([[feedback_one_source_for_mark_count_action]] 印・数字・畳みを別々の物差しで決めない)。
+function meosClockBadgeRow(document, pair) {
+  try {
+    if (!document || !pair) return -1;
+    let e = Math.min(document.lineCount - 1, pair.end), badge = -1;
+    while (e + 1 < document.lineCount) {
+      const t = document.lineAt(e + 1).text;
+      if (meosIsPairBadgeSpec(t)) { e++; badge = e; continue; }
+      if (meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t) && (meosClockFcParse(t) || {}).when) { e++; continue; }
+      break;
+    }
+    if (badge < 0) return -1;                       // バッジ行thatが無い膜は、今までどおり
+    for (let k = e + 1; k < document.lineCount; k++) {
+      const t = document.lineAt(k).text;
+      if (!meosIsUnfoldingSpecLine(t)) break;        // 指定行the並びthat切れたら、そこまで
+      const c = meosClockFcParse(t);
+      if (c && c.when && !c.done) return badge;      // これから鳴る⏰that在る
+    }
+    return -1;
+  } catch (_) { return -1; }
+}
+// ⏰行から、その数字を置くバッジ行を引く(上へ辿る。指定行の並びの中だけ)。
+function meosClockBadgeRowForLine(document, clockLine) {
+  try {
+    for (let k = clockLine - 1; k >= 0 && k >= clockLine - 8; k--) {
+      const t = document.lineAt(k).text;
+      if (meosIsPairBadgeSpec(t)) return k;
+      if (!meosIsSpecLine(t)) return -1;             // 指定行thatが途切れたら、もう膜の外
+    }
+  } catch (_) { }
+  return -1;
+}
 function meosPairBlockEnd(document, pair) {
   let e = Math.min(document.lineCount - 1, pair.end);
   try {
@@ -5648,6 +5692,10 @@ function foldRangeEnd(document, pair, fcOut) {
   //   ★開くか畳むかを言うのは meosFcWantsOpen ただ1つ＝ **畳みの形も、開閉の宛先も、同じ答えから引く**
   //     (meosFcFoldShape)。→ [[feedback_one_source_for_mark_count_action]]
   if (fcOut) return Math.min(document.lineCount - 1, pair.end);   // カーソルthat中= バッジ行は畳みの外
+  // ★★★v4.1.147(俊克「**バッジの部分を折り畳まずに**、その2行を使って…2行に分割したように見せれば」):
+  //   生きている⏰thatある膜では、バッジ行は**動く数字の置き場**so、カーソルthat外でも畳まない。
+  //   ★形はカーソルthat中に居る時と同じ(▲で止める)= 既に通っている道を使う＝ 交差thatが起きない。
+  if (meosClockBadgeRow(document, pair) >= 0) return Math.min(document.lineCount - 1, pair.end);
   return meosPairBlockEnd(document, pair);                        // カーソルthat外= 今までどおり畳みの中
 }
 function pairStateKey(editor, pair) {
@@ -9780,7 +9828,17 @@ function meosScheduleClockMetaWrite(doc) {
 //   ★★**⏰リストの ☑ は「動いている」、本文末尾の ✓ は「済み」**so、意味that逆さまだった。
 //     俊克の答えは**位置で決める**= 顔(⏰の直後)に書いた ✓ は「休み」＝ ⏸ と読み、⏸ へ書き直す。
 //     打ちにくい ⏸ を打てる人はそのまま打てばよく、✓ でも通る= **読める形は増やし、書く形は絞る**。
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*([\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u23f8\u2713\u2714\u2705\ufe0f]*)[ \t]*([^\n<]*?)[ \t]*-->/;
+// v4.1.147(俊克 9/5 pm11:41 改良2「一時停止しても回数を表示しようよ。
+//   **何回経過したかは重要な結果であり、情報**だからね。コメント内部に書き込んでおけばいいよ」):
+//   ***止めても時刻の格子は進み続ける**so、再開してから数え直すと**別の数**that出る=
+//     経過した回数は**書いておくしか残せない**([[project_badge_is_intent]] と同じ線引き=
+//     数え直せる物は書かない／書けない物だけ書く)。
+//   ***住所は \u23f8 の**すぐ後ろ**= \u23f82。**尾の \u00d7N は「何回走るか」(上限)**so、
+//     同じ字で「何回走ったか」を書くと2つの意味thatぶつかり、再開時に「上限2」と読まれる。
+//     -> **役that違う物は、住所を分ける**。
+//   *数字を許すのは \u23f8 の直後だけ= 印の欄全体に数字を許すと \u23f0 2026-... の
+//     2026 を印として食う(起点that消える)。
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*((?:[\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u2713\u2714\u2705\ufe0f]|\u23f8\ufe0f?[0-9]*)*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
 // \u23f8=休み(予定は書いたまま、鳴らないでいる)
 // ★★★v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを
@@ -9856,7 +9914,9 @@ function meosClockFcParse(text) {
   const tags = [];
   body = body.replace(/(^|\s)#([^\s#<>]+)/g, (mm, sp, tg) => { tags.push(tg); return sp ? ' ' : ''; }).trim();
   const face = String(m[1] || '');
-  return { lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, tags, ufc: meosIsUnfoldingSpecLine(t) };
+  const _pm = /\u23f8\ufe0f?([0-9]+)/.exec(face);   // v4.1.147: 休んだ時に何周終えていたか
+  const pausedRound = _pm ? parseInt(_pm[1], 10) : 0;
+  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, tags, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -9968,7 +10028,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, tags: _tags, ufc: c.ufc });   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, tags: _tags, ufc: c.ufc });   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   return out;
@@ -10098,7 +10158,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     if (!doc || !doc.uri) return false;
     const line = spec
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
-      ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? '\u23f8' : '')
+      ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
         + ' ' + String(spec.when || '').trim()
         // ★★★v4.1.1108: **向きは必ず書く。周期は在る時だけ書く**(俊克「↺は方向だけを示している」)。
         //   繰返しthat無くても矢印を書くので、**一度きりのストップウォッチthat生データに残る**。
@@ -10291,7 +10351,7 @@ function meosArmClockFcFor(doc) {
       //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
       if (c.off) {
         // v4.1.1114: 顔に ✓ で書かれていたら ⏸ へ書き直す= 意味は変えず、字だけ揃える(名前は状態の写し)。
-        try { if (MEOS_CLOCK_DONE_MARK_RE.test(String(meosClockFaceOf(doc.lineAt(c.line).text) || ''))) meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, tags: c.tags, done: false, off: true }, c.line); } catch (_) { }
+        try { if (MEOS_CLOCK_DONE_MARK_RE.test(String(meosClockFaceOf(doc.lineAt(c.line).text) || ''))) meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, pausedRound: c.pausedRound, tags: c.tags, done: false, off: true }, c.line); } catch (_) { }
         const _w = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
@@ -10585,7 +10645,9 @@ async function meosClockSetEnabled(uri, key, on) {
       _meosPseudoScopes.delete(lk);
       if (sc && sc.hold) { try { await meosApplyModeToScope(doc, key, 'normal', sc.name); } catch (_) { } }
     }
-    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, tags: hit.tags, done: false, off: true }, hit.line);
+    // v4.1.147: 止めた**その時**の周回数を書き残す(控えは上で消しているので sc から読む)。
+    const _pr9 = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit ? (hit.pausedRound || 0) : 0);
+    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, pausedRound: _pr9, tags: hit.tags, done: false, off: true }, hit.line);
     // ★★★v4.1.62(俊克 バグ4「リストの✓ボタンを押して…止めた後で、リストから無くなってしまう。
     //   **これは残しておくべきだよ**。貴方は、Stopしたら、リストから消すようなことを書いていたよね。
     //   それは間違いだよ」): ★★★**休んでいる物は「予定」であって「履歴」ではない**=
@@ -10889,6 +10951,15 @@ function meosApplyTimerLineDecorations(editor) {
             //   ★**同じ意味の物that場所で色を変えると、色thatが意味を失う**= 休みは休みso、いつも赤。
             //   ★v4.1.66で \u21ba\u21bb に色を入れた今、行の上には既に色that在る= 赤は埋もれない。
             pausesOut.push(new vscode.Range(i, at, i, at + len));
+            // v4.1.147(俊克 改良2): 休んでいても**何周終えたか**は出す= 結果は情報so、消さない。
+            //   場所は走っている時と同じ(バッジ行の右端)= 止めた瞬間に数字that飛ばない。
+            if (c.pausedRound > 0) {
+              const _bg3 = meosClockBadgeRowForLine(doc, i);
+              let _pl = i, _pat = (txt.lastIndexOf('-->') > 0) ? txt.lastIndexOf('-->') : txt.length;
+              if (_bg3 >= 0) { try { const _b3 = doc.lineAt(_bg3).text; const _c3 = _b3.lastIndexOf('-->'); _pl = _bg3; _pat = (_c3 > 0) ? _c3 : _b3.length; } catch (_) { } }
+              rounds.push({ range: new vscode.Range(_pl, _pat, _pl, _pat),
+                renderOptions: { before: { contentText: '\u00d7' + c.pausedRound + (c.rounds > 0 ? ('/' + c.rounds) : '') + ' ', color: '#e0803a', fontWeight: '800' } } });
+            }
             continue;
           }
           const until = byId.get(owner ? owner.id : '');
@@ -10943,13 +11014,17 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★→ **1つの装飾の `before` と `after`** に分ける= 順番thatが決まる(before→after)し、
           //     色は別々に持てる。**駒を2つ置かず、1つの駒に2つの顔を持たせる**。
           const _face = (u) => meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
-          // ★★v4.1.141(俊克 9/5 pm06:18 バグ1「×0thatコメントの外に出ちゃったよ」):
-          //   ★★**時計はコメントの中に立つ**(v4.1.20 俊克)= `-->` の手前。私は行の右端(外)へ置いていた。
-          //   ★★→ 中に入れたまま順番も決める= **場所を1つずらす**。顔は `-->` の1つ手前に、
-          //     周回数は `-->` の直前に置く。位置that違えば、描く順は位置that決める(同じ所に2つ置かない)。
-          const _at1 = (_at2 > 0) ? (_at2 - 1) : _at2;
+          // ★★★v4.1.147(俊克 9/5 pm11:49「UFCのデータとしては今まで通り1行にして、バッジの部分を
+          //   折り畳まずに、**その2行を使って見せかけ2行に分割したように見せれば**いいんじゃないか?」):
+          //   ★★★**動く数字は、すぐ上のバッジ行の右端へ出す**= 書いた物(いつ・どう回るか)は⏰行に据え置き。
+          //     so生データは1文字も動かず、**UFC1行のコピペがthatそのまま時計になる**(⏰の一番の値打ち)。
+          //   ★出し先that無い(バッジ行の無い膜)時は、今までどおり⏰行の中へ。
+          const _bg2 = meosClockBadgeRowForLine(doc, i);
+          let _fl = i, _fat2 = _at2;
+          if (_bg2 >= 0) { try { const _bt = doc.lineAt(_bg2).text; const _bc = _bt.lastIndexOf('-->'); _fl = _bg2; _fat2 = (_bc > 0) ? _bc : _bt.length; } catch (_) { } }
+          const _at1 = (_fat2 > 0) ? (_fat2 - 1) : _fat2;
           items.push({
-            range: new vscode.Range(i, _at1, i, _at1),
+            range: new vscode.Range(_fl, _at1, _fl, _at1),
             renderOptions: c.dual
               ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },
                   after: { contentText: _face(true) + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
@@ -10960,7 +11035,7 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★**周回数は顔ではない**= 残り/経過は「今この回のどこか」、周回数は「何回目か」so、役that違う。
           //     → 色も置き場所も分ける= **行の右端**(`-->` の外)に、橙で。
           //   ★位置thatが違うので、描く順の取り合いも起きない(v4.1.139で踏んだ穴を作らない)。
-          if (_rnd) rounds.push({ range: new vscode.Range(i, _at2, i, _at2),
+          if (_rnd) rounds.push({ range: new vscode.Range(_fl, _fat2, _fl, _fat2),
             // ★v4.1.142(俊克 9/5 pm06:46 改良1「オレンジ一色に近い中、重要な回数that同じオレンジ色では
             //   目立たない」): ★橙は**地の色**so、その上に置く物には使えない。緑と水色は顔that持っている
             //   so、周回数は**地でも顔でもない白**= 3つthat互いに違う。
@@ -30026,7 +30101,12 @@ function meosFcFoldShape(document, caretLine) {
       const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
       const shift = open && (b.open != null);
       const head = shift ? b.start + 1 : b.start;
-      out.push({ b, head, end: b.end, shift, open, hasRange: b.end > head });
+      // ★★★v4.1.147: 畳みを止めた行は、**塊の側でも畳まない**= 膜の範囲だけ縮めても、
+      //   FCの塊thatその行を畳んでしまえば同じこと(2つの物差しthat食い違う=今日6回踏んだ形)。
+      //   → 畳むか否かは meosClockBadgeRow 1つthat決める。
+      let end = b.end;
+      if (b.open != null) { const _bg = meosClockBadgeRow(document, { end: b.start }); if (_bg >= 0) end = Math.min(end, _bg - 1); }
+      out.push({ b, head, end, shift, open, hasRange: end > head });
     }
   } catch (_) { }
   return out;

@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.147 (2026-09-06)
+- **The clock reads as two rows, and the data stays one line.** With remaining and elapsed shown together the ⏰ line had grown wide. The badge row directly above it is now kept unfolded whenever the membrane has a live clock, and the running figures (`⏰ 5.37 0.41 ×0`) are drawn there instead — what is *written* never moves. Splitting the source into two lines was the obvious fix and the wrong one: a clock spread over two lines can no longer be pasted as one, and pasting one UFC line to turn any membrane into a timer is the whole point of putting the clock in the text.
+- **A paused clock keeps its count.** Pausing now writes it into the comment as `⏸2` — two turns done. It cannot be recomputed later: the origin grid keeps advancing while the clock is stopped, so the number is only true at the moment you stop. The count also stays on screen while paused.
+- **`⏸2` and `×3` are different things and live in different places.** The tail's `×N` says how many turns to run; the head's `⏸N` says how many were run. Writing the result with the same mark as the limit would make a resumed clock stop after two.
+
 ### v4.1.146 (2026-09-05)
 - **`(…)×N` — a repeat that knows when to stop.** Three rules now cover every clock: **the arrow is the direction, the number is how long one turn lasts, and `(…)×N` is how many turns** (leave it off for endless). `(↺↻3m/1m)×3` is three boxing rounds; `(↻15m)×1` is the one thing the notation could not say before — a stopwatch that runs once, because a stopwatch counts *length minus remaining* and so needs a length.
 - **It closes itself.** When the last turn ends, the clock writes its own ✓, folds away, and the next booking below it moves up into the live seat — the same rule that already governed one-shot clocks.

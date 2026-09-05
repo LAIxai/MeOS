@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -115,8 +115,21 @@ const mEnd=X.foldRangeEnd(d4,pr4), fcEnd=Math.max(...X.meosDefBlocks(d4).map(b=>
 // ★★★v4.1.105(俊克 9/4 am09:02「膜の外にカーソルが出ている状態では、バッジFCは折り畳むのがルール」):
 //   形はカーソルで変わる。外= 膜がバッジ行まで畳む(入れ子) / 中= 畳みは▲で止まり塊の頭がバッジ行へずれる(離れる)。
 //   どちらの瞬間も交差しないことを、両方見張る。
-ok(fcEnd<=mEnd, '\u2605\u2605\u2605カーソルが外= 塊は膜の中(入れ子で収まる)', [fcEnd,mEnd]);
-ok(mEnd===4, '\u2605カーソルが外= バッジ行まで畳む(FC=畳まれるべきコメント)', mEnd);
+/* ★★★v4.1.147(俊克 9/5 pm11:49「バッジの部分を折り畳まずに、その2行を使って見せかけで2行に分割」):
+   生きた⏰that在る膜では、バッジ行は動く数字の置き場so、カーソルthat外でも畳まない(形は「中」と同じ▲止め)。
+   ★交差の見張りは実際に渡す範囲(hasRange)で見る= b.end は生の塊の終わりso、畳むかどうかを語らない。 */
+ok(mEnd===3, '★★★カーソルthat外でも、生きた⏰の膜はバッジ行を畳まない(数字の置き場)', mEnd);
+ok(X.meosFcFoldShape(d4,-1).filter(it=>it.hasRange).every(it=>it.head>mEnd),
+   '★★★カーソルthat外でも交差しない(渡す範囲は膜の外だけ)', X.meosFcFoldShape(d4,-1).map(it=>[it.head,it.end,it.hasRange]));
+ok(X.meosClockBadgeRow(d4,pr4)===4, '★数字の置き場はバッジ行', X.meosClockBadgeRow(d4,pr4));
+{
+ const L3b=L3.slice(0,5);   /* ⏰行を外した同じ膜= 時計thatが無ければ今までどおり畳む */
+ const d4b={uri:{toString:()=>'file:///h.md',fsPath:'/h.md',scheme:'file'},languageId:'markdown',lineCount:L3b.length,
+  lineAt:n=>({text:L3b[n],range:new stub.Range(n,0,n,L3b[n].length)}),getText:()=>L3b.join('\n'),eol:1,fileName:'/h.md',isClosed:false,version:1};
+ const pr4b=X.collectPairs(d4b,{excludeIndex:false})[0];
+ ok(X.foldRangeEnd(d4b,pr4b)===4, '★★時計thatが無ければ、今までどおりバッジ行まで畳む', X.foldRangeEnd(d4b,pr4b));
+ ok(X.meosClockBadgeRow(d4b,pr4b)===-1, '  判定も「置き場は無い」と答える(1つの判定から引く)', X.meosClockBadgeRow(d4b,pr4b));
+}
 ok(X.foldRangeEnd(d4,pr4,true)===3, '\u2605\u2605\u2605カーソルが中= 畳むのは▲まで(バッジ行は膜の直下に見える)', X.foldRangeEnd(d4,pr4,true));
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d4,pr4,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(塊の頭は膜の外)', X.meosFcFoldShape(d4,1).map(it=>[it.head,it.end,it.hasRange]));
 ok(X.meosFcFoldShape(d4,1).filter(it=>it.hasRange).length===0, '\u2605バッジ行だけなら範囲を渡さない(畳む中身が無い)', X.meosFcFoldShape(d4,1).length);
@@ -221,10 +234,13 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
   /* ★v4.1.140: 周回数は顔と役が違うので、色も場所も分ける(行の右端・橙)。 */
   /* ★★v4.1.141: 時計はコメントの中に立つ(v4.1.20)。顔は `-->` の1つ手前、周回数は `-->` の直前。 */
-  ok(/rounds\.push\(\{ range: new vscode\.Range\(i, _at2, i, _at2\)/.test(S8) && /color: '#e0803a'/.test(S8),
+  ok(/rounds\.push\(\{ range: new vscode\.Range\(_fl, _fat2, _fl, _fat2\)/.test(S8) && /color: '#e0803a'/.test(S8),
      '\u2605\u2605\u00d7N は別の駒・別の色で、コメントの**中**に立つ', true);
-  ok(/const _at1 = \(_at2 > 0\) \? \(_at2 - 1\) : _at2;/.test(S8) && /range: new vscode\.Range\(i, _at1, i, _at1\)/.test(S8),
+  ok(/const _at1 = \(_fat2 > 0\) \? \(_fat2 - 1\) : _fat2;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
      '\u2605\u2605\u2605場所を1つずらして順番を決める(同じ所に2つ置かない)', true);
+  /* \u2605\u2605\u2605v4.1.147: 数字はすぐ上のバッジ行へ出す(生データは1文字も動かさない= UFC1行のコピペthat時計になる)。 */
+  ok(/const _bg2 = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /let _fl = i, _fat2 = _at2;/.test(S8),
+     '\u2605\u2605\u2605動く数字はバッジ行の右端へ(書いた物は\u23f0行に据え置き)', true);
   ok(/\(typeof _nx\.round === 'number'\) \? _nx\.round : 1/.test(S8) && !/_nx\.round \|\| 1/.test(S8),
      '\u2605\u2605\u2605`\|\| 1` は 0 を 1 に化けさせる(\u00d70 that出なかった正体)', true);
   ok(/renderOptions: c\.dual/.test(S8) && !/for \(let _fi = 0/.test(S8),
@@ -430,9 +446,17 @@ console.log('\u2470 矢印＝向き / 数字＝周期');
 console.log('\u246e 膜の塊を畳む相手は終わりの行(膜に当てない)');
 {
   const _sOut=X.meosFcFoldShape(d4,-1)[0], _sIn=X.meosFcFoldShape(d4,1)[0];
-  ok(_sOut.head===3&&_sOut.end===4&&_sOut.hasRange, '\u2605カーソルが外= ▲..バッジが範囲(バッジ行は中に居る)', [_sOut.head,_sOut.end]);
+  ok(!_sOut.hasRange, '\u2605\u2605\u2605生きた\u23f0の膜= カーソルthat外でもバッジ行はどの範囲にも入らない(旧: \u2605カーソルが外= ▲..バッジが範囲(バッジ行は中に居る)', [_sOut.head,_sOut.end]);
   ok(!_sIn.hasRange, '\u2605\u2605\u2605ずれた形ではバッジ行はどの範囲にも入らない(打っても膜に当たらない)', _sIn.hasRange);
-  ok(X.foldRangeEnd(d4,pr4,true)===3&&_sOut.end>3, '\u2605\u2605終わりの行は、ずれた形の膜の範囲より外', [X.foldRangeEnd(d4,pr4,true),_sOut.end]);
+  ok(X.foldRangeEnd(d4,pr4,true)===3&&X.foldRangeEnd(d4,pr4)===3, '\u2605\u2605どちらの形でも畳みは\u25b2で止まる', [X.foldRangeEnd(d4,pr4,true),X.foldRangeEnd(d4,pr4)]);
+  {
+   const L3c=L3.slice(0,5);   /* 時計の無い膜= 今までどおり \u25b2..バッジ that範囲 */
+   const d4c={uri:{toString:()=>'file:///k.md',fsPath:'/k.md',scheme:'file'},languageId:'markdown',lineCount:L3c.length,
+    lineAt:n=>({text:L3c[n],range:new stub.Range(n,0,n,L3c[n].length)}),getText:()=>L3c.join('\n'),eol:1,fileName:'/k.md',isClosed:false,version:1};
+   const _sc=X.meosFcFoldShape(d4c,-1)[0];
+   ok(_sc.head===3&&_sc.end===4&&_sc.hasRange, '\u2605時計の無い膜= カーソルthat外なら \u25b2..バッジ that範囲(v4.1.105のまま)', [_sc.head,_sc.end]);
+   ok(!X.meosFcFoldShape(d4c,1)[0].hasRange, '\u2605\u2605ずれた形ではバッジ行はどの範囲にも入らない(打っても膜に当たらない)', true);
+  }
 }
 
 // ★★★v4.1.106(俊克 9/4 am09:45 バグ2「折り畳まれた膜の⏰UFCの行をクリックした時も、
@@ -458,7 +482,7 @@ const L4=['# t','<!-- {* \u25bcmCN=E_1 *} -->','x','<!-- {* \u25b2mCN=E_1 *} -->
 const mk5=(uri)=>({uri:{toString:()=>uri,fsPath:'/u.md',scheme:'file'},languageId:'markdown',lineCount:L4.length,
  lineAt:n=>({text:L4[n],range:new stub.Range(n,0,n,L4[n].length)}),getText:()=>L4.join('\n'),eol:1,fileName:'/u.md',isClosed:false,version:1});
 const d5=mk5('file:///h.md'), pr5=X.collectPairs(d5,{excludeIndex:false})[0];
-ok(Math.max(...X.meosDefBlocks(d5).map(b=>b.end))<=X.foldRangeEnd(d5,pr5), '\u2605\u2605UFCでも交差しない(カーソルが外= 入れ子)', true);
+ok(X.meosFcFoldShape(d5,-1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d5,pr5)), '\u2605\u2605UFCでも交差しない(カーソルthat外= 渡す範囲は膜の外)', X.meosFcFoldShape(d5,-1).map(it=>[it.head,it.end,it.hasRange]));
 ok(X.meosFcFoldShape(d5,1).filter(it=>it.hasRange).every(it=>it.head>X.foldRangeEnd(d5,pr5,true)), '\u2605\u2605UFCでも交差しない(カーソルが中= 離れている)', true);
 ok(X.meosBlockEndForCarry(d5,pr5)===5, '\u2605UFCも膜と一緒に運ばれる', X.meosBlockEndForCarry(d5,pr5));
 
@@ -478,7 +502,7 @@ ok(shD.length===1&&shD[0].head===4&&shD[0].end===5, '\u2605\u2605カーソルが
 ok(shD.every(it=>it.head>X.foldRangeEnd(dDone,prD,true)), '\u2605\u2605\u2605カーソルが中でも交差しない(離れている)', true);
 const dLive=mkL('<!-- Mew!UFC \u23f0 2026-12-31 23:00 -->','file:///j.md');
 const prL=X.collectPairs(dLive,{excludeIndex:false})[0];
-ok(X.foldRangeEnd(dLive,prL)===4&&X.foldRangeEnd(dLive,prL,true)===3, '\u2605これから鳴る\u23f0(UFC)はどちらの形でも膜の畳みの外', [X.foldRangeEnd(dLive,prL),X.foldRangeEnd(dLive,prL,true)]);
+ok(X.foldRangeEnd(dLive,prL)===3&&X.foldRangeEnd(dLive,prL,true)===3, '\u2605これから鳴る\u23f0(UFC)はどちらの形でも膜の畳みの外', [X.foldRangeEnd(dLive,prL),X.foldRangeEnd(dLive,prL,true)]);
 ok(X.meosFcFoldShape(dLive,1).filter(it=>it.hasRange).length===0, '\u2605カーソルが中= バッジ行だけなら範囲を渡さない', X.meosFcFoldShape(dLive,1).length);
 
 // v4.1.21(俊克「開始膜か閉じ膜をクリックしてもFC群が折り畳まれたまま。標準の折畳みボタンでしか戻らない」):
@@ -1403,6 +1427,30 @@ console.log('⑩ (…)×N 回数の記法');
   ok(/rounds done key=/.test(A), '  終わったことをログへ残す', true);
   ok(A.indexOf('_rn.round > c.rounds') < A.indexOf('if (_meosPseudoUntil.has(lk))'),
      '★★★回数の終わりは「掛かっているか」を見る前に見る(掛かったままの物もここで終れる)', true);}
+}
+
+// v4.1.147(俊克 9/5 pm11:41 改良2「一時停止しても回数を表示しよう。**何回経過したかは重要な結果であり
+//   情報**だからね。コメント内部に書き込んでおけばいい」＋ pm11:49「UFCのデータとしては今まで通り1行に」):
+console.log('\u246b \u23f82= 休んだ時に何周終えていたか');
+{
+ const P=X.meosClockFcParse;
+ const L=(face,sp)=>'<!-- Mew!UFC \u23f0'+face+' 2026-09-05 20:05 '+sp+' -->';
+ ok((P(L('\u23f82','(\u21ba\u21bb3m/1m)\u00d73'))||{}).pausedRound===2, '\u2605\u2605\u23f82 を「2周終えた」と読む', (P(L('\u23f82','(\u21ba\u21bb3m/1m)\u00d73'))||{}).pausedRound);
+ {const c=P(L('\u23f82','(\u21ba\u21bb3m/1m)\u00d73'))||{};
+  ok(c.when==='2026-09-05 20:05', '\u2605\u2605\u2605数字を印に許しても、起点は食われない(2026 を印と読まない)', c.when);
+  ok(c.rounds===3, '\u2605\u2605\u2605**住所that違う**= 頭の \u23f82(結果) と 尾の \u00d73(上限) thatぶつからない', [c.pausedRound,c.rounds]);
+  ok(c.off===true&&Array.isArray(c.cycle)&&c.cycle.join('/')==='3m/1m', '  休みも長さもそのまま読める', true);}
+ ok((P(L('\u23f8','\u21ba3m'))||{}).pausedRound===0, '  数字の無い \u23f8 は 0(今までの行thatそのまま読める)', true);
+ ok((P(L('','\u21ba3m'))||{}).pausedRound===0, '  休んでいない行は 0', true);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/spec\.off \? \('\\u23f8' \+ \(spec\.pausedRound > 0 \? Math\.floor\(spec\.pausedRound\) : ''\)\) : ''/.test(S),
+    '\u2605\u2605書く時も \u23f8N で書き戻す', true);
+ ok(/const _pr9 = \(sc && typeof sc\.round === 'number' && sc\.round > 0\) \? sc\.round/.test(S),
+    '\u2605\u2605\u2605止める**その時**の周回数を控えから読む(消える前に)', true);
+ ok(/if \(c\.pausedRound > 0\) \{/.test(S) && /_bg3 = meosClockBadgeRowForLine/.test(S),
+    '\u2605休んでいても \u00d7N を出す(場所は走っている時と同じバッジ行)', true);
+ ok(!/meosClockTailParse/.test(S) && /const line = spec/.test(S) && !/const _blk = spec/.test(S),
+    '\u2605\u2605\u2605生データは1行のまま(2行に割らない= UFC1行のコピペthatそのまま時計になる)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
