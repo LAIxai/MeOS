@@ -411,5 +411,24 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
 }
 
 
+// v4.1.153(俊克 9/6 am10:19 バグ1「膜that閉じてしまったthat、バッジは ⊕ を表示している。
+//   **膜に入った時、このバッジに従って膜を開くべき**だよね」):
+{
+ const fs2=require('fs'), path2=require('path');
+ const S=fs2.readFileSync(path2.join(__dirname,'extension.js'),'utf8');
+ ok(/function meosOpenByBadgeOnEnter\(editor\)/.test(S), '★入った膜をバッジのとおりに開く道that在る', true);
+ ok(/if \(!b \|\| b\.symbol !== '\\u2295'\) return;/.test(S),
+    '★★★開けに行くのは ⊕ の膜だけ(⊖ は人that畳んだ物so触らない)', true);
+ ok(/if \(_meosBadgeOpenSeen === k\) return;/.test(S),
+    '★★入った瞬間だけ(中に居る間ずっと開け直すと、自分で畳んで覗けなくなる)', true);
+ ok(/if \(meosRawSuppressedAt\(ed\)\) \{ _meosBadgeOpenSeen = null; return; \}/.test(S),
+    '★Rawでは触らない(「無効の時と同じ姿」)', true);
+ ok(/meosHoldMstatSync\(4000\);\s*\n?\s*\/\/[^\n]*\n?\s*vscode\.commands\.executeCommand\('editor\.unfold'/.test(S)
+    || /meosHoldMstatSync\(4000\);[\s\S]{0,200}?editor\.unfold/.test(S),
+    '★★★開ける間はバッジを書かない(復元that自分の教科書を書き換えない= v4.1.1106)', true);
+ ok(/setTimeout\(\(\) => \{[\s\S]{0,80}?_meosBadgeOpenTimer = null;/.test(S),
+    '  手that止まってから1回(毎カーソル移動で重い走査をしない)', true);
+}
+
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);

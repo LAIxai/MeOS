@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.153 (2026-09-06)
+- **The pause count is white inside the membrane too.** Only the ⏸ mark was being cut out of the orange row; the digits beside it stayed under it, and orange is painted `!important`, so white could not win. Both are cut out now — the mark stays red because it is a state, the count is white because it is a result.
+- **The drawn 🔓 stays out of Raw.** It is not in the text — MeOS draws it to say "not locked" — and Raw is meant to look like MeOS switched off, so it adds nothing there.
+- **A membrane whose badge says ⊕ opens when you enter it.** The badge is a statement of intent, so a membrane marked open that is nonetheless folded is the screen falling behind the intent. The restore at startup runs once per file and nothing put it right afterwards; now entering the membrane asks once more. Only ⊕ is acted on — ⊖ means you folded it yourself — and only on entry, so you can still fold a membrane and look inside it.
+
 ### v4.1.152 (2026-09-06)
 - **A paused clock now carries two numbers, and they mean different things.** `⏸116` in the text says where the cycle is *now* — the round you would resume into. The `×21` on the borrowed row says where you *stopped*. Keeping only the stopping figure was what made a resumed clock jump from 21 to 116 with no explanation: the origin grid never stops advancing just because the clock does.
 - **`⏸N` is refreshed only when the caret enters the membrane.** Once, on entry — not while you sit there typing, which would move the text under your hands, and not on a timer, which would be work for nothing.

@@ -4672,6 +4672,46 @@ function meosCaretEscapeLineForFolds(caret, foldPairs) {
     .sort((a, b) => a.start - b.start)[0];
   return cover ? cover.start : -1;
 }
+// ★★★v4.1.153(俊克 9/6 am10:19 バグ1「この一連の操作中に膜that閉じてしまったthat、バッジは \u2295 を
+//   表示している。**膜に入った時、このバッジに従って膜を開くべき**だよね。なぜ閉じてしまったのかは別にして」):
+//   ★★★**バッジは人の意思**([[project_badge_is_intent]])so、\u2295 と書いてある膜thatが閉じているのは
+//     **画面thatが意思に追いついていない**状態= 直せる所で直す。
+//   ★★起動時の復元(restoreMstatsForEditor)は1ファイル1回so、その後に何thatが畳んだら誰も戻さなかった。
+//     → **入った時にもう一度だけ訊く**。畳む方は触らない(\u2296 は人that畳んだ物so、開けに行かない)。
+//   ★入った瞬間だけ= 中に居る間ずっと開け直すと、自分で畳んで中を覗く操作thatできなくなる。
+//   ★重い走査を毎カーソル移動でしないよう、手that止まってから(150ms)1回だけ。
+let _meosBadgeOpenSeen = null, _meosBadgeOpenTimer = null;
+function meosOpenByBadgeOnEnter(editor) {
+  try {
+    if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) { _meosBadgeOpenSeen = null; return; }
+    if (_meosBadgeOpenTimer) { clearTimeout(_meosBadgeOpenTimer); _meosBadgeOpenTimer = null; }
+    _meosBadgeOpenTimer = setTimeout(() => {
+      _meosBadgeOpenTimer = null;
+      try {
+        const ed = vscode.window.activeTextEditor;
+        if (!ed || ed !== editor || !ed.document) return;
+        if (meosRawSuppressedAt(ed)) { _meosBadgeOpenSeen = null; return; }   // Rawは「無効の姿」so触らない
+        const caret = ed.selection.active.line;
+        let pair = null;
+        for (const q of collectPairs(ed.document, { excludeIndex: false })) {
+          if (caret >= q.start && caret <= q.end && (!pair || q.start > pair.start)) pair = q;   // 一番内側
+        }
+        if (!pair) { _meosBadgeOpenSeen = null; return; }
+        const k = pairStateKey(ed, pair);
+        if (_meosBadgeOpenSeen === k) return;                                  // 入った瞬間だけ
+        _meosBadgeOpenSeen = k;
+        const b = (meosPairBadgeAt(ed.document, pair) || {}).badge || null;
+        if (!b || b.symbol !== '\u2295') return;                               // 「開けておく」と書いた膜だけ
+        if (pair.end <= pair.start + 1) return;                                // 中身の無い膜は畳めない
+        const inner = pair.start + 1;
+        for (const r of (ed.visibleRanges || [])) if (inner >= r.start.line && inner <= r.end.line) return;   // もう開いている
+        meosDbg('[badgeOpen] \u2295 なのに畳まれていた \u2192 開く 膜=' + pair.id + ' 行=' + (pair.start + 1));
+        meosHoldMstatSync(4000);                                               // 開ける間はバッジを書かない(v4.1.1106)
+        vscode.commands.executeCommand('editor.unfold', { selectionLines: [pair.start] });
+      } catch (_) { }
+    }, 150);
+  } catch (_) { }
+}
 async function restoreMstatsForEditor(editor) {
   if (!editor) return;
   const key = String(editor.document.uri);
@@ -10975,7 +11015,10 @@ function meosApplyTimerLineDecorations(editor) {
               }
             }
           } catch (_) { }
-          if (!c.done && !c.lock) {
+          // ★★v4.1.153(俊克 改良2「\ud83d\udd13 は見せかけso、**Rawモードでも非表示に**しよう」):
+          //   ★★**Rawは「MeOSthat無効の時と同じ姿」**(v4.1.1103)so、本文に無い字は1つも足さない。
+          //   ★\ud83d\udd13 は「掛かっていない」を描いているだけ= 本文には居ない(v4.1.64)。
+          if (!c.done && !c.lock && !meosShowsRawLine(editor, i)) {
             const _a = txt.indexOf('\u23f0');
             if (_a >= 0) {
               const _e = _a + 1 + ((txt.charCodeAt(_a + 1) === 0xfe0f) ? 1 : 0);
@@ -30167,7 +30210,19 @@ function meosApplyFcRowDecorations(editor) {
           //   ★★→ 抜く物を**[始まり, 終わり]の対**にする(1文字の物は [a, a+1] と書けば同じ道を通る)。
           const _cut = [];
           if (_cc.done) { const a = txt.search(MEOS_CLOCK_DONE_MARK_RE); if (a >= 0) _cut.push([a, a + 1]); }
-          if (_cc.off) { const a = txt.indexOf('\u23f8'); if (a >= 0) _cut.push([a, a + 1]); }
+          // ★★v4.1.153(俊克 9/6 am10:19 改良1「膜の中に入ると UFCの `\u23f8116` thatが橙色になっているのはバグ。
+          //   **白文字にして**下さい」): ★★**抜いていたのは印だけで、数字thatが橙に残っていた**=
+          //   橙は `!important` so、抜かない限り白は勝てない(v4.1.19「外側を割る」)。
+          //   ★印(赤)と数字(白)は役that違うthat、**どちらも橙の外**= 割る範囲は `\u23f8` と続く数字の両方。
+          if (_cc.off) {
+            const a = txt.indexOf('\u23f8');
+            if (a >= 0) {
+              let e = a + 1; if (txt.charCodeAt(e) === 0xfe0f) e++;
+              _cut.push([a, e]);
+              const _d = /^[0-9]+/.exec(txt.slice(e));
+              if (_d) _cut.push([e, e + _d[0].length]);
+            }
+          }
           // ★v4.1.143: 抜くのも**矢印that在れば**= 繰返し無し(`\u21ba\u21bb` だけ)の行も橙から抜く。
           //   走っている桁を白くするのは、繰返しthat在る時だけ(桁thatその時しか無い)。
           {
@@ -33339,6 +33394,7 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     meosUpdateInTableContext(e.textEditor);
     try { meosApplyFcRowDecorations(e.textEditor); } catch (_) { }
+    try { meosOpenByBadgeOnEnter(e.textEditor); } catch (_) { }   // v4.1.153: 入った膜はバッジのとおりに開く
   }));
   // ★★v4.0.342(俊克 am00:09 バグ1「→←キー**押しっぱなし**での移動は、途中でぐるぐる周回して先に進まない。
   //   これはシフトキー同時押下では起きないので、**タイマーを使用しなければいいんじゃないの? なぜタイマーが

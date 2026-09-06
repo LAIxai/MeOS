@@ -907,7 +907,9 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
  ok((P('<!-- Mew!UFC \u23f0\ud83d\udd13 2099-01-01 09:00 -->')||{}).lock===false, '  \u624b\u3067\u66f8\u3044\u305f \ud83d\udd13 \u306f\u300c\u639b\u3051\u3066\u3044\u306a\u3044\u300d(\u7121\u5370\u3068\u540c\u3058)', true);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/\(spec\.lock \? '\\ud83d\\udd10' : ''\)/.test(S), '\u2605\u66f8\u304f\u306e\u306f\u639b\u304b\u3063\u3066\u3044\u308b\u6642\u3060\u3051(\ud83d\udd13 \u306f\u5b57\u306b\u3057\u306a\u3044)', true);
- ok(/if \(!c\.done && !c\.lock\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
+ /* v4.1.153(俊克 改良2): 見せかけの ⏰ の錠は、生表示(Raw/カーソル行)では出さない
+    = Raw は「MeOSが無効の時と同じ姿」so、本文に無い字は1つも足さない。 */
+ ok(/if \(!c\.done && !c\.lock && !meosShowsRawLine\(editor, i\)\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u306a\u3044\u6642\u306e \ud83d\udd13 \u306f**\u63cf\u304f\u3060\u3051**(\u898b\u305b\u304b\u3051\u306e\u8868\u793a)', true);
  ok(/clkBox\(b,clkDir,clkDir\?'\\u21bb stopwatch':'\\u21ba countdown'\)/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
  ok(/clkDir=false;clkRep=false;/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc\u30fb\u7e70\u8fd4\u3057\u7121\u3057(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
