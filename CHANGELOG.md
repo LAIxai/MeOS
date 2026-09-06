@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.158 (2026-09-06)
+- **Ticking Repeat fills the box with a working HIIT.** `((30s 15s)×4 1m)×3` — four rounds of thirty on, fifteen off, a minute between sets, three sets — appears the moment you tick `□ Repeat ↺↻`, with the caret at the end and nothing selected, so you edit the numbers rather than type the shape. The placeholder shows the same pattern. v4.1.157 tried to do this with a `value` attribute on the field, which never survived to the screen.
+
 ### v4.1.157 (2026-09-06)
 - **Nesting — `((30s 15s)×8 1m)×3` — which is what an interval timer is actually for.** Sets of reps with a rest between sets is the shape every HIIT and circuit app is built around, and it was the one thing the notation could not say. It needs no new symbol: a space already means *and then*, so `(…)×8 1m` reads "that group, then one minute", and the outer level is just the same list one step up. Two rules cover it — **a list is elements joined by a space; an element is a length, or `(list)×N`** — and there is no depth limit.
 - **The engine did not change.** The inner nesting is expanded into a flat run of steps, which is exactly the cycle MeOS already counted, and the outermost `×N` is exactly the round limit it already honoured. `((30s 15s)×8 1m)×3` is seventeen steps, three times.

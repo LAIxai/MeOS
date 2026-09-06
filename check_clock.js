@@ -1532,8 +1532,11 @@ console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居�
   ok(e.steps[0].from===2 && e.steps[0].to===5, '  桁も控える(白く光る所を数え直さない)', [e.steps[0].from,e.steps[0].to]);}
  /* ⑥ 面の初期値= 骨組みthatそのまま入っている(部分修正して使う) */
  {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(/value="\(\(30s 15s\)\\u00d71 1m\)\\u00d71"/.test(S),
-     '★★★面の箱に骨組みを入れておく(俊克「初期値として文字を入れて置く。部分的に修正できるように」)', true);
+  ok(/if\(!String\(_cy9\.value\|\|''\)\.trim\(\)\)_cy9\.value='\(\(30s 15s\)\\u00d74 1m\)\\u00d73';/.test(S),
+     '★★★Repeat に✓を入れた時、空なら骨組みを入れる(既定that記法の教科書になる)', true);
+  ok(/placeholder="\(\(30s 15s\)\\u00d74 1m\)\\u00d73"/.test(S), '  影文字も同じ典型のHIIT', true);
+  ok(!/_cy9\.select&&_cy9\.select\(\)/.test(S) && /setSelectionRange\(_n9,_n9\)/.test(S),
+     '★★全選択はしない(部分的に修正できるように= 打った瞬間に消えては困る)', true);
   ok(/const _cyEx = \(_rep && _cyRaw\) \? meosParseCycleExpr\(_cyRaw, 0\) : null;/.test(S),
      '★面の箱も同じ1つの読みで受ける', true);}
 }
