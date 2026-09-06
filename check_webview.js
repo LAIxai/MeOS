@@ -126,3 +126,20 @@ catch (e) { console.log('webview script: SYNTAX ERROR -> ' + e.message + '  (詳
     }
   }
 }
+
+// ★★★v4.1.173(俊克 バグ1の真因): webviewのJSはテンプレートリテラルの中so、
+//   バックスラッシュを二重に書かないと**評価の時に潰れる**(d のエスケープthat、ただの d になる)。
+//   ★ここで見る js は**評価後**の姿so、潰れていれば `(d{4})` のような形で残る。
+//   ★同じ穴that前from3つ在った(合体行の曜日／箱への打ち込み)= 誰も気づかないまま効かなかった。
+{
+  const marks = ['(d{', ')D(', '(?:s+', '(d{1,2})', '[^]s+'];
+  const hits = [];
+  for (const m of marks) { let i = js.indexOf(m); while (i >= 0) { hits.push(m + ' @' + i); i = js.indexOf(m, i + 1); } }
+  if (hits.length) {
+    console.log('webview regex: BROKEN ESCAPES -> ' + hits.slice(0, 8).join(', '));
+    console.log('  (テンプレートリテラルの中では \\\\d と二重に書く。単一だと d に潰れる)');
+    process.exitCode = 1;
+  } else {
+    console.log('webview regex: OK (正規表現のエスケープthatテンプレートで潰れていない)');
+  }
+}

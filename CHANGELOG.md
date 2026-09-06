@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.173 (2026-09-06)
+- **`read ⏰` sets the date now — the regex had been eaten by the template literal.** The panel's script lives inside a JavaScript template literal, where a lone backslash before `d` is not an escape at all and simply disappears: `/^(\\d{4})/` written with one backslash reaches the browser as `/^(d{4})/`, which matches nothing. The panel's own report said `matched:false` with the right string in hand, which is what finally pointed at it.
+- **Three older places had the same hole** — the weekday on the combined date line, and both patterns behind typing a date into the box. Typing a date there has never worked. All six are fixed.
+- **A check now refuses to let it back in.** `check_webview.js` reads the script *after* the template is resolved and fails on the shapes a lost backslash leaves behind. Verified by breaking one on purpose and watching it fail.
+
 ### v4.1.172 (2026-09-06)
 - **The panel now reports what it did with a `read`.** Node only ever knew that it had *sent* the clock; whether a wheel actually moved was invisible from there. The panel sends back what it received, whether the date matched, and what each wheel reads afterwards — so the next press names the cause instead of leaving it to inference.
 - `↺` and `↻` in the Repeat label take the document's own colours (`#3fb950` / `#56d4dd`) and sit closer together.

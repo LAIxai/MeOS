@@ -25124,16 +25124,24 @@ clkPutYMDHM(t.getFullYear(),t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes
 /* v4.1.169: この膜の時計を面へ取り込む(read \u23f0)。打ち込みの口は clkSyncFromBox 1つ。 */
 function clkTakeIn(d){try{
  if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
+ /* ★★★v4.1.173(俊克 バグ1の真因・ack that名指し): ack thatが matched:false を返した=
+    **字は届いているのに正規表現that当たっていなかった**。
+    ★★★webviewのJSはテンプレートリテラルの中so、バックスラッシュを二重に書かないと潰れる
+      (単一の d エスケープは、評価後にただの d になる)。ファイル内の他9箇所は元from二重so、
+      私だけthat単一で書いていた。
+    ★同じ穴that**前from3つ**在った= 合体行の曜日と、箱への打ち込み(clkSyncFromBox)。
+      so「箱に日付を打っても効かない」はずthat、誰も気づいていなかった。
+    ★検査で網を張った(webview領域に単一エスケープthat在れば落ちる)。 */
  /* ★v4.1.171: 箱(clk-edit)に書いてfrom読み直す遠回りをやめ、**同じ1つの置き方**で直に置く。 */
  var e=document.getElementById('clk-edit');
  /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat、15:30 の**分**を落としていた
     (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeat だけthat入ったように見えた。
     → **時:分:秒 の形の時だけ**末尾の秒を落とす。 */
- var _w=String(d.when||'').replace(/^(\d{4}\D\d{1,2}\D\d{1,2}\s+\d{1,2}:\d{2}):\d{2}$/, '$1');
- var _md=/^(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/.exec(_w);
+ var _w=String(d.when||'').replace(/^(\\d{4}\\D\\d{1,2}\\D\\d{1,2}\\s+\\d{1,2}:\\d{2}):\\d{2}$/, '$1');
+ var _md=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})(?:\\s+(\\d{1,2}):(\\d{2}))?$/.exec(_w);
  if(_md){clkFixD=true;clkPutYMDHM(+_md[1],+_md[2],+_md[3],(_md[4]!=null?+_md[4]:null),(_md[5]!=null?+_md[5]:null));
   if(e)e.value=_w;}
- else{var _mt=/^(\d{1,2}):(\d{2})$/.exec(_w);if(_mt)clkPutYMDHM(null,null,null,+_mt[1],+_mt[2]);}
+ else{var _mt=/^(\\d{1,2}):(\\d{2})$/.exec(_w);if(_mt)clkPutYMDHM(null,null,null,+_mt[1],+_mt[2]);}
  var cy=document.getElementById('clk-cyc');
  clkRep=!!d.rep;clkPaintRep();
  if(cy)cy.value=String(d.cycle||'');
@@ -25167,7 +25175,7 @@ function clkText(){return (clkFixD?(clkDateStr()+' '):'')+clkTimeStr();}
 function clkEcho(){var wd=document.getElementById('clk-wd'),wt=document.getElementById('clk-wt');if(!wd||!wt)return;
 /* v4.1.77: 起点を決める面so、ここにも曜日= 何曜日に始まるのかthat決める前に見える。 */
 var _ds=clkDateStr();
-try{var _m=/^(\d{4})\D(\d{1,2})\D(\d{1,2})$/.exec(_ds);
+try{var _m=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})$/.exec(_ds);
  if(_m)_ds=_ds+'('+clkW(new Date(+_m[1],+_m[2]-1,+_m[3]))+')';}catch(e){}
 wd.textContent=_ds;wt.textContent=clkTimeStr();
 wd.classList.toggle('fix',clkFixD);
@@ -25176,9 +25184,9 @@ if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
 /* 打ち込みの口は1つ= 合体行を押すと、この箱が同じ場所に出る。 */
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
 var v=(e.value||'').trim().replace(/[\uFF1A]/g,':').replace(/[\uFF0F]/g,'/');
-var m=/^(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(v);
+var m=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})(?:\\s+(\\d{1,2}):?(\\d{2}))?$/.exec(v);
 if(m){clkFixD=true;clkPutYMDHM(+m[1],+m[2],+m[3],(m[4]!=null?+m[4]:null),(m[5]!=null?+m[5]:null));return;}   /* v4.1.171: 置き方は1つ */
-var t=/^(\d{1,2}):?(\d{2})$/.exec(v);
+var t=/^(\\d{1,2}):?(\\d{2})$/.exec(v);
 if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
 /* v4.1.0: 一覧の1行= 「時刻・年月日 + 膜名」。今日なら時刻だけ、他の日なら月日も添える
    (**日付は、違う時にだけ言う**= 同じ日の予定に今日の日付を並べても、読む物that増えるだけ)。 */
