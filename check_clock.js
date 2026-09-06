@@ -271,7 +271,7 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
   const P7=S7.slice(S7.indexOf('function meosFcPairAt'), S7.indexOf('function meosFcPairAt')+2500);
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
-  const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+14000);
+  const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+18000);
   ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle \}, _sc7, _nowAll\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
@@ -406,7 +406,7 @@ console.log('\u2473 並びのどれが今なのかを、並びそのものが言
   /* \u2605\u2605\u2605v4.1.1113: **宣言より前で読まない**(TDZ= try/catch that黙って握り潰す)。
      v4.1.1111はこれで一度も走っていなかった= 俊克の目that捕まえるまで、誰も気づけなかった。 */
   const S1=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const D=S1.slice(S1.indexOf('function meosApplyTimerLineDecorations'), S1.indexOf('function meosApplyTimerLineDecorations')+14000);
+  const D=S1.slice(S1.indexOf('function meosApplyTimerLineDecorations'), S1.indexOf('function meosApplyTimerLineDecorations')+18000);
   ok(D.indexOf('let owner = _pairs()') >= 0 && D.indexOf('cycNow.push') > D.indexOf('let owner = _pairs()'),
      '\u2605\u2605\u2605owner の宣言より**後ろ**で使う(TDZ を作らない)', [D.indexOf('let owner = _pairs()'), D.indexOf('cycNow.push')]);
 }
@@ -912,7 +912,7 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
  ok(/\(spec\.lock \? '\\ud83d\\udd10' : ''\)/.test(S), '\u2605\u66f8\u304f\u306e\u306f\u639b\u304b\u3063\u3066\u3044\u308b\u6642\u3060\u3051(\ud83d\udd13 \u306f\u5b57\u306b\u3057\u306a\u3044)', true);
  /* v4.1.153(俊克 改良2): 見せかけの ⏰ の錠は、生表示(Raw/カーソル行)では出さない
     = Raw は「MeOSが無効の時と同じ姿」so、本文に無い字は1つも足さない。 */
- ok(/if \(!c\.done && !c\.lock && !meosShowsRawLine\(editor, i\)\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
+ ok(/if \(!c\.done && !c\.lock && !_rawHere\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u306a\u3044\u6642\u306e \ud83d\udd13 \u306f**\u63cf\u304f\u3060\u3051**(\u898b\u305b\u304b\u3051\u306e\u8868\u793a)', true);
  ok(/clkBox\(b,clkDir,clkDir\?'\\u21bb stopwatch':'\\u21ba countdown'\)/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
  ok(/clkDir=false;clkRep=false;/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc\u30fb\u7e70\u8fd4\u3057\u7121\u3057(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
@@ -1544,6 +1544,26 @@ console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居�
      '★★★カーソルは**最初の数字の終わり**(0とsの間)= Backspaceで打ち直せる所', true);
   ok(/const _cyEx = \(_rep && _cyRaw\) \? meosParseCycleExpr\(_cyRaw, 0\) : null;/.test(S),
      '★面の箱も同じ1つの読みで受ける', true);}
+}
+
+// v4.1.161(俊克 9/6 pm02:14「本当は、インライン編集のときや、Rawモードでは、残り時間の表示は
+//   見えないはずなんだよね。これを特殊事情として許すのか、原則通り見せなくすべきか。どうする?」):
+console.log('⑭ Rawでは字を1つも足さない(色は字ではないso残す)');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const F=S.slice(S.indexOf('function meosApplyTimerLineDecorations'), S.indexOf('function meosClockFaceMs'));
+ ok(/const _rawHere = meosShowsRawLine\(editor, i\);/.test(F),
+    '★生表示かどうかは行の頭で1回だけ訊く(枝ごとに写経しない)', true);
+ ok(/if \(_rawHere\) continue;/.test(F),
+    '★★★生の行には数字も ×N も出さない(昨日の「⏰の残り時間は例外」を取り消す)', true);
+ ok(/const _dm = _rawHere \? null :/.test(F), '★曜日も字so出さない', true);
+ ok(/if \(!c\.done && !c\.lock && !_rawHere\) \{/.test(F), '  🔓 も同じ1つの答えから引く', true);
+ /* ★色は字を足していないso残る= 矢印の緑/水色・実行中の白・⏸の赤・✓の白は生でも生きている
+    (俊克 v4.1.1103「▼ボタン以外(⏰の残り時間・TSの色・バッジの色)は例外でよい」の色の部分は生きたまま)。 */
+ ok(F.indexOf("(_c1 === '\\u21bb' ? dirUp : dirDown)") < F.indexOf('if (_rawHere) continue;'),
+    '★★色(矢印の向き)は生の行でも残る= 字を足していない', true);
+ ok(F.indexOf('cycNow.push') < F.indexOf('if (_rawHere) continue;'),
+    '  実行中の桁の白も残る(色so)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

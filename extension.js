@@ -11081,6 +11081,16 @@ function meosApplyTimerLineDecorations(editor) {
           const c = meosClockFcParse(txt);
           if (!c || !c.when) continue;
           if (!meosClockLineIsLive(doc, i)) continue;   // v4.1.66: 囲いの中の見本には印を出さない
+          // ★★★v4.1.161(俊克 9/6 pm02:14「本当は、インライン編集のときや、Rawモードでは、残り時間の
+          //   表示は見えないはずなんだよね。これを特殊事情として許すのか、原則通り見せなくすべきか」):
+          //   ★★★**原則どおり消す**= 規則を1行にする= **Rawでは字を1つも足さない。色は字ではないso残す**。
+          //     これで \ud83d\udd13(v4.1.153)も残り時間も \u00d7N も曜日も、同じ1つの理由で説明thatつく
+          //     ＝ 例外を1つずつ数える形をやめられる([[feedback_one_source_for_mark_count_action]])。
+          //   ★昨日の裁定「\u23f0の残り時間は例外でよい」(v4.1.1103)を1つ取り消す= Rawの定義を
+          //     「MeOSを無効化した時と同じ姿」と決めた以上、字を足せばその定義that崩れるから。
+          //   ★失う物は無い= 残り時間は Me Dockの\u23f0ボタンとステータスバーにも出ている
+          //     (\u23f0行を直している間も、同じ数字that画面に2つ在る)。
+          const _rawHere = meosShowsRawLine(editor, i);
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
           //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
           //   **これですべてthatすっきりする**よ」):
@@ -11139,7 +11149,7 @@ function meosApplyTimerLineDecorations(editor) {
           }
           // ★v4.1.77: 日付の右に曜日を**描く**= 本文には1文字も増やさない(出す物と、覚える物を分ける)。
           try {
-            const _dm = /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/.exec(txt);
+            const _dm = _rawHere ? null : /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/.exec(txt);   // v4.1.161: 曜日も字
             if (_dm && txt.charAt(_dm.index + _dm[0].length) !== '(') {
               const _dd = new Date(+_dm[1], +_dm[2] - 1, +_dm[3]);
               if (!isNaN(_dd.getTime())) {
@@ -11152,7 +11162,7 @@ function meosApplyTimerLineDecorations(editor) {
           // ★★v4.1.153(俊克 改良2「\ud83d\udd13 は見せかけso、**Rawモードでも非表示に**しよう」):
           //   ★★**Rawは「MeOSthat無効の時と同じ姿」**(v4.1.1103)so、本文に無い字は1つも足さない。
           //   ★\ud83d\udd13 は「掛かっていない」を描いているだけ= 本文には居ない(v4.1.64)。
-          if (!c.done && !c.lock && !meosShowsRawLine(editor, i)) {
+          if (!c.done && !c.lock && !_rawHere) {
             const _a = txt.indexOf('\u23f0');
             if (_a >= 0) {
               const _e = _a + 1 + ((txt.charCodeAt(_a + 1) === 0xfe0f) ? 1 : 0);
@@ -11289,6 +11299,7 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★→ **生を見せている行thatあるなら、その膜では借りない**。数字は⏰行の
           //     **コメントの内側**へ戻す(v4.1.20 俊克「コメントの外に出す必要はない」)。
           //   ★これで生データと通常表示の違いthat見える= Rawは「MeOSthat無い時の姿」(v4.1.1103)。
+          if (_rawHere) continue;                      // ★v4.1.161: 生の行に字は足さない(数字も \u00d7N も)
           const _bgRaw = meosClockBadgeRowForLine(doc, i);
           let _bg2 = -1;
           try { _bg2 = (_bgRaw >= 0 && !meosShowsRawLine(editor, _bgRaw) && !meosShowsRawLine(editor, i)) ? _bgRaw : -1; } catch (_) { _bg2 = _bgRaw; }

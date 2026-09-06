@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.161 (2026-09-06)
+- **A raw row gets no added characters at all.** One rule replaces a growing list of exceptions: *raw adds no characters; colour is not a character, so it stays.* The running figures, the round count, the drawn weekday and the drawn 🔓 all disappear with the caret in the block or in Raw mode — Raw is defined as what MeOS looks like switched off, and anything written into the line breaks that definition. This reverses the one exception granted in v4.1.1103 for the clock's remaining time, and nothing is lost by it: the same number is on the Me Dock ⏰ button and in the status bar the whole time. The colours stay — arrow direction, the white running element, the red ⏸, the white ✓ — because they add nothing to the text.
+
 ### v4.1.160 (2026-09-06)
 - **The running figures no longer split `×12` down the middle.** They were anchored one character back from the end of the comment so that they and the round count could not land on the same spot — but v4.1.149 moved that end past the trailing spaces, and one character back from there is *inside the number*, so `×12` rendered as `×1 [figures] 2`. Both anchors now sit outside the text: the figures right after the last character, the count just before the closing `-->`.
 
