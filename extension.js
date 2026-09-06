@@ -11741,6 +11741,7 @@ function meosEditorColumn(doc) {
   return vscode.ViewColumn.One;
 }
 let _meosLastJump = '';   // v4.1.51: 直前の移動that何をしたか(計測)
+let _meosLastJumpLine = -1;   // v4.1.164: 直前に降りた行(鐘の後の見張りthat見る所)
 async function meosJumpToScope(scope, byBell) {
   try {
     if (!scope) return;
@@ -11781,6 +11782,7 @@ async function meosJumpToScope(scope, byBell) {
     ed.selection = new vscode.Selection(pos, pos);
     try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }
     ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    _meosLastJumpLine = ln;                        // v4.1.164: 見張りthat見るのも、ここ
     _meosLastJump = 'went to line ' + (ln + 1);
   } catch (e) { _meosLastJump = 'THREW: ' + (e && e.message ? e.message : String(e)); }
 }
@@ -11915,7 +11917,14 @@ function meosWatchCaretAfterBell(uri, line) {
   } catch (_) { }
 }
 // v4.1.56: 鐘で飛んだ後、畳み直し等that表示を戻すことthat在るので、落ち着いてから見せ直す。
-function meosRevealAgainAfterBell(uri, key) {
+// ★★★v4.1.164(俊克 9/6 pm03:16 バグ1「最後に居た場所に着地した直後、**開始膜に移動してしまう**。なぜ?」):
+//   ★★★**鐘の後の見張りthatが、いつも開始膜(rng.from)を見ていた**= 着地点をv4.1.162で
+//     「膜の中の最後にいた行」に変えたのに、見張りは変えていなかったso、
+//     長い膜では開始膜thatが画面外→「見えていない」と判断して**カーソルごと引き戻していた**。
+//   ★★→ 見張りにも**実際に降りた行**を渡す。見るのも戻すのも同じ1行
+//     ([[feedback_one_source_for_mark_count_action]] 飛ぶ所と見張る所を別の物差しで決めない)。
+//   ★渡されなければ今までどおり開始膜を見る(古い呼び手を壊さない)。
+function meosRevealAgainAfterBell(uri, key, atLine) {
   const shot = (tag) => {
     try {
       const ed = vscode.window.visibleTextEditors.find(e => e.document && e.document.uri.toString() === uri);
@@ -11930,9 +11939,9 @@ function meosRevealAgainAfterBell(uri, key) {
     const ed = shot(tag);
     if (!ed) return;
     try {
-      const rng = meosScopeRangeNow(ed.document, key);
-      if (!rng) return;
-      const ln = Math.max(0, Math.min(rng.from, ed.document.lineCount - 1));
+      let _base = (typeof atLine === 'number' && atLine >= 0) ? atLine : -1;
+      if (_base < 0) { const rng = meosScopeRangeNow(ed.document, key); if (!rng) return; _base = rng.from; }
+      const ln = Math.max(0, Math.min(_base, ed.document.lineCount - 1));
       const vr = ed.visibleRanges && ed.visibleRanges[0];
       if (vr && ln >= vr.start.line && ln <= vr.end.line) return;      // 見えている= 触らない
       const p = new vscode.Position(ln, 0);
@@ -11991,7 +12000,7 @@ async function meosPseudoTimeUp(key) {
   //   ★犯人の第一候補= 鐘that書いた⏰行(次の時刻/✓)の**文書変更→畳み直し**。畳みは表示範囲を動かす。
   //   ★★→ **落ち着いてから、もう一度そこを見せる**。畳み直しの後に上書きするので、どちらthat先でも勝てる。
   //     ついでに、その時の**見えている範囲**を記録する= 戻されたかどうかthat数字で残る。
-  try { meosRevealAgainAfterBell(scope.uri, scope.key); } catch (_) { }
+  try { meosRevealAgainAfterBell(scope.uri, scope.key, _meosLastJumpLine); } catch (_) { }   // v4.1.164: 見張るのも降りた行
   // ★★★v4.1.51(俊克「そのメッセージthat出てこないよ」): ステータスバーは鐘の表示に押し出されていた。
   //   → **必ず読まれる所**(「時間です」の知らせ)に載せる。
   let _dg = '';

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.164 (2026-09-06)
+- **The bell stops dragging you back to the opening line.** A watchdog runs 300ms and 900ms after the bell to make sure the membrane really is on screen — and it had always checked the *opening* line. v4.1.162 moved the landing spot into the body without telling it, so on a long membrane the opening line was off screen, the watchdog decided nothing was visible, and hauled the caret back up. It now watches the line the jump actually landed on. Jumping and watching read the same number.
+
 ### v4.1.163 (2026-09-06)
 - **Found who was folding the clock membrane the moment you left it — v4.1.153 was.** Once a membrane with a live clock stopped folding its badge row, its comment block no longer had a fold range at all; but the automatic folder was the one path still reading the raw block list instead of the shape that knows about ranges, so it kept telling the ▲ line to fold. `editor.fold` folds the innermost range at a line, and with the inner one gone the innermost range there *is the membrane* — a trap this codebase already documented in v4.0.188. The automatic folder now takes its targets from the same place the ranges are decided, so a block with no range is never asked to fold.
 - Every one of the ten places that can fold now writes a `[foldWho]` line naming itself, so the next time something folds unexpectedly the log says which one it was rather than leaving it to guesswork.

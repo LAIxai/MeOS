@@ -701,8 +701,17 @@ console.log('\u3253 秒読みは3段(アーチェリー式)');
  ok(/if \(!name\) return;/.test(SRC13.slice(SRC13.indexOf('function meosPlayWhistle'), SRC13.indexOf('function meosPlayWhistle')+800)),
     '  音を空にしている人には鳴らさない', true);
  const SRC12=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _rv=SRC12.slice(SRC12.indexOf('function meosRevealAgainAfterBell'), SRC12.indexOf('function meosRevealAgainAfterBell')+1400);
+ const _rv=SRC12.slice(SRC12.indexOf('function meosRevealAgainAfterBell'), SRC12.indexOf('function meosRevealAgainAfterBell')+2600);
  ok(/setTimeout\(\(\) => again\('t\+300'\), 300\)/.test(_rv)&&/again\('t\+900'\), 900\)/.test(_rv), '\u2605飛んだ後、落ち着いてから2度見せ直す', true);
+ /* ★★★v4.1.164(俊克「最後に居た場所に着地した直後、開始膜に移動してしまう」):
+    見張りthatいつも開始膜を見ていた= 長い膜では開始膜that画面外→「見えていない」と判断して引き戻していた。
+    → 飛ぶ所と見張る所を、同じ1行から引く。 */
+ ok(/function meosRevealAgainAfterBell\(uri, key, atLine\)/.test(SRC12),
+    '★★★見張りにも「実際に降りた行」を渡す', true);
+ ok(/let _base = \(typeof atLine === 'number' && atLine >= 0\) \? atLine : -1;/.test(_rv),
+    '  渡されなければ今までどおり開始膜を見る(古い呼び手を壊さない)', true);
+ ok(/meosRevealAgainAfterBell\(scope\.uri, scope\.key, _meosLastJumpLine\)/.test(SRC12),
+    '★★飛んだ側that控えた行を、そのまま見張りへ渡す', true);
  ok(/if \(vr && ln >= vr\.start\.line && ln <= vr\.end\.line\) return;/.test(_rv), '\u2605\u2605見えていれば触らない(戻された時だけ引き戻す)', true);
  ok(/view=/.test(_rv), '  その時の**見えている範囲**も記録する(戻されたかthat数字で残る)', true);
  ok(/meosJumpToScope\(scope, true\)/.test(_up), '  移動thatは時刻ちょうどの方に在る', true);
