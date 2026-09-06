@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.166 (2026-09-06)
+- **`Doomsday` answers the question the Doomsday Clock refuses to.** Being told it is 85 seconds to midnight tells you nothing you can hold; what you want to know is how long that is. Read the clock face as a whole day and scale it against the age of the universe, and 85 seconds is **13,563,600 years** — one second is about 159,572 of them. MeOS counts it down, and the tail ticks every second. `終末時計` works too.
+- The figure is the current one: 85 seconds, set 27 January 2026, moved in from 89.
+
 ### v4.1.165 (2026-09-06)
 - **Two words you can write where the time goes.** `BigBang` runs a clock counting from the beginning of the universe — `≈13787000000y 248d 15:59.55`, and the tail really does tick. `MeW!` starts a weekly cycle from the moment MeOS v1.0.30 was committed, 2026-07-13 16:04:45. Both stay in the text as the word you typed, so the raw line still says `⏰ BigBang` and you can grep for them.
 - The universe does not fit in a `Date` — 13.787 billion years is past both the ±273,791-year limit and the point where milliseconds stop being exact integers, so a single number would tick in 64-second jumps. The years and the running tail are kept apart instead: the count is a constant, the tail runs from the first of January.

@@ -1610,8 +1610,18 @@ console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
  ok(!c('2026-09-06 12:30').magic, '★普通の時刻は今までどおり(仕掛けは完全一致の時だけ)', true);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/const MEOS_BIGBANG_YEARS = 13787000000;/.test(S), '  年数は Planck 2018 の 13.787 Gyr', true);
- ok(/\(_bb \? \('\\u2248' \+ MEOS_BIGBANG_YEARS \+ 'y '\) : ''\)/.test(S),
+ ok(/\(_my \? \('\\u2248' \+ _my \+ 'y '\) : ''\)/.test(S),
     '★★★顔は「年の数＋動く尻尾」(1つの数で持つと秒that64秒刻みになる)', true);
+ /* ★★v4.1.166(俊克「終末時計だよ。ビッグバンfromの年数の比として、最新の公表値from計算して」
+    ＋「24時間だよ」): 俊克「あと5秒と言われても、後何年なんだよ? って、それthat知りたいのにね」 */
+ {const d=c('Doomsday');
+  ok(!!(d.magic&&d.magic.doomsday), '★終末時計thatが仕掛けとして読める', !!d.magic);
+  ok(d.magic.years===13563600, '★★★85秒 ÷ 24時間 × 137.87億年 = 13,563,600年', d.magic&&d.magic.years);
+  ok(d.up===false&&String(d.cycle)==='1y', '★★逆算(↺)= 残りthat減る。尻尾は今年の残り(毎秒動く)', [d.up,d.cycle]);
+  ok(/^\d{4}-01-01 00:00$/.test(d.when||'')&&d.when>c('BigBang').when, '  目標は来年の元日(BigBangは今年の元日)', [d.when,c('BigBang').when]);
+  ok(!!c('終末時計').magic, '  日本語でも読む', true);}
+ ok(/const MEOS_DOOMSDAY_SEC = 85;/.test(S), '  公表値は85秒(2026-01-27・89秒from前進)', true);
+ ok(/const MEOS_DOOMSDAY_FACE_SEC = 24 \* 60 \* 60;/.test(S), '★文字盤は24時間(真夜中that一日の終わり)', true);
  ok(/String\(\(spec\.whenSrc != null && String\(spec\.whenSrc\)\.trim\(\)\) \? spec\.whenSrc : \(spec\.when \|\| ''\)\)/.test(S),
     '★★書き戻しは「書いてあった字」で(置き換えた起点を書かない)', true);
 }

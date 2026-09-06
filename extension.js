@@ -9937,13 +9937,28 @@ const MEOS_CYCLE_DUR_RE = /^[0-9]+[ \t]*[smhdwySMHDWY]?/;
 //     ([[project_clock_in_the_text]] \u23f0の住所は本文)。
 const MEOS_BIGBANG_YEARS = 13787000000;                 // Planck 2018: 13.787 Gyr
 const MEOS_MEW_ORIGIN = '2026-07-13 16:04:45';          // MeOS v1.0.30 のcommit(俊克 pm03:58「これを使えばいい」)
-const MEOS_MAGIC_WHEN_RE = /^(BigBang|MeW!)$/i;
+// ★★★v4.1.166(俊克 9/6 pm04:08「もう一つ仕込もう。**終末時計**だよ。これをビッグバンfromの年数の比として、
+//   最新の公表値from計算して、残り日数を表示する」＋pm04:09「**24時間**だよ」):
+//   ★俊克「**あと5秒と言われても、後何年なんだよ? って、それthat知りたいのにね**」
+//     ＝ 終末時計の「秒」は比喩so、**人の時間に直す**thatこの仕掛けの中身。
+//   ★最新の公表値= **85秒**(2026-01-27 Bulletin of the Atomic Scientists・89秒from前進・史上最短)。
+//   ★文字盤は**24時間**(俊克の裁定)= 真夜中thatが一日の終わり。so 1秒 \u2248 159,572年、
+//     85秒 \u2248 **13,563,600年**。
+//   ★これも Date に入らないso BigBang と同じ作り= **年の数は定数・尻尾は今年の残り**(毎秒動く)。
+const MEOS_DOOMSDAY_SEC = 85;                           // 2026-01-27 発表(前回89秒)
+const MEOS_DOOMSDAY_FACE_SEC = 24 * 60 * 60;            // 文字盤は24時間(俊克 pm04:09)
+const MEOS_DOOMSDAY_YEARS = Math.round(MEOS_BIGBANG_YEARS * MEOS_DOOMSDAY_SEC / MEOS_DOOMSDAY_FACE_SEC);
+const MEOS_MAGIC_WHEN_RE = /^(BigBang|MeW!|Doomsday|\u7d42\u672b\u6642\u8a08)$/i;
 function meosClockMagicWhen(w) {
   const t = String(w == null ? '' : w).trim();
   if (!MEOS_MAGIC_WHEN_RE.test(t)) return null;
   if (/^BigBang$/i.test(t)) {
-    const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from
-    return { bigbang: true, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };
+    const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from(数え上げ)
+    return { bigbang: true, years: MEOS_BIGBANG_YEARS, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };
+  }
+  if (/^(Doomsday|\u7d42\u672b\u6642\u8a08)$/i.test(t)) {
+    const y1 = new Date(new Date().getFullYear() + 1, 0, 1, 0, 0, 0, 0);   // 尻尾は今年の残り(逆算)
+    return { doomsday: true, years: MEOS_DOOMSDAY_YEARS, when: meosClockFcStamp(y1), cycle: ['1y'], up: false, dual: false };
   }
   return { mew: true, when: MEOS_MEW_ORIGIN, cycle: ['1w'], up: false, dual: true };
 }
@@ -11317,8 +11332,8 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★→ **1つの装飾の `before` と `after`** に分ける= 順番thatが決まる(before→after)し、
           //     色は別々に持てる。**駒を2つ置かず、1つの駒に2つの顔を持たせる**。
           // ★v4.1.165: BigBang は**年の数を前に足す**= 尻尾(日・時分秒)は今年の元日fromso毎秒動く。
-          const _bb = !!(c.magic && c.magic.bigbang);
-          const _face = (u) => (_bb ? ('\u2248' + MEOS_BIGBANG_YEARS + 'y ') : '')
+          const _my = (c.magic && c.magic.years > 0) ? c.magic.years : 0;   // v4.1.166: 年数は仕掛けthat持つ
+          const _face = (u) => (_my ? ('\u2248' + _my + 'y ') : '')
             + meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
           // ★★★v4.1.147(俊克 9/5 pm11:49「UFCのデータとしては今まで通り1行にして、バッジの部分を
           //   折り畳まずに、**その2行を使って見せかけ2行に分割したように見せれば**いいんじゃないか?」):
