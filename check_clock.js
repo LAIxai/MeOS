@@ -1670,15 +1670,20 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
  ok(/\[clockRead\] ok=/.test(S) && /read \\u23f0 \\u2014 ' \+ _r\.why/.test(S),
     '★★黙って失敗しない(何を返したかを残し、読めなければバーで言う)', true);
  ok(/#clk-y\{flex:1\.62\}/.test(S), '  年の輪をもう少し広く', true);
- ok(/\.clk-ar-dn,\.clk-ar-up\{font-size:1\.4em;line-height:1;letter-spacing:-\.08em\}/.test(S),
+ ok(/\.clk-ar-dn,\.clk-ar-up\{font-size:1\.4em;line-height:1;letter-spacing:-\.2em\}/.test(S),
     '★面の矢印は1.4倍・間を詰めて1つの塊に', true);
  /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat 15:30 の**分**を落としていた
     (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeatだけthat入ったように見えた。 */
  ok(/replace\(\/\^\(\\d\{4\}\\D\\d\{1,2\}\\D\\d\{1,2\}\\s\+\\d\{1,2\}:\\d\{2\}\):\\d\{2\}\$\/, '\$1'\)/.test(S),
     '★★★秒を落とすのは「時:分:秒」の形の時だけ(分を巻き込まない)', true);
 
- ok(/\.clk-ar-dn\{color:#4ec9a0/.test(S) && /\.clk-ar-up\{color:#4fc1e9/.test(S),
-    '★★面の矢印も本文と同じ色(↺=緑 / ↻=水色)', true);
+ /* ★v4.1.172(俊克「緑色that分かりにくいので、もう少し濃い色の緑に」): 本文の色をそのまま使う。 */
+ ok(/\.clk-ar-dn\{color:#3fb950/.test(S) && /\.clk-ar-up\{color:#56d4dd/.test(S),
+    '★★面の矢印は**本文と同じ色の定数**(↺=#3fb950 / ↻=#56d4dd)', true);
+ ok(/const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd'/.test(S),
+    '  本文側の定数と一致している(2か所で違えば覚え直しになる)', true);
+ ok(/type:'clockReadAck'/.test(S) && /\[clockRead\] ack /.test(S),
+    '★★★面that「何をしたか」を返す(nodeは送ったまでしか知らない)', true);
  ok(/_a\.className=\(_ch==='\\u21bb'\)\?'clk-ar-up':'clk-ar-dn';/.test(S),
     '  Repeatの札の中の矢印だけを色の駒で包む(他の字はそのまま)', true);
  ok(/#clk-copy,#clk-read,#clk-now,#clk-set/.test(S), '★押した物をたどる名簿にも入れた(枝だけでは通らない)', true);
