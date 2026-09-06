@@ -9922,6 +9922,31 @@ const MEOS_CLOCK_DONE_RE = /[\u2713\u2714\u2705]\ufe0f?$|\u6e08$/;
 //     ([[project_raw_line_is_not_for_decoration]] の裏返し)。
 //   ★0の長さ(`0m`/`00`)はそこで並びを終える(v4.1.23からの作法をそのまま)。
 const MEOS_CYCLE_DUR_RE = /^[0-9]+[ \t]*[smhdwySMHDWY]?/;
+// ★★★v4.1.165(俊克 9/6 pm03:53「2つ仕掛けを仕込んでおこう」):
+//   ★(1) `BigBang` と書くと、**ビッグバンからの経過年数**thatが出る。Zennでネタとして見せる。
+//   ★(2) `MeW!` と書くと、**MeOS v1.0.30 のリリース(2026-07-13 pm07:10)を起点とする1週間周期**thatが走る。
+//     → もう1つ在ることをZennでクイズにする。
+//   ★★★**ビッグバンは Date に入らない**= JSの Date は ±273,791年thatが限界。
+//     137億年をミリ秒にすると約 4.35e20 で `Number.MAX_SAFE_INTEGER`(9.0e15)を超えるso、
+//     1つの数で持つと**秒の桁that約64秒刻みでしか動かない**(時計thatカクつく)。
+//     → **年の数と、動く尻尾を分ける**= 起点は「今年の元日」・周期は `1y`(so尻尾は毎秒動く)、
+//       顔に出す年だけ 137.87億 を足す。`meosMmSs` の `\u2248Ny hh:mm.ss` の形をそのまま使う。
+//   ★年数は Planck 2018 の 13.787 \u00b1 0.020 Gyr。**\u00b120,000,000年の誤差**thatあるso、
+//     尻尾の秒は最初から冗談(それthatネタ)。
+//   ★字は本文に残す(`BigBang` のまま)= grep できるし、生データを見れば仕掛けthat分かる
+//     ([[project_clock_in_the_text]] \u23f0の住所は本文)。
+const MEOS_BIGBANG_YEARS = 13787000000;                 // Planck 2018: 13.787 Gyr
+const MEOS_MEW_ORIGIN = '2026-07-13 16:04:45';          // MeOS v1.0.30 のcommit(俊克 pm03:58「これを使えばいい」)
+const MEOS_MAGIC_WHEN_RE = /^(BigBang|MeW!)$/i;
+function meosClockMagicWhen(w) {
+  const t = String(w == null ? '' : w).trim();
+  if (!MEOS_MAGIC_WHEN_RE.test(t)) return null;
+  if (/^BigBang$/i.test(t)) {
+    const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from
+    return { bigbang: true, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };
+  }
+  return { mew: true, when: MEOS_MEW_ORIGIN, cycle: ['1w'], up: false, dual: true };
+}
 function meosParseCycleExpr(src, base) {
   const S = String(src == null ? '' : src);
   const B = (typeof base === 'number') ? base : 0;
@@ -10074,10 +10099,20 @@ function meosClockFcParse(text) {
   //   ★1枚とは限らない= 札は入れ物ではなく**目印**so、何枚でも重なってよい。
   const tags = [];
   body = body.replace(/(^|\s)#([^\s#<>]+)/g, (mm, sp, tg) => { tags.push(tg); return sp ? ' ' : ''; }).trim();
+  // ★v4.1.165: 仕掛けの言葉= 本文はそのまま、時計だけ本物の起点/周期で走らせる。
+  let magic = null, whenSrc = body;
+  try {
+    const _mg = meosClockMagicWhen(body);
+    if (_mg) {
+      magic = _mg; body = _mg.when;
+      if (!(Array.isArray(cycle) && cycle.length)) { cycle = _mg.cycle; cycleSrc = ''; }
+      if (!cycleSrc) { up = _mg.up; dual = _mg.dual; }
+    }
+  } catch (_) { }
   const face = String(m[1] || '');
   const _pm = /\u23f8\ufe0f?([0-9]+)/.exec(face);   // v4.1.147: 休んだ時に何周終えていたか
   const pausedRound = _pm ? parseInt(_pm[1], 10) : 0;
-  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, tags, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, tags, magic, whenSrc, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10189,7 +10224,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, tags: _tags, ufc: c.ufc });   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, magic: c.magic, whenSrc: c.whenSrc, tags: _tags, ufc: c.ufc });   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   return out;
@@ -10320,7 +10355,9 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     const line = spec
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
-        + ' ' + String(spec.when || '').trim()
+        // ★v4.1.165: 仕掛けの言葉(BigBang / MeW!)は**書いてあった字のまま**戻す
+        //   (置き換えた本物の起点を書くと、次の書き戻しで仕掛けthat消える)。
+        + ' ' + String((spec.whenSrc != null && String(spec.whenSrc).trim()) ? spec.whenSrc : (spec.when || '')).trim()
         // ★★★v4.1.1108: **向きは必ず書く。周期は在る時だけ書く**(俊克「↺は方向だけを示している」)。
         //   繰返しthat無くても矢印を書くので、**一度きりのストップウォッチthat生データに残る**。
         //   v4.1.60: \u21bbはそのまま残す / v4.1.58: 書く時は \u21ba
@@ -10442,7 +10479,7 @@ function meosArmClockFcFor(doc) {
           if (_rn && _rn.round > c.rounds) {
             meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
             meosDbg('[armClock] rounds done key=' + c.key + ' \u884c=' + (c.line + 1) + ' \u00d7' + c.rounds);
-            if (c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, tags: c.tags, done: true }, c.line); } catch (_) { } }
+            if (c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, tags: c.tags, done: true }, c.line); } catch (_) { } }
             const _rd = _rb || meosParseStampLoose(c.when);
             meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false, tags: c.tags }, _rd ? _rd.getTime() : Date.now());
             continue;
@@ -10509,7 +10546,7 @@ function meosArmClockFcFor(doc) {
         //     MeOSthat名前も揃える= 畳まれて視界から消え、次の1本that直下に来る。
         //   ★逆向き(手でFCと書く)は読まない= `FC かつ ✓なし` は v4.1.18で「✓を外した=もう一度走らせたい」
         //     と決めた字so、同じ字に2つの意図は持たせられない。**止めるのは ✓ か ⏸ の1本道**。
-        if (c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, tags: c.tags, done: true }, c.line); } catch (_) { } }
+        if (c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, tags: c.tags, done: true }, c.line); } catch (_) { } }
         const _d = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false }, _d ? _d.getTime() : Date.now());
         continue;                                                   // 済み= 履歴だけ
@@ -10540,7 +10577,7 @@ function meosArmClockFcFor(doc) {
           }
         } catch (_) { }
         // v4.1.1114: 顔に ✓ で書かれていたら ⏸ へ書き直す= 意味は変えず、字だけ揃える(名前は状態の写し)。
-        try { if (MEOS_CLOCK_DONE_MARK_RE.test(String(meosClockFaceOf(doc.lineAt(c.line).text) || ''))) meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, pausedRound: c.pausedRound, tags: c.tags, done: false, off: true }, c.line); } catch (_) { }
+        try { if (MEOS_CLOCK_DONE_MARK_RE.test(String(meosClockFaceOf(doc.lineAt(c.line).text) || ''))) meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, pausedRound: c.pausedRound, tags: c.tags, done: false, off: true }, c.line); } catch (_) { }
         const _w = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
@@ -10579,7 +10616,7 @@ function meosArmClockFcFor(doc) {
       meosNoteClockHistory(scope, w.at.getTime());
       // ★v4.1.18(俊克 👍2「✓を外し、新しい時刻を設定して保存すると再起動する。FCに変わるようになった時には、
       //   再起動でUFCに再び戻る必要がある」): これから鳴る物は見えていなければならないので、名前を戻す。
-      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, tags: c.tags, done: false }, c.line); } catch (_) { } }
+      if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, tags: c.tags, done: false }, c.line); } catch (_) { } }
       n++;
     }
     // ★★★v4.1.66(俊克 問題1): **本文that言わなくなった物は、ここで落とす**=
@@ -10862,7 +10899,7 @@ async function meosClockSetEnabled(uri, key, on) {
       const _r = meosClockRollToNextDay(_when);
       if (_r) { _when = _r; _rolled = true; }
     }
-    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, tags: hit.tags, done: false, off: false }, hit.line);
+    await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, whenSrc: hit.whenSrc, tags: hit.tags, done: false, off: false }, hit.line);
     try { meosArmClockFcFor(doc); } catch (_) { }
     if (_meosPseudoUntil.has(lk)) {
       if (_rolled) vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + (hit.name || key) + ' \u2014 that time had gone, so it is set for ' + _when + '.', 4000);
@@ -11279,7 +11316,10 @@ function meosApplyTimerLineDecorations(editor) {
           //     秒ごとに前後thatが入れ替わっていた。
           //   ★★→ **1つの装飾の `before` と `after`** に分ける= 順番thatが決まる(before→after)し、
           //     色は別々に持てる。**駒を2つ置かず、1つの駒に2つの顔を持たせる**。
-          const _face = (u) => meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
+          // ★v4.1.165: BigBang は**年の数を前に足す**= 尻尾(日・時分秒)は今年の元日fromso毎秒動く。
+          const _bb = !!(c.magic && c.magic.bigbang);
+          const _face = (u) => (_bb ? ('\u2248' + MEOS_BIGBANG_YEARS + 'y ') : '')
+            + meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
           // ★★★v4.1.147(俊克 9/5 pm11:49「UFCのデータとしては今まで通り1行にして、バッジの部分を
           //   折り畳まずに、**その2行を使って見せかけ2行に分割したように見せれば**いいんじゃないか?」):
           //   ★★★**動く数字は、すぐ上のバッジ行の右端へ出す**= 書いた物(いつ・どう回るか)は⏰行に据え置き。
@@ -11676,7 +11716,7 @@ async function meosEndPseudoTimer(key) {
         //   ★繰返しの行は付けない= まだ終わっていない(v4.1.23)。
         const _same = _hits2.filter(h => String(h.when) === String(_hit.when) && !(Array.isArray(h.cycle) && h.cycle.length));
         for (const h of (_same.length ? _same : [_hit])) {
-          await meosClockFcSet(doc, scope.key, { when: h.when, hold: h.hold, lock: h.lock, cycle: h.cycle, up: h.up, dual: h.dual, rounds: h.rounds, cycleSrc: h.cycleSrc, tags: h.tags, done: true }, h.line);
+          await meosClockFcSet(doc, scope.key, { when: h.when, hold: h.hold, lock: h.lock, cycle: h.cycle, up: h.up, dual: h.dual, rounds: h.rounds, cycleSrc: h.cycleSrc, whenSrc: h.whenSrc, tags: h.tags, done: true }, h.line);
         }
       }
       else {
@@ -27214,7 +27254,7 @@ function toggleMeDock(editorOverride) {
         const doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === message.uri);
         const hit = doc ? meosClockFcScan(doc).find(c => c.key === message.key) : null;
         if (doc && hit) {
-          await meosClockFcSet(doc, message.key, { when: hit.when, hold: hit.hold, lock: false, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, tags: hit.tags, done: false, off: hit.off }, hit.line);
+          await meosClockFcSet(doc, message.key, { when: hit.when, hold: hit.hold, lock: false, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, whenSrc: hit.whenSrc, tags: hit.tags, done: false, off: hit.off }, hit.line);
           const _s = _meosPseudoScopes.get(message.uri + ' ' + message.key); if (_s) _s.lock = false;
           meosUpdateTimerBar(); meosPostViewMode(); meosPostTagList(); try { updateMeDockMode(); } catch (_) { }
           vscode.window.setStatusBarMessage('MeOS: \ud83d\udd13 ' + (hit.name || message.key) + ' \u2014 the lock is off; it can be dropped again.', 3000);

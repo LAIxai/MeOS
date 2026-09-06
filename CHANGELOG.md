@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.165 (2026-09-06)
+- **Two words you can write where the time goes.** `BigBang` runs a clock counting from the beginning of the universe — `≈13787000000y 248d 15:59.55`, and the tail really does tick. `MeW!` starts a weekly cycle from the moment MeOS v1.0.30 was committed, 2026-07-13 16:04:45. Both stay in the text as the word you typed, so the raw line still says `⏰ BigBang` and you can grep for them.
+- The universe does not fit in a `Date` — 13.787 billion years is past both the ±273,791-year limit and the point where milliseconds stop being exact integers, so a single number would tick in 64-second jumps. The years and the running tail are kept apart instead: the count is a constant, the tail runs from the first of January.
+
 ### v4.1.164 (2026-09-06)
 - **The bell stops dragging you back to the opening line.** A watchdog runs 300ms and 900ms after the bell to make sure the membrane really is on screen — and it had always checked the *opening* line. v4.1.162 moved the landing spot into the body without telling it, so on a long membrane the opening line was off screen, the watchdog decided nothing was visible, and hauled the caret back up. It now watches the line the jump actually landed on. Jumping and watching read the same number.
 

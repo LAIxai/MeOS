@@ -169,7 +169,7 @@ console.log('\u247d ↺↻ = 1行に顔が2つ');
   ok(/spec\.dual \? '\\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
   ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
      '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
-  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, tags: _tags, ufc: c\.ufc/.test(S10),
+  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, magic: c\.magic, whenSrc: c\.whenSrc, tags: _tags, ufc: c\.ufc/.test(S10),
      '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
 }
 
@@ -1589,6 +1589,31 @@ console.log('⑮ 鐘の着地点は膜の中(▼の上に降りない)');
     '  一覧from行く時は今までどおり⏰行へ(直しに行くso生でよい)', true);
  ok(J.indexOf('savedMeCursorLine') > J.indexOf('if (!byBell)'),
     '★飛ぶ口は1つのまま(meosJumpToScope の中で分ける)', true);
+}
+
+// v4.1.165(俊克 9/6 pm03:53「2つ仕掛けを仕込んでおこう」＋pm03:58「16:04:45を使えばいい」):
+console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
+{
+ const P=X.meosClockFcParse;
+ const c=(w)=>P('<!-- Mew!UFC ⏰ '+w+' -->')||{};
+ {const b=c('BigBang');
+  ok(!!(b.magic&&b.magic.bigbang), '★BigBang thatが仕掛けとして読める', !!b.magic);
+  ok(b.up===true&&String(b.cycle)==='1y', '★★経過(↻)＋1年周期= 尻尾thatが毎秒動く', [b.up,b.cycle]);
+  ok(/^\d{4}-01-01 00:00$/.test(b.when||''), '★★★起点は今年の元日(137億年は Date に入らないso年は別に足す)', b.when);
+  ok(b.whenSrc==='BigBang', '★★本文の字はそのまま(書き戻しで仕掛けthat消えない)', b.whenSrc);}
+ {const m=c('MeW!');
+  ok(!!(m.magic&&m.magic.mew), '★MeW! thatが仕掛けとして読める', !!m.magic);
+  ok(m.when==='2026-07-13 16:04:45', '★★★起点= MeOS v1.0.30 のcommit', m.when);
+  ok(String(m.cycle)==='1w'&&m.dual===true, '★★1週間周期・CDとSWを並べる', [m.cycle,m.dual]);
+  ok(m.whenSrc==='MeW!', '★★本文の字はそのまま', m.whenSrc);}
+ ok(!!(c('bigbang').magic), '  大文字小文字は問わない', true);
+ ok(!c('2026-09-06 12:30').magic, '★普通の時刻は今までどおり(仕掛けは完全一致の時だけ)', true);
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/const MEOS_BIGBANG_YEARS = 13787000000;/.test(S), '  年数は Planck 2018 の 13.787 Gyr', true);
+ ok(/\(_bb \? \('\\u2248' \+ MEOS_BIGBANG_YEARS \+ 'y '\) : ''\)/.test(S),
+    '★★★顔は「年の数＋動く尻尾」(1つの数で持つと秒that64秒刻みになる)', true);
+ ok(/String\(\(spec\.whenSrc != null && String\(spec\.whenSrc\)\.trim\(\)\) \? spec\.whenSrc : \(spec\.when \|\| ''\)\)/.test(S),
+    '★★書き戻しは「書いてあった字」で(置き換えた起点を書かない)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
