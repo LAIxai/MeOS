@@ -169,7 +169,7 @@ console.log('\u247d ↺↻ = 1行に顔が2つ');
   ok(/spec\.dual \? '\\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
   ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
      '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
-  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, magic: c\.magic, whenSrc: c\.whenSrc, tags: _tags, ufc: c\.ufc/.test(S10),
+  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, cycleReps: c\.cycleReps, magic: c\.magic, whenSrc: c\.whenSrc, tags: _tags, ufc: c\.ufc/.test(S10),
      '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
 }
 
@@ -1690,6 +1690,27 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
  ok(/_a\.className=\(_ch==='\\u21bb'\)\?'clk-ar-up':'clk-ar-dn';/.test(S),
     '  Repeatの札の中の矢印だけを色の駒で包む(他の字はそのまま)', true);
  ok(/#clk-copy,#clk-read,#clk-now,#clk-set/.test(S), '★押した物をたどる名簿にも入れた(枝だけでは通らない)', true);
+}
+
+// v4.1.174(俊克 9/6 pm09:23「HIITの初期値でやると、途中で一時停止して再開すると表示that目茶苦茶おかしくなる。
+//   特に、**4回のインターバルの1〜4のどこかを示す**表示that出ないので分かりにくい」):
+console.log('⑱ 短い形を落とさない / 内側の何本目かを数える');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const P=X.meosClockFcParse;
+ const c=P('<!-- Mew!UFC ⏰ 2026-09-06 19:07 ↺↻((30s 15s)×4 1m)×3 -->')||{};
+ ok(c.cycle.length===9&&c.rounds===3, '  1周9歩・3セット', [c.cycle.length,c.rounds]);
+ ok(JSON.stringify(c.cycleReps)==='[[1,4],[1,4],[2,4],[2,4],[3,4],[3,4],[4,4],[4,4],null]',
+    '★★★内側の何本目かを展開の時に控える(平らにすると消える物)', c.cycleReps);
+ ok(c.cycleReps[8]===null, '  セット間の休みは「何本目」を持たない(内側の輪の外so)', true);
+ ok(/if \(_rnd && _rp\) _rnd \+= ' \\u00b7' \+ _rp\[0\] \+ '\/' \+ _rp\[1\];/.test(S),
+    '★★外の周(×2/3)の隣に内側(·3/4)を添える', true);
+ /* ★★★書き戻しで短い形を落とすと、本文that展開された姿に化ける(俊克の実物= (30s/15s/30s/…)×3)。 */
+ {const _sites=S.split('\n').filter(l=>/meosClockFcSet\(/.test(l)&&/cycle: (c|hit|h)\.cycle/.test(l));
+  ok(_sites.length>0 && _sites.every(l=>/cycleSrc:/.test(l)),
+     '★★★時計を書き戻す口は**全部**短い形を運ぶ(1つでも落ちると本文that展開形に化ける)', _sites.length);
+  ok(_sites.every(l=>/whenSrc:/.test(l)),
+     '  起点の字(BigBang等)も同じく全部運ぶ', true);}
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

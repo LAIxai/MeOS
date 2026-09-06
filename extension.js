@@ -10041,7 +10041,14 @@ function meosParseCycleExpr(src, base) {
           for (const e of inner) out.push(e);
           continue;
         }
-        for (let k = 0; k < Math.max(1, n); k++) for (const e of inner) out.push(e);
+        // ★★★v4.1.174(俊克「**4回のインターバルの1〜4のどこか**を示す表示that出ないので分かりにくい」):
+        //   ★★★入れ子を平らにすると、**内側の何回目か**thatが消える= `(30s 15s)\u00d74` の4本は
+        //     どれも同じ字を指すso、白い桁だけでは1本目と3本目thatが見分けられない。
+        //   ★★→ 展開する時に**その場で控える**(rep=何回目 / reps=何回中)。内側thatが勝つ
+        //     (一番内側の輪thatが人の数える単位so、外側で上書きしない)。
+        for (let k = 0; k < Math.max(1, n); k++) for (const e of inner) {
+          out.push((n > 1 && !e.reps) ? { tok: e.tok, from: e.from, to: e.to, rep: k + 1, reps: n } : e);
+        }
         continue;
       }
       if (S[i] === '#') break;                        // v4.1.157: 札from先は時計ではない
@@ -10122,7 +10129,7 @@ function meosClockFcParse(text) {
   //     **書く形は括弧の1つに絞る**(meosClockFcSet)= read-both / write-one([[project_notation_v4]])。
   //   ★却下= `|\u00d73`(縦棒)は俊克の裁定で括弧へ / 裸の `\u00d73` は `1m` だけに掛かって見える /
   //     空白区切りは**目に見えない物に意味を持たせない**。
-  let rounds = null, cycleSrc = '', cycleSpans = null, cycleSeps = null;
+  let rounds = null, cycleSrc = '', cycleSpans = null, cycleSeps = null, cycleReps = null;
   // ★v4.1.157: 矢印の後ろは**丸ごと式**= 括弧も入れ子も回数も、1つの読みthat受ける。
   const _ai = body.search(/[\u21ba\u21bb]/);
   if (_ai >= 0) {
@@ -10140,6 +10147,7 @@ function meosClockFcParse(text) {
     if (_ex.steps.length) {
       cycle = _ex.steps.map(e => e.tok);             // 平らに展開した歩の並び= 今までの cycle
       cycleSpans = _ex.steps.map(e => [e.from, e.to]);
+      cycleReps = _ex.steps.map(e => (e.reps > 1 ? [e.rep, e.reps] : null));   // v4.1.174: 内側の何回目か
       cycleSeps = _ex.seps;
       rounds = _ex.rounds;                           // 一番外の \u00d7N = 回数
     }
@@ -10168,7 +10176,7 @@ function meosClockFcParse(text) {
   const face = String(m[1] || '');
   const _pm = /\u23f8\ufe0f?([0-9]+)/.exec(face);   // v4.1.147: 休んだ時に何周終えていたか
   const pausedRound = _pm ? parseInt(_pm[1], 10) : 0;
-  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, tags, magic, whenSrc, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10280,7 +10288,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, magic: c.magic, whenSrc: c.whenSrc, tags: _tags, ufc: c.ufc });   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, tags: _tags, ufc: c.ufc });   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   return out;
@@ -10627,7 +10635,7 @@ function meosArmClockFcFor(doc) {
               if (_r9 > 0 && _r9 !== (c.pausedRound || 0)) {
                 if (!_meosPauseStopRound.has(lk) && c.pausedRound > 0) _meosPauseStopRound.set(lk, c.pausedRound);
                 meosDbg('[clockPause] caret in \u2192 \u23f8' + (c.pausedRound || 0) + ' \u2192 \u23f8' + _r9 + ' key=' + c.key);
-                meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, pausedRound: _r9, tags: c.tags, done: false, off: true }, c.line);
+                meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, pausedRound: _r9, tags: c.tags, done: false, off: true }, c.line);
               }
             }
           }
@@ -10930,7 +10938,7 @@ async function meosClockSetEnabled(uri, key, on) {
     // v4.1.147: 止めた**その時**の周回数を書き残す(控えは上で消しているので sc から読む)。
     const _pr9 = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit ? (hit.pausedRound || 0) : 0);
     try { if (_pr9 > 0) _meosPauseStopRound.set(lk, _pr9); } catch (_) { }   // v4.1.152: 「どこで止めたか」は覚えの側
-    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, pausedRound: _pr9, tags: hit.tags, done: false, off: true }, hit.line);
+    if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, whenSrc: hit.whenSrc, pausedRound: _pr9, tags: hit.tags, done: false, off: true }, hit.line);
     // ★★★v4.1.62(俊克 バグ4「リストの✓ボタンを押して…止めた後で、リストから無くなってしまう。
     //   **これは残しておくべきだよ**。貴方は、Stopしたら、リストから消すようなことを書いていたよね。
     //   それは間違いだよ」): ★★★**休んでいる物は「予定」であって「履歴」ではない**=
@@ -11382,8 +11390,14 @@ function meosApplyTimerLineDecorations(editor) {
           const _sc7 = scById.get(owner ? owner.id : '') || {};
           // ★v4.1.146: 回数the上限that在れば `\u00d72/3` と出す= **あと何周かthat読める**
           //   (ボクシングの「3ラウンドの2つ目」)。上限that無い時は今までどおり `\u00d72` だけ。
-          const _rnd = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7))
+          // ★★v4.1.174: 外の周(\u00d72/3)の隣に、**内側の何本目か**(\u00b73/4)を添える。
+          //   ★入れ子でない時は今までどおり= 出す物を増やさない。
+          let _rnd = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7))
             ? ('\u00d7' + _sc7.round + (c.rounds > 0 ? ('/' + c.rounds) : '')) : '';
+          try {
+            const _rp = (c.cycleReps && _sc7 && typeof _sc7.cidx === 'number') ? c.cycleReps[_sc7.cidx] : null;
+            if (_rnd && _rp) _rnd += ' \u00b7' + _rp[0] + '/' + _rp[1];
+          } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
           //   ★★★**同じ位置に、同じ種類の装飾を2つ置いた**= VS Codeは描く順を約束しないので、
           //     秒ごとに前後thatが入れ替わっていた。
