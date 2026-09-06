@@ -1660,13 +1660,23 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
     '★★★read ⏰ = この膜の時計を面へ取り込む', true);
  ok(/when: String\(hit\.whenSrc \|\| hit\.when \|\| ''\)/.test(S)&&/cycle: String\(hit\.cycleSrc \|\|/.test(S),
     '★★★返すのは**本文の字そのもの**(置き換えた値を渡すと BigBang のような仕掛けthat消える)', true);
- ok(/if\(e&&\/\^\\d\{4\}\\D\\d\{1,2\}\\D\\d\{1,2\}\/\.test\(_w\)\)\{e\.value=_w;clkSyncFromBox\(\);\}/.test(S),
-    '★打ち込みの口は clkSyncFromBox 1つ(輪への置き方を2つ持たない)', true);
+ /* ★★★v4.1.171(俊克 バグ1「read⏰ は起点の日付をまったく読み込んでない。設定パネルthat更新されない」):
+    輪に置く道that2つあった= clkNow は「窓(年代)ごと張り直してfrom選ぶ」のに clkSyncFromBox は選ぶだけ。
+    窓の中に居ない年は**黙って留まる**(v4.1.86で一度通った穴)。→ 置き方を1つに。 */
+ ok(/function clkPutYMDHM\(y,mo,d,h,mi\)\{/.test(S) && /clkFill\(document\.getElementById\('clk-y'\),_yb,_yb\+9,false\);/.test(S),
+    '★★★輪への置き方は1つ(年は必ず窓ごと張り直す)', true);
+ ok(/if\(m\)\{clkFixD=true;clkPutYMDHM\(/.test(S) && /if\(_md\)\{clkFixD=true;clkPutYMDHM\(/.test(S),
+    '★★打ち込みも read も同じ置き方を通る', true);
+ ok(/\[clockRead\] ok=/.test(S) && /read \\u23f0 \\u2014 ' \+ _r\.why/.test(S),
+    '★★黙って失敗しない(何を返したかを残し、読めなければバーで言う)', true);
+ ok(/#clk-y\{flex:1\.62\}/.test(S), '  年の輪をもう少し広く', true);
+ ok(/\.clk-ar-dn,\.clk-ar-up\{font-size:1\.4em;line-height:1;letter-spacing:-\.08em\}/.test(S),
+    '★面の矢印は1.4倍・間を詰めて1つの塊に', true);
  /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat 15:30 の**分**を落としていた
     (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeatだけthat入ったように見えた。 */
  ok(/replace\(\/\^\(\\d\{4\}\\D\\d\{1,2\}\\D\\d\{1,2\}\\s\+\\d\{1,2\}:\\d\{2\}\):\\d\{2\}\$\/, '\$1'\)/.test(S),
     '★★★秒を落とすのは「時:分:秒」の形の時だけ(分を巻き込まない)', true);
- ok(/#clk-y\{flex:1\.4\}/.test(S), '★年の輪は4桁so少し広く(19pxの太字that入り切らない)', true);
+
  ok(/\.clk-ar-dn\{color:#4ec9a0/.test(S) && /\.clk-ar-up\{color:#4fc1e9/.test(S),
     '★★面の矢印も本文と同じ色(↺=緑 / ↻=水色)', true);
  ok(/_a\.className=\(_ch==='\\u21bb'\)\?'clk-ar-up':'clk-ar-dn';/.test(S),

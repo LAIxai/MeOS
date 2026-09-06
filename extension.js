@@ -23235,10 +23235,13 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 .clk-cols{display:flex;gap:2px;align-items:stretch}
 /* ★v4.1.170(俊克 改良1「大文字の年の右that少し切れているので、枠を少し広げて」):
    年は4桁so、月日(2桁)と同じ幅では 19px の太字that入り切らない。**中身なりの幅**にする。 */
-#clk-y{flex:1.4}
+#clk-y{flex:1.62}
 /* v4.1.170: 面の矢印も本文と同じ色(\u21ba=緑・\u21bb=水色)。色that2か所で違えば覚え直しになる。 */
-.clk-ar-dn{color:#4ec9a0;font-weight:900}
-.clk-ar-up{color:#4fc1e9;font-weight:900}
+/* ★v4.1.171(俊克 改良1「\u21ba と \u21bb の間を近づけて、文字サイズを1.4倍にしよう」):
+   ★矢印は**顔の名札**so、札の中でも本文と同じ重さで立たせる。間を詰めて1つの塊に見せる。 */
+.clk-ar-dn,.clk-ar-up{font-size:1.4em;line-height:1;letter-spacing:-.08em}
+.clk-ar-dn{color:#4ec9a0;font-weight:900;margin-left:2px}
+.clk-ar-up{color:#4fc1e9;font-weight:900;margin-right:1px}
 .clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 /* ★★v4.1.83(俊克 改良2「この回転ドラムの大きな橙色の部分をWクリックすると、そこに直接値を
@@ -25098,25 +25101,37 @@ function clkSyncFromCols(){clkFitDays();clkEcho();}
    なっている」): ★★★**v4.1.83で窓を『年代』にした時の取り残し**= 窓that2030年代なら、
    その中に2026は居ないso、今日を選ぼうとしても**選べずに黙って留まっていた**。
    → 今日へ戻す時は、**窓ごと今日の年代へ**張り直す(選ぶ前に、居場所を作る)。 */
+/* ★★★v4.1.171(俊克 バグ1「read\u23f0 は、起点の日付をまったく読み込んでない。読み込んでいるのかも
+   知れないthat、設定パネルthat更新されない。なぜ?」):
+   ★★★**輪に置く道that2つあった**= clkNow/clkDateEmpty は「窓(年代)ごと張り直してfrom選ぶ」のに、
+     clkSyncFromBox は**選ぶだけ**。窓の中に居ない年は選べず、**黙って留まる**(v4.1.86で一度通った穴)。
+   ★★→ 置き方を**1つ**にする= 年は必ず窓ごと張り直す。呼ぶ側は年月日時分を渡すだけ。
+     ([[feedback_one_source_for_mark_count_action]] 同じ仕事を2つの口で書かない) */
+function clkPutYMDHM(y,mo,d,h,mi){
+ if(y!=null){var _yb=Math.floor(y/10)*10;
+  clkFill(document.getElementById('clk-y'),_yb,_yb+9,false);
+  clkSel(document.getElementById('clk-y'),y);
+  if(mo!=null)clkSel(document.getElementById('clk-mo'),mo);
+  clkFitDays();
+  if(d!=null)clkSel(document.getElementById('clk-d'),d);}
+ if(h!=null)clkSel(document.getElementById('clk-h'),h);
+ if(mi!=null)clkSel(document.getElementById('clk-mi'),mi);}
 /* v4.1.169: ダイヤルを今に合わせる(日付も指定したことにする= clkFixD=true)。 */
 function clkNow(){var t=new Date();clkFixD=true;
-var _yb=Math.floor(t.getFullYear()/10)*10;
-clkFill(document.getElementById('clk-y'),_yb,_yb+9,false);
-clkSel(document.getElementById('clk-y'),t.getFullYear());
-clkSel(document.getElementById('clk-mo'),t.getMonth()+1);
-clkFitDays();
-clkSel(document.getElementById('clk-d'),t.getDate());
-clkSel(document.getElementById('clk-h'),t.getHours());
-clkSel(document.getElementById('clk-mi'),t.getMinutes());}
+clkPutYMDHM(t.getFullYear(),t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes());}
 /* v4.1.169: この膜の時計を面へ取り込む(read \u23f0)。打ち込みの口は clkSyncFromBox 1つ。 */
 function clkTakeIn(d){try{
  if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
+ /* ★v4.1.171: 箱(clk-edit)に書いてfrom読み直す遠回りをやめ、**同じ1つの置き方**で直に置く。 */
  var e=document.getElementById('clk-edit');
  /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat、15:30 の**分**を落としていた
     (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeat だけthat入ったように見えた。
     → **時:分:秒 の形の時だけ**末尾の秒を落とす。 */
  var _w=String(d.when||'').replace(/^(\d{4}\D\d{1,2}\D\d{1,2}\s+\d{1,2}:\d{2}):\d{2}$/, '$1');
- if(e&&/^\d{4}\D\d{1,2}\D\d{1,2}/.test(_w)){e.value=_w;clkSyncFromBox();}
+ var _md=/^(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/.exec(_w);
+ if(_md){clkFixD=true;clkPutYMDHM(+_md[1],+_md[2],+_md[3],(_md[4]!=null?+_md[4]:null),(_md[5]!=null?+_md[5]:null));
+  if(e)e.value=_w;}
+ else{var _mt=/^(\d{1,2}):(\d{2})$/.exec(_w);if(_mt)clkPutYMDHM(null,null,null,+_mt[1],+_mt[2]);}
  var cy=document.getElementById('clk-cyc');
  clkRep=!!d.rep;clkPaintRep();
  if(cy)cy.value=String(d.cycle||'');
@@ -25154,8 +25169,7 @@ if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
 var v=(e.value||'').trim().replace(/[\uFF1A]/g,':').replace(/[\uFF0F]/g,'/');
 var m=/^(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\s+(\d{1,2}):?(\d{2}))?$/.exec(v);
-if(m){clkFixD=true;clkSel(document.getElementById('clk-y'),+m[1]);clkSel(document.getElementById('clk-mo'),+m[2]);clkSel(document.getElementById('clk-d'),+m[3]);
- if(m[4]!=null){clkSel(document.getElementById('clk-h'),+m[4]);clkSel(document.getElementById('clk-mi'),+m[5]);}return;}
+if(m){clkFixD=true;clkPutYMDHM(+m[1],+m[2],+m[3],(m[4]!=null?+m[4]:null),(m[5]!=null?+m[5]:null));return;}   /* v4.1.171: 置き方は1つ */
 var t=/^(\d{1,2}):?(\d{2})$/.exec(v);
 if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
 /* v4.1.0: 一覧の1行= 「時刻・年月日 + 膜名」。今日なら時刻だけ、他の日なら月日も添える
@@ -27267,6 +27281,10 @@ function toggleMeDock(editorOverride) {
           else if (!sc || !sc.key) _r.why = 'put the caret inside a membrane first';
         }
       } catch (_) { }
+      // ★v4.1.171: **黙って失敗しない**= 何を返したかを残し、読めなかった時は面でなくバーで言う
+      //   (webview側の言い口に頼ると、無ければ何も出ない= 今回それで原因thatが見えなかった)。
+      try { meosDbg('[clockRead] ok=' + _r.ok + ' when=' + JSON.stringify(_r.when || '') + ' cycle=' + JSON.stringify(_r.cycle || '') + (_r.ok ? '' : (' why=' + _r.why))); } catch (_) { }
+      try { if (!_r.ok) vscode.window.setStatusBarMessage('MeOS: read \u23f0 \u2014 ' + _r.why, 3000); } catch (_) { }
       try { if (meDockPanel) meDockPanel.webview.postMessage(_r); } catch (_) { }
       return;
     }

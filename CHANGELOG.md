@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.171 (2026-09-06)
+- **`read ⏰` sets the date wheels now.** There were two ways of putting a value on a wheel: one that rebuilds the year window first and one that only selects — and a year outside the current window simply cannot be selected, so it stayed put and said nothing. That trap was found once before, in v4.1.86. There is one way now, and typing into the box, `Now`, and `read ⏰` all go through it.
+- **A read that fails says so.** It writes what it returned to the debug log and puts the reason in the status bar, instead of relying on a message in the panel that was never there.
+- **The year wheel is wider again**, and in the Repeat label `↺↻` is 1.4× and tightened up into one mark.
+
 ### v4.1.170 (2026-09-06)
 - **`read ⏰` was only bringing back the repeat, and that was a bug.** Stripping the seconds off the time used a pattern that took the minutes instead — `2026-09-06 15:30` became `2026-09-06 15`, which then failed to parse as a date at all, so the dials never moved. Seconds are now removed only from a time that actually has them.
 - **The year wheel is wider.** Four digits at 19px bold did not fit in a column sized for two.
