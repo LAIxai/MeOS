@@ -1458,8 +1458,19 @@ console.log('\u246b \u23f82= 休んだ時に何周終えていたか');
     '\u2605\u2605書く時も \u23f8N で書き戻す', true);
  ok(/const _pr9 = \(sc && typeof sc\.round === 'number' && sc\.round > 0\) \? sc\.round/.test(S),
     '\u2605\u2605\u2605止める**その時**の周回数を控えから読む(消える前に)', true);
- ok(/if \(c\.pausedRound > 0\) \{/.test(S) && /_bg3r = meosClockBadgeRowForLine/.test(S) && /_bg3r >= 0 && !meosShowsRawLine\(editor, _bg3r\)/.test(S),
-    '\u2605休んでいても \u00d7N を出す(場所は走っている時と同じバッジ行)', true);
+ /* \u2605\u2605\u2605v4.1.152(俊克 9/6 am09:45): 休みの数字は**2つ**= 本文の \u23f8N(今どこか・戻る先) と
+    借りた行の \u00d7N(どこで止めたか・結果)。止めても時刻の格子は進み続けるso、
+    \u23f8 に止めた時の数を残すと再開の瞬間に 21→116 と飛ぶ。 */
+ ok(/_meosPauseStopRound\.set\(lk, _pr9\)/.test(S),
+    '\u2605\u2605\u2605止めた時の回数は覚えの側に持つ(本文の \u23f8N とは別の数)', true);
+ ok(/const _stop = _meosPauseStopRound\.has\(_lk3\) \? _meosPauseStopRound\.get\(_lk3\) : c\.pausedRound;/.test(S),
+    '  覚えthatが無い時(再起動後)は本文の数をそのまま出す', true);
+ ok(/_bg3 = \(_bg3r >= 0 && !meosShowsRawLine\(editor, _bg3r\) && !meosShowsRawLine\(editor, i\)\) \? _bg3r : -1; \} catch \(_\) \{ _bg3 = -1; \}/.test(S),
+    '\u2605\u2605\u2605生を見せている行では \u00d7N を出さない(本文の \u23f8N thatもう言っている)', true);
+ ok(/if \(_dg && _dg\.index === 0\) dones\.push/.test(S),
+    '\u2605\u2605\u23f8 の右の数字は白(休みの赤とは役that違う= 結果は立たせる)', true);
+ ok(/if \(!_meosPauseCaretIn\.has\(lk\)\) \{/.test(S) && /_meosPauseCaretIn\.add\(lk\);/.test(S),
+    '\u2605\u2605\u2605\u23f8N を直すのは**膜に入った瞬間だけ**(中に居る間ずっと直すと打っている最中に本文that動く)', true);
  ok(!/meosClockTailParse/.test(S) && /const line = spec/.test(S) && !/const _blk = spec/.test(S),
     '\u2605\u2605\u2605生データは1行のまま(2行に割らない= UFC1行のコピペthatそのまま時計になる)', true);
 }

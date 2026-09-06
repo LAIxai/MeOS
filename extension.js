@@ -10350,6 +10350,28 @@ function meosArmClockFcFor(doc) {
       // ★★★v4.1.24: \u23f8(休み)は**仕掛けない**。ただし一覧には出す= 休んでいる物が見えないと、戻せない。
       //   出す時刻は**書いてある時刻**(残り時間ではない)so、☑を入れればその時刻でまた走る。
       if (c.off) {
+        // ★★★v4.1.152: **カーソルthatこの膜に入った瞬間だけ**、\u23f8N を今の周回数へ直す。
+        //   ★中に居る間ずっと直すと、打っている最中に本文that動く= 入った1回だけに絞る。
+        //   ★これで再開の前に「今116周目」と見えているso、再開しても飛んだように見えない。
+        try {
+          if (Array.isArray(c.cycle) && c.cycle.length) {
+            const _cl9 = meosCaretLineForDoc(doc);
+            const _rg9 = (_cl9 >= 0) ? meosScopeRangeNow(doc, c.key) : null;
+            const _in9 = !!(_rg9 && _cl9 >= _rg9.from && _cl9 <= meosBlockEndForCarry(doc, { end: _rg9.to }));
+            if (!_in9) _meosPauseCaretIn.delete(lk);
+            else if (!_meosPauseCaretIn.has(lk)) {
+              _meosPauseCaretIn.add(lk);                              // 入った瞬間= ここ1回だけ
+              const _b9 = meosParseStampLoose(c.when);
+              const _n9 = _b9 ? meosCycleSeriesNext(_b9.getTime(), c.cycle, Date.now()) : null;
+              const _r9 = (_n9 && typeof _n9.round === 'number') ? _n9.round : 0;
+              if (_r9 > 0 && _r9 !== (c.pausedRound || 0)) {
+                if (!_meosPauseStopRound.has(lk) && c.pausedRound > 0) _meosPauseStopRound.set(lk, c.pausedRound);
+                meosDbg('[clockPause] caret in \u2192 \u23f8' + (c.pausedRound || 0) + ' \u2192 \u23f8' + _r9 + ' key=' + c.key);
+                meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, pausedRound: _r9, tags: c.tags, done: false, off: true }, c.line);
+              }
+            }
+          }
+        } catch (_) { }
         // v4.1.1114: 顔に ✓ で書かれていたら ⏸ へ書き直す= 意味は変えず、字だけ揃える(名前は状態の写し)。
         try { if (MEOS_CLOCK_DONE_MARK_RE.test(String(meosClockFaceOf(doc.lineAt(c.line).text) || ''))) meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, pausedRound: c.pausedRound, tags: c.tags, done: false, off: true }, c.line); } catch (_) { }
         const _w = meosParseStampLoose(c.when);
@@ -10647,6 +10669,7 @@ async function meosClockSetEnabled(uri, key, on) {
     }
     // v4.1.147: 止めた**その時**の周回数を書き残す(控えは上で消しているので sc から読む)。
     const _pr9 = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit ? (hit.pausedRound || 0) : 0);
+    try { if (_pr9 > 0) _meosPauseStopRound.set(lk, _pr9); } catch (_) { }   // v4.1.152: 「どこで止めたか」は覚えの側
     if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, pausedRound: _pr9, tags: hit.tags, done: false, off: true }, hit.line);
     // ★★★v4.1.62(俊克 バグ4「リストの✓ボタンを押して…止めた後で、リストから無くなってしまう。
     //   **これは残しておくべきだよ**。貴方は、Stopしたら、リストから消すようなことを書いていたよね。
@@ -10791,7 +10814,16 @@ let meosClockCycNowDeco = null;   // v4.1.1111: 今その回を走っている�
 let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
-let meosClockBadgeHideDeco = null;    // v4.1.140: 何周目か(顔とは別の役so、別の駒)
+let meosClockBadgeHideDeco = null;
+// ★★★v4.1.152(俊克 9/6 am09:45「停止中のタイマーを再開すると、回数that×116になった。この違いに最初戸惑う。
+//   そこで、1行目の \u00d721 は**停止した時の回数**として表示し、`\u23f8116` のように、ここは**現在の周回数**を
+//   表示する。ただし、これは**文字カーソルthatこの膜に入った時のみ更新**する。無駄な処理をしないためだ」):
+//   ★★★**止めても時刻の格子は進み続ける**so、`\u23f8` に止めた時の数を残したままにすると、
+//     再開した瞬間に 21→116 と飛ぶ。俊克の答えは**2つの数を別々の場所で持つ**こと=
+//     本文の `\u23f8N`= 今どこか(戻る先) / 借りた行の `\u00d7N`= どこで止めたか(結果)。
+//   ★更新は**膜に入った時だけ**= 中に居る間ずっと書き替えると、打っている最中に本文that動く。
+const _meosPauseStopRound = new Map();   // uri+key -> 止めた時の周回数(この起動の間だけ覚える)
+const _meosPauseCaretIn = new Set();     // uri+key -> 今カーソルthat中に居る(入った瞬間を捕まえるため)    // v4.1.140: 何周目か(顔とは別の役so、別の駒)
 const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd';   // \u21ba=緑 / \u21bb=水色
 // 行の中の輪の印(\u21ba/\u21bb)の位置。無ければ -1。橙を割る側と、色を置く側that同じ1つから引く。
 // v4.1.1111: 矢印の後ろの並び(`3m/1m`)の、idx番目の桁を返す。無ければ null。
@@ -10975,23 +11007,30 @@ function meosApplyTimerLineDecorations(editor) {
             //   ★**同じ意味の物that場所で色を変えると、色thatが意味を失う**= 休みは休みso、いつも赤。
             //   ★v4.1.66で \u21ba\u21bb に色を入れた今、行の上には既に色that在る= 赤は埋もれない。
             pausesOut.push(new vscode.Range(i, at, i, at + len));
-            // v4.1.147(俊克 改良2): 休んでいても**何周終えたか**は出す= 結果は情報so、消さない。
-            //   場所は走っている時と同じ(バッジ行の右端)= 止めた瞬間に数字that飛ばない。
-            if (c.pausedRound > 0) {
-              const _bg3r = meosClockBadgeRowForLine(doc, i);
-              let _bg3 = -1;
-              try { _bg3 = (_bg3r >= 0 && !meosShowsRawLine(editor, _bg3r) && !meosShowsRawLine(editor, i)) ? _bg3r : -1; } catch (_) { _bg3 = _bg3r; }
-              let _pl = i, _pat = (txt.lastIndexOf('-->') > 0) ? txt.lastIndexOf('-->') : txt.length, _pAfter = false;
-              if (_bg3 >= 0) {                            // v4.1.148: 休んでいる時も**行頭**(場所thatが飛ばない)
+            // ★★v4.1.152(俊克 改良1「\u23f8 の右の繰り返した回数『21』は**白色にして目立たせよう**」):
+            //   ★数字は**結果**so、休みの赤(印)とは役that違う= 白で立たせる(\u2713 と同じ白い駒を使う)。
+            try {
+              const _dg = /[0-9]+/.exec(txt.slice(at + len, at + len + 8));
+              if (_dg && _dg.index === 0) dones.push(new vscode.Range(i, at + len, i, at + len + _dg[0].length));
+            } catch (_) { }
+            // ★★★v4.1.152(俊克 改良1/2「インラインのとき/Rawモードの時、右端の \u00d721 は見せるべきではない」):
+            //   ★★★**生を見せている行では、本文the `\u23f8N` thatもう同じことを言っている**= 二度言わない。
+            //     飾りは「本文に無い物」を足す時にだけ出す([[feedback_one_source_for_mark_count_action]])。
+            //   ★★借りた行に出すのは**止めた時の回数**= 本文の `\u23f8N`(今どこか)とは別の数so、重複しない。
+            //     覚えthatが無い時(再起動後など)は本文の数をそのまま出す。
+            const _bg3r = meosClockBadgeRowForLine(doc, i);
+            let _bg3 = -1;
+            try { _bg3 = (_bg3r >= 0 && !meosShowsRawLine(editor, _bg3r) && !meosShowsRawLine(editor, i)) ? _bg3r : -1; } catch (_) { _bg3 = -1; }
+            if (_bg3 >= 0) {
+              const _lk3 = uri + ' ' + (owner ? owner.id : '');
+              const _stop = _meosPauseStopRound.has(_lk3) ? _meosPauseStopRound.get(_lk3) : c.pausedRound;
+              if (_stop > 0) {
                 let _l3 = 0; try { _l3 = doc.lineAt(_bg3).text.length; } catch (_) { }
-                _pl = _bg3; _pat = _l3; _pAfter = true;   // v4.1.150: 走っている時と同じ置き方
-                if (_l3) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3));   // v4.1.151
+                if (_l3) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3));
+                const _pt9 = '\u00d7' + _stop + (c.rounds > 0 ? ('/' + c.rounds) : '');
+                rounds.push({ range: new vscode.Range(_bg3, _l3, _bg3, _l3),
+                  renderOptions: { after: { contentText: _pt9, color: '#e0803a', fontWeight: '800' } } });
               }
-              const _pt9 = '\u00d7' + c.pausedRound + (c.rounds > 0 ? ('/' + c.rounds) : '');
-              rounds.push({ range: new vscode.Range(_pl, _pat, _pl, _pat),
-                renderOptions: _pAfter
-                  ? { after: { contentText: '  ' + _pt9, color: '#e0803a', fontWeight: '800' } }
-                  : { before: { contentText: _pt9 + ' ', color: '#e0803a', fontWeight: '800' } } });
             }
             continue;
           }

@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.152 (2026-09-06)
+- **A paused clock now carries two numbers, and they mean different things.** `⏸116` in the text says where the cycle is *now* — the round you would resume into. The `×21` on the borrowed row says where you *stopped*. Keeping only the stopping figure was what made a resumed clock jump from 21 to 116 with no explanation: the origin grid never stops advancing just because the clock does.
+- **`⏸N` is refreshed only when the caret enters the membrane.** Once, on entry — not while you sit there typing, which would move the text under your hands, and not on a timer, which would be work for nothing.
+- **The digits after `⏸` are white.** The pause mark is red because it is a state; the count beside it is a result, and results get to stand out.
+- **No `×N` on a raw row.** With the caret in the block, or in Raw mode, the text's own `⏸N` already says it — the decoration was saying the same thing twice.
+
 ### v4.1.151 (2026-09-06)
 - **Raw rows get their raw text back, and nothing else.** With the caret in the block, or in Raw mode, the badge row was still carrying the clock's figures and the round count had escaped past the closing `-->`. Not collapsing the row on a raw line was only half the rule — the figures also had to stop being *placed* there. When any row involved is shown raw, the membrane does not borrow: the badge row is just the badge, and the figures return to their old place inside the ⏰ line's own comment. Raw means what MeOS looks like switched off, so the difference between the two views is visible again.
 
