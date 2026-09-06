@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.168 (2026-09-06)
+- **Each of the three now reads the way it should be read.** `BigBang` shows `13.787b years 18:38.07` — days are dropped, because next to a figure in billions a day is not a quantity anyone reads. `MeW!` counts up only, `0y 55d 02:13.47` since the release. `Doomsday7s` shows both faces: `↺ 1.11M years 05:41.28` remaining, and `↻ 79y 98d …` since the Clock first appeared, on the June 1947 cover of the Bulletin — Martyl Langsdorf set it at seven minutes to midnight "because it looked good to my eye".
+- **Decimals: `Doomsday6.5s`.** Big numbers are truncated rather than rounded, so 1,117,002 reads `1.11M` and 13,787,000,000 reads `13.787b`.
+- **Both arrows take the same colour when only one face is shown.** The colour follows what is actually on screen, not what is written: a magic word decides its own direction, so `↺↻` written above a single face was colouring the two glyphs differently and telling a small lie.
+
 ### v4.1.167 (2026-09-06)
 - **Write the published figure into the line: `Doomsday85s`.** Next January the Bulletin will say something else, and all that changes is the number in the text — nothing in MeOS needs touching. The length is read by the same parser as every cycle, so no new rule arrives with it: `85s` is eighty-five seconds, `17m` is seventeen minutes, a bare number is minutes as it always is. Which means the whole history lines up in one file — `Doomsday17m` (1991, the furthest it has ever been) is 162,763,194 years; `Doomsday100s` is 15,957,176; `Doomsday85s` is 13,563,600.
 

@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -1604,14 +1604,24 @@ console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
  {const m=c('MeW!');
   ok(!!(m.magic&&m.magic.mew), '★MeW! thatが仕掛けとして読める', !!m.magic);
   ok(m.when==='2026-07-13 16:04:45', '★★★起点= MeOS v1.0.30 のcommit', m.when);
-  ok(String(m.cycle)==='1w'&&m.dual===true, '★★1週間周期・CDとSWを並べる', [m.cycle,m.dual]);
+  /* ★v4.1.168(俊克 改良2「MeW!も経過時間だけにして、単に日数、年数を表示しよう。0y 60d... のように」) */
+  ok(String(m.cycle)==='1y'&&m.up===true&&m.dual===false, '★★リリースfromの通算だけ(週の輪はやめた)', [m.cycle,m.up,m.dual]);
   ok(m.whenSrc==='MeW!', '★★本文の字はそのまま', m.whenSrc);}
  ok(!!(c('bigbang').magic), '  大文字小文字は問わない', true);
  ok(!c('2026-09-06 12:30').magic, '★普通の時刻は今までどおり(仕掛けは完全一致の時だけ)', true);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/const MEOS_BIGBANG_YEARS = 13787000000;/.test(S), '  年数は Planck 2018 の 13.787 Gyr', true);
- ok(/\(_my \? \('\\u2248' \+ _my \+ 'y '\) : ''\)/.test(S),
-    '★★★顔は「年の数＋動く尻尾」(1つの数で持つと秒that64秒刻みになる)', true);
+ /* ★★v4.1.168(俊克 改良1/3「13.787b years 18:38.07 にしよう。**dayは要らない**」「1.11M years」):
+    大きな数は切り捨て。日は億年の隣で読む値を持たないso落とす。 */
+ ok(/if \(_my\) return meosBigNum\(_my\) \+ ' years ' \+ meosHmsTail\(_ms\);/.test(S),
+    '★★★顔は「年の数＋動く尻尾」・日は落とす', true);
+ ok(X.meosBigNum(13787000000)==='13.787b', '★13787000000 → 13.787b(切り捨て)', X.meosBigNum(13787000000));
+ ok(X.meosBigNum(1117002)==='1.11M', '★★1117002 → 1.11M(俊克thatが書いた桁)', X.meosBigNum(1117002));
+ ok(c('Doomsday6.5s').magic.secs===6.5, '★★★小数も読む(6.5s)', c('Doomsday6.5s').magic.secs);
+ ok(c('Doomsday7s').dual===true, '★★終末時計は表裏= ↺残り / ↻1947年6月の初出fromの通算', true);
+ ok(/const MEOS_DOOMSDAY_FIRST = new Date\(1947, 5, 1/.test(S), '  初出は Bulletin 1947年6月号(7分前)', true);
+ ok(/if \(!c\.dual && _two\) \(c\.up \? dirUp : dirDown\)/.test(S),
+    '★★★顔that1つなら矢印2文字とも同じ色(画面that嘘をつかない)', true);
  /* ★★v4.1.166(俊克「終末時計だよ。ビッグバンfromの年数の比として、最新の公表値from計算して」
     ＋「24時間だよ」): 俊克「あと5秒と言われても、後何年なんだよ? って、それthat知りたいのにね」 */
  {const d=c('Doomsday');

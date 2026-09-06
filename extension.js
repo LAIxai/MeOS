@@ -9955,23 +9955,53 @@ const MEOS_MEW_ORIGIN = '2026-07-13 16:04:45';          // MeOS v1.0.30 のcommi
 //   ★値を書かない `Doomsday` は 85秒(2026-01-27 発表・89秒from前進)。
 const MEOS_DOOMSDAY_SEC = 85;                           // 値を書かない時の既定(2026-01-27 発表)
 const MEOS_DOOMSDAY_FACE_SEC = 24 * 60 * 60;            // 文字盤は24時間(俊克 pm04:09)
-const MEOS_MAGIC_WHEN_RE = /^(?:BigBang|MeW!|(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*[ \t]*[smhSMH]?)$/i;
+const MEOS_MAGIC_WHEN_RE = /^(?:BigBang|MeW!|(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*(?:\.[0-9]+)?[ \t]*[smhSMH]?)$/i;
+// ★★v4.1.168(俊克 9/6 pm06:39 改良1「BigBangは 13.787b years 18:38.07 にしよう。**dayは要らない**」
+//   ＋改良3「111万年後なら **1.11M years**」): ★大きな数は**丸めずに切り捨て**る
+//   (13.787b / 1.11M ＝ 俊克thatが書いた通りの桁)。
+function meosBigNum(n) {
+  const v = Math.max(0, Math.floor(Number(n) || 0));
+  if (v >= 1e9) return (Math.floor(v / 1e6) / 1e3) + 'b';
+  if (v >= 1e6) return (Math.floor(v / 1e4) / 1e2) + 'M';
+  if (v >= 1e3) return (Math.floor(v / 10) / 1e2) + 'k';
+  return String(v);
+}
+const _p2 = (x) => String(x).padStart(2, '0');
+// 日を落とした尻尾(時:分.秒)= 年thatが億や兆の時、日は読む値を持たない(俊克 改良1/3)
+function meosHmsTail(ms) {
+  const t = Math.ceil(Math.max(0, ms) / 1000);
+  return _p2(Math.floor(t / 3600) % 24) + ':' + _p2(Math.floor(t / 60) % 60) + '.' + _p2(t % 60);
+}
+// 年と日を出す尻尾(俊克 改良2「単に日数、年数を表示しよう。0y 60d... のように」)
+function meosYdTail(ms, years) {
+  const t = Math.ceil(Math.max(0, ms) / 1000);
+  return (Math.max(0, Math.floor(years || 0))) + 'y ' + Math.floor(t / 86400) + 'd '
+    + _p2(Math.floor(t / 3600) % 24) + ':' + _p2(Math.floor(t / 60) % 60) + '.' + _p2(t % 60);
+}
+const MEOS_DOOMSDAY_FIRST = new Date(1947, 5, 1, 0, 0, 0, 0);   // 初出= Bulletin 1947年6月号(7分前)
 function meosClockMagicWhen(w) {
   const t = String(w == null ? '' : w).trim();
   if (!MEOS_MAGIC_WHEN_RE.test(t)) return null;
   if (/^BigBang$/i.test(t)) {
     const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from(数え上げ)
-    return { bigbang: true, years: MEOS_BIGBANG_YEARS, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };
+    return { bigbang: true, years: MEOS_BIGBANG_YEARS, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };   // 経過だけ(俊克 改良1)
   }
-  const _dm = /^(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*([0-9]+[ \t]*[smhSMH]?)?$/i.exec(t);
+  // ★v4.1.168(俊克 改良3「6.5s のような**小数点**も使えるようにしよう」)= 秒は自分で読む
+  //   (meosCycleMs は整数so、ここだけ小数を許す。単位は同じ s/m/h)。
+  const _dm = /^(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*([0-9]+(?:\.[0-9]+)?)?[ \t]*([smhSMH]?)$/i.exec(t);
   if (_dm) {
-    const _ms = _dm[1] ? meosCycleMs(String(_dm[1]).replace(/[ \t]/g, '')) : (MEOS_DOOMSDAY_SEC * 1000);
-    const _sec = (_ms > 0) ? (_ms / 1000) : (MEOS_DOOMSDAY_SEC * 1000) / 1000;
+    const _n = _dm[1] ? Number(_dm[1]) : MEOS_DOOMSDAY_SEC;
+    const _u = String(_dm[2] || 's').toLowerCase();
+    const _sec = (isFinite(_n) && _n > 0) ? (_n * (_u === 'h' ? 3600 : (_u === 'm' ? 60 : 1))) : MEOS_DOOMSDAY_SEC;
     const y1 = new Date(new Date().getFullYear() + 1, 0, 1, 0, 0, 0, 0);   // 尻尾は今年の残り(逆算)
+    // ★★俊克 改良3「これは**最初の発表日fromの経過時間も**表示しよう」= \u21ba\u21bb の裏表で並べる
+    //   (\u21ba=終末までの残り / \u21bb=1947年6月の初出fromの経過)。
     return { doomsday: true, secs: _sec, years: Math.round(MEOS_BIGBANG_YEARS * _sec / MEOS_DOOMSDAY_FACE_SEC),
-      when: meosClockFcStamp(y1), cycle: ['1y'], up: false, dual: false };
+      when: meosClockFcStamp(y1), cycle: ['1y'], up: false, dual: true };
   }
-  return { mew: true, when: MEOS_MEW_ORIGIN, cycle: ['1w'], up: false, dual: true };
+  // ★v4.1.168(俊克 改良2「MeW!も**経過時間だけ**にして、単に日数、年数を表示しよう」)
+  //   = 週の輪はやめ、リリースfromの通算を出す(1年の輪so `0y 55d` のように積み上がる)。
+  return { mew: true, when: MEOS_MEW_ORIGIN, cycle: ['1y'], up: true, dual: false };
 }
 function meosParseCycleExpr(src, base) {
   const S = String(src == null ? '' : src);
@@ -11204,12 +11234,18 @@ function meosApplyTimerLineDecorations(editor) {
             //   ★★**色は「字そのもの」から決める**= 私は `c.up`(両方の時は false)で選んでいたので、
             //     2文字目の \u21bb まで緑になっていた。字を見れば `\u21bb\u21ba` の順でも正しい
             //     (俊克「どっちも良いね」への答えthatこれ= 並びを覚えなくてよい)。
+            // ★★v4.1.168(俊克 バグ1「終末時計の \u21ba that緑色になっていない」):
+            //   ★★**顔that1つしか出ない時は、書いてある2文字とも同じ色**= 仕掛け(BigBang/MeW!/Doomsday)は
+            //     向きを自分で決めるso、人that `\u21ba\u21bb` と書いても出るのthat1つなら、
+            //     字ごとに色を分けると**画面thatが嘘をつく**(v4.1.139は顔that2つの時の話)。
             if (_ar >= 0) {
               const _c1 = txt.charAt(_ar);
-              (_c1 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
-              if (c.dual && _ar > 0) {
-                const _c0 = txt.charAt(_ar - 1);
-                if (_c0 === '\u21ba' || _c0 === '\u21bb') (_c0 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar - 1, i, _ar));
+              const _c0 = (_ar > 0) ? txt.charAt(_ar - 1) : '';
+              const _two = (_c0 === '\u21ba' || _c0 === '\u21bb');
+              if (!c.dual && _two) (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar - 1, i, _ar + 1));
+              else {
+                (_c1 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
+                if (c.dual && _two) (_c0 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar - 1, i, _ar));
               }
             }
           }
@@ -11343,9 +11379,27 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★→ **1つの装飾の `before` と `after`** に分ける= 順番thatが決まる(before→after)し、
           //     色は別々に持てる。**駒を2つ置かず、1つの駒に2つの顔を持たせる**。
           // ★v4.1.165: BigBang は**年の数を前に足す**= 尻尾(日・時分秒)は今年の元日fromso毎秒動く。
-          const _my = (c.magic && c.magic.years > 0) ? c.magic.years : 0;   // v4.1.166: 年数は仕掛けthat持つ
-          const _face = (u) => (_my ? ('\u2248' + _my + 'y ') : '')
-            + meosMmSs(meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll));
+          // ★★v4.1.168(俊克 改良1/2/3): 仕掛けごとに顔の作りthat違う。
+          //   BigBang  = 13.787b years 18:38.07  (日は要らない= 億年の隣で日は読む値を持たない)
+          //   Doomsday = \u21ba 1.11M years 05:41.28 / \u21bb 1947年6月の初出fromの通算 79y 98d …
+          //   MeW!     = 0y 55d 02:13.47  (リリースfromの通算)
+          const _mg2 = c.magic || null;
+          const _my = (_mg2 && _mg2.years > 0) ? _mg2.years : 0;
+          const _face = (u) => {
+            const _ms = meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll);
+            if (_mg2 && _mg2.doomsday && u) {                       // 初出(1947年6月)fromの通算
+              const _yr = 365.2425 * 86400000;
+              const _el = Math.max(0, _nowAll - MEOS_DOOMSDAY_FIRST.getTime());
+              const _yy = Math.floor(_el / _yr);
+              return meosYdTail(_el - _yy * _yr, _yy);
+            }
+            if (_mg2 && _mg2.mew) {                                 // リリースfromの通算(年は周回数from)
+              const _rd = (_sc7 && typeof _sc7.round === 'number') ? _sc7.round : 1;
+              return meosYdTail(_ms, Math.max(0, _rd - 1));
+            }
+            if (_my) return meosBigNum(_my) + ' years ' + meosHmsTail(_ms);
+            return meosMmSs(_ms);
+          };
           // ★★★v4.1.147(俊克 9/5 pm11:49「UFCのデータとしては今まで通り1行にして、バッジの部分を
           //   折り畳まずに、**その2行を使って見せかけ2行に分割したように見せれば**いいんじゃないか?」):
           //   ★★★**動く数字は、すぐ上のバッジ行の右端へ出す**= 書いた物(いつ・どう回るか)は⏰行に据え置き。
