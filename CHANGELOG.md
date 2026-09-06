@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.159 (2026-09-06)
+- **The caret lands between the `0` and the `s`.** `((30|s 15s)×4 1m)×3` — right at the end of the first number, where Backspace already does the right thing. The brackets, the `×` and the unit are scaffolding; the digits are the only part anyone edits, so that is where the hand should start.
+
 ### v4.1.158 (2026-09-06)
 - **Ticking Repeat fills the box with a working HIIT.** `((30s 15s)×4 1m)×3` — four rounds of thirty on, fifteen off, a minute between sets, three sets — appears the moment you tick `□ Repeat ↺↻`, with the caret at the end and nothing selected, so you edit the numbers rather than type the shape. The placeholder shows the same pattern. v4.1.157 tried to do this with a `value` attribute on the field, which never survived to the screen.
 

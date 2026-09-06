@@ -1537,6 +1537,8 @@ console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居�
   ok(/placeholder="\(\(30s 15s\)\\u00d74 1m\)\\u00d73"/.test(S), '  影文字も同じ典型のHIIT', true);
   ok(!/_cy9\.select&&_cy9\.select\(\)/.test(S) && /setSelectionRange\(_n9,_n9\)/.test(S),
      '★★全選択はしない(部分的に修正できるように= 打った瞬間に消えては困る)', true);
+  ok(/var _m9=\/\[0-9\]\+\/\.exec\(_cy9\.value\);var _n9=_m9\?\(_m9\.index\+_m9\[0\]\.length\):/.test(S),
+     '★★★カーソルは**最初の数字の終わり**(0とsの間)= Backspaceで打ち直せる所', true);
   ok(/const _cyEx = \(_rep && _cyRaw\) \? meosParseCycleExpr\(_cyRaw, 0\) : null;/.test(S),
      '★面の箱も同じ1つの読みで受ける', true);}
 }

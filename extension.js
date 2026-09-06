@@ -25238,7 +25238,11 @@ if(clkCaret&&clkPop){
       ★全選択はしない= 俊克「**部分的に修正できるように**」so、打った瞬間に消えては困る。 */
    if(clkRep){try{var _cy9=document.getElementById('clk-cyc');
     if(_cy9){if(!String(_cy9.value||'').trim())_cy9.value='((30s 15s)\u00d74 1m)\u00d73';
-     _cy9.focus();try{var _n9=_cy9.value.length;_cy9.setSelectionRange(_n9,_n9);}catch(e2){}}}catch(e){}}
+     /* ★★v4.1.159(俊克 9/6 pm01:06「30s の左側に文字カーソルを出そうよ。**そこからカスタマイズするのthat自然**だよ」):
+        ★★**最初の数字の終わり(0 と s の間)**に置く= 数字だけthat直す所で、括弧も \u00d7 も単位も枠組み。
+          そこならBackspaceで数字を消して打ち直せる= **手thatそのまま動く**。
+          (数字の前でも末尾でもなく、消したい物の右端。) */
+     _cy9.focus();try{var _m9=/[0-9]+/.exec(_cy9.value);var _n9=_m9?(_m9.index+_m9[0].length):_cy9.value.length;_cy9.setSelectionRange(_n9,_n9);}catch(e2){}}}catch(e){}}
    return;}
   /* ★★★v4.1.1109(俊克 9/4 pm11:57 改良1「countdownボタンを押すと、なぜか、一緒にRepeatにも
      チェックが入ってしまう」): ★★★**向きと繰返しは独立している**(v4.1.1108で矢印が
