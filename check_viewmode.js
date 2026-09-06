@@ -111,5 +111,23 @@ ok(T.meosModeAtLine(doc, 94) === 'normal' && T.meosModeAtLine(doc, 35) === 'raw'
 ok(T.meosInheritedMode(doc, IN) === 'raw' && T.meosScopeMode(T.meosModeScope(ed(94))) === 'normal',
    '★受け継ぎは raw のまま・効いている値は normal', true);
 
+// v4.1.154(俊克 9/6 am10:48 バグ1「⏰膜from文字カーソルthat出たのに開始膜と閉じ膜thatコメントのまま。
+//   他の⏰膜は正常なのに、そこだけthatおかしい」= Rawを入れた膜thatが取り残されていた):
+console.log('⑨ Raw は押した1つの物so、効く先も1つに揃える');
+{
+ const S=fs.readFileSync(path.join(SRCDIR,'extension.js'),'utf8');
+ ok(/async function meosClearRawEverywhere\(doc\)/.test(S),
+    '★残った raw を全部消す道that在る', true);
+ ok(/const keys = Object\.keys\(view\)\.filter\(k => view\[k\] === 'raw'\);/.test(S),
+    '★★消すのは「今 raw の膜」全部(カーソルの居る膜だけではない)', true);
+ ok(/if \(ed && ed\.document && await meosClearRawEverywhere\(ed\.document\)\) return 'normal';/.test(S),
+    '★★★raw thatどこかに残っていれば、押した意味は「消す」(入れる所と切る所を別にしない)', true);
+ const _F=S.slice(S.indexOf('async function meosClearRawEverywhere'), S.indexOf('async function toggleRawMode'));
+ ok(/meosHoldMstatSync\(20000\);/.test(_F) && /meosReleaseMstatSync\(\);/.test(_F),
+    '★消している間はバッジを書かない(畳み直しthat自分の教科書を書き換えない= v4.1.1106)', true);
+ ok(/for \(const k of keys\) \{ try \{ if \(ed\) await meosApplyFoldForMode\(ed, k, 'normal', 'raw'\); \}/.test(S),
+    '  畳みも膜ごとに戻す(消した数だけ)', true);
+}
+
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
 process.exit(ng ? 1 : 0);

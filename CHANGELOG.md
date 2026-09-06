@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.154 (2026-09-06)
+- **Raw view can no longer strand a membrane.** Raw is a per-membrane property, and the toggle acted on whichever membrane held the caret *at the moment it was pressed* — so turning it on inside membrane A, moving away, and pressing again set some other membrane and left A raw for good. That membrane then kept showing its open and close lines as comments while every other clock membrane behaved, which is exactly what it looked like. Decoding the view map stored in the file confirmed it: three membranes were sitting at `raw`, plus one written explicitly to `normal` — the footprint of an "off" that landed on the wrong membrane. Pressing the toggle now means *off* whenever anything in the file is raw, and it clears every one of them, so the three already stranded are cleaned up the first time it is pressed.
+
 ### v4.1.153 (2026-09-06)
 - **The pause count is white inside the membrane too.** Only the ⏸ mark was being cut out of the orange row; the digits beside it stayed under it, and orange is painted `!important`, so white could not win. Both are cut out now — the mark stays red because it is a state, the count is white because it is a result.
 - **The drawn 🔓 stays out of Raw.** It is not in the text — MeOS draws it to say "not locked" — and Raw is meant to look like MeOS switched off, so it adds nothing there.

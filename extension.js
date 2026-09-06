@@ -12004,7 +12004,45 @@ async function meosCycleViewMode(step) {
   return meosSetViewMode(MEOS_VIEW_MODES[(i + (Number(step) < 0 ? n - 1 : 1)) % n]);
 }
 // 旧名は残す(コマンド/呪文の呼び元)＝ 「この膜をそのモードにする/やめる」の意味。
-async function toggleRawMode() { return meosSetViewMode(meosViewMode() === 'raw' ? 'normal' : 'raw'); }
+// ★★★v4.1.154(俊克 9/6 am10:48 バグ1「通常モードで、\u23f0膜from文字カーソルthat出たのに、開始膜と閉じ膜that
+//   インラインのようにコメントのままになっている。**他の\u23f0膜は正常なのに、そこだけthatおかしい**」):
+//   ★★★**入れる所と切る所that、別々の膜を指していた**= Rawは膜ごとの性質(v4.0.444)で、
+//     `toggleRawMode` は**押した瞬間にカーソルthat居る膜**に効く。so膜Aの中で入れ、
+//     カーソルを出してもう一度押すと、切れるのは**別の膜(or ファイル地)**で、Aは raw のまま残る。
+//   ★★★実測(俊克の日記の mHTOC1 を復号): raw thatが3つ residual で残っていた
+//     (`1度きりのタイマテスト…` / `\u23f0最終テスト1…S001843` / `…S005153`)。
+//     加えて `\u23f0付き膜4… -> normal` = **切る操作thatが別の膜に着地した足跡**。
+//   ★★→ **押す物は1つso、効く先も1つに揃える**= Rawthatどこかに残っていれば、押した意味は「消す」。
+//     残っている物を**全部**消す= 人from見えない・辿り着けない状態を作らない
+//     ([[feedback_one_source_for_mark_count_action]] 印・数字・動きは同じ1つの判定から)。
+//   ★これで既に残っている3つも、次に押した時に片付く(直す道を別に作らない)。
+async function meosClearRawEverywhere(doc) {
+  try {
+    if (!doc) return false;
+    const view = meosViewMeta(doc);
+    const keys = Object.keys(view).filter(k => view[k] === 'raw');
+    const fileRaw = (view[''] === 'raw');
+    if (!keys.length && !fileRaw) return false;
+    meosHoldMstatSync(20000);                       // v4.1.1106: 畳み直しthat終わるまでバッジは書かない
+    for (const k of keys) delete view[k];
+    _meosModeEpoch++;
+    meosScheduleViewMetaWrite(doc);
+    meosDbg('[viewmode] raw を全部消した n=' + keys.length + ' keys=' + keys.join(','));
+    const ed = vscode.window.visibleTextEditors.find(v => v.document === doc) || meosCurrentEditor();
+    if (ed) refresh(ed);
+    try { if (ed) await meosSyncFcFoldForCursor(ed); } catch (_) { }
+    for (const k of keys) { try { if (ed) await meosApplyFoldForMode(ed, k, 'normal', 'raw'); } catch (_) { } }
+    meosReleaseMstatSync();
+    meosPostViewMode();
+    vscode.window.setStatusBarMessage('MeOS: raw view off (' + keys.length + ' membrane' + (keys.length === 1 ? '' : 's') + ')', 2200);
+    return true;
+  } catch (_) { return false; }
+}
+async function toggleRawMode() {
+  const ed = meosCurrentEditor();
+  if (ed && ed.document && await meosClearRawEverywhere(ed.document)) return 'normal';
+  return meosSetViewMode(meosViewMode() === 'raw' ? 'normal' : 'raw');
+}
 async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pseudo' ? 'normal' : 'pseudo'); }
 // ★★★v4.0.442/448: ⏰ = テスト用紙。**その膜だけ**を時間で押さえる(俊克 8/27 am08:35)。
 //   ★時間が閉めるのは**出口だけ**＝ 見え方には触れない。終わってもモードは勝手に変えない
