@@ -1566,5 +1566,21 @@ console.log('⑭ Rawでは字を1つも足さない(色は字ではないso残�
     '  実行中の桁の白も残る(色so)', true);
 }
 
+// v4.1.162(俊克 9/6 pm02:40「タイムアップで⏰膜の開始膜に飛ぶthat、奇麗な光景that見れない。
+//   H-TOC同様に、膜の中に最後にいた場所に着地しようよ」):
+console.log('⑮ 鐘の着地点は膜の中(▼の上に降りない)');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const J=S.slice(S.indexOf('async function meosJumpToScope'), S.indexOf('function meosPlayChime'));
+ ok(/_sv = savedMeCursorLine\(doc, scope\.key, rng\.from, rng\.to\);/.test(J),
+    '★★★H-TOCと同じ覚え(その膜で最後にいた行)へ降りる', true);
+ ok(/const _body = Math\.min\(rng\.from \+ 1,/.test(J),
+    '★★覚えthat無ければ開始膜の**次の行**(▼の上でなければよい)', true);
+ ok(/if \(!byBell\) \{[\s\S]{0,200}?meosClockFcScan/.test(J),
+    '  一覧from行く時は今までどおり⏰行へ(直しに行くso生でよい)', true);
+ ok(J.indexOf('savedMeCursorLine') > J.indexOf('if (!byBell)'),
+    '★飛ぶ口は1つのまま(meosJumpToScope の中で分ける)', true);
+}
+
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);

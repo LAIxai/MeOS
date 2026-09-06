@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.162 (2026-09-06)
+- **The bell lands inside the membrane, not on its ▼.** The ▼, ▲, badge and ⏰ rows are one group, so a caret on the opening line turns the whole clock raw — which meant the bell's own landing spot destroyed the view it had just called you to see. It now goes where H-TOC goes: the line you were last on inside that membrane, or the line just below ▼ if there is no memory of one. Going to a clock from the ⏰ list still lands on the clock line itself, where the raw text is what you want.
+
 ### v4.1.161 (2026-09-06)
 - **A raw row gets no added characters at all.** One rule replaces a growing list of exceptions: *raw adds no characters; colour is not a character, so it stays.* The running figures, the round count, the drawn weekday and the drawn 🔓 all disappear with the caret in the block or in Raw mode — Raw is defined as what MeOS looks like switched off, and anything written into the line breaks that definition. This reverses the one exception granted in v4.1.1103 for the clock's remaining time, and nothing is lost by it: the same number is on the Me Dock ⏰ button and in the status bar the whole time. The colours stay — arrow direction, the white running element, the red ⏸, the white ✓ — because they add nothing to the text.
 

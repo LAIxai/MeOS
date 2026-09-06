@@ -11760,6 +11760,20 @@ async function meosJumpToScope(scope, byBell) {
     //     行き先thatが違って当たり前(v4.0.453)。**同じ移動に見えて、狙いthatが2つ在る**。
     let ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
     if (!byBell) { try { const _c = meosClockFcScan(doc).find(x => x.key === scope.key); if (_c && _c.line >= 0) ln = Math.min(_c.line, doc.lineCount - 1); } catch (_) { } }
+    else {
+      // ★★★v4.1.162(俊克 9/6 pm02:40「タイムアップで\u23f0膜の開始膜に飛ぶんだthat、そうすると
+      //   **奇麗な光景that見れない**んだよ。だから、H-TOC同様に、**膜の中に最後にいた場所に着地**しよう」):
+      //   ★★★**\u25bc の上に降りると、その膜の飾りthat全部生に変わる**= \u25bc/\u25b2/バッジ/\u23f0 は
+      //     「3つで1つ」(v4.1.1101)so、\u25bc にカーソルthat乗った瞬間に\u23f0行まで生データになる。
+      //     ★v4.1.161で「Rawでは字を足さない」と決めた以上、鐘の着地点thatその景色を消していた。
+      //   ★★→ **本文の中へ降りる**= H-TOCと同じ `savedMeCursorLine`(その膜で最後にいた行)。
+      //     覚えthatが無ければ**開始膜の次の行**= どこでもよいthat、\u25bc の上でなければよい。
+      //   ★飛ぶ口は1つのまま(meosJumpToScope)= 一覧from行く時は今までどおり\u23f0行へ(直しに行くso生でよい)。
+      let _sv = -1;
+      try { _sv = savedMeCursorLine(doc, scope.key, rng.from, rng.to); } catch (_) { }
+      const _body = Math.min(rng.from + 1, Math.min(rng.to, doc.lineCount - 1));
+      ln = (_sv > rng.from) ? Math.min(_sv, doc.lineCount - 1) : Math.max(0, _body);
+    }
     const pos = new vscode.Position(ln, 0);
     ed.selection = new vscode.Selection(pos, pos);
     try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: [ln] }); } catch (_) { }
