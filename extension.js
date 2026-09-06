@@ -11292,7 +11292,18 @@ function meosApplyTimerLineDecorations(editor) {
           const _bgRaw = meosClockBadgeRowForLine(doc, i);
           let _bg2 = -1;
           try { _bg2 = (_bgRaw >= 0 && !meosShowsRawLine(editor, _bgRaw) && !meosShowsRawLine(editor, i)) ? _bgRaw : -1; } catch (_) { _bg2 = _bgRaw; }
-          let _fl = i, _at1 = (_at2 > 0) ? (_at2 - 1) : _at2, _fat2 = _at2, _rndAfter = false;
+          // ★★★v4.1.160(俊克 9/6 pm01:58 バグ1「右端の `2\u00d71/12` の \u00d7 の前の2thatが意味不明。
+          //   ずっと2のまま。MeOSを無効化すれば、末尾の \u00d712 の1と2の間にタイマー表示を
+          //   間違って挿入しているのthat分る」):
+          //   ★★★**順番を決めるための1桁ずらしthat、本文の字の中を指していた**=
+          //     v4.1.139で「同じ所に2つ置かない」ために顔を `_at2-1` に置いたthat、
+          //     v4.1.149で `_at2` を `-->` の**空白を詰めた位置**へ動かしたso、
+          //     `_at2-1` thatが `\u00d712` の `1` と `2` の間に入ってしまった。
+          //     ★字と字の間に割り込むと、**本文の数字thatが割れて見える**(俊克の見た `2\u00d71/12`)。
+          //   ★★→ ずらす先は**字の外**にする= 顔は詰めた位置(`\u00d712` の直後)、
+          //     周回数は `-->` の直前(空白の向こう)。2つは離れているので描く順も決まる。
+          const _clRaw = (_cl > 0) ? _cl : txt.length;
+          let _fl = i, _at1 = _at2, _fat2 = (_clRaw > _at2) ? _clRaw : _at2, _rndAfter = false;
           if (_bg2 >= 0) {
             let _blen = 0; try { _blen = doc.lineAt(_bg2).text.length; } catch (_) { }
             _fl = _bg2;

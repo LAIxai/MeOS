@@ -236,7 +236,10 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   /* ★★v4.1.141: 時計はコメントの中に立つ(v4.1.20)。顔は `-->` の1つ手前、周回数は `-->` の直前。 */
   ok(/rounds\.push\(\{ range: new vscode\.Range\(_fl, _fat2, _fl, _fat2\)/.test(S8) && /color: '#e0803a'/.test(S8),
      '\u2605\u2605\u00d7N は別の駒・別の色で、コメントの**中**に立つ', true);
-  ok(/let _fl = i, _at1 = \(_at2 > 0\) \? \(_at2 - 1\) : _at2, _fat2 = _at2, _rndAfter = false;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
+  /* ★★★v4.1.160(俊克「×12 の1と2の間にタイマー表示を挿入している」):
+     順番を決めるための1桁ずらしthat**本文の字の中**を指していた= 字と字の間に割り込むと数字that割れる。
+     → ずらす先は字の外へ(顔は詰めた位置、周回数は --> の直前)。 */
+  ok(/let _fl = i, _at1 = _at2, _fat2 = \(_clRaw > _at2\) \? _clRaw : _at2, _rndAfter = false;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
      '\u2605\u2605\u2605場所を1つずらして順番を決める(同じ所に2つ置かない)', true);
   /* \u2605\u2605\u2605v4.1.147: 数字はすぐ上のバッジ行へ出す(生データは1文字も動かさない= UFC1行のコピペthat時計になる)。 */
   /* ★★★v4.1.148(俊克 9/6 am00:07「**行頭からタイマ数値that見えることthat目的**だよ」):

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.160 (2026-09-06)
+- **The running figures no longer split `×12` down the middle.** They were anchored one character back from the end of the comment so that they and the round count could not land on the same spot — but v4.1.149 moved that end past the trailing spaces, and one character back from there is *inside the number*, so `×12` rendered as `×1 [figures] 2`. Both anchors now sit outside the text: the figures right after the last character, the count just before the closing `-->`.
+
 ### v4.1.159 (2026-09-06)
 - **The caret lands between the `0` and the `s`.** `((30|s 15s)×4 1m)×3` — right at the end of the first number, where Backspace already does the right thing. The brackets, the `×` and the unit are scaffolding; the digits are the only part anyone edits, so that is where the hand should start.
 
