@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.156 (2026-09-06)
+- **The two-second lag while scrolling was v4.1.153 opening a 100,000-line membrane over and over.** Its test for "is this folded?" asked whether the line after the ▼ was in a visible range — but a range excludes anything scrolled off screen just as it excludes anything folded, so a large membrane, whose ▼ is almost always above the viewport, read as folded every single time. The log showed it firing twelve times in six minutes. It now only judges a membrane whose ▼ is actually on screen — what you cannot see, you cannot know the fold state of — and never sends the same membrane twice.
+
 ### v4.1.155 (2026-09-06)
 - **v4.1.154 fixed a door nobody uses.** The Me Dock button posts `viewMode` and goes through the mode cycler, never through `toggleRawMode`, so the clearing added there never ran — the stranded membrane stayed raw and a fourth one joined it. The clearing now sits where the mode is *decided*, so all three doors (button, command, keybinding) get it.
 

@@ -426,6 +426,14 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
  ok(/meosHoldMstatSync\(4000\);\s*\n?\s*\/\/[^\n]*\n?\s*vscode\.commands\.executeCommand\('editor\.unfold'/.test(S)
     || /meosHoldMstatSync\(4000\);[\s\S]{0,200}?editor\.unfold/.test(S),
     '★★★開ける間はバッジを書かない(復元that自分の教科書を書き換えない= v4.1.1106)', true);
+ /* ★★★v4.1.156(俊克「スクロールしていくと2秒くらいかかっている」の真因):
+    **画面外の行は「畳まれている」と同じ顔をしている**= visibleRanges は畳みだけでなく
+    スクロールで外れた行も持たないso、10万行の膜は開始行that常に画面外= 毎回誤判定していた。
+    → ▼の行そのものthat見えている時だけ判定する(分からない時は何もしない)。 */
+ ok(/if \(!_headSeen\) return;/.test(S) && /pair\.start >= r\.start\.line && pair\.start <= r\.end\.line/.test(S),
+    '★★★▼that画面に在る時だけ畳みを判定する(画面外を「畳まれている」と読まない)', true);
+ ok(/if \(_meosBadgeOpenTried\.has\(k\)\) return;/.test(S) && /_meosBadgeOpenTried\.add\(k\);/.test(S),
+    '★★同じ膜へ二度は打たない(開かなかった時に打ち続けない)', true);
  ok(/setTimeout\(\(\) => \{[\s\S]{0,80}?_meosBadgeOpenTimer = null;/.test(S),
     '  手that止まってから1回(毎カーソル移動で重い走査をしない)', true);
 }

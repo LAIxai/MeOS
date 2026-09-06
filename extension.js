@@ -4681,6 +4681,7 @@ function meosCaretEscapeLineForFolds(caret, foldPairs) {
 //   ★入った瞬間だけ= 中に居る間ずっと開け直すと、自分で畳んで中を覗く操作thatできなくなる。
 //   ★重い走査を毎カーソル移動でしないよう、手that止まってから(150ms)1回だけ。
 let _meosBadgeOpenSeen = null, _meosBadgeOpenTimer = null;
+const _meosBadgeOpenTried = new Set();   // v4.1.156: 一度打った膜(開かなかった時に打ち続けない)
 function meosOpenByBadgeOnEnter(editor) {
   try {
     if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) { _meosBadgeOpenSeen = null; return; }
@@ -4703,8 +4704,22 @@ function meosOpenByBadgeOnEnter(editor) {
         const b = (meosPairBadgeAt(ed.document, pair) || {}).badge || null;
         if (!b || b.symbol !== '\u2295') return;                               // 「開けておく」と書いた膜だけ
         if (pair.end <= pair.start + 1) return;                                // 中身の無い膜は畳めない
+        // ★★★v4.1.156(俊克 9/6 am11:05 バグ1「スクロールしていくと、バッジとUFCの書き換えに2秒くらい
+        //   かかっている。なぜそんなタイムラグthatあるのか?」の真因):
+        //   ★★★**画面外の行は「畳まれている」と同じ顔をしている**= `visibleRanges` は畳みだけでなく
+        //     **スクロールで外れた行**も持たないので、10万行の膜は開始行thatほぼ常に画面外=
+        //     毎回「畳まれている」と誤判定し、巨大膜を何度も開き直していた
+        //     (実測ログ= `[badgeOpen] … 膜=MeOSプロジェクト_161204.707` that6分で12回)。
+        //   ★★→ **\u25bc の行そのものthat見えている時だけ判定する**= 見えていない物の畳みは分からない、
+        //     と認めるthat正しい。分からない時は何もしない(推測で動かない)。
+        //   ★併せて、同じ膜へ二度は打たない(開かなかった時に打ち続けない)。
+        let _headSeen = false;
+        for (const r of (ed.visibleRanges || [])) if (pair.start >= r.start.line && pair.start <= r.end.line) { _headSeen = true; break; }
+        if (!_headSeen) return;                                                // \u25bc that画面に無い= 分からない
         const inner = pair.start + 1;
         for (const r of (ed.visibleRanges || [])) if (inner >= r.start.line && inner <= r.end.line) return;   // もう開いている
+        if (_meosBadgeOpenTried.has(k)) return;                                // 一度打った膜は追わない
+        _meosBadgeOpenTried.add(k);
         meosDbg('[badgeOpen] \u2295 なのに畳まれていた \u2192 開く 膜=' + pair.id + ' 行=' + (pair.start + 1));
         meosHoldMstatSync(4000);                                               // 開ける間はバッジを書かない(v4.1.1106)
         vscode.commands.executeCommand('editor.unfold', { selectionLines: [pair.start] });
