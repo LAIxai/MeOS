@@ -120,8 +120,16 @@ console.log('⑨ Raw は押した1つの物so、効く先も1つに揃える');
     '★残った raw を全部消す道that在る', true);
  ok(/const keys = Object\.keys\(view\)\.filter\(k => view\[k\] === 'raw'\);/.test(S),
     '★★消すのは「今 raw の膜」全部(カーソルの居る膜だけではない)', true);
- ok(/if \(ed && ed\.document && await meosClearRawEverywhere\(ed\.document\)\) return 'normal';/.test(S),
-    '★★★raw thatどこかに残っていれば、押した意味は「消す」(入れる所と切る所を別にしない)', true);
+ /* ★★★v4.1.155(俊克「まだコメント状態のまま。なぜ?」= v4.1.154は使われていない入口を直していた):
+    Me Dockのボタンは viewMode → meosCycleViewMode → meosSetViewMode を通り、toggleRawMode は通らない。
+    → 消すのは**モードを決める1か所**で。入口that3つ(ボタン/コマンド/呪文)でも決める所thatが1つなら食い違わない。 */
+ ok(/if \(next !== 'raw'\) \{ try \{ await meosClearRawEverywhere\(scope\.doc\); \} catch \(_\) \{ \} \}/.test(S),
+    '★★★raw を出る指示なら、そこで取り残された raw を全部消す(決める所は1つ)', true);
+ {const _sv=S.slice(S.indexOf('async function meosSetViewMode'), S.indexOf('async function meosApplyModeToScope'));
+  ok(_sv.indexOf('meosClearRawEverywhere') < _sv.indexOf('return meosApplyModeToScope'),
+     '  消してから当てる(消し残しthat次の判断に混ざらない)', true);}
+ ok(/async function toggleRawMode\(\) \{ return meosSetViewMode\(/.test(S),
+    '  切替の入口は判定を持たない(1つの規則を2か所に書かない)', true);
  const _F=S.slice(S.indexOf('async function meosClearRawEverywhere'), S.indexOf('async function toggleRawMode'));
  ok(/meosHoldMstatSync\(20000\);/.test(_F) && /meosReleaseMstatSync\(\);/.test(_F),
     '★消している間はバッジを書かない(畳み直しthat自分の教科書を書き換えない= v4.1.1106)', true);

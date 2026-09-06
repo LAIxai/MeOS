@@ -11923,6 +11923,13 @@ async function meosSetViewMode(mode) {
     meosPostViewMode();
     return 'pseudo';
   }
+  // ★★★v4.1.155(俊克 9/6 am10:55 バグ1「まだコメント状態のまま。なぜ?」= v4.1.154thatが効かなかった):
+  //   ★★★**私は使われていない方の入口を直していた**= Me Dockのボタンは
+  //     `viewMode` → `meosCycleViewMode` → **この関数**を通り、`toggleRawMode` は通らない。
+  //   ★★→ 直す場所は**モードを決める1か所**= raw を出る指示なら、そこで取り残された raw を全部消す。
+  //     入口thatが3つ(ボタン/コマンド/呪文)あっても、決める所thatが1つなら食い違わない
+  //     ([[feedback_one_source_for_mark_count_action]])。
+  if (next !== 'raw') { try { await meosClearRawEverywhere(scope.doc); } catch (_) { } }
   return meosApplyModeToScope(scope.doc, scope.key, next, scope.name);
 }
 // v4.0.447: 設定を当てる所は1つ。ボタンからも、タイマーの終わりの知らせからも、ここを通る。
@@ -12038,11 +12045,7 @@ async function meosClearRawEverywhere(doc) {
     return true;
   } catch (_) { return false; }
 }
-async function toggleRawMode() {
-  const ed = meosCurrentEditor();
-  if (ed && ed.document && await meosClearRawEverywhere(ed.document)) return 'normal';
-  return meosSetViewMode(meosViewMode() === 'raw' ? 'normal' : 'raw');
-}
+async function toggleRawMode() { return meosSetViewMode(meosViewMode() === 'raw' ? 'normal' : 'raw'); }
 async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pseudo' ? 'normal' : 'pseudo'); }
 // ★★★v4.0.442/448: ⏰ = テスト用紙。**その膜だけ**を時間で押さえる(俊克 8/27 am08:35)。
 //   ★時間が閉めるのは**出口だけ**＝ 見え方には触れない。終わってもモードは勝手に変えない

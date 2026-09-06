@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.155 (2026-09-06)
+- **v4.1.154 fixed a door nobody uses.** The Me Dock button posts `viewMode` and goes through the mode cycler, never through `toggleRawMode`, so the clearing added there never ran — the stranded membrane stayed raw and a fourth one joined it. The clearing now sits where the mode is *decided*, so all three doors (button, command, keybinding) get it.
+
 ### v4.1.154 (2026-09-06)
 - **Raw view can no longer strand a membrane.** Raw is a per-membrane property, and the toggle acted on whichever membrane held the caret *at the moment it was pressed* — so turning it on inside membrane A, moving away, and pressing again set some other membrane and left A raw for good. That membrane then kept showing its open and close lines as comments while every other clock membrane behaved, which is exactly what it looked like. Decoding the view map stored in the file confirmed it: three membranes were sitting at `raw`, plus one written explicitly to `normal` — the footprint of an "off" that landed on the wrong membrane. Pressing the toggle now means *off* whenever anything in the file is raw, and it clears every one of them, so the three already stranded are cleaned up the first time it is pressed.
 
