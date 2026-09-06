@@ -23239,9 +23239,11 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 /* v4.1.170: 面の矢印も本文と同じ色(\u21ba=緑・\u21bb=水色)。色that2か所で違えば覚え直しになる。 */
 /* ★v4.1.171(俊克 改良1「\u21ba と \u21bb の間を近づけて、文字サイズを1.4倍にしよう」):
    ★矢印は**顔の名札**so、札の中でも本文と同じ重さで立たせる。間を詰めて1つの塊に見せる。 */
-.clk-ar-dn,.clk-ar-up{font-size:1.4em;line-height:1;letter-spacing:-.08em}
-.clk-ar-dn{color:#4ec9a0;font-weight:900;margin-left:2px}
-.clk-ar-up{color:#4fc1e9;font-weight:900;margin-right:1px}
+.clk-ar-dn,.clk-ar-up{font-size:1.4em;line-height:1;letter-spacing:-.2em}
+/* ★v4.1.172(俊克 改良1「緑色that分かりにくいので、もう少し濃い色の緑に」＋「間を2、3ピクセル近づけよう」):
+   ★**本文と同じ色をそのまま使う**(\u21ba=#3fb950 / \u21bb=#56d4dd)= 2か所で違えば覚え直しになる。 */
+.clk-ar-dn{color:#3fb950;font-weight:900;margin-left:2px}
+.clk-ar-up{color:#56d4dd;font-weight:900;margin-right:1px}
 .clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 /* ★★v4.1.83(俊克 改良2「この回転ドラムの大きな橙色の部分をWクリックすると、そこに直接値を
@@ -25138,7 +25140,13 @@ function clkTakeIn(d){try{
  var tg=document.getElementById('clk-tagin');if(tg)tg.value=(d.tags||[]).join(' ');
  clkLock=!!d.lock;if(typeof clkPaintLock==='function')clkPaintLock();
  clkEcho();clkTouch();clkPaintSet();
-}catch(err){}}
+ /* ★★★v4.1.172: **面that何をしたかを返す**= node側は「送った」までしか知らないso、
+    輪thatが動いたかどうかは面に訊くしかない(v4.0.187の網を面にも張る)。 */
+ try{vscode.postMessage({type:'clockReadAck',w:_w,matched:!!_md,fix:clkFixD,
+  y:clkPick(document.getElementById('clk-y')),mo:clkPick(document.getElementById('clk-mo')),
+  d:clkPick(document.getElementById('clk-d')),h:clkPick(document.getElementById('clk-h')),
+  mi:clkPick(document.getElementById('clk-mi'))});}catch(e2){}
+}catch(err){try{vscode.postMessage({type:'clockReadAck',err:String(err&&err.message||err)});}catch(e3){}}}
 function clkDateEmpty(){clkFixD=false;
 var t=new Date();
 var _yb=Math.floor(t.getFullYear()/10)*10;
@@ -27267,6 +27275,10 @@ function toggleMeDock(editorOverride) {
     // ★★★v4.1.169(俊克 改良2「⏰膜の中にいる時、read を押すと、その値を読み込めるようにしよう」):
     //   ★★**返すのは本文の字そのもの**= 起点も輪も、書いてあるものをそのまま面へ渡す
     //     (置き換えた値を渡すと、Setした瞬間に BigBang のような仕掛けthat消える)。
+    if (message && message.type === 'clockReadAck') {
+      try { meosDbg('[clockRead] ack ' + JSON.stringify(message)); } catch (_) { }
+      return;
+    }
     if (message && message.type === 'clockRead') {
       let _r = { type: 'clockRead', ok: false, why: 'no clock in this membrane' };
       try {

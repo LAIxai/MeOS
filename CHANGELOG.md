@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.172 (2026-09-06)
+- **The panel now reports what it did with a `read`.** Node only ever knew that it had *sent* the clock; whether a wheel actually moved was invisible from there. The panel sends back what it received, whether the date matched, and what each wheel reads afterwards — so the next press names the cause instead of leaving it to inference.
+- `↺` and `↻` in the Repeat label take the document's own colours (`#3fb950` / `#56d4dd`) and sit closer together.
+
 ### v4.1.171 (2026-09-06)
 - **`read ⏰` sets the date wheels now.** There were two ways of putting a value on a wheel: one that rebuilds the year window first and one that only selects — and a year outside the current window simply cannot be selected, so it stayed put and said nothing. That trap was found once before, in v4.1.86. There is one way now, and typing into the box, `Now`, and `read ⏰` all go through it.
 - **A read that fails says so.** It writes what it returned to the debug log and puts the reason in the status bar, instead of relying on a message in the panel that was never there.
