@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -143,7 +143,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   const S11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(!/id="clk-dir"/.test(S11), '\u2605\u2605\u2605向きの駒は面から消えた(選ばせない)', true);
   ok(/dual:true,cycle:/.test(S11), '\u2605\u2605\u2605面は常に \u21ba\u21bb を頼む', true);
-  ok(/dual: _dl0, rounds: _rd0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
+  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
   ok(/pointer-events:none/.test(S11) && /\.clk-set\.on\{/.test(S11),
      '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
@@ -169,7 +169,7 @@ console.log('\u247d ↺↻ = 1行に顔が2つ');
   ok(/spec\.dual \? '\\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
   ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
      '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
-  ok(/dual: c\.dual, rounds: c\.rounds, tags: _tags, ufc: c\.ufc/.test(S10),
+  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, tags: _tags, ufc: c\.ufc/.test(S10),
      '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
 }
 
@@ -929,7 +929,8 @@ console.log('\u325f Repeat\u306e\u2610 / \u5411\u304d\u306e\u8272 / \u9320\u306e
  /* ★★★v4.1.142(俊克 改良2「常に同時起動にして『□ Repeat ↺↻』の1つボタンに」): 向きの駒は外した。 */
  ok(/id="clk-rep"/.test(S)&&/clkBox\(b,clkRep,'Repeat \\u21ba\\u21bb'\)/.test(S),
     '\u2605\u2605\u2605\u2610 Repeat that**\u7e70\u8fd4\u3057\u7121\u3057**\u306e\u59ff(\u5916\u3059\u53e3\u304c\u9762\u306b\u51fa\u305f)', true);
- ok(/cycle: _rep \? meosParseCycleInput\(message\.cycle\) : \[\]/.test(S)&&/hasCycle: true/.test(S),
+ /* ★v4.1.157: 面の箱も同じ1つの読み(meosParseCycleExpr)で受ける。読めない時だけ古い読みへ落ちる。 */
+ ok(/cycle: \(_cyEx && _cyEx\.steps\.length\) \? _cyEx\.steps\.map\(e => e\.tok\) : \(_rep \? meosParseCycleInput\(message\.cycle\) : \[\]\)/.test(S)&&/hasCycle: true/.test(S),
     '\u2605\u2605\u2610 \u306e\u307e\u307e Set \u3059\u308c\u3070**\u7e70\u8fd4\u3057\u304c\u5916\u308c\u308b**(\u7a7a\u6b04=\u89e6\u3089\u306a\u3044\u3001\u306f\u7121\u304f\u306a\u3063\u305f)', true);
  ok(/type: 'clockCurrent', cycle: _cyc, up: _up/.test(S)&&/postMessage\(\{type:'clockAskCurrent'\}\)/.test(S),
     '\u2605\u2605\u2605\u9762\u306f**\u4eca\u306e\u819c\u306e\u59ff\u3092\u898b\u305b\u3066\u304b\u3089**\u76f4\u3055\u305b\u308b(\u898b\u3048\u3066\u3044\u308b\u7269\u3092\u5909\u3048\u308b)', true);
@@ -1431,8 +1432,13 @@ console.log('⑩ (…)×N 回数の記法');
  ok(CI('(3m/1m)×3').join('/')==='3m/1m', '  括弧も長さに混ざらない', CI('(3m/1m)×3'));
  /* ⑥ 書く形は括弧の1つに絞る(read-both / write-one) */
  {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(/_rn \? \('\(' \+ _ar \+ _cy \+ '\)\\u00d7' \+ _rn\)/.test(S),
-     '★★★書く時は必ず括弧 `(↺↻3m/1m)×3`(読む形は3通り、書く形は1つ)', true);
+  /* ★★★v4.1.157(俊克 pm00:11〜00:24): 矢印は**括弧の外**へ(向きは式の一部ではない)。
+     区切りは空白で書き、見せかけでは / に見せる。短い元の形(cycleSrc)thatあればそのまま書き戻す
+     = 17歩に展開した姿を本文へ書かない。 */
+  ok(/if \(_src\) return _ar \+ _src;/.test(S),
+     '★★★短い形thatあればそのまま書き戻す(展開した姿を本文へ書かない)', true);
+  ok(/return _ar \+ \(_rn \? \('\(' \+ _cy \+ '\)\\u00d7' \+ _rn\) : _cy\);/.test(S),
+     '★★★書く形= 矢印は括弧の外・区切りは空白 `\\u21ba\\u21bb\(3m 1m\)\\u00d712`', true);
   ok(/const _rn = \(spec\.rounds > 0 && _cy\) \? Math\.floor\(spec\.rounds\) : 0;/.test(S),
      '★長さの無い時は回数を書かない(読みと揃える)', true);
   const A=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+14000);
@@ -1492,6 +1498,44 @@ console.log('\u246c \u23f0行も包みを消す(飾りの行は予定だけ)');
     '\u2605\u2605消し方は幅ごと畳む(文字は並びに残るso、色も数字も同じ桁に当たる)', true);
  ok(/let _at2 = \(_cl > 0\) \? _cl : txt\.length;\s*\n\s*while \(_at2 > 0 && txt\.charAt\(_at2 - 1\) === ' '\) _at2--;/.test(S),
     '\u2605数字は消える手前へ置く(隠した所に物を置かない)', true);
+}
+
+// v4.1.157(俊克 9/6 pm00:11〜00:24): 入れ子は新しい構造ではない= 並びthat一段上に居るだけ。
+//   俊克「空白は順番と言うか、→ のような意味だよね。貴方の + と同等の意味だよ」
+console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居るだけ');
+{
+ const P=X.meosClockFcParse, E=X.meosParseCycleExpr;
+ const L=(sp)=>'<!-- Mew!UFC ⏰ 2026-09-06 12:30 '+sp+' -->';
+ const c=(sp)=>P(L(sp))||{};
+ /* ① 展開すれば、数える仕組みは1行も変えなくてよい */
+ {const x=c('↺↻((30s 15s)×8 1m)×3');
+  ok(x.cycle.length===17, '★★★1周= 30s,15s を8回 と 1m の17歩(平らに展開する)', x.cycle.length);
+  ok(x.rounds===3, '★★★一番外の ×3 = 回数(今までの rounds そのもの)', x.rounds);
+  ok(x.cycle[0]==='30s'&&x.cycle[15]==='15s'&&x.cycle[16]==='1m', '  並びの順も正しい', x.cycle.slice(14));}
+ /* ② HIITと格闘技の実物that書ける */
+ ok(c('↺↻(3m 1m)×12').rounds===12, '★ボクシング世界戦 (3m 1m)×12', true);
+ ok(c('↺↻((20s 10s)×8 0m)×1').cycle.length===16, '★タバタ ((20s 10s)×8 0m)×1= 0は並びを終える', c('↺↻((20s 10s)×8 0m)×1').cycle.length);
+ ok(c('↺↻((30s 15s)×4 1m)×3').cycle.length===9, '★サーキット3セット= 8歩＋セット間の休み', c('↺↻((30s 15s)×4 1m)×3').cycle.length);
+ /* ③ 空白thatが「そして」= / も読む(既に書かれた物を置いていかない) */
+ ok(c('↺↻3m 1m').cycle.join('/')==='3m/1m' && c('↺↻3m/1m').cycle.join('/')==='3m/1m',
+    '★★空白でも / でも同じに読む(空白thatが「そして」)', true);
+ ok(c('↻3m 1m×3').rounds===3 && c('↻3m/1mx3').rounds===3, '  括弧無しの裸の ×N も読む', true);
+ ok(c('(↺↻3m/1m)×3').rounds===3 && c('(↺↻3m/1m)×3').when==='2026-09-06 12:30',
+    '★★★旧い書き方(矢印that括弧の中)も読む・起点も食われない', c('(↺↻3m/1m)×3').when);
+ ok(c('(↺↻3m/1m)×3').cycleSrc==='', '  ただし短い形は捨てる(釣り合わない括弧を書き戻さない)', true);
+ /* ④ 札は時計の後ろにも書ける */
+ {const x=c('↺05 #目薬');
+  ok(x.cycle.join()==='05' && (x.tags||[]).join()==='目薬', '★札は式の後ろでも拾う(時計に食われない)', [x.cycle,x.tags]);}
+ /* ⑤ 「そして」の空白は、見せかけで / に見せるso場所を控える */
+ {const e=E('((30s 15s)×8 1m)×3', 0);
+  ok(e.seps.length===2, '★★区切りの空白を控える(見せかけで / に置き換える所)', e.seps.length);
+  ok(e.steps[0].from===2 && e.steps[0].to===5, '  桁も控える(白く光る所を数え直さない)', [e.steps[0].from,e.steps[0].to]);}
+ /* ⑥ 面の初期値= 骨組みthatそのまま入っている(部分修正して使う) */
+ {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(/value="\(\(30s 15s\)\\u00d71 1m\)\\u00d71"/.test(S),
+     '★★★面の箱に骨組みを入れておく(俊克「初期値として文字を入れて置く。部分的に修正できるように」)', true);
+  ok(/const _cyEx = \(_rep && _cyRaw\) \? meosParseCycleExpr\(_cyRaw, 0\) : null;/.test(S),
+     '★面の箱も同じ1つの読みで受ける', true);}
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

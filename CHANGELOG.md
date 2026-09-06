@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.157 (2026-09-06)
+- **Nesting — `((30s 15s)×8 1m)×3` — which is what an interval timer is actually for.** Sets of reps with a rest between sets is the shape every HIIT and circuit app is built around, and it was the one thing the notation could not say. It needs no new symbol: a space already means *and then*, so `(…)×8 1m` reads "that group, then one minute", and the outer level is just the same list one step up. Two rules cover it — **a list is elements joined by a space; an element is a length, or `(list)×N`** — and there is no depth limit.
+- **The engine did not change.** The inner nesting is expanded into a flat run of steps, which is exactly the cycle MeOS already counted, and the outermost `×N` is exactly the round limit it already honoured. `((30s 15s)×8 1m)×3` is seventeen steps, three times.
+- **The panel opens with the skeleton in the box** — `((30s 15s)×1 1m)×1` — to be edited in place rather than typed from nothing. Change it to `(3m 1m)×12` and you have a world title fight; start it on the opening bell and you can watch how far the real event drifts.
+- Written with spaces, shown with `/`: the raw line is what you type, the decorated line is what you read. Everything already written keeps working — `3m/1m`, a bare `×3`, and the old `(↺↻3m/1m)×3` all still read, and are quietly rewritten into the new shape the next time MeOS touches them.
+
 ### v4.1.156 (2026-09-06)
 - **The two-second lag while scrolling was v4.1.153 opening a 100,000-line membrane over and over.** Its test for "is this folded?" asked whether the line after the ▼ was in a visible range — but a range excludes anything scrolled off screen just as it excludes anything folded, so a large membrane, whose ▼ is almost always above the viewport, read as folded every single time. The log showed it firing twelve times in six minutes. It now only judges a membrane whose ▼ is actually on screen — what you cannot see, you cannot know the fold state of — and never sends the same membrane twice.
 
