@@ -11242,7 +11242,18 @@ function meosApplyTimerLineDecorations(editor) {
               const _c1 = txt.charAt(_ar);
               const _c0 = (_ar > 0) ? txt.charAt(_ar - 1) : '';
               const _two = (_c0 === '\u21ba' || _c0 === '\u21bb');
-              if (!c.dual && _two) (c.up ? dirUp : dirDown).push(new vscode.Range(i, _ar - 1, i, _ar + 1));
+              // ★★★v4.1.169(俊克 9/6 pm06:58 改良3「経過時間だけのときは、**水色の \u21bb だけ**にして、
+              //   逆算タイマーを示す \u21ba は**非表示**にしよう」):
+              //   ★★★**出ていない顔の矢印は、出さない**= v4.1.168は「2つとも同じ色」にしたthat、
+              //     それでも**在るはずのない向きthat見えている**。矢印は顔の名札so、顔thatが1つなら1つ。
+              //   ★消すのは飾りの時だけ(生の行では1文字も足さない/消さない= v4.1.161)。
+              if (!c.dual && _two) {
+                const _keep = c.up ? '\u21bb' : '\u21ba';
+                const _kAt = (_c1 === _keep) ? _ar : (_ar - 1);
+                const _hAt = (_kAt === _ar) ? (_ar - 1) : _ar;
+                (c.up ? dirUp : dirDown).push(new vscode.Range(i, _kAt, i, _kAt + 1));
+                if (!_rawHere) badgeHide.push(new vscode.Range(i, _hAt, i, _hAt + 1));   // 使わない向きは消す
+              }
               else {
                 (_c1 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar, i, _ar + 1));
                 if (c.dual && _two) (_c0 === '\u21bb' ? dirUp : dirDown).push(new vscode.Range(i, _ar - 1, i, _ar));
@@ -23589,7 +23600,7 @@ color:#ffffff;z-index:4;padding:0}
   <div class="clk-tagadd" id="clk-tagadd" style="display:none"><input class="clk-in" id="clk-tagnew" placeholder="\u30bf\u30b0\u3067\u7d5e\u308b" spellcheck="false" data-tip="Type to narrow this list by tag \u2014 any tag, not only the ones on the bar. Press \uff0b to put what you typed on the membrane the cursor is in (typing one it already has takes it off)."><button class="clk-tag0" id="clk-tagadd" data-tip="\uff0b | Put what is typed in the box on the membrane the cursor is in \u2014 press again to take it off.">\uff0b</button><button class="clk-tag0" id="clk-tag0" data-tip="#tag0 | One press puts this tag on the membrane the cursor is in \u2014 press again to take it off. The plainest way to start: mark a few membranes with it and they gather here.">#tag0</button></div>
   <div class="clk-warn" id="clk-warn"></div>
   <div class="clk-row"><span class="clk-lab">Origin</span><span class="clk-hint">empty = today / tomorrow</span></div>
-  <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
+  <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-now" data-tip="Set the dials to right now \u2014 today's date and the time on the clock. Then nudge whichever wheel you meant to change.">Now</button><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
   <div style="border-top:1px solid var(--vscode-panel-border);margin:3px 0"></div>
   <div class="clk-row"><span class="clk-lab">Time</span><span class="clk-hint">24-hour</span></div>
   <div class="clk-cols"><div class="clk-col" id="clk-h"></div><div class="clk-col" id="clk-mi"></div></div>
@@ -23599,7 +23610,7 @@ color:#ffffff;z-index:4;padding:0}
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint">00 ends the list</span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
-  <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
+  <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
 <!-- {* ▲mCN=dock_toc *} -->
 <div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="ref-new-group" data-tip="Create a new reference group here (pick a symbol, name it, add an optional note). The Edit dropdown Reference does the same.">✚ New reference group…</button><button class="bm-pop-item" id="ref-toggle-disabled" data-tip="Put the text cursor ON a reference mark, then run this: a live mark ▶◀ becomes dormant ▷◁ (grey, kept out of numbering/cycling but the note survives), and a dormant ▷◁ becomes live ▶◀ again. Reversible alternative to Delete.">◻ Disable / Enable (mark at cursor)</button><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too). Permanent.">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button><button class="bm-pop-item" id="ref-jump-note" data-tip="Same as ⌘/Ctrl-click on the reference button: Annotated group → jump to its note · Marks / Pending → jump straight to the Front (F). Clicking here does it too.">📖 Jump to note</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="bm-pending-list" id="ref-group-list"></div><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-mode-toggle" data-tip="Switch the working reference between a 💤 pending group and a normal reference group.">⇄ Select 💤 or Normal Ref</button></div>
@@ -25081,6 +25092,29 @@ function clkSyncFromCols(){clkFitDays();clkEcho();}
    なっている」): ★★★**v4.1.83で窓を『年代』にした時の取り残し**= 窓that2030年代なら、
    その中に2026は居ないso、今日を選ぼうとしても**選べずに黙って留まっていた**。
    → 今日へ戻す時は、**窓ごと今日の年代へ**張り直す(選ぶ前に、居場所を作る)。 */
+/* v4.1.169: ダイヤルを今に合わせる(日付も指定したことにする= clkFixD=true)。 */
+function clkNow(){var t=new Date();clkFixD=true;
+var _yb=Math.floor(t.getFullYear()/10)*10;
+clkFill(document.getElementById('clk-y'),_yb,_yb+9,false);
+clkSel(document.getElementById('clk-y'),t.getFullYear());
+clkSel(document.getElementById('clk-mo'),t.getMonth()+1);
+clkFitDays();
+clkSel(document.getElementById('clk-d'),t.getDate());
+clkSel(document.getElementById('clk-h'),t.getHours());
+clkSel(document.getElementById('clk-mi'),t.getMinutes());}
+/* v4.1.169: この膜の時計を面へ取り込む(read \u23f0)。打ち込みの口は clkSyncFromBox 1つ。 */
+function clkTakeIn(d){try{
+ if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
+ var e=document.getElementById('clk-edit');
+ var _w=String(d.when||'').replace(/:(\d{2})$/,'');           /* 秒は輪to持たないso落とす */
+ if(e&&/^\d{4}\D\d{1,2}\D\d{1,2}/.test(_w)){e.value=_w;clkSyncFromBox();}
+ var cy=document.getElementById('clk-cyc');
+ clkRep=!!d.rep;clkPaintRep();
+ if(cy)cy.value=String(d.cycle||'');
+ var tg=document.getElementById('clk-tagin');if(tg)tg.value=(d.tags||[]).join(' ');
+ clkLock=!!d.lock;if(typeof clkPaintLock==='function')clkPaintLock();
+ clkEcho();clkTouch();clkPaintSet();
+}catch(err){}}
 function clkDateEmpty(){clkFixD=false;
 var t=new Date();
 var _yb=Math.floor(t.getFullYear()/10)*10;
@@ -25392,6 +25426,15 @@ if(clkCaret&&clkPop){
   var col=ev.target&&ev.target.parentElement&&ev.target.parentElement.classList.contains('clk-col')?ev.target.parentElement:null;
   if(col){if(col.id==='clk-y'||col.id==='clk-mo'||col.id==='clk-d')clkFixD=true;
    clkSel(col,ev.target.getAttribute('data-v'));clkSyncFromCols();clkTouch();return;}
+  /* ★★v4.1.169(俊克 改良1「⏰▼のパネルに **Nowボタン**を付けよう。ダイヤルを現在時刻に
+     合わせるためのボタンだよ」): ★**今に合わせてfrom、動かしたい輪だけ動かす**=
+     0から回すより、現在地from始める方that手数that少ない(既定は教科書= Repeatの骨組みと同じ考え)。
+     ★clear は「日付を指定しない」に戻す駒so、Now とは役that違う(並べて置く)。 */
+  if(ev.target&&ev.target.id==='clk-now'){clkNow();clkEcho();clkTouch();clkPaintSet();return;}
+  /* ★★★v4.1.169(俊克 改良2「⏰膜の中にいる時、**read**を押すと、その値を読み込めるようにしよう。
+     それを修正して、Setすれば使いやすいでしょ」): ★★**直す前に、今の値を持って来る**=
+     0から打ち直させない。copy ⏰(外へ出す)と read ⏰(中へ取る)で、口that表裏に揃う。 */
+  if(ev.target&&ev.target.closest&&ev.target.closest('#clk-read')){vscode.postMessage({type:'clockRead'});return;}
   if(ev.target&&ev.target.id==='clk-dclr'){clkDateEmpty();clkEcho();clkTouch();return;}
   /* v4.1.64: 錠は**明るい方を押す**= \ud83d\udd10 を押せば掛かり、肩の \ud83d\udd13 that明るくなる。その \ud83d\udd13 を押せば外れる。
      \u2605Encrypt Me と同じ形so、覚え直すことthat無い(\u5bb6\u306e\u4f5c\u6cd5)。 */
@@ -25399,7 +25442,7 @@ if(clkCaret&&clkPop){
      ★★★**当たりthat見えている物より小さかった**= □ は子の span so、id で見ていた私の枝を素通りしていた。
      ★→ **押した物の上をたどって、どのボタンの中かを訊く**= 見えている箱の中は、どこでも当たり
      ([[project_direct_manipulation_mark]] 印は押せる大きさ／当たりthat表示と一致する)。 */
-  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'):null;
+  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set'):null;
   var _id=_hit?_hit.id:'';
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();clkTouch();return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
@@ -26344,6 +26387,7 @@ if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持
   var _cy=document.getElementById('clk-cyc');if(_cy)_cy.value=m.cycle||'';
   var _tg=document.getElementById('clk-tagin');if(_tg)_tg.value=m.tag||'';   /* v4.1.70 */
   clkPaintRep();}}catch(e){}return;}
+if(m&&m.type==='clockRead'){clkTakeIn(m);return;}   /* v4.1.169 */
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
 var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(Number(m.stopUndo)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
 if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmNextUp=!!m.nextUp;vmNextStep=Number(m.nextStep)||0;vmStopUndo=Number(m.stopUndo)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];
@@ -27190,6 +27234,26 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'openGithubTokens') { try { await vscode.env.openExternal(vscode.Uri.parse(MEOS_GH_TOKENS_URL)); } catch (_) { } return; } // v4.0.83
+    // ★★★v4.1.169(俊克 改良2「⏰膜の中にいる時、read を押すと、その値を読み込めるようにしよう」):
+    //   ★★**返すのは本文の字そのもの**= 起点も輪も、書いてあるものをそのまま面へ渡す
+    //     (置き換えた値を渡すと、Setした瞬間に BigBang のような仕掛けthat消える)。
+    if (message && message.type === 'clockRead') {
+      let _r = { type: 'clockRead', ok: false, why: 'no clock in this membrane' };
+      try {
+        const ed = meosCurrentEditor();
+        if (ed && ed.document) {
+          const sc = meosModeScope(ed);
+          const hit = sc && sc.key ? meosClockFcScan(ed.document).find(c => c.key === sc.key) : null;
+          if (hit) _r = { type: 'clockRead', ok: true,
+            when: String(hit.whenSrc || hit.when || ''),
+            cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))),
+            rep: !!(hit.cycle && hit.cycle.length), lock: !!hit.lock, tags: hit.tags || [] };
+          else if (!sc || !sc.key) _r.why = 'put the caret inside a membrane first';
+        }
+      } catch (_) { }
+      try { if (meDockPanel) meDockPanel.webview.postMessage(_r); } catch (_) { }
+      return;
+    }
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン

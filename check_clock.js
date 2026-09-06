@@ -211,7 +211,7 @@ console.log('\u247b copy \u23f0 は ⏰行だけを写す');
   ok(/id="clk-copy"/.test(S9) && /_id==='clk-copy'/.test(S9), '\u2605面にボタンが在り、押すと node へ届く', true);
   /* ★★★v4.1.134(俊克 質問1「copy ⏰ ボタンは表示されるけど、動作はしてないよね?」):
      枝を足しても、**扉の名簿に入れなければ通らない**(closest の選択子)。 */
-  ok(/closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'\)/.test(S9),
+  ok(/closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set'\)/.test(S9),
      '\u2605\u2605\u2605押した物をたどる名簿に copy が入っている(枝だけ足しても通らない)', true);
 }
 
@@ -1018,7 +1018,7 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
     '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
  ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
     '\u2605\u2605\u6253\u9375that\u843d\u3061\u7740\u3044\u305f\u3089 \u23f0 \u3082\u8aad\u307f\u76f4\u3059= \u56f2\u3044\u3078\u5165\u308c\u305f\u898b\u672c\u304c\u4fdd\u5b58\u3092\u5f85\u305f\u305a\u306b\u843d\u3061\u308b', true);
- ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-set'\)/.test(S),
+ ok(/var _hit=\(ev\.target&&ev\.target\.closest\)\?ev\.target\.closest\('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set'\)/.test(S),
     '\u2605\u2605\u2605\u898b\u3048\u3066\u3044\u308b\u7bb1\u306e\u4e2d\u306f\u3069\u3053\u3067\u3082\u5f53\u305f\u308a(\u2610 \u3092\u62bc\u3057\u3066\u3082\u52b9\u304f)', true);
  ok(/var n2=new Date\(\);/.test(S)&&!/var n2=new Date\(Date\.now\(\)\+30\*60000\)/.test(S),
     '\u2605\u6642\u5206\u306e\u65e2\u5b9a\u306f**\u4eca**(30\u5206\u5f8c\u306f\u79c1\u306e\u63d0\u6848\u3067\u3057\u304b\u306a\u304b\u3063\u305f)', true);
@@ -1620,8 +1620,12 @@ console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
  ok(c('Doomsday6.5s').magic.secs===6.5, '★★★小数も読む(6.5s)', c('Doomsday6.5s').magic.secs);
  ok(c('Doomsday7s').dual===true, '★★終末時計は表裏= ↺残り / ↻1947年6月の初出fromの通算', true);
  ok(/const MEOS_DOOMSDAY_FIRST = new Date\(1947, 5, 1/.test(S), '  初出は Bulletin 1947年6月号(7分前)', true);
- ok(/if \(!c\.dual && _two\) \(c\.up \? dirUp : dirDown\)/.test(S),
-    '★★★顔that1つなら矢印2文字とも同じ色(画面that嘘をつかない)', true);
+ /* ★★★v4.1.169(俊克 改良3「経過時間だけのときは水色の ↻ だけにして、↺ は非表示に」):
+    出ていない顔の矢印は出さない= 矢印は顔の名札so、顔that1つなら1つ。 */
+ ok(/const _keep = c\.up \? '\\u21bb' : '\\u21ba';/.test(S),
+    '★★★顔that1つなら、その向きの矢印だけ残す', true);
+ ok(/if \(!_rawHere\) badgeHide\.push\(new vscode\.Range\(i, _hAt, i, _hAt \+ 1\)\);/.test(S),
+    '★★使わない向きは消す(消すのは飾りの時だけ= 生では1文字も触らない)', true);
  /* ★★v4.1.166(俊克「終末時計だよ。ビッグバンfromの年数の比として、最新の公表値from計算して」
     ＋「24時間だよ」): 俊克「あと5秒と言われても、後何年なんだよ? って、それthat知りたいのにね」 */
  {const d=c('Doomsday');
@@ -1643,6 +1647,23 @@ console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
  ok(/const MEOS_DOOMSDAY_FACE_SEC = 24 \* 60 \* 60;/.test(S), '★文字盤は24時間(真夜中that一日の終わり)', true);
  ok(/String\(\(spec\.whenSrc != null && String\(spec\.whenSrc\)\.trim\(\)\) \? spec\.whenSrc : \(spec\.when \|\| ''\)\)/.test(S),
     '★★書き戻しは「書いてあった字」で(置き換えた起点を書かない)', true);
+}
+
+// v4.1.169(俊克 9/6 pm06:58 改良1「Nowボタンを付けよう」／改良2「read を押すと、その値を読み込める
+//   ようにしよう。それを修正して、Setすれば使いやすいでしょ」):
+console.log('⑰ Now / read ⏰ = 0from打ち直させない');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/id="clk-now"/.test(S)&&/function clkNow\(\)\{var t=new Date\(\);clkFixD=true;/.test(S),
+    '★★Now= ダイヤルを今に合わせる(日付も指定したことにする)', true);
+ ok(/id="clk-read"/.test(S)&&/type:'clockRead'/.test(S),
+    '★★★read ⏰ = この膜の時計を面へ取り込む', true);
+ ok(/when: String\(hit\.whenSrc \|\| hit\.when \|\| ''\)/.test(S)&&/cycle: String\(hit\.cycleSrc \|\|/.test(S),
+    '★★★返すのは**本文の字そのもの**(置き換えた値を渡すと BigBang のような仕掛けthat消える)', true);
+ ok(/if\(e&&\/\^\\d\{4\}\\D\\d\{1,2\}\\D\\d\{1,2\}\/\.test\(_w\)\)\{e\.value=_w;clkSyncFromBox\(\);\}/.test(S),
+    '★打ち込みの口は clkSyncFromBox 1つ(輪への置き方を2つ持たない)', true);
+ ok(/replace\(\/:\(\\d\{2\}\)\$\/,''\)/.test(S), '  秒は輪that持たないso落とす', true);
+ ok(/#clk-copy,#clk-read,#clk-now,#clk-set/.test(S), '★押した物をたどる名簿にも入れた(枝だけでは通らない)', true);
 }
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);

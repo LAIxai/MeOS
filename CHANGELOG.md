@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.169 (2026-09-06)
+- **`Now`** sets the dials to today and the time on the clock, so you start from where you are and nudge the one wheel you meant to change. It sits beside `clear`, which does the opposite job — taking the date off again.
+- **`read ⏰`** pulls this membrane's clock into the panel: the time, the repeat, the tags, the lock. Change what you want and press Set. It hands back the text exactly as written, so reading and re-setting a `BigBang` line does not quietly turn it into a date. Together with `copy ⏰` the two openings now face each other — one takes the clock out, one brings it in.
+- **Only the arrow that has a face is shown.** With a single face, the other glyph is hidden rather than merely recoloured: an arrow is the label on a face, so one face means one arrow. Nothing is hidden on a raw row.
+
 ### v4.1.168 (2026-09-06)
 - **Each of the three now reads the way it should be read.** `BigBang` shows `13.787b years 18:38.07` — days are dropped, because next to a figure in billions a day is not a quantity anyone reads. `MeW!` counts up only, `0y 55d 02:13.47` since the release. `Doomsday7s` shows both faces: `↺ 1.11M years 05:41.28` remaining, and `↻ 79y 98d …` since the Clock first appeared, on the June 1947 cover of the Bulletin — Martyl Langsdorf set it at seven minutes to midnight "because it looked good to my eye".
 - **Decimals: `Doomsday6.5s`.** Big numbers are truncated rather than rounded, so 1,117,002 reads `1.11M` and 13,787,000,000 reads `13.787b`.
