@@ -23233,6 +23233,12 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
    ★実装は scroll-snap= 慣性も物理も要らない。止まった所に一番近い段thatが答え。
    ★上下に1段ぶんの余白(::before/::after)を足すso、**最初と最後の値も真ん中に来られる**。 */
 .clk-cols{display:flex;gap:2px;align-items:stretch}
+/* ★v4.1.170(俊克 改良1「大文字の年の右that少し切れているので、枠を少し広げて」):
+   年は4桁so、月日(2桁)と同じ幅では 19px の太字that入り切らない。**中身なりの幅**にする。 */
+#clk-y{flex:1.4}
+/* v4.1.170: 面の矢印も本文と同じ色(\u21ba=緑・\u21bb=水色)。色that2か所で違えば覚え直しになる。 */
+.clk-ar-dn{color:#4ec9a0;font-weight:900}
+.clk-ar-up{color:#4fc1e9;font-weight:900}
 .clk-col{box-sizing:border-box;position:relative;flex:1;height:68px;overflow-y:auto;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.06);scrollbar-width:none;-ms-overflow-style:none}
 .clk-col::-webkit-scrollbar{display:none}
 /* ★★v4.1.83(俊克 改良2「この回転ドラムの大きな橙色の部分をWクリックすると、そこに直接値を
@@ -25106,7 +25112,10 @@ clkSel(document.getElementById('clk-mi'),t.getMinutes());}
 function clkTakeIn(d){try{
  if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
  var e=document.getElementById('clk-edit');
- var _w=String(d.when||'').replace(/:(\d{2})$/,'');           /* 秒は輪to持たないso落とす */
+ /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat、15:30 の**分**を落としていた
+    (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeat だけthat入ったように見えた。
+    → **時:分:秒 の形の時だけ**末尾の秒を落とす。 */
+ var _w=String(d.when||'').replace(/^(\d{4}\D\d{1,2}\D\d{1,2}\s+\d{1,2}:\d{2}):\d{2}$/, '$1');
  if(e&&/^\d{4}\D\d{1,2}\D\d{1,2}/.test(_w)){e.value=_w;clkSyncFromBox();}
  var cy=document.getElementById('clk-cyc');
  clkRep=!!d.rep;clkPaintRep();
@@ -25483,9 +25492,16 @@ if(clkCaret&&clkPop){
   b.classList.toggle('on',clkDirty&&!need);}
  function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);}
  /* v4.1.66: \u2610 だけ大きく出せるように、箱と字を別の子にする。 */
+ /* ★★v4.1.170(俊克 改良2「\u21ba\u21bb は、緑/水に色を付けて下さい。Repeatチェックボックスの方もね」):
+    ★★**面の矢印も、本文の矢印と同じ色**= \u21ba=緑(残り) / \u21bb=水色(経過)。 */
  function clkBox(b,on,label){while(b.firstChild)b.removeChild(b.firstChild);
   var k=document.createElement('span');k.className='clk-ck';k.textContent=on?'\u2611':'\u2610';
-  b.appendChild(k);b.appendChild(document.createTextNode(label));}
+  b.appendChild(k);
+  var _s=String(label||'');
+  for(var _i=0;_i<_s.length;_i++){var _ch=_s.charAt(_i);
+   if(_ch==='\u21ba'||_ch==='\u21bb'){var _a=document.createElement('span');
+    _a.className=(_ch==='\u21bb')?'clk-ar-up':'clk-ar-dn';_a.textContent=_ch;b.appendChild(_a);}
+   else b.appendChild(document.createTextNode(_ch));}}
  function clkPaintDir(){var b=document.getElementById('clk-dir');if(!b)return;b.classList.toggle('on',clkDir);
   /* v4.1.1109: 繰返しthat無くても向きは効く(一度きりのストップウォッチthat書ける)。 */
   clkBox(b,clkDir,clkDir?'\u21bb stopwatch':'\u21ba countdown');}

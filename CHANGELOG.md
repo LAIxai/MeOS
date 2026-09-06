@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.170 (2026-09-06)
+- **`read ⏰` was only bringing back the repeat, and that was a bug.** Stripping the seconds off the time used a pattern that took the minutes instead — `2026-09-06 15:30` became `2026-09-06 15`, which then failed to parse as a date at all, so the dials never moved. Seconds are now removed only from a time that actually has them.
+- **The year wheel is wider.** Four digits at 19px bold did not fit in a column sized for two.
+- **`↺` is green and `↻` is cyan in the panel too**, the same as in the text. A colour that means one thing in the document and nothing in the panel is a second thing to remember.
+
 ### v4.1.169 (2026-09-06)
 - **`Now`** sets the dials to today and the time on the clock, so you start from where you are and nudge the one wheel you meant to change. It sits beside `clear`, which does the opposite job — taking the date off again.
 - **`read ⏰`** pulls this membrane's clock into the panel: the time, the repeat, the tags, the lock. Change what you want and press Set. It hands back the text exactly as written, so reading and re-setting a `BigBang` line does not quietly turn it into a date. Together with `copy ⏰` the two openings now face each other — one takes the clock out, one brings it in.

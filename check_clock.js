@@ -1662,7 +1662,15 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
     '★★★返すのは**本文の字そのもの**(置き換えた値を渡すと BigBang のような仕掛けthat消える)', true);
  ok(/if\(e&&\/\^\\d\{4\}\\D\\d\{1,2\}\\D\\d\{1,2\}\/\.test\(_w\)\)\{e\.value=_w;clkSyncFromBox\(\);\}/.test(S),
     '★打ち込みの口は clkSyncFromBox 1つ(輪への置き方を2つ持たない)', true);
- ok(/replace\(\/:\(\\d\{2\}\)\$\/,''\)/.test(S), '  秒は輪that持たないso落とす', true);
+ /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat 15:30 の**分**を落としていた
+    (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeatだけthat入ったように見えた。 */
+ ok(/replace\(\/\^\(\\d\{4\}\\D\\d\{1,2\}\\D\\d\{1,2\}\\s\+\\d\{1,2\}:\\d\{2\}\):\\d\{2\}\$\/, '\$1'\)/.test(S),
+    '★★★秒を落とすのは「時:分:秒」の形の時だけ(分を巻き込まない)', true);
+ ok(/#clk-y\{flex:1\.4\}/.test(S), '★年の輪は4桁so少し広く(19pxの太字that入り切らない)', true);
+ ok(/\.clk-ar-dn\{color:#4ec9a0/.test(S) && /\.clk-ar-up\{color:#4fc1e9/.test(S),
+    '★★面の矢印も本文と同じ色(↺=緑 / ↻=水色)', true);
+ ok(/_a\.className=\(_ch==='\\u21bb'\)\?'clk-ar-up':'clk-ar-dn';/.test(S),
+    '  Repeatの札の中の矢印だけを色の駒で包む(他の字はそのまま)', true);
  ok(/#clk-copy,#clk-read,#clk-now,#clk-set/.test(S), '★押した物をたどる名簿にも入れた(枝だけでは通らない)', true);
 }
 
