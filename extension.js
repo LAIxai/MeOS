@@ -11392,12 +11392,18 @@ function meosApplyTimerLineDecorations(editor) {
           //   (ボクシングの「3ラウンドの2つ目」)。上限that無い時は今までどおり `\u00d72` だけ。
           // ★★v4.1.174: 外の周(\u00d72/3)の隣に、**内側の何本目か**(\u00b73/4)を添える。
           //   ★入れ子でない時は今までどおり= 出す物を増やさない。
-          let _rnd = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7))
+          // ★★v4.1.175(俊克 9/6 pm11:47「`\u23f0 0.07 0.08 \u00d74/4 | \u00d71/3` の方that分かりやすい」):
+          //   ★★★**数字と同じ側に、その数字の単位を置く**= 出ている 0.07/0.08 は**今の1本**の値so、
+          //     「4本目」はその隣に居るべき。セットの数(\u00d71/3)は一段粗い話so、仕切りの向こう。
+          //   ★仕切り(|)は畳んだバッジの跡= 物理的にそこに在るso、手前と向こうで役を分けられる。
+          const _rndOut = ((Array.isArray(c.cycle) && c.cycle.length) && _rnd0(_sc7))
             ? ('\u00d7' + _sc7.round + (c.rounds > 0 ? ('/' + c.rounds) : '')) : '';
+          let _rndIn = '';
           try {
             const _rp = (c.cycleReps && _sc7 && typeof _sc7.cidx === 'number') ? c.cycleReps[_sc7.cidx] : null;
-            if (_rnd && _rp) _rnd += ' \u00b7' + _rp[0] + '/' + _rp[1];
+            if (_rndOut && _rp) _rndIn = '\u00d7' + _rp[0] + '/' + _rp[1];
           } catch (_) { }
+          const _rnd = _rndOut;
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
           //   ★★★**同じ位置に、同じ種類の装飾を2つ置いた**= VS Codeは描く順を約束しないので、
           //     秒ごとに前後thatが入れ替わっていた。
@@ -11481,8 +11487,8 @@ function meosApplyTimerLineDecorations(editor) {
             range: new vscode.Range(_fl, _at1, _fl, _at1),
             renderOptions: c.dual
               ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },
-                  after: { contentText: _face(true) + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
-              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + ' ',
+                  after: { contentText: _face(true) + (_rndIn ? ('  ' + _rndIn) : '') + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
+              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + (_rndIn ? ('  ' + _rndIn) : '') + ' ',
                   color: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN), fontWeight: '800' } }
           });
           // ★★v4.1.140(俊克 改良3「\u00d7N は別の色にしようよ」):

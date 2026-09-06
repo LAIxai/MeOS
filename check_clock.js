@@ -230,7 +230,7 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   ok(R(480001)===3, '\u2605\u26058分を過ぎたら3周目', R(480001));
   const S8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(/before: \{ contentText: '\\u23f0 ' \+ _face\(false\) \+ ' ', color: MEOS_CLOCK_DIR_DOWN/.test(S8)
-     && /after: \{ contentText: _face\(true\) \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
+     && /after: \{ contentText: _face\(true\) \+ \(_rndIn \? \('  ' \+ _rndIn\) : ''\) \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
   /* ★v4.1.140: 周回数は顔と役が違うので、色も場所も分ける(行の右端・橙)。 */
   /* ★★v4.1.141: 時計はコメントの中に立つ(v4.1.20)。顔は `-->` の1つ手前、周回数は `-->` の直前。 */
@@ -1703,8 +1703,13 @@ console.log('⑱ 短い形を落とさない / 内側の何本目かを数える
  ok(JSON.stringify(c.cycleReps)==='[[1,4],[1,4],[2,4],[2,4],[3,4],[3,4],[4,4],[4,4],null]',
     '★★★内側の何本目かを展開の時に控える(平らにすると消える物)', c.cycleReps);
  ok(c.cycleReps[8]===null, '  セット間の休みは「何本目」を持たない(内側の輪の外so)', true);
- ok(/if \(_rnd && _rp\) _rnd \+= ' \\u00b7' \+ _rp\[0\] \+ '\/' \+ _rp\[1\];/.test(S),
-    '★★外の周(×2/3)の隣に内側(·3/4)を添える', true);
+ /* ★★v4.1.175(俊克「⏰ 0.07 0.08 ×4/4 | ×1/3 の方that分かりやすい」):
+    数字と同じ側に、その数字の単位を置く= 0.07/0.08 は**今の1本**の値so「4本目」はその隣。
+    セットの数は一段粗い話so、仕切り(畳んだバッジの跡)の向こう。 */
+ ok(/if \(_rndOut && _rp\) _rndIn = '\\u00d7' \+ _rp\[0\] \+ '\/' \+ _rp\[1\];/.test(S),
+    '★★内側は ×4/4(顔の隣) / 外側は ×1/3(仕切りの向こう)', true);
+ ok(/_face\(true\) \+ \(_rndIn \? \('  ' \+ _rndIn\) : ''\)/.test(S),
+    '★★★内側の回数は**顔と同じ駒**に乗せる(仕切りの手前に置ける唯一の場所)', true);
  /* ★★★書き戻しで短い形を落とすと、本文that展開された姿に化ける(俊克の実物= (30s/15s/30s/…)×3)。 */
  {const _sites=S.split('\n').filter(l=>/meosClockFcSet\(/.test(l)&&/cycle: (c|hit|h)\.cycle/.test(l));
   ok(_sites.length>0 && _sites.every(l=>/cycleSrc:/.test(l)),

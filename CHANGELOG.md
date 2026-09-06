@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.175 (2026-09-06)
+- **`⏰ 0.07 0.08 ×4/4 | ×1/3`** — the interval count moves over to sit with the figures, and only the set count stays past the divider. The numbers on the left are this interval's own, so the count that says *which interval* belongs beside them; how many sets in is a coarser thing and reads better on its own.
+
 ### v4.1.174 (2026-09-06)
 - **Pausing no longer rewrites `((30s 15s)×4 1m)×3` as `(30s 15s 30s 15s 30s 15s 30s 15s 1m)×3`.** Two of the ten places that write a clock back — both on the pause path — were dropping the compact form, so the line was rebuilt from the flattened steps. A check now walks every write site and fails if any one of them stops carrying it; the same goes for the origin word, so a paused `BigBang` cannot turn into a date either.
 - **`·3/4` says which interval you are in.** Flattening the nesting is what lets the engine stay unchanged, but it also loses the thing a person counts: the four `30s` steps all point at the same text, so the white marker cannot tell the first from the third. The repetition index is recorded during expansion and shown beside the round: `×2/3 ·3/4` is the third interval of the second set. Clocks without nesting show what they always did.
