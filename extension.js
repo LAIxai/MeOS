@@ -9945,10 +9945,17 @@ const MEOS_MEW_ORIGIN = '2026-07-13 16:04:45';          // MeOS v1.0.30 のcommi
 //   ★文字盤は**24時間**(俊克の裁定)= 真夜中thatが一日の終わり。so 1秒 \u2248 159,572年、
 //     85秒 \u2248 **13,563,600年**。
 //   ★これも Date に入らないso BigBang と同じ作り= **年の数は定数・尻尾は今年の残り**(毎秒動く)。
-const MEOS_DOOMSDAY_SEC = 85;                           // 2026-01-27 発表(前回89秒)
+// ★★★v4.1.167(俊克 9/6 pm04:17「**`Doomsday85s` と書くんだよ**。ここを毎年公表の値を入れれば、
+//   直ぐに計算できる」): ★★★**値はコードでなく本文に置く**= 毎年の発表を書き換えるだけで済む
+//   ([[project_clock_in_the_text]] \u23f0の住所は本文)。私は85をコードに焼き込んでいた。
+//   ★長さの読みは `meosCycleMs` をそのまま使う= 規則thatが1つも増えない。so単位も同じ
+//     (`85s`=85秒 / `17m`=17分 / 裸の数字は既定どおり分)。
+//   ★★これで**歴史の値も書ける**= `Doomsday17m`(1991年・史上最遠)は 1.63億年、
+//     `Doomsday100s`(2020〜2022)は 1596万年。同じ1行で並べて比べられる。
+//   ★値を書かない `Doomsday` は 85秒(2026-01-27 発表・89秒from前進)。
+const MEOS_DOOMSDAY_SEC = 85;                           // 値を書かない時の既定(2026-01-27 発表)
 const MEOS_DOOMSDAY_FACE_SEC = 24 * 60 * 60;            // 文字盤は24時間(俊克 pm04:09)
-const MEOS_DOOMSDAY_YEARS = Math.round(MEOS_BIGBANG_YEARS * MEOS_DOOMSDAY_SEC / MEOS_DOOMSDAY_FACE_SEC);
-const MEOS_MAGIC_WHEN_RE = /^(BigBang|MeW!|Doomsday|\u7d42\u672b\u6642\u8a08)$/i;
+const MEOS_MAGIC_WHEN_RE = /^(?:BigBang|MeW!|(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*[ \t]*[smhSMH]?)$/i;
 function meosClockMagicWhen(w) {
   const t = String(w == null ? '' : w).trim();
   if (!MEOS_MAGIC_WHEN_RE.test(t)) return null;
@@ -9956,9 +9963,13 @@ function meosClockMagicWhen(w) {
     const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from(数え上げ)
     return { bigbang: true, years: MEOS_BIGBANG_YEARS, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };
   }
-  if (/^(Doomsday|\u7d42\u672b\u6642\u8a08)$/i.test(t)) {
+  const _dm = /^(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*([0-9]+[ \t]*[smhSMH]?)?$/i.exec(t);
+  if (_dm) {
+    const _ms = _dm[1] ? meosCycleMs(String(_dm[1]).replace(/[ \t]/g, '')) : (MEOS_DOOMSDAY_SEC * 1000);
+    const _sec = (_ms > 0) ? (_ms / 1000) : (MEOS_DOOMSDAY_SEC * 1000) / 1000;
     const y1 = new Date(new Date().getFullYear() + 1, 0, 1, 0, 0, 0, 0);   // 尻尾は今年の残り(逆算)
-    return { doomsday: true, years: MEOS_DOOMSDAY_YEARS, when: meosClockFcStamp(y1), cycle: ['1y'], up: false, dual: false };
+    return { doomsday: true, secs: _sec, years: Math.round(MEOS_BIGBANG_YEARS * _sec / MEOS_DOOMSDAY_FACE_SEC),
+      when: meosClockFcStamp(y1), cycle: ['1y'], up: false, dual: false };
   }
   return { mew: true, when: MEOS_MEW_ORIGIN, cycle: ['1w'], up: false, dual: true };
 }

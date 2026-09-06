@@ -1620,7 +1620,16 @@ console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
   ok(d.up===false&&String(d.cycle)==='1y', '★★逆算(↺)= 残りthat減る。尻尾は今年の残り(毎秒動く)', [d.up,d.cycle]);
   ok(/^\d{4}-01-01 00:00$/.test(d.when||'')&&d.when>c('BigBang').when, '  目標は来年の元日(BigBangは今年の元日)', [d.when,c('BigBang').when]);
   ok(!!c('終末時計').magic, '  日本語でも読む', true);}
- ok(/const MEOS_DOOMSDAY_SEC = 85;/.test(S), '  公表値は85秒(2026-01-27・89秒from前進)', true);
+ /* ★★★v4.1.167(俊克「Doomsday85s と書くんだよ。ここを毎年公表の値を入れれば、直ぐに計算できる」):
+    **値はコードでなく本文に置く**= 毎年の発表を書き換えるだけで済む。長さの読みは meosCycleMs を
+    そのまま使うso規則that1つも増えない= 歴史の値も同じ1行で並べられる。 */
+ ok(c('Doomsday85s').magic.years===13563600, '★★★Doomsday85s = 13,563,600年', c('Doomsday85s').magic.years);
+ ok(c('Doomsday89s').magic.years===14201887, '  Doomsday89s(前回) = 14,201,887年', c('Doomsday89s').magic.years);
+ ok(c('Doomsday17m').magic.years===162763194, '★Doomsday17m(1991年・史上最遠) = 1.63億年', c('Doomsday17m').magic.years);
+ ok(c('Doomsday100s').magic.years===15957176, '  Doomsday100s(2020〜2022) = 1596万年', c('Doomsday100s').magic.years);
+ ok(c('Doomsday').magic.years===13563600, '  値を書かなければ既定の85秒', true);
+ ok(!!c('終末時計85s').magic, '  日本語＋値でも読む', true);
+ ok(/const MEOS_DOOMSDAY_SEC = 85;/.test(S), '  既定は85秒(2026-01-27・89秒from前進)', true);
  ok(/const MEOS_DOOMSDAY_FACE_SEC = 24 \* 60 \* 60;/.test(S), '★文字盤は24時間(真夜中that一日の終わり)', true);
  ok(/String\(\(spec\.whenSrc != null && String\(spec\.whenSrc\)\.trim\(\)\) \? spec\.whenSrc : \(spec\.when \|\| ''\)\)/.test(S),
     '★★書き戻しは「書いてあった字」で(置き換えた起点を書かない)', true);

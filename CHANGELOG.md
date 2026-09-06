@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.167 (2026-09-06)
+- **Write the published figure into the line: `Doomsday85s`.** Next January the Bulletin will say something else, and all that changes is the number in the text — nothing in MeOS needs touching. The length is read by the same parser as every cycle, so no new rule arrives with it: `85s` is eighty-five seconds, `17m` is seventeen minutes, a bare number is minutes as it always is. Which means the whole history lines up in one file — `Doomsday17m` (1991, the furthest it has ever been) is 162,763,194 years; `Doomsday100s` is 15,957,176; `Doomsday85s` is 13,563,600.
+
 ### v4.1.166 (2026-09-06)
 - **`Doomsday` answers the question the Doomsday Clock refuses to.** Being told it is 85 seconds to midnight tells you nothing you can hold; what you want to know is how long that is. Read the clock face as a whole day and scale it against the age of the universe, and 85 seconds is **13,563,600 years** — one second is about 159,572 of them. MeOS counts it down, and the tail ticks every second. `終末時計` works too.
 - The figure is the current one: 85 seconds, set 27 January 2026, moved in from 89.
