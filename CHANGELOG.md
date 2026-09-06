@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.176 (2026-09-06)
+- **Only the numerators are white, so white means *this is the part that moves*.** `×4/4` and `×1/3` now carry their counts in white and their totals in their own colour — cyan for the interval, orange for the set. A collapsed row only offers its two ends as places to put anything, which is one short of what four colours need, so the badge row keeps a single space visible: invisible in itself, useful as an anchor, and it reads as a gap anyway. Each fraction is one decoration split across `before` and `after`, never two decorations at one spot — that ordering is undefined, as v4.1.139 found out.
+
 ### v4.1.175 (2026-09-06)
 - **`⏰ 0.07 0.08 ×4/4 | ×1/3`** — the interval count moves over to sit with the figures, and only the set count stays past the divider. The numbers on the left are this interval's own, so the count that says *which interval* belongs beside them; how many sets in is a coarser thing and reads better on its own.
 

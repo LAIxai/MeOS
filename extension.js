@@ -11083,6 +11083,13 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null;
+// ★★★v4.1.176(俊克 9/6 pm11:52「できれば、**分母を別々の色**にして、**分子だけを白色**にして下さい。
+//   こうすれば、**変化するのthat白色**だと分る」):
+//   ★★★**動いている物だけを白にする**= 目は色で「どこを見ればよいか」を覚える。
+//   ★★仕掛け= 畳んだ行は**両端しか置き場thatない**(間に差し込んだ物は一緒に畳まれる= v4.1.150)so、
+//     **バッジ行の空白を1つだけ残して**置き場を1つ増やす。空白は見えても何も語らないso、
+//     ちょうど区切りにもなる。
+let meosClockRepDeco = null;      // 内側(何本目)= 分子は白・分母は水色(1つの駒の before/after)
 // ★★★v4.1.152(俊克 9/6 am09:45「停止中のタイマーを再開すると、回数that×116になった。この違いに最初戸惑う。
 //   そこで、1行目の \u00d721 は**停止した時の回数**として表示し、`\u23f8116` のように、ここは**現在の周回数**を
 //   表示する。ただし、これは**文字カーソルthatこの膜に入った時のみ更新**する。無駄な処理をしないためだ」):
@@ -11145,7 +11152,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [];   // v4.1.148
+    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];   // v4.1.148 / v4.1.176
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -11468,11 +11475,13 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★→ ずらす先は**字の外**にする= 顔は詰めた位置(`\u00d712` の直後)、
           //     周回数は `-->` の直前(空白の向こう)。2つは離れているので描く順も決まる。
           const _clRaw = (_cl > 0) ? _cl : txt.length;
-          let _fl = i, _at1 = _at2, _fat2 = (_clRaw > _at2) ? _clRaw : _at2, _rndAfter = false;
+          let _fl = i, _at1 = _at2, _fat2 = (_clRaw > _at2) ? _clRaw : _at2, _rndAfter = false, _spAt = -1;
           if (_bg2 >= 0) {
             let _blen = 0; try { _blen = doc.lineAt(_bg2).text.length; } catch (_) { }
             _fl = _bg2;
             _at1 = 0;                                    // 顔は**行頭**
+            // ★v4.1.176: 置き場を1つ増やす= バッジ行の空白を1つだけ残し、その両側を別々に畳む。
+            try { const _bt6 = doc.lineAt(_bg2).text; _spAt = _bt6.indexOf(' ', 1); } catch (_) { _spAt = -1; }
             // ★★★v4.1.150(俊克 9/6 am00:25 改良1「\u00d70/12 も残り時間などの右に見せかけで出すように」
             //   = v4.1.148で列1に置いた \u00d7N thatが**一度も出ていなかった**):
             //   ★★★**隠した範囲の内側に置いた物は、一緒に畳まれる**= 幅0にしているのは字so、
@@ -11481,27 +11490,47 @@ function meosApplyTimerLineDecorations(editor) {
             //   ★★→ 周回数は**行末(隠した範囲の向こう側)**へ `after` で置く= 顔(列0の before)と
             //     鏡写しso、描く順も決まる(同じ所に2つ置かない= v4.1.139)。
             _fat2 = _blen; _rndAfter = true;
-            if (_blen) badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen));   // v4.1.151: 借りると決めた行so、必ず消す
+            if (_blen) {
+              if (_spAt > 0 && _spAt < _blen - 1) {      // v4.1.176: 空白1つを残して両側を畳む
+                badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _spAt));
+                badgeHide.push(new vscode.Range(_bg2, _spAt + 1, _bg2, _blen));
+              } else { _spAt = -1; badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen)); }
+            }
           }
           items.push({
             range: new vscode.Range(_fl, _at1, _fl, _at1),
             renderOptions: c.dual
               ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },
-                  after: { contentText: _face(true) + (_rndIn ? ('  ' + _rndIn) : '') + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
-              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + (_rndIn ? ('  ' + _rndIn) : '') + ' ',
+                  after: { contentText: _face(true) + ((_rndIn && _spAt < 0) ? ('  ' + _rndIn) : '') + ' ', color: MEOS_CLOCK_DIR_UP, fontWeight: '800' } }
+              : { after: { contentText: '\u23f0 ' + _face(!!c.up) + ((_rndIn && _spAt < 0) ? ('  ' + _rndIn) : '') + ' ',
                   color: (c.up ? MEOS_CLOCK_DIR_UP : MEOS_CLOCK_DIR_DOWN), fontWeight: '800' } }
           });
           // ★★v4.1.140(俊克 改良3「\u00d7N は別の色にしようよ」):
           //   ★★**周回数は顔ではない**= 残り/経過は「今この回のどこか」、周回数は「何回目か」so、役that違う。
           //     → 色も置き場所も分ける= **行の右端**(`-->` の外)に、橙で。
           //   ★位置thatが違うので、描く順の取り合いも起きない(v4.1.139で踏んだ穴を作らない)。
+          // ★★v4.1.176: 分子だけ白= **変化する物that白**。分母は役ごとの色(内側=水色 / 外側=橙)。
+          //   ★1つの駒の before/after に分ける= 同じ所に2つの駒を置くと描く順that決まらない(v4.1.139)。
+          if (_rndIn && _spAt >= 0) {
+            const _sl = _rndIn.indexOf('/');
+            reps.push({ range: new vscode.Range(_fl, _spAt, _fl, _spAt),
+              renderOptions: {
+                before: { contentText: ' ' + (_sl > 0 ? _rndIn.slice(0, _sl) : _rndIn), color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' },
+                after: { contentText: (_sl > 0 ? _rndIn.slice(_sl) : ''), color: MEOS_CLOCK_DIR_UP, fontWeight: '800' }
+              } });
+          }
           if (_rnd) rounds.push({ range: new vscode.Range(_fl, _fat2, _fl, _fat2),
             // ★v4.1.142(俊克 9/5 pm06:46 改良1「オレンジ一色に近い中、重要な回数that同じオレンジ色では
             //   目立たない」): ★橙は**地の色**so、その上に置く物には使えない。緑と水色は顔that持っている
             //   so、周回数は**地でも顔でもない白**= 3つthat互いに違う。
-            renderOptions: _rndAfter
-              ? { after: { contentText: '  ' + _rnd, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } }
-              : { before: { contentText: _rnd + ' ', color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' } } });
+            // ★v4.1.176: ここも1つの駒で= before に分子(白)・after に分母(橙)。
+            renderOptions: (function () {
+              const _s2 = _rnd.indexOf('/');
+              const _nu = (_s2 > 0) ? _rnd.slice(0, _s2) : _rnd;
+              const _de = (_s2 > 0) ? _rnd.slice(_s2) : '';
+              return { before: { contentText: (_rndAfter ? '  ' : '') + _nu, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' },
+                after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };
+            })() });
         }
       }
     } catch (_) { }
@@ -11528,6 +11557,8 @@ function meosApplyTimerLineDecorations(editor) {
     // v4.1.148: 場所を借りたバッジ行は中身を消す(幅ごと畳む= 数字thatが行頭に立つ)。
     if (badgeHide.length && !meosClockBadgeHideDeco) meosClockBadgeHideDeco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; opacity: 0; font-size: 0;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });

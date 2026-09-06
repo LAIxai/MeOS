@@ -149,7 +149,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
      '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
   ok(/function clkTouch\(\)/.test(S11) && /clkDirty=false;clkPaintSet\(\)/.test(S11),
      '\u2605\u2605開いた時は未設定から始まる', true);
-  ok(/color: new vscode\.ThemeColor\('editor\.foreground'\), fontWeight: '800' \} \} \}\);/.test(S11),
+  ok(/color: new vscode\.ThemeColor\('editor\.foreground'\), fontWeight: '800' \}/.test(S11) && /color: '#e0803a', fontWeight: '800' \}/.test(S11),
      '\u2605\u2605周回数は地(橙)でも顔(緑/水色)でもない色', true);
 }
 
@@ -230,7 +230,7 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   ok(R(480001)===3, '\u2605\u26058分を過ぎたら3周目', R(480001));
   const S8=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(/before: \{ contentText: '\\u23f0 ' \+ _face\(false\) \+ ' ', color: MEOS_CLOCK_DIR_DOWN/.test(S8)
-     && /after: \{ contentText: _face\(true\) \+ \(_rndIn \? \('  ' \+ _rndIn\) : ''\) \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
+     && /after: \{ contentText: _face\(true\) \+ \(\(_rndIn && _spAt < 0\) \? \('  ' \+ _rndIn\) : ''\) \+ ' ', color: MEOS_CLOCK_DIR_UP/.test(S8),
      '\u2605\u2605\u2605数字は矢印と同じ色(\u21ba=緑 / \u21bb=水色)= 色を増やさない', true);
   /* ★v4.1.140: 周回数は顔と役が違うので、色も場所も分ける(行の右端・橙)。 */
   /* ★★v4.1.141: 時計はコメントの中に立つ(v4.1.20)。顔は `-->` の1つ手前、周回数は `-->` の直前。 */
@@ -239,13 +239,13 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
   /* ★★★v4.1.160(俊克「×12 の1と2の間にタイマー表示を挿入している」):
      順番を決めるための1桁ずらしthat**本文の字の中**を指していた= 字と字の間に割り込むと数字that割れる。
      → ずらす先は字の外へ(顔は詰めた位置、周回数は --> の直前)。 */
-  ok(/let _fl = i, _at1 = _at2, _fat2 = \(_clRaw > _at2\) \? _clRaw : _at2, _rndAfter = false;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
+  ok(/let _fl = i, _at1 = _at2, _fat2 = \(_clRaw > _at2\) \? _clRaw : _at2, _rndAfter = false, _spAt = -1;/.test(S8) && /range: new vscode\.Range\(_fl, _at1, _fl, _at1\)/.test(S8),
      '\u2605\u2605\u2605場所を1つずらして順番を決める(同じ所に2つ置かない)', true);
   /* \u2605\u2605\u2605v4.1.147: 数字はすぐ上のバッジ行へ出す(生データは1文字も動かさない= UFC1行のコピペthat時計になる)。 */
   /* ★★★v4.1.148(俊克 9/6 am00:07「**行頭からタイマ数値that見えることthat目的**だよ」):
      右端では窓を狭めた瞬間に切れる= 幅に負けないためには行頭でなければ意味thatない。 */
-  ok(/const _bgRaw = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /_at1 = 0;\s+\/\/ 顔は\*\*行頭\*\*/.test(S8)
-     && /_fat2 = _blen; _rndAfter = true;/.test(S8) && /renderOptions: _rndAfter/.test(S8),
+  ok(/const _bgRaw = meosClockBadgeRowForLine\(doc, i\);/.test(S8) && /_at1 = 0;[\s\S]{0,240}?顔は\*\*行頭\*\*/.test(S8)
+     && /_fat2 = _blen; _rndAfter = true;/.test(S8) && /_rndAfter \? '  ' : ''/.test(S8),
      '\u2605\u2605\u2605動く数字はバッジ行の**行頭**へ／\u00d7N は行末の外側(隠した範囲の内側に置くと一緒に畳まれる)', true);
   ok(/badgeHide\.push\(new vscode\.Range\(_bg2, 0, _bg2, _blen\)\)/.test(S8) && /opacity: 0; font-size: 0;/.test(S8),
      '\u2605\u2605バッジ行は**中身を消して場所だけ借りる**(数字thatが行頭に立つ)', true);
@@ -253,7 +253,7 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
      消さないだけでなく**置かない**。数字は⏰行のコメントの内側へ戻る(昨日と同じ轍を踏まない)。 */
   ok(/\(_bgRaw >= 0 && !meosShowsRawLine\(editor, _bgRaw\) && !meosShowsRawLine\(editor, i\)\) \? _bgRaw : -1/.test(S8),
      '\u2605\u2605\u2605生を見せている行thatあれば借りない(消さないだけでなく置かない)', true);
-  ok(/if \(_blen\) badgeHide\.push/.test(S8),
+  ok(/if \(_blen\) \{/.test(S8) && /_spAt = -1; badgeHide\.push/.test(S8),
      '  借りると決めた行は必ず消す(判定は1か所で済ませる)', true);
   ok(/\(typeof _nx\.round === 'number'\) \? _nx\.round : 1/.test(S8) && !/_nx\.round \|\| 1/.test(S8),
      '\u2605\u2605\u2605`\|\| 1` は 0 を 1 に化けさせる(\u00d70 that出なかった正体)', true);
@@ -1708,8 +1708,8 @@ console.log('⑱ 短い形を落とさない / 内側の何本目かを数える
     セットの数は一段粗い話so、仕切り(畳んだバッジの跡)の向こう。 */
  ok(/if \(_rndOut && _rp\) _rndIn = '\\u00d7' \+ _rp\[0\] \+ '\/' \+ _rp\[1\];/.test(S),
     '★★内側は ×4/4(顔の隣) / 外側は ×1/3(仕切りの向こう)', true);
- ok(/_face\(true\) \+ \(_rndIn \? \('  ' \+ _rndIn\) : ''\)/.test(S),
-    '★★★内側の回数は**顔と同じ駒**に乗せる(仕切りの手前に置ける唯一の場所)', true);
+ ok(/_spAt = _bt6\.indexOf\(' ', 1\);/.test(S) && /after: \{ contentText: \(_sl > 0 \? _rndIn\.slice\(_sl\) : ''\), color: MEOS_CLOCK_DIR_UP/.test(S),
+    '★★★内側= 分子は白・分母は水色(残した空白の所に、1つの駒で)', true);
  /* ★★★書き戻しで短い形を落とすと、本文that展開された姿に化ける(俊克の実物= (30s/15s/30s/…)×3)。 */
  {const _sites=S.split('\n').filter(l=>/meosClockFcSet\(/.test(l)&&/cycle: (c|hit|h)\.cycle/.test(l));
   ok(_sites.length>0 && _sites.every(l=>/cycleSrc:/.test(l)),
