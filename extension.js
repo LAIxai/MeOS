@@ -4615,6 +4615,7 @@ async function reconcilePastedFolds(editor, from, to) {
         anyExpanded = true;
         // カーソルが畳む範囲の内側に残ると VSCode が見せようと自動展開→開始行(畳んでも見える)へ退避。
         try { editor.selection = new vscode.Selection(p.start, 0, p.start, 0); } catch (_) {}
+        try { meosDbg('[foldWho] reconcilePastedFolds lines=' + JSON.stringify([p.start])); } catch (_) { }   // v4.1.163: 誰that畳んだか
         try { await vscode.commands.executeCommand('editor.fold', { selectionLines: [p.start] }); } catch (_) {}
         try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) {} _folded++;
         if (!_pairBodyVisible(editor, p)) skipUntil = p.end; // 畳めた→中身は隠れた(空振りなら次ポーリングで再試行)
@@ -4781,6 +4782,7 @@ async function restoreMstatsForEditor(editor) {
           editor.revealRange(new vscode.Range(_esc, 0, _esc, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
         }
       } catch (_) { }
+      try { meosDbg('[foldWho] restoreMstatsForEditor lines=' + JSON.stringify(_left.map)); } catch (_) { }   // v4.1.163: 誰that畳んだか
       await vscode.commands.executeCommand('editor.fold', { selectionLines: _left.map(p => p.start) });
       _rounds++;
       // ★★v4.0.357: 畳めたかの物差しを直す。`_pairBodyVisible` は「膜の範囲と画面が**重なるか**」なので、
@@ -8825,6 +8827,7 @@ async function foldWorkingTocRegion(editor) {
   if (!region) return;
   try {
     await vscode.window.showTextDocument(editor.document, editor.viewColumn || vscode.ViewColumn.One, false);
+    try { meosDbg('[foldWho] foldWorkingTocRegion lines=' + JSON.stringify([region.markerLine])); } catch (_) { }   // v4.1.163: 誰that畳んだか
     await vscode.commands.executeCommand('editor.fold', { selectionLines: [region.markerLine] });
   } catch (_) {}
 }
@@ -12171,6 +12174,7 @@ async function meosApplyFoldForMode(editor, key, next, prev) {
   // Rawを出た＝ バッジの言うとおりに戻す(⊖だけ畳む。⊕は今開いている)
   const back = inScope.filter(p => { const b = (meosPairBadgeAt(doc, p) || {}).badge || null; return !!b && b.symbol === '⊖'; });
   if (!back.length) return;
+  try { meosDbg('[foldWho] meosApplyFoldForMode lines=' + JSON.stringify(back.map)); } catch (_) { }   // v4.1.163: 誰that畳んだか
   try { await vscode.commands.executeCommand('editor.fold', { selectionLines: back.map(p => p.start) }); } catch (_) { }
   for (const p of back) { try { foldStateByPairKey.set(pairStateKey(editor, p), true); } catch (_) { } }
   try { meosDbg('[viewmode] Rawを出て畳み直した 膜=' + back.length); } catch (_) { }
@@ -15808,6 +15812,7 @@ async function foldAll() {
   const starts = collectPairs(editor.document, { excludeIndex: false })
     .filter(p => !isMstatFixed(p, editor.document))
     .map(p => p.start);
+  try { meosDbg('[foldWho] foldAll lines=' + JSON.stringify(starts)); } catch (_) { }   // v4.1.163: 誰that畳んだか
   if (starts.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: starts });
   setTimeout(() => { refresh(editor); scheduleMstatsSync(editor); }, 180);
 }
@@ -15890,6 +15895,7 @@ async function toggleMeAllMembranes() {
     await vscode.commands.executeCommand('editor.unfold', { selectionLines: unfoldLines });
   }
   if (foldLines.length) {
+    try { meosDbg('[foldWho] toggleMeAllMembranes lines=' + JSON.stringify(foldLines)); } catch (_) { }   // v4.1.163: 誰that畳んだか
     await vscode.commands.executeCommand('editor.fold', { selectionLines: foldLines });
   }
 
@@ -18951,6 +18957,7 @@ function meosRefoldAfterNameEdit(ed, openLine) {
   try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
   setTimeout(() => {
     try {
+      try { meosDbg('[foldWho] meosRefoldAfterNameEdit lines=' + JSON.stringify([openLine])); } catch (_) { }   // v4.1.163: 誰that畳んだか
       vscode.commands.executeCommand('editor.fold', { selectionLines: [openLine] })
         .then(() => { try { refresh(ed); } catch (_) { } }, () => { });
     } catch (_) { }
@@ -30811,6 +30818,7 @@ async function meosFoldPseudoOpened(editor) {
     if (!hits.length) return;
     _meosFcBusy = true;
     try { for (const _h of hits) meosFcNoteFolded(_h); } catch (_) { }
+    try { meosDbg('[foldWho] meosFoldPseudoOpened lines=' + JSON.stringify(hits)); } catch (_) { }   // v4.1.163: 誰that畳んだか
     try { await vscode.commands.executeCommand('editor.fold', { selectionLines: hits }); } catch (_) { }
     finally { _meosFcBusy = false; }
   } catch (_) { _meosFcBusy = false; }
@@ -30903,8 +30911,19 @@ async function meosAutoFoldSpecLines(editor, force) {
     // v4.0.440: 読書モードでは**カーソルの塊も畳む相手**(除ける理由=「そこは生データを見せている」が消えるので)
     // ★★v4.0.443/444: **開いているべき塊は、一括の道も触らない**＝ 開けているのは偶然ではなく約束だから
     //   (v4.0.328「カーソルの居る群は触らない」を、Rawの膜にもそのまま当てる)。判定は1つ(meosFcWantsOpen)。
-    const _mine = (b) => meosFcWantsOpen(editor.document, b, _cur);
-    heads = meosDefBlocks(editor.document).filter(b => b.fc && !_mine(b) && _vis(b.start) && _vis(b.end) && !meosFcRecentlyFolded(b.start)).map(b => b.start);   // v4.0.466: 今しがた畳んだ物は二度畳まない
+    // ★★★v4.1.163(俊克 9/6 pm02:55 バグ1「⏰膜を開いて、その場を離れると、直ぐに折り畳まれてしまう。
+    //   飛んだけど直ぐに閉じて、折り畳まれた膜に着地してしまう。**誰that折り畳んでいるのか?**」):
+    //   ★★★**私thatv4.1.153で作った穴**= 生きた⏰の膜はバッジ行を畳まないと決めたので、
+    //     その膜のFC塊には**もう畳む範囲thatが無い**(hasRange=false)。それなのにこの道だけthat
+    //     `meosDefBlocks` を直に見ていて、範囲の有無を知らないまま▲行へ「畳め」と打っていた。
+    //   ★★★そして v4.0.188 の記録どおり= **`editor.fold` は一番内側の範囲を畳む。内側that無ければ
+    //     外側＝膜を畳む**。so「その場を離れた瞬間に膜that畳まれる」。
+    //   ★★→ **畳む相手も、畳む範囲を決めた所から引く**= `meosFcFoldShape`(hasRange 付き)。
+    //     形と宛先を別々の物差しで決めない([[feedback_one_source_for_mark_count_action]])。
+    //     `it.open` thatカーソルthat中に居る塊= 今までの `_mine` と同じ役so、判定も1つに寄る。
+    heads = meosFcFoldShape(editor.document, _cur)
+      .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
+      .map(it => it.head);   // v4.0.466: 今しがた畳んだ物は二度畳まない
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
   if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
@@ -30929,6 +30948,7 @@ async function meosAutoFoldSpecLines(editor, force) {
       await new Promise(r => setTimeout(r, 150 * attempt)); // VS Codeが範囲を取り直すのを待つ(v0.9.961の作法)
       const _t0 = Date.now();
       const _vt0 = (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; // v4.0.187
+      try { meosDbg('[foldWho] meosAutoFoldSpecLines lines=' + JSON.stringify(heads)); } catch (_) { }   // v4.1.163: 誰that畳んだか
       await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
       try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
       try { meosDbg('[fcFold] ok attempt=' + attempt + ' blocks=' + heads.length + ' lines=' + editor.document.lineCount + ' ' + (Date.now() - _t0) + 'ms heads=' + heads.slice(0, 8).join(',')); } catch (_) { }
@@ -33357,6 +33377,7 @@ function activate(context) {
     try { for (const _h of heads) meosFcNoteFolded(_h); } catch (_) { }
     try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
     await new Promise(r => setTimeout(r, 120));
+    try { meosDbg('[foldWho] activate lines=' + JSON.stringify(heads)); } catch (_) { }   // v4.1.163: 誰that畳んだか
     await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
     vscode.window.showInformationMessage('MeOS: folded ' + heads.length + ' spec line(s).');
   }));

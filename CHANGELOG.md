@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.163 (2026-09-06)
+- **Found who was folding the clock membrane the moment you left it — v4.1.153 was.** Once a membrane with a live clock stopped folding its badge row, its comment block no longer had a fold range at all; but the automatic folder was the one path still reading the raw block list instead of the shape that knows about ranges, so it kept telling the ▲ line to fold. `editor.fold` folds the innermost range at a line, and with the inner one gone the innermost range there *is the membrane* — a trap this codebase already documented in v4.0.188. The automatic folder now takes its targets from the same place the ranges are decided, so a block with no range is never asked to fold.
+- Every one of the ten places that can fold now writes a `[foldWho]` line naming itself, so the next time something folds unexpectedly the log says which one it was rather than leaving it to guesswork.
+
 ### v4.1.162 (2026-09-06)
 - **The bell lands inside the membrane, not on its ▼.** The ▼, ▲, badge and ⏰ rows are one group, so a caret on the opening line turns the whole clock raw — which meant the bell's own landing spot destroyed the view it had just called you to see. It now goes where H-TOC goes: the line you were last on inside that membrane, or the line just below ▼ if there is no memory of one. Going to a clock from the ⏰ list still lands on the clock line itself, where the raw text is what you want.
 

@@ -438,5 +438,23 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
     '  手that止まってから1回(毎カーソル移動で重い走査をしない)', true);
 }
 
+// v4.1.163(俊克 9/6 pm02:55「⏰膜を開いて、その場を離れると直ぐに折り畳まれてしまう。誰that折り畳んでいるのか?」):
+//   ★私thatv4.1.153で作った穴= 生きた⏰の膜はFC塊に畳む範囲thatが無い(hasRange=false)のに、
+//     自動畳みだけthat meosDefBlocks を直に見ていて、範囲の有無を知らないまま▲行へ打っていた。
+//   ★v4.0.188の記録どおり= editor.fold は一番内側を畳む。内側that無ければ**外側=膜**を畳む。
+{
+ const fs3=require('fs'), path3=require('path');
+ const S=fs3.readFileSync(path3.join(__dirname,'extension.js'),'utf8');
+ const A=S.slice(S.indexOf('async function meosAutoFoldSpecLines'), S.indexOf('async function meosAutoFoldSpecLines')+8000);
+ ok(/heads = meosFcFoldShape\(editor\.document, _cur\)/.test(A),
+    '★★★自動畳みも「畳む範囲を決めた所」から相手を引く(meosDefBlocks を直に見ない)', true);
+ ok(/\.filter\(it => it\.hasRange && it\.b\.fc && !it\.open/.test(A),
+    '★★★範囲thatが無い塊には打たない(内側that無いと外側=膜を畳んでしまう= v4.0.188)', true);
+ ok(!/meosDefBlocks\(editor\.document\)\.filter\(b => b\.fc/.test(A),
+    '  古い二本目の物差しは残っていない', true);
+ /* ★誰that畳んだかを、打った所すべてで1行残す(次に起きたら名指しできる= v4.0.187の網) */
+ ok((S.match(/\[foldWho\]/g) || []).length >= 10, '★畳む口すべてに名札を付けた(10か所)', (S.match(/\[foldWho\]/g)||[]).length);
+}
+
 console.log(ng ? ('NG ' + ng + ' 件') : '全部 ok');
 process.exit(ng ? 1 : 0);
