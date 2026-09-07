@@ -63,8 +63,8 @@ or double-click one and type. Everything the panel writes goes on the line, wher
 by hand — on a phone, in any editor, with no MeOS at all.
 
 When the time comes MeOS **brings you to that membrane**, so write the next job inside it. Set from
-Pseudo-WYSIWYG it holds the membrane shut instead — a test paper you cannot walk out of, with your own 👻
-answers waiting in the file. **↩ Back** returns you to whatever you were doing.
+Pseudo-WYSIWYG it **holds that membrane in Pseudo view** instead: you cannot get back to the raw data, so
+your own 👻 answers stay hidden until the bell — a test paper you cannot walk out of. **↩ Back** returns you to whatever you were doing.
 
 **The bell counts you down the way it is called at an archery line.** Three seconds of sound a minute out,
 five at thirty, and from ten seconds it does not stop — then a high, clear tone at the moment itself. Near is
