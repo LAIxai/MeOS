@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.182 (2026-09-07)
+- **Tag & Go explained in one line instead of five.** "The sixth row is a door" asked the reader to count rows in a panel they had not seen yet; the picture already shows where the door is, so the words no longer point at it. What was left needed saying plainly: **Tag & Go is an H-TOC wearing a ⏰ mask** — write the tag while you are making the membrane, call it to the door later, warp there, and hang a clock on it if you want one. And once a clock is on a membrane, you do not go to it: it comes and gets you.
+
 ### v4.1.181 (2026-09-07)
 - **The README now says where ↩ Back is.** It was named three times without ever saying that it appears in the status bar, and only after the bell has actually moved you — so a reader looked for it in Me Dock and found nothing. It is also moved next to the sentence about being carried away, where it belongs; sitting after the test-paper clause it read as a non sequitur.
 

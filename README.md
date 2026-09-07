@@ -80,13 +80,13 @@ belongs to. ☑ and ☐ let a clock rest without losing what it was set for, `St
 and not an ending, and `Undo` puts it straight back. Times far off read `≈4y 23:55.17` — roughly when, and
 still alive; that is all a four-year plan needs to say.
 
-**Tag & Go** — the sixth row is a door. Write `#eyedrops` in the comment on a membrane's opening line, where
-you are writing anyway, and every membrane wearing that tag gathers behind the door, clock or no clock.
-Choose one and you warp there; tick its box and a clock already written on it starts, after which it appears
-in the list by the one rule the list has ever had. Nothing is ever put into that list by hand.
+**Tag & Go is a door you can open anywhere.** Write a tag — `#eyedrops` — in a membrane's opening comment
+while you are making the membrane, and later that tag calls every one of them to the door. Pick one and you
+warp there. Hang a ⏰ on it while you are there, or set no clock at all and use the door as a table of
+contents.
 
-*So the ⏰ is a mask.* Underneath it is a way of finding a place in your own writing and being taken there —
-which is harder to explain than a timer, and easier to use once you have one.
+*So Tag & Go is an H-TOC wearing a ⏰ mask.* And once a clock is on a membrane, you do not have to go to it —
+**it comes and gets you.**
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.1-timed-membrane.png" alt="A timed membrane - the origin, the repeat and the running countdown live in the text, and when the bell rings MeOS takes you to that membrane" width="92%"><br>
