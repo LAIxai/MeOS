@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.179 (2026-09-07)
+- **The v4.1 picture now sits directly under the v4.1 text**, where the reader has just been told what a clock on a membrane is, instead of down in the gallery above the v4.0 frame.
+
 ### v4.1.178 (2026-09-07)
 - **The v4.1 hero picture is in the README.** One frame for the whole of ⏰: the origin and the repeat written in the text, the countdown standing at the head of the badge row, the ⏰ list, Tag&Go, and the picker — with a five-yearly medical check-up as the example, because a clock you set once and forget for four years is the case ordinary timers cannot hold.
 

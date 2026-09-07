@@ -86,6 +86,11 @@ in the list by the one rule the list has ever had. Nothing is ever put into that
 *So the ⏰ is a mask.* Underneath it is a way of finding a place in your own writing and being taken there —
 which is harder to explain than a timer, and easier to use once you have one.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.1-timed-membrane.png" alt="A timed membrane - the origin, the repeat and the running countdown live in the text, and when the bell rings MeOS takes you to that membrane" width="92%"><br>
+  <sub><b>NEW in v4.1 — stick a &#9200; note on a membrane, and the timer brings you back to it.</b> Write the <b>origin</b> where the time goes (<code>2030-10-05 10:00 &#8634;&#8635;5y</code>): an arrow is the direction, the figure is the length of one turn, and <code>(&hellip;)&times;N</code> is how many turns — so <code>&#8634;(3m 1m)&times;3</code> is a boxing round and <code>&#8635;((30s 15s)&times;4 1m)&times;3</code> is a HIIT set. The origin is never rewritten when the bell rings, so <b>what you set is still there years later</b>; the running figure is drawn, not stored. One minute out it sounds for three seconds, thirty seconds out for five, and from ten seconds it does not stop — then <b>MeOS carries you to the membrane itself</b>, where what you meant to do is already written. The &#9200; list is a table of contents with a time axis, and <b>Tag&amp;Go</b> narrows it to one <code>#tag</code> — <b>Anywhere = Tag&amp;Go, When = &#9200;</b>.</sub>
+</p>
+
 ### NEW in v4.0 — your data is plain Markdown; the instructions live in comments
 
 v4.0 finishes the idea. **Every mark you write is real Markdown** — headings, lists, bold, highlight,
@@ -173,11 +178,6 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   answer key**, and it can be sat again tomorrow. Set from any other view it is simply a **bell** — write the
   next job inside a membrane and MeOS brings you to it when the time comes. The schedule lives in the place it
   is about, the way a 👻 note does; **↩ Back** returns you to whatever you were doing.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.1-timed-membrane.png" alt="A timed membrane - the origin, the repeat and the running countdown live in the text, and when the bell rings MeOS takes you to that membrane" width="92%"><br>
-  <sub><b>NEW in v4.1 — stick a &#9200; note on a membrane, and the timer brings you back to it.</b> Write the <b>origin</b> where the time goes (<code>2030-10-05 10:00 &#8634;&#8635;5y</code>): an arrow is the direction, the figure is the length of one turn, and <code>(&hellip;)&times;N</code> is how many turns — so <code>&#8634;(3m 1m)&times;3</code> is a boxing round and <code>&#8635;((30s 15s)&times;4 1m)&times;3</code> is a HIIT set. The origin is never rewritten when the bell rings, so <b>what you set is still there years later</b>; the running figure is drawn, not stored. One minute out it sounds for three seconds, thirty seconds out for five, and from ten seconds it does not stop — then <b>MeOS carries you to the membrane itself</b>, where what you meant to do is already written. The &#9200; list is a table of contents with a time axis, and <b>Tag&amp;Go</b> narrows it to one <code>#tag</code> — <b>Anywhere = Tag&amp;Go, When = &#9200;</b>.</sub>
-</p>
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once - MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
