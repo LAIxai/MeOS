@@ -1592,7 +1592,7 @@ console.log('⑮ 鐘の着地点は膜の中(▼の上に降りない)');
 }
 
 // v4.1.165(俊克 9/6 pm03:53「2つ仕掛けを仕込んでおこう」＋pm03:58「16:04:45を使えばいい」):
-console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
+console.log('⑯ 仕掛け4つ(BigBang / MeW! / Doomsday / Species)');
 {
  const P=X.meosClockFcParse;
  const c=(w)=>P('<!-- Mew!UFC ⏰ '+w+' -->')||{};
@@ -1644,7 +1644,23 @@ console.log('⑯ 仕掛け2つ(BigBang / MeW!)');
  ok(c('Doomsday').magic.years===13563600, '  値を書かなければ既定の85秒', true);
  ok(!!c('終末時計85s').magic, '  日本語＋値でも読む', true);
  ok(/const MEOS_DOOMSDAY_SEC = 85;/.test(S), '  既定は85秒(2026-01-27・89秒from前進)', true);
- ok(/const MEOS_DOOMSDAY_FACE_SEC = 24 \* 60 \* 60;/.test(S), '★文字盤は24時間(真夜中that一日の終わり)', true);
+ ok(/const MEOS_UNIVERSE_FACE_SEC = 24 \* 60 \* 60;/.test(S), '★文字盤は24時間(真夜中that一日の終わり)= Speciesと共通', true);
+ /* ★★★v4.1.177(俊克 9/7 am09:54「まず、Doomsday付箋を Species付箋 に変えよう。Species6.3sなら、100万年だね。
+    100万年前までの長さ(宇宙時間)を知りたい時も、Species6.3sで調べられる」):
+    終末時計=残り時間(起点が無くても成り立つ) / 種のライフサイクル=長さ(起点が無ければ1秒も測れない)。 */
+ {const sp=c('Species6.3s');
+  ok(!!(sp.magic&&sp.magic.species), '★Species that仕掛けとして読める', !!sp.magic);
+  ok(sp.magic.years===1005302, '★★★Species6.3s = 1,005,302年(≤10万年の切り上げで 1M years)', sp.magic.years);
+  ok(sp.up===true&&sp.dual===false, '★★長さには向きthat無いので顔は1つ(同じ数を2度出さない)', [sp.up,sp.dual]);
+  ok(/^\d{4}-01-01 00:00$/.test(sp.when||'')&&sp.when===c('BigBang').when, '  起点は今年の元日(BigBangと同じ)', sp.when);
+  ok(sp.whenSrc==='Species6.3s', '★★本文の字はそのまま', sp.whenSrc);}
+ ok(c('Species').magic.years===1005302, '  値を書かなければ既定の6.3s(哺乳類の平均種寿命)', c('Species').magic.years);
+ ok(!!c('種6.3s').magic&&c('種6.3s').magic.years===1005302, '★日本語でも書ける(種6.3s)', true);
+ ok(X.meosBigNum(c('Species6.3s').magic.years)==='1M', '  顔に出るのは 1M years', X.meosBigNum(c('Species6.3s').magic.years));
+ /* 恐竜は約17分・人類は約2秒= 人類that恐竜に並ぶとは、2秒を17分にすること。 */
+ ok(Math.abs(c('Species17m').magic.years-162763194)<2, '★★Species17m(恐竜) ≈ 1.63億年', c('Species17m').magic.years);
+ ok(Math.abs(c('Species1.9s').magic.years-303186)<2, '★★Species1.9s(ホモ・サピエンス) ≈ 30万年', c('Species1.9s').magic.years);
+ ok(c('Species6.3s').magic.secs===6.3&&!c('Species6.3s').magic.doomsday, '★終末時計の裏面(↻1947年from)は引き継がthatない', true);
  ok(/String\(\(spec\.whenSrc != null && String\(spec\.whenSrc\)\.trim\(\)\) \? spec\.whenSrc : \(spec\.when \|\| ''\)\)/.test(S),
     '★★書き戻しは「書いてあった字」で(置き換えた起点を書かない)', true);
 }

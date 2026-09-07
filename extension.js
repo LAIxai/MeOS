@@ -9954,8 +9954,19 @@ const MEOS_MEW_ORIGIN = '2026-07-13 16:04:45';          // MeOS v1.0.30 のcommi
 //     `Doomsday100s`(2020〜2022)は 1596万年。同じ1行で並べて比べられる。
 //   ★値を書かない `Doomsday` は 85秒(2026-01-27 発表・89秒from前進)。
 const MEOS_DOOMSDAY_SEC = 85;                           // 値を書かない時の既定(2026-01-27 発表)
-const MEOS_DOOMSDAY_FACE_SEC = 24 * 60 * 60;            // 文字盤は24時間(俊克 pm04:09)
-const MEOS_MAGIC_WHEN_RE = /^(?:BigBang|MeW!|(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*(?:\.[0-9]+)?[ \t]*[smhSMH]?)$/i;
+const MEOS_UNIVERSE_FACE_SEC = 24 * 60 * 60;            // 文字盤は24時間(俊克 pm04:09)= Species と Doomsday の共通の物差し
+// ★★★v4.1.177(俊克 9/7 am09:54「まず、Doomsday付箋を **Species付箋** に変えよう。Species6.3sなら、
+//   100万年だね。100万年前までの長さ(宇宙時間)を知りたい時も、Species6.3sで調べられる」):
+//   ★★★**終末時計は「残り時間」なので、起点が無くても成り立ってしまう**(だから85秒に根拠が無い)。
+//     種のライフサイクルは**始まりと終わりの両方を持つ長さ**なので、起点(ビッグバン)が無ければ1秒も測れない
+//     = 名前を変えると、この付箋の起点が飾りでなく必然になる。
+//   ★★**長さには向きが無い**= `Species6.3s` の100万年は、未来へ100万年でも過去へ100万年でも同じ。
+//     なので顔は1つ(↻の数え上げ)だけ= **同じ数を2度出さない**。終末時計の裏面(↻1947年from)は種には無いので引き継がない。
+//   ★値を書かない `Species` は **6.3s ≈ 100万年**= 哺乳類の平均種寿命の目安(Raup / Lawton–May)。
+//     恐竜(1.6億年)は約17分、人類(30万年)は約2秒。人類が恐竜に並ぶとは、この2秒を17分にすること。
+//   ★日本語でも書ける= `種6.3s`(俊克「日本人にはSpeciesと入力するのは、難しいかもしれない」)。
+const MEOS_SPECIES_SEC = 6.3;                           // 値を書かない時の既定(≈100万年= 哺乳類の平均種寿命)
+const MEOS_MAGIC_WHEN_RE = /^(?:BigBang|MeW!|(?:Species|\u7a2e|Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*(?:\.[0-9]+)?[ \t]*[smhSMH]?)$/i;
 // ★★v4.1.168(俊克 9/6 pm06:39 改良1「BigBangは 13.787b years 18:38.07 にしよう。**dayは要らない**」
 //   ＋改良3「111万年後なら **1.11M years**」): ★大きな数は**丸めずに切り捨て**る
 //   (13.787b / 1.11M ＝ 俊克thatが書いた通りの桁)。
@@ -9986,6 +9997,17 @@ function meosClockMagicWhen(w) {
     const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from(数え上げ)
     return { bigbang: true, years: MEOS_BIGBANG_YEARS, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };   // 経過だけ(俊克 改良1)
   }
+  // ★★★v4.1.177: 種のライフサイクル= 秒を**年の長さ**に直す(向きを持たないので顔は1つ)。
+  //   読みは Doomsday と同じ形(値は本文に置く)= 規則が1つも増えない。
+  const _sp = /^(?:Species|\u7a2e)[ \t]*([0-9]+(?:\.[0-9]+)?)?[ \t]*([smhSMH]?)$/i.exec(t);
+  if (_sp) {
+    const _n = _sp[1] ? Number(_sp[1]) : MEOS_SPECIES_SEC;
+    const _u = String(_sp[2] || 's').toLowerCase();
+    const _sec = (isFinite(_n) && _n > 0) ? (_n * (_u === 'h' ? 3600 : (_u === 'm' ? 60 : 1))) : MEOS_SPECIES_SEC;
+    const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from(BigBangと同じ)
+    return { species: true, secs: _sec, years: Math.round(MEOS_BIGBANG_YEARS * _sec / MEOS_UNIVERSE_FACE_SEC),
+      when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };
+  }
   // ★v4.1.168(俊克 改良3「6.5s のような**小数点**も使えるようにしよう」)= 秒は自分で読む
   //   (meosCycleMs は整数so、ここだけ小数を許す。単位は同じ s/m/h)。
   const _dm = /^(?:Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*([0-9]+(?:\.[0-9]+)?)?[ \t]*([smhSMH]?)$/i.exec(t);
@@ -9996,7 +10018,7 @@ function meosClockMagicWhen(w) {
     const y1 = new Date(new Date().getFullYear() + 1, 0, 1, 0, 0, 0, 0);   // 尻尾は今年の残り(逆算)
     // ★★俊克 改良3「これは**最初の発表日fromの経過時間も**表示しよう」= \u21ba\u21bb の裏表で並べる
     //   (\u21ba=終末までの残り / \u21bb=1947年6月の初出fromの経過)。
-    return { doomsday: true, secs: _sec, years: Math.round(MEOS_BIGBANG_YEARS * _sec / MEOS_DOOMSDAY_FACE_SEC),
+    return { doomsday: true, secs: _sec, years: Math.round(MEOS_BIGBANG_YEARS * _sec / MEOS_UNIVERSE_FACE_SEC),
       when: meosClockFcStamp(y1), cycle: ['1y'], up: false, dual: true };
   }
   // ★v4.1.168(俊克 改良2「MeW!も**経過時間だけ**にして、単に日数、年数を表示しよう」)
@@ -11250,7 +11272,7 @@ function meosApplyTimerLineDecorations(editor) {
             //     2文字目の \u21bb まで緑になっていた。字を見れば `\u21bb\u21ba` の順でも正しい
             //     (俊克「どっちも良いね」への答えthatこれ= 並びを覚えなくてよい)。
             // ★★v4.1.168(俊克 バグ1「終末時計の \u21ba that緑色になっていない」):
-            //   ★★**顔that1つしか出ない時は、書いてある2文字とも同じ色**= 仕掛け(BigBang/MeW!/Doomsday)は
+            //   ★★**顔that1つしか出ない時は、書いてある2文字とも同じ色**= 仕掛け(BigBang/MeW!/Doomsday/Species)は
             //     向きを自分で決めるso、人that `\u21ba\u21bb` と書いても出るのthat1つなら、
             //     字ごとに色を分けると**画面thatが嘘をつく**(v4.1.139は顔that2つの時の話)。
             if (_ar >= 0) {
@@ -11421,6 +11443,7 @@ function meosApplyTimerLineDecorations(editor) {
           //   BigBang  = 13.787b years 18:38.07  (日は要らない= 億年の隣で日は読む値を持たない)
           //   Doomsday = \u21ba 1.11M years 05:41.28 / \u21bb 1947年6月の初出fromの通算 79y 98d …
           //   MeW!     = 0y 55d 02:13.47  (リリースfromの通算)
+          //   Species  = 1M years 18:38.07   (v4.1.177: 長さだけ= 向きを持たないので顔は1つ)
           const _mg2 = c.magic || null;
           const _my = (_mg2 && _mg2.years > 0) ? _mg2.years : 0;
           const _face = (u) => {

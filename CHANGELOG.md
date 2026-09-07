@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.177 (2026-09-07)
+- **`Doomsday` becomes `Species`.** The Doomsday Clock is a *remainder*, and a remainder needs no origin — which is exactly why nobody can tell you what eighty-five seconds is. A species' lifecycle has both ends, so it cannot be stated at all without an origin, and the origin here is the Big Bang. Same dial, same arithmetic, a name that makes the origin necessary rather than decorative. `Species6.3s` is **1,005,302 years** — and 6.3s is what a bare `Species` means, because a million years is roughly the mean lifespan of a mammalian species.
+- **A length has no direction, so `Species` shows one face.** `Species6.3s` answers "how long is a million years on this dial?" whether you are looking forward or back, so there is nothing to put on a second face; the Clock's reverse side — time since the June 1947 cover — belongs to `Doomsday` and stays there. `Doomsday85s` still works, unchanged.
+- **`種6.3s` too.** Typing `Species` on a Japanese keyboard is a detour, and the house already had the pattern: `終末時計` next to `Doomsday`.
+- Scale check, for the essay this came out of: dinosaurs at 164 million years are about **17 minutes**; *Homo sapiens* at 300,000 years is about **2 seconds**. Reaching a dinosaur-length run means turning 2 seconds into 17 minutes.
+
 ### v4.1.176 (2026-09-06)
 - **Only the numerators are white, so white means *this is the part that moves*.** `×4/4` and `×1/3` now carry their counts in white and their totals in their own colour — cyan for the interval, orange for the set. A collapsed row only offers its two ends as places to put anything, which is one short of what four colours need, so the badge row keeps a single space visible: invisible in itself, useful as an anchor, and it reads as a gap anyway. Each fraction is one decoration split across `before` and `after`, never two decorations at one spot — that ordering is undefined, as v4.1.139 found out.
 
