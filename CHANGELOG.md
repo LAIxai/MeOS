@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.181 (2026-09-07)
+- **The README now says where ↩ Back is.** It was named three times without ever saying that it appears in the status bar, and only after the bell has actually moved you — so a reader looked for it in Me Dock and found nothing. It is also moved next to the sentence about being carried away, where it belongs; sitting after the test-paper clause it read as a non sequitur.
+
 ### v4.1.180 (2026-09-07)
 - **README wording fixed: the clock does not shut the membrane.** "Holds the membrane shut" reads as if the membrane were folded closed. What a clock set from Pseudo-WYSIWYG actually holds is the *view* — you cannot get back to the raw data, so the 👻 answers stay hidden until the bell.
 

@@ -62,9 +62,11 @@ repeat), how long each turn lasts, which way it runs, and 🔐 if this one must 
 or double-click one and type. Everything the panel writes goes on the line, where you can also just type it
 by hand — on a phone, in any editor, with no MeOS at all.
 
-When the time comes MeOS **brings you to that membrane**, so write the next job inside it. Set from
-Pseudo-WYSIWYG it **holds that membrane in Pseudo view** instead: you cannot get back to the raw data, so
-your own 👻 answers stay hidden until the bell — a test paper you cannot walk out of. **↩ Back** returns you to whatever you were doing.
+When the time comes MeOS **brings you to that membrane**, so write the next job inside it — and once it has
+moved you, **↩ Back** appears in the status bar at the bottom of the window, naming the membrane you were in,
+to put you back where the bell found you. Set from Pseudo-WYSIWYG the clock **holds that membrane in Pseudo
+view** instead: you cannot get back to the raw data, so your own 👻 answers stay hidden until the bell — a
+test paper you cannot walk out of.
 
 **The bell counts you down the way it is called at an archery line.** Three seconds of sound a minute out,
 five at thirty, and from ten seconds it does not stop — then a high, clear tone at the moment itself. Near is
@@ -177,7 +179,8 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   moment the bell rings you mark your own work: **one file is the question paper, the answer sheet and the
   answer key**, and it can be sat again tomorrow. Set from any other view it is simply a **bell** — write the
   next job inside a membrane and MeOS brings you to it when the time comes. The schedule lives in the place it
-  is about, the way a 👻 note does; **↩ Back** returns you to whatever you were doing.
+  is about, the way a 👻 note does; once it has moved you, **↩ Back** appears in the status bar and returns you
+  to whatever you were doing.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once - MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
@@ -435,7 +438,7 @@ MeOS stands on the shoulders of:
 - **🔖 Bookmarks — leap there, and back** — up to 3 "place" bookmarks with a one-click **Front Anchor** (the line you're writing right now). Two bookmarks make a **bidirectional jump**: there, and back, again and again. A safety net so you never lose your home.
 - **▶◀ Reference marks (point membranes)** — named, grouped, grep-able in-text bookmarks that live in your text and travel with Git. Create a group via **Edit▾ → Reference** (pick a canonical symbol: ※ † ‡ * §), issue marks with the **💤 button** (one click parks a "do it later" point; the new mark becomes **F**), and cycle a group with the **※ button** (one click jumps to F, click again to walk the group). Footnotes (†n) are simply the most classic use of reference marks — the mark sits in the text, the explanation lives with the mark.
 - **Three views, one per membrane (v4.0)** — 👁🥩 **Normal** (decorated; the caret line shows its raw data) · **Raw🥩** (*this* membrane shows its raw source — membrane lanes and all decoration step aside — while every other membrane keeps its own setting) · **Pseudo👁 Pseudo-WYSIWYG** (nothing raw at all; 👻 and plain strikethroughs disappear, so a draft reads the way a reader will meet it). A membrane with no setting of its own follows the one enclosing it, and a setting is only written when it differs from what encloses it. Saved in the file's own **mMETA** membrane, so it travels with the file through Git. *(The `kakaka` spell still works — it now toggles Raw for the membrane you are in.)*
-- **⏰ A clock on a membrane (v4.0)** — set it from ⏰ ▾: a date wheel on top, a time wheel below, or just type `18:30`. How precisely you write it says what kind of plan it is — a time alone means today (or tomorrow if it has passed), a day and month means this year, a full date means that one day. From **Pseudo-WYSIWYG** the clock **holds** the membrane: no way out until the time is up, and because the answers are already in the file — hidden in 👻, exactly where you wrote them — **one file becomes the question paper, the answer sheet and the answer key**. The bell rings, the membrane returns to Normal, and you mark your own work; tomorrow the same file is a test again, or a memory sheet. From **any other view** it is a bell instead: write the next job inside a membrane, set a time, and **MeOS brings you to it when the time comes** — the schedule lives in the place it is about, the way a 👻 note does, and **↩ Back** takes you home. It rings out loud as well as on screen, it counts down in the membrane's own closing comment (so it is waiting for you exactly where you finish), ⏰ lists every clock you have running and jumps to any of them, and **it is kept in the file, so it survives a restart and travels with the file**.
+- **⏰ A clock on a membrane (v4.0)** — set it from ⏰ ▾: a date wheel on top, a time wheel below, or just type `18:30`. How precisely you write it says what kind of plan it is — a time alone means today (or tomorrow if it has passed), a day and month means this year, a full date means that one day. From **Pseudo-WYSIWYG** the clock **holds** the membrane: no way out until the time is up, and because the answers are already in the file — hidden in 👻, exactly where you wrote them — **one file becomes the question paper, the answer sheet and the answer key**. The bell rings, the membrane returns to Normal, and you mark your own work; tomorrow the same file is a test again, or a memory sheet. From **any other view** it is a bell instead: write the next job inside a membrane, set a time, and **MeOS brings you to it when the time comes** — the schedule lives in the place it is about, the way a 👻 note does, and **↩ Back** appears in the status bar to take you home. It rings out loud as well as on screen, it counts down in the membrane's own closing comment (so it is waiting for you exactly where you finish), ⏰ lists every clock you have running and jumps to any of them, and **it is kept in the file, so it survives a restart and travels with the file**.
 
 > ⚙️ **Recommended setting:** `"editor.wrappingIndent": "none"`
 > Keeps wrapped lines flush, so they sit cleanly next to the gutter membrane lanes.
