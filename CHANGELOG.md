@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.183 (2026-09-07)
+- **The Japanese in the notes is written in Japanese again.** Two old lines in this file, and the release notes for v4.0 and v4.1, had drifted into a house shorthand where English `that` and `so` stood in for Japanese particles. It is fine in source comments; it has no business in anything a reader meets. All of it is out.
+
 ### v4.1.182 (2026-09-07)
 - **Tag & Go explained in one line instead of five.** "The sixth row is a door" asked the reader to count rows in a panel they had not seen yet; the picture already shows where the door is, so the words no longer point at it. What was left needed saying plainly: **Tag & Go is an H-TOC wearing a ⏰ mask** — write the tag while you are making the membrane, call it to the door later, warp there, and hang a clock on it if you want one. And once a clock is on a membrane, you do not go to it: it comes and gets you.
 
@@ -2836,12 +2839,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
   **飛んだ番号は、ファイルが手つかずである証拠**。
 - **同期させるものが無い.** 命令が名乗るのは**種類**であって実物ではない —
   `A↑1(白/緑)` は「上付きが1つ」という意味で、`-1.` が「番号付きの項目」を意味するのと同じ。
-  同じ種類が並んだら**出現順**で結ぶ。so**本文を書き換えても命令は壊れない**し、
+  同じ種類が並んだら**出現順**で結ぶ。なので**本文を書き換えても命令は壊れない**し、
   ファイルは**腐りうるラベルも番号も持たない**。2つめを指したい時だけ `A↑1#2(…)` と書く。
   どちらの形で書くかは **Me Dock の「Format ▼」→ `□ Folding Comment(FC) below`** の1つのチェックで決まる。
   チェックが決めるのは**これから書くもの**だけで、**すでに書かれたものはそのまま**。
   過去を救うのは🐱(旧記法→新記法の移行)の役目so、**移行の道は1本しか作らない**(v4.0.164)。
-  指定行は**ただのテキスト**so、並べ替えや一部削除は**その行で直接**できる。
+  指定行は**ただのテキスト**なので、並べ替えや一部削除は**その行で直接**できる。
   指定行は**その行が持つもの全部**を受けられる —— 見出しも、上付きも、そして**文の途中にいる**
   ハイライトや取消線も。**1つの命令につき1つのコメント**なので、
   **箱の数がそのまま命令の数**になる —— `<!-- Mew!FC ~~(赤/) --><!-- Mew!FC ==(白/黄) -->`。
