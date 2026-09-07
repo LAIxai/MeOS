@@ -175,6 +175,11 @@ nothing is proprietary. Open it in MeOS and the comments disappear: you read pro
   is about, the way a 👻 note does; **↩ Back** returns you to whatever you were doing.
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.1-timed-membrane.png" alt="A timed membrane - the origin, the repeat and the running countdown live in the text, and when the bell rings MeOS takes you to that membrane" width="92%"><br>
+  <sub><b>NEW in v4.1 — stick a &#9200; note on a membrane, and the timer brings you back to it.</b> Write the <b>origin</b> where the time goes (<code>2030-10-05 10:00 &#8634;&#8635;5y</code>): an arrow is the direction, the figure is the length of one turn, and <code>(&hellip;)&times;N</code> is how many turns — so <code>&#8634;(3m 1m)&times;3</code> is a boxing round and <code>&#8635;((30s 15s)&times;4 1m)&times;3</code> is a HIIT set. The origin is never rewritten when the bell rings, so <b>what you set is still there years later</b>; the running figure is drawn, not stored. One minute out it sounds for three seconds, thirty seconds out for five, and from ten seconds it does not stop — then <b>MeOS carries you to the membrane itself</b>, where what you meant to do is already written. The &#9200; list is a table of contents with a time axis, and <b>Tag&amp;Go</b> narrows it to one <code>#tag</code> — <b>Anywhere = Tag&amp;Go, When = &#9200;</b>.</sub>
+</p>
+
+<p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4-comment-is-the-command.png" alt="The same file, both ways at once - MeOS renders the prose while the cursor line shows the plain Markdown underneath" width="92%"><br>
   <sub><b>NEW in v4.0 — the comment is the command, and the data is still plain Markdown.</b> A heading, a numbered list that sub-numbers itself, a link that warps <b>by membrane name</b> — every instruction sits in an HTML comment at the <b>end of the line</b>, so it never comes between your words. Put the cursor on a line (the orange arrows) and MeOS hands that line back to you raw: that is the whole file, valid Markdown everywhere else on Earth. Bold / italic / link and heading / bullet each collapse into <b>one button</b>, and <b>🚫 takes any of it back with no selecting</b> — just put the cursor inside.</sub>
 </p>

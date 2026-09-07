@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.178 (2026-09-07)
+- **The v4.1 hero picture is in the README.** One frame for the whole of ⏰: the origin and the repeat written in the text, the countdown standing at the head of the badge row, the ⏰ list, Tag&Go, and the picker — with a five-yearly medical check-up as the example, because a clock you set once and forget for four years is the case ordinary timers cannot hold.
+
 ### v4.1.177 (2026-09-07)
 - **`Doomsday` becomes `Species`.** The Doomsday Clock is a *remainder*, and a remainder needs no origin — which is exactly why nobody can tell you what eighty-five seconds is. A species' lifecycle has both ends, so it cannot be stated at all without an origin, and the origin here is the Big Bang. Same dial, same arithmetic, a name that makes the origin necessary rather than decorative. `Species6.3s` is **1,005,302 years** — and 6.3s is what a bare `Species` means, because a million years is roughly the mean lifespan of a mammalian species.
 - **A length has no direction, so `Species` shows one face.** `Species6.3s` answers "how long is a million years on this dial?" whether you are looking forward or back, so there is nothing to put on a second face; the Clock's reverse side — time since the June 1947 cover — belongs to `Doomsday` and stays there. `Doomsday85s` still works, unchanged.
