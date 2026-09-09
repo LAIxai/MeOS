@@ -5049,12 +5049,18 @@ async function meosRepairDuplicateMembraneNames(editor) {
   const B = 'Rename all ' + allSide.jobs.length;
   // ★v4.2.6(俊克「パネルに出る説明をもっとコンパクトにしようよ」): 2行＋例3つ。
   //   言うべきは「何が壊れているか」と「なぜ残りは触らないか」の2つだけ。
-  const msg = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' shared names / '
-    + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 \u23f0 on ' + clockSide.names.length + '.\n'
-    + 'Only the \u23f0 ones break (a clock is keyed on the name). A repeated name is otherwise how the H-TOC finds a topic.\n'
-    + head;
-  const buttons = clockSide.jobs.length ? [A, B, 'Cancel'] : [B, 'Cancel'];
-  const pick = await vscode.window.showWarningMessage(msg, ...buttons);
+  const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' shared names / '
+    + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 \u23f0 on ' + clockSide.names.length + '.';
+  const msgDetail = 'Only the \u23f0 ones break \u2014 a clock is keyed on the name. A repeated name is otherwise how the H-TOC finds a topic.\n\n'
+    + head + '\n\nThe first of each keeps its name.';
+  // ★★★v4.2.7(俊克「パネルが5秒〜10秒で消えちゃったよ。なぜ?」・2度目):
+  //   ★★★**VS Code の通知は、ボタンthat付いていても引っ込む**。warning にしても消えた。
+  //     押されるまで必ず残るのは**モーダル**だけso、そこへ移す。
+  //   ★★これは我慢して受け入れる形でもある= 583個の名前を書き換えるかを訊く場面so、
+  //     **画面を止めて訊く**方that正しい(俊克「一手間かけて、実行させる類いの処理」)。
+  //   ★モーダルは自前で Cancel を持つso、こちらでは足さない(押さずに閉じれば undefined)。
+  const buttons = clockSide.jobs.length ? [A, B] : [B];
+  const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, ...buttons);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
   if (pick === A) jobs = clockSide.jobs;
   else if (pick === B) jobs = allSide.jobs;

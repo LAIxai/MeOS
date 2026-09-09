@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.7 (2026-09-09)
+- **The question waits for you now.** Making it a warning was not enough — a VS Code notification retires on its own even when it is holding buttons, so twice it vanished mid-read. The only thing that stays until it is answered is a modal, and a modal is the honest shape for this anyway: it is asking whether to rewrite hundreds of names, which is worth stopping the window for. Cancel comes with the dialog, so there is no longer one of ours beside it.
+
 ### v4.2.6 (2026-09-09)
 - **`Check & repair membranes with ⏰`** — the name now says what it reaches, not just what it does. And the question it asks is two lines instead of five: what is broken, and why the rest is left alone.
 
