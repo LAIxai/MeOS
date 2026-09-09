@@ -5023,11 +5023,14 @@ async function meosRepairDuplicateMembraneNames(editor) {
     }
   }
   if (!jobs.length) { vscode.window.showInformationMessage('MeOS: \ud83d\udc31 no two membranes share a name \u2014 nothing to repair.'); return; }
+  // ★★★v4.2.4: 数えた結果、直すものthat在った= ここで🐱を点ける(v4.0.111の「点灯=直すものthat在る」)。
+  meosPostMewLit(true);
   const head = dupNames.slice(0, 6).join(' / ') + (dupNames.length > 6 ? (' \u2026 +' + (dupNames.length - 6)) : '');
   const pick = await vscode.window.showInformationMessage(
     'MeOS \ud83d\udc31 ' + dupNames.length + ' name(s) are shared by ' + (jobs.length + dupNames.length) + ' membranes. '
     + 'Give the later ones a fresh timestamp? The first of each keeps its name.\n' + head,
     { modal: false }, 'Repair ' + jobs.length, 'Cancel');
+  try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
   if (pick !== ('Repair ' + jobs.length)) return;
   deferRefreshCount++;
   try {
@@ -17889,6 +17892,16 @@ async function meosSweepOrphanDirectives(editor, lines) {
     try { refresh(editor); } catch (_) { }
   } catch (_) { }
 }
+// ★★★v4.2.4(俊克 9/9 am11:07「🐱が色が付いてないのに、メニューが出るのはおかしいよね。でも裏で
+//   チェックしたら無駄なので、こうしようか。メニューを実行すると、先ずチェックのみ実行する。
+//   重複していれば猫を明るい🐱にする。そして、個数を出し、修復しますか?と聞く」):
+//   ★★★**点灯は「直すものが在る」という合図**(v4.0.111)。重複も直すものなので、意味は1つのまま。
+//   ★★裏で毎回229,134行を数えるのは無駄so、**訊かれた時だけ数える**。
+//     = 🐱が暗いのは「重複が無い」ではなく「まだ訊いていない」。メニューが答えの出し口。
+//   ★答え終わったら本来の姿へ戻す(force=true で数え直さずに送り直す)。
+function meosPostMewLit(on) {
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mewLit', on: !!on }); } catch (_) { }
+}
 function meosPostMewState(count, force) {
   if (!force && count === meosMewLastCount) return; // 変わった時だけ送る(スクロール中のメッセージ洪水を避ける)
   meosMewLastCount = count;
@@ -26684,6 +26697,7 @@ if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持
   var _tg=document.getElementById('clk-tagin');if(_tg)_tg.value=m.tag||'';   /* v4.1.70 */
   clkPaintRep();}}catch(e){}return;}
 if(m&&m.type==='clockRead'){clkTakeIn(m);return;}   /* v4.1.169 */
+if(m&&m.type==='mewLit'){const _b=document.getElementById('mew-btn');if(_b)_b.classList.toggle('on',!!m.on);return;}
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
 var _sg=(m.mode||'normal')+'|'+(Number(m.until)||0)+'|'+(Number(m.nextUntil)||0)+'|'+(Number(m.stopUndo)||0)+'|'+(m.scope||'')+'|'+(m.own!==false?'1':'0')+'|'+(m.ringing?'R':'')+'|'+_cs;
 if(_sg!==vmSig){vmSig=_sg;viewMode=m.mode||'normal';vmUntil=Number(m.until)||0;vmNextUntil=Number(m.nextUntil)||0;vmNextUp=!!m.nextUp;vmNextStep=Number(m.nextStep)||0;vmStopUndo=Number(m.stopUndo)||0;vmScope=m.scope||'';vmOwn=(m.own!==false);vmRing=!!m.ringing;vmClocks=m.clocks||[];

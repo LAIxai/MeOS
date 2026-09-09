@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.4 (2026-09-09)
+- **The menu checks first, and the 🐱 lights up if it found something.** A dark cat with a live menu under it looked wrong, and it was — but counting a quarter of a million lines in the background, over and over, on the chance that something is wrong, is worse. So the cat being dark does not mean *there are no duplicates*; it means *nobody has asked yet*, and the menu is where you ask. Run it and the count is taken; if two membranes share a name the cat lights before the question is put to you, and goes back to what it was once you have answered. Lit has meant *there is something here to fix* since v4.0.111, and a duplicated name is something to fix, so the signal still says one thing.
+- The number on the cat's shoulder is untouched — that is the count of unsigned Me notation, and two counts sharing one badge would be two facts wearing one face.
+
 ### v4.2.3 (2026-09-09)
 - **`Check & repair duplicate membrane names`.** The item shows you the count and then writes, so a name that only said *Check* was promising less than it does. A menu item should name the thing it will do.
 

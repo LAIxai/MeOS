@@ -1774,6 +1774,16 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/<span class="fmt-cell fmt-cell-head mew-cell">/.test(S2),
     '★★▾を持ったので fmt-cell を戻す(v4.0.110の前提that戻った= 右辺that閉じる)', true);
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
+ /* ★★★v4.2.4(俊克「メニューを実行すると先ずチェックのみ。重複していれば猫を明るい🐱にする。
+    そして個数を出し、修復しますか?と聞く」): 点灯=直すものが在る合図(v4.0.111)。重複も直すもの。 */
+ ok(/meosPostMewLit\(true\);[\s\S]{0,400}showInformationMessage/.test(S2),
+    '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
+ ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
+    '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);
+ ok(/no two membranes share a name[\s\S]{0,60}return;[\s\S]{0,200}meosPostMewLit\(true\)/.test(S2),
+    '★重複が無ければ点けない(先に返す)', true);
+ ok(/m\.type==='mewLit'\)\{const _b=document\.getElementById\('mew-btn'\)/.test(S2),
+    '  面の側は点けるだけ(数字は触らない= 数字は署名の無いMe記法の数)', true);
  /* ★★★v4.2.1(俊克「メニューがとんでもなく離れている」): 位置は計算でなく定義。 */
  ok(/\.mew-cell \.mew-pop\{position:absolute;top:calc\(100% \+ 2px\);right:0/.test(S2),
     '★★★メニューは親(.mew-cell)へCSSで貼る= 座標を測らない', true);
