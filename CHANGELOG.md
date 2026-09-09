@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.13 (2026-09-09)
+- `⏰ Rename 9 membranes with a timer`.
+
 ### v4.2.12 (2026-09-09)
 - **Nine clocks, nine membranes.** The counts disagreed because the repair kept the first membrane of a name and renamed all the rest, clock or no clock — so nine duplicate names carrying a clock came out as eighteen renames. But the membranes without a clock never needed touching: give the clock-bearing one a fresh name and its key is unique, while every repeated name the H-TOC relies on stays exactly as it was. Now the ⏰ option renames the membranes that hold a clock, and nothing else, so the number on the button is the number of clocks it repairs.
 - Buttons are short again: `⏰ Rename 9 membranes with a clock` and `Rename all 583 duplicates`.

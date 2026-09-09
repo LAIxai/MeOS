@@ -5063,7 +5063,7 @@ async function meosRepairDuplicateMembraneNames(editor) {
   //   ★★数には何の数かを付ける(俊克 疑問1「9個…なぜボタンでは18なのか?」)= 名前と膜を両方書く。
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
   // ★v4.2.12(俊克 改良1「横長のボタンは奇妙だね」): ボタンは短く。理由は上の1行と数thatが語る。
-  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes with a clock';
+  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes with a timer';
   const B = 'Rename all ' + allSide.jobs.length + ' duplicates';
   const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
     + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
