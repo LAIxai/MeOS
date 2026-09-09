@@ -1777,8 +1777,11 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★暗い所に暗いパネルを出さない(クリーム色= 出ていることthat一目で分かる)', true);
  ok(/type:'membraneDupShow'/.test(S2) && /message\.type === 'membraneDupShow'/.test(S2),
     '★★★直す前に見に行ける(何も書かない)', true);
- ok(/function mewDupStep\(k,btn\)/.test(S2) && /mewDupIx\[k\]=\(i\+1\)%a\.length/.test(S2),
-    '★★★押すたびに同じ名前の次の1つへ(1つ見せるだけでは重複の証拠にならない)', true);
+ ok(/function mewDupStep\(k,btn,back\)/.test(S2)
+    && S2.indexOf("c=(c<0)?(back?n-1:0):((c+(back?-1:1)+n)%n)")>=0,
+    '★★★押すたびに次の1つへ・shiftで1つ前へ(進む道には戻る道を対で付ける)', true);
+ ok(/addEventListener\('click',ev=>mewDupStep\('c',mewDupSeeC,ev&&ev\.shiftKey\)\)/.test(S2),
+    '★shiftを見ている(押した物that自分で向きを決める)', true);
  ok(/out\.push\(\{ line: q\.start, name: id, ni, ci, cn: list\.length \}\)/.test(S2),
     '★何番目の名前の何個目かを、見本that自分で持つ', true);
  ok(S2.indexOf("+(sp.ni||1)+'/'+_nn+'-'+(sp.ci||1)")>=0,
