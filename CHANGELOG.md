@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.23 (2026-09-09)
+- **The counter says which name and which copy: `(2-1)/9`.** Walking through the duplicates, a running total told you how far you had gone but not where a name ended and the next began. Now the first number is the name, the second is the copy inside it, and the last is how many names there are — so `(1-1)/9 → (1-2)/9 → (2-1)/9` reads as *first name, first copy; first name, second copy; second name, first copy*.
+
 ### v4.2.22 (2026-09-09)
 - **See one walks.** Showing a single membrane proves nothing — a name is only *duplicated* once you have seen the second one. Press again and it goes to the next membrane sharing that name, then the next, counting as it goes: `Next 2/3`. The panel stays open and keeps the focus, so stepping through is one click each, and the status bar names the membrane and its line number for anyone who wants to write it down before repairing.
 

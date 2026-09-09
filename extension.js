@@ -5052,14 +5052,20 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
   //   同じ名前の2つ目・3つ目まで歩けて、初めて自分の目で確かめたことになる。
   //   so見本は1つでなく**並び**を渡す= 名前ごとに、その名前を持つ膜を全部、順に。
   const _clockNameSet = new Set(clockSide.names.map(n => n.replace(/ \u00d7[0-9]+$/, '')));
+  // ★v4.2.23(俊克「(1-1)/9→(1-2)/9…(2-1)/9…のようにすれば、分かりやすいよね」):
+  //   ★★**何番目の名前の、何個目か**を数字that自分で言う= 名前thatが変わった所も一目で分かる。
   const _spots = (wantClock) => {
     const out = [];
+    let ni = 0;
     for (const [id, list] of byName) {
       if (list.length < 2) continue;
       if (_clockNameSet.has(id) !== wantClock) continue;
+      ni++;
+      let ci = 0;
       for (const q of list.slice().sort((a, b) => a.start - b.start)) {
-        out.push({ line: q.start, name: id });
-        if (out.length >= 200) return out;                       // 面へ送る量は抑える
+        ci++;
+        out.push({ line: q.start, name: id, ni, ci, cn: list.length });
+        if (out.length >= 300) return out;                       // 面へ送る量は抑える
       }
     }
     return out;
@@ -26291,7 +26297,9 @@ if(mewDupAll)mewDupAll.addEventListener('click',()=>{vscode.postMessage({type:'m
 function mewDupStep(k,btn){const a=mewDupSpots[k]||[];if(!a.length)return;
 const i=mewDupIx[k]%a.length;mewDupIx[k]=(i+1)%a.length;const sp=a[i];
 vscode.postMessage({type:'membraneDupShow',line:sp.line,name:sp.name});
-if(btn)btn.textContent='👁 Next '+(i+1)+'/'+a.length;}
+/* ★v4.2.23: (何番目の名前 - その中の何個目)/名前の総数 */
+const _nn=a[a.length-1]&&a[a.length-1].ni?a[a.length-1].ni:1;
+if(btn)btn.textContent='👁 ('+(sp.ni||1)+'-'+(sp.ci||1)+')/'+_nn;}
 if(mewDupSeeC)mewDupSeeC.addEventListener('click',()=>mewDupStep('c',mewDupSeeC));
 if(mewDupSeeA)mewDupSeeA.addEventListener('click',()=>mewDupStep('a',mewDupSeeA));
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&mewDup&&mewDup.classList.contains('on')){closeMewDup();}});
