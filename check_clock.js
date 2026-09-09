@@ -1798,8 +1798,9 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★★メニューは親(.mew-cell)へCSSで貼る= 座標を測らない', true);
  ok(!/mewMenuBtn\.getBoundingClientRect\(\)/.test(S2),
     '★★測る道が残っていない(bm-popのfixed＋計算を持ち込まない)', true);
- ok(/id="mew-dupfix"[^>]*>Check &amp; repair membranes with &#9200;</.test(S2),
-    '★★名前は「する事」と「効く範囲」を言う(⏰の付いた膜を調べて直す)', true);
+ ok(/id="mew-dupfix"[^>]*>&#9200; Repair the duplicates that have timers</.test(S2)
+    && /id="mew-dupfix-all"[^>]*>Repair every duplicate name</.test(S2),
+    '★★2つの項目that一目で違う(頭の字from違える= 同じに見えると重複と読まれる)', true);
  ok(/_meosClockScanCache\.set\(doc, \{ version: doc\.version, value: out \}\)/.test(S2),
     '★★★⏰の全行スキャンに控えを付けた(229,134行で11.0ms → 0.0ms)', true);
 }

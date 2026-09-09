@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.18 (2026-09-09)
+- **Two menu items that started with the same four words read as one item printed twice.** They now differ from the first character: `⏰ Repair the duplicates that have timers` and `Repair every duplicate name`.
+- *On the panel's buttons: they stack because macOS stacks them, and it does so once a title is long — with three buttons, or with two long ones. Shortening them makes them sit in a row, and also lets the panel fall to its minimum width, which is the same lever pulling both ways. The way out is not in the extension: `"window.dialogStyle": "custom"` makes VS Code draw the dialog itself, with the buttons in a row at the bottom right.*
+
 ### v4.2.17 (2026-09-09)
 - **The panel went tall because the buttons got short.** A macOS alert takes its width from the longest unbroken run of text inside it, and until v4.2.15 that was the button — `⏰ Rename 20 membranes with timers` was holding the panel open. Trimming it let the alert fall to its minimum width, and the same message then wrapped into twice the lines. The width cannot be set, but it can be pushed, and with only two buttons left there is no longer any cost to a long label: the descriptive text is back, and the panel is wide again.
 
