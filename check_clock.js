@@ -143,7 +143,9 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   const S11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(!/id="clk-dir"/.test(S11), '\u2605\u2605\u2605向きの駒は面から消えた(選ばせない)', true);
   ok(/dual:true,cycle:/.test(S11), '\u2605\u2605\u2605面は常に \u21ba\u21bb を頼む', true);
-  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
+  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
+  ok(/const _pMark = \(\(_up0 \|\| _dl0\) && _org && _org\.getTime\(\) <= Date\.now\(\)\)/.test(S11),
+     '\u2605\u2605今(=もう過去)を起点にしたら p と名乗らせる(役を字に焼き付ける)', true);
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
   ok(/pointer-events:none/.test(S11) && /\.clk-set\.on\{/.test(S11),
      '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
@@ -1768,6 +1770,15 @@ console.log('㊲ f/p の印 — 未来を狙ったストップウォッチは、
     '★★足すのは未来を狙った時だけ', true);
  ok(S3.indexOf("+ 'f/' + meosClockFcStamp(new Date()) + 'p'")>=0,
     '★fは小文字(Fは曜日の金曜と紛れる)', true);
+ /* ★v4.2.29(俊克 改良1「fを緑色にし、pを水色にしよう」＋改良2「Nowを押してSetすると、Nowは
+    押した瞬間に過去になるのでpを付けるべき」)。 */
+ {const b2=q('2026-09-10 01:12p \u21ba\u21bb3m');
+  ok(b2.when==='2026-09-10 01:12', '★★★p だけの形= 起点thatそのまま数え始め(字は落として値は両方へ)', b2.when);
+  ok(!!b2.pAt, '  p の値も持つ', b2.pAt);
+  ok(b2.whenSrc==='2026-09-10 01:12p', '  本文の字はそのまま', b2.whenSrc);}
+ ok(/dirDown\.push\(new vscode\.Range\(i, _fAt, i, _fAt \+ 1\)\)/.test(S3)
+    && /dirUp\.push\(new vscode\.Range\(i, _pAt2, i, _pAt2 \+ 1\)\)/.test(S3),
+    '★★f=緑(逆算と同じ) / p=水色(SWと同じ)= 色の出所は矢印と同じ1つの定数', true);
 }
 console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / 🐱▾で全体を修復');
 {

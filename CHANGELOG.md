@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.29 (2026-09-10)
+- **f is green, p is cyan** — the colours the two faces already wear, ↺ for the bell ahead and ↻ for the counting, drawn from the same pair of constants so the letter and the arrow can never disagree.
+- **Set a clock to *now* and it is written `…p`.** Now is already the past by the time it is written, so it is a starting point and says so. Marking it is not decoration: without the letter the same line reads as a plain origin next year, and the role it was given today is lost. A lone `p` is read as both the origin and the start.
+
 ### v4.2.28 (2026-09-10)
 - **A stopwatch aimed at a future time now keeps its start in the text, so restarting the editor no longer sets it back to zero.** The moment a clock was armed was held in memory and nowhere else, so reopening the file re-armed it and the elapsed count began again from nothing — quietly, with no sign that anything had been lost. It is written into the line instead: `2027-09-09 15:30f/2026-09-09 23:29p`, where **f** is the bell you are aiming at and **p** is where the counting starts.
 - **Nobody types either letter.** Write the time you mean; if it is in the future MeOS adds the pair when the clock starts, and if it is in the past that time *is* the start and nothing is added — which is what makes *count as if I began at 4:30 this morning* still work. The letter is lowercase because `F` is already Friday in a membrane name.

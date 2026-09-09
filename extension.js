@@ -10442,6 +10442,12 @@ function meosClockFcParse(text) {
   try {
     const _fp = /^(.+?)[ \t]*f[ \t]*\/[ \t]*(.+?)[ \t]*p$/i.exec(body);
     if (_fp) { body = _fp[1].trim(); const _d = meosParseStampLoose(_fp[2].trim()); if (_d) pAt = _d.getTime(); }
+    else {
+      // ★v4.2.29: `p` だけの形= **起点thatそのまま数え始め**(今を書いた時・過去を書いた時)。
+      //   印は役を字に焼き付けるためso、字は落として値は両方に使う。
+      const _pOnly = /^(.+?)[ \t]*p$/i.exec(body);
+      if (_pOnly) { const _d2 = meosParseStampLoose(_pOnly[1].trim()); if (_d2) { body = _pOnly[1].trim(); pAt = _d2.getTime(); } }
+    }
   } catch (_) { }
   try {
     const _mg = meosClockMagicWhen(body);
@@ -11593,6 +11599,21 @@ function meosApplyTimerLineDecorations(editor) {
               }
             }
           }
+          // ★★v4.2.29(俊克 2026.09.10 am01:07 改良1「逆算タイマーは緑色なので、fを緑色にし、
+          //   pを水色にしよう」): ★★**印の色は、その印that指す顔の色**= f(未来の鐘)は逆算と同じ緑、
+          //   p(数え始め)はストップウォッチと同じ水色。色の出所は矢印と**同じ1つの定数**so、
+          //   2つの物差しthatできない → [[feedback_one_source_for_mark_count_action]]
+          try {
+            if (!_rawHere && c.pAt) {
+              const _fp = /(\d)[ \t]*(f)[ \t]*\/[\s\S]*?(p)(?![A-Za-z0-9])/.exec(txt);
+              if (_fp) {
+                const _fAt = _fp.index + _fp[0].indexOf('f');
+                const _pAt2 = _fp.index + _fp[0].lastIndexOf('p');
+                dirDown.push(new vscode.Range(i, _fAt, i, _fAt + 1));
+                dirUp.push(new vscode.Range(i, _pAt2, i, _pAt2 + 1));
+              }
+            }
+          } catch (_) { }
           // ★v4.1.77: 日付の右に曜日を**描く**= 本文には1文字も増やさない(出す物と、覚える物を分ける)。
           try {
             const _dm = _rawHere ? null : /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/.exec(txt);   // v4.1.161: 曜日も字
@@ -12825,7 +12846,13 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     const _org = atDate ? ((atDate instanceof Date) ? atDate : new Date(Number(atDate))) : new Date(Date.now() + ms);
     _meosPseudoScopes.delete(lk);
     if (opts && opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
-    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0 });
+    // ★★v4.2.29(俊克 改良2「Nowを押してからSetボタンを押すと、Nowは押した瞬間に過去になるので、
+    //   pを付けるべきだよ」): ★★**今は、書いた瞬間にもう過去**= それthat数え始めso `p` と名乗らせる。
+    //   ★印を付けるのは**役を字に焼き付けるため**= 付けないと、同じ生データthat時とともに役を変える
+    //   (今日の起点は、来年には「過去の起点」に見える) → [[project_clock_fp_stamps]]
+    //   ★未来を指定した時は付けない= 掛かった瞬間に `f/…p` の対thatが書かれる(v4.2.28)。
+    const _pMark = ((_up0 || _dl0) && _org && _org.getTime() <= Date.now()) ? (meosClockFcStamp(_org) + 'p') : '';
+    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark });
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + (_up0 ? '\u21bb' : '\u21ba') + _cy0.join('/')
