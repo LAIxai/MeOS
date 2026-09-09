@@ -9966,7 +9966,7 @@ const MEOS_UNIVERSE_FACE_SEC = 24 * 60 * 60;            // 文字盤は24時間(
 //     恐竜(1.6億年)は約17分、人類(30万年)は約2秒。人類が恐竜に並ぶとは、この2秒を17分にすること。
 //   ★日本語でも書ける= `種6.3s`(俊克「日本人にはSpeciesと入力するのは、難しいかもしれない」)。
 const MEOS_SPECIES_SEC = 6.3;                           // 値を書かない時の既定(≈100万年= 哺乳類の平均種寿命)
-const MEOS_MAGIC_WHEN_RE = /^(?:BigBang|MeW!|(?:Species|\u7a2e|Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*(?:\.[0-9]+)?[ \t]*[smhSMH]?)$/i;
+const MEOS_MAGIC_WHEN_RE = /^(?:Big[ \t]*Bang|MeW!|(?:Species|\u7a2e|Doomsday|\u7d42\u672b\u6642\u8a08)[ \t]*[0-9]*(?:\.[0-9]+)?[ \t]*[smhSMH]?)$/i;
 // ★★v4.1.168(俊克 9/6 pm06:39 改良1「BigBangは 13.787b years 18:38.07 にしよう。**dayは要らない**」
 //   ＋改良3「111万年後なら **1.11M years**」): ★大きな数は**丸めずに切り捨て**る
 //   (13.787b / 1.11M ＝ 俊克thatが書いた通りの桁)。
@@ -9993,7 +9993,10 @@ const MEOS_DOOMSDAY_FIRST = new Date(1947, 5, 1, 0, 0, 0, 0);   // 初出= Bulle
 function meosClockMagicWhen(w) {
   const t = String(w == null ? '' : w).trim();
   if (!MEOS_MAGIC_WHEN_RE.test(t)) return null;
-  if (/^BigBang$/i.test(t)) {
+  // ★v4.1.184(俊克 9/9 am09:56『『Mew!UFC ⏰ Big Bang』でも動くようにして下さい』):
+  //   ★★**人が書く形は1つでなくていい**= 英語としては Big Bang の方が普通なので、
+  //     間の空白を許すだけでいい(規則は1つも増えない・大小も従来どおり問わない)。
+  if (/^Big[ \t]*Bang$/i.test(t)) {
     const y0 = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);   // 尻尾は今年の元日from(数え上げ)
     return { bigbang: true, years: MEOS_BIGBANG_YEARS, when: meosClockFcStamp(y0), cycle: ['1y'], up: true, dual: false };   // 経過だけ(俊克 改良1)
   }

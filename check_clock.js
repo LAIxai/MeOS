@@ -1608,6 +1608,10 @@ console.log('⑯ 仕掛け4つ(BigBang / MeW! / Doomsday / Species)');
   ok(String(m.cycle)==='1y'&&m.up===true&&m.dual===false, '★★リリースfromの通算だけ(週の輪はやめた)', [m.cycle,m.up,m.dual]);
   ok(m.whenSrc==='MeW!', '★★本文の字はそのまま', m.whenSrc);}
  ok(!!(c('bigbang').magic), '  大文字小文字は問わない', true);
+ /* ★v4.1.184(俊克「『Mew!UFC ⏰ Big Bang』でも動くようにして下さい」): 人が書く形は1つでなくていい。 */
+ ok(!!(c('Big Bang').magic&&c('Big Bang').magic.bigbang), '★Big Bang(空白あり)でも読む', !!c('Big Bang').magic);
+ ok(c('Big Bang').whenSrc==='Big Bang', '  本文の字はそのまま', c('Big Bang').whenSrc);
+ ok(!!c('big bang').magic, '  空白あり＋小文字でも読む', true);
  ok(!c('2026-09-06 12:30').magic, '★普通の時刻は今までどおり(仕掛けは完全一致の時だけ)', true);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/const MEOS_BIGBANG_YEARS = 13787000000;/.test(S), '  年数は Planck 2018 の 13.787 Gyr', true);

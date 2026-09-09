@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.184 (2026-09-09)
+- **`Big Bang` with a space works too.** In English the two words are usually written apart, and there was no reason to insist on one of the two spellings. The rule count does not go up — the space is simply allowed, and case is ignored as before.
+
 ### v4.1.183 (2026-09-07)
 - **The Japanese in the notes is written in Japanese again.** Two old lines in this file, and the release notes for v4.0 and v4.1, had drifted into a house shorthand where English `that` and `so` stood in for Japanese particles. It is fine in source comments; it has no business in anything a reader meets. All of it is out.
 
