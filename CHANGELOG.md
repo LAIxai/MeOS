@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.8 (2026-09-09)
+- **`656 membranes share 73 names — 9 of those names carry a ⏰.`** Three numbers stood in a row and only the last one had lost its noun: `⏰ on 9` said nothing to anyone who had not written it. A number needs to say what it counts.
+
 ### v4.2.7 (2026-09-09)
 - **The question waits for you now.** Making it a warning was not enough — a VS Code notification retires on its own even when it is holding buttons, so twice it vanished mid-read. The only thing that stays until it is answered is a modal, and a modal is the honest shape for this anyway: it is asking whether to rewrite hundreds of names, which is worth stopping the window for. Cancel comes with the dialog, so there is no longer one of ours beside it.
 

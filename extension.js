@@ -5049,8 +5049,10 @@ async function meosRepairDuplicateMembraneNames(editor) {
   const B = 'Rename all ' + allSide.jobs.length;
   // ★v4.2.6(俊克「パネルに出る説明をもっとコンパクトにしようよ」): 2行＋例3つ。
   //   言うべきは「何が壊れているか」と「なぜ残りは触らないか」の2つだけ。
-  const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' shared names / '
-    + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 \u23f0 on ' + clockSide.names.length + '.';
+  // ★v4.2.8(俊克「『\u23f0 on 9.』の『on 9.』が意味不明だよね」): 3つの数that並ぶのに、
+  //   最後だけ主語thatが抜けていた。**数には、何の数かを付ける**。
+  const msgTitle = 'MeOS \ud83d\udc31 ' + (allSide.jobs.length + allSide.names.length) + ' membranes share '
+    + allSide.names.length + ' names \u2014 ' + clockSide.names.length + ' of those names carry a \u23f0.';
   const msgDetail = 'Only the \u23f0 ones break \u2014 a clock is keyed on the name. A repeated name is otherwise how the H-TOC finds a topic.\n\n'
     + head + '\n\nThe first of each keeps its name.';
   // ★★★v4.2.7(俊克「パネルが5秒〜10秒で消えちゃったよ。なぜ?」・2度目):
