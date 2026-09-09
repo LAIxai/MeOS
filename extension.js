@@ -5000,7 +5000,7 @@ function meosStampAfter(base, seedMs, taken) {
 //   ★so これは自動でなく**人that呼んだ時だけ**の口にする(🐱と同じ立て付け・[[project_now_not_bulk]])。
 //   ★★**数を見せてから書く**= 知らせると動かすを分ける(sweepClockMeta と同じ作法)。
 //   ★残すのは**一番上の1つ**= 先に在った物that元の名前を持つ(後から来た物thatが名乗り直す)。
-async function meosRepairDuplicateMembraneNames(editor, mode) {
+async function meosRepairDuplicateMembraneNames(editor) {
   if (!editor || !editor.document) { vscode.window.showInformationMessage('MeOS: open a file first.'); return; }
   const doc = editor.document;
   let pairs = [];
@@ -5058,19 +5058,14 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
   //   ★上に残すのは1行だけ(俊克 改良1)= 何を残して何を打ち直すか。
   //   ★★数には何の数かを付ける(俊克 疑問1「9個…なぜボタンでは18なのか?」)= 名前と膜を両方書く。
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
-  // ★★★v4.2.16(俊克「想定通りに行かないね。もしかして、パネルの横幅の問題? それも指定できないの?」
-  //   ＋「パネル右上に閉じるための×ボタンも付けられないのか?」):
-  //   ★★★**幅も×も段組も、どれも指定できない**= これはmacOSのネイティブなアラートで、
-  //     VS Code のAPIは項目の並び順しか渡せない。字を短くしても縦積みのままだったのは、
-  //     **長さでなく個数**の話so= macOSはボタンthat3つ以上あると縦に積む。
-  //   ★★→ 狙いの配置(メインthat右端・隣にCancel)を得る道は1つ= **ボタンを2つにする**。
-  //     so選択肢はパネルから**🐱▾メニューへ移す**= 選ぶ場所thatメニュー、確かめる場所thatパネル。
-  //     危ない方(全部打ち直す)thatが自分の項目を持つのも、この方that正しい。
-  const _clockMode = (mode !== 'all');
-  const side = _clockMode ? clockSide : allSide;
-  if (!side.jobs.length) {
-    vscode.window.showInformationMessage('MeOS: \ud83d\udc31 '
-      + (_clockMode ? 'no duplicate name has a \u23f0 \u2014 nothing to repair.' : 'no two membranes share a name \u2014 nothing to repair.'));
+  // ★★★v4.2.19(俊克「結局、縦積みになるなら、最初のままでいいよね」):
+  //   ★★★**縦積みは避けられない**と分かった(macOSは字that長ければ2つでも積む・3つでも積む)。
+  //     so「横並びにするために選択肢を分ける」という v4.2.16 の理由thatが消えた= 1枚に戻す。
+  //   ★★選択肢は**並べて見せた方that選べる**= ⏰だけと全部を、同じ画面で見比べられる。
+  //   ★幅はボタンの字that決めるので、説明のある長い字のままにする(v4.2.17で分かった所)。
+  //   ★横並びthat要るなら、それは設定の話= `"window.dialogStyle": "custom"`(VS Code自身that描く)。
+  if (!allSide.jobs.length) {
+    vscode.window.showInformationMessage('MeOS: \ud83d\udc31 no two membranes share a name \u2014 nothing to repair.');
     return;
   }
   // ★★★v4.2.4: 数えた結果、直すものthat在った= ここで🐱を点ける(v4.0.111の「点灯=直すものthat在る」)。
@@ -5078,22 +5073,18 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
   meosPostMewLit(true);
   const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
     + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
-  const msgDetail = (_clockMode
-    ? 'Rename the ' + side.jobs.length + ' membranes that carry a timer. Every other membrane keeps its name \u2014 a repeated name is how the H-TOC finds a topic.'
-    : 'Rename ' + side.jobs.length + ' membranes so that no name is used twice. The first membrane of each name keeps it.')
-    + '\nA renamed membrane gets a fresh timestamp; nothing else changes.';
-  // ★★★v4.2.17(俊克「縦積みの時に、最初のころは横長だったのに、最後に縦長になったのはなぜ?」):
-  //   ★★★**縦長にしたのは私**= v4.2.15でボタンを短くした瞬間、パネルを横に押し広げていた物that
-  //     消えて最小幅に落ちた。macOSのアラートの幅は**中で一番長い一続きの文字**で決まる。
-  //   ★★→ **幅は指定できないthat、押すことはできる**。ボタンthat2つになった今なら、長い字でも
-  //     横並びのままso、字を戻して幅を稼ぐ。
-  const A = _clockMode
-    ? ('\u23f0 Rename ' + side.jobs.length + ' membranes with timers')
-    : ('Rename all ' + side.jobs.length + ' duplicates');
-  const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, A);
+  const msgDetail = 'Only a duplicate name that carries a timer is broken \u2014 a clock is stored under its membrane\u2019s name.\n'
+    + 'Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.\n'
+    + 'A renamed membrane gets a fresh timestamp; nothing else changes.';
+  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes with timers';
+  const B = 'Rename all ' + allSide.jobs.length + ' duplicates';
+  const buttons = clockSide.jobs.length ? [A, B] : [B];
+  const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, ...buttons);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
-  if (pick !== A) return;
-  jobs = side.jobs;
+  if (pick === A) jobs = clockSide.jobs;
+  else if (pick === B) jobs = allSide.jobs;
+  else return;
+  if (!jobs.length) return;
   if (!jobs.length) return;
   deferRefreshCount++;
   try {
@@ -23957,7 +23948,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for membranes whose name is used twice and that carry a timer - a clock is stored under its membrane name, so a duplicate name breaks it. Only those membranes are renamed; every other repeated name is left alone.">&#9200; Repair the duplicates that have timers</button><button class="bm-pop-item" id="mew-dupfix-all" data-tip="Check the whole file for every duplicate name and make them all unique - the first membrane of each name keeps it. Note that a repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate.">Repair every duplicate name</button></div></span>
+<span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -26237,8 +26228,6 @@ function closeMewPop(){if(mewPop)mewPop.classList.remove('on');}
 if(mewMenuBtn)mewMenuBtn.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();
 mewPop.classList.toggle('on',!mewPop.classList.contains('on'));if(typeof hideTocTip==='function')hideTocTip();});
 if(mewDupFix)mewDupFix.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupFix'});closeMewPop();});
-const mewDupFixAll=document.getElementById('mew-dupfix-all');
-if(mewDupFixAll)mewDupFixAll.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupFixAll'});closeMewPop();});
 /* v0.9.99972(改良2 俊克): ▾メニュー=参照グループ選択(💤保留は別枠)+発行+Switch Front。行クリック=作業グループを切替。 */
 const refSubmenu=document.getElementById('ref-submenu');function closeRefSubmenu(){if(refSubmenu)refSubmenu.classList.remove('on');
 }function openRefSubmenu(catName,trigEl){if(!refSubmenu)return;const arr=(window.__refGroups||[]).filter(g=>catName==='doc'?g.hasMembrane:!g.hasMembrane);
@@ -27743,9 +27732,9 @@ function toggleMeDock(editorOverride) {
     //     (私は『ピン留め』を勧めたthat、俊克の形の方that規則を1つに保つ)。
     //   ★★★探す相手は**膜**であって時計ではない= ⏰の無い膜も出す。行って、そこで掛ければよい。
     //   ★訊かれた時だけ走る(入口を叩いた時)so、カーソル毎に全部の膜を読まない。
-    if (message && (message.type === 'membraneDupFix' || message.type === 'membraneDupFixAll')) {   // v4.1.186 / v4.2.16
+    if (message && message.type === 'membraneDupFix') {   // v4.1.186: 🐱▾「膜の重複チェック＆修復」
       const _ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
-      try { await meosRepairDuplicateMembraneNames(_ed, message.type === 'membraneDupFixAll' ? 'all' : 'clock'); } catch (_) { }
+      try { await meosRepairDuplicateMembraneNames(_ed); } catch (_) { }
       return;
     }
     if (message && message.type === 'clockTagList') { meosPostTagList(); return; }

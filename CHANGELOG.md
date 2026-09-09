@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.19 (2026-09-09)
+- **Both choices are back on one panel.** Splitting them into two menu items was only ever a way to get the buttons into a row, and the buttons will not go into a row: macOS stacks them once a title is long, whether there are two or three. With the reason gone, the split goes too — and side by side is where the two options belong anyway, since choosing between them means comparing them. The long labels stay, because they are what keeps the panel wide.
+
 ### v4.2.18 (2026-09-09)
 - **Two menu items that started with the same four words read as one item printed twice.** They now differ from the first character: `⏰ Repair the duplicates that have timers` and `Repair every duplicate name`.
 - *On the panel's buttons: they stack because macOS stacks them, and it does so once a title is long — with three buttons, or with two long ones. Shortening them makes them sit in a row, and also lets the panel fall to its minimum width, which is the same lever pulling both ways. The way out is not in the extension: `"window.dialogStyle": "custom"` makes VS Code draw the dialog itself, with the buttons in a row at the bottom right.*

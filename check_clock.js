@@ -1766,17 +1766,17 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★▼と▲とバッジ行の3つとも直す(片方だけ直すと対that壊れる)', true);
  /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
     ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
- ok(/async function meosRepairDuplicateMembraneNames\(editor, mode\)/.test(S2), '★ファイル全体の修復that在る(⏰だけ / 全部)', true);
+ ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
  ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
     '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
- ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, A\)/.test(S2),
-    '★★★渡すボタンは1つ＋Cancel(macOSは3つ以上を縦に積む)', true);
- ok(/'\\u23f0 Rename ' \+ side\.jobs\.length \+ ' membranes with timers'/.test(S2),
+ ok(/const buttons = clockSide\.jobs\.length \? \[A, B\] : \[B\];/.test(S2),
+    '★★★選択肢は1枚に並べる(縦積みは避けられないと分かったso、分ける理由that消えた)', true);
+ ok(/'\\u23f0 Rename ' \+ clockSide\.jobs\.length \+ ' membranes with timers'/.test(S2),
     '★★★幅は指定できないthat、一番長い字で押し広げられる(短くすると最小幅に落ちる)', true);
- ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, A\)/.test(S2),
-    '★★★押されるまで残るのはモーダル・渡すボタンは1つ', true);
- ok(/id="mew-dupfix-all"/.test(S2) && /membraneDupFixAll/.test(S2),
-    '★★★選ぶ場所はメニュー・確かめる場所はパネル(選択肢をボタンから外へ)', true);
+ ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, \.\.\.buttons\)/.test(S2),
+    '★★★押されるまで残るのはモーダル', true);
+ ok(!/mew-dupfix-all/.test(S2) && !/membraneDupFixAll/.test(S2),
+    '★分けた道は残っていない(1枚に戻した)', true);
  ok(/const _hasClock = \(q\) => clockLines\.some\(ln => ln >= q\.start && ln <= q\.end \+ 2\);/.test(S2),
     '★★★⏰を持つのは膜ごとに見る(名前でなく行の位置で決める)', true);
  ok(/id="mew-menu-btn"/.test(S2)&&/id="mew-dupfix"/.test(S2), '★🐱に▾と項目that在る', true);
@@ -1789,7 +1789,7 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
  ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
     '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);
- ok(/nothing to repair\.'\)\);[\s\S]{0,300}meosPostMewLit\(true\)/.test(S2),
+ ok(/nothing to repair\.'\);[\s\S]{0,40}return;[\s\S]{0,300}meosPostMewLit\(true\)/.test(S2),
     '★重複が無ければ点けない(先に返す= 何も無い時に猫を点けない)', true);
  ok(/m\.type==='mewLit'\)\{const _b=document\.getElementById\('mew-btn'\)/.test(S2),
     '  面の側は点けるだけ(数字は触らない= 数字は署名の無いMe記法の数)', true);
@@ -1798,9 +1798,8 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★★メニューは親(.mew-cell)へCSSで貼る= 座標を測らない', true);
  ok(!/mewMenuBtn\.getBoundingClientRect\(\)/.test(S2),
     '★★測る道が残っていない(bm-popのfixed＋計算を持ち込まない)', true);
- ok(/id="mew-dupfix"[^>]*>&#9200; Repair the duplicates that have timers</.test(S2)
-    && /id="mew-dupfix-all"[^>]*>Repair every duplicate name</.test(S2),
-    '★★2つの項目that一目で違う(頭の字from違える= 同じに見えると重複と読まれる)', true);
+ ok(/id="mew-dupfix"[^>]*>Check &amp; repair duplicate names</.test(S2),
+    '★項目は1つ(選択肢はパネルの中で並べる)', true);
  ok(/_meosClockScanCache\.set\(doc, \{ version: doc\.version, value: out \}\)/.test(S2),
     '★★★⏰の全行スキャンに控えを付けた(229,134行で11.0ms → 0.0ms)', true);
 }
