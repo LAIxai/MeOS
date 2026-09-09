@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.6 (2026-09-09)
+- **`Check & repair membranes with ⏰`** — the name now says what it reaches, not just what it does. And the question it asks is two lines instead of five: what is broken, and why the rest is left alone.
+
 ### v4.2.5 (2026-09-09)
 - **A repeated name is not automatically a fault, and the repair had to learn that.** Asked what the `Repair 583` button meant, the honest answer required going and looking: one of the names it offered to rewrite appears thirty times, once inside each day's entry, always as the same note about the same past date. That is not an accident — **a membrane name is the H-TOC's search term, not a pointer**, so thirty membranes answering to one name is how you find all thirty places on one topic. Renaming them would have destroyed the very thing they were for.
 - **What actually breaks is the clock**, because a clock is keyed on the name and two membranes answering to it leave nothing able to say which one it is on. So the repair now defaults to the duplicates that carry a ⏰, and says how many of each kind it found before you choose. Renaming every duplicate is still offered, on its own button, next to the sentence explaining what it costs.
