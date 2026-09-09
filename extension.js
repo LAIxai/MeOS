@@ -4993,6 +4993,64 @@ function meosStampAfter(base, seedMs, taken) {
   }
   return base + '_' + meosMembraneStamp(new Date(seedMs));
 }
+// ★★★v4.1.186(俊克 9/9 am10:23「重複する膜の修復を…ファイル全体で実行するようにしましょう。
+//   他の修復は見える範囲だけだけど、**膜の重複は、全部直さないと意味ない**からね」):
+//   ★★★**見える範囲だけ**という🐱の作法は、ここでは通らない= 重複は「離れた2つ」の関係so、
+//     片方that画面の外に在るのthat普通。**関係を直すには両方を見なければならない**。
+//   ★so これは自動でなく**人that呼んだ時だけ**の口にする(🐱と同じ立て付け・[[project_now_not_bulk]])。
+//   ★★**数を見せてから書く**= 知らせると動かすを分ける(sweepClockMeta と同じ作法)。
+//   ★残すのは**一番上の1つ**= 先に在った物that元の名前を持つ(後から来た物thatが名乗り直す)。
+async function meosRepairDuplicateMembraneNames(editor) {
+  if (!editor || !editor.document) { vscode.window.showInformationMessage('MeOS: open a file first.'); return; }
+  const doc = editor.document;
+  let pairs = [];
+  try { pairs = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
+  if (!pairs.length) { vscode.window.showInformationMessage('MeOS: no membranes in this file.'); return; }
+  const byName = new Map(), taken = new Set();
+  for (const p of pairs) { if (!byName.has(p.id)) byName.set(p.id, []); byName.get(p.id).push(p); taken.add(p.id); }
+  const jobs = [];
+  let seed = Date.now();
+  const dupNames = [];
+  for (const [id, list] of byName) {
+    if (list.length < 2) continue;
+    dupNames.push(id + ' \u00d7' + list.length);
+    const rest = list.slice().sort((a, b) => a.start - b.start).slice(1);   // 一番上は据え置き
+    for (const p of rest) {
+      const base = String(p.id).replace(MEOS_NAME_TS_RE, '').replace(/_+$/, '') || 'name';
+      const next = meosStampAfter(base, seed, taken);
+      seed += 1000; taken.add(next);
+      jobs.push({ old: p.id, next, start: p.start, end: p.end });
+    }
+  }
+  if (!jobs.length) { vscode.window.showInformationMessage('MeOS: \ud83d\udc31 no two membranes share a name \u2014 nothing to repair.'); return; }
+  const head = dupNames.slice(0, 6).join(' / ') + (dupNames.length > 6 ? (' \u2026 +' + (dupNames.length - 6)) : '');
+  const pick = await vscode.window.showInformationMessage(
+    'MeOS \ud83d\udc31 ' + dupNames.length + ' name(s) are shared by ' + (jobs.length + dupNames.length) + ' membranes. '
+    + 'Give the later ones a fresh timestamp? The first of each keeps its name.\n' + head,
+    { modal: false }, 'Repair ' + jobs.length, 'Cancel');
+  if (pick !== ('Repair ' + jobs.length)) return;
+  deferRefreshCount++;
+  try {
+    const ok = await editor.edit(eb => {
+      for (const j of jobs) {
+        for (const ln of [j.start, j.end, j.end + 1]) {
+          if (ln < 0 || ln >= doc.lineCount) continue;
+          const t = doc.lineAt(ln).text;
+          const needle = 'mCN=' + j.old;
+          let at = t.indexOf(needle);
+          while (at >= 0) {
+            eb.replace(new vscode.Range(ln, at + 4, ln, at + 4 + j.old.length), j.next);
+            at = t.indexOf(needle, at + needle.length);
+          }
+        }
+      }
+    });
+    vscode.window.showInformationMessage(ok
+      ? ('MeOS \ud83d\udc31 repaired ' + jobs.length + ' membrane name(s). Save (Cmd+S) to keep it.')
+      : 'MeOS: could not write the repair.');
+  } catch (_) { vscode.window.showInformationMessage('MeOS: could not write the repair.'); }
+  finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); }
+}
 function scheduleRestampPastedMembranes(editor, from, to) {
   if (_meosRestampTimer) { clearTimeout(_meosRestampTimer); _meosRestampTimer = null; }
   _meosRestampTimer = setTimeout(() => { _meosRestampTimer = null; try { restampPastedMembranes(editor, from, to); } catch (_) { } }, 140);
@@ -10336,10 +10394,24 @@ async function meosSetMembraneTags(doc, line, tags) {
 // v4.1.66: 走り読みの結果(生きている⏰の行)を版ごとに控える= **描く側と掛ける側that同じ1つから引く**
 //   ([[feedback_one_source_for_mark_count_action]])。控えは掛け直しの時にだけ作られるso、毎秒は走らない。
 const _meosClockLinesMem = new Map();   // uri -> { version, lines:Set }
+// ★★★v4.1.186(俊克 9/9 am10:29「別の所の無駄も修正して下さい」＋ am10:23「⏰付箋を貼ってあると、
+//   その実行の度に、ファイル全体をスキャンして居たりするのかな?」):
+//   ★★★**この関数だけ自前の控えを持っていなかった**= 呼ばれるたびに全部の行を歩いていた。
+//     俊克の生涯日記(229,134行 / 15.8MB)で実測= **11.0ms**(膜の対は控えthat効いていて0.0ms)。
+//     229,134行を歩いて見つけるのは**180行**。⏰一覧を出す/鐘that鳴る/☑を押す/飛ぶ、その全部で毎回11ms。
+//   ★★控えの作り方は `collectMembraneStructure` と同じ物差し= **版数that変わるまで同じ答え**
+//     (打鍵で版thatが上がれば自然に捨てられる)。so新しい規則は1つも増えない。
+//   ★返すのは同じ配列so、受け取った側thatが中身を書き換えてはいけない(今の呼び出しは
+//     filter / find / map / for-of の読むだけ・2026.09.09 全16箇所を確認)。
+const _meosClockScanCache = new WeakMap();
 function meosClockFcScan(doc) {
   const out = [];
   const _lines = new Set();
   if (!doc || !doc.lineCount) return out;
+  try {
+    const _c = _meosClockScanCache.get(doc);
+    if (_c && _c.version === doc.version) return _c.value;
+  } catch (_) { }
   let pairs = [];
   try { pairs = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { }
   // ★★★v4.1.39(俊克「なんてこった。**あんたthatせっせと仕込んでいた**んだよ。貴方の説明をコピーして、
@@ -10395,6 +10467,7 @@ function meosClockFcScan(doc) {
     out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, tags: _tags, ufc: c.ufc });   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
+  try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
   return out;
 }
 // その行thatが「生きている⏰」かどうか。控えthat古ければ、今までどおり(印だけthat少し余分に出る)。
@@ -23780,7 +23853,7 @@ color:#ffffff;z-index:4;padding:0}
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
 <!-- {* ▲mCN=dock_toc *} -->
-<div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="ref-new-group" data-tip="Create a new reference group here (pick a symbol, name it, add an optional note). The Edit dropdown Reference does the same.">✚ New reference group…</button><button class="bm-pop-item" id="ref-toggle-disabled" data-tip="Put the text cursor ON a reference mark, then run this: a live mark ▶◀ becomes dormant ▷◁ (grey, kept out of numbering/cycling but the note survives), and a dormant ▷◁ becomes live ▶◀ again. Reversible alternative to Delete.">◻ Disable / Enable (mark at cursor)</button><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too). Permanent.">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button><button class="bm-pop-item" id="ref-jump-note" data-tip="Same as ⌘/Ctrl-click on the reference button: Annotated group → jump to its note · Marks / Pending → jump straight to the Front (F). Clicking here does it too.">📖 Jump to note</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="bm-pending-list" id="ref-group-list"></div><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-mode-toggle" data-tip="Switch the working reference between a 💤 pending group and a normal reference group.">⇄ Select 💤 or Normal Ref</button></div>
+<div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button></div><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for membranes that share a name, and give the later ones a fresh timestamp. A name is an address - two membranes answering to it means nothing can say which one a clock is on, or where a jump lands. You are shown the count before anything is written.">膜の重複チェック＆修復</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="ref-new-group" data-tip="Create a new reference group here (pick a symbol, name it, add an optional note). The Edit dropdown Reference does the same.">✚ New reference group…</button><button class="bm-pop-item" id="ref-toggle-disabled" data-tip="Put the text cursor ON a reference mark, then run this: a live mark ▶◀ becomes dormant ▷◁ (grey, kept out of numbering/cycling but the note survives), and a dormant ▷◁ becomes live ▶◀ again. Reversible alternative to Delete.">◻ Disable / Enable (mark at cursor)</button><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too). Permanent.">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button><button class="bm-pop-item" id="ref-jump-note" data-tip="Same as ⌘/Ctrl-click on the reference button: Annotated group → jump to its note · Marks / Pending → jump straight to the Front (F). Clicking here does it too.">📖 Jump to note</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="bm-pending-list" id="ref-group-list"></div><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-mode-toggle" data-tip="Switch the working reference between a 💤 pending group and a normal reference group.">⇄ Select 💤 or Normal Ref</button></div>
 <div class="bm-pop" id="ref-submenu"></div><div class="bm-pop toc-child-pop" id="toc-child-pop" tabindex="-1"></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div><div class="bm-pop dw-name-pop" id="dw-name-pop"><div class="dnp-head">Life Diary — title rule</div><input id="dw-name-tpl" placeholder="✴️?M/DW? YYYY" spellcheck="false"/><div class="dnp-result" id="dw-name-result"></div><div class="dnp-btns"><button class="dnp-save" id="dw-name-save">Save</button><button id="dw-name-reset">Reset to default</button></div><div class="dnp-help"><div class="dnp-ex"><code>✴️?M/DW? YYYY</code><span>✴️7/20M 2026 <i>and</i> 7/20 2026 — the default</span></div><div class="dnp-ex"><code>✴️M/DW YYYY</code><span>✴️7/20M 2026 only — strict</span></div><div class="dnp-ex"><code>YYYY.MM.DD(W)</code><span>2026.07.20(M)</span></div><div class="dnp-leg"><b>W</b> weekday S-M-T-W-t-F-s · <b>MM</b>/<b>DD</b> 2 digits · <b>?</b> may be missing · anything else literal</div></div></div><input class="dw-base-input" id="dw-base-input" spellcheck="false" maxlength="40"/><div class="dw-hint" id="dw-hint"></div>
 <div class="gh-wizard" id="gh-wizard">
 <div class="gh-wizard-head" id="gh-wizard-head" data-tip="Press the 🐙 button, then Cmd+S → your file is saved AND pushed to GitHub. Or leave 🐙 off to save locally only. (Click here to open/close settings.)"><span class="gh-wizard-title">🐙 GitHub: Push 🐙 &amp; Save Me!</span><span class="gh-wizard-status" id="gh-wizard-status"></span><span class="gh-pat-exp" id="gh-pat-exp" style="display:none"></span><button class="gh-wizard-toggle" id="gh-wizard-toggle" data-tip="Open / close">▾</button></div>
@@ -23800,7 +23873,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span></span>
+<span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -26068,6 +26141,19 @@ let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;bmPop.style.
 });});
 if(bmRemove)bmRemove.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkRemove'});closeBmPop();});
 if(bmClear)bmClear.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkClearAll'});closeBmPop();});
+/* ★★★v4.1.186(俊克 9/9 am10:23「🐱にも▼メニューを足して、『膜の重複チェック&修復』というメニューを
+   追加してもいいけどね。これは、一手間かけて、実行させる類いの処理だからね」＋ am10:29「▼メニューを
+   追加しましょう」): ★★★**一手間は、隠れた修飾キーでなく、名前のある項目**。
+   ★🐱の↻は「見える範囲の変換」so、ファイル全体を書き換える仕事を同じボタンに隠さない。
+   ★v4.0.110で🐱から fmt-cell を外したのは「▾を持たないと右辺that開く」からso、▾を持った今、
+     元の形(▾that箱を閉じる)に戻すのthat正しい= あの決めを裏返すのでなく、前提の方that戻った。 */
+const mewMenuBtn=document.getElementById('mew-menu-btn'),mewPop=document.getElementById('mew-pop'),mewDupFix=document.getElementById('mew-dupfix');
+function closeMewPop(){if(mewPop)mewPop.classList.remove('on');}
+if(mewMenuBtn)mewMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!mewPop.classList.contains('on');
+mewPop.classList.toggle('on',willOpen);if(typeof hideTocTip==='function')hideTocTip();if(!willOpen)return;
+const r=mewMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=mewPop.offsetHeight||40,w=mewPop.offsetWidth||200;
+let left=Math.min(r.right-w,window.innerWidth-w-6);if(left<6)left=6;mewPop.style.left=left+'px';mewPop.style.top=Math.max(6,r.top-h-6)+'px';});});
+if(mewDupFix)mewDupFix.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupFix'});closeMewPop();});
 /* v0.9.99972(改良2 俊克): ▾メニュー=参照グループ選択(💤保留は別枠)+発行+Switch Front。行クリック=作業グループを切替。 */
 const refSubmenu=document.getElementById('ref-submenu');function closeRefSubmenu(){if(refSubmenu)refSubmenu.classList.remove('on');
 }function openRefSubmenu(catName,trigEl){if(!refSubmenu)return;const arr=(window.__refGroups||[]).filter(g=>catName==='doc'?g.hasMembrane:!g.hasMembrane);
@@ -26099,7 +26185,8 @@ if(refNewGroupBtn)refNewGroupBtn.addEventListener('click',()=>{vscode.postMessag
 });
 if(refToggleDisabledBtn)refToggleDisabledBtn.addEventListener('click',()=>{vscode.postMessage({type:'referenceToggleDisabled'});
 closeBmPendingPop();});
-document.addEventListener('click',ev=>{if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();
+document.addEventListener('click',ev=>{if(mewPop&&mewPop.classList.contains('on')&&!mewPop.contains(ev.target)&&ev.target!==mewMenuBtn)closeMewPop();
+if(bmPop&&bmPop.classList.contains('on')&&!bmPop.contains(ev.target)&&ev.target!==bmMenuBtn)closeBmPop();
 },true);
 /* v0.9.897: 💤保留栞のプルアップメニュー(通常栞の🔖▾と同じ仕組み)。 */
 function closeBmPendingPop(){if(bmPendingPop)bmPendingPop.classList.remove('on');if(typeof closeRefSubmenu==='function')closeRefSubmenu();
@@ -27570,6 +27657,11 @@ function toggleMeDock(editorOverride) {
     //     (私は『ピン留め』を勧めたthat、俊克の形の方that規則を1つに保つ)。
     //   ★★★探す相手は**膜**であって時計ではない= ⏰の無い膜も出す。行って、そこで掛ければよい。
     //   ★訊かれた時だけ走る(入口を叩いた時)so、カーソル毎に全部の膜を読まない。
+    if (message && message.type === 'membraneDupFix') {   // v4.1.186: 🐱▾「膜の重複チェック＆修復」
+      const _ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+      try { await meosRepairDuplicateMembraneNames(_ed); } catch (_) { }
+      return;
+    }
     if (message && message.type === 'clockTagList') { meosPostTagList(); return; }
     // ★★★v4.1.72(俊克 改良1「**任意のタグを入力できるようにしよう**。そして、既定のタグとして
     //   #tag0 ボタンを置いて、これを押すと、**現在文字カーソルが入っている膜にそのタグが入る**ように

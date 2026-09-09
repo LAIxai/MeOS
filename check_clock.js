@@ -1744,7 +1744,7 @@ console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 /* ★★★v4.1.185(俊克 9/9 am10:04「Mepyでコピーすると自動でTSを変えているよね。手動でコピペした時も、
    ペーストした瞬間に焼き直せば一貫性があるでしょ」): 名前は番地so、同じ名前が2つ在ると⏰は
    どちらの膜か決められない。実測= 生涯日記に⏰を持つ重複名that12件(同名3つの膜まで在った)。 */
-console.log('㉒ 貼った膜の名前がぶつかったらTSを打ち直す');
+console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / 🐱▾で全体を修復');
 {
  const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  const t0=Date.parse('2026-09-09T10:04:00+09:00');
@@ -1764,5 +1764,17 @@ console.log('㉒ 貼った膜の名前がぶつかったらTSを打ち直す');
     '  発火は「膜ごと貼った時」だけ(mCN= と改行を含む挿入)', true);
  ok(/for \(const ln of \[j\.start, j\.end, j\.end \+ 1\]\)/.test(S2),
     '★★▼と▲とバッジ行の3つとも直す(片方だけ直すと対that壊れる)', true);
+ /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
+    ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
+ ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
+ ok(/\.slice\(\)\.sort\(\(a, b\) => a\.start - b\.start\)\.slice\(1\)/.test(S2),
+    '★★残すのは一番上の1つ(先に在った物that元の名前を持つ)', true);
+ ok(/'Repair ' \+ jobs\.length, 'Cancel'/.test(S2), '★★★数を見せてから書く(知らせると動かすを分ける)', true);
+ ok(/id="mew-menu-btn"/.test(S2)&&/id="mew-dupfix"/.test(S2), '★🐱に▾と項目that在る', true);
+ ok(/<span class="fmt-cell fmt-cell-head mew-cell">/.test(S2),
+    '★★▾を持ったので fmt-cell を戻す(v4.0.110の前提that戻った= 右辺that閉じる)', true);
+ ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
+ ok(/_meosClockScanCache\.set\(doc, \{ version: doc\.version, value: out \}\)/.test(S2),
+    '★★★⏰の全行スキャンに控えを付けた(229,134行で11.0ms → 0.0ms)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

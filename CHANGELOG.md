@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.186 (2026-09-09)
+- **The ⏰ scan was walking the whole file every time it was asked anything.** It was the one place that kept no record of its own answer: measured on a 229,134-line diary it cost **11.0 ms** a call — reading a quarter of a million lines to find the 180 that carry a clock — and it is called whenever the ⏰ list is drawn, a bell rings, a box is ticked, or a jump is made. It now keeps its answer until the document version changes, the same yardstick `collectMembraneStructure` has always used, so no new rule arrives with it. **11.0 ms → 0.0 ms.**
+- **🐱 has a ▾, and behind it: check the whole file for membranes that share a name, and repair.** The cat converts what you can see, on purpose. A duplicate name is not something you can see — it is a relation between two places, and the other one is usually off screen, so this job has to reach the whole file and therefore has to be asked for. You are shown how many share a name before a single character is written; the first of each keeps its name, and the later ones get a fresh timestamp.
+- Giving 🐱 a ▾ puts its `fmt-cell` back. v4.0.110 took it off because a cell with no ▾ leaves its right edge open — that reasoning ends the moment the ▾ exists, so this is the old shape returning, not a decision reversed.
+
 ### v4.1.185 (2026-09-09)
 - **Paste a membrane whose name is already taken, and its timestamp is rewritten on landing.** Mepy's Copy/Duplicate has done this since v4.0.383 — a copy is not the same thing again, it is *another* thing — but selecting a membrane and copying it by hand slipped straight past the rule. This lifetime diary had reached three membranes sharing one name, each with its own clock: 1,484 membranes, 649 distinct names, 61 of them duplicated, twelve of those carrying a ⏰. A name is an address, so when two membranes answer to it nothing can say which one the clock is on, or where a jump lands.
 - **Only on a collision.** If the pasted name exists nowhere else, that paste was a *move*, and the name must survive it — the H-TOC's search term, every link, and the clock's own key all point at it. The reason given in v4.0.383 (two of the same name and no way to choose) only exists when they collide.
