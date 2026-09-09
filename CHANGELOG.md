@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.22 (2026-09-09)
+- **See one walks.** Showing a single membrane proves nothing — a name is only *duplicated* once you have seen the second one. Press again and it goes to the next membrane sharing that name, then the next, counting as it goes: `Next 2/3`. The panel stays open and keeps the focus, so stepping through is one click each, and the status bar names the membrane and its line number for anyone who wants to write it down before repairing.
+
 ### v4.2.21 (2026-09-09)
 - **Look before it writes.** Each row of the panel now carries its own **See one** beside its Rename: press it and MeOS goes to one of the membranes it is talking about, closes the panel and writes nothing. Look at it, decide, and open the menu again when you are ready. Repairing hundreds of names on the strength of a number, with no way to see what the number refers to, was asking for trust that had not been earned.
 - **The panel is cream, and it opens under the 🐱 that was pressed.** Dark on dark, floating a third of the way down the dock, it was easy to miss entirely — the first report of it was that nothing had happened.

@@ -5047,9 +5047,23 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
   };
   const clockSide = mkJobs(true), allSide = mkJobs(false);
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
-  // ★v4.2.21: ⏰を持たない側の見本= 全部の中で、⏰の側に入っていない名前の1つ目。
+  // ★★★v4.2.22(俊克「See oneをもう一度押すと、重複している次のも見れるようにする。これで本当に
+  //   重複していることを確認できる」): ★★★**1つ見せるだけでは「重複している」の証拠にならない**。
+  //   同じ名前の2つ目・3つ目まで歩けて、初めて自分の目で確かめたことになる。
+  //   so見本は1つでなく**並び**を渡す= 名前ごとに、その名前を持つ膜を全部、順に。
   const _clockNameSet = new Set(clockSide.names.map(n => n.replace(/ \u00d7[0-9]+$/, '')));
-  const _otherFirst = allSide.jobs.find(j => !_clockNameSet.has(j.old)) || null;
+  const _spots = (wantClock) => {
+    const out = [];
+    for (const [id, list] of byName) {
+      if (list.length < 2) continue;
+      if (_clockNameSet.has(id) !== wantClock) continue;
+      for (const q of list.slice().sort((a, b) => a.start - b.start)) {
+        out.push({ line: q.start, name: id });
+        if (out.length >= 200) return out;                       // 面へ送る量は抑える
+      }
+    }
+    return out;
+  };
   let jobs = clockSide.jobs;
   // ★v4.2.5〜7の経緯: information は自分から引っ込み、warning も引っ込んだ。
   //   押されるまで残る物を探して modal へ行き、v4.2.10 で QuickPick(ignoreFocusOut)に落ち着いた。
@@ -5092,10 +5106,8 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
         //   再度、このツールで修正させるというのが安心でしょ」＋「勝手に直して、どこが直ったか
         //   分らないのは不安だからね」): ★★★**直す前に、自分の目で見る道を用意する**。
         //   見本を1つ渡し、面from「見に行く」を押せるようにする。
-        clockLine: clockSide.jobs.length ? clockSide.jobs[0].start : -1,
-        clockName: clockSide.jobs.length ? clockSide.jobs[0].old : '',
-        otherLine: _otherFirst ? _otherFirst.start : -1,
-        otherName: _otherFirst ? _otherFirst.old : ''
+        clockSpots: _spots(true),
+        otherSpots: _spots(false)
       });
     } catch (_) { }
     return;
@@ -26267,15 +26279,21 @@ mewDupAll=document.getElementById('mew-dup-all'),mewDupSeeC=document.getElementB
 mewDupSeeA=document.getElementById('mew-dup-see-all'),mewDupLblC=document.getElementById('mew-dup-lbl-clock'),
 mewDupLblA=document.getElementById('mew-dup-lbl-all'),mewDupRowC=document.getElementById('mew-dup-row-clock'),
 mewDupRowA=document.getElementById('mew-dup-row-all');
-let mewDupSeen={c:-1,a:-1,cn:'',an:''};
+let mewDupSpots={c:[],a:[]},mewDupIx={c:0,a:0};
 function closeMewDup(){if(mewDup)mewDup.classList.remove('on');}
 if(mewDupX)mewDupX.addEventListener('click',closeMewDup);
 if(mewDupClock)mewDupClock.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupApply',mode:'clock'});closeMewDup();});
 if(mewDupAll)mewDupAll.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupApply',mode:'all'});closeMewDup();});
 /* ★★★v4.2.21(俊克「見つけた⏰膜の1つにジャンプして、それを先ず自分で確認してから、再度、この
    ツールで修正させるというのが安心でしょ」): 見てから直す。押すとパネルは閉じ、何も書かない。 */
-if(mewDupSeeC)mewDupSeeC.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupShow',line:mewDupSeen.c,name:mewDupSeen.cn});closeMewDup();});
-if(mewDupSeeA)mewDupSeeA.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupShow',line:mewDupSeen.a,name:mewDupSeen.an});closeMewDup();});
+/* ★★★v4.2.22: パネルは出したまま・押すたびに同じ名前の次の1つへ。1つ見せるだけでは
+   「重複している」の証拠にならない= 2つ目まで歩けて初めて自分の目で確かめたことになる。 */
+function mewDupStep(k,btn){const a=mewDupSpots[k]||[];if(!a.length)return;
+const i=mewDupIx[k]%a.length;mewDupIx[k]=(i+1)%a.length;const sp=a[i];
+vscode.postMessage({type:'membraneDupShow',line:sp.line,name:sp.name});
+if(btn)btn.textContent='👁 Next '+(i+1)+'/'+a.length;}
+if(mewDupSeeC)mewDupSeeC.addEventListener('click',()=>mewDupStep('c',mewDupSeeC));
+if(mewDupSeeA)mewDupSeeA.addEventListener('click',()=>mewDupStep('a',mewDupSeeA));
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&mewDup&&mewDup.classList.contains('on')){closeMewDup();}});
 /* v0.9.99972(改良2 俊克): ▾メニュー=参照グループ選択(💤保留は別枠)+発行+Switch Front。行クリック=作業グループを切替。 */
 const refSubmenu=document.getElementById('ref-submenu');function closeRefSubmenu(){if(refSubmenu)refSubmenu.classList.remove('on');
@@ -26804,13 +26822,16 @@ if(m&&m.type==='mewLit'){const _b=document.getElementById('mew-btn');if(_b)_b.cl
 if(m&&m.type==='mewDupAsk'){
 if(mewDupTitle)mewDupTitle.textContent='🐱 '+m.names+' duplicate names, used by '+m.membranes+' membranes.';
 /* ★v4.2.20: ボタンの字は短く。説明はそれぞれのtipが持つ。★v4.2.21: 行ごとに「見る」と「直す」。 */
-mewDupSeen={c:(typeof m.clockLine==='number'?m.clockLine:-1),a:(typeof m.otherLine==='number'?m.otherLine:-1),cn:m.clockName||'',an:m.otherName||''};
+mewDupSpots={c:(m.clockSpots||[]),a:(m.otherSpots||[])};mewDupIx={c:0,a:0};
+if(mewDupSeeC)mewDupSeeC.textContent='👁 See one';
+if(mewDupSeeA)mewDupSeeA.textContent='👁 See one';
 if(mewDupLblC)mewDupLblC.textContent='⏰ '+m.clockNames+' names with a timer';
 if(mewDupClock)mewDupClock.textContent='Rename '+m.clockJobs;
 if(mewDupRowC)mewDupRowC.style.display=m.clockJobs?'':'none';
 if(mewDupLblA)mewDupLblA.textContent=m.otherNames+' names with no timer';
 if(mewDupAll)mewDupAll.textContent='Rename all '+m.allJobs;
-if(mewDupSeeA)mewDupSeeA.style.display=(mewDupSeen.a>=0)?'':'none';
+if(mewDupSeeA)mewDupSeeA.style.display=(mewDupSpots.a.length)?'':'none';
+if(mewDupSeeC)mewDupSeeC.style.display=(mewDupSpots.c.length)?'':'none';
 if(mewDupRowA)mewDupRowA.style.display=m.allJobs?'':'none';
 if(mewDup)mewDup.classList.add('on');
 return;}
@@ -27801,7 +27822,8 @@ function toggleMeDock(editorOverride) {
         if (_ed && _ed.document && _ln < _ed.document.lineCount) {
           _ed.selection = new vscode.Selection(_ln, 0, _ln, 0);
           _ed.revealRange(new vscode.Range(_ln, 0, _ln, 0), vscode.TextEditorRevealType.InCenter);
-          try { await vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: false }); } catch (_) { }
+          // ★v4.2.22: 焦点はMe Dockに残す= もう一度「次」を押すのthat一手で済む(俊克「押しっぱなしでいい」)。
+          try { await vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: true }); } catch (_) { }
           vscode.window.setStatusBarMessage('MeOS: ' + (message.name || '') + ' \u2014 line ' + (_ln + 1), 5000);
         }
       } catch (_) { }
