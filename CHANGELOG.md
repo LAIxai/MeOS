@@ -4,8 +4,8 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
-### v4.2.23 (2026-09-09)
-- **The counter says which name and which copy: `(2-1)/9`.** Walking through the duplicates, a running total told you how far you had gone but not where a name ended and the next began. Now the first number is the name, the second is the copy inside it, and the last is how many names there are — so `(1-1)/9 → (1-2)/9 → (2-1)/9` reads as *first name, first copy; first name, second copy; second name, first copy*.
+### v4.2.24 (2026-09-09)
+- **Shift-click steps back.** Comparing two copies means going back to the one before, and without that the only way back was all the way round. A way forward wants a way back beside it.
 
 ### v4.2.23 (2026-09-09)
 - **The counter says which name and which copy: `1/9-1`.** A running total told you how far you had walked but not where one name ended and the next began. The first figure is the name, then how many names there are, then the copy inside that name — `1/9-1 → 1/9-2 → 2/9-1` reads as *first name, first copy; first name, second copy; second name, first copy*.
