@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.25 (2026-09-09)
+- **One timer under a repeated name was never broken, and the repair was about to rename it anyway.** A clock is filed under its membrane's name, so two clocks answering to one name is a collision — but a single clock sharing its name with membranes that carry no clock has nothing competing for the key. The rule now asks for **two or more timers on one name**, and renames from the second onwards, since leaving one is enough to settle which clock the name means. On the diary that took it from twenty membranes down to eleven — the nine it should never have touched were sound.
+
 ### v4.2.24 (2026-09-09)
 - **Shift-click steps back.** Comparing two copies means going back to the one before, and without that the only way back was all the way round. A way forward wants a way back beside it.
 

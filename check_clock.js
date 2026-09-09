@@ -1767,8 +1767,10 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
     ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
  ok(/async function meosRepairDuplicateMembraneNames\(editor, mode\)/.test(S2), '★ファイル全体の修復that在る(数える／打ち直す)', true);
- ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
-    '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
+ ok(/if \(onlyClock && _clocked\.length < 2\) continue;/.test(S2),
+    '★★★⏰that1つしか無い名前は壊れていない(鍵を取り合う相手that居ない)', true);
+ ok(/const rest = onlyClock \? _clocked\.slice\(1\) : sorted\.slice\(1\);/.test(S2),
+    '★★★打ち直すのは2つ目from= 1つ残せばその名前の⏰は1つになる(触る必要の無い物は触らない)', true);
  ok(/type: 'mewDupAsk',[\s\S]{0,400}otherNames: _other/.test(S2),
     '★★★数えて面へ渡すだけ(訊く所は Me Dock の中)', true);
  ok(/\.mew-dup\{display:none;position:absolute;top:calc\(100% \+ 6px\);right:0/.test(S2),
