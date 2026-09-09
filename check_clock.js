@@ -1771,8 +1771,12 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
  ok(/type: 'mewDupAsk',[\s\S]{0,400}otherNames: _other/.test(S2),
     '★★★数えて面へ渡すだけ(訊く所は Me Dock の中)', true);
- ok(/\.mew-dup-row\{display:flex;justify-content:flex-end/.test(S2),
-    '★★★ボタンは横並び・右寄せ(CSSで決める= OSに投げない)', true);
+ ok(/\.mew-dup\{display:none;position:absolute;top:calc\(100% \+ 6px\);right:0/.test(S2),
+    '★★★パネルは押したボタンの真下(親へCSSで貼る= 座標を測らない)', true);
+ ok(/background:#fdf6e3;color:#1e293b/.test(S2),
+    '★★暗い所に暗いパネルを出さない(クリーム色= 出ていることthat一目で分かる)', true);
+ ok(/type:'membraneDupShow'/.test(S2) && /message\.type === 'membraneDupShow'/.test(S2),
+    '★★★直す前に見に行ける(見本の1つへ飛ぶ・何も書かない)', true);
  ok(/id="mew-dup-x"/.test(S2) && /Escape'&&mewDup/.test(S2),
     '★★×とEscで閉じる(勝手に消えない・組込みAPIに無かった物)', true);
  ok(!/mew-dupfix-all/.test(S2) && !/membraneDupFixAll/.test(S2),

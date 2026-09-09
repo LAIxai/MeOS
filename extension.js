@@ -5047,6 +5047,9 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
   };
   const clockSide = mkJobs(true), allSide = mkJobs(false);
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
+  // ★v4.2.21: ⏰を持たない側の見本= 全部の中で、⏰の側に入っていない名前の1つ目。
+  const _clockNameSet = new Set(clockSide.names.map(n => n.replace(/ \u00d7[0-9]+$/, '')));
+  const _otherFirst = allSide.jobs.find(j => !_clockNameSet.has(j.old)) || null;
   let jobs = clockSide.jobs;
   // ★v4.2.5〜7の経緯: information は自分から引っ込み、warning も引っ込んだ。
   //   押されるまで残る物を探して modal へ行き、v4.2.10 で QuickPick(ignoreFocusOut)に落ち着いた。
@@ -5084,7 +5087,15 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
         clockNames: clockSide.names.length,
         clockJobs: clockSide.jobs.length,
         allJobs: allSide.jobs.length,
-        otherNames: _other
+        otherNames: _other,
+        // ★★★v4.2.21(俊克「見つけた⏰膜の1つにジャンプして、それを先ず自分で確認してから、
+        //   再度、このツールで修正させるというのが安心でしょ」＋「勝手に直して、どこが直ったか
+        //   分らないのは不安だからね」): ★★★**直す前に、自分の目で見る道を用意する**。
+        //   見本を1つ渡し、面from「見に行く」を押せるようにする。
+        clockLine: clockSide.jobs.length ? clockSide.jobs[0].start : -1,
+        clockName: clockSide.jobs.length ? clockSide.jobs[0].old : '',
+        otherLine: _otherFirst ? _otherFirst.start : -1,
+        otherName: _otherFirst ? _otherFirst.old : ''
       });
     } catch (_) { }
     return;
@@ -23683,17 +23694,19 @@ color:#ffffff;z-index:4;padding:0}
 .mew-cell .mew-pop .bm-pop-item{white-space:nowrap;overflow:visible;text-overflow:clip;max-width:none}
 /* ★★★v4.2.20(俊克「Me Dockは、そもそも、htmlのブラウザーと同じことができるはずだよね」):
    訊く所も家の中に置く。横並びも×も項目ごとのtipも、ここでは全部ただのCSSとHTML。 */
-.mew-dup{display:none;position:fixed;left:12px;right:12px;top:14%;z-index:80;padding:13px 15px;border:1px solid var(--vscode-panel-border);border-radius:10px;background:var(--vscode-editor-background);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.mew-dup{display:none;position:absolute;top:calc(100% + 6px);right:0;width:min(430px,80vw);z-index:80;padding:12px 14px;border:1px solid #c9a227;border-radius:10px;background:#fdf6e3;color:#1e293b;box-shadow:0 12px 34px rgba(0,0,0,.55);text-align:left}
 .mew-dup.on{display:block}
-.mew-dup-x{position:absolute;top:5px;right:7px;border:0;background:transparent;color:var(--vscode-foreground);opacity:.65;cursor:pointer;font-size:13px;line-height:1;padding:3px 5px;font-family:inherit}
+.mew-dup-x{position:absolute;top:4px;right:6px;border:0;background:transparent;color:#1e293b;opacity:.55;cursor:pointer;font-size:13px;line-height:1;padding:3px 5px;font-family:inherit}
 .mew-dup-x:hover{opacity:1}
-.mew-dup-title{font-weight:800;font-size:12.5px;line-height:1.55;margin:0 20px 9px 0}
-.mew-dup-body{font-size:11.5px;line-height:1.65;opacity:.9;display:flex;flex-direction:column;gap:2px}
-.mew-dup-row{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:13px;flex-wrap:wrap}
-.mew-dup-btn{font-family:inherit;font-size:11.5px;padding:5px 11px;border:1px solid var(--vscode-panel-border);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.14));color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}
-.mew-dup-btn:hover{border-color:#94a3b8}
-.mew-dup-main{background:#a8730e;border-color:#c98a17;color:#fff;font-weight:700}
-.mew-dup-main:hover{background:#c2860f}
+.mew-dup-title{font-weight:800;font-size:12.5px;line-height:1.55;margin:0 18px 8px 0}
+.mew-dup-body{font-size:11px;line-height:1.6;opacity:.82;display:flex;flex-direction:column;gap:1px;margin-bottom:10px}
+.mew-dup-line{display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:nowrap}
+.mew-dup-lbl{font-size:11.5px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mew-dup-btn{font-family:inherit;font-size:11.5px;padding:4px 10px;border:1px solid #b9a26a;border-radius:6px;background:#f2e7c9;color:#1e293b;cursor:pointer;white-space:nowrap;flex:0 0 auto}
+.mew-dup-btn:hover{background:#e8d9ae;border-color:#8a7534}
+.mew-dup-see{background:transparent;border-style:dashed}
+.mew-dup-main{background:#a8730e;border-color:#8a5d09;color:#fff;font-weight:700}
+.mew-dup-main:hover{background:#c2860f;border-color:#8a5d09}
 .fmt-lvl.mew-cycle{cursor:pointer}
 .fmt-btn.mew-btn .mew-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super}
 .enc-btns{display:inline-flex;gap:12px;align-items:stretch;flex:none}
@@ -23947,7 +23960,7 @@ color:#ffffff;z-index:4;padding:0}
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
 <!-- {* ▲mCN=dock_toc *} -->
-<div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>Only a duplicate name that carries a timer is broken &mdash; a clock is stored under its membrane&#8217;s name.</div><div>Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.</div><div>A renamed membrane gets a fresh timestamp; nothing else changes.</div></div><div class="mew-dup-row"><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique - including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate. The first membrane of each name keeps it."></button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. A clock is stored under its membrane name, so a duplicate name breaks it - these are the ones that need repair. Every other repeated name is left exactly as it is."></button></div></div><div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="ref-new-group" data-tip="Create a new reference group here (pick a symbol, name it, add an optional note). The Edit dropdown Reference does the same.">✚ New reference group…</button><button class="bm-pop-item" id="ref-toggle-disabled" data-tip="Put the text cursor ON a reference mark, then run this: a live mark ▶◀ becomes dormant ▷◁ (grey, kept out of numbering/cycling but the note survives), and a dormant ▷◁ becomes live ▶◀ again. Reversible alternative to Delete.">◻ Disable / Enable (mark at cursor)</button><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too). Permanent.">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button><button class="bm-pop-item" id="ref-jump-note" data-tip="Same as ⌘/Ctrl-click on the reference button: Annotated group → jump to its note · Marks / Pending → jump straight to the Front (F). Clicking here does it too.">📖 Jump to note</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="bm-pending-list" id="ref-group-list"></div><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-mode-toggle" data-tip="Switch the working reference between a 💤 pending group and a normal reference group.">⇄ Select 💤 or Normal Ref</button></div>
+<div class="bm-pop" id="bm-pop"><button class="bm-pop-item" id="bm-clear" data-tip="Remove all 🔖 bookmarks at once (💤 pending are kept)">Clear all bookmarks</button><button class="bm-pop-item" id="bm-remove" data-tip="Remove the 🔖 on the current cursor line">Remove this bookmark</button></div><div class="bm-pop bm-pending-pop" id="bm-pending-pop"><button class="bm-pop-item" id="ref-new-group" data-tip="Create a new reference group here (pick a symbol, name it, add an optional note). The Edit dropdown Reference does the same.">✚ New reference group…</button><button class="bm-pop-item" id="ref-toggle-disabled" data-tip="Put the text cursor ON a reference mark, then run this: a live mark ▶◀ becomes dormant ▷◁ (grey, kept out of numbering/cycling but the note survives), and a dormant ▷◁ becomes live ▶◀ again. Reversible alternative to Delete.">◻ Disable / Enable (mark at cursor)</button><button class="bm-pop-item" id="ref-delete-group" data-tip="Pick a reference group and delete ALL of its marks from the document (mMETA entry too). Permanent.">🗑 Delete a group…</button><button class="bm-pop-item" id="ref-delete-all" data-tip="Delete every reference mark of every group from the document.">🧹 Delete ALL groups</button><button class="bm-pop-item" id="ref-jump-note" data-tip="Same as ⌘/Ctrl-click on the reference button: Annotated group → jump to its note · Marks / Pending → jump straight to the Front (F). Clicking here does it too.">📖 Jump to note</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="bm-pending-list" id="ref-group-list"></div><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="ref-mode-toggle" data-tip="Switch the working reference between a 💤 pending group and a normal reference group.">⇄ Select 💤 or Normal Ref</button></div>
 <div class="bm-pop" id="ref-submenu"></div><div class="bm-pop toc-child-pop" id="toc-child-pop" tabindex="-1"></div><div class="bm-pop me-char-pop" id="me-char-pop"><div class="me-char-pop-row head" id="me-char-pop-head">Chars</div><button class="bm-pop-item" id="me-char-recalc" data-tip="Recalculate | The current count becomes the new baseline (ΔChar = 0). Use it when you start a new writing/cutting session.">↺ Reset ΔChar baseline</button><div class="me-char-pop-row"><span>Target</span><input id="me-char-target-input" type="number" min="1" placeholder="e.g. 2000" data-tip="Target = the absolute number of chars this membrane should contain (strikethrough excluded)."/><button class="me-char-pop-btn" id="me-char-target-set">Set</button><button class="me-char-pop-btn" id="me-char-target-clear">Clear</button></div></div><div class="bm-pop dw-name-pop" id="dw-name-pop"><div class="dnp-head">Life Diary — title rule</div><input id="dw-name-tpl" placeholder="✴️?M/DW? YYYY" spellcheck="false"/><div class="dnp-result" id="dw-name-result"></div><div class="dnp-btns"><button class="dnp-save" id="dw-name-save">Save</button><button id="dw-name-reset">Reset to default</button></div><div class="dnp-help"><div class="dnp-ex"><code>✴️?M/DW? YYYY</code><span>✴️7/20M 2026 <i>and</i> 7/20 2026 — the default</span></div><div class="dnp-ex"><code>✴️M/DW YYYY</code><span>✴️7/20M 2026 only — strict</span></div><div class="dnp-ex"><code>YYYY.MM.DD(W)</code><span>2026.07.20(M)</span></div><div class="dnp-leg"><b>W</b> weekday S-M-T-W-t-F-s · <b>MM</b>/<b>DD</b> 2 digits · <b>?</b> may be missing · anything else literal</div></div></div><input class="dw-base-input" id="dw-base-input" spellcheck="false" maxlength="40"/><div class="dw-hint" id="dw-hint"></div>
 <div class="gh-wizard" id="gh-wizard">
 <div class="gh-wizard-head" id="gh-wizard-head" data-tip="Press the 🐙 button, then Cmd+S → your file is saved AND pushed to GitHub. Or leave 🐙 off to save locally only. (Click here to open/close settings.)"><span class="gh-wizard-title">🐙 GitHub: Push 🐙 &amp; Save Me!</span><span class="gh-wizard-status" id="gh-wizard-status"></span><span class="gh-pat-exp" id="gh-pat-exp" style="display:none"></span><button class="gh-wizard-toggle" id="gh-wizard-toggle" data-tip="Open / close">▾</button></div>
@@ -23967,7 +23980,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
-<span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div></span>
+<span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so a duplicate name breaks it.</div><div>A repeated name with no clock may be deliberate: that is how the H-TOC finds a topic.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them first. The panel closes and nothing is written - run the menu again when you are ready to repair.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no clock, before deciding whether it was deliberate.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
@@ -26250,11 +26263,19 @@ if(mewDupFix)mewDupFix.addEventListener('click',()=>{vscode.postMessage({type:'m
 /* ★★★v4.2.20: 訊くパネルも Me Dock の中。押した所と同じ家に出す。 */
 const mewDup=document.getElementById('mew-dup'),mewDupX=document.getElementById('mew-dup-x'),
 mewDupTitle=document.getElementById('mew-dup-title'),mewDupClock=document.getElementById('mew-dup-clock'),
-mewDupAll=document.getElementById('mew-dup-all');
+mewDupAll=document.getElementById('mew-dup-all'),mewDupSeeC=document.getElementById('mew-dup-see-clock'),
+mewDupSeeA=document.getElementById('mew-dup-see-all'),mewDupLblC=document.getElementById('mew-dup-lbl-clock'),
+mewDupLblA=document.getElementById('mew-dup-lbl-all'),mewDupRowC=document.getElementById('mew-dup-row-clock'),
+mewDupRowA=document.getElementById('mew-dup-row-all');
+let mewDupSeen={c:-1,a:-1,cn:'',an:''};
 function closeMewDup(){if(mewDup)mewDup.classList.remove('on');}
 if(mewDupX)mewDupX.addEventListener('click',closeMewDup);
 if(mewDupClock)mewDupClock.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupApply',mode:'clock'});closeMewDup();});
 if(mewDupAll)mewDupAll.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupApply',mode:'all'});closeMewDup();});
+/* ★★★v4.2.21(俊克「見つけた⏰膜の1つにジャンプして、それを先ず自分で確認してから、再度、この
+   ツールで修正させるというのが安心でしょ」): 見てから直す。押すとパネルは閉じ、何も書かない。 */
+if(mewDupSeeC)mewDupSeeC.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupShow',line:mewDupSeen.c,name:mewDupSeen.cn});closeMewDup();});
+if(mewDupSeeA)mewDupSeeA.addEventListener('click',()=>{vscode.postMessage({type:'membraneDupShow',line:mewDupSeen.a,name:mewDupSeen.an});closeMewDup();});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&mewDup&&mewDup.classList.contains('on')){closeMewDup();}});
 /* v0.9.99972(改良2 俊克): ▾メニュー=参照グループ選択(💤保留は別枠)+発行+Switch Front。行クリック=作業グループを切替。 */
 const refSubmenu=document.getElementById('ref-submenu');function closeRefSubmenu(){if(refSubmenu)refSubmenu.classList.remove('on');
@@ -26781,11 +26802,16 @@ if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持
 if(m&&m.type==='clockRead'){clkTakeIn(m);return;}   /* v4.1.169 */
 if(m&&m.type==='mewLit'){const _b=document.getElementById('mew-btn');if(_b)_b.classList.toggle('on',!!m.on);return;}
 if(m&&m.type==='mewDupAsk'){
-if(mewDupTitle)mewDupTitle.textContent='🐱 '+m.names+' duplicate names, used by '+m.membranes+' membranes — '+m.clockNames+' of them have a ⏰.';
-/* ★v4.2.20: ボタンの字は短く。**説明はそれぞれのtipthat持つ**(俊克 v4.2.10の狙い= 組込みAPIには
-   無かった物・Me Dockなら普通に付く)。so横1行に収まる。 */
-if(mewDupClock){mewDupClock.textContent='⏰ Rename '+m.clockJobs;mewDupClock.style.display=m.clockJobs?'':'none';}
+if(mewDupTitle)mewDupTitle.textContent='🐱 '+m.names+' duplicate names, used by '+m.membranes+' membranes.';
+/* ★v4.2.20: ボタンの字は短く。説明はそれぞれのtipが持つ。★v4.2.21: 行ごとに「見る」と「直す」。 */
+mewDupSeen={c:(typeof m.clockLine==='number'?m.clockLine:-1),a:(typeof m.otherLine==='number'?m.otherLine:-1),cn:m.clockName||'',an:m.otherName||''};
+if(mewDupLblC)mewDupLblC.textContent='⏰ '+m.clockNames+' names with a timer';
+if(mewDupClock)mewDupClock.textContent='Rename '+m.clockJobs;
+if(mewDupRowC)mewDupRowC.style.display=m.clockJobs?'':'none';
+if(mewDupLblA)mewDupLblA.textContent=m.otherNames+' names with no timer';
 if(mewDupAll)mewDupAll.textContent='Rename all '+m.allJobs;
+if(mewDupSeeA)mewDupSeeA.style.display=(mewDupSeen.a>=0)?'':'none';
+if(mewDupRowA)mewDupRowA.style.display=m.allJobs?'':'none';
 if(mewDup)mewDup.classList.add('on');
 return;}
 if(m&&m.type==='mewState'){if(typeof window.__renderMew==='function')window.__renderMew(m.count);return;}/* v4.0.68: 🐱の件数は診断のパスから直接来る(スクロールでも追従) */if(m&&m.type==='viewMode'){/* ★★★v4.1.27(俊克 バグ1「インライン編集で未来の日付にしてCmd+Sで保存するとタイマーが再起動する。   しかし\u23f0リストが更新されない」): ★★★**描き直すかどうかの見張りthat、時計を見ていなかった**=   合図はmode/until/scope/own/ringingの5つだけで作られていたので、   一覧の中身thatどれだけ変わっても合図thatが同じなら描き直さない。   ★untilは**カーソルの居る膜**の残り時間so、\u23f0行(閉じ膜の外)に居る間は0のまま動かない= 気づけない。   → **描く物を、描くかどうかの判断に入れる**([[feedback_one_source_for_mark_count_action]])。 */var _cs='';try{var _cl=m.clocks||[];for(var _ci=0;_ci<_cl.length;_ci++){var _cc=_cl[_ci]||{};_cs+=(_cc.uri||'')+'~'+(_cc.key||'')+'~'+(_cc.at||0)+'~'+(_cc.running?'1':'0')+'~'+(_cc.next?'N':'')+';';}}catch(e){}
@@ -27768,6 +27794,19 @@ function toggleMeDock(editorOverride) {
     //     (私は『ピン留め』を勧めたthat、俊克の形の方that規則を1つに保つ)。
     //   ★★★探す相手は**膜**であって時計ではない= ⏰の無い膜も出す。行って、そこで掛ければよい。
     //   ★訊かれた時だけ走る(入口を叩いた時)so、カーソル毎に全部の膜を読まない。
+    if (message && message.type === 'membraneDupShow') {   // ★v4.2.21: 直す前に、自分の目で見る
+      const _ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
+      const _ln = Math.max(0, Number(message.line) || 0);
+      try {
+        if (_ed && _ed.document && _ln < _ed.document.lineCount) {
+          _ed.selection = new vscode.Selection(_ln, 0, _ln, 0);
+          _ed.revealRange(new vscode.Range(_ln, 0, _ln, 0), vscode.TextEditorRevealType.InCenter);
+          try { await vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: false }); } catch (_) { }
+          vscode.window.setStatusBarMessage('MeOS: ' + (message.name || '') + ' \u2014 line ' + (_ln + 1), 5000);
+        }
+      } catch (_) { }
+      return;
+    }
     if (message && (message.type === 'membraneDupFix' || message.type === 'membraneDupApply')) {   // v4.1.186 / v4.2.20
       const _ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
       const _mode = (message.type === 'membraneDupApply') ? (message.mode === 'all' ? 'all' : 'clock') : '';
