@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.1 era — highlights (2026-08 →)
 
+### v4.1.185 (2026-09-09)
+- **Paste a membrane whose name is already taken, and its timestamp is rewritten on landing.** Mepy's Copy/Duplicate has done this since v4.0.383 — a copy is not the same thing again, it is *another* thing — but selecting a membrane and copying it by hand slipped straight past the rule. This lifetime diary had reached three membranes sharing one name, each with its own clock: 1,484 membranes, 649 distinct names, 61 of them duplicated, twelve of those carrying a ⏰. A name is an address, so when two membranes answer to it nothing can say which one the clock is on, or where a jump lands.
+- **Only on a collision.** If the pasted name exists nowhere else, that paste was a *move*, and the name must survive it — the H-TOC's search term, every link, and the clock's own key all point at it. The reason given in v4.0.383 (two of the same name and no way to choose) only exists when they collide.
+- Only the timestamp changes; what you typed is untouched. Several collisions in one paste are spaced a second apart, because the stamp resolves to seconds and two made in the same second would collide again on the spot. The rewrite joins the paste's own undo step, so one Ctrl+Z takes back both.
+
 ### v4.1.184 (2026-09-09)
 - **`Big Bang` with a space works too.** In English the two words are usually written apart, and there was no reason to insist on one of the two spellings. The rule count does not go up — the space is simply allowed, and case is ignored as before.
 

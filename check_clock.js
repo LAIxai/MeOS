@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -1740,3 +1740,29 @@ console.log('⑱ 短い形を落とさない / 内側の何本目かを数える
 
 console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 },50);
+
+/* ★★★v4.1.185(俊克 9/9 am10:04「Mepyでコピーすると自動でTSを変えているよね。手動でコピペした時も、
+   ペーストした瞬間に焼き直せば一貫性があるでしょ」): 名前は番地so、同じ名前が2つ在ると⏰は
+   どちらの膜か決められない。実測= 生涯日記に⏰を持つ重複名that12件(同名3つの膜まで在った)。 */
+console.log('㉒ 貼った膜の名前がぶつかったらTSを打ち直す');
+{
+ const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const t0=Date.parse('2026-09-09T10:04:00+09:00');
+ const a=X.meosStampAfter('テスト', t0, new Set());
+ const b=X.meosStampAfter('テスト', t0, new Set([a]));
+ ok(a.indexOf('テスト_')===0, '★人が付けた部分は1文字も触らない(TSだけ足す)', a);
+ ok(a!==b, '★★同じ秒に2つ作らない(ぶつかったら1秒ずらす)', [a,b]);
+ ok(X.meosStampAfter('x', t0, new Set(['x_'+X.meosMembraneStamp(new Date(t0))]))!=='x_'+X.meosMembraneStamp(new Date(t0)),
+    '  既に在る名前は返さない', true);
+ ok(/if \(\(count\.get\(p\.id\) \|\| 0\) <= 1\) continue;/.test(S2),
+    '★★★打ち直すのは**ぶつかった時だけ**= 移動(切り取り→貼り)では名前を変えない', true);
+ ok(/undoStopBefore: false, undoStopAfter: false/.test(S2),
+    '★★貼り付けと同じ1つのUndoにする(人から見れば一つの行い)', true);
+ ok(/e\.reason === _R\.Undo \|\| e\.reason === _R\.Redo/.test(S2),
+    '★Undo/Redoでは打ち直さない(Undo that Undo にならなくなる)', true);
+ ok(/t\.indexOf\('mCN='\) >= 0 && t\.indexOf\('\\n'\) >= 0/.test(S2),
+    '  発火は「膜ごと貼った時」だけ(mCN= と改行を含む挿入)', true);
+ ok(/for \(const ln of \[j\.start, j\.end, j\.end \+ 1\]\)/.test(S2),
+    '★★▼と▲とバッジ行の3つとも直す(片方だけ直すと対that壊れる)', true);
+}
+console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

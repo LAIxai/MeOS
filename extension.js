@@ -4968,6 +4968,85 @@ function collectMembraneStructure(document, options = {}) {
   return value;
 }
 
+// ★★★v4.1.185(俊克 9/9 am10:04「Mepyで、膜と中身をコピーすると、自動でタイムスタンプを変えているよね。
+//   それと同様に、膜と中身を選択して、手動でコピーしたときも、ペーストした瞬間に、自動でタイムスタンプを
+//   現在時刻で焼き直せば、一貫性があるでしょ」):
+//   ★★★**複製とは、同じ物をもう1つ作ることでなく、別の物を作ること**(v4.0.383)。この決めは
+//     Mepy の Copy/Duplicate にしか効いておらず、手で選んでコピペした時は素通りしていた。
+//     結果、生涯日記の中に**同じ名前の膜が3つ**在る所まで来ていた
+//     (2026.09.09 実測= 膜1484 / 名前649種 / 重複した名前61 / うち⏰を持つ重複が12)。
+//     名前は番地なので、同じ名前が2つ在ると⏰もワープ先も**どちらの膜か決められない**。
+//   ★★★**打ち直すのは、ぶつかった時だけ**= 貼った名前が他所に無ければ、それは**移動**(切り取り→貼り)
+//     なので名前を変えてはいけない。H-TOCの検索語・リンク・⏰の鍵が、全部その名前を指している
+//     ([[project_htoc_is_a_grep_query]])。v4.0.383の理由「同じ名前が2つ在ると決められない」は、
+//     ぶつかった時にしか生まれない。
+//   ★変えるのはTSだけ。人が付けた部分は1文字も触らない → [[project_last_specified_wins]]
+//   ★1回の貼り付けで複数ぶつかっても、1秒ずつずらして**全部別の名前**にする
+//     (TSは秒までなので、同じ秒に2つ作ると直したそばからまたぶつかる)。
+//   ★打ち直しは貼り付けと**同じ1つの Undo** にする(undoStopを立てない)= 人から見れば一つの行い。
+let _meosRestampBusy = false;
+let _meosRestampTimer = null;
+function meosStampAfter(base, seedMs, taken) {
+  for (let k = 0; k < 600; k++) {
+    const cand = base + '_' + meosMembraneStamp(new Date(seedMs + k * 1000));
+    if (!taken.has(cand)) return cand;
+  }
+  return base + '_' + meosMembraneStamp(new Date(seedMs));
+}
+function scheduleRestampPastedMembranes(editor, from, to) {
+  if (_meosRestampTimer) { clearTimeout(_meosRestampTimer); _meosRestampTimer = null; }
+  _meosRestampTimer = setTimeout(() => { _meosRestampTimer = null; try { restampPastedMembranes(editor, from, to); } catch (_) { } }, 140);
+}
+async function restampPastedMembranes(editor, from, to) {
+  if (_meosRestampBusy || !editor || !editor.document) return;
+  const doc = editor.document;
+  let pairs = [];
+  try { pairs = collectPairs(doc, { excludeIndex: false }).filter(p => !isMetaMembraneId(p.id)); } catch (_) { return; }
+  if (!pairs.length) return;
+  const count = new Map(), taken = new Set();
+  for (const p of pairs) { count.set(p.id, (count.get(p.id) || 0) + 1); taken.add(p.id); }
+  const inside = pairs.filter(p => p.start >= from && p.start <= to).sort((a, b) => a.start - b.start);
+  const jobs = [];
+  let seed = Date.now();
+  for (const p of inside) {
+    if ((count.get(p.id) || 0) <= 1) continue;                  // ぶつかっていない= 移動なので触らない
+    const base = String(p.id).replace(MEOS_NAME_TS_RE, '').replace(/_+$/, '') || 'name';
+    const next = meosStampAfter(base, seed, taken);
+    seed += 1000;
+    taken.add(next);
+    count.set(p.id, (count.get(p.id) || 0) - 1);
+    count.set(next, 1);
+    jobs.push({ old: p.id, next, start: p.start, end: p.end });
+  }
+  if (!jobs.length) return;
+  _meosRestampBusy = true;
+  deferRefreshCount++;
+  try {
+    const ok = await editor.edit(eb => {
+      for (const j of jobs) {
+        for (const ln of [j.start, j.end, j.end + 1]) {          // ▼ / ▲ / 直下のバッジ行(`mCN=名前` を持つことがある)
+          if (ln < 0 || ln >= doc.lineCount) continue;
+          const t = doc.lineAt(ln).text;
+          const needle = 'mCN=' + j.old;
+          let at = t.indexOf(needle);
+          while (at >= 0) {
+            eb.replace(new vscode.Range(ln, at + 4, ln, at + 4 + j.old.length), j.next);
+            at = t.indexOf(needle, at + needle.length);
+          }
+        }
+      }
+    }, { undoStopBefore: false, undoStopAfter: false });
+    if (ok) {
+      try {
+        vscode.window.setStatusBarMessage('MeOS: 貼った膜の名前がぶつかっていたので、タイムスタンプを打ち直しました — '
+          + jobs[0].next + (jobs.length > 1 ? ('　ほか' + (jobs.length - 1) + '件') : ''), 6000);
+      } catch (_) { }
+    }
+  } catch (_) { } finally {
+    deferRefreshCount = Math.max(0, deferRefreshCount - 1);
+    _meosRestampBusy = false;
+  }
+}
 function collectPairs(document, options = {}) {
   return collectMembraneStructure(document, options).pairs;
 }
@@ -34487,6 +34566,24 @@ makeDecorations();
           }
         }
         if (_pf) scheduleReconcilePastedFolds(activeEditor, _pf.from, _pf.to);
+        // ★★★v4.1.185: 膜ごと貼った時だけ(`mCN=` と改行を含む挿入)。Undo/Redo は除く
+        //   (戻した名前をまた打ち直したら、Undo が Undo にならない)。
+        let _isUndo = false;
+        try {
+          const _R = vscode.TextDocumentChangeReason;
+          _isUndo = !!(_R && (e.reason === _R.Undo || e.reason === _R.Redo));
+        } catch (_) { }
+        if (!_isUndo && !_meosRestampBusy) {
+          let _rs = null;
+          for (const cc of e.contentChanges) {
+            const t = cc.text || '';
+            if (t.indexOf('mCN=') >= 0 && t.indexOf('\n') >= 0) {
+              const _from = cc.range.start.line, _to = _from + (t.match(/\n/g) || []).length;
+              if (!_rs) _rs = { from: _from, to: _to }; else { _rs.from = Math.min(_rs.from, _from); _rs.to = Math.max(_rs.to, _to); }
+            }
+          }
+          if (_rs) scheduleRestampPastedMembranes(activeEditor, _rs.from, _rs.to);
+        }
       }
       // v0.9.633: debounce typing-driven refresh to stop MeOS edits racing the
       // Japanese IME. onDidChangeTextDocument fires on every keystroke AND on every
