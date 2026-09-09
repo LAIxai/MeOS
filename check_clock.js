@@ -1766,15 +1766,15 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★▼と▲とバッジ行の3つとも直す(片方だけ直すと対that壊れる)', true);
  /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
     ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
- ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
+ ok(/async function meosRepairDuplicateMembraneNames\(editor, mode\)/.test(S2), '★ファイル全体の修復that在る(数える／打ち直す)', true);
  ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
     '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
- ok(/const buttons = clockSide\.jobs\.length \? \[A, B\] : \[B\];/.test(S2),
-    '★★★選択肢は1枚に並べる(縦積みは避けられないと分かったso、分ける理由that消えた)', true);
- ok(/'\\u23f0 Rename ' \+ clockSide\.jobs\.length \+ ' membranes with timers'/.test(S2),
-    '★★★幅は指定できないthat、一番長い字で押し広げられる(短くすると最小幅に落ちる)', true);
- ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, \.\.\.buttons\)/.test(S2),
-    '★★★押されるまで残るのはモーダル', true);
+ ok(/type: 'mewDupAsk',[\s\S]{0,400}otherNames: _other/.test(S2),
+    '★★★数えて面へ渡すだけ(訊く所は Me Dock の中)', true);
+ ok(/\.mew-dup-row\{display:flex;justify-content:flex-end/.test(S2),
+    '★★★ボタンは横並び・右寄せ(CSSで決める= OSに投げない)', true);
+ ok(/id="mew-dup-x"/.test(S2) && /Escape'&&mewDup/.test(S2),
+    '★★×とEscで閉じる(勝手に消えない・組込みAPIに無かった物)', true);
  ok(!/mew-dupfix-all/.test(S2) && !/membraneDupFixAll/.test(S2),
     '★分けた道は残っていない(1枚に戻した)', true);
  ok(/const _hasClock = \(q\) => clockLines\.some\(ln => ln >= q\.start && ln <= q\.end \+ 2\);/.test(S2),
@@ -1785,7 +1785,7 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
  /* ★★★v4.2.4(俊克「メニューを実行すると先ずチェックのみ。重複していれば猫を明るい🐱にする。
     そして個数を出し、修復しますか?と聞く」): 点灯=直すものが在る合図(v4.0.111)。重複も直すもの。 */
- ok(/meosPostMewLit\(true\);[\s\S]{0,1500}showWarningMessage/.test(S2),
+ ok(/meosPostMewLit\(true\);[\s\S]{0,200}type: 'mewDupAsk'/.test(S2),
     '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
  ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
     '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);

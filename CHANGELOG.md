@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.20 (2026-09-09)
+- **The question is asked inside Me Dock now, and every limit we spent the day fighting is gone with it.** Me Dock is a webview — the same HTML, CSS and JavaScript that every other panel in it is built from — and the ⏰ picker, Tag & Go and the tip strips all live there. The confirmation went to the built-in dialog API instead, which is a doorway out to the operating system, and from the moment it was called the width, the button layout and the close box all belonged to somebody else. Nothing about the problem required that; the button that opened it was already in Me Dock, so the panel it opens belonged there too.
+- What comes back by building it at home: buttons in a row, right-aligned, the recommended one last; **a tip on each button**, which is what was asked for eight versions ago and answered with *the API has no such thing*; a × in the corner and Esc to close; the panel in Me Dock's own colours; and no dependence on `window.dialogStyle`, so it looks the same for everyone.
+
 ### v4.2.19 (2026-09-09)
 - **Both choices are back on one panel.** Splitting them into two menu items was only ever a way to get the buttons into a row, and the buttons will not go into a row: macOS stacks them once a title is long, whether there are two or three. With the reason gone, the split goes too — and side by side is where the two options belong anyway, since choosing between them means comparing them. The long labels stay, because they are what keeps the panel wide.
 
