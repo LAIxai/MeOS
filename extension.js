@@ -5042,37 +5042,38 @@ async function meosRepairDuplicateMembraneNames(editor) {
   if (!allSide.jobs.length) { vscode.window.showInformationMessage('MeOS: \ud83d\udc31 no two membranes share a name \u2014 nothing to repair.'); return; }
   // ★★★v4.2.4: 数えた結果、直すものthat在った= ここで🐱を点ける(v4.0.111の「点灯=直すものthat在る」)。
   meosPostMewLit(true);
-  const head = (dupNames.length ? dupNames : allSide.names).slice(0, 3).join(' / ');
-  // ★★★v4.2.5: **消えない知らせにする**(俊克「ユーザが×ボタンかCancelボタンを押すまで、消さないように
-  //   できるか?」)= VS Code の information は自分から引っ込む。warning は押されるまで居る。
-  const A = '\ud83d\udd50 Rename ' + clockSide.jobs.length + ' (\u23f0 only)';
-  const B = 'Rename all ' + allSide.jobs.length;
-  // ★v4.2.6(俊克「パネルに出る説明をもっとコンパクトにしようよ」): 2行＋例3つ。
-  //   言うべきは「何が壊れているか」と「なぜ残りは触らないか」の2つだけ。
-  // ★v4.2.8/9(俊克「『on 9.』が意味不明」→「shareとは何か? 重複なのか?」):
-  //   ★★**数には、何の数かを付ける**。そして**言葉は、訳しても壊れない物を選ぶ**=
-  //     share は「共有」と読めて重複だと伝わらない。break は目的語を書かないと訳that反転する
-  //     (俊克のDeepLで「割り当てられます」になった)。so duplicate と breaks that clock で書く。
+  // ★v4.2.5〜7の経緯: information は自分から引っ込み、warning も引っ込んだ。
+  //   押されるまで残る物を探して modal へ行き、v4.2.10 で QuickPick(ignoreFocusOut)に落ち着いた。
+  // ★★★v4.2.10(俊克 疑問1「9個に⏰が付いていると言って、なぜボタンでは18なのか?」
+  //   ＋改良1「説明がやはり長い。…その上の説明は、それぞれのボタンのtipで出そうよ」):
+  //   ★★★**9は名前の数・18は膜の数**= また「何の数か」を書いていなかった。ボタンにも単位を付ける。
+  //   ★★★モーダルのボタンにtipは付けられない(APIが無い)so、**項目that自分の説明を持てる形**へ移す
+  //     = QuickPick の detail thatそのまま「そのボタンのtip」になる。
+  //     ignoreFocusOut so勝手に消えない・Esc で取り消し(俊克「押すまで消さない」を満たす)。
+  //   ★上に残すのは1行だけ= 「何を残して何を打ち直すか」。理由は、選ぶ物の隣へ。
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
-  const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
-    + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
-  const msgDetail = 'A clock is stored under its membrane\u2019s name, so a duplicate name breaks that clock: '
-    + 'nothing can tell which membrane it belongs to. Those ' + clockSide.names.length + ' are the ones that need repair.\n\n'
-    + 'The other ' + _other + ' may well be deliberate \u2014 the H-TOC finds every place on a topic by searching for the same name.\n\n'
-    + 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp.\n\n'
-    + head;
-  // ★★★v4.2.7(俊克「パネルが5秒〜10秒で消えちゃったよ。なぜ?」・2度目):
-  //   ★★★**VS Code の通知は、ボタンthat付いていても引っ込む**。warning にしても消えた。
-  //     押されるまで必ず残るのは**モーダル**だけso、そこへ移す。
-  //   ★★これは我慢して受け入れる形でもある= 583個の名前を書き換えるかを訊く場面so、
-  //     **画面を止めて訊く**方that正しい(俊克「一手間かけて、実行させる類いの処理」)。
-  //   ★モーダルは自前で Cancel を持つso、こちらでは足さない(押さずに閉じれば undefined)。
-  const buttons = clockSide.jobs.length ? [A, B] : [B];
-  const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, ...buttons);
+  const _items = [];
+  if (clockSide.jobs.length) _items.push({
+    label: '\u23f0 Rename ' + clockSide.jobs.length + ' membranes',
+    description: clockSide.names.length + ' duplicate names that have a clock',
+    detail: 'A clock is stored under its membrane\u2019s name, so a duplicate name breaks that clock: nothing can tell which membrane it belongs to.',
+    pick: 'clock'
+  });
+  _items.push({
+    label: 'Rename all ' + allSide.jobs.length + ' membranes',
+    description: 'all ' + allSide.names.length + ' duplicate names',
+    detail: 'Includes the ' + _other + ' names with no clock \u2014 but a repeated name is how the H-TOC finds every place on one topic.',
+    pick: 'all'
+  });
+  const _sel = await vscode.window.showQuickPick(_items, {
+    title: 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
+      + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0',
+    placeHolder: 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp.',
+    ignoreFocusOut: true
+  });
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
-  if (pick === A) jobs = clockSide.jobs;
-  else if (pick === B) jobs = allSide.jobs;
-  else return;
+  if (!_sel) return;
+  jobs = (_sel.pick === 'clock') ? clockSide.jobs : allSide.jobs;
   if (!jobs.length) return;
   deferRefreshCount++;
   try {

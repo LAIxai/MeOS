@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.10 (2026-09-09)
+- **Nine names, eighteen membranes — the buttons now say which.** The title counted names and the buttons counted membranes, and neither said so, which made the second number look like a mistake. Each number carries its noun.
+- **The reasons moved next to the thing they are reasons for.** A modal's buttons cannot carry a tooltip, so the choice is now a picker: each option keeps its own line of explanation beside it, and the single sentence that applies to both — the first membrane of each name keeps it, the rest get a fresh timestamp — sits at the top on its own. It stays open until answered, which is where the last three versions were trying to get.
+
 ### v4.2.9 (2026-09-09)
 - **Words that survive translation.** `656 membranes share 73 names` reads as *sharing*, which is a nice thing, when what is meant is that the names are **duplicated**. And `only the ⏰ ones break`, with nothing said about what they break, came back from a translator as *only the ⏰ ones are allocated* — the opposite of a warning. The dialog now says `73 duplicate names` and `a duplicate name breaks that clock`, and spells out what a clock being broken means: nothing can tell which membrane it belongs to.
 
