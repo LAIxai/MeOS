@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.17 (2026-09-09)
+- **The panel went tall because the buttons got short.** A macOS alert takes its width from the longest unbroken run of text inside it, and until v4.2.15 that was the button — `⏰ Rename 20 membranes with timers` was holding the panel open. Trimming it let the alert fall to its minimum width, and the same message then wrapped into twice the lines. The width cannot be set, but it can be pushed, and with only two buttons left there is no longer any cost to a long label: the descriptive text is back, and the panel is wide again.
+
 ### v4.2.16 (2026-09-09)
 - **The choice moved out of the dialog and into the menu.** Shortening the buttons had not made them sit side by side, because the thing that stacks them is not their length: macOS stacks whenever there are three. Width cannot be set, a close box cannot be added, and the row layout cannot be asked for — the panel is a native alert and the API passes it nothing but an ordered list. What the API does allow is fewer buttons, so 🐱 ▾ now holds two items — `Check & repair membranes with ⏰` and `Check & repair all duplicate names` — and each opens a panel with one action beside Cancel, which is the layout that was wanted. It also puts the far-reaching option behind its own deliberate choice, where it belongs.
 

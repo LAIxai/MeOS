@@ -1769,8 +1769,10 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/async function meosRepairDuplicateMembraneNames\(editor, mode\)/.test(S2), '★ファイル全体の修復that在る(⏰だけ / 全部)', true);
  ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
     '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
- ok(/const A = 'Rename ' \+ side\.jobs\.length;/.test(S2),
-    '★★★ボタンは1つ＋Cancel(macOSは3つ以上を縦に積む)', true);
+ ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, A\)/.test(S2),
+    '★★★渡すボタンは1つ＋Cancel(macOSは3つ以上を縦に積む)', true);
+ ok(/'\\u23f0 Rename ' \+ side\.jobs\.length \+ ' membranes with timers'/.test(S2),
+    '★★★幅は指定できないthat、一番長い字で押し広げられる(短くすると最小幅に落ちる)', true);
  ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, A\)/.test(S2),
     '★★★押されるまで残るのはモーダル・渡すボタンは1つ', true);
  ok(/id="mew-dupfix-all"/.test(S2) && /membraneDupFixAll/.test(S2),
@@ -1783,7 +1785,7 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
  /* ★★★v4.2.4(俊克「メニューを実行すると先ずチェックのみ。重複していれば猫を明るい🐱にする。
     そして個数を出し、修復しますか?と聞く」): 点灯=直すものが在る合図(v4.0.111)。重複も直すもの。 */
- ok(/meosPostMewLit\(true\);[\s\S]{0,900}showWarningMessage/.test(S2),
+ ok(/meosPostMewLit\(true\);[\s\S]{0,1500}showWarningMessage/.test(S2),
     '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
  ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
     '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);

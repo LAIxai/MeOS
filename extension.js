@@ -5082,7 +5082,14 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
     ? 'Rename the ' + side.jobs.length + ' membranes that carry a timer. Every other membrane keeps its name \u2014 a repeated name is how the H-TOC finds a topic.'
     : 'Rename ' + side.jobs.length + ' membranes so that no name is used twice. The first membrane of each name keeps it.')
     + '\nA renamed membrane gets a fresh timestamp; nothing else changes.';
-  const A = 'Rename ' + side.jobs.length;
+  // ★★★v4.2.17(俊克「縦積みの時に、最初のころは横長だったのに、最後に縦長になったのはなぜ?」):
+  //   ★★★**縦長にしたのは私**= v4.2.15でボタンを短くした瞬間、パネルを横に押し広げていた物that
+  //     消えて最小幅に落ちた。macOSのアラートの幅は**中で一番長い一続きの文字**で決まる。
+  //   ★★→ **幅は指定できないthat、押すことはできる**。ボタンthat2つになった今なら、長い字でも
+  //     横並びのままso、字を戻して幅を稼ぐ。
+  const A = _clockMode
+    ? ('\u23f0 Rename ' + side.jobs.length + ' membranes with timers')
+    : ('Rename all ' + side.jobs.length + ' duplicates');
   const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, A);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
   if (pick !== A) return;
