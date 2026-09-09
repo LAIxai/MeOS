@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.26 (2026-09-09)
+- **See one lands one line above the membrane, not on it.** The line the cursor sits on shows its raw data, which is the whole point of that rule — but it also means landing inside a membrane retires the very figure you came to look at. One line up is outside, and the clock is still running there. The line number in the status bar is still the membrane's own, so it stays worth writing down.
+
 ### v4.2.25 (2026-09-09)
 - **One timer under a repeated name was never broken, and the repair was about to rename it anyway.** A clock is filed under its membrane's name, so two clocks answering to one name is a collision — but a single clock sharing its name with membranes that carry no clock has nothing competing for the key. The rule now asks for **two or more timers on one name**, and renames from the second onwards, since leaving one is enough to settle which clock the name means. On the diary that took it from twenty membranes down to eleven — the nine it should never have touched were sound.
 

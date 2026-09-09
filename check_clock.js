@@ -1792,6 +1792,10 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★見に行ってもパネルは閉じない(戻って次を押せる)', true);
  ok(/preserveFocus: true \}\); \} catch/.test(S2),
     '★焦点はMe Dockに残す(「次」を一手で押せる)', true);
+ ok(/const _ln = Math\.max\(0, _ln0 - 1\);/.test(S2),
+    '★★着地は開始膜の1行前(膜の中に降りると、その膜の動く数字that引っ込む)', true);
+ ok(/' \\u2014 line ' \+ \(_ln0 \+ 1\)/.test(S2),
+    '  控えるのは膜の行番号(降りた行でなく)', true);
  ok(/id="mew-dup-x"/.test(S2) && /Escape'&&mewDup/.test(S2),
     '★★×とEscで閉じる(勝手に消えない・組込みAPIに無かった物)', true);
  ok(!/mew-dupfix-all/.test(S2) && !/membraneDupFixAll/.test(S2),

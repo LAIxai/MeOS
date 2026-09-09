@@ -27838,14 +27838,19 @@ function toggleMeDock(editorOverride) {
     //   ★訊かれた時だけ走る(入口を叩いた時)so、カーソル毎に全部の膜を読まない。
     if (message && message.type === 'membraneDupShow') {   // ★v4.2.21: 直す前に、自分の目で見る
       const _ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
-      const _ln = Math.max(0, Number(message.line) || 0);
+      // ★★v4.2.26(俊克「飛んだ時、開始膜に着地すると、⏰が動いているか分らないので、開始膜の
+      //   1行前に着地しようよ」): ★★**カーソルの居る行は生データを見せる場**so、膜の中に降りると
+      //   その膜の飾り(動く数字)thatが引っ込む。1行上=膜の外へ降りれば、⏰は走ったまま見える。
+      //   → [[project_raw_line_is_not_for_decoration]]
+      const _ln0 = Math.max(0, Number(message.line) || 0);
+      const _ln = Math.max(0, _ln0 - 1);
       try {
         if (_ed && _ed.document && _ln < _ed.document.lineCount) {
           _ed.selection = new vscode.Selection(_ln, 0, _ln, 0);
           _ed.revealRange(new vscode.Range(_ln, 0, _ln, 0), vscode.TextEditorRevealType.InCenter);
           // ★v4.2.22: 焦点はMe Dockに残す= もう一度「次」を押すのthat一手で済む(俊克「押しっぱなしでいい」)。
           try { await vscode.window.showTextDocument(_ed.document, { viewColumn: _ed.viewColumn, preserveFocus: true }); } catch (_) { }
-          vscode.window.setStatusBarMessage('MeOS: ' + (message.name || '') + ' \u2014 line ' + (_ln + 1), 5000);
+          vscode.window.setStatusBarMessage('MeOS: ' + (message.name || '') + ' \u2014 line ' + (_ln0 + 1), 5000);   // 控えるのは膜の行
         }
       } catch (_) { }
       return;
