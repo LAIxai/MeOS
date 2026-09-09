@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.15 (2026-09-09)
+- **Short buttons, so the dialog can lay them out in one row.** Where the buttons sit is macOS's decision, not something the API can be told — but macOS stacks them vertically only when they will not fit side by side. Trimmed to `⏰ Rename 20` and `Rename all 583`, they fit, which puts the default at the right end with Cancel beside it. What each one covers moved up into the line above, where there is room to say it properly.
+
 ### v4.2.14 (2026-09-09)
 - `⏰ Rename 9 membranes with timers` — a bare plural is what English uses for *this kind of thing in general*, so the label reads the same whether a membrane carries one timer or several, and will not need editing when it can carry several.
 

@@ -5062,15 +5062,22 @@ async function meosRepairDuplicateMembraneNames(editor) {
   //   ★上に残すのは1行だけ(俊克 改良1)= 何を残して何を打ち直すか。
   //   ★★数には何の数かを付ける(俊克 疑問1「9個…なぜボタンでは18なのか?」)= 名前と膜を両方書く。
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
-  // ★v4.2.12(俊克 改良1「横長のボタンは奇妙だね」): ボタンは短く。理由は上の1行と数thatが語る。
+  // ★★★v4.2.15(俊克 改良1「一番下の右寄せで配置しよう。残りの2つをその上の段に横並びに」):
+  //   ★★★**段組と寄せはOSthat決める**= VS Code のモーダルに渡せるのは項目の**並び順**だけで、
+  //     行や位置を指定する口は無い(macOSはネイティブのダイアログを描く)。
+  //   ★★→ 効く手が1つある= **macOSは横1行に収まらない時だけ縦積みにする**。so字を短くすれば
+  //     横1行になり、既定ボタンthat右端・その隣にCancel、という並びthat自然に出る
+  //     (俊克の狙い「Cancelも押しやすく」はそこで満たせる)。
+  //   ★短くしても数と動詞は落とさない= 何を何個やるかは、ボタンthat自分で言い続ける。
   // ★v4.2.14(俊克「1つの膜に複数の⏰UFCを貼付けるとき、一々 a timer / timers と書き換えるより、
   //   総称として with timer のほうがいいでしょ?」): 狙いは正しい= **数で書き換えたくない**。
   //   英語で総称を担うのは**冠詞なしの複数形**なので `with timers`。1個でも複数でも同じ字で通る。
-  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes with timers';
-  const B = 'Rename all ' + allSide.jobs.length + ' duplicates';
+  const A = '\u23f0 Rename ' + clockSide.jobs.length;
+  const B = 'Rename all ' + allSide.jobs.length;
   const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
     + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
-  const msgDetail = 'A fresh timestamp is given only to the membranes that are renamed; the others keep their name.';
+  const msgDetail = '\u23f0 Rename ' + clockSide.jobs.length + ' \u2014 only the membranes with timers.  \u2022  Rename all ' + allSide.jobs.length + ' \u2014 every duplicate.\n'
+    + 'A renamed membrane gets a fresh timestamp; the others keep their name.';
   const buttons = clockSide.jobs.length ? [A, B] : [B];
   const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, ...buttons);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
