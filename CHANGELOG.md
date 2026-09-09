@@ -2,6 +2,13 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v4.2 era — highlights (2026-09 →)
+
+### v4.2.1 (2026-09-09)
+- **The 🐱 menu opens under the 🐱, not across the panel.** It had borrowed the bookmark popup's approach — fixed position, then work out the coordinates — and landed at the far left while the button sat at the far right. The cell it belongs to is already a positioned parent, so the menu is now pinned to it in CSS and no coordinate is measured at all. Position by definition, not by arithmetic; the same lesson as v4.1.11.
+- **The item reads `Check duplicate names…`** — the rest of Me Dock is in English, and one Japanese label in the middle of it was the only one of its kind.
+- *A backtick inside a CSS comment would have turned the whole of Me Dock into a string; `check_webview.js` caught it before it shipped.*
+
 ## v4.1 era — highlights (2026-08 →)
 
 ### v4.1.186 (2026-09-09)

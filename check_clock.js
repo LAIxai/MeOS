@@ -1774,6 +1774,12 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/<span class="fmt-cell fmt-cell-head mew-cell">/.test(S2),
     '★★▾を持ったので fmt-cell を戻す(v4.0.110の前提that戻った= 右辺that閉じる)', true);
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
+ /* ★★★v4.2.1(俊克「メニューがとんでもなく離れている」): 位置は計算でなく定義。 */
+ ok(/\.mew-cell \.mew-pop\{position:absolute;top:calc\(100% \+ 6px\);right:0/.test(S2),
+    '★★★メニューは親(.mew-cell)へCSSで貼る= 座標を測らない', true);
+ ok(!/mewMenuBtn\.getBoundingClientRect\(\)/.test(S2),
+    '★★測る道が残っていない(bm-popのfixed＋計算を持ち込まない)', true);
+ ok(/id="mew-dupfix"[^>]*>Check duplicate names/.test(S2), '★項目は英語', true);
  ok(/_meosClockScanCache\.set\(doc, \{ version: doc\.version, value: out \}\)/.test(S2),
     '★★★⏰の全行スキャンに控えを付けた(229,134行で11.0ms → 0.0ms)', true);
 }
