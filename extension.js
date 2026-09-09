@@ -5054,6 +5054,7 @@ async function meosRepairDuplicateMembraneNames(editor, mode) {
   const _clockNameSet = new Set(clockSide.names.map(n => n.replace(/ \u00d7[0-9]+$/, '')));
   // ★v4.2.23(俊克「(1-1)/9→(1-2)/9…(2-1)/9…のようにすれば、分かりやすいよね」):
   //   ★★**何番目の名前の、何個目か**を数字that自分で言う= 名前thatが変わった所も一目で分かる。
+  //   ★形は `1/9-1`(名前の番号/名前の総数-その中の番号)。
   const _spots = (wantClock) => {
     const out = [];
     let ni = 0;
@@ -26297,9 +26298,9 @@ if(mewDupAll)mewDupAll.addEventListener('click',()=>{vscode.postMessage({type:'m
 function mewDupStep(k,btn){const a=mewDupSpots[k]||[];if(!a.length)return;
 const i=mewDupIx[k]%a.length;mewDupIx[k]=(i+1)%a.length;const sp=a[i];
 vscode.postMessage({type:'membraneDupShow',line:sp.line,name:sp.name});
-/* ★v4.2.23: (何番目の名前 - その中の何個目)/名前の総数 */
+/* ★v4.2.23(俊克「1/9-1→1/9-2のほうがいいかな」): 何番目の名前/名前の総数-その中の何個目 */
 const _nn=a[a.length-1]&&a[a.length-1].ni?a[a.length-1].ni:1;
-if(btn)btn.textContent='👁 ('+(sp.ni||1)+'-'+(sp.ci||1)+')/'+_nn;}
+if(btn)btn.textContent='👁 '+(sp.ni||1)+'/'+_nn+'-'+(sp.ci||1);}
 if(mewDupSeeC)mewDupSeeC.addEventListener('click',()=>mewDupStep('c',mewDupSeeC));
 if(mewDupSeeA)mewDupSeeA.addEventListener('click',()=>mewDupStep('a',mewDupSeeA));
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&mewDup&&mewDup.classList.contains('on')){closeMewDup();}});

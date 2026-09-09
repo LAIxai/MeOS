@@ -1781,8 +1781,8 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★★押すたびに同じ名前の次の1つへ(1つ見せるだけでは重複の証拠にならない)', true);
  ok(/out\.push\(\{ line: q\.start, name: id, ni, ci, cn: list\.length \}\)/.test(S2),
     '★何番目の名前の何個目かを、見本that自分で持つ', true);
- ok(S2.indexOf("+(sp.ni||1)+'-'+(sp.ci||1)+')/'+_nn")>=0,
-    '★★(名前の番号-その中の番号)/名前の総数= 名前that変わった所も一目で分かる', true);
+ ok(S2.indexOf("+(sp.ni||1)+'/'+_nn+'-'+(sp.ci||1)")>=0,
+    '★★名前の番号/名前の総数-その中の番号(1/9-1)= 名前that変わった所も一目で分かる', true);
  ok(!/function mewDupStep\(k,btn\)\{[^}]*closeMewDup/.test(S2),
     '★★見に行ってもパネルは閉じない(戻って次を押せる)', true);
  ok(/preserveFocus: true \}\); \} catch/.test(S2),
