@@ -1767,16 +1767,16 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
     ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
  ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
- ok(/\.slice\(\)\.sort\(\(a, b\) => a\.start - b\.start\)\.slice\(1\)/.test(S2),
-    '★★残すのは一番上の1つ(先に在った物that元の名前を持つ)', true);
- ok(/Rename ' \+ clockSide\.jobs\.length \+ ' membranes \\u2014 the ' \+ clockSide\.names\.length \+ ' names with a clock'/.test(S2),
-    '★★★数には何の数かを付ける(膜の数と名前の数を両方書く)', true);
+ ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
+    '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
+ ok(/'\\u23f0 Rename ' \+ clockSide\.jobs\.length \+ ' membranes with a clock'/.test(S2),
+    '★★★数thatが一致する(⏰を持つ膜の数= 打ち直す膜の数)・ボタンは短く', true);
  ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, \.\.\.buttons\)/.test(S2),
     '★★★押されるまで残るのはモーダル(俊克が褒めた形を捨てない)', true);
- ok(/const msgDetail = 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp\.';/.test(S2),
-    '★★上に残すのは1行だけ= 理由はボタンの字が自分で言う', true);
- ok(/if \(onlyClock && !clockKeys\.has\(id\)\) continue;/.test(S2),
-    '★★★既定は⏰を持つ重複だけ= 名前の繰返しはH-TOCの検索語(直すつもりで壊さない)', true);
+ ok(/const msgDetail = 'A fresh timestamp is given only to the membranes that are renamed; the others keep their name\.';/.test(S2),
+    '★★上に残すのは1行だけ', true);
+ ok(/const _hasClock = \(q\) => clockLines\.some\(ln => ln >= q\.start && ln <= q\.end \+ 2\);/.test(S2),
+    '★★★⏰を持つのは膜ごとに見る(名前でなく行の位置で決める)', true);
  ok(/id="mew-menu-btn"/.test(S2)&&/id="mew-dupfix"/.test(S2), '★🐱に▾と項目that在る', true);
  ok(/<span class="fmt-cell fmt-cell-head mew-cell">/.test(S2),
     '★★▾を持ったので fmt-cell を戻す(v4.0.110の前提that戻った= 右辺that閉じる)', true);

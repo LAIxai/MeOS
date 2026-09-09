@@ -5017,16 +5017,25 @@ async function meosRepairDuplicateMembraneNames(editor) {
   //   ★★so**壊れているのは⏰だけ**= 時計は名前を鍵にして掛かるので、同じ名前that2つ在ると
   //     どちらの膜か決められない。名前の重複that罪になるのは、⏰thatその名前に乗っている時だけ。
   //   ★→ 既定は**⏰を持つ重複だけ**。全部やる道も残すthat、押す前に何が違うかを言う。
-  const clockKeys = new Set();
-  try { for (const c of meosClockFcScan(doc)) if (c.key) clockKeys.add(c.key); } catch (_) { }
+  // ★★★v4.2.12(俊克 改良2「9個の時計が付いているなら、9つの膜だよね」):
+  //   ★★★**直すべきは⏰を持つ膜そのもの**= 同じ名前の他の膜(⏰を持たない物)は触らなくていい。
+  //     ⏰を持つ側に新しい名前を渡せば、その時計の鍵は一意になる。**H-TOCの繰返しは1つも壊れない**。
+  //   ★so数も一致する= 「⏰を持つ膜that何個」と「打ち直す膜that何個」thatが同じ数になる。
+  //     v4.2.11までは「一番上を残して残りを全部」so、⏰と関係の無い膜まで数に入っていた。
+  const clockLines = [];
+  try { for (const c of meosClockFcScan(doc)) if (typeof c.line === 'number') clockLines.push(c.line); } catch (_) { }
+  const _hasClock = (q) => clockLines.some(ln => ln >= q.start && ln <= q.end + 2);
   const mkJobs = (onlyClock) => {
     const jobs = [], names = [], seen = new Set(taken);
     let seed = Date.now();
     for (const [id, list] of byName) {
       if (list.length < 2) continue;
-      if (onlyClock && !clockKeys.has(id)) continue;
+      const sorted = list.slice().sort((a, b) => a.start - b.start);
+      // ⏰だけ= その名前を持つ膜のうち**⏰を持つ物**を打ち直す(他は据え置き)。
+      // 全部= 一番上を残して残りを打ち直す(名前の重複そのものを消す)。
+      const rest = onlyClock ? sorted.filter(_hasClock) : sorted.slice(1);
+      if (!rest.length) continue;
       names.push(id + ' \u00d7' + list.length);
-      const rest = list.slice().sort((a, b) => a.start - b.start).slice(1);   // 一番上は据え置き
       for (const q of rest) {
         const base = String(q.id).replace(MEOS_NAME_TS_RE, '').replace(/_+$/, '') || 'name';
         const next = meosStampAfter(base, seed, seen);
@@ -5053,11 +5062,12 @@ async function meosRepairDuplicateMembraneNames(editor) {
   //   ★上に残すのは1行だけ(俊克 改良1)= 何を残して何を打ち直すか。
   //   ★★数には何の数かを付ける(俊克 疑問1「9個…なぜボタンでは18なのか?」)= 名前と膜を両方書く。
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
-  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes \u2014 the ' + clockSide.names.length + ' names with a clock';
-  const B = 'Rename all ' + allSide.jobs.length + ' membranes \u2014 all ' + allSide.names.length + ' names, including the ' + _other + ' with no clock';
+  // ★v4.2.12(俊克 改良1「横長のボタンは奇妙だね」): ボタンは短く。理由は上の1行と数thatが語る。
+  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes with a clock';
+  const B = 'Rename all ' + allSide.jobs.length + ' duplicates';
   const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
     + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
-  const msgDetail = 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp.';
+  const msgDetail = 'A fresh timestamp is given only to the membranes that are renamed; the others keep their name.';
   const buttons = clockSide.jobs.length ? [A, B] : [B];
   const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, ...buttons);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ

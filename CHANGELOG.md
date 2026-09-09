@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.12 (2026-09-09)
+- **Nine clocks, nine membranes.** The counts disagreed because the repair kept the first membrane of a name and renamed all the rest, clock or no clock — so nine duplicate names carrying a clock came out as eighteen renames. But the membranes without a clock never needed touching: give the clock-bearing one a fresh name and its key is unique, while every repeated name the H-TOC relies on stays exactly as it was. Now the ⏰ option renames the membranes that hold a clock, and nothing else, so the number on the button is the number of clocks it repairs.
+- Buttons are short again: `⏰ Rename 9 membranes with a clock` and `Rename all 583 duplicates`.
+
 ### v4.2.11 (2026-09-09)
 - **The panel is back.** Moving the choice into a picker was meant to give each option its own line of explanation, since a modal's buttons cannot carry a tooltip. But the panel was the part that had just been called right, and trading it away to satisfy the other half of the request was the wrong half to give up. The explanation now lives in the button text itself — `⏰ Rename 18 membranes — the 9 names with a clock` — which is where a tooltip would have pointed anyway, and the line above stays the single sentence it was asked to be.
 
