@@ -1769,12 +1769,12 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
  ok(/\.slice\(\)\.sort\(\(a, b\) => a\.start - b\.start\)\.slice\(1\)/.test(S2),
     '★★残すのは一番上の1つ(先に在った物that元の名前を持つ)', true);
- ok(/label: '\\u23f0 Rename ' \+ clockSide\.jobs\.length \+ ' membranes'/.test(S2),
-    '★★★ボタンにも単位を付ける(9は名前の数・18は膜の数)', true);
- ok(/showQuickPick\(_items, \{[\s\S]{0,400}ignoreFocusOut: true/.test(S2),
-    '★★★勝手に消えない(ignoreFocusOut)・Escで取り消し', true);
- ok(/detail: 'A clock is stored under its membrane/.test(S2),
-    '★★★理由は選ぶ物の隣へ(項目ごとのdetail= そのボタンのtip)', true);
+ ok(/Rename ' \+ clockSide\.jobs\.length \+ ' membranes \\u2014 the ' \+ clockSide\.names\.length \+ ' names with a clock'/.test(S2),
+    '★★★数には何の数かを付ける(膜の数と名前の数を両方書く)', true);
+ ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, \.\.\.buttons\)/.test(S2),
+    '★★★押されるまで残るのはモーダル(俊克が褒めた形を捨てない)', true);
+ ok(/const msgDetail = 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp\.';/.test(S2),
+    '★★上に残すのは1行だけ= 理由はボタンの字が自分で言う', true);
  ok(/if \(onlyClock && !clockKeys\.has\(id\)\) continue;/.test(S2),
     '★★★既定は⏰を持つ重複だけ= 名前の繰返しはH-TOCの検索語(直すつもりで壊さない)', true);
  ok(/id="mew-menu-btn"/.test(S2)&&/id="mew-dupfix"/.test(S2), '★🐱に▾と項目that在る', true);
@@ -1783,7 +1783,7 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
  /* ★★★v4.2.4(俊克「メニューを実行すると先ずチェックのみ。重複していれば猫を明るい🐱にする。
     そして個数を出し、修復しますか?と聞く」): 点灯=直すものが在る合図(v4.0.111)。重複も直すもの。 */
- ok(/meosPostMewLit\(true\);[\s\S]{0,2600}showQuickPick/.test(S2),
+ ok(/meosPostMewLit\(true\);[\s\S]{0,2000}showWarningMessage/.test(S2),
     '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
  ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
     '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);

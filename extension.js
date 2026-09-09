@@ -5044,36 +5044,26 @@ async function meosRepairDuplicateMembraneNames(editor) {
   meosPostMewLit(true);
   // ★v4.2.5〜7の経緯: information は自分から引っ込み、warning も引っ込んだ。
   //   押されるまで残る物を探して modal へ行き、v4.2.10 で QuickPick(ignoreFocusOut)に落ち着いた。
-  // ★★★v4.2.10(俊克 疑問1「9個に⏰が付いていると言って、なぜボタンでは18なのか?」
-  //   ＋改良1「説明がやはり長い。…その上の説明は、それぞれのボタンのtipで出そうよ」):
-  //   ★★★**9は名前の数・18は膜の数**= また「何の数か」を書いていなかった。ボタンにも単位を付ける。
-  //   ★★★モーダルのボタンにtipは付けられない(APIが無い)so、**項目that自分の説明を持てる形**へ移す
-  //     = QuickPick の detail thatそのまま「そのボタンのtip」になる。
-  //     ignoreFocusOut so勝手に消えない・Esc で取り消し(俊克「押すまで消さない」を満たす)。
-  //   ★上に残すのは1行だけ= 「何を残して何を打ち直すか」。理由は、選ぶ物の隣へ。
+  // ★★★v4.2.11(俊克 バグ1「なぜ、奇麗なパネルを捨てたの? この設定方法は、私が一番嫌いなんだよ」):
+  //   ★★★**褒められた物を、こちらの都合で捨てた**。v4.2.10で QuickPick へ移したのは
+  //     「説明をボタンのtipへ」を叶えるためだったが、モーダルのボタンにtipは付けられない(APIが無い)。
+  //     叶わないと分かった時点で選ぶべきだったのは**説明を短くする方**で、パネルを替える話ではなかった。
+  //   ★★→ モーダルに戻す。tipの代わりに**ボタンの字が自分で説明する**= 選ぶ物の隣に理由を置く、
+  //     という俊克の狙いは、ラベル自身に持たせれば同じ所へ届く。
+  //   ★上に残すのは1行だけ(俊克 改良1)= 何を残して何を打ち直すか。
+  //   ★★数には何の数かを付ける(俊克 疑問1「9個…なぜボタンでは18なのか?」)= 名前と膜を両方書く。
   const _other = Math.max(0, allSide.names.length - clockSide.names.length);
-  const _items = [];
-  if (clockSide.jobs.length) _items.push({
-    label: '\u23f0 Rename ' + clockSide.jobs.length + ' membranes',
-    description: clockSide.names.length + ' duplicate names that have a clock',
-    detail: 'A clock is stored under its membrane\u2019s name, so a duplicate name breaks that clock: nothing can tell which membrane it belongs to.',
-    pick: 'clock'
-  });
-  _items.push({
-    label: 'Rename all ' + allSide.jobs.length + ' membranes',
-    description: 'all ' + allSide.names.length + ' duplicate names',
-    detail: 'Includes the ' + _other + ' names with no clock \u2014 but a repeated name is how the H-TOC finds every place on one topic.',
-    pick: 'all'
-  });
-  const _sel = await vscode.window.showQuickPick(_items, {
-    title: 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
-      + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0',
-    placeHolder: 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp.',
-    ignoreFocusOut: true
-  });
+  const A = '\u23f0 Rename ' + clockSide.jobs.length + ' membranes \u2014 the ' + clockSide.names.length + ' names with a clock';
+  const B = 'Rename all ' + allSide.jobs.length + ' membranes \u2014 all ' + allSide.names.length + ' names, including the ' + _other + ' with no clock';
+  const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
+    + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
+  const msgDetail = 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp.';
+  const buttons = clockSide.jobs.length ? [A, B] : [B];
+  const pick = await vscode.window.showWarningMessage(msgTitle, { modal: true, detail: msgDetail }, ...buttons);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
-  if (!_sel) return;
-  jobs = (_sel.pick === 'clock') ? clockSide.jobs : allSide.jobs;
+  if (pick === A) jobs = clockSide.jobs;
+  else if (pick === B) jobs = allSide.jobs;
+  else return;
   if (!jobs.length) return;
   deferRefreshCount++;
   try {

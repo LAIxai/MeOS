@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.11 (2026-09-09)
+- **The panel is back.** Moving the choice into a picker was meant to give each option its own line of explanation, since a modal's buttons cannot carry a tooltip. But the panel was the part that had just been called right, and trading it away to satisfy the other half of the request was the wrong half to give up. The explanation now lives in the button text itself — `⏰ Rename 18 membranes — the 9 names with a clock` — which is where a tooltip would have pointed anyway, and the line above stays the single sentence it was asked to be.
+
 ### v4.2.10 (2026-09-09)
 - **Nine names, eighteen membranes — the buttons now say which.** The title counted names and the buttons counted membranes, and neither said so, which made the second number look like a mistake. Each number carries its noun.
 - **The reasons moved next to the thing they are reasons for.** A modal's buttons cannot carry a tooltip, so the choice is now a picker: each option keeps its own line of explanation beside it, and the single sentence that applies to both — the first membrane of each name keeps it, the rest get a fresh timestamp — sits at the top on its own. It stays open until answered, which is where the last three versions were trying to get.
