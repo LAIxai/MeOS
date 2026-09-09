@@ -1769,14 +1769,19 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
  ok(/\.slice\(\)\.sort\(\(a, b\) => a\.start - b\.start\)\.slice\(1\)/.test(S2),
     '★★残すのは一番上の1つ(先に在った物that元の名前を持つ)', true);
- ok(/'Repair ' \+ jobs\.length, 'Cancel'/.test(S2), '★★★数を見せてから書く(知らせると動かすを分ける)', true);
+ ok(/const buttons = clockSide\.jobs\.length \? \[A, B, 'Cancel'\] : \[B, 'Cancel'\];/.test(S2),
+    '★★★数を見せてから書く(⏰だけ / 全部 / やめる の3択)', true);
+ ok(/showWarningMessage\(msg, \.\.\.buttons\)/.test(S2),
+    '★★★知らせは押されるまで消えない(information は自分から引っ込む)', true);
+ ok(/if \(onlyClock && !clockKeys\.has\(id\)\) continue;/.test(S2),
+    '★★★既定は⏰を持つ重複だけ= 名前の繰返しはH-TOCの検索語(直すつもりで壊さない)', true);
  ok(/id="mew-menu-btn"/.test(S2)&&/id="mew-dupfix"/.test(S2), '★🐱に▾と項目that在る', true);
  ok(/<span class="fmt-cell fmt-cell-head mew-cell">/.test(S2),
     '★★▾を持ったので fmt-cell を戻す(v4.0.110の前提that戻った= 右辺that閉じる)', true);
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
  /* ★★★v4.2.4(俊克「メニューを実行すると先ずチェックのみ。重複していれば猫を明るい🐱にする。
     そして個数を出し、修復しますか?と聞く」): 点灯=直すものが在る合図(v4.0.111)。重複も直すもの。 */
- ok(/meosPostMewLit\(true\);[\s\S]{0,400}showInformationMessage/.test(S2),
+ ok(/meosPostMewLit\(true\);[\s\S]{0,1400}showWarningMessage/.test(S2),
     '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
  ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
     '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);

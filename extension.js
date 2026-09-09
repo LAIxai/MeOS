@@ -5008,30 +5008,57 @@ async function meosRepairDuplicateMembraneNames(editor) {
   if (!pairs.length) { vscode.window.showInformationMessage('MeOS: no membranes in this file.'); return; }
   const byName = new Map(), taken = new Set();
   for (const p of pairs) { if (!byName.has(p.id)) byName.set(p.id, []); byName.get(p.id).push(p); taken.add(p.id); }
-  const jobs = [];
-  let seed = Date.now();
-  const dupNames = [];
-  for (const [id, list] of byName) {
-    if (list.length < 2) continue;
-    dupNames.push(id + ' \u00d7' + list.length);
-    const rest = list.slice().sort((a, b) => a.start - b.start).slice(1);   // 一番上は据え置き
-    for (const p of rest) {
-      const base = String(p.id).replace(MEOS_NAME_TS_RE, '').replace(/_+$/, '') || 'name';
-      const next = meosStampAfter(base, seed, taken);
-      seed += 1000; taken.add(next);
-      jobs.push({ old: p.id, next, start: p.start, end: p.end });
+  // ★★★v4.2.5(俊克「Repair 583 の583とは何?」→ 実物を見に行って分かったこと):
+  //   ★★★**同じ名前の繰返しは、事故とは限らない**。俊克の日記の `\u2734\ufe0f7/18 2022_071423.718` は30個
+  //     在るが、日記の各日のエントリに1つずつ入っている= **意図して同じ名前を使っている**。
+  //   ★★★**H-TOCの膜名はポインタでなく grep の検索語**([[project_htoc_is_a_grep_query]])so、
+  //     同じ名前that30個あるのは「その話題を持つ日that30日ある」という意味。
+  //     打ち直せば、この関係thatが消える= **直すつもりで壊す**。
+  //   ★★so**壊れているのは⏰だけ**= 時計は名前を鍵にして掛かるので、同じ名前that2つ在ると
+  //     どちらの膜か決められない。名前の重複that罪になるのは、⏰thatその名前に乗っている時だけ。
+  //   ★→ 既定は**⏰を持つ重複だけ**。全部やる道も残すthat、押す前に何が違うかを言う。
+  const clockKeys = new Set();
+  try { for (const c of meosClockFcScan(doc)) if (c.key) clockKeys.add(c.key); } catch (_) { }
+  const mkJobs = (onlyClock) => {
+    const jobs = [], names = [], seen = new Set(taken);
+    let seed = Date.now();
+    for (const [id, list] of byName) {
+      if (list.length < 2) continue;
+      if (onlyClock && !clockKeys.has(id)) continue;
+      names.push(id + ' \u00d7' + list.length);
+      const rest = list.slice().sort((a, b) => a.start - b.start).slice(1);   // 一番上は据え置き
+      for (const q of rest) {
+        const base = String(q.id).replace(MEOS_NAME_TS_RE, '').replace(/_+$/, '') || 'name';
+        const next = meosStampAfter(base, seed, seen);
+        seed += 1000; seen.add(next);
+        jobs.push({ old: q.id, next, start: q.start, end: q.end });
+      }
     }
-  }
-  if (!jobs.length) { vscode.window.showInformationMessage('MeOS: \ud83d\udc31 no two membranes share a name \u2014 nothing to repair.'); return; }
+    return { jobs, names };
+  };
+  const clockSide = mkJobs(true), allSide = mkJobs(false);
+  let jobs = clockSide.jobs;
+  const dupNames = clockSide.names;
+  if (!allSide.jobs.length) { vscode.window.showInformationMessage('MeOS: \ud83d\udc31 no two membranes share a name \u2014 nothing to repair.'); return; }
   // ★★★v4.2.4: 数えた結果、直すものthat在った= ここで🐱を点ける(v4.0.111の「点灯=直すものthat在る」)。
   meosPostMewLit(true);
-  const head = dupNames.slice(0, 6).join(' / ') + (dupNames.length > 6 ? (' \u2026 +' + (dupNames.length - 6)) : '');
-  const pick = await vscode.window.showInformationMessage(
-    'MeOS \ud83d\udc31 ' + dupNames.length + ' name(s) are shared by ' + (jobs.length + dupNames.length) + ' membranes. '
-    + 'Give the later ones a fresh timestamp? The first of each keeps its name.\n' + head,
-    { modal: false }, 'Repair ' + jobs.length, 'Cancel');
+  const head = (dupNames.length ? dupNames : allSide.names).slice(0, 5).join(' / ');
+  // ★★★v4.2.5: **消えない知らせにする**(俊克「ユーザが×ボタンかCancelボタンを押すまで、消さないように
+  //   できるか?」)= VS Code の information は自分から引っ込む。warning は押されるまで居る。
+  const A = '\ud83d\udd50 Rename ' + clockSide.jobs.length + ' (\u23f0 only)';
+  const B = 'Rename all ' + allSide.jobs.length;
+  const msg = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' names are shared by '
+    + (allSide.jobs.length + allSide.names.length) + ' membranes.\n'
+    + '\u23f0 ' + clockSide.names.length + ' of them carry a clock \u2014 those are the ones that break, because a clock is keyed on the name.\n'
+    + 'The rest may be deliberate: a repeated name is how the H-TOC finds every place on one topic.\n'
+    + 'The first of each keeps its name; the later ones get a fresh timestamp.\n' + head;
+  const buttons = clockSide.jobs.length ? [A, B, 'Cancel'] : [B, 'Cancel'];
+  const pick = await vscode.window.showWarningMessage(msg, ...buttons);
   try { meosPostMewState(meosMewLastCount, true); } catch (_) { }   // 訊き終わったら本来の姿へ
-  if (pick !== ('Repair ' + jobs.length)) return;
+  if (pick === A) jobs = clockSide.jobs;
+  else if (pick === B) jobs = allSide.jobs;
+  else return;
+  if (!jobs.length) return;
   deferRefreshCount++;
   try {
     const ok = await editor.edit(eb => {

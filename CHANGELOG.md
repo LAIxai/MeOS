@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.5 (2026-09-09)
+- **A repeated name is not automatically a fault, and the repair had to learn that.** Asked what the `Repair 583` button meant, the honest answer required going and looking: one of the names it offered to rewrite appears thirty times, once inside each day's entry, always as the same note about the same past date. That is not an accident — **a membrane name is the H-TOC's search term, not a pointer**, so thirty membranes answering to one name is how you find all thirty places on one topic. Renaming them would have destroyed the very thing they were for.
+- **What actually breaks is the clock**, because a clock is keyed on the name and two membranes answering to it leave nothing able to say which one it is on. So the repair now defaults to the duplicates that carry a ⏰, and says how many of each kind it found before you choose. Renaming every duplicate is still offered, on its own button, next to the sentence explaining what it costs.
+- **The question no longer disappears while you are reading it.** An information notification retires by itself; this one now stays until it is answered.
+
 ### v4.2.4 (2026-09-09)
 - **The menu checks first, and the 🐱 lights up if it found something.** A dark cat with a live menu under it looked wrong, and it was — but counting a quarter of a million lines in the background, over and over, on the chance that something is wrong, is worse. So the cat being dark does not mean *there are no duplicates*; it means *nobody has asked yet*, and the menu is where you ask. Run it and the count is taken; if two membranes share a name the cat lights before the question is put to you, and goes back to what it was once you have answered. Lit has meant *there is something here to fix* since v4.0.111, and a duplicated name is something to fix, so the signal still says one thing.
 - The number on the cat's shoulder is untouched — that is the count of unsigned Me notation, and two counts sharing one badge would be two facts wearing one face.
