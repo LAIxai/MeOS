@@ -1769,7 +1769,7 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
  ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
     '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
- ok(/'\\u23f0 Rename ' \+ clockSide\.jobs\.length \+ ' membranes with a timer'/.test(S2),
+ ok(/'\\u23f0 Rename ' \+ clockSide\.jobs\.length \+ ' membranes with timers'/.test(S2),
     '★★★数thatが一致する(⏰を持つ膜の数= 打ち直す膜の数)・ボタンは短く', true);
  ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, \.\.\.buttons\)/.test(S2),
     '★★★押されるまで残るのはモーダル(俊克が褒めた形を捨てない)', true);

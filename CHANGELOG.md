@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.14 (2026-09-09)
+- `⏰ Rename 9 membranes with timers` — a bare plural is what English uses for *this kind of thing in general*, so the label reads the same whether a membrane carries one timer or several, and will not need editing when it can carry several.
+
 ### v4.2.13 (2026-09-09)
 - `⏰ Rename 9 membranes with a timer`.
 
