@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.27 (2026-09-09)
+- **A code fence now closes at the membrane boundary, matched or not — and with that, half the clocks in a lifelong diary came back.** Fences were paired by counting, so a single unmatched ``` shifted every pair after it and opened phantom blocks thousands of lines long: one ran from 71,543 to 74,464. Everything inside a fence is read as plain text, correctly, so every ⏰ that fell into one of those phantoms was invisible — **of 179 clock lines in the file, MeOS could see 95**. A membrane is a closed region; nothing should be able to lead a fence out of one. Crossing a ▼ or ▲ now closes whatever was open, which bounds the damage from one stray backtick to the membrane it was typed in. The count went to 109, and the timer that started all of this — the one that would not run — is running.
+- The rule that quoted notation stays inert (v4.1.39, v4.1.66) is untouched. What changed is only how far a fence can reach.
+
 ### v4.2.26 (2026-09-09)
 - **See one lands one line above the membrane, not on it.** The line the cursor sits on shows its raw data, which is the whole point of that rule — but it also means landing inside a membrane retires the very figure you came to look at. One line up is outside, and the clock is still running there. The line number in the status bar is still the membrane's own, so it stays worth writing down.
 

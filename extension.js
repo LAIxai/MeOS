@@ -10538,6 +10538,16 @@ function meosClockFcScan(doc) {
   for (let i = 0; i < doc.lineCount; i++) {
     let txt = ''; try { txt = doc.lineAt(i).text; } catch (_) { continue; }
     const _fm = /^\s*(`{3,}|~{3,})/.exec(txt);
+    // ★★★v4.2.27(俊克「そもそも、コードフェンスは、膜の中で閉じればいいよ。たとえ数が合わなかった
+    //   としてもね」): ★★★**膜は閉じた領域**so、囲いthatその境を越えるのは筋that通らない
+    //   ([[project_true_outliner_membrane]])。膜の行(▼/▲)を跨いだら、開いていた囲いは**そこで閉じる**。
+    //   ★★★これで**1つの打ち間違いの被害thatその膜の中で止まる**。
+    //     実測(俊克の日記229,134行・2026.09.09)= 囲いの印that4051個=奇数so1つ余り、以後の対thatが
+    //     全部1つずつずれて、71543〜74464(2921行)のような**幻の囲い**thatできていた。
+    //     その中の⏰は「字そのもの」と読まれ、**179個の⏰のうち95個しか見えていなかった**
+    //     (73981の時計that動かない、の真因)。
+    //   ★囲いの中の引用を無視する決め(v4.1.39/66)は変えない= 変えるのは**どこまで届くか**だけ。
+    if (fence && (txt.indexOf('\u25bcmCN=') >= 0 || txt.indexOf('\u25b2mCN=') >= 0)) fence = null;
     if (_fm) {
       const _ch = _fm[1][0], _len = _fm[1].length;
       if (!fence) { fence = { ch: _ch, len: _len }; continue; }

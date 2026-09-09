@@ -1767,6 +1767,11 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
     ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
  ok(/async function meosRepairDuplicateMembraneNames\(editor, mode\)/.test(S2), '★ファイル全体の修復that在る(数える／打ち直す)', true);
+ /* ★★★v4.2.27(俊克「そもそも、コードフェンスは、膜の中で閉じればいいよ。たとえ数が合わなかった
+    としてもね」): 膜は閉じた領域so、囲いthatその境を越えるのは筋that通らない。実測= 俊克の日記で
+    179個の⏰のうち95個しか見えていなかった(幻の囲い2921行の中に沈んでいた) → 109個へ。 */
+ ok(S2.indexOf("if (fence && (txt.indexOf('\\u25bcmCN=') >= 0 || txt.indexOf('\\u25b2mCN=') >= 0)) fence = null;")>=0,
+    '★★★囲いは膜の境で閉じる(1つの打ち間違いthatファイル全体を黙らせない)', true);
  ok(/if \(onlyClock && _clocked\.length < 2\) continue;/.test(S2),
     '★★★⏰that1つしか無い名前は壊れていない(鍵を取り合う相手that居ない)', true);
  ok(/const rest = onlyClock \? _clocked\.slice\(1\) : sorted\.slice\(1\);/.test(S2),
