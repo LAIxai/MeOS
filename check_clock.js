@@ -1779,7 +1779,7 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★★直す前に見に行ける(何も書かない)', true);
  ok(/function mewDupStep\(k,btn\)/.test(S2) && /mewDupIx\[k\]=\(i\+1\)%a\.length/.test(S2),
     '★★★押すたびに同じ名前の次の1つへ(1つ見せるだけでは重複の証拠にならない)', true);
- ok(!/mewDupStep[\s\S]{0,200}closeMewDup\(\)/.test(S2),
+ ok(!/function mewDupStep\(k,btn\)\{[^}]*closeMewDup/.test(S2),
     '★★見に行ってもパネルは閉じない(戻って次を押せる)', true);
  ok(/preserveFocus: true \}\); \} catch/.test(S2),
     '★焦点はMe Dockに残す(「次」を一手で押せる)', true);
