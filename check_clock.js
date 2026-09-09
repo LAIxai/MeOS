@@ -1766,15 +1766,15 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★★▼と▲とバッジ行の3つとも直す(片方だけ直すと対that壊れる)', true);
  /* ★★★v4.1.186(俊克「重複する膜の修復をファイル全体で。膜の重複は全部直さないと意味ない」
     ＋「▼メニューを追加しましょう」): 重複は「離れた2つ」の関係so、見える範囲だけでは直せない。 */
- ok(/async function meosRepairDuplicateMembraneNames\(editor\)/.test(S2), '★ファイル全体の修復that在る', true);
+ ok(/async function meosRepairDuplicateMembraneNames\(editor, mode\)/.test(S2), '★ファイル全体の修復that在る(⏰だけ / 全部)', true);
  ok(/const rest = onlyClock \? sorted\.filter\(_hasClock\) : sorted\.slice\(1\);/.test(S2),
     '★★★⏰だけ= ⏰を持つ膜を打ち直す(他は据え置き) / 全部= 一番上を残す', true);
- ok(/const A = '\\u23f0 Rename ' \+ clockSide\.jobs\.length;/.test(S2),
-    '★★★ボタンは横1行に収まる長さ(段組はOSthat決めるので、字で効かせる)', true);
- ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, \.\.\.buttons\)/.test(S2),
-    '★★★押されるまで残るのはモーダル(俊克が褒めた形を捨てない)', true);
- ok(/only the membranes with timers\.[\s\S]{0,80}every duplicate\./.test(S2),
-    '★★ボタンthat短くなった分、どちらthat何かは上の行that引き受ける', true);
+ ok(/const A = 'Rename ' \+ side\.jobs\.length;/.test(S2),
+    '★★★ボタンは1つ＋Cancel(macOSは3つ以上を縦に積む)', true);
+ ok(/showWarningMessage\(msgTitle, \{ modal: true, detail: msgDetail \}, A\)/.test(S2),
+    '★★★押されるまで残るのはモーダル・渡すボタンは1つ', true);
+ ok(/id="mew-dupfix-all"/.test(S2) && /membraneDupFixAll/.test(S2),
+    '★★★選ぶ場所はメニュー・確かめる場所はパネル(選択肢をボタンから外へ)', true);
  ok(/const _hasClock = \(q\) => clockLines\.some\(ln => ln >= q\.start && ln <= q\.end \+ 2\);/.test(S2),
     '★★★⏰を持つのは膜ごとに見る(名前でなく行の位置で決める)', true);
  ok(/id="mew-menu-btn"/.test(S2)&&/id="mew-dupfix"/.test(S2), '★🐱に▾と項目that在る', true);
@@ -1783,12 +1783,12 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  ok(/message\.type === 'membraneDupFix'/.test(S2), '  面からの口も在る', true);
  /* ★★★v4.2.4(俊克「メニューを実行すると先ずチェックのみ。重複していれば猫を明るい🐱にする。
     そして個数を出し、修復しますか?と聞く」): 点灯=直すものが在る合図(v4.0.111)。重複も直すもの。 */
- ok(/meosPostMewLit\(true\);[\s\S]{0,2000}showWarningMessage/.test(S2),
+ ok(/meosPostMewLit\(true\);[\s\S]{0,900}showWarningMessage/.test(S2),
     '★★★数えて、在ったら🐱を点けてから訊く(訊く前に点く)', true);
  ok(/meosPostMewState\(meosMewLastCount, true\);[^\n]*本来の姿/.test(S2),
     '★★訊き終わったら本来の姿へ戻す(点けっぱなしにしない)', true);
- ok(/no two membranes share a name[\s\S]{0,60}return;[\s\S]{0,200}meosPostMewLit\(true\)/.test(S2),
-    '★重複が無ければ点けない(先に返す)', true);
+ ok(/nothing to repair\.'\)\);[\s\S]{0,300}meosPostMewLit\(true\)/.test(S2),
+    '★重複が無ければ点けない(先に返す= 何も無い時に猫を点けない)', true);
  ok(/m\.type==='mewLit'\)\{const _b=document\.getElementById\('mew-btn'\)/.test(S2),
     '  面の側は点けるだけ(数字は触らない= 数字は署名の無いMe記法の数)', true);
  /* ★★★v4.2.1(俊克「メニューがとんでもなく離れている」): 位置は計算でなく定義。 */

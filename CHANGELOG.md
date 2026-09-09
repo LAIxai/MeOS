@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.16 (2026-09-09)
+- **The choice moved out of the dialog and into the menu.** Shortening the buttons had not made them sit side by side, because the thing that stacks them is not their length: macOS stacks whenever there are three. Width cannot be set, a close box cannot be added, and the row layout cannot be asked for — the panel is a native alert and the API passes it nothing but an ordered list. What the API does allow is fewer buttons, so 🐱 ▾ now holds two items — `Check & repair membranes with ⏰` and `Check & repair all duplicate names` — and each opens a panel with one action beside Cancel, which is the layout that was wanted. It also puts the far-reaching option behind its own deliberate choice, where it belongs.
+
 ### v4.2.15 (2026-09-09)
 - **Short buttons, so the dialog can lay them out in one row.** Where the buttons sit is macOS's decision, not something the API can be told — but macOS stacks them vertically only when they will not fit side by side. Trimmed to `⏰ Rename 20` and `Rename all 583`, they fit, which puts the default at the right end with Cancel beside it. What each one covers moved up into the line above, where there is room to say it properly.
 
