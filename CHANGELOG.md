@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.3 (2026-09-09)
+- **`Check & repair duplicate membrane names`.** The item shows you the count and then writes, so a name that only said *Check* was promising less than it does. A menu item should name the thing it will do.
+
 ### v4.2.2 (2026-09-09)
 - **`Check duplicate membrane names` — the ellipsis is gone.** A trailing `…` is meant to say *this opens a dialog*, but at the end of the only item in a small box it reads as *the text was cut off*, which is exactly how it was read. With one item there is nothing to abbreviate, so the name is written out in full and the box takes the width of what is in it.
 - The menu sits 2px under the 🐱 instead of 6.
