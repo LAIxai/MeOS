@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -169,7 +169,7 @@ console.log('\u247d ↺↻ = 1行に顔が2つ');
   ok(/spec\.dual \? '\\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
   ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
      '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
-  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, cycleReps: c\.cycleReps, magic: c\.magic, whenSrc: c\.whenSrc, tags: _tags, ufc: c\.ufc/.test(S10),
+  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, cycleReps: c\.cycleReps, magic: c\.magic, whenSrc: c\.whenSrc, pAt: c\.pAt \|\| 0, tags: _tags, ufc: c\.ufc/.test(S10),
      '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
 }
 
@@ -272,7 +272,7 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
   const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+18000);
-  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle \}, _sc7, _nowAll\)/.test(D7),
+  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle, pAt: c\.pAt \}, _sc7, _nowAll\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
      '\u2605渡されなければ今までどおり自分で見る', true);
@@ -1744,6 +1744,31 @@ console.log(ng?('NG '+ng+'件'):'全項目 PASS'); process.exit(ng?1:0);
 /* ★★★v4.1.185(俊克 9/9 am10:04「Mepyでコピーすると自動でTSを変えているよね。手動でコピペした時も、
    ペーストした瞬間に焼き直せば一貫性があるでしょ」): 名前は番地so、同じ名前が2つ在ると⏰は
    どちらの膜か決められない。実測= 生涯日記に⏰を持つ重複名that12件(同名3つの膜まで在った)。 */
+/* ★★★v4.2.28(俊克 2026.09.10 am00:00「未来の起点を指定した時のストップウォッチにp値を自動付加する
+   ことだけ実装して、今日は終りにしよう。v4.1の暗黙のバグ(未必の故意)だからね」):
+   f=未来の目標 / p=数え始め。人は未来の時刻だけ書き、MeOSがpを足す。 */
+console.log('㊲ f/p の印 — 未来を狙ったストップウォッチは、掛けた瞬間を本文に持つ');
+{
+ const S3=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const q=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
+ const a=q('2027-09-09 15:30f/2026-09-09 23:29p ↻50m ×1');
+ ok(a.when==='2027-09-09 15:30', '★★★fの側that起点(鐘の時刻)', a.when);
+ ok(!!a.pAt && new Date(a.pAt).getFullYear()===2026, '★★★pの側that数え始め', a.pAt&&new Date(a.pAt).toISOString());
+ ok(a.whenSrc==='2027-09-09 15:30f/2026-09-09 23:29p', '★★本文の字はそのまま(書き戻しで印that消えない)', a.whenSrc);
+ ok(q('2026-09-09 04:30 ↻50m ×1').pAt===0, '★★★過去を書いた時は足さない(それ自体that p)', q('2026-09-09 04:30 ↻50m ×1').pAt);
+ ok(!!q('2027-09-09 15:30F/2026-09-09 23:29P ↻50m ×1').pAt, '  大文字でも読む(書くのは小文字)', true);
+ /* 顔= pから数える。armedAt(覚え)を使うと開き直しで0に戻る、というのthat直した所。 */
+ {const now=Date.parse('2026-09-10T00:29:00+09:00'), pAt=Date.parse('2026-09-09T23:29:00+09:00');
+  const ms=X.meosClockFaceForLine2(Date.parse('2027-09-09T15:30:00+09:00'),
+    {when:'2027-09-09 15:30', up:true, cycle:['50m'], pAt}, {armedAt:now}, now);
+  ok(Math.round(ms/60000)===60, '★★★未来起点のSWは p から数える(覚えでなく字so、開き直しても続く)', Math.round(ms/60000));}
+ ok(S3.indexOf("if (c.ufc && !c.pAt && (c.up || c.dual)) {")>=0,
+    '★★★書くのは p that無い時だけ(開き直しの度に書き直すと、直そうとしている穴を自分で開ける)', true);
+ ok(/const _org0 = meosParseStampLoose\(c\.when\);[\s\S]{0,80}getTime\(\) > Date\.now\(\)/.test(S3),
+    '★★足すのは未来を狙った時だけ', true);
+ ok(S3.indexOf("+ 'f/' + meosClockFcStamp(new Date()) + 'p'")>=0,
+    '★fは小文字(Fは曜日の金曜と紛れる)', true);
+}
 console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / 🐱▾で全体を修復');
 {
  const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');

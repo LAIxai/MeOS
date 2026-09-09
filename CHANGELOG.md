@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.28 (2026-09-10)
+- **A stopwatch aimed at a future time now keeps its start in the text, so restarting the editor no longer sets it back to zero.** The moment a clock was armed was held in memory and nowhere else, so reopening the file re-armed it and the elapsed count began again from nothing — quietly, with no sign that anything had been lost. It is written into the line instead: `2027-09-09 15:30f/2026-09-09 23:29p`, where **f** is the bell you are aiming at and **p** is where the counting starts.
+- **Nobody types either letter.** Write the time you mean; if it is in the future MeOS adds the pair when the clock starts, and if it is in the past that time *is* the start and nothing is added — which is what makes *count as if I began at 4:30 this morning* still work. The letter is lowercase because `F` is already Friday in a membrane name.
+- It is written once, only when there is no **p** there yet. Writing it on every arm would re-open the very hole this closes.
+
 ### v4.2.27 (2026-09-09)
 - **A code fence now closes at the membrane boundary, matched or not — and with that, half the clocks in a lifelong diary came back.** Fences were paired by counting, so a single unmatched ``` shifted every pair after it and opened phantom blocks thousands of lines long: one ran from 71,543 to 74,464. Everything inside a fence is read as plain text, correctly, so every ⏰ that fell into one of those phantoms was invisible — **of 179 clock lines in the file, MeOS could see 95**. A membrane is a closed region; nothing should be able to lead a fence out of one. Crossing a ▼ or ▲ now closes whatever was open, which bounds the damage from one stray backtick to the membrane it was typed in. The count went to 109, and the timer that started all of this — the one that would not run — is running.
 - The rule that quoted notation stays inert (v4.1.39, v4.1.66) is untouched. What changed is only how far a fence can reach.

@@ -10430,6 +10430,19 @@ function meosClockFcParse(text) {
   body = body.replace(/(^|\s)#([^\s#<>]+)/g, (mm, sp, tg) => { tags.push(tg); return sp ? ' ' : ''; }).trim();
   // ★v4.1.165: 仕掛けの言葉= 本文はそのまま、時計だけ本物の起点/周期で走らせる。
   let magic = null, whenSrc = body;
+  // ★★★v4.2.28(俊克 2026.09.10 am00:00「未来の起点を指定した時のストップウォッチにp値を自動付加する
+  //   ことだけ実装して、今日は終りにしよう。v4.1の暗黙のバグ(未必の故意)だからね」):
+  //   ★★★**f＝未来の目標 / p＝数え始め**。`F` は曜日の金曜(S-M-T-W-t-F-s)と紛れるso**小文字**。
+  //   ★★★**書くのは人でなくMeOS**= 人は未来の時刻だけを書き、掛けた瞬間の「今」をMeOSthatpとして足す。
+  //     これthat無いと、掛けた時刻thatが `_meosPseudoScopes` の中にしか無く、
+  //     **VSCodiumを開き直すたびに経過thatが0に戻っていた**(v4.1.136の積み残し)。
+  //   ★過去の時刻を書いた時は、**それ自体が p**= 何も足さない・上書きしない
+  //     (「過去のam4:30から測っていることにする」thatが消えるso) → [[project_clock_fp_stamps]]
+  let pAt = 0;
+  try {
+    const _fp = /^(.+?)[ \t]*f[ \t]*\/[ \t]*(.+?)[ \t]*p$/i.exec(body);
+    if (_fp) { body = _fp[1].trim(); const _d = meosParseStampLoose(_fp[2].trim()); if (_d) pAt = _d.getTime(); }
+  } catch (_) { }
   try {
     const _mg = meosClockMagicWhen(body);
     if (_mg) {
@@ -10441,7 +10454,7 @@ function meosClockFcParse(text) {
   const face = String(m[1] || '');
   const _pm = /\u23f8\ufe0f?([0-9]+)/.exec(face);   // v4.1.147: 休んだ時に何周終えていたか
   const pausedRound = _pm ? parseInt(_pm[1], 10) : 0;
-  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10577,7 +10590,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, tags: _tags, ufc: c.ufc });   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, tags: _tags, ufc: c.ufc });   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -10964,6 +10977,21 @@ function meosArmClockFcFor(doc) {
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
         step: _step, cidx: _cidx, round: _crnd };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている / v4.1.1111: 今の回は並びの何番目か
+      // ★★★v4.2.28: **未来を狙ったストップウォッチには、掛けた瞬間を p として本文に書く**。
+      //   ★★人は未来の時刻だけを書けばよい= `f` も `p` も MeOSthat足す。
+      //   ★★★書くのは**まだ p thatが無い時だけ**= 開き直しの度に書き直すと、
+      //     直そうとしている「経過thatが0に戻る」を自分で起こしてしまう。
+      //   ★過去を書いた時は足さない(それ自体thatが p)。逆算だけの時も足さない(p を読む顔thatが無い)。
+      try {
+        if (c.ufc && !c.pAt && (c.up || c.dual)) {
+          const _org0 = meosParseStampLoose(c.when);
+          if (_org0 && _org0.getTime() > Date.now()) {
+            const _src2 = String(c.whenSrc || c.when).trim() + 'f/' + meosClockFcStamp(new Date()) + 'p';
+            meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: _src2, tags: c.tags, done: false }, c.line);   // v4.2.28
+            scope.pAt = Date.now();
+          }
+        }
+      } catch (_) { }
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
@@ -11715,7 +11743,7 @@ function meosApplyTimerLineDecorations(editor) {
           const _mg2 = c.magic || null;
           const _my = (_mg2 && _mg2.years > 0) ? _mg2.years : 0;
           const _face = (u) => {
-            const _ms = meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle }, _sc7, _nowAll);
+            const _ms = meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle, pAt: c.pAt }, _sc7, _nowAll);
             if (_mg2 && _mg2.doomsday && u) {                       // 初出(1947年6月)fromの通算
               const _yr = 365.2425 * 86400000;
               const _el = Math.max(0, _nowAll - MEOS_DOOMSDAY_FIRST.getTime());
@@ -11958,7 +11986,8 @@ function meosClockFaceForLine(until, c, sc, now) {
       const _o = meosParseStampLoose(c && c.when);
       if (_o && _o.getTime() > _now) {
         if (!c || !c.up) return left;                              // ゴングまでの残り
-        const _a = (sc && sc.armedAt) ? sc.armedAt : _now;
+        // ★★★v4.2.28: 本文に p thatあれば、そこfrom数える(覚えでなく字so、開き直しても続く)。
+        const _a = (c && c.pAt) ? c.pAt : ((sc && sc.armedAt) ? sc.armedAt : _now);
         return Math.max(0, _now - _a);                             // 掛けてからの経過
       }
     } catch (_) { }
