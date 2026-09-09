@@ -5049,12 +5049,18 @@ async function meosRepairDuplicateMembraneNames(editor) {
   const B = 'Rename all ' + allSide.jobs.length;
   // ★v4.2.6(俊克「パネルに出る説明をもっとコンパクトにしようよ」): 2行＋例3つ。
   //   言うべきは「何が壊れているか」と「なぜ残りは触らないか」の2つだけ。
-  // ★v4.2.8(俊克「『\u23f0 on 9.』の『on 9.』が意味不明だよね」): 3つの数that並ぶのに、
-  //   最後だけ主語thatが抜けていた。**数には、何の数かを付ける**。
-  const msgTitle = 'MeOS \ud83d\udc31 ' + (allSide.jobs.length + allSide.names.length) + ' membranes share '
-    + allSide.names.length + ' names \u2014 ' + clockSide.names.length + ' of those names carry a \u23f0.';
-  const msgDetail = 'Only the \u23f0 ones break \u2014 a clock is keyed on the name. A repeated name is otherwise how the H-TOC finds a topic.\n\n'
-    + head + '\n\nThe first of each keeps its name.';
+  // ★v4.2.8/9(俊克「『on 9.』が意味不明」→「shareとは何か? 重複なのか?」):
+  //   ★★**数には、何の数かを付ける**。そして**言葉は、訳しても壊れない物を選ぶ**=
+  //     share は「共有」と読めて重複だと伝わらない。break は目的語を書かないと訳that反転する
+  //     (俊克のDeepLで「割り当てられます」になった)。so duplicate と breaks that clock で書く。
+  const _other = Math.max(0, allSide.names.length - clockSide.names.length);
+  const msgTitle = 'MeOS \ud83d\udc31 ' + allSide.names.length + ' duplicate names, used by '
+    + (allSide.jobs.length + allSide.names.length) + ' membranes \u2014 ' + clockSide.names.length + ' of them have a \u23f0.';
+  const msgDetail = 'A clock is stored under its membrane\u2019s name, so a duplicate name breaks that clock: '
+    + 'nothing can tell which membrane it belongs to. Those ' + clockSide.names.length + ' are the ones that need repair.\n\n'
+    + 'The other ' + _other + ' may well be deliberate \u2014 the H-TOC finds every place on a topic by searching for the same name.\n\n'
+    + 'Repair keeps the first membrane of each name and gives the rest a fresh timestamp.\n\n'
+    + head;
   // ★★★v4.2.7(俊克「パネルが5秒〜10秒で消えちゃったよ。なぜ?」・2度目):
   //   ★★★**VS Code の通知は、ボタンthat付いていても引っ込む**。warning にしても消えた。
   //     押されるまで必ず残るのは**モーダル**だけso、そこへ移す。

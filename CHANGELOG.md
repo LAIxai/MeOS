@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.9 (2026-09-09)
+- **Words that survive translation.** `656 membranes share 73 names` reads as *sharing*, which is a nice thing, when what is meant is that the names are **duplicated**. And `only the ⏰ ones break`, with nothing said about what they break, came back from a translator as *only the ⏰ ones are allocated* — the opposite of a warning. The dialog now says `73 duplicate names` and `a duplicate name breaks that clock`, and spells out what a clock being broken means: nothing can tell which membrane it belongs to.
+
 ### v4.2.8 (2026-09-09)
 - **`656 membranes share 73 names — 9 of those names carry a ⏰.`** Three numbers stood in a row and only the last one had lost its noun: `⏰ on 9` said nothing to anyone who had not written it. A number needs to say what it counts.
 
