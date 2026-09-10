@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.43 (2026-09-10)
+- **Folding now reports whether it actually happened.** The log says a block was folded; the screen says it was not. Rather than guess which is lying, the pass now looks at the block's last line immediately after folding and says whether it went out of sight — the same way an earlier jump was pinned down. No behaviour changes in this version.
+
 ### v4.2.42 (2026-09-10)
 - **Clicking near a folded block folds again.** The guard added in v4.2.38 was reading the caret as being off screen when it was not: the editor reports the visible lines as a set of ranges broken at every fold, so a line sitting in one of those breaks looks exactly like a line below the bottom of the window. On a 182-line file the caret on line 6 was being called off screen three clicks running. The caret is now judged against the top and bottom of the window, and the breaks in between are not counted. The diagnostic prints the window it measured against.
 

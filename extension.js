@@ -31788,6 +31788,7 @@ function meosFcRecentlyFolded(ln) {
 //       **同じ門番を、呼び元の数だけ書かない**。
 const MEOS_FC_EDIT_QUIET_MS = 700;   // v4.0.396: 打鍵で動いた画面のためには畳み直さない
 let _meosFcQuietTimer = null;   // v4.2.40: 静かになるまで持ち回す1本
+let _headEnd43 = new Map();     // v4.2.43: 畳んだ相手の終わり(効いたか確かめる)
 // ★★★v4.2.39(俊克 2026.09.10 pm00:53「その外の空行をクリックすると、いつまで経っても畳まれない。
 //   ところが、別の空行をクリックすると畳まれる」): ★★★**帰った理由を名指しする**。
 //   実測(meos-debug.log)= そのクリックの時刻に `[foldWho]` that1行も出ていない= 走る前に黙って帰っている。
@@ -31910,6 +31911,7 @@ async function meosAutoFoldSpecLines(editor, force) {
       meosFoldWhy('カーソルthat画面の外 行=' + (_cur + 1) + ' 画面=' + (_screenTop + 1) + '〜' + (_screenBot + 1));
       return;
     }
+    _headEnd43 = new Map();   // v4.2.43: 畳んだ相手の終わりを控える(効いたか確かめるため)
     heads = meosFcFoldShape(editor.document, _cur)
       .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
       .map(it => it.head);   // v4.0.466: 今しがた畳んだ物は二度畳まない
@@ -31954,6 +31956,14 @@ async function meosAutoFoldSpecLines(editor, force) {
       try { meosDbg('[foldWho] meosAutoFoldSpecLines lines=' + JSON.stringify(heads)); } catch (_) { }   // v4.1.163: 誰that畳んだか
       await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
       try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
+      // ★★★v4.2.43(俊克 pm01:53「全く改善されない。なぜ?」): ★★★**畳んだ後に、本当に畳まれたかを測る**。
+      //   ログは `★一括で畳んだ` と言っているのに、俊克の画面では畳まれていない= **報告と実物that食い違う**。
+      //   → 畳んだ相手の**終わりの行that隠れたか**を、その場で見て言う(v4.0.188と同じ確かめ方)。
+      try {
+        const _took = heads.map(h => { const e = _headEnd43.get(h);
+          return (h + 1) + '\u2192' + ((e == null) ? '?' : ((e + 1) + (lineVisible(editor, e) ? '見えたまま' : '隠れた'))); });
+        meosDbg('[fcTook] ' + _took.join(' / ') + '  カーソル行=' + (editor.selection.active.line + 1));
+      } catch (_) { }
       try { meosDbg('[fcFold] ok attempt=' + attempt + ' blocks=' + heads.length + ' lines=' + editor.document.lineCount + ' ' + (Date.now() - _t0) + 'ms heads=' + heads.slice(0, 8).join(',')); } catch (_) { }
       _meosFcFolded.add(key);
       return;
