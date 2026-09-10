@@ -2048,6 +2048,12 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★先読みは入れない(画面の外の塊は畳まない= v4.0.186の掟を戻した)', true);
   ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/.test(W),
      '  見えている塊だけを畳む(俊克 pm01:37「別の場所に飛んでしまう」で戻した)', true);}
+ /* ★★★v4.2.44(俊克 pm01:59「膜を再描画するルーチンの中で、FC/UFCの折畳み処理が走るはずでしょ。
+    こんなに悩む話じゃないよね」)= 描き直すのと同じ拍で畳みを打つ。 */
+ ok(/try \{ const _ed44 = editor; if \(_ed44\) setTimeout\(\(\) => \{ try \{ meosAutoFoldSpecLines\(_ed44\); \}/.test(FN(S9,'function refresh(editor = vscode.window.activeTextEditor)')),
+    '★★★再描画の道が畳みを打つ(合図を1つ取りこぼしても、描き直しで効く)', true);
+ ok(/_headEnd43\.set\(it\.head, it\.end\)/.test(S9),
+    '★畳んだ相手の終わりを控える(効いたかを言えるようにする)', true);
  ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/
     .test(FN(S9,'async function meosFoldPseudoOpened')),
     '★他の道の見え方は今までどおり(先読みを足したのは一括の道だけ)', true);

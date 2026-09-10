@@ -16017,7 +16017,17 @@ function refresh(editor = vscode.window.activeTextEditor) {
     try { vscode.window.setStatusBarMessage('MeOS: refresh error (see MeOS Debug) — 他の機能は動きます', 4000); } catch (_) { }
     return undefined;
   }
-  finally { try { const _ms = Date.now() - _rt0; if (_ms > 300) meosDbg('[refresh] ' + _ms + 'ms lines=' + ((editor && editor.document) ? editor.document.lineCount : -1)); } catch (_) {} }
+  finally {
+    // ★★★v4.2.44(俊克 2026.09.10 pm01:59「そもそも、行番号を読めば、外に出たと判断できるんだから、
+    //   膜を再描画するルーチンの中で、FC/UFCの折畳み処理が走るはずでしょ。こんなに悩む話じゃないよね」):
+    //   ★★★**俊克thatが正しい。私は畳みを別の道に置いたまま、門番を1つずつ塞いでいた**。
+    //     畳むかどうかは `meosFcFoldShape` 1つthat既に答えている= 描き直す時に、その答えを打てばいい。
+    //   ★★→ **再描画と同じ拍で畳みを打つ**。今までの3つの合図(スクロール/カーソル/起動)は残すthat、
+    //     どれか1つthat取りこぼしても、描き直しthat来た時にまた効く= 落ちる道thatが無くなる。
+    //   ★重さは足していない= meosAutoFoldSpecLines は畳む相手that無ければ即帰る(門番は全部その中)。
+    try { const _ed44 = editor; if (_ed44) setTimeout(() => { try { meosAutoFoldSpecLines(_ed44); } catch (_) { } }, 0); } catch (_) { }
+    try { const _ms = Date.now() - _rt0; if (_ms > 300) meosDbg('[refresh] ' + _ms + 'ms lines=' + ((editor && editor.document) ? editor.document.lineCount : -1)); } catch (_) {}
+  }
 }
 function _refreshInner(editor) {
   activeEditor = editor;
@@ -31914,7 +31924,7 @@ async function meosAutoFoldSpecLines(editor, force) {
     _headEnd43 = new Map();   // v4.2.43: 畳んだ相手の終わりを控える(効いたか確かめるため)
     heads = meosFcFoldShape(editor.document, _cur)
       .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
-      .map(it => it.head);   // v4.0.466: 今しがた畳んだ物は二度畳まない
+      .map(it => { _headEnd43.set(it.head, it.end); return it.head; });   // v4.2.43: 終わりも控える   // v4.0.466: 今しがた畳んだ物は二度畳まない
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) {
     // ★v4.2.39: 塊は在るのに畳まないなら、**落とした条件thatが答え**so、その数を並べて言う。
