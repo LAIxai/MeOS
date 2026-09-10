@@ -1926,10 +1926,10 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
  /* ★★★v4.2.33(2026.09.10 俊克「でもなぜ連動しないんだ?」)= 席が回って来た時が起点。 */
  ok(/if \(!c\.when && c\.ufc && !c\.done && !c\.off && Array\.isArray\(c\.cycle\) && c\.cycle\.length\) \{/.test(S9),
     '★★★時刻を書いていない1本は、席が回って来た時が起点(前が終わった時から数える)', true);
- ok(/const _src3 = \(String\(c\.whenSrc \|\| ''\)\.trim\(\) \+ ' ' \+ _st3 \+ 'p'\)\.trim\(\);/.test(S9),
-    '★★新しい仕組みを作らず v4.2.28 と同じ口で p を書く(番号は頭に残す)', true);
- ok(/c\.when = _st3; c\.whenSrc = _src3;/.test(S9),
-    '★この走査からもう起点を持つ(本文の書き込みを待たない)', true);
+  ok(/const _base53 = \(_sc53 && _sc53\.armedAt\) \? _sc53\.armedAt : Date\.now\(\);/.test(S9),
+     '★★★起点は覚えの側だけに持つ(本文に書くと、次の周でそれが古い起点になる= v4.2.53)', true);
+  ok(/c\.when = meosClockFcStamp\(new Date\(_base53\)\);/.test(S9) && !/whenSrc: _src3/.test(S9),
+     '★★★本文は1文字も触らない(起点が無いことが、その1本の性質だから)', true);
  {const qq=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
   const w1=qq('2. 2026-09-10 09:46p ↻2m ×1'), w0=qq('2026-09-10 09:46p ↺3m ×1');
   ok(w1.when==='2026-09-10 09:46' && w1.listNo==='2.' && !!w1.pAt && w1.cycle.join()==='2m',

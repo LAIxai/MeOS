@@ -11168,13 +11168,23 @@ function meosArmClockFcFor(doc) {
       //   ★書くのは1回だけ= 次からは when を持つので、この枝に入らない。
       //   ★休み(⏸)と済み(✓)は除く。周期を持たない物も除く(掛ける先が無い)。
       //   ★見せかけの番号は whenSrc の頭にそのまま残す= 番号は最後まで動かない(v4.2.31)。
+      // ★★★v4.2.53(俊克 2026.09.11 am01:19「2番目の1分タイマーの方に、日時分pを書き込む必要はない。
+      //   このせいで、2回目以降で、1分タイマーthat起動しない」): ★★★**本文に書かない**。
+      //   ★★★書いてしまうと、**次の周でそれthat古い起点になる**= `01:07:50p` から数えると
+      //     `\u00d72` はもう終わっているので、2周目は「済み」と判定されて動かない。
+      //   ★★★俊克の設計はこう言っていた= 「繰返しのタイマーは起点から計算し、**起点のないタイマーは
+      //     チェックをクリックしたタイミングで始まる**」。起点thatが無いことthatその1本の性質so、
+      //     MeOSthatそれを書き込むと、**性質そのものを消してしまう**。
+      //   ★★→ 起点は**覚えの側だけ**に持つ(armedAt)。輪thatが回る時に覚えthat消えるso、
+      //     次の周は押した瞬間から始まる= 俊克の言うとおりの動き。
+      //   ★掛かっている間は armedAt から同じ値thatが出るso、走査のたびに起点that動くことは無い
+      //     (`sig` thatが揺れて掛け直しの輪になるのを避ける)。
       if (!c.when && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
         try {
-          const _st3 = meosClockFcStamp(new Date());
-          const _src3 = (String(c.whenSrc || '').trim() + ' ' + _st3 + 'p').trim();
-          meosClockFcSet(doc, c.key, { when: _st3, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: _src3, tags: c.tags, done: false }, c.line);
-          meosDbg('[armClock] chain start key=' + c.key + ' \u884c=' + (c.line + 1) + ' ' + _src3);
-          c.when = _st3; c.whenSrc = _src3;            // この走査からもう起点を持つ(書き込みを待たない)
+          const _sc53 = _meosPseudoScopes.get(uri + ' ' + c.key);
+          const _base53 = (_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now();
+          c.when = meosClockFcStamp(new Date(_base53));   // この走査の中だけ。本文は1文字も触らない
+          meosDbg('[armClock] chain start(\u899a\u3048\u306e\u5074\u3060\u3051) key=' + c.key + ' \u884c=' + (c.line + 1) + ' ' + c.when);
         } catch (_) { }
       }
       let w = meosParseWhen(c.when), _step = 0, _cidx = 0, _crnd = 1;
