@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.31 (2026-09-10)
+- **The number at the front of a clock is for you, not for MeOS.** `1.`, `2.`, `3)` are read the way Markdown reads a numbered list: the digits you typed are kept in the line and shown back to you untouched, and MeOS decides the order from the sequence instead. The number is dropped from the time it was being mistaken for, and left in the text, so every path that writes the line back carries it through without a single one of them being changed.
+- A date written with dots — `2026.09.10` — is not a list number. The two are told apart by the space that always follows a number.
+- **A clock with no time is a clock.** The second and later entries of a chain start when the one before them finishes, so they carry only an arrow and a period: `↻3m ×1`. Until now the scanner threw those lines away.
+
 ### v4.2.30 (2026-09-10)
 - **A lone `p` is coloured too.** Set a clock to *now*, or write a time already past, and there is no `f/` beside it — the letter was left grey because the drawing side insisted on the pair while the reading side had understood the single form since v4.2.29. Two rulers on one letter, again.
 - **The colour is now taken from the text the reader already produced** (`whenSrc`) instead of hunting through the line a second time, so the letter that gave the clock its start is the letter that gets painted — in either case, and whichever case it was typed in.

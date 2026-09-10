@@ -171,8 +171,8 @@ console.log('\u247d ↺↻ = 1行に顔が2つ');
   ok(/spec\.dual \? '\\u21ba\\u21bb'/.test(S10), '\u2605\u2605書く時も \u21ba\u21bb で戻す(書き換えで片方に化けない)', true);
   ok(!/cycle: c\.cycle, up: c\.up, tags:/.test(S10) && !/cycle: hit\.cycle, up: hit\.up, tags:/.test(S10),
      '\u2605\u2605\u2605読んだ物をそのまま返す口は全部 dual を持つ', true);
-  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, cycleReps: c\.cycleReps, magic: c\.magic, whenSrc: c\.whenSrc, pAt: c\.pAt \|\| 0, tags: _tags, ufc: c\.ufc/.test(S10),
-     '\u2605\u2605\u2605拾い読み(scan)も dual を運ぶ(ここが抜けると hit.dual が空になる)', true);
+  ok(/dual: c\.dual, rounds: c\.rounds, cycleSrc: c\.cycleSrc, cycleSpans: c\.cycleSpans, cycleSeps: c\.cycleSeps, cycleReps: c\.cycleReps, magic: c\.magic, whenSrc: c\.whenSrc, pAt: c\.pAt \|\| 0, listNo: c\.listNo \|\| '', tags: _tags, ufc: c\.ufc/.test(S10),
+     '\u2605\u2605\u2605拾い読み(scan)も読んだ項目を全部運ぶ(dual / listNo — 抜けると受け取る側が空になる)', true);
 }
 
 // ★★★v4.1.136(俊克 9/5 pm04:43「ストップウォッチは、タイマを起動した時からの経過時間だよ。
@@ -1789,6 +1789,16 @@ console.log('㊲ f/p の印 — 未来を狙ったストップウォッチは、
     '★★★対を要求しない= p 単独でも塗る(v4.2.29 の積み残し)', true);
  ok(/const _wAt = txt\.indexOf\(c\.whenSrc\);/.test(S3),
     '★★塗る場所は本文を探し直さず whenSrc から引く= 1つの物差し', true);
+ /* ★★★v4.2.31(2026.09.10 連なり①)= 先頭の番号は見せかけ / 時刻の無い時計も読む。 */
+ {const n1=q('1. 2026-09-10 10:00 ↺50m ×1'), n2=q('3) ↻90s ×2'), n3=q('2026.09.10 10:00 ↺5m');
+  ok(n1.when==='2026-09-10 10:00' && n1.whenSrc==='1. 2026-09-10 10:00' && n1.listNo==='1.',
+     '★★★番号は when から落として whenSrc に残す(書き戻す口を1つも触らずに番号が動かない)', [n1.when,n1.whenSrc]);
+  ok(n2.when==='' && n2.whenSrc==='3)' && n2.listNo==='3)' && n2.cycle.join()==='90s',
+     '★番号だけの行(連なりの2本目以降)も番号と周期を持って帰る', [n2.whenSrc,n2.cycle]);
+  ok(n3.when==='2026.09.10 10:00' && n3.listNo==='',
+     '★★★点の日付を番号と見間違えない(見分けるのは後ろの空白)', n3.when);}
+ ok(/if \(!c \|\| \(!c\.when && !\(c\.cycle && c\.cycle\.length\)\)\) continue;/.test(S3),
+    '★★★時刻を持たない時計も読む(連なりの2本目以降は前が終わった時が起点)', true);
 }
 console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / 🐱▾で全体を修復');
 {

@@ -10430,6 +10430,18 @@ function meosClockFcParse(text) {
   body = body.replace(/(^|\s)#([^\s#<>]+)/g, (mm, sp, tg) => { tags.push(tg); return sp ? ' ' : ''; }).trim();
   // ★v4.1.165: 仕掛けの言葉= 本文はそのまま、時計だけ本物の起点/周期で走らせる。
   let magic = null, whenSrc = body;
+  // ★★★v4.2.31(2026.09.10 連なり①): ★★★**先頭の番号は見せかけ**。
+  //   人は数字で読み、MeOSは並びで判断する(Markdown の番号付き箱条書きと同じ)。
+  //   `1. 2026-09-10 10:00` の `1.` を **when から落とし、whenSrc には残す**。
+  //   ★★書き戻す口は whenSrc をそのまま運ぶので、口を１つも触らずに
+  //     **見せかけの番号が最後まで動かない** → [[project_clock_chain]]
+  //   ★点の日付(`2026.09.10`)と見分けるのは**後ろの空白**= 番号は必ず空白で切れる。
+  //     番号だけの行(`2. ↻3m` の周期を抜いた後)は丸ごと番号なので、その形も取る。
+  let listNo = '';
+  try {
+    const _no = /^(\d{1,3}[.)])(?:[ \t]+|$)/.exec(body);
+    if (_no) { listNo = _no[1]; body = body.slice(_no[0].length).trim(); }
+  } catch (_) { }
   // ★★★v4.2.28(俊克 2026.09.10 am00:00「未来の起点を指定した時のストップウォッチにp値を自動付加する
   //   ことだけ実装して、今日は終りにしよう。v4.1の暗黙のバグ(未必の故意)だからね」):
   //   ★★★**f＝未来の目標 / p＝数え始め**。`F` は曜日の金曜(S-M-T-W-t-F-s)と紛れるso**小文字**。
@@ -10460,7 +10472,7 @@ function meosClockFcParse(text) {
   const face = String(m[1] || '');
   const _pm = /\u23f8\ufe0f?([0-9]+)/.exec(face);   // v4.1.147: 休んだ時に何周終えていたか
   const pausedRound = _pm ? parseInt(_pm[1], 10) : 0;
-  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10576,7 +10588,12 @@ function meosClockFcScan(doc) {
     if (fence) continue;                                                 // 囲いの中は、ぜんぶ文字
     if (txt.indexOf('`') >= 0) { const _m = meosMaskCodeSpans(txt); if (!meosClockFcParse(_m)) continue; }  // 行中の ` … ` も文字
     const c = meosClockFcParse(txt);
-    if (!c || !c.when) continue;
+    // ★★★v4.2.31(2026.09.10 連なり①): ★★★**時刻を持たない時計も読む**。
+    //   連なりの2本目以降は起点を書かない(前が終わった時が起点)ので、
+    //   `↻3m ×1` だけの行が成り立つ → [[project_clock_chain]]。
+    //   ★向きと周期を持てば時計= どちらも無ければ今までどおりただの字。
+    //   ★主の無い ⏰ を落とす門番(v4.1.1120)は下でそのまま効く。
+    if (!c || (!c.when && !(c.cycle && c.cycle.length))) continue;
     // ★★v4.1.13(俊克 バグ1の実物): 閉じ膜と ⏰ の間には、**バッジなど他のFC行が積まれる**。
     //   ので「直前の行」ではなく、**指定行を飛び越えて上の閉じ膜**を探す(指定は塊の下に積み上がる物)。
     let j = i - 1;
@@ -10596,7 +10613,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, tags: _tags, ufc: c.ufc });   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
