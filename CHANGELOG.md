@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.42 (2026-09-10)
+- **Clicking near a folded block folds again.** The guard added in v4.2.38 was reading the caret as being off screen when it was not: the editor reports the visible lines as a set of ranges broken at every fold, so a line sitting in one of those breaks looks exactly like a line below the bottom of the window. On a 182-line file the caret on line 6 was being called off screen three clicks running. The caret is now judged against the top and bottom of the window, and the breaks in between are not counted. The diagnostic prints the window it measured against.
+
 ### v4.2.41 (2026-09-10)
 - **The look-ahead added in v4.2.40 is withdrawn.** Folding blocks that were not on screen made the caret jump to another place on nearly every click. The measurement it was built on — folding moves nothing when the caret is in view — was taken while every block being folded was itself on screen, so it never said anything about folding one that was not. The old rule stands: nothing off screen is folded.
 - Putting the fold off until things go quiet, rather than dropping it, stays — that one the log did show.

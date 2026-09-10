@@ -2019,8 +2019,8 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★★描く側も同じ数え方= 待っている⏰も包みを消す(俊克 バグ3)', true);
  /* ★★★v4.2.38(俊克「膜の外や内部に文字カーソルが入っても折り畳まれない。しかしスクロールすると
     折り畳まれる」＋「スクロールダウンすると、またスクロールアップしてしまう」)。 */
- ok(/if \(!lineVisible\(editor, _cur\)\) \{ meosFoldWhy\(/.test(S9),
-    '★★★カーソルが画面の外に居る間は畳まない(飛ぶ相手は塊でなくカーソル)', true);
+ ok(/if \(_screenTop < 0 \|\| _cur < _screenTop \|\| _cur > _screenBot\) \{/.test(S9),
+    '★★★カーソルは画面の端から端の間で見る(visibleRangesは畳みで切れる= 切れ目を画面の外と読まない)', true);
  ok(!/!_meosFcFolded\.has\(String\(e\.textEditor\.document\.uri \|\| ''\)\)/.test(S9),
     '★★★一度畳んだ文書でもカーソルで走る(この門番があるとスクロールだけが効いていた)', true);
  ok(/onDidChangeTextEditorSelection[\s\S]{0,1400}?clearTimeout\(_meosFcScrollTimer\); _meosFcScrollTimer = setTimeout\(/.test(S9),

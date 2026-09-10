@@ -31894,7 +31894,22 @@ async function meosAutoFoldSpecLines(editor, force) {
     //   ★これで動きは「飛んで戻る」から「何も起きない」になる= 2回の移動that0回。
     //   ★俊克の±3画面の先読みでは直らない= 飛ぶ相手thatが塊でなくカーソルso、
     //     先に畳んでも、その時にカーソルへ飛ぶ(場所を変えるだけ)。
-    if (!lineVisible(editor, _cur)) { meosFoldWhy('カーソルthat画面の外 行=' + (_cur + 1)); return; }
+    // ★★★v4.2.42(俊克 pm01:47「テストmdでの動きは、前と同じ」→ ログthatが3回とも
+    //   `カーソルthat画面の外 行=6` と言っていた): ★★★**私の門番that誤爆していた**。
+    //   ★182行の盤で、6行目のカーソルthat「画面の外」になる訳thatが無い。
+    //   ★★★真因= `visibleRanges` は**畳まれた所で切れる**so、
+    //     「画面の外」と「畳まれた所の中」that同じ顔をしている
+    //     (俊克thatv4.1.1104で名指しした落とし穴を、私thatそのまま踏んだ)。
+    //     カーソルの前後に畳んだ塊thatあると、カーソル行thatが範囲の切れ目に落ちる。
+    //   ★★→ **画面の縦の範囲(一番上〜一番下)に居るか**で見る= 途中の切れ目は数えない。
+    //     止めたかったのは「カーソルthatずっと下/上に居る時に、そこへ飛ばされる事」so、
+    //     訊くべきは**画面の端から端の間に居るか**thatだけ。
+    const _screenTop = (() => { try { const rs = editor.visibleRanges || []; return rs.length ? rs[0].start.line : -1; } catch (_) { return -1; } })();
+    const _screenBot = (() => { try { const rs = editor.visibleRanges || []; return rs.length ? rs[rs.length - 1].end.line : -1; } catch (_) { return -1; } })();
+    if (_screenTop < 0 || _cur < _screenTop || _cur > _screenBot) {
+      meosFoldWhy('カーソルthat画面の外 行=' + (_cur + 1) + ' 画面=' + (_screenTop + 1) + '〜' + (_screenBot + 1));
+      return;
+    }
     heads = meosFcFoldShape(editor.document, _cur)
       .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
       .map(it => it.head);   // v4.0.466: 今しがた畳んだ物は二度畳まない
