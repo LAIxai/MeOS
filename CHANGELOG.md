@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.35 (2026-09-10)
+- **A clock waiting for its turn is no longer folded away before it runs.** Deciding whether a membrane still has a clock to come was asking for a starting time, and the later entries of a chain have none until their turn arrives — so once the ones above them had finished, the membrane was read as having nothing left and the whole stack was folded, the pending clock with it. The count now asks what the reader and the arming pass already ask: not finished, and carrying either a time or a period.
+- Once every clock in the membrane has finished, the badge and the finished clocks fold together, as before.
+
 ### v4.2.34 (2026-09-10)
 - **A clock that cannot be started now says so, on the line where it is fixed.** Delete a ⏸ by hand and its number stays behind, so `⏰⏸1 1. ↺1m ×1` becomes `⏰1 1. ↺1m ×1` — and that stray `1` is read as the starting point. `1 1.` is not a date, so the clock was dropped one step short of being armed, without a word, even though its period, its number and its membrane were all in place. Three versions were spent looking for it.
 - Not writing into the text was right. Saying nothing was not. A ⚠️ is now drawn beside the ⏰ of any clock dropped this way, with a note naming the text that could not be read and where to look. The mark is drawn, never written, so it is absent in raw view, and it takes the place of the 🔓 — one mark to a line.

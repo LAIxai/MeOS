@@ -1940,5 +1940,29 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★Raw では出さない(本文に無い字を足さない)', true);
  ok(/if \(!c\.done && !c\.lock && !_rawHere && !_bad34\) \{/.test(S9),
     '★1行に印は1つ= 壊れている方が 🔓 より先', true);
+ /* ★★★v4.2.35(俊克「最終的に全部終わったら、バッジも含めて折り畳むべきだよね?」)=
+    畳みの判定も、読む側・掛ける側と同じ数え方にする。 */
+ {const mkd=(A)=>({uri:{toString:()=>'file:///f.md',fsPath:'/f.md',scheme:'file'},languageId:'markdown',lineCount:A.length,
+   lineAt:(i)=>({text:A[i],range:{start:{line:i,character:0},end:{line:i,character:(A[i]||'').length}}}),
+   getText:()=>A.join('\n'),positionAt:()=>({line:0,character:0}),offsetAt:()=>0});
+  const B=(c1,c2,c3)=>['# t','<!-- {* ▼mCN=X_1 // c *} -->','本文','<!-- {* ▲mCN=X_1 // *} -->',
+   '<!-- Mew!FC mCN (📊⊕0+0D0W) -->', c1, c2, c3, '<!-- Mew!FC 1. 準備運動 -->'];
+  const pair={start:1,end:3,id:'X_1'};
+  const D1='<!-- Mew!FC ⏰ 1. 2026-09-10 10:48 ↺1m ×1✓ -->';
+  const D2='<!-- Mew!FC ⏰ 2. 2026-09-10 10:52:58p ↻2m ×1✓ -->';
+  const D3='<!-- Mew!FC ⏰ 3. 2026-09-10 10:55:00p ↺3m ×1✓ -->';
+  const U2='<!-- Mew!UFC ⏰ 2. 2026-09-10 10:52:58p ↻2m ×1 -->';
+  const U3='<!-- Mew!UFC ⏰ 3. ↺3m ×1 -->';
+  const mid=mkd(B(D1,D2,U3)), all=mkd(B(D1,D2,D3)), one=mkd(B(D1,U2,U3));
+  ok(X.meosClockBadgeRow(mid,pair)===4,
+     '★★★まだ席の回っていない1本(起点を書いていない)を、これから鳴る⏰として数える', X.meosClockBadgeRow(mid,pair));
+  ok(X.foldRangeEnd(mid,pair,false)===3,
+     '★★★走る前に畳まない(直る前は 5〜7 を畳んでいた)', X.foldRangeEnd(mid,pair,false)+1);
+  ok(X.meosClockBadgeRow(one,pair)===4 && X.foldRangeEnd(one,pair,false)===3,
+     '  走っている1本が在る間も今までどおり(バッジは動く数字の置き場)', true);
+  ok(X.meosClockBadgeRow(all,pair)===-1 && X.foldRangeEnd(all,pair,false)===7,
+     '★★★全部終わったら、バッジも含めて畳む(俊克の言うとおりの姿)', X.foldRangeEnd(all,pair,false)+1);}
+ ok(/if \(c && !c\.done && \(c\.when \|\| \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)\)\) return badge;/.test(S9),
+    '★★数え方が読む側(v4.2.31)・掛ける側(v4.2.33)と揃っている', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

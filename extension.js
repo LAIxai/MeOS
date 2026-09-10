@@ -4163,7 +4163,15 @@ function meosClockBadgeRow(document, pair) {
       const t = document.lineAt(k).text;
       if (!meosIsUnfoldingSpecLine(t)) break;        // 指定行the並びthat切れたら、そこまで
       const c = meosClockFcParse(t);
-      if (c && c.when && !c.done) return badge;      // これから鳴る⏰that在る
+      // ★★★v4.2.35(2026.09.10 俊克「最終的に全部終わったら、バッジも含めて折り畳むべきだよね?」から出た穴):
+      //   ★★★**これから鳴る⏰の数え方が古かった**= `c.when` を要求していたので、連なりの
+      //     まだ席の回っていない1本(`3. ↺3m ×1` = 起点を書いていない)が「居ない」ことにされ、
+      //     **走る前に畳まれていた**。
+      //   ★★→ 数え方を読む側(v4.2.31 の門番)・掛ける側(v4.2.33)と揃える=
+      //     **済みでなく、起点か周期のどちらかを持てば、これから鳴る**
+      //     → [[feedback_one_source_for_mark_count_action]]
+      //   ★休み(⏸)は今までどおり数える= また自分が動くという意思so、置き場は要る。
+      if (c && !c.done && (c.when || (Array.isArray(c.cycle) && c.cycle.length))) return badge;
     }
     return -1;
   } catch (_) { return -1; }
