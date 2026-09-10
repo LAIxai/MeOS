@@ -31705,20 +31705,21 @@ async function meosSyncFcFoldForCursor(editor) {
         await new Promise(r => setTimeout(r, 150));                // 範囲の取り直しを待つ(v0.9.961の作法)
       }
     } catch (_) { }
-    for (const st of Array.from(_meosFcOpenSet)) if (!want.has(st)) { await foldIfVisible(st); _meosFcOpenSet.delete(st); }
-    const toOpen = Array.from(want).filter(st => !_meosFcOpenSet.has(st));
-    if (toOpen.length) {
-      // ★★★v4.1.106(俊克 9/4 am09:45 バグ3「折り畳まれた膜や⏰UFCをクリックしただけで、膜が展開されて
-      //   しまう。▼▲ボタンをクリックしている訳じゃないのに」):
-      //   ★★★**見えていない行へ「開け」と打つと、開くのは膜になる**＝ その行thatが隠れているという事は、
-      //     外側thatが畳まれているという事so、VS Codeは**外側を開けて**その行を見せに行く。
-      //   ★畳む側には v4.0.186/188 でこの門番thatが在った(`foldIfVisible`)。**対の片側にしか置いていなかった**
-      //     ＝ 今日3度目の同じ形。→ 開く側にも同じ門番を置く。
-      //   ★開けなかった塊は覚えにも入れない(次にその行thatが見えた時、また開きに行ける)。
-      const _tg = toOpen.map(st => _target.get(st)).filter(h => h >= 0 && _visible(h));
-      if (_tg.length) await unfold(_tg);
-      for (const st of toOpen) { const h = _target.get(st); if (h < 0 || _visible(h)) _meosFcOpenSet.add(st); }
-    }
+    // ★★★v4.2.47(俊克 pm02:36「膜をクリックして、開く時と開かない時がある。特に、閉じ膜は開かない
+    //   ことが多い。まだ素直さが足りないようだね」): ★★★**カーソルの道thatまだ覚えで決めていた**。
+    //   ★開ける相手を `want - _meosFcOpenSet` で選んでいたので、**畳まれているのに覚えに載っていない塊は
+    //     永久に開かない**(覚えは MeOS that自分で開けた物しか持たない)。
+    //     俊克の「閉じ膜は開かないことthatが多い」はこれ= 閉じ膜の下の塊は、起動時に畳まれた物so
+    //     覚えに載っていない。
+    //   ★★→ v4.2.46 と**同じ物差し**にする= 望む姿(it.open)と今の姿(終わりthat見えているか)を
+    //     突き合わせ、違う所だけ打つ。2本の道that同じ答えを出すので、どちらthat先でも同じ所へ落ち着く。
+    //   ★覚えは**打った後に揃えるだけ**(決めるのには使わない)。
+    const _isOpenNow47 = (it) => _visible(it.end);                     // 終わりthat見えている= 開いている
+    const _toOpen47 = _shape.filter(it => it.hasRange && it.open && _visible(it.head) && !_isOpenNow47(it)).map(it => it.head);
+    const _toFold47 = _shape.filter(it => it.hasRange && !it.open && _visible(it.head) && _isOpenNow47(it) && !meosFcRecentlyFolded(it.head)).map(it => it.head);
+    if (_toOpen47.length) { try { meosDbg('[fcOne] 開ける ' + _toOpen47.map(x => x + 1).join(',')); } catch (_) { } await unfold(_toOpen47); }
+    if (_toFold47.length) { try { meosDbg('[fcOne] 畳む ' + _toFold47.map(x => x + 1).join(',')); } catch (_) { } for (const h of _toFold47) meosFcNoteFolded(h); await fold(_toFold47); }
+    try { _meosFcOpenSet.clear(); for (const it of _shape) if (it.hasRange && it.open) _meosFcOpenSet.add(it.b.start); } catch (_) { }
     // ★v4.0.440(俊克「読書モードで、見出しやハイライトをコピペすると、FCコメントが見えちゃう」):
     //   Pseudoの膜の中は、**誰が開けた物でも**畳む(貼り付けで増えた分もここで閉じる)。
     for (const b of blocks) if (meosModeAtLine(editor.document, b.start) === 'pseudo') await foldIfVisible(b.start);

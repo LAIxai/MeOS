@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.47 (2026-09-10)
+- **Clicking a membrane opens it, every time.** The path that follows the caret was still choosing what to open by subtraction — the blocks it wanted open, minus the ones it remembered opening — and it only ever remembers the ones it opened itself. A block folded at start-up is in no such record, so it could never be picked, and clicking its closing membrane did nothing. It now compares the same two things the other path does: what should be open, and what is (a block whose last line is visible is open), and acts on the difference. Both paths reach the same answer, so it no longer matters which runs first. The record is rebuilt after the fact and no longer decides anything.
+
 ### v4.2.46 (2026-09-10)
 - **Folding is now decided by comparing what should be with what is, and nothing else.** It used to be worked out from a pile of remembered things — which blocks had been opened, which had just been folded, which document had been done once, three timers, two busy flags — spread across two paths that both wrote to them. So what you saw depended on what had happened before, and a first click would only correct the bookkeeping while a second finally moved something. Now: what should be folded is the answer the shape function already gives for the caret's line, and what is folded is read off the screen — a block whose last line is visible is open. Only the differences are acted on, so running it twice changes nothing the first run did not, and no history is carried.
 - Blocks that ought to be open but are folded are opened first, before anything else is folded.

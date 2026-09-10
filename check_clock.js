@@ -536,7 +536,8 @@ const SRC2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
 const _bulk=FN(SRC2, 'function meosAutoFoldSpecLines');
 ok(/_meosFcOpenSet\.delete/.test(_bulk), '\u2605\u2605一括の道が覚えから外している', /_meosFcOpenSet\.delete/.test(_bulk));
 const _one=FN(SRC2, 'function meosSyncFcFoldForCursor');
-ok(/_meosFcOpenSet\.delete/.test(_one), '  個別の道も外している(対の両側)', true);
+ok(/_meosFcOpenSet\.clear\(\); for \(const it of _shape\) if \(it\.hasRange && it\.open\) _meosFcOpenSet\.add/.test(_one),
+   '★★★個別の道は覚えを**打った後に丸ごと作り直す**(決めるのには使わない= v4.2.47)', true);
 
 // v4.1.23(俊克「目薬を5分置きにつけるときに、05/00という設定にすること」＋アーチェリーの秒読み)
 console.log('\u246e 繰返し(\u21bb)と秒');
@@ -2063,6 +2064,17 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★畳むのは「開いていると分かっている物」だけ(v4.0.188の事故を原理的に起こさない)', true);
   ok(/if \(_open46\.length\) \{[\s\S]{0,300}?editor\.unfold/.test(W),
      '★開ける方を先に打つ(入った塊を見せてから、余所を畳む)', true);}
+ /* ★★★v4.2.47(俊克 pm02:36「膜をクリックして、開く時と開かない時がある。特に、閉じ膜は
+    開かないことが多い」)= カーソルの道も同じ物差しにする。 */
+ {const O=FN(S9,'async function meosSyncFcFoldForCursor');
+  ok(!/const toOpen = Array\.from\(want\)\.filter\(st => !_meosFcOpenSet\.has\(st\)\)/.test(O),
+     '★★★開ける相手を覚えの引き算で選ばない(畳まれているのに覚えに無い塊が永久に開かなくなる)', true);
+  ok(/const _toOpen47 = _shape\.filter\(it => it\.hasRange && it\.open && _visible\(it\.head\) && !_isOpenNow47\(it\)\)/.test(O),
+     '★★★開けるのは「開けたいのに畳んである物」= 望む姿と今の姿の差', true);
+  ok(/const _toFold47 = _shape\.filter\(it => it\.hasRange && !it\.open && _visible\(it\.head\) && _isOpenNow47\(it\)/.test(O),
+     '★★畳むのは「畳みたいのに開いている物」= 対の反対側も同じ形', true);
+  ok(/const _isOpenNow47 = \(it\) => _visible\(it\.end\);/.test(O),
+     '  今の姿は画面から読む(終わりが見えていれば開いている)', true);}
  ok(/_headEnd43\.set\(it\.head, it\.end\)/.test(S9),
     '★畳んだ相手の終わりを控える(効いたかを言えるようにする)', true);
  ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/
