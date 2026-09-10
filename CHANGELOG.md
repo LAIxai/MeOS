@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.36 (2026-09-10)
+- **The badge says what it is doing.** While a membrane still has a clock to come, its badge line is the surface the running numbers are painted on, so it is not folded — and it is now named accordingly: `Mew!UFC`. When the last clock has finished there is nothing left to show and it goes back to being an ordinary `Mew!FC`.
+- **Finished clocks now disappear one by one, so you can see the chain move.** No new folding was written for this: a line named UFC is not counted into a block, so once the badge carries that name the finished clocks below it form a block of their own, headed by the badge. Each time one finishes it joins the block and slips out of sight, until the last one goes and the membrane closes over the whole stack — a membrane and nothing else, the way a single five-minute timer has always ended.
+- What the badge itself says — ⊕, ⊖, the depth, the colour — is not touched. That is the reader's, not ours.
+
 ### v4.2.35 (2026-09-10)
 - **A clock waiting for its turn is no longer folded away before it runs.** Deciding whether a membrane still has a clock to come was asking for a starting time, and the later entries of a chain have none until their turn arrives — so once the ones above them had finished, the membrane was read as having nothing left and the whole stack was folded, the pending clock with it. The count now asks what the reader and the arming pass already ask: not finished, and carrying either a time or a period.
 - Once every clock in the membrane has finished, the badge and the finished clocks fold together, as before.

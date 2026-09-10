@@ -1964,5 +1964,35 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★全部終わったら、バッジも含めて畳む(俊克の言うとおりの姿)', X.foldRangeEnd(all,pair,false)+1);}
  ok(/if \(c && !c\.done && \(c\.when \|\| \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)\)\) return badge;/.test(S9),
     '★★数え方が読む側(v4.2.31)・掛ける側(v4.2.33)と揃っている', true);
+ /* ★★★v4.2.36(俊克「バッジもUFCしておくのが合理的かな? 済んだ分から折り畳んで
+    見えなくなっていく方が、進んでいくのが分かりやすいでしょ」)= 名前が状態を語る。 */
+ {let _u=0;
+  const mk2=(A)=>{const u='file:///bg'+(++_u)+'.md';return{uri:{toString:()=>u,fsPath:'/bg'+_u+'.md',scheme:'file'},
+   languageId:'markdown',lineCount:A.length,version:_u,
+   lineAt:(i)=>({text:A[i],range:{start:{line:i,character:0},end:{line:i,character:(A[i]||'').length}}}),
+   getText:()=>A.join('\n'),positionAt:()=>({line:0,character:0}),offsetAt:()=>0};};
+  const D1='<!-- Mew!FC ⏰ 1. 2026-09-10 10:48 ↺1m ×1✓ -->';
+  const D2='<!-- Mew!FC ⏰ 2. 2026-09-10 10:52:58p ↻2m ×1✓ -->';
+  const D3='<!-- Mew!FC ⏰ 3. 2026-09-10 10:55:00p ↺3m ×1✓ -->';
+  const U2='<!-- Mew!UFC ⏰ 2. 2026-09-10 10:52:58p ↻2m ×1 -->';
+  const U3='<!-- Mew!UFC ⏰ 3. ↺3m ×1 -->';
+  const UB='<!-- Mew!UFC mCN (📊⊕0+0D0W) -->', FB='<!-- Mew!FC mCN (📊⊕0+0D0W) -->';
+  const B=(b,c1,c2,c3)=>['# t','<!-- {* ▼mCN=X_1 // c *} -->','本文','<!-- {* ▲mCN=X_1 // *} -->',b,c1,c2,c3];
+  const shape=(A)=>{const d=mk2(A);
+   return {fc:X.meosFcFoldShape(d,-1).filter(it=>it.hasRange).map(it=>[it.head,it.end]),
+           mem:X.foldRangeEnd(d,{start:1,end:3,id:'X_1'},false), badge:X.meosClockBadgeRow(d,{end:3})};};
+  const a=shape(B(UB,D1,U2,U3)), b=shape(B(UB,D1,D2,U3)), c=shape(B(FB,D1,D2,D3));
+  ok(a.badge===4 && b.badge===4, '★★UFCのバッジも「バッジ行」と読める(名前を変えても在り処は変わらない)', [a.badge,b.badge]);
+  ok(JSON.stringify(a.fc)==='[[4,5]]',
+     '★★★済んだ1本だけが、バッジを頭にして隠れる(走っている物と待っている物は見えたまま)', a.fc);
+  ok(JSON.stringify(b.fc)==='[[4,6]]',
+     '★★★済むたびに隠れる分が増える(進んでいるのが見える)', b.fc);
+  ok(c.badge===-1 && c.mem===7,
+     '★★★全部済んだらバッジも畳みの中= 膜だけが見える(5分タイマーの時と同じ姿)', [c.badge,c.mem]);}
+ ok(/async function meosSyncClockBadgeFold\(doc\) \{/.test(S9)
+    && /if \(meosIsUnfoldingSpecLine\(t\) === want\) continue;/.test(S9),
+    '★★書くのは名前が変わる時だけ(毎回書けば押してもいないのに文書が汚れる)', true);
+ ok(/const want = \(bg >= 0\);/.test(S9),
+    '★★★UFCにするかFCに戻すかは、畳みと同じ1つの判定から引く(meosClockBadgeRow)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

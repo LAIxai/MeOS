@@ -10858,6 +10858,46 @@ function meosLiveClockFor(doc, key) {
 //   ★★印は**落とした所と同じ1つから引く**(壊れた膜の \u26a0\ufe0f と同じ作り= meosWarnGutterLines)
 //     → [[feedback_one_source_for_mark_count_action]] / [[feedback_fix_signal_at_fix_place]]
 const _meosClockUnreadable = new Map();   // uri → Set(行) 起点that読めなくて掛からなかった行
+// ★★★v4.2.36(俊克 2026.09.10 am11:32「バッジもUFCしておくのが合理的かな? バッジは折り畳まないで、
+//   その上に上塗りしていると言うことだからね。そして、全てが終わったら、バッジも本来のFCに戻す。
+//   そして、済んだ分から折り畳んで見えなくなっていく方が、進んでいくのが分かりやすいでしょ」):
+//   ★★★**名前が状態を語る**(v4.1.18)を、バッジにもそのまま伸ばす。
+//     走る⏰が在る間のバッジは**上塗りする場所**なので畳まない= UFC。
+//     全部終われば見せる物が無くなるので、本来の FC に戻る= 膜だけが見える姿。
+//   ★★★これで畳みは**既に在る仕組みが作る**= UFCは塊に数えない(meosDefBlocks)ので、
+//     済んだFC群だけが塊になり、頭は1つ上のバッジ行になる。済んだ分から順に消えていく。
+//     **新しい畳みの道は1本も足さない** → [[feedback_copy_the_house_style_first]]
+//   ★書くのは**名前が変わる時だけ**。毎回書けば、押してもいないのに文書が汚れる。
+//   ★バッジの中身(⊕/⊖ = 人の意思)には1文字も触らない → [[project_badge_is_intent]]
+//   ★訊く口は既に在る2つだけ= これから鳴る⏰が在るか(meosClockBadgeRow)／
+//     バッジ行はどこか(meosClockBadgeRowForLine)。同じ問いを2度作らない。
+async function meosSyncClockBadgeFold(doc) {
+  try {
+    if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
+    const ed = new vscode.WorkspaceEdit(); let n = 0; const seen = new Set();
+    for (const c of meosClockFcScan(doc)) {
+      if (!c.key || seen.has(c.key)) continue; seen.add(c.key);
+      let bg = -1;
+      try { const r = meosScopeRangeNow(doc, c.key); if (r) bg = meosClockBadgeRow(doc, { end: r.to }); } catch (_) { }
+      const want = (bg >= 0);                                  // これから鳴る⏰that在る= 畳まない= UFC
+      const row = want ? bg : meosClockBadgeRowForLine(doc, c.line);
+      if (row < 0) continue;                                   // バッジ行の無い膜は、今までどおり
+      const t = doc.lineAt(row).text;
+      if (meosIsUnfoldingSpecLine(t) === want) continue;        // 既にその名前
+      const from = want ? (MEOS_MEW_SIG + 'FC') : (MEOS_MEW_SIG + 'UFC');
+      const at = t.indexOf(from);
+      if (at < 0) continue;
+      ed.replace(doc.uri, new vscode.Range(row, at, row, at + from.length),
+        want ? (MEOS_MEW_SIG + 'UFC') : (MEOS_MEW_SIG + 'FC'));
+      n++;
+      meosDbg('[badgeFold] ' + (want ? 'FC\u2192UFC' : 'UFC\u2192FC') + ' key=' + c.key + ' \u884c=' + (row + 1));
+    }
+    if (!n) return 0;
+    const okApplied = await vscode.workspace.applyEdit(ed);
+    if (!okApplied) meosDbg('[badgeFold] \u2605\u66f8\u3051\u306a\u304b\u3063\u305f n=' + n);
+    return okApplied ? n : 0;
+  } catch (_) { return 0; }
+}
 function meosArmClockFcFor(doc) {
   try {
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
@@ -11089,6 +11129,7 @@ function meosArmClockFcFor(doc) {
     // ★v4.1.27: 掛かった数that0でも、**書いてある⏰を見つけたなら一覧thatが変わり得る**
     //   (時刻を書き替えた/\u23f8を外した等)。so、見つけた時は必ず知らせる。
     _meosClockUnreadable.set(uri, _unread);   // v4.2.34
+    try { meosSyncClockBadgeFold(doc); } catch (_) { }   // v4.2.36: バッジの名前を今の姿へ
     if (n || _seen) { meosUpdateTimerBar(); meosPostViewMode(); }
     return n;
   } catch (_) { return 0; }
