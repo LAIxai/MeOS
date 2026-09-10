@@ -10762,7 +10762,9 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     if (!doc || !doc.uri) return false;
     const line = spec
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
-      ? ('<!-- ' + MEOS_MEW_SIG + (spec.done ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
+      // ★★★v4.2.50: `wait` = **待っている**(畳むthat、済みではない)= FC＋✓なし。
+      //   done は今までどおり FC＋✓。名前(FC/UFC)と印(✓)を別々に決められるようにした。
+      ? ('<!-- ' + MEOS_MEW_SIG + ((spec.done || spec.wait) ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
         // ★v4.1.165: 仕掛けの言葉(BigBang / MeW!)は**書いてあった字のまま**戻す
         //   (置き換えた本物の起点を書くと、次の書き戻しで仕掛けthat消える)。
         + ' ' + String((spec.whenSrc != null && String(spec.whenSrc).trim()) ? spec.whenSrc : (spec.when || '')).trim()
@@ -10861,6 +10863,49 @@ async function meosClockFcSet(doc, key, spec, atLine) {
 //   ★★★**連なりのメッセージ**= 時計の並びの下に積んだ、⏰を持たないFC指定行。
 //     N番目の時計に、N番目のメッセージthat対応する(番号は見せかけ・並びで決める= v4.2.31)。
 //   ★★⏰を持たないので**時計として読まれない**= 既に在る見分け(CN=2567)thatそのまま働く。
+// ★★★v4.2.50(俊克 2026.09.10 pm06:43「最後にアラームを鳴らし、そして1つ目のタイマーを起動する」
+//   ＋ pm07:11「連動しない。1つ目の15分間隔の⏰thatが繰り返されてしまう」
+//   ＋ pm07:17「ウィンドウ最下段に表示した『クリック』と書かれた部分をクリックする方that押しやすい」):
+//   ★★★**輪を回す**= 今走っている1本を待ちへ、次の1本を走りへ。**名前を付け替えるだけ**。
+//   ★済みにしない= 次の周でまた走るso ✓ は付けない
+//     (俊克「起点を使って正確に周期を表示するだけ」)。
+//   ★次thatが無ければ先頭へ戻る= これthat輪。
+//   ★起点を持たない1本は、走りに変わった瞬間に v4.2.33 that `p` を書くso、ここでは何も足さない。
+let _meosChainWait = null;   // {uri, key, text} 「クリック」を待っている連なり
+async function meosChainAdvance(doc, key) {
+  try {
+    const rows = meosClockFcScan(doc).filter(c => c.key === key);
+    if (rows.length < 2) return -1;
+    let cur = rows.findIndex(c => c.ufc && !c.done);
+    if (cur < 0) cur = 0;
+    const next = (cur + 1) % rows.length;
+    if (next === cur) return -1;
+    const _put = async (c, wait) => {
+      await meosClockFcSet(doc, c.key, {
+        when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual,
+        rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, tags: c.tags,
+        done: false, wait: !!wait }, c.line);
+    };
+    await _put(rows[cur], true);                    // 今の1本= 待ちへ(FC・\u2713なし)
+    await _put(rows[next], false);                  // 次の1本= 走りへ(UFC)
+    try { meosDbg('[chain] ' + (cur + 1) + '\u672c\u76ee \u2192 ' + (next + 1) + '\u672c\u76ee \u819c=' + key); } catch (_) { }
+    try { const lk = doc.uri.toString() + ' ' + key; meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); } catch (_) { }
+    try { meosArmClockFcFor(doc); } catch (_) { }
+    return next;
+  } catch (_) { return -1; }
+}
+// ★★★v4.2.50: 最下段の「クリック」を押した時。**家の中の同じ役の部品**(⏰ ringing — click to stop /
+//   \u21a9 Back)と同じ作りso、押す所thatが1つの列に揃う → [[feedback_copy_the_house_style_first]]
+async function meosChainNextFromBar() {
+  const w = _meosChainWait; _meosChainWait = null;
+  try {
+    if (!w) return;
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === w.uri)
+      || await vscode.workspace.openTextDocument(vscode.Uri.parse(w.uri));
+    if (doc) await meosChainAdvance(doc, w.key);
+  } catch (_) { }
+  try { meosUpdateTimerBar(); } catch (_) { }
+}
 function meosChainMessagesFor(doc, key) {
   const out = [];
   try {
@@ -10903,7 +10948,7 @@ function meosChainSayFor(doc, key, clockLine, round) {
 function meosLiveClockFor(doc, key) {
   try {
     const rows = meosClockFcScan(doc).filter(c => c.key === key);
-    return rows.find(c => !c.done) || rows[0];
+    return rows.find(c => !c.done && c.ufc) || rows.find(c => !c.done) || rows[0];   // v4.2.50: 今走っている1本that先
   } catch (_) { return undefined; }
 }
 // ★★★v4.2.34(2026.09.10 俊克「ゴミの1が付いていたので消したら、動いた」): ★★★**落とした行を覚える**。
@@ -10979,7 +11024,14 @@ function meosArmClockFcFor(doc) {
       //   一時停止は「また自分that動く」という意思so、順番を譲るのはおかしい。
       //   ★⏰ボタンもリストの✓外しも、本文へ書くのは同じ `⏸` so、**3つの口that自動的に揃う**
       //     ([[feedback_one_source_for_mark_count_action]] 1つの規則を3か所に書かない)。
-      if (!c.done) { if (_liveTaken.has(c.key)) continue; _liveTaken.add(c.key); }
+      // ★★★v4.2.50: **席は「今走っている1本」= UFC の物へ**。
+      //   連なりでは待っている物thatFC(✓なし)so、上に在っても席を取らない。
+      //   ★UFCthat1本も無い膜(全部待ち)は、先頭thatが席を取る= 輪の入口。
+      if (!c.done) {
+        if (_liveTaken.has(c.key)) continue;
+        if (!c.ufc && meosClockFcScan(doc).some(x => x.key === c.key && x.ufc && !x.done)) continue;
+        _liveTaken.add(c.key);
+      }
       const lk = uri + ' ' + c.key;
       // ★★★v4.1.146: **回数(`\u00d7N`)the終わり**= N周を終えた時計は、自分で ✓ を書いて畳まれる。
       //   ★★数え直しは `meosCycleSeriesNext` 1本= 「今that何周目か」を答える所thatが既に在るso、
@@ -10994,7 +11046,16 @@ function meosArmClockFcFor(doc) {
           if (_rn && _rn.round > c.rounds) {
             meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
             meosDbg('[armClock] rounds done key=' + c.key + ' \u884c=' + (c.line + 1) + ' \u00d7' + c.rounds);
-            if (c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, tags: c.tags, done: true }, c.line); } catch (_) { } }
+            // ★★★v4.2.50: **連なりの中なら、済みにせず次へ回す**= 輪。
+            //   ★1本しか無い膜は今までどおり済み(✓)= 一度きりの時計の姿は変えない。
+            let _chained50 = false;
+            try {
+              if (meosClockFcScan(doc).filter(x => x.key === c.key).length >= 2) {
+                meosChainAdvance(doc, c.key); _chained50 = true;
+                meosDbg('[chain] \u00d7N \u3092\u7d42\u3048\u305f \u2192 \u6b21\u3078 \u819c=' + c.key + ' \u884c=' + (c.line + 1));
+              }
+            } catch (_) { }
+            if (!_chained50 && c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, tags: c.tags, done: true }, c.line); } catch (_) { } }
             const _rd = _rb || meosParseStampLoose(c.when);
             meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: false, tags: c.tags }, _rd ? _rd.getTime() : Date.now());
             continue;
@@ -12150,6 +12211,21 @@ function meosUpdateTimerBar() {
       return;
     }
     if (_meosRingBlink) { clearInterval(_meosRingBlink); _meosRingBlink = null; }   // v4.1.22: 鳴り止んだら元の拍へ
+    // ★★★v4.2.50(俊克 pm07:17「以前の実装で、ウィンドウ最下段に表示した『クリック』と書かれた部分を
+    //   クリックすると言うのthatあったでしょ? メッセージをクリックするよりも、その方that押しやすい」):
+    //   ★★★**4つ目の姿**= 連なりthat次を待っている間。⏰ ringing / \u21a9 Back と同じ列・同じ作り。
+    //   ★走行中の残り時間より前に出す= 今いちばん言うべきことthat「押してください」so。
+    //     押せば消えて、いつもの残り時間へ戻る。
+    if (_meosChainWait) {
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+      _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next') + '  \u2014 click';
+      _meosTimerBar.tooltip = 'MeOS: click to start the next clock on this membrane.';
+      _meosTimerBar.command = 'lai-membrane.chainNext';
+      try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); } catch (_) { }
+      _meosTimerBar.show();
+      meosTickTimerLines();
+      return;
+    }
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
       meosTickTimerLines();
@@ -12168,6 +12244,7 @@ function meosUpdateTimerBar() {
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
     _meosTimerBar.text = '⏰ ' + (sc && sc.up ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
+    try { _meosTimerBar.backgroundColor = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない
     _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
     // ★v4.0.459: 最後の1分は**地の色that変わる**= Me Dockを閉じていても目に入る(VS Code標準の警告色so、
@@ -12745,6 +12822,21 @@ async function meosPseudoTimeUp(key) {
   try {
     const _d49 = vscode.workspace.textDocuments.find(x => x.uri.toString() === scope.uri);
     if (_d49 && scope.key) _say49 = meosChainSayFor(_d49, scope.key, scope.line, scope.round || 0);
+  } catch (_) { }
+  // ★★★v4.2.50: **連なりthat在れば、次を待つ**= 最下段に「⏰ 目薬の時間です — click」を出す。
+  //   ★出すのは**次thatが在る時だけ**= 最後の1本は自分で先頭へ戻る(下の輪の口)。
+  //   ★押さなければ、次の周thatが来ても溜めない= 言葉thatが新しい物に置き換わるだけ(俊克 pm06:43 の裁定)。
+  try {
+    const _d50 = vscode.workspace.textDocuments.find(x => x.uri.toString() === scope.uri);
+    if (_d50 && scope.key) {
+      const _rows50 = meosClockFcScan(_d50).filter(c => c.key === scope.key);
+      const _i50 = _rows50.findIndex(c => c.line === scope.line);
+      if (_rows50.length >= 2 && _i50 >= 0 && _i50 < _rows50.length - 1) {
+        _meosChainWait = { uri: scope.uri, key: scope.key, text: _say49 || scope.name || '' };
+        try { meosDbg('[chain] \u6b21\u3092\u5f85\u3064 ' + (_i50 + 1) + '/' + _rows50.length + ' \u819c=' + scope.key); } catch (_) { }
+        try { meosUpdateTimerBar(); } catch (_) { }
+      }
+    }
   } catch (_) { }
   const name = _say49 || scope.name || 'this file';
   try { if (_say49) meosDbg('[chainSay] ' + _say49 + ' (\u819c=' + (scope.name || '') + ' \u884c=' + ((scope.line || 0) + 1) + ')'); } catch (_) { }
@@ -34821,7 +34913,8 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
-  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.alarmReturn', () => meosGoBackFromAlarm())); // v4.0.454: 鐘で連れ出された所へ戻る  // v4.0.442: Pseudoを時間で押さえる(テスト用紙/暗記シート)
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.alarmReturn', () => meosGoBackFromAlarm()));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.chainNext', () => meosChainNextFromBar()));   // v4.2.50: 最下段の「クリック」で次の1本へ // v4.0.454: 鐘で連れ出された所へ戻る  // v4.0.442: Pseudoを時間で押さえる(テスト用紙/暗記シート)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.toggleGithubAutoSync', () => toggleGithubAutoSync())); // v0.9.973

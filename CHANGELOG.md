@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.50 (2026-09-10)
+- **A membrane's clocks now hand over to one another, and come back round.** When one rings, the bar at the bottom says its line and offers a click — the same place, and the same shape, as *⏰ ringing — click to stop* and *↩ Back*. Clicking starts the next clock; when the last one has run out its rounds it hands back to the first without being asked. Nothing is marked finished on the way round: a clock reached from a starting point keeps its own reckoning, so a late start never moves it.
+- To say this, a clock can now be **waiting** — folded, but not finished. Which is folded and which is not was the same decision as which had finished; they are now two.
+- A membrane with a single clock behaves exactly as before, finishing with a ✓.
+
 ### v4.2.49 (2026-09-10)
 - **A clock can say something short instead of its membrane's name.** Stack folding comments without a ⏰ under the clocks of a membrane and the first belongs to the first clock, the second to the second, and so on — the numbers you write are there for you to read, the order is what counts. When a clock rings it says its line rather than a name carrying a timestamp. Write none and nothing changes.
 - **`1.` inside a message is a slot for a number.** The one at the front of the line is the entry's number and is dropped; the first one after that is filled with the round, so `目薬 1. 本目` reads as *目薬 2 本目* on the second. Nothing is written into the file — the number is put in as the line is spoken, so rewriting a starting point can never leave a stale count behind.

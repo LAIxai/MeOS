@@ -429,8 +429,10 @@ console.log('\u2471 動くのは直下の1本だけ');
   const A=FN(S0, 'function meosArmClockFcFor');
   ok(/const _liveTaken = new Set\(\)/.test(A), '\u2605生きている1本を覚える席が在る', true);
   /* \u2605v4.1.1112: 席を譲るのは「済み」だけ。「休み」(⏸)は席を保つ。 */
-  ok(/if \(!c\.done\) \{ if \(_liveTaken\.has\(c\.key\)\) continue; _liveTaken\.add\(c\.key\); \}/.test(A),
-     '\u2605\u2605\u2605二本目以降は仕掛けない(済んだ物だけが席を譲る)', true);
+  ok(/if \(!c\.done\) \{\s*\n\s*if \(_liveTaken\.has\(c\.key\)\) continue;/.test(A) && /_liveTaken\.add\(c\.key\);/.test(A),
+     '★★★二本目以降は仕掛けない(済んだ物だけが席を譲る)', true);
+  ok(/if \(!c\.ufc && meosClockFcScan\(doc\)\.some\(x => x\.key === c\.key && x\.ufc && !x\.done\)\) continue;/.test(A),
+     '★★★席は「今走っている1本」= UFCの物へ(待ちのFCは上に在っても取らない= v4.2.50)', true);
   ok(!/if \(!c\.done && !c\.off\) \{ if \(_liveTaken/.test(A), '\u2605\u2605休み(\u23f8)は席を保つ(一時停止は順番を譲らない)', true);
   ok(/if \(c\.ufc\) \{ try \{ meosClockFcSet\(doc, c\.key, \{[^}]*done: true/.test(A),
      '\u2605\u2605手で \u2713 を書いたらFC化する(名前は状態の写し)', true);
@@ -2127,5 +2129,33 @@ console.log('㊵ 連なりのメッセージ(俊克 2026.09.10 pm06:43 の目薬
     '  対応が無ければ空= 今までどおり膜の名前を出す', true);
  ok(/const name = _say49 \|\| scope\.name \|\| 'this file';/.test(S49),
     '★★言葉が在れば名前でなく言葉を出す(書かない人には何も変わらない)', true);
+}
+console.log('㊶ 連なりの輪(俊克 pm06:43 の設計 ＋ pm07:17「最下段のクリック」)');
+{
+ const S50=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/\(\(spec\.done \|\| spec\.wait\) \? 'FC' : 'UFC'\)/.test(S50) && /\(spec\.done \? '\\u2713' : ''\)/.test(S50),
+    '★★★「待っている」を書ける(FC＋✓なし)= 名前と印を別々に決める', true);
+ const AD=FN(S50,'async function meosChainAdvance');
+ ok(/const next = \(cur \+ 1\) % rows\.length;/.test(AD),
+    '★★★次が無ければ先頭へ戻る= これが輪', true);
+ ok(/await _put\(rows\[cur\], true\);[\s\S]{0,200}?await _put\(rows\[next\], false\);/.test(AD),
+    '★★今の1本を待ちへ、次の1本を走りへ(名前を付け替えるだけ)', true);
+ ok(/done: false, wait: !!wait \}/.test(AD),
+    '★★★済みにしない= 次の周でまた走るので ✓ は付けない', true);
+ ok(/if \(rows\.length < 2\) return -1;/.test(AD),
+    '  1本しか無い膜では何も起きない(一度きりの時計の姿は変えない)', true);
+ const BAR=FN(S50,'function meosUpdateTimerBar');
+ ok(/if \(_meosChainWait\) \{/.test(BAR) && /'lai-membrane\.chainNext'/.test(BAR),
+    '★★★最下段の4つ目の姿= ⏰ ringing / ↩ Back と同じ列・同じ作り', true);
+ ok(/_meosTimerBar\.text = '\\u23f0 ' \+ \(_meosChainWait\.text \|\| 'next'\) \+ '  \\u2014 click';/.test(BAR),
+    '  出すのはメッセージ＋click(膜名ではない)', true);
+ const UP=FN(S50,'async function meosPseudoTimeUp');
+ ok(/_i50 >= 0 && _i50 < _rows50\.length - 1/.test(UP),
+    '★★待つのは次が在る時だけ= 最後の1本は自分で先頭へ戻る', true);
+ const ARM=FN(S50,'function meosArmClockFcFor');
+ ok(/meosChainAdvance\(doc, c\.key\); _chained50 = true;/.test(ARM),
+    '★★★×N を終えたら、済みにせず次へ回す(連なりの中だけ)', true);
+ ok(/if \(!_chained50 && c\.ufc\)/.test(ARM),
+    '  1本だけの膜は今までどおり済み(✓)になる', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
