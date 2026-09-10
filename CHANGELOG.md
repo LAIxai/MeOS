@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.41 (2026-09-10)
+- **The look-ahead added in v4.2.40 is withdrawn.** Folding blocks that were not on screen made the caret jump to another place on nearly every click. The measurement it was built on — folding moves nothing when the caret is in view — was taken while every block being folded was itself on screen, so it never said anything about folding one that was not. The old rule stands: nothing off screen is folded.
+- Putting the fold off until things go quiet, rather than dropping it, stays — that one the log did show.
+
 ### v4.2.40 (2026-09-10)
 - **Folding after a click is no longer thrown away.** The log, once it could speak, said the same thing over and over: *just after an edit (320ms)*. Folding stands down for 700ms after any edit, and the wait before it runs is 320ms — so every fold the caret asked for died there. Clicking types nothing; the edits were MeOS's own, writing badges and starting points. It was stopping its own folding with its own writing. Now it is put off to the moment things go quiet instead of being dropped — which is what the folding that follows the caret has always done.
 - **Three screens are folded ahead of you.** Until today the rule was to leave anything off screen alone, because folding scrolls to what it folds. Today's measurements showed it scrolls to the *caret*, not to the block: with the caret in view, folding a block off screen moves nothing. So the blocks just above and below are folded before you get there, and arriving no longer changes what you are looking at.

@@ -2044,10 +2044,10 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★打鍵の直後は捨てずに、静かになる時刻へ回す(兄弟の meosScheduleFcCursorSync と同じ作法)', true);
   ok(/if \(_meosFcQuietTimer\) clearTimeout\(_meosFcQuietTimer\);/.test(W),
      '  回すのは1本だけ(何度呼ばれても待ち合わせは1つ)', true);
-  ok(/const _look = _vpH \* 3;/.test(W) && /ln >= r\.start\.line - _look && ln <= r\.end\.line \+ _look/.test(W),
-     '★★★前後3画面ぶんを先に畳む(着いた時にはもう畳んである)', true);
-  ok(/return r \? Math\.max\(10, \(r\.end\.line - r\.start\.line\) \+ 1\) : 40;/.test(W),
-     '  1画面の高さは今の画面から測る(決め打ちしない)', true);}
+  ok(!/const _look = _vpH \* 3;/.test(W) && !/r\.start\.line - _look/.test(W),
+     '★★★先読みは入れない(画面の外の塊は畳まない= v4.0.186の掟を戻した)', true);
+  ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/.test(W),
+     '  見えている塊だけを畳む(俊克 pm01:37「別の場所に飛んでしまう」で戻した)', true);}
  ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/
     .test(FN(S9,'async function meosFoldPseudoOpened')),
     '★他の道の見え方は今までどおり(先読みを足したのは一括の道だけ)', true);
