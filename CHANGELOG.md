@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.34 (2026-09-10)
+- **A clock that cannot be started now says so, on the line where it is fixed.** Delete a ⏸ by hand and its number stays behind, so `⏰⏸1 1. ↺1m ×1` becomes `⏰1 1. ↺1m ×1` — and that stray `1` is read as the starting point. `1 1.` is not a date, so the clock was dropped one step short of being armed, without a word, even though its period, its number and its membrane were all in place. Three versions were spent looking for it.
+- Not writing into the text was right. Saying nothing was not. A ⚠️ is now drawn beside the ⏰ of any clock dropped this way, with a note naming the text that could not be read and where to look. The mark is drawn, never written, so it is absent in raw view, and it takes the place of the 🔓 — one mark to a line.
+- The mark is drawn from the very lines the arming pass threw away, so the two can never disagree.
+
 ### v4.2.33 (2026-09-10)
 - **A clock with no time starts when its turn comes round.** The second and later clocks of a chain are not given a starting time — they begin where the one before them ended — and until now they were dropped one line short of being armed, in silence. The turn only comes round when the clock above has finished, so arriving here *is* the moment of starting, and MeOS writes it into the line as **p** through the same door it already used in v4.2.28. From that point on the line carries a time like any other and takes the ordinary path.
 - The number at the head of the line is kept where it is, so a chain still reads `1. 2. 3.` after every one of them has run.

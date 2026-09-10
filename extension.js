@@ -10843,11 +10843,19 @@ function meosLiveClockFor(doc, key) {
     return rows.find(c => !c.done) || rows[0];
   } catch (_) { return undefined; }
 }
+// ★★★v4.2.34(2026.09.10 俊克「ゴミの1が付いていたので消したら、動いた」): ★★★**落とした行を覚える**。
+//   `\u23f0\u23f81 …` の \u23f8 を手で消すと `\u23f01 …` が残り、その `1` が起点(when)に化けて
+//   `1 1.` のような日時にならない字になる。周期も番号も主も揃っているのに、掛ける手前で消えていた。
+//   ★★★本文を汚さないのは正しい。**何も言わないのは別の話**。→ 落とした行に \u26a0\ufe0f を描く。
+//   ★★印は**落とした所と同じ1つから引く**(壊れた膜の \u26a0\ufe0f と同じ作り= meosWarnGutterLines)
+//     → [[feedback_one_source_for_mark_count_action]] / [[feedback_fix_signal_at_fix_place]]
+const _meosClockUnreadable = new Map();   // uri → Set(行) 起点that読めなくて掛からなかった行
 function meosArmClockFcFor(doc) {
   try {
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
     const uri = doc.uri.toString();
     let n = 0, _seen = 0; const _seenKeys = new Set();
+    const _unread = new Set();   // v4.2.34: この走査で落とした行
     // ★★★v4.1.1110(俊克 9/5 am08:49「**直下のUFCタイマーのみを動かす**…1回切りのタイマーなら、
     //   終了と同時にFC化し見えなくなる」＋ am08:56「1つだけ起動する利点は、**⏰リストの項目を増やさないで
     //   いいこと**。2番目以降は、追加や修正をすることもあるので、その度に起動していたらやり難い」):
@@ -11020,6 +11028,7 @@ function meosArmClockFcFor(doc) {
         //   → **書いてある⏰は、掛かっていなくても一覧に出す**。見えない物は戻せない。
         const _p = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _p ? _p.getTime() : Date.now());
+        _unread.add(c.line);   // v4.2.34: 黙って消さず、印を出す所へ渡す
         continue;                                                   // 読めない書き方は、黙って無視(本文を汚さない)
       }
       // v4.1.60: 向きと間隔を**掛けた時に**控える= 面は毎秒描く物so、その度に14万行をなぞらない
@@ -11071,6 +11080,7 @@ function meosArmClockFcFor(doc) {
     } catch (_) { }
     // ★v4.1.27: 掛かった数that0でも、**書いてある⏰を見つけたなら一覧thatが変わり得る**
     //   (時刻を書き替えた/\u23f8を外した等)。so、見つけた時は必ず知らせる。
+    _meosClockUnreadable.set(uri, _unread);   // v4.2.34
     if (n || _seen) { meosUpdateTimerBar(); meosPostViewMode(); }
     return n;
   } catch (_) { return 0; }
@@ -11690,7 +11700,26 @@ function meosApplyTimerLineDecorations(editor) {
           // ★★v4.1.153(俊克 改良2「\ud83d\udd13 は見せかけso、**Rawモードでも非表示に**しよう」):
           //   ★★**Rawは「MeOSthat無効の時と同じ姿」**(v4.1.1103)so、本文に無い字は1つも足さない。
           //   ★\ud83d\udd13 は「掛かっていない」を描いているだけ= 本文には居ない(v4.1.64)。
-          if (!c.done && !c.lock && !_rawHere) {
+          // ★★★v4.2.34: 起点が読めなくて掛からなかった行に ⚠️ を描く。
+          //   ★★★**知らせる印は、直す場所に出す** → [[feedback_fix_signal_at_fix_place]]。
+          //     一覧やバーに出しても、その行を探すところから始めることになる。
+          //   ★印を出す元は、掛ける側が落とした行そのもの(_meosClockUnreadable)。
+          //   ★Raw では出さない= 本文に無い字を足さない(v4.1.153)。
+          //   ★🔓(掛かっていない)とは共存させない= 1行に印は1つ。壊れている方が先。
+          let _bad34 = false;
+          try { const _s34 = _meosClockUnreadable.get(uri); _bad34 = !!(_s34 && _s34.has(i)); } catch (_) { }
+          if (_bad34 && !_rawHere) {
+            const _a34 = txt.indexOf('\u23f0');
+            if (_a34 >= 0) {
+              const _e34 = _a34 + 1 + ((txt.charCodeAt(_a34 + 1) === 0xfe0f) ? 1 : 0);
+              const _w34 = String((c && (c.whenSrc || c.when)) || '').trim();
+              items.push({ range: new vscode.Range(i, _e34, i, _e34),
+                hoverMessage: '⚠️ This clock is not running. Its starting point cannot be read: `' + _w34
+                  + '`\n\nLook for a stray character just after the ⏰ — deleting a ⏸ leaves its number behind.',
+                renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
+            }
+          }
+          if (!c.done && !c.lock && !_rawHere && !_bad34) {
             const _a = txt.indexOf('\u23f0');
             if (_a >= 0) {
               const _e = _a + 1 + ((txt.charCodeAt(_a + 1) === 0xfe0f) ? 1 : 0);

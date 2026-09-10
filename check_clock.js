@@ -923,7 +923,7 @@ console.log('\u325e \u25be\u8a2d\u5b9a\u30d1\u30cd\u30eb= \u5411\u304d\u30fb\u8d
  ok(/\(spec\.lock \? '\\ud83d\\udd10' : ''\)/.test(S), '\u2605\u66f8\u304f\u306e\u306f\u639b\u304b\u3063\u3066\u3044\u308b\u6642\u3060\u3051(\ud83d\udd13 \u306f\u5b57\u306b\u3057\u306a\u3044)', true);
  /* v4.1.153(俊克 改良2): 見せかけの ⏰ の錠は、生表示(Raw/カーソル行)では出さない
     = Raw は「MeOSが無効の時と同じ姿」so、本文に無い字は1つも足さない。 */
- ok(/if \(!c\.done && !c\.lock && !_rawHere\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
+ ok(/if \(!c\.done && !c\.lock && !_rawHere && !_bad34\) \{/.test(S)&&/contentText: '\\ud83d\\udd13', opacity/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u306a\u3044\u6642\u306e \ud83d\udd13 \u306f**\u63cf\u304f\u3060\u3051**(\u898b\u305b\u304b\u3051\u306e\u8868\u793a)', true);
  ok(/clkBox\(b,clkDir,clkDir\?'\\u21bb stopwatch':'\\u21ba countdown'\)/.test(S), '\u2605\u2605\u2610\u21ba \u21c4 \u2611\u21bb \u306e\u5207\u66ff', true);
  ok(/clkDir=false;clkRep=false;/.test(S), '\u2605\u65e2\u5b9a\u306f\u9006\u7b97\u30bf\u30a4\u30de\u30fc\u30fb\u7e70\u8fd4\u3057\u7121\u3057(\u958b\u304f\u5ea6\u306b\u623b\u308b)', true);
@@ -1568,7 +1568,7 @@ console.log('⑭ Rawでは字を1つも足さない(色は字ではないso残�
  ok(/if \(_rawHere\) continue;/.test(F),
     '★★★生の行には数字も ×N も出さない(昨日の「⏰の残り時間は例外」を取り消す)', true);
  ok(/const _dm = _rawHere \? null :/.test(F), '★曜日も字so出さない', true);
- ok(/if \(!c\.done && !c\.lock && !_rawHere\) \{/.test(F), '  🔓 も同じ1つの答えから引く', true);
+ ok(/if \(!c\.done && !c\.lock && !_rawHere && !_bad34\) \{/.test(F), '  🔓 も同じ1つの答えから引く', true);
  /* ★色は字を足していないso残る= 矢印の緑/水色・実行中の白・⏸の赤・✓の白は生でも生きている
     (俊克 v4.1.1103「▼ボタン以外(⏰の残り時間・TSの色・バッジの色)は例外でよい」の色の部分は生きたまま)。 */
  ok(F.indexOf("(_c1 === '\\u21bb' ? dirUp : dirDown)") < F.indexOf('if (_rawHere) continue;'),
@@ -1925,5 +1925,20 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
   ok(w1.when==='2026-09-10 09:46' && w1.listNo==='2.' && !!w1.pAt && w1.cycle.join()==='2m',
      '★★★書いた形を読み直せる(番号・起点・p・周期が全部戻る)', [w1.when,w1.listNo,w1.cycle]);
   ok(w0.listNo==='' && !!w0.pAt, '  番号の無い1本でも同じ', w0.whenSrc);}
+ /* ★★★v4.2.34(俊克「ゴミの1が付いていたので消したら、動いた」)= 黙って落とさずに言う。 */
+ {const qq=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
+  const g1=qq('1 1. ↺1m ×1'), g2=qq('1. ↺1m ×1');
+  ok(g1.when==='1 1.' && g1.cycle.join()==='1m',
+     '★★★⏸ を消して残った 1 は起点に化ける(周期も番号も主も揃っているのに日時にならない)', g1.when);
+  ok(g2.when==='' && g2.listNo==='1.',
+     '  番号だけなら今までどおり正しく落ちる(見分けているのは後ろの空白)', [g2.when,g2.listNo]);}
+ ok(/_unread\.add\(c\.line\);/.test(S9) && /_meosClockUnreadable\.set\(uri, _unread\);/.test(S9),
+    '★★★掛ける側が落とした行を覚える(黙って消さない)', true);
+ ok(/const _s34 = _meosClockUnreadable\.get\(uri\); _bad34 = !!\(_s34 && _s34\.has\(i\)\);/.test(S9),
+    '★★★印は落とした所と同じ1つから引く(壊れた膜の ⚠️ と同じ作り)', true);
+ ok(/if \(_bad34 && !_rawHere\) \{/.test(S9),
+    '★Raw では出さない(本文に無い字を足さない)', true);
+ ok(/if \(!c\.done && !c\.lock && !_rawHere && !_bad34\) \{/.test(S9),
+    '★1行に印は1つ= 壊れている方が 🔓 より先', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
