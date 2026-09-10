@@ -2037,6 +2037,20 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★同じ理由は1.5秒に1回まで(ログが次の発火の燃料にならない)', true);
  ok(!/\.slice\([A-Za-z0-9_$]+\.indexOf\('(?:async )?function [A-Za-z_$][\w$]*'\), *[A-Za-z0-9_$]+\.indexOf\([^)]*\) *\+ *\d+\)/.test(fs.readFileSync(__filename,'utf8')),
     '★★★この検査ファイルに、関数を固定長で切る窓が1つも残っていない', true);
+ /* ★★★v4.2.40(俊克 pm01:23 の実測ログ「打鍵の直後 (320ms)」が延々と並ぶ
+    ＋ バグ2「スクロールした時に、やはり、遅れて表示が変わるのが見える」)。 */
+ {const W=FN(S9,'async function meosAutoFoldSpecLines');
+  ok(/_meosFcQuietTimer = setTimeout\(\(\) => \{ _meosFcQuietTimer = null;/.test(W),
+     '★★★打鍵の直後は捨てずに、静かになる時刻へ回す(兄弟の meosScheduleFcCursorSync と同じ作法)', true);
+  ok(/if \(_meosFcQuietTimer\) clearTimeout\(_meosFcQuietTimer\);/.test(W),
+     '  回すのは1本だけ(何度呼ばれても待ち合わせは1つ)', true);
+  ok(/const _look = _vpH \* 3;/.test(W) && /ln >= r\.start\.line - _look && ln <= r\.end\.line \+ _look/.test(W),
+     '★★★前後3画面ぶんを先に畳む(着いた時にはもう畳んである)', true);
+  ok(/return r \? Math\.max\(10, \(r\.end\.line - r\.start\.line\) \+ 1\) : 40;/.test(W),
+     '  1画面の高さは今の画面から測る(決め打ちしない)', true);}
+ ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/
+    .test(FN(S9,'async function meosFoldPseudoOpened')),
+    '★他の道の見え方は今までどおり(先読みを足したのは一括の道だけ)', true);
  ok(/async function meosSyncClockBadgeFold\(doc\) \{/.test(S9)
     && /if \(meosIsUnfoldingSpecLine\(t\) === want\) continue;/.test(S9),
     '★★書くのは名前が変わる時だけ(毎回書けば押してもいないのに文書が汚れる)', true);

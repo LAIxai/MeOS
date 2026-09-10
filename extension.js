@@ -31787,6 +31787,7 @@ function meosFcRecentlyFolded(ln) {
 //     → [[feedback_one_source_for_mark_count_action]]「印もボタンも同じ1つの判定から引く」の兄弟＝
 //       **同じ門番を、呼び元の数だけ書かない**。
 const MEOS_FC_EDIT_QUIET_MS = 700;   // v4.0.396: 打鍵で動いた画面のためには畳み直さない
+let _meosFcQuietTimer = null;   // v4.2.40: 静かになるまで持ち回す1本
 // ★★★v4.2.39(俊克 2026.09.10 pm00:53「その外の空行をクリックすると、いつまで経っても畳まれない。
 //   ところが、別の空行をクリックすると畳まれる」): ★★★**帰った理由を名指しする**。
 //   実測(meos-debug.log)= そのクリックの時刻に `[foldWho]` that1行も出ていない= 走る前に黙って帰っている。
@@ -31814,7 +31815,27 @@ async function meosAutoFoldSpecLines(editor, force) {
   //     ＝ 合図はもう在る。無ければ、次の本物のスクロール/焦点/ファイル切替で来る。
   //   ★重いのは走査(8.7ms)ではなく、**中の `await 150ms` と `editor.fold`(折り畳み範囲の作り直し)**。
   //     だから「軽くする」ではなく「**打鍵では呼ばない**」が正しい直し。
-  if (!force && (Date.now() - _meosLastEditAt) < MEOS_FC_EDIT_QUIET_MS) { meosFoldWhy('打鍵の直後 (' + (Date.now() - _meosLastEditAt) + 'ms)'); return; }
+  // ★★★v4.2.40(俊克 2026.09.10 pm01:23 の実測ログ): ★★★**捨てていた**。
+  //   `[foldWhy] 打鍵の直後 (320ms)` that延々と並ぶ= v4.2.38 で入れた待ち(320ms)は
+  //   この門番(700ms)より短いso、**カーソル由来の畳みは必ずここで消えていた**。
+  //   ★★★しかもクリックでは打鍵していない= **編集しているのは MeOS 自身**
+  //     (バッジのFC↔UFC・⏰のp書き込み)。自分の書き込みで自分の畳みを止めていた。
+  //   ★★2回目のクリックで畳まれたのは、その頃には700msを過ぎていたから
+  //     = 俊克の「別の空行をクリックすると畳まれる」thatそのまま説明できる。
+  //   ★★→ **捨てずに、静かになる時刻へ回す**。兄弟の meosScheduleFcCursorSync は
+  //     元からそう書いてある(`setTimeout(run, QUIET - since)`)= 家の中の同じ役の部品に合わせる
+  //     → [[feedback_copy_the_house_style_first]]
+  //   ★回すのは1本だけ= 何度呼ばれても、待ち合わせは1つ(積み上がらない)。
+  if (!force) {
+    const _since = Date.now() - _meosLastEditAt;
+    if (_since < MEOS_FC_EDIT_QUIET_MS) {
+      meosFoldWhy('打鍵の直後 (' + _since + 'ms) → ' + (MEOS_FC_EDIT_QUIET_MS - _since + 20) + 'ms 後へ回す');
+      try { if (_meosFcQuietTimer) clearTimeout(_meosFcQuietTimer); } catch (_) { }
+      _meosFcQuietTimer = setTimeout(() => { _meosFcQuietTimer = null;
+        try { meosAutoFoldSpecLines(editor, false); } catch (_) { } }, MEOS_FC_EDIT_QUIET_MS - _since + 20);
+      return;
+    }
+  }
   if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
   // ★★v4.0.327(俊克 8/21 am09:46 バグ1「インストール直後に、元いた行に飛ぶようにしたよね。その直後に、
@@ -31838,7 +31859,18 @@ async function meosAutoFoldSpecLines(editor, force) {
   //   ★教訓＝ **合図を足す時は、その合図を鳴らすのが誰かを数える**。ここでは鳴らしていたのが自分だった。
   let heads = [];
   try {
-    const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
+    // ★★★v4.2.40(俊克 pm00:33「前後3画面分くらいを先読みして、事前に処理しておくようにすれば、
+    //   普通にスクロールする時に、余計な動きが起きないよ」＋ pm01:23 バグ2「スクロールした時に、
+    //   やはり、遅れて表示が変わるのが見える」): ★★★**今なら安全に先読みできる**。
+    //   ★昨日までの掟は「画面の外の塊は畳まない」(v4.0.186)= `editor.fold` that畳む相手を見せに行くから。
+    //   ★★★今日の計測でその前提thatが崩れた= 飛ぶ相手は**塊ではなくカーソル**(v4.2.38)。
+    //     カーソルthat画面に居る間は、画面外の塊を畳んでも上端は動かない(ログの `1→1` thatその証拠)。
+    //   ★★→ **前後3画面ぶんを先に畳む**。着いた時にはもう畳んであるso、遅れて姿that変わらない。
+    //   ★カーソルthat画面の外の時は上の門番that既に帰しているso、飛ぶ道は残っていない。
+    const _vpH = (() => { try { const r = (editor.visibleRanges || [])[0];
+      return r ? Math.max(10, (r.end.line - r.start.line) + 1) : 40; } catch (_) { return 40; } })();
+    const _look = _vpH * 3;                                     // 前後3画面ぶん
+    const _vis = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line - _look && ln <= r.end.line + _look); } catch (_) { return false; } };
     const _cur = editor.selection.active.line;
     // v4.0.440: 読書モードでは**カーソルの塊も畳む相手**(除ける理由=「そこは生データを見せている」が消えるので)
     // ★★v4.0.443/444: **開いているべき塊は、一括の道も触らない**＝ 開けているのは偶然ではなく約束だから

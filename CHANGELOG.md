@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.40 (2026-09-10)
+- **Folding after a click is no longer thrown away.** The log, once it could speak, said the same thing over and over: *just after an edit (320ms)*. Folding stands down for 700ms after any edit, and the wait before it runs is 320ms — so every fold the caret asked for died there. Clicking types nothing; the edits were MeOS's own, writing badges and starting points. It was stopping its own folding with its own writing. Now it is put off to the moment things go quiet instead of being dropped — which is what the folding that follows the caret has always done.
+- **Three screens are folded ahead of you.** Until today the rule was to leave anything off screen alone, because folding scrolls to what it folds. Today's measurements showed it scrolls to the *caret*, not to the block: with the caret in view, folding a block off screen moves nothing. So the blocks just above and below are folded before you get there, and arriving no longer changes what you are looking at.
+
 ### v4.2.39 (2026-09-10)
 - **When folding decides to do nothing, it now says why.** Clicking away from a membrane sometimes left everything open, while clicking a second time folded it at once — and the log held no trace of either click, because every one of the six ways the folding pass can decide to stand down returned in silence. Each of them now names itself, and when there are blocks to fold but none were chosen, the counts that ruled them out are given too. At most one line every second and a half, and only when the reason changes, so the log cannot become the thing that keeps waking it.
 
