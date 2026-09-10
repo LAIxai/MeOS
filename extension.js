@@ -10829,6 +10829,20 @@ async function meosClockFcSet(doc, key, spec, atLine) {
   } catch (_) { return false; }
 }
 // 書いてある ⏰ を仕掛ける。既に走っている物には触らない(mMETA由来が先に居れば、そちらを立てる)。
+// ★★★v4.2.32(2026.09.10 連なり②): ★★★**「この膜の時計」は、生きている１本を指す**。
+//   掛ける側(meosArmClockFcFor の _liveTaken ← v4.1.1110)は既に「直下の生きた１本だけ」を
+//   動かしていたのに、受け取る側は `find(c => c.key === key)` で**一番上の１本**を取っていた。
+//   ★★★走り終わった時計は**席を譲るだけで、居場所は動かない**(FCとしてそこに残る)ので、
+//     連なりでは一番上が済みの行になり、**掛かっている行と、押した時に動く行が別になる**。
+//     ★同じ問いに 2 つの物差し → [[feedback_one_source_for_mark_count_action]]
+//   ★席を譲るのは「済み」だけ(v4.1.1112)= 一時停止(⏸)は「また自分が動く」という意思なので席を保つ。
+//   ★済んだ物しか無い時は一番上を返す= 連なりでない膜では今までと同じ答え。
+function meosLiveClockFor(doc, key) {
+  try {
+    const rows = meosClockFcScan(doc).filter(c => c.key === key);
+    return rows.find(c => !c.done) || rows[0];
+  } catch (_) { return undefined; }
+}
 function meosArmClockFcFor(doc) {
   try {
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
@@ -11258,9 +11272,9 @@ async function meosClockSetEnabled(uri, key, on) {
   } catch (_) { }
   if (!doc) { vscode.window.setStatusBarMessage('MeOS: \u23f0 could not open that file.', 3000); return false; }
   const lk = uri + ' ' + key;
-  let hit = meosClockFcScan(doc).find(c => c.key === key);
+  let hit = meosLiveClockFor(doc, key);
   // ★v4.1.35: 本文に⏰行thatが無い(=旧式)なら、まずこの1つを本文へ移してから効かせる。
-  if (!hit) { if (await meosClockMigrateToFc(doc, key)) hit = meosClockFcScan(doc).find(c => c.key === key); }
+  if (!hit) { if (await meosClockMigrateToFc(doc, key)) hit = meosLiveClockFor(doc, key); }
   if (!on) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) {
@@ -12142,7 +12156,7 @@ function meosCycleStepFor(key) {
     const sc = _meosPseudoScopes.get(key); if (!sc) return 0;
     if (sc.step > 0) return sc.step;   // v4.1.63: 掛けた時に控えてある(数えた所と同じ1つから引く)
     const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri); if (!doc) return 0;
-    const hit = meosClockFcScan(doc).find(c => c.key === sc.key);
+    const hit = meosLiveClockFor(doc, sc.key);
     return (hit && Array.isArray(hit.cycle) && hit.cycle.length) ? meosCycleMs(hit.cycle[0]) : 0;
   } catch (_) { return 0; }
 }
@@ -12314,7 +12328,7 @@ async function meosJumpToScope(scope, byBell) {
     //   ★鐘に呼ばれた時(byBell)は今までどおり**膜の頭**= あちらは「次の仕事を読む」ための移動so、
     //     行き先thatが違って当たり前(v4.0.453)。**同じ移動に見えて、狙いthatが2つ在る**。
     let ln = Math.max(0, Math.min(rng.from, doc.lineCount - 1));
-    if (!byBell) { try { const _c = meosClockFcScan(doc).find(x => x.key === scope.key); if (_c && _c.line >= 0) ln = Math.min(_c.line, doc.lineCount - 1); } catch (_) { } }
+    if (!byBell) { try { const _c = meosLiveClockFor(doc, scope.key); if (_c && _c.line >= 0) ln = Math.min(_c.line, doc.lineCount - 1); } catch (_) { } }
     else {
       // ★★★v4.1.162(俊克 9/6 pm02:40「タイムアップで\u23f0膜の開始膜に飛ぶんだthat、そうすると
       //   **奇麗な光景that見れない**んだよ。だから、H-TOC同様に、**膜の中に最後にいた場所に着地**しよう」):
@@ -12864,7 +12878,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   let _cy0 = null, _up0 = false, _tg0 = null, _dl0 = false, _rd0 = 0, _cs0 = '';   // v4.1.146: _rd0 = 回数 / v4.1.157: _cs0 = 短い形
   if (scope.key) {
     try {
-      const _h = meosClockFcScan(scope.doc).find(c => c.key === scope.key);
+      const _h = meosLiveClockFor(scope.doc, scope.key);
       if (_h) { if (Array.isArray(_h.cycle) && _h.cycle.length) _cy0 = _h.cycle; _up0 = !!_h.up; _dl0 = !!_h.dual; _rd0 = _h.rounds || 0; _cs0 = _h.cycleSrc || ''; _tg0 = _h.tags || null; }   // v4.1.1109 / v4.1.142
     } catch (_) { }
     if (opts && opts.hasCycle) { _cy0 = (opts.cycle && opts.cycle.length) ? opts.cycle : null; _up0 = !!opts.up; _dl0 = !!opts.dual; _rd0 = opts.rounds || 0; _cs0 = opts.cycleSrc || ''; }   // v4.1.1109 / v4.1.142
@@ -27809,7 +27823,7 @@ function toggleMeDock(editorOverride) {
         const ed = meosCurrentEditor();
         if (ed && ed.document) {
           const sc = meosModeScope(ed);
-          const hit = sc && sc.key ? meosClockFcScan(ed.document).find(c => c.key === sc.key) : null;
+          const hit = sc && sc.key ? meosLiveClockFor(ed.document, sc.key) : null;
           if (hit) _r = { type: 'clockRead', ok: true,
             when: String(hit.whenSrc || hit.when || ''),
             cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))),
@@ -27910,7 +27924,7 @@ function toggleMeDock(editorOverride) {
         const _e = meosCurrentEditor(); const _sc = _e ? meosModeScope(_e) : null;
         let _cyc = '', _up = false, _tag = '';
         if (_sc && _sc.key && _sc.doc) {
-          const _h = meosClockFcScan(_sc.doc).find(c => c.key === _sc.key);
+          const _h = meosLiveClockFor(_sc.doc, _sc.key);
           if (_h && Array.isArray(_h.cycle) && _h.cycle.length) _cyc = _h.cycle.join(' ');
           if (_h) _up = !!_h.up;                                  // v4.1.1109: 向きは周期と別(一度きりでも名乗る)
           if (_h && Array.isArray(_h.tags) && _h.tags.length) _tag = _h.tags.join(' ');
@@ -27992,7 +28006,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'clockUnlock') {
       try {
         const doc = vscode.workspace.textDocuments.find(x => x.uri.toString() === message.uri);
-        const hit = doc ? meosClockFcScan(doc).find(c => c.key === message.key) : null;
+        const hit = doc ? meosLiveClockFor(doc, message.key) : null;
         if (doc && hit) {
           await meosClockFcSet(doc, message.key, { when: hit.when, hold: hit.hold, lock: false, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, whenSrc: hit.whenSrc, tags: hit.tags, done: false, off: hit.off }, hit.line);
           const _s = _meosPseudoScopes.get(message.uri + ' ' + message.key); if (_s) _s.lock = false;

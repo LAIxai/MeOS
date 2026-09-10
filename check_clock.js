@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
@@ -771,7 +771,7 @@ console.log('\u3257 掛け直しても \u21bb thatが消えない');
  const _i0=SRC10.indexOf('  let _cy0 = null, _up0 = false, _tg0 = null, _dl0 = false');
  const _set=SRC10.slice(_i0, _i0+2200);
  ok(/cycle: _cy0, up: _up0, dual: _dl0/.test(_set), '\u2605\u2605\u2605Set thatが書く時に繰返しと向きを渡している', true);
- ok(/meosClockFcScan\(scope\.doc\)/.test(_set), '  在れば本文から読んで持ち越す', true);
+ ok(/meosLiveClockFor\(scope\.doc/.test(_set), '  在れば本文から読んで持ち越す', true);
  ok(/if \(opts && opts\.hasCycle\)/.test(_set), '  箱に書いた時だけ触る(空なら今の指定that残る)', true);
  ok(!/meosClockFcSet\(scope\.doc, scope\.key, \{ when: meosClockFcStamp\(_at\), hold, lock \}\)/.test(SRC10),
     '\u2605\u21bb を渡さない古い書き方that残っていない', true);
@@ -1587,7 +1587,7 @@ console.log('⑮ 鐘の着地点は膜の中(▼の上に降りない)');
     '★★★H-TOCと同じ覚え(その膜で最後にいた行)へ降りる', true);
  ok(/const _body = Math\.min\(rng\.from \+ 1,/.test(J),
     '★★覚えthat無ければ開始膜の**次の行**(▼の上でなければよい)', true);
- ok(/if \(!byBell\) \{[\s\S]{0,200}?meosClockFcScan/.test(J),
+ ok(/if \(!byBell\) \{[\s\S]{0,200}?meosLiveClockFor/.test(J),
     '  一覧from行く時は今までどおり⏰行へ(直しに行くso生でよい)', true);
  ok(J.indexOf('savedMeCursorLine') > J.indexOf('if (!byBell)'),
     '★飛ぶ口は1つのまま(meosJumpToScope の中で分ける)', true);
@@ -1886,5 +1886,32 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
     '★項目は1つ(選択肢はパネルの中で並べる)', true);
  ok(/_meosClockScanCache\.set\(doc, \{ version: doc\.version, value: out \}\)/.test(S2),
     '★★★⏰の全行スキャンに控えを付けた(229,134行で11.0ms → 0.0ms)', true);
+}
+console.log('㊴ 連なり= 「この膜の時計」は生きている１本を指す');
+{
+ const S9=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const L4=['# t','<!-- {* ▼mCN=A_1 // c *} -->','body','<!-- {* ▲mCN=A_1 // c *} -->',
+  '<!-- Mew!FC ⏰ 1. 2026-09-10 09:00 ↺10m ×1 ✓ -->',
+  '<!-- Mew!UFC ⏰ 2. ↻3m ×1 -->',
+  '<!-- Mew!UFC ⏰ 3. ↺5m ×1 -->'];
+ const mkd=(A)=>({uri:{toString:()=>'file:///c.md',fsPath:'/c.md',scheme:'file'},languageId:'markdown',lineCount:A.length,
+  lineAt:(i)=>({text:A[i],range:{start:{line:i,character:0},end:{line:i,character:A[i].length}}}),
+  getText:()=>A.join('\n'),positionAt:()=>({line:0,character:0}),offsetAt:()=>0});
+ const d4=mkd(L4), rows=X.meosClockFcScan(d4);
+ ok(rows.length===3, '★★★1つの膜に3本並べたら3本とも読む(2本目以降は時刻を持たない)', rows.length);
+ ok(rows[0].done===true && rows[1].done===false && rows[2].done===false,
+    '  一番上が走り終わった1本= 席は譲るが居場所は動かない', [rows[0].done,rows[1].done]);
+ ok(rows.map(c=>c.listNo).join(' ')==='1. 2. 3.',
+    '★見せかけの番号は3本とも持ったまま(人は数字で読む)', rows.map(c=>c.listNo));
+ const live=X.meosLiveClockFor(d4,'A_1');
+ ok(live && live.line===5, '★★★指すのは一番上ではなく生きている1本(掛かっている行と押した時に動く行を揃える)', live&&live.line);
+ ok(live && live.listNo==='2.', '  その1本の番号は 2.', live&&live.listNo);
+ const L5=L4.slice(0,5); L5[4]='<!-- Mew!UFC ⏰ 2026-09-10 09:00 ↺10m ×1 -->';
+ ok(X.meosLiveClockFor(mkd(L5),'A_1').line===4,
+    '★連なりでない膜では今までと同じ答え(1本しか無ければそれ)', true);
+ ok(!/meosClockFcScan\([\w.]+\)\.find\(/.test(S9),
+    '★★★「この膜の時計」を訊く口は1つだけ(find の直打ちが1つも残っていない)', true);
+ ok((S9.match(/meosLiveClockFor\(/g)||[]).length>=9,
+    '  7か所+定義+呼び出しが全部その口を通っている', (S9.match(/meosLiveClockFor\(/g)||[]).length);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.32 (2026-09-10)
+- **"The clock on this membrane" now means the one that is running.** Arming had understood this since v4.1.1110 — it starts the first clock below the membrane that has not finished — but everything else asked a different question and took whichever clock sat highest. A clock that has finished gives up its turn without moving out of the way, so in a chain the highest one is a finished one, and the row you were watching and the row your click reached had drifted apart.
+- Seven places asked that question; all seven now ask it through one door. Pause (⏸) still keeps its turn — only finishing hands it on. On a membrane with a single clock the answer is what it always was.
+
 ### v4.2.31 (2026-09-10)
 - **The number at the front of a clock is for you, not for MeOS.** `1.`, `2.`, `3)` are read the way Markdown reads a numbered list: the digits you typed are kept in the line and shown back to you untouched, and MeOS decides the order from the sequence instead. The number is dropped from the time it was being mistaken for, and left in the text, so every path that writes the line back carries it through without a single one of them being changed.
 - A date written with dots — `2026.09.10` — is not a list number. The two are told apart by the space that always follows a number.
