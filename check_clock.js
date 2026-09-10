@@ -622,7 +622,7 @@ const _sig=SRC3.slice(SRC3.indexOf("if(m&&m.type==='viewMode')"), SRC3.indexOf("
 ok(/_sg=.*\+'\|'\+_cs/.test(_sig), '\u2605\u2605\u2605合図に一覧thatが入っている(描く物を、描くかどうかの判断に入れる)', /_cs/.test(_sig));
 ok(/_cc\.at/.test(_sig)&&/_cc\.running/.test(_sig)&&/_cc\.next/.test(_sig), '  時刻\u30fb走っているか\u30fb次かthat全部合図に効く', true);
 ok(/_cc\.key/.test(_sig), '  どの膜かも合図に効く(入れ替わりを見逃さない)', true);
-const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+14000);
+const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+22000);
 ok(/if \(n \|\| _seen\)/.test(_arm), '\u2605掛かった数that0でも、\u23f0を見つけたら知らせる', /_seen/.test(_arm));
 
 // v4.1.39(俊克「あんたがせっせと仕込んでいたんだよ。貴方の説明をコピーして、それを私がペーストする」)
@@ -1913,5 +1913,17 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★★「この膜の時計」を訊く口は1つだけ(find の直打ちが1つも残っていない)', true);
  ok((S9.match(/meosLiveClockFor\(/g)||[]).length>=9,
     '  7か所+定義+呼び出しが全部その口を通っている', (S9.match(/meosLiveClockFor\(/g)||[]).length);
+ /* ★★★v4.2.33(2026.09.10 俊克「でもなぜ連動しないんだ?」)= 席が回って来た時が起点。 */
+ ok(/if \(!c\.when && c\.ufc && !c\.done && !c\.off && Array\.isArray\(c\.cycle\) && c\.cycle\.length\) \{/.test(S9),
+    '★★★時刻を書いていない1本は、席が回って来た時が起点(前が終わった時から数える)', true);
+ ok(/const _src3 = \(String\(c\.whenSrc \|\| ''\)\.trim\(\) \+ ' ' \+ _st3 \+ 'p'\)\.trim\(\);/.test(S9),
+    '★★新しい仕組みを作らず v4.2.28 と同じ口で p を書く(番号は頭に残す)', true);
+ ok(/c\.when = _st3; c\.whenSrc = _src3;/.test(S9),
+    '★この走査からもう起点を持つ(本文の書き込みを待たない)', true);
+ {const qq=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
+  const w1=qq('2. 2026-09-10 09:46p ↻2m ×1'), w0=qq('2026-09-10 09:46p ↺3m ×1');
+  ok(w1.when==='2026-09-10 09:46' && w1.listNo==='2.' && !!w1.pAt && w1.cycle.join()==='2m',
+     '★★★書いた形を読み直せる(番号・起点・p・周期が全部戻る)', [w1.when,w1.listNo,w1.cycle]);
+  ok(w0.listNo==='' && !!w0.pAt, '  番号の無い1本でも同じ', w0.whenSrc);}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

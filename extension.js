@@ -10986,6 +10986,25 @@ function meosArmClockFcFor(doc) {
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold, tags: c.tags }, _w ? _w.getTime() : Date.now(), true);   // v4.1.62: 休みも予定
         continue;
       }
+      // ★★★v4.2.33(2026.09.10 連なり③・俊克「でもなぜ連動しないんだ?」): ★★★**時刻を書いていない
+      //   1本は、席が回って来た時が起点**。連なりの2本目以降は起点を書かない(前が終わった時から数える)
+      //   ので、ここへ来た瞬間が掛かった瞬間 → [[project_clock_chain]]。
+      //   ★★**新しい仕組みは作らない**= v4.2.28 と同じ口で `p`(数え始め)を本文に書くだけ。
+      //     書いた後は when を持つので、この先は今までの道を1行も変えずに流れる。
+      //   ★★★席が回って来るのは、前の1本が済みになった時だけ(_liveTaken / v4.1.1110)。
+      //     下に並ぶ物は予備であり下書きなので、ここへは来ない。
+      //   ★書くのは1回だけ= 次からは when を持つので、この枝に入らない。
+      //   ★休み(⏸)と済み(✓)は除く。周期を持たない物も除く(掛ける先が無い)。
+      //   ★見せかけの番号は whenSrc の頭にそのまま残す= 番号は最後まで動かない(v4.2.31)。
+      if (!c.when && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
+        try {
+          const _st3 = meosClockFcStamp(new Date());
+          const _src3 = (String(c.whenSrc || '').trim() + ' ' + _st3 + 'p').trim();
+          meosClockFcSet(doc, c.key, { when: _st3, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: _src3, tags: c.tags, done: false }, c.line);
+          meosDbg('[armClock] chain start key=' + c.key + ' \u884c=' + (c.line + 1) + ' ' + _src3);
+          c.when = _st3; c.whenSrc = _src3;            // この走査からもう起点を持つ(書き込みを待たない)
+        } catch (_) { }
+      }
       let w = meosParseWhen(c.when), _step = 0, _cidx = 0, _crnd = 1;
       if (Array.isArray(c.cycle) && c.cycle.length) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。

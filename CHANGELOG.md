@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.33 (2026-09-10)
+- **A clock with no time starts when its turn comes round.** The second and later clocks of a chain are not given a starting time — they begin where the one before them ended — and until now they were dropped one line short of being armed, in silence. The turn only comes round when the clock above has finished, so arriving here *is* the moment of starting, and MeOS writes it into the line as **p** through the same door it already used in v4.2.28. From that point on the line carries a time like any other and takes the ordinary path.
+- The number at the head of the line is kept where it is, so a chain still reads `1. 2. 3.` after every one of them has run.
+
 ### v4.2.32 (2026-09-10)
 - **"The clock on this membrane" now means the one that is running.** Arming had understood this since v4.1.1110 — it starts the first clock below the membrane that has not finished — but everything else asked a different question and took whichever clock sat highest. A clock that has finished gives up its turn without moving out of the way, so in a chain the highest one is a finished one, and the row you were watching and the row your click reached had drifted apart.
 - Seven places asked that question; all seven now ask it through one door. Pause (⏸) still keeps its turn — only finishing hands it on. On a membrane with a single clock the answer is what it always was.
