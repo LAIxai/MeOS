@@ -2010,6 +2010,14 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★塊の終わりを決める物差しが meosDefBlocks と同じ(時計かどうかを訊かない)', true);
  ok(/if \(!c \|\| \(!c\.when && !\(c\.cycle && c\.cycle\.length\)\)\) continue;[\s\S]{0,400}?meosClockLineIsLive/.test(S9),
     '★★★描く側も同じ数え方= 待っている⏰も包みを消す(俊克 バグ3)', true);
+ /* ★★★v4.2.38(俊克「膜の外や内部に文字カーソルが入っても折り畳まれない。しかしスクロールすると
+    折り畳まれる」＋「スクロールダウンすると、またスクロールアップしてしまう」)。 */
+ ok(/if \(!lineVisible\(editor, _cur\)\) return;/.test(S9),
+    '★★★カーソルが画面の外に居る間は畳まない(飛ぶ相手は塊でなくカーソル)', true);
+ ok(!/!_meosFcFolded\.has\(String\(e\.textEditor\.document\.uri \|\| ''\)\)/.test(S9),
+    '★★★一度畳んだ文書でもカーソルで走る(この門番があるとスクロールだけが効いていた)', true);
+ ok(/onDidChangeTextEditorSelection[\s\S]{0,1400}?clearTimeout\(_meosFcScrollTimer\); _meosFcScrollTimer = setTimeout\(/.test(S9),
+    '★カーソル由来もスクロールと同じ待ち(320ms)を通す= 打鍵ごとに走らせない', true);
  ok(/async function meosSyncClockBadgeFold\(doc\) \{/.test(S9)
     && /if \(meosIsUnfoldingSpecLine\(t\) === want\) continue;/.test(S9),
     '★★書くのは名前が変わる時だけ(毎回書けば押してもいないのに文書が汚れる)', true);

@@ -31838,6 +31838,18 @@ async function meosAutoFoldSpecLines(editor, force) {
     //   ★★→ **畳む相手も、畳む範囲を決めた所から引く**= `meosFcFoldShape`(hasRange 付き)。
     //     形と宛先を別々の物差しで決めない([[feedback_one_source_for_mark_count_action]])。
     //     `it.open` thatカーソルthat中に居る塊= 今までの `_mine` と同じ役so、判定も1つに寄る。
+    // ★★★v4.2.38(俊克 2026.09.10 pm00:33「スクロールダウンすると、またスクロールアップしてしまう、
+    //   と言うような動きがあって、すごく使い難い」): ★★★**飛ぶ相手は塊ではなく、文字カーソル**。
+    //   実測(meos-debug.log 03:26:09)= 行11(画面の中)を畳んだ瞬間に **画面上端 1→40**。
+    //   その時カーソルは45行目= 画面の外に居た。`editor.fold` の後、VS Code はカーソルを見せに行く。
+    //   そのあと meosRestoreView that上端を戻す= **飛んで、戻る**thatそのまま目に見える。
+    //   ★★→ **カーソルが画面の外に居る間は畳まない**。読んでいる所から連れ戻さない。
+    //     カーソルthat画面に戻れば、その時に畳めばいい
+    //     (v4.0.186「見えていないものを整える必要thatそもそも無い」の続き= 相手をカーソルへ広げた)。
+    //   ★これで動きは「飛んで戻る」から「何も起きない」になる= 2回の移動that0回。
+    //   ★俊克の±3画面の先読みでは直らない= 飛ぶ相手thatが塊でなくカーソルso、
+    //     先に畳んでも、その時にカーソルへ飛ぶ(場所を変えるだけ)。
+    if (!lineVisible(editor, _cur)) return;
     heads = meosFcFoldShape(editor.document, _cur)
       .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
       .map(it => it.head);   // v4.0.466: 今しがた畳んだ物は二度畳まない
@@ -34235,7 +34247,14 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     // ★v4.0.396: ここは v4.0.141 の「入れ直した直後、人が最初にクリックした時に1回だけ畳む」ための道。
     //   **まだ畳んでいないファイルの時だけ**呼ぶ(steady stateの打鍵では一切呼ばない)。
-    try { if (e.textEditor && e.textEditor.document && !_meosFcFolded.has(String(e.textEditor.document.uri || ''))) meosAutoFoldSpecLines(e.textEditor); } catch (_) { }
+    // ★★★v4.2.38(俊克 バグ1「膜の外や、内部に文字カーソルが入っても折り畳まれない。しかし、スクロールすると、折り畳まれる」):
+    //   ★★★**その文書を一度畳んだら、以後カーソルでは二度と走らなかった**(_meosFcFolded の門番)。
+    //   走り終えた⏰がFCになるのは開いた後so、カーソルをどう動かしても畳まれない。
+    //   スクロール側(onDidChangeTextEditorVisibleRanges)には同じ門番that無いので、スクロールだけthat効いていた。
+    //   ★★→ 門番を外し、**スクロールと同じ待ち(320ms)**を通す= 打鍵ごとに走らせない。
+    //   ★カーソルthat画面の外の時は中で帰る(v4.2.38の上の門番)so、飛ぶ心配は無い。
+    try { if (e.textEditor) { clearTimeout(_meosFcScrollTimer); _meosFcScrollTimer = setTimeout(() => {
+      _meosFcScrollTimer = null; try { meosAutoFoldSpecLines(e.textEditor); } catch (_) { } }, 320); } } catch (_) { }
     try { meosScheduleFcCursorSync(e.textEditor); } catch (_) { }
     try { meosNoteMembraneNameEdit(e.textEditor); } catch (_) { }   // v4.0.351: 膜名を直に直せるようにする
   }));

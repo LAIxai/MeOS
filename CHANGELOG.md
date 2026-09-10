@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.38 (2026-09-10)
+- **Moving the caret folds again.** Once a document had been folded through, a guard stopped the caret from ever driving the folding again; only scrolling could. Clocks turn into folding comments long after a file is opened, so nothing the caret did would tuck them away. The guard is gone, and caret-driven folding now waits the same moment scrolling does, so typing does not set it running.
+- **The jump-and-come-back while reading is gone.** The log had it: folding a block on line 11 — a line already on screen — moved the top of the view from 1 to 40, and the view was then put back. What the editor scrolls to after folding is not the block, it is the caret, and the caret was forty lines further down. So folding now waits until the caret is on screen. Nothing is tidied while you are reading somewhere else; when the caret comes back into view, folding resumes. Two movements become none.
+
 ### v4.2.37 (2026-09-10)
 - **Two folds were crossing, and one symptom wore two faces.** The membrane's block ended at the last clock; the block of foldable comments below it ran further, to the last comment. Measured on a real membrane: `[9…16]` against `[12…19]` — one range starting inside the other and ending outside it, which the editor discards. So the comment lines were left showing their raw `<!-- … -->`, and folding the membrane hid the clocks while those comments stayed behind. The two now measure the block the same way: every folding comment stacked under a closing membrane belongs to it, clock or not.
 - **A clock waiting its turn now looks like a clock.** Its line was dropped at the entrance of the drawing pass for having no starting time yet, so it never reached the step that hides the `<!-- Mew!UFC ⏰ … -->` around it, and sat there as raw comment text next to its neighbours. The entrance now counts the way the reader, the arming pass and the folding already count. Which of them shows a running number is decided further down, as before, and is unchanged.
