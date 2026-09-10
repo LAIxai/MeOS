@@ -31575,6 +31575,32 @@ function meosApplyFcRowDecorations(editor) {
 function meosFcFoldShape(document, caretLine) {
   const out = [];
   try {
+    // ★★★v4.2.51(俊克 2026.09.10 pm07:47 改良1「文字カーソルthatある行によって、部分的にしか
+    //   表示されない(一部thatが折り畳まれている)のthat使い難いので、どこにあってもすべての行を
+    //   表示するようにしようよ。ただし、膜の内部のメモを書くところは除いてね」):
+    //   ★★★**走る⏰を持つ膜の指定行は、カーソルthatどこに在っても畳まない**。
+    //     バッジも時計もメッセージも、**並び全部thatが1つの物**so、途中で切れると読めない。
+    //   ★畳むのは今までどおり**膜の中の本文**(メモ)だけ= 膜の範囲は1文字も変えていない。
+    //   ★条件は「まだ鳴る⏰that並びの中に在る」= 全部済んだ一度きりの時計は、今までどおり畳む
+    //     (v4.2.36「全部終わったら膜だけthat見える」はそのまま生きる)。
+    //   ★★これで v4.2.36 の「済んだ分から消えていく」は連なりでは起きなくなる=
+    //     輪では戻ってくるso、消していく相手thatが居ない。俊克の改良1thatその整理。
+    //   ★見るのは**並び全体**= まだ鳴る⏰thatが1本でも居れば、その並びの指定行はぜんぶ見せる。
+    //     バッジも、待っている時計も、メッセージも、途中で切れたら読めないので。
+    const _liveStacks = [];
+    try {
+      for (const c of meosClockFcScan(document)) {
+        if (c.done) continue;
+        let a = c.line, z = c.line;                                  // 指定行の並びを上下へ広げる
+        while (a - 1 >= 0 && meosIsSpecLine(document.lineAt(a - 1).text)) a--;
+        while (z + 1 < document.lineCount && meosIsSpecLine(document.lineAt(z + 1).text)) z++;
+        _liveStacks.push([a, z]);
+      }
+    } catch (_) { }
+    const _stackHasLiveClock = (from, to) => {
+      for (const r of _liveStacks) if (from <= r[1] + 1 && to >= r[0] - 1) return true;   // 頭(1行上)も並びの一員
+      return false;
+    };
     for (const b of meosDefBlocks(document)) {
       const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
       const shift = open && (b.open != null);
@@ -31584,7 +31610,9 @@ function meosFcFoldShape(document, caretLine) {
       //   → 畳むか否かは meosClockBadgeRow 1つthat決める。
       let end = b.end;
       if (b.open != null) { const _bg = meosClockBadgeRow(document, { end: b.start }); if (_bg >= 0) end = Math.min(end, _bg - 1); }
-      out.push({ b, head, end, shift, open, hasRange: end > head });
+      // ★v4.2.51: 並びの中にまだ鳴る⏰thatが在れば、この塊は畳まない(範囲を渡さない)。
+      const _keepOpen51 = _stackHasLiveClock(head, end);
+      out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51, keepOpen: _keepOpen51 });
     }
   } catch (_) { }
   return out;

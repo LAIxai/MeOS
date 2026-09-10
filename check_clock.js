@@ -1993,10 +1993,10 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
            mem:X.foldRangeEnd(d,{start:1,end:3,id:'X_1'},false), badge:X.meosClockBadgeRow(d,{end:3})};};
   const a=shape(B(UB,D1,U2,U3)), b=shape(B(UB,D1,D2,U3)), c=shape(B(FB,D1,D2,D3));
   ok(a.badge===4 && b.badge===4, '★★UFCのバッジも「バッジ行」と読める(名前を変えても在り処は変わらない)', [a.badge,b.badge]);
-  ok(JSON.stringify(a.fc)==='[[4,5]]',
-     '★★★済んだ1本だけが、バッジを頭にして隠れる(走っている物と待っている物は見えたまま)', a.fc);
-  ok(JSON.stringify(b.fc)==='[[4,6]]',
-     '★★★済むたびに隠れる分が増える(進んでいるのが見える)', b.fc);
+  ok(a.fc.length===0,
+     '★★★走る⏰が在る間は、並びを1行も畳まない(v4.2.51 改良1・どこにカーソルが在っても全部見える)', a.fc);
+  ok(b.fc.length===0,
+     '  待っている1本が残っている間も同じ(バッジも時計もメッセージも1つの並び)', b.fc);
   ok(c.badge===-1 && c.mem===7,
      '★★★全部済んだらバッジも畳みの中= 膜だけが見える(5分タイマーの時と同じ姿)', [c.badge,c.mem]);}
  /* ★★★v4.2.37(俊克 バグ1/2「最後のメッセージ用のデータがRawのように見えている」
@@ -2157,5 +2157,18 @@ console.log('㊶ 連なりの輪(俊克 pm06:43 の設計 ＋ pm07:17「最下�
     '★★★×N を終えたら、済みにせず次へ回す(連なりの中だけ)', true);
  ok(/if \(!_chained50 && c\.ufc\)/.test(ARM),
     '  1本だけの膜は今までどおり済み(✓)になる', true);
+}
+console.log('㊷ 走る⏰の並びは畳まない(俊克 pm07:47 改良1)');
+{
+ const S51=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const SH=FN(S51,'function meosFcFoldShape');
+ ok(/const _liveStacks = \[\];/.test(SH) && /while \(a - 1 >= 0 && meosIsSpecLine\(document\.lineAt\(a - 1\)\.text\)\) a--;/.test(SH),
+    '★★★見るのは並び全体(⏰から上下へ、指定行が続く限り広げる)', true);
+ ok(/hasRange: \(end > head\) && !_keepOpen51/.test(SH),
+    '★★★まだ鳴る⏰が居れば、その並びには畳む範囲を渡さない', true);
+ ok(/if \(c\.done\) continue;/.test(SH),
+    '★全部済んだ並びは今までどおり畳む(一度きりの時計の姿は変えない)', true);
+ ok(/if \(from <= r\[1\] \+ 1 && to >= r\[0\] - 1\)/.test(SH),
+    '  塊の頭(1行上)も並びの一員として数える', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.51 (2026-09-10)
+- **While a membrane still has a clock to come, its whole stack stays in view.** The badge, the clock running, the ones waiting, the lines they will say — they are one thing, and reading half of it tells you nothing, so none of it folds any more, wherever the caret happens to be. What folds is what always folded: the notes inside the membrane. Once every clock there has finished, the stack closes as before and the membrane alone is left.
+- This also settles the odd folding seen when a chain came back round to its first clock — there is no longer a fold there to go wrong.
+
 ### v4.2.50 (2026-09-10)
 - **A membrane's clocks now hand over to one another, and come back round.** When one rings, the bar at the bottom says its line and offers a click — the same place, and the same shape, as *⏰ ringing — click to stop* and *↩ Back*. Clicking starts the next clock; when the last one has run out its rounds it hands back to the first without being asked. Nothing is marked finished on the way round: a clock reached from a starting point keeps its own reckoning, so a late start never moves it.
 - To say this, a clock can now be **waiting** — folded, but not finished. Which is folded and which is not was the same decision as which had finished; they are now two.
