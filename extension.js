@@ -31717,7 +31717,7 @@ async function meosSyncFcFoldForCursor(editor) {
     const _isOpenNow47 = (it) => _visible(it.end);                     // 終わりthat見えている= 開いている
     const _toOpen47 = _shape.filter(it => it.hasRange && it.open && _visible(it.head) && !_isOpenNow47(it)).map(it => it.head);
     const _toFold47 = _shape.filter(it => it.hasRange && !it.open && _visible(it.head) && _isOpenNow47(it) && !meosFcRecentlyFolded(it.head)).map(it => it.head);
-    if (_toOpen47.length) { try { meosDbg('[fcOne] 開ける ' + _toOpen47.map(x => x + 1).join(',')); } catch (_) { } await unfold(_toOpen47); }
+    if (_toOpen47.length) { try { meosDbg('[fcOne] 開ける ' + _toOpen47.map(x => x + 1).join(',')); } catch (_) { } try { for (const _h of _toOpen47) _meosFoldedAt48.delete(_h); } catch (_) { } await unfold(_toOpen47); }
     if (_toFold47.length) { try { meosDbg('[fcOne] 畳む ' + _toFold47.map(x => x + 1).join(',')); } catch (_) { } for (const h of _toFold47) meosFcNoteFolded(h); await fold(_toFold47); }
     try { _meosFcOpenSet.clear(); for (const it of _shape) if (it.hasRange && it.open) _meosFcOpenSet.add(it.b.start); } catch (_) { }
     // ★v4.0.440(俊克「読書モードで、見出しやハイライトをコピペすると、FCコメントが見えちゃう」):
@@ -31801,6 +31801,17 @@ const MEOS_FC_EDIT_QUIET_MS = 700;   // v4.0.396: 打鍵で動いた画面のた
 let _meosFcQuietTimer = null;   // v4.2.40: 静かになるまで持ち回す1本
 let _headEnd43 = new Map();     // v4.2.43: 畳んだ相手の終わり(効いたか確かめる)
 let _shape46 = [], _open46 = [];   // v4.2.46: 望む姿と、開け直す相手
+let _meosFoldSig48 = '';   // v4.2.48: 前に「範囲that変わった」と言った時の姿
+// ★v4.2.48: **開けた覚えthat無いのに、また畳んだ**なら、誰かthat外で開き直している。
+//   輪thatが消えたかを、次の1回で確かめられるようにする(1行だけ・120秒の窓)。
+const _meosFoldedAt48 = new Map();
+function meosNoteReopen48(h) {
+  try {
+    const t = _meosFoldedAt48.get(h);
+    if (t && Date.now() - t < 120000) meosDbg('[fcReopen] \u982d=' + (h + 1) + ' ' + Math.round((Date.now() - t) / 1000) + '\u79d2\u524d\u306b\u7573\u3093\u3060\u306e\u306b\u3001\u307e\u305f\u958b\u3044\u3066\u3044\u305f');
+    _meosFoldedAt48.set(h, Date.now());
+  } catch (_) { }
+}
 // ★★★v4.2.39(俊克 2026.09.10 pm00:53「その外の空行をクリックすると、いつまで経っても畳まれない。
 //   ところが、別の空行をクリックすると畳まれる」): ★★★**帰った理由を名指しする**。
 //   実測(meos-debug.log)= そのクリックの時刻に `[foldWho]` that1行も出ていない= 走る前に黙って帰っている。
@@ -31974,16 +31985,34 @@ async function meosAutoFoldSpecLines(editor, force) {
   try {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
-      await new Promise(r => setTimeout(r, 150 * attempt)); // VS Codeが範囲を取り直すのを待つ(v0.9.961の作法)
+      // ★★★v4.2.48(俊克 pm02:47 バグ1「スクロールする前に閉じていた⏰膜が、スクロールして戻ると、
+      //   再び開いていて、それを閉め直しているのは、どうにかならないのか?」):
+      //   ★★★**開き直していたのは MeOS 自身**= 畳む前に毎回「範囲that変わった」と言っていた。
+      //     VS Code はそう言われると畳み範囲を取り直し、**形の変わった範囲の畳み状態を捨てる**。
+      //   ★★★⏰膜だけthat開き直るのは、⏰膜だけthat**範囲の形を実際に変える**から=
+      //     生きた時計の有無でバッジthat畳みの外へ出たり入ったりする(v4.1.147 / v4.2.36)。
+      //   ★★v4.2.44で再描画の拍に乗せた結果、これthat毎回鳴るようになった=
+      //     畳む→変わったと言う→VS Codethat開き直す→また畳む、の輪。
+      //     ログの「同じ塊を1分で5回畳む、間に開けた記録は無し」thatその輪の姿。
+      //   ★★→ **本当に変わった時だけ言う**。範囲thatが変わるのは
+      //     ①本文that変わった(document.version) ②カーソルthat塊に出入りした(shift)、の2つだけ。
+      //   ★言わなかった時は待ちも要らない(取り直しthat走らないので)。
+      const _sigNow48 = String(editor.document.version) + '|' + _shape46.filter(it => it.shift).map(it => it.b.open).join(',');
+      if (_sigNow48 !== _meosFoldSig48) {
+        _meosFoldSig48 = _sigNow48;
+        try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
+        await new Promise(r => setTimeout(r, 150 * attempt)); // VS Codeが範囲を取り直すのを待つ(v0.9.961の作法)
+      }
       const _t0 = Date.now();
       const _vt0 = (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; // v4.0.187
       try { meosDbg('[foldWho] meosAutoFoldSpecLines lines=' + JSON.stringify(heads)); } catch (_) { }   // v4.1.163: 誰that畳んだか
       // ★★★v4.2.46: **開ける方を先に打つ**= カーソルthat入った塊を見せてから、余所を畳む。
       if (_open46.length) {
         try { meosDbg('[fcOpen] ' + _open46.map(x => x + 1).join(',') + ' を開ける'); } catch (_) { }
+        try { for (const _h of _open46) _meosFoldedAt48.delete(_h); } catch (_) { }
         try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: _open46 }); } catch (_) { }
       }
+      try { for (const _h48 of heads) meosNoteReopen48(_h48); } catch (_) { }   // v4.2.48
       if (heads.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
       try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
       // ★★★v4.2.43(俊克 pm01:53「全く改善されない。なぜ?」): ★★★**畳んだ後に、本当に畳まれたかを測る**。

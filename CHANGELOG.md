@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.48 (2026-09-10)
+- **A clock membrane you closed stays closed when you scroll back to it.** It was MeOS reopening it. Before folding anything, the pass told the editor its folding ranges had changed — every single time — and the editor answers that by working the ranges out again and letting go of what it had collapsed where the shape no longer matches. A clock membrane is the one kind whose shape really does move, its badge stepping in and out of the fold as clocks run, so it was the one kind that came back open. Once folding began running on the redraw beat this happened constantly: fold, announce, reopened, fold again — the log shows the same block folded five times in a minute with nothing opening it in between. The announcement is now made only when something actually changed: the text, or the caret crossing into or out of a block. When nothing is announced, nothing waits either.
+
 ### v4.2.47 (2026-09-10)
 - **Clicking a membrane opens it, every time.** The path that follows the caret was still choosing what to open by subtraction — the blocks it wanted open, minus the ones it remembered opening — and it only ever remembers the ones it opened itself. A block folded at start-up is in no such record, so it could never be picked, and clicking its closing membrane did nothing. It now compares the same two things the other path does: what should be open, and what is (a block whose last line is visible is open), and acts on the difference. Both paths reach the same answer, so it no longer matters which runs first. The record is rebuilt after the fact and no longer decides anything.
 
