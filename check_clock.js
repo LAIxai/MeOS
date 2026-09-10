@@ -15,6 +15,13 @@ const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
  +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
+// ★★★v4.2.39: 関数を**丸ごと**切り出す(固定長の窓をやめる)。
+//   今日3度、コードは無傷なのに「探している字が窓の外へ出た」だけで検査が落ちた
+//   (⑤ 18000 / ⑪ 14000 / ⑭ 6000)。窓の長さは「この関数がこの先どれだけ育つか」を
+//   当てる仕事で、当たらない。→ 次の行頭 function まで= 長さを推測する所を消す。
+const FN=(S,head)=>{const a=S.indexOf(head); if(a<0) return '';
+  const re=/\n(?:async )?function [A-Za-z_$]/g; re.lastIndex=a+head.length;
+  const r=re.exec(S); return S.slice(a, r ? r.index : S.length);};
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const lines=['# t','<!-- {* ▼mCN=A_1 // c *} -->','x','<!-- {* ▲mCN=A_1 // c *} -->'];
 const mk=(uri)=>({uri:{toString:()=>uri,fsPath:'/x.md',scheme:'file'},languageId:'markdown',lineCount:lines.length,
@@ -270,10 +277,10 @@ console.log('\u247a 数字は矢印と同じ色 / 何周目かを数える');
 console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回に1つ / × は走っている1本');
 {
   const S7=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const P7=S7.slice(S7.indexOf('function meosFcPairAt'), S7.indexOf('function meosFcPairAt')+2500);
+  const P7=FN(S7, 'function meosFcPairAt');
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
-  const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+26000);
+  const D7=FN(S7, 'function meosApplyTimerLineDecorations');
   ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle, pAt: c\.pAt \}, _sc7, _nowAll\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
@@ -285,12 +292,12 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
 console.log('\u2478 持ち主は閉じ膜だけ / A + B = 1回分の長さ');
 {
   const S6=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const C6=S6.slice(S6.indexOf('function meosClockFcScan'), S6.indexOf('function meosClockFcScan')+9000);
+  const C6=FN(S6, 'function meosClockFcScan');
   ok(/const owner = pairs\.find\(p => p\.end === j\) \|\| null;/.test(C6) && /if \(!owner\) continue;/.test(C6),
      '\u2605\u2605\u2605直前の閉じ膜が無ければ読まない(予備の道を外した)', true);
   ok(!/if \(!owner\) for \(const p of pairs\)/.test(C6),
      '\u2605\u2605膜の中のどこに在っても持ち主を作る道は無い', true);
-  const F6=S6.slice(S6.indexOf('function meosClockFaceForLine'), S6.indexOf('function meosClockFaceForLine')+2000);
+  const F6=FN(S6, 'function meosClockFaceForLine');
   /* ★★★v4.1.131: 形でなく**数**で確かめる= 2つの顔を同じ「今」で出して、足して長さになるか。 */
   {
     const step=180000, until=Date.now()+150400;   /* 3分の回・残り2:30.4 */
@@ -311,7 +318,7 @@ console.log('\u2478 持ち主は閉じ膜だけ / A + B = 1回分の長さ');
 console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2本を行で見分ける');
 {
   const S5=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const E5=S5.slice(S5.indexOf('async function meosEndPseudoTimer'), S5.indexOf('async function meosEndPseudoTimer')+4000);
+  const E5=FN(S5, 'async function meosEndPseudoTimer');
   ok(/done: true \}, h\.line\)/.test(E5) && /cycle: h\.cycle, up: h\.up/.test(E5),
      '\u2605\u2605\u2605済みにする時も向きと周期をそのまま返す(\u21bb が \u21ba に化けない)', true);
   ok(/typeof scope\.line === 'number' \? _hits2\.find\(c => c\.line === scope\.line\)/.test(E5),
@@ -319,7 +326,7 @@ console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2�
   /* \u2605v4.1.1119: 同じ起点の行は同じ時計so、済みも一緒。繰返しは付けない。 */
   ok(/const _same = _hits2\.filter\(h => String\(h\.when\) === String\(_hit\.when\) && !\(Array\.isArray\(h\.cycle\)/.test(E5),
      '\u2605\u2605\u2605同じ起点の行は一緒に済みになる(繰返しは除く)', true);
-  const A5=S5.slice(S5.indexOf('function meosArmClockFcFor'), S5.indexOf('function meosArmClockFcFor')+14000);
+  const A5=FN(S5, 'function meosArmClockFcFor');
   ok(/line: c\.line,/.test(A5) && /_s\.line = c\.line;/.test(A5),
      '\u2605\u2605控えは行も持ち、毎回読み直す', true);
   /* \u2605\u2605\u2605v4.1.1119(俊克 pm01:10): 鳴る時刻が同じ行は「同じ1つの時計の別の顔」so、並べて出す。 */
@@ -335,12 +342,12 @@ console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2�
 console.log('\u2476 控えを作る口は 1 つ');
 {
   const S4=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const T4=S4.slice(S4.indexOf('async function meosStartPseudoTimer'), S4.indexOf('async function meosStartPseudoTimer')+9000);
+  const T4=FN(S4, 'async function meosStartPseudoTimer');
   ok(/if \(scope\.key\) \{[^]{0,600}meosArmClockFcFor\(scope\.doc\)/.test(T4),
      '\u2605\u2605\u2605膜に掛ける物は本文へ書いて armClock に任せる', true);
   ok(/_meosPseudoScopes\.set\(lk, \{ doc: scope\.doc[^]{0,200}fc: !!scope\.key \}\)/.test(T4),
      '\u2605膜の外(mMETA)だけは今までどおり自前', true);
-  const E4=S4.slice(S4.indexOf('async function meosEndPseudoTimer'), S4.indexOf('async function meosEndPseudoTimer')+3000);
+  const E4=FN(S4, 'async function meosEndPseudoTimer');
   ok(/scope\.when \? _hits2\.find\(c => String\(c\.when\) === String\(scope\.when\)\)/.test(E4),
      '\u2605\u2605\u2605鳴ったのはどの行かを控えの when で名指しする', true);
 }
@@ -350,7 +357,7 @@ console.log('\u2476 控えを作る口は 1 つ');
 console.log('\u2475 新しい予定は足す、名指しされた1本は直す');
 {
   const S3=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const F=S3.slice(S3.indexOf('async function meosClockFcSet'), S3.indexOf('async function meosClockFcSet')+9000);
+  const F=FN(S3, 'async function meosClockFcSet');
   ok(/async function meosClockFcSet\(doc, key, spec, atLine\)/.test(F), '\u2605どの行の話かを言える', true);
   ok(/const _named = \(typeof atLine === 'number'/.test(F), '\u2605\u2605名指しされた1本を探す', true);
   ok(/\} else if \(hit && spec\) \{[^]{0,900}ed\.insert\(doc\.uri/.test(F),
@@ -373,7 +380,7 @@ console.log('\u2475 新しい予定は足す、名指しされた1本は直す')
 console.log('\u2474 今の回の長さ / 顔の \u2713 は休み');
 {
   const S2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const A2=S2.slice(S2.indexOf('function meosArmClockFcFor'), S2.indexOf('function meosArmClockFcFor')+14000);
+  const A2=FN(S2, 'function meosArmClockFcFor');
   ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\); _s\.cyc/.test(A2),
      '\u2605\u2605\u2605並びの先頭を入れ続けない(1mの回でstep=3mなら 3-1=2.00 から始まる)', true);
   ok(/meosCycleSeriesNext\(_b\.getTime\(\), c\.cycle, _u - 1\)/.test(A2),
@@ -408,7 +415,7 @@ console.log('\u2473 並びのどれが今なのかを、並びそのものが言
   /* \u2605\u2605\u2605v4.1.1113: **宣言より前で読まない**(TDZ= try/catch that黙って握り潰す)。
      v4.1.1111はこれで一度も走っていなかった= 俊克の目that捕まえるまで、誰も気づけなかった。 */
   const S1=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const D=S1.slice(S1.indexOf('function meosApplyTimerLineDecorations'), S1.indexOf('function meosApplyTimerLineDecorations')+18000);
+  const D=FN(S1, 'function meosApplyTimerLineDecorations');
   ok(D.indexOf('let owner = _pairs()') >= 0 && D.indexOf('cycNow.push') > D.indexOf('let owner = _pairs()'),
      '\u2605\u2605\u2605owner の宣言より**後ろ**で使う(TDZ を作らない)', [D.indexOf('let owner = _pairs()'), D.indexOf('cycNow.push')]);
 }
@@ -419,7 +426,7 @@ console.log('\u2473 並びのどれが今なのかを、並びそのものが言
 console.log('\u2471 動くのは直下の1本だけ');
 {
   const S0=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  const A=S0.slice(S0.indexOf('function meosArmClockFcFor'), S0.indexOf('function meosArmClockFcFor')+14000);
+  const A=FN(S0, 'function meosArmClockFcFor');
   ok(/const _liveTaken = new Set\(\)/.test(A), '\u2605生きている1本を覚える席が在る', true);
   /* \u2605v4.1.1112: 席を譲るのは「済み」だけ。「休み」(⏸)は席を保つ。 */
   ok(/if \(!c\.done\) \{ if \(_liveTaken\.has\(c\.key\)\) continue; _liveTaken\.add\(c\.key\); \}/.test(A),
@@ -526,9 +533,9 @@ ok(X.meosFcFoldShape(dLive,1).filter(it=>it.hasRange).length===0, '\u2605カー�
 //   壊れ方から逆算した検査= **畳む道は、必ず覚えからも外す**。
 console.log('\u246d 畳んだら、覚えからも外す(開き直せる)');
 const SRC2=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-const _bulk=SRC2.slice(SRC2.indexOf('function meosAutoFoldSpecLines'), SRC2.indexOf('function meosAutoFoldSpecLines')+6000);
+const _bulk=FN(SRC2, 'function meosAutoFoldSpecLines');
 ok(/_meosFcOpenSet\.delete/.test(_bulk), '\u2605\u2605一括の道が覚えから外している', /_meosFcOpenSet\.delete/.test(_bulk));
-const _one=SRC2.slice(SRC2.indexOf('function meosSyncFcFoldForCursor'), SRC2.indexOf('function meosSyncFcFoldForCursor')+9000);
+const _one=FN(SRC2, 'function meosSyncFcFoldForCursor');
 ok(/_meosFcOpenSet\.delete/.test(_one), '  個別の道も外している(対の両側)', true);
 
 // v4.1.23(俊克「目薬を5分置きにつけるときに、05/00という設定にすること」＋アーチェリーの秒読み)
@@ -622,7 +629,7 @@ const _sig=SRC3.slice(SRC3.indexOf("if(m&&m.type==='viewMode')"), SRC3.indexOf("
 ok(/_sg=.*\+'\|'\+_cs/.test(_sig), '\u2605\u2605\u2605合図に一覧thatが入っている(描く物を、描くかどうかの判断に入れる)', /_cs/.test(_sig));
 ok(/_cc\.at/.test(_sig)&&/_cc\.running/.test(_sig)&&/_cc\.next/.test(_sig), '  時刻\u30fb走っているか\u30fb次かthat全部合図に効く', true);
 ok(/_cc\.key/.test(_sig), '  どの膜かも合図に効く(入れ替わりを見逃さない)', true);
-const _arm=SRC3.slice(SRC3.indexOf('function meosArmClockFcFor'), SRC3.indexOf('function meosArmClockFcFor')+22000);
+const _arm=FN(SRC3, 'function meosArmClockFcFor');
 ok(/if \(n \|\| _seen\)/.test(_arm), '\u2605掛かった数that0でも、\u23f0を見つけたら知らせる', /_seen/.test(_arm));
 
 // v4.1.39(俊克「あんたがせっせと仕込んでいたんだよ。貴方の説明をコピーして、それを私がペーストする」)
@@ -644,7 +651,7 @@ console.log('\u2472 引用した\u23f0は、本物にならない');
 console.log('\u2473 \u00d7 は走っていなくても行を消す');
 {
  const SRC4=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _drop=SRC4.slice(SRC4.indexOf('async function meosClockDrop'), SRC4.indexOf('async function meosClockDrop')+3000);
+ const _drop=FN(SRC4, 'async function meosClockDrop');
  const _ifBody=_drop.slice(_drop.indexOf('if (lk) {'), _drop.indexOf('}', _drop.indexOf('await meosEndPseudoTimer')));
  ok(!/meosClockFcSet\([^)]*null\)/.test(_ifBody), '\u2605\u2605\u2605行を消す処理that「走っている時」の中に無い', _ifBody.length);
  ok(/meosClockFcSet\(d, key, null, _dropLine\)/.test(_drop), '  \u00d7 は本文の行を消す(走っている1本を名指し)', true);
@@ -687,23 +694,23 @@ console.log('\u3253 秒読みは3段(アーチェリー式)');
  const SRC7=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/MEOS_BELL_MARKS = \[\[60000, 3000\], \[30000, 5000\], \[10000, 0\]\]/.test(SRC7),
     '\u2605\u2605\u26051分前=3秒 / 30秒前=5秒 / 10秒前=鳴り続ける(0)', true);
- const _mf=SRC7.slice(SRC7.indexOf('function meosBellMarksFor'), SRC7.indexOf('function meosBellMarksFor')+220);
+ const _mf=FN(SRC7, 'function meosBellMarksFor');
  ok(/m\[0\] < cycleStep/.test(_mf), '\u2605繰返しの間隔より遠い印は出さない(1分周期に「1分前」は無い)', true);
- const _rf=SRC7.slice(SRC7.indexOf('function meosRingFor'), SRC7.indexOf('function meosRingFor')+320);
+ const _rf=FN(SRC7, 'function meosRingFor');
  ok(/meosStartRinging\(name\)/.test(_rf)&&/meosStopRinging/.test(_rf), '  N秒だけ鳴らして止める口that在る', true);
- const _arm=SRC7.slice(SRC7.indexOf('function meosArmPseudoTimer'), SRC7.indexOf('function meosArmPseudoTimer')+1200);
+ const _arm=FN(SRC7, 'function meosArmPseudoTimer');
  ok(/ms - marks\[i\]\[0\]/.test(_arm), '\u2605\u2605次の印の時刻で起きる(1秒ごとに数えない)', true);
  ok(!/meosJumpToScope/.test(_arm), '  印の枝に移動thatが混ざっていない', true);
- const _up=SRC7.slice(SRC7.indexOf('async function meosPseudoTimeUp'), SRC7.indexOf('async function meosPseudoTimeUp')+1600);
+ const _up=FN(SRC7, 'async function meosPseudoTimeUp');
  ok(/meosStopRinging\(\); meosPlayWhistle\(\);/.test(_up), '\u2605\u2605\u26050秒= 秒読みを止め、3秒の高音を1つ(黙るのではない)', true);
  const SRC13=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _w=SRC13.slice(SRC13.indexOf('function meosWhistlePath'), SRC13.indexOf('function meosWhistlePath')+1200);
+ const _w=FN(SRC13, 'function meosWhistlePath');
  ok(/meosWhistlePath\(1760, 3\)/.test(SRC13), '\u2605\u26051760Hz(A6)を3秒= OSの音には無い「続く音」so自分で作る', true);
  ok(/Math\.min\(1, t \* 25, \(secs - t\) \* 25\)/.test(_w), '\u2605端を丸める(矩形に切るとプツッと言う)', true);
- ok(/if \(!name\) return;/.test(SRC13.slice(SRC13.indexOf('function meosPlayWhistle'), SRC13.indexOf('function meosPlayWhistle')+800)),
+ ok(/if \(!name\) return;/.test(FN(SRC13, 'function meosPlayWhistle')),
     '  音を空にしている人には鳴らさない', true);
  const SRC12=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _rv=SRC12.slice(SRC12.indexOf('function meosRevealAgainAfterBell'), SRC12.indexOf('function meosRevealAgainAfterBell')+2600);
+ const _rv=FN(SRC12, 'function meosRevealAgainAfterBell');
  ok(/setTimeout\(\(\) => again\('t\+300'\), 300\)/.test(_rv)&&/again\('t\+900'\), 900\)/.test(_rv), '\u2605飛んだ後、落ち着いてから2度見せ直す', true);
  /* ★★★v4.1.164(俊克「最後に居た場所に着地した直後、開始膜に移動してしまう」):
     見張りthatいつも開始膜を見ていた= 長い膜では開始膜that画面外→「見えていない」と判断して引き戻していた。
@@ -897,7 +904,7 @@ console.log('\u325d \u672c\u6587\u306e\u6642\u523b\u306f**\u8d77\u70b9**= \u9418
  ok(Date.now()-t0<50, '  \u6570\u3048\u308b\u306e\u306b\u6642\u9593\u3092\u639b\u3051\u306a\u3044(1\u5468\u3076\u3093\u305a\u3064\u98db\u3070\u3059)', (Date.now()-t0)+'ms');
  ok(N(0,[],Date.now())===null&&N(NaN,['05'],Date.now())===null, '  \u8aad\u3081\u306a\u3044\u7269\u306f null(\u672c\u6587\u3092\u6c5a\u3055\u306a\u3044)', true);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- const _ep=S.slice(S.indexOf('async function meosEndPseudoTimer'), S.indexOf('async function meosEndPseudoTimer')+2600);
+ const _ep=FN(S, 'async function meosEndPseudoTimer');
  ok(!/meosClockFcSet\(doc, scope\.key, \{ when: meosClockFcStamp/.test(_ep), '\u2605\u2605\u2605\u9cf4\u3063\u3066\u3082\u672c\u6587\u306e\u6642\u523b\u3092\u66f8\u304d\u66ff\u3048\u306a\u3044(\u8d77\u70b9\u304c\u6b8b\u308b)', true);
  ok(!/meosCycleRotate/.test(S), '\u2605\u4e26\u3073\u306e\u56de\u8ee2\u3082\u66f8\u304b\u306a\u3044= \u72b6\u614b\u3092\u6301\u3064\u7269\u304c1\u3064\u6e1b\u3063\u305f', true);
  ok(/if \(sc\.step > 0\) return sc\.step;/.test(S), '  \u79d2\u8aad\u307f\u306e\u9593\u9694\u3082\u63a7\u3048\u305f\u7269\u304b\u3089(\u6bce\u56de14\u4e07\u884c\u3092\u8aad\u307e\u306a\u3044)', true);
@@ -1015,7 +1022,7 @@ console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5
  /* \u2605v4.1.1110: 向きは周期と別(v4.1.1109/1110)。控えを毎回新しくする、という意図はそのまま。 */
  ok(/_s\.up = !!c\.up;/.test(S) && /_s\.tags = c\.tags/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u308b\u7269\u306e**\u898b\u305f\u76ee\u306e\u63a7\u3048**\u3092\u6bce\u56de\u65b0\u3057\u304f\u3059\u308b(\u4e00\u89a7\u3068\u884c\u304cが\u98df\u3044\u9055\u308f\u306a\u3044)', true);
- const _arm2=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+14000);
+ const _arm2=FN(S, 'function meosArmClockFcFor');
  ok(!/_s\.step = meosCycleMs\(c\.cycle\[0\]\)[^]{0,200}_meosPseudoUntil\.set/.test(_arm2),
     '  \u63a7\u3048\u3092\u65b0\u3057\u304f\u3057\u3066\u3082**\u9cf4\u308b\u6642\u523b\u306f\u89e6\u3089\u306a\u3044**', true);
  ok(/setTimeout\(\(\) => \{[^]{0,600}meosArmClockFcFor\(e\.document\)/.test(S),
@@ -1141,7 +1148,7 @@ console.log('\u3266 Tag&Go= \u63a2\u3059\u306e\u306f\u819c\u30fb\u76ee\u7684\u30
  ok(/has: !!_c/.test(S)&&/tags: _tg/.test(S), '  \u23f0 that\u5728\u308b\u304b\u3069\u3046\u304b\u3082\u4e00\u7dd2\u306b\u6e21\u3059', true);
  ok(/var _src=clkTagMode\?vmTagItems:vmClocks/.test(S),
     '\u2605\u2605\u90e8\u5c4b\u306e\u4e2d\u3068\u666e\u6bb5\u306f**\u5225\u306e\u6e90**\u304b\u3089\u63cf\u304f', true);
- ok(/else if\(_shown>=5\)break;/.test(S)&&!/pin/i.test(S.slice(S.indexOf('function clkRenderList'), S.indexOf('function clkRenderList')+2000)),
+ ok(/else if\(_shown>=5\)break;/.test(S)&&!/pin/i.test(FN(S, 'function clkRenderList')),
     '\u2605\u2605\u2605\u4e00\u89a7\u306f**\u624b\u3067\u8db3\u3059\u9053\u3092\u4f5c\u3089\u306a\u3044**= \u898f\u5247\u306f\u300c\u6642\u523b\u306e\u8fd1\u3044\u9806\u300d1\u3064\u306e\u307e\u307e', true);
  ok(/ck\.textContent=\(clkTagMode&&!c\.has\)\?'\\u00b7'/.test(S),
     '\u2605\u23f0\u306e\u7121\u3044\u819c\u306b\u306f\u8d77\u3053\u3059\u5370\u3092\u7f6e\u304b\u306a\u3044', true);
@@ -1455,7 +1462,7 @@ console.log('⑩ (…)×N 回数の記法');
      '★★★書く形= 矢印は括弧の外・区切りは空白 `\\u21ba\\u21bb\(3m 1m\)\\u00d712`', true);
   ok(/const _rn = \(spec\.rounds > 0 && _cy\) \? Math\.floor\(spec\.rounds\) : 0;/.test(S),
      '★長さの無い時は回数を書かない(読みと揃える)', true);
-  const A=S.slice(S.indexOf('function meosArmClockFcFor'), S.indexOf('function meosArmClockFcFor')+14000);
+  const A=FN(S, 'function meosArmClockFcFor');
   ok(/_rn\.round > c\.rounds/.test(A), '★★★数え直しは meosCycleSeriesNext 1本(新しい数えを作らない)', true);
   ok(/rounds done key=/.test(A), '  終わったことをログへ残す', true);
   ok(A.indexOf('_rn.round > c.rounds') < A.indexOf('if (_meosPseudoUntil.has(lk))'),
@@ -2012,12 +2019,24 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★★描く側も同じ数え方= 待っている⏰も包みを消す(俊克 バグ3)', true);
  /* ★★★v4.2.38(俊克「膜の外や内部に文字カーソルが入っても折り畳まれない。しかしスクロールすると
     折り畳まれる」＋「スクロールダウンすると、またスクロールアップしてしまう」)。 */
- ok(/if \(!lineVisible\(editor, _cur\)\) return;/.test(S9),
+ ok(/if \(!lineVisible\(editor, _cur\)\) \{ meosFoldWhy\(/.test(S9),
     '★★★カーソルが画面の外に居る間は畳まない(飛ぶ相手は塊でなくカーソル)', true);
  ok(!/!_meosFcFolded\.has\(String\(e\.textEditor\.document\.uri \|\| ''\)\)/.test(S9),
     '★★★一度畳んだ文書でもカーソルで走る(この門番があるとスクロールだけが効いていた)', true);
  ok(/onDidChangeTextEditorSelection[\s\S]{0,1400}?clearTimeout\(_meosFcScrollTimer\); _meosFcScrollTimer = setTimeout\(/.test(S9),
     '★カーソル由来もスクロールと同じ待ち(320ms)を通す= 打鍵ごとに走らせない', true);
+ /* ★★★v4.2.39(俊克「その外の空行をクリックすると、いつまで経っても畳まれない」)=
+    帰った理由を名指しする。黙る関数はデバッグできない。 */
+ {const W=FN(S9,'async function meosAutoFoldSpecLines');
+  ok(W.length>1000, '  関数を丸ごと切り出せている(固定長の窓をやめた)', W.length);
+  ok((W.match(/meosFoldWhy\(/g)||[]).length>=6,
+     '★★★6つの門番が全部、帰る時に理由を言う', (W.match(/meosFoldWhy\(/g)||[]).length);
+  ok(/畳む相手that無い 塊=' \+ _all\.length \+ ' 開けたい=/.test(W),
+     '★★塊が在るのに畳まない時は、落とした条件の数まで言う', true);}
+ ok(/if \(reason === _meosFoldWhyLast && \(Date\.now\(\) - _meosFoldWhyAt\) < 1500\) return;/.test(S9),
+    '★同じ理由は1.5秒に1回まで(ログが次の発火の燃料にならない)', true);
+ ok(!/\.slice\([A-Za-z0-9_$]+\.indexOf\('(?:async )?function [A-Za-z_$][\w$]*'\), *[A-Za-z0-9_$]+\.indexOf\([^)]*\) *\+ *\d+\)/.test(fs.readFileSync(__filename,'utf8')),
+    '★★★この検査ファイルに、関数を固定長で切る窓が1つも残っていない', true);
  ok(/async function meosSyncClockBadgeFold\(doc\) \{/.test(S9)
     && /if \(meosIsUnfoldingSpecLine\(t\) === want\) continue;/.test(S9),
     '★★書くのは名前が変わる時だけ(毎回書けば押してもいないのに文書が汚れる)', true);

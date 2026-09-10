@@ -31787,8 +31787,23 @@ function meosFcRecentlyFolded(ln) {
 //     → [[feedback_one_source_for_mark_count_action]]「印もボタンも同じ1つの判定から引く」の兄弟＝
 //       **同じ門番を、呼び元の数だけ書かない**。
 const MEOS_FC_EDIT_QUIET_MS = 700;   // v4.0.396: 打鍵で動いた画面のためには畳み直さない
+// ★★★v4.2.39(俊克 2026.09.10 pm00:53「その外の空行をクリックすると、いつまで経っても畳まれない。
+//   ところが、別の空行をクリックすると畳まれる」): ★★★**帰った理由を名指しする**。
+//   実測(meos-debug.log)= そのクリックの時刻に `[foldWho]` that1行も出ていない= 走る前に黙って帰っている。
+//   門番は6つ在り、どれで帰ったかthat分からない= **黙る関数はデバッグできない**(v4.0.112の教訓)。
+//   ★1.5秒に1回まで＆理由that変わった時だけ書く= ログthat次の発火の燃料にならないように
+//     (この関数の元からの戒め「ここでログを書くと、それthat次の発火の燃料になる」を守る)。
+let _meosFoldWhyAt = 0, _meosFoldWhyLast = '';
+function meosFoldWhy(reason) {
+  try {
+    if (reason === _meosFoldWhyLast && (Date.now() - _meosFoldWhyAt) < 1500) return;
+    _meosFoldWhyLast = reason; _meosFoldWhyAt = Date.now();
+    meosDbg('[foldWhy] ' + reason);
+  } catch (_) { }
+}
 async function meosAutoFoldSpecLines(editor, force) {
-  if (!MEOS_SPEC_LINE_AUTOFOLD || _meosFcFolding || _meosFcBusy) return; // v4.0.328: 個別の道が動いている間は割り込まない
+  if (!MEOS_SPEC_LINE_AUTOFOLD) { meosFoldWhy('autofold=off'); return; }
+  if (_meosFcFolding || _meosFcBusy) { meosFoldWhy('別の道that動いている (folding=' + _meosFcFolding + ' busy=' + _meosFcBusy + ')'); return; }   // v4.0.328
   // ★★v4.0.396(俊克 8/23 pm09:17「bs連打→fs連打→bs連打のとき1、2秒止まる。**そもそも、なぜbs、fsキーに
   //   遅延の処理を残す必要があるのか?**」):
   //   ★★**俊克が正しい。残す必要は無い**。bs/fs は **FCの塊を1つも作らない**ので、畳む仕事を打鍵に
@@ -31799,7 +31814,7 @@ async function meosAutoFoldSpecLines(editor, force) {
   //     ＝ 合図はもう在る。無ければ、次の本物のスクロール/焦点/ファイル切替で来る。
   //   ★重いのは走査(8.7ms)ではなく、**中の `await 150ms` と `editor.fold`(折り畳み範囲の作り直し)**。
   //     だから「軽くする」ではなく「**打鍵では呼ばない**」が正しい直し。
-  if (!force && (Date.now() - _meosLastEditAt) < MEOS_FC_EDIT_QUIET_MS) return;   // 打鍵由来=捨てる(遅らせない)
+  if (!force && (Date.now() - _meosLastEditAt) < MEOS_FC_EDIT_QUIET_MS) { meosFoldWhy('打鍵の直後 (' + (Date.now() - _meosLastEditAt) + 'ms)'); return; }
   if (!editor || !editor.document || !meosIsRealFileDoc(editor.document)) return; // 出力チャネル等は対象外(黙って帰る=ログも書かない)
   const key = String(editor.document.uri || '');
   // ★★v4.0.327(俊克 8/21 am09:46 バグ1「インストール直後に、元いた行に飛ぶようにしたよね。その直後に、
@@ -31849,15 +31864,29 @@ async function meosAutoFoldSpecLines(editor, force) {
     //   ★これで動きは「飛んで戻る」から「何も起きない」になる= 2回の移動that0回。
     //   ★俊克の±3画面の先読みでは直らない= 飛ぶ相手thatが塊でなくカーソルso、
     //     先に畳んでも、その時にカーソルへ飛ぶ(場所を変えるだけ)。
-    if (!lineVisible(editor, _cur)) return;
+    if (!lineVisible(editor, _cur)) { meosFoldWhy('カーソルthat画面の外 行=' + (_cur + 1)); return; }
     heads = meosFcFoldShape(editor.document, _cur)
       .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
       .map(it => it.head);   // v4.0.466: 今しがた畳んだ物は二度畳まない
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
-  if (!heads.length) return; // 見えている開いた塊が無い=黙って帰る(ここでログを書くと、それが次の発火の燃料になる)
-  if (vscode.window.activeTextEditor !== editor) return; // アクティブでない=次の機会に譲る(ログは書かない)
+  if (!heads.length) {
+    // ★v4.2.39: 塊は在るのに畳まないなら、**落とした条件thatが答え**so、その数を並べて言う。
+    try {
+      const _vis2 = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
+      const _all = meosFcFoldShape(editor.document, editor.selection.active.line).filter(it => it.hasRange && it.b.fc);
+      if (_all.length) {
+        const _o = _all.filter(it => it.open).length;
+        const _rf = _all.filter(it => meosFcRecentlyFolded(it.head)).length;
+        const _nv = _all.filter(it => !(_vis2(it.head) && _vis2(it.end))).length;
+        meosFoldWhy('畳む相手that無い 塊=' + _all.length + ' 開けたい=' + _o + ' 今しがた畳んだ=' + _rf
+          + ' 画面外=' + _nv + ' カーソル行=' + (editor.selection.active.line + 1));
+      } else meosFoldWhy('FCの塊that1つも無い カーソル行=' + (editor.selection.active.line + 1));
+    } catch (_) { }
+    return;
+  }
+  if (vscode.window.activeTextEditor !== editor) { meosFoldWhy('このエディタthatアクティブでない'); return; }
   // v4.0.311: **選択している間は一括でも畳まない**(v4.0.214で個別の道には入れた門番を、こちらにも)。
-  try { if ((editor.selections || []).some(sl => !sl.isEmpty)) return; } catch (_) { }
+  try { if ((editor.selections || []).some(sl => !sl.isEmpty)) { meosFoldWhy('字that選ばれている'); return; } } catch (_) { }
   _meosFcFolding = true;
   // ★★★v4.1.21(俊克「開始膜か閉じ膜をクリックした時に、バッジやFC群が折り畳まれたままになっている。
   //   VSCm標準の折畳みボタンを使わないと回復しない」):

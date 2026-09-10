@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.39 (2026-09-10)
+- **When folding decides to do nothing, it now says why.** Clicking away from a membrane sometimes left everything open, while clicking a second time folded it at once — and the log held no trace of either click, because every one of the six ways the folding pass can decide to stand down returned in silence. Each of them now names itself, and when there are blocks to fold but none were chosen, the counts that ruled them out are given too. At most one line every second and a half, and only when the reason changes, so the log cannot become the thing that keeps waking it.
+
 ### v4.2.38 (2026-09-10)
 - **Moving the caret folds again.** Once a document had been folded through, a guard stopped the caret from ever driving the folding again; only scrolling could. Clocks turn into folding comments long after a file is opened, so nothing the caret did would tuck them away. The guard is gone, and caret-driven folding now waits the same moment scrolling does, so typing does not set it running.
 - **The jump-and-come-back while reading is gone.** The log had it: folding a block on line 11 — a line already on screen — moved the top of the view from 1 to 40, and the view was then put back. What the editor scrolls to after folding is not the block, it is the caret, and the caret was forty lines further down. So folding now waits until the caret is on screen. Nothing is tidied while you are reading somewhere else; when the caret comes back into view, folding resumes. Two movements become none.
