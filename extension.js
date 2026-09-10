@@ -11777,6 +11777,28 @@ function meosApplyTimerLineDecorations(editor) {
                 let _k9 = _c9; while (_k9 > 0 && txt.charAt(_k9 - 1) === ' ') _k9--;
                 badgeHide.push(new vscode.Range(i, _k9, i, txt.length));           // ` -->` を消す
               }
+              // ★★★v4.2.52(俊克 2026.09.11 am01:12「ただし連番が表示されないよね」
+              //   ＋ pm06:43「1.の部分に見せかけの値を表示する」):
+              //   ★★★**見せかけの番号を、並びの何本目かで描く**= 本文には1文字も書かない。
+              //     俊克は全部の行に `1.` と書いておけばよく、画面には 1. 2. 3. that出る。
+              //   ★何本目かは**上へ数える**= 指定行の並びthat続く限り、⏰の行を数えるだけ(全文書を走らない)。
+              //   ★消し方は幅ごと畳む(v0.9.479)so、後ろの桁は1つも動かない。
+              try {
+                if (c.listNo) {
+                  let _n52 = 1;
+                  for (let k = i - 1; k >= 0; k--) {
+                    const _t52 = doc.lineAt(k).text;
+                    if (!meosIsSpecLine(_t52)) break;
+                    if (_t52.indexOf('\u23f0') >= 0 && meosClockFcParse(_t52)) _n52++;
+                  }
+                  const _at52 = txt.indexOf(c.listNo, _p0 >= 0 ? _p0 : 0);
+                  if (_at52 > 0) {
+                    badgeHide.push(new vscode.Range(i, _at52, i, _at52 + c.listNo.length));
+                    items.push({ range: new vscode.Range(i, _at52, i, _at52),
+                      renderOptions: { before: { contentText: _n52 + '.' } } });
+                  }
+                }
+              } catch (_) { }
               // ★★v4.1.157(俊克 9/6 pm00:24「見せかけの表示部分では、今まで通り `/` で区切ればいい」):
               //   ★★**直す形と読む形は別**= 生データは打ちやすい空白、画面は締まって見える `/`。
               //     `30s 15s` は打つ時の形so、読む時は `30s/15s` の方that塊thatが見える。
@@ -31585,22 +31607,12 @@ function meosFcFoldShape(document, caretLine) {
     //     (v4.2.36「全部終わったら膜だけthat見える」はそのまま生きる)。
     //   ★★これで v4.2.36 の「済んだ分から消えていく」は連なりでは起きなくなる=
     //     輪では戻ってくるso、消していく相手thatが居ない。俊克の改良1thatその整理。
-    //   ★見るのは**並び全体**= まだ鳴る⏰thatが1本でも居れば、その並びの指定行はぜんぶ見せる。
-    //     バッジも、待っている時計も、メッセージも、途中で切れたら読めないので。
-    const _liveStacks = [];
-    try {
-      for (const c of meosClockFcScan(document)) {
-        if (c.done) continue;
-        let a = c.line, z = c.line;                                  // 指定行の並びを上下へ広げる
-        while (a - 1 >= 0 && meosIsSpecLine(document.lineAt(a - 1).text)) a--;
-        while (z + 1 < document.lineCount && meosIsSpecLine(document.lineAt(z + 1).text)) z++;
-        _liveStacks.push([a, z]);
-      }
-    } catch (_) { }
-    const _stackHasLiveClock = (from, to) => {
-      for (const r of _liveStacks) if (from <= r[1] + 1 && to >= r[0] - 1) return true;   // 頭(1行上)も並びの一員
-      return false;
-    };
+    //   ★★★v4.2.52(俊克 2026.09.11 am00:58 バグ1〜3): ★★★**v4.2.51 は広過ぎ、かつ高く付いた**。
+    //     ①メッセージのFCまで畳まなくなった(俊克thatが畳んで欲しいのは今までどおり)
+    //     ②畳みの形を決める所に**全文書の⏰走査**を入れ、v4.2.44以降それthat**再描画のたび**に走った
+    //       → ログの `[host-blocked] 5596ms`。カウントダウンthat止まって見えたのはこれ。
+    //   ★★→ **その塊の行だけを見る**= 走査ゼロ。⏰thatが在って ✓ thatが無ければ「まだ鳴る時計」。
+    //     時計の行を含む塊だけ開けたまま、メッセージだけの塊は今までどおり畳む。
     for (const b of meosDefBlocks(document)) {
       const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
       const shift = open && (b.open != null);
@@ -31611,7 +31623,16 @@ function meosFcFoldShape(document, caretLine) {
       let end = b.end;
       if (b.open != null) { const _bg = meosClockBadgeRow(document, { end: b.start }); if (_bg >= 0) end = Math.min(end, _bg - 1); }
       // ★v4.2.51: 並びの中にまだ鳴る⏰thatが在れば、この塊は畳まない(範囲を渡さない)。
-      const _keepOpen51 = _stackHasLiveClock(head, end);
+      // ★v4.2.52: この塊の中に「まだ鳴る時計」thatが在るか= その行を見るだけ(全文書を走らない)。
+      let _keepOpen51 = false;
+      try {
+        for (let ln = Math.max(0, head + 1); ln <= end && ln < document.lineCount; ln++) {   // v4.2.52: **畳まれる行**だけ(頭は畳まれないso見ない)
+          const t = document.lineAt(ln).text;
+          if (t.indexOf('\u23f0') < 0) continue;                 // 安い足切り(⏰の無い行は読まない)
+          const c = meosClockFcParse(t);
+          if (c && !c.done) { _keepOpen51 = true; break; }        // まだ鳴る時計= この塊は開けたまま
+        }
+      } catch (_) { }
       out.push({ b, head, end, shift, open, hasRange: (end > head) && !_keepOpen51, keepOpen: _keepOpen51 });
     }
   } catch (_) { }

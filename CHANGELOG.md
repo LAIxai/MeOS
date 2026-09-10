@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.52 (2026-09-11)
+- **v4.2.51 went too wide, and cost too much.** It kept the message lines open along with the clocks, and it worked out what to keep open by scanning the whole document for clocks — from inside the routine that decides folding, which since v4.2.44 runs on every redraw. On a long diary that stopped the editor for five seconds at a time, which is why counting down appeared to halt. It now looks only at the lines a fold would actually hide, and only at lines carrying a ⏰. Clocks stay in view; the lines they say fold as they always did.
+- **The number in front of a clock is drawn from its place in the stack.** Write `1.` on every line and the screen reads 1., 2., 3. — counted upwards from the line itself, without reading the rest of the file, and drawn over the text rather than into it.
+
 ### v4.2.51 (2026-09-10)
 - **While a membrane still has a clock to come, its whole stack stays in view.** The badge, the clock running, the ones waiting, the lines they will say — they are one thing, and reading half of it tells you nothing, so none of it folds any more, wherever the caret happens to be. What folds is what always folded: the notes inside the membrane. Once every clock there has finished, the stack closes as before and the membrane alone is left.
 - This also settles the odd folding seen when a chain came back round to its first clock — there is no longer a fold there to go wrong.
