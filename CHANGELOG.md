@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.45 (2026-09-10)
+- **A folded clock membrane opens again when you click it.** Since folding began running on the redraw beat, two paths were reaching for the same block: the caret opens it, and five seconds later the sweep folded it shut again — the log caught the pair. The sweep was even removing the block from the record of what the caret had opened, to take it. It now leaves those alone; closing them belongs to the caret, when the caret leaves. Clock membranes were the only ones to show it, being the only ones habitually held open.
+
 ### v4.2.44 (2026-09-10)
 - **Folding now runs on the same beat as the redraw.** Whether a block should be folded has one answer already, and the redraw walks the membranes anyway — so the redraw now asks for it. The three older signals (scrolling, the caret, start-up) stay, but none of them has to be the one that catches it: if a signal is missed, the next redraw picks it up. Nothing extra is spent, since the folding pass leaves immediately when there is nothing to fold.
 - The check added in v4.2.43 was not recording what it measured against; it is now.

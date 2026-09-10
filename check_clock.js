@@ -2052,6 +2052,10 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     こんなに悩む話じゃないよね」)= 描き直すのと同じ拍で畳みを打つ。 */
  ok(/try \{ const _ed44 = editor; if \(_ed44\) setTimeout\(\(\) => \{ try \{ meosAutoFoldSpecLines\(_ed44\); \}/.test(FN(S9,'function refresh(editor = vscode.window.activeTextEditor)')),
     '★★★再描画の道が畳みを打つ(合図を1つ取りこぼしても、描き直しで効く)', true);
+ /* ★★★v4.2.45(俊克 pm02:17 バグ1「⏰膜では、折り畳まれた膜をクリックすると展開しなくなった」)=
+    カーソルの道が開けている塊には手を出さない。 */
+ ok(/!it\.open && !_meosFcOpenSet\.has\(it\.b\.start\)/.test(FN(S9,'async function meosAutoFoldSpecLines')),
+    '★★★一括の道は、カーソルの道が開けた塊を横取りしない(閉じるのはカーソルが出た時)', true);
  ok(/_headEnd43\.set\(it\.head, it\.end\)/.test(S9),
     '★畳んだ相手の終わりを控える(効いたかを言えるようにする)', true);
  ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/

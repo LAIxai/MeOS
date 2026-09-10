@@ -31923,7 +31923,19 @@ async function meosAutoFoldSpecLines(editor, force) {
     }
     _headEnd43 = new Map();   // v4.2.43: 畳んだ相手の終わりを控える(効いたか確かめるため)
     heads = meosFcFoldShape(editor.document, _cur)
-      .filter(it => it.hasRange && it.b.fc && !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
+      // ★★★v4.2.45(俊克 pm02:17 バグ1「⏰膜では、折り畳まれた膜をクリックすると展開しなくなった。
+      //   普通の膜では、今まで通り直ぐコメント化される」): ★★★**2つの道that同じ塊を取り合っていた**。
+      //   実測(meos-debug.log)=
+      //     05:20:54 [fcSync] unfold 123951      ← カーソルの道that開けた
+      //     05:20:59 [fcTook] 123951→123952隠れた ← 一括の道that畳み直した
+      //   ★★★v4.2.44で再描画の拍に乗せた途端、**開けた物を5秒後に畳み直す**形になった。
+      //     一括の道は `_meosFcOpenSet.delete()` で覚えから外してまで畳んでいた= 横取り。
+      //   ★★→ **カーソルの道that開けている塊には手を出さない**。閉じるのはカーソルthat出た時で、
+      //     それはカーソルの道の仕事(v4.0.141からの役割分担)。一括の道は残りだけを見る。
+      //   ★⏰膜だけで出たのは、⏰膜thatカーソルの道で開かれる唯一の常連だから
+      //     (普通の膜は開けたまま置かれないので取り合いthat起きない)。
+      .filter(it => it.hasRange && it.b.fc && !it.open && !_meosFcOpenSet.has(it.b.start)
+        && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
       .map(it => { _headEnd43.set(it.head, it.end); return it.head; });   // v4.2.43: 終わりも控える   // v4.0.466: 今しがた畳んだ物は二度畳まない
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
   if (!heads.length) {
