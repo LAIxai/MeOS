@@ -2179,4 +2179,23 @@ console.log('㊷ 走る⏰の並びは畳まない(俊克 pm07:47 改良1)');
   ok(/badgeHide\.push\(new vscode\.Range\(i, _at52, i, _at52 \+ c\.listNo\.length\)\)/.test(D),
      '  書いてある `1.` は幅ごと畳んで消す(後ろの桁が動かない)', true);}
 }
+console.log('㊸ f/p の書き換え(俊克 2026.09.11 am01:34 / am01:48)');
+{
+ const S54=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const A54=FN(S54,'function meosArmClockFcFor');
+ ok(/\(a\) 過去で印that無い/.test(A54) && /\(b\) f that過去になった/.test(A54),
+    '★★★書き換えるのは掛けた時だけ・1回だけ(走査しない)', true);
+ ok(/const _fp54 = _s54\.slice\(0, _fi54\)\.trim\(\);[\s\S]{0,400}?whenSrc: _fp54 \+ 'p'/.test(A54),
+    '★★★f が過去になったら対を畳んで <fの時刻>p だけにする(命綱の p は役目を終えた)', true);
+ ok(/_s54\.indexOf\('\/'\) < 0 && !\/\[fp\]\\s\*\$\/i\.test\(_s54\)/.test(A54),
+    '★★過去で印が無い時だけ p を足す(既に印が在る行と対の行には触らない)', true);
+ ok(/_o54 && _o54\.getTime\(\) <= Date\.now\(\)/.test(A54),
+    '  足すのは過去の起点だけ(未来は v4.2.28 が対を書く)', true);
+ {const qq=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
+  const a=qq('1. 2026-09-11 00:54p ↺↻3m'), b=qq('2027-09-09 15:30p ↻50m');
+  ok(a.when==='2026-09-11 00:54' && !!a.pAt && a.listNo==='1.',
+     '★書いた後の形を読み直せる(番号も起点も p も戻る)', [a.when,a.listNo]);
+  ok(b.when==='2027-09-09 15:30' && !!b.pAt,
+     '  対を畳んだ後の形も読める', b.when);}
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

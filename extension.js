@@ -11231,6 +11231,34 @@ function meosArmClockFcFor(doc) {
           }
         }
       } catch (_) { }
+      // ★★★v4.2.54(俊克 2026.09.11 am01:34「起点that過去の日付になった時点で、生データでも明示的に p でないと、
+      //   Rawデータを見た時に、それthat未来なのかthat分らない。時計と見比べない限りね」
+      //   ＋ am01:48「f/p を同時に書いていた時の p 値は、あくまでも f 値に到達するまでにストップウォッチとして
+      //   必要なだけ。f that過去になった時点で役目を終える」):
+      //   ★★★**曖昧さthatが在るのは生データの中**so、直しも生データに要る(描くのでは届かない)。
+      //     `2026-09-11 00:54` はそれだけ見ても未来の予定か過去の起点かthat分からない。`00:54p` なら1文字で読める。
+      //   ★★★書き換えるのは**掛けた時だけ・1回だけ**= 走査はしない → [[project_now_not_bulk]]
+      //     (a) 過去で印that無い   → `p` を足す
+      //     (b) f that過去になった → 対を畳んで `<fの時刻>p` だけに(命綱の p は役目を終えた)
+      //     (c) 未来で印that無い   → v4.2.28 that既に `f/…p` の対を書く(すぐ上)
+      try {
+        const _s54 = String(c.whenSrc || '').trim();
+        const _fi54 = _s54.search(/f\s*\//i);
+        if (_fi54 > 0 && /p\s*$/i.test(_s54)) {
+          const _fp54 = _s54.slice(0, _fi54).trim();
+          const _ft54 = meosParseStampLoose(_fp54.replace(/^\d{1,3}[.)]\s*/, ''));
+          if (_ft54 && _ft54.getTime() <= Date.now()) {
+            meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: _fp54 + 'p', tags: c.tags, done: false }, c.line);   // v4.2.54
+            meosDbg('[fp] f\u304c\u904e\u53bb \u2192 ' + _fp54 + 'p \u884c=' + (c.line + 1));
+          }
+        } else if (c.ufc && !c.pAt && _s54 && _s54.indexOf('/') < 0 && !/[fp]\s*$/i.test(_s54)) {
+          const _o54 = meosParseStampLoose(c.when);
+          if (_o54 && _o54.getTime() <= Date.now()) {
+            meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: _s54 + 'p', tags: c.tags, done: false }, c.line);   // v4.2.54
+            meosDbg('[fp] \u904e\u53bb\u306e\u8d77\u70b9\u306b p \u2192 ' + _s54 + 'p \u884c=' + (c.line + 1));
+          }
+        }
+      } catch (_) { }
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
