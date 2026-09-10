@@ -10855,6 +10855,51 @@ async function meosClockFcSet(doc, key, spec, atLine) {
 //     ★同じ問いに 2 つの物差し → [[feedback_one_source_for_mark_count_action]]
 //   ★席を譲るのは「済み」だけ(v4.1.1112)= 一時停止(⏸)は「また自分が動く」という意思なので席を保つ。
 //   ★済んだ物しか無い時は一番上を返す= 連なりでない膜では今までと同じ答え。
+// ★★★v4.2.49(俊克 2026.09.10 pm06:43「メッセージFCがあった方が、タイマーを汚さずに使える」
+//   ＋ pm06:27「今まで通りタイムスタンプ付きの長い膜名をウィンドウ最下段に書くより、
+//   コンパクトなメッセージを出した方が分かりやすい」):
+//   ★★★**連なりのメッセージ**= 時計の並びの下に積んだ、⏰を持たないFC指定行。
+//     N番目の時計に、N番目のメッセージthat対応する(番号は見せかけ・並びで決める= v4.2.31)。
+//   ★★⏰を持たないので**時計として読まれない**= 既に在る見分け(CN=2567)thatそのまま働く。
+function meosChainMessagesFor(doc, key) {
+  const out = [];
+  try {
+    const rows = meosClockFcScan(doc).filter(c => c.key === key);
+    if (!rows.length) return out;
+    let ln = Math.max.apply(null, rows.map(r => r.line)) + 1;
+    for (; ln < doc.lineCount; ln++) {
+      const t = doc.lineAt(ln).text;
+      if (!meosIsSpecLine(t)) break;                       // 指定行の並びthat切れたら、そこまで
+      if (meosIsUnfoldingSpecLine(t)) continue;            // UFCは飛ばす
+      if (t.indexOf('\u23f0') >= 0) continue;               // 時計は飛ばす
+      if (meosIsPairBadgeSpec(t)) continue;                // バッジは飛ばす
+      const pay = (meosSpecLinePayloads(t) || []).join(' ').trim();
+      if (pay) out.push(pay);
+    }
+  } catch (_) { }
+  return out;
+}
+// ★★★v4.2.49(俊克 pm06:43「1.の部分に見せかけの値を表示する」):
+//   ★★★**`N.` は数字を出す器**= 位置that役を決める。
+//     行頭のものは見せかけの番号(落とす) / 残った最初のものthat**今何回目か**。
+//   ★本文には1文字も書かない= 出す時に差し替えるだけ(v4.1.77の曜日と同じ作法)。
+function meosChainFillSlot(text, round) {
+  try {
+    let t = String(text == null ? '' : text).replace(/^\s*\d{1,3}[.)]\s*/, '');   // 行頭= 見せかけの番号
+    if (round > 0) t = t.replace(/\d{1,3}[.)]/, String(round));                    // 残った最初の器thatが回数
+    return t.trim();
+  } catch (_) { return String(text || '').trim(); }
+}
+// 鳴った時に出す言葉。メッセージthat在ればそれ、無ければ今までどおり膜の名前。
+function meosChainSayFor(doc, key, clockLine, round) {
+  try {
+    const rows = meosClockFcScan(doc).filter(c => c.key === key);
+    const i = rows.findIndex(c => c.line === clockLine);
+    const msgs = meosChainMessagesFor(doc, key);
+    if (i >= 0 && i < msgs.length) return meosChainFillSlot(msgs[i], round);
+  } catch (_) { }
+  return '';
+}
 function meosLiveClockFor(doc, key) {
   try {
     const rows = meosClockFcScan(doc).filter(c => c.key === key);
@@ -12692,7 +12737,17 @@ async function meosPseudoTimeUp(key) {
       + ' ' + (_av && _av.document ? (_av.document.uri.toString() === scope.uri ? 'same' : 'OTHER') : 'none') + '\u3011';
   } catch (_) { }
   try { meosBellDbg('[timeUp] ' + (scope.name || '') + _dg); } catch (_) { }   // v4.1.53: 窓thatが消えても残る
-  const name = scope.name || 'this file';
+  // ★★★v4.2.49(俊克 pm06:27「今まで通りタイムスタンプ付きの長い膜名をウィンドウ最下段に書くより、
+  //   コンパクトなメッセージを出した方が分かりやすい」):
+  //   ★★★**言葉that在れば、名前でなく言葉を出す**= `目薬 2 本目`。
+  //   ★メッセージthat無ければ今までどおり膜の名前so、書かない人には何も変わらない。
+  let _say49 = '';
+  try {
+    const _d49 = vscode.workspace.textDocuments.find(x => x.uri.toString() === scope.uri);
+    if (_d49 && scope.key) _say49 = meosChainSayFor(_d49, scope.key, scope.line, scope.round || 0);
+  } catch (_) { }
+  const name = _say49 || scope.name || 'this file';
+  try { if (_say49) meosDbg('[chainSay] ' + _say49 + ' (\u819c=' + (scope.name || '') + ' \u884c=' + ((scope.line || 0) + 1) + ')'); } catch (_) { }
   vscode.window.showInformationMessage('MeOS: Time is up \u2014 ' + name + '.' + _dg + (scope.hold
     ? ' Back to the normal view: your 👻 answers are showing again, exactly where you wrote them.'
     : ' Here is the membrane you asked for.'));

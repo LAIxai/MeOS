@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosChainMessagesFor,meosChainFillSlot,meosChainSayFor,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 // ★★★v4.2.39: 関数を**丸ごと**切り出す(固定長の窓をやめる)。
 //   今日3度、コードは無傷なのに「探している字が窓の外へ出た」だけで検査が落ちた
@@ -2096,5 +2096,36 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★書くのは名前が変わる時だけ(毎回書けば押してもいないのに文書が汚れる)', true);
  ok(/const want = \(bg >= 0\);/.test(S9),
     '★★★UFCにするかFCに戻すかは、畳みと同じ1つの判定から引く(meosClockBadgeRow)', true);
+}
+console.log('㊵ 連なりのメッセージ(俊克 2026.09.10 pm06:43 の目薬の例そのまま)');
+{
+ const S49=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const A=['# t','<!-- {* ▼mCN=EYE_1 // 目薬 *} -->','本文','<!-- {* ▲mCN=EYE_1 // *} -->',
+  '<!-- Mew!FC mCN (📊⊕0+0D0W) -->',
+  '<!-- Mew!UFC ⏰ 1. 2026-09-05 01:00p ↺↻8h -->',
+  '<!-- Mew!FC ⏰ 2. ↺↻(5m)×2 -->',
+  '<!-- Mew!FC 1. 目薬の時間です -->',
+  '<!-- Mew!FC 2. 目薬 1. 本目 -->',''];
+ const d={uri:{toString:()=>'file:///eye.md',fsPath:'/eye.md',scheme:'file'},languageId:'markdown',
+  lineCount:A.length,version:49,
+  lineAt:(i)=>({text:A[i],range:{start:{line:i,character:0},end:{line:i,character:(A[i]||'').length}}}),
+  getText:()=>A.join('\n'),positionAt:()=>({line:0,character:0}),offsetAt:()=>0};
+ const rows=X.meosClockFcScan(d);
+ ok(rows.length===2 && rows[0].ufc===true && rows[1].ufc===false,
+    '★★★4つの姿を書き分けられる(UFC=今走っている / FC=待っている)', rows.map(c=>c.ufc));
+ ok(rows[0].rounds===null && rows[1].rounds===2,
+    '★起点のある繰返しは回数の上限を持たない= 済みにならない', [rows[0].rounds,rows[1].rounds]);
+ ok(JSON.stringify(X.meosChainMessagesFor(d,'EYE_1'))==='["1. 目薬の時間です","2. 目薬 1. 本目"]',
+    '★★★⏰を持たないFCがメッセージ= 時計として読まれない', X.meosChainMessagesFor(d,'EYE_1'));
+ ok(X.meosChainFillSlot('2. 目薬 1. 本目',2)==='目薬 2 本目',
+    '★★★行頭の番号は落とし、残った最初の器に回数を入れる(位置が役を決める)', X.meosChainFillSlot('2. 目薬 1. 本目',2));
+ ok(X.meosChainFillSlot('1. 目薬の時間です',18)==='目薬の時間です',
+    '  器が無ければ何も入れない(数字を勝手に足さない)', X.meosChainFillSlot('1. 目薬の時間です',18));
+ ok(X.meosChainSayFor(d,'EYE_1',5,18)==='目薬の時間です' && X.meosChainSayFor(d,'EYE_1',6,2)==='目薬 2 本目',
+    '★★★N番目の時計にN番目のメッセージが対応する(番号は見せかけ・並びで決める)', true);
+ ok(X.meosChainSayFor(d,'EYE_1',999,1)==='',
+    '  対応が無ければ空= 今までどおり膜の名前を出す', true);
+ ok(/const name = _say49 \|\| scope\.name \|\| 'this file';/.test(S49),
+    '★★言葉が在れば名前でなく言葉を出す(書かない人には何も変わらない)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

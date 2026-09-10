@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.49 (2026-09-10)
+- **A clock can say something short instead of its membrane's name.** Stack folding comments without a ⏰ under the clocks of a membrane and the first belongs to the first clock, the second to the second, and so on — the numbers you write are there for you to read, the order is what counts. When a clock rings it says its line rather than a name carrying a timestamp. Write none and nothing changes.
+- **`1.` inside a message is a slot for a number.** The one at the front of the line is the entry's number and is dropped; the first one after that is filled with the round, so `目薬 1. 本目` reads as *目薬 2 本目* on the second. Nothing is written into the file — the number is put in as the line is spoken, so rewriting a starting point can never leave a stale count behind.
+
 ### v4.2.48 (2026-09-10)
 - **A clock membrane you closed stays closed when you scroll back to it.** It was MeOS reopening it. Before folding anything, the pass told the editor its folding ranges had changed — every single time — and the editor answers that by working the ranges out again and letting go of what it had collapsed where the shape no longer matches. A clock membrane is the one kind whose shape really does move, its badge stepping in and out of the fold as clocks run, so it was the one kind that came back open. Once folding began running on the redraw beat this happened constantly: fold, announce, reopened, fold again — the log shows the same block folded five times in a minute with nothing opening it in between. The announcement is now made only when something actually changed: the text, or the caret crossing into or out of a block. When nothing is announced, nothing waits either.
 
