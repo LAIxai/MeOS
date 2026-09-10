@@ -5,6 +5,9 @@
 //   visibleRanges に切れ目を作る = VSCode が折り畳んだ時に起きる事そのもの。
 // 使い方:  node src/check_fold.js
 const fs = require('fs'); const path = require('path'); const Module = require('module');
+const FN=(S,head)=>{const a=S.indexOf(head); if(a<0) return '';
+  const re=/\n(?:async )?function [A-Za-z_$]/g; re.lastIndex=a+head.length;
+  const r=re.exec(S); return S.slice(a, r ? r.index : S.length);};   // v4.2.46: 固定長の窓をやめる
 const stub = {
   Position: class { constructor(l, c) { this.line = l; this.character = c; } },
   Range: class { constructor(a, b, c, d) { if (typeof a === 'object') { this.start = a; this.end = b; } else { this.start = { line: a, character: b }; this.end = { line: c, character: d }; } } },
@@ -445,10 +448,10 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
 {
  const fs3=require('fs'), path3=require('path');
  const S=fs3.readFileSync(path3.join(__dirname,'extension.js'),'utf8');
- const A=S.slice(S.indexOf('async function meosAutoFoldSpecLines'), S.indexOf('async function meosAutoFoldSpecLines')+8000);
- ok(/heads = meosFcFoldShape\(editor\.document, _cur\)/.test(A),
+ const A=FN(S, 'async function meosAutoFoldSpecLines');
+ ok(/_shape46 = meosFcFoldShape\(editor\.document, _cur\)/.test(A),
     '★★★自動畳みも「畳む範囲を決めた所」から相手を引く(meosDefBlocks を直に見ない)', true);
- ok(/\.filter\(it => it\.hasRange && it\.b\.fc && !it\.open/.test(A),
+ ok(/\.filter\(it => it\.hasRange && it\.b\.fc\)/.test(A) && /\.filter\(it => !it\.open &&/.test(A),
     '★★★範囲thatが無い塊には打たない(内側that無いと外側=膜を畳んでしまう= v4.0.188)', true);
  ok(!/meosDefBlocks\(editor\.document\)\.filter\(b => b\.fc/.test(A),
     '  古い二本目の物差しは残っていない', true);

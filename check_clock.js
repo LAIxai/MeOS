@@ -2054,8 +2054,15 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★★再描画の道が畳みを打つ(合図を1つ取りこぼしても、描き直しで効く)', true);
  /* ★★★v4.2.45(俊克 pm02:17 バグ1「⏰膜では、折り畳まれた膜をクリックすると展開しなくなった」)=
     カーソルの道が開けている塊には手を出さない。 */
- ok(/!it\.open && !_meosFcOpenSet\.has\(it\.b\.start\)/.test(FN(S9,'async function meosAutoFoldSpecLines')),
-    '★★★一括の道は、カーソルの道が開けた塊を横取りしない(閉じるのはカーソルが出た時)', true);
+ {const W=FN(S9,'async function meosAutoFoldSpecLines');
+  ok(!/_meosFcOpenSet\.has\(it\.b\.start\)/.test(W) && /_meosFcOpenSet\.delete\(_h\)/.test(W),
+     '★★★覚えを見て**決めない**(今の姿と突き合わせる)。畳んだ後に覚えを揃えるのは残す', true);
+  ok(/_open46 = _shape46\.filter\(it => it\.open && _vis\(it\.head\) && !_vis\(it\.end\)\)/.test(W),
+     '★★★開けるべきなのに畳んである塊= その場で見つけて開ける(履歴を持たない)', true);
+  ok(/\.filter\(it => !it\.open && _vis\(it\.head\) && _vis\(it\.end\)/.test(W),
+     '★★★畳むのは「開いていると分かっている物」だけ(v4.0.188の事故を原理的に起こさない)', true);
+  ok(/if \(_open46\.length\) \{[\s\S]{0,300}?editor\.unfold/.test(W),
+     '★開ける方を先に打つ(入った塊を見せてから、余所を畳む)', true);}
  ok(/_headEnd43\.set\(it\.head, it\.end\)/.test(S9),
     '★畳んだ相手の終わりを控える(効いたかを言えるようにする)', true);
  ok(/const _vis = \(ln\) => \{ try \{ return \(editor\.visibleRanges \|\| \[\]\)\.some\(r => ln >= r\.start\.line && ln <= r\.end\.line\)/

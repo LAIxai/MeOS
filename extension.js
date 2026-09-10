@@ -31799,6 +31799,7 @@ function meosFcRecentlyFolded(ln) {
 const MEOS_FC_EDIT_QUIET_MS = 700;   // v4.0.396: 打鍵で動いた画面のためには畳み直さない
 let _meosFcQuietTimer = null;   // v4.2.40: 静かになるまで持ち回す1本
 let _headEnd43 = new Map();     // v4.2.43: 畳んだ相手の終わり(効いたか確かめる)
+let _shape46 = [], _open46 = [];   // v4.2.46: 望む姿と、開け直す相手
 // ★★★v4.2.39(俊克 2026.09.10 pm00:53「その外の空行をクリックすると、いつまで経っても畳まれない。
 //   ところが、別の空行をクリックすると畳まれる」): ★★★**帰った理由を名指しする**。
 //   実測(meos-debug.log)= そのクリックの時刻に `[foldWho]` that1行も出ていない= 走る前に黙って帰っている。
@@ -31922,23 +31923,24 @@ async function meosAutoFoldSpecLines(editor, force) {
       return;
     }
     _headEnd43 = new Map();   // v4.2.43: 畳んだ相手の終わりを控える(効いたか確かめるため)
-    heads = meosFcFoldShape(editor.document, _cur)
-      // ★★★v4.2.45(俊克 pm02:17 バグ1「⏰膜では、折り畳まれた膜をクリックすると展開しなくなった。
-      //   普通の膜では、今まで通り直ぐコメント化される」): ★★★**2つの道that同じ塊を取り合っていた**。
-      //   実測(meos-debug.log)=
-      //     05:20:54 [fcSync] unfold 123951      ← カーソルの道that開けた
-      //     05:20:59 [fcTook] 123951→123952隠れた ← 一括の道that畳み直した
-      //   ★★★v4.2.44で再描画の拍に乗せた途端、**開けた物を5秒後に畳み直す**形になった。
-      //     一括の道は `_meosFcOpenSet.delete()` で覚えから外してまで畳んでいた= 横取り。
-      //   ★★→ **カーソルの道that開けている塊には手を出さない**。閉じるのはカーソルthat出た時で、
-      //     それはカーソルの道の仕事(v4.0.141からの役割分担)。一括の道は残りだけを見る。
-      //   ★⏰膜だけで出たのは、⏰膜thatカーソルの道で開かれる唯一の常連だから
-      //     (普通の膜は開けたまま置かれないので取り合いthat起きない)。
-      .filter(it => it.hasRange && it.b.fc && !it.open && !_meosFcOpenSet.has(it.b.start)
-        && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))
-      .map(it => { _headEnd43.set(it.head, it.end); return it.head; });   // v4.2.43: 終わりも控える   // v4.0.466: 今しがた畳んだ物は二度畳まない
+    // ★★★v4.2.46(俊克 pm02:25「外かは入るのか、外に出るかを変数にして、再描画すればいいだけでしょ?
+    //   どこを彷徨っているのか?」): ★★★**俊克thatが正しい。覚えを見るのをやめる**。
+    //   ★これまでは `_meosFcOpenSet`(開いた集合)・`_meosFcJustFolded`・一度きりの印…と
+    //     **覚えthat8つ**在り、2本の道thatそれを書き換えていた= **今の姿that履歴で決まる**。
+    //     so「2回クリックしないと揃わない」thatが起きる(1回目は覚えを直すだけで終わる)。
+    //   ★★★→ **望む姿と、今の姿を、その場で突き合わせる**。
+    //     望む姿 = meosFcFoldShape(doc, カーソル行) that既に全部答えている(純粋な関数)。
+    //     今の姿 = **塊の終わりの行that見えているか**(見えていれば開いている / 隠れていれば畳んである)。
+    //     打つのは**違う所だけ**so、何度走っても同じ所へ落ち着く(履歴を持たない)。
+    //   ★畳むのは「開いていると分かっている物」だけ= 既に畳まれた物へ fold を打たない
+    //     (v4.0.188 の「内側that無いと外側=膜を畳む」事故を原理的に起こさない)。
+    _shape46 = meosFcFoldShape(editor.document, _cur).filter(it => it.hasRange && it.b.fc);
+    _open46 = _shape46.filter(it => it.open && _vis(it.head) && !_vis(it.end)).map(it => it.head);   // 開けるべきなのに畳んである
+    heads = _shape46
+      .filter(it => !it.open && _vis(it.head) && _vis(it.end) && !meosFcRecentlyFolded(it.head))     // 畳むべきなのに開いている
+      .map(it => { _headEnd43.set(it.head, it.end); return it.head; });
   } catch (e) { try { meosDbg('[fcFold] blocks failed: ' + (e && e.message)); } catch (_) { } return; }
-  if (!heads.length) {
+  if (!heads.length && !_open46.length) {
     // ★v4.2.39: 塊は在るのに畳まないなら、**落とした条件thatが答え**so、その数を並べて言う。
     try {
       const _vis2 = (ln) => { try { return (editor.visibleRanges || []).some(r => ln >= r.start.line && ln <= r.end.line); } catch (_) { return false; } };
@@ -31976,7 +31978,12 @@ async function meosAutoFoldSpecLines(editor, force) {
       const _t0 = Date.now();
       const _vt0 = (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; // v4.0.187
       try { meosDbg('[foldWho] meosAutoFoldSpecLines lines=' + JSON.stringify(heads)); } catch (_) { }   // v4.1.163: 誰that畳んだか
-      await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
+      // ★★★v4.2.46: **開ける方を先に打つ**= カーソルthat入った塊を見せてから、余所を畳む。
+      if (_open46.length) {
+        try { meosDbg('[fcOpen] ' + _open46.map(x => x + 1).join(',') + ' を開ける'); } catch (_) { }
+        try { await vscode.commands.executeCommand('editor.unfold', { selectionLines: _open46 }); } catch (_) { }
+      }
+      if (heads.length) await vscode.commands.executeCommand('editor.fold', { selectionLines: heads });
       try { meosDbg('[fcFold] ★一括で畳んだ blocks=' + heads.length + ' 画面上端 ' + _vt0 + '→' + ((editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1)); } catch (_) { } // v4.0.187
       // ★★★v4.2.43(俊克 pm01:53「全く改善されない。なぜ?」): ★★★**畳んだ後に、本当に畳まれたかを測る**。
       //   ログは `★一括で畳んだ` と言っているのに、俊克の画面では畳まれていない= **報告と実物that食い違う**。
