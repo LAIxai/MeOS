@@ -273,7 +273,7 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
   const P7=S7.slice(S7.indexOf('function meosFcPairAt'), S7.indexOf('function meosFcPairAt')+2500);
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
-  const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+18000);
+  const D7=S7.slice(S7.indexOf('function meosApplyTimerLineDecorations'), S7.indexOf('function meosApplyTimerLineDecorations')+26000);
   ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle, pAt: c\.pAt \}, _sc7, _nowAll\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
@@ -1779,6 +1779,16 @@ console.log('㊲ f/p の印 — 未来を狙ったストップウォッチは、
  ok(/dirDown\.push\(new vscode\.Range\(i, _fAt, i, _fAt \+ 1\)\)/.test(S3)
     && /dirUp\.push\(new vscode\.Range\(i, _pAt2, i, _pAt2 \+ 1\)\)/.test(S3),
     '★★f=緑(逆算と同じ) / p=水色(SWと同じ)= 色の出所は矢印と同じ1つの定数', true);
+ /* ★★★v4.2.30(2026.09.10 am09:09 昨夜の続き)= p は単独でも塗る。 */
+ {const b3=q('2026-09-10 01:12p ↺↻3m'), b4=q('2027-09-09 15:30f/2026-09-09 23:29p ↻50m ×1');
+  ok(b3.whenSrc.slice(-1)==='p' && b4.whenSrc.slice(-1)==='p',
+     '★★★pAt を持つ行の whenSrc は必ず p で終わる(塗る側が当てにしている契約)', [b3.whenSrc,b4.whenSrc]);
+  ok(b4.whenSrc.indexOf('/')>0 && b3.whenSrc.indexOf('/')<0,
+     '★対かどうかは `/` の有無だけで分かる(f を探し直さない)', true);}
+ ok(/if \(!_rawHere && c\.pAt && c\.whenSrc\) \{/.test(S3),
+    '★★★対を要求しない= p 単独でも塗る(v4.2.29 の積み残し)', true);
+ ok(/const _wAt = txt\.indexOf\(c\.whenSrc\);/.test(S3),
+    '★★塗る場所は本文を探し直さず whenSrc から引く= 1つの物差し', true);
 }
 console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / 🐱▾で全体を修復');
 {

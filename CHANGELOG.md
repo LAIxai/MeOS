@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.30 (2026-09-10)
+- **A lone `p` is coloured too.** Set a clock to *now*, or write a time already past, and there is no `f/` beside it — the letter was left grey because the drawing side insisted on the pair while the reading side had understood the single form since v4.2.29. Two rulers on one letter, again.
+- **The colour is now taken from the text the reader already produced** (`whenSrc`) instead of hunting through the line a second time, so the letter that gave the clock its start is the letter that gets painted — in either case, and whichever case it was typed in.
+
 ### v4.2.29 (2026-09-10)
 - **f is green, p is cyan** — the colours the two faces already wear, ↺ for the bell ahead and ↻ for the counting, drawn from the same pair of constants so the letter and the arrow can never disagree.
 - **Set a clock to *now* and it is written `…p`.** Now is already the past by the time it is written, so it is a starting point and says so. Marking it is not decoration: without the letter the same line reads as a plain origin next year, and the role it was given today is lost. A lone `p` is read as both the origin and the start.

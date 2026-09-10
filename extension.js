@@ -11603,14 +11603,25 @@ function meosApplyTimerLineDecorations(editor) {
           //   pを水色にしよう」): ★★**印の色は、その印that指す顔の色**= f(未来の鐘)は逆算と同じ緑、
           //   p(数え始め)はストップウォッチと同じ水色。色の出所は矢印と**同じ1つの定数**so、
           //   2つの物差しthatできない → [[feedback_one_source_for_mark_count_action]]
+          // ★★★v4.2.30(2026.09.10 am09:09 昨夜の続き): ★★★**p は単独でも塗る**。
+          //   Nowを押して掛けた時と、過去の時刻を書いた時は `f/` の相方が居ない。
+          //   ★★読む側は `p` だけの形を v4.2.29 で既に読んで pAt を持っていたのに、
+          //     塗る側だけが対を要求していた= **同じ字を 2 つの物差しで見ていた**
+          //     → [[feedback_one_source_for_mark_count_action]]
+          //   ★★★塗る場所は本文を探し直さず **whenSrc(読む側が作った字そのもの)** から引く。
+          //     whenSrc は pAt を作った時必ず `p` で終わるので、大文字で書いてあっても同じ所を指す。
           try {
-            if (!_rawHere && c.pAt) {
-              const _fp = /(\d)[ \t]*(f)[ \t]*\/[\s\S]*?(p)(?![A-Za-z0-9])/.exec(txt);
-              if (_fp) {
-                const _fAt = _fp.index + _fp[0].indexOf('f');
-                const _pAt2 = _fp.index + _fp[0].lastIndexOf('p');
-                dirDown.push(new vscode.Range(i, _fAt, i, _fAt + 1));
+            if (!_rawHere && c.pAt && c.whenSrc) {
+              const _wAt = txt.indexOf(c.whenSrc);
+              if (_wAt >= 0) {
+                const _pAt2 = _wAt + c.whenSrc.length - 1;
                 dirUp.push(new vscode.Range(i, _pAt2, i, _pAt2 + 1));
+                const _sl = c.whenSrc.indexOf('/');                                        // 対の時だけ f も塗る
+                const _fRel = (_sl > 0) ? c.whenSrc.slice(0, _sl).search(/[fF][ \t]*$/) : -1;
+                if (_fRel >= 0) {
+                  const _fAt = _wAt + _fRel;
+                  dirDown.push(new vscode.Range(i, _fAt, i, _fAt + 1));
+                }
               }
             }
           } catch (_) { }
