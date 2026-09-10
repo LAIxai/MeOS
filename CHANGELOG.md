@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.37 (2026-09-10)
+- **Two folds were crossing, and one symptom wore two faces.** The membrane's block ended at the last clock; the block of foldable comments below it ran further, to the last comment. Measured on a real membrane: `[9…16]` against `[12…19]` — one range starting inside the other and ending outside it, which the editor discards. So the comment lines were left showing their raw `<!-- … -->`, and folding the membrane hid the clocks while those comments stayed behind. The two now measure the block the same way: every folding comment stacked under a closing membrane belongs to it, clock or not.
+- **A clock waiting its turn now looks like a clock.** Its line was dropped at the entrance of the drawing pass for having no starting time yet, so it never reached the step that hides the `<!-- Mew!UFC ⏰ … -->` around it, and sat there as raw comment text next to its neighbours. The entrance now counts the way the reader, the arming pass and the folding already count. Which of them shows a running number is decided further down, as before, and is unchanged.
+
 ### v4.2.36 (2026-09-10)
 - **The badge says what it is doing.** While a membrane still has a clock to come, its badge line is the surface the running numbers are painted on, so it is not folded — and it is now named accordingly: `Mew!UFC`. When the last clock has finished there is nothing left to show and it goes back to being an ordinary `Mew!FC`.
 - **Finished clocks now disappear one by one, so you can see the chain move.** No new folding was written for this: a line named UFC is not counted into a block, so once the badge carries that name the finished clocks below it form a block of their own, headed by the badge. Each time one finishes it joins the block and slips out of sight, until the last one goes and the membrane closes over the whole stack — a membrane and nothing else, the way a single five-minute timer has always ended.

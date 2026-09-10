@@ -1960,8 +1960,8 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★走る前に畳まない(直る前は 5〜7 を畳んでいた)', X.foldRangeEnd(mid,pair,false)+1);
   ok(X.meosClockBadgeRow(one,pair)===4 && X.foldRangeEnd(one,pair,false)===3,
      '  走っている1本が在る間も今までどおり(バッジは動く数字の置き場)', true);
-  ok(X.meosClockBadgeRow(all,pair)===-1 && X.foldRangeEnd(all,pair,false)===7,
-     '★★★全部終わったら、バッジも含めて畳む(俊克の言うとおりの姿)', X.foldRangeEnd(all,pair,false)+1);}
+  ok(X.meosClockBadgeRow(all,pair)===-1 && X.foldRangeEnd(all,pair,false)===8,
+     '★★★全部終わったら、バッジもコメントFCも含めて畳む(v4.2.37で塊の物差しを揃えた)', X.foldRangeEnd(all,pair,false)+1);}
  ok(/if \(c && !c\.done && \(c\.when \|\| \(Array\.isArray\(c\.cycle\) && c\.cycle\.length\)\)\) return badge;/.test(S9),
     '★★数え方が読む側(v4.2.31)・掛ける側(v4.2.33)と揃っている', true);
  /* ★★★v4.2.36(俊克「バッジもUFCしておくのが合理的かな? 済んだ分から折り畳んで
@@ -1989,6 +1989,27 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '★★★済むたびに隠れる分が増える(進んでいるのが見える)', b.fc);
   ok(c.badge===-1 && c.mem===7,
      '★★★全部済んだらバッジも畳みの中= 膜だけが見える(5分タイマーの時と同じ姿)', [c.badge,c.mem]);}
+ /* ★★★v4.2.37(俊克 バグ1/2「最後のメッセージ用のデータがRawのように見えている」
+    「①の膜を折り畳むと、なぜか⏰1〜3が消える」)= 2つの畳みが交差していた。 */
+ {const A7=['# t','<!-- {* ▼mCN=Y_1 // c *} -->','本文','<!-- {* ▲mCN=Y_1 // *} -->',
+   '<!-- Mew!FC mCN (📊⊕0+0D0W) -->',
+   '<!-- Mew!FC ⏰ 1. 2026-09-10 10:48 ↺1m ×1✓ -->',
+   '<!-- Mew!FC 1. 準備運動 -->','<!-- Mew!FC 2. 本番 -->',''];
+  const d7={uri:{toString:()=>'file:///x37.md',fsPath:'/x37.md',scheme:'file'},languageId:'markdown',
+   lineCount:A7.length,version:37,
+   lineAt:(i)=>({text:A7[i],range:{start:{line:i,character:0},end:{line:i,character:(A7[i]||'').length}}}),
+   getText:()=>A7.join('\n'),positionAt:()=>({line:0,character:0}),offsetAt:()=>0};
+  const pr={start:1,end:3,id:'Y_1'};
+  const mem=X.foldRangeEnd(d7,pr,false);
+  const fc=X.meosFcFoldShape(d7,-1).filter(it=>it.hasRange).map(it=>[it.head,it.end]);
+  ok(mem===7, '★★★コメントFCも膜の物(指定は塊の下に積み上がる物)', mem);
+  ok(fc.length===1 && fc[0][1]===7, '  FC塊も同じ所で終わる(直る前は膜が行6で切れていた)', fc);
+  ok(!(pr.start < fc[0][0] && fc[0][0] < mem && mem < fc[0][1]),
+     '★★★2つの範囲が交差しない= VS Code に捨てられない( [ ) ] にならない)', [pr.start,fc[0][0],mem,fc[0][1]]);}
+ ok(/if \(meosIsSpecLine\(t\) && !meosIsUnfoldingSpecLine\(t\)\) \{ e\+\+; continue; \}/.test(S9),
+    '★★塊の終わりを決める物差しが meosDefBlocks と同じ(時計かどうかを訊かない)', true);
+ ok(/if \(!c \|\| \(!c\.when && !\(c\.cycle && c\.cycle\.length\)\)\) continue;[\s\S]{0,400}?meosClockLineIsLive/.test(S9),
+    '★★★描く側も同じ数え方= 待っている⏰も包みを消す(俊克 バグ3)', true);
  ok(/async function meosSyncClockBadgeFold\(doc\) \{/.test(S9)
     && /if \(meosIsUnfoldingSpecLine\(t\) === want\) continue;/.test(S9),
     '★★書くのは名前が変わる時だけ(毎回書けば押してもいないのに文書が汚れる)', true);

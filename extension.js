@@ -4193,7 +4193,17 @@ function meosPairBlockEnd(document, pair) {
     while (e + 1 < document.lineCount) {
       const t = document.lineAt(e + 1).text;
       if (meosIsPairBadgeSpec(t)) { e++; continue; }
-      if (meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t) && (meosClockFcParse(t) || {}).when) { e++; continue; }
+      // ★★★v4.2.37(俊克 2026.09.10 am11:51 バグ1/2「最後のメッセージ用のデータが Raw のように見えている」
+      //   「①の膜を折り畳むと、なぜか ⏰1〜3 が消える」): ★★★**2つの畳みが交差していた**。
+      //   ここは「時計のFC行」だけを膜の物にしていたのに、FC塊を作る側(meosDefBlocks)は
+      //   **FC指定行をぜんぶ**塊にしていた。実測 = 膜[行9〜16] と FC塊[行12〜19] で `( [ ) ]`。
+      //   ★★★交差した範囲は VS Code that捨てるので、FC塊が効かず、コメントFCだけ素で残り、
+      //     膜を畳むと時計だけthat消えた。1つの症状の2つの顔。
+      //   ★★→ **物差しを揃える**= 閉じ膜の下に積まれた FC指定行は、時計でなくても膜の物。
+      //     指定は塊の下に積み上がる物(CN=2548)so、これが元から正しい形。
+      //     → [[feedback_one_source_for_mark_count_action]]
+      //   ★UFC(畳まない指定行)は今までどおり塊に入れない= そこで切れるのthat交差を防いでいる。
+      if (meosIsSpecLine(t) && !meosIsUnfoldingSpecLine(t)) { e++; continue; }
       break;
     }
   } catch (_) { }
@@ -11623,7 +11633,14 @@ function meosApplyTimerLineDecorations(editor) {
           const txt = doc.lineAt(i).text || '';
           if (txt.indexOf('\u23f0') < 0) continue;
           const c = meosClockFcParse(txt);
-          if (!c || !c.when) continue;
+          // ★★★v4.2.37(俊克 バグ3「1番目のタイマーが一時停止中のときには、動作中もそうだけど、
+          //   2番目以降のタイマーもコメント記号を出さずに、タイマーの設定値だけを表示すべきだよね」):
+          //   ★★★**同じ物差しの4か所目**= 席の回っていない1本(起点をまだ持たない)がここで落ち、
+          //     包み(`<!-- Mew!UFC ⏰ … -->`)を消す所まで届いていなかった。
+          //   ★読む側(v4.2.31)・掛ける側(v4.2.33)・畳む側(v4.2.35)と同じ数え方にする。
+          //   ★数字を出すのは掛かっている1本だけ(v4.1.1110)= その門番は下にそのまま在る。
+          //     ここで決めるのは「時計として描くか」だけ。
+          if (!c || (!c.when && !(c.cycle && c.cycle.length))) continue;
           if (!meosClockLineIsLive(doc, i)) continue;   // v4.1.66: 囲いの中の見本には印を出さない
           // ★★★v4.1.161(俊克 9/6 pm02:14「本当は、インライン編集のときや、Rawモードでは、残り時間の
           //   表示は見えないはずなんだよね。これを特殊事情として許すのか、原則通り見せなくすべきか」):
