@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.58 (2026-09-11)
+- **Clocks now have a main tap, and stopping them all closes it.** Stopping "everything running" was never enough: a long diary quotes hundreds of clocks, MeOS reads a quoted one as real, and the very next sweep armed a fresh batch — so stopping them one at a time, or even all at once, could not keep up. **MeOS: Stop all clocks** now turns clocks off altogether: nothing is armed, however many are written, until you turn them back on. The status bar says `⏰ off`, and that same square is the way back — click it, or run **MeOS: Turn clocks back on**. The setting outlives a reload, because "stop them" should only have to be said once.
+
 ### v4.2.57 (2026-09-11)
 - **A clock with no time left to run can no longer ring.** The wake-up that a running clock schedules works out how long is left by asking what time the clock is due. Erase that answer and the sum comes out hugely negative, which reads as "the time has come" — so the bell rings, and rings again. v4.2.56's stop-everything erased exactly that answer while leaving the wake-ups in place, which is why stopping them all set every one of them off. A wake-up whose clock is no longer due now simply goes away. Wherever the record is cleared from, the bell stays silent.
 - **Stop all now clears the wake-ups too, and silences the bell last.** It swept the clocks it could see and left the rest; it now cancels every pending wake-up, then quiets the bell, so nothing fires behind the sweep.

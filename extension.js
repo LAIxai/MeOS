@@ -11003,6 +11003,7 @@ async function meosSyncClockBadgeFold(doc) {
 }
 function meosArmClockFcFor(doc) {
   try {
+    if (_meosClocksOff) return 0;                                 // ★v4.2.58: 元栓that閉じている間は1本も掛けない
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return 0;
     const uri = doc.uri.toString();
     let n = 0, _seen = 0; const _seenKeys = new Set();
@@ -11343,6 +11344,7 @@ function meosArmClockFcFor(doc) {
 // 開いた時に、書いてある予定を仕掛け直す。一度だけ(同じファイルを何度開いても二重にしない)。
 async function meosLoadClocksFor(doc) {
   try {
+    if (_meosClocksOff) return;                                   // ★v4.2.58: 開き直しても、閉じている間は掛け直さない
     if (!doc || !doc.uri || !meosIsRealFileDoc(doc)) return;
     const uri = doc.uri.toString();
     if (_meosClockLoaded.has(uri)) return;
@@ -11382,6 +11384,29 @@ function meosPruneClockPast(m) {
     const past = Object.keys(m).filter(k => m[k] && m[k].past).sort((a, b) => (Number(m[b].at) || 0) - (Number(m[a].at) || 0));
     for (let i = MEOS_CLOCK_PAST_MAX; i < past.length; i++) delete m[past[i]];
   } catch (_) { }
+}
+// ★★★v4.2.58(俊克 2026.09.11 pm10:2x「まだ止まらないよ」＋ pm10:09「1つずつ消しても間に合わない」):
+//   ★★★**「今掛かっている物を止める」では、いつまでも追いつかない**= 本文に⏰that220本在れば、
+//     止めた次の走査で別の物that掛かる。俊克thatが最初に言った「間に合わない」thatこれ。
+//   ★★★→ **元栓を作る**= 掛ける所そのものを閉じる。閉じている間は1本も掛からないso、
+//     何本書いてあっても関係that無い(1つずつ数えて追いかけるのをやめる)。
+//   ★閉じたことは**面に出す**= `⏰ off — click to resume`。見えない止め方は、戻し方thatも見えない
+//     → [[feedback_fix_signal_at_fix_place]] / 入口と出口は同じ家に置く。
+//   ★開き直しても閉じたまま(globalState)= 「止めて」は一度言えば足りる。
+let _meosClocksOff = false, _meosGlobalState = null;
+const MEOS_CLOCKS_OFF_KEY = 'meosClocksOff';
+function meosClocksAreOff() { return !!_meosClocksOff; }
+// 元栓を閉める/開ける。閉める時は**起きる手も覚えも鐘も**まとめて落とす(2つ持たない)。
+function meosSetClocksOff(off) {
+  _meosClocksOff = !!off;
+  try { if (_meosGlobalState) _meosGlobalState.update(MEOS_CLOCKS_OFF_KEY, _meosClocksOff); } catch (_) { }
+  if (_meosClocksOff) {
+    try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
+    try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); } catch (_) { }
+    try { _meosChainWait = null; } catch (_) { }
+    try { meosStopRinging(); } catch (_) { }
+  }
+  try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
 }
 const _meosPseudoUntil = new Map();     // key → 解ける時刻(ms)
 const _meosPseudoTimers = new Map();    // key → timeout
@@ -12323,6 +12348,19 @@ function meosUpdateTimerBar() {
       return;
     }
     if (_meosRingBlink) { clearInterval(_meosRingBlink); _meosRingBlink = null; }   // v4.1.22: 鳴り止んだら元の拍へ
+    // ★★★v4.2.58: 元栓that閉じている間は、**それthat今いちばん言うべきこと**= 止まっていることと、
+    //   戻し方thatが同じ1つの枡に出る(止めた人thatが、止めたと分かる／戻せると分かる)。
+    if (_meosClocksOff) {
+      if (_meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; _meosChainBlinkOn = false; }
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+      _meosTimerBar.text = '\u23f0 off';
+      _meosTimerBar.tooltip = 'MeOS: every clock is stopped. No clock will be armed until you turn them back on. Click to resume.';
+      _meosTimerBar.command = 'lai-membrane.clockResumeAll';
+      try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = new vscode.ThemeColor('descriptionForeground'); } catch (_) { }
+      _meosTimerBar.show();
+      meosTickTimerLines();
+      return;
+    }
     if (!_meosChainWait && _meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; _meosChainBlinkOn = false; }   // ★v4.2.54: 押されたら点滅も終わる
     // ★★★v4.2.50(俊克 pm07:17「以前の実装で、ウィンドウ最下段に表示した『クリック』と書かれた部分を
     //   クリックすると言うのthatあったでしょ? メッセージをクリックするよりも、その方that押しやすい」):
@@ -34687,6 +34725,8 @@ function meosStartLagWatch() {
   }, 1000);
 }
 function activate(context) {
+  // ★v4.2.58: 元栓の覚えは globalState= 「止めて」は一度言えば足りる(開き直しても閉じたまま)。
+  try { _meosGlobalState = context.globalState; _meosClocksOff = !!context.globalState.get(MEOS_CLOCKS_OFF_KEY, false); } catch (_) { }
   extensionContext = context;
   try { meosStartLagWatch(); context.subscriptions.push({ dispose() { try { clearInterval(_meosLagWatch); } catch (_) {} _meosLagWatch = null; } }); } catch (_) {}
   // v1.0.0: 段階リリースの元栓を when 用コンテキストに公開(palette/keybinding の meos.phase>=N 判定に使う)。
@@ -35114,6 +35154,14 @@ function activate(context) {
   //   ★★★消さずに**休み(⏸)**にする= 時刻は本文に残るso、⏰リストの☑で1本ずつ戻せる。
   //     消すと戻す道that無い([[project_badge_is_intent]] 人の意思を私the都合で捨てない)。
   //   ★覚えの側も同時に落とす= 本文と覚えthat食い違わない([[feedback_one_source_for_mark_count_action]])。
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.clockResumeAll', async () => {
+    try {
+      meosSetClocksOff(false);
+      for (const d of vscode.workspace.textDocuments) { try { _meosClockLoaded.delete(d.uri.toString()); await meosLoadClocksFor(d); } catch (_) { } }
+      vscode.window.showInformationMessage('MeOS: clocks are on again \u2014 what is written on your membranes is armed as usual.');
+      meosDbg('[stopAll] \u5143\u6813\u3092\u958b\u3051\u305f');
+    } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.clockStopAll', async () => {
     try {
       meosStopRinging();
@@ -35148,10 +35196,12 @@ function activate(context) {
         for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); }
         _meosPseudoUntil.clear(); _meosPreBell.clear(); _meosBellDone.clear();
       } catch (_) { }
-      meosStopRinging(); _meosChainWait = null;
-      meosUpdateTimerBar(); meosPostViewMode();
+      // ★★★v4.2.58: **元栓を閉じる**= 止めた次の走査で別の1本that掛かる、を断つ。
+      //   これthat無いと、本文に何本も書いてある人には「止めた」thatが一瞬で嘘になる。
+      meosSetClocksOff(true);
       vscode.window.showInformationMessage('MeOS: stopped ' + rows.length + ' running clock' + (rows.length === 1 ? '' : 's')
-        + (n ? (' \u2014 ' + n + ' written as \u23f8 (paused), so they stay stopped after a reload. Tick one in the \u23f0 list to bring it back.') : '.'));
+        + (n ? (' (' + n + ' written as \u23f8)') : '')
+        + ' \u2014 and clocks are now OFF, so nothing new will be armed however many are written. The status bar shows \u23f0 off; click it, or run "MeOS: Turn clocks back on", when you want them back.');
       meosDbg('[stopAll] \u639b\u304b\u308a=' + rows.length + ' \u23f8\u3078=' + n);
     } catch (e) { try { vscode.window.showWarningMessage('MeOS: could not stop every clock \u2014 ' + String(e)); } catch (_) { } }
   }));

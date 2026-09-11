@@ -1962,7 +1962,12 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
    ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===1,
       '\u2605\u2605\u26051\u672c\u304d\u308a\u306e `1` \u306f\u4eca\u307e\u3067\u3069\u304a\u308a \u26a0\ufe0f(\u23f8 \u3092\u6d88\u3057\u305f\u30b4\u30df)',
       Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));}
-  /* ★★★v4.2.57= 解ける時刻を失った時計は鳴ってはならない(覚えを消して、起きる手を残すと鳴る)。 */
+  /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */
+ ok(/if \(_meosClocksOff\) return 0;/.test(S9) && /if \(_meosClocksOff\) return;/.test(S9),
+    '\u2605\u2605\u2605\u639b\u3051\u308b\u53e3\u306f2\u3064\u3068\u3082\u5143\u6813\u3092\u898b\u308b(\u639b\u3051\u76f4\u3057\u306e\u9053\u3082\u9589\u3058\u308b)', true);
+ ok(/_meosTimerBar\.text = '\\u23f0 off';/.test(S9) && /'lai-membrane\.clockResumeAll'/.test(S9),
+    '\u2605\u2605\u2605\u9589\u3058\u305f\u3053\u3068\u3092\u9762\u306b\u51fa\u3057\u3001\u305d\u306e\u679a\u304c\u623b\u3057\u65b9(\u5165\u53e3\u3068\u51fa\u53e3\u306f\u540c\u3058\u5bb6)', true);
+ /* ★★★v4.2.57= 解ける時刻を失った時計は鳴ってはならない(覚えを消して、起きる手を残すと鳴る)。 */
  ok(/setTimeout\(\(\) => \{[\s\S]{0,1400}?if \(!_meosPseudoUntil\.has\(key\)\) \{ _meosPseudoTimers\.delete\(key\); return; \}/.test(S9),
     '\u2605\u2605\u2605until \u304c\u7121\u3051\u308c\u3070\u9418\u306f\u9cf4\u3089\u306a\u3044(\u3069\u3053\u304c\u899a\u3048\u3092\u6d88\u3057\u3066\u3082\u5b89\u5168)', true);
  {const SA=S9.slice(S9.indexOf("registerCommand('lai-membrane.clockStopAll'"), S9.indexOf("registerCommand('lai-membrane.clockStopAll'")+3000);
