@@ -10799,7 +10799,9 @@ async function meosClockFcSet(doc, key, spec, atLine) {
     //   ★遠すぎる予定は**その場で目にも見せる**= 記録は後で読む物so、気づく手thatも要る。
     try {
       const _old = hit ? doc.lineAt(hit.line).text : '(none)';
-      if (_old !== line) meosDbg('[clockFcSet] key=' + key + ' 行=' + (hit ? (hit.line + 1) : '-') + ' 名指し=' + ((typeof atLine === 'number') ? (atLine + 1) : 'なし') + ' 本数=' + hits.length + ' old=' + _old + ' new=' + (line || '(delete)'));
+      // ★v4.2.55: `old=` は hits[0] の行so、名指しthat別の行の時は**その行**も出す(誰thatどこを直したかthat読める)。
+      const _oldNamed = ((typeof atLine === 'number') && atLine >= 0 && atLine < doc.lineCount) ? doc.lineAt(atLine).text : _old;
+      if (_old !== line || _oldNamed !== line) meosDbg('[clockFcSet] key=' + key + ' 行=' + (hit ? (hit.line + 1) : '-') + ' 名指し=' + ((typeof atLine === 'number') ? (atLine + 1) : 'なし') + ' 本数=' + hits.length + ' whenSrc=' + JSON.stringify(spec ? (spec.whenSrc == null ? null : String(spec.whenSrc)) : null) + ' old名指し=' + _oldNamed + ' old=' + _old + ' new=' + (line || '(delete)'));
       const _w = spec ? meosParseStampLoose(String(spec.when || '')) : null;
       if (_w && _w.getTime() - Date.now() > 5 * 365 * 24 * 3600e3) {
         vscode.window.setStatusBarMessage('MeOS: \u23f0 ' + key + ' \u2014 set to ' + spec.when + '. That is a long way off \u2014 is it what you meant?', 6000);
@@ -11058,8 +11060,17 @@ function meosArmClockFcFor(doc) {
       //     毎回 `''` と `2026-09-11 21:05` が比べられ、**走査のたびに掛け直し**ていた
       //     = 1分タイマーが1秒も進まない。起点は armedAt から作り、scope.armedAt にも
       //     **同じ値**を入れる= 字が揺れない → [[feedback_one_source_for_mark_count_action]]
+      //   ★★★v4.2.55(俊克 pm09:37 バグ1・ログ `→ 1|1m||0`): ★★★**起点が書かれていない姿は1つではない**=
+      //     空 / 見せかけの番号だけ(`1.` `1)` `1`) / 番号＋印だけ(`1.p`)。点thatが1つ落ちただけで
+      //     時計that死んでいた(`1.` は走り `1` は ⚠️)。
+      //   ★★★ただし**この読み方をするのは連なりの中だけ**= 1本きりの時計に付いた `1` は
+      //     ⏸ を消した時のゴミso、今までどおり ⚠️ で知らせる(v4.2.34)。
+      //     **同じ字that、居場所で役を変える** → [[feedback_one_source_for_mark_count_action]]
+      const _blank55 = /^(?:\d{1,3}[.)]?)?[ \t]*[pfPF]?$/.test(String(c.when == null ? '' : c.when).trim());
+      let _chain55 = false;
+      try { if (_blank55 && c.when) _chain55 = (meosClockFcScan(doc).filter(x => x.key === c.key).length >= 2); } catch (_) { }
       let _synth53 = false, _base53 = 0;
-      if (!c.when && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
+      if (_blank55 && (!c.when || _chain55) && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
         try {
           const _sc53 = _meosPseudoScopes.get(lk);
           _base53 = (_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now();
@@ -11232,6 +11243,18 @@ function meosArmClockFcFor(doc) {
         const _p = meosParseStampLoose(c.when);
         meosNoteClockHistory({ uri, key: c.key, name: c.name, hold: !!c.hold }, _p ? _p.getTime() : Date.now());
         _unread.add(c.line);   // v4.2.34: 黙って消さず、印を出す所へ渡す
+        // ★★★v4.2.55(俊克 2026.09.11 pm09:37 バグ2「謎の1分タイマーが鳴り続けている。
+        //   この⚠️付きのthat実は走っていて、止められない」):
+        //   ★★★**印と動きは、同じ1つの判定から**= 読めない行に ⚠️ を出す以上、その行の時計は
+        //     掛かっていてはならない。掛かりを残すと、画面は「止まっている」と言い、鐘は鳴り続ける=
+        //     止め方that画面のどこにも無い → [[feedback_one_source_for_mark_count_action]]
+        //   ★席は1膜1本(_liveTaken)so、ここで落とすのは**この膜の今の1本**だけ。
+        try {
+          if (_meosPseudoUntil.has(lk) || _meosPseudoScopes.has(lk)) {
+            meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
+            meosDbg('[armClock] \u8aad\u3081\u306a\u3044\u8d77\u70b9 \u2192 \u639b\u304b\u308a\u3092\u843d\u3068\u3059 key=' + c.key + ' \u884c=' + (c.line + 1) + ' \u672c\u6587=' + doc.lineAt(c.line).text);
+          }
+        } catch (_) { }
         continue;                                                   // 読めない書き方は、黙って無視(本文を汚さない)
       }
       // v4.1.60: 向きと間隔を**掛けた時に**控える= 面は毎秒描く物so、その度に14万行をなぞらない

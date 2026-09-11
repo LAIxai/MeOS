@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.55 (2026-09-11)
+- **A missing full stop no longer kills a clock.** In a chain, the clock waiting its turn is written as its display number alone — `1.` — and that means "no starting point, begin when the turn comes". Something downstream dropped the dot, leaving `1`, which is not a time and is not a number-with-a-dot either: the clock stopped with a ⚠️ and would not start. Having no starting point now has one answer whatever it looks like on the line — empty, `1.`, `1)`, `1`, or `1.p` — but only inside a chain. On a lone clock a stray `1` is still what it was: the remains of a deleted ⏸, and still worth a ⚠️.
+- **A clock showing ⚠️ is never secretly running.** The mark said stopped while the bell rang every minute, and nothing on screen could stop it, because the timer armed under the old reading outlived the line that stopped making sense. A line MeOS cannot read now has its timer dropped in the same breath as the mark goes up.
+- **The clock log now names the line it was told to write.** It printed the first clock of the membrane while writing the second, which hid which line each write landed on.
+
 ### v4.2.54 (2026-09-11)
 - **The starting point MeOS keeps in memory is no longer written down.** v4.2.53 decided that a clock with no starting time must not be given one — and then the lettering added the same day wrote a **p** onto it anyway, leaving `1.p` on the line. Read back, `1.p` is not a time, so the clock stopped with a ⚠️ and never ran again. A starting point held in memory is not text, and nothing is marked onto it. Lines already carrying that stray **p** are cleaned up the first time they are read.
 - **A clock with no starting time now keeps the one it was given.** Working out the starting point happened *after* the check for "is this already armed", so the check compared an empty time against the one in hand and re-armed on every pass. A one-minute timer never advanced a second. The starting point is now settled first, and the same value goes into both places.

@@ -13,7 +13,7 @@ let INFO=[]; stub.window.showInformationMessage=(m)=>{INFO.push(m);return Promis
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mc_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosChainMessagesFor,meosChainFillSlot,meosChainSayFor,meosArmClockFcFor,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
+ +'\nmodule.exports.__t={_meosClockMem,_meosPseudoUntil,_meosPseudoScopes,_meosClockLoaded,meosClockMeta,meosLoadClocksFor,meosParseWhen,meosClockList,meosClockFcParse,meosClockFcScan,meosLiveClockFor,meosChainMessagesFor,meosChainFillSlot,meosChainSayFor,meosArmClockFcFor,_meosClockUnreadable,meosClockFcStamp,meosMmSs,meosPairBlockEnd,meosClockBadgeRow,meosClockBadgeRowForLine,collectPairs,foldRangeEnd,meosFcFoldShape,meosClockFaceForLine,meosClockFcStamp,meosCycleElemSpan,meosClockArrowAt,meosFcWantsOpen,meosDefBlocks,meosBlockEndForCarry,meosIsUnfoldingSpecLine,meosIsSpecLine,meosCycleMs,meosCycleSeriesNext,meosParseTagInput,meosMembraneTags,meosMembraneTagsLine,meosParseCycleInput,meosParseCycleExpr,meosBigNum,meosNextTickDelay,meosClockRollToNextDay,meosParseStampLoose,meosClockForget,_meosClockDropped,_meosClockLoaded,meosNoteClockHistory,_meosClockHistory,meosClockFaceMs,meosNextClockScope,meosApplyTimerLineDecorations,meosStampAfter,meosClockFaceForLine2:meosClockFaceForLine,meosMembraneStamp,meosClockFcStamp2:meosClockFcStamp};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 // ★★★v4.2.39: 関数を**丸ごと**切り出す(固定長の窓をやめる)。
 //   今日3度、コードは無傷なのに「探している字が窓の外へ出た」だけで検査が落ちた
@@ -1927,8 +1927,13 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
  ok((S9.match(/meosLiveClockFor\(/g)||[]).length>=9,
     '  7か所+定義+呼び出しが全部その口を通っている', (S9.match(/meosLiveClockFor\(/g)||[]).length);
  /* ★★★v4.2.33(2026.09.10 俊克「でもなぜ連動しないんだ?」)= 席が回って来た時が起点。 */
- ok(/if \(!c\.when && c\.ufc && !c\.done && !c\.off && Array\.isArray\(c\.cycle\) && c\.cycle\.length\) \{/.test(S9),
+ ok(/if \(_blank55 && \(!c\.when \|\| _chain55\) && c\.ufc && !c\.done && !c\.off && Array\.isArray\(c\.cycle\) && c\.cycle\.length\) \{/.test(S9),
     '★★★時刻を書いていない1本は、席が回って来た時が起点(前が終わった時から数える)', true);
+ /* ★★★v4.2.55= 起点が無い姿は1つではない(空 / `1.` / `1)` / `1` / `1.p`)。読むのは連なりの中だけ。 */
+ ok(/const _blank55 = \/\^\(\?:\\d\{1,3\}\[\.\)\]\?\)\?\[ \\t\]\*\[pfPF\]\?\$\//.test(S9),
+    '★★★番号だけ(点が有っても無くても)と番号＋印は、どれも「起点無し」の姿', true);
+ ok(/_chain55 = \(meosClockFcScan\(doc\)\.filter\(x => x\.key === c\.key\)\.length >= 2\)/.test(S9),
+    '★★★ただし連なりの中だけ= 1本きりに付いた `1` は ⏸ を消したゴミso ⚠️ のまま(v4.2.34)', true);
   ok(/_base53 = \(_sc53 && _sc53\.armedAt\) \? _sc53\.armedAt : Date\.now\(\);/.test(S9),
      '★★★起点は覚えの側だけに持つ(本文に書くと、次の周でそれが古い起点になる= v4.2.53)', true);
   /* ★★★v4.2.54= 起点を決めるのは「掛かっているか」を見張る枝より**先**。後ろだと控えの sig(字)と
@@ -1942,6 +1947,24 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
   /* ★★★v4.2.54= 既に書かれてしまった「起点の読めない p」(`1.p`)は、読んだ時に落とす。 */
   ok(/c\.whenSrc = _k54; c\.when = ''; c\.pAt = 0;/.test(S9),
      '★★★`1.p` の残骸は、その場で落として起点無しに戻す', true);
+  /* ★★★v4.2.55= 実際に掛かるかで見る(字の読みではなく、連なりの中での答え)。 */
+  {const mk2=(A)=>({uri:{toString:()=>'file:///b55.md',fsPath:'/b55.md',scheme:'file'},languageId:'markdown',lineCount:A.length,
+     lineAt:(i)=>({text:A[i],range:{start:{line:i,character:0},end:{line:i,character:A[i].length}}}),
+     getText:()=>A.join('\n'),positionAt:()=>({line:0,character:0}),offsetAt:()=>0});
+   const head=['# t','b','<!-- {* \u25bcmCN=B_1 // c *} -->','','<!-- {* \u25b2mCN=B_1 // c *} -->'];
+   const two=mk2(head.concat(['<!-- Mew!FC \u23f0 1. 2026-09-11 20:53p \u21ba\u21bb3m -->','<!-- Mew!UFC \u23f0 1 \u21ba\u21bb1m -->']));
+   X.meosArmClockFcFor(two);
+   ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===0,
+      '\u2605\u2605\u2605\u9023\u306a\u308a\u306e2\u672c\u76ee\u306e `1` \u306f\u8d77\u70b9\u7121\u3057= \u639b\u304b\u308b(\u26a0\ufe0f\u3092\u51fa\u3055\u306a\u3044)',
+      Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));
+   const one=mk2(head.concat(['<!-- Mew!UFC \u23f0 1 \u21ba\u21bb1m -->']));
+   X.meosArmClockFcFor(one);
+   ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===1,
+      '\u2605\u2605\u26051\u672c\u304d\u308a\u306e `1` \u306f\u4eca\u307e\u3067\u3069\u304a\u308a \u26a0\ufe0f(\u23f8 \u3092\u6d88\u3057\u305f\u30b4\u30df)',
+      Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));}
+  /* ★★★v4.2.55= ⚠️ を出す行の時計は、掛かっていてはならない(印と動きは同じ1つの判定から)。 */
+  ok(/_unread\.add\(c\.line\);[\s\S]{0,900}?meosClearPseudoTimer\(lk\); _meosPseudoScopes\.delete\(lk\);/.test(S9),
+     '\u2605\u2605\u2605\u8aad\u3081\u306a\u3044\u884c\u306f\u639b\u304b\u308a\u3082\u843d\u3068\u3059(\u26a0\ufe0f\u304c\u51fa\u3066\u3044\u308b\u306e\u306b\u9418\u304c\u9cf4\u308a\u7d9a\u3051\u306a\u3044)', true);
   ok(/c\.when = meosClockFcStamp\(new Date\(_base53\)\);/.test(S9) && !/whenSrc: _src3/.test(S9),
      '★★★本文は1文字も触らない(起点が無いことが、その1本の性質だから)', true);
  {const qq=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
