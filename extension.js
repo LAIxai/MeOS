@@ -35889,9 +35889,29 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
     } catch (_) {}
   }, 600);
 }
+// ★★★v4.2.59(俊克 2026.09.11 pm10:32「音は止まってないよ。なぜ?」・実測=
+//   `afplay -v 2 /System/Library/Sounds/Sosumi.aiff` that鳴り続けている):
+//   ★★★**鳴らしていたのは、入れ替える前のMeOSの残骸だった**= vsixを入れ直すと、VS Codeは
+//     古い方を deactivate して新しい方を**同じ拡張ホストの中に**読み込む。ところが
+//     `deactivate()` は飾りと dispose だけを片付けており、**setInterval を1つも止めていなかった**。
+//   ★★★so古い鐘の拍thatが生き残り、しかもその古い側from見た `vscode` は既に切れているので
+//     設定を読む所thatが例外になり、**組込みの既定(Sosumi / -v 2)に落ちて鳴る**=
+//     俊克that設定を空にしても、Stop allを押しても、⏰リストthatが空でも、止まらない。
+//     (面に何も出ないのも同じ理由= 古い側は面を持っていない)
+//   ★★→ **自分で点けた物は、自分で消してから去る**。拍・起きる手・鐘・覚え、全部。
+//   ★これthat今日の「2つ持てば、いつか食い違う」の最後の形= 生きている自分と、死んだ自分。
 function deactivate() {
-  disposeDecorations();
-  for (const d of disposables) d.dispose();
+  try { meosStopRinging(); } catch (_) { }
+  try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
+  try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); } catch (_) { }
+  try { if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; } } catch (_) { }
+  try { if (_meosRingBlink) { clearInterval(_meosRingBlink); _meosRingBlink = null; } } catch (_) { }
+  try { if (_meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; } } catch (_) { }
+  try { if (_meosTimerTick) { clearTimeout(_meosTimerTick); _meosTimerTick = null; } } catch (_) { }
+  try { if (_meosLagWatch) { clearInterval(_meosLagWatch); _meosLagWatch = null; } } catch (_) { }
+  try { if (_meosTimerBar) { _meosTimerBar.dispose(); _meosTimerBar = null; } } catch (_) { }
+  try { disposeDecorations(); } catch (_) { }
+  try { for (const d of disposables) d.dispose(); } catch (_) { }
 }
 module.exports = { activate, deactivate };
 // {* ▲mCN=0900_PROVIDER_ACTIVATE // end [cGJF=h] *}

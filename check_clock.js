@@ -1962,7 +1962,15 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
    ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===1,
       '\u2605\u2605\u26051\u672c\u304d\u308a\u306e `1` \u306f\u4eca\u307e\u3067\u3069\u304a\u308a \u26a0\ufe0f(\u23f8 \u3092\u6d88\u3057\u305f\u30b4\u30df)',
       Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));}
-  /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */
+  /* ★★★v4.2.59= 入れ替えで去る時、自分で点けた拍を自分で消す(残ると古い側が既定の音で鳴り続ける)。 */
+ {const DE=S9.slice(S9.indexOf('function deactivate()'));
+  ok(/meosStopRinging\(\)/.test(DE) && /clearInterval\(_meosRingTimer\)/.test(DE)
+     && /clearInterval\(_meosRingBlink\)/.test(DE) && /clearInterval\(_meosChainBlink\)/.test(DE)
+     && /clearTimeout\(h\)/.test(DE) && /clearInterval\(_meosLagWatch\)/.test(DE),
+     '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
+  const ALL=(S9.match(/setInterval\(/g)||[]).length;
+  ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+ /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */
  ok(/if \(_meosClocksOff\) return 0;/.test(S9) && /if \(_meosClocksOff\) return;/.test(S9),
     '\u2605\u2605\u2605\u639b\u3051\u308b\u53e3\u306f2\u3064\u3068\u3082\u5143\u6813\u3092\u898b\u308b(\u639b\u3051\u76f4\u3057\u306e\u9053\u3082\u9589\u3058\u308b)', true);
  ok(/_meosTimerBar\.text = '\\u23f0 off';/.test(S9) && /'lai-membrane\.clockResumeAll'/.test(S9),
