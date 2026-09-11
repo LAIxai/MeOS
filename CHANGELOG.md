@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.61 (2026-09-11)
+- **The clock waiting its turn now shows its numbers too.** Which line of a membrane is the one actually running was decided by comparing the starting time on the line with the one MeOS armed. That works until the clock has no starting time written — the second in a chain begins when its turn comes, so the line says `1.` while MeOS holds the real moment in memory, and the two can never match. So the badge row stayed blank and the step being counted never turned white, though the clock was running fine. A clock with nothing written to compare is now recognised by its line instead, which is what MeOS knew all along. Drawing the numbers and colouring the step both ask the same one question.
+- `1m×2` and `(1m)×2` are the same thing. Brackets are only needed around two or more steps — `(3m 1m)×2`.
+
 ### v4.2.60 (2026-09-11)
 - **Correction to v4.2.59.** That entry said a bell was ringing from the previous copy of MeOS, left behind by an install. That was wrong. The bell came from a test harness left running outside the editor entirely, which is why reloading the window never stopped it — reloading replaces the editor's extensions, not another program's sound. Nothing was wrong with the extension's shutdown in the way described.
 

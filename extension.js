@@ -11264,7 +11264,8 @@ function meosArmClockFcFor(doc) {
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : '') + '|' + (c.rounds || 0),   // v4.1.82
         when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
-        armedAt: _base53 || Date.now(),             // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値**(ストップウォッチは、ここからの経過)
+        armedAt: _base53 || Date.now(),             // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値**
+        synth: _synth53,                               // ★v4.2.61: 起点that本文に無い1本(行で見分ける)(ストップウォッチは、ここからの経過)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
@@ -11780,6 +11781,23 @@ function meosCycleElemSpan(txt, arrowAt, idx) {
     return [at + lead, at + raw.replace(/\s+$/, '').length];
   } catch (_) { return null; }
 }
+// ★★★v4.2.61(俊克 2026.09.11 pm11:28 バグ1「1分タイマーのとき、バッジ部分にタイマー値that表示しない」
+//   ＋「(1m)×2 の 1m that白文字になっていない」):
+//   ★★★**「この行that掛かっている1本か」を、字で見分けていた**= 控えの `when` と本文の `when` を
+//     比べる(v4.1.1110)。ところthat連なりの待ち番は**起点を本文に持たない**(v4.2.53)so、
+//     控えには覚えの上の起点(`2026-09-11 23:34:55`)、本文には `1p`(または空)that在り、
+//     **永久に一致しない** → 数字も白い桁も1つも描かれない。
+//   ★★★→ **起点that本文に無い1本は、行thatその名札**。掛けた側は既に行を控えている(v4.1.1118)so、
+//     新しい覚えは要らない。訊く口はこの1つ= 描く側も橙を割る側も同じ答えを見る
+//     → [[feedback_one_source_for_mark_count_action]]
+function meosScopeOwnsLine(sc, c, line) {
+  try {
+    if (!sc) return false;
+    if (sc.synth) return sc.line === line;                 // 起点は覚えの中にしか無い= 行で見分ける
+    if (!sc.when) return false;
+    return String(c && c.when) === String(sc.when);
+  } catch (_) { return false; }
+}
 // v4.1.1114: その⏰行の持ち主(膜)の、掛かっている控えを引く。無ければ null。
 //   ★描く側(meosApplyTimerLineDecorations)と、橙を割る側(meosApplyFcRowDecorations)thatが
 //     **同じ答え**を見るための口= 2か所で数え直さない。
@@ -11792,9 +11810,9 @@ function meosClockOwnerScopeAt(doc, line) {
     }
     if (!best) return null;
     const sc = _meosPseudoScopes.get(uri + ' ' + best.id);
-    if (!sc || !sc.when) return null;
+    if (!sc || !(sc.when || sc.synth)) return null;
     const c = meosClockFcParse(doc.lineAt(line).text || '');
-    if (!c || String(c.when) !== String(sc.when)) return null;      // 掛かっている1本だけ
+    if (!c || !meosScopeOwnsLine(sc, c, line)) return null;         // ★v4.2.61: 掛かっている1本だけ(口は1つ)
     return sc;
   } catch (_) { return null; }
 }
@@ -12101,7 +12119,7 @@ function meosApplyTimerLineDecorations(editor) {
             //     soボクシングの「残り」と「経過」は**並べて出る**のthat正しい。
             //   ★★→ 判定は**起点(when)thatが同じか**。行の一致は要らない(v4.1.1118はここthat行き過ぎた)。
             //     鳴る時刻that違う行は別の予定so、今までどおり直下の1本だけ(v4.1.1110)。
-            if (_sc9 && _sc9.when && String(c.when) !== String(_sc9.when)) continue;
+            if (_sc9 && (_sc9.when || _sc9.synth) && !meosScopeOwnsLine(_sc9, c, i)) continue;   // ★v4.2.61
           } catch (_) { }
           // ★★★v4.1.1113(俊克 9/5 am10:27 バグ1「単発の↻1mの「1m」thatが白色になっていない。
           //   肝心の連動型も同様」): ★★★**v4.1.1111は一度も走っていなかった**=

@@ -330,7 +330,9 @@ console.log('\u2477 書き戻しは向きを落とさない / 同じ時刻の2�
   ok(/line: c\.line,/.test(A5) && /_s\.line = c\.line;/.test(A5),
      '\u2605\u2605控えは行も持ち、毎回読み直す', true);
   /* \u2605\u2605\u2605v4.1.1119(俊克 pm01:10): 鳴る時刻が同じ行は「同じ1つの時計の別の顔」so、並べて出す。 */
-  ok(/if \(_sc9 && _sc9\.when && String\(c\.when\) !== String\(_sc9\.when\)\) continue;/.test(S5),
+  /* ★v4.2.61: 物差しは `meosScopeOwnsLine` 1つへ引っ越した(字で比べる／起点が本文に無ければ行で比べる)。 */
+  ok(/if \(_sc9 && \(_sc9\.when \|\| _sc9\.synth\) && !meosScopeOwnsLine\(_sc9, c, i\)\) continue;/.test(S5)
+     && /return String\(c && c\.when\) === String\(sc\.when\);/.test(S5),
      '\u2605\u2605\u2605同じ起点なら何本でも出す / 違えば出さない', true);
   ok(/function meosClockFaceForLine\(until, c, sc, now\)/.test(S5) && /if \(!c \|\| !c\.up\) return left;/.test(S5),
      '\u2605\u2605\u2605顔は**その行**の向きで出す(片方が\u21ba、片方が\u21bb)', true);
@@ -439,7 +441,7 @@ console.log('\u2471 動くのは直下の1本だけ');
   ok(A.indexOf('_liveTaken') < A.indexOf('_meosPseudoUntil.has(lk)'),
      '\u2605\u2605門番は「既に掛かっているか」より**先**(後の1本が控えを上書きしない)', true);
   ok(/when: String\(c\.when \|\| ''\)/.test(A), '\u2605掛かっているのはどの行かを控える', true);
-  ok(/_sc9 && _sc9\.when && String\(c\.when\) !== String\(_sc9\.when\)/.test(S0),
+  ok(/_sc9 && \(_sc9\.when \|\| _sc9\.synth\) && !meosScopeOwnsLine\(_sc9, c, i\)/.test(S0),
      '\u2605\u2605待機中の行(違う時刻)には数字を出さない', true);
 }
 
@@ -1962,7 +1964,20 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
    ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===1,
       '\u2605\u2605\u26051\u672c\u304d\u308a\u306e `1` \u306f\u4eca\u307e\u3067\u3069\u304a\u308a \u26a0\ufe0f(\u23f8 \u3092\u6d88\u3057\u305f\u30b4\u30df)',
       Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));}
-  /* ★★★v4.2.59= 入れ替えで去る時、自分で点けた拍を自分で消す(残ると古い側が既定の音で鳴り続ける)。 */
+  /* ★★★v4.2.61= 「この行が掛かっている1本か」を訊く口は1つ。起点が本文に無い1本は行で見分ける。 */
+ ok(/function meosScopeOwnsLine\(sc, c, line\)/.test(S9) && /if \(sc\.synth\) return sc\.line === line;/.test(S9),
+    '\u2605\u2605\u2605\u8d77\u70b9that\u672c\u6587\u306b\u7121\u30441\u672c\u306f\u3001\u884c\u304c\u540d\u672d(\u5b57\u3067\u306f\u898b\u5206\u3051\u3089\u308c\u306a\u3044)', true);
+ ok(!/String\(c\.when\) !== String\(_sc9\.when\)/.test(S9) && !/String\(c\.when\) !== String\(sc\.when\)/.test(S9),
+    '  \u53e4\u3044\u7269\u5dee\u3057(\u5b57\u3067\u6bd4\u3079\u308b)\u306f1\u3064\u3082\u6b8b\u3063\u3066\u3044\u306a\u3044', true);
+ ok((S9.match(/meosScopeOwnsLine\(/g)||[]).length>=3,
+    '  \u63cf\u304f\u5074\u3082\u6a59\u3092\u5272\u308b\u5074\u3082\u3001\u305d\u306e1\u3064\u3092\u901a\u308b', (S9.match(/meosScopeOwnsLine\(/g)||[]).length);
+ ok(/synth: _synth53,/.test(S9), '  \u63a7\u3048\u306b\u5370\u3092\u4ed8\u3051\u308b(\u639b\u3051\u305f\u5074that\u77e5\u3063\u3066\u3044\u308b\u4e8b\u3092\u904b\u3076)', true);
+ /* ★★v4.2.61= ×N の括弧は「2歩以上の時だけ」= 1m×2 と (1m)×2 は同じ物。 */
+ {const Q=(w)=>X.meosClockFcParse('<!-- Mew!UFC \u23f0 '+w+' -->')||{};
+  const a1=Q('1p \u21ba\u21bb(1m)\u00d72'), a2=Q('1p \u21ba\u21bb1m\u00d72');
+  ok(a1.cycle.join()===a2.cycle.join() && a1.rounds===a2.rounds && a1.rounds===2,
+     '\u2605(1m)\u00d72 \u3068 1m\u00d72 \u306f\u540c\u3058(\u62ec\u5f27\u306f2\u6b69\u4ee5\u4e0a\u306e\u6642\u3060\u3051\u8981\u308b)', [a1.rounds,a2.rounds]);}
+ /* ★★★v4.2.59= 入れ替えで去る時、自分で点けた拍を自分で消す(残ると古い側が既定の音で鳴り続ける)。 */
  {const DE=S9.slice(S9.indexOf('function deactivate()'));
   ok(/meosStopRinging\(\)/.test(DE) && /clearInterval\(_meosRingTimer\)/.test(DE)
      && /clearInterval\(_meosRingBlink\)/.test(DE) && /clearInterval\(_meosChainBlink\)/.test(DE)
