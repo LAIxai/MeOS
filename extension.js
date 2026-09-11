@@ -10892,7 +10892,7 @@ async function meosChainAdvance(doc, key) {
     await _put(rows[cur], true);                    // 今の1本= 待ちへ(FC・\u2713なし)
     await _put(rows[next], false);                  // 次の1本= 走りへ(UFC)
     try { meosDbg('[chain] ' + (cur + 1) + '\u672c\u76ee \u2192 ' + (next + 1) + '\u672c\u76ee \u819c=' + key); } catch (_) { }
-    try { const lk = doc.uri.toString() + ' ' + key; meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); } catch (_) { }
+    try { const lk = doc.uri.toString() + ' ' + key; meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }   // ★v4.2.62: 席that回った= 起点も忘れる
     try { meosArmClockFcFor(doc); } catch (_) { }
     return next;
   } catch (_) { return -1; }
@@ -11021,7 +11021,18 @@ function meosArmClockFcFor(doc) {
     //     ＝ 俊克の(3)は、この1行で成立する(並べ替えも覚えも要らない)。
     //   ★これは⏰の繰返しと同じ作法= **並びthat状態を持つ**([[project_clock_in_the_text]] v4.1.57)。
     const _liveTaken = new Set();
-    for (const c of meosClockFcScan(doc)) {
+    // ★★★v4.2.62(俊克 2026.09.12 am01:38 バグ1/2の真因・実測で名指し):
+    //   ★★★**私は「この走査の中だけ」と言いながら、覚えの中の行そのものを書き換えていた**=
+    //     `meosClockFcScan` は文書の版で覚えているので、返ってくる行は**走査をまたいで同じ物**。
+    //     v4.2.53 that `c.when` に覚えの上の起点を入れると、それthat次の走査にも残り、
+    //     2度目には「本文に起点that書いてある」ように見える → `_blank55` that偽になり
+    //     → 元の1本だと分からなくなり → f/p の口that `1.p` を本文へ書く。
+    //   ★★★俊克thatずっと見ていた `1.p` は、**私thatが毎回書き直していた**物だった
+    //     (v4.2.54の「残骸を落とす」は、自分で作った物を自分で拭いていただけ)。
+    //   ★★→ **覚えは読む物so、書くなら写しを持つ**。1行の写し(Object.assign)で、
+    //     この走査の中の書き換えthat本当に「この走査の中だけ」になる。
+    for (const _c0 of meosClockFcScan(doc)) {
+      const c = Object.assign({}, _c0);   // ★v4.2.62: 覚えの中の行を汚さない
       _seen++; _seenKeys.add(c.key);
       // ★★v4.1.1112(俊克 9/5 am10:04「⏰ボタンを押して一時停止したり、⏰リストで✓を外しても、
       //   同様に実装してください」): ★★**席を譲るのは「済み」だけ。「休み」は席を保つ**＝
@@ -11074,7 +11085,9 @@ function meosArmClockFcFor(doc) {
       if (_blank55 && (!c.when || _chain55) && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
         try {
           const _sc53 = _meosPseudoScopes.get(lk);
-          _base53 = (_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now();
+          // ★v4.2.62: 覚えの順= 輪の覚え ＞ 控え ＞ 今。鐘で控えthat消えても起点は動かない。
+          _base53 = _meosChainStart.get(lk) || ((_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now());
+          _meosChainStart.set(lk, _base53);
           c.when = meosClockFcStamp(new Date(_base53));   // この走査の中だけ。本文は1文字も触らない
           _synth53 = true;
           meosDbg('[armClock] chain start(覚えの側だけ) key=' + c.key + ' 行=' + (c.line + 1) + ' ' + c.when);
@@ -11394,6 +11407,15 @@ function meosPruneClockPast(m) {
 //   ★閉じたことは**面に出す**= `⏰ off — click to resume`。見えない止め方は、戻し方thatも見えない
 //     → [[feedback_fix_signal_at_fix_place]] / 入口と出口は同じ家に置く。
 //   ★開き直しても閉じたまま(globalState)= 「止めて」は一度言えば足りる。
+// ★★★v4.2.62(俊克 2026.09.12 am01:38 バグ2「1分を何度繰り返しても、1/2のままで、
+//   1つ目のタイマーに移行しない」):
+//   ★★★**起点that鐘のたびに「今」へ動いていた**= v4.2.53は起点を控え(scope.armedAt)に置いたthat、
+//     鳴り終わる道(meosEndPseudoTimer)は控えを消してから掛け直すso、次の走査では控えthat無く、
+//     `Date.now()` から数え直す。so周回数thatいつまでも1周目=**×Nに辿り着けず、輪that回らない**。
+//   ★★★→ 起点は**輪thatが回るまで生きる覚え**に置く。消えるのは「席that次へ回った時」だけ=
+//     v4.2.53 that言っていた「輪thatが回る時に覚えthat消える」を、そのとおりの場所に作る。
+//   ★鍵は膜(uri+key)= 席は1膜に1つ(v4.1.1110)so、これで足りる。
+const _meosChainStart = new Map();      // uri+key → 起点(ms) 本文に起点を持たない1本のため
 let _meosClocksOff = false, _meosGlobalState = null;
 const MEOS_CLOCKS_OFF_KEY = 'meosClocksOff';
 function meosClocksAreOff() { return !!_meosClocksOff; }
@@ -11403,7 +11425,7 @@ function meosSetClocksOff(off) {
   try { if (_meosGlobalState) _meosGlobalState.update(MEOS_CLOCKS_OFF_KEY, _meosClocksOff); } catch (_) { }
   if (_meosClocksOff) {
     try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
-    try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); } catch (_) { }
+    try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); _meosChainStart.clear(); } catch (_) { }
     try { _meosChainWait = null; } catch (_) { }
     try { meosStopRinging(); } catch (_) { }
   }
@@ -12474,7 +12496,12 @@ function meosClockFaceForLine(until, c, sc, now) {
     if (!c || !c.up) return left;                                  // \u21ba(または矢印なし)= 残り
     let step = 0;
     if (Array.isArray(c.cycle) && c.cycle.length) {
-      if (sc && sc.step > 0 && String(sc.when || '') === String(c.when || '')) step = sc.step;   // 控えthat在れば使う
+      // ★★★v4.2.62(俊克 バグ1「2つともストップウォッチ表示になってしまう」): ★★★**ここも字で見分けていた**=
+      //   起点that本文に無い1本では `sc.when`(覚えの起点) と `c.when`('') that一致せず、長さ(step)that 0 のまま。
+      //   so `step > 0 ? 経過 : left` の分かれ道で**残りthatそのまま返り、2つの顔that同じ値になる**。
+      //   ★v4.2.61で口を1つにしたのに、**同じ物を見ている3か所目**を数えていなかった
+      //     → [[feedback_one_source_for_mark_count_action]]
+      if (sc && sc.step > 0 && (sc.synth || String(sc.when || '') === String(c.when || ''))) step = sc.step;   // 控えthat在れば使う
       else { const b = meosParseStampLoose(c.when); const nx = b ? meosCycleSeriesNext(b.getTime(), c.cycle, until - 1) : null; if (nx) step = nx.step; }
     }
     // ★★v4.1.1120(俊克 バグ1「同時起点の2つthat、1秒ズレているね」):

@@ -1936,7 +1936,7 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '★★★番号だけ(点が有っても無くても)と番号＋印は、どれも「起点無し」の姿', true);
  ok(/_chain55 = \(meosClockFcScan\(doc\)\.filter\(x => x\.key === c\.key\)\.length >= 2\)/.test(S9),
     '★★★ただし連なりの中だけ= 1本きりに付いた `1` は ⏸ を消したゴミso ⚠️ のまま(v4.2.34)', true);
-  ok(/_base53 = \(_sc53 && _sc53\.armedAt\) \? _sc53\.armedAt : Date\.now\(\);/.test(S9),
+  ok(/_base53 = _meosChainStart\.get\(lk\) \|\| \(\(_sc53 && _sc53\.armedAt\) \? _sc53\.armedAt : Date\.now\(\)\);/.test(S9),
      '★★★起点は覚えの側だけに持つ(本文に書くと、次の周でそれが古い起点になる= v4.2.53)', true);
   /* ★★★v4.2.54= 起点を決めるのは「掛かっているか」を見張る枝より**先**。後ろだと控えの sig(字)と
      毎回食い違い、走査のたびに掛け直す= 1分タイマーが1秒も進まない。 */
@@ -1964,7 +1964,21 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
    ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===1,
       '\u2605\u2605\u26051\u672c\u304d\u308a\u306e `1` \u306f\u4eca\u307e\u3067\u3069\u304a\u308a \u26a0\ufe0f(\u23f8 \u3092\u6d88\u3057\u305f\u30b4\u30df)',
       Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));}
-  /* ★★★v4.2.61= 「この行が掛かっている1本か」を訊く口は1つ。起点が本文に無い1本は行で見分ける。 */
+  /* ★★★v4.2.62(真因)= 覚え(scanのキャッシュ)の中の行を書き換えていた。走査をまたいで残るので、
+    2度目には「本文に起点が書いてある」ように見え、f/p の口が `1.p` を本文へ書いていた。 */
+ ok(/for \(const _c0 of meosClockFcScan\(doc\)\) \{\s*\n\s*const c = Object\.assign\(\{\}, _c0\);/.test(S9),
+    '\u2605\u2605\u2605\u899a\u3048\u306e\u4e2d\u306e\u884c\u3092\u6c5a\u3055\u306a\u3044(\u5199\u3057\u3092\u6301\u3064)= \u300c\u3053\u306e\u8d70\u67fb\u306e\u4e2d\u3060\u3051\u300dthat\u672c\u5f53\u306b\u306a\u308b', true);
+ /* ★★★v4.2.62= 起点は鐘では動かない。消えるのは席が次へ回った時だけ。 */
+ ok(/const _meosChainStart = new Map\(\);/.test(S9)
+    && /_base53 = _meosChainStart\.get\(lk\) \|\|/.test(S9)
+    && /_meosChainStart\.set\(lk, _base53\);/.test(S9),
+    '\u2605\u2605\u2605\u8d77\u70b9\u306f\u9418\u3067\u52d5\u304b\u306a\u3044(\u9418\u306e\u305f\u3073\u306b\u4eca\u3078\u52d5\u304f\u3068\u3001\u5468\u56de\u6570that1\u306e\u307e\u307e)', true);
+ ok(/_meosPseudoScopes\.delete\(lk\); _meosChainStart\.delete\(lk\);/.test(S9),
+    '  \u6d88\u3048\u308b\u306e\u306f\u5e2d\u304c\u6b21\u3078\u56de\u3063\u305f\u6642\u3060\u3051', true);
+ /* ★★★v4.2.62= 長さ(step)を引く所も、字ではなく控えを見る(2つの顔が同じ値になっていた)。 */
+ ok(/if \(sc && sc\.step > 0 && \(sc\.synth \|\| String\(sc\.when \|\| ''\) === String\(c\.when \|\| ''\)\)\) step = sc\.step;/.test(S9),
+    '\u2605\u2605\u2605\u9577\u3055\u3092\u5f15\u304f\u6240\u3082\u540c\u3058\u7269\u5dee\u3057(step that0\u3060\u3068SW\u304c\u9006\u7b97\u3068\u540c\u3058\u5024\u306b\u306a\u308b)', true);
+ /* ★★★v4.2.61= 「この行が掛かっている1本か」を訊く口は1つ。起点が本文に無い1本は行で見分ける。 */
  ok(/function meosScopeOwnsLine\(sc, c, line\)/.test(S9) && /if \(sc\.synth\) return sc\.line === line;/.test(S9),
     '\u2605\u2605\u2605\u8d77\u70b9that\u672c\u6587\u306b\u7121\u30441\u672c\u306f\u3001\u884c\u304c\u540d\u672d(\u5b57\u3067\u306f\u898b\u5206\u3051\u3089\u308c\u306a\u3044)', true);
  ok(!/String\(c\.when\) !== String\(_sc9\.when\)/.test(S9) && !/String\(c\.when\) !== String\(sc\.when\)/.test(S9),

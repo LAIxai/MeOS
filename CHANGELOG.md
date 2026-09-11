@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.62 (2026-09-12)
+- **A clock's reading is no longer written back into what MeOS remembers.** Lines are parsed once and kept for as long as the file is unchanged, so the same objects come back on every sweep. When a chain's next clock began, MeOS filled in the moment it started — "just for this sweep", except the object outlived the sweep. Next time round, the line looked as though a starting time had been written on it, and the routine that marks a written starting point with **p** duly wrote one: the `1.p` that kept appearing was MeOS writing it, every time. Each sweep now works on its own copy, so "just for this sweep" is true.
+- **The turn now actually passes.** The moment a chain's clock began was kept beside the running timer, and ringing clears that, so every ring started the count again from zero — the round stayed at 1 of 2 forever and the next clock never got its turn. The starting moment now lives until the turn passes, which is what it was always meant to mean.
+- **The two faces show two numbers again.** Remaining and elapsed are worked out from the length of one round, and the length was looked up by matching the starting time on the line — which a chain's next clock does not have. Without a length there is nothing to subtract from, so both faces fell back to showing the remaining. They read `A` and `B` again, and `A + B` is one round.
+
 ### v4.2.61 (2026-09-11)
 - **The clock waiting its turn now shows its numbers too.** Which line of a membrane is the one actually running was decided by comparing the starting time on the line with the one MeOS armed. That works until the clock has no starting time written — the second in a chain begins when its turn comes, so the line says `1.` while MeOS holds the real moment in memory, and the two can never match. So the badge row stayed blank and the step being counted never turned white, though the clock was running fine. A clock with nothing written to compare is now recognised by its line instead, which is what MeOS knew all along. Drawing the numbers and colouring the step both ask the same one question.
 - `1m×2` and `(1m)×2` are the same thing. Brackets are only needed around two or more steps — `(3m 1m)×2`.
