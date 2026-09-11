@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.56 (2026-09-11)
+- **Stop all running clocks, in one go.** There was a way to stop one clock and no way to stop them all, so when a file holds many — a long diary quotes plenty of past clocks, and MeOS reads a quoted one as real — stopping them one at a time cannot keep up. Run **MeOS: Stop all running clocks** from the Command Palette: the bell stops, every armed clock is dropped, and each one is written ⏸ on its line so it stays stopped after a reload. Only the clocks actually running are touched; the ones merely written stay as they are. Nothing is deleted — the time stays on the membrane, so ticking one in the ⏰ list brings it back.
+
 ### v4.2.55 (2026-09-11)
 - **A missing full stop no longer kills a clock.** In a chain, the clock waiting its turn is written as its display number alone — `1.` — and that means "no starting point, begin when the turn comes". Something downstream dropped the dot, leaving `1`, which is not a time and is not a number-with-a-dot either: the clock stopped with a ⚠️ and would not start. Having no starting point now has one answer whatever it looks like on the line — empty, `1.`, `1)`, `1`, or `1.p` — but only inside a chain. On a lone clock a stray `1` is still what it was: the remains of a deleted ⏸, and still worth a ⚠️.
 - **A clock showing ⚠️ is never secretly running.** The mark said stopped while the bell rang every minute, and nothing on screen could stop it, because the timer armed under the old reading outlived the line that stopped making sense. A line MeOS cannot read now has its timer dropped in the same breath as the mark goes up.

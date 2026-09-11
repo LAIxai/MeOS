@@ -35098,6 +35098,43 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.alarmReturn', () => meosGoBackFromAlarm()));
+  // ★★★v4.2.56(俊克 2026.09.11 pm10:09「13個も走っていて、1つずつ消しても間に合わない。全部消して」):
+  //   ★★★**一度に止める口that無かった**= 掛かりを外す道は「1本ずつ」しか無く、増える方that速ければ
+  //     追いつけない。日記には過去の記録として書いた⏰that220本在り、そのうち何本もthat本物として走る。
+  //   ★★★止めるのは**今掛かっている物だけ**= 書いてあるだけの物には触らない(220本を一括で書き替えない
+  //     → [[project_now_not_bulk]])。俊克の言う「13個」thatちょうどこれ。
+  //   ★★★消さずに**休み(⏸)**にする= 時刻は本文に残るso、⏰リストの☑で1本ずつ戻せる。
+  //     消すと戻す道that無い([[project_badge_is_intent]] 人の意思を私the都合で捨てない)。
+  //   ★覚えの側も同時に落とす= 本文と覚えthat食い違わない([[feedback_one_source_for_mark_count_action]])。
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.clockStopAll', async () => {
+    try {
+      meosStopRinging();
+      _meosChainWait = null;
+      const rows = [];
+      for (const [k, sc] of Array.from(_meosPseudoScopes)) {
+        if (!sc) continue;
+        rows.push({ k, uri: sc.uri, line: (typeof sc.line === 'number') ? sc.line : -1, key: sc.key, fc: sc.fc !== false });
+      }
+      let n = 0;
+      for (const r of rows) {
+        meosClearPseudoTimer(r.k); _meosPseudoScopes.delete(r.k);
+        if (!r.fc || r.line < 0 || !r.key) continue;
+        const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === r.uri);
+        if (!doc || r.line >= doc.lineCount) continue;
+        const c = meosClockFcParse(doc.lineAt(r.line).text);
+        if (!c || c.off) continue;
+        try {
+          await meosClockFcSet(doc, r.key, { when: c.when, hold: c.hold, lock: false, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: c.whenSrc, pausedRound: c.pausedRound, tags: c.tags, done: false, off: true }, r.line);   // v4.2.56: 短い形も起点の字も運ぶ(1つでも落とすと本文that化ける)
+          n++;
+        } catch (_) { }
+      }
+      try { _meosPseudoUntil.clear(); } catch (_) { }
+      meosUpdateTimerBar(); meosPostViewMode();
+      vscode.window.showInformationMessage('MeOS: stopped ' + rows.length + ' running clock' + (rows.length === 1 ? '' : 's')
+        + (n ? (' \u2014 ' + n + ' written as \u23f8 (paused), so they stay stopped after a reload. Tick one in the \u23f0 list to bring it back.') : '.'));
+      meosDbg('[stopAll] \u639b\u304b\u308a=' + rows.length + ' \u23f8\u3078=' + n);
+    } catch (e) { try { vscode.window.showWarningMessage('MeOS: could not stop every clock \u2014 ' + String(e)); } catch (_) { } }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.chainNext', () => meosChainNextFromBar()));   // v4.2.50: 最下段の「クリック」で次の1本へ // v4.0.454: 鐘で連れ出された所へ戻る  // v4.0.442: Pseudoを時間で押さえる(テスト用紙/暗記シート)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.githubCommitPush', () => githubCommitPush())); // v0.9.972
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.openGithubPage', () => openGithubPage())); // v0.9.972
