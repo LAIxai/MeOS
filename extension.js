@@ -10872,6 +10872,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
 //   ★次thatが無ければ先頭へ戻る= これthat輪。
 //   ★起点を持たない1本は、走りに変わった瞬間に v4.2.33 that `p` を書くso、ここでは何も足さない。
 let _meosChainWait = null;   // {uri, key, text} 「クリック」を待っている連なり
+let _meosChainBlink = null, _meosChainBlinkOn = false;   // ★v4.2.54: 待っている間の点滅(黄の面 ⇄ 黄の字)
 async function meosChainAdvance(doc, key) {
   try {
     const rows = meosClockFcScan(doc).filter(c => c.key === key);
@@ -11033,6 +11034,40 @@ function meosArmClockFcFor(doc) {
         _liveTaken.add(c.key);
       }
       const lk = uri + ' ' + c.key;
+      // ★★★v4.2.54(俊克 2026.09.11 pm09:12 バグ1「clickを押すと、⚠️マークが表示して停止してしまう。
+      //   なぜ「⏰⚠️ 1.p 」のようにpが表示されるのか?」):
+      //   ★★★**v4.2.53 が覚えの上だけに作った起点を、v4.2.53の f/p が本文だと思って
+      //     `p` を書いていた**= 起点の無い1本に `1.p` が残り、次の走査ではそれを起点として
+      //     読もうとして読めず、⚠️ で止まる。**「書かない」と決めた物を、同じ日の私が書いていた**。
+      //   ★→ (1) 既に書かれてしまった「起点の読めない `p`」は、その場で落とす(1回だけ)。
+      //   ★  (2) 覚えの上で作った起点には、印を書かない(下の `_synth53`)。
+      try {
+        //   ★落とすのは**残骸の形そのもの**(`p` / `1.p`)だけ= 「p で終わる字」を広く狩ると、
+        //     `Sleep` のような本文まで削る。印は形that語る → [[project_direct_manipulation_mark]]
+        const _j54 = String(c.whenSrc || '').trim();
+        if (c.ufc && /^(?:\d{1,3}[.)])?[ \t]*p$/i.test(_j54)) {
+          const _k54 = _j54.slice(0, -1).trim();
+          c.whenSrc = _k54; c.when = ''; c.pAt = 0;
+          meosClockFcSet(doc, c.key, { when: '', hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, whenSrc: _k54, tags: c.tags, done: false }, c.line);
+          meosDbg('[fp] 起点の読めない p を落とす → ' + _k54 + ' 行=' + (c.line + 1));
+        }
+      } catch (_) { }
+      // ★★★v4.2.33/v4.2.53 の「時刻を書いていない1本は、席が回って来た時が起点」を、
+      //   ★★★**掛かっているかを見張る枝より先**へ移した(v4.2.54)。
+      //   ★★★控えの `sig` は `c.when` の**字そのもの**so、起点を後から作ると
+      //     毎回 `''` と `2026-09-11 21:05` が比べられ、**走査のたびに掛け直し**ていた
+      //     = 1分タイマーが1秒も進まない。起点は armedAt から作り、scope.armedAt にも
+      //     **同じ値**を入れる= 字が揺れない → [[feedback_one_source_for_mark_count_action]]
+      let _synth53 = false, _base53 = 0;
+      if (!c.when && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
+        try {
+          const _sc53 = _meosPseudoScopes.get(lk);
+          _base53 = (_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now();
+          c.when = meosClockFcStamp(new Date(_base53));   // この走査の中だけ。本文は1文字も触らない
+          _synth53 = true;
+          meosDbg('[armClock] chain start(覚えの側だけ) key=' + c.key + ' 行=' + (c.line + 1) + ' ' + c.when);
+        } catch (_) { }
+      }
       // ★★★v4.1.146: **回数(`\u00d7N`)the終わり**= N周を終えた時計は、自分で ✓ を書いて畳まれる。
       //   ★★数え直しは `meosCycleSeriesNext` 1本= 「今that何周目か」を答える所thatが既に在るso、
       //     新しい数えを作らない([[feedback_one_source_for_mark_count_action]] 印・数字・動きは同じ1つの判定から)。
@@ -11179,14 +11214,8 @@ function meosArmClockFcFor(doc) {
       //     次の周は押した瞬間から始まる= 俊克の言うとおりの動き。
       //   ★掛かっている間は armedAt から同じ値thatが出るso、走査のたびに起点that動くことは無い
       //     (`sig` thatが揺れて掛け直しの輪になるのを避ける)。
-      if (!c.when && c.ufc && !c.done && !c.off && Array.isArray(c.cycle) && c.cycle.length) {
-        try {
-          const _sc53 = _meosPseudoScopes.get(uri + ' ' + c.key);
-          const _base53 = (_sc53 && _sc53.armedAt) ? _sc53.armedAt : Date.now();
-          c.when = meosClockFcStamp(new Date(_base53));   // この走査の中だけ。本文は1文字も触らない
-          meosDbg('[armClock] chain start(\u899a\u3048\u306e\u5074\u3060\u3051) key=' + c.key + ' \u884c=' + (c.line + 1) + ' ' + c.when);
-        } catch (_) { }
-      }
+      //   ★★★v4.2.54: **この段は `const lk` の直後へ引っ越した**= 掛かっているかを見張る枝より
+      //     先に起点を決めないと、控えの `sig` とここで作る起点that毎回食い違う。
       let w = meosParseWhen(c.when), _step = 0, _cidx = 0, _crnd = 1;
       if (Array.isArray(c.cycle) && c.cycle.length) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
@@ -11211,7 +11240,7 @@ function meosArmClockFcFor(doc) {
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : '') + '|' + (c.rounds || 0),   // v4.1.82
         when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
-        armedAt: Date.now(),                           // ★v4.1.136: 掛けた時刻(ストップウォッチは、ここからの経過)
+        armedAt: _base53 || Date.now(),             // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値**(ストップウォッチは、ここからの経過)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
@@ -11222,7 +11251,7 @@ function meosArmClockFcFor(doc) {
       //     直そうとしている「経過thatが0に戻る」を自分で起こしてしまう。
       //   ★過去を書いた時は足さない(それ自体thatが p)。逆算だけの時も足さない(p を読む顔thatが無い)。
       try {
-        if (c.ufc && !c.pAt && (c.up || c.dual)) {
+        if (c.ufc && !c.pAt && !_synth53 && (c.up || c.dual)) {   // ★v4.2.54: 覚えの上の起点には書かない
           const _org0 = meosParseStampLoose(c.when);
           if (_org0 && _org0.getTime() > Date.now()) {
             const _src2 = String(c.whenSrc || c.when).trim() + 'f/' + meosClockFcStamp(new Date()) + 'p';
@@ -11242,7 +11271,7 @@ function meosArmClockFcFor(doc) {
       //     (b) f that過去になった → 対を畳んで `<fの時刻>p` だけに(命綱の p は役目を終えた)
       //     (c) 未来で印that無い   → v4.2.28 that既に `f/…p` の対を書く(すぐ上)
       try {
-        const _s54 = String(c.whenSrc || '').trim();
+        const _s54 = _synth53 ? '' : String(c.whenSrc || '').trim();   // ★v4.2.54: 覚えの上の起点は本文ではないso印を書かない
         const _fi54 = _s54.search(/f\s*\//i);
         if (_fi54 > 0 && /p\s*$/i.test(_s54)) {
           const _fp54 = _s54.slice(0, _fi54).trim();
@@ -12264,13 +12293,14 @@ function meosUpdateTimerBar() {
       _meosTimerBar.text = '\u23f0 ringing' + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
-      try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); } catch (_) { }
+      try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); _meosTimerBar.color = undefined; } catch (_) { }
       _meosTimerBar.show();
       meosTickTimerLines();
       if (!_meosRingBlink) _meosRingBlink = setInterval(() => meosTickTimerLines(), MEOS_RING_BLINK_MS);   // v4.1.22: 鳴っている間だけ速い拍
       return;
     }
     if (_meosRingBlink) { clearInterval(_meosRingBlink); _meosRingBlink = null; }   // v4.1.22: 鳴り止んだら元の拍へ
+    if (!_meosChainWait && _meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; _meosChainBlinkOn = false; }   // ★v4.2.54: 押されたら点滅も終わる
     // ★★★v4.2.50(俊克 pm07:17「以前の実装で、ウィンドウ最下段に表示した『クリック』と書かれた部分を
     //   クリックすると言うのthatあったでしょ? メッセージをクリックするよりも、その方that押しやすい」):
     //   ★★★**4つ目の姿**= 連なりthat次を待っている間。⏰ ringing / \u21a9 Back と同じ列・同じ作り。
@@ -12278,11 +12308,22 @@ function meosUpdateTimerBar() {
     //     押せば消えて、いつもの残り時間へ戻る。
     if (_meosChainWait) {
       if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-      _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next') + '  \u2014 click';
+      _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next')
+        + (_meosChainWait.next ? ('  \u2014 click to start ' + _meosChainWait.next + ' timer') : '  \u2014 click');
       _meosTimerBar.tooltip = 'MeOS: click to start the next clock on this membrane.';
       _meosTimerBar.command = 'lai-membrane.chainNext';
-      try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); } catch (_) { }
+      // ★★v4.2.54(俊克 改良1「ハイライトを黄色と黒で点滅するようにしよう」):
+      //   ★★VS Codeが枡の地に許すのは warning/error の2色だけso、**黄の面 ⇄ 黄の字**を交互に出す=
+      //     面that黄の時は字は既定(黒)、面を外した時は字だけ黄。**色の出所は1つの色名**so、
+      //     テーマthat変わっても2つの姿that食い違わない → [[feedback_one_source_for_mark_count_action]]
+      //   ★拍は鐘と同じ定数から引く(息=0.8秒)= MeOSの中に拍を2つ持たない。
+      try {
+        const _y54 = new vscode.ThemeColor('statusBarItem.warningBackground');
+        _meosTimerBar.backgroundColor = _meosChainBlinkOn ? _y54 : undefined;
+        _meosTimerBar.color = _meosChainBlinkOn ? undefined : _y54;
+      } catch (_) { }
       _meosTimerBar.show();
+      if (!_meosChainBlink) _meosChainBlink = setInterval(() => { _meosChainBlinkOn = !_meosChainBlinkOn; meosUpdateTimerBar(); }, MEOS_RING_BLINK_MS * 2);
       meosTickTimerLines();
       return;
     }
@@ -12295,6 +12336,7 @@ function meosUpdateTimerBar() {
         _meosTimerBar.text = '\u21a9 Back' + (_meosReturnMark.name ? ('  ' + _meosReturnMark.name) : '');
         _meosTimerBar.tooltip = 'MeOS: go back to what you were doing when the bell rang.';
         _meosTimerBar.command = 'lai-membrane.alarmReturn';
+        try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = undefined; } catch (_) { }   // ★v4.2.54
         _meosTimerBar.show();
       } else if (_meosTimerBar) _meosTimerBar.hide();
       return;
@@ -12304,7 +12346,7 @@ function meosUpdateTimerBar() {
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
     _meosTimerBar.text = '⏰ ' + (sc && sc.up ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
-    try { _meosTimerBar.backgroundColor = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない
+    try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない / ★v4.2.54: 字の色も
     _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
     // ★v4.0.459: 最後の1分は**地の色that変わる**= Me Dockを閉じていても目に入る(VS Code標準の警告色so、
@@ -12892,7 +12934,12 @@ async function meosPseudoTimeUp(key) {
       const _rows50 = meosClockFcScan(_d50).filter(c => c.key === scope.key);
       const _i50 = _rows50.findIndex(c => c.line === scope.line);
       if (_rows50.length >= 2 && _i50 >= 0 && _i50 < _rows50.length - 1) {
-        _meosChainWait = { uri: scope.uri, key: scope.key, text: _say49 || scope.name || '' };
+        // ★★v4.2.54(俊克 改良1「3分のあと、-click to start 1m timer と表示した方がいい」):
+        //   ★★**次に何が始まるのかを、押す前に言う**= 長さは次の1本that既に持っているso、
+        //     ここで数え直さない([[feedback_one_source_for_mark_count_action]])。
+        const _nx54 = _rows50[_i50 + 1];
+        const _len54 = (_nx54 && Array.isArray(_nx54.cycle) && _nx54.cycle.length) ? _nx54.cycle.join('/') : '';
+        _meosChainWait = { uri: scope.uri, key: scope.key, text: _say49 || scope.name || '', next: _len54 };
         try { meosDbg('[chain] \u6b21\u3092\u5f85\u3064 ' + (_i50 + 1) + '/' + _rows50.length + ' \u819c=' + scope.key); } catch (_) { }
         try { meosUpdateTimerBar(); } catch (_) { }
       }
@@ -31164,9 +31211,34 @@ function meosDefBlocks(document) {
       //     ⏰行はまだ畳みの外に無かった。畳まない行(UFC)も**同じ塊の一員**so、そこに居る間も開けておく。
       //   ★畳む範囲(start..end)は1行も伸ばさない＝ 伸ばすと⏰thatが畳まれてしまう(v4.1.16)。
       //     伸ばすのは**開く合図の範囲(openEnd)だけ**＝ v4.0.301で表や箇条書きに入れたのと同じ手。
+      // ★★★v4.2.54(俊克 2026.09.11 pm09:12 バグ2「メッセージFC2つthat、膜に文字カーソルthat来ても
+      //   表示されない。2つ目の⏰UFCの中に文字カーソルthat来て初めて表示される。なぜ?」):
+      //   ★★★**UFCは畳みを切るthat、持ち主まで切ってはいけない**＝ 閉じ膜の下に並ぶ指定行は
+      //     UFCもFCも全部その膜の持ち物(v4.0.332「3つは常に1つ」→ v4.1.106で4つ)。
+      //     ところが塊を刻む側は UFC を「本文行」と見なすso、⏰UFCの下に続くメッセージFCは
+      //     **その⏰行を持ち主にしていた**＝ 膜に居ても開かず、その⏰行に居た時だけ開く。
+      //   ★★→ **畳む範囲(start..end)は1文字も変えない**(変えるとUFCthat畳まれる= v4.1.16)。
+      //     変えるのは**持ち主を探す足だけ**＝ 頭that指定行なら、指定行と空行を越えて本文行まで戻る。
+      //   ★開く合図は別の名前で持つ(ownTop/ownOpen)＝ `open` は「膜の3行組」の合図so、
+      //     そこに混ぜると頭thatずれて(shift)、畳みの宛先まで変わってしまう。
+      let ownTop = null, ownOpen = null;
+      try {
+        if (meosIsSpecLine(lines[head])) {                          // 頭that指定行= UFCで切られた塊
+          let o = head;
+          while (o > 0 && (meosIsSpecLine(lines[o]) || !String(lines[o] || '').trim())) o--;
+          ownTop = o;
+          const _h2 = String(lines[o] || '');
+          if ((_h2.indexOf('▲') >= 0 || _h2.indexOf('△') >= 0) && parseCloseLine(_h2)) {
+            const op2 = meosMembraneOpenFor(document, o); if (op2 >= 0) ownOpen = op2;
+          }
+        }
+      } catch (_) { }
       let openEnd = e;
       if (open != null) { try { while (openEnd + 1 < n && meosIsUnfoldingSpecLine(lines[openEnd + 1])) openEnd++; } catch (_) { } }
-      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open, openEnd });
+      // ★v4.2.54: UFCで切られた塊は、**指定行の並びぜんぶ**that1つの合図の範囲=
+      //   バッジも時計も言葉も一続きso、そのどこに居ても並び全部that見える(v4.2.51の趣旨を、畳まずに満たす)。
+      if (ownTop != null) { try { while (openEnd + 1 < n && meosIsSpecLine(lines[openEnd + 1])) openEnd++; } catch (_) { } }
+      if (!isDef(lines[head])) out.push({ start: head, top, end: e, fc, open, openEnd, ownTop, ownOpen });
       ln = e;
     }
   } catch (_) { }
@@ -31387,9 +31459,11 @@ function meosFcWantsOpen(doc, block, caretLine) {
   if (m === 'pseudo') return false;
   if (!(caretLine >= 0)) return false;
   if (meosModeAtLine(doc, caretLine) !== 'normal') return false;   // 読む所に居る間は、命令を開かない
-  const top = (block.top == null) ? block.start : block.top;
+  // ★v4.2.54: 頭thatUFCで切られた塊は、持ち主(ownTop/ownOpen)から合図を出す= 膜に居れば開く。
+  const top = (block.ownTop != null) ? block.ownTop : ((block.top == null) ? block.start : block.top);
   const end = (block.openEnd == null) ? block.end : block.openEnd;   // v4.1.106: ⏰(UFC)行も塊の一員
-  return (block.open != null && caretLine === block.open) || (caretLine >= top && caretLine <= end);
+  const op = (block.open != null) ? block.open : block.ownOpen;
+  return (op != null && caretLine === op) || (caretLine >= top && caretLine <= end);
 }
 // ★v4.1.1101: 第3引数 `caretAt` ＝ **カーソルthatその行に在ったとしたら**の答えを返す(既定＝今の位置)。
 //   「押す直前はどうだったか」を訊くために要る。**物差しを2本にしないための引数**＝

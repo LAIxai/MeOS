@@ -1774,8 +1774,11 @@ console.log('㊲ f/p の印 — 未来を狙ったストップウォッチは、
   const ms=X.meosClockFaceForLine2(Date.parse('2027-09-09T15:30:00+09:00'),
     {when:'2027-09-09 15:30', up:true, cycle:['50m'], pAt}, {armedAt:now}, now);
   ok(Math.round(ms/60000)===60, '★★★未来起点のSWは p から数える(覚えでなく字so、開き直しても続く)', Math.round(ms/60000));}
- ok(S3.indexOf("if (c.ufc && !c.pAt && (c.up || c.dual)) {")>=0,
+ ok(S3.indexOf("if (c.ufc && !c.pAt && !_synth53 && (c.up || c.dual)) {")>=0,
     '★★★書くのは p that無い時だけ(開き直しの度に書き直すと、直そうとしている穴を自分で開ける)', true);
+ /* ★★★v4.2.54= 覚えの上で作った起点(_synth53)は**本文ではない**so、そこに印を書かない。 */
+ ok(S3.indexOf("const _s54 = _synth53 ? '' : String(c.whenSrc || '').trim();")>=0,
+    '★★★覚えの上の起点には f/p を書かない(v4.2.53の決めた「書かない」を、次の口that破らない)', true);
  ok(/const _org0 = meosParseStampLoose\(c\.when\);[\s\S]{0,80}getTime\(\) > Date\.now\(\)/.test(S3),
     '★★足すのは未来を狙った時だけ', true);
  ok(S3.indexOf("+ 'f/' + meosClockFcStamp(new Date()) + 'p'")>=0,
@@ -1926,8 +1929,19 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
  /* ★★★v4.2.33(2026.09.10 俊克「でもなぜ連動しないんだ?」)= 席が回って来た時が起点。 */
  ok(/if \(!c\.when && c\.ufc && !c\.done && !c\.off && Array\.isArray\(c\.cycle\) && c\.cycle\.length\) \{/.test(S9),
     '★★★時刻を書いていない1本は、席が回って来た時が起点(前が終わった時から数える)', true);
-  ok(/const _base53 = \(_sc53 && _sc53\.armedAt\) \? _sc53\.armedAt : Date\.now\(\);/.test(S9),
+  ok(/_base53 = \(_sc53 && _sc53\.armedAt\) \? _sc53\.armedAt : Date\.now\(\);/.test(S9),
      '★★★起点は覚えの側だけに持つ(本文に書くと、次の周でそれが古い起点になる= v4.2.53)', true);
+  /* ★★★v4.2.54= 起点を決めるのは「掛かっているか」を見張る枝より**先**。後ろだと控えの sig(字)と
+     毎回食い違い、走査のたびに掛け直す= 1分タイマーが1秒も進まない。 */
+  ok(S9.indexOf("const lk = uri + ' ' + c.key;") >= 0
+     && S9.indexOf("const lk = uri + ' ' + c.key;") < S9.indexOf('let _synth53 = false, _base53 = 0;')
+     && S9.indexOf('let _synth53 = false, _base53 = 0;') < S9.indexOf('if (_meosPseudoUntil.has(lk)) {'),
+     '★★★起点を決めるのは「掛かっているか」を見張る枝より先(sig that毎回食い違わない)', true);
+  ok(/armedAt: _base53 \|\| Date\.now\(\),/.test(S9),
+     '★★★控えの armedAt も**同じ値**(2つ持てば、いつか食い違う)', true);
+  /* ★★★v4.2.54= 既に書かれてしまった「起点の読めない p」(`1.p`)は、読んだ時に落とす。 */
+  ok(/c\.whenSrc = _k54; c\.when = ''; c\.pAt = 0;/.test(S9),
+     '★★★`1.p` の残骸は、その場で落として起点無しに戻す', true);
   ok(/c\.when = meosClockFcStamp\(new Date\(_base53\)\);/.test(S9) && !/whenSrc: _src3/.test(S9),
      '★★★本文は1文字も触らない(起点が無いことが、その1本の性質だから)', true);
  {const qq=(w)=>X.meosClockFcParse('<!-- Mew!UFC ⏰ '+w+' -->')||{};
@@ -2147,8 +2161,18 @@ console.log('㊶ 連なりの輪(俊克 pm06:43 の設計 ＋ pm07:17「最下�
  const BAR=FN(S50,'function meosUpdateTimerBar');
  ok(/if \(_meosChainWait\) \{/.test(BAR) && /'lai-membrane\.chainNext'/.test(BAR),
     '★★★最下段の4つ目の姿= ⏰ ringing / ↩ Back と同じ列・同じ作り', true);
- ok(/_meosTimerBar\.text = '\\u23f0 ' \+ \(_meosChainWait\.text \|\| 'next'\) \+ '  \\u2014 click';/.test(BAR),
+ ok(/_meosTimerBar\.text = '\\u23f0 ' \+ \(_meosChainWait\.text \|\| 'next'\)/.test(BAR),
     '  出すのはメッセージ＋click(膜名ではない)', true);
+ /* ★★v4.2.54(俊克 改良1)= 次に何が始まるのかを、押す前に言う。長さは次の1本that持っている。 */
+ ok(/click to start ' \+ _meosChainWait\.next \+ ' timer/.test(BAR),
+    '★★次の長さを言う(`— click to start 1m timer`)', true);
+ ok(/_meosChainWait = \{ uri: scope\.uri, key: scope\.key, text: [^\n]*next: _len54 \}/.test(S50),
+    '  長さは次の1本の cycle from引く(数え直さない)', true);
+ ok(/_meosTimerBar\.backgroundColor = _meosChainBlinkOn \? _y54 : undefined;/.test(BAR)
+    && /_meosTimerBar\.color = _meosChainBlinkOn \? undefined : _y54;/.test(BAR),
+    '★★黄の面 ⇄ 黄の字で点滅(色の出所は1つの色名)', true);
+ ok(/if \(!_meosChainWait && _meosChainBlink\)/.test(BAR),
+    '  押されたら点滅も終わる(拍を置き去りにしない)', true);
  const UP=FN(S50,'async function meosPseudoTimeUp');
  ok(/_i50 >= 0 && _i50 < _rows50\.length - 1/.test(UP),
     '★★待つのは次が在る時だけ= 最後の1本は自分で先頭へ戻る', true);
