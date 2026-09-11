@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.57 (2026-09-11)
+- **A clock with no time left to run can no longer ring.** The wake-up that a running clock schedules works out how long is left by asking what time the clock is due. Erase that answer and the sum comes out hugely negative, which reads as "the time has come" — so the bell rings, and rings again. v4.2.56's stop-everything erased exactly that answer while leaving the wake-ups in place, which is why stopping them all set every one of them off. A wake-up whose clock is no longer due now simply goes away. Wherever the record is cleared from, the bell stays silent.
+- **Stop all now clears the wake-ups too, and silences the bell last.** It swept the clocks it could see and left the rest; it now cancels every pending wake-up, then quiets the bell, so nothing fires behind the sweep.
+
 ### v4.2.56 (2026-09-11)
 - **Stop all running clocks, in one go.** There was a way to stop one clock and no way to stop them all, so when a file holds many — a long diary quotes plenty of past clocks, and MeOS reads a quoted one as real — stopping them one at a time cannot keep up. Run **MeOS: Stop all running clocks** from the Command Palette: the bell stops, every armed clock is dropped, and each one is written ⏸ on its line so it stays stopped after a reload. Only the clocks actually running are touched; the ones merely written stay as they are. Nothing is deleted — the time stays on the membrane, so ticking one in the ⏰ list brings it back.
 

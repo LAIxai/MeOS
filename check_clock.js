@@ -1962,7 +1962,13 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
    ok((X._meosClockUnreadable.get('file:///b55.md')||new Set()).size===1,
       '\u2605\u2605\u26051\u672c\u304d\u308a\u306e `1` \u306f\u4eca\u307e\u3067\u3069\u304a\u308a \u26a0\ufe0f(\u23f8 \u3092\u6d88\u3057\u305f\u30b4\u30df)',
       Array.from(X._meosClockUnreadable.get('file:///b55.md')||[]));}
-  /* ★★★v4.2.55= ⚠️ を出す行の時計は、掛かっていてはならない(印と動きは同じ1つの判定から)。 */
+  /* ★★★v4.2.57= 解ける時刻を失った時計は鳴ってはならない(覚えを消して、起きる手を残すと鳴る)。 */
+ ok(/setTimeout\(\(\) => \{[\s\S]{0,1400}?if \(!_meosPseudoUntil\.has\(key\)\) \{ _meosPseudoTimers\.delete\(key\); return; \}/.test(S9),
+    '\u2605\u2605\u2605until \u304c\u7121\u3051\u308c\u3070\u9418\u306f\u9cf4\u3089\u306a\u3044(\u3069\u3053\u304c\u899a\u3048\u3092\u6d88\u3057\u3066\u3082\u5b89\u5168)', true);
+ {const SA=S9.slice(S9.indexOf("registerCommand('lai-membrane.clockStopAll'"), S9.indexOf("registerCommand('lai-membrane.clockStopAll'")+3000);
+  ok(/clearTimeout\(h\); \} catch \(_\) \{ \} _meosPseudoTimers\.delete\(k\)/.test(SA),
+     '\u2605\u2605\u2605\u5168\u90e8\u6b62\u3081\u308b\u306f\u300c\u8d77\u304d\u308b\u624b\u300d\u3082\u5916\u3059(\u899a\u3048\u3060\u3051\u6d88\u3059\u3068\u9cf4\u308b)', true);}
+ /* ★★★v4.2.55= ⚠️ を出す行の時計は、掛かっていてはならない(印と動きは同じ1つの判定から)。 */
   ok(/_unread\.add\(c\.line\);[\s\S]{0,900}?meosClearPseudoTimer\(lk\); _meosPseudoScopes\.delete\(lk\);/.test(S9),
      '\u2605\u2605\u2605\u8aad\u3081\u306a\u3044\u884c\u306f\u639b\u304b\u308a\u3082\u843d\u3068\u3059(\u26a0\ufe0f\u304c\u51fa\u3066\u3044\u308b\u306e\u306b\u9418\u304c\u9cf4\u308a\u7d9a\u3051\u306a\u3044)', true);
   ok(/c\.when = meosClockFcStamp\(new Date\(_base53\)\);/.test(S9) && !/whenSrc: _src3/.test(S9),

@@ -12529,6 +12529,14 @@ function meosArmPseudoTimer(key, ms) {
   let step = (i < marks.length) ? (ms - marks[i][0]) : ms;   // 次の印の時刻で起きる
   step = Math.min(Math.max(step, 0), MEOS_TIMER_CHUNK);
   _meosPseudoTimers.set(key, setTimeout(() => {
+    // ★★★v4.2.57(俊克 2026.09.11 pm10:20「Stop all を実行したthat、まだ1分タイマーthat鳴り続けている。
+    //   ⏰ボタンのリストは全て停止している。clickという表示も出なくなったので、どうしようもない」):
+    //   ★★★**解ける時刻を失った時計は、鳴ってはならない**= ここは `_meosPseudoUntil` から残りを引くso、
+    //     覚えthat消えていると `left` thatが大きな負の数になり、**「もう時間だ」と読んで鳴る**。
+    //     v4.2.56の「全部止める」thatまさにそれを起こした= 覚えを消して、起きる手(timeout)を残した。
+    //   ★★→ **止まっているかどうかは1つの答えから引く**= until thatが無ければ、この時計は居ない。
+    //     この1行で、どこが覚えを消しても鐘は鳴らない → [[feedback_one_source_for_mark_count_action]]
+    if (!_meosPseudoUntil.has(key)) { _meosPseudoTimers.delete(key); return; }
     const left = (_meosPseudoUntil.get(key) || 0) - Date.now();
     if (left > 500) {
       const mk = meosBellMarksFor(meosCycleStepFor(key));
@@ -35115,6 +35123,13 @@ function activate(context) {
         if (!sc) continue;
         rows.push({ k, uri: sc.uri, line: (typeof sc.line === 'number') ? sc.line : -1, key: sc.key, fc: sc.fc !== false });
       }
+      // ★★★v4.2.57: **起きる手(timeout)を先に全部外す**= 覚えだけ消すと、残った手that
+      //   「時間切れ」と読んで鳴る(v4.2.56で実際に起きた)。掛かりの覚えthat無い鍵も在るso、
+      //   控え(_meosPseudoScopes)ではなく**時計の側の全部**をなぞる。
+      try {
+        for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); }
+        _meosPseudoUntil.clear(); _meosPreBell.clear(); _meosBellDone.clear();
+      } catch (_) { }
       let n = 0;
       for (const r of rows) {
         meosClearPseudoTimer(r.k); _meosPseudoScopes.delete(r.k);
@@ -35128,7 +35143,12 @@ function activate(context) {
           n++;
         } catch (_) { }
       }
-      try { _meosPseudoUntil.clear(); } catch (_) { }
+      // ★v4.2.57: 鐘を止めるのは**最後**= 掃いている途中で1本that鳴っても、消し残しにならない。
+      try {
+        for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); }
+        _meosPseudoUntil.clear(); _meosPreBell.clear(); _meosBellDone.clear();
+      } catch (_) { }
+      meosStopRinging(); _meosChainWait = null;
       meosUpdateTimerBar(); meosPostViewMode();
       vscode.window.showInformationMessage('MeOS: stopped ' + rows.length + ' running clock' + (rows.length === 1 ? '' : 's')
         + (n ? (' \u2014 ' + n + ' written as \u23f8 (paused), so they stay stopped after a reload. Tick one in the \u23f0 list to bring it back.') : '.'));
