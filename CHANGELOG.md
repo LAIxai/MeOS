@@ -4,8 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.60 (2026-09-11)
+- **Correction to v4.2.59.** That entry said a bell was ringing from the previous copy of MeOS, left behind by an install. That was wrong. The bell came from a test harness left running outside the editor entirely, which is why reloading the window never stopped it — reloading replaces the editor's extensions, not another program's sound. Nothing was wrong with the extension's shutdown in the way described.
+
 ### v4.2.59 (2026-09-11)
-- **MeOS now puts out its own fires before it leaves.** Install a new version and the editor shuts the old one down and loads the new one in the same process — but shutting down only cleared decorations, never the repeating beats a running clock had started. The old bell kept its rhythm, and from where it stood the editor was already gone, so reading your settings failed and it fell back to the built-in sound. That is a bell no setting could silence, no Stop could reach, and no panel could show: your ⏰ list was empty because the thing ringing was not in it. Every beat, wake-up, bell and status square is now cleared on the way out.
+- **MeOS puts out its own fires before it leaves.** Install a new version and the editor shuts the old copy down and loads the new one in the same process — but shutting down only cleared decorations, never the repeating beats a running clock had started. Each install could leave one beating. They are all cleared on the way out now. (This was written as the cause of a bell that would not stop; it was not — see v4.2.60. It is still worth doing.)
 
 ### v4.2.58 (2026-09-11)
 - **Clocks now have a main tap, and stopping them all closes it.** Stopping "everything running" was never enough: a long diary quotes hundreds of clocks, MeOS reads a quoted one as real, and the very next sweep armed a fresh batch — so stopping them one at a time, or even all at once, could not keep up. **MeOS: Stop all clocks** now turns clocks off altogether: nothing is armed, however many are written, until you turn them back on. The status bar says `⏰ off`, and that same square is the way back — click it, or run **MeOS: Turn clocks back on**. The setting outlives a reload, because "stop them" should only have to be said once.

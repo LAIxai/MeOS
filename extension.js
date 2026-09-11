@@ -35889,17 +35889,15 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
     } catch (_) {}
   }, 600);
 }
-// ★★★v4.2.59(俊克 2026.09.11 pm10:32「音は止まってないよ。なぜ?」・実測=
-//   `afplay -v 2 /System/Library/Sounds/Sosumi.aiff` that鳴り続けている):
-//   ★★★**鳴らしていたのは、入れ替える前のMeOSの残骸だった**= vsixを入れ直すと、VS Codeは
-//     古い方を deactivate して新しい方を**同じ拡張ホストの中に**読み込む。ところが
-//     `deactivate()` は飾りと dispose だけを片付けており、**setInterval を1つも止めていなかった**。
-//   ★★★so古い鐘の拍thatが生き残り、しかもその古い側from見た `vscode` は既に切れているので
-//     設定を読む所thatが例外になり、**組込みの既定(Sosumi / -v 2)に落ちて鳴る**=
-//     俊克that設定を空にしても、Stop allを押しても、⏰リストthatが空でも、止まらない。
-//     (面に何も出ないのも同じ理由= 古い側は面を持っていない)
-//   ★★→ **自分で点けた物は、自分で消してから去る**。拍・起きる手・鐘・覚え、全部。
-//   ★これthat今日の「2つ持てば、いつか食い違う」の最後の形= 生きている自分と、死んだ自分。
+// ★★★v4.2.60(訂正): v4.2.59 は**間違った見立て**で書いた= 「鳴らしていたのは入れ替え前のMeOSの残骸」
+//   としたthat、**本当の音源は私(Claude)that裏で回し続けていた検証台(node)だった**。
+//   `afplay -v 2 Sosumi` の `-v 2` は、検証台のvscodeスタブthat設定を持たず**組込み既定を返していた**印so、
+//   俊克のVSCodiumとは無関係だった。俊克thatReload Windowでも止まらなかったのthat何よりの証拠=
+//   拡張ホストを作り直しても、別プロセスの音は止まらない。
+//   ★★★**測った物(afplayの引数)から、測っていない事(拡張の中の状態)を推し量った**
+//     → [[feedback_measure_before_you_generalize]]。親プロセスを1回見れば、最初に分かった。
+// ★ただし**この片付けそのものは残す**= deactivate that setInterval を1つも止めないのは、
+//   見立てとは別に本当の穴(入れ替えの度に拍that1つ残る)。自分で点けた物は、自分で消してから去る。
 function deactivate() {
   try { meosStopRinging(); } catch (_) { }
   try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
