@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.69 (2026-09-12)
+- **📦 Re-install VSIX, in yellow.** The button said only "Re-install", which could be read as reinstalling the editor itself. It now names the thing it installs — the `.vsix` file you see in Finder, rather than "VSX", which is the name of a store. Yellow, because a tool for the person building MeOS should not look like the controls everyone else uses.
+
 ### v4.2.68 (2026-09-12)
 - **📦 Re-install opens the folder and lets you choose.** v4.2.67 picked the newest build for you, which quietly closed the door MeOS keeps open on purpose: every old build is kept so a regression can be walked back through them. A button that only ever installs the newest one takes that away. It now opens a picker at your `.vsix` folder — newest, oldest, whichever you are chasing — and installs what you point at. It sits under the Standards switch, at the right edge.
 
