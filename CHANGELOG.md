@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.74 (2026-09-13)
+- **The cursor turns into a hand over ▶️ and ⏸️, and the tooltip is gone.** A tooltip appears where your pointer is, which is the one place it must not be when the pointer is on a button — the explanation covered the thing it was explaining. The pointer shape says the same thing, covers nothing, and needs no words: if it changes, the button has you. ▼ keeps its tooltip, because what ▼ does is not written on it.
+
 ### v4.2.72 (2026-09-13)
 - **A clock with no starting time picks up where it stopped.** Stop it at 0.35 left, come back an hour later, press ▶️ — it says 0.35. The moment it began is held in memory rather than written down, so when you press again MeOS moves that moment forward by exactly as long as you were away. A clock that *does* have a starting time written on it still keeps its schedule: an appointment does not move because you looked away. That is the whole difference between the two, and it now shows in the one place it matters.
 
