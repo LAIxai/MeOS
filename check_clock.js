@@ -2015,7 +2015,7 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     起点を書いてある1本は動かない(予定は止めても予定・v4.2.65 改良2)。 */
  ok(/_meosChainStart\.set\(lk, _base72 \+ _slept\);/.test(S9),
     '\u2605\u2605\u2605\u4f11\u3093\u3060\u5206\u3060\u3051\u4eee\u60f3\u306e\u8d77\u70b9\u3092\u5148\u3078\u305a\u3089\u3059(\u6b62\u3081\u305f\u5024\u304b\u3089\u7d9a\u304f)', true);
- {const SH=S9.slice(S9.indexOf('async function meosClockStopHere'), S9.indexOf('async function meosClockStopHere')+1400);
+ {const SH=FN(S9,'async function meosClockStopHere');   /* v4.2.46: 固定長の窓を使わない(次の function まで) */
   ok(!/_meosChainStart\.delete\(lk\)/.test(SH),
      '  \u6b62\u3081\u308b\u6642\u306b\u306f\u6d88\u3055\u306a\u3044(\u6d88\u3059\u3068\u518d\u958b\u304c0\u304b\u3089\u306b\u306a\u308b)', true);}
  /* ★★★v4.2.71(俊克 改良1「バッジ上でタイマー値を凍結しましょう」)=
