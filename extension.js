@@ -23320,6 +23320,37 @@ function meosRecentWithState() {
 //   ★★**そのファイルの居場所は、開いているタブが知っている**= タブを探して、その**グループへ戻す**。
 //   ★`visibleTextEditors` では足りない= **見えていないタブ**(そのグループで別のタブが前に居る)は入らない。
 //   タブの一覧(`tabGroups`)なら、隠れていても居場所が分かる。だから新しい所に増やしてしまうことがない。
+// ★★★v4.2.67: 一番新しい .vsix を入れる。探すのは**版の番号で**= 作った順(mtime)は
+//   ビルドし直すと前後するthat、番号は前後しない([[feedback_never_delete_old_builds]] で
+//   古い版を全部残しているので、mtime では当てにならない)。
+async function meosInstallNewestVsix() {
+  try {
+    const dir = String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '') || '').trim();
+    if (!dir) { vscode.window.showWarningMessage('MeOS: set laiMembrane.devVsixDir to the folder that holds your .vsix files.'); return false; }
+    const fs = require('fs'), path = require('path');
+    let names = [];
+    try { names = fs.readdirSync(dir).filter(n => /\.vsix$/i.test(n)); } catch (_) {
+      vscode.window.showWarningMessage('MeOS: cannot read ' + dir); return false;
+    }
+    if (!names.length) { vscode.window.showWarningMessage('MeOS: no .vsix in ' + dir); return false; }
+    const key = (n) => {
+      const m = /(\d+)\.(\d+)\.(\d+)\.vsix$/i.exec(n);
+      return m ? (+m[1] * 1e8 + +m[2] * 1e4 + +m[3]) : -1;
+    };
+    names.sort((x, y) => key(y) - key(x));
+    const newest = names[0];
+    if (key(newest) < 0) { vscode.window.showWarningMessage('MeOS: could not read a version from the .vsix names in ' + dir); return false; }
+    const full = path.join(dir, newest);
+    meosDbg('[vsix] install ' + full);
+    await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(full));
+    const pick = await vscode.window.showInformationMessage('MeOS: installed ' + newest + '.', 'Reload Window');
+    if (pick === 'Reload Window') await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    return true;
+  } catch (e) {
+    try { vscode.window.showWarningMessage('MeOS: could not install the .vsix \u2014 ' + String(e && e.message ? e.message : e)); } catch (_) { }
+    return false;
+  }
+}
 function meosTabForPath(p) {
   try {
     const path = String(p || '');
@@ -23459,6 +23490,15 @@ function meDockHtml() {
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
+  // ★★★v4.2.67(俊克 改良1「拡張機能の Uninstall/Install from VSIX... を実行するボタンを Me Dock に
+  //   作れないか? もう何千回通しているので、飽き飽きしてきた」):
+  //   ★★★**出すのは、置き場所を教えた人にだけ**= 設定 `laiMembrane.devVsixDir` に道を書いた時だけ
+  //     この駒を作る。書いていない人(＝ふつうの利用者)の Me Dock には**1文字も増えない**。
+  //   ★作るのは作る人の道具so、既定では存在しない([[project_phased_release]] と同じ門番の考え)。
+  const _devVsixDir = String(_mtxCfg.get('devVsixDir', '') || '').trim();
+  const _devVsixBtn = _devVsixDir
+    ? '<button class="warn-btn dev-vsix-btn" id="dev-vsix" data-tip="Install the newest .vsix from ' + esc(_devVsixDir) + ' — click, then reload.">\ud83d\udce6</button>'
+    : '';
   const mdSync = !!(extensionContext && extensionContext.globalState.get('meDockSync')); // ノート本文(エディタ)もズームに同期するか
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
@@ -24800,7 +24840,7 @@ color:#ffffff;z-index:4;padding:0}
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
     <div class="nav-scroll" id="nav-scroll" data-tip="Bird-EV ToDo (bird's-eye view) — left: every heading · right: every unresolved review note. Clear the right side = project done. Drag a handle to jump."><div class="nav-ticks nav-ticks-head" id="nav-ticks-head"></div><div class="nav-ticks nav-ticks-mark" id="nav-ticks-mark"></div><span class="nss nss-head" id="nav-scroll-head"></span><span class="nss nss-mark" id="nav-scroll-mark"></span></div>
-    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span></div>
+    <div class="nav-center-row toc-nav-row"><span class="top-eof-unit"><button class="cancel nav-center-btn toc-btn top-mode" id="nav-toc" data-tip="TOP — jump to top of file">TOP</button><button class="eof-badge" id="nav-eof" data-tip="E — End of file (jump to the very bottom ⤓)">E</button></span><button class="cancel nav-center-btn toc-create-btn" id="nav-create-toc" data-tip="Create Hyper TOC">create TOC</button><span class="toc-axis">---</span><span class="me-axis-wrap"><span class="toc-axis current" id="nav-current-word">Me</span></span><span class="me-flip-row"><span class="me-nav-switch" id="me-nav-switch" data-tip="Warp/Submarine Me! skeleton"><span class="me-nav-seg"><button class="cancel nav-center-btn me-nav-mode warp on" id="nav-me-warp" data-tip="Warp — global/root navigation mode">Warp</button><button class="cancel nav-center-btn me-nav-mode submarine off" id="nav-me-submarine" data-tip="Submarine — local/depth navigation mode">Submarine<span class="depth-window" id="nav-me-depth">-0</span></button></span><button class="cancel me-flip-btn" id="nav-me-minus" data-tip="Previous membrane (up ↑)">↑</button><button class="cancel me-flip-btn" id="nav-me-plus" data-tip="Next membrane (down ↓)">↓</button></span><button class="warn-btn" id="warn-btn" disabled data-tip="No broken membrane in this file.">⚠️<span class="warn-n" id="warn-n"></span></button></span><button class="fmt-btn raw-toggle" id="raw-toggle" data-tip="View mode | Click to cycle: 👁🥩 Normal &#8594; Raw🥩 &#8594; Pseudo👁. Opt-click goes the other way.">👁🥩</button><span class="head-nav nav-head-group" data-tip="Jump between ##[…]## headings (made by the Format ## button), within the current membrane. Plain Markdown ## is ignored."><button class="cancel nav-center-btn head-nav-btn" id="nav-head-prev" data-tip="Previous ##[…]## heading (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-head-label">#</span><button class="cancel nav-center-btn head-nav-btn" id="nav-head-next" data-tip="Next ##[…]## heading (below ↓)">↓</button></span>${_devVsixBtn}</div>
     <div class="nav-center-row line-row"><span class="head-nav line-hist"><button class="cancel nav-center-btn head-nav-btn" id="hist-back" data-tip="Back">←</button><button class="cancel time-machine-trigger head-nav-center" id="time-machine-trigger" data-tip="Time Machine Me">(0/0)</button><button class="cancel nav-center-btn head-nav-btn" id="hist-forward" data-tip="Forward">→</button></span><button class="cancel line-btn ${meDockCurrentLineMarkerActive?'on':''}" id="line-btn" data-tip="Toggle line marker">Line</button><input class="line-input" id="line-input" value="${esc(initial.line || '')}" inputmode="numeric"/><span class="head-nav mark-nav" data-tip="Jump between highlights / strikethroughs in the current membrane — editor ⇄ author review notes."><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-prev" data-tip="Previous highlight / strikethrough (above ↑)">↑</button><span class="toc-axis current head-nav-label" id="nav-mark-label">💬</span><button class="cancel nav-center-btn head-nav-btn" id="nav-mark-next" data-tip="Next highlight / strikethrough (below ↓)">↓</button></div>
     <div class="time-machine-panel" id="time-machine-panel"><div class="time-machine-title">Time Machine Me</div><div class="time-machine-main"><div class="tm-world-box"><div class="tm-world-row real active" id="tm-world-real" data-tip="Real world line"><div class="tm-world-label">Real</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-real"></div><input class="time-machine-slider" id="time-machine-slider-real" type="range" min="1" max="1" value="1"/></div></div><div class="tm-world-row reinc" id="tm-world-reinc" data-tip="REinc world line"><div class="tm-world-label">REinc</div><div class="time-machine-slider-wrap"><div class="tm-insertion-marks" id="tm-insertion-marks-reinc"></div><input class="time-machine-slider" id="time-machine-slider-reinc" type="range" min="1" max="1" value="1"/></div></div></div><div class="time-machine-side"><input class="time-machine-index" id="time-machine-index" type="number" min="1" value="1"/><span class="line-meter" id="time-machine-total">/ 0</span><button class="cancel time-machine-clear" id="time-machine-clear" data-tip="Clear current Line history">Clear</button></div></div></div>
     <!-- v0.9.690: Navigate Me の Bi-direction Jump バー(nav-anchor🟢/nav-bidi🔴/nav-clear)を撤去 — Current Me に統合(俊克 am11:25)。参照JSは全て if(...) ガード済みなので要素削除で安全。 -->
@@ -26078,6 +26118,7 @@ if(vmTick){clearTimeout(vmTick);vmTick=null;}
 if(_nl>0){var _d=(((vmNextUntil-Date.now())%1000)+1000)%1000+8;
  vmTick=setTimeout(function(){vmTick=null;window.__renderRaw();},_d);}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
+{const dv=document.getElementById('dev-vsix');if(dv)dv.addEventListener('click',()=>{vscode.postMessage({type:'installVsix'});});}   /* v4.2.67 */
 /* v4.1.61: Opt の上げ下げを見る。★鍵盤の事件は**この面に焦点が来ている時だけ**届くso、
    マウスの動き(altKey を連れて来る)も見る= 本文を書きながら Opt を押してボタンへ手を伸ばしても変わる。 */
 function vmSetAlt(a){a=!!a;if(a===vmAlt)return;vmAlt=a;try{if(window.__renderRaw)window.__renderRaw();}catch(e){}}
@@ -28501,6 +28542,7 @@ function toggleMeDock(editorOverride) {
       try { if (meDockPanel) meDockPanel.webview.postMessage(_r); } catch (_) { }
       return;
     }
+    if (message && message.type === 'installVsix') { await meosInstallNewestVsix(); return; }   // v4.2.67
     if (message && message.type === 'toggleRaw') { await toggleRawMode(); return; }
     if (message && message.type === 'toggleRead') { await toggleReadMode(); return; }   // v4.0.438
     if (message && message.type === 'viewMode') { await meosCycleViewMode(message.step); return; }   // v4.0.441: 3モードボタン
@@ -35398,6 +35440,7 @@ function activate(context) {
   //   ★★★消さずに**休み(⏸)**にする= 時刻は本文に残るso、⏰リストの☑で1本ずつ戻せる。
   //     消すと戻す道that無い([[project_badge_is_intent]] 人の意思を私the都合で捨てない)。
   //   ★覚えの側も同時に落とす= 本文と覚えthat食い違わない([[feedback_one_source_for_mark_count_action]])。
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.installNewestVsix', () => meosInstallNewestVsix()));   // ★v4.2.67
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.clockResumeAll', async () => {
     try {
       meosSetClocksOff(false);

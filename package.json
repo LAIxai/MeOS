@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. A membrane is just a comment — so it structures, folds, warps, and encrypts your notes and code without touching your data, not by a millimeter. One file, one brain: Hyper TOC warp & bi-directional jump, ✅ searchable checklists, 🐙 one-tap GitHub backup (Octopush), 🔐 AES-256 Encrypt Me. Markdown⊕ — Markdown, plus. MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). ／ それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣",
-  "version": "4.2.66",
+  "version": "4.2.67",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -128,6 +128,11 @@
       {
         "command": "lai-membrane.alarmReturn",
         "title": "MeOS: Back to Where the Bell Found You",
+        "category": "MeOS"
+      },
+      {
+        "command": "lai-membrane.installNewestVsix",
+        "title": "MeOS: Install the newest .vsix (dev)",
         "category": "MeOS"
       },
       {
@@ -360,6 +365,11 @@
           "type": "string",
           "default": "",
           "description": "MeOS: write a diagnostic log to this absolute file path. Empty (the default) means MeOS writes nothing and keeps nothing — turn it on only while chasing a problem, then empty it again."
+        },
+        "laiMembrane.devVsixDir": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Developer only. Folder that holds your built `.vsix` files. When set, Me Dock shows a 📦 button that installs the newest one. Leave empty and nothing is added."
         },
         "laiMembrane.clockSound": {
           "type": "string",

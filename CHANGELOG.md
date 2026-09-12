@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.67 (2026-09-12)
+- **A 📦 button that installs your newest build, for the person building it.** Tell MeOS where your `.vsix` files live (`laiMembrane.devVsixDir`) and Me Dock grows one button at the end of its row: press it, MeOS finds the highest version number in that folder, installs it, and offers to reload. Leave the setting empty — as everyone but its author will — and nothing is added to the panel at all. It picks by version number rather than by file date, because old builds are kept and rebuilt ones would lie about their age.
+
 ### v4.2.66 (2026-09-12)
 - **Pressing the button no longer opens the line up.** A press is a press, not a visit — the line stays as it was drawn, so you can press again straight away. The ▼ was taught this in v4.0.362; the new button now rides the same part rather than a copy of it.
 - **The red `⏸` is gone from the drawn line.** The button already says the clock is stopped, and saying it twice costs a mark. `⏸` stays written on the line, so a stopped clock is still stopped tomorrow — you just see it in the raw text rather than painted red.
