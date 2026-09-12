@@ -1999,14 +1999,29 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
   const ALL=(S9.match(/setInterval\(/g)||[]).length;
   ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+ /* ★★★v4.2.65(俊克 改良1/2)= 全部の⏰行に運転ボタンを描く。走っていれば ⏸️ / 止まっていれば ▶️。
+    so「書く印」は ⏯️ へ引越し= 同じ形に2つの意味を持たせない。 */
+ ok(/\+ \(spec\.manual \? '\\u23ef\\ufe0f' : ''\)/.test(S9),
+    '\u2605\u2605\u2605\u66f8\u304f\u5370\u306f \u23ef\ufe0f 1\u3064(\u25b6\ufe0f \u306f\u63cf\u304f\u30dc\u30bf\u30f3\u306b\u8b72\u3063\u305f)', true);
+ ok(/manual: \(face\.indexOf\('\\u23ef'\) >= 0 \|\| face\.indexOf\('\\u25b6'\) >= 0\)/.test(S9),
+    '  \u8aad\u3080\u306e\u306f \u23ef\ufe0f \u3068 \u25b6\ufe0f \u306e\u4e21\u65b9(\u4eca\u65e5\u66f8\u3044\u305f\u7269\u3092\u7f6e\u3044\u3066\u3044\u304b\u306a\u3044)', true);
+ ok(/contentText: _run65 \? '\\u23f8\\ufe0f' : '\\u25b6\\ufe0f'/.test(S9),
+    '\u2605\u2605\u2605\u904b\u8ee2\u30dc\u30bf\u30f3\u306f**\u63cf\u304f\u3060\u3051**(\ud83d\udd13 \u3068\u540c\u3058\u6d41\u5100\u30fb\u672c\u6587\u306b\u306f1\u6587\u5b57\u3082\u8db3\u3055\u306a\u3044)', true);
+ {const _i1=S9.indexOf('if (!owner) for (const p of _pairs())'), _i2=S9.indexOf('const _run65 = meosClockLineRunning');
+  ok(_i1>0 && _i2>_i1, '\u2605\u2605owner \u306e\u5ba3\u8a00\u3088\u308a**\u5f8c\u308d**\u306b\u7f6e\u304f(v4.1.1113\u306eTDZ\u306e\u7a74\u3092\u4f5c\u3089\u306a\u3044)', [_i1,_i2]);}
+ ok(/if \(character < 0 \|\| character > at\) return null;/.test(S9)
+    && /if \(!c \|\| c\.done\) return null;/.test(S9),
+    '\u2605\u5f53\u305f\u308a\u306f 0\u6841\u301c\u23f0\u306e\u6841(\u25bc \u3068\u540c\u3058\u7269\u5dee\u3057)\u30fb\u6e08\u3093\u3060\u7269\u306b\u306f\u51fa\u3055\u306a\u3044', true);
+ ok(/async function meosClockStopHere\(doc, key, line\)/.test(S9) && /done: false, off: true \}, line\)/.test(S9),
+    '\u2605\u6b62\u3081\u308b\u306f\u672c\u6587\u3078 \u23f8 \u3092\u66f8\u304f(v4.1.24\u306e\u4f11\u307f\u3068\u540c\u30581\u3064\u306e\u9053)', true);
  /* ★★★v4.2.63= 席を渡す時の決め手は、受け取る側の ▶️ ただ1つ。無印=そのまま次へ / ▶️=押すまで待つ。 */
  {const Q=(w)=>X.meosClockFcParse('<!-- Mew!UFC \u23f0'+w+' 1. \u21ba\u21bb5m -->')||{};
   ok(Q('').manual===false && Q('\u25b6\ufe0f').manual===true && Q('\u25b6').manual===true,
      '\u2605\u2605\u2605\u7121\u5370=\u305d\u306e\u307e\u307e\u6b21\u3078 / \u25b6\ufe0f\u3082\u25b6\u3082\u8aad\u3080(read-both)', [Q('').manual,Q('\u25b6\ufe0f').manual,Q('\u25b6').manual]);
   ok(Q('\ud83d\udd10\u25b6\ufe0f').lock===true && Q('\ud83d\udd10\u25b6\ufe0f').manual===true,
      '  \u9854\u306e\u4ed6\u306e\u5370\u3068\u4e26\u3079\u3089\u308c\u308b', true);}
- ok(/\+ \(spec\.manual \? '\\u25b6\\ufe0f' : ''\)/.test(S9),
-    '\u2605\u66f8\u304f\u306e\u306f\u8272\u4ed8\u304d\u306e \u25b6\ufe0f(\u7d20\u306e \u25b6 \u306f\u53c2\u7167\u7b26 \u25b6\u25c0 that\u4f7f\u3063\u3066\u3044\u308b)', true);
+ ok(/\+ \(spec\.manual \? '\\u23ef\\ufe0f' : ''\)/.test(S9),
+    '\u2605\u66f8\u304f\u306e\u306f \u23ef\ufe0f(v4.2.65 \u3067\u5f15\u8d8a\u3057)', true);
  ok(/function meosChainWantsClick\(doc, key, line\)/.test(S9) && /return !!\(nx && nx\.manual\);/.test(S9),
     '\u2605\u2605\u2605\u6c7a\u3081\u308b\u306e\u306f1\u304b\u6240(\u6e21\u3059\u5165\u53e3\u306f2\u3064\u3042\u308b)', true);
  ok(/if \(!\(_nx54 && _nx54\.manual\)\) \{/.test(S9) && /if \(meosChainWantsClick\(doc, c\.key, c\.line\)\) \{/.test(S9),
@@ -2018,10 +2033,10 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
  ok(/if \(character >= 0 && character <= info\.idStart\) return info;/.test(S9),
     '\u2605\u2605\u2605\u25bc \u306e\u5f53\u305f\u308a\u306f 0\u6841\u304b\u3089(\u6bdc\u540d\u3088\u308a\u5de6\u306f\u3001\u305c\u3093\u3076\u5370)', true);
  ok(/function meosClockPlayHitAt\(document, line, character\)/.test(S9)
-    && /if \(character < 0 \|\| character > end\) return null;/.test(S9),
+    && /if \(character < 0 \|\| character > at\) return null;/.test(S9),
     '\u2605\u2605\u2605\u25b6\ufe0f \u3082\u540c\u3058\u5f62(0\u6841\u301c\u25b6\ufe0f\u306e\u53f3\u7aef)= \u5370\u3092 2 \u3064\u4f5c\u3089\u306a\u3044', true);
- ok(/if \(!c \|\| !c\.manual \|\| c\.done\) return null;/.test(S9),
-    '  \u62bc\u305b\u308b\u306e\u306f \u25b6\ufe0f \u3092\u6301\u3064 1 \u672c\u3060\u3051(\u5370that\u300c\u5f85\u3064\u300d\u3068\u8a00\u3063\u3066\u3044\u308b\u7269)', true);
+ ok(/if \(!c \|\| c\.done\) return null;/.test(S9),
+    '  \u904b\u8ee2\u30dc\u30bf\u30f3\u306f\u5168\u90e8\u306e\u23f0\u884c\u306b\u51fa\u308b(\u6e08\u3093\u3060\u7269\u3092\u9664\u304f)', true);
  ok(/hit=' \+ !!meosArrowHitAt\(/.test(S9),
     '\u2605\u8a08\u6e2c\u3082\u672c\u5f53\u306e\u5f53\u305f\u308a\u304b\u3089\u5f15\u304f(\u53e4\u30441\u6841\u306e\u5f0fthat\u5618\u3092\u3064\u3044\u3066\u3044\u305f)', true);
  /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */

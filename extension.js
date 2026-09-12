@@ -10154,7 +10154,7 @@ function meosScheduleClockMetaWrite(doc) {
 //     -> **役that違う物は、住所を分ける**。
 //   *数字を許すのは \u23f8 の直後だけ= 印の欄全体に数字を許すと \u23f0 2026-... の
 //     2026 を印として食う(起点that消える)。
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*((?:[\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u2713\u2714\u2705\u25b6\ufe0f]|\u23f8\ufe0f?[0-9]*)*)[ \t]*([^\n<]*?)[ \t]*-->/;
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*((?:[\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u2713\u2714\u2705\u25b6\u23ef\ufe0f]|\u23f8\ufe0f?[0-9]*)*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
 // \u23f8=休み(予定は書いたまま、鳴らないでいる)
 // ★★★v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを
@@ -10495,7 +10495,13 @@ function meosClockFcParse(text) {
   //   ★印は例外に付ける(⏸🔒✓👁 と同じ流儀)= 連なりの普通は「そして」so、待たせる方に印を書く。
   //   ★`▶` と `▶️` の両方を読む(read-both)。書くのは色付きの `▶️`=
   //     素の `▶` は参照符 `▶◀` が既に使っている(見分けが付く形で書く)。
-  return { pausedRound, manual: face.indexOf('\u25b6') >= 0, lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, ufc: meosIsUnfoldingSpecLine(t) };
+  // ★★★v4.2.65(俊克 2026.09.12 pm10:31「⏯️ でGo!!」):
+  //   ★★★**書く印は `⏯️`、描くボタンは `▶️`/`⏸️`**= 形を1つの意味に戻す。
+  //     v4.2.63 は「押すまで待つ」に `▶️` を使ったthat、改良1で `▶️` は**今の姿**を描く物になった。
+  //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
+  //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
+  //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10769,7 +10775,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       // ★★★v4.2.50: `wait` = **待っている**(畳むthat、済みではない)= FC＋✓なし。
       //   done は今までどおり FC＋✓。名前(FC/UFC)と印(✓)を別々に決められるようにした。
-      ? ('<!-- ' + MEOS_MEW_SIG + ((spec.done || spec.wait) ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.manual ? '\u25b6\ufe0f' : '')   /* ★v4.2.63: 押すまで待つ印 */ + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
+      ? ('<!-- ' + MEOS_MEW_SIG + ((spec.done || spec.wait) ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.manual ? '\u23ef\ufe0f' : '')   /* ★v4.2.65: 押すまで待つ印(書くのは ⏯️ 1つ・▶️ は読むだけ) */ + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
         // ★v4.1.165: 仕掛けの言葉(BigBang / MeW!)は**書いてあった字のまま**戻す
         //   (置き換えた本物の起点を書くと、次の書き戻しで仕掛けthat消える)。
         + ' ' + String((spec.whenSrc != null && String(spec.whenSrc).trim()) ? spec.whenSrc : (spec.when || '')).trim()
@@ -12115,6 +12121,18 @@ function meosApplyTimerLineDecorations(editor) {
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
           let owner = _pairs().find(p => p.end === j) || null;
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+          // ★★★v4.2.65(俊克 改良1/2): **運転ボタンを描く**= 走っていれば `⏸️`、止まっていれば `▶️`。
+          //   ★本文には1文字も足さない(v4.1.64 の 🔓 と同じ流儀)。Rawでは出さない・済んだ物(✓)にも出さない。
+          //   ★★**`owner` の宣言より後ろに置く**= v4.1.1113 で踏んだ穴(TDZ を try/catch that飲み、
+          //     何も描かれず何も言わない)を二度と作らない。
+          if (!c.done && !_rawHere) {
+            const _a65 = txt.indexOf('\u23f0');
+            if (_a65 >= 0) {
+              const _run65 = meosClockLineRunning(doc, owner ? owner.id : '', i);
+              items.push({ range: new vscode.Range(i, _a65, i, _a65),
+                renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
+            }
+          }
           if (c.done) {
             // ★v4.1.20(俊克 改良1「STOPボタンの点滅と同期して、白い✓が点滅すると分かりやすい」):
             //   鳴っている間だけ、1秒ごとに白を消す= 鐘と同じ拍で✓が瞬く(新しい時計は増やさない)。
@@ -17516,30 +17534,64 @@ function meosClockOwnerKeyForLine(document, line) {
   } catch (_) { }
   return '';
 }
+// ★★★v4.2.65(俊克 改良1/2「3mタイマーが動いている時に1mタイマーに▶️を出す。押して実行中は⏸️を出し、
+//   それを押すと▶️に変わる。1つ目のタイマーにも同様に出せば、操作系に一貫性がある」):
+//   ★★★**全部の⏰行に、運転ボタンを1つ描く**= 走っていれば `⏸️`、止まっていれば `▶️`。
+//   ★★★**新しい仕組みは1つも作らない**= 家の中に同じ役の部品that既に在る(v4.1.64 の錠)=
+//     「掛かっている方だけを字にする＝ `🔒` は本文に書き、`🔓` は描くだけ」。
+//     ここも同じ= **止めた事実は本文の `⏸`、次にできる事は描くだけ**。
+//   ★当たりは ▼ と同じ形= **0桁〜⏰の桁**(殻は幅ごと畳んで消しているので、画面では1つの塊)。
 function meosClockPlayHitAt(document, line, character) {
   try {
     const txt = document.lineAt(line).text || '';
     if (txt.indexOf('\u23f0') < 0) return null;
     const c = meosClockFcParse(txt);
-    if (!c || !c.manual || c.done) return null;
-    const at = txt.indexOf('\u25b6');
+    if (!c || c.done) return null;                          // 済んだ物には運転ボタンを出さない
+    const at = txt.indexOf('\u23f0');
     if (at < 0) return null;
-    const end = at + 1 + ((txt.charCodeAt(at + 1) === 0xfe0f) ? 1 : 0);
-    if (character < 0 || character > end) return null;      // 0桁〜▶️の右端(▼と同じ形)
-    return { line, c, at, end };
+    if (character < 0 || character > at) return null;       // 0桁〜⏰の桁(▼と同じ物差し)
+    return { line, c, at, end: at };
   } catch (_) { return null; }
+}
+// その行の時計は、今この膜で走っている1本か。控えthat「どの行か」を持っている(v4.1.1118)。
+function meosClockLineRunning(document, key, line) {
+  try {
+    const sc = _meosPseudoScopes.get(document.uri.toString() + ' ' + key);
+    return !!(sc && sc.line === line);
+  } catch (_) { return false; }
+}
+// 止める= 本文へ `⏸` を書く(v4.1.24の休みと同じ1つの道)。錠thatが掛かっていれば降りられない。
+async function meosClockStopHere(doc, key, line) {
+  try {
+    const lk = doc.uri.toString() + ' ' + key;
+    const sc = _meosPseudoScopes.get(lk);
+    if (sc && sc.lock) {
+      vscode.window.setStatusBarMessage('MeOS: \ud83d\udd10 ' + (sc.name || 'this clock')
+        + ' \u2014 locked. \u2325 Option-click the \ud83d\udd10 to take the lock off.', 6000);
+      return false;
+    }
+    let hit = null; for (const x of meosClockFcScan(doc)) if (x.line === line) hit = x;
+    if (!hit) return false;
+    const _pr = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit.pausedRound || 0);
+    await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: hit.whenSrc, pausedRound: _pr, tags: hit.tags, done: false, off: true }, line);   // v4.2.65: 短い形も起点の字も印も、全部運ぶ
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }
+    _meosChainWait = null;
+    try { meosArmClockFcFor(doc); } catch (_) { }
+    try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+    meosDbg('[play] \u23f8 \u3092\u66f8\u3044\u305f \u884c=' + (line + 1) + ' \u819c=' + key);
+    return true;
+  } catch (_) { return false; }
 }
 // その1本に席を回す(今から数え始める)。渡す口は既に在る物を使い、新しい仕組みは作らない。
 async function meosChainStartHere(doc, key, line) {
   try {
     const rows = meosClockFcScan(doc).filter(x => x.key === key);
     if (!rows.length) return false;
-    const _put = async (x, wait) => meosClockFcSet(doc, x.key, { when: x.when, hold: x.hold, lock: x.lock,
-      cycle: x.cycle, up: x.up, dual: x.dual, rounds: x.rounds, cycleSrc: x.cycleSrc, manual: x.manual,
-      whenSrc: x.whenSrc, tags: x.tags, done: false, wait: !!wait }, x.line);
+    const _put = async (x, wait) => meosClockFcSet(doc, x.key, { when: x.when, hold: x.hold, lock: x.lock, cycle: x.cycle, up: x.up, dual: x.dual, rounds: x.rounds, cycleSrc: x.cycleSrc, manual: x.manual, whenSrc: x.whenSrc, tags: x.tags, done: false, wait: !!wait }, x.line);   // v4.2.65: 同上
     for (const x of rows) if (x.line !== line && x.ufc && !x.done) await _put(x, true);   // 他は待ちへ
-    const me = rows.find(x => x.line === line);
-    if (me && !me.ufc) await _put(me, false);                                             // この1本を走りへ
+    let me = null; for (const x of rows) if (x.line === line) me = x;
+    // ★v4.2.65: 押した1本は**休みも外す**= 押したのに `⏸` のまま、は嘘になる。
+    if (me && (!me.ufc || me.off)) await _put(me, false);                                  // この1本を走りへ
     const lk = doc.uri.toString() + ' ' + key;
     try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }
     _meosChainWait = null;
@@ -17576,9 +17628,14 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       const _pl = meosClockPlayHitAt(editor.document, _ln, editor.selection.active.character);
       if (_pl) {
         const _own = meosClockOwnerKeyForLine(editor.document, _ln);
+        const _run = _own ? meosClockLineRunning(editor.document, _own, _ln) : false;
         meosDbg('[play] \u884c=' + (_ln + 1) + ' caretCh=' + editor.selection.active.character
-          + ' \u5f53\u305f\u308a=0\u301c' + _pl.end + ' \u819c=' + (_own || '\u306a\u3057'));
-        if (_own) { await meosChainStartHere(editor.document, _own, _ln); return; }
+          + ' \u5f53\u305f\u308a=0\u301c' + _pl.end + ' \u819c=' + (_own || '\u306a\u3057') + ' \u8d70\u3063\u3066\u3044\u308b=' + _run);
+        if (_own) {
+          if (_run) await meosClockStopHere(editor.document, _own, _ln);   // \u23f8\ufe0f \u3092\u62bc\u3057\u305f= \u6b62\u3081\u308b
+          else await meosChainStartHere(editor.document, _own, _ln);        // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b
+          return;
+        }
       }
     } catch (_) { }
   }
@@ -29401,8 +29458,12 @@ function meosClockPlayHoverMessage(editor, position) {
     const _pl = meosClockPlayHitAt(editor.document, position.line, position.character);
     if (!_pl) return null;
     const _cy = (_pl.c && Array.isArray(_pl.c.cycle) && _pl.c.cycle.length) ? _pl.c.cycle.join('/') : '';
-    return '\u25b6\ufe0f Start this clock now' + (_cy ? (' \u2014 ' + _cy) : '')
-      + '  \u2014 click. (This one waits for you; the ones without \u25b6\ufe0f follow on by themselves.)';
+    const _own = meosClockOwnerKeyForLine(editor.document, position.line);
+    const _run = _own ? meosClockLineRunning(editor.document, _own, position.line) : false;
+    return _run
+      ? ('\u23f8\ufe0f Stop this clock \u2014 click. (It goes back to \u25b6\ufe0f, and \u23f8 is written on the line so it stays stopped.)')
+      : ('\u25b6\ufe0f Start this clock now' + (_cy ? (' \u2014 ' + _cy) : '') + ' \u2014 click.'
+         + (_pl.c && _pl.c.manual ? ' (\u23ef\ufe0f = this one waits for you when its turn comes.)' : ''));
   } catch (_) { return null; }
 }
 function membraneArrowHoverMessage(editor, position) {

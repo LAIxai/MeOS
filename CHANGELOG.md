@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.65 (2026-09-12)
+- **Every clock now carries one button, and it shows what pressing it will do.** Running, it is `⏸️`; stopped, it is `▶️`. Press to switch. Nothing new was built for this — MeOS has done exactly this with the lock since v4.1.64, writing `🔒` on the line and only drawing `🔓`. Here the line carries `⏸` when you stop it, and the button is drawn.
+- **The mark that says "wait for me when your turn comes" is now `⏯️`.** It was `▶️` for a day. Once `▶️` became the button that starts a clock, one shape would have meant two things on the same line. `▶️` written by yesterday's version is still read, so nothing already written stops working.
+- A clock with a starting time written on it keeps its schedule across a stop: press `▶️` again and it shows the next bell counted from that starting time, not from when you pressed. One without a written start — the second in a chain — begins when you press. That is the difference between an appointment and a stopwatch, and it needs no explaining beyond this line.
+
 ### v4.2.64 (2026-09-12)
 - **The ▼ is now as wide to click as it looks.** 1141 recorded clicks on membrane lines said it plainly: presses landed a column or two either side of a target six columns wide, and the ones that fell to its left missed even though they were on the glyph. On a decorated line everything from the start of the line to the membrane name is hidden or is the ▼ itself — it all draws as that one mark — so all of it now counts as pressing it. The name keeps every one of its own columns.
 - **`▶️` is a button.** The clock waiting for you has the mark, and the mark is where you press: click it and that clock starts counting from now. It reads the same way the ▼ does, from the start of the line through the mark. The bar's "— click" lives in memory and is gone after a restart; `▶️` is written on the line, so the way back is still there next week.
