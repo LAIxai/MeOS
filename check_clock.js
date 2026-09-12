@@ -2009,6 +2009,15 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
   const ALL=(S9.match(/setInterval\(/g)||[]).length;
   ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+ /* ★★★v4.2.72(俊克 改良2「起点のないタイマーは、停止した後に再開したときは、停止した値から
+    カウントしよう。つまり、仮想の起点を変更すると言うことになるのかな」)= そのとおり。
+    止めても仮想の起点を消さず、再開の時に「止まっていた分」だけ先へずらす。
+    起点を書いてある1本は動かない(予定は止めても予定・v4.2.65 改良2)。 */
+ ok(/_meosChainStart\.set\(lk, _base72 \+ _slept\);/.test(S9),
+    '\u2605\u2605\u2605\u4f11\u3093\u3060\u5206\u3060\u3051\u4eee\u60f3\u306e\u8d77\u70b9\u3092\u5148\u3078\u305a\u3089\u3059(\u6b62\u3081\u305f\u5024\u304b\u3089\u7d9a\u304f)', true);
+ {const SH=S9.slice(S9.indexOf('async function meosClockStopHere'), S9.indexOf('async function meosClockStopHere')+1400);
+  ok(!/_meosChainStart\.delete\(lk\)/.test(SH),
+     '  \u6b62\u3081\u308b\u6642\u306b\u306f\u6d88\u3055\u306a\u3044(\u6d88\u3059\u3068\u518d\u958b\u304c0\u304b\u3089\u306b\u306a\u308b)', true);}
  /* ★★★v4.2.71(俊克 改良1「バッジ上でタイマー値を凍結しましょう」)=
     止めた瞬間の**入力**(until / その時の今 / 控え)を覚え、走っている時と同じ1本の道を通す。
     出来上がった字を覚えると、描き方が2つできて必ず食い違う。 */

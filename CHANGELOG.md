@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.72 (2026-09-13)
+- **A clock with no starting time picks up where it stopped.** Stop it at 0.35 left, come back an hour later, press ▶️ — it says 0.35. The moment it began is held in memory rather than written down, so when you press again MeOS moves that moment forward by exactly as long as you were away. A clock that *does* have a starting time written on it still keeps its schedule: an appointment does not move because you looked away. That is the whole difference between the two, and it now shows in the one place it matters.
+
 ### v4.2.71 (2026-09-12)
 - **Stop a clock and its numbers stay where they were.** Until now the badge line went back to showing the badge the moment you stopped, and the reading you were watching vanished. It now holds the last reading, still. What is remembered is not the text but the three things the text was made from — when it was due, what the time was, and what MeOS had noted about the round — so the stopped line is drawn by exactly the same code as a running one. One way of drawing, two states.
 

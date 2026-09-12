@@ -17602,7 +17602,12 @@ async function meosClockStopHere(doc, key, line) {
     const _pr = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit.pausedRound || 0);
     await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: hit.whenSrc, pausedRound: _pr, tags: hit.tags, done: false, off: true }, line);   // v4.2.65: 短い形も起点の字も印も、全部運ぶ
     try { meosFreezeClockFace(lk, line); } catch (_) { }   // ★v4.2.71: 止めた瞬間の顔を凍らせる
-    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }
+    // ★★★v4.2.72(俊克 改良2「起点のないタイマーは、停止した後に再開したときは、停止した値から
+    //   カウントしよう。つまり、仮想の起点を変更すると言うことになるのかな」): ★★★**そのとおり**。
+    //   so止める時に**仮想の起点を消さない**= 再開の時に「止まっていた分」だけ先へずらす(下の口)。
+    //   ★起点を**書いてある**1本は今までどおり動かない(予定は止めても予定so・v4.2.65 改良2)。
+    //     ずらすのは `_meosChainStart`(起点の無い1本の覚え)だけ= 予定とストップウォッチの違いthatそのまま。
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); } catch (_) { }
     _meosChainWait = null;
     try { meosArmClockFcFor(doc); } catch (_) { }
     try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
@@ -17621,7 +17626,17 @@ async function meosChainStartHere(doc, key, line) {
     // ★v4.2.65: 押した1本は**休みも外す**= 押したのに `⏸` のまま、は嘘になる。
     if (me && (!me.ufc || me.off)) await _put(me, false);                                  // この1本を走りへ
     const lk = doc.uri.toString() + ' ' + key;
-    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }   // ★v4.2.71: 走り出したら凍りは溶ける
+    // ★★★v4.2.72: **休みから戻る時は、止まっていた分だけ仮想の起点を先へずらす**=
+    //   止めた値から続く(俊克 改良2)。席that次へ回った時は今までどおり作り直す(輪の入口)。
+    try {
+      const _fz72 = _meosPauseFreeze.get(lk), _base72 = _meosChainStart.get(lk);
+      if (_fz72 && _fz72.line === line && _base72) {
+        const _slept = Math.max(0, Date.now() - _fz72.at);
+        _meosChainStart.set(lk, _base72 + _slept);
+        meosDbg('[play] \u4eee\u60f3\u306e\u8d77\u70b9\u3092 ' + Math.round(_slept / 1000) + '\u79d2 \u5148\u3078 \u884c=' + (line + 1));
+      } else _meosChainStart.delete(lk);
+    } catch (_) { _meosChainStart.delete(lk); }
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }   // ★v4.2.71: 走り出したら凍りは溶ける
     _meosChainWait = null;
     try { meosArmClockFcFor(doc); } catch (_) { }
     try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
