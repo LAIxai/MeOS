@@ -23514,9 +23514,12 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* ★v4.2.67/68: 📦 は Standards の真下・右端(俊克「Standardsボタンの下に右寄せで」)。
    設定 devVsixDir を書いた人にだけ在る駒so、書いていない面では 1px も場所を取らない。 */
 /* ★v4.2.69(俊克「黒文字は目立たないので、黄色文字にしようか」)= 作る人の道具so、
-   面の他の駒と同じ色では埋もれる。黄は「これは普段の操作ではない」と言う色。 */
-.dev-vsix-btn{margin-left:auto;flex:0 0 auto;border:1px solid color-mix(in srgb,#f5c542 45%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:#f5c542;font-weight:800;font-size:12px;line-height:1.2;padding:1px 7px;cursor:pointer;opacity:.9}
-.dev-vsix-btn:hover{opacity:1;border-color:#f5c542}
+   面の他の駒と同じ色では埋もれる。黄は「これは普段の操作ではない」と言う色。
+   ★v4.2.70(俊克「Mepyの黄色と同じくらい明るくてもいいかもよ」)= 新しい値を作らず、
+     **MeOSthat既に持っている黄**(ハイライトの rgba(255,232,40,.95) = 黄身色)を使う。
+     色を1つ足すたびに「MeOSの黄」that増える → [[feedback_one_source_for_mark_count_action]] */
+.dev-vsix-btn{margin-left:auto;flex:0 0 auto;border:1px solid color-mix(in srgb,rgba(255,232,40,.95) 55%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:rgba(255,232,40,.95);font-weight:800;font-size:12px;line-height:1.2;padding:1px 7px;cursor:pointer;opacity:.9}
+.dev-vsix-btn:hover{opacity:1;border-color:rgba(255,232,40,.95)}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
 /* v4.0.306(俊克「Me Dockに最初に表示しているファイル名はスペースの関係上、小さいのは仕方ない。ただ、**角丸四角で

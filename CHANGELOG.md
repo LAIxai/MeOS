@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.70 (2026-09-12)
+- **The 📦 button takes MeOS's own yellow.** Brighter, as asked — and taken from the yellow MeOS already uses for highlighting rather than mixed fresh, so "MeOS yellow" keeps meaning one colour.
+
 ### v4.2.69 (2026-09-12)
 - **📦 Re-install VSIX, in yellow.** The button said only "Re-install", which could be read as reinstalling the editor itself. It now names the thing it installs — the `.vsix` file you see in Finder, rather than "VSX", which is the name of a store. Yellow, because a tool for the person building MeOS should not look like the controls everyone else uses.
 
