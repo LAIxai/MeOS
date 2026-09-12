@@ -11795,6 +11795,7 @@ async function meosGoBackFromAlarm() {
 //   ★★★**置き場所thatが意味を決める**＝ 閉じ膜は「その膜の終わり」so、**解き終わった人thatが必ず通る所**。
 //     ステータスバー1つでは「どの膜の残りか」thatが言えず、2つ掛けたら片方thatが消える。膜の物は膜に置く。
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
+let meosClockPlayDeco = null;   // ★v4.2.74: 運転ボタンの当たり= 手の形(cursor:pointer)
 let meosTimerLineDeco = null;
 let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で浮かせる
 // ★★★v4.1.61(俊克 改良1「UFCでの一時停止表示⏸の文字色を白色にしよう。他が橙色なので、
@@ -11914,6 +11915,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];   // v4.1.148 / v4.1.176
+    const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -12145,8 +12147,11 @@ function meosApplyTimerLineDecorations(editor) {
             const _a65 = txt.indexOf('\u23f0');
             if (_a65 >= 0) {
               const _run65 = meosClockLineRunning(doc, owner ? owner.id : '', i);
-              items.push({ range: new vscode.Range(i, _a65, i, _a65),
+              // ★★★v4.2.74: 駒そのものto、その当たり(0桁〜⏰)の両方に**手の形**を当てる=
+              //   押せる所の上でだけ形that変わる。吹き出しは出さない(何も覆わない)。
+              plays.push({ range: new vscode.Range(i, _a65, i, _a65),
                 renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
+              plays.push({ range: new vscode.Range(i, 0, i, _a65 + 1) });
             }
           }
           if (c.done) {
@@ -12419,6 +12424,10 @@ function meosApplyTimerLineDecorations(editor) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
+    // ★★★v4.2.74: 運転ボタンは**手の形を持つ型**で置く= 押せる所の上でだけ形that変わる。
+    //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
+    if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: 'pointer', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosClockPlayDeco, plays);
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockRoundDeco, rounds);   // v4.1.140: 周回数は別の駒(色も場所も顔と分ける)
@@ -29548,21 +29557,16 @@ function meosArrowHitAt(document, line, character) {
   if (character >= 0 && character <= info.idStart) return info;
   return null;
 }
-// ★v4.2.64: `▶️` の上では、押す物を名指しする(条件③ tipは押す物を名指しする)。
-function meosClockPlayHoverMessage(editor, position) {
-  try {
-    if (!editor || !position) return null;
-    const _pl = meosClockPlayHitAt(editor.document, position.line, position.character);
-    if (!_pl) return null;
-    const _cy = (_pl.c && Array.isArray(_pl.c.cycle) && _pl.c.cycle.length) ? _pl.c.cycle.join('/') : '';
-    const _own = meosClockOwnerKeyForLine(editor.document, position.line);
-    const _run = _own ? meosClockLineRunning(editor.document, _own, position.line) : false;
-    return _run
-      ? ('\u23f8\ufe0f Stop this clock \u2014 click. (It goes back to \u25b6\ufe0f, and \u23f8 is written on the line so it stays stopped.)')
-      : ('\u25b6\ufe0f Start this clock now' + (_cy ? (' \u2014 ' + _cy) : '') + ' \u2014 click.'
-         + (_pl.c && _pl.c.manual ? ' (\u23ef\ufe0f = this one waits for you when its turn comes.)' : ''));
-  } catch (_) { return null; }
-}
+// ★★★v4.2.74(俊克 2026.09.13 am00:29「そのボタンを押す意味は、tipを出す必要that無いので、
+//   出さないようにしよう」＋ am00:39「マウスの形状を変えるというのはどうだろう? ▶️/⏸️ を
+//   認識したとき、マウス形状を手の形にするとかだね」):
+//   ★★★**押す物の上に、押す邪魔を出さない**= 吹き出しは**指の在る所**に浮くので、
+//     押そうとした瞬間に、押したい物をそれ自身の説明that覆う(俊克 バグ1)。
+//   ★★★**合図は、覆わない物で出す**= 手の形。世界中のどのボタンでも同じ意味so、
+//     言葉thatが1文字も要らない。認識されていれば形thatが変わる= 空振りthat押す前に分かる。
+//   ★v4.2.64 で私は「tipは押す物を名指しする」(条件③)を守ったつもりthatった。それは
+//     **名指しする値打ちthat在る印**の話= ▼(押すと何that起きるか読めない)には要る。
+//     ▶️/⏸️ は**形thatもう言っている** → [[project_direct_manipulation_mark]]
 function membraneArrowHoverMessage(editor, position) {
   if (!editor || !position) return null;
   const info = membraneLineInfo(editor.document, position.line);
@@ -35777,8 +35781,6 @@ makeDecorations();
         if (greenMsg) return new vscode.Hover(greenMsg);
         const mstatMsg = mstatBadgeIconHoverMessage(document, position);
         if (mstatMsg) return new vscode.Hover(mstatMsg);
-        const playMsg = meosClockPlayHoverMessage(editor, position);   // ★v4.2.64
-        if (playMsg) return new vscode.Hover(playMsg);
         const arrowMsg = membraneArrowHoverMessage(editor, position);
         if (arrowMsg) return new vscode.Hover(arrowMsg);
         // v3.1.0(俊克): 画像膜=見出し行/画像リンク行にホバーで実画像をポップ表示(グリフ固有ホバーが外れた領域のフォールバック)。

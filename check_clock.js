@@ -2009,6 +2009,15 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
   const ALL=(S9.match(/setInterval\(/g)||[]).length;
   ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+ /* ★★★v4.2.74(俊克「そのボタンを押す意味は、tipを出す必要が無いので、出さないようにしよう」
+    ＋「マウスの形状を手の形にするとかだね」)= 押す物の上に、押す邪魔を出さない。
+    合図は覆わない物(手の形)で出す。 */
+ ok(!/meosClockPlayHoverMessage/.test(S9),
+    '\u2605\u2605\u2605\u25b6\ufe0f/\u23f8\ufe0f \u306e\u4e0a\u306b\u5439\u304d\u51fa\u3057\u3092\u51fa\u3055\u306a\u3044(\u62bc\u3059\u7269\u3092\u305d\u308c\u81ea\u8eab\u306e\u8aac\u660ethat\u8986\u3046)', true);
+ ok(/createTextEditorDecorationType\(\{ cursor: 'pointer'/.test(S9) && /editor\.setDecorations\(meosClockPlayDeco, plays\);/.test(S9),
+    '\u2605\u2605\u2605\u5408\u56f3\u306f\u624b\u306e\u5f62(\u4f55\u3082\u8986\u308f\u306a\u3044\u30fb\u8a00\u8449that1\u6587\u5b57\u3082\u8981\u3089\u306a\u3044)', true);
+ ok(/plays\.push\(\{ range: new vscode\.Range\(i, 0, i, _a65 \+ 1\) \}\);/.test(S9),
+    '  \u99d2\u3082\u5f53\u305f\u308a\u3082\u540c\u3058\u578b= \u898b\u3048\u3066\u3044\u308b\u7269\u3068\u62bc\u305b\u308b\u6240that\u305a\u308c\u306a\u3044', true);
  /* ★★★v4.2.72(俊克 改良2「起点のないタイマーは、停止した後に再開したときは、停止した値から
     カウントしよう。つまり、仮想の起点を変更すると言うことになるのかな」)= そのとおり。
     止めても仮想の起点を消さず、再開の時に「止まっていた分」だけ先へずらす。
