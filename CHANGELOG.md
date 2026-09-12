@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.63 (2026-09-12)
+- **A chain now runs straight through, and `▶️` is how you ask it to stop and wait for you.** Two clocks written one under the other simply follow one another, which is what putting them in a row already looked like it meant. Mark the second one `▶️` and it waits until you press — for the things you have to actually do before the next stretch of time means anything. Eye drops: the five minutes start when the drop goes in, not when the reminder rang.
+- **One mark decides, wherever the turn is passed.** A turn passes at two moments — the bell, and the end of `×N` — and each used to decide for itself, so whether you were asked to press depended on which one you happened to hit. Both now read the same mark on the clock receiving the turn.
+- `▶` is read as well as `▶️`, and `▶️` is what gets written: the plain `▶` already belongs to the reference mark `▶◀`, and the coloured one cannot be mistaken for it.
+
 ### v4.2.62 (2026-09-12)
 - **A clock's reading is no longer written back into what MeOS remembers.** Lines are parsed once and kept for as long as the file is unchanged, so the same objects come back on every sweep. When a chain's next clock began, MeOS filled in the moment it started — "just for this sweep", except the object outlived the sweep. Next time round, the line looked as though a starting time had been written on it, and the routine that marks a written starting point with **p** duly wrote one: the `1.p` that kept appearing was MeOS writing it, every time. Each sweep now works on its own copy, so "just for this sweep" is true.
 - **The turn now actually passes.** The moment a chain's clock began was kept beside the running timer, and ringing clears that, so every ring started the count again from zero — the round stayed at 1 of 2 forever and the next clock never got its turn. The starting moment now lives until the turn passes, which is what it was always meant to mean.

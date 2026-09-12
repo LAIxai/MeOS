@@ -150,7 +150,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   const S11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(!/id="clk-dir"/.test(S11), '\u2605\u2605\u2605向きの駒は面から消えた(選ばせない)', true);
   ok(/dual:true,cycle:/.test(S11), '\u2605\u2605\u2605面は常に \u21ba\u21bb を頼む', true);
-  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く', true);
+  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark, manual: _mn0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く(v4.2.63: \u25b6\ufe0f も)', true);
   ok(/const _pMark = \(\(_up0 \|\| _dl0\) && _org && _org\.getTime\(\) <= Date\.now\(\)\)/.test(S11),
      '\u2605\u2605今(=もう過去)を起点にしたら p と名乗らせる(役を字に焼き付ける)', true);
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
@@ -1999,6 +1999,20 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
   const ALL=(S9.match(/setInterval\(/g)||[]).length;
   ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+ /* ★★★v4.2.63= 席を渡す時の決め手は、受け取る側の ▶️ ただ1つ。無印=そのまま次へ / ▶️=押すまで待つ。 */
+ {const Q=(w)=>X.meosClockFcParse('<!-- Mew!UFC \u23f0'+w+' 1. \u21ba\u21bb5m -->')||{};
+  ok(Q('').manual===false && Q('\u25b6\ufe0f').manual===true && Q('\u25b6').manual===true,
+     '\u2605\u2605\u2605\u7121\u5370=\u305d\u306e\u307e\u307e\u6b21\u3078 / \u25b6\ufe0f\u3082\u25b6\u3082\u8aad\u3080(read-both)', [Q('').manual,Q('\u25b6\ufe0f').manual,Q('\u25b6').manual]);
+  ok(Q('\ud83d\udd10\u25b6\ufe0f').lock===true && Q('\ud83d\udd10\u25b6\ufe0f').manual===true,
+     '  \u9854\u306e\u4ed6\u306e\u5370\u3068\u4e26\u3079\u3089\u308c\u308b', true);}
+ ok(/\+ \(spec\.manual \? '\\u25b6\\ufe0f' : ''\)/.test(S9),
+    '\u2605\u66f8\u304f\u306e\u306f\u8272\u4ed8\u304d\u306e \u25b6\ufe0f(\u7d20\u306e \u25b6 \u306f\u53c2\u7167\u7b26 \u25b6\u25c0 that\u4f7f\u3063\u3066\u3044\u308b)', true);
+ ok(/function meosChainWantsClick\(doc, key, line\)/.test(S9) && /return !!\(nx && nx\.manual\);/.test(S9),
+    '\u2605\u2605\u2605\u6c7a\u3081\u308b\u306e\u306f1\u304b\u6240(\u6e21\u3059\u5165\u53e3\u306f2\u3064\u3042\u308b)', true);
+ ok(/if \(!\(_nx54 && _nx54\.manual\)\) \{/.test(S9) && /if \(meosChainWantsClick\(doc, c\.key, c\.line\)\) \{/.test(S9),
+    '  \u9418\u306e\u53e3\u3082 \u00d7N \u306e\u53e3\u3082\u3001\u305d\u306e1\u3064\u3092\u901a\u308b', true);
+ {const _mn=(S9.match(/manual: [a-z_]+\.manual/g)||[]).length;
+  ok(_mn>=14, '\u2605\u66f8\u304d\u623b\u3059\u53e3\u306f**\u5168\u90e8** \u25b6\ufe0f \u3092\u904b\u3076(1\u3064\u3067\u3082\u843d\u3068\u3059\u3068\u5370\u304c\u6d88\u3048\u308b)', _mn);}
  /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */
  ok(/if \(_meosClocksOff\) return 0;/.test(S9) && /if \(_meosClocksOff\) return;/.test(S9),
     '\u2605\u2605\u2605\u639b\u3051\u308b\u53e3\u306f2\u3064\u3068\u3082\u5143\u6813\u3092\u898b\u308b(\u639b\u3051\u76f4\u3057\u306e\u9053\u3082\u9589\u3058\u308b)', true);
