@@ -17499,6 +17499,56 @@ function mstatBadgeIconDoorRanges(editor) {
   return ranges;
 }
 
+// ★★★v4.2.64(俊克 2026.09.12 pm09:50「膜の▼や▼▲を押すのが、未だに押せたり押せなかったりする。
+//   これを一緒に直して、▶️ボタンを確実に押せるようにしたいね」):
+//   ★★★**▼と同じ物差しを使う**= 印を2つ作らない。⏰行も殻(`<!-- Mew!UFC `)を幅ごと畳んで消しているので、
+//     **0桁〜▶️の右端は、画面では1つの塊**に見えている。そこを全部当たりにする。
+//   ★押せるのは `▶️` を持つ1本だけ= 印that「押すまで待つ」と言っている物so、押す所thatそこに在る
+//     → [[feedback_fix_signal_at_fix_place]] 知らせるUIと直すUIを別に作らない。
+//   ★最下段の `— click` は覚えの側so、開き直すと消える。`▶️` は**本文に在る**so、
+//     1週間後でも膜へ行けば押せる → [[project_clock_in_the_text]]
+// その⏰行の持ち主(膜)の名前。scan that既に答えを持っているので、数え直さない。
+// ★これは `meosLiveClockFor`(この膜の走っている1本は?)とは**別の問い**= 「この行の持ち主は誰か」。
+//   so同じ口には出来ない。ただし `.find` の直打ちは禁じ手(検査that見張っている)so、素直に回す。
+function meosClockOwnerKeyForLine(document, line) {
+  try {
+    for (const x of meosClockFcScan(document)) if (x.line === line) return x.key || '';
+  } catch (_) { }
+  return '';
+}
+function meosClockPlayHitAt(document, line, character) {
+  try {
+    const txt = document.lineAt(line).text || '';
+    if (txt.indexOf('\u23f0') < 0) return null;
+    const c = meosClockFcParse(txt);
+    if (!c || !c.manual || c.done) return null;
+    const at = txt.indexOf('\u25b6');
+    if (at < 0) return null;
+    const end = at + 1 + ((txt.charCodeAt(at + 1) === 0xfe0f) ? 1 : 0);
+    if (character < 0 || character > end) return null;      // 0桁〜▶️の右端(▼と同じ形)
+    return { line, c, at, end };
+  } catch (_) { return null; }
+}
+// その1本に席を回す(今から数え始める)。渡す口は既に在る物を使い、新しい仕組みは作らない。
+async function meosChainStartHere(doc, key, line) {
+  try {
+    const rows = meosClockFcScan(doc).filter(x => x.key === key);
+    if (!rows.length) return false;
+    const _put = async (x, wait) => meosClockFcSet(doc, x.key, { when: x.when, hold: x.hold, lock: x.lock,
+      cycle: x.cycle, up: x.up, dual: x.dual, rounds: x.rounds, cycleSrc: x.cycleSrc, manual: x.manual,
+      whenSrc: x.whenSrc, tags: x.tags, done: false, wait: !!wait }, x.line);
+    for (const x of rows) if (x.line !== line && x.ufc && !x.done) await _put(x, true);   // 他は待ちへ
+    const me = rows.find(x => x.line === line);
+    if (me && !me.ufc) await _put(me, false);                                             // この1本を走りへ
+    const lk = doc.uri.toString() + ' ' + key;
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }
+    _meosChainWait = null;
+    try { meosArmClockFcFor(doc); } catch (_) { }
+    try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+    meosDbg('[chain] \u25b6\ufe0f \u3092\u62bc\u3057\u305f \u2192 \u884c=' + (line + 1) + ' \u819c=' + key);
+    return true;
+  } catch (_) { return false; }
+}
 async function handleMembraneNameSelection(editor, selectionKind) {
   if (!editor) return;
   const now = Date.now();
@@ -17513,10 +17563,23 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       const _i = membraneLineInfo(editor.document, editor.selection.active.line);
       if (_i) meosDbg('[arrow] line=' + _i.line + ' kind=' + _i.kind + ' idStart=' + _i.idStart
         + ' caretCh=' + editor.selection.active.character
-        + ' hit=' + (editor.selection.active.character === _i.idStart)
+        + ' hit=' + !!meosArrowHitAt(editor.document, _i.line, editor.selection.active.character)   /* ★v4.2.64: 計測も本当の当たりから引く(古い1桁の式that嘘をついていた) */
         + ' emptySel=' + editor.selection.isEmpty
         + ' suppressed=' + (now < nameJumpSuppressUntil)
         + ' at=' + JSON.stringify((editor.document.lineAt(_i.line).text || '').substr(editor.selection.active.character, 8)));
+    } catch (_) { }
+  }
+  // ★★★v4.2.64: `▶️` を押した= その1本に席を回す。▼と同じ「マウスの時だけ」の道に乗せる。
+  if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
+    try {
+      const _ln = editor.selection.active.line;
+      const _pl = meosClockPlayHitAt(editor.document, _ln, editor.selection.active.character);
+      if (_pl) {
+        const _own = meosClockOwnerKeyForLine(editor.document, _ln);
+        meosDbg('[play] \u884c=' + (_ln + 1) + ' caretCh=' + editor.selection.active.character
+          + ' \u5f53\u305f\u308a=0\u301c' + _pl.end + ' \u819c=' + (_own || '\u306a\u3057'));
+        if (_own) { await meosChainStartHere(editor.document, _own, _ln); return; }
+      }
     } catch (_) { }
   }
   if (now < nameJumpSuppressUntil) return;
@@ -29302,7 +29365,7 @@ function meosArrowHitAt(document, line, character) {
   //   ★直し＝ **▼ の字から膜名の直前まで、ぜんぶ当たりにする**。これは飾りでも生データでも
   //     「膜名より左＝印の領域」で一致する。膜名から右はジャンプの領域なので触らない(役割の境目は不変)。
   const text = document.lineAt(line).text || '';
-  const glyph = text.search(/[▼▽▲△]/);
+  const glyph = text.search(/[▼▽▲△]/);   // v4.2.64: 印that居るかの確認だけ(当たりの下限は0)
   // ★★★v4.1.108(俊克 9/4 am10:06「折り畳んだ膜や⏰UFCをクリックしただけで、膜that展開されてしまう。
   //   ▼▲ボタンをクリックしている訳じゃないのに」＋ ログthat名指しした):
   //     [arrow] line=114171 idStart=13 caretCh=13 hit=true at="⏰付き膜2_20"
@@ -29314,9 +29377,33 @@ function meosArrowHitAt(document, line, character) {
   //     v4.0.368で「変えてよい」と色で言った、まさにその字。so名前を直そうとして畳んでしまう。
   // ★v4.1.109/110: 「その行に印that居るか」はここでは決めない(下の meosArrowPressBlocked / tip側)。
   //   ここは**桁の物差しだけ**＝ ▼の字から膜名の直前まで。
-  const lo = (glyph >= 0) ? glyph : Math.max(0, info.idStart - 1);
-  if (character >= lo && character <= info.idStart) return info;
+  // ★★★v4.2.64(俊克 2026.09.12 pm09:58「▼膜名と表示されているときの ▼ は、0桁目を認識するように
+  //   すればいいんじゃないの? 折り畳まれたときは ▼▲ が0〜1桁目ということだよね」＋実測1141件):
+  //   ★★★**俊克thatが正しい。画面で見えている物を、そのまま当たりにする。**
+  //     飾りの時、`<!-- {* `(0〜7) と `mCN=`(9〜12) は**幅ごと畳んで消している**ので、
+  //     0〜idStart の桁は**全部、画面では1つの ▼ に見えている**。
+  //   ★★★v4.0.359 で私は「膜名より左＝印の領域」と書きながら、**8桁(▼の字)から始めていた**。
+  //     so 0〜7 に落ちたクリックは「▼を押しているのに効かない」になっていた(実測21件)。
+  //     → **書いた通りに、0から始める**。
+  //   ★→ [[project_direct_manipulation_mark]] の条件①「印は押せる大きさ」。
+  //   ★★表示の状態で**分けない**= 押した瞬間、その行はもう「カーソル行＝生データ」so、
+  //     モードで分けると**初回クリックが必ず外れる**(押す前の姿を見に行く道は、ここには無い)。
+  //   ★左へ伸ばすのは生データでも安全= 0〜7桁は殻(`<!-- {* `)で、**触るなと色で言っている所**
+  //     (v4.0.368)。そこを押したら畳む、はむしろ筋that通る。膜名(idStartより右)は1桁も取らない。
+  if (glyph < 0 && info.idStart <= 0) return null;
+  if (character >= 0 && character <= info.idStart) return info;
   return null;
+}
+// ★v4.2.64: `▶️` の上では、押す物を名指しする(条件③ tipは押す物を名指しする)。
+function meosClockPlayHoverMessage(editor, position) {
+  try {
+    if (!editor || !position) return null;
+    const _pl = meosClockPlayHitAt(editor.document, position.line, position.character);
+    if (!_pl) return null;
+    const _cy = (_pl.c && Array.isArray(_pl.c.cycle) && _pl.c.cycle.length) ? _pl.c.cycle.join('/') : '';
+    return '\u25b6\ufe0f Start this clock now' + (_cy ? (' \u2014 ' + _cy) : '')
+      + '  \u2014 click. (This one waits for you; the ones without \u25b6\ufe0f follow on by themselves.)';
+  } catch (_) { return null; }
 }
 function membraneArrowHoverMessage(editor, position) {
   if (!editor || !position) return null;
@@ -35531,6 +35618,8 @@ makeDecorations();
         if (greenMsg) return new vscode.Hover(greenMsg);
         const mstatMsg = mstatBadgeIconHoverMessage(document, position);
         if (mstatMsg) return new vscode.Hover(mstatMsg);
+        const playMsg = meosClockPlayHoverMessage(editor, position);   // ★v4.2.64
+        if (playMsg) return new vscode.Hover(playMsg);
         const arrowMsg = membraneArrowHoverMessage(editor, position);
         if (arrowMsg) return new vscode.Hover(arrowMsg);
         // v3.1.0(俊克): 画像膜=見出し行/画像リンク行にホバーで実画像をポップ表示(グリフ固有ホバーが外れた領域のフォールバック)。

@@ -2013,6 +2013,17 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '  \u9418\u306e\u53e3\u3082 \u00d7N \u306e\u53e3\u3082\u3001\u305d\u306e1\u3064\u3092\u901a\u308b', true);
  {const _mn=(S9.match(/manual: [a-z_]+\.manual/g)||[]).length;
   ok(_mn>=14, '\u2605\u66f8\u304d\u623b\u3059\u53e3\u306f**\u5168\u90e8** \u25b6\ufe0f \u3092\u904b\u3076(1\u3064\u3067\u3082\u843d\u3068\u3059\u3068\u5370\u304c\u6d88\u3048\u308b)', _mn);}
+ /* ★★★v4.2.64(俊克「▼膜名と表示されているときの ▼ は0桁目を認識するように」＋実測1141件)=
+    画面で1つの印に見えている所は、全部当たり。▼も ▶️ も同じ物差し。 */
+ ok(/if \(character >= 0 && character <= info\.idStart\) return info;/.test(S9),
+    '\u2605\u2605\u2605\u25bc \u306e\u5f53\u305f\u308a\u306f 0\u6841\u304b\u3089(\u6bdc\u540d\u3088\u308a\u5de6\u306f\u3001\u305c\u3093\u3076\u5370)', true);
+ ok(/function meosClockPlayHitAt\(document, line, character\)/.test(S9)
+    && /if \(character < 0 \|\| character > end\) return null;/.test(S9),
+    '\u2605\u2605\u2605\u25b6\ufe0f \u3082\u540c\u3058\u5f62(0\u6841\u301c\u25b6\ufe0f\u306e\u53f3\u7aef)= \u5370\u3092 2 \u3064\u4f5c\u3089\u306a\u3044', true);
+ ok(/if \(!c \|\| !c\.manual \|\| c\.done\) return null;/.test(S9),
+    '  \u62bc\u305b\u308b\u306e\u306f \u25b6\ufe0f \u3092\u6301\u3064 1 \u672c\u3060\u3051(\u5370that\u300c\u5f85\u3064\u300d\u3068\u8a00\u3063\u3066\u3044\u308b\u7269)', true);
+ ok(/hit=' \+ !!meosArrowHitAt\(/.test(S9),
+    '\u2605\u8a08\u6e2c\u3082\u672c\u5f53\u306e\u5f53\u305f\u308a\u304b\u3089\u5f15\u304f(\u53e4\u30441\u6841\u306e\u5f0fthat\u5618\u3092\u3064\u3044\u3066\u3044\u305f)', true);
  /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */
  ok(/if \(_meosClocksOff\) return 0;/.test(S9) && /if \(_meosClocksOff\) return;/.test(S9),
     '\u2605\u2605\u2605\u639b\u3051\u308b\u53e3\u306f2\u3064\u3068\u3082\u5143\u6813\u3092\u898b\u308b(\u639b\u3051\u76f4\u3057\u306e\u9053\u3082\u9589\u3058\u308b)', true);

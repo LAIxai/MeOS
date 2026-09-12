@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.64 (2026-09-12)
+- **The ▼ is now as wide to click as it looks.** 1141 recorded clicks on membrane lines said it plainly: presses landed a column or two either side of a target six columns wide, and the ones that fell to its left missed even though they were on the glyph. On a decorated line everything from the start of the line to the membrane name is hidden or is the ▼ itself — it all draws as that one mark — so all of it now counts as pressing it. The name keeps every one of its own columns.
+- **`▶️` is a button.** The clock waiting for you has the mark, and the mark is where you press: click it and that clock starts counting from now. It reads the same way the ▼ does, from the start of the line through the mark. The bar's "— click" lives in memory and is gone after a restart; `▶️` is written on the line, so the way back is still there next week.
+- The click measurement had been reporting against a rule one column wide while the real test was six. It now asks the same question the press does.
+
 ### v4.2.63 (2026-09-12)
 - **A chain now runs straight through, and `▶️` is how you ask it to stop and wait for you.** Two clocks written one under the other simply follow one another, which is what putting them in a row already looked like it meant. Mark the second one `▶️` and it waits until you press — for the things you have to actually do before the next stretch of time means anything. Eye drops: the five minutes start when the drop goes in, not when the reminder rang.
 - **One mark decides, wherever the turn is passed.** A turn passes at two moments — the bell, and the end of `×N` — and each used to decide for itself, so whether you were asked to press depended on which one you happened to hit. Both now read the same mark on the clock receiving the turn.
