@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.66 (2026-09-12)
+- **Pressing the button no longer opens the line up.** A press is a press, not a visit — the line stays as it was drawn, so you can press again straight away. The ▼ was taught this in v4.0.362; the new button now rides the same part rather than a copy of it.
+- **The red `⏸` is gone from the drawn line.** The button already says the clock is stopped, and saying it twice costs a mark. `⏸` stays written on the line, so a stopped clock is still stopped tomorrow — you just see it in the raw text rather than painted red.
+- **Where it stopped is shown at the end of the line: `×1/2`.** It used to be a number beside the `⏸`, and before that it was borrowed onto the badge row above. It now sits where the same count sits while the clock runs, so your eye does not have to move.
+- Raw lines get nothing at all now — no colour, no added mark. A line shown raw is there to be edited.
+
 ### v4.2.65 (2026-09-12)
 - **Every clock now carries one button, and it shows what pressing it will do.** Running, it is `⏸️`; stopped, it is `▶️`. Press to switch. Nothing new was built for this — MeOS has done exactly this with the lock since v4.1.64, writing `🔒` on the line and only drawing `🔓`. Here the line carries `⏸` when you stop it, and the button is drawn.
 - **The mark that says "wait for me when your turn comes" is now `⏯️`.** It was `▶️` for a day. Once `▶️` became the button that starts a clock, one shape would have meant two things on the same line. `▶️` written by yesterday's version is still read, so nothing already written stops working.

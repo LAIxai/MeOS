@@ -12152,32 +12152,30 @@ function meosApplyTimerLineDecorations(editor) {
             //   当初は橙と同系統so赤だと目立ち難いかと思ったthat、**統一感that無い**ね」):
             //   ★**同じ意味の物that場所で色を変えると、色thatが意味を失う**= 休みは休みso、いつも赤。
             //   ★v4.1.66で \u21ba\u21bb に色を入れた今、行の上には既に色that在る= 赤は埋もれない。
-            pausesOut.push(new vscode.Range(i, at, i, at + len));
-            // ★★v4.1.152(俊克 改良1「\u23f8 の右の繰り返した回数『21』は**白色にして目立たせよう**」):
-            //   ★数字は**結果**so、休みの赤(印)とは役that違う= 白で立たせる(\u2713 と同じ白い駒を使う)。
-            try {
-              const _dg = /[0-9]+/.exec(txt.slice(at + len, at + len + 8));
-              if (_dg && _dg.index === 0) dones.push(new vscode.Range(i, at + len, i, at + len + _dg[0].length));
-            } catch (_) { }
-            // ★★★v4.1.152(俊克 改良1/2「インラインのとき/Rawモードの時、右端の \u00d721 は見せるべきではない」):
-            //   ★★★**生を見せている行では、本文the `\u23f8N` thatもう同じことを言っている**= 二度言わない。
-            //     飾りは「本文に無い物」を足す時にだけ出す([[feedback_one_source_for_mark_count_action]])。
-            //   ★★借りた行に出すのは**止めた時の回数**= 本文の `\u23f8N`(今どこか)とは別の数so、重複しない。
-            //     覚えthatが無い時(再起動後など)は本文の数をそのまま出す。
-            const _bg3r = meosClockBadgeRowForLine(doc, i);
-            let _bg3 = -1;
-            try { _bg3 = (_bg3r >= 0 && !meosShowsRawLine(editor, _bg3r) && !meosShowsRawLine(editor, i)) ? _bg3r : -1; } catch (_) { _bg3 = -1; }
-            if (_bg3 >= 0) {
-              const _lk3 = uri + ' ' + (owner ? owner.id : '');
-              const _stop = _meosPauseStopRound.has(_lk3) ? _meosPauseStopRound.get(_lk3) : c.pausedRound;
-              if (_stop > 0) {
-                let _l3 = 0; try { _l3 = doc.lineAt(_bg3).text.length; } catch (_) { }
-                if (_l3) badgeHide.push(new vscode.Range(_bg3, 0, _bg3, _l3));
-                const _pt9 = '\u00d7' + _stop + (c.rounds > 0 ? ('/' + c.rounds) : '');
-                rounds.push({ range: new vscode.Range(_bg3, _l3, _bg3, _l3),
-                  renderOptions: { after: { contentText: _pt9, color: '#e0803a', fontWeight: '800' } } });
-              }
+            // ★★★v4.2.66(俊克 改良2「止めた時、従来の赤文字の『⏸1』that出るのは、もう不要だよね」
+            //   ＋ 改良4「末尾に 1/2 のように、どの周期で止まっているかを示すべき」):
+            //   ★★★**運転ボタン(▶️)that「止まっている」をもう言っている**= 赤い `⏸` は二度目の同じ話so、
+            //     飾りの側では**畳んで消す**。本文には残る(開き直しても止まったまま= v4.1.24の仕掛け)。
+            //   ★★消えた数(何周目で止まったか)は**行の末尾へ移す**= `×1/2`。
+            //     走っている時に出ている `×N/M` と**同じ形・同じ場所**so、目の動きthat変わらない。
+            //   ★Rawでは今までどおり本物の字that見える(飾りを足しも引きもしない= v4.1.161)。
+            let _len66 = len;
+            try { const _d66 = /[0-9]+/.exec(txt.slice(at + len, at + len + 8)); if (_d66 && _d66.index === 0) _len66 = len + _d66[0].length; } catch (_) { }
+            //   ★Rawでは色も付けない= 生の行は編集のための場so、飾りを1つも持ち込まない
+            //     → [[project_raw_line_is_not_for_decoration]]。赤い ⏸ は v4.1.67 で作った物that、
+            //     運転ボタンthatが同じ事を言う今は役目を終えた(俊克 改良2)。
+            if (!_rawHere) {
+              badgeHide.push(new vscode.Range(i, at, i, at + _len66));            // 改良2: ⏸N を畳んで消す
+              const _cl66 = txt.lastIndexOf('-->');
+              let _tail66 = (_cl66 > 0) ? _cl66 : txt.length;
+              while (_tail66 > 0 && txt.charAt(_tail66 - 1) === ' ') _tail66--;
+              const _lk66 = uri + ' ' + (owner ? owner.id : '');
+              const _st66 = _meosPauseStopRound.has(_lk66) ? _meosPauseStopRound.get(_lk66) : c.pausedRound;
+              if (_st66 > 0) rounds.push({ range: new vscode.Range(i, _tail66, i, _tail66),   // 改良4: 末尾へ ×1/2
+                renderOptions: { after: { contentText: '  \u00d7' + _st66 + (c.rounds > 0 ? ('/' + c.rounds) : ''), color: '#e0803a', fontWeight: '800' } } });
             }
+            // ★★★v4.2.66: v4.1.152 は同じ数をバッジ行へ**借りて**出していた。末尾へ移した今、
+            //   借りる相手は要らない= 同じ物を2か所に出さない → [[feedback_one_source_for_mark_count_action]]
             continue;
           }
           const until = byId.get(owner ? owner.id : '');
@@ -17632,8 +17630,16 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         meosDbg('[play] \u884c=' + (_ln + 1) + ' caretCh=' + editor.selection.active.character
           + ' \u5f53\u305f\u308a=0\u301c' + _pl.end + ' \u819c=' + (_own || '\u306a\u3057') + ' \u8d70\u3063\u3066\u3044\u308b=' + _run);
         if (_own) {
+          // ★★★v4.2.66(俊克 改良1「ボタンをクリックすると必ずRaw表示になってしまう」):
+          //   ★★★**押した結果that、次に押す物を消していた**= v4.0.362 で ▼ に対して直したのと同じ穴。
+          //     「その行を編集しに来た」のではなく「ボタンを押した」だけso、カーソル行扱いを外す。
+          //   ★家の中の同じ役の部品(setRefNoRaw)にそのまま乗る= 新しい仕掛けを作らない。
+          setRefNoRaw(editor.document, _ln);
           if (_run) await meosClockStopHere(editor.document, _own, _ln);   // \u23f8\ufe0f \u3092\u62bc\u3057\u305f= \u6b62\u3081\u308b
           else await meosChainStartHere(editor.document, _own, _ln);        // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b
+          setRefNoRaw(editor.document, _ln);   // 途中の refresh で解けていても張り直す(v4.0.362と同じ)
+          try { refresh(editor); } catch (_) { }
+          try { meosTickTimerLines(); } catch (_) { }   // ★改良3: 押した瞬間に ▶️⇄⏸️ that入れ替わる
           return;
         }
       }

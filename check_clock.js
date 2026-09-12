@@ -857,9 +857,11 @@ console.log('\u325b \u23f8\u306e\u8272 / Opt \u3067\u4e00\u89a7 / \u5909\u308f\u
  /* v4.1.64: 見せかけの \ud83d\udd13 は色を持たない項目so、数える前に外す(見るのは \u23f8 の色だけ)。 */
  /* v4.1.66: 同じ行に輪の印の色(緑)と見せかけの\ud83d\udd13 も乗るso、\u23f8 の色だけを見る。 */
  const col=(g)=>g.filter(x=>/#ffffff|#ff4d4d/.test(x[0]||'')).map(x=>/#ffffff/.test(x[0])?'white':'red').join(',');
- ok(col(inHere)==='red'&&col(outside)==='red', '\u2605\u2605\u2605v4.1.67: \u23f8 \u306f**\u3044\u3064\u3082\u8d64**(\u540c\u3058\u610f\u5473\u306e\u7269that\u5834\u6240\u3067\u8272\u3092\u5909\u3048\u306a\u3044)', [col(inHere),col(outside)]);
- ok(col(outside)==='red', '\u2605\u2605\u2605\u6a59\u3067\u306a\u3051\u308c\u3070 \u23f8 \u306f\u8d64(\u819c\u304c\u901a\u5e38\u306e\u72b6\u614b)', col(outside));
- ok(col(inHere).split(',').length===1&&col(outside).split(',').length===1, '  \u5857\u308b\u306e\u306f1\u6587\u5b57\u3060\u3051(\u884c\u5168\u4f53\u306f\u6a59\u306e\u307e\u307e)', [inHere.length,outside.length]);
+ /* ★★★v4.2.66(俊克 改良2「止めた時、赤文字の ⏸1 が出るのは、もう不要だよね」):
+    運転ボタン(▶️)が「止まっている」をもう言っているので、⏸ の赤も数字の白も出さない。
+    v4.1.67「⏸ はいつも赤」は、その印しか無かった時の掟。印が増えたので、二度言うのをやめた。 */
+ ok(col(inHere)===''&&col(outside)==='', '\u2605\u2605\u2605\u23f8 \u306b\u8272\u3092\u4ed8\u3051\u306a\u3044(\u904b\u8ee2\u30dc\u30bf\u30f3that\u540c\u3058\u4e8b\u3092\u8a00\u3063\u3066\u3044\u308b)', [col(inHere),col(outside)]);
+ ok(col(inHere)===col(outside), '  \u819c\u306e\u4e2d\u3067\u3082\u5916\u3067\u3082\u540c\u3058(\u5834\u6240\u3067\u5909\u3048\u306a\u3044\u306f\u751f\u304d\u3066\u3044\u308b)', [col(inHere),col(outside)]);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/var _stopMode=\(!vmAlt\)&&/.test(S), '\u2605\u2605Opt \u3092\u62bc\u3057\u3066\u3044\u308b\u9593\u306f Stop \u3092\u9000\u3051\u308b', true);
  ok(/document\.addEventListener\('mousemove',function\(e\)\{vmSetAlt/.test(S), '\u2605\u9375\u76e4\u306e\u7126\u70b9\u304c\u7121\u3044\u6642\u3067\u3082\u5206\u304b\u308b(\u30de\u30a6\u30b9\u304c altKey \u3092\u9023\u308c\u3066\u6765\u308b)', true);
@@ -1022,8 +1024,10 @@ console.log('\u3260 \u56f2\u3044\u306e\u4e2d\u306f\u6587\u5b57 / \u672c\u6587tha
 console.log('\u3261 \u23f8\u306f\u3044\u3064\u3082\u8d64 / \u4e00\u89a7\u306e\u5199\u3057\u3092\u65b0\u3057\u304f\u3059\u308b / \u2610\u3092\u62bc\u3057\u3066\u3082\u52b9\u304f');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/pausesOut\.push\(new vscode\.Range\(i, at, i, at \+ len\)\);/.test(S)&&!/orange\.has\(i\) \? pausesIn/.test(S),
-    '\u2605\u2605\u2605\u23f8 \u306f\u5834\u6240\u3067\u8272\u3092\u5909\u3048\u306a\u3044(\u610f\u5473that\u540c\u3058\u306a\u3089\u8272\u3082\u540c\u3058)', true);
+ /* ★v4.2.66(俊克 改良2「止めた時、赤文字の ⏸1 が出るのは、もう不要」)=
+    運転ボタン(▶️)が「止まっている」をもう言っているので、赤い ⏸ は役目を終えた。飾りでは畳んで消す。 */
+ ok(/badgeHide\.push\(new vscode\.Range\(i, at, i, at \+ _len66\)\);/.test(S) && !/pausesOut\.push\(/.test(S),
+    '\u2605\u2605\u2605\u23f8N \u306f\u98fe\u308a\u3067\u306f\u7573\u3093\u3067\u6d88\u3059(\u8d64\u3082\u767d\u3082\u3082\u3046\u51fa\u3055\u306a\u3044)', true);
  /* \u2605v4.1.1110: 向きは周期と別(v4.1.1109/1110)。控えを毎回新しくする、という意図はそのまま。 */
  ok(/_s\.up = !!c\.up;/.test(S) && /_s\.tags = c\.tags/.test(S),
     '\u2605\u2605\u2605\u639b\u304b\u3063\u3066\u3044\u308b\u7269\u306e**\u898b\u305f\u76ee\u306e\u63a7\u3048**\u3092\u6bce\u56de\u65b0\u3057\u304f\u3059\u308b(\u4e00\u89a7\u3068\u884c\u304cが\u98df\u3044\u9055\u308f\u306a\u3044)', true);
@@ -1497,12 +1501,14 @@ console.log('\u246b \u23f82= 休んだ時に何周終えていたか');
     \u23f8 に止めた時の数を残すと再開の瞬間に 21→116 と飛ぶ。 */
  ok(/_meosPauseStopRound\.set\(lk, _pr9\)/.test(S),
     '\u2605\u2605\u2605止めた時の回数は覚えの側に持つ(本文の \u23f8N とは別の数)', true);
- ok(/const _stop = _meosPauseStopRound\.has\(_lk3\) \? _meosPauseStopRound\.get\(_lk3\) : c\.pausedRound;/.test(S),
-    '  覚えthatが無い時(再起動後)は本文の数をそのまま出す', true);
- ok(/_bg3 = \(_bg3r >= 0 && !meosShowsRawLine\(editor, _bg3r\) && !meosShowsRawLine\(editor, i\)\) \? _bg3r : -1; \} catch \(_\) \{ _bg3 = -1; \}/.test(S),
-    '\u2605\u2605\u2605生を見せている行では \u00d7N を出さない(本文の \u23f8N thatもう言っている)', true);
- ok(/if \(_dg && _dg\.index === 0\) dones\.push/.test(S),
-    '\u2605\u2605\u23f8 の右の数字は白(休みの赤とは役that違う= 結果は立たせる)', true);
+ ok(/const _st66 = _meosPauseStopRound\.has\(_lk66\) \? _meosPauseStopRound\.get\(_lk66\) : c\.pausedRound;/.test(S),
+    '  覚えが無い時(再起動後)は本文の数をそのまま出す', true);
+ /* ★★v4.2.66(俊克 改良4「末尾に 1/2 のように、どの周期で止まっているかを示すべき」)=
+    バッジ行へ借りるのをやめ、行の末尾へ。走っている時の ×N/M と同じ形・同じ場所。 */
+ ok(/rounds\.push\(\{ range: new vscode\.Range\(i, _tail66, i, _tail66\)/.test(S) && !/_bg3/.test(S),
+    '\u2605\u2605\u2605\u6b62\u3081\u305f\u5468\u56de\u6570\u306f\u884c\u306e\u672b\u5c3e\u3078(\u30d0\u30c3\u30b8\u884c\u3092\u501f\u308a\u306a\u3044= \u540c\u3058\u7269\u30922\u304b\u6240\u306b\u51fa\u3055\u306a\u3044)', true);
+ ok(/if \(!_rawHere\) \{/.test(S),
+    '\u2605\u2605\u2605\u751f\u3092\u898b\u305b\u3066\u3044\u308b\u884c\u3067\u306f\u4f55\u3082\u51fa\u3055\u306a\u3044(\u8272\u3082\u542b\u3081\u3066)', true);
  ok(/if \(!_meosPauseCaretIn\.has\(lk\)\) \{/.test(S) && /_meosPauseCaretIn\.add\(lk\);/.test(S),
     '\u2605\u2605\u2605\u23f8N を直すのは**膜に入った瞬間だけ**(中に居る間ずっと直すと打っている最中に本文that動く)', true);
  ok(!/meosClockTailParse/.test(S) && /const line = spec/.test(S) && !/const _blk = spec/.test(S),
