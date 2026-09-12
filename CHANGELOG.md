@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.71 (2026-09-12)
+- **Stop a clock and its numbers stay where they were.** Until now the badge line went back to showing the badge the moment you stopped, and the reading you were watching vanished. It now holds the last reading, still. What is remembered is not the text but the three things the text was made from — when it was due, what the time was, and what MeOS had noted about the round — so the stopped line is drawn by exactly the same code as a running one. One way of drawing, two states.
+
 ### v4.2.70 (2026-09-12)
 - **The 📦 button takes MeOS's own yellow.** Brighter, as asked — and taken from the yellow MeOS already uses for highlighting rather than mixed fresh, so "MeOS yellow" keeps meaning one colour.
 

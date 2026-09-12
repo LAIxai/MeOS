@@ -11466,7 +11466,7 @@ function meosSetClocksOff(off) {
   try { if (_meosGlobalState) _meosGlobalState.update(MEOS_CLOCKS_OFF_KEY, _meosClocksOff); } catch (_) { }
   if (_meosClocksOff) {
     try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
-    try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); _meosChainStart.clear(); } catch (_) { }
+    try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); _meosChainStart.clear(); _meosPauseFreeze.clear(); } catch (_) { }
     try { _meosChainWait = null; } catch (_) { }
     try { meosStopRinging(); } catch (_) { }
   }
@@ -11666,6 +11666,7 @@ async function meosClockSetEnabled(uri, key, on) {
     // v4.1.147: 止めた**その時**の周回数を書き残す(控えは上で消しているので sc から読む)。
     const _pr9 = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit ? (hit.pausedRound || 0) : 0);
     try { if (_pr9 > 0) _meosPauseStopRound.set(lk, _pr9); } catch (_) { }   // v4.1.152: 「どこで止めたか」は覚えの側
+    try { if (hit) meosFreezeClockFace(lk, hit.line); } catch (_) { }   // ★v4.2.71: 顔も凍らせる(⏰リストの☐でも同じ)
     if (hit) await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: hit.whenSrc, pausedRound: _pr9, tags: hit.tags, done: false, off: true }, hit.line);
     // ★★★v4.1.62(俊克 バグ4「リストの✓ボタンを押して…止めた後で、リストから無くなってしまう。
     //   **これは残しておくべきだよ**。貴方は、Stopしたら、リストから消すようなことを書いていたよね。
@@ -11691,6 +11692,7 @@ async function meosClockSetEnabled(uri, key, on) {
       const _r = meosClockRollToNextDay(_when);
       if (_r) { _when = _r; _rolled = true; }
     }
+    try { _meosPauseFreeze.delete(lk); } catch (_) { }   // ★v4.2.71: 走り出すなら凍りは溶ける
     await meosClockFcSet(doc, key, { when: _when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: hit.whenSrc, tags: hit.tags, done: false, off: false }, hit.line);
     try { meosArmClockFcFor(doc); } catch (_) { }
     if (_meosPseudoUntil.has(lk)) {
@@ -11826,6 +11828,20 @@ let meosClockRepDeco = null;      // 内側(何本目)= 分子は白・分母は
 //     本文の `\u23f8N`= 今どこか(戻る先) / 借りた行の `\u00d7N`= どこで止めたか(結果)。
 //   ★更新は**膜に入った時だけ**= 中に居る間ずっと書き替えると、打っている最中に本文that動く。
 const _meosPauseStopRound = new Map();   // uri+key -> 止めた時の周回数(この起動の間だけ覚える)
+// ★★★v4.2.71(俊克 改良1「バッジ上でタイマー値を凍結しましょう」):
+//   ★★★**止めた瞬間の入力を覚える**= 出来上がった字ではなく、until(解ける時刻)と at(その時の今)と
+//     控え。描く側は**走っている時と同じ1本の道**を、この3つを差し替えて通る。
+//   ★字を覚えると「走っている時の描き方」と「止まっている時の描き方」の2つthatできる=
+//     今日それを何度も食い違わせた → [[feedback_one_source_for_mark_count_action]]
+//   ★この起動の間だけ(覚えの側)。開き直せば消える= 本文には何も書かない。
+const _meosPauseFreeze = new Map();      // uri+key -> {until, at, sc, line}
+function meosFreezeClockFace(lk, line) {
+  try {
+    const until = _meosPseudoUntil.get(lk), sc = _meosPseudoScopes.get(lk);
+    if (until == null || !sc) return;
+    _meosPauseFreeze.set(lk, { until, at: Date.now(), sc: Object.assign({}, sc), line });
+  } catch (_) { }
+}
 const _meosPauseCaretIn = new Set();     // uri+key -> 今カーソルthat中に居る(入った瞬間を捕まえるため)    // v4.1.140: 何周目か(顔とは別の役so、別の駒)
 const MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd';   // \u21ba=緑 / \u21bb=水色
 // 行の中の輪の印(\u21ba/\u21bb)の位置。無ければ -1。橙を割る側と、色を置く側that同じ1つから引く。
@@ -12171,20 +12187,33 @@ function meosApplyTimerLineDecorations(editor) {
               while (_tail66 > 0 && txt.charAt(_tail66 - 1) === ' ') _tail66--;
               const _lk66 = uri + ' ' + (owner ? owner.id : '');
               const _st66 = _meosPauseStopRound.has(_lk66) ? _meosPauseStopRound.get(_lk66) : c.pausedRound;
-              if (_st66 > 0) rounds.push({ range: new vscode.Range(i, _tail66, i, _tail66),   // 改良4: 末尾へ ×1/2
+              // ★v4.2.71: 凍らせた顔that在る時は、走る道thatこの数を出す(二度出さない)。
+              const _fzT = _meosPauseFreeze.get(uri + ' ' + (owner ? owner.id : ''));
+              if (!(_fzT && _fzT.line === i) && _st66 > 0) rounds.push({ range: new vscode.Range(i, _tail66, i, _tail66),   // 改良4: 末尾へ ×1/2
                 renderOptions: { after: { contentText: '  \u00d7' + _st66 + (c.rounds > 0 ? ('/' + c.rounds) : ''), color: '#e0803a', fontWeight: '800' } } });
             }
             // ★★★v4.2.66: v4.1.152 は同じ数をバッジ行へ**借りて**出していた。末尾へ移した今、
             //   借りる相手は要らない= 同じ物を2か所に出さない → [[feedback_one_source_for_mark_count_action]]
-            continue;
+            // ★★★v4.2.71(俊克「バッジ上でタイマー値を凍結しましょう」): **凍らせた顔that在れば、
+            //   ここで降りずに走る道へ落とす**= 止まっていても、最後に見えていた数字thatそのまま残る。
+            {
+              const _fzO = _meosPauseFreeze.get(uri + ' ' + (owner ? owner.id : ''));
+              if (!(_fzO && _fzO.line === i)) continue;
+            }
           }
-          const until = byId.get(owner ? owner.id : '');
+          // ★★★v4.2.71: 止まっている1本は、**凍らせた3つ(until / その時の今 / 控え)**で同じ道を通る。
+          //   ここから下は1行も分けない= 走っている時と止まっている時で描き方that食い違わない。
+          const _fz71 = (c.off && !c.done) ? _meosPauseFreeze.get(uri + ' ' + (owner ? owner.id : '')) : null;
+          const _frozen = (_fz71 && _fz71.line === i) ? _fz71 : null;
+          const _nowLine = _frozen ? _frozen.at : _nowAll;
+          const _scLine = () => (_frozen ? _frozen.sc : scById.get(owner ? owner.id : ''));
+          const until = _frozen ? _frozen.until : byId.get(owner ? owner.id : '');
           if (until == null) continue;
           // ★★v4.1.1110: 数字を出すのは**掛かっている1本だけ**= 同じ膜に⏰that2本在る時、
           //   下の行は予約(下書き)so、残り時間も経過時間も持たない。
           //   ★見分けは**書いてある時刻**= 控えた `when` と、この行の `when` thatが同じ物だけthat現役。
           try {
-            const _sc9 = scById.get(owner ? owner.id : '');
+            const _sc9 = _scLine();
             // ★★★v4.1.1119(俊克 9/5 pm01:10「まったく同じ起点で…カウントダウンで見るのthat普通だけど、
             //   同時に、ストップウォッチと並べて見たいということthatある」):
             //   ★★★**鳴る時刻that同じ行は、別々の時計ではない。同じ1つの時計の、別の顔だ**＝
@@ -12205,7 +12234,7 @@ function meosApplyTimerLineDecorations(editor) {
           //     (待機中の行と済んだ行は、上の門番thatもう落としている)。
           if (Array.isArray(c.cycle) && c.cycle.length) {
             const _ar2 = meosClockArrowAt(txt);
-            const _sc8 = scById.get(owner ? owner.id : '');
+            const _sc8 = _scLine();
             if (_ar2 >= 0 && _sc8) {
               // ★v4.1.157: 桁は**読んだ時に控えてある**(cycleSpans)= 入れ子thatあっても数え直さない。
               //   展開した歩thatが同じ字を指すことthatある(8回繰り返す `30s` は8歩とも同じ桁)= それthat正しい。
@@ -12223,7 +12252,7 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★★★**1行に顔that2つ**= `\u21ba\u21bb` なら、残り(緑)と経過(水色)を並べて出す。
           //     色は矢印から借りるso、どちらthatどちらかは字を読まなくても分かる(v4.1.132の続き)。
           //   ★周回数(\u00d7N)は**1つ**= 同じ回を2つの顔で見ているだけso、2度言わない。
-          const _sc7 = scById.get(owner ? owner.id : '') || {};
+          const _sc7 = _scLine() || {};
           // ★v4.1.146: 回数the上限that在れば `\u00d72/3` と出す= **あと何周かthat読める**
           //   (ボクシングの「3ラウンドの2つ目」)。上限that無い時は今までどおり `\u00d72` だけ。
           // ★★v4.1.174: 外の周(\u00d72/3)の隣に、**内側の何本目か**(\u00b73/4)を添える。
@@ -12254,10 +12283,10 @@ function meosApplyTimerLineDecorations(editor) {
           const _mg2 = c.magic || null;
           const _my = (_mg2 && _mg2.years > 0) ? _mg2.years : 0;
           const _face = (u) => {
-            const _ms = meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle, pAt: c.pAt }, _sc7, _nowAll);
+            const _ms = meosClockFaceForLine(until, { when: c.when, up: u, cycle: c.cycle, pAt: c.pAt }, _sc7, _nowLine);
             if (_mg2 && _mg2.doomsday && u) {                       // 初出(1947年6月)fromの通算
               const _yr = 365.2425 * 86400000;
-              const _el = Math.max(0, _nowAll - MEOS_DOOMSDAY_FIRST.getTime());
+              const _el = Math.max(0, _nowLine - MEOS_DOOMSDAY_FIRST.getTime());
               const _yy = Math.floor(_el / _yr);
               return meosYdTail(_el - _yy * _yr, _yy);
             }
@@ -17572,6 +17601,7 @@ async function meosClockStopHere(doc, key, line) {
     if (!hit) return false;
     const _pr = (sc && typeof sc.round === 'number' && sc.round > 0) ? sc.round : (hit.pausedRound || 0);
     await meosClockFcSet(doc, key, { when: hit.when, hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: hit.whenSrc, pausedRound: _pr, tags: hit.tags, done: false, off: true }, line);   // v4.2.65: 短い形も起点の字も印も、全部運ぶ
+    try { meosFreezeClockFace(lk, line); } catch (_) { }   // ★v4.2.71: 止めた瞬間の顔を凍らせる
     try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }
     _meosChainWait = null;
     try { meosArmClockFcFor(doc); } catch (_) { }
@@ -17591,7 +17621,7 @@ async function meosChainStartHere(doc, key, line) {
     // ★v4.2.65: 押した1本は**休みも外す**= 押したのに `⏸` のまま、は嘘になる。
     if (me && (!me.ufc || me.off)) await _put(me, false);                                  // この1本を走りへ
     const lk = doc.uri.toString() + ' ' + key;
-    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); } catch (_) { }
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }   // ★v4.2.71: 走り出したら凍りは溶ける
     _meosChainWait = null;
     try { meosArmClockFcFor(doc); } catch (_) { }
     try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }

@@ -281,7 +281,11 @@ console.log('\u2479 持ち主の無い⏰は対にしない / 「今」は一回
   ok(/_orphanClock/.test(P7) && /!meosClockLineIsLive\(doc, i\)/.test(P7),
      '\u2605\u2605\u2605持ち主の無い⏰は橙の対応に入れない(関係の無い行が対だと名乗らない)', true);
   const D7=FN(S7, 'function meosApplyTimerLineDecorations');
-  ok(/const _nowAll = Date\.now\(\);/.test(D7) && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle, pAt: c\.pAt \}, _sc7, _nowAll\)/.test(D7),
+  /* ★v4.2.71: 「今」は行ごとに1つ(_nowLine)= 走っていれば _nowAll、止めてあれば凍らせた時刻。
+     2つの顔は必ず同じ1つの「今」から出る、という掟はそのまま。 */
+  ok(/const _nowAll = Date\.now\(\);/.test(D7)
+     && /const _nowLine = _frozen \? _frozen\.at : _nowAll;/.test(D7)
+     && /meosClockFaceForLine\(until, \{ when: c\.when, up: u, cycle: c\.cycle, pAt: c\.pAt \}, _sc7, _nowLine\)/.test(D7),
      '\u2605\u2605\u2605一回の描画の「今」は1つ(2つの顔が秒の境目でずれない)', true);
   ok(/const _now = \(typeof now === 'number'\) \? now : Date\.now\(\);/.test(S7),
      '\u2605渡されなければ今までどおり自分で見る', true);
@@ -2005,6 +2009,15 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
   const ALL=(S9.match(/setInterval\(/g)||[]).length;
   ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+ /* ★★★v4.2.71(俊克 改良1「バッジ上でタイマー値を凍結しましょう」)=
+    止めた瞬間の**入力**(until / その時の今 / 控え)を覚え、走っている時と同じ1本の道を通す。
+    出来上がった字を覚えると、描き方が2つできて必ず食い違う。 */
+ ok(/const _meosPauseFreeze = new Map\(\);/.test(S9) && /_meosPauseFreeze\.set\(lk, \{ until, at: Date\.now\(\), sc: Object\.assign\(\{\}, sc\), line \}\);/.test(S9),
+    '\u2605\u2605\u2605\u51cd\u3089\u305b\u308b\u306e\u306f\u5b57\u3067\u306a\u304f**\u5165\u529b**(until / \u305d\u306e\u6642\u306e\u4eca / \u63a7\u3048)', true);
+ ok(/const until = _frozen \? _frozen\.until : byId\.get/.test(S9) && /const _scLine = \(\) => \(_frozen \? _frozen\.sc : scById\.get/.test(S9),
+    '\u2605\u2605\u2605\u63cf\u304f\u9053\u306f1\u672c(\u8d70\u3063\u3066\u3044\u3066\u3082\u6b62\u307e\u3063\u3066\u3044\u3066\u3082\u540c\u3058\u6240\u3092\u901a\u308b)', true);
+ ok(/_meosPauseFreeze\.delete\(lk\)/.test(S9),
+    '  \u8d70\u308a\u51fa\u3057\u305f\u3089\u51cd\u308a\u306f\u6eb6\u3051\u308b', true);
  /* ★★★v4.2.65(俊克 改良1/2)= 全部の⏰行に運転ボタンを描く。走っていれば ⏸️ / 止まっていれば ▶️。
     so「書く印」は ⏯️ へ引越し= 同じ形に2つの意味を持たせない。 */
  ok(/\+ \(spec\.manual \? '\\u23ef\\ufe0f' : ''\)/.test(S9),
