@@ -4,8 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.68 (2026-09-12)
+- **📦 Re-install opens the folder and lets you choose.** v4.2.67 picked the newest build for you, which quietly closed the door MeOS keeps open on purpose: every old build is kept so a regression can be walked back through them. A button that only ever installs the newest one takes that away. It now opens a picker at your `.vsix` folder — newest, oldest, whichever you are chasing — and installs what you point at. It sits under the Standards switch, at the right edge.
+
 ### v4.2.67 (2026-09-12)
-- **A 📦 button that installs your newest build, for the person building it.** Tell MeOS where your `.vsix` files live (`laiMembrane.devVsixDir`) and Me Dock grows one button at the end of its row: press it, MeOS finds the highest version number in that folder, installs it, and offers to reload. Leave the setting empty — as everyone but its author will — and nothing is added to the panel at all. It picks by version number rather than by file date, because old builds are kept and rebuilt ones would lie about their age.
+- **A 📦 button for the person doing the building.** Tell MeOS where your `.vsix` files live (`laiMembrane.devVsixDir`) and Me Dock grows one button. Leave the setting empty — as everyone but its author will — and nothing is added to the panel at all.
 
 ### v4.2.66 (2026-09-12)
 - **Pressing the button no longer opens the line up.** A press is a press, not a visit — the line stays as it was drawn, so you can press again straight away. The ▼ was taught this in v4.0.362; the new button now rides the same part rather than a copy of it.
