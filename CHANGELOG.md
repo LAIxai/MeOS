@@ -4,6 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.76 (2026-09-13)
+- **Where the hand shows, a press works — all of it.** The hand covers the ▼ and the first letter after it, but a press only counted on the left half of that letter. It now counts on the whole width the hand covers. Same for ▶️ / ⏸️.
+- **Press ▼ again without moving the mouse, and it answers.** After opening a membrane the text cursor stayed exactly where you clicked, and the editor only reports a click when the cursor *moves* — so a second click on the same spot went unheard. Folding already moved the cursor aside, which is why it worked sometimes and not others. Both now park the cursor at the start of the line. ▶️ / ⏸️ too.
+- **A slow fold no longer swallows the next click.** A short guard after each press, meant to ignore the cursor movement the press itself causes, was also throwing away a real click that arrived just after a slow fold. A mouse press on ▼ is now taken before that guard.
+
 ### v4.2.75 (2026-09-13)
 - **The cursor turns into a hand over ▼, ▼▲ and ▲ too.** The same signal ▶️ and ⏸️ got in v4.2.74, on the other thing in a note you press. The hand covers exactly the columns a press lands on — the whole mark, from the start of the line — so if the pointer changes, the fold will answer. Lines shown raw draw no mark, and get no hand.
 

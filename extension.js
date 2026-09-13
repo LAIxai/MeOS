@@ -17490,6 +17490,20 @@ function membraneArrowToggleHitInfo(editor) {
   }
   return null;
 }
+// ★★★v4.2.76(俊克 2026.09.13 am10:01「マウスの位置を動かさないでいると、何度押しても切り替わらない
+//   ことがある」＋ meos-debug.log の実測): ★★★**押した後、カーソルを押した桁に残すと、次の1回が届かない**。
+//   VS Code は「選択が変わった時」にしか知らせないので、同じ桁をもう一度押しても何も起きない。
+//   実測= 開く(unfold)はカーソルを元の桁へ戻す → 次のクリックが無音。畳む(fold)は0桁へ退避する
+//   (v0.9.905)ので次が届く＝ **押せたり押せなかったりの差は、開いたか畳んだかだった**。
+//   ★直し＝ 押し終わったら、畳む時と同じ所(その行の0桁)へカーソルを置く。家の中の同じ役の手に揃える。
+function meosParkCaretAfterPress(editor, line) {
+  try {
+    const a = editor && editor.selection ? editor.selection.active : null;
+    if (!a || a.line !== line || a.character === 0) return;
+    editor.selection = new vscode.Selection(line, 0, line, 0);
+  } catch (_) { }
+}
+let _meosArrowToggling = false;   // ★v4.2.76: トグルの最中に届いた2度目は、畳み/開きが食い違うので受けない
 async function toggleMembraneFromArrowHit(editor, info) {
   if (!editor || !info) return false;
   const matched = pairedMembraneForLine(editor.document, info.line);
@@ -17506,7 +17520,11 @@ async function toggleMembraneFromArrowHit(editor, info) {
   //     印は出たまま何度でも押せて、編集したい時は一度離れて戻ればよい(生データはそこで出る)。
   //   ★畳むとカーソルは開始行へ退避する(v0.9.905)ので、抑止するのは常に開始行。
   setRefNoRaw(editor.document, matched.pair.start);
-  await setPairFoldStateAndMstat(editor, matched.pair, !isPairFolded(editor, matched.pair));
+  _meosArrowToggling = true;
+  try {
+    await setPairFoldStateAndMstat(editor, matched.pair, !isPairFolded(editor, matched.pair));
+    meosParkCaretAfterPress(editor, matched.pair.start);   // ★v4.2.76: 次のクリックが必ず届く所へ
+  } finally { _meosArrowToggling = false; }
   setRefNoRaw(editor.document, matched.pair.start);   // トグル中の refresh で解けていても張り直す
   refresh(editor);
   nameJumpSuppressUntil = Date.now() + 250;
@@ -17602,7 +17620,7 @@ function meosClockPlayHitAt(document, line, character) {
     if (!c || c.done) return null;                          // 済んだ物には運転ボタンを出さない
     const at = txt.indexOf('\u23f0');
     if (at < 0) return null;
-    if (character < 0 || character > at) return null;       // 0桁〜⏰の桁(▼と同じ物差し)
+    if (character < 0 || character > at + 1) return null;   // 0桁〜⏰の次の桁(v4.2.76: 手の形 _a65+1 と同じ幅)
     return { line, c, at, end: at };
   } catch (_) { return null; }
 }
@@ -17709,12 +17727,21 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           if (_run) await meosClockStopHere(editor.document, _own, _ln);   // \u23f8\ufe0f \u3092\u62bc\u3057\u305f= \u6b62\u3081\u308b
           else await meosChainStartHere(editor.document, _own, _ln);        // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b
           setRefNoRaw(editor.document, _ln);   // 途中の refresh で解けていても張り直す(v4.0.362と同じ)
+          meosParkCaretAfterPress(editor, _ln);   // ★v4.2.76: ▼と同じ= 次のクリックが必ず届く所へ
           try { refresh(editor); } catch (_) { }
           try { meosTickTimerLines(); } catch (_) { }   // ★改良3: 押した瞬間に ▶️⇄⏸️ that入れ替わる
           return;
         }
       }
     } catch (_) { }
+  }
+  // ★★★v4.2.76(実測 2026.09.13 09:57:10): 畳みに2.2秒かかった直後、**押し終わりに張る250msの窓が、
+  //   俊克の2度目のクリックを食べた**(`[arrow] … hit=true suppressed=true`)。窓は「押した結果として
+  //   動いたカーソル」を読み違えないためのもので、**人のクリックを捨てるためではない**。
+  //   so ▼ をマウスで押した時だけ窓より先に受ける。トグルの最中(_meosArrowToggling)は受けない。
+  if (!_meosArrowToggling && selectionKind === vscode.TextEditorSelectionChangeKind.Mouse) {
+    const _early = membraneArrowToggleHitInfo(editor);
+    if (_early) { await toggleMembraneFromArrowHit(editor, _early); return; }
   }
   if (now < nameJumpSuppressUntil) return;
 
@@ -17737,7 +17764,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
 
   // v0.9.216: the rendered ▼/▲ glyph is an arrow-only fold toggle.
   // v0.9.216: only mouse selection may toggle it.
-  const arrowHit = isMouseSelection ? membraneArrowToggleHitInfo(editor) : null;
+  const arrowHit = (isMouseSelection && !_meosArrowToggling) ? membraneArrowToggleHitInfo(editor) : null;
   if (arrowHit) {
     await toggleMembraneFromArrowHit(editor, arrowHit);
     return;
@@ -29570,8 +29597,12 @@ function meosArrowHitAt(document, line, character) {
   //     モードで分けると**初回クリックが必ず外れる**(押す前の姿を見に行く道は、ここには無い)。
   //   ★左へ伸ばすのは生データでも安全= 0〜7桁は殻(`<!-- {* `)で、**触るなと色で言っている所**
   //     (v4.0.368)。そこを押したら畳む、はむしろ筋that通る。膜名(idStartより右)は1桁も取らない。
+  // ★★★v4.2.76(俊克 2026.09.13 am10:01「▼の左半分ではなく、1文字部全部で手の形が動いていたのかと
+  //   思っていた」): ★★★**手の形が出る所と、押して効く所を、同じ幅にする**。v4.2.75 の手は
+  //   0〜idStart+1(差し込まれた駒をまたぐにはそこまで要る)。当たりが idStart までだと、
+  //   **膜名の1文字目の右半分は、手なのに効かない**= v4.0.358 と同じ穴を、形で作っていた。
   if (glyph < 0 && info.idStart <= 0) return null;
-  if (character >= 0 && character <= info.idStart) return info;
+  if (character >= 0 && character <= info.idStart + 1) return info;
   return null;
 }
 // ★★★v4.2.74(俊克 2026.09.13 am00:29「そのボタンを押す意味は、tipを出す必要that無いので、

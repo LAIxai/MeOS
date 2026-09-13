@@ -2046,7 +2046,7 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     '\u2605\u2605\u2605\u904b\u8ee2\u30dc\u30bf\u30f3\u306f**\u63cf\u304f\u3060\u3051**(\ud83d\udd13 \u3068\u540c\u3058\u6d41\u5100\u30fb\u672c\u6587\u306b\u306f1\u6587\u5b57\u3082\u8db3\u3055\u306a\u3044)', true);
  {const _i1=S9.indexOf('if (!owner) for (const p of _pairs())'), _i2=S9.indexOf('const _run65 = meosClockLineRunning');
   ok(_i1>0 && _i2>_i1, '\u2605\u2605owner \u306e\u5ba3\u8a00\u3088\u308a**\u5f8c\u308d**\u306b\u7f6e\u304f(v4.1.1113\u306eTDZ\u306e\u7a74\u3092\u4f5c\u3089\u306a\u3044)', [_i1,_i2]);}
- ok(/if \(character < 0 \|\| character > at\) return null;/.test(S9)
+ ok(/if \(character < 0 \|\| character > at \+ 1\) return null;/.test(S9)
     && /if \(!c \|\| c\.done\) return null;/.test(S9),
     '\u2605\u5f53\u305f\u308a\u306f 0\u6841\u301c\u23f0\u306e\u6841(\u25bc \u3068\u540c\u3058\u7269\u5dee\u3057)\u30fb\u6e08\u3093\u3060\u7269\u306b\u306f\u51fa\u3055\u306a\u3044', true);
  ok(/async function meosClockStopHere\(doc, key, line\)/.test(S9) && /done: false, off: true \}, line\)/.test(S9),
@@ -2067,13 +2067,21 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
   ok(_mn>=14, '\u2605\u66f8\u304d\u623b\u3059\u53e3\u306f**\u5168\u90e8** \u25b6\ufe0f \u3092\u904b\u3076(1\u3064\u3067\u3082\u843d\u3068\u3059\u3068\u5370\u304c\u6d88\u3048\u308b)', _mn);}
  /* ★★★v4.2.64(俊克「▼膜名と表示されているときの ▼ は0桁目を認識するように」＋実測1141件)=
     画面で1つの印に見えている所は、全部当たり。▼も ▶️ も同じ物差し。 */
- ok(/if \(character >= 0 && character <= info\.idStart\) return info;/.test(S9),
+ ok(/if \(character >= 0 && character <= info\.idStart \+ 1\) return info;/.test(S9),
     '\u2605\u2605\u2605\u25bc \u306e\u5f53\u305f\u308a\u306f 0\u6841\u304b\u3089(\u6bdc\u540d\u3088\u308a\u5de6\u306f\u3001\u305c\u3093\u3076\u5370)', true);
  ok(/function meosClockPlayHitAt\(document, line, character\)/.test(S9)
-    && /if \(character < 0 \|\| character > at\) return null;/.test(S9),
+    && /if \(character < 0 \|\| character > at \+ 1\) return null;/.test(S9),
     '\u2605\u2605\u2605\u25b6\ufe0f \u3082\u540c\u3058\u5f62(0\u6841\u301c\u25b6\ufe0f\u306e\u53f3\u7aef)= \u5370\u3092 2 \u3064\u4f5c\u3089\u306a\u3044', true);
  ok(/if \(!c \|\| c\.done\) return null;/.test(S9),
     '  \u904b\u8ee2\u30dc\u30bf\u30f3\u306f\u5168\u90e8\u306e\u23f0\u884c\u306b\u51fa\u308b(\u6e08\u3093\u3060\u7269\u3092\u9664\u304f)', true);
+ /* ★★★v4.2.76(俊克「マウスの位置を動かさないでいると、何度押しても切り替わらない」＋実測)=
+    押し終わりにカーソルを0桁へ置く(同じ桁の再クリックは選択が変わらず届かない)／窓より先に▼を受ける。 */
+ ok(/function meosParkCaretAfterPress\(editor, line\)/.test(S9)
+    && /meosParkCaretAfterPress\(editor, matched\.pair\.start\);/.test(S9)
+    && /meosParkCaretAfterPress\(editor, _ln\);/.test(S9),
+    '\u2605\u2605\u2605\u25bc\u3082\u25b6\ufe0f\u3082\u62bc\u3057\u7d42\u308f\u308a\u306b0\u6841\u3078(\u6b21\u306e1\u56de\u304c\u5fc5\u305a\u5c4a\u304f)', true);
+ ok(/if \(!_meosArrowToggling && selectionKind === vscode\.TextEditorSelectionChangeKind\.Mouse\) \{[\s\S]{0,200}?toggleMembraneFromArrowHit[\s\S]{0,200}?if \(now < nameJumpSuppressUntil\) return;/.test(S9),
+    '\u2605\u2605\u2605\u25bc\u306e\u30af\u30ea\u30c3\u30af\u306f250ms\u306e\u7a93\u3088\u308a\u5148\u306b\u53d7\u3051\u308b', true);
  ok(/hit=' \+ !!meosArrowHitAt\(/.test(S9),
     '\u2605\u8a08\u6e2c\u3082\u672c\u5f53\u306e\u5f53\u305f\u308a\u304b\u3089\u5f15\u304f(\u53e4\u30441\u6841\u306e\u5f0fthat\u5618\u3092\u3064\u3044\u3066\u3044\u305f)', true);
  /* ★★★v4.2.58= 元栓。閉じている間は、走査that何度来ても1本も掛からない。 */
