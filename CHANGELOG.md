@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.88 (2026-09-14)
+- **Set ⏰ lights up as soon as you change the time.** Turning the dials with the wheel or by dragging, or typing a time into the box, did not count as a change — only clicking a number did — so a plain date-and-time clock could not be set until you flicked Repeat on and off. Every way of changing the time now counts.
+
 ### v4.2.87 (2026-09-13)
 - **`×N` now repeats the one thing just before it.** `5m×2` and `(5m)×2` always meant the same when written on their own, but inside a sequence they came apart: `(8h 5m×2)` was read as "8h then 5m, twice, then stop", while `(8h (5m)×2)` was "8h, 5m, 5m, forever". A part that means one thing alone should mean the same thing inside something bigger, so both now read as 8h, 5m, 5m, repeating. A clock that is only `5m×2` still counts two rounds and stops. Old lines written with `/` (`3m/1m×3`) keep the meaning they were written with.
 

@@ -26810,8 +26810,11 @@ if(clkCaret&&clkPop){
   col.appendChild(b);try{b.focus();b.select();}catch(e){}}
  ['clk-y','clk-mo','clk-d','clk-h','clk-mi'].forEach(function(id){var _c=document.getElementById(id);
   if(_c)_c.addEventListener('dblclick',function(e){e.preventDefault();e.stopPropagation();clkTypeIn(_c);});});
- ['clk-y','clk-mo','clk-d'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixD=true;});});
- ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols);});
+ /* ★★v4.2.88(俊克 バグ1「日時のみ設定する時に、Setボタンが有効にならない。一旦Repeatをオン→オフすると押せる」):
+    ★★**触った合図(clkTouch)が、輪を回す道と打ち込む道に無かった**= 押して選ぶ道(click)だけが出していた。
+    ★→ 人が触った印の在る所(clkWatch の onTouch / 打ち込み箱の確定)から、同じ clkTouch を呼ぶ。 */
+ ['clk-y','clk-mo','clk-d'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkFixD=true;clkTouch();});});
+ ['clk-h','clk-mi'].forEach(function(id){clkWatch(document.getElementById(id),clkSyncFromCols,function(){clkTouch();});});
  clkPop.addEventListener('click',function(ev){ev.stopPropagation();
   /* v4.1.68b: 断りの札を押したら、その場で下ろす(閉じない= 一覧はそのまま見ていられる)。 */
   if(ev.target&&ev.target.closest&&ev.target.closest('#clk-warn')){clkWarnOff();return;}
@@ -26981,7 +26984,7 @@ if(clkCaret&&clkPop){
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  function clkEditOn(){if(!clkEditEl)return;clkEditEl.value=clkText();clkPop.classList.add('editing');
   try{clkEditEl.focus();clkEditEl.select();}catch(e){}}
- function clkEditOff(apply){if(!clkEditEl)return;if(apply)clkSyncFromBox();clkPop.classList.remove('editing');clkEcho();}
+ function clkEditOff(apply){if(!clkEditEl)return;if(apply){clkSyncFromBox();clkTouch();}clkPop.classList.remove('editing');clkEcho();}   /* v4.2.88: 打ち込んだら押せる */
  if(clkWhenEl)clkWhenEl.addEventListener('click',function(ev){ev.stopPropagation();clkEditOn();});
  if(clkEditEl){clkEditEl.addEventListener('keydown',function(e){
   if(e.key==='Enter'){if(clkComposing(e))return;clkEditOff(true);clkFire();return;}
