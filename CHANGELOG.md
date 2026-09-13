@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.77 (2026-09-13)
+- **A clock with no starting time now survives a restart.** Its starting moment used to live only in memory, so reopening VSCodium put it back to zero. MeOS now writes it on the line, marked with a leading `v` for *virtual*: `⏰ v2026-09-13 09:40:12 ↻1m ×1` while it runs, `⏰⏸ v2m25s ↻1m ×1` while it is stopped — the stopped form holds how far it had got, because a starting moment would drift for as long as it rests. A clock with a real starting time is written exactly as before, with no `v`.
+- **The `v` is only there while it has a job.** It goes when the clock finishes (✓) or hands its turn on; the next time its turn comes round, that moment is its start. MeOS writes it only when the value changes, so writing it does not set off another write.
+
 ### v4.2.76 (2026-09-13)
 - **Where the hand shows, a press works — all of it.** The hand covers the ▼ and the first letter after it, but a press only counted on the left half of that letter. It now counts on the whole width the hand covers. Same for ▶️ / ⏸️.
 - **Press ▼ again without moving the mouse, and it answers.** After opening a membrane the text cursor stayed exactly where you clicked, and the editor only reports a click when the cursor *moves* — so a second click on the same spot went unheard. Folding already moved the cursor aside, which is why it worked sometimes and not others. Both now park the cursor at the start of the line. ▶️ / ⏸️ too.
