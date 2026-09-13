@@ -11422,6 +11422,17 @@ function meosArmClockFcFor(doc) {
         const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, Date.now()) : null;
         if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; _crnd = (typeof _nx.round === 'number') ? _nx.round : 1; }   // v4.1.1111 / v4.1.132 / ★v4.1.140: `|| 1` は 0 を 1 に化けさせる
       }
+      // ★★★v4.2.89(俊克 バグ2「起点を設定しない1回切りの設定ができない」＋ am02:48
+      //   「起点が過去ならストップウォッチ、起点が未来なら、逆算とストップウォッチに必然的になるよね?
+      //   ドラム式で設定した日付によって変わるってことだよ」):
+      //   ★★★**長さの無い一度きりで、起点が過去= その時刻から数え続けるストップウォッチ**
+      //     (記法 v4.1.146 の `⏰ 起点 ↻` = 起点から数え上げ続ける)。今までは鐘の時刻が無いので ⚠️ にしていた。
+      //   ★鐘は鳴らない= 解ける時刻を百年先に置き、数字は起点からの経過で出す(sc.openFrom)。
+      let _open89 = 0;
+      if (!w && !(Array.isArray(c.cycle) && c.cycle.length) && (c.up || c.dual)) {
+        const _o89 = c.pAt ? new Date(c.pAt) : meosParseStampLoose(c.when);
+        if (_o89 && _o89.getTime() <= Date.now()) { _open89 = _o89.getTime(); w = { at: new Date(Date.now() + MEOS_OPEN_SW_MS), ms: MEOS_OPEN_SW_MS }; }
+      }
       if (!w) {
         // ★★★v4.1.25(俊克 バグ1「☐をクリックすると…⏰リストから消えてしまう」):
         //   ★★★**一覧に出るのは「済み」と「走っている物」だけだった**= 書いてあるのに掛かっていない物は
@@ -11450,7 +11461,8 @@ function meosArmClockFcFor(doc) {
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : '') + '|' + (c.rounds || 0),   // v4.1.82
         when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
-        armedAt: _base53 || Date.now(),             // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値**
+        armedAt: _open89 || _base53 || Date.now(),  // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値** / ★v4.2.89: 過去の起点
+        openFrom: _open89,                             // ★v4.2.89: 長さの無い過去起点のストップウォッチ(鐘なし・経過を出す)
         synth: _synth53,                               // ★v4.2.61: 起点that本文に無い1本(行で見分ける)(ストップウォッチは、ここからの経過)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
@@ -11502,7 +11514,7 @@ function meosArmClockFcFor(doc) {
       _meosPseudoScopes.set(lk, scope);
       _meosPseudoUntil.set(lk, w.at.getTime());
       meosArmPseudoTimer(lk, Math.max(250, w.ms + 250));
-      meosNoteClockHistory(scope, w.at.getTime());
+      meosNoteClockHistory(scope, _open89 || w.at.getTime());   // ★v4.2.89: 百年先ではなく起点で並べる
       // ★v4.1.18(俊克 👍2「✓を外し、新しい時刻を設定して保存すると再起動する。FCに変わるようになった時には、
       //   再起動でUFCに再び戻る必要がある」): これから鳴る物は見えていなければならないので、名前を戻す。
       if (!c.ufc) { try { meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, manual: c.manual, whenSrc: c.whenSrc, tags: c.tags, done: false }, c.line); } catch (_) { } }
@@ -12667,7 +12679,7 @@ function meosUpdateTimerBar() {
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
-    _meosTimerBar.text = '⏰ ' + (sc && sc.up ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
+    _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
     try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない / ★v4.2.54: 字の色も
     _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
@@ -12691,6 +12703,7 @@ function meosUpdateTimerBar() {
 // ★★v4.1.1119: **顔はその行から出す**= 同じ時計を2つの顔で見る時、向きも長さも行thatが持っている。
 //   控え(sc)は「今どの回か」を数え直さないための控えso、行と食い違ったら**行thatが正しい**。
 function _rnd0(sc) { return sc && typeof sc.round === 'number' && sc.round >= 0; }   // v4.1.138: 0周目も出す
+const MEOS_OPEN_SW_MS = 100 * 365 * 24 * 3600e3;   // ★v4.2.89: 鐘の無いストップウォッチの「解ける時刻」= 百年先
 function meosClockFaceForLine(until, c, sc, now) {
   try {
     // ★★★v4.1.130(俊克 9/5 pm02:10 バグ2「同時起点の2つのタイマ値thatまだ一致しない」):
@@ -12698,6 +12711,7 @@ function meosClockFaceForLine(until, c, sc, now) {
     //     秒の境目をまたぐと、片方だけthat1秒進む。**同じ一回の描画の「今」は1つ**でなければならない。
     //   ★俊克の不変式 A + B = 1回分の長さ は、**同じ「今」から出した2つ**でしか成り立たない。
     const _now = (typeof now === 'number') ? now : Date.now();
+    if (sc && sc.openFrom) return Math.max(0, _now - sc.openFrom);   // ★v4.2.89: 過去の起点から数え続ける
     const left = Math.max(0, until - _now);
     // ★★★v4.1.136(俊克 9/5 pm04:43「**ストップウォッチは、タイマを起動した時からの経過時間**だよ。
     //   スタート時点からどれだけ経過したかを知るためだよ。それだけ」):
@@ -12739,6 +12753,7 @@ function meosClockFaceForLine(until, c, sc, now) {
   } catch (_) { return Math.max(0, until - Date.now()); }
 }
 function meosClockFaceMs(until, sc) {
+  if (sc && sc.openFrom) return Math.max(0, Date.now() - sc.openFrom);   // ★v4.2.89
   const left = Math.max(0, until - Date.now());
   if (sc && sc.up && sc.step > 0) return Math.max(0, Math.min(sc.step, sc.step - left));
   return left;
@@ -13628,7 +13643,10 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   if (scope.key) {
     _meosPseudoScopes.delete(lk);
     if (opts && opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
-    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, cycle: null, up: _up0, dual: _dl0, rounds: 0 }); } catch (_) { }
+    // ★v4.2.89: 起点が過去の一度きり= その時刻を `p`(数え始め)として書く= 鐘の無いストップウォッチ。
+    const _past89 = !!(atDate && ((atDate instanceof Date) ? atDate.getTime() : Number(atDate)) <= Date.now());
+    const _w89 = _past89 ? meosClockFcStamp((atDate instanceof Date) ? atDate : new Date(Number(atDate))) : meosClockFcStamp(_at);
+    try { await meosClockFcSet(scope.doc, scope.key, { when: _w89, hold, lock, cycle: null, up: _up0, dual: _dl0, rounds: 0, whenSrc: _past89 ? (_w89 + 'p') : undefined }); } catch (_) { }
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     const _wn = atDate ? (' \u2014 ' + meosFormatStamp(atDate)) : (' \u2014 ' + meosMmSs(ms));
@@ -28826,8 +28844,13 @@ function toggleMeDock(editorOverride) {
         tags: (message.tags != null) ? meosParseTagInput(message.tags) : null };
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
-      // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。一度きりの予定だけは今までどおり未来だけ。
-      const _org = w ? w.at : ((_opts.cycle && _opts.cycle.length) ? meosParseStampLoose(message.when) : null);
+      // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
+      // ★★v4.2.89(俊克 バグ2): **一度きりも過去を受ける**= ドラムの日付が過去なら、そこから数えるストップウォッチ
+      //   (未来なら今までどおり逆算＋ストップウォッチ)。時刻だけの指定は node が今日/明日にするので過去にならない。
+      const _loose89 = meosParseStampLoose(message.when);
+      const _past89 = !w && !(_opts.cycle && _opts.cycle.length) && _loose89 && _loose89.getTime() <= Date.now();
+      if (_past89) { _opts.up = true; _opts.dual = false; }   // 過去に向かって逆算は無いso、↻ だけ
+      const _org = w ? w.at : ((_opts.cycle && _opts.cycle.length) ? _loose89 : (_past89 ? _loose89 : null));
       if (!_org) { vscode.window.setStatusBarMessage('MeOS: 18:30 / 9/1 18:30 / 2026-09-01 18:30', 3000); return; }
       await meosStartPseudoTimer(0, w ? w.ms : 0, _org, _opts);
       return;

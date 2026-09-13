@@ -349,7 +349,7 @@ console.log('\u2476 控えを作る口は 1 つ');
 {
   const S4=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   const T4=FN(S4, 'async function meosStartPseudoTimer');
-  ok(/if \(scope\.key\) \{[^]{0,600}meosArmClockFcFor\(scope\.doc\)/.test(T4),
+  ok(/if \(scope\.key\) \{[^]{0,1400}?meosArmClockFcFor\(scope\.doc\)/.test(T4),
      '\u2605\u2605\u2605膜に掛ける物は本文へ書いて armClock に任せる', true);
   ok(/_meosPseudoScopes\.set\(lk, \{ doc: scope\.doc[^]{0,200}fc: !!scope\.key \}\)/.test(T4),
      '\u2605膜の外(mMETA)だけは今までどおり自前', true);
@@ -1966,7 +1966,7 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
      && S9.indexOf("const lk = uri + ' ' + c.key;") < S9.indexOf('let _synth53 = false, _base53 = 0;')
      && S9.indexOf('let _synth53 = false, _base53 = 0;') < S9.indexOf('if (_meosPseudoUntil.has(lk)) {'),
      '★★★起点を決めるのは「掛かっているか」を見張る枝より先(sig that毎回食い違わない)', true);
-  ok(/armedAt: _base53 \|\| Date\.now\(\),/.test(S9),
+  ok(/armedAt: _open89 \|\| _base53 \|\| Date\.now\(\),/.test(S9),
      '★★★控えの armedAt も**同じ値**(2つ持てば、いつか食い違う)', true);
   /* ★★★v4.2.54= 既に書かれてしまった「起点の読めない p」(`1.p`)は、読んだ時に落とす。 */
   ok(/c\.whenSrc = _k54; c\.when = ''; c\.pAt = 0;/.test(S9),

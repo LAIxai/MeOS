@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.89 (2026-09-14)
+- **A one-off clock can start in the past.** Pick a date that has already gone by, leave Repeat off, and press Set: the clock counts up from that moment, as a stopwatch that never rings. Pick a date still to come and it counts down to it, as before. The dial decides which — there is nothing else to choose. Written by hand, `⏰ 2026-09-13 20:00 ↻` now does the same, instead of showing ⚠️.
+
 ### v4.2.88 (2026-09-14)
 - **Set ⏰ lights up as soon as you change the time.** Turning the dials with the wheel or by dragging, or typing a time into the box, did not count as a change — only clicking a number did — so a plain date-and-time clock could not be set until you flicked Repeat on and off. Every way of changing the time now counts.
 
