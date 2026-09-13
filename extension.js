@@ -2578,6 +2578,15 @@ let encHideDecoration; // v0.9.9996: 暗号文(🔒MeOS-enc行)を隠す
 let encLabelDecoration; // v0.9.9996: 「🔐 Locked」ラベルを見せる
 let closeLineHideDecoration;
 let closeLineLabelDecoration;
+// ★★★v4.2.79(俊克 2026.09.13 am10:34「MeOSの全体で出る手の形のマウスをすべて、BTRON様式に変えよう。
+//   BTRONで唯一生き残ったのはこのマウスの形であることは、皮肉だけど、私はこの手の形が本当に好きなんだ。
+//   だから、遺すべきなんだよ」＋ am11:08 方針1= 自分で描く):
+//   ★★★**MeOSの手は1つ**= 本文の装飾も Me Dock のボタンも、この1つの定数から引く。
+//   ★絵は BTRON/超漢字の「選択指」へのオマージュ= 左上を指す人差し指・関節3つ・折った親指・黒い袖。
+//     点は写さず一から描いた(描き方は media/hand/make_hand.py)。暗い画面でも見えるよう外に白い縁。
+//   ★1x=20px / 2x=40px。指先(1,1)が当たり。読めない所では OS の手(pointer)に落ちる。
+//   ★VS Code は装飾の cursor をそのままCSSへ流す(`cursor:{0};`)・画面の CSP は data: を許す(実測 1.126)。
+const MEOS_HAND_CURSOR = 'image-set(url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAq0lEQVR42q2USQ7AIAhF+cb7X5lupCGMtsqKhPYxfISYmYmIxeiCCYiVf0YzFR5BIVAAJBzxAUAl9T+vuANWUPGT7hwYtv0I1CXR3Qzbwgq+H1bjlPhKxA4YQVsRzLxHono5M+3bCmc0wxMbkSCdulvAYiXOgHYdtl/ImiMiQfS+7YDCl7IjTvA0XRzN0QirSWEAZtEKsiSVUOPzeUpGgb8LrI/xlYNsj7INPlSzz8xmyKvgAAAAAElFTkSuQmCC") 1x, url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABeklEQVR42s2Y0a7EIAhEhdz//2X2qTeEDois6PpWk9rjAIOWxhhDRGSAQUQ0Lg964DSL5r0NyRbueX7mPHWPAmrljHrXIRlNalANeQOUdc7ZUKP5CqSosVwk+qNKrVdOAmhCILq4drgD2cWrkJE62Q2GgAgyAtUf8t7zGNBePGA3TCuQKH+jXPbERpDkJXUEY+dnwJmNeKHn2U6yFW434KkUqAdzmYPEpgdUwyBlqvZoG0PaqJGamfAd6yQRpBfyq4CdpxpkWyXAmZFXB+r5U5tZtZxOJfkX4KLxlw3pLVDOwkWHh6OAqBg8Qz4BydWq2wkZpQ1/Yw0dSlq74ewL2aa/wws1JGd7LwLtrOR/2BUP7DbppSKxZ8KdhwS9xmw9WunD3oIZVSsbE5FBq/fbHSpGF6pX4VQu4RV1shcse2CgogLSURDoNEObfEw64LYB7sjbr0/UN+BaAXfAtQKilrkK1x7iCDL7l4u7iwRBrvyCO/YH/3WdTHrwBzI4gyxnAajNAAAAAElFTkSuQmCC") 2x) 1 1, pointer';
 let membraneArrowHandDecoration;   // ★v4.2.75: ▼/▼▲/▲ の当たり= 手の形(cursor:pointer)
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
 // the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
@@ -3565,7 +3574,7 @@ function makeDecorations() {
   //     0桁〜idStart+1 = 駒(idStart に差し込まれた ▼)をまたぐ。⏰の `_a65 + 1` と同じ。
   membraneArrowHandDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    cursor: 'pointer'
+    cursor: MEOS_HAND_CURSOR   // v4.2.79: MeOSの手
   });
   // v0.9.606: mNT rendering goes through the standard mCN openLineLabel / closeLineLabel
   // pipeline. The only mNT-specific touch is the 📒 marker appended to the ▼/▲ glyph.
@@ -3653,7 +3662,7 @@ function makeDecorations() {
     // pointer on the membrane-name range so hovering the name still
     // shows the affordance), but the after '🟢' is gone to avoid drawing
     // the button twice.
-    textDecoration: 'cursor: pointer; font-weight: 700;'
+    textDecoration: 'cursor: ' + MEOS_HAND_CURSOR + '; font-weight: 700;'
   });
   jumpNameHoverDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -3661,7 +3670,7 @@ function makeDecorations() {
   });
   redJumpDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'cursor: pointer; font-weight: 700;'
+    textDecoration: 'cursor: ' + MEOS_HAND_CURSOR + '; font-weight: 700;'
   });
   redJumpHoverDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -3669,7 +3678,7 @@ function makeDecorations() {
   });
   mstatIconDoorDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'cursor: pointer;',
+    textDecoration: 'cursor: ' + MEOS_HAND_CURSOR + ';',
     fontWeight: '700'
   });
 
@@ -3878,15 +3887,15 @@ function makeDecorations() {
   // decoration-type level apply to the 2-UTF16 emoji range cleanly.
   sourceRjfButtonDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'none; cursor: pointer;'
+    textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';'
   });
   activeRedTargetButtonDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'none; cursor: pointer;'
+    textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';'
   });
   activeGreenButtonDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'none; cursor: pointer;'
+    textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';'
   });
 
   // v0.9.488: shared "tip" decoration for ALL 4 membrane jump button
@@ -12508,7 +12517,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
     // ★★★v4.2.74: 運転ボタンは**手の形を持つ型**で置く= 押せる所の上でだけ形that変わる。
     //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
-    if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: 'pointer', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: MEOS_HAND_CURSOR, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockPlayDeco, plays);
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -15556,7 +15565,7 @@ function membraneButtonItems(editor, opts) {
         const cursorRange = new vscode.Range(line, startCol, line, fallbackEnd);
         cursorItems.push({
           range: cursorRange,
-          renderOptions: { before: { contentText: emoji, margin: '0 2px 0 0', textDecoration: 'none; cursor: pointer;' } },
+          renderOptions: { before: { contentText: emoji, margin: '0 2px 0 0', textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';' } },
         });
         tipItems.push({ range: cursorRange, hoverMessage: tip });
       }
@@ -15725,7 +15734,7 @@ function activeGreenButtonItems(editor) {
       const r = new vscode.Range(line, at, line, at);
       cursorItems.push({
         range: r,
-        renderOptions: { after: { contentText: '🟢', margin: '0 0 0 2px', textDecoration: 'none; cursor: pointer;' } },
+        renderOptions: { after: { contentText: '🟢', margin: '0 0 0 2px', textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';' } },
       });
       // v0.9.671 (bug2): a hoverMessage does NOT fire on a zero-width range (v0.9.481) —
       // that is why the body 🟢 lost its tip in v0.9.670. Host the tip on a NON-EMPTY range
@@ -23669,6 +23678,7 @@ function meDockHtml() {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <style>
+:root{--meos-hand:${MEOS_HAND_CURSOR};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
 /* {* ▼mCN=dock_css // Me Dock のCSS(見た目) *} */
 
 :root{color-scheme:light dark}
@@ -23689,23 +23699,23 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ★v4.2.70(俊克「Mepyの黄色と同じくらい明るくてもいいかもよ」)= 新しい値を作らず、
      **MeOSthat既に持っている黄**(ハイライトの rgba(255,232,40,.95) = 黄身色)を使う。
      色を1つ足すたびに「MeOSの黄」that増える → [[feedback_one_source_for_mark_count_action]] */
-.dev-vsix-btn{margin-left:auto;flex:0 0 auto;border:1px solid color-mix(in srgb,rgba(255,232,40,.95) 55%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:rgba(255,232,40,.95);font-weight:800;font-size:12px;line-height:1.2;padding:1px 7px;cursor:pointer;opacity:.9}
+.dev-vsix-btn{margin-left:auto;flex:0 0 auto;border:1px solid color-mix(in srgb,rgba(255,232,40,.95) 55%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:rgba(255,232,40,.95);font-weight:800;font-size:12px;line-height:1.2;padding:1px 7px;cursor:var(--meos-hand);opacity:.9}
 .dev-vsix-btn:hover{opacity:1;border-color:rgba(255,232,40,.95)}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
 /* v4.0.306(俊克「Me Dockに最初に表示しているファイル名はスペースの関係上、小さいのは仕方ない。ただ、**角丸四角で
    囲って、操作対象だと分かり易く**しようよ」): 名前と▾で1つの押せる箱にする(箱ごと押せる)。 */
-.title-file{position:relative;display:flex;align-items:center;gap:3px;min-width:0;padding:1px 4px 1px 6px;border:1px solid var(--meos-frame);border-radius:6px;cursor:pointer}
+.title-file{position:relative;display:flex;align-items:center;gap:3px;min-width:0;padding:1px 4px 1px 6px;border:1px solid var(--meos-frame);border-radius:6px;cursor:var(--meos-hand)}
 .title-file:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file-name{font-size:10px;font-weight:600;opacity:.85;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
-.title-file-caret{font-size:9px;line-height:1;padding:1px 2px;border:0;border-radius:3px;background:transparent;color:inherit;opacity:.6;cursor:pointer}
+.title-file-caret{font-size:9px;line-height:1;padding:1px 2px;border:0;border-radius:3px;background:transparent;color:inherit;opacity:.6;cursor:var(--meos-hand)}
 /* ★★v4.1.93(俊克 改良1「ファイルメニューの右肩に📌を白地の円に入れたボタンを付けよう。
    これを押すと、ピン留めされたファイルに即、切り替わる」):
    ★**肩に立つ**= 名前の箱の持ち物that、箱の幅を1pxも取らない(家の作法= mz-badge と同じ立ち方)。
    ★白地の円= 留めた1本は**他の何とも競らない**so、自分の地を持ってよい。
    ★出るのは**行ける時だけ**= 留めthat無い / もうそこに居る、なら出さない
      (▾that1本の時に消えるのと同じ規則= 押しても何も起きない駒を置かない)。 */
-.title-file-jump{position:absolute;top:0;right:0;transform:translate(50%,calc(-50% - 5px));/* v4.1.95(俊克 改良1「上方約-5ピクセル。白い円がファイル名の角丸四角に少しだけ食い込むくらい」)= 角のど真ん中(mz-badgeの立ち方)では、背の低い箱には乗り過ぎる。円は肩に**掛ける**物so、5px上げて爪先だけ乗せる。 */width:15px;height:15px;display:none;align-items:center;justify-content:center;padding:0;border:1px solid rgba(0,0,0,.35);border-radius:50%;background:#fff;color:#111;font-size:9px;line-height:1;cursor:pointer;z-index:5}
+.title-file-jump{position:absolute;top:0;right:0;transform:translate(50%,calc(-50% - 5px));/* v4.1.95(俊克 改良1「上方約-5ピクセル。白い円がファイル名の角丸四角に少しだけ食い込むくらい」)= 角のど真ん中(mz-badgeの立ち方)では、背の低い箱には乗り過ぎる。円は肩に**掛ける**物so、5px上げて爪先だけ乗せる。 */width:15px;height:15px;display:none;align-items:center;justify-content:center;padding:0;border:1px solid rgba(0,0,0,.35);border-radius:50%;background:#fff;color:#111;font-size:9px;line-height:1;cursor:var(--meos-hand);z-index:5}
 .title-file-jump.on{display:flex}
 /* ★★v4.1.94(俊克 バグ1「📌ボタンが付いてないよ。なぜ?」): ★★★**私that「行ける時だけ出す」という条件を
    足していた**= 留めた1本の中に居ると消える。so「そこに居る」時ほど、ボタンthatが無くなっていた。
@@ -23734,7 +23744,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0;font-size:12px}/* v4.0.365/367: 詰める＋読める大きさに */
 /* v4.0.367(俊克 改良2「Me Dockの更新日は、tipに更新日のコピーを付けよう」): tip(::after)は疑似要素so押せない。
    → **中身自身を押せる物にする**= 日付をクリックすれば「ファイル名 + 更新日時」that手に入る。 */
-.title-file-ud .ud-copy{cursor:pointer;border-radius:3px;padding:0 2px}
+.title-file-ud .ud-copy{cursor:var(--meos-hand);border-radius:3px;padding:0 2px}
 /* v4.0.371(俊克「できれば、前の緑色の方が目立っていいけどね」): 緑にならなかったのは**後から定義された
    tipの背景に負けていた**から(同じ詳細度は後勝ち)。→ クラスを重ねて詳細度で勝たせる。 */
 .title-file-ud .ud-copy.ud-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}
@@ -23759,7 +23769,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-caret[data-tip]::after,.title-file-ud [data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 7px);z-index:60;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;line-height:1.4;width:max-content;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
 .title-file-caret[data-tip]:hover::after,.title-file-ud [data-tip]:hover::after{opacity:1}/* v4.0.364: UDも同じtipに乗る(被らない) */
 /* v4.0.309: 📌は1つだけ。留めた物は常に先頭・薄く出しておいて、留めた時だけはっきりさせる。 */
-.title-file-pin{width:20px;flex:0 0 20px;padding:0;margin-left:2px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:12px;line-height:1;opacity:0;cursor:pointer}
+.title-file-pin{width:20px;flex:0 0 20px;padding:0;margin-left:2px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:12px;line-height:1;opacity:0;cursor:var(--meos-hand)}
 .title-file-row:hover .title-file-pin{opacity:.45}
 .title-file-pin.on{opacity:1}
 .title-file-pin:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
@@ -23768,10 +23778,10 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    button はフォントを継承しないので、同じ 14px でも span とは別のフォントで丸を描く。
    → **同じ部品にする**(留めた行も title-file-x・押せないようにするだけ)。大きさは1か所から出る。 */
 .title-file-row:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.2))}
-.title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;opacity:.85}
+.title-file-item{flex:1;min-width:0;text-align:left;padding:5px 8px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:var(--meos-hand);opacity:.85}
 .title-file-row.cur .title-file-item{opacity:1;font-weight:700;cursor:default}
 /* v4.0.304(俊克「VSCmライクに、×で、未保存を●にしよう」): タブと同じ作法= 既定は × / 未保存は ● / ●に触れると × に戻る。 */
-.title-file-x{width:20px;flex:0 0 20px;padding:0;margin-right:4px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;line-height:1;opacity:.5;cursor:pointer}
+.title-file-x{width:20px;flex:0 0 20px;padding:0;margin-right:4px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:14px;line-height:1;opacity:.5;cursor:var(--meos-hand)}
 .title-file-x:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
 /* ★テンプレート文字列の中なので **バックスラッシュのCSSエスケープは書けない**(JSの数値エスケープと取り合いになる)。字そのものを置く。 */
 .title-file-x::before{content:'×'}
@@ -23785,7 +23795,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-x[disabled]:hover{background:transparent;opacity:.5}
 .title-file-x[disabled]::before,.title-file-x[disabled]:hover::before{content:'●'}
 .title-actions{display:flex;align-items:center;gap:7px}
-.standards-toggle{border:1px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+.standards-toggle{border:1px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:var(--meos-hand)}
 .standards-toggle .standards-switch{width:30px;height:14px;border-radius:999px;background:var(--vscode-input-background);border:1px solid var(--vscode-panel-border);position:relative;box-sizing:border-box;display:inline-block;flex:0 0 auto;transition:background .12s ease,border-color .12s ease}
 .standards-toggle .standards-knob{width:10px;height:10px;border-radius:50%;background:var(--vscode-editor-foreground);opacity:.78;position:absolute;top:1px;left:1px;transition:left .12s ease,background .12s ease,opacity .12s ease}
 .standards-toggle.on{color:#d18400;border-color:rgba(210,132,0,.55);background:rgba(255,213,92,.12)}
@@ -23793,21 +23803,21 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .standards-toggle.on .standards-knob{left:17px;background:#fff;opacity:1}
 .standards-toggle.off{opacity:.72}
 .standards-toggle.off .standards-switch{background:rgba(128,128,128,.22)}
-.close{border:0;background:transparent;color:var(--vscode-editor-foreground);font-size:16px;cursor:pointer;padding:0 4px;opacity:.75}
+.close{border:0;background:transparent;color:var(--vscode-editor-foreground);font-size:16px;cursor:var(--meos-hand);padding:0 4px;opacity:.75}
 .close:hover{opacity:1}
 .mz-split{position:relative;display:inline-block;margin-right:8px}
-.mz-a{border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;line-height:1;padding:4px 11px;cursor:pointer}
+.mz-a{border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;line-height:1;padding:4px 11px;cursor:var(--meos-hand)}
 .mz-a:hover{filter:brightness(1.15)}
 .mz-a.on{color:#d18400;border-color:rgba(210,132,0,.6);background:rgba(255,213,92,.14)}
-.mz-badge{position:absolute;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;line-height:1;color:var(--vscode-foreground);cursor:pointer;z-index:3;opacity:.85}
+.mz-badge{position:absolute;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;line-height:1;color:var(--vscode-foreground);cursor:var(--meos-hand);z-index:3;opacity:.85}
 .mz-badge:hover{opacity:1;filter:brightness(1.25)}
 .mz-tr{top:0;right:0;transform:translate(50%,-50%)}
 .mz-br{bottom:0;right:0;transform:translate(50%,50%)}
 .mz-pop{position:absolute;top:100%;left:0;margin-top:8px;display:none;align-items:center;gap:10px;padding:8px 12px;background:var(--vscode-editorWidget-background,var(--vscode-sideBar-background));border:1px solid var(--vscode-panel-border);border-radius:9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}
 .mz-pop.on{display:inline-flex}
-.mz-slider{-webkit-appearance:none;appearance:none;width:120px;height:13px;background:transparent;cursor:pointer}
+.mz-slider{-webkit-appearance:none;appearance:none;width:120px;height:13px;background:transparent;cursor:var(--meos-hand)}
 .mz-slider::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:linear-gradient(to right,#d18400 0,#d18400 var(--mz-fill,0%),color-mix(in srgb,var(--vscode-foreground) 28%,transparent) var(--mz-fill,0%),color-mix(in srgb,var(--vscode-foreground) 28%,transparent) 100%)}
-.mz-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:#d18400;border:1px solid rgba(0,0,0,.35);cursor:pointer;margin-top:-4px}
+.mz-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:#d18400;border:1px solid rgba(0,0,0,.35);cursor:var(--meos-hand);margin-top:-4px}
 .mz-pct{width:48px;font-size:11px;font-weight:700;text-align:center;font-family:ui-monospace,Menlo,monospace;border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);padding:2px 0}
 .mz-pct:focus{outline:none;border-color:#6366f1}
 .body{padding:10px;display:grid;gap:8px;box-sizing:border-box;border:1.5px solid var(--meos-frame);border-radius:10px}
@@ -23818,7 +23828,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .inline-panel{padding:8px;border:1px solid var(--meos-frame);border-radius:8px;background:var(--vscode-editor-background);display:grid;gap:8px}
 .inline-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
 .inline-title{font-size:14px;font-weight:900;color:var(--vscode-editor-foreground);display:flex;align-items:center;gap:5px;min-width:0}
-.edit-mode-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:13px;font-weight:900;padding:2px 20px 2px 7px;outline:none;cursor:pointer;min-height:25px}
+.edit-mode-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:13px;font-weight:900;padding:2px 20px 2px 7px;outline:none;cursor:var(--meos-hand);min-height:25px}
 .edit-mode-select:hover{filter:brightness(1.04)}
 .zoom-scope-indicator{margin-left:auto;flex:1;min-width:0;text-align:right;font-size:11px;font-weight:900;color:var(--vscode-editor-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}
 .zoom-scope-indicator .zoom-scope-label{color:#d18400;font-weight:900}
@@ -23830,18 +23840,18 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    v4.0.427(俊克「⚠️ボタンは、Navigate Me!のWarpの右に移動しよう」)= 行き先を決める道具の並びへ移した
    ＝ これは**どこへ行くかの道具**so、名前を直す所(Edit Me)ではなく、動く所に置く。 */
 /* v4.0.428(俊克「四角枠が妙に縦長なので横長にした方が、落ち着く」)= 隣の丸い駒と同じ背丈・同じ丸みで、横に広く。 */
-.warn-btn{margin-left:8px;padding:1px 9px;border:1px solid transparent;border-radius:9px;background:transparent;font-size:14px;line-height:15px;cursor:pointer;opacity:.28;filter:grayscale(1);white-space:nowrap;}/* v4.0.431(俊克): ⚠️は1.3倍(11→14px)。件数は10px固定なので一緒に太らない=背丈は変えずに印だけ大きく */
+.warn-btn{margin-left:8px;padding:1px 9px;border:1px solid transparent;border-radius:9px;background:transparent;font-size:14px;line-height:15px;cursor:var(--meos-hand);opacity:.28;filter:grayscale(1);white-space:nowrap;}/* v4.0.431(俊克): ⚠️は1.3倍(11→14px)。件数は10px固定なので一緒に太らない=背丈は変えずに印だけ大きく */
 .warn-btn .warn-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super;color:#fff}/* v4.0.429(俊克): 黒より白 */
 .warn-btn:not([disabled]){opacity:1;filter:none;background:rgba(255,64,64,.16);border-color:rgba(255,64,64,.55);}
 .warn-btn:not([disabled]):hover{background:rgba(255,64,64,.30);}
 .warn-btn[disabled]{cursor:default;}
-.new-md-btn{flex:none;font-size:11px;font-weight:800;padding:2px 9px;border:1px solid #116329;border-radius:6px;background:#1a7f37;color:#fff;cursor:pointer;line-height:1.3;white-space:nowrap}
+.new-md-btn{flex:none;font-size:11px;font-weight:800;padding:2px 9px;border:1px solid #116329;border-radius:6px;background:#1a7f37;color:#fff;cursor:var(--meos-hand);line-height:1.3;white-space:nowrap}
 .new-md-btn:hover{background:#2da44e}
 .new-md-btn:active{background:#116329}
 .me-name-wrap.hidden,.zoom-me-panel.hidden,.ref-create-panel.hidden{display:none}
 .ref-create-panel{display:grid;gap:5px;padding:2px 0}
 .ref-sym-row{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
-.ref-sym{min-width:26px;height:22px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;padding:0 9px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);cursor:pointer;font-size:13px;line-height:1;overflow:visible}
+.ref-sym{min-width:26px;height:22px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;padding:0 9px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);cursor:var(--meos-hand);font-size:13px;line-height:1;overflow:visible}
 .ref-sym[data-fam="4"]{font-size:26px}
 .ref-sym[data-fam="5"]{font-size:12px}
 .ref-sym[data-fam="1"]{font-size:13px}
@@ -23888,7 +23898,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .membrane-visual{position:relative;isolation:isolate;max-width:210px;border:1.5px solid currentColor;border-radius:8px;background:color-mix(in srgb, currentColor 14%, transparent);overflow:hidden}
 .me-choice{display:flex;align-items:center;gap:6px;font-weight:900;font-size:14px;line-height:1;margin:0;padding:5px 8px}
 .me-choice input,.contents-choice input{width:17px;height:17px;margin:0;accent-color:currentColor}
-.me-scope-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:currentColor;font:inherit;font-weight:900;padding:2px 20px 2px 8px;outline:none;cursor:pointer;min-height:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.me-scope-select{border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:currentColor;font:inherit;font-weight:900;padding:2px 20px 2px 8px;outline:none;cursor:var(--meos-hand);min-height:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
 .me-scope-select:hover{filter:brightness(1.04)}
 .me-scope-select:focus{outline:1.5px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}
 .me-scope-select option{color:var(--vscode-editor-foreground);background:var(--vscode-dropdown-background,var(--vscode-editor-background))}
@@ -23962,7 +23972,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .time-machine-title{font-size:12px;font-weight:900;color:#d18400;letter-spacing:.02em;line-height:1.25;padding-top:2px;margin-bottom:8px}
 .time-machine-main{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:8px;align-items:stretch}
 .tm-world-box{border:1px solid #ebcd92;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.22)}
-.tm-world-row{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:8px;min-height:43px;padding:7px 10px;cursor:pointer}
+.tm-world-row{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:8px;min-height:43px;padding:7px 10px;cursor:var(--meos-hand)}
 .tm-world-row+.tm-world-row{border-top:1px solid #ebcd92}
 .tm-world-label{font-size:11px;font-weight:900;text-align:right}
 .tm-world-row.real .tm-world-label{color:#22c55e}
@@ -24057,7 +24067,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 @keyframes headSpin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 .head-nav .head-nav-btn:disabled{opacity:.35;cursor:default}
 .head-nav .head-nav-btn.wrap-edge{border-width:2.5px;background:rgba(210,132,0,.18)}
-.head-nav .head-nav-center{box-sizing:border-box;background:rgba(128,128,128,.12);border:1px solid var(--meos-frame);border-radius:6px;padding:2px 6px;min-height:0;font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;cursor:pointer}
+.head-nav .head-nav-center{box-sizing:border-box;background:rgba(128,128,128,.12);border:1px solid var(--meos-frame);border-radius:6px;padding:2px 6px;min-height:0;font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;cursor:var(--meos-hand)}
 .head-nav .head-nav-center:hover{background:rgba(128,128,128,.22)}
 .head-nav.line-hist{margin-left:0}
 .anchor-btn,.bidi-btn{width:30px;min-width:30px;max-width:30px;font-size:14px;line-height:1;text-align:center;padding-left:0;padding-right:0}
@@ -24082,7 +24092,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .mepy-hello-r{right:-3px;top:0;bottom:0;width:6px}
 /* v0.9.824: Meの右目(向かって左)はボタンではない=「目をつぶっている」設定で囲み線を薄く(俊克 am02:35)。 */
 .me-scope-label{display:grid;place-items:center;min-width:30px;height:30px;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:50%;background:var(--vscode-editor-background);color:currentColor;font-weight:900;font-size:13px;padding:0;margin-left:-7px}
-.color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:0;background:transparent;border:none;padding:0;cursor:pointer;color:inherit}
+.color-btn{min-width:0;display:inline-flex;align-items:flex-start;gap:0;background:transparent;border:none;padding:0;cursor:var(--meos-hand);color:inherit}
 .color-btn:hover{filter:brightness(1.08)}
 .color-ball{width:27px;height:27px;border-radius:50%;border:2px solid color-mix(in srgb,var(--vscode-foreground) 72%,transparent);box-shadow:inset 0 0 0 3.5px var(--vscode-editor-background);display:inline-block;background:currentColor}
 /* v0.9.821: 「(R)」はキャラ自身の左目(=画面右のボール)に接するくらい密着(俊克 pm10:05 改良2)。 */
@@ -24121,7 +24131,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .edit-row:hover{background:var(--vscode-list-hoverBackground)}
 .edit-row.hidden{display:none}
 .buttons{display:flex;justify-content:flex-end;gap:6px}
-button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transparent);border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer}
+button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transparent);border-radius:5px;padding:4px 8px;font-size:12px;cursor:var(--meos-hand)}
 .cancel{background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground)}
 .set{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}
 .hint{padding:2px 2px 0 2px;font-size:11px;opacity:.65;line-height:1.35}
@@ -24131,14 +24141,14 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-title{font-size:12px;font-weight:900;color:#d18400}
 .toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-hand);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
 .toc-tab.dragging{opacity:.4}
 .toc-tab.drop-left{box-shadow:inset 3px 0 0 #d18400;background:rgba(210,132,0,.18)}
 .toc-tab.drop-right{box-shadow:inset -3px 0 0 #d18400;background:rgba(210,132,0,.18)}
 .toc-tab:hover{background:rgba(255,213,92,.18)}
 .toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
 .toc-tab-ops{margin-left:auto;display:inline-flex;gap:2px;align-items:center;padding-bottom:2px}
-.toc-tab-btn{font-size:13px;line-height:1;padding:2px 7px;border:1px solid rgba(210,140,0,.35);border-radius:4px;background:rgba(255,213,92,.10);color:var(--vscode-editor-foreground);cursor:pointer}
+.toc-tab-btn{font-size:13px;line-height:1;padding:2px 7px;border:1px solid rgba(210,140,0,.35);border-radius:4px;background:rgba(255,213,92,.10);color:var(--vscode-editor-foreground);cursor:var(--meos-hand)}
 #toc-tab-add{color:#16a34a;border-color:rgba(22,163,74,.5);background:rgba(22,163,74,.12)}
 #toc-tab-add:hover{background:rgba(22,163,74,.22)}
 #toc-tab-del{color:#dc2626;border-color:rgba(220,38,38,.5);background:rgba(220,38,38,.12)}
@@ -24147,7 +24157,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-tab-confirm{display:none;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,80,80,.10);border-bottom:1px solid rgba(255,80,80,.40);font-size:12px}
 .toc-tab-confirm.on{display:flex}
 .toc-tab-confirm-msg{flex:1;color:#b91c1c}
-.toc-tab-confirm-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:4px;cursor:pointer}
+.toc-tab-confirm-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:4px;cursor:var(--meos-hand)}
 .toc-tab-confirm-yes{background:#b91c1c;color:#fff;border-color:#b91c1c}
 .toc-tab-confirm-no{background:var(--vscode-input-background);color:var(--vscode-foreground)}
 .fixed-toc-body{height:144px;overflow-y:scroll;border-top:1px solid rgba(210,140,0,.20);border-bottom:1px solid rgba(210,140,0,.20)}
@@ -24157,7 +24167,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .fixed-toc-body .toc-sticky-head .bidi-jump-bar{position:static}
 .toc-pin-bar .toc-pin{border-bottom:0;border-top:1px solid rgba(56,148,255,.32)}
 .toc-pin-bar:empty{display:none}
-.toc-pin-chars{display:flex;align-items:center;gap:6px;padding:3px 8px 4px;font-size:11px;background:rgba(56,148,255,.07);border-top:1px dashed rgba(56,148,255,.25);cursor:pointer}
+.toc-pin-chars{display:flex;align-items:center;gap:6px;padding:3px 8px 4px;font-size:11px;background:rgba(56,148,255,.07);border-top:1px dashed rgba(56,148,255,.25);cursor:var(--meos-hand)}
 .toc-pin-chars:hover{background:rgba(56,148,255,.16)}
 .me-char-bar{position:relative;flex:1;min-width:0;height:13px;border:1px solid rgba(56,148,255,.45);border-radius:7px;overflow:hidden;background:var(--vscode-input-background)}
 .me-char-fill{height:100%;border-radius:6px 0 0 6px;transition:width .25s ease,background .25s ease}
@@ -24175,7 +24185,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .me-char-pop-row{display:flex;align-items:center;gap:4px;padding:3px 5px;font-size:12px}
 .me-char-pop-row.head{font-weight:700;opacity:.85;padding-bottom:1px}
 .me-char-pop-row input{width:72px;font-size:12px;padding:2px 5px;border:1px solid var(--vscode-panel-border);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
-.me-char-pop-row .me-char-pop-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}
+.me-char-pop-row .me-char-pop-btn{font-size:11px;padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-foreground);cursor:var(--meos-hand);white-space:nowrap}
 .me-char-pop-row .me-char-pop-btn:hover{background:rgba(56,148,255,.18)}
 .me-char-pop-row #me-char-target-set{background:#3794ff;border-color:#3794ff;color:#fff}
 .me-char-pop-row #me-char-target-set:hover{background:#1f7fe8}
@@ -24183,19 +24193,19 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .me-char-pop #me-char-recalc:hover{background:rgba(56,148,255,.18);border-color:#3794ff}
 .bidi-jump-bar-nav{border-bottom:none;border-top:1px solid rgba(210,140,0,.20);margin-top:4px}
 .bidi-jump-bar .bidi-label{opacity:.85;font-weight:500}
-.bidi-jump-bar .bidi-btn{cursor:pointer;user-select:none;padding:1px 4px;border-radius:3px}
+.bidi-jump-bar .bidi-btn{cursor:var(--meos-hand);user-select:none;padding:1px 4px;border-radius:3px}
 .bidi-jump-bar .bidi-btn:hover{background:var(--vscode-list-hoverBackground,rgba(128,128,128,.15))}
 .bidi-jump-bar .bidi-btn.inactive{opacity:.4;cursor:default}
 .bidi-jump-bar .bidi-btn.inactive:hover{background:transparent}
 .bidi-jump-bar .bidi-sep{opacity:.45}
 .bidi-jump-bar .bidi-jumponly{opacity:.55;font-size:11px;margin-left:auto}
-.bidi-jump-bar .bidi-clear{cursor:pointer;user-select:none;font-size:11px;padding:1px 6px;margin-left:6px;border:1px solid rgba(200,60,60,.5);border-radius:3px;color:var(--vscode-errorForeground,#c33)}
+.bidi-jump-bar .bidi-clear{cursor:var(--meos-hand);user-select:none;font-size:11px;padding:1px 6px;margin-left:6px;border:1px solid rgba(200,60,60,.5);border-radius:3px;color:var(--vscode-errorForeground,#c33)}
 .bidi-jump-bar .bidi-clear:hover{background:rgba(200,60,60,.12)}
 .bidi-jump-bar .nav-jump-label.hidden{display:none}
 .toc-tools{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 8px 4px;border-top:1px solid rgba(210,140,0,.20);background:rgba(255,213,92,.08)}
 .tt-split{display:inline-flex;align-items:stretch;position:relative}
 .tt-split>button{height:26px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;padding:0 9px}
-.tt-badge{position:absolute;width:15px;height:15px;border-radius:50%;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:6;line-height:1;user-select:none}
+.tt-badge{position:absolute;width:15px;height:15px;border-radius:50%;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand);box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:6;line-height:1;user-select:none}
 .tt-up{top:-6px;right:-5px;background:#6b7280}
 .tt-del{top:-6px;right:-5px;background:#dc2626}
 .tt-dial{top:-6px;right:-6px;background:#7c3aed;font-size:11px}
@@ -24214,7 +24224,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .dw-name-pop .dnp-result.ok{color:#16a34a}
 .dw-name-pop .dnp-result.ng{color:#e5534b}
 .dw-name-pop .dnp-btns{display:flex;gap:6px;margin-top:8px}
-.dw-name-pop .dnp-btns button{flex:1;font-size:11px;font-weight:700;padding:4px 8px;border-radius:5px;cursor:pointer;border:1px solid var(--meos-frame);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}
+.dw-name-pop .dnp-btns button{flex:1;font-size:11px;font-weight:700;padding:4px 8px;border-radius:5px;cursor:var(--meos-hand);border:1px solid var(--meos-frame);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}
 .dw-name-pop .dnp-save{background:#1f9d57!important;border-color:#116329!important;color:#fff!important}
 .dw-split{margin-left:4px}
 .dw-today{font-weight:700}
@@ -24246,10 +24256,10 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .format-tools .fmt-btns{display:flex;gap:6px}
 .fmt-cell{display:inline-flex;align-items:stretch}
 .fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}
-.fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
+.fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
 .fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-cell-head{position:relative}
-.fmt-lvl{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:4;line-height:1}
+.fmt-lvl{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand);box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:4;line-height:1}
 /* v1.0.0 段階リリース門番: テーブル(≥3)=升目ボタンを隠す。★v1.0.1(俊克): ↻(fmt-lvl)は「3プリセット巡回」=昔からの機能なので全フェーズで表示。動的リング/🚫(カーソルを装飾内に置いた時の挙動)だけがv4.0解禁=JS側でactionableをphase>=4限定にして抑止。 */
 body[data-phase="1"] .fmt-table-cell,body[data-phase="2"] .fmt-table-cell{display:none}
 body[data-phase="1"] #idx-goto-image,body[data-phase="2"] #idx-goto-image,body[data-phase="3"] #idx-goto-image,body[data-phase="4"] #idx-goto-image{display:none}
@@ -24260,7 +24270,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* v3.1.74(俊克): 𝗕は最大2文字(BI)so固定30px(===等の44pxより狭く・B/I/BIで幅不変so↻連打可) */
 /* v3.1.77(俊克): v3.1.76の#fmt-metexパディング(↻で高さが微妙に変わる)を撤去しv3.1.75に戻す=はみ出しOK(上付き=上/下付き=下に延びて、高さ変化が見た目で分かる方が良い) */.fmt-pop{min-width:auto;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));border-color:var(--meos-frame)}
 .fmt-slots{display:flex;align-items:center;gap:6px;justify-content:center}
-.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-editor-foreground);cursor:pointer}
+.fmt-slot{display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-editor-foreground);cursor:var(--meos-hand)}
 .fmt-slot:hover{filter:brightness(1.1)}
 .fmt-slot.dim{opacity:.35}
 .fmt-slot-sep{font-weight:900;opacity:.55}
@@ -24268,10 +24278,10 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .fmt-ball.none{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--meos-frame) 2px,var(--meos-frame) 3px)}
 .fmt-pop-head{font-size:10px;font-weight:800;opacity:.85;margin-bottom:3px;color:#d18400}
 .fmt-grid{display:grid;grid-template-columns:repeat(7,auto);gap:3px}
-.fmt-swatch{width:22px;height:22px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}
+.fmt-swatch{width:22px;height:22px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;display:grid;place-items:center;cursor:var(--meos-hand);padding:0}
 .fmt-swatch:hover{filter:brightness(1.1)}
 .fmt-swatch.active{outline:2px solid var(--vscode-focusBorder,#3794ff);outline-offset:1px}
-.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:pointer;border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}
+.fmt-btn{font-size:13px;font-weight:900;font-family:ui-monospace,Menlo,monospace;min-width:32px;padding:2px 9px;line-height:1.25;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground)}
 .fmt-btn.fmt-remove{font-size:1.3em;line-height:1;-webkit-text-fill-color:initial}
 .fmt-btn.ghost-face{font-size:17px;line-height:1}/* v4.0.433(俊克): 👻は1.3倍(13→17px)。🚫と同じ手 */
 .fmt-btn.raw-toggle.read-on{background:#1e4f8a;color:#e6f0ff;border-color:#16396b}/* v4.0.440(俊克): 読書モード中は青 */
@@ -24431,7 +24441,7 @@ box-shadow:0 8px 26px rgba(0,0,0,.55)}
    ★★断るだけでなく**外し方も同じ札に書く**([[feedback_fix_signal_at_fix_place]] 直す場所に直す合図)。 */
 /* v4.1.68b(俊克 改良1「警告の部分をクリックしたら、警告が消えるようにしよう」):
    ★読み終わった人that、読み終わったと言える口= 待たされるのは、読む前だけでいい。 */
-.clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4;cursor:pointer}
+.clk-warn{display:none;margin:3px 0 1px;padding:4px 6px;border:1px solid #d13438;border-radius:5px;background:rgba(209,52,56,.16);color:#ff7276;font-size:11px;font-weight:700;line-height:1.4;cursor:var(--meos-hand)}
 .clk-warn:hover{background:rgba(209,52,56,.26)}
 .clk-warn.on{display:block}
 /* ★★★v4.1.89(俊克 バグ1「さっきタグとタイマーを登録した膜だけthat、tipthat出る」＋
@@ -24454,7 +24464,7 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
    ★選ぶのは1枚だけ= 押した札だけthat残る。もう一度押せば all に戻る(モードを覚えない)。 */
 .clk-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;padding-top:4px;border-top:1px dashed rgba(127,127,127,.35)}
 .clk-tags:empty{display:none}
-.clk-tag{font-size:10px;font-weight:700;line-height:1;padding:2px 6px;border:1px solid rgba(127,212,232,.55);border-radius:9px;background:transparent;color:#7fd4e8;cursor:pointer;white-space:nowrap}
+.clk-tag{font-size:10px;font-weight:700;line-height:1;padding:2px 6px;border:1px solid rgba(127,212,232,.55);border-radius:9px;background:transparent;color:#7fd4e8;cursor:var(--meos-hand);white-space:nowrap}
 .clk-tag:hover{background:rgba(127,212,232,.16)}
 .clk-tag.on{background:rgba(127,212,232,.26);border-color:#7fd4e8;color:#cdeff8}
 .clk-tag.all{color:var(--vscode-editor-foreground);border-color:var(--vscode-panel-border)}
@@ -24464,7 +24474,7 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
    ★★★**一覧は「直近5つ」で足りる**= 予定表として毎日見る物so、短くなければ読まれない。
      札で束ねた眺めは**別の部屋**= 入口を1つ置いて、要る時だけ入る。
    ★入口は**6番目の行**= 5つの続きに立つso、目that自然にそこへ落ちる(新しい場所を作らない)。 */
-.clk-door{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;border:1px dashed rgba(127,212,232,.5);color:#7fd4e8;font-size:10px;font-weight:700;cursor:pointer}
+.clk-door{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;border:1px dashed rgba(127,212,232,.5);color:#7fd4e8;font-size:10px;font-weight:700;cursor:var(--meos-hand)}
 .clk-door:hover{background:rgba(127,212,232,.14)}
 .clk-tagadd{display:flex;align-items:center;gap:4px;margin-top:3px}
 /* ★★★v4.1.80: **札の箱that見えていなかった**= 一覧の役(hist-only)は設定側の .clk-in を全部隠すso、
@@ -24473,7 +24483,7 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
    ★→ この箱だけ例外にする(役で隠す規則は残したまま、名指しで戻す)。 */
 .clk-pop.hist-only .clk-tagadd .clk-in{display:block}
 .clk-tagadd .clk-in{flex:1;min-width:0;font-size:10px;padding:2px 5px}
-.clk-tag0{flex:none;font-size:10px;font-weight:800;line-height:1;padding:3px 7px;border:1px solid rgba(224,128,58,.85);border-radius:9px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap}
+.clk-tag0{flex:none;font-size:10px;font-weight:800;line-height:1;padding:3px 7px;border:1px solid rgba(224,128,58,.85);border-radius:9px;background:rgba(224,128,58,.22);color:var(--vscode-editor-foreground);cursor:var(--meos-hand);white-space:nowrap}
 .clk-tag0:hover{background:rgba(224,128,58,.34)}
 /* ★★v4.1.75(俊克「まったく直ってないよ」= v4.1.74は**選んだ札を隠す**だけso、
    何も選んでいない時(部屋に入った直後)は幅that戻らなかった):
@@ -24486,7 +24496,7 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 /* v4.1.74: 札は名前より先に縮む= 読みたいのは膜の名前so、そちらに幅を譲る。 */
 .clk-item .ci-tag{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:38%;font-size:9px;font-weight:700;line-height:1;padding:1px 4px;border-radius:8px;background:rgba(127,212,232,.18);color:#7fd4e8;margin-left:3px}
 .clk-item.refused{box-shadow:0 0 0 1.5px #d13438 inset}
-.clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer;opacity:.9;color:var(--vscode-editor-foreground)}
+.clk-item{display:flex;gap:5px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:var(--meos-hand);opacity:.9;color:var(--vscode-editor-foreground)}
 .clk-item:hover{background:rgba(224,128,58,.20);opacity:1}
 .clk-item.live{opacity:1}
 /* ★★★v4.1.32→33(俊克 改良1「左端に少し食み出した形thatが、少し野暮ったく見える」→
@@ -24539,14 +24549,14 @@ color:var(--vscode-editor-background);box-shadow:0 2px 8px rgba(0,0,0,.28)}
    置いたので、在ることに気づけなかった。→ 縁を持たせて、字の濃さで置く(押せる物の顔)。
    ★押す所は字より広く= 1桁の当たりでは狙えない([[project_direct_manipulation_mark]])。 */
 .clk-item .ci-x,.clk-item .ci-lock{flex:none;font-size:11px;font-weight:900;line-height:1;padding:2px 5px;border-radius:5px}
-.clk-item .ci-x{cursor:pointer;color:var(--vscode-editor-foreground);border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 40%,transparent);background:rgba(127,127,127,.14)}
+.clk-item .ci-x{cursor:var(--meos-hand);color:var(--vscode-editor-foreground);border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 40%,transparent);background:rgba(127,127,127,.14)}
 .clk-item .ci-x:hover{background:rgba(230,70,50,.42);border-color:rgba(230,70,50,.95)}
 .clk-item .ci-x:active{transform:translateY(1px)}
-.clk-item .ci-lock{cursor:pointer;opacity:.9;border:1px solid transparent}
+.clk-item .ci-lock{cursor:var(--meos-hand);opacity:.9;border:1px solid transparent}
 .clk-item .ci-lock:hover{border-color:rgba(47,128,184,.8);background:rgba(47,128,184,.18)}
 /* ★★★v4.1.24: 一覧の左端の \u2611/\u2610 = **使う/休む**。押す所は字より広く取る
    ([[project_direct_manipulation_mark]] 印は押せる大きさ)。使っている物だけが橙= 面が状態を語る。 */
-.clk-item .ci-ck{flex:none;font-size:12px;line-height:1;padding:2px 4px;border-radius:5px;cursor:pointer;color:var(--vscode-editor-foreground);opacity:.55}
+.clk-item .ci-ck{flex:none;font-size:12px;line-height:1;padding:2px 4px;border-radius:5px;cursor:var(--meos-hand);color:var(--vscode-editor-foreground);opacity:.55}
 .clk-item .ci-ck:hover{background:rgba(224,128,58,.28);opacity:1}
 .clk-item .ci-ck.on{opacity:1;color:#e0803a}
 .clk-item .ci-ck:active{transform:translateY(1px)}
@@ -24592,7 +24602,7 @@ color:#ffffff;z-index:4;padding:0}
      クリックthat効かないのは、慣性はOS/ブラウザ側の動きで、click では止まらないから。
    ★→ ①1段ずつしか進めなくする(scroll-snap-stop:always)= 飛ばない ②指を置いた瞬間に**今の位置を書き戻す**
      (scrollTop=scrollTop)= その一筆that慣性を打ち切る。触れば止まる、を体で分かる形にする。 */
-.clk-col div{height:22px;line-height:22px;font-size:10px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:pointer;color:var(--vscode-editor-foreground);opacity:.8;transition:font-size .12s,opacity .12s}
+.clk-col div{height:22px;line-height:22px;font-size:10px;font-family:ui-monospace,Menlo,monospace;text-align:center;cursor:var(--meos-hand);color:var(--vscode-editor-foreground);opacity:.8;transition:font-size .12s,opacity .12s}
 .clk-col div.sel{font-size:19px;font-weight:900;opacity:1;color:#e0803a}
 /* ★★★v4.1.46(俊克 バグ1「確定値(→ …)の年月日that白色なら、上の年月日スクロールの部分の
    今日の年月日も、橙色でなくて、白色にしないとね」):
@@ -24606,7 +24616,7 @@ color:#ffffff;z-index:4;padding:0}
 .clk-cols::before{content:'';position:absolute;left:0;right:0;top:22px;height:22px;border-top:1px solid rgba(224,128,58,.55);border-bottom:1px solid rgba(224,128,58,.55);pointer-events:none;z-index:1}
 /* ★v4.1.3(俊克「clearボタンは、ボタンらしく、角丸四角で囲ってボタンらしくしようよ」):
    縁が地に溶けていた= 押せる物に見えていなかった。地を持たせ、縁を立て、押せば沈む。 */
-.clk-clear{flex:none;align-self:flex-start;font-size:10px;font-weight:700;padding:3px 8px;border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 45%,transparent);border-radius:6px;background:rgba(127,127,127,.16);color:var(--vscode-editor-foreground);cursor:pointer}
+.clk-clear{flex:none;align-self:flex-start;font-size:10px;font-weight:700;padding:3px 8px;border:1px solid color-mix(in srgb,var(--vscode-editor-foreground) 45%,transparent);border-radius:6px;background:rgba(127,127,127,.16);color:var(--vscode-editor-foreground);cursor:var(--meos-hand)}
 .clk-clear:hover{background:rgba(224,128,58,.22);border-color:rgba(224,128,58,.75)}
 .clk-clear:active{transform:translateY(1px)}
 .clk-in{width:100%;box-sizing:border-box;font-size:11px;font-family:ui-monospace,Menlo,monospace;padding:3px 5px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
@@ -24636,16 +24646,16 @@ color:#ffffff;z-index:4;padding:0}
 .clk-foot{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .clk-foot .clk-modes{display:flex;align-items:center;gap:4px;min-width:0}
 .clk-mins{display:flex;gap:3px}
-.clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer}
+.clk-mins button{font-size:10px;padding:1px 4px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand)}
 .clk-mins button:hover{background:rgba(224,128,58,.20)}
 /* ★v4.1.5: 🔓/🔒= 掛ける前に選ぶ。押した姿that答えso、チェック箱は要らない(印は形が語る)。 */
 /* v4.1.64: 錠は Encrypt Me と同じ姿(\ud83d\udd10 の右肩に \ud83d\udd13)= 家に在る同じ役の部品を真似る。 */
 .clk-whenrow{display:flex;align-items:center;gap:12px}
 .clk-whenrow .clk-when{flex:1;border-color:var(--vscode-panel-border)}
 .clk-lockunit{position:relative;display:inline-flex;flex:none;margin-right:5px}
-.clk-lockmain{font-size:13px;line-height:1;padding:2px 6px;border:1px solid #a0500f;border-radius:6px;background:#d2691e;color:#fff;cursor:pointer}
+.clk-lockmain{font-size:13px;line-height:1;padding:2px 6px;border:1px solid #a0500f;border-radius:6px;background:#d2691e;color:#fff;cursor:var(--meos-hand)}
 .clk-lockmain:hover{background:#e07b2a}
-.clk-lockbadge{position:absolute;top:-7px;right:-8px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;padding:0;margin:0;border:1px solid transparent;border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);cursor:pointer;filter:grayscale(1) brightness(.85);z-index:6}
+.clk-lockbadge{position:absolute;top:-7px;right:-8px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;padding:0;margin:0;border:1px solid transparent;border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);cursor:var(--meos-hand);filter:grayscale(1) brightness(.85);z-index:6}
 /* \u2605v4.1.65(俊克 改良2「\ud83d\udd10を押した時に\ud83d\udd13の色が薄い」): 施錠=オレンジ \u21c4 解錠=ブルー。
    Encrypt Me(v2.0.58 俊克「施錠=オレンジなら解錠=青系」)と**同じ対比**so、覚え直すことthat無い。 */
 .clk-lockunit.on .clk-lockmain{opacity:.45;border-color:var(--vscode-panel-border);background:transparent;color:var(--vscode-editor-foreground)}
@@ -24660,7 +24670,7 @@ color:#ffffff;z-index:4;padding:0}
 /* \u2605v4.1.66(俊克 改良1「\u2610 countdown の時に**角丸四角で囲われないのthat分かりにくい**」):
    \u2605**箱は状態でなく「押せる物である」ことを言う**so、押していない時も見えていなければならない。
    \u2605\u2605v4.1.66(俊克 改良2「チェックボックスの \u2610 that小さ過ぎるので約1.4倍に」): 13px \u00d7 1.4 \u2248 18px。 */
-.clk-dir,.clk-rep{font-size:13px;font-weight:700;padding:2px 7px;border:1px solid rgba(224,128,58,.55);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.clk-dir,.clk-rep{font-size:13px;font-weight:700;padding:2px 7px;border:1px solid rgba(224,128,58,.55);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 .clk-ck{font-size:18px;line-height:1}
 .clk-dir{color:#3fb950}
 .clk-dir.on{color:#56d4dd}
@@ -24672,11 +24682,11 @@ color:#ffffff;z-index:4;padding:0}
    しなかったら、そのままSetを押す人はいない。薄い色は未設定で**押せなく**して、何かを設定したら
    濃い色にして押せるようにする」): ★**押せる時だけ、押せる顔をする**= 薄い＝まだ何も言っていない。 */
 .clk-set{margin-left:auto;font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.35);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);opacity:.45;pointer-events:none;cursor:default}
-.clk-set.on{border-color:rgba(224,128,58,.85);background:rgba(224,128,58,.30);opacity:1;pointer-events:auto;cursor:pointer}
+.clk-set.on{border-color:rgba(224,128,58,.85);background:rgba(224,128,58,.30);opacity:1;pointer-events:auto;cursor:var(--meos-hand)}
 .clk-set.on:hover{background:rgba(224,128,58,.42)}
 /* ★v4.1.133(俊克 9/5 pm03:12「これは、既存の膜の直下にペーストするのが目的so、膜の同時生成は不要」):
    ★copy は Set と同じ駒の形で、**色は控えめ**= 掛ける(Set)が主役、写す(copy)は脇役。 */
-.clk-copy{font-size:11px;font-weight:800;padding:2px 7px;margin-right:4px;border:1px solid rgba(224,128,58,.45);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:pointer;opacity:.9}
+.clk-copy{font-size:11px;font-weight:800;padding:2px 7px;margin-right:4px;border:1px solid rgba(224,128,58,.45);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand);opacity:.9}
 .clk-copy:hover{background:rgba(224,128,58,.16);opacity:1}
 /* ★★v4.1.18(俊克 改良3「STOPで点滅している時の⏰ボタンは、大きくなっているのはいいんだけど、
    ▼ボタンが元の大きさなので、少し間抜けに見える」): ★★**大きくするのは駒ごと**= ⏰と▼は1つの駒なので、
@@ -24711,18 +24721,18 @@ color:#ffffff;z-index:4;padding:0}
    訊く所も家の中に置く。横並びも×も項目ごとのtipも、ここでは全部ただのCSSとHTML。 */
 .mew-dup{display:none;position:absolute;top:calc(100% + 6px);right:0;width:min(430px,80vw);z-index:80;padding:12px 14px;border:1px solid #c9a227;border-radius:10px;background:#fdf6e3;color:#1e293b;box-shadow:0 12px 34px rgba(0,0,0,.55);text-align:left}
 .mew-dup.on{display:block}
-.mew-dup-x{position:absolute;top:4px;right:6px;border:0;background:transparent;color:#1e293b;opacity:.55;cursor:pointer;font-size:13px;line-height:1;padding:3px 5px;font-family:inherit}
+.mew-dup-x{position:absolute;top:4px;right:6px;border:0;background:transparent;color:#1e293b;opacity:.55;cursor:var(--meos-hand);font-size:13px;line-height:1;padding:3px 5px;font-family:inherit}
 .mew-dup-x:hover{opacity:1}
 .mew-dup-title{font-weight:800;font-size:12.5px;line-height:1.55;margin:0 18px 8px 0}
 .mew-dup-body{font-size:11px;line-height:1.6;opacity:.82;display:flex;flex-direction:column;gap:1px;margin-bottom:10px}
 .mew-dup-line{display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:nowrap}
 .mew-dup-lbl{font-size:11.5px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mew-dup-btn{font-family:inherit;font-size:11.5px;padding:4px 10px;border:1px solid #b9a26a;border-radius:6px;background:#f2e7c9;color:#1e293b;cursor:pointer;white-space:nowrap;flex:0 0 auto}
+.mew-dup-btn{font-family:inherit;font-size:11.5px;padding:4px 10px;border:1px solid #b9a26a;border-radius:6px;background:#f2e7c9;color:#1e293b;cursor:var(--meos-hand);white-space:nowrap;flex:0 0 auto}
 .mew-dup-btn:hover{background:#e8d9ae;border-color:#8a7534}
 .mew-dup-see{background:transparent;border-style:dashed}
 .mew-dup-main{background:#a8730e;border-color:#8a5d09;color:#fff;font-weight:700}
 .mew-dup-main:hover{background:#c2860f;border-color:#8a5d09}
-.fmt-lvl.mew-cycle{cursor:pointer}
+.fmt-lvl.mew-cycle{cursor:var(--meos-hand)}
 .fmt-btn.mew-btn .mew-n{font-size:10px;font-weight:900;font-family:ui-monospace,Menlo,monospace;margin-left:2px;vertical-align:super}
 .enc-btns{display:inline-flex;gap:12px;align-items:stretch;flex:none}
 .encrypt-me-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:7px;padding-top:8px;border-top:1px solid var(--meos-frame)}
@@ -24731,7 +24741,7 @@ color:#ffffff;z-index:4;padding:0}
 .enc-pass-label{flex:none;font-size:13px;font-weight:800}
 .enc-pass-input{flex:1;min-width:0;font-size:12px;padding:3px 7px;border:1px solid rgba(210,105,30,.5);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .enc-pass-input:focus{border-color:#d2691e;outline:none}
-.enc-pass-eye,.enc-pass-go,.enc-pass-x{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid rgba(127,127,127,.35);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}
+.enc-pass-eye,.enc-pass-go,.enc-pass-x{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:var(--meos-hand);border:1px solid rgba(127,127,127,.35);background:var(--vscode-button-secondaryBackground);color:var(--vscode-foreground)}
 .enc-pass-go{background:#1a7f37;border-color:#116329;color:#fff}
 .enc-pass-go:hover{background:#2da44e}
 .enc-pass-eye:hover,.enc-pass-x:hover{filter:brightness(1.1)}
@@ -24741,12 +24751,12 @@ color:#ffffff;z-index:4;padding:0}
 #enc-lock.enc-active{background:#d2691e;border-color:#a0500f;color:#fff;opacity:1}
 #enc-lock.enc-active:hover{background:#e07b2a;border-color:#a0500f}
 .enc-lockunit{position:relative;display:inline-flex}
-.enc-badge{position:absolute;top:-7px;right:-8px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;padding:0;margin:0;border:1px solid transparent;border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);cursor:pointer;filter:grayscale(1) brightness(.85);z-index:6}
+.enc-badge{position:absolute;top:-7px;right:-8px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;padding:0;margin:0;border:1px solid transparent;border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);cursor:var(--meos-hand);filter:grayscale(1) brightness(.85);z-index:6}
 #enc-unlock.enc-active{filter:none;background:#2f80b8;border-color:rgba(0,0,0,.6);box-shadow:0 0 4px rgba(47,128,184,.7)}
 #enc-unlock.enc-active:hover{background:#3a93d0;filter:brightness(1.05)}
 #nav-toc.top-mode{background:#0d9aa0;border-color:#0d9aa0;color:#fff}
 .top-eof-unit{position:relative;display:inline-flex;margin-right:12px}
-.eof-badge{position:absolute;bottom:-3px;right:-7px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;padding:0;margin:0;border:0.5px solid rgba(0,0,0,.6);border-radius:50%;background:#6366f1;color:#fff;cursor:pointer;z-index:6}
+.eof-badge{position:absolute;bottom:-3px;right:-7px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;line-height:1;padding:0;margin:0;border:0.5px solid rgba(0,0,0,.6);border-radius:50%;background:#6366f1;color:#fff;cursor:var(--meos-hand);z-index:6}
 .eof-badge:hover{background:#7c7ef5}
 #nav-eof{background:#6366f1;border-color:rgba(0,0,0,.6);color:#fff}
 #time-machine-trigger{background:#7c3aed;border-color:#7c3aed;color:#fff}
@@ -24763,11 +24773,11 @@ color:#ffffff;z-index:4;padding:0}
 .fmt-btn.gh-push.gh-on{background:#1a7f37;border-color:#116329;color:#fff}
 .fmt-btn.gh-push.gh-on:hover{background:#2da44e}
 .gh-wizard{margin:5px 8px;border:1px solid rgba(26,127,55,.4);border-radius:7px;background:rgba(26,127,55,.06);overflow:hidden}
-.gh-wizard-head{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;background:rgba(26,127,55,.12);user-select:none}
+.gh-wizard-head{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:var(--meos-hand);background:rgba(26,127,55,.12);user-select:none}
 .gh-wizard-head:hover{background:rgba(26,127,55,.2)}
 .gh-wizard-title{flex:none;font-size:11px;font-weight:800;color:#2da44e}
 .gh-wizard-status{flex:1;min-width:0;font-size:10px;font-weight:700;color:#2da44e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
-.gh-wizard-toggle{flex:none;font-size:11px;font-weight:900;padding:0 5px;border:none;background:transparent;color:#2da44e;cursor:pointer;line-height:1}
+.gh-wizard-toggle{flex:none;font-size:11px;font-weight:900;padding:0 5px;border:none;background:transparent;color:#2da44e;cursor:var(--meos-hand);line-height:1}
 .gh-wizard-body{padding:6px 8px}
 .gh-wizard.collapsed .gh-wizard-body{display:none}
 .gh-wizard.collapsed .gh-wizard-toggle{transform:rotate(-90deg)}
@@ -24776,18 +24786,18 @@ color:#ffffff;z-index:4;padding:0}
 .gh-step{flex:none;font-size:11px;font-weight:900;color:#2da44e;width:14px}
 .gh-input{flex:1;min-width:0;font-size:11px;padding:3px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .gh-input:focus{border-color:#2da44e;outline:none}
-.gh-pat-link{flex:none;font-size:10px;padding:3px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:pointer;white-space:nowrap}
+.gh-pat-link{flex:none;font-size:10px;padding:3px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:var(--meos-hand);white-space:nowrap}
 .gh-pat-link:hover{background:rgba(26,127,55,.14)}
 .gh-pat-link:disabled{opacity:.35;cursor:default;background:transparent}
-.gh-priv-row{display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding-left:19px;user-select:none}
-.gh-priv-row input{margin:0;cursor:pointer}
+.gh-priv-row{display:flex;align-items:center;gap:5px;font-size:11px;cursor:var(--meos-hand);padding-left:19px;user-select:none}
+.gh-priv-row input{margin:0;cursor:var(--meos-hand)}
 .gh-folder-row2{font-size:11px}
 .gh-folder-label2{flex:none;font-size:12px}
 .gh-folder-name2{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--vscode-foreground)}
 .gh-folder-name2.none{opacity:.45;font-weight:400}
-.gh-change-btn{flex:none;font-size:10px;padding:2px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:pointer;white-space:nowrap}
+.gh-change-btn{flex:none;font-size:10px;padding:2px 6px;border:1px solid rgba(26,127,55,.5);border-radius:4px;background:transparent;color:#2da44e;cursor:var(--meos-hand);white-space:nowrap}
 .gh-change-btn:hover{background:rgba(26,127,55,.14)}
-.gh-connect-btn{font-size:11px;font-weight:700;padding:4px 8px;border:1px solid #1a7f37;border-radius:4px;background:#1a7f37;color:#fff;cursor:pointer;margin-top:2px}
+.gh-connect-btn{font-size:11px;font-weight:700;padding:4px 8px;border:1px solid #1a7f37;border-radius:4px;background:#1a7f37;color:#fff;cursor:var(--meos-hand);margin-top:2px}
 .gh-connect-btn:hover{background:#2da44e}
 .gh-connect-btn:disabled{opacity:.4;cursor:default}
 .gh-msg{font-size:10px;min-height:0;color:#2da44e;font-weight:600}
@@ -24797,9 +24807,9 @@ color:#ffffff;z-index:4;padding:0}
 .gh-conn-folder::before{content:"📁 "}
 .gh-conn-repo{flex:1;min-width:0;color:#2da44e;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gh-conn-repo::before{content:"✅ "}
-.gh-disconnect-btn{flex:none;font-size:10px;padding:1px 6px;border:1px solid rgba(229,83,75,.5);border-radius:4px;background:transparent;color:#e5534b;cursor:pointer}
+.gh-disconnect-btn{flex:none;font-size:10px;padding:1px 6px;border:1px solid rgba(229,83,75,.5);border-radius:4px;background:transparent;color:#e5534b;cursor:var(--meos-hand)}
 .gh-disconnect-btn:hover{background:rgba(229,83,75,.14)}
-.gh-sync-btn,.gh-open-btn{flex:none;font-size:13px;padding:1px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:transparent;cursor:pointer;line-height:1.3}
+.gh-sync-btn,.gh-open-btn{flex:none;font-size:13px;padding:1px 6px;border:1px solid rgba(26,127,55,.4);border-radius:4px;background:transparent;cursor:var(--meos-hand);line-height:1.3}
 .gh-sync-btn:hover,.gh-open-btn:hover{background:rgba(26,127,55,.14)}
 .gh-sync-btn.gh-on{background:#1a7f37;border-color:#116329}
 /* v4.0.82(俊克): PATの期限を🐙の隣に。7日以内=橙・当日/切れ=赤。切れる前に気づける口。 */.gh-pat-exp{flex:none;font-size:10px;font-weight:700;padding:0 2px;margin-right:6px;white-space:nowrap;background:transparent;border:0;color:var(--vscode-foreground);opacity:.9;position:relative;text-decoration:underline dotted;text-underline-offset:2px;text-decoration-thickness:1px}
@@ -24822,11 +24832,11 @@ color:#ffffff;z-index:4;padding:0}
 .bm-pop .ref-cat{font-weight:700}
 .bm-pop .ref-cat .ref-arrow{float:right;opacity:.7;margin-left:8px}
 .bm-pop .ref-chk{color:#dc2626;font-weight:900}
-.bm-pop .ref-seg{cursor:pointer;padding:1px 4px;border-radius:3px}
+.bm-pop .ref-seg{cursor:var(--meos-hand);padding:1px 4px;border-radius:3px}
 .bm-pop .ref-seg:hover{background:rgba(255,255,255,.14)}
 .toc-tools .bm-pending-cnt{position:relative;top:-4px;left:1px;font-size:12px;font-weight:900;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.85)}
 .toc-tools .bm-split{display:inline-flex;align-items:stretch;position:relative}
-.bm-f-badge{position:absolute;top:-6px;right:-5px;width:15px;height:15px;border-radius:50%;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:6;line-height:1;user-select:none}
+.bm-f-badge{position:absolute;top:-6px;right:-5px;width:15px;height:15px;border-radius:50%;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand);box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:6;line-height:1;user-select:none}
 #ref-f-badge{background:#2563eb}
 #ref-f-badge:hover{background:#1d4ed8}
 #bm-f-badge{background:#dc2626}
@@ -24863,7 +24873,7 @@ color:#ffffff;z-index:4;padding:0}
 .bm-split .bm-cnt{font-size:11px;font-weight:900;color:#fff;position:relative;top:-5px;left:2px;text-shadow:0 0 2px rgba(0,0,0,.65)}
 .bm-pop{display:none;position:fixed;z-index:60;flex-direction:column;gap:2px;padding:4px;border:1px solid var(--vscode-panel-border);border-radius:7px;background:var(--vscode-editor-background);box-shadow:0 6px 18px rgba(0,0,0,.26)}
 .bm-pop.on{display:flex}
-/* v4.0.167(俊克 8/13 am00:30 改良2「Folding Comment(FC) below の□がまだ少し小さい」): ★★真因は**大きさの数字ではなくフォント**= メニュー項目は button、見出しメニューは div。**button は font-family を継承しない**(既定 Arial / div は -apple-system)so、**同じ font-size 18px でも箱のグリフが小さい**。ブラウザで実測して確かめた(枠は 20.7x18.0 で同じ・中の字だけ違う)。so数字をいじらず **font-family を継承させる**=これで見出しメニューと同じ字になる。 */.bm-pop-item{font-family:inherit;font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:pointer;white-space:nowrap}
+/* v4.0.167(俊克 8/13 am00:30 改良2「Folding Comment(FC) below の□がまだ少し小さい」): ★★真因は**大きさの数字ではなくフォント**= メニュー項目は button、見出しメニューは div。**button は font-family を継承しない**(既定 Arial / div は -apple-system)so、**同じ font-size 18px でも箱のグリフが小さい**。ブラウザで実測して確かめた(枠は 20.7x18.0 で同じ・中の字だけ違う)。so数字をいじらず **font-family を継承させる**=これで見出しメニューと同じ字になる。 */.bm-pop-item{font-family:inherit;font-size:12px;text-align:left;padding:5px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-foreground);cursor:var(--meos-hand);white-space:nowrap}
 /* v4.0.167: 表のメニューの印も .meos-chk に任せる(幅も色も太さも、印の1か所で決める)。 *//* v4.0.166(俊克 8/13 am00:12 改良1「☑が小さい。特にFormatのが小さ過ぎる。Boldなどでも小さい。Boldなどの従来のサイズの1.5倍くらいにできないか?」＋改良2「なぜ□ Folding Comment(FC) belowの✓を入れた時だけ緑色にするのか?」): ★★**チェックの見た目を1つのクラスに集める**= 今まで4か所(見出し/箇条書き・Bold/Italic・mbGridのBold/Italic・FC)が**それぞれ別の書き方**で箱を出していたso、大きさを直すのに4か所を触ることになっていた。★1.5倍= 12pxの本文に対して箱だけ1.5em。★**両方の状態が同じ寸法**so、切替で1pxも動かない。★改良2=**緑をやめた**。緑は「良い/完了」を意味するthat、これは**どちらでもいい2つの形の選択**so、色で優劣を付けるのは嘘だった。見出しメニューの ☑/□ が最初から色を変えていない=**そちらが正しかった**。 */.meos-chk{display:inline-block;min-width:1.15em;font-size:1.5em;line-height:1;vertical-align:-0.14em;font-weight:400}
 .bm-pop-item:hover{background:rgba(210,132,0,.16)}
 .bm-pop-item.disabled{opacity:.4;cursor:default;pointer-events:none}
@@ -24872,7 +24882,7 @@ color:#ffffff;z-index:4;padding:0}
 .bm-pop #bm-add-pending.disabled{opacity:.4;cursor:default;pointer-events:none}
 .bm-pop #ref-group-list{display:flex;flex-direction:column;gap:2px}
 .bm-pop #ref-group-list:empty{display:none}
-.bm-pop .bm-pending-row{font-size:11px;text-align:left;padding:4px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-descriptionForeground);cursor:pointer;white-space:nowrap}
+.bm-pop .bm-pending-row{font-size:11px;text-align:left;padding:4px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--vscode-descriptionForeground);cursor:var(--meos-hand);white-space:nowrap}
 .bm-pop .bm-pending-row:hover{background:rgba(100,116,139,.18);color:var(--vscode-foreground)}
 .bm-pop .bm-pending-row.active{color:#d18400;font-weight:800}
 .bm-pop #bm-clear{order:2;border-top:1px solid var(--vscode-panel-border);margin-top:2px;color:var(--vscode-descriptionForeground)}
@@ -24885,7 +24895,7 @@ color:#ffffff;z-index:4;padding:0}
 .bm-pop #bm-pending-resolve{order:3}
 .bm-pop #bm-pending-front{order:4;color:#dc2626;font-weight:700}
 .bm-pop #bm-pending-front:hover{background:rgba(220,38,38,.14)}
-.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:pointer}
+.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:var(--meos-hand)}
 .fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}
 .fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}
 .fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}
@@ -24905,19 +24915,19 @@ color:#ffffff;z-index:4;padding:0}
 .toc-mini{padding:2px 4px;min-width:20px;font-size:11px}
 .toc-tools .toc-del{font-size:22px;line-height:1;color:#b91c1c;padding:0 8px}
 .fixed-toc-empty{padding:8px;font-size:12px;opacity:.6}
-.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}
+.toc-pin{display:flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px;font-weight:700;cursor:var(--meos-hand);background:rgba(56,148,255,.12);border-bottom:1px solid rgba(56,148,255,.32);white-space:nowrap;overflow:hidden}
 .toc-pin:hover{background:rgba(56,148,255,.24)}
 .toc-pin-emoji{flex:none;font-size:12px}
 .toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}
 .toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}
 .toc-pin-access{flex:none;font-weight:700;font-size:11px;opacity:.85;margin-left:3px}
-.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:pointer;white-space:nowrap}
+.toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:var(--meos-hand);white-space:nowrap}
 .toc-pin-mode.dim{opacity:.35;cursor:default}
 .toc-pin-check{width:12px;height:12px;margin:0}
-.toc-pin-jump{flex:none;cursor:pointer;font-size:13px;opacity:1;padding-left:0}
+.toc-pin-jump{flex:none;cursor:var(--meos-hand);font-size:13px;opacity:1;padding-left:0}
 .toc-pin-jump.dim{opacity:.35}
-.toc-pin-toggle{flex:none;cursor:pointer;font-size:10px;font-weight:900;padding:1px 5px;margin-left:auto;border:1px solid currentColor;border-radius:4px;background:#fff;line-height:1.4;text-shadow:0 0 1px rgba(0,0,0,.5)}
+.toc-pin-toggle{flex:none;cursor:var(--meos-hand);font-size:10px;font-weight:900;padding:1px 5px;margin-left:auto;border:1px solid currentColor;border-radius:4px;background:#fff;line-height:1.4;text-shadow:0 0 1px rgba(0,0,0,.5)}
 .toc-pin-toggle:hover{background:color-mix(in srgb,currentColor 16%,#fff)}
 .toc-tooltip{position:fixed;z-index:9999;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;font-style:normal;letter-spacing:normal;text-transform:none;box-shadow:0 2px 8px rgba(0,0,0,.2);white-space:pre-line;max-width:260px;line-height:1.4}
 .img-viewer{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;background:var(--vscode-editor-background,#1e1e1e)}
@@ -24925,12 +24935,12 @@ color:#ffffff;z-index:4;padding:0}
 .iv-bar{display:flex;align-items:center;gap:10px;padding:8px 10px 6px;flex:none}
 .iv-count{font-size:11px;opacity:.7;flex:none}
 .iv-spacer{flex:1}
-.iv-btn{font-size:14px;font-weight:800;min-width:30px;height:26px;padding:0 7px;border:1px solid var(--meos-frame,rgba(127,127,127,.4));border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.14));color:var(--vscode-foreground);cursor:pointer;line-height:1}
+.iv-btn{font-size:14px;font-weight:800;min-width:30px;height:26px;padding:0 7px;border:1px solid var(--meos-frame,rgba(127,127,127,.4));border-radius:6px;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.14));color:var(--vscode-foreground);cursor:var(--meos-hand);line-height:1}
 .iv-btn:hover{filter:brightness(1.15)}
 .iv-btn:disabled{opacity:.3;cursor:default}
 .iv-btn.iv-close{color:#e5534b;border-color:rgba(229,83,75,.5)}
 .iv-split{position:relative;display:inline-flex}
-.iv-badge{position:absolute;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;line-height:1;border:1px solid rgba(0,0,0,.55);border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);color:var(--vscode-badge-foreground,#fff);cursor:pointer;z-index:2}
+.iv-badge{position:absolute;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;line-height:1;border:1px solid rgba(0,0,0,.55);border-radius:50%;background:var(--vscode-badge-background,#3a3a3a);color:var(--vscode-badge-foreground,#fff);cursor:var(--meos-hand);z-index:2}
 .iv-badge:hover{filter:brightness(1.25)}
 .iv-badge.disabled{opacity:.3;cursor:default}
 .iv-badge-tr{top:-6px;right:-6px}
@@ -24940,7 +24950,7 @@ color:#ffffff;z-index:4;padding:0}
 .iv-name-label::before{content:"🖼 "}
 .iv-name-input{flex:1;min-width:0;font-size:12px;font-weight:700;padding:3px 7px;border:1px solid var(--meos-frame,rgba(127,127,127,.4));border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .iv-name-input:focus{border-color:#6366f1;outline:none}
-.iv-name-btn,.iv-name-go{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid var(--meos-frame,rgba(127,127,127,.4));background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.14));color:var(--vscode-foreground)}
+.iv-name-btn,.iv-name-go{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:var(--meos-hand);border:1px solid var(--meos-frame,rgba(127,127,127,.4));background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.14));color:var(--vscode-foreground)}
 .iv-name-btn:hover,.iv-name-go:hover{filter:brightness(1.15)}
 #iv-name-stamp{background:#a8730e;border-color:#a8730e;color:#fff}
 #iv-name-reset{background:#c0392b;border-color:#c0392b;color:#fff}
@@ -25840,21 +25850,21 @@ fmtPop.style.top=Math.max(6,fmtPopBottom-h)+'px';});}
 if(window.__fmtActionable&&window.__fmtActionable[kind]){const r=(window.__fmtRing&&window.__fmtRing[kind])||0;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;
 const w=(r===0)?baseW:(((baseW-1+r)%3)+1);return (kind==='heading')?fmtHeadingColors[w]:(kind==='highlight')?fmtHlSlots[w-1]:fmtStSlots[w-1];
 }return fmtSpec[kind];}
-function renderFmtPop(){if(!fmtPop)return;const spec=fmtCurSpec(fmtPopKind);let html='';/* v4.0.38(俊克): 上付/下付の▾も他と同じ形に=上段に設定(Super%/Sub%)・下段に色スロット(選ぶとグリッドが出る)。 */if(fmtPopKind==='heading'){const _hb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px;'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
+function renderFmtPop(){if(!fmtPop)return;const spec=fmtCurSpec(fmtPopKind);let html='';/* v4.0.38(俊克): 上付/下付の▾も他と同じ形に=上段に設定(Super%/Sub%)・下段に色スロット(選ぶとグリッドが出る)。 */if(fmtPopKind==='heading'){const _hb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" style="cursor:var(--meos-hand);padding:2px 11px;margin:0 4px;border-radius:5px;'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
 html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-size:12px">'+_hb('head','Heading',spec.head!==false)+_hb('bullet','Bullets',!!spec.bullet)+'</div>';
 /* v4.0.47: 箇条書きON の時だけ種類(- / 1.)。ハイフン/アスタリスク/プラスは描画結果が同じなので選択肢に出さない(意味が変わるのは番号付きだけ)。★このコメントに **backtick を書くとテンプレートリテラルが途中で終わる**(v4.0.50で全壊した)。 */if(spec.bullet){const _bl=[['-','• Bullet'],['1.','1. Numbered']];
-html+='<div style="display:flex;justify-content:center;gap:8px;padding:0 0 7px;font-size:12px">'+_bl.map(b=>'<span class="fmt-blt" data-blt="'+b[0]+'" style="cursor:pointer;padding:1px 9px;border-radius:5px;'+((spec.blt||'-')===b[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'">'+b[1]+'</span>').join('')+'</div>';
+html+='<div style="display:flex;justify-content:center;gap:8px;padding:0 0 7px;font-size:12px">'+_bl.map(b=>'<span class="fmt-blt" data-blt="'+b[0]+'" style="cursor:var(--meos-hand);padding:1px 9px;border-radius:5px;'+((spec.blt||'-')===b[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'">'+b[1]+'</span>').join('')+'</div>';
 }}if(fmtPopKind==='metex'){const _row=(lb,id,pid,base,val)=>'<div style="display:flex;align-items:center;gap:8px;padding:3px 4px;white-space:nowrap;font-size:12px"><span style="display:inline-block;min-width:24px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-weight:700">A<span id="'+pid+'">'+base+'</span></span><span style="flex:1">'+lb+'</span><input id="'+id+'" type="number" min="30" max="200" value="'+val+'" style="width:54px"/></div>';
 html+=_row('Super %','mtx-sup-input','mtx-sup-prev','2',(typeof mtxSupVal!=='undefined'?mtxSupVal:150))+_row('Sub %','mtx-sub-input','mtx-sub-prev','3',(typeof mtxSubVal!=='undefined'?mtxSubVal:50));
-}/* v4.0.18(俊克): 統一ボタンの▾=スクショ2形。□Bold □Italic を一番上(▼caretから遠い=操作機会少)・色は下(見出し等と共通)。将来 □Link 下線 もこの上段に。 */if(fmtPopKind==='highlight'){const _bi=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px;font-weight:'+(k==='bold'?'900':'400')+';font-style:'+(k==='italic'?'italic':'normal')+';'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
+}/* v4.0.18(俊克): 統一ボタンの▾=スクショ2形。□Bold □Italic を一番上(▼caretから遠い=操作機会少)・色は下(見出し等と共通)。将来 □Link 下線 もこの上段に。 */if(fmtPopKind==='highlight'){const _bi=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" style="cursor:var(--meos-hand);padding:2px 11px;margin:0 4px;border-radius:5px;font-weight:'+(k==='bold'?'900':'400')+';font-style:'+(k==='italic'?'italic':'normal')+';'+(on?'':'opacity:.55')+'">'+'<span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span>';
 html+='<div style="display:flex;justify-content:center;padding:2px 0 5px;font-size:12px">'+_bi('bold','Bold',spec.bold)+_bi('italic','Italic',spec.italic)+_bi('link','🔗',spec.link)+'</div>';
 /* v4.0.26(俊克 どこでもH-TOC): □Linkの時だけ下線種を選ぶ(0=単線/1=二重/2=波線/3=二重波線)。生データは番号so手打ち不要・UIは実物の下線でプレビュー。 */if(spec.link){const _ulc=fmtHexFg(spec.fg);
-const _uls=[[0,'Solid'],[1,'Double'],[2,'Wavy'],[3,'Double wavy']];html+='<div style="display:flex;justify-content:center;gap:6px;padding:0 0 7px;font-size:12px">'+_uls.map(u=>'<span class="fmt-ul" data-ul="'+u[0]+'" title="'+u[1]+' underline"'+' style="cursor:pointer;display:inline-block;text-align:center;padding:1px 5px 3px;border-radius:5px;'+((Number(spec.ul)||0)===u[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'"><span style="display:inline-block;width:20px;padding-bottom:6px;'+fmtUlCssStr(u[0],_ulc)+'">'+u[0]+'</span></span>').join('')+'</div>';
+const _uls=[[0,'Solid'],[1,'Double'],[2,'Wavy'],[3,'Double wavy']];html+='<div style="display:flex;justify-content:center;gap:6px;padding:0 0 7px;font-size:12px">'+_uls.map(u=>'<span class="fmt-ul" data-ul="'+u[0]+'" title="'+u[1]+' underline"'+' style="cursor:var(--meos-hand);display:inline-block;text-align:center;padding:1px 5px 3px;border-radius:5px;'+((Number(spec.ul)||0)===u[0]?'box-shadow:0 0 0 1px var(--vscode-focusBorder);background-color:var(--vscode-list-activeSelectionBackground);':'opacity:.65;')+'"><span style="display:inline-block;width:20px;padding-bottom:6px;'+fmtUlCssStr(u[0],_ulc)+'">'+u[0]+'</span></span>').join('')+'</div>';
 }}/* v4.0.432(俊克): 取消線の▾に □ ~~ = 従来方式に戻す設定。既定はオフ＝👻。 */if(fmtPopKind==='strike'){const _tt=escText(spec.tilde?'Strikethrough | Crossed out, and still visible. Uncheck to comment out with \ud83d\udc7b instead \u2014 hidden, not deleted.':'Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again; outside MeOS it is a strikethrough. Check this to go back to a plain strikethrough.');
 /* ★★v4.0.437(俊克「半透明で読み難いよ」): ★★**tipが半透明だったのではなく、□がオフの時の opacity:.55 を
    ::after が受け継いでいた**(CSSのopacityは親に掛けると子から戻せない)。→ **薄くするのは中身だけ**にして、
    tipを載せる外側は素のままにする。見た目の薄さは変わらない。 */
-const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" data-tip="'+_tt+'" style="cursor:pointer;padding:2px 11px;margin:0 4px;border-radius:5px">'+'<span style="'+(on?'':'opacity:.55')+'"><span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span></span>';
+const _tb=(k,lb,on)=>'<span class="fmt-bi" data-bi="'+k+'" data-tip="'+_tt+'" style="cursor:var(--meos-hand);padding:2px 11px;margin:0 4px;border-radius:5px">'+'<span style="'+(on?'':'opacity:.55')+'"><span class="meos-chk">'+(on?'☑':'□')+'</span> '+lb+'</span></span>';
 /* v4.0.433(俊克「設定パネルに説明は要らないよ。左が切れているしね。出すなら、tipで」)= 説明は**読みたい時に読む物**so
    パネルに常に置かない(常に見える説明は本文になる)。□ ~~ 自身のtipへ。 */
 html+='<div style="display:flex;justify-content:center;padding:2px 0 7px;font-size:12px">'+_tb('tilde','~~',!!spec.tilde)+'</div>';
@@ -27096,12 +27106,12 @@ fmtBold.innerHTML='<span style="font-weight:'+(mbBold?'900':'400')+';font-style:
 return '';}
 /* v3.7.4(俊克 改良1): 3兄弟の▾と共通の見た目に。一番下=○/○の色スロット・その1つ上=☑Bold ☑Italic・スロットをクリックで色グリッド展開 */
 function mbGrid(list,cur){var h='<div style="display:flex;gap:3px;flex-wrap:wrap;padding:4px 8px;max-width:212px">';for(var j=0;j<list.length;j++){var nm=list[j][0],
-hx=list[j][1],on=(nm===cur)||(nm==='なし'&&!cur);h+='<span class="mb-sw" data-name="'+nm+'" title="'+nm+'" style="width:16px;height:16px;border-radius:4px;cursor:pointer;box-sizing:border-box;border:'+(on?'2px solid var(--vscode-focusBorder,#3794ff)':'1px solid var(--meos-frame)')+';background:'+(hx?hx:'transparent')+(hx?'':';background-image:repeating-linear-gradient(45deg,transparent,transparent 2px,#888 2px,#888 3px)')+'"></span>';
+hx=list[j][1],on=(nm===cur)||(nm==='なし'&&!cur);h+='<span class="mb-sw" data-name="'+nm+'" title="'+nm+'" style="width:16px;height:16px;border-radius:4px;cursor:var(--meos-hand);box-sizing:border-box;border:'+(on?'2px solid var(--vscode-focusBorder,#3794ff)':'1px solid var(--meos-frame)')+';background:'+(hx?hx:'transparent')+(hx?'':';background-image:repeating-linear-gradient(45deg,transparent,transparent 2px,#888 2px,#888 3px)')+'"></span>';
 }return h+'</div>';}
 function mbSlot(ch,name,list){var hx=mbHex(list,name);return '<span class="mb-slot fmt-slot'+(mbCh===ch?' active':'')+'" data-ch="'+ch+'" title="'+(ch==='fg'?'Text color':'Background color')+'"><span class="fmt-ball'+(hx?'':' none')+'" style="background:'+(hx||'transparent')+'"></span></span>';
 }
 function mbRenderPop(){if(!boldPop)return;var h='';if(mbCh){h+='<div style="font-size:10px;opacity:.75;padding:4px 8px 0">'+(mbCh==='fg'?'Text color':'Background color')+'</div>'+mbGrid(mbCh==='fg'?FMT_FG:FMT_BG,mbCh==='fg'?mbCur().fg:mbCur().bg);
-}h+='<div style="display:flex;gap:16px;align-items:center;padding:6px 10px 3px;white-space:nowrap"><span class="mb-chk" data-k="b" style="cursor:pointer"><span class="meos-chk">'+(mbBold?'☑':'☐')+'</span> <b>Bold</b></span><span class="mb-chk" data-k="i" style="cursor:pointer"><span class="meos-chk">'+(mbItalic?'☑':'☐')+'</span> <i>Italic</i></span></div>';
+}h+='<div style="display:flex;gap:16px;align-items:center;padding:6px 10px 3px;white-space:nowrap"><span class="mb-chk" data-k="b" style="cursor:var(--meos-hand)"><span class="meos-chk">'+(mbBold?'☑':'☐')+'</span> <b>Bold</b></span><span class="mb-chk" data-k="i" style="cursor:var(--meos-hand)"><span class="meos-chk">'+(mbItalic?'☑':'☐')+'</span> <i>Italic</i></span></div>';
 h+='<div style="display:flex;gap:7px;align-items:center;padding:2px 10px 7px">'+mbSlot('fg',mbCur().fg,FMT_FG)+'<span style="opacity:.55;font-weight:700">/</span>'+mbSlot('bg',mbCur().bg,FMT_BG)+'</div>';
 boldPop.innerHTML=h;}
 mbFace();if(fmtBold)fmtBold.addEventListener('click',function(){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.bold){vscode.postMessage({type:'fmtCycle',

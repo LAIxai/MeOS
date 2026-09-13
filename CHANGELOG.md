@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.79 (2026-09-13)
+- **MeOS has its own hand.** Everywhere MeOS shows a hand — ▼ and ▲ on a membrane, ▶️ and ⏸️ on a clock, the 🟢 and 🔴 buttons, and every button in Me Dock — it is now one hand, drawn for MeOS: a finger pointing up and to the left, three knuckles, a folded thumb, and a black cuff at the wrist. It is a homage to the pointer of BTRON (and its descendant, Cho-Kanji), where the cursor was a hand long before it was anywhere else. Drawn from scratch rather than copied, with a white rim so it reads on dark themes too. Where an image cursor cannot be shown, the system hand takes over.
+
 ### v4.2.78 (2026-09-13)
 - **📦 Re-install VSIX finishes on its own.** After you picked a `.vsix` in Finder, a notification still asked you to press Reload Window. Picking the file already says what you want, so MeOS now reloads the window straight away and shows the file name in the status bar for a moment.
 

@@ -14,3 +14,4 @@ check_*.js
 webview_out*.js
 CHANGELOG_phase5.md
 package_phase5_config.json.txt
+media/hand/**

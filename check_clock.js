@@ -1060,7 +1060,7 @@ console.log('\u3262 \u65ad\u308a\u306f\u62bc\u3057\u305f\u5834\u6240\u306e\u96a3
  ok(/\.clk-item\.refused\{box-shadow/.test(S), '  \u62bc\u3057\u305f\u884c\u306b\u8d64\u3044\u7e01(\u3069\u308c\u306e\u8a71\u304b\u304c\u5206\u304b\u308b)', true);
  ok(/clkWarnT=setTimeout\(function\(\)\{clkWarnT=null;clkWarnOff\(\);\},9000\)/.test(S),
     '  \u3059\u3050\u306b\u306f\u6d88\u3048\u306a\u3044(9\u79d2)\u30fb\u6b21\u3092\u62bc\u305b\u3070\u4e0b\u308a\u308b', true);
- ok(/closest\('#clk-warn'\)\)\{clkWarnOff\(\);return;\}/.test(S)&&/\.clk-warn\{[^}]*cursor:pointer/.test(S),
+ ok(/closest\('#clk-warn'\)\)\{clkWarnOff\(\);return;\}/.test(S)&&/\.clk-warn\{[^}]*cursor:var\(--meos-hand\)/.test(S),
     '\u2605\u2605v4.1.68b: \u672d\u3092\u62bc\u305b\u3070\u305d\u306e\u5834\u3067\u4e0b\u308a\u308b(\u8aad\u307f\u7d42\u308f\u3063\u305f\u4eba\u304c\u305d\u3046\u8a00\u3048\u308b)', true);
  ok(/w\.title='Click to dismiss'/.test(S), '  \u62bc\u305b\u308b\u3053\u3068\u3092\u672d\u81ea\u8eab\u304c\u8a00\u3046', true);
  ok(/var c=_lst\[Number\(it\.getAttribute\('data-i'\)\)\];\n   clkWarnOff\(\);/.test(S),
@@ -2016,7 +2016,7 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     合図は覆わない物(手の形)で出す。 */
  ok(!/meosClockPlayHoverMessage/.test(S9),
     '\u2605\u2605\u2605\u25b6\ufe0f/\u23f8\ufe0f \u306e\u4e0a\u306b\u5439\u304d\u51fa\u3057\u3092\u51fa\u3055\u306a\u3044(\u62bc\u3059\u7269\u3092\u305d\u308c\u81ea\u8eab\u306e\u8aac\u660ethat\u8986\u3046)', true);
- ok(/createTextEditorDecorationType\(\{ cursor: 'pointer'/.test(S9) && /editor\.setDecorations\(meosClockPlayDeco, plays\);/.test(S9),
+ ok(/createTextEditorDecorationType\(\{ cursor: MEOS_HAND_CURSOR/.test(S9) && /editor\.setDecorations\(meosClockPlayDeco, plays\);/.test(S9),
     '\u2605\u2605\u2605\u5408\u56f3\u306f\u624b\u306e\u5f62(\u4f55\u3082\u8986\u308f\u306a\u3044\u30fb\u8a00\u8449that1\u6587\u5b57\u3082\u8981\u3089\u306a\u3044)', true);
  ok(/plays\.push\(\{ range: new vscode\.Range\(i, 0, i, _a65 \+ 1\) \}\);/.test(S9),
     '  \u99d2\u3082\u5f53\u305f\u308a\u3082\u540c\u3058\u578b= \u898b\u3048\u3066\u3044\u308b\u7269\u3068\u62bc\u305b\u308b\u6240that\u305a\u308c\u306a\u3044', true);
@@ -2379,5 +2379,16 @@ console.log('㊸ f/p の書き換え(俊克 2026.09.11 am01:34 / am01:48)');
      '★書いた後の形を読み直せる(番号も起点も p も戻る)', [a.when,a.listNo]);
   ok(b.when==='2027-09-09 15:30' && !!b.pAt,
      '  対を畳んだ後の形も読める', b.when);}
+}
+console.log('㊹ MeOSの手(v4.2.79 俊克「手の形のマウスをすべて、BTRON様式に」)');
+{
+ const S79=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/^const MEOS_HAND_CURSOR = 'image-set\(url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 1x, url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 2x\) 1 1, pointer';$/m.test(S79),
+    '★★★手は1つの定数(1x/2x・指先が当たり・読めなければOSの手)', true);
+ ok(!/cursor: ?'pointer'/.test(S79) && !/textDecoration: '[^']*cursor: pointer/.test(S79),
+    '★★★本文の装飾に素の pointer は残っていない', true);
+ const W=S79.slice(S79.indexOf('return `<!DOCTYPE html>'), S79.indexOf('</script></body></html>`;'));
+ ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{MEOS_HAND_CURSOR\};\}/.test(W),
+    '★★★Me Dock も同じ定数から(素の cursor:pointer は0)', (W.match(/cursor:pointer/g)||[]).length);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
