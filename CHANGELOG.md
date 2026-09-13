@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.82 (2026-09-13)
+- **You can see through the hand.** The inside of the hand is transparent again, as it was drawn, so the text under the pointer stays readable. To keep the lines from sinking into a dark theme, each line now has a thin white edge on both sides instead of the whole hand being filled in.
+
 ### v4.2.81 (2026-09-13)
 - **The MeOS hand is now drawn by MeOS's author.** Two attempts by the code were not good enough; this one was drawn in Affinity by LAIxai — the BTRON selection finger, pointing up and to the left, with the black cuff. MeOS only makes the outside of the picture transparent, adds a white rim for dark themes, and gives it a pixel of room. 26×22, with a 2× version for Retina.
 
