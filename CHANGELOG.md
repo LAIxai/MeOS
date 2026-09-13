@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.80 (2026-09-13)
+- **The MeOS hand, redrawn as line art.** The first drawing was made by outlining a filled shape, and it came out lumpy. The hand it pays homage to is a line drawing, so this one is too: one-pixel lines placed by hand, then filled — a squared fingertip, three knuckles with the creases between them, the finger's lower line running on into the palm, a folded thumb, and the black cuff. 24 px, doubled pixel for pixel on Retina so it stays a bitmap hand.
+
 ### v4.2.79 (2026-09-13)
 - **MeOS has its own hand.** Everywhere MeOS shows a hand — ▼ and ▲ on a membrane, ▶️ and ⏸️ on a clock, the 🟢 and 🔴 buttons, and every button in Me Dock — it is now one hand, drawn for MeOS: a finger pointing up and to the left, three knuckles, a folded thumb, and a black cuff at the wrist. It is a homage to the pointer of BTRON (and its descendant, Cho-Kanji), where the cursor was a hand long before it was anywhere else. Drawn from scratch rather than copied, with a white rim so it reads on dark themes too. Where an image cursor cannot be shown, the system hand takes over.
 

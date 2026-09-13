@@ -2584,9 +2584,12 @@ let closeLineLabelDecoration;
 //   ★★★**MeOSの手は1つ**= 本文の装飾も Me Dock のボタンも、この1つの定数から引く。
 //   ★絵は BTRON/超漢字の「選択指」へのオマージュ= 左上を指す人差し指・関節3つ・折った親指・黒い袖。
 //     点は写さず一から描いた(描き方は media/hand/make_hand.py)。暗い画面でも見えるよう外に白い縁。
-//   ★1x=20px / 2x=40px。指先(1,1)が当たり。読めない所では OS の手(pointer)に落ちる。
+//   ★1x=24px / 2x=48px(点を倍にしただけ= ビットマップの手のまま)。指先(1,1)が当たり。
+//     読めない所では OS の手(pointer)に落ちる。
+//   ★★v4.2.80(俊克 am11:16「絵が下手だね」): v4.2.79 は塗った塊から輪郭を出したので、ぼてっとした。
+//     超漢字の選択指は**線画**= 1pxの線を点で置き、中を塗る形に描き直した(media/hand/make_hand.py)。
 //   ★VS Code は装飾の cursor をそのままCSSへ流す(`cursor:{0};`)・画面の CSP は data: を許す(実測 1.126)。
-const MEOS_HAND_CURSOR = 'image-set(url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAq0lEQVR42q2USQ7AIAhF+cb7X5lupCGMtsqKhPYxfISYmYmIxeiCCYiVf0YzFR5BIVAAJBzxAUAl9T+vuANWUPGT7hwYtv0I1CXR3Qzbwgq+H1bjlPhKxA4YQVsRzLxHono5M+3bCmc0wxMbkSCdulvAYiXOgHYdtl/ImiMiQfS+7YDCl7IjTvA0XRzN0QirSWEAZtEKsiSVUOPzeUpGgb8LrI/xlYNsj7INPlSzz8xmyKvgAAAAAElFTkSuQmCC") 1x, url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABeklEQVR42s2Y0a7EIAhEhdz//2X2qTeEDois6PpWk9rjAIOWxhhDRGSAQUQ0Lg964DSL5r0NyRbueX7mPHWPAmrljHrXIRlNalANeQOUdc7ZUKP5CqSosVwk+qNKrVdOAmhCILq4drgD2cWrkJE62Q2GgAgyAtUf8t7zGNBePGA3TCuQKH+jXPbERpDkJXUEY+dnwJmNeKHn2U6yFW434KkUqAdzmYPEpgdUwyBlqvZoG0PaqJGamfAd6yQRpBfyq4CdpxpkWyXAmZFXB+r5U5tZtZxOJfkX4KLxlw3pLVDOwkWHh6OAqBg8Qz4BydWq2wkZpQ1/Yw0dSlq74ewL2aa/wws1JGd7LwLtrOR/2BUP7DbppSKxZ8KdhwS9xmw9WunD3oIZVSsbE5FBq/fbHSpGF6pX4VQu4RV1shcse2CgogLSURDoNEObfEw64LYB7sjbr0/UN+BaAXfAtQKilrkK1x7iCDL7l4u7iwRBrvyCO/YH/3WdTHrwBzI4gyxnAajNAAAAAElFTkSuQmCC") 2x) 1 1, pointer';
+const MEOS_HAND_CURSOR = 'image-set(url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAA0UlEQVR42q2WQQ7FIAhEgfT+V56/KYYQ8I9Ul63OgwGJCgBSLFVVubAUALKWM29Aniz6CgsAeeElpMs8O7AyyPvjN9+cRZ0NQGIc8dzTReCHPJMsmoRKB0RErIogQwrr6BpYSH8LqWykAMnjFrJbu/+Wq85C2Gysaq0OMllW9bb7fQNixQVZ6U8h0T5jNp9AvOPcEWMjYiD5zlAZsF3TBWBfLenE1xjppiQD+XdndDqKqch9XA9aEKz4UZEn4seAU/ER4ER8BIj1Zx4H4yKzz5sfstC8LOOyM1MAAAAASUVORK5CYII=") 1x, url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABEklEQVR42u2a3Q7DIAiFZdn7v7K7MmlJKCDIlOLtmrqcz8Ofhd57b4oFANA2Wp92+IJBgBMWg9qFxPEEvpzSF8Vvv1/IqUhoPcd5MJ8HOIGo57AynNIY3HicAkrtl88DgjP86AlO6QdFVR7MF4UoZbUkBF6pPHAjMNw8zrCVBJdPKhNTHlhFQhvd3leNSmsWKYllfxTtnz8TWz1R/YCVAOeBXUjkr0YppaNJUO9/Xz+grUq94j/eb3i0CKwiQdVU+P1FwKuqnO3Y8hOIivdS5dNNJUA7y/SaKmg7uLSTOYiaKnud+XzT6dUbzHpIeiNUBP6lfPUD0dGmCET1utpbzyIwW/N43fxXHrDWUNZvLo4n8APobupMcOp7VgAAAABJRU5ErkJggg==") 2x) 1 1, pointer';
 let membraneArrowHandDecoration;   // ★v4.2.75: ▼/▼▲/▲ の当たり= 手の形(cursor:pointer)
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
 // the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
