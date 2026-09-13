@@ -23503,8 +23503,14 @@ async function meosInstallVsix() {
     meosDbg('[vsix] install ' + uri.fsPath);
     await vscode.commands.executeCommand('workbench.extensions.installExtension', uri);
     const name = String(uri.fsPath || '').split('/').pop();
-    const pick = await vscode.window.showInformationMessage('MeOS: installed ' + name + '.', 'Reload Window');
-    if (pick === 'Reload Window') await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    // ★★★v4.2.78(俊克 2026.09.13 am10:21「最後は、右下に出るパネルでボタンを押す必要がある。
+    //   これを出さずに、インストールが完了するようにできないか?」):
+    //   ★★★**Finderで選んだ時点で、答えは決まっている**= 入れたのは再読込みして使うため。
+    //     押す物が1つしか無い確認は、手間を1つ足すだけ → [[feedback_fix_signal_at_fix_place]]
+    //   ★やる事は、今までボタンが呼んでいた同じ1つ(reloadWindow)= 効き目は1つも変えない。
+    //   ★何を入れたかは、ステータスバーに一瞬だけ(何も覆わない)。
+    try { vscode.window.setStatusBarMessage('MeOS: installed ' + name + ' \u2014 reloading\u2026', 3000); } catch (_) { }
+    await vscode.commands.executeCommand('workbench.action.reloadWindow');
     return true;
   } catch (e) {
     try { vscode.window.showWarningMessage('MeOS: could not install the .vsix \u2014 ' + String(e && e.message ? e.message : e)); } catch (_) { }

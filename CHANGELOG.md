@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.78 (2026-09-13)
+- **📦 Re-install VSIX finishes on its own.** After you picked a `.vsix` in Finder, a notification still asked you to press Reload Window. Picking the file already says what you want, so MeOS now reloads the window straight away and shows the file name in the status bar for a moment.
+
 ### v4.2.77 (2026-09-13)
 - **A clock with no starting time now survives a restart.** Its starting moment used to live only in memory, so reopening VSCodium put it back to zero. MeOS now writes it on the line, marked with a leading `v` for *virtual*: `⏰ v2026-09-13 09:40:12 ↻1m ×1` while it runs, `⏰⏸ v2m25s ↻1m ×1` while it is stopped — the stopped form holds how far it had got, because a starting moment would drift for as long as it rests. A clock with a real starting time is written exactly as before, with no `v`.
 - **The `v` is only there while it has a job.** It goes when the clock finishes (✓) or hands its turn on; the next time its turn comes round, that moment is its start. MeOS writes it only when the value changes, so writing it does not set off another write.
