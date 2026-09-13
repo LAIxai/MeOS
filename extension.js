@@ -10330,6 +10330,16 @@ function meosParseCycleExpr(src, base) {
   const S = String(src == null ? '' : src);
   const B = (typeof base === 'number') ? base : 0;
   let i = 0, outerRounds = 0, outerTaken = false;
+  // ★★★v4.2.87(俊克 2026.09.13 pm09:14「この2つが異なることが論理的に分らないよ。
+  //   部分で見て同じなら、組み込んでも同じはずでしょ?」 `↺↻(8h (5m)×2)` / `↺↻(8h 5m×2)`):
+  //   ★★★**俊克が正しい。×N は直前の1つに掛かる**(正規表現の `a b{2}` と同じ)。
+  //     v4.1.157 は「括弧の無い ×N は常に全体に掛かる」と読んでいたso、
+  //     `5m×2` と `(5m)×2` は1つだけで書いた時は同じなのに、並びに入れると別物になっていた
+  //     (`(8h 5m×2)` = 「8h→5m」を2周で終わり)。**部分の意味が、置き場所で変わる記法は壊れている**。
+  //   ★1つだけの時は今までどおり= 式全体が「1つ×N」なら、それが回数(`5m×2` ＝ `(5m)×2` ＝ 2回で終わり)。
+  //   ★`/` で区切った古い形(`3m/1m×3`)は、書かれた時の意味のまま全体に掛ける(過去を一括で読み替えない)。
+  const legacySlash = S.indexOf('/') >= 0;
+  let topItems = 0, soleElemCount = 0;
   const seps = [];                                   // 「そして」の空白(見せかけで / に置き換える所)
   const skipWs = (record) => {
     const from = i;
@@ -10353,6 +10363,7 @@ function meosParseCycleExpr(src, base) {
       skipWs(out.length > 0);                         // 要素と要素の間だけ「そして」として覚える
       if (i >= S.length || S[i] === ')' || S[i] === '\uff09') break;
       if (S[i] === '(' || S[i] === '\uff08') {
+        if (depth === 0) topItems++;
         const atTop = (depth === 0 && out.length === 0 && !outerTaken);
         i++;
         const inner = seq(depth + 1);
@@ -10387,11 +10398,25 @@ function meosParseCycleExpr(src, base) {
       const from = B + i, to = B + i + m[0].replace(/[ \t]+$/, '').length;
       i += m[0].length;
       if (meosCycleMs(tok) <= 0) break;               // 0 = ここで並びthat終わる(v4.1.23)
+      if (depth === 0) topItems++;
+      // ★v4.2.87: 直前の1つに掛かる ×N(`5m×2`)。`/` の古い形では読まない(下の全体に掛ける道へ)。
+      const nE = legacySlash ? 0 : readCount();
+      if (nE > 1) {
+        for (let k = 0; k < nE; k++) out.push({ tok, from, to, rep: k + 1, reps: nE });
+        if (depth === 0) soleElemCount = nE;
+        continue;
+      }
+      if (nE === 1 && depth === 0) soleElemCount = 1;
       out.push({ tok, from, to });
     }
     return out;
   }
-  const steps = seq(0);
+  let steps = seq(0);
+  // ★v4.2.87: 式全体が「1つ×N」だけなら、その ×N が回数(`↺5m ×2` ＝ `↺(5m)×2`・書かれている全部の形)。
+  if (!outerTaken && topItems === 1 && soleElemCount > 0 && steps.length) {
+    outerRounds = soleElemCount;
+    steps = [{ tok: steps[0].tok, from: steps[0].from, to: steps[0].to }];
+  }
   // ★v4.1.157: v4.1.146〜156 は `(\u21ba\u21bb3m/1m)\u00d73` と**矢印を括弧の中**に書いていた。
   //   その形は式の先頭に `(` thatが無い代わりに**閉じ括弧that余る**so、ここで拾って回数にする
   //   (read-both= 既に書かれた物を置いていかない)。

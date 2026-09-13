@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.87 (2026-09-13)
+- **`×N` now repeats the one thing just before it.** `5m×2` and `(5m)×2` always meant the same when written on their own, but inside a sequence they came apart: `(8h 5m×2)` was read as "8h then 5m, twice, then stop", while `(8h (5m)×2)` was "8h, 5m, 5m, forever". A part that means one thing alone should mean the same thing inside something bigger, so both now read as 8h, 5m, 5m, repeating. A clock that is only `5m×2` still counts two rounds and stops. Old lines written with `/` (`3m/1m×3`) keep the meaning they were written with.
+
 ### v4.2.86 (2026-09-13)
 - **The hand shows on Today in Hyper IDX too.** Today showed a text cursor, as a hint that a double-click lets you type a date. But a single click is what most people do there, and the white ring around the button already says it can be typed into — so it now shows the hand like every other button.
 
