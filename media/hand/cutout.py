@@ -1,7 +1,10 @@
 import sys
 from PIL import Image
 def cutout(src, pad, halo, th, dst):
-    im=Image.open(src).convert('RGB'); W,H=im.size
+    # 透明で書き出した絵も、白い背景の絵も受ける= 一度白の上に重ねてから、外側の白だけを透明にする
+    # (Affinity の透明書き出しは手の中の白も透明になる= そのままだと暗い画面で手が消える)
+    src_im=Image.open(src).convert('RGBA'); flat=Image.new('RGBA',src_im.size,(255,255,255,255)); flat.alpha_composite(src_im)
+    im=flat.convert('RGB'); W,H=im.size
     bg=set(); st=[(x,y) for x in range(W) for y in (0,H-1)]+[(x,y) for y in range(H) for x in (0,W-1)]
     def light(p): return min(im.getpixel(p))>=th
     while st:
