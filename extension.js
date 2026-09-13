@@ -2578,6 +2578,7 @@ let encHideDecoration; // v0.9.9996: 暗号文(🔒MeOS-enc行)を隠す
 let encLabelDecoration; // v0.9.9996: 「🔐 Locked」ラベルを見せる
 let closeLineHideDecoration;
 let closeLineLabelDecoration;
+let membraneArrowHandDecoration;   // ★v4.2.75: ▼/▼▲/▲ の当たり= 手の形(cursor:pointer)
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
 // the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
 let warningArrowDecoration;
@@ -3309,6 +3310,7 @@ function disposeDecorations() {
   if (encLabelDecoration) encLabelDecoration.dispose();
   if (closeLineHideDecoration) closeLineHideDecoration.dispose();
   if (closeLineLabelDecoration) closeLineLabelDecoration.dispose();
+  if (membraneArrowHandDecoration) membraneArrowHandDecoration.dispose();
   if (stealthShellHideDecoration) stealthShellHideDecoration.dispose();
   if (stealthContentHideDecoration) stealthContentHideDecoration.dispose();
   if (stealthOpenLabelDecoration) stealthOpenLabelDecoration.dispose();
@@ -3381,6 +3383,7 @@ function disposeDecorations() {
   encLabelDecoration = undefined;
   closeLineHideDecoration = undefined;
   closeLineLabelDecoration = undefined;
+  membraneArrowHandDecoration = undefined;
   stealthShellHideDecoration = undefined;
   stealthContentHideDecoration = undefined;
   stealthOpenLabelDecoration = undefined;
@@ -3555,6 +3558,14 @@ function makeDecorations() {
   closeLineLabelDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     before: { margin: '0 0 0 0', fontWeight: '600' }
+  });
+  // ★★★v4.2.75(俊克 2026.09.13 am09:35「膜の▼､▼▲でもマウスをBTRONの手の形にしようよ」):
+  //   v4.2.74 の ▶️/⏸️ と同じ型= 押せる所の上でだけ形が変わる。
+  //   ★`cursor` は字の範囲にしか効かない(before の駒そのものには載らない)。so 範囲は
+  //     0桁〜idStart+1 = 駒(idStart に差し込まれた ▼)をまたぐ。⏰の `_a65 + 1` と同じ。
+  membraneArrowHandDecoration = vscode.window.createTextEditorDecorationType({
+    rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    cursor: 'pointer'
   });
   // v0.9.606: mNT rendering goes through the standard mCN openLineLabel / closeLineLabel
   // pipeline. The only mNT-specific touch is the 📒 marker appended to the ▼/▲ glyph.
@@ -7130,6 +7141,7 @@ function applyPrettyLabels(editor) {
   const openLabels = [];
   const closeHide = [];
   const closeLabels = [];
+  const arrowHands = [];   // ★v4.2.75: 印を描いた行にだけ手の形(描いていない印は押せない)
   const linkHide = [];
   // v0.9.656/657: ハイライト ==text(色)== の本体範囲（色別）とマーカー範囲（==・(色)を隠す）
   const highlightBodyRangesByColor = {}; // 背景色別 { red:[Range...], yellow:[...], ... }
@@ -7957,6 +7969,7 @@ function applyPrettyLabels(editor) {
       const openGlyph = isMnt
         ? (baseOpenGlyph + '📒' + aliasInLabel)
         : (baseOpenGlyph + aliasInLabel);
+      arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // ★v4.2.75
       openLabels.push({
         range: new vscode.Range(line, parts.idStart, line, parts.idStart),
         renderOptions: { before: { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
@@ -7983,6 +7996,7 @@ function applyPrettyLabels(editor) {
         const isMntClose = !!(pair && pair.isMnt);
         const baseCloseGlyph = meosMembraneGlyph('close', false, isToc);  // v4.0.361: 字は1か所で決める
         const closeGlyph = isMntClose ? (baseCloseGlyph + '📒') : baseCloseGlyph;
+        arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // ★v4.2.75
         closeLabels.push({
           range: new vscode.Range(line, parts.idStart, line, parts.idStart),
           renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosMembraneColorForOpen(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
@@ -8085,6 +8099,7 @@ function applyPrettyLabels(editor) {
   setDecoCached(editor, openLineLabelDecoration, 'openLabel', openLabels);
   setDecoCached(editor, closeLineHideDecoration, 'closeHide', closeHide);
   setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', closeLabels);
+  if (membraneArrowHandDecoration) editor.setDecorations(membraneArrowHandDecoration, arrowHands);   // ★v4.2.75
   // v0.9.656/657: ハイライト ==text(色)== 適用（色ごとの本体背景＋マーカー==/(色)隠し）
   if (highlightBodyByColor) {
     for (const key of Object.keys(HIGHLIGHT_COLORS)) {
@@ -14290,6 +14305,7 @@ function clear(editor) {
   if (openLineLabelDecoration) setDecoCached(editor, openLineLabelDecoration, 'openLabel', []);
   if (closeLineHideDecoration) setDecoCached(editor, closeLineHideDecoration, 'closeHide', []);
   if (closeLineLabelDecoration) setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', []);
+  if (membraneArrowHandDecoration) editor.setDecorations(membraneArrowHandDecoration, []);   // ★v4.2.75
   if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, []);
   if (jumpActiveDecoration) editor.setDecorations(jumpActiveDecoration, []);
   if (jumpNameHoverDecoration) editor.setDecorations(jumpNameHoverDecoration, []);
@@ -14307,6 +14323,7 @@ function clearMembraneVisualDecorations(editor) {
   if (openLineLabelDecoration) setDecoCached(editor, openLineLabelDecoration, 'openLabel', []);
   if (closeLineHideDecoration) setDecoCached(editor, closeLineHideDecoration, 'closeHide', []);
   if (closeLineLabelDecoration) setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', []);
+  if (membraneArrowHandDecoration) editor.setDecorations(membraneArrowHandDecoration, []);   // ★v4.2.75
   if (warningArrowDecoration) editor.setDecorations(warningArrowDecoration, []);
 }
 
@@ -36180,7 +36197,7 @@ makeDecorations();
   context.subscriptions.push(warpTodayCommand);
   const controlMeCommand = vscode.commands.registerCommand('laiMembrane.controlMe', controlMePanel);
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
-context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
+context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, membraneArrowHandDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     // v4.0.393: 膜の位置を訊く3つ(Me Dock/ステータスバー/カーソル記憶)は連打を1回に畳む。軽い2つは今までどおり即座。
     vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); scheduleCursorFollow(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
     vscode.window.onDidChangeActiveTextEditor((e) => { meosDropDecoSigCache(); setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e);

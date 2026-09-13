@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.75 (2026-09-13)
+- **The cursor turns into a hand over ▼, ▼▲ and ▲ too.** The same signal ▶️ and ⏸️ got in v4.2.74, on the other thing in a note you press. The hand covers exactly the columns a press lands on — the whole mark, from the start of the line — so if the pointer changes, the fold will answer. Lines shown raw draw no mark, and get no hand.
+
 ### v4.2.74 (2026-09-13)
 - **The cursor turns into a hand over ▶️ and ⏸️, and the tooltip is gone.** A tooltip appears where your pointer is, which is the one place it must not be when the pointer is on a button — the explanation covered the thing it was explaining. The pointer shape says the same thing, covers nothing, and needs no words: if it changes, the button has you. ▼ keeps its tooltip, because what ▼ does is not written on it.
 
