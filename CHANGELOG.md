@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.84 (2026-09-13)
+- **The hand is used exactly as drawn.** MeOS no longer adds a white edge or extra room around it; the picture already has what it needs. The only change is one transparent row on the Retina version, so that it is exactly twice the size of the standard one.
+
 ### v4.2.83 (2026-09-13)
 - **The hand is solid white inside again.** See-through looked clever and turned out to be invisible: over a dark strip the hand melted into the background and you could no longer tell where it was pointing. LAIxai redrew it with a white palm; the outside stays transparent, with the white edge around the lines so the black cuff still shows on dark themes.
 
