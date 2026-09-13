@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.83 (2026-09-13)
+- **The hand is solid white inside again.** See-through looked clever and turned out to be invisible: over a dark strip the hand melted into the background and you could no longer tell where it was pointing. LAIxai redrew it with a white palm; the outside stays transparent, with the white edge around the lines so the black cuff still shows on dark themes.
+
 ### v4.2.82 (2026-09-13)
 - **You can see through the hand.** The inside of the hand is transparent again, as it was drawn, so the text under the pointer stays readable. To keep the lines from sinking into a dark theme, each line now has a thin white edge on both sides instead of the whole hand being filled in.
 
