@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.85 (2026-09-13)
+- **A larger hand for larger pointers (trial).** macOS's Pointer size setting enlarges the MeOS hand too, but it was stretching a 48 px picture and the lines went blocky. The hand now carries a 96 px drawing for Retina screens, in the hope that macOS enlarges from that instead.
+
 ### v4.2.84 (2026-09-13)
 - **The hand is used exactly as drawn.** MeOS no longer adds a white edge or extra room around it; the picture already has what it needs. The only change is one transparent row on the Retina version, so that it is exactly twice the size of the standard one.
 

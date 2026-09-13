@@ -2383,8 +2383,8 @@ console.log('㊸ f/p の書き換え(俊克 2026.09.11 am01:34 / am01:48)');
 console.log('㊹ MeOSの手(v4.2.79 俊克「手の形のマウスをすべて、BTRON様式に」)');
 {
  const S79=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/^const MEOS_HAND_CURSOR = 'image-set\(url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 1x, url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 2x\) 1 1, pointer';$/m.test(S79),
-    '★★★手は1つの定数(1x/2x・指先が当たり・読めなければOSの手)', true);
+ ok(/^const MEOS_HAND_CURSOR = 'image-set\(url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 1x(?:, url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) [24]x)+\) 1 1, pointer';$/m.test(S79),
+    '★★★手は1つの定数(1x＋2x/4x・指先が当たり・読めなければOSの手)', true);
  ok(!/cursor: ?'pointer'/.test(S79) && !/textDecoration: '[^']*cursor: pointer/.test(S79),
     '★★★本文の装飾に素の pointer は残っていない', true);
  const W=S79.slice(S79.indexOf('return `<!DOCTYPE html>'), S79.indexOf('</script></body></html>`;'));
