@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.86 (2026-09-13)
+- **The hand shows on Today in Hyper IDX too.** Today showed a text cursor, as a hint that a double-click lets you type a date. But a single click is what most people do there, and the white ring around the button already says it can be typed into — so it now shows the hand like every other button.
+
 ### v4.2.85 (2026-09-13)
 - **A larger hand for larger pointers (trial).** macOS's Pointer size setting enlarges the MeOS hand too, but it was stretching a 48 px picture and the lines went blocky. The hand now carries a 96 px drawing for Retina screens, in the hope that macOS enlarges from that instead.
 

@@ -24251,7 +24251,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* v2.0.31(俊克): 右Today=多態の基準点入力。編集可能(day/Today)は白抜きの囲み枠+Iビーム。検索中は↻を無効(グレー)。ダブルクリックで下のinlineフィールド。 */
 .dw-split .dw-scope.dw-editable{box-shadow:inset 0 0 0 2px rgba(255,255,255,.72)}
 .dw-split .dw-scope .dw-tg2{font-size:1.4em;line-height:1;position:relative;top:1.5px;margin-right:0.5px}
-.dw-split .dw-scope.dw-editable:hover{cursor:text}
+/* v4.2.86(俊克「H-IDXのTodayの部分にBTRON手が出ないよ」): v2.0.31 はダブルクリックで日付を打てる印に I ビームを出していた。押す物(1回=ダイヤル)の上は手= 打てる印は白抜きの枠が既に言っている。 */.dw-split .dw-scope.dw-editable:hover{cursor:var(--meos-hand)}
 .tt-badge.dw-dial-off{opacity:.35;pointer-events:none;filter:grayscale(1)}
 .dw-base-input{position:fixed;z-index:70;display:none;box-sizing:border-box;font-size:13px;font-weight:700;text-align:center;color:#fff;background:#16a34a;border:2px solid #fff;border-radius:0 6px 6px 0;padding:0 6px;outline:none}
 .dw-base-input.on{display:block}
