@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.81 (2026-09-13)
+- **The MeOS hand is now drawn by MeOS's author.** Two attempts by the code were not good enough; this one was drawn in Affinity by LAIxai — the BTRON selection finger, pointing up and to the left, with the black cuff. MeOS only makes the outside of the picture transparent, adds a white rim for dark themes, and gives it a pixel of room. 26×22, with a 2× version for Retina.
+
 ### v4.2.80 (2026-09-13)
 - **The MeOS hand, redrawn as line art.** The first drawing was made by outlining a filled shape, and it came out lumpy. The hand it pays homage to is a line drawing, so this one is too: one-pixel lines placed by hand, then filled — a squared fingertip, three knuckles with the creases between them, the finger's lower line running on into the palm, a folded thumb, and the black cuff. 24 px, doubled pixel for pixel on Retina so it stays a bitmap hand.
 
