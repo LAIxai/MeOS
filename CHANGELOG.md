@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.103 (2026-09-14)
+- **The Paste lag button is always there.** A setting you can only see when conditions line up is a setting you forget exists. The button now stays under Standards in every file. While Markdown Language Features is running it is bright; once you have turned it off it is faded — and clicking it still takes you to the extension, so you can turn it back on and compare.
+
 ### v4.2.102 (2026-09-14)
 - **"Paste lag in 200k–300k line files?"** A lifelong diary kept in one file can grow past 200,000 lines. At that size a single paste can freeze the editor for ten seconds or more — and the cause is not MeOS but Markdown Language Features, built into VSCodium, which re-reads the whole file after every change. When the file you are in is that large and that extension is running, Me Dock shows this button under Standards. It takes you straight to the extension; press the gear and choose Disable (Workspace). Once it is off, the button goes away. MeOS keeps working without it; you lose Markdown preview and link checking.
 
