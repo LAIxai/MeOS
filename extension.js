@@ -29981,6 +29981,51 @@ let _meosTextCache = { key: '', text: null, lines: null };
 // ★直し= **変更を配列に当てる**。1打の変更は1〜数行so、その行だけ差し替えれば刻み直す必要が無い。
 //   ★安全弁を2つ置く= ①`lines.length === doc.lineCount` ②変更した行を1本だけ実物と突き合わせる。
 //   どちらか合わなければ**捨てる**(次に要る人が刻み直す)= 食い違ったまま走り続けることが原理的に無い。
+// ★★★v4.2.97(俊克 2026.09.14 pm06:52「止まっているのほぼ全ては、cmd+Vのペーストだよ。たぶん。
+//   これは、以前から全く改善されていない。何とかして欲しいよ」):
+//   ★★★**推測で直さない。貼った瞬間から数秒、CPUとメモリの使われ方をそのまま取る**
+//     ([[feedback_go_get_the_measurement]] / [[feedback_root_cause_before_patching]])。
+//   ★やり方= Node の inspector(拡張ホストの中の V8 に直接つなぐ)で、CPU の標本と、どこでメモリを割り当てたかの標本を
+//     8秒だけ取り、debugLogPath と同じ場所へ `meos-paste-<時刻>.cpuprofile / .heapprofile` を書く。
+//   ★条件= debugLogPath を設定している人だけ・改行を含む貼り付け(1文字の打鍵では動かない)・2分に1回まで。
+let _meosPasteProbeAt = 0, _meosPasteProbeBusy = false;
+function meosPasteProbeMaybe(e) {
+  try {
+    const dbg = meosDbgPath(); if (!dbg) return;
+    if (_meosPasteProbeBusy || Date.now() - _meosPasteProbeAt < 120000) return;
+    const chs = (e && e.contentChanges) || [];
+    if (chs.length !== 1) return;
+    const t = String(chs[0].text || '');
+    if (t.length < 40 || t.indexOf('\n') < 0) return;                 // 改行を含む、ある程度の長さ= 貼り付け
+    if (!e.document || e.document.lineCount < 20000) return;          // 大きな文書の時だけ
+    _meosPasteProbeBusy = true; _meosPasteProbeAt = Date.now();
+    const inspector = require('inspector'), path = require('path'), fs = require('fs');
+    const sess = new inspector.Session(); sess.connect();
+    const post = (m, p) => new Promise((res) => sess.post(m, p || {}, (err, r) => res(err ? null : r)));
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const base = path.join(path.dirname(dbg), 'meos-paste-' + stamp);
+    const lines = t.split('\n').length;
+    meosDbg('[pasteProbe] 開始 貼った行=' + lines + ' 字=' + t.length + ' 文書行=' + e.document.lineCount + ' → ' + base + '.*');
+    const memLog = [];
+    let memStop = false;   // 拍(setInterval)は増やさない= 8秒で自分から止まる短い連鎖にする
+    const memTick = () => { if (memStop) return; try { const m = process.memoryUsage(); memLog.push(Math.round((Date.now() - _meosPasteProbeAt)) + 'ms heap=' + Math.round(m.heapUsed / 1048576) + 'MB'); } catch (_) { } if (Date.now() - _meosPasteProbeAt < 9000) setTimeout(memTick, 250); };
+    setTimeout(memTick, 0);
+    (async () => {
+      try {
+        await post('Profiler.enable'); await post('Profiler.setSamplingInterval', { interval: 500 });
+        await post('Profiler.start');
+        await post('HeapProfiler.enable'); await post('HeapProfiler.startSampling', { samplingInterval: 64 * 1024 });
+        await new Promise(r => setTimeout(r, 8000));
+        const cpu = await post('Profiler.stop');
+        const heap = await post('HeapProfiler.stopSampling');
+        if (cpu && cpu.profile) fs.writeFileSync(base + '.cpuprofile', JSON.stringify(cpu.profile));
+        if (heap && heap.profile) fs.writeFileSync(base + '.heapprofile', JSON.stringify(heap.profile));
+        meosDbg('[pasteProbe] 終わり ' + memLog.join(' | '));
+      } catch (err) { try { meosDbg('[pasteProbe] 失敗 ' + String(err && err.message || err)); } catch (_) { } }
+      finally { memStop = true; try { sess.disconnect(); } catch (_) { } _meosPasteProbeBusy = false; }
+    })();
+  } catch (err) { _meosPasteProbeBusy = false; try { meosDbg('[pasteProbe] 失敗 ' + String(err && err.message || err)); } catch (_) { } }
+}
 function meosPatchDocLines(e) {
   try {
     const doc = e && e.document; if (!doc || !e.contentChanges || !e.contentChanges.length) return false;
@@ -36258,6 +36303,7 @@ makeDecorations();
         const _dockEd = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
         if (_dockEd && _dockEd.document === e.document) postDockFileUD(_dockEd);
       } catch (_) { }
+      try { meosPasteProbeMaybe(e); } catch (_) { }   // ★v4.2.97: 貼り付けの直後を測る(debugLogPath がある人だけ)
       // v4.0.272: **一番先に**行の配列を直す(この後の誰かthat meosDocLines を呼んでも刻み直さない)。
       try { meosPatchDocLines(e); } catch (_) { }
       // v4.0.258: 分割した行への変更を、理由と中身ごと記録する(誰が消したかを名指しさせる)。
