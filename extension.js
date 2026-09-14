@@ -17809,7 +17809,13 @@ async function meosChainStartHere(doc, key, line) {
     //   止めた値から続く(俊克 改良2)。席that次へ回った時は今までどおり作り直す(輪の入口)。
     try {
       const _fz72 = _meosPauseFreeze.get(lk), _base72 = _meosChainStart.get(lk);
-      if (_fz72 && _fz72.line === line && _base72) {
+      // ★★★v4.2.90(俊克 改良1「起点無しのタイマーを止めて、残り5分から始められるか色々試したが、
+      //   起点がすぐに呼び出されてしまう。これを初期化する方法は無いのか?」):
+      //   ★★★**本文が真実**= 止めた行から `v…` を消したら、覚えの起点も捨てて最初から数える。
+      //     今までは覚え(_meosChainStart)だけを見ていたので、字を消しても止めた値から続いていた。
+      //   ★`v` が残っていれば今までどおり止めた値から(v4.2.72)。
+      const _vText90 = !!(me && (me.vAt || (typeof me.vElapsed === 'number' && me.vElapsed >= 0)));
+      if (_fz72 && _fz72.line === line && _base72 && _vText90) {
         const _slept = Math.max(0, Date.now() - _fz72.at);
         _meosChainStart.set(lk, _base72 + _slept);
         meosDbg('[play] \u4eee\u60f3\u306e\u8d77\u70b9\u3092 ' + Math.round(_slept / 1000) + '\u79d2 \u5148\u3078 \u884c=' + (line + 1));

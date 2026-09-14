@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.90 (2026-09-14)
+- **Start a stopped clock from the beginning.** A clock with no starting time picks up where it stopped — that is what the `v…` MeOS writes on the line is for. Delete that `v…` and press ▶️, and it now starts again from zero. Until now MeOS also kept the starting moment in memory, so deleting the text changed nothing.
+
 ### v4.2.89 (2026-09-14)
 - **A one-off clock can start in the past.** Pick a date that has already gone by, leave Repeat off, and press Set: the clock counts up from that moment, as a stopwatch that never rings. Pick a date still to come and it counts down to it, as before. The dial decides which — there is nothing else to choose. Written by hand, `⏰ 2026-09-13 20:00 ↻` now does the same, instead of showing ⚠️.
 
