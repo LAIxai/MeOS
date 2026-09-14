@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.112 (2026-09-15)
+- **The macOS hand, as it used to look.** The pointing hand in macOS's own help pages is slim; the one macOS actually shows today is bulky. The macOS choice in Me Dock now uses a slim classic hand drawn for MeOS by LAIxai, so the comparison with the BTRON hand is between two well-drawn hands. The switch button shows it too, in place of the word "macOS".
+
 ### v4.2.110 (2026-09-15)
 - **Pick the hand right in Me Dock — one button.** Under the file button, a single button shows the hand in use: the BTRON hand or the macOS hand 👆. Click it to switch to the other; hover over it and the pointer is that hand. It only changes the hand over things you can press — everywhere else the pointer stays as it is.
 
