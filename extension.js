@@ -23930,7 +23930,8 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    ファイル名の行の右に 📦 と縦に積む= ファイル名が1行ぶん上がり、Standards → Paste lag → Re-install VSIX の縦の並びは保つ。 */
 .row2-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:0 0 auto}
 /* v4.2.105(俊克「もう少し上の方がいいかな。後、5、6ピクセル上かな」): スクショはRetinaの2倍= 画面の3px。左側(ファイル名とUD)だけを持ち上げ、右の縦積みは動かさない。 */
-.title-row2>.title-file,.title-row2>.title-file-ud{position:relative;top:-3px}
+/* v4.2.106(俊克「やはり、後3〜5ピクセル上に」): 前回のスクショで6px上がったのを実測(118→112)= 俊克の「ピクセル」はスクショの点。3〜5点の真ん中=4点=画面2px を足す。 */
+.title-row2>.title-file,.title-row2>.title-file-ud{position:relative;top:-5px}
 .paste-lag-btn{flex:0 0 auto;border:1px solid rgba(224,128,58,.75);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:#e0803a;font-weight:800;font-size:12px;line-height:1.2;padding:3px 9px;cursor:var(--meos-hand)}
 .paste-lag-btn:hover{border-color:#e0803a;background:rgba(224,128,58,.18)}
 /* ★v4.2.103(俊克「常に表示しておくようにしようよ。そうしないと、そういう設定があることを忘れてしまう。一旦設定したら、薄い色で表示」): 無効にした後は薄く。押せば同じ所へ連れて行く(戻して試せる)。 */
