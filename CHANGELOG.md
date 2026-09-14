@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.101 (2026-09-14)
+- **The 🔴 / 🟢 jump pairs are retired.** Their job was taken over by Current Me long ago, but MeOS still looked for a pair in the whole file after every change and cursor move — a real part of the delay after pasting into a very large file. MeOS no longer looks for pairs, and Add to Hyper TOC no longer writes a 🔴 pair when pressed on a membrane name in the text; it just adds the membrane. Old pair markers already in a file are left as they are, still hidden.
+
 ### v4.2.100 (2026-09-14)
 - **A chain no longer waits forever.** When the next clock in a chain is marked ⏯️ (wait for a click) and nobody clicks for five minutes — the same five minutes after which a ringing bell gives up — MeOS skips that clock and hands the turn to the one after it. In a chain of two, that means the first clock starts again.
 

@@ -9592,19 +9592,12 @@ async function addCurrentMembraneToWorkingToc() {
         // findable (e.g. citation referencing a not-yet-defined membrane).
         // User v0.9.572_0938 bug: 「136行には表示されない。ここがバグ。…双方向
         // ジャンプができない」.
-        const sourceRangeForCitation = new vscode.Range(pos.line, 0, pos.line, currentLineText.length);
-        const resolvedKey = aliasResolvedKey || candidate;
-        const targetInfo = findOpeningMembraneByName(doc, resolvedKey, new Set([pos.line]));
-        if (targetInfo && targetInfo.idRange) {
-          await showSingleRedJumpPair(editor, sourceRangeForCitation, targetInfo.idRange, resolvedKey);
-        } else {
-          // No target membrane in this document — keep the source-only marker.
-          await setSourceRjfFlag(editor, sourceRangeForCitation);
-        }
-        // Recover the allocated n from the freshly-written marker on the source line.
-        const updatedText = doc.lineAt(pos.line).text || '';
-        const nm = updatedText.match(/\[sRJF=v(\d+)\]/);
-        citeN = nm ? parseInt(nm[1], 10) : null;
+        // ★★★v4.2.101(俊克 2026.09.14 pm07:42「(廃止1) 🔴🟢のジャンプの対を廃止して下さい。
+        //   まだ動いていたとは知らなかったよ。そんなことが影響していたとはね」):
+        //   ★★本文の膜名の上で Add to Hyper TOC を押しても、🔴の対(`[sRJF=vN]` / `[tRJF=v]🔴`)を**書かない**。
+        //     H-TOC に膜を足すだけ。対を探す処理(restoreActive*JumpFromJumpFlags)も止めた。
+        //   ★本文に残っている古い印は消さない(本文を書き換えない)= 見えないまま残る。
+        citeN = null;
         citationLine = pos.line;
         // v0.9.572: when matched via alias, the H-TOC key must be the real
         // membrane name (so jumps resolve) and the displayed note should be
@@ -14816,9 +14809,11 @@ function visibleTargetRjfTextRange(document) {
 //     24万行を歩く。貼り付け1回で 1445ms(restoreActiveRedJumpFromJumpFlags の合計)。
 //   ★→ 「この版には対が無い」を版の鍵で覚える= 同じ版でもう一度訊かれたら読まない。版が変われば1回だけ読み直す。
 let _meosRjfMissKey = '';
+const MEOS_JUMP_PAIRS_RETIRED = true;   // ★v4.2.101(俊克「(廃止1) 🔴🟢のジャンプの対を廃止して下さい」)
 function restoreActiveRedJumpFromJumpFlags(editor = vscode.window.activeTextEditor) {
   if (!editor || !editor.document) return false;
   if (activeRedJump && activeRedJump.uri === editor.document.uri.toString() && activeRedJump.sourceRange && activeRedJump.targetRange) return true;
+  if (MEOS_JUMP_PAIRS_RETIRED) return false;   // ★v4.2.101: 🔴の対は廃止= 本文の古い印から対を組み直さない(全文を読まない)
   const _k99 = _meosTextKey(editor.document);
   if (_meosRjfMissKey === _k99) return false;
   const sourceRange = visibleSourceRjfTextRange(editor.document);
@@ -15254,6 +15249,7 @@ let _meosGjfMissKey = '';   // ★v4.2.99: 赤と同じ= 「この版には🟢�
 function restoreActiveGreenJumpFromJumpFlags(editor = vscode.window.activeTextEditor) {
   if (!editor || !editor.document) return false;
   if (activeGreenJump && activeGreenJump.uri === editor.document.uri.toString() && Array.isArray(activeGreenJump.ranges) && activeGreenJump.ranges.length) return true;
+  if (MEOS_JUMP_PAIRS_RETIRED) return false;   // ★v4.2.101: 🟢の対も廃止
   const _k99 = _meosTextKey(editor.document);
   if (_meosGjfMissKey === _k99) return false;
   const ranges = visibleGreenJumpRangesFromFlags(editor.document);
