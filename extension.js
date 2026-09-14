@@ -23956,8 +23956,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* ★v4.2.109(俊克「ファイルメニューの下が空いているので、そこに、macOS指差しかBTRON指差の絵のボタンを置いて、それを押すと切り替わる」)
    ★v4.2.110(俊克「2つ並べるより、1つのボタンにした方がいいよ」): 1つの駒= 今の手の絵を出し、押すともう一方へ。駒の上の手も今の手(--meos-hand)。 */
 .title-row2{position:relative}
+/* ★v4.2.114(俊克 改良1「切替ボタンをもう少し上に」): スクショで ファイル名の枠の下端→ボタンの上端 が29点(画面14px)空いていた。大胆に11px上げて 30px→19px。 */
 /* ★v4.2.111(俊克 改良2「切替ボタンの背景を赤とか水色のように目立つ色にしようよ」＋「macOS指差しの黄色い絵(絵文字👆)は格好悪い」): 地は水色。macOS 側は絵文字をやめて字で。 */
-.hand-pick{position:absolute;left:2.3em;top:30px;height:22px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #0e7490;border-radius:6px;background:#56d4dd;color:#0b2a30;font-size:11px;font-weight:800;line-height:1}
+.hand-pick{position:absolute;left:2.3em;top:19px;height:22px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #0e7490;border-radius:6px;background:#56d4dd;color:#0b2a30;font-size:11px;font-weight:800;line-height:1}
 .hand-pick:hover{background:#7fe3ea}
 .hand-pick .hp-mac,.hand-pick .hp-sys{display:none}
 .hand-pick.is-macos .hp-btron,.hand-pick.is-system .hp-btron{display:none}
@@ -26425,7 +26426,7 @@ if(fmtHighlight){const f=fmtHlFace();fmtSetHlFace(fmtHighlight,f);}renderFmtBtnC
 const fmtStCycle=document.getElementById('fmt-st-cycle');if(fmtStCycle)fmtStCycle.addEventListener('click',ev=>{ev.preventDefault();
 ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.strike){window.__fmtRing.strike=((window.__fmtRing.strike||0)+1)%4;
 window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('strike');return;}fmtStIdx=(fmtStIdx+1)%3;
-fmtSpec.strike=fmtStSlots[fmtStIdx];if(fmtStrike)fmtStrike.textContent='~'.repeat([1,2,3][fmtStIdx]);renderFmtBtnColors();
+fmtSpec.strike=fmtStSlots[fmtStIdx];renderFmtBtnColors();/* ★v4.2.114(俊克 バグ1「取消線の↻ボタンで切り替えると、👻がボタンのところに出なくなる」): 面を ~~ で直に書いていた= 👻を描く口(__renderFmtRing)を通していなかった。面は1つの口から描く。 */if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');
 pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='strike')renderFmtPop();});var fmtToolsEl=document.getElementById('format-tools');
 if(fmtToolsEl)fmtToolsEl.addEventListener('mouseleave',function(){window.__fmtTipSuppress=false;});
 /* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){const ap=(btn,k)=>{if(!btn)return;

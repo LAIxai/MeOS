@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.114 (2026-09-15)
+- **👻 stays on the strikethrough button when you cycle its colour.** Pressing ↻ on the strikethrough button wrote `~~` straight onto it, wiping out the 👻 that says the next strike will hide the text. It now redraws the button the one way it is always drawn, so 👻 stays.
+- The pointer-hand switch sits a little higher, closer to the file button.
+
 ### v4.2.113 (2026-09-15)
 - **Three hands to compare.** The switch under the file button now cycles through the BTRON hand, the slim classic macOS hand, and the hand your operating system shows today (the button reads "OS" for that one). Click to move to the next and hover to see it.
 
