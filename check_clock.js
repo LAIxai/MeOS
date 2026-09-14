@@ -2026,7 +2026,7 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
     合図は覆わない物(手の形)で出す。 */
  ok(!/meosClockPlayHoverMessage/.test(S9),
     '\u2605\u2605\u2605\u25b6\ufe0f/\u23f8\ufe0f \u306e\u4e0a\u306b\u5439\u304d\u51fa\u3057\u3092\u51fa\u3055\u306a\u3044(\u62bc\u3059\u7269\u3092\u305d\u308c\u81ea\u8eab\u306e\u8aac\u660ethat\u8986\u3046)', true);
- ok(/createTextEditorDecorationType\(\{ cursor: MEOS_HAND_CURSOR/.test(S9) && /editor\.setDecorations\(meosClockPlayDeco, plays\);/.test(S9),
+ ok(/createTextEditorDecorationType\(\{ cursor: meosHandCursor\(\)/.test(S9) && /editor\.setDecorations\(meosClockPlayDeco, plays\);/.test(S9),
     '\u2605\u2605\u2605\u5408\u56f3\u306f\u624b\u306e\u5f62(\u4f55\u3082\u8986\u308f\u306a\u3044\u30fb\u8a00\u8449that1\u6587\u5b57\u3082\u8981\u3089\u306a\u3044)', true);
  ok(/plays\.push\(\{ range: new vscode\.Range\(i, 0, i, _a65 \+ 1\) \}\);/.test(S9),
     '  \u99d2\u3082\u5f53\u305f\u308a\u3082\u540c\u3058\u578b= \u898b\u3048\u3066\u3044\u308b\u7269\u3068\u62bc\u305b\u308b\u6240that\u305a\u308c\u306a\u3044', true);
@@ -2399,10 +2399,10 @@ console.log('㊹ MeOSの手(v4.2.79 俊克「手の形のマウスをすべて�
  const S79=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/^const MEOS_HAND_CURSOR = 'image-set\(url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 1x(?:, url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) [24]x)+\) 1 1, pointer';$/m.test(S79),
     '★★★手は1つの定数(1x＋2x/4x・指先が当たり・読めなければOSの手)', true);
- ok(!/cursor: ?'pointer'/.test(S79) && !/textDecoration: '[^']*cursor: pointer/.test(S79),
+ ok(!/cursor: ?'pointer'[^)]/.test(S79.replace("return 'pointer';",'')) && !/textDecoration: '[^']*cursor: pointer/.test(S79),
     '★★★本文の装飾に素の pointer は残っていない', true);
  const W=S79.slice(S79.indexOf('return `<!DOCTYPE html>'), S79.indexOf('</script></body></html>`;'));
- ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{MEOS_HAND_CURSOR\};\}/.test(W),
+ ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{meosHandCursor\(\)\};\}/.test(W),
     '★★★Me Dock も同じ定数から(素の cursor:pointer は0)', (W.match(/cursor:pointer/g)||[]).length);
 }
 console.log('㊺ f/p の見た目は f だけ / Opt+クリックで最初から(v4.2.92)');
@@ -2441,5 +2441,16 @@ console.log('㊼ 連なりの待ちは5分で飛ばす(v4.2.100)');
     '★★待ちを作る2つの口の両方が since を持ち、最下段の描き直しで5分を見る', true);
  ok(/const nn = nx \? meosChainNextRow\(doc, w\.key, nx\.line\) : null;[\s\S]{0,400}?if \(target\) await meosChainStartHere\(doc, w\.key, target\.line\);/.test(S100),
     '★★★飛ばす= 待っていた1本の次の1本に席を回す(2本なら今の1本がもう一度)', true);
+}
+console.log('㊽ BTRON指差し / macOS指差し を選ぶ(v4.2.108)');
+{
+ const S108=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/function meosHandCursor\(\) \{[\s\S]{0,200}?=== 'macos'\) return 'pointer';[\s\S]{0,40}?return MEOS_HAND_CURSOR;/.test(S108),
+    '★★設定 pointerHand が macos なら CSS の pointer(= macOS の指差し)、既定は BTRON の絵', true);
+ ok((S108.match(/MEOS_HAND_CURSOR/g)||[]).length===2, '★★★手を使う所は全部 meosHandCursor() から(定数を直接読むのは定義と関数だけ)', (S108.match(/MEOS_HAND_CURSOR/g)||[]).length);
+ ok(!/cursorTMP/.test(S108) && (S108.match(/cursor: ' \+ meosHandCursor\(\) \+ '/g)||[]).length===8, '  装飾の textDecoration 8か所も同じ関数から', (S108.match(/cursor: ' \+ meosHandCursor\(\) \+ '/g)||[]).length);
+ const P=JSON.parse(fs.readFileSync(path.join(SRC,'package.json'),'utf8'));
+ const pr=P.contributes.configuration.properties||{};
+ ok(pr['laiMembrane.pointerHand'] && pr['laiMembrane.pointerHand'].default==='btron', '  設定は既定 btron', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

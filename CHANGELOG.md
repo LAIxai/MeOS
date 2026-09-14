@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.108 (2026-09-15)
+- **Choose your hand: BTRON or macOS.** A new setting, `laiMembrane.pointerHand`, switches the hand MeOS shows over things you can press between the BTRON pointing hand (the default) and the standard macOS pointing hand. The change applies at once, in the text and in Me Dock, so you can flip back and forth and see the difference for yourself — the BTRON finger points up and to the left, and what you are about to press stays in view.
+
 ### v4.2.104 (2026-09-15)
 - **A tighter Me Dock header.** The file button sat too far in and too far down. Its indent is now half what it was, and the Paste lag button no longer takes a line of its own: it stacks above 📦 Re-install VSIX at the right of the file row, so the file name moves up closer to the title.
 

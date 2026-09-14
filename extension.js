@@ -2603,6 +2603,14 @@ let closeLineLabelDecoration;
 //     確かめる事= ①標準の大きさで今までと同じ大きさか ②大きくした時に線が滑らかになるか。駄目なら 2x に戻す。
 //   ★指先(1,1)が当たり。読めない所では OS の手(pointer)に落ちる。
 const MEOS_HAND_CURSOR = 'image-set(url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAUCAYAAACXtf2DAAABfGlDQ1BJQ0MgUHJvZmlsZQAAeJx1kc8rRFEUxz8zQ36NH8XCgpo0rNCgJjbKSENNmsYog83MMz/UzHi99yZNtspWUWLj14K/gK2yVopIyVqWxAY955mpmWTO7dzzud97z+nec8EeTisZvcoDmayhhfw+11xk3lXzQh2N2OmkKaro6lgwGKCifdxhs+JNn1Wr8rl/rWEpritgqxUeVVTNEJ4UDqwaqsXbwm1KKrokfCrcq8kFhW8tPVbgZ4uTBf6yWAuHxsHeIuxKlnGsjJWUlhGWl+POpHNK8T7WS5zx7OyMxC7xDnRC+PHhYooJxvEywIjMXvoYpF9WVMj3/OZPsyK5iswqeTSWSZLCoFfUnFSPS0yIHpeRJm/1/29f9cTQYKG60wfVT6b51g01W/C9aZqfh6b5fQSOR7jIlvJXDmD4XfTNkubeh+Z1OLssabEdON+A9gc1qkV/JYe4PZGA1xNojEDrNdQvFHpW3Of4HsJr8lVXsLsHPXK+efEHFD1nwH2P+1oAAAKZSURBVHjatZW/SxthHMafy10ub+6NuUSjEQvSukkJisXNqVgsdCqh0KH+DRkc0kGIIjgVClIHp4IdHByUFgJ2E4Id1CEIGlKCUIodgk2xNpfEuzxdIpQzP2yrD7zLve/7+dy93/feF16vtwSgrihK3e/3vwKgoHlMAE8BBAOBQCoUCu2EQqGdYDD4Gh3C4+Nj5nI5RqPRss/nW3D1ewDoQohvg4ODZa/XWwHAubk5rq2tMRwOWwCetBUUCgWSZKFQYE9Pj6Xr+ksA8Pl8i5qmVYUQaU3TbJJcWVkhAK6vr5MkV1dXKaX8CkBvSjcM483Q0FC5WCySJI+OjmiaZkVV1QVVVZ3t7W329/dXAbBYLNK2bQKgaZokScdxODo6+kvTtGSrL/AYhvFueHi4XCqVSJLZbJZSyqppmhZJ7u/vEwBTqRRJcnNzk0tLS7zM3t4edV23AARbSVQp5cbY2Fj5/PycJLm7u8vZ2VnnEhKPx+vz8/NsFSFEFcDddrXwSim3JiYmypZl8W9zHQEACCllZmpqyqrVarciAAAphMiPjIxc2Lb9L4IHALYa/02TYqjqpMfjuQBARVHoOM61BOPj46VoNDoJ4DsAAvjUtOh+v/9tMplkOp1mYyDr9XpHQTabZSAQqFzOabSPV88D0/ywvLxMksxkMgTAs7OztvCDgwN2d3c7LrgF4OEVQVdX19bMzEz9umt/eHjISCTihlcAPGpV5PtCiGIikbjotP65XI69vb22C14F8LjTTrpjGMbnSCRSHhgY+Olu09PTP/L5PPv6+tzwmvvgU9pIDACxZh2xWCx8cnKycXp6Kv54bAOIA3iP/8w9AF9cb2437oobSaIJ/BluMAqAhQbcAfActxAFwCKAF51G/gacRI+HeBtjKgAAAABJRU5ErkJggg==") 1x, url("data:image/png;base64,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") 4x) 1 1, pointer';
+// ★★★v4.2.108(俊克 2026.09.15 am05:47「この指差しを指定することは可能か? もし可能なら、BTRON指差しとmacOS指差しを
+//   選択できるようにしよう。そうすれば、BTRON指差しの方が視界良好で優れていることが分るよ」):
+//   ★CSS の `pointer` が macOS の指差し(NSCursor pointingHand)そのもの= 絵を持たなくても OS の手を出せる。
+//   ★選ぶのは設定 `laiMembrane.pointerHand`(btron / macos)1つ。手を使う所は全部この関数から引く(定数を直接読まない)。
+function meosHandCursor() {
+  try { if (String(vscode.workspace.getConfiguration('laiMembrane').get('pointerHand', 'btron')) === 'macos') return 'pointer'; } catch (_) { }
+  return MEOS_HAND_CURSOR;
+}
 let membraneArrowHandDecoration;   // ★v4.2.75: ▼/▼▲/▲ の当たり= 手の形(cursor:pointer)
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
 // the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
@@ -3590,7 +3598,7 @@ function makeDecorations() {
   //     0桁〜idStart+1 = 駒(idStart に差し込まれた ▼)をまたぐ。⏰の `_a65 + 1` と同じ。
   membraneArrowHandDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    cursor: MEOS_HAND_CURSOR   // v4.2.79: MeOSの手
+    cursor: meosHandCursor()   // v4.2.79: MeOSの手
   });
   // v0.9.606: mNT rendering goes through the standard mCN openLineLabel / closeLineLabel
   // pipeline. The only mNT-specific touch is the 📒 marker appended to the ▼/▲ glyph.
@@ -3678,7 +3686,7 @@ function makeDecorations() {
     // pointer on the membrane-name range so hovering the name still
     // shows the affordance), but the after '🟢' is gone to avoid drawing
     // the button twice.
-    textDecoration: 'cursor: ' + MEOS_HAND_CURSOR + '; font-weight: 700;'
+    textDecoration: 'cursor: ' + meosHandCursor() + '; font-weight: 700;'
   });
   jumpNameHoverDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -3686,7 +3694,7 @@ function makeDecorations() {
   });
   redJumpDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'cursor: ' + MEOS_HAND_CURSOR + '; font-weight: 700;'
+    textDecoration: 'cursor: ' + meosHandCursor() + '; font-weight: 700;'
   });
   redJumpHoverDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -3694,7 +3702,7 @@ function makeDecorations() {
   });
   mstatIconDoorDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'cursor: ' + MEOS_HAND_CURSOR + ';',
+    textDecoration: 'cursor: ' + meosHandCursor() + ';',
     fontWeight: '700'
   });
 
@@ -3903,15 +3911,15 @@ function makeDecorations() {
   // decoration-type level apply to the 2-UTF16 emoji range cleanly.
   sourceRjfButtonDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';'
+    textDecoration: 'none; cursor: ' + meosHandCursor() + ';'
   });
   activeRedTargetButtonDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';'
+    textDecoration: 'none; cursor: ' + meosHandCursor() + ';'
   });
   activeGreenButtonDecoration = vscode.window.createTextEditorDecorationType({
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';'
+    textDecoration: 'none; cursor: ' + meosHandCursor() + ';'
   });
 
   // v0.9.488: shared "tip" decoration for ALL 4 membrane jump button
@@ -12608,7 +12616,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
     // ★★★v4.2.74: 運転ボタンは**手の形を持つ型**で置く= 押せる所の上でだけ形that変わる。
     //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
-    if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: MEOS_HAND_CURSOR, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockPlayDeco, plays);
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -15688,7 +15696,7 @@ function membraneButtonItems(editor, opts) {
         const cursorRange = new vscode.Range(line, startCol, line, fallbackEnd);
         cursorItems.push({
           range: cursorRange,
-          renderOptions: { before: { contentText: emoji, margin: '0 2px 0 0', textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';' } },
+          renderOptions: { before: { contentText: emoji, margin: '0 2px 0 0', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } },
         });
         tipItems.push({ range: cursorRange, hoverMessage: tip });
       }
@@ -15857,7 +15865,7 @@ function activeGreenButtonItems(editor) {
       const r = new vscode.Range(line, at, line, at);
       cursorItems.push({
         range: r,
-        renderOptions: { after: { contentText: '🟢', margin: '0 0 0 2px', textDecoration: 'none; cursor: ' + MEOS_HAND_CURSOR + ';' } },
+        renderOptions: { after: { contentText: '🟢', margin: '0 0 0 2px', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } },
       });
       // v0.9.671 (bug2): a hoverMessage does NOT fire on a zero-width range (v0.9.481) —
       // that is why the body 🟢 lost its tip in v0.9.670. Host the tip on a NON-EMPTY range
@@ -23902,7 +23910,7 @@ function meDockHtml() {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <style>
-:root{--meos-hand:${MEOS_HAND_CURSOR};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
+:root{--meos-hand:${meosHandCursor()};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
 /* {* ▼mCN=dock_css // Me Dock のCSS(見た目) *} */
 
 :root{color-scheme:light dark}
@@ -28176,7 +28184,7 @@ for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.text
 _t.addEventListener('click',function(){try{vscode.postMessage({type:'copyFileAndUd'});}catch(_e){}});
 _ud.appendChild(_t);}
 }
-return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
+return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
 if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);
@@ -36590,7 +36598,13 @@ makeDecorations();
       // 「改行を最後に意図して打ったときに膜線を戻すようにした方がスマート」.
       if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
     }),
-    vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); syncGutterEditorSettings(); refresh(); } }),
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
+        try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
+        try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor() }); } catch (_) { }
+      }
+      if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); syncGutterEditorSettings(); refresh(); }
+    }),
     vscode.commands.registerCommand('laiMembrane.refresh', () => refresh()),
     vscode.commands.registerCommand('laiMembrane.addMembrane', addMembrane),
     vscode.commands.registerCommand('laiMembrane.toggleMeDock', toggleMeDock),
