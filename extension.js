@@ -29996,7 +29996,8 @@ function meosPasteProbeMaybe(e) {
     const chs = (e && e.contentChanges) || [];
     if (chs.length !== 1) return;
     const t = String(chs[0].text || '');
-    if (t.length < 40 || t.indexOf('\n') < 0) return;                 // 改行を含む、ある程度の長さ= 貼り付け
+    // ★v4.2.98: 俊克の遅い貼り付けは「201文字の1行」だった= 改行を条件にすると測れない。長さだけで見る(打鍵は1〜数文字)。
+    if (t.length < 60) return;
     if (!e.document || e.document.lineCount < 20000) return;          // 大きな文書の時だけ
     _meosPasteProbeBusy = true; _meosPasteProbeAt = Date.now();
     const inspector = require('inspector'), path = require('path'), fs = require('fs');
