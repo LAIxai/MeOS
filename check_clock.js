@@ -2338,7 +2338,7 @@ console.log('㊶ 連なりの輪(俊克 pm06:43 の設計 ＋ pm07:17「最下�
  /* ★★v4.2.54(俊克 改良1)= 次に何が始まるのかを、押す前に言う。長さは次の1本that持っている。 */
  ok(/click to start ' \+ _meosChainWait\.next \+ ' timer/.test(BAR),
     '★★次の長さを言う(`— click to start 1m timer`)', true);
- ok(/_meosChainWait = \{ uri: scope\.uri, key: scope\.key, text: [^\n]*next: _len54 \}/.test(S50),
+ ok(/_meosChainWait = \{ uri: scope\.uri, key: scope\.key, [^\n]*text: [^\n]*next: _len54 \}/.test(S50),
     '  長さは次の1本の cycle from引く(数え直さない)', true);
  ok(/_meosTimerBar\.backgroundColor = _meosChainBlinkOn \? _y54 : undefined;/.test(BAR)
     && /_meosTimerBar\.color = _meosChainBlinkOn \? undefined : _y54;/.test(BAR),
@@ -2431,5 +2431,15 @@ console.log('㊻ ▶️/⏸️ を押した後に tip(v4.2.94 俊克「ステー
  {const W=S94.slice(S94.indexOf('return `<!DOCTYPE html>'), S94.indexOf('</script></body></html>`;'));
   const Nd=S94.split('\n').filter(l=>!/^\s*(\/\/|\/\*|★)/.test(l)&&!/meosDbg/.test(l)&&!/[\u3040-\u30ff\u4e00-\u9fff]/.test(l)&&/\\u2325|⌥/.test(l));   /* 日本語の行は注釈 */
   ok(Nd.length===0, '★★★見える文字に ⌥ を使わない(Opt と書く)', Nd.map(l=>l.slice(0,80)));}
+}
+console.log('㊼ 連なりの待ちは5分で飛ばす(v4.2.100)');
+{
+ const S100=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/const MEOS_CHAIN_WAIT_MS = 5 \* 60000;/.test(S100) && /_meosRingUntil = Date\.now\(\) \+ 5 \* 60000;/.test(S100),
+    '★★待つ上限は鐘の上限と同じ5分', true);
+ ok(/Date\.now\(\) - _meosChainWait\.since >= MEOS_CHAIN_WAIT_MS/.test(S100) && (S100.match(/_meosChainWait = \{[^\n]*since: Date\.now\(\)/g)||[]).length===2,
+    '★★待ちを作る2つの口の両方が since を持ち、最下段の描き直しで5分を見る', true);
+ ok(/const nn = nx \? meosChainNextRow\(doc, w\.key, nx\.line\) : null;[\s\S]{0,400}?if \(target\) await meosChainStartHere\(doc, w\.key, target\.line\);/.test(S100),
+    '★★★飛ばす= 待っていた1本の次の1本に席を回す(2本なら今の1本がもう一度)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

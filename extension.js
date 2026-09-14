@@ -11069,6 +11069,23 @@ async function meosChainAdvance(doc, key) {
     return next;
   } catch (_) { return -1; }
 }
+const MEOS_CHAIN_WAIT_MS = 5 * 60000;   // ★v4.2.100: 押すまで待つ上限(鐘の上限と同じ5分)
+// 待っている1本(⏯️)を飛ばし、その次の1本に席を回す。次の次が今の1本なら、今の1本をもう一度走らせる(輪)。
+async function meosChainSkipWaiting() {
+  const w = _meosChainWait; _meosChainWait = null;
+  if (!w) return;
+  try {
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === w.uri);
+    if (!doc) return;
+    const cur = (typeof w.line === 'number') ? w.line : -1;
+    const nx = meosChainNextRow(doc, w.key, cur);
+    const nn = nx ? meosChainNextRow(doc, w.key, nx.line) : null;
+    const target = nn || null;
+    meosDbg('[chain] 5\u5206\u5fdc\u7b54\u306a\u3057 \u2192 \u98db\u3070\u3059 \u5f85\u3063\u3066\u3044\u305f\u884c=' + (nx ? nx.line + 1 : '-') + ' \u6b21\u306b\u8d70\u308b\u884c=' + (target ? target.line + 1 : '-') + ' \u819c=' + w.key);
+    if (target) await meosChainStartHere(doc, w.key, target.line);
+  } catch (_) { }
+  try { meosUpdateTimerBar(); } catch (_) { }
+}
 // ★★★v4.2.50: 最下段の「クリック」を押した時。**家の中の同じ役の部品**(⏰ ringing — click to stop /
 //   \u21a9 Back)と同じ作りso、押す所thatが1つの列に揃う → [[feedback_copy_the_house_style_first]]
 async function meosChainNextFromBar() {
@@ -11276,7 +11293,7 @@ function meosArmClockFcFor(doc) {
                 // ★★★v4.2.63: ここも同じ1つの決め手を通す(印that在れば押すまで待つ)。
                 if (meosChainWantsClick(doc, c.key, c.line)) {
                   const _nx63 = meosChainNextRow(doc, c.key, c.line);
-                  _meosChainWait = { uri, key: c.key, text: meosChainSayFor(doc, c.key, c.line, 0) || c.name || '',
+                  _meosChainWait = { uri, key: c.key, line: c.line, since: Date.now(), text: meosChainSayFor(doc, c.key, c.line, 0) || c.name || '',
                     next: (_nx63 && Array.isArray(_nx63.cycle) && _nx63.cycle.length) ? _nx63.cycle.join('/') : '' };
                   meosUpdateTimerBar();
                   _chained50 = true;
@@ -12650,6 +12667,12 @@ function meosUpdateTimerBar() {
     //   ★★★**4つ目の姿**= 連なりthat次を待っている間。⏰ ringing / \u21a9 Back と同じ列・同じ作り。
     //   ★走行中の残り時間より前に出す= 今いちばん言うべきことthat「押してください」so。
     //     押せば消えて、いつもの残り時間へ戻る。
+    // ★★★v4.2.100(俊克「連なりで、5分応答が無ければ次へ飛ばすを実装して下さい」・2026.09.09 の設計「終わり方」):
+    //   ★★**5分待って押されなければ、待っている1本を飛ばして、その次へ席を回す**= 1回切りの鐘が自分から
+    //     鳴り止むのと同じ5分(meosStartRinging の上限)。席を外している人の連なりが、そこで永久に止まらない。
+    if (_meosChainWait && _meosChainWait.since && Date.now() - _meosChainWait.since >= MEOS_CHAIN_WAIT_MS) {
+      try { meosChainSkipWaiting(); } catch (_) { _meosChainWait = null; }
+    }
     if (_meosChainWait) {
       if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
       _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next')
@@ -13307,7 +13330,7 @@ async function meosPseudoTimeUp(key) {
           try { meosChainAdvance(_d50, scope.key); } catch (_) { }
           try { meosUpdateTimerBar(); } catch (_) { }
         } else {
-          _meosChainWait = { uri: scope.uri, key: scope.key, text: _say49 || scope.name || '', next: _len54 };
+          _meosChainWait = { uri: scope.uri, key: scope.key, line: scope.line, since: Date.now(), text: _say49 || scope.name || '', next: _len54 };
           try { meosDbg('[chain] \u6b21\u3092\u5f85\u3064 ' + (_i50 + 1) + '/' + _rows50.length + ' \u819c=' + scope.key); } catch (_) { }
           try { meosUpdateTimerBar(); } catch (_) { }
         }

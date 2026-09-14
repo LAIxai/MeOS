@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.100 (2026-09-14)
+- **A chain no longer waits forever.** When the next clock in a chain is marked ⏯️ (wait for a click) and nobody clicks for five minutes — the same five minutes after which a ringing bell gives up — MeOS skips that clock and hands the turn to the one after it. In a chain of two, that means the first clock starts again.
+
 ### v4.2.99 (2026-09-14)
 - **Less work after every change in very large files.** Whenever the cursor moved or the screen was redrawn, MeOS checked the whole file to confirm that there was no active 🔴 or 🟢 jump pair — and in a 240,000-line diary, with no pair, that meant reading every line twice, again and again. It now remembers the answer for each version of the file and reads it only once per change.
 
