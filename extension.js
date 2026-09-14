@@ -12154,6 +12154,16 @@ function meosApplyTimerLineDecorations(editor) {
               //   ★★**直す形と読む形は別**= 生データは打ちやすい空白、画面は締まって見える `/`。
               //     `30s 15s` は打つ時の形so、読む時は `30s/15s` の方that塊thatが見える。
               //   ★消し方は幅ごと畳む(v0.9.479)so、桁は動かない= 色も白い実行中の桁も同じ所に当たる。
+              // ★★v4.2.92(俊克 am09:45「f/pの見た目の貴方の案に1票」): **f/p の対は、飾りの行では f だけ見せる**。
+              //   対が在るのは f(目標)がまだ未来の間だけ(過去になれば MeOS が `…p` 1つに畳む・v4.2.54)so、
+              //   見せるべきは「どこへ向かっているか」= f。p(数え始め)は生データの行で読める。消し方は幅ごと畳む。
+              try {
+                const _fp92 = /[fF][ \t]*(\/[ \t]*\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}(?:\([SMTWtFs]\))?[ \t]+\d{1,2}:\d{2}(?::\d{2})?[ \t]*[pP])/.exec(txt);
+                if (_fp92) {
+                  const _h92 = _fp92.index + _fp92[0].indexOf('/');
+                  badgeHide.push(new vscode.Range(i, _h92, i, _fp92.index + _fp92[0].length));
+                }
+              } catch (_) { }
               for (const _sp9 of (c.cycleSeps || [])) {
                 if (!(_sp9[1] > _sp9[0]) || _sp9[1] > txt.length) continue;
                 badgeHide.push(new vscode.Range(i, _sp9[0], i, _sp9[1]));
@@ -17787,6 +17797,25 @@ async function meosClockStopHere(doc, key, line) {
     return true;
   } catch (_) { return false; }
 }
+// ★★v4.2.92: 最初から数え直す(Opt+クリック)。起点を持たない1本だけ= 本文の `v…` と覚えの起点を捨てて、
+//   ⏸ も外し、今から走らせる。★起点を書いてある1本は予定so動かさない(v4.2.65 改良2と同じ線)。
+//   ★やる事は「人が v を消して ▶️ を押す」(v4.2.90)と同じ= 道を2本にしない。
+async function meosClockRestartHere(doc, key, line) {
+  try {
+    let hit = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) hit = x;
+    if (!hit) return false;
+    if (hit.when) {
+      vscode.window.setStatusBarMessage('MeOS: \u23f0 this clock has a start time written on it \u2014 it keeps its schedule.', 4000);
+      return false;
+    }
+    const lk = doc.uri.toString() + ' ' + key;
+    try { meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk); _meosChainStart.delete(lk); _meosPauseFreeze.delete(lk); } catch (_) { }
+    const _sv = meosClockSplitV(hit.whenSrc);
+    await meosClockFcSet(doc, key, { when: '', hold: hit.hold, lock: hit.lock, cycle: hit.cycle, up: hit.up, dual: hit.dual, rounds: hit.rounds, cycleSrc: hit.cycleSrc, manual: hit.manual, whenSrc: _sv ? _sv.pre : hit.whenSrc, tags: hit.tags, done: false }, line);
+    meosDbg('[play] \u2325 \u6700\u521d\u304b\u3089 \u884c=' + (line + 1) + ' \u819c=' + key);
+    return await meosChainStartHere(doc, key, line);
+  } catch (_) { return false; }
+}
 // その1本に席を回す(今から数え始める)。渡す口は既に在る物を使い、新しい仕組みは作らない。
 async function meosChainStartHere(doc, key, line) {
   try {
@@ -17843,10 +17872,37 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     } catch (_) { }
   }
   // ★★★v4.2.64: `▶️` を押した= その1本に席を回す。▼と同じ「マウスの時だけ」の道に乗せる。
+  // ★★★v4.2.92(俊克 am09:45「Opt+clickで⏸️を押すと、最初からカウントし直すという案も採用です」):
+  //   ★Opt+クリックは VS Code では**カーソルを1つ足す**(editor.multiCursorModifier の既定)= 選択の合図に
+  //     修飾キーは乗ってこないso、**カーソルが増えた事**で見分ける。足されたカーソルが運転ボタンの上なら、
+  //     カーソルを1つに戻して「最初から」。ボタンの上でなければ、今までどおりのマルチカーソル。
+  let _optSel92 = null;
+  try {
+    const _sels92 = editor.selections || [];
+    if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && _sels92.length >= 2) {
+      for (let k = _sels92.length - 1; k >= 0; k--) {
+        const _s = _sels92[k];
+        if (_s.isEmpty && meosClockPlayHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }
+      }
+      if (_optSel92) editor.selections = [new vscode.Selection(_optSel92.active, _optSel92.active)];
+    }
+  } catch (_) { _optSel92 = null; }
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
     try {
       const _ln = editor.selection.active.line;
       const _pl = meosClockPlayHitAt(editor.document, _ln, editor.selection.active.character);
+      if (_pl && _optSel92) {
+        const _own92 = meosClockOwnerKeyForLine(editor.document, _ln);
+        if (_own92) {
+          setRefNoRaw(editor.document, _ln);
+          await meosClockRestartHere(editor.document, _own92, _ln);
+          setRefNoRaw(editor.document, _ln);
+          meosParkCaretAfterPress(editor, _ln);
+          try { refresh(editor); } catch (_) { }
+          try { meosTickTimerLines(); } catch (_) { }
+        }
+        return;
+      }
       if (_pl) {
         const _own = meosClockOwnerKeyForLine(editor.document, _ln);
         const _run = _own ? meosClockLineRunning(editor.document, _own, _ln) : false;

@@ -2405,4 +2405,16 @@ console.log('㊹ MeOSの手(v4.2.79 俊克「手の形のマウスをすべて�
  ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{MEOS_HAND_CURSOR\};\}/.test(W),
     '★★★Me Dock も同じ定数から(素の cursor:pointer は0)', (W.match(/cursor:pointer/g)||[]).length);
 }
+console.log('㊺ f/p の見た目は f だけ / Opt+クリックで最初から(v4.2.92)');
+{
+ const S92=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const D=FN(S92,'function meosApplyTimerLineDecorations');
+ ok(/const _fp92 = /.test(D) && /badgeHide\.push\(new vscode\.Range\(i, _h92, i, _fp92\.index \+ _fp92\[0\]\.length\)\)/.test(D),
+    '★★f/p の対は飾りの行で /…p を畳む(生データの行では消さない枝の中)', true);
+ const txt='<!-- Mew!FC ⏰ 2026-09-14 10:06f/2026-09-14 09:07:37p ↺↻ -->';
+ const m=/[fF][ \t]*(\/[ \t]*\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}(?:\([SMTWtFs]\))?[ \t]+\d{1,2}:\d{2}(?::\d{2})?[ \t]*[pP])/.exec(txt);
+ ok(m && txt.slice(m.index+m[0].indexOf('/'), m.index+m[0].length)==='/2026-09-14 09:07:37p', '  畳むのは `/2026-09-14 09:07:37p` だけ', m&&m[0]);
+ ok(/if \(_optSel92\) editor\.selections = \[new vscode\.Selection\(_optSel92\.active, _optSel92\.active\)\];/.test(S92),
+    '★★Opt+クリック= 足されたカーソルが運転ボタンの上なら、カーソルを1つに戻して最初から', true);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

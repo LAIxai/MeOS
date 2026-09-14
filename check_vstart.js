@@ -10,7 +10,7 @@ let ver=1;
 stub.workspace.applyEdit=async(ed)=>{for(const o of ed.ops){ if(o[0]==='r'){A[o[1].start.line]=o[2];} else throw new Error('op '+o[0]);} ver++; return true;};
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/simv_'+process.pid+'.js';
-fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockStopHere,meosChainStartHere,meosClockFcSet,_meosChainStart,_meosPseudoScopes,_meosPseudoUntil,_meosPauseFreeze,meosChainAdvance,meosClockAdjustV,meosClockFmtElapsed};\n');
+fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosClockFcScan,meosArmClockFcFor,meosClockStopHere,meosChainStartHere,meosClockFcSet,_meosChainStart,_meosPseudoScopes,_meosPseudoUntil,_meosPauseFreeze,meosChainAdvance,meosClockAdjustV,meosClockFmtElapsed,meosClockRestartHere};\n');
 let X; try{X=require(T).__t;}finally{fs.unlinkSync(T);}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const doc={uri:{toString:()=>'file:///v.md',fsPath:'/v.md',scheme:'file'},languageId:'markdown',get lineCount(){return A.length},get version(){return ver},
@@ -85,5 +85,18 @@ const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
  ok(/⏸.* \/\/ 5分タイマー -->$/.test(A[4]),'★★止めてもタイトルは残る',A[4]);
  await X.meosChainStartHere(doc,'T_1',4); await sleep(20);
  ok(/ \/\/ 5分タイマー -->$/.test(A[4]) && A[4].indexOf('⏸')<0,'  再開してもタイトルは残る',A[4]);
+ // ★v4.2.92: Opt+クリック= 最初から(起点なしだけ)
+ A=['# t','<!-- {* ▼mCN=U_1 // c *} -->','x','<!-- {* ▲mCN=U_1 // c *} -->','<!-- Mew!UFC ⏰ ↻5m ×1 // ラーメン -->']; ver++;
+ X.meosArmClockFcFor(doc); await sleep(20);
+ const lkU='file:///v.md U_1';
+ X._meosChainStart.set(lkU, Date.now()-150e3); ver++; X.meosArmClockFcFor(doc); await sleep(20);
+ await X.meosClockStopHere(doc,'U_1',4); await sleep(20);
+ await X.meosClockRestartHere(doc,'U_1',4); await sleep(30);
+ const bU=X._meosChainStart.get(lkU);
+ ok(bU && (Date.now()-bU)<3000 && A[4].indexOf('⏸')<0 && / \/\/ ラーメン -->$/.test(A[4]),'★★★Opt+クリック= 止めていても走っていても最初から(⏸ も外す・タイトルは残る)',[bU&&(Date.now()-bU),A[4]]);
+ A=['# t','<!-- {* ▼mCN=W_2 // c *} -->','x','<!-- {* ▲mCN=W_2 // c *} -->','<!-- Mew!UFC ⏰ 2026-09-01 08:00p ↺↻8h -->']; ver++;
+ X.meosArmClockFcFor(doc); await sleep(20); const before=A[4];
+ const r2=await X.meosClockRestartHere(doc,'W_2',4); await sleep(20);
+ ok(r2===false && A[4]===before,'  起点を書いてある1本は動かさない(予定は予定)',A[4]);
  console.log(ng?('NG '+ng):'ALL PASS'); process.exit(0);
 })();
