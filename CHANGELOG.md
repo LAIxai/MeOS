@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.93 (2026-09-14)
+- **The heading button stays on the level you chose.** Cycling it quickly — ###, #, ## — could leave it showing # again. Every press saves the choice, and a refresh from MeOS that happened to be sent just before the last save arrived was putting the previous level back. Saves are now numbered, and a refresh older than the panel's latest choice is ignored.
+
 ### v4.2.92 (2026-09-14)
 - **A clock aimed at the future shows only where it is going.** When MeOS has written both the target and the moment it started counting (`10:06f/09:07:37p`), the drawn line now shows just the target, `10:06f`. Both stay in the text, and both appear when the cursor is on the line.
 - **⌥ Option-click ▶️ or ⏸️ to start again from zero.** For a clock with no starting time written on it, an Option-click throws away where it had got to and counts from now — running or stopped. A clock with a start time keeps its schedule. Deleting the `v…` from the line and pressing ▶️ still does the same thing.

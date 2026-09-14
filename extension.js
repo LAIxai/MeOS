@@ -8660,6 +8660,7 @@ function hyperTocDataKey(document) {
 // file (restored on reload / another PC) without writing on every click.
 const _htocSelMem = new Map(); // uriString -> { tabId: selKey }  (live, session-side)
 const _fmtMem = new Map(); // v0.9.99938: uriString -> Format色設定 {highlight,strike,heading:{1,2,3},level} (live・mMETAに随伴)
+const _fmtRevMem = new Map();   // ★v4.2.92: uri → 面が送った最後の saveFmt の通し番号
 let _fmtWriteTimer = null;  // v0.9.99938: mMETA書込デバウンス
 function getHtocSelMap(document) {
   if (!document) return {};
@@ -9387,7 +9388,7 @@ function postFixedWorkingTocSnapshot() {
   try { const uri = editor.document.uri.toString(); let fmt = _fmtMem.get(uri); if (!fmt) { const d = getHyperTocData(editor.document); if (d && d.fmt) { fmt = d.fmt; _fmtMem.set(uri, fmt); } } // v4.0.42(俊克): そのノートに記録が無ければ**ユーザー既定**(globalState)を渡す。以前はnullを渡していたので、VS Codeを開き直した直後に
   // mMETAを持たないファイルを開くと組込み既定(赤/黄)に戻って見えた=「ファイル毎に初期化される」の正体。
   if (!fmt) { try { fmt = extensionContext && extensionContext.globalState.get('meosFmtUserDefault'); } catch (_) {} }
-  meDockPanel.webview.postMessage({ type: 'loadFmt', fmt: fmt || null }); } catch (_) {}
+  meDockPanel.webview.postMessage({ type: 'loadFmt', fmt: fmt || null, uri, rev: _fmtRevMem.get(uri) || 0 }); } catch (_) {}   // ★v4.2.92: 通し番号を添える
   try { meDockPanel.webview.postMessage({ type: 'linkUl', ul: meosLinkUlLast() }); } catch (_) {} // v4.0.298: 面の下線も同じ値から
   try { postMeDockFile(editor); } catch (_) {} // v4.0.303: 版の右にファイル名＋履歴(相手が変わった時だけ働く)
   postBookmarkState(editor); // v0.9.715: 🔖 ボタン状態(個数/満杯)も同期
@@ -25941,7 +25942,7 @@ function fmtStTildeOn(){var sp=fmtStSlots[fmtStIdx]||{};return stAltOn()?!sp.til
 function fmtStGhostOn(){return !fmtStTildeOn();}
 const fmtSpec={highlight:fmtHlSlots[0],strike:fmtStSlots[0],heading:fmtHeadingColors[2],/* v4.0.38(俊克「上付きの▾パネルを他と同じに」): 上付/下付も共有パネル(fmt-pop)を使う。値の実体は従来どおり mtxFg/mtxBg so既存コードは無傷。 */metex:{get fg(){return (typeof mtxFg!=='undefined')?mtxFg:null;
 },set fg(v){mtxFg=v||null;},get bg(){return (typeof mtxBg!=='undefined')?mtxBg:null;},set bg(v){mtxBg=v||null;}}};
-/* v0.9.99938: Format色設定をmMETAへ随伴保存(変更のたびにnodeへ送る) */function pushFmt(){try{vscode.postMessage({type:'saveFmt',fmt:{highlight:fmtHlSlots,
+/* v0.9.99938: Format色設定をmMETAへ随伴保存(変更のたびにnodeへ送る) */function pushFmt(){try{window.__fmtRev=(Number(window.__fmtRev)||0)+1;vscode.postMessage({type:'saveFmt',rev:window.__fmtRev,fmt:{highlight:fmtHlSlots,
 hlIdx:fmtHlIdx,strike:fmtStSlots,stIdx:fmtStIdx,heading:fmtHeadingColors,level:fmtHeadingLevel,bold:(typeof mbCombo!=='undefined'?mbCombo:undefined),
 metexFg:(typeof mtxFg!=='undefined'?mtxFg:null),metexBg:(typeof mtxBg!=='undefined'?mtxBg:null)}});}catch(_){}}/* v3.1.74(俊克): 太字色(mbCombo)もmMETAへ随伴保存(再インストールで無地に戻る件の修正) / v4.0.7(俊克): 上付/下付の色(mtxFg/mtxBg)も保存(再インストールで色なしに戻る件) */
 const FMT_FG=[['赤','#d22828'],['橙','#d77814'],['黄','#b49600'],['緑','#28963c'],['青','#286ed2'],['紫','#9646d2'],['桃','#d23c96'],['黒','#222222'],['白','#f5f5f5'],['灰','#828282'],['紺','#000080'],['水','#00bfff'],['ワイン','#800000']];
@@ -28051,7 +28052,7 @@ for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.text
 _t.addEventListener('click',function(){try{vscode.postMessage({type:'copyFileAndUd'});}catch(_e){}});
 _ud.appendChild(_t);}
 }
-return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
+return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
 if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);
@@ -28766,6 +28767,7 @@ function toggleMeDock(editorOverride) {
       if (ed && message.fmt) {
         const doc = ed.document;
         _fmtMem.set(doc.uri.toString(), message.fmt);
+        _fmtRevMem.set(doc.uri.toString(), Number(message.rev) || 0);   // ★v4.2.92: 面の保存の通し番号(控えに添えて返す)
         // v4.0.42(俊克「ファイル毎に初期化されるのは使い難い」): Format設定を**ユーザー既定**としてもglobalStateに保存。
         // 住み分け=ノートのmMETA(そのノート固有・他人に渡しても色が travel する)＞globalState(自分の既定)＞組込み既定。
         try { if (extensionContext) extensionContext.globalState.update('meosFmtUserDefault', message.fmt); } catch (_) {}
