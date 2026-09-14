@@ -14787,12 +14787,20 @@ function visibleTargetRjfTextRange(document) {
   return null;
 }
 
+// ★★★v4.2.99(俊克 pm07:18「今も10秒以上遅延した」＋ 貼り付け直後8秒の cpuprofile):
+//   ★★★**赤い対が無い(普通の)時に、無いことを確かめるために、毎回2度全文を読んでいた**=
+//     Me Dock の状態を送るたび(カーソルが動くたび・再描画のたび)に visibleSource/TargetRjfTextRange が
+//     24万行を歩く。貼り付け1回で 1445ms(restoreActiveRedJumpFromJumpFlags の合計)。
+//   ★→ 「この版には対が無い」を版の鍵で覚える= 同じ版でもう一度訊かれたら読まない。版が変われば1回だけ読み直す。
+let _meosRjfMissKey = '';
 function restoreActiveRedJumpFromJumpFlags(editor = vscode.window.activeTextEditor) {
   if (!editor || !editor.document) return false;
   if (activeRedJump && activeRedJump.uri === editor.document.uri.toString() && activeRedJump.sourceRange && activeRedJump.targetRange) return true;
+  const _k99 = _meosTextKey(editor.document);
+  if (_meosRjfMissKey === _k99) return false;
   const sourceRange = visibleSourceRjfTextRange(editor.document);
   const targetRange = visibleTargetRjfTextRange(editor.document);
-  if (!sourceRange || !targetRange) return false;
+  if (!sourceRange || !targetRange) { _meosRjfMissKey = _k99; return false; }
   activeRedJump = {
     uri: editor.document.uri.toString(),
     sourceRange,
@@ -15219,11 +15227,14 @@ function visibleGreenJumpRangesFromFlags(document) {
   return ranges;
 }
 
+let _meosGjfMissKey = '';   // ★v4.2.99: 赤と同じ= 「この版には🟢の対が無い」を覚えて、同じ版で全文を読み直さない
 function restoreActiveGreenJumpFromJumpFlags(editor = vscode.window.activeTextEditor) {
   if (!editor || !editor.document) return false;
   if (activeGreenJump && activeGreenJump.uri === editor.document.uri.toString() && Array.isArray(activeGreenJump.ranges) && activeGreenJump.ranges.length) return true;
+  const _k99 = _meosTextKey(editor.document);
+  if (_meosGjfMissKey === _k99) return false;
   const ranges = visibleGreenJumpRangesFromFlags(editor.document);
-  if (!ranges.length) return false;
+  if (!ranges.length) { _meosGjfMissKey = _k99; return false; }
   activeGreenJump = { uri: editor.document.uri.toString(), ranges };
   renderActiveGreenMarkers(editor);
   // v0.9.584: re-push H-TOC snapshot so the Bi-direction Jump bar's 🟢

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.99 (2026-09-14)
+- **Less work after every change in very large files.** Whenever the cursor moved or the screen was redrawn, MeOS checked the whole file to confirm that there was no active 🔴 or 🟢 jump pair — and in a 240,000-line diary, with no pair, that meant reading every line twice, again and again. It now remembers the answer for each version of the file and reads it only once per change.
+
 ### v4.2.96 (2026-09-14)
 - **Numbered lists show their numbers.** A plain `1. 2. 3.` list with nothing else on its lines was drawn with bullets (•) instead of numbers. MeOS now numbers it by its order, whatever digits were written — `1. 2. 3.` and `1. 1. 1.` both read 1, 2, 3.
 - **Less waiting in very large files.** In a 240,000-line diary, headings and other drawing could lag by several seconds. VSCodium's own profiler named MeOS: eight scans over the whole file ran on every redraw, each asking the editor for every line one by one, and each of those requests builds a small object. Hundreds of thousands of them per redraw kept the memory collector busy. Those scans now read the lines MeOS already keeps cut up for the current version of the file.
