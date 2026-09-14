@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.95 (2026-09-14)
+- **Pressing ▶️ or ⏸️ also silences a ringing bell.** Stopping a clock while its bell was ringing stopped the numbers but not the sound, until you pressed ⏰ as well. If you are touching the clock, you have already noticed it.
+- **The note after ▶️ / ⏸️ appears once.** It showed after every press; once you know what the buttons do, that is just in the way. It now appears the first time you press one in each session, and says both things at once: a stopped clock goes on from where it stopped, and Opt-click starts it again from zero.
+
 ### v4.2.94 (2026-09-14)
 - **After you press ▶️ or ⏸️, a short note says what just happened and what else you can do.** "⏸️ Stopped. Click ▶️ to go on from here — or Opt-click ▶️ to start again from zero." It appears only after the press, so it never covers the button you are about to click, and it goes away on its own. Hovering over the button without pressing still shows nothing.
 - **"Opt", spelled out.** Wherever MeOS told you to hold the Option key, it showed the ⌥ symbol, which many keyboards do not print on the key. It now says Opt.

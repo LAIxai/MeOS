@@ -2424,8 +2424,10 @@ console.log('㊻ ▶️/⏸️ を押した後に tip(v4.2.94 俊克「ステー
     && /executeCommand\('editor\.action\.showHover'\)/.test(S94),
     '★★★押した行に数秒だけ言葉を預け、カーソルの所で hover を開く(普段は出ない)', true);
  ok(/const playTip = meosPlayTipHover\(document, position\);/.test(S94), '  hover の口は預けた言葉だけを返す', true);
- ok(/Opt-click \\u25b6\\ufe0f to start again from zero\./.test(S94) && /Opt-click \\u23f8\\ufe0f to start again from zero\./.test(S94),
-    '★★止めた時は ▶️、走らせた時は ⏸️ の Opt-click を言う(起点なしだけ)', true);
+ ok(/if \(_meosPlayTipShown\) return;/.test(S94) && /if \(_noOrigin94\) meosShowPlayTipOnce\(editor, _ln,/.test(S94) && /Opt-click to start again from zero\./.test(S94),
+    '★★v4.2.95 tip は1回の起動で最初の1回だけ・言葉は1つ(起点なしの1本で)', true);
+ ok(/if \(_pl\) \{ try \{ if \(meosIsRinging\(\)\) meosStopRinging\(\); \} catch \(_\) \{ \} \}/.test(S94),
+    '★★v4.2.95 ▶️/⏸️ を押したら鳴っている音も止める(⏰ボタンと同じ口)', true);
  {const W=S94.slice(S94.indexOf('return `<!DOCTYPE html>'), S94.indexOf('</script></body></html>`;'));
   const Nd=S94.split('\n').filter(l=>!/^\s*(\/\/|\/\*|★)/.test(l)&&!/meosDbg/.test(l)&&!/[\u3040-\u30ff\u4e00-\u9fff]/.test(l)&&/\\u2325|⌥/.test(l));   /* 日本語の行は注釈 */
   ok(Nd.length===0, '★★★見える文字に ⌥ を使わない(Opt と書く)', Nd.map(l=>l.slice(0,80)));}

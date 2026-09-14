@@ -17807,6 +17807,15 @@ async function meosClockStopHere(doc, key, line) {
 //   ★出し方= 押した行に数秒だけ言葉を預け、カーソルの所で hover を開く(editor.action.showHover)。
 //     預けた言葉は時間が来たら消えるso、普段マウスを乗せても何も出ない(v4.2.74 のまま)。
 let _meosPlayTip = null;   // {uri, line, text, until}
+// ★★v4.2.95(俊克「tipは全部に出さなくても、どれか最初に押しそうなのを1つ出せば十分じゃないのか?」):
+//   ★★**覚えてしまえば、毎回の説明は邪魔**= 1回の起動につき、最初に押した時だけ出す。
+//     言葉は1つにまとめる(▶️ でも ⏸️ でも、最初に押した方で「続き」と「Opt で最初から」の両方を知る)。
+let _meosPlayTipShown = false;
+function meosShowPlayTipOnce(editor, line, text) {
+  if (_meosPlayTipShown) return;
+  _meosPlayTipShown = true;
+  meosShowPlayTip(editor, line, text);
+}
 function meosShowPlayTip(editor, line, text) {
   try {
     if (!editor || !text) return;
@@ -17917,6 +17926,11 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     try {
       const _ln = editor.selection.active.line;
       const _pl = meosClockPlayHitAt(editor.document, _ln, editor.selection.active.character);
+      // ★★v4.2.95(俊克 改良1「タイマーが鳴っている時に止めても、表示は止まったのに、鳴り続けている。
+      //   ⏰ボタンを押せば鳴り止むけど、▶️ボタンなどを押した時に同時に止められないのか?」):
+      //   ★★**時計に触った人は、もう気づいている**= 鳴り続ける理由(気づかせる・v4.0.469)は、押した時点で終わっている。
+      //     ⏰ボタンと同じ meosStopRinging を呼ぶ(止める口を2つ作らない)。
+      if (_pl) { try { if (meosIsRinging()) meosStopRinging(); } catch (_) { } }
       if (_pl && _optSel92) {
         const _own92 = meosClockOwnerKeyForLine(editor.document, _ln);
         if (_own92) {
@@ -17949,12 +17963,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           try {
             let _h94 = null; for (const x of meosClockFcScan(editor.document)) if (x.key === _own && x.line === _ln) _h94 = x;
             const _noOrigin94 = !!(_h94 && !_h94.when);
-            if (_run) meosShowPlayTip(editor, _ln, _noOrigin94
-              ? '\u23f8\ufe0f Stopped. Click \u25b6\ufe0f to go on from here \u2014 or Opt-click \u25b6\ufe0f to start again from zero.'
-              : '\u23f8\ufe0f Stopped. Click \u25b6\ufe0f to go on. This clock keeps the schedule written on it.');
-            else meosShowPlayTip(editor, _ln, _noOrigin94
-              ? '\u25b6\ufe0f Running. Opt-click \u23f8\ufe0f to start again from zero.'
-              : '\u25b6\ufe0f Running, on the schedule written on it.');
+            // ★v4.2.95: 1回の起動で最初の1回だけ。Opt の話が要る1本(起点なし)で出す。
+            if (_noOrigin94) meosShowPlayTipOnce(editor, _ln,
+              '\u25b6\ufe0f / \u23f8\ufe0f starts and stops this clock \u2014 a stopped clock goes on from where it stopped. Opt-click to start again from zero.');
           } catch (_) { }
           try { refresh(editor); } catch (_) { }
           try { meosTickTimerLines(); } catch (_) { }   // ★改良3: 押した瞬間に ▶️⇄⏸️ that入れ替わる
