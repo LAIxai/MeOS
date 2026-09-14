@@ -4,8 +4,8 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
-### v4.2.109 (2026-09-15)
-- **Pick the hand right in Me Dock.** Under the file button there are now two small buttons: the BTRON hand and the macOS hand 👆. Hover over each and the pointer turns into that very hand, so you can try both before choosing; click one to use it everywhere you can press. It only changes the hand over pressable things — everywhere else the pointer stays as it is.
+### v4.2.110 (2026-09-15)
+- **Pick the hand right in Me Dock — one button.** Under the file button, a single button shows the hand in use: the BTRON hand or the macOS hand 👆. Click it to switch to the other; hover over it and the pointer is that hand. It only changes the hand over things you can press — everywhere else the pointer stays as it is.
 
 ### v4.2.108 (2026-09-15)
 - **Choose your hand: BTRON or macOS.** A new setting, `laiMembrane.pointerHand`, switches the hand MeOS shows over things you can press between the BTRON pointing hand (the default) and the standard macOS pointing hand. The change applies at once, in the text and in Me Dock, so you can flip back and forth and see the difference for yourself — the BTRON finger points up and to the left, and what you are about to press stays in view.
