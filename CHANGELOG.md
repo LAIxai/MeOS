@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.113 (2026-09-15)
+- **Three hands to compare.** The switch under the file button now cycles through the BTRON hand, the slim classic macOS hand, and the hand your operating system shows today (the button reads "OS" for that one). Click to move to the next and hover to see it.
+
 ### v4.2.112 (2026-09-15)
 - **The macOS hand, as it used to look.** The pointing hand in macOS's own help pages is slim; the one macOS actually shows today is bulky. The macOS choice in Me Dock now uses a slim classic hand drawn for MeOS by LAIxai, so the comparison with the BTRON hand is between two well-drawn hands. The switch button shows it too, in place of the word "macOS".
 
