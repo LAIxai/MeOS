@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.117 (2026-09-15)
+- **Each hand has its own button colour.** The pointer-hand switch stays cyan for the BTRON hand, turns Aqua blue for the classic macOS hand, and neutral grey for "OS" (the hand differs from one operating system to the next).
+
 ### v4.2.114 (2026-09-15)
 - **👻 stays on the strikethrough button when you cycle its colour.** Pressing ↻ on the strikethrough button wrote `~~` straight onto it, wiping out the 👻 that says the next strike will hide the text. It now redraws the button the one way it is always drawn, so 👻 stays.
 - The pointer-hand switch sits a little higher, closer to the file button.
