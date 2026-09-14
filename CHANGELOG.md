@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.96 (2026-09-14)
+- **Numbered lists show their numbers.** A plain `1. 2. 3.` list with nothing else on its lines was drawn with bullets (•) instead of numbers. MeOS now numbers it by its order, whatever digits were written — `1. 2. 3.` and `1. 1. 1.` both read 1, 2, 3.
+- **Less waiting in very large files.** In a 240,000-line diary, headings and other drawing could lag by several seconds. VSCodium's own profiler named MeOS: eight scans over the whole file ran on every redraw, each asking the editor for every line one by one, and each of those requests builds a small object. Hundreds of thousands of them per redraw kept the memory collector busy. Those scans now read the lines MeOS already keeps cut up for the current version of the file.
+
 ### v4.2.95 (2026-09-14)
 - **Pressing ▶️ or ⏸️ also silences a ringing bell.** Stopping a clock while its bell was ringing stopped the numbers but not the sound, until you pressed ⏰ as well. If you are touching the clock, you have already noticed it.
 - **The note after ▶️ / ⏸️ appears once.** It showed after every press; once you know what the buttons do, that is just in the way. It now appears the first time you press one in each session, and says both things at once: a stopped clock goes on from where it stopped, and Opt-click starts it again from zero.

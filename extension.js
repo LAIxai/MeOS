@@ -6577,10 +6577,11 @@ function parseRefPointInner(inner) {
 function collectRefPoints(doc) {
   const points = [];
   const counts = {};
+  const _dl91 = meosDocLines(doc);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < doc.lineCount; line++) {
     // v4.0.223: ★足切りは**生の行**で先に(全行に伏せ処理を掛けると O(文書) の重さになる=v4.0.222で16万行に掛けて
     //   collectRefPoints that 4.7ms→16.3ms に膨れた)。伏せるのは**符thatが在る行だけ**。
-    const _raw = doc.lineAt(line).text || '';
+    const _raw = (_dl91[line] || '') || '';
     if (!lineHasRefMark(_raw)) continue;
     const text = meosRefScanText(_raw); // v4.0.215: コードスパンの中の符は数えない
     if (!lineHasRefMark(text)) continue;
@@ -7358,6 +7359,11 @@ function applyPrettyLabels(editor) {
             if (_d && _d.bullet === 'number') { lv = meosItemLevels(_d.token); _count = true; }
           } catch (_) { }
         }
+        // ★★v4.2.96(俊克 バグ1「あなたが 1. 2. 3. と連番で書いているのが、MeOSでは『・』で表示されるんだよ」):
+        //   ★★**行末に命令も FC も無い素の番号付き項目**は数えていなかった= 描く側は行頭の `1. ` を隠して、
+        //     番号の無い `•` を出していた。行頭が `N. ` なら、それ自体が「番号付き」という宣言。
+        //   ★書いた数字は当てにしない(MeOSは並びで数える)= `1. 2. 3.` も `1. 1. 1.` も 1 2 3。
+        if (!_count && /^[ \t]*\d+[.)][ \t]+\S/.test(text)) _count = true;
         if (_count) {
           if (!lv || !lv.length) lv = [{ style: 'num' }];
           _numOf.set(line, meosItemNumStep(_numLv, lv));      // v4.0.299: 数え方は1つの関数から(検査も同じ物を呼ぶ)
@@ -7766,7 +7772,7 @@ function applyPrettyLabels(editor) {
         if (!hashes && dir && dir.level) { const mH = /^#{1,6}/.exec(dtext.slice(bodyStart)); if (mH) bareHashLen = mH[0].length; }
         let bodyEndP = bodyStart + mP[5].length;
         // 末尾の仕様コメント <!-- (色)//tip / -1 --> を読み、本文から外して隠す
-        let sp = null, numbered = false;
+        let sp = null, numbered = /^\s*\d+[.)]/.test(mPr[2] || '');   // ★v4.2.96: 行頭が `N. ` なら、コメントが無くても番号付き
         const mC = mCpre;
         if (mC && mC.index >= bodyStart) {
           // v4.0.59(俊克): 行頭に `- ` があるのだから、コメント内の指定は**数字だけ**でよい(`-1`→`1`)。旧 `-1` も読む。
@@ -14730,8 +14736,9 @@ function visibleSourceRjfTextRange(document) {
   // earlier in the line, or from the membrane id if the marker happens to
   // sit on a formal membrane line.
   if (!document) return null;
+  const _dl91 = meosDocLines(document);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < document.lineCount; line++) {
-    const text = document.lineAt(line).text || '';
+    const text = (_dl91[line] || '') || '';
     const matches = sourceRjfSpanMatchesInLine(text);
     const active = matches.find(m => m.state === 'v');
     if (!active) continue;
@@ -14769,8 +14776,9 @@ function visibleSourceRjfTextRange(document) {
 
 function visibleTargetRjfTextRange(document) {
   if (!document) return null;
+  const _dl91 = meosDocLines(document);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < document.lineCount; line++) {
-    const text = document.lineAt(line).text || '';
+    const text = (_dl91[line] || '') || '';
     if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
     if (!/\[tRJF=v\]/u.test(text)) continue;
     const info = membraneLineInfo(document, line);
@@ -14813,8 +14821,9 @@ function sourceRjfHideRanges(editor) {
   const ranges = [];
   if (!editor || !editor.document) return ranges;
   const doc = editor.document;
+  const _dl91 = meosDocLines(doc);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < doc.lineCount; line++) {
-    const text = doc.lineAt(line).text || '';
+    const text = (_dl91[line] || '') || '';
     if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
     for (const m of sourceRjfSpanMatchesInLine(text)) {
       // v0.9.693 (Phase 2b): 🔴 統合廃止により、sRJF マーカーは🔴込みで"全体"を隠す
@@ -14841,8 +14850,9 @@ function realRedButtonRangesInDocument(document) {
   // user-reported `[oGJF=v]🟢 🔴 [tRJF=v] *}` raw form.
   const ranges = [];
   if (!document) return ranges;
+  const _dl91 = meosDocLines(document);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < document.lineCount; line++) {
-    const text = document.lineAt(line).text || '';
+    const text = (_dl91[line] || '') || '';
     if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
     const spanRanges = sourceRjfSpanMatchesInLine(text).map(m => [m.index, m.index + m.text.length]);
     // Find `[tRJF=v]🔴` literal pairs so we can exempt the trailing 🔴.
@@ -15198,8 +15208,9 @@ async function setGreenJumpFlags(editor, ranges) {
 function visibleGreenJumpRangesFromFlags(document) {
   const ranges = [];
   if (!document) return ranges;
+  const _dl91 = meosDocLines(document);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < document.lineCount; line++) {
-    const text = document.lineAt(line).text || '';
+    const text = (_dl91[line] || '') || '';
     if (text.indexOf('JF') < 0) continue; // v0.9.662: 安価な事前フィルタ(全行スキャン軽減)
     if (!/\[(?:oGJF|cGJF|GJF)=v\]/u.test(text)) continue;
     const info = membraneLineInfo(document, line);
@@ -15573,8 +15584,9 @@ function membraneButtonItems(editor, opts) {
   const tipItems = [];
   if (!editor || !editor.document) return { cursorItems, tipItems };
   const doc = editor.document;
+  const _dl91 = meosDocLines(doc);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let line = 0; line < doc.lineCount; line++) {
-    const text = doc.lineAt(line).text || '';
+    const text = (_dl91[line] || '') || '';
     // v0.9.662: 安価な事前フィルタ。全 jump フラグ(oGJF/cGJF/GJF/tRJF/sRJF)は "JF" を含む。
     // ジャンプフラグを持つ行は通常ごく少数なので、'JF' を含まない大多数の行で matchFn
     // (正規表現)を回さずスキップ。膜選択時の全行スキャンによる体感固まりを軽減(俊克 pm09:43)。
@@ -16434,8 +16446,9 @@ function markdownWrapperHideRanges(editor) {
   if (!editor || !isMarkdownDocument(editor.document)) return ranges;
   const doc = editor.document;
 
+  const _dl91 = meosDocLines(doc);   // ★v4.2.96: 全行を lineAt で歩くと版ごとに行の器を何十万個も作る(GCの山)= 刻んだ行を使う
   for (let i = 0; i < doc.lineCount; i++) {
-    const text = doc.lineAt(i).text || "";
+    const text = (_dl91[i] || '') || "";
     const m = text.match(/^(\s*)\[\/\/\]:\s*#\s*\((.*)\)\s*$/);
     if (!m) continue;
 
