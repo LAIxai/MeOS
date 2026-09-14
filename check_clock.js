@@ -2402,7 +2402,7 @@ console.log('㊹ MeOSの手(v4.2.79 俊克「手の形のマウスをすべて�
  ok(!/cursor: ?'pointer'[^)]/.test(S79.replace("return 'pointer';",'')) && !/textDecoration: '[^']*cursor: pointer/.test(S79),
     '★★★本文の装飾に素の pointer は残っていない', true);
  const W=S79.slice(S79.indexOf('return `<!DOCTYPE html>'), S79.indexOf('</script></body></html>`;'));
- ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{meosHandCursor\(\)\};\}/.test(W),
+ ok(!/cursor:pointer/.test(W.replace('.hand-pick .hp-seg[data-hand="macos"]{cursor:pointer}','')) && /:root\{--meos-hand:\$\{meosHandCursor\(\)\};\}/.test(W),   /* v4.2.109: 手を選ぶ駒の macOS 側だけは、見本として素の pointer */
     '★★★Me Dock も同じ定数から(素の cursor:pointer は0)', (W.match(/cursor:pointer/g)||[]).length);
 }
 console.log('㊺ f/p の見た目は f だけ / Opt+クリックで最初から(v4.2.92)');
@@ -2447,7 +2447,7 @@ console.log('㊽ BTRON指差し / macOS指差し を選ぶ(v4.2.108)');
  const S108=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/function meosHandCursor\(\) \{[\s\S]{0,200}?=== 'macos'\) return 'pointer';[\s\S]{0,40}?return MEOS_HAND_CURSOR;/.test(S108),
     '★★設定 pointerHand が macos なら CSS の pointer(= macOS の指差し)、既定は BTRON の絵', true);
- ok((S108.match(/MEOS_HAND_CURSOR/g)||[]).length===2, '★★★手を使う所は全部 meosHandCursor() から(定数を直接読むのは定義と関数だけ)', (S108.match(/MEOS_HAND_CURSOR/g)||[]).length);
+ ok((S108.replace('.hand-pick .hp-seg[data-hand="btron"]{cursor:${MEOS_HAND_CURSOR}}','').match(/MEOS_HAND_CURSOR/g)||[]).length===2,   /* v4.2.109: 手を選ぶ駒の BTRON 側だけは見本として定数 */ '★★★手を使う所は全部 meosHandCursor() から(定数を直接読むのは定義と関数だけ)', (S108.match(/MEOS_HAND_CURSOR/g)||[]).length);
  ok(!/cursorTMP/.test(S108) && (S108.match(/cursor: ' \+ meosHandCursor\(\) \+ '/g)||[]).length===8, '  装飾の textDecoration 8か所も同じ関数から', (S108.match(/cursor: ' \+ meosHandCursor\(\) \+ '/g)||[]).length);
  const P=JSON.parse(fs.readFileSync(path.join(SRC,'package.json'),'utf8'));
  const pr=P.contributes.configuration.properties||{};
