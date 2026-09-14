@@ -10436,6 +10436,13 @@ function meosClockFcParse(text) {
   if (!m) return null;
   let body = String(m[2] || '').trim(), done = false;
   const _bodyAt = m.index + (m[2] ? m[0].indexOf(m[2]) : 0);   // v4.1.157: 行の中の位置(白く光る桁を数え直さない)
+  // ★★★v4.2.91(俊克 2026.09.14 am09:38「従来のメッセージ機能を取り込んで、従来の分離したメッセージ機能は
+  //   廃止した方が分かりやすいんじゃないかな?」 `<!-- Mew!UFC ⏰ ↺↻(5m)×2 // 目薬 1. 本目 -->`):
+  //   ★★★**`//` から後ろは、その1本のタイトル**= 時計の中身には混ぜない(今までは「5分」の 5 が周期に入っていた)。
+  //   ★タイトルは時計と一緒に旅する= 1行コピペで持ち運べる。並びの外のメッセージFCと、対応を数えなくてよい。
+  //   ★中の `1.` は数字の器(v4.2.49 と同じ)= 鳴った時に周回数が入る。
+  let title = '';
+  { const _ti = body.indexOf('//'); if (_ti >= 0) { title = body.slice(_ti + 2).trim(); body = body.slice(0, _ti).trim(); } }
   if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
   // ★★★v4.1.23(俊克「今、一番使いたいのは、目薬を5分置きにつけるときに、05/00という設定にすること」):
   //   ★★★**繰返しは『次の間隔』の並びで書く**= `\u21bb05` なら5分ごと、`\u21bb50/10` なら50分と10分の交互。
@@ -10577,7 +10584,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -10718,7 +10725,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -10892,6 +10899,12 @@ async function meosClockFcSet(doc, key, spec, atLine) {
   try {
     if (!doc || !doc.uri) return false;
     spec = meosClockAdjustV(doc, key, spec, atLine);   // ★v4.2.77: 仮想の起点を消す/経過に変える
+    // ★v4.2.91: タイトルは呼び手が運ばなくても残る= 名指しの行に書いてある物を、そのまま書き戻す。
+    try {
+      if (spec && spec.title === undefined && typeof atLine === 'number') {
+        for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) { spec = Object.assign({}, spec, { title: x.title || '' }); break; }
+      }
+    } catch (_) { }
     const line = spec
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       // ★★★v4.2.50: `wait` = **待っている**(畳むthat、済みではない)= FC＋✓なし。
@@ -10916,7 +10929,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
           const _rn = (spec.rounds > 0 && _cy) ? Math.floor(spec.rounds) : 0;   // 長さthat無ければ回数は書かない
           return _ar + (_rn ? ('(' + _cy + ')\u00d7' + _rn) : _cy);
         })()
-        + (spec.done ? '\u2713' : '') + ' -->')
+        + (spec.done ? '\u2713' : '') + ((spec.title && String(spec.title).trim()) ? (' // ' + String(spec.title).trim()) : '') + ' -->')   /* v4.2.91: タイトル */
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
     //   85,821行のような大きい膜では、閉じ膜の直後でない⏰行も「一番内側の膜」の持ち物として拾われる
@@ -11061,28 +11074,7 @@ async function meosChainNextFromBar() {
   } catch (_) { }
   try { meosUpdateTimerBar(); } catch (_) { }
 }
-function meosChainMessagesFor(doc, key) {
-  const out = [];
-  try {
-    const rows = meosClockFcScan(doc).filter(c => c.key === key);
-    if (!rows.length) return out;
-    let ln = Math.max.apply(null, rows.map(r => r.line)) + 1;
-    for (; ln < doc.lineCount; ln++) {
-      const t = doc.lineAt(ln).text;
-      if (!meosIsSpecLine(t)) break;                       // 指定行の並びthat切れたら、そこまで
-      if (meosIsUnfoldingSpecLine(t)) continue;            // UFCは飛ばす
-      if (t.indexOf('\u23f0') >= 0) continue;               // 時計は飛ばす
-      if (meosIsPairBadgeSpec(t)) continue;                // バッジは飛ばす
-      const pay = (meosSpecLinePayloads(t) || []).join(' ').trim();
-      if (pay) out.push(pay);
-    }
-  } catch (_) { }
-  return out;
-}
-// ★★★v4.2.49(俊克 pm06:43「1.の部分に見せかけの値を表示する」):
-//   ★★★**`N.` は数字を出す器**= 位置that役を決める。
-//     行頭のものは見せかけの番号(落とす) / 残った最初のものthat**今何回目か**。
-//   ★本文には1文字も書かない= 出す時に差し替えるだけ(v4.1.77の曜日と同じ作法)。
+// ★v4.2.91: meosChainMessagesFor(並びの外のメッセージFC)は廃止= 言葉は各⏰のタイトル(`// …`)から引く。
 function meosChainFillSlot(text, round) {
   try {
     let t = String(text == null ? '' : text).replace(/^\s*\d{1,3}[.)]\s*/, '');   // 行頭= 見せかけの番号
@@ -11091,12 +11083,12 @@ function meosChainFillSlot(text, round) {
   } catch (_) { return String(text || '').trim(); }
 }
 // 鳴った時に出す言葉。メッセージthat在ればそれ、無ければ今までどおり膜の名前。
+// ★★★v4.2.91: 言葉は**その1本のタイトル**から引く(並びの外のメッセージFCは廃止= 対応を数えない)。
+//   連なりでなくても効く= タイトルを書けば、膜の名前の代わりにそれが出る。
 function meosChainSayFor(doc, key, clockLine, round) {
   try {
-    const rows = meosClockFcScan(doc).filter(c => c.key === key);
-    const i = rows.findIndex(c => c.line === clockLine);
-    const msgs = meosChainMessagesFor(doc, key);
-    if (i >= 0 && i < msgs.length) return meosChainFillSlot(msgs[i], round);
+    let me = null; for (const c of meosClockFcScan(doc)) if (c.key === key && c.line === clockLine) { me = c; break; }   // 行で名指し(「この膜の時計」を訊く口ではない)
+    if (me && me.title) return meosChainFillSlot(me.title, round);
   } catch (_) { }
   return '';
 }
@@ -11463,6 +11455,7 @@ function meosArmClockFcFor(doc) {
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
         armedAt: _open89 || _base53 || Date.now(),  // ★v4.1.136: 掛けた時刻 / ★v4.2.54: 覚えの上の起点と**同じ値** / ★v4.2.89: 過去の起点
         openFrom: _open89,                             // ★v4.2.89: 長さの無い過去起点のストップウォッチ(鐘なし・経過を出す)
+        title: c.title || '',                          // ★v4.2.91: その1本のタイトル(最下段で膜名の代わりに出す)
         synth: _synth53,                               // ★v4.2.61: 起点that本文に無い1本(行で見分ける)(ストップウォッチは、ここからの経過)
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
@@ -12679,7 +12672,7 @@ function meosUpdateTimerBar() {
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
-    _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && sc.name ? ('  ' + sc.name) : '') + (n > 1 ? ('  +' + (n - 1)) : '');
+    _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && (sc.title || sc.name) ? ('  ' + (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name)) : '')   /* v4.2.91: タイトルが在ればそれ */ + (n > 1 ? ('  +' + (n - 1)) : '');
     try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない / ★v4.2.54: 字の色も
     _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';

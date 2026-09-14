@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.91 (2026-09-14)
+- **Give each ⏰ a title, right on its line.** Write it after `//`: `<!-- Mew!UFC ⏰ ↺↻(5m)×2 // eye drops, 1. of 2 -->`. When that clock rings, the title is what the status bar says instead of the membrane's long name, and a `1.` inside it becomes the round number. The title travels with the clock — copy the line and the title comes too. Until now `//` was not understood, and the 5 in "5-minute timer" could even end up read as part of the clock.
+- **The separate message lines are retired.** The comment lines stacked under a chain of clocks, matched to the clocks by their order, are no longer read; a title on each clock says the same thing without anything to count. Old message lines stay in the file as plain comments.
+
 ### v4.2.90 (2026-09-14)
 - **Start a stopped clock from the beginning.** A clock with no starting time picks up where it stopped — that is what the `v…` MeOS writes on the line is for. Delete that `v…` and press ▶️, and it now starts again from zero. Until now MeOS also kept the starting moment in memory, so deleting the text changed nothing.
 

@@ -77,5 +77,13 @@ const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
  await X.meosChainStartHere(doc,'R_1',4); await sleep(20);
  const bR=X._meosChainStart.get(lkR);
  ok(bR && (Date.now()-bR)<3000,'★★★v を消して ▶️ = 最初から数える(覚えの起点を捨てる)',bR&&(Date.now()-bR));
+ // ★v4.2.91: タイトルは書き戻しで消えない(止める/済み)
+ A=['# t','<!-- {* ▼mCN=T_1 // c *} -->','x','<!-- {* ▲mCN=T_1 // c *} -->','<!-- Mew!UFC ⏰ ↻5m ×1 // 5分タイマー -->']; ver++;
+ X.meosArmClockFcFor(doc); await sleep(20);
+ ok(/ v\d{4}-.* \/\/ 5分タイマー -->$/.test(A[4]),'★★v起点を書いてもタイトルは残る',A[4]);
+ await X.meosClockStopHere(doc,'T_1',4); await sleep(20);
+ ok(/⏸.* \/\/ 5分タイマー -->$/.test(A[4]),'★★止めてもタイトルは残る',A[4]);
+ await X.meosChainStartHere(doc,'T_1',4); await sleep(20);
+ ok(/ \/\/ 5分タイマー -->$/.test(A[4]) && A[4].indexOf('⏸')<0,'  再開してもタイトルは残る',A[4]);
  console.log(ng?('NG '+ng):'ALL PASS'); process.exit(0);
 })();
