@@ -23956,9 +23956,10 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* ★v4.2.109(俊克「ファイルメニューの下が空いているので、そこに、macOS指差しかBTRON指差の絵のボタンを置いて、それを押すと切り替わる」)
    ★v4.2.110(俊克「2つ並べるより、1つのボタンにした方がいいよ」): 1つの駒= 今の手の絵を出し、押すともう一方へ。駒の上の手も今の手(--meos-hand)。 */
 .title-row2{position:relative}
+/* ★v4.2.115(俊克「少し近づき過ぎたね」): スクショで枠の下端→ボタンの上端が5点(画面2〜3px)。4px 下げて 19px→23px(隙間は画面6〜7px)。 */
 /* ★v4.2.114(俊克 改良1「切替ボタンをもう少し上に」): スクショで ファイル名の枠の下端→ボタンの上端 が29点(画面14px)空いていた。大胆に11px上げて 30px→19px。 */
 /* ★v4.2.111(俊克 改良2「切替ボタンの背景を赤とか水色のように目立つ色にしようよ」＋「macOS指差しの黄色い絵(絵文字👆)は格好悪い」): 地は水色。macOS 側は絵文字をやめて字で。 */
-.hand-pick{position:absolute;left:2.3em;top:19px;height:22px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #0e7490;border-radius:6px;background:#56d4dd;color:#0b2a30;font-size:11px;font-weight:800;line-height:1}
+.hand-pick{position:absolute;left:2.3em;top:23px;height:22px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #0e7490;border-radius:6px;background:#56d4dd;color:#0b2a30;font-size:11px;font-weight:800;line-height:1}
 .hand-pick:hover{background:#7fe3ea}
 .hand-pick .hp-mac,.hand-pick .hp-sys{display:none}
 .hand-pick.is-macos .hp-btron,.hand-pick.is-system .hp-btron{display:none}
