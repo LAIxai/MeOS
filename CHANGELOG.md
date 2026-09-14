@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.104 (2026-09-15)
+- **A tighter Me Dock header.** The file button sat too far in and too far down. Its indent is now half what it was, and the Paste lag button no longer takes a line of its own: it stacks above 📦 Re-install VSIX at the right of the file row, so the file name moves up closer to the title.
+
 ### v4.2.103 (2026-09-14)
 - **The Paste lag button is always there.** A setting you can only see when conditions line up is a setting you forget exists. The button now stays under Standards in every file. While Markdown Language Features is running it is bright; once you have turned it off it is faded — and clicking it still takes you to the extension, so you can turn it back on and compare.
 
