@@ -977,7 +977,7 @@ console.log('\u325f Repeat\u306e\u2610 / \u5411\u304d\u306e\u8272 / \u9320\u306e
  ok(/\.clk-lockmain\{[^}]*background:#d2691e/.test(S), '  \u639b\u3051\u308b\u524d\u306e \ud83d\udd10 \u306f\u30aa\u30ec\u30f3\u30b8\u3067\u660e\u308b\u3044', true);
  ok(/if\(isLk\)\{if\(c&&ev\.altKey\)vscode\.postMessage\(\{type:'clockUnlock'/.test(S),
     '\u2605\u2605\u2605\u9320\u306e\u5916\u3057\u65b9\u306f**\u9320that\u898b\u3048\u3066\u3044\u308b\u5834\u6240**\u306b(\u4e00\u89a7\u306e\ud83d\udd10\u3092 \u2325 \u30af\u30ea\u30c3\u30af)', true);
- ok(/Option-click to take the lock off/.test(S), '\u2605tip that\u305d\u306e\u5834\u3067\u5916\u3057\u65b9\u3092\u8a00\u3046(\u63a2\u3055\u305b\u306a\u3044)', true);
+ ok(/Opt-click to take the lock off/.test(S), '\u2605tip that\u305d\u306e\u5834\u3067\u5916\u3057\u65b9\u3092\u8a00\u3046(\u63a2\u3055\u305b\u306a\u3044)', true);
  ok(/type === 'clockUnlock'/.test(S)&&/lock: false, cycle: hit\.cycle/.test(S),
     '  \u5916\u3059\u306e\u306f \ud83d\udd10 \u4e00\u6587\u5b57\u3060\u3051(\u6642\u523b\u3082\u8f2a\u3082\u4f11\u307f\u3082\u305d\u306e\u307e\u307e)', true);
 }
@@ -1053,7 +1053,7 @@ console.log('\u3262 \u65ad\u308a\u306f\u62bc\u3057\u305f\u5834\u6240\u306e\u96a3
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/id="clk-warn"/.test(S)&&/\.clk-warn\{[^}]*border:1px solid #d13438/.test(S),
     '\u2605\u2605\u2605\u65ad\u308a\u306f**\u4e00\u89a7\u306e\u96a3**\u306b\u8d64\u304f\u51fa\u308b(\u753b\u9762\u306e\u4e0b\u7aef\u306f\u6307\u304b\u3089\u9060\u3044)', true);
- ok(/Option-click the \\ud83d\\udd10 to take the lock off/.test(S),
+ ok(/Opt-click the \\ud83d\\udd10 to take the lock off/.test(S),
     '\u2605\u2605\u65ad\u308b\u3060\u3051\u3067\u306a\u304f**\u5916\u3057\u65b9\u3082\u540c\u3058\u672d\u306b\u66f8\u304f**', true);
  ok(/postMessage\(\{ type: 'clockRefused', key: sc\.key, text: _msg \}\)/.test(S),
     '  \u65ad\u3063\u305f\u5074that\u3001\u3069\u306e\u884c\u304b\u3092\u540d\u6307\u3057\u3057\u3066\u77e5\u3089\u305b\u308b', true);
@@ -2416,5 +2416,18 @@ console.log('㊺ f/p の見た目は f だけ / Opt+クリックで最初から(
  ok(m && txt.slice(m.index+m[0].indexOf('/'), m.index+m[0].length)==='/2026-09-14 09:07:37p', '  畳むのは `/2026-09-14 09:07:37p` だけ', m&&m[0]);
  ok(/if \(_optSel92\) editor\.selections = \[new vscode\.Selection\(_optSel92\.active, _optSel92\.active\)\];/.test(S92),
     '★★Opt+クリック= 足されたカーソルが運転ボタンの上なら、カーソルを1つに戻して最初から', true);
+}
+console.log('㊻ ▶️/⏸️ を押した後に tip(v4.2.94 俊克「ステータスバーは見ない」「はっきりOptと表示」)');
+{
+ const S94=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/_meosPlayTip = \{ uri: editor\.document\.uri\.toString\(\), line, text, until: Date\.now\(\) \+ 4000 \};/.test(S94)
+    && /executeCommand\('editor\.action\.showHover'\)/.test(S94),
+    '★★★押した行に数秒だけ言葉を預け、カーソルの所で hover を開く(普段は出ない)', true);
+ ok(/const playTip = meosPlayTipHover\(document, position\);/.test(S94), '  hover の口は預けた言葉だけを返す', true);
+ ok(/Opt-click \\u25b6\\ufe0f to start again from zero\./.test(S94) && /Opt-click \\u23f8\\ufe0f to start again from zero\./.test(S94),
+    '★★止めた時は ▶️、走らせた時は ⏸️ の Opt-click を言う(起点なしだけ)', true);
+ {const W=S94.slice(S94.indexOf('return `<!DOCTYPE html>'), S94.indexOf('</script></body></html>`;'));
+  const Nd=S94.split('\n').filter(l=>!/^\s*(\/\/|\/\*|★)/.test(l)&&!/meosDbg/.test(l)&&!/[\u3040-\u30ff\u4e00-\u9fff]/.test(l)&&/\\u2325|⌥/.test(l));   /* 日本語の行は注釈 */
+  ok(Nd.length===0, '★★★見える文字に ⌥ を使わない(Opt と書く)', Nd.map(l=>l.slice(0,80)));}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

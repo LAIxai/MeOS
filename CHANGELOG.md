@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.94 (2026-09-14)
+- **After you press ▶️ or ⏸️, a short note says what just happened and what else you can do.** "⏸️ Stopped. Click ▶️ to go on from here — or Opt-click ▶️ to start again from zero." It appears only after the press, so it never covers the button you are about to click, and it goes away on its own. Hovering over the button without pressing still shows nothing.
+- **"Opt", spelled out.** Wherever MeOS told you to hold the Option key, it showed the ⌥ symbol, which many keyboards do not print on the key. It now says Opt.
+
 ### v4.2.93 (2026-09-14)
 - **The heading button stays on the level you chose.** Cycling it quickly — ###, #, ## — could leave it showing # again. Every press saves the choice, and a refresh from MeOS that happened to be sent just before the last save arrived was putting the previous level back. Saves are now numbered, and a refresh older than the panel's latest choice is ignored.
 

@@ -11790,7 +11790,7 @@ async function meosClockSetEnabled(uri, key, on) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) {
       // v4.1.68: 面にも出す= 押した指の隣で、赤く、外し方まで言う(下端の一行は消えるthat早い)。
-      const _msg = '\ud83d\udd10 Locked \u2014 this one stays until the time is up. \u2325 Option-click the \ud83d\udd10 to take the lock off.';
+      const _msg = '\ud83d\udd10 Locked \u2014 this one stays until the time is up. Opt-click the \ud83d\udd10 to take the lock off.';
       vscode.window.setStatusBarMessage('MeOS: \ud83d\udd10 ' + (sc.name || 'this clock') + ' \u2014 ' + _msg, 6000);
       try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockRefused', key: sc.key, text: _msg }); } catch (_) { }
       return false;
@@ -17777,7 +17777,7 @@ async function meosClockStopHere(doc, key, line) {
     const sc = _meosPseudoScopes.get(lk);
     if (sc && sc.lock) {
       vscode.window.setStatusBarMessage('MeOS: \ud83d\udd10 ' + (sc.name || 'this clock')
-        + ' \u2014 locked. \u2325 Option-click the \ud83d\udd10 to take the lock off.', 6000);
+        + ' \u2014 locked. Opt-click the \ud83d\udd10 to take the lock off.', 6000);
       return false;
     }
     let hit = null; for (const x of meosClockFcScan(doc)) if (x.line === line) hit = x;
@@ -17798,6 +17798,30 @@ async function meosClockStopHere(doc, key, line) {
     return true;
   } catch (_) { return false; }
 }
+// ★★★v4.2.94(俊克 2026.09.14 am11:36「ステータスバーは、見ないんだよ。気づかない。例えば、▶️や⏸️を押した時に、
+//   tipを出すのはどうか? optクリックすれば、最初からカウントダウンしますよ、とかね。英語でね」
+//   ＋「⌥マークは、optなのかCtrlなのかがいつも分らない…はっきり、Optと表示した方がいい」):
+//   ★★★**押した後に出す**= 押す前(マウスが乗った時)に出すと、押したい物をそれ自身の説明が覆う(v4.2.74)。
+//     押し終わった後なら、覆われて困る物はもう無い。しかも「今押した物が何をしたか」と「次に何ができるか」を、
+//     見ている所で言える([[feedback_fix_signal_at_fix_place]])。
+//   ★出し方= 押した行に数秒だけ言葉を預け、カーソルの所で hover を開く(editor.action.showHover)。
+//     預けた言葉は時間が来たら消えるso、普段マウスを乗せても何も出ない(v4.2.74 のまま)。
+let _meosPlayTip = null;   // {uri, line, text, until}
+function meosShowPlayTip(editor, line, text) {
+  try {
+    if (!editor || !text) return;
+    _meosPlayTip = { uri: editor.document.uri.toString(), line, text, until: Date.now() + 4000 };
+    setTimeout(() => { try { vscode.commands.executeCommand('editor.action.showHover'); } catch (_) { } }, 80);
+  } catch (_) { }
+}
+function meosPlayTipHover(document, position) {
+  try {
+    const t = _meosPlayTip;
+    if (!t || Date.now() > t.until || t.uri !== document.uri.toString() || t.line !== position.line) return null;
+    const md = new vscode.MarkdownString(t.text); md.isTrusted = false;
+    return md;
+  } catch (_) { return null; }
+}
 // ★★v4.2.92: 最初から数え直す(Opt+クリック)。起点を持たない1本だけ= 本文の `v…` と覚えの起点を捨てて、
 //   ⏸ も外し、今から走らせる。★起点を書いてある1本は予定so動かさない(v4.2.65 改良2と同じ線)。
 //   ★やる事は「人が v を消して ▶️ を押す」(v4.2.90)と同じ= 道を2本にしない。
@@ -17806,7 +17830,8 @@ async function meosClockRestartHere(doc, key, line) {
     let hit = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) hit = x;
     if (!hit) return false;
     if (hit.when) {
-      vscode.window.setStatusBarMessage('MeOS: \u23f0 this clock has a start time written on it \u2014 it keeps its schedule.', 4000);
+      const _ed94 = meosCurrentEditor();
+      if (_ed94 && _ed94.document === doc) meosShowPlayTip(_ed94, line, 'This clock has a start time written on it, so it keeps its schedule \u2014 Opt-click cannot start it again from zero.');
       return false;
     }
     const lk = doc.uri.toString() + ' ' + key;
@@ -17896,9 +17921,10 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         const _own92 = meosClockOwnerKeyForLine(editor.document, _ln);
         if (_own92) {
           setRefNoRaw(editor.document, _ln);
-          await meosClockRestartHere(editor.document, _own92, _ln);
+          const _ok94 = await meosClockRestartHere(editor.document, _own92, _ln);
           setRefNoRaw(editor.document, _ln);
           meosParkCaretAfterPress(editor, _ln);
+          if (_ok94) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Started again from zero.');   // ★v4.2.94
           try { refresh(editor); } catch (_) { }
           try { meosTickTimerLines(); } catch (_) { }
         }
@@ -17919,6 +17945,17 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           else await meosChainStartHere(editor.document, _own, _ln);        // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b
           setRefNoRaw(editor.document, _ln);   // 途中の refresh で解けていても張り直す(v4.0.362と同じ)
           meosParkCaretAfterPress(editor, _ln);   // ★v4.2.76: ▼と同じ= 次のクリックが必ず届く所へ
+          // ★v4.2.94: 押した後に、次に何ができるかを言う。Opt で最初から、は起点を持たない1本だけの話。
+          try {
+            let _h94 = null; for (const x of meosClockFcScan(editor.document)) if (x.key === _own && x.line === _ln) _h94 = x;
+            const _noOrigin94 = !!(_h94 && !_h94.when);
+            if (_run) meosShowPlayTip(editor, _ln, _noOrigin94
+              ? '\u23f8\ufe0f Stopped. Click \u25b6\ufe0f to go on from here \u2014 or Opt-click \u25b6\ufe0f to start again from zero.'
+              : '\u23f8\ufe0f Stopped. Click \u25b6\ufe0f to go on. This clock keeps the schedule written on it.');
+            else meosShowPlayTip(editor, _ln, _noOrigin94
+              ? '\u25b6\ufe0f Running. Opt-click \u23f8\ufe0f to start again from zero.'
+              : '\u25b6\ufe0f Running, on the schedule written on it.');
+          } catch (_) { }
           try { refresh(editor); } catch (_) { }
           try { meosTickTimerLines(); } catch (_) { }   // ★改良3: 押した瞬間に ▶️⇄⏸️ that入れ替わる
           return;
@@ -25115,10 +25152,10 @@ color:#ffffff;z-index:4;padding:0}
 <!-- {* ▼mCN=dock_format // Format Me の行(== ~~ A2 ## / 表 / 🐱 / Raw) *} -->
 <div class="row format-tools" id="format-tools"><span class="fmt-label"><span class="fmt-me-box">Format</span> Me</span>
 <span class="fmt-btns">
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · ⌥Option+Click = link just this once, with the underline you last chose (leave □ Link unchecked in the presets; the button shows that underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;⌥ Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-highlight" data-tip="Format | One button, three presets. ▾ checks □ Bold / □ Italic / □ Link (+ underline style) and picks the colors · ↻ cycles the 3 presets · Opt-click = link just this once, with the underline you last chose (leave □ Link unchecked in the presets; the button shows that underline before you press) · Click wraps the selection: =={ text (text/bg)//tip }== · **bold** · *italic* · 🔗 link (copy a URL or an existing membrane name first and it is filled in for you — otherwise type it into the empty target) · cursor inside → 🚫 removes it — plain Markdown too (==text== / **text** / *text*)">==</button><button class="fmt-caret" data-kind="highlight" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-hl-cycle" data-tip="Cycle 3 saved highlight colors (set each with ▾)">↻</span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
-<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;⌥ Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
+<span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
 <span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
 <span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so two timers under one name break both.</div><div>One timer under a repeated name is fine \u2014 nothing is competing for the key.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them. Press again for the next membrane with that name - shift-click steps back. The count reads name / how many names - which copy. Nothing is written, and the panel stays open.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no timer, before deciding whether it was deliberate. Press again for the next - shift-click steps back. Nothing is written.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
@@ -26079,11 +26116,11 @@ var m=hdAltMode();
    箇条書きだけの設定でも「Heading (H3)」と名乗っていた。→ 面と同じ3通りから引く。 */
 var _h=fmtHeadingColors[fmtHeadingLevel]||{};var _hb=(_h.blt||'-');
 var head1=(_h.head===false)?('Bullet list ('+_hb+' ) | '+_hb+' text'):('Heading (H'+fmtHeadingLevel+') | '+hh+'[ text (text/bg)//tip ]'+hh+(_h.bullet?(' with a bullet ('+_hb+' )'):''));
-return head1+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'\u2325 Opt \u2192 heading only (drops the bullet)':m==='h2'?'\u2325 Opt \u2192 add a heading (H2); change it in the folding comment for H1 or H3':m==='on'?('\u2325 Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'\u2325 Opt \u2192 nothing here (H3 is kept in reserve)');}
+return head1+' \u2014 \u25be picks color \u00b7 \u21bb cycles # \u2192 ## \u2192 ###'+String.fromCharCode(10)+(m==='off'?'Opt \u2192 heading only (drops the bullet)':m==='h2'?'Opt \u2192 add a heading (H2); change it in the folding comment for H1 or H3':m==='on'?('Opt \u2192 bullet list ('+b+' ) with the preset color on the text'):'Opt \u2192 nothing here (H3 is kept in reserve)');}
 function fmtHeadAltTip(){var b=hdAltBlt();var h=fmtHeadingColors[fmtHeadingLevel]||{};
-if(hdAltMode()==='h2')return 'Add a heading (H2) | The preset is a bullet on its own, so \u2325 Opt gives it a heading. H2 because it is the one most used.'+String.fromCharCode(10)+'Want H1 or H3 instead? Change the H2 in the folding comment underneath.';
-if(hdAltMode()==='off')return 'Heading only | The preset carries a bullet; \u2325 Opt writes it without one. Let go of \u2325 Opt to go back.'+String.fromCharCode(10)+'\u2325 Opt is always the other answer: no bullet yet, add one \u2014 already a bullet, drop it.';
-return 'Bullet list ('+b+' ) | Writes one item with the preset color. Let go of \u2325 Opt to go back to the heading.'+String.fromCharCode(10)+'Do not want the color? Delete the folding comment underneath \u2014 that is the whole undo.';}
+if(hdAltMode()==='h2')return 'Add a heading (H2) | The preset is a bullet on its own, so Opt gives it a heading. H2 because it is the one most used.'+String.fromCharCode(10)+'Want H1 or H3 instead? Change the H2 in the folding comment underneath.';
+if(hdAltMode()==='off')return 'Heading only | The preset carries a bullet; Opt writes it without one. Let go of Opt to go back.'+String.fromCharCode(10)+'Opt is always the other answer: no bullet yet, add one \u2014 already a bullet, drop it.';
+return 'Bullet list ('+b+' ) | Writes one item with the preset color. Let go of Opt to go back to the heading.'+String.fromCharCode(10)+'Do not want the color? Delete the folding comment underneath \u2014 that is the whole undo.';}
 var stBaseTip='';
 function fmtHlLinkOn(){var sp=fmtHlSlots[fmtHlIdx]||{};return hlAltOn()?!sp.link:!!sp.link;}
 /* v4.0.298(俊克): 下線の種類は「最後に自分で決めた値」。nodeが覚えていて、開いた時と変わった時に送ってくる。
@@ -26171,7 +26208,7 @@ b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else 
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
 /* v4.0.432: 取消線の面は**これから書く物**を見せる= 既定は👻。🚫(解除)の時は今までどおりリングに任せる。 */
 if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';btn.classList.add('ghost-face');
-btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough. \u2325 Opt \u2192 plain strikethrough \u00b7 \u25be turns it off for good.');
+btn.setAttribute('data-tip','Comment out (\ud83d\udc7b) | The text stays in the file but is not shown at all. Put the caret on that line to see it again.'+String.fromCharCode(10)+'Outside MeOS it is still a strikethrough. Opt \u2192 plain strikethrough \u00b7 \u25be turns it off for good.');
 btn.classList.remove('fmt-remove');
 /* ★★v4.0.434b→435(俊克「指定した背景色が👻の背景に出る時と出ない時がある。…設定した色を見せておくことも大事」):
    ★★出たり出なかったりは、**面を描く口と色を塗る口が別**だったから(v4.0.421と同じ穴・2度目)＝ここで色を消して
@@ -26180,7 +26217,7 @@ btn.classList.remove('fmt-remove');
 {var _ss=fmtSpec.strike||{};var _sbg=_ss.bg?fmtHexBg(_ss.bg):'';btn.style.color=fmtHexFg(_ss.fg);btn.style.backgroundColor=_sbg;btn.style.borderColor=_sbg||'';}
 return;}
 if(kind==='strike')btn.classList.remove('ghost-face');   /* v4.0.433: 👻でない時は素の大きさへ戻す */
-if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip+String.fromCharCode(10)+'\u2325 Opt \u2192 \ud83d\udc7b comment out');
+if(kind==='strike'&&stBaseTip)btn.setAttribute('data-tip',stBaseTip+String.fromCharCode(10)+'Opt \u2192 \ud83d\udc7b comment out');
 if(kind==='heading'&&hdAltOn()&&hdAltMode()){/* v4.0.420(俊克 改良2): 面は - A = Aにプリセットの色を乗せる。押した結果がそのまま面に見える(色が要らなければFCコメントを消すだけ) */
 btn.classList.remove('fmt-remove');
 if(hdAltMode()==='off'){/* v4.0.422: 既に箇条書き= 外した姿(見出しだけ)を見せる。色はボタンが着ているまま */
@@ -26399,7 +26436,7 @@ _rt.setAttribute('data-tip',(viewMode==='pseudo')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f0 Held for another '+vmMmSs(left)+' \u2014 there is no way out until it ends. Press \u23f0 if you really must stop it early.')
-:('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'\u2325 Opt-click \u2192 '+VM_NAME[back]
+:('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'Opt-click \u2192 '+VM_NAME[back]
 +String.fromCharCode(10)+(vmOwn
 ?'This sets the membrane you are in. Every membrane keeps its own setting, and it is saved in the file (mMETA) \u2014 so it is still there tomorrow.'
 :'Handed down from the membrane outside this one \u2014 a membrane with no setting of its own follows whatever encloses it. Clicking gives this one a setting of its own; land back on the inherited value and it goes back to following.'))));
@@ -26825,7 +26862,7 @@ try{var _tg=clkTagMode?(c.tags||[]):[];for(var _k=0;_k<_tg.length;_k++){if(clkTa
    ×は走っている物なら**止めてから**外す。外せないのは🔒を選んで掛けた物だけ(そこは印that🔒に変わる)。 */
 if(clkTagMode){/* 探し物の段では × を出さない= ここは探す所で、片付ける所ではない */}
 else if(c.running&&c.lock){var lk=document.createElement('span');lk.className='ci-lock';lk.textContent='\ud83d\udd10';
-lk.title='Locked \u2014 this one cannot be dropped until the time is up. \u2325 Option-click to take the lock off.';row.appendChild(lk);}
+lk.title='Locked \u2014 this one cannot be dropped until the time is up. Opt-click to take the lock off.';row.appendChild(lk);}
 else{var x=document.createElement('span');x.className='ci-x';x.textContent='\u00d7';
 x.title=(c.running?'Stop and forget this one':'Forget this one')+' \u2014 MeOS takes you there first, in case you did not mean it.';row.appendChild(x);}
 el.appendChild(row);}
@@ -36030,6 +36067,8 @@ makeDecorations();
           const _wm = warningHoverMessage(meosWarningsAtLine(document, position.line));
           if (_wm) return new vscode.Hover(_wm);
         } catch (_) { }
+        const playTip = meosPlayTipHover(document, position);   // ★v4.2.94: ▶️/⏸️ を押した直後だけ
+        if (playTip) return new vscode.Hover(playTip);
         const redMsg = redJumpHoverMessage(editor, position);
         if (redMsg) return new vscode.Hover(redMsg);
         const greenMsg = activeGreenHoverMessage(editor, position);
