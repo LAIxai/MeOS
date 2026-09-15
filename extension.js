@@ -27891,7 +27891,7 @@ if(!tocImeComposing)vscode.postMessage({type:'updateTocItem',line0:Number(item.g
 setTimeout(clearTocEditingComment,0);}});
 /* v0.9.711: 全tip共通。tipの右端をカーソルの約6文字左に置く間隔(px)。俊克 am09:53「ポインターより6文字くらい離す・見えないとストレス」。 */
 const TIP_GAP_PX=44;
-function showTocTip(ev){if(!tocTooltip)return;if(window.__tocChildOpen)return;/* v1.0.1(俊克 改良1): Format↻を1回押したらプリセット選択中はtip抑制(見出しtipが左に伸びて邪魔)。Format行を離れたら解除→次回また1回だけ出る。 */if(window.__fmtTipSuppress&&ev&&ev.target&&ev.target.closest&&ev.target.closest('#format-tools')){hideTocTip();
+function showTocTip(ev){if(!tocTooltip)return;if(document.body.classList.contains('meos-gripping')||document.body.classList.contains('meos-palming')){hideTocTip();return;}/* v4.2.135: 掴んでいる間はtipを出さない(タブの名前tipが線に被っていた) */if(window.__tocChildOpen)return;/* v1.0.1(俊克 改良1): Format↻を1回押したらプリセット選択中はtip抑制(見出しtipが左に伸びて邪魔)。Format行を離れたら解除→次回また1回だけ出る。 */if(window.__fmtTipSuppress&&ev&&ev.target&&ev.target.closest&&ev.target.closest('#format-tools')){hideTocTip();
 return;}/* v0.9.999123: 副メニュー表示中はtip抑止 */if(window.__headWrapUntil&&Date.now()<window.__headWrapUntil){hideTocTip();return;
 }/* v3.0.4(俊克 改良1): 表の▾メニュー(table-pop)が開いている間はメニュー外要素(表ボタン/▾自身/他の書式ボタン)のtipを出さない=開いたメニューを覆わない。メニュー内の項目tipは.bm-pop.on分岐が担当。 */{var _tpo=document.getElementById('table-pop');
 if(_tpo&&_tpo.classList.contains('on')&&!(ev&&ev.target&&ev.target.closest&&ev.target.closest('#table-pop'))){hideTocTip();
@@ -28053,9 +28053,6 @@ let x;if(right){const nx=tab.nextElementSibling&&tab.nextElementSibling.classLis
 else{const pv=tab.previousElementSibling&&tab.previousElementSibling.classList.contains('toc-tab')?tab.previousElementSibling:null;x=pv?(pv.offsetLeft+pv.offsetWidth+tab.offsetLeft)/2:tab.offsetLeft-1;}
 c.style.left=x+'px';c.style.top=Math.max(0,tab.offsetTop-2)+'px';c.style.height=(tab.offsetHeight+2)+'px';}
   function _tabPointX(ev,tab){const r=tab.getBoundingClientRect();const sx=tab.offsetWidth?r.width/tab.offsetWidth:1;return r.left+(ev.offsetX||0)*sx;}
-  function _resolveDropTabX(x){const tabs=tocTabRow.querySelectorAll('.toc-tab');if(!tabs.length)return null;const first=tabs[0],last=tabs[tabs.length-1];
-if(x>=last.getBoundingClientRect().right)return last;if(x<=first.getBoundingClientRect().left)return first;let best=first;
-for(const t of tabs){if(x>=t.getBoundingClientRect().left)best=t;}return best;}
   function _tabEndPress(commit){if(!_tabPress)return;const p=_tabPress;_tabPress=null;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');if(p.moved){if(commit)_commitTabReorder();_tabSuppressClick=true;}
 _dragTabIdx=null;_pendingTo=null;_clearDropMarks();}
@@ -28066,11 +28063,18 @@ try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
 if(typeof hideTocTip==='function')hideTocTip();}
 _tabTrack(x);});
-  function _tabTrack(x){const tab=_resolveDropTabX(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
+  /* ★v4.2.135(俊克「少しドラッグした方向に先読みして、縦線を出すようにしようよ」pm03:44「先読みするのは1つ先までだよ。
+     表示した縦線を越えた時に、その先に縦線を移動すれば良いんだよ」):
+     4px 動かした時点で、動かした向きの**隣のタブの向こう**に線(1つ先だけ先読み)。その線を指が越えたら、次の隙間へ1つずつ進む。 */
+  function _tabLeadTab(x){const p=_tabPress;if(!p)return null;const dx=x-p.x0;if(Math.abs(dx)<4)return p.tab;const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const me=tabs.indexOf(p.tab);const R=t=>t.getBoundingClientRect();
+if(dx>0){if(me+1>=tabs.length)return p.tab;let k=me+1;while(k+1<tabs.length&&x>(R(tabs[k]).right+R(tabs[k+1]).left)/2)k++;return tabs[k];}
+if(me-1<0)return p.tab;let k=me-1;while(k-1>=0&&x<(R(tabs[k-1]).right+R(tabs[k]).left)/2)k--;return tabs[k];}
+  function _tabTrack(x){const tab=_tabLeadTab(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
 const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_tabCaret(tab,overIdx>_dragTabIdx);
 _pendingTo=overIdx;}else{_pendingTo=null;_tabCaret(null);}}
   tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved)_tabTrack(_tabPointX(ev,_tabPress.tab));/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true);});
   tocTabRow.addEventListener('pointercancel',()=>{_tabEndPress(false);});
+  window.addEventListener('blur',()=>{if(_tabPress)_tabEndPress(false);});   /* v4.2.135: 押したまま焦点が外へ出ても、握りの印を残さない */
   tocTabRow.addEventListener('lostpointercapture',()=>{if(_tabPress)_tabEndPress(true);});
   /* v4.2.131: 動かした後の click はタブ切替にしない(捕まえた要素の上で離すので click が出る) */
   tocTabRow.addEventListener('click',ev=>{if(_tabSuppressClick){ev.stopImmediatePropagation();ev.preventDefault();_tabSuppressClick=false;}},true);
