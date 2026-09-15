@@ -23016,7 +23016,7 @@ function navMeMarkJumpTo(n) {
   return ok;
 }
 // v0.9.99925: ノブ色＝指している見出し/注釈の色(俊克 6/27 pm06:27 バグ1/2)。見出し描画(reHead)と同じ解決で fg(文字色)・bg(背景色) のキーを返す。
-function targetColorKeys(text) {
+function targetColorKeys(text, nextText) {
   try {
     const reHdSq = /^(\s*)(\/\*\s*)?(#{1,3})\[((?:[^\]\n]|\[[^\]\n]*\])*)\]\3(\s*\*\/)?/;
     const reHdCu = /^(\s*)(\/\*\s*)?(#{1,3})\{((?:[^}\n]|\{(?:[^}\n]|\{[^}\n]*\})*\})*)\}\3(\s*\*\/)?/; // v4.0.10: 新形{}
@@ -23030,6 +23030,10 @@ function targetColorKeys(text) {
       return { fg: fg, bg: bg };
     }
     const sp2 = parseColorSpec(text || '');
+    // ★v4.2.124(俊克「見出しの色と同じ色になるはずなんだけど」): FC形の見出しは色が真下の指定行に居る。読む側も真下を見る(v4.0.177と同じ形)
+    if (!sp2.fgKey && !sp2.bgKey && nextText) {
+      try { const fc = meosParseSpecLine(nextText); if (fc && fc.line) { const sp3 = parseColorSpec(fc.line); if (sp3.fgKey || sp3.bgKey) return { fg: sp3.fgKey || null, bg: sp3.bgKey || null }; } } catch (_) { }
+    }
     return { fg: sp2.fgKey || null, bg: sp2.bgKey || null };
   } catch (_) { return null; }
 }
@@ -23065,7 +23069,7 @@ function meosNavTicks(doc, lines, lo, span) {
   for (const L of lines) {
     const p = Math.max(0, Math.min(1, (L - lo) / span)); const key = Math.round(p * 1000);
     const had = bins.get(key); if (had && had.b) continue;
-    const k = targetColorKeys(doc.lineAt(L).text || '');
+    const k = targetColorKeys(doc.lineAt(L).text || '', L + 1 < doc.lineCount ? (doc.lineAt(L + 1).text || '') : '');
     if (had && !(k && k.bg)) continue;
     bins.set(key, { p: p, f: k ? k.fg : null, b: k ? k.bg : null });
   }
@@ -23087,13 +23091,13 @@ function headNavStateForEditor(editor) {
     // v4.0.177: 真下の指定行も渡す(FC形の見出しも数える)
     if (reHead.test(t, i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) { count++; headLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; }
   }
-  const ck = curText ? targetColorKeys(curText) : null; // v0.9.99925: ノブ色=現在見出しの色
+  const ck = curText ? targetColorKeys(curText, curLine0 + 1 < doc.lineCount ? (doc.lineAt(curLine0 + 1).text || '') : '') : null; // v0.9.99925: ノブ色=現在見出しの色
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 大きな膜は前後20個の範囲
   const span = Math.max(1, win.hi - win.lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
   const linePct = Math.max(0, Math.min(1, (baseLine - win.lo) / span));
   const ticks = meosNavTicks(doc, headLines.filter(L => L >= win.lo && L <= win.hi), win.lo, span);   // v4.2.122: 300個で打ち切らない
-  return { count: count, index: index, linePct: linePct, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
+  return { count: count, index: index, linePct: linePct, win: win.lo + '-' + win.hi, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
 // v0.9.886: ハイライト/取消線ジャンプ(編集者⇄作家のレビュー注釈を巡る・俊克 6/15 pm09:02)。現在膜内・端で
@@ -23150,13 +23154,13 @@ function markNavStateForEditor(editor) {
   let count = 0, total = 0, index = 0, hasBefore = false, hasAfter = false, curText = null, curLine0 = null;
   const markLines = [];
   for (let i = lo; i <= hi; i++) { const t = doc.lineAt(i).text || ''; if (isAnyMark(t)) total++; if (markNavHit(t)) { count++; markLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; } }
-  const ck = curText ? targetColorKeys(curText) : null; // v0.9.99925: ノブ色=現在注釈/見出しの色
+  const ck = curText ? targetColorKeys(curText, curLine0 + 1 < doc.lineCount ? (doc.lineAt(curLine0 + 1).text || '') : '') : null; // v0.9.99925: ノブ色=現在注釈/見出しの色
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 見出しと同じ範囲
   const span = Math.max(1, win.hi - win.lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
   const linePct = Math.max(0, Math.min(1, (baseLine - win.lo) / span));
   const ticks = meosNavTicks(doc, markLines.filter(L => L >= win.lo && L <= win.hi), win.lo, span);   // v4.2.122: 300個で打ち切らない
-  return { count: count, total: total, index: index, linePct: linePct, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
+  return { count: count, total: total, index: index, linePct: linePct, win: win.lo + '-' + win.hi, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
 
@@ -26008,7 +26012,7 @@ function renderHeadNav(st){if(!navHeadPrev||!navHeadNext)return;const c=(st&&st.
 navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));/* v0.9.99924: 縦位置ゲージ(二重丸ノブ)＝何番目を視覚化・数字はtip */if(navHeadLabel)navHeadLabel.textContent='#';
 window.__navHeadCount=c;renderTicks('nav-ticks-head',st&&st.ticks);/* v0.9.99930: 全見出しtick＋灰ノブ */const m=document.getElementById('nav-scroll-head');
 if(m){if(c<1){m.classList.add('empty');m.removeAttribute('data-pct');}else{m.classList.remove('empty');const lp=(st&&typeof st.linePct==='number')?st.linePct:0;
-const repos=(window.__navOnly==='head')||!m.hasAttribute('data-pct');if(repos&&!window.__dragNav){m.style.top=(8+lp*84)+'%';
+const repos=(window.__navOnly==='head')||!m.hasAttribute('data-pct')||m.getAttribute('data-win')!==String(st&&st.win);/* v4.2.124(俊克「小さい膜ではノブ位置が大きく変わるはず」): 最終位置の印(v0.9.99928)は同じバーの上でだけ意味がある。膜(範囲)が替われば置き直す */if(repos&&!window.__dragNav){m.style.top=(8+lp*84)+'%';m.setAttribute('data-win',String(st&&st.win));
 m.setAttribute('data-pct',String(lp));m.setAttribute('data-tip','# Heading '+(idx||0)+' / '+c);}/* v4.2.121: 数秒後に右下へ出る2つ目のtip= この title(OSの吹き出し)。tipは data-tip の ::after 1つだけにする */
 }}const grp=navHeadPrev.closest?navHeadPrev.closest('.nav-head-group'):null;if(grp)grp.title=(c>0?('Heading '+(idx||0)+' / '+c+'  —  '):'')+'Jump between ##[…]## headings within the current membrane.';
 }
@@ -26021,7 +26025,7 @@ off=c<1;/* v0.9.929: 💬も1つで有効化 */navMarkPrev.disabled=off;navMarkN
 navMarkNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));/* v0.9.99924: 縦位置ゲージ(二重丸ノブ)＝未チェックの何番目を視覚化・数字はtip */if(navMarkLabel)navMarkLabel.textContent='💬';
 window.__navMarkCount=c;renderTicks('nav-ticks-mark',st&&st.ticks);/* v0.9.99930: 全未チェック注釈tick＋灰ノブ */const m=document.getElementById('nav-scroll-mark');
 if(m){if(c<1){m.classList.add('empty');m.removeAttribute('data-pct');}else{m.classList.remove('empty');const lp=(st&&typeof st.linePct==='number')?st.linePct:0;
-const repos=(window.__navOnly==='mark')||!m.hasAttribute('data-pct');if(repos&&!window.__dragNav){m.style.top=(8+lp*84)+'%';
+const repos=(window.__navOnly==='mark')||!m.hasAttribute('data-pct')||m.getAttribute('data-win')!==String(st&&st.win);/* v4.2.124(俊克「小さい膜ではノブ位置が大きく変わるはず」): 最終位置の印(v0.9.99928)は同じバーの上でだけ意味がある。膜(範囲)が替われば置き直す */if(repos&&!window.__dragNav){m.style.top=(8+lp*84)+'%';m.setAttribute('data-win',String(st&&st.win));
 m.setAttribute('data-pct',String(lp));m.setAttribute('data-tip','💬 Comment '+(idx||0)+' / '+c);}/* v4.2.121: 数秒後に右下へ出る2つ目のtip= この title(OSの吹き出し)。tipは data-tip の ::after 1つだけにする */
 }}const grp=navMarkPrev.closest?navMarkPrev.closest('.mark-nav'):null;if(grp)grp.title=(c>0?('未チェック '+(idx||0)+'＃'+c+(tot>c?('（全'+tot+'）'):'')+'  —  '):'')+'Jump between review notes (highlights / strikethroughs) in the current membrane.';
 }
