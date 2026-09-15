@@ -24042,8 +24042,8 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* ★v4.2.115(俊克「少し近づき過ぎたね」): スクショで枠の下端→ボタンの上端が5点(画面2〜3px)。4px 下げて 19px→23px(隙間は画面6〜7px)。 */
 /* ★v4.2.114(俊克 改良1「切替ボタンをもう少し上に」): スクショで ファイル名の枠の下端→ボタンの上端 が29点(画面14px)空いていた。大胆に11px上げて 30px→19px。 */
 /* ★v4.2.111(俊克 改良2「切替ボタンの背景を赤とか水色のように目立つ色にしようよ」＋「macOS指差しの黄色い絵(絵文字👆)は格好悪い」): 地は水色。macOS 側は絵文字をやめて字で。 */
-.hand-pick{position:absolute;left:2.3em;top:23px;height:22px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #0e7490;border-radius:6px;background:#56d4dd;color:#0b2a30;font-size:11px;font-weight:800;line-height:1}
-.hand-pick:hover{background:#7fe3ea}
+.hand-pick{position:absolute;left:2.3em;top:23px;height:22px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #8a6508;border-radius:6px;background:linear-gradient(#fff1a6,#f2c230 48%,#d9a012 52%,#c28a0a);color:#3a2a00;font-size:11px;font-weight:800;line-height:1}   /* v4.2.127(俊克「BTRONの背景色を金色にしようよ。Goldメダル」): 金の玉(上が光る) */
+.hand-pick:hover{background:linear-gradient(#fff6c4,#f6cf52 48%,#e2ad2a 52%,#cf9a1c)}
 .hand-pick.is-macos{border-color:#1f5fbf;background:linear-gradient(#8ec5ff,#3b8ff0 55%,#2a7de6);color:#fff}   /* v4.2.117(俊克「macのボタンはmacらしい色に」): Aqua の青い玉 */
 .hand-pick.is-macos:hover{background:linear-gradient(#a9d3ff,#5aa3f5 55%,#4291ec)}
 .hand-pick.is-system{border-color:#6b7280;background:#d1d5db;color:#1f2937}   /* v4.2.117(俊克「OSはOSごとに違うので別の色」): どのOSにも寄らない灰 */
