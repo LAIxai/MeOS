@@ -2628,6 +2628,18 @@ function meosHandCursor() {
 // ★v4.2.118(俊克 2026.09.15 am10:52「tipを数行に縮めよう。そして、OSのところだけに表示することにしよう」):
 //   ★BTRON と macOS の時は、ボタンの絵が手そのもの= 読む物が無い。今の OS の手(字「OS」)の時だけ、何の手かを言う。
 const MEOS_HAND_TIP = 'Pointer hand | The hand of your OS, shown over things you can press. Click to switch: BTRON, macOS, OS.';
+// ★★v4.2.131(俊克 2026.09.15 pm03:13「H-TOCをOSの手の平と握りで動くようにする。それをベースに、私がこの後描く、BTRON用、macOS用の手の絵を入れて、対応する」):
+//   ★実測(NSCursor・macOS 26.6.2): OSの手の平/握りの当たりは (16,17)=**手の平の真ん中**= 掴む物の真上に手が乗って隠す(指差しは人差指の先 13,8)。
+//   ★CSS の grab/grabbing は当たりを動かせない→ OS の手は「OSのまま」の見本に残す。BTRON/macOS は俊克の絵で当たりを人差指の先(手の平)・第二関節(握り)に置く。
+//   ★手の平と握りも**この2つの関数から**引く(Me Dock は --meos-palm / --meos-grip)= 絵が届いたら btron/macos の行を足すだけ。
+function meosPalmCursor() {
+  const n = meosHandName();
+  return 'grab';      // 📌v4.2.131: 俊克の BTRON / macOS の手の平の絵が届くまでは、どの手も OS の手の平
+}
+function meosGripCursor() {
+  const n = meosHandName();
+  return 'grabbing';  // 📌v4.2.131: 俊克の BTRON / macOS の握りの絵が届くまでは、どの手も OS の握り
+}
 let membraneArrowHandDecoration;   // ★v4.2.75: ▼/▼▲/▲ の当たり= 手の形(cursor:pointer)
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
 // the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
@@ -24004,7 +24016,7 @@ function meDockHtml() {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <style>
-:root{--meos-hand:${meosHandCursor()};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
+:root{--meos-hand:${meosHandCursor()};--meos-palm:${meosPalmCursor()};--meos-grip:${meosGripCursor()};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
 /* {* ▼mCN=dock_css // Me Dock のCSS(見た目) *} */
 
 :root{color-scheme:light dark}
@@ -24355,9 +24367,11 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .nav-ticks-mark{right:0;width:50%}
 .tk{position:absolute;left:0;right:0;height:2px;background:var(--tk-o,transparent);transform:translateY(-50%)}
 .tk::after{content:'';position:absolute;left:0;right:0;top:50%;height:0.5px;background:var(--tk-i,#fff);transform:translateY(-50%)}
-.nss{position:absolute;left:50%;width:11px;height:11px;background:rgba(125,125,125,.5);box-shadow:0 0 0 1px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.45);cursor:grab;touch-action:none;z-index:3}
+.nss{position:absolute;left:50%;width:11px;height:11px;background:rgba(125,125,125,.5);box-shadow:0 0 0 1px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.45);cursor:var(--meos-palm);touch-action:none;z-index:3}
 .nss::after{content:'';position:absolute;left:50%;top:50%;width:5px;height:5px;background:rgba(255,255,255,.55);transform:translate(-50%,-50%)}
-.nss:active{cursor:grabbing}
+.nss:active{cursor:var(--meos-grip)}
+body.meos-palming,body.meos-palming *{cursor:var(--meos-palm)!important}   /* v4.2.131: 押している間(まだ動かしていない)= 手の平 */
+body.meos-gripping,body.meos-gripping *{cursor:var(--meos-grip)!important}   /* v4.2.131: 掴んで動かしている間= どこの上でも握り */
 .nss-head{transform:translate(calc(-50% - 6px),-50%);border-radius:2px}
 .nss-head::after{border-radius:1px}
 .nss-mark{transform:translate(calc(-50% + 6px),-50%);border-radius:50%}
@@ -24499,7 +24513,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-title{font-size:12px;font-weight:900;color:#d18400}
 .toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-hand);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-hand);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}
 .toc-tab.dragging{opacity:.4}
 .toc-tab.drop-left{box-shadow:inset 3px 0 0 #d18400;background:rgba(210,132,0,.18)}
 .toc-tab.drop-right{box-shadow:inset -3px 0 0 #d18400;background:rgba(210,132,0,.18)}
@@ -25730,7 +25744,7 @@ function renderHyperTocTabs(toc){
     const active=t.active?' active':'';
     const name=escText(t.name||'Hyper TOC');
     const count=Number(t.itemCount||0);
-    return '<div class="toc-tab'+active+'" draggable="true" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items) — drag to reorder">'+name+'</div>';
+    return '<div class="toc-tab'+active+'" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items) — drag to reorder">'+name+'</div>';
   }).join('');
   const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
   tocTabRow.innerHTML=tabsHtml+opsHtml;
@@ -28021,33 +28035,37 @@ idx});}
   // v0.9.768: タブのドラッグ並べ替え(HTML5 DnD・イベント委譲。innerHTML再生成されてもtocTabRowは残る)。
   let _dragTabIdx=null;
   let _pendingTo=null;       /* v0.9.772: dragoverで「今表示している挿入線」の対象idx。 */
-  let _dropHandled=false;    /* v0.9.773: dropが発火したか。 */
   function _clearDropMarks(){tocTabRow.querySelectorAll('.toc-tab.dragging,.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('dragging','drop-left','drop-right'));
 }
   /* v0.9.773: 「見えている挿入線(_pendingTo)」に入れる。dropはパネル外で離すと発火しないので、必ず発火するdragendでも確定する(=どこで離しても線が出ていれば移動)。 */
   function _commitTabReorder(){if(_dragTabIdx!==null&&_pendingTo!==null&&!isNaN(_dragTabIdx)&&!isNaN(_pendingTo)&&_dragTabIdx!==_pendingTo){vscode.postMessage({type:'reorderHyperTocTab',
 from:_dragTabIdx,to:_pendingTo});}}
-  /* v0.9.770: ポインタが直接タブ上に無くてもX座標で最寄りのタブを解決(右端を越えたら最後のタブ=末尾へ移動可能に)。 */
-  function _resolveDropTab(ev){const direct=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(direct)return direct;
-const tabs=tocTabRow.querySelectorAll('.toc-tab');if(!tabs.length)return null;const x=ev.clientX,first=tabs[0],last=tabs[tabs.length-1];
+  /* ★v4.2.131(俊克「H-TOCのタブのドラッグがこのテストに最適。今は、OSの指差しが出るけど、握りに変わらない」):
+     HTML5 DnD はドラッグ中の手をブラウザ/OSが握る(CSS cursor が効かない)→ pointer 系に作り替え(Bird-EV のノブと同じ)。
+     乗せる=指差し / 押す=手の平 / 4px 動かす=握り(body に印を付けて、どこの上でも同じ手)。
+     ★位置は clientX でなく**掴んだタブの四角+offsetX**から(Me Dock では clientX と四角が別の物差し= v4.2.129 の実測)。 */
+  let _tabPress=null;let _tabSuppressClick=false;
+  function _tabPointX(ev,tab){const r=tab.getBoundingClientRect();const sx=tab.offsetWidth?r.width/tab.offsetWidth:1;return r.left+(ev.offsetX||0)*sx;}
+  function _resolveDropTabX(x){const tabs=tocTabRow.querySelectorAll('.toc-tab');if(!tabs.length)return null;const first=tabs[0],last=tabs[tabs.length-1];
 if(x>=last.getBoundingClientRect().right)return last;if(x<=first.getBoundingClientRect().left)return first;let best=first;
 for(const t of tabs){if(x>=t.getBoundingClientRect().left)best=t;}return best;}
-  tocTabRow.addEventListener('dragstart',ev=>{const tab=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(!tab){return;
-}_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;_dropHandled=false;if(ev.dataTransfer){ev.dataTransfer.effectAllowed='move';
-try{ev.dataTransfer.setData('text/plain',String(_dragTabIdx));}catch(_){}}tab.classList.add('dragging');if(typeof hideTocTip==='function')hideTocTip();
-/* v0.9.769: ドラッグ中はtipを隠してドロップ位置を見えるように。 */});
-  /* v0.9.770: dragover/drop は H-TOCパネル全体(fixedToc)で受ける。右はopsボタンが行き過ぎを拾うが左はタブ左に
-     要素が無く tocTabRow の外に出て発火しなかった非対称を解消。_resolveDropTab がX座標で先頭/末尾/最寄りに解決。 */
-  const _dropZone=(typeof fixedToc!=='undefined'&&fixedToc)?fixedToc:tocTabRow;
-  _dropZone.addEventListener('dragover',ev=>{if(_dragTabIdx===null)return;const tab=_resolveDropTab(ev);if(!tab)return;ev.preventDefault();
-if(ev.dataTransfer)ev.dataTransfer.dropEffect='move';tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
+  function _tabEndPress(commit){if(!_tabPress)return;const p=_tabPress;_tabPress=null;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
+document.body.classList.remove('meos-palming','meos-gripping');if(p.moved){if(commit)_commitTabReorder();_tabSuppressClick=true;}
+_dragTabIdx=null;_pendingTo=null;_clearDropMarks();}
+  tocTabRow.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;_tabSuppressClick=false;const tab=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(!tab)return;
+_tabPress={tab:tab,pid:ev.pointerId,x0:_tabPointX(ev,tab),moved:false};_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;
+try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
+  tocTabRow.addEventListener('pointermove',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;const p=_tabPress;const x=_tabPointX(ev,p.tab);
+if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
+if(typeof hideTocTip==='function')hideTocTip();}
+const tab=_resolveDropTabX(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
 const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');
 _pendingTo=overIdx;}else{_pendingTo=null;}});
-  _dropZone.addEventListener('drop',ev=>{if(_dragTabIdx===null)return;ev.preventDefault();_dropHandled=true;_commitTabReorder();
-_dragTabIdx=null;_pendingTo=null;_clearDropMarks();});
-  /* v0.9.773: dropがパネル外で発火しなくても、必ず発火するdragendで「見えていた線」に確定する。 */
-  tocTabRow.addEventListener('dragend',()=>{if(!_dropHandled)_commitTabReorder();_dragTabIdx=null;_pendingTo=null;_dropHandled=false;
-_clearDropMarks();});
+  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;_tabEndPress(true);});
+  tocTabRow.addEventListener('pointercancel',()=>{_tabEndPress(false);});
+  tocTabRow.addEventListener('lostpointercapture',()=>{if(_tabPress)_tabEndPress(true);});
+  /* v4.2.131: 動かした後の click はタブ切替にしない(捕まえた要素の上で離すので click が出る) */
+  tocTabRow.addEventListener('click',ev=>{if(_tabSuppressClick){ev.stopImmediatePropagation();ev.preventDefault();_tabSuppressClick=false;}},true);
 }
 if(tocTabConfirmYes)tocTabConfirmYes.addEventListener('click',()=>{vscode.postMessage({type:'deleteHyperTocTab'});if(tocTabConfirm)tocTabConfirm.classList.remove('on');
 });
@@ -28297,7 +28315,7 @@ for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.text
 _t.addEventListener('click',function(){try{vscode.postMessage({type:'copyFileAndUd'});}catch(_e){}});
 _ud.appendChild(_t);}
 }
-return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));}catch(e){}try{var _hp=document.getElementById('hand-pick');if(_hp){['btron','macos','system'].forEach(function(k){_hp.classList.toggle('is-'+k,m.hand===k);});if(m.hand==='system')_hp.setAttribute('data-tip','${MEOS_HAND_TIP}');else{_hp.removeAttribute('data-tip');hideTocTip();}   /* v4.2.118: tip は OS の時だけ */}}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
+return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));document.documentElement.style.setProperty('--meos-palm',String(m.palm||'grab'));document.documentElement.style.setProperty('--meos-grip',String(m.grip||'grabbing'));}catch(e){}try{var _hp=document.getElementById('hand-pick');if(_hp){['btron','macos','system'].forEach(function(k){_hp.classList.toggle('is-'+k,m.hand===k);});if(m.hand==='system')_hp.setAttribute('data-tip','${MEOS_HAND_TIP}');else{_hp.removeAttribute('data-tip');hideTocTip();}   /* v4.2.118: tip は OS の時だけ */}}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
 if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);
@@ -36719,7 +36737,7 @@ makeDecorations();
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
-        try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor(), hand: meosHandName() }); } catch (_) { }
+        try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor(), palm: meosPalmCursor(), grip: meosGripCursor(), hand: meosHandName() }); } catch (_) { }
       }
       if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); syncGutterEditorSettings(); refresh(); }
     }),
