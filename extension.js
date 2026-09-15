@@ -25739,6 +25739,7 @@ navToc.classList.add('top-mode');navToc.disabled=false;navToc.classList.remove('
 navCreateToc.disabled=!!hasToc;}}
 function renderHyperTocTabs(toc){
   if(!tocTabRow)return;
+  if(window.__tabPressing){window.__tabPendingToc=toc;return;}   /* ★v4.2.138: 掴んでいる間はタブを描き直さない(掴んだタブが消えると線が出ない)。離した時に描く */
   const tabs=(toc&&Array.isArray(toc.tabs))?toc.tabs:[];
   if(!tabs.length){tocTabRow.innerHTML='';return;}
   const tabsHtml=tabs.map(t=>{
@@ -25748,7 +25749,8 @@ function renderHyperTocTabs(toc){
     return '<div class="toc-tab'+active+'" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items) — drag to reorder">'+name+'</div>';
   }).join('');
   const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
-  tocTabRow.innerHTML=tabsHtml+opsHtml;
+  const _h=tabsHtml+opsHtml;if(tocTabRow.__html===_h&&tocTabRow.querySelector('.toc-tab'))return;tocTabRow.__html=_h;   /* v4.2.138: 中身が同じなら描き直さない */
+  tocTabRow.innerHTML=_h;
 }
 function pinRowHtml(toc){const cm=toc&&toc.currentMembrane;if(!cm)return '';const nm=(cm.hasImage?'🖼 ':'')+escText(cm.name||'(無名)');
 const b=cm.delta?('[Δ'+(cm.delta>0?'+':'')+cm.delta+']'):'';const titleTip=escText('Shows the membrane the cursor is in now. Click here to jump among 3 points: open membrane, close membrane, cursor position.');
@@ -28053,11 +28055,11 @@ let x;if(right){const nx=tab.nextElementSibling&&tab.nextElementSibling.classLis
 else{const pv=tab.previousElementSibling&&tab.previousElementSibling.classList.contains('toc-tab')?tab.previousElementSibling:null;x=pv?(pv.offsetLeft+pv.offsetWidth+tab.offsetLeft)/2:tab.offsetLeft-1;}
 c.style.left=x+'px';c.style.top=Math.max(0,tab.offsetTop-2)+'px';c.style.height=(tab.offsetHeight+2)+'px';}
   function _tabPointX(ev,tab){const r=tab.getBoundingClientRect();const sx=tab.offsetWidth?r.width/tab.offsetWidth:1;return r.left+(ev.offsetX||0)*sx;}
-  function _tabEndPress(commit){if(!_tabPress)return;const p=_tabPress;_tabPress=null;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
+  function _tabEndPress(commit){if(!_tabPress)return;const p=_tabPress;_tabPress=null;window.__tabPressing=false;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');if(p.moved){if(commit)_commitTabReorder();_tabSuppressClick=true;}
-_dragTabIdx=null;_pendingTo=null;_clearDropMarks();}
+_dragTabIdx=null;_pendingTo=null;_clearDropMarks();if(window.__tabPendingToc){const t=window.__tabPendingToc;window.__tabPendingToc=null;try{renderHyperTocTabs(t);}catch(_){}}}
   tocTabRow.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;_tabSuppressClick=false;const tab=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(!tab)return;
-_tabPress={tab:tab,pid:ev.pointerId,x0:_tabPointX(ev,tab),moved:false};_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;
+_tabPress={tab:tab,pid:ev.pointerId,x0:_tabPointX(ev,tab),moved:false};window.__tabPressing=true;_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;
 try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
   tocTabRow.addEventListener('pointermove',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;const p=_tabPress;const x=_tabPointX(ev,p.tab);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
@@ -28069,19 +28071,20 @@ _tabTrack(x);});
   /* ★v4.2.136(俊克 pm03:47「かなり先読みが早過ぎる嫌いはある。次のタブの3分の1くらいに来た時に、縦線を出すようにした方が自然」):
      指が隣のタブの**3分の1**まで入ったら、そのタブの向こうに線。さらに先のタブも同じ規則で1つずつ(越えた分だけ進む)。入っていなければ線なし。 */
   /* ★v4.2.137(俊克 pm03:55「端のタブを移動する時は、ドラッグしたら直ぐに、縦線を出した方がいいよ」): 左端を右へ・右端を左へは行き先が一方にしか無い= 4px 動かしたら直ぐに隣の向こうへ線(その先は 1/3 の規則) */
-  function _tabLeadTab(x){const p=_tabPress;if(!p)return null;const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const me=tabs.indexOf(p.tab);let hit=p.tab;
-if(me===0&&tabs.length>1&&x-p.x0>=4)hit=tabs[1];
-for(let k=me+1;k<tabs.length;k++){const r=tabs[k].getBoundingClientRect();if(x>r.left+r.width/3)hit=tabs[k];else break;}
-if(hit!==p.tab)return hit;
-if(me===tabs.length-1&&me>0&&p.x0-x>=4)hit=tabs[me-1];
-for(let k=me-1;k>=0;k--){const r=tabs[k].getBoundingClientRect();if(x<r.right-r.width/3)hit=tabs[k];else break;}
-return hit;}
+  /* ★v4.2.138(俊克 pm03:57「縦線を越えたら、さらに次の位置に先読みして縦線を移動してよ」):
+     出始め= 隣のタブの 1/3 まで入ったら(端のタブは 4px で直ぐに)隣の向こうに線。
+     その先= 指が**表示している線(隙間の真ん中)を越えたら**、次のタブの向こうへ1つ進める(1つ先を先読み)。 */
+  function _tabLeadTab(x){const p=_tabPress;if(!p)return null;const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const me=tabs.indexOf(p.tab);const n=tabs.length;if(me<0)return null;
+const R=t=>t.getBoundingClientRect();const gap=(a,b)=>(R(tabs[a]).right+R(tabs[b]).left)/2;const dx=x-p.x0;
+if(me+1<n){const r=R(tabs[me+1]);if((me===0&&dx>=4)||x>r.left+r.width/3){let k=me+1;while(k+1<n&&x>gap(k,k+1))k++;return tabs[k];}}
+if(me-1>=0){const r=R(tabs[me-1]);if((me===n-1&&dx<=-4)||x<r.right-r.width/3){let k=me-1;while(k-1>=0&&x<gap(k-1,k))k--;return tabs[k];}}
+return p.tab;}
   function _tabTrack(x){const tab=_tabLeadTab(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
 const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_tabCaret(tab,overIdx>_dragTabIdx);
 _pendingTo=overIdx;}else{_pendingTo=null;_tabCaret(null);}}
   tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved)_tabTrack(_tabPointX(ev,_tabPress.tab));/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true);});
   tocTabRow.addEventListener('pointercancel',()=>{_tabEndPress(false);});
-  window.addEventListener('blur',()=>{if(_tabPress)_tabEndPress(false);});   /* v4.2.135: 押したまま焦点が外へ出ても、握りの印を残さない */
+  /* ★v4.2.138: v4.2.135 の window blur で片付ける仕掛けは外した= Me Dock は押した直後に焦点を本文へ返すことがあり、そのたびにドラッグを打ち切っていた(俊克「縦線が出ないことが何度もある」) */
   tocTabRow.addEventListener('lostpointercapture',()=>{if(_tabPress)_tabEndPress(true);});
   /* v4.2.131: 動かした後の click はタブ切替にしない(捕まえた要素の上で離すので click が出る) */
   tocTabRow.addEventListener('click',ev=>{if(_tabSuppressClick){ev.stopImmediatePropagation();ev.preventDefault();_tabSuppressClick=false;}},true);
