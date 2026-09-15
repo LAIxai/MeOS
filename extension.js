@@ -22989,7 +22989,7 @@ function navMeHeadingJumpTo(n) {
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: バーと同じ範囲
   const desired = Math.max(0, Math.min(1, Number(n) || 0)); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し / v4.2.125: バーと同じ物差し(win.pct)で比べる
   let target = heads[0], best = Infinity;
-  for (const h of heads) { const d = Math.abs(win.pct(h) - desired) + (h < win.lo || h > win.hi ? 2 : 0); if (d < best) { best = d; target = h; } }
+  for (const h of heads) { const d = Math.abs(win.pct(h) - desired) + (h < win.lo || h > win.hi || win.inKid(h) ? 2 : 0); if (d < best) { best = d; target = h; } }
   const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 見出しそのものに着地+着地時raw抑止
   const ok = jumpMeDockTargetLine(String(land + 1));
   try { const col = editor.document.lineAt(land).text.length; editor.selection = new vscode.Selection(new vscode.Position(land, col), new vscode.Position(land, col)); } catch (_) {}
@@ -23008,7 +23008,7 @@ function navMeMarkJumpTo(n) {
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: バーと同じ範囲
   const desired = Math.max(0, Math.min(1, Number(n) || 0)); // v0.9.99929: n=行番号フラクション(0..1)→最寄り注釈 / v4.2.125: バーと同じ物差し(win.pct)で比べる
   let target = marks[0], best = Infinity;
-  for (const mk of marks) { const d = Math.abs(win.pct(mk) - desired) + (mk < win.lo || mk > win.hi ? 2 : 0); if (d < best) { best = d; target = mk; } }
+  for (const mk of marks) { const d = Math.abs(win.pct(mk) - desired) + (mk < win.lo || mk > win.hi || win.inKid(mk) ? 2 : 0); if (d < best) { best = d; target = mk; } }
   const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 💬注釈そのものに着地+着地時raw抑止
   const ok = jumpMeDockTargetLine(String(land + 1));
   try { const col = editor.document.lineAt(land).text.length; editor.selection = new vscode.Selection(new vscode.Position(land, col), new vscode.Position(land, col)); } catch (_) {}
@@ -23051,37 +23051,50 @@ function meosNavWindow(editor, doc, lo, hi) {
   const curEff = editor.selection.active.line + 1;   // 見出しの index と同じ数え方(park-above)
   const key = doc.uri.toString() + '|' + doc.version + '|' + lo + '|' + hi + '|' + curEff;
   if (__meosNavWinCache && __meosNavWinCache.key === key) return __meosNavWinCache.win;
+  // ★★v4.2.126(俊克 pm02:16「子膜の中に見出しがあるかどうかは無関係だよ。子膜、孫膜は無視するんだからね」):
+  //   ★バーが描くのは**その膜の地の本文だけ**。子膜は(中身が何であれ)1行に畳み、中の見出し/💬も線にしない。
+  //   ★v4.2.125 の「見出しを持つ子膜は畳まない」は私の付け足しで、間違い。
+  //   ★前後20個も、地の見出しで数える。位置は win.pct(行) の1つから= 線もノブもドラッグの飛び先も同じ物差し。
+  const kids = [];
+  try {
+    const all = collectPairs(doc, { excludeIndex: false }).filter(q => q.start > lo && q.end < hi).sort((x, y) => (x.start - y.start) || (y.end - x.end));
+    let last = -1;
+    for (const q of all) { if (q.start <= last) continue; kids.push(q); last = q.end; }   // 孫膜は子膜の中= 数えない
+  } catch (_) { }
+  const inKid = function (L) { for (const q of kids) { if (L < q.start) return false; if (L <= q.end) return true; } return false; };
   const heads = [];
-  for (let i = lo; i <= hi; i++) { if (MEOS_NAV_HEAD_RE.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) heads.push(i); }
-  let win = { lo: lo, hi: hi };
+  for (let i = lo; i <= hi; i++) { if (MEOS_NAV_HEAD_RE.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '') && !inKid(i)) heads.push(i); }
+  const win = { lo: lo, hi: hi, inKid: inKid, heads: heads };
   const N = MEOS_NAV_WINDOW_HALF * 2 + 1;
   if (heads.length > N) {
     let cur = -1; for (let k = 0; k < heads.length && heads[k] <= curEff; k++) cur = k;
     let a = Math.max(0, cur - MEOS_NAV_WINDOW_HALF), b = a + N - 1;
     if (b > heads.length - 1) { b = heads.length - 1; a = b - N + 1; }
-    win = { lo: heads[a], hi: heads[b] };
+    win.lo = heads[a]; win.hi = heads[b];
   }
-  // ★v4.2.125(俊克 pm02:10「日記の後半に、気温の膜が長いので、この行数は無視するんだよ」):
-  //   ★範囲の中の子膜で**見出しを1つも持たない物**は、1行に畳んで測る(気温の表・ゴミ当番など)。
-  //   ★見出しを持つ子膜は畳まない= 大きな膜の「遺伝子配列」(子膜の中の見出しの縞)はそのまま。
-  //   ★位置は win.pct(行) の1つから引く= 線もノブもドラッグの飛び先も同じ物差し。
-  const folds = [];
+  // ★v4.2.126(俊克 pm02:18「厳密に言えば、子膜を折り畳まれた1行としてカウントするんだよ。そして、見かけ上飛んでいる行数もカウントしない」):
+  //   ★数えるのは**畳んだ姿で画面に出る行**だけ= 子膜は▼の1行・FCの指定行など畳まれる行(meosFcFoldShape が決める所)は0行。
+  //   ★畳む範囲は畳む側と同じ1つから引く(自前で判定を持たない)。
+  let hid = kids.filter(q => q.start >= win.lo && q.end <= win.hi).map(q => [q.start + 1, q.end]);
   try {
-    const kids = collectPairs(doc, { excludeIndex: false }).filter(q => q.start > win.lo && q.end < win.hi).sort((x, y) => (x.start - y.start) || (y.end - x.end));
-    let last = -1;
-    for (const q of kids) {
-      if (q.start <= last) continue;                                  // 畳んだ子膜の中の孫膜は数えない
-      let has = false; for (const h of heads) { if (h >= q.start && h <= q.end) { has = true; break; } if (h > q.end) break; }
-      if (!has) { folds.push(q); last = q.end; }
+    for (const it of meosFcFoldShape(doc, editor.selection.active.line)) {
+      if (!it.hasRange || it.open) continue;
+      const a = it.head + 1, b = it.end;
+      if (b >= win.lo && a <= win.hi) hid.push([Math.max(a, win.lo), Math.min(b, win.hi)]);
     }
   } catch (_) { }
-  const cut = folds.reduce((t, q) => t + (q.end - q.start), 0);
+  hid.sort((x, y) => x[0] - y[0]);
+  const folds = [];
+  for (const h of hid) { const t = folds[folds.length - 1]; if (t && h[0] <= t[1] + 1) t[1] = Math.max(t[1], h[1]); else folds.push([h[0], h[1]]); }
+  const cut = folds.reduce((t, q) => t + (q[1] - q[0] + 1), 0);
   const span = Math.max(1, (win.hi - win.lo) - cut);
   win.pct = function (L) {
     let x = L - win.lo;
-    for (const q of folds) { if (L > q.end) x -= (q.end - q.start); else if (L > q.start) { x -= (L - q.start); break; } else break; }
+    for (const q of folds) { if (L > q[1]) x -= (q[1] - q[0] + 1); else if (L >= q[0]) { x -= (L - q[0] + 1); break; } else break; }
     return Math.max(0, Math.min(1, x / span));
   };
+  // ノブ= 地の見出しのうちカーソル以前の最後(無ければカーソルの行)
+  win.base = function () { let b = null; for (const h of heads) { if (h <= curEff) b = h; else break; } return b != null ? b : Math.max(lo, Math.min(curEff - 1, hi)); };
   __meosNavWinCache = { key: key, win: win };
   return win;
 }
@@ -23114,9 +23127,8 @@ function headNavStateForEditor(editor) {
   }
   const ck = curText ? targetColorKeys(curText, curLine0 + 1 < doc.lineCount ? (doc.lineAt(curLine0 + 1).text || '') : '') : null; // v0.9.99925: ノブ色=現在見出しの色
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 大きな膜は前後20個の範囲
-  const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
-  const linePct = win.pct(baseLine);   // v4.2.125: 見出しの無い子膜は1行
-  const ticks = meosNavTicks(doc, headLines.filter(L => L >= win.lo && L <= win.hi), win);   // v4.2.122: 300個で打ち切らない
+  const linePct = win.pct(win.base());   // v4.2.126: 地の見出しの位置(子膜は1行)
+  const ticks = meosNavTicks(doc, win.heads.filter(L => L >= win.lo && L <= win.hi), win);   // v4.2.122: 300個で打ち切らない
   return { count: count, index: index, linePct: linePct, win: win.lo + '-' + win.hi, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
@@ -23177,8 +23189,8 @@ function markNavStateForEditor(editor) {
   const ck = curText ? targetColorKeys(curText, curLine0 + 1 < doc.lineCount ? (doc.lineAt(curLine0 + 1).text || '') : '') : null; // v0.9.99925: ノブ色=現在注釈/見出しの色
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 見出しと同じ範囲
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
-  const linePct = win.pct(baseLine);   // v4.2.125: 見出しの無い子膜は1行
-  const ticks = meosNavTicks(doc, markLines.filter(L => L >= win.lo && L <= win.hi), win);   // v4.2.122: 300個で打ち切らない
+  const linePct = win.pct(baseLine);   // v4.2.126: 子膜は1行
+  const ticks = meosNavTicks(doc, markLines.filter(L => L >= win.lo && L <= win.hi && !win.inKid(L)), win);   // v4.2.126: 子膜の中の💬は線にしない   // v4.2.122: 300個で打ち切らない
   return { count: count, total: total, index: index, linePct: linePct, win: win.lo + '-' + win.hi, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
