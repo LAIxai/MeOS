@@ -22987,9 +22987,9 @@ function navMeHeadingJumpTo(n) {
   for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) heads.push(i); } // v4.0.177: 真下の指定行も渡す(FC形の見出し)
   if (!heads.length) return false;
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: バーと同じ範囲
-  const desired = win.lo + Math.max(0, Math.min(1, Number(n) || 0)) * (win.hi - win.lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し
+  const desired = Math.max(0, Math.min(1, Number(n) || 0)); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し / v4.2.125: バーと同じ物差し(win.pct)で比べる
   let target = heads[0], best = Infinity;
-  for (const h of heads) { const d = Math.abs(h - desired); if (d < best) { best = d; target = h; } }
+  for (const h of heads) { const d = Math.abs(win.pct(h) - desired) + (h < win.lo || h > win.hi ? 2 : 0); if (d < best) { best = d; target = h; } }
   const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 見出しそのものに着地+着地時raw抑止
   const ok = jumpMeDockTargetLine(String(land + 1));
   try { const col = editor.document.lineAt(land).text.length; editor.selection = new vscode.Selection(new vscode.Position(land, col), new vscode.Position(land, col)); } catch (_) {}
@@ -23006,9 +23006,9 @@ function navMeMarkJumpTo(n) {
   for (let i = lo; i <= hi; i++) { if (markNavHit(doc.lineAt(i).text || '')) marks.push(i); }
   if (!marks.length) return false;
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: バーと同じ範囲
-  const desired = win.lo + Math.max(0, Math.min(1, Number(n) || 0)) * (win.hi - win.lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り注釈
+  const desired = Math.max(0, Math.min(1, Number(n) || 0)); // v0.9.99929: n=行番号フラクション(0..1)→最寄り注釈 / v4.2.125: バーと同じ物差し(win.pct)で比べる
   let target = marks[0], best = Infinity;
-  for (const mk of marks) { const d = Math.abs(mk - desired); if (d < best) { best = d; target = mk; } }
+  for (const mk of marks) { const d = Math.abs(win.pct(mk) - desired) + (mk < win.lo || mk > win.hi ? 2 : 0); if (d < best) { best = d; target = mk; } }
   const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 💬注釈そのものに着地+着地時raw抑止
   const ok = jumpMeDockTargetLine(String(land + 1));
   try { const col = editor.document.lineAt(land).text.length; editor.selection = new vscode.Selection(new vscode.Position(land, col), new vscode.Position(land, col)); } catch (_) {}
@@ -23061,13 +23061,34 @@ function meosNavWindow(editor, doc, lo, hi) {
     if (b > heads.length - 1) { b = heads.length - 1; a = b - N + 1; }
     win = { lo: heads[a], hi: heads[b] };
   }
+  // ★v4.2.125(俊克 pm02:10「日記の後半に、気温の膜が長いので、この行数は無視するんだよ」):
+  //   ★範囲の中の子膜で**見出しを1つも持たない物**は、1行に畳んで測る(気温の表・ゴミ当番など)。
+  //   ★見出しを持つ子膜は畳まない= 大きな膜の「遺伝子配列」(子膜の中の見出しの縞)はそのまま。
+  //   ★位置は win.pct(行) の1つから引く= 線もノブもドラッグの飛び先も同じ物差し。
+  const folds = [];
+  try {
+    const kids = collectPairs(doc, { excludeIndex: false }).filter(q => q.start > win.lo && q.end < win.hi).sort((x, y) => (x.start - y.start) || (y.end - x.end));
+    let last = -1;
+    for (const q of kids) {
+      if (q.start <= last) continue;                                  // 畳んだ子膜の中の孫膜は数えない
+      let has = false; for (const h of heads) { if (h >= q.start && h <= q.end) { has = true; break; } if (h > q.end) break; }
+      if (!has) { folds.push(q); last = q.end; }
+    }
+  } catch (_) { }
+  const cut = folds.reduce((t, q) => t + (q.end - q.start), 0);
+  const span = Math.max(1, (win.hi - win.lo) - cut);
+  win.pct = function (L) {
+    let x = L - win.lo;
+    for (const q of folds) { if (L > q.end) x -= (q.end - q.start); else if (L > q.start) { x -= (L - q.start); break; } else break; }
+    return Math.max(0, Math.min(1, x / span));
+  };
   __meosNavWinCache = { key: key, win: win };
   return win;
 }
-function meosNavTicks(doc, lines, lo, span) {
+function meosNavTicks(doc, lines, win) {
   const bins = new Map();
   for (const L of lines) {
-    const p = Math.max(0, Math.min(1, (L - lo) / span)); const key = Math.round(p * 1000);
+    const p = win.pct(L); const key = Math.round(p * 1000);
     const had = bins.get(key); if (had && had.b) continue;
     const k = targetColorKeys(doc.lineAt(L).text || '', L + 1 < doc.lineCount ? (doc.lineAt(L + 1).text || '') : '');
     if (had && !(k && k.bg)) continue;
@@ -23093,10 +23114,9 @@ function headNavStateForEditor(editor) {
   }
   const ck = curText ? targetColorKeys(curText, curLine0 + 1 < doc.lineCount ? (doc.lineAt(curLine0 + 1).text || '') : '') : null; // v0.9.99925: ノブ色=現在見出しの色
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 大きな膜は前後20個の範囲
-  const span = Math.max(1, win.hi - win.lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
-  const linePct = Math.max(0, Math.min(1, (baseLine - win.lo) / span));
-  const ticks = meosNavTicks(doc, headLines.filter(L => L >= win.lo && L <= win.hi), win.lo, span);   // v4.2.122: 300個で打ち切らない
+  const linePct = win.pct(baseLine);   // v4.2.125: 見出しの無い子膜は1行
+  const ticks = meosNavTicks(doc, headLines.filter(L => L >= win.lo && L <= win.hi), win);   // v4.2.122: 300個で打ち切らない
   return { count: count, index: index, linePct: linePct, win: win.lo + '-' + win.hi, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
@@ -23156,10 +23176,9 @@ function markNavStateForEditor(editor) {
   for (let i = lo; i <= hi; i++) { const t = doc.lineAt(i).text || ''; if (isAnyMark(t)) total++; if (markNavHit(t)) { count++; markLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; } }
   const ck = curText ? targetColorKeys(curText, curLine0 + 1 < doc.lineCount ? (doc.lineAt(curLine0 + 1).text || '') : '') : null; // v0.9.99925: ノブ色=現在注釈/見出しの色
   const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 見出しと同じ範囲
-  const span = Math.max(1, win.hi - win.lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
-  const linePct = Math.max(0, Math.min(1, (baseLine - win.lo) / span));
-  const ticks = meosNavTicks(doc, markLines.filter(L => L >= win.lo && L <= win.hi), win.lo, span);   // v4.2.122: 300個で打ち切らない
+  const linePct = win.pct(baseLine);   // v4.2.125: 見出しの無い子膜は1行
+  const ticks = meosNavTicks(doc, markLines.filter(L => L >= win.lo && L <= win.hi), win);   // v4.2.122: 300個で打ち切らない
   return { count: count, total: total, index: index, linePct: linePct, win: win.lo + '-' + win.hi, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
