@@ -22986,7 +22986,8 @@ function navMeHeadingJumpTo(n) {
   const heads = [];
   for (let i = lo; i <= hi; i++) { if (reHead.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) heads.push(i); } // v4.0.177: 真下の指定行も渡す(FC形の見出し)
   if (!heads.length) return false;
-  const desired = lo + Math.max(0, Math.min(1, Number(n) || 0)) * (hi - lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し
+  const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: バーと同じ範囲
+  const desired = win.lo + Math.max(0, Math.min(1, Number(n) || 0)) * (win.hi - win.lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り見出し
   let target = heads[0], best = Infinity;
   for (const h of heads) { const d = Math.abs(h - desired); if (d < best) { best = d; target = h; } }
   const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 見出しそのものに着地+着地時raw抑止
@@ -23004,7 +23005,8 @@ function navMeMarkJumpTo(n) {
   const marks = [];
   for (let i = lo; i <= hi; i++) { if (markNavHit(doc.lineAt(i).text || '')) marks.push(i); }
   if (!marks.length) return false;
-  const desired = lo + Math.max(0, Math.min(1, Number(n) || 0)) * (hi - lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り注釈
+  const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: バーと同じ範囲
+  const desired = win.lo + Math.max(0, Math.min(1, Number(n) || 0)) * (win.hi - win.lo); // v0.9.99929: n=行番号フラクション(0..1)→最寄り注釈
   let target = marks[0], best = Infinity;
   for (const mk of marks) { const d = Math.abs(mk - desired); if (d < best) { best = d; target = mk; } }
   const land = target; setRefNoRaw(doc, target); // v1.0.12(改良2): 💬注釈そのものに着地+着地時raw抑止
@@ -23035,6 +23037,29 @@ function targetColorKeys(text) {
 //   ★真因= v0.9.99935(6/28)から「300個を超えたら線を1本も送らない」打ち切りだった。生涯日記が300見出しを越えた日から真っ白。
 //   ★実測= 生涯日記(24.5万行)の見出し5400個の色を全部決めても 約5ms= 打ち切るほど重くない。
 //   ★線は 1000段に丸めて同じ段は1本(色つきを優先)= 何千個でもバーの画素より細かい線は送らない。
+// ★v4.2.123(俊克 pm00:11「現在地の前後20個だけをバー表示すればいいんじゃないか?」pm00:13「1つの膜の中の話だよ。
+//   そんなデカイ膜の時に、このBirdのスクロールバーは使わないでしょ」):
+//   ★バーの縮尺= 膜の見出しが41個までは膜の頭〜末尾(今まで通り)。それを超える膜では**現在地の前後20個の見出し**の間。
+//   ★見出しも💬も、線・ノブ・ドラッグの飛び先はこの同じ範囲から引く(数える「89 / 2672」と↑↓の巡回は膜全体のまま)。
+const MEOS_NAV_WINDOW_HALF = 20;
+let __meosNavWinCache = null;
+function meosNavWindow(editor, doc, lo, hi) {
+  const curEff = editor.selection.active.line + 1;   // 見出しの index と同じ数え方(park-above)
+  const key = doc.uri.toString() + '|' + doc.version + '|' + lo + '|' + hi + '|' + curEff;
+  if (__meosNavWinCache && __meosNavWinCache.key === key) return __meosNavWinCache.win;
+  const heads = [];
+  for (let i = lo; i <= hi; i++) { if (MEOS_NAV_HEAD_RE.test(doc.lineAt(i).text || '', i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) heads.push(i); }
+  let win = { lo: lo, hi: hi };
+  const N = MEOS_NAV_WINDOW_HALF * 2 + 1;
+  if (heads.length > N) {
+    let cur = -1; for (let k = 0; k < heads.length && heads[k] <= curEff; k++) cur = k;
+    let a = Math.max(0, cur - MEOS_NAV_WINDOW_HALF), b = a + N - 1;
+    if (b > heads.length - 1) { b = heads.length - 1; a = b - N + 1; }
+    win = { lo: heads[a], hi: heads[b] };
+  }
+  __meosNavWinCache = { key: key, win: win };
+  return win;
+}
 function meosNavTicks(doc, lines, lo, span) {
   const bins = new Map();
   for (const L of lines) {
@@ -23063,10 +23088,11 @@ function headNavStateForEditor(editor) {
     if (reHead.test(t, i + 1 <= hi ? (doc.lineAt(i + 1).text || '') : '')) { count++; headLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; }
   }
   const ck = curText ? targetColorKeys(curText) : null; // v0.9.99925: ノブ色=現在見出しの色
-  const span = Math.max(1, hi - lo);
+  const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 大きな膜は前後20個の範囲
+  const span = Math.max(1, win.hi - win.lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
-  const linePct = Math.max(0, Math.min(1, (baseLine - lo) / span));
-  const ticks = meosNavTicks(doc, headLines, lo, span);   // v4.2.122: 300個で打ち切らない
+  const linePct = Math.max(0, Math.min(1, (baseLine - win.lo) / span));
+  const ticks = meosNavTicks(doc, headLines.filter(L => L >= win.lo && L <= win.hi), win.lo, span);   // v4.2.122: 300個で打ち切らない
   return { count: count, index: index, linePct: linePct, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
@@ -23125,10 +23151,11 @@ function markNavStateForEditor(editor) {
   const markLines = [];
   for (let i = lo; i <= hi; i++) { const t = doc.lineAt(i).text || ''; if (isAnyMark(t)) total++; if (markNavHit(t)) { count++; markLines.push(i); if (i <= curEff) { index++; curText = t; curLine0 = i; } if (i < curEff) hasBefore = true; if (i > curEff) hasAfter = true; } }
   const ck = curText ? targetColorKeys(curText) : null; // v0.9.99925: ノブ色=現在注釈/見出しの色
-  const span = Math.max(1, hi - lo);
+  const win = meosNavWindow(editor, doc, lo, hi);   // v4.2.123: 見出しと同じ範囲
+  const span = Math.max(1, win.hi - win.lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
-  const linePct = Math.max(0, Math.min(1, (baseLine - lo) / span));
-  const ticks = meosNavTicks(doc, markLines, lo, span);   // v4.2.122: 300個で打ち切らない
+  const linePct = Math.max(0, Math.min(1, (baseLine - win.lo) / span));
+  const ticks = meosNavTicks(doc, markLines.filter(L => L >= win.lo && L <= win.hi), win.lo, span);   // v4.2.122: 300個で打ち切らない
   return { count: count, total: total, index: index, linePct: linePct, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
