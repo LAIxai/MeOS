@@ -24513,7 +24513,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-title{font-size:12px;font-weight:900;color:#d18400}
 .toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-hand);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}
+.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-palm);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}   /* v4.2.132(俊克「タブの上に来たら、手の平に変えなきゃ駄目だよ」): 掴める物の上は手の平 */
 .toc-tab.dragging{opacity:.4}
 .toc-tab.drop-left{box-shadow:inset 3px 0 0 #d18400;background:rgba(210,132,0,.18)}
 .toc-tab.drop-right{box-shadow:inset -3px 0 0 #d18400;background:rgba(210,132,0,.18)}
@@ -28042,7 +28042,7 @@ idx});}
 from:_dragTabIdx,to:_pendingTo});}}
   /* ★v4.2.131(俊克「H-TOCのタブのドラッグがこのテストに最適。今は、OSの指差しが出るけど、握りに変わらない」):
      HTML5 DnD はドラッグ中の手をブラウザ/OSが握る(CSS cursor が効かない)→ pointer 系に作り替え(Bird-EV のノブと同じ)。
-     乗せる=指差し / 押す=手の平 / 4px 動かす=握り(body に印を付けて、どこの上でも同じ手)。
+     乗せる=手の平(v4.2.132) / 押す=手の平 / 4px 動かす=握り(body に印を付けて、どこの上でも同じ手)。
      ★位置は clientX でなく**掴んだタブの四角+offsetX**から(Me Dock では clientX と四角が別の物差し= v4.2.129 の実測)。 */
   let _tabPress=null;let _tabSuppressClick=false;
   function _tabPointX(ev,tab){const r=tab.getBoundingClientRect();const sx=tab.offsetWidth?r.width/tab.offsetWidth:1;return r.left+(ev.offsetX||0)*sx;}
