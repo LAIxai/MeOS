@@ -24214,7 +24214,7 @@ body.clk-open [data-tip]::after{display:none!important}
 /* v4.0.436(俊克「□ ~~ にtipがなかなか出てこない」)= CSSのtipの家に入っていなかったので共有のJS製tipに
    落ちていた(出るまで間が空く)。家に入れた。
    ★v4.0.437(俊克「tipが被っている。**上の方が良いよ**」)= 下に出すとパネルの中身を覆う。家の既定(上)へ戻す。 */
-.nss-head[data-tip]::after,.nss-mark[data-tip]::after{left:auto;right:calc(100% + 8px);bottom:auto;top:50%;transform:translateY(-50%)}
+.nss-head[data-tip]::after,.nss-mark[data-tip]::after{left:auto;right:calc(100% + 8px);bottom:auto;top:50%;transform:translateY(-50%);width:max-content;height:auto;white-space:nowrap}   /* v4.2.121(俊克「Bird-EVのノブのtipが切れている」): ノブの中の白い点 .nss::after の height:5px をtipが受け継いで、5px の箱に字がはみ出していた */
 /* v3.1.35(俊克 v3.1.34直し残し): .head-nav容器内のボタン(#箱/💬箱の↑↓=長いtipで右端見切れ・(4/4)のBack/Forward=TOPに被る)は右寄せで左へ伸ばす=見切れ/被り解消。 */
 .head-nav .nav-center-btn[data-tip]::after{left:auto;right:0;transform:none}
 /* v3.1.37(俊克 個別): head-nav-btn(Back/Forward等17px円ボタン=font-weight:900)のtipだけ太字が残る→最高特異度で普通体を強制。 */
@@ -25967,7 +25967,7 @@ navHeadNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));/* v0.9.99924: �
 window.__navHeadCount=c;renderTicks('nav-ticks-head',st&&st.ticks);/* v0.9.99930: 全見出しtick＋灰ノブ */const m=document.getElementById('nav-scroll-head');
 if(m){if(c<1){m.classList.add('empty');m.removeAttribute('data-pct');}else{m.classList.remove('empty');const lp=(st&&typeof st.linePct==='number')?st.linePct:0;
 const repos=(window.__navOnly==='head')||!m.hasAttribute('data-pct');if(repos&&!window.__dragNav){m.style.top=(8+lp*84)+'%';
-m.setAttribute('data-pct',String(lp));m.setAttribute('data-tip','# Heading '+(idx||0)+' / '+c);}m.title=m.getAttribute('data-tip')||('# Heading '+(idx||0)+' / '+c);
+m.setAttribute('data-pct',String(lp));m.setAttribute('data-tip','# Heading '+(idx||0)+' / '+c);}/* v4.2.121: 数秒後に右下へ出る2つ目のtip= この title(OSの吹き出し)。tipは data-tip の ::after 1つだけにする */
 }}const grp=navHeadPrev.closest?navHeadPrev.closest('.nav-head-group'):null;if(grp)grp.title=(c>0?('Heading '+(idx||0)+' / '+c+'  —  '):'')+'Jump between ##[…]## headings within the current membrane.';
 }
 if(navMarkPrev)navMarkPrev.addEventListener('click',()=>{window.__navOnly='mark';vscode.postMessage({type:'navMarkJump',
@@ -25980,7 +25980,7 @@ navMarkNext.classList.toggle('wrap-edge',!!(st&&st.plusWraps));/* v0.9.99924: �
 window.__navMarkCount=c;renderTicks('nav-ticks-mark',st&&st.ticks);/* v0.9.99930: 全未チェック注釈tick＋灰ノブ */const m=document.getElementById('nav-scroll-mark');
 if(m){if(c<1){m.classList.add('empty');m.removeAttribute('data-pct');}else{m.classList.remove('empty');const lp=(st&&typeof st.linePct==='number')?st.linePct:0;
 const repos=(window.__navOnly==='mark')||!m.hasAttribute('data-pct');if(repos&&!window.__dragNav){m.style.top=(8+lp*84)+'%';
-m.setAttribute('data-pct',String(lp));m.setAttribute('data-tip','💬 Comment '+(idx||0)+' / '+c);}m.title=m.getAttribute('data-tip')||('💬 Comment '+(idx||0)+' / '+c);
+m.setAttribute('data-pct',String(lp));m.setAttribute('data-tip','💬 Comment '+(idx||0)+' / '+c);}/* v4.2.121: 数秒後に右下へ出る2つ目のtip= この title(OSの吹き出し)。tipは data-tip の ::after 1つだけにする */
 }}const grp=navMarkPrev.closest?navMarkPrev.closest('.mark-nav'):null;if(grp)grp.title=(c>0?('未チェック '+(idx||0)+'＃'+c+(tot>c?('（全'+tot+'）'):'')+'  —  '):'')+'Jump between review notes (highlights / strikethroughs) in the current membrane.';
 }
 /* v0.9.99927: 統一スクロールバーのドラッグ→N番目へジャンプ(俊克 6/27 pm06:48) */
