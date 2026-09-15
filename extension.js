@@ -28066,9 +28066,13 @@ _tabTrack(x);});
   /* ★v4.2.135(俊克「少しドラッグした方向に先読みして、縦線を出すようにしようよ」pm03:44「先読みするのは1つ先までだよ。
      表示した縦線を越えた時に、その先に縦線を移動すれば良いんだよ」):
      4px 動かした時点で、動かした向きの**隣のタブの向こう**に線(1つ先だけ先読み)。その線を指が越えたら、次の隙間へ1つずつ進む。 */
-  function _tabLeadTab(x){const p=_tabPress;if(!p)return null;const dx=x-p.x0;if(Math.abs(dx)<4)return p.tab;const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const me=tabs.indexOf(p.tab);const R=t=>t.getBoundingClientRect();
-if(dx>0){if(me+1>=tabs.length)return p.tab;let k=me+1;while(k+1<tabs.length&&x>(R(tabs[k]).right+R(tabs[k+1]).left)/2)k++;return tabs[k];}
-if(me-1<0)return p.tab;let k=me-1;while(k-1>=0&&x<(R(tabs[k-1]).right+R(tabs[k]).left)/2)k--;return tabs[k];}
+  /* ★v4.2.136(俊克 pm03:47「かなり先読みが早過ぎる嫌いはある。次のタブの3分の1くらいに来た時に、縦線を出すようにした方が自然」):
+     指が隣のタブの**3分の1**まで入ったら、そのタブの向こうに線。さらに先のタブも同じ規則で1つずつ(越えた分だけ進む)。入っていなければ線なし。 */
+  function _tabLeadTab(x){const p=_tabPress;if(!p)return null;const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const me=tabs.indexOf(p.tab);let hit=p.tab;
+for(let k=me+1;k<tabs.length;k++){const r=tabs[k].getBoundingClientRect();if(x>r.left+r.width/3)hit=tabs[k];else break;}
+if(hit!==p.tab)return hit;
+for(let k=me-1;k>=0;k--){const r=tabs[k].getBoundingClientRect();if(x<r.right-r.width/3)hit=tabs[k];else break;}
+return hit;}
   function _tabTrack(x){const tab=_tabLeadTab(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
 const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_tabCaret(tab,overIdx>_dragTabIdx);
 _pendingTo=overIdx;}else{_pendingTo=null;_tabCaret(null);}}
