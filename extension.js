@@ -23031,6 +23031,21 @@ function targetColorKeys(text) {
     return { fg: sp2.fgKey || null, bg: sp2.bgKey || null };
   } catch (_) { return null; }
 }
+// ★v4.2.122(俊克 2026.09.15 pm00:01「見出しが多くなると、スクロールバーに縞模様がまったく見えなくなって、真っ白。1ヶ月以上前から」):
+//   ★真因= v0.9.99935(6/28)から「300個を超えたら線を1本も送らない」打ち切りだった。生涯日記が300見出しを越えた日から真っ白。
+//   ★実測= 生涯日記(24.5万行)の見出し5400個の色を全部決めても 約5ms= 打ち切るほど重くない。
+//   ★線は 1000段に丸めて同じ段は1本(色つきを優先)= 何千個でもバーの画素より細かい線は送らない。
+function meosNavTicks(doc, lines, lo, span) {
+  const bins = new Map();
+  for (const L of lines) {
+    const p = Math.max(0, Math.min(1, (L - lo) / span)); const key = Math.round(p * 1000);
+    const had = bins.get(key); if (had && had.b) continue;
+    const k = targetColorKeys(doc.lineAt(L).text || '');
+    if (had && !(k && k.bg)) continue;
+    bins.set(key, { p: p, f: k ? k.fg : null, b: k ? k.bg : null });
+  }
+  return Array.from(bins.values());
+}
 function headNavStateForEditor(editor) {
   if (!editor || !editor.document) return { count: 0, plusWraps: false, minusWraps: false };
   const doc = editor.document;
@@ -23051,7 +23066,7 @@ function headNavStateForEditor(editor) {
   const span = Math.max(1, hi - lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
   const linePct = Math.max(0, Math.min(1, (baseLine - lo) / span));
-  const ticks = headLines.length <= 300 ? headLines.map(L => { const k = targetColorKeys(doc.lineAt(L).text || ''); return { p: Math.max(0, Math.min(1, (L - lo) / span)), f: k ? k.fg : null, b: k ? k.bg : null }; }) : [];
+  const ticks = meosNavTicks(doc, headLines, lo, span);   // v4.2.122: 300個で打ち切らない
   return { count: count, index: index, linePct: linePct, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
@@ -23113,7 +23128,7 @@ function markNavStateForEditor(editor) {
   const span = Math.max(1, hi - lo);
   const baseLine = (curLine0 != null) ? curLine0 : Math.max(lo, Math.min(curEff - 1, hi));
   const linePct = Math.max(0, Math.min(1, (baseLine - lo) / span));
-  const ticks = markLines.length <= 300 ? markLines.map(L => { const k = targetColorKeys(doc.lineAt(L).text || ''); return { p: Math.max(0, Math.min(1, (L - lo) / span)), f: k ? k.fg : null, b: k ? k.bg : null }; }) : [];
+  const ticks = meosNavTicks(doc, markLines, lo, span);   // v4.2.122: 300個で打ち切らない
   return { count: count, total: total, index: index, linePct: linePct, ticks: ticks, fg: ck ? ck.fg : null, bg: ck ? ck.bg : null, plusWraps: count >= 2 && !hasAfter, minusWraps: count >= 2 && !hasBefore };
 }
 
