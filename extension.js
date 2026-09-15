@@ -24512,11 +24512,12 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-name-row{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,213,92,.13);border-bottom:1px solid rgba(210,140,0,.25)}
 .toc-title{font-size:12px;font-weight:900;color:#d18400}
 .toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
-.toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
+.toc-tab-row{position:relative;display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
 .toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-palm);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}   /* v4.2.132(俊克「タブの上に来たら、手の平に変えなきゃ駄目だよ」): 掴める物の上は手の平 */
 .toc-tab.dragging{opacity:.4}
-.toc-tab.drop-left{box-shadow:inset 3px 0 0 #ffffff;background:rgba(210,132,0,.18)}   /* v4.2.133(俊克「挿入位置に白色の縦線マークを入れるといいよね」): 橙→白= 橙のタブの上で埋もれない */
-.toc-tab.drop-right{box-shadow:inset -3px 0 0 #ffffff;background:rgba(210,132,0,.18)}
+.toc-tab.drop-left{background:rgba(210,132,0,.18)}
+.toc-tab.drop-right{background:rgba(210,132,0,.18)}
+.toc-tab-caret{position:absolute;width:3px;margin-left:-1.5px;background:#ffffff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.45);pointer-events:none;z-index:5}   /* v4.2.134(俊克「この形ではなく、縦線を上書き(見かけ上)してよ」): タブの中に塗るのをやめ、タブとタブの隙間に白い縦線を1本重ねる */
 .toc-tab:hover{background:rgba(255,213,92,.18)}
 .toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
 .toc-tab-ops{margin-left:auto;display:inline-flex;gap:2px;align-items:center;padding-bottom:2px}
@@ -28035,7 +28036,7 @@ idx});}
   // v0.9.768: タブのドラッグ並べ替え(HTML5 DnD・イベント委譲。innerHTML再生成されてもtocTabRowは残る)。
   let _dragTabIdx=null;
   let _pendingTo=null;       /* v0.9.772: dragoverで「今表示している挿入線」の対象idx。 */
-  function _clearDropMarks(){tocTabRow.querySelectorAll('.toc-tab.dragging,.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('dragging','drop-left','drop-right'));
+  function _clearDropMarks(){tocTabRow.querySelectorAll('.toc-tab.dragging,.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('dragging','drop-left','drop-right'));_tabCaret(null);
 }
   /* v0.9.773: 「見えている挿入線(_pendingTo)」に入れる。dropはパネル外で離すと発火しないので、必ず発火するdragendでも確定する(=どこで離しても線が出ていれば移動)。 */
   function _commitTabReorder(){if(_dragTabIdx!==null&&_pendingTo!==null&&!isNaN(_dragTabIdx)&&!isNaN(_pendingTo)&&_dragTabIdx!==_pendingTo){vscode.postMessage({type:'reorderHyperTocTab',
@@ -28045,6 +28046,12 @@ from:_dragTabIdx,to:_pendingTo});}}
      乗せる=手の平(v4.2.132) / 押す=手の平 / 4px 動かす=握り(body に印を付けて、どこの上でも同じ手)。
      ★位置は clientX でなく**掴んだタブの四角+offsetX**から(Me Dock では clientX と四角が別の物差し= v4.2.129 の実測)。 */
   let _tabPress=null;let _tabSuppressClick=false;
+  /* v4.2.134: 挿入位置の白い縦線= タブとタブの隙間の真ん中に重ねる。位置は offsetLeft(行の中の物差し)= clientX も四角も使わない */
+  function _tabCaret(tab,right){let c=tocTabRow.querySelector('.toc-tab-caret');if(!tab){if(c)c.remove();return;}
+if(!c){c=document.createElement('div');c.className='toc-tab-caret';tocTabRow.appendChild(c);}
+let x;if(right){const nx=tab.nextElementSibling&&tab.nextElementSibling.classList.contains('toc-tab')?tab.nextElementSibling:null;x=nx?(tab.offsetLeft+tab.offsetWidth+nx.offsetLeft)/2:tab.offsetLeft+tab.offsetWidth+1;}
+else{const pv=tab.previousElementSibling&&tab.previousElementSibling.classList.contains('toc-tab')?tab.previousElementSibling:null;x=pv?(pv.offsetLeft+pv.offsetWidth+tab.offsetLeft)/2:tab.offsetLeft-1;}
+c.style.left=x+'px';c.style.top=Math.max(0,tab.offsetTop-2)+'px';c.style.height=(tab.offsetHeight+2)+'px';}
   function _tabPointX(ev,tab){const r=tab.getBoundingClientRect();const sx=tab.offsetWidth?r.width/tab.offsetWidth:1;return r.left+(ev.offsetX||0)*sx;}
   function _resolveDropTabX(x){const tabs=tocTabRow.querySelectorAll('.toc-tab');if(!tabs.length)return null;const first=tabs[0],last=tabs[tabs.length-1];
 if(x>=last.getBoundingClientRect().right)return last;if(x<=first.getBoundingClientRect().left)return first;let best=first;
@@ -28058,10 +28065,11 @@ try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('
   tocTabRow.addEventListener('pointermove',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;const p=_tabPress;const x=_tabPointX(ev,p.tab);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
 if(typeof hideTocTip==='function')hideTocTip();}
-const tab=_resolveDropTabX(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
-const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');
-_pendingTo=overIdx;}else{_pendingTo=null;}});
-  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;_tabEndPress(true);});
+_tabTrack(x);});
+  function _tabTrack(x){const tab=_resolveDropTabX(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
+const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_tabCaret(tab,overIdx>_dragTabIdx);
+_pendingTo=overIdx;}else{_pendingTo=null;_tabCaret(null);}}
+  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved)_tabTrack(_tabPointX(ev,_tabPress.tab));/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true);});
   tocTabRow.addEventListener('pointercancel',()=>{_tabEndPress(false);});
   tocTabRow.addEventListener('lostpointercapture',()=>{if(_tabPress)_tabEndPress(true);});
   /* v4.2.131: 動かした後の click はタブ切替にしない(捕まえた要素の上で離すので click が出る) */
