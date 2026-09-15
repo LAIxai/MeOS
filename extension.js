@@ -28054,12 +28054,20 @@ if(!c){c=document.createElement('div');c.className='toc-tab-caret';tocTabRow.app
 let x;if(right){const nx=tab.nextElementSibling&&tab.nextElementSibling.classList.contains('toc-tab')?tab.nextElementSibling:null;x=nx?(tab.offsetLeft+tab.offsetWidth+nx.offsetLeft)/2:tab.offsetLeft+tab.offsetWidth+1;}
 else{const pv=tab.previousElementSibling&&tab.previousElementSibling.classList.contains('toc-tab')?tab.previousElementSibling:null;x=pv?(pv.offsetLeft+pv.offsetWidth+tab.offsetLeft)/2:tab.offsetLeft-1;}
 c.style.left=x+'px';c.style.top=Math.max(0,tab.offsetTop-2)+'px';c.style.height=(tab.offsetHeight+2)+'px';}
-  function _tabPointX(ev,tab){const r=tab.getBoundingClientRect();const sx=tab.offsetWidth?r.width/tab.offsetWidth:1;return r.left+(ev.offsetX||0)*sx;}
+  /* ★★v4.2.140(実測 v4.2.139 のログ): **clientX も offsetX も同じ「マウスの物差し」**で、タブの四角(getBoundingClientRect)はその約1.7倍。
+     v4.2.129 で「部品の中の offsetX なら四角と同じ物差し」と思い込んでいた= 手が174px進んでも計算は122px= 縦線が置き去り(俊克 pm04:11)。
+     → 押した時に、掴んだタブの幅を**マウスの物差しで**測る(elementFromPoint で右端を二分探索)。比 k = 四角の幅 / マウスの物差しの幅。
+       以後の位置 = 押した時のタブの左端(四角) + (clientX − タブの左端(マウスの物差し)) × k。 */
+  function _tabMeasure(ev,tab){const r=tab.getBoundingClientRect();const leftU=ev.clientX-(ev.offsetX||0);let k=1;
+try{const y=ev.clientY;const on=u=>{const e=document.elementFromPoint(leftU+u,y);return !!(e&&e.closest&&e.closest('.toc-tab')===tab);};
+let lo=Math.max(0,ev.offsetX||0),hi=lo+2;let g=0;while(on(hi)&&g++<12)hi*=2;if(on(lo)&&!on(hi)){for(let i=0;i<16;i++){const m=(lo+hi)/2;if(on(m))lo=m;else hi=m;}const wU=(lo+hi)/2;if(wU>2){const kk=r.width/wU;if(kk>0.3&&kk<4)k=kk;}}}catch(_){}
+return {k:k,leftU:leftU,left0:r.left};}
+  function _tabPointX(ev,tab){const p=_tabPress;if(p&&p.m)return p.m.left0+(ev.clientX-p.m.leftU)*p.m.k;const r=tab.getBoundingClientRect();return r.left+(ev.offsetX||0);}
   function _tabEndPress(commit){if(!_tabPress)return;const p=_tabPress;_tabPress=null;window.__tabPressing=false;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');if(p.moved){if(commit)_commitTabReorder();_tabSuppressClick=true;}
 _dragTabIdx=null;_pendingTo=null;_clearDropMarks();if(window.__tabPendingToc){const t=window.__tabPendingToc;window.__tabPendingToc=null;try{renderHyperTocTabs(t);}catch(_){}}}
   tocTabRow.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;_tabSuppressClick=false;const tab=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(!tab)return;
-_tabPress={tab:tab,pid:ev.pointerId,x0:_tabPointX(ev,tab),moved:false};window.__tabPressing=true;_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;
+_tabPress={tab:tab,pid:ev.pointerId,m:_tabMeasure(ev,tab),moved:false};_tabPress.x0=_tabPointX(ev,tab);window.__tabPressing=true;_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;
 try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
   tocTabRow.addEventListener('pointermove',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;const p=_tabPress;const x=_tabPointX(ev,p.tab);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
@@ -28067,7 +28075,7 @@ if(typeof hideTocTip==='function')hideTocTip();}
 _tabTrack(x);_tabDbg('move',ev,x);});
   /* ★v4.2.139: 実物で測る(台では線を越えると進むのに、実物では進まない)。Debug ログ [dock] tab… に出す */
   let _tabDbgT=0;function _tabDbg(tag,ev,x){if(tag==='move'&&Date.now()-_tabDbgT<120)return;_tabDbgT=Date.now();try{const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const p=_tabPress;
-vscode.postMessage({type:'dockDbg',text:'tab '+tag+' x='+Math.round(x)+' x0='+(p?Math.round(p.x0):'-')+' cx='+Math.round(ev.clientX)+' ox='+Math.round(ev.offsetX)+' tgt='+(ev.target&&ev.target.className)+' me='+(p?tabs.indexOf(p.tab):'-')+' conn='+(p?p.tab.isConnected:'-')+' pend='+_pendingTo+' rects='+tabs.map(t=>{const r=t.getBoundingClientRect();return Math.round(r.left)+'-'+Math.round(r.right);}).join(',')+' ow='+(p?p.tab.offsetWidth:'-')});}catch(_){}}
+vscode.postMessage({type:'dockDbg',text:'tab '+tag+' x='+Math.round(x)+' x0='+(p?Math.round(p.x0):'-')+' cx='+Math.round(ev.clientX)+' ox='+Math.round(ev.offsetX)+' tgt='+(ev.target&&ev.target.className)+' me='+(p?tabs.indexOf(p.tab):'-')+' conn='+(p?p.tab.isConnected:'-')+' pend='+_pendingTo+' rects='+tabs.map(t=>{const r=t.getBoundingClientRect();return Math.round(r.left)+'-'+Math.round(r.right);}).join(',')+' ow='+(p?p.tab.offsetWidth:'-')+' k='+(p&&p.m?p.m.k.toFixed(3):'-')});}catch(_){}}
   /* ★v4.2.135(俊克「少しドラッグした方向に先読みして、縦線を出すようにしようよ」pm03:44「先読みするのは1つ先までだよ。
      表示した縦線を越えた時に、その先に縦線を移動すれば良いんだよ」):
      4px 動かした時点で、動かした向きの**隣のタブの向こう**に線(1つ先だけ先読み)。その線を指が越えたら、次の隙間へ1つずつ進む。 */
