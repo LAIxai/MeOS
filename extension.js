@@ -24515,8 +24515,8 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-tab-row{display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
 .toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-palm);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}   /* v4.2.132(俊克「タブの上に来たら、手の平に変えなきゃ駄目だよ」): 掴める物の上は手の平 */
 .toc-tab.dragging{opacity:.4}
-.toc-tab.drop-left{box-shadow:inset 3px 0 0 #d18400;background:rgba(210,132,0,.18)}
-.toc-tab.drop-right{box-shadow:inset -3px 0 0 #d18400;background:rgba(210,132,0,.18)}
+.toc-tab.drop-left{box-shadow:inset 3px 0 0 #ffffff;background:rgba(210,132,0,.18)}   /* v4.2.133(俊克「挿入位置に白色の縦線マークを入れるといいよね」): 橙→白= 橙のタブの上で埋もれない */
+.toc-tab.drop-right{box-shadow:inset -3px 0 0 #ffffff;background:rgba(210,132,0,.18)}
 .toc-tab:hover{background:rgba(255,213,92,.18)}
 .toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
 .toc-tab-ops{margin-left:auto;display:inline-flex;gap:2px;align-items:center;padding-bottom:2px}
