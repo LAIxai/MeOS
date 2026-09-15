@@ -28064,7 +28064,10 @@ try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('
   tocTabRow.addEventListener('pointermove',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;const p=_tabPress;const x=_tabPointX(ev,p.tab);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
 if(typeof hideTocTip==='function')hideTocTip();}
-_tabTrack(x);});
+_tabTrack(x);_tabDbg('move',ev,x);});
+  /* ★v4.2.139: 実物で測る(台では線を越えると進むのに、実物では進まない)。Debug ログ [dock] tab… に出す */
+  let _tabDbgT=0;function _tabDbg(tag,ev,x){if(tag==='move'&&Date.now()-_tabDbgT<120)return;_tabDbgT=Date.now();try{const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const p=_tabPress;
+vscode.postMessage({type:'dockDbg',text:'tab '+tag+' x='+Math.round(x)+' x0='+(p?Math.round(p.x0):'-')+' cx='+Math.round(ev.clientX)+' ox='+Math.round(ev.offsetX)+' tgt='+(ev.target&&ev.target.className)+' me='+(p?tabs.indexOf(p.tab):'-')+' conn='+(p?p.tab.isConnected:'-')+' pend='+_pendingTo+' rects='+tabs.map(t=>{const r=t.getBoundingClientRect();return Math.round(r.left)+'-'+Math.round(r.right);}).join(',')+' ow='+(p?p.tab.offsetWidth:'-')});}catch(_){}}
   /* ★v4.2.135(俊克「少しドラッグした方向に先読みして、縦線を出すようにしようよ」pm03:44「先読みするのは1つ先までだよ。
      表示した縦線を越えた時に、その先に縦線を移動すれば良いんだよ」):
      4px 動かした時点で、動かした向きの**隣のタブの向こう**に線(1つ先だけ先読み)。その線を指が越えたら、次の隙間へ1つずつ進む。 */
@@ -28082,7 +28085,7 @@ return p.tab;}
   function _tabTrack(x){const tab=_tabLeadTab(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
 const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_tabCaret(tab,overIdx>_dragTabIdx);
 _pendingTo=overIdx;}else{_pendingTo=null;_tabCaret(null);}}
-  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved)_tabTrack(_tabPointX(ev,_tabPress.tab));/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true);});
+  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved){_tabTrack(_tabPointX(ev,_tabPress.tab));_tabDbg('up',ev,_tabPointX(ev,_tabPress.tab));}/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true);});
   tocTabRow.addEventListener('pointercancel',()=>{_tabEndPress(false);});
   /* ★v4.2.138: v4.2.135 の window blur で片付ける仕掛けは外した= Me Dock は押した直後に焦点を本文へ返すことがあり、そのたびにドラッグを打ち切っていた(俊克「縦線が出ないことが何度もある」) */
   tocTabRow.addEventListener('lostpointercapture',()=>{if(_tabPress)_tabEndPress(true);});
