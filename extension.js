@@ -28068,9 +28068,12 @@ _tabTrack(x);});
      4px 動かした時点で、動かした向きの**隣のタブの向こう**に線(1つ先だけ先読み)。その線を指が越えたら、次の隙間へ1つずつ進む。 */
   /* ★v4.2.136(俊克 pm03:47「かなり先読みが早過ぎる嫌いはある。次のタブの3分の1くらいに来た時に、縦線を出すようにした方が自然」):
      指が隣のタブの**3分の1**まで入ったら、そのタブの向こうに線。さらに先のタブも同じ規則で1つずつ(越えた分だけ進む)。入っていなければ線なし。 */
+  /* ★v4.2.137(俊克 pm03:55「端のタブを移動する時は、ドラッグしたら直ぐに、縦線を出した方がいいよ」): 左端を右へ・右端を左へは行き先が一方にしか無い= 4px 動かしたら直ぐに隣の向こうへ線(その先は 1/3 の規則) */
   function _tabLeadTab(x){const p=_tabPress;if(!p)return null;const tabs=[...tocTabRow.querySelectorAll('.toc-tab')];const me=tabs.indexOf(p.tab);let hit=p.tab;
+if(me===0&&tabs.length>1&&x-p.x0>=4)hit=tabs[1];
 for(let k=me+1;k<tabs.length;k++){const r=tabs[k].getBoundingClientRect();if(x>r.left+r.width/3)hit=tabs[k];else break;}
 if(hit!==p.tab)return hit;
+if(me===tabs.length-1&&me>0&&p.x0-x>=4)hit=tabs[me-1];
 for(let k=me-1;k>=0;k--){const r=tabs[k].getBoundingClientRect();if(x<r.right-r.width/3)hit=tabs[k];else break;}
 return hit;}
   function _tabTrack(x){const tab=_tabLeadTab(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
