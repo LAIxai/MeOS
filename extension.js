@@ -2658,6 +2658,12 @@ function meosGripCursor() {
   if (n === 'macos') return MEOS_GRIP_CURSOR_MAC;
   return 'grabbing';                                                            // OS はそのまま
 }
+// ★v4.2.152(俊克 2026.09.16 am11:36「テーブルに関する記事の流れで言えば、折り返し幅を今回入れよう。
+//   貴方が作った表で、テーブルボタンで整形しても、折り返し幅が短くて、奇麗に整形できないことがよくあるから」):
+//   ★超漢字の一覧(第21回)= **変形手=つまもうとする / つまみ=形や大きさを変えている間**。折り返し幅は「大きさを変える」= この2つの担当。
+//   📌俊克の変形手/つまみの絵が届くまでは OS の ew-resize / col-resize。届いたらこの2つの関数に足すだけ。
+function meosPinchCursor() { return 'ew-resize'; }
+function meosPinchedCursor() { return 'col-resize'; }
 let membraneArrowHandDecoration;   // ★v4.2.75: ▼/▼▲/▲ の当たり= 手の形(cursor:pointer)
 // v0.9.606: mNT rendering now reuses the standard mCN pretty-label pipeline; only
 // the ▼/▲ glyph is augmented with 📒 to mark the cell envelope. No custom decoration types.
@@ -24034,7 +24040,7 @@ function meDockHtml() {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
 <style>
-:root{--meos-hand:${meosHandCursor()};--meos-palm:${meosPalmCursor()};--meos-grip:${meosGripCursor()};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
+:root{--meos-hand:${meosHandCursor()};--meos-palm:${meosPalmCursor()};--meos-grip:${meosGripCursor()};--meos-pinch:${meosPinchCursor()};--meos-pinched:${meosPinchedCursor()};} /* v4.2.79: MeOSの手(BTRONへのオマージュ)= 本文の装飾と同じ1つの定数 */
 /* {* ▼mCN=dock_css // Me Dock のCSS(見た目) *} */
 
 :root{color-scheme:light dark}
@@ -24536,6 +24542,11 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .toc-tab.dragging{opacity:.4}
 .toc-tab.drop-left{background:rgba(210,132,0,.18)}
 .toc-tab.drop-right{background:rgba(210,132,0,.18)}
+.tw-wrap-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 10px;font-size:11px;color:var(--vscode-foreground)}   /* v4.2.152: 折り返し幅を摘んで変える */
+.tw-wrap-grip{cursor:var(--meos-pinch);user-select:none;touch-action:none;padding:2px 10px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.18);font-weight:700;min-width:64px;text-align:center}
+.tw-wrap-grip:hover{background:rgba(127,127,127,.3)}
+.tw-wrap-grip.on{cursor:var(--meos-pinched);background:rgba(127,127,127,.42)}
+body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .toc-tab-caret{position:absolute;width:3px;margin-left:-1.5px;background:#ffffff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.45);pointer-events:none;z-index:5}   /* v4.2.134(俊克「この形ではなく、縦線を上書き(見かけ上)してよ」): タブの中に塗るのをやめ、タブとタブの隙間に白い縦線を1本重ねる */
 .toc-tab:hover{background:rgba(255,213,92,.18)}
 .toc-tab.active{background:rgba(245,158,11,.30);border-color:#d18400;color:#d18400;font-weight:700}
@@ -25402,7 +25413,7 @@ color:#ffffff;z-index:4;padding:0}
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
 
 <!-- {* ▼mCN=dock_tablemenu // 表のメニュー *} -->
-<div class="bm-pop" id="table-pop"><button class="bm-pop-item" id="table-autocalc-toggle" data-tip="Auto-calc: live + save — checkbox | Checked (default) = auto: totals update live on screen as you switch cells (the file is not touched), and are committed into the file on save (Cmd+S). Unchecked = manual: totals show the last value and recompute only when you press ▦ (Excel manual calc + F9). Changed cells flash green either way (auto = on cell-switch / save, manual = on ▦)."><span class="tw-check meos-chk">□</span>Auto-calc: live + save</button><button class="bm-pop-item" id="table-recalc-all" data-tip="Re-calculate all | Recompute and bake every table inside the membrane the cursor is in (or the whole document if not inside one). One click bakes all results into the file at once and flashes what changed — useful in both modes (e.g. commit every table now without saving, or refresh several tables in manual mode). A notification shows how many cells changed.">Re-calculate all</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="table-dup-row" data-tip="Duplicate the current row → (rows run across; a copy is inserted below — edit either the original or the copy).">⧉ Duplicate row→</button><button class="bm-pop-item" id="table-del-row" data-tip="Delete the current row → (rows run across).">✕ Delete row→</button><button class="bm-pop-item" id="table-dup-col" data-tip="Duplicate the column at the cursor ↓ (columns run down; a copy is inserted to its right). On a merge anchor (🤝→N cell — even declared in another row) the whole merged unit is duplicated; on a column to its right, only that one column.">⧉ Duplicate column↓</button><button class="bm-pop-item" id="table-del-col" data-tip="Delete the column at the cursor ↓ (columns run down). On a merge anchor (🤝→N cell — even declared in another row) the whole merged unit is deleted; on a column to its right, only that one column.">✕ Delete column↓</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="table-wrap-toggle" data-tip="Membrane this table | Wrap the table the cursor is in as a MeOS membrane, so its range is explicit and Current Me can jump to its tail (great for very long tables). Checked = wrapped; click to toggle."><span class="tw-check meos-chk">□</span>Membrane this table</button></div>
+<div class="bm-pop" id="table-pop"><button class="bm-pop-item" id="table-autocalc-toggle" data-tip="Auto-calc: live + save — checkbox | Checked (default) = auto: totals update live on screen as you switch cells (the file is not touched), and are committed into the file on save (Cmd+S). Unchecked = manual: totals show the last value and recompute only when you press ▦ (Excel manual calc + F9). Changed cells flash green either way (auto = on cell-switch / save, manual = on ▦)."><span class="tw-check meos-chk">□</span>Auto-calc: live + save</button><button class="bm-pop-item" id="table-recalc-all" data-tip="Re-calculate all | Recompute and bake every table inside the membrane the cursor is in (or the whole document if not inside one). One click bakes all results into the file at once and flashes what changed — useful in both modes (e.g. commit every table now without saving, or refresh several tables in manual mode). A notification shows how many cells changed.">Re-calculate all</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><div class="tw-wrap-row" data-tip="Wrap width | Pinch the number and drag left or right to change where lines wrap (editor.wordWrapColumn). The table formatter lays out columns inside this width, so a narrow wrap is what breaks a wide table. The body re-wraps while you drag."><span>Wrap width</span><span class="tw-wrap-grip" id="tw-wrap-grip"><span id="tw-wrap-val">80</span></span></div></div><button class="bm-pop-item" id="table-dup-row" data-tip="Duplicate the current row → (rows run across; a copy is inserted below — edit either the original or the copy).">⧉ Duplicate row→</button><button class="bm-pop-item" id="table-del-row" data-tip="Delete the current row → (rows run across).">✕ Delete row→</button><button class="bm-pop-item" id="table-dup-col" data-tip="Duplicate the column at the cursor ↓ (columns run down; a copy is inserted to its right). On a merge anchor (🤝→N cell — even declared in another row) the whole merged unit is duplicated; on a column to its right, only that one column.">⧉ Duplicate column↓</button><button class="bm-pop-item" id="table-del-col" data-tip="Delete the column at the cursor ↓ (columns run down). On a merge anchor (🤝→N cell — even declared in another row) the whole merged unit is deleted; on a column to its right, only that one column.">✕ Delete column↓</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="table-wrap-toggle" data-tip="Membrane this table | Wrap the table the cursor is in as a MeOS membrane, so its range is explicit and Current Me can jump to its tail (great for very long tables). Checked = wrapped; click to toggle."><span class="tw-check meos-chk">□</span>Membrane this table</button></div>
 <!-- {* ▲mCN=dock_tablemenu *} --></div><!-- v4.0.198: row format-tools を閉じる。v4.0.197でメニューを消した時に、この1つを巻き込んでいた -->
 
 
@@ -27417,6 +27428,7 @@ const fmtTableBtn=document.getElementById('fmt-table');if(fmtTableBtn)fmtTableBt
 /* v0.9.999150: 表整形ボタン */
 const fmtTableCaret=document.getElementById('fmt-table-caret'),tablePop=document.getElementById('table-pop');function closeTablePop(){if(typeof closeClkPop==='function')closeClkPop();if(tablePop)tablePop.classList.remove('on');
 }if(fmtTableCaret&&tablePop){fmtTableCaret.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const willOpen=!tablePop.classList.contains('on');
+if(willOpen)vscode.postMessage({type:'requestWrapColumn'});   /* v4.2.152: 今の折り返し幅を出す */
 if(willOpen&&typeof window.__renderTableWrapCheck==='function')window.__renderTableWrapCheck();if(willOpen&&typeof window.__renderTableAutoCalcCheck==='function')window.__renderTableAutoCalcCheck();
 if(willOpen&&typeof hideTocTip==='function')hideTocTip();/* v3.0.5(俊克 改良1): メニューを開いた瞬間に、既に表示中の▼のtipを消す(クリックしてもマウス静止だとshowTocTipが再発火せずtipが残っていた)。 */tablePop.classList.toggle('on',willOpen);
 if(!willOpen)return;const r=fmtTableCaret.getBoundingClientRect();requestAnimationFrame(()=>{const h=tablePop.offsetHeight||60,
@@ -27533,6 +27545,23 @@ w=boldPop.offsetWidth||150;var left=Math.min(r.right-w,window.innerWidth-w-6);if
 boldPop.style.top=Math.max(6,r.top-h-6)+'px';});});}
 document.addEventListener('click',function(ev){if(boldPop&&boldPop.classList.contains('on')&&ev.target.closest&&!ev.target.closest('#bold-pop')&&!ev.target.closest('#fmt-bold-caret'))closeBoldPop();
 });
+/* ★v4.2.152: 折り返し幅の摘み= 数字を摘んで左右に動かす(4pxで1桁)。本文は動かしながら折り返し直る。
+   位置は掴んだ部品の四角から測る(Me Dockはマウスと四角が別の物差し= v4.2.140 の実測)。 */
+{const grip=document.getElementById('tw-wrap-grip'),val=document.getElementById('tw-wrap-val');let pr=null,last=0;
+const meas=(ev,el)=>{const r=el.getBoundingClientRect();const leftU=ev.clientX-(ev.offsetX||0);let k=1;
+try{const y=ev.clientY;const on=u=>{const e=document.elementFromPoint(leftU+u,y);return !!(e&&(e===el||(e.closest&&e.closest('#tw-wrap-grip')===el)));};
+let lo=Math.max(0,ev.offsetX||0),hi=lo+2,g=0;while(on(hi)&&g++<12)hi*=2;if(on(lo)&&!on(hi)){for(let i=0;i<16;i++){const m=(lo+hi)/2;if(on(m))lo=m;else hi=m;}const wU=(lo+hi)/2;if(wU>2){const kk=r.width/wU;if(kk>0.3&&kk<4)k=kk;}}}catch(_){}
+return {k:k,leftU:leftU,left0:r.left};};
+const px=(ev,m)=>m.left0+(ev.clientX-m.leftU)*m.k;
+if(grip){grip.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;ev.preventDefault();ev.stopPropagation();const m=meas(ev,grip);
+pr={m:m,x0:px(ev,m),v0:Number(val.textContent)||80,pid:ev.pointerId};try{grip.setPointerCapture(ev.pointerId);}catch(_){}
+grip.classList.add('on');document.body.classList.add('meos-pinching');if(typeof hideTocTip==='function')hideTocTip();});
+grip.addEventListener('pointermove',ev=>{if(!pr||ev.pointerId!==pr.pid)return;const v=Math.max(40,Math.min(200,pr.v0+Math.round((px(ev,pr.m)-pr.x0)/4)));
+if(String(v)===val.textContent)return;val.textContent=String(v);const now=Date.now();if(now-last<70)return;last=now;vscode.postMessage({type:'setWrapColumn',value:v});});
+const end=()=>{if(!pr)return;pr=null;grip.classList.remove('on');document.body.classList.remove('meos-pinching');vscode.postMessage({type:'setWrapColumn',value:Number(val.textContent)||80});};
+grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);
+grip.addEventListener('click',ev=>{ev.stopPropagation();});}
+window.__renderWrapCol=function(v){if(val&&v)val.textContent=String(v);};}
 [['table-recalc-all','recalcAll'],['table-dup-row','tableDupRow'],['table-del-row','tableDelRow'],['table-dup-col','tableDupCol'],['table-del-col','tableDelCol']].forEach(([id,ty])=>{const b=document.getElementById(id);
 if(b)b.addEventListener('click',()=>{vscode.postMessage({type:ty});closeTablePop();});});/* v0.9.999165: 行/列の複製・削除 *//* v4.0.462: ⏰の▾も、外を押したら閉じる(表の▾と同じ作法。ただし自分の門番を持つ= 相手の状態に相乗りしない) */
 document.addEventListener('click',ev=>{if(clkPop&&clkPop.classList.contains('on')&&!clkPop.contains(ev.target)&&ev.target!==clkCaret)closeClkPop();});
@@ -28366,7 +28395,7 @@ for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.text
 _t.addEventListener('click',function(){try{vscode.postMessage({type:'copyFileAndUd'});}catch(_e){}});
 _ud.appendChild(_t);}
 }
-return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));document.documentElement.style.setProperty('--meos-palm',String(m.palm||'grab'));document.documentElement.style.setProperty('--meos-grip',String(m.grip||'grabbing'));}catch(e){}try{var _hp=document.getElementById('hand-pick');if(_hp){['btron','macos','system'].forEach(function(k){_hp.classList.toggle('is-'+k,m.hand===k);});if(m.hand==='system')_hp.setAttribute('data-tip','${MEOS_HAND_TIP}');else{_hp.removeAttribute('data-tip');hideTocTip();}   /* v4.2.118: tip は OS の時だけ */}}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
+return;}if(m&&m.type==='wrapColumn'){/* v4.2.152 */try{if(typeof window.__renderWrapCol==='function')window.__renderWrapCol(Number(m.value)||80);}catch(e){}return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));document.documentElement.style.setProperty('--meos-palm',String(m.palm||'grab'));document.documentElement.style.setProperty('--meos-grip',String(m.grip||'grabbing'));document.documentElement.style.setProperty('--meos-pinch',String(m.pinch||'ew-resize'));document.documentElement.style.setProperty('--meos-pinched',String(m.pinched||'col-resize'));}catch(e){}try{var _hp=document.getElementById('hand-pick');if(_hp){['btron','macos','system'].forEach(function(k){_hp.classList.toggle('is-'+k,m.hand===k);});if(m.hand==='system')_hp.setAttribute('data-tip','${MEOS_HAND_TIP}');else{_hp.removeAttribute('data-tip');hideTocTip();}   /* v4.2.118: tip は OS の時だけ */}}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
 if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);
@@ -29162,6 +29191,22 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'installVsix') { await meosInstallVsix(); return; }   // v4.2.67
+    if (message && message.type === 'requestWrapColumn') {   // ★v4.2.152: 今の折り返し幅を返す
+      try {
+        const cfg = vscode.workspace.getConfiguration('editor');
+        meDockPanel.webview.postMessage({ type: 'wrapColumn', value: Math.max(40, Math.min(200, Number(cfg.get('wordWrapColumn', 80)) || 80)) });
+      } catch (_) { }
+      return;
+    }
+    if (message && message.type === 'setWrapColumn') {   // ★v4.2.152: 摘んで動かした幅を設定へ(本文はその場で折り返し直る)
+      try {
+        const v = Math.max(40, Math.min(200, Number(message.value) || 80));
+        const cfg = vscode.workspace.getConfiguration('editor');
+        cfg.update('wordWrapColumn', v, vscode.ConfigurationTarget.Global);
+        if (String(cfg.get('wordWrap', 'off')) === 'off') cfg.update('wordWrap', 'wordWrapColumn', vscode.ConfigurationTarget.Global);   // 幅を指定しても 'off' では折り返さない
+      } catch (_) { }
+      return;
+    }
     if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
       try { const v = (message.value === 'macos' || message.value === 'system') ? message.value : 'btron'; await vscode.workspace.getConfiguration('laiMembrane').update('pointerHand', v, vscode.ConfigurationTarget.Global); } catch (_) { }
@@ -36788,7 +36833,7 @@ makeDecorations();
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
-        try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor(), palm: meosPalmCursor(), grip: meosGripCursor(), hand: meosHandName() }); } catch (_) { }
+        try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor(), palm: meosPalmCursor(), grip: meosGripCursor(), pinch: meosPinchCursor(), pinched: meosPinchedCursor(), hand: meosHandName() }); } catch (_) { }
       }
       if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); syncGutterEditorSettings(); refresh(); }
     }),
