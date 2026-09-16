@@ -27593,7 +27593,8 @@ document.addEventListener('click',function(ev){if(boldPop&&boldPop.classList.con
 const clamp=v=>Math.max(40,Math.min(200,Math.round(Number(v)||80)));
 const wf=document.getElementById('ww-track');const paint=v=>{if(wv)wv.textContent=String(v);if(ws)ws.value=String(v);if(wf)wf.style.setProperty('--ww-fill',Math.round((v-40)/1.6)+'%');if(wn&&document.activeElement!==wn)wn.value=String(v);};
 let last=0;const send=(v,force)=>{const now=Date.now();if(!force&&now-last<70)return;last=now;vscode.postMessage({type:'setWrapColumn',value:v});};
-const wsp=document.querySelector('.ww-split');window.__renderWrapCol=function(v,slot){paint(clamp(v));if(wsp&&slot!=null){wsp.classList.remove('s0','s1','s2');wsp.classList.add('s'+(Number(slot)%3));}};   /* v4.2.167: 今いる枠を色で言う */
+const wsp=document.querySelector('.ww-split');try{vscode.postMessage({type:'requestWrapColumn'});}catch(e){}   /* ★v4.2.169(俊克「インストール直後に背景色が付いていない」): 色と数字は開いた時でなく、面that出来た時に貰う */
+window.__renderWrapCol=function(v,slot){paint(clamp(v));if(wsp&&slot!=null){wsp.classList.remove('s0','s1','s2');wsp.classList.add('s'+(Number(slot)%3));}};   /* v4.2.167: 今いる枠を色で言う */
 if(wb&&wp){wb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const on=!wp.classList.contains('on');wp.classList.toggle('on',on);wb.classList.toggle('on',on);
 if(on){vscode.postMessage({type:'requestWrapColumn'});if(typeof hideTocTip==='function')hideTocTip();}});
 document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.contains(ev.target)&&ev.target!==wb&&!wb.contains(ev.target)){wp.classList.remove('on');wb.classList.remove('on');}});   /* v4.2.162(俊克「折り返しボタン単独の時には、やはり角丸四角に」): 外を押して閉じた時もボタンの角を丸に戻す */}
