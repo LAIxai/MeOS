@@ -25762,7 +25762,8 @@ function renderHyperTocTabs(toc){
     const active=t.active?' active':'';
     const name=escText(t.name||'Hyper TOC');
     const count=Number(t.itemCount||0);
-    return '<div class="toc-tab'+active+'" data-tab-idx="'+String(t.idx)+'" data-tip="'+name+' ('+count+' items) — drag to reorder">'+name+'</div>';
+    /* v4.2.145(俊克「H-TOCタブのドラッグの時にtipは不要。ポインタの形がその意味を示しているんだからね」): タブのtipを外す= 手の平と握りが「掴んで動かせる」を語る */
+    return '<div class="toc-tab'+active+'" data-tab-idx="'+String(t.idx)+'">'+name+'</div>';
   }).join('');
   const opsHtml='<div class="toc-tab-ops"><button class="toc-tab-btn" id="toc-tab-add" data-tip="Duplicate this tab">＋</button><button class="toc-tab-btn" id="toc-tab-del" data-tip="Delete this tab">−</button></div>';
   const _h=tabsHtml+opsHtml;if(tocTabRow.__html===_h&&tocTabRow.querySelector('.toc-tab'))return;tocTabRow.__html=_h;   /* v4.2.138: 中身が同じなら描き直さない */
