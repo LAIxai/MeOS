@@ -24550,9 +24550,9 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .ww-btn:hover{filter:brightness(1.15)}
 .ww-pop{position:absolute;top:100%;left:0;margin-top:-1px;display:none;align-items:center;gap:10px;padding:7px 11px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);border:1px solid var(--meos-frame);border-radius:0 9px 9px 9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}   /* v4.2.158(俊克「スクロールバーを囲む角丸四角を、ボタンの角丸四角に完全に接するように」): 隙間ゼロ(枠を1本共有)・左上の角も四角にして繋げる */
 .ww-pop.on{display:flex}
-.ww-slider{-webkit-appearance:none;appearance:none;width:130px;height:13px;background:transparent;cursor:var(--meos-hand)}   /* v4.2.157(俊克): ノブは形を変える物ではないso 選択指のまま */
-.ww-slider::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(90deg,#e0a93c var(--ww-fill,0%),color-mix(in srgb,var(--vscode-editor-background) 55%,#e8c46a 45%) var(--ww-fill,0%))}
-.ww-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-4.5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe38a,#f0a828 60%,#c8801a);box-shadow:0 0 0 1px rgba(0,0,0,.4);cursor:var(--meos-hand)}   /* v4.2.157(俊克「ノブに色を付けようよ」): 金の玉(手の切替ボタンと同じ家の色) */
+.ww-slider{-webkit-appearance:none;appearance:none;width:130px;height:14px;background:transparent;cursor:var(--meos-hand);overflow:hidden;border-radius:4px}   /* v4.2.157: ノブは形を変える物ではないso 選択指のまま / v4.2.160(俊克「ノブが移動した後、スクロールバーの下に潜り込む」): 溝の塗りを**ノブの影**で作る= 塗りを描き直さないso重なりの順が崩れない */
+.ww-slider::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:color-mix(in srgb,var(--vscode-editor-background) 55%,#e8c46a 45%)}
+.ww-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-4px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe38a,#f0a828 60%,#c8801a);box-shadow:0 0 0 1px rgba(0,0,0,.4),-140px 0 0 134px #e0a93c;cursor:var(--meos-hand)}   /* v4.2.157(俊克「ノブに色を付けようよ」): 金の玉 / v4.2.160: 左の塗りはこの影(溝の中に隠れる) */
 .ww-num{width:46px;font-size:11px;font-weight:700;text-align:center;font-family:ui-monospace,Menlo,monospace;border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);padding:2px 0}
 .tw-wrap-grip{cursor:var(--meos-pinch);user-select:none;touch-action:none;padding:2px 10px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.18);font-weight:700;min-width:64px;text-align:center}
 .tw-wrap-grip:hover{background:rgba(127,127,127,.3)}
@@ -25309,7 +25309,9 @@ color:#ffffff;z-index:4;padding:0}
 .bm-pop #bm-pending-resolve{order:3}
 .bm-pop #bm-pending-front{order:4;color:#dc2626;font-weight:700}
 .bm-pop #bm-pending-front:hover{background:rgba(220,38,38,.14)}
-.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:var(--meos-hand)}
+.fixed-toc-item{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:4px;padding:4px 6px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;cursor:default}   /* ★v4.2.160(俊克「膜名の上では文字カーソル形状にして、クリックすると選択と同時に文字編集ができる。周辺の選択手は廃止。チェックボックス上では選択指」): 押せる物の上だけ手= 行の地は手を出さない */
+.fixed-toc-item .toc-value,.fixed-toc-item .toc-disp{cursor:text}
+.toc-check{cursor:var(--meos-hand)}
 .fixed-toc-item:hover{background:var(--vscode-list-hoverBackground)}
 .fixed-toc-item.selected{background:rgba(245,158,11,.26);box-shadow:inset 3px 0 0 #d18400}
 .fixed-toc-item.selected .toc-value{border-color:#d18400;background:rgba(255,213,92,.16)}
