@@ -24545,9 +24545,10 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* ★v4.2.156(俊克 pm00:33「Wrap widthはスクロールバー方式に。値でも入力できるように。これはテーブルというより、エディタの基本設定so、マウス形状の横に折り返し設定ボタンを」):
    表の▾から出して、Me Dock の右上(手の切替の隣)へ。作りは家の中の同じ役の部品= A のズーム(mz-split/mz-pop)をそのまま真似る。 */
 .ww-split{position:relative;display:inline-block;margin-right:6px}
-.ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}
+.ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:rgba(200,160,74,.16);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
+.ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:rgba(200,160,74,.26)}
 .ww-btn:hover{filter:brightness(1.15)}
-.ww-pop{position:absolute;top:100%;left:0;margin-top:8px;display:none;align-items:center;gap:10px;padding:8px 12px;background:var(--vscode-editorWidget-background,var(--vscode-sideBar-background));border:1px solid var(--vscode-panel-border);border-radius:9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}
+.ww-pop{position:absolute;top:100%;left:0;margin-top:-1px;display:none;align-items:center;gap:10px;padding:7px 11px;background:rgba(200,160,74,.10);border:1px solid var(--meos-frame);border-radius:0 9px 9px 9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}   /* v4.2.158(俊克「スクロールバーを囲む角丸四角を、ボタンの角丸四角に完全に接するように」): 隙間ゼロ(枠を1本共有)・左上の角も四角にして繋げる */
 .ww-pop.on{display:flex}
 .ww-slider{-webkit-appearance:none;appearance:none;width:130px;height:13px;background:transparent;cursor:var(--meos-hand)}   /* v4.2.157(俊克): ノブは形を変える物ではないso 選択指のまま */
 .ww-slider::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--meos-frame) var(--ww-fill,0%),rgba(127,127,127,.35) var(--ww-fill,0%))}
@@ -27561,7 +27562,7 @@ const clamp=v=>Math.max(40,Math.min(200,Math.round(Number(v)||80)));
 const paint=v=>{if(wv)wv.textContent=String(v);if(ws){ws.value=String(v);ws.style.setProperty('--ww-fill',Math.round((v-40)/1.6)+'%');}if(wn&&document.activeElement!==wn)wn.value=String(v);};
 let last=0;const send=(v,force)=>{const now=Date.now();if(!force&&now-last<70)return;last=now;vscode.postMessage({type:'setWrapColumn',value:v});};
 window.__renderWrapCol=function(v){paint(clamp(v));};
-if(wb&&wp){wb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const on=!wp.classList.contains('on');wp.classList.toggle('on',on);
+if(wb&&wp){wb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const on=!wp.classList.contains('on');wp.classList.toggle('on',on);wb.classList.toggle('on',on);
 if(on){vscode.postMessage({type:'requestWrapColumn'});if(typeof hideTocTip==='function')hideTocTip();}});
 document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.contains(ev.target)&&ev.target!==wb&&!wb.contains(ev.target))wp.classList.remove('on');});}
 if(ws)ws.addEventListener('input',()=>{const v=clamp(ws.value);paint(v);send(v);});
