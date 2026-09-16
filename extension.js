@@ -24545,13 +24545,13 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* ★v4.2.156(俊克 pm00:33「Wrap widthはスクロールバー方式に。値でも入力できるように。これはテーブルというより、エディタの基本設定so、マウス形状の横に折り返し設定ボタンを」):
    表の▾から出して、Me Dock の右上(手の切替の隣)へ。作りは家の中の同じ役の部品= A のズーム(mz-split/mz-pop)をそのまま真似る。 */
 .ww-split{position:relative;display:inline-block;margin-right:6px}
-.ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:rgba(200,160,74,.16);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
-.ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:rgba(200,160,74,.26)}
+.ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.159(俊克「半透明になっちゃった。薄めのパステル色で」): 透かさない= 地の色に金を混ぜた不透明の色 */   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
+.ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e8c46a 28%)}
 .ww-btn:hover{filter:brightness(1.15)}
-.ww-pop{position:absolute;top:100%;left:0;margin-top:-1px;display:none;align-items:center;gap:10px;padding:7px 11px;background:rgba(200,160,74,.10);border:1px solid var(--meos-frame);border-radius:0 9px 9px 9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}   /* v4.2.158(俊克「スクロールバーを囲む角丸四角を、ボタンの角丸四角に完全に接するように」): 隙間ゼロ(枠を1本共有)・左上の角も四角にして繋げる */
+.ww-pop{position:absolute;top:100%;left:0;margin-top:-1px;display:none;align-items:center;gap:10px;padding:7px 11px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);border:1px solid var(--meos-frame);border-radius:0 9px 9px 9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}   /* v4.2.158(俊克「スクロールバーを囲む角丸四角を、ボタンの角丸四角に完全に接するように」): 隙間ゼロ(枠を1本共有)・左上の角も四角にして繋げる */
 .ww-pop.on{display:flex}
 .ww-slider{-webkit-appearance:none;appearance:none;width:130px;height:13px;background:transparent;cursor:var(--meos-hand)}   /* v4.2.157(俊克): ノブは形を変える物ではないso 選択指のまま */
-.ww-slider::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--meos-frame) var(--ww-fill,0%),rgba(127,127,127,.35) var(--ww-fill,0%))}
+.ww-slider::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(90deg,#e0a93c var(--ww-fill,0%),color-mix(in srgb,var(--vscode-editor-background) 55%,#e8c46a 45%) var(--ww-fill,0%))}
 .ww-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-4.5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe38a,#f0a828 60%,#c8801a);box-shadow:0 0 0 1px rgba(0,0,0,.4);cursor:var(--meos-hand)}   /* v4.2.157(俊克「ノブに色を付けようよ」): 金の玉(手の切替ボタンと同じ家の色) */
 .ww-num{width:46px;font-size:11px;font-weight:700;text-align:center;font-family:ui-monospace,Menlo,monospace;border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);padding:2px 0}
 .tw-wrap-grip{cursor:var(--meos-pinch);user-select:none;touch-action:none;padding:2px 10px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.18);font-weight:700;min-width:64px;text-align:center}
