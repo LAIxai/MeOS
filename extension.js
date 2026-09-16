@@ -29191,19 +29191,28 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'installVsix') { await meosInstallVsix(); return; }   // v4.2.67
-    if (message && message.type === 'requestWrapColumn') {   // ★v4.2.152: 今の折り返し幅を返す
+    if (message && (message.type === 'requestWrapColumn' || message.type === 'setWrapColumn')) {
+      // ★★v4.2.154(俊克 pm00:12 バグ1「値が変化するけど、実際の折り返しが変化したように見えない。なぜ?」):
+      //   ★★真因= 俊克の設定には **`[markdown]` の言語別の折り返し幅(80)** が在り、Markdown ではそちらが勝つ。
+      //     v4.2.152 は言語別でない方(45)を書いていたので、数字だけ動いて本文は1行も変わらなかった。
+      //   ★**読む所と書く所を、今そこで効いている1つに揃える**= 今の本文の言語で読み、同じ言語の欄へ書く。
       try {
-        const cfg = vscode.workspace.getConfiguration('editor');
-        meDockPanel.webview.postMessage({ type: 'wrapColumn', value: Math.max(40, Math.min(200, Number(cfg.get('wordWrapColumn', 80)) || 80)) });
-      } catch (_) { }
-      return;
-    }
-    if (message && message.type === 'setWrapColumn') {   // ★v4.2.152: 摘んで動かした幅を設定へ(本文はその場で折り返し直る)
-      try {
-        const v = Math.max(40, Math.min(200, Number(message.value) || 80));
-        const cfg = vscode.workspace.getConfiguration('editor');
-        cfg.update('wordWrapColumn', v, vscode.ConfigurationTarget.Global);
-        if (String(cfg.get('wordWrap', 'off')) === 'off') cfg.update('wordWrap', 'wordWrapColumn', vscode.ConfigurationTarget.Global);   // 幅を指定しても 'off' では折り返さない
+        const ed = getMeDockTargetEditor ? getMeDockTargetEditor() : vscode.window.activeTextEditor;
+        const doc = ed && ed.document;
+        const scope = doc ? { uri: doc.uri, languageId: doc.languageId } : undefined;
+        const cfg = vscode.workspace.getConfiguration('editor', scope);
+        if (message.type === 'setWrapColumn') {
+          const v = Math.max(40, Math.min(200, Number(message.value) || 80));
+          const ins = cfg.inspect('wordWrapColumn') || {};
+          const target = (ins.workspaceFolderValue !== undefined || ins.workspaceFolderLanguageValue !== undefined) ? vscode.ConfigurationTarget.WorkspaceFolder
+            : (ins.workspaceValue !== undefined || ins.workspaceLanguageValue !== undefined) ? vscode.ConfigurationTarget.Workspace
+              : vscode.ConfigurationTarget.Global;                                   // 今その値が書いてある所に書く(無ければ自分の設定へ)
+          const lang = !!doc;                                                        // 言語別の欄に書く= 今見ている本文に効く
+          cfg.update('wordWrapColumn', v, target, lang);
+          if (String(cfg.get('wordWrap', 'off')) === 'off') cfg.update('wordWrap', 'wordWrapColumn', target, lang);   // 'off' のままでは幅を変えても折り返さない
+        } else {
+          meDockPanel.webview.postMessage({ type: 'wrapColumn', value: Math.max(40, Math.min(200, Number(cfg.get('wordWrapColumn', 80)) || 80)) });
+        }
       } catch (_) { }
       return;
     }
