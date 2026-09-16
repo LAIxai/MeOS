@@ -2397,12 +2397,14 @@ console.log('㊸ f/p の書き換え(俊克 2026.09.11 am01:34 / am01:48)');
 console.log('㊹ MeOSの手(v4.2.79 俊克「手の形のマウスをすべて、BTRON様式に」)');
 {
  const S79=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/^const MEOS_HAND_CURSOR = 'image-set\(url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) 1x(?:, url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) [24]x)+\) 1 1, pointer';$/m.test(S79),
-    '★★★手は1つの定数(1x＋2x/4x・指先が当たり・読めなければOSの手)', true);
+ /* v4.2.173: 倍率は 1x/4x 固定をやめ、出す大きさで決める(v4.2.151= 1.2x/4.8x で20px幅)。読むのは「2枚組＋当たり＋読めなければOSの手」の形だけ。 */
+ ok(/^const MEOS_HAND_CURSOR = 'image-set\(url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) [\d.]+x(?:, url\("data:image\/png;base64,[A-Za-z0-9+\/=]+"\) [\d.]+x)+\) \d+ \d+, pointer';$/m.test(S79),
+    '★★★手は1つの定数(2枚組・角が当たり・読めなければOSの手)', true);
  ok(!/cursor: ?'pointer'[^)]/.test(S79.replace("return 'pointer';",'')) && !/textDecoration: '[^']*cursor: pointer/.test(S79),
     '★★★本文の装飾に素の pointer は残っていない', true);
  const W=S79.slice(S79.indexOf('return `<!DOCTYPE html>'), S79.indexOf('</script></body></html>`;'));
- ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{meosHandCursor\(\)\};\}/.test(W),
+ /* v4.2.152: :root は手だけでなく、手の平・握り・変形手・つまみも一緒に配る */
+ ok(!/cursor:pointer/.test(W) && /:root\{--meos-hand:\$\{meosHandCursor\(\)\};--meos-palm:\$\{meosPalmCursor\(\)\};--meos-grip:\$\{meosGripCursor\(\)\};/.test(W),
     '★★★Me Dock も同じ定数から(素の cursor:pointer は0)', (W.match(/cursor:pointer/g)||[]).length);
 }
 console.log('㊺ f/p の見た目は f だけ / Opt+クリックで最初から(v4.2.92)');

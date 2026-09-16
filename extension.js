@@ -12044,6 +12044,7 @@ async function meosGoBackFromAlarm() {
 //     ステータスバー1つでは「どの膜の残りか」thatが言えず、2つ掛けたら片方thatが消える。膜の物は膜に置く。
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosClockPlayDeco = null;   // ★v4.2.74: 運転ボタンの当たり= 手の形(cursor:pointer)
+let meosClockTitleDeco = null;  // ★v4.2.173: 走っている1本のタイトル(待っている⏰のタイトルは畳む)
 let meosTimerLineDeco = null;
 let meosClockDoneDeco = null;   // v4.1.14: 済んだ ⏰ の印(✓)を白で浮かせる
 // ★★★v4.1.61(俊克 改良1「UFCでの一時停止表示⏸の文字色を白色にしよう。他が橙色なので、
@@ -12164,6 +12165,11 @@ function meosApplyTimerLineDecorations(editor) {
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];   // v4.1.148 / v4.1.176
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
+    // ★★v4.2.173(俊克 2026.09.17 am02:30「//以降のコメント部分は常時表示するべきではない。Rawモードにすれば確認できる。
+    //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
+    //   ★★**タイトルは、走っている1本だけthat見せる**= 待っている⏰の `// …` は畳んで消す。
+    //   ★見せる時は**下端と同じ字**= 周回数を入れた形(meosChainFillSlot)。字を作る所は1つ(v4.2.91の下端と同じ関数)。
+    const titles = [], _titleAt = new Map();
     const _nowAll = Date.now();   // v4.1.130: この一回の描画の「今」は1つ(2つの顔thatずれない)
     const uri = doc.uri.toString();
     const byId = new Map(), legacy = new Map(), scById = new Map();   // v4.1.60: 向きも引けるように
@@ -12239,6 +12245,15 @@ function meosApplyTimerLineDecorations(editor) {
                 let _k9 = _c9; while (_k9 > 0 && txt.charAt(_k9 - 1) === ' ') _k9--;
                 badgeHide.push(new vscode.Range(i, _k9, i, txt.length));           // ` -->` を消す
               }
+              try {   // ★v4.2.173: `// タイトル` を畳む(走っている1本だけ、下で同じ場所へ描き直す)
+                const _e73 = (_c9 > 0 ? _c9 : txt.length);
+                const _h73 = txt.lastIndexOf('//', _e73);
+                if (_h73 > _p0) {
+                  let _s73 = _h73; while (_s73 > 0 && txt.charAt(_s73 - 1) === ' ') _s73--;
+                  let _t73 = _e73; while (_t73 > 0 && txt.charAt(_t73 - 1) === ' ') _t73--;
+                  if (_t73 > _s73) { badgeHide.push(new vscode.Range(i, _s73, i, _t73)); _titleAt.set(i, _s73); }
+                }
+              } catch (_) { }
               // ★★★v4.2.52(俊克 2026.09.11 am01:12「ただし連番が表示されないよね」
               //   ＋ pm06:43「1.の部分に見せかけの値を表示する」):
               //   ★★★**見せかけの番号を、並びの何本目かで描く**= 本文には1文字も書かない。
@@ -12532,6 +12547,14 @@ function meosApplyTimerLineDecorations(editor) {
             if (_rndOut && _rp) _rndIn = '\u00d7' + _rp[0] + '/' + _rp[1];
           } catch (_) { }
           const _rnd = _rndOut;
+          // ★v4.2.173: ここは**掛かっている1本**だけthat通る道so、タイトルを出すのもここ1か所。
+          try {
+            const _ta73 = _titleAt.get(i);
+            if (_ta73 != null && c.title) titles.push({
+              range: new vscode.Range(i, _ta73, i, _ta73),
+              renderOptions: { after: { contentText: '  ' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0), color: '#9aa0a6', fontStyle: 'normal' } }
+            });
+          } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
           //   ★★★**同じ位置に、同じ種類の装飾を2つ置いた**= VS Codeは描く順を約束しないので、
           //     秒ごとに前後thatが入れ替わっていた。
@@ -12689,6 +12712,8 @@ function meosApplyTimerLineDecorations(editor) {
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockRoundDeco, rounds);   // v4.1.140: 周回数は別の駒(色も場所も顔と分ける)
+    if (!meosClockTitleDeco) meosClockTitleDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosClockTitleDeco, titles);   // ★v4.2.173: 走っている1本のタイトル(下端と同じ字)
     if (meosClockDoneDeco) editor.setDecorations(meosClockDoneDeco, dones);
     if (meosClockPauseOutDeco) editor.setDecorations(meosClockPauseOutDeco, pausesOut);
     if (meosClockDirDownDeco) editor.setDecorations(meosClockDirDownDeco, dirDown);
