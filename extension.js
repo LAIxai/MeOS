@@ -24199,6 +24199,10 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-pop:has(.title-file-x:hover) .title-file-hint,.title-file-pop:has(.title-file-pin:hover) .title-file-hint{opacity:1}
 /* ▾ のtipは**真上**へ= メニューは下にぶら下がるので、開いていても覆いようが無い。 */
 .title-file-caret[data-tip],.title-file-ud [data-tip]{position:relative}
+/* ★★v4.2.182(俊克「数字の上と↩️の上でtipの位置が変化する。なぜ?」): ★当たりが切り替わるたびにtipが見る箱が替わるから。○数字の上= span#ww-btn-val(CSSの無い素のinline) ○↩️の上= button#ww-btn。素の inline の箱は行ボックスに引き伸ばされるので、上端がボタンと違う。★直し= JSを触らず、**箱を安定させる**= 中の飾りは当たりを持たない(pointer-events:none)・当たりを持つ素は inline-block。 */
+#ww-btn-val{pointer-events:none}
+.title-file-ud [data-tip]{display:inline-block}
+.ud-copy>*{pointer-events:none}
 .title-file-jump[data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 7px);z-index:60;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;line-height:1.4;width:max-content;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .08s}
 .title-file-jump[data-tip]:hover::after{opacity:1}
 .title-file-caret[data-tip]::after,.title-file-ud [data-tip]::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 7px);z-index:60;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400!important;line-height:1.4;width:max-content;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .08s}
