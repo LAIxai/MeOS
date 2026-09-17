@@ -2665,7 +2665,7 @@ function meosGripCursor() {
 // ★v4.2.166: 折り返し幅の3つのプリセット(既定= 40 全部見える / 80 ふつう / 100 表を奇麗に)
 function meosWrapPresets() {
   try { const a = extensionContext.globalState.get('meosWrapPresets', null); if (Array.isArray(a) && a.length === 3) return a.map(n => Math.max(40, Math.min(200, Number(n) || 80))); } catch (_) { }
-  return [48, 80, 100];   // ★v4.2.185(俊克「40は少し狭過ぎる」): 40→48。下限の40はそのまま(手で打てばもっと狭くできる)。
+  return [47, 80, 100];   // ★v4.2.185(俊克「40は少し狭過ぎる」): 40→48。下限の40はそのまま(手で打てばもっと狭くできる)。
 }
 // 折り返し幅を書く道は1本(↻の巡回も、バーの摘みも、ここを通る)
 function meosWriteWrapColumn(cfg, doc, v) {
@@ -24610,10 +24610,10 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .ww-pop.on{display:flex}
 .ww-bar{position:relative;width:130px;height:16px;display:flex;align-items:center}   /* ★v4.2.162(俊克「ノブに付けた縁も沈み込んでいる。描画順、あるいはレイア構造の問題でしょ」): その通り= 影で塗る方式は overflow:hidden でノブごと切っていた。溝・塗り・ノブを別の層にして、順番を自分で持つ */
 .ww-track{position:absolute;left:7px;right:7px;height:4px;border-radius:2px;background:linear-gradient(90deg,#e0a93c var(--ww-fill,0%),color-mix(in srgb,var(--vscode-editor-background) 55%,#e8c46a 45%) var(--ww-fill,0%));z-index:1}   /* ★v4.2.163(俊克「角丸四角の高さが大き過ぎ。中の黄色っぽい横軸と同じ高さでいい。そうすれば自然にノブが上にはみ出る」): 溝は4pxの細い線1本・両端はノブの半径ぶん内側 */
-.ww-slider{position:relative;z-index:2;-webkit-appearance:none;appearance:none;width:130px;height:16px;background:transparent;border:0;outline:0;padding:0;border-radius:0;box-shadow:none;cursor:var(--meos-hand)}
+.ww-slider{position:relative;z-index:2;-webkit-appearance:none;appearance:none;width:160px;height:16px;background:transparent;border:0;outline:0;padding:0;border-radius:0;box-shadow:none;cursor:var(--meos-hand)}
 .ww-slider:focus,.ww-slider:focus-visible{outline:0;border:0;box-shadow:none}   /* ★v4.2.165(俊克「移動すると角張った四角がゾンビのように出てくる」): 摘むとスライダーthat選ばれ、入力欄の青枠(input:focus)that出ていた */   /* ★v4.2.164(俊克「角丸四角の高さが変わってない。なぜ?」): Me Dock 共通の input の指定(青い縁・地の色・角丸・padding)がスライダーにも掛かっていた= その四角の正体。ここで全部外す */
 .ww-slider::-webkit-slider-runnable-track{height:16px;background:transparent}
-.ww-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:1px;border:2px solid #8a6508;border-radius:50%;background:#fff6dd;box-shadow:0 1px 2px rgba(0,0,0,.5);cursor:var(--meos-hand)}   /* v4.2.161: 白い玉＋濃い金の縁= 塗りの上に浮く / v4.2.162: 切り取りをやめたのでノブは丸ごと見える */   /* v4.2.157(俊克「ノブに色を付けようよ」): 金の玉 / v4.2.160: 左の塗りはこの影(溝の中に隠れる) */
+.ww-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:1px;border:0;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.78) 0%,rgba(255,255,255,.30) 45%,rgba(255,255,255,.50) 100%);box-shadow:inset 0 2px 1px rgba(255,255,255,1),inset 0 -2px 2px rgba(0,0,0,.34),0 3px 7px rgba(0,0,0,.72);cursor:var(--meos-hand)}/* ★★v4.2.186(俊克「ノブをリキッドグラス化できるのか?」→台で見比べて選んだ F): ★縁を引かない= 本物のガラスは線で囲まれていない。上の光と下の影だけで球に見える。★銀のまま(金味を足さない)= ノブは摑む物so、地(金の溝)と同化させない。★backdrop-filter は入れない= 背後が単色の溝 so ぼかす対象が無く、台で差が出なかった。 */   /* v4.2.161: 白い玉＋濃い金の縁= 塗りの上に浮く / v4.2.162: 切り取りをやめたのでノブは丸ごと見える */   /* v4.2.157(俊克「ノブに色を付けようよ」): 金の玉 / v4.2.160: 左の塗りはこの影(溝の中に隠れる) */
 .ww-num{width:46px;font-size:11px;font-weight:700;text-align:center;font-family:ui-monospace,Menlo,monospace;border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);padding:2px 0}
 .tw-wrap-grip{cursor:var(--meos-pinch);user-select:none;touch-action:none;padding:2px 10px;border:1px solid var(--vscode-panel-border);border-radius:5px;background:rgba(127,127,127,.18);font-weight:700;min-width:64px;text-align:center}
 .tw-wrap-grip:hover{background:rgba(127,127,127,.3)}
@@ -27632,7 +27632,7 @@ document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.conta
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});   /* v4.2.166: 3つを巡る(押した所で効く) */
 if(ws)ws.addEventListener('input',()=>{const v=clamp(ws.value);paint(v);send(v);});
 if(ws)ws.addEventListener('change',()=>{const v=clamp(ws.value);paint(v);send(v,true);});
-if(wn){wn.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const v=clamp(wn.value);paint(v);send(v,true);wn.blur();}});
+if(wn){wn.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const v=clamp(wn.value);paint(v);send(v,true);wn.blur();}/* ★v4.2.186(俊克「↓/↑キーで値を変更できるように」): スライダーでは出しにくい±1を、ここで確実に。paint は焦点中の枠を書き換えない so 数字は自分で入れる。 */if(ev.key==='ArrowUp'||ev.key==='ArrowDown'){ev.preventDefault();const v=clamp((Number(wn.value)||80)+(ev.key==='ArrowUp'?1:-1));wn.value=String(v);paint(v);send(v,true);}});
 wn.addEventListener('blur',()=>{const v=clamp(wn.value);paint(v);send(v,true);});}}
 
 [['table-recalc-all','recalcAll'],['table-dup-row','tableDupRow'],['table-del-row','tableDelRow'],['table-dup-col','tableDupCol'],['table-del-col','tableDelCol']].forEach(([id,ty])=>{const b=document.getElementById(id);
