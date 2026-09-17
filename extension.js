@@ -2665,7 +2665,7 @@ function meosGripCursor() {
 // ★v4.2.166: 折り返し幅の3つのプリセット(既定= 40 全部見える / 80 ふつう / 100 表を奇麗に)
 function meosWrapPresets() {
   try { const a = extensionContext.globalState.get('meosWrapPresets', null); if (Array.isArray(a) && a.length === 3) return a.map(n => Math.max(40, Math.min(200, Number(n) || 80))); } catch (_) { }
-  return [40, 80, 100];
+  return [48, 80, 100];   // ★v4.2.185(俊克「40は少し狭過ぎる」): 40→48。下限の40はそのまま(手で打てばもっと狭くできる)。
 }
 // 折り返し幅を書く道は1本(↻の巡回も、バーの摘みも、ここを通る)
 function meosWriteWrapColumn(cfg, doc, v) {
