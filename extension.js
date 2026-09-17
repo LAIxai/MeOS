@@ -28107,7 +28107,7 @@ _ghh=tocTooltip.offsetHeight||20;tocTooltip.style.right='auto';var _gl=_gr.right
 if(_gl<2)_gl=2;tocTooltip.style.left=_gl+'px';var _gt=_gr.top-_ghh-6;if(_gt<2)_gt=_gr.bottom+6;if(_gt+_ghh>window.innerHeight-2)_gt=window.innerHeight-_ghh-2;
 tocTooltip.style.top=_gt+'px';return;}const _baEl=el.closest&&el.closest('.big-action,.nav-center-btn,.me-flip-btn,.eof-badge,.line-btn,.time-machine-trigger,.time-machine-clear,.tm-world-row,.bird-ev-label,.nss-head,.nss-mark,.nav-scroll,.me-nav-switch,.head-nav,.title-file-caret');
 if(_baEl){/* v3.1.32-33(俊克): big-action及びNavigate行(Time Machine/Bird-EV/ノブ)のtipは、要素自身の子 ::after(CSSだけ)で表示=同じzoom文脈で本家/VSCodium両方自動的に正位置。JSの共有fixed tooltipは出さない(座標計算を捨てる)。 */hideTocTip();
-return;}if(el.id==='ww-btn'||el.id==='ww-ring'){/* v4.2.168: ↻も同じ置き方(v4.2.166で足した↻は既定の道へ落ちていた= tipthat遠かった正体) *//* ★v4.2.157(俊克「表示位置は、ポインタの下端に接する位置をtipの上端に」): 手はマウスの所に居るso、要素でなくマウスから置く。手の丈は約20px(俊克の画面で実測・v4.2.151で20px幅に揃えた) */
+return;}if(el.id==='ww-btn'||el.id==='ww-ring'||el.id==='hand-pick'){/* ★v4.2.174(俊克「ポインタボタンのtipも、tipの右上角が手首に接するようにしようよ」): 手の切替ボタンもこの1つの道へ合流= v4.2.157〜172 で作った「ポインタから生える」置き方をそのまま使う(下の v4.2.119 の要素基準の分岐にはもう来ない)。 *//* v4.2.168: ↻も同じ置き方(v4.2.166で足した↻は既定の道へ落ちていた= tipthat遠かった正体) *//* ★v4.2.157(俊克「表示位置は、ポインタの下端に接する位置をtipの上端に」): 手はマウスの所に居るso、要素でなくマウスから置く。手の丈は約20px(俊克の画面で実測・v4.2.151で20px幅に揃えた) */
 var _wg=ev.target&&ev.target.getBoundingClientRect?ev.target:el;var _wr=_wg.getBoundingClientRect();
 /* ★v4.2.172(俊克「ポインタのy位置によって被り方が変わる。一定にしよう」): ★真因= 部品の中のマウスの位置(offsetX/Y)は**マウスの物差し**なのに、四角の物差しのまま足していた(v4.2.140と同じ穴)。
    → 部品の左上を両方の物差しで見て比 k を出し、offset を換算する= 部品のどこに居ても、手とtipの重なりthat一定になる。 */
