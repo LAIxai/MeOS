@@ -12007,6 +12007,7 @@ function meosClockList(limit) {
 //   → 鳴っている間だけ拍を0.4秒にする(1往復0.8秒＝息と同じ)。鳴り止めば元の1秒へ戻す。
 //   ★描き直すのは**見えている範囲の⏰行だけ**so、速くしても負担は増えない。
 let _meosTimerBar = null, _meosTimerTick = null, _meosRingBlink = null;
+let _meosTimerTitle = null, _meosTimerMore = null;   // ★v4.2.189: 最下段を色で分けるso枚を分ける(StatusBarItem は全体に1色しか持てない)
 const MEOS_RING_BLINK_MS = 400;   // 息(0.8秒)の半分= 白が点いて消えて1往復
 // ★★★v4.0.454(俊克「勝手に飛ぶのも、自分で飛ぶのも、**元いた場所に戻るのは、少し面倒**だね?」):
 //   ★★★**連れ出したのはMeOSso、帰り道もMeOSthat出す**。◀(Line history)は在ったthat、
@@ -12746,6 +12747,8 @@ function meosScheduleTimerTick() {
 }
 function meosUpdateTimerBar() {
   try {
+    // ★v4.2.189: 補助の2枚は、走っている時だけ出す(鳴っている/off の時は、それ1つを言う)
+    try { if (_meosTimerTitle) _meosTimerTitle.hide(); if (_meosTimerMore) _meosTimerMore.hide(); } catch (_) { }
     let best = null;
     for (const [k, until] of _meosPseudoUntil) if (!best || until < best.until) best = { k, until };
     if (meosIsRinging()) {                               // v4.0.469: 鳴っている間は、それthatが一番言うべきこと
@@ -12824,7 +12827,27 @@ function meosUpdateTimerBar() {
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
-    _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && (sc.title || sc.name) ? ('  ' + (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name)) : '')   /* v4.2.91: タイトルが在ればそれ */ + (n > 1 ? ('  +' + (n - 1)) : '');
+    // ★★v4.2.189(俊克「「目薬の時間です」だけを橙色にできないのか? 残時間は緑色にする。+7は灰色」):
+    //   ★StatusBarItem は文字列全体に1色しか持てないso、**枚を分ける**。
+    //   Right は priority が大きいほど左so 100 > 99 > 98 = [⏰ 残時間][タイトル][+N]。
+    const _ttl = (sc && (sc.title || sc.name)) ? (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name) : '';
+    _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc));
+    if (_ttl) {
+      if (!_meosTimerTitle) _meosTimerTitle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+      _meosTimerTitle.text = _ttl;
+      try { _meosTimerTitle.color = '#e0803a'; } catch (_) { }
+      _meosTimerTitle.command = 'lai-membrane.pseudoTimer';
+      _meosTimerTitle.tooltip = 'MeOS: what this clock is for. Click to see them all, or to go to one.';
+      _meosTimerTitle.show();
+    }
+    if (n > 1) {
+      if (!_meosTimerMore) _meosTimerMore = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 98);
+      _meosTimerMore.text = '+' + (n - 1);
+      try { _meosTimerMore.color = '#9aa0a6'; } catch (_) { }
+      _meosTimerMore.command = 'lai-membrane.pseudoTimer';
+      _meosTimerMore.tooltip = (n - 1) + ' more clock' + (n > 2 ? 's are' : ' is') + ' running. Click to see them all.';
+      _meosTimerMore.show();
+    }
     try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない / ★v4.2.54: 字の色も
     _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.' + (n > 1 ? ('\n+' + (n - 1) + ' = ' + (n - 1) + ' more clock' + (n > 2 ? 's are' : ' is') + ' running.') : '');   // ★v4.2.188(俊克「最後の「+7」は、今でも、この値が何かを思い出せない」): 字を変えず、試しに意味を添える
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
@@ -12836,7 +12859,7 @@ function meosUpdateTimerBar() {
       _meosTimerBar.backgroundColor = _warn ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
       // ★v4.2.188(俊克「ウィンドウ最下段の方も橙色にしようよ」): 本文のタイトルと同じ #e0803a。
       //   ただし最後の1分は地が警告色に変わるso、字は標準のままに戻す(読めなくならないように)。
-      _meosTimerBar.color = _warn ? undefined : '#e0803a';
+      _meosTimerBar.color = _warn ? undefined : '#3fb950';   // ★v4.2.189: 残り時間は緑(家の緑= 保存済の✕と同じ)
     } catch (_) { }
     _meosTimerBar.show();
     meosTickTimerLines();
@@ -27634,7 +27657,7 @@ if(wb&&wp){wb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagati
 if(on){vscode.postMessage({type:'requestWrapColumn'});if(typeof hideTocTip==='function')hideTocTip();}});
 document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.contains(ev.target)&&ev.target!==wb&&!wb.contains(ev.target)){wp.classList.remove('on');wb.classList.remove('on');}});   /* v4.2.162(俊克「折り返しボタン単独の時には、やはり角丸四角に」): 外を押して閉じた時もボタンの角を丸に戻す */}
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});   /* v4.2.166: 3つを巡る(押した所で効く) */
-/* ★★v4.2.188(俊克「20ピクセル以内のスライドは、ノブを動かさず、±1の変化だけをする」): ★幅や zoom をいじるのをやめ、**指の動いた量で役を分ける**= 掴んだ所から20px以内は微調整(±1だけ)・それを超えたら普段のスライダー。標準動作は止めず、微調整の間だけ答えを上書きする(物差しを混ぜない)。 */let _wdX=null,_wdV=0,_wdD=0;if(ws){ws.addEventListener('pointerdown',ev=>{_wdX=ev.clientX;_wdV=clamp(ws.value);_wdD=0;});ws.addEventListener('pointermove',ev=>{if(_wdX!=null)_wdD=ev.clientX-_wdX;});const _wEnd=()=>{_wdX=null;};ws.addEventListener('pointerup',_wEnd);ws.addEventListener('pointercancel',_wEnd);window.addEventListener('pointerup',_wEnd);}if(ws)ws.addEventListener('input',()=>{let v=clamp(ws.value);if(_wdX!=null&&Math.abs(_wdD)<=20){v=clamp(_wdV+(_wdD>0?1:_wdD<0?-1:0));ws.value=String(v);}paint(v);send(v);});
+/* ★★v4.2.188(俊克「20ピクセル以内のスライドは、ノブを動かさず、±1の変化だけをする」): ★幅や zoom をいじるのをやめ、**指の動いた量で役を分ける**= 掴んだ所から20px以内は微調整(±1だけ)・それを超えたら普段のスライダー。標準動作は止めず、微調整の間だけ答えを上書きする(物差しを混ぜない)。 */let _wdX=null,_wdV=0,_wdD=0,_wdT=0;if(ws){ws.addEventListener('pointerdown',ev=>{_wdX=ev.clientX;_wdV=clamp(ws.value);_wdD=0;_wdT=Date.now();});/* ★v4.2.189(俊克「手を止めた時点でリセットするんだよ。そうしないと、続けて増減できないよ」): 掴んだ所だけを基準にすると、20px使い切ったら微調整が終わる。→ **手が止まったら基準を引き直す**= ゆっくり動かしては止めるを繰り返せば、何度でも±1。 */ws.addEventListener('pointermove',ev=>{if(_wdX==null)return;const _n=Date.now();if(_n-_wdT>140){_wdX=ev.clientX;_wdV=clamp(ws.value);}_wdT=_n;_wdD=ev.clientX-_wdX;});const _wEnd=()=>{_wdX=null;};ws.addEventListener('pointerup',_wEnd);ws.addEventListener('pointercancel',_wEnd);window.addEventListener('pointerup',_wEnd);}if(ws)ws.addEventListener('input',()=>{let v=clamp(ws.value);if(_wdX!=null&&Math.abs(_wdD)<=20){v=clamp(_wdV+(_wdD>0?1:_wdD<0?-1:0));ws.value=String(v);}paint(v);send(v);});
 if(ws)ws.addEventListener('change',()=>{const v=clamp(ws.value);paint(v);send(v,true);});
 if(wn){wn.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const v=clamp(wn.value);paint(v);send(v,true);wn.blur();}/* ★v4.2.186(俊克「↓/↑キーで値を変更できるように」): スライダーでは出しにくい±1を、ここで確実に。paint は焦点中の枠を書き換えない so 数字は自分で入れる。 */if(ev.key==='ArrowUp'||ev.key==='ArrowDown'){ev.preventDefault();const v=clamp((Number(wn.value)||80)+(ev.key==='ArrowUp'?1:-1));wn.value=String(v);paint(v);send(v,true);}});
 wn.addEventListener('blur',()=>{const v=clamp(wn.value);paint(v);send(v,true);});}}
@@ -37026,6 +37049,8 @@ function deactivate() {
   try { if (_meosTimerTick) { clearTimeout(_meosTimerTick); _meosTimerTick = null; } } catch (_) { }
   try { if (_meosLagWatch) { clearInterval(_meosLagWatch); _meosLagWatch = null; } } catch (_) { }
   try { if (_meosTimerBar) { _meosTimerBar.dispose(); _meosTimerBar = null; } } catch (_) { }
+  try { if (_meosTimerTitle) { _meosTimerTitle.dispose(); _meosTimerTitle = null; } } catch (_) { }
+  try { if (_meosTimerMore) { _meosTimerMore.dispose(); _meosTimerMore = null; } } catch (_) { }
   try { disposeDecorations(); } catch (_) { }
   try { for (const d of disposables) d.dispose(); } catch (_) { }
 }
