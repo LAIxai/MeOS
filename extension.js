@@ -7903,7 +7903,9 @@ function applyPrettyLabels(editor) {
             const itB = { range: rB };
             if (sp.comment) { const md = new vscode.MarkdownString('💬 ' + sp.comment); md.isTrusted = false; itB.hoverMessage = md; }
             if (fk && highlightFgRangesByColor[fk]) highlightFgRangesByColor[fk].push(itB);
-            if (sp.bgKey && highlightBodyRangesByColor[sp.bgKey]) highlightBodyRangesByColor[sp.bgKey].push({ range: rB });
+            // ★v4.2.195: 見出し(v4.2.194)と同じ= 先頭の「✅ 」は背景色の外へ(埋もれ防止)。
+            const _bbl = (/^\u2705[ \u3000]?/u.exec(dtext.slice(bodyStart, bodyEndP)) || [''])[0].length;
+            if (sp.bgKey && highlightBodyRangesByColor[sp.bgKey]) highlightBodyRangesByColor[sp.bgKey].push({ range: _bbl ? new vscode.Range(line, bodyStart + _bbl, line, bodyEndP) : rB });
           }
         }
       }
@@ -36421,12 +36423,14 @@ function activate(context) {
           const _fc = out.match(/<!--([^\n]*?)-->/);
           if (_fc && HEAD_DONE_TIP_ANY.test(_fc[1])) {
             const _done = !HEAD_DONE_TIP_OPEN.test(_fc[1]);
-            const _isHead = (t) => /^\s*#{1,6}\s/.test(t);
+            // ★v4.2.195(俊克「箱条書きも同様に実装して下さい」): 見出しと同じ道を通す=
+            //   マーカー(# / - / 1.)の後ろに ✅ を置く。判定を増やさず、形の一覧に足すだけ。
+            const _isHead = (t) => /^\s*(?:#{1,6}|[-*+]|\d+[.)])\s/.test(t);
             let _hi = -1, _ht = '';
             if (_isHead(out)) { _hi = i; _ht = out; }
             else if (i > 0) { const _p = doc.lineAt(i - 1).text; if (_isHead(_p)) { _hi = i - 1; _ht = _p; } }
             if (_hi >= 0) {
-              const _hm = _ht.match(/^(\s*#{1,6}\s+)(\u2705[ \u3000]*)?/u);
+              const _hm = _ht.match(/^(\s*(?:#{1,6}|[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u);
               if (_hm) {
                 const _has = !!_hm[2];
                 if (_done && !_has) {
