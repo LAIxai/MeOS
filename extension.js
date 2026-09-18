@@ -7439,7 +7439,7 @@ function applyPrettyLabels(editor) {
         //   ★★**行末に命令も FC も無い素の番号付き項目**は数えていなかった= 描く側は行頭の `1. ` を隠して、
         //     番号の無い `•` を出していた。行頭が `N. ` なら、それ自体が「番号付き」という宣言。
         //   ★書いた数字は当てにしない(MeOSは並びで数える)= `1. 2. 3.` も `1. 1. 1.` も 1 2 3。
-        if (!_count && /^[ \t]*(?:\u2705[ \u3000]*)?\d+[.)][ \t]+\S/.test(text)) _count = true;   /* ★v4.2.198: 行頭の「✅ 」を飲む= 箱条書きの済み印はマーカーの前(v4.2.197)so、行頭を見る判定は全部これを読み飛ばないと、済んだ項目だけ列から外れる */
+        if (!_count && /^[ \t]*\d+[.)][ \t]+\S/.test(text)) _count = true;
         if (_count) {
           if (!lv || !lv.length) lv = [{ style: 'num' }];
           _numOf.set(line, meosItemNumStep(_numLv, lv));      // v4.0.299: 数え方は1つの関数から(検査も同じ物を呼ぶ)
@@ -7838,10 +7838,7 @@ function applyPrettyLabels(editor) {
       // ★行頭マーカーは**生データ**で測る。dtextはコードスパンを空白に潰しているので、`- ` の後ろの `[ \t]+` が
       //   その空白を貪欲に飲み込み、`- \`Cmd + Shift + P\` ` を丸ごとマーカー扱いして隠していた。
       //   行頭マーカーがコードスパンの中に入ることは無いので、生で測る方が常に正しい。
-      // ★★v4.2.197: 行頭の「✅ 」は**字下げの一部**として飲む= 箱条書きの✅はマーカーの前に置く(v4.2.197)so、
-      //   ここで読み飛ばないと `✅ 1. …` が箱条書きと見えなくなる。
-      //   ★組の番号を変えずに済む形にする= indent の長さに✅が入るだけso、本文の開始も隠す範囲もそのまま正しい。
-      const mPr = /^([ \t]*(?:\u2705[ \u3000]*)?)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?/.exec(text) || ['', '', '', '', ''];
+      const mPr = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?/.exec(text) || ['', '', '', '', ''];
       if (mP && (mPr[3] || mPr[2] || _dirOnly)) { // 見出しか箇条書きのどちらかであること(コメントの宣言でも可)
         const indent = mPr[1].length, bulletLen = mPr[2].length, gap = mPr[4] || '';
         let hashes = mPr[3] || '';
@@ -7897,9 +7894,16 @@ function applyPrettyLabels(editor) {
           // v4.0.58(俊克 バグ1): 箇条書きにも色を効かせる。ラベル(•/N.)は文字色に従い、本文には文字色/背景色を掛ける。
           const _bfg = (sp && sp.fgKey && HIGHLIGHT_FG_COLORS[sp.fgKey]) ? HIGHLIGHT_FG_COLORS[sp.fgKey] : null;
           // v4.0.117(俊克): 階層つきの番号。ラベルは _numOf(既に '1.' / '1.1' / '1a' の形)・深さぶんの空白は MeOS が描く
+          // ★★★v4.2.199(俊克「データと見かけを分けよう」):
+          //   ★生データは `1. ✅ 名`(マーカーの後ろ)のまま= grep ✅ も、行頭を見る判定18箇所も無傷。
+          //   ★画面だけ `✅ 1. 名` に見せる= 本文先頭の「✅ 」を隠し、ラベル(• / N.)の前に描く。
+          //   ★マーカーを隠して • を描くのと同じ作法(v4.0.53)= 家の中の同じ役の部品を真似る。
+          const _dnM = /^\u2705[ \u3000]?/u.exec(dtext.slice(bodyStart, bodyEndP));
+          const _dnL = _dnM ? _dnM[0].length : 0;
+          if (_dnL) meItemHideRanges.push(new vscode.Range(line, bodyStart, line, bodyStart + _dnL));
           const _lbl = numbered ? (_numOf.get(line) || '1.') : '•';
           const _lin = numbered ? (_numIndentOf.get(line) || 0) : 0;
-          meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: (_lin ? '\u00A0'.repeat(_lin) : '') + _lbl /* v4.0.118: 半角空白はHTMLで畳まれて消える→NBSPで寄せる */ /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: _bfg || new vscode.ThemeColor('editor.foreground'), width: (Math.max(3, _lin + _lbl.length + 1)) + 'ch' } } });
+          meItemLabelItems.push({ range: new vscode.Range(line, indent, line, indent), renderOptions: { before: { contentText: (_dnL ? '\u2705 ' : '') + (_lin ? '\u00A0'.repeat(_lin) : '') + _lbl /* v4.0.118: 半角空白はHTMLで畳まれて消える→NBSPで寄せる */ /* v4.0.57(俊克 改良1): `•`+空白2=3桁にして `N. ` と本文の開始位置を揃える */, color: _bfg || new vscode.ThemeColor('editor.foreground'), width: (Math.max(3, _lin + _lbl.length + 1) + (_dnL ? 3 : 0)) + 'ch' } } });   // ★v4.2.199: ✅の分だけ幅を足す
           if (!hashes && !(dir && dir.level) && sp && (sp.fgKey || sp.bgKey || sp.comment) && bodyEndP > bodyStart) { // 見出し無しの箇条書き=本文に色/tipを掛ける(見出しありは上の分岐が担当)
             const rB = new vscode.Range(line, bodyStart, line, bodyEndP);
             let fk = sp.fgKey; if (sp.bgKey && !fk) fk = DARK_BG_KEYS.has(sp.bgKey) ? 'white' : 'black';
@@ -19837,7 +19841,7 @@ function meosSpecCommentAfter(text, e) {
   return { raw: mew ? meosStripMewSignature(raw0) : raw0, mew, end: e + m[0].length };
 }
 const MEOS_NUM_ITEM_RE = /^[ \t]*(?:-1\{|#{1,3}-1\{)|^[ \t]*\d+[.)][ \t][^\n]*<!--[^\n]*-->[ \t]*$|^[ \t]*[-*+][ \t][^\n]*<!--[^\n]*(?:^|\s)-?1\.?(?:[\s(][^\n]*)?-->[ \t]*$/; // v4.0.61: 新形=行頭 `N. `+仕様コメント / 旧形=`- 項目<!-- 1 -->` // v4.0.59: コメント内は `1`(旧 `-1` も読む) // 連番の対象(新形 `- 項目<!-- -1 -->` と旧Me記法の両方)
-const MEOS_ANY_ITEM_RE = /^[ \t]*(?:\u2705[ \u3000]*)?(?:-1?\{|#{1,3}-1?\{|[-*+][ \t]|\d+[.)][ \t])/;   /* ★v4.2.198: 行頭の「✅ 」を飲む= 箱条書きの済み印はマーカーの前(v4.2.197)so、行頭を見る判定は全部これを読み飛ばないと、済んだ項目だけ列から外れる */ // 項目の並び(間に挟まっても連番は途切れない)
+const MEOS_ANY_ITEM_RE = /^[ \t]*(?:-1?\{|#{1,3}-1?\{|[-*+][ \t]|\d+[.)][ \t])/; // 項目の並び(間に挟まっても連番は途切れない)
 // v4.0.172(俊克 8/13 pm02:40 バグ3「箇条書きの改行で次の行に箇条書きが続けられる機能がうまく動作しない。
 //   これは、行末方式のときはうまく行っていたよね」): 次の項目へ**骨だけ**引き継ぐ(命令トークン＋色。
 //   tipは項目ごとの注釈so空にして持ち越す)。★行末方式もFC方式も**同じ1つの物差し**を使う。
@@ -21831,7 +21835,7 @@ function meosTableCellRow(lines, blk, ln) {
 // 表の全行から指定を集めて、表の下に1本のFC行として置く(既に在れば、そこへ足す)。
 // v4.0.299: 素の項目から「今の形」を命令にする（箱を揃えるための詰め物）。見た目は1文字も変わらない。
 function meosListItemDefaultDirective(text) {
-  const m = /^[ \t]*(?:\u2705[ \u3000]*)?([-*+]|\d+[.)])[ \t]/.exec(String(text == null ? '' : text));   /* ★v4.2.198: 行頭の「✅ 」を飲む= 箱条書きの済み印はマーカーの前(v4.2.197)so、行頭を見る判定は全部これを読み飛ばないと、済んだ項目だけ列から外れる */
+  const m = /^[ \t]*([-*+]|\d+[.)])[ \t]/.exec(String(text == null ? '' : text));
   if (!m) return null;
   return /^[-*+]$/.test(m[1]) ? '-' : '-1.';
 }
@@ -32168,7 +32172,7 @@ function meosTableBlockFor(lines, ln) {
 //     ③足りない時に「どれがどれか」を推測しない。
 //   ★配るのは**行に効く命令だけ**（`-1.` `-1.1` `-` `H2`）。語に効く記法（== ~~ 上付き…）は今までどおり真下を見る
 //     ＝ 既に在る道を1本も曲げない。
-const MEOS_LIST_BLOCK_RE = /^[ \t]*(?:\u2705[ \u3000]*)?(?:[-*+]|\d+[.)])[ \t]/;   /* ★v4.2.198: 行頭の「✅ 」を飲む= 箱条書きの済み印はマーカーの前(v4.2.197)so、行頭を見る判定は全部これを読み飛ばないと、済んだ項目だけ列から外れる */
+const MEOS_LIST_BLOCK_RE = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/;
 // ★★v4.0.299: **塊は1回だけ数える**。項目ごとに上下へ歩くと、n項目のリストで n×n 回になる。
 //   14万行の実データで測ったら 5項目=41ms / 100項目=253ms / 500項目=1210ms。これは**全行を回るパス**なので、
 //   そのまま入れれば v4.0.113(400ms×回数=40秒の遅延) と v4.0.154(Me Dockが10秒真っ黒) と同じ穴を3度目に掘る
@@ -34248,8 +34252,8 @@ let _meosCheckStampBusy = false;
 let _meosCheckPend = null; // { uri, line, from, to } 時刻待ちの箱と、その塊の範囲
 // その行に「対応済なのに時刻thatが無い箱」があるか。あれば入れる位置も返す。
 // ★★★v4.2.197(俊克「箱条書きのときは、・や1.の**前**に✅をいれようよ」):
-//   ★見出しと箱条書きで置き場所が違う= 見出しは `## ✅ 名` / 箱条書きは `✅ 1. 名`。
-//     (箱条書きでマーカーの後ろに置くと、番号と本文が✅で分断される)
+//   ★v4.2.199(俊克「データと見かけを分けよう」): **生データはマーカーの後ろに统一**(`## ✅ 名` / `1. ✅ 名`)。
+//     箱条書きを `✅ 1. 名` に見せるのは**装飾**の仕事= 行頭を見る判定18箇所を1つも触らない。
 //   ★**場所を決めるのはここ 1つだけ**= 時刻と一緒に入れる道も、保存時の道も、ここを引く
 //     ([[feedback_one_source_for_mark_count_action]] 片方だけ直すをやめる)。旧位置(`1. ✅`)も読める。
 function meosDoneMarkSpot(text) {
@@ -34257,12 +34261,8 @@ function meosDoneMarkSpot(text) {
     const t = String(text == null ? '' : text);
     const h = /^(\s*#{1,6}\s+)(\u2705[ \u3000]*)?/u.exec(t);
     if (h) return { ins: h[1].length, has: h[2] ? { at: h[1].length, len: h[2].length } : null };
-    const b = /^(\s*)(\u2705[ \u3000]*)?((?:[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u.exec(t);
-    if (b && b[3]) {
-      if (b[2]) return { ins: b[1].length, has: { at: b[1].length, len: b[2].length } };
-      if (b[4]) return { ins: b[1].length, has: { at: b[1].length + b[3].length, len: b[4].length } };   // 旧位置
-      return { ins: b[1].length, has: null };
-    }
+    const b = /^(\s*(?:[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u.exec(t);
+    if (b) return { ins: b[1].length, has: b[2] ? { at: b[1].length, len: b[2].length } : null };
   } catch (_) { }
   return null;
 }
