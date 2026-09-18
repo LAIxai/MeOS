@@ -36406,6 +36406,35 @@ function activate(context) {
         out = out.replace(/~~\{(?!\s*\*\/)([^\n]*?)\}~~/g, (mm, inner) => '~~{' + applyCheckTransform(inner) + '}~~');
         // v4.0.315: v4.0の新形= 指定はFC行か行末のコメントに在る(殻が無い)。コメントの中身に時刻だけ注入する。
         out = out.replace(/<!--([^\n]*?)-->/g, (mm, inner) => (HEAD_DONE_TIP_ANY.test(inner) ? '<!--' + applyCheckStampOnly(inner) + '-->' : mm));
+        // ★★★v4.2.193(俊克「見出しの頭に✅が出ないね。以前は出していたよね?
+        //   もしかして、何かの時に、要らないと判断したかも知れない。とりあえず復活して」):
+        //   ★v4.0.315 で v4.0 の新形(FC行)には**時刻だけ**を入れることにしていた= 殻(##[…]##)が無くなり、
+        //     ✅ の置き場所が決まらなかった。→ **置き場所は見出し行の頭**と決めて復活する。
+        //   ★✅の後ろにスペースを1つ(俊克「特に見出しが緑色だとくっついてしまうのを避ける。以前もそうしていた」)。
+        //   ★箱を空に戻したら ✅ も消す(両方向・冪等)。
+        try {
+          const _fc = out.match(/<!--([^\n]*?)-->/);
+          if (_fc && HEAD_DONE_TIP_ANY.test(_fc[1])) {
+            const _done = !HEAD_DONE_TIP_OPEN.test(_fc[1]);
+            const _isHead = (t) => /^\s*#{1,6}\s/.test(t);
+            let _hi = -1, _ht = '';
+            if (_isHead(out)) { _hi = i; _ht = out; }
+            else if (i > 0) { const _p = doc.lineAt(i - 1).text; if (_isHead(_p)) { _hi = i - 1; _ht = _p; } }
+            if (_hi >= 0) {
+              const _hm = _ht.match(/^(\s*#{1,6}\s+)(\u2705[ \u3000]*)?/u);
+              if (_hm) {
+                const _has = !!_hm[2];
+                if (_done && !_has) {
+                  if (_hi === i) out = _ht.slice(0, _hm[1].length) + '\u2705 ' + _ht.slice(_hm[1].length);
+                  else edits.push(vscode.TextEdit.insert(new vscode.Position(_hi, _hm[1].length), '\u2705 '));
+                } else if (!_done && _has) {
+                  if (_hi === i) out = _ht.slice(0, _hm[1].length) + _ht.slice(_hm[1].length + _hm[2].length);
+                  else edits.push(vscode.TextEdit.delete(new vscode.Range(_hi, _hm[1].length, _hi, _hm[1].length + _hm[2].length)));
+                }
+              }
+            }
+          }
+        } catch (_) { }
         if (out === text) continue;
         edits.push(vscode.TextEdit.replace(new vscode.Range(i, 0, i, text.length), out));
       }
