@@ -12826,13 +12826,17 @@ function meosUpdateTimerBar() {
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
     _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc)) + (sc && (sc.title || sc.name) ? ('  ' + (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name)) : '')   /* v4.2.91: タイトルが在ればそれ */ + (n > 1 ? ('  +' + (n - 1)) : '');
     try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = undefined; } catch (_) { }   // v4.2.50: 待ちの色を残さない / ★v4.2.54: 字の色も
-    _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.';
+    _meosTimerBar.tooltip = 'MeOS: a clock is running on a membrane. Click to see them all, or to go to one.' + (n > 1 ? ('\n+' + (n - 1) + ' = ' + (n - 1) + ' more clock' + (n > 2 ? 's are' : ' is') + ' running.') : '');   // ★v4.2.188(俊克「最後の「+7」は、今でも、この値が何かを思い出せない」): 字を変えず、試しに意味を添える
     _meosTimerBar.command = 'lai-membrane.pseudoTimer';
     // ★v4.0.459: 最後の1分は**地の色that変わる**= Me Dockを閉じていても目に入る(VS Code標準の警告色so、
     //   MeOSthat色を発明しない)。俊克の「枠を飛び出す」の狙いは、**動かさずに**これで足りる。
     try {
       const _left = Math.max(0, best.until - Date.now());
-      _meosTimerBar.backgroundColor = (_left <= 60000) ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+      const _warn = _left <= 60000;
+      _meosTimerBar.backgroundColor = _warn ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
+      // ★v4.2.188(俊克「ウィンドウ最下段の方も橙色にしようよ」): 本文のタイトルと同じ #e0803a。
+      //   ただし最後の1分は地が警告色に変わるso、字は標準のままに戻す(読めなくならないように)。
+      _meosTimerBar.color = _warn ? undefined : '#e0803a';
     } catch (_) { }
     _meosTimerBar.show();
     meosTickTimerLines();
@@ -25596,7 +25600,7 @@ if(input){
 // {* ▼mCN=dock_js_zoom // Me Dock自体のズーム(⊕/⊖・本家VS CodeのCSS zoom対策) *}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
 if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;/* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
-if(pop)pop.style.zoom=inv;var __wpop=document.getElementById('ww-pop');if(__wpop)__wpop.style.zoom=inv;/* ★★v4.2.187(俊克「スライダーはまだスムースに±1ができない」): ★真因= 幅を160pxにしても Me Dock の zoom(0.75)で画面では120pxになり、1画面px=1.33単位に戻っていた。★直しは上の mz-pop と同じ= **逆ズームで物理の大きさを一定**にする。どの zoom でも溝は画面160px= 範囲40〜200の160段階と 1:1。 */var pct=Math.round(z*100);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=pct+'%';
+if(pop)pop.style.zoom=inv;var pct=Math.round(z*100);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=pct+'%';
 var sl=document.getElementById('mz-slider');if(sl){if(document.activeElement!==sl)sl.value=pct;/* v3.1.21改良3: Time Machine式=ノブ左を橙で塗る(min60〜max200→0〜100%)。 */var __fill=Math.max(0,Math.min(100,(pct-60)/1.4));
 sl.style.setProperty('--mz-fill',__fill+'%');}var a=document.getElementById('mz-a');if(a)a.classList.toggle('on',__mdSync);
 }catch(e){}}
@@ -27630,7 +27634,7 @@ if(wb&&wp){wb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagati
 if(on){vscode.postMessage({type:'requestWrapColumn'});if(typeof hideTocTip==='function')hideTocTip();}});
 document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.contains(ev.target)&&ev.target!==wb&&!wb.contains(ev.target)){wp.classList.remove('on');wb.classList.remove('on');}});   /* v4.2.162(俊克「折り返しボタン単独の時には、やはり角丸四角に」): 外を押して閉じた時もボタンの角を丸に戻す */}
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});   /* v4.2.166: 3つを巡る(押した所で効く) */
-if(ws)ws.addEventListener('input',()=>{const v=clamp(ws.value);paint(v);send(v);});
+/* ★★v4.2.188(俊克「20ピクセル以内のスライドは、ノブを動かさず、±1の変化だけをする」): ★幅や zoom をいじるのをやめ、**指の動いた量で役を分ける**= 掴んだ所から20px以内は微調整(±1だけ)・それを超えたら普段のスライダー。標準動作は止めず、微調整の間だけ答えを上書きする(物差しを混ぜない)。 */let _wdX=null,_wdV=0,_wdD=0;if(ws){ws.addEventListener('pointerdown',ev=>{_wdX=ev.clientX;_wdV=clamp(ws.value);_wdD=0;});ws.addEventListener('pointermove',ev=>{if(_wdX!=null)_wdD=ev.clientX-_wdX;});const _wEnd=()=>{_wdX=null;};ws.addEventListener('pointerup',_wEnd);ws.addEventListener('pointercancel',_wEnd);window.addEventListener('pointerup',_wEnd);}if(ws)ws.addEventListener('input',()=>{let v=clamp(ws.value);if(_wdX!=null&&Math.abs(_wdD)<=20){v=clamp(_wdV+(_wdD>0?1:_wdD<0?-1:0));ws.value=String(v);}paint(v);send(v);});
 if(ws)ws.addEventListener('change',()=>{const v=clamp(ws.value);paint(v);send(v,true);});
 if(wn){wn.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const v=clamp(wn.value);paint(v);send(v,true);wn.blur();}/* ★v4.2.186(俊克「↓/↑キーで値を変更できるように」): スライダーでは出しにくい±1を、ここで確実に。paint は焦点中の枠を書き換えない so 数字は自分で入れる。 */if(ev.key==='ArrowUp'||ev.key==='ArrowDown'){ev.preventDefault();const v=clamp((Number(wn.value)||80)+(ev.key==='ArrowUp'?1:-1));wn.value=String(v);paint(v);send(v,true);}});
 wn.addEventListener('blur',()=>{const v=clamp(wn.value);paint(v);send(v,true);});}}
