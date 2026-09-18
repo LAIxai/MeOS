@@ -12096,7 +12096,7 @@ function meosMenuBarClockItems() {
     rows.sort((a, b) => a.until - b.until);
     for (const r of rows) {
       if (!r.sc) continue;
-      const nm = r.sc.title ? meosChainFillSlot(r.sc.title, r.sc.round || 0) : (r.sc.name || '(outside every membrane)');
+      const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       out.push({ id: 'go:' + go.length, title: '\u23f0 ' + meosMmSs(meosClockFaceMs(r.until, r.sc)) + '   ' + nm });
       go.push(r.sc);
     }
@@ -13181,7 +13181,7 @@ function meosArmPseudoTimer(key, ms) {
       while (j < mk.length && left <= mk[j][0] + 600) {
         if (left >= mk[j][0] - 1500) {                    // その印のために起きた= 鳴らす
           const sc = _meosPseudoScopes.get(key);
-          meosRingFor(sc && sc.name, mk[j][1]);
+          meosRingFor(meosClockSayName(sc), mk[j][1]);
           meosUpdateTimerBar();
         }
         j++;
@@ -13449,6 +13449,11 @@ function meosPlayWhistle() {
     exec("afplay -v " + vol + " '" + String(f).replace(/'/g, "'\\''") + "'", () => { });
   } catch (_) { }
 }
+// ★v4.2.212(俊克「鳴っている時もタイトルを出して」): ⏰の名の出し方はこの1つ。タイトル(// …)が在ればそれ(周回数入り)、
+//   無ければ膜名。鳴らす2か所とメニューの一覧が同じ物を引く([[feedback_one_source_for_mark_count_action]])。
+function meosClockSayName(sc) {
+  try { if (!sc) return ''; return sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : (sc.name || ''); } catch (_) { return (sc && sc.name) || ''; }
+}
 function meosStartRinging(name) {
   const every = meosRingSeconds();
   meosPlayChime();
@@ -13549,7 +13554,7 @@ async function meosPseudoTimeUp(key) {
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
   const _pre = (_meosBellDone.get(key) || 0) > 0; _meosBellDone.delete(key); _meosPreBell.delete(key);
   const _cyc = meosCycleStepFor(key);
-  if (!_pre) meosStartRinging(_sc0 && _sc0.name);   // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  if (!_pre) meosStartRinging(meosClockSayName(_sc0));   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
   //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。
   // ★★★v4.1.56(俊克「アーチェリーでタイムアップのときは、警告音というか、**ホイッスル**を鳴らしていたね」):
