@@ -7838,7 +7838,10 @@ function applyPrettyLabels(editor) {
       // ★行頭マーカーは**生データ**で測る。dtextはコードスパンを空白に潰しているので、`- ` の後ろの `[ \t]+` が
       //   その空白を貪欲に飲み込み、`- \`Cmd + Shift + P\` ` を丸ごとマーカー扱いして隠していた。
       //   行頭マーカーがコードスパンの中に入ることは無いので、生で測る方が常に正しい。
-      const mPr = /^([ \t]*)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?/.exec(text) || ['', '', '', '', ''];
+      // ★★v4.2.197: 行頭の「✅ 」は**字下げの一部**として飲む= 箱条書きの✅はマーカーの前に置く(v4.2.197)so、
+      //   ここで読み飛ばないと `✅ 1. …` が箱条書きと見えなくなる。
+      //   ★組の番号を変えずに済む形にする= indent の長さに✅が入るだけso、本文の開始も隠す範囲もそのまま正しい。
+      const mPr = /^([ \t]*(?:\u2705[ \u3000]*)?)((?:[-*+][ \t]+|\d+[.)][ \t]+)?)(?:(#{1,6})([ \t]+))?/.exec(text) || ['', '', '', '', ''];
       if (mP && (mPr[3] || mPr[2] || _dirOnly)) { // 見出しか箇条書きのどちらかであること(コメントの宣言でも可)
         const indent = mPr[1].length, bulletLen = mPr[2].length, gap = mPr[4] || '';
         let hashes = mPr[3] || '';
@@ -34244,6 +34247,25 @@ function meosFmtKindFollow(e) {
 let _meosCheckStampBusy = false;
 let _meosCheckPend = null; // { uri, line, from, to } 時刻待ちの箱と、その塊の範囲
 // その行に「対応済なのに時刻thatが無い箱」があるか。あれば入れる位置も返す。
+// ★★★v4.2.197(俊克「箱条書きのときは、・や1.の**前**に✅をいれようよ」):
+//   ★見出しと箱条書きで置き場所が違う= 見出しは `## ✅ 名` / 箱条書きは `✅ 1. 名`。
+//     (箱条書きでマーカーの後ろに置くと、番号と本文が✅で分断される)
+//   ★**場所を決めるのはここ 1つだけ**= 時刻と一緒に入れる道も、保存時の道も、ここを引く
+//     ([[feedback_one_source_for_mark_count_action]] 片方だけ直すをやめる)。旧位置(`1. ✅`)も読める。
+function meosDoneMarkSpot(text) {
+  try {
+    const t = String(text == null ? '' : text);
+    const h = /^(\s*#{1,6}\s+)(\u2705[ \u3000]*)?/u.exec(t);
+    if (h) return { ins: h[1].length, has: h[2] ? { at: h[1].length, len: h[2].length } : null };
+    const b = /^(\s*)(\u2705[ \u3000]*)?((?:[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u.exec(t);
+    if (b && b[3]) {
+      if (b[2]) return { ins: b[1].length, has: { at: b[1].length, len: b[2].length } };
+      if (b[4]) return { ins: b[1].length, has: { at: b[1].length + b[3].length, len: b[4].length } };   // 旧位置
+      return { ins: b[1].length, has: null };
+    }
+  } catch (_) { }
+  return null;
+}
 function meosCheckStampPendingAt(doc, line) {
   try {
     if (line < 0 || line >= doc.lineCount) return null;
@@ -34297,15 +34319,10 @@ function meosCheckStampWatch(editor) {
           //     置き場所は v4.2.193/195 と同じ= 見出し/箱条書きのマーカーの後ろ。保存時の道も残す(冪等)。
           let _ckHd = null;
           try {
-            const _isHd = (t) => /^\s*(?:#{1,6}|[-*+]|\d+[.)])\s/.test(t);
             const _t0 = ed2.document.lineAt(hit.line).text;
-            let _hl = -1, _htx = '';
-            if (_isHd(_t0)) { _hl = hit.line; _htx = _t0; }
-            else if (hit.line > 0) { const _p = ed2.document.lineAt(hit.line - 1).text; if (_isHd(_p)) { _hl = hit.line - 1; _htx = _p; } }
-            if (_hl >= 0) {
-              const _m2 = _htx.match(/^(\s*(?:#{1,6}|[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u);
-              if (_m2 && !_m2[2]) _ckHd = { line: _hl, col: _m2[1].length };
-            }
+            let _sp = meosDoneMarkSpot(_t0), _hl = _sp ? hit.line : -1;
+            if (!_sp && hit.line > 0) { _sp = meosDoneMarkSpot(ed2.document.lineAt(hit.line - 1).text); if (_sp) _hl = hit.line - 1; }
+            if (_hl >= 0 && _sp && !_sp.has) _ckHd = { line: _hl, col: _sp.ins };
           } catch (_) { }
           await ed2.edit(eb => {
             eb.insert(new vscode.Position(hit.line, hit.ins), ' ' + meosFormatStamp(new Date()));
@@ -36446,21 +36463,15 @@ function activate(context) {
             const _done = !HEAD_DONE_TIP_OPEN.test(_fc[1]);
             // ★v4.2.195(俊克「箱条書きも同様に実装して下さい」): 見出しと同じ道を通す=
             //   マーカー(# / - / 1.)の後ろに ✅ を置く。判定を増やさず、形の一覧に足すだけ。
-            const _isHead = (t) => /^\s*(?:#{1,6}|[-*+]|\d+[.)])\s/.test(t);
-            let _hi = -1, _ht = '';
-            if (_isHead(out)) { _hi = i; _ht = out; }
-            else if (i > 0) { const _p = doc.lineAt(i - 1).text; if (_isHead(_p)) { _hi = i - 1; _ht = _p; } }
-            if (_hi >= 0) {
-              const _hm = _ht.match(/^(\s*(?:#{1,6}|[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u);
-              if (_hm) {
-                const _has = !!_hm[2];
-                if (_done && !_has) {
-                  if (_hi === i) out = _ht.slice(0, _hm[1].length) + '\u2705 ' + _ht.slice(_hm[1].length);
-                  else edits.push(vscode.TextEdit.insert(new vscode.Position(_hi, _hm[1].length), '\u2705 '));
-                } else if (!_done && _has) {
-                  if (_hi === i) out = _ht.slice(0, _hm[1].length) + _ht.slice(_hm[1].length + _hm[2].length);
-                  else edits.push(vscode.TextEdit.delete(new vscode.Range(_hi, _hm[1].length, _hi, _hm[1].length + _hm[2].length)));
-                }
+            let _sp = meosDoneMarkSpot(out), _hi = _sp ? i : -1, _ht = out;
+            if (!_sp && i > 0) { const _p = doc.lineAt(i - 1).text; _sp = meosDoneMarkSpot(_p); if (_sp) { _hi = i - 1; _ht = _p; } }
+            if (_hi >= 0 && _sp) {
+              if (_done && !_sp.has) {
+                if (_hi === i) out = _ht.slice(0, _sp.ins) + '\u2705 ' + _ht.slice(_sp.ins);
+                else edits.push(vscode.TextEdit.insert(new vscode.Position(_hi, _sp.ins), '\u2705 '));
+              } else if (!_done && _sp.has) {
+                if (_hi === i) out = _ht.slice(0, _sp.has.at) + _ht.slice(_sp.has.at + _sp.has.len);
+                else edits.push(vscode.TextEdit.delete(new vscode.Range(_hi, _sp.has.at, _hi, _sp.has.at + _sp.has.len)));
               }
             }
           }
