@@ -12889,8 +12889,9 @@ function meosUpdateTimerBar() {
       // ★v4.2.209(俊克「ringingと言う表示は、♪と♬を交互に入れて、鳴っている感じを見せるといい」):
       //   拍は鐘と同じ定数から(一息=0.8秒ごとに入れ替え)。最下段もメニューバーも同じ音符。
       const _note = (Math.floor(Date.now() / (MEOS_RING_BLINK_MS * 2)) % 2) ? '\u266c' : '\u266a';
-      _meosTimerBar.text = '\u23f0 ' + _note + ' ringing' + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
-      meosMenuBarSet('\u23f0 ' + _note + ' ringing' + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }]);   // v4.2.205/207/209
+      // ★v4.2.211(俊克「音符記号を出すので、ringingという文字は削除していい。そのつもりで音符記号を入れた」)
+      _meosTimerBar.text = '\u23f0 ' + _note + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
+      meosMenuBarSet('\u23f0 ' + _note + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }]);   // v4.2.205/207/209/211
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
       try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); _meosTimerBar.color = undefined; } catch (_) { }
