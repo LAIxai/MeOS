@@ -7251,6 +7251,7 @@ function applyPrettyLabels(editor) {
   // v0.9.661: 文字色別の範囲。==語(文字色+背景色)== の文字色レイヤー。
   const highlightFgRangesByColor = {};   // 文字色別 { red:[...], black:[...], ... }
   for (const key of Object.keys(HIGHLIGHT_FG_COLORS)) highlightFgRangesByColor[key] = [];
+  const _itemLayer = [];   // ★v4.2.203: 箱条書きの項目全体の色。適用の直前に語の範囲をくり抜いてから戻す
   const highlightMarkerRanges = [];
   // v0.9.99967: 参照符(点膜▶◀)の隠し範囲とラベル項目。採番は仮想=このループで毎回計算(不保存)。
   const refPointHideItems = [];
@@ -7909,10 +7910,10 @@ function applyPrettyLabels(editor) {
             let fk = sp.fgKey; if (sp.bgKey && !fk) fk = DARK_BG_KEYS.has(sp.bgKey) ? 'white' : 'black';
             const itB = { range: rB };
             if (sp.comment) { const md = new vscode.MarkdownString('💬 ' + sp.comment); md.isTrusted = false; itB.hoverMessage = md; }
-            if (fk && highlightFgRangesByColor[fk]) highlightFgRangesByColor[fk].push(itB);
+            if (fk && highlightFgRangesByColor[fk]) _itemLayer.push({ fg: true, key: fk, item: itB });   // v4.2.203: 語に譲る(適用前にくり抜く)
             // ★v4.2.195: 見出し(v4.2.194)と同じ= 先頭の「✅ 」は背景色の外へ(埋もれ防止)。
             const _bbl = (/^\u2705[ \u3000]?/u.exec(dtext.slice(bodyStart, bodyEndP)) || [''])[0].length;
-            if (sp.bgKey && highlightBodyRangesByColor[sp.bgKey]) highlightBodyRangesByColor[sp.bgKey].push({ range: _bbl ? new vscode.Range(line, bodyStart + _bbl, line, bodyEndP) : rB });
+            if (sp.bgKey && highlightBodyRangesByColor[sp.bgKey]) _itemLayer.push({ fg: false, key: sp.bgKey, item: { range: _bbl ? new vscode.Range(line, bodyStart + _bbl, line, bodyEndP) : rB } });
           }
         }
       }
@@ -8221,6 +8222,30 @@ function applyPrettyLabels(editor) {
   setDecoCached(editor, closeLineHideDecoration, 'closeHide', closeHide);
   setDecoCached(editor, closeLineLabelDecoration, 'closeLabel', closeLabels);
   if (membraneArrowHandDecoration) editor.setDecorations(membraneArrowHandDecoration, arrowHands);   // ★v4.2.75
+  // ★★★v4.2.203(俊克「文字色が後出しが有効にならない。何か薄いハイライトがかかっているので、
+  //   箱条書きの方が上書きされているように見える」):
+  //   ★真因= 項目全体の色(白/green)と語の色(黒/黄)が**同じ装飾型**に入り、同じ字に重なっていた。
+  //     背景は半透明どうしが混ざり(薄い緑)、字の色は型を作った順で勝つ(白)= 書いた順が効いていない。
+  //   ★!important で勝たせる手(見出し v4.0.137)では背景が混ざったまま。→ **項目の色から語の範囲をくり抜く**。
+  //     語の所には語の色だけが掛かる= 後に指定した狭い方が勝つ([[project_last_specified_wins]])。
+  if (_itemLayer.length) {
+    const _cutsByLine = new Map();
+    const _addCut = (it) => { const r = (it && it.range) || it; if (!r || !r.start || r.start.line !== r.end.line) return;
+      const ln = r.start.line; if (!_cutsByLine.has(ln)) _cutsByLine.set(ln, []); _cutsByLine.get(ln).push([r.start.character, r.end.character]); };
+    for (const k in highlightBodyRangesByColor) for (const it of highlightBodyRangesByColor[k]) _addCut(it);
+    for (const k in highlightFgRangesByColor) for (const it of highlightFgRangesByColor[k]) _addCut(it);
+    try { const _cm = _meosColoredMarks.get(editor.document.uri.toString());
+      if (_cm) for (const [ln, arr] of _cm) for (const [a, b] of arr) { if (!_cutsByLine.has(ln)) _cutsByLine.set(ln, []); _cutsByLine.get(ln).push([a, b]); } } catch (_) { }   // 太字/斜体の口の色
+    for (const L of _itemLayer) {
+      const r = L.item.range, ln = r.start.line;
+      const cuts = (_cutsByLine.get(ln) || []).filter(([a, b]) => b > r.start.character && a < r.end.character).sort((x, y) => x[0] - y[0]);
+      let cur = r.start.character; const pieces = [];
+      for (const [a, b] of cuts) { if (a > cur) pieces.push([cur, a]); cur = Math.max(cur, b); }
+      if (cur < r.end.character) pieces.push([cur, r.end.character]);
+      const dst = L.fg ? highlightFgRangesByColor : highlightBodyRangesByColor;
+      for (const [a, b] of pieces) dst[L.key].push(Object.assign({}, L.item, { range: new vscode.Range(ln, a, ln, b) }));
+    }
+  }
   // v0.9.656/657: ハイライト ==text(色)== 適用（色ごとの本体背景＋マーカー==/(色)隠し）
   if (highlightBodyByColor) {
     for (const key of Object.keys(HIGHLIGHT_COLORS)) {
@@ -12567,7 +12592,7 @@ function meosApplyTimerLineDecorations(editor) {
             const _ta73 = _titleAt.get(i);
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
-              renderOptions: { after: { contentText: '  ' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0), color: '#e0803a', fontStyle: 'normal' /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
+              renderOptions: { after: { contentText: '\u00a0' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
             });
           } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
@@ -35527,6 +35552,9 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain, rawFg) {
   if (bgKey && HIGHLIGHT_COLORS[bgKey]) { opt.backgroundColor = HIGHLIGHT_COLORS[bgKey]; opt.borderRadius = '2px'; } // v4.0.70(俊克 改良3): ハイライトと同じ角丸に(真四角だと隣り合う別設定の境が分からない)
   const t = vscode.window.createTextEditorDecorationType(opt); boldFmtTypeCache.set(key, t); return t;
 }
+// ★v4.2.203: 太字/斜体の口が色を付けた範囲(uri → Map<行, [[s,e]]>)。主処理(applyPrettyLabels)はこの後に走るので、
+//   箱条書きの項目全体の色からこの範囲もくり抜ける(塗る口が2つある= v4.0.408 と同じ事情)。
+const _meosColoredMarks = new Map();
 function meosApplyBoldDecorations(editor) {
   // v4.0.347(俊克「見出しが閉じるのが10秒以上かかる」): **この道には計測が1つも無かった**。
   //   refresh も foldingRanges も測っているのに、描画パスは無測定＝ **網の外**だった(v4.0.112の教訓)。
@@ -35538,11 +35566,12 @@ function meosApplyBoldDecorations(editor) {
   if (!boldHideDeco) boldHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); // v4.0.15(俊克): font-sizeに!important=見出し内(font-size:大)でも太字/斜体膜のマーカーが確実に畳まれる(前後の空白バグ修正)
   try {
     const doc = editor.document; const hideRAll = []; const itemsByType = new Map();
+    const _cmk = new Map(); _meosColoredMarks.set(doc.uri.toString(), _cmk);   // v4.2.203
     const _bLines = MEOS_SPEC_LINE ? meosDocLines(doc) : null; // v4.0.152: 語に効く記法のFC指定行を引くための行配列(版ごとに1回だけ刻んである)
     const _prose = meosIsProseDoc(doc); // v4.0.20: 素の斜体 _text_ は散文だけ(コードの `catch (_)` 等で誤爆しない)
     const linkSpansOf = (t0) => { const out = []; if (t0.indexOf('-->[') < 0) return out; MEOS_MELINK_RE.lastIndex = 0; let mk; while ((mk = MEOS_MELINK_RE.exec(t0)) !== null) out.push([mk.index, mk.index + mk[0].length]); return out; }; // v4.0.31: この行のリンク範囲
     let _lnLinks = [];
-    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain, rawFg) => { if (e <= s) return; bgKey = meosHiBgKey(bgKey, fgKey); /* v4.0.408: 白い字が乗る黄だけ、落とした黄に */ const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain, rawFg); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
+    const pushStyle = (ln, s, e, bold, italic, fgKey, bgKey, comment, plain, rawFg) => { if (e <= s) return; if (fgKey || bgKey || rawFg) { if (!_cmk.has(ln)) _cmk.set(ln, []); _cmk.get(ln).push([s, e]); } bgKey = meosHiBgKey(bgKey, fgKey); /* v4.0.408: 白い字が乗る黄だけ、落とした黄に */ const t = meosBoldFmtType(bold, italic, fgKey, bgKey, false, plain, rawFg); const item = { range: new vscode.Range(ln, s, ln, e) }; if (comment) { const h = new vscode.MarkdownString('💬 ' + comment); h.isTrusted = false; item.hoverMessage = h; } if (!itemsByType.has(t)) itemsByType.set(t, []); itemsByType.get(t).push(item); };
     const cursorLines = meosRawLines(editor);   // v4.0.347: 自前で数えず、同じ1つの判定に訊く
     const vrs = meosScanSpans(editor, doc); // v4.0.199: 重なり無しの走査範囲(折り畳みthat有ると visibleRanges that割れる)
     const _bTblRows = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) _bTblRows.add(ln); // v4.0.215: 表の行=セル境界を壁にする
