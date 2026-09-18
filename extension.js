@@ -12054,7 +12054,7 @@ let _meosTimerBar = null, _meosTimerTick = null, _meosRingBlink = null;
 //   ★実機(macOS 27)で確かめた= 帯の中(y=1230/高さ1260)に出る・字の差替え・親が消えると終わる。
 //   ★v4.2.206(俊克「橙色の四角を角丸四角に。入力モードの[A]くらいの高さに。今は⏰の文字ギリギリ過ぎる」):
 //     字の背景色では角も余白も付かない→ **角丸の四角と字を画像として描いて貼る**。四角18pt・角の半径5・字11pt(元は14ptで高さ17=四角とほぼ同じ、12ptでも上下1.5ptしか空かない)。
-const MEOS_MENUBAR_JXA = "ObjC.import('Cocoa');\nObjC.bindFunction('kill', ['int', ['int', 'int']]);\nfunction run(argv) {\n  const statePath = argv[0], parentPid = parseInt(argv[1], 10), clickPath = argv[2];\n  const app = $.NSApplication.sharedApplication;\n  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);\n  const bar = $.NSStatusBar.systemStatusBar;\n  const item = bar.statusItemWithLength($.NSVariableStatusItemLength);\n  let appPath = '';\n  ObjC.registerSubclass({ name: 'MeOSMenuTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {\n    let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}\n    try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}\n    try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {}\n  } } } });\n  const tgt = $.MeOSMenuTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)\n  function build(entries) {\n    const m = $.NSMenu.alloc.init; m.autoenablesItems = false;\n    for (const e of entries) {\n      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); continue; }\n      const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));\n      if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id); }\n    }\n    return m;\n  }\n  let lastMenu = null, menu = null;\n  const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);\n  let last = null;\n  for (;;) {\n    if (parentPid > 0 && $.kill(parentPid, 0) !== 0) break;\n    let st = null;\n    try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}\n    if (!st || st.quit) break;\n    if (st.app) appPath = st.app;\n    const mj = JSON.stringify(st.menu || []);\n    if (mj !== lastMenu) { lastMenu = mj; menu = build(st.menu || []); item.menu = menu; }\n    if (st.text !== last) {\n      last = st.text;\n      const font = $.NSFont.menuBarFontOfSize(11);\n      const attrs = $.NSMutableDictionary.alloc.init;\n      attrs.setObjectForKey(font, $.NSFontAttributeName);\n      attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);\n      const ns = $(st.text), sz = ns.sizeWithAttributes(attrs);\n      const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;\n      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));\n      img.lockFocus;\n      orange.setFill;\n      $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;\n      ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), attrs);\n      img.unlockFocus;\n      img.template = false;\n      item.button.image = img; item.button.title = '';\n    }\n    $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));\n  }\n  bar.removeStatusItem(item);\n  return 'bye';\n}\n";
+const MEOS_MENUBAR_JXA = "ObjC.import('Cocoa');\nObjC.bindFunction('kill', ['int', ['int', 'int']]);\nfunction run(argv) {\n  const statePath = argv[0], parentPid = parseInt(argv[1], 10), clickPath = argv[2];\n  const app = $.NSApplication.sharedApplication;\n  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);\n  const bar = $.NSStatusBar.systemStatusBar;\n  const item = bar.statusItemWithLength($.NSVariableStatusItemLength);\n  let appPath = '';\n  ObjC.registerSubclass({ name: 'MeOSMenuTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {\n    let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}\n    try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}\n    try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {}\n  } } } });\n  const tgt = $.MeOSMenuTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)\n  function build(entries) {\n    const m = $.NSMenu.alloc.init; m.autoenablesItems = false;\n    for (const e of entries) {\n      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); continue; }\n      const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));\n      if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id); }\n      if (e.hiLen > 0) {\n        try {\n          const a = $.NSMutableAttributedString.alloc.init;\n          a.mutableString.setString($(e.title));\n          a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), $.NSMakeRange(0, a.length));\n          a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, $.NSMakeRange(e.hiAt, e.hiLen));\n          mi.attributedTitle = a;\n        } catch (x) {}\n      }\n    }\n    return m;\n  }\n  let lastMenu = null, menu = null;\n  const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);\n  let last = null;\n  for (;;) {\n    if (parentPid > 0 && $.kill(parentPid, 0) !== 0) break;\n    let st = null;\n    try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}\n    if (!st || st.quit) break;\n    if (st.app) appPath = st.app;\n    const mj = JSON.stringify(st.menu || []);\n    if (mj !== lastMenu) { lastMenu = mj; menu = build(st.menu || []); item.menu = menu; }\n    if (st.text !== last) {\n      last = st.text;\n      const font = $.NSFont.menuBarFontOfSize(11);\n      const attrs = $.NSMutableDictionary.alloc.init;\n      attrs.setObjectForKey(font, $.NSFontAttributeName);\n      attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);\n      const ns = $(st.text), sz = ns.sizeWithAttributes(attrs);\n      const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;\n      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));\n      img.lockFocus;\n      orange.setFill;\n      $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;\n      ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), attrs);\n      img.unlockFocus;\n      img.template = false;\n      item.button.image = img; item.button.title = '';\n    }\n    $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));\n  }\n  bar.removeStatusItem(item);\n  return 'bye';\n}\n";
 let _meosMb = null;   // { proc, state, click, script, last }
 let _meosMbGo = [];   // v4.2.207: メニューの go:N → 飛び先
 function meosMenuBarPick(id) {
@@ -12064,18 +12064,25 @@ function meosMenuBarPick(id) {
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'stop') { meosStopRinging(); return; }
     if (id === 'next') { vscode.commands.executeCommand('lai-membrane.chainNext'); return; }
-    if (id === 'raw') { toggleRawMode(); return; }
+    if (id === 'raw') { Promise.resolve(toggleRawMode()).then(() => { try { meosUpdateTimerBar(); } catch (_) { } }); return; }
     if (id === 'dock') { toggleMeDock(); return; }
     if (id === 'hprev') { navMeHeadingJump(-1); return; }
     if (id === 'hnext') { navMeHeadingJump(1); return; }
   } catch (_) { }
 }
 // 命の無い常の段(命入りの段の下に付く)= 一覧と、命文の子メニュー
-const MEOS_MB_TAIL = [
-  { sep: true }, { id: 'list', title: 'Open the clock list\u2026' },
-  { sep: true }, { title: 'Spells', sub: [
-    { id: 'raw', title: 'Raw on/off   (kakaka)' }, { id: 'dock', title: 'Me Dock open/close   (mememe)' },
-    { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] } ];
+// ★v4.2.208(俊克「Raw on/off メニューは、on/offのどっちかを赤文字で示せないか?」):
+//   今の状態(カーソルの膜の meosViewMode)の方を赤。毎回作るので、切り替えると次の拍で色も移る。
+function meosMenuBarTail() {
+  let raw = false; try { raw = meosViewMode() === 'raw'; } catch (_) { }
+  const rt = 'Raw on/off   (kakaka)';
+  const hiAt = raw ? rt.indexOf('on/') : rt.indexOf('/off') + 1, hiLen = raw ? 2 : 3;
+  return [
+    { sep: true }, { id: 'list', title: 'Open the clock list\u2026' },
+    { sep: true }, { title: 'Spells', sub: [
+      { id: 'raw', title: rt, hiAt, hiLen }, { id: 'dock', title: 'Me Dock open/close   (mememe)' },
+      { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] } ];
+}
 // v4.2.207(俊克「+4のすべての予定出して、そこにワープできるのが先ずあるといいよね」): 一覧と同じ並び・同じ飛び先(meosJumpToScope)。
 //   名前はタイトル(// …)が在ればそれ、無ければ膜名。時刻は最下段と同じ数え方(meosClockFaceMs)。
 function meosMenuBarClockItems() {
@@ -12109,10 +12116,11 @@ function meosMenuBarSet(text, menu) {
       _meosMb = { proc: null, state: base + '.json', click: base + '.click', script: base + '.js', last: null };
       try { fs.watchFile(_meosMb.click, { interval: 400 }, (cur, prev) => { if (cur.mtimeMs > 0 && cur.mtimeMs !== prev.mtimeMs) { try { meosMenuBarPick(JSON.parse(fs.readFileSync(_meosMb.click, 'utf8')).id); } catch (_) { } } }); } catch (_) { }
     }
-    const _key = t + '\u0001' + JSON.stringify(menu || []);
+    const _fullMenu = (menu || []).concat(meosMenuBarTail());
+    const _key = t + '\u0001' + JSON.stringify(_fullMenu);
     if (_key === _meosMb.last && _meosMb.proc) return;
     const ep = String(process.execPath || ''), ai = ep.indexOf('.app/');
-    fs.writeFileSync(_meosMb.state, JSON.stringify({ text: t, app: ai > 0 ? ep.slice(0, ai + 4) : '', menu: (menu || []).concat(MEOS_MB_TAIL) }));
+    fs.writeFileSync(_meosMb.state, JSON.stringify({ text: t, app: ai > 0 ? ep.slice(0, ai + 4) : '', menu: _fullMenu }));
     _meosMb.last = _key;
     if (!_meosMb.proc) {
       fs.writeFileSync(_meosMb.script, MEOS_MENUBAR_JXA);
@@ -36508,6 +36516,9 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
+  // ★v4.2.208(俊克「この呪文は、ショートカットを付けたいとユーザは思うかも」): 呪文4つのうち見出しの前/次だけコマンドが無かった
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.headingPrev', () => navMeHeadingJump(-1)));
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.headingNext', () => navMeHeadingJump(1)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.alarmReturn', () => meosGoBackFromAlarm()));
   // ★★★v4.2.56(俊克 2026.09.11 pm10:09「13個も走っていて、1つずつ消しても間に合わない。全部消して」):
   //   ★★★**一度に止める口that無かった**= 掛かりを外す道は「1本ずつ」しか無く、増える方that速ければ
