@@ -32223,6 +32223,36 @@ function meosListLineSpecFor(lines, ln) {
   const hit = ds[idx];
   return hit ? { text: hit.text, dir: hit.dir, blk, idx, all: ds } : null;
 }
+// ★★★v4.2.200(俊克「箱条書きFCがそれぞれの次の行に入っているよ。テーブルと同様に、
+//   最後にFC群としてまとめようよ」):
+//   ★読む側は v4.0.299 で既に揃っている(meosListLineSpecFor が塊の下のFC群から N番目を配る)。
+//     今の形(項目→FC→項目→FC)は連続しないso塊が 1項目になり、「真下」の道を通っていた。
+//   ★so必要なのは**並べ替えだけ**= 項目を全部上へ、FCを全部下へ。
+//   ★数が合わない形には手を出さない(v4.0.299の「足りない時に推測しない」と同じ戒め)。
+function meosListSpecsToBlockPlan(lines, ln) {
+  try {
+    if (!lines || ln < 0 || ln >= lines.length) return null;
+    const _t = (i) => String(lines[i] == null ? '' : lines[i]);
+    const isItem = (t) => MEOS_LIST_BLOCK_RE.test(t) && !meosIsSpecLine(t);
+    const isSpec = (t) => meosIsSpecLine(t);
+    if (!isItem(_t(ln)) && !isSpec(_t(ln))) return null;
+    let s = ln, e = ln;
+    while (s > 0 && (isItem(_t(s - 1)) || isSpec(_t(s - 1)))) s--;
+    while (e + 1 < lines.length && (isItem(_t(e + 1)) || isSpec(_t(e + 1)))) e++;
+    const items = [], specs = [];
+    for (let i = s; i <= e; i++) {
+      const t = _t(i);
+      if (isSpec(t)) specs.push(t);
+      else if (isItem(t)) items.push(t);
+      else return null;                       // 項目でもFCでもない行が混ざる= 触らない
+    }
+    if (items.length < 2) return null;        // 1項目なら「真下」の形で正しい
+    if (specs.length !== items.length) return null;   // 箱の数と項目の数が合わない= 推測しない
+    const already = lines.slice(s, s + items.length).every((t) => isItem(String(t == null ? '' : t)));
+    if (already) return null;                 // もう塊の形= 何もしない(冪等)
+    return { start: s, end: e, items, specs, text: items.concat(specs).join('\n') };
+  } catch (_) { return null; }
+}
 // 1行の中に「相手になる印」that種類ごとに何個あるか。**描く側と同じ物差し**から引く
 // (meosInlineMarkEnds=語に効く記法／meosMeTexTokens=上付下付／`[表示]()`=リンク)。
 function meosEmptyLinkCount(text) {
@@ -36262,6 +36292,16 @@ function activate(context) {
 
   // v0.9.719: 🔖 ホバーのコマンドリンク用。次へ巡回 / 指定行のしおり削除。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkCycle', () => bookmarkCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
+  // ★v4.2.200: 箱条書きのFCを塊の下へまとめる(読む側は既に揃っているso、並べ替えるだけ)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.listSpecsToBlock', async () => {
+    const ed = vscode.window.activeTextEditor || getMeDockTargetEditor();
+    if (!ed) return;
+    const plan = meosListSpecsToBlockPlan(meosDocLines(ed.document), ed.selection.active.line);
+    if (!plan) { vscode.window.setStatusBarMessage('MeOS: nothing to group here (need N items and N spec lines).', 3000); return; }
+    const last = ed.document.lineAt(plan.end).text.length;
+    await ed.edit(eb => eb.replace(new vscode.Range(plan.start, 0, plan.end, last), plan.text));
+    try { meosDbg('[fcGroup] 塊の下へまとめた 項目=' + plan.items.length + ' 行=' + (plan.start + 1) + '..' + (plan.end + 1)); } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.formatTable', () => meosFormatTableAtCursor(vscode.window.activeTextEditor || getMeDockTargetEditor()))); // v0.9.999148: Markdownテーブル桁揃え(全角2幅対応)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableDupRow', () => meosTableDupRow(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableDelRow', () => meosTableDelRow(vscode.window.activeTextEditor || getMeDockTargetEditor())));
