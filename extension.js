@@ -19933,6 +19933,23 @@ async function meosContinueListOnEnterFC(editor, pos) {
   const carried = meosCarryItemSpec(sp && sp.line ? sp.line : '');
   const next = /^\d+[.)]$/.test(marker) ? ('1' + marker.slice(-1)) : marker; // MeOSthat管理する項目は常に `1.`
   const newSpec = carried ? ('\n<!-- ' + MEOS_MEW_SIG + 'FC ' + carried + ' -->') : '';
+  // ★★★v4.2.201(俊克「改行でFC群にならないんだけど、なぜ?」):
+  //   ★この道は「本文＋真下の指定」の組を下に複製していた= 項目・FC・項目・FC(交互)が生まれる。
+  //     v4.0.301 の「塊の中へ」は**既に塊の形**の時だけ= 1項目目からは決して入れなかった。
+  //   ★→ 行に効く指定だけなら、**本文のすぐ下に項目・指定群の末尾に指定**= この1回で塊(2項目+2本)になり、
+  //     次からは v4.0.301 の道を通る。元の行番号で書くso1回の編集で同時に置ける。
+  let _grp = !!carried && MEOS_LIST_BLOCK_RE.test(bodyText) && specEnd > bodyLn;
+  for (let _i = bodyLn + 1; _grp && _i <= specEnd; _i++) if (!meosSpecLineIsLineOnly(doc.lineAt(_i).text)) _grp = false;
+  if (_grp) {
+    await editor.edit(eb => {
+      eb.insert(new vscode.Position(bodyLn, doc.lineAt(bodyLn).text.length), '\n' + indent + next + gap);
+      eb.insert(new vscode.Position(specEnd, specEndText.length), newSpec);
+    });
+    const _pg = new vscode.Position(bodyLn + 1, (indent + next + gap).length);
+    editor.selection = new vscode.Selection(_pg, _pg);
+    _dbg('塊を始めた item=' + (bodyLn + 2) + ' spec=' + (specEnd + 2));
+    return true;
+  }
   await editor.edit(eb => eb.insert(new vscode.Position(specEnd, specEndText.length), '\n' + indent + next + gap + newSpec));
   const p = new vscode.Position(specEnd + 1, (indent + next + gap).length);
   editor.selection = new vscode.Selection(p, p);                // カーソルは新しい項目の本文の位置
@@ -32229,6 +32246,17 @@ function meosListLineSpecFor(lines, ln) {
 //     今の形(項目→FC→項目→FC)は連続しないso塊が 1項目になり、「真下」の道を通っていた。
 //   ★so必要なのは**並べ替えだけ**= 項目を全部上へ、FCを全部下へ。
 //   ★数が合わない形には手を出さない(v4.0.299の「足りない時に推測しない」と同じ戒め)。
+// ★v4.2.201: FC群にしてよい指定行か= **行に効く指定だけ**(-1. / (色)//[]tip= など)。
+//   語に効く指定(== ~~ 上付き リンク)は「真下」を見る道so、群にすると隣の項目へ配られる= 触らない。
+//   変換コマンドもEnterも、この1つを引く([[feedback_one_source_for_mark_count_action]])。
+function meosSpecLineIsLineOnly(text) {
+  try {
+    const p = meosParseSpecLine(String(text == null ? '' : text));
+    if (!p) return false;
+    if ((p.fmt && p.fmt.length) || (p.metex && p.metex.length) || (p.link && p.link.length)) return false;
+    return !!((p.lines && p.lines.length) || p.line);
+  } catch (_) { return false; }
+}
 function meosListSpecsToBlockPlan(lines, ln) {
   try {
     if (!lines || ln < 0 || ln >= lines.length) return null;
@@ -32242,7 +32270,7 @@ function meosListSpecsToBlockPlan(lines, ln) {
     const items = [], specs = [];
     for (let i = s; i <= e; i++) {
       const t = _t(i);
-      if (isSpec(t)) specs.push(t);
+      if (isSpec(t)) { if (!meosSpecLineIsLineOnly(t)) return null; specs.push(t); }   // v4.2.201: 語の指定が混ざる= 触らない
       else if (isItem(t)) items.push(t);
       else return null;                       // 項目でもFCでもない行が混ざる= 触らない
     }
