@@ -2665,7 +2665,7 @@ function meosGripCursor() {
 // ★v4.2.166: 折り返し幅の3つのプリセット(既定= 40 全部見える / 80 ふつう / 100 表を奇麗に)
 function meosWrapPresets() {
   try { const a = extensionContext.globalState.get('meosWrapPresets', null); if (Array.isArray(a) && a.length === 3) return a.map(n => Math.max(40, Math.min(200, Number(n) || 80))); } catch (_) { }
-  return [47, 80, 100];   // ★v4.2.185(俊克「40は少し狭過ぎる」): 40→48。下限の40はそのまま(手で打てばもっと狭くできる)。
+  return [48, 80, 100];   // ★v4.2.185(俊克「40は少し狭過ぎる」): 40→48。下限の40はそのまま(手で打てばもっと狭くできる)。
 }
 // 折り返し幅を書く道は1本(↻の巡回も、バーの摘みも、ここを通る)
 function meosWriteWrapColumn(cfg, doc, v) {
@@ -12552,7 +12552,7 @@ function meosApplyTimerLineDecorations(editor) {
             const _ta73 = _titleAt.get(i);
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
-              renderOptions: { after: { contentText: '  ' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0), color: '#9aa0a6', fontStyle: 'normal' } }
+              renderOptions: { after: { contentText: '  ' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0), color: '#e0803a', fontStyle: 'normal' /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
             });
           } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
@@ -25596,7 +25596,7 @@ if(input){
 // {* ▼mCN=dock_js_zoom // Me Dock自体のズーム(⊕/⊖・本家VS CodeのCSS zoom対策) *}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
 if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;/* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
-if(pop)pop.style.zoom=inv;var pct=Math.round(z*100);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=pct+'%';
+if(pop)pop.style.zoom=inv;var __wpop=document.getElementById('ww-pop');if(__wpop)__wpop.style.zoom=inv;/* ★★v4.2.187(俊克「スライダーはまだスムースに±1ができない」): ★真因= 幅を160pxにしても Me Dock の zoom(0.75)で画面では120pxになり、1画面px=1.33単位に戻っていた。★直しは上の mz-pop と同じ= **逆ズームで物理の大きさを一定**にする。どの zoom でも溝は画面160px= 範囲40〜200の160段階と 1:1。 */var pct=Math.round(z*100);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=pct+'%';
 var sl=document.getElementById('mz-slider');if(sl){if(document.activeElement!==sl)sl.value=pct;/* v3.1.21改良3: Time Machine式=ノブ左を橙で塗る(min60〜max200→0〜100%)。 */var __fill=Math.max(0,Math.min(100,(pct-60)/1.4));
 sl.style.setProperty('--mz-fill',__fill+'%');}var a=document.getElementById('mz-a');if(a)a.classList.toggle('on',__mdSync);
 }catch(e){}}
