@@ -7878,7 +7878,12 @@ function applyPrettyLabels(editor) {
             const it = { range: rP };
             if (sp && sp.comment) { const md = new vscode.MarkdownString('💬 ' + sp.comment); md.isTrusted = false; it.hoverMessage = md; }
             (headingColorItemsByKey[ck] || headingColorItemsByKey[HEADING_DEFAULT_COLOR[level]]).push(it);
-            if (bgk) (highlightBodyRangesByColor[bgk] || []).push({ range: rP });
+            // ★★v4.2.194(俊克「ハイライトはこの「✅ 」(スペース部分も含めて)を対象外にしてください。以前もそうしていた」):
+            //   ★殻のある形(##{…}##)では v0.9.99958 で既に外していたが、**素の Markdown 見出しだけ残っていた**
+            //   ([[feedback_one_source_for_mark_count_action]] 同じ規則が2か所で、片方だけ直されていた)。
+            //   ★背景色だけ外す(字の色は✅にも掛ける= 殻あり形と同じ)。
+            const _hbl = (/^\u2705[ \u3000]?/u.exec(dtext.slice(bodyStart, bodyEndP)) || [''])[0].length;
+            if (bgk) (highlightBodyRangesByColor[bgk] || []).push({ range: _hbl ? new vscode.Range(line, bodyStart + _hbl, line, bodyEndP) : rP });
           }
         }
         if (bulletLen || (dir && dir.bullet)) { // 箇条書き: `- `(マーカー+空白)を丸ごと隠して • / N. を描く(番号は生データに書かない=自動採番)
