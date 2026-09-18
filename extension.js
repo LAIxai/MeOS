@@ -12747,17 +12747,19 @@ function meosScheduleTimerTick() {
 }
 function meosUpdateTimerBar() {
   try {
-    // ★v4.2.189: 補助の2枚は、走っている時だけ出す(鳴っている/off の時は、それ1つを言う)
-    try { if (_meosTimerTitle) _meosTimerTitle.hide(); if (_meosTimerMore) _meosTimerMore.hide(); } catch (_) { }
+    // ★★v4.2.190(俊克「エディタで文字入力をすると、このシステムパネルがなぜかチラつく」):
+    //   ★真因= v4.2.189 でここに「毎回 hide」を置いた。文字を打つたびに更新が走るso、hide→show を繰り返していた。
+    //   ★状態が変わった所でだけ消す= 走行中は show のまま字だけ更新される。
+    const _subHide = () => { try { if (_meosTimerTitle) _meosTimerTitle.hide(); if (_meosTimerMore) _meosTimerMore.hide(); } catch (_) { } };
     let best = null;
     for (const [k, until] of _meosPseudoUntil) if (!best || until < best.until) best = { k, until };
     if (meosIsRinging()) {                               // v4.0.469: 鳴っている間は、それthatが一番言うべきこと
-      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
       _meosTimerBar.text = '\u23f0 ringing' + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
       try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); _meosTimerBar.color = undefined; } catch (_) { }
-      _meosTimerBar.show();
+      _subHide(); _meosTimerBar.show();
       meosTickTimerLines();
       if (!_meosRingBlink) _meosRingBlink = setInterval(() => meosTickTimerLines(), MEOS_RING_BLINK_MS);   // v4.1.22: 鳴っている間だけ速い拍
       return;
@@ -12767,12 +12769,12 @@ function meosUpdateTimerBar() {
     //   戻し方thatが同じ1つの枡に出る(止めた人thatが、止めたと分かる／戻せると分かる)。
     if (_meosClocksOff) {
       if (_meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; _meosChainBlinkOn = false; }
-      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
       _meosTimerBar.text = '\u23f0 off';
       _meosTimerBar.tooltip = 'MeOS: every clock is stopped. No clock will be armed until you turn them back on. Click to resume.';
       _meosTimerBar.command = 'lai-membrane.clockResumeAll';
       try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = new vscode.ThemeColor('descriptionForeground'); } catch (_) { }
-      _meosTimerBar.show();
+      _subHide(); _meosTimerBar.show();
       meosTickTimerLines();
       return;
     }
@@ -12789,7 +12791,7 @@ function meosUpdateTimerBar() {
       try { meosChainSkipWaiting(); } catch (_) { _meosChainWait = null; }
     }
     if (_meosChainWait) {
-      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
       _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next')
         + (_meosChainWait.next ? ('  \u2014 click to start ' + _meosChainWait.next + ' timer') : '  \u2014 click');
       _meosTimerBar.tooltip = 'MeOS: click to start the next clock on this membrane.';
@@ -12814,7 +12816,7 @@ function meosUpdateTimerBar() {
       meosTickTimerLines();
       // 時計thatが止んだ後、連れ出したままなら、同じ枡に**帰り道**を出す。
       if (_meosReturnMark) {
-        if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+        if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
         _meosTimerBar.text = '\u21a9 Back' + (_meosReturnMark.name ? ('  ' + _meosReturnMark.name) : '');
         _meosTimerBar.tooltip = 'MeOS: go back to what you were doing when the bell rang.';
         _meosTimerBar.command = 'lai-membrane.alarmReturn';
@@ -12823,7 +12825,7 @@ function meosUpdateTimerBar() {
       } else if (_meosTimerBar) _meosTimerBar.hide();
       return;
     }
-    if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
@@ -12832,8 +12834,10 @@ function meosUpdateTimerBar() {
     //   Right は priority が大きいほど左so 100 > 99 > 98 = [⏰ 残時間][タイトル][+N]。
     const _ttl = (sc && (sc.title || sc.name)) ? (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name) : '';
     _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc));
+    if (!_ttl && _meosTimerTitle) { try { _meosTimerTitle.hide(); } catch (_) { } }
+    if (!(n > 1) && _meosTimerMore) { try { _meosTimerMore.hide(); } catch (_) { } }
     if (_ttl) {
-      if (!_meosTimerTitle) _meosTimerTitle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+      if (!_meosTimerTitle) _meosTimerTitle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 102);
       _meosTimerTitle.text = _ttl;
       try { _meosTimerTitle.color = '#e0803a'; } catch (_) { }
       _meosTimerTitle.command = 'lai-membrane.pseudoTimer';
@@ -12841,7 +12845,7 @@ function meosUpdateTimerBar() {
       _meosTimerTitle.show();
     }
     if (n > 1) {
-      if (!_meosTimerMore) _meosTimerMore = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 98);
+      if (!_meosTimerMore) _meosTimerMore = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
       _meosTimerMore.text = '+' + (n - 1);
       try { _meosTimerMore.color = '#9aa0a6'; } catch (_) { }
       _meosTimerMore.command = 'lai-membrane.pseudoTimer';
@@ -27657,7 +27661,7 @@ if(wb&&wp){wb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagati
 if(on){vscode.postMessage({type:'requestWrapColumn'});if(typeof hideTocTip==='function')hideTocTip();}});
 document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.contains(ev.target)&&ev.target!==wb&&!wb.contains(ev.target)){wp.classList.remove('on');wb.classList.remove('on');}});   /* v4.2.162(俊克「折り返しボタン単独の時には、やはり角丸四角に」): 外を押して閉じた時もボタンの角を丸に戻す */}
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});   /* v4.2.166: 3つを巡る(押した所で効く) */
-/* ★★v4.2.188(俊克「20ピクセル以内のスライドは、ノブを動かさず、±1の変化だけをする」): ★幅や zoom をいじるのをやめ、**指の動いた量で役を分ける**= 掴んだ所から20px以内は微調整(±1だけ)・それを超えたら普段のスライダー。標準動作は止めず、微調整の間だけ答えを上書きする(物差しを混ぜない)。 */let _wdX=null,_wdV=0,_wdD=0,_wdT=0;if(ws){ws.addEventListener('pointerdown',ev=>{_wdX=ev.clientX;_wdV=clamp(ws.value);_wdD=0;_wdT=Date.now();});/* ★v4.2.189(俊克「手を止めた時点でリセットするんだよ。そうしないと、続けて増減できないよ」): 掴んだ所だけを基準にすると、20px使い切ったら微調整が終わる。→ **手が止まったら基準を引き直す**= ゆっくり動かしては止めるを繰り返せば、何度でも±1。 */ws.addEventListener('pointermove',ev=>{if(_wdX==null)return;const _n=Date.now();if(_n-_wdT>140){_wdX=ev.clientX;_wdV=clamp(ws.value);}_wdT=_n;_wdD=ev.clientX-_wdX;});const _wEnd=()=>{_wdX=null;};ws.addEventListener('pointerup',_wEnd);ws.addEventListener('pointercancel',_wEnd);window.addEventListener('pointerup',_wEnd);}if(ws)ws.addEventListener('input',()=>{let v=clamp(ws.value);if(_wdX!=null&&Math.abs(_wdD)<=20){v=clamp(_wdV+(_wdD>0?1:_wdD<0?-1:0));ws.value=String(v);}paint(v);send(v);});
+/* ★★v4.2.188(俊克「20ピクセル以内のスライドは、ノブを動かさず、±1の変化だけをする」): ★幅や zoom をいじるのをやめ、**指の動いた量で役を分ける**= 掴んだ所から20px以内は微調整(±1だけ)・それを超えたら普段のスライダー。標準動作は止めず、微調整の間だけ答えを上書きする(物差しを混ぜない)。 */let _wdX=null,_wdV=0,_wdD=0,_wdT=0,_wdJ=false;if(ws){ws.addEventListener('pointerdown',ev=>{_wdX=ev.clientX;_wdV=clamp(ws.value);_wdD=0;_wdT=Date.now();_wdJ=false;});/* ★v4.2.189(俊克「手を止めた時点でリセットするんだよ。そうしないと、続けて増減できないよ」): 掴んだ所だけを基準にすると、20px使い切ったら微調整が終わる。→ **手が止まったら基準を引き直す**= ゆっくり動かしては止めるを繰り返せば、何度でも±1。 */ws.addEventListener('pointermove',ev=>{if(_wdX==null)return;const _n=Date.now();if(_n-_wdT>140){_wdX=ev.clientX;_wdV=clamp(ws.value);_wdJ=false;}_wdT=_n;_wdD=ev.clientX-_wdX;});const _wEnd=()=>{_wdX=null;};ws.addEventListener('pointerup',_wEnd);ws.addEventListener('pointercancel',_wEnd);window.addEventListener('pointerup',_wEnd);}/* ★★v4.2.190(俊克「ノブの幅以内のドラッグ動作なら、±1にする。そして、止めるまでの差がノブの幅以上なら、まず、ノブを+10の位置に移動する。その後のドラッグはマウス位置に追従」): 閾値はノブの幅 14px。超えた最初の1回だけ +10 を置き、以降は標準のまま指に付いていく。 */if(ws)ws.addEventListener('input',()=>{let v=clamp(ws.value);if(_wdX!=null){const _ad=Math.abs(_wdD),_sg=_wdD>0?1:-1;if(_ad<=14){v=clamp(_wdV+(_ad?_sg:0));ws.value=String(v);}else if(!_wdJ){_wdJ=true;v=clamp(_wdV+_sg*10);ws.value=String(v);}}paint(v);send(v);});
 if(ws)ws.addEventListener('change',()=>{const v=clamp(ws.value);paint(v);send(v,true);});
 if(wn){wn.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const v=clamp(wn.value);paint(v);send(v,true);wn.blur();}/* ★v4.2.186(俊克「↓/↑キーで値を変更できるように」): スライダーでは出しにくい±1を、ここで確実に。paint は焦点中の枠を書き換えない so 数字は自分で入れる。 */if(ev.key==='ArrowUp'||ev.key==='ArrowDown'){ev.preventDefault();const v=clamp((Number(wn.value)||80)+(ev.key==='ArrowUp'?1:-1));wn.value=String(v);paint(v);send(v,true);}});
 wn.addEventListener('blur',()=>{const v=clamp(wn.value);paint(v);send(v,true);});}}
