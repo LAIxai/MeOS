@@ -12047,6 +12047,10 @@ function meosClockList(limit) {
 //   ★描き直すのは**見えている範囲の⏰行だけ**so、速くしても負担は増えない。
 let _meosTimerBar = null, _meosTimerTick = null, _meosRingBlink = null;
 let _meosTimerTitle = null, _meosTimerMore = null;   // ★v4.2.189: 最下段を色で分けるso枚を分ける(StatusBarItem は全体に1色しか持てない)
+// ★v4.2.204(俊克「ウィンドウ最下段の右端に表示されるので、他の表示があると見えない。前のように左側に」):
+//   ★v4.2.190 の 103/102/101 で並びが変わった。前(v4.2.188まで)は 100 で Markdown のすぐ右。
+//   ★組込みの Markdown は 100.1 付近・膜名は MeOS の 100 → その間の 100.03/.02/.01 に置くと、
+//     前と同じ場所に正しい順で連続して並ぶ(膜名に割り込まれない)。priority は小数も使える。
 const MEOS_RING_BLINK_MS = 400;   // 息(0.8秒)の半分= 白が点いて消えて1往復
 // ★★★v4.0.454(俊克「勝手に飛ぶのも、自分で飛ぶのも、**元いた場所に戻るのは、少し面倒**だね?」):
 //   ★★★**連れ出したのはMeOSso、帰り道もMeOSthat出す**。◀(Line history)は在ったthat、
@@ -12793,7 +12797,7 @@ function meosUpdateTimerBar() {
     let best = null;
     for (const [k, until] of _meosPseudoUntil) if (!best || until < best.until) best = { k, until };
     if (meosIsRinging()) {                               // v4.0.469: 鳴っている間は、それthatが一番言うべきこと
-      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
       _meosTimerBar.text = '\u23f0 ringing' + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
@@ -12808,7 +12812,7 @@ function meosUpdateTimerBar() {
     //   戻し方thatが同じ1つの枡に出る(止めた人thatが、止めたと分かる／戻せると分かる)。
     if (_meosClocksOff) {
       if (_meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; _meosChainBlinkOn = false; }
-      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
       _meosTimerBar.text = '\u23f0 off';
       _meosTimerBar.tooltip = 'MeOS: every clock is stopped. No clock will be armed until you turn them back on. Click to resume.';
       _meosTimerBar.command = 'lai-membrane.clockResumeAll';
@@ -12830,7 +12834,7 @@ function meosUpdateTimerBar() {
       try { meosChainSkipWaiting(); } catch (_) { _meosChainWait = null; }
     }
     if (_meosChainWait) {
-      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
+      if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
       _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next')
         + (_meosChainWait.next ? ('  \u2014 click to start ' + _meosChainWait.next + ' timer') : '  \u2014 click');
       _meosTimerBar.tooltip = 'MeOS: click to start the next clock on this membrane.';
@@ -12855,7 +12859,7 @@ function meosUpdateTimerBar() {
       meosTickTimerLines();
       // 時計thatが止んだ後、連れ出したままなら、同じ枡に**帰り道**を出す。
       if (_meosReturnMark) {
-        if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
+        if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
         _meosTimerBar.text = '\u21a9 Back' + (_meosReturnMark.name ? ('  ' + _meosReturnMark.name) : '');
         _meosTimerBar.tooltip = 'MeOS: go back to what you were doing when the bell rang.';
         _meosTimerBar.command = 'lai-membrane.alarmReturn';
@@ -12864,7 +12868,7 @@ function meosUpdateTimerBar() {
       } else if (_meosTimerBar) _meosTimerBar.hide();
       return;
     }
-    if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
+    if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
     const sc = _meosPseudoScopes.get(best.k);
     const n = _meosPseudoUntil.size;
     // v4.1.60: ストップウォッチは\u21bbを添える= ここには膜名しか手かかりが無いso、向きを字で言う。
@@ -12876,7 +12880,7 @@ function meosUpdateTimerBar() {
     if (!_ttl && _meosTimerTitle) { try { _meosTimerTitle.hide(); } catch (_) { } }
     if (!(n > 1) && _meosTimerMore) { try { _meosTimerMore.hide(); } catch (_) { } }
     if (_ttl) {
-      if (!_meosTimerTitle) _meosTimerTitle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 102);
+      if (!_meosTimerTitle) _meosTimerTitle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.02);
       _meosTimerTitle.text = _ttl;
       try { _meosTimerTitle.color = '#e0803a'; } catch (_) { }
       _meosTimerTitle.command = 'lai-membrane.pseudoTimer';
@@ -12884,7 +12888,7 @@ function meosUpdateTimerBar() {
       _meosTimerTitle.show();
     }
     if (n > 1) {
-      if (!_meosTimerMore) _meosTimerMore = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
+      if (!_meosTimerMore) _meosTimerMore = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.01);
       _meosTimerMore.text = '+' + (n - 1);
       try { _meosTimerMore.color = '#9aa0a6'; } catch (_) { }
       _meosTimerMore.command = 'lai-membrane.pseudoTimer';
