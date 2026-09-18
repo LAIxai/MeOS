@@ -34290,7 +34290,28 @@ function meosCheckStampWatch(editor) {
       _meosCheckStampBusy = true; deferRefreshCount++;
       (async () => {
         try {
-          await ed2.edit(eb => eb.insert(new vscode.Position(hit.line, hit.ins), ' ' + meosFormatStamp(new Date())), { undoStopBefore: false, undoStopAfter: false });
+          // ★★★v4.2.196(俊克「箱条書きで、頭に✅が付かないよ」):
+          //   ★★真因= **印が2つの道に分かれていた**。時刻はここ(カーソルが塊を離れた時・v4.0.319)で入るが、
+          //     ✅ は syncHeadingDoneMarks(**保存時**)だった。同じ「済んだ」なのに出る拍が違う。
+          //   ★→ **同じ所で、同じ一筆で入れる** ([[feedback_one_source_for_mark_count_action]])。
+          //     置き場所は v4.2.193/195 と同じ= 見出し/箱条書きのマーカーの後ろ。保存時の道も残す(冪等)。
+          let _ckHd = null;
+          try {
+            const _isHd = (t) => /^\s*(?:#{1,6}|[-*+]|\d+[.)])\s/.test(t);
+            const _t0 = ed2.document.lineAt(hit.line).text;
+            let _hl = -1, _htx = '';
+            if (_isHd(_t0)) { _hl = hit.line; _htx = _t0; }
+            else if (hit.line > 0) { const _p = ed2.document.lineAt(hit.line - 1).text; if (_isHd(_p)) { _hl = hit.line - 1; _htx = _p; } }
+            if (_hl >= 0) {
+              const _m2 = _htx.match(/^(\s*(?:#{1,6}|[-*+]|\d+[.)])\s+)(\u2705[ \u3000]*)?/u);
+              if (_m2 && !_m2[2]) _ckHd = { line: _hl, col: _m2[1].length };
+            }
+          } catch (_) { }
+          await ed2.edit(eb => {
+            eb.insert(new vscode.Position(hit.line, hit.ins), ' ' + meosFormatStamp(new Date()));
+            if (_ckHd) eb.insert(new vscode.Position(_ckHd.line, _ckHd.col), '\u2705 ');
+          }, { undoStopBefore: false, undoStopAfter: false });
+          try { if (_ckHd) meosDbg('[checkStamp] \u2705 \u3082\u540c\u3058\u4e00\u7b46\u3067\u5165\u308c\u305f \u884c=' + (_ckHd.line + 1)); } catch (_) { }
           try { meosDbg('[checkStamp] 塊を離れたので時刻を入れた 行=' + (hit.line + 1)); } catch (_) { }
         } catch (_) { }
         finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); _meosCheckStampBusy = false; }
