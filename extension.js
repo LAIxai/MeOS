@@ -12046,6 +12046,42 @@ function meosClockList(limit) {
 //   → 鳴っている間だけ拍を0.4秒にする(1往復0.8秒＝息と同じ)。鳴り止めば元の1秒へ戻す。
 //   ★描き直すのは**見えている範囲の⏰行だけ**so、速くしても負担は増えない。
 let _meosTimerBar = null, _meosTimerTick = null, _meosRingBlink = null;
+// ★★★v4.2.205(俊克「⏰メッセージを mac のメニューなどが表示されている右側の部分に。
+//   ここはアプリが状態を表示することができるよね」):
+//   ★VS Code の API には無い→ **macOS 標準の osascript(JXA)を小さな係として起こし、メニューバーの項目を持たせる**(コンパイル不要)。
+//   ★やり取りは状態ファイル1つ(係が0.5秒ごとに読む)。係は親(拡張ホスト)が消えたら自分も消える(kill(pid,0))。
+//   ★押すと VSCodium を前へ出し、クリックの印を書く→ 拡張が⏰の一覧を開く。mac 以外では何もしない。
+//   ★実機(macOS 27)で確かめた= 帯の中(y=1230/高さ1260)に出る・字の差替え・親が消えると終わる。
+const MEOS_MENUBAR_JXA = "ObjC.import('Cocoa');\nObjC.bindFunction('kill', ['int', ['int', 'int']]);\nfunction run(argv) {\n  const statePath = argv[0], parentPid = parseInt(argv[1], 10), clickPath = argv[2];\n  const app = $.NSApplication.sharedApplication;\n  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);\n  const bar = $.NSStatusBar.systemStatusBar;\n  const item = bar.statusItemWithLength($.NSVariableStatusItemLength);\n  let appPath = '';\n  ObjC.registerSubclass({ name: 'MeOSMenuTarget', methods: { 'clicked:': { types: ['void', ['id']], implementation: function (s) {\n    try { $.NSString.alloc.initWithUTF8String(String(Date.now())).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}\n    try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {}\n  } } } });\n  item.button.target = $.MeOSMenuTarget.alloc.init; item.button.action = 'clicked:';\n  const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);\n  let last = null;\n  for (;;) {\n    if (parentPid > 0 && $.kill(parentPid, 0) !== 0) break;\n    let st = null;\n    try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}\n    if (!st || st.quit) break;\n    if (st.app) appPath = st.app;\n    if (st.text !== last) {\n      last = st.text;\n      const m = $.NSMutableAttributedString.alloc.init;\n      m.mutableString.setString($(' ' + st.text + ' '));\n      const r = $.NSMakeRange(0, m.length);\n      m.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.whiteColor, r);\n      m.addAttributeValueRange($.NSBackgroundColorAttributeName, orange, r);\n      item.button.attributedTitle = m;\n    }\n    $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));\n  }\n  bar.removeStatusItem(item);\n  return 'bye';\n}\n";
+let _meosMb = null;   // { proc, state, click, script, last }
+function meosMenuBarSet(text) {
+  try {
+    if (process.platform !== 'darwin') return;
+    const on = vscode.workspace.getConfiguration('laiMembrane').get('menuBarClock', true);
+    const fs = require('fs'), os = require('os'), path = require('path');
+    if (!text || !on) {
+      if (_meosMb && _meosMb.proc) { try { fs.writeFileSync(_meosMb.state, JSON.stringify({ quit: true })); } catch (_) { } _meosMb.last = null; }
+      return;
+    }
+    const t = String(text).length > 40 ? String(text).slice(0, 39) + '\u2026' : String(text);   // ノッチの裏に隠れないよう短く
+    if (!_meosMb) {
+      const base = path.join(os.tmpdir(), 'meos-menubar-' + process.pid);
+      _meosMb = { proc: null, state: base + '.json', click: base + '.click', script: base + '.js', last: null };
+      try { fs.watchFile(_meosMb.click, { interval: 700 }, (cur, prev) => { if (cur.mtimeMs > prev.mtimeMs && prev.mtimeMs > 0 || (cur.mtimeMs > 0 && prev.mtimeMs === 0)) { try { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); } catch (_) { } } }); } catch (_) { }
+    }
+    if (t === _meosMb.last && _meosMb.proc) return;
+    const ep = String(process.execPath || ''), ai = ep.indexOf('.app/');
+    fs.writeFileSync(_meosMb.state, JSON.stringify({ text: t, app: ai > 0 ? ep.slice(0, ai + 4) : '' }));
+    _meosMb.last = t;
+    if (!_meosMb.proc) {
+      fs.writeFileSync(_meosMb.script, MEOS_MENUBAR_JXA);
+      const cp = require('child_process').spawn('osascript', ['-l', 'JavaScript', _meosMb.script, _meosMb.state, String(process.pid), _meosMb.click], { stdio: 'ignore' });
+      _meosMb.proc = cp;
+      cp.on('exit', () => { if (_meosMb && _meosMb.proc === cp) { _meosMb.proc = null; _meosMb.last = null; } });
+      cp.on('error', () => { if (_meosMb && _meosMb.proc === cp) { _meosMb.proc = null; _meosMb.last = null; } });
+    }
+  } catch (_) { }
+}
 let _meosTimerTitle = null, _meosTimerMore = null;   // ★v4.2.189: 最下段を色で分けるso枚を分ける(StatusBarItem は全体に1色しか持てない)
 // ★v4.2.204(俊克「ウィンドウ最下段の右端に表示されるので、他の表示があると見えない。前のように左側に」):
 //   ★v4.2.190 の 103/102/101 で並びが変わった。前(v4.2.188まで)は 100 で Markdown のすぐ右。
@@ -12799,6 +12835,7 @@ function meosUpdateTimerBar() {
     if (meosIsRinging()) {                               // v4.0.469: 鳴っている間は、それthatが一番言うべきこと
       if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
       _meosTimerBar.text = '\u23f0 ringing' + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
+      meosMenuBarSet('\u23f0 ringing' + (_meosRingName ? (' ' + _meosRingName) : ''));   // v4.2.205
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
       try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); _meosTimerBar.color = undefined; } catch (_) { }
@@ -12814,6 +12851,7 @@ function meosUpdateTimerBar() {
       if (_meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; _meosChainBlinkOn = false; }
       if (!_meosTimerBar) _meosTimerBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100.03);
       _meosTimerBar.text = '\u23f0 off';
+      meosMenuBarSet(null);   // v4.2.205: 止めた時はメニューバーから引っ込める
       _meosTimerBar.tooltip = 'MeOS: every clock is stopped. No clock will be armed until you turn them back on. Click to resume.';
       _meosTimerBar.command = 'lai-membrane.clockResumeAll';
       try { _meosTimerBar.backgroundColor = undefined; _meosTimerBar.color = new vscode.ThemeColor('descriptionForeground'); } catch (_) { }
@@ -12838,6 +12876,8 @@ function meosUpdateTimerBar() {
       _meosTimerBar.text = '\u23f0 ' + (_meosChainWait.text || 'next')
         + (_meosChainWait.next ? ('  \u2014 click to start ' + _meosChainWait.next + ' timer') : '  \u2014 click');
       _meosTimerBar.tooltip = 'MeOS: click to start the next clock on this membrane.';
+      _subHide();   // v4.2.205: v4.2.190で入れ忘れていた(タイトルと+Nが残っていた)
+      meosMenuBarSet('\u23f0 ' + (_meosChainWait.text || 'next') + ' \u2014 click');
       _meosTimerBar.command = 'lai-membrane.chainNext';
       // ★★v4.2.54(俊克 改良1「ハイライトを黄色と黒で点滅するようにしよう」):
       //   ★★VS Codeが枡の地に許すのは warning/error の2色だけso、**黄の面 ⇄ 黄の字**を交互に出す=
@@ -12856,6 +12896,8 @@ function meosUpdateTimerBar() {
     }
     if (!best) {
       if (_meosTimerTick) { clearInterval(_meosTimerTick); _meosTimerTick = null; }
+      _subHide();   // v4.2.205: ⏰が全部止んだ後もタイトルと+Nが残っていた
+      meosMenuBarSet(null);
       meosTickTimerLines();
       // 時計thatが止んだ後、連れ出したままなら、同じ枡に**帰り道**を出す。
       if (_meosReturnMark) {
@@ -12877,6 +12919,7 @@ function meosUpdateTimerBar() {
     //   Right は priority が大きいほど左so 100 > 99 > 98 = [⏰ 残時間][タイトル][+N]。
     const _ttl = (sc && (sc.title || sc.name)) ? (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name) : '';
     _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc));
+    meosMenuBarSet(_meosTimerBar.text + (_ttl ? ' ' + _ttl : '') + (n > 1 ? ' +' + (n - 1) : ''));   // v4.2.205: 最下段と同じ中身
     if (!_ttl && _meosTimerTitle) { try { _meosTimerTitle.hide(); } catch (_) { } }
     if (!(n > 1) && _meosTimerMore) { try { _meosTimerMore.hide(); } catch (_) { } }
     if (_ttl) {
@@ -37224,6 +37267,7 @@ function deactivate() {
   try { if (_meosTimerBar) { _meosTimerBar.dispose(); _meosTimerBar = null; } } catch (_) { }
   try { if (_meosTimerTitle) { _meosTimerTitle.dispose(); _meosTimerTitle = null; } } catch (_) { }
   try { if (_meosTimerMore) { _meosTimerMore.dispose(); _meosTimerMore = null; } } catch (_) { }
+  try { meosMenuBarSet(null); } catch (_) { }   // v4.2.205: メニューバーの係も終わらせる
   try { disposeDecorations(); } catch (_) { }
   try { for (const d of disposables) d.dispose(); } catch (_) { }
 }
