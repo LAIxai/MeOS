@@ -35705,7 +35705,7 @@ function meosApplyCodeSpanDecorations(editor) {
       codeFileGapDeco = null;
       codeTickGhostDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.230(俊克「右端にスペース1個入れると寸詰まり感がなくなる」): 閉じの ` を消さずに透明にして、板の中の1字ぶんの空きにする
       codeFilePillDeco = null;
-      codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
+      codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important; -webkit-text-fill-color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
     const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [];
     const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
