@@ -12535,7 +12535,7 @@ function meosApplyTimerLineDecorations(editor) {
                 renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
             }
           }
-          if (!c.done && c.lock && !_rawHere) {   // ★v4.2.235: 掛かっている🔐に外し方のtip(外す時は確認しない=安全な向き)
+          if (c.lock && !_rawHere) {   // ★v4.2.235/238(済んだ後も): 掛かっている🔐に外し方のtip(外す時は確認しない=安全な向き)
             const _lm = meosClockLockMarkAt(txt);
             if (_lm) items.push({ range: new vscode.Range(i, _lm.a, i, _lm.b), hoverMessage: '\ud83d\udd10 Locked \u2014 this clock cannot be stopped or dropped until it rings. Opt-click the \ud83d\udd10 to take the lock off.' });
           }
@@ -12578,10 +12578,10 @@ function meosApplyTimerLineDecorations(editor) {
                 renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
               // ★v4.2.237(俊克 質問1「ロック中は⏸️を押しても止まらないので、ポインタを↖に」/ バグ3「🔐の上でポインタが変化しない」):
               //   錠が掛かっている間、運転ボタンの当たりは↖(押しても断られる)。代わりに🔐に手の形(Opt+クリックで外す)。
-              if (c.lock && !c.done) {
-                noPress.push(new vscode.Range(i, 0, i, _a65 + 1));
-                const _lm37 = meosClockLockMarkAt(txt); if (_lm37) plays.push({ range: new vscode.Range(i, _lm37.a, i, _lm37.b) });
-              } else plays.push({ range: new vscode.Range(i, 0, i, _a65 + 1) });
+              const _lm37 = c.lock ? meosClockLockMarkAt(txt) : null;
+              if (c.lock && !c.done) noPress.push(new vscode.Range(i, 0, i, _a65 + 1));
+              else plays.push({ range: new vscode.Range(i, 0, i, _a65 + 1) });
+              if (_lm37) plays.push({ range: new vscode.Range(i, _lm37.a, i, _lm37.b) });   // v4.2.238: 済んだ後も🔐は外せる(手の形)
             }
           }
           if (c.done) {
@@ -18131,6 +18131,7 @@ function meosClockPlayHitAt(document, line, character) {
     const at = txt.indexOf('\u23f0');
     if (at < 0) return null;
     if (character < 0 || character > at + 1) return null;   // 0桁〜⏰の次の桁(v4.2.76: 手の形 _a65+1 と同じ幅)
+    if (c.lock) { const _lm = meosClockLockMarkAt(txt); if (_lm && character >= _lm.a) return null; }   // v4.2.238: 🔐の上は▶️でない(外すのはOpt+クリック)
     return { line, c, at, end: at };
   } catch (_) { return null; }
 }
@@ -18341,7 +18342,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && _sels92.length >= 2) {
       for (let k = _sels92.length - 1; k >= 0; k--) {
         const _s = _sels92[k];
-        if (_s.isEmpty && meosClockPlayHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }
+        // ★v4.2.238: 🔐を▶️より先に見る(✓の付いた⏰では🔐が▶️の当たり at+1 と重なり、Opt+クリックが▶️に取られていた)。
         // ★v4.2.235(俊克「Optクリックがあるから、確認パネルは出さなくても良い。tipで説明すればいい」): 本文の🔐をOpt+クリック= 錠を外す
         if (_s.isEmpty) { const _t = editor.document.lineAt(_s.active.line).text || ''; const _lm = (_t.indexOf('\u23f0') >= 0) ? meosClockLockMarkAt(_t) : null;
           if (_lm && _s.active.character >= _lm.a && _s.active.character <= _lm.b) {
@@ -18353,6 +18354,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
             try { refresh(editor); } catch (_) { }
             return;
           } }
+        if (_s.isEmpty && meosClockPlayHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }
       }
       if (_optSel92) editor.selections = [new vscode.Selection(_optSel92.active, _optSel92.active)];
     }
@@ -35812,7 +35814,7 @@ function meosApplyCodeSpanDecorations(editor) {
       //   VS Code の before は文字の外に別の箱で入るため、板の枠の中には入らない→ 3つの箱を継いで1枚の板に見せる=
       //   ①📄(黄の四角・枠の左半分) ②空白(板の地・枠の上下) ③本文(枠の右半分)。①は隠した開きの ` の位置、②は本文の頭に付けるので順は崩れない。
       const PB = 'rgba(128,128,128,0.50)', PG = 'rgba(128,128,128,0.20)';
-      codeFileDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important; letter-spacing: 2.4ch;', before: { contentText: '📄', backgroundColor: 'rgba(224,169,60,0.60)', textDecoration: 'none; position: absolute; font-size: 0.9em; padding: 0 2px; border-radius: 3px 0 0 3px; margin-left: 0;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   /* v4.2.226(俊克「段が2つに増えた」): 箱を3つ継ぐと絵文字の箱の高さが合わない→ 継ぐのをやめ、開きの ` を**透明にして幅を広げ**(板の中の空き)、その上に📄を浮かせて(absolute=幅を取らない)置く。枠は本文の板1枚だけ。 */
+      codeFileDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important; letter-spacing: 2.4ch;', before: { contentText: '📄', backgroundColor: 'rgba(196,132,32,0.95)', textDecoration: 'none; position: absolute; font-size: 0.9em; padding: 0 2px; border-radius: 3px 0 0 3px; margin-left: 0;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   /* v4.2.226(俊克「段が2つに増えた」): 箱を3つ継ぐと絵文字の箱の高さが合わない→ 継ぐのをやめ、開きの ` を**透明にして幅を広げ**(板の中の空き)、その上に📄を浮かせて(absolute=幅を取らない)置く。枠は本文の板1枚だけ。 */
       codeFileGapDeco = null;
       codeTickGhostDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.230(俊克「右端にスペース1個入れると寸詰まり感がなくなる」): 閉じの ` を消さずに透明にして、板の中の1字ぶんの空きにする
       codeFilePillDeco = null;
@@ -35825,8 +35827,12 @@ function meosApplyCodeSpanDecorations(editor) {
     const vrs = meosScanSpans(editor, doc);
     const tbl = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) tbl.add(ln);
     const R = (ln, a, b) => new vscode.Range(ln, a, ln, b);
+    // ★v4.2.238(俊克「リンク指定のときのバージョン部分がまた色が付かなくなった」): クリームの字の色(!important)と版番号の橙がぶつかる→ 版番号の所はクリームの字の色を掛けない。
+    let _curTxt = '';
+    const creamPush = (ln, a, b) => { MEOS_CODE_VER_RE.lastIndex = 0; const seg = _curTxt.slice(a, b); let v, from = a; while ((v = MEOS_CODE_VER_RE.exec(seg)) !== null) { const va = a + v.index; if (va > from) creamTx.push(R(ln, from, va)); from = va + v[0].length; } if (b > from) creamTx.push(R(ln, from, b)); };
     for (const vr of vrs) for (let ln = vr[0]; ln <= vr[1]; ln++) {
       const text = lines[ln]; if (!text || text.indexOf('`') < 0 || raw.has(ln) || fence.has(ln)) continue;
+      _curTxt = text;
       const re = /(`+)([^\n]*?[^`\n][^\n]*?)\1(?!`)/g; let m;
       while ((m = re.exec(text)) !== null) {
         const s = m.index, n = m[1].length, e = s + m[0].length, cs = s + n, ce = e - n;
@@ -35836,8 +35842,8 @@ function meosApplyCodeSpanDecorations(editor) {
         if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs - 1)); ghosts.push(R(ln, cs - 1, cs)); } hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); }   // v4.2.231(俊克「他の板の両端にもスペース1個」): 開き/閉じの ` の内側の1つを透明にして両端の空きにする
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
-        if (isFile) { if (tbl.has(ln)) clocks.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); } creamTx.push(R(ln, cs, ce)); }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
-        else { const _ck = body.charCodeAt(0) === 0x23f0; (_ck ? clocks : (isSet ? sets : pills)).push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); if (_ck) creamTx.push(R(ln, cs, ce)); }
+        if (isFile) { if (tbl.has(ln)) clocks.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); } creamPush(ln, cs, ce); }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
+        else { const _ck = body.charCodeAt(0) === 0x23f0; (_ck ? clocks : (isSet ? sets : pills)).push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); if (_ck) creamPush(ln, cs, ce); }
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
       }
