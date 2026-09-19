@@ -17005,6 +17005,7 @@ function _refreshInner(editor) {
   try { meosApplyNameStampDecorations(editor); } catch (_) {} // v4.0.363: 膜名TSのモザイク色分け(詰めた数字を読めるように)
   try { meosApplyMeLinkDecorations(editor); } catch (_) {} // v4.0.8: ノート内リンク(コメント包み)の整形
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
+  try { meosApplyCodeSpanDecorations(editor); } catch (_) {} // v4.2.223: インラインコード `…` を板に
   try { meosApplyBoldDecorations(editor); } catch (_) {} // v3.7.0: 太字/斜体 **text**/***text***(同一行内・Raw/隔離時は解除)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
@@ -35664,6 +35665,67 @@ function meosBoldFmtType(bold, italic, fgKey, bgKey, noStroke, plain, rawFg) {
 // ★v4.2.203: 太字/斜体の口が色を付けた範囲(uri → Map<行, [[s,e]]>)。主処理(applyPrettyLabels)はこの後に走るので、
 //   箱条書きの項目全体の色からこの範囲もくり抜ける(塗る口が2つある= v4.0.408 と同じ事情)。
 const _meosColoredMarks = new Map();
+// ★★v4.2.223(俊克 2026.09.19 am09:15「`MeOS/lai-membrane-4.2.215.vsix` のような記法は、整形するとどんな形で出すものか?
+//   素のMarkdownでは青色で目立つのに、MeOSの派手な見出しに比べると地味。MeOSらしい表示の仕方はないか?」→「貴方の線で」):
+//   ★一般の整形= 等幅・角丸の灰色の板・バッククォートは見せない(GitHub/Zenn/Notion)。エディタは元から等幅なので、板と隠しだけ。
+//   ★MeOSらしさ= **中身が何を指すかで形を変える**(見た目でなく関係)= ファイルの道筋は頭に📄・設定名/コマンド名は青い板・
+//     版番号(4.2.215)は橙の太字。カーソル行は生のまま(他の装飾と同じ約束)。表の行はバッククォートを隠さない(列の幅を崩さない)。
+//     ``` の囲み(コードブロック)の中は触らない。
+const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
+const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
+const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
+let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeVerDeco = null;
+let _meosFenceCache = { key: null, set: null };
+function meosFenceLines(doc) {
+  const key = _meosTextKey(doc);
+  if (_meosFenceCache.key === key && _meosFenceCache.set) return _meosFenceCache.set;
+  const lines = meosDocLines(doc), set = new Set(); let open = null;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i]; if (t.length < 3) { if (open) set.add(i); continue; }
+    const m = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(t);
+    if (m) { set.add(i); if (!open) open = m[1][0]; else if (m[1][0] === open) open = null; continue; }
+    if (open) set.add(i);
+  }
+  _meosFenceCache = { key, set }; return set;
+}
+function meosApplyCodeSpanDecorations(editor) {
+  try {
+    if (!editor || !editor.document) return;
+    const doc = editor.document;
+    if (!codeHideDeco) {
+      codeHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      const pill = (bg, bd) => ({ backgroundColor: bg, border: '1px solid ' + bd, borderRadius: '4px', color: new vscode.ThemeColor('editor.foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      codePillDeco = vscode.window.createTextEditorDecorationType(pill('rgba(128,128,128,0.20)', 'rgba(128,128,128,0.50)'));
+      codeSetDeco = vscode.window.createTextEditorDecorationType(pill('rgba(70,130,230,0.20)', 'rgba(70,130,230,0.60)'));
+      codeFileDeco = vscode.window.createTextEditorDecorationType({ before: { contentText: '📄', margin: '0 2px 0 1px' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      codeVerDeco = vscode.window.createTextEditorDecorationType({ color: '#e0803a', fontWeight: '900', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    }
+    const hide = [], pills = [], sets = [], files = [], vers = [];
+    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeVerDeco, vers); };
+    if (!meosIsProseDoc(doc)) { put(); return; }
+    const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
+    const vrs = meosScanSpans(editor, doc);
+    const tbl = new Set(); for (const vr of vrs) for (const ln of meosTableRowLines(doc, vr[0], vr[1])) tbl.add(ln);
+    const R = (ln, a, b) => new vscode.Range(ln, a, ln, b);
+    for (const vr of vrs) for (let ln = vr[0]; ln <= vr[1]; ln++) {
+      const text = lines[ln]; if (!text || text.indexOf('`') < 0 || raw.has(ln) || fence.has(ln)) continue;
+      const re = /(`+)([^\n]*?[^`\n][^\n]*?)\1(?!`)/g; let m;
+      while ((m = re.exec(text)) !== null) {
+        const s = m.index, n = m[1].length, e = s + m[0].length, cs = s + n, ce = e - n;
+        if (s > 0 && text[s - 1] === '`') continue;
+        const body = m[2].trim(); if (!body) continue;
+        if (!tbl.has(ln)) { hide.push(R(ln, s, cs)); hide.push(R(ln, ce, e)); }
+        const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
+        const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
+        (isSet ? sets : pills).push(R(ln, cs, ce));
+        if (isFile) files.push(R(ln, cs, cs + 1));
+        MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
+        while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
+      }
+    }
+    put();
+  } catch (_) { }
+}
 function meosApplyBoldDecorations(editor) {
   // v4.0.347(俊克「見出しが閉じるのが10秒以上かかる」): **この道には計測が1つも無かった**。
   //   refresh も foldingRanges も測っているのに、描画パスは無測定＝ **網の外**だった(v4.0.112の教訓)。
@@ -36505,7 +36567,7 @@ function activate(context) {
   const _meosCaretNow = (ed) => ({ ln: ed.selection.active.line, ch: ed.selection.active.character });
   const _meosPass = (cmd) => { vscode.commands.executeCommand(cmd); };
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeSpanDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
