@@ -12175,7 +12175,7 @@ async function meosGoBackFromAlarm() {
 //   ★★★**置き場所thatが意味を決める**＝ 閉じ膜は「その膜の終わり」so、**解き終わった人thatが必ず通る所**。
 //     ステータスバー1つでは「どの膜の残りか」thatが言えず、2つ掛けたら片方thatが消える。膜の物は膜に置く。
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
-let meosClockLockDeco = null;   // ★v4.2.236: 🔓の駒
+let meosClockLockDeco = null, meosClockNoPressDeco = null;   // ★v4.2.236: 🔓の駒
 let meosClockPlayDeco = null;   // ★v4.2.74: 運転ボタンの当たり= 手の形(cursor:pointer)
 let meosClockTitleDeco = null;  // ★v4.2.173: 走っている1本のタイトル(待っている⏰のタイトルは畳む)
 let meosTimerLineDeco = null;
@@ -12299,6 +12299,7 @@ function meosApplyTimerLineDecorations(editor) {
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];   // v4.1.148 / v4.1.176
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
+    const noPress = [];   // ★v4.2.237: 錠の間の運転ボタン= ↖
     // ★★v4.2.173(俊克 2026.09.17 am02:30「//以降のコメント部分は常時表示するべきではない。Rawモードにすれば確認できる。
     //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
     //   ★★**タイトルは、走っている1本だけthat見せる**= 待っている⏰の `// …` は畳んで消す。
@@ -12565,7 +12566,9 @@ function meosApplyTimerLineDecorations(editor) {
           //   ★本文には1文字も足さない(v4.1.64 の 🔓 と同じ流儀)。Rawでは出さない・済んだ物(✓)にも出さない。
           //   ★★**`owner` の宣言より後ろに置く**= v4.1.1113 で踏んだ穴(TDZ を try/catch that飲み、
           //     何も描かれず何も言わない)を二度と作らない。
-          if (!c.done && !_rawHere) {
+          // ★v4.2.237(俊克 改良1「✓を消さないと再起動できない。時刻を変えた後に▶️を押せば✓が消えるように」): 済んだ物にも▶️を出す
+          //   (押すと meosChainStartHere が done:false で書き直す= ✓が消えて走る)。
+          if (!_rawHere) {
             const _a65 = txt.indexOf('\u23f0');
             if (_a65 >= 0) {
               const _run65 = meosClockLineRunning(doc, owner ? owner.id : '', i);
@@ -12573,7 +12576,12 @@ function meosApplyTimerLineDecorations(editor) {
               //   押せる所の上でだけ形that変わる。吹き出しは出さない(何も覆わない)。
               plays.push({ range: new vscode.Range(i, _a65, i, _a65),
                 renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
-              plays.push({ range: new vscode.Range(i, 0, i, _a65 + 1) });
+              // ★v4.2.237(俊克 質問1「ロック中は⏸️を押しても止まらないので、ポインタを↖に」/ バグ3「🔐の上でポインタが変化しない」):
+              //   錠が掛かっている間、運転ボタンの当たりは↖(押しても断られる)。代わりに🔐に手の形(Opt+クリックで外す)。
+              if (c.lock && !c.done) {
+                noPress.push(new vscode.Range(i, 0, i, _a65 + 1));
+                const _lm37 = meosClockLockMarkAt(txt); if (_lm37) plays.push({ range: new vscode.Range(i, _lm37.a, i, _lm37.b) });
+              } else plays.push({ range: new vscode.Range(i, 0, i, _a65 + 1) });
             }
           }
           if (c.done) {
@@ -12861,6 +12869,8 @@ function meosApplyTimerLineDecorations(editor) {
     if (!meosClockLockDeco) meosClockLockDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; letter-spacing: 1.7ch;',
       before: { contentText: '\ud83d\udd13', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 0.25em; opacity: 0.65;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockLockDeco, lockBtns);
+    if (!meosClockNoPressDeco) meosClockNoPressDeco = vscode.window.createTextEditorDecorationType({ cursor: 'default', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosClockNoPressDeco, noPress);
     editor.setDecorations(meosTimerLineDeco, items);
     if (!meosClockRoundDeco) meosClockRoundDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockRoundDeco, rounds);   // v4.1.140: 周回数は別の駒(色も場所も顔と分ける)
@@ -18117,7 +18127,7 @@ function meosClockPlayHitAt(document, line, character) {
     const txt = document.lineAt(line).text || '';
     if (txt.indexOf('\u23f0') < 0) return null;
     const c = meosClockFcParse(txt);
-    if (!c || c.done) return null;                          // 済んだ物には運転ボタンを出さない
+    if (!c) return null;                          // v4.2.237: 済んだ物にも運転ボタン(押すと✓が消えて走る)
     const at = txt.indexOf('\u23f0');
     if (at < 0) return null;
     if (character < 0 || character > at + 1) return null;   // 0桁〜⏰の次の桁(v4.2.76: 手の形 _a65+1 と同じ幅)
@@ -18165,7 +18175,7 @@ function meosClockLockHitAt(document, line, character) {
 async function meosClockLockHere(editor, hit) {
   const doc = editor.document, ln = hit.line;
   const when = String((hit.c && (hit.c.whenSrc || hit.c.when)) || '').trim();
-  const pick = await vscode.window.showWarningMessage('🔐 Lock this clock?', { modal: true,
+  const pick = '🔐 Lock'; /* v4.2.237(俊克「ロックする時の確認パネルも要らない」): Opt+クリックで外せるので訊かない。説明は🔓のtipに */ if (false) await vscode.window.showWarningMessage('🔐 Lock this clock?', { modal: true,
     detail: 'Until it rings' + (when ? ' (' + when + ')' : '') + ', this clock cannot be stopped or dropped. To take the lock off, Opt-click the \ud83d\udd10 in the \u23f0 list.' }   /* v4.2.234: 錠は「鳴るまで止められない・消せない」で、Opt+クリックで外せる(v4.1.68)。v4.2.233の「戻れない」は誤り */, '🔐 Lock');
   if (pick !== '🔐 Lock') { meosDbg('[lock] やめた 行=' + (ln + 1)); return false; }
   const txt = doc.lineAt(ln).text || '';
@@ -35767,7 +35777,7 @@ const _meosColoredMarks = new Map();
 const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
 const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
-let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeVerDeco = null;
+let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
 let _meosFenceCache = { key: null, set: null };
 function meosFenceLines(doc) {
   const key = _meosTextKey(doc);
@@ -35792,8 +35802,12 @@ function meosApplyCodeSpanDecorations(editor) {
       codeSetDeco = vscode.window.createTextEditorDecorationType(pill('rgba(70,130,230,0.20)', 'rgba(70,130,230,0.60)'));
       // ★v4.2.236(俊克「`⏰18:30` の四角枠の背景を、ダークモードではクリーム色に。ライトモードは今の灰色」): ⏰で始まる板だけ。クリームの上は濃い茶の字。
       codeClockDeco = vscode.window.createTextEditorDecorationType({ borderRadius: '4px', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        light: { backgroundColor: 'rgba(128,128,128,0.20)', border: '1px solid rgba(128,128,128,0.50)', color: new vscode.ThemeColor('editor.foreground') },
-        dark: { backgroundColor: '#f3e6c4', border: '1px solid #cbb98c', textDecoration: 'none; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;' } });
+        light: { backgroundColor: 'rgba(128,128,128,0.20)', border: '1px solid rgba(128,128,128,0.50)' },
+        dark: { backgroundColor: '#f3e6c4', border: '1px solid #cbb98c' } });
+      // ★v4.2.237(俊克「両端の ` が表示されている」): 字の色(塗り)を板全体に掛けたので、両端の透明の ` まで塗り戻していた→ 字の色は中身だけに掛ける。
+      codeCreamTextDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        light: { color: new vscode.ThemeColor('editor.foreground') },
+        dark: { textDecoration: 'none; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;' } });
       // ★v4.2.224(俊克「📄が枠の外なので一体感が無い。枠の中に入れて『📄 』とスペースを空け、📄を一回り大きい四角ハイライトの上に乗せる。📄は色が付けられないからね」):
       //   VS Code の before は文字の外に別の箱で入るため、板の枠の中には入らない→ 3つの箱を継いで1枚の板に見せる=
       //   ①📄(黄の四角・枠の左半分) ②空白(板の地・枠の上下) ③本文(枠の右半分)。①は隠した開きの ` の位置、②は本文の頭に付けるので順は崩れない。
@@ -35804,8 +35818,8 @@ function meosApplyCodeSpanDecorations(editor) {
       codeFilePillDeco = null;
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important; -webkit-text-fill-color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
-    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [];
-    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
+    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [];
+    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
     const vrs = meosScanSpans(editor, doc);
@@ -35822,8 +35836,8 @@ function meosApplyCodeSpanDecorations(editor) {
         if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs - 1)); ghosts.push(R(ln, cs - 1, cs)); } hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); }   // v4.2.231(俊克「他の板の両端にもスペース1個」): 開き/閉じの ` の内側の1つを透明にして両端の空きにする
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
-        if (isFile) { if (tbl.has(ln)) pills.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); pills.push(R(ln, s, ce + 1)); } }
-        else (body.charCodeAt(0) === 0x23f0 ? clocks : (isSet ? sets : pills)).push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1));
+        if (isFile) { if (tbl.has(ln)) clocks.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); } creamTx.push(R(ln, cs, ce)); }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
+        else { const _ck = body.charCodeAt(0) === 0x23f0; (_ck ? clocks : (isSet ? sets : pills)).push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); if (_ck) creamTx.push(R(ln, cs, ce)); }
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
       }
@@ -37404,6 +37418,7 @@ makeDecorations();
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
         try { if (meosClockLockDeco) { meosClockLockDeco.dispose(); meosClockLockDeco = null; } } catch (_) { }
+        try { if (meosClockNoPressDeco) { meosClockNoPressDeco.dispose(); meosClockNoPressDeco = null; } } catch (_) { }
         try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor(), palm: meosPalmCursor(), grip: meosGripCursor(), pinch: meosPinchCursor(), pinched: meosPinchedCursor(), hand: meosHandName() }); } catch (_) { }
       }
       if (e.affectsConfiguration('laiMembrane')) { makeDecorations(); syncGutterEditorSettings(); refresh(); }
