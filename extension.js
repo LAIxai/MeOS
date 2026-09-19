@@ -12532,13 +12532,25 @@ function meosApplyTimerLineDecorations(editor) {
                 renderOptions: { after: { contentText: '⚠️', margin: '0 0 0 2px' } } });
             }
           }
+          if (!c.done && c.lock && !_rawHere) {   // ★v4.2.235: 掛かっている🔐に外し方のtip(外す時は確認しない=安全な向き)
+            const _lm = meosClockLockMarkAt(txt);
+            if (_lm) items.push({ range: new vscode.Range(i, _lm.a, i, _lm.b), hoverMessage: '\ud83d\udd10 Locked \u2014 this clock cannot be stopped or dropped until it rings. Opt-click the \ud83d\udd10 to take the lock off.' });
+          }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
             const _sp = meosClockLockSpot(txt);
             if (_sp) {
               // ★★v4.2.233(俊克「⏰FCの中の🔓もボタン化して🔐をかけれるように。ロックするとその時間まで開けられないので確認パネルは出そう」):
               //   ★押せる🔓は、⏰の右隣(= ▶️の当たり at+1 と同じ桁)ではなく、**時刻の字の直前**に置く= クリックの落ちる桁が▶️と重ならない。
-              if (_sp.p > _sp.at + 1) items.push({ range: new vscode.Range(i, _sp.p, i, _sp.p), hoverMessage: '\ud83d\udd13 Click to lock this clock \ud83d\udd10',
-                renderOptions: { before: { contentText: '\ud83d\udd13', opacity: '0.55', margin: '0 3px 0 0' } } });
+              if (_sp.p > _sp.at + 1) {
+                // ★v4.2.235(俊克「🔓でポインタの形が変わらないし、切り替えができない」「⏰と🔓の間をもう少し狭く」):
+                //   ★手の形を持つ運転ボタンの型(plays)に入れる= ▶️と同じ当たりの作り。当たりは⏰の次の次の桁〜時刻の頭。
+                //   ★間の空白は隠す(⏸6 等の印はもう隠れていて、空白だけが残っていた)。
+                const _g = Math.max(_sp.at + 2, _sp.e);
+                if (_sp.p - 1 >= _g && /[ \t]/.test(txt[_sp.p - 1])) badgeHide.push(new vscode.Range(i, _sp.p - 1, i, _sp.p));
+                plays.push({ range: new vscode.Range(i, _sp.p, i, _sp.p), hoverMessage: '\ud83d\udd13 Click to lock this clock with \ud83d\udd10 \u2014 it then cannot be stopped or dropped until it rings.',
+                  renderOptions: { before: { contentText: '\ud83d\udd13', opacity: '0.6', margin: '0 4px 0 2px' } } });
+                if (_sp.p > _g) plays.push({ range: new vscode.Range(i, _g, i, _sp.p) });
+              }
               else items.push({ range: new vscode.Range(i, _sp.e, i, _sp.e),
                 renderOptions: { after: { contentText: '\ud83d\udd13', opacity: '0.42' } } });
             }
@@ -18116,6 +18128,24 @@ function meosClockLockSpot(txt) {
   for (;;) { let hit = false; for (const k of MK) if (txt.startsWith(k, p)) { p += k.length; hit = true; break; } if (!hit && /[0-9]/.test(txt[p] || '') && /⏸️?[0-9]*$/.test(txt.slice(e, p))) { p++; hit = true; } if (!hit) break; }
   return { at, e, p };
 }
+function meosClockLockMarkAt(txt) {   // ★v4.2.235: 本文の🔐(旧🔒)の位置= ⏰の後ろ・時刻の頭より前
+  const sp = meosClockLockSpot(txt); if (!sp) return null;
+  for (const k of ['\ud83d\udd10', '\ud83d\udd12']) { const a = txt.indexOf(k, sp.e); if (a >= 0 && a < sp.p) { const b = a + 2 + ((txt.charCodeAt(a + 2) === 0xfe0f) ? 1 : 0); return { a, b }; } }
+  return null;
+}
+async function meosClockUnlockAt(document, line, character) {
+  try {
+    const txt = document.lineAt(line).text || '';
+    const c = meosClockFcParse(txt); if (!c || !c.lock) return false;
+    const lm = meosClockLockMarkAt(txt); if (!lm || character < lm.a || character > lm.b) return false;
+    const we = new vscode.WorkspaceEdit(); we.delete(document.uri, new vscode.Range(line, lm.a, line, lm.b));
+    const ok = await vscode.workspace.applyEdit(we);
+    meosDbg('[lock] \ud83d\udd10 \u3092\u5916\u3057\u305f(Opt+\u30af\u30ea\u30c3\u30af) \u884c=' + (line + 1) + ' ok=' + ok);
+    try { meosArmClockFcFor(document); } catch (_) { }
+    try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+    return ok;
+  } catch (_) { return false; }
+}
 function meosClockLockHitAt(document, line, character) {
   try {
     const txt = document.lineAt(line).text || '';
@@ -18123,7 +18153,7 @@ function meosClockLockHitAt(document, line, character) {
     const c = meosClockFcParse(txt);
     if (!c || c.done || c.lock) return null;
     const sp = meosClockLockSpot(txt);
-    if (!sp || !(sp.p > sp.at + 1) || character !== sp.p) return null;
+    if (!sp || !(sp.p > sp.at + 1) || character < Math.max(sp.at + 2, sp.e) || character > sp.p) return null;
     return { line, c, at: sp.at, e: sp.e };
   } catch (_) { return null; }
 }
@@ -18297,6 +18327,17 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       for (let k = _sels92.length - 1; k >= 0; k--) {
         const _s = _sels92[k];
         if (_s.isEmpty && meosClockPlayHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }
+        // ★v4.2.235(俊克「Optクリックがあるから、確認パネルは出さなくても良い。tipで説明すればいい」): 本文の🔐をOpt+クリック= 錠を外す
+        if (_s.isEmpty) { const _t = editor.document.lineAt(_s.active.line).text || ''; const _lm = (_t.indexOf('\u23f0') >= 0) ? meosClockLockMarkAt(_t) : null;
+          if (_lm && _s.active.character >= _lm.a && _s.active.character <= _lm.b) {
+            editor.selections = [new vscode.Selection(_s.active, _s.active)];
+            setRefNoRaw(editor.document, _s.active.line);
+            await meosClockUnlockAt(editor.document, _s.active.line, _s.active.character);
+            setRefNoRaw(editor.document, _s.active.line);
+            meosParkCaretAfterPress(editor, _s.active.line);
+            try { refresh(editor); } catch (_) { }
+            return;
+          } }
       }
       if (_optSel92) editor.selections = [new vscode.Selection(_optSel92.active, _optSel92.active)];
     }
