@@ -12533,10 +12533,13 @@ function meosApplyTimerLineDecorations(editor) {
             }
           }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
-            const _a = txt.indexOf('\u23f0');
-            if (_a >= 0) {
-              const _e = _a + 1 + ((txt.charCodeAt(_a + 1) === 0xfe0f) ? 1 : 0);
-              items.push({ range: new vscode.Range(i, _e, i, _e),
+            const _sp = meosClockLockSpot(txt);
+            if (_sp) {
+              // ★★v4.2.233(俊克「⏰FCの中の🔓もボタン化して🔐をかけれるように。ロックするとその時間まで開けられないので確認パネルは出そう」):
+              //   ★押せる🔓は、⏰の右隣(= ▶️の当たり at+1 と同じ桁)ではなく、**時刻の字の直前**に置く= クリックの落ちる桁が▶️と重ならない。
+              if (_sp.p > _sp.at + 1) items.push({ range: new vscode.Range(i, _sp.p, i, _sp.p), hoverMessage: '\ud83d\udd13 Click to lock this clock \ud83d\udd10',
+                renderOptions: { before: { contentText: '\ud83d\udd13', opacity: '0.55', margin: '0 3px 0 0' } } });
+              else items.push({ range: new vscode.Range(i, _sp.e, i, _sp.e),
                 renderOptions: { after: { contentText: '\ud83d\udd13', opacity: '0.42' } } });
             }
           }
@@ -18104,6 +18107,41 @@ function meosClockPlayHitAt(document, line, character) {
     return { line, c, at, end: at };
   } catch (_) { return null; }
 }
+// ★★v4.2.233: 🔓(掛かっていない錠)を押す所。⏰(+FE0F)の後の印(🔐🔒🔓👁✓✔✅▶⏯⏸数字)と空白を飛ばした先=時刻の字の頭。
+function meosClockLockSpot(txt) {
+  const at = txt.indexOf('⏰'); if (at < 0) return null;
+  const e = at + 1 + ((txt.charCodeAt(at + 1) === 0xfe0f) ? 1 : 0);
+  const MK = ['🔐', '🔒', '🔓', '👁', '✓', '✔', '✅', '▶', '⏯', '⏸', '️', ' ', '\t'];
+  let p = e;
+  for (;;) { let hit = false; for (const k of MK) if (txt.startsWith(k, p)) { p += k.length; hit = true; break; } if (!hit && /[0-9]/.test(txt[p] || '') && /⏸️?[0-9]*$/.test(txt.slice(e, p))) { p++; hit = true; } if (!hit) break; }
+  return { at, e, p };
+}
+function meosClockLockHitAt(document, line, character) {
+  try {
+    const txt = document.lineAt(line).text || '';
+    if (txt.indexOf('⏰') < 0) return null;
+    const c = meosClockFcParse(txt);
+    if (!c || c.done || c.lock) return null;
+    const sp = meosClockLockSpot(txt);
+    if (!sp || !(sp.p > sp.at + 1) || character !== sp.p) return null;
+    return { line, c, at: sp.at, e: sp.e };
+  } catch (_) { return null; }
+}
+async function meosClockLockHere(editor, hit) {
+  const doc = editor.document, ln = hit.line;
+  const when = String((hit.c && (hit.c.whenSrc || hit.c.when)) || '').trim();
+  const pick = await vscode.window.showWarningMessage('🔐 Lock this clock?', { modal: true,
+    detail: 'Until it rings' + (when ? ' (' + when + ')' : '') + ', this clock cannot be stopped or unlocked. There is no way back once it is locked.' }, '🔐 Lock');
+  if (pick !== '🔐 Lock') { meosDbg('[lock] やめた 行=' + (ln + 1)); return false; }
+  const txt = doc.lineAt(ln).text || '';
+  if (txt.indexOf('⏰') !== hit.at) return false;   // 確認の間に行が変わった
+  const we = new vscode.WorkspaceEdit(); we.insert(doc.uri, new vscode.Position(ln, hit.e), '🔐');
+  const ok = await vscode.workspace.applyEdit(we);
+  meosDbg('[lock] 🔐 を掛けた 行=' + (ln + 1) + ' ok=' + ok);
+  try { meosArmClockFcFor(doc); } catch (_) { }
+  try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+  return ok;
+}
 // その行の時計は、今この膜で走っている1本か。控えthat「どの行か」を持っている(v4.1.1118)。
 function meosClockLineRunning(document, key, line) {
   try {
@@ -18266,6 +18304,15 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
     try {
       const _ln = editor.selection.active.line;
+      const _lk = meosClockLockHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.233: 🔓を押した= 🔐を掛けるか訊く
+      if (_lk) {
+        setRefNoRaw(editor.document, _ln);
+        meosParkCaretAfterPress(editor, _ln);
+        await meosClockLockHere(editor, _lk);
+        setRefNoRaw(editor.document, _ln);
+        try { refresh(editor); } catch (_) { }
+        return;
+      }
       const _pl = meosClockPlayHitAt(editor.document, _ln, editor.selection.active.character);
       // ★★v4.2.95(俊克 改良1「タイマーが鳴っている時に止めても、表示は止まったのに、鳴り続けている。
       //   ⏰ボタンを押せば鳴り止むけど、▶️ボタンなどを押した時に同時に止められないのか?」):
