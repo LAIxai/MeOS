@@ -35722,11 +35722,11 @@ function meosApplyCodeSpanDecorations(editor) {
         if (s > 0 && text[s - 1] === '`') continue;
         const body = m[2].trim(); if (!body) continue;
         const isFile0 = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
-        if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs)); hide.push(R(ln, ce, e)); } else { hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); } }
+        if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs - 1)); ghosts.push(R(ln, cs - 1, cs)); } hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); }   // v4.2.231(俊克「他の板の両端にもスペース1個」): 開き/閉じの ` の内側の1つを透明にして両端の空きにする
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
         if (isFile) { if (tbl.has(ln)) pills.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); pills.push(R(ln, s, ce + 1)); } }
-        else (isSet ? sets : pills).push(R(ln, cs, ce));
+        else (isSet ? sets : pills).push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1));
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
       }
