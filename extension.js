@@ -35674,7 +35674,7 @@ const _meosColoredMarks = new Map();
 const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
 const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
-let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeVerDeco = null;
+let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeVerDeco = null;
 let _meosFenceCache = { key: null, set: null };
 function meosFenceLines(doc) {
   const key = _meosTextKey(doc);
@@ -35703,11 +35703,12 @@ function meosApplyCodeSpanDecorations(editor) {
       const PB = 'rgba(128,128,128,0.50)', PG = 'rgba(128,128,128,0.20)';
       codeFileDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important; letter-spacing: 2.4ch;', before: { contentText: '📄', backgroundColor: 'rgba(224,169,60,0.60)', textDecoration: 'none; position: absolute; font-size: 0.9em; padding: 0 2px; border-radius: 3px 0 0 3px; margin-left: 0;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   /* v4.2.226(俊克「段が2つに増えた」): 箱を3つ継ぐと絵文字の箱の高さが合わない→ 継ぐのをやめ、開きの ` を**透明にして幅を広げ**(板の中の空き)、その上に📄を浮かせて(absolute=幅を取らない)置く。枠は本文の板1枚だけ。 */
       codeFileGapDeco = null;
+      codeTickGhostDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.230(俊克「右端にスペース1個入れると寸詰まり感がなくなる」): 閉じの ` を消さずに透明にして、板の中の1字ぶんの空きにする
       codeFilePillDeco = null;
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
-    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [];
-    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeVerDeco, vers); };
+    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [];
+    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
     const vrs = meosScanSpans(editor, doc);
@@ -35721,10 +35722,10 @@ function meosApplyCodeSpanDecorations(editor) {
         if (s > 0 && text[s - 1] === '`') continue;
         const body = m[2].trim(); if (!body) continue;
         const isFile0 = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
-        if (!tbl.has(ln)) { if (!isFile0) hide.push(R(ln, s, cs)); hide.push(R(ln, ce, e)); }
+        if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs)); hide.push(R(ln, ce, e)); } else { hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); } }
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
-        if (isFile) { if (tbl.has(ln)) pills.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); pills.push(R(ln, s, ce)); } }
+        if (isFile) { if (tbl.has(ln)) pills.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); pills.push(R(ln, s, ce + 1)); } }
         else (isSet ? sets : pills).push(R(ln, cs, ce));
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
