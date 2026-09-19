@@ -35674,7 +35674,7 @@ const _meosColoredMarks = new Map();
 const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
 const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
-let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeVerDeco = null;
+let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeVerDeco = null;
 let _meosFenceCache = { key: null, set: null };
 function meosFenceLines(doc) {
   const key = _meosTextKey(doc);
@@ -35697,11 +35697,17 @@ function meosApplyCodeSpanDecorations(editor) {
       const pill = (bg, bd) => ({ backgroundColor: bg, border: '1px solid ' + bd, borderRadius: '4px', color: new vscode.ThemeColor('editor.foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       codePillDeco = vscode.window.createTextEditorDecorationType(pill('rgba(128,128,128,0.20)', 'rgba(128,128,128,0.50)'));
       codeSetDeco = vscode.window.createTextEditorDecorationType(pill('rgba(70,130,230,0.20)', 'rgba(70,130,230,0.60)'));
-      codeFileDeco = vscode.window.createTextEditorDecorationType({ before: { contentText: '📄', margin: '0 2px 0 1px' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-      codeVerDeco = vscode.window.createTextEditorDecorationType({ color: '#e0803a', fontWeight: '900', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // ★v4.2.224(俊克「📄が枠の外なので一体感が無い。枠の中に入れて『📄 』とスペースを空け、📄を一回り大きい四角ハイライトの上に乗せる。📄は色が付けられないからね」):
+      //   VS Code の before は文字の外に別の箱で入るため、板の枠の中には入らない→ 3つの箱を継いで1枚の板に見せる=
+      //   ①📄(黄の四角・枠の左半分) ②空白(板の地・枠の上下) ③本文(枠の右半分)。①は隠した開きの ` の位置、②は本文の頭に付けるので順は崩れない。
+      const PB = 'rgba(128,128,128,0.50)', PG = 'rgba(128,128,128,0.20)';
+      codeFileDeco = vscode.window.createTextEditorDecorationType({ before: { contentText: '📄', backgroundColor: 'rgba(224,169,60,0.60)', border: '1px solid ' + PB + '; border-right: none', textDecoration: 'none; border-radius: 4px 0 0 4px; padding: 0 2px;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      codeFileGapDeco = vscode.window.createTextEditorDecorationType({ before: { contentText: '\u00a0', backgroundColor: PG, border: '1px solid ' + PB + '; border-left: none; border-right: none' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      codeFilePillDeco = vscode.window.createTextEditorDecorationType({ backgroundColor: PG, border: '1px solid ' + PB + '; border-left: none', borderRadius: '0 4px 4px 0', color: new vscode.ThemeColor('editor.foreground'), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
-    const hide = [], pills = [], sets = [], files = [], vers = [];
-    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeVerDeco, vers); };
+    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [];
+    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeFileGapDeco, gaps); editor.setDecorations(codeFilePillDeco, fpills); editor.setDecorations(codeVerDeco, vers); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
     const vrs = meosScanSpans(editor, doc);
@@ -35717,8 +35723,8 @@ function meosApplyCodeSpanDecorations(editor) {
         if (!tbl.has(ln)) { hide.push(R(ln, s, cs)); hide.push(R(ln, ce, e)); }
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
-        (isSet ? sets : pills).push(R(ln, cs, ce));
-        if (isFile) files.push(R(ln, cs, cs + 1));
+        if (isFile) { files.push(R(ln, s, cs)); gaps.push(R(ln, cs, cs + 1)); fpills.push(R(ln, cs, ce)); }
+        else (isSet ? sets : pills).push(R(ln, cs, ce));
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
       }
