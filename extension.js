@@ -35809,11 +35809,11 @@ function meosApplyCodeSpanDecorations(editor) {
       codeSetDeco = vscode.window.createTextEditorDecorationType(pill('rgba(70,130,230,0.20)', 'rgba(70,130,230,0.60)'));
       // ★v4.2.236(俊克「`⏰18:30` の四角枠の背景を、ダークモードではクリーム色に。ライトモードは今の灰色」): ⏰で始まる板だけ。クリームの上は濃い茶の字。
       codeClockDeco = vscode.window.createTextEditorDecorationType({ borderRadius: '4px', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        light: { backgroundColor: 'rgba(128,128,128,0.20)', border: '1px solid rgba(128,128,128,0.50)' },
+        light: { backgroundColor: '#f3e6c4', border: '1px solid #cbb98c' },   // v4.2.242(俊克「ライトモードの人も、俺たちもクリームの方が良い、差別だ!!と言うかも」): ライトもクリーム
         dark: { backgroundColor: '#f3e6c4', border: '1px solid #cbb98c' } });
       // ★v4.2.237(俊克「両端の ` が表示されている」): 字の色(塗り)を板全体に掛けたので、両端の透明の ` まで塗り戻していた→ 字の色は中身だけに掛ける。
       codeCreamTextDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        light: { color: new vscode.ThemeColor('editor.foreground') },
+        light: { textDecoration: 'none; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;' },
         dark: { textDecoration: 'none; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;' } });
       // ★v4.2.224(俊克「📄が枠の外なので一体感が無い。枠の中に入れて『📄 』とスペースを空け、📄を一回り大きい四角ハイライトの上に乗せる。📄は色が付けられないからね」):
       //   VS Code の before は文字の外に別の箱で入るため、板の枠の中には入らない→ 3つの箱を継いで1枚の板に見せる=
