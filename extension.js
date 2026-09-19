@@ -24406,7 +24406,7 @@ function meDockHtml() {
   const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 100)) || 100));
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
-  const htocOpen = !(extensionContext && extensionContext.globalState.get('htocOpen') === false);   // v4.2.250: H-TOCの開閉(既定=開)
+  const htocOpen = !!(extensionContext && extensionContext.globalState.get('htocOpen') === true);   // v4.2.251(俊克「H-TOCは通常は最小化しておく」): 既定=閉
   const fmtTipSeen = (() => { try { const v = extensionContext && extensionContext.globalState.get('fmtTipSeen'); return (v && typeof v === 'object') ? v : {}; } catch (_) { return {}; } })();   // v4.2.239: Format Meのtipを今日見たボタン
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
   // ★★★v4.2.67(俊克 改良1「拡張機能の Uninstall/Install from VSIX... を実行するボタンを Me Dock に
@@ -24968,6 +24968,9 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .htoc-n{flex:0 0 auto;min-width:18px;text-align:center;padding:0 6px;border-radius:9px;background:#d18400;color:#fff;font-size:11px}
 .htoc-n:empty{display:none}
 .htoc-arrow{flex:0 0 auto;font-size:11px;opacity:.8}
+#dock-clk{padding:0 8px}
+#dock-clk .bm-pop.clk-pop{position:static!important;left:auto!important;top:auto!important;right:auto!important;margin:0 0 7px!important;width:min(100%,360px)!important;box-shadow:none}   /* v4.2.251(俊克「今のリストより大きく、でもH-TOCと同じにはしない。コンパクトなのが良い所」) */
+#dock-clk .clk-list{max-height:180px}
 .fixed-toc.htoc-closed .toc-tab-row,.fixed-toc.htoc-closed .toc-tab-confirm,.fixed-toc.htoc-closed .toc-name-row,.fixed-toc.htoc-closed .fixed-toc-body{display:none!important}   /* v4.2.244(俊克「詰まっているので、Re-install VSIXボタンの左に」) */
 .th-split{position:relative;display:inline-block}
 .th-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#b48ae8 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap;overflow:hidden}
@@ -27853,7 +27856,7 @@ if(clkCaret&&clkPop){
  var clkHasAnchor=(function(){try{return !!(window.CSS&&CSS.supports&&CSS.supports('anchor-name','--a'));}catch(e){return false;}})();
  function clkPlace(){
   if(!clkPop)return;
-  if(clkHasAnchor){clkPop.style.left='';clkPop.style.top='';return;}
+  if(clkHasAnchor||(clkPop.closest&&clkPop.closest('#dock-clk'))){clkPop.style.left='';clkPop.style.top='';return;}   /* v4.2.251: 流れの中に置いた時は位置を決めない */
   var anchor=document.querySelector('.clk-wrap')||document.getElementById('raw-timer');if(!anchor)return;
   var put=function(){var r=anchor.getBoundingClientRect();
    var w=clkPop.offsetWidth||236,h=clkPop.offsetHeight||140;
@@ -28006,6 +28009,7 @@ if(on){vscode.postMessage({type:'requestWrapColumn'});if(typeof hideTocTip==='fu
 document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.contains(ev.target)&&ev.target!==wb&&!wb.contains(ev.target)){wp.classList.remove('on');wb.classList.remove('on');}});   /* v4.2.162(俊克「折り返しボタン単独の時には、やはり角丸四角に」): 外を押して閉じた時もボタンの角を丸に戻す */}
 {/* v4.2.250: 先頭の行= ⏰＋📑 */const lead=document.getElementById('dock-lead'),hb=document.getElementById('htoc-btn'),ft=document.getElementById('fixed-toc');
 try{const cw=document.querySelector('.toc-tools:not(.dock-lead) .clk-wrap');if(lead&&cw)lead.insertBefore(cw,lead.firstChild);}catch(e){}
+try{/* ★v4.2.251(俊克「タイマーボタンを押すとH-TOCのように展開する。浮いた形ではなく」): ⏰の箱を先頭の行のすぐ下へ移し、流れの中で開く */const cp=document.getElementById('clk-pop');if(lead&&cp){const dk=document.createElement('div');dk.id='dock-clk';lead.parentNode.insertBefore(dk,lead.nextSibling);dk.appendChild(cp);}}catch(e){}
 const hLab=document.getElementById('htoc-lab'),hN=document.getElementById('htoc-n'),hAr=document.getElementById('htoc-arrow');
 const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.active');const nm=at?String(at.textContent||'').replace(/[\u25be\u25b4]/g,'').trim():'';if(hLab)hLab.textContent=nm?('Hyper TOC \u00b7 '+nm):'Hyper TOC';const n=document.querySelectorAll('#fixed-toc-body .toc-check:not(:checked)').length;if(hN)hN.textContent=n?String(n):'';if(hAr&&ft)hAr.textContent=ft.classList.contains('htoc-closed')?'\u25be':'\u25b4';}catch(e){}};
 if(hb&&ft)hb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const closed=!ft.classList.contains('htoc-closed');ft.classList.toggle('htoc-closed',closed);hPaint();vscode.postMessage({type:'htocOpen',open:!closed});if(typeof hideTocTip==='function')hideTocTip();});
@@ -28028,7 +28032,7 @@ wn.addEventListener('blur',()=>{const v=clamp(wn.value);paint(v);send(v,true);})
 
 [['table-recalc-all','recalcAll'],['table-dup-row','tableDupRow'],['table-del-row','tableDelRow'],['table-dup-col','tableDupCol'],['table-del-col','tableDelCol']].forEach(([id,ty])=>{const b=document.getElementById(id);
 if(b)b.addEventListener('click',()=>{vscode.postMessage({type:ty});closeTablePop();});});/* v0.9.999165: 行/列の複製・削除 *//* v4.0.462: ⏰の▾も、外を押したら閉じる(表の▾と同じ作法。ただし自分の門番を持つ= 相手の状態に相乗りしない) */
-document.addEventListener('click',ev=>{if(clkPop&&clkPop.classList.contains('on')&&!clkPop.contains(ev.target)&&ev.target!==clkCaret)closeClkPop();});
+document.addEventListener('click',ev=>{if(clkPop&&clkPop.classList.contains('on')&&!(clkPop.closest&&clkPop.closest('#dock-clk'))&&!clkPop.contains(ev.target)&&ev.target!==clkCaret)closeClkPop();});   /* v4.2.251: 流れの中に開いた時は、H-TOCと同じくボタンで閉じる */
 document.addEventListener('click',ev=>{if(tablePop.classList.contains('on')&&!tablePop.contains(ev.target)&&ev.target!==fmtTableCaret)closeTablePop();
 },true);}/* v0.9.999154: テーブル膜メニュー(膜化/解除) */
 /* v0.9.99914: 合言葉入力を暗号3兄弟の下(enc-pass-row)に表示。🔐/🔓で出し、Enter/Goで送信、Esc/✕で閉じ、👁で表示切替。 */
