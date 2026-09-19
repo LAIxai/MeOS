@@ -24366,6 +24366,7 @@ function meDockHtml() {
   const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 100)) || 100));
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const meosVer = meosExtVersion(); // webviewヘッダ用(タブ名は createWebviewPanel 側で付与)
+  const fmtTipSeen = (() => { try { const v = extensionContext && extensionContext.globalState.get('fmtTipSeen'); return (v && typeof v === 'object') ? v : {}; } catch (_) { return {}; } })();   // v4.2.239: Format Meのtipを今日見たボタン
   const mdZoom = (extensionContext && Number(extensionContext.globalState.get('meDockZoom'))) || 1; // v3.1.16(俊克): Me Dock全体のズーム倍率(本家VS CodeでMe Dockが相対的に大きくなる件のバランス調整)
   // ★★★v4.2.67(俊克 改良1「拡張機能の Uninstall/Install from VSIX... を実行するボタンを Me Dock に
   //   作れないか? もう何千回通しているので、飽き飽きしてきた」):
@@ -25866,7 +25867,7 @@ meChoice=document.getElementById('me-choice'),meScopeSelect=document.getElementB
 meCheck=document.getElementById('me-check'),contentsCheck=document.getElementById('contents-check'),opAddToc=document.getElementById('op-add-toc'),
 opToggle=document.getElementById('op-toggle'),opRemove=document.getElementById('op-remove'),opCopy=document.getElementById('op-copy'),
 opSelect=document.getElementById('op-select'),opDuplicate=document.getElementById('op-duplicate');
-let __mdZoom=${mdZoom},__mdSync=${mdSync ? 'true' : 'false'};
+let __mdZoom=${mdZoom},__mdSync=${mdSync ? 'true' : 'false'};let __fmtTipSeen=${JSON.stringify(fmtTipSeen).replace(/</g, '\\u003c')};
 /* ★v4.0.367(俊克 改良3): Edit Me の入力枠の中をモザイクに見せる。
    字を透明にした入力欄の下に、同じ字を色付きで敷く= 枠の中が色分けされて見える。
    ①敷く字は入力欄と同じ字体/余白/行の高さでなければ1桁もずれる → 実物から写す。
@@ -28430,7 +28431,10 @@ let top=rect.top-h-4;if(top<2)top=rect.bottom+4;if(top+h>window.innerHeight-2)to
 }else{/* 通常: 要素の右端から左伸ばし・行の上端に合わせる。 */tocTooltip.style.right='auto';let left=rect.right-tw;if(left+tw>window.innerWidth-2)left=window.innerWidth-tw-2;
 if(left<2)left=2;tocTooltip.style.left=left+'px';let top=rect.top+1;if(top<2)top=2;if(top+h>window.innerHeight-2)top=window.innerHeight-h-2;
 tocTooltip.style.top=top+'px';}}
-function showTocTip(ev){_showTocTipBody(ev);try{if(tocTooltip&&tocTooltip.style.display!=='none')meosPlaceTipAtPointer(ev);}catch(e){}}   /* v4.2.213: 位置はここで1回だけ */
+function meosFmtTipKey(t){try{var ft=t&&t.closest&&t.closest('#format-tools');if(!ft)return '';var el=t.closest('[data-tip]')||t.closest('button');if(!el||!ft.contains(el))return '';if(el.id)return el.id;var all=ft.querySelectorAll('[data-tip],button');return String(el.className||'x').split(' ')[0]+':'+Array.prototype.indexOf.call(all,el);}catch(e){return '';}}
+function meosFmtTipGate(ev){try{/* ★v4.2.239(俊克「Format Meのボタンは頻繁に使うので、tipが長過ぎなのはうざい。1日1回だけ長いtipを出して、それ以降は出さない。慣れれば読む必要はない」): Format Meの行のボタンだけ(開いたパネルの中の見本等は今までどおり)。同じボタンの上に居る間は出し続け、離れて戻ったら出さない。 */var t=ev&&ev.target;if(!t||!t.closest)return;var ft=t.closest('#format-tools');if(!ft||t.closest('#fmt-pop,#bold-pop,.color-pop,.ww-pop'))return;var key=meosFmtTipKey(t);if(!key)return;var d=new Date(),day=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();if(window.__fmtTipLive===key)return;if(__fmtTipSeen[key]===day){hideTocTip();return;}__fmtTipSeen[key]=day;window.__fmtTipLive=key;vscode.postMessage({type:'fmtTipSeen',key:key,day:day});}catch(e){}}
+document.addEventListener('mouseover',function(e){try{var k=meosFmtTipKey(e.target);if(window.__fmtTipLive&&window.__fmtTipLive!==k)window.__fmtTipLive='';}catch(_){}},true);
+function showTocTip(ev){_showTocTipBody(ev);try{if(tocTooltip&&tocTooltip.style.display!=='none')meosFmtTipGate(ev);}catch(e){}try{if(tocTooltip&&tocTooltip.style.display!=='none')meosPlaceTipAtPointer(ev);}catch(e){}}   /* v4.2.213: 位置はここで1回だけ */
 function hideTocTip(){if(tocTooltip)tocTooltip.style.display='none';}
 /* v0.9.712: 全tip統一。webview全体で mousemove を拾い、data-tip / native title を持つ最近接要素に
    共通の左伸ばしtipを出す(showTocTip内で title→data-tip 遅延移行)。個別リスナ(fixedTocBody/format-tools)は廃止し1本化。 */
@@ -29273,6 +29277,7 @@ function toggleMeDock(editorOverride) {
 
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // v3.1.16(俊克): Me Dock全体ズームの永続化＋「本文も同期」トグルでエディタのフォントズームも連動。
+    if (message && message.type === 'fmtTipSeen') { try { const m = Object.assign({}, extensionContext.globalState.get('fmtTipSeen') || {}); m[String(message.key || '')] = String(message.day || ''); extensionContext.globalState.update('fmtTipSeen', m); } catch (_) {} return; }   // v4.2.239
     if (message && message.type === 'meDockZoom') { try { extensionContext.globalState.update('meDockZoom', Number(message.zoom) || 1); } catch (_) {} return; }
     if (message && message.type === 'meDockSync') { try { extensionContext.globalState.update('meDockSync', !!message.on); } catch (_) {} return; }
     if (message && message.type === 'editorFontZoom') { try { const cfg = vscode.workspace.getConfiguration('editor'); const cur = Number(cfg.get('fontSize')) || 14; const next = Math.max(6, Math.min(40, cur + (message.dir > 0 ? 1 : -1))); await cfg.update('fontSize', next, vscode.ConfigurationTarget.Global); } catch (_) {} return; } // v3.1.16.1: editor.action.fontZoom* はwebviewフォーカス中に効かない(バグ1)→editor.fontSizeを直接±1
