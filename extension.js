@@ -35701,7 +35701,7 @@ function meosApplyCodeSpanDecorations(editor) {
       //   VS Code の before は文字の外に別の箱で入るため、板の枠の中には入らない→ 3つの箱を継いで1枚の板に見せる=
       //   ①📄(黄の四角・枠の左半分) ②空白(板の地・枠の上下) ③本文(枠の右半分)。①は隠した開きの ` の位置、②は本文の頭に付けるので順は崩れない。
       const PB = 'rgba(128,128,128,0.50)', PG = 'rgba(128,128,128,0.20)';
-      codeFileDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important; letter-spacing: 2.4ch;', before: { contentText: '📄', backgroundColor: 'rgba(224,169,60,0.60)', textDecoration: 'none; position: absolute; font-size: 0.9em; padding: 0 2px; border-radius: 3px; margin-left: 0;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   /* v4.2.226(俊克「段が2つに増えた」): 箱を3つ継ぐと絵文字の箱の高さが合わない→ 継ぐのをやめ、開きの ` を**透明にして幅を広げ**(板の中の空き)、その上に📄を浮かせて(absolute=幅を取らない)置く。枠は本文の板1枚だけ。 */
+      codeFileDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important; letter-spacing: 2.4ch;', before: { contentText: '📄', backgroundColor: 'rgba(224,169,60,0.60)', textDecoration: 'none; position: absolute; font-size: 0.9em; padding: 0 2px; border-radius: 3px 0 0 3px; margin-left: 0;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   /* v4.2.226(俊克「段が2つに増えた」): 箱を3つ継ぐと絵文字の箱の高さが合わない→ 継ぐのをやめ、開きの ` を**透明にして幅を広げ**(板の中の空き)、その上に📄を浮かせて(absolute=幅を取らない)置く。枠は本文の板1枚だけ。 */
       codeFileGapDeco = null;
       codeFilePillDeco = null;
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
