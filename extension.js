@@ -18131,7 +18131,7 @@ async function meosClockLockHere(editor, hit) {
   const doc = editor.document, ln = hit.line;
   const when = String((hit.c && (hit.c.whenSrc || hit.c.when)) || '').trim();
   const pick = await vscode.window.showWarningMessage('🔐 Lock this clock?', { modal: true,
-    detail: 'Until it rings' + (when ? ' (' + when + ')' : '') + ', this clock cannot be stopped or unlocked. There is no way back once it is locked.' }, '🔐 Lock');
+    detail: 'Until it rings' + (when ? ' (' + when + ')' : '') + ', this clock cannot be stopped or dropped. To take the lock off, Opt-click the \ud83d\udd10 in the \u23f0 list.' }   /* v4.2.234: 錠は「鳴るまで止められない・消せない」で、Opt+クリックで外せる(v4.1.68)。v4.2.233の「戻れない」は誤り */, '🔐 Lock');
   if (pick !== '🔐 Lock') { meosDbg('[lock] やめた 行=' + (ln + 1)); return false; }
   const txt = doc.lineAt(ln).text || '';
   if (txt.indexOf('⏰') !== hit.at) return false;   // 確認の間に行が変わった
