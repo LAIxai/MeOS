@@ -35848,7 +35848,7 @@ function meosApplyCodeSpanDecorations(editor) {
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
         if (isFile) { if (tbl.has(ln)) clocks.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); } creamPush(ln, cs, ce); }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
-        else { const _ck = body.charCodeAt(0) === 0x23f0; (_ck ? clocks : (isSet ? sets : pills)).push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); if (_ck) creamPush(ln, cs, ce); }
+        else { clocks.push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
       }
