@@ -36035,10 +36035,19 @@ function meosApplyCodeFenceDecorations(editor) {
       //     → [[feedback_copy_the_house_style_first]](家の中の同じ役の部品を真似る)。
       //   ★右だけは縁でなく**幕**(地の色)= 窓の端で切っている所so、縁は引かない。
       const CUT = 'var(--vscode-editor-background)';
+      // ★★★v4.2.267(俊克「幅の狭い黒地の角丸を伸縮する帯に重ねれば(排他的に?)、角丸に見えるんじゃないのか?」):
+      //   ★★**そのとおり**= 「地の色で上から隠す」を**形のある隠し方**にすればよい。CSS にその口that在る=
+      //     `clip-path: inset(0 44px 0 0 round 6px …)` = **右から44点を切り落とし、その切り口の角を丸める**。
+      //     俊克の言う「黒地の角丸を重ねる」を、重ねる代わりに**切り抜き**でやったのthatこれ(同じ絵になる)。
+      //   ★縁(borderRadius)では丸くできなかった理由= 右は幕(太い縁)so、角丸は幕の**外側**に掛かり、
+      //     内側(見える所)の半径 = 外側の半径 − 幕の幅 = 0 になる。切り抜きは**見える所そのもの**を丸める。
+      //   ★効かない版でも害は無い= 幕(右の太い縁)はそのまま残してあるso、切り口は今までどおり出る(角that四角いだけ)。
       const slab = (radius, top, bottom) => ({ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid',
         borderColor: (top ? EDGE : 'transparent') + ' ' + CUT + ' ' + (bottom ? EDGE : 'transparent') + ' ' + EDGE,
         borderWidth: (top ? '1px ' : '0 ') + MEOS_FENCE_RIGHT_GAP + 'px ' + (bottom ? '1px ' : '0 ') + '1px',
-        borderRadius: radius, textDecoration: 'none; box-sizing: border-box !important;' });
+        borderRadius: radius,
+        textDecoration: 'none; box-sizing: border-box !important;'
+          + ' clip-path: inset(0 ' + MEOS_FENCE_RIGHT_GAP + 'px 0 0 round ' + radius + ') !important;' });
       fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0', false, false));
       fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0', true, false));
       fenceFootDeco = vscode.window.createTextEditorDecorationType(slab('0 0 6px 6px', false, true));

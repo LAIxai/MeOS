@@ -112,5 +112,9 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
     '★★左の縁はインラインと同じ1px・頭に上の縁・足に下の縁= 3辺を細い縁that囲う(俊克 改良2「左端の色thatズレている」)', true);
  ok(/const CUT = 'var\(--vscode-editor-background\)';/.test(S),
     '  右だけは縁でなく幕(地の色)= 切っている所so縁を引かない', true);
+ ok(/clip-path: inset\(0 ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 0 round ' \+ radius \+ '\) !important;/.test(S),
+    '★★★切り口の角を丸める= 右から44点を切り落とし、その切り口を丸める(俊克「黒地の角丸を重ねれば」・v4.2.267)', true);
+ ok(/borderWidth: \(top \? '1px ' : '0 '\) \+ MEOS_FENCE_RIGHT_GAP/.test(S),
+    '  幕(右の太い縁)は残す= 切り抜きthat効かない版でも、切り口は今までどおり出る', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
