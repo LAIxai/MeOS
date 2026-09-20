@@ -118,7 +118,7 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
     '★★駒(右端に重ねる四角)の残骸を置かない= 字の側の駒は「その行の字の右端」からしか数えられない', true);
  // ★v4.2.272: 幕の幅は勘でなく設定から(スクロールバーの幅 + 4点)
  ok(/function meosFenceRightGap\(\)/.test(S) && /get\('scrollbar\.verticalScrollbarSize', 14\)/.test(S)
-    && /const MEOS_FENCE_RIGHT_PAD = 4;/.test(S),
+    && /const MEOS_FENCE_RIGHT_PAD = 15;/.test(S),
     '★★★幕の幅= スクロールバーの幅(設定) + 15点= 勘で44点と置かない(窓を狭めると字that紙からはみ出していた)', true);
  ok(/borderWidth: '0 ' \+ _gap \+ 'px 0 1px'/.test(S)
     && /if \(fenceSlabDeco && _meosFenceGapUsed !== _gap\)/.test(S),
