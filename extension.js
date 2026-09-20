@@ -35928,13 +35928,31 @@ const MEOS_FENCE_PAD_COLS = 2;     // 紙の右の余白(桁)
 // ★★v4.2.276(俊克 改良1「コードのときもクリーム色が無駄に伸びているのはなぜか?」):
 //   ★**折り返した行は、画面では折り返し幅までしか出ていない**のに、紙は**論理行の桁**で測っていた=
 //     長い1行that2段に折り返っている時、紙だけthat右へ伸びる。→ **折り返し幅を上限**にする。
+// ★★★v4.2.293(俊克 バグ1「食み出しは、全く改善されてないよ。なぜ?」の真因・実測):
+//   ★★★**折り返し幅を45と読んでいた**(全体の値)。俊克の[markdown]は61so、**画面は61で折り返るのに、
+//     箱は45で作られていた**= 箱that字より短い(食み出し)。スクショを画素で測って割り出した
+//     (箱=48.3桁 / 字=51.1桁 → 箱は「45+余白2」= 47桁で作られていた)。
+//   ★★→ **言語ごとの値を名指しで読む**= `inspect()` の `*LanguageValue`。
+//     `get()` は言語ごとの値を返さない場合thatある(この一件thatその実物)。
+//     MeOSの折り返し幅の摘み(v4.2.152)も同じく inspect で書き先を決めている= 家の中の同じ手。
+function meosCfgLangValue(cfg, key, dflt) {
+  try {
+    const ins = cfg.inspect(key) || {};
+    const v = (ins.workspaceFolderLanguageValue !== undefined) ? ins.workspaceFolderLanguageValue
+            : (ins.workspaceLanguageValue !== undefined) ? ins.workspaceLanguageValue
+            : (ins.globalLanguageValue !== undefined) ? ins.globalLanguageValue
+            : (ins.defaultLanguageValue !== undefined) ? ins.defaultLanguageValue
+            : undefined;
+    return (v !== undefined) ? v : cfg.get(key, dflt);
+  } catch (_) { try { return cfg.get(key, dflt); } catch (__) { return dflt; } }
+}
 function meosFenceWrapColumn(doc) {
   try {
     const cfg = meosFenceCfg(doc);
-    const mode = String(cfg.get('wordWrap', 'off'));
+    const mode = String(meosCfgLangValue(cfg, 'wordWrap', 'off'));
     if (mode === 'off') return 0;                  // 折り返さない= 上限なし(紙は一番長い行のまま)
     if (mode === 'on') return 0;                   // 窓の端で折り返す= 桁を読めないso上限を置かない
-    return Math.max(20, Math.min(300, Number(cfg.get('wordWrapColumn', 80)) || 80));
+    return Math.max(20, Math.min(300, Number(meosCfgLangValue(cfg, 'wordWrapColumn', 80)) || 80));
   } catch (_) { return 0; }
 }
 // ★★★v4.2.277(俊克 バグ1「中のコードが食み出している。なぜ?」の真因):

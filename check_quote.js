@@ -56,7 +56,11 @@ ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).bef
  ok(/before: \{ contentText: ' ', width: cols \+ 'ch' \}/.test(S),
     '  字下げの駒は**幅だけ**(流れの中so高さを持たせない= 折り返した段that潰れる)', true);
  ok(/const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';/.test(S),
-    '  引用符の色は家の色(テーマの引用色は暗い地に沈む)', true);}
+    '  引用符の色は家の色(テーマの引用色は暗い地に沈む)', true);
+ ok(/function meosCfgLangValue\(cfg, key, dflt\)/.test(S)
+    && /ins\.workspaceFolderLanguageValue/.test(S) && /ins\.globalLanguageValue/.test(S)
+    && /meosCfgLangValue\(cfg, 'wordWrapColumn', 80\)/.test(S) && /meosCfgLangValue\(cfg, 'wordWrap', 'off'\)/.test(S),
+    '★★★折り返し幅は**言語ごとの値を名指しで**読む(inspect の *LanguageValue)= get() では全体の45that返り、箱that字より短かった(v4.2.293)', true);}
 
 console.log('③ カーソルの行は生のまま / 囲いの中は触らない');
 X.meosApplyQuoteDecorations(mkEd(4));
