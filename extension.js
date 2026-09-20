@@ -35974,7 +35974,12 @@ function meosFencePaperCapType(w, kind, rows) {
   const R = MEOS_FENCE_RADIUS;
   const radius = (kind === 'head') ? (R + ' ' + R + ' 0 0') : ((kind === 'foot') ? ('0 0 ' + R + ' ' + R) : '0');
   t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    before: { contentText: ' ', width: w + 'ch', height: (rows * 100) + '%', backgroundColor: MEOS_FENCE_CREAM, borderRadius: radius,
+    // ★★v4.2.282(俊克「線が入るのは、文字サイズ指定か高さ指定が微妙に違うからじゃないかな?」= その筋thatが濃い):
+    //   ★行の高さは端数(例 23.4点)を持つso、駒の高さを「段×100%」ちょうどにすると、
+    //     段の継ぎ目に**1点足りない隙間**that出て、細い横線に見える(地の色that覗く)。
+    //   ★→ 足の行以外は**1点だけ長く**して、次の行に重ねる(足は伸ばさない= 紙の下にはみ出さない)。
+    before: { contentText: ' ', width: w + 'ch', height: (kind === 'foot') ? ((rows * 100) + '%') : ('calc(' + (rows * 100) + '% + 1px)'),
+      backgroundColor: MEOS_FENCE_CREAM, borderRadius: radius,
       textDecoration: 'none; position: absolute; left: 0; top: 0; z-index: -1; border-radius: ' + radius + ' !important;' } });
   // ★z-index は **-1**= 位置を持つ箱は、何も言わないと**字より上**に描かれる(字を隠す)。負だけthat字の下に入る。
   _fencePaperCapTypes.set(key, t); return t;

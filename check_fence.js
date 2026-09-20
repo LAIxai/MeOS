@@ -105,9 +105,9 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
 console.log('⑦⑧ 紙は字の側の駒1枚(v4.2.280 — 予備の板は撤去・段をまたぐ)');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/before: \{ contentText: ' ', width: w \+ 'ch', height: \(rows \* 100\) \+ '%'/.test(S)
+ ok(/height: \(kind === 'foot'\) \? \(\(rows \* 100\) \+ '%'\) : \('calc\(' \+ \(rows \* 100\) \+ '% \+ 1px\)'\)/.test(S)
     && /position: absolute; left: 0; top: 0; z-index: -1; border-radius: ' \+ radius \+ ' !important;/.test(S),
-    '★★★駒は字の側(ch=字の1桁)・段の数だけ高い・字の下(z-index:-1)・角丸は2つの口で言う', true);
+    '★★★駒は字の側(ch=字の1桁)・段の数だけ高い(継ぎ目は1点重ねる)・字の下(z-index:-1)・角丸は2つの口で言う', true);
  ok(/const MEOS_FENCE_RADIUS = '8px';/.test(S), '★角丸は8点(6点では見えなかった)', true);
  ok(!/_fencePaperTypes/.test(S) && !/meosFenceColPx/.test(S) && !/MEOS_FENCE_COL_RATIO/.test(S),
     '★★予備の板(点で見積もる方)は撤去= 段をまたぐ所で狭い板thatはみ出して「凹」に見えていた', true);
