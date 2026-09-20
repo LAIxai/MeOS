@@ -36120,6 +36120,25 @@ const MEOS_ALERTS = {
   CAUTION:   { icon: '🛑', label: 'Caution',   color: '#e5534b' },
 };
 const MEOS_ALERT_RE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*$/;
+// ★★★v4.2.291(俊克 疑問1「引用ブロックの場合は、四角で囲むんじゃないのか?」):
+//   ★★**引用は箱にしない**(本の作法= 箱は「囲み記事」という別物)。**Alertは箱にするのthat主流**
+//     (Docusaurus/MkDocs/Notion の callout はどれも薄く色を敷いた箱)。GitHubthat左罫だけなのは簡略形。
+//   ★→ **Alertだけ箱**= 種類の色を薄く敷き、角を丸める。縦線と違って箱は膜の記法とぶつからない。
+//   ★作りは紙(コードブロック)と同じ= 字の側の駒・幅は ch・高さは段の数・字の下(z-index:-1)。
+const MEOS_ALERT_BG = '1f';        // 箱の地の濃さ(16進の透明度= 約12%)
+const _quotePanelTypes = new Map();   // '桁|役|段|色' → Alertの箱
+function meosQuotePanelType(w, kind, rows, color) {
+  const key = w + '|' + kind + '|' + rows + '|' + color;
+  let t = _quotePanelTypes.get(key); if (t) return t;
+  const R = MEOS_FENCE_RADIUS;
+  const radius = (kind === 'head') ? (R + ' ' + R + ' 0 0') : ((kind === 'foot') ? ('0 0 ' + R + ' ' + R) : '0');
+  t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { contentText: ' ', width: w + 'ch', height: (kind === 'foot') ? ((rows * 100) + '%') : ('calc(' + (rows * 100) + '% + 1px)'),
+      backgroundColor: color + MEOS_ALERT_BG, borderRadius: radius,
+      textDecoration: 'none; position: absolute; left: 0; top: 0; z-index: -1; border-radius: ' + radius + ' !important;' } });
+  _quotePanelTypes.set(key, t); return t;
+}
+const MEOS_QUOTE_PANEL_PAD = 2;    // Alertの箱の右の余白(桁)
 const MEOS_QUOTE_ATTR_INSET = 8;   // 出典を右端から何桁内側で止めるか(v4.2.287: 俊克「もう1文字分左」= 全角1字=2桁)
 // ★★v4.2.287(俊克「2行までは引用マーク(引用符)、3行以上は引用ブロック、というのが暗黙のルール」= そのとおり):
 //   ★本の作法= **短い引用は引用符で括る / 長い引用は塊にして引用符を付けない**(字下げthat引用符の代わりになる)。
@@ -36182,6 +36201,7 @@ function meosApplyQuoteDecorations(editor) {
     const pads = new Map(); const hides = [], marks = [], markEnds = [], folds = []; const alerts = new Map();
     const put = () => {
       for (const t of _quotePadTypes.values()) editor.setDecorations(t, pads.get(t) || []);
+      for (const t of _quotePanelTypes.values()) editor.setDecorations(t, pads.get(t) || []);
       editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks); editor.setDecorations(quoteMarkEndDeco, markEnds);
       editor.setDecorations(quoteFoldDeco, folds);
       for (const k of Object.keys(MEOS_ALERTS)) editor.setDecorations(meosQuoteAlertType(k), alerts.get(k) || []);
@@ -36204,7 +36224,9 @@ function meosApplyQuoteDecorations(editor) {
         let wide = 0;
         for (let i = from; i <= to; i++) {
           const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
-          wide = Math.max(wide, q.level * MEOS_QUOTE_INDENT + displayColumns(q.body));
+          const _al = MEOS_ALERT_RE.exec(q.body.trim());
+          const _w0 = _al ? (displayColumns(MEOS_ALERTS[_al[1]].icon + ' ' + MEOS_ALERTS[_al[1]].label) + 2) : displayColumns(q.body);
+          wide = Math.max(wide, q.level * MEOS_QUOTE_INDENT + _w0);
         }
         if (wrapCol) wide = Math.min(wide, wrapCol);
         // ★v4.2.288: 塊の頭that `[!TIP]` 等なら **GitHub Alert**= 印＋見出しを出し、罫を種類の色に。引用符は付けない。
@@ -36236,6 +36258,11 @@ function meosApplyQuoteDecorations(editor) {
           const ty = meosQuotePadType(pad);
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
+          if (alert) {                                               // v4.2.291: Alertは箱で囲む(引用は囲まない)
+            const tp = meosQuotePanelType(wide + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows, MEOS_ALERTS[alert.kind].color);
+            if (!pads.has(tp)) pads.set(tp, []);
+            pads.get(tp).push(L(i));
+          }
           if (alert && i === alert.line) {                              // `[!TIP]` の字は畳み、見出しを出す
             folds.push(new vscode.Range(i, q.mark, i, (lines[i] || '').length));
             if (!alerts.has(alert.kind)) alerts.set(alert.kind, []);

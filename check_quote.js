@@ -105,6 +105,16 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
  ok(!!fold && (seen.get(fold)||[]).map(at).join()==='1,4', '★`[!TIP]`/`[!WARNING]` の字は畳む(幅ごと消す)', (seen.get(fold)||[]).map(at));
  ok(!!warn && o4(warn).after.color==='#c69026', '  種類ごとに色(WARNINGは黄)', warn&&o4(warn).after.color);
  ok(!K.some(k=>o4(k).before && o4(k).before.width==='3px'), '★★Alertでも縦線は引かない(色は印と見出しthat持つ)', true);
+ // ★v4.2.291: Alertは箱で囲む(引用は囲まない)
+ {const S5=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(/const MEOS_ALERT_BG = '1f';/.test(S5) && /backgroundColor: color \+ MEOS_ALERT_BG/.test(S5),
+     '★★★Alertは種類の色を薄く敷いた箱(角丸・字の下)= 本の作法では引用は囲まず、注記は囲む', true);
+  const panels=K.filter(k=>o4(k).before && /ch$/.test(String(o4(k).before.width||'')) && String(o4(k).before.backgroundColor||'').endsWith('1f'));
+  const at2=(x)=>((x.range||x).start.line);
+  ok(panels.length>=2, '  箱は頭・中・足で角丸thatが違う(型は幅と役と段で使い回す)', panels.map(k=>[o4(k).before.width,o4(k).before.borderRadius]));
+  ok(panels.some(k=>(seen.get(k)||[]).map(at2).includes(1)) && panels.some(k=>(seen.get(k)||[]).map(at2).includes(2)),
+     '  Alertの全部の行に箱that続く', panels.map(k=>(seen.get(k)||[]).map(at2)));
+  ok(panels.every(k=>String(o4(k).before.backgroundColor).startsWith('#')), '  色は種類の色', panels.map(k=>o4(k).before.backgroundColor));}
  const mk2=K.find(k=>o4(k).before && o4(k).before.contentText==='\u201c');
  ok((seen.get(mk2)||[]).length===0, '★Alertには引用符を付けない(GitHubと同じ)', (seen.get(mk2)||[]).map(at));
 }
