@@ -8,7 +8,7 @@ const stub=eval('('+H.slice(H.indexOf('const stub = {'), H.indexOf('const origLo
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mq_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosQuoteLineParts,meosApplyQuoteDecorations,displayColumns};\n');
+ +'\nmodule.exports.__t={meosQuoteLineParts,meosApplyQuoteDecorations,displayColumns,meosRenderCols};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 
@@ -46,8 +46,8 @@ ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).bef
  const two=used.find(u=>u[0]==='4ch');
  ok(!!two && two[1].join()==='2,3,4,5,6', '★ふつうの引用行は4桁の字下げ(全角2字)', used);
  const attr=used.find(u=>u[0]!=='4ch');
- const wide=Math.max(...[2,4,5,7].map(i=>4+X.displayColumns(L[i].replace(/^> ?/,''))));
- ok(!!attr && attr[1].join()==='7' && attr[0]===(4+(wide-4-X.displayColumns('―― Spy Lai')-8))+'ch',
+ const wide=Math.max(...[2,4,5,7].map(i=>4+X.meosRenderCols(L[i].replace(/^> ?/,''))));
+ ok(!!attr && attr[1].join()==='7' && attr[0]===(4+(wide-4-X.meosRenderCols('―― Spy Lai')-8))+'ch',
     '★★★出典(―― Spy Lai)は右寄せ・右端より8桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
 }
 {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
@@ -123,7 +123,12 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
   ok(/const _tail = \(i === to && !String\(lines\[to \+ 1\] === undefined \? 'x' : lines\[to \+ 1\]\)\.trim\(\)\) \? 1 : 0;/.test(S6),
      '★★足の行は**次の行that空なら1行ぶん長く**= 箱の下に余白(次に字thatあれば伸ばさない・v4.2.294 俊克 改良1)', true);
   ok(/affectsConfiguration\('editor\.wordWrapColumn'\)/.test(S6) && /for \(const ed of vscode\.window\.visibleTextEditors\) refresh\(ed\)/.test(S6),
-     '★★★設定that変わったら描き直す= 触った回数で見え方that変わる穴を塞ぐ(俊克 バグ1)', true);}
+     '★★★設定that変わったら描き直す= 触った回数で見え方that変わる穴を塞ぐ(俊克 バグ1)', true);
+  ok(/function meosRenderCols\(text\)/.test(S6) && /_meosTableCjkW : 1;/.test(S6)
+     && !/displayColumns\(q\.body\)/.test(S6),
+     '★★★桁は**画面での幅**で数える= 全角は font の実比(laiMembrane.tableCjkWidth・既定1.67)。2桁と数えると箱that7桁長くなる(v4.2.295)', true);
+  ok(X.meosRenderCols('覚えておくと良いこと。引用符は付かない。')===33 && X.displayColumns('覚えておくと良いこと。引用符は付かない。')===40,
+     '  20字の注記= 私の旧い数え方40桁 / 画面は33桁(箱は46→39へ)', [X.meosRenderCols('覚えておくと良いこと。引用符は付かない。'), X.displayColumns('覚えておくと良いこと。引用符は付かない。')]);}
  const mk2=K.find(k=>o4(k).before && o4(k).before.contentText==='\u201c');
  ok((seen.get(mk2)||[]).length===0, '★Alertには引用符を付けない(GitHubと同じ)', (seen.get(mk2)||[]).map(at));
 }

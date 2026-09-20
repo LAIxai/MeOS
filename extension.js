@@ -35924,6 +35924,23 @@ let _meosFenceCache = { key: null, set: null };
 //     (v4.2.259の埋め草の段違いthat起きない) ③スクロールバーには**構造上**届かない。
 //   ★桁は家の物差し displayColumns(全角=2)。1桁 = 1ch(等幅so「0」の幅と同じ)。
 const MEOS_FENCE_CREAM = '#f3e6c4', MEOS_FENCE_INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
+// ★★★v4.2.295(俊克 バグ1「20文字でも囲んだ四角that長過ぎる。どんなアルゴリズムなんだ?」):
+//   ★★★**全角を2桁と数えていた**thatが、俊克の画面(Menlo＋Hiragino)では**約1.67桁**。
+//     20字の注記= 私の数で40桁・画面では33桁so、箱thatが7桁ぶん長かった。
+//   ★★→ **家の中に既に答えthat在った**= `laiMembrane.tableCjkWidth`(既定1.67)= 表の桁揃えで
+//     俊克と実測した値(v0.9.999164)。**同じ1つの数**から紙も箱も作る
+//     → [[feedback_one_source_for_mark_count_action]] / [[feedback_copy_the_house_style_first]]
+//   ★この数は「字の物差し」so、折り返しの段数もこれで数える(VS Codeも**描いた幅**で折り返している)。
+function meosRenderCols(text) {   // v4.2.295: 画面での桁(全角は font の実比)。**整数に丸める**= 型を増やさず端数も出さない
+  let n = 0;
+  try {
+    for (const ch of (text || '')) {
+      if (ch === '\t') { n += 2; continue; }
+      n += isWideCodePoint(ch.codePointAt(0)) ? _meosTableCjkW : 1;
+    }
+  } catch (_) { return displayColumns(text); }
+  return Math.round(n);
+}
 const MEOS_FENCE_PAD_COLS = 2;     // 紙の右の余白(桁)
 // ★★v4.2.276(俊克 改良1「コードのときもクリーム色が無駄に伸びているのはなぜか?」):
 //   ★**折り返した行は、画面では折り返し幅までしか出ていない**のに、紙は**論理行の桁**で測っていた=
@@ -36247,7 +36264,7 @@ function meosApplyQuoteDecorations(editor) {
         for (let i = from; i <= to; i++) {
           const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
           const _al = MEOS_ALERT_RE.exec(q.body.trim());
-          const _w0 = _al ? (displayColumns(MEOS_ALERTS[_al[1]].icon + ' ' + MEOS_ALERTS[_al[1]].label) + 2) : displayColumns(q.body);
+          const _w0 = _al ? (meosRenderCols(MEOS_ALERTS[_al[1]].icon + ' ' + MEOS_ALERTS[_al[1]].label) + 2) : meosRenderCols(q.body);
           wide = Math.max(wide, q.level * MEOS_QUOTE_INDENT + _w0);
         }
         if (wrapCol) wide = Math.min(wide, wrapCol);
@@ -36272,8 +36289,8 @@ function meosApplyQuoteDecorations(editor) {
           const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
           if (raw.has(i)) continue;                                  // カーソルの行は生のまま
           if (q.mark > 0) folds.push(new vscode.Range(i, 0, i, q.mark));   // `>` は**畳む**(幅ごと消す= 数と見た目を合わせる)
-          const cols = displayColumns(q.body);
-          const rows = wrapCol ? Math.max(1, Math.min(20, Math.ceil(Math.max(1, cols) / wrapCol))) : 1;
+          const cols = meosRenderCols(q.body);
+          const rows = wrapCol ? Math.max(1, Math.min(20, Math.ceil(Math.max(1, cols + q.level * MEOS_QUOTE_INDENT) / wrapCol))) : 1;
           // 出典の行(―― 誰それ)は**右寄せ**= 字下げを「紙の幅 − その行の字」まで広げる
           const attr = MEOS_QUOTE_ATTR_RE.test(q.body);
           const pad = q.level * MEOS_QUOTE_INDENT + (attr ? Math.max(0, wide - q.level * MEOS_QUOTE_INDENT - cols - MEOS_QUOTE_ATTR_INSET) : 0);
@@ -36339,7 +36356,7 @@ function meosApplyCodeFenceDecorations(editor) {
         //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
         const _wrapCol = meosFenceWrapColumn(doc);   // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
         const _w = (() => {
-          let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, displayColumns(lines[i] || ''));
+          let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, meosRenderCols(lines[i] || ''));
           if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
           return MEOS_FENCE_INDENT_COLS + c + MEOS_FENCE_PAD_COLS;    // v4.2.281: 左の字下げ + 中身 + 右の余白
         })();
@@ -36348,7 +36365,7 @@ function meosApplyCodeFenceDecorations(editor) {
           const t = lines[ln] || '';
           const _kind = (ln === b.open) ? 'head' : ((ln === b.close) ? 'foot' : 'body');
           // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
-          const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(displayColumns(t) / _wrapCol))) : 1;
+          const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(t) / _wrapCol))) : 1;
           const ty = meosFencePaperCapType(_w, _kind, _rows);
           if (!paper.has(ty)) paper.set(ty, []);
           paper.get(ty).push(L(ln));

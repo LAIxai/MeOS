@@ -111,7 +111,7 @@ console.log('⑦⑧ 紙は字の側の駒1枚(v4.2.280 — 予備の板は撤去
  ok(/const MEOS_FENCE_RADIUS = '8px';/.test(S), '★角丸は8点(6点では見えなかった)', true);
  ok(!/_fencePaperTypes/.test(S) && !/meosFenceColPx/.test(S) && !/MEOS_FENCE_COL_RATIO/.test(S),
     '★★予備の板(点で見積もる方)は撤去= 段をまたぐ所で狭い板thatはみ出して「凹」に見えていた', true);
- ok(/const _rows = _wrapCol \? Math\.max\(1, Math\.min\(20, Math\.ceil\(displayColumns\(t\) \/ _wrapCol\)\)\) : 1;/.test(S),
+ ok(/const _rows = _wrapCol \? Math\.max\(1, Math\.min\(20, Math\.ceil\(meosRenderCols\(t\) \/ _wrapCol\)\)\) : 1;/.test(S),
     '★段の数= その行の桁 ÷ 折り返し幅(折り返さない設定なら1段)', true);
  ok(/function meosFenceWrapColumn\(doc\)/.test(S)
     && /getConfiguration\('editor', doc \? \{ uri: doc\.uri, languageId: doc\.languageId \} : undefined\)/.test(S),
