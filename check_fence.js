@@ -102,7 +102,6 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
  const d=D();
  ok((seen.get(d.body)||[]).every(x=>!x.renderOptions) && (seen.get(d.head)||[]).every(x=>!x.renderOptions),
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
- ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
  ok(/const MEOS_FENCE_RIGHT_GAP = 44;/.test(S)
     && /' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 1px'/.test(S) && /' \+ CUT \+ '/.test(S),
     '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
@@ -114,5 +113,17 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
  ok(!/clip-path: inset/.test(S) && !/box-sizing: border-box !important/.test(S) && !/width: calc\(100% - /.test(S),
     '★★★届かないCSSは残骸を置かない= 行いっぱいの板に渡るのは背景と縁とoutlineだけ(VSCodiumの中で実測)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
+ // ★v4.2.269: 切り口の角を作る駒(字の側= CSSが届く口)
+ ok(/const cap = \(radius, top\) => \(\{ after: \{ contentText: '', width: MEOS_FENCE_CAP/.test(S)
+    && /position: absolute; right: ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px; '/.test(S),
+    '★★★駒は字の側に置き、右から44点(板の切り口と同じ所)に立てる', true);
+ ok(/fenceCapTopDeco = vscode\.window\.createTextEditorDecorationType\(cap\('0 0 0 ' \+ MEOS_FENCE_CAP \+ 'px', true\)\)/.test(S)
+    && /fenceCapBotDeco = vscode\.window\.createTextEditorDecorationType\(cap\(MEOS_FENCE_CAP \+ 'px 0 0 0', false\)\)/.test(S),
+    '★頭は左下を丸めた駒を上に/足は左上を丸めた駒を下に= 塗り残しthat四分円になる', true);
+ X.meosApplyCodeFenceDecorations(mkEd(0));
+ {const K=[...seen.keys()], cT=seen.get(K[6])||[], cB=seen.get(K[7])||[];
+  const at=(x)=>(x.range||x).start.line;
+  ok(cT.length===1 && at(cT[0])===2 && cB.length===1 && at(cB[0])===5,
+     '  駒は頭の行と足の行に1つずつ(中の行には置かない)', [cT.map(at),cB.map(at)]);}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
