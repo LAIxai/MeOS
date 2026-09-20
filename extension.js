@@ -35909,7 +35909,7 @@ const _meosColoredMarks = new Map();
 const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
 const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
-let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
+let codeHeadPillDeco = null, codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
 let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
@@ -36077,10 +36077,13 @@ function meosApplyCodeSpanDecorations(editor) {
       codeFileGapDeco = null;
       codeTickGhostDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.230(俊克「右端にスペース1個入れると寸詰まり感がなくなる」): 閉じの ` を消さずに透明にして、板の中の1字ぶんの空きにする
       codeFilePillDeco = null;
+      // ★v4.2.300: 見出しの中の板= 地も字も **!important** で上書きする(見出しthat自分の色を持っているso)
+      codeHeadPillDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        textDecoration: 'none; background-color: #f3e6c4 !important; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important; border-radius: 4px; padding: 0 1px;' });
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important; -webkit-text-fill-color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
-    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [];
-    const put = () => { editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
+    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [], heads300 = [];
+    const put = () => { editor.setDecorations(codeHeadPillDeco, heads300); editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
     const vrs = meosScanSpans(editor, doc);
@@ -36097,9 +36100,11 @@ function meosApplyCodeSpanDecorations(editor) {
         const s = m.index, n = m[1].length, e = s + m[0].length, cs = s + n, ce = e - n;
         if (s > 0 && text[s - 1] === '`') continue;
         const body = m[2].trim(); if (!body) continue;
-        // ★★v4.2.299(俊克 改良1「見出しに、インラインコードを入れると、今一だね」):
-        //   ★見出しは**それ自体that大きな声**so、その中に板を置くと声thatが2つになる(地の色もぶつかる)。
-        //   ★→ 見出しの行では**板を置かない**= ` は隠すthatけ。字は見出しの色のまま= 声は1つ。
+        // ★★v4.2.300(俊克「それでは、見出しの中にインラインコードを入れる意味thatない。
+        //   やはり、インラインコードの方を上書きするべき」= そのとおり):
+        //   ★見出しの中でも**板を出す**。ただし見出しthat地の色と字の色を持っているso、
+        //     **強く言う**(`!important` で地と字を上書き)= 板thatが勝つ。
+        //   ★v4.2.299で「見出しの中は板を置かない」としたのは引っ込め過ぎ= 記法の意味thatが消えていた。
         const _head299 = /^[ \t]{0,3}#{1,6}[ \t]/.test(text);
         const isFile0 = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs - 1)); ghosts.push(R(ln, cs - 1, cs)); } hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); }   // v4.2.231(俊克「他の板の両端にもスペース1個」): 開き/閉じの ` の内側の1つを透明にして両端の空きにする
@@ -36108,7 +36113,7 @@ function meosApplyCodeSpanDecorations(editor) {
         // ★v4.2.258(俊克 改良1「`がクリーム色の外にあると、なんか変なので、クリーム色の中に入れた方が良いんじゃない?」):
         //   表の行では ` を隠さない(列の幅を崩さない・v4.2.223の約束)so、**板の方を ` の外まで広げる**=
         //   見えている ` も板の中に入り、字の色も板の色に揃う。隠す/隠さないの約束は1つも変えていない。
-        if (_head299) { /* 見出しの中は板を置かない(v4.2.299) */ }
+        if (_head299) { heads300.push(R(ln, cs - 1, ce + 1)); }   // v4.2.300: 見出しの中は「上書きの板」1枚で出す
         else if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
         else if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); }
         else { clocks.push(R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
