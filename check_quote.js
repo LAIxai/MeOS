@@ -118,7 +118,12 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
   ok(panels.length>=2, '  箱は頭・中・足で角丸thatが違う(型は幅と役と段で使い回す)', panels.map(k=>[o4(k).before.width,o4(k).before.borderRadius]));
   ok(panels.some(k=>(seen.get(k)||[]).map(at2).includes(1)) && panels.some(k=>(seen.get(k)||[]).map(at2).includes(2)),
      '  Alertの全部の行に箱that続く', panels.map(k=>(seen.get(k)||[]).map(at2)));
-  ok(panels.every(k=>String(o4(k).before.backgroundColor).startsWith('#')), '  色は種類の色', panels.map(k=>o4(k).before.backgroundColor));}
+  ok(panels.every(k=>String(o4(k).before.backgroundColor).startsWith('#')), '  色は種類の色', panels.map(k=>o4(k).before.backgroundColor));
+  const S6=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+  ok(/const _tail = \(i === to && !String\(lines\[to \+ 1\] === undefined \? 'x' : lines\[to \+ 1\]\)\.trim\(\)\) \? 1 : 0;/.test(S6),
+     '★★足の行は**次の行that空なら1行ぶん長く**= 箱の下に余白(次に字thatあれば伸ばさない・v4.2.294 俊克 改良1)', true);
+  ok(/affectsConfiguration\('editor\.wordWrapColumn'\)/.test(S6) && /for \(const ed of vscode\.window\.visibleTextEditors\) refresh\(ed\)/.test(S6),
+     '★★★設定that変わったら描き直す= 触った回数で見え方that変わる穴を塞ぐ(俊克 バグ1)', true);}
  const mk2=K.find(k=>o4(k).before && o4(k).before.contentText==='\u201c');
  ok((seen.get(mk2)||[]).length===0, '★Alertには引用符を付けない(GitHubと同じ)', (seen.get(mk2)||[]).map(at));
 }

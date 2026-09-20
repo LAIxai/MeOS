@@ -36281,7 +36281,10 @@ function meosApplyQuoteDecorations(editor) {
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
           if (alert) {                                               // v4.2.291: Alertは箱で囲む(引用は囲まない)
-            const tp = meosQuotePanelType(wide + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows, MEOS_ALERTS[alert.kind].color);
+            // ★v4.2.294(俊克 改良1「1行の引用は、次の行も使用する」): **足の行は、次の行that空なら1行ぶん長く**=
+            //   箱の下に余白thatできて窮屈でなくなる。次に字thatあれば伸ばさない(字を隠さない)。
+            const _tail = (i === to && !String(lines[to + 1] === undefined ? 'x' : lines[to + 1]).trim()) ? 1 : 0;
+            const tp = meosQuotePanelType(wide + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows + _tail, MEOS_ALERTS[alert.kind].color);
             if (!pads.has(tp)) pads.set(tp, []);
             pads.get(tp).push(L(i));
           }
@@ -37169,7 +37172,14 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableDupCol', () => meosTableColOp(vscode.window.activeTextEditor || getMeDockTargetEditor(), 'dup')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableDelCol', () => meosTableColOp(vscode.window.activeTextEditor || getMeDockTargetEditor(), 'del')));
   try { meosReadTableCjkWidth(); } catch (_) {} // v0.9.999164: テーブルの全角幅係数を設定から読む
-  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { try { meosDbgReset(); } catch (_) { } if (e.affectsConfiguration('laiMembrane.tableCjkWidth')) { try { meosReadTableCjkWidth(); refresh(vscode.window.activeTextEditor); } catch (_) {} } }));
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { try { meosDbgReset(); } catch (_) { } if (e.affectsConfiguration('laiMembrane.tableCjkWidth')) { try { meosReadTableCjkWidth(); refresh(vscode.window.activeTextEditor); } catch (_) {} }
+    // ★★v4.2.294(俊克 バグ1「同じ折り返し110であっても、何回かやっていると、表示that異なる」の真因):
+    //   ★★**設定that変わっても描き直していなかった**= 紙も箱も「その時に読んだ折り返し幅」で作るso、
+    //     幅を変えた後、打つかスクロールするまで**前の幅のまま**= 触った回数で見え方that変わる。
+    //   ★→ 折り返し・字の大きさthat変わったら、その場で描き直す(望む姿と今の姿を突き合わせる)。
+    if (e.affectsConfiguration('editor.wordWrap') || e.affectsConfiguration('editor.wordWrapColumn') || e.affectsConfiguration('editor.fontSize')) {
+      try { for (const ed of vscode.window.visibleTextEditors) refresh(ed); } catch (_) { }
+    } }));
   // v0.9.999156: 表内のセル間キーボード移動(meos.inTableコンテキスト付きキーで発火)
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellNext', () => meosTableNav(vscode.window.activeTextEditor, 'next')));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.tableCellPrev', () => meosTableNav(vscode.window.activeTextEditor, 'prev')));
