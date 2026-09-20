@@ -59,4 +59,15 @@ X.meosApplyCodeFenceDecorations({document:jsDoc,visibleRanges:[new stub.Range(0,
 const d4=D();
 ok([d4.head,d4.foot,d4.body,d4.ink,d4.tick,d4.lang].every(t=>(seen.get(t)||[]).length===0), '  .js のファイルは素のまま(口は必ず空で閉じる)', true);
 
+console.log('⑤ 閉じの ``` は「同じ字・同じ数以上・後ろに何も無い」時だけ(実測で出た穴)');
+{
+ const M=['# t','````md','`板` は1個の ` で囲む。','```js は3個。この囲みは4個。','````','あと書き','~~~python','print(1)','~~~','',"```js",'const unclosed = 1;'];
+ const md={uri:{toString:()=>'file:///g.md',fsPath:'/g.md',scheme:'file'},languageId:'markdown',lineCount:M.length,
+  lineAt:n=>({text:M[n],range:new stub.Range(n,0,n,M[n].length)}),getText:()=>M.join('\n'),eol:1,fileName:'/g.md',isClosed:false,version:1};
+ const b=X.meosFenceBlocks(md);
+ ok(b.length===3, '★囲みは3つ(4個で包んだ物・~~~の物・閉じていない物)', b.map(x=>[x.open,x.close,x.lang]));
+ ok(b[0] && b[0].open===1 && b[0].close===4, '★★4個で包んだ中の ```js は文字= 板は途中で切れない', b[0]);
+ ok(b[1] && b[1].open===6 && b[1].close===8 && b[1].lang==='python', '★~~~ も同じ扱い(字が違えば閉じない)', b[1]);
+ ok(b[2] && b[2].open===10 && b[2].close===M.length-1, '★閉じthat無ければ文書の終わりまで1枚', b[2]);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

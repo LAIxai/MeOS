@@ -35905,10 +35905,12 @@ function meosFenceBlocks(doc) {
   const lines = meosDocLines(doc), list = []; let open = null;
   for (let i = 0; i < lines.length; i++) {
     const t = lines[i]; if (t.length < 3) continue;
-    const m = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*([^\s`~]*)/.exec(t);
+    const m = /^[ \t]{0,3}((`{3,})|(~{3,}))[ \t]*([^\s`~]*)/.exec(t);
     if (!m) continue;
-    if (!open) open = { open: i, close: -1, ch: m[1][0], lang: (m[2] || '').trim() };
-    else if (m[1][0] === open.ch) { open.close = i; list.push(open); open = null; }
+    if (!open) { open = { open: i, close: -1, ch: m[1][0], len: m[1].length, lang: (m[4] || '').trim() }; continue; }
+    // ★v4.2.256: 閉じの ``` は**開きと同じ字で、同じ数以上で、後ろに何も無い**時だけ(CommonMark)。
+    //   ここを緩くすると、4個で包んだ囲みの中の ```js が閉じ扱いになり、板that途中で切れる(実測で出た)。
+    if (m[1][0] === open.ch && m[1].length >= open.len && /^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*$/.test(t)) { open.close = i; list.push(open); open = null; }
   }
   if (open) { open.close = lines.length - 1; list.push(open); }   // 閉じthat無い= 文書の終わりまで(元の数え方と同じ)
   _meosFenceBlkCache = { key, list }; return list;
