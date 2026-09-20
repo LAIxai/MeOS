@@ -36079,7 +36079,9 @@ function meosApplyCodeSpanDecorations(editor) {
       codeFilePillDeco = null;
       // ★v4.2.300: 見出しの中の板= 地も字も **!important** で上書きする(見出しthat自分の色を持っているso)
       codeHeadPillDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        textDecoration: 'none; background-color: #f3e6c4 !important; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important; border-radius: 4px; padding: 0 1px;' });
+        // ★v4.2.301(俊克 バグ1「`の部分thatコブのようになった」): **角丸と余白は付けない**=
+        //   隠した ` の所は別の駒になるso、駒ごとに角thatが丸まり「コブ」に見える。地だけを平らに敷く。
+        textDecoration: 'none; background-color: #f3e6c4 !important; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;' });
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important; -webkit-text-fill-color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
     const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [], heads300 = [];

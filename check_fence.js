@@ -139,7 +139,7 @@ console.log('⑨ 見出しの中のインラインコードは板にしない(v4
  const S9=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/const _head299 = /.test(S9) && /#\{1,6\}/.test(S9)
     && /if \(_head299\) \{ heads300\.push/.test(S9)
-    && /background-color: #f3e6c4 !important; color: #3b3020 !important/.test(S9),
+    && /background-color: #f3e6c4 !important; color: #3b3020 !important/.test(S9) && !/border-radius: 4px; padding: 0 1px;/.test(S9),
     '★★見出しの中でも板を出す= ただし**上書き**で(見出しthat自分の地と字の色を持つso・v4.2.300)', true);
  ok(/if \(!_head299\) \{ MEOS_CODE_VER_RE/.test(S9), '  版番号の橙も見出しの中では出さない(色thatぶつかる)', true);
 }
