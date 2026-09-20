@@ -7425,6 +7425,13 @@ function applyPrettyLabels(editor) {
     //   ★★→ **数える口は1つ**(meosFenceBlocks)= 閉じていない物・長すぎる物は囲いに数えないので、
     //     v4.0.24の200行の安全弁もここでは要らない(安全弁は数える口の中へ引っ越した)。
     _inFence = !!(_plFence && _plFence.has(line));
+    // ★★★v4.2.276(俊克 バグ1「膜のケースは、縮められないのか?」の真因):
+    //   ★★★**囲いの中でも、この道thatまだ顔を描いていた**= 膜行の殻(`<!-- {* 〜 *} -->`)を隠して ▼ と名前を出す。
+    //     字は短く見えるのに、紙は**生の字の桁**で測るso、紙だけthat長く残る(俊克の④のスクショ)。
+    //   ★★→ **囲いの中では、この道は1つも描かない**= 「囲いの中は、ぜんぶ文字」を、
+    //     見出し/箇条書きだけでなく**顔・符・番号・装飾ぜんぶ**に広げる(v4.2.258の約束の続き)。
+    //     数える所(採番)も飛ばす= 引用の中の符thatが本文の番号を動かしては困る。
+    if (_inFence) continue;
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
     if (lineHasRefMark(text)) {
@@ -35917,6 +35924,18 @@ let _meosFenceCache = { key: null, set: null };
 //   ★桁は家の物差し displayColumns(全角=2)。1桁 = 1ch(等幅so「0」の幅と同じ)。
 const MEOS_FENCE_CREAM = '#f3e6c4', MEOS_FENCE_INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
 const MEOS_FENCE_PAD_COLS = 2;     // 紙の右の余白(桁)
+// ★★v4.2.276(俊克 改良1「コードのときもクリーム色が無駄に伸びているのはなぜか?」):
+//   ★**折り返した行は、画面では折り返し幅までしか出ていない**のに、紙は**論理行の桁**で測っていた=
+//     長い1行that2段に折り返っている時、紙だけthat右へ伸びる。→ **折り返し幅を上限**にする。
+function meosFenceWrapColumn() {
+  try {
+    const cfg = vscode.workspace.getConfiguration('editor');
+    const mode = String(cfg.get('wordWrap', 'off'));
+    if (mode === 'off') return 0;                  // 折り返さない= 上限なし(紙は一番長い行のまま)
+    if (mode === 'on') return 0;                   // 窓の端で折り返す= 桁を読めないso上限を置かない
+    return Math.max(20, Math.min(300, Number(cfg.get('wordWrapColumn', 80)) || 80));
+  } catch (_) { return 0; }
+}
 const _fencePaperTypes = new Map();   // '桁|役' → 装飾の型(幅ごとに1つ・使い回す)
 function meosFencePaperType(w, kind) {
   const key = w + '|' + kind;
@@ -36059,7 +36078,12 @@ function meosApplyCodeFenceDecorations(editor) {
         //   ★★★**紙の幅は、その囲いの一番長い行＋余白**= 窓の幅にも、ファイルの一番長い行にも、
         //     折り返しの設定にも**一切よらない**。俊克の見た「差that移動している内に変わる」は、
         //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
-        const _w = (() => { let w = 0; for (let i = b.open; i <= b.close; i++) w = Math.max(w, displayColumns(lines[i] || '')); return w + MEOS_FENCE_PAD_COLS; })();
+        const _w = (() => {
+          let w = 0; for (let i = b.open; i <= b.close; i++) w = Math.max(w, displayColumns(lines[i] || ''));
+          w += MEOS_FENCE_PAD_COLS;
+          const wc = meosFenceWrapColumn();          // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
+          return wc ? Math.min(w, wc) : w;
+        })();
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';

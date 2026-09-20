@@ -108,11 +108,29 @@ console.log('⑦ 紙は「中身の大きさ」(v4.2.274 — 行いっぱいの�
     '★★★紙= 左の太い縁(クリーム)を桁(ch)で引く= 幅は左から数える(窓にも中身にもよらない)', true);
  ok(/isWholeLine: true, backgroundColor: 'transparent'/.test(S),
     '★行いっぱいの型のまま= 高さは行の高さぴったり(埋め草の段違いthat起きない)', true);
- ok(/const MEOS_FENCE_PAD_COLS = 2;/.test(S) && /w \+ MEOS_FENCE_PAD_COLS/.test(S)
+ ok(/const MEOS_FENCE_PAD_COLS = 2;/.test(S) && /w \+= MEOS_FENCE_PAD_COLS;/.test(S)
     && /displayColumns\(lines\[i\] \|\| ''\)/.test(S),
     '★幅= その囲いの一番長い行 + 余白2桁(家の物差し displayColumns)', true);
  ok(!/meosFenceRightGap/.test(S) && !/MEOS_FENCE_RIGHT_GAP/.test(S) && !/fenceSlabDeco/.test(S),
     '  窓の端から削る道(v4.2.263〜273)は残骸ごと畳んだ', true);
+ // ★v4.2.276: 折り返し幅that上限 / 囲いの中では顔も描かない
+ ok(/function meosFenceWrapColumn\(\)/.test(S) && /return wc \? Math\.min\(w, wc\) : w;/.test(S),
+    '★★折り返し幅を上限にする= 折り返った行は画面では其処までso、紙だけthat伸びない(俊克 改良1)', true);
+ ok(/if \(_inFence\) continue;/.test(S),
+    '★★★囲いの中では顔も符も番号も描かない= 「囲いの中は、ぜんぶ文字」を全部に広げる(俊克 バグ1)', true);
+ {const W2=['# t','```','<!-- {* ▼mCN=これは膜ではない_20260920S105400JST // 板の中は文字 *} -->','```'];
+  const wd={uri:{toString:()=>'file:///w2.md',fsPath:'/w2.md',scheme:'file'},languageId:'markdown',lineCount:W2.length,
+   lineAt:n=>({text:W2[n],range:new stub.Range(n,0,n,W2[n].length)}),getText:()=>W2.join('\n'),eol:1,fileName:'/w2.md',isClosed:false,version:1};
+  const _g=stub.workspace.getConfiguration;
+  stub.workspace.getConfiguration=()=>({get:(k,dv)=>(k==='wordWrap'?'wordWrapColumn':(k==='wordWrapColumn'?40:dv)),update(){}});
+  X.meosApplyCodeFenceDecorations({document:wd,visibleRanges:[new stub.Range(0,0,W2.length-1,0)],
+   selection:{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true},
+   selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],
+   setDecorations:(t,items)=>seen.set(t,items)});
+  const used=[...seen.keys()].filter(k=>(seen.get(k)||[]).length && /ch$/.test(String((k.__opts||{}).borderWidth||'')));
+  ok(used.length && used.every(k=>(k.__opts.borderWidth)==='0 0 0 40ch'),
+     '  長い1行(折り返す)の紙は、折り返し幅(40)で止まる', used.map(k=>k.__opts.borderWidth));
+  stub.workspace.getConfiguration=_g;}
  // 実物: 型は幅ごとに1つ・頭/足/中で角丸が違う
  X.meosApplyCodeFenceDecorations(mkEd(0));
  {const K=[...seen.keys()], at=(x)=>(x.range||x).start.line;
