@@ -36115,7 +36115,7 @@ const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
 const MEOS_ALERTS = {
   NOTE:      { icon: 'ℹ️', label: 'Note',      color: '#539bf5' },
   TIP:       { icon: '💡', label: 'Tip',       color: '#57ab5a' },
-  IMPORTANT: { icon: '🗣️', label: 'Important', color: '#986ee2' },
+  IMPORTANT: { icon: '💬', label: 'Important', color: '#986ee2' },
   WARNING:   { icon: '⚠️', label: 'Warning',   color: '#c69026' },
   CAUTION:   { icon: '🛑', label: 'Caution',   color: '#e5534b' },
 };
@@ -36137,15 +36137,28 @@ function meosQuoteAlertType(kind) {
     after: { contentText: a.icon + ' ' + a.label, color: a.color, fontWeight: '700', margin: '0 0 0 1px' } });
   _quoteAlertTypes.set(kind, t); return t;
 }
-const _quotePadTypes = new Map();  // '桁|段|色' → 字下げ(+罫)の駒
-function meosQuotePadType(cols, rows, col2) {
-  const key = cols + '|' + rows + '|' + (col2 || '');
+// ★★★v4.2.289(俊克 バグ1「⑭,⑯that崩れている」の真因):
+//   ★★★**流れの中の駒に「高さ」を持たせていた**= 字下げの駒は字を右へずらす為に**流れの中**に置くthat、
+//     そこに `height: 段×100%` を足すと**行の箱そのもの**thatが伸び、折り返した行の段thatが重なって潰れた。
+//   ★★→ **役を2つに分ける**= ①字下げ(流れの中・幅だけ) ②罫(位置を持つ・高さは段の数)。
+//     高さを持つ物は必ず**流れの外**へ置く(紙の駒と同じ流儀)。
+const _quotePadTypes = new Map();   // '桁' → 字下げの駒(流れの中・幅だけ)
+function meosQuotePadType(cols) {
+  const key = String(cols);
   let t = _quotePadTypes.get(key); if (t) return t;
-  const bar = (col) => ({ contentText: ' ', width: cols + 'ch', height: (rows * 100) + '%',
-    borderColor: col2 || col, borderStyle: 'solid', borderWidth: '0 0 0 3px', textDecoration: 'none; box-sizing: border-box;' });
+  t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { contentText: ' ', width: cols + 'ch' } });
+  _quotePadTypes.set(key, t); return t;
+}
+const _quoteRuleTypes = new Map();  // '段|色|左' → 罫の駒(流れの外・高さは段の数)
+function meosQuoteRuleType(rows, col2, leftCols) {
+  const key = rows + '|' + (col2 || '') + '|' + leftCols;
+  let t = _quoteRuleTypes.get(key); if (t) return t;
+  const bar = (col) => ({ contentText: ' ', width: '3px', height: (rows * 100) + '%', backgroundColor: col2 || col,
+    textDecoration: 'none; position: absolute; left: ' + leftCols + 'ch; top: 0; z-index: -1;' });
   t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     before: bar(MEOS_QUOTE_RULE_DARK), light: { before: bar(MEOS_QUOTE_RULE_LIGHT) }, dark: { before: bar(MEOS_QUOTE_RULE_DARK) } });
-  _quotePadTypes.set(key, t); return t;
+  _quoteRuleTypes.set(key, t); return t;
 }
 // 引用の塊= 続いている `>` の行。空行(>だけ)も塊の中。
 function meosQuoteLineParts(text) {
@@ -36175,6 +36188,7 @@ function meosApplyQuoteDecorations(editor) {
     const pads = new Map(); const hides = [], marks = [], markEnds = [], folds = []; const alerts = new Map();
     const put = () => {
       for (const t of _quotePadTypes.values()) editor.setDecorations(t, pads.get(t) || []);
+      for (const t of _quoteRuleTypes.values()) editor.setDecorations(t, pads.get(t) || []);
       editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks); editor.setDecorations(quoteMarkEndDeco, markEnds);
       editor.setDecorations(quoteFoldDeco, folds);
       for (const k of Object.keys(MEOS_ALERTS)) editor.setDecorations(meosQuoteAlertType(k), alerts.get(k) || []);
@@ -36226,9 +36240,12 @@ function meosApplyQuoteDecorations(editor) {
           // 出典の行(―― 誰それ)は**右寄せ**= 字下げを「紙の幅 − その行の字」まで広げる
           const attr = MEOS_QUOTE_ATTR_RE.test(q.body);
           const pad = q.level * MEOS_QUOTE_INDENT + (attr ? Math.max(0, wide - q.level * MEOS_QUOTE_INDENT - cols - MEOS_QUOTE_ATTR_INSET) : 0);
-          const ty = meosQuotePadType(pad, rows, alert ? MEOS_ALERTS[alert.kind].color : null);
+          const ty = meosQuotePadType(pad);
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
+          const tr = meosQuoteRuleType(rows, alert ? MEOS_ALERTS[alert.kind].color : null, (q.level - 1) * MEOS_QUOTE_INDENT);
+          if (!pads.has(tr)) pads.set(tr, []);
+          pads.get(tr).push(L(i));
           if (alert && i === alert.line) {                              // `[!TIP]` の字は畳み、見出しを出す
             folds.push(new vscode.Range(i, q.mark, i, (lines[i] || '').length));
             if (!alerts.has(alert.kind)) alerts.set(alert.kind, []);

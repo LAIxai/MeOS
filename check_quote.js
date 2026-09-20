@@ -51,11 +51,11 @@ ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).bef
     '★★★出典(―― Spy Lai)は右寄せ・右端より8桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
 }
 {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/borderWidth: '0 0 0 3px'/.test(S)
+ ok(/width: '3px', height: \(rows \* 100\) \+ '%', backgroundColor: col2 \|\| col/.test(S)
     && /const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';/.test(S)
     && !/borderColor: new vscode\.ThemeColor\('textBlockQuote/.test(S),
-    '★★罫と引用符は**家の色**(紙と同じクリームの縁)= テーマの引用色は暗い地に沈む(Monokai)', true);
- ok(/light: \{ before: bar\(MEOS_QUOTE_RULE_LIGHT\) \}, dark: \{ before: bar\(MEOS_QUOTE_RULE_DARK\) \}/.test(S)
+    '★★罫は位置を持つ駒(流れの外)・色は家の色= 流れの中に高さを持たせると行thatが潰れる(v4.2.289)', true);
+ ok(/before: bar\(MEOS_QUOTE_RULE_DARK\), light: \{ before: bar\(MEOS_QUOTE_RULE_LIGHT\) \}/.test(S)
     && /light: \{ before: qmark\(MEOS_QUOTE_RULE_LIGHT\) \}, dark: \{ before: qmark\(MEOS_QUOTE_RULE_DARK\) \}/.test(S),
     '  明るい地では濃い方に切り替える', true);}
 
@@ -105,8 +105,8 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
  ok(!!tip && (seen.get(tip)||[]).map(at).join()==='1', '★★★`[!TIP]` の行に「💡 Tip」を出す', tip&&[o4(tip).after.contentText,(seen.get(tip)||[]).map(at)]);
  ok(!!fold && (seen.get(fold)||[]).map(at).join()==='1,4', '★`[!TIP]`/`[!WARNING]` の字は畳む(幅ごと消す)', (seen.get(fold)||[]).map(at));
  ok(!!warn && o4(warn).after.color==='#c69026', '  種類ごとに色(WARNINGは黄)', warn&&o4(warn).after.color);
- const rules=K.filter(k=>o4(k).before && /ch$/.test(String(o4(k).before.width||'')) && (seen.get(k)||[]).length);
- ok(rules.some(k=>o4(k).before.borderColor==='#57ab5a'), '★★罫も種類の色(TIPは緑)', rules.map(k=>o4(k).before.borderColor));
+ const rules=K.filter(k=>o4(k).before && o4(k).before.width==='3px' && (seen.get(k)||[]).length);
+ ok(rules.some(k=>o4(k).before.backgroundColor==='#57ab5a'), '★★罫も種類の色(TIPは緑)', rules.map(k=>o4(k).before.backgroundColor));
  const mk2=K.find(k=>o4(k).before && o4(k).before.contentText==='\u201c');
  ok((seen.get(mk2)||[]).length===0, '★Alertには引用符を付けない(GitHubと同じ)', (seen.get(mk2)||[]).map(at));
 }
