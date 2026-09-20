@@ -36097,6 +36097,10 @@ function meosApplyCodeSpanDecorations(editor) {
         const s = m.index, n = m[1].length, e = s + m[0].length, cs = s + n, ce = e - n;
         if (s > 0 && text[s - 1] === '`') continue;
         const body = m[2].trim(); if (!body) continue;
+        // ★★v4.2.299(俊克 改良1「見出しに、インラインコードを入れると、今一だね」):
+        //   ★見出しは**それ自体that大きな声**so、その中に板を置くと声thatが2つになる(地の色もぶつかる)。
+        //   ★→ 見出しの行では**板を置かない**= ` は隠すthatけ。字は見出しの色のまま= 声は1つ。
+        const _head299 = /^[ \t]{0,3}#{1,6}[ \t]/.test(text);
         const isFile0 = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs - 1)); ghosts.push(R(ln, cs - 1, cs)); } hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); }   // v4.2.231(俊克「他の板の両端にもスペース1個」): 開き/閉じの ` の内側の1つを透明にして両端の空きにする
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
@@ -36104,11 +36108,12 @@ function meosApplyCodeSpanDecorations(editor) {
         // ★v4.2.258(俊克 改良1「`がクリーム色の外にあると、なんか変なので、クリーム色の中に入れた方が良いんじゃない?」):
         //   表の行では ` を隠さない(列の幅を崩さない・v4.2.223の約束)so、**板の方を ` の外まで広げる**=
         //   見えている ` も板の中に入り、字の色も板の色に揃う。隠す/隠さないの約束は1つも変えていない。
-        if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
+        if (_head299) { /* 見出しの中は板を置かない(v4.2.299) */ }
+        else if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
         else if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); }
         else { clocks.push(R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
-        MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
-        while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
+        if (!_head299) { MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
+          while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length)); }
       }
     }
     put();

@@ -134,4 +134,12 @@ console.log('⑦⑧ 紙は字の側の駒1枚(v4.2.280 — 予備の板は撤去
   const foot=caps.find(k=>o(k).before.borderRadius==='0 0 8px 8px');
   ok(foot && (seen.get(foot)||[]).map(at).join()==='4', '  足の駒= 下の2つの角that丸い(最後の中身の行)', foot&&(seen.get(foot)||[]).map(at));}
 }
+console.log('⑨ 見出しの中のインラインコードは板にしない(v4.2.299)');
+{
+ const S9=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/const _head299 = /.test(S9) && /#\{1,6\}/.test(S9)
+    && /if \(_head299\) \{ \/\* 見出しの中は板を置かない/.test(S9),
+    '★★見出しの行では板を置かない(` は隠すthatけ)= 見出しthat大きな声so、声を2つにしない', true);
+ ok(/if \(!_head299\) \{ MEOS_CODE_VER_RE/.test(S9), '  版番号の橙も見出しの中では出さない(色thatぶつかる)', true);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
