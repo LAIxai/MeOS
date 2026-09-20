@@ -36298,10 +36298,11 @@ function meosApplyQuoteDecorations(editor) {
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
           if (alert) {                                               // v4.2.291: Alertは箱で囲む(引用は囲まない)
-            // ★v4.2.294(俊克 改良1「1行の引用は、次の行も使用する」): **足の行は、次の行that空なら1行ぶん長く**=
-            //   箱の下に余白thatできて窮屈でなくなる。次に字thatあれば伸ばさない(字を隠さない)。
-            const _tail = (i === to && !String(lines[to + 1] === undefined ? 'x' : lines[to + 1]).trim()) ? 1 : 0;
-            const tp = meosQuotePanelType(wide + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows + _tail, MEOS_ALERTS[alert.kind].color);
+            // ★v4.2.296(俊克「なぜ、3行目まで枠を作ってしまうのか? 明らかに2行あれば済む時に」):
+            //   ★v4.2.294で足した「下の余白1行」は**私の読み違い**= 俊克の「次の行も使用する」は
+            //     **長い1行を仮想的に2段にする**話であって、空の行を箱に飲む話ではなかった。→ 外す。
+            //   ★箱は**その塊の行だけ**= 書いてある物thatそのまま形を決める。
+            const tp = meosQuotePanelType(wide + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows, MEOS_ALERTS[alert.kind].color);
             if (!pads.has(tp)) pads.set(tp, []);
             pads.get(tp).push(L(i));
           }
