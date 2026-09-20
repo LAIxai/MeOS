@@ -103,27 +103,31 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
  ok((seen.get(d.body)||[]).every(x=>!x.renderOptions) && (seen.get(d.head)||[]).every(x=>!x.renderOptions),
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
  ok(/const MEOS_FENCE_RIGHT_GAP = 44;/.test(S)
-    && /' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 1px'/.test(S) && /' \+ CUT \+ '/.test(S),
+    && /MEOS_FENCE_CAP\) \+ 'px 0 1px'/.test(S) && /' \+ CUT \+ '/.test(S),
     '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
  ok(!/width: calc\(100% - /.test(S), '  効かなかった道(中身の幅から引く)は残骸を置かない', true);
  ok(/const slab = \(radius\) => \(\{ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid'/.test(S)
     && /borderColor: 'transparent ' \+ CUT \+ ' transparent ' \+ EDGE/.test(S)
-    && /borderWidth: '0 ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 1px'/.test(S),
+    && /borderWidth: '0 ' \+ \(MEOS_FENCE_RIGHT_GAP \+ MEOS_FENCE_CAP\) \+ 'px 0 1px'/.test(S),
     '★★左はインラインと同じ1pxの縁・右は幕・上下は引かない(上下を引くと幕の上にヒゲthat出る・v4.2.268)', true);
  ok(!/clip-path: inset/.test(S) && !/box-sizing: border-box !important/.test(S) && !/width: calc\(100% - /.test(S),
     '★★★届かないCSSは残骸を置かない= 行いっぱいの板に渡るのは背景と縁とoutlineだけ(VSCodiumの中で実測)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
- // ★v4.2.269: 切り口の角を作る駒(字の側= CSSが届く口)
- ok(/const cap = \(radius, top\) => \(\{ after: \{ contentText: '', width: MEOS_FENCE_CAP/.test(S)
-    && /position: absolute; right: ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px; '/.test(S),
-    '★★★駒は字の側に置き、右から44点(板の切り口と同じ所)に立てる', true);
- ok(/fenceCapTopDeco = vscode\.window\.createTextEditorDecorationType\(cap\('0 0 0 ' \+ MEOS_FENCE_CAP \+ 'px', true\)\)/.test(S)
-    && /fenceCapBotDeco = vscode\.window\.createTextEditorDecorationType\(cap\(MEOS_FENCE_CAP \+ 'px 0 0 0', false\)\)/.test(S),
-    '★頭は左下を丸めた駒を上に/足は左上を丸めた駒を下に= 塗り残しthat四分円になる', true);
+ // ★v4.2.270(俊克「幅10くらいの角丸四角を右端に重ねればいいだけじゃないのか?」= その通りにした)
+ ok(/const cap = \(radius\) => \(\{ after: \{ contentText: ' ', width: MEOS_FENCE_CAP \+ 'px',/.test(S)
+    && /backgroundColor: CREAM, borderRadius: radius,/.test(S)
+    && /position: absolute; right: ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px; top: 0; bottom: 0;/.test(S),
+    '★★★駒はクリーム・行の高さいっぱい・右から44点(板の切り口と同じ所)', true);
+ ok(/borderWidth: '0 ' \+ \(MEOS_FENCE_RIGHT_GAP \+ MEOS_FENCE_CAP\) \+ 'px 0 1px'/.test(S),
+    '★★板は駒の幅だけ手前で切り、その先を駒that継ぐ(駒that出ない版でも12点手前で終わるだけ)', true);
+ ok(/fenceCapTopDeco = .*cap\('0 ' \+ MEOS_FENCE_CAP_R \+ 'px 0 0'\)\)/.test(S)
+    && /fenceCapBotDeco = .*cap\('0 0 ' \+ MEOS_FENCE_CAP_R \+ 'px 0'\)\)/.test(S)
+    && /fenceCapMidDeco = .*cap\('0'\)\)/.test(S),
+    '★頭=右上だけ丸い/足=右下だけ/中=角なし', true);
  X.meosApplyCodeFenceDecorations(mkEd(0));
- {const K=[...seen.keys()], cT=seen.get(K[6])||[], cB=seen.get(K[7])||[];
-  const at=(x)=>(x.range||x).start.line;
-  ok(cT.length===1 && at(cT[0])===2 && cB.length===1 && at(cB[0])===5,
-     '  駒は頭の行と足の行に1つずつ(中の行には置かない)', [cT.map(at),cB.map(at)]);}
+ {const K=[...seen.keys()], at=(x)=>(x.range||x).start.line;
+  const cT=seen.get(K[6])||[], cB=seen.get(K[7])||[], cM=seen.get(K[8])||[];
+  ok(cT.map(at).join()==='2' && cB.map(at).join()==='5' && cM.map(at).join()==='3,4',
+     '  駒は囲いの全部の行に1つずつ(右端that1本の線になる)', [cT.map(at),cB.map(at),cM.map(at)]);}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

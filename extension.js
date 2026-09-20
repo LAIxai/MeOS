@@ -35900,7 +35900,8 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
-const MEOS_FENCE_CAP = 6;          // v4.2.269: 切り口の角を作る駒の大きさ(=板の角丸と同じ半径)
+const MEOS_FENCE_CAP = 12;         // v4.2.270(俊克「幅10くらいの角丸四角を右端に重ねればいいだけじゃないのか?」): 右端に重ねるクリームの駒の幅
+const MEOS_FENCE_CAP_R = 6;        // その駒の角丸(板の角丸と同じ半径)
 const MEOS_FENCE_RIGHT_GAP = 44;   // v4.2.264(俊克「かなり短くしないと駄目だね」): 紙の右端を窓の端から何点(px)手前で止めるか。14では印(縦スクロールバー＋概観ルーラ)に届かなかったso、一度に大きく寄せる(数は1字で変わる)
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
@@ -36004,7 +36005,7 @@ function meosApplyCodeSpanDecorations(editor) {
 //   ★**板自体that「ここは引用だ」と語る**= ``` の字を隠しても、中の記法that本物にならない事は形で分かる
 //     → [[feedback_quoted_notation_must_be_inert]]。
 //   ★カーソルの居る行は生のまま(他の装飾と同じ約束)。ただし**板は切らない**= 紙に穴を開けない。
-let fenceSlabDeco = null, fenceHeadDeco = null, fenceFootDeco = null, fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null, fenceCapTopDeco = null, fenceCapBotDeco = null;
+let fenceSlabDeco = null, fenceHeadDeco = null, fenceFootDeco = null, fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null, fenceCapTopDeco = null, fenceCapBotDeco = null, fenceCapMidDeco = null;
 function meosApplyCodeFenceDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
@@ -36048,20 +36049,21 @@ function meosApplyCodeFenceDecorations(editor) {
       //     クリームの右に**細いヒゲ**thatはみ出していた(俊克のスクショの右端)。左の1pxだけ残す。
       const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid',
         borderColor: 'transparent ' + CUT + ' transparent ' + EDGE,
-        borderWidth: '0 ' + MEOS_FENCE_RIGHT_GAP + 'px 0 1px',
+        borderWidth: '0 ' + (MEOS_FENCE_RIGHT_GAP + MEOS_FENCE_CAP) + 'px 0 1px',   // v4.2.270: 駒の幅だけ手前で切る(その先は駒that継ぐ)
         borderRadius: radius });
-      // ★★★v4.2.268b/269(俊克「クリーム色の幅の狭い角丸四角を…重ねて伸縮させればいいんじゃないか?」→「やるしかないでしょ」):
-      //   ★★★**字の側になら CSS that届く**(実測: ContentClassName には textDecoration that渡る)so、
-      //     切り口の角に**小さな駒**を1つ置いて、角を作る。置き場所は `.view-line`(position:absolute・width:100%)
-      //     の中= **右から44点**と言えば、板の切り口と同じ所に立つ(VSCodiumのCSSを読んで確かめた)。
-      //   ★駒は**地の色**= 角の四角い所だけを塗り潰し、**駒自身の角を丸める**(border-radius)=
-      //     塗り残しthat四分円になり、クリームの角that丸くなる。俊克の「重ねる」を、色を逆にして実現した物。
-      //   ★頭の行は左下を丸めた駒を上に / 足の行は左上を丸めた駒を下に(丸めるのは切り口の側だけ)。
-      const cap = (radius, top) => ({ after: { contentText: '', width: MEOS_FENCE_CAP + 'px', height: MEOS_FENCE_CAP + 'px',
-        backgroundColor: CUT, borderRadius: radius,
-        textDecoration: 'none; position: absolute; right: ' + MEOS_FENCE_RIGHT_GAP + 'px; ' + (top ? 'top: 0;' : 'bottom: 0;') } });
-      fenceCapTopDeco = vscode.window.createTextEditorDecorationType(cap('0 0 0 ' + MEOS_FENCE_CAP + 'px', true));
-      fenceCapBotDeco = vscode.window.createTextEditorDecorationType(cap(MEOS_FENCE_CAP + 'px 0 0 0', false));
+      // ★★★v4.2.270(俊克「やはり、幅10くらいの角丸四角を右端に重ねればいいだけじゃないのか?」= その通りにした):
+      //   ★★**板は駒の幅(12点)だけ手前で切り、その先を駒that継ぐ**= 継いだ駒の外の角を丸める=
+      //     紙の右端that丸くなる。俊克の言葉どおり「角丸四角を右端に重ねる」。
+      //   ★駒は**字の側**の口(after)= ここには CSS that届く(実測)。`.view-line` は position:absolute・width:100% so、
+      //     `right: 44px` と言えば板の切り口と同じ所に立ち、窓の幅that変われば一緒に伸び縮みする。
+      //   ★上下は `top:0; bottom:0` で行の高さいっぱい(高さを数で持たない= 行の高さthat変わっても付いて行く)。
+      //   ★駒that出ない版でも害は無い= 紙that12点手前で終わるだけ(角は四角いまま)。
+      const cap = (radius) => ({ after: { contentText: ' ', width: MEOS_FENCE_CAP + 'px',
+        backgroundColor: CREAM, borderRadius: radius,
+        textDecoration: 'none; position: absolute; right: ' + MEOS_FENCE_RIGHT_GAP + 'px; top: 0; bottom: 0;' } });
+      fenceCapTopDeco = vscode.window.createTextEditorDecorationType(cap('0 ' + MEOS_FENCE_CAP_R + 'px 0 0'));   // 頭= 右上だけ丸い
+      fenceCapBotDeco = vscode.window.createTextEditorDecorationType(cap('0 0 ' + MEOS_FENCE_CAP_R + 'px 0'));   // 足= 右下だけ丸い
+      fenceCapMidDeco = vscode.window.createTextEditorDecorationType(cap('0'));                                  // 中= 角なし
       fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
       fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));
       fenceFootDeco = vscode.window.createTextEditorDecorationType(slab('0 0 6px 6px'));
@@ -36074,10 +36076,10 @@ function meosApplyCodeFenceDecorations(editor) {
       fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
     }
-    const body = [], heads = [], foots = [], inks = [], ticks = [], langs = [], capT = [], capB = [];
+    const body = [], heads = [], foots = [], inks = [], ticks = [], langs = [], capT = [], capB = [], capM = [];
     const put = () => { editor.setDecorations(fenceSlabDeco, body); editor.setDecorations(fenceHeadDeco, heads); editor.setDecorations(fenceFootDeco, foots);
       editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
-      editor.setDecorations(fenceCapTopDeco, capT); editor.setDecorations(fenceCapBotDeco, capB); };
+      editor.setDecorations(fenceCapTopDeco, capT); editor.setDecorations(fenceCapBotDeco, capB); editor.setDecorations(fenceCapMidDeco, capM); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
     const raw = meosRawLines(editor), lines = meosDocLines(doc);
@@ -36089,8 +36091,7 @@ function meosApplyCodeFenceDecorations(editor) {
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
           (ln === b.open ? heads : (ln === b.close ? foots : body)).push(L(ln));
-          if (ln === b.open) capT.push(L(ln));                     // v4.2.269: 切り口の角を作る駒(上)
-          if (ln === b.close) capB.push(L(ln));                    //                             (下)
+          (ln === b.open ? capT : (ln === b.close ? capB : capM)).push(L(ln));   // v4.2.270: 右端に継ぐ駒(頭=右上が丸い / 足=右下 / 中=角なし)
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(板だけ残す)
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
