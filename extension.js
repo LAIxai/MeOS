@@ -35909,7 +35909,7 @@ const _meosColoredMarks = new Map();
 const MEOS_CODE_FILE_EXT_RE = /\.(?:js|mjs|cjs|ts|tsx|jsx|json|jsonl|md|mdx|txt|log|vsix|png|jpg|jpeg|gif|svg|webp|html|css|py|sh|zsh|yml|yaml|toml|diag|ips|plist|zip|pdf)$/i;
 const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
-let codeHeadPillDeco = null, codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
+let codeHeadPillDeco = null, codeHeadPillMidDeco = null, codeHeadPillEndDeco = null, codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
 let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
@@ -36077,15 +36077,20 @@ function meosApplyCodeSpanDecorations(editor) {
       codeFileGapDeco = null;
       codeTickGhostDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.230(俊克「右端にスペース1個入れると寸詰まり感がなくなる」): 閉じの ` を消さずに透明にして、板の中の1字ぶんの空きにする
       codeFilePillDeco = null;
-      // ★v4.2.300: 見出しの中の板= 地も字も **!important** で上書きする(見出しthat自分の色を持っているso)
-      codeHeadPillDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        // ★v4.2.301(俊克 バグ1「`の部分thatコブのようになった」): **角丸と余白は付けない**=
-        //   隠した ` の所は別の駒になるso、駒ごとに角thatが丸まり「コブ」に見える。地だけを平らに敷く。
-        textDecoration: 'none; background-color: #f3e6c4 !important; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;' });
+      // ★v4.2.300/302: 見出しの中の板= 地も字も **!important** で上書きする(見出しthat自分の色を持っているso)。
+      //   ★★v4.2.302(俊克 改良1「角丸じゃないので、イメージthat狂う」): 角丸は**両端の駒にだけ**掛ける=
+      //     隠した ` の所は別の駒になるso、全部に丸みを掛けると「コブ」3つになる(v4.2.301の姿)。
+      //     左端= 左だけ丸い / 中= 角なし / 右端= 右だけ丸い → 継ぐと**1本の角丸の帯**になる。
+      const headPill = (radius) => ({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        textDecoration: 'none; background-color: #f3e6c4 !important; color: #3b3020 !important; -webkit-text-fill-color: #3b3020 !important;'
+          + (radius ? (' border-radius: ' + radius + ' !important;') : '') });
+      codeHeadPillDeco = vscode.window.createTextEditorDecorationType(headPill('4px 0 0 4px'));
+      codeHeadPillMidDeco = vscode.window.createTextEditorDecorationType(headPill(''));
+      codeHeadPillEndDeco = vscode.window.createTextEditorDecorationType(headPill('0 4px 4px 0'));
       codeVerDeco = vscode.window.createTextEditorDecorationType({ fontWeight: '900', textDecoration: 'none; color: #e0803a !important; -webkit-text-fill-color: #e0803a !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });   // v4.2.224: 板の地の色(editor.foreground)に負けて白かった
     }
-    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [], heads300 = [];
-    const put = () => { editor.setDecorations(codeHeadPillDeco, heads300); editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
+    const hide = [], pills = [], sets = [], files = [], gaps = [], fpills = [], vers = [], ghosts = [], clocks = [], creamTx = [], heads300 = [], headsMid = [], headsEnd = [];
+    const put = () => { editor.setDecorations(codeHeadPillDeco, heads300); editor.setDecorations(codeHeadPillMidDeco, headsMid); editor.setDecorations(codeHeadPillEndDeco, headsEnd); editor.setDecorations(codeHideDeco, hide); editor.setDecorations(codePillDeco, pills); editor.setDecorations(codeSetDeco, sets); editor.setDecorations(codeClockDeco, clocks); editor.setDecorations(codeCreamTextDeco, creamTx); editor.setDecorations(codeFileDeco, files); editor.setDecorations(codeTickGhostDeco, ghosts); editor.setDecorations(codeVerDeco, vers); };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const raw = meosRawLines(editor), fence = meosFenceLines(doc), lines = meosDocLines(doc);
     const vrs = meosScanSpans(editor, doc);
@@ -36115,7 +36120,9 @@ function meosApplyCodeSpanDecorations(editor) {
         // ★v4.2.258(俊克 改良1「`がクリーム色の外にあると、なんか変なので、クリーム色の中に入れた方が良いんじゃない?」):
         //   表の行では ` を隠さない(列の幅を崩さない・v4.2.223の約束)so、**板の方を ` の外まで広げる**=
         //   見えている ` も板の中に入り、字の色も板の色に揃う。隠す/隠さないの約束は1つも変えていない。
-        if (_head299) { heads300.push(R(ln, cs - 1, ce + 1)); }   // v4.2.300: 見出しの中は「上書きの板」1枚で出す
+        if (_head299) {                                            // v4.2.302: 見出しの中は3つ継いで1本の角丸の帯に
+          heads300.push(R(ln, cs - 1, cs)); headsMid.push(R(ln, cs, ce)); headsEnd.push(R(ln, ce, ce + 1));
+        }
         else if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
         else if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); }
         else { clocks.push(R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
