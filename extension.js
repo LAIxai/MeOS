@@ -36140,7 +36140,15 @@ const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';
 //   ★★★**`>` を透明にしていた= 字は消えるthat、桁は居座る**。so字は「字下げ(2桁) ＋ 居座った `> `(2桁)」で
 //     始まっていたのに、私の数の上では2桁しか見ていなかった= **箱の幅that字より2桁短い**(食み出し)。
 //   ★★→ `>` は**畳む**(幅ごと消す)= 見た目と数thatが一致する。字下げは4桁(全角2字)にして今までの見え方を保つ。
-const MEOS_QUOTE_INDENT = 4;       // 1階層あたりの字下げ(桁・全角2字)
+// ★★v4.2.298(俊克「アルファベットや半角数字では2文字分だけ1行目よりインデントthat浅く出る」):
+//   ★折り返した2行目の字下げは **VS Codeの1段(editor.tabSize)** で決まる(wrappingIndent=indent)。
+//     MeOSの字下げthatそれと違うと、頭thatずれる。→ **同じ数を使う**= 引用の字下げ = tabSize。
+function meosQuoteIndentCols(doc) {
+  try {
+    const n = Number(meosCfgLangValue(meosFenceCfg(doc), 'tabSize', 4));
+    return Math.max(2, Math.min(8, (isFinite(n) && n > 0) ? n : 4));
+  } catch (_) { return 4; }
+}
 // ★v4.2.285/286(俊克「引用文の右端より2、3文字前」→「1行目の『無かった。』の『無』の字の位置から始めるくらい」):
 //   ★出典は**引用の右端ぴったり**ではなく**少し内側**で止める= 本の組み方(右端に貼り付けると窮屈)。
 //   ★★数を3→6に増やしたのは、**和文の桁の数え方**のため= MeOSは全角を2桁と数えるthat、
@@ -36251,6 +36259,7 @@ function meosApplyQuoteDecorations(editor) {
     const raw = meosRawLines(editor);
     const L = (ln) => new vscode.Range(ln, 0, ln, 0);
     const wrapCol = meosFenceWrapColumn(doc), _quoteWrap = wrapCol;
+    const MEOS_QUOTE_INDENT = meosQuoteIndentCols(doc);   // v4.2.298: 1段= editor.tabSize(折り返した行と頭を揃える)
     for (const vr of meosScanSpans(editor, doc)) {
       let ln = vr[0];
       while (ln <= vr[1]) {
@@ -36369,13 +36378,19 @@ function meosApplyCodeFenceDecorations(editor) {
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
-          const _kind = (ln === b.open) ? 'head' : ((ln === b.close) ? 'foot' : 'body');
-          // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
-          const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(t) / _wrapCol))) : 1;
-          const ty = meosFencePaperCapType(_w, _kind, _rows);
-          if (!paper.has(ty)) paper.set(ty, []);
-          paper.get(ty).push(L(ln));
-          indents.push(L(ln));                                       // v4.2.281: 1桁ぶん右へ
+          // ★★v4.2.298(俊克 改良1「コードブロックの閉じる記号that、枠の行として表示されるのはおかしい」):
+          //   ★紙は**中身の行まで**= 閉じの ``` の行には紙を敷かない(空の枠の行thatが出ない)。
+          //     字は畳んであるso、その行はただの空行に見える。足の丸みは**最後の中身の行**へ。
+          const _last = (b.close > b.open) ? (b.close - 1) : b.close;   // 紙の足= 最後の中身の行
+          if (!(ln === b.close && b.close > b.open)) {                 // 閉じの ``` の行には紙を敷かない
+            const _kind = (ln === b.open) ? 'head' : ((ln === _last) ? 'foot' : 'body');
+            // v4.2.280: その行that何段に折り返るか= 段の数だけ紙を高くする(折り返した段にも紙that続く)
+            const _rows = _wrapCol ? Math.max(1, Math.min(20, Math.ceil(meosRenderCols(t) / _wrapCol))) : 1;
+            const ty = meosFencePaperCapType(_w, _kind, _rows);
+            if (!paper.has(ty)) paper.set(ty, []);
+            paper.get(ty).push(L(ln));
+            indents.push(L(ln));                                     // v4.2.281: 1桁ぶん右へ
+          }
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に

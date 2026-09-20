@@ -45,8 +45,8 @@ ok([2,3,4,5].every(n=>F.has(n)) && !F.has(1) && !F.has(6), '★行番号の口�
 console.log('② 板を描く(カーソルは囲みの外)');
 X.meosApplyCodeFenceDecorations(mkEd(0));
 const d=D();
-ok([...lineSet(d.head)].join()==='2' && [...lineSet(d.foot)].join()==='5', '★開きの行=帯の頭・閉じの行=帯の足(角丸はここだけ)', [[...lineSet(d.head)],[...lineSet(d.foot)]]);
-ok([...lineSet(d.body)].join()==='3,4', '★中身の行は角丸なしの板', [...lineSet(d.body)]);
+ok([...lineSet(d.head)].join()==='2' && [...lineSet(d.foot)].join()==='4', '★開きの行=帯の頭・**最後の中身の行**=帯の足(閉じの ``` には紙を敷かない・v4.2.298)', [[...lineSet(d.head)],[...lineSet(d.foot)]]);
+ok([...lineSet(d.body)].join()==='3', '★中身の行は角丸なしの板(足の行を除く)', [...lineSet(d.body)]);
 ok([...lineSet(d.ink)].join()==='3,4' && (seen.get(d.ink)||[]).every(r=>r.end.character===L[r.start.line].length), '★濃い茶の字は中身の行だけ・行の端まで', [...lineSet(d.ink)]);
 ok([...lineSet(d.tick)].join()==='2,5', '★``` の字は開き/閉じの両方とも透明に', [...lineSet(d.tick)]);
 ok((seen.get(d.lang)||[]).length===1 && seen.get(d.lang)[0].renderOptions.before.contentText==='js', '★言語名は開きの行に1つだけ', seen.get(d.lang));
@@ -132,6 +132,6 @@ console.log('⑦⑧ 紙は字の側の駒1枚(v4.2.280 — 予備の板は撤去
   ok(head && head.__opts.before.width==='18ch' && (seen.get(head)||[]).map(at).join()==='2',
      '★★頭の駒= 1(字下げ)+15(一番長い行)+2(右の余白)=18桁・上の2つの角that丸い', head&&[head.__opts.before.width,(seen.get(head)||[]).map(at)]);
   const foot=caps.find(k=>o(k).before.borderRadius==='0 0 8px 8px');
-  ok(foot && (seen.get(foot)||[]).map(at).join()==='5', '  足の駒= 下の2つの角that丸い', foot&&(seen.get(foot)||[]).map(at));}
+  ok(foot && (seen.get(foot)||[]).map(at).join()==='4', '  足の駒= 下の2つの角that丸い(最後の中身の行)', foot&&(seen.get(foot)||[]).map(at));}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
