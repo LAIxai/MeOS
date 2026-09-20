@@ -35,19 +35,19 @@ ok(X.meosQuoteLineParts('ふつう')===null, '  引用でない行は null', tru
 console.log('② 本の顔(字下げ・引用符・出典の右寄せ)');
 X.meosApplyQuoteDecorations(mkEd(0));
 const keys=[...seen.keys()];
-const hide=keys.find(k=>/transparent !important/.test(String(o2(k).textDecoration||'')));
+const hide=keys.find(k=>/font-size: 0px !important/.test(String(o2(k).textDecoration||'')));   // v4.2.292: `>` は畳む
 const mark=keys.find(k=>o2(k).before && o2(k).before.contentText==='“');
 const pads=keys.filter(k=>o2(k).before && /ch$/.test(String(o2(k).before.width||'')));
-ok((seen.get(hide)||[]).length===6, '★`>` の印は隠す(6行ぜんぶ)', (seen.get(hide)||[]).map(at));
+ok((seen.get(hide)||[]).length===6, '★`>` の印は**畳む**(6行ぜんぶ・幅ごと消すso数と見た目that合う)', (seen.get(hide)||[]).map(at));
 ok((seen.get(mark)||[]).length===0, '★★★3行以上の引用には引用符を付けない(塊= 字下げthat引用符の代わり・v4.2.287)', (seen.get(mark)||[]).map(at));
 ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).before.width));
 {
  const used=pads.filter(k=>(seen.get(k)||[]).length).map(k=>[o2(k).before.width,(seen.get(k)||[]).map(at)]);
- const two=used.find(u=>u[0]==='2ch');
- ok(!!two && two[1].join()==='2,3,4,5,6', '★ふつうの引用行は2桁の字下げ', used);
- const attr=used.find(u=>u[0]!=='2ch');
- const wide=Math.max(...[2,4,5,7].map(i=>2+X.displayColumns(L[i].replace(/^> ?/,''))));
- ok(!!attr && attr[1].join()==='7' && attr[0]===(2+(wide-2-X.displayColumns('―― Spy Lai')-8))+'ch',
+ const two=used.find(u=>u[0]==='4ch');
+ ok(!!two && two[1].join()==='2,3,4,5,6', '★ふつうの引用行は4桁の字下げ(全角2字)', used);
+ const attr=used.find(u=>u[0]!=='4ch');
+ const wide=Math.max(...[2,4,5,7].map(i=>4+X.displayColumns(L[i].replace(/^> ?/,''))));
+ ok(!!attr && attr[1].join()==='7' && attr[0]===(4+(wide-4-X.displayColumns('―― Spy Lai')-8))+'ch',
     '★★★出典(―― Spy Lai)は右寄せ・右端より8桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
 }
 {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
@@ -102,7 +102,7 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
  const warn=K.find(k=>o4(k).after && /Warning$/.test(String(o4(k).after.contentText||'')));
  const fold=K.find(k=>/font-size: 0px !important/.test(String(o4(k).textDecoration||'')));
  ok(!!tip && (seen.get(tip)||[]).map(at).join()==='1', '★★★`[!TIP]` の行に「💡 Tip」を出す', tip&&[o4(tip).after.contentText,(seen.get(tip)||[]).map(at)]);
- ok(!!fold && (seen.get(fold)||[]).map(at).join()==='1,4', '★`[!TIP]`/`[!WARNING]` の字は畳む(幅ごと消す)', (seen.get(fold)||[]).map(at));
+ ok(!!fold && (seen.get(fold)||[]).map(at).filter((v,i,a)=>a.indexOf(v)===i).join()==='1,2,4,5', '★`[!TIP]`/`[!WARNING]` の字も `>` も畳む(幅ごと消す)', (seen.get(fold)||[]).map(at));
  ok(!!warn && o4(warn).after.color==='#c69026', '  種類ごとに色(WARNINGは黄)', warn&&o4(warn).after.color);
  ok(!K.some(k=>o4(k).before && o4(k).before.width==='3px'), '★★Alertでも縦線は引かない(色は印と見出しthat持つ)', true);
  // ★v4.2.291: Alertは箱で囲む(引用は囲まない)

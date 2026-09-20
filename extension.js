@@ -36101,7 +36101,11 @@ let fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
 //     引用符も罫も**MeOSの調度品**so、テーマに預けず家の色で持つ(紙と同じ材= 一目で同じ家の物と分かる)。
 //   ★引用の**字の色はテーマのまま**= それはテーマthat「引用はこう見せたい」と決めている所(Monokaiの紫の斜体)。
 const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';
-const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
+// ★★★v4.2.292(俊克 バグ1「折り返しの値によって、食み出したり、横幅that長過ぎたりする」の真因):
+//   ★★★**`>` を透明にしていた= 字は消えるthat、桁は居座る**。so字は「字下げ(2桁) ＋ 居座った `> `(2桁)」で
+//     始まっていたのに、私の数の上では2桁しか見ていなかった= **箱の幅that字より2桁短い**(食み出し)。
+//   ★★→ `>` は**畳む**(幅ごと消す)= 見た目と数thatが一致する。字下げは4桁(全角2字)にして今までの見え方を保つ。
+const MEOS_QUOTE_INDENT = 4;       // 1階層あたりの字下げ(桁・全角2字)
 // ★v4.2.285/286(俊克「引用文の右端より2、3文字前」→「1行目の『無かった。』の『無』の字の位置から始めるくらい」):
 //   ★出典は**引用の右端ぴったり**ではなく**少し内側**で止める= 本の組み方(右端に貼り付けると窮屈)。
 //   ★★数を3→6に増やしたのは、**和文の桁の数え方**のため= MeOSは全角を2桁と数えるthat、
@@ -36249,7 +36253,7 @@ function meosApplyQuoteDecorations(editor) {
         for (let i = from; i <= to; i++) {
           const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
           if (raw.has(i)) continue;                                  // カーソルの行は生のまま
-          if (q.mark > 0) hides.push(new vscode.Range(i, 0, i, q.mark));   // `>` は隠す(中身でない字)
+          if (q.mark > 0) folds.push(new vscode.Range(i, 0, i, q.mark));   // `>` は**畳む**(幅ごと消す= 数と見た目を合わせる)
           const cols = displayColumns(q.body);
           const rows = wrapCol ? Math.max(1, Math.min(20, Math.ceil(Math.max(1, cols) / wrapCol))) : 1;
           // 出典の行(―― 誰それ)は**右寄せ**= 字下げを「紙の幅 − その行の字」まで広げる
