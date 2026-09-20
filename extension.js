@@ -35962,6 +35962,11 @@ function meosFenceCfg(doc) {
 //     → **駒の高さを段の数だけ持たせる**(`height: 段数×100%`)= 1枚の紙that段をまたぐ。**予備の板は撤去**。
 //   ★改良1= 角丸を**2つの口**で言う(borderRadius と、字の側に届く CSS の両方)。半径も 6→8点に。
 const MEOS_FENCE_RADIUS = '8px';
+// ★★v4.2.281(俊克 改良1「左端から始まると、文字が貼り付いたようになって窮屈。1文字分くらいのインデントがあると見やすい」):
+//   ★**字を1桁ぶん右へずらす**= 幅を持つ駒(位置を持たせない)を行の頭に1つ置くと、字thatその分だけ右から始まる。
+//     本文は1字も変えない(紙と同じ流儀)。紙は左端のままso、左に1桁の余白thatできる。
+const MEOS_FENCE_INDENT_COLS = 1;
+let fenceIndentDeco = null;          // v4.2.281: 行の頭に置く1桁ぶんの空き(字を右へずらす)
 const _fencePaperCapTypes = new Map();   // '桁|役|段' → 字の側の紙
 function meosFencePaperCapType(w, kind, rows) {
   const key = w + '|' + kind + '|' + rows;
@@ -36086,15 +36091,19 @@ function meosApplyCodeFenceDecorations(editor) {
         light: { textDecoration: 'none; color: ' + MEOS_FENCE_INK + ' !important; -webkit-text-fill-color: ' + MEOS_FENCE_INK + ' !important;' },
         dark: { textDecoration: 'none; color: ' + MEOS_FENCE_INK + ' !important; -webkit-text-fill-color: ' + MEOS_FENCE_INK + ' !important;' } });
       fenceTickDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // v4.2.281: 字下げ= 幅だけ持つ駒(位置を持たせない=流れの中so、字thatその分右へ動く)
+      fenceIndentDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        before: { contentText: ' ', width: MEOS_FENCE_INDENT_COLS + 'ch' } });
       // 札は幅を取らない(隠した ``` の上に浮かせる・v4.2.226の📄と同じ手)
       fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; z-index: 2; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
+        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; left: ' + MEOS_FENCE_INDENT_COLS + 'ch; z-index: 2; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
     }
     const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
-    const inks = [], ticks = [], langs = [];
+    const inks = [], ticks = [], langs = [], indents = [];
     const put = () => {
       for (const t of _fencePaperCapTypes.values()) editor.setDecorations(t, paper.get(t) || []);
       editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
+      editor.setDecorations(fenceIndentDeco, indents);
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
@@ -36109,9 +36118,9 @@ function meosApplyCodeFenceDecorations(editor) {
         //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
         const _wrapCol = meosFenceWrapColumn(doc);   // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
         const _w = (() => {
-          let w = 0; for (let i = b.open; i <= b.close; i++) w = Math.max(w, displayColumns(lines[i] || ''));
-          w += MEOS_FENCE_PAD_COLS;
-          return _wrapCol ? Math.min(w, _wrapCol) : w;
+          let c = 0; for (let i = b.open; i <= b.close; i++) c = Math.max(c, displayColumns(lines[i] || ''));
+          if (_wrapCol) c = Math.min(c, _wrapCol);                    // 折り返った行は其処までしか出ていない
+          return MEOS_FENCE_INDENT_COLS + c + MEOS_FENCE_PAD_COLS;    // v4.2.281: 左の字下げ + 中身 + 右の余白
         })();
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
@@ -36122,6 +36131,7 @@ function meosApplyCodeFenceDecorations(editor) {
           const ty = meosFencePaperCapType(_w, _kind, _rows);
           if (!paper.has(ty)) paper.set(ty, []);
           paper.get(ty).push(L(ln));
+          indents.push(L(ln));                                       // v4.2.281: 1桁ぶん右へ
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に

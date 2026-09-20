@@ -27,7 +27,7 @@ const mkEd=(caret)=>({document:doc,visibleRanges:[new stub.Range(0,0,L.length-1,
 const lineSet=(t)=>new Set((seen.get(t)||[]).map(x=>(x.range||x).start.line));
 // ★v4.2.274: 型は幅ごとに作るso、並び順でなく**中身の指定**で見分ける(角丸と縁の幅で役that分かる)
 const D=()=>{const a=[...seen.keys()], o=(k)=>(k.__opts||{});
-  const pap=a.filter(k=>o(k).before && /ch$/.test(String(o(k).before.width||'')));
+  const pap=a.filter(k=>o(k).before && /ch$/.test(String(o(k).before.width||'')) && o(k).before.backgroundColor);
   return { head: pap.find(k=>o(k).before.borderRadius==='8px 8px 0 0'), foot: pap.find(k=>o(k).before.borderRadius==='0 0 8px 8px'),
            body: pap.find(k=>o(k).before.borderRadius==='0'),
            ink: a.find(k=>/color: #3b3020/.test(String((o(k).dark||{}).textDecoration||''))),
@@ -117,13 +117,20 @@ console.log('⑦⑧ 紙は字の側の駒1枚(v4.2.280 — 予備の板は撤去
     && /getConfiguration\('editor', doc \? \{ uri: doc\.uri, languageId: doc\.languageId \} : undefined\)/.test(S),
     '★★設定は**その文書のつもり**で読む= [markdown]の61that効く(素で読むと全体の45で16桁食み出す)', true);
  ok(/z-index: 2; font-size: 0\.82em/.test(S), '  札は駒の上(z-index)', true);
+ // ★v4.2.281: 字下げ(俊克 改良1「1文字分くらいのインデント」)
+ ok(/const MEOS_FENCE_INDENT_COLS = 1;/.test(S)
+    && /before: \{ contentText: ' ', width: MEOS_FENCE_INDENT_COLS \+ 'ch' \}/.test(S)
+    && /return MEOS_FENCE_INDENT_COLS \+ c \+ MEOS_FENCE_PAD_COLS;/.test(S),
+    '★★字下げ= 幅だけ持つ駒を行の頭に置く(本文は1字も変えない)・紙も其の分だけ広い', true);
+ ok(/position: absolute; left: ' \+ MEOS_FENCE_INDENT_COLS \+ 'ch; z-index: 2;/.test(S),
+    '  札も字下げに揃える(左から1桁)', true);
  X.meosApplyCodeFenceDecorations(mkEd(0));
  {const a=[...seen.keys()], o=(k)=>(k.__opts||{}), at=(x)=>(x.range||x).start.line;
-  const caps=a.filter(k=>o(k).before && /ch$/.test(String(o(k).before.width||'')));
+  const caps=a.filter(k=>o(k).before && /ch$/.test(String(o(k).before.width||'')) && o(k).before.backgroundColor);
   ok(caps.length===3, '  頭・中・足の3つの型(幅と段が同じなら使い回す)', caps.map(k=>[o(k).before.width,o(k).before.borderRadius]));
   const head=caps.find(k=>o(k).before.borderRadius==='8px 8px 0 0');
-  ok(head && head.__opts.before.width==='17ch' && (seen.get(head)||[]).map(at).join()==='2',
-     '★★頭の駒= 17桁・上の2つの角that丸い(右上も丸められる= 本物の端だから)', head&&[head.__opts.before.width,(seen.get(head)||[]).map(at)]);
+  ok(head && head.__opts.before.width==='18ch' && (seen.get(head)||[]).map(at).join()==='2',
+     '★★頭の駒= 1(字下げ)+15(一番長い行)+2(右の余白)=18桁・上の2つの角that丸い', head&&[head.__opts.before.width,(seen.get(head)||[]).map(at)]);
   const foot=caps.find(k=>o(k).before.borderRadius==='0 0 8px 8px');
   ok(foot && (seen.get(foot)||[]).map(at).join()==='5', '  足の駒= 下の2つの角that丸い', foot&&(seen.get(foot)||[]).map(at));}
 }
