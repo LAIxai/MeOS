@@ -104,7 +104,9 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
  ok(/const MEOS_FENCE_RIGHT_GAP = 44;/.test(S)
-    && /textDecoration: 'none; width: calc\(100% - ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px\) !important;'/.test(S),
-    '★★★右端は点(px)で削る= 桁を知らなくてもスクロールバーの手前で止まる(v4.2.263 俊克「5ピクセル狭く」)', true);
+    && /borderWidth: '0 ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 3px'/.test(S)
+    && /const EDGE4 = 'transparent var\(--vscode-editor-background\) transparent ' \+ EDGE;/.test(S),
+    '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
+ ok(!/width: calc\(100% - /.test(S), '  効かなかった道(中身の幅から引く)は残骸を置かない', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
