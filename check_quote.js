@@ -120,7 +120,7 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
      '  Alertの全部の行に箱that続く', panels.map(k=>(seen.get(k)||[]).map(at2)));
   ok(panels.every(k=>String(o4(k).before.backgroundColor).startsWith('#')), '  色は種類の色', panels.map(k=>o4(k).before.backgroundColor));
   const S6=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(!/_tail/.test(S6),
+  ok(!/rows \+ _tail/.test(S6) && /'foot'\), rows, MEOS_ALERTS\[alert\.kind\]\.color\)/.test(S6),
      '★★箱は**その塊の行だけ**= 空の行を飲まない(v4.2.294の「下の余白」は読み違いso外した)', true);
   ok(/affectsConfiguration\('editor\.wordWrapColumn'\)/.test(S6) && /for \(const ed of vscode\.window\.visibleTextEditors\) refresh\(ed\)/.test(S6),
      '★★★設定that変わったら描き直す= 触った回数で見え方that変わる穴を塞ぐ(俊克 バグ1)', true);
