@@ -116,6 +116,9 @@ console.log('⑤ GitHub Alerts(> [!TIP] 等)= Git準拠(v4.2.288)');
   const panels=K.filter(k=>o4(k).before && /ch$/.test(String(o4(k).before.width||'')) && String(o4(k).before.backgroundColor||'').endsWith('1f'));
   const at2=(x)=>((x.range||x).start.line);
   ok(panels.length>=2, '  箱は頭・中・足で角丸thatが違う(型は幅と役と段で使い回す)', panels.map(k=>[o4(k).before.width,o4(k).before.borderRadius]));
+  {const S7=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+   ok(/const _pw = _quoteWrap \? \(MEOS_QUOTE_INDENT \+ _quoteWrap\) : wide;/.test(S7),
+      '★★★Alertの箱は**折り返し点で揃える**(中身の長さに依らず一定)= 注記thatが縦に並ぶ(v4.2.297 俊克 改良2)', true);}
   ok(panels.some(k=>(seen.get(k)||[]).map(at2).includes(1)) && panels.some(k=>(seen.get(k)||[]).map(at2).includes(2)),
      '  Alertの全部の行に箱that続く', panels.map(k=>(seen.get(k)||[]).map(at2)));
   ok(panels.every(k=>String(o4(k).before.backgroundColor).startsWith('#')), '  色は種類の色', panels.map(k=>o4(k).before.backgroundColor));

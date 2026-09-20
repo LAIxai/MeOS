@@ -36250,7 +36250,7 @@ function meosApplyQuoteDecorations(editor) {
     let fence = null; try { fence = meosFenceLines(doc); } catch (_) { fence = null; }
     const raw = meosRawLines(editor);
     const L = (ln) => new vscode.Range(ln, 0, ln, 0);
-    const wrapCol = meosFenceWrapColumn(doc);
+    const wrapCol = meosFenceWrapColumn(doc), _quoteWrap = wrapCol;
     for (const vr of meosScanSpans(editor, doc)) {
       let ln = vr[0];
       while (ln <= vr[1]) {
@@ -36302,7 +36302,12 @@ function meosApplyQuoteDecorations(editor) {
             //   ★v4.2.294で足した「下の余白1行」は**私の読み違い**= 俊克の「次の行も使用する」は
             //     **長い1行を仮想的に2段にする**話であって、空の行を箱に飲む話ではなかった。→ 外す。
             //   ★箱は**その塊の行だけ**= 書いてある物thatそのまま形を決める。
-            const tp = meosQuotePanelType(wide + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows, MEOS_ALERTS[alert.kind].color);
+            // ★★v4.2.297(俊克 改良2「横の長さthatもう少し折り返し点に近づけば」＋ 改良案1「枠の横幅は一定に」):
+            //   ★**Alertの箱は折り返し点で揃える**= 字下げ + 折り返し幅 + 余白。中身の長さに依らず**一定**so、
+            //     Note/Tip/Warning… thatが縦に綺麗に並ぶ(注記は「同じ役の箱」so、揃っている方that読みやすい)。
+            //   ★折り返さない設定の時だけ、中身の長さに合わせる(止める所thatが無いso)。
+            const _pw = _quoteWrap ? (MEOS_QUOTE_INDENT + _quoteWrap) : wide;
+            const tp = meosQuotePanelType(_pw + MEOS_QUOTE_PANEL_PAD, (i === from) ? 'head' : ((i === to) ? 'foot' : 'body'), rows, MEOS_ALERTS[alert.kind].color);
             if (!pads.has(tp)) pads.set(tp, []);
             pads.get(tp).push(L(i));
           }
