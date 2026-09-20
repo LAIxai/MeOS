@@ -36034,8 +36034,10 @@ function meosApplyCodeFenceDecorations(editor) {
         light: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' },
         dark: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' } });
       fenceTickDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // ★v4.2.260: 札は**幅を取らない**(position:absolute)= 隠した ``` の上に浮かせる。
+      //   取らせると開きの行だけthat他の行より長くなり、紙の右端that1本の線にならない(v4.2.226の📄と同じ手)。
       fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
+        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
     }
     const body = [], heads = [], foots = [], inks = [], ticks = [], langs = [];
     const put = () => { editor.setDecorations(fenceSlabDeco, body); editor.setDecorations(fenceHeadDeco, heads); editor.setDecorations(fenceFootDeco, foots);
@@ -36047,19 +36049,28 @@ function meosApplyCodeFenceDecorations(editor) {
     // ★v4.2.259: 紙の幅= 折り返し幅。折り返さない設定の時だけ「その囲いの一番長い行」に合わせる
     //   (紙thatが字より短いと、字that紙からはみ出す)。桁の数え方は家の物差し displayColumns(全角=2)。
     const _wrap = meosWrapColumn();
-    const NB = '\u00a0';
+    // ★★★v4.2.260(俊克 バグ1「コードブロックが崩れた。折り返し幅を200まで上げても駄目なんだよ。なぜ?」):
+    //   ★★穴は2つthat重なっていた。
+    //   ①**埋め草に `\u00a0`(改行しない空白)を使っていた**= コードの字の font に無いことthatあり、
+    //     別の font に落ちる= **1字の幅thatが本文と違う**(右端thatが行ごとにずれ、高さも変わって段thatずれた)。
+    //     → 素の空白 + `white-space: pre` に直す(同じ font・同じ幅)。
+    //   ②**紙の幅を「折り返し幅」そのものにしていた**= 字の無い所まで埋めるので、幅を広げるほど埋め草that増え、
+    //     窓の外へはみ出す(俊克の「200にしても駄目」の正体= 広げるほど悪くなっていた)。
+    //     → **紙は、その囲いの一番長い行に合わせる**(折り返し幅は**上限**として使うだけ)。
+    //       紙は字を包む物so、字より広い必要thatが無い → [[feedback_measure_before_you_generalize]]
     const _slabItem = (ln, t, width) => {
       const w = displayColumns(t), pad = Math.max(0, Math.min(400, width - w));
       const it = { range: new vscode.Range(ln, 0, ln, t.length) };
-      if (pad > 0) it.renderOptions = { after: { contentText: NB.repeat(pad) } };
+      if (pad > 0) it.renderOptions = { after: { contentText: ' '.repeat(pad) } };
       return it;
     };
     for (const vr of meosScanSpans(editor, doc)) {
       for (const b of blocks) {
         if (b.close < vr[0] || b.open > vr[1]) continue;
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
-        let _w = _wrap;
-        if (!_w) { _w = 0; for (let ln = b.open; ln <= b.close; ln++) _w = Math.max(_w, displayColumns(lines[ln] || '')); }
+        let _w = 0;
+        for (let ln = b.open; ln <= b.close; ln++) _w = Math.max(_w, displayColumns(lines[ln] || ''));   // 一番長い行= 紙の幅
+        if (_wrap) _w = Math.min(_w, _wrap);                                                             // 折り返し幅は上限(そこから先は字thatが折り返る)
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
           (ln === b.open ? heads : (ln === b.close ? foots : body)).push(_slabItem(ln, t, _w));

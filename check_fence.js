@@ -109,8 +109,24 @@ console.log('⑦ 紙の幅は折り返し幅まで(俊克 改良1 — スクロ�
  stub.workspace.getConfiguration=(sec)=>({ get:(k,dv)=> (k==='wordWrap'?'wordWrapColumn':(k==='wordWrapColumn'?40:dv)), update(){} });
  X.meosApplyCodeFenceDecorations(mkEd(0));
  const d2=D();
- ok((seen.get(d2.body)||[]).every(x=>displayCols(L[x.range.start.line])+((x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length)===40),
-    '★★★折り返し幅(40)で止まる= 俊克thatMe Dockの摘みで決めた幅と同じ物差し', (seen.get(d2.body)||[]).map(x=>(x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length));
+ ok((seen.get(d2.body)||[]).every(x=>displayCols(L[x.range.start.line])+((x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length)===wide),
+    '★★★折り返し幅(40)は**上限**= 紙は一番長い行に合わせる(広げるほど埋め草that増える穴・v4.2.260)', (seen.get(d2.body)||[]).map(x=>(x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length));
+ // 折り返し幅that紙より狭い時は、その幅で止める(そこから先は字that折り返る)
+ {
+  const W=['# t','```js','const veryLongLine = 123456789;','x','```'];   // 一番長い行=31桁
+  const wd={uri:{toString:()=>'file:///w.md',fsPath:'/w.md',scheme:'file'},languageId:'markdown',lineCount:W.length,
+   lineAt:n=>({text:W[n],range:new stub.Range(n,0,n,W[n].length)}),getText:()=>W.join('\n'),eol:1,fileName:'/w.md',isClosed:false,version:1};
+  stub.workspace.getConfiguration=(sec)=>({ get:(k,dv)=> (k==='wordWrap'?'wordWrapColumn':(k==='wordWrapColumn'?20:dv)), update(){} });
+  X.meosApplyCodeFenceDecorations({document:wd,visibleRanges:[new stub.Range(0,0,W.length-1,0)],
+   selection:{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true},
+   selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],
+   setDecorations:(t,items)=>seen.set(t,items)});
+  const d3=D(), pd=(t)=>(seen.get(t)||[]).map(x=>displayCols(W[x.range.start.line])+((x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length));
+  ok(pd(d3.head).join()==='20' && pd(d3.foot).join()==='20' && pd(d3.body).join()==='31,20',
+     '★折り返し幅(20)より長い行はそのまま・短い行はその幅まで= 紙の右端は折り返しの所', [pd(d3.head),pd(d3.body),pd(d3.foot)]);
+ }
+  ok(/contentText: ' '\.repeat\(pad\)/.test(S) && !/NB\.repeat/.test(S), '★★埋め草は素の空白(\\u00a0 は別の font に落ちて幅thatずれた)', true);
+ ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない= 開きの行だけthat長くならない', true);
  stub.workspace.getConfiguration=_g;
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
