@@ -36025,7 +36025,13 @@ function meosApplyCodeFenceDecorations(editor) {
       //   幅は**折り返し幅**まで= 足りない分は after の空白で埋める(空白にも同じ地の色)。
       const slab = (radius) => ({ backgroundColor: CREAM, borderColor: EDGE, borderStyle: 'solid', borderWidth: '0 0 0 3px', borderRadius: radius,
         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        after: { backgroundColor: CREAM, textDecoration: 'none; white-space: pre;' },
+        // ★★★v4.2.261(俊克 バグ1「まだ駄目だね。今は折り返し幅48にしてある。もしかして、2分の1にしたのか?」):
+        //   ★幅は半分にしていない= 紙は**一番長い行**に合わせている(48桁の紙ではなく、19桁の紙)。
+        //     崩れて見えていたのは幅ではなく**埋め草の箱の高さ**= 字の無い箱so行の高さを持たず、
+        //     下へずれて次の行に被っていた(俊克のスクショの段違い)。
+        //   ★→ 箱に**行の高さいっぱい**を持たせ、上端で揃える(height:100% / vertical-align:top)。
+        //     margin も 0 と言い切る= 字の終わりと紙の継ぎ目に隙間を作らない。
+        after: { backgroundColor: CREAM, height: '100%', margin: '0', textDecoration: 'none; white-space: pre; display: inline-block; vertical-align: top; line-height: inherit;' },
         light: { backgroundColor: CREAM, borderColor: EDGE }, dark: { backgroundColor: CREAM, borderColor: EDGE } });
       fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
       fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));

@@ -127,6 +127,8 @@ console.log('⑦ 紙の幅は折り返し幅まで(俊克 改良1 — スクロ�
  }
   ok(/contentText: ' '\.repeat\(pad\)/.test(S) && !/NB\.repeat/.test(S), '★★埋め草は素の空白(\\u00a0 は別の font に落ちて幅thatずれた)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない= 開きの行だけthat長くならない', true);
+ ok(/after: \{ backgroundColor: CREAM, height: '100%', margin: '0', textDecoration: 'none; white-space: pre; display: inline-block; vertical-align: top;/.test(S),
+    '★★埋め草の箱は行の高さいっぱい・上端で揃える(字の無い箱that下へずれて段違いになった・v4.2.261)', true);
  stub.workspace.getConfiguration=_g;
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
