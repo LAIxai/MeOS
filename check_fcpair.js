@@ -48,9 +48,14 @@ let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch
 
 let ng = 0;
 const ok = (cond, label, got) => { console.log((cond ? '  ok  ' : ' NG   ') + label + (cond ? '' : '   ← ' + JSON.stringify(got))); if (!cond) ng++; };
-function makeDoc(lines, lang) {
+// ★v4.2.258: 台どうしthat `uri@version` を共有しているso、本体の行の覚え(_meosTextCache)は
+//   **最初に読んだ台の行**を返し続ける。表の台のように「この台の行」を読む物だけ、別のファイル名を渡す
+//   (第3引数)= 台の作り全部を変えると、覚えに相乗りしていた他の項目that落ちる(実測)。
+let _mkDocN = 0;
+function makeDoc(lines, lang, uniq) {
+  const _u = uniq ? ('file:///t' + (++_mkDocN) + '.md') : 'file:///t.md';
   return {
-    uri: { toString: () => 'file:///t.md', fsPath: '/t.md', scheme: 'file' }, languageId: lang || 'markdown', lineCount: lines.length,
+    uri: { toString: () => _u, fsPath: '/t.md', scheme: 'file' }, languageId: lang || 'markdown', lineCount: lines.length,
     lineAt: (n) => ({ text: lines[n], range: new stub.Range(n, 0, n, lines[n].length) }),
     getText: () => lines.join('\n'), eol: 1, fileName: '/t.md', isClosed: false, version: 1,
   };
@@ -508,7 +513,7 @@ console.log('㉜ 段落は「印1つ ⇄ FC1個」で橙(v4.0.401 俊克)');
   ok(Array.isArray(_out) && _out.length === 0, '★修飾の外では何も橙にしない(v4.0.411)', _out);
   // 表は今までどおり「横一列どうし」= 細かくしない
   const TB = ['| 品目 | 備考 |', '| --- | --- |', '| **りんご** | みかん |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC **not (白/黄) -->'];
-  ok(T.meosFcMarkPairRanges(makeDoc(TB), 2, 4) === null, '★表は横一列どうしのまま(俊克「表としては良い」)', true);
+  ok(T.meosFcMarkPairRanges(makeDoc(TB, null, true), 2, 4) === null, '★表は横一列どうしのまま(俊克「表としては良い」)', true);
 }
 
 console.log('㉝ 段落のFC群は「1つの修飾＝1行」(v4.0.402 俊克)');
@@ -551,7 +556,7 @@ console.log('㉟ 段落では、本文1行とFC群ぜんぶが1つの組(v4.0.40
   }
   // 表は今までどおり「i行目 ⇄ i本目」
   const TB = ['| a | b |', '| --- | --- |', '| **x** | y |', '<!-- Mew!FC not -->', '<!-- Mew!FC not -->', '<!-- Mew!FC **not (白/黄) -->'];
-  const mt = T.meosFcMate(makeDoc(TB), 2);
+  const mt = T.meosFcMate(makeDoc(TB, null, true), 2);
   ok(!!mt && JSON.stringify(mt.lines) === '[2,5]', '★表は3行目 ⇄ FC3本目のまま', mt && mt.lines);
 }
 console.log('㊱ 橙は !important で塗る — 印自身の色に負けない(v4.0.403 バグ2)');

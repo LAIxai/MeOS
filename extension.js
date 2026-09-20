@@ -5086,9 +5086,17 @@ function collectMembraneStructure(document, options = {}) {
   // and draws its lane at the leftmost lane X, visually serving as the cell envelope.
   const MNT_OPEN = /^\s*\/\/[ \t]*\{[ \t]*[▼▽][ \t]*mNT[ \t]*=/;
   const isMntOpenText = (t) => MNT_OPEN.test(t);
+  // ★★★v4.2.258(俊克 バグ1「以前から、コードブロックに入った片割れの膜は本物として処理されていた」):
+  //   ★★★**囲いの中の ▼/▲ は文字**= 対にも数えない(⚠️も出さない)。今まではここが囲いを見ていなかったので、
+  //     説明の為に貼った膜that本物になり、片割れの警告まで出ていた → [[feedback_quoted_notation_must_be_inert]]。
+  //   ★数える口は1つ(meosFenceBlocks)= 板を描く所・見出しの所・⏰の所と同じ答え。
+  //   ★散文(md/txt)だけ= コードのファイルの中の ``` は、元から囲いとして扱っていない。
+  let _fenceSkip = null;
+  try { if (meosIsProseDoc(document)) _fenceSkip = meosFenceLines(document); } catch (_) { _fenceSkip = null; }
   for (let i = 0; i < document.lineCount; i++) {
     const text = document.lineAt(i).text;
     if (!MEMBRANE_ARROW_RE.test(text)) continue; // v2.0.49: 矢印なし=膜になり得ない→重い解析を回避(挙動不変)
+    if (_fenceSkip && _fenceSkip.has(i)) continue;   // v4.2.258: 囲いの中は、ぜんぶ文字
     const open = parseOpenLine(text);
     const close = parseCloseLine(text);
     if (open) {
@@ -7378,7 +7386,8 @@ function applyPrettyLabels(editor) {
   // コードブロック内は見出しにしない(bashの `# コメント` が巨大な赤見出しになるのを防ぐ)。フェンス判定は全行必要
   // (画面外で開いたフェンスが可視行に効く)ので _plVis の足切りより前で、先頭文字のcharCodeで安く弾いてから測る。
   const _proseDoc = meosIsProseDoc(editor.document);
-  let _inFence = false, _fenceAt = -1;
+  let _inFence = false;
+  const _plFence = (() => { try { return _proseDoc ? meosFenceLines(editor.document) : null; } catch (_) { return null; } })();   // v4.2.258: 囲いの行(閉じている物だけ)
   // v4.0.117: 連番を**階層ごと**に持つ。_numLv[d-1] が深さdのカウンタ。浅い項目が来たら深い方はリセット。
   let _numLv = []; const _numOf = new Map(); // 行 → 表示ラベル文字列('1.' / '1.1' / '1a')
   const _numIndentOf = new Map();            // 行 → 先頭に空ける桁数(深さ-1)*2
@@ -7404,7 +7413,12 @@ function applyPrettyLabels(editor) {
     // v4.0.24(俊克 バグ1): ★安全弁。140k行日記には閉じ忘れの ``` が1本あり(715回トグル=奇数)、それ以降の全行が
     // 「コードブロックの中」扱いになって素の見出しが一切描画されなかった。フェンスが200行以上開きっぱなしなら
     // 迷子と見なして閉じる=1本の迷子フェンスで以降が全滅しない(日記の実コードブロックは十数行so十分な余裕)。
-    if (_proseDoc) { if (_inFence && (line - _fenceAt) > 200) _inFence = false; const _c0 = text.charCodeAt(0); if (_c0 === 96 || _c0 === 126 || _c0 === 32 || _c0 === 9) { if (/^[ \t]{0,3}(?:```|~~~)/.test(text)) { _inFence = !_inFence; if (_inFence) _fenceAt = line; } } }
+    // ★★★v4.2.258(俊克 バグ2「なぜか、箇条書き指定 - が効いていない。ただし日記上では正しく動作している」):
+    //   ★★★**ここだけthat自前で数えていた**= ``` を見る度に裏返すso、4個の ```` で包んだ囲みの中の ```js でも
+    //     裏返り、そこから下の全部that「囲いの中」になって、見出しも箇条書きも描かれなくなっていた(盤の⑤以降)。
+    //   ★★→ **数える口は1つ**(meosFenceBlocks)= 閉じていない物・長すぎる物は囲いに数えないので、
+    //     v4.0.24の200行の安全弁もここでは要らない(安全弁は数える口の中へ引っ越した)。
+    _inFence = !!(_plFence && _plFence.has(line));
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
     if (lineHasRefMark(text)) {
@@ -10850,27 +10864,15 @@ function meosClockFcScan(doc) {
   //   ★★もう1つの穴は [[project_clock_todo_v41]] の下に書いた= **一度掛かった物は、
   //     本文that変わっても外れなかった**。貼っている途中の一瞬を捕まえると、そのまま生き続ける。
   //     → 掛け直しの度に、本文that言わなくなった物を落とす(この関数の呼び手側)。
-  let fence = null;                    // { ch, len } 開いている囲い
+  // ★★★v4.2.258: 囲いを数える口を**1つ**に= 板を描く所・膜の対・見出し/箇条書きと同じ答え(meosFenceBlocks)。
+  //   ★v4.1.66の「印の種類と長さで対を合わせる」も、v4.2.27の「1本の打ち間違いの被害を止める」も、
+  //     数える口の中に引き継いである= 閉じていない物は囲いに数えない・長すぎる物も数えない。
+  //   ★so、ここで膜の行を見て囲いを打ち切る必要thatが無くなった(打ち切ると、引用した膜that本物になる=俊克 バグ1)。
+  let _fcFence = null;
+  try { _fcFence = meosIsProseDoc(doc) ? meosFenceLines(doc) : null; } catch (_) { _fcFence = null; }
   for (let i = 0; i < doc.lineCount; i++) {
     let txt = ''; try { txt = doc.lineAt(i).text; } catch (_) { continue; }
-    const _fm = /^\s*(`{3,}|~{3,})/.exec(txt);
-    // ★★★v4.2.27(俊克「そもそも、コードフェンスは、膜の中で閉じればいいよ。たとえ数が合わなかった
-    //   としてもね」): ★★★**膜は閉じた領域**so、囲いthatその境を越えるのは筋that通らない
-    //   ([[project_true_outliner_membrane]])。膜の行(▼/▲)を跨いだら、開いていた囲いは**そこで閉じる**。
-    //   ★★★これで**1つの打ち間違いの被害thatその膜の中で止まる**。
-    //     実測(俊克の日記229,134行・2026.09.09)= 囲いの印that4051個=奇数so1つ余り、以後の対thatが
-    //     全部1つずつずれて、71543〜74464(2921行)のような**幻の囲い**thatできていた。
-    //     その中の⏰は「字そのもの」と読まれ、**179個の⏰のうち95個しか見えていなかった**
-    //     (73981の時計that動かない、の真因)。
-    //   ★囲いの中の引用を無視する決め(v4.1.39/66)は変えない= 変えるのは**どこまで届くか**だけ。
-    if (fence && (txt.indexOf('\u25bcmCN=') >= 0 || txt.indexOf('\u25b2mCN=') >= 0)) fence = null;
-    if (_fm) {
-      const _ch = _fm[1][0], _len = _fm[1].length;
-      if (!fence) { fence = { ch: _ch, len: _len }; continue; }
-      if (_ch === fence.ch && _len >= fence.len) { fence = null; continue; }
-      // 開いている囲いの中の、別の種類の印は本文の一部so、数えない
-    }
-    if (fence) continue;                                                 // 囲いの中は、ぜんぶ文字
+    if (_fcFence && _fcFence.has(i)) continue;                           // 囲いの中は、ぜんぶ文字
     if (txt.indexOf('`') >= 0) { const _m = meosMaskCodeSpans(txt); if (!meosClockFcParse(_m)) continue; }  // 行中の ` … ` も文字
     const c = meosClockFcParse(txt);
     // ★★★v4.2.31(2026.09.10 連なり①): ★★★**時刻を持たない時計も読む**。
@@ -35898,6 +35900,7 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
+const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
 function meosFenceBlocks(doc) {
   const key = _meosTextKey(doc);
@@ -35910,9 +35913,16 @@ function meosFenceBlocks(doc) {
     if (!open) { open = { open: i, close: -1, ch: m[1][0], len: m[1].length, lang: (m[4] || '').trim() }; continue; }
     // ★v4.2.256: 閉じの ``` は**開きと同じ字で、同じ数以上で、後ろに何も無い**時だけ(CommonMark)。
     //   ここを緩くすると、4個で包んだ囲みの中の ```js が閉じ扱いになり、板that途中で切れる(実測で出た)。
-    if (m[1][0] === open.ch && m[1].length >= open.len && /^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*$/.test(t)) { open.close = i; list.push(open); open = null; }
+    if (m[1][0] === open.ch && m[1].length >= open.len && /^[ \t]{0,3}(?:`{3,}|~{3,})[ \t]*$/.test(t)) {
+      open.close = i; if (i - open.open + 1 <= MEOS_FENCE_MAX_LINES) list.push(open); open = null;
+    }
   }
-  if (open) { open.close = lines.length - 1; list.push(open); }   // 閉じthat無い= 文書の終わりまで(元の数え方と同じ)
+  // ★★★v4.2.258(俊克 バグ1/2): **閉じていない囲いは、囲いではない**。
+  //   ★v4.0.24の200行の安全弁と v4.2.27「囲いは膜の中で閉じればいい」は、どちらも
+  //     **1本の迷子の ``` that以後を全部飲む**のを止める為の物。→ ここで1つにまとめる=
+  //     ①閉じthat無ければ数に入れない ②長すぎる物も数に入れない(MEOS_FENCE_MAX_LINES)。
+  //   ★これで「引用の中は文字」と「迷子1本で文書が壊れない」の両方that、同じ1つの答えから出る
+  //     → [[feedback_one_source_for_mark_count_action]] / [[feedback_quoted_notation_must_be_inert]]
   _meosFenceBlkCache = { key, list }; return list;
 }
 function meosFenceLines(doc) {
@@ -35971,8 +35981,12 @@ function meosApplyCodeSpanDecorations(editor) {
         if (!tbl.has(ln)) { if (!isFile0) { hide.push(R(ln, s, cs - 1)); ghosts.push(R(ln, cs - 1, cs)); } hide.push(R(ln, ce + 1, e)); ghosts.push(R(ln, ce, ce + 1)); }   // v4.2.231(俊克「他の板の両端にもスペース1個」): 開き/閉じの ` の内側の1つを透明にして両端の空きにする
         const isFile = !/\s/.test(body) && (body.indexOf('/') >= 0 || MEOS_CODE_FILE_EXT_RE.test(body));
         const isSet = !isFile && MEOS_CODE_SETTING_RE.test(body);
-        if (isFile) { if (tbl.has(ln)) clocks.push(R(ln, cs, ce)); else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); } creamPush(ln, cs, ce); }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
-        else { clocks.push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
+        // ★v4.2.258(俊克 改良1「`がクリーム色の外にあると、なんか変なので、クリーム色の中に入れた方が良いんじゃない?」):
+        //   表の行では ` を隠さない(列の幅を崩さない・v4.2.223の約束)so、**板の方を ` の外まで広げる**=
+        //   見えている ` も板の中に入り、字の色も板の色に揃う。隠す/隠さないの約束は1つも変えていない。
+        if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
+        else if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); }
+        else { clocks.push(R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
       }

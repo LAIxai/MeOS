@@ -11,7 +11,7 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mf_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations};\n');
+ +'\nmodule.exports.__t={meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 
@@ -65,9 +65,29 @@ console.log('⑤ 閉じの ``` は「同じ字・同じ数以上・後ろに何�
  const md={uri:{toString:()=>'file:///g.md',fsPath:'/g.md',scheme:'file'},languageId:'markdown',lineCount:M.length,
   lineAt:n=>({text:M[n],range:new stub.Range(n,0,n,M[n].length)}),getText:()=>M.join('\n'),eol:1,fileName:'/g.md',isClosed:false,version:1};
  const b=X.meosFenceBlocks(md);
- ok(b.length===3, '★囲みは3つ(4個で包んだ物・~~~の物・閉じていない物)', b.map(x=>[x.open,x.close,x.lang]));
+ ok(b.length===2, '★囲みは2つ(4個で包んだ物・~~~の物)= 閉じていない物は囲いに数えない', b.map(x=>[x.open,x.close,x.lang]));
  ok(b[0] && b[0].open===1 && b[0].close===4, '★★4個で包んだ中の ```js は文字= 板は途中で切れない', b[0]);
  ok(b[1] && b[1].open===6 && b[1].close===8 && b[1].lang==='python', '★~~~ も同じ扱い(字が違えば閉じない)', b[1]);
- ok(b[2] && b[2].open===10 && b[2].close===M.length-1, '★閉じthat無ければ文書の終わりまで1枚', b[2]);
+ ok(!b.some(x=>x.open===10), '★★★閉じthat無い ``` は囲いではない(迷子1本で以後that沈まない・v4.2.258)', b);
+ {
+  const long=['# t','```js'].concat(Array.from({length:400},(_,i)=>'x'+i)).concat(['```']);
+  const ld={uri:{toString:()=>'file:///h.md',fsPath:'/h.md',scheme:'file'},languageId:'markdown',lineCount:long.length,
+   lineAt:n=>({text:long[n],range:new stub.Range(n,0,n,long[n].length)}),getText:()=>long.join('\n'),eol:1,fileName:'/h.md',isClosed:false,version:1};
+  ok(X.meosFenceBlocks(ld).length===0, '★★長すぎる囲い(300行超)も数えない= 迷子の ``` that2本たまたま合っただけ', X.meosFenceBlocks(ld));
+ }
+}
+console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数える口は1つ)');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ const Q=['# t','```','<!-- {* ▼mCN=これは膜ではない_20260920S105400JST // c *} -->','<!-- {* ▲mCN=これは膜ではない_20260920S105400JST // c *} -->','```','<!-- {* ▼mCN=本物_20260920S105401JST // c *} -->','本文','<!-- {* ▲mCN=本物_20260920S105401JST // c *} -->'];
+ const qd={uri:{toString:()=>'file:///q.md',fsPath:'/q.md',scheme:'file'},languageId:'markdown',lineCount:Q.length,
+  lineAt:n=>({text:Q[n],range:new stub.Range(n,0,n,Q[n].length)}),getText:()=>Q.join('\n'),eol:1,fileName:'/q.md',isClosed:false,version:1};
+ const st=X.collectMembraneStructure(qd,{excludeIndex:false});
+ ok(st.pairs.length===1 && st.pairs[0].start===5, '★★★囲いの中の ▼▲ は対に数えない= 本物は下の1つだけ(俊克 バグ1)', st.pairs.map(p=>[p.start,p.end]));
+ ok(st.unclosedOpens.length===0 && st.orphanCloses.length===0, '★★片割れの警告(⚠️)も出さない= 引用は片割れですらない', [st.unclosedOpens,st.orphanCloses]);
+ ok(/_fenceSkip && _fenceSkip\.has\(i\)/.test(S), '  膜の対を数える口も、同じ1つの答え(meosFenceLines)を引く', true);
+ ok(/_inFence = !!\(_plFence && _plFence\.has\(line\)\);/.test(S) && !/_inFence = !_inFence/.test(S),
+    '★★★見出し/箇条書きの口も自前で数えない(俊克 バグ2= ⑤から下の印that全部消えていた)', true);
+ ok(/_fcFence && _fcFence\.has\(i\)/.test(S), '  ⏰の走査も同じ口', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

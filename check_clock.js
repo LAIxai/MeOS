@@ -1007,7 +1007,7 @@ console.log('\u3260 \u56f2\u3044\u306e\u4e2d\u306f\u6587\u5b57 / \u672c\u6587tha
  ok(!X._meosPseudoUntil.has(lk)&&!X._meosPseudoScopes.has(lk),
     '\u2605\u2605\u2605\u8cab\u3063\u3066\u3044\u305f\u7269\u3082\u3001\u672c\u6587that\u8a00\u308f\u306a\u304f\u306a\u308c\u3070\u843d\u3061\u308b(\u30be\u30f3\u30d3\u306e\u6839\u3092\u65ad\u3064)', [...X._meosPseudoUntil.keys()]);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/if \(_ch === fence\.ch && _len >= fence\.len\)/.test(S), '\u2605\u5370\u306e\u7a2e\u985e\u3068\u9577\u3055\u3067\u5bfe\u3092\u5408\u308f\u305b\u308b(CommonMark\u306e\u898f\u5247)', true);
+ ok(/if \(m\[1\]\[0\] === open\.ch && m\[1\]\.length >= open\.len/.test(S), '\u2605\u5370\u306e\u7a2e\u985e\u3068\u9577\u3055\u3067\u5bfe\u3092\u5408\u308f\u305b\u308b(CommonMark\u306e\u898f\u5247\u30fbv4.2.258\u3067 meosFenceBlocks \u3078)', true);
  ok(/if \(!meosClockLineIsLive\(doc, i\)\) continue;/.test(S), '\u2605\u56f2\u3044\u306e\u4e2d\u306e\u884c\u306b\u306f\u5370\u3082\u51fa\u3055\u306a\u3044(\u63cf\u304f\u5074\u3082\u540c\u30581\u3064\u304b\u3089)', true);
  // 改良3: 輪の印の色
  ok(/MEOS_CLOCK_DIR_DOWN = '#3fb950', MEOS_CLOCK_DIR_UP = '#56d4dd'/.test(S),
@@ -1861,8 +1861,14 @@ console.log('㊱ 貼った膜の名前がぶつかったらTSを打ち直す / �
  /* ★★★v4.2.27(俊克「そもそも、コードフェンスは、膜の中で閉じればいいよ。たとえ数が合わなかった
     としてもね」): 膜は閉じた領域so、囲いthatその境を越えるのは筋that通らない。実測= 俊克の日記で
     179個の⏰のうち95個しか見えていなかった(幻の囲い2921行の中に沈んでいた) → 109個へ。 */
- ok(S2.indexOf("if (fence && (txt.indexOf('\\u25bcmCN=') >= 0 || txt.indexOf('\\u25b2mCN=') >= 0)) fence = null;")>=0,
-    '★★★囲いは膜の境で閉じる(1つの打ち間違いthatファイル全体を黙らせない)', true);
+ /* ★★★v4.2.258: その守りは**数える口の中へ引っ越した**= 閉じていない囲い・長すぎる囲いは数に入れない。
+    so ⏰の走査は「囲いの行か」を1つの口に訊くだけ(膜の行で打ち切ると、引用した膜that本物になる= 俊克 バグ1)。 */
+ ok(/_fcFence = meosIsProseDoc\(doc\) \? meosFenceLines\(doc\) : null;/.test(S2)
+    && /if \(_fcFence && _fcFence\.has\(i\)\) continue;/.test(S2)
+    && S2.indexOf("if (fence && (txt.indexOf('\\u25bcmCN=')")<0,
+    '★★★囲いは1つの口that数える(1つの打ち間違いthatファイル全体を黙らせない守りは、その口の中)', true);
+ ok(/const MEOS_FENCE_MAX_LINES = 300;/.test(S2) && /if \(i - open\.open \+ 1 <= MEOS_FENCE_MAX_LINES\) list\.push\(open\);/.test(S2),
+    '★★閉じthat無い/長すぎる囲いは数に入れない(迷子の ``` 1本で文書thatが沈まない)', true);
  ok(/if \(onlyClock && _clocked\.length < 2\) continue;/.test(S2),
     '★★★⏰that1つしか無い名前は壊れていない(鍵を取り合う相手that居ない)', true);
  ok(/const rest = onlyClock \? _clocked\.slice\(1\) : sorted\.slice\(1\);/.test(S2),
