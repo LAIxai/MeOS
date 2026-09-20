@@ -39,7 +39,7 @@ const hide=keys.find(k=>/transparent !important/.test(String(o2(k).textDecoratio
 const mark=keys.find(k=>o2(k).before && o2(k).before.contentText==='“');
 const pads=keys.filter(k=>o2(k).before && /ch$/.test(String(o2(k).before.width||'')));
 ok((seen.get(hide)||[]).length===6, '★`>` の印は隠す(6行ぜんぶ)', (seen.get(hide)||[]).map(at));
-ok((seen.get(mark)||[]).map(at).join()==='2', '★★大きな引用符は塊の頭に1つだけ(空の > には出さない)', (seen.get(mark)||[]).map(at));
+ok((seen.get(mark)||[]).length===0, '★★★3行以上の引用には引用符を付けない(塊= 字下げthat引用符の代わり・v4.2.287)', (seen.get(mark)||[]).map(at));
 ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).before.width));
 {
  const used=pads.filter(k=>(seen.get(k)||[]).length).map(k=>[o2(k).before.width,(seen.get(k)||[]).map(at)]);
@@ -47,8 +47,8 @@ ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).bef
  ok(!!two && two[1].join()==='2,3,4,5,6', '★ふつうの引用行は2桁の字下げ', used);
  const attr=used.find(u=>u[0]!=='2ch');
  const wide=Math.max(...[2,4,5,7].map(i=>2+X.displayColumns(L[i].replace(/^> ?/,''))));
- ok(!!attr && attr[1].join()==='7' && attr[0]===(2+(wide-2-X.displayColumns('―― Spy Lai')-6))+'ch',
-    '★★★出典(―― Spy Lai)は右寄せ・右端より6桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
+ ok(!!attr && attr[1].join()==='7' && attr[0]===(2+(wide-2-X.displayColumns('―― Spy Lai')-8))+'ch',
+    '★★★出典(―― Spy Lai)は右寄せ・右端より8桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
 }
 {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/borderWidth: '0 0 0 3px'/.test(S)
@@ -71,5 +71,22 @@ X.meosApplyQuoteDecorations(mkEd(4));
   selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],
   setDecorations:(t,items)=>seen.set(t,items)});
  ok((seen.get(hide)||[]).length===0, '★★囲いの中の `>` は引用にしない(引用は文字)', (seen.get(hide)||[]).map(at));
+}
+console.log('④ 2行までは引用符・3行以上は塊(v4.2.287 俊克の暗黙のルール)');
+{
+ const S2=['# t','> ミトコンドリアが無ければ、複雑な生命は無かった。','> それがMeOS。','> ―― Spy Lai','x'];
+ const d2={uri:{toString:()=>'file:///q2.md',fsPath:'/q2.md',scheme:'file'},languageId:'markdown',lineCount:S2.length,
+  lineAt:n=>({text:S2[n],range:new stub.Range(n,0,n,S2[n].length)}),getText:()=>S2.join('\n'),eol:1,fileName:'/q2.md',isClosed:false,version:1};
+ X.meosApplyQuoteDecorations({document:d2,visibleRanges:[new stub.Range(0,0,S2.length-1,0)],
+  selection:{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true},
+  selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],
+  setDecorations:(t,items)=>seen.set(t,items)});
+ const K=[...seen.keys()], o3=(k)=>(k.__opts||{});
+ const mk=K.find(k=>o3(k).before && o3(k).before.contentText==='\u201c');
+ const mkEnd=K.find(k=>o3(k).after && o3(k).after.contentText==='\u201d');
+ ok((seen.get(mk)||[]).map(at).join()==='1', '★中身が2行= 開きの引用符を塊の頭に', (seen.get(mk)||[]).map(at));
+ ok((seen.get(mkEnd)||[]).map(at).join()==='2', '★★閉じの引用符は**最後の中身の行の末尾**(出典の行には付けない)', (seen.get(mkEnd)||[]).map(at));
+ ok(/const MEOS_QUOTE_MARK_MAX_LINES = 2;/.test(fs.readFileSync(path.join(SRC,'extension.js'),'utf8')),
+    '  境目は定数(2行)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

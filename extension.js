@@ -36107,10 +36107,15 @@ const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
 //   ★★数を3→6に増やしたのは、**和文の桁の数え方**のため= MeOSは全角を2桁と数えるthat、
 //     画面の全角(斜体の引用)は半角2つより**少し狭い**(実測で約0.9)。so和文の長い行は
 //     私の数の上では実際より長くなり、出典that右へ押し出される。その差を6桁で吸収する。
-const MEOS_QUOTE_ATTR_INSET = 6;   // 出典を右端から何桁内側で止めるか
-const MEOS_QUOTE_MARK = '“';  // 大きな引用符(段落の頭に1つだけ)
+const MEOS_QUOTE_ATTR_INSET = 8;   // 出典を右端から何桁内側で止めるか(v4.2.287: 俊克「もう1文字分左」= 全角1字=2桁)
+// ★★v4.2.287(俊克「2行までは引用マーク(引用符)、3行以上は引用ブロック、というのが暗黙のルール」= そのとおり):
+//   ★本の作法= **短い引用は引用符で括る / 長い引用は塊にして引用符を付けない**(字下げthat引用符の代わりになる)。
+//     → **中身の行that2行までなら引用符、3行以上なら付けない**。短い時は**閉じ引用符**も対で出す。
+const MEOS_QUOTE_MARK = '“';        // 開きの大きな引用符
+const MEOS_QUOTE_MARK_CLOSE = '”';  // 閉じの引用符
+const MEOS_QUOTE_MARK_MAX_LINES = 2;    // これ以下の行数なら引用符を出す(3行以上は塊so付けない)
 const MEOS_QUOTE_ATTR_RE = /^\s*(?:――|——|—|--|──)\s*\S/;   // 出典の行(――/—/--)
-let quoteHideDeco = null, quoteMarkDeco = null;
+let quoteHideDeco = null, quoteMarkDeco = null, quoteMarkEndDeco = null;
 const _quotePadTypes = new Map();  // '桁|段' → 字下げ(+罫)の駒
 function meosQuotePadType(cols, rows) {
   const key = cols + '|' + rows;
@@ -36138,11 +36143,16 @@ function meosApplyQuoteDecorations(editor) {
         textDecoration: 'none; position: absolute; left: 0.1ch; top: -0.15em; z-index: -1; font-size: 2.4em; line-height: 1; opacity: 0.75;' });
       quoteMarkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         before: qmark(MEOS_QUOTE_RULE_DARK), light: { before: qmark(MEOS_QUOTE_RULE_LIGHT) }, dark: { before: qmark(MEOS_QUOTE_RULE_DARK) } });
+      // 閉じ引用符= 最後の字のすぐ後ろ(流れの中so位置合わせは要らない)。開きより控えめに。
+      const qend = (col) => ({ contentText: MEOS_QUOTE_MARK_CLOSE, color: col, margin: '0 0 0 1px',
+        textDecoration: 'none; font-size: 1.5em; line-height: 1; opacity: 0.75; vertical-align: -0.15em;' });
+      quoteMarkEndDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        after: qend(MEOS_QUOTE_RULE_DARK), light: { after: qend(MEOS_QUOTE_RULE_LIGHT) }, dark: { after: qend(MEOS_QUOTE_RULE_DARK) } });
     }
-    const pads = new Map(); const hides = [], marks = [];
+    const pads = new Map(); const hides = [], marks = [], markEnds = [];
     const put = () => {
       for (const t of _quotePadTypes.values()) editor.setDecorations(t, pads.get(t) || []);
-      editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks);
+      editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks); editor.setDecorations(quoteMarkEndDeco, markEnds);
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const lines = meosDocLines(doc);
@@ -36165,6 +36175,14 @@ function meosApplyQuoteDecorations(editor) {
           wide = Math.max(wide, q.level * MEOS_QUOTE_INDENT + displayColumns(q.body));
         }
         if (wrapCol) wide = Math.min(wide, wrapCol);
+        // v4.2.287: 引用符を出すかは**中身の行数**で決める(出典と空の > は数えない)
+        let textLines = 0, firstText = -1, lastText = -1;
+        for (let i = from; i <= to; i++) {
+          const q0 = meosQuoteLineParts(lines[i] || ''); if (!q0) continue;
+          if (!q0.body.trim() || MEOS_QUOTE_ATTR_RE.test(q0.body)) continue;
+          textLines++; if (firstText < 0) firstText = i; lastText = i;
+        }
+        const useMark = textLines > 0 && textLines <= MEOS_QUOTE_MARK_MAX_LINES;
         for (let i = from; i <= to; i++) {
           const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
           if (raw.has(i)) continue;                                  // カーソルの行は生のまま
@@ -36177,7 +36195,8 @@ function meosApplyQuoteDecorations(editor) {
           const ty = meosQuotePadType(pad, rows);
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
-          if (i === from && q.body.trim()) marks.push(L(i));          // 大きな引用符は塊の頭に1つだけ
+          if (useMark && i === firstText) marks.push(L(i));            // 開きの引用符(短い引用だけ)
+          if (useMark && i === lastText) markEnds.push(new vscode.Range(i, (lines[i] || '').length, i, (lines[i] || '').length));   // 閉じの引用符
         }
         ln = to + 1;
       }
