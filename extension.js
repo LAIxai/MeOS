@@ -17087,6 +17087,7 @@ function _refreshInner(editor) {
   try { meosApplyMeLinkDecorations(editor); } catch (_) {} // v4.0.8: ノート内リンク(コメント包み)の整形
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
   try { meosApplyCodeSpanDecorations(editor); } catch (_) {} // v4.2.223: インラインコード `…` を板に
+  try { meosApplyCodeFenceDecorations(editor); } catch (_) {} // v4.2.256: コードブロック ``` を1枚の板に
   try { meosApplyBoldDecorations(editor); } catch (_) {} // v3.7.0: 太字/斜体 **text**/***text***(同一行内・Raw/隔離時は解除)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
@@ -35894,16 +35895,29 @@ const MEOS_CODE_SETTING_RE = /^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$/;
 const MEOS_CODE_VER_RE = /v?\d+\.\d+\.\d+/g;
 let codeHideDeco = null, codePillDeco = null, codeSetDeco = null, codeFileDeco = null, codeFileGapDeco = null, codeFilePillDeco = null, codeTickGhostDeco = null, codeClockDeco = null, codeCreamTextDeco = null, codeVerDeco = null;
 let _meosFenceCache = { key: null, set: null };
+// ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
+//   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
+//   → [[feedback_one_source_for_mark_count_action]]。
+let _meosFenceBlkCache = { key: null, list: null };
+function meosFenceBlocks(doc) {
+  const key = _meosTextKey(doc);
+  if (_meosFenceBlkCache.key === key && _meosFenceBlkCache.list) return _meosFenceBlkCache.list;
+  const lines = meosDocLines(doc), list = []; let open = null;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i]; if (t.length < 3) continue;
+    const m = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*([^\s`~]*)/.exec(t);
+    if (!m) continue;
+    if (!open) open = { open: i, close: -1, ch: m[1][0], lang: (m[2] || '').trim() };
+    else if (m[1][0] === open.ch) { open.close = i; list.push(open); open = null; }
+  }
+  if (open) { open.close = lines.length - 1; list.push(open); }   // 閉じthat無い= 文書の終わりまで(元の数え方と同じ)
+  _meosFenceBlkCache = { key, list }; return list;
+}
 function meosFenceLines(doc) {
   const key = _meosTextKey(doc);
   if (_meosFenceCache.key === key && _meosFenceCache.set) return _meosFenceCache.set;
-  const lines = meosDocLines(doc), set = new Set(); let open = null;
-  for (let i = 0; i < lines.length; i++) {
-    const t = lines[i]; if (t.length < 3) { if (open) set.add(i); continue; }
-    const m = /^[ \t]{0,3}(`{3,}|~{3,})/.exec(t);
-    if (m) { set.add(i); if (!open) open = m[1][0]; else if (m[1][0] === open) open = null; continue; }
-    if (open) set.add(i);
-  }
+  const set = new Set();
+  for (const b of meosFenceBlocks(doc)) for (let i = b.open; i <= b.close; i++) set.add(i);
   _meosFenceCache = { key, set }; return set;
 }
 function meosApplyCodeSpanDecorations(editor) {
@@ -35959,6 +35973,58 @@ function meosApplyCodeSpanDecorations(editor) {
         else { clocks.push(tbl.has(ln) ? R(ln, cs, ce) : R(ln, cs - 1, ce + 1)); creamPush(ln, cs, ce); }   // v4.2.241(俊克「基本的に全てクリーム色で出すことを想定していた。インラインコードとして目立たせるため」): ダークでは全部クリーム(ライトは灰色)
         MEOS_CODE_VER_RE.lastIndex = 0; let v; const inner = text.slice(cs, ce);
         while ((v = MEOS_CODE_VER_RE.exec(inner)) !== null) vers.push(R(ln, cs + v.index, cs + v.index + v[0].length));
+      }
+    }
+    put();
+  } catch (_) { }
+}
+// ★★★v4.2.256(俊克 2026.09.20 am10:47「インラインコードと同様に、コードブロックも奈麗にしようか?」):
+//   ★★**同じ材で、大きさだけを変える**= インラインの板(v4.2.223〜241 クリーム地・濃い茶の字・縁 #cbb98c)を、
+//     行いっぱいの1枚にする。新しい色も新しい形も作らない → [[feedback_copy_the_house_style_first]]
+//   ★**``` は畳む**= 中身でない字は隠すthat MeOS の約束([[project_folding_hides_non_content]])。
+//     開きの行は**帯**になり、言語名(js/bash…)を小さく乗せる。閉じの行は空の帯= 紙の下の余白。
+//   ★**板自体that「ここは引用だ」と語る**= ``` の字を隠しても、中の記法that本物にならない事は形で分かる
+//     → [[feedback_quoted_notation_must_be_inert]]。
+//   ★カーソルの居る行は生のまま(他の装飾と同じ約束)。ただし**板は切らない**= 紙に穴を開けない。
+let fenceSlabDeco = null, fenceHeadDeco = null, fenceFootDeco = null, fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
+function meosApplyCodeFenceDecorations(editor) {
+  try {
+    if (!editor || !editor.document) return;
+    const doc = editor.document;
+    if (!fenceSlabDeco) {
+      const CREAM = '#f3e6c4', EDGE = '#cbb98c', INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
+      const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderColor: EDGE, borderStyle: 'solid', borderWidth: '0 0 0 3px', borderRadius: radius,
+        light: { backgroundColor: CREAM, borderColor: EDGE }, dark: { backgroundColor: CREAM, borderColor: EDGE } });
+      fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
+      fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));
+      fenceFootDeco = vscode.window.createTextEditorDecorationType(slab('0 0 6px 6px'));
+      fenceInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        light: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' },
+        dark: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' } });
+      fenceTickDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
+    }
+    const body = [], heads = [], foots = [], inks = [], ticks = [], langs = [];
+    const put = () => { editor.setDecorations(fenceSlabDeco, body); editor.setDecorations(fenceHeadDeco, heads); editor.setDecorations(fenceFootDeco, foots);
+      editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs); };
+    if (!meosIsProseDoc(doc)) { put(); return; }
+    const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
+    const raw = meosRawLines(editor), lines = meosDocLines(doc);
+    const L = (ln) => new vscode.Range(ln, 0, ln, 0);
+    for (const vr of meosScanSpans(editor, doc)) {
+      for (const b of blocks) {
+        if (b.close < vr[0] || b.open > vr[1]) continue;
+        const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
+        for (let ln = from; ln <= to; ln++) {
+          const t = lines[ln] || '';
+          (ln === b.open ? heads : (ln === b.close ? foots : body)).push(L(ln));
+          if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(板だけ残す)
+          if (ln === b.open || ln === b.close) {
+            if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
+            if (ln === b.open) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang || 'code' } } });
+          } else if (t.length) inks.push(new vscode.Range(ln, 0, ln, t.length));
+        }
       }
     }
     put();
@@ -36806,7 +36872,7 @@ function activate(context) {
   const _meosPass = (cmd) => { vscode.commands.executeCommand(cmd); };
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
   context.subscriptions.push(vscode.window.onDidChangeActiveColorTheme(() => { try { if (_meosThemeOrig == null) meosThemeRemember(meosThemeNow()); meosThemePost(); } catch (_) { } }));   // v4.2.243: VS Codeのメニューで替えてもダーク/ライトの控えを取る(試し着せの間は取らない)
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeSpanDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeSpanDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeFenceDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
