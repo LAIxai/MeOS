@@ -94,6 +94,8 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
  ok(st.pairs.length===1 && st.pairs[0].start===5, '★★★囲いの中の ▼▲ は対に数えない= 本物は下の1つだけ(俊克 バグ1)', st.pairs.map(p=>[p.start,p.end]));
  ok(st.unclosedOpens.length===0 && st.orphanCloses.length===0, '★★片割れの警告(⚠️)も出さない= 引用は片割れですらない', [st.unclosedOpens,st.orphanCloses]);
  ok(/_fenceSkip && _fenceSkip\.has\(i\)/.test(S), '  膜の対を数える口も、同じ1つの答え(meosFenceLines)を引く', true);
+ ok(/if \(meosIsProseDoc\(document\) && meosFenceLines\(document\)\.has\(line\)\) return null;/.test(S),
+    '★★★囲いの中の行は**膜行ではない**= 顔(殻を隠して▼を出す)も出さない(v4.2.275 紙だけthat長く見えた真因)', true);
  ok(/_inFence = !!\(_plFence && _plFence\.has\(line\)\);/.test(S) && !/_inFence = !_inFence/.test(S),
     '★★★見出し/箇条書きの口も自前で数えない(俊克 バグ2= ⑤から下の印that全部消えていた)', true);
  ok(/_fcFence && _fcFence\.has\(i\)/.test(S), '  ⏰の走査も同じ口', true);

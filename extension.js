@@ -5031,6 +5031,12 @@ function membraneLineInfo(document, line) {
   const text = document.lineAt(line).text;
   const src = asRealMembraneSource(text);
   if (!src) return null;
+  // ★★★v4.2.275(俊克 質問1「④項はなぜ、中身よりも長く伸びているのか?」の真因):
+  //   ★★**囲いの中の膜行thatまだ「膜の顔」で描かれていた**= `<!-- {* 〜 *} -->` の殻を隠し、▼と名前を出す。
+  //     so**字は短く見えるのに、紙は生の字の桁で測る**= 紙だけthat長く見えていた。
+  //   ★★→ ここで1つ塞ぐ= **囲いの中の行は膜行ではない**。v4.2.258で対・⚠️・⏰を塞いだ所to同じ答えになり、
+  //     顔も畳みも当たりも、全部この1つの口から出る → [[feedback_one_source_for_mark_count_action]]
+  try { if (meosIsProseDoc(document) && meosFenceLines(document).has(line)) return null; } catch (_) { }
   let m = src.match(OPEN_RE);
   let kind = 'open';
   if (!m) { m = src.match(CLOSE_RE); kind = 'close'; }
