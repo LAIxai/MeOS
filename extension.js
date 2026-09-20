@@ -35900,21 +35900,26 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
-// ★★★v4.2.272(俊克「削る幅は、スクロールバーの左端から3〜5ピクセルくらい左の位置に調整しよう」
-//   ＋「どうしてもスクロールバーは避けたい。選択しようとしてそこをクリックすると、意図に反してスクロールしてしまう」):
-//   ★★**幅を勘で決めない**= スクロールバーの幅は設定(editor.scrollbar.verticalScrollbarSize・既定14)that知っている。
-//     紙の右端 = その幅 ＋ 4点(俊克の「3〜5」の真ん中)。44点は広すぎて、窓を狭めると字that紙からはみ出していた。
-//   ★設定that変わったら型を作り直す(覚えた値と違えば捨てて作る)= 望む姿と今の姿を突き合わせる。
-const MEOS_FENCE_RIGHT_PAD = 15;   // v4.2.273(俊克「+4ではなく、+15にしてみようか」): スクロールバーの左端から更に何点左で止めるか。
-//   ★4点では**概観ルーラの印**(⏰や栞の色の点= スクロールバーの帯の中に並ぶ)に紙that掛かっていた。
-//     俊克の「スクロールバーにかかっている」は、滑り子だけでなく**その帯ぜんぶ**を指している。
-function meosFenceRightGap() {
-  try {
-    const n = Number(vscode.workspace.getConfiguration('editor').get('scrollbar.verticalScrollbarSize', 14));
-    return Math.max(6, Math.min(80, (isFinite(n) && n > 0 ? n : 14))) + MEOS_FENCE_RIGHT_PAD;
-  } catch (_) { return 14 + MEOS_FENCE_RIGHT_PAD; }
+// ★★★v4.2.274(俊克「理由が今一分らないけど、やってみようよ」): ★★★**紙は「中身の大きさ」で作る**。
+//   ★v4.2.259〜273 は紙を「行いっぱいの箱」に乗せていたthat、その箱の幅は VS Code that
+//     **「今までに描いた行の中で一番長い行」**で決めている(実測: ViewLines._updateLineWidths)。
+//     so ①折り返しを切ると窓のはるか右まで伸びる ②スクロールやファイル移動で幅that動く
+//     (俊克「差that移動している内に変わる。これが不思議」)。その箱から降りる。
+//   ★★★**紙 = 左の太い縁**= `border-left: <桁数>ch` を地の色でなく**クリーム**で引く=
+//     ①幅は左から数えるso窓にも中身にもよらない ②行いっぱいso**高さは行の高さぴったり**
+//     (v4.2.259の埋め草の段違いthat起きない) ③スクロールバーには**構造上**届かない。
+//   ★桁は家の物差し displayColumns(全角=2)。1桁 = 1ch(等幅so「0」の幅と同じ)。
+const MEOS_FENCE_CREAM = '#f3e6c4', MEOS_FENCE_INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
+const MEOS_FENCE_PAD_COLS = 2;     // 紙の右の余白(桁)
+const _fencePaperTypes = new Map();   // '桁|役' → 装飾の型(幅ごとに1つ・使い回す)
+function meosFencePaperType(w, kind) {
+  const key = w + '|' + kind;
+  let t = _fencePaperTypes.get(key); if (t) return t;
+  const radius = (kind === 'head') ? '6px 0 0 0' : ((kind === 'foot') ? '0 0 0 6px' : '0');
+  t = vscode.window.createTextEditorDecorationType({ isWholeLine: true, backgroundColor: 'transparent',
+    borderStyle: 'solid', borderWidth: '0 0 0 ' + w + 'ch', borderColor: MEOS_FENCE_CREAM, borderRadius: radius });
+  _fencePaperTypes.set(key, t); return t;
 }
-let _meosFenceGapUsed = -1;        // 型を作った時の幅(設定that変わったら作り直す)
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
 function meosFenceBlocks(doc) {
@@ -36017,81 +36022,26 @@ function meosApplyCodeSpanDecorations(editor) {
 //   ★**板自体that「ここは引用だ」と語る**= ``` の字を隠しても、中の記法that本物にならない事は形で分かる
 //     → [[feedback_quoted_notation_must_be_inert]]。
 //   ★カーソルの居る行は生のまま(他の装飾と同じ約束)。ただし**板は切らない**= 紙に穴を開けない。
-let fenceSlabDeco = null, fenceHeadDeco = null, fenceFootDeco = null, fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
+let fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
 function meosApplyCodeFenceDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
     const doc = editor.document;
-    const _gap = meosFenceRightGap();
-    if (fenceSlabDeco && _meosFenceGapUsed !== _gap) {              // v4.2.272: 設定that変わった= 型を捨てて作り直す(6つまとめて)
-      for (const d of [fenceSlabDeco, fenceHeadDeco, fenceFootDeco, fenceInkDeco, fenceTickDeco, fenceLangDeco]) { try { if (d) d.dispose(); } catch (_) { } }
-      fenceSlabDeco = fenceHeadDeco = fenceFootDeco = fenceInkDeco = fenceTickDeco = fenceLangDeco = null;
-    }
-    if (!fenceSlabDeco) {
-      _meosFenceGapUsed = _gap;
-      const CREAM = '#f3e6c4', EDGE = '#cbb98c', INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
-      // ★★★v4.2.262(俊克「私が言いたかったのは、前後の文字、今、表示している部分の最大幅…
-      //   結局は、スクロールバーの左端までの長さにして、と言えば良かったのかもね」):
-      //   ★★**紙は窓いっぱい**= 行いっぱい(isWholeLine)に戻す。これthatVS Codeで「行の幅」を
-      //     窓の端まで敷ける唯一の道so、字の無い所を空白で埋める道(v4.2.259〜261)は捨てる
-      //     = 埋め草は font と行の高さに振り回され、3版かけても段違いthat残った。
-      //   ★**スクロールバーの手前で止める事はできない**= 桁の数(窓の幅)を拡張は読めず、
-      //     行いっぱいの地は、スクロールバー(重ねて描かれる)の下まで伸びる。
-      //     → 止められない事は、止められないと言う → [[feedback_measure_before_you_generalize]]
-      // ★v4.2.263(俊克「窓一杯より例えば5ピクセル狭くすることは可能か?」): CSSの幅で削る道を試した(効かず→v4.2.265)。
-      // ★★★v4.2.265(俊克 バグ1「全く変わらない。なぜ?」): ★**CSSの width thatが効いていなかった**。
-      //   理由= 行いっぱいの地は「窓の幅」ではなく**中身の幅(一番長い行まで)**の箱so、
-      //     そこから44点引いても、引いた先thatまだ窓の右端より外に在る= 画面では1点も変わらない。
-      //     (折り返しを切って横に流している時は、中身の幅that窓より遥かに広い。)
-      //   ★★→ **引くのをやめて、隠す**= 右に太い縁を1本置き、その色を**エディタの地の色**にする。
-      //     縁は地の上に描かれるso、その幅だけクリームthat消える= 窓の幅を知らなくても右端が短くなる。
-      //   ★縁の色/太さ/形は装飾の正規の口(borderColor/Width/Style)= 左の3pxの縁thatが既に効いている実績の道
-      //     → [[feedback_copy_the_house_style_first]]。色は `var(--vscode-editor-background)` でテーマに従う。
-      //   ★box-sizing も言っておく(縁を箱の内側に置く)= 効く版では確実に内側へ、効かない版でも害は無い。
-      // ★★★v4.2.266(俊克 改良2「インラインコードの左端は奇麗なんだけど、コードブロックの左端が色がズレている」):
-      //   ★**インラインの板は1pxの細い縁that四方を囲っている**のに、こちらは左に3pxの太い帯を立てていた=
-      //     同じ材のはずthat、左だけ別の物に見える。→ **インラインと同じ1pxの縁**にし、
-      //     頭の行には上の縁、足の行には下の縁を足す= 3辺を細い縁that囲う「大きな板」になる
-      //     → [[feedback_copy_the_house_style_first]](家の中の同じ役の部品を真似る)。
-      //   ★右だけは縁でなく**幕**(地の色)= 窓の端で切っている所so、縁は引かない。
-      const CUT = 'var(--vscode-editor-background)';
-      // ★★★v4.2.268(実測でわかった事): ★★★**行いっぱいの板に CSS は入れられない**。
-      //   VSCodium の中を読んだ(workbench.desktop.main.js `getCSSTextForModelDecorationClassName`)=
-      //   行いっぱいの板に渡るのは **backgroundColor / outline* / 縁(border*)だけ**で、
-      //   `textDecoration` は**字の側の口**(InlineClassName / ContentClassName)にしか渡らない。
-      //   → v4.2.263の `width: calc(…)`・v4.2.265の `box-sizing`・v4.2.267の `clip-path` は
-      //     **1つも届いていなかった**(俊克のスクショの通り、角は四角いまま)。残骸は置かない。
-      //   ★so「切り口を丸める」は、この板からはできない= 右は幕(太い縁)so、角丸は幕の外側に掛かり、
-      //     内側(見える所)の半径 = 外側の半径 − 幕の幅 = 0。
-      //   ★v4.2.266で足した上下の1pxの縁は**外す**= 縁は箱の端まで引かれるso、幕の上を通って
-      //     クリームの右に**細いヒゲ**thatはみ出していた(俊克のスクショの右端)。左の1pxだけ残す。
-      const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid',
-        borderColor: 'transparent ' + CUT + ' transparent ' + EDGE,
-        borderWidth: '0 ' + _gap + 'px 0 1px',
-        borderRadius: radius });
-      // ★★★v4.2.271(実測で終わりにする): ★★★**切り口の角は丸められない**。VSCodium の中を読んで、3つthat確定した=
-      //   ①行いっぱいの板に渡る CSS は**背景・縁・outline だけ**(textDecoration は届かない)。
-      //     so角丸は幕(太い縁)の外側に掛かり、見える所の半径 = 外側の半径 − 幕の幅 = 0。
-      //   ②字の側(after)には CSS that届くthat、`.monaco-editor .view-lines>.view-line>span` 自体that
-      //     **position:absolute** so、駒の `right: 44px` は**窓の右端ではなく「その行の字の右端」**から数えられる。
-      //     = 窓の切り口の所には立てられない(v4.2.269/270 で1点も出なかった正体)。
-      //   ③so「窓の右端から44点の所に、形のある物を置く」道は、装飾には無い。
-      //   → 切り口は切り口のまま(四角)。駒の道は残骸ごと畳む → [[feedback_measure_before_you_generalize]]
-      fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
-      fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));
-      fenceFootDeco = vscode.window.createTextEditorDecorationType(slab('0 0 6px 6px'));
+    if (!fenceInkDeco) {
       fenceInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        light: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' },
-        dark: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' } });
+        light: { textDecoration: 'none; color: ' + MEOS_FENCE_INK + ' !important; -webkit-text-fill-color: ' + MEOS_FENCE_INK + ' !important;' },
+        dark: { textDecoration: 'none; color: ' + MEOS_FENCE_INK + ' !important; -webkit-text-fill-color: ' + MEOS_FENCE_INK + ' !important;' } });
       fenceTickDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
-      // ★v4.2.260: 札は**幅を取らない**(position:absolute)= 隠した ``` の上に浮かせる。
-      //   取らせると開きの行だけthat他の行より長くなり、紙の右端that1本の線にならない(v4.2.226の📄と同じ手)。
+      // 札は幅を取らない(隠した ``` の上に浮かせる・v4.2.226の📄と同じ手)
       fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
     }
-    const body = [], heads = [], foots = [], inks = [], ticks = [], langs = [];
-    const put = () => { editor.setDecorations(fenceSlabDeco, body); editor.setDecorations(fenceHeadDeco, heads); editor.setDecorations(fenceFootDeco, foots);
-      editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs); };
+    const paper = new Map();                                        // 型 → 置く行
+    const inks = [], ticks = [], langs = [];
+    const put = () => {
+      for (const t of _fencePaperTypes.values()) editor.setDecorations(t, paper.get(t) || []);
+      editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
+    };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
     const raw = meosRawLines(editor), lines = meosDocLines(doc);
@@ -36099,11 +36049,18 @@ function meosApplyCodeFenceDecorations(editor) {
     for (const vr of meosScanSpans(editor, doc)) {
       for (const b of blocks) {
         if (b.close < vr[0] || b.open > vr[1]) continue;
+        // ★★★v4.2.274(俊克「理由が今一分らないけど、やってみようよ」= 紙を「中身の大きさ」にする):
+        //   ★★★**紙の幅は、その囲いの一番長い行＋余白**= 窓の幅にも、ファイルの一番長い行にも、
+        //     折り返しの設定にも**一切よらない**。俊克の見た「差that移動している内に変わる」は、
+        //     VS Codethat「今までに描いた行の中で一番長い行」で箱を決めているから(実測)。その箱から降りる。
+        const _w = (() => { let w = 0; for (let i = b.open; i <= b.close; i++) w = Math.max(w, displayColumns(lines[i] || '')); return w + MEOS_FENCE_PAD_COLS; })();
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
-          (ln === b.open ? heads : (ln === b.close ? foots : body)).push(L(ln));
-          if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(板だけ残す)
+          const ty = meosFencePaperType(_w, ln === b.open ? 'head' : (ln === b.close ? 'foot' : 'body'));
+          if (!paper.has(ty)) paper.set(ty, []);
+          paper.get(ty).push(L(ln));
+          if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
             if (ln === b.open) langs.push({ range: L(ln), renderOptions: { before: { contentText: b.lang || 'code' } } });

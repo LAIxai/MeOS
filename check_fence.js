@@ -25,7 +25,14 @@ const mkEd=(caret)=>({document:doc,visibleRanges:[new stub.Range(0,0,L.length-1,
  selections:[{active:{line:caret,character:0},anchor:{line:caret,character:0},isEmpty:true}],
  setDecorations:(t,items)=>seen.set(t,items)});
 const lineSet=(t)=>new Set((seen.get(t)||[]).map(x=>(x.range||x).start.line));
-const D=()=>{const a=[...seen.keys()];return {head:a[1],foot:a[2],body:a[0],ink:a[3],tick:a[4],lang:a[5]};};
+// ★v4.2.274: 型は幅ごとに作るso、並び順でなく**中身の指定**で見分ける(角丸と縁の幅で役that分かる)
+const D=()=>{const a=[...seen.keys()], o=(k)=>(k.__opts||{});
+  const pap=a.filter(k=>/ch$/.test(String(o(k).borderWidth||'')));
+  return { head: pap.find(k=>o(k).borderRadius==='6px 0 0 0'), foot: pap.find(k=>o(k).borderRadius==='0 0 0 6px'),
+           body: pap.find(k=>o(k).borderRadius==='0'),
+           ink: a.find(k=>/color: #3b3020/.test(String((o(k).dark||{}).textDecoration||''))),
+           tick: a.find(k=>/transparent !important/.test(String(o(k).textDecoration||''))),
+           lang: a.find(k=>o(k).before) };};
 
 console.log('① 囲みを1つの口で数える(板の口と、行番号の口that同じ走査から)');
 const B=X.meosFenceBlocks(doc);
@@ -91,37 +98,29 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
     '★★★見出し/箇条書きの口も自前で数えない(俊克 バグ2= ⑤から下の印that全部消えていた)', true);
  ok(/_fcFence && _fcFence\.has\(i\)/.test(S), '  ⏰の走査も同じ口', true);
 }
-console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)');
+console.log('⑦ 紙は「中身の大きさ」(v4.2.274 — 行いっぱいの箱から降りる)');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid'/.test(S),
-    '★★紙は行いっぱい= VS Codeで窓の端まで敷ける唯一の道', true);
- ok(!/_slabItem/.test(S) && !/meosWrapColumn/.test(S) && !/contentText: ' '\.repeat\(pad\)/.test(S),
-    '★★埋め草(空白で幅を作る道)は残骸ごと捨てた= font と行の高さに振り回される道は選ばない', true);
+ ok(/borderWidth: '0 0 0 ' \+ w \+ 'ch', borderColor: MEOS_FENCE_CREAM/.test(S)
+    && /backgroundColor: 'transparent'/.test(S),
+    '★★★紙= 左の太い縁(クリーム)を桁(ch)で引く= 幅は左から数える(窓にも中身にもよらない)', true);
+ ok(/isWholeLine: true, backgroundColor: 'transparent'/.test(S),
+    '★行いっぱいの型のまま= 高さは行の高さぴったり(埋め草の段違いthat起きない)', true);
+ ok(/const MEOS_FENCE_PAD_COLS = 2;/.test(S) && /w \+ MEOS_FENCE_PAD_COLS/.test(S)
+    && /displayColumns\(lines\[i\] \|\| ''\)/.test(S),
+    '★幅= その囲いの一番長い行 + 余白2桁(家の物差し displayColumns)', true);
+ ok(!/meosFenceRightGap/.test(S) && !/MEOS_FENCE_RIGHT_GAP/.test(S) && !/fenceSlabDeco/.test(S),
+    '  窓の端から削る道(v4.2.263〜273)は残骸ごと畳んだ', true);
+ // 実物: 型は幅ごとに1つ・頭/足/中で角丸が違う
  X.meosApplyCodeFenceDecorations(mkEd(0));
- const d=D();
- ok((seen.get(d.body)||[]).every(x=>!x.renderOptions) && (seen.get(d.head)||[]).every(x=>!x.renderOptions),
-    '  1行に1つの駒だけ(字の無い箱を継がない)', true);
- ok(/const MEOS_FENCE_RIGHT_PAD = 15;/.test(S)
-    && /' \+ _gap \+ 'px 0 1px'/.test(S) && /' \+ CUT \+ '/.test(S),
-    '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
- ok(!/width: calc\(100% - /.test(S), '  効かなかった道(中身の幅から引く)は残骸を置かない', true);
- ok(/const slab = \(radius\) => \(\{ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid'/.test(S)
-    && /borderColor: 'transparent ' \+ CUT \+ ' transparent ' \+ EDGE/.test(S)
-    && /borderWidth: '0 ' \+ _gap \+ 'px 0 1px'/.test(S),
-    '★★左はインラインと同じ1pxの縁・右は幕・上下は引かない(上下を引くと幕の上にヒゲthat出る・v4.2.268)', true);
- ok(!/clip-path: inset/.test(S) && !/box-sizing: border-box !important/.test(S) && !/width: calc\(100% - /.test(S),
-    '★★★届かないCSSは残骸を置かない= 行いっぱいの板に渡るのは背景と縁とoutlineだけ(VSCodiumの中で実測)', true);
- ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
- // ★v4.2.271: 駒の道は畳んだ(窓の右端に物を置く口that装飾に無い= 実測)
- ok(!/fenceCap/.test(S) && !/MEOS_FENCE_CAP/.test(S),
-    '★★駒(右端に重ねる四角)の残骸を置かない= 字の側の駒は「その行の字の右端」からしか数えられない', true);
- // ★v4.2.272: 幕の幅は勘でなく設定から(スクロールバーの幅 + 4点)
- ok(/function meosFenceRightGap\(\)/.test(S) && /get\('scrollbar\.verticalScrollbarSize', 14\)/.test(S)
-    && /const MEOS_FENCE_RIGHT_PAD = 15;/.test(S),
-    '★★★幕の幅= スクロールバーの幅(設定) + 15点= 勘で44点と置かない(窓を狭めると字that紙からはみ出していた)', true);
- ok(/borderWidth: '0 ' \+ _gap \+ 'px 0 1px'/.test(S)
-    && /if \(fenceSlabDeco && _meosFenceGapUsed !== _gap\)/.test(S),
-    '  設定that変わったら型を作り直す(6つまとめて捨てる)', true);
+ {const K=[...seen.keys()], at=(x)=>(x.range||x).start.line;
+  const used=K.filter(k=>(seen.get(k)||[]).length).map(k=>[k.__opts&&k.__opts.borderWidth, k.__opts&&k.__opts.borderRadius, (seen.get(k)||[]).map(at)]);
+  const papers=used.filter(u=>u[0]&&/ch$/.test(String(u[0])));
+  ok(papers.length===3, '  頭・中・足の3つの型that使われる(幅は同じ)', papers);
+  const w=[...new Set(papers.map(p=>String(p[0])))];
+  ok(w.length===1 && w[0]==='0 0 0 17ch', '★★一番長い行(15桁)+2桁= 17ch で3行とも同じ幅', w);
+  const head=papers.find(p=>p[2].join()==='2'), foot=papers.find(p=>p[2].join()==='5');
+  ok(head && head[1]==='6px 0 0 0' && foot && foot[1]==='0 0 0 6px',
+     '★頭は左上・足は左下thatが丸い(右は切り口so丸められない)', [head&&head[1],foot&&foot[1]]);}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
