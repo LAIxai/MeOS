@@ -35900,6 +35900,7 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
+const MEOS_FENCE_RIGHT_GAP = 14;   // v4.2.263: 紙の右端を窓の端から何点(px)手前で止めるか(既定= 縦スクロールバーの幅)
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
 function meosFenceBlocks(doc) {
@@ -36017,7 +36018,15 @@ function meosApplyCodeFenceDecorations(editor) {
       //   ★**スクロールバーの手前で止める事はできない**= 桁の数(窓の幅)を拡張は読めず、
       //     行いっぱいの地は、スクロールバー(重ねて描かれる)の下まで伸びる。
       //     → 止められない事は、止められないと言う → [[feedback_measure_before_you_generalize]]
+      // ★★★v4.2.263(俊克「窓一杯より例えば5ピクセル狭くすることは可能か?」): ★できる。
+      //   ★行いっぱいの地は VS Code that幅を持つ箱so、桁数を知らなくても **CSS で幅だけ削れる**=
+      //     `width: calc(100% - Npx)`。桁(字の数)ではなく**点(ピクセル)**で削るso、窓の幅を読む必要thatが無い
+      //     → 今日ここまで3版すべった「字で幅を作る」道の裏返し(幅は、字でなく箱に訊く)。
+      //   ★削る量は1つの定数(MEOS_FENCE_RIGHT_GAP)。既定は 14px= VS Code の縦スクロールバーの幅
+      //     (俊克の「5ピクセル」は例so、まず**スクロールバーthat隠れる幅**に置いた。数は1字直せば変わる)。
+      //   ★CSS は textDecoration の口から入れる(家の中で既に使っている手・v4.2.226 の 📄 と同じ)。
       const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderColor: EDGE, borderStyle: 'solid', borderWidth: '0 0 0 3px', borderRadius: radius,
+        textDecoration: 'none; width: calc(100% - ' + MEOS_FENCE_RIGHT_GAP + 'px) !important;',
         light: { backgroundColor: CREAM, borderColor: EDGE }, dark: { backgroundColor: CREAM, borderColor: EDGE } });
       fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
       fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));
