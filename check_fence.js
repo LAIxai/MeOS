@@ -102,7 +102,7 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
  const d=D();
  ok((seen.get(d.body)||[]).every(x=>!x.renderOptions) && (seen.get(d.head)||[]).every(x=>!x.renderOptions),
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
- ok(/const MEOS_FENCE_RIGHT_PAD = 4;/.test(S)
+ ok(/const MEOS_FENCE_RIGHT_PAD = 15;/.test(S)
     && /' \+ _gap \+ 'px 0 1px'/.test(S) && /' \+ CUT \+ '/.test(S),
     '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
  ok(!/width: calc\(100% - /.test(S), '  効かなかった道(中身の幅から引く)は残骸を置かない', true);
@@ -119,7 +119,7 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
  // ★v4.2.272: 幕の幅は勘でなく設定から(スクロールバーの幅 + 4点)
  ok(/function meosFenceRightGap\(\)/.test(S) && /get\('scrollbar\.verticalScrollbarSize', 14\)/.test(S)
     && /const MEOS_FENCE_RIGHT_PAD = 4;/.test(S),
-    '★★★幕の幅= スクロールバーの幅(設定) + 4点= 勘で44点と置かない(窓を狭めると字that紙からはみ出していた)', true);
+    '★★★幕の幅= スクロールバーの幅(設定) + 15点= 勘で44点と置かない(窓を狭めると字that紙からはみ出していた)', true);
  ok(/borderWidth: '0 ' \+ _gap \+ 'px 0 1px'/.test(S)
     && /if \(fenceSlabDeco && _meosFenceGapUsed !== _gap\)/.test(S),
     '  設定that変わったら型を作り直す(6つまとめて捨てる)', true);

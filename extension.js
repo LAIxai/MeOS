@@ -35905,7 +35905,9 @@ let _meosFenceCache = { key: null, set: null };
 //   ★★**幅を勘で決めない**= スクロールバーの幅は設定(editor.scrollbar.verticalScrollbarSize・既定14)that知っている。
 //     紙の右端 = その幅 ＋ 4点(俊克の「3〜5」の真ん中)。44点は広すぎて、窓を狭めると字that紙からはみ出していた。
 //   ★設定that変わったら型を作り直す(覚えた値と違えば捨てて作る)= 望む姿と今の姿を突き合わせる。
-const MEOS_FENCE_RIGHT_PAD = 4;    // スクロールバーの左端から更に何点左で止めるか
+const MEOS_FENCE_RIGHT_PAD = 15;   // v4.2.273(俊克「+4ではなく、+15にしてみようか」): スクロールバーの左端から更に何点左で止めるか。
+//   ★4点では**概観ルーラの印**(⏰や栞の色の点= スクロールバーの帯の中に並ぶ)に紙that掛かっていた。
+//     俊克の「スクロールバーにかかっている」は、滑り子だけでなく**その帯ぜんぶ**を指している。
 function meosFenceRightGap() {
   try {
     const n = Number(vscode.workspace.getConfiguration('editor').get('scrollbar.verticalScrollbarSize', 14));
