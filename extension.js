@@ -35900,7 +35900,7 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
-const MEOS_FENCE_RIGHT_GAP = 14;   // v4.2.263: 紙の右端を窓の端から何点(px)手前で止めるか(既定= 縦スクロールバーの幅)
+const MEOS_FENCE_RIGHT_GAP = 44;   // v4.2.264(俊克「かなり短くしないと駄目だね」): 紙の右端を窓の端から何点(px)手前で止めるか。14では印(縦スクロールバー＋概観ルーラ)に届かなかったso、一度に大きく寄せる(数は1字で変わる)
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
 function meosFenceBlocks(doc) {

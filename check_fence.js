@@ -103,7 +103,7 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
  ok((seen.get(d.body)||[]).every(x=>!x.renderOptions) && (seen.get(d.head)||[]).every(x=>!x.renderOptions),
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
- ok(/const MEOS_FENCE_RIGHT_GAP = 14;/.test(S)
+ ok(/const MEOS_FENCE_RIGHT_GAP = 44;/.test(S)
     && /textDecoration: 'none; width: calc\(100% - ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px\) !important;'/.test(S),
     '★★★右端は点(px)で削る= 桁を知らなくてもスクロールバーの手前で止まる(v4.2.263 俊克「5ピクセル狭く」)', true);
 }
