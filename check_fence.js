@@ -11,8 +11,9 @@ const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mf_'+process.pid+'.js';
 fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')
- +'\nmodule.exports.__t={meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure};\n');
+ +'\nmodule.exports.__t={displayColumns,meosWrapColumn,meosFenceBlocks,meosFenceLines,meosApplyCodeFenceDecorations,meosApplyCodeSpanDecorations,collectMembraneStructure};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
+const displayCols=(t)=>X.displayColumns(t);
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 
 const L=[ '# t', 'まえがき `x.md` を見よ', '```js', 'const a = 1;', 'console.log(a);', '```', 'あとがき' ];
@@ -89,5 +90,27 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
  ok(/_inFence = !!\(_plFence && _plFence\.has\(line\)\);/.test(S) && !/_inFence = !_inFence/.test(S),
     '★★★見出し/箇条書きの口も自前で数えない(俊克 バグ2= ⑤から下の印that全部消えていた)', true);
  ok(/_fcFence && _fcFence\.has\(i\)/.test(S), '  ⏰の走査も同じ口', true);
+}
+console.log('⑦ 紙の幅は折り返し幅まで(俊克 改良1 — スクロールバーの下まで伸びない)');
+{
+ const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(!/isWholeLine: true, backgroundColor: CREAM/.test(S) && /const slab = \(radius\) => \(\{ backgroundColor: CREAM/.test(S),
+    '★★行いっぱい(isWholeLine)をやめた= 右端that窓の端まで伸びない', true);
+ // 折り返さない設定(台の既定)= その囲いの一番長い行に合わせる
+ X.meosApplyCodeFenceDecorations(mkEd(0));
+ const d=D(), pad=(t)=>{const x=(seen.get(t)||[]).map(y=>(y.renderOptions&&y.renderOptions.after&&y.renderOptions.after.contentText||'').length);return x;};
+ const wide=Math.max('```js'.length,'const a = 1;'.length,'console.log(a);'.length,'```'.length);
+ ok(pad(d.head).join()===String(wide-'```js'.length) && pad(d.foot).join()===String(wide-'```'.length),
+    '★折り返さない時は「一番長い行」まで埋める(字that紙からはみ出さない)', [pad(d.head),pad(d.foot),wide]);
+ ok((seen.get(d.body)||[]).every(x=>displayCols(L[x.range.start.line])+((x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length)===wide),
+    '  中の行も同じ幅で揃う(紙の右端that1本の線になる)', (seen.get(d.body)||[]).map(x=>x.range.start.line));
+ // 折り返す設定= その桁で止める
+ const _g=stub.workspace.getConfiguration;
+ stub.workspace.getConfiguration=(sec)=>({ get:(k,dv)=> (k==='wordWrap'?'wordWrapColumn':(k==='wordWrapColumn'?40:dv)), update(){} });
+ X.meosApplyCodeFenceDecorations(mkEd(0));
+ const d2=D();
+ ok((seen.get(d2.body)||[]).every(x=>displayCols(L[x.range.start.line])+((x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length)===40),
+    '★★★折り返し幅(40)で止まる= 俊克thatMe Dockの摘みで決めた幅と同じ物差し', (seen.get(d2.body)||[]).map(x=>(x.renderOptions&&x.renderOptions.after&&x.renderOptions.after.contentText||'').length));
+ stub.workspace.getConfiguration=_g;
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

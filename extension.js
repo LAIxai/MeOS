@@ -35900,6 +35900,18 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
+// ★v4.2.259(俊克 改良1「囲みの右端を短くして、スクロールバーの所を避けよう。厳密に言えば、折り返し幅だね」):
+//   折り返し幅= 俊克thatMe Dockの摘みで決めている値(v4.2.152/166 の 40/80/100)そのもの。
+//   折り返さない設定(off)の時は 0 を返す= その時は「その囲いの一番長い行」に合わせる(下)。
+function meosWrapColumn() {
+  try {
+    const cfg = vscode.workspace.getConfiguration('editor');
+    const mode = String(cfg.get('wordWrap', 'off'));
+    if (mode === 'off') return 0;
+    if (mode === 'on') return 80;   // 窓の端で折り返す= 桁数は拡張から読めないso、既定と同じ 80 で見積もる
+    return Math.max(20, Math.min(300, Number(cfg.get('wordWrapColumn', 80)) || 80));
+  } catch (_) { return 0; }
+}
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
 function meosFenceBlocks(doc) {
@@ -36009,7 +36021,11 @@ function meosApplyCodeFenceDecorations(editor) {
     const doc = editor.document;
     if (!fenceSlabDeco) {
       const CREAM = '#f3e6c4', EDGE = '#cbb98c', INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
-      const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderColor: EDGE, borderStyle: 'solid', borderWidth: '0 0 0 3px', borderRadius: radius,
+      // ★v4.2.259: 行いっぱい(isWholeLine)をやめる= 右端thatスクロールバーの下まで伸びない。
+      //   幅は**折り返し幅**まで= 足りない分は after の空白で埋める(空白にも同じ地の色)。
+      const slab = (radius) => ({ backgroundColor: CREAM, borderColor: EDGE, borderStyle: 'solid', borderWidth: '0 0 0 3px', borderRadius: radius,
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        after: { backgroundColor: CREAM, textDecoration: 'none; white-space: pre;' },
         light: { backgroundColor: CREAM, borderColor: EDGE }, dark: { backgroundColor: CREAM, borderColor: EDGE } });
       fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
       fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));
@@ -36028,13 +36044,25 @@ function meosApplyCodeFenceDecorations(editor) {
     const blocks = meosFenceBlocks(doc); if (!blocks.length) { put(); return; }
     const raw = meosRawLines(editor), lines = meosDocLines(doc);
     const L = (ln) => new vscode.Range(ln, 0, ln, 0);
+    // ★v4.2.259: 紙の幅= 折り返し幅。折り返さない設定の時だけ「その囲いの一番長い行」に合わせる
+    //   (紙thatが字より短いと、字that紙からはみ出す)。桁の数え方は家の物差し displayColumns(全角=2)。
+    const _wrap = meosWrapColumn();
+    const NB = '\u00a0';
+    const _slabItem = (ln, t, width) => {
+      const w = displayColumns(t), pad = Math.max(0, Math.min(400, width - w));
+      const it = { range: new vscode.Range(ln, 0, ln, t.length) };
+      if (pad > 0) it.renderOptions = { after: { contentText: NB.repeat(pad) } };
+      return it;
+    };
     for (const vr of meosScanSpans(editor, doc)) {
       for (const b of blocks) {
         if (b.close < vr[0] || b.open > vr[1]) continue;
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
+        let _w = _wrap;
+        if (!_w) { _w = 0; for (let ln = b.open; ln <= b.close; ln++) _w = Math.max(_w, displayColumns(lines[ln] || '')); }
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
-          (ln === b.open ? heads : (ln === b.close ? foots : body)).push(L(ln));
+          (ln === b.open ? heads : (ln === b.close ? foots : body)).push(_slabItem(ln, t, _w));
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(板だけ残す)
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
