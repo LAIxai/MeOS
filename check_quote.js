@@ -50,9 +50,14 @@ ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).bef
  ok(!!attr && attr[1].join()==='7' && attr[0]===(2+(wide-2-X.displayColumns('―― Spy Lai')))+'ch',
     '★★★出典(―― Spy Lai)は右寄せ= 字下げを「塊の幅 − その行の字」まで広げる', [attr, wide]);
 }
-ok(/borderWidth: '0 0 0 3px'/.test(fs.readFileSync(path.join(SRC,'extension.js'),'utf8'))
-   && /textBlockQuote\.border/.test(fs.readFileSync(path.join(SRC,'extension.js'),'utf8')),
-   '  左の罫は3点・色はテーマの引用色(textBlockQuote.border)', true);
+{const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/borderWidth: '0 0 0 3px'/.test(S)
+    && /const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';/.test(S)
+    && !/borderColor: new vscode\.ThemeColor\('textBlockQuote/.test(S),
+    '★★罫と引用符は**家の色**(紙と同じクリームの縁)= テーマの引用色は暗い地に沈む(Monokai)', true);
+ ok(/light: \{ before: bar\(MEOS_QUOTE_RULE_LIGHT\) \}, dark: \{ before: bar\(MEOS_QUOTE_RULE_DARK\) \}/.test(S)
+    && /light: \{ before: qmark\(MEOS_QUOTE_RULE_LIGHT\) \}, dark: \{ before: qmark\(MEOS_QUOTE_RULE_DARK\) \}/.test(S),
+    '  明るい地では濃い方に切り替える', true);}
 
 console.log('③ カーソルの行は生のまま / 囲いの中は触らない');
 X.meosApplyQuoteDecorations(mkEd(4));

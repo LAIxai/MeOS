@@ -36094,7 +36094,13 @@ let fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
 //   縦線1本はWeb由来の省略形so、それだけでは「本の顔」にならない。
 //   ★MeOS流= **本文は1字も変えない**= `>` は隠し、字下げ・罫・引用符・右寄せは全部**飾り**で作る。
 //   ★紙(コードブロック)と同じ物差し= 桁は `displayColumns`、幅は `ch`(字の font の1桁)so拡大に付いて行く。
-//   ★色はテーマの物を使う= `textBlockQuote.border`(引用の罫の色として VS Code that定義している)。
+//   ★色は家の色(v4.2.284で確定= テーマの引用色は暗い地に沈むテーマthat多い)。
+// ★★v4.2.284(俊克「ダークモード(Monokai)では、沈んでしまうので、別の色がいいね」):
+//   ★テーマの `textBlockQuote.border` は**暗い色を置くテーマthatが多い**(Monokaiは紺に近い)= 地に沈む。
+//   ★→ **紙(コードブロック)と同じ家の色**にする= クリームの縁 #cbb98c(暗い地) / 濃い方 #a8905a(明るい地)。
+//     引用符も罫も**MeOSの調度品**so、テーマに預けず家の色で持つ(紙と同じ材= 一目で同じ家の物と分かる)。
+//   ★引用の**字の色はテーマのまま**= それはテーマthat「引用はこう見せたい」と決めている所(Monokaiの紫の斜体)。
+const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';
 const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
 const MEOS_QUOTE_MARK = '“';  // 大きな引用符(段落の頭に1つだけ)
 const MEOS_QUOTE_ATTR_RE = /^\s*(?:――|——|—|--|──)\s*\S/;   // 出典の行(――/—/--)
@@ -36103,10 +36109,10 @@ const _quotePadTypes = new Map();  // '桁|段' → 字下げ(+罫)の駒
 function meosQuotePadType(cols, rows) {
   const key = cols + '|' + rows;
   let t = _quotePadTypes.get(key); if (t) return t;
+  const bar = (col) => ({ contentText: ' ', width: cols + 'ch', height: (rows * 100) + '%',
+    borderColor: col, borderStyle: 'solid', borderWidth: '0 0 0 3px', textDecoration: 'none; box-sizing: border-box;' });
   t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    before: { contentText: ' ', width: cols + 'ch', height: (rows * 100) + '%',
-      borderColor: new vscode.ThemeColor('textBlockQuote.border'), borderStyle: 'solid', borderWidth: '0 0 0 3px',
-      textDecoration: 'none; box-sizing: border-box;' } });
+    before: bar(MEOS_QUOTE_RULE_DARK), light: { before: bar(MEOS_QUOTE_RULE_LIGHT) }, dark: { before: bar(MEOS_QUOTE_RULE_DARK) } });
   _quotePadTypes.set(key, t); return t;
 }
 // 引用の塊= 続いている `>` の行。空行(>だけ)も塊の中。
@@ -36122,9 +36128,10 @@ function meosApplyQuoteDecorations(editor) {
     if (!quoteHideDeco) {
       quoteHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       // 大きな引用符= 幅を取らない飾り(字の下・淡く大きく)。本の扉の引用と同じ置き方。
+      const qmark = (col) => ({ contentText: MEOS_QUOTE_MARK, color: col,
+        textDecoration: 'none; position: absolute; left: 0.1ch; top: -0.15em; z-index: -1; font-size: 2.4em; line-height: 1; opacity: 0.75;' });
       quoteMarkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        before: { contentText: MEOS_QUOTE_MARK, color: new vscode.ThemeColor('textBlockQuote.border'),
-          textDecoration: 'none; position: absolute; left: 0.1ch; top: -0.15em; z-index: -1; font-size: 2.4em; line-height: 1; opacity: 0.55;' } });
+        before: qmark(MEOS_QUOTE_RULE_DARK), light: { before: qmark(MEOS_QUOTE_RULE_LIGHT) }, dark: { before: qmark(MEOS_QUOTE_RULE_DARK) } });
     }
     const pads = new Map(); const hides = [], marks = [];
     const put = () => {
