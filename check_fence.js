@@ -151,8 +151,8 @@ console.log('⑧ 本物の紙は字の側に置く(v4.2.278 — 桁は字の fon
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/before: \{ contentText: ' ', width: w \+ 'ch', height: '100%', backgroundColor: MEOS_FENCE_CREAM/.test(S)
-    && /position: absolute; left: 0; top: 0; z-index: 0;/.test(S),
-    '★★★駒は字の側= ch that字の font の1桁になる(Cmd\\+= で字だけ拡大されても付いて行く)', true);
+    && /position: absolute; left: 0; top: 0; z-index: -1;/.test(S),
+    '★★★駒は字の側= ch that字の font の1桁になる・z-index:-1 で字の下(位置を持つ箱は既定で字より上so隠してしまう)', true);
  ok(/const MEOS_FENCE_COL_RATIO = 0\.55;/.test(S),
     '★予備の板は狭めに見積もる= 本物より外に出ない(出ると角が四角く覗く)', true);
  ok(/z-index: 2; font-size: 0\.82em/.test(S), '  札は駒の上(z-index)', true);

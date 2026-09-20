@@ -35976,7 +35976,9 @@ function meosFencePaperCapType(w, kind) {
   const radius = (kind === 'head') ? '6px 6px 0 0' : ((kind === 'foot') ? '0 0 6px 6px' : '0');
   t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     before: { contentText: ' ', width: w + 'ch', height: '100%', backgroundColor: MEOS_FENCE_CREAM, borderRadius: radius,
-      textDecoration: 'none; position: absolute; left: 0; top: 0; z-index: 0;' } });
+      textDecoration: 'none; position: absolute; left: 0; top: 0; z-index: -1;' } });
+  // ★v4.2.279: z-index は **-1**= 位置を持つ箱は、何も言わないと**字より上**に描かれる(字を隠してしまう)。
+  //   負の値だけthat「字の下・行の地の上」に入る。札(言語名)は逆に上(2)に置く。
   _fencePaperCapTypes.set(key, t); return t;
 }
 const _fencePaperTypes = new Map();   // '幅(点)|役' → 予備の板(幅ごとに1つ・使い回す)
