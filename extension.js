@@ -35936,13 +35936,28 @@ function meosFenceWrapColumn() {
     return Math.max(20, Math.min(300, Number(cfg.get('wordWrapColumn', 80)) || 80));
   } catch (_) { return 0; }
 }
-const _fencePaperTypes = new Map();   // '桁|役' → 装飾の型(幅ごとに1つ・使い回す)
+// ★★★v4.2.277(俊克 バグ1「中のコードが食み出している。なぜ?」の真因):
+//   ★★★**`ch` は「その箱の font の 0 の幅」**= 紙の箱(.cdr)は**エディタの等幅font を継いでいない**
+//     (VSCodiumのCSSを読んだ= .monaco-editor に font の指定thatが無く、字の font は字の側だけに当たる)。
+//     so 49桁と言ったのに、画面では44桁ぶんしか無く、コードthat右へ食み出していた(実測: 44/49≒0.9)。
+//   ★★→ **桁を点(px)に直してから渡す**= 半角1桁 ≒ 字の大きさ × 0.62(等幅fontの目安・**広めに取る**)。
+//     広めに取るのは、紙thatが字より短いと食み出す(直す前の姿)= **足りない方が悪い**から。
+//   ★字の大きさは設定(editor.fontSize)that知っている。設定that変われば型は作り直す(鍵に入れてある)。
+const MEOS_FENCE_COL_RATIO = 0.62;
+function meosFenceColPx() {
+  try {
+    const n = Number(vscode.workspace.getConfiguration('editor').get('fontSize', 14));
+    return Math.max(6, Math.min(48, (isFinite(n) && n > 0 ? n : 14))) * MEOS_FENCE_COL_RATIO;
+  } catch (_) { return 14 * MEOS_FENCE_COL_RATIO; }
+}
+const _fencePaperTypes = new Map();   // '幅(点)|役' → 装飾の型(幅ごとに1つ・使い回す)
 function meosFencePaperType(w, kind) {
-  const key = w + '|' + kind;
+  const px = Math.round(w * meosFenceColPx());
+  const key = px + '|' + kind;
   let t = _fencePaperTypes.get(key); if (t) return t;
   const radius = (kind === 'head') ? '6px 0 0 0' : ((kind === 'foot') ? '0 0 0 6px' : '0');
   t = vscode.window.createTextEditorDecorationType({ isWholeLine: true, backgroundColor: 'transparent',
-    borderStyle: 'solid', borderWidth: '0 0 0 ' + w + 'ch', borderColor: MEOS_FENCE_CREAM, borderRadius: radius });
+    borderStyle: 'solid', borderWidth: '0 0 0 ' + px + 'px', borderColor: MEOS_FENCE_CREAM, borderRadius: radius });
   _fencePaperTypes.set(key, t); return t;
 }
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない

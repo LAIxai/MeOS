@@ -27,7 +27,7 @@ const mkEd=(caret)=>({document:doc,visibleRanges:[new stub.Range(0,0,L.length-1,
 const lineSet=(t)=>new Set((seen.get(t)||[]).map(x=>(x.range||x).start.line));
 // ★v4.2.274: 型は幅ごとに作るso、並び順でなく**中身の指定**で見分ける(角丸と縁の幅で役that分かる)
 const D=()=>{const a=[...seen.keys()], o=(k)=>(k.__opts||{});
-  const pap=a.filter(k=>/ch$/.test(String(o(k).borderWidth||'')));
+  const pap=a.filter(k=>/^0 0 0 \d+px$/.test(String(o(k).borderWidth||'')));
   return { head: pap.find(k=>o(k).borderRadius==='6px 0 0 0'), foot: pap.find(k=>o(k).borderRadius==='0 0 0 6px'),
            body: pap.find(k=>o(k).borderRadius==='0'),
            ink: a.find(k=>/color: #3b3020/.test(String((o(k).dark||{}).textDecoration||''))),
@@ -103,9 +103,9 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
 console.log('⑦ 紙は「中身の大きさ」(v4.2.274 — 行いっぱいの箱から降りる)');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/borderWidth: '0 0 0 ' \+ w \+ 'ch', borderColor: MEOS_FENCE_CREAM/.test(S)
-    && /backgroundColor: 'transparent'/.test(S),
-    '★★★紙= 左の太い縁(クリーム)を桁(ch)で引く= 幅は左から数える(窓にも中身にもよらない)', true);
+ ok(/borderWidth: '0 0 0 ' \+ px \+ 'px', borderColor: MEOS_FENCE_CREAM/.test(S)
+    && /backgroundColor: 'transparent'/.test(S) && /const MEOS_FENCE_COL_RATIO = 0\.62;/.test(S),
+    '★★★紙= 左の太い縁(クリーム)・幅は桁を点(px)に直して渡す(chは箱のfontの0の幅so合わない・v4.2.277)', true);
  ok(/isWholeLine: true, backgroundColor: 'transparent'/.test(S),
     '★行いっぱいの型のまま= 高さは行の高さぴったり(埋め草の段違いthat起きない)', true);
  ok(/const MEOS_FENCE_PAD_COLS = 2;/.test(S) && /w \+= MEOS_FENCE_PAD_COLS;/.test(S)
@@ -127,18 +127,18 @@ console.log('⑦ 紙は「中身の大きさ」(v4.2.274 — 行いっぱいの�
    selection:{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true},
    selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],
    setDecorations:(t,items)=>seen.set(t,items)});
-  const used=[...seen.keys()].filter(k=>(seen.get(k)||[]).length && /ch$/.test(String((k.__opts||{}).borderWidth||'')));
-  ok(used.length && used.every(k=>(k.__opts.borderWidth)==='0 0 0 40ch'),
+  const used=[...seen.keys()].filter(k=>(seen.get(k)||[]).length && /^0 0 0 \d+px$/.test(String((k.__opts||{}).borderWidth||'')));
+  ok(used.length && used.every(k=>(k.__opts.borderWidth)==='0 0 0 ' + Math.round(40*14*0.62) + 'px'),
      '  長い1行(折り返す)の紙は、折り返し幅(40)で止まる', used.map(k=>k.__opts.borderWidth));
   stub.workspace.getConfiguration=_g;}
  // 実物: 型は幅ごとに1つ・頭/足/中で角丸が違う
  X.meosApplyCodeFenceDecorations(mkEd(0));
  {const K=[...seen.keys()], at=(x)=>(x.range||x).start.line;
   const used=K.filter(k=>(seen.get(k)||[]).length).map(k=>[k.__opts&&k.__opts.borderWidth, k.__opts&&k.__opts.borderRadius, (seen.get(k)||[]).map(at)]);
-  const papers=used.filter(u=>u[0]&&/ch$/.test(String(u[0])));
+  const papers=used.filter(u=>u[0]&&/^0 0 0 \d+px$/.test(String(u[0])));
   ok(papers.length===3, '  頭・中・足の3つの型that使われる(幅は同じ)', papers);
   const w=[...new Set(papers.map(p=>String(p[0])))];
-  ok(w.length===1 && w[0]==='0 0 0 17ch', '★★一番長い行(15桁)+2桁= 17ch で3行とも同じ幅', w);
+  ok(w.length===1 && w[0]==='0 0 0 ' + Math.round(17*14*0.62) + 'px', '★★一番長い行(15桁)+2桁= 17桁ぶんの点で3行とも同じ幅', w);
   const head=papers.find(p=>p[2].join()==='2'), foot=papers.find(p=>p[2].join()==='5');
   ok(head && head[1]==='6px 0 0 0' && foot && foot[1]==='0 0 0 6px',
      '★頭は左上・足は左下thatが丸い(右は切り口so丸められない)', [head&&head[1],foot&&foot[1]]);}
