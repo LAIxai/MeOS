@@ -47,8 +47,8 @@ ok(pads.length>=2, '  字下げの駒は幅ごとに1つ', pads.map(k=>o2(k).bef
  ok(!!two && two[1].join()==='2,3,4,5,6', '★ふつうの引用行は2桁の字下げ', used);
  const attr=used.find(u=>u[0]!=='2ch');
  const wide=Math.max(...[2,4,5,7].map(i=>2+X.displayColumns(L[i].replace(/^> ?/,''))));
- ok(!!attr && attr[1].join()==='7' && attr[0]===(2+(wide-2-X.displayColumns('―― Spy Lai')-3))+'ch',
-    '★★★出典(―― Spy Lai)は右寄せ・右端より3桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
+ ok(!!attr && attr[1].join()==='7' && attr[0]===(2+(wide-2-X.displayColumns('―― Spy Lai')-6))+'ch',
+    '★★★出典(―― Spy Lai)は右寄せ・右端より6桁内側で止める(v4.2.285 俊克「離れ過ぎ」)', [attr, wide]);
 }
 {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/borderWidth: '0 0 0 3px'/.test(S)

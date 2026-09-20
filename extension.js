@@ -36102,9 +36102,12 @@ let fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
 //   ★引用の**字の色はテーマのまま**= それはテーマthat「引用はこう見せたい」と決めている所(Monokaiの紫の斜体)。
 const MEOS_QUOTE_RULE_DARK = '#cbb98c', MEOS_QUOTE_RULE_LIGHT = '#a8905a';
 const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
-// ★v4.2.285(俊克「最後の引用先that少し右に離れ過ぎている。引用文の右端より、2、3文字前くらいの位置から」):
-//   ★出典は**引用の右端ぴったり**ではなく、**少し内側**で止める= 本の組み方(右端に貼り付けると窮屈に見える)。
-const MEOS_QUOTE_ATTR_INSET = 3;   // 出典を右端から何桁内側で止めるか
+// ★v4.2.285/286(俊克「引用文の右端より2、3文字前」→「1行目の『無かった。』の『無』の字の位置から始めるくらい」):
+//   ★出典は**引用の右端ぴったり**ではなく**少し内側**で止める= 本の組み方(右端に貼り付けると窮屈)。
+//   ★★数を3→6に増やしたのは、**和文の桁の数え方**のため= MeOSは全角を2桁と数えるthat、
+//     画面の全角(斜体の引用)は半角2つより**少し狭い**(実測で約0.9)。so和文の長い行は
+//     私の数の上では実際より長くなり、出典that右へ押し出される。その差を6桁で吸収する。
+const MEOS_QUOTE_ATTR_INSET = 6;   // 出典を右端から何桁内側で止めるか
 const MEOS_QUOTE_MARK = '“';  // 大きな引用符(段落の頭に1つだけ)
 const MEOS_QUOTE_ATTR_RE = /^\s*(?:――|——|—|--|──)\s*\S/;   // 出典の行(――/—/--)
 let quoteHideDeco = null, quoteMarkDeco = null;
