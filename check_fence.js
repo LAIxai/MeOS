@@ -27,9 +27,9 @@ const mkEd=(caret)=>({document:doc,visibleRanges:[new stub.Range(0,0,L.length-1,
 const lineSet=(t)=>new Set((seen.get(t)||[]).map(x=>(x.range||x).start.line));
 // ★v4.2.274: 型は幅ごとに作るso、並び順でなく**中身の指定**で見分ける(角丸と縁の幅で役that分かる)
 const D=()=>{const a=[...seen.keys()], o=(k)=>(k.__opts||{});
-  const pap=a.filter(k=>/^0 0 0 \d+px$/.test(String(o(k).borderWidth||'')));
-  return { head: pap.find(k=>o(k).borderRadius==='6px 0 0 0'), foot: pap.find(k=>o(k).borderRadius==='0 0 0 6px'),
-           body: pap.find(k=>o(k).borderRadius==='0'),
+  const pap=a.filter(k=>o(k).before && /ch$/.test(String(o(k).before.width||'')));
+  return { head: pap.find(k=>o(k).before.borderRadius==='8px 8px 0 0'), foot: pap.find(k=>o(k).before.borderRadius==='0 0 8px 8px'),
+           body: pap.find(k=>o(k).before.borderRadius==='0'),
            ink: a.find(k=>/color: #3b3020/.test(String((o(k).dark||{}).textDecoration||''))),
            tick: a.find(k=>/transparent !important/.test(String(o(k).textDecoration||''))),
            lang: a.find(k=>o(k).before && o(k).before.color==='#6b5a3a'),
@@ -102,67 +102,29 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
     '★★★見出し/箇条書きの口も自前で数えない(俊克 バグ2= ⑤から下の印that全部消えていた)', true);
  ok(/_fcFence && _fcFence\.has\(i\)/.test(S), '  ⏰の走査も同じ口', true);
 }
-console.log('⑦ 紙は「中身の大きさ」(v4.2.274 — 行いっぱいの箱から降りる)');
+console.log('⑦⑧ 紙は字の側の駒1枚(v4.2.280 — 予備の板は撤去・段をまたぐ)');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/borderWidth: '0 0 0 ' \+ px \+ 'px', borderColor: MEOS_FENCE_CREAM/.test(S)
-    && /backgroundColor: 'transparent'/.test(S) && /const MEOS_FENCE_COL_RATIO = 0\.55;/.test(S),
-    '★★★紙= 左の太い縁(クリーム)・幅は桁を点(px)に直して渡す(chは箱のfontの0の幅so合わない・v4.2.277)', true);
- ok(/isWholeLine: true, backgroundColor: 'transparent'/.test(S),
-    '★行いっぱいの型のまま= 高さは行の高さぴったり(埋め草の段違いthat起きない)', true);
- ok(/const MEOS_FENCE_PAD_COLS = 2;/.test(S) && /w \+= MEOS_FENCE_PAD_COLS;/.test(S)
-    && /displayColumns\(lines\[i\] \|\| ''\)/.test(S),
-    '★幅= その囲いの一番長い行 + 余白2桁(家の物差し displayColumns)', true);
- ok(!/meosFenceRightGap/.test(S) && !/MEOS_FENCE_RIGHT_GAP/.test(S) && !/fenceSlabDeco/.test(S),
-    '  窓の端から削る道(v4.2.263〜273)は残骸ごと畳んだ', true);
- // ★v4.2.276: 折り返し幅that上限 / 囲いの中では顔も描かない
- ok(/function meosFenceWrapColumn\(doc\)/.test(S) && /return wc \? Math\.min\(w, wc\) : w;/.test(S)
-    && /getConfiguration\('editor', doc \? \{ uri: doc\.uri, languageId: doc\.languageId \} : undefined\)/.test(S)
-    && /meosFenceColPx\(doc\)/.test(S) && /meosFenceWrapColumn\(doc\)/.test(S),
-    '★★★折り返し幅を上限にし、設定は**その文書のつもり**で読む= [markdown]の61that効く(素で読むと全体の45で16桁食み出す・v4.2.278)', true);
- ok(/if \(_inFence\) continue;/.test(S),
-    '★★★囲いの中では顔も符も番号も描かない= 「囲いの中は、ぜんぶ文字」を全部に広げる(俊克 バグ1)', true);
- {const W2=['# t','```','<!-- {* ▼mCN=これは膜ではない_20260920S105400JST // 板の中は文字 *} -->','```'];
-  const wd={uri:{toString:()=>'file:///w2.md',fsPath:'/w2.md',scheme:'file'},languageId:'markdown',lineCount:W2.length,
-   lineAt:n=>({text:W2[n],range:new stub.Range(n,0,n,W2[n].length)}),getText:()=>W2.join('\n'),eol:1,fileName:'/w2.md',isClosed:false,version:1};
-  const _g=stub.workspace.getConfiguration;
-  stub.workspace.getConfiguration=()=>({get:(k,dv)=>(k==='wordWrap'?'wordWrapColumn':(k==='wordWrapColumn'?40:dv)),update(){}});
-  X.meosApplyCodeFenceDecorations({document:wd,visibleRanges:[new stub.Range(0,0,W2.length-1,0)],
-   selection:{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true},
-   selections:[{active:{line:0,character:0},anchor:{line:0,character:0},isEmpty:true}],
-   setDecorations:(t,items)=>seen.set(t,items)});
-  const used=[...seen.keys()].filter(k=>(seen.get(k)||[]).length && /^0 0 0 \d+px$/.test(String((k.__opts||{}).borderWidth||'')));
-  ok(used.length && used.every(k=>(k.__opts.borderWidth)==='0 0 0 ' + Math.round(40*14*0.55) + 'px'),
-     '  長い1行(折り返す)の紙は、折り返し幅(40)で止まる', used.map(k=>k.__opts.borderWidth));
-  stub.workspace.getConfiguration=_g;}
- // 実物: 型は幅ごとに1つ・頭/足/中で角丸が違う
- X.meosApplyCodeFenceDecorations(mkEd(0));
- {const K=[...seen.keys()], at=(x)=>(x.range||x).start.line;
-  const used=K.filter(k=>(seen.get(k)||[]).length).map(k=>[k.__opts&&k.__opts.borderWidth, k.__opts&&k.__opts.borderRadius, (seen.get(k)||[]).map(at)]);
-  const papers=used.filter(u=>u[0]&&/^0 0 0 \d+px$/.test(String(u[0])));
-  ok(papers.length===3, '  頭・中・足の3つの型that使われる(幅は同じ)', papers);
-  const w=[...new Set(papers.map(p=>String(p[0])))];
-  ok(w.length===1 && w[0]==='0 0 0 ' + Math.round(17*14*0.55) + 'px', '★★一番長い行(15桁)+2桁= 17桁ぶんの点で3行とも同じ幅', w);
-  const head=papers.find(p=>p[2].join()==='2'), foot=papers.find(p=>p[2].join()==='5');
-  ok(head && head[1]==='6px 0 0 0' && foot && foot[1]==='0 0 0 6px',
-     '★頭は左上・足は左下thatが丸い(右は切り口so丸められない)', [head&&head[1],foot&&foot[1]]);}
-}
-console.log('⑧ 本物の紙は字の側に置く(v4.2.278 — 桁は字の font で数える)');
-{
- const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/before: \{ contentText: ' ', width: w \+ 'ch', height: '100%', backgroundColor: MEOS_FENCE_CREAM/.test(S)
-    && /position: absolute; left: 0; top: 0; z-index: -1;/.test(S),
-    '★★★駒は字の側= ch that字の font の1桁になる・z-index:-1 で字の下(位置を持つ箱は既定で字より上so隠してしまう)', true);
- ok(/const MEOS_FENCE_COL_RATIO = 0\.55;/.test(S),
-    '★予備の板は狭めに見積もる= 本物より外に出ない(出ると角が四角く覗く)', true);
+ ok(/before: \{ contentText: ' ', width: w \+ 'ch', height: \(rows \* 100\) \+ '%'/.test(S)
+    && /position: absolute; left: 0; top: 0; z-index: -1; border-radius: ' \+ radius \+ ' !important;/.test(S),
+    '★★★駒は字の側(ch=字の1桁)・段の数だけ高い・字の下(z-index:-1)・角丸は2つの口で言う', true);
+ ok(/const MEOS_FENCE_RADIUS = '8px';/.test(S), '★角丸は8点(6点では見えなかった)', true);
+ ok(!/_fencePaperTypes/.test(S) && !/meosFenceColPx/.test(S) && !/MEOS_FENCE_COL_RATIO/.test(S),
+    '★★予備の板(点で見積もる方)は撤去= 段をまたぐ所で狭い板thatはみ出して「凹」に見えていた', true);
+ ok(/const _rows = _wrapCol \? Math\.max\(1, Math\.min\(20, Math\.ceil\(displayColumns\(t\) \/ _wrapCol\)\)\) : 1;/.test(S),
+    '★段の数= その行の桁 ÷ 折り返し幅(折り返さない設定なら1段)', true);
+ ok(/function meosFenceWrapColumn\(doc\)/.test(S)
+    && /getConfiguration\('editor', doc \? \{ uri: doc\.uri, languageId: doc\.languageId \} : undefined\)/.test(S),
+    '★★設定は**その文書のつもり**で読む= [markdown]の61that効く(素で読むと全体の45で16桁食み出す)', true);
  ok(/z-index: 2; font-size: 0\.82em/.test(S), '  札は駒の上(z-index)', true);
  X.meosApplyCodeFenceDecorations(mkEd(0));
- {const d=D(), at=(x)=>(x.range||x).start.line;
-  const h=d.cap('head'), b2=d.cap('body'), f=d.cap('foot');
-  ok(!!h && !!b2 && !!f, '  頭・中・足の駒thatそろっている', [!!h,!!b2,!!f]);
-  ok(h && (seen.get(h)||[]).map(at).join()==='2' && f && (seen.get(f)||[]).map(at).join()==='5'
-     && b2 && (seen.get(b2)||[]).map(at).join()==='3,4', '  駒は囲いの全部の行に1つずつ', true);
-  ok(h && h.__opts.before.width==='17ch' && h.__opts.before.borderRadius==='6px 6px 0 0',
-     '★★頭の駒= 17桁・上の2つの角that丸い(右上も丸められる= 本物の端だから)', h && [h.__opts.before.width,h.__opts.before.borderRadius]);}
+ {const a=[...seen.keys()], o=(k)=>(k.__opts||{}), at=(x)=>(x.range||x).start.line;
+  const caps=a.filter(k=>o(k).before && /ch$/.test(String(o(k).before.width||'')));
+  ok(caps.length===3, '  頭・中・足の3つの型(幅と段が同じなら使い回す)', caps.map(k=>[o(k).before.width,o(k).before.borderRadius]));
+  const head=caps.find(k=>o(k).before.borderRadius==='8px 8px 0 0');
+  ok(head && head.__opts.before.width==='17ch' && (seen.get(head)||[]).map(at).join()==='2',
+     '★★頭の駒= 17桁・上の2つの角that丸い(右上も丸められる= 本物の端だから)', head&&[head.__opts.before.width,(seen.get(head)||[]).map(at)]);
+  const foot=caps.find(k=>o(k).before.borderRadius==='0 0 8px 8px');
+  ok(foot && (seen.get(foot)||[]).map(at).join()==='5', '  足の駒= 下の2つの角that丸い', foot&&(seen.get(foot)||[]).map(at));}
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
