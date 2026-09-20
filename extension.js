@@ -35927,9 +35927,9 @@ const MEOS_FENCE_PAD_COLS = 2;     // 紙の右の余白(桁)
 // ★★v4.2.276(俊克 改良1「コードのときもクリーム色が無駄に伸びているのはなぜか?」):
 //   ★**折り返した行は、画面では折り返し幅までしか出ていない**のに、紙は**論理行の桁**で測っていた=
 //     長い1行that2段に折り返っている時、紙だけthat右へ伸びる。→ **折り返し幅を上限**にする。
-function meosFenceWrapColumn() {
+function meosFenceWrapColumn(doc) {
   try {
-    const cfg = vscode.workspace.getConfiguration('editor');
+    const cfg = meosFenceCfg(doc);
     const mode = String(cfg.get('wordWrap', 'off'));
     if (mode === 'off') return 0;                  // 折り返さない= 上限なし(紙は一番長い行のまま)
     if (mode === 'on') return 0;                   // 窓の端で折り返す= 桁を読めないso上限を置かない
@@ -35943,16 +35943,45 @@ function meosFenceWrapColumn() {
 //   ★★→ **桁を点(px)に直してから渡す**= 半角1桁 ≒ 字の大きさ × 0.62(等幅fontの目安・**広めに取る**)。
 //     広めに取るのは、紙thatが字より短いと食み出す(直す前の姿)= **足りない方が悪い**から。
 //   ★字の大きさは設定(editor.fontSize)that知っている。設定that変われば型は作り直す(鍵に入れてある)。
-const MEOS_FENCE_COL_RATIO = 0.62;
-function meosFenceColPx() {
+const MEOS_FENCE_COL_RATIO = 0.55;   // v4.2.278: 予備の板は**必ず本物より内側**に(狭めに見積もる)
+// ★★★v4.2.278(俊克 バグ1「3枚とも、折り返し幅61だけど、食み出している。なぜ?」の真因):
+//   ★★★**設定を「その文書のつもり」で読んでいなかった**= 俊克の折り返し幅61は
+//     `"[markdown]": { "editor.wordWrapColumn": 61 }` = **言語ごとの設定**。
+//     `getConfiguration('editor')` を**素で**読むと、全体の値(45)that返る= 紙は45桁で切り、
+//     字は61桁まで伸びる → 16桁ぶん食み出す(俊克の実物の設定を読んで確かめた)。
+//   ★★→ **文書を渡して読む**= `getConfiguration('editor', { uri, languageId })`。
+//     これで [markdown] の値・フォルダごとの値・全体の値thatVS Codeの決めた順で解決される。
+//   ★字の大きさも同じ= 言語ごとに変えている人that居るso、同じ口から読む。
+function meosFenceCfg(doc) {
+  try { return vscode.workspace.getConfiguration('editor', doc ? { uri: doc.uri, languageId: doc.languageId } : undefined); }
+  catch (_) { return vscode.workspace.getConfiguration('editor'); }
+}
+function meosFenceColPx(doc) {
   try {
-    const n = Number(vscode.workspace.getConfiguration('editor').get('fontSize', 14));
+    const n = Number(meosFenceCfg(doc).get('fontSize', 14));
     return Math.max(6, Math.min(48, (isFinite(n) && n > 0 ? n : 14))) * MEOS_FENCE_COL_RATIO;
   } catch (_) { return 14 * MEOS_FENCE_COL_RATIO; }
 }
-const _fencePaperTypes = new Map();   // '幅(点)|役' → 装飾の型(幅ごとに1つ・使い回す)
-function meosFencePaperType(w, kind) {
-  const px = Math.round(w * meosFenceColPx());
+// ★★★v4.2.278(俊克 バグ1「3枚とも、折り返し幅61だけど、食み出している」の2つ目の穴):
+//   ★★★**字の大きさthat設定の数と違う**= 俊克の画面の1桁は約20点so、設定(13)から出した約8点とは2.5倍違う
+//     (Cmd+= の「字だけ拡大」は設定に書かれず、拡張からは読めない)。**点で見積もる道は当てにならない**。
+//   ★★→ **紙を字の側に置く**= `before` の駒は**字の font を継ぐ**so `ch` thatそのまま「1桁」になる=
+//     拡大しても、fontを変えても、紙は字に付いて行く。高さは `height:100%`(行いっぱい)。
+//   ★行いっぱいの板(点で見積もる方)は**予備**として残す= 駒that出ない版でも紙は出る(狭いだけ)。
+//   ★札(言語名)は駒の上に出す= z-index で順を決める(どちらも position:absolute)。
+const _fencePaperCapTypes = new Map();   // '桁|役' → 字の側の紙(本物)
+function meosFencePaperCapType(w, kind) {
+  const key = w + '|' + kind;
+  let t = _fencePaperCapTypes.get(key); if (t) return t;
+  const radius = (kind === 'head') ? '6px 6px 0 0' : ((kind === 'foot') ? '0 0 6px 6px' : '0');
+  t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { contentText: ' ', width: w + 'ch', height: '100%', backgroundColor: MEOS_FENCE_CREAM, borderRadius: radius,
+      textDecoration: 'none; position: absolute; left: 0; top: 0; z-index: 0;' } });
+  _fencePaperCapTypes.set(key, t); return t;
+}
+const _fencePaperTypes = new Map();   // '幅(点)|役' → 予備の板(幅ごとに1つ・使い回す)
+function meosFencePaperType(w, kind, doc) {
+  const px = Math.round(w * meosFenceColPx(doc));
   const key = px + '|' + kind;
   let t = _fencePaperTypes.get(key); if (t) return t;
   const radius = (kind === 'head') ? '6px 0 0 0' : ((kind === 'foot') ? '0 0 0 6px' : '0');
@@ -36074,12 +36103,13 @@ function meosApplyCodeFenceDecorations(editor) {
       fenceTickDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       // 札は幅を取らない(隠した ``` の上に浮かせる・v4.2.226の📄と同じ手)
       fenceLangDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
+        before: { color: '#6b5a3a', margin: '0 0 0 2px', textDecoration: 'none; position: absolute; z-index: 2; font-size: 0.82em; font-weight: 700; letter-spacing: 0.08em;' } });
     }
-    const paper = new Map();                                        // 型 → 置く行
+    const paper = new Map();                                        // 型 → 置く行(予備の板と、字の側の紙)
     const inks = [], ticks = [], langs = [];
     const put = () => {
       for (const t of _fencePaperTypes.values()) editor.setDecorations(t, paper.get(t) || []);
+      for (const t of _fencePaperCapTypes.values()) editor.setDecorations(t, paper.get(t) || []);
       editor.setDecorations(fenceInkDeco, inks); editor.setDecorations(fenceTickDeco, ticks); editor.setDecorations(fenceLangDeco, langs);
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
@@ -36096,15 +36126,17 @@ function meosApplyCodeFenceDecorations(editor) {
         const _w = (() => {
           let w = 0; for (let i = b.open; i <= b.close; i++) w = Math.max(w, displayColumns(lines[i] || ''));
           w += MEOS_FENCE_PAD_COLS;
-          const wc = meosFenceWrapColumn();          // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
+          const wc = meosFenceWrapColumn(doc);       // v4.2.276: 折り返し幅that上限(折り返った行は其処までしか出ていない)
           return wc ? Math.min(w, wc) : w;
         })();
         const from = Math.max(b.open, vr[0]), to = Math.min(b.close, vr[1]);
         for (let ln = from; ln <= to; ln++) {
           const t = lines[ln] || '';
-          const ty = meosFencePaperType(_w, ln === b.open ? 'head' : (ln === b.close ? 'foot' : 'body'));
-          if (!paper.has(ty)) paper.set(ty, []);
-          paper.get(ty).push(L(ln));
+          const _kind = (ln === b.open) ? 'head' : ((ln === b.close) ? 'foot' : 'body');
+          for (const ty of [meosFencePaperType(_w, _kind, doc), meosFencePaperCapType(_w, _kind)]) {
+            if (!paper.has(ty)) paper.set(ty, []);
+            paper.get(ty).push(L(ln));
+          }
           if (raw.has(ln)) continue;                                   // カーソルの行= 字は生のまま(紙だけ残す)
           if (ln === b.open || ln === b.close) {
             if (t.length) ticks.push(new vscode.Range(ln, 0, ln, t.length));   // ``` と言語名の字を透明に
