@@ -142,5 +142,7 @@ console.log('⑨ 見出しの中のインラインコードは板にしない(v4
     && /headPill\('4px 0 0 4px'\)/.test(S9) && /headPill\('0 4px 4px 0'\)/.test(S9),
     '★★見出しの中でも板を出す= 上書き(!important)で、角丸は**両端の駒だけ**= 継ぐと1本の角丸の帯(v4.2.302)', true);
  ok(/if \(!_head299\) \{ MEOS_CODE_VER_RE/.test(S9), '  版番号の橙も見出しの中では出さない(色thatぶつかる)', true);
+ ok(/if \(isFile0\) files\.push\(R\(ln, s, cs\)\);/.test(S9),
+    '★見出しの中でも📄の札は出す= ファイルの道筋だと読める(v4.2.303 俊克 バグ1)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');

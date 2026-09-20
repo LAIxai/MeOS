@@ -36121,6 +36121,10 @@ function meosApplyCodeSpanDecorations(editor) {
         //   表の行では ` を隠さない(列の幅を崩さない・v4.2.223の約束)so、**板の方を ` の外まで広げる**=
         //   見えている ` も板の中に入り、字の色も板の色に揃う。隠す/隠さないの約束は1つも変えていない。
         if (_head299) {                                            // v4.2.302: 見出しの中は3つ継いで1本の角丸の帯に
+          // ★v4.2.303(俊克 バグ1「見出しに入れると、最初のラベルthat出ない」):
+          //   ★ファイルの道筋(.vsix 等)には📄の札thatが付くthat、見出しの枝で落としていた。
+          //     見出しでも**同じ札を出す**= 記法の意味(これはファイル)thatが見出しでも読める。
+          if (isFile0) files.push(R(ln, s, cs));
           heads300.push(R(ln, cs - 1, cs)); headsMid.push(R(ln, cs, ce)); headsEnd.push(R(ln, ce, ce + 1));
         }
         else if (isFile) { if (tbl.has(ln)) { clocks.push(R(ln, s, e)); creamPush(ln, s, e); } else { files.push(R(ln, s, cs)); clocks.push(R(ln, s, ce + 1)); creamPush(ln, cs, ce); } }   // v4.2.237(俊克「リンク指定の方もクリーム色に」)
