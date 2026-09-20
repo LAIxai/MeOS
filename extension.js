@@ -35900,7 +35900,19 @@ let _meosFenceCache = { key: null, set: null };
 // ★★v4.2.256: 囲み(```)を**1つの口で数える**= 行の集まりを欲しい口(板を描く)と、
 //   行番号だけを欲しい口(インラインがthat中を触らない為)の両方が、同じ走査から出る
 //   → [[feedback_one_source_for_mark_count_action]]。
-const MEOS_FENCE_RIGHT_GAP = 44;   // v4.2.264(俊克「かなり短くしないと駄目だね」): 紙の右端を窓の端から何点(px)手前で止めるか。14では印(縦スクロールバー＋概観ルーラ)に届かなかったso、一度に大きく寄せる(数は1字で変わる)
+// ★★★v4.2.272(俊克「削る幅は、スクロールバーの左端から3〜5ピクセルくらい左の位置に調整しよう」
+//   ＋「どうしてもスクロールバーは避けたい。選択しようとしてそこをクリックすると、意図に反してスクロールしてしまう」):
+//   ★★**幅を勘で決めない**= スクロールバーの幅は設定(editor.scrollbar.verticalScrollbarSize・既定14)that知っている。
+//     紙の右端 = その幅 ＋ 4点(俊克の「3〜5」の真ん中)。44点は広すぎて、窓を狭めると字that紙からはみ出していた。
+//   ★設定that変わったら型を作り直す(覚えた値と違えば捨てて作る)= 望む姿と今の姿を突き合わせる。
+const MEOS_FENCE_RIGHT_PAD = 4;    // スクロールバーの左端から更に何点左で止めるか
+function meosFenceRightGap() {
+  try {
+    const n = Number(vscode.workspace.getConfiguration('editor').get('scrollbar.verticalScrollbarSize', 14));
+    return Math.max(6, Math.min(80, (isFinite(n) && n > 0 ? n : 14))) + MEOS_FENCE_RIGHT_PAD;
+  } catch (_) { return 14 + MEOS_FENCE_RIGHT_PAD; }
+}
+let _meosFenceGapUsed = -1;        // 型を作った時の幅(設定that変わったら作り直す)
 const MEOS_FENCE_MAX_LINES = 300;   // v4.2.258: これより長い「囲い」は迷子の ``` that2本たまたま合っただけ= 数に入れない
 let _meosFenceBlkCache = { key: null, list: null };
 function meosFenceBlocks(doc) {
@@ -36008,7 +36020,13 @@ function meosApplyCodeFenceDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
     const doc = editor.document;
+    const _gap = meosFenceRightGap();
+    if (fenceSlabDeco && _meosFenceGapUsed !== _gap) {              // v4.2.272: 設定that変わった= 型を捨てて作り直す(6つまとめて)
+      for (const d of [fenceSlabDeco, fenceHeadDeco, fenceFootDeco, fenceInkDeco, fenceTickDeco, fenceLangDeco]) { try { if (d) d.dispose(); } catch (_) { } }
+      fenceSlabDeco = fenceHeadDeco = fenceFootDeco = fenceInkDeco = fenceTickDeco = fenceLangDeco = null;
+    }
     if (!fenceSlabDeco) {
+      _meosFenceGapUsed = _gap;
       const CREAM = '#f3e6c4', EDGE = '#cbb98c', INK = '#3b3020';   // インラインの板と同じ値(v4.2.236/242)
       // ★★★v4.2.262(俊克「私が言いたかったのは、前後の文字、今、表示している部分の最大幅…
       //   結局は、スクロールバーの左端までの長さにして、と言えば良かったのかもね」):
@@ -36047,7 +36065,7 @@ function meosApplyCodeFenceDecorations(editor) {
       //     クリームの右に**細いヒゲ**thatはみ出していた(俊克のスクショの右端)。左の1pxだけ残す。
       const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid',
         borderColor: 'transparent ' + CUT + ' transparent ' + EDGE,
-        borderWidth: '0 ' + MEOS_FENCE_RIGHT_GAP + 'px 0 1px',
+        borderWidth: '0 ' + _gap + 'px 0 1px',
         borderRadius: radius });
       // ★★★v4.2.271(実測で終わりにする): ★★★**切り口の角は丸められない**。VSCodium の中を読んで、3つthat確定した=
       //   ①行いっぱいの板に渡る CSS は**背景・縁・outline だけ**(textDecoration は届かない)。
