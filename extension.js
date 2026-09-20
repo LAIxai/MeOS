@@ -36028,14 +36028,20 @@ function meosApplyCodeFenceDecorations(editor) {
       //   ★縁の色/太さ/形は装飾の正規の口(borderColor/Width/Style)= 左の3pxの縁thatが既に効いている実績の道
       //     → [[feedback_copy_the_house_style_first]]。色は `var(--vscode-editor-background)` でテーマに従う。
       //   ★box-sizing も言っておく(縁を箱の内側に置く)= 効く版では確実に内側へ、効かない版でも害は無い。
-      const EDGE4 = 'transparent var(--vscode-editor-background) transparent ' + EDGE;
-      const slab = (radius) => ({ isWholeLine: true, backgroundColor: CREAM, borderColor: EDGE4, borderStyle: 'solid',
-        borderWidth: '0 ' + MEOS_FENCE_RIGHT_GAP + 'px 0 3px', borderRadius: radius,
-        textDecoration: 'none; box-sizing: border-box !important;',
-        light: { backgroundColor: CREAM, borderColor: EDGE4 }, dark: { backgroundColor: CREAM, borderColor: EDGE4 } });
-      fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0'));
-      fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0'));
-      fenceFootDeco = vscode.window.createTextEditorDecorationType(slab('0 0 6px 6px'));
+      // ★★★v4.2.266(俊克 改良2「インラインコードの左端は奇麗なんだけど、コードブロックの左端が色がズレている」):
+      //   ★**インラインの板は1pxの細い縁that四方を囲っている**のに、こちらは左に3pxの太い帯を立てていた=
+      //     同じ材のはずthat、左だけ別の物に見える。→ **インラインと同じ1pxの縁**にし、
+      //     頭の行には上の縁、足の行には下の縁を足す= 3辺を細い縁that囲う「大きな板」になる
+      //     → [[feedback_copy_the_house_style_first]](家の中の同じ役の部品を真似る)。
+      //   ★右だけは縁でなく**幕**(地の色)= 窓の端で切っている所so、縁は引かない。
+      const CUT = 'var(--vscode-editor-background)';
+      const slab = (radius, top, bottom) => ({ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid',
+        borderColor: (top ? EDGE : 'transparent') + ' ' + CUT + ' ' + (bottom ? EDGE : 'transparent') + ' ' + EDGE,
+        borderWidth: (top ? '1px ' : '0 ') + MEOS_FENCE_RIGHT_GAP + 'px ' + (bottom ? '1px ' : '0 ') + '1px',
+        borderRadius: radius, textDecoration: 'none; box-sizing: border-box !important;' });
+      fenceSlabDeco = vscode.window.createTextEditorDecorationType(slab('0', false, false));
+      fenceHeadDeco = vscode.window.createTextEditorDecorationType(slab('6px 6px 0 0', true, false));
+      fenceFootDeco = vscode.window.createTextEditorDecorationType(slab('0 0 6px 6px', false, true));
       fenceInkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         light: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' },
         dark: { textDecoration: 'none; color: ' + INK + ' !important; -webkit-text-fill-color: ' + INK + ' !important;' } });

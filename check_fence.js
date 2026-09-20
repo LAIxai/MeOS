@@ -94,7 +94,7 @@ console.log('⑥ 囲いの中は、ぜんぶ文字(俊克 バグ1/2 — 数え�
 console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)');
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/const slab = \(radius\) => \(\{ isWholeLine: true, backgroundColor: CREAM/.test(S),
+ ok(/isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid'/.test(S),
     '★★紙は行いっぱい= VS Codeで窓の端まで敷ける唯一の道', true);
  ok(!/_slabItem/.test(S) && !/meosWrapColumn/.test(S) && !/contentText: ' '\.repeat\(pad\)/.test(S),
     '★★埋め草(空白で幅を作る道)は残骸ごと捨てた= font と行の高さに振り回される道は選ばない', true);
@@ -104,9 +104,13 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
  ok(/const MEOS_FENCE_RIGHT_GAP = 44;/.test(S)
-    && /borderWidth: '0 ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 3px'/.test(S)
-    && /const EDGE4 = 'transparent var\(--vscode-editor-background\) transparent ' \+ EDGE;/.test(S),
+    && /MEOS_FENCE_RIGHT_GAP \+ 'px '/.test(S) && /' ' \+ CUT \+ ' '/.test(S),
     '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
  ok(!/width: calc\(100% - /.test(S), '  効かなかった道(中身の幅から引く)は残骸を置かない', true);
+ ok(/const slab = \(radius, top, bottom\)/.test(S) && /\(top \? '1px ' : '0 '\)/.test(S) && /\(bottom \? '1px ' : '0 '\)/.test(S)
+    && !/0 3px/.test(S.slice(S.indexOf('const slab = (radius, top, bottom)'), S.indexOf('fenceSlabDeco ='))),
+    '★★左の縁はインラインと同じ1px・頭に上の縁・足に下の縁= 3辺を細い縁that囲う(俊克 改良2「左端の色thatズレている」)', true);
+ ok(/const CUT = 'var\(--vscode-editor-background\)';/.test(S),
+    '  右だけは縁でなく幕(地の色)= 切っている所so縁を引かない', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
