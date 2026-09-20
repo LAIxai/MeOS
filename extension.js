@@ -36150,16 +36150,10 @@ function meosQuotePadType(cols) {
     before: { contentText: ' ', width: cols + 'ch' } });
   _quotePadTypes.set(key, t); return t;
 }
-const _quoteRuleTypes = new Map();  // '段|色|左' → 罫の駒(流れの外・高さは段の数)
-function meosQuoteRuleType(rows, col2, leftCols) {
-  const key = rows + '|' + (col2 || '') + '|' + leftCols;
-  let t = _quoteRuleTypes.get(key); if (t) return t;
-  const bar = (col) => ({ contentText: ' ', width: '3px', height: (rows * 100) + '%', backgroundColor: col2 || col,
-    textDecoration: 'none; position: absolute; left: ' + leftCols + 'ch; top: 0; z-index: -1;' });
-  t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    before: bar(MEOS_QUOTE_RULE_DARK), light: { before: bar(MEOS_QUOTE_RULE_LIGHT) }, dark: { before: bar(MEOS_QUOTE_RULE_DARK) } });
-  _quoteRuleTypes.set(key, t); return t;
-}
+// ★★v4.2.290(俊克「縦線は要らないよ。膜線などと紛らわしいからだよ」):
+//   ★★**MeOSでは縦線は膜の物**= 膜の帯(lane)と同じ形を引用に使うと、**どちらの線か分からなくなる**。
+//     → 引用の罫は**引かない**。引用の合図は**字下げ**と(短い時の)**引用符**、Alertは**印＋見出しの色**。
+//   ★家の中で同じ形を2つの役に使わない= [[project_relation_over_appearance]] の線引き。
 // 引用の塊= 続いている `>` の行。空行(>だけ)も塊の中。
 function meosQuoteLineParts(text) {
   const m = /^([ \t]{0,3})(>+)([ \t]?)([^\n]*)$/.exec(text || '');
@@ -36188,7 +36182,6 @@ function meosApplyQuoteDecorations(editor) {
     const pads = new Map(); const hides = [], marks = [], markEnds = [], folds = []; const alerts = new Map();
     const put = () => {
       for (const t of _quotePadTypes.values()) editor.setDecorations(t, pads.get(t) || []);
-      for (const t of _quoteRuleTypes.values()) editor.setDecorations(t, pads.get(t) || []);
       editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks); editor.setDecorations(quoteMarkEndDeco, markEnds);
       editor.setDecorations(quoteFoldDeco, folds);
       for (const k of Object.keys(MEOS_ALERTS)) editor.setDecorations(meosQuoteAlertType(k), alerts.get(k) || []);
@@ -36243,9 +36236,6 @@ function meosApplyQuoteDecorations(editor) {
           const ty = meosQuotePadType(pad);
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
-          const tr = meosQuoteRuleType(rows, alert ? MEOS_ALERTS[alert.kind].color : null, (q.level - 1) * MEOS_QUOTE_INDENT);
-          if (!pads.has(tr)) pads.set(tr, []);
-          pads.get(tr).push(L(i));
           if (alert && i === alert.line) {                              // `[!TIP]` の字は畳み、見出しを出す
             folds.push(new vscode.Range(i, q.mark, i, (lines[i] || '').length));
             if (!alerts.has(alert.kind)) alerts.set(alert.kind, []);
