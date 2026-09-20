@@ -12585,22 +12585,10 @@ function meosApplyTimerLineDecorations(editor) {
           }
           if (c.lock && !_rawHere) {   // ★v4.2.235/238(済んだ後も): 掛かっている🔐に外し方のtip(外す時は確認しない=安全な向き)
             const _lm = meosClockLockMarkAt(txt);
-            // ★★★v4.2.254(俊克 改良1「Optを押しつつ、🔐の上に来たら、tipを変えて、解除できることを示そうよ」):
-            //   ★**Optを押している事は、tipを出す側からは見えない**= VS Code は修飾キーの状態を拡張に渡さない
-            //     (v4.2.92 で Opt+クリックを**カーソルthatが増えた事**で見分けたのも同じ理由)。
-            //     押している間は何の合図も来ないso、tip を差し替える引き金thatが無い。
-            //   ★★→ **解除の口を tip の中へ出す**= 「外せる」と書く代わりに、その場で押せる1行を置く
-            //     (🔖のホバーメニューと同じ家の作り= command リンク)。Opt を押さなくても外せるので、
-            //     修飾キーを覚えていない人もその場で解ける → [[feedback_fix_signal_at_fix_place]]。
-            if (_lm) {
-              const _ua = encodeURIComponent(JSON.stringify([i]));
-              const _md = new vscode.MarkdownString(
-                '🔐 Locked — this clock cannot be stopped or dropped until it rings.  \n'
-                + '[🔓 Take the lock off](command:lai-membrane.clockUnlockAt?' + _ua + ')  \n'
-                + 'or Opt-click the 🔐.');
-              _md.isTrusted = { enabledCommands: ['lai-membrane.clockUnlockAt'] };
-              items.push({ range: new vscode.Range(i, _lm.a, i, _lm.b), hoverMessage: _md });
-            }
+            // ★★★v4.2.255(俊克 改良1「説明が分り難い。『Opt-click this 🔐 to unlock』だけで良いんじゃないか?」):
+            //   ★**tipは1行**= 掛かっている事は🔐の字that既に言っているso、tipthat言う事は**外し方**だけ。
+            //   ★v4.2.254で足した押せる1行(commandリンク)は撤去= 道を2つ見せると、どちらを読むかから始まる。
+            if (_lm) items.push({ range: new vscode.Range(i, _lm.a, i, _lm.b), hoverMessage: 'Opt-click this 🔐 to unlock' });
           }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
             const _sp = meosClockLockSpot(txt);
@@ -36829,15 +36817,6 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.homeJump', () => homeJump(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.homeSwitch', () => homeSwitch(vscode.window.activeTextEditor || getMeDockTargetEditor())));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bookmarkRemoveAt', (line) => bookmarkRemove(vscode.window.activeTextEditor || getMeDockTargetEditor(), line)));
-  // ★v4.2.254(俊克 改良1): 🔐のtipから押す解除の口。Opt+クリック(v4.2.235)と**同じ1つの手**を呼ぶ
-  //   = 錠を外すのは本文の🔐を1字落とすだけ(v4.1.65)。
-  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.clockUnlockAt', async (line) => {
-    const ed = vscode.window.activeTextEditor || getMeDockTargetEditor(); if (!ed) return;
-    if (typeof line !== 'number' || line < 0 || line >= ed.document.lineCount) return;
-    const lm = meosClockLockMarkAt(ed.document.lineAt(line).text || ''); if (!lm) return;
-    await meosClockUnlockAt(ed.document, line, lm.a);
-    try { refresh(ed); } catch (_) { }
-  }));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturn', (key) => { try { jumpToWorkingTocItem(key); } catch (_) {} })); // v0.9.946: H-TOC帰還
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.htocReturnLine', (line0) => { try { jumpMeDockTargetLine(String((Number(line0) || 0) + 1)); } catch (_) {} })); // v0.9.949: 作業位置(行番号)へ戻る
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.bumpAccess', (key) => { try { const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return; let id = String(key || '').trim(); if (!id) { const cp = findCurrentPair(ed); if (cp) id = String(cp.id || '').trim(); } if (id) bumpMeAccess(ed.document, id); } catch (_) {} })); // v0.9.954: AIが自己判断でアクセス計上する明示フック
