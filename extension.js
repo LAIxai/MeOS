@@ -17103,6 +17103,7 @@ function _refreshInner(editor) {
   try { meosApplyFuncDecorations(editor); } catch (_) {} // v3.5.0: 関数膜 name(x=5)_TS → 計算結果(関数電卓)
   try { meosApplyCodeSpanDecorations(editor); } catch (_) {} // v4.2.223: インラインコード `…` を板に
   try { meosApplyCodeFenceDecorations(editor); } catch (_) {} // v4.2.256: コードブロック ``` を1枚の板に
+  try { meosApplyQuoteDecorations(editor); } catch (_) {}      // v4.2.283: 引用(>)を本の顔に
   try { meosApplyBoldDecorations(editor); } catch (_) {} // v3.7.0: 太字/斜体 **text**/***text***(同一行内・Raw/隔離時は解除)
   if (!editor || !lineDecoration) return;
   restoreActiveGreenJumpFromJumpFlags(editor);
@@ -36087,6 +36088,91 @@ function meosApplyCodeSpanDecorations(editor) {
 //     → [[feedback_quoted_notation_must_be_inert]]。
 //   ★カーソルの居る行は生のまま(他の装飾と同じ約束)。ただし**板は切らない**= 紙に穴を開けない。
 let fenceInkDeco = null, fenceTickDeco = null, fenceLangDeco = null;
+// {* ▼mCN=4283_QUOTE // 引用(>)を本の顔にする (📊⊕0+0D0W) *}
+// ★★★v4.2.283(俊克「引用文記法も対応しようよ。単に縦線を入れるだけで良いのか? 本の中に引用があるとき、
+//   どんな表現をするのか?」): ★★本の作法は4つ= ①両側を字下げ ②前後の余白 ③大きな引用符を1つ ④出典は右寄せ。
+//   縦線1本はWeb由来の省略形so、それだけでは「本の顔」にならない。
+//   ★MeOS流= **本文は1字も変えない**= `>` は隠し、字下げ・罫・引用符・右寄せは全部**飾り**で作る。
+//   ★紙(コードブロック)と同じ物差し= 桁は `displayColumns`、幅は `ch`(字の font の1桁)so拡大に付いて行く。
+//   ★色はテーマの物を使う= `textBlockQuote.border`(引用の罫の色として VS Code that定義している)。
+const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
+const MEOS_QUOTE_MARK = '“';  // 大きな引用符(段落の頭に1つだけ)
+const MEOS_QUOTE_ATTR_RE = /^\s*(?:――|——|—|--|──)\s*\S/;   // 出典の行(――/—/--)
+let quoteHideDeco = null, quoteMarkDeco = null;
+const _quotePadTypes = new Map();  // '桁|段' → 字下げ(+罫)の駒
+function meosQuotePadType(cols, rows) {
+  const key = cols + '|' + rows;
+  let t = _quotePadTypes.get(key); if (t) return t;
+  t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    before: { contentText: ' ', width: cols + 'ch', height: (rows * 100) + '%',
+      borderColor: new vscode.ThemeColor('textBlockQuote.border'), borderStyle: 'solid', borderWidth: '0 0 0 3px',
+      textDecoration: 'none; box-sizing: border-box;' } });
+  _quotePadTypes.set(key, t); return t;
+}
+// 引用の塊= 続いている `>` の行。空行(>だけ)も塊の中。
+function meosQuoteLineParts(text) {
+  const m = /^([ \t]{0,3})(>+)([ \t]?)([^\n]*)$/.exec(text || '');
+  if (!m) return null;
+  return { lead: m[1].length, level: m[2].length, mark: m[1].length + m[2].length + m[3].length, body: m[4] };
+}
+function meosApplyQuoteDecorations(editor) {
+  try {
+    if (!editor || !editor.document) return;
+    const doc = editor.document;
+    if (!quoteHideDeco) {
+      quoteHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // 大きな引用符= 幅を取らない飾り(字の下・淡く大きく)。本の扉の引用と同じ置き方。
+      quoteMarkDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+        before: { contentText: MEOS_QUOTE_MARK, color: new vscode.ThemeColor('textBlockQuote.border'),
+          textDecoration: 'none; position: absolute; left: 0.1ch; top: -0.15em; z-index: -1; font-size: 2.4em; line-height: 1; opacity: 0.55;' } });
+    }
+    const pads = new Map(); const hides = [], marks = [];
+    const put = () => {
+      for (const t of _quotePadTypes.values()) editor.setDecorations(t, pads.get(t) || []);
+      editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks);
+    };
+    if (!meosIsProseDoc(doc)) { put(); return; }
+    const lines = meosDocLines(doc);
+    let fence = null; try { fence = meosFenceLines(doc); } catch (_) { fence = null; }
+    const raw = meosRawLines(editor);
+    const L = (ln) => new vscode.Range(ln, 0, ln, 0);
+    const wrapCol = meosFenceWrapColumn(doc);
+    for (const vr of meosScanSpans(editor, doc)) {
+      let ln = vr[0];
+      while (ln <= vr[1]) {
+        if (fence && fence.has(ln)) { ln++; continue; }
+        if (!meosQuoteLineParts(lines[ln] || '')) { ln++; continue; }
+        // 塊の頭を上へ辿り、足を下へ辿る(走査の窓で切れないように)
+        let from = ln; while (from > 0 && !(fence && fence.has(from - 1)) && meosQuoteLineParts(lines[from - 1] || '')) from--;
+        let to = ln; while (to + 1 < lines.length && !(fence && fence.has(to + 1)) && meosQuoteLineParts(lines[to + 1] || '')) to++;
+        // 塊の幅= 一番長い行(字下げ込み)。折り返し幅that上限。
+        let wide = 0;
+        for (let i = from; i <= to; i++) {
+          const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
+          wide = Math.max(wide, q.level * MEOS_QUOTE_INDENT + displayColumns(q.body));
+        }
+        if (wrapCol) wide = Math.min(wide, wrapCol);
+        for (let i = from; i <= to; i++) {
+          const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
+          if (raw.has(i)) continue;                                  // カーソルの行は生のまま
+          if (q.mark > 0) hides.push(new vscode.Range(i, 0, i, q.mark));   // `>` は隠す(中身でない字)
+          const cols = displayColumns(q.body);
+          const rows = wrapCol ? Math.max(1, Math.min(20, Math.ceil(Math.max(1, cols) / wrapCol))) : 1;
+          // 出典の行(―― 誰それ)は**右寄せ**= 字下げを「紙の幅 − その行の字」まで広げる
+          const attr = MEOS_QUOTE_ATTR_RE.test(q.body);
+          const pad = q.level * MEOS_QUOTE_INDENT + (attr ? Math.max(0, wide - q.level * MEOS_QUOTE_INDENT - cols) : 0);
+          const ty = meosQuotePadType(pad, rows);
+          if (!pads.has(ty)) pads.set(ty, []);
+          pads.get(ty).push(L(i));
+          if (i === from && q.body.trim()) marks.push(L(i));          // 大きな引用符は塊の頭に1つだけ
+        }
+        ln = to + 1;
+      }
+    }
+    put();
+  } catch (_) { }
+}
+// {* ▲mCN=4283_QUOTE // *}
 function meosApplyCodeFenceDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
@@ -36990,7 +37076,7 @@ function activate(context) {
   const _meosPass = (cmd) => { vscode.commands.executeCommand(cmd); };
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => meosUpdateInTableContext(ed)));
   context.subscriptions.push(vscode.window.onDidChangeActiveColorTheme(() => { try { if (_meosThemeOrig == null) meosThemeRemember(meosThemeNow()); meosThemePost(); } catch (_) { } }));   // v4.2.243: VS Codeのメニューで替えてもダーク/ライトの控えを取る(試し着せの間は取らない)
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeSpanDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeFenceDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { meosApplyTableMergeDecorations(e.textEditor); } catch (_) {} try { meosApplyTableCalcDecorations(e.textEditor); } catch (_) {} try { meosApplyTableRowLineDecorations(e.textEditor); } catch (_) {} try { meosApplyImageThumbDecorations(e.textEditor); } catch (_) {} try { meosApplyMeTexDecorations(e.textEditor); } catch (_) {} try { meosApplyFuncDecorations(e.textEditor); } catch (_) {} try { meosApplyBoldDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeSpanDecorations(e.textEditor); } catch (_) {} try { meosApplyCodeFenceDecorations(e.textEditor); } catch (_) {} try { meosApplyQuoteDecorations(e.textEditor); } catch (_) {} try { meosApplyMeLinkDecorations(e.textEditor); } catch (_) {} })); // v0.9.999158/3.0.7.1/3.1.9/3.4.0/3.5.0/4.0.8: スクロールで結合装飾+計算結果+行罫線+額縁サムネ+MeTeX+関数膜+ノート内リンクを追従
   try { meosUpdateInTableContext(vscode.window.activeTextEditor); } catch (_) {}
   // v0.9.99969: 参照符(点膜▶◀)の巡回とF切替(Switch Front Reference=栞のSwitch Frontと同流儀)。
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.referenceCycle', () => referenceCycle(vscode.window.activeTextEditor || getMeDockTargetEditor())));
