@@ -2455,4 +2455,17 @@ console.log('㊽ BTRON指差し / macOS指差し を選ぶ(v4.2.108)');
  const pr=P.contributes.configuration.properties||{};
  ok(pr['laiMembrane.pointerHand'] && pr['laiMembrane.pointerHand'].default==='btron', '  設定は既定 btron', true);
 }
+console.log('㊾ 錠は本文that決める / 🔐のtipから外せる(v4.2.254)');
+{
+ const S254=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
+ ok(/_s\.tags = c\.tags \|\| \[\];[\s\S]{0,900}?_s\.lock = !!c\.lock;/.test(S254),
+    '★★★掛かっている物の控えも、錠を本文から読み直す(🔐を外したのに止まらない元)', true);
+ ok(/const _sig = String\(c\.when\)[^\n]*$/m.test(S254) && !/const _sig = String\(c\.when\)[^\n]*lock/m.test(S254),
+    '  sig(掛け直しの見分け)に錠は入らない= 錠の付け外しで時計を掛け直さない', true);
+ ok(/registerCommand\('lai-membrane\.clockUnlockAt', async \(line\) => \{[\s\S]{0,400}?await meosClockUnlockAt\(ed\.document, line, lm\.a\);/.test(S254),
+    '★★tipの口も Opt+クリックと同じ1つの手(meosClockUnlockAt)を呼ぶ', true);
+ ok(/\[\u{1F513} Take the lock off\]\(command:lai-membrane\.clockUnlockAt\?' \+ _ua \+ '\)/u.test(S254)
+    && /_md\.isTrusted = \{ enabledCommands: \['lai-membrane\.clockUnlockAt'\] \}/.test(S254),
+    '★🔐のtipに押せる1行(Optを押さなくても外せる)', true);
+}
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
