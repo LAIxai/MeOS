@@ -104,17 +104,15 @@ console.log('⑦ 紙は窓いっぱい(v4.2.262 — 埋め草の道は捨てた)
     '  1行に1つの駒だけ(字の無い箱を継がない)', true);
  ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
  ok(/const MEOS_FENCE_RIGHT_GAP = 44;/.test(S)
-    && /MEOS_FENCE_RIGHT_GAP \+ 'px '/.test(S) && /' ' \+ CUT \+ ' '/.test(S),
+    && /' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 1px'/.test(S) && /' \+ CUT \+ '/.test(S),
     '★★★右端は「引く」でなく「隠す」= 地の色の太い縁(窓の幅を知らなくても短くなる・v4.2.265)', true);
  ok(!/width: calc\(100% - /.test(S), '  効かなかった道(中身の幅から引く)は残骸を置かない', true);
- ok(/const slab = \(radius, top, bottom\)/.test(S) && /\(top \? '1px ' : '0 '\)/.test(S) && /\(bottom \? '1px ' : '0 '\)/.test(S)
-    && !/0 3px/.test(S.slice(S.indexOf('const slab = (radius, top, bottom)'), S.indexOf('fenceSlabDeco ='))),
-    '★★左の縁はインラインと同じ1px・頭に上の縁・足に下の縁= 3辺を細い縁that囲う(俊克 改良2「左端の色thatズレている」)', true);
- ok(/const CUT = 'var\(--vscode-editor-background\)';/.test(S),
-    '  右だけは縁でなく幕(地の色)= 切っている所so縁を引かない', true);
- ok(/clip-path: inset\(0 ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 0 round ' \+ radius \+ '\) !important;/.test(S),
-    '★★★切り口の角を丸める= 右から44点を切り落とし、その切り口を丸める(俊克「黒地の角丸を重ねれば」・v4.2.267)', true);
- ok(/borderWidth: \(top \? '1px ' : '0 '\) \+ MEOS_FENCE_RIGHT_GAP/.test(S),
-    '  幕(右の太い縁)は残す= 切り抜きthat効かない版でも、切り口は今までどおり出る', true);
+ ok(/const slab = \(radius\) => \(\{ isWholeLine: true, backgroundColor: CREAM, borderStyle: 'solid'/.test(S)
+    && /borderColor: 'transparent ' \+ CUT \+ ' transparent ' \+ EDGE/.test(S)
+    && /borderWidth: '0 ' \+ MEOS_FENCE_RIGHT_GAP \+ 'px 0 1px'/.test(S),
+    '★★左はインラインと同じ1pxの縁・右は幕・上下は引かない(上下を引くと幕の上にヒゲthat出る・v4.2.268)', true);
+ ok(!/clip-path: inset/.test(S) && !/box-sizing: border-box !important/.test(S) && !/width: calc\(100% - /.test(S),
+    '★★★届かないCSSは残骸を置かない= 行いっぱいの板に渡るのは背景と縁とoutlineだけ(VSCodiumの中で実測)', true);
+ ok(/position: absolute; font-size: 0\.82em/.test(S), '★札は幅を取らない(隠した ``` の上に浮かせる)', true);
 }
 console.log(ng ? ('NG ' + ng + '件') : '全項目 PASS');
