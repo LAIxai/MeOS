@@ -36107,6 +36107,19 @@ const MEOS_QUOTE_INDENT = 2;       // 1階層あたりの字下げ(桁)
 //   ★★数を3→6に増やしたのは、**和文の桁の数え方**のため= MeOSは全角を2桁と数えるthat、
 //     画面の全角(斜体の引用)は半角2つより**少し狭い**(実測で約0.9)。so和文の長い行は
 //     私の数の上では実際より長くなり、出典that右へ押し出される。その差を6桁で吸収する。
+// ★★★v4.2.288(俊克「表もGit準拠なので、引用もGit準拠にするのが自然だね」):
+//   ★★GitHub Alerts= `> [!NOTE]` `[!TIP]` `[!IMPORTANT]` `[!WARNING]` `[!CAUTION]`。
+//     GitHubでは**印＋見出し語**を出し、罫と見出しをその種類の色にする。引用符は付けない。
+//   ★MeOSも同じ形で= `[!TIP]` の字は畳み、代わりに「💡 Tip」を出す。罫の色も種類の色へ。
+//     本文は1字も変えないso、GitHubで開けばGitHubthat同じ絵を出す(= Git準拠の意味)。
+const MEOS_ALERTS = {
+  NOTE:      { icon: 'ℹ️', label: 'Note',      color: '#539bf5' },
+  TIP:       { icon: '💡', label: 'Tip',       color: '#57ab5a' },
+  IMPORTANT: { icon: '🗣️', label: 'Important', color: '#986ee2' },
+  WARNING:   { icon: '⚠️', label: 'Warning',   color: '#c69026' },
+  CAUTION:   { icon: '🛑', label: 'Caution',   color: '#e5534b' },
+};
+const MEOS_ALERT_RE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*$/;
 const MEOS_QUOTE_ATTR_INSET = 8;   // 出典を右端から何桁内側で止めるか(v4.2.287: 俊克「もう1文字分左」= 全角1字=2桁)
 // ★★v4.2.287(俊克「2行までは引用マーク(引用符)、3行以上は引用ブロック、というのが暗黙のルール」= そのとおり):
 //   ★本の作法= **短い引用は引用符で括る / 長い引用は塊にして引用符を付けない**(字下げthat引用符の代わりになる)。
@@ -36115,13 +36128,21 @@ const MEOS_QUOTE_MARK = '“';        // 開きの大きな引用符
 const MEOS_QUOTE_MARK_CLOSE = '”';  // 閉じの引用符
 const MEOS_QUOTE_MARK_MAX_LINES = 2;    // これ以下の行数なら引用符を出す(3行以上は塊so付けない)
 const MEOS_QUOTE_ATTR_RE = /^\s*(?:――|——|—|--|──)\s*\S/;   // 出典の行(――/—/--)
-let quoteHideDeco = null, quoteMarkDeco = null, quoteMarkEndDeco = null;
-const _quotePadTypes = new Map();  // '桁|段' → 字下げ(+罫)の駒
-function meosQuotePadType(cols, rows) {
-  const key = cols + '|' + rows;
+let quoteHideDeco = null, quoteMarkDeco = null, quoteMarkEndDeco = null, quoteFoldDeco = null;
+const _quoteAlertTypes = new Map();   // 種類 → 見出し(💡 Tip)の駒
+function meosQuoteAlertType(kind) {
+  let t = _quoteAlertTypes.get(kind); if (t) return t;
+  const a = MEOS_ALERTS[kind];
+  t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    after: { contentText: a.icon + ' ' + a.label, color: a.color, fontWeight: '700', margin: '0 0 0 1px' } });
+  _quoteAlertTypes.set(kind, t); return t;
+}
+const _quotePadTypes = new Map();  // '桁|段|色' → 字下げ(+罫)の駒
+function meosQuotePadType(cols, rows, col2) {
+  const key = cols + '|' + rows + '|' + (col2 || '');
   let t = _quotePadTypes.get(key); if (t) return t;
   const bar = (col) => ({ contentText: ' ', width: cols + 'ch', height: (rows * 100) + '%',
-    borderColor: col, borderStyle: 'solid', borderWidth: '0 0 0 3px', textDecoration: 'none; box-sizing: border-box;' });
+    borderColor: col2 || col, borderStyle: 'solid', borderWidth: '0 0 0 3px', textDecoration: 'none; box-sizing: border-box;' });
   t = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     before: bar(MEOS_QUOTE_RULE_DARK), light: { before: bar(MEOS_QUOTE_RULE_LIGHT) }, dark: { before: bar(MEOS_QUOTE_RULE_DARK) } });
   _quotePadTypes.set(key, t); return t;
@@ -36138,6 +36159,8 @@ function meosApplyQuoteDecorations(editor) {
     const doc = editor.document;
     if (!quoteHideDeco) {
       quoteHideDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; color: transparent !important; -webkit-text-fill-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      // `[!TIP]` の字は**畳む**(幅ごと消す)= 代わりの見出しthatその場所に出る
+      quoteFoldDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0px !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
       // 大きな引用符= 幅を取らない飾り(字の下・淡く大きく)。本の扉の引用と同じ置き方。
       const qmark = (col) => ({ contentText: MEOS_QUOTE_MARK, color: col,
         textDecoration: 'none; position: absolute; left: 0.1ch; top: -0.15em; z-index: -1; font-size: 2.4em; line-height: 1; opacity: 0.75;' });
@@ -36149,10 +36172,12 @@ function meosApplyQuoteDecorations(editor) {
       quoteMarkEndDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
         after: qend(MEOS_QUOTE_RULE_DARK), light: { after: qend(MEOS_QUOTE_RULE_LIGHT) }, dark: { after: qend(MEOS_QUOTE_RULE_DARK) } });
     }
-    const pads = new Map(); const hides = [], marks = [], markEnds = [];
+    const pads = new Map(); const hides = [], marks = [], markEnds = [], folds = []; const alerts = new Map();
     const put = () => {
       for (const t of _quotePadTypes.values()) editor.setDecorations(t, pads.get(t) || []);
       editor.setDecorations(quoteHideDeco, hides); editor.setDecorations(quoteMarkDeco, marks); editor.setDecorations(quoteMarkEndDeco, markEnds);
+      editor.setDecorations(quoteFoldDeco, folds);
+      for (const k of Object.keys(MEOS_ALERTS)) editor.setDecorations(meosQuoteAlertType(k), alerts.get(k) || []);
     };
     if (!meosIsProseDoc(doc)) { put(); return; }
     const lines = meosDocLines(doc);
@@ -36175,14 +36200,23 @@ function meosApplyQuoteDecorations(editor) {
           wide = Math.max(wide, q.level * MEOS_QUOTE_INDENT + displayColumns(q.body));
         }
         if (wrapCol) wide = Math.min(wide, wrapCol);
+        // ★v4.2.288: 塊の頭that `[!TIP]` 等なら **GitHub Alert**= 印＋見出しを出し、罫を種類の色に。引用符は付けない。
+        let alert = null;
+        for (let i = from; i <= to; i++) {
+          const q0 = meosQuoteLineParts(lines[i] || ''); if (!q0) continue;
+          if (!q0.body.trim()) continue;
+          const m0 = MEOS_ALERT_RE.exec(q0.body.trim());
+          if (m0 && i === from) alert = { kind: m0[1], line: i };
+          break;
+        }
         // v4.2.287: 引用符を出すかは**中身の行数**で決める(出典と空の > は数えない)
         let textLines = 0, firstText = -1, lastText = -1;
         for (let i = from; i <= to; i++) {
           const q0 = meosQuoteLineParts(lines[i] || ''); if (!q0) continue;
-          if (!q0.body.trim() || MEOS_QUOTE_ATTR_RE.test(q0.body)) continue;
+          if (!q0.body.trim() || MEOS_QUOTE_ATTR_RE.test(q0.body) || MEOS_ALERT_RE.test(q0.body.trim())) continue;
           textLines++; if (firstText < 0) firstText = i; lastText = i;
         }
-        const useMark = textLines > 0 && textLines <= MEOS_QUOTE_MARK_MAX_LINES;
+        const useMark = !alert && textLines > 0 && textLines <= MEOS_QUOTE_MARK_MAX_LINES;   // Alertには引用符を付けない(GitHubと同じ)
         for (let i = from; i <= to; i++) {
           const q = meosQuoteLineParts(lines[i] || ''); if (!q) continue;
           if (raw.has(i)) continue;                                  // カーソルの行は生のまま
@@ -36192,9 +36226,14 @@ function meosApplyQuoteDecorations(editor) {
           // 出典の行(―― 誰それ)は**右寄せ**= 字下げを「紙の幅 − その行の字」まで広げる
           const attr = MEOS_QUOTE_ATTR_RE.test(q.body);
           const pad = q.level * MEOS_QUOTE_INDENT + (attr ? Math.max(0, wide - q.level * MEOS_QUOTE_INDENT - cols - MEOS_QUOTE_ATTR_INSET) : 0);
-          const ty = meosQuotePadType(pad, rows);
+          const ty = meosQuotePadType(pad, rows, alert ? MEOS_ALERTS[alert.kind].color : null);
           if (!pads.has(ty)) pads.set(ty, []);
           pads.get(ty).push(L(i));
+          if (alert && i === alert.line) {                              // `[!TIP]` の字は畳み、見出しを出す
+            folds.push(new vscode.Range(i, q.mark, i, (lines[i] || '').length));
+            if (!alerts.has(alert.kind)) alerts.set(alert.kind, []);
+            alerts.get(alert.kind).push(new vscode.Range(i, (lines[i] || '').length, i, (lines[i] || '').length));
+          }
           if (useMark && i === firstText) marks.push(L(i));            // 開きの引用符(短い引用だけ)
           if (useMark && i === lastText) markEnds.push(new vscode.Range(i, (lines[i] || '').length, i, (lines[i] || '').length));   // 閉じの引用符
         }
