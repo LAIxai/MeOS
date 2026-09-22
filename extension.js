@@ -8907,7 +8907,12 @@ async function setHtocSelForActiveTab(key) {
 // 消失=俊克 2026.06.01 am09:13 指摘)。hexエンコードなので //, ==, ~~, --> 等のパーサ干渉文字を一切
 // 含まず安全。editor 上では装飾(mdWrapperHideDecoration)で非表示、markdown preview でも HTMLコメント
 // として非表示。globalState は移行フォールバック/キャッシュに降格。
-const HTOC_MARKER_RE = /(?:<!--|\/\*)\s*mHTOC1\s+([0-9a-fA-F]*)\s*(?:-->|\*\/)/;
+// ★v4.2.304(俊克 9/23「日記のメタデータが壊れたみたい」): 印は**1行まるごと**でなければ印でない。
+//   旧: 行の途中の `<!-- mHTOC1 -->`(hex空)にも当たった → 末尾の本物の行が 131070字で切れて読めなくなった時、
+//   走査が上へ登り、6月の会話ログの**本文の1文**を印と読み、そこへmMETA膜を上書きしていた(09.09〜09.14の間)。
+//   → 行頭〜行末で固定・hexは1字以上。切れた印(閉じ `-->` の無いhex行)は HTOC_BROKEN_RE で拾い、本文へ登らずそこで止まる。
+const HTOC_MARKER_RE = /^\s*(?:<!--|\/\*)\s*mHTOC1\s+([0-9a-fA-F]+)\s*(?:-->|\*\/)\s*$/;
+const HTOC_BROKEN_RE = /^\s*(?:<!--|\/\*)\s*mHTOC1\s+[0-9a-fA-F]+\s*$/;
 const _htocSourceCache = new WeakMap(); // document -> { version, markerLine, data }
 function encodeHyperTocLine(data, document) {
   // v0.9.908: C系コード(js/ts/c…)では HTMLコメント <!-- --> を書くと tsserver が構文エラー扱い→以降の行に
@@ -8936,6 +8941,7 @@ function _scanHyperTocSource(document) {
   for (let i = document.lineCount - 1; i >= 0; i--) {
     const t = document.lineAt(i).text || '';
     if (HTOC_MARKER_RE.test(t)) { markerLine = i; data = decodeHyperTocLineText(t); break; }
+    if (HTOC_BROKEN_RE.test(t)) { markerLine = i; data = null; break; } // v4.2.304: 切れた印=ここが置き場所(次の書込みで直る)
   }
   const entry = { version: document.version, markerLine, data };
   _htocSourceCache.set(document, entry);
@@ -8982,7 +8988,8 @@ async function writeHyperTocToSource(document, data) {
   const wrapped = existing >= 0 && existing - 1 >= 0 && isHtocMetaOpenAt(document, existing - 1);
   const _wrapOpenId = wrapped ? ((parseOpenLine(document.lineAt(existing - 1).text || '') || {}).id || '') : '';
   // v0.9.958: 既にmMETA名で包まれ hex も同一 → 何もしない。旧名(HTOC1_META)はアップグレードのため通す。
-  if (wrapped && _wrapOpenId === HTOC_META_ID && (document.lineAt(existing).text || '') === hexLine) return true;
+  const _metaCloseBelow = wrapped && existing + 1 < document.lineCount && isMetaMembraneId(((parseCloseLine(document.lineAt(existing + 1).text || '') || {}).id) || '');
+  if (wrapped && _wrapOpenId === HTOC_META_ID && _metaCloseBelow && (document.lineAt(existing).text || '') === hexLine) return true; // v4.2.304: 閉じ膜が無ければ素通りせず直す
   deferRefreshCount++;
   let ok = true;
   try {
@@ -8994,8 +9001,11 @@ async function writeHyperTocToSource(document, data) {
         const _closeOk = _closeLn < document.lineCount && isMetaMembraneId(((parseCloseLine(document.lineAt(_closeLn).text || '') || {}).id) || '');
         if (_wrapOpenId !== HTOC_META_ID && _closeOk) {
           eb.replace(new vscode.Range(existing - 1, 0, _closeLn, (document.lineAt(_closeLn).text || '').length), metaOpen + '\n' + hexLine + '\n' + metaClose);
-        } else {
+        } else if (_closeOk) {
           eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), hexLine);
+        } else {
+          // v4.2.304: 閉じ膜が無い(hex行が切れて ▲ ごと失われていた)→ hex行の直後に閉じ膜を書き戻す。
+          eb.replace(new vscode.Range(existing, 0, existing, (document.lineAt(existing).text || '').length), hexLine + '\n' + metaClose);
         }
       } else if (existing >= 0) {
         // Legacy bare marker → upgrade in place by wrapping it in the meta-membrane.
