@@ -13173,8 +13173,12 @@ function meosUpdateTimerBar() {
       //   拍は鐘と同じ定数から(一息=0.8秒ごとに入れ替え)。最下段もメニューバーも同じ音符。
       const _note = (Math.floor(Date.now() / (MEOS_RING_BLINK_MS * 2)) % 2) ? '\u266c' : '\u266a';
       // ★v4.2.211(俊克「音符記号を出すので、ringingという文字は削除していい。そのつもりで音符記号を入れた」)
-      _meosTimerBar.text = '\u23f0 ' + _note + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
-      meosMenuBarSet('\u23f0' + (_meosRingAnchor ? '\u2693\ufe0f' : '') + ' ' + _note + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }], { anchor: _meosRingAnchor });   // v4.2.205/207/209/211 / v4.2.325: ⚓の鐘も青
+      // ★v4.2.328(俊克 改良1「鳴っている時に、残り時間が出ないので、スクショを撮っても区別できないね。残り時間も表示しよう」):
+      //   先鐘の間は、鳴っている時計そのものがまだ数えている(best)。同じ時計の時だけ残り時間を添える(別の時計の数字を混ぜない)。
+      let _left = '';
+      try { const _bsc = best ? _meosPseudoScopes.get(best.k) : null; if (_bsc && meosClockSayName(_bsc) === _meosRingName) _left = ' ' + meosMmSs(meosClockFaceMs(best.until, _bsc)); } catch (_) { }
+      _meosTimerBar.text = '\u23f0 ' + _note + _left + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
+      meosMenuBarSet('\u23f0' + (_meosRingAnchor ? '\u2693\ufe0f' : '') + ' ' + _note + _left + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }], { anchor: _meosRingAnchor });   // v4.2.205/207/209/211 / v4.2.325: ⚓の鐘も青
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
       try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); _meosTimerBar.color = undefined; } catch (_) { }
