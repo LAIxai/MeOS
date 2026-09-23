@@ -12139,7 +12139,7 @@ let _meosTimerBar = null, _meosTimerTick = null, _meosRingBlink = null;
 //   ★実機(macOS 27)で確かめた= 帯の中(y=1230/高さ1260)に出る・字の差替え・親が消えると終わる。
 //   ★v4.2.206(俊克「橙色の四角を角丸四角に。入力モードの[A]くらいの高さに。今は⏰の文字ギリギリ過ぎる」):
 //     字の背景色では角も余白も付かない→ **角丸の四角と字を画像として描いて貼る**。四角18pt・角の半径5・字11pt(元は14ptで高さ17=四角とほぼ同じ、12ptでも上下1.5ptしか空かない)。
-const MEOS_MENUBAR_JXA = "ObjC.import('Cocoa');\nObjC.bindFunction('kill', ['int', ['int', 'int']]);\nfunction run(argv) {\n  const statePath = argv[0], parentPid = parseInt(argv[1], 10), clickPath = argv[2];\n  const app = $.NSApplication.sharedApplication;\n  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);\n  const bar = $.NSStatusBar.systemStatusBar;\n  const item = bar.statusItemWithLength($.NSVariableStatusItemLength);\n  let appPath = '';\n  ObjC.registerSubclass({ name: 'MeOSMenuTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {\n    let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}\n    try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}\n    try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {}\n  } } } });\n  const tgt = $.MeOSMenuTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)\n  function build(entries) {\n    const m = $.NSMenu.alloc.init; m.autoenablesItems = false;\n    for (const e of entries) {\n      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); continue; }\n      const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));\n      if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id); }\n      if (e.pill) {\n        try {\n          const font = $.NSFont.menuFontOfSize(0);\n          const plain = (t) => { const x = $.NSMutableAttributedString.alloc.init; x.mutableString.setString($(t)); x.addAttributeValueRange($.NSFontAttributeName, font, $.NSMakeRange(0, x.length)); return x; };\n          const at = $.NSMutableDictionary.alloc.init;\n          at.setObjectForKey(font, $.NSFontAttributeName); at.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);\n          const ns = $(e.pill), sz = ns.sizeWithAttributes(at);\n          const PX = 5, H = Math.ceil(sz.height) + 2, W = Math.ceil(sz.width) + PX * 2;\n          const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));\n          img.lockFocus; $.NSColor.systemRedColor.setFill;\n          $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;\n          ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), at); img.unlockFocus;\n          const att = $.NSTextAttachment.alloc.init; att.image = img;\n          att.bounds = $.NSMakeRect(0, Math.round((font.capHeight - H) / 2), W, H);\n          const all = plain(e.pre || '');\n          all.appendAttributedString($.NSAttributedString.attributedStringWithAttachment(att));\n          all.appendAttributedString(plain(e.post || ''));\n          mi.attributedTitle = all;\n        } catch (x) {}\n      }\n    }\n    return m;\n  }\n  let lastMenu = null, menu = null;\n  const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);\n  let last = null;\n  for (;;) {\n    if (parentPid > 0 && $.kill(parentPid, 0) !== 0) break;\n    let st = null;\n    try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}\n    if (!st || st.quit) break;\n    if (st.app) appPath = st.app;\n    const mj = JSON.stringify(st.menu || []);\n    if (mj !== lastMenu) { lastMenu = mj; menu = build(st.menu || []); item.menu = menu; }\n    if (st.text !== last) {\n      last = st.text;\n      const font = $.NSFont.menuBarFontOfSize(11);\n      const attrs = $.NSMutableDictionary.alloc.init;\n      attrs.setObjectForKey(font, $.NSFontAttributeName);\n      attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);\n      const ns = $(st.text), sz = ns.sizeWithAttributes(attrs);\n      const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;\n      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));\n      img.lockFocus;\n      orange.setFill;\n      $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;\n      ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), attrs);\n      img.unlockFocus;\n      img.template = false;\n      item.button.image = img; item.button.title = '';\n    }\n    $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));\n  }\n  bar.removeStatusItem(item);\n  return 'bye';\n}\n";
+const MEOS_MENUBAR_JXA = "ObjC.import('Cocoa');\nObjC.bindFunction('kill', ['int', ['int', 'int']]);\nfunction run(argv) {\n  const statePath = argv[0], parentPid = parseInt(argv[1], 10), clickPath = argv[2];\n  const app = $.NSApplication.sharedApplication;\n  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);\n  const bar = $.NSStatusBar.systemStatusBar;\n  const item = bar.statusItemWithLength($.NSVariableStatusItemLength);\n  let appPath = '';\n  ObjC.registerSubclass({ name: 'MeOSMenuTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {\n    let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}\n    try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}\n    try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {}\n  } } } });\n  const tgt = $.MeOSMenuTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)\n  function build(entries) {\n    const m = $.NSMenu.alloc.init; m.autoenablesItems = false;\n    for (const e of entries) {\n      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); continue; }\n      const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));\n      if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id); }\n      if (e.indent) mi.indentationLevel = e.indent;\n      if (e.off) mi.enabled = false;\n      if (e.pill) {\n        try {\n          const font = $.NSFont.menuFontOfSize(0);\n          const plain = (t) => { const x = $.NSMutableAttributedString.alloc.init; x.mutableString.setString($(t)); x.addAttributeValueRange($.NSFontAttributeName, font, $.NSMakeRange(0, x.length)); return x; };\n          const at = $.NSMutableDictionary.alloc.init;\n          at.setObjectForKey(font, $.NSFontAttributeName); at.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);\n          const ns = $(e.pill), sz = ns.sizeWithAttributes(at);\n          const PX = 5, H = Math.ceil(sz.height) + 2, W = Math.ceil(sz.width) + PX * 2;\n          const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));\n          img.lockFocus; $.NSColor.systemRedColor.setFill;\n          $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;\n          ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), at); img.unlockFocus;\n          const att = $.NSTextAttachment.alloc.init; att.image = img;\n          att.bounds = $.NSMakeRect(0, Math.round((font.capHeight - H) / 2), W, H);\n          const all = plain(e.pre || '');\n          all.appendAttributedString($.NSAttributedString.attributedStringWithAttachment(att));\n          all.appendAttributedString(plain(e.post || ''));\n          mi.attributedTitle = all;\n        } catch (x) {}\n      }\n    }\n    return m;\n  }\n  let lastMenu = null, menu = null;\n  const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);\n  let last = null;\n  for (;;) {\n    if (parentPid > 0 && $.kill(parentPid, 0) !== 0) break;\n    let st = null;\n    try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}\n    if (!st || st.quit) break;\n    if (st.app) appPath = st.app;\n    const mj = JSON.stringify(st.menu || []);\n    if (mj !== lastMenu) { lastMenu = mj; menu = build(st.menu || []); item.menu = menu; }\n    if (st.text !== last) {\n      last = st.text;\n      const font = $.NSFont.menuBarFontOfSize(11);\n      const attrs = $.NSMutableDictionary.alloc.init;\n      attrs.setObjectForKey(font, $.NSFontAttributeName);\n      attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);\n      const ns = $(st.text), sz = ns.sizeWithAttributes(attrs);\n      const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;\n      const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));\n      img.lockFocus;\n      orange.setFill;\n      $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;\n      ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), attrs);\n      img.unlockFocus;\n      img.template = false;\n      item.button.image = img; item.button.title = '';\n    }\n    $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));\n  }\n  bar.removeStatusItem(item);\n  return 'bye';\n}\n";
 let _meosMb = null;   // { proc, state, click, script, last }
 let _meosMbGo = [];   // v4.2.207: メニューの go:N → 飛び先
 function meosMenuBarPick(id) {
@@ -12147,6 +12147,8 @@ function meosMenuBarPick(id) {
     id = String(id || '');
     if (id.startsWith('go:')) { const sc = _meosMbGo[parseInt(id.slice(3), 10)]; if (sc) meosJumpToScope(sc); return; }
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
+    if (id.startsWith('tg:')) { const it = _meosMbTag[parseInt(id.slice(3), 10)]; if (it) meosJumpToScope({ uri: it.uri, key: it.key, name: it.name }); return; }
+    if (id === 'tags') { meosOpenTagGo(); return; }
     if (id === 'stop') { meosStopRinging(); return; }
     if (id === 'next') { vscode.commands.executeCommand('lai-membrane.chainNext'); return; }
     if (id === 'raw') { Promise.resolve(toggleRawMode()).then(() => { try { meosUpdateTimerBar(); } catch (_) { } }); return; }
@@ -12166,7 +12168,7 @@ function meosMenuBarTail() {
   //   内側に左右5pt、外側に細い空白(U+2009)。
   const _rp = raw ? { pre: 'Raw ', pill: 'on', post: '\u2009/off   (kakaka)' } : { pre: 'Raw on/\u2009', pill: 'off', post: '   (kakaka)' };
   return [
-    { sep: true }, { id: 'list', title: 'Open the clock list\u2026' },
+    { sep: true }, ...meosMenuBarTagItems(),   // v4.2.309: 「Open the clock list…」→ Tag&Goの姿
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },
       { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] } ];
@@ -13758,6 +13760,52 @@ async function meosPseudoTimeUp(key) {
 //     部屋(vmTagItems)は**入口を叩いた時にしか作っていなかった**。so中で何をしても姿that変わらない。
 //   ★→ 予定を触る口(\u2611/\u2610・錠外し・札の付け外し)の後で、**部屋の分も送り直す**。
 //     送るのは口の中so、順番thatが必ず「変えてから送る」になる。
+// ★★v4.2.309(俊克 2026.09.23 pm01:50「メニューバーの「Open the clock list...」をTag&Goに変えよう。タグごとに孫メニューはわずらわしいのでインデント」):
+//   ★出すのは**⏰▼のTag&Goで最後に見ていた姿**= 部屋の札(選んだ札・打った字・札の並び)は面から _meosTagView へ、膜の一覧は下の _meosTagItemsLast へ。
+//   ★限るのは札の数ではなく**行の数**(MEOS_MB_TAG_ROWS)。越えた分は最後の1行「…他にN件 — Open Tag&Go」へ。
+//   ★札を2つ持つ膜は両方の札の下に出る= 札で探す所so、どちらから探しても見つかる。
+let _meosTagItemsLast = { uri: '', items: [] };
+let _meosTagView = { sel: '', filter: '', order: [] };
+let _meosMbTag = [];
+const MEOS_MB_TAG_ROWS = 15;
+function meosMenuBarTagItems() {
+  const out = [], go = [];
+  try {
+    let cur = ''; try { const e = meosCurrentEditor(); if (e && e.document) cur = e.document.uri.toString(); } catch (_) { }
+    const items = (_meosTagItemsLast.uri && _meosTagItemsLast.uri === cur) ? _meosTagItemsLast.items : [];
+    const f = String(_meosTagView.filter || '').toLowerCase();
+    const pass = it => !f || (it.tags || []).some(t => String(t).toLowerCase().indexOf(f) >= 0);
+    let tags = [];
+    if (_meosTagView.sel) tags = [_meosTagView.sel];
+    else {
+      const seen = []; for (const it of items) for (const t of (it.tags || [])) if (seen.indexOf(t) < 0) seen.push(t);
+      const ord = Array.isArray(_meosTagView.order) ? _meosTagView.order : [];
+      seen.sort((a, b) => { let ia = ord.indexOf(a), ib = ord.indexOf(b); if (ia < 0) ia = 9999; if (ib < 0) ib = 9999; return ia - ib; });
+      tags = seen;
+    }
+    let rows = 0, rest = 0;
+    for (const t of tags) {
+      const mem = items.filter(it => (it.tags || []).indexOf(t) >= 0 && pass(it));
+      if (!mem.length) continue;
+      if (rows + 2 > MEOS_MB_TAG_ROWS) { rest += mem.length; continue; }   // 札の見出しだけ残して中が空、は作らない
+      out.push({ title: '#' + t, off: true }); rows++;
+      for (const it of mem) {
+        if (rows >= MEOS_MB_TAG_ROWS) { rest++; continue; }
+        out.push({ id: 'tg:' + go.length, title: (it.running ? '\u23f0 ' : '') + (it.name || it.key), indent: 1 }); go.push(it); rows++;
+      }
+    }
+    out.push({ id: 'tags', title: rest ? ('\u2026 ' + rest + ' more \u2014 Open Tag&Go') : 'Open Tag&Go\u2026' });
+  } catch (_) { out.push({ id: 'tags', title: 'Open Tag&Go\u2026' }); }
+  _meosMbTag = go;
+  return out;
+}
+function meosOpenTagGo() {
+  try {
+    const send = () => { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'openTagGo', sel: _meosTagView.sel || '', filter: _meosTagView.filter || '' }); } catch (_) { } };
+    if (meDockPanel) { try { meDockPanel.reveal(undefined, true); } catch (_) { } send(); }
+    else { toggleMeDock(); setTimeout(send, 900); }
+  } catch (_) { }
+}
 function meosPostTagList() {
       if (!meDockPanel) return;                 // v4.1.92: 面that無ければ数えない(閉じている時に膜を数えに行かない)
       try {
@@ -13785,6 +13833,7 @@ function meosPostTagList() {
           // 時刻を持つ物that先(近い順)、その後は書いてある順= 探し物の並びも「時刻の近い順」から外れない。
           _items.sort((a, b) => (a.at && b.at) ? (a.at - b.at) : (a.at ? -1 : (b.at ? 1 : (a.line - b.line))));
         }
+        _meosTagItemsLast = { uri: _d ? _d.uri.toString() : '', items: _items };   // v4.2.309: メニューバーも同じ源から引く
         if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockTags', items: _items });
       } catch (_) { }
 }
@@ -27340,7 +27389,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -27522,7 +27571,9 @@ function clkRenderTags(){var bar=document.getElementById('clk-tags'),add=documen
  var back=mk('\u2190','',' all');back.removeAttribute('data-tag');back.id='clk-tagback';
  back.title='Back to the next five';bar.appendChild(back);
  bar.appendChild(mk('all','',' all'));
- for(i=0;i<seen.length;i++)bar.appendChild(mk('#'+seen[i],seen[i]));}
+ for(i=0;i<seen.length;i++)bar.appendChild(mk('#'+seen[i],seen[i]));
+ /* v4.2.309: 部屋の姿(選んだ札・打った字・札の並び)を拡張へ= メニューバーのTag&Goは最後に見ていた姿を出す */
+ try{var _tvk=clkTagSel+'\u0001'+clkTagFilter+'\u0001'+seen.join('\u0001');if(_tvk!==clkTagViewLast){clkTagViewLast=_tvk;vscode.postMessage({type:'tagView',sel:clkTagSel,filter:clkTagFilter,order:seen});}}catch(e){}}
 /* v4.1.78: 生きた数字。\u21bb は経過(= 間隔 \u2212 残り)、\u21ba は残り= 面と同じ式(二重に持たない)。 */
 function clkLiveVal(c){var left=Math.max(0,(c.at||0)-Date.now());
  if(c.up&&c.step>0)return vmMmSs(Math.max(0,Math.min(c.step,c.step-left)));
@@ -28822,7 +28873,7 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
+if(m&&m.type==='openTagGo'){/* v4.2.309: メニューバーから部屋へ= 最後に見ていた札のまま開く */try{if(!(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('hist-only'))&&window.__clkOpen)window.__clkOpen('hist');clkTagMode=true;clkTagSel=String(m.sel||'');clkTagFilter=String(m.filter||'');var _tn3=document.getElementById('clk-tagnew');if(_tn3)_tn3.value=clkTagFilter;vscode.postMessage({type:'clockTagList'});clkRenderList();clkPlace();}catch(e){}return;}if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
  try{if(clkTagMode){clkRenderList();clkPlace();}
   else{var _dr=document.getElementById('clk-door');if(_dr)_dr.textContent=clkDoorLabel();}   /* v4.1.91: 一覧は描き直さず、扉の数字だけ書き直す(生きた数字を跨がない) */
  }catch(e){}return;}
@@ -29907,6 +29958,7 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'clockTagList') { meosPostTagList(); return; }
+    if (message && message.type === 'tagView') { _meosTagView = { sel: String(message.sel || ''), filter: String(message.filter || ''), order: Array.isArray(message.order) ? message.order.map(String) : [] }; return; }   // v4.2.309
     // ★★★v4.1.72(俊克 改良1「**任意のタグを入力できるようにしよう**。そして、既定のタグとして
     //   #tag0 ボタンを置いて、これを押すと、**現在文字カーソルが入っている膜にそのタグが入る**ように
     //   する。これで、初心者でも、このタグでまとめられる」):
