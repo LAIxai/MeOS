@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.337) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.340) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -174,6 +174,23 @@ function run(argv) {
       item.button.image = img; item.button.title = '';
     }
   }
+  // ★v4.2.340: 連動の次の1歩(鳴った a から、次に鳴る行・回・時刻)。過ぎた分は同じ規則で飛ばす(眠っていた間など)
+  const chainNext = (a, now) => {
+    const ch = a.chain, n = ch.length; const stepOf = (r, k) => ((r.steps && r.steps.length) ? r.steps[k % r.steps.length] : 0);
+    const nextB = (r, from) => { const tot = (r.steps || []).reduce((x, y) => x + y, 0); if (!(tot > 0)) return 0; let t = r.origin; if (t > from) return t;
+      t += Math.floor((from - t) / tot) * tot; let k = 0, g = 0; while (t <= from && g++ < 1000) { t += stepOf(r, k); k++; } return t; };
+    let idx = a.idx || 0, done = (a.done || 0) + 1, at = a.at, g = 0;
+    for (;;) {
+      const row = ch[idx] || {}; let nextAt = 0;
+      if (row.rounds > 0 && done < row.rounds) nextAt = at + stepOf(row, done);
+      else if (n === 1) { if (!(row.rounds > 0)) nextAt = at + stepOf(row, done); else return null; }   // 1行だけで回数を終えた= おしまい
+      else { idx = (idx + 1) % n; done = 0; const r2 = ch[idx]; nextAt = r2.origin > 0 ? nextB(r2, at) : at + stepOf(r2, 0); }
+      if (!(nextAt > at)) return null;
+      if (nextAt > now || g++ > 500) return { at: nextAt, idx, done, name: ch[idx].name || a.name, anchor: !!ch[idx].anchor };
+      at = nextAt; done = done + 1;   // 眠っていた間に過ぎた1歩= 数えて先へ
+      if (ch[idx].rounds > 0 && done >= ch[idx].rounds && n > 1) { /* 次の周で行を回す */ }
+    }
+  };
   const BELL_MARKS = [[60000, 3000], [30000, 5000], [10000, 0]];   // v4.2.333: 拡張の MEOS_BELL_MARKS と同じ
   let preDone = {};
   const MISSED_MS = 10 * 60000;   // 眠っていた間に過ぎた物は、10分以内なら鳴らす(それより古い朝の目覚ましは鳴らさない)
@@ -203,7 +220,8 @@ function run(argv) {
       for (const a of alarms) {
         if (fired[a.id + '@' + a.at] || a.at <= now) continue;
         const n = (Array.isArray(a.steps) && a.steps.length) ? a.steps.length : 0;
-        const cyc = n ? a.steps[Math.max(0, (a.si || 0) - 1) % n] : 0;
+        let cyc = n ? a.steps[Math.max(0, (a.si || 0) - 1) % n] : 0;
+        if (Array.isArray(a.chain) && a.chain[a.idx || 0]) { const r0 = a.chain[a.idx || 0]; cyc = (r0.steps && r0.steps.length) ? r0.steps[(a.done || 0) % r0.steps.length] : 0; }   // v4.2.340
         const marks = cyc > 0 ? BELL_MARKS.filter(m => m[0] < cyc) : BELL_MARKS;
         const key = a.id + '@' + a.at; let i = preDone[key] || 0, hit = -1;
         while (i < marks.length && a.at - now <= marks[i][0]) { hit = i; i++; }
@@ -212,10 +230,13 @@ function run(argv) {
       for (const a of alarms) {
         if (fired[a.id + '@' + a.at] || a.at > now) continue;
         fired[a.id + '@' + a.at] = 1;
+        // ★v4.2.340: 連動の⏰= 拡張と同じ規則で席を回す(回数を終えたら/限り無しは1回で次の行へ。次の行に起点が有ればその区切り、無ければそこから数える)
+        if (Array.isArray(a.chain) && a.chain.length) { const nx = chainNext(a, now); if (nx) adv[a.id] = nx; }
         // v4.2.332: 周期の時計は、並びに沿って次の時刻へ進める(過ぎた分は飛ばして、今より先の最初の区切りへ)
-        if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
+        else if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
         if (now - a.at > MISSED_MS) continue;
-        ringing = { name: a.name || '', until: now + ((Array.isArray(a.steps) && a.steps.length) ? 3000 : 5 * 60000), anchor: !!a.anchor, whistle: !!(Array.isArray(a.steps) && a.steps.length) };   // v4.2.336: 周期の時刻ちょうどは笛(ピーーー)   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
+        const cyc0 = (Array.isArray(a.chain) && a.chain.length) || (Array.isArray(a.steps) && a.steps.length);   // v4.2.340: 連動も周期と同じく笛
+        ringing = { name: a.name || '', until: now + (cyc0 ? 3000 : 5 * 60000), anchor: !!a.anchor, whistle: !!cyc0 };   // v4.2.336: 周期の時刻ちょうどは笛(ピーーー)   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
         ringNext = 0;
         if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }

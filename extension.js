@@ -12241,7 +12241,20 @@ function meosHelperAlarms() {
       let steps = null;
       try { const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri); const hit = doc ? meosLiveClockFor(doc, sc.key) : null;
         if (hit && Array.isArray(hit.cycle) && hit.cycle.length && !(hit.rounds > 0)) { const ms = hit.cycle.map(t => meosCycleMs(t)).filter(v => v > 0); if (ms.length) steps = ms; } } catch (_) { }
-      out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), steps });   // v4.2.312: ⚓= 鳴らすだけ
+      // ★★v4.2.340(俊克 バグ1「VSCmが閉じている時に、タイムアップ後にアラームが鳴り続けて、1番目のタイマーに戻らない」):
+      //   ヘルパーは連動(⏰が次の⏰を呼ぶ)を知らなかった= 5m×2 は回数に限りが有るので「一度きりの鐘」として鳴り続けていた。
+      //   → その膜の⏰行の並び(各行の周期・回数・起点・⚓・名前)と、今どの行の何回目かを渡し、拡張と同じ規則で席を回してもらう。
+      let chain = null, idx = 0, done = 0;
+      try { const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri);
+        const rows = doc ? meosClockFcScan(doc).filter(x => x.key === sc.key && !x.off) : [];
+        if (rows.length) {
+          chain = rows.map(r => { const ws = String(r.whenSrc || r.when || '').trim(); let org = 0;
+            if (ws && !/^v/i.test(ws)) { try { const d = meosParseStampLoose(r.when); if (d) org = d.getTime(); } catch (_) { } }   // v…(仮想の起点)は起点として数えない= 従属
+            return { steps: (Array.isArray(r.cycle) ? r.cycle : []).map(t => meosCycleMs(t)).filter(v => v > 0), rounds: (r.rounds > 0 ? r.rounds : 0), origin: org, anchor: !!r.anchor,
+              name: r.title ? meosChainFillSlot(r.title, 1) : (sc.name || sc.key) }; });
+          idx = Math.max(0, rows.findIndex(r => r.line === sc.line)); done = Math.max(0, (typeof sc.round === 'number' ? sc.round : 1) - 1);
+        } } catch (_) { chain = null; }
+      out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), steps, chain, idx, done });   // v4.2.312: ⚓= 鳴らすだけ
     }
   } catch (_) { }
   return out.sort((a, b) => a.at - b.at);
