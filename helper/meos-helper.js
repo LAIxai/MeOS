@@ -31,7 +31,7 @@ function run(argv) {
       x.addAttributeValueRange($.NSFontAttributeName, isA ? big : font, r);
       x.addAttributeValueRange($.NSForegroundColorAttributeName, isA ? (hideA ? $.NSColor.clearColor : $.NSColor.systemRedColor) : $.NSColor.whiteColor, r);
       if (isA) {
-        x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-3), r);   // v4.2.322(俊克「メニューバーだけ下げを3に戻して」)
+        x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-2), r);   // v4.2.322(俊克「メニューバーだけ下げを3に戻して」)→ v4.2.323「下げ2に」
         if (!hideA) { x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); }
       }
       s.appendAttributedString(x);
