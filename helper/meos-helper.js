@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.316) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.317) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -17,6 +17,20 @@ function run(argv) {
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   const bar = $.NSStatusBar.systemStatusBar;
   const item = bar.statusItemWithLength($.NSVariableStatusItemLength);
+  // ★v4.2.317(俊克 改良1「灰色の絵文字は目立たないので、文字の⚓にして、文字色を黒でも…文字サイズを大きく」): ⚓だけ字の形(FE0E)・黒・太く大きく
+  const styled = (t, font) => {
+    const s = $.NSMutableAttributedString.alloc.init;
+    const big = $.NSFont.boldSystemFontOfSize(15);
+    for (const p of String(t).split(/(\u2693\ufe0f?)/)) {
+      if (!p) continue;
+      const isA = p.charAt(0) === '\u2693';
+      const x = $.NSMutableAttributedString.alloc.init; x.mutableString.setString($(isA ? '\u2693\ufe0e' : p));
+      x.addAttributeValueRange($.NSFontAttributeName, isA ? big : font, $.NSMakeRange(0, x.length));
+      x.addAttributeValueRange($.NSForegroundColorAttributeName, isA ? $.NSColor.blackColor : $.NSColor.whiteColor, $.NSMakeRange(0, x.length));
+      s.appendAttributedString(x);
+    }
+    return s;
+  };
   let appPath = '', scheme = 'vscodium', ext = 'lai.lai-membrane';
   // ★拡張が居ない時の口(ここで決める物)= 'h:' で始まる
   let alarms = [], fired = {}, ringing = null, ringNext = 0, sound = { file: '', vol: 2, every: 1 };
@@ -101,13 +115,13 @@ function run(argv) {
       const attrs = $.NSMutableDictionary.alloc.init;
       attrs.setObjectForKey(font, $.NSFontAttributeName);
       attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);
-      const ns = $(t), sz = ns.sizeWithAttributes(attrs);
+      const ns = styled(t, font), sz = ns.size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));
       img.lockFocus;
       (anchor ? blue : orange).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
-      ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), attrs);
+      ns.drawAtPoint($.NSMakePoint(PX, (H - sz.height) / 2));
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
