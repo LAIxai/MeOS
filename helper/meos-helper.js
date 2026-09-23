@@ -19,7 +19,7 @@ function run(argv) {
   const item = bar.statusItemWithLength($.NSVariableStatusItemLength);
   // ★v4.2.317(俊克 改良1「灰色の絵文字は目立たないので、文字の⚓にして…文字サイズを大きく」): ⚓だけ字の形(FE0E)
   // ★v4.2.319(俊克 改良2「縁0.4・下げ5で確定」「⚓を右5°くらい傾けようか?」): 赤の塗り＋黒の縁(字の大きさの1.6%)・20pt・下げ5・右へ5°
-  const ANCHOR_TILT = 5;
+  const ANCHOR_TILT = 10;   // v4.2.321(俊克「傾き10°にしてみよう」)
   const styled = (t, font, hideA) => {
     const s = $.NSMutableAttributedString.alloc.init;
     const big = $.NSFont.boldSystemFontOfSize(20);   // v4.2.320: 太字(26ptは札からはみ出した・実測)
