@@ -13466,6 +13466,7 @@ function meosArmPseudoTimer(key, ms) {
       while (j < mk.length && left <= mk[j][0] + 600) {
         if (left >= mk[j][0] - 1500) {                    // その印のために起きた= 鳴らす
           const sc = _meosPseudoScopes.get(key);
+          try { _meosRingAnchor = !!(sc && meosClockAnchoredNow(sc)); } catch (_) { _meosRingAnchor = false; }   // v4.2.327: 先鐘(1分前・30秒前・10秒前)も⚓なら青
           meosRingFor(meosClockSayName(sc), mk[j][1]);
           meosUpdateTimerBar();
         }
