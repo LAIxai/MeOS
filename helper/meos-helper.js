@@ -93,8 +93,8 @@ function run(argv) {
       // v4.2.330(俊克 改良1「メニューバーの中の⚓が絵文字のままだよ」): 一覧の⚓も札と同じ字の形・赤＋黒の縁
       if (!e.pill && !e.sub && /\u2693/.test(e.title || '')) { try { const mf = $.NSFont.menuFontOfSize(0); const a = $.NSMutableAttributedString.alloc.init;
         for (const q of String(e.title).split(/(\u2693\ufe0f?)/)) { if (!q) continue; const isA = q.charAt(0) === '\u2693'; const x = $.NSMutableAttributedString.alloc.init; x.mutableString.setString($(isA ? '\u2693\ufe0e' : q)); const r = $.NSMakeRange(0, x.length);
-          x.addAttributeValueRange($.NSFontAttributeName, isA ? $.NSFont.boldSystemFontOfSize(20) : mf, r);   // v4.2.332(俊克 改良1「メニューの中の⚓も大きく」)
-          if (isA) { x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, r); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-3), r); }
+          x.addAttributeValueRange($.NSFontAttributeName, isA ? $.NSFont.boldSystemFontOfSize(24) : mf, r);   // v4.2.333(俊克「もう少し大きく」「係留中なので、垂直になっていると考えればいい」): 24pt・傾けない
+          if (isA) { x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, r); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-4), r); }
           a.appendAttributedString(x); }
         mi.attributedTitle = a; } catch (x) {} }
       if (e.pill) {
@@ -142,7 +142,7 @@ function run(argv) {
     item.visible = on;
     if (!on) return;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu) { lastMenu = mj; item.menu = build(menu || []); }
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; item.menu = build(menu || []); }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (text !== lastText || !!anchor !== lastAnchor) {
       lastText = text; lastAnchor = !!anchor;
       const t = String(text).length > 40 ? String(text).slice(0, 39) + '…' : String(text);   // ノッチの裏に隠れないよう短く
@@ -162,11 +162,15 @@ function run(argv) {
       item.button.image = img; item.button.title = '';
     }
   }
+  const BELL_MARKS = [[60000, 3000], [30000, 5000], [10000, 0]];   // v4.2.333: 拡張の MEOS_BELL_MARKS と同じ
+  let preDone = {};
   const MISSED_MS = 10 * 60000;   // 眠っていた間に過ぎた物は、10分以内なら鳴らす(それより古い朝の目覚ましは鳴らさない)
-  for (;;) {
+  let quitNow = false;
+  const tracking = () => { try { return ObjC.unwrap($.NSRunLoop.currentRunLoop.currentMode) === 'NSEventTrackingRunLoopMode'; } catch (e) { return false; } };
+  function step() {
     let st = null;
     try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}
-    if (st && st.quit) break;                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
+    if (st && st.quit) { quitNow = true; return; }                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
     if (st) {
       if (st.app) appPath = st.app;
       if (st.scheme) scheme = st.scheme;
@@ -182,6 +186,17 @@ function run(argv) {
       for (const a of alarms) if (a.at <= now) fired[a.id + '@' + a.at] = 1;   // 拡張が鳴らした物を、後で鳴らし直さない
       show(st && st.text, st && st.menu, st && st.anchor);
     } else {
+      // ★v4.2.333(俊克 バグ1「⚓タイマーは…3回鳴るだけというのは今一。通常通り、1分前、30秒前、10秒以内の鳴動はしようよ」):
+      //   拡張と同じ先鐘= 1分前に3秒・30秒前に5秒・10秒前から時刻まで鳴り続ける。周期より遠い印は出さない(1分周期に1分前は無い)。
+      for (const a of alarms) {
+        if (fired[a.id + '@' + a.at] || a.at <= now) continue;
+        const n = (Array.isArray(a.steps) && a.steps.length) ? a.steps.length : 0;
+        const cyc = n ? a.steps[Math.max(0, (a.si || 0) - 1) % n] : 0;
+        const marks = cyc > 0 ? BELL_MARKS.filter(m => m[0] < cyc) : BELL_MARKS;
+        const key = a.id + '@' + a.at; let i = preDone[key] || 0, hit = -1;
+        while (i < marks.length && a.at - now <= marks[i][0]) { hit = i; i++; }
+        if (hit >= 0) { preDone[key] = i; ringing = { name: a.name || '', until: marks[hit][1] > 0 ? now + marks[hit][1] : a.at, anchor: !!a.anchor }; ringNext = 0; }
+      }
       for (const a of alarms) {
         if (fired[a.id + '@' + a.at] || a.at > now) continue;
         fired[a.id + '@' + a.at] = 1;
@@ -204,8 +219,16 @@ function run(argv) {
       const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
       show(text, menu, ringing ? !!ringing.anchor : (next.length > 0 && !!next[0].anchor));
     }
-    $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
   }
+  // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
+  //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
+  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} } } } });
+  const ticker = $.MeOSTickH.alloc.init;
+  const timer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.5, ticker, 'tick:', $(), true);
+  $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSRunLoopCommonModes);
+  try { step(); } catch (e) {}
+  while (!quitNow) $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
+  timer.invalidate;
   bar.removeStatusItem(item);
   return 'bye';
 }
