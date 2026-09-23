@@ -12278,7 +12278,8 @@ function meosHelperWrite(text, menu, owner, anchor) {
     const fs = require('fs'), path = require('path'), dir = meosHelperDir();
     const ep = String(process.execPath || ''), ai = ep.indexOf('.app/');
     const st = { owner: (owner === undefined ? process.pid : owner), app: ai > 0 ? ep.slice(0, ai + 4) : '', scheme: vscode.env.uriScheme || 'vscodium',
-      text: text || null, anchor: !!anchor, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound() };
+      text: text || null, anchor: !!anchor, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound(),
+      tagGo: { view: _meosTagView, items: (_meosTagItemsLast.items || []).slice(0, 300) } };   // v4.2.342: 閉じている間のTag&Go
     const key = JSON.stringify(st);
     if (key === _meosHelper.last) return;
     fs.mkdirSync(dir, { recursive: true });
@@ -13978,6 +13979,7 @@ async function meosPseudoTimeUp(key) {
 //   ★★v4.2.311(俊克 改良1「全部出すと邪魔なので、Tag&Goというメニューのみ表示し、それをクリックすると今の状態にする」):
 //     メニューは「Tag&Go」の1行だけ。押すと⏰▼のTag&Goの部屋を、最後に見ていた姿(選んだ札・打った字)で開く。部屋の姿は面から _meosTagView へ。
 let _meosTagView = { sel: '', filter: '', order: [] };
+let _meosTagItemsLast = { uri: '', items: [] };   // ★v4.2.342: 最後に数えた部屋の一覧= VSCodiumが閉じている間、ヘルパーのメニューに並べる
 function meosOpenTagGo() {
   try {
     const send = () => { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'openTagGo', sel: _meosTagView.sel || '', filter: _meosTagView.filter || '' }); } catch (_) { } };
@@ -14012,6 +14014,7 @@ function meosPostTagList() {
           // 時刻を持つ物that先(近い順)、その後は書いてある順= 探し物の並びも「時刻の近い順」から外れない。
           _items.sort((a, b) => (a.at && b.at) ? (a.at - b.at) : (a.at ? -1 : (b.at ? 1 : (a.line - b.line))));
         }
+        _meosTagItemsLast = { uri: _d ? _d.uri.toString() : '', items: _items.map(it => ({ uri: it.uri, key: it.key, name: it.name, tags: it.tags })) };   // v4.2.342
         if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clockTags', items: _items });
       } catch (_) { }
 }

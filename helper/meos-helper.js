@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.341) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.342) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -69,13 +69,14 @@ function run(argv) {
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
       if (id === 'h:open') { openApp(); return; }
+      if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openUrl(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行
       const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openUrl(warpUrl(a, false)); }
       return;
     }
     try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}
     openApp();
   } } } });
-  let optTarget = null;   // v4.2.337: 札に出ている時計(拡張が居ない時)
+  let optTarget = null, tagRows = [];   // v4.2.337: 札に出ている時計(拡張が居ない時)
   const optWarp = () => {
     if (ownerAlive(owner)) { try { $(JSON.stringify({ id: 'optwarp', t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} openApp(); return; }
     if (optTarget) { stopBell(); openUrl(warpUrl(optTarget, false)); } else openApp();
@@ -239,7 +240,10 @@ function run(argv) {
         else if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
         if (now - a.at > MISSED_MS) continue;
         const cyc0 = (Array.isArray(a.chain) && a.chain.length) || (Array.isArray(a.steps) && a.steps.length);   // v4.2.340: 連動も周期と同じく笛
-        ringing = { name: a.name || '', until: now + (cyc0 ? 3000 : 5 * 60000), anchor: !!a.anchor, whistle: !!cyc0 };   // v4.2.336: 周期の時刻ちょうどは笛(ピーーー)   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
+        // ★v4.2.342(俊克「二本目がタイムアップした直後に「⏰⚓♬目薬2本目」が数秒表示された後、次に切り替わった。VSCmが起動している時は無い」):
+        //   拡張は時刻ちょうどに鐘を止めて笛を1回鳴らすだけ(鳴っている扱いにしない)。こちらは笛の3秒を「鳴っている」にしていた→ 同じく鳴らすだけ
+        if (cyc0) { stopBell(); try { const f = sound.whistle || sound.file; if (f) $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(sound.vol || 2), f])); } catch (e) {} }
+        else ringing = { name: a.name || '', until: now + 5 * 60000, anchor: !!a.anchor };   // v4.2.336: 周期の時刻ちょうどは笛(ピーーー)   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
         ringNext = 0;
         if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }
@@ -262,6 +266,26 @@ function run(argv) {
       if (ringing) menu.push({ id: 'h:stop', title: 'Stop the bell' }, { sep: true });
       next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
       if (next.length) menu.push({ sep: true });
+      // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
+      //   最後に見ていた部屋の姿(選んだ札・打った字・札の並び)で、札ごとに並べる(v4.2.309の形)。押せば VSCodium を起こして膜へ
+      tagRows = [];
+      try {
+        const tg = (st && st.tagGo) || {}, v = tg.view || {}, items = Array.isArray(tg.items) ? tg.items : [];
+        const f = String(v.filter || '').toLowerCase(), pass = it => !f || (it.tags || []).some(x => String(x).toLowerCase().indexOf(f) >= 0);
+        let tags = [];
+        if (v.sel) tags = [v.sel];
+        else { for (const it of items) for (const x of (it.tags || [])) if (tags.indexOf(x) < 0) tags.push(x);
+          const ord = Array.isArray(v.order) ? v.order : []; tags.sort((p, q) => { let a1 = ord.indexOf(p), b1 = ord.indexOf(q); if (a1 < 0) a1 = 9999; if (b1 < 0) b1 = 9999; return a1 - b1; }); }
+        const tmenu = [];
+        let rows = 0, rest = 0;
+        for (const x of tags) {
+          const mem = items.filter(it => (it.tags || []).indexOf(x) >= 0 && pass(it)); if (!mem.length) continue;
+          if (rows + 2 > 15) { rest += mem.length; continue; }
+          tmenu.push({ title: '#' + x, off: true }); rows++;
+          for (const it of mem) { if (rows >= 15) { rest++; continue; } tmenu.push({ id: 'h:t' + tagRows.length, title: it.name || it.key, indent: 1 }); tagRows.push(it); rows++; }
+        }
+        if (tmenu.length || items.length) { menu.push({ title: 'Tag&Go', off: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1 }); menu.push({ sep: true }); }
+      } catch (e) {}
       menu.push({ id: 'h:open', title: 'Open VSCodium' });
       // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):
       //   拡張の最下段(v4.2.328)と同じく、鳴っている時計がまだ数えていれば残り時間を添える。♪/♬も拡張と同じ拍(0.8秒)で入れ替える。
