@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.317) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.319) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -17,19 +17,40 @@ function run(argv) {
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   const bar = $.NSStatusBar.systemStatusBar;
   const item = bar.statusItemWithLength($.NSVariableStatusItemLength);
-  // ★v4.2.317(俊克 改良1「灰色の絵文字は目立たないので、文字の⚓にして、文字色を黒でも…文字サイズを大きく」): ⚓だけ字の形(FE0E)・黒・太く大きく
-  const styled = (t, font) => {
+  // ★v4.2.317(俊克 改良1「灰色の絵文字は目立たないので、文字の⚓にして…文字サイズを大きく」): ⚓だけ字の形(FE0E)
+  // ★v4.2.319(俊克 改良2「縁0.4・下げ5で確定」「⚓を右5°くらい傾けようか?」): 赤の塗り＋黒の縁(字の大きさの1.6%)・20pt・下げ5・右へ5°
+  const ANCHOR_TILT = 5;
+  const styled = (t, font, hideA) => {
     const s = $.NSMutableAttributedString.alloc.init;
-    const big = $.NSFont.boldSystemFontOfSize(15);
+    const big = $.NSFont.systemFontOfSize(20);
     for (const p of String(t).split(/(\u2693\ufe0f?)/)) {
       if (!p) continue;
       const isA = p.charAt(0) === '\u2693';
       const x = $.NSMutableAttributedString.alloc.init; x.mutableString.setString($(isA ? '\u2693\ufe0e' : p));
-      x.addAttributeValueRange($.NSFontAttributeName, isA ? big : font, $.NSMakeRange(0, x.length));
-      x.addAttributeValueRange($.NSForegroundColorAttributeName, isA ? $.NSColor.blackColor : $.NSColor.whiteColor, $.NSMakeRange(0, x.length));
+      const r = $.NSMakeRange(0, x.length);
+      x.addAttributeValueRange($.NSFontAttributeName, isA ? big : font, r);
+      x.addAttributeValueRange($.NSForegroundColorAttributeName, isA ? (hideA ? $.NSColor.clearColor : $.NSColor.systemRedColor) : $.NSColor.whiteColor, r);
+      if (isA) {
+        x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-5), r);
+        if (!hideA) { x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); }
+      }
       s.appendAttributedString(x);
     }
     return s;
+  };
+  // 字を描く= 全体は⚓を透明にして並べ、⚓だけを同じ場所へ傾けて描き直す(並びも背丈も全体と同じ物差し)
+  const drawStyled = (t, font, x, y) => {
+    styled(t, font, true).drawAtPoint($.NSMakePoint(x, y));
+    const m = /\u2693\ufe0f?/.exec(String(t)); if (!m) return;
+    const pre = String(t).slice(0, m.index);
+    const pw = pre ? styled(pre, font, false).size.width : 0;
+    const one = styled(pre + m[0], font, false);   // 前の字と同じ行の高さで⚓を測る
+    const aw = one.size.width - pw, ah = one.size.height;
+    const ctx = $.NSGraphicsContext.currentContext; ctx.saveGraphicsState;
+    const tr = $.NSAffineTransform.transform;
+    tr.translateXByYBy(x + pw + aw / 2, y + ah / 2); tr.rotateByDegrees(-ANCHOR_TILT); tr.translateXByYBy(-(x + pw + aw / 2), -(y + ah / 2)); tr.concat;
+    styled(m[0], font, false).drawAtPoint($.NSMakePoint(x + pw, y + (ah - styled(m[0], font, false).size.height)));
+    ctx.restoreGraphicsState;
   };
   let appPath = '', scheme = 'vscodium', ext = 'lai.lai-membrane';
   // ★拡張が居ない時の口(ここで決める物)= 'h:' で始まる
@@ -115,13 +136,13 @@ function run(argv) {
       const attrs = $.NSMutableDictionary.alloc.init;
       attrs.setObjectForKey(font, $.NSFontAttributeName);
       attrs.setObjectForKey($.NSColor.whiteColor, $.NSForegroundColorAttributeName);
-      const ns = styled(t, font), sz = ns.size;
+      const sz = styled(t, font, true).size;
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));
       img.lockFocus;
       (anchor ? blue : orange).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
-      ns.drawAtPoint($.NSMakePoint(PX, (H - sz.height) / 2));
+      drawStyled(t, font, PX, (H - sz.height) / 2);
       img.unlockFocus;
       img.template = false;
       item.button.image = img; item.button.title = '';
