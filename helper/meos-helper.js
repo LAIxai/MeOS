@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.340) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.341) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -175,6 +175,9 @@ function run(argv) {
     }
   }
   // ★v4.2.340: 連動の次の1歩(鳴った a から、次に鳴る行・回・時刻)。過ぎた分は同じ規則で飛ばす(眠っていた間など)
+  // ★v4.2.341(俊克 バグ1「VSCmを閉じていると、目薬2本目のときに、メニューバーは、1本目と誤表示される」):
+  //   名前の器(タイトルの `1.`)に回数を入れるのは拡張(meosChainFillSlot)だけだった→ 同じ規則をここにも1つ
+  const fillSlot = (text, round) => { let s = String(text || '').replace(/^\s*\d{1,3}[.)]\s*/, ''); if (round > 0) s = s.replace(/\d{1,3}[.)]/, String(round)); return s.trim(); };
   const chainNext = (a, now) => {
     const ch = a.chain, n = ch.length; const stepOf = (r, k) => ((r.steps && r.steps.length) ? r.steps[k % r.steps.length] : 0);
     const nextB = (r, from) => { const tot = (r.steps || []).reduce((x, y) => x + y, 0); if (!(tot > 0)) return 0; let t = r.origin; if (t > from) return t;
@@ -186,7 +189,7 @@ function run(argv) {
       else if (n === 1) { if (!(row.rounds > 0)) nextAt = at + stepOf(row, done); else return null; }   // 1行だけで回数を終えた= おしまい
       else { idx = (idx + 1) % n; done = 0; const r2 = ch[idx]; nextAt = r2.origin > 0 ? nextB(r2, at) : at + stepOf(r2, 0); }
       if (!(nextAt > at)) return null;
-      if (nextAt > now || g++ > 500) return { at: nextAt, idx, done, name: ch[idx].name || a.name, anchor: !!ch[idx].anchor };
+      if (nextAt > now || g++ > 500) return { at: nextAt, idx, done, name: (ch[idx].title ? fillSlot(ch[idx].title, done + 1) : ch[idx].name) || a.name, anchor: !!ch[idx].anchor };
       at = nextAt; done = done + 1;   // 眠っていた間に過ぎた1歩= 数えて先へ
       if (ch[idx].rounds > 0 && done >= ch[idx].rounds && n > 1) { /* 次の周で行を回す */ }
     }

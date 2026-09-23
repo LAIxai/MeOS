@@ -12251,7 +12251,7 @@ function meosHelperAlarms() {
           chain = rows.map(r => { const ws = String(r.whenSrc || r.when || '').trim(); let org = 0;
             if (ws && !/^v/i.test(ws)) { try { const d = meosParseStampLoose(r.when); if (d) org = d.getTime(); } catch (_) { } }   // v…(仮想の起点)は起点として数えない= 従属
             return { steps: (Array.isArray(r.cycle) ? r.cycle : []).map(t => meosCycleMs(t)).filter(v => v > 0), rounds: (r.rounds > 0 ? r.rounds : 0), origin: org, anchor: !!r.anchor,
-              name: r.title ? meosChainFillSlot(r.title, 1) : (sc.name || sc.key) }; });
+              name: r.title ? meosChainFillSlot(r.title, 1) : (sc.name || sc.key), title: r.title || '' }; });   // v4.2.341: 器(1.)に回数を入れるための元の字
           idx = Math.max(0, rows.findIndex(r => r.line === sc.line)); done = Math.max(0, (typeof sc.round === 'number' ? sc.round : 1) - 1);
         } } catch (_) { chain = null; }
       out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), steps, chain, idx, done });   // v4.2.312: ⚓= 鳴らすだけ
