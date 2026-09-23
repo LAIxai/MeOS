@@ -12248,7 +12248,11 @@ function meosHelperSound() {
     const name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     const file = !name ? '' : (name.indexOf('/') >= 0 ? name : ('/System/Library/Sounds/' + name + '.aiff'));
-    return { file, vol, every: meosRingSeconds() };
+    // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
+    let whistle = '';
+    try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
+      if (src && !fs.existsSync(dst)) { fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.copyFileSync(src, dst); } if (fs.existsSync(dst)) whistle = dst; } } catch (_) { }
+    return { file, vol, every: meosRingSeconds(), whistle };
   } catch (_) { return { file: '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }
 }
 function meosHelperWrite(text, menu, owner, anchor) {

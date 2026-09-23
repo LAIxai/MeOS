@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.335) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.336) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -204,18 +204,23 @@ function run(argv) {
         // v4.2.332: 周期の時計は、並びに沿って次の時刻へ進める(過ぎた分は飛ばして、今より先の最初の区切りへ)
         if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
         if (now - a.at > MISSED_MS) continue;
-        ringing = { name: a.name || '', until: now + ((Array.isArray(a.steps) && a.steps.length) ? 3000 : 5 * 60000), anchor: !!a.anchor };   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
+        ringing = { name: a.name || '', until: now + ((Array.isArray(a.steps) && a.steps.length) ? 3000 : 5 * 60000), anchor: !!a.anchor, whistle: !!(Array.isArray(a.steps) && a.steps.length) };   // v4.2.336: 周期の時刻ちょうどは笛(ピーーー)   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
         ringNext = 0;
         if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }
       if (ringing && now >= ringing.until) stopBell();
       // ★v4.2.335(俊克「VSCmを閉じている時に、鳴動がゆっくりだったのはなぜか?」): 見回り(0.5秒)のついでに鳴らしていたので、
       //   0.6秒の設定が次の見回りの1.0秒へ間延びしていた。→ 鐘は専用のタイマーで、設定どおりの間隔で鳴らす。
-      if (ringing && !bellTimer) {
+      if (ringing && ringing.whistle && !ringing.blown) {   // v4.2.336: 拡張の meosPlayWhistle と同じ= 秒読みを止めて、3秒の笛を1回
+        if (bellTimer) { bellTimer.invalidate; bellTimer = null; }
+        ringing.blown = true;
+        try { const f = sound.whistle || sound.file; if (f) $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(sound.vol || 2), f])); } catch (e) {}
+      }
+      if (ringing && !ringing.whistle && !bellTimer) {
         playBell();
         if (sound.every > 0) { bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(Math.max(0.3, sound.every), ticker, 'bell:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); }
       }
-      if (!ringing && bellTimer) { bellTimer.invalidate; bellTimer = null; }
+      if ((!ringing || ringing.whistle) && bellTimer) { bellTimer.invalidate; bellTimer = null; }
       alarms = alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
       const next = alarms.filter(a => !fired[a.id + '@' + a.at] && a.at > now).sort((x, y) => x.at - y.at);
       const menu = [];
