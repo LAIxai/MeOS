@@ -23230,6 +23230,7 @@ async function bookmarkTogglePending(editor) {
   try { await vscode.window.showTextDocument(doc, { viewColumn: editor.viewColumn, preserveFocus: false, selection: new vscode.Range(pos, pos) }); } catch (_) {}
   editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
 }
+const _bookmarkUndo = new Map();   // v4.2.329: uri -> [{start, del, ins, before}] 栞を消した編集の直前の姿
 function adjustBookmarksForChange(e) { // 編集による行ズレを分かる範囲で追従。
   if (!e || !e.document) return;
   const k = e.document.uri.toString();
@@ -23237,6 +23238,35 @@ function adjustBookmarksForChange(e) { // 編集による行ズレを分かる�
   const data = _bookmarkMem.get(k);
   const pending = Array.isArray(data.pending) ? data.pending : [];
   if (!data.marks.length && !pending.length) return;
+  // ★★v4.2.329(俊克「全選択カットをUndoで戻すと、栞のFが消えている。参照グループのFは記憶したまま」→「メタに書き込んでないんじゃないのか?」):
+  //   ★その通り= 栞は globalState に**行番号で**持っている(参照グループのFは本文のmMETA= Undoで本文ごと戻る)。
+  //     全部消すと栞は1行目に押し寄せて重なり、Undoで本文が戻っても「1行目の後ろに挿入」としか見えず1行目に取り残されていた。
+  //   ★→ 栞の行を消す編集の**直前の姿を控え**、その編集を**Undoした時に控えから戻す**(同じ所・同じ行数を逆向きに戻す変更だけ)。
+  //     Redo はもう一度消す編集なので、また控えが積まれる= 何度行き来しても戻る。
+  try {
+    const _st = _bookmarkUndo.get(k) || [];
+    if (e.reason === vscode.TextDocumentChangeReason.Undo && e.contentChanges.length === 1 && _st.length) {
+      const c0 = e.contentChanges[0], ins0 = (c0.text.match(/\n/g) || []).length, del0 = c0.range.end.line - c0.range.start.line, top = _st[_st.length - 1];
+      if (top.start === c0.range.start.line && top.del === ins0 && top.ins === del0) {
+        _st.pop();
+        const back = JSON.parse(top.before);
+        _bookmarkMem.set(k, back);
+        saveBookmarks(e.document, back);
+        meosDbg('[bookmark] Undo で栞を戻した(' + (back.marks || []).length + '個 F=' + back.front + ')');
+        return;
+      }
+    }
+    const _lines = [].concat(data.marks, pending.map(q => q.line), [data.front, data.pendingFront, data.home]).filter(n => typeof n === 'number' && n >= 0);
+    for (const c of e.contentChanges) {
+      const s0 = c.range.start.line, e0 = c.range.end.line, del = e0 - s0;
+      if (del > 0 && _lines.some(n => n >= s0 && n <= e0)) {
+        _st.push({ start: s0, del, ins: (c.text.match(/\n/g) || []).length, before: JSON.stringify(data) });
+        while (_st.length > 20) _st.shift();
+        _bookmarkUndo.set(k, _st);
+        break;
+      }
+    }
+  } catch (_) { }
   // v0.9.847: 通常栞のタイムスタンプ(markStamps)も行ズレに追従させるため、行番号と日時を対(pair)で持って一緒にずらす。
   const stamps = (data.markStamps && typeof data.markStamps === 'object') ? data.markStamps : {};
   let pairs = data.marks.map(L => ({ line: L, at: stamps[L] || '' }));
