@@ -12770,10 +12770,14 @@ function meosApplyTimerLineDecorations(editor) {
               const _am = meosClockAnchorMarkAt(txt);
               if (_am) badgeHide.push(new vscode.Range(i, _am.a, i, _am.b));
               const _withLock = !c.done && !c.lock;   // v4.2.318: 右の区画に🔓が立つか(立たなければ駒は🚢💨/⚓だけの幅)
-              (c.anchor ? (_withLock ? moorLBtns : moorBtns) : (_withLock ? shipLBtns : shipBtns)).push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p),
-                // ★v4.2.324(俊克 改良1「本文の⚓ボタンにも、🔓ボタン同様に、tipで説明を入れよう」): 🔓と同じ書き方= 今の姿と、押すと何が起きるかを1行で
-                hoverMessage: c.anchor ? '\u2693 Moored \u2014 when time is up the bell rings, but you stay where you are. Click to sail \ud83d\udea2\ud83d\udca8: you will be warped here again.'
-                  : '\ud83d\udea2\ud83d\udca8 Click to moor this clock with \u2693 \u2014 when time is up the bell still rings, but you are not warped here.' });
+              // ★v4.2.325(俊克 改良2「⚓の上ではtipが出ないので、どっちでも共通のtipを出そうよ」):
+              //   ⚓の絵の下は隠した本文の⚓の桁= 指はそこに落ちてtipの範囲の外だった。→ tipは⏰の後ろ〜駒の右端まで1つ(🚢💨/⚓と🔓を1枚で言う)
+              { const _lmA = meosClockLockMarkAt(txt);
+                items.push({ range: new vscode.Range(i, _lmA ? _lmA.b : _spA.e, i, _spA.p), hoverMessage: (c.anchor
+                  ? '\u2693 Moored \u2014 when time is up the bell rings, but you stay where you are. Click \u2693 to sail \ud83d\udea2\ud83d\udca8: you will be warped here again.'
+                  : '\ud83d\udea2\ud83d\udca8 When time is up you are warped here. Click \ud83d\udea2\ud83d\udca8 to moor with \u2693 \u2014 the bell still rings, but you stay where you are.')
+                  + (_withLock ? '\n\n\ud83d\udd13 Click \ud83d\udd13 to lock this clock with \ud83d\udd10 \u2014 it then cannot be stopped or dropped until it rings.' : '') }); }
+              (c.anchor ? (_withLock ? moorLBtns : moorBtns) : (_withLock ? shipLBtns : shipBtns)).push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p) });   // tipは上の1枚
             }
           }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
@@ -12788,8 +12792,7 @@ function meosApplyTimerLineDecorations(editor) {
                 // ★★v4.2.236(俊克「まだポインタの形が変わらず、切り替えができない」): 🔓を**空白の上に浮かせた飾り**にしていたので、
                 //   隠した印(⏸6)と空白の桁が全部同じ位置に重なり、押すと⏰の頭(▶️の当たり)へ落ちていた(ログ caretCh=13)。
                 //   → 時刻の直前の**空白1字そのもの**を🔓の駒にする= 本物の字の箱なので手の形も当たりも効く(幅は字間で広げる)。
-                if (/[ \t]/.test(txt[_sp.p - 1] || '')) lockBtns.push({ range: new vscode.Range(i, _sp.p - 1, i, _sp.p),
-                  hoverMessage: '\ud83d\udd13 Click to lock this clock with \ud83d\udd10 \u2014 it then cannot be stopped or dropped until it rings.' });
+                if (/[ \t]/.test(txt[_sp.p - 1] || '')) lockBtns.push({ range: new vscode.Range(i, _sp.p - 1, i, _sp.p) });   // v4.2.325: tipは🚢💨/⚓と共通の1枚
               }
               else items.push({ range: new vscode.Range(i, _sp.e, i, _sp.e),
                 renderOptions: { after: { contentText: '\ud83d\udd13', opacity: '0.42' } } });
@@ -13171,7 +13174,7 @@ function meosUpdateTimerBar() {
       const _note = (Math.floor(Date.now() / (MEOS_RING_BLINK_MS * 2)) % 2) ? '\u266c' : '\u266a';
       // ★v4.2.211(俊克「音符記号を出すので、ringingという文字は削除していい。そのつもりで音符記号を入れた」)
       _meosTimerBar.text = '\u23f0 ' + _note + (_meosRingName ? ('  ' + _meosRingName) : '') + '  \u2014 click to stop';
-      meosMenuBarSet('\u23f0 ' + _note + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }]);   // v4.2.205/207/209/211
+      meosMenuBarSet('\u23f0' + (_meosRingAnchor ? '\u2693\ufe0f' : '') + ' ' + _note + (_meosRingName ? (' ' + _meosRingName) : ''), [{ id: 'stop', title: 'Stop the bell' }], { anchor: _meosRingAnchor });   // v4.2.205/207/209/211 / v4.2.325: ⚓の鐘も青
       _meosTimerBar.tooltip = 'MeOS: the clock is ringing. Click here, or the \u23f0 button, to stop it.';
       _meosTimerBar.command = 'lai-membrane.pseudoTimer';
       try { _meosTimerBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground'); _meosTimerBar.color = undefined; } catch (_) { }
@@ -13677,6 +13680,7 @@ function meosPlayChime() {
 //     知らせるUIと直すUIを別に作らない([[feedback_fix_signal_at_fix_place]])。
 //   ★ただし**永久には鳴らさない**= 席を外している人の機械thatが鳴り続けるのは事故。上限を置く(既定5分)。
 let _meosRingTimer = null, _meosRingUntil = 0, _meosRingName = '';
+let _meosRingAnchor = false;   // ★v4.2.325(俊克 改良3「⚓のタイマーが鳴っているときに、橙色の地になっているので、そっちも青色に」)
 function meosRingSeconds() {
   // ★v4.0.473(俊克「⏰音は、間を置かずに、**連続的に**鳴らせないかな?」): 小数を受ける=
   //   0.6 なら音thatほぼ途切れない。0 は「1回だけ」の意味so残す。下限0.3(それより短いと afplay that
@@ -13685,7 +13689,7 @@ function meosRingSeconds() {
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
-  _meosRingUntil = 0; _meosRingName = '';
+  _meosRingUntil = 0; _meosRingName = ''; _meosRingAnchor = false;
   meosUpdateTimerBar(); meosPostViewMode();
 }
 // ★★★v4.1.57(俊克「もう少し**高音で3秒間、ピーって**鳴らそうよ」):
@@ -13836,6 +13840,7 @@ async function meosPseudoTimeUp(key) {
   // v4.1.44: 先に鳴らし終えていれば、ここでは鳴らし直さない(鐘は1つ・鳴り続けている)。
   const _pre = (_meosBellDone.get(key) || 0) > 0; _meosBellDone.delete(key); _meosPreBell.delete(key);
   const _cyc = meosCycleStepFor(key);
+  try { _meosRingAnchor = !!(_sc0 && meosClockAnchoredNow(_sc0)); } catch (_) { _meosRingAnchor = false; }   // v4.2.325
   if (!_pre) meosStartRinging(meosClockSayName(_sc0));   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
   //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。

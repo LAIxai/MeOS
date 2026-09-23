@@ -171,7 +171,7 @@ function run(argv) {
         if (fired[a.id] || a.at > now) continue;
         fired[a.id] = 1;
         if (now - a.at > MISSED_MS) continue;
-        ringing = { name: a.name || '', until: now + 5 * 60000 };   // 上限5分= 拡張と同じ
+        ringing = { name: a.name || '', until: now + 5 * 60000, anchor: !!a.anchor };   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
         ringNext = 0;
         if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }
@@ -183,8 +183,8 @@ function run(argv) {
       next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
       if (next.length) menu.push({ sep: true });
       menu.push({ id: 'h:open', title: 'Open VSCodium' });
-      const text = ringing ? ('⏰ ' + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
-      show(text, menu, !ringing && next.length > 0 && !!next[0].anchor);
+      const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
+      show(text, menu, ringing ? !!ringing.anchor : (next.length > 0 && !!next[0].anchor));
     }
     $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
   }
