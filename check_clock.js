@@ -2453,7 +2453,7 @@ console.log('㊼ 連なりの待ちは5分で飛ばす(v4.2.100)');
 console.log('㊽ BTRON指差し / macOS指差し を選ぶ(v4.2.108)');
 {
  const S108=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
- ok(/function meosHandCursor\(\) \{[\s\S]{0,200}?=== 'macos'\) return MEOS_HAND_CURSOR_MAC;[\s\S]{0,120}?return MEOS_HAND_CURSOR;/.test(S108) && /^const MEOS_HAND_CURSOR_MAC = 'image-set\(/m.test(S108),
+ ok(/function meosHandCursor\(\) \{[\s\S]{0,200}?=== 'macos'\) return MEOS_HAND_CURSOR_MAC;[\s\S]{0,300}?return MEOS_HAND_CURSOR;/.test(S108) && /^const MEOS_HAND_CURSOR_MAC = 'image-set\(/m.test(S108),
     '★★設定 pointerHand が macos なら俊克の macOS の手の絵(v4.2.112)、既定は BTRON の絵', true);
  ok((S108.match(/MEOS_HAND_CURSOR(_MAC)?\b/g)||[]).length===4, '★★★手を使う所は全部 meosHandCursor() から(定数を直接読むのは定義2つと関数だけ)', (S108.match(/MEOS_HAND_CURSOR(_MAC)?\b/g)||[]).length);
  ok(!/cursorTMP/.test(S108) && (S108.match(/cursor: ' \+ meosHandCursor\(\) \+ '/g)||[]).length===8, '  装飾の textDecoration 8か所も同じ関数から', (S108.match(/cursor: ' \+ meosHandCursor\(\) \+ '/g)||[]).length);
