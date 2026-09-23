@@ -2657,7 +2657,7 @@ async function meosThemeMessage(m) {
   }
 }
 function meosHandName() {
-  try { const v = String(vscode.workspace.getConfiguration('laiMembrane').get('pointerHand', 'btron')); return (v === 'macos' || v === 'macos22' || v === 'system') ? v : 'btron'; } catch (_) { return 'btron'; }
+  try { const v = String(vscode.workspace.getConfiguration('laiMembrane').get('pointerHand', 'btron')); return v === 'macos' ? 'macos22' : ((v === 'macos22' || v === 'system') ? v : 'btron'); } catch (_) { return 'btron'; }   // ★v4.2.306: 選べるのは3つ。元の macos は絵と定数だけ残し、設定に残っていれば22.5°版で出す
 }
 function meosHandCursor() {
   const n = meosHandName();
@@ -2668,7 +2668,7 @@ function meosHandCursor() {
 }
 // ★v4.2.118(俊克 2026.09.15 am10:52「tipを数行に縮めよう。そして、OSのところだけに表示することにしよう」):
 //   ★BTRON と macOS の時は、ボタンの絵が手そのもの= 読む物が無い。今の OS の手(字「OS」)の時だけ、何の手かを言う。
-const MEOS_HAND_TIP = 'Pointer hand | The hand of your OS, shown over things you can press. Click to switch: BTRON, macOS 22.5°, macOS, OS.';
+const MEOS_HAND_TIP = 'Pointer hand | The hand of your OS, shown over things you can press. Click to switch: BTRON, macOS 22.5°, OS.';
 // ★★v4.2.131(俊克 2026.09.15 pm03:13「H-TOCをOSの手の平と握りで動くようにする。それをベースに、私がこの後描く、BTRON用、macOS用の手の絵を入れて、対応する」):
 //   ★実測(NSCursor・macOS 26.6.2): OSの手の平/握りの当たりは (16,17)=**手の平の真ん中**= 掴む物の真上に手が乗って隠す(指差しは人差指の先 13,8)。
 //   ★CSS の grab/grabbing は当たりを動かせない→ OS の手は「OSのまま」の見本に残す。BTRON/macOS は俊克の絵で当たりを人差指の先(手の平)・第二関節(握り)に置く。
@@ -27216,7 +27216,7 @@ if(_nl>0){var _d=(((vmNextUntil-Date.now())%1000)+1000)%1000+8;
  vmTick=setTimeout(function(){vmTick=null;window.__renderRaw();},_d);}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
 {const dv=document.getElementById('dev-vsix');if(dv)dv.addEventListener('click',()=>{vscode.postMessage({type:'installVsix'});});}   /* v4.2.67 */
-{const hp=document.getElementById('hand-pick');if(hp)hp.addEventListener('click',()=>{vscode.postMessage({type:'setPointerHand',value:hp.classList.contains('is-btron')?'macos22':(hp.classList.contains('is-macos22')?'macos':(hp.classList.contains('is-macos')?'system':'btron'))});   /* v4.2.113: 3つを巡る → v4.2.305: BTRON→macOS22.5°→macOS→OS の4つ */});}   /* v4.2.110: 1つのボタンで入れ替え */
+{const hp=document.getElementById('hand-pick');if(hp)hp.addEventListener('click',()=>{vscode.postMessage({type:'setPointerHand',value:hp.classList.contains('is-btron')?'macos22':(hp.classList.contains('is-macos22')?'system':'btron')});   /* v4.2.113: 3つを巡る → v4.2.306(俊克「4種類は多過ぎ」): BTRON→macOS 22.5°→OS の3つ(元のmacOSの手は源として残す) */});}   /* v4.2.110: 1つのボタンで入れ替え */
 {const pl=document.getElementById('paste-lag');if(pl)pl.addEventListener('click',()=>{vscode.postMessage({type:'openMdLangFeatures'});});}   /* v4.2.102 */
 /* v4.1.61: Opt の上げ下げを見る。★鍵盤の事件は**この面に焦点が来ている時だけ**届くso、
    マウスの動き(altKey を連れて来る)も見る= 本文を書きながら Opt を押してボタンへ手を伸ばしても変わる。 */
