@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.336) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.337) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -75,6 +75,17 @@ function run(argv) {
     try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}
     openApp();
   } } } });
+  let optTarget = null;   // v4.2.337: 札に出ている時計(拡張が居ない時)
+  const optWarp = () => {
+    if (ownerAlive(owner)) { try { $(JSON.stringify({ id: 'optwarp', t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} openApp(); return; }
+    if (optTarget) { stopBell(); openUrl(warpUrl(optTarget, false)); } else openApp();
+  };
+  // ★v4.2.337(俊克「Optクリックでメニューバーをクリックすると、VSCmを起動する。あるいは、今表示している膜にワープする」):
+  //   メニューが開く直前に Opt を見て、押されていればメニューを畳み、札に出ている膜へワープする。
+  ObjC.registerSubclass({ name: 'MeOSMenuDelH', protocols: ['NSMenuDelegate'], methods: { 'menuWillOpen:': { types: ['void', ['id']], implementation: function (m) {
+    try { if (($.NSEvent.modifierFlags & 0x80000) === 0) return; m.cancelTracking; optWarp(); } catch (e) {}
+  } } } });
+  const mdel = $.MeOSMenuDelH.alloc.init;   // 強く持つ
   const tgt = $.MeOSHelperTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)
   function build(entries) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
@@ -143,7 +154,7 @@ function run(argv) {
     item.visible = on;
     if (!on) return;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu && !tracking()) { lastMenu = mj; item.menu = build(menu || []); }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; const mm = build(menu || []); mm.delegate = mdel; item.menu = mm; }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (text !== lastText || !!anchor !== lastAnchor) {
       lastText = text; lastAnchor = !!anchor;
       const t = String(text).length > 40 ? String(text).slice(0, 39) + '…' : String(text);   // ノッチの裏に隠れないよう短く
@@ -231,6 +242,7 @@ function run(argv) {
       // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):
       //   拡張の最下段(v4.2.328)と同じく、鳴っている時計がまだ数えていれば残り時間を添える。♪/♬も拡張と同じ拍(0.8秒)で入れ替える。
       const ra = ringing ? next.find(a => (a.name || '') === ringing.name) : null;
+      optTarget = ra || (next.length ? next[0] : null);   // v4.2.337: 札に出ている時計
       const note = (Math.floor(now / 800) % 2) ? '\u266c' : '\u266a';
       const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + note + ' ' + (ra ? face(ra.at - now) + ' ' : '') + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
       show(text, menu, ringing ? !!ringing.anchor : (next.length > 0 && !!next[0].anchor));
