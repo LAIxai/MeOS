@@ -55,6 +55,7 @@ function run(argv) {
   let appPath = '', scheme = 'vscodium', ext = 'lai.lai-membrane';
   // ★拡張が居ない時の口(ここで決める物)= 'h:' で始まる
   let alarms = [], fired = {}, ringing = null, ringNext = 0, sound = { file: '', vol: 2, every: 1 };
+  let adv = {};   // v4.2.332: 周期の時計をここで進めた分(id → {at, si})。state.json は拡張が居ない間は変わらないので、上に重ねて持つ
   const openApp = () => { try { if (appPath) $.NSWorkspace.sharedWorkspace.openURL($.NSURL.fileURLWithPath(appPath)); } catch (e) {} };
   const warpUrl = (a, bell) => scheme + '://' + ext + '/warp?uri=' + encodeURIComponent(a.uri || '') + '&key=' + encodeURIComponent(a.key || '')
     + '&name=' + encodeURIComponent(a.name || '') + (bell ? '&bell=1' : '');
@@ -92,8 +93,8 @@ function run(argv) {
       // v4.2.330(俊克 改良1「メニューバーの中の⚓が絵文字のままだよ」): 一覧の⚓も札と同じ字の形・赤＋黒の縁
       if (!e.pill && !e.sub && /\u2693/.test(e.title || '')) { try { const mf = $.NSFont.menuFontOfSize(0); const a = $.NSMutableAttributedString.alloc.init;
         for (const q of String(e.title).split(/(\u2693\ufe0f?)/)) { if (!q) continue; const isA = q.charAt(0) === '\u2693'; const x = $.NSMutableAttributedString.alloc.init; x.mutableString.setString($(isA ? '\u2693\ufe0e' : q)); const r = $.NSMakeRange(0, x.length);
-          x.addAttributeValueRange($.NSFontAttributeName, isA ? $.NSFont.boldSystemFontOfSize(15) : mf, r);
-          if (isA) { x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, r); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-1), r); }
+          x.addAttributeValueRange($.NSFontAttributeName, isA ? $.NSFont.boldSystemFontOfSize(20) : mf, r);   // v4.2.332(俊克 改良1「メニューの中の⚓も大きく」)
+          if (isA) { x.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, r); x.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-1.6), r); x.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, r); x.addAttributeValueRange($.NSBaselineOffsetAttributeName, $(-3), r); }
           a.appendAttributedString(x); }
         mi.attributedTitle = a; } catch (x) {} }
       if (e.pill) {
@@ -170,27 +171,31 @@ function run(argv) {
       if (st.app) appPath = st.app;
       if (st.scheme) scheme = st.scheme;
       if (st.sound) sound = st.sound;
-      if (Array.isArray(st.alarms)) alarms = st.alarms;
+      if (Array.isArray(st.alarms)) alarms = st.alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
       owner = st.owner || 0;
     }
     const now = Date.now();
     if (ownerAlive(owner)) {
       // 拡張が居る= 数えるのも鳴らすのも拡張。こちらは写しを受け取り、出すだけ。
       if (ringing) stopBell();                           // 起こした VSCodium が鐘を引き継いだ
-      for (const a of alarms) if (a.at <= now) fired[a.id] = 1;   // 拡張が鳴らした物を、後で鳴らし直さない
+      adv = {};   // 拡張が居る= 数え直した写しが正
+      for (const a of alarms) if (a.at <= now) fired[a.id + '@' + a.at] = 1;   // 拡張が鳴らした物を、後で鳴らし直さない
       show(st && st.text, st && st.menu, st && st.anchor);
     } else {
       for (const a of alarms) {
-        if (fired[a.id] || a.at > now) continue;
-        fired[a.id] = 1;
+        if (fired[a.id + '@' + a.at] || a.at > now) continue;
+        fired[a.id + '@' + a.at] = 1;
+        // v4.2.332: 周期の時計は、並びに沿って次の時刻へ進める(過ぎた分は飛ばして、今より先の最初の区切りへ)
+        if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
         if (now - a.at > MISSED_MS) continue;
-        ringing = { name: a.name || '', until: now + 5 * 60000, anchor: !!a.anchor };   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
+        ringing = { name: a.name || '', until: now + ((Array.isArray(a.steps) && a.steps.length) ? 3000 : 5 * 60000), anchor: !!a.anchor };   // v4.2.332: 周期は3秒の合図だけ(拡張の笛と同じ長さ)   // 上限5分= 拡張と同じ / v4.2.325: ⚓の鐘も青
         ringNext = 0;
         if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }
       if (ringing && now >= ringing.until) stopBell();
       if (ringing && now >= ringNext) { playBell(); ringNext = sound.every > 0 ? now + sound.every * 1000 : Infinity; }
-      const next = alarms.filter(a => !fired[a.id] && a.at > now).sort((x, y) => x.at - y.at);
+      alarms = alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
+      const next = alarms.filter(a => !fired[a.id + '@' + a.at] && a.at > now).sort((x, y) => x.at - y.at);
       const menu = [];
       if (ringing) menu.push({ id: 'h:stop', title: 'Stop the bell' }, { sep: true });
       next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
