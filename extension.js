@@ -3413,11 +3413,19 @@ function normalizeProtoMembraneLineText(text) {
   return raw;
 }
 
+// ★★v4.2.324(俊克 バグ1「mCN=DL数の戦略_024025.711の閉じ膜が閉じていないと判定されている。⚠️が間違って表示されている」):
+//   ★真因= 開始膜の札が殻の外に出ていた `<!-- {* ▼mCN=… *} #tag0 -->`(09.05から・9月初めの札付けが書いた形)。
+//     殻の閉じ `*}` の後ろに字が在ると開始膜と読めず、閉じ膜だけが残って⚠️になる。
+//   ★読める形を増やす= `*}` と `-->` の間の札だけは、殻の中へ戻して読む(本文は書き換えない・過去を一括変換しない)。
+function meosTagsBackInsideShell(t) {
+  const m = /^(\s*<!--[\s\S]*?)(\s*\*\s*\})(\s+(?:#[^\s#<>*}]+\s*)+)(-->\s*)$/.exec(t);
+  return m ? (m[1] + ' ' + m[3].trim() + m[2] + ' ' + m[4]) : t;
+}
 function asRealMembraneSource(text) {
   // v0.9.216:
   // Pair collection enters here, so proto core must be normalized here,
   // not only in the visual parser.
-  const raw = normalizeProtoMembraneLineText(String(text || ''));
+  const raw = normalizeProtoMembraneLineText(meosTagsBackInsideShell(String(text || '')));   // v4.2.324: 札を殻へ戻してから殻をそろえる
 
   // Existing canonical source: // {▼mCN=name // comment}
   // This branch is deliberately unchanged for TypeScript / JavaScript / C-like files.
@@ -10844,6 +10852,9 @@ function meosMembraneTagsLine(txt, tags) {
   let mid = tail ? rest.slice(0, rest.length - tail.length) : rest;
   mid = mid.replace(/(^|\s)#[^\s#<>*}]+/g, '').replace(/\s+$/, '');
   const add = (Array.isArray(tags) && tags.length) ? (' ' + tags.map(x => '#' + x).join(' ')) : '';
+  // ★v4.2.324: 殻の外に札が出ていた行(`*} #tag0 -->`)を直す時は、札を殻の中へ入れて書く(外へ書き戻さない)
+  const _sh = /(\s*\*\s*\})$/.exec(mid);
+  if (_sh && tail && !/\*/.test(tail)) return head + mid.slice(0, mid.length - _sh[1].length) + add + _sh[1] + tail;
   return head + mid + add + tail;
 }
 // 開始膜のコメントの札を書き替える。**触るのはコメントの中だけ**= 膜の名前も閉じの印も動かさない。
@@ -12760,7 +12771,9 @@ function meosApplyTimerLineDecorations(editor) {
               if (_am) badgeHide.push(new vscode.Range(i, _am.a, i, _am.b));
               const _withLock = !c.done && !c.lock;   // v4.2.318: 右の区画に🔓が立つか(立たなければ駒は🚢💨/⚓だけの幅)
               (c.anchor ? (_withLock ? moorLBtns : moorBtns) : (_withLock ? shipLBtns : shipBtns)).push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p),
-                hoverMessage: c.anchor ? '\u2693 Moored: the bell rings, you stay put. Click to sail \ud83d\udea2\ud83d\udca8 again.' : '\ud83d\udea2\ud83d\udca8 Warps you here when time is up. Click to moor \u2693.' });
+                // ★v4.2.324(俊克 改良1「本文の⚓ボタンにも、🔓ボタン同様に、tipで説明を入れよう」): 🔓と同じ書き方= 今の姿と、押すと何が起きるかを1行で
+                hoverMessage: c.anchor ? '\u2693 Moored \u2014 when time is up the bell rings, but you stay where you are. Click to sail \ud83d\udea2\ud83d\udca8: you will be warped here again.'
+                  : '\ud83d\udea2\ud83d\udca8 Click to moor this clock with \u2693 \u2014 when time is up the bell still rings, but you are not warped here.' });
             }
           }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
