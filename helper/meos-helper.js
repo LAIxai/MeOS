@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.319) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.334) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -216,7 +216,11 @@ function run(argv) {
       next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
       if (next.length) menu.push({ sep: true });
       menu.push({ id: 'h:open', title: 'Open VSCodium' });
-      const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
+      // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):
+      //   拡張の最下段(v4.2.328)と同じく、鳴っている時計がまだ数えていれば残り時間を添える。♪/♬も拡張と同じ拍(0.8秒)で入れ替える。
+      const ra = ringing ? next.find(a => (a.name || '') === ringing.name) : null;
+      const note = (Math.floor(now / 800) % 2) ? '\u266c' : '\u266a';
+      const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + note + ' ' + (ra ? face(ra.at - now) + ' ' : '') + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
       show(text, menu, ringing ? !!ringing.anchor : (next.length > 0 && !!next[0].anchor));
     }
   }
