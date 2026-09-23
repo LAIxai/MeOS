@@ -12191,9 +12191,115 @@ function meosMenuBarClockItems() {
   _meosMbGo = go;
   return out;
 }
+// ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
+//   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
+//   ★設定 laiMembrane.menuBarHelper(既定オフ・mac だけ)。オンにすると helper/meos-helper.js を LaunchAgent に載せ、
+//     ログイン時から常駐させる。メニューバーの持ち主はヘルパー1つ= 拡張は state.json に**写し**(表示と予定の表)を書くだけ。
+//   ★時計の住まいは本文の膜= 写しは拡張が起きる度に本文から数え直した物で上書きされる(突き合わせで揃う)。
+//   ★VSCodium が閉じている間はヘルパーが数え、時刻が来たら鐘を鳴らして vscodium://lai.lai-membrane/warp を開く
+//     → VSCodium が起き、下の registerUriHandler が膜へ飛んで鐘を引き継ぐ。
+//   ★第1段で写すのは**今掛かっている物の次の1回**だけ(一度きり・繰返しの次の周回)。錠(🔐)やストップウォッチは VSCodium の中でしか意味が無いので持たせない。
+const MEOS_HELPER_LABEL = 'com.laixai.meos.helper';
+let _meosHelper = { ensured: false, last: null, watching: false };
+function meosHelperOn() {
+  try { return process.platform === 'darwin' && !!vscode.workspace.getConfiguration('laiMembrane').get('menuBarHelper', false); } catch (_) { return false; }
+}
+function meosHelperDir() { const os = require('os'), path = require('path'); return path.join(os.homedir(), 'Library', 'Application Support', 'MeOS', 'helper'); }
+function meosHelperAlarms() {
+  const out = [];
+  try {
+    for (const [k, until] of _meosPseudoUntil) {
+      const sc = _meosPseudoScopes.get(k); if (!sc || !until) continue;
+      if (sc.up && !(sc.step > 0)) continue;             // 区切りの無いストップウォッチ= 鳴る時刻が無い
+      out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key });
+    }
+  } catch (_) { }
+  return out.sort((a, b) => a.at - b.at);
+}
+function meosHelperSound() {
+  try {
+    const cfg = vscode.workspace.getConfiguration('laiMembrane');
+    const name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
+    const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
+    const file = !name ? '' : (name.indexOf('/') >= 0 ? name : ('/System/Library/Sounds/' + name + '.aiff'));
+    return { file, vol, every: meosRingSeconds() };
+  } catch (_) { return { file: '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }
+}
+function meosHelperWrite(text, menu, owner) {
+  try {
+    const fs = require('fs'), path = require('path'), dir = meosHelperDir();
+    const ep = String(process.execPath || ''), ai = ep.indexOf('.app/');
+    const st = { owner: (owner === undefined ? process.pid : owner), app: ai > 0 ? ep.slice(0, ai + 4) : '', scheme: vscode.env.uriScheme || 'vscodium',
+      text: text || null, menu: menu || [], alarms: meosHelperAlarms(), sound: meosHelperSound() };
+    const key = JSON.stringify(st);
+    if (key === _meosHelper.last) return;
+    fs.mkdirSync(dir, { recursive: true });
+    const f = path.join(dir, 'state.json'), tmp = f + '.tmp';
+    fs.writeFileSync(tmp, key); fs.renameSync(tmp, f);   // 半分書いた表をヘルパーに読ませない
+    _meosHelper.last = key;
+    if (!_meosHelper.watching) {
+      _meosHelper.watching = true;
+      const click = path.join(dir, 'click.json');
+      fs.watchFile(click, { interval: 400 }, (cur, prev) => { if (cur.mtimeMs > 0 && cur.mtimeMs !== prev.mtimeMs) { try { meosMenuBarPick(JSON.parse(fs.readFileSync(click, 'utf8')).id); } catch (_) { } } });
+    }
+  } catch (_) { }
+}
+// 載せる/降ろす(launchctl)。本体(meos-helper.js)は vsix の中の物を写し、違っていれば入れ替えて起こし直す。
+function meosHelperEnsure() {
+  if (_meosHelper.ensured) return;
+  _meosHelper.ensured = true;
+  try {
+    const fs = require('fs'), path = require('path'), cp = require('child_process'), dir = meosHelperDir();
+    fs.mkdirSync(dir, { recursive: true });
+    const src = fs.readFileSync(path.join(extensionContext.extensionPath, 'helper', 'meos-helper.js'), 'utf8');
+    const js = path.join(dir, 'meos-helper.js');
+    let old = ''; try { old = fs.readFileSync(js, 'utf8'); } catch (_) { }
+    if (old !== src) fs.writeFileSync(js, src);
+    const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', MEOS_HELPER_LABEL + '.plist');
+    const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const body = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+      + '<plist version="1.0"><dict>\n<key>Label</key><string>' + MEOS_HELPER_LABEL + '</string>\n'
+      + '<key>ProgramArguments</key><array><string>/usr/bin/osascript</string><string>-l</string><string>JavaScript</string><string>' + esc(js) + '</string><string>' + esc(dir) + '</string></array>\n'
+      + '<key>RunAtLoad</key><true/>\n<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>\n<key>ProcessType</key><string>Interactive</string>\n'
+      + '<key>StandardErrorPath</key><string>' + esc(path.join(dir, 'helper.log')) + '</string>\n</dict></plist>\n';
+    let oldP = ''; try { oldP = fs.readFileSync(plist, 'utf8'); } catch (_) { }
+    if (oldP !== body) { fs.mkdirSync(path.dirname(plist), { recursive: true }); fs.writeFileSync(plist, body); }
+    const dom = 'gui/' + process.getuid();
+    // 先に「降りろ」の印を消す(前にオフにした時の quit が残っていると、起きた途端に降りる)
+    try { const stf = path.join(dir, 'state.json'); const cur = JSON.parse(fs.readFileSync(stf, 'utf8')); if (cur && cur.quit) fs.unlinkSync(stf); } catch (_) { }
+    cp.execFile('launchctl', ['print', dom + '/' + MEOS_HELPER_LABEL], (err) => {
+      if (err || oldP !== body) {
+        cp.execFile('launchctl', ['bootout', dom + '/' + MEOS_HELPER_LABEL], () => {
+          cp.execFile('launchctl', ['bootstrap', dom, plist], (e2) => { meosDbg('[helper] bootstrap ' + (e2 ? ('失敗 ' + e2.message) : 'ok')); });
+        });
+      } else if (old !== src) {
+        cp.execFile('launchctl', ['kickstart', '-k', dom + '/' + MEOS_HELPER_LABEL], (e3) => { meosDbg('[helper] 本体を入れ替えて起こし直した ' + (e3 ? e3.message : 'ok')); });
+      }
+    });
+    // 同じ窓の古い係(親と一緒に消える osascript)は降ろす= ⏰を2つ並べない
+    try { if (_meosMb && _meosMb.proc) fs.writeFileSync(_meosMb.state, JSON.stringify({ quit: true })); } catch (_) { }
+  } catch (e) { meosDbg('[helper] ensure 失敗 ' + (e && e.message)); }
+}
+function meosHelperRemove() {
+  _meosHelper.ensured = false; _meosHelper.last = null;
+  try {
+    const fs = require('fs'), path = require('path'), cp = require('child_process'), dir = meosHelperDir();
+    try { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ quit: true })); } catch (_) { }
+    const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', MEOS_HELPER_LABEL + '.plist');
+    cp.execFile('launchctl', ['bootout', 'gui/' + process.getuid() + '/' + MEOS_HELPER_LABEL], () => { try { fs.unlinkSync(plist); } catch (_) { } meosDbg('[helper] 降ろした'); });
+  } catch (_) { }
+}
+// VSCodium を閉じる時= 表示は引っ込め、予定の表だけ残してヘルパーに渡す(owner 0)
+function meosHelperHandOff() { if (meosHelperOn()) meosHelperWrite(null, [], 0); }
 function meosMenuBarSet(text, menu) {
   try {
     if (process.platform !== 'darwin') return;
+    if (meosHelperOn()) {   // v4.2.310: 持ち主はヘルパー= 写しを書くだけ
+      meosHelperEnsure();
+      const _on = vscode.workspace.getConfiguration('laiMembrane').get('menuBarClock', true);
+      meosHelperWrite((text && _on) ? String(text) : null, (text && _on) ? (menu || []).concat(meosMenuBarTail()) : []);
+      return;
+    }
     const on = vscode.workspace.getConfiguration('laiMembrane').get('menuBarClock', true);
     const fs = require('fs'), os = require('os'), path = require('path');
     if (!text || !on) {
@@ -37377,6 +37483,21 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
+  // ★v4.2.310: ヘルパーが開く vscodium://lai.lai-membrane/warp?uri=…&key=…&name=…&bell=1 = 膜へ飛び、鐘を引き継ぐ
+  try {
+    context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: async (u) => {
+      try {
+        if (!u || u.path !== '/warp') return;
+        const q = new URLSearchParams(u.query || '');
+        const sc = { uri: q.get('uri') || '', key: q.get('key') || '', name: q.get('name') || '' };
+        if (!sc.uri || !sc.key) return;
+        meosDbg('[helper] warp ' + sc.key + (q.get('bell') === '1' ? ' (bell)' : ''));
+        await meosJumpToScope(sc, q.get('bell') === '1');
+        if (q.get('bell') === '1' && !meosIsRinging()) meosStartRinging(sc.name);
+      } catch (_) { }
+    } }));
+  } catch (_) { }
+  try { if (meosHelperOn()) { meosHelperEnsure(); meosUpdateTimerBar(); } } catch (_) { }
   // ★v4.2.208(俊克「この呪文は、ショートカットを付けたいとユーザは思うかも」): 呪文4つのうち見出しの前/次だけコマンドが無かった
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.headingPrev', () => navMeHeadingJump(-1)));
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.headingNext', () => navMeHeadingJump(1)));
@@ -38082,6 +38203,14 @@ makeDecorations();
       if (composeRestoreTimer) { clearTimeout(composeRestoreTimer); composeRestoreTimer = null; }
     }),
     vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('laiMembrane.menuBarHelper')) {   // ★v4.2.310: 常駐ヘルパーを載せる/降ろす
+        try {
+          if (meosHelperOn()) { meosHelperEnsure(); vscode.window.showInformationMessage('MeOS: the menu-bar helper is on. Your \u23f0 now keeps time even when VSCodium is closed, and wakes it at the membrane when time is up. (macOS may tell you a background item was added.)'); }
+          else { meosHelperRemove(); vscode.window.showInformationMessage('MeOS: the menu-bar helper is off and removed. The \u23f0 in the menu bar lives only while VSCodium is open, as before.'); }
+          if (_meosMb) _meosMb.last = null;
+          meosUpdateTimerBar();
+        } catch (_) { }
+      }
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
         try { if (meosClockLockDeco) { meosClockLockDeco.dispose(); meosClockLockDeco = null; } } catch (_) { }
@@ -38171,6 +38300,7 @@ context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposab
 // ★ただし**この片付けそのものは残す**= deactivate that setInterval を1つも止めないのは、
 //   見立てとは別に本当の穴(入れ替えの度に拍that1つ残る)。自分で点けた物は、自分で消してから去る。
 function deactivate() {
+  try { meosHelperHandOff(); } catch (_) { }   // v4.2.310: 時計を片付ける**前に**、予定の表をヘルパーへ渡す
   try { meosStopRinging(); } catch (_) { }
   try { for (const [k, h] of Array.from(_meosPseudoTimers)) { try { clearTimeout(h); } catch (_) { } _meosPseudoTimers.delete(k); } } catch (_) { }
   try { _meosPseudoUntil.clear(); _meosPseudoScopes.clear(); _meosPreBell.clear(); _meosBellDone.clear(); } catch (_) { }
