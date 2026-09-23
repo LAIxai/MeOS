@@ -25808,6 +25808,10 @@ color:#ffffff;z-index:4;padding:0}
 /* \u2605v4.1.66(俊克 改良1「\u2610 countdown の時に**角丸四角で囲われないのthat分かりにくい**」):
    \u2605**箱は状態でなく「押せる物である」ことを言う**so、押していない時も見えていなければならない。
    \u2605\u2605v4.1.66(俊克 改良2「チェックボックスの \u2610 that小さ過ぎるので約1.4倍に」): 13px \u00d7 1.4 \u2248 18px。 */
+.clk-pset{margin-left:auto;display:inline-flex;align-items:center;position:relative}   /* v4.2.315: プリセット+↻ */
+.clk-pbtn{font-size:12px;font-weight:700;padding:1px 14px 1px 8px;border:1px solid rgba(224,128,58,.55);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand);white-space:nowrap}
+.clk-pbtn:hover{background:rgba(224,128,58,.18)}
+.clk-pring{position:absolute;right:-7px;top:-7px;width:15px;height:15px;border-radius:50%;background:#e0803a;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand)}
 .clk-dir,.clk-rep{font-size:13px;font-weight:700;padding:2px 7px;border:1px solid rgba(224,128,58,.55);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 .clk-ck{font-size:18px;line-height:1}
 .clk-dir{color:#3fb950}
@@ -26120,7 +26124,7 @@ color:#ffffff;z-index:4;padding:0}
   <input class="clk-in clk-edit" id="clk-edit" placeholder="20:00 / 2026-09-01 20:00" spellcheck="false">
   <div class="clk-row"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
-  <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint">00 ends the list</span></div>
+  <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint" id="clk-hint-rep">00 ends the list</span><span class="clk-pset"><button class="clk-pbtn" id="clk-pbtn">24h</button><span class="clk-pring" id="clk-pring" data-tip="Next preset | Three presets, round and round.">\u21bb</span></span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -27569,7 +27573,10 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'24h',anchor:false},{cyc:'20m',anchor:true},{cyc:'1w',anchor:false}];var clkPresetSlot=0;   /* v4.2.315 */
+function clkPaintPreset(){var b=document.getElementById('clk-pbtn');var pr=clkPresets[clkPresetSlot]||{};if(b){b.textContent=(pr.cyc||'\u2014')+(pr.anchor?' \u2693':'');b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 | Click to put \u21ba'+(pr.cyc||'')+(pr.anchor?' \u2693':' \ud83d\udea2\ud83d\udca8')+' into the panel, then press Set. Opt-click keeps what the Repeat box and \ud83d\udea2\ud83d\udca8/\u2693 say now. \u21bb goes to the next preset.');}}
+function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
+var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
@@ -27994,9 +28001,17 @@ if(clkCaret&&clkPop){
      ★★★**当たりthat見えている物より小さかった**= □ は子の span so、id で見ていた私の枝を素通りしていた。
      ★→ **押した物の上をたどって、どのボタンの中かを訊く**= 見えている箱の中は、どこでも当たり
      ([[project_direct_manipulation_mark]] 印は押せる大きさ／当たりthat表示と一致する)。 */
-  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set'):null;
+  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-anchor,#clk-pbtn,#clk-pring,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set'):null;
   var _id=_hit?_hit.id:'';
-  if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();clkTouch();return;}if(_id==='clk-anchor'){clkAnchor=!clkAnchor;clkPaintLock();clkTouch();return;}
+  if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();clkTouch();return;}if(_id==='clk-anchor'){clkAnchor=!clkAnchor;clkPaintLock();clkTouch();return;}   /* v4.2.315: 振り分けの一覧に #clk-anchor が無く、押しても届いていなかった */
+  /* ★★v4.2.315(俊克 pm03:28「⏰▼の設定のプリセット3つを↻ボタンを付けて、設定できるようにしようよ。例えば、24h繰返し。忘れないように、1日一回鳴らす」):
+     ★3つの枠を↻で巡る(折り返し幅の↻と同じ作法)。ボタン= その枠をパネルへ流し込む(Repeat・繰返しの式・🚢💨/⚓)。時刻は触らない= 起点は今のダイヤル。
+     ★Opt+クリック= 今のパネル(繰返しの式・🚢💨/⚓)をこの枠に覚える。覚えるのは面ではなく拡張(globalState)= 次に開いても同じ3つ。 */
+  if(_id==='clk-pring'){clkPresetSlot=(clkPresetSlot+1)%3;clkPaintPreset();vscode.postMessage({type:'clockPresetSlot',slot:clkPresetSlot});return;}
+  if(_id==='clk-pbtn'){var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
+   if(ev.altKey){var _cy2=document.getElementById('clk-cyc');var _v2=_cy2?String(_cy2.value||'').trim():'';if(!_v2){clkFlash('Type a repeat first (e.g. 24h), then Opt-click to keep it here.');return;}
+    clkPresets[clkPresetSlot]={cyc:_v2,anchor:!!clkAnchor};clkPaintPreset();vscode.postMessage({type:'clockPresetSave',slot:clkPresetSlot,cyc:_v2,anchor:!!clkAnchor});clkFlash('Kept in preset '+(clkPresetSlot+1)+': '+_v2+(clkAnchor?' \u2693':''));return;}
+   clkRep=true;clkPaintRep();var _cy3=document.getElementById('clk-cyc');if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkTouch();return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
    /* ★★v4.1.158(俊克 9/6 pm00:51 改良1「Repeat\u21ba\u21bb をクリックした時、入力枠は空のままだね。
         ((30s 15s)x4 1m)x3 that典型的なHIITの使用パターンらしいので、影文字もこのパターンに直して、
@@ -28127,6 +28142,7 @@ if(clkCaret&&clkPop){
    clkPaintRep();
   }
   vscode.postMessage({type:'clockAskCurrent'});               /* v4.1.65: 今の膜の姿を見せてから直させる */
+  vscode.postMessage({type:'clockPresetsAsk'});clkPaintPreset();   /* v4.2.315 */
   /* ★v4.1.67(俊克 改良3「時分は、**現在時刻を既定**にしようよ」): ★起点を決める面so、
      出すべきは**今**= 人that見ている時計と同じ数字thatが最初に在る(30分後は私の提案でしかなかった)。 */
   if(!_keep){var n2=new Date();                               /* 既定= 今の時刻 */
@@ -29053,7 +29069,7 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='openTagGo'){/* v4.2.309: メニューバーから部屋へ= 最後に見ていた札のまま開く */try{if(!(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('hist-only'))&&window.__clkOpen)window.__clkOpen('hist');clkTagMode=true;clkTagSel=String(m.sel||'');clkTagFilter=String(m.filter||'');var _tn3=document.getElementById('clk-tagnew');if(_tn3)_tn3.value=clkTagFilter;vscode.postMessage({type:'clockTagList'});clkRenderList();clkPlace();}catch(e){}return;}if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
+if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.list.length===3)clkPresets=m.list;clkPresetSlot=Math.max(0,Math.min(2,Number(m.slot)||0));clkPaintPreset();}catch(e){}return;}if(m&&m.type==='openTagGo'){/* v4.2.309: メニューバーから部屋へ= 最後に見ていた札のまま開く */try{if(!(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('hist-only'))&&window.__clkOpen)window.__clkOpen('hist');clkTagMode=true;clkTagSel=String(m.sel||'');clkTagFilter=String(m.filter||'');var _tn3=document.getElementById('clk-tagnew');if(_tn3)_tn3.value=clkTagFilter;vscode.postMessage({type:'clockTagList'});clkRenderList();clkPlace();}catch(e){}return;}if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
  try{if(clkTagMode){clkRenderList();clkPlace();}
   else{var _dr=document.getElementById('clk-door');if(_dr)_dr.textContent=clkDoorLabel();}   /* v4.1.91: 一覧は描き直さず、扉の数字だけ書き直す(生きた数字を跨がない) */
  }catch(e){}return;}
@@ -30139,6 +30155,18 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'clockTagList') { meosPostTagList(); return; }
+    // ★v4.2.315: ⏰▼のプリセット3つ(覚えは globalState= 次に開いても同じ3つ)
+    if (message && (message.type === 'clockPresetsAsk' || message.type === 'clockPresetSlot' || message.type === 'clockPresetSave')) {
+      try {
+        const def = [{ cyc: '24h', anchor: false }, { cyc: '20m', anchor: true }, { cyc: '1w', anchor: false }];
+        let list = extensionContext.globalState.get('meosClockPresets', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+        let slot = Number(extensionContext.globalState.get('meosClockPresetSlot', 0)) || 0;
+        if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); await extensionContext.globalState.update('meosClockPresetSlot', slot); }
+        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor }; await extensionContext.globalState.update('meosClockPresets', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
+        if (message.type === 'clockPresetsAsk' && meDockPanel) meDockPanel.webview.postMessage({ type: 'clockPresets', list, slot });
+      } catch (_) { }
+      return;
+    }
     if (message && message.type === 'tagView') { _meosTagView = { sel: String(message.sel || ''), filter: String(message.filter || ''), order: Array.isArray(message.order) ? message.order.map(String) : [] }; return; }   // v4.2.309
     // ★★★v4.1.72(俊克 改良1「**任意のタグを入力できるようにしよう**。そして、既定のタグとして
     //   #tag0 ボタンを置いて、これを押すと、**現在文字カーソルが入っている膜にそのタグが入る**ように
