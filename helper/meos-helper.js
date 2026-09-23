@@ -22,7 +22,7 @@ function run(argv) {
   const ANCHOR_TILT = 5;
   const styled = (t, font, hideA) => {
     const s = $.NSMutableAttributedString.alloc.init;
-    const big = $.NSFont.systemFontOfSize(20);
+    const big = $.NSFont.boldSystemFontOfSize(20);   // v4.2.320: 太字(26ptは札からはみ出した・実測)
     for (const p of String(t).split(/(\u2693\ufe0f?)/)) {
       if (!p) continue;
       const isA = p.charAt(0) === '\u2693';
