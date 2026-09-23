@@ -11126,7 +11126,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       // ★v4.1.18: これから鳴る物=UFC(見えている)／鳴り終わった物=FC(畳まれる)。名前が状態を語る。
       // ★★★v4.2.50: `wait` = **待っている**(畳むthat、済みではない)= FC＋✓なし。
       //   done は今までどおり FC＋✓。名前(FC/UFC)と印(✓)を別々に決められるようにした。
-      ? ('<!-- ' + MEOS_MEW_SIG + ((spec.done || spec.wait) ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.anchor ? '\u2693' : '') + (spec.manual ? '\u23ef\ufe0f' : '')   /* ★v4.2.65: 押すまで待つ印(書くのは ⏯️ 1つ・▶️ は読むだけ) */ + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
+      ? ('<!-- ' + MEOS_MEW_SIG + ((spec.done || spec.wait) ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.anchor ? '\u2693\ufe0f' : '') + (spec.manual ? '\u23ef\ufe0f' : '')   /* ★v4.2.65: 押すまで待つ印(書くのは ⏯️ 1つ・▶️ は読むだけ) */ + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
         // ★v4.1.165: 仕掛けの言葉(BigBang / MeW!)は**書いてあった字のまま**戻す
         //   (置き換えた本物の起点を書くと、次の書き戻しで仕掛けthat消える)。
         + (function () { const _w = String((spec.whenSrc != null && String(spec.whenSrc).trim()) ? spec.whenSrc : (spec.when || '')).trim(); return _w ? (' ' + _w) : ''; })()   /* v4.2.77: 起点も番号も無い時に空白を2つ書かない */
@@ -12378,6 +12378,7 @@ async function meosGoBackFromAlarm() {
 //   ★★★**置き場所thatが意味を決める**＝ 閉じ膜は「その膜の終わり」so、**解き終わった人thatが必ず通る所**。
 //     ステータスバー1つでは「どの膜の残りか」thatが言えず、2つ掛けたら片方thatが消える。膜の物は膜に置く。
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
+let meosClockShipDeco = null, meosClockMoorDeco = null;   // ★v4.2.314: 🚢💨/⚓ の区画
 let meosClockLockDeco = null, meosClockNoPressDeco = null;   // ★v4.2.236: 🔓の駒
 let meosClockPlayDeco = null;   // ★v4.2.74: 運転ボタンの当たり= 手の形(cursor:pointer)
 let meosClockTitleDeco = null;  // ★v4.2.173: 走っている1本のタイトル(待っている⏰のタイトルは畳む)
@@ -12502,6 +12503,7 @@ function meosApplyTimerLineDecorations(editor) {
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];   // v4.1.148 / v4.1.176
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
+    const shipBtns = [], moorBtns = [];   // ★v4.2.314: 同じ空白1字の左の区画= 🚢💨(飛ぶ) / ⚓(停泊)
     const noPress = [];   // ★v4.2.237: 錠の間の運転ボタン= ↖
     // ★★v4.2.173(俊克 2026.09.17 am02:30「//以降のコメント部分は常時表示するべきではない。Rawモードにすれば確認できる。
     //   動いているものの本文の表示that、ウィンドウ下端にも表示される、と言うのthat正しい見せ方でしょ?」):
@@ -12744,6 +12746,20 @@ function meosApplyTimerLineDecorations(editor) {
             //   ★**tipは1行**= 掛かっている事は🔐の字that既に言っているso、tipthat言う事は**外し方**だけ。
             //   ★v4.2.254で足した押せる1行(commandリンク)は撤去= 道を2つ見せると、どちらを読むかから始まる。
             if (_lm) items.push({ range: new vscode.Range(i, _lm.a, i, _lm.b), hoverMessage: 'Opt-click this 🔐 to unlock' });
+          }
+          // ★★v4.2.314(俊克 pm03:13「▶️と⏸️の関係と同じで、左側のこの場所に入れようよ。見かけのボタンにすればいい。データ的には、⚓が書いてあるかどうかの違い」
+          //   ＋ pm03:17「⏸️⏰⚓🔓の順番でいいよ」):
+          //   ★時刻の直前の空白1字(🔓の駒)を**左右2つの区画**にする= 左 🚢💨/⚓(停泊の切替) / 右 🔓(錠)。
+          //     押した所は字の箱の左半分(p-1)か右半分(p)で分かれる= 1字で2つのボタンを持てる。幅は区画ごとに1つの絵が入る広さ。
+          //   ★本文の⚓は描いた⚓と重ならないよう隠す(Rawの行では隠さない= 直すための窓)。
+          if (!_rawHere && !_bad34) {
+            const _spA = meosClockLockSpot(txt);
+            if (_spA && _spA.p > _spA.at + 1 && /[ \t]/.test(txt[_spA.p - 1] || '')) {
+              const _am = meosClockAnchorMarkAt(txt);
+              if (_am) badgeHide.push(new vscode.Range(i, _am.a, i, _am.b));
+              (c.anchor ? moorBtns : shipBtns).push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p),
+                hoverMessage: c.anchor ? '\u2693 Moored: the bell rings, you stay put. Click to sail \ud83d\udea2\ud83d\udca8 again.' : '\ud83d\udea2\ud83d\udca8 Warps you here when time is up. Click to moor \u2693.' });
+            }
           }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
             const _sp = meosClockLockSpot(txt);
@@ -13072,9 +13088,16 @@ function meosApplyTimerLineDecorations(editor) {
     //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
     if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockPlayDeco, plays);
-    if (!meosClockLockDeco) meosClockLockDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; letter-spacing: 1.7ch;',
-      before: { contentText: '\ud83d\udd13', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 0.25em; opacity: 0.65;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    // ★v4.2.314: 駒の幅は左の区画(🚢💨/⚓)が持つ。🔓は右の区画へ after で置く(駒の右端から戻す)。
+    if (!meosClockLockDeco) meosClockLockDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(),
+      after: { contentText: '\ud83d\udd13', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: -3.6ch; opacity: 0.65;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockLockDeco, lockBtns);
+    if (!meosClockShipDeco) meosClockShipDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; letter-spacing: 8ch;',
+      before: { contentText: '\ud83d\udea2\ud83d\udca8', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 0.1em;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosClockShipDeco, shipBtns);
+    if (!meosClockMoorDeco) meosClockMoorDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; letter-spacing: 8ch;',
+      before: { contentText: '\u2693\ufe0f', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 0.1em;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    editor.setDecorations(meosClockMoorDeco, moorBtns);
     if (!meosClockNoPressDeco) meosClockNoPressDeco = vscode.window.createTextEditorDecorationType({ cursor: 'default', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockNoPressDeco, noPress);
     editor.setDecorations(meosTimerLineDeco, items);
@@ -13802,7 +13825,7 @@ async function meosPseudoTimeUp(key) {
   if (!scope) return;
   // ★★v4.2.312(俊克 改良3「20分サイクリックタイマーを使っていて、膜に飛ばない指定もできるといいね」→ pm02:33「⚓ でもいいけど」):
   //   ★⚓= **停泊中の船はワープしない**(iWarpShip)。鐘・メニューバー・ステータスバーはそのまま、飛ぶのだけやめる。
-  if (scope.anchor || (_sc0 && _sc0.anchor)) { meosDbg('[anchor] \u2693 ' + (scope.key || '') + ' 鳴らすだけ(飛ばない)'); return; }
+  if (meosClockAnchoredNow(scope)) { meosDbg('[anchor] \u2693 ' + (scope.key || '') + ' 鳴らすだけ(飛ばない)'); return; }
   await meosJumpToScope(scope, true);
   // v4.1.50: 飛んだ直後から6秒、カーソルthat動いたら「いつ・どこへ・誰that」を残す。
   try {
@@ -15001,7 +15024,7 @@ function maybeHandleRawTrigger(e) {
     const ci = lt.indexOf('\u23f0'); if (ci < 0 || ci > endChar - 6) continue;
     let at = ci + 1; if (lt.charCodeAt(at) === 0xfe0f) at++;
     const has = lt.indexOf('\u2693') >= 0;
-    const nl = lt.slice(0, at) + (has ? '' : '\u2693') + lt.slice(at, endChar - 6).replace(/[ \t]+$/, (endChar - 6 < lt.length && lt.charAt(endChar) === ' ') ? '' : '$&') + lt.slice(endChar);
+    const nl = lt.slice(0, at) + (has ? '' : '\u2693\ufe0f') + lt.slice(at, endChar - 6).replace(/[ \t]+$/, (endChar - 6 < lt.length && lt.charAt(endChar) === ' ') ? '' : '$&') + lt.slice(endChar);
     _rawTriggerBusy = true; deferRefreshCount++;
     (async () => {
       try { await ed.edit(eb => eb.replace(new vscode.Range(line, 0, line, lt.length), nl), { undoStopBefore: false, undoStopAfter: false }); } catch (_) { }
@@ -18375,6 +18398,7 @@ function meosClockPlayHitAt(document, line, character) {
     const at = txt.indexOf('\u23f0');
     if (at < 0) return null;
     if (character < 0 || character > at + 1) return null;   // 0桁〜⏰の次の桁(v4.2.76: 手の形 _a65+1 と同じ幅)
+    if (character > at && meosClockAnchorHitAt(document, line, character)) return null;   // v4.2.314: ⏰の右隣が🚢💨/⚓の区画なら、そちらが先
     if (c.lock) { const _lm = meosClockLockMarkAt(txt); if (_lm && character >= _lm.a) return null; }   // v4.2.238: 🔐の上は▶️でない(外すのはOpt+クリック)
     return { line, c, at, end: at };
   } catch (_) { return null; }
@@ -18387,6 +18411,46 @@ function meosClockLockSpot(txt) {
   let p = e;
   for (;;) { let hit = false; for (const k of MK) if (txt.startsWith(k, p)) { p += k.length; hit = true; break; } if (!hit && /[0-9]/.test(txt[p] || '') && /⏸️?[0-9]*$/.test(txt.slice(e, p))) { p++; hit = true; } if (!hit) break; }
   return { at, e, p };
+}
+function meosClockAnchorMarkAt(txt) {   // ★v4.2.314: 本文の⚓(+FE0F)の位置= ⏰の後ろ・時刻の頭より前
+  const sp = meosClockLockSpot(txt); if (!sp) return null;
+  const a = txt.indexOf('\u2693', sp.e); if (a < 0 || a >= sp.p) return null;
+  return { a, b: a + 1 + ((txt.charCodeAt(a + 1) === 0xfe0f) ? 1 : 0) };
+}
+// ★v4.2.314: 🚢💨/⚓ の区画= 駒(空白1字)の左半分。⏰の後ろに隠れた印(⚓・⏸N)は同じ桁に畳まれているので、そこも同じ区画。
+function meosClockAnchorHitAt(document, line, character) {
+  try {
+    const txt = document.lineAt(line).text || '';
+    if (txt.indexOf('\u23f0') < 0) return null;
+    const c = meosClockFcParse(txt); if (!c) return null;
+    const sp = meosClockLockSpot(txt);
+    if (!sp || !(sp.p > sp.at + 1) || !/[ \t]/.test(txt[sp.p - 1] || '')) return null;
+    const lm = meosClockLockMarkAt(txt);
+    const from = lm ? lm.b : sp.e;                 // 🔐は字として見えているので、その上は区画ではない
+    if (character < from || character > sp.p - 1) return null;
+    return { line, c, sp, lm };
+  } catch (_) { return null; }
+}
+async function meosClockAnchorToggle(document, hit) {
+  try {
+    const ln = hit.line, txt = document.lineAt(ln).text || '';
+    const am = meosClockAnchorMarkAt(txt);
+    const we = new vscode.WorkspaceEdit();
+    if (am) we.delete(document.uri, new vscode.Range(ln, am.a, ln, am.b));
+    else { const lm = meosClockLockMarkAt(txt); we.insert(document.uri, new vscode.Position(ln, lm ? lm.b : hit.sp.e), '\u2693\ufe0f'); }
+    const ok = await vscode.workspace.applyEdit(we);
+    meosDbg('[anchor] ' + (am ? '\u2693 \u2192 \ud83d\udea2\ud83d\udca8' : '\ud83d\udea2\ud83d\udca8 \u2192 \u2693') + ' 行=' + (ln + 1) + ' ok=' + ok);
+    return ok;
+  } catch (_) { return false; }
+}
+// 鳴った時に本文を見直す= 走っている間に⚓を付け外ししても、鳴る瞬間の本文が正しい
+function meosClockAnchoredNow(scope) {
+  try {
+    const doc = scope && (scope.doc || vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri));
+    if (!doc) return !!(scope && scope.anchor);
+    for (const x of meosClockFcScan(doc)) if (x.key === scope.key) return !!x.anchor;
+  } catch (_) { }
+  return !!(scope && scope.anchor);
 }
 function meosClockLockMarkAt(txt) {   // ★v4.2.235: 本文の🔐(旧🔒)の位置= ⏰の後ろ・時刻の頭より前
   const sp = meosClockLockSpot(txt); if (!sp) return null;
@@ -18413,7 +18477,7 @@ function meosClockLockHitAt(document, line, character) {
     const c = meosClockFcParse(txt);
     if (!c || c.done || c.lock) return null;
     const sp = meosClockLockSpot(txt);
-    if (!sp || !/[ \t]/.test(txt[sp.p - 1] || '') || !(character === sp.p || (character === sp.p - 1 && sp.p - 1 > sp.at + 1))) return null;   // v4.2.236: 駒=空白1字(左半分=p-1・右半分=p)。p-1が▶️の当たり(at+1)と重なる時は右半分だけ
+    if (!sp || !/[ \t]/.test(txt[sp.p - 1] || '') || !(character === sp.p)) return null;   /* v4.2.314: 左半分(p-1)は🚢💨/⚓の区画になった */   // v4.2.236: 駒=空白1字(左半分=p-1・右半分=p)。p-1が▶️の当たり(at+1)と重なる時は右半分だけ
     return { line, c, at: sp.at, e: sp.e };
   } catch (_) { return null; }
 }
@@ -18606,6 +18670,15 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
     try {
       const _ln = editor.selection.active.line;
+      const _an = meosClockAnchorHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.314: 🚢💨/⚓を押した= 停泊を切り替える
+      if (_an) {
+        setRefNoRaw(editor.document, _ln);
+        meosParkCaretAfterPress(editor, _ln);
+        await meosClockAnchorToggle(editor.document, _an);
+        setRefNoRaw(editor.document, _ln);
+        try { refresh(editor); } catch (_) { }
+        return;
+      }
       const _lk = meosClockLockHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.233: 🔓を押した= 🔐を掛けるか訊く
       if (_lk) {
         setRefNoRaw(editor.document, _ln);
@@ -38216,6 +38289,7 @@ makeDecorations();
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
         try { if (meosClockLockDeco) { meosClockLockDeco.dispose(); meosClockLockDeco = null; } } catch (_) { }
+        try { if (meosClockShipDeco) { meosClockShipDeco.dispose(); meosClockShipDeco = null; } if (meosClockMoorDeco) { meosClockMoorDeco.dispose(); meosClockMoorDeco = null; } } catch (_) { }
         try { if (meosClockNoPressDeco) { meosClockNoPressDeco.dispose(); meosClockNoPressDeco = null; } } catch (_) { }
         try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'handCursor', value: meosHandCursor(), palm: meosPalmCursor(), grip: meosGripCursor(), pinch: meosPinchCursor(), pinched: meosPinchedCursor(), hand: meosHandName() }); } catch (_) { }
       }
