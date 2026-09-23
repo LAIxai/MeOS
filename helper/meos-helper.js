@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.312) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.316) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -86,14 +86,16 @@ function run(argv) {
   };
   let lastMenu = null, lastText = null;
   const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
-  function show(text, menu) {
+  const blue = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x2f / 255, 0x80 / 255, 0xb8 / 255, 1);   // v4.2.316: ⚓停泊中
+  let lastAnchor = null;
+  function show(text, menu, anchor) {
     const on = !!text;
     item.visible = on;
     if (!on) return;
     const mj = JSON.stringify(menu || []);
     if (mj !== lastMenu) { lastMenu = mj; item.menu = build(menu || []); }
-    if (text !== lastText) {
-      lastText = text;
+    if (text !== lastText || !!anchor !== lastAnchor) {
+      lastText = text; lastAnchor = !!anchor;
       const t = String(text).length > 40 ? String(text).slice(0, 39) + '…' : String(text);   // ノッチの裏に隠れないよう短く
       const font = $.NSFont.menuBarFontOfSize(11);
       const attrs = $.NSMutableDictionary.alloc.init;
@@ -103,7 +105,7 @@ function run(argv) {
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));
       img.lockFocus;
-      orange.setFill;
+      (anchor ? blue : orange).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
       ns.drawAtPointWithAttributes($.NSMakePoint(PX, (H - sz.height) / 2), attrs);
       img.unlockFocus;
@@ -128,7 +130,7 @@ function run(argv) {
       // 拡張が居る= 数えるのも鳴らすのも拡張。こちらは写しを受け取り、出すだけ。
       if (ringing) stopBell();                           // 起こした VSCodium が鐘を引き継いだ
       for (const a of alarms) if (a.at <= now) fired[a.id] = 1;   // 拡張が鳴らした物を、後で鳴らし直さない
-      show(st && st.text, st && st.menu);
+      show(st && st.text, st && st.menu, st && st.anchor);
     } else {
       for (const a of alarms) {
         if (fired[a.id] || a.at > now) continue;
@@ -143,11 +145,11 @@ function run(argv) {
       const next = alarms.filter(a => !fired[a.id] && a.at > now).sort((x, y) => x.at - y.at);
       const menu = [];
       if (ringing) menu.push({ id: 'h:stop', title: 'Stop the bell' }, { sep: true });
-      next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰ ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
+      next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
       if (next.length) menu.push({ sep: true });
       menu.push({ id: 'h:open', title: 'Open VSCodium' });
-      const text = ringing ? ('⏰ ' + (ringing.name || 'time is up')) : (next.length ? ('⏰ ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
-      show(text, menu);
+      const text = ringing ? ('⏰ ' + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
+      show(text, menu, !ringing && next.length > 0 && !!next[0].anchor);
     }
     $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
   }
