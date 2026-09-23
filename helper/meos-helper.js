@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.310) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.311) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -47,6 +47,7 @@ function run(argv) {
       if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id || ''); }
       if (e.indent) mi.indentationLevel = e.indent;
       if (e.off) mi.enabled = false;
+      if (e.check) mi.state = 1;   // v4.2.311: ✓
       if (e.pill) {
         try {
           const font = $.NSFont.menuFontOfSize(0);
