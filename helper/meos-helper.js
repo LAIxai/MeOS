@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.334) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.335) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -60,7 +60,8 @@ function run(argv) {
   const warpUrl = (a, bell) => scheme + '://' + ext + '/warp?uri=' + encodeURIComponent(a.uri || '') + '&key=' + encodeURIComponent(a.key || '')
     + '&name=' + encodeURIComponent(a.name || '') + (bell ? '&bell=1' : '');
   const openUrl = (u) => { try { $.NSWorkspace.sharedWorkspace.openURL($.NSURL.URLWithString($(u))); } catch (e) {} };
-  const stopBell = () => { ringing = null; ringNext = 0; };
+  let bellTimer = null;
+  const stopBell = () => { ringing = null; ringNext = 0; if (bellTimer) { bellTimer.invalidate; bellTimer = null; } };
   const ownerAlive = (pid) => pid > 0 && $.kill(pid, 0) === 0;
   let owner = 0;
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {
@@ -208,7 +209,13 @@ function run(argv) {
         if (!a.anchor) openUrl(warpUrl(a, true));        // VSCodium を起こして膜へ(鐘は拡張が引き継ぐ)。⚓停泊中は鳴らすだけ(v4.2.312)
       }
       if (ringing && now >= ringing.until) stopBell();
-      if (ringing && now >= ringNext) { playBell(); ringNext = sound.every > 0 ? now + sound.every * 1000 : Infinity; }
+      // ★v4.2.335(俊克「VSCmを閉じている時に、鳴動がゆっくりだったのはなぜか?」): 見回り(0.5秒)のついでに鳴らしていたので、
+      //   0.6秒の設定が次の見回りの1.0秒へ間延びしていた。→ 鐘は専用のタイマーで、設定どおりの間隔で鳴らす。
+      if (ringing && !bellTimer) {
+        playBell();
+        if (sound.every > 0) { bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(Math.max(0.3, sound.every), ticker, 'bell:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); }
+      }
+      if (!ringing && bellTimer) { bellTimer.invalidate; bellTimer = null; }
       alarms = alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
       const next = alarms.filter(a => !fired[a.id + '@' + a.at] && a.at > now).sort((x, y) => x.at - y.at);
       const menu = [];
@@ -226,7 +233,8 @@ function run(argv) {
   }
   // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
-  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} } } } });
+  ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} } },
+    'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) playBell(); } catch (e) {} } } } });
   const ticker = $.MeOSTickH.alloc.init;
   const timer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.5, ticker, 'tick:', $(), true);
   $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSRunLoopCommonModes);
