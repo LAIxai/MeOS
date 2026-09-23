@@ -1198,7 +1198,7 @@ console.log('\u3268 \u90e8\u5c4b\u306e\u6e90\u3082\u9001\u308a\u76f4\u3059 / \u5
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/function meosPostTagList\(\)/.test(S),
     '\u2605\u2605\u90e8\u5c4b\u306e\u5206\u3092\u9001\u308b\u53e3\u3092**1\u3064\u306e\u95a2\u6570**\u306b(\u9001\u308a\u5fd8\u308c\u3092\u4f5c\u3089\u306a\u3044)', true);
- ok(/clockEnable'\) \{ await meosClockSetEnabled\(message\.uri, message\.key, !!message\.on\); meosPostTagList\(\);/.test(S),
+ ok(/clockEnable'\) \{[\s\S]{0,200}?await meosClockSetEnabled\(message\.uri, message\.key, !!message\.on\); meosPostTagList\(\);/.test(S),   // v4.2.338: 前に「最後に止めた1本」を覚える1行が入った
     '\u2605\u2605\u2605\u2611\u2610 \u306e\u5f8c\u3067**\u90e8\u5c4b\u3082\u65b0\u3057\u304f\u306a\u308b**(\u52d5\u3044\u3066\u3044\u308b\u306e\u306b\u5370that\u5909\u308f\u3089\u306a\u3044\u3001\u304c\u7121\u304f\u306a\u308b)', true);
  ok(/meosPostViewMode\(\); meosPostTagList\(\); try \{ updateMeDockMode/.test(S),
     '  \u9320\u5916\u3057\u30fb\u672d\u306e\u4ed8\u3051\u5916\u3057\u306e\u5f8c\u3082\u540c\u3058', true);

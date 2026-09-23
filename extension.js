@@ -12168,6 +12168,7 @@ function meosMenuBarPick(id) {
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
+    if (id === 'resume') { meosResumeLastStopped(); return; }   // v4.2.338
     // ★v4.2.337: Opt+クリック= 札に出ている膜へ(最下段と同じ1本= 一番近い時計)
     if (id === 'optwarp') { let best = null; for (const [k, u] of _meosPseudoUntil) if (!best || u < best.u) best = { k, u }; const sc = best ? _meosPseudoScopes.get(best.k) : null; if (sc) meosJumpToScope(sc); return; }
     if (id === 'stop') { meosStopRinging(); return; }
@@ -12194,7 +12195,8 @@ function meosMenuBarTail() {
     ...(process.platform === 'darwin' ? [{ id: 'helper', title: 'Keep \u23f0 running when VSCodium is closed', box: meosHelperOn() }] : []),
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },
-      { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] } ];
+      { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] },
+    ...(function () { const r = meosLastStoppedItem(); return r ? [{ sep: true }, r] : []; })() ];   // v4.2.338: 最後に止めた1本
 }
 // v4.2.207(俊克「+4のすべての予定出して、そこにワープできるのが先ずあるといいよね」): 一覧と同じ並び・同じ飛び先(meosJumpToScope)。
 //   名前はタイトル(// …)が在ればそれ、無ければ膜名。時刻は最下段と同じ数え方(meosClockFaceMs)。
@@ -18554,6 +18556,33 @@ function meosClockLineRunning(document, key, line) {
   } catch (_) { return false; }
 }
 // 止める= 本文へ `⏸` を書く(v4.1.24の休みと同じ1つの道)。錠thatが掛かっていれば降りられない。
+// ★★v4.2.338(俊克 pm10:57「最後に止めたタイマーは、今は、メニューバーから見えなくなるので、それをメニューの最後に復活できるように、残しておく」):
+//   ★メニューバーは走っている時計しか見せない= ⏸を押した途端、その時計へ戻る道がメニューバーから消えていた。
+//   ★覚えるのは**最後に止めた1本だけ**(uri・膜名・行)。メニューの最後に「▶️ 名前」で出し、押せばその場で走り直す(ワープはしない)。
+//     走り出したら出さない(覚えは消さない= 走っているかは毎回 _meosPseudoUntil と突き合わせる)。
+function meosNoteLastStopped(uri, key, line, name) {
+  try { extensionContext.globalState.update('meosLastStopped', { uri: String(uri || ''), key: String(key || ''), line: typeof line === 'number' ? line : -1, name: String(name || key || '') }); } catch (_) { }
+}
+function meosLastStoppedItem() {
+  try {
+    const ls = extensionContext.globalState.get('meosLastStopped', null);
+    if (!ls || !ls.uri || !ls.key) return null;
+    if (_meosPseudoUntil.has(ls.uri + ' ' + ls.key)) return null;   // もう走っている
+    return { id: 'resume', title: '\u25b6\ufe0f ' + (ls.name || ls.key) + '   \u2014 last stopped' };
+  } catch (_) { return null; }
+}
+async function meosResumeLastStopped() {
+  try {
+    const ls = extensionContext.globalState.get('meosLastStopped', null); if (!ls) return;
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === ls.uri) || await vscode.workspace.openTextDocument(vscode.Uri.parse(ls.uri));
+    if (!doc) return;
+    let hit = null; for (const x of meosClockFcScan(doc)) if (x.key === ls.key && (!hit || x.line === ls.line)) hit = x;   // 行が動いていても同じ膜の⏰を探す
+    if (!hit) { vscode.window.setStatusBarMessage('MeOS: the stopped \u23f0 is no longer written there.', 4000); return; }
+    await meosChainStartHere(doc, ls.key, hit.line);
+    meosDbg('[resume] \u25b6\ufe0f ' + ls.key + ' 行=' + (hit.line + 1));
+    try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+  } catch (_) { }
+}
 async function meosClockStopHere(doc, key, line) {
   try {
     const lk = doc.uri.toString() + ' ' + key;
@@ -18578,6 +18607,7 @@ async function meosClockStopHere(doc, key, line) {
     try { meosArmClockFcFor(doc); } catch (_) { }
     try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
     meosDbg('[play] \u23f8 \u3092\u66f8\u3044\u305f \u884c=' + (line + 1) + ' \u819c=' + key);
+    try { meosNoteLastStopped(doc.uri.toString(), key, line, (hit.title ? meosChainFillSlot(hit.title, _pr || 0) : key)); } catch (_) { }   // v4.2.338
     return true;
   } catch (_) { return false; }
 }
@@ -30103,7 +30133,8 @@ function toggleMeDock(editorOverride) {
     // v4.1.0: 一覧from選んだ= その膜へ行く(飛ぶ口は meosJumpToScope 1つ)。
     if (message && message.type === 'clockGoto') { await meosJumpToScope({ uri: message.uri, key: message.key, name: message.name }); return; }
     if (message && message.type === 'clockForget') { await meosClockDrop(message.uri, message.key); try { updateMeDockMode(); } catch (_) { } return; }  // v4.1.4/4.1.5: 一覧の×(走っていれば止めてから外す)
-    if (message && message.type === 'clockEnable') { await meosClockSetEnabled(message.uri, message.key, !!message.on); meosPostTagList(); try { updateMeDockMode(); } catch (_) { } return; }   // v4.1.76: 部屋の分も送り直す  // v4.1.24: 一覧の\u2611/\u2610(使う/休む)
+    if (message && message.type === 'clockEnable') { if (!message.on) { try { meosNoteLastStopped(message.uri, message.key, -1, message.key); } catch (_) { } }   // v4.2.338: 一覧の☐も「最後に止めた1本」
+      await meosClockSetEnabled(message.uri, message.key, !!message.on); meosPostTagList(); try { updateMeDockMode(); } catch (_) { } return; }   // v4.1.76: 部屋の分も送り直す  // v4.1.24: 一覧の\u2611/\u2610(使う/休む)
     // ★★★v4.1.58: Stop= **音を黙らせる**だけでなく、**この回を終わらせる**。
     //   ★一度きりの時計なら済み(✓)に、繰返しなら**この回を飛ばして次を仕掛ける**=
     //     どちらも「この回は終わり」という1つの意味。目薬を先に差した時に押す物so、それthat自然。
