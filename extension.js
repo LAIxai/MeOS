@@ -12422,7 +12422,7 @@ function meosMenuBarTail() {
     //   helperは終了しない。helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする。これは他のアプリでもそうしているよね」):
     //   ★v4.2.311 の☑(常駐の入/切)はメニューバーが出ている前提の切替だった= 起こす口にならない。起こす口は⏰パネルの [V-helper]、降ろす口はここ。
     { sep: true }, { id: 'quitapp', title: 'Quit ' + meosAppName() },
-    { id: 'quitvhelper', title: 'Quit V-helper for ' + meosAppName() } ];   // v4.2.370: for= その アプリのための係 / v4.2.369: itself を外す(常駐アプリの作法= Quit + 名前)   // v4.2.364: ⏰パネルの橙の [V-helper] を押すのと同じ
+    { id: 'quitvhelper', title: 'Quit V-helper for VSCs' } ];   // v4.2.371: 本家とVSCodiumの両方を止める(VSCs= 2つの VS Code) / v4.2.370 / v4.2.369: itself を外す(常駐アプリの作法= Quit + 名前)   // v4.2.364: ⏰パネルの橙の [V-helper] を押すのと同じ
 }
 // ★★v4.2.364(俊克「V-helperボタンを押すと、メニューバーのメニュー全体を終了する、という意味だよ。現状は一瞬消えて再び起動したように見える。
 //   Quit ⏰ menu bar は橙色のV-helperと同じ処理になる。だから、メニューも Quit V-helper(VSCodium) itself にしたほうがいい」):
@@ -12431,10 +12431,32 @@ function meosMenuBarTail() {
 function meosVHelperOn() { try { return process.platform === 'darwin' && !!vscode.workspace.getConfiguration('laiMembrane').get('menuBarClock', true); } catch (_) { return false; } }
 //   ★切る間は、窓ごとの係も起こさない(_meosVHOff)= 設定を1つずつ書く間に、もう片方の係が顔を出さない。
 let _meosVHOff = false;
-async function meosVHelperSet(on) {
+// ★★v4.2.371(俊克「Quit V-helper for VSCsとして、本家VSCとVSCm両方のhelperを停止するようにしようよ。一緒に止める手段が無い。
+//   止めるために、もう一方を起動すると言うのも、無駄だしね」):
+//   ★V-helper(常駐の係)は2つのアプリで1人を共有(置き場所も LaunchAgent も同じ)。止めるとは「係」と「両方の設定」を切ること。
+//   ★知らせ= 共有の置き場所の vhelper-off.json(時刻と誰か)。開いているアプリは見張って即座に、閉じていたアプリは次に開いた時に読む。
+function meosVHelperOffSignalPath() { return require('path').join(meosHelperDir(), 'vhelper-off.json'); }
+function meosVHelperBroadcastOff() {
+  try { const fs = require('fs'); fs.mkdirSync(meosHelperDir(), { recursive: true }); const t = Date.now();
+    fs.writeFileSync(meosVHelperOffSignalPath(), JSON.stringify({ t, pid: process.pid, app: meosAppName() }));
+    if (extensionContext) extensionContext.globalState.update('meosVHelperOffSeen', t); } catch (_) { }
+}
+function meosVHelperHearOff() {   // 他のアプリ(or 閉じている間のヘルパー)が止めたか= 見ていない知らせが在れば、こちらも切る
+  try {
+    const fs = require('fs'); const f = meosVHelperOffSignalPath(); if (!fs.existsSync(f)) return;
+    const m = JSON.parse(fs.readFileSync(f, 'utf8') || '{}'); const t = Number(m.t) || 0;
+    const seen = Number(extensionContext ? extensionContext.globalState.get('meosVHelperOffSeen', 0) : 0) || 0;
+    if (!(t > seen)) return;
+    if (extensionContext) extensionContext.globalState.update('meosVHelperOffSeen', t);
+    if (m.pid === process.pid) return;
+    if (meosVHelperOn() || meosHelperOn()) { meosDbg('[vhelper] ' + (m.app || '?') + ' が止めた → こちらも切る'); meosVHelperSet(false, true); }
+  } catch (_) { }
+}
+async function meosVHelperSet(on, heard) {
   const c = vscode.workspace.getConfiguration('laiMembrane');
   if (on) { await c.update('menuBarHelper', true, vscode.ConfigurationTarget.Global); await c.update('menuBarClock', true, vscode.ConfigurationTarget.Global); return; }
   _meosVHOff = true;
+  if (!heard) meosVHelperBroadcastOff();   // v4.2.371: もう片方のアプリにも知らせる
   try {
     meosHelperRemove();
     await c.update('menuBarHelper', false, vscode.ConfigurationTarget.Global);
@@ -37816,6 +37838,8 @@ function activate(context) {
   //   ★**一括変換は自動ではやらない**([[project_now_not_bulk]])that、**人that呼んだ時だけ**やる口は在っていい
   //     (🐱と同じ立て付け= 変えるかどうかを決めるのは人)。数を見せてから書く。
   //   ★移せない物(膜thatもう無い/時刻thatが読めない)は**捨てる**= 行き先の無い予定は予定ではない。
+  // v4.2.371: もう片方のアプリが V-helper を止めた知らせ= 開いた時に1度読み、開いている間は見張る
+  try { meosVHelperHearOff(); require('fs').watchFile(meosVHelperOffSignalPath(), { interval: 700 }, (cur, prev) => { if (cur.mtimeMs > 0 && cur.mtimeMs !== prev.mtimeMs) meosVHelperHearOff(); }); } catch (_) { }
   // v4.2.363: 閉じている間にヘルパーのメニューで Quit …-helper を選んだ= その意思を設定へ移す(次に開いても起こさない)
   try {
     const fs = require('fs'), path = require('path'), mk = path.join(meosHelperDir(), 'off-by-user');

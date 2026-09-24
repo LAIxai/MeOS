@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.370) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.371) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -73,6 +73,7 @@ function run(argv) {
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
       if (id === 'h:quithelper') {
         try { $('1').writeToFileAtomicallyEncodingError(dir + '/off-by-user', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+        try { $(JSON.stringify({ t: Date.now(), pid: 0, app: 'V-helper' })).writeToFileAtomicallyEncodingError(dir + '/vhelper-off.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}   // v4.2.371: 両方のアプリへ
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/com.laixai.meos.helper.plist'), null); } catch (e) {}
         stopBell(); quitNow = true; return;
       }
@@ -298,7 +299,7 @@ function run(argv) {
         if (tmenu.length || items.length) { menu.push({ title: 'Tag&Go', off: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1 }); menu.push({ sep: true }); }
       } catch (e) {}
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり
-      menu.push({ id: 'h:quithelper', title: 'Quit V-helper for ' + appName });   // v4.2.370   // v4.2.364
+      menu.push({ id: 'h:quithelper', title: 'Quit V-helper for VSCs' });   // v4.2.371: 両方   // v4.2.364
       // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):
       //   拡張の最下段(v4.2.328)と同じく、鳴っている時計がまだ数えていれば残り時間を添える。♪/♬も拡張と同じ拍(0.8秒)で入れ替える。
       const ra = ringing ? next.find(a => (a.name || '') === ringing.name) : null;
