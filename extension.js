@@ -14636,7 +14636,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     //   (今日の起点は、来年には「過去の起点」に見える) → [[project_clock_fp_stamps]]
     //   ★未来を指定した時は付けない= 掛かった瞬間に `f/…p` の対thatが書かれる(v4.2.28)。
     const _pMark = ((_up0 || _dl0) && _org && _org.getTime() <= Date.now()) ? (meosClockFcStamp(_org) + 'p') : '';
-    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark, manual: _mn0 });   // ★v4.2.63: ▶️も運ぶ
+    await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_org), hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark, manual: _mn0 }, (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined);   // v4.2.367   // ★v4.2.63: ▶️も運ぶ
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + (_up0 ? '\u21bb' : '\u21ba') + _cy0.join('/')
@@ -14660,7 +14660,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     // ★v4.2.89: 起点が過去の一度きり= その時刻を `p`(数え始め)として書く= 鐘の無いストップウォッチ。
     const _past89 = !!(atDate && ((atDate instanceof Date) ? atDate.getTime() : Number(atDate)) <= Date.now());
     const _w89 = _past89 ? meosClockFcStamp((atDate instanceof Date) ? atDate : new Date(Number(atDate))) : meosClockFcStamp(_at);
-    try { await meosClockFcSet(scope.doc, scope.key, { when: _w89, hold, lock, anchor, cycle: null, up: _up0, dual: _dl0, rounds: 0, whenSrc: _past89 ? (_w89 + 'p') : undefined }); } catch (_) { }
+    try { await meosClockFcSet(scope.doc, scope.key, { when: _w89, hold, lock, anchor, cycle: null, up: _up0, dual: _dl0, rounds: 0, whenSrc: _past89 ? (_w89 + 'p') : undefined }, (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined); } catch (_) { }
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     const _wn = atDate ? (' \u2014 ' + meosFormatStamp(atDate)) : (' \u2014 ' + meosMmSs(ms));
@@ -14684,7 +14684,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     // ★★★v4.1.1109(俊克 バグ1「ストップウォッチを設定したはずなのに、UFCは↺になってしまう」):
     //   ★★★**ここthat向きを捨てていた**= 一度きりの道は `up: false` を打ち込んでいたので、
     //     面で↻を選んでも、本文には必ず↺と書かれていた。
-    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, anchor, cycle: null, up: _up0, dual: _dl0, rounds: 0 }); } catch (_) { }
+    try { await meosClockFcSet(scope.doc, scope.key, { when: meosClockFcStamp(_at), hold, lock, anchor, cycle: null, up: _up0, dual: _dl0, rounds: 0 }, (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined); } catch (_) { }
   }
   else { try { meosClockMeta(scope.doc)[scope.key] = { at: _at, hold, lock }; meosScheduleClockMetaWrite(scope.doc); } catch (_) { } }
   meosNoteClockHistory({ uri: scope.uri, key: scope.key, name: scope.name, hold }, _at);   // v4.1.0: 履歴にも残す
@@ -28188,6 +28188,7 @@ clkPutYMDHM(t.getFullYear(),t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes
 /* v4.1.169: この膜の時計を面へ取り込む(read \u23f0)。打ち込みの口は clkSyncFromBox 1つ。 */
 function clkTakeIn(d){try{
  if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
+ window.__clkReadLine=(typeof d.line==='number')?d.line:-1;   /* v4.2.367: Set はこの行を書き直す */
  /* ★★★v4.1.173(俊克 バグ1の真因・ack that名指し): ack thatが matched:false を返した=
     **字は届いているのに正規表現that当たっていなかった**。
     ★★★webviewのJSはテンプレートリテラルの中so、バックスラッシュを二重に書かないと潰れる
@@ -28628,7 +28629,7 @@ if(clkCaret&&clkPop){
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
-  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:''});   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:'',atLine:(typeof window.__clkReadLine==='number'&&window.__clkReadLine>=0)?window.__clkReadLine:-1});window.__clkReadLine=-1;   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -28647,6 +28648,8 @@ if(clkCaret&&clkPop){
    clkLastAcc+=ev.deltaY;var th=24;if(Math.abs(clkLastAcc)<th)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;   /* 上へ回す= 増える */
    clkLastAsk(u.getAttribute('data-u'),dir);},{passive:false});
   if(clkCycEl)clkCycEl.addEventListener('input',clkLastSoon);
+  /* v4.2.367(俊克の絵①): Repeat の箱の上でもその場で回す= ×N ±1 */
+  if(clkCycEl)clkCycEl.addEventListener('wheel',function(ev){if(clkCycEl.disabled)return;ev.preventDefault();clkLastAcc+=ev.deltaY;if(Math.abs(clkLastAcc)<24)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;clkLastAsk('n',dir);},{passive:false});
   var wh=document.getElementById('clk-when');if(wh&&window.MutationObserver)new MutationObserver(clkLastSoon).observe(wh,{childList:true,characterData:true,subtree:true});
   clkLastSoon();})();
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
@@ -28689,7 +28692,7 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  clkDirty=false;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
+  clkDirty=false;clkPaintSet();window.__clkReadLine=-1;   /* v4.1.142: 開いた時は未設定から始まる / v4.2.367: Read の行も忘れる */
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
    vscode.postMessage({type:'clockTagList'});   /* v4.1.91: 扉の数字を今のファイルで数え直す(開く時に1回だけ) */
@@ -30532,8 +30535,12 @@ function toggleMeDock(editorOverride) {
         const ed = meosCurrentEditor();
         if (ed && ed.document) {
           const sc = meosModeScope(ed);
-          const hit = sc && sc.key ? meosLiveClockFor(ed.document, sc.key) : null;
-          if (hit) _r = { type: 'clockRead', ok: true,
+          // ★v4.2.367(俊克「次の予定ではなく、現在文字カーソルがいる⏰FCの値をReadボタンで読込み、変更してSetする」):
+          //   カーソルが⏰行に居れば**その行**を読み、行番号も返す= Set はその1本を書き直す(新しく足さない)。
+          let hit = null;
+          try { const _cl = ed.selection.active.line; hit = sc && sc.key ? (meosClockFcScan(ed.document).find(c => c.key === sc.key && c.line === _cl) || null) : null; } catch (_) { hit = null; }
+          if (!hit) hit = sc && sc.key ? meosLiveClockFor(ed.document, sc.key) : null;
+          if (hit) _r = { type: 'clockRead', ok: true, line: (typeof hit.line === 'number' ? hit.line : -1),
             when: String(hit.whenSrc || hit.when || ''),
             cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))),
             rep: !!(hit.cycle && hit.cycle.length), lock: !!hit.lock, tags: hit.tags || [] };
@@ -30648,7 +30655,8 @@ function toggleMeDock(editorOverride) {
         cycleSrc: (_cyEx && _cyEx.steps.length) ? _cyRaw : '',
         up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,   // v4.1.142: 面は常に \u21ba\u21bb
         rounds: (_cyEx && _cyEx.rounds) ? _cyEx.rounds : (_rep ? meosParseRoundsInput(message.cycle) : 0),
-        tags: (message.tags != null) ? meosParseTagInput(message.tags) : null };
+        tags: (message.tags != null) ? meosParseTagInput(message.tags) : null,
+        atLine: (typeof message.atLine === 'number' && message.atLine >= 0) ? message.atLine : undefined };   // v4.2.367: Read した行を書き直す
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
