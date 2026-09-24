@@ -31274,11 +31274,21 @@ class MembraneFoldingProvider {
       // v4.1.105: 畳みの形はカーソルで変わる(バッジ行が畳みの中か外か)ので、ここで一度だけ訊く。
       const _caret = meosCaretLineForDoc(document);
       const _out = meosFcOutMembranes(document, _caret);
-      return collectPairs(document, { excludeIndex: false })
+      // ★★★v4.2.368(俊克 バグ1「膜の最後のほうをクリックすると、先頭に飛んでしまう。5回やって毎回」):
+      //   ★★★真因= VS Code は1ファイルの畳み範囲を editor.foldingMaximumRegions(既定5000)までしか持たず、超えた分は**深い物から捨てる**。
+      //     生涯日記は 5220個= 5段目の FC の塊が捨てられ、「その行を畳め」が1つ外の膜を畳んで先頭へ跳んでいた(v4.0.188 と同じ見え方)。
+      //   ★直し= package.json の configurationDefaults で上限を 65000(VS Code の最大)へ。上限を超えたら、ここで名乗らせる。
+      const _all68 = collectPairs(document, { excludeIndex: false })
         .filter(p => p.end > p.start)
         .map(p => new vscode.FoldingRange(p.start, foldRangeEnd(document, p, _out.has(p.start)), vscode.FoldingRangeKind.Region))
         .concat(meosDefBlockFoldingRanges(document, _caret))
         .sort((a, b) => a.start - b.start); // v4.0.140: 開始行で並べて返す(混ぜた順のまま渡さない)
+      try {
+        const _max68 = Number(vscode.workspace.getConfiguration('editor', document).get('foldingMaximumRegions', 5000)) || 5000;
+        if (_all68.length > _max68 && _all68.length !== MembraneFoldingProvider._over68) meosDbg('[foldingRanges] ★上限超え ' + _all68.length + ' > editor.foldingMaximumRegions=' + _max68 + ' (深い塊から捨てられる= 畳むと外の膜が畳まれる)');
+      } catch (_) { }
+      MembraneFoldingProvider._over68 = (_all68.length > (Number(vscode.workspace.getConfiguration('editor', document).get('foldingMaximumRegions', 5000)) || 5000)) ? _all68.length : 0;   // 同じ数では1度だけ名乗る
+      return _all68;
     } finally { try { const _ms = Date.now() - _t0; if (_ms > 300) meosDbg('[foldingRanges] ' + _ms + 'ms lines=' + document.lineCount); } catch (_) {} }
   }
   // Call before editor.fold to force VSCode to re-request ranges from this provider.
