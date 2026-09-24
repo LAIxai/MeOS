@@ -2,7 +2,7 @@
   "name": "lai-membrane",
   "displayName": "MeOS — Membrane OS",
   "description": "MeOS — Membrane OS. A membrane is just a comment — so it structures, folds, warps, and encrypts your notes and code without touching your data, not by a millimeter. One file, one brain: Hyper TOC warp & bi-directional jump, ✅ searchable checklists, 🐙 one-tap GitHub backup (Octopush), 🔐 AES-256 Encrypt Me. Markdown⊕ — Markdown, plus. MeOS for VSCm — the VSCodium implementation of MeOS (part of MeOS for anywhere, the universal membrane notation; abbreviated μOS). ／ それは、コメント文が命令文になる新世界。あなたのコードや原稿を1mmも汚さない。最軽量のOS。Hyper TOCで、どこでもワープ、双方向ジャンプ。あなたのコードは卵割 (Cleavage) し、1つの生命体になる。最高の創作環境を提供します!!! 全世界の膜を双方向リンクする未来も見えている。 I, My, MeOS 🐣",
-  "version": "4.2.377",
+  "version": "4.2.378",
   "publisher": "lai",
   "engines": {
     "vscode": "^1.85.0"
@@ -408,6 +408,11 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Folder that the 📦 Re-install VSIX button in Me Dock opens its file picker in — you choose which build, so trying an older one stays one click away. Leave empty to start from the folder you picked last time (or Downloads)."
+        },
+        "laiMembrane.pasteProbe": {
+          "type": "boolean",
+          "default": false,
+          "description": "Developer only. With laiMembrane.debugLogPath set, take an 8-second CPU and memory profile after a long paste into a very large file, and write it to probe/paste/ next to the log."
         },
         "laiMembrane.clockSound": {
           "type": "string",

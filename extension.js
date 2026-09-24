@@ -31829,6 +31829,9 @@ let _meosPasteProbeAt = 0, _meosPasteProbeBusy = false;
 function meosPasteProbeMaybe(e) {
   try {
     const dbg = meosDbgPath(); if (!dbg) return;
+    // ★v4.2.378(俊克「MeOSフォルダが meos-paste-….cpuprofile で埋め尽くされて、Re-install VSIX でファイルが出るまで5秒以上」):
+    //   役目(貼り付けの遅さ= Markdown Language Features を突き止める)は 9/14 に終わった= 既定で止める。測りたい時だけ設定で入れる。
+    try { if (!vscode.workspace.getConfiguration('laiMembrane').get('pasteProbe', false)) return; } catch (_) { return; }
     if (_meosPasteProbeBusy || Date.now() - _meosPasteProbeAt < 120000) return;
     const chs = (e && e.contentChanges) || [];
     if (chs.length !== 1) return;
@@ -31841,7 +31844,8 @@ function meosPasteProbeMaybe(e) {
     const sess = new inspector.Session(); sess.connect();
     const post = (m, p) => new Promise((res) => sess.post(m, p || {}, (err, r) => res(err ? null : r)));
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const base = path.join(path.dirname(dbg), 'meos-paste-' + stamp);
+    const _pd = path.join(path.dirname(dbg), 'probe', 'paste'); try { fs.mkdirSync(_pd, { recursive: true }); } catch (_) { }   // v4.2.378: 一番上に置かない
+    const base = path.join(_pd, 'meos-paste-' + stamp);
     const lines = t.split('\n').length;
     meosDbg('[pasteProbe] 開始 貼った行=' + lines + ' 字=' + t.length + ' 文書行=' + e.document.lineCount + ' → ' + base + '.*');
     const memLog = [];
