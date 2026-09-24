@@ -11206,6 +11206,50 @@ function meosClockUntilRewrite(txt, c, n) {
   } catch (_) { return null; }
 }
 const _meosUntilBusy = new Set();
+// ★★v4.2.365(俊克「×63を調整する時、1mmもマウスを動かさずにホイールで。±10くらいをその場スクロールで変えつつ、目標日がどう変化するかを見て調整する」
+//   ＋「Date&Countの最終的な微調整にも使える。大ざっぱな日付を入れて一気に回す。日付の月とか日をスクロールすることもできる」):
+//   ★エディタの本文の上のホイールは拡張に届かない→ ⏰パネル(Me Dock の中)で回す。数える所は ×N の最終日/Date&Count と同じ関数。
+// 式の文字に回数 n を書く(既に ×N が在れば替える / 並びは括弧で包む= ×N は直前の1つに掛かる v4.2.87)。
+function meosCycleTextSetRounds(text, n) {
+  const t = String(text == null ? '' : text).trim();
+  if (!t || !(n > 0)) return t;
+  const ex = meosParseCycleExpr(t, 0);
+  if (ex.rounds > 0) { const re = /[\u00d7xX*]\s*([0-9]+)/g; let m, last = null; while ((m = re.exec(t))) last = m; if (last) return t.slice(0, last.index) + '\u00d7' + n + t.slice(last.index + last[0].length); }
+  let wraps = false;
+  if (/^[(\uff08]/.test(t)) { let dp = 0; wraps = true; for (let k = 0; k < t.length; k++) { const ch = t[k]; if (ch === '(' || ch === '\uff08') dp++; else if (ch === ')' || ch === '\uff09') { dp--; if (dp === 0 && k < t.length - 1) { wraps = false; break; } } } }
+  if (wraps) return t + '\u00d7' + n;
+  return ex.steps.length === 1 ? (t + ' \u00d7' + n) : ('(' + t + ')\u00d7' + n);
+}
+// ⏰パネルの問い= {when, cycle, unit:'n'|'d'|'mo'|'y'|'', dir:±1} → {n, cycle, parts}
+function meosClockLastAnswer(msg) {
+  const cyc = String(msg.cycle || '').trim();
+  const ex = cyc ? meosParseCycleExpr(cyc, 0) : { steps: [], rounds: null };
+  const cycle = ex.steps.map(e => e.tok);
+  if (!cycle.length) return { ok: false };
+  const w = String(msg.when || '').trim();
+  const od = meosParseStampLoose(w) || ((meosParseWhen(w) || {}).at) || null;
+  if (!od) return { ok: false };
+  const o = od.getTime();
+  let n = ex.rounds > 0 ? ex.rounds : 0, newText = cyc;
+  const unit = String(msg.unit || ''), dir = (Number(msg.dir) || 0) > 0 ? 1 : ((Number(msg.dir) || 0) < 0 ? -1 : 0);
+  if (unit && dir) {
+    if (unit === 'n' || !(n > 0)) n = Math.max(1, (n || 0) + (unit === 'n' ? dir : Math.max(dir, 0)));
+    else {                                               // 日付の桁を回す= その桁で1つ先/前の日付を目標に、越えない一番大きいN(必ず1つは動く)
+      const last = new Date(meosCycleLastAt(o, cycle, n));
+      const tg = new Date(last);
+      if (unit === 'y') tg.setFullYear(tg.getFullYear() + dir); else if (unit === 'mo') tg.setMonth(tg.getMonth() + dir); else tg.setDate(tg.getDate() + dir);
+      let n2 = meosCycleRoundsUntil(o, cycle, tg.getTime());
+      if (dir > 0 && n2 <= n) n2 = n + 1;
+      if (dir < 0 && n2 >= n) n2 = n - 1;
+      n = Math.max(1, n2);
+    }
+    newText = meosCycleTextSetRounds(cyc, n);
+  }
+  if (!(n > 0)) return { ok: true, n: 0, cycle: newText };
+  const t = meosCycleLastAt(o, cycle, n); if (!t) return { ok: false };
+  const d = new Date(t), p2 = (x) => (x < 10 ? '0' : '') + x;
+  return { ok: true, n, cycle: newText, parts: { y: String(d.getFullYear()), mo: p2(d.getMonth() + 1), d: p2(d.getDate()), wd: 'SMTWtFs'[d.getDay()], hm: p2(d.getHours()) + ':' + p2(d.getMinutes()) } };
+}
 // ★★★v4.2.77: 仮想の起点 `v…` の読み書き。字の形はここ1か所で決める。
 //   `1. v2026-09-13 09:40:12` → {pre:'1.', at} / `v2m25s` → {pre:'', elapsed}
 function meosClockSplitV(src) {
@@ -25992,6 +26036,12 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
      右端に合わせよと書くだけ。**右端は定義から一致する**(誰がいつ測っても同じ)。
    ★JSの計算は、錨を知らない古い版のためだけに残す(下の clkPlace)。 */
 .clk-wrap{anchor-name:--meos-clk}
+/* v4.2.365: Repeat の下の「×N → 最終日」= ホイールで回す桁(琥珀の下線= 回せる所) */
+.clk-last{display:flex;align-items:baseline;gap:6px;margin:2px 0 4px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700}
+.clk-pop.norepeat .clk-last{display:none}
+.clk-last .clk-arrow{opacity:.6}
+.clk-last [data-u]{border-bottom:2px solid #d18400;padding:0 1px;cursor:ns-resize}
+.clk-last [data-u]:hover{background:rgba(209,132,0,.22)}
 /* v4.2.363: ⏰パネル右上の [V-helper]= 常駐の係を起こす/降ろす。入っている時は琥珀、切れている時は灰。 */
 .clk-vh-row{display:flex;justify-content:flex-end;margin:0 0 3px}
 .clk-vhelper{border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:10px;font-weight:800;line-height:1;padding:3px 7px;cursor:var(--meos-hand)}
@@ -26598,6 +26648,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint" id="clk-hint-rep">00 ends the list</span><span class="clk-pset"><button class="clk-pbtn" id="clk-pbtn">24h</button><span class="clk-pring" id="clk-pring" data-tip="Next preset | Three presets, round and round.">\u21bb</span></span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
+  <div class="clk-last" id="clk-last" data-tip="Roll the wheel here \u2014 on \u00d7N to change the count, on the year, month or day to move the last bell. Nothing is written until you press Set."><span class="clk-ln" id="clk-ln" data-u="n">\u00d7\u2014</span><span class="clk-arrow">\u2192</span><span class="clk-lt" id="clk-lt"></span></div>
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
 <!-- {* ▲mCN=dock_toc *} -->
@@ -28580,6 +28631,23 @@ if(clkCaret&&clkPop){
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
+ /* v4.2.365: 「×N → 最終日」をホイールで回す(マウスは動かさない)。数えるのは拡張(×N の最終日/Date&Count と同じ関数)。 */
+ var clkLastSeq=0,clkLastTimer=null,clkLastAcc=0;
+ function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:clkText(),cycle:cy?cy.value:'',unit:unit||'',dir:dir||0});}
+ function clkLastSoon(){if(clkLastTimer)clearTimeout(clkLastTimer);clkLastTimer=setTimeout(function(){clkLastTimer=null;clkLastAsk('',0);},150);}
+ window.__clkLastPaint=function(m){if(m.seq!==clkLastSeq)return;var ln=document.getElementById('clk-ln'),lt=document.getElementById('clk-lt');if(!ln||!lt)return;
+  var cy=document.getElementById('clk-cyc');if(cy&&typeof m.cycle==='string'&&m.cycle!==cy.value)cy.value=m.cycle;
+  if(!m.ok){ln.textContent='\u00d7\u2014';lt.innerHTML='';return;}
+  ln.textContent=m.n>0?('\u00d7'+m.n):'\u00d7\u2014';
+  if(!m.parts){lt.innerHTML='<span class="clk-noend">no end</span>';return;}
+  var P=m.parts;lt.innerHTML='<span data-u="y">'+P.y+'</span>-<span data-u="mo">'+P.mo+'</span>-<span data-u="d">'+P.d+'</span>('+P.wd+') '+P.hm;};
+ (function(){var row=document.getElementById('clk-last');if(!row)return;
+  row.addEventListener('wheel',function(ev){var u=ev.target&&ev.target.closest?ev.target.closest('[data-u]'):null;if(!u)return;ev.preventDefault();
+   clkLastAcc+=ev.deltaY;var th=24;if(Math.abs(clkLastAcc)<th)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;   /* 上へ回す= 増える */
+   clkLastAsk(u.getAttribute('data-u'),dir);},{passive:false});
+  if(clkCycEl)clkCycEl.addEventListener('input',clkLastSoon);
+  var wh=document.getElementById('clk-when');if(wh&&window.MutationObserver)new MutationObserver(clkLastSoon).observe(wh,{childList:true,characterData:true,subtree:true});
+  clkLastSoon();})();
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
  if(clkCycEl)clkCycEl.addEventListener('input',function(){clkTouch();clkPaintSet();});   /* v4.1.144 */
  if(clkTagEl0())clkTagEl0().addEventListener('input',clkTouch);
@@ -29676,7 +29744,7 @@ for(var _i=0;_i<_cs.length;_i++){var _sp=document.createElement('span');_sp.text
 _t.addEventListener('click',function(){try{vscode.postMessage({type:'copyFileAndUd'});}catch(_e){}});
 _ud.appendChild(_t);}
 }
-return;}if(m&&m.type==='helperState'){/* v4.2.363 */var vh=document.getElementById('clk-vhelper');if(vh)vh.classList.toggle('on',!!m.on);return;}if(m&&m.type==='themeState'){try{if(typeof window.__renderTheme==='function')window.__renderTheme(m);}catch(e){}return;}if(m&&m.type==='wrapColumn'){/* v4.2.152 */try{if(typeof window.__renderWrapCol==='function')window.__renderWrapCol(Number(m.value)||80,m.slot);}catch(e){}return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));document.documentElement.style.setProperty('--meos-palm',String(m.palm||'grab'));document.documentElement.style.setProperty('--meos-grip',String(m.grip||'grabbing'));document.documentElement.style.setProperty('--meos-pinch',String(m.pinch||'ew-resize'));document.documentElement.style.setProperty('--meos-pinched',String(m.pinched||'col-resize'));}catch(e){}try{var _hp=document.getElementById('hand-pick');if(_hp){['btron','macos22','macos','system'].forEach(function(k){_hp.classList.toggle('is-'+k,m.hand===k);});if(m.hand==='system')_hp.setAttribute('data-tip','${MEOS_HAND_TIP}');else{_hp.removeAttribute('data-tip');hideTocTip();}   /* v4.2.118: tip は OS の時だけ */}}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
+return;}if(m&&m.type==='clkLast'){/* v4.2.365 */try{if(typeof window.__clkLastPaint==='function')window.__clkLastPaint(m);}catch(e){}return;}if(m&&m.type==='helperState'){/* v4.2.363 */var vh=document.getElementById('clk-vhelper');if(vh)vh.classList.toggle('on',!!m.on);return;}if(m&&m.type==='themeState'){try{if(typeof window.__renderTheme==='function')window.__renderTheme(m);}catch(e){}return;}if(m&&m.type==='wrapColumn'){/* v4.2.152 */try{if(typeof window.__renderWrapCol==='function')window.__renderWrapCol(Number(m.value)||80,m.slot);}catch(e){}return;}if(m&&m.type==='handCursor'){/* v4.2.108: 手の形の切替= CSS 変数だけ差し替える(面を作り直さない) */try{document.documentElement.style.setProperty('--meos-hand',String(m.value||'pointer'));document.documentElement.style.setProperty('--meos-palm',String(m.palm||'grab'));document.documentElement.style.setProperty('--meos-grip',String(m.grip||'grabbing'));document.documentElement.style.setProperty('--meos-pinch',String(m.pinch||'ew-resize'));document.documentElement.style.setProperty('--meos-pinched',String(m.pinched||'col-resize'));}catch(e){}try{var _hp=document.getElementById('hand-pick');if(_hp){['btron','macos22','macos','system'].forEach(function(k){_hp.classList.toggle('is-'+k,m.hand===k);});if(m.hand==='system')_hp.setAttribute('data-tip','${MEOS_HAND_TIP}');else{_hp.removeAttribute('data-tip');hideTocTip();}   /* v4.2.118: tip は OS の時だけ */}}catch(e){}return;}if(m&&m.type==='pasteLagState'){/* v4.2.103: いつも出す。Markdown拡張が止まっていれば薄く、tip も戻し方を言う */const pb=document.getElementById('paste-lag');if(pb){pb.classList.toggle('off',!m.on);pb.setAttribute('data-tip',m.on?'Paste lag | In one very large file (200k lines and more), a paste can freeze the editor for 10 seconds or longer. The cause is Markdown Language Features, built into VSCodium: it re-reads the whole file after every change. Click to open it, then press the gear and choose Disable (Workspace). MeOS keeps working without it.':'Paste lag | Markdown Language Features is off in this workspace, so pastes into very large files stay quick. Click to open it again, then press the gear and choose Enable (Workspace) if you want Markdown preview back, or to compare the two.');}return;}if(m&&m.type==='linkUl'){/* v4.0.298: 最後に決めた下線の種類(持ち主はnode) */fmtLinkUlLast=Math.max(0,Math.min(3,Math.trunc(Number(m.ul))||0));if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');return;}if(m&&m.type==='loadFmt'){/* ★★v4.2.92(俊克 バグ1「見出しボタンを###→#→##の順で押すと、なぜか最後に#に切り替わってしまう。だいぶ前から」): ★★**nodeからの控えが、面の新しい指定を1つ前に戻していた**= 押すたびに面は saveFmt を送る。その間にnodeが別の用事(スナップショット)で loadFmt を送ると、まだ届いていない最後の保存より**1つ古い値**が面に届き、##が#に戻る。★→ 保存に通し番号を付け、同じファイルで面の番号より古い控えは読まない(ファイルが変わった時は読む)。 */if(m.uri&&m.uri===window.__fmtUri&&(Number(m.rev)||0)<(Number(window.__fmtRev)||0))return;if(m.uri&&m.uri!==window.__fmtUri){window.__fmtUri=m.uri;window.__fmtRev=Number(m.rev)||0;}const f=m.fmt;if(f){const restoreSlots=(slots,idxVal,src)=>{if(Array.isArray(src)){for(let i=0;i<3;i++){if(src[i])Object.assign(slots[i],src[i]);
 }return Math.max(0,Math.min(2,Number(idxVal)||0));}if(src&&typeof src==='object'){Object.assign(slots[0],src);return 0;}
 return null;};const hi=restoreSlots(fmtHlSlots,f.hlIdx,f.highlight);if(hi!==null)fmtHlIdx=hi;const si=restoreSlots(fmtStSlots,f.stIdx,f.strike);
 if(si!==null)fmtStIdx=si;if(f.heading){[1,2,3].forEach(L=>{const hc=f.heading[L]||f.heading[String(L)];if(hc)Object.assign(fmtHeadingColors[L],hc);
@@ -30510,6 +30578,10 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
+    if (message && message.type === 'clkLastAsk') {   // v4.2.365: ⏰パネルの ×N → 最終日(ホイール)
+      try { meDockPanel.webview.postMessage(Object.assign({ type: 'clkLast', seq: message.seq }, meosClockLastAnswer(message))); } catch (_) { }
+      return;
+    }
     if (message && message.type === 'toggleHelper') {   // v4.2.363: ⏰パネルの [V-helper]= 常駐の係を起こす/降ろす
       try { await meosVHelperSet(!meosVHelperOn()); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切
       return;

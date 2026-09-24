@@ -7,7 +7,7 @@ const stubSrc=H.slice(H.indexOf('const stub = {'), H.indexOf('const origLoad'));
 const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')+')');
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mp_'+process.pid+'.js';
-fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosCycleSeriesNext,meosParseCycleInput,meosCycleMs,meosParseCycleExpr,meosCycleLastAt,meosClockLastLabel,meosParseUntil,meosCycleRoundsUntil,meosClockUntilRewrite,meosClockOriginOf};\n');
+fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosCycleSeriesNext,meosParseCycleInput,meosCycleMs,meosParseCycleExpr,meosCycleLastAt,meosClockLastLabel,meosParseUntil,meosCycleRoundsUntil,meosClockUntilRewrite,meosClockOriginOf,meosClockLastAnswer,meosCycleTextSetRounds};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const D=(s)=>new Date(s).getTime(), F=(t)=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'('+'SMTWtFs'[d.getDay()]+') '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');};
@@ -97,5 +97,19 @@ r=rw('<!-- Mew!UFC ⏰ 2. ↺(5m) ~'+Y+'-09-24 21:12 -->');
 ok(r.n===0, '起点の無い1本は数えられない(⚠️のまま残す)', r.n);
 r=rw('<!-- Mew!UFC ⏰ '+Y+'-09-24 10:00 ↺8h ~'+Y+'-09-24 12:00 -->');
 ok(r.n===0, '1回も鳴らないうちに来る日付は 0(⚠️)', r.n);
+
+console.log('⑥ ⏰パネルのホイール(v4.2.365 ×N → 最終日)');
+const A=(o)=>X.meosClockLastAnswer(o);
+let q=A({when:Y+'-09-24 10:00',cycle:'8h ×111'});
+ok(q.ok && q.n===111 && q.parts.mo==='10' && q.parts.d==='31' && q.parts.hm==='10:00', '問うだけ= ×111 → 10-31 10:00', q);
+q=A({when:Y+'-09-24 10:00',cycle:'8h ×111',unit:'n',dir:1}); ok(q.n===112 && q.cycle==='8h ×112' && q.parts.hm==='18:00', '×N を上へ1目盛り → ×112・18:00', q);
+q=A({when:Y+'-09-24 10:00',cycle:'8h ×111',unit:'d',dir:1}); ok(q.n===114 && q.parts.d==='01', '日を上へ → 11/1 10:00 まで(×114)', q);
+q=A({when:Y+'-09-24 10:00',cycle:'8h ×111',unit:'d',dir:-1}); ok(q.n===108 && q.parts.d==='30', '日を下へ → 10/30 10:00(×108)', q);
+q=A({when:Y+'-10-01 10:00',cycle:'t1,3 ×11',unit:'d',dir:1}); ok(q.n===12, '暦の規則で日を上へ= 次の開催日まで必ず1つ進む(×12)', q);
+q=A({when:Y+'-10-01 10:00',cycle:'t1,3 ×11',unit:'mo',dir:-1}); ok(q.n<11 && q.parts, '月を下へ= 1か月前より前の最後の開催日', q);
+q=A({when:Y+'-09-24 21:00',cycle:'3m 1m',unit:'n',dir:1}); ok(q.cycle==='(3m 1m)×1', '×N の無い並びに回数= 括弧で包む', q);
+ok(X.meosCycleTextSetRounds('((30s 15s)×4 1m)',3)==='((30s 15s)×4 1m)×3','入れ子を包む括弧に ×3');
+ok(X.meosCycleTextSetRounds('20m×225',250)==='20m×250','既存の ×225 を替える');
+q=A({when:'',cycle:'8h ×3'}); ok(!q.ok,'起点が無ければ答えない');
 console.log(ng?('\nNG '+ng+'件'):'\n全部 ok');
 process.exit(ng?1:0);
