@@ -25303,6 +25303,10 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .mz-br{bottom:0;right:0;transform:translate(50%,50%)}
 .mz-pop{position:absolute;top:100%;left:0;margin-top:8px;display:none;align-items:center;gap:10px;padding:8px 12px;background:var(--vscode-editorWidget-background,var(--vscode-sideBar-background));border:1px solid var(--vscode-panel-border);border-radius:9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:50}
 .mz-pop.on{display:inline-flex}
+/* v4.2.355(俊克「スライダーは要らないけど、数値ボックスを復活しようよ。↓/↑キーで切り替えると、操作しやすくなる」):
+   窓は数値の欄だけ。右端に揃えて左へ開く(右へ切れない)。 */
+.mz-pop{left:auto;right:0;padding:5px 7px}
+.mz-slider{display:none}
 .mz-slider{-webkit-appearance:none;appearance:none;width:120px;height:13px;background:transparent;cursor:var(--meos-hand)}
 .mz-slider::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:linear-gradient(to right,#d18400 0,#d18400 var(--mz-fill,0%),color-mix(in srgb,var(--vscode-foreground) 28%,transparent) var(--mz-fill,0%),color-mix(in srgb,var(--vscode-foreground) 28%,transparent) 100%)}
 .mz-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:50%;background:#d18400;border:1px solid rgba(0,0,0,.35);cursor:var(--meos-hand);margin-top:-4px}
@@ -26694,7 +26698,7 @@ function __mzStep(z){var b=0,d=9;for(var k=0;k<__MZ.length;k++){var e=Math.abs(_
 function __mzOfStep(n){return __MZ[Math.max(1,Math.min(__MZ.length,n))-1];}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
 if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;/* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
-if(pop)pop.style.zoom=inv;var st=__mzStep(z);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=st+'/'+__MZ.length;
+/* v4.2.355: 窓も他のボタンと同じ縮尺(逆ズームで実寸に戻すと、小さい段ほど窓だけ巨大になった) */if(pop)pop.style.zoom='';var st=__mzStep(z);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=st+'/'+__MZ.length;
 var zi=document.getElementById('mz-in'),zo=document.getElementById('mz-out');if(zi)zi.title='Bigger \u00b7 '+st+'/'+__MZ.length+(st>=__MZ.length?' (max)':'');if(zo)zo.title='Smaller \u00b7 '+st+'/'+__MZ.length+(st<=1?' (min)':'');
 var sl=document.getElementById('mz-slider');if(sl){if(document.activeElement!==sl)sl.value=st;/* v3.1.21改良3: Time Machine式=ノブ左を橙で塗る(1〜15段→0〜100%)。 */var __fill=Math.max(0,Math.min(100,(st-1)/(__MZ.length-1)*100));
 sl.style.setProperty('--mz-fill',__fill+'%');}var a=document.getElementById('mz-a');if(a)a.classList.toggle('on',__mdSync);
@@ -26706,11 +26710,12 @@ function __mzPop(show){var pop=document.getElementById('mz-pop');if(pop)pop.clas
 (function(){var a=document.getElementById('mz-a'),i=document.getElementById('mz-in'),o=document.getElementById('mz-out'),
 p=document.getElementById('mz-pct'),sl=document.getElementById('mz-slider'),sp=a&&a.closest?a.closest('.mz-split'):null;
 if(a)a.addEventListener('click',function(){__mdSync=!__mdSync;a.classList.toggle('on',__mdSync);vscode.postMessage({type:'meDockSync',
-on:__mdSync});});/* v4.2.350(俊克「スライダーがばかデカイし、右に切れていて操作できない」): 15段になった今、段はtipが言う(n/15)= 窓はもう開かない。 */if(i)i.addEventListener('click',function(){__mzSet(__mzOfStep(__mzStep(__mdZoom)+1));if(__mdSync)vscode.postMessage({type:'editorFontZoom',
-dir:1});});if(o)o.addEventListener('click',function(){__mzSet(__mzOfStep(__mzStep(__mdZoom)-1));if(__mdSync)vscode.postMessage({type:'editorFontZoom',
+on:__mdSync});});/* v4.2.350(俊克「スライダーがばかデカイし、右に切れていて操作できない」): 15段になった今、段はtipが言う(n/15)= 窓はもう開かない。 */var __mzFocus=function(){__mzPop(true);var q=document.getElementById('mz-pct');if(q){q.focus();q.select();}};/* v4.2.355: 押したら欄へ= そのまま↑↓で段を動かせる */
+if(i)i.addEventListener('click',function(){__mzSet(__mzOfStep(__mzStep(__mdZoom)+1));__mzFocus();if(__mdSync)vscode.postMessage({type:'editorFontZoom',
+dir:1});});if(o)o.addEventListener('click',function(){__mzSet(__mzOfStep(__mzStep(__mdZoom)-1));__mzFocus();if(__mdSync)vscode.postMessage({type:'editorFontZoom',
 dir:-1});});if(sl)sl.addEventListener('input',function(){var n=parseFloat(sl.value);if(isFinite(n))__mzSet(__mzOfStep(n));});if(p){var commit=function(){var n=parseFloat(String(p.value).replace(/[^0-9.\/]/g,'').split('/')[0]);
 /* v4.2.349: 15以下は段(7 でも 7/15 でも)、それより大きければ今まで通り% */if(isFinite(n)&&n>0)__mzSet(n<=__MZ.length?__mzOfStep(n):n/100);else __mzApply();};p.addEventListener('focus',function(){if(typeof hideTocTip==='function')hideTocTip();
-});p.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='ArrowUp'){e.preventDefault();
+});p.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){e.preventDefault();__mzApply();p.blur();__mzPop(false);}else if(e.key==='ArrowUp'){e.preventDefault();
 __mzSet(__mzOfStep(__mzStep(__mdZoom)+1));__mzPct();}else if(e.key==='ArrowDown'){e.preventDefault();__mzSet(__mzOfStep(__mzStep(__mdZoom)-1));__mzPct();}});p.addEventListener('blur',commit);
 }document.addEventListener('click',function(e){var pop=document.getElementById('mz-pop');if(pop&&pop.classList.contains('on')&&sp&&!sp.contains(e.target))__mzPop(false);
 });__mdZoom=__mzOfStep(__mzStep(__mdZoom));__mzApply();})();
