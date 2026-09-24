@@ -11119,7 +11119,21 @@ function meosCycleLastAt(origin, cycle, rounds) {
 }
 function meosClockLastLabel(t) {
   const d = new Date(t), p = (x) => (x < 10 ? '0' : '') + x;
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  const y = (d.getFullYear() === new Date().getFullYear()) ? '' : (d.getFullYear() + '-');   // v4.2.346: 今年なら年は省く
+  return y + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+// ★★★v4.2.346(俊克 2026.09.24 am11:15「修正と同時にタイマーは動作するので、5秒間だけ、バッジを間借りして、最終日を表示すればいい。
+//   タイマーを停止中なら、バッジが空いているので、そこに表示し続けるので、回数を調整しやすいよ。一石二鳥だね」):
+//   ★⏰行の後ろ(v4.2.344)は横に長すぎた。出す場所はバッジ行= 走っている時は直してから5秒だけ顔の代わりに / 止めている時はずっと。
+//   ★本文には書かない(表示であって記法ではない)。起点の決まっていない1本・済み・×N無しは 0。
+const MEOS_LAST_FLASH_MS = 5000;
+const _meosLastFlash = new Map();   // 膜+⏰行の位置 -> {sig, at}= 直した瞬間を覚える(開いただけでは光らない)
+function meosClockLastAtOf(c) {
+  try {
+    if (!c || c.done || !(c.rounds > 0) || !Array.isArray(c.cycle) || !c.cycle.length) return 0;
+    const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null;
+    return o ? meosCycleLastAt(o.getTime(), c.cycle, c.rounds) : 0;
+  } catch (_) { return 0; }
 }
 // ★★★v4.2.77: 仮想の起点 `v…` の読み書き。字の形はここ1か所で決める。
 //   `1. v2026-09-13 09:40:12` → {pre:'1.', at} / `v2m25s` → {pre:'', elapsed}
@@ -12618,7 +12632,8 @@ function meosApplyTimerLineDecorations(editor) {
     if (!editor || !editor.document) return;
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
-    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];   // v4.1.148 / v4.1.176
+    const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
+    const _badgeLent = new Set();   // v4.2.346: 最終日に貸したバッジ行(1膜1つ)   // v4.1.148 / v4.1.176
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
     const shipBtns = [], moorBtns = [], shipLBtns = [], moorLBtns = [], lockedBtns = [];   // v4.2.339: 🔐も駒の右へ   // ★v4.2.314: 同じ空白1字の左の区画= 🚢💨(飛ぶ) / ⚓(停泊)。v4.2.318: 🔓と並ぶ時(L)と1人の時で幅を変える
@@ -12710,23 +12725,6 @@ function meosApplyTimerLineDecorations(editor) {
                   let _s73 = _h73; while (_s73 > 0 && txt.charAt(_s73 - 1) === ' ') _s73--;
                   let _t73 = _e73; while (_t73 > 0 && txt.charAt(_t73 - 1) === ' ') _t73--;
                   if (_t73 > _s73) { badgeHide.push(new vscode.Range(i, _s73, i, _t73)); _titleAt.set(i, _s73); }
-                }
-              } catch (_) { }
-              // ★★★v4.2.344: `×N` のすぐ後ろに最終日(`→ 2026-10-31(s) 10:00`)= 直す字の隣に、直した答えを出す
-              //   → [[feedback_fix_signal_at_fix_place]]。起点の決まっていない1本(連なりの待ち番)には出さない。
-              try {
-                if (!c.done && c.rounds > 0 && Array.isArray(c.cycle) && c.cycle.length) {
-                  const _o44 = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null;
-                  const _L44 = _o44 ? meosCycleLastAt(_o44.getTime(), c.cycle, c.rounds) : 0;
-                  if (_L44 > 0) {
-                    const _a44 = txt.search(/[↺↻]/);
-                    const _h44 = txt.indexOf('//', _a44);
-                    const _seg = txt.slice(0, _h44 > _a44 ? _h44 : (_c9 > 0 ? _c9 : txt.length));
-                    const _re44 = /[×xX*]\s*([0-9]+)/g; let _m44, _end44 = -1;
-                    while ((_m44 = _re44.exec(_seg))) if (_m44.index > _a44 && +_m44[1] === c.rounds) _end44 = _m44.index + _m44[0].length;
-                    if (_a44 >= 0 && _end44 > 0) rounds.push({ range: new vscode.Range(i, _end44, i, _end44),
-                      renderOptions: { after: { contentText: ' → ' + meosClockLastLabel(_L44), color: new vscode.ThemeColor('descriptionForeground'), fontWeight: 'normal' } } });
-                  }
                 }
               } catch (_) { }
               // ★★★v4.2.52(俊克 2026.09.11 am01:12「ただし連番が表示されないよね」
@@ -12929,6 +12927,22 @@ function meosApplyTimerLineDecorations(editor) {
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
           let owner = _pairs().find(p => p.end === j) || null;
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+          // ★v4.2.346: 最終日と「直したばかりか」。鍵は膜＋閉じ膜からの段数= 上に行が増えても動かない。
+          let _last46 = 0, _flash46 = false;
+          try {
+            _last46 = meosClockLastAtOf(c);
+            if (_last46 > 0) {
+              const _fk = uri + ' ' + (owner ? owner.id : '') + ' ' + (i - (owner ? owner.end : 0));
+              const _sg = String(c.when) + '|' + (c.cycleSrc || c.cycle.join(' ')) + '|' + c.rounds;
+              const _f = _meosLastFlash.get(_fk), _nw = Date.now();
+              if (!_f) _meosLastFlash.set(_fk, { sig: _sg, at: 0 });
+              else {
+                if (_f.sig !== _sg) { _f.sig = _sg; _f.at = _nw; }
+                else if (_f.at && _rawHere && _nw - _f.at < MEOS_LAST_FLASH_MS) _f.at = _nw;   // 打っている間は数え始めない
+                _flash46 = !!_f.at && (_nw - _f.at < MEOS_LAST_FLASH_MS);
+              }
+            }
+          } catch (_) { }
           // ★★★v4.2.65(俊克 改良1/2): **運転ボタンを描く**= 走っていれば `⏸️`、止まっていれば `▶️`。
           //   ★本文には1文字も足さない(v4.1.64 の 🔓 と同じ流儀)。Rawでは出さない・済んだ物(✓)にも出さない。
           //   ★★**`owner` の宣言より後ろに置く**= v4.1.1113 で踏んだ穴(TDZ を try/catch that飲み、
@@ -13000,7 +13014,20 @@ function meosApplyTimerLineDecorations(editor) {
             //   ここで降りずに走る道へ落とす**= 止まっていても、最後に見えていた数字thatそのまま残る。
             {
               const _fzO = _meosPauseFreeze.get(uri + ' ' + (owner ? owner.id : ''));
-              if (!(_fzO && _fzO.line === i)) continue;
+              if (!(_fzO && _fzO.line === i)) {
+                // ★v4.2.346: 止めている間は空いているバッジ行に最終日を出し続ける= 回数を直しながら見られる。
+                try {
+                  const _bgP = (!_rawHere && _last46 > 0) ? meosClockBadgeRowForLine(doc, i) : -1;
+                  if (_bgP >= 0 && !_badgeLent.has(_bgP) && !meosShowsRawLine(editor, _bgP)) {
+                    _badgeLent.add(_bgP);
+                    const _blP = doc.lineAt(_bgP).text.length;
+                    if (_blP) badgeHide.push(new vscode.Range(_bgP, 0, _bgP, _blP));
+                    items.push({ range: new vscode.Range(_bgP, 0, _bgP, 0),
+                      renderOptions: { after: { contentText: '\u23f0 \u2192 ' + meosClockLastLabel(_last46) + ' ', color: '#e0803a', fontWeight: '800' } } });
+                  }
+                } catch (_) { }
+                continue;
+              }
             }
           }
           // ★★★v4.2.71: 止まっている1本は、**凍らせた3つ(until / その時の今 / 控え)**で同じ道を通る。
@@ -13166,7 +13193,12 @@ function meosApplyTimerLineDecorations(editor) {
               } else { _spAt = -1; badgeHide.push(new vscode.Range(_bg2, 0, _bg2, _blen)); }
             }
           }
-          items.push({
+          if (_bg2 >= 0) _badgeLent.add(_bg2);
+          // ★v4.2.346: 直してから5秒(止めて凍らせた顔ならずっと)は、顔の代わりに最終日= バッジを間借りする。
+          const _lastTx = (_last46 > 0 && (_flash46 || c.off)) ? ('\u23f0 \u2192 ' + meosClockLastLabel(_last46) + ' ') : '';
+          if (_lastTx) items.push({ range: new vscode.Range(_fl, _at1, _fl, _at1),
+            renderOptions: { after: { contentText: _lastTx, color: '#e0803a', fontWeight: '800' } } });
+          else items.push({
             range: new vscode.Range(_fl, _at1, _fl, _at1),
             renderOptions: c.dual
               ? { before: { contentText: '\u23f0 ' + _face(false) + ' ', color: MEOS_CLOCK_DIR_DOWN, fontWeight: '800' },

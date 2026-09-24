@@ -55,7 +55,10 @@ const ex=X.meosParseCycleExpr('t1,3',0);
 ok(ex.steps.length===1 && ex.steps[0].tok==='t1,3' && ex.steps[0].to===4, '式として読んでも1つ・桁は0〜4', ex.steps);
 
 console.log('④ 最終日(v4.2.344 ×N の答え)');
-const L=(o,c,n)=>{const t=X.meosCycleLastAt(D(o),c,n);return t?X.meosClockLastLabel(t):'';};
+const P2=(x)=>String(x).padStart(2,'0');
+const L=(o,c,n)=>{const t=X.meosCycleLastAt(D(o),c,n);if(!t)return '';const d=new Date(t);return d.getFullYear()+'-'+P2(d.getMonth()+1)+'-'+P2(d.getDate())+'('+'SMTWtFs'[d.getDay()]+') '+P2(d.getHours())+':'+P2(d.getMinutes());};
+ok(X.meosClockLastLabel(D(new Date().getFullYear()+'-10-31T10:00:00')).indexOf('10-31(')===0,'今年なら年を省く(v4.2.346)',X.meosClockLastLabel(D(new Date().getFullYear()+'-10-31T10:00:00')));
+ok(X.meosClockLastLabel(D('2099-01-01T10:00:00')).indexOf('2099-')===0,'他の年は年を書く');
 let g=L('2026-09-24T10:00:00',['8h'],111); ok(g==='2026-10-31(s) 10:00','↺8h ×111 → 10/31 10:00',g);
 g=L('2026-10-01T10:00:00',['t1,3'],11); ok(g==='2027-03-18(t) 10:00','↺t1,3 ×11 → 3/18(開催12回)',g);
 g=L('2026-10-01T10:00:00',['t1,3'],12); ok(g==='2027-04-01(t) 10:00','×12 だと1回多い(4/1)が見える',g);
