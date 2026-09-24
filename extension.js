@@ -12335,8 +12335,8 @@ function meosMenuBarPick(id) {
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
+    if (id === 'quitvhelper' || id === 'quithelper') { meosVHelperSet(false); return; }   // v4.2.364
     if (id === 'quitapp') { vscode.commands.executeCommand('workbench.action.quit'); return; }   // v4.2.363: Dock の「終了」と同じ(ヘルパーは残る)
-    if (id === 'quithelper') { vscode.workspace.getConfiguration('laiMembrane').update('menuBarHelper', false, vscode.ConfigurationTarget.Global); return; }   // v4.2.363
     if (id === 'quitbar') {   // v4.2.348: このアプリのメニューバーの⏰を降ろす(設定 menuBarClock を切る= 次に開いても出ない)
       vscode.workspace.getConfiguration('laiMembrane').update('menuBarClock', false, vscode.ConfigurationTarget.Global).then(() => {
         try { meosMenuBarSet(null); } catch (_) { }
@@ -12378,7 +12378,24 @@ function meosMenuBarTail() {
     //   helperは終了しない。helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする。これは他のアプリでもそうしているよね」):
     //   ★v4.2.311 の☑(常駐の入/切)はメニューバーが出ている前提の切替だった= 起こす口にならない。起こす口は⏰パネルの [V-helper]、降ろす口はここ。
     { sep: true }, { id: 'quitapp', title: 'Quit ' + meosAppName() },
-    ...(meosHelperOn() ? [{ id: 'quithelper', title: 'Quit ' + meosAppName() + '-helper' }] : [{ id: 'quitbar', title: 'Quit \u23f0 menu bar (' + meosAppName() + ')' }]) ];
+    { id: 'quitvhelper', title: 'Quit V-helper (' + meosAppName() + ') itself' } ];   // v4.2.364: ⏰パネルの橙の [V-helper] を押すのと同じ
+}
+// ★★v4.2.364(俊克「V-helperボタンを押すと、メニューバーのメニュー全体を終了する、という意味だよ。現状は一瞬消えて再び起動したように見える。
+//   Quit ⏰ menu bar は橙色のV-helperと同じ処理になる。だから、メニューも Quit V-helper(VSCodium) itself にしたほうがいい」):
+//   ★メニューバーの ⏰ = V-helper。入= メニューバーに居て常駐する(menuBarClock＋menuBarHelper) / 切= メニューバーに何も居ない(両方切る)。
+//     常駐しない窓ごとの係だけが残る中間の姿は、ボタンからは作らない(切ったのに別の係が出てくる= 一瞬消えて戻ったように見えた)。
+function meosVHelperOn() { try { return process.platform === 'darwin' && !!vscode.workspace.getConfiguration('laiMembrane').get('menuBarClock', true); } catch (_) { return false; } }
+//   ★切る間は、窓ごとの係も起こさない(_meosVHOff)= 設定を1つずつ書く間に、もう片方の係が顔を出さない。
+let _meosVHOff = false;
+async function meosVHelperSet(on) {
+  const c = vscode.workspace.getConfiguration('laiMembrane');
+  if (on) { await c.update('menuBarHelper', true, vscode.ConfigurationTarget.Global); await c.update('menuBarClock', true, vscode.ConfigurationTarget.Global); return; }
+  _meosVHOff = true;
+  try {
+    meosHelperRemove();
+    await c.update('menuBarHelper', false, vscode.ConfigurationTarget.Global);
+    await c.update('menuBarClock', false, vscode.ConfigurationTarget.Global);
+  } finally { _meosVHOff = false; try { meosMenuBarSet(null); } catch (_) { } }
 }
 function meosAppName() { try { return String(vscode.env.appName || 'VSCodium'); } catch (_) { return 'VSCodium'; } }
 // v4.2.207(俊克「+4のすべての予定出して、そこにワープできるのが先ずあるといいよね」): 一覧と同じ並び・同じ飛び先(meosJumpToScope)。
@@ -12530,6 +12547,7 @@ function meosHelperHandOff() { if (meosHelperOn()) { meosHelperWrite(null, [], 0
 function meosMenuBarSet(text, menu, opts) {
   try {
     if (process.platform !== 'darwin') return;
+    if (_meosVHOff) { try { if (_meosMb && _meosMb.proc) require('fs').writeFileSync(_meosMb.state, JSON.stringify({ quit: true })); if (_meosMb) _meosMb.last = null; } catch (_) { } return; }   // v4.2.364
     if (meosHelperOn()) {   // v4.2.310: 持ち主はヘルパー= 写しを書くだけ
       meosHelperEnsure();
       const _on = vscode.workspace.getConfiguration('laiMembrane').get('menuBarClock', true);
@@ -26563,7 +26581,7 @@ color:#ffffff;z-index:4;padding:0}
 <!-- {* ▼mCN=dock_toc // 固定TOC(H-TOC) *} -->
 <div class="fixed-toc${htocOpen ? '' : ' htoc-closed'}" id="fixed-toc"><div class="toc-tools dock-lead" id="dock-lead"><span class="hidx-title tms-title" data-tip="Timed Me-System (TMS) | MeOS at its root: a membrane (Me) that the clock brings you back to. Write the next job inside, set the \u23f0, and it will find you.">Timed Me-System:</span><span class="hidx-title htoc-title">Hyper TOC:</span><button class="htoc-btn" id="htoc-btn" data-tip="Hyper TOC | Click to open or close the list. The number is how many items are not checked yet."><span class="htoc-ic">\ud83d\udcd1</span><span class="htoc-lab" id="htoc-lab">Hyper TOC</span><span class="htoc-n" id="htoc-n"></span><span class="htoc-arrow" id="htoc-arrow">${htocOpen ? '\u25b4' : '\u25be'}</span></button></div><div class="toc-tab-row" id="toc-tab-row"></div><div class="toc-tab-confirm" id="toc-tab-confirm"><span class="toc-tab-confirm-msg" id="toc-tab-confirm-msg">Delete this tab?</span><button class="toc-tab-confirm-btn toc-tab-confirm-yes" id="toc-tab-confirm-yes">Delete</button><button class="toc-tab-confirm-btn toc-tab-confirm-no" id="toc-tab-confirm-no">Cancel</button></div><div class="toc-name-row"><span class="toc-title">Hyper TOC</span><input class="toc-name" id="fixed-toc-name" value="" title="Rename current tab (alias)"/></div><div class="fixed-toc-body" id="fixed-toc-body"><div class="fixed-toc-empty">Hyper TOC is empty.</div></div><div class="toc-pin-bar" id="toc-pin-bar"></div><div class="toc-tools"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><button class="cancel clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</button></span>
 <div class="bm-pop clk-pop" id="clk-pop">
-${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vhelper' + (meosHelperOn() ? ' on' : '') + '" id="clk-vhelper" data-tip="V-helper | Lives in the menu bar: keeps your \u23f0 ringing while ' + esc(meosAppName()) + ' is closed, and starts or quits ' + esc(meosAppName()) + ' from there, like the Dock. Click to start it; click again to stop it.">V-helper</button></div>' : ''}
+${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vhelper' + (meosVHelperOn() ? ' on' : '') + '" id="clk-vhelper" data-tip="V-helper | The \u23f0 in the menu bar. Orange = it is there and stays resident: it keeps your \u23f0 ringing while ' + esc(meosAppName()) + ' is closed, and starts or quits ' + esc(meosAppName()) + ' from there, like the Dock. Grey = nothing in the menu bar. Click to switch.">V-helper</button></div>' : ''}
   <div class="clk-tip" id="clk-tip"></div>
   <div class="clk-list" id="clk-list"></div>
   <div class="clk-tags" id="clk-tags"></div>
@@ -30493,7 +30511,7 @@ function toggleMeDock(editorOverride) {
     }
     if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
     if (message && message.type === 'toggleHelper') {   // v4.2.363: ⏰パネルの [V-helper]= 常駐の係を起こす/降ろす
-      try { const c = vscode.workspace.getConfiguration('laiMembrane'); await c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); } catch (_) { }
+      try { await meosVHelperSet(!meosVHelperOn()); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切
       return;
     }
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
@@ -37710,7 +37728,7 @@ function activate(context) {
   // v4.2.363: 閉じている間にヘルパーのメニューで Quit …-helper を選んだ= その意思を設定へ移す(次に開いても起こさない)
   try {
     const fs = require('fs'), path = require('path'), mk = path.join(meosHelperDir(), 'off-by-user');
-    if (fs.existsSync(mk)) { fs.unlinkSync(mk); vscode.workspace.getConfiguration('laiMembrane').update('menuBarHelper', false, vscode.ConfigurationTarget.Global); }
+    if (fs.existsSync(mk)) { fs.unlinkSync(mk); meosVHelperSet(false); }   // v4.2.364: メニューバーの ⏰ ごと切る
   } catch (_) { }
   // v4.2.350: 変化の無い Cmd+S= 柔らかい音を返し、保存そのものは今まで通り呼ぶ(保存に掛けている他の仕掛けを止めない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
@@ -38807,15 +38825,16 @@ makeDecorations();
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('laiMembrane.menuBarHelper')) {   // ★v4.2.310: 常駐ヘルパーを載せる/降ろす
         try {
-          if (meosHelperOn()) { meosHelperEnsure(); vscode.window.showInformationMessage('MeOS: the menu-bar helper is on. Your \u23f0 now keeps time even when VSCodium is closed, and wakes it at the membrane when time is up. (macOS may tell you a background item was added.)'); }
-          else { meosHelperRemove(); vscode.window.showInformationMessage('MeOS: the menu-bar helper is off and removed. The \u23f0 in the menu bar lives only while VSCodium is open, as before.'); }
+          if (meosHelperOn()) { meosHelperEnsure(); vscode.window.setStatusBarMessage('MeOS: V-helper is on \u2014 it stays in the menu bar, keeps your \u23f0 ringing while ' + meosAppName() + ' is closed, and starts ' + meosAppName() + ' from there.', 6000); }   // v4.2.364: 押した所(ボタン)が色で答えるので、窓は出さない
+          else { meosHelperRemove(); vscode.window.setStatusBarMessage('MeOS: V-helper is off \u2014 nothing in the menu bar.', 6000); }
           if (_meosMb) _meosMb.last = null;
           meosUpdateTimerBar();
-          try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'helperState', on: meosHelperOn() }); } catch (_) { }   // v4.2.363
+          try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'helperState', on: meosVHelperOn() }); } catch (_) { }   // v4.2.363
         } catch (_) { }
       }
       if (e.affectsConfiguration('laiMembrane.menuBarClock')) {   // v4.2.348: 設定で戻した/切った= その場で出す/降ろす
         try { if (_meosMb) _meosMb.last = null; meosUpdateTimerBar(); } catch (_) { }
+        try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'helperState', on: meosVHelperOn() }); } catch (_) { }   // v4.2.364
       }
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
