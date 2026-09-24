@@ -12422,7 +12422,7 @@ function meosMenuBarTail() {
     //   helperは終了しない。helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする。これは他のアプリでもそうしているよね」):
     //   ★v4.2.311 の☑(常駐の入/切)はメニューバーが出ている前提の切替だった= 起こす口にならない。起こす口は⏰パネルの [V-helper]、降ろす口はここ。
     { sep: true }, { id: 'quitapp', title: 'Quit ' + meosAppName() },
-    { id: 'quitvhelper', title: 'Quit V-helper (' + meosAppName() + ') itself' } ];   // v4.2.364: ⏰パネルの橙の [V-helper] を押すのと同じ
+    { id: 'quitvhelper', title: 'Quit V-helper (' + meosAppName() + ')' } ];   // v4.2.369: itself を外す(常駐アプリの作法= Quit + 名前)   // v4.2.364: ⏰パネルの橙の [V-helper] を押すのと同じ
 }
 // ★★v4.2.364(俊克「V-helperボタンを押すと、メニューバーのメニュー全体を終了する、という意味だよ。現状は一瞬消えて再び起動したように見える。
 //   Quit ⏰ menu bar は橙色のV-helperと同じ処理になる。だから、メニューも Quit V-helper(VSCodium) itself にしたほうがいい」):
