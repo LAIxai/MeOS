@@ -25333,6 +25333,8 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* ★v4.2.380(俊克「亀がかすれてよく見えないのは寂しい。✓マークが入ったので意味は伝わるから、絵は普通にはっきり表示」):
    「済み」は ✓ が言う= 札を薄くしない。亀ははっきり、字と枠だけ少し落ち着いた色に。 */
 .paste-lag-btn.off{opacity:1;color:color-mix(in srgb,#e0803a 65%,var(--vscode-foreground) 35%);border-color:rgba(224,128,58,.4)}
+/* v4.2.381(俊克「亀が緑なので、灰色だと沈む。もっと明るい灰色の地に」): 地を明るい灰に、字は地に負けない明るいオレンジに */
+.paste-lag-btn.off{background:#6e7278;color:#ffc48a;border-color:rgba(224,128,58,.55)}
 .paste-lag-btn.off:hover{opacity:1;border-color:#e0803a}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
