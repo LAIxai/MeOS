@@ -26687,8 +26687,10 @@ if(input){
 // {* ▲mCN=dock_js_elements *}
 // {* ▼mCN=dock_js_zoom // Me Dock自体のズーム(⊕/⊖・本家VS CodeのCSS zoom対策) *}
 /* v4.2.349(俊克「1%刻みの必要はなく、1/15のように示せば迷わない」): 60%〜200%を10%ずつの15段= 何段目かで言う。 */
-function __mzStep(z){return Math.max(1,Math.min(15,Math.round((z-0.6)*10)+1));}
-function __mzOfStep(n){return Math.round((0.6+0.1*(Math.max(1,Math.min(15,n))-1))*100)/100;}
+/* v4.2.352(俊克「3、4段階以上の大きさにするケースは無い。それ以下のサイズを15段階で細かく」): 58%〜100%を3%ずつの15段。
+   上の端は100%= 何も触っていない人の既定(これより大きくする人は居なかった)。前に200%まで上げていた値は100%に揃う。 */
+function __mzStep(z){return Math.max(1,Math.min(15,Math.round((z-0.58)/0.03)+1));}
+function __mzOfStep(n){return Math.round((0.58+0.03*(Math.max(1,Math.min(15,n))-1))*100)/100;}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
 if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;/* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
 if(pop)pop.style.zoom=inv;var st=__mzStep(z);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=st+'/15';
@@ -26703,14 +26705,14 @@ function __mzPop(show){var pop=document.getElementById('mz-pop');if(pop)pop.clas
 (function(){var a=document.getElementById('mz-a'),i=document.getElementById('mz-in'),o=document.getElementById('mz-out'),
 p=document.getElementById('mz-pct'),sl=document.getElementById('mz-slider'),sp=a&&a.closest?a.closest('.mz-split'):null;
 if(a)a.addEventListener('click',function(){__mdSync=!__mdSync;a.classList.toggle('on',__mdSync);vscode.postMessage({type:'meDockSync',
-on:__mdSync});});/* v4.2.350(俊克「スライダーがばかデカイし、右に切れていて操作できない」): 15段になった今、段はtipが言う(n/15)= 窓はもう開かない。 */if(i)i.addEventListener('click',function(){__mzSet(__mdZoom+0.1);if(__mdSync)vscode.postMessage({type:'editorFontZoom',
-dir:1});});if(o)o.addEventListener('click',function(){__mzSet(__mdZoom-0.1);if(__mdSync)vscode.postMessage({type:'editorFontZoom',
+on:__mdSync});});/* v4.2.350(俊克「スライダーがばかデカイし、右に切れていて操作できない」): 15段になった今、段はtipが言う(n/15)= 窓はもう開かない。 */if(i)i.addEventListener('click',function(){__mzSet(__mzOfStep(__mzStep(__mdZoom)+1));if(__mdSync)vscode.postMessage({type:'editorFontZoom',
+dir:1});});if(o)o.addEventListener('click',function(){__mzSet(__mzOfStep(__mzStep(__mdZoom)-1));if(__mdSync)vscode.postMessage({type:'editorFontZoom',
 dir:-1});});if(sl)sl.addEventListener('input',function(){var n=parseFloat(sl.value);if(isFinite(n))__mzSet(__mzOfStep(n));});if(p){var commit=function(){var n=parseFloat(String(p.value).replace(/[^0-9.\/]/g,'').split('/')[0]);
 /* v4.2.349: 15以下は段(7 でも 7/15 でも)、それより大きければ今まで通り% */if(isFinite(n)&&n>0)__mzSet(n<=15?__mzOfStep(n):n/100);else __mzApply();};p.addEventListener('focus',function(){if(typeof hideTocTip==='function')hideTocTip();
 });p.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='ArrowUp'){e.preventDefault();
-__mzSet(__mdZoom+0.1);__mzPct();}else if(e.key==='ArrowDown'){e.preventDefault();__mzSet(__mdZoom-0.1);__mzPct();}});p.addEventListener('blur',commit);
+__mzSet(__mzOfStep(__mzStep(__mdZoom)+1));__mzPct();}else if(e.key==='ArrowDown'){e.preventDefault();__mzSet(__mzOfStep(__mzStep(__mdZoom)-1));__mzPct();}});p.addEventListener('blur',commit);
 }document.addEventListener('click',function(e){var pop=document.getElementById('mz-pop');if(pop&&pop.classList.contains('on')&&sp&&!sp.contains(e.target))__mzPop(false);
-});__mzApply();})();
+});__mdZoom=__mzOfStep(__mzStep(__mdZoom));__mzApply();})();
 const colorChoices=[['R','🟥','Red'],['O','🟧','Orange'],['Y','🟨','Yellow'],['G','🟩','Green'],['B','🟦','Blue'],['P','🟪','Purple'],['N','🟫','Brown'],['W','⬜','White']];
 // {* ▲mCN=dock_js_zoom *}
 // {* ▼mCN=dock_js_membrane // 膜の色/名前/Edit Meパネル(色ボタン・栞ボタン・モード表示) *}
