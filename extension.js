@@ -26039,6 +26039,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* v4.2.365: Repeat の下の「×N → 最終日」= ホイールで回す桁(琥珀の下線= 回せる所) */
 .clk-last{display:flex;align-items:baseline;gap:6px;margin:2px 0 4px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700}
 .clk-pop.norepeat .clk-last{display:none}
+.clk-pop.hist-only .clk-last{display:none}   /* v4.2.366: 一覧(⏰)の窓では出さない= 設定(▾)の物 */
 .clk-last .clk-arrow{opacity:.6}
 .clk-last [data-u]{border-bottom:2px solid #d18400;padding:0 1px;cursor:ns-resize}
 .clk-last [data-u]:hover{background:rgba(209,132,0,.22)}
