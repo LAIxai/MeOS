@@ -13997,6 +13997,43 @@ function meosWhistlePath(hz, secs) {
     fs.writeFileSync(f, buf); _meosWhistleFile = f; return f;
   } catch (_) { return null; }
 }
+// ★★v4.2.350(俊克 改良2「Cmd+Sで保存した時、変化がなければ、affinityなどでもそうだけど、警告音を出そうよ。ホワン、ホワンという感じの柔らかい音」):
+//   ★変化の無い保存は何も起きない= 押した手に「もう保存してある」と返す物が無い。音で返す(画面は何も覆わない)。
+//   ★音は作る= 下がりながら消える柔らかい音(520→390Hz)を2つ。鐘(Sosumi)や笛とは別物と分かる形。
+let _meosNoChangeFile = null;
+function meosNoChangeSoundPath() {
+  if (_meosNoChangeFile) return _meosNoChangeFile;
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 22050, one = 0.24, gap = 0.07, secs = one * 2 + gap, n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    const ph = [0, 0];
+    for (let i = 0; i < n; i++) {
+      const t = i / rate; let v = 0;
+      for (let k = 0; k < 2; k++) {
+        const t0 = k * (one + gap), u = t - t0;
+        if (u < 0 || u > one) continue;
+        const hz = 520 - 130 * (u / one);                                  // 下がる= 「ホワン」
+        ph[k] += 2 * Math.PI * hz / rate;
+        const env = Math.min(1, u / 0.03) * Math.exp(-u * 9);              // 柔らかく立ち上がり、すぐ消える
+        v += (Math.sin(ph[k]) + 0.18 * Math.sin(2 * ph[k])) * env * (k ? 0.85 : 1);
+      }
+      buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 9000), 44 + i * 2);
+    }
+    const f = path.join(os.tmpdir(), 'meos-nochange-v1.wav');
+    fs.writeFileSync(f, buf); _meosNoChangeFile = f; return f;
+  } catch (_) { return null; }
+}
+function meosPlayNoChange() {
+  try {
+    if (process.platform !== 'darwin') return;
+    const f = meosNoChangeSoundPath(); if (!f) return;
+    require('child_process').exec('/usr/bin/afplay -v 1.5 ' + JSON.stringify(f), () => { });
+  } catch (_) { }
+}
 function meosPlayWhistle() {
   try {
     let name = 'Sosumi', vol = 2;
@@ -26661,8 +26698,8 @@ function __mzPop(show){var pop=document.getElementById('mz-pop');if(pop)pop.clas
 (function(){var a=document.getElementById('mz-a'),i=document.getElementById('mz-in'),o=document.getElementById('mz-out'),
 p=document.getElementById('mz-pct'),sl=document.getElementById('mz-slider'),sp=a&&a.closest?a.closest('.mz-split'):null;
 if(a)a.addEventListener('click',function(){__mdSync=!__mdSync;a.classList.toggle('on',__mdSync);vscode.postMessage({type:'meDockSync',
-on:__mdSync});});if(i)i.addEventListener('click',function(){__mzSet(__mdZoom+0.1);__mzPop(true);if(__mdSync)vscode.postMessage({type:'editorFontZoom',
-dir:1});});if(o)o.addEventListener('click',function(){__mzSet(__mdZoom-0.1);__mzPop(true);if(__mdSync)vscode.postMessage({type:'editorFontZoom',
+on:__mdSync});});/* v4.2.350(俊克「スライダーがばかデカイし、右に切れていて操作できない」): 15段になった今、段はtipが言う(n/15)= 窓はもう開かない。 */if(i)i.addEventListener('click',function(){__mzSet(__mdZoom+0.1);if(__mdSync)vscode.postMessage({type:'editorFontZoom',
+dir:1});});if(o)o.addEventListener('click',function(){__mzSet(__mdZoom-0.1);if(__mdSync)vscode.postMessage({type:'editorFontZoom',
 dir:-1});});if(sl)sl.addEventListener('input',function(){var n=parseFloat(sl.value);if(isFinite(n))__mzSet(__mzOfStep(n));});if(p){var commit=function(){var n=parseFloat(String(p.value).replace(/[^0-9.\/]/g,'').split('/')[0]);
 /* v4.2.349: 15以下は段(7 でも 7/15 でも)、それより大きければ今まで通り% */if(isFinite(n)&&n>0)__mzSet(n<=15?__mzOfStep(n):n/100);else __mzApply();};p.addEventListener('focus',function(){if(typeof hideTocTip==='function')hideTocTip();
 });p.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='ArrowUp'){e.preventDefault();
@@ -37626,6 +37663,11 @@ function activate(context) {
   //   ★**一括変換は自動ではやらない**([[project_now_not_bulk]])that、**人that呼んだ時だけ**やる口は在っていい
   //     (🐱と同じ立て付け= 変えるかどうかを決めるのは人)。数を見せてから書く。
   //   ★移せない物(膜thatもう無い/時刻thatが読めない)は**捨てる**= 行き先の無い予定は予定ではない。
+  // v4.2.350: 変化の無い Cmd+S= 柔らかい音を返し、保存そのものは今まで通り呼ぶ(保存に掛けている他の仕掛けを止めない)。
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
+    meosPlayNoChange();
+    try { await vscode.commands.executeCommand('workbench.action.files.save'); } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.sweepClockMeta', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
     if (!ed || !ed.document) { vscode.window.showInformationMessage('MeOS: open a file first.'); return; }
