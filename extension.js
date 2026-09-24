@@ -10622,12 +10622,14 @@ function meosParseCycleExpr(src, base) {
         if (seps.length && seps[seps.length - 1][1] === B + i) seps.pop();   // 直前の空白は区切りではない
         break;
       }
-      const m = MEOS_CYCLE_DUR_RE.exec(S.slice(i));
+      // ★v4.2.343: 語の頭が曜日の字なら暦の規則(`t1,3`)。語の途中の字は今までどおり飛ばす。
+      const _rl = (i === 0 || /[\s(（\/]/.test(S[i - 1])) ? MEOS_CAL_RULE_RE.exec(S.slice(i)) : null;
+      const m = _rl || MEOS_CYCLE_DUR_RE.exec(S.slice(i));
       if (!m) { i++; continue; }                      // 読めない字は飛ばす(本文を汚さない)
       const tok = m[0].replace(/[ \t]+/g, '');
       const from = B + i, to = B + i + m[0].replace(/[ \t]+$/, '').length;
       i += m[0].length;
-      if (meosCycleMs(tok) <= 0) break;               // 0 = ここで並びthat終わる(v4.1.23)
+      if (!_rl && meosCycleMs(tok) <= 0) break;       // 0 = ここで並びthat終わる(v4.1.23)
       if (depth === 0) topItems++;
       // ★v4.2.87: 直前の1つに掛かる ×N(`5m×2`)。`/` の古い形では読まない(下の全体に掛ける道へ)。
       const nE = legacySlash ? 0 : readCount();
@@ -10980,6 +10982,46 @@ function meosCycleMs(step) {
   const n = Number(m[1]) || 0, u = String(m[2] || 'm').toLowerCase();
   return n * (MEOS_CYCLE_UNIT[u] || 60000);
 }
+// ★★★v4.2.343(俊克 2026.09.24 am10:15「最優先は、第1、第3木曜の実装だね」):
+//   ★★★**暦の規則は字で始まる**= `↺t1,3`(第1・第3木曜) / `↺t`(毎木曜) / `↺MWF`(月水金)。
+//     曜日の字は家の物= S-M-T-W-t-F-s(木曜は小文字 t・火曜は大文字 T) → [[project_weekday_notation]]。
+//   ★数字で始まれば間隔(`↺30s`=30秒) / 曜日の字で始まれば規則(`↺s`=土曜)= 2つは混ざらない。
+//   ★規則は**足し算ではない**so meosCycleMs は 0 を返す(間隔の口へ嘘の長さを流さない)。
+//     数えるのは meosCycleSeriesNext の中の1か所だけ。鳴る時刻(時:分)は起点の時刻を使う。
+//   ★並びに規則が2つ以上在れば**和**(`↺t1,3 M` = 第1第3木曜と毎月曜)。規則と間隔は混ぜない(規則が勝つ)。
+const MEOS_CAL_RULE_RE = /^[SMTWtFs]+(?:[1-5](?:,[1-5])*)?(?=$|[\s)）×xX*\/#])/;
+const MEOS_CAL_DOW = { S: 0, M: 1, T: 2, W: 3, t: 4, F: 5, s: 6 };
+function meosCalRuleParse(tok) {
+  const s = String(tok == null ? '' : tok).trim();
+  const m = /^([SMTWtFs]+)((?:[1-5](?:,[1-5])*)?)$/.exec(s);
+  if (!m) return null;
+  const days = new Set(m[1].split('').map(ch => MEOS_CAL_DOW[ch]));
+  const nth = m[2] ? new Set(m[2].split(',').map(Number)) : null;
+  return { days, nth };
+}
+function meosCalRuleHit(rules, d) {
+  const dw = d.getDay(), wk = Math.floor((d.getDate() - 1) / 7) + 1;   // 第何週= その月の同じ曜日の何回目
+  return rules.some(r => r.days.has(dw) && (!r.nth || r.nth.has(wk)));
+}
+// 起点 origin の日付から1日ずつ歩き、規則に当たる日の「起点の時刻」を鐘とする。
+//   round= from までに鳴った数(待ちは0周目= 間隔の時計と同じ数え方)/ step= 前の鐘(無ければ起点)からの長さ。
+function meosCalRuleNext(origin, rules, from) {
+  const o = new Date(origin);
+  const d = new Date(o.getFullYear(), o.getMonth(), o.getDate(), o.getHours(), o.getMinutes(), o.getSeconds(), 0);
+  let count = 0, prev = origin, guard = 0;
+  while (guard++ < 366 * 200) {
+    const t = d.getTime();
+    if (t >= origin && meosCalRuleHit(rules, d)) {
+      if (t > from) return { at: t, step: (t > prev ? t - prev : 7 * 86400000), idx: 0, round: count };
+      count++; prev = t;
+    }
+    d.setDate(d.getDate() + 1);                       // 夏時間でも時:分は動かない(日付で歩く)
+  }
+  return null;
+}
+function meosCycleRules(cycle) {
+  return (Array.isArray(cycle) ? cycle : []).map(meosCalRuleParse).filter(Boolean);
+}
 // ★★★v4.1.63(俊克 バグ1「UFCに記録している年月日時分秒は**開始点のまま固定**という仕様に決めたはずだが、
 //   最初の目標時刻を過ぎると…14:49に変わってしまう。これでは、**いつから始めたかという記録that失われて**
 //   しまう。これは再開の度に再計算するのは無駄なので、内部的に、次の目標時刻を…保存しておけばいいんじゃないか?」):
@@ -11021,14 +11063,20 @@ function meosParseCycleInput(txt) {
   const out = [];
   // v4.1.146: 回数と括弧は長さではないso、先に外す。
   const _t = String(txt == null ? '' : txt).replace(/[\u00d7xX]\s*[0-9]+\s*$/, '').replace(/[()（）]/g, ' ');
-  for (const w of _t.trim().split(/[\s,\/]+/)) {
-    if (!w) continue;
-    if (/^0+[smhdwySMHDWY]?$/.test(w)) break;      // 00 = ここで終わり
-    if (meosCycleMs(w) > 0) out.push(w);
+  // v4.2.343: 暦の規則の `,` は中身(`t1,3`)so、先に空白で切ってから規則でない語だけ `,` で切る。
+  for (const w0 of _t.trim().split(/[\s\/]+/)) {
+    if (w0 && meosCalRuleParse(w0)) { out.push(w0); continue; }
+    for (const w of w0.split(',')) {
+      if (!w) continue;
+      if (/^0+[smhdwySMHDWY]?$/.test(w)) return out;   // 00 = ここで終わり
+      if (meosCycleMs(w) > 0) out.push(w);
+    }
   }
   return out;
 }
 function meosCycleSeriesNext(origin, cycle, from) {
+  const _rules = meosCycleRules(cycle);                // v4.2.343: 暦の規則(`t1,3`)は日を数える
+  if (_rules.length) return isFinite(origin) ? meosCalRuleNext(origin, _rules, from) : null;
   const steps = (Array.isArray(cycle) ? cycle : []).map(meosCycleMs).filter(x => x > 0);
   const len = steps.length;
   if (!len || !isFinite(origin)) return null;
