@@ -25330,6 +25330,10 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* ★v4.2.103(俊克「常に表示しておくようにしようよ。そうしないと、そういう設定があることを忘れてしまう。一旦設定したら、薄い色で表示」): 無効にした後は薄く。押せば同じ所へ連れて行く(戻して試せる)。 */
 .paste-lag-btn.off{opacity:.45}
 .paste-lag-btn.off:hover{opacity:.8}
+/* ★v4.2.380(俊克「亀がかすれてよく見えないのは寂しい。✓マークが入ったので意味は伝わるから、絵は普通にはっきり表示」):
+   「済み」は ✓ が言う= 札を薄くしない。亀ははっきり、字と枠だけ少し落ち着いた色に。 */
+.paste-lag-btn.off{opacity:1;color:color-mix(in srgb,#e0803a 65%,var(--vscode-foreground) 35%);border-color:rgba(224,128,58,.4)}
+.paste-lag-btn.off:hover{opacity:1;border-color:#e0803a}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
 /* v4.0.306(俊克「Me Dockに最初に表示しているファイル名はスペースの関係上、小さいのは仕方ない。ただ、**角丸四角で
