@@ -25308,6 +25308,8 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .mz-pop{left:auto;right:0;padding:5px 7px}
 /* v4.2.356(俊克 改良1「入力ボックスの右上角が、文字サイズボタンの左下角に接するような位置に」): 窓の右上角= [A] の左下角。 */
 .mz-pop{right:100%;top:100%;margin-top:0}
+/* v4.2.357(俊克「右に並行移動して角丸のラウンドの端が合うくらいに」): 角が丸い分(窓の半径9px)だけ右へ= 丸の端と丸の端が出会う。 */
+.mz-pop{margin-right:-9px}
 .mz-slider{display:none}
 .mz-slider{-webkit-appearance:none;appearance:none;width:120px;height:13px;background:transparent;cursor:var(--meos-hand)}
 .mz-slider::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:linear-gradient(to right,#d18400 0,#d18400 var(--mz-fill,0%),color-mix(in srgb,var(--vscode-foreground) 28%,transparent) var(--mz-fill,0%),color-mix(in srgb,var(--vscode-foreground) 28%,transparent) 100%)}
