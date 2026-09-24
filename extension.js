@@ -25310,7 +25310,10 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .mz-pop{right:100%;top:100%;margin-top:0}
 /* v4.2.358(俊克「今だと折り返しボタン用にも見える。⊕と⊖の右横に表示しよう。その時、Standardsボタンを一時的に消してもいい。間違って押してしまうこともあるからね」):
    窓は ⊕⊖ の右横(Standards の場所)。開いている間 Standards は見えなくし押せなくする(場所は残す= 周りが動かない)。 */
-.mz-pop{left:calc(100% + 12px);right:auto;top:50%;transform:translateY(-50%);margin:0}
+.mz-pop{left:calc(100% + 6px);right:auto;top:50%;transform:translateY(-50%);margin:0}
+/* v4.2.359(俊克「⊕と⊖の右端に接するように後5、6ピクセル」「背景と同系色で目立たないので、外箱の内部をはっきりした色で」):
+   6px左へ。外箱は欄の枠と同じ藍(#6366f1)で縁取り、中をその藍を背景に混ぜた色で塗る(明るいテーマでも暗いテーマでも地から浮く)。 */
+.mz-pop{background:color-mix(in srgb,#6366f1 38%,var(--vscode-editor-background));border-color:#6366f1}
 .title-actions:has(.mz-pop.on) #standards-toggle{visibility:hidden;pointer-events:none}
 .mz-slider{display:none}
 .mz-slider{-webkit-appearance:none;appearance:none;width:120px;height:13px;background:transparent;cursor:var(--meos-hand)}
