@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.342) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.363) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -52,7 +52,7 @@ function run(argv) {
     styled(m[0], font, false).drawAtPoint($.NSMakePoint(x + pw, y + (ah - styled(m[0], font, false).size.height)));
     ctx.restoreGraphicsState;
   };
-  let appPath = '', scheme = 'vscodium', ext = 'lai.lai-membrane';
+  let appPath = '', appName = 'VSCodium', scheme = 'vscodium', ext = 'lai.lai-membrane';
   // ★拡張が居ない時の口(ここで決める物)= 'h:' で始まる
   let alarms = [], fired = {}, ringing = null, ringNext = 0, sound = { file: '', vol: 2, every: 1 };
   let adv = {};   // v4.2.332: 周期の時計をここで進めた分(id → {at, si})。state.json は拡張が居ない間は変わらないので、上に重ねて持つ
@@ -69,12 +69,19 @@ function run(argv) {
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
       if (id === 'h:open') { openApp(); return; }
+      // ★v4.2.363(俊克「helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする」): 閉じている間に降ろす口。
+      //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
+      if (id === 'h:quithelper') {
+        try { $('1').writeToFileAtomicallyEncodingError(dir + '/off-by-user', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+        try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/com.laixai.meos.helper.plist'), null); } catch (e) {}
+        stopBell(); quitNow = true; return;
+      }
       if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openUrl(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行
       const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openUrl(warpUrl(a, false)); }
       return;
     }
     try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}
-    openApp();
+    if (id !== 'quitapp' && id !== 'quithelper') openApp();   // v4.2.363: 終了を押したのに起こし直さない
   } } } });
   let optTarget = null, tagRows = [];   // v4.2.337: 札に出ている時計(拡張が居ない時)
   const optWarp = () => {
@@ -149,14 +156,17 @@ function run(argv) {
   let lastMenu = null, lastText = null;
   const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
   const blue = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x2f / 255, 0x80 / 255, 0xb8 / 255, 1);   // v4.2.316: ⚓停泊中
-  let lastAnchor = null;
+  let lastAnchor = null, lastIdle = null;
+  // ★v4.2.363: 常駐の係は、⏰が無い時も消えない= 灰色の ⏰ で居る(そこからアプリの起動/終了ができる)。
+  const gray = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x6b / 255, 0x72 / 255, 0x80 / 255, 1);
   function show(text, menu, anchor) {
-    const on = !!text;
-    item.visible = on;
-    if (!on) return;
+    const idle = !text;
+    if (idle) text = '\u23f0';
+    item.visible = true;
     const mj = JSON.stringify(menu || []);
     if (mj !== lastMenu && !tracking()) { lastMenu = mj; const mm = build(menu || []); mm.delegate = mdel; item.menu = mm; }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
-    if (text !== lastText || !!anchor !== lastAnchor) {
+    if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle) {
+      lastIdle = idle;
       lastText = text; lastAnchor = !!anchor;
       const t = String(text).length > 40 ? String(text).slice(0, 39) + '…' : String(text);   // ノッチの裏に隠れないよう短く
       const font = $.NSFont.menuBarFontOfSize(11);
@@ -167,7 +177,7 @@ function run(argv) {
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));
       img.lockFocus;
-      (anchor ? blue : orange).setFill;
+      (idle ? gray : (anchor ? blue : orange)).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
       drawStyled(t, font, PX, (H - sz.height) / 2);
       img.unlockFocus;
@@ -206,6 +216,7 @@ function run(argv) {
     if (st && st.quit) { quitNow = true; return; }                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
     if (st) {
       if (st.app) appPath = st.app;
+      if (st.appName) appName = st.appName;   // v4.2.363
       if (st.scheme) scheme = st.scheme;
       if (st.sound) sound = st.sound;
       if (Array.isArray(st.alarms)) alarms = st.alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
@@ -286,7 +297,8 @@ function run(argv) {
         }
         if (tmenu.length || items.length) { menu.push({ title: 'Tag&Go', off: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1 }); menu.push({ sep: true }); }
       } catch (e) {}
-      menu.push({ id: 'h:open', title: 'Open VSCodium' });
+      menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり
+      menu.push({ id: 'h:quithelper', title: 'Quit ' + appName + '-helper' });
       // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):
       //   拡張の最下段(v4.2.328)と同じく、鳴っている時計がまだ数えていれば残り時間を添える。♪/♬も拡張と同じ拍(0.8秒)で入れ替える。
       const ra = ringing ? next.find(a => (a.name || '') === ringing.name) : null;
