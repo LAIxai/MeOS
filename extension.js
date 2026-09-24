@@ -10676,6 +10676,18 @@ function meosClockFcParse(text) {
   let title = '';
   { const _ti = body.indexOf('//'); if (_ti >= 0) { title = body.slice(_ti + 2).trim(); body = body.slice(0, _ti).trim(); } }
   if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
+  // ★v4.2.347 Date&Count: 式の後ろの `~日付` は時計の中身に混ぜない(数字を長さと読ませない)。書き戻す口へ運ぶ。
+  let untilSrc = '', untilAt = 0;
+  try {
+    const _ua = body.search(/[\u21ba\u21bb]/);
+    const _um = /[~\u301c\uff5e][^~\u301c\uff5e]*$/.exec(body);
+    if (_ua >= 0 && _um && _um.index > _ua) {
+      untilSrc = _um[0].trim();
+      const _ud = meosParseUntil(_um[0].slice(1));
+      untilAt = _ud ? _ud.getTime() : 0;
+      body = body.slice(0, _um.index).trim();
+    }
+  } catch (_) { }
   // ★★★v4.1.23(俊克「今、一番使いたいのは、目薬を5分置きにつけるときに、05/00という設定にすること」):
   //   ★★★**繰返しは『次の間隔』の並びで書く**= `\u21bb05` なら5分ごと、`\u21bb50/10` なら50分と10分の交互。
   //     単位は既定が分(プリセットと同じ数の読み方)、`s`=秒 / `h`=時。
@@ -10816,7 +10828,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -11128,13 +11140,72 @@ function meosClockLastLabel(t) {
 //   ★本文には書かない(表示であって記法ではない)。起点の決まっていない1本・済み・×N無しは 0。
 const MEOS_LAST_FLASH_MS = 5000;
 const _meosLastFlash = new Map();   // 膜+⏰行の位置 -> {sig, at}= 直した瞬間を覚える(開いただけでは光らない)
+function meosClockOriginOf(c) {
+  try { const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null; return o ? o.getTime() : 0; } catch (_) { return 0; }
+}
 function meosClockLastAtOf(c) {
   try {
     if (!c || c.done || !(c.rounds > 0) || !Array.isArray(c.cycle) || !c.cycle.length) return 0;
-    const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null;
-    return o ? meosCycleLastAt(o.getTime(), c.cycle, c.rounds) : 0;
+    const o = meosClockOriginOf(c);
+    return o ? meosCycleLastAt(o, c.cycle, c.rounds) : 0;
   } catch (_) { return 0; }
 }
+// ★★★v4.2.347 Date&Count(俊克 2026.09.24 am11:20「×Nの代わりに ～2026.09.26(土)am11:21.07f のように書くと、
+//   Nの近似値を求めて、×Nと書き戻してくれる。これで、すべての使い方に対応できるでしょ」):
+//   ★★★`~日付` は**入力の近道**= 書き戻した後に本文に残るのは ×N の1つだけ(答えを2つ持たない)。
+//     日付で決めたい人は ~日付、回数で決めたい人は ×N。どちらで書いても最終日はバッジに出る(v4.2.346)。
+//   ★近似は**越えない一番大きいN**= 締切を越えて鳴るより手前で終わる方が安全。ずれはバッジの最終日で見える。
+//   ★`f` は付けなくてよい(付けても読んで捨てる)= 起点の f は「始まりのゴング」so、同じ字に「終わり」を持たせない。
+//   ★日付だけなら、その日の終わり(23:59:59)まで。曜日の括弧(土)(s)・am/pm・JST は読んで捨てる。
+function meosParseUntil(txt) {
+  let t = String(txt == null ? '' : txt).trim().replace(/[：]/g, ':').replace(/[／]/g, '/');
+  t = t.replace(/[A-Z]{2,4}$/, '').replace(/f$/, '').replace(/\s*[(（][^)）]*[)）]\s*/g, ' ').trim();
+  t = t.replace(/(am|pm)\s*(\d{1,2})[:.](\d{2})(?:[.:](\d{2}))?/i, (m0, ap, h, mi, ss) => {
+    let hh = (+h) % 12; if (/pm/i.test(ap)) hh += 12;
+    return ' ' + hh + ':' + mi + (ss ? ':' + ss : '');
+  }).replace(/\s+/g, ' ').trim();
+  if (/^(\d{4}[\/\-.])?\d{1,2}[\/\-.]\d{1,2}$/.test(t)) t += ' 23:59:59';   // 日付だけ= その日いっぱい
+  const w = meosParseWhen(t);
+  return w && w.at ? w.at : null;
+}
+// 起点から until までに収まる一番大きい N(armClock の round > rounds で済みと同じ数え方)。
+function meosCycleRoundsUntil(origin, cycle, until) {
+  if (!(origin > 0) || !isFinite(origin) || !(until > origin)) return 0;
+  const rules = meosCycleRules(cycle);
+  if (rules.length) {
+    const o = new Date(origin);
+    const d = new Date(o.getFullYear(), o.getMonth(), o.getDate(), o.getHours(), o.getMinutes(), o.getSeconds(), 0);
+    let hits = 0, guard = 0;
+    while (guard++ < 366 * 200 && d.getTime() <= until) { if (d.getTime() >= origin && meosCalRuleHit(rules, d)) hits++; d.setDate(d.getDate() + 1); }
+    return Math.max(0, hits - 1);                    // 起点の日はゴング(0周目)
+  }
+  const tot = (Array.isArray(cycle) ? cycle : []).map(meosCycleMs).filter(x => x > 0).reduce((a, b) => a + b, 0);
+  return tot > 0 ? Math.floor((until - origin) / tot) : 0;
+}
+// ⏰行の `~日付` を `×N` に書き換えた行を返す(書けなければ null)。
+function meosClockUntilRewrite(txt, c, n) {
+  try {
+    const a = txt.search(/[\u21ba\u21bb]/); if (a < 0 || !(n > 0) || !c.untilSrc) return null;
+    const ae = a + /^[\u21ba\u21bb]{1,2}/.exec(txt.slice(a))[0].length;
+    const ui = txt.indexOf(c.untilSrc, ae); if (ui < 0) return null;
+    let head = txt.slice(0, ui).replace(/[ \t]+$/, '');
+    const tail = txt.slice(ui + c.untilSrc.length);
+    if (c.rounds > 0) {                                // 既に ×N が在れば、その数を替える
+      const re = /[\u00d7xX*]\s*([0-9]+)/g; let m, last = null;
+      while ((m = re.exec(head))) if (m.index >= ae) last = m;
+      if (!last) return null;
+      head = head.slice(0, last.index) + '\u00d7' + n + head.slice(last.index + last[0].length);
+    } else {
+      const expr = head.slice(ae).trim();
+      let wraps = false;                               // 式まるごとが1つの括弧か
+      if (/^[(\uff08]/.test(expr)) { let dp = 0; wraps = true; for (let k = 0; k < expr.length; k++) { const ch = expr[k]; if (ch === '(' || ch === '\uff08') dp++; else if (ch === ')' || ch === '\uff09') { dp--; if (dp === 0 && k < expr.length - 1) { wraps = false; break; } } } }
+      const single = wraps || meosParseCycleExpr(expr, 0).steps.length === 1;
+      head = wraps ? (head + '\u00d7' + n) : single ? (head + ' \u00d7' + n) : (head.slice(0, ae) + '(' + expr + ')\u00d7' + n);   // 並びは括弧で包む(×N は直前の1つに掛かる= v4.2.87)
+    }
+    return head + tail;
+  } catch (_) { return null; }
+}
+const _meosUntilBusy = new Set();
 // ★★★v4.2.77: 仮想の起点 `v…` の読み書き。字の形はここ1か所で決める。
 //   `1. v2026-09-13 09:40:12` → {pre:'1.', at} / `v2m25s` → {pre:'', elapsed}
 function meosClockSplitV(src) {
@@ -11214,6 +11285,13 @@ async function meosClockFcSet(doc, key, spec, atLine) {
         for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === atLine) { spec = Object.assign({}, spec, { title: x.title || '' }); break; }
       }
     } catch (_) { }
+    // ★v4.2.347: 書き戻す前の `~日付` も運ぶ= 起点の p を書き足す等の書き直しで消えない(⚓と同じ作法)。
+    try {
+      if (spec && spec.untilSrc === undefined) {
+        let _uh = null; for (const x of meosClockFcScan(doc)) if (x.key === key && (typeof atLine !== 'number' || x.line === atLine)) { _uh = x; break; }
+        if (_uh && typeof _uh.line === 'number') { const _pc = meosClockFcParse(doc.lineAt(_uh.line).text); if (_pc && _pc.untilSrc) spec = Object.assign({}, spec, { untilSrc: _pc.untilSrc }); }
+      }
+    } catch (_) { }
     // ★v4.2.312: ⚓(停泊)は書き直しの度に運ぶ= 呼ぶ側(15箇所)が知らなくても落ちない。明示された時だけ替える
     try {
       if (spec && spec.anchor === undefined) {
@@ -11245,6 +11323,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
           const _rn = (spec.rounds > 0 && _cy) ? Math.floor(spec.rounds) : 0;   // 長さthat無ければ回数は書かない
           return _ar + (_rn ? ('(' + _cy + ')\u00d7' + _rn) : _cy);
         })()
+        + ((spec.untilSrc && !spec.done) ? (' ' + String(spec.untilSrc).trim()) : '')   /* v4.2.347: 書き戻す前の ~日付 */
         + (spec.done ? '\u2713' : '') + ((spec.title && String(spec.title).trim()) ? (' // ' + String(spec.title).trim()) : '') + ' -->')   /* v4.2.91: タイトル */
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
@@ -12927,6 +13006,26 @@ function meosApplyTimerLineDecorations(editor) {
           while (j >= 0 && meosIsSpecLine(doc.lineAt(j).text)) j--;
           let owner = _pairs().find(p => p.end === j) || null;
           if (!owner) for (const p of _pairs()) { if (p.start <= i && i <= p.end && (!owner || (p.end - p.start) < (owner.end - owner.start))) owner = p; }
+          // ★v4.2.347 Date&Count: カーソルが行を出たら `~日付` を `×N` に書き戻す。書けなければ ⚠️ を添えて残す。
+          try {
+            if (c.untilSrc && !_rawHere && !c.done) {
+              const _o47 = meosClockOriginOf(c);
+              const _n47 = (_o47 && c.untilAt && Array.isArray(c.cycle) && c.cycle.length) ? meosCycleRoundsUntil(_o47, c.cycle, c.untilAt) : 0;
+              const _nt47 = _n47 > 0 ? meosClockUntilRewrite(txt, c, _n47) : null;
+              const _bk47 = uri + ' ' + i + ' ' + txt;
+              if (_nt47 && _nt47 !== txt && !_meosUntilBusy.has(_bk47)) {
+                _meosUntilBusy.add(_bk47);
+                const _we = new vscode.WorkspaceEdit();
+                _we.replace(doc.uri, new vscode.Range(i, 0, i, txt.length), _nt47);
+                meosDbg('[until] ' + (i + 1) + ': ' + c.untilSrc + ' -> \u00d7' + _n47);
+                Promise.resolve(vscode.workspace.applyEdit(_we)).then(() => _meosUntilBusy.delete(_bk47), () => _meosUntilBusy.delete(_bk47));
+              } else if (!_nt47) {
+                const _ue = txt.indexOf(c.untilSrc);
+                if (_ue >= 0) items.push({ range: new vscode.Range(i, _ue + c.untilSrc.length, i, _ue + c.untilSrc.length),
+                  renderOptions: { after: { contentText: ' \u26a0\ufe0f', color: '#e0803a' } } });
+              }
+            }
+          } catch (_) { }
           // ★v4.2.346: 最終日と「直したばかりか」。鍵は膜＋閉じ膜からの段数= 上に行が増えても動かない。
           let _last46 = 0, _flash46 = false;
           try {
