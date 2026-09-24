@@ -30622,7 +30622,7 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'toggleHelper') {   // v4.2.363: ⏰パネルの [V-helper]= 常駐の係を起こす/降ろす
-      try { await meosVHelperSet(!meosVHelperOn()); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切
+      try { await meosVHelperSet(!meosVHelperOn(), true); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
       return;
     }
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
@@ -37852,7 +37852,7 @@ function activate(context) {
   // v4.2.363: 閉じている間にヘルパーのメニューで Quit …-helper を選んだ= その意思を設定へ移す(次に開いても起こさない)
   try {
     const fs = require('fs'), path = require('path'), mk = path.join(meosHelperDir(), 'off-by-user');
-    if (fs.existsSync(mk)) { fs.unlinkSync(mk); meosVHelperSet(false); }   // v4.2.364: メニューバーの ⏰ ごと切る
+    if (fs.existsSync(mk)) { fs.unlinkSync(mk); meosVHelperSet(false, true); }   // v4.2.364: メニューバーの ⏰ ごと切る / v4.2.374: 知らせはヘルパーが既に置いた(重ねて出すと、後で起こした方まで止める)
   } catch (_) { }
   // v4.2.350: 変化の無い Cmd+S= 柔らかい音を返し、保存そのものは今まで通り呼ぶ(保存に掛けている他の仕掛けを止めない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
