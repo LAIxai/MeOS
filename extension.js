@@ -25301,6 +25301,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
    色は全面の時と同じ琥珀(半分と全部で、同じ物の量が違うと読める)。 */
 .mz-a{background:linear-gradient(90deg,var(--vscode-button-secondaryBackground) 50%,rgba(255,213,92,.14) 50%)}
 .mz-a.on{color:#d18400;border-color:rgba(210,132,0,.6);background:rgba(255,213,92,.14)}
+/* ★v4.2.362(俊克「薄過ぎて分らんよ。文字Aにも色がかかっている。Aは白で、地は透明じゃなくて琥珀色そのものでいい」): 琥珀は不透明の #d18400・A はいつも白。 */
+.mz-a{color:#fff;background:linear-gradient(90deg,var(--vscode-button-secondaryBackground) 50%,#d18400 50%)}
+.mz-a.on{color:#fff;border-color:#d18400;background:#d18400}
 .mz-badge{position:absolute;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;line-height:1;color:var(--vscode-foreground);cursor:var(--meos-hand);z-index:3;opacity:.85}
 .mz-badge:hover{opacity:1;filter:brightness(1.25)}
 .mz-tr{top:0;right:0;transform:translate(50%,-50%)}
