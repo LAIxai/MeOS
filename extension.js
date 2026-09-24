@@ -12435,9 +12435,9 @@ let _meosVHOff = false;
 //   止めるために、もう一方を起動すると言うのも、無駄だしね」):
 //   ★V-helper(常駐の係)は2つのアプリで1人を共有(置き場所も LaunchAgent も同じ)。止めるとは「係」と「両方の設定」を切ること。
 //   ★知らせ= 共有の置き場所の vhelper-off.json(時刻と誰か)。開いているアプリは見張って即座に、閉じていたアプリは次に開いた時に読む。
-function meosVHelperOffSignalPath() { return require('path').join(meosHelperDir(), 'vhelper-off.json'); }
+function meosVHelperOffSignalPath() { return require('path').join(meosHelperShared(), 'vhelper-off.json'); }   // v4.2.372: 2人の係が共に読む所
 function meosVHelperBroadcastOff() {
-  try { const fs = require('fs'); fs.mkdirSync(meosHelperDir(), { recursive: true }); const t = Date.now();
+  try { const fs = require('fs'); fs.mkdirSync(meosHelperShared(), { recursive: true }); const t = Date.now();
     fs.writeFileSync(meosVHelperOffSignalPath(), JSON.stringify({ t, pid: process.pid, app: meosAppName() }));
     if (extensionContext) extensionContext.globalState.update('meosVHelperOffSeen', t); } catch (_) { }
 }
@@ -12490,12 +12490,18 @@ function meosMenuBarClockItems() {
 //   ★VSCodium が閉じている間はヘルパーが数え、時刻が来たら鐘を鳴らして vscodium://lai.lai-membrane/warp を開く
 //     → VSCodium が起き、下の registerUriHandler が膜へ飛んで鐘を引き継ぐ。
 //   ★第1段で写すのは**今掛かっている物の次の1回**だけ(一度きり・繰返しの次の周回)。錠(🔐)やストップウォッチは VSCodium の中でしか意味が無いので持たせない。
-const MEOS_HELPER_LABEL = 'com.laixai.meos.helper';
+// ★★v4.2.372(俊克 バグ1「本家で V-helper を出して本家を終了→ VSCm で V-helper を出すと、本家用のメニューバーが消えて VSCm 用だけになる。なぜ?」):
+//   ★真因= V-helper は1人だけ(置き場所も LaunchAgent の名前も同じ)= VSCm が同じ係に自分の予定表を書き直し、本家から預かった表を上書きしていた。
+//   ★→ アプリごとに1人ずつ(名前と置き場所に uriScheme= vscode / vscodium を足す)。止める知らせ(vhelper-off.json)だけは共有の置き場所に置く。
+const MEOS_HELPER_LABEL_OLD = 'com.laixai.meos.helper';
+function meosHelperScheme() { try { return String(vscode.env.uriScheme || 'vscodium').replace(/[^A-Za-z0-9_-]/g, '') || 'vscodium'; } catch (_) { return 'vscodium'; } }
+function meosHelperLabel() { return MEOS_HELPER_LABEL_OLD + '.' + meosHelperScheme(); }
 let _meosHelper = { ensured: false, last: null, watching: false };
 function meosHelperOn() {
   try { return process.platform === 'darwin' && !!vscode.workspace.getConfiguration('laiMembrane').get('menuBarHelper', false); } catch (_) { return false; }
 }
-function meosHelperDir() { const os = require('os'), path = require('path'); return path.join(os.homedir(), 'Library', 'Application Support', 'MeOS', 'helper'); }
+function meosHelperShared() { const os = require('os'), path = require('path'); return path.join(os.homedir(), 'Library', 'Application Support', 'MeOS', 'helper'); }
+function meosHelperDir() { return require('path').join(meosHelperShared(), meosHelperScheme()); }   // v4.2.372: アプリごと
 function meosHelperAlarms() {
   const out = [];
   try {
@@ -12570,25 +12576,28 @@ function meosHelperEnsure() {
     const js = path.join(dir, 'meos-helper.js');
     let old = ''; try { old = fs.readFileSync(js, 'utf8'); } catch (_) { }
     if (old !== src) fs.writeFileSync(js, src);
-    const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', MEOS_HELPER_LABEL + '.plist');
+    const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', meosHelperLabel() + '.plist');
     const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const body = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
-      + '<plist version="1.0"><dict>\n<key>Label</key><string>' + MEOS_HELPER_LABEL + '</string>\n'
+      + '<plist version="1.0"><dict>\n<key>Label</key><string>' + meosHelperLabel() + '</string>\n'
       + '<key>ProgramArguments</key><array><string>/usr/bin/osascript</string><string>-l</string><string>JavaScript</string><string>' + esc(js) + '</string><string>' + esc(dir) + '</string></array>\n'
       + '<key>RunAtLoad</key><true/>\n<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>\n<key>ProcessType</key><string>Interactive</string>\n'
       + '<key>StandardErrorPath</key><string>' + esc(path.join(dir, 'helper.log')) + '</string>\n</dict></plist>\n';
     let oldP = ''; try { oldP = fs.readFileSync(plist, 'utf8'); } catch (_) { }
     if (oldP !== body) { fs.mkdirSync(path.dirname(plist), { recursive: true }); fs.writeFileSync(plist, body); }
     const dom = 'gui/' + process.getuid();
+    // v4.2.372: 前の「1人だけの係」(旧い名前)が残っていれば降ろす= 2人の係の横で3人目が走らない
+    try { const oldP = path.join(require('os').homedir(), 'Library', 'LaunchAgents', MEOS_HELPER_LABEL_OLD + '.plist');
+      if (fs.existsSync(oldP)) { cp.execFile('launchctl', ['bootout', dom + '/' + MEOS_HELPER_LABEL_OLD], () => { try { fs.unlinkSync(oldP); } catch (_) { } meosDbg('[helper] 旧い1人だけの係を降ろした'); }); } } catch (_) { }
     // 先に「降りろ」の印を消す(前にオフにした時の quit が残っていると、起きた途端に降りる)
     try { const stf = path.join(dir, 'state.json'); const cur = JSON.parse(fs.readFileSync(stf, 'utf8')); if (cur && cur.quit) fs.unlinkSync(stf); } catch (_) { }
-    cp.execFile('launchctl', ['print', dom + '/' + MEOS_HELPER_LABEL], (err) => {
+    cp.execFile('launchctl', ['print', dom + '/' + meosHelperLabel()], (err) => {
       if (err || oldP !== body) {
-        cp.execFile('launchctl', ['bootout', dom + '/' + MEOS_HELPER_LABEL], () => {
+        cp.execFile('launchctl', ['bootout', dom + '/' + meosHelperLabel()], () => {
           cp.execFile('launchctl', ['bootstrap', dom, plist], (e2) => { meosDbg('[helper] bootstrap ' + (e2 ? ('失敗 ' + e2.message) : 'ok')); });
         });
       } else if (old !== src) {
-        cp.execFile('launchctl', ['kickstart', '-k', dom + '/' + MEOS_HELPER_LABEL], (e3) => { meosDbg('[helper] 本体を入れ替えて起こし直した ' + (e3 ? e3.message : 'ok')); });
+        cp.execFile('launchctl', ['kickstart', '-k', dom + '/' + meosHelperLabel()], (e3) => { meosDbg('[helper] 本体を入れ替えて起こし直した ' + (e3 ? e3.message : 'ok')); });
       }
     });
     // 同じ窓の古い係(親と一緒に消える osascript)は降ろす= ⏰を2つ並べない
@@ -12600,8 +12609,8 @@ function meosHelperRemove() {
   try {
     const fs = require('fs'), path = require('path'), cp = require('child_process'), dir = meosHelperDir();
     try { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ quit: true })); } catch (_) { }
-    const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', MEOS_HELPER_LABEL + '.plist');
-    cp.execFile('launchctl', ['bootout', 'gui/' + process.getuid() + '/' + MEOS_HELPER_LABEL], () => { try { fs.unlinkSync(plist); } catch (_) { } meosDbg('[helper] 降ろした'); });
+    const plist = path.join(require('os').homedir(), 'Library', 'LaunchAgents', meosHelperLabel() + '.plist');
+    cp.execFile('launchctl', ['bootout', 'gui/' + process.getuid() + '/' + meosHelperLabel()], () => { try { fs.unlinkSync(plist); } catch (_) { } meosDbg('[helper] 降ろした'); });
   } catch (_) { }
 }
 // VSCodium を閉じる時= 表示は引っ込め、予定の表だけ残してヘルパーに渡す(owner 0)

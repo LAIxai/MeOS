@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.371) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.372) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -13,6 +13,11 @@ ObjC.bindFunction('kill', ['int', ['int', 'int']]);
 function run(argv) {
   const dir = argv[0];
   const statePath = dir + '/state.json', clickPath = dir + '/click.json';
+  // v4.2.372: アプリごとの係= 置き場所の最後の名前(vscode / vscodium)が自分の名前。止める知らせは1つ上の共有の置き場所
+  const myScheme = dir.split('/').filter(Boolean).pop() || '';
+  const sharedDir = dir.replace(/\/[^\/]+\/?$/, '');
+  const myLabel = 'com.laixai.meos.helper' + (/^(vscode|vscodium|[A-Za-z0-9_-]+)$/.test(myScheme) && sharedDir !== dir ? '.' + myScheme : '');
+  const bornAt = Date.now();
   const app = $.NSApplication.sharedApplication;
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   const bar = $.NSStatusBar.systemStatusBar;
@@ -73,8 +78,8 @@ function run(argv) {
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
       if (id === 'h:quithelper') {
         try { $('1').writeToFileAtomicallyEncodingError(dir + '/off-by-user', true, $.NSUTF8StringEncoding, null); } catch (e) {}
-        try { $(JSON.stringify({ t: Date.now(), pid: 0, app: 'V-helper' })).writeToFileAtomicallyEncodingError(dir + '/vhelper-off.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}   // v4.2.371: 両方のアプリへ
-        try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/com.laixai.meos.helper.plist'), null); } catch (e) {}
+        try { $(JSON.stringify({ t: Date.now(), pid: 0, app: 'V-helper' })).writeToFileAtomicallyEncodingError(sharedDir + '/vhelper-off.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}   // v4.2.371/372: 両方のアプリと、もう1人の係へ
+        try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/' + myLabel + '.plist'), null); } catch (e) {}
         stopBell(); quitNow = true; return;
       }
       if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openUrl(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行
@@ -214,7 +219,13 @@ function run(argv) {
   function step() {
     let st = null;
     try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}
-    if (st && st.quit) { quitNow = true; return; }                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
+    if (st && st.quit) { quitNow = true; return; }
+    // v4.2.372: もう1人(か、どちらかのアプリ)が「両方止める」を押した= 自分が生まれた後の知らせなら、自分も降りる
+    try { const sg = $.NSString.stringWithContentsOfFileEncodingError(sharedDir + '/vhelper-off.json', $.NSUTF8StringEncoding, null);
+      if (sg && !sg.isNil()) { const m = JSON.parse(ObjC.unwrap(sg)); if ((Number(m.t) || 0) > bornAt) {
+        try { $('1').writeToFileAtomicallyEncodingError(dir + '/off-by-user', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+        try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/' + myLabel + '.plist'), null); } catch (e) {}
+        stopBell(); quitNow = true; return; } } } catch (e) {}                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
     if (st) {
       if (st.app) appPath = st.app;
       if (st.appName) appName = st.appName;   // v4.2.363
