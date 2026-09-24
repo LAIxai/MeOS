@@ -14027,11 +14027,16 @@ function meosNoChangeSoundPath() {
     fs.writeFileSync(f, buf); _meosNoChangeFile = f; return f;
   } catch (_) { return null; }
 }
+// ★v4.2.351(俊克「なぜ音はmacOSだけなのか?」): 私が afplay だけで書いていた。鐘(meosPlayChime)と同じく3つのOSに道を持つ。
+//   作った wav は同じ1つ= mac=afplay / win=PowerShell の SoundPlayer / linux=paplay→aplay(無ければ端末のベル)。
 function meosPlayNoChange() {
   try {
-    if (process.platform !== 'darwin') return;
     const f = meosNoChangeSoundPath(); if (!f) return;
-    require('child_process').exec('/usr/bin/afplay -v 1.5 ' + JSON.stringify(f), () => { });
+    const { exec } = require('child_process');
+    const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 1.5 ' + q(f), () => { });
+    else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
+    else exec('paplay ' + q(f) + ' || aplay -q ' + q(f) + ' || printf "\\a"', () => { });
   } catch (_) { }
 }
 function meosPlayWhistle() {
