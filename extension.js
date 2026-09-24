@@ -25089,6 +25089,12 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-file-x[disabled]{cursor:default;opacity:.5}
 .title-file-x[disabled]:hover{background:transparent;opacity:.5}
 .title-file-x[disabled]::before,.title-file-x[disabled]:hover::before{content:'●'}
+/* ★v4.2.345(俊克「Me Dockのファイル一覧に、Finderで開くという副メニュー」): 家の副メニューと同じく右クリックで出す(H-TOCの子膜フライアウトと同じ作法)。
+   ★ポインタの所に出す= position:fixed。#title-file の外に置くので、箱ごと押せる口(v4.0.306)に拾われない。 */
+.title-file-sub{display:none;position:fixed;z-index:60;padding:3px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.title-file-sub.on{display:block}
+.title-file-sub button{display:block;width:100%;text-align:left;padding:4px 12px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:13px;white-space:nowrap;cursor:var(--meos-hand)}
+.title-file-sub button:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.28))}
 .title-actions{display:flex;align-items:center;gap:7px}
 .standards-toggle{border:1px solid color-mix(in srgb,var(--vscode-foreground) 30%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:12px;font-weight:800;padding:3px 7px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:var(--meos-hand)}
 .standards-toggle .standards-switch{width:30px;height:14px;border-radius:999px;background:var(--vscode-input-background);border:1px solid var(--vscode-panel-border);position:relative;box-sizing:border-box;display:inline-block;flex:0 0 auto;transition:background .12s ease,border-color .12s ease}
@@ -27519,7 +27525,23 @@ if(x){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'closeRe
 var b=ev.target&&ev.target.closest?ev.target.closest('[data-path]'):null;
 if(!b)return;var row=b.closest('.title-file-row');fp.classList.remove('on');if(row&&row.classList.contains('cur'))return;
 vscode.postMessage({type:'openRecent',path:b.getAttribute('data-path')});});
-document.addEventListener('click',function(ev){if(fp.classList.contains('on')&&ev.target.closest&&!ev.target.closest('#title-file'))fp.classList.remove('on');});})();
+/* ★v4.2.345: 行を右クリック= 副メニュー(Reveal in Finder)。Macでなければ OS の呼び名に合わせる。 */
+var fs2=document.createElement('div');fs2.className='title-file-sub';document.body.appendChild(fs2);
+var fsClose=function(){fs2.classList.remove('on');};
+fp.addEventListener('contextmenu',function(ev){var r=ev.target&&ev.target.closest?ev.target.closest('.title-file-row'):null;
+var b=r?r.querySelector('[data-path]'):null;if(!b)return;ev.preventDefault();ev.stopPropagation();
+if(typeof hideTocTip==='function')hideTocTip();
+var mac=/Mac/i.test(navigator.platform||navigator.userAgent||'');
+fs2.innerHTML='<button data-reveal="'+esc(b.getAttribute('data-path'))+'">'+(mac?'Reveal in Finder':'Reveal in File Explorer')+'</button>';
+fs2.style.left=ev.clientX+'px';fs2.style.top=ev.clientY+'px';fs2.classList.add('on');
+var rc=fs2.getBoundingClientRect();if(rc.right>window.innerWidth-4)fs2.style.left=Math.max(4,window.innerWidth-4-rc.width)+'px';
+if(rc.bottom>window.innerHeight-4)fs2.style.top=Math.max(4,ev.clientY-rc.height)+'px';});
+fs2.addEventListener('click',function(ev){var x=ev.target&&ev.target.closest?ev.target.closest('[data-reveal]'):null;
+ev.preventDefault();ev.stopPropagation();fsClose();fp.classList.remove('on');
+if(x)vscode.postMessage({type:'revealRecent',path:x.getAttribute('data-reveal')});});
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape')fsClose();});
+document.addEventListener('contextmenu',function(ev){if(!(ev.target&&ev.target.closest&&ev.target.closest('.title-file-pop')))fsClose();});
+document.addEventListener('click',function(ev){fsClose();if(fp.classList.contains('on')&&ev.target.closest&&!ev.target.closest('#title-file'))fp.classList.remove('on');});})();
 /* v4.0.295: ハイライトボタンのOption見張りを登録。描き直しは既に在る1つの口(__renderFmtRing)へ通す
    = 🚫の時は面を触らない、というv4.0の作法がそのまま効く(裏の顔を出す口を別に作らない)。 */
 hlAltW=fmtAltWatch(fmtHighlight,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('highlight');});
@@ -30113,6 +30135,11 @@ function toggleMeDock(editorOverride) {
         meosRecentRemove(String(message.path || ''));
         postMeDockFile(getMeDockTargetEditor() || vscode.window.activeTextEditor, true, true);
       } catch (_) {}
+      return;
+    }
+    if (message && message.type === 'revealRecent') { // v4.2.345: 副メニューの Reveal in Finder= VS Code 自身の口に任せる
+      try { await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(String(message.path || ''))); }
+      catch (_) { try { vscode.window.showInformationMessage('MeOS: could not reveal that file.'); } catch (__) {} }
       return;
     }
     if (message && message.type === 'openRecent') { // v4.0.303: ▾の履歴から選んだファイルを開く
