@@ -11095,6 +11095,32 @@ function meosCycleSeriesNext(origin, cycle, from) {
   while (t <= from && guard++ < len * 3 + 4) { hit = i % len; last = steps[hit]; t += last; i++; }
   return { at: t, step: last, idx: hit, round: k + Math.floor((i > 0 ? i - 1 : 0) / len) + 1 };
 }
+// ★★★v4.2.344(俊克 2026.09.24 am10:35「×N方式の時に、最終日をプログラム側が表示すればいいんじゃない?
+//   適当なNを入力して、表示された最終日を見て、Nを修正すればいい。回数が目標のこともあるしね」):
+//   ★★★**最終日は表示であって記法ではない**= 起点＋周期＋N から出るso、本文に書かない(`#N` と同じ理屈)。
+//   ★終わる所は armClock の「round > rounds で済み」と同じ1つの数え方から引く
+//     → [[feedback_one_source_for_mark_count_action]]。
+//     間隔= 並び1周を N 回(起点 + N×1周) / 暦の規則= 起点の日がゴング(0周目)so N+1 回目の当たり日。
+function meosCycleLastAt(origin, cycle, rounds) {
+  if (!(rounds > 0) || !isFinite(origin)) return 0;
+  const rules = meosCycleRules(cycle);
+  if (rules.length) {
+    const o = new Date(origin);   // meosCalRuleNext と同じ歩き方を1回で(描くたびに呼ばれるので N 回やり直さない)
+    const d = new Date(o.getFullYear(), o.getMonth(), o.getDate(), o.getHours(), o.getMinutes(), o.getSeconds(), 0);
+    let hits = 0, guard = 0;
+    while (guard++ < 366 * 200) {
+      if (d.getTime() >= origin && meosCalRuleHit(rules, d) && ++hits > rounds) return d.getTime();
+      d.setDate(d.getDate() + 1);
+    }
+    return 0;
+  }
+  const tot = (Array.isArray(cycle) ? cycle : []).map(meosCycleMs).filter(x => x > 0).reduce((a, b) => a + b, 0);
+  return tot > 0 ? origin + rounds * tot : 0;
+}
+function meosClockLastLabel(t) {
+  const d = new Date(t), p = (x) => (x < 10 ? '0' : '') + x;
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
 // ★★★v4.2.77: 仮想の起点 `v…` の読み書き。字の形はここ1か所で決める。
 //   `1. v2026-09-13 09:40:12` → {pre:'1.', at} / `v2m25s` → {pre:'', elapsed}
 function meosClockSplitV(src) {
@@ -12684,6 +12710,23 @@ function meosApplyTimerLineDecorations(editor) {
                   let _s73 = _h73; while (_s73 > 0 && txt.charAt(_s73 - 1) === ' ') _s73--;
                   let _t73 = _e73; while (_t73 > 0 && txt.charAt(_t73 - 1) === ' ') _t73--;
                   if (_t73 > _s73) { badgeHide.push(new vscode.Range(i, _s73, i, _t73)); _titleAt.set(i, _s73); }
+                }
+              } catch (_) { }
+              // ★★★v4.2.344: `×N` のすぐ後ろに最終日(`→ 2026-10-31(s) 10:00`)= 直す字の隣に、直した答えを出す
+              //   → [[feedback_fix_signal_at_fix_place]]。起点の決まっていない1本(連なりの待ち番)には出さない。
+              try {
+                if (!c.done && c.rounds > 0 && Array.isArray(c.cycle) && c.cycle.length) {
+                  const _o44 = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null;
+                  const _L44 = _o44 ? meosCycleLastAt(_o44.getTime(), c.cycle, c.rounds) : 0;
+                  if (_L44 > 0) {
+                    const _a44 = txt.search(/[↺↻]/);
+                    const _h44 = txt.indexOf('//', _a44);
+                    const _seg = txt.slice(0, _h44 > _a44 ? _h44 : (_c9 > 0 ? _c9 : txt.length));
+                    const _re44 = /[×xX*]\s*([0-9]+)/g; let _m44, _end44 = -1;
+                    while ((_m44 = _re44.exec(_seg))) if (_m44.index > _a44 && +_m44[1] === c.rounds) _end44 = _m44.index + _m44[0].length;
+                    if (_a44 >= 0 && _end44 > 0) rounds.push({ range: new vscode.Range(i, _end44, i, _end44),
+                      renderOptions: { after: { contentText: ' → ' + meosClockLastLabel(_L44), color: new vscode.ThemeColor('descriptionForeground'), fontWeight: 'normal' } } });
+                  }
                 }
               } catch (_) { }
               // ★★★v4.2.52(俊克 2026.09.11 am01:12「ただし連番が表示されないよね」

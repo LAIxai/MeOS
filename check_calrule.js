@@ -7,7 +7,7 @@ const stubSrc=H.slice(H.indexOf('const stub = {'), H.indexOf('const origLoad'));
 const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')+')');
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/mp_'+process.pid+'.js';
-fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosCycleSeriesNext,meosParseCycleInput,meosCycleMs,meosParseCycleExpr};\n');
+fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosCycleSeriesNext,meosParseCycleInput,meosCycleMs,meosParseCycleExpr,meosCycleLastAt,meosClockLastLabel};\n');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const D=(s)=>new Date(s).getTime(), F=(t)=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'('+'SMTWtFs'[d.getDay()]+') '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');};
@@ -53,5 +53,18 @@ ok(X.meosParseCycleInput('t1,3').join('|')==='t1,3', '箱に t1,3', X.meosParseC
 ok(X.meosParseCycleInput('10m,3h 00 5m').join('|')==='10m|3h', '箱の , 区切りと 00 は今までどおり', X.meosParseCycleInput('10m,3h 00 5m'));
 const ex=X.meosParseCycleExpr('t1,3',0);
 ok(ex.steps.length===1 && ex.steps[0].tok==='t1,3' && ex.steps[0].to===4, '式として読んでも1つ・桁は0〜4', ex.steps);
+
+console.log('④ 最終日(v4.2.344 ×N の答え)');
+const L=(o,c,n)=>{const t=X.meosCycleLastAt(D(o),c,n);return t?X.meosClockLastLabel(t):'';};
+let g=L('2026-09-24T10:00:00',['8h'],111); ok(g==='2026-10-31(s) 10:00','↺8h ×111 → 10/31 10:00',g);
+g=L('2026-10-01T10:00:00',['t1,3'],11); ok(g==='2027-03-18(t) 10:00','↺t1,3 ×11 → 3/18(開催12回)',g);
+g=L('2026-10-01T10:00:00',['t1,3'],12); ok(g==='2027-04-01(t) 10:00','×12 だと1回多い(4/1)が見える',g);
+g=L('2026-09-24T10:00:00',['5m','5m'],1); ok(g==='2026-09-24(t) 10:10','入れ子を平らにした並び(5m 5m)×1 → 10分後',g);
+ok(X.meosCycleLastAt(D('2026-09-24T10:00:00'),['8h'],0)===0,'×N が無ければ出さない');
+// armClock と同じ数え方か= 最終日の直前は round<=N、直後は round>N
+const o2=D('2026-10-01T10:00:00'), last=X.meosCycleLastAt(o2,['t1,3'],11);
+ok(X.meosCycleSeriesNext(o2,['t1,3'],last-1).round<=11 && X.meosCycleSeriesNext(o2,['t1,3'],last).round>11,'最終日で済みになる(armClockの round>rounds と一致)');
+const o3=D('2026-09-24T10:00:00'), l3=X.meosCycleLastAt(o3,['8h'],111);
+ok(X.meosCycleSeriesNext(o3,['8h'],l3-1).round<=111 && X.meosCycleSeriesNext(o3,['8h'],l3).round>111,'間隔でも一致');
 console.log(ng?('\nNG '+ng+'件'):'\n全部 ok');
 process.exit(ng?1:0);
