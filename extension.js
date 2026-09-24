@@ -12335,6 +12335,13 @@ function meosMenuBarPick(id) {
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
+    if (id === 'quitbar') {   // v4.2.348: このアプリのメニューバーの⏰を降ろす(設定 menuBarClock を切る= 次に開いても出ない)
+      vscode.workspace.getConfiguration('laiMembrane').update('menuBarClock', false, vscode.ConfigurationTarget.Global).then(() => {
+        try { meosMenuBarSet(null); } catch (_) { }
+        vscode.window.showInformationMessage('MeOS: the \u23f0 menu bar of ' + meosAppName() + ' is off. To bring it back, turn on Settings \u203a laiMembrane.menuBarClock.');
+      }, () => { });
+      return;
+    }
     if (id === 'resume') { meosResumeLastStopped(); return; }   // v4.2.338
     // ★v4.2.337: Opt+クリック= 札に出ている膜へ(最下段と同じ1本= 一番近い時計)
     if (id === 'optwarp') { let best = null; for (const [k, u] of _meosPseudoUntil) if (!best || u < best.u) best = { k, u }; const sc = best ? _meosPseudoScopes.get(best.k) : null; if (sc) meosJumpToScope(sc); return; }
@@ -12359,12 +12366,16 @@ function meosMenuBarTail() {
   return [
     { sep: true }, { id: 'tags', title: 'Tag&Go' },   // v4.2.311: 1行だけ。押すと部屋を今の姿で開く
     // ★v4.2.311(俊克 改良2「メニューバーに、常駐化のオンオフを✓付きで設定できるように。Tag&Goメニューの下に」)
-    ...(process.platform === 'darwin' ? [{ id: 'helper', title: 'Keep \u23f0 running when VSCodium is closed', box: meosHelperOn() }] : []),
+    ...(process.platform === 'darwin' ? [{ id: 'helper', title: 'Keep \u23f0 running when ' + meosAppName() + ' is closed', box: meosHelperOn() }] : []),   // v4.2.348: アプリの名前で言う(VS Code と VSCodium の2つが並ぶ時に見分ける)
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },
       { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] },
-    ...(function () { const r = meosLastStoppedItem(); return r ? [{ sep: true }, r] : []; })() ];   // v4.2.338: 最後に止めた1本
+    ...(function () { const r = meosLastStoppedItem(); return r ? [{ sep: true }, r] : []; })(),   // v4.2.338: 最後に止めた1本
+    // ★v4.2.348(俊克 改良1「メニューバーを終了するメニューをメニューの一番下に。今は、2つのメニューが表示している」):
+    //   VS Code と VSCodium の両方に MeOS が居ると、⏰ が2つ並ぶ。どちらの⏰かを名前で言い、その場で降ろせるようにする。
+    { sep: true }, { id: 'quitbar', title: 'Quit \u23f0 menu bar (' + meosAppName() + ')' } ];
 }
+function meosAppName() { try { return String(vscode.env.appName || 'VSCodium'); } catch (_) { return 'VSCodium'; } }
 // v4.2.207(俊克「+4のすべての予定出して、そこにワープできるのが先ずあるといいよね」): 一覧と同じ並び・同じ飛び先(meosJumpToScope)。
 //   名前はタイトル(// …)が在ればそれ、無ければ膜名。時刻は最下段と同じ数え方(meosClockFaceMs)。
 function meosMenuBarClockItems() {
@@ -38703,6 +38714,9 @@ makeDecorations();
           if (_meosMb) _meosMb.last = null;
           meosUpdateTimerBar();
         } catch (_) { }
+      }
+      if (e.affectsConfiguration('laiMembrane.menuBarClock')) {   // v4.2.348: 設定で戻した/切った= その場で出す/降ろす
+        try { if (_meosMb) _meosMb.last = null; meosUpdateTimerBar(); } catch (_) { }
       }
       if (e.affectsConfiguration('laiMembrane.pointerHand')) {   // ★v4.2.108: 手の形を選び直した= 遅れて作る型も作り直し、Me Dock の変数も替える
         try { if (meosClockPlayDeco) { meosClockPlayDeco.dispose(); meosClockPlayDeco = null; } } catch (_) { }
