@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.372) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.373) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -162,6 +162,8 @@ function run(argv) {
   let lastMenu = null, lastText = null;
   const orange = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
   const blue = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x2f / 255, 0x80 / 255, 0xb8 / 255, 1);   // v4.2.316: ⚓停泊中
+  // ★v4.2.373(俊克「VSCm用helperは今まで通りオレンジ色、本家VSC用のhelperを別の色に」): 本家は紫(青は⚓の色なので使わない)
+  const purple = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x7c / 255, 0x3a / 255, 0xed / 255, 1);
   let lastAnchor = null, lastIdle = null;
   // ★v4.2.363: 常駐の係は、⏰が無い時も消えない= 灰色の ⏰ で居る(そこからアプリの起動/終了ができる)。
   const gray = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x6b / 255, 0x72 / 255, 0x80 / 255, 1);
@@ -183,7 +185,7 @@ function run(argv) {
       const H = 18, PX = 7, W = Math.ceil(sz.width) + PX * 2;
       const img = $.NSImage.alloc.initWithSize($.NSMakeSize(W, H));
       img.lockFocus;
-      (idle ? gray : (anchor ? blue : orange)).setFill;
+      (idle ? gray : (anchor ? blue : (myScheme === 'vscode' ? purple : orange))).setFill;
       $.NSBezierPath.bezierPathWithRoundedRectXRadiusYRadius($.NSMakeRect(0, 0, W, H), 5, 5).fill;
       drawStyled(t, font, PX, (H - sz.height) / 2);
       img.unlockFocus;
