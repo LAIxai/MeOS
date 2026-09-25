@@ -11213,6 +11213,10 @@ function meosClockSetTarget() {
     return { refused: '\u23f0 To add a clock, put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines, then press Set. To change a clock, put the caret on its \u23f0 line.' };
   } catch (_) { return null; }
 }
+let _meosClkPanelOpen = false, _meosClkTargetTimer = null;
+function meosPostClkTarget() {
+  try { const r = meosClockSetTarget(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clkTarget', ok: !!(r && !r.refused), mode: r ? (r.refused ? 'refuse' : (typeof r.atLine === 'number' ? 'change' : 'add')) : '' }); } catch (_) { }
+}
 function meosClockAtLine(doc, key, line) { for (const c of meosClockFcScan(doc)) if ((key == null || c.key === key) && c.line === line) return c; return null; }   // v4.2.389: key=null= 膜を問わず、その行の時計
 function meosClockOriginOf(c) {
   try { const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null; return o ? o.getTime() : 0; } catch (_) { return 0; }
@@ -28190,6 +28194,7 @@ if(window.__clkOpen)window.__clkOpen('hist');});
    ★開き方・位置決め・外を押したら閉じる、は表の▾と同じ形(家の作法を真似る)。 */
 var clkCaret=document.getElementById('raw-timer-caret'),clkPop=document.getElementById('clk-pop');
 function closeClkPop(){if(clkPop)clkPop.classList.remove('on');try{document.body.classList.remove('clk-open');}catch(e){}
+ try{vscode.postMessage({type:'clkPanelOpen',on:false});}catch(e){}   /* v4.2.393 */
  try{clkWarnOff();}catch(e){}
  try{var _tp=document.getElementById('clk-tip');if(_tp){_tp.classList.remove('on');_tp.textContent='';}}catch(e){}}
 function clkPad(n){return (n<10?'0':'')+n;}
@@ -28761,7 +28766,9 @@ if(clkCaret&&clkPop){
  function clkPaintSet(){var b=document.getElementById('clk-set');if(!b)return;
   var cy=document.getElementById('clk-cyc');
   var need=(clkRep&&(!cy||!String(cy.value||'').trim()));   /* ✓なのに長さthat空= まだ言い切っていない */
-  b.classList.toggle('on',clkDirty&&!need);}
+  b.classList.toggle('on',clkDirty&&!need&&window.__clkTargetOk!==false);
+  /* ★v4.2.393: 置き場所が違う間は押せず、tip が置き場所を言う(カーソルを動かすたびに拡張が判定し直す) */
+  if(window.__clkTargetOk===false)b.setAttribute('data-tip','Set | Put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines to add a clock, or on a \u23f0 line to change it.');else b.removeAttribute('data-tip');}
  function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);var an=document.getElementById('clk-anchor');if(an){an.classList.toggle('on',clkAnchor);an.textContent=clkAnchor?'\u2693':'\ud83d\udea2\ud83d\udca8';}}   /* v4.2.313(俊克 改良1「⚓ボタンを押すと、🚢💨という二文字のボタンに切り替える」): 今の姿を形で出す= 🚢💨 飛んで行く / ⚓ 停泊 */
  /* v4.1.66: \u2610 だけ大きく出せるように、箱と字を別の子にする。 */
  /* ★★v4.1.170(俊克 改良2「\u21ba\u21bb は、緑/水に色を付けて下さい。Repeatチェックボックスの方もね」):
@@ -28871,7 +28878,8 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  clkDirty=false;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
+  clkDirty=false;window.__clkTargetOk=true;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
+  if(mode!=='hist'){try{vscode.postMessage({type:'clkPanelOpen',on:true});}catch(e){}}   /* v4.2.393: 開いている間だけ、カーソルの場所を判定してもらう */
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
    vscode.postMessage({type:'clockTagList'});   /* v4.1.91: 扉の数字を今のファイルで数え直す(開く時に1回だけ) */
@@ -29841,7 +29849,8 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
   else{var _dr=document.getElementById('clk-door');if(_dr)_dr.textContent=clkDoorLabel();}   /* v4.1.91: 一覧は描き直さず、扉の数字だけ書き直す(生きた数字を跨がない) */
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
-if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');clkWarn(m.text||'','');}catch(e){}return;}
+if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
+if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
   clkRep=!!(m.cycle&&m.cycle.length);clkDir=!!m.up;
@@ -30796,6 +30805,9 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
+    if (message && message.type === 'clkPanelOpen') {   // v4.2.393: ⏰▾ の設定の窓が開いている間だけ、カーソルの場所を判定して送る
+      _meosClkPanelOpen = !!message.on; if (_meosClkPanelOpen) meosPostClkTarget(); return;
+    }
     if (message && message.type === 'clkLastAsk') {   // v4.2.365: ⏰パネルの ×N → 最終日(ホイール)
       try { meDockPanel.webview.postMessage(Object.assign({ type: 'clkLast', seq: message.seq }, meosClockLastAnswer(message))); } catch (_) { }
       return;
@@ -38045,6 +38057,12 @@ function activate(context) {
     const fs = require('fs'), path = require('path'), mk = path.join(meosHelperDir(), 'off-by-user');
     if (fs.existsSync(mk)) { fs.unlinkSync(mk); meosVHelperSet(false, true); }   // v4.2.364: メニューバーの ⏰ ごと切る / v4.2.374: 知らせはヘルパーが既に置いた(重ねて出すと、後で起こした方まで止める)
   } catch (_) { }
+  // v4.2.393: ⏰▾ が開いている間だけ、カーソルが動いたら(止まって150ms後に)置き場所を判定し直す
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => {
+    if (!_meosClkPanelOpen) return;
+    if (_meosClkTargetTimer) clearTimeout(_meosClkTargetTimer);
+    _meosClkTargetTimer = setTimeout(() => { _meosClkTargetTimer = null; meosPostClkTarget(); }, 150);
+  }));
   // v4.2.350: 変化の無い Cmd+S= 柔らかい音を返し、保存そのものは今まで通り呼ぶ(保存に掛けている他の仕掛けを止めない)。
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
     meosPlayNoChange();
