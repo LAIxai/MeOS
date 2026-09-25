@@ -26623,6 +26623,14 @@ color:#ffffff;z-index:4;padding:0}
    \u2605\u2605v4.1.66(俊克 改良2「チェックボックスの \u2610 that小さ過ぎるので約1.4倍に」): 13px \u00d7 1.4 \u2248 18px。 */
 .clk-cycwrap{position:relative;margin-top:2px}   /* v4.2.409: Repeat の箱＋右肩の↻(プリセット3つ) */
 .clk-pop.hist-only .clk-cycwrap{display:none}
+/* v4.2.411(俊克「Repeatの3プリセットの入力枠を3色で色分け。見出しボタンなどと同様に」): 折り返し幅の↻と同じ 赤/青/緑 */
+.clk-cycwrap.s0 .clk-cyc{background:color-mix(in srgb,var(--vscode-input-background) 76%,#e0564a 24%);border-color:#a8453c}
+.clk-cycwrap.s1 .clk-cyc{background:color-mix(in srgb,var(--vscode-input-background) 76%,#4a86e0 24%);border-color:#3a69ad}
+.clk-cycwrap.s2 .clk-cyc{background:color-mix(in srgb,var(--vscode-input-background) 76%,#3fa85c 24%);border-color:#2f7f45}
+.clk-cycwrap.s0 .clk-pring{background:#e0564a}.clk-cycwrap.s1 .clk-pring{background:#4a86e0}.clk-cycwrap.s2 .clk-pring{background:#3fa85c}
+/* v4.2.411(俊克「起点に Starting point… 日付日時の後ろに p/f」): p=過去(数え上げ=水色) / f=未来(残り=緑)。FC に書かれる印と同じ字 */
+.clk-when .cw-fp{margin-left:1px;font-weight:800}
+.clk-when .cw-fp.p{color:#4fc1ff}.clk-when .cw-fp.f{color:#6cc04a}
 .clk-cyc{display:block;resize:none;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}
 .clk-pbtn{font-size:12px;font-weight:700;padding:1px 14px 1px 8px;border:1px solid rgba(224,128,58,.55);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand);white-space:nowrap}
 .clk-pbtn:hover{background:rgba(224,128,58,.18)}
@@ -26936,7 +26944,8 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div style="border-top:1px solid var(--vscode-panel-border);margin:3px 0"></div>
   <div class="clk-row"><span class="clk-lab">Time</span><span class="clk-hint">24-hour</span></div>
   <div class="clk-cols"><div class="clk-col" id="clk-h"></div><div class="clk-col" id="clk-mi"></div></div>
-  <div class="clk-whenrow"><div class="clk-when" id="clk-when" data-tip="Where the clock starts from \u2014 with a repeat this may be in the past, and the bells are counted on from it. Click the line to type it in: 20:00, or 2026-09-01 20:00. Orange = what you set. Grey = what MeOS worked out for you."><span class="cw-a">\u2192</span><span class="cw-d" id="clk-wd"></span><span class="cw-t" id="clk-wt"></span></div><span class="clk-lockunit" id="clk-lockunit"><button class="clk-lockmain" id="clk-lock" data-tip="Lock \ud83d\udd10 | A test paper you cannot walk out of \u2014 it cannot be dropped from the list until the time is up. Click the bright one; the shoulder \ud83d\udd13 lights up instead, and clicking that unlocks again. Choose, then press Set.">\ud83d\udd10</button><button class="clk-lockbadge" id="clk-unlock" data-tip="Unlock \ud83d\udd13 | Bright on the shoulder when this clock is set to lock. Click it to go back to a clock you can drop at any time.">\ud83d\udd13</button></span><button class="clk-anchor" id="clk-anchor" data-tip="Warp \ud83d\udea2\ud83d\udca8 or moor \u2693 | \ud83d\udea2\ud83d\udca8: when the time is up, you are warped to the membrane. \u2693: the bell rings, but you stay where you are \u2014 for a cycle you work through (every 20 minutes). Click to switch, then press Set. You can also type anchor in the \u23f0 line.">\ud83d\udea2\ud83d\udca8</button></div>
+  <div class="clk-row"><span class="clk-lab">Starting point</span><span class="clk-hint">p = past \u00b7 f = future</span></div>
+  <div class="clk-whenrow"><div class="clk-when" id="clk-when" data-tip="Where the clock starts from \u2014 with a repeat this may be in the past, and the bells are counted on from it. Click the line to type it in: 20:00, or 2026-09-01 20:00. Orange = what you set. Grey = what MeOS worked out for you."><span class="cw-a">\u2192</span><span class="cw-d" id="clk-wd"></span><span class="cw-t" id="clk-wt"></span><span class="cw-fp" id="clk-wfp"></span></div><span class="clk-lockunit" id="clk-lockunit"><button class="clk-lockmain" id="clk-lock" data-tip="Lock \ud83d\udd10 | A test paper you cannot walk out of \u2014 it cannot be dropped from the list until the time is up. Click the bright one; the shoulder \ud83d\udd13 lights up instead, and clicking that unlocks again. Choose, then press Set.">\ud83d\udd10</button><button class="clk-lockbadge" id="clk-unlock" data-tip="Unlock \ud83d\udd13 | Bright on the shoulder when this clock is set to lock. Click it to go back to a clock you can drop at any time.">\ud83d\udd13</button></span><button class="clk-anchor" id="clk-anchor" data-tip="Warp \ud83d\udea2\ud83d\udca8 or moor \u2693 | \ud83d\udea2\ud83d\udca8: when the time is up, you are warped to the membrane. \u2693: the bell rings, but you stay where you are \u2014 for a cycle you work through (every 20 minutes). Click to switch, then press Set. You can also type anchor in the \u23f0 line.">\ud83d\udea2\ud83d\udca8</button></div>
   <input class="clk-in clk-edit" id="clk-edit" placeholder="20:00 / 2026-09-01 20:00" spellcheck="false">
   <div class="clk-row"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
@@ -28419,7 +28428,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
 var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // Pomodoro 1.',anchor:false},{cyc:'8h // Time for eye drops\\n(5m)\u00d72 // Eye drop # 1.',anchor:true},{cyc:'24h\u00d710',anchor:false}];var clkPresetSlot=0;   /* v4.2.315 */
-function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
+function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
 /* 時刻から導かれる日= 今日、過ぎていれば明日。node の meosParseWhen と同じ決まりをここに写す
@@ -28541,10 +28550,14 @@ var _ds=clkDateStr();
 try{var _m=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})$/.exec(_ds);
  if(_m)_ds=_ds+'('+clkW(new Date(+_m[1],+_m[2]-1,+_m[3]))+')';}catch(e){}
 wd.textContent=_ds;wt.textContent=clkTimeStr();
-if(window.__clkNoOrigin){wd.textContent='no start \u2014 counts from Set';wt.textContent='';}   /* v4.2.395: 起点なし(回すと起点が決まる) */
+/* v4.2.411: 起点の後ろに p/f= FC に書かれるのと同じ印。Now を押した瞬間に p になるのが見える */
+var _fp=document.getElementById('clk-wfp');if(_fp){var _o=null;try{var _dm=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})/.exec(clkDateStr()),_tm=/(\\d{1,2}):(\\d{2})/.exec(clkTimeStr());if(_dm&&_tm)_o=new Date(+_dm[1],+_dm[2]-1,+_dm[3],+_tm[1],+_tm[2]);}catch(e){}
+ var _k=_o?(_o.getTime()<=Date.now()?'p':'f'):'';_fp.textContent=_k;_fp.className='cw-fp'+(_k?' '+_k:'');_fp.setAttribute('data-tip',_k==='p'?'p = past | The starting point has already gone \u2014 the clock counts up from it.':(_k==='f'?'f = future | The starting point is still to come \u2014 the clock counts down to it.':''));}
+if(window.__clkNoOrigin){wd.textContent='no start \u2014 counts from Set';wt.textContent='';if(_fp){_fp.textContent='';_fp.className='cw-fp';}}   /* v4.2.395: 起点なし(回すと起点が決まる) */
 wd.classList.toggle('fix',clkFixD);
 /* v4.1.46: 同じ旗を輪にも渡す= 下の行と輪that同じことを言う(色の意味は1つ) */
 if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
+(function clkFpBeat(){try{if(clkPop&&clkPop.classList.contains('on'))clkEcho();}catch(e){}setTimeout(clkFpBeat,1000);})();   /* v4.2.411: 開いている間に起点を過ぎたら f→p(webview の中の拍= 窓と一緒に消える) */
 /* 打ち込みの口は1つ= 合体行を押すと、この箱が同じ場所に出る。 */
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
 var v=(e.value||'').trim().replace(/[\uFF1A]/g,':').replace(/[\uFF0F]/g,'/');
@@ -28866,7 +28879,12 @@ if(clkCaret&&clkPop){
    var _cur=clkPresets[clkPresetSlot]||{};
    if(_cy3&&String(_cy3.value||'').trim()===String(_cur.cyc||'')&&clkRep){clkPresetSlot=(clkPresetSlot+1)%3;vscode.postMessage({type:'clockPresetSlot',slot:clkPresetSlot});}
    var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
-   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}return;}
+   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
+   /* ★v4.2.411(俊克「回数指定(×3など)があるケースでは、×の右側に文字カーソルを自動で移動し、ドラム式セレクターを表示させる。これで仕組みを自然に学習させる」):
+      ×N があれば × のすぐ右へ置いてドラムを出す。無ければ最初の数字の終わり(v4.1.159 と同じ置き場所) */
+   try{if(_cy3){var _vv=_cy3.value,_mx=/[\u00d7xX*]\\s*\\d/.exec(_vv),_at;if(_mx)_at=_mx.index+1;else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
+    _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
+   return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
    /* ★★v4.1.158(俊克 9/6 pm00:51 改良1「Repeat\u21ba\u21bb をクリックした時、入力枠は空のままだね。
         ((30s 15s)x4 1m)x3 that典型的なHIITの使用パターンらしいので、影文字もこのパターンに直して、
@@ -28966,6 +28984,7 @@ if(clkCaret&&clkPop){
      ★v4.2.367 の「箱の上でホイール」はやめ、日付・時刻と同じドラム(clkFill/clkSel/clkWatch)を箱の下に出す。回すのは、カーソルの居る × の数だけ。 */
   var clkNdCols=document.getElementById('clk-ncols'),clkNd=document.getElementById('clk-nd'),clkNdSpan=null;
   function clkNdHide(){clkNdSpan=null;if(clkNdCols)clkNdCols.classList.remove('on');}
+  window.__clkNdCheck=function(){clkNdSpan=null;clkNdCheck();};   /* v4.2.411: ↻ で入れた ×N にもドラム */
   function clkNdCheck(){if(!clkCycEl||!clkNd||clkCycEl.disabled){clkNdHide();return;}
    var v=clkCycEl.value,c=clkCycEl.selectionStart,re=/[\u00d7xX*]\\s*(\\d+)/g,m,hit=null;
    while((m=re.exec(v))){var ds=m.index+m[0].length-m[1].length,de=m.index+m[0].length;if(c>m.index&&c<=de){hit={s:ds,e:de,n:parseInt(m[1],10)};break;}}

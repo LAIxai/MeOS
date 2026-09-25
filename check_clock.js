@@ -759,7 +759,7 @@ console.log('\u3255 色の意味は1つ(指定した=橙)');
     '  白くするのは**日付の3列だけ**(時刻は常に橙)', true);
  ok(!/class="clk-col dcol" id="clk-h"/.test(SRC9)&&!/class="clk-col dcol" id="clk-mi"/.test(SRC9),
     '  時分の列には印を付けない(指定しない状態that無い)', true);
- const _e=SRC9.slice(SRC9.indexOf('function clkEcho()'), SRC9.indexOf('function clkEcho()')+760);
+ const _e=SRC9.slice(SRC9.indexOf('function clkEcho()'), SRC9.indexOf('function clkEcho()')+2200);
  ok(/clkPop\.classList\.toggle\('dfix',clkFixD\)/.test(_e), '\u2605\u2605下の行と輪that**同じ旗**から色を決める', true);
 }
 
