@@ -14691,7 +14691,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   const ed = meosCurrentEditor(); if (!ed) return;
   let scope = meosModeScope(ed); if (!scope) return;
   // ★v4.2.389: read ⏰ で読んだ⏰行(閉じ膜の下= カーソルの「今の膜」は1つ外側)を直す時は、その⏰の膜として書く
-  if (opts && opts.atKey && typeof opts.atLine === 'number' && scope.doc) scope = Object.assign({}, scope, { key: opts.atKey, name: opts.atKey });
+  if (opts && opts.atKey && scope.doc) scope = Object.assign({}, scope, { key: opts.atKey, name: opts.atKey });   // v4.2.391: 行を名指ししない時(群のすぐ下)も、その⏰の膜として足す
   const ms = untilMs ? Math.max(1000, untilMs) : Math.max(1, Math.min(600, Math.round(Number(minutes) || 0))) * 60000;
   const lk = meosLockKey(scope);
   meosClearPseudoTimer(lk);
@@ -30849,8 +30849,12 @@ function toggleMeDock(editorOverride) {
         // ★★v4.2.390(俊克「ある膜で⏰FCをreadで読込み、別の膜に行って、そこの⏰FCに上書きしたり、追加したりできるので、文字カーソルの位置で制御するのがいい」):
         //   ★どこへ書くかは **Set を押した瞬間のカーソル**が決める(read は値をパネルへ持って来るだけ・覚えを持たない)。
         //     カーソルが⏰FC の行の上= その行を書き直す(その⏰の膜として) / それ以外(開始膜・閉じ膜・膜の中)= その膜の⏰FC群の最後に足す。
-        ...(function () { try { const _e = meosCurrentEditor(); const _h = _e ? meosClockAtLine(_e.document, null, _e.selection.active.line) : null;
-          return _h ? { atLine: _h.line, atKey: String(_h.key || '') } : {}; } catch (_) { return {}; } })() };
+        //   ★v4.2.391(俊克「文字カーソルを⏰FC群の直ぐ後ろに置いて、そこにSetすると思うはず」): 1つ上の行が⏰FCなら、その群の膜の最後に足す
+        //     (群の下の行は膜の外= そのままだと外側の膜に足していた)。
+        ...(function () { try { const _e = meosCurrentEditor(); if (!_e) return {}; const _ln = _e.selection.active.line;
+          const _h = meosClockAtLine(_e.document, null, _ln); if (_h) return { atLine: _h.line, atKey: String(_h.key || '') };
+          const _up = _ln > 0 ? meosClockAtLine(_e.document, null, _ln - 1) : null; if (_up) return { atKey: String(_up.key || '') };
+          return {}; } catch (_) { return {}; } })() };
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
