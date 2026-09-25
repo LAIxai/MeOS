@@ -11305,7 +11305,8 @@ function meosClockLastAnswer(msg) {
   const cycle = ex.steps.map(e => e.tok);
   if (!cycle.length) return { ok: false };
   const w = String(msg.when || '').trim();
-  const od = meosParseStampLoose(w) || ((meosParseWhen(w) || {}).at) || null;
+  // v4.2.398: 起点なし(Set した瞬間から数える)なら、今を起点に最終日を出す
+  const od = (w === '') ? new Date() : (meosParseStampLoose(w) || ((meosParseWhen(w) || {}).at) || null);
   if (!od) return { ok: false };
   const o = od.getTime();
   let n = ex.rounds > 0 ? ex.rounds : 0, newText = cyc;
@@ -28827,7 +28828,7 @@ if(clkCaret&&clkPop){
  var clkCycEl=document.getElementById('clk-cyc');
  /* v4.2.365: 「×N → 最終日」をホイールで回す(マウスは動かさない)。数えるのは拡張(×N の最終日/Date&Count と同じ関数)。 */
  var clkLastSeq=0,clkLastTimer=null,clkLastAcc=0;
- function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:clkText(),cycle:cy?cy.value:'',unit:unit||'',dir:dir||0});}
+ function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?cy.value:'',unit:unit||'',dir:dir||0});}
  function clkLastSoon(){if(clkLastTimer)clearTimeout(clkLastTimer);clkLastTimer=setTimeout(function(){clkLastTimer=null;clkLastAsk('',0);},150);}
  window.__clkLastPaint=function(m){if(m.seq!==clkLastSeq)return;var ln=document.getElementById('clk-ln'),lt=document.getElementById('clk-lt');if(!ln||!lt)return;
   var cy=document.getElementById('clk-cyc');if(cy&&typeof m.cycle==='string'&&m.cycle!==cy.value)cy.value=m.cycle;

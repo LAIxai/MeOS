@@ -110,6 +110,6 @@ q=A({when:Y+'-10-01 10:00',cycle:'t1,3 ×11',unit:'mo',dir:-1}); ok(q.n<11 && q.
 q=A({when:Y+'-09-24 21:00',cycle:'3m 1m',unit:'n',dir:1}); ok(q.cycle==='(3m 1m)×1', '×N の無い並びに回数= 括弧で包む', q);
 ok(X.meosCycleTextSetRounds('((30s 15s)×4 1m)',3)==='((30s 15s)×4 1m)×3','入れ子を包む括弧に ×3');
 ok(X.meosCycleTextSetRounds('20m×225',250)==='20m×250','既存の ×225 を替える');
-q=A({when:'',cycle:'8h ×3'}); ok(!q.ok,'起点が無ければ答えない');
+q=A({when:'',cycle:'8h ×3'}); ok(q.ok && q.n===3 && q.parts, '起点なし= 今から数えて最終日を出す(v4.2.398)', q);
 console.log(ng?('\nNG '+ng+'件'):'\n全部 ok');
 process.exit(ng?1:0);
