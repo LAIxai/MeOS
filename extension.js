@@ -11194,6 +11194,25 @@ function meosClockLastLabel(t) {
 const MEOS_LAST_FLASH_MS = 5000;
 const _meosLastFlash = new Map();   // 膜+⏰行の位置 -> {sig, at}= 直した瞬間を覚える(開いただけでは光らない)
 // v4.2.383: 「この行の時計」(Read ⏰ がカーソルの⏰行を読む)= 席の1本を探す口(meosLiveClockFor)とは別の問い。行を名指しして探す。
+// v4.2.392: Set の書き先= {atLine, atKey}(書き直す)/{atKey}(その膜の群の最後に足す)/{refused}(場所が違う)。
+//   許すのは ①⏰FC の行 ②閉じ膜(▲)の行・そのすぐ下のバッジの行 ③⏰FC群(か閉じ膜・バッジ)のすぐ下の空行 だけ。
+function meosClockSetTarget() {
+  try {
+    const e = meosCurrentEditor(); if (!e) return null;
+    const doc = e.document, ln = e.selection.active.line;
+    const h = meosClockAtLine(doc, null, ln); if (h) return { atLine: h.line, atKey: String(h.key || '') };
+    const pairs = collectPairs(doc, { excludeIndex: false });
+    const closeKey = (l) => { const p = pairs.find(q => q.end === l); return p ? String(p.id || '') : ''; };
+    const badgeKey = (l) => (l >= 1 && meosIsPairBadgeSpec(doc.lineAt(l).text)) ? closeKey(l - 1) : '';
+    let k = closeKey(ln) || badgeKey(ln);
+    if (k) return { atKey: k };
+    if (!doc.lineAt(ln).text.trim() && ln >= 1) {
+      const up = meosClockAtLine(doc, null, ln - 1); if (up) return { atKey: String(up.key || '') };
+      k = closeKey(ln - 1) || badgeKey(ln - 1); if (k) return { atKey: k };
+    }
+    return { refused: '\u23f0 To add a clock, put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines, then press Set. To change a clock, put the caret on its \u23f0 line.' };
+  } catch (_) { return null; }
+}
 function meosClockAtLine(doc, key, line) { for (const c of meosClockFcScan(doc)) if ((key == null || c.key === key) && c.line === line) return c; return null; }   // v4.2.389: key=null= 膜を問わず、その行の時計
 function meosClockOriginOf(c) {
   try { const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null; return o ? o.getTime() : 0; } catch (_) { return 0; }
@@ -29822,6 +29841,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
   else{var _dr=document.getElementById('clk-door');if(_dr)_dr.textContent=clkDoorLabel();}   /* v4.1.91: 一覧は描き直さず、扉の数字だけ書き直す(生きた数字を跨がない) */
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
+if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');clkWarn(m.text||'','');}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
   clkRep=!!(m.cycle&&m.cycle.length);clkDir=!!m.up;
@@ -30849,12 +30869,12 @@ function toggleMeDock(editorOverride) {
         // ★★v4.2.390(俊克「ある膜で⏰FCをreadで読込み、別の膜に行って、そこの⏰FCに上書きしたり、追加したりできるので、文字カーソルの位置で制御するのがいい」):
         //   ★どこへ書くかは **Set を押した瞬間のカーソル**が決める(read は値をパネルへ持って来るだけ・覚えを持たない)。
         //     カーソルが⏰FC の行の上= その行を書き直す(その⏰の膜として) / それ以外(開始膜・閉じ膜・膜の中)= その膜の⏰FC群の最後に足す。
-        //   ★v4.2.391(俊克「文字カーソルを⏰FC群の直ぐ後ろに置いて、そこにSetすると思うはず」): 1つ上の行が⏰FCなら、その群の膜の最後に足す
-        //     (群の下の行は膜の外= そのままだと外側の膜に足していた)。
-        ...(function () { try { const _e = meosCurrentEditor(); if (!_e) return {}; const _ln = _e.selection.active.line;
-          const _h = meosClockAtLine(_e.document, null, _ln); if (_h) return { atLine: _h.line, atKey: String(_h.key || '') };
-          const _up = _ln > 0 ? meosClockAtLine(_e.document, null, _ln - 1) : null; if (_up) return { atKey: String(_up.key || '') };
-          return {}; } catch (_) { return {}; } })() };
+        //   ★v4.2.391: ⏰FC群のすぐ下の行もその群の膜 / ★v4.2.392: 足せる場所を限る(下の meosClockSetTarget)。
+        ...(meosClockSetTarget() || {}) };
+      // ★★v4.2.392(俊克 改良1「ものすごい長い膜だと、間違って⏰を付けたことに気づかないことがある。
+      //   タイマーの追加は、閉じ膜あるいは⏰FC群の直後の空行に限定しないか?」):
+      //   ★場所が違えば書かずに断り、パネルを開き直して札を出す(値はそのまま= 置き直して押し直すだけ)。
+      if (_opts.refused) { try { meDockPanel.webview.postMessage({ type: 'clkSetRefused', text: _opts.refused }); } catch (_) { } return; }
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
