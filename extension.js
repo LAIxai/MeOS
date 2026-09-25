@@ -29169,7 +29169,7 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,9).join('');};
-const sdLabel=(n)=>((n==='Mew'||n==='Purr')?'\ud83d\udc31 ':'')+sdShort(n);   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
+const sdLabel=(n)=>(n==='Mew'?'\ud83d\udc31 ':(n==='Purr'?'\ud83d\ude38 ':''))+sdShort(n);   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
 window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='Mew'||m.current==='Purr')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  const rows=[{name:'',label:'(no sound)'}].concat((m.list||[]).map(n=>({name:n,label:sdLabel(n)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
