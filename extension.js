@@ -2677,36 +2677,37 @@ function meosMewPath() {
     const os = require('os'), fs = require('fs'), path = require('path');
     // ★v4.2.400(俊克「ものすごい声。人が甲高い声で鳴き真似しているように聞こえる。ちょっとリアル過ぎる」): 子猫の「ミュー」へ
     //   = 高く・上下は小さく・口の形の動きを小さく(母音に聞こえない)・倍音を減らして細く・0.5秒
-    // ★v4.2.401(俊克「ミャゥ↗→↘のように下がるのが違和感。ミャー↗→→のような感じに。鼻にかかったような音にすると、もっと猫らしくなる」):
-    //   = 上がって平らに伸ばす(下げない)/ 1500Hz 辺りに響きの谷・2900Hz 辺りに細い響き(鼻に抜ける声)/ 0.6秒
-    const rate = 44100, dur = 0.6, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    // ★v4.2.402(俊克「miヤーーゥ↗→→↘。mi は小さく短く、ヤーが鼻にかかった音、最後に短い小さいゥ」):
+    //   3つの部分= mi(0.08秒・35%・イ) / ヤーー(鼻にかかる・960Hz で平ら・ア) / ゥ(0.12秒・45%から消える・下がる・ウ)。継ぎ目は30msでなめらかに。
+    const rate = 44100, dur = 0.64, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
-    const ease = (x) => x * x * (3 - 2 * x);
-    const lerp3 = (a, b, c, u, m) => (u < m ? a + (b - a) * ease(u / m) : b + (c - b) * ease((u - m) / (1 - m)));
+    const A = 0.08, B = 0.52, X = 0.03;                                   // mi の終わり / ヤーの終わり / 継ぎ目
+    const sm = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+    const seg = (t, vMi, vYa, vU) => { const w1 = sm((t - A) / X), w2 = sm((t - B) / X); return vMi * (1 - w1) + (vYa * (1 - w2) + vU * w2) * w1; };
     let ph = 0, peak = 0;
     for (let i = 0; i < n; i++) {
-      const t = i / rate, u = t / dur;
-      const f0 = lerp3(720, 960, 940, u, 0.28) * (1 + 0.008 * Math.sin(2 * Math.PI * 7 * t));   // ミャ↗ー→→(下げない) ＋ 小さな震え
+      const t = i / rate;
+      let f0 = t < A ? 800 + 60 * (t / A) : (t < B ? 860 + 100 * sm((t - A) / 0.1) : 960 - 240 * sm((t - B) / (dur - B)));
+      f0 *= (1 + 0.008 * Math.sin(2 * Math.PI * 7 * t));
       ph += 2 * Math.PI * f0 / rate;
-      const F1 = lerp3(900, 1100, 950, u, 0.4), F2 = lerp3(2000, 1800, 1600, u, 0.4);          // 口の形はほとんど動かさない
+      const F1 = seg(t, 400, 1000, 500), F2 = seg(t, 2300, 1600, 900), nas = seg(t, 0.3, 1, 0.4);
       let v = 0;
       for (let k = 1; k <= 8; k++) {
         const fk = k * f0; if (fk > rate / 2 - 500) break;
         const g = (Math.exp(-Math.pow((fk - F1) / 260, 2)) + 0.8 * Math.exp(-Math.pow((fk - F2) / 380, 2)) + 0.3 * Math.exp(-Math.pow((fk - 3000) / 500, 2)) + 0.04)
-          * (1 - 0.7 * Math.exp(-Math.pow((fk - 1500) / 300, 2)))                    // 鼻の谷
-          + 0.5 * Math.exp(-Math.pow((fk - 2900) / 400, 2));                         // 鼻にかかった細い響き
-        v += g * Math.sin(k * ph) / Math.pow(k, 1.1);   // 倍音は弱め= 細い声(鼻の響きの分だけ少し残す)
+          * (1 - 0.7 * nas * Math.exp(-Math.pow((fk - 1500) / 300, 2)))        // 鼻の谷(ヤーで強く)
+          + 0.5 * nas * Math.exp(-Math.pow((fk - 2900) / 400, 2));             // 鼻にかかった細い響き
+        v += g * Math.sin(k * ph) / Math.pow(k, 1.1);
       }
-      const nasal = u < 0.08 ? 0.35 + 0.65 * (u / 0.08) : 1;                                     // 頭の「ン」は少し籠もる
-      const env = Math.min(1, t / 0.03) * (u < 0.7 ? 1 : Math.pow(Math.max(0, (1 - u) / 0.3), 1.2));   // 伸ばしてから、高さは保ったまま消える
-      v *= env * nasal; smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+      const amp = seg(t, 0.8, 1, 0.45)   /* mi は「イ」で響きが弱いので、係数は大きめ(測って ヤーの約3分の1) */ * Math.min(1, t / 0.02) * (t < B + X ? 1 : Math.pow(Math.max(0, (dur - t) / (dur - B - X)), 1.3));
+      v *= amp; smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
     }
     const k = peak > 0 ? (0.8 / peak) : 1;
     for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-mew-v3.wav');
+    const f = path.join(os.tmpdir(), 'meos-mew-v4.wav');
     fs.writeFileSync(f, buf); _meosMewFile = f; return f;
   } catch (_) { return null; }
 }
@@ -12670,7 +12671,7 @@ function meosHelperSound() {
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
-    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
+    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
