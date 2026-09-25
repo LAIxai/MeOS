@@ -11194,7 +11194,7 @@ function meosClockLastLabel(t) {
 const MEOS_LAST_FLASH_MS = 5000;
 const _meosLastFlash = new Map();   // 膜+⏰行の位置 -> {sig, at}= 直した瞬間を覚える(開いただけでは光らない)
 // v4.2.383: 「この行の時計」(Read ⏰ がカーソルの⏰行を読む)= 席の1本を探す口(meosLiveClockFor)とは別の問い。行を名指しして探す。
-function meosClockAtLine(doc, key, line) { for (const c of meosClockFcScan(doc)) if (c.key === key && c.line === line) return c; return null; }
+function meosClockAtLine(doc, key, line) { for (const c of meosClockFcScan(doc)) if ((key == null || c.key === key) && c.line === line) return c; return null; }   // v4.2.389: key=null= 膜を問わず、その行の時計
 function meosClockOriginOf(c) {
   try { const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null; return o ? o.getTime() : 0; } catch (_) { return 0; }
 }
@@ -14689,7 +14689,9 @@ function meosMsUntilClock(txt) { const w = meosParseWhen(txt); return w ? w.ms :
 //     繰返しをやめることは別の意志([[project_last_specified_wins]] v4.1.52の教訓)。
 async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   const ed = meosCurrentEditor(); if (!ed) return;
-  const scope = meosModeScope(ed); if (!scope) return;
+  let scope = meosModeScope(ed); if (!scope) return;
+  // ★v4.2.389: read ⏰ で読んだ⏰行(閉じ膜の下= カーソルの「今の膜」は1つ外側)を直す時は、その⏰の膜として書く
+  if (opts && opts.atKey && typeof opts.atLine === 'number' && scope.doc) scope = Object.assign({}, scope, { key: opts.atKey, name: opts.atKey });
   const ms = untilMs ? Math.max(1000, untilMs) : Math.max(1, Math.min(600, Math.round(Number(minutes) || 0))) * 60000;
   const lk = meosLockKey(scope);
   meosClearPseudoTimer(lk);
@@ -28332,7 +28334,7 @@ clkPutYMDHM(t.getFullYear(),t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes
 /* v4.1.169: この膜の時計を面へ取り込む(read \u23f0)。打ち込みの口は clkSyncFromBox 1つ。 */
 function clkTakeIn(d){try{
  if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
- window.__clkReadLine=(typeof d.line==='number')?d.line:-1;   /* v4.2.367: Set はこの行を書き直す */
+ window.__clkReadLine=(typeof d.line==='number')?d.line:-1;window.__clkReadKey=String(d.key||'');   /* v4.2.367: Set はこの行を書き直す / v4.2.389: その膜の名前も */
  /* ★★★v4.1.173(俊克 バグ1の真因・ack that名指し): ack thatが matched:false を返した=
     **字は届いているのに正規表現that当たっていなかった**。
     ★★★webviewのJSはテンプレートリテラルの中so、バックスラッシュを二重に書かないと潰れる
@@ -28773,7 +28775,7 @@ if(clkCaret&&clkPop){
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
-  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:'',atLine:(typeof window.__clkReadLine==='number'&&window.__clkReadLine>=0)?window.__clkReadLine:-1});window.__clkReadLine=-1;   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:'',atLine:(typeof window.__clkReadLine==='number'&&window.__clkReadLine>=0)?window.__clkReadLine:-1,atKey:window.__clkReadKey||''});window.__clkReadLine=-1;window.__clkReadKey='';   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -30716,13 +30718,23 @@ function toggleMeDock(editorOverride) {
           // ★v4.2.367(俊克「次の予定ではなく、現在文字カーソルがいる⏰FCの値をReadボタンで読込み、変更してSetする」):
           //   カーソルが⏰行に居れば**その行**を読み、行番号も返す= Set はその1本を書き直す(新しく足さない)。
           let hit = null;
-          try { hit = sc && sc.key ? meosClockAtLine(ed.document, sc.key, ed.selection.active.line) : null; } catch (_) { hit = null; }
+          // ★v4.2.389(俊克 バグ1「⏰FCに文字カーソルを置いた時に read が読み込まない。開始膜か閉じ膜の上でないと読めない」):
+          //   ⏰FC は閉じ膜の下に並ぶ= カーソルがそこに居ると「今の膜」は1つ外側になり、外側で探して「無い」と言っていた(ログ why=no clock in this membrane)。
+          //   → カーソルの行が⏰行なら、膜を問わずその行を読む。
+          try { hit = meosClockAtLine(ed.document, null, ed.selection.active.line); } catch (_) { hit = null; }
           if (!hit) hit = sc && sc.key ? meosLiveClockFor(ed.document, sc.key) : null;
-          if (hit) _r = { type: 'clockRead', ok: true, line: (typeof hit.line === 'number' ? hit.line : -1),
-            when: String(hit.whenSrc || hit.when || ''),
+          if (hit) _r = { type: 'clockRead', ok: true, line: (typeof hit.line === 'number' ? hit.line : -1), key: String(hit.key || ''),   // v4.2.389: その⏰の膜の名前も運ぶ(Set が外側の膜に書かない)
+            when: (function () {   // v4.2.389: f/p の印はパネルの起点の欄が読めない(ack matched:false)= 未来の f があればその日時、無ければ p の日時を素の形で渡す
+              const w0 = String(hit.whenSrc || hit.when || '').trim();
+              const mf = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)f\b/.exec(w0);
+              if (mf) return mf[1];
+              const mp = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)p\b/.exec(w0);
+              if (mp) return mp[1];
+              return w0;
+            })(),
             cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))),
             rep: !!(hit.cycle && hit.cycle.length), lock: !!hit.lock, tags: hit.tags || [] };
-          else if (!sc || !sc.key) _r.why = 'put the caret inside a membrane first';
+          else if (!sc || !sc.key) _r.why = 'put the caret on a \u23f0 line or inside a membrane first';
         }
       } catch (_) { }
       // ★v4.1.171: **黙って失敗しない**= 何を返したかを残し、読めなかった時は面でなくバーで言う
@@ -30835,7 +30847,8 @@ function toggleMeDock(editorOverride) {
         up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,   // v4.1.142: 面は常に \u21ba\u21bb
         rounds: (_cyEx && _cyEx.rounds) ? _cyEx.rounds : (_rep ? meosParseRoundsInput(message.cycle) : 0),
         tags: (message.tags != null) ? meosParseTagInput(message.tags) : null,
-        atLine: (typeof message.atLine === 'number' && message.atLine >= 0) ? message.atLine : undefined };   // v4.2.367: Read した行を書き直す
+        atLine: (typeof message.atLine === 'number' && message.atLine >= 0) ? message.atLine : undefined,   // v4.2.367: Read した行を書き直す
+        atKey: (typeof message.atLine === 'number' && message.atLine >= 0 && message.atKey) ? String(message.atKey) : undefined };   // v4.2.389: その行の膜
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。

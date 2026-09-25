@@ -1712,7 +1712,7 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
     '★★Now= ダイヤルを今に合わせる(日付も指定したことにする)', true);
  ok(/id="clk-read"/.test(S)&&/type:'clockRead'/.test(S),
     '★★★read ⏰ = この膜の時計を面へ取り込む', true);
- ok(/when: String\(hit\.whenSrc \|\| hit\.when \|\| ''\)/.test(S)&&/cycle: String\(hit\.cycleSrc \|\|/.test(S),
+ ok(/(when|const w0 =) String\(hit\.whenSrc \|\| hit\.when \|\| ''\)/.test(S)&&/if \(mf\) return mf\[1\];[\s\S]{0,400}return w0;/.test(S)&&   /* v4.2.389: f/p の印だけ外す(仕掛けの言葉はそのまま w0 で返す) *//cycle: String\(hit\.cycleSrc \|\|/.test(S),
     '★★★返すのは**本文の字そのもの**(置き換えた値を渡すと BigBang のような仕掛けthat消える)', true);
  /* ★★★v4.1.171(俊克 バグ1「read⏰ は起点の日付をまったく読み込んでない。設定パネルthat更新されない」):
     輪に置く道that2つあった= clkNow は「窓(年代)ごと張り直してfrom選ぶ」のに clkSyncFromBox は選ぶだけ。
