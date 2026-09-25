@@ -2675,7 +2675,9 @@ function meosMewPath() {
   if (_meosMewFile) { try { if (require('fs').existsSync(_meosMewFile)) return _meosMewFile; } catch (_) { } }
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
-    const rate = 44100, dur = 0.78, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    // ★v4.2.400(俊克「ものすごい声。人が甲高い声で鳴き真似しているように聞こえる。ちょっとリアル過ぎる」): 子猫の「ミュー」へ
+    //   = 高く・上下は小さく・口の形の動きを小さく(母音に聞こえない)・倍音を減らして細く・0.5秒
+    const rate = 44100, dur = 0.5, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
@@ -2685,22 +2687,22 @@ function meosMewPath() {
     let ph = 0, peak = 0;
     for (let i = 0; i < n; i++) {
       const t = i / rate, u = t / dur;
-      const f0 = lerp3(550, 800, 430, u, 0.28) * (1 + 0.015 * Math.sin(2 * Math.PI * 6 * t));   // ミ↗ャ↘ウ ＋ 震え
+      const f0 = lerp3(750, 980, 680, u, 0.3) * (1 + 0.008 * Math.sin(2 * Math.PI * 7 * t));   // ミュ↗ー↘ ＋ 小さな震え
       ph += 2 * Math.PI * f0 / rate;
-      const F1 = lerp3(420, 950, 520, u, 0.4), F2 = lerp3(2300, 1400, 850, u, 0.4);            // イ → ア → ウ
+      const F1 = lerp3(900, 1100, 950, u, 0.4), F2 = lerp3(2000, 1800, 1600, u, 0.4);          // 口の形はほとんど動かさない
       let v = 0;
-      for (let k = 1; k <= 14; k++) {
+      for (let k = 1; k <= 6; k++) {
         const fk = k * f0; if (fk > rate / 2 - 500) break;
         const g = Math.exp(-Math.pow((fk - F1) / 260, 2)) + 0.8 * Math.exp(-Math.pow((fk - F2) / 380, 2)) + 0.3 * Math.exp(-Math.pow((fk - 3000) / 500, 2)) + 0.04;
-        v += g * Math.sin(k * ph) / Math.pow(k, 0.5);
+        v += g * Math.sin(k * ph) / Math.pow(k, 1.3);   // 倍音は急に弱く= 細い声
       }
       const nasal = u < 0.08 ? 0.35 + 0.65 * (u / 0.08) : 1;                                     // 頭の「ン」は少し籠もる
-      const env = Math.min(1, t / 0.045) * (u < 0.62 ? 1 : Math.pow(Math.max(0, (1 - u) / 0.38), 1.6));
+      const env = Math.min(1, t / 0.03) * (u < 0.5 ? 1 : Math.pow(Math.max(0, (1 - u) / 0.5), 1.4));
       v *= env * nasal; smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
     }
     const k = peak > 0 ? (0.8 / peak) : 1;
     for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-mew-v1.wav');
+    const f = path.join(os.tmpdir(), 'meos-mew-v2.wav');
     fs.writeFileSync(f, buf); _meosMewFile = f; return f;
   } catch (_) { return null; }
 }
@@ -12664,7 +12666,7 @@ function meosHelperSound() {
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
-    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
+    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
