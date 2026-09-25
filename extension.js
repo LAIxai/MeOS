@@ -2667,25 +2667,72 @@ function meosSoundDirs() {
   if (process.platform === 'win32') return [{ dir: path.join(process.env.SystemRoot || process.env.windir || 'C:\\Windows', 'Media'), re: /\.wav$/i }];
   return [{ dir: '/usr/share/sounds/freedesktop/stereo', re: /\.(oga|ogg|wav)$/i }];
 }
+// ★★v4.2.399(俊克「アラーム音ボタンのリストに Mew を追加しよう。🐱 Mew / 🐱 Purr。Purr が猫のゴロゴロと分る人は少ない」
+//   ＋「無いものは自分で作る。作って下さい」): ★猫の声を計算で作る= 権利の心配が無く、vsix も増えない(鳴らす時に作る)。
+//   ★「ミ↗ャ↘ウ」= 声の高さ 550→800→430Hz / 口の形(響きの山)を イ→ア→ウ へ動かす / 少しの震え / 柔らかく立ち上がり消える。
+let _meosMewFile = null;
+function meosMewPath() {
+  if (_meosMewFile) { try { if (require('fs').existsSync(_meosMewFile)) return _meosMewFile; } catch (_) { } }
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 44100, dur = 0.78, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    const ease = (x) => x * x * (3 - 2 * x);
+    const lerp3 = (a, b, c, u, m) => (u < m ? a + (b - a) * ease(u / m) : b + (c - b) * ease((u - m) / (1 - m)));
+    let ph = 0, peak = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / rate, u = t / dur;
+      const f0 = lerp3(550, 800, 430, u, 0.28) * (1 + 0.015 * Math.sin(2 * Math.PI * 6 * t));   // ミ↗ャ↘ウ ＋ 震え
+      ph += 2 * Math.PI * f0 / rate;
+      const F1 = lerp3(420, 950, 520, u, 0.4), F2 = lerp3(2300, 1400, 850, u, 0.4);            // イ → ア → ウ
+      let v = 0;
+      for (let k = 1; k <= 14; k++) {
+        const fk = k * f0; if (fk > rate / 2 - 500) break;
+        const g = Math.exp(-Math.pow((fk - F1) / 260, 2)) + 0.8 * Math.exp(-Math.pow((fk - F2) / 380, 2)) + 0.3 * Math.exp(-Math.pow((fk - 3000) / 500, 2)) + 0.04;
+        v += g * Math.sin(k * ph) / Math.pow(k, 0.5);
+      }
+      const nasal = u < 0.08 ? 0.35 + 0.65 * (u / 0.08) : 1;                                     // 頭の「ン」は少し籠もる
+      const env = Math.min(1, t / 0.045) * (u < 0.62 ? 1 : Math.pow(Math.max(0, (1 - u) / 0.38), 1.6));
+      v *= env * nasal; smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    const k = peak > 0 ? (0.8 / peak) : 1;
+    for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-mew-v1.wav');
+    fs.writeFileSync(f, buf); _meosMewFile = f; return f;
+  } catch (_) { return null; }
+}
+// 音の名前 → 鳴らすファイル(Mew= 作った猫の声 / フルパス= そのまま / mac= システムの音)
+function meosSoundResolve(name) {
+  const n = String(name || '');
+  if (n === 'Mew') return meosMewPath() || '';
+  if (meosSoundIsPath(n)) return n;
+  return process.platform === 'darwin' && n ? ('/System/Library/Sounds/' + n + '.aiff') : '';
+}
 function meosSoundIsPath(n) { return /[\/\\]/.test(String(n || '')); }
 function meosSoundList() {
   const out = [], fs = require('fs'), path = require('path');
   for (const d of meosSoundDirs()) {
     try { for (const f of fs.readdirSync(d.dir)) { const m = d.re.exec(f); if (m) out.push(d.byName ? m[1] : path.join(d.dir, f)); } } catch (_) { }
   }
+  out.push('Mew');   // v4.2.399: 作った猫の声(どの OS でも)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
   if (cur && out.indexOf(cur) < 0 && (process.platform === 'darwin' || meosSoundIsPath(cur))) out.push(cur);   // 手で書いた音のファイル(フルパス)も一覧に残す
   return out;
 }
 function meosSoundNow() { try { return String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'Sosumi') || '').trim(); } catch (_) { return 'Sosumi'; } }
-function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
+function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && cur !== 'Mew' && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
 // 1つの音を鳴らす(試聴も鐘も同じ口)。返り値= 走らせた子(止めるため)。
 function meosSoundSpawn(name) {
   const cp = require('child_process');
+  if (name === 'Mew') name = meosMewPath() || '';   // v4.2.399
+  if (!name) return null;
   if (process.platform === 'darwin') {
     const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
-    const f = meosSoundIsPath(name) ? name : ('/System/Library/Sounds/' + name + '.aiff');
+    const f = meosSoundResolve(name);
     return cp.execFile('/usr/bin/afplay', ['-v', String(vol), f], () => { });
   }
   if (!meosSoundIsPath(name)) return null;
@@ -12615,7 +12662,9 @@ function meosHelperSound() {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
     const name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
-    const file = !name ? '' : (name.indexOf('/') >= 0 ? name : ('/System/Library/Sounds/' + name + '.aiff'));
+    let file = !name ? '' : meosSoundResolve(name);
+    // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
+    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
@@ -14118,9 +14167,9 @@ function meosPlayChime() {
     const { exec } = require('child_process');
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') {
-      const f = name.indexOf('/') >= 0 ? name : ('/System/Library/Sounds/' + name + '.aiff');
+      const f = meosSoundResolve(name);   // v4.2.399: Mew も
       exec('afplay -v ' + vol + ' ' + q(f), () => { });
-    } else if (meosSoundIsPath(name)) {
+    } else if (meosSoundIsPath(name) || name === 'Mew') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
@@ -29112,8 +29161,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,9).join('');};
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?'\ud83d\udd14 ':'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdShort(m.current):'off'));}if(!sp)return;sp.innerHTML='';
- const rows=[{name:'',label:'(no sound)'}].concat((m.list||[]).map(n=>({name:n,label:sdShort(n)})));
+const sdLabel=(n)=>((n==='Mew'||n==='Purr')?'\ud83d\udc31 ':'')+sdShort(n);   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='Mew'||m.current==='Purr')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+ const rows=[{name:'',label:'(no sound)'}].concat((m.list||[]).map(n=>({name:n,label:sdLabel(n)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
   r.addEventListener('click',ev=>{ev.stopPropagation();clearTimeout(sdTimer);sdAct(r,false);vscode.postMessage({type:'soundPreview',name:x.name});vscode.postMessage({type:'soundCommit',name:x.name});});
