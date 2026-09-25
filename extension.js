@@ -14199,7 +14199,9 @@ function meosRingSeconds() {
   // ★v4.0.473(俊克「⏰音は、間を置かずに、**連続的に**鳴らせないかな?」): 小数を受ける=
   //   0.6 なら音thatほぼ途切れない。0 は「1回だけ」の意味so残す。下限0.3(それより短いと afplay that
   //   積み上がるだけで、音は大きくならない)。
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; return (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; } catch (_) { return 1; }
+  // ★v4.2.407(俊克「Mewを鳴らす時に間隔を指定できないのか? 今は続けざまに鳴いて不自然。音源の長さが0.7sなので1〜1.5秒間隔で」):
+  //   Mew の時だけ最低1.25秒= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return (meosSoundNow() === 'Mew') ? Math.max(1.25, b) : b; } catch (_) { return 1; }
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
