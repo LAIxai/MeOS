@@ -1579,7 +1579,7 @@ console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居�
  /* ⑥ 面の初期値= 骨組みthatそのまま入っている(部分修正して使う) */
  {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   /* v4.2.413: 骨組み(HIIT)はプリセット③へ。✓を入れて箱が空なら今のプリセット・入れたら最後の ×N の右へ(全選択はしない) */
-  ok(/else if\(_cy9&&!String\(_cy9\.value\|\|''\)\.trim\(\)\)clkApplyPreset\(\);/.test(S) && /cyc:'\(\(30s 15s\)\\u00d74 1m\)\\u00d73'/.test(S),
+  ok(/else if\(_cy9&&!String\(_cy9\.value\|\|''\)\.trim\(\)\)clkApplyPreset\(\);/.test(S) && /cyc:'\(\(30s 15s\)\\u00d74 1m\)\\u00d73 \/\/ /.test(S),
      '★★★Repeat に✓を入れた時、空ならプリセットを入れる(HIIT の骨組みは③)', true);
   ok(/placeholder="\(\(30s 15s\)\\u00d74 1m\)\\u00d73"/.test(S), '  影文字も同じ典型のHIIT', true);
   ok(!/_cy3\.select\(\)/.test(S) && /_cy3\.setSelectionRange\(_at,_at\)/.test(S),
