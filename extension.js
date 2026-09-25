@@ -25370,7 +25370,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* v4.2.384(俊克「🐢のサイズを1.4倍にしよう」): 亀だけ大きく。行の高さは変えない(札の高さを保つ) */
 .paste-lag-btn .pl-turtle{font-size:1.4em;line-height:0;vertical-align:-0.12em}
 /* v4.2.386(俊克「✅が少し上付き加減になっているので、2、3ピクセル字下げしよう」): 3px 下げる(周りは動かさない) */
-.paste-lag-btn .pl-check{position:relative;top:3px}
+.paste-lag-btn .pl-check{position:relative;top:1.5px}   /* v4.2.387(俊克「ちょっと下げ過ぎた。適当に調整」): 0=浮く/3=下がり過ぎ → 1.5 */
 .paste-lag-btn.off:hover{opacity:1;border-color:#e0803a}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
