@@ -26180,7 +26180,11 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-pop.norepeat .clk-last{display:none}
 .clk-pop.hist-only .clk-last{display:none}   /* v4.2.366: 一覧(⏰)の窓では出さない= 設定(▾)の物 */
 .clk-last .clk-arrow{opacity:.6}
-.clk-last [data-u]{border-bottom:2px solid #d18400;padding:0 1px;cursor:ns-resize}
+.clk-last [data-u]{border-bottom:2px solid #d18400;padding:0 1px;cursor:default}   /* v4.2.388(俊克「▲▼が上下になったマークは下が見えないのが駄目」): 普通の矢印 */
+/* v4.2.388: 回数のドラム= Repeat の箱で × の後ろにカーソルを置いた時だけ出す(日付・時刻と同じ部品) */
+.clk-ncols{display:none;margin:2px 0 4px}
+.clk-ncols.on{display:grid;grid-template-columns:1fr}
+.clk-pop.norepeat .clk-ncols,.clk-pop.hist-only .clk-ncols{display:none}
 .clk-last [data-u]:hover{background:rgba(209,132,0,.22)}
 /* v4.2.363: ⏰パネル右上の [V-helper]= 常駐の係を起こす/降ろす。入っている時は琥珀、切れている時は灰。 */
 .clk-vh-row{display:flex;justify-content:flex-end;margin:0 0 3px}
@@ -26788,6 +26792,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint" id="clk-hint-rep">00 ends the list</span><span class="clk-pset"><button class="clk-pbtn" id="clk-pbtn">24h</button><span class="clk-pring" id="clk-pring" data-tip="Next preset | Three presets, round and round.">\u21bb</span></span></div>
   <input class="clk-in clk-cyc" id="clk-cyc" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays.">
+  <div class="clk-cols clk-ncols" id="clk-ncols"><div class="clk-col clk-ncol" id="clk-nd"></div></div>
   <div class="clk-last" id="clk-last" data-tip="Roll the wheel here \u2014 on \u00d7N to change the count, on the year, month or day to move the last bell. Nothing is written until you press Set."><span class="clk-ln" id="clk-ln" data-u="n">\u00d7\u2014</span><span class="clk-arrow">\u2192</span><span class="clk-lt" id="clk-lt"></span></div>
   <div class="clk-foot"><span class="clk-modes"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button><span class="tt-split tt-mv"><button class="cancel toc-move" id="toc-move-down" title="Move selected item down">⬇️</button><span class="tt-badge tt-up" id="toc-move-up" title="Move selected item up">↑</span></span><span class="tt-split tt-ad"><button class="cancel toc-add" id="toc-add" title="Duplicate selected item">＋</button><span class="tt-badge tt-del" id="toc-del-item" title="Delete selected item">－</span></span></div></div>
@@ -28787,8 +28792,23 @@ if(clkCaret&&clkPop){
    clkLastAcc+=ev.deltaY;var th=24;if(Math.abs(clkLastAcc)<th)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;   /* 上へ回す= 増える */
    clkLastAsk(u.getAttribute('data-u'),dir);},{passive:false});
   if(clkCycEl)clkCycEl.addEventListener('input',clkLastSoon);
-  /* v4.2.367(俊克の絵①): Repeat の箱の上でもその場で回す= ×N ±1 */
-  if(clkCycEl)clkCycEl.addEventListener('wheel',function(ev){if(clkCycEl.disabled)return;ev.preventDefault();clkLastAcc+=ev.deltaY;if(Math.abs(clkLastAcc)<24)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;clkLastAsk('n',dir);},{passive:false});
+  /* ★★v4.2.388(俊克「せっかく上にドラム式のダイヤルが有るんだから、そこを使おう。(5m×3 1m)×5 のような時は ×3、×5 の部分に Ⓣday のようなスクロールを出す。
+     設定した数値の±10を出せばいい。Repeat の入力枠の ×3 の × の後ろに文字カーソルを置くと、回数変更用のボタンをその下に表示して、そこでスクロール」):
+     ★v4.2.367 の「箱の上でホイール」はやめ、日付・時刻と同じドラム(clkFill/clkSel/clkWatch)を箱の下に出す。回すのは、カーソルの居る × の数だけ。 */
+  var clkNdCols=document.getElementById('clk-ncols'),clkNd=document.getElementById('clk-nd'),clkNdSpan=null;
+  function clkNdHide(){clkNdSpan=null;if(clkNdCols)clkNdCols.classList.remove('on');}
+  function clkNdCheck(){if(!clkCycEl||!clkNd||clkCycEl.disabled){clkNdHide();return;}
+   var v=clkCycEl.value,c=clkCycEl.selectionStart,re=/[\u00d7xX*]\\s*(\\d+)/g,m,hit=null;
+   while((m=re.exec(v))){var ds=m.index+m[0].length-m[1].length,de=m.index+m[0].length;if(c>m.index&&c<=de){hit={s:ds,e:de,n:parseInt(m[1],10)};break;}}
+   if(!hit){clkNdHide();return;}
+   var same=clkNdSpan&&clkNdSpan.s===hit.s&&clkNdCols.classList.contains('on');clkNdSpan=hit;
+   if(!same){var lo=Math.max(1,hit.n-10);clkFill(clkNd,lo,hit.n+10,false);clkNdCols.classList.add('on');clkSel(clkNd,hit.n);try{clkMark(clkNd);}catch(e){}}}
+  if(clkCycEl){['keyup','click','focus'].forEach(function(t){clkCycEl.addEventListener(t,clkNdCheck);});clkCycEl.addEventListener('input',function(){clkNdSpan=null;clkNdCheck();});}
+  if(clkNd)clkWatch(clkNd,function(){var n=clkPick(clkNd);if(n==null||!clkNdSpan||!clkCycEl)return;
+   var v=clkCycEl.value,sp=clkNdSpan,s2=String(n);if(v.slice(sp.s,sp.e)===s2)return;
+   clkCycEl.value=v.slice(0,sp.s)+s2+v.slice(sp.e);clkNdSpan={s:sp.s,e:sp.s+s2.length,n:n};
+   try{clkCycEl.setSelectionRange(sp.s+s2.length,sp.s+s2.length);}catch(e){}
+   clkLastSoon();},function(){try{clkTouch();}catch(e){}});
   var wh=document.getElementById('clk-when');if(wh&&window.MutationObserver)new MutationObserver(clkLastSoon).observe(wh,{childList:true,characterData:true,subtree:true});
   clkLastSoon();})();
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
