@@ -26624,9 +26624,11 @@ color:#ffffff;z-index:4;padding:0}
 .clk-cycwrap{position:relative;margin-top:2px}   /* v4.2.409: Repeat の箱＋右肩の↻(プリセット3つ) */
 .clk-pop.hist-only .clk-cycwrap{display:none}
 /* v4.2.411(俊克「Repeatの3プリセットの入力枠を3色で色分け。見出しボタンなどと同様に」): 折り返し幅の↻と同じ 赤/青/緑 */
-.clk-cycwrap.s0 .clk-cyc{background:color-mix(in srgb,var(--vscode-input-background) 76%,#e0564a 24%);border-color:#a8453c}
-.clk-cycwrap.s1 .clk-cyc{background:color-mix(in srgb,var(--vscode-input-background) 76%,#4a86e0 24%);border-color:#3a69ad}
-.clk-cycwrap.s2 .clk-cyc{background:color-mix(in srgb,var(--vscode-input-background) 76%,#3fa85c 24%);border-color:#2f7f45}
+.clk-cycwrap .clk-cyc{border-width:2px}   /* v4.2.412(俊克「枠の色が薄過ぎる。透明にしないで、はっきりした色に」) */
+.clk-cycwrap.s0 .clk-cyc{background:#7a2f29;border-color:#e0564a;color:#fff}
+.clk-cycwrap.s1 .clk-cyc{background:#27477a;border-color:#4a86e0;color:#fff}
+.clk-cycwrap.s2 .clk-cyc{background:#23603a;border-color:#3fa85c;color:#fff}
+.clk-cycwrap .clk-cyc::placeholder{color:rgba(255,255,255,.55)}
 .clk-cycwrap.s0 .clk-pring{background:#e0564a}.clk-cycwrap.s1 .clk-pring{background:#4a86e0}.clk-cycwrap.s2 .clk-pring{background:#3fa85c}
 /* v4.2.411(俊克「起点に Starting point… 日付日時の後ろに p/f」): p=過去(数え上げ=水色) / f=未来(残り=緑)。FC に書かれる印と同じ字 */
 .clk-when .cw-fp{margin-left:1px;font-weight:800}
@@ -28427,7 +28429,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // Pomodoro 1.',anchor:false},{cyc:'8h // Time for eye drops\\n(5m)\u00d72 // Eye drop # 1.',anchor:true},{cyc:'24h\u00d710',anchor:false}];var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // Pomodoro 1.',anchor:false},{cyc:'8h // Time for eye drops\\n(5m)\u00d72 // Eye drop # 1.',anchor:true},{cyc:'((30s 15s)\u00d74 1m)\u00d73',anchor:false}];var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -28882,7 +28884,7 @@ if(clkCaret&&clkPop){
    clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
    /* ★v4.2.411(俊克「回数指定(×3など)があるケースでは、×の右側に文字カーソルを自動で移動し、ドラム式セレクターを表示させる。これで仕組みを自然に学習させる」):
       ×N があれば × のすぐ右へ置いてドラムを出す。無ければ最初の数字の終わり(v4.1.159 と同じ置き場所) */
-   try{if(_cy3){var _vv=_cy3.value,_mx=/[\u00d7xX*]\\s*\\d/.exec(_vv),_at;if(_mx)_at=_mx.index+1;else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
+   try{if(_cy3){var _vv=_cy3.value,_rx=/[\u00d7xX*]\\s*\\d/g,_mx=null,_m1;while((_m1=_rx.exec(_vv)))_mx=_m1;var _at;if(_mx)_at=_mx.index+1;   /* v4.2.412: 最後の ×N(外側の回数= 最初に直す所) */else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
     _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
    return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
@@ -31150,11 +31152,11 @@ function toggleMeDock(editorOverride) {
     if (message && (message.type === 'clockPresetsAsk' || message.type === 'clockPresetSlot' || message.type === 'clockPresetSave')) {
       try {
         // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
-        const def = [{ cyc: '(25m 5m)\u00d74 // Pomodoro 1.', anchor: false }, { cyc: '8h // Time for eye drops\n(5m)\u00d72 // Eye drop # 1.', anchor: true }, { cyc: '24h\u00d710', anchor: false }];
-        let list = extensionContext.globalState.get('meosClockPresets3', null); if (!Array.isArray(list) || list.length !== 3) list = def;
-        let slot = Number(extensionContext.globalState.get('meosClockPresetSlot', 0)) || 0;
-        if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); await extensionContext.globalState.update('meosClockPresetSlot', slot); }
-        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor }; await extensionContext.globalState.update('meosClockPresets3', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
+        const def = [{ cyc: '(25m 5m)\u00d74 // Pomodoro 1.', anchor: false }, { cyc: '8h // Time for eye drops\n(5m)\u00d72 // Eye drop # 1.', anchor: true }, { cyc: '((30s 15s)\u00d74 1m)\u00d73', anchor: false }];   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
+        let list = extensionContext.globalState.get('meosClockPresets4', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+        let slot = 0;   // v4.2.412(俊克「最初に表示するのは、トマトだよ」): 開くたびに①から
+        if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); }
+        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor }; await extensionContext.globalState.update('meosClockPresets4', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
         if (message.type === 'clockPresetsAsk' && meDockPanel) meDockPanel.webview.postMessage({ type: 'clockPresets', list, slot });
       } catch (_) { }
       return;
