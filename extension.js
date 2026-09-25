@@ -14739,6 +14739,14 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     if (opts && opts.hasCycle) { _cy0 = (opts.cycle && opts.cycle.length) ? opts.cycle : null; _up0 = !!opts.up; _dl0 = !!opts.dual; _rd0 = opts.rounds || 0; _cs0 = opts.cycleSrc || ''; }   // v4.1.1109 / v4.1.142
     if (opts && opts.tags) _tg0 = opts.tags;                       // v4.1.70: 面that言った札that勝つ
   }
+  if (scope.key && _cy0 && opts && opts.noOrigin) {   // ★v4.2.395: 起点を書かない⏰(席が回ってきた/Set した瞬間から数える= 連なりの2本目と同じ)
+    _meosPseudoScopes.delete(lk);
+    if (opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
+    await meosClockFcSet(scope.doc, scope.key, { when: '', hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, manual: _mn0 }, (typeof opts.atLine === 'number') ? opts.atLine : undefined);
+    try { meosArmClockFcFor(scope.doc); } catch (_) { }
+    meosUpdateTimerBar(); meosPostViewMode();
+    return;
+  }
   if (scope.key && _cy0) {
     const _org = atDate ? ((atDate instanceof Date) ? atDate : new Date(Number(atDate))) : new Date(Date.now() + ms);
     _meosPseudoScopes.delete(lk);
@@ -28323,7 +28331,7 @@ var was=clkPick(ed);                                  /* 選んでいなけれ�
 clkFill(ed,1,dim,true);
 if(was!=null)clkSel(ed,Math.min(was,dim));            /* 31日を選んだまま2月へ動かしたら、末日へ寄せる */
 }
-function clkSyncFromCols(){clkFitDays();clkEcho();}
+function clkSyncFromCols(){window.__clkNoOrigin=false;clkFitDays();clkEcho();}   /* v4.2.395: ドラムを回した= 起点を決めた */
 /* ★日付の「空」の姿= 何も選ばず、頭まで巻き戻す。clear と 開く時の両方that、ここ1つを呼ぶ。 */
 /* ★★★v4.1.45(俊克 改良2「年月日that下の『→』の確定値に反映されない。**初期値、および、Clearボタンを
    押した時は、今日の年月日を表示すべき**だよね。それを基準にして修正したいと思うのthat普通でしょ?
@@ -28376,6 +28384,7 @@ function clkTakeIn(d){try{
  if(_md){clkFixD=true;clkPutYMDHM(+_md[1],+_md[2],+_md[3],(_md[4]!=null?+_md[4]:null),(_md[5]!=null?+_md[5]:null));
   if(e)e.value=_w;}
  else{var _mt=/^(\\d{1,2}):(\\d{2})$/.exec(_w);if(_mt)clkPutYMDHM(null,null,null,+_mt[1],+_mt[2]);}
+ window.__clkNoOrigin=!!d.noOrigin;   /* v4.2.395: 起点なしの⏰を読んだ= ドラムを触るまで起点を書かない */
  var cy=document.getElementById('clk-cyc');
  clkRep=!!d.rep;clkPaintRep();
  if(cy)cy.value=String(d.cycle||'');
@@ -28412,6 +28421,7 @@ var _ds=clkDateStr();
 try{var _m=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})$/.exec(_ds);
  if(_m)_ds=_ds+'('+clkW(new Date(+_m[1],+_m[2]-1,+_m[3]))+')';}catch(e){}
 wd.textContent=_ds;wt.textContent=clkTimeStr();
+if(window.__clkNoOrigin){wd.textContent='no start \u2014 counts from Set';wt.textContent='';}   /* v4.2.395: 起点なし(回すと起点が決まる) */
 wd.classList.toggle('fix',clkFixD);
 /* v4.1.46: 同じ旗を輪にも渡す= 下の行と輪that同じことを言う(色の意味は1つ) */
 if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
@@ -28800,7 +28810,7 @@ if(clkCaret&&clkPop){
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
-  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',when:(window.__clkNoOrigin&&clkRep)?'':v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -28878,7 +28888,7 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  clkDirty=false;window.__clkTargetOk=true;window.__clkTagTouched=false;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
+  clkDirty=false;window.__clkTargetOk=true;window.__clkTagTouched=false;window.__clkNoOrigin=false;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
   if(mode!=='hist'){try{vscode.postMessage({type:'clkPanelOpen',on:true});}catch(e){}}   /* v4.2.393: 開いている間だけ、カーソルの場所を判定してもらう */
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
@@ -30758,8 +30768,11 @@ function toggleMeDock(editorOverride) {
               if (mf) return mf[1];
               const mp = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)p\b/.exec(w0);
               if (mp) return mp[1];
+              // ★v4.2.395(俊克「時間指定なしの5mタイマーをreadしたのに、setするときに時間もセットされてしまう」):
+              //   起点を持たない⏰(連なりの2本目の仮の起点 v… / 番号だけ)は、起点なしとして渡す= パネルも起点を書かない
+              if (/^(?:\d{1,3}[.)]\s*)?(v\S.*)?$/.test(w0)) return '';
               return w0;
-            })(),
+            })(), noOrigin: (function () { const w0 = String(hit.whenSrc || hit.when || '').trim(); return /^(?:\d{1,3}[.)]\s*)?(v\S.*)?$/.test(w0); })(),
             cycle: String(hit.cycleSrc || ((hit.cycle || []).join(' '))),
             rep: !!(hit.cycle && hit.cycle.length), lock: !!hit.lock, tags: hit.tags || [] };
           else if (!sc || !sc.key) _r.why = 'put the caret on a \u23f0 line or inside a membrane first';
@@ -30888,6 +30901,7 @@ function toggleMeDock(editorOverride) {
       //   ★場所が違えば書かずに断り、パネルを開き直して札を出す(値はそのまま= 置き直して押し直すだけ)。
       if (_opts.refused) { try { meDockPanel.webview.postMessage({ type: 'clkSetRefused', text: _opts.refused }); } catch (_) { } return; }
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
+      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); return; }   // v4.2.395: 起点なし
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
       // ★★v4.2.89(俊克 バグ2): **一度きりも過去を受ける**= ドラムの日付が過去なら、そこから数えるストップウォッチ
