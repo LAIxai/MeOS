@@ -156,7 +156,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
   ok(/pointer-events:none/.test(S11) && /\.clk-set\.on\{/.test(S11),
      '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
-  ok(/function clkTouch\(\)/.test(S11) && /clkDirty=false;clkPaintSet\(\)/.test(S11),
+  ok(/function clkTouch\(\)/.test(S11) && /clkDirty=false;(window\.__clkTargetOk=true;)?clkPaintSet\(\)/.test(S11)   /* v4.2.393: 置き場所の旗も開いた時に戻す */,
      '\u2605\u2605開いた時は未設定から始まる', true);
   ok(/color: new vscode\.ThemeColor\('editor\.foreground'\), fontWeight: '800' \}/.test(S11) && /color: '#e0803a', fontWeight: '800' \}/.test(S11),
      '\u2605\u2605周回数は地(橙)でも顔(緑/水色)でもない色', true);
