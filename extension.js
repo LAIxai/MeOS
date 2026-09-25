@@ -26217,11 +26217,14 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-last [data-u]{border-bottom:2px solid #d18400;padding:0 1px;cursor:default}   /* v4.2.388(俊克「▲▼が上下になったマークは下が見えないのが駄目」): 普通の矢印 */
 /* v4.2.388: 回数のドラム= Repeat の箱で × の後ろにカーソルを置いた時だけ出す(日付・時刻と同じ部品) */
 .clk-ncols{display:none;margin:2px 0 4px}
+/* ★v4.2.397(俊克「readした時に、無駄な3段の表が入るのは、なぜ削除しないのか?」): 後ろの .clk-cols{display:flex} に負けていた= いつも空のドラムが見えていた。強さを上げて隠す */
+.clk-cols.clk-ncols{display:none}
+.clk-cols.clk-ncols.on{display:flex}
 /* v4.2.396(俊克「意味不明の表の部分に、⏰FC行全体を表示したら。全く同じものをSetすると分かりやすい」): read した行をそのまま見せる */
 .clk-rawline{display:none;margin:2px 0 4px;padding:3px 6px;border:1px dashed #d18400;border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;opacity:.9}
 .clk-rawline.on{display:block}
 .clk-pop.hist-only .clk-rawline{display:none}
-.clk-ncols.on{display:grid;grid-template-columns:1fr}
+
 .clk-pop.norepeat .clk-ncols,.clk-pop.hist-only .clk-ncols{display:none}
 .clk-last [data-u]:hover{background:rgba(209,132,0,.22)}
 /* v4.2.363: ⏰パネル右上の [V-helper]= 常駐の係を起こす/降ろす。入っている時は琥珀、切れている時は灰。 */
