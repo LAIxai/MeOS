@@ -12677,7 +12677,7 @@ function meosHelperSound() {
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
       if (src && !fs.existsSync(dst)) { fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.copyFileSync(src, dst); } if (fs.existsSync(dst)) whistle = dst; } } catch (_) { }
-    return { file, vol, every: meosRingSeconds(), whistle };
+    return { file, vol, every: meosRingSeconds(), whistle, fluct: name === 'Mew' };   // v4.2.408: fluct= 1/fゆらぎ
   } catch (_) { return { file: meosSoundResolve('Mew') || '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }   // v4.2.406
 }
 function meosHelperWrite(text, menu, owner, anchor) {
@@ -14161,7 +14161,18 @@ async function meosJumpToScope(scope, byBell) {
 //   ★MeOSは音を持たない＝ **OSの音を借りる**(mac=/System/Library/Sounds の名前・win=beep)。
 //     鳴らす物を自分で抱えないso、vsixも増えず、人thatが好きな音に替えられる。
 //   ★設定 laiMembrane.clockSound を空にすれば鳴らない(要らない人thatは黙らせられる)。
-function meosPlayChime() {
+// ★v4.2.408(俊克「音量を一鳴き毎に1/fゆらぎで変化させよう」): Mew の鳴き続けの大きさの倍率(0.55〜1.15)。
+//   Voss-McCartney の1/f雑音= 4段の乱数を、n回目は n の末尾の0の数の段だけ引き直す(遅い段ほどゆっくり変わる)。
+//   V-helper(helper/meos-helper.js の mewGain)も同じ作り。鳴り始めに meosMewGainReset で振り出しへ。
+let _meosMewRows = [0.5, 0.5, 0.5, 0.5], _meosMewN = 0;
+function meosMewGainReset() { _meosMewRows = _meosMewRows.map(() => Math.random()); _meosMewN = 0; }
+function meosMewGain() {
+  _meosMewN++; let k = 0, n = _meosMewN; while (k < 3 && !(n & 1)) { n >>= 1; k++; }
+  _meosMewRows[k] = Math.random();
+  const x = _meosMewRows.reduce((a, b) => a + b, 0) / _meosMewRows.length;
+  return 0.55 + 0.6 * x;
+}
+function meosPlayChime(gain) {
   try {
     // ★v4.0.471(俊克「やさしすぎる音だね。**寝ていたら気づかない**」): 目覚ましは**起こす**物so、
     //   ①既定を鋭い音(Sosumi)にし ②大きさを設定で上げられるようにする(afplay -v は1.0を超えると増幅する)。
@@ -14176,7 +14187,8 @@ function meosPlayChime() {
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') {
       const f = meosSoundResolve(name);   // v4.2.399: Mew も
-      exec('afplay -v ' + vol + ' ' + q(f), () => { });
+      const g = (name === 'Mew' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
+      exec('afplay -v ' + (Math.round(vol * g * 100) / 100) + ' ' + q(f), () => { });
     } else if (meosSoundIsPath(name) || name === 'Mew') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
@@ -14200,8 +14212,8 @@ function meosRingSeconds() {
   //   0.6 なら音thatほぼ途切れない。0 は「1回だけ」の意味so残す。下限0.3(それより短いと afplay that
   //   積み上がるだけで、音は大きくならない)。
   // ★v4.2.407(俊克「Mewを鳴らす時に間隔を指定できないのか? 今は続けざまに鳴いて不自然。音源の長さが0.7sなので1〜1.5秒間隔で」):
-  //   Mew の時だけ最低1.25秒= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return (meosSoundNow() === 'Mew') ? Math.max(1.25, b) : b; } catch (_) { return 1; }
+  //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return (meosSoundNow() === 'Mew') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
@@ -14300,14 +14312,15 @@ function meosClockSayName(sc) {
 }
 function meosStartRinging(name) {
   const every = meosRingSeconds();
-  meosPlayChime();
+  meosMewGainReset();
+  meosPlayChime(meosMewGain());
   if (!every) return;                                    // 0= 1回だけ
   _meosRingName = name || '';
   _meosRingUntil = Date.now() + 5 * 60000;               // 上限5分= 席を外していても止まる
   if (_meosRingTimer) clearInterval(_meosRingTimer);
   _meosRingTimer = setInterval(() => {
     if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; }
-    meosPlayChime();
+    meosPlayChime(meosMewGain());
   }, Math.round(every * 1000));
   meosUpdateTimerBar(); meosPostViewMode();
 }

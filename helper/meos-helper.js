@@ -153,10 +153,18 @@ function run(argv) {
     const p = (n) => (n < 10 ? '0' : '') + n;
     return (d ? d + 'd ' + p(h) : String(h)) + ':' + p(m) + '.' + p(ss);
   };
+  // v4.2.408: Mew の鳴き続けは一鳴き毎に大きさを1/fゆらぎ(拡張の meosMewGain と同じ作り・0.55〜1.15倍)
+  let mewRows = [0.5, 0.5, 0.5, 0.5], mewN = 0;
+  const mewGain = () => {
+    mewN++; let k = 0, n = mewN; while (k < 3 && !(n & 1)) { n >>= 1; k++; }
+    mewRows[k] = Math.random();
+    return 0.55 + 0.6 * (mewRows.reduce((a, b) => a + b, 0) / mewRows.length);
+  };
   const playBell = () => {
     try {
       if (!sound.file) return;
-      $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(sound.vol || 2), sound.file]));
+      const g = sound.fluct ? mewGain() : 1;
+      $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(Math.round((sound.vol || 2) * g * 100) / 100), sound.file]));
     } catch (e) {}
   };
   let lastMenu = null, lastText = null;
@@ -281,6 +289,7 @@ function run(argv) {
         try { const f = sound.whistle || sound.file; if (f) $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(sound.vol || 2), f])); } catch (e) {}
       }
       if (ringing && !ringing.whistle && !bellTimer) {
+        mewRows = mewRows.map(() => Math.random()); mewN = 0;   // v4.2.408: 鳴り始めは振り出しから
         playBell();
         if (sound.every > 0) { bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(Math.max(0.3, sound.every), ticker, 'bell:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); }
       }
