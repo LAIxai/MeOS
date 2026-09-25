@@ -2677,46 +2677,38 @@ function meosMewPath() {
     const os = require('os'), fs = require('fs'), path = require('path');
     // ★v4.2.400(俊克「ものすごい声。人が甲高い声で鳴き真似しているように聞こえる。ちょっとリアル過ぎる」): 子猫の「ミュー」へ
     //   = 高く・上下は小さく・口の形の動きを小さく(母音に聞こえない)・倍音を減らして細く・0.5秒
-    // ★v4.2.402(俊克「miヤーーゥ↗→→↘。mi は小さく短く、ヤーが鼻にかかった音、最後に短い小さいゥ」):
-    //   3つの部分= mi(0.08秒・35%・イ) / ヤーー(鼻にかかる・960Hz で平ら・ア) / ゥ(0.12秒・45%から消える・下がる・ウ)。継ぎ目は30msでなめらかに。
-    // ★v4.2.403(俊克「ヤーーを0.2秒にしてみて。500Hz→800Hz→400Hz」): mi 0.08 / ヤー 0.2 / ゥ 0.12 = 0.4秒
-    const rate = 44100, dur = 0.40, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    // ★★v4.2.404(俊克「添付の音声データを周波数解析して見て下さい。最初の声が一番それっぽい」＋ 子猫の音響分析「基本周波数 600〜1500Hz・倍音構造が明確」):
+    //   本物の子猫の最初の一声(0.7秒)を 20ms ごとに測った数字で合成する(録音そのものは使わない・配らない)。
+    //   ★測って分かった事= 高さは約1000Hzで**ほとんど動かない**(920→1075→920・±8%)/ 主役は2〜3倍音 / 始めだけ4〜6倍音が明るく、
+    //     終わりは低い倍音だけ(暗くなる)/ 0.2秒かけて立ち上がり0.3秒が山・ゆっくり消える / 雑音はほとんど無い。
+    //   v4.2.399〜403 は高さを大きく動かし、口の形(母音)を動かしていた= 人の鳴き真似に聞こえた真因。
+    const rate = 44100, dur = 0.70, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
-    const A = 0.08, B = 0.28, X = 0.03;                                   // mi の終わり / ヤーの終わり / 継ぎ目
-    const sm = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
-    const seg = (t, vMi, vYa, vU) => { const w1 = sm((t - A) / X), w2 = sm((t - B) / X); return vMi * (1 - w1) + (vYa * (1 - w2) + vU * w2) * w1; };
-    let ph = 0, peak = 0;
+    const tbl = (T, t) => { if (t <= T[0][0]) return T[0][1]; for (let j = 1; j < T.length; j++) if (t <= T[j][0]) { const a0 = T[j - 1], a1 = T[j], u = (t - a0[0]) / (a1[0] - a0[0]); return Array.isArray(a0[1]) ? a0[1].map((v, q) => v + (a1[1][q] - v) * u) : a0[1] + (a1[1] - a0[1]) * u; } return T[T.length - 1][1]; };
+    const F0 = [[0, 920], [0.08, 980], [0.16, 1050], [0.22, 1075], [0.26, 1050], [0.46, 1025], [0.56, 1000], [0.64, 950], [0.70, 918]];       // 測った高さ(Hz)
+    const LOUD = [[0, 0.08], [0.02, 0.15], [0.04, 0.24], [0.06, 0.32], [0.08, 0.40], [0.10, 0.51], [0.12, 0.63], [0.14, 0.76], [0.16, 0.84], [0.18, 0.92],
+      [0.20, 0.97], [0.22, 1.0], [0.26, 0.96], [0.30, 0.91], [0.34, 0.78], [0.38, 0.57], [0.42, 0.51], [0.46, 0.37], [0.50, 0.30], [0.54, 0.26], [0.58, 0.20], [0.62, 0.17], [0.66, 0.13], [0.70, 0]];   // 測った大きさ
+    const HARM = [[0, [0.6, 1.0, 0.45, 0.35, 0.25, 0.12]], [0.18, [0.55, 1.0, 0.6, 0.12, 0.05, 0]], [0.26, [0.3, 0.9, 1.0, 0.05, 0, 0]],
+      [0.36, [0.12, 0.45, 1.0, 0, 0, 0]], [0.46, [0.35, 0.6, 1.0, 0, 0, 0]], [0.56, [0.85, 1.0, 0.55, 0, 0, 0]], [0.70, [1.0, 0.9, 0.35, 0, 0, 0]]];   // 測った倍音の強さ(1〜6倍音)= 真ん中は3倍音が主役
+    let ph = 0, peak = 0, seed = 12345;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
     for (let i = 0; i < n; i++) {
       const t = i / rate;
-      let f0 = t < A ? 500 + 60 * (t / A) : (t < B ? 560 + 240 * sm((t - A) / 0.08) : 800 - 400 * sm((t - B) / (dur - B)));   // 500 → 800(平ら) → 400
-      f0 *= (1 + 0.008 * Math.sin(2 * Math.PI * 7 * t));
+      const f0 = tbl(F0, t) * (1 + 0.005 * Math.sin(2 * Math.PI * 6 * t));
       ph += 2 * Math.PI * f0 / rate;
-      const F1 = seg(t, 400, 1000, 500), F2 = seg(t, 2300, 1600, 900), nas = seg(t, 0.3, 1, 0.4);
+      const hs = tbl(HARM, t);
       let v = 0;
-      for (let k = 1; k <= 8; k++) {
-        const fk = k * f0; if (fk > rate / 2 - 500) break;
-        const g = (Math.exp(-Math.pow((fk - F1) / 260, 2)) + 0.8 * Math.exp(-Math.pow((fk - F2) / 380, 2)) + 0.3 * Math.exp(-Math.pow((fk - 3000) / 500, 2)) + 0.04)
-          * (1 - 0.7 * nas * Math.exp(-Math.pow((fk - 1500) / 300, 2)))        // 鼻の谷(ヤーで強く)
-          + 0.5 * nas * Math.exp(-Math.pow((fk - 2900) / 400, 2));             // 鼻にかかった細い響き
-        v += g * Math.sin(k * ph) / Math.pow(k, 1.1);
-      }
-      smp[i] = v;                                                                // まず素の声(大きさは後で揃える)
-    }
-    // ★v4.2.403: 大きさは係数で当てずに**測って揃える**= 高さや響きを変えるたびに配分が崩れない。
-    //   10ms ごとの実効値で割り、狙いの形(mi 0.3 / ヤー 1 / ゥ 0.35 から消える)を掛ける。
-    const W = Math.floor(rate * 0.01), rms = new Float64Array(n);
-    { let acc = 0; for (let i = 0; i < n; i++) { acc += smp[i] * smp[i]; if (i >= W) acc -= smp[i - W] * smp[i - W]; rms[i] = Math.sqrt(Math.max(acc, 1e-12) / Math.min(i + 1, W)); } }
-    for (let i = 0; i < n; i++) {
-      const t = i / rate, c = Math.min(n - 1, i + (W >> 1));
-      const want = seg(t, 0.3, 1, 0.35) * Math.min(1, t / 0.02) * (t < B + X ? 1 : Math.pow(Math.max(0, (dur - t) / (dur - B - X)), 1.3));
-      const v = smp[i] / Math.max(rms[c], 1e-6) * want; smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+      for (let q = 0; q < hs.length; q++) { const fk = (q + 1) * f0; if (fk > rate / 2 - 500) break; v += hs[q] * Math.sin((q + 1) * ph); }
+      v += 0.02 * rnd();                                                         // ほんの少しの息
+      v *= tbl(LOUD, t) * Math.min(1, t / 0.01) * Math.min(1, (dur - t) / 0.01);
+      smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
     }
     const k = peak > 0 ? (0.8 / peak) : 1;
     for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-mew-v5.wav');
+    const f = path.join(os.tmpdir(), 'meos-mew-v7.wav');
     fs.writeFileSync(f, buf); _meosMewFile = f; return f;
   } catch (_) { return null; }
 }
@@ -12680,7 +12672,7 @@ function meosHelperSound() {
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
-    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v5.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
+    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
