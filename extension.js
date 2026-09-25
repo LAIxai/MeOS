@@ -2731,7 +2731,7 @@ function meosSoundList() {
   if (cur && out.indexOf(cur) < 0 && (process.platform === 'darwin' || meosSoundIsPath(cur))) out.push(cur);   // 手で書いた音のファイル(フルパス)も一覧に残す
   return out;
 }
-function meosSoundNow() { try { return String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'Sosumi') || '').trim(); } catch (_) { return 'Sosumi'; } }
+function meosSoundNow() { try { return String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'Mew') || '').trim(); } catch (_) { return 'Sosumi'; } }
 function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && cur !== 'Mew' && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
 // 1つの音を鳴らす(試聴も鐘も同じ口)。返り値= 走らせた子(止めるため)。
 function meosSoundSpawn(name) {
@@ -12668,7 +12668,7 @@ function meosHelperAlarms() {
 function meosHelperSound() {
   try {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
-    const name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
+    const name = String(cfg.get('clockSound', 'Mew') || '').trim();
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
@@ -12678,7 +12678,7 @@ function meosHelperSound() {
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
       if (src && !fs.existsSync(dst)) { fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.copyFileSync(src, dst); } if (fs.existsSync(dst)) whistle = dst; } } catch (_) { }
     return { file, vol, every: meosRingSeconds(), whistle };
-  } catch (_) { return { file: '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }
+  } catch (_) { return { file: meosSoundResolve('Mew') || '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }   // v4.2.406
 }
 function meosHelperWrite(text, menu, owner, anchor) {
   if (_meosHelper.handedOff) return;   // v4.2.330: 渡した後は書かない
@@ -14168,7 +14168,7 @@ function meosPlayChime() {
     let name = 'Sosumi', vol = 2;
     try {
       const cfg = vscode.workspace.getConfiguration('laiMembrane');
-      name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
+      name = String(cfg.get('clockSound', 'Mew') || '').trim();
       const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     } catch (_) { }
     if (!name) return;                                   // 空= 鳴らさない
@@ -14280,7 +14280,7 @@ function meosPlayWhistle() {
     let name = 'Sosumi', vol = 2;
     try {
       const cfg = vscode.workspace.getConfiguration('laiMembrane');
-      name = String(cfg.get('clockSound', 'Sosumi') || '').trim();
+      name = String(cfg.get('clockSound', 'Mew') || '').trim();
       const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     } catch (_) { }
     if (!name) return;                                   // 空= 鳴らさない(人の意思)
