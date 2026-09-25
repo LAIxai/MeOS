@@ -25335,6 +25335,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .paste-lag-btn.off{opacity:1;color:color-mix(in srgb,#e0803a 65%,var(--vscode-foreground) 35%);border-color:rgba(224,128,58,.4)}
 /* v4.2.381(俊克「亀が緑なので、灰色だと沈む。もっと明るい灰色の地に」): 地を明るい灰に、字は地に負けない明るいオレンジに */
 .paste-lag-btn.off{background:#6e7278;color:#ffc48a;border-color:rgba(224,128,58,.55)}
+/* v4.2.382(俊克「灰色では駄目だね。白かクリーム色にしよう」): 地はインラインコードの板と同じクリーム #f3e6c4、字は濃いオレンジ */
+.paste-lag-btn.off{background:#f3e6c4;color:#b4540f;border-color:#e0803a}
+.paste-lag-btn.off:hover{background:#f8eed3}
 .paste-lag-btn.off:hover{opacity:1;border-color:#e0803a}
 .title-ver{font-size:10px;font-weight:600;opacity:.5;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
 /* v4.0.303: 版の右にファイル名。長い名前は縮めて、全体はツールチップで見せる。▾で最近5つ。 */
