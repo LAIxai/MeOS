@@ -150,7 +150,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   const S11=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
   ok(!/id="clk-dir"/.test(S11), '\u2605\u2605\u2605向きの駒は面から消えた(選ばせない)', true);
   ok(/dual:true,cycle:/.test(S11), '\u2605\u2605\u2605面は常に \u21ba\u21bb を頼む', true);
-  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark, manual: _mn0 \}\)/.test(S11), '\u2605面が言った同時が、書く所まで届く(v4.2.63: \u25b6\ufe0f も)', true);
+  ok(/dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _pMark, manual: _mn0 \}(\)|, \(opts && typeof opts\.atLine)/.test(S11),   /* v4.2.367: Read した行を書き直す引数(atLine)が足された */ '\u2605面が言った同時が、書く所まで届く(v4.2.63: \u25b6\ufe0f も)', true);
   ok(/const _pMark = \(\(_up0 \|\| _dl0\) && _org && _org\.getTime\(\) <= Date\.now\(\)\)/.test(S11),
      '\u2605\u2605今(=もう過去)を起点にしたら p と名乗らせる(役を字に焼き付ける)', true);
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);

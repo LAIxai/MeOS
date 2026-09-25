@@ -11193,6 +11193,8 @@ function meosClockLastLabel(t) {
 //   ★本文には書かない(表示であって記法ではない)。起点の決まっていない1本・済み・×N無しは 0。
 const MEOS_LAST_FLASH_MS = 5000;
 const _meosLastFlash = new Map();   // 膜+⏰行の位置 -> {sig, at}= 直した瞬間を覚える(開いただけでは光らない)
+// v4.2.383: 「この行の時計」(Read ⏰ がカーソルの⏰行を読む)= 席の1本を探す口(meosLiveClockFor)とは別の問い。行を名指しして探す。
+function meosClockAtLine(doc, key, line) { for (const c of meosClockFcScan(doc)) if (c.key === key && c.line === line) return c; return null; }
 function meosClockOriginOf(c) {
   try { const o = meosParseStampLoose(c.when) || (c.vAt > 0 ? new Date(c.vAt) : null) || ((meosParseWhen(c.when) || {}).at) || null; return o ? o.getTime() : 0; } catch (_) { return 0; }
 }
@@ -22258,6 +22260,33 @@ async function insertFormatTemplate(kind, editor, fg, bg, level, opt) {
       // v4.0.416: Opt押しの取消ボタン= 👻(コメント化)。色は持たない= 見えない物に色は要らない。
       const _ghost = !!(opt && opt.ghost) && kind === 'strike';
       const _dir = _ghost ? '~~👻' : (kind === 'highlight') ? '***not' : '~~';
+      // ★★v4.2.383(俊克 別件1「最近、取消線ボタンが、複数行に対応しなくなっている」):
+      //   ★ログ= 空行と箇条書きをまたいで何段落も選んだまま押していた(sel に \n\n- が入っている)。
+      //     Markdown の ~~ / *** は**段落や項目をまたげない**= 範囲全体を1組で包んでも線は引かれない。
+      //   ★→ **行ごとに包む**。空行・指定行(コメント)は飛ばし、行頭の字下げ・箇条書きの印・見出しの # は印の外に残す。
+      //     下の行から順に書く= 1行書く口(meosWriteMarkAndSpec)は毎回文書を読み直すので、FC行が増えても位置がずれない。
+      if (sel.start.line !== sel.end.line) {
+        const _todo = [];
+        for (let _ln = sel.end.line; _ln >= sel.start.line; _ln--) {
+          const _tx = doc.lineAt(_ln).text;
+          if (!_tx.trim() || meosIsSpecLine(_tx) || /^\s*<!--/.test(_tx) || /^\s*(```|~~~)/.test(_tx)) continue;
+          const _lead = (/^(\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|>\s*|#{1,6}\s+)?)/.exec(_tx) || [''])[0].length;
+          let _a = (_ln === sel.start.line) ? Math.max(sel.start.character, _lead) : _lead;
+          let _b = (_ln === sel.end.line) ? sel.end.character : _tx.length;
+          while (_b > _a && /\s/.test(_tx[_b - 1])) _b--;
+          if (_b <= _a) continue;
+          _todo.push({ ln: _ln, a: _a, b: _b, t: _tx.slice(_a, _b) });
+        }
+        for (const it of _todo) {
+          await meosWriteMarkAndSpec(editor, new vscode.Selection(it.ln, it.a, it.ln, it.b), mk + it.t + mk, mk, _dir + ' ' + spec);
+        }
+        try { meosDbg('[fmt] ' + kind + ' 複数行= ' + _todo.length + '行を行ごとに包んだ'); } catch (_) { }
+        const _p0 = new vscode.Position(sel.start.line, sel.start.character);
+        editor.selection = new vscode.Selection(_p0, _p0);
+        editor = await meosFocusBack(editor, editor.selection);
+        try { if (MEOS_SPEC_LINE && meosFormatWritesFC()) await meosPushLineSpecsOutOfLine(editor); } catch (_) { }
+        return;
+      }
       // v4.0.210(俊克): **中間状態を作らない**= 本文に印・指定行に指定を、1回の編集で同時に書く。
       const _mark = mk + body + mk;
       // ★★v4.0.434(俊克 8/27 am01:42「**お化けにも、色指定を付けておく**。そうすれば、FCコメントで👻を消せば、
@@ -30663,7 +30692,7 @@ function toggleMeDock(editorOverride) {
           // ★v4.2.367(俊克「次の予定ではなく、現在文字カーソルがいる⏰FCの値をReadボタンで読込み、変更してSetする」):
           //   カーソルが⏰行に居れば**その行**を読み、行番号も返す= Set はその1本を書き直す(新しく足さない)。
           let hit = null;
-          try { const _cl = ed.selection.active.line; hit = sc && sc.key ? (meosClockFcScan(ed.document).find(c => c.key === sc.key && c.line === _cl) || null) : null; } catch (_) { hit = null; }
+          try { hit = sc && sc.key ? meosClockAtLine(ed.document, sc.key, ed.selection.active.line) : null; } catch (_) { hit = null; }
           if (!hit) hit = sc && sc.key ? meosLiveClockFor(ed.document, sc.key) : null;
           if (hit) _r = { type: 'clockRead', ok: true, line: (typeof hit.line === 'number' ? hit.line : -1),
             when: String(hit.whenSrc || hit.when || ''),
