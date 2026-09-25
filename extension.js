@@ -11268,6 +11268,40 @@ function meosClockSetTarget() {
     return { refused: '\u23f0 To add a clock, put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines, then press Set. To change a clock, put the caret on its \u23f0 line.' };
   } catch (_) { return null; }
 }
+// ★★v4.2.410(俊克「2番目は、二行パターンで、目薬の例」): Repeat の箱の**1行=⏰の1行**。1行目は今までどおり起点つきで書き、
+//   2行目から先は起点なし(前の⏰から受け継ぐ)で、同じ膜の⏰群の後ろへ足す。
+//   ★カーソルが⏰行の上= その膜の⏰群を**丸ごと置き換え**る(1行目は群の先頭行へ・余った行は消す・🔐は残す)。
+function meosPanelCycleOpts(rep, text) {
+  const raw = String(text == null ? '' : text).trim();
+  const ex = (rep && raw) ? meosParseCycleExpr(raw, 0) : null;
+  return { cycle: (ex && ex.steps.length) ? ex.steps.map(e => e.tok) : (rep ? meosParseCycleInput(raw) : []),
+    cycleSrc: (ex && ex.steps.length) ? raw : '',
+    rounds: (ex && ex.rounds) ? ex.rounds : (rep ? meosParseRoundsInput(raw) : 0) };
+}
+async function meosClockSetMore(message, first) {
+  try {
+    const more = Array.isArray(message.more) ? message.more : [];
+    if (!more.length || !first || !first.atKey) return;
+    const ed = meosCurrentEditor(); if (!ed) return; const doc = ed.document, key = first.atKey;
+    const rows = () => meosClockFcScan(doc).filter(c => c.key === key).sort((a, b) => a.line - b.line);
+    const replace = (typeof first.atLine === 'number');
+    for (let i = 0; i < more.length; i++) {
+      const it = more[i] || {};
+      let at;
+      if (replace) { const r = rows(); const k = r.findIndex(c => c.line === first.atLine); if (k >= 0 && r[k + 1 + i]) at = r[k + 1 + i].line; }
+      _meosClockLockNext = !!message.lock; _meosClockAnchorNext = !!message.anchor;
+      await meosStartPseudoTimer(0, 0, null, Object.assign({ hasCycle: true, up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,
+        title: String(it.title || ''), listNo: String(it.listNo || ''), tags: null, noOrigin: true, atKey: key },
+        meosPanelCycleOpts(true, it.cycle), (typeof at === 'number') ? { atLine: at } : {}));
+    }
+    if (replace) {   // 余った行(群の中で、書いた行より後ろ)を消す。🔐は外せない約束なので残す
+      const r = rows(); const k = r.findIndex(c => c.line === first.atLine);
+      const extra = (k >= 0) ? r.slice(k + 1 + more.length) : [];
+      for (let j = extra.length - 1; j >= 0; j--) { const t = doc.lineAt(extra[j].line).text; if (t.indexOf('\ud83d\udd10') >= 0) continue; await meosClockFcSet(doc, key, null, extra[j].line); }
+      try { meosArmClockFcFor(doc); } catch (_) { }
+    }
+  } catch (e) { meosDbg('[clockSetMore] ' + (e && e.message)); }
+}
 let _meosClkPanelOpen = false, _meosClkTargetTimer = null;
 function meosPostClkTarget() {
   try { const r = meosClockSetTarget(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clkTarget', ok: !!(r && !r.refused), mode: r ? (r.refused ? 'refuse' : (typeof r.atLine === 'number' ? 'change' : 'add')) : '' }); } catch (_) { }
@@ -28384,7 +28418,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'20m\u00d736',anchor:true},{cyc:'(50m 10m)\u00d74',anchor:false},{cyc:'24h\u00d710',anchor:false}];var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // Pomodoro 1.',anchor:false},{cyc:'8h // Time for eye drops\\n(5m)\u00d72 // Eye drop # 1.',anchor:true},{cyc:'24h\u00d710',anchor:false}];var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -28902,16 +28936,22 @@ if(clkCaret&&clkPop){
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
-  vscode.postMessage({type:'pseudoTimerSet',title:window.__clkReadTitle||'',listNo:window.__clkReadListNo||'',when:(window.__clkNoOrigin&&clkRep)?'':v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  /* v4.2.410: 箱の1行= ⏰の1行。行末の // の後ろはその⏰のタイトル。2行以上なら連番 1. を頭に(Markdown と同じく全部 1.) */
+  var _ls=(clkRep&&cy)?String(cy.value||'').split(/\\n/).map(function(x){var k=x.indexOf('//');return {cycle:(k>=0?x.slice(0,k):x).trim(),title:(k>=0?x.slice(k+2):'').trim()};}).filter(function(o){return o.cycle;}):[];
+  var _multi=_ls.length>1;var _l0=_ls[0]||{cycle:'',title:''};
+  var _more=_multi?_ls.slice(1).map(function(o){return {cycle:o.cycle,title:o.title,listNo:'1.'};}):[];
+  vscode.postMessage({type:'pseudoTimerSet',more:_more,title:_l0.title||window.__clkReadTitle||'',listNo:window.__clkReadListNo||(_multi?'1.':''),when:(window.__clkNoOrigin&&clkRep)?'':v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:_l0.cycle,tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
  /* v4.2.365: 「×N → 最終日」をホイールで回す(マウスは動かさない)。数えるのは拡張(×N の最終日/Date&Count と同じ関数)。 */
  var clkLastSeq=0,clkLastTimer=null,clkLastAcc=0;
- function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?cy.value:'',unit:unit||'',dir:dir||0});}
+ /* v4.2.410: 最終日の輪が読むのは1行目の式だけ(// のタイトルと2行目から先は触らない) */
+ function clkL0(v){v=String(v||'');var nl=v.indexOf('\\n');var line=nl<0?v:v.slice(0,nl);var k=line.indexOf('//');return {ex:(k<0?line:line.slice(0,k)).trim(),rest:(k<0?'':line.slice(k))+(nl<0?'':v.slice(nl))};}
+ function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?clkL0(cy.value).ex:'',unit:unit||'',dir:dir||0});}
  function clkLastSoon(){if(clkLastTimer)clearTimeout(clkLastTimer);clkLastTimer=setTimeout(function(){clkLastTimer=null;clkLastAsk('',0);},150);}
  window.__clkLastPaint=function(m){if(m.seq!==clkLastSeq)return;var ln=document.getElementById('clk-ln'),lt=document.getElementById('clk-lt');if(!ln||!lt)return;
-  var cy=document.getElementById('clk-cyc');if(cy&&typeof m.cycle==='string'&&m.cycle!==cy.value)cy.value=m.cycle;
+  var cy=document.getElementById('clk-cyc');if(cy&&typeof m.cycle==='string'){var _l0=clkL0(cy.value);if(m.cycle!==_l0.ex)cy.value=m.cycle+(_l0.rest?(_l0.rest.charAt(0)==='\\n'?'':' ')+_l0.rest:'');}
   if(!m.ok){ln.textContent='\u00d7\u2014';lt.innerHTML='';return;}
   ln.textContent=m.n>0?('\u00d7'+m.n):'\u00d7\u2014';
   if(!m.parts){lt.innerHTML='<span class="clk-noend">no end</span>';return;}
@@ -28941,10 +28981,10 @@ if(clkCaret&&clkPop){
   var wh=document.getElementById('clk-when');if(wh&&window.MutationObserver)new MutationObserver(clkLastSoon).observe(wh,{childList:true,characterData:true,subtree:true});
   clkLastSoon();})();
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
- if(clkCycEl)clkCycEl.addEventListener('input',function(){if(/[\\r\\n]/.test(clkCycEl.value))clkCycEl.value=clkCycEl.value.replace(/\\s*[\\r\\n]+\\s*/g,' ');clkTouch();clkPaintSet();});   /* v4.2.409: 貼った改行は空白に */   /* v4.1.144 */
+ if(clkCycEl)clkCycEl.addEventListener('input',function(){if(/\\r/.test(clkCycEl.value))clkCycEl.value=clkCycEl.value.replace(/\\r\\n?/g,'\\n');clkTouch();clkPaintSet();});   /* v4.2.410: 改行は⏰の区切り(\\r だけ揃える) */   /* v4.1.144 */
  if(clkTagEl0())clkTagEl0().addEventListener('input',function(){window.__clkTagTouched=true;clkTouch();});   /* v4.2.394: 札の欄は触った時だけ書く */
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&!clkComposing(e)){e.preventDefault();e.stopPropagation();clkFire();}   /* v4.2.409: 箱は2行でも式は1行= 改行は打たせない */
+  if(e.key==='Enter'&&!clkComposing(e)){e.stopPropagation();if(e.shiftKey)return;e.preventDefault();clkFire();}   /* v4.2.410: Shift+Enter= 次の⏰の行 / Enter= Set */
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
  var clkTagNew=document.getElementById('clk-tagnew');
  if(clkTagNew){clkTagNew.addEventListener('input',function(){clkTagFilter=(clkTagNew.value||'').trim();
@@ -30995,8 +31035,12 @@ function toggleMeDock(editorOverride) {
       //   タイマーの追加は、閉じ膜あるいは⏰FC群の直後の空行に限定しないか?」):
       //   ★場所が違えば書かずに断り、パネルを開き直して札を出す(値はそのまま= 置き直して押し直すだけ)。
       if (_opts.refused) { try { meDockPanel.webview.postMessage({ type: 'clkSetRefused', text: _opts.refused }); } catch (_) { } return; }
+      // v4.2.410: 箱が2行以上で⏰行の上= 群を丸ごと置き換える→ 1行目は群の先頭行へ
+      if (Array.isArray(message.more) && message.more.length && typeof _opts.atLine === 'number') {
+        try { const _e0 = meosCurrentEditor(); const _g0 = _e0 ? meosClockFcScan(_e0.document).filter(c => c.key === _opts.atKey).sort((a, b) => a.line - b.line) : []; if (_g0.length) _opts.atLine = _g0[0].line; } catch (_) { }
+      }
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
-      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); return; }   // v4.2.395: 起点なし
+      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); await meosClockSetMore(message, _opts); return; }   // v4.2.395: 起点なし
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
       // ★★v4.2.89(俊克 バグ2): **一度きりも過去を受ける**= ドラムの日付が過去なら、そこから数えるストップウォッチ
@@ -31007,6 +31051,7 @@ function toggleMeDock(editorOverride) {
       const _org = w ? w.at : ((_opts.cycle && _opts.cycle.length) ? _loose89 : (_past89 ? _loose89 : null));
       if (!_org) { vscode.window.setStatusBarMessage('MeOS: 18:30 / 9/1 18:30 / 2026-09-01 18:30', 3000); return; }
       await meosStartPseudoTimer(0, w ? w.ms : 0, _org, _opts);
+      await meosClockSetMore(message, _opts);   // v4.2.410: 箱の2行目から先
       return;
     }           // v4.0.442/448: ⏰=テスト用紙
     // v4.1.65: ▾を開いた時だけ訊かれる= カーソルthat動く度に14万行を読まない。
@@ -31085,12 +31130,12 @@ function toggleMeDock(editorOverride) {
     // ★v4.2.315: ⏰▼のプリセット3つ(覚えは globalState= 次に開いても同じ3つ)
     if (message && (message.type === 'clockPresetsAsk' || message.type === 'clockPresetSlot' || message.type === 'clockPresetSave')) {
       try {
-        // v4.2.409(俊克): 既定= 20m×36(目を休める・⚓)/(50m 10m)×4(学校の午前)/24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
-        const def = [{ cyc: '20m\u00d736', anchor: true }, { cyc: '(50m 10m)\u00d74', anchor: false }, { cyc: '24h\u00d710', anchor: false }];
-        let list = extensionContext.globalState.get('meosClockPresets2', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+        // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
+        const def = [{ cyc: '(25m 5m)\u00d74 // Pomodoro 1.', anchor: false }, { cyc: '8h // Time for eye drops\n(5m)\u00d72 // Eye drop # 1.', anchor: true }, { cyc: '24h\u00d710', anchor: false }];
+        let list = extensionContext.globalState.get('meosClockPresets3', null); if (!Array.isArray(list) || list.length !== 3) list = def;
         let slot = Number(extensionContext.globalState.get('meosClockPresetSlot', 0)) || 0;
         if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); await extensionContext.globalState.update('meosClockPresetSlot', slot); }
-        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor }; await extensionContext.globalState.update('meosClockPresets2', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
+        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor }; await extensionContext.globalState.update('meosClockPresets3', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
         if (message.type === 'clockPresetsAsk' && meDockPanel) meDockPanel.webview.postMessage({ type: 'clockPresets', list, slot });
       } catch (_) { }
       return;
