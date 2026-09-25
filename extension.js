@@ -28334,7 +28334,6 @@ clkPutYMDHM(t.getFullYear(),t.getMonth()+1,t.getDate(),t.getHours(),t.getMinutes
 /* v4.1.169: この膜の時計を面へ取り込む(read \u23f0)。打ち込みの口は clkSyncFromBox 1つ。 */
 function clkTakeIn(d){try{
  if(!d||!d.ok){if(d&&d.why)window.__meosToast&&window.__meosToast(d.why);return;}
- window.__clkReadLine=(typeof d.line==='number')?d.line:-1;window.__clkReadKey=String(d.key||'');   /* v4.2.367: Set はこの行を書き直す / v4.2.389: その膜の名前も */
  /* ★★★v4.1.173(俊克 バグ1の真因・ack that名指し): ack thatが matched:false を返した=
     **字は届いているのに正規表現that当たっていなかった**。
     ★★★webviewのJSはテンプレートリテラルの中so、バックスラッシュを二重に書かないと潰れる
@@ -28775,7 +28774,7 @@ if(clkCaret&&clkPop){
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
-  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:'',atLine:(typeof window.__clkReadLine==='number'&&window.__clkReadLine>=0)?window.__clkReadLine:-1,atKey:window.__clkReadKey||''});window.__clkReadLine=-1;window.__clkReadKey='';   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:''});   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -28853,7 +28852,7 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  clkDirty=false;clkPaintSet();window.__clkReadLine=-1;   /* v4.1.142: 開いた時は未設定から始まる / v4.2.367: Read の行も忘れる */
+  clkDirty=false;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
    vscode.postMessage({type:'clockTagList'});   /* v4.1.91: 扉の数字を今のファイルで数え直す(開く時に1回だけ) */
@@ -30847,8 +30846,11 @@ function toggleMeDock(editorOverride) {
         up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,   // v4.1.142: 面は常に \u21ba\u21bb
         rounds: (_cyEx && _cyEx.rounds) ? _cyEx.rounds : (_rep ? meosParseRoundsInput(message.cycle) : 0),
         tags: (message.tags != null) ? meosParseTagInput(message.tags) : null,
-        atLine: (typeof message.atLine === 'number' && message.atLine >= 0) ? message.atLine : undefined,   // v4.2.367: Read した行を書き直す
-        atKey: (typeof message.atLine === 'number' && message.atLine >= 0 && message.atKey) ? String(message.atKey) : undefined };   // v4.2.389: その行の膜
+        // ★★v4.2.390(俊克「ある膜で⏰FCをreadで読込み、別の膜に行って、そこの⏰FCに上書きしたり、追加したりできるので、文字カーソルの位置で制御するのがいい」):
+        //   ★どこへ書くかは **Set を押した瞬間のカーソル**が決める(read は値をパネルへ持って来るだけ・覚えを持たない)。
+        //     カーソルが⏰FC の行の上= その行を書き直す(その⏰の膜として) / それ以外(開始膜・閉じ膜・膜の中)= その膜の⏰FC群の最後に足す。
+        ...(function () { try { const _e = meosCurrentEditor(); const _h = _e ? meosClockAtLine(_e.document, null, _e.selection.active.line) : null;
+          return _h ? { atLine: _h.line, atKey: String(_h.key || '') } : {}; } catch (_) { return {}; } })() };
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
