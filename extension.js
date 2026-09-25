@@ -26625,14 +26625,14 @@ color:#ffffff;z-index:4;padding:0}
 .clk-pop.hist-only .clk-cycwrap{display:none}
 /* v4.2.411(俊克「Repeatの3プリセットの入力枠を3色で色分け。見出しボタンなどと同様に」): 折り返し幅の↻と同じ 赤/青/緑 */
 .clk-cycwrap .clk-cyc{border-width:2px}   /* v4.2.412(俊克「枠の色が薄過ぎる。透明にしないで、はっきりした色に」) */
-.clk-cycwrap.s0 .clk-cyc{background:#7a2f29;border-color:#e0564a;color:#fff}
+.clk-cycwrap.s0 .clk-cyc{background:#7a6210;border-color:#e8c23a;color:#fff}   /* v4.2.416(俊克「🍅のときは赤背景だと目立たないので黄色に」) */
 .clk-cycwrap.s1 .clk-cyc{background:#27477a;border-color:#4a86e0;color:#fff}
 .clk-cycwrap.s2 .clk-cyc{background:#23603a;border-color:#3fa85c;color:#fff}
 .clk-cycwrap .clk-cyc::placeholder{color:rgba(255,255,255,.55)}
 .clk-cycwrap.off .clk-cyc{background:var(--vscode-input-background);border-color:var(--vscode-panel-border);color:var(--vscode-input-foreground)}
 .clk-cycwrap.off .clk-pring{background:#777}
-.clk-rawline{white-space:pre-wrap;overflow-wrap:anywhere}   /* v4.2.413: ⏰行の姿(1行=1⏰) */
-.clk-cycwrap.s0 .clk-pring{background:#e0564a}.clk-cycwrap.s1 .clk-pring{background:#4a86e0}.clk-cycwrap.s2 .clk-pring{background:#3fa85c}
+.clk-rawline{white-space:pre-wrap;overflow-wrap:break-word}   /* v4.2.413: ⏰行の姿(1行=1⏰) */
+.clk-cycwrap.s0 .clk-pring{background:#d9a81e}.clk-cycwrap.s1 .clk-pring{background:#4a86e0}.clk-cycwrap.s2 .clk-pring{background:#3fa85c}
 /* v4.2.411(俊克「起点に Starting point… 日付日時の後ろに p/f」): p=過去(数え上げ=水色) / f=未来(残り=緑)。FC に書かれる印と同じ字 */
 .clk-when .cw-fp{margin-left:1px;font-weight:800}
 .clk-when .cw-fp.p{color:#4fc1ff}.clk-when .cw-fp.f{color:#6cc04a}
