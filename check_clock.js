@@ -1578,13 +1578,14 @@ console.log('⑬ 入れ子 ((30s 15s)×8 1m)×3 = 並びthatが一段上に居�
   ok(e.steps[0].from===2 && e.steps[0].to===5, '  桁も控える(白く光る所を数え直さない)', [e.steps[0].from,e.steps[0].to]);}
  /* ⑥ 面の初期値= 骨組みthatそのまま入っている(部分修正して使う) */
  {const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
-  ok(/if\(!String\(_cy9\.value\|\|''\)\.trim\(\)\)_cy9\.value='\(\(30s 15s\)\\u00d74 1m\)\\u00d73';/.test(S),
-     '★★★Repeat に✓を入れた時、空なら骨組みを入れる(既定that記法の教科書になる)', true);
+  /* v4.2.413: 骨組み(HIIT)はプリセット③へ。✓を入れて箱が空なら今のプリセット・入れたら最後の ×N の右へ(全選択はしない) */
+  ok(/else if\(_cy9&&!String\(_cy9\.value\|\|''\)\.trim\(\)\)clkApplyPreset\(\);/.test(S) && /cyc:'\(\(30s 15s\)\\u00d74 1m\)\\u00d73'/.test(S),
+     '★★★Repeat に✓を入れた時、空ならプリセットを入れる(HIIT の骨組みは③)', true);
   ok(/placeholder="\(\(30s 15s\)\\u00d74 1m\)\\u00d73"/.test(S), '  影文字も同じ典型のHIIT', true);
-  ok(!/_cy9\.select&&_cy9\.select\(\)/.test(S) && /setSelectionRange\(_n9,_n9\)/.test(S),
+  ok(!/_cy3\.select\(\)/.test(S) && /_cy3\.setSelectionRange\(_at,_at\)/.test(S),
      '★★全選択はしない(部分的に修正できるように= 打った瞬間に消えては困る)', true);
-  ok(/var _m9=\/\[0-9\]\+\/\.exec\(_cy9\.value\);var _n9=_m9\?\(_m9\.index\+_m9\[0\]\.length\):/.test(S),
-     '★★★カーソルは**最初の数字の終わり**(0とsの間)= Backspaceで打ち直せる所', true);
+  ok(/while\(\(_m1=_rx\.exec\(_vv\)\)\)_mx=_m1;var _at;if\(_mx\)_at=_mx\.index\+1;/.test(S),
+     '★★★カーソルは**最後の ×N の右**(外側の回数= 最初に直す所・ドラムも出る)', true);
   ok(/const _cyEx = \(_rep && _cyRaw\) \? meosParseCycleExpr\(_cyRaw, 0\) : null;/.test(S),
      '★面の箱も同じ1つの読みで受ける', true);}
 }

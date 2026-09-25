@@ -26608,7 +26608,7 @@ color:#ffffff;z-index:4;padding:0}
 /* \u2605v4.1.65(俊克 改良2「\ud83d\udd10を押した時に\ud83d\udd13の色が薄い」): 施錠=オレンジ \u21c4 解錠=ブルー。
    Encrypt Me(v2.0.58 俊克「施錠=オレンジなら解錠=青系」)と**同じ対比**so、覚え直すことthat無い。 */
 .clk-anchor{flex:none;margin-right:6px;min-width:26px;height:22px;padding:0 4px;border:1px solid var(--vscode-panel-border,#555);border-radius:6px;background:transparent;cursor:var(--meos-hand);font-size:13px;line-height:1;white-space:nowrap}
-.clk-anchor.on{background:#2f80b8;border-color:#2f80b8}   /* v4.2.312: ⚓ 停泊中は錠の🔓と同じ青 / v4.2.313: 形が状態を語るので薄くはしない */
+.clk-anchor.on{background:transparent;border-color:#e0564a;color:#e0564a;font-size:16px;font-weight:900}   /* v4.2.413(俊克「⚓️ボタンは、赤文字⚓︎にしよう」) */   /* v4.2.312: ⚓ 停泊中は錠の🔓と同じ青 / v4.2.313: 形が状態を語るので薄くはしない */
 .clk-lockunit.on .clk-lockmain{opacity:.45;border-color:var(--vscode-panel-border);background:transparent;color:var(--vscode-editor-foreground)}
 .clk-lockunit.on .clk-lockbadge{filter:none;background:#2f80b8;border-color:rgba(0,0,0,.6);box-shadow:0 0 5px rgba(47,128,184,.85)}
 .clk-lockunit.on .clk-lockbadge:hover{background:#3a93d0;filter:brightness(1.08)}
@@ -26629,6 +26629,9 @@ color:#ffffff;z-index:4;padding:0}
 .clk-cycwrap.s1 .clk-cyc{background:#27477a;border-color:#4a86e0;color:#fff}
 .clk-cycwrap.s2 .clk-cyc{background:#23603a;border-color:#3fa85c;color:#fff}
 .clk-cycwrap .clk-cyc::placeholder{color:rgba(255,255,255,.55)}
+.clk-cycwrap.off .clk-cyc{background:var(--vscode-input-background);border-color:var(--vscode-panel-border);color:var(--vscode-input-foreground)}
+.clk-cycwrap.off .clk-pring{background:#777}
+.clk-rawline{white-space:pre-wrap;overflow-wrap:anywhere}   /* v4.2.413: ⏰行の姿(1行=1⏰) */
 .clk-cycwrap.s0 .clk-pring{background:#e0564a}.clk-cycwrap.s1 .clk-pring{background:#4a86e0}.clk-cycwrap.s2 .clk-pring{background:#3fa85c}
 /* v4.2.411(俊克「起点に Starting point… 日付日時の後ろに p/f」): p=過去(数え上げ=水色) / f=未来(残り=緑)。FC に書かれる印と同じ字 */
 .clk-when .cw-fp{margin-left:1px;font-weight:800}
@@ -26951,7 +26954,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <input class="clk-in clk-edit" id="clk-edit" placeholder="20:00 / 2026-09-01 20:00" spellcheck="false">
   <div class="clk-row"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
-  <div class="clk-row"><span class="clk-lab">Repeat</span><span class="clk-hint" id="clk-hint-rep">00 ends the list</span></div>
+  <div class="clk-row"><span class="clk-lab">UFC</span><span class="clk-hint" id="clk-hint-rep">one line = one \u23f0 \u00b7 00 ends the list</span></div>
   <div class="clk-cycwrap"><textarea class="clk-in clk-cyc" id="clk-cyc" rows="2" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays."></textarea><span class="clk-pring" id="clk-pring">\u21bb</span></div>
   <div class="clk-rawline" id="clk-rawline"></div>
   <div class="clk-cols clk-ncols" id="clk-ncols"><div class="clk-col clk-ncol" id="clk-nd"></div></div>
@@ -28558,7 +28561,7 @@ var _fp=document.getElementById('clk-wfp');if(_fp){var _o=null;try{var _dm=/^(\\
 if(window.__clkNoOrigin){wd.textContent='no start \u2014 counts from Set';wt.textContent='';if(_fp){_fp.textContent='';_fp.className='cw-fp';}}   /* v4.2.395: 起点なし(回すと起点が決まる) */
 wd.classList.toggle('fix',clkFixD);
 /* v4.1.46: 同じ旗を輪にも渡す= 下の行と輪that同じことを言う(色の意味は1つ) */
-if(clkPop)clkPop.classList.toggle('dfix',clkFixD);}
+if(clkPop)clkPop.classList.toggle('dfix',clkFixD);try{if(window.__clkPaintPrev)window.__clkPaintPrev();}catch(e){}}
 (function clkFpBeat(){try{if(clkPop&&clkPop.classList.contains('on'))clkEcho();}catch(e){}setTimeout(clkFpBeat,1000);})();   /* v4.2.411: 開いている間に起点を過ぎたら f→p(webview の中の拍= 窓と一緒に消える) */
 /* 打ち込みの口は1つ= 合体行を押すと、この箱が同じ場所に出る。 */
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
@@ -28880,12 +28883,7 @@ if(clkCaret&&clkPop){
     clkPresets[clkPresetSlot]={cyc:_v2,anchor:!!clkAnchor};clkPaintPreset();vscode.postMessage({type:'clockPresetSave',slot:clkPresetSlot,cyc:_v2,anchor:!!clkAnchor});clkFlash('Kept in preset '+(clkPresetSlot+1)+': '+_v2+(clkAnchor?' \u2693':''));return;}
    var _cur=clkPresets[clkPresetSlot]||{};
    if(_cy3&&String(_cy3.value||'').trim()===String(_cur.cyc||'')&&clkRep){clkPresetSlot=(clkPresetSlot+1)%3;vscode.postMessage({type:'clockPresetSlot',slot:clkPresetSlot});}
-   var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
-   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
-   /* ★v4.2.411(俊克「回数指定(×3など)があるケースでは、×の右側に文字カーソルを自動で移動し、ドラム式セレクターを表示させる。これで仕組みを自然に学習させる」):
-      ×N があれば × のすぐ右へ置いてドラムを出す。無ければ最初の数字の終わり(v4.1.159 と同じ置き場所) */
-   try{if(_cy3){var _vv=_cy3.value,_rx=/[\u00d7xX*]\\s*\\d/g,_mx=null,_m1;while((_m1=_rx.exec(_vv)))_mx=_m1;var _at;if(_mx)_at=_mx.index+1;   /* v4.2.412: 最後の ×N(外側の回数= 最初に直す所) */else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
-    _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
+   clkApplyPreset();
    return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
    /* ★★v4.1.158(俊克 9/6 pm00:51 改良1「Repeat\u21ba\u21bb をクリックした時、入力枠は空のままだね。
@@ -28893,13 +28891,11 @@ if(clkCaret&&clkPop){
         クリックした時に**初期値として自動で入れよう**」):
       ★★**骨組みthat入っていれば、0から打たずに数字だけ直せる**= 既定thatが記法の教科書になる。
       ★全選択はしない= 俊克「**部分的に修正できるように**」so、打った瞬間に消えては困る。 */
-   if(clkRep){try{var _cy9=document.getElementById('clk-cyc');
-    if(_cy9){if(!String(_cy9.value||'').trim())_cy9.value='((30s 15s)\u00d74 1m)\u00d73';
-     /* ★★v4.1.159(俊克 9/6 pm01:06「30s の左側に文字カーソルを出そうよ。**そこからカスタマイズするのthat自然**だよ」):
-        ★★**最初の数字の終わり(0 と s の間)**に置く= 数字だけthat直す所で、括弧も \u00d7 も単位も枠組み。
-          そこならBackspaceで数字を消して打ち直せる= **手thatそのまま動く**。
-          (数字の前でも末尾でもなく、消したい物の右端。) */
-     _cy9.focus();try{var _m9=/[0-9]+/.exec(_cy9.value);var _n9=_m9?(_m9.index+_m9[0].length):_cy9.value.length;_cy9.setSelectionRange(_n9,_n9);}catch(e2){}}}catch(e){}}
+   /* ★v4.2.413(俊克「✓を外すと ↻ を灰色にして、入力枠には何も無い状態にする。何も無い状態と3つのプリセットの4つの状態」):
+      外す= 箱を空に / 入れる= 箱が空なら今のプリセット(v4.1.158 の HIIT 既定は③へ移った) */
+   try{var _cy9=document.getElementById('clk-cyc');if(!clkRep){if(_cy9)_cy9.value='';if(window.__clkNdCheck)window.__clkNdCheck();clkLastSoon();}
+    else if(_cy9&&!String(_cy9.value||'').trim())clkApplyPreset();}catch(e){}
+   try{clkPaintPrev();}catch(e){}
    return;}
   /* ★★★v4.1.1109(俊克 9/4 pm11:57 改良1「countdownボタンを押すと、なぜか、一緒にRepeatにも
      チェックが入ってしまう」): ★★★**向きと繰返しは独立している**(v4.1.1108で矢印が
@@ -28925,7 +28921,7 @@ if(clkCaret&&clkPop){
   b.classList.toggle('on',clkDirty&&!need&&window.__clkTargetOk!==false);
   /* ★v4.2.393: 置き場所が違う間は押せず、tip が置き場所を言う(カーソルを動かすたびに拡張が判定し直す) */
   if(window.__clkTargetOk===false)b.setAttribute('data-tip','Set | Put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines to add a clock, or on a \u23f0 line to change it.');else b.removeAttribute('data-tip');}
- function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);var an=document.getElementById('clk-anchor');if(an){an.classList.toggle('on',clkAnchor);an.textContent=clkAnchor?'\u2693':'\ud83d\udea2\ud83d\udca8';}}   /* v4.2.313(俊克 改良1「⚓ボタンを押すと、🚢💨という二文字のボタンに切り替える」): 今の姿を形で出す= 🚢💨 飛んで行く / ⚓ 停泊 */
+ function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);var an=document.getElementById('clk-anchor');if(an){an.classList.toggle('on',clkAnchor);an.textContent=clkAnchor?'\u2693\ufe0e':'\ud83d\udea2\ud83d\udca8';}try{if(window.__clkPaintPrev)window.__clkPaintPrev();}catch(e){}}   /* v4.2.313(俊克 改良1「⚓ボタンを押すと、🚢💨という二文字のボタンに切り替える」): 今の姿を形で出す= 🚢💨 飛んで行く / ⚓ 停泊 */
  /* v4.1.66: \u2610 だけ大きく出せるように、箱と字を別の子にする。 */
  /* ★★v4.1.170(俊克 改良2「\u21ba\u21bb は、緑/水に色を付けて下さい。Repeatチェックボックスの方もね」):
     ★★**面の矢印も、本文の矢印と同じ色**= \u21ba=緑(残り) / \u21bb=水色(経過)。 */
@@ -28944,7 +28940,25 @@ if(clkCaret&&clkPop){
     リピートなし」): ★★★**「触らない」を「無し」の代わりにしていた**= v4.1.64は箱that空なら今の指定を残す
     という決まりso、**外す口thatどこにも無かった**(00 を打つ道は在ったthat、それは書き方の話で、面の話ではない)。
     ★→ 面that**今の姿を見せて**、その姿を変えて Set する= 見えている物を変える、という当たり前の形。 */
- function clkPaintRep(){var b=document.getElementById('clk-rep');if(b){b.classList.toggle('on',clkRep);
+ /* ★v4.2.413: プリセットを箱へ入れる口は1つ(↻・開いた直後・☑Repeat)。入れたら最後の ×N の右へカーソルとドラム(v4.2.411〜412) */
+ function clkApplyPreset(){var _cy3=document.getElementById('clk-cyc');var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
+   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
+   try{if(_cy3){var _vv=_cy3.value,_rx=/[\u00d7xX*]\\s*\\d/g,_mx=null,_m1;while((_m1=_rx.exec(_vv)))_mx=_m1;var _at;if(_mx)_at=_mx.index+1;else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
+    _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
+   try{clkPaintPrev();}catch(e){}}
+ window.__clkApplyPreset=clkApplyPreset;window.__clkPaintPrev=function(){clkPaintPrev();};
+ /* ★★v4.2.413(俊克 改良2「実際のエディタ上の表示通りの形を見せる ▶️⏰🚢💨🔓 1. …」): 箱の下に、Set で本文に出る⏰行の姿を1行ずつ。
+    read した時の生の行(v4.2.396)も同じ場所= 何も変えなければ同じ物が見える */
+ function clkPaintPrev(){var el=document.getElementById('clk-rawline');if(!el)return;var cy=document.getElementById('clk-cyc');
+   var head='\u25b6\ufe0f\u23f0'+(clkAnchor?'\u2693\ufe0f':'\ud83d\udea2\ud83d\udca8')+(clkLock?'\ud83d\udd10':'\ud83d\udd13');
+   var org='';if(!window.__clkNoOrigin){var _fp=document.getElementById('clk-wfp');org=clkDateStr()+' '+clkTimeStr()+(_fp?_fp.textContent:'');}
+   var ls=(clkRep&&cy)?String(cy.value||'').split(/\\n/).filter(function(x){return x.trim();}):[''];if(!ls.length)ls=[''];
+   var multi=ls.length>1,no=window.__clkReadListNo||(multi?'1.':'');
+   el.textContent=ls.map(function(x,i){var k=x.indexOf('//'),ex=(k<0?x:x.slice(0,k)).trim(),tt=(k<0?'':x.slice(k+2)).trim();if(!tt&&i===0)tt=window.__clkReadTitle||'';
+     return head+(no?' '+no:'')+(i===0&&org?' '+org:'')+(clkRep&&ex?' \u21ba\u21bb'+ex:'')+(tt?' // '+tt:'');}).join('\\n');
+   el.classList.add('on');}
+ function clkPaintRep(){var _cw=document.querySelector('.clk-cycwrap');if(_cw)_cw.classList.toggle('off',!clkRep);   /* v4.2.413: ✓を外すと ↻ は灰・箱は無地 */
+  var b=document.getElementById('clk-rep');if(b){b.classList.toggle('on',clkRep);
    /* ★★★v4.1.142(俊克 改良2「いっそのこと常に同時起動にして、『\u25a1 Repeat \u21ba\u21bb』の1つボタンに
      しよう。**史上初のデフォルトで同時表示タイマー**ってね」): ★★★向きを選ばせない=
      **掛ければ必ず両方の顔that出る**。片方だけにしたい人は本文の矢印を1つ消せばよい(読む形は残る)。
@@ -29002,7 +29016,7 @@ if(clkCaret&&clkPop){
   var wh=document.getElementById('clk-when');if(wh&&window.MutationObserver)new MutationObserver(clkLastSoon).observe(wh,{childList:true,characterData:true,subtree:true});
   clkLastSoon();})();
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
- if(clkCycEl)clkCycEl.addEventListener('input',function(){if(/\\r/.test(clkCycEl.value))clkCycEl.value=clkCycEl.value.replace(/\\r\\n?/g,'\\n');clkTouch();clkPaintSet();});   /* v4.2.410: 改行は⏰の区切り(\\r だけ揃える) */   /* v4.1.144 */
+ if(clkCycEl)clkCycEl.addEventListener('input',function(){if(/\\r/.test(clkCycEl.value))clkCycEl.value=clkCycEl.value.replace(/\\r\\n?/g,'\\n');clkTouch();clkPaintSet();try{clkPaintPrev();}catch(e){}});   /* v4.2.410: 改行は⏰の区切り(\\r だけ揃える) */   /* v4.1.144 */
  if(clkTagEl0())clkTagEl0().addEventListener('input',function(){window.__clkTagTouched=true;clkTouch();});   /* v4.2.394: 札の欄は触った時だけ書く */
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!clkComposing(e)){e.stopPropagation();if(e.shiftKey)return;e.preventDefault();clkFire();}   /* v4.2.410: Shift+Enter= 次の⏰の行 / Enter= Set */
@@ -30008,7 +30022,9 @@ if(_rdi)_rdi.value='';var _rcb=document.getElementById('ref-create-btn');if(_rcb
 if(typeof window.__paintRefSyms==='function')window.__paintRefSyms();if(typeof window.__refRefreshName==='function')window.__refRefreshName();
 }else{renderEditPanelMode();}var _n=document.getElementById('ref-name-input');if(_n){try{_n.focus();_n.select();}catch(e){}}
 return;}if(m&&m.type==='mewReveal'){window.__mewRevealOn=!!m.on;return;}/* v4.0.111: ボタンの明暗は個数だけで決める(ここでは触らない) *//* v4.0.106 */
-if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.list.length===3)clkPresets=m.list;clkPresetSlot=Math.max(0,Math.min(2,Number(m.slot)||0));clkPaintPreset();}catch(e){}return;}if(m&&m.type==='openTagGo'){/* v4.2.309: メニューバーから部屋へ= 最後に見ていた札のまま開く */try{if(!(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('hist-only'))&&window.__clkOpen)window.__clkOpen('hist');clkTagMode=true;clkTagSel=String(m.sel||'');clkTagFilter=String(m.filter||'');var _tn3=document.getElementById('clk-tagnew');if(_tn3)_tn3.value=clkTagFilter;vscode.postMessage({type:'clockTagList'});clkRenderList();clkPlace();}catch(e){}return;}if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
+if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.list.length===3)clkPresets=m.list;clkPresetSlot=Math.max(0,Math.min(2,Number(m.slot)||0));clkPaintPreset();
+ /* ★v4.2.413(俊克「パネルを出した直後は中途半端なので、🍅が入った状態で出そう」): この膜に繰返しが無ければ①を入れて開く(clockCurrent の後に届く) */
+ var _cy8=document.getElementById('clk-cyc');if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')&&!clkRep&&_cy8&&!String(_cy8.value||'').trim()&&window.__clkApplyPreset)window.__clkApplyPreset();}catch(e){}return;}if(m&&m.type==='openTagGo'){/* v4.2.309: メニューバーから部屋へ= 最後に見ていた札のまま開く */try{if(!(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('hist-only'))&&window.__clkOpen)window.__clkOpen('hist');clkTagMode=true;clkTagSel=String(m.sel||'');clkTagFilter=String(m.filter||'');var _tn3=document.getElementById('clk-tagnew');if(_tn3)_tn3.value=clkTagFilter;vscode.postMessage({type:'clockTagList'});clkRenderList();clkPlace();}catch(e){}return;}if(m&&m.type==='clockTags'){vmTagItems=m.items||[];   /* v4.1.73: Tag&Go の探し物 */
  try{if(clkTagMode){clkRenderList();clkPlace();}
   else{var _dr=document.getElementById('clk-door');if(_dr)_dr.textContent=clkDoorLabel();}   /* v4.1.91: 一覧は描き直さず、扉の数字だけ書き直す(生きた数字を跨がない) */
  }catch(e){}return;}
