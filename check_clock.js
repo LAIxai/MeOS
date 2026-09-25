@@ -156,7 +156,7 @@ console.log('\u247e 既定で ↺↻ / Set は指定してから押せる');
   ok(/\.clk-set\{margin-left:auto/.test(S11), '\u2605Set は右端(折り返しても)', true);
   ok(/pointer-events:none/.test(S11) && /\.clk-set\.on\{/.test(S11),
      '\u2605\u2605\u2605未設定では押せない・指定したら押せる(薄い/濃い)', true);
-  ok(/function clkTouch\(\)/.test(S11) && /clkDirty=false;(window\.__clkTargetOk=true;)?clkPaintSet\(\)/.test(S11)   /* v4.2.393: 置き場所の旗も開いた時に戻す */,
+  ok(/function clkTouch\(\)/.test(S11) && /clkDirty=false;(window\.__clk\w+=\w+;)*clkPaintSet\(\)/.test(S11)   /* v4.2.393: 置き場所の旗も開いた時に戻す */,
      '\u2605\u2605開いた時は未設定から始まる', true);
   ok(/color: new vscode\.ThemeColor\('editor\.foreground'\), fontWeight: '800' \}/.test(S11) && /color: '#e0803a', fontWeight: '800' \}/.test(S11),
      '\u2605\u2605周回数は地(橙)でも顔(緑/水色)でもない色', true);
@@ -1091,7 +1091,7 @@ console.log('\u3263 \u672d(#tag)= \u672c\u6587\u306b\u4f4f\u307f\u3001\u4e00\u89
     '\u2605\u540c\u3058\u672d\u3092\u3082\u3046\u4e00\u5ea6\u62bc\u305b\u3070 all \u3078\u623b\u308b(\u30e2\u30fc\u30c9\u3092\u899a\u3048\u306a\u3044)', true);
  ok(/if\(clkTagSel&&seen\.indexOf\(clkTagSel\)<0\)clkTagSel='';/.test(S),
     '  \u6d88\u3048\u305f\u672d\u3092\u9078\u3073\u7d9a\u3051\u306a\u3044(\u7a7a\u306e\u4e00\u89a7\u3092\u898b\u305b\u306a\u3044)', true);
- ok(/id="clk-tagin"/.test(S)&&/tags:tg\?tg\.value:''/.test(S),
+ ok(/id="clk-tagin"/.test(S)&&/tags:(tg\?tg\.value:''|\(tg&&window\.__clkTagTouched\)\?tg\.value:null)/.test(S)   /* v4.2.394: 触った時だけ送る */,
     '  \u25be\u304b\u3089\u3082\u4ed8\u3051\u3089\u308c\u308b(\u958b\u3051\u3070\u4eca\u306e\u672d that\u5165\u3063\u3066\u3044\u308b)', true);
  ok(/\.clk-item \.ci-tag\{/.test(S), '  \u884c\u306b\u3082\u672d\u3092\u5c0f\u3055\u304f\u51fa\u3059', true);
 }

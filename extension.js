@@ -26806,7 +26806,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="clk-tags" id="clk-tags"></div>
   <div class="clk-tagadd" id="clk-tagadd" style="display:none"><input class="clk-in" id="clk-tagnew" placeholder="\u30bf\u30b0\u3067\u7d5e\u308b" spellcheck="false" data-tip="Type to narrow this list by tag \u2014 any tag, not only the ones on the bar. Press \uff0b to put what you typed on the membrane the cursor is in (typing one it already has takes it off)."><button class="clk-tag0" id="clk-tagadd" data-tip="\uff0b | Put what is typed in the box on the membrane the cursor is in \u2014 press again to take it off.">\uff0b</button><button class="clk-tag0" id="clk-tag0" data-tip="#tag0 | One press puts this tag on the membrane the cursor is in \u2014 press again to take it off. The plainest way to start: mark a few membranes with it and they gather here.">#tag0</button></div>
   <div class="clk-warn" id="clk-warn"></div>
-  <div class="clk-row"><span class="clk-lab">Origin</span><span class="clk-hint">empty = today / tomorrow</span></div>
+  <div class="clk-row"><span class="clk-lab">Date</span><span class="clk-hint">empty = today / tomorrow</span></div>
   <div class="clk-cols"><div class="clk-col dcol" id="clk-y"></div><div class="clk-col dcol" id="clk-mo"></div><div class="clk-col dcol" id="clk-d"></div><button class="clk-clear" id="clk-now" data-tip="Set the dials to right now \u2014 today's date and the time on the clock. Then nudge whichever wheel you meant to change.">Now</button><button class="clk-clear" id="clk-dclr" data-tip="Clear the date \u2014 back to a plain daily time.">clear</button></div>
   <div style="border-top:1px solid var(--vscode-panel-border);margin:3px 0"></div>
   <div class="clk-row"><span class="clk-lab">Time</span><span class="clk-hint">24-hour</span></div>
@@ -28800,7 +28800,7 @@ if(clkCaret&&clkPop){
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
-  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:tg?tg.value:''});   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',when:v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:(clkRep&&cy)?cy.value:'',tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -28840,7 +28840,7 @@ if(clkCaret&&clkPop){
   clkLastSoon();})();
  function clkComposing(e){return !!(e.isComposing||e.keyCode===229);}   /* v4.1.87 */
  if(clkCycEl)clkCycEl.addEventListener('input',function(){clkTouch();clkPaintSet();});   /* v4.1.144 */
- if(clkTagEl0())clkTagEl0().addEventListener('input',clkTouch);
+ if(clkTagEl0())clkTagEl0().addEventListener('input',function(){window.__clkTagTouched=true;clkTouch();});   /* v4.2.394: 札の欄は触った時だけ書く */
  if(clkCycEl)clkCycEl.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!clkComposing(e)){e.stopPropagation();clkFire();}
   if(e.key==='Escape'){e.stopPropagation();closeClkPop();}});
@@ -28878,7 +28878,7 @@ if(clkCaret&&clkPop){
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
   clkPop.classList.remove('editing');
-  clkDirty=false;window.__clkTargetOk=true;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
+  clkDirty=false;window.__clkTargetOk=true;window.__clkTagTouched=false;clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
   if(mode!=='hist'){try{vscode.postMessage({type:'clkPanelOpen',on:true});}catch(e){}}   /* v4.2.393: 開いている間だけ、カーソルの場所を判定してもらう */
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
    try{var _tn2=document.getElementById('clk-tagnew');if(_tn2)_tn2.value='';}catch(e){}
