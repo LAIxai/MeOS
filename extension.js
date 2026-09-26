@@ -11441,6 +11441,16 @@ function meosClockSplitV(src) {
   const m = /^((?:\d{1,3}[.)])?)[ \t]*v(\d[^\s]*(?:[ \t]+\d{1,2}:\d{2}(?::\d{2})?)?)$/.exec(String(src == null ? '' : src).trim());
   return m ? { pre: m[1], rest: m[2] } : null;
 }
+// ★★v4.2.428(俊克「起点のあるタイマーの次の行に起点のないタイマーを書くのは、1本目は独立して動くしかない。
+//   従属は起点のないタイマーの組合せ。そうしないと矛盾が起きる」): その行が**自分の起点**を持つか。
+//   仮の起点(v…)と見せかけの番号(1.)は起点ではない。
+function meosClockHasOwnOrigin(c) {
+  try {
+    const src = String((c && c.whenSrc) || '').trim();
+    if (!src || meosClockSplitV(src)) return false;
+    return /\d/.test(src.replace(/^\d{1,3}[.)]\s*/, ''));
+  } catch (_) { return false; }
+}
 function meosClockReadV(body) {
   const sv = meosClockSplitV(body);
   if (!sv || sv.pre) return null;              // parse では番号を先に落としてから呼ぶ
@@ -11906,7 +11916,8 @@ function meosArmClockFcFor(doc) {
             //   ★1本しか無い膜は今までどおり済み(✓)= 一度きりの時計の姿は変えない。
             let _chained50 = false;
             try {
-              if (meosClockFcScan(doc).filter(x => x.key === c.key).length >= 2) {
+              // v4.2.428: 起点を持つ行は独立= ×N を終えたら自分だけ ✓ で止まり、順番を回さない(下の「済み」へ落ちる)
+              if (!meosClockHasOwnOrigin(c) && meosClockFcScan(doc).filter(x => x.key === c.key).length >= 2) {
                 // ★★★v4.2.63: ここも同じ1つの決め手を通す(印that在れば押すまで待つ)。
                 if (meosChainWantsClick(doc, c.key, c.line)) {
                   const _nx63 = meosChainNextRow(doc, c.key, c.line);
