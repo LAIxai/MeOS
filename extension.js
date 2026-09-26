@@ -11285,14 +11285,31 @@ async function meosClockSetMore(message, first) {
     const ed = meosCurrentEditor(); if (!ed) return; const doc = ed.document, key = first.atKey;
     const rows = () => meosClockFcScan(doc).filter(c => c.key === key).sort((a, b) => a.line - b.line);
     const replace = (typeof first.atLine === 'number');
+    // ★★v4.2.424(俊克 バグ1「⏰プリセット(青)をSetすると、2つのFCでなく8hタイマーしか付かない」):
+    //   真因= 1本目を書くと掛ける側(meosArmClockFcFor)が同じ行に f/…p の対を書き直す。その書き直しと2本目の差し込みが
+    //   同時に走り、古い版の上に作った差し込みが捨てられていた(台では書き直しが起きないので通っていた)。
+    //   → 1本ごとに「書けたか」を本文で確かめ、書けていなければ少し待って書き直す(最大6回)。
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    await sleep(250);
     for (let i = 0; i < more.length; i++) {
       const it = more[i] || {};
-      let at;
-      if (replace) { const r = rows(); const k = r.findIndex(c => c.line === first.atLine); if (k >= 0 && r[k + 1 + i]) at = r[k + 1 + i].line; }
-      _meosClockLockNext = !!message.lock; _meosClockAnchorNext = !!message.anchor;
-      await meosStartPseudoTimer(0, 0, null, Object.assign({ hasCycle: true, up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,
-        title: String(it.title || ''), listNo: String(it.listNo || ''), tags: null, noOrigin: true, atKey: key },
-        meosPanelCycleOpts(true, it.cycle), (typeof at === 'number') ? { atLine: at } : {}));
+      const want = String(it.cycle || '').trim();
+      for (let t = 0; t < 6; t++) {
+        let at;
+        if (replace) { const r = rows(); const k = r.findIndex(c => c.line === first.atLine); if (k >= 0 && r[k + 1 + i]) at = r[k + 1 + i].line; }
+        const before = rows().length;
+        _meosClockLockNext = (it.lock !== undefined) ? !!it.lock : !!message.lock;          // v4.2.424: 🔓/🚢💨 は行ごと
+        _meosClockAnchorNext = (it.anchor !== undefined) ? !!it.anchor : !!message.anchor;
+        await meosStartPseudoTimer(0, 0, null, Object.assign({ hasCycle: true, up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,
+          title: String(it.title || ''), listNo: String(it.listNo || ''), tags: null, noOrigin: true, atKey: key },
+          meosPanelCycleOpts(true, it.cycle), (typeof at === 'number') ? { atLine: at } : {}));
+        await sleep(200);
+        const r2 = rows();
+        const ok = (typeof at === 'number') ? (at < doc.lineCount && doc.lineAt(at).text.indexOf(want) >= 0) : (r2.length > before);
+        if (ok) break;
+        meosDbg('[clockSetMore] ' + (i + 2) + '本目が書けていない→ 書き直し ' + (t + 1));
+        await sleep(300);
+      }
     }
     if (replace) {   // 余った行(群の中で、書いた行より後ろ)を消す。🔐は外せない約束なので残す
       const r = rows(); const k = r.findIndex(c => c.line === first.atLine);
@@ -28969,28 +28986,35 @@ if(clkCaret&&clkPop){
     ★→ 面that**今の姿を見せて**、その姿を変えて Set する= 見えている物を変える、という当たり前の形。 */
  /* ★v4.2.413: プリセットを箱へ入れる口は1つ(↻・開いた直後・☑Repeat)。入れたら最後の ×N の右へカーソルとドラム(v4.2.411〜412) */
  function clkApplyPreset(){var _cy3=document.getElementById('clk-cyc');var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
-   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
+   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkLock=false;clkLineFx=[];clkPaintLock();clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
    try{if(_cy3){var _vv=_cy3.value,_rx=/[\u00d7xX*]\\s*\\d/g,_mx=null,_m1;while((_m1=_rx.exec(_vv)))_mx=_m1;var _at;if(_mx)_at=_mx.index+1;else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
     _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
    try{clkPaintPrev();}catch(e){}}
  window.__clkApplyPreset=clkApplyPreset;window.__clkPaintPrev=function(){clkPaintPrev();};
  /* ★★v4.2.413(俊克 改良2「実際のエディタ上の表示通りの形を見せる ▶️⏰🚢💨🔓 1. …」): 箱の下に、Set で本文に出る⏰行の姿を1行ずつ。
     read した時の生の行(v4.2.396)も同じ場所= 何も変えなければ同じ物が見える */
+ /* ★v4.2.424(俊克 バグ2「⏰プリセット(青)の2つ並んだ🚢💨ボタンを押すと、もう一つも一緒に変わってしまう」): 🚢💨/🔓 は行ごと。1行目= clkAnchor/clkLock、2行目から= clkLineFx[i] */
+ var clkLineFx=[];
+ function clkFx(i){if(i===0)return {a:clkAnchor,l:clkLock};var f=clkLineFx[i];if(!f){f={a:clkAnchor,l:false};clkLineFx[i]=f;}return f;}
+ window.__clkLineFx=function(){return clkLineFx;};window.__clkLineFxReset=function(){clkLineFx=[];};
  function clkPaintPrev(){var el=document.getElementById('clk-rawline');if(!el)return;var cy=document.getElementById('clk-cyc');
    var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
    /* v4.2.417: 🚢💨/⚓️ と 🔓/🔐 は押せる駒(エディタの⏰行と同じ所・同じ形)。押すとパネルの設定が替わり、全部の行に映る */
-   var an='<span class="cp-b'+(clkAnchor?' an-on':'')+'" data-act="anchor" data-tip="'+(clkAnchor?'\u2693\ufe0f Moor | The bell rings, you stay where you are. Click for \ud83d\udea2\ud83d\udca8 warp.':'\ud83d\udea2\ud83d\udca8 Warp | When the time is up you are warped to the membrane. Click for \u2693\ufe0f moor.')+'">'+(clkAnchor?'<span class="cp-an">\u2693\ufe0e</span>':'\ud83d\udea2\ud83d\udca8')+'</span>';
-   var lk='<span class="cp-b'+(clkLock?' lk-on':'')+'" data-act="lock" data-tip="'+(clkLock?'\ud83d\udd10 Locked | It cannot be stopped or dropped until the time is up. Click to unlock.':'\ud83d\udd13 Unlocked | Click to lock it, like a test paper you cannot walk out of.')+'">'+(clkLock?'\ud83d\udd10':'\ud83d\udd13')+'</span>';
-   var head='\u25b6\ufe0f\u23f0'+an+lk;
+   var mk=function(i){var F=clkFx(i),A=F.a,K=F.l;var an='<span class="cp-b'+(A?' an-on':'')+'" data-act="anchor" data-i="'+i+'" data-tip="'+(A?'\u2693\ufe0f Moor | The bell rings, you stay where you are. Click for \ud83d\udea2\ud83d\udca8 warp.':'\ud83d\udea2\ud83d\udca8 Warp | When the time is up you are warped to the membrane. Click for \u2693\ufe0f moor.')+'">'+(A?'<span class="cp-an">\u2693\ufe0e</span>':'\ud83d\udea2\ud83d\udca8')+'</span>';
+   var lk='<span class="cp-b'+(K?' lk-on':'')+'" data-act="lock" data-i="'+i+'" data-tip="'+(K?'\ud83d\udd10 Locked | It cannot be stopped or dropped until the time is up. Click to unlock.':'\ud83d\udd13 Unlocked | Click to lock it, like a test paper you cannot walk out of.')+'">'+(K?'\ud83d\udd10':'\ud83d\udd13')+'</span>';
+   return '\u25b6\ufe0f\u23f0'+an+lk;};
    var org='';if(!window.__clkNoOrigin){var _fp=document.getElementById('clk-wfp');org=clkDateStr()+' '+clkTimeStr()+(_fp?_fp.textContent:'');}
    var ls=(clkRep&&cy)?String(cy.value||'').split(/\\n/).filter(function(x){return x.trim();}):[''];if(!ls.length)ls=[''];
    var multi=ls.length>1,no=window.__clkReadListNo||(multi?'1.':'');
    el.innerHTML=ls.map(function(x,i){var k=x.indexOf('//'),ex=(k<0?x:x.slice(0,k)).trim(),tt=(k<0?'':x.slice(k+2)).trim();if(!tt&&i===0)tt=window.__clkReadTitle||'';
-     return head+esc((no?' '+no:'')+(i===0&&org?' '+org:'')+(clkRep&&ex?' \u21ba\u21bb'+ex:'')+(tt?' // '+tt:''));}).join('\\n');
+     return mk(i)+esc((no?' '+no:'')+(i===0&&org?' '+org:'')+(clkRep&&ex?' \u21ba\u21bb'+ex:'')+(tt?' // '+tt:''));}).join('\\n');
    el.classList.add('on');}
  (function(){var el=document.getElementById('clk-rawline');if(!el||el.__cpWired)return;el.__cpWired=true;
    el.addEventListener('click',function(ev){var t=ev.target&&ev.target.closest?ev.target.closest('[data-act]'):null;if(!t)return;ev.stopPropagation();
-     if(t.getAttribute('data-act')==='anchor')clkAnchor=!clkAnchor;else clkLock=!clkLock;clkPaintLock();clkTouch();clkPaintSet();});})();
+     var i=parseInt(t.getAttribute('data-i')||'0',10)||0;
+     if(i===0){if(t.getAttribute('data-act')==='anchor')clkAnchor=!clkAnchor;else clkLock=!clkLock;clkPaintLock();}
+     else{var f=clkFx(i);if(t.getAttribute('data-act')==='anchor')f.a=!f.a;else f.l=!f.l;clkPaintPrev();}
+     clkTouch();clkPaintSet();});})();
  function clkPaintRep(){var _cw=document.querySelector('.clk-cycwrap');if(_cw)_cw.classList.toggle('off',!clkRep);   /* v4.2.413: ✓を外すと ↻ は灰・箱は無地 */
   var b=document.getElementById('clk-rep');if(b){b.classList.toggle('on',clkRep);
    /* ★★★v4.1.142(俊克 改良2「いっそのこと常に同時起動にして、『\u25a1 Repeat \u21ba\u21bb』の1つボタンに
@@ -29007,7 +29031,7 @@ if(clkCaret&&clkPop){
   /* v4.2.410: 箱の1行= ⏰の1行。行末の // の後ろはその⏰のタイトル。2行以上なら連番 1. を頭に(Markdown と同じく全部 1.) */
   var _ls=(clkRep&&cy)?String(cy.value||'').split(/\\n/).map(function(x){var k=x.indexOf('//');return {cycle:(k>=0?x.slice(0,k):x).trim(),title:(k>=0?x.slice(k+2):'').trim()};}).filter(function(o){return o.cycle;}):[];
   var _multi=_ls.length>1;var _l0=_ls[0]||{cycle:'',title:''};
-  var _more=_multi?_ls.slice(1).map(function(o){return {cycle:o.cycle,title:o.title,listNo:'1.'};}):[];
+  var _fx=window.__clkLineFx?window.__clkLineFx():[];var _more=_multi?_ls.slice(1).map(function(o,j){var f=_fx[j+1];return {cycle:o.cycle,title:o.title,listNo:'1.',anchor:f?!!f.a:clkAnchor,lock:f?!!f.l:false};}):[];   /* v4.2.424: 行ごとの🚢💨/🔓 */
   vscode.postMessage({type:'pseudoTimerSet',more:_more,title:_l0.title||window.__clkReadTitle||'',listNo:window.__clkReadListNo||(_multi?'1.':''),when:(window.__clkNoOrigin&&clkRep)?'':v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:_l0.cycle,tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
