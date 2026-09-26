@@ -31754,6 +31754,8 @@ class MembraneFoldingProvider {
       // v4.1.105: 畳みの形はカーソルで変わる(バッジ行が畳みの中か外か)ので、ここで一度だけ訊く。
       const _caret = meosCaretLineForDoc(document);
       const _out = meosFcOutMembranes(document, _caret);
+      // v4.2.425: VS Code に渡した畳みの形の名札(畳む側が「取り直しが済んだか」を確かめる)
+      try { MembraneFoldingProvider._lastSig = String(document.uri) + '@' + document.version + '|' + Array.from(_out).join(','); } catch (_) { }
       // ★★★v4.2.368(俊克 バグ1「膜の最後のほうをクリックすると、先頭に飛んでしまう。5回やって毎回」):
       //   ★★★真因= VS Code は1ファイルの畳み範囲を editor.foldingMaximumRegions(既定5000)までしか持たず、超えた分は**深い物から捨てる**。
       //     生涯日記は 5220個= 5段目の FC の塊が捨てられ、「その行を畳め」が1つ外の膜を畳んで先頭へ跳んでいた(v4.0.188 と同じ見え方)。
@@ -35319,11 +35321,20 @@ async function meosAutoFoldSpecLines(editor, force) {
       //   ★★→ **本当に変わった時だけ言う**。範囲thatが変わるのは
       //     ①本文that変わった(document.version) ②カーソルthat塊に出入りした(shift)、の2つだけ。
       //   ★言わなかった時は待ちも要らない(取り直しthat走らないので)。
-      const _sigNow48 = String(editor.document.version) + '|' + _shape46.filter(it => it.shift).map(it => it.b.open).join(',');
-      if (_sigNow48 !== _meosFoldSig48) {
+      // ★★★v4.2.425(俊克 バグ1「HIITが終わったら、膜が勝手に閉じてしまう」):
+      //   ★★★真因(meos-debug.log 2026-09-26 08:38Z)= 取り直しを頼んで**150ms だけ待って**畳んでいた。27.8万行の日記では
+      //     範囲の計算に 350ms 前後かかるので、畳む時の VS Code は**古い形**(鳴った時にカーソルが膜の中に居た時の形=
+      //     ▲行は膜の範囲の端)のまま。▲行を「畳め」= 一番内側= **膜**が畳まれた(fcReopen が3回とも同じ)。
+      //   ★★→ 待つのは時間ではなく**答え**= VS Code が今の形で取り直した(Provider の名札が今の形と一致)のを見てから畳む。
+      //     比べる名札は Provider と同じ作り(meosFcOutMembranes)= 物差しを1本に。最大2秒待って来なければ、今回は畳まない。
+      const _sigNow48 = String(editor.document.uri) + '@' + editor.document.version + '|' + Array.from(meosFcOutMembranes(editor.document, editor.selection.active.line)).join(',');
+      if (MembraneFoldingProvider._lastSig !== _sigNow48) {
         _meosFoldSig48 = _sigNow48;
         try { if (membraneFoldingProviderInstance) membraneFoldingProviderInstance.notifyRangesChanged(); } catch (_) { }
-        await new Promise(r => setTimeout(r, 150 * attempt)); // VS Codeが範囲を取り直すのを待つ(v0.9.961の作法)
+        const _w0 = Date.now();
+        while (MembraneFoldingProvider._lastSig !== _sigNow48 && Date.now() - _w0 < 2000) await new Promise(r => setTimeout(r, 50));
+        if (MembraneFoldingProvider._lastSig !== _sigNow48) { meosFoldWhy('範囲の取り直しが来ない(2秒)→ 今回は畳まない'); break; }
+        await new Promise(r => setTimeout(r, 60));   // 返した範囲を VS Code が載せる一拍
       }
       const _t0 = Date.now();
       const _vt0 = (editor.visibleRanges && editor.visibleRanges.length) ? (editor.visibleRanges[0].start.line + 1) : -1; // v4.0.187

@@ -2269,12 +2269,12 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
  /* ★★★v4.2.48(俊克 pm02:47 バグ1「スクロールする前に閉じていた⏰膜が、スクロールして戻ると、
     再び開いていて、それを閉め直しているのは、どうにかならないのか?」)= 開き直していたのは MeOS 自身。 */
  {const W=FN(S9,'async function meosAutoFoldSpecLines');
-  ok(/if \(_sigNow48 !== _meosFoldSig48\) \{[\s\S]{0,300}?notifyRangesChanged/.test(W),
+  ok(/if \(MembraneFoldingProvider\._lastSig !== _sigNow48\) \{[\s\S]{0,300}?notifyRangesChanged/.test(W),
      '★★★「範囲が変わった」と言うのは、本当に変わった時だけ(毎回言うとVS Codeが畳みを捨てる)', true);
-  ok(/const _sigNow48 = String\(editor\.document\.version\) \+ '\|' \+ _shape46\.filter\(it => it\.shift\)/.test(W),
+  ok(/const _sigNow48 = String\(editor\.document\.uri\) \+ '@' \+ editor\.document\.version \+ '\|' \+ Array\.from\(meosFcOutMembranes\(/.test(W) && /MembraneFoldingProvider\._lastSig = String\(document\.uri\) \+ '@' \+ document\.version \+ '\|' \+ Array\.from\(_out\)/.test(S9),
      '★★範囲が変わるのは①本文が変わった②カーソルが塊に出入りした、の2つだけ', true);
-  ok(/if \(_sigNow48 !== _meosFoldSig48\) \{[\s\S]{0,400}?setTimeout\(r, 150 \* attempt\)/.test(W),
-     '★言わなかった時は待ちも要らない(取り直しが走らない)', true);
+  ok(/if \(MembraneFoldingProvider\._lastSig !== _sigNow48\) \{[\s\S]{0,900}?while \(MembraneFoldingProvider\._lastSig !== _sigNow48/.test(W),
+     '★言わなかった時は待ちも要らない(取り直しが走らない)/v4.2.425: 待つのは時間でなく Provider の名札', true);
   ok(/for \(const _h48 of heads\) meosNoteReopen48\(_h48\)/.test(W),
      '  開けた覚えが無いのに畳み直したら1行言う(輪が消えたかを次の1回で確かめる)', true);}
  ok(/_headEnd43\.set\(it\.head, it\.end\)/.test(S9),
