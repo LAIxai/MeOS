@@ -28516,7 +28516,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:true},{cyc:'((30s 15s)\u00d74 1m)\u00d73 // \ud83d\udc93HIIT',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'((30s 15s)\u00d74 1m)\u00d73 // \ud83d\udc93HIIT',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -28964,7 +28964,8 @@ if(clkCaret&&clkPop){
      ★Opt+クリック= 今の箱と🚢💨/⚓をこの枠に覚える(v4.2.315 のまま)。 */
   if(_id==='clk-pring'){var _cy3=document.getElementById('clk-cyc');
    if(ev.altKey){var _v2=_cy3?String(_cy3.value||'').trim():'';if(!_v2){clkFlash('Type a repeat first (e.g. 24h), then Opt-click \u21bb to keep it here.');return;}
-    clkPresets[clkPresetSlot]={cyc:_v2,anchor:!!clkAnchor,noOrigin:!!window.__clkNoOrigin};clkPaintPreset();vscode.postMessage({type:'clockPresetSave',slot:clkPresetSlot,cyc:_v2,anchor:!!clkAnchor,noOrigin:!!window.__clkNoOrigin});clkFlash('Kept in preset '+(clkPresetSlot+1)+': '+_v2+(clkAnchor?' \u2693':''));return;}
+    var _nl2=_v2.split(/\\n/).length,_fx2=window.__clkLineFx?window.__clkLineFx():[],_an2=[!!clkAnchor];for(var _bi=1;_bi<_nl2;_bi++)_an2.push(_fx2[_bi]?!!_fx2[_bi].a:!!clkAnchor);
+    clkPresets[clkPresetSlot]={cyc:_v2,anchor:!!clkAnchor,noOrigin:!!window.__clkNoOrigin,anchors:_an2};clkPaintPreset();vscode.postMessage({type:'clockPresetSave',slot:clkPresetSlot,cyc:_v2,anchor:!!clkAnchor,noOrigin:!!window.__clkNoOrigin,anchors:_an2});clkFlash('Kept in preset '+(clkPresetSlot+1)+': '+_v2+(clkAnchor?' \u2693':''));return;}
    var _cur=clkPresets[clkPresetSlot]||{};
    if(_cy3&&String(_cy3.value||'').trim()===String(_cur.cyc||'')&&clkRep){clkPresetSlot=(clkPresetSlot+1)%3;vscode.postMessage({type:'clockPresetSlot',slot:clkPresetSlot});}
    clkApplyPreset();
@@ -29026,7 +29027,7 @@ if(clkCaret&&clkPop){
     ★→ 面that**今の姿を見せて**、その姿を変えて Set する= 見えている物を変える、という当たり前の形。 */
  /* ★v4.2.413: プリセットを箱へ入れる口は1つ(↻・開いた直後・☑Repeat)。入れたら最後の ×N の右へカーソルとドラム(v4.2.411〜412) */
  function clkApplyPreset(){var _cy3=document.getElementById('clk-cyc');var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
-   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=!!_pr.anchor;clkLock=false;clkLineFx=[];window.__clkNoOrigin=!!_pr.noOrigin;try{clkEcho();}catch(e){}clkPaintLock();   /* v4.2.427: 受け渡しのプリセットは起点なし(輪で1本目が0から始まるため) */clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
+   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=Array.isArray(_pr.anchors)?!!_pr.anchors[0]:!!_pr.anchor;clkLock=false;clkLineFx=[];if(Array.isArray(_pr.anchors))for(var _ai=1;_ai<_pr.anchors.length;_ai++)clkLineFx[_ai]={a:!!_pr.anchors[_ai],l:false};window.__clkNoOrigin=!!_pr.noOrigin;   /* v4.2.431: 行ごとの🚢💨/⚓ */try{clkEcho();}catch(e){}clkPaintLock();   /* v4.2.427: 受け渡しのプリセットは起点なし(輪で1本目が0から始まるため) */clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
    try{if(_cy3){var _vv=_cy3.value,_rx=/[\u00d7xX*]\\s*\\d/g,_mx=null,_m1;while((_m1=_rx.exec(_vv)))_mx=_m1;var _at;if(_mx)_at=_mx.index+1;else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
     _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
    try{clkPaintPrev();}catch(e){}}
@@ -31267,11 +31268,11 @@ function toggleMeDock(editorOverride) {
       try {
         // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
         const def = [{ cyc: '(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 // \u2615Break', anchor: false, noOrigin: true },   // v4.2.427(俊克「3プリセットの1つを従属連動の例に。🍅で10分の休みを入れて繰り返す」)= 起点なしの受け渡し
-                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: true }, { cyc: '((30s 15s)\u00d74 1m)\u00d73 // \ud83d\udc93HIIT', anchor: false }];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
-        let list = extensionContext.globalState.get('meosClockPresets7', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '((30s 15s)\u00d74 1m)\u00d73 // \ud83d\udc93HIIT', anchor: false }];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
+        let list = extensionContext.globalState.get('meosClockPresets8', null); if (!Array.isArray(list) || list.length !== 3) list = def;
         let slot = 0;   // v4.2.412(俊克「最初に表示するのは、トマトだよ」): 開くたびに①から
         if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); }
-        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin }; await extensionContext.globalState.update('meosClockPresets7', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
+        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin, anchors: Array.isArray(message.anchors) ? message.anchors.map(Boolean) : undefined }; await extensionContext.globalState.update('meosClockPresets8', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
         if (message.type === 'clockPresetsAsk' && meDockPanel) meDockPanel.webview.postMessage({ type: 'clockPresets', list, slot });
       } catch (_) { }
       return;

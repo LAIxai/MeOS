@@ -107,7 +107,7 @@ while the clock runs, and for as long as you like while it is paused, so you can
 change N. Nothing but `×N` is kept in your file; the last day is worked out from what is already written there.
 
 **Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
-steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 eye drops (two lines, at anchor) and
+steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 eye drops (two lines; the five-minute one at anchor) and
 💓 HIIT `((30s 15s)×4 1m)×3` — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
