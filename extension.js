@@ -12084,6 +12084,9 @@ function meosArmClockFcFor(doc) {
             //     → [[feedback_reconcile_dont_remember]] / [[feedback_one_source_for_mark_count_action]]。
             //   ★これで外し方が3つ(Opt+クリック/⏰一覧の🔓/手で🔐を消す)のどれでも同じ1つの答えになる。
             _s.lock = !!c.lock;
+            // ★★v4.2.446(俊克「インラインで編集しても動くようにしてよ」): **タイトルも本文と一緒に新しくする**= 🔔/🔕/×・// のメッセージを
+            //   手で書き換えた時、掛けた時のタイトルのまま鳴っていた(時刻と輪は変わらないので掛け直しが起きない= 錠の v4.2.254 と同じ形)。
+            _s.title = c.title || ''; _s.cycleSrc = c.cycleSrc || ''; _s.rounds = c.rounds || 0; _s.cycle = Array.isArray(c.cycle) ? c.cycle : [];
           }
         } catch (_) { }
         continue;                                                   // 既に仕掛かっている
@@ -13423,6 +13426,19 @@ function meosApplyTimerLineDecorations(editor) {
                 const _ue = txt.indexOf(c.untilSrc);
                 if (_ue >= 0) items.push({ range: new vscode.Range(i, _ue + c.untilSrc.length, i, _ue + c.untilSrc.length),
                   renderOptions: { after: { contentText: ' \u26a0\ufe0f', color: '#e0803a' } } });
+              }
+            }
+          } catch (_) { }
+          // ★v4.2.446(俊克「インラインで編集しても動くようにしてよ」): 手で書いた 🔔番号 も、カーソルが行を出たら名前に書き換える(Set と同じ)
+          try {
+            if (!_rawHere && /\u{1F514}\s*\d/u.test(txt)) {
+              const _nb = meosBellNumbersToNames(txt), _bk46 = uri + ' ' + i + ' ' + txt;
+              if (_nb !== txt && !_meosUntilBusy.has(_bk46)) {
+                _meosUntilBusy.add(_bk46);
+                const _we46 = new vscode.WorkspaceEdit();
+                _we46.replace(doc.uri, new vscode.Range(i, 0, i, txt.length), _nb);
+                meosDbg('[bellName] ' + (i + 1) + ': 番号→名前');
+                Promise.resolve(vscode.workspace.applyEdit(_we46)).then(() => _meosUntilBusy.delete(_bk46), () => _meosUntilBusy.delete(_bk46));
               }
             }
           } catch (_) { }
