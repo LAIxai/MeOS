@@ -26633,10 +26633,17 @@ color:#ffffff;z-index:4;padding:0}
 .clk-cycwrap.off .clk-pring{background:#777}
 .clk-rawline{white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;font-size:11px;line-height:1.55}   /* v4.2.413: ⏰行の姿(1行=1⏰) / v4.2.417: 上の break-all が残って 💓HII|T と割れていた */
 /* ★v4.2.417(俊克 改良4「▶️⏰… の🚢💨と🔓を設定ボタンに= エディタ上の操作の練習にもなる。大きくして押せることを示す」) */
-.clk-rawline .cp-b{display:inline-block;font-size:15px;line-height:1;padding:1px 3px;margin:0 1px;border:1px solid rgba(209,132,0,.75);border-radius:5px;background:rgba(209,132,0,.14);cursor:var(--meos-hand);vertical-align:-2px}
-.clk-rawline .cp-b:hover{background:rgba(209,132,0,.34)}
-.clk-rawline .cp-b.lk-on{border-color:#e0803a;background:rgba(224,128,58,.32)}
+.clk-rawline .cp-b{display:inline-block;font-size:15px;line-height:1;padding:1px 3px;margin:0 1px;border:1px solid #c9a55a;border-radius:5px;background:#f6ebcf;cursor:var(--meos-hand);vertical-align:-2px}   /* v4.2.419(俊克「🚢💨/🔓ボタンの地をクリーム色に」) */
+.clk-rawline .cp-b:hover{background:#ecd9a6}
+.clk-rawline .cp-b.lk-on{border-color:#e0803a}
 .clk-rawline .cp-b.an-on{border-color:#e0564a}
+.clk-rawline .cp-an{display:inline-block;color:#d9342b;font-weight:900;transform:rotate(10deg)}   /* v4.2.419(俊克「⚓︎ボタンを赤色文字にして、10°傾けよう。字下げはしないでいい」) */
+/* ★v4.2.419(俊克「幅を外枠一杯まで広げよう。但しドラム式ダイヤルは広げずに、UFCの所だけ」): 設定の窓だけ全幅・UFC の3つ(見出し/⏰行の姿/箱)以外は今の幅のまま */
+#dock-clk .bm-pop.clk-pop.set-only{width:100%!important}
+.clk-pop.set-only>*:not(.clk-ufcrow):not(.clk-rawline):not(.clk-cycwrap){max-width:388px}
+/* ★v4.2.419(俊克「Last bell だけ枠が無いので、Starting point の枠の地の色と同じ色に。2つの日付があることがよく分る」): 2つの日付= 同じ琥珀の地の枠 */
+.clk-whenrow .clk-when,.clk-last{background:color-mix(in srgb,var(--vscode-input-background) 80%,#d18400 20%)}
+.clk-last{justify-content:center;padding:3px 6px;border:1px solid var(--vscode-panel-border);border-radius:5px;box-sizing:border-box}
 .clk-whenrow .clk-lockunit,.clk-whenrow .clk-anchor{display:none}   /* v4.2.417: 🔐🔓/🚢💨 は⏰行の姿の上で押す */
 .clk-cycwrap.s0 .clk-pring{background:#d9a81e}.clk-cycwrap.s1 .clk-pring{background:#4a86e0}.clk-cycwrap.s2 .clk-pring{background:#3fa85c}
 /* v4.2.411(俊克「起点に Starting point… 日付日時の後ろに p/f」): p=過去(数え上げ=水色) / f=未来(残り=緑)。FC に書かれる印と同じ字 */
@@ -26960,7 +26967,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <input class="clk-in clk-edit" id="clk-edit" placeholder="20:00 / 2026-09-01 20:00" spellcheck="false">
   <div class="clk-row"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
-  <div class="clk-row"><span class="clk-lab">UFC</span><span class="clk-hint" id="clk-hint-rep">one line = one \u23f0 \u00b7 00 ends the list</span></div>
+  <div class="clk-row clk-ufcrow"><span class="clk-lab">UFC</span><span class="clk-hint" id="clk-hint-rep">one line = one \u23f0 \u00b7 00 ends the list</span></div>
   <div class="clk-rawline" id="clk-rawline"></div>
   <div class="clk-cycwrap"><textarea class="clk-in clk-cyc" id="clk-cyc" rows="2" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays."></textarea><span class="clk-pring" id="clk-pring">\u21bb</span></div>
   <div class="clk-cols clk-ncols" id="clk-ncols"><div class="clk-col clk-ncol" id="clk-nd"></div></div>
@@ -28959,7 +28966,7 @@ if(clkCaret&&clkPop){
  function clkPaintPrev(){var el=document.getElementById('clk-rawline');if(!el)return;var cy=document.getElementById('clk-cyc');
    var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
    /* v4.2.417: 🚢💨/⚓️ と 🔓/🔐 は押せる駒(エディタの⏰行と同じ所・同じ形)。押すとパネルの設定が替わり、全部の行に映る */
-   var an='<span class="cp-b'+(clkAnchor?' an-on':'')+'" data-act="anchor" data-tip="'+(clkAnchor?'\u2693\ufe0f Moor | The bell rings, you stay where you are. Click for \ud83d\udea2\ud83d\udca8 warp.':'\ud83d\udea2\ud83d\udca8 Warp | When the time is up you are warped to the membrane. Click for \u2693\ufe0f moor.')+'">'+(clkAnchor?'\u2693\ufe0f':'\ud83d\udea2\ud83d\udca8')+'</span>';
+   var an='<span class="cp-b'+(clkAnchor?' an-on':'')+'" data-act="anchor" data-tip="'+(clkAnchor?'\u2693\ufe0f Moor | The bell rings, you stay where you are. Click for \ud83d\udea2\ud83d\udca8 warp.':'\ud83d\udea2\ud83d\udca8 Warp | When the time is up you are warped to the membrane. Click for \u2693\ufe0f moor.')+'">'+(clkAnchor?'<span class="cp-an">\u2693\ufe0e</span>':'\ud83d\udea2\ud83d\udca8')+'</span>';
    var lk='<span class="cp-b'+(clkLock?' lk-on':'')+'" data-act="lock" data-tip="'+(clkLock?'\ud83d\udd10 Locked | It cannot be stopped or dropped until the time is up. Click to unlock.':'\ud83d\udd13 Unlocked | Click to lock it, like a test paper you cannot walk out of.')+'">'+(clkLock?'\ud83d\udd10':'\ud83d\udd13')+'</span>';
    var head='\u25b6\ufe0f\u23f0'+an+lk;
    var org='';if(!window.__clkNoOrigin){var _fp=document.getElementById('clk-wfp');org=clkDateStr()+' '+clkTimeStr()+(_fp?_fp.textContent:'');}
