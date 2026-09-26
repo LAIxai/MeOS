@@ -54,12 +54,15 @@ counted from its origin as if nothing had happened.
 
 **Or let them hand over.** Give every line a count `×N` and no origin, and the clocks run one after another:
 when the first has done its turns the second starts, and when the last is done the first begins again from zero.
+The rule is one line long: **a clock with an origin keeps its own time; only clocks without one hand over.**
 Four tomatoes with a short break after each, then a longer rest, round and round:
 
 ```md
 <!-- Mew!UFC ⏰ 1. ↺↻(25m 5m)×4 // 🍅Pomodoro 1. -->
 <!-- Mew!FC ⏰ 1. ↺↻(10m)×1 // ☕Break -->
 ```
+
+(The same routine also fits on one line — `↺↻((25m 5m)×4 10m)×5` — when you want it to stop after five rounds.)
 
 The `1.` at the start is only for your eyes, as in a Markdown list: write `1.` on every line and MeOS still shows
 1, 2, 3, because it reads the order, not the figure.
