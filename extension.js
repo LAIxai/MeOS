@@ -2718,6 +2718,7 @@ function meosMewPath() {
 //     (6304Hz -58dB/s・2707Hz -27dB/s・1385Hz -12dB/s)= 「カーン」の後に低い「ウォーン」が残る
 //   ★近い成分が組(1372/1385/1401Hz・2433/2448Hz・6304/6315Hz)= うなり(揺れる響き)の正体。組のまま入れる。
 let _meosGongFile = null;
+let GONG_NB = [0.27772, 0.04473, 1.4351, 0.49805, 0.93007, 0.25629, 0.54924, 0.01663];   // v4.2.442: 帯域ごとの雑音の強さ= 合成を録音と同じ測り方で測り直し、5回で合わせた(差は 4dB 以内)
 function meosGongPath() {
   if (_meosGongFile) { try { if (require('fs').existsSync(_meosGongFile)) return _meosGongFile; } catch (_) { } }
   try {
@@ -2739,12 +2740,31 @@ function meosGongPath() {
       let v = 0;
       for (let q = 0; q < P.length; q++) { const a = Math.pow(10, (P[q][1] + P[q][2] * t) / 20); v += a * Math.sin(2 * Math.PI * P[q][0] * t + ph0[q]); }
       v += 0.35 * (rnd() - 0.5) * Math.exp(-t / 0.004);                            // 打った瞬間の「カチッ」(4ms)
-      v *= Math.min(1, t / 0.0015) * Math.min(1, (dur - t) / 0.08);
-      smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+      smp[i] = v;
+    }
+    // ★★v4.2.442(俊克「少し雑音をカットし過ぎている。その部分がゴングらしさ」): 成分の**間**に広がる響き(シャーン)も測った。
+    //   帯域ごとの中央値(ピークでない所)= 2707Hz 比の強さと1秒に消えるdB。乱数を帯域ごとに絞って足す(録音は使わない)。
+    //   [下Hz, 上Hz, 強さ(掛け率・合成して測り直して合わせた), 1秒に消えるdB]
+    const NB = [[200, 500, GONG_NB[0], -16.6], [500, 1000, GONG_NB[1], -17.4], [1000, 2000, GONG_NB[2], -23.2], [2000, 3000, GONG_NB[3], -28.0],
+      [3000, 4500, GONG_NB[4], -36.0], [4500, 6500, GONG_NB[5], -46.3], [6500, 9000, GONG_NB[6], -52.2], [9000, 13000, GONG_NB[7], -48.6]];
+    for (const [lo, hi, g, dd] of NB) {
+      const f0 = Math.sqrt(lo * hi), Q = f0 / (hi - lo), w0 = 2 * Math.PI * f0 / rate, al = Math.sin(w0) / (2 * Q), a0 = 1 + al;
+      const b0 = al / a0, b2 = -al / a0, a1 = -2 * Math.cos(w0) / a0, a2 = (1 - al) / a0;   // RBJ の帯域通過(ピーク0dB)
+      let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / rate, xin = rnd() - 0.5;
+        const y = b0 * xin + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = xin; y2 = y1; y1 = y;
+        smp[i] += g * y * Math.pow(10, dd * t / 20);
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      smp[i] *= Math.min(1, t / 0.0015) * Math.min(1, (dur - t) / 0.08);
+      if (Math.abs(smp[i]) > peak) peak = Math.abs(smp[i]);
     }
     const k = peak > 0 ? (0.85 / peak) : 1;
     for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-gong-v1.wav');
+    const f = path.join(os.tmpdir(), 'meos-gong-v2.wav');
     fs.writeFileSync(f, buf); _meosGongFile = f; return f;
   } catch (_) { return null; }
 }
@@ -12804,7 +12824,7 @@ function meosHelperSound() {
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
     if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
-    if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
+    if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
