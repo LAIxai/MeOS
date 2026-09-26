@@ -68,7 +68,8 @@ Four tomatoes with a short break after each, then a longer rest, round and round
 and one more for the end. Each shows while its time runs — on the line, in the status bar and on the menu bar —
 and is said again when it ends. Add `🔔` and a number — the number beside each sound in Me Dock's 🔔 list — or
 the sound's name to choose that time's bell; `🔔15/11/6` takes the next sound on every count, and `🔕` keeps that
-time silent. Without either, the bell you chose in Me Dock rings.
+time silent. **Set** writes the numbers down as names, so the line rings the same on any machine. Without either,
+the bell you chose in Me Dock rings.
 
 ```md
 <!-- Mew!UFC ⏰ ↺↻((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔15/11/6 // 💓break 1. 🔕 // 🏁Done 🔔Hero -->

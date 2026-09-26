@@ -11301,7 +11301,7 @@ async function meosClockSetMore(message, first) {
         _meosClockLockNext = (it.lock !== undefined) ? !!it.lock : !!message.lock;          // v4.2.424: 🔓/🚢💨 は行ごと
         _meosClockAnchorNext = (it.anchor !== undefined) ? !!it.anchor : !!message.anchor;
         await meosStartPseudoTimer(0, 0, null, Object.assign({ hasCycle: true, up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,
-          title: String(it.title || ''), listNo: String(it.listNo || ''), tags: null, noOrigin: true, atKey: key },
+          title: meosBellNumbersToNames(String(it.title || '')), listNo: String(it.listNo || ''), tags: null, noOrigin: true, atKey: key },
           meosPanelCycleOpts(true, it.cycle), (typeof at === 'number') ? { atLine: at } : {}));
         await sleep(200);
         const r2 = rows();
@@ -14416,6 +14416,17 @@ function meosSoundByName(nm) {
     for (const x of meosSoundList()) { const b = path.basename(String(x)).replace(/\.[^.]+$/, '').toLowerCase(); if (b === want || String(x).toLowerCase() === want) return x; }
   } catch (_) { }
   return '';
+}
+// ★v4.2.438(俊克「🔔3、🔔8などで指定して、Setすると、名前に変換する。そうすれば可搬性が担保できる」):
+//   番号はその機械の一覧の順= 本文には名前で残す(Date&Count の ~日付→×N と同じ= 書く時は楽に、残る物は持ち運べる形)。
+function meosBellNumbersToNames(text) {
+  try {
+    const path = require('path');
+    return String(text == null ? '' : text).replace(/\u{1F514}\s*(\S+)/gu, (m0, list) => '\u{1F514}' + list.split('/').map(x => {
+      if (!/^\d{1,3}$/.test(x)) return x;
+      const hit = meosSoundByName(x); return hit ? path.basename(String(hit)).replace(/\.[^.]+$/, '') : x;
+    }).join('/'));
+  } catch (_) { return String(text || ''); }
 }
 function meosClockSoundFor(sc, final) {
   try {
@@ -31210,7 +31221,7 @@ function toggleMeDock(editorOverride) {
         cycleSrc: (_cyEx && _cyEx.steps.length) ? _cyRaw : '',
         up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,   // v4.1.142: 面は常に \u21ba\u21bb
         rounds: (_cyEx && _cyEx.rounds) ? _cyEx.rounds : (_rep ? meosParseRoundsInput(message.cycle) : 0),
-        title: String(message.title || ''), listNo: String(message.listNo || ''),   // v4.2.396: read した行のタイトルと連番
+        title: meosBellNumbersToNames(String(message.title || '')), listNo: String(message.listNo || ''),   // v4.2.396: read した行のタイトルと連番 / v4.2.438: 🔔番号→名前
         tags: (message.tags != null) ? meosParseTagInput(message.tags) : null,
         // ★★v4.2.390(俊克「ある膜で⏰FCをreadで読込み、別の膜に行って、そこの⏰FCに上書きしたり、追加したりできるので、文字カーソルの位置で制御するのがいい」):
         //   ★どこへ書くかは **Set を押した瞬間のカーソル**が決める(read は値をパネルへ持って来るだけ・覚えを持たない)。
