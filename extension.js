@@ -2730,8 +2730,10 @@ function meosGongPath() {
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
     // [高さHz, 打った瞬間の強さdB(2707Hz=0), 1秒に消えるdB]
     const P = [[309.3, -20, -8], [1371.8, -23, -12], [1385.0, -16, -12], [1400.6, -22, -12], [1603.7, -21, -22], [2015.0, -8, -19],
-      [2433.0, -24, -22], [2448.2, -25, -22], [2707.3, 0, -27], [2766.2, -28, -27], [3574.4, -20, -25], [4292.0, -18, -42],
-      [4788.5, -27, -41], [6304.2, -15, -58], [6314.6, -26, -58], [7709.8, -22, -43], [7915.8, -22, -51]];
+      [2433.0, -24, -22], [2448.2, -25, -22], [2707.3, 0, -27], [2766.2, -28, -27], [3574.4, -18, -22], [4292.0, -15, -28],
+      [4788.5, -24, -28], [6304.2, -12, -34], [6314.6, -23, -34], [7709.8, -19, -30], [7915.8, -19, -33]];
+    // ★v4.2.443(俊克「前よりはいい。もう少し高音部分を残して」): 3.5kHz より上の成分を +3dB・消え方をゆるく(-42〜-58 → -28〜-34dB/s)。
+    //   録音は YouTube の圧縮とスピーカー→マイクを通っている= 高い音から先に失われる。測った数字より、耳を信じる。
     let seed = 20260927, peak = 0;
     const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
     const ph0 = P.map(() => rnd() * 2 * Math.PI);
@@ -2746,7 +2748,8 @@ function meosGongPath() {
     //   帯域ごとの中央値(ピークでない所)= 2707Hz 比の強さと1秒に消えるdB。乱数を帯域ごとに絞って足す(録音は使わない)。
     //   [下Hz, 上Hz, 強さ(掛け率・合成して測り直して合わせた), 1秒に消えるdB]
     const NB = [[200, 500, GONG_NB[0], -16.6], [500, 1000, GONG_NB[1], -17.4], [1000, 2000, GONG_NB[2], -23.2], [2000, 3000, GONG_NB[3], -28.0],
-      [3000, 4500, GONG_NB[4], -36.0], [4500, 6500, GONG_NB[5], -46.3], [6500, 9000, GONG_NB[6], -52.2], [9000, 13000, GONG_NB[7], -48.6]];
+      [3000, 4500, GONG_NB[4] * 1.4, -28.0], [4500, 6500, GONG_NB[5] * 1.6, -30.0], [6500, 9000, GONG_NB[6] * 1.6, -32.0], [9000, 13000, GONG_NB[7] * 2.5, -32.0],
+      [13000, 18000, 0.02, -36.0]];   // v4.2.443: 高い帯域を +3〜8dB・ゆっくり消す・13〜18kHz(録音の圧縮で切れていた所)を少し
     for (const [lo, hi, g, dd] of NB) {
       const f0 = Math.sqrt(lo * hi), Q = f0 / (hi - lo), w0 = 2 * Math.PI * f0 / rate, al = Math.sin(w0) / (2 * Q), a0 = 1 + al;
       const b0 = al / a0, b2 = -al / a0, a1 = -2 * Math.cos(w0) / a0, a2 = (1 - al) / a0;   // RBJ の帯域通過(ピーク0dB)
@@ -2764,7 +2767,7 @@ function meosGongPath() {
     }
     const k = peak > 0 ? (0.85 / peak) : 1;
     for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-gong-v2.wav');
+    const f = path.join(os.tmpdir(), 'meos-gong-v3.wav');
     fs.writeFileSync(f, buf); _meosGongFile = f; return f;
   } catch (_) { return null; }
 }
@@ -12824,7 +12827,7 @@ function meosHelperSound() {
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
     if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
-    if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
+    if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
