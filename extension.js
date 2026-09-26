@@ -2712,10 +2712,47 @@ function meosMewPath() {
     fs.writeFileSync(f, buf); _meosMewFile = f; return f;
   } catch (_) { return null; }
 }
+// ★★v4.2.441(俊克「なぜアラーム音にゴングの音が無いんだろう?」→ 俊克の録音 ゴング.m4a を測った): 🥊Gong
+//   録音そのものは使わない・配らない。測った数字(成分の高さ・打った瞬間の強さ・1秒に何dB消えるか)だけで合成する。
+//   ★測って分かった事= 主役は 2707Hz、次が 2015Hz(-8dB)/ 整数倍でない(金属の鐘)/ 高い成分ほど早く消える
+//     (6304Hz -58dB/s・2707Hz -27dB/s・1385Hz -12dB/s)= 「カーン」の後に低い「ウォーン」が残る
+//   ★近い成分が組(1372/1385/1401Hz・2433/2448Hz・6304/6315Hz)= うなり(揺れる響き)の正体。組のまま入れる。
+let _meosGongFile = null;
+function meosGongPath() {
+  if (_meosGongFile) { try { if (require('fs').existsSync(_meosGongFile)) return _meosGongFile; } catch (_) { } }
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 44100, dur = 3.0, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    // [高さHz, 打った瞬間の強さdB(2707Hz=0), 1秒に消えるdB]
+    const P = [[309.3, -20, -8], [1371.8, -23, -12], [1385.0, -16, -12], [1400.6, -22, -12], [1603.7, -21, -22], [2015.0, -8, -19],
+      [2433.0, -24, -22], [2448.2, -25, -22], [2707.3, 0, -27], [2766.2, -28, -27], [3574.4, -20, -25], [4292.0, -18, -42],
+      [4788.5, -27, -41], [6304.2, -15, -58], [6314.6, -26, -58], [7709.8, -22, -43], [7915.8, -22, -51]];
+    let seed = 20260927, peak = 0;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const ph0 = P.map(() => rnd() * 2 * Math.PI);
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      let v = 0;
+      for (let q = 0; q < P.length; q++) { const a = Math.pow(10, (P[q][1] + P[q][2] * t) / 20); v += a * Math.sin(2 * Math.PI * P[q][0] * t + ph0[q]); }
+      v += 0.35 * (rnd() - 0.5) * Math.exp(-t / 0.004);                            // 打った瞬間の「カチッ」(4ms)
+      v *= Math.min(1, t / 0.0015) * Math.min(1, (dur - t) / 0.08);
+      smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    const k = peak > 0 ? (0.85 / peak) : 1;
+    for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-gong-v1.wav');
+    fs.writeFileSync(f, buf); _meosGongFile = f; return f;
+  } catch (_) { return null; }
+}
 // 音の名前 → 鳴らすファイル(Mew= 作った猫の声 / フルパス= そのまま / mac= システムの音)
 function meosSoundResolve(name) {
   const n = String(name || '');
   if (n === 'Mew') return meosMewPath() || '';
+  if (n === 'Gong') return meosGongPath() || '';   // v4.2.441
   if (meosSoundIsPath(n)) return n;
   return process.platform === 'darwin' && n ? ('/System/Library/Sounds/' + n + '.aiff') : '';
 }
@@ -2726,6 +2763,7 @@ function meosSoundList() {
     try { for (const f of fs.readdirSync(d.dir)) { const m = d.re.exec(f); if (m) out.push(d.byName ? m[1] : path.join(d.dir, f)); } } catch (_) { }
   }
   out.push('Mew');   // v4.2.399: 作った猫の声(どの OS でも)
+  out.push('Gong');  // v4.2.441: 作ったゴング(どの OS でも)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
   if (cur && out.indexOf(cur) < 0 && (process.platform === 'darwin' || meosSoundIsPath(cur))) out.push(cur);   // 手で書いた音のファイル(フルパス)も一覧に残す
@@ -2737,6 +2775,7 @@ function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) me
 function meosSoundSpawn(name) {
   const cp = require('child_process');
   if (name === 'Mew') name = meosMewPath() || '';   // v4.2.399
+  if (name === 'Gong') name = meosGongPath() || '';   // v4.2.441
   if (!name) return null;
   if (process.platform === 'darwin') {
     const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
@@ -12765,6 +12804,7 @@ function meosHelperSound() {
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
     if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
+    if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
@@ -14282,7 +14322,7 @@ function meosPlayChime(gain) {
       const f = meosSoundResolve(name);   // v4.2.399: Mew も
       const g = (name === 'Mew' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
       exec('afplay -v ' + (Math.round(vol * g * 100) / 100) + ' ' + q(f), () => { });
-    } else if (meosSoundIsPath(name) || name === 'Mew') {
+    } else if (meosSoundIsPath(name) || name === 'Mew' || name === 'Gong') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
@@ -29464,9 +29504,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,9).join('');};
-const sdLabel=(n)=>(n==='Mew'?'\ud83d\udc31 ':(n==='Purr'?'\ud83d\ude38 ':''))+sdShort(n);
+const sdLabel=(n)=>(n==='Mew'?'\ud83d\udc31 ':(n==='Purr'?'\ud83d\ude38 ':(n==='Gong'?'\ud83e\udd4a ':'')))+sdShort(n);   /* v4.2.441: 🥊Gong */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='Mew'||m.current==='Purr')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='Mew'||m.current==='Purr'||m.current==='Gong')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
