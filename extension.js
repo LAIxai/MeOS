@@ -14423,8 +14423,8 @@ function meosBellNumbersToNames(text) {
   try {
     const path = require('path');
     return String(text == null ? '' : text).replace(/\u{1F514}\s*(\S+)/gu, (m0, list) => '\u{1F514}' + list.split('/').map(x => {
-      if (!/^\d{1,3}$/.test(x)) return x;
-      const hit = meosSoundByName(x); return hit ? path.basename(String(hit)).replace(/\.[^.]+$/, '') : x;
+      const mm = /^(\d{1,3})(\u00d7?)$/.exec(x); if (!mm) return x;                  // v4.2.439: 🔔8× も
+      const hit = meosSoundByName(mm[1]); return hit ? path.basename(String(hit)).replace(/\.[^.]+$/, '') + mm[2] : x;
     }).join('/'));
   } catch (_) { return String(text || ''); }
 }
@@ -14441,12 +14441,39 @@ function meosClockSoundFor(sc, final) {
     }
     if (/\u{1F515}/u.test(seg || '')) return MEOS_BELL_MUTE;                           // v4.2.437: 🔕= この時間は鳴らさない
     const m = /\u{1F514}\s*(\S+)/u.exec(seg || ''); if (!m) return '';
-    const list = m[1].split('/').filter(Boolean); if (!list.length) return '';
+    const list = m[1].replace(/\u00d7$/, '').split('/').filter(Boolean); if (!list.length) return '';   // v4.2.439: × は数え鳴きの印
     const nm = list[((Math.max(1, count) - 1) % list.length)];
     const hit = meosSoundByName(nm);
     if (!hit) meosDbg('[bellSound] 知らない音の名前 ' + nm + ' → 既定の音');
     return hit;
   } catch (_) { return ''; }
+}
+// ★★v4.2.439(俊克「1Rの開始にミャー1回、2Rのときミャー2回、これで聞いているだけで何ラウンド目か分かる」):
+//   `🔔Mew×` = その時間が**始まる時**、回数(器 1. と同じ数え方)だけ鳴らす。始まりの合図がこれになるので、その時は0秒の笛を鳴らさない。
+//   返り値= { sound, count } / 無ければ null。sc は今終わった1歩(次の1歩を数える)。
+function meosClockStartCountBell(sc) {
+  try {
+    if (!sc || !sc.title || meosClockIsFinalStep(sc)) return null;
+    const len = Array.isArray(sc.cycle) ? sc.cycle.length : 0; if (!len) return null;
+    const i = (Number(sc.cidx) || 0) % len, ni = (i + 1) % len, nr = (Number(sc.round) || 0) + (i + 1 >= len ? 1 : 0);
+    const nx = Object.assign({}, sc, { cidx: ni, round: nr });
+    const segs = String(sc.title).replace(/^\s*\d{1,3}[.)]\s*/, '').split(/\s+\/\/\s+/);
+    const si = meosClockStepSeg(nx);
+    const seg = (segs.length > 1) ? (segs[Math.min(si.seg, segs.length - 1)] || '') : segs[0];
+    const m = /\u{1F514}\s*(\S+?)\u00d7(?=\s|$)/u.exec(seg || ''); if (!m) return null;
+    const snd = meosSoundByName(m[1].split('/')[0]); if (!snd) return null;
+    const count = Math.max(1, Math.min(20, (segs.length > 1 ? si.count : nr) || 1));
+    return { sound: snd, count };
+  } catch (_) { return null; }
+}
+function meosPlayCountBell(cb) {
+  try {
+    if (!cb || !cb.sound) return;
+    const gap = Math.round(((cb.sound === 'Mew') ? 1.35 : 1.0) * 1000);
+    meosMewGainReset();
+    for (let k = 0; k < cb.count; k++) setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, k * gap);
+    meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
+  } catch (_) { }
 }
 // その1歩が式の最後(最終周の最後の時間)か= 終わりの鐘は終了用のメッセージと音
 function meosClockIsFinalStep(sc) {
@@ -14566,7 +14593,8 @@ async function meosPseudoTimeUp(key) {
   //   ★★★**秒読みの最後には「発射」の合図that要る**= v4.1.55は0秒で黙らせたthat、
   //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
   //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
-  if (_cyc > 0) { try { meosStopRinging(); meosPlayWhistle(_ov436); } catch (_) { } }   // v4.1.57: 秒読みを止め、3秒の高音1つ
+  const _cb439 = meosClockStartCountBell(_sc0 || {});                                    // v4.2.439: 次の時間の数え鳴き
+  if (_cyc > 0) { try { meosStopRinging(); if (_cb439) meosPlayCountBell(_cb439); else meosPlayWhistle(_ov436); } catch (_) { } }   // v4.1.57: 秒読みを止め、3秒の高音1つ
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   // ★★v4.2.312(俊克 改良3「20分サイクリックタイマーを使っていて、膜に飛ばない指定もできるといいね」→ pm02:33「⚓ でもいいけど」):
@@ -28572,7 +28600,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. \ud83d\udd14Mew\u00d7 // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -31329,11 +31357,11 @@ function toggleMeDock(editorOverride) {
       try {
         // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
         const def = [{ cyc: '(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 // \u2615Break', anchor: false, noOrigin: true },   // v4.2.427(俊克「3プリセットの1つを従属連動の例に。🍅で10分の休みを入れて繰り返す」)= 起点なしの受け渡し
-                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
-        let list = extensionContext.globalState.get('meosClockPresets11', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. \ud83d\udd14Mew\u00d7 // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
+        let list = extensionContext.globalState.get('meosClockPresets12', null); if (!Array.isArray(list) || list.length !== 3) list = def;
         let slot = 0;   // v4.2.412(俊克「最初に表示するのは、トマトだよ」): 開くたびに①から
         if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); }
-        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin, anchors: Array.isArray(message.anchors) ? message.anchors.map(Boolean) : undefined }; await extensionContext.globalState.update('meosClockPresets11', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
+        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin, anchors: Array.isArray(message.anchors) ? message.anchors.map(Boolean) : undefined }; await extensionContext.globalState.update('meosClockPresets12', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
         if (message.type === 'clockPresetsAsk' && meDockPanel) meDockPanel.webview.postMessage({ type: 'clockPresets', list, slot });
       } catch (_) { }
       return;
