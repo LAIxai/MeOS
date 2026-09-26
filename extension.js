@@ -26640,12 +26640,12 @@ color:#ffffff;z-index:4;padding:0}
 .clk-rawline .cp-an{display:inline-block;color:#d9342b;font-weight:900;transform:rotate(10deg)}   /* v4.2.419(俊克「⚓︎ボタンを赤色文字にして、10°傾けよう。字下げはしないでいい」) */
 /* ★v4.2.419(俊克「幅を外枠一杯まで広げよう。但しドラム式ダイヤルは広げずに、UFCの所だけ」): 設定の窓だけ全幅・UFC の3つ(見出し/⏰行の姿/箱)以外は今の幅のまま */
 #dock-clk .bm-pop.clk-pop.set-only{width:100%!important}
-.clk-pop.set-only>*:not(.clk-ufcrow):not(.clk-rawline):not(.clk-cycwrap){max-width:388px}
-.clk-pop.set-only>.clk-ufcrow,.clk-pop.set-only>.clk-rawline,.clk-pop.set-only>.clk-cycwrap{margin-right:12px}   /* v4.2.420(俊克「↻ボタンが切れているので、その分だけ狭めよう。↻の右に5pxくらい余裕」) */
+.clk-pop.set-only>*:not(.clk-ufcrow):not(.clk-rawline):not(.clk-cycwrap):not(.clk-foot){max-width:388px}
+.clk-pop.set-only>.clk-ufcrow,.clk-pop.set-only>.clk-rawline,.clk-pop.set-only>.clk-cycwrap,.clk-pop.set-only>.clk-foot{margin-right:12px}   /* v4.2.422: read/copy/Set も↻と同じ右端へ */   /* v4.2.420(俊克「↻ボタンが切れているので、その分だけ狭めよう。↻の右に5pxくらい余裕」) */
 /* ★v4.2.420(俊克 改良4「並びを整理」): Starting point → Tag(字下げ=起点の付属) → Last bell(2つの日付が並ぶ) → ☑Repeat → プリセットの箱 → UFC(Set で書く姿) → read/copy/Set */
 .clk-pop.set-only .clk-tagrow,.clk-pop.set-only .clk-tagin{margin-left:16px}
 .clk-pop.set-only .clk-tagin{width:calc(100% - 16px)}
-.clk-pop.set-only>.clk-tagrow,.clk-pop.set-only>.clk-tagin{max-width:372px}   /* v4.2.421(俊克「Tagの右端を合わせよう」): 字下げの分だけ短く= 右端は上下の箱と同じ */
+.clk-pop.set-only>.clk-tagrow,.clk-pop.set-only>.clk-tagin{max-width:372px!important}   /* v4.2.422: 上の :not(…)×4 の規則は詳細度(0,6,0)が高く、372px が負けていた→ !important / v4.2.421(俊克「Tagの右端を合わせよう」): 字下げの分だけ短く= 右端は上下の箱と同じ */
 .clk-pop.set-only .clk-foot{justify-content:flex-end}.clk-pop.set-only .clk-foot .clk-set{margin-left:16px}   /* v4.2.421(俊克「read/copy/Setを右寄せに。copyとSetの間を少し離す」) */
 .clk-reprow{display:flex;margin:5px 0 3px}
 .clk-pop.norepeat .clk-cycwrap,.clk-pop.norepeat .clk-ncols{display:none!important}   /* v4.2.420(俊克「✓を入れると、その下に3プリセットが出る」) */
