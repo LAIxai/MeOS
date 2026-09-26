@@ -64,6 +64,15 @@ Four tomatoes with a short break after each, then a longer rest, round and round
 
 (The same routine also fits on one line — `↺↻((25m 5m)×4 10m)×5` — when you want it to stop after five rounds.)
 
+**One line, a message and a bell for every time.** Put one `//` message for each time you wrote, left to right,
+and one more for the end. Each shows while its time runs — on the line, in the status bar and on the menu bar —
+and is said again when it ends. Add `🔔` and a sound name to choose that time's bell; `🔔Tink/Pop/Glass` takes the
+next sound on every count. Without `🔔` the bell you chose in Me Dock rings.
+
+```md
+<!-- Mew!UFC ⏰ ↺↻((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Glass // 💓break 1. 🔔Tink // 🏁Done 🔔Hero -->
+```
+
 The `1.` at the start is only for your eyes, as in a Markdown list: write `1.` on every line and MeOS still shows
 1, 2, 3, because it reads the order, not the figure.
 

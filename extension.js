@@ -11757,6 +11757,7 @@ function meosChainFillSlot(text, round, ctx) {
         round = done ? 0 : si.count;
       } else t = segs[0];
     }
+    t = t.replace(/\s*\u{1F514}\S*/gu, '');                                         // v4.2.436: 🔔音の名前は見せない(鳴らす時に読む)
     if (round > 0) t = t.replace(/\d{1,3}[.)]/, String(round));                    // 残った最初の器thatが回数
     return t.trim();
   } catch (_) { return String(text || '').trim(); }
@@ -14069,6 +14070,7 @@ function meosArmPseudoTimer(key, ms) {
         if (left >= mk[j][0] - 1500) {                    // その印のために起きた= 鳴らす
           const sc = _meosPseudoScopes.get(key);
           try { _meosRingAnchor = !!(sc && meosClockAnchoredNow(sc)); } catch (_) { _meosRingAnchor = false; }   // v4.2.327: 先鐘(1分前・30秒前・10秒前)も⚓なら青
+          _meosBellOverride = meosClockSoundFor(sc, false);   // v4.2.436: 先鐘はその時間の 🔔
           meosRingFor(meosClockSayName(sc), mk[j][1]);
           meosUpdateTimerBar();
         }
@@ -14270,7 +14272,7 @@ function meosPlayChime(gain) {
     let name = 'Sosumi', vol = 2;
     try {
       const cfg = vscode.workspace.getConfiguration('laiMembrane');
-      name = String(cfg.get('clockSound', 'Mew') || '').trim();
+      name = _meosBellOverride || String(cfg.get('clockSound', 'Mew') || '').trim();   // v4.2.436: その⏰の 🔔
       const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     } catch (_) { }
     if (!name) return;                                   // 空= 鳴らさない
@@ -14304,11 +14306,11 @@ function meosRingSeconds() {
   //   積み上がるだけで、音は大きくならない)。
   // ★v4.2.407(俊克「Mewを鳴らす時に間隔を指定できないのか? 今は続けざまに鳴いて不自然。音源の長さが0.7sなので1〜1.5秒間隔で」):
   //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return (meosSoundNow() === 'Mew') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return ((_meosBellOverride || meosSoundNow()) === 'Mew') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
-  _meosRingUntil = 0; _meosRingName = ''; _meosRingAnchor = false;
+  _meosRingUntil = 0; _meosRingName = ''; _meosRingAnchor = false; _meosBellOverride = '';   // v4.2.436
   meosUpdateTimerBar(); meosPostViewMode();
 }
 // ★★★v4.1.57(俊克「もう少し**高音で3秒間、ピーって**鳴らそうよ」):
@@ -14380,8 +14382,9 @@ function meosPlayNoChange() {
     else exec('paplay ' + q(f) + ' || aplay -q ' + q(f) + ' || printf "\\a"', () => { });
   } catch (_) { }
 }
-function meosPlayWhistle() {
+function meosPlayWhistle(ov) {
   try {
+    if (ov) { const _k = _meosBellOverride; _meosBellOverride = ov; try { meosPlayChime(); } finally { _meosBellOverride = _k; } return; }   // v4.2.436: 🔔を書いた時間は、0秒の合図もその音
     let name = 'Sosumi', vol = 2;
     try {
       const cfg = vscode.workspace.getConfiguration('laiMembrane');
@@ -14398,8 +14401,44 @@ function meosPlayWhistle() {
 }
 // ★v4.2.212(俊克「鳴っている時もタイトルを出して」): ⏰の名の出し方はこの1つ。タイトル(// …)が在ればそれ(周回数入り)、
 //   無ければ膜名。鳴らす2か所とメニューの一覧が同じ物を引く([[feedback_one_source_for_mark_count_action]])。
-function meosClockSayName(sc) {
-  try { if (!sc) return ''; return sc.title ? meosChainFillSlot(sc.title, sc.round || 0, sc) : (sc.name || ''); } catch (_) { return (sc && sc.name) || ''; }
+// ★★v4.2.436(俊克「アラーム音指定を入れましょう。回数ごとに音を変えて、1サイクル終わったら音を変えるとかね」):
+//   `// 💓HIIT-Box 1. 🔔Glass // 💓break 1. 🔔Mew // 🏁Done 🔔Hero` = その時間の鐘の音。`🔔Tink/Pop/Glass` は回数ごとに巡る
+//   (回数= 器 1. と同じ数え方)。書かなければ Me Dock の 🔔。名前は 🔔 の一覧と同じ(大文字小文字は問わない・無い名前は既定へ= 黙らせない)。
+//   ★エディタを閉じている間(V-helper)は既定の音のまま= v4.5(俊克 2026.09.27)。
+let _meosBellOverride = '';
+function meosSoundByName(nm) {
+  try {
+    const want = String(nm || '').trim().toLowerCase(); if (!want) return '';
+    const path = require('path');
+    for (const x of meosSoundList()) { const b = path.basename(String(x)).replace(/\.[^.]+$/, '').toLowerCase(); if (b === want || String(x).toLowerCase() === want) return x; }
+  } catch (_) { }
+  return '';
+}
+function meosClockSoundFor(sc, final) {
+  try {
+    if (!sc || !sc.title) return '';
+    const segs = String(sc.title).replace(/^\s*\d{1,3}[.)]\s*/, '').split(/\s+\/\/\s+/);
+    let seg = segs[0], count = Number(sc.round) || 0;
+    if (segs.length > 1) {
+      const si = meosClockStepSeg(sc);
+      const done = !!final || (Number(sc.rounds) > 0 && count > Number(sc.rounds));
+      seg = (done && segs.length > si.atoms) ? segs[si.atoms] : (segs[Math.min(si.seg, segs.length - 1)] || segs[0]);
+      count = done ? 1 : si.count;
+    }
+    const m = /\u{1F514}\s*(\S+)/u.exec(seg || ''); if (!m) return '';
+    const list = m[1].split('/').filter(Boolean); if (!list.length) return '';
+    const nm = list[((Math.max(1, count) - 1) % list.length)];
+    const hit = meosSoundByName(nm);
+    if (!hit) meosDbg('[bellSound] 知らない音の名前 ' + nm + ' → 既定の音');
+    return hit;
+  } catch (_) { return ''; }
+}
+// その1歩が式の最後(最終周の最後の時間)か= 終わりの鐘は終了用のメッセージと音
+function meosClockIsFinalStep(sc) {
+  try { const len = Array.isArray(sc.cycle) ? sc.cycle.length : 0; return !!(sc && Number(sc.rounds) > 0 && Number(sc.round) >= Number(sc.rounds) && len && (Number(sc.cidx) || 0) % len === len - 1); } catch (_) { return false; }
+}
+function meosClockSayName(sc, final) {
+  try { if (!sc) return ''; return sc.title ? meosChainFillSlot(sc.title, sc.round || 0, final ? Object.assign({}, sc, { done: true }) : sc) : (sc.name || ''); } catch (_) { return (sc && sc.name) || ''; }
 }
 function meosStartRinging(name) {
   const every = meosRingSeconds();
@@ -14503,14 +14542,16 @@ async function meosPseudoTimeUp(key) {
   const _pre = (_meosBellDone.get(key) || 0) > 0; _meosBellDone.delete(key); _meosPreBell.delete(key);
   const _cyc = meosCycleStepFor(key);
   try { _meosRingAnchor = !!(_sc0 && meosClockAnchoredNow(_sc0)); } catch (_) { _meosRingAnchor = false; }   // v4.2.325
-  if (!_pre) meosStartRinging(meosClockSayName(_sc0));   // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  const _fin436 = meosClockIsFinalStep(_sc0 || {});                                   // v4.2.436: 最後の1歩= 終了用のメッセージと音
+  const _ov436 = meosClockSoundFor(_sc0, _fin436);
+  if (!_pre) { _meosBellOverride = _ov436; meosStartRinging(meosClockSayName(_sc0, _fin436)); }   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
   //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。
   // ★★★v4.1.56(俊克「アーチェリーでタイムアップのときは、警告音というか、**ホイッスル**を鳴らしていたね」):
   //   ★★★**秒読みの最後には「発射」の合図that要る**= v4.1.55は0秒で黙らせたthat、
   //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
   //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
-  if (_cyc > 0) { try { meosStopRinging(); meosPlayWhistle(); } catch (_) { } }   // v4.1.57: 秒読みを止め、3秒の高音1つ
+  if (_cyc > 0) { try { meosStopRinging(); meosPlayWhistle(_ov436); } catch (_) { } }   // v4.1.57: 秒読みを止め、3秒の高音1つ
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   // ★★v4.2.312(俊克 改良3「20分サイクリックタイマーを使っていて、膜に飛ばない指定もできるといいね」→ pm02:33「⚓ でもいいけど」):

@@ -711,7 +711,7 @@ console.log('\u3253 秒読みは3段(アーチェリー式)');
  ok(/ms - marks\[i\]\[0\]/.test(_arm), '\u2605\u2605次の印の時刻で起きる(1秒ごとに数えない)', true);
  ok(!/meosJumpToScope/.test(_arm), '  印の枝に移動thatが混ざっていない', true);
  const _up=FN(SRC7, 'async function meosPseudoTimeUp');
- ok(/meosStopRinging\(\); meosPlayWhistle\(\);/.test(_up), '\u2605\u2605\u26050秒= 秒読みを止め、3秒の高音を1つ(黙るのではない)', true);
+ ok(/meosStopRinging\(\); meosPlayWhistle\((_ov436)?\);/.test(_up),   /* v4.2.436: 🔔を書いた時間はその音で */ '\u2605\u2605\u26050秒= 秒読みを止め、3秒の高音を1つ(黙るのではない)', true);
  const SRC13=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  const _w=FN(SRC13, 'function meosWhistlePath');
  ok(/meosWhistlePath\(1760, 3\)/.test(SRC13), '\u2605\u26051760Hz(A6)を3秒= OSの音には無い「続く音」so自分で作る', true);
