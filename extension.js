@@ -38550,6 +38550,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
     meosPlayNoChange();
     try { await vscode.commands.executeCommand('workbench.action.files.save'); } catch (_) { }
+    try { const _e = vscode.window.activeTextEditor; if (_e && meosIsRealFileDoc(_e.document)) { meosArmClockFcFor(_e.document); meosUpdateTimerBar(); refresh(_e); } } catch (_) { }   // v4.2.447: 変わっていない Cmd+S でも⏰を掛け直す
   }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.sweepClockMeta', async () => {
     const ed = (typeof getMeDockTargetEditor === 'function' ? getMeDockTargetEditor() : null) || vscode.window.activeTextEditor;
@@ -39115,6 +39116,9 @@ function activate(context) {
     } catch (_) { }
   }));
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    // ★v4.2.447(俊克「インラインで直した後に、カウントが再開するまで時間がかかる。Cmd+Sで再開するといいね」):
+    //   保存した瞬間に⏰を読み直して掛け直す(待たずに、書いた姿で数え始める)。
+    try { if (doc && meosIsRealFileDoc(doc)) { meosArmClockFcFor(doc); meosUpdateTimerBar(); const _ed7 = vscode.window.activeTextEditor; if (_ed7 && _ed7.document === doc) refresh(_ed7); } } catch (_) { }
     // v4.1.61: 変わっていない保存なら、更新日を元へ戻す(UD を読む前に、ここで)。
     try {
       const _k0 = (doc && doc.uri) ? doc.uri.toString() : '';
