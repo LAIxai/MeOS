@@ -28524,7 +28524,10 @@ var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜
    (webview から node の関数は呼べない= MeTeX の高さの式と同じ事情)。 */
 function clkDerived(){var h=clkPick(document.getElementById('clk-h')),mi=clkPick(document.getElementById('clk-mi'));
 var n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate(),h||0,mi||0,0,0);
-if(t.getTime()<=n.getTime())t.setDate(t.getDate()+1);return t;}
+/* ★★v4.2.435(俊克「以前から、Dateが1日後が設定されるというバグが起きやすい」): 真因= 開いた時の時刻の輪は「今の分」so、
+   秒の分だけ必ず過去= 「過ぎた時刻は明日」の決まりで**明日の同じ時刻**になっていた(繰返しなら24時間後に始まる)。
+   ★明日へ回すのは**一度きり**の時だけ= 繰返しの起点は過去でよい(v4.1 から「過去なら数え上げ」) */
+if(t.getTime()<=n.getTime()&&!clkRep)t.setDate(t.getDate()+1);return t;}
 function clkDateStr(){if(clkFixD){var y=clkPick(document.getElementById('clk-y')),mo=clkPick(document.getElementById('clk-mo')),d=clkPick(document.getElementById('clk-d'));
 if(y&&mo&&d)return y+'-'+clkPad(mo)+'-'+clkPad(d);}
 var t=clkDerived();return t.getFullYear()+'-'+clkPad(t.getMonth()+1)+'-'+clkPad(t.getDate());}
@@ -29027,7 +29030,8 @@ if(clkCaret&&clkPop){
     ★→ 面that**今の姿を見せて**、その姿を変えて Set する= 見えている物を変える、という当たり前の形。 */
  /* ★v4.2.413: プリセットを箱へ入れる口は1つ(↻・開いた直後・☑Repeat)。入れたら最後の ×N の右へカーソルとドラム(v4.2.411〜412) */
  function clkApplyPreset(){var _cy3=document.getElementById('clk-cyc');var _pr=clkPresets[clkPresetSlot];if(!_pr)return;
-   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=Array.isArray(_pr.anchors)?!!_pr.anchors[0]:!!_pr.anchor;clkLock=false;clkLineFx=[];if(Array.isArray(_pr.anchors))for(var _ai=1;_ai<_pr.anchors.length;_ai++)clkLineFx[_ai]={a:!!_pr.anchors[_ai],l:false};window.__clkNoOrigin=!!_pr.noOrigin;   /* v4.2.431: 行ごとの🚢💨/⚓ */try{clkEcho();}catch(e){}clkPaintLock();   /* v4.2.427: 受け渡しのプリセットは起点なし(輪で1本目が0から始まるため) */clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
+   clkRep=true;clkPaintRep();if(_cy3)_cy3.value=_pr.cyc||'';clkAnchor=Array.isArray(_pr.anchors)?!!_pr.anchors[0]:!!_pr.anchor;clkLock=false;clkLineFx=[];if(!_pr.noOrigin){try{clkNow();}catch(e){}}   /* v4.2.435(俊克「プリセットだけを使う場合、Nowボタンを押した状態にすべき」) */
+   if(Array.isArray(_pr.anchors))for(var _ai=1;_ai<_pr.anchors.length;_ai++)clkLineFx[_ai]={a:!!_pr.anchors[_ai],l:false};window.__clkNoOrigin=!!_pr.noOrigin;   /* v4.2.431: 行ごとの🚢💨/⚓ */try{clkEcho();}catch(e){}clkPaintLock();   /* v4.2.427: 受け渡しのプリセットは起点なし(輪で1本目が0から始まるため) */clkPaintPreset();clkTouch();clkPaintSet();try{clkLastSoon();}catch(e){}
    try{if(_cy3){var _vv=_cy3.value,_rx=/[\u00d7xX*]\\s*\\d/g,_mx=null,_m1;while((_m1=_rx.exec(_vv)))_mx=_m1;var _at;if(_mx)_at=_mx.index+1;else{var _mn=/[0-9]+/.exec(_vv);_at=_mn?(_mn.index+_mn[0].length):_vv.length;}
     _cy3.focus();_cy3.setSelectionRange(_at,_at);if(window.__clkNdCheck)window.__clkNdCheck();}}catch(e){}
    try{clkPaintPrev();}catch(e){}}
