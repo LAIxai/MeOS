@@ -54,9 +54,10 @@ counted from its origin as if nothing had happened.
 
 **Or let them hand over.** Give every line a count `×N` and no origin, and the clocks run one after another:
 when the first has done its turns the second starts, and when the last is done the first begins again from zero.
+Four tomatoes with a short break after each, then a longer rest, round and round:
 
 ```md
-<!-- Mew!UFC ⏰ 1. ↺↻(50m)×1 // 📖Study -->
+<!-- Mew!UFC ⏰ 1. ↺↻(25m 5m)×4 // 🍅Pomodoro 1. -->
 <!-- Mew!FC ⏰ 1. ↺↻(10m)×1 // ☕Break -->
 ```
 
@@ -103,7 +104,7 @@ while the clock runs, and for as long as you like while it is paused, so you can
 change N. Nothing but `×N` is kept in your file; the last day is worked out from what is already written there.
 
 **Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
-steps through three presets — 🍅 Pomodoro `(25m 5m)×4`, 💧 eye drops (two lines, at anchor) and
+steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 eye drops (two lines, at anchor) and
 💓 HIIT `((30s 15s)×4 1m)×3` — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
