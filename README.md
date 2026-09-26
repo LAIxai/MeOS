@@ -66,11 +66,12 @@ Four tomatoes with a short break after each, then a longer rest, round and round
 
 **One line, a message and a bell for every time.** Put one `//` message for each time you wrote, left to right,
 and one more for the end. Each shows while its time runs — on the line, in the status bar and on the menu bar —
-and is said again when it ends. Add `🔔` and a sound name to choose that time's bell; `🔔Tink/Pop/Glass` takes the
-next sound on every count. Without `🔔` the bell you chose in Me Dock rings.
+and is said again when it ends. Add `🔔` and a number — the number beside each sound in Me Dock's 🔔 list — or
+the sound's name to choose that time's bell; `🔔15/11/6` takes the next sound on every count, and `🔕` keeps that
+time silent. Without either, the bell you chose in Me Dock rings.
 
 ```md
-<!-- Mew!UFC ⏰ ↺↻((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Glass // 💓break 1. 🔔Tink // 🏁Done 🔔Hero -->
+<!-- Mew!UFC ⏰ ↺↻((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔15/11/6 // 💓break 1. 🔕 // 🏁Done 🔔Hero -->
 ```
 
 The `1.` at the start is only for your eyes, as in a Markdown list: write `1.` on every line and MeOS still shows

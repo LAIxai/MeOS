@@ -11757,7 +11757,7 @@ function meosChainFillSlot(text, round, ctx) {
         round = done ? 0 : si.count;
       } else t = segs[0];
     }
-    t = t.replace(/\s*\u{1F514}\S*/gu, '');                                         // v4.2.436: 🔔音の名前は見せない(鳴らす時に読む)
+    t = t.replace(/\s*\u{1F514}\S*/gu, '').replace(/\s*\u{1F515}\S*/gu, '');                                         // v4.2.436: 🔔音の名前は見せない(鳴らす時に読む)
     if (round > 0) t = t.replace(/\d{1,3}[.)]/, String(round));                    // 残った最初の器thatが回数
     return t.trim();
   } catch (_) { return String(text || '').trim(); }
@@ -14275,7 +14275,7 @@ function meosPlayChime(gain) {
       name = _meosBellOverride || String(cfg.get('clockSound', 'Mew') || '').trim();   // v4.2.436: その⏰の 🔔
       const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     } catch (_) { }
-    if (!name) return;                                   // 空= 鳴らさない
+    if (!name || name === MEOS_BELL_MUTE) return;        // 空= 鳴らさない / v4.2.437: 🔕
     const { exec } = require('child_process');
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') {
@@ -14406,10 +14406,13 @@ function meosPlayWhistle(ov) {
 //   (回数= 器 1. と同じ数え方)。書かなければ Me Dock の 🔔。名前は 🔔 の一覧と同じ(大文字小文字は問わない・無い名前は既定へ= 黙らせない)。
 //   ★エディタを閉じている間(V-helper)は既定の音のまま= v4.5(俊克 2026.09.27)。
 let _meosBellOverride = '';
+const MEOS_BELL_MUTE = '\u0000mute';   // v4.2.437: 🔕
 function meosSoundByName(nm) {
   try {
     const want = String(nm || '').trim().toLowerCase(); if (!want) return '';
     const path = require('path');
+    // v4.2.437(俊克「アラームの名前を入れるのも煩わしいので、リストに番号を入れよう。🔔3、🔕」): 🔔の一覧の番号(1から)
+    if (/^\d{1,3}$/.test(want)) { const L = meosSoundList(), k = parseInt(want, 10); return (k >= 1 && k <= L.length) ? L[k - 1] : ''; }
     for (const x of meosSoundList()) { const b = path.basename(String(x)).replace(/\.[^.]+$/, '').toLowerCase(); if (b === want || String(x).toLowerCase() === want) return x; }
   } catch (_) { }
   return '';
@@ -14425,6 +14428,7 @@ function meosClockSoundFor(sc, final) {
       seg = (done && segs.length > si.atoms) ? segs[si.atoms] : (segs[Math.min(si.seg, segs.length - 1)] || segs[0]);
       count = done ? 1 : si.count;
     }
+    if (/\u{1F515}/u.test(seg || '')) return MEOS_BELL_MUTE;                           // v4.2.437: 🔕= この時間は鳴らさない
     const m = /\u{1F514}\s*(\S+)/u.exec(seg || ''); if (!m) return '';
     const list = m[1].split('/').filter(Boolean); if (!list.length) return '';
     const nm = list[((Math.max(1, count) - 1) % list.length)];
@@ -29411,9 +29415,10 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,9).join('');};
-const sdLabel=(n)=>(n==='Mew'?'\ud83d\udc31 ':(n==='Purr'?'\ud83d\ude38 ':''))+sdShort(n);   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
+const sdLabel=(n)=>(n==='Mew'?'\ud83d\udc31 ':(n==='Purr'?'\ud83d\ude38 ':''))+sdShort(n);
+const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
 window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='Mew'||m.current==='Purr')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
- const rows=[{name:'',label:'(no sound)'}].concat((m.list||[]).map(n=>({name:n,label:sdLabel(n)})));
+ const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
   r.addEventListener('click',ev=>{ev.stopPropagation();clearTimeout(sdTimer);sdAct(r,false);vscode.postMessage({type:'soundPreview',name:x.name});vscode.postMessage({type:'soundCommit',name:x.name});});
