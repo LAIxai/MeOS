@@ -121,7 +121,7 @@ change N. Nothing but `×N` is kept in your file; the last day is worked out fro
 
 **Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
 steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 eye drops (two lines; the five-minute one at anchor) and
-💓 an hour of boxing `((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Gong× // 💓break 1.`, one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
+💓 an hour of boxing `((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Gong× 🔕 // 💓break 1.` (gongs to start each round, silence inside it), one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
 routine begins and where it ends. One line in the box is one ⏰, and just above **Set** the panel shows each line
