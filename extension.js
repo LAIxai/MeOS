@@ -14455,7 +14455,8 @@ function meosClockStartCountBell(sc) {
   try {
     if (!sc || !sc.title || meosClockIsFinalStep(sc)) return null;
     const len = Array.isArray(sc.cycle) ? sc.cycle.length : 0; if (!len) return null;
-    const i = (Number(sc.cidx) || 0) % len, ni = (i + 1) % len, nr = (Number(sc.round) || 0) + (i + 1 >= len ? 1 : 0);
+    const _w0 = !(Number(sc.round) > 0);                                              // 0周目(起点を待っていた)= 次は1周目の最初
+    const i = (Number(sc.cidx) || 0) % len, ni = _w0 ? 0 : (i + 1) % len, nr = _w0 ? 1 : (Number(sc.round) || 0) + (i + 1 >= len ? 1 : 0);
     const nx = Object.assign({}, sc, { cidx: ni, round: nr });
     const segs = String(sc.title).replace(/^\s*\d{1,3}[.)]\s*/, '').split(/\s+\/\/\s+/);
     const si = meosClockStepSeg(nx);
@@ -14465,6 +14466,15 @@ function meosClockStartCountBell(sc) {
     const count = Math.max(1, Math.min(20, (segs.length > 1 ? si.count : nr) || 1));
     return { sound: snd, count };
   } catch (_) { return null; }
+}
+// ★v4.2.440(俊克「Setを押した時、1鳴きしましょう。最初のゴングだね」): 今すぐ始まる時(起点なし/起点が今か過去)、
+//   1本目の最初の時間に 🔔…× が在れば、その1周目として鳴らす。未来の起点なら、起点の瞬間(0周目の終わり)に鳴る。
+function meosClockSetGong(title, cycleSrc, cycle, rounds) {
+  try {
+    const t = String(title || ''); if (t.indexOf('\u00d7') < 0 || t.indexOf('\u{1F514}') < 0) return;
+    const cb = meosClockStartCountBell({ title: t, cycleSrc: cycleSrc || '', cycle: Array.isArray(cycle) ? cycle : [], rounds: rounds || 0, cidx: 0, round: 0 });
+    if (cb) meosPlayCountBell(cb);
+  } catch (_) { }
 }
 function meosPlayCountBell(cb) {
   try {
@@ -31265,7 +31275,7 @@ function toggleMeDock(editorOverride) {
         try { const _e0 = meosCurrentEditor(); const _g0 = _e0 ? meosClockFcScan(_e0.document).filter(c => c.key === _opts.atKey).sort((a, b) => a.line - b.line) : []; if (_g0.length) _opts.atLine = _g0[0].line; } catch (_) { }
       }
       if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
-      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); await meosClockSetMore(message, _opts); return; }   // v4.2.395: 起点なし
+      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); await meosClockSetMore(message, _opts); return; }   // v4.2.395: 起点なし
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
       // ★★v4.2.89(俊克 バグ2): **一度きりも過去を受ける**= ドラムの日付が過去なら、そこから数えるストップウォッチ
@@ -31276,6 +31286,7 @@ function toggleMeDock(editorOverride) {
       const _org = w ? w.at : ((_opts.cycle && _opts.cycle.length) ? _loose89 : (_past89 ? _loose89 : null));
       if (!_org) { vscode.window.setStatusBarMessage('MeOS: 18:30 / 9/1 18:30 / 2026-09-01 18:30', 3000); return; }
       await meosStartPseudoTimer(0, w ? w.ms : 0, _org, _opts);
+      try { if (_org && _org.getTime() <= Date.now() + 1000) meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); } catch (_) { }   // v4.2.440: 最初のゴング
       await meosClockSetMore(message, _opts);   // v4.2.410: 箱の2行目から先
       return;
     }           // v4.0.442/448: ⏰=テスト用紙
