@@ -2896,8 +2896,18 @@ function meosWriteWrapColumn(cfg, doc, v) {
     : (ins.workspaceValue !== undefined || ins.workspaceLanguageValue !== undefined) ? vscode.ConfigurationTarget.Workspace
       : vscode.ConfigurationTarget.Global;                                       // 今その値が書いてある所に書く(無ければ自分の設定へ)
   const lang = !!doc;                                                            // 言語別の欄に書く= 今見ている本文に効く
-  cfg.update('wordWrapColumn', v, target, lang);
-  if (String(cfg.get('wordWrap', 'off')) === 'off') cfg.update('wordWrap', 'wordWrapColumn', target, lang);   // 'off' のままでは幅を変えても折り返さない
+  const old = Number(cfg.get('wordWrapColumn', 0)) || 0;                          // 書く前の幅(縦線の差し替えに使う)
+  // ★v4.2.449(俊克 2026.09.27 am07:42「折り返しの文字数の位置を示す縦線を出すようにしようよ。私は何文字目を指定したかを忘れている」):
+  //   折り返し幅を書くたびに、同じ所へ縦線(editor.rulers)も書く。前の幅の線だけ抜いて今の幅を足す= 俊克が自分で引いた線は残す。
+  //   ★縦線も折り返しも同じ物差し= 半角1字の幅×N。日本語は1字≒半角1.67字分(フォント次第)なので、×2 にせず同じ線で折れる。
+  //   ★同じ [markdown] 欄へ同時に書くと後の書き込みが前を消しうる→ 1つずつ順に書く。
+  const colOf = r => (typeof r === 'number' ? r : Number(r && r.column));
+  const rulers = (cfg.get('rulers', []) || []).filter(r => colOf(r) !== old && colOf(r) !== v).concat([v]).sort((a, b) => colOf(a) - colOf(b));
+  const wrapOff = String(cfg.get('wordWrap', 'off')) === 'off';                  // 'off' のままでは幅を変えても折り返さない
+  Promise.resolve(cfg.update('wordWrapColumn', v, target, lang))
+    .then(() => wrapOff ? cfg.update('wordWrap', 'wordWrapColumn', target, lang) : null)
+    .then(() => cfg.update('rulers', rulers, target, lang))
+    .catch(() => { });
 }
 function meosPinchCursor() { return 'ew-resize'; }
 function meosPinchedCursor() { return 'col-resize'; }
