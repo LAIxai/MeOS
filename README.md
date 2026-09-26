@@ -12,6 +12,9 @@
   <a href="https://github.com/LAIxai/MeOS/releases/latest"><img src="https://img.shields.io/badge/release-v2.0-2196f3" alt="Latest Release (v2.0)"></a>
 </p>
 
+<p align="center"><b>MeOS — Membrane OS</b>, a.k.a. <b>iWarpShip</b><br>
+<sub><i>i</i> for information — a ship that warps through the space of what you wrote.</sub></p>
+
 ### **Markdown⊕** — *Markdown, plus.*
 
 MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the ⊕). A membrane is just a comment — so a Markdown⊕ document stays 100% valid Markdown, and the very same notation works in code. Markdown gave you *formatting*; **Markdown⊕ adds structure, navigation, and bookmarks that bring you back** — without touching your data.
@@ -33,6 +36,122 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 > ## **Ai, Mai, MeOS 🐥**
 >
 > ## **You(AI) & I(LAI) 🐔**
+
+### NEW in v4.2 — clocks that hand over to each other, and keep ringing after you close the editor
+
+v4.1 put one clock on a membrane. **v4.2 lets a membrane carry a whole routine** — several clocks, one after
+another — and it keeps that routine running on the Mac menu bar even when VSCodium is closed.
+
+```md
+<!-- Mew!UFC ⏰⚓️ 1. 2026-09-05 01:00p ↺↻8h // 💧Time for eye drops -->
+<!-- Mew!UFC ⏰⚓️ 1. ↺↻(5m)×2 // 💧Eye drop # 1. -->
+```
+
+**Clocks in a row hand over to each other.** Put several ⏰ lines under one membrane and they run in order:
+every eight hours the first one rings, then the second counts five minutes twice — one drop, wait, the second
+drop — and hands back to the first. The `1.` at the start is only for your eyes, as in a Markdown list: write
+`1.` on every line and MeOS still shows 1, 2, 3, because it reads the order, not the figure.
+
+**Each clock has its own title**, written after `//`. The title travels with the clock, so a single line can be
+copied anywhere and still says what it is for. A `1.` inside the title is a slot for the count: `💧Eye drop # 1.`
+reads *💧Eye drop # 2* on the second drop — on the line, in the status bar and on the menu bar alike. Only the clock
+that is running shows its title on the line; the ones waiting their turn stay quiet.
+
+**Every line has its own ▶️ / ⏸️.** Stop one clock and the rest of the row carries on. Mark a line ⏯️ and, when
+its turn comes, it waits for you to press ▶️ instead of starting by itself. 🔓 → 🔐 locks a clock so it can be
+neither stopped nor deleted until it rings; **Opt+click** the 🔐 to take the lock off again.
+
+**⚓ rings without taking you away.** A clock at anchor keeps its bell and its countdown but does not warp you to
+its membrane — for the twenty-minute stretch reminder that should not pull you out of what you are writing.
+The panel shows 🚢💨 (warp) or ⚓ (anchor) beside every clock, so you can see which kind it is at a glance.
+
+**Past or future, the origin decides.** Write a date that has already gone and the clock measures up from it
+as a stopwatch. Write one still to come and it counts down to it, then starts its repeats there — like a title
+fight that begins at the bell. MeOS says which it is with one letter after the time — **p** for past, **f** for
+future — so the raw line tells you without a look at the clock.
+
+**Repeats can follow the calendar.** A repeat that starts with a weekday letter is a calendar rule, not an
+interval: `↺t1,3` is the first and third Thursday, `↺t` every Thursday, `↺MWF` Monday, Wednesday and Friday
+(the week is written S‑M‑T‑W‑t‑F‑s — Thursday is the small `t`). The bell rings at the time of day written in
+the origin.
+
+```md
+<!-- Mew!UFC ⏰ 2026-10-01 10:00 ↺t1,3 ×11 // Monthly meeting -->
+```
+
+**Count or date — write whichever you know (Date&Count).** If you know how many turns, write `×N`; if you know
+when it should end, write `~` and the date instead, and MeOS turns it into the largest `×N` that does not run past
+it:
+
+```md
+<!-- Mew!UFC ⏰ 2026-09-24 10:00 ↺8h ~2026-10-31 10:00 // Medicine -->   →   ↺8h ×111
+```
+
+Either way the last day is shown on the badge line just above the clock — for five seconds after you change it
+while the clock runs, and for as long as you like while it is paused, so you can guess an N, read the date and
+change N. Nothing but `×N` is kept in your file; the last day is worked out from what is already written there.
+
+**Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
+steps through three presets — 🍅 Pomodoro `(25m 5m)×4`, 💧 eye drops (the two lines above, at anchor) and
+💓 HIIT `((30s 15s)×4 1m)×3` — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
+it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
+**Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
+routine begins and where it ends. One line in the box is one ⏰, and just above **Set** the panel shows each line
+exactly as it will look in the editor — `▶️⏰🚢💨🔓 …` — where 🚢💨 and 🔓 are buttons, the same ones you will press on
+the line itself. Pick a preset and press Set; the rest you learn from the clock that appears in your text.
+
+**V-helper — the ⏰ that stays in the menu bar (macOS).** V-helper lives in the menu bar and keeps the clocks you
+set in VSCodium running even when VSCodium is not: it counts, rings, moves a row of clocks on to the next one, and
+when a bell is due it wakes VSCodium and brings you to the membrane. Like the Dock, it starts and quits VSCodium,
+and while VSCodium is closed it lists your Tag & Go rooms — pick one and you are there. Turn it on or off with
+**[V-helper]** at the top right of the ⏰ panel (orange = in the menu bar, grey = nothing there).
+
+**Two editors, two lives.** VS Code and VSCodium each get their own V-helper — **purple for VS Code, orange for
+VSCodium** — and each keeps only the clocks of the files open in its own editor. So you can run work clocks in
+one and private clocks in the other, side by side in the menu bar. Give them different bells too: press **🔔** beside the 🎨 Theme button in each editor's Me Dock, move with ↑/↓ to
+hear every sound, and press Enter to keep one (it is saved as `laiMembrane.clockSound`, per editor). Then you know whose clock rang before you even look.
+Keep the two lives in separate files — the same file open in both editors shows its clocks in both.
+
+<p align="center">
+  <!-- ★ヒーロー#2(v4.2.173以降の姿で撮り直し)をここへ: media/hero/v4.2-chained-clocks.png -->
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-chained-clocks.png" alt="Chained clocks - every eight hours, two eye drops five minutes apart; each line has its own play and pause button" width="92%"><br>
+  <sub><b>NEW in v4.2 — clocks that hand over to each other.</b> Every eight hours, two eye drops five minutes apart: two lines under one membrane. Each line has its own &#9654;&#65039; / &#9208;&#65039;, and each works as a timer on its own at any time.</sub>
+</p>
+
+**Wide tables stay tables — wrap width in three presets.** You line a table up with the table button, and the
+editor wraps it at 80 columns and breaks it apart again. Beside the pointer button in Me Dock there is now a
+**wrap width** knob: drag it, or type the number, and the text re-wraps as you move. Keep three widths — say
+80 for prose, 140 for a wide table, 200 for the widest — and **↻** steps through them (red, blue, green), so a
+table that did not fit a moment ago opens out in one click. We know of no other Markdown editor that lets you
+change the wrap width this directly.
+
+**Also in v4.2**
+
+- **Me Dock in ten sizes** — ⊕ / ⊖ beside **A** step through 60–80 % in eight fine steps, then 90 % and 100 %.
+  A small box opens right there and says where you are (`4/10`); ↑ / ↓ keep stepping while you drag the panel
+  wider, so you can settle the size in one go.
+- **📦 Re-install VSIX for everyone** — pick any `.vsix` (the newest, or an older one to compare) and MeOS installs
+  it and reloads. It opens where you picked last time, or your Downloads folder.
+- **Reveal in Finder** — right-click a file in Me Dock's recent-files list.
+- **Two editors, two ⏰** — if MeOS runs in both VS Code and VSCodium, each menu-bar ⏰ says which one it is, and
+  **Quit V-helper for VSCs** at the bottom stops it for both.
+
+- **Three pointing hands** — the BTRON hand, a slim 22.5° classic macOS hand, or your OS's own. The tip of the
+  finger is where you point, and it does not jump when the hand changes shape.
+- **Code blocks and inline code on a sheet of paper** — a code block is drawn as one sheet, and `inline code`
+  as a small cream plate, so notation you quote in a note stays text and is never run.
+- **🎨 Theme button** in Me Dock — ↑/↓ to try colour themes on, Enter to keep one.
+- **🐱 Mew, the new default bell** — a kitten's call that MeOS makes itself, from a real kitten's pitch and
+  harmonics measured to the millisecond. It calls every 1.35 s, each call a little louder or softer by
+  **1/f fluctuation**, so it never sounds like a loop. Pick another sound any time with **🔔** beside the 🎨 Theme button.
+- **A soft "no change" sound** — press Cmd+S (Ctrl+S) when there is nothing new to save and MeOS answers with
+  two soft falling tones, so your hand knows the file was already saved.
+- **Sounds are tested on macOS.** The ⏰ bell, the 🔔 picker (Windows: the `.wav` files in `C:\Windows\Media`;
+  Linux: the sounds in `/usr/share/sounds/freedesktop/stereo`) and the "no change" sound also have a way to play on
+  Windows and Linux, but we have not heard them there yet. If one stays silent on your machine, please tell us in an
+  [Issue](https://github.com/LAIxai/MeOS/issues) — that is how it gets fixed.
+- **Slow pasting in a very large diary?** Me Dock points you to switching off VSCodium's built-in
+  *Markdown Language Features* for that workspace, which was the cause we measured.
 
 ### NEW in v4.1 — hang a clock on a membrane, and it comes to find you
 
