@@ -70,7 +70,8 @@ and is said again when it ends. Add `🔔` and a number — the number beside ea
 the sound's name to choose that time's bell; `🔔15/11/6` takes the next sound on every count, and `🔕` keeps that
 time silent. **Set** writes the numbers down as names, so the line rings the same on any machine. Without either,
 the bell you chose in Me Dock rings. Add `×` — `🔔Mew×` — and that time is announced when it **starts**, once for
-round 1, twice for round 2: you know the round with your eyes shut.
+round 1, twice for round 2: you know the round with your eyes shut. 🥊 **Gong** is new in the 🔔 list — made, like 🐱 Mew,
+from measurements of a real one.
 
 ```md
 <!-- Mew!UFC ⏰ ↺↻((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔15/11/6 // 💓break 1. 🔕 // 🏁Done 🔔Hero -->
@@ -120,7 +121,7 @@ change N. Nothing but `×N` is kept in your file; the last day is worked out fro
 
 **Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
 steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 eye drops (two lines; the five-minute one at anchor) and
-💓 an hour of boxing `((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Mew× // 💓break 1.`, one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
+💓 an hour of boxing `((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Gong× // 💓break 1.`, one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
 routine begins and where it ends. One line in the box is one ⏰, and just above **Set** the panel shows each line
