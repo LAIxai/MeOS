@@ -43,14 +43,25 @@ v4.1 put one clock on a membrane. **v4.2 lets a membrane carry a whole routine**
 another — and it keeps that routine running on the Mac menu bar even when VSCodium is closed.
 
 ```md
-<!-- Mew!UFC ⏰⚓️ 1. 2026-09-05 01:00p ↺↻8h // 💧Time for eye drops -->
-<!-- Mew!UFC ⏰⚓️ 1. ↺↻(5m)×2 // 💧Eye drop # 1. -->
+<!-- Mew!UFC ⏰🔐 1. 2026-09-01 10:45p ↺↻8h // 💧Time for eye drops -->
+<!-- Mew!FC ⏰⚓️ 1. ↺↻(5m)×2 // 💧Eye drop # 1. -->
 ```
 
-**Clocks in a row hand over to each other.** Put several ⏰ lines under one membrane and they run in order:
-every eight hours the first one rings, then the second counts five minutes twice — one drop, wait, the second
-drop — and hands back to the first. The `1.` at the start is only for your eyes, as in a Markdown list: write
-`1.` on every line and MeOS still shows 1, 2, 3, because it reads the order, not the figure.
+**Independent yet linked.** The first clock keeps its own time from its origin — every eight hours, day after
+day. The second waits under it: press its ▶️ when you put in the first drop and it counts five minutes twice for
+the second (**Opt+click** starts it again from zero, any time). Stop it and the eight-hour clock carries on,
+counted from its origin as if nothing had happened.
+
+**Or let them hand over.** Give every line a count `×N` and no origin, and the clocks run one after another:
+when the first has done its turns the second starts, and when the last is done the first begins again from zero.
+
+```md
+<!-- Mew!UFC ⏰ 1. ↺↻(50m)×1 // 📖Study -->
+<!-- Mew!FC ⏰ 1. ↺↻(10m)×1 // ☕Break -->
+```
+
+The `1.` at the start is only for your eyes, as in a Markdown list: write `1.` on every line and MeOS still shows
+1, 2, 3, because it reads the order, not the figure.
 
 **Each clock has its own title**, written after `//`. The title travels with the clock, so a single line can be
 copied anywhere and still says what it is for. A `1.` inside the title is a slot for the count: `💧Eye drop # 1.`
@@ -92,7 +103,7 @@ while the clock runs, and for as long as you like while it is paused, so you can
 change N. Nothing but `×N` is kept in your file; the last day is worked out from what is already written there.
 
 **Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
-steps through three presets — 🍅 Pomodoro `(25m 5m)×4`, 💧 eye drops (the two lines above, at anchor) and
+steps through three presets — 🍅 Pomodoro `(25m 5m)×4`, 💧 eye drops (two lines, at anchor) and
 💓 HIIT `((30s 15s)×4 1m)×3` — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
