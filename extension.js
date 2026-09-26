@@ -14541,17 +14541,21 @@ function meosClockStartCountBell(sc) {
     const segs = String(sc.title).replace(/^\s*\d{1,3}[.)]\s*/, '').split(/\s+\/\/\s+/);
     const si = meosClockStepSeg(nx);
     const seg = (segs.length > 1) ? (segs[Math.min(si.seg, segs.length - 1)] || '') : segs[0];
-    const m = /\u{1F514}\s*(\S+?)\u00d7(?=\s|$)/u.exec(seg || ''); if (!m) return null;
-    const snd = meosSoundByName(m[1].split('/')[0]); if (!snd) return null;
-    const count = Math.max(1, Math.min(20, (segs.length > 1 ? si.count : nr) || 1));
-    return { sound: snd, count };
+    const cnt = Math.max(1, Math.min(20, (segs.length > 1 ? si.count : nr) || 1));
+    const m = /\u{1F514}\s*(\S+?)\u00d7(?=\s|$)/u.exec(seg || '');
+    if (m) { const snd = meosSoundByName(m[1].split('/')[0]); return snd ? { sound: snd, count: cnt } : null; }
+    // ★v4.2.448(俊克「🔔Gong× の × を外すと、毎回ゴングが1回だけ鳴るのかと思いきや、ピーーーが鳴る。なぜ?」):
+    //   その時間に書いた 🔔 は、その時間の**始まり**の合図(0秒= 前の時間の終わり)にもなる= 1回だけ。/ の並びは回数で巡る。
+    const m2 = /\u{1F514}\s*(\S+)/u.exec(seg || '');
+    if (m2) { const L = m2[1].split('/').filter(Boolean); const snd = L.length ? meosSoundByName(L[(cnt - 1) % L.length]) : ''; return snd ? { sound: snd, count: 1 } : null; }
+    return null;
   } catch (_) { return null; }
 }
 // ★v4.2.440(俊克「Setを押した時、1鳴きしましょう。最初のゴングだね」): 今すぐ始まる時(起点なし/起点が今か過去)、
 //   1本目の最初の時間に 🔔…× が在れば、その1周目として鳴らす。未来の起点なら、起点の瞬間(0周目の終わり)に鳴る。
 function meosClockSetGong(title, cycleSrc, cycle, rounds) {
   try {
-    const t = String(title || ''); if (t.indexOf('\u00d7') < 0 || t.indexOf('\u{1F514}') < 0) return;
+    const t = String(title || ''); if (t.indexOf('\u{1F514}') < 0) return;   // v4.2.448: × が無くても、1本目の 🔔 を1回
     const cb = meosClockStartCountBell({ title: t, cycleSrc: cycleSrc || '', cycle: Array.isArray(cycle) ? cycle : [], rounds: rounds || 0, cidx: 0, round: 0 });
     if (cb) meosPlayCountBell(cb);
   } catch (_) { }
