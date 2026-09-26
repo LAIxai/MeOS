@@ -11726,9 +11726,37 @@ async function meosChainNextFromBar() {
   try { meosUpdateTimerBar(); } catch (_) { }
 }
 // ★v4.2.91: meosChainMessagesFor(並びの外のメッセージFC)は廃止= 言葉は各⏰のタイトル(`// …`)から引く。
-function meosChainFillSlot(text, round) {
+// ★★v4.2.430(俊克「((25m 5m)×4 10m)×5 のように1行で書くと、//形式でメッセージを出せない。
+//   ((25m 5m)×4 10m)×5 // 25m用 // 5m用 // 10m用 // 終了用」→ 案A= そのメッセージを走っている間も、終わった時も出す):
+//   ★対応は**書いた時間の並び順**(長さではない)= 展開した1歩ごとに、式の中のどの字から来たか(from)を持っている。
+//   ★`//` の数= 時間の数+1 なら最後は終了用 / 1個なら今まで通り行全体のタイトル。
+//   ★器(1.)の回数= その時間を囲む一番内側の回数(1周の中に2回以上出る時間は周の中で数え、1回だけの時間は周回数)。
+function meosClockStepSeg(ctx) {
+  try {
+    const n = Math.max(0, Number(ctx.cidx) || 0), round = Number(ctx.round) || 0;
+    const ex = ctx.cycleSrc ? meosParseCycleExpr(String(ctx.cycleSrc), 0) : null;
+    if (ex && ex.steps && ex.steps.length && ex.steps.every(e => typeof e.from === 'number')) {
+      const froms = ex.steps.map(e => e.from), atoms = Array.from(new Set(froms)).sort((a, b) => a - b);
+      const i = n % froms.length, f = froms[i];
+      const occ = froms.filter(x => x === f).length;
+      return { seg: atoms.indexOf(f), atoms: atoms.length, count: occ > 1 ? froms.slice(0, i + 1).filter(x => x === f).length : round };
+    }
+    const len = Array.isArray(ctx.cycle) && ctx.cycle.length ? ctx.cycle.length : 1;
+    return { seg: n % len, atoms: len, count: round };
+  } catch (_) { return { seg: 0, atoms: 1, count: Number(ctx && ctx.round) || 0 }; }
+}
+function meosChainFillSlot(text, round, ctx) {
   try {
     let t = String(text == null ? '' : text).replace(/^\s*\d{1,3}[.)]\s*/, '');   // 行頭= 見せかけの番号
+    const segs = t.split(/\s+\/\/\s+/);
+    if (segs.length > 1) {                                                          // v4.2.430: 時間ごとのメッセージ
+      if (ctx && typeof ctx === 'object') {
+        const si = meosClockStepSeg(ctx);
+        const done = (Number(ctx.rounds) > 0 && round > Number(ctx.rounds)) || !!ctx.done;
+        t = (done && segs.length > si.atoms) ? segs[si.atoms] : (segs[Math.min(si.seg, segs.length - 1)] || segs[0]);
+        round = done ? 0 : si.count;
+      } else t = segs[0];
+    }
     if (round > 0) t = t.replace(/\d{1,3}[.)]/, String(round));                    // 残った最初の器thatが回数
     return t.trim();
   } catch (_) { return String(text || '').trim(); }
@@ -12120,7 +12148,8 @@ function meosArmClockFcFor(doc) {
         up: !!c.up,                                    // v4.1.1109: 手で ↻ と書いた一度きりも、そのまま向きを持つ
         tags: c.tags || [],
         cyc: (Array.isArray(c.cycle) && c.cycle.length) ? ((c.up ? '\u21bb' : '\u21ba') + c.cycle.join('/')) : '',   // v4.1.78: tip用
-        step: _step, cidx: _cidx, round: _crnd };   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている / v4.1.1111: 今の回は並びの何番目か
+        step: _step, cidx: _cidx, round: _crnd,
+        cycleSrc: c.cycleSrc || '', rounds: c.rounds || 0, cycle: Array.isArray(c.cycle) ? c.cycle : [] };   // v4.2.430: 時間ごとのメッセージを引くため   // v4.1.16: 本文由来 / v4.1.63: 今の回の長さは、数えた時に分かっている / v4.1.1111: 今の回は並びの何番目か
       // ★★★v4.2.28: **未来を狙ったストップウォッチには、掛けた瞬間を p として本文に書く**。
       //   ★★人は未来の時刻だけを書けばよい= `f` も `p` も MeOSthat足す。
       //   ★★★書くのは**まだ p thatが無い時だけ**= 開き直しの度に書き直すと、
@@ -13509,7 +13538,7 @@ function meosApplyTimerLineDecorations(editor) {
             const _ta73 = _titleAt.get(i);
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
-              renderOptions: { after: { contentText: '\u00a0' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
+              renderOptions: { after: { contentText: '\u00a0' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
             });
           } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
@@ -13829,7 +13858,7 @@ function meosUpdateTimerBar() {
     // ★★v4.2.189(俊克「「目薬の時間です」だけを橙色にできないのか? 残時間は緑色にする。+7は灰色」):
     //   ★StatusBarItem は文字列全体に1色しか持てないso、**枚を分ける**。
     //   Right は priority が大きいほど左so 100 > 99 > 98 = [⏰ 残時間][タイトル][+N]。
-    const _ttl = (sc && (sc.title || sc.name)) ? (sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : sc.name) : '';
+    const _ttl = (sc && (sc.title || sc.name)) ? (sc.title ? meosChainFillSlot(sc.title, sc.round || 0, sc) : sc.name) : '';
     _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc));
     // ★v4.2.316(俊克 改良1「⚓をメニューバーに出そうよ。⚓の有る時は、橙色でなくて、別の背景色にすれば、分かりやすい」): 次に鳴る1本が⚓なら ⏰⚓ と青の地
     const _anc316 = !!(sc && meosClockAnchoredNow(sc));
@@ -14370,7 +14399,7 @@ function meosPlayWhistle() {
 // ★v4.2.212(俊克「鳴っている時もタイトルを出して」): ⏰の名の出し方はこの1つ。タイトル(// …)が在ればそれ(周回数入り)、
 //   無ければ膜名。鳴らす2か所とメニューの一覧が同じ物を引く([[feedback_one_source_for_mark_count_action]])。
 function meosClockSayName(sc) {
-  try { if (!sc) return ''; return sc.title ? meosChainFillSlot(sc.title, sc.round || 0) : (sc.name || ''); } catch (_) { return (sc && sc.name) || ''; }
+  try { if (!sc) return ''; return sc.title ? meosChainFillSlot(sc.title, sc.round || 0, sc) : (sc.name || ''); } catch (_) { return (sc && sc.name) || ''; }
 }
 function meosStartRinging(name) {
   const every = meosRingSeconds();
