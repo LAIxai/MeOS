@@ -11522,6 +11522,44 @@ async function meosClockNudge(document, hit, big) {
     return true;
   } catch (_) { return false; }
 }
+// ★★v4.2.475(俊克「起点ありで、1分前などを鳴らなくして、開始のときだけラウンド数だけ鳴らす…これも切替ボタンを付けたほうがいいね」→「その形で作って」):
+//   メッセージの頭の `//` の直前に [🔔]/[🥊]。🔔= 先鐘あり / 🥊= 開始のゴングだけ(全部の時間に 🔕・数え鳴き 🔔…× が無ければ最初の時間に 🔔Gong×)。
+//   ⏰ と時刻の間は 🚢💨/🔓 の当たりで埋まっている= 印が実際に書かれるメッセージの所に置く。
+function meosClockBellModeSpot(txt) {
+  try {
+    const a = txt.search(/[↺↻]/); if (a < 0) return null;
+    const j = txt.indexOf('//', a); if (j < 0) return null;
+    const e = txt.lastIndexOf('-->'); if (e < j) return null;
+    const segs = txt.slice(j + 2, e).split('//');
+    const muted = segs.length > 0 && segs.every(x => /\u{1F515}/u.test(x));
+    return { j, e, segs, muted };
+  } catch (_) { return null; }
+}
+function meosClockBellModeHitAt(document, line, character) {
+  try {
+    const txt = document.lineAt(line).text || ''; if (txt.indexOf('⏰') < 0) return null;
+    const c = meosClockFcParse(txt); if (!c || c.done) return null;
+    const sp = meosClockBellModeSpot(txt); if (!sp || character !== sp.j) return null;
+    return { line, sp };
+  } catch (_) { return null; }
+}
+async function meosClockBellModeToggle(document, hit) {
+  try {
+    const txt = document.lineAt(hit.line).text || '', sp = meosClockBellModeSpot(txt); if (!sp) return false;
+    let segs = sp.segs.map(x => x.trim());
+    if (sp.muted) segs = segs.map(x => x.replace(/\s*\u{1F515}/gu, '').trim());
+    else {
+      segs = segs.map(x => /\u{1F515}/u.test(x) ? x : (x + ' \u{1F515}').trim());
+      if (!segs.some(x => /\u{1F514}\S*×/u.test(x))) segs[0] = segs[0].replace(/\s*\u{1F515}/u, '') + ' \u{1F514}Gong× \u{1F515}';
+    }
+    const nt = txt.slice(0, sp.j) + '// ' + segs.map(x => x.trim()).join(' // ') + ' ' + txt.slice(sp.e);
+    if (nt === txt) return false;
+    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, 0, hit.line, txt.length), nt);
+    const ok = await vscode.workspace.applyEdit(we);
+    meosDbg('[bellMode] ' + (sp.muted ? '🥊 → 🔔' : '🔔 → 🥊') + ' 行=' + (hit.line + 1) + ' ok=' + ok);
+    return ok;
+  } catch (_) { return false; }
+}
 async function meosClockNudgeFlush(document, line) {
   const key = document.uri.toString() + ' ' + line;
   const pd = _meosNudgePend.get(key); _meosNudgePend.delete(key);
@@ -13564,6 +13602,13 @@ function meosApplyTimerLineDecorations(editor) {
                 const _pd = _meosNudgePend.get(uri + ' ' + i);
                 plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s') }, (_pd && _pd.ms) ? { after: { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } } : {}) });
               }
+            }
+          } catch (_) { }
+          // ★v4.2.475: [🔔]/[🥊] 鳴らし方の切替(メッセージの頭の // の直前)
+          try {
+            if (!_rawHere && !c.done) {
+              const _bs = meosClockBellModeSpot(txt);
+              if (_bs) plays.push({ range: new vscode.Range(i, _bs.j, i, _bs.j), renderOptions: { before: { contentText: _bs.muted ? '🥊' : '🔔', backgroundColor: '#fffdf6', border: '1px solid #d18400', margin: '0 4px 0 0', textDecoration: 'none; border-radius: 4px; padding: 0 2px; cursor: ' + meosHandCursor() + ';' } } });
             }
           } catch (_) { }
           // ★v4.2.471: 本文に写された [−1s][+1s] の字は、カーソルが行を出たら消す(ボタンは描く物)
@@ -19884,6 +19929,15 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
         await meosClockLockHere(editor, _lk);
+        setRefNoRaw(editor.document, _ln);
+        try { refresh(editor); } catch (_) { }
+        return;
+      }
+      const _bm75 = meosClockBellModeHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.475: [🔔]/[🥊]
+      if (_bm75) {
+        setRefNoRaw(editor.document, _ln);
+        meosParkCaretAfterPress(editor, _ln);
+        await meosClockBellModeToggle(editor.document, _bm75);
         setRefNoRaw(editor.document, _ln);
         try { refresh(editor); } catch (_) { }
         return;

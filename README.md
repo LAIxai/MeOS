@@ -70,7 +70,7 @@ and is said again when it ends. Add `🔔` and a number — the number beside ea
 the sound's name to choose that time's bell — it rings once as the time begins, and for the warnings before it ends; `🔔15/11/6` takes the next sound on every count, and `🔕` keeps that
 time silent. **Set** writes the numbers down as names, so the line rings the same on any machine. Without either,
 the bell you chose in Me Dock rings. Add `×` — `🔔Mew×` — and that time is announced when it **starts**, once for
-round 1, twice for round 2: you know the round with your eyes shut. 🥊 **Gong** is new in the 🔔 list — made, like 🐱 Mew,
+round 1, twice for round 2: you know the round with your eyes shut. A **[🔔] / [🥊]** button just before the messages switches the whole line between *warnings on* and *only the starting gong* (it writes `🔕` on every time, and `🔔Gong×` on the first if there is no counted bell). 🥊 **Gong** is new in the 🔔 list — made, like 🐱 Mew,
 from measurements of a real one.
 
 ```md
