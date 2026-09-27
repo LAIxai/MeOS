@@ -6,6 +6,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ### v4.2.463 – v4.2.468 (2026-09-27, evening)
 - **Opt+click ⏸️ holds a clock and moves its schedule back.** A clock with an origin keeps its schedule when you stop it; Opt+click ⏸️ holds it instead, and ▶️ goes on with the origin moved back by the time it was held — every remaining round and bell moves with it. It works across closing the editor.
+- **`+4s` after the origin** moves it by that much when the caret leaves the line (`-30s`, `+1m30s`, `+2h` too), like `~date` turning into `×N`. `p`/`f` is written again for the new time.
 - **Me Dock, rearranged.** Header, Format Me, Hyper IDX, Current Me with Encrypt Me, 🐙 Push, Edit Me and Navigate Me stay at the top; the **Timed Me-System / Hyper TOC** row stays right under them, and only the ⏰ panel and the Hyper TOC list scroll. The parts that grow and shrink are at the bottom, so nothing above them moves. Hyper TOC's ⬇️ and ＋ moved to the Hyper TOC name row.
 
 ### v4.2.459 – v4.2.462 (2026-09-27, afternoon)

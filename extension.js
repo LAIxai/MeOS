@@ -10866,6 +10866,18 @@ function meosClockFcParse(text) {
       body = body.slice(0, _um.index).trim();
     }
   } catch (_) { }
+  // ★v4.2.469(俊克「ズレた秒数を直接、+4sのようにできると実用的だよ」): 矢印より前の `+4s` `-30s` `+1m30s` = 起点をずらす指示。
+  //   ~日付 と同じ作法= 起点の読みには混ぜず、カーソルが行を出たら起点を書き直して字は消える。日付の `-` と取り違えないよう「空白の直後の ±」だけ。
+  let shiftSrc = '', shiftMs = 0;
+  try {
+    const _sa = body.search(/[↺↻]/), _hd = _sa >= 0 ? body.slice(0, _sa) : body;
+    const _sm = /(^|\s)([+\-−])((?:\d+(?:\.\d+)?[hms])+)(?=\s|$)/.exec(_hd);
+    if (_sm) {
+      let _ms = 0; String(_sm[3]).replace(/(\d+(?:\.\d+)?)([hms])/g, (q, n, u) => { _ms += Number(n) * (u === 'h' ? 3600e3 : u === 'm' ? 60e3 : 1e3); return q; });
+      shiftMs = (_sm[2] === '+' ? 1 : -1) * Math.round(_ms); shiftSrc = (_sm[2] + _sm[3]).trim();
+      body = (body.slice(0, _sm.index) + (_sm[1] || '') + body.slice(_sm.index + _sm[0].length)).replace(/[ \t]{2,}/g, ' ').trim();
+    }
+  } catch (_) { }
   // ★★★v4.1.23(俊克「今、一番使いたいのは、目薬を5分置きにつけるときに、05/00という設定にすること」):
   //   ★★★**繰返しは『次の間隔』の並びで書く**= `\u21bb05` なら5分ごと、`\u21bb50/10` なら50分と10分の交互。
   //     単位は既定が分(プリセットと同じ数の読み方)、`s`=秒 / `h`=時。
@@ -11006,7 +11018,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -11459,6 +11471,23 @@ function meosClockUntilRewrite(txt, c, n) {
       head = wraps ? (head + '\u00d7' + n) : single ? (head + ' \u00d7' + n) : (head.slice(0, ae) + '(' + expr + ')\u00d7' + n);   // 並びは括弧で包む(×N は直前の1つに掛かる= v4.2.87)
     }
     return head + tail;
+  } catch (_) { return null; }
+}
+// ★v4.2.469: ⏰行の `+4s` を起点へ書き込んだ行を返す(書けなければ null)。起点の時刻をずらし、p/f は付け直し、`+4s` は消す。
+function meosClockShiftRewrite(txt, c) {
+  try {
+    if (!c || !c.shiftSrc || !c.shiftMs) return null;
+    const a = txt.search(/[↺↻]/), head = a >= 0 ? txt.slice(0, a) : txt, tail = a >= 0 ? txt.slice(a) : '';
+    const re = /(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?::\d{2})?)([pf])?/;
+    const m = re.exec(head); if (!m) return null;
+    if (m.index > 0 && /v$/i.test(head.slice(0, m.index))) return null;   // 仮の起点(v…)は拡張が書く物= ずらさない(⚠️)
+    const o = meosParseStampLoose(m[1] + m[3].replace(/^\s+/, ' ')); if (!o) return null;
+    const nw = new Date(o.getTime() + c.shiftMs), st = meosClockFcStamp(nw);
+    const mark = m[4] ? (nw.getTime() <= Date.now() ? 'p' : 'f') : '';
+    let h2 = head.slice(0, m.index) + st + mark + head.slice(m.index + m[0].length);
+    const si = h2.indexOf(c.shiftSrc); if (si < 0) return null;
+    h2 = (h2.slice(0, si).replace(/[ \t]+$/, '') + ' ' + h2.slice(si + c.shiftSrc.length).replace(/^[ \t]+/, ''));
+    return h2.replace(/[ \t]+$/, ' ') + tail;
   } catch (_) { return null; }
 }
 const _meosUntilBusy = new Set();
@@ -13463,6 +13492,23 @@ function meosApplyTimerLineDecorations(editor) {
                 const _ue = txt.indexOf(c.untilSrc);
                 if (_ue >= 0) items.push({ range: new vscode.Range(i, _ue + c.untilSrc.length, i, _ue + c.untilSrc.length),
                   renderOptions: { after: { contentText: ' \u26a0\ufe0f', color: '#e0803a' } } });
+              }
+            }
+          } catch (_) { }
+          // ★v4.2.469: `+4s` は、カーソルが行を出たら起点へ書き込む(書けない= 起点が本文に無い1本 → ⚠️ を添えて残す)
+          try {
+            if (c.shiftSrc && !_rawHere && !c.done) {
+              const _ns69 = meosClockShiftRewrite(txt, c), _bk69 = uri + ' ' + i + ' ' + txt;
+              if (_ns69 && _ns69 !== txt && !_meosUntilBusy.has(_bk69)) {
+                _meosUntilBusy.add(_bk69);
+                const _we69 = new vscode.WorkspaceEdit();
+                _we69.replace(doc.uri, new vscode.Range(i, 0, i, txt.length), _ns69);
+                meosDbg('[shift] ' + (i + 1) + ': ' + c.shiftSrc + ' -> ' + _ns69);
+                Promise.resolve(vscode.workspace.applyEdit(_we69)).then(() => _meosUntilBusy.delete(_bk69), () => _meosUntilBusy.delete(_bk69));
+              } else if (!_ns69) {
+                const _se = txt.indexOf(c.shiftSrc);
+                if (_se >= 0) items.push({ range: new vscode.Range(i, _se + c.shiftSrc.length, i, _se + c.shiftSrc.length),
+                  renderOptions: { after: { contentText: ' ⚠️', color: '#e0803a' } } });
               }
             }
           } catch (_) { }
