@@ -11509,15 +11509,32 @@ function meosClockNudgeHitAt(document, line, character) {
     return null;
   } catch (_) { return null; }
 }
+const _meosNudgePend = new Map();   // uri+' '+行 -> {ms, t}= 押してためた量(3秒止まったら書く)
 async function meosClockNudge(document, hit, big) {
   try {
-    const txt = document.lineAt(hit.line).text || '';
-    const nt = meosClockOriginShiftText(txt, hit.dir * (big ? 10000 : 1000)); if (!nt || nt === txt) return false;
-    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, 0, hit.line, txt.length), nt);
+    const key = document.uri.toString() + ' ' + hit.line;
+    const pd = _meosNudgePend.get(key) || { ms: 0, t: null };
+    pd.ms += hit.dir * (big ? 10000 : 1000);
+    if (pd.t) clearTimeout(pd.t);
+    pd.t = setTimeout(() => { meosClockNudgeFlush(document, hit.line).catch(() => { }); }, 3000);
+    _meosNudgePend.set(key, pd);
+    meosDbg('[nudge] ためる ' + (pd.ms / 1000) + 's 行=' + (hit.line + 1));
+    return true;
+  } catch (_) { return false; }
+}
+async function meosClockNudgeFlush(document, line) {
+  const key = document.uri.toString() + ' ' + line;
+  const pd = _meosNudgePend.get(key); _meosNudgePend.delete(key);
+  try {
+    if (!pd || !pd.ms) return false;
+    const txt = document.lineAt(line).text || '';
+    const nt = meosClockOriginShiftText(txt, pd.ms); if (!nt || nt === txt) return false;
+    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(line, 0, line, txt.length), nt);
     const ok = await vscode.workspace.applyEdit(we);
-    meosDbg('[nudge] ' + (hit.dir > 0 ? '+' : '−') + (big ? '10' : '1') + 's 行=' + (hit.line + 1) + ' ok=' + ok);
+    meosDbg('[nudge] 書く ' + (pd.ms / 1000) + 's 行=' + (line + 1) + ' ok=' + ok);
     return ok;
   } catch (_) { return false; }
+  finally { try { const ed = vscode.window.visibleTextEditors.find(e => e.document === document); if (ed) refresh(ed); } catch (_) { } }
 }
 function meosClockShiftRewrite(txt, c) {
   try {
@@ -13540,8 +13557,11 @@ function meosApplyTimerLineDecorations(editor) {
               const _nk = meosClockNudgeSpot(txt, c);
               if (_nk >= 0) {
                 const _bt = (t) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: '0 2px', textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em;' });
-                items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('−1s'), after: _bt('+1s') } });
-                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });   // 手の形
+                // ★v4.2.472(俊克 バグ1「ポインターが選択指に変わらない」): 絵も手の形の型(plays)の側に描く= ▶️ と同じ(絵の上で手になる)
+                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s'), after: _bt('+1s') } });
+                // ★v4.2.472(俊克「ボタンを押したら、その右に+1、+2…と見せて、クリックが止まって3秒したら、それを反映する」): ためた量
+                const _pd = _meosNudgePend.get(uri + ' ' + i);
+                if (_pd && _pd.ms) items.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: { before: { contentText: (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's ', color: '#e0803a', fontWeight: '900' } } });
               }
             }
           } catch (_) { }
