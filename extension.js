@@ -19625,8 +19625,35 @@ async function meosClockRestartHere(doc, key, line) {
   } catch (_) { return false; }
 }
 // その1本に席を回す(今から数え始める)。渡す口は既に在る物を使い、新しい仕組みは作らない。
+// ★★★v4.2.468(俊克 2026.09.27「ドクターチェックで1分停止したので、それには対応できない」→「これは、ボクシングだけのことではないので、
+//   Optクリックで⏸️ボタンを押すことで、進行を止めて、ずらすと言うのは、必須機能だよ」):
+//   ★起点のある⏰は、止めても時刻表を守る(再開すると本来のラウンドへ戻る)。**Opt+⏸ = 止めて、ずらす**(D-CHECK)。
+//     止めた時刻を覚え、▶️ で再開する時に、止めていた時間だけ本文の起点を後ろへ書き直す= 残りのラウンドもゴングも全部ずれる。
+//   ★起点の無い⏰は、ふつうの ⏸ がもう「止めた所から続く」= Opt は今までどおり「ゼロから」(目薬の5分×2)。
+//   ★覚えは globalState= 止めている間にアプリを閉じても、再開の時に正しくずれる。
+function meosClockHoldAll() { try { return Object.assign({}, extensionContext.globalState.get('meosClockHold', null) || {}); } catch (_) { return {}; } }
+function meosClockHoldSet(lk, v) { try { const o = meosClockHoldAll(); if (v) o[lk] = v; else delete o[lk]; extensionContext.globalState.update('meosClockHold', o); } catch (_) { } }
+function meosClockHoldOf(lk) { const v = meosClockHoldAll()[lk]; return (v && Number(v.at) > 0) ? v : null; }
+async function meosClockHoldApply(doc, key, line) {
+  try {
+    const lk = doc.uri.toString() + ' ' + key;
+    const hd = meosClockHoldOf(lk); if (!hd) return false;
+    meosClockHoldSet(lk, null);
+    let me = null; for (const x of meosClockFcScan(doc)) if (x.key === key && x.line === line) me = x;
+    if (!me || !me.when || meosClockSplitV(me.whenSrc)) return false;          // 起点が本文に無い1本は、ずらす物が無い
+    const o = meosParseStampLoose(me.when); if (!o) return false;
+    const shift = Math.max(0, Date.now() - Number(hd.at));
+    const nw = new Date(o.getTime() + shift), st = meosClockFcStamp(nw);
+    const pre = ((String(me.whenSrc || '').match(/^\s*\d{1,3}[.)]\s*/) || [''])[0]).trim();
+    const src = (pre ? pre + ' ' : '') + st + (nw.getTime() <= Date.now() ? 'p' : 'f');
+    await meosClockFcSet(doc, key, { when: st, hold: me.hold, lock: me.lock, cycle: me.cycle, up: me.up, dual: me.dual, rounds: me.rounds, cycleSrc: me.cycleSrc, manual: me.manual, whenSrc: src, pausedRound: me.pausedRound, tags: me.tags, done: false, off: !!me.off }, line);
+    meosDbg('[hold] 起点を ' + Math.round(shift / 1000) + '秒 後ろへ ' + me.when + ' → ' + st + ' 行=' + (line + 1));
+    return true;
+  } catch (_) { return false; }
+}
 async function meosChainStartHere(doc, key, line) {
   try {
+    try { await meosClockHoldApply(doc, key, line); } catch (_) { }   // v4.2.468: Opt+⏸ で止めていた分だけ起点をずらしてから走らせる
     const rows = meosClockFcScan(doc).filter(x => x.key === key);
     if (!rows.length) return false;
     const _put = async (x, wait) => meosClockFcSet(doc, x.key, { when: x.when, hold: x.hold, lock: x.lock, cycle: x.cycle, up: x.up, dual: x.dual, rounds: x.rounds, cycleSrc: x.cycleSrc, manual: x.manual, whenSrc: x.whenSrc, tags: x.tags, done: false, wait: !!wait }, x.line);   // v4.2.65: 同上
@@ -19737,6 +19764,28 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       if (_pl) { try { if (meosIsRinging()) meosStopRinging(); } catch (_) { } }
       if (_pl && _optSel92) {
         const _own92 = meosClockOwnerKeyForLine(editor.document, _ln);
+        // ★v4.2.468: 起点のある⏰の Opt+⏸ = 止めて、ずらす(D-CHECK)/ 止めている間の Opt+▶️ = ずらして再開
+        try {
+          let _h68 = null; if (_own92) for (const x of meosClockFcScan(editor.document)) if (x.key === _own92 && x.line === _ln) _h68 = x;
+          if (_h68 && _h68.when && !meosClockSplitV(_h68.whenSrc)) {
+            const _lk68 = editor.document.uri.toString() + ' ' + _own92;
+            const _run68 = meosClockLineRunning(editor.document, _own92, _ln);
+            setRefNoRaw(editor.document, _ln);
+            if (_run68) {
+              const _ok68 = await meosClockStopHere(editor.document, _own92, _ln);
+              if (_ok68) { meosClockHoldSet(_lk68, { at: Date.now(), line: _ln }); meosShowPlayTip(editor, _ln, '\u23f8\ufe0f Held \u2014 press \u25b6\ufe0f to go on. The schedule moves back by the time it was held.'); }
+            } else {
+              const _hd68 = meosClockHoldOf(_lk68);
+              await meosChainStartHere(editor.document, _own92, _ln);
+              if (_hd68) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Going on \u2014 the schedule moved back by ' + meosMmSs(Math.max(0, Date.now() - Number(_hd68.at))) + '.');
+            }
+            setRefNoRaw(editor.document, _ln);
+            meosParkCaretAfterPress(editor, _ln);
+            try { refresh(editor); } catch (_) { }
+            try { meosTickTimerLines(); } catch (_) { }
+            return;
+          }
+        } catch (_) { }
         if (_own92) {
           setRefNoRaw(editor.document, _ln);
           const _ok94 = await meosClockRestartHere(editor.document, _own92, _ln);
@@ -19760,7 +19809,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           //   ★家の中の同じ役の部品(setRefNoRaw)にそのまま乗る= 新しい仕掛けを作らない。
           setRefNoRaw(editor.document, _ln);
           if (_run) await meosClockStopHere(editor.document, _own, _ln);   // \u23f8\ufe0f \u3092\u62bc\u3057\u305f= \u6b62\u3081\u308b
-          else await meosChainStartHere(editor.document, _own, _ln);        // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b
+          else { const _hd68b = meosClockHoldOf(editor.document.uri.toString() + ' ' + _own); await meosChainStartHere(editor.document, _own, _ln); if (_hd68b) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Going on \u2014 the schedule moved back by ' + meosMmSs(Math.max(0, Date.now() - Number(_hd68b.at))) + '.'); }   // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b / v4.2.468: \u3057\u305f\u5206\u3060\u3051\u305a\u3089\u3059
           setRefNoRaw(editor.document, _ln);   // 途中の refresh で解けていても張り直す(v4.0.362と同じ)
           meosParkCaretAfterPress(editor, _ln);   // ★v4.2.76: ▼と同じ= 次のクリックが必ず届く所へ
           // ★v4.2.94: 押した後に、次に何ができるかを言う。Opt で最初から、は起点を持たない1本だけの話。
