@@ -26608,6 +26608,9 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-last [data-u].on{background:rgba(209,132,0,.35);border-radius:3px}   /* v4.2.452: 選び器が開いている桁 */
 .clk-col div.clk-ghost{opacity:.4}   /* v4.2.453: 月末の次の 01 = 輪の続き(同じ月の1日) */
 .clk-col div.clk-ghost.sel{opacity:1}
+/* ★v4.2.454(俊克「加速スクロールで、1、30(あるいは31)まで行ったら、そこで停止する。その後ゆっくりスクロールすると、1から30に切り替わる。これは、他でもそうしていたよね」):
+   薄い01が下の余白(::after)の代わりをする= 回し切っても真ん中に来るのは月末。01は見本で、止まる所ではない(端で止まり、次の一撫でで先頭の01へ= v4.1.28 の輪) */
+.clk-col.has-ghost::after{display:none}
 /* v4.2.363: ⏰パネル右上の [V-helper]= 常駐の係を起こす/降ろす。入っている時は琥珀、切れている時は灰。 */
 .clk-vh-row{display:flex;justify-content:flex-end;margin:0 0 3px}
 .clk-vhelper{border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:10px;font-weight:800;line-height:1;padding:3px 7px;cursor:var(--meos-hand)}
@@ -28717,7 +28720,8 @@ el.addEventListener('wheel',function(e){
     ★上端でも同じ= 00で止まり、次に戻せば59へ。 */
  var _mx=el.scrollHeight-el.clientHeight;
  if(t===null&&_mx>1){
-  var _wrap=(e.deltaY>0&&el.scrollTop>=_mx-1)?0:((e.deltaY<0&&el.scrollTop<=1)?el.children.length-1:-1);
+  var _li=el.children.length-1;while(_li>0&&el.children[_li].classList.contains('clk-ghost'))_li--;   /* v4.2.454: 薄い見本(月末の次の01)は端ではない */
+  var _wrap=(e.deltaY>0&&el.scrollTop>=_mx-1)?0:((e.deltaY<0&&el.scrollTop<=1)?_li:-1);
   if(_wrap>=0){clkGoto(el,_wrap,false);clkMark(el);
    t=setTimeout(function(){t=null;clkCenter(el);onPick();},110);return;}
  }
@@ -29333,6 +29337,7 @@ if(clkCaret&&clkPop){
    clkLdU=u;clkLdT=false;clkFill(clkLd,lo,hi,pad);
    /* ★v4.2.453(俊克「31の代わりに1を見せる…9/1にすると言う見せ方…そっちのほうが良いかな。月は月をクリックして変えればいいしね」):
       月末の次に 01 を薄く見せる= 輪の続き。止めればその月の1日(月は替えない)。 */
+   clkLd.classList.toggle('has-ghost',u==='d');
    if(u==='d'){var _g=document.createElement('div');_g.setAttribute('data-v','1');_g.className='clk-ghost';_g.textContent=clkPad(1);clkLd.appendChild(_g);}
    clkLdCols.classList.add('on');clkSel(clkLd,Math.max(lo,v));try{clkMark(clkLd);}catch(e){}clkLdMarkOn();}
   window.__clkLdSync=function(){if(!clkLdU)return;var v=clkLdVal(clkLdU);if(isNaN(v)){if(clkLdU!=='n')clkLdHide();return;}
