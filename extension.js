@@ -26606,6 +26606,8 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 .clk-last [data-u]:hover{background:rgba(209,132,0,.22)}
 .clk-last [data-u]{cursor:var(--meos-hand)}   /* v4.2.452: クリックで選び器が開く */
 .clk-last [data-u].on{background:rgba(209,132,0,.35);border-radius:3px}   /* v4.2.452: 選び器が開いている桁 */
+.clk-col div.clk-ghost{opacity:.4}   /* v4.2.453: 月末の次の 01 = 輪の続き(同じ月の1日) */
+.clk-col div.clk-ghost.sel{opacity:1}
 /* v4.2.363: ⏰パネル右上の [V-helper]= 常駐の係を起こす/降ろす。入っている時は琥珀、切れている時は灰。 */
 .clk-vh-row{display:flex;justify-content:flex-end;margin:0 0 3px}
 .clk-vhelper{border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:10px;font-weight:800;line-height:1;padding:3px 7px;cursor:var(--meos-hand)}
@@ -29327,9 +29329,14 @@ if(clkCaret&&clkPop){
    if(isNaN(v)){if(u!=='n'){clkLdHide();return;}v=0;}
    var lo,hi,pad=false;
    if(u==='n'){lo=Math.max(1,v-10);hi=Math.max(v,1)+10;}else if(u==='y'){lo=v-5;hi=v+5;}else if(u==='mo'){lo=1;hi=12;pad=true;}else{lo=1;hi=31;pad=true;}
-   clkLdU=u;clkLdT=false;clkFill(clkLd,lo,hi,pad);clkLdCols.classList.add('on');clkSel(clkLd,Math.max(lo,v));try{clkMark(clkLd);}catch(e){}clkLdMarkOn();}
+   if(u==='d'){var _y=clkLdVal('y'),_m=clkLdVal('mo');if(!isNaN(_y)&&!isNaN(_m))hi=new Date(_y,_m,0).getDate();}   /* v4.2.453: その月の日数まで(9月に31を見せない) */
+   clkLdU=u;clkLdT=false;clkFill(clkLd,lo,hi,pad);
+   /* ★v4.2.453(俊克「31の代わりに1を見せる…9/1にすると言う見せ方…そっちのほうが良いかな。月は月をクリックして変えればいいしね」):
+      月末の次に 01 を薄く見せる= 輪の続き。止めればその月の1日(月は替えない)。 */
+   if(u==='d'){var _g=document.createElement('div');_g.setAttribute('data-v','1');_g.className='clk-ghost';_g.textContent=clkPad(1);clkLd.appendChild(_g);}
+   clkLdCols.classList.add('on');clkSel(clkLd,Math.max(lo,v));try{clkMark(clkLd);}catch(e){}clkLdMarkOn();}
   window.__clkLdSync=function(){if(!clkLdU)return;var v=clkLdVal(clkLdU);if(isNaN(v)){if(clkLdU!=='n')clkLdHide();return;}
-   if(clkPick(clkLd)===v){clkLdMarkOn();return;}
+   if(clkPick(clkLd)===v&&!clkLd.querySelector('.sel.clk-ghost')){clkLdMarkOn();return;}   /* v4.2.453: 月末の次の 01 で止めたら、本物の 01 へ戻す */
    if(clkLdU==='n'){var lo=Math.max(1,v-10);var f=clkLd.firstChild;if(!f||Number(f.getAttribute('data-v'))!==lo){clkLdShow('n');return;}}
    clkSel(clkLd,v);try{clkMark(clkLd);}catch(e){}clkLdMarkOn();};
   row.addEventListener('click',function(ev){var u=ev.target&&ev.target.closest?ev.target.closest('[data-u]'):null;if(!u)return;ev.stopPropagation();
