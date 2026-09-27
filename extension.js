@@ -11502,6 +11502,25 @@ function meosClockLastAnswer(msg) {
     }
     newText = meosCycleTextSetRounds(cyc, n);
   }
+  // ★v4.2.452(俊克 09.27 改良1「Last bellで、日の部分をクリックしたら、縦方向に伸びるスクロールセレクターを出して、1mmもマウスを動かさずに値を変更できるように。Ⓣdayボタンのようにね」):
+  //   選び器は「この値にして」と言う(set)。×N はその数に / 年・月・日は、その桁だけ替えた日時を越えない一番大きい N(ホイールの1目盛りと同じ数え方)。
+  const setV = (msg.set === undefined || msg.set === null || msg.set === '') ? NaN : Math.floor(Number(msg.set));
+  if (unit && !dir && isFinite(setV)) {
+    if (unit === 'n') n = Math.max(1, setV);
+    else if (n > 0) {
+      const tg = new Date(meosCycleLastAt(o, cycle, n));
+      if (unit === 'y' || unit === 'mo') {
+        const y2 = unit === 'y' ? setV : tg.getFullYear(), m2 = unit === 'mo' ? Math.max(1, Math.min(12, setV)) - 1 : tg.getMonth();
+        const dim = new Date(y2, m2 + 1, 0).getDate();   // 31日→2月 のような時は月末に止める(月を飛び越さない)
+        tg.setFullYear(y2, m2, Math.min(tg.getDate(), dim));
+      } else {
+        const dim = new Date(tg.getFullYear(), tg.getMonth() + 1, 0).getDate();
+        tg.setDate(Math.max(1, Math.min(dim, setV)));
+      }
+      n = Math.max(1, meosCycleRoundsUntil(o, cycle, tg.getTime()));
+    }
+    newText = meosCycleTextSetRounds(cyc, n);
+  }
   if (!(n > 0)) return { ok: true, n: 0, cycle: newText };
   const t = meosCycleLastAt(o, cycle, n); if (!t) return { ok: false };
   const d = new Date(t), p2 = (x) => (x < 10 ? '0' : '') + x;
@@ -26585,6 +26604,8 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 
 .clk-pop.norepeat .clk-ncols,.clk-pop.hist-only .clk-ncols{display:none}
 .clk-last [data-u]:hover{background:rgba(209,132,0,.22)}
+.clk-last [data-u]{cursor:var(--meos-hand)}   /* v4.2.452: クリックで選び器が開く */
+.clk-last [data-u].on{background:rgba(209,132,0,.35);border-radius:3px}   /* v4.2.452: 選び器が開いている桁 */
 /* v4.2.363: ⏰パネル右上の [V-helper]= 常駐の係を起こす/降ろす。入っている時は琥珀、切れている時は灰。 */
 .clk-vh-row{display:flex;justify-content:flex-end;margin:0 0 3px}
 .clk-vhelper{border:1px solid var(--meos-frame);border-radius:5px;background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);font-size:10px;font-weight:800;line-height:1;padding:3px 7px;cursor:var(--meos-hand)}
@@ -27231,7 +27252,8 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="clk-row clk-tagrow"><span class="clk-lab">Tag</span><span class="clk-hint">space-separated \u2014 empty clears</span></div>
   <input class="clk-in clk-tagin" id="clk-tagin" placeholder="\u76ee\u85ac \u671d" spellcheck="false" data-tip="A label for this membrane \u2014 it is written in the comment after the // on the opening line (#\u76ee\u85ac), where you write anyway, so it can be grepped and typed by hand. The bar under the list filters by these.">
   <div class="clk-row clk-lastlab"><span class="clk-lab">Last bell</span><span class="clk-hint">roll \u00d7N or the date</span></div>
-  <div class="clk-last" id="clk-last" data-tip="Roll the wheel here \u2014 on \u00d7N to change the count, on the year, month or day to move the last bell. Nothing is written until you press Set."><span class="clk-ln" id="clk-ln" data-u="n">\u00d7\u2014</span><span class="clk-arrow">\u2192</span><span class="clk-lt" id="clk-lt"></span></div>
+  <div class="clk-last" id="clk-last" data-tip="Click \u00d7N, the year, the month or the day to open a picker below and roll it \u2014 or roll the wheel right here. Nothing is written until you press Set."><span class="clk-ln" id="clk-ln" data-u="n">\u00d7\u2014</span><span class="clk-arrow">\u2192</span><span class="clk-lt" id="clk-lt"></span></div>
+  <div class="clk-cols clk-ncols clk-lcols" id="clk-lcols"><div class="clk-col clk-ncol" id="clk-ld"></div></div>
   <div class="clk-reprow"><button class="clk-rep" id="clk-rep" data-tip="Repeat | Off = one bell and it is done. On = it comes round again, each turn as long as the Repeat box says. Opening this panel shows what this membrane already has, so leaving it off is how a repeat is taken away.">\u2610 Repeat</button></div>   <!-- v4.2.420: ☑Repeat は1行に独り= ✓でその下にプリセットの箱 -->
   <div class="clk-cycwrap"><textarea class="clk-in clk-cyc" id="clk-cyc" rows="2" placeholder="((30s 15s)\u00d74 1m)\u00d73" spellcheck="false" data-tip="How long each turn lasts \u2014 10m 3h 00. Add \u00d7N for a limited number of turns: 3m/1m\u00d73 is three rounds of three minutes then one, and it closes itself when they are up. Units: s m h d w y (a bare number means minutes). 00 says the list ends there, so anything after it is kept but not used. Put 00 first to take the repeat off. Leave the box empty and whatever is already written stays."></textarea><span class="clk-pring" id="clk-pring">\u21bb</span></div>
   <div class="clk-cols clk-ncols" id="clk-ncols"><div class="clk-col clk-ncol" id="clk-nd"></div></div>
@@ -29286,12 +29308,36 @@ if(clkCaret&&clkPop){
   if(!m.ok){ln.textContent='\u00d7\u2014';lt.innerHTML='';return;}
   ln.textContent=m.n>0?('\u00d7'+m.n):'\u00d7\u2014';
   if(!m.parts){lt.innerHTML='<span class="clk-noend">no end</span>';return;}
-  var P=m.parts;lt.innerHTML='<span data-u="y">'+P.y+'</span>-<span data-u="mo">'+P.mo+'</span>-<span data-u="d">'+P.d+'</span>('+P.wd+') '+P.hm;};
+  var P=m.parts;lt.innerHTML='<span data-u="y">'+P.y+'</span>-<span data-u="mo">'+P.mo+'</span>-<span data-u="d">'+P.d+'</span>('+P.wd+') '+P.hm;
+  try{if(window.__clkLdSync)window.__clkLdSync();}catch(e){}
+  try{var _nc=document.getElementById('clk-ncols');if(_nc&&_nc.classList.contains('on')&&window.__clkNdCheck)window.__clkNdCheck();}catch(e){}};   /* v4.2.452: 開いている選び器と箱の下の回数ドラムを、答えの値に合わせ直す(Last bell で回すと古い数を指していた) */
  (function(){var row=document.getElementById('clk-last');if(!row)return;
   row.addEventListener('wheel',function(ev){var u=ev.target&&ev.target.closest?ev.target.closest('[data-u]'):null;if(!u)return;ev.preventDefault();
    clkLastAcc+=ev.deltaY;var th=24;if(Math.abs(clkLastAcc)<th)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;   /* 上へ回す= 増える */
    clkLastAsk(u.getAttribute('data-u'),dir);},{passive:false});
   if(clkCycEl)clkCycEl.addEventListener('input',clkLastSoon);
+  /* ★v4.2.452(俊克「Last bellで、日の部分をクリックしたら、縦方向に伸びるスクロールセレクターを出して、1mmもマウスを動かさずに値を変更できるように。Ⓣdayボタンのようにね」):
+     ★部品は家の中の物= 箱の下の回数のドラム(v4.2.388)と同じ clkFill/clkSel/clkWatch。桁をクリックすると、その桁の選び器が Last bell の下に開く。
+     ★選んだ値は「この値にして」(set)で拡張へ。年月日は、その日時を越えない一番大きい ×N になる= 答えの値へ選び器を合わせ直す。 */
+  var clkLd=document.getElementById('clk-ld'),clkLdCols=document.getElementById('clk-lcols'),clkLdU='',clkLdT=false;   /* clkLdT= 人が回した(開いただけでは書かない) */
+  function clkLdVal(u){var e=row.querySelector('[data-u="'+u+'"]');if(!e)return NaN;return parseInt(String(e.textContent||'').replace(/[^0-9]/g,''),10);}
+  function clkLdMarkOn(){var a=row.querySelectorAll('[data-u]');for(var i=0;i<a.length;i++)a[i].classList.toggle('on',!!clkLdU&&a[i].getAttribute('data-u')===clkLdU);}
+  function clkLdHide(){clkLdU='';if(clkLdCols)clkLdCols.classList.remove('on');clkLdMarkOn();}
+  function clkLdShow(u){if(!clkLd||!clkLdCols)return;var v=clkLdVal(u);
+   if(isNaN(v)){if(u!=='n'){clkLdHide();return;}v=0;}
+   var lo,hi,pad=false;
+   if(u==='n'){lo=Math.max(1,v-10);hi=Math.max(v,1)+10;}else if(u==='y'){lo=v-5;hi=v+5;}else if(u==='mo'){lo=1;hi=12;pad=true;}else{lo=1;hi=31;pad=true;}
+   clkLdU=u;clkLdT=false;clkFill(clkLd,lo,hi,pad);clkLdCols.classList.add('on');clkSel(clkLd,Math.max(lo,v));try{clkMark(clkLd);}catch(e){}clkLdMarkOn();}
+  window.__clkLdSync=function(){if(!clkLdU)return;var v=clkLdVal(clkLdU);if(isNaN(v)){if(clkLdU!=='n')clkLdHide();return;}
+   if(clkPick(clkLd)===v){clkLdMarkOn();return;}
+   if(clkLdU==='n'){var lo=Math.max(1,v-10);var f=clkLd.firstChild;if(!f||Number(f.getAttribute('data-v'))!==lo){clkLdShow('n');return;}}
+   clkSel(clkLd,v);try{clkMark(clkLd);}catch(e){}clkLdMarkOn();};
+  row.addEventListener('click',function(ev){var u=ev.target&&ev.target.closest?ev.target.closest('[data-u]'):null;if(!u)return;ev.stopPropagation();
+   var k=u.getAttribute('data-u');if(clkLdU===k&&clkLdCols.classList.contains('on')){clkLdHide();return;}clkLdShow(k);});
+  window.__clkLdHide=clkLdHide;
+  if(clkLd)clkWatch(clkLd,function(){var v=clkPick(clkLd);if(v==null||!clkLdU||!clkLdT)return;if(v===clkLdVal(clkLdU))return;
+   var cy=document.getElementById('clk-cyc');clkLastSeq++;
+   vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?clkL0(cy.value).ex:'',unit:clkLdU,dir:0,set:v});},function(){clkLdT=true;try{clkTouch();}catch(e){}});
   /* ★★v4.2.388(俊克「せっかく上にドラム式のダイヤルが有るんだから、そこを使おう。(5m×3 1m)×5 のような時は ×3、×5 の部分に Ⓣday のようなスクロールを出す。
      設定した数値の±10を出せばいい。Repeat の入力枠の ×3 の × の後ろに文字カーソルを置くと、回数変更用のボタンをその下に表示して、そこでスクロール」):
      ★v4.2.367 の「箱の上でホイール」はやめ、日付・時刻と同じドラム(clkFill/clkSel/clkWatch)を箱の下に出す。回すのは、カーソルの居る × の数だけ。 */
@@ -29351,7 +29397,7 @@ if(clkCaret&&clkPop){
   clkPop.classList.toggle('on',willOpen);
   try{document.body.classList.toggle('clk-open',willOpen);}catch(e){}
   if(!willOpen)return;
-  clkPop.classList.remove('editing');
+  clkPop.classList.remove('editing');try{if(window.__clkLdHide)window.__clkLdHide();}catch(e){}   /* v4.2.452: 開き直したら選び器は閉じる */
   clkDirty=false;window.__clkTargetOk=true;window.__clkTagTouched=false;window.__clkNoOrigin=false;window.__clkReadTitle='';window.__clkReadListNo='';try{var _rl0=document.getElementById('clk-rawline');if(_rl0){_rl0.classList.remove('on');_rl0.textContent='';}}catch(e){}clkPaintSet();   /* v4.1.142: 開いた時は未設定から始まる */
   if(mode!=='hist'){try{vscode.postMessage({type:'clkPanelOpen',on:true});}catch(e){}}   /* v4.2.393: 開いている間だけ、カーソルの場所を判定してもらう */
   if(mode==='hist'){clkTagMode=false;clkTagSel='';clkTagFilter='';
