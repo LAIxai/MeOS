@@ -28670,7 +28670,7 @@ function clkCenter(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;clkGot
 /* v4.1.84(俊克「Optのときのスクロール量that大き過ぎる。なかなか動き出さないので、前回との中間値くらいに」):
    1(v4.1.82=速すぎ) \u2194 90(v4.1.83=重すぎ) の間= 45。指の実感は端でなく真ん中に在る。 */
 const CLK_ALT_STEP=45;
-function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;var _altAcc=0;var _lw=0;   /* v4.2.455: 最後に合図が来た時刻 */
+function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;var _altAcc=0;
 /* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
 /* ★v4.1.2: **人が触った合図はここだけ**(scroll は clkSel の置き直しでも鳴るので数えない)。 */
 var stop=function(){if(onTouch)onTouch();try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop;}catch(e){}
@@ -28686,11 +28686,6 @@ el.addEventListener('mousedown',stop,{passive:true});
    ★段の高さで割り切った所へ置く= 常に段の真ん中に居る(窓と数字thatずれない)。 */
 el.addEventListener('wheel',function(e){
  e.preventDefault();if(onTouch)onTouch();
- /* ★★v4.2.455(俊克 バグ1「加速スクロールすると、一瞬止まるが、直ぐに最初の値とかに切り替わってしまう」):
-    ★★macOS の慣性は指を離した後も合図を送り続け、尾ほど間が空く(台で 130〜220ms)。v4.1.28 は「収める timer が鳴り終わった(110ms)」を
-      『指が一度離れた』と読んでいたので、慣性の尾を「次の一撫で」と取り違えて端から巻き戻っていた。
-    ★→ 巻き戻してよいのは、最後の合図から 400ms 空いた時だけ= 慣性の尾より長く、人の「止まった、じゃあ次」より短い。 */
- var _nw=Date.now(),_gap=_nw-_lw;_lw=_nw;
  /* ★★★v4.1.82(俊克「年that2020年代の10年分なので、2030を設定するにはインライン編集するしかない。
     この10年に絞っているのは確かにいい。そこで、**Optを押しながら回すと、無限に進み、戻る**ように
     しよう」): ★★★**狭さは正しい。足りないのは『その先へ行く道』だけ**=
@@ -28724,7 +28719,7 @@ el.addEventListener('wheel',function(e){
     ★★続けて撫でている間(t!==null)は巻き戻らない= 端で止まる。止まってから撫でれば、反対の端へ。
     ★上端でも同じ= 00で止まり、次に戻せば59へ。 */
  var _mx=el.scrollHeight-el.clientHeight;
- if(t===null&&_gap>400&&_mx>1){
+ if(t===null&&_mx>1){
   var _li=el.children.length-1;while(_li>0&&el.children[_li].classList.contains('clk-ghost'))_li--;   /* v4.2.454: 薄い見本(月末の次の01)は端ではない */
   var _wrap=(e.deltaY>0&&el.scrollTop>=_mx-1)?0:((e.deltaY<0&&el.scrollTop<=1)?_li:-1);
   if(_wrap>=0){clkGoto(el,_wrap,false);clkMark(el);
@@ -29315,13 +29310,13 @@ if(clkCaret&&clkPop){
  function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?clkL0(cy.value).ex:'',unit:unit||'',dir:dir||0});}
  function clkLastSoon(){if(clkLastTimer)clearTimeout(clkLastTimer);clkLastTimer=setTimeout(function(){clkLastTimer=null;clkLastAsk('',0);},150);}
  window.__clkLastPaint=function(m){if(m.seq!==clkLastSeq)return;var ln=document.getElementById('clk-ln'),lt=document.getElementById('clk-lt');if(!ln||!lt)return;
-  var cy=document.getElementById('clk-cyc');if(cy&&typeof m.cycle==='string'){var _l0=clkL0(cy.value);if(m.cycle!==_l0.ex)cy.value=m.cycle+(_l0.rest?(_l0.rest.charAt(0)==='\\n'?'':' ')+_l0.rest:'');}
+  var cy=document.getElementById('clk-cyc'),_chg=false;if(cy&&typeof m.cycle==='string'){var _l0=clkL0(cy.value);if(m.cycle!==_l0.ex){cy.value=m.cycle+(_l0.rest?(_l0.rest.charAt(0)==='\\n'?'':' ')+_l0.rest:'');_chg=true;}}
   if(!m.ok){ln.textContent='\u00d7\u2014';lt.innerHTML='';return;}
   ln.textContent=m.n>0?('\u00d7'+m.n):'\u00d7\u2014';
   if(!m.parts){lt.innerHTML='<span class="clk-noend">no end</span>';return;}
   var P=m.parts;lt.innerHTML='<span data-u="y">'+P.y+'</span>-<span data-u="mo">'+P.mo+'</span>-<span data-u="d">'+P.d+'</span>('+P.wd+') '+P.hm;
   try{if(window.__clkLdSync)window.__clkLdSync();}catch(e){}
-  try{var _nc=document.getElementById('clk-ncols');if(_nc&&_nc.classList.contains('on')&&window.__clkNdCheck)window.__clkNdCheck();}catch(e){}};   /* v4.2.452: 開いている選び器と箱の下の回数ドラムを、答えの値に合わせ直す(Last bell で回すと古い数を指していた) */
+  try{var _nc=document.getElementById('clk-ncols');if(_chg&&_nc&&_nc.classList.contains('on')&&window.__clkNdCheck)window.__clkNdCheck();}catch(e){}   /* v4.2.456: 答えが箱を書き換えた時だけ(回数ドラムを回している最中に作り直さない) */};   /* v4.2.452: 開いている選び器と箱の下の回数ドラムを、答えの値に合わせ直す(Last bell で回すと古い数を指していた) */
  (function(){var row=document.getElementById('clk-last');if(!row)return;
   row.addEventListener('wheel',function(ev){var u=ev.target&&ev.target.closest?ev.target.closest('[data-u]'):null;if(!u)return;ev.preventDefault();
    clkLastAcc+=ev.deltaY;var th=24;if(Math.abs(clkLastAcc)<th)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;   /* 上へ回す= 増える */
@@ -29330,7 +29325,7 @@ if(clkCaret&&clkPop){
   /* ★v4.2.452(俊克「Last bellで、日の部分をクリックしたら、縦方向に伸びるスクロールセレクターを出して、1mmもマウスを動かさずに値を変更できるように。Ⓣdayボタンのようにね」):
      ★部品は家の中の物= 箱の下の回数のドラム(v4.2.388)と同じ clkFill/clkSel/clkWatch。桁をクリックすると、その桁の選び器が Last bell の下に開く。
      ★選んだ値は「この値にして」(set)で拡張へ。年月日は、その日時を越えない一番大きい ×N になる= 答えの値へ選び器を合わせ直す。 */
-  var clkLd=document.getElementById('clk-ld'),clkLdCols=document.getElementById('clk-lcols'),clkLdU='',clkLdT=false;   /* clkLdT= 人が回した(開いただけでは書かない) */
+  var clkLd=document.getElementById('clk-ld'),clkLdCols=document.getElementById('clk-lcols'),clkLdU='',clkLdT=false,clkLdSent=null;   /* clkLdSent= 最後に送った値(v4.2.456) */   /* clkLdT= 人が回した(開いただけでは書かない) */
   function clkLdVal(u){var e=row.querySelector('[data-u="'+u+'"]');if(!e)return NaN;return parseInt(String(e.textContent||'').replace(/[^0-9]/g,''),10);}
   function clkLdMarkOn(){var a=row.querySelectorAll('[data-u]');for(var i=0;i<a.length;i++)a[i].classList.toggle('on',!!clkLdU&&a[i].getAttribute('data-u')===clkLdU);}
   function clkLdHide(){clkLdU='';if(clkLdCols)clkLdCols.classList.remove('on');clkLdMarkOn();}
@@ -29339,13 +29334,18 @@ if(clkCaret&&clkPop){
    var lo,hi,pad=false;
    if(u==='n'){lo=Math.max(1,v-10);hi=Math.max(v,1)+10;}else if(u==='y'){lo=v-5;hi=v+5;}else if(u==='mo'){lo=1;hi=12;pad=true;}else{lo=1;hi=31;pad=true;}
    if(u==='d'){var _y=clkLdVal('y'),_m=clkLdVal('mo');if(!isNaN(_y)&&!isNaN(_m))hi=new Date(_y,_m,0).getDate();}   /* v4.2.453: その月の日数まで(9月に31を見せない) */
-   clkLdU=u;clkLdT=false;clkFill(clkLd,lo,hi,pad);
+   clkLdU=u;clkLdT=false;clkLdSent=null;clkFill(clkLd,lo,hi,pad);
    /* ★v4.2.453(俊克「31の代わりに1を見せる…9/1にすると言う見せ方…そっちのほうが良いかな。月は月をクリックして変えればいいしね」):
       月末の次に 01 を薄く見せる= 輪の続き。止めればその月の1日(月は替えない)。 */
    clkLd.classList.toggle('has-ghost',u==='d');
    if(u==='d'){var _g=document.createElement('div');_g.setAttribute('data-v','1');_g.className='clk-ghost';_g.textContent=clkPad(1);clkLd.appendChild(_g);}
    clkLdCols.classList.add('on');clkSel(clkLd,Math.max(lo,v));try{clkMark(clkLd);}catch(e){}clkLdMarkOn();}
   window.__clkLdSync=function(){if(!clkLdU)return;var v=clkLdVal(clkLdU);if(isNaN(v)){if(clkLdU!=='n')clkLdHide();return;}
+   /* ★★v4.2.456(俊克 バグ1「まだ駄目。他のところの方式をそのまま使えばいい。そこでも、こんな問題は起きなかったよね?」):
+      ★★Date のドラムは値をその場で持つだけ= 答えを待たない。ここは拡張へ聞いて答えで合わせ直していたので、回している途中の一瞬の止まり(110ms)で
+        送った古い値の答えが、先へ進んだ選び器を引き戻していた(台で 30→17 を再現)。
+      ★→ 選び器が「送った値」をまだ指している時だけ合わせ直す。人が先へ回したら、答えは数字の表示にだけ使う(選び器は人の物)。 */
+   if(clkLdSent!==null&&clkPick(clkLd)!==clkLdSent){clkLdMarkOn();return;}
    if(clkPick(clkLd)===v&&!clkLd.querySelector('.sel.clk-ghost')){clkLdMarkOn();return;}   /* v4.2.453: 月末の次の 01 で止めたら、本物の 01 へ戻す */
    if(clkLdU==='n'){var lo=Math.max(1,v-10);var f=clkLd.firstChild;if(!f||Number(f.getAttribute('data-v'))!==lo){clkLdShow('n');return;}}
    clkSel(clkLd,v);try{clkMark(clkLd);}catch(e){}clkLdMarkOn();};
@@ -29353,7 +29353,7 @@ if(clkCaret&&clkPop){
    var k=u.getAttribute('data-u');if(clkLdU===k&&clkLdCols.classList.contains('on')){clkLdHide();return;}clkLdShow(k);});
   window.__clkLdHide=clkLdHide;
   if(clkLd)clkWatch(clkLd,function(){var v=clkPick(clkLd);if(v==null||!clkLdU||!clkLdT)return;if(v===clkLdVal(clkLdU))return;
-   var cy=document.getElementById('clk-cyc');clkLastSeq++;
+   var cy=document.getElementById('clk-cyc');clkLastSeq++;clkLdSent=v;
    vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?clkL0(cy.value).ex:'',unit:clkLdU,dir:0,set:v});},function(){clkLdT=true;try{clkTouch();}catch(e){}});
   /* ★★v4.2.388(俊克「せっかく上にドラム式のダイヤルが有るんだから、そこを使おう。(5m×3 1m)×5 のような時は ×3、×5 の部分に Ⓣday のようなスクロールを出す。
      設定した数値の±10を出せばいい。Repeat の入力枠の ×3 の × の後ろに文字カーソルを置くと、回数変更用のボタンをその下に表示して、そこでスクロール」):
