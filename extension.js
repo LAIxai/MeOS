@@ -13556,7 +13556,7 @@ function meosApplyTimerLineDecorations(editor) {
             if (!_rawHere && c.ufc) {
               const _nk = meosClockNudgeSpot(txt, c);
               if (_nk >= 0) {
-                const _bt = (t) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: '0 2px', textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em;' });
+                const _bt = (t) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: '0 2px', textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em; cursor: ' + meosHandCursor() + ';' });   // v4.2.473: 手の形は絵そのものに(▶️ は下の字が手を持っていた= 絵の下に字が無いここでは効かない)
                 // ★v4.2.472(俊克 バグ1「ポインターが選択指に変わらない」): 絵も手の形の型(plays)の側に描く= ▶️ と同じ(絵の上で手になる)
                 plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s'), after: _bt('+1s') } });
                 // ★v4.2.472(俊克「ボタンを押したら、その右に+1、+2…と見せて、クリックが止まって3秒したら、それを反映する」): ためた量
