@@ -4,6 +4,81 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.459 – v4.2.462 (2026-09-27, afternoon)
+- **⏭️ Pass the next** at the top of the menu-bar ⏰ skips the next bell of the nearest clock without a sound: a repeat moves on to its next turn, the last turn of a `×N` or a one-off clock is marked done, a row hands over to its next line. **↩︎ last passed** brings it back while its time is still to come. It works with VSCodium closed too — V-helper moves on by itself, and VSCodium picks the pass up when it opens.
+- **The top of Me Dock stays put.** The title row and **Format Me** stay at the top while you scroll, and Format Me now sits above the ⏰ row, so opening the ⏰ panel no longer moves the buttons you use most. They follow Me Dock's size like everything else.
+- README: the v4.2 hero image, and the new features above.
+
+### v4.2.449 – v4.2.458 (2026-09-27, morning)
+- **A vertical line at the wrap width.** Changing the wrap width (the knob, or ↻ through the three presets) moves a thin line to the same column, so you can see where a line will break — Japanese text breaks at the same line, with about one character for every 1.7 half-width ones.
+- **Last bell drums.** Click the year, month or day of **Last bell** in the ⏰▾ panel and the same three drums as **Date** open under it. Roll them to the day the routine should end, and the count becomes the largest `×N` that does not run past it (the `~date` rule). **Opt** while rolling the year steps through the decades. Click the `×N` of Last bell to go to the count in the box, with its drum.
+- The count drum under the Repeat box follows `×N` when Last bell changes it.
+- `~date` also accepts an end date that has already gone by (it is compared with the origin, not with today).
+- **Set** adds the membrane's badge line when it is missing, so the countdown has its place.
+- Typing a date into **Starting point** now sets the origin, just as rolling the drums does.
+
+### v4.2.435 – v4.2.448 (2026-09-27, early morning)
+- **A bell for every time.** In a one-line routine, add `🔔` and a sound's name or its number in the 🔔 list after each `//` message: `🔔15/11/6` takes the next sound on every count, `🔕` keeps that time silent, and **Set** writes numbers down as names so the line rings the same on any machine. `🔔Mew×` announces the round when it starts — once for round 1, twice for round 2.
+- **🥊 Gong**, a new bell made from measurements of a real gong. The boxing preset uses it to start each round and stays silent inside the round.
+- Editing a ⏰ line by hand keeps its bells and messages; **Cmd+S** re-reads the clocks at once.
+- The Date drum no longer jumps to tomorrow when the panel opens.
+
+### v4.2.409 – v4.2.434 (2026-09-25 → 26)
+- **Three presets in the ⏰▾ panel**, stepped through with **↻** on the Repeat box: 🍅 Pomodoro (`(25m 5m)×4` then a `(10m)×1` break, handing over round and round), 💧 eye drops (every 8 hours, two drops 5 minutes apart — the second clock at ⚓ anchor) and 💓 an hour of boxing `((3m 1m)×5)×3`. One line in the box is one ⏰; the caret lands on the last `×N` with its drum.
+- **One message per time** in a one-line routine: `((25m 5m)×4 10m)×5 // 🍅… // ☕… // 🛋… // 🏁…`. A `1.` inside a title is a slot for the round number.
+- **Independent or linked.** A clock with an origin keeps its own time; only clocks without one hand over to each other.
+- The panel shows each line exactly as it will look in the editor, with its 🚢💨 / 🔓 buttons, and is laid out Starting point → Tag → Last bell → Repeat.
+- Fixed: a finished membrane folding by itself; the second line of a two-line preset not being written.
+
+### v4.2.363 – v4.2.408 (2026-09-24 → 25)
+- **V-helper**: the menu-bar ⏰ lives on when VSCodium is closed — it starts and quits the app like the Dock, and **Quit V-helper for VSCs** stops it for VS Code and VSCodium together. Each editor gets its own V-helper: **purple for VS Code, orange for VSCodium**.
+- **🔔 bell picker** beside the 🎨 Theme button (↑/↓ to hear, Enter to keep). **🐱 Mew**, a kitten's call made by MeOS from a real kitten's measurements, is the new default bell; it calls every 1.35 s with 1/f fluctuation in loudness.
+- **Roll ×N → last day** with the wheel in the ⏰▾ panel; a **count drum** (±10) appears under the Repeat box when the caret is after a `×`.
+- **read ⏰** reads the clock on the caret's line (title, number, ⚓ included) and **Set** rewrites that same line. Set is allowed only on a closing ▲ line or just below the ⏰ lines.
+- Strikethrough and highlight on a multi-line selection wrap each line.
+- **🐢 Paste lag ✅** shows when VSCodium's Markdown Language Features is already off for the workspace.
+
+### v4.2.339 – v4.2.362 (2026-09-24)
+- **Calendar repeats**: `↺t1,3` (first and third Thursday), `↺t` (every Thursday), `↺MWF`.
+- **The last day of a `×N` clock** is shown on the badge line (5 seconds after a change while running, all the time while paused).
+- **Date & Count**: write `~` and an end date instead of `×N`; MeOS writes back the largest `×N` that fits.
+- With VSCodium closed, linked clocks still hand over, and titles count up ("Eye drop # 2").
+- **Me Dock in ten sizes** (60–80 % in eight steps, then 90 % and 100 %) with a small `n/10` box; the **A** button shows whether it sizes Me Dock only or the text too.
+- **📦 Re-install VSIX** for everyone; **Reveal in Finder** from the recent-files list; a soft sound when Cmd+S has nothing to save.
+- Fixed: clicking the end of a very large membrane jumped to its top (fold regions over 5000).
+
+### v4.2.304 – v4.2.338 (2026-09-23)
+- **The menu-bar ⏰ keeps working after you close VSCodium** (the first V-helper): it counts, rings, and when a bell is due it wakes VSCodium and warps you to the membrane.
+- **⚓ Anchor**: a clock that rings without taking you to its membrane. Each ⏰ line has a 🚢💨 / ⚓ button; the menu bar turns blue while an anchored clock is next.
+- **Opt+click** the menu-bar ⏰ to go to the membrane it shows; **last stopped** brings back the clock you stopped last; the menu lists your **Tag & Go** rooms.
+- A classic macOS hand tilted 22.5° joins the pointer choices (BTRON, macOS 22.5°, OS).
+- Undoing a select-all cut puts the bookmarks (F · 🔖 · 💤 · 🏠) back on their lines.
+
+### v4.2.254 – v4.2.303 (2026-09-20 → 21)
+- **Code blocks on a sheet of paper**: a fenced code block is drawn as one cream sheet, like `inline code`, so quoted notation stays text and is never run.
+- **Quotes like a book** (indent, large quotation marks, the source aligned right) and **GitHub Alerts** (`> [!TIP]` …) in a light box.
+- 🔐 can be removed with **Opt+click**, and a stopped clock really stops.
+
+### v4.2.216 – v4.2.253 (2026-09-19)
+- **`inline code` on a cream plate**; a file name in inline code gets a 📄 tag.
+- **🔓 → 🔐 lock** on a ⏰ line: it can be neither stopped nor deleted until it rings.
+- **🎨 Theme button** in Me Dock: ↑/↓ to try a colour theme, Enter to keep it.
+- The first row of Me Dock reads **Timed Me-System: ⏰ … Hyper TOC: 📑**; H-TOC opens and closes in place and starts closed.
+- Format Me tips appear in full for 20 minutes after their first showing each day, then stay short.
+
+### v4.2.185 – v4.2.215 (2026-09-18)
+- **Running clocks on the macOS menu bar**, with a menu to warp to any clock, the spells (Raw on/off, Me Dock, previous/next heading).
+- The ⏰ title is shown in the status bar in its own colour, split from the countdown and the `+N`.
+- ✅ at the head of a heading or list item is stamped again, and list items gather their FC lines like tables.
+- Wrap-width knob: finer control, default presets 48 / 80 / 100.
+
+### v4.2.118 – v4.2.184 (2026-09-15 → 17)
+- **Your own pointing hands**: BTRON and classic macOS hands (pointing, open palm, grip) drawn for MeOS, at the size of the OS pointer, with the hot spot where the finger points.
+- **Drag H-TOC tabs** to reorder them (palm to press, grip to move, a white line where the tab will land).
+- **Wrap width knob** in Me Dock: drag or type, the text re-wraps as you move; **↻** steps through three presets (red, blue, green).
+- **Bird-EV** handles membranes with hundreds of headings and folds child membranes to one line.
+- Only the running ⏰ shows its title on the line; tips grow from the pointer everywhere in Me Dock.
+
 ### v4.2.117 (2026-09-15)
 - **Each hand has its own button colour.** The pointer-hand switch stays cyan for the BTRON hand, turns Aqua blue for the classic macOS hand, and neutral grey for "OS" (the hand differs from one operating system to the next).
 
