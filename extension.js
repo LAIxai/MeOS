@@ -26348,6 +26348,14 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* v4.2.464: Hyper IDX の枠= H-TOC の枠と同じ見た目で、固定の箱(dock-stick)の中・Format Me の下 */
 .hidx-box{border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden;margin:6px 0 0}
 .hidx-box .toc-tools.hidx-row{border-top:0;padding:6px 8px}
+/* v4.2.465: 並べ替え= Current Me＋Encrypt Me の枠 / 🐙 / Edit Me / Navigate Me を固定の箱へ・Mepy は H-TOC の上 */
+.cur-box{border:1px solid rgba(56,148,255,.45);border-radius:8px;overflow:hidden;margin:6px 0 0;background:var(--vscode-sideBar-background)}
+.cur-box .toc-pin-bar .toc-pin{border-top:0}
+.cur-box .encrypt-me-row{margin:0;padding:6px 10px;border-top:1px solid rgba(56,148,255,.25)}
+.dock-stick > .gh-wizard,.dock-stick > .inline-panel,.dock-stick > .nav-box{margin-top:6px}
+.nav-box .hint{margin:4px 2px 0}
+.mepy-box{display:flex;justify-content:center;margin:0 0 8px}
+.dock-stick.unstick{position:static}
 /* v4.2.464: H-TOC の ⬇️/＋ は H-TOC を開いた時の名前の行の右端へ(.toc-tools の外なので大きさを写す) */
 .toc-name-row .htoc-ops{display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 .htoc-ops button{font-size:11px;padding:3px 6px}
@@ -27508,7 +27516,7 @@ var __MZ=[0.6,0.6286,0.6571,0.6857,0.7143,0.7429,0.7714,0.8,0.9,1];   /* v4.2.35
 function __mzStep(z){var b=0,d=9;for(var k=0;k<__MZ.length;k++){var e=Math.abs(__MZ[k]-z);if(e<d){d=e;b=k;}}return b+1;}
 function __mzOfStep(n){return __MZ[Math.max(1,Math.min(__MZ.length,n))-1];}
 function __mzApply(){try{var z=__mdZoom,inv=(z?1/z:1);/* v3.1.24(俊克 v3.1.23 NG): v3.1.16〜3.1.20で「本文だけzoom＋#toc-tooltipは本文内」の時は本文tipが正常だった=同一zoom(＋同一スクロール)文脈にtipと対象が同居していた為。v3.1.21以降tipを本文外(section.dock直下)へ出したのが全崩れの元凶(GBCRのzoom論理座標とfixed配置の座標系が別文脈でズレ→下ほど比例拡大)。→**tipを本文(main.body)内へ戻す**。ヘッダ帯もscaleさせる改良4は「main.bodyとheaderを同一zで常時ズーム(トグル無し=バグ2解消)」で実現。dock全体zoomは廃止(スクロール文脈が絡み崩れる為)。 */var m=document.querySelector('main.body');
-if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;var __ft=document.getElementById('format-tools');if(__ft)__ft.style.zoom=z;var __hb=document.getElementById('hidx-box');if(__hb)__hb.style.zoom=z;/* v4.2.464 */var __fp=document.getElementById('fmt-pop');if(__fp)__fp.style.zoom=z;/* v4.2.461(俊克「でっかくなっちゃったよー」): v4.2.460 で Format Me を main.body の外(固定の箱)へ出したので、本文と同じ縮尺を掛け直す。色の窓も本文に居た時と同じ縮尺 *//* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
+if(m)m.style.zoom=z;var h=document.querySelector('header.title');if(h)h.style.zoom=z;var __ft=document.getElementById('format-tools');if(__ft)__ft.style.zoom=z;var __hb=document.getElementById('hidx-box');if(__hb)__hb.style.zoom=z;/* v4.2.464 */['cur-box','gh-wizard','new-rename-panel','nav-box'].forEach(function(id){var e=document.getElementById(id);if(e&&e.parentElement&&e.parentElement.id==='dock-stick')e.style.zoom=z;});/* v4.2.465: 固定の箱へ移った物だけ(本文に居る間に掛けると二重に縮む) */var __fp=document.getElementById('fmt-pop');if(__fp)__fp.style.zoom=z;/* v4.2.461(俊克「でっかくなっちゃったよー」): v4.2.460 で Format Me を main.body の外(固定の箱)へ出したので、本文と同じ縮尺を掛け直す。色の窓も本文に居た時と同じ縮尺 *//* ズームUIのpopup(スライダー)は逆ズームで物理サイズ一定=ドラッグ中もノブが動かない。 */var pop=document.getElementById('mz-pop');
 /* v4.2.355: 窓も他のボタンと同じ縮尺(逆ズームで実寸に戻すと、小さい段ほど窓だけ巨大になった) */if(pop)pop.style.zoom='';var st=__mzStep(z);var p=document.getElementById('mz-pct');if(p&&document.activeElement!==p)p.value=st+'/'+__MZ.length;
 var zi=document.getElementById('mz-in'),zo=document.getElementById('mz-out');if(zi)zi.title='Bigger \u00b7 '+st+'/'+__MZ.length+(st>=__MZ.length?' (max)':'');if(zo)zo.title='Smaller \u00b7 '+st+'/'+__MZ.length+(st<=1?' (min)':'');
 var sl=document.getElementById('mz-slider');if(sl){if(document.activeElement!==sl)sl.value=st;/* v3.1.21改良3: Time Machine式=ノブ左を橙で塗る(1〜15段→0〜100%)。 */var __fill=Math.max(0,Math.min(100,(st-1)/(__MZ.length-1)*100));
@@ -29699,6 +29707,26 @@ document.addEventListener('click',ev=>{if(wp.classList.contains('on')&&!wp.conta
 {/* v4.2.250: 先頭の行= ⏰＋📑 */const lead=document.getElementById('dock-lead'),hb=document.getElementById('htoc-btn'),ft=document.getElementById('fixed-toc');
 try{const cw=document.querySelector('.toc-tools:not(.dock-lead) .clk-wrap');if(lead&&cw)lead.insertBefore(cw,lead.querySelector('.htoc-title')||hb||null);   /* v4.2.252: 名札(Timed Me-System:)の後ろ・📑の前 */}catch(e){}
 try{/* ★v4.2.251(俊克「タイマーボタンを押すとH-TOCのように展開する。浮いた形ではなく」): ⏰の箱を先頭の行のすぐ下へ移し、流れの中で開く */const cp=document.getElementById('clk-pop');if(lead&&cp){const dk=document.createElement('div');dk.id='dock-clk';lead.parentNode.insertBefore(dk,lead.nextSibling);dk.appendChild(cp);}}catch(e){}
+try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd Hyper TOCとH-TOCを近くに…Me Dockヘッダー/Format Me/H-IDX/Current Me/Encrypt Me/🐙プッシュ/Edit Me/Navigate Me/Timed MeとH-TOC。
+   これで、下に大きく延びたり縮まったりするのが、一番下に来るので、他に影響しない」): ⏰の箱と同じ作法= 出来上がった部品をidで掴んで並べ替える
+   (Edit Me の枠は HTML の上で閉じが1つ足りず、ブラウザが </main> で閉じている= 文字列の切り貼りでは巻き込むので、直った後の姿を動かす)。
+   ★tip(toc-tooltip)は本文の中へ戻す= 縮尺の計算は本文の中を前提にしている(v3.1.24)。 */
+ const _st=document.getElementById('dock-stick'),_hx=document.getElementById('hidx-box'),_mn=document.querySelector('main.body'),_ft=document.getElementById('fixed-toc');
+ const _pin=document.getElementById('toc-pin-bar'),_enc=document.getElementById('encrypt-me-row'),_gh=document.getElementById('gh-wizard'),_nrp=document.getElementById('new-rename-panel'),_nav=document.getElementById('nav-center'),_mp=document.getElementById('membrane-panel'),_tt=document.getElementById('toc-tooltip');
+ if(_st&&_hx&&_mn&&_ft&&_pin&&_enc&&_gh&&_nrp&&_nav&&_mp){
+  const _hint=_nrp.querySelector('.hint')||_mn.querySelector(':scope > .hint');   /* 案内の1行(Line history)は Navigate Me の下へ */
+  const _cur=document.createElement('div');_cur.className='cur-box';_cur.id='cur-box';_cur.appendChild(_pin);_cur.appendChild(_enc);
+  const _nb=document.createElement('div');_nb.className='nav-box';_nb.id='nav-box';_nb.appendChild(_nav);if(_hint)_nb.appendChild(_hint);
+  const _mb=document.createElement('div');_mb.className='mepy-box';_mb.id='mepy-box';_mb.appendChild(_mp);
+  _hx.after(_cur);_cur.after(_gh);_gh.after(_nrp);_nrp.after(_nb);
+  _mn.insertBefore(_mb,_ft);
+  if(_tt)_mn.appendChild(_tt);
+  try{__mzApply();}catch(e){}
+ }
+ /* ★安全弁: 固定の部分が窓の高さの6割を超えたら固定を外す(下の⏰とH-TOCへスクロールで届かなくなるので) */
+ if(_st){const _fit=function(){try{_st.classList.remove('unstick');if(window.innerHeight>0&&_st.getBoundingClientRect().height>window.innerHeight*0.6)_st.classList.add('unstick');}catch(e){}};
+  window.addEventListener('resize',_fit);try{new ResizeObserver(_fit).observe(_st);}catch(e){}_fit();}
+}catch(e){}
 const hLab=document.getElementById('htoc-lab'),hN=document.getElementById('htoc-n'),hAr=document.getElementById('htoc-arrow');
 const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.active');const nm=at?String(at.textContent||'').replace(/[\u25be\u25b4]/g,'').trim():'';if(hLab)hLab.textContent=nm||'Hyper TOC';const n=document.querySelectorAll('#fixed-toc-body .toc-check:not(:checked)').length;if(hN)hN.textContent=n?String(n):'';if(hAr&&ft)hAr.textContent=ft.classList.contains('htoc-closed')?'\u25be':'\u25b4';}catch(e){}};
 if(hb&&ft)hb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const closed=!ft.classList.contains('htoc-closed');ft.classList.toggle('htoc-closed',closed);hPaint();vscode.postMessage({type:'htocOpen',open:!closed});if(typeof hideTocTip==='function')hideTocTip();});
@@ -30400,9 +30428,9 @@ function newRenameTabTargets(){
 function cycleNewRenameFocus(ev){
   if(ev.key!=='Tab')return;
   const panel=document.getElementById('new-rename-panel');
-  if(!panel || !panel.contains(document.activeElement))return;
   const targets=newRenameTabTargets();
   if(!targets.length)return;
+  if(!(panel && panel.contains(document.activeElement)) && targets.indexOf(document.activeElement)<0)return;   /* v4.2.465: Navigate Me と Mepy は枠の外へ出たので、対象の欄に焦点があれば巡る */
   ev.preventDefault();
   const current=document.activeElement;
   const zoomStart=document.getElementById('zoom-me-start');
@@ -30423,7 +30451,7 @@ function cycleNewRenameFocus(ev){
   next.focus();
   if(next===input || next===lineInput || next===zoomStart){try{next.select();}catch(_){}}
 }
-document.getElementById('new-rename-panel').addEventListener('keydown',cycleNewRenameFocus,true);
+document.addEventListener('keydown',cycleNewRenameFocus,true);   /* v4.2.465: 枠の外へ出た欄からの Tab も拾う */
 setBtn.addEventListener('click',()=>{draftName=input.value;draftDirty=false;vscode.postMessage({type:'runInlineNewRename',
 mode:currentMode,value:draftName,line:lineInput.value,color:draftColor||currentColor||''});});
 input.addEventListener('input',()=>{draftName=input.value;draftDirty=true;});
