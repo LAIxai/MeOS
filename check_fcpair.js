@@ -1131,9 +1131,9 @@ console.log('(51) ⏰ に「走っている時計の一覧」= 予定表にな�
 console.log('(52) ⏰ は年月日も受ける／長い待ちは刻んで継ぐ(v4.0.458 俊克)  ※読み取りの実測は check_when.js');
 {
   const src = fs.readFileSync(path.join(__dirname, 'extension.js'), 'utf8');
-  ok(/function meosParseWhen\(txt\)/.test(src),
+  ok(/function meosParseWhen\(txt(, allowPast)?\)/.test(src),   // v4.2.451: ~日付(締切)だけ過去も読む
      '★★★「いつ」を読む口は1つ(時刻 / 月日 / 年月日)', true);
-  ok(/if \(t\.getTime\(\) <= now\.getTime\(\)\) return null;                   \/\/ 過ぎた指定は誤り/.test(src),
+  ok(/if \((!allowPast && )?t\.getTime\(\) <= now\.getTime\(\)\) return null;\s+\/\/ 過ぎた指定は誤り/.test(src),
      '★★年まで書いた指定は送らない(過ぎていれば誤りと言う= 黙って来年にしない)', true);
   ok(/if \(t\.getMonth\(\) !== mo - 1 \|\| t\.getDate\(\) !== d\) return null;/.test(src),
      '★2/30 のような日を見抜く(Datethat繰り上げるのを、そのまま通さない)', true);

@@ -11419,7 +11419,9 @@ function meosParseUntil(txt) {
     return ' ' + hh + ':' + mi + (ss ? ':' + ss : '');
   }).replace(/\s+/g, ' ').trim();
   if (/^(\d{4}[\/\-.])?\d{1,2}[\/\-.]\d{1,2}$/.test(t)) t += ' 23:59:59';   // 日付だけ= その日いっぱい
-  const w = meosParseWhen(t);
+  // ★v4.2.451(俊克 09.27 テスト盤⑦-3「~2026-09-24 21:13 が ⚠️ のまま」): 年つきの過去の日付を「誤り」として捨てていた。
+  //   締切は**起点と比べる物**(起点も過去でよい v4.1.64)。今日より前かどうかは関係ない。1回も収まらなければ ⚠️ は今まで通り。
+  const w = meosParseWhen(t, true);
   return w && w.at ? w.at : null;
 }
 // 起点から until までに収まる一番大きい N(armClock の round > rounds で済みと同じ数え方)。
@@ -11684,13 +11686,19 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       if (_ln2 < doc.lineCount) ed.insert(doc.uri, new vscode.Position(_ln2, 0), line + '\n');
       else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + line);
     } else if (spec) {
-      let at = -1;
-      try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; break; } } catch (_) { }
+      let at = -1, _pr = null;
+      try { for (const p of collectPairs(doc, { excludeIndex: false })) if (p.id === key) { at = p.end; _pr = p; break; } } catch (_) { }
       if (at < 0) return false;                                    // 膜の外(ファイル全体)には書かない
       let ln = at + 1;
       while (ln < doc.lineCount && meosIsSpecLine(doc.lineAt(ln).text)) ln++;
-      if (ln < doc.lineCount) ed.insert(doc.uri, new vscode.Position(ln, 0), line + '\n');
-      else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + line);
+      // ★v4.2.451(俊克 09.27「⑧にもバッジが無いよ」「これにもバッジコメントが無いよ」): 最初の⏰を足す膜にバッジ行が無ければ、
+      //   ▲の次に一緒に書く。無いと残り時間の置き場が無く、顔が▼の行の右へ逃げる(v4.1.147 の置き場= バッジ行)。
+      //   形は新しい膜の閉じ膜と同じ口(meosPairBadgeLineText)から。旧形(▼行にバッジ)の膜には足さない= 二重にしない。
+      let _bgText = '';
+      try { if (_pr && !meosPairBadgeAt(doc, _pr)) _bgText = meosPairBadgeLineText(key, lineIndent(doc, at), '(\ud83d\udcca\u22950+0)') + '\n'; } catch (_) { }
+      if (_bgText && ln > at + 1 && at + 1 < doc.lineCount) { ed.insert(doc.uri, new vscode.Position(at + 1, 0), _bgText); _bgText = ''; }
+      if (ln < doc.lineCount) ed.insert(doc.uri, new vscode.Position(ln, 0), _bgText + line + '\n');
+      else ed.insert(doc.uri, doc.lineAt(doc.lineCount - 1).range.end, '\n' + _bgText + line);
     } else return false;
     // ★v4.1.1116: **書けたかどうかを名乗らせる**= ステータスバーは書けても書けなくても出るので、
     //   `false` thatが黙って返ると「掛けたのに何も起きない」になる(俊克 バグ1の見え方)。
@@ -15010,7 +15018,7 @@ async function toggleReadMode() { return meosSetViewMode(meosViewMode() === 'pse
 //   ★過ぎていれば1つ先へ送る＝ 時刻だけ→明日 / 月日→来年 / 年つき→送らない(過ぎた指定は誤り)。
 //   ★時刻を省いた日付は**その日の始まり(00:00)**＝ 一日を指したのだから、その一日の頭。
 //   受ける形: 18:30 / 1830 / 9/1 18:30 / 09-01 1830 / 2026/9/1 18:30 / 2026-09-01 / 20260901 1830
-function meosParseWhen(txt) {
+function meosParseWhen(txt, allowPast) {   // allowPast: v4.2.451 ~日付(締切)は起点と比べる物so、年つきの過去も読む
   // v4.1.77: 手で書いた曜日 `(t)` は**読んで捨てる**= 曜日は年月日から出る物so、真実は日付の方。
   const raw = String(txt || '').trim().replace(/[：]/g, ':').replace(/[／]/g, '/')
     .replace(/(\d)\s*\([SMTWtFs]\)/, '$1');
@@ -15040,7 +15048,7 @@ function meosParseWhen(txt) {
   if (y != null) {                                   // 年まで書いた= その1日。送らない
     t = new Date(y, mo - 1, d, hh, mi, ss, 0);
     if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;   // 2/30 のような日
-    if (t.getTime() <= now.getTime()) return null;                   // 過ぎた指定は誤り
+    if (!allowPast && t.getTime() <= now.getTime()) return null;     // 過ぎた指定は誤り(一度きりの予定の話)
   } else if (mo != null) {                           // 月日だけ= 今年。過ぎていれば来年
     t = new Date(now.getFullYear(), mo - 1, d, hh, mi, ss, 0);
     if (t.getMonth() !== mo - 1 || t.getDate() !== d) return null;
@@ -28840,9 +28848,9 @@ if(clkPop)clkPop.classList.toggle('dfix',clkFixD);try{if(window.__clkPaintPrev)w
 function clkSyncFromBox(){var e=document.getElementById('clk-edit');if(!e)return;
 var v=(e.value||'').trim().replace(/[\uFF1A]/g,':').replace(/[\uFF0F]/g,'/');
 var m=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})(?:\\s+(\\d{1,2}):?(\\d{2}))?$/.exec(v);
-if(m){clkFixD=true;clkPutYMDHM(+m[1],+m[2],+m[3],(m[4]!=null?+m[4]:null),(m[5]!=null?+m[5]:null));return;}   /* v4.1.171: 置き方は1つ */
+if(m){window.__clkNoOrigin=false;clkFixD=true;clkPutYMDHM(+m[1],+m[2],+m[3],(m[4]!=null?+m[4]:null),(m[5]!=null?+m[5]:null));return;}   /* v4.1.171: 置き方は1つ / v4.2.451: 打ち込んだ日時= 起点を決めた(ドラムを回したのと同じ) */
 var t=/^(\\d{1,2}):?(\\d{2})$/.exec(v);
-if(t){clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
+if(t){window.__clkNoOrigin=false;clkSel(document.getElementById('clk-h'),+t[1]);clkSel(document.getElementById('clk-mi'),+t[2]);}}
 /* v4.1.0: 一覧の1行= 「時刻・年月日 + 膜名」。今日なら時刻だけ、他の日なら月日も添える
    (**日付は、違う時にだけ言う**= 同じ日の予定に今日の日付を並べても、読む物that増えるだけ)。 */
 /* ★★★v4.1.77(俊克 2026.08.29「**曜日は大事。スケジュールにとってね**」= \u23f0の残り仕事\u2462):

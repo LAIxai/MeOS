@@ -1720,7 +1720,7 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
     窓の中に居ない年は**黙って留まる**(v4.1.86で一度通った穴)。→ 置き方を1つに。 */
  ok(/function clkPutYMDHM\(y,mo,d,h,mi\)\{/.test(S) && /clkFill\(document\.getElementById\('clk-y'\),_yb,_yb\+9,false\);/.test(S),
     '★★★輪への置き方は1つ(年は必ず窓ごと張り直す)', true);
- ok(/if\(m\)\{clkFixD=true;clkPutYMDHM\(/.test(S) && /if\(_md\)\{clkFixD=true;clkPutYMDHM\(/.test(S),
+ ok(/if\(m\)\{(window\.__clkNoOrigin=false;)?clkFixD=true;clkPutYMDHM\(/.test(S) && /if\(_md\)\{clkFixD=true;clkPutYMDHM\(/.test(S),
     '★★打ち込みも read も同じ置き方を通る', true);
  ok(/\[clockRead\] ok=/.test(S) && /read \\u23f0 \\u2014 ' \+ _r\.why/.test(S),
     '★★黙って失敗しない(何を返したかを残し、読めなければバーで言う)', true);
