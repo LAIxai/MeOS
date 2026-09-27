@@ -28682,7 +28682,7 @@ el.addEventListener('wheel',function(e){
     ★★★**窓は『年代』**= 10年ぶんthat1枚。Optで年代をまたぎ、離せばその年代の中を回る。
       so「今どの10年を見ているか」thatが常にはっきりする(窓の中身thatが年代そのもの)。
     ★ゆっくり= 合図の deltaY を貯めて、貯まった分だけ1年動く(macOSの加速に流されない)。 */
- if(e.altKey&&el.id==='clk-y'){
+ if(e.altKey&&(el.id==='clk-y'||el.id==='clk-ly')){   /* v4.2.458: Last bell の年ドラムも同じ(Opt で年代をまたぐ) */
   _altAcc+=e.deltaY;if(Math.abs(_altAcc)<CLK_ALT_STEP)return;
   var _dy=(_altAcc>0)?1:-1;_altAcc=0;
   var _cy=clkPick(el)||new Date().getFullYear();
@@ -29294,11 +29294,12 @@ if(clkCaret&&clkPop){
  function clkLastAsk(unit,dir){var cy=document.getElementById('clk-cyc');clkLastSeq++;vscode.postMessage({type:'clkLastAsk',seq:clkLastSeq,when:window.__clkNoOrigin?'':clkText(),cycle:cy?clkL0(cy.value).ex:'',unit:unit||'',dir:dir||0});}
  function clkLastSoon(){if(clkLastTimer)clearTimeout(clkLastTimer);clkLastTimer=setTimeout(function(){clkLastTimer=null;clkLastAsk('',0);},150);}
  window.__clkLastPaint=function(m){if(m.seq!==clkLastSeq)return;var ln=document.getElementById('clk-ln'),lt=document.getElementById('clk-lt');if(!ln||!lt)return;
-  var cy=document.getElementById('clk-cyc');if(cy&&typeof m.cycle==='string'){var _l0=clkL0(cy.value);if(m.cycle!==_l0.ex)cy.value=m.cycle+(_l0.rest?(_l0.rest.charAt(0)==='\\n'?'':' ')+_l0.rest:'');}
+  var cy=document.getElementById('clk-cyc'),_chg=false;if(cy&&typeof m.cycle==='string'){var _l0=clkL0(cy.value);if(m.cycle!==_l0.ex)_chg=true;if(_chg)cy.value=m.cycle+(_l0.rest?(_l0.rest.charAt(0)==='\\n'?'':' ')+_l0.rest:'');}
   if(!m.ok){ln.textContent='\u00d7\u2014';lt.innerHTML='';return;}
   ln.textContent=m.n>0?('\u00d7'+m.n):'\u00d7\u2014';
   if(!m.parts){lt.innerHTML='<span class="clk-noend">no end</span>';return;}
-  var P=m.parts;lt.innerHTML='<span data-u="y">'+P.y+'</span>-<span data-u="mo">'+P.mo+'</span>-<span data-u="d">'+P.d+'</span>('+P.wd+') '+P.hm;};
+  var P=m.parts;lt.innerHTML='<span data-u="y">'+P.y+'</span>-<span data-u="mo">'+P.mo+'</span>-<span data-u="d">'+P.d+'</span>('+P.wd+') '+P.hm;
+  try{var _nc=document.getElementById('clk-ncols');if(_chg&&_nc&&_nc.classList.contains('on')&&window.__clkNdRefresh)window.__clkNdRefresh();}catch(e){}};   /* v4.2.458(俊克「下の8h×3400の下のドラムが111のままなのが気になる」): 答えが箱を書き換えた時だけ、回数ドラムを今の数へ */
  (function(){var row=document.getElementById('clk-last');if(!row)return;
   row.addEventListener('wheel',function(ev){var u=ev.target&&ev.target.closest?ev.target.closest('[data-u]'):null;if(!u)return;ev.preventDefault();
    clkLastAcc+=ev.deltaY;var th=24;if(Math.abs(clkLastAcc)<th)return;var dir=clkLastAcc<0?1:-1;clkLastAcc=0;   /* 上へ回す= 増える */
@@ -29337,6 +29338,11 @@ if(clkCaret&&clkPop){
    if(!hit){clkNdHide();return;}
    var same=clkNdSpan&&clkNdSpan.s===hit.s&&clkNdCols.classList.contains('on');clkNdSpan=hit;
    if(!same){var lo=Math.max(1,hit.n-10);clkFill(clkNd,lo,hit.n+10,false);clkNdCols.classList.add('on');clkSel(clkNd,hit.n);try{clkMark(clkNd);}catch(e){}}}
+  /* v4.2.458: 答えで箱の ×N が書き換わったら、開いている回数ドラムを同じ × の新しい数へ(カーソルの位置は見ない= 閉じない) */
+  window.__clkNdRefresh=function(){if(!clkNdSpan||!clkCycEl||!clkNdCols||!clkNdCols.classList.contains('on'))return;
+   var v=clkCycEl.value,s0=clkNdSpan.s,e0=s0;while(e0<v.length&&v.charCodeAt(e0)>=48&&v.charCodeAt(e0)<=57)e0++;
+   var n=parseInt(v.slice(s0,e0),10);if(isNaN(n)){clkNdHide();return;}if(n===clkNdSpan.n)return;
+   clkNdSpan={s:s0,e:e0,n:n};clkFill(clkNd,Math.max(1,n-10),n+10,false);clkSel(clkNd,n);try{clkMark(clkNd);}catch(e){}};
   if(clkCycEl){['keyup','click'].forEach(function(t){clkCycEl.addEventListener(t,clkNdCheck);});clkCycEl.addEventListener('input',function(ev){if(!ev.isTrusted)return;clkNdSpan=null;clkNdCheck();});}   /* v4.2.396: 人が置いた時だけ(read で値が入っただけでは出さない) */
   if(clkNd)clkWatch(clkNd,function(){var n=clkPick(clkNd);if(n==null||!clkNdSpan||!clkCycEl)return;
    var v=clkCycEl.value,sp=clkNdSpan,s2=String(n);if(v.slice(sp.s,sp.e)===s2)return;
