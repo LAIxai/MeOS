@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.477 (2026-09-28)
+- **The cycle first, the origin last.** A ⏰ line is now written `⏰ 🔔Gong/🔕Mew ↺↻(3m 1m)×12 2026-09-28 03:30:00p // R 1. // break 1.` — the cycle is what you read, the origin may run off a narrow window. Lines in the old order are still read; MeOS writes the new order whenever it rewrites one.
+- **Two bells, main and sub.** The first time of the line with an origin is main, every other time is sub. `🔔`/`🔕` decide only the warnings (1 minute, 30 s, 10 s before a time ends); every time rings its own sound **once as it begins**. Two buttons [🔔][🔕] on the line switch them; the sounds are named in the raw line (or numbered — `🔔3/🔕5` — and written down as names).
+- The messages are hidden on the line; the running one shows as an orange tag on the badge line — `⏰ 2.53 0.07 | [R2]/12`.
+- Gone: counted bells (`🔔Gong×`), a list of sounds per count (`🔔15/11/6`) and `🔕` per message — replaced by the two bells above.
+
 ### v4.2.463 – v4.2.468 (2026-09-27, evening)
 - **Opt+click ⏸️ holds a clock and moves its schedule back.** A clock with an origin keeps its schedule when you stop it; Opt+click ⏸️ holds it instead, and ▶️ goes on with the origin moved back by the time it was held — every remaining round and bell moves with it. It works across closing the editor.
 - **`+4s` after the origin** moves it by that much when the caret leaves the line (`-30s`, `+1m30s`, `+2h` too), like `~date` turning into `×N`. `p`/`f` is written again for the new time.

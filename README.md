@@ -43,8 +43,8 @@ v4.1 put one clock on a membrane. **v4.2 lets a membrane carry a whole routine**
 another — and it keeps that routine running on the Mac menu bar even when VSCodium is closed.
 
 ```md
-<!-- Mew!UFC ⏰🔐 1. 2026-09-01 10:45p ↺↻8h // 💧Time for eye drops -->
-<!-- Mew!FC ⏰⚓️ 1. ↺↻(5m)×2 // 💧Eye drop # 1. -->
+<!-- Mew!UFC ⏰🔐 🔔Glass/🔔Tink 1. ↺↻8h 2026-09-01 10:45p // 💧Time for eye drops -->
+<!-- Mew!FC ⏰⚓️ 🔔/🔔 1. ↺↻(5m)×2 // 💧Eye drop # 1. -->
 ```
 
 **Independent yet linked.** The first clock keeps its own time from its origin — every eight hours, day after
@@ -58,24 +58,31 @@ The rule is one line long: **a clock with an origin keeps its own time; only clo
 Four tomatoes with a short break after each, then a longer rest, round and round:
 
 ```md
-<!-- Mew!UFC ⏰ 1. ↺↻(25m 5m)×4 // 🍅Pomodoro 1. -->
-<!-- Mew!FC ⏰ 1. ↺↻(10m)×1 // ☕Break -->
+<!-- Mew!UFC ⏰ 🔔/🔔 1. ↺↻(25m 5m)×4 // 🍅Pomodoro 1. -->
+<!-- Mew!FC ⏰ 🔔/🔔 1. ↺↻(10m)×1 // ☕Break -->
 ```
 
 (The same routine also fits on one line — `↺↻((25m 5m)×4 10m)×5` — when you want it to stop after five rounds.)
 
-**One line, a message and a bell for every time.** Put one `//` message for each time you wrote, left to right,
-and one more for the end. Each shows while its time runs — on the line, in the status bar and on the menu bar —
-and is said again when it ends. Add `🔔` and a number — the number beside each sound in Me Dock's 🔔 list — or
-the sound's name to choose that time's bell — it rings once as the time begins, and for the warnings before it ends; `🔔15/11/6` takes the next sound on every count, and `🔕` drops that
-time's warnings (the whistle at its end still sounds). **Set** writes the numbers down as names, so the line rings the same on any machine. Without either,
-the bell you chose in Me Dock rings. Add `×` — `🔔Mew×` — and that time is announced when it **starts**, once for
-round 1, twice for round 2: you know the round with your eyes shut. Each message has its own **[🔔] / [🥊]** button: 🔔 keeps that time's warnings, 🥊 (or 🔕 for a time without a counted bell) writes `🔕` to drop them — the round rings only its starting gong. The template (`R1.`) is hidden, and the running time shows its count on an orange tag — `[R3]` or `[break3]` — so the line itself tells you where you are. 🥊 **Gong** is new in the 🔔 list — made, like 🐱 Mew,
-from measurements of a real one.
+**The cycle first, the origin last.** A ⏰ line reads left to right in the order you care about: the buttons,
+the cycle, then the origin — which may run off the edge of a narrow window without hiding anything you need.
 
 ```md
-<!-- Mew!UFC ⏰ ↺↻((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔15/11/6 // 💓break 1. 🔕 // 🏁Done 🔔Hero -->
+<!-- Mew!UFC ⏰⚓️ 🔔Gong/🔕Mew ↺↻(3m 1m)×12 2026-09-28 03:30:00p // R 1. // break 1. -->
 ```
+
+On screen that line reads `⏸️⏰⚓️🔓🔔🔕[−1s][+1s] ↺↻(3m/1m)×12 2026-09-28(M) 03:30:00p`, and the badge line above it
+shows the countdown and the round — `⏰ 2.53 0.07 | [R2]/12`.
+
+**Two bells: main and sub.** The first time of the line with an origin (or of the first line) is the **main** time;
+every other time is **sub**. `🔔Gong/🔕Mew` right after the ⏰ gives each its sound — main Gong, sub Mew — and says
+whether it warns you: **🔔** rings 1 minute, 30 seconds and 10 seconds before that time ends, **🔕** stays quiet. Either
+way a time always rings **once as it begins**, so with `🔕Gong/🔕Mew` you hear only a gong at each round and a mew at
+each break. The two buttons [🔔][🔕] on the line switch them; the sound is chosen in the raw line — a name, or the
+number beside it in Me Dock's 🔔 list (`🔔3/🔕5`), which MeOS writes down as a name when the caret leaves the line so it
+rings the same on any machine. Put one `//` message for each time you wrote, left to right, and one more for the end;
+they show in the status bar and on the menu bar while their time runs. 🥊 **Gong** is new in the 🔔 list — made, like
+🐱 Mew, from measurements of a real one.
 
 The `1.` at the start is only for your eyes, as in a Markdown list: write `1.` on every line and MeOS still shows
 1, 2, 3, because it reads the order, not the figure.
@@ -85,7 +92,7 @@ copied anywhere and still says what it is for. A `1.` inside the title is a slot
 reads *💧Eye drop # 2* on the second drop — on the line, in the status bar and on the menu bar alike. Only the clock
 that is running shows its title on the line; the ones waiting their turn stay quiet.
 
-**Every line has its own ▶️ / ⏸️.** Stop one clock and the rest of the row carries on. A clock with an origin keeps its schedule when you stop it; **Opt+click ⏸️** instead holds it and moves the whole schedule back by the time it was held — for a doctor's check in the fourth round, a phone call in the middle of a Pomodoro. To nudge it by hand, write `+4s` (or `-30s`, `+1m30s`) after the origin: when the caret leaves the line, the origin moves by that much and the `+4s` is gone. Or press the **[−1s] / [+1s]** buttons drawn right after the origin (**Opt+click** for ±10 s) — handy when the referee stops the clock for a low blow, again and again. Mark a line ⏯️ and, when
+**Every line has its own ▶️ / ⏸️.** Stop one clock and the rest of the row carries on. A clock with an origin keeps its schedule when you stop it; **Opt+click ⏸️** instead holds it and moves the whole schedule back by the time it was held — for a doctor's check in the fourth round, a phone call in the middle of a Pomodoro. To nudge it by hand, write `+4s` (or `-30s`, `+1m30s`) after the origin: when the caret leaves the line, the origin moves by that much and the `+4s` is gone. Or press the **[−1s] / [+1s]** buttons drawn just before the cycle (**Opt+click** for ±10 s) — handy when the referee stops the clock for a low blow, again and again. Mark a line ⏯️ and, when
 its turn comes, it waits for you to press ▶️ instead of starting by itself. 🔓 → 🔐 locks a clock so it can be
 neither stopped nor deleted until it rings; **Opt+click** the 🔐 to take the lock off again.
 
@@ -104,7 +111,7 @@ interval: `↺t1,3` is the first and third Thursday, `↺t` every Thursday, `↺
 the origin.
 
 ```md
-<!-- Mew!UFC ⏰ 2026-10-01 10:00 ↺t1,3 ×11 // Monthly meeting -->
+<!-- Mew!UFC ⏰ 🔔/🔔 ↺t1,3 ×11 2026-10-01 10:00 // Monthly meeting -->
 ```
 
 **Count or date — write whichever you know (Date&Count).** If you know how many turns, write `×N`; if you know
@@ -112,7 +119,7 @@ when it should end, write `~` and the date instead, and MeOS turns it into the l
 it:
 
 ```md
-<!-- Mew!UFC ⏰ 2026-09-24 10:00 ↺8h ~2026-10-31 10:00 // Medicine -->   →   ↺8h ×111
+<!-- Mew!UFC ⏰ 🔔/🔔 ↺8h ~2026-10-31 10:00 2026-09-24 10:00 // Medicine -->   →   ↺8h ×111
 ```
 
 Either way the last day is shown on the badge line just above the clock — for five seconds after you change it
@@ -121,7 +128,7 @@ change N. Nothing but `×N` is kept in your file; the last day is worked out fro
 
 **Three presets, then Set.** The ⏰▾ panel opens with a routine already in it. **↻** on the corner of the UFC box
 steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 eye drops (two lines; the five-minute one at anchor) and
-💓 an hour of boxing `((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Gong× 🔕 // 💓break 1.` (gongs to start each round, silence inside it), one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
+💓 an hour of boxing `🔔Gong/🔕Mew ((3m 1m)×5)×3 // 💓HIIT-Box 1. // 💓break 1.` (a gong to start each round, a mew for each break), one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
 routine begins and where it ends. Click the year, month or day of **Last bell** and the same three drums as

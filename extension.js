@@ -10602,7 +10602,7 @@ function meosScheduleClockMetaWrite(doc) {
 //     -> **役that違う物は、住所を分ける**。
 //   *数字を許すのは \u23f8 の直後だけ= 印の欄全体に数字を許すと \u23f0 2026-... の
 //     2026 を印として食う(起点that消える)。
-const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*((?:[\ud83d\udd10\ud83d\udd12\ud83d\udd13\ud83d\udc41\u2713\u2714\u2705\u25b6\u23ef\u2693\ufe0f]|\u23f8\ufe0f?[0-9]*)*)[ \t]*([^\n<]*?)[ \t]*-->/;
+const MEOS_CLOCK_FC_RE = /<!--[ \t]*[Mm][Ee][Ww]![ \t]*(?:UFC|ufc|FC|fc)?[ \t]*\u23f0\ufe0f?[ \t]*((?:\ud83d[\udd10\udd12\udd13\udc41]|[\u2713\u2714\u2705\u25b6\u23ef\u2693\ufe0f]|\u23f8\ufe0f?[0-9]*)*)[ \t]*([^\n<]*?)[ \t]*-->/;
 // \ud83d\udd12=錠(途中で外せない) / \ud83d\udc41=押さえる(Pseudo\ud83d\udc41で掛けた時計。鳴るまで生データへ戻れない)
 // \u23f8=休み(予定は書いたまま、鳴らないでいる)
 // ★★★v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを
@@ -10854,6 +10854,33 @@ function meosClockFcParse(text) {
   let title = '';
   { const _ti = body.indexOf('//'); if (_ti >= 0) { title = body.slice(_ti + 2).trim(); body = body.slice(0, _ti).trim(); } }
   if (MEOS_CLOCK_DONE_RE.test(body)) { done = true; body = body.replace(MEOS_CLOCK_DONE_RE, '').trim(); }
+  // ★★★v4.2.477(俊克 2026.09.28 am04:12「もっとシンプルにしよう。音はメインとサブの2種類のみ」＋ am04:26「起点の日時よりも、(3m/1m)のような周期の方が
+  //   ユーザーにとって見れば重要…本文の並びを変えるのは、今回、やるべき。Rawの並びと通常の表示の並びが違うと分かりにくい」):
+  //   ★新しい並び= ⏰印 🔔主/🔕副 [番号] ↺↻周期 [~日付] 起点 [+4s] // メッセージ …
+  //   ★読む入口で「起点 → 周期」の順に組み直し、先は今までの読み方をそのまま使う(p/f・仮の起点・番号・暦の規則に手を入れない)。周期の字の位置は本文の実際の位置から渡す。
+  let bellSrc = '', bellMainOn = true, bellMain = '', bellSubOn = true, bellSub = '', _cycAt = -1;
+  try {
+    const _ar = body.search(/[↺↻]/);
+    if (_ar >= 0) {
+      let _pre = body.slice(0, _ar);
+      const _bm = /^\s*([\u{1F514}\u{1F515}])([^\s\/\u{1F514}\u{1F515}]*)(?:\s*\/\s*([\u{1F514}\u{1F515}])([^\s\/]*))?/u.exec(_pre);
+      if (_bm) {
+        bellSrc = _bm[0].trim(); bellMainOn = (_bm[1] === '\u{1F514}'); bellMain = _bm[2] || '';
+        if (_bm[3]) { bellSubOn = (_bm[3] === '\u{1F514}'); bellSub = _bm[4] || ''; }
+        _pre = _pre.slice(_bm.index + _bm[0].length);
+      }
+      const _arw = /^[↺↻]{1,2}/.exec(body.slice(_ar))[0];
+      let _post = body.slice(_ar + _arw.length);
+      let _untilPart = '';
+      const _um0 = /[~〜～]\s*\S+(?:\s+(?![0-9]{4}[\/\-.])\S*\d{1,2}[:.]\d{2}\S*)?/.exec(_post);
+      if (_um0) { _untilPart = _um0[0].trim(); _post = _post.slice(0, _um0.index) + ' ' + _post.slice(_um0.index + _um0[0].length); }
+      const _om = /(^|\s)(v?\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}|v?\d{1,2}:\d{2}|v\d+[hms][0-9hms]*)/.exec(_post);
+      let _cyc = _post, _org = '';
+      if (_om) { _cyc = _post.slice(0, _om.index + _om[1].length); _org = _post.slice(_om.index + _om[1].length); }
+      body = [_pre.trim(), _org.trim(), _arw + _cyc.replace(/[ \t]+$/, ''), _untilPart].filter(x => x).join(' ');
+      const _rawAr = t.search(/[↺↻]/); if (_rawAr >= 0) _cycAt = _rawAr + _arw.length;
+    }
+  } catch (_) { }
   // ★v4.2.347 Date&Count: 式の後ろの `~日付` は時計の中身に混ぜない(数字を長さと読ませない)。書き戻す口へ運ぶ。
   let untilSrc = '', untilAt = 0;
   try {
@@ -10936,7 +10963,7 @@ function meosClockFcParse(text) {
     //   そのまま書き戻すと壊れた行になるso、短い形は捨てて組み直させる
     //   (次に鳴った時、静かに新しい形へ移る= v4.1.58と同じ作法)。
     if ((cycleSrc.split(')').length - 1) > (cycleSrc.split('(').length - 1)) cycleSrc = '';
-    const _ex = meosParseCycleExpr(body.slice(_srcAt), _bodyAt + _srcAt);
+    const _ex = meosParseCycleExpr(body.slice(_srcAt), (_cycAt >= 0 ? _cycAt : _bodyAt + _srcAt));   // v4.2.477: 周期の字の位置は本文の実際の位置
     if (_ex.steps.length) {
       cycle = _ex.steps.map(e => e.tok);             // 平らに展開した歩の並び= 今までの cycle
       cycleSpans = _ex.steps.map(e => [e.from, e.to]);
@@ -11022,7 +11049,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, bellSrc, bellMainOn, bellMain, bellSubOn, bellSub, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -11154,7 +11181,7 @@ function meosClockFcScan(doc) {
     const _tags = (c.tags || []).slice();
     if (owner) for (const _t of meosMembraneTags(doc, owner.start)) if (_tags.indexOf(_t) < 0) _tags.push(_t);
     _lines.add(i);
-    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
+    out.push({ line: i, key: owner ? owner.id : '', name: owner ? owner.id : '', when: c.when, lock: c.lock, anchor: c.anchor, hold: c.hold, manual: c.manual,   /* v4.2.63 */ off: c.off, done: c.done, pausedRound: c.pausedRound, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, cycleSpans: c.cycleSpans, cycleSeps: c.cycleSeps, cycleReps: c.cycleReps, magic: c.magic, whenSrc: c.whenSrc, pAt: c.pAt || 0, listNo: c.listNo || '', tags: _tags, ufc: c.ufc, bellSrc: c.bellSrc || '', bellMainOn: c.bellMainOn !== false, bellMain: c.bellMain || '', bellSubOn: c.bellSubOn !== false, bellSub: c.bellSub || '', /* v4.2.477 */ vAt: c.vAt || 0, vElapsed: (typeof c.vElapsed === 'number') ? c.vElapsed : -1 /* v4.2.77: 仮想の起点 */, title: c.title || '' /* v4.2.91 */ });   // v4.2.31: 見せかけの番号   // v4.2.28: 数え始め(p)   // v4.1.157: 短い形と桁も運ぶ   // v4.1.146: 回数も運ぶ   // v4.1.138: dual も運ぶ(書き換えで片方に化けない)
   }
   try { _meosClockLinesMem.set(doc.uri.toString(), { version: doc.version, lines: _lines }); } catch (_) { }
   try { _meosClockScanCache.set(doc, { version: doc.version, value: out }); } catch (_) { }   // v4.1.186
@@ -11379,7 +11406,7 @@ async function meosClockSetMore(message, first) {
     await sleep(250);
     for (let i = 0; i < more.length; i++) {
       const it = more[i] || {};
-      const want = String(it.cycle || '').trim();
+      const want = String(it.cycle || '').replace(/^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u, '').trim();   // v4.2.477: 2行目から先の 🔔/🔕 は読まない(メインの行の指定が決める)
       for (let t = 0; t < 6; t++) {
         let at;
         if (replace) { const r = rows(); const k = r.findIndex(c => c.line === first.atLine); if (k >= 0 && r[k + 1 + i]) at = r[k + 1 + i].line; }
@@ -11481,13 +11508,17 @@ function meosClockUntilRewrite(txt, c, n) {
 // ★v4.2.470: 起点の時刻を ms だけずらした行を返す(書けなければ null)= `+4s` の書き戻しと [−1s]/[+1s] の共通の部品。p/f は新しい時刻で付け直す。
 function meosClockOriginShiftText(txt, ms) {
   try {
-    const a = txt.search(/[↺↻]/), head = a >= 0 ? txt.slice(0, a) : txt, tail = a >= 0 ? txt.slice(a) : '';
-    const m = /(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?::\d{2})?)([pf])?/.exec(head); if (!m) return null;
-    if (m.index > 0 && /v$/i.test(head.slice(0, m.index))) return null;   // 仮の起点(v…)は拡張が書く物= ずらさない
+    // ★v4.2.477: 起点は周期の後ろ(// の前)。~日付 の日付と仮の起点(v…)は起点ではない。古い並び(起点が矢印の前)も同じ探し方で見つかる。
+    const tEnd = (function () { const a = txt.search(/[\u21ba\u21bb]/); const k = txt.indexOf('//', a >= 0 ? a : 0); const c = txt.lastIndexOf('-->'); return k >= 0 ? k : (c >= 0 ? c : txt.length); })();
+    const zone = txt.slice(0, tEnd);
+    const re = /(?<![~\u301c\uff5ev\d])(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?::\d{2})?)([pf])?/g;
+    let m = null, x; while ((x = re.exec(zone))) { const pre = zone.slice(Math.max(0, x.index - 2), x.index); if (/[~\u301c\uff5e]\s*$/.test(pre)) continue; m = x; break; }
+    if (!m) return null;
+    if (m.index > 0 && /v$/i.test(zone.slice(0, m.index))) return null;
     const o = meosParseStampLoose(m[1] + m[3].replace(/^\s+/, ' ')); if (!o) return null;
     const nw = new Date(o.getTime() + ms), st = meosClockFcStamp(nw);
     const mark = m[4] ? (nw.getTime() <= Date.now() ? 'p' : 'f') : '';
-    return head.slice(0, m.index) + st + mark + head.slice(m.index + m[0].length) + tail;
+    return txt.slice(0, m.index) + st + mark + txt.slice(m.index + m[0].length);
   } catch (_) { return null; }
 }
 // ★★v4.2.470(俊克「[+][-]0sのような微調整ボタンがあるといいね。結構何度も、たとえば、ローブローでも時間が止められて、ズレたよ」):
@@ -11496,7 +11527,7 @@ function meosClockNudgeSpot(txt, c) {
   try {
     if (!c || c.done || !c.when || meosClockSplitV(c.whenSrc)) return -1;   // 起点が本文に在る1本だけ
     const a = txt.search(/[↺↻]/); if (a < 2) return -1;
-    if (!/[ \t]/.test(txt[a - 1]) || !/[0-9pf]/.test(txt[a - 2])) return -1;
+    if (!/[ \t]/.test(txt[a - 1])) return -1;   // v4.2.477: 起点は周期の後ろへ移った= 矢印の前の空白だけを見る
     return a - 1;
   } catch (_) { return -1; }
 }
@@ -11543,29 +11574,37 @@ function meosClockTitleSegs(txt) {
 }
 function c9done76(c) { return !!(c && c.done); }
 function meosClockSegIcon(g) { return g.muted ? (g.counted ? '🥊' : '🔕') : '🔔'; }
+// ★v4.2.477: 頭の 🔔主/🔕副 の位置= メインのボタンは 🔔/🔕 の字の直後、サブのボタンは / の後ろの 🔔/🔕 の字の前(🔓 は頭の字の前= 位置が重ならない)
+function meosClockBellHead(txt) {
+  try {
+    const a = txt.search(/[↺↻]/); if (a < 0) return null;
+    const head = txt.slice(0, a);
+    const re = /([\u{1F514}\u{1F515}])([^\s\/\u{1F514}\u{1F515}]*)(?:\s*\/\s*([\u{1F514}\u{1F515}])([^\s\/]*))?/u;
+    const at = txt.indexOf('⏰'); if (at < 0) return null;
+    const m = re.exec(head.slice(at + 1)); if (!m) return null;
+    const b0 = at + 1 + m.index, end = b0 + m[0].length;
+    const b1 = m[3] ? (b0 + m[0].lastIndexOf(m[3])) : -1;
+    return { b0, b1, end, mainOn: m[1] === '\u{1F514}', subOn: m[3] ? m[3] === '\u{1F514}' : true };
+  } catch (_) { return null; }
+}
 function meosClockBellModeHitAt(document, line, character) {
   try {
     const txt = document.lineAt(line).text || ''; if (txt.indexOf('⏰') < 0) return null;
     const c = meosClockFcParse(txt); if (!c || c.done) return null;
-    const segs = meosClockTitleSegs(txt), k = segs.findIndex(g => g.s === character);
-    return k >= 0 ? { line, k } : null;
+    const h = meosClockBellHead(txt); if (!h) return null;
+    if (character === h.b0 + 2) return { line, which: 'main', h };
+    if (h.b1 >= 0 && character === h.b1) return { line, which: 'sub', h };
+    return null;
   } catch (_) { return null; }
 }
 async function meosClockBellModeToggle(document, hit) {
   try {
-    const txt = document.lineAt(hit.line).text || '', segs = meosClockTitleSegs(txt), g = segs[hit.k]; if (!g) return false;
-    let b = g.body.trim();
-    if (g.muted) b = b.replace(/\s*\u{1F515}/gu, '').trim();
-    else {
-      b = (b + ' \u{1F515}').trim();
-      if (hit.k === 0 && !segs.some(x => x.counted)) b = b.replace(/\s*\u{1F515}$/u, '') + ' \u{1F514}Gong× \u{1F515}';   // 最初の区切り(ラウンド)を黙らせる時、数え鳴きが無ければ開始のゴング
-    }
-    const tail = txt.slice(g.e);
-    const nt = txt.slice(0, g.s) + ' ' + b + ' ' + tail.replace(/^[ \t]+/, '');
-    if (nt === txt) return false;
-    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, 0, hit.line, txt.length), nt);
+    const txt = document.lineAt(hit.line).text || '', h = meosClockBellHead(txt); if (!h) return false;
+    const pos = hit.which === 'main' ? h.b0 : h.b1; if (pos < 0) return false;
+    const cur = txt.slice(pos, pos + 2), nx = (cur === '\u{1F514}') ? '\u{1F515}' : '\u{1F514}';
+    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, pos, hit.line, pos + 2), nx);
     const ok = await vscode.workspace.applyEdit(we);
-    meosDbg('[bellMode] 区切り' + (hit.k + 1) + ' ' + (g.muted ? '→ 🔔' : '→ 🔕') + ' 行=' + (hit.line + 1) + ' ok=' + ok);
+    meosDbg('[bellMode] ' + hit.which + ' ' + cur + '→' + nx + ' 行=' + (hit.line + 1) + ' ok=' + ok);
     return ok;
   } catch (_) { return false; }
 }
@@ -11587,10 +11626,9 @@ function meosClockShiftRewrite(txt, c) {
   try {
     if (!c || !c.shiftSrc || !c.shiftMs) return null;
     const nt = meosClockOriginShiftText(txt, c.shiftMs); if (!nt) return null;
-    const a = nt.search(/[↺↻]/), head = a >= 0 ? nt.slice(0, a) : nt, tail = a >= 0 ? nt.slice(a) : '';
-    const si = head.indexOf(c.shiftSrc); if (si < 0) return null;
-    const h2 = head.slice(0, si).replace(/[ \t]+$/, '') + ' ' + head.slice(si + c.shiftSrc.length).replace(/^[ \t]+/, '');
-    return h2.replace(/[ \t]+$/, ' ') + tail;
+    const a = nt.search(/[\u21ba\u21bb]/), k = nt.indexOf('//', a >= 0 ? a : 0), lim = k >= 0 ? k : nt.length;
+    const si = nt.lastIndexOf(c.shiftSrc, lim); if (si < 0) return null;   // v4.2.477: +4s は起点の後ろ(// の前)
+    return (nt.slice(0, si).replace(/[ \t]+$/, '') + ' ' + nt.slice(si + c.shiftSrc.length).replace(/^[ \t]+/, '')).replace(/ \/\//, ' //');
   } catch (_) { return null; }
 }
 const _meosUntilBusy = new Set();
@@ -11610,6 +11648,12 @@ function meosCycleTextSetRounds(text, n) {
 }
 // ⏰パネルの問い= {when, cycle, unit:'n'|'d'|'mo'|'y'|'', dir:±1} → {n, cycle, parts}
 function meosClockLastAnswer(msg) {
+  const _r43 = meosClockLastAnswer0(Object.assign({}, msg, { cycle: String(msg.cycle || '').replace(/^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u, '') }));   // v4.2.477: 行頭の 🔔主/🔕副 は周期でない
+  const _b43 = /^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u.exec(String(msg.cycle || ''));
+  if (_b43 && _r43 && typeof _r43.cycle === 'string') _r43.cycle = _b43[1].trim() + ' ' + _r43.cycle;   // 箱を書き直す時に付け戻す
+  return _r43;
+}
+function meosClockLastAnswer0(msg) {
   const cyc = String(msg.cycle || '').trim();
   const ex = cyc ? meosParseCycleExpr(cyc, 0) : { steps: [], rounds: null };
   const cycle = ex.steps.map(e => e.tok);
@@ -11741,6 +11785,13 @@ async function meosClockFcSet(doc, key, spec, atLine) {
         if (_uh && typeof _uh.line === 'number') { const _pc = meosClockFcParse(doc.lineAt(_uh.line).text); if (_pc && _pc.untilSrc) spec = Object.assign({}, spec, { untilSrc: _pc.untilSrc }); }
       }
     } catch (_) { }
+    // ★v4.2.477: 鐘の指定(🔔主/🔕副)も書き直しの度に運ぶ(~日付 と同じ作法)
+    try {
+      if (spec && spec.bellSrc === undefined) {
+        let _bh = null; for (const x of meosClockFcScan(doc)) if (x.key === key && (typeof atLine !== 'number' || x.line === atLine)) { _bh = x; break; }
+        if (_bh && typeof _bh.line === 'number') { const _pc = meosClockFcParse(doc.lineAt(_bh.line).text); if (_pc && _pc.bellSrc) spec = Object.assign({}, spec, { bellSrc: _pc.bellSrc }); }
+      }
+    } catch (_) { }
     // ★v4.2.312: ⚓(停泊)は書き直しの度に運ぶ= 呼ぶ側(15箇所)が知らなくても落ちない。明示された時だけ替える
     try {
       if (spec && spec.anchor === undefined) {
@@ -11755,7 +11806,16 @@ async function meosClockFcSet(doc, key, spec, atLine) {
       ? ('<!-- ' + MEOS_MEW_SIG + ((spec.done || spec.wait) ? 'FC' : 'UFC') + ' \u23f0' + (spec.hold ? '\ud83d\udc41' : '') + (spec.lock ? '\ud83d\udd10' : '') + (spec.anchor ? '\u2693\ufe0f' : '') + (spec.manual ? '\u23ef\ufe0f' : '')   /* ★v4.2.65: 押すまで待つ印(書くのは ⏯️ 1つ・▶️ は読むだけ) */ + (spec.off ? ('\u23f8' + (spec.pausedRound > 0 ? Math.floor(spec.pausedRound) : '')) : '')
         // ★v4.1.165: 仕掛けの言葉(BigBang / MeW!)は**書いてあった字のまま**戻す
         //   (置き換えた本物の起点を書くと、次の書き戻しで仕掛けthat消える)。
-        + (function () { const _w = String((spec.whenSrc != null && String(spec.whenSrc).trim()) ? spec.whenSrc : (spec.when || '')).trim(); return _w ? (' ' + _w) : ''; })()   /* v4.2.77: 起点も番号も無い時に空白を2つ書かない */
+        + ' ' + (spec.bellSrc ? String(spec.bellSrc).trim() : '\u{1F514}/\u{1F514}')   /* v4.2.477: 🔔主/🔕副(無ければ 🔔/🔔= 既定の音で鳴る)。印との間に空白1つ= 🔓 の当たり */
+        + (function () {   /* ★v4.2.477: 新しい並び= [番号] ↺↻周期 [~日付] 起点。起点が魔法の言葉(BigBang 等)の時だけ今までの並び(言葉が先) */
+          const _w = String((spec.whenSrc != null && String(spec.whenSrc).trim()) ? spec.whenSrc : (spec.when || '')).trim();
+          const _no = /^(\d{1,3}[.)])(?:[ \t]+|$)/.exec(_w);
+          const _ln = _no ? _no[1] : '', _og = _no ? _w.slice(_no[0].length).trim() : _w;
+          const _dt = !_og || /^(v?\d{4}[\/\-.]|v?\d{1,2}:\d{2}|v\d)/.test(_og);
+          spec.__og43 = _dt ? _og : '';
+          const _lead = _dt ? _ln : _w;
+          return _lead ? (' ' + _lead) : '';
+        })()
         // ★★★v4.1.1108: **向きは必ず書く。周期は在る時だけ書く**(俊克「↺は方向だけを示している」)。
         //   繰返しthat無くても矢印を書くので、**一度きりのストップウォッチthat生データに残る**。
         //   v4.1.60: \u21bbはそのまま残す / v4.1.58: 書く時は \u21ba
@@ -11773,6 +11833,7 @@ async function meosClockFcSet(doc, key, spec, atLine) {
           return _ar + (_rn ? ('(' + _cy + ')\u00d7' + _rn) : _cy);
         })()
         + ((spec.untilSrc && !spec.done) ? (' ' + String(spec.untilSrc).trim()) : '')   /* v4.2.347: 書き戻す前の ~日付 */
+        + (spec.__og43 ? (' ' + spec.__og43) : '')   /* v4.2.477: 起点は周期の後ろ */
         + (spec.done ? '\u2713' : '') + ((spec.title && String(spec.title).trim()) ? (' // ' + String(spec.title).trim()) : '') + ' -->')   /* v4.2.91: タイトル */
       : '';
     // ★★★v4.1.31: **同じ膜に⏰行that2本以上在り得る**= 拾う側は find(1本目だけ)so、消したつもりで残る。
@@ -13369,15 +13430,19 @@ function meosApplyTimerLineDecorations(editor) {
                 let _k9 = _c9; while (_k9 > 0 && txt.charAt(_k9 - 1) === ' ') _k9--;
                 badgeHide.push(new vscode.Range(i, _k9, i, txt.length));           // ` -->` を消す
               }
-              try {   // ★v4.2.173 → v4.2.476: 区切り(// …)ごとに中身を隠し、頭にボタン＋鐘の指定を描く(札は下の掛かっている1本の所)
-                const _sg76 = meosClockTitleSegs(txt);
-                for (const g of _sg76) {
-                  let _e76 = g.e; while (_e76 > g.s && txt.charAt(_e76 - 1) === ' ') _e76--;
-                  if (_e76 > g.s) badgeHide.push(new vscode.Range(i, g.s, i, _e76));
-                  if (!c9done76(c)) plays.push({ range: new vscode.Range(i, g.s, i, g.s), renderOptions: Object.assign({ before: { contentText: meosClockSegIcon(g), backgroundColor: '#fffdf6', border: '1px solid #d18400', margin: '0 3px 0 4px', textDecoration: 'none; border-radius: 4px; padding: 0 2px; cursor: ' + meosHandCursor() + ';' } },
-                    g.marks ? { after: { contentText: g.marks + ' ', color: new vscode.ThemeColor('editor.foreground') } } : {}) });
+              try {   // ★v4.2.477: メッセージ(矢印の後ろの最初の // から)は行から全部隠す= 回数の札はバッジ行へ。頭の 🔔主/🔕副 は字を隠してボタンを描く
+                const _ar30 = txt.search(/[↺↻]/), _e30 = (_c9 > 0 ? _c9 : txt.length);
+                const _h30 = _ar30 >= 0 ? txt.indexOf('//', _ar30) : -1;
+                if (_h30 > 0 && _h30 < _e30) { let _s30 = _h30; while (_s30 > 0 && txt.charAt(_s30 - 1) === ' ') _s30--; badgeHide.push(new vscode.Range(i, _s30, i, _e30)); }
+                const _bh30 = meosClockBellHead(txt);
+                if (_bh30) {
+                  badgeHide.push(new vscode.Range(i, _bh30.b0, i, _bh30.end));
+                  if (!c.done) {
+                    const _bb = (on) => ({ contentText: on ? '🔔' : '🔕', margin: '0 1px', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' });
+                    plays.push({ range: new vscode.Range(i, _bh30.b0 + 2, i, _bh30.b0 + 2), renderOptions: { before: _bb(_bh30.mainOn) } });
+                    if (_bh30.b1 >= 0) plays.push({ range: new vscode.Range(i, _bh30.b1, i, _bh30.b1), renderOptions: { before: _bb(_bh30.subOn) } });
+                  }
                 }
-                if (_sg76.length) _titleAt.set(i, _sg76);
               } catch (_) { }
               // ★★★v4.2.52(俊克 2026.09.11 am01:12「ただし連番が表示されないよね」
               //   ＋ pm06:43「1.の部分に見せかけの値を表示する」):
@@ -13647,7 +13712,7 @@ function meosApplyTimerLineDecorations(editor) {
           } catch (_) { }
           // ★v4.2.446(俊克「インラインで編集しても動くようにしてよ」): 手で書いた 🔔番号 も、カーソルが行を出たら名前に書き換える(Set と同じ)
           try {
-            if (!_rawHere && /\u{1F514}\s*\d/u.test(txt)) {
+            if (!_rawHere && /[\u{1F514}\u{1F515}]\d/u.test(txt)) {   // v4.2.477: 🔔3/🔕5
               const _nb = meosBellNumbersToNames(txt), _bk46 = uri + ' ' + i + ' ' + txt;
               if (_nb !== txt && !_meosUntilBusy.has(_bk46)) {
                 _meosUntilBusy.add(_bk46);
@@ -13967,6 +14032,10 @@ function meosApplyTimerLineDecorations(editor) {
               const _s2 = _rnd.indexOf('/');
               const _nu = (_s2 > 0) ? _rnd.slice(0, _s2) : _rnd;
               const _de = (_s2 > 0) ? _rnd.slice(_s2) : '';
+              // ★v4.2.477: 回数はメッセージの札で出す= [R2]/12(俊克「⏰⚓︎ 2.53 0.07 | [R2]/12」)。メッセージが無ければ今までどおり ×2
+              let _lb30 = ''; try { if (c.title) _lb30 = meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null); } catch (_) { }
+              if (_lb30) return { before: { contentText: (_rndAfter ? '  ' : '') + '\u00a0' + _lb30 + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', fontWeight: '800', textDecoration: 'none; border-radius: 3px' },
+                after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };
               return { before: { contentText: (_rndAfter ? '  ' : '') + _nu, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' },
                 after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };
             })() });
@@ -14725,31 +14794,53 @@ function meosSoundByName(nm) {
 function meosBellNumbersToNames(text) {
   try {
     const path = require('path');
-    return String(text == null ? '' : text).replace(/\u{1F514}\s*(\S+)/gu, (m0, list) => '\u{1F514}' + list.split('/').map(x => {
-      const mm = /^(\d{1,3})(\u00d7?)$/.exec(x); if (!mm) return x;                  // v4.2.439: 🔔8× も
-      const hit = meosSoundByName(mm[1]); return hit ? path.basename(String(hit)).replace(/\.[^.]+$/, '') + mm[2] : x;
-    }).join('/'));
+    // ★v4.2.477: 🔔3/🔕5 のように、🔔 と 🔕 の直後の番号を名前へ(別のパソコンでも同じ音= v4.2.438 の作法)
+    return String(text == null ? '' : text).replace(/([\u{1F514}\u{1F515}])(\d{1,3})(?=[\s\/]|$)/gu, (m0, e, n) => {
+      const hit = meosSoundByName(n); return hit ? e + path.basename(String(hit)).replace(/\.[^.]+$/, '') : m0;
+    });
   } catch (_) { return String(text || ''); }
 }
-function meosClockSoundFor(sc, final) {
+// ★★★v4.2.477(俊克「音はメインとサブの2種類のみ。起点のあるもの、あるいは最初の指定がメイン…鳴るか🔔、鳴らないか🔕…メインを🔕に設定しても、開始時には鳴る」):
+//   ★メインの行= 同じ膜の⏰行のうち起点のある行(無ければ最初の行)。その行の最初の時間がメイン、残り全部(その行の残りの時間・ほかの行)がサブ。
+//   ★音と鳴る/鳴らないは、メインの行の頭の 🔔主/🔕副 から引く。🔔/🔕 が決めるのは先鐘(1分前・30秒前・10秒前)だけ= 始まりはいつもその音で1回。
+function meosClockBellRows(sc) {
   try {
-    if (!sc || !sc.title) return '';
-    const segs = String(sc.title).replace(/^\s*\d{1,3}[.)]\s*/, '').split(/\s+\/\/\s+/);
-    let seg = segs[0], count = Number(sc.round) || 0;
-    if (segs.length > 1) {
-      const si = meosClockStepSeg(sc);
-      const done = !!final || (Number(sc.rounds) > 0 && count > Number(sc.rounds));
-      seg = (done && segs.length > si.atoms) ? segs[si.atoms] : (segs[Math.min(si.seg, segs.length - 1)] || segs[0]);
-      count = done ? 1 : si.count;
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri); if (!doc) return null;
+    const rows = meosClockFcScan(doc).filter(x => x.key === sc.key); if (!rows.length) return null;
+    const main = rows.find(x => meosClockHasOwnOrigin(x)) || rows[0];
+    return { rows, main };
+  } catch (_) { return null; }
+}
+function meosClockBellPick(main, isMain) {
+  const on = isMain ? (main.bellMainOn !== false) : (main.bellSubOn !== false);
+  const nm = isMain ? main.bellMain : main.bellSub;
+  return { on, sound: nm ? (meosSoundByName(nm) || '') : '' };   // '' = Me Dock の 🔔 で選んだ音
+}
+function meosClockRoleNow(sc) {
+  try {
+    const br = meosClockBellRows(sc); if (!br) return { on: true, sound: '' };
+    const me = br.rows.find(x => x.line === sc.line) || br.main;
+    return meosClockBellPick(br.main, me === br.main && meosClockStepSeg(sc).seg === 0);
+  } catch (_) { return { on: true, sound: '' }; }
+}
+// 次に始まる時間の音(同じ行の次の時間/行を終えたら連なりの次の行)。何も始まらない(全部終わった)なら null。
+function meosClockNextStart(sc) {
+  try {
+    const br = meosClockBellRows(sc); if (!br) return null;
+    const len = Array.isArray(sc.cycle) ? sc.cycle.length : 0; if (!len) return null;
+    const me = br.rows.find(x => x.line === sc.line) || br.main;
+    if (!meosClockIsFinalStep(sc)) {
+      const _w0 = !(Number(sc.round) > 0), i = (Number(sc.cidx) || 0) % len, ni = _w0 ? 0 : (i + 1) % len;
+      const nx = Object.assign({}, sc, { cidx: ni, round: _w0 ? 1 : (Number(sc.round) || 0) + (i + 1 >= len ? 1 : 0) });
+      return meosClockBellPick(br.main, me === br.main && meosClockStepSeg(nx).seg === 0);
     }
-    if (/\u{1F515}/u.test(seg || '')) return MEOS_BELL_MUTE;                           // v4.2.437: 🔕= この時間は鳴らさない
-    const m = /\u{1F514}\s*(\S+)/u.exec(seg || ''); if (!m) return '';
-    const list = m[1].replace(/\u00d7$/, '').split('/').filter(Boolean); if (!list.length) return '';   // v4.2.439: × は数え鳴きの印
-    const nm = list[((Math.max(1, count) - 1) % list.length)];
-    const hit = meosSoundByName(nm);
-    if (!hit) meosDbg('[bellSound] 知らない音の名前 ' + nm + ' → 既定の音');
-    return hit;
-  } catch (_) { return ''; }
+    if (br.rows.length > 1) { const k = br.rows.indexOf(me), nr = br.rows[(k + 1) % br.rows.length]; return meosClockBellPick(br.main, nr === br.main); }
+    return null;
+  } catch (_) { return null; }
+}
+function meosPlayOnce(sound) { try { const _k = _meosBellOverride; _meosBellOverride = sound || ''; try { meosPlayChime(); } finally { _meosBellOverride = _k; } } catch (_) { } }
+function meosClockSoundFor(sc, final) {
+  try { const r = meosClockRoleNow(sc); return r.on ? r.sound : MEOS_BELL_MUTE; } catch (_) { return ''; }   // v4.2.477: 先鐘に使う(🔕= 鳴らさない)
 }
 // ★★v4.2.439(俊克「1Rの開始にミャー1回、2Rのときミャー2回、これで聞いているだけで何ラウンド目か分かる」):
 //   `🔔Mew×` = その時間が**始まる時**、回数(器 1. と同じ数え方)だけ鳴らす。始まりの合図がこれになるので、その時は0秒の笛を鳴らさない。
@@ -14777,11 +14868,7 @@ function meosClockStartCountBell(sc) {
 // ★v4.2.440(俊克「Setを押した時、1鳴きしましょう。最初のゴングだね」): 今すぐ始まる時(起点なし/起点が今か過去)、
 //   1本目の最初の時間に 🔔…× が在れば、その1周目として鳴らす。未来の起点なら、起点の瞬間(0周目の終わり)に鳴る。
 function meosClockSetGong(title, cycleSrc, cycle, rounds) {
-  try {
-    const t = String(title || ''); if (t.indexOf('\u{1F514}') < 0) return;   // v4.2.448: × が無くても、1本目の 🔔 を1回
-    const cb = meosClockStartCountBell({ title: t, cycleSrc: cycleSrc || '', cycle: Array.isArray(cycle) ? cycle : [], rounds: rounds || 0, cidx: 0, round: 0 });
-    if (cb) meosPlayCountBell(cb);
-  } catch (_) { }
+  try { meosPlayOnce(''); } catch (_) { }   // v4.2.477: 始まりはいつも1回(数え鳴きは廃止)
 }
 function meosPlayCountBell(cb) {
   try {
@@ -14903,15 +14990,15 @@ async function meosPseudoTimeUp(key) {
   try { _meosRingAnchor = !!(_sc0 && meosClockAnchoredNow(_sc0)); } catch (_) { _meosRingAnchor = false; }   // v4.2.325
   const _fin436 = meosClockIsFinalStep(_sc0 || {});                                   // v4.2.436: 最後の1歩= 終了用のメッセージと音
   const _ov436 = meosClockSoundFor(_sc0, _fin436);
-  if (!_pre && _ov436 !== MEOS_BELL_MUTE) { _meosBellOverride = _ov436; meosStartRinging(meosClockSayName(_sc0, _fin436)); }   // v4.2.445: 🔕 は鳴動しない   // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  if (!_pre && !(_cyc > 0)) { _meosBellOverride = (_ov436 === MEOS_BELL_MUTE ? '' : _ov436); meosStartRinging(meosClockSayName(_sc0, _fin436)); }   // v4.2.477: 鳴り続けるのは一度きりの⏰だけ(🔕 でも鳴る)。周期は始まる時間の音を1回(下)   // v4.2.445: 🔕 は鳴動しない   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
   //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。
   // ★★★v4.1.56(俊克「アーチェリーでタイムアップのときは、警告音というか、**ホイッスル**を鳴らしていたね」):
   //   ★★★**秒読みの最後には「発射」の合図that要る**= v4.1.55は0秒で黙らせたthat、
   //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
   //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
-  const _cb439 = meosClockStartCountBell(_sc0 || {});                                    // v4.2.439: 次の時間の数え鳴き
-  if (_cyc > 0) { try { meosStopRinging(); if (_cb439) meosPlayCountBell(_cb439); else meosPlayWhistle(_ov436 === MEOS_BELL_MUTE ? '' : _ov436); } catch (_) { } }   // v4.2.476(俊克「🥊指定のときに、3mの終了時点で、ピーーーが鳴らない。それは鳴らさないと駄目でしょ」): 🔕 は先鐘だけ= 終わりの笛は鳴らす   // v4.1.57: 秒読みを止め、3秒の高音1つ
+  const _ns43 = (_cyc > 0 && _sc0) ? meosClockNextStart(_sc0) : null;                   // v4.2.477: 次に始まる時間の音(数え鳴きは廃止)
+  if (_cyc > 0) { try { meosStopRinging(); if (_ns43) meosPlayOnce(_ns43.sound); else meosPlayWhistle(''); } catch (_) { } }   // v4.2.477: 始まる時間の音を1回(🔕 でも)・全部終わったら笛   // v4.2.476(俊克「🥊指定のときに、3mの終了時点で、ピーーーが鳴らない。それは鳴らさないと駄目でしょ」): 🔕 は先鐘だけ= 終わりの笛は鳴らす   // v4.1.57: 秒読みを止め、3秒の高音1つ
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   // ★★v4.2.312(俊克 改良3「20分サイクリックタイマーを使っていて、膜に飛ばない指定もできるといいね」→ pm02:33「⚓ でもいいけど」):
@@ -15307,7 +15394,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
   if (scope.key && _cy0 && opts && opts.noOrigin) {   // ★v4.2.395: 起点を書かない⏰(席が回ってきた/Set した瞬間から数える= 連なりの2本目と同じ)
     _meosPseudoScopes.delete(lk);
     if (opts.tags) { try { const _r = meosScopeRangeNow(scope.doc, scope.key); if (_r) await meosSetMembraneTags(scope.doc, _r.from, opts.tags); } catch (_) { } }
-    await meosClockFcSet(scope.doc, scope.key, Object.assign({ when: '', hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, manual: _mn0 }, opts.listNo ? { whenSrc: opts.listNo } : {}, opts.title ? { title: opts.title } : {}), (typeof opts.atLine === 'number') ? opts.atLine : undefined);
+    await meosClockFcSet(scope.doc, scope.key, Object.assign((opts && opts.bellSrc) ? { bellSrc: opts.bellSrc } : {}, { when: '', hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, manual: _mn0 }, opts.listNo ? { whenSrc: opts.listNo } : {}, opts.title ? { title: opts.title } : {}), (typeof opts.atLine === 'number') ? opts.atLine : undefined);
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     return;
@@ -15323,7 +15410,7 @@ async function meosStartPseudoTimer(minutes, untilMs, atDate, opts) {
     //   ★未来を指定した時は付けない= 掛かった瞬間に `f/…p` の対thatが書かれる(v4.2.28)。
     const _pMark = ((_up0 || _dl0) && _org && _org.getTime() <= Date.now()) ? (meosClockFcStamp(_org) + 'p') : '';
     const _lnPre = (opts && opts.listNo) ? (opts.listNo + ' ') : '';   // v4.2.396: read した連番を頭に
-    await meosClockFcSet(scope.doc, scope.key, Object.assign({ when: meosClockFcStamp(_org), hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _lnPre ? (_lnPre + (_pMark || meosClockFcStamp(_org))) : _pMark, manual: _mn0 }, (opts && opts.title) ? { title: opts.title } : {}), (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined);   // v4.2.367   // ★v4.2.63: ▶️も運ぶ
+    await meosClockFcSet(scope.doc, scope.key, Object.assign((opts && opts.bellSrc) ? { bellSrc: opts.bellSrc } : {}, { when: meosClockFcStamp(_org), hold, lock, anchor, cycle: _cy0, up: _up0, dual: _dl0, rounds: _rd0, cycleSrc: _cs0, whenSrc: _lnPre ? (_lnPre + (_pMark || meosClockFcStamp(_org))) : _pMark, manual: _mn0 }, (opts && opts.title) ? { title: opts.title } : {}), (opts && typeof opts.atLine === 'number') ? opts.atLine : undefined);   // v4.2.367   // ★v4.2.63: ▶️も運ぶ
     try { meosArmClockFcFor(scope.doc); } catch (_) { }
     meosUpdateTimerBar(); meosPostViewMode();
     vscode.window.setStatusBarMessage('MeOS: ' + (scope.name || 'this file') + ' \u2014 ' + (_up0 ? '\u21bb' : '\u21ba') + _cy0.join('/')
@@ -29110,7 +29197,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. \ud83d\udd14Gong\u00d7 \ud83d\udd15 // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'\ud83d\udd14Gong/\ud83d\udd15Mew ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -29646,7 +29733,8 @@ if(clkCaret&&clkPop){
    var ls=(clkRep&&cy)?String(cy.value||'').split(/\\n/).filter(function(x){return x.trim();}):[''];if(!ls.length)ls=[''];
    var multi=ls.length>1,no=window.__clkReadListNo||(multi?'1.':'');
    el.innerHTML=ls.map(function(x,i){var k=x.indexOf('//'),ex=(k<0?x:x.slice(0,k)).trim(),tt=(k<0?'':x.slice(k+2)).trim();if(!tt&&i===0)tt=window.__clkReadTitle||'';
-     return mk(i)+esc((no?' '+no:'')+(i===0&&org?' '+org:'')+(clkRep&&ex?' \u21ba\u21bb'+ex:'')+(tt?' // '+tt:''));}).join('\\n');
+     var bl='',bm=/^((?:\\ud83d[\\udd14\\udd15])[^\\s/]*(?:\\s*[/]\\s*(?:\\ud83d[\\udd14\\udd15])[^\\s/]*)?)\\s*/.exec(ex);if(bm){bl=bm[1];ex=ex.slice(bm[0].length).trim();}   /* v4.2.477: 新しい並び= 🔔主/🔕副 [番号] ↺↻周期 起点 // メッセージ */
+     return mk(i)+esc((bl?' '+bl:'')+(no?' '+no:'')+(clkRep&&ex?' \u21ba\u21bb'+ex:'')+(i===0&&org?' '+org:'')+(tt?' // '+tt:''));}).join('\\n');
    el.classList.add('on');}
  (function(){var el=document.getElementById('clk-rawline');if(!el||el.__cpWired)return;el.__cpWired=true;
    el.addEventListener('click',function(ev){var t=ev.target&&ev.target.closest?ev.target.closest('[data-act]'):null;if(!t)return;ev.stopPropagation();
@@ -31808,6 +31896,8 @@ function toggleMeDock(editorOverride) {
         : (message.cycle != null && String(message.cycle).trim() !== '');   // 古い面から来た時のため
       // ★★v4.1.157: 面の箱も**同じ1つの読み**で受ける= `((30s 15s)\u00d78 1m)\u00d73` thatそのまま通る。
       //   打った字は `cycleSrc` としてそのまま本文へ書く(展開した17歩を書かない)。
+      let _bell43 = '';   // ★v4.2.477: 箱の行頭の 🔔主/🔕副 = 頭の鐘の指定(周期には混ぜない)
+      try { const _bm43 = /^\s*([\u{1F514}\u{1F515}][^\s\/\u{1F514}\u{1F515}]*(?:\s*\/\s*[\u{1F514}\u{1F515}][^\s\/]*)?)\s*/u.exec(String(message.cycle || '')); if (_bm43) { _bell43 = _bm43[1].trim(); message.cycle = String(message.cycle).slice(_bm43[0].length); } } catch (_) { }
       const _cyRaw = (message.cycle == null) ? '' : String(message.cycle).trim();
       const _cyEx = (_rep && _cyRaw) ? meosParseCycleExpr(_cyRaw, 0) : null;
       const _opts = { hasCycle: true,
@@ -31815,6 +31905,7 @@ function toggleMeDock(editorOverride) {
         cycleSrc: (_cyEx && _cyEx.steps.length) ? _cyRaw : '',
         up: !!message.up, dual: (message.dual !== undefined) ? !!message.dual : false,   // v4.1.142: 面は常に \u21ba\u21bb
         rounds: (_cyEx && _cyEx.rounds) ? _cyEx.rounds : (_rep ? meosParseRoundsInput(message.cycle) : 0),
+        ...(_bell43 ? { bellSrc: meosBellNumbersToNames(_bell43) } : {}),   // v4.2.477
         title: meosBellNumbersToNames(String(message.title || '')), listNo: String(message.listNo || ''),   // v4.2.396: read した行のタイトルと連番 / v4.2.438: 🔔番号→名前
         tags: (message.tags != null) ? meosParseTagInput(message.tags) : null,
         // ★★v4.2.390(俊克「ある膜で⏰FCをreadで読込み、別の膜に行って、そこの⏰FCに上書きしたり、追加したりできるので、文字カーソルの位置で制御するのがいい」):
@@ -31924,11 +32015,11 @@ function toggleMeDock(editorOverride) {
       try {
         // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
         const def = [{ cyc: '(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 // \u2615Break', anchor: false, noOrigin: true },   // v4.2.427(俊克「3プリセットの1つを従属連動の例に。🍅で10分の休みを入れて繰り返す」)= 起点なしの受け渡し
-                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. \ud83d\udd14Gong\u00d7 \ud83d\udd15 // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
-        let list = extensionContext.globalState.get('meosClockPresets14', null); if (!Array.isArray(list) || list.length !== 3) list = def;
+                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '\ud83d\udd14Gong/\ud83d\udd15Mew ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
+        let list = extensionContext.globalState.get('meosClockPresets15', null); if (!Array.isArray(list) || list.length !== 3) list = def;
         let slot = 0;   // v4.2.412(俊克「最初に表示するのは、トマトだよ」): 開くたびに①から
         if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); }
-        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin, anchors: Array.isArray(message.anchors) ? message.anchors.map(Boolean) : undefined }; await extensionContext.globalState.update('meosClockPresets14', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
+        if (message.type === 'clockPresetSave') { const k = Math.max(0, Math.min(2, Number(message.slot) || 0)); list = list.slice(); list[k] = { cyc: String(message.cyc || '').trim(), anchor: !!message.anchor, noOrigin: !!message.noOrigin, anchors: Array.isArray(message.anchors) ? message.anchors.map(Boolean) : undefined }; await extensionContext.globalState.update('meosClockPresets15', list); meosDbg('[preset] ' + (k + 1) + ' = ' + list[k].cyc + (list[k].anchor ? ' \u2693' : '')); }
         if (message.type === 'clockPresetsAsk' && meDockPanel) meDockPanel.webview.postMessage({ type: 'clockPresets', list, slot });
       } catch (_) { }
       return;

@@ -26,7 +26,7 @@ const doc={uri:{toString:()=>'file:///p.md',fsPath:'/p.md',scheme:'file'},langua
  }
  let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
  ok(R[0].armed && Math.abs(R[0].ms-90*60e3)<61e3 && R[0].unread===0, '★★★過去の起点 ↻(長さなし)= 起点から数え続ける(⚠️にしない)', R[0]);
- ok(R[1].armed && Math.abs(R[1].ms-90*60e3)<61e3 && /p ↺↻/.test(R[1].line), '★★ ↺↻ でも数え続ける・起点に p が付く', R[1]);
+ ok(R[1].armed && Math.abs(R[1].ms-90*60e3)<61e3 && /(p ↺↻|↺↻ \d{4}-\d{2}-\d{2} \d{1,2}:\d{2}(:\d{2})?p)/.test(R[1].line)   /* v4.2.477: 新しい並び= ↺↻ の後ろに起点 */, '★★ ↺↻ でも数え続ける・起点に p が付く', R[1]);
  ok(!R[2].armed && R[2].unread===1, '  ↺ だけ(過去へ向かう逆算)は今までどおり ⚠️', R[2]);
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  ok(/const _past89 = !w && !\(_opts\.cycle && _opts\.cycle\.length\) && _loose89 && _loose89\.getTime\(\) <= Date\.now\(\);/.test(S) && /if \(_past89\) \{ _opts\.up = true; _opts\.dual = false; \}/.test(S),
