@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.373) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.459) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -82,13 +82,29 @@ function run(argv) {
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/' + myLabel + '.plist'), null); } catch (e) {}
         stopBell(); quitNow = true; return;
       }
+      // ★v4.2.459(俊克「アプリを閉じている時でも、パスすることで次の予定に移れるように」): 鳴った時と同じ「次へ進める」を音なしで。
+      //   記録は passed.json= 次にアプリを開いた時、拡張が床として引き継ぐ。戻すのは飛ばした回がまだ先の時だけ。
+      if (id === 'h:pass') { const now = Date.now(); const nx = alarms.filter(a => !fired[a.id + '@' + a.at] && a.at > now).sort((x, y) => x.at - y.at)[0]; if (!nx) return;
+        const prev = adv[nx.id] ? Object.assign({}, adv[nx.id]) : null;
+        fired[nx.id + '@' + nx.at] = 1;
+        if (Array.isArray(nx.chain) && nx.chain.length) { const n2 = chainNext(nx, nx.at); if (n2) adv[nx.id] = n2; }
+        else if (Array.isArray(nx.steps) && nx.steps.length) { const si = nx.si || 0; adv[nx.id] = { at: nx.at + nx.steps[si % nx.steps.length], si: si + 1 }; }
+        lastPass = { id: nx.id, at: nx.at, prev, name: nx.name || nx.key || '' };
+        try { $(JSON.stringify({ uri: nx.uri || '', key: nx.key || '', at: nx.at, name: lastPass.name, t: now })).writeToFileAtomicallyEncodingError(dir + '/passed.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+        return; }
+      if (id === 'h:unpass') { if (!lastPass || lastPass.at <= Date.now()) { lastPass = null; return; }
+        delete fired[lastPass.id + '@' + lastPass.at];
+        if (lastPass.prev) adv[lastPass.id] = lastPass.prev; else delete adv[lastPass.id];
+        try { $.NSFileManager.defaultManager.removeItemAtPathError($(dir + '/passed.json'), null); } catch (e) {}
+        lastPass = null; return; }
       if (id.indexOf('h:t') === 0) { const it = tagRows[parseInt(id.slice(3), 10)]; if (it) openUrl(warpUrl(it, false)); return; }   // v4.2.342: Tag&Go の行
       const a = alarms[parseInt(id.slice(2), 10)]; if (a) { stopBell(); openUrl(warpUrl(a, false)); }
       return;
     }
     try { $(JSON.stringify({ id: id, t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {}
-    if (id !== 'quitapp' && id !== 'quithelper') openApp();   // v4.2.363: 終了を押したのに起こし直さない
+    if (id !== 'quitapp' && id !== 'quithelper' && id !== 'pass' && id !== 'unpass') openApp();   // v4.2.363: 終了を押したのに起こし直さない / v4.2.459: pass は前へ出さない
   } } } });
+  let lastPass = null;   // v4.2.459: 閉じている間に最後に pass した1本 {id, at, prev, name}
   let optTarget = null, tagRows = [];   // v4.2.337: 札に出ている時計(拡張が居ない時)
   const optWarp = () => {
     if (ownerAlive(owner)) { try { $(JSON.stringify({ id: 'optwarp', t: Date.now() })).writeToFileAtomicallyEncodingError(clickPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} openApp(); return; }
@@ -298,6 +314,8 @@ function run(argv) {
       const next = alarms.filter(a => !fired[a.id + '@' + a.at] && a.at > now).sort((x, y) => x.at - y.at);
       const menu = [];
       if (ringing) menu.push({ id: 'h:stop', title: 'Stop the bell' }, { sep: true });
+      const _p2 = (d) => (d < 10 ? '0' : '') + d, _lab = (t) => { const d = new Date(t); return _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()); };   // 拡張の meosClockLastLabel と同じ形(年は省く)
+      if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
       next.forEach((a) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + face(a.at - now) + '   ' + (a.name || a.key || '') }); });
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
@@ -320,6 +338,7 @@ function run(argv) {
         }
         if (tmenu.length || items.length) { menu.push({ title: 'Tag&Go', off: true }); menu.push(...tmenu); if (rest) menu.push({ title: '\u2026 ' + rest + ' more', off: true, indent: 1 }); menu.push({ sep: true }); }
       } catch (e) {}
+      if (lastPass && lastPass.at > now) menu.push({ id: 'h:unpass', title: '\u21a9\ufe0e ' + lastPass.name + '   ' + _lab(lastPass.at) + '   \u2014 last passed' }, { sep: true });   // v4.2.459
       menu.push({ id: 'h:open', title: 'Start ' + appName });   // v4.2.363: Dock の代わり
       menu.push({ id: 'h:quithelper', title: 'Quit V-helper for VSCs' });   // v4.2.371: 両方   // v4.2.364
       // ★v4.2.334(俊克 改良1「VSCmを閉じている時の⚓タイマーで、鳴っている間に残タイマーが表示されなくなった」):

@@ -12021,7 +12021,7 @@ function meosArmClockFcFor(doc) {
       if (!c.done && !c.off && c.rounds > 0 && Array.isArray(c.cycle) && c.cycle.length) {
         try {
           const _rb = meosParseStampLoose(c.when);
-          const _rn = _rb ? meosCycleSeriesNext(_rb.getTime(), c.cycle, Date.now()) : null;
+          const _rn = _rb ? meosCycleSeriesNext(_rb.getTime(), c.cycle, meosPassFrom(lk)) : null;   // v4.2.459: pass の床より後
           if (_rn && _rn.round > c.rounds) {
             meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
             meosDbg('[armClock] rounds done key=' + c.key + ' \u884c=' + (c.line + 1) + ' \u00d7' + c.rounds);
@@ -12187,7 +12187,7 @@ function meosArmClockFcFor(doc) {
         // ★v4.1.23: 輪の予定は、留守の間に過ぎていても**次の回**へ進めて掛け直す(目薬を飲み損ねない)。
         // ★v4.1.63: **数えるだけ**= 本文(起点)には触らない。いつ始めたのかthatそこに残る。
         const _b = meosParseStampLoose(c.when) || (w && w.at) || null;
-        const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, Date.now()) : null;
+        const _nx = _b ? meosCycleSeriesNext(_b.getTime(), c.cycle, meosPassFrom(lk)) : null;   // v4.2.459: pass の床より後
         if (_nx) { w = { at: new Date(_nx.at), ms: _nx.at - Date.now() }; _step = _nx.step; _cidx = _nx.idx || 0; _crnd = (typeof _nx.round === 'number') ? _nx.round : 1; }   // v4.1.1111 / v4.1.132 / ★v4.1.140: `|| 1` は 0 を 1 に化けさせる
       }
       // ★★★v4.2.89(俊克 バグ2「起点を設定しない1回切りの設定ができない」＋ am02:48
@@ -12196,6 +12196,18 @@ function meosArmClockFcFor(doc) {
       //   ★★★**長さの無い一度きりで、起点が過去= その時刻から数え続けるストップウォッチ**
       //     (記法 v4.1.146 の `⏰ 起点 ↻` = 起点から数え上げ続ける)。今までは鐘の時刻が無いので ⚠️ にしていた。
       //   ★鐘は鳴らない= 解ける時刻を百年先に置き、数字は起点からの経過で出す(sc.openFrom)。
+      // ★v4.2.459: 一度きりの⏰が pass の床より前= 鳴らさずに済み(鳴った時と同じ書き方)
+      try {
+        if (w && w.at && !(Array.isArray(c.cycle) && c.cycle.length) && !c.done && c.ufc) {
+          const _pf = meosPassFloorOf(lk);
+          if (_pf && w.at.getTime() <= _pf) {
+            meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
+            meosClockFcSet(doc, c.key, { when: c.when, hold: c.hold, lock: c.lock, cycle: c.cycle, up: c.up, dual: c.dual, rounds: c.rounds, cycleSrc: c.cycleSrc, manual: c.manual, whenSrc: c.whenSrc, tags: c.tags, done: true }, c.line);
+            meosDbg('[pass] 一度きり → 済み key=' + c.key + ' 行=' + (c.line + 1));
+            continue;
+          }
+        }
+      } catch (_) { }
       let _open89 = 0;
       if (!w && !(Array.isArray(c.cycle) && c.cycle.length) && (c.up || c.dual)) {
         const _o89 = c.pAt ? new Date(c.pAt) : meosParseStampLoose(c.when);
@@ -12702,6 +12714,8 @@ function meosMenuBarPick(id) {
       return;
     }
     if (id === 'resume') { meosResumeLastStopped(); return; }   // v4.2.338
+    if (id === 'pass') { meosPassNext(); return; }       // v4.2.459
+    if (id === 'unpass') { meosUnpassLast(); return; }   // v4.2.459
     // ★v4.2.337: Opt+クリック= 札に出ている膜へ(最下段と同じ1本= 一番近い時計)
     if (id === 'optwarp') { let best = null; for (const [k, u] of _meosPseudoUntil) if (!best || u < best.u) best = { k, u }; const sc = best ? _meosPseudoScopes.get(best.k) : null; if (sc) meosJumpToScope(sc); return; }
     if (id === 'stop') { meosStopRinging(); return; }
@@ -12728,7 +12742,7 @@ function meosMenuBarTail() {
     { sep: true }, { title: 'Spells', sub: [
       Object.assign({ id: 'raw', title: rt }, _rp), { id: 'dock', title: 'Me Dock open/close   (mememe)' },
       { id: 'hprev', title: 'Previous heading   (YOYOYO)' }, { id: 'hnext', title: 'Next heading   (yoyoyo)' } ] },
-    ...(function () { const r = meosLastStoppedItem(); return r ? [{ sep: true }, r] : []; })(),   // v4.2.338: 最後に止めた1本
+    ...(function () { const r = meosLastStoppedItem(), q = meosLastPassedItem(); const a2 = [r, q].filter(Boolean); return a2.length ? [{ sep: true }].concat(a2) : []; })(),   // v4.2.338: 最後に止めた1本 / v4.2.459: 最後に pass した1本
     // ★v4.2.348(俊克 改良1「メニューバーを終了するメニューをメニューの一番下に。今は、2つのメニューが表示している」):
     //   VS Code と VSCodium の両方に MeOS が居ると、⏰ が2つ並ぶ。どちらの⏰かを名前で言い、その場で降ろせるようにする。
     // ★★v4.2.363(俊克「helperは一般的に常駐を意味する。helperを起動するボタンが必要。Quit VSCmはDockでアプリを終了するのと同じ。
@@ -12793,6 +12807,7 @@ function meosMenuBarClockItems() {
     }
   } catch (_) { }
   _meosMbGo = go;
+  try { const _p = meosPassNextItem(); if (_p && out.length) out.unshift(_p, { sep: true }); } catch (_) { }   // v4.2.459: 次をpass
   return out;
 }
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
@@ -19419,6 +19434,94 @@ function meosClockLineRunning(document, key, line) {
 //     走り出したら出さない(覚えは消さない= 走っているかは毎回 _meosPseudoUntil と突き合わせる)。
 function meosNoteLastStopped(uri, key, line, name) {
   try { extensionContext.globalState.update('meosLastStopped', { uri: String(uri || ''), key: String(key || ''), line: typeof line === 'number' ? line : -1, name: String(name || key || '') }); } catch (_) { }
+}
+// ★★★v4.2.459(俊克 2026.09.27 pm00:02「メニューバーに、「次をpass」を追加しよう…last stoppedと同様に、復活できるように、last passedを表示する。
+//   これは、アプリを閉じている時でも、パスすることで次の予定に移れるようにするためだよ」＋ 問い「次の1回だけ飛ばす」「まだ来ていなければ戻す」):
+//   ★★pass= **床**を1つ置くだけ= 「この時刻まで(含む)は鳴らさない」。次の回は掛け直しが床より後から数える(meosCycleSeriesNext の from)。
+//     繰返し= 次の回へ(最後の回なら済み・連なりなら次の行へ= 鳴った時と同じ道) / 一度きり= 床より前なら済み(✓)。
+//   ★last passed= 床を外して掛け直す(飛ばした回がまだ先なら戻る)。済みにした行は済みを外す。
+//   ★床は globalState に置く= 開き直しても残る。アプリを閉じている間に係(helper)が pass した分は passed.json で受け取る。
+const _meosPassFloor = new Map();   // uri+' '+key -> 床(ms)
+let _meosPassLoaded = false;
+function meosPassSave() { try { const o = {}; for (const [k, v] of _meosPassFloor) o[k] = v; extensionContext.globalState.update('meosPassFloor', o); } catch (_) { } }
+function meosPassLoad() {
+  if (_meosPassLoaded) return; _meosPassLoaded = true;
+  try { const o = extensionContext.globalState.get('meosPassFloor', null) || {}; for (const k of Object.keys(o)) if (Number(o[k]) > 0) _meosPassFloor.set(k, Number(o[k])); } catch (_) { }
+  // 係が閉じている間に pass した分(passed.json)= 床として引き継ぐ
+  try {
+    const fs = require('fs'), path = require('path'), f = path.join(meosHelperDir(), 'passed.json');
+    if (fs.existsSync(f)) {
+      const r = JSON.parse(fs.readFileSync(f, 'utf8'));
+      if (r && r.uri && r.key && Number(r.at) > 0) {
+        const lk = r.uri + ' ' + r.key;
+        if (Number(r.at) > (_meosPassFloor.get(lk) || 0)) _meosPassFloor.set(lk, Number(r.at));
+        extensionContext.globalState.update('meosLastPassed', { uri: r.uri, key: r.key, at: Number(r.at), name: String(r.name || r.key), line: -1, t: Number(r.t) || Date.now() });
+        meosDbg('[pass] 係から受け取る ' + r.key + ' 床=' + new Date(Number(r.at)).toISOString());
+      }
+      try { fs.unlinkSync(f); } catch (_) { }
+      meosPassSave();
+    }
+  } catch (_) { }
+}
+function meosPassFloorOf(lk) {
+  meosPassLoad();
+  const f = _meosPassFloor.get(lk) || 0;
+  if (f && f < Date.now() - 3600e3) { _meosPassFloor.delete(lk); meosPassSave(); return 0; }   // 過ぎて1時間= 用済み
+  return f;
+}
+function meosPassFrom(lk) { return Math.max(Date.now(), meosPassFloorOf(lk)); }
+function meosPassNextTarget() {
+  let best = null; for (const [k, u] of _meosPseudoUntil) { const sc = _meosPseudoScopes.get(k); if (!sc || (sc.up && !(sc.step > 0))) continue; if (!best || u < best.u) best = { k, u, sc }; }
+  return best;
+}
+function meosPassNextItem() {
+  try { const b = meosPassNextTarget(); if (!b) return null;
+    return { id: 'pass', title: '⏭️ Pass the next   ' + (meosClockSayName(b.sc) || b.sc.name || b.sc.key) + '   ' + meosClockLastLabel(b.u) };
+  } catch (_) { return null; }
+}
+async function meosPassNext() {
+  try {
+    const b = meosPassNextTarget(); if (!b) return;
+    const sc = b.sc, doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === sc.uri); if (!doc) return;
+    const name = meosClockSayName(sc) || sc.name || sc.key;
+    meosPassLoad();
+    _meosPassFloor.set(b.k, b.u); meosPassSave();
+    extensionContext.globalState.update('meosLastPassed', { uri: sc.uri, key: sc.key, at: b.u, name, line: typeof sc.line === 'number' ? sc.line : -1, t: Date.now() });
+    meosClearPseudoTimer(b.k); _meosPseudoScopes.delete(b.k);
+    meosArmClockFcFor(doc);                                   // 鳴った時と同じ掛け直し= 床より後の回へ(済み・連なりも同じ道)
+    meosDbg('[pass] ' + sc.key + ' 床=' + new Date(b.u).toISOString());
+    try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+    vscode.window.setStatusBarMessage('MeOS: passed ⏰ ' + name + ' (' + meosClockLastLabel(b.u) + '). To undo: ↩︎ last passed in the ⏰ menu.', 5000);
+  } catch (_) { }
+}
+function meosLastPassedItem() {
+  try {
+    const r = extensionContext.globalState.get('meosLastPassed', null);
+    if (!r || !r.uri || !r.key || !(Number(r.at) > Date.now())) return null;   // 飛ばした回が過ぎたら戻す物は無い
+    return { id: 'unpass', title: '↩︎ ' + (r.name || r.key) + '   ' + meosClockLastLabel(Number(r.at)) + '   — last passed' };
+  } catch (_) { return null; }
+}
+async function meosUnpassLast() {
+  try {
+    const r = extensionContext.globalState.get('meosLastPassed', null); if (!r) return;
+    extensionContext.globalState.update('meosLastPassed', null);
+    if (!(Number(r.at) > Date.now())) { vscode.window.setStatusBarMessage('MeOS: the passed ⏰ time has already gone by.', 4000); return; }
+    const lk = r.uri + ' ' + r.key;
+    meosPassLoad(); _meosPassFloor.delete(lk); meosPassSave();
+    const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === r.uri) || await vscode.workspace.openTextDocument(vscode.Uri.parse(r.uri));
+    if (!doc) return;
+    // pass で済みになった行(最後の回・一度きり)は済みを外す
+    try {
+      const rows = meosClockFcScan(doc).filter(x => x.key === r.key);
+      const h = (r.line >= 0 ? rows.find(x => x.line === r.line) : null) || null;
+      if (h && h.done && !rows.some(x => x !== h && !x.done && x.ufc)) await meosClockFcSet(doc, r.key, { when: h.when, hold: h.hold, lock: h.lock, cycle: h.cycle, up: h.up, dual: h.dual, rounds: h.rounds, cycleSrc: h.cycleSrc, manual: h.manual, whenSrc: h.whenSrc, tags: h.tags, done: false }, h.line);
+    } catch (_) { }
+    meosClearPseudoTimer(lk); _meosPseudoScopes.delete(lk);
+    meosArmClockFcFor(doc);
+    meosDbg('[unpass] ' + r.key);
+    try { meosUpdateTimerBar(); meosPostViewMode(); } catch (_) { }
+    vscode.window.setStatusBarMessage('MeOS: ⏰ ' + (r.name || r.key) + ' is back (' + meosClockLastLabel(Number(r.at)) + ').', 4000);
+  } catch (_) { }
 }
 function meosLastStoppedItem() {
   try {
