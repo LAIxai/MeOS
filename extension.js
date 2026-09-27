@@ -11525,38 +11525,47 @@ async function meosClockNudge(document, hit, big) {
 // ★★v4.2.475(俊克「起点ありで、1分前などを鳴らなくして、開始のときだけラウンド数だけ鳴らす…これも切替ボタンを付けたほうがいいね」→「その形で作って」):
 //   メッセージの頭の `//` の直前に [🔔]/[🥊]。🔔= 先鐘あり / 🥊= 開始のゴングだけ(全部の時間に 🔕・数え鳴き 🔔…× が無ければ最初の時間に 🔔Gong×)。
 //   ⏰ と時刻の間は 🚢💨/🔓 の当たりで埋まっている= 印が実際に書かれるメッセージの所に置く。
-function meosClockBellModeSpot(txt) {
+// ★★v4.2.476(俊克「🥊/🔔のボタンは、3mと1mのそれぞれに有るべき… //🥊 🔔Gong× [R3]  // 🔕 [break3]」): 区切り(// …)ごとに切替。
+//   区切りの中身は隠し、頭にボタン＋鐘の指定、走っている区切りの終わりに回数を入れた橙の札。ボタンと札は別の字の位置= 描く順も押す所も決まる。
+function meosClockTitleSegs(txt) {
   try {
-    const a = txt.search(/[↺↻]/); if (a < 0) return null;
-    const j = txt.indexOf('//', a); if (j < 0) return null;
-    const e = txt.lastIndexOf('-->'); if (e < j) return null;
-    const segs = txt.slice(j + 2, e).split('//');
-    const muted = segs.length > 0 && segs.every(x => /\u{1F515}/u.test(x));
-    return { j, e, segs, muted };
-  } catch (_) { return null; }
+    const a = txt.search(/[↺↻]/); if (a < 0) return [];
+    const c9 = txt.lastIndexOf('-->'); let t = (c9 > 0 ? c9 : txt.length); while (t > 0 && txt.charAt(t - 1) === ' ') t--;
+    const out = []; let p = txt.indexOf('//', a);
+    while (p >= 0 && p < t) {
+      const nx = txt.indexOf('//', p + 2), e = (nx >= 0 && nx < t) ? nx : t;
+      const body = txt.slice(p + 2, e);
+      out.push({ j: p, s: p + 2, e, body, muted: /\u{1F515}/u.test(body), counted: /\u{1F514}\S*×/u.test(body), marks: (body.match(/\u{1F514}\S*/gu) || []).join(' ') });
+      p = (nx >= 0 && nx < t) ? nx : -1;
+    }
+    return out;
+  } catch (_) { return []; }
 }
+function c9done76(c) { return !!(c && c.done); }
+function meosClockSegIcon(g) { return g.muted ? (g.counted ? '🥊' : '🔕') : '🔔'; }
 function meosClockBellModeHitAt(document, line, character) {
   try {
     const txt = document.lineAt(line).text || ''; if (txt.indexOf('⏰') < 0) return null;
     const c = meosClockFcParse(txt); if (!c || c.done) return null;
-    const sp = meosClockBellModeSpot(txt); if (!sp || character !== sp.j) return null;
-    return { line, sp };
+    const segs = meosClockTitleSegs(txt), k = segs.findIndex(g => g.s === character);
+    return k >= 0 ? { line, k } : null;
   } catch (_) { return null; }
 }
 async function meosClockBellModeToggle(document, hit) {
   try {
-    const txt = document.lineAt(hit.line).text || '', sp = meosClockBellModeSpot(txt); if (!sp) return false;
-    let segs = sp.segs.map(x => x.trim());
-    if (sp.muted) segs = segs.map(x => x.replace(/\s*\u{1F515}/gu, '').trim());
+    const txt = document.lineAt(hit.line).text || '', segs = meosClockTitleSegs(txt), g = segs[hit.k]; if (!g) return false;
+    let b = g.body.trim();
+    if (g.muted) b = b.replace(/\s*\u{1F515}/gu, '').trim();
     else {
-      segs = segs.map(x => /\u{1F515}/u.test(x) ? x : (x + ' \u{1F515}').trim());
-      if (!segs.some(x => /\u{1F514}\S*×/u.test(x))) segs[0] = segs[0].replace(/\s*\u{1F515}/u, '') + ' \u{1F514}Gong× \u{1F515}';
+      b = (b + ' \u{1F515}').trim();
+      if (hit.k === 0 && !segs.some(x => x.counted)) b = b.replace(/\s*\u{1F515}$/u, '') + ' \u{1F514}Gong× \u{1F515}';   // 最初の区切り(ラウンド)を黙らせる時、数え鳴きが無ければ開始のゴング
     }
-    const nt = txt.slice(0, sp.j) + '// ' + segs.map(x => x.trim()).join(' // ') + ' ' + txt.slice(sp.e);
+    const tail = txt.slice(g.e);
+    const nt = txt.slice(0, g.s) + ' ' + b + ' ' + tail.replace(/^[ \t]+/, '');
     if (nt === txt) return false;
     const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, 0, hit.line, txt.length), nt);
     const ok = await vscode.workspace.applyEdit(we);
-    meosDbg('[bellMode] ' + (sp.muted ? '🥊 → 🔔' : '🔔 → 🥊') + ' 行=' + (hit.line + 1) + ' ok=' + ok);
+    meosDbg('[bellMode] 区切り' + (hit.k + 1) + ' ' + (g.muted ? '→ 🔔' : '→ 🔕') + ' 行=' + (hit.line + 1) + ' ok=' + ok);
     return ok;
   } catch (_) { return false; }
 }
@@ -13360,14 +13369,15 @@ function meosApplyTimerLineDecorations(editor) {
                 let _k9 = _c9; while (_k9 > 0 && txt.charAt(_k9 - 1) === ' ') _k9--;
                 badgeHide.push(new vscode.Range(i, _k9, i, txt.length));           // ` -->` を消す
               }
-              try {   // ★v4.2.173: `// タイトル` を畳む(走っている1本だけ、下で同じ場所へ描き直す)
-                const _e73 = (_c9 > 0 ? _c9 : txt.length);
-                const _h73 = txt.lastIndexOf('//', _e73);
-                if (_h73 > _p0) {
-                  let _s73 = _h73; while (_s73 > 0 && txt.charAt(_s73 - 1) === ' ') _s73--;
-                  let _t73 = _e73; while (_t73 > 0 && txt.charAt(_t73 - 1) === ' ') _t73--;
-                  if (_t73 > _s73) { badgeHide.push(new vscode.Range(i, _s73, i, _t73)); _titleAt.set(i, _s73); }
+              try {   // ★v4.2.173 → v4.2.476: 区切り(// …)ごとに中身を隠し、頭にボタン＋鐘の指定を描く(札は下の掛かっている1本の所)
+                const _sg76 = meosClockTitleSegs(txt);
+                for (const g of _sg76) {
+                  let _e76 = g.e; while (_e76 > g.s && txt.charAt(_e76 - 1) === ' ') _e76--;
+                  if (_e76 > g.s) badgeHide.push(new vscode.Range(i, g.s, i, _e76));
+                  if (!c9done76(c)) plays.push({ range: new vscode.Range(i, g.s, i, g.s), renderOptions: Object.assign({ before: { contentText: meosClockSegIcon(g), backgroundColor: '#fffdf6', border: '1px solid #d18400', margin: '0 3px 0 4px', textDecoration: 'none; border-radius: 4px; padding: 0 2px; cursor: ' + meosHandCursor() + ';' } },
+                    g.marks ? { after: { contentText: g.marks + ' ', color: new vscode.ThemeColor('editor.foreground') } } : {}) });
                 }
+                if (_sg76.length) _titleAt.set(i, _sg76);
               } catch (_) { }
               // ★★★v4.2.52(俊克 2026.09.11 am01:12「ただし連番が表示されないよね」
               //   ＋ pm06:43「1.の部分に見せかけの値を表示する」):
@@ -13604,13 +13614,6 @@ function meosApplyTimerLineDecorations(editor) {
               }
             }
           } catch (_) { }
-          // ★v4.2.475: [🔔]/[🥊] 鳴らし方の切替(メッセージの頭の // の直前)
-          try {
-            if (!_rawHere && !c.done) {
-              const _bs = meosClockBellModeSpot(txt);
-              if (_bs) plays.push({ range: new vscode.Range(i, _bs.j, i, _bs.j), renderOptions: { before: { contentText: _bs.muted ? '🥊' : '🔔', backgroundColor: '#fffdf6', border: '1px solid #d18400', margin: '0 4px 0 0', textDecoration: 'none; border-radius: 4px; padding: 0 2px; cursor: ' + meosHandCursor() + ';' } } });
-            }
-          } catch (_) { }
           // ★v4.2.471: 本文に写された [−1s][+1s] の字は、カーソルが行を出たら消す(ボタンは描く物)
           try {
             if (c.btnSrc && !_rawHere) {
@@ -13828,7 +13831,14 @@ function meosApplyTimerLineDecorations(editor) {
           const _rnd = _rndOut;
           // ★v4.2.173: ここは**掛かっている1本**だけthat通る道so、タイトルを出すのもここ1か所。
           try {
-            const _ta73 = _titleAt.get(i);
+            const _sg73 = _titleAt.get(i);
+            let _ta73 = null;
+            if (Array.isArray(_sg73) && _sg73.length && _sc7) {
+              const _si73 = meosClockStepSeg(_sc7), _dn73 = (Number(_sc7.rounds) > 0 && (_sc7.round || 0) > Number(_sc7.rounds));
+              const _k73 = (_dn73 && _sg73.length > _si73.atoms) ? _si73.atoms : Math.min(_si73.seg, _sg73.length - 1);
+              let _e73 = _sg73[_k73].e; while (_e73 > _sg73[_k73].s && txt.charAt(_e73 - 1) === ' ') _e73--;
+              _ta73 = _e73;   // v4.2.476: 走っている区切りの終わり(ボタンの位置とは別の字)
+            }
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
               renderOptions: { after: { contentText: '\u00a0' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
@@ -14901,7 +14911,7 @@ async function meosPseudoTimeUp(key) {
   //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
   //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
   const _cb439 = meosClockStartCountBell(_sc0 || {});                                    // v4.2.439: 次の時間の数え鳴き
-  if (_cyc > 0) { try { meosStopRinging(); if (_cb439) meosPlayCountBell(_cb439); else meosPlayWhistle(_ov436); } catch (_) { } }   // v4.1.57: 秒読みを止め、3秒の高音1つ
+  if (_cyc > 0) { try { meosStopRinging(); if (_cb439) meosPlayCountBell(_cb439); else meosPlayWhistle(_ov436 === MEOS_BELL_MUTE ? '' : _ov436); } catch (_) { } }   // v4.2.476(俊克「🥊指定のときに、3mの終了時点で、ピーーーが鳴らない。それは鳴らさないと駄目でしょ」): 🔕 は先鐘だけ= 終わりの笛は鳴らす   // v4.1.57: 秒読みを止め、3秒の高音1つ
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   // ★★v4.2.312(俊克 改良3「20分サイクリックタイマーを使っていて、膜に飛ばない指定もできるといいね」→ pm02:33「⚓ でもいいけど」):

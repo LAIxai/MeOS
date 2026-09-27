@@ -67,10 +67,10 @@ Four tomatoes with a short break after each, then a longer rest, round and round
 **One line, a message and a bell for every time.** Put one `//` message for each time you wrote, left to right,
 and one more for the end. Each shows while its time runs — on the line, in the status bar and on the menu bar —
 and is said again when it ends. Add `🔔` and a number — the number beside each sound in Me Dock's 🔔 list — or
-the sound's name to choose that time's bell — it rings once as the time begins, and for the warnings before it ends; `🔔15/11/6` takes the next sound on every count, and `🔕` keeps that
-time silent. **Set** writes the numbers down as names, so the line rings the same on any machine. Without either,
+the sound's name to choose that time's bell — it rings once as the time begins, and for the warnings before it ends; `🔔15/11/6` takes the next sound on every count, and `🔕` drops that
+time's warnings (the whistle at its end still sounds). **Set** writes the numbers down as names, so the line rings the same on any machine. Without either,
 the bell you chose in Me Dock rings. Add `×` — `🔔Mew×` — and that time is announced when it **starts**, once for
-round 1, twice for round 2: you know the round with your eyes shut. A **[🔔] / [🥊]** button just before the messages switches the whole line between *warnings on* and *only the starting gong* (it writes `🔕` on every time, and `🔔Gong×` on the first if there is no counted bell). 🥊 **Gong** is new in the 🔔 list — made, like 🐱 Mew,
+round 1, twice for round 2: you know the round with your eyes shut. Each message has its own **[🔔] / [🥊]** button: 🔔 keeps that time's warnings, 🥊 (or 🔕 for a time without a counted bell) writes `🔕` to drop them — the round rings only its starting gong. The template (`R1.`) is hidden, and the running time shows its count on an orange tag — `[R3]` or `[break3]` — so the line itself tells you where you are. 🥊 **Gong** is new in the 🔔 list — made, like 🐱 Mew,
 from measurements of a real one.
 
 ```md
