@@ -28670,7 +28670,7 @@ function clkCenter(el){if(!el)return;var bi=clkNearest(el);if(bi<0)return;clkGot
 /* v4.1.84(俊克「Optのときのスクロール量that大き過ぎる。なかなか動き出さないので、前回との中間値くらいに」):
    1(v4.1.82=速すぎ) \u2194 90(v4.1.83=重すぎ) の間= 45。指の実感は端でなく真ん中に在る。 */
 const CLK_ALT_STEP=45;
-function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;var _altAcc=0;
+function clkWatch(el,onPick,onTouch){if(!el)return;var t=null;var _altAcc=0;var _lw=0;   /* v4.2.455: 最後に合図が来た時刻 */
 /* v4.0.465: 触れた瞬間に慣性を打ち切る(今の位置を書き戻す= その一筆that滑りを止める)。 */
 /* ★v4.1.2: **人が触った合図はここだけ**(scroll は clkSel の置き直しでも鳴るので数えない)。 */
 var stop=function(){if(onTouch)onTouch();try{el.style.scrollBehavior='auto';el.scrollTop=el.scrollTop;}catch(e){}
@@ -28686,6 +28686,11 @@ el.addEventListener('mousedown',stop,{passive:true});
    ★段の高さで割り切った所へ置く= 常に段の真ん中に居る(窓と数字thatずれない)。 */
 el.addEventListener('wheel',function(e){
  e.preventDefault();if(onTouch)onTouch();
+ /* ★★v4.2.455(俊克 バグ1「加速スクロールすると、一瞬止まるが、直ぐに最初の値とかに切り替わってしまう」):
+    ★★macOS の慣性は指を離した後も合図を送り続け、尾ほど間が空く(台で 130〜220ms)。v4.1.28 は「収める timer が鳴り終わった(110ms)」を
+      『指が一度離れた』と読んでいたので、慣性の尾を「次の一撫で」と取り違えて端から巻き戻っていた。
+    ★→ 巻き戻してよいのは、最後の合図から 400ms 空いた時だけ= 慣性の尾より長く、人の「止まった、じゃあ次」より短い。 */
+ var _nw=Date.now(),_gap=_nw-_lw;_lw=_nw;
  /* ★★★v4.1.82(俊克「年that2020年代の10年分なので、2030を設定するにはインライン編集するしかない。
     この10年に絞っているのは確かにいい。そこで、**Optを押しながら回すと、無限に進み、戻る**ように
     しよう」): ★★★**狭さは正しい。足りないのは『その先へ行く道』だけ**=
@@ -28719,7 +28724,7 @@ el.addEventListener('wheel',function(e){
     ★★続けて撫でている間(t!==null)は巻き戻らない= 端で止まる。止まってから撫でれば、反対の端へ。
     ★上端でも同じ= 00で止まり、次に戻せば59へ。 */
  var _mx=el.scrollHeight-el.clientHeight;
- if(t===null&&_mx>1){
+ if(t===null&&_gap>400&&_mx>1){
   var _li=el.children.length-1;while(_li>0&&el.children[_li].classList.contains('clk-ghost'))_li--;   /* v4.2.454: 薄い見本(月末の次の01)は端ではない */
   var _wrap=(e.deltaY>0&&el.scrollTop>=_mx-1)?0:((e.deltaY<0&&el.scrollTop<=1)?_li:-1);
   if(_wrap>=0){clkGoto(el,_wrap,false);clkMark(el);
