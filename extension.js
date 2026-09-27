@@ -26361,6 +26361,11 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
    上にできた隙間は地の色の帯で覆う(下の中身が透けない)。 */
 .dock-stick::before{content:'';position:absolute;left:-15px;right:-15px;top:calc(-1 * var(--stick-top,0px));height:var(--stick-top,0px);background:var(--vscode-editor-background);pointer-events:none}
 .dock-stick.unstick::before{display:none}
+/* v4.2.467: Timed Me-System ／ Hyper TOC の行= 固定の箱の真下に貼り付く(--tms-top は JS が測る)。その下の⏰パネルと H-TOC の中身だけが流れる */
+.tms-box{position:sticky;top:var(--tms-top,0px);z-index:29;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:linear-gradient(rgba(255,213,92,.08),rgba(255,213,92,.08)),var(--vscode-sideBar-background);margin:0 0 6px;overflow:hidden}
+.tms-box .dock-lead{border-top:0}
+.tms-box.unstick{position:static}
+.fixed-toc.htoc-closed:not(:has(.clk-pop.on)){border-color:transparent;background:transparent}
 /* v4.2.464: H-TOC の ⬇️/＋ は H-TOC を開いた時の名前の行の右端へ(.toc-tools の外なので大きさを写す) */
 .toc-name-row .htoc-ops{display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 .htoc-ops button{font-size:11px;padding:3px 6px}
@@ -29725,13 +29730,21 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
   const _mb=document.createElement('div');_mb.className='mepy-box';_mb.id='mepy-box';_mb.appendChild(_mp);
   _hx.after(_cur);_cur.after(_gh);_gh.after(_nrp);_nrp.after(_nb);
   _mn.insertBefore(_mb,_ft);
+  /* ★v4.2.467(俊克「Timed MeとH-TOCという部分も固定にして、その下に表示されるパネルだけをスクロールするように。Timed Meが常に同じ位置に確認できる」):
+     TMS の行を H-TOC の枠(overflow:hidden= その中では sticky が効かない)から出し、自前の枠で固定。⏰の箱(#dock-clk)と H-TOC の中身は枠に残って流れる。 */
+  const _ld=document.getElementById('dock-lead');
+  if(_ld){const _tw=document.createElement('div');_tw.id='tms-wrap';_mn.insertBefore(_tw,_ft);const _tb=document.createElement('div');_tb.className='tms-box';_tb.id='tms-box';_tw.appendChild(_tb);_tw.appendChild(_ft);_tb.appendChild(_ld);}   /* 本文は grid= 1マスの中では sticky が動けない→ H-TOC の枠と1つの箱に包む(伸びた分だけ貼り付いていられる) */
   if(_tt)_mn.appendChild(_tt);
   try{__mzApply();}catch(e){}
  }
  /* ★安全弁: 固定の部分が窓の高さの6割を超えたら固定を外す(下の⏰とH-TOCへスクロールで届かなくなるので) */
  if(_st){try{if(!window.scrollY){const _t0=Math.max(0,Math.round(_st.getBoundingClientRect().top));_st.style.setProperty('--stick-top',_t0+'px');}}catch(e){}   /* v4.2.466: 止まっている時の高さで貼り付く */
- const _fit=function(){try{_st.classList.remove('unstick');if(window.innerHeight>0&&_st.getBoundingClientRect().height>window.innerHeight*0.6)_st.classList.add('unstick');}catch(e){}};
-  window.addEventListener('resize',_fit);try{new ResizeObserver(_fit).observe(_st);}catch(e){}_fit();}
+ const _fit=function(){try{const _tb=document.getElementById('tms-box');_st.classList.remove('unstick');if(_tb)_tb.classList.remove('unstick');
+   const _h=_st.getBoundingClientRect().height,_t0=parseFloat(getComputedStyle(_st).top)||0,_z=(typeof __mdZoom==='number'&&__mdZoom>0)?__mdZoom:1;
+   if(_tb)_tb.style.setProperty('--tms-top',((_t0+_h)/_z)+'px');   /* v4.2.467: 固定の箱の真下。本文は縮尺の中なので z で割る */
+   const _all=_h+(_tb?_tb.getBoundingClientRect().height:0);
+   if(window.innerHeight>0&&_all>window.innerHeight*0.6){_st.classList.add('unstick');if(_tb)_tb.classList.add('unstick');}}catch(e){}};
+  window.addEventListener('resize',_fit);try{const _ro=new ResizeObserver(_fit);_ro.observe(_st);const _tb2=document.getElementById('tms-box');if(_tb2)_ro.observe(_tb2);}catch(e){}_fit();}
 }catch(e){}
 const hLab=document.getElementById('htoc-lab'),hN=document.getElementById('htoc-n'),hAr=document.getElementById('htoc-arrow');
 const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.active');const nm=at?String(at.textContent||'').replace(/[\u25be\u25b4]/g,'').trim():'';if(hLab)hLab.textContent=nm||'Hyper TOC';const n=document.querySelectorAll('#fixed-toc-body .toc-check:not(:checked)').length;if(hN)hN.textContent=n?String(n):'';if(hAr&&ft)hAr.textContent=ft.classList.contains('htoc-closed')?'\u25be':'\u25b4';}catch(e){}};
