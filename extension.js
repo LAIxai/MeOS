@@ -10868,6 +10868,10 @@ function meosClockFcParse(text) {
   } catch (_) { }
   // ★v4.2.469(俊克「ズレた秒数を直接、+4sのようにできると実用的だよ」): 矢印より前の `+4s` `-30s` `+1m30s` = 起点をずらす指示。
   //   ~日付 と同じ作法= 起点の読みには混ぜず、カーソルが行を出たら起点を書き直して字は消える。日付の `-` と取り違えないよう「空白の直後の ±」だけ。
+  // ★v4.2.471(俊克「これでなぜ駄目なんだ? ボタン化するんだよね? ⚠️が出て起動しない」): [−1s][+1s] は拡張が描くボタンで、本文の字ではない。
+  //   写して書かれても起点の読みには混ぜず、カーソルが行を出たら消す(私の説明が描いた姿を字と同じ見かけで書いたのが元)。
+  let btnSrc = '';
+  try { const _bm = /\[\s*[−\-]\s*\d+\s*s\s*\]\s*\[\s*\+\s*\d+\s*s\s*\]/.exec(body); if (_bm) { btnSrc = _bm[0]; body = (body.slice(0, _bm.index) + ' ' + body.slice(_bm.index + _bm[0].length)).replace(/[ \t]{2,}/g, ' ').trim(); } } catch (_) { }
   let shiftSrc = '', shiftMs = 0;
   try {
     const _sa = body.search(/[↺↻]/), _hd = _sa >= 0 ? body.slice(0, _sa) : body;
@@ -11018,7 +11022,7 @@ function meosClockFcParse(text) {
   //     同じ形に2つの意味を持たせない → [[feedback_one_source_for_mark_count_action]]
   //   ★`⏯️`(再生/一時停止の切替)は「**ここで手that要る**」= 渡す所で人に替わる、という意味に合う。
   //   ★`▶️`/`▶` も読み続ける(read-both)= 今日書いた物を置いていかない。書くのは `⏯️` 1つ。
-  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, ufc: meosIsUnfoldingSpecLine(t) };
+  return { pausedRound, manual: (face.indexOf('\u23ef') >= 0 || face.indexOf('\u25b6') >= 0), lock: (face.indexOf('\ud83d\udd10') >= 0 || face.indexOf('\ud83d\udd12') >= 0), hold: face.indexOf('\ud83d\udc41') >= 0, anchor: face.indexOf('\u2693') >= 0 /* v4.2.312 ⚓停泊= 鳴っても飛ばない */, off: (face.indexOf('\u23f8') >= 0 || MEOS_CLOCK_DONE_MARK_RE.test(face)), done, when: body, cycle, up, dual, rounds, cycleSrc, cycleSpans, cycleSeps, cycleReps, tags, magic, whenSrc, pAt, listNo, vAt, vElapsed, title, untilSrc, untilAt, shiftSrc, shiftMs, btnSrc, ufc: meosIsUnfoldingSpecLine(t) };
 }
 // ★★★v4.1.71(俊克 バグ1「基本は、**開始膜の // の後ろのコメント書き込み部分に #タグを入れれば**
 //   いいんだよね? でも、⏰リストには何も出ないよ」):
@@ -13538,6 +13542,20 @@ function meosApplyTimerLineDecorations(editor) {
                 const _bt = (t) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: '0 2px', textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em;' });
                 items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('−1s'), after: _bt('+1s') } });
                 plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });   // 手の形
+              }
+            }
+          } catch (_) { }
+          // ★v4.2.471: 本文に写された [−1s][+1s] の字は、カーソルが行を出たら消す(ボタンは描く物)
+          try {
+            if (c.btnSrc && !_rawHere) {
+              const _bi = txt.indexOf(c.btnSrc), _bk71 = uri + ' ' + i + ' ' + txt;
+              if (_bi >= 0 && !_meosUntilBusy.has(_bk71)) {
+                const _nt71 = (txt.slice(0, _bi).replace(/[ \t]+$/, '') + ' ' + txt.slice(_bi + c.btnSrc.length).replace(/^[ \t]+/, ''));
+                _meosUntilBusy.add(_bk71);
+                const _we71 = new vscode.WorkspaceEdit();
+                _we71.replace(doc.uri, new vscode.Range(i, 0, i, txt.length), _nt71);
+                meosDbg('[nudge] 写された [−1s][+1s] を消す 行=' + (i + 1));
+                Promise.resolve(vscode.workspace.applyEdit(_we71)).then(() => _meosUntilBusy.delete(_bk71), () => _meosUntilBusy.delete(_bk71));
               }
             }
           } catch (_) { }
