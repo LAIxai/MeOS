@@ -11474,19 +11474,54 @@ function meosClockUntilRewrite(txt, c, n) {
   } catch (_) { return null; }
 }
 // ★v4.2.469: ⏰行の `+4s` を起点へ書き込んだ行を返す(書けなければ null)。起点の時刻をずらし、p/f は付け直し、`+4s` は消す。
+// ★v4.2.470: 起点の時刻を ms だけずらした行を返す(書けなければ null)= `+4s` の書き戻しと [−1s]/[+1s] の共通の部品。p/f は新しい時刻で付け直す。
+function meosClockOriginShiftText(txt, ms) {
+  try {
+    const a = txt.search(/[↺↻]/), head = a >= 0 ? txt.slice(0, a) : txt, tail = a >= 0 ? txt.slice(a) : '';
+    const m = /(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?::\d{2})?)([pf])?/.exec(head); if (!m) return null;
+    if (m.index > 0 && /v$/i.test(head.slice(0, m.index))) return null;   // 仮の起点(v…)は拡張が書く物= ずらさない
+    const o = meosParseStampLoose(m[1] + m[3].replace(/^\s+/, ' ')); if (!o) return null;
+    const nw = new Date(o.getTime() + ms), st = meosClockFcStamp(nw);
+    const mark = m[4] ? (nw.getTime() <= Date.now() ? 'p' : 'f') : '';
+    return head.slice(0, m.index) + st + mark + head.slice(m.index + m[0].length) + tail;
+  } catch (_) { return null; }
+}
+// ★★v4.2.470(俊克「[+][-]0sのような微調整ボタンがあるといいね。結構何度も、たとえば、ローブローでも時間が止められて、ズレたよ」):
+//   起点の時刻と矢印の間の空白1字= 左に [−1s]・右に [+1s](空白の前/後ろにカーソルが落ちる所で見分ける= ▶️/🚢💨 と同じ仕掛け)。Opt+クリックは ±10s。
+function meosClockNudgeSpot(txt, c) {
+  try {
+    if (!c || c.done || !c.when || meosClockSplitV(c.whenSrc)) return -1;   // 起点が本文に在る1本だけ
+    const a = txt.search(/[↺↻]/); if (a < 2) return -1;
+    if (!/[ \t]/.test(txt[a - 1]) || !/[0-9pf]/.test(txt[a - 2])) return -1;
+    return a - 1;
+  } catch (_) { return -1; }
+}
+function meosClockNudgeHitAt(document, line, character) {
+  try {
+    const txt = document.lineAt(line).text || ''; if (txt.indexOf('⏰') < 0) return null;
+    const c = meosClockFcParse(txt); const k = meosClockNudgeSpot(txt, c); if (k < 0) return null;
+    if (character === k) return { line, dir: -1 };
+    if (character === k + 1) return { line, dir: 1 };
+    return null;
+  } catch (_) { return null; }
+}
+async function meosClockNudge(document, hit, big) {
+  try {
+    const txt = document.lineAt(hit.line).text || '';
+    const nt = meosClockOriginShiftText(txt, hit.dir * (big ? 10000 : 1000)); if (!nt || nt === txt) return false;
+    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, 0, hit.line, txt.length), nt);
+    const ok = await vscode.workspace.applyEdit(we);
+    meosDbg('[nudge] ' + (hit.dir > 0 ? '+' : '−') + (big ? '10' : '1') + 's 行=' + (hit.line + 1) + ' ok=' + ok);
+    return ok;
+  } catch (_) { return false; }
+}
 function meosClockShiftRewrite(txt, c) {
   try {
     if (!c || !c.shiftSrc || !c.shiftMs) return null;
-    const a = txt.search(/[↺↻]/), head = a >= 0 ? txt.slice(0, a) : txt, tail = a >= 0 ? txt.slice(a) : '';
-    const re = /(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?::\d{2})?)([pf])?/;
-    const m = re.exec(head); if (!m) return null;
-    if (m.index > 0 && /v$/i.test(head.slice(0, m.index))) return null;   // 仮の起点(v…)は拡張が書く物= ずらさない(⚠️)
-    const o = meosParseStampLoose(m[1] + m[3].replace(/^\s+/, ' ')); if (!o) return null;
-    const nw = new Date(o.getTime() + c.shiftMs), st = meosClockFcStamp(nw);
-    const mark = m[4] ? (nw.getTime() <= Date.now() ? 'p' : 'f') : '';
-    let h2 = head.slice(0, m.index) + st + mark + head.slice(m.index + m[0].length);
-    const si = h2.indexOf(c.shiftSrc); if (si < 0) return null;
-    h2 = (h2.slice(0, si).replace(/[ \t]+$/, '') + ' ' + h2.slice(si + c.shiftSrc.length).replace(/^[ \t]+/, ''));
+    const nt = meosClockOriginShiftText(txt, c.shiftMs); if (!nt) return null;
+    const a = nt.search(/[↺↻]/), head = a >= 0 ? nt.slice(0, a) : nt, tail = a >= 0 ? nt.slice(a) : '';
+    const si = head.indexOf(c.shiftSrc); if (si < 0) return null;
+    const h2 = head.slice(0, si).replace(/[ \t]+$/, '') + ' ' + head.slice(si + c.shiftSrc.length).replace(/^[ \t]+/, '');
     return h2.replace(/[ \t]+$/, ' ') + tail;
   } catch (_) { return null; }
 }
@@ -13492,6 +13527,17 @@ function meosApplyTimerLineDecorations(editor) {
                 const _ue = txt.indexOf(c.untilSrc);
                 if (_ue >= 0) items.push({ range: new vscode.Range(i, _ue + c.untilSrc.length, i, _ue + c.untilSrc.length),
                   renderOptions: { after: { contentText: ' \u26a0\ufe0f', color: '#e0803a' } } });
+              }
+            }
+          } catch (_) { }
+          // ★v4.2.470: [−1s]/[+1s] の微調整ボタン(起点の在る、済んでいない行・生データを見せていない時)
+          try {
+            if (!_rawHere && c.ufc) {
+              const _nk = meosClockNudgeSpot(txt, c);
+              if (_nk >= 0) {
+                const _bt = (t) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: '0 2px', textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em;' });
+                items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('−1s'), after: _bt('+1s') } });
+                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });   // 手の形
               }
             }
           } catch (_) { }
@@ -19776,6 +19822,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
             try { refresh(editor); } catch (_) { }
             return;
           } }
+        if (_s.isEmpty && meosClockNudgeHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }   // v4.2.470: Opt+[±1s] = ±10s
         if (_s.isEmpty && meosClockPlayHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }
       }
       if (_optSel92) editor.selections = [new vscode.Selection(_optSel92.active, _optSel92.active)];
@@ -19798,6 +19845,15 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
         await meosClockLockHere(editor, _lk);
+        setRefNoRaw(editor.document, _ln);
+        try { refresh(editor); } catch (_) { }
+        return;
+      }
+      const _nd70 = meosClockNudgeHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.470: [−1s]/[+1s]
+      if (_nd70) {
+        setRefNoRaw(editor.document, _ln);
+        meosParkCaretAfterPress(editor, _ln);
+        await meosClockNudge(editor.document, _nd70, !!_optSel92);
         setRefNoRaw(editor.document, _ln);
         try { refresh(editor); } catch (_) { }
         return;

@@ -85,7 +85,7 @@ copied anywhere and still says what it is for. A `1.` inside the title is a slot
 reads *💧Eye drop # 2* on the second drop — on the line, in the status bar and on the menu bar alike. Only the clock
 that is running shows its title on the line; the ones waiting their turn stay quiet.
 
-**Every line has its own ▶️ / ⏸️.** Stop one clock and the rest of the row carries on. A clock with an origin keeps its schedule when you stop it; **Opt+click ⏸️** instead holds it and moves the whole schedule back by the time it was held — for a doctor's check in the fourth round, a phone call in the middle of a Pomodoro. To nudge it by hand, write `+4s` (or `-30s`, `+1m30s`) after the origin: when the caret leaves the line, the origin moves by that much and the `+4s` is gone. Mark a line ⏯️ and, when
+**Every line has its own ▶️ / ⏸️.** Stop one clock and the rest of the row carries on. A clock with an origin keeps its schedule when you stop it; **Opt+click ⏸️** instead holds it and moves the whole schedule back by the time it was held — for a doctor's check in the fourth round, a phone call in the middle of a Pomodoro. To nudge it by hand, write `+4s` (or `-30s`, `+1m30s`) after the origin: when the caret leaves the line, the origin moves by that much and the `+4s` is gone. Or press the **[−1s] / [+1s]** buttons drawn right after the origin (**Opt+click** for ±10 s) — handy when the referee stops the clock for a low blow, again and again. Mark a line ⏯️ and, when
 its turn comes, it waits for you to press ▶️ instead of starting by itself. 🔓 → 🔐 locks a clock so it can be
 neither stopped nor deleted until it rings; **Opt+click** the 🔐 to take the lock off again.
 
