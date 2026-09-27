@@ -124,7 +124,10 @@ steps through three presets — 🍅 Pomodoro (the hand-over pair above), 💧 e
 💓 an hour of boxing `((3m 1m)×5)×3 // 💓HIIT-Box 1. 🔔Gong× 🔕 // 💓break 1.` (gongs to start each round, silence inside it), one message for each time — in yellow, blue and green, and the caret lands on the last `×N` with a drum beside
 it, so the first thing you try is the count. **Opt+click** ↻ to keep your own routine in its place.
 **Starting point** and **Last bell** sit one above the other, so while you turn the drum you watch where the
-routine begins and where it ends. One line in the box is one ⏰, and just above **Set** the panel shows each line
+routine begins and where it ends. Click the year, month or day of **Last bell** and the same three drums as
+**Date** open under it: roll them to the day you want to finish, and the count becomes the largest `×N` that does
+not run past it (the same rule as `~date`). Click the `×N` of Last bell and the caret goes to the count in the
+box, with its drum. **Opt** while you roll the year steps through the decades, as in **Date**. One line in the box is one ⏰, and just above **Set** the panel shows each line
 exactly as it will look in the editor — `▶️⏰🚢💨🔓 …` — where 🚢💨 and 🔓 are buttons, the same ones you will press on
 the line itself. Pick a preset and press Set; the rest you learn from the clock that appears in your text.
 
@@ -134,6 +137,12 @@ when a bell is due it wakes VSCodium and brings you to the membrane. Like the Do
 and while VSCodium is closed it lists your Tag & Go rooms — pick one and you are there. Turn it on or off with
 **[V-helper]** at the top right of the ⏰ panel (orange = in the menu bar, grey = nothing there).
 
+**Pass the next.** Not taking this dose? **⏭️ Pass the next** at the top of the menu-bar ⏰ skips the next bell of
+the nearest clock without a sound: a repeat moves on to its next turn, the last turn of a `×N` or a one-off clock
+is marked done, and a row hands over to its next line — just as if it had rung. **↩︎ last passed**, beside
+**last stopped**, brings it back while its time is still to come. It works with VSCodium closed too: V-helper moves
+on by itself, and VSCodium picks the pass up the next time it opens, so the skipped bell stays silent.
+
 **Two editors, two lives.** VS Code and VSCodium each get their own V-helper — **purple for VS Code, orange for
 VSCodium** — and each keeps only the clocks of the files open in its own editor. So you can run work clocks in
 one and private clocks in the other, side by side in the menu bar. Give them different bells too: press **🔔** beside the 🎨 Theme button in each editor's Me Dock, move with ↑/↓ to
@@ -141,20 +150,24 @@ hear every sound, and press Enter to keep one (it is saved as `laiMembrane.clock
 Keep the two lives in separate files — the same file open in both editors shows its clocks in both.
 
 <p align="center">
-  <!-- ★ヒーロー#2(v4.2.173以降の姿で撮り直し)をここへ: media/hero/v4.2-chained-clocks.png -->
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-chained-clocks.png" alt="Chained clocks - every eight hours, two eye drops five minutes apart; each line has its own play and pause button" width="92%"><br>
-  <sub><b>NEW in v4.2 — clocks that hand over to each other.</b> Every eight hours, two eye drops five minutes apart: two lines under one membrane. Each line has its own &#9654;&#65039; / &#9208;&#65039;, and each works as a timer on its own at any time.</sub>
+  <sub><b>NEW in v4.2 — independent yet linked.</b> This is the main editor, not a preview. Every eight hours, two eye drops five minutes apart: two lines under one membrane, counting down on the line, in the status bar and on the menu bar of both VS Code (purple) and VSCodium (orange). Each line has its own &#9654;&#65039; / &#9208;&#65039;, &#128674;&#128168; / &#9875; and &#128272; / &#128274; buttons, and <b>Opt+click</b> starts the five-minute clock again from zero at any time.</sub>
 </p>
 
 **Wide tables stay tables — wrap width in three presets.** You line a table up with the table button, and the
 editor wraps it at 80 columns and breaks it apart again. Beside the pointer button in Me Dock there is now a
 **wrap width** knob: drag it, or type the number, and the text re-wraps as you move. Keep three widths — say
 80 for prose, 140 for a wide table, 200 for the widest — and **↻** steps through them (red, blue, green), so a
-table that did not fit a moment ago opens out in one click. We know of no other Markdown editor that lets you
+table that did not fit a moment ago opens out in one click. A thin vertical line stands at the wrap width and
+moves with it, so you can see where a line will break. The number counts half-width characters: a line of
+Japanese breaks at the same line, with about one character for every 1.7 half-width ones. We know of no other Markdown editor that lets you
 change the wrap width this directly.
 
 **Also in v4.2**
 
+- **The top of Me Dock stays put** — the title row and **Format Me** stay at the top while you scroll, and
+  Format Me now sits above the ⏰ row, so opening the ⏰ panel no longer pushes the buttons you use most out of
+  reach. They follow Me Dock's size like everything else.
 - **Me Dock in ten sizes** — ⊕ / ⊖ beside **A** step through 60–80 % in eight fine steps, then 90 % and 100 %.
   A small box opens right there and says where you are (`4/10`); ↑ / ↓ keep stepping while you drag the panel
   wider, so you can settle the size in one go.
