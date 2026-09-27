@@ -25806,7 +25806,7 @@ function meDockHtml() {
 :root{color-scheme:light dark}
 body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--vscode-editor-background);color:var(--vscode-editor-foreground);--meos-frame:color-mix(in srgb,var(--vscode-foreground) 50%,transparent)}
 .dock{border:1px solid var(--vscode-panel-border);border-radius:10px;overflow:visible;box-shadow:0 8px 24px rgba(0,0,0,.20);background:var(--vscode-sideBar-background)}
-.dock-stick{position:sticky;top:0;z-index:30;background:var(--vscode-sideBar-background);border-radius:10px 10px 0 0}   /* v4.2.460: タイトル＋Format Me= スクロールしても上に残る(ポップアップは fixed なので位置はずれない) */
+.dock-stick{position:sticky;top:var(--stick-top,0px);z-index:30;background:var(--vscode-sideBar-background);border-radius:10px 10px 0 0}   /* v4.2.460: タイトル＋Format Me= スクロールしても上に残る(ポップアップは fixed なので位置はずれない) */
 .title{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:9px 11px;font-size:14px;font-weight:800;letter-spacing:.02em;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 50%,transparent);border-radius:8px}
 .title-left{display:flex;align-items:center;gap:8px;min-width:0}
 /* ★v4.0.366(俊克 改良2「Me Dockの一番上の領域が混み合って、横幅の調整がしにくいので、ファイルメニューと
@@ -26356,6 +26356,11 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .nav-box .hint{margin:4px 2px 0}
 .mepy-box{display:flex;justify-content:center;margin:0 0 8px}
 .dock-stick.unstick{position:static}
+/* ★v4.2.466(俊克「スクロールすると、固定位置のはずの部分が少し上に移動してしまう。これを動かないようにできないか?」):
+   top:0 だったので、上の余白(body の padding＋枠の線)の分だけ上へ動いていた→ 止まっている時と同じ高さ(--stick-top= 起動時に測る)で貼り付く。
+   上にできた隙間は地の色の帯で覆う(下の中身が透けない)。 */
+.dock-stick::before{content:'';position:absolute;left:-15px;right:-15px;top:calc(-1 * var(--stick-top,0px));height:var(--stick-top,0px);background:var(--vscode-editor-background);pointer-events:none}
+.dock-stick.unstick::before{display:none}
 /* v4.2.464: H-TOC の ⬇️/＋ は H-TOC を開いた時の名前の行の右端へ(.toc-tools の外なので大きさを写す) */
 .toc-name-row .htoc-ops{display:inline-flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 .htoc-ops button{font-size:11px;padding:3px 6px}
@@ -29724,7 +29729,8 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
   try{__mzApply();}catch(e){}
  }
  /* ★安全弁: 固定の部分が窓の高さの6割を超えたら固定を外す(下の⏰とH-TOCへスクロールで届かなくなるので) */
- if(_st){const _fit=function(){try{_st.classList.remove('unstick');if(window.innerHeight>0&&_st.getBoundingClientRect().height>window.innerHeight*0.6)_st.classList.add('unstick');}catch(e){}};
+ if(_st){try{if(!window.scrollY){const _t0=Math.max(0,Math.round(_st.getBoundingClientRect().top));_st.style.setProperty('--stick-top',_t0+'px');}}catch(e){}   /* v4.2.466: 止まっている時の高さで貼り付く */
+ const _fit=function(){try{_st.classList.remove('unstick');if(window.innerHeight>0&&_st.getBoundingClientRect().height>window.innerHeight*0.6)_st.classList.add('unstick');}catch(e){}};
   window.addEventListener('resize',_fit);try{new ResizeObserver(_fit).observe(_st);}catch(e){}_fit();}
 }catch(e){}
 const hLab=document.getElementById('htoc-lab'),hN=document.getElementById('htoc-n'),hAr=document.getElementById('htoc-arrow');
