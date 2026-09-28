@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.486 (2026-09-28)
+- [−1s][+1s] are as wide as the place you can press, and keep a small gap from the text after them.
+
 ### v4.2.485 (2026-09-28)
 - [−1s][+1s] stay on the text line when the line is taller (⚓).
 

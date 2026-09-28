@@ -13714,15 +13714,16 @@ function meosApplyTimerLineDecorations(editor) {
                   // ★v4.2.484(俊克「ボタンの高さは低くできるの?」): 行の高さを継いでいた→ line-height 1.2 で字の高さに
                   // ★v4.2.485(俊克 バグ1「ボクシングタイマーで、[-1s][+1s]の下に文字の下端が見えている」): 浮かせた絵(absolute)は行の上端に付く=
                   //   ⚓(1.95em)で行が高くなると札の字より上にずれた。→ 字と同じ並び(基準線揃え)に置き、幅は左右の余白で打ち消す(幅= 3ch＋余白4px＋枠2px)
-                  const _ov = (t, ml, mr) => ({ contentText: t, textDecoration: 'none; position: relative; pointer-events: none; margin-left: ' + ml + '; margin-right: ' + mr + '; line-height: 1.2; color: #2a2a2a; background-color: #fffdf6; border: 1px solid #d18400; border-radius: 4px; padding: 0 2px; font-weight: 800; z-index: 1;' });
+                  const _ov = (t, ml, mr) => ({ contentText: t, textDecoration: 'none; position: relative; pointer-events: none; margin-left: ' + ml + '; margin-right: ' + mr + '; line-height: 1.2; color: #2a2a2a; background-color: #fffdf6; border: 1px solid #d18400; border-radius: 4px; padding: 0; font-weight: 800; z-index: 1;' });   // v4.2.486: 余白0= 絵の幅は札と同じ(枠の1pxだけはみ出す)
                   const _ll = (_nk >= 2 && /[\udc00-\udfff]/.test(txt[_nk - 1]) && /[\ud800-\udbff]/.test(txt[_nk - 2])) ? 2 : 1;
                   gap9.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });
                   // ★v4.2.484: 絵は2枚とも k の空白1字の1つの装飾に= 頭(before)は [−1s] の札の後ろ・尻(after)は [+1s] の札の前に立つ(順が決まる)。
                   //   1つ前の字に置いていた [−1s] の絵は、名前の無い 🔕(🔔/🔔)だと 🔕 のボタンと同じ桁になり、順が入れ替わってずれた(4.2.483 のスクショ)。
                   //   [−1s] は札の幅(3字= 3ch)と枠(3px)の分だけ左へ戻す
-                  items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _ov('\u22121s', 'calc(-3ch - 3px)', '-3px'), after: _ov('+1s', '-3px', 'calc(-3ch - 3px)') } });
+                  items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _ov('\u22121s', 'calc(-3ch - 1px)', '-1px'), after: _ov('+1s', '-1px', 'calc(-3ch - 1px)') } });
                   plays.push({ range: new vscode.Range(i, _nk - _ll, i, _nk + 2 <= txt.length ? _nk + 2 : _nk + 1) });   // 手の形(2枚の札を跨ぐ)
-                  if (_pdTxt) items.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: { before: _pdTxt } });
+                  // v4.2.486(俊克 改良1「右の文字が[+1]ボタンに食い込んでいる…右の文字との間に物理的にスペースを」): [+1s] の札の後ろに 4px の隙間(ためた量もここ)
+                  items.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: { before: Object.assign({ contentText: '', margin: '0 0 0 4px' }, _pdTxt || {}) } });
                   nudgeHints.push({ line: i, k: _nk });
                 } else {
                 gap3.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });   // v4.2.481: 間は 3px の隙間
@@ -14125,8 +14126,8 @@ function meosApplyTimerLineDecorations(editor) {
       textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockGap3Deco) editor.setDecorations(meosClockGap3Deco, gap3);   // v4.2.481
     if ((gap6.length || gap9.length) && !meosClockGapNDeco) meosClockGapNDeco = {
-      6: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 6px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }),
-      9: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 9px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }) };
+      6: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 4px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }),
+      9: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 5px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }) };
     if (meosClockGapNDeco) { editor.setDecorations(meosClockGapNDeco[6], gap6); editor.setDecorations(meosClockGapNDeco[9], gap9); }   // v4.2.483
     try {   // ★v4.2.483: ±1s の札の場所が変わった時だけ VS Code に描き直しを頼む
       const _sig83 = nudgeHints.map(h => h.line + ':' + h.k).join(',');
