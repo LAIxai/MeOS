@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.479 (2026-09-28)
+- The [🔔][🔕] buttons at the head of a ⏰ line are shown again (they were hidden together with the bell names).
+
 ### v4.2.478 (2026-09-28)
 - **[−1s][+1s] sit right after 🔓**, before the list number, and 3 px apart.
 

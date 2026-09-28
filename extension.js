@@ -13439,7 +13439,10 @@ function meosApplyTimerLineDecorations(editor) {
                 if (_h30 > 0 && _h30 < _e30) { let _s30 = _h30; while (_s30 > 0 && txt.charAt(_s30 - 1) === ' ') _s30--; badgeHide.push(new vscode.Range(i, _s30, i, _e30)); }
                 const _bh30 = meosClockBellHead(txt);
                 if (_bh30) {
-                  badgeHide.push(new vscode.Range(i, _bh30.b0, i, _bh30.end));
+                  // ★v4.2.479(俊克「Rawには 🔔Gong/🔕Mew があるので、本来なら 🔔🔕 と表示されるはず」): 隠す範囲の**内側**に置いた before は一緒に消える
+                  //   (範囲の頭と後ろ端に置いた物は見える= 番号と ⚓)→ 隠す範囲をボタンの位置で切り、ボタンはいつも境目に立たせる
+                  const _cut30 = [_bh30.b0, _bh30.b0 + 2].concat(_bh30.b1 > _bh30.b0 + 2 ? [_bh30.b1] : []).concat([_bh30.end]);
+                  for (let _q = 0; _q + 1 < _cut30.length; _q++) if (_cut30[_q] < _cut30[_q + 1]) badgeHide.push(new vscode.Range(i, _cut30[_q], i, _cut30[_q + 1]));
                   if (!c.done) {
                     const _bb = (on) => ({ contentText: on ? '🔔' : '🔕', margin: '0 1px', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' });
                     plays.push({ range: new vscode.Range(i, _bh30.b0 + 2, i, _bh30.b0 + 2), renderOptions: { before: _bb(_bh30.mainOn) } });
