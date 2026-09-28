@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.483 (2026-09-28)
+- [−1s][+1s] are now pressed through VS Code inlay hints, with the familiar buttons drawn on top — a click anywhere on a button counts for that button (the left half used to count for the button before it).
+
 ### v4.2.482 (2026-09-28)
 - [🔔]/[🔕] no longer break the bell into a stray character when clicked.
 - **Me Dock keeps the width you dragged it to** when it is opened again or the window reloads.

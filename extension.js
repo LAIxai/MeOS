@@ -13254,7 +13254,11 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null;
-let meosClockGap3Deco = null;   // ★v4.2.481: ボタンの間の隙間= 隠した字の最後の1字を 3px の幅で残す
+let meosClockGap3Deco = null;
+let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9px)
+const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, k}]= [−1s] の札は k、[+1s] の札は k+1
+const _meosNudgeHintsSig = new Map();
+const _meosNudgeHintsEv = new vscode.EventEmitter();   // ★v4.2.481: ボタンの間の隙間= 隠した字の最後の1字を 3px の幅で残す
 // ★★★v4.1.176(俊克 9/6 pm11:52「できれば、**分母を別々の色**にして、**分子だけを白色**にして下さい。
 //   こうすれば、**変化するのthat白色**だと分る」):
 //   ★★★**動いている物だけを白にする**= 目は色で「どこを見ればよいか」を覚える。
@@ -13357,7 +13361,7 @@ function meosApplyTimerLineDecorations(editor) {
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
     const _badgeLent = new Set();   // v4.2.346: 最終日に貸したバッジ行(1膜1つ)   // v4.1.148 / v4.1.176
-    const gap3 = [];   // ★v4.2.481
+    const gap3 = [], gap6 = [], gap9 = [], nudgeHints = [];   // ★v4.2.481 / v4.2.483
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
     const shipBtns = [], moorBtns = [], shipLBtns = [], moorLBtns = [], lockedBtns = [];   // v4.2.339: 🔐も駒の右へ   // ★v4.2.314: 同じ空白1字の左の区画= 🚢💨(飛ぶ) / ⚓(停泊)。v4.2.318: 🔓と並ぶ時(L)と1人の時で幅を変える
@@ -13456,7 +13460,8 @@ function meosApplyTimerLineDecorations(editor) {
                     const _s = _cut30[_q], _e = _cut30[_q + 1]; if (!(_s < _e)) continue;
                     const _l = (_e - _s >= 2 && /[\udc00-\udfff]/.test(txt[_e - 1]) && /[\ud800-\udbff]/.test(txt[_e - 2])) ? 2 : 1;
                     if (_e - _l > _s) badgeHide.push(new vscode.Range(i, _s, i, _e - _l));
-                    gap3.push({ range: new vscode.Range(i, _e - _l, i, _e) });
+                    // v4.2.483: [−1s] の札の前の字は 6px(札の上に重ねる絵の枠 3px ＋ 🔕 との隙間 3px)
+                    ((_e === _bh30.end && c.ufc && !c.done && meosClockNudgeSpot(txt, c) === _bh30.end) ? gap6 : gap3).push({ range: new vscode.Range(i, _e - _l, i, _e) });
                   }
                   if (!c.done) {
                     const _bb = (on) => ({ contentText: on ? '🔔' : '🔕', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' });
@@ -13695,12 +13700,30 @@ function meosApplyTimerLineDecorations(editor) {
                 const _bt = (t, mg) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: mg, textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em; cursor: ' + meosHandCursor() + ';' });   // v4.2.473: 手の形は絵そのものに(▶️ は下の字が手を持っていた= 絵の下に字が無いここでは効かない)
                 // ★v4.2.472(俊克 バグ1「ポインターが選択指に変わらない」): 絵も手の形の型(plays)の側に描く= ▶️ と同じ(絵の上で手になる)
                 // ★v4.2.478(俊克「[-1s][+1s]の間を空けずに、2､3ピクセルくらいに」): 間の空白1字は隠す(幅0)= 間は余白 3px だけ
+                const _bh83 = meosClockBellHead(txt);
+                const _pd = _meosNudgePend.get(uri + ' ' + i);
+                const _pdTxt = (_pd && _pd.ms) ? { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } : null;
+                if (_bh83 && _bh83.end === _nk) {
+                  // ★★v4.2.483(俊克「インレイヒントの上にさらにボタンを上書きできればいいのにね」→「Try&Go!!」):
+                  //   ★押す物= インレイヒントの札(VS Code が行に差し込む字)。札の上をどこで押しても、カーソルは札の桁(k / k+1)に落ちる
+                  //     (絵の before は左半分を押すと1字前に丸められた= 4.2.482 の [clkClick])。
+                  //   ★見える物= 今までの絵を札の上に重ねる(クリックは素通し= pointer-events: none)。
+                  //     札は桁 k の字の前に入る。装飾の頭は札の後ろに立つ(VS Code は装飾の頭を差し込んだ字の右へ置く)so、
+                  //     [−1s] の絵は1つ前の字(6px の隙間)の頭、[+1s] の絵は k の頭(= [−1s] の札の直後・9px の隙間の前)に置き、隙間の分だけ右へずらす。
+                  //   ★手の形は、札を跨ぐ範囲に plays(手の形だけの型)を掛けて札にも効かせる。
+                  const _ov = (t, ml) => ({ contentText: t, textDecoration: 'none; position: absolute; pointer-events: none; margin-left: ' + ml + 'px; color: #2a2a2a; background-color: #fffdf6; border: 1px solid #d18400; border-radius: 4px; padding: 0 2px; font-weight: 800; z-index: 1;' });
+                  const _ll = (_nk >= 2 && /[\udc00-\udfff]/.test(txt[_nk - 1]) && /[\ud800-\udbff]/.test(txt[_nk - 2])) ? 2 : 1;
+                  gap9.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });
+                  items.push({ range: new vscode.Range(i, _nk - _ll, i, _nk), renderOptions: { before: _ov('\u22121s', 3) } });
+                  items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _ov('+1s', 6) } });
+                  plays.push({ range: new vscode.Range(i, _nk - _ll, i, _nk + 2 <= txt.length ? _nk + 2 : _nk + 1) });   // 手の形(2枚の札を跨ぐ)
+                  if (_pdTxt) items.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: { before: _pdTxt } });
+                  nudgeHints.push({ line: i, k: _nk });
+                } else {
                 gap3.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });   // v4.2.481: 間は 3px の隙間
                 plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s', '0') } });
-                // ★v4.2.474(俊克「数値は[+1]の右にしよう。[+1]を最初に連続して押そうとすると、ボタンが逃げてしまう」):
-                //   同じ位置の2つの装飾は描く順が決まらない→ [+1s] とためた量を1つの装飾の before/after に入れる(順が必ず [+1s] → 量)。当たりは今までどおり空白の後ろ。
-                const _pd = _meosNudgePend.get(uri + ' ' + i);
-                plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s', '0 3px 0 0') }, (_pd && _pd.ms) ? { after: { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } } : {}) });
+                plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s', '0 3px 0 0') }, _pdTxt ? { after: _pdTxt } : {}) });
+                }
               }
             }
           } catch (_) { }
@@ -14096,6 +14119,14 @@ function meosApplyTimerLineDecorations(editor) {
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
       textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockGap3Deco) editor.setDecorations(meosClockGap3Deco, gap3);   // v4.2.481
+    if ((gap6.length || gap9.length) && !meosClockGapNDeco) meosClockGapNDeco = {
+      6: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 6px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }),
+      9: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 9px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }) };
+    if (meosClockGapNDeco) { editor.setDecorations(meosClockGapNDeco[6], gap6); editor.setDecorations(meosClockGapNDeco[9], gap9); }   // v4.2.483
+    try {   // ★v4.2.483: ±1s の札の場所が変わった時だけ VS Code に描き直しを頼む
+      const _sig83 = nudgeHints.map(h => h.line + ':' + h.k).join(',');
+      if (_meosNudgeHintsSig.get(uri) !== _sig83) { _meosNudgeHintsSig.set(uri, _sig83); _meosNudgeHints.set(uri, nudgeHints); _meosNudgeHintsEv.fire(); }
+    } catch (_) { }
     // ★★★v4.2.74: 運転ボタンは**手の形を持つ型**で置く= 押せる所の上でだけ形that変わる。
     //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
     if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -39887,6 +39918,24 @@ makeDecorations();
     { scheme: 'untitled' },
     { scheme: 'file' }
   ];
+  // ★v4.2.483: ±1s の札(押す物)。見える絵は装飾で上に重ねる。古い VS Code に口が無くても起動は止めない
+  try { if (vscode.languages.registerInlayHintsProvider) context.subscriptions.push(
+vscode.languages.registerInlayHintsProvider(foldingSelector, {
+      onDidChangeInlayHints: _meosNudgeHintsEv.event,
+      provideInlayHints(document, range) {
+        const out = [];
+        try {
+          for (const h of (_meosNudgeHints.get(document.uri.toString()) || [])) {
+            if (h.line < range.start.line || h.line > range.end.line) continue;
+            const txt = document.lineAt(h.line).text || ''; if (h.k + 1 > txt.length) continue;
+            out.push(new vscode.InlayHint(new vscode.Position(h.line, h.k), '\u22121s'));
+            out.push(new vscode.InlayHint(new vscode.Position(h.line, h.k + 1), '+1s'));
+          }
+        } catch (_) { }
+        return out;
+      }
+    })); } catch (_) { }
+
   disposables = [
     vscode.languages.registerFoldingRangeProvider(foldingSelector, (membraneFoldingProviderInstance = new MembraneFoldingProvider())),
     vscode.languages.registerHoverProvider(foldingSelector, {
