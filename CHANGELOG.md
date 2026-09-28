@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.489 (2026-09-28)
+- Switching 🔔/🔕, 🔓/🔐 or 🚢💨/⚓ no longer makes the buttons jump before they settle.
+
 ### v4.2.488 (2026-09-28)
 - The buttons on a ⏰ line sit close together again, the pointer turns into the hand over each of them, and ⚓ sinks on its own without lowering the line.
 

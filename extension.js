@@ -11609,10 +11609,14 @@ async function meosClockBellModeToggle(document, hit) {
     //   🔔(D83D DD14) と 🔕(D83D DD15) は前半が同じ= 置き換えは共通の頭を削って「後半1つ」の変更に縮められ、
     //   割れた後半だけが拡張へ運ばれて字が壊れた疑い(その後 ±1s の行ごと書き換えで、壊れた写しが本文へ戻った)。
     //   → 1回で置き換えず、**消してから入れる**(共通の頭が生まれない)
-    const we0 = new vscode.WorkspaceEdit(); we0.delete(document.uri, new vscode.Range(hit.line, pos, hit.line, pos + 2));
-    if (!(await vscode.workspace.applyEdit(we0))) return false;
-    const we = new vscode.WorkspaceEdit(); we.insert(document.uri, new vscode.Position(hit.line, pos), nx);
-    const ok = await vscode.workspace.applyEdit(we);
+    const _u89 = document.uri.toString(); _meosHintHold.add(_u89);   // v4.2.489: 消して入れる間は描かない
+    let ok = false;
+    try {
+      const we0 = new vscode.WorkspaceEdit(); we0.delete(document.uri, new vscode.Range(hit.line, pos, hit.line, pos + 2));
+      if (!(await vscode.workspace.applyEdit(we0))) return false;
+      const we = new vscode.WorkspaceEdit(); we.insert(document.uri, new vscode.Position(hit.line, pos), nx);
+      ok = await vscode.workspace.applyEdit(we);
+    } finally { _meosHintHold.delete(_u89); }
     meosDbg('[bellMode] ' + hit.which + ' ' + cur + '→' + nx + ' 行=' + (hit.line + 1) + ' ok=' + ok
       + ' 後=' + JSON.stringify((document.lineAt(hit.line).text || '').slice(pos, pos + 6)));   // v4.2.482: 書いた後の字を残す(割れていれば \\ud83d 等で見える)
     return ok;
@@ -13259,6 +13263,8 @@ let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9
 const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]= ⏰行のボタンの札(v4.2.487: 全部のボタン)
 let meosClockHintSkinDeco = null;   // ★v4.2.487: 札の灰色の地を消し、手の形にする
 const _meosNudgeHintsSig = new Map();
+const _meosNudgeHintsVer = new Map();   // ★v4.2.489: 札の表を作った時の本文の版
+const _meosHintHold = new Set();   // ★v4.2.489: 2手で書き換えている最中の uri(途中の姿で描かない)
 const _meosNudgeHintsEv = new vscode.EventEmitter();   // ★v4.2.481: ボタンの間の隙間= 隠した字の最後の1字を 3px の幅で残す
 // ★★★v4.1.176(俊克 9/6 pm11:52「できれば、**分母を別々の色**にして、**分子だけを白色**にして下さい。
 //   こうすれば、**変化するのthat白色**だと分る」):
@@ -13358,6 +13364,7 @@ function meosClockArrowAt(txt) {
 function meosApplyTimerLineDecorations(editor) {
   try {
     if (!editor || !editor.document) return;
+    if (_meosHintHold.has(editor.document.uri.toString())) return;   // ★v4.2.489: 🔔↔🔕 を消して入れる途中は描かない(途中の姿で並びが崩れて見えた)
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
@@ -14161,6 +14168,7 @@ function meosApplyTimerLineDecorations(editor) {
     if (meosClockHintSkinDeco) editor.setDecorations(meosClockHintSkinDeco, hintSkins);   // v4.2.487
     try {   // ★v4.2.483: ±1s の札の場所が変わった時だけ VS Code に描き直しを頼む
       const _sig83 = nudgeHints.map(h => h.line + ':' + h.col + ':' + h.label).join(',');
+      _meosNudgeHintsVer.set(uri, doc.version);
       if (_meosNudgeHintsSig.get(uri) !== _sig83) { _meosNudgeHintsSig.set(uri, _sig83); _meosNudgeHints.set(uri, nudgeHints); _meosNudgeHintsEv.fire(); }
     } catch (_) { }
     // ★★★v4.2.74: 運転ボタンは**手の形を持つ型**で置く= 押せる所の上でだけ形that変わる。
@@ -20088,6 +20096,11 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   try {
     const _sels92 = editor.selections || [];
     if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && _sels92.length >= 2) {
+      try {   // ★v4.2.489(俊克 バグ1「🔐だけが、Optクリックする時、右隣との隙間くらいをクリックしないと反応しない」): Opt+クリックで足されたカーソルの桁を残す
+        const _l89 = _sels92[_sels92.length - 1], _t89 = editor.document.lineAt(_l89.active.line).text || '';
+        if (_t89.indexOf('\u23f0') >= 0) { const _sp89 = meosClockLockSpot(_t89), _lm89 = meosClockLockMarkAt(_t89);
+          meosDbg('[optClick] 行=' + (_l89.active.line + 1) + ' 桁=' + _sels92.map(x => x.active.character + (x.isEmpty ? '' : '~' + x.anchor.character)).join(',') + ' 錠p=' + (_sp89 ? _sp89.p : -1) + ' 本文🔐=' + (_lm89 ? _lm89.a + '-' + _lm89.b : '-')); }
+      } catch (_) { }
       for (let k = _sels92.length - 1; k >= 0; k--) {
         const _s = _sels92[k];
         // ★v4.2.238: 🔐を▶️より先に見る(✓の付いた⏰では🔐が▶️の当たり at+1 と重なり、Opt+クリックが▶️に取られていた)。
@@ -39961,6 +39974,14 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       provideInlayHints(document, range) {
         const out = [];
         try {
+          // ★★v4.2.489(俊克 改良1「▶️/⏸️だけは自然に切り替わる。他の切替ボタンは一旦変な位置に移動して、次に正しい位置に現れる。なぜ?」):
+          //   ★本文を書き換えると VS Code はすぐ札を訊きに来る。表は前の本文で作った物= 古い桁に札が立ち、次の描画で正しい桁へ飛んでいた。
+          //   → 表が今の本文の版より古ければ、ここで描き直してから答える(書き換えの途中= _meosHintHold の間は前の表のまま)
+          const _u89 = document.uri.toString();
+          if (!_meosHintHold.has(_u89) && _meosNudgeHintsVer.get(_u89) !== document.version) {
+            const _ed89 = (vscode.window.visibleTextEditors || []).find(e => e.document === document);
+            if (_ed89) meosApplyTimerLineDecorations(_ed89);
+          }
           for (const h of (_meosNudgeHints.get(document.uri.toString()) || [])) {
             if (h.line < range.start.line || h.line > range.end.line) continue;
             const txt = document.lineAt(h.line).text || ''; if (h.col > txt.length) continue;
