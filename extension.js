@@ -20021,6 +20021,19 @@ async function handleMembraneNameSelection(editor, selectionKind) {
   if (selectionKind === vscode.TextEditorSelectionChangeKind.Mouse && editor.selection.isEmpty) {
     try {
       const _ln = editor.selection.active.line;
+      // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
+      //   → [[feedback_go_get_the_measurement]]。⏰の行をマウスで押した時だけ。
+      try {
+        const _t80 = editor.document.lineAt(_ln).text || '';
+        if (_t80.indexOf('\u23f0') >= 0) {
+          const _sp80 = meosClockLockSpot(_t80), _bh80 = meosClockBellHead(_t80), _c80 = meosClockFcParse(_t80);
+          meosDbg('[clkClick] 行=' + (_ln + 1) + ' caretCh=' + editor.selection.active.character
+            + ' 駒p-1=' + (_sp80 ? _sp80.p - 1 : -1) + ' 錠p=' + (_sp80 ? _sp80.p : -1)
+            + ' 主b0+2=' + (_bh80 ? _bh80.b0 + 2 : -1) + ' 副b1=' + (_bh80 ? _bh80.b1 : -1) + ' 鐘end=' + (_bh80 ? _bh80.end : -1)
+            + ' ±1s=' + meosClockNudgeSpot(_t80, _c80)
+            + ' at=' + JSON.stringify(_t80.substr(editor.selection.active.character, 6)));
+        }
+      } catch (_) { }
       const _an = meosClockAnchorHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.314: 🚢💨/⚓を押した= 停泊を切り替える
       if (_an) {
         setRefNoRaw(editor.document, _ln);
