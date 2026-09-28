@@ -13368,12 +13368,23 @@ function meosApplyTimerLineDecorations(editor) {
     //   ★札の字は空白 n 字(= n ch)。絵は札の直後(装飾の頭は差し込んだ字の右に立つ)に、幅 n ch の箱で置き、左へ n ch 戻す(字の並び= 基準線揃え)。
     //   ★札の灰色の地は、札を跨ぐ範囲に掛けた型(meosClockHintSkinDeco)で消す(手の形も同じ型)。
     //   新しいボタンを足す時もこれを呼ぶ。当たりの判定は今までどおり「カーソルの桁 == col」。
-    const _hintBtn = (i, col, n, content, css, fsEm, after) => {
-      nudgeHints.push({ line: i, col, label: '\u00a0'.repeat(n) });
-      const W = (n / (fsEm || 1)).toFixed(3) + 'ch';
-      items.push({ range: new vscode.Range(i, col, i, col), renderOptions: Object.assign({ before: { contentText: content,
-        textDecoration: 'none; position: relative; pointer-events: none; display: inline-block; box-sizing: border-box; width: ' + W + '; margin-left: -' + W + '; text-align: center; line-height: 1.2; z-index: 1; ' + (css || '') } }, after ? { after } : {}) });
-      hintSkins.push({ range: new vscode.Range(i, Math.max(0, col - 1), i, col + 1) });
+    // ★v4.2.488(俊克 改良1「逆に横に開いたよ。なぜ?」＋バグ1「⚓︎が出ると行全体が沈む」):
+    //   ①札を空白 n 字(整数 ch)にしていた= 絵(約1.7ch)より広く、間が開いた → 札の字を**絵そのもの**にする(🔔🔕🔐 は札だけで絵は要らない)
+    //   ②札を跨ぐ型の範囲の端が絵文字の真ん中(サロゲートの間)に落ち、VS Code に切り詰められて札を跨がなかった= 灰色の地も手の形も効かなかった
+    //   ③⚓(1.95em)を字の並びに置いたので行が高くなった → ⚓ だけは今までどおり浮かせる(absolute= 行の高さを変えない)
+    //   絵を重ねる時(ov): rtl= 幅0の箱から左へはみ出させて札にぴったり重ねる(札と同じ字・同じ大きさの時) / abs= 浮かせて W だけ左へ戻す
+    const _hintBtn = (i, col, label, ov) => {
+      nudgeHints.push({ line: i, col, label });
+      const t = doc.lineAt(i).text || '';
+      const hi = (k) => /[\ud800-\udbff]/.test(t[k] || ''), lo = (k) => /[\udc00-\udfff]/.test(t[k] || '');
+      const a = Math.max(0, col - ((col >= 2 && lo(col - 1) && hi(col - 2)) ? 2 : 1));
+      const b = Math.min(t.length, col + ((hi(col) && lo(col + 1)) ? 2 : 1));
+      hintSkins.push({ range: new vscode.Range(i, a, i, b) });
+      if (!ov) return;
+      const base = ov.abs
+        ? 'none; position: absolute; pointer-events: none; margin-left: -' + ov.abs + '; z-index: 1; '
+        : 'none; position: relative; pointer-events: none; display: inline-block; width: 0; direction: rtl; white-space: nowrap; line-height: 1.2; z-index: 1; ';
+      items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: ov.abs ? ov.content : ('\u200e' + ov.content + '\u200e'), textDecoration: base + (ov.css || '') } } });
     };
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
@@ -13477,8 +13488,8 @@ function meosApplyTimerLineDecorations(editor) {
                     ((_e === _bh30.end && c.ufc && !c.done && meosClockNudgeSpot(txt, c) === _bh30.end) ? gap6 : gap3).push({ range: new vscode.Range(i, _e - _l, i, _e) });
                   }
                   if (!c.done) {
-                    _hintBtn(i, _bh30.b0 + 2, 2, _bh30.mainOn ? '🔔' : '🔕');   // v4.2.487: 札＋絵
-                    if (_bh30.b1 >= 0) _hintBtn(i, _bh30.b1, 2, _bh30.subOn ? '🔔' : '🔕');
+                    _hintBtn(i, _bh30.b0 + 2, _bh30.mainOn ? '🔔' : '🔕');   // v4.2.487: 札(v4.2.488: 札の字が絵)
+                    if (_bh30.b1 >= 0) _hintBtn(i, _bh30.b1, _bh30.subOn ? '🔔' : '🔕');
                   }
                 }
               } catch (_) { }
@@ -13650,7 +13661,7 @@ function meosApplyTimerLineDecorations(editor) {
               // ★v4.2.339(俊克 質問1「なぜ、この2つ目の5分タイマーの並び順は1つ目と違うのか?」): 🔐は本文の字で⏰の直後、🔓は駒の右に描く= 順が入れ替わっていた。
               //   → 🔐も本文の字を隠して駒の右の区画へ描く= いつでも ⏰ [🚢💨/⚓] [🔓/🔐](外すのは今までどおり Opt+クリック)
               const _lmH = c.lock ? meosClockLockMarkAt(txt) : null;
-              if (_lmH) { badgeHide.push(new vscode.Range(i, _lmH.a, i, _lmH.b)); _hintBtn(i, _spA.p, 2, '\ud83d\udd10'); }   // v4.2.487: 札＋絵   // v4.2.481: 🔐も駒の後ろ(p)に立つ1つのボタン
+              if (_lmH) { badgeHide.push(new vscode.Range(i, _lmH.a, i, _lmH.b)); _hintBtn(i, _spA.p, '\ud83d\udd10'); }   // v4.2.487: 札＋絵   // v4.2.481: 🔐も駒の後ろ(p)に立つ1つのボタン
               const _withLock = !!_lmH || (!c.done && !c.lock);   // v4.2.318: 右の区画が立つか(🔓 か 🔐)
               // ★v4.2.325(俊克 改良2「⚓の上ではtipが出ないので、どっちでも共通のtipを出そうよ」):
               //   ⚓の絵の下は隠した本文の⚓の桁= 指はそこに落ちてtipの範囲の外だった。→ tipは⏰の後ろ〜駒の右端まで1つ(🚢💨/⚓と🔓を1枚で言う)
@@ -13661,8 +13672,8 @@ function meosApplyTimerLineDecorations(editor) {
                   + (_lmH ? '\n\n\ud83d\udd10 Locked \u2014 Opt-click \ud83d\udd10 to unlock.' : (_withLock ? '\n\n\ud83d\udd13 Click \ud83d\udd13 to lock this clock with \ud83d\udd10 \u2014 it then cannot be stopped or dropped until it rings.' : '')) }); }
               // v4.2.487: 🚢💨/⚓ も札＋絵(札は駒の空白の前= p-1)。駒は 3px の隙間
               gap3.push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p) });
-              if (c.anchor) _hintBtn(i, _spA.p - 1, 2, '\u2693\ufe0e', 'font-size: 1.95em; font-weight: 900; color: #ff3b30; -webkit-text-stroke: 0.35px #000; transform: translateY(0.14em) rotate(10deg); transform-origin: 50% 60%;', 1.95);
-              else _hintBtn(i, _spA.p - 1, 3, '\ud83d\udea2\ud83d\udca8', 'font-size: 0.85em;', 0.85);
+              if (c.anchor) _hintBtn(i, _spA.p - 1, '\u00a0\u00a0', { abs: (2 / 1.95).toFixed(3) + 'ch', content: '\u2693\ufe0e', css: 'font-size: 1.95em; font-weight: 900; color: #ff3b30; -webkit-text-stroke: 0.35px #000; transform: translateY(0.14em) rotate(10deg); transform-origin: 50% 60%;' });
+              else _hintBtn(i, _spA.p - 1, '\u00a0\u00a0\u00a0', { content: '\ud83d\udea2\ud83d\udca8', css: 'font-size: 0.85em;' });
             }
           }
           if (!c.done && !c.lock && !_rawHere && !_bad34) {
@@ -13677,7 +13688,7 @@ function meosApplyTimerLineDecorations(editor) {
                 // ★★v4.2.236(俊克「まだポインタの形が変わらず、切り替えができない」): 🔓を**空白の上に浮かせた飾り**にしていたので、
                 //   隠した印(⏸6)と空白の桁が全部同じ位置に重なり、押すと⏰の頭(▶️の当たり)へ落ちていた(ログ caretCh=13)。
                 //   → 時刻の直前の**空白1字そのもの**を🔓の駒にする= 本物の字の箱なので手の形も当たりも効く(幅は字間で広げる)。
-                if (/[ \t]/.test(txt[_sp.p - 1] || '')) _hintBtn(i, _sp.p, 2, '\ud83d\udd13', 'opacity: 0.65;');   // v4.2.487: 札＋絵   // v4.2.481: 🔓は駒の後ろ(p)に立つ1つのボタン   // v4.2.325: tipは🚢💨/⚓と共通の1枚
+                if (/[ \t]/.test(txt[_sp.p - 1] || '')) _hintBtn(i, _sp.p, '\ud83d\udd13', { content: '\ud83d\udd13', css: 'filter: brightness(0.6);' });   // 札と同じ字を暗くして重ねる(opacity だと下の札が透ける)   // v4.2.487: 札＋絵   // v4.2.481: 🔓は駒の後ろ(p)に立つ1つのボタン   // v4.2.325: tipは🚢💨/⚓と共通の1枚
               }
               else items.push({ range: new vscode.Range(i, _sp.e, i, _sp.e),
                 renderOptions: { after: { contentText: '\ud83d\udd13', opacity: '0.42' } } });

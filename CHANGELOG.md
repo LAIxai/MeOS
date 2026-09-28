@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.488 (2026-09-28)
+- The buttons on a ⏰ line sit close together again, the pointer turns into the hand over each of them, and ⚓ sinks on its own without lowering the line.
+
 ### v4.2.487 (2026-09-28)
 - 🚢💨/⚓, 🔓/🔐 and [🔔][🔕] on a ⏰ line work like [−1s][+1s]: a click anywhere on the button counts for that button.
 
