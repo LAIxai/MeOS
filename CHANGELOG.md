@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.484 (2026-09-28)
+- [−1s][+1s] are as tall as the text, and [−1s] sits on its own place when the sub bell has no name.
+
 ### v4.2.483 (2026-09-28)
 - [−1s][+1s] are now pressed through VS Code inlay hints, with the familiar buttons drawn on top — a click anywhere on a button counts for that button (the left half used to count for the button before it).
 

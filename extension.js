@@ -13711,11 +13711,14 @@ function meosApplyTimerLineDecorations(editor) {
                   //     札は桁 k の字の前に入る。装飾の頭は札の後ろに立つ(VS Code は装飾の頭を差し込んだ字の右へ置く)so、
                   //     [−1s] の絵は1つ前の字(6px の隙間)の頭、[+1s] の絵は k の頭(= [−1s] の札の直後・9px の隙間の前)に置き、隙間の分だけ右へずらす。
                   //   ★手の形は、札を跨ぐ範囲に plays(手の形だけの型)を掛けて札にも効かせる。
-                  const _ov = (t, ml) => ({ contentText: t, textDecoration: 'none; position: absolute; pointer-events: none; margin-left: ' + ml + 'px; color: #2a2a2a; background-color: #fffdf6; border: 1px solid #d18400; border-radius: 4px; padding: 0 2px; font-weight: 800; z-index: 1;' });
+                  // ★v4.2.484(俊克「ボタンの高さは低くできるの?」): 行の高さを継いでいた→ line-height 1.2 で字の高さに
+                  const _ov = (t, ml) => ({ contentText: t, textDecoration: 'none; position: absolute; pointer-events: none; margin-left: ' + ml + '; line-height: 1.2; color: #2a2a2a; background-color: #fffdf6; border: 1px solid #d18400; border-radius: 4px; padding: 0 2px; font-weight: 800; z-index: 1;' });
                   const _ll = (_nk >= 2 && /[\udc00-\udfff]/.test(txt[_nk - 1]) && /[\ud800-\udbff]/.test(txt[_nk - 2])) ? 2 : 1;
                   gap9.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });
-                  items.push({ range: new vscode.Range(i, _nk - _ll, i, _nk), renderOptions: { before: _ov('\u22121s', 3) } });
-                  items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _ov('+1s', 6) } });
+                  // ★v4.2.484: 絵は2枚とも k の空白1字の1つの装飾に= 頭(before)は [−1s] の札の後ろ・尻(after)は [+1s] の札の前に立つ(順が決まる)。
+                  //   1つ前の字に置いていた [−1s] の絵は、名前の無い 🔕(🔔/🔔)だと 🔕 のボタンと同じ桁になり、順が入れ替わってずれた(4.2.483 のスクショ)。
+                  //   [−1s] は札の幅(3字= 3ch)と枠(3px)の分だけ左へ戻す
+                  items.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _ov('\u22121s', 'calc(-3ch - 3px)'), after: _ov('+1s', '-3px') } });
                   plays.push({ range: new vscode.Range(i, _nk - _ll, i, _nk + 2 <= txt.length ? _nk + 2 : _nk + 1) });   // 手の形(2枚の札を跨ぐ)
                   if (_pdTxt) items.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: { before: _pdTxt } });
                   nudgeHints.push({ line: i, k: _nk });
