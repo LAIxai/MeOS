@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.487 (2026-09-28)
+- 🚢💨/⚓, 🔓/🔐 and [🔔][🔕] on a ⏰ line work like [−1s][+1s]: a click anywhere on the button counts for that button.
+
 ### v4.2.486 (2026-09-28)
 - [−1s][+1s] are as wide as the place you can press, and keep a small gap from the text after them.
 
