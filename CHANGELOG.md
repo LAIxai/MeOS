@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.478 (2026-09-28)
+- **[−1s][+1s] sit right after 🔓**, before the list number, and 3 px apart.
+
 ### v4.2.477 (2026-09-28)
 - **The cycle first, the origin last.** A ⏰ line is now written `⏰ 🔔Gong/🔕Mew ↺↻(3m 1m)×12 2026-09-28 03:30:00p // R 1. // break 1.` — the cycle is what you read, the origin may run off a narrow window. Lines in the old order are still read; MeOS writes the new order whenever it rewrites one.
 - **Two bells, main and sub.** The first time of the line with an origin is main, every other time is sub. `🔔`/`🔕` decide only the warnings (1 minute, 30 s, 10 s before a time ends); every time rings its own sound **once as it begins**. Two buttons [🔔][🔕] on the line switch them; the sounds are named in the raw line (or numbered — `🔔3/🔕5` — and written down as names).

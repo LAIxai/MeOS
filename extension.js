@@ -11527,6 +11527,9 @@ function meosClockNudgeSpot(txt, c) {
   try {
     if (!c || c.done || !c.when || meosClockSplitV(c.whenSrc)) return -1;   // 起点が本文に在る1本だけ
     const a = txt.search(/[↺↻]/); if (a < 2) return -1;
+    // ★v4.2.478(俊克 改良1「[-1s][+1s]を項番の後ではなく、🔓の直ぐ後ろに配置しよう」): 頭の 🔔主/🔕副 の直後の空白1字を使う(字は隠す)
+    const bh = meosClockBellHead(txt);
+    if (bh && bh.end < a && /[ \t]/.test(txt[bh.end] || '')) return bh.end;
     if (!/[ \t]/.test(txt[a - 1])) return -1;   // v4.2.477: 起点は周期の後ろへ移った= 矢印の前の空白だけを見る
     return a - 1;
   } catch (_) { return -1; }
@@ -13461,7 +13464,8 @@ function meosApplyTimerLineDecorations(editor) {
                   const _at52 = txt.indexOf(c.listNo, _p0 >= 0 ? _p0 : 0);
                   if (_at52 > 0) {
                     badgeHide.push(new vscode.Range(i, _at52, i, _at52 + c.listNo.length));
-                    items.push({ range: new vscode.Range(i, _at52, i, _at52),
+                    // v4.2.478: 番号は隠した字の後ろ端に描く= 頭には [+1s] が立つ(同じ位置の2つの装飾は描く順が決まらない)
+                    items.push({ range: new vscode.Range(i, _at52 + c.listNo.length, i, _at52 + c.listNo.length),
                       renderOptions: { before: { contentText: _n52 + '.' } } });
                   }
                 }
@@ -13669,13 +13673,15 @@ function meosApplyTimerLineDecorations(editor) {
             if (!_rawHere && c.ufc) {
               const _nk = meosClockNudgeSpot(txt, c);
               if (_nk >= 0) {
-                const _bt = (t) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: '0 2px', textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em; cursor: ' + meosHandCursor() + ';' });   // v4.2.473: 手の形は絵そのものに(▶️ は下の字が手を持っていた= 絵の下に字が無いここでは効かない)
+                const _bt = (t, mg) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: mg, textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em; cursor: ' + meosHandCursor() + ';' });   // v4.2.473: 手の形は絵そのものに(▶️ は下の字が手を持っていた= 絵の下に字が無いここでは効かない)
                 // ★v4.2.472(俊克 バグ1「ポインターが選択指に変わらない」): 絵も手の形の型(plays)の側に描く= ▶️ と同じ(絵の上で手になる)
-                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s') } });
+                // ★v4.2.478(俊克「[-1s][+1s]の間を空けずに、2､3ピクセルくらいに」): 間の空白1字は隠す(幅0)= 間は余白 3px だけ
+                badgeHide.push(new vscode.Range(i, _nk, i, _nk + 1));
+                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s', '0 0 0 2px') } });
                 // ★v4.2.474(俊克「数値は[+1]の右にしよう。[+1]を最初に連続して押そうとすると、ボタンが逃げてしまう」):
                 //   同じ位置の2つの装飾は描く順が決まらない→ [+1s] とためた量を1つの装飾の before/after に入れる(順が必ず [+1s] → 量)。当たりは今までどおり空白の後ろ。
                 const _pd = _meosNudgePend.get(uri + ' ' + i);
-                plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s') }, (_pd && _pd.ms) ? { after: { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } } : {}) });
+                plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s', '0 2px 0 3px') }, (_pd && _pd.ms) ? { after: { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } } : {}) });
               }
             }
           } catch (_) { }
