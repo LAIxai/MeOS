@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.485 (2026-09-28)
+- [−1s][+1s] stay on the text line when the line is taller (⚓).
+
 ### v4.2.484 (2026-09-28)
 - [−1s][+1s] are as tall as the text, and [−1s] sits on its own place when the sub bell has no name.
 
