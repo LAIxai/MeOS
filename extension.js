@@ -13247,6 +13247,7 @@ let meosClockRoundDeco = null;
 // v4.1.148: 数字の置き場になったバッジ行は、**中身を消して場所だけ借りる**
 //   (v0.9.479 と同じ隠し方= 幅ごと畳む。display:none は before を道連れにするので使わない)。
 let meosClockBadgeHideDeco = null;
+let meosClockGap3Deco = null;   // ★v4.2.481: ボタンの間の隙間= 隠した字の最後の1字を 3px の幅で残す
 // ★★★v4.1.176(俊克 9/6 pm11:52「できれば、**分母を別々の色**にして、**分子だけを白色**にして下さい。
 //   こうすれば、**変化するのthat白色**だと分る」):
 //   ★★★**動いている物だけを白にする**= 目は色で「どこを見ればよいか」を覚える。
@@ -13349,6 +13350,7 @@ function meosApplyTimerLineDecorations(editor) {
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
     const _badgeLent = new Set();   // v4.2.346: 最終日に貸したバッジ行(1膜1つ)   // v4.1.148 / v4.1.176
+    const gap3 = [];   // ★v4.2.481
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
     const shipBtns = [], moorBtns = [], shipLBtns = [], moorLBtns = [], lockedBtns = [];   // v4.2.339: 🔐も駒の右へ   // ★v4.2.314: 同じ空白1字の左の区画= 🚢💨(飛ぶ) / ⚓(停泊)。v4.2.318: 🔓と並ぶ時(L)と1人の時で幅を変える
@@ -13442,9 +13444,15 @@ function meosApplyTimerLineDecorations(editor) {
                   // ★v4.2.479(俊克「Rawには 🔔Gong/🔕Mew があるので、本来なら 🔔🔕 と表示されるはず」): 隠す範囲の**内側**に置いた before は一緒に消える
                   //   (範囲の頭と後ろ端に置いた物は見える= 番号と ⚓)→ 隠す範囲をボタンの位置で切り、ボタンはいつも境目に立たせる
                   const _cut30 = [_bh30.b0, _bh30.b0 + 2].concat(_bh30.b1 > _bh30.b0 + 2 ? [_bh30.b1] : []).concat([_bh30.end]);
-                  for (let _q = 0; _q + 1 < _cut30.length; _q++) if (_cut30[_q] < _cut30[_q + 1]) badgeHide.push(new vscode.Range(i, _cut30[_q], i, _cut30[_q + 1]));
+                  // v4.2.481: 各区間の最後の1字は 3px の幅で残す= 次のボタンの左半分を押しても、カーソルはそのボタンの桁に落ちる
+                  for (let _q = 0; _q + 1 < _cut30.length; _q++) {
+                    const _s = _cut30[_q], _e = _cut30[_q + 1]; if (!(_s < _e)) continue;
+                    const _l = (_e - _s >= 2 && /[\udc00-\udfff]/.test(txt[_e - 1]) && /[\ud800-\udbff]/.test(txt[_e - 2])) ? 2 : 1;
+                    if (_e - _l > _s) badgeHide.push(new vscode.Range(i, _s, i, _e - _l));
+                    gap3.push({ range: new vscode.Range(i, _e - _l, i, _e) });
+                  }
                   if (!c.done) {
-                    const _bb = (on) => ({ contentText: on ? '🔔' : '🔕', margin: '0 1px', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' });
+                    const _bb = (on) => ({ contentText: on ? '🔔' : '🔕', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' });
                     plays.push({ range: new vscode.Range(i, _bh30.b0 + 2, i, _bh30.b0 + 2), renderOptions: { before: _bb(_bh30.mainOn) } });
                     if (_bh30.b1 >= 0) plays.push({ range: new vscode.Range(i, _bh30.b1, i, _bh30.b1), renderOptions: { before: _bb(_bh30.subOn) } });
                   }
@@ -13468,8 +13476,9 @@ function meosApplyTimerLineDecorations(editor) {
                   if (_at52 > 0) {
                     badgeHide.push(new vscode.Range(i, _at52, i, _at52 + c.listNo.length));
                     // v4.2.478: 番号は隠した字の後ろ端に描く= 頭には [+1s] が立つ(同じ位置の2つの装飾は描く順が決まらない)
-                    items.push({ range: new vscode.Range(i, _at52 + c.listNo.length, i, _at52 + c.listNo.length),
-                      renderOptions: { before: { contentText: _n52 + '.' } } });
+                    // v4.2.481: 隠した字の after に描く= 頭の 🔓(p) とも、後ろ端の [−1s] とも別の装飾の場所
+                    items.push({ range: new vscode.Range(i, _at52, i, _at52 + c.listNo.length),
+                      renderOptions: { after: { contentText: _n52 + '.' } } });
                   }
                 }
               } catch (_) { }
@@ -13617,7 +13626,7 @@ function meosApplyTimerLineDecorations(editor) {
               // ★v4.2.339(俊克 質問1「なぜ、この2つ目の5分タイマーの並び順は1つ目と違うのか?」): 🔐は本文の字で⏰の直後、🔓は駒の右に描く= 順が入れ替わっていた。
               //   → 🔐も本文の字を隠して駒の右の区画へ描く= いつでも ⏰ [🚢💨/⚓] [🔓/🔐](外すのは今までどおり Opt+クリック)
               const _lmH = c.lock ? meosClockLockMarkAt(txt) : null;
-              if (_lmH) { badgeHide.push(new vscode.Range(i, _lmH.a, i, _lmH.b)); lockedBtns.push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p) }); }
+              if (_lmH) { badgeHide.push(new vscode.Range(i, _lmH.a, i, _lmH.b)); lockedBtns.push({ range: new vscode.Range(i, _spA.p, i, _spA.p) }); }   // v4.2.481: 🔐も駒の後ろ(p)に立つ1つのボタン
               const _withLock = !!_lmH || (!c.done && !c.lock);   // v4.2.318: 右の区画が立つか(🔓 か 🔐)
               // ★v4.2.325(俊克 改良2「⚓の上ではtipが出ないので、どっちでも共通のtipを出そうよ」):
               //   ⚓の絵の下は隠した本文の⚓の桁= 指はそこに落ちてtipの範囲の外だった。→ tipは⏰の後ろ〜駒の右端まで1つ(🚢💨/⚓と🔓を1枚で言う)
@@ -13641,7 +13650,7 @@ function meosApplyTimerLineDecorations(editor) {
                 // ★★v4.2.236(俊克「まだポインタの形が変わらず、切り替えができない」): 🔓を**空白の上に浮かせた飾り**にしていたので、
                 //   隠した印(⏸6)と空白の桁が全部同じ位置に重なり、押すと⏰の頭(▶️の当たり)へ落ちていた(ログ caretCh=13)。
                 //   → 時刻の直前の**空白1字そのもの**を🔓の駒にする= 本物の字の箱なので手の形も当たりも効く(幅は字間で広げる)。
-                if (/[ \t]/.test(txt[_sp.p - 1] || '')) lockBtns.push({ range: new vscode.Range(i, _sp.p - 1, i, _sp.p) });   // v4.2.325: tipは🚢💨/⚓と共通の1枚
+                if (/[ \t]/.test(txt[_sp.p - 1] || '')) lockBtns.push({ range: new vscode.Range(i, _sp.p, i, _sp.p) });   // v4.2.481: 🔓は駒の後ろ(p)に立つ1つのボタン   // v4.2.325: tipは🚢💨/⚓と共通の1枚
               }
               else items.push({ range: new vscode.Range(i, _sp.e, i, _sp.e),
                 renderOptions: { after: { contentText: '\ud83d\udd13', opacity: '0.42' } } });
@@ -13679,12 +13688,12 @@ function meosApplyTimerLineDecorations(editor) {
                 const _bt = (t, mg) => ({ contentText: t, color: '#2a2a2a', backgroundColor: '#fffdf6', border: '1px solid #d18400', fontWeight: '800', margin: mg, textDecoration: 'none; border-radius: 4px; padding: 0 3px; font-size: 0.8em; cursor: ' + meosHandCursor() + ';' });   // v4.2.473: 手の形は絵そのものに(▶️ は下の字が手を持っていた= 絵の下に字が無いここでは効かない)
                 // ★v4.2.472(俊克 バグ1「ポインターが選択指に変わらない」): 絵も手の形の型(plays)の側に描く= ▶️ と同じ(絵の上で手になる)
                 // ★v4.2.478(俊克「[-1s][+1s]の間を空けずに、2､3ピクセルくらいに」): 間の空白1字は隠す(幅0)= 間は余白 3px だけ
-                badgeHide.push(new vscode.Range(i, _nk, i, _nk + 1));
-                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s', '0 0 0 2px') } });
+                gap3.push({ range: new vscode.Range(i, _nk, i, _nk + 1) });   // v4.2.481: 間は 3px の隙間
+                plays.push({ range: new vscode.Range(i, _nk, i, _nk + 1), renderOptions: { before: _bt('\u22121s', '0') } });
                 // ★v4.2.474(俊克「数値は[+1]の右にしよう。[+1]を最初に連続して押そうとすると、ボタンが逃げてしまう」):
                 //   同じ位置の2つの装飾は描く順が決まらない→ [+1s] とためた量を1つの装飾の before/after に入れる(順が必ず [+1s] → 量)。当たりは今までどおり空白の後ろ。
                 const _pd = _meosNudgePend.get(uri + ' ' + i);
-                plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s', '0 2px 0 3px') }, (_pd && _pd.ms) ? { after: { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } } : {}) });
+                plays.push({ range: new vscode.Range(i, _nk + 1, i, _nk + 1), renderOptions: Object.assign({ before: _bt('+1s', '0 3px 0 0') }, (_pd && _pd.ms) ? { after: { contentText: ' ' + (_pd.ms > 0 ? '+' : '\u2212') + Math.abs(_pd.ms / 1000) + 's', color: '#e0803a', fontWeight: '900' } } : {}) });
               }
             }
           } catch (_) { }
@@ -14077,6 +14086,9 @@ function meosApplyTimerLineDecorations(editor) {
     if (reps.length && !meosClockRepDeco) meosClockRepDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
+    if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    if (meosClockGap3Deco) editor.setDecorations(meosClockGap3Deco, gap3);   // v4.2.481
     // ★★★v4.2.74: 運転ボタンは**手の形を持つ型**で置く= 押せる所の上でだけ形that変わる。
     //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
     if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
@@ -14085,14 +14097,19 @@ function meosApplyTimerLineDecorations(editor) {
     // ★★v4.2.318(俊克 改良1「なぜか🚢💨の後ろが大きく空間が空く」): 幅を1つ(8ch)にしていた= 🔐で🔓が立たない行でも、⚓でも同じ広さが残った。
     //   → 駒の幅は**中に入る物で決める**4通り。左右の区画の境(字の箱の真ん中)は、🚢💨/⚓と🔓の間に来るように置く。
     // ★v4.2.339: 右の区画は駒の頭から数える(after で右端から戻すと、番号「2.」の描き足しと同じ桁に重なった)
-    if (!meosClockLockDeco) meosClockLockDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(),
-      before: { contentText: '\ud83d\udd13', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 3.6ch; opacity: 0.65;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    // ★★v4.2.481(俊克 バグ1「🔔の左の🔔を押すと🔓が反応して🔐になる」＋改良1「🔓と🔔の間も3pxに」):
+    //   ★測った([clkClick]): 絵のボタンを押すと、カーソルは**ボタンの右半分なら頭の桁・左半分なら前の隠した字の中**に落ちる。
+    //     隠した字は幅0so、前の字の中= 前のボタンの桁と同じ所(🔔主の左半分 → 🔓の桁 p)だった。
+    //   ★→ 全部のボタン(🚢💨/⚓・🔓/🔐・🔔主・🔕副・[−1s]・[+1s])を**自分の桁に立つ1つの絵**にし、間に隠した字の最後の1字を **3px の幅**で残す。
+    //     左半分に落ちても前の字の後ろ端= 自分の桁。駒(空白1字)を左右半分に分ける作りはやめる(半分ずつの幅が🔓の後ろに空白を作っていた)。
+    if (!meosClockLockDeco) meosClockLockDeco = vscode.window.createTextEditorDecorationType({
+      before: { contentText: '\ud83d\udd13', textDecoration: 'none; opacity: 0.65; cursor: ' + meosHandCursor() + ';' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockLockDeco, lockBtns);
     if (!meosClockLockedDeco) meosClockLockedDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(),
-      before: { contentText: '\ud83d\udd10', textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 3.6ch;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      before: { contentText: '\ud83d\udd10', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockLockedDeco, lockedBtns);
-    const _pieceDeco = (sp, txt, fs) => vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; letter-spacing: ' + sp + 'ch;',
-      before: { contentText: txt, textDecoration: 'none; position: absolute; pointer-events: none; margin-left: 0.1em; font-size: ' + fs + ';' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+    const _pieceDeco = (sp, txt, fs) => vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;',   // v4.2.481: 駒= 3px の隙間(sp は使わない)
+      before: { contentText: txt, textDecoration: 'none; cursor: ' + meosHandCursor() + '; font-size: ' + fs + ';' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (!meosClockShipDeco) meosClockShipDeco = { a: _pieceDeco(2.6, '\ud83d\udea2\ud83d\udca8', '0.85em'), l: _pieceDeco(5.6, '\ud83d\udea2\ud83d\udca8', '0.85em') };   // v4.2.339: 右の区画(3.6ch〜)に🔓/🔐が入る幅   // v4.2.319: 🔓との間を半分ちょっと詰める(俊克 改良1)
     // ★v4.2.319(俊克 改良2「縁0.4・下げ5で確定。本文のボタンも同様に」「右5°くらい傾け」): 字の形の⚓を赤・黒の縁・少し下げて右へ5°= 砂に潜った錨
     // ★v4.2.320(俊克 改良1「⚓を太字にし、サイズを1.3倍にしてみよう」): 1.15em → 1.5em・太字。駒の幅も同じだけ広げる

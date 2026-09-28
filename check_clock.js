@@ -2375,7 +2375,7 @@ console.log('㊷ 走る⏰の並びは畳まない(俊克 pm07:47 改良1)');
      '  ⏰の無い行は読まない(安い足切り)・畳みの形を決める所で全文書を走らない', true);
  /* ★★★v4.2.52(俊克 am01:12「ただし連番が表示されないよね」)= 見せかけの番号を描く。 */
  {const D=FN(S51,'function meosApplyTimerLineDecorations');
-  ok(/renderOptions: \{ before: \{ contentText: _n52 \+ '\.' \} \}/.test(D),
+  ok(/renderOptions: \{ (?:before|after): \{ contentText: _n52 \+ '\.' \} \}/.test(D),   /* v4.2.481: 隠した字の after に描く */
      '★★★見せかけの番号を、並びの何本目かで描く(本文には1文字も書かない)', true);
   ok(/if \(!meosIsSpecLine\(_t52\)\) break;/.test(D) && !/meosClockFcScan\(doc\)/.test(D.slice(D.indexOf('_n52'), D.indexOf('_n52')+900)),
      '★何本目かは上へ数えるだけ(全文書を走らない)', true);
