@@ -11605,9 +11605,16 @@ async function meosClockBellModeToggle(document, hit) {
     const txt = document.lineAt(hit.line).text || '', h = meosClockBellHead(txt); if (!h) return false;
     const pos = hit.which === 'main' ? h.b0 : h.b1; if (pos < 0) return false;
     const cur = txt.slice(pos, pos + 2), nx = (cur === '\u{1F514}') ? '\u{1F515}' : '\u{1F514}';
-    const we = new vscode.WorkspaceEdit(); we.replace(document.uri, new vscode.Range(hit.line, pos, hit.line, pos + 2), nx);
+    // ★v4.2.482(俊克 バグ1/2「🔔を押すと変な表示になった」= 本文が ?Gong に化けた): 拡張の側の置き換えは正しい(台で確認= 17〜19 を 🔕 へ)。
+    //   🔔(D83D DD14) と 🔕(D83D DD15) は前半が同じ= 置き換えは共通の頭を削って「後半1つ」の変更に縮められ、
+    //   割れた後半だけが拡張へ運ばれて字が壊れた疑い(その後 ±1s の行ごと書き換えで、壊れた写しが本文へ戻った)。
+    //   → 1回で置き換えず、**消してから入れる**(共通の頭が生まれない)
+    const we0 = new vscode.WorkspaceEdit(); we0.delete(document.uri, new vscode.Range(hit.line, pos, hit.line, pos + 2));
+    if (!(await vscode.workspace.applyEdit(we0))) return false;
+    const we = new vscode.WorkspaceEdit(); we.insert(document.uri, new vscode.Position(hit.line, pos), nx);
     const ok = await vscode.workspace.applyEdit(we);
-    meosDbg('[bellMode] ' + hit.which + ' ' + cur + '→' + nx + ' 行=' + (hit.line + 1) + ' ok=' + ok);
+    meosDbg('[bellMode] ' + hit.which + ' ' + cur + '→' + nx + ' 行=' + (hit.line + 1) + ' ok=' + ok
+      + ' 後=' + JSON.stringify((document.lineAt(hit.line).text || '').slice(pos, pos + 6)));   // v4.2.482: 書いた後の字を残す(割れていれば \\ud83d 等で見える)
     return ok;
   } catch (_) { return false; }
 }
@@ -31471,6 +31478,41 @@ function closeAllMeDockTabs() {
     if (toClose.length) vscode.window.tabGroups.close(toClose, true);
   } catch (_) {}
 }
+// ★★v4.2.482(俊克 別件1「再読み込みされた時などに、Me Dockの幅が変わることがある。自分がドラッグした幅を維持するようにできないか?」):
+//   Me Dock は右の編集グループに開く webview= 作り直す度に VS Code が新しいグループを既定の幅で割る。
+//   → 左右2つのグループで Me Dock が右に居る間だけ、幅の割合を覚える(2秒おきに今の姿を見る= ドラッグした結果を拾う)。
+//     作り直した直後は覚えた割合に戻す(戻している間は覚えない= 既定の幅で上書きしない)。
+let _meDockWidthTimer = null, _meDockWidthHoldUntil = 0;
+async function meosMeDockWidthSave() {
+  try {
+    if (!meDockPanel || Date.now() < _meDockWidthHoldUntil) return;
+    if (meDockPanel.viewColumn !== vscode.ViewColumn.Two) return;
+    const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
+    if (!lo || lo.orientation !== 0 || !Array.isArray(lo.groups) || lo.groups.length !== 2) return;
+    const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0; if (!(a > 0 && b > 0)) return;
+    const r = b / (a + b); if (!(r > 0.08 && r < 0.92)) return;
+    const old = Number(extensionContext.globalState.get('meDockWidthRatio')) || 0;
+    if (Math.abs(old - r) > 0.004) { extensionContext.globalState.update('meDockWidthRatio', r); meosDbg('[dockWidth] 覚えた ' + r.toFixed(3)); }
+  } catch (_) { }
+}
+function meosMeDockWidthRestore() {
+  const r = Number(extensionContext && extensionContext.globalState.get('meDockWidthRatio')) || 0;
+  if (!_meDockWidthTimer) _meDockWidthTimer = setInterval(() => { meosMeDockWidthSave(); }, 2000);
+  if (!(r > 0.08 && r < 0.92)) return;
+  _meDockWidthHoldUntil = Date.now() + 3000;
+  const put = async () => {
+    try {
+      if (!meDockPanel || meDockPanel.viewColumn !== vscode.ViewColumn.Two) return;
+      const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
+      if (!lo || lo.orientation !== 0 || !Array.isArray(lo.groups) || lo.groups.length !== 2) return;
+      const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
+      if (a > 0 && b > 0 && Math.abs(b / (a + b) - r) < 0.004) return;   // もう覚えた幅
+      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - r }, { size: r }] });
+      meosDbg('[dockWidth] 戻した ' + r.toFixed(3));
+    } catch (_) { }
+  };
+  setTimeout(put, 150); setTimeout(put, 900);
+}
 function toggleMeDock(editorOverride) {
   setMeDockTargetEditor(editorOverride || vscode.window.activeTextEditor);
   if (meDockPanel) {
@@ -31502,6 +31544,7 @@ function toggleMeDock(editorOverride) {
     { enableScripts: true, retainContextWhenHidden: true }
   );
 
+  meosMeDockWidthRestore();   // ★v4.2.482: ドラッグした幅に戻す
   _meosPasteLagShown = null;   // ★v4.2.102: 面を作り直したら、ボタンの出し入れも送り直す
   meDockPanel.webview.html = meDockHtml().replace('<body>', '<body data-phase="' + MEOS_RELEASE_PHASE + '">');
   setTimeout(() => postFixedWorkingTocSnapshot(), 80);
@@ -40362,6 +40405,7 @@ function deactivate() {
   try { if (_meosChainBlink) { clearInterval(_meosChainBlink); _meosChainBlink = null; } } catch (_) { }
   try { if (_meosTimerTick) { clearTimeout(_meosTimerTick); _meosTimerTick = null; } } catch (_) { }
   try { if (_meosLagWatch) { clearInterval(_meosLagWatch); _meosLagWatch = null; } } catch (_) { }
+  try { if (_meDockWidthTimer) { clearInterval(_meDockWidthTimer); _meDockWidthTimer = null; } } catch (_) { }   // v4.2.482: Me Dock の幅を覚える見張り
   try { if (_meosTimerBar) { _meosTimerBar.dispose(); _meosTimerBar = null; } } catch (_) { }
   try { if (_meosTimerTitle) { _meosTimerTitle.dispose(); _meosTimerTitle = null; } } catch (_) { }
   try { if (_meosTimerMore) { _meosTimerMore.dispose(); _meosTimerMore = null; } } catch (_) { }

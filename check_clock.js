@@ -2024,10 +2024,10 @@ console.log('㊴ 連なり= 「この膜の時計」は生きている１本を�
  {const DE=S9.slice(S9.indexOf('function deactivate()'));
   ok(/meosStopRinging\(\)/.test(DE) && /clearInterval\(_meosRingTimer\)/.test(DE)
      && /clearInterval\(_meosRingBlink\)/.test(DE) && /clearInterval\(_meosChainBlink\)/.test(DE)
-     && /clearTimeout\(h\)/.test(DE) && /clearInterval\(_meosLagWatch\)/.test(DE),
+     && /clearTimeout\(h\)/.test(DE) && /clearInterval\(_meosLagWatch\)/.test(DE) && /clearInterval\(_meDockWidthTimer\)/.test(DE),
      '\u2605\u2605\u2605deactivate that\u62cd\u30fb\u8d77\u304d\u308b\u624b\u30fb\u9418\u3092\u5168\u90e8\u6d88\u3059(\u53e4\u3044\u81ea\u5206\u3092\u6b8b\u3055\u306a\u3044)', true);
   const ALL=(S9.match(/setInterval\(/g)||[]).length;
-  ok(ALL===4, '  \u62cd\u306f4\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
+  ok(ALL===5, '  \u62cd\u306f5\u3064\u3060\u3051(\u5897\u3084\u3057\u305f\u3089 deactivate \u3082\u76f4\u3059)', ALL);}
  /* ★★★v4.2.74(俊克「そのボタンを押す意味は、tipを出す必要が無いので、出さないようにしよう」
     ＋「マウスの形状を手の形にするとかだね」)= 押す物の上に、押す邪魔を出さない。
     合図は覆わない物(手の形)で出す。 */
