@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.493 (2026-09-30)
+- Switching 🔔/🔕, 🔓/🔐 or 🚢💨/⚓ changes only the drawing on top; the place you press stays the same, so the line does not jump while VS Code catches up.
+
 ### v4.2.492 (2026-09-30)
 - The buttons of a ⏰ line are worked out from that line alone, so VS Code gets them at once after a switch and the line no longer jumps for a moment.
 

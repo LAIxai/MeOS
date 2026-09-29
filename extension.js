@@ -13261,7 +13261,8 @@ let meosClockBadgeHideDeco = null;
 let meosClockGap3Deco = null;
 let meosClockGapNDeco = null;   // ★v4.2.483: ±1s の札の前の隙間(6px/9px)
 const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]= ⏰行のボタンの札(v4.2.487: 全部のボタン)
-let meosClockHintSkinDeco = null;   // ★v4.2.487: 札の灰色の地を消し、手の形にする
+let meosClockHintSkinDeco = null;
+let meosClockHintMaskDeco = null;   // ★v4.2.493   // ★v4.2.487: 札の灰色の地を消し、手の形にする
 const _meosNudgeHintsSig = new Map();
 const _meosNudgeHintsVer = new Map();   // ★v4.2.489: 札の表を作った時の本文の版
 const _meosHintHold = new Set();
@@ -13376,14 +13377,13 @@ function meosClockLineHints(editor, doc, i) {
     if (editor && meosShowsRawLine(editor, i)) return out;
     let bad = false; try { const s = _meosClockUnreadable.get(doc.uri.toString()); bad = !!(s && s.has(i)); } catch (_) { }
     const bh = meosClockBellHead(txt);
-    if (bh && !c.done) { out.push({ col: bh.b0 + 2, label: bh.mainOn ? '🔔' : '🔕' }); if (bh.b1 >= 0) out.push({ col: bh.b1, label: bh.subOn ? '🔔' : '🔕' }); }
+    if (bh && !c.done) { out.push({ col: bh.b0 + 2, label: '\u3000' }); if (bh.b1 >= 0) out.push({ col: bh.b1, label: '\u3000' }); }   // v4.2.493: 札は状態によらず一定
     if (!bad) {
       const sp = meosClockLockSpot(txt);
       if (sp && sp.p > sp.at + 1 && /[ \t]/.test(txt[sp.p - 1] || '')) {
-        out.push({ col: sp.p - 1, label: c.anchor ? '\u00a0\u00a0' : '\u00a0\u00a0\u00a0' });
+        out.push({ col: sp.p - 1, label: '\u00a0\u00a0\u00a0' });
         const lm = c.lock ? meosClockLockMarkAt(txt) : null;
-        if (lm) out.push({ col: sp.p, label: '\ud83d\udd10' });
-        else if (!c.done && !c.lock) out.push({ col: sp.p, label: '\ud83d\udd13' });
+        if (lm || (!c.done && !c.lock)) out.push({ col: sp.p, label: '\u3000' });
       }
     }
     if (c.ufc) { const nk = meosClockNudgeSpot(txt, c); if (nk >= 0 && bh && bh.end === nk) out.push({ col: nk, label: '\u22121s' }, { col: nk + 1, label: '+1s' }); }
@@ -13394,27 +13394,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
   try {
     if (!editor || !editor.document) return;
     if (_meosHintHold.has(editor.document.uri.toString())) return;
-    // ★★v4.2.490(俊克 バグ1「ボタンをクリックすると、一旦そこが字詰めされ、左の方に元の絵が移動し、次に元の位置に切り替わったボタンが現れる。
-    //   ボタンを押した時に、新しいのを上書きし、その上で元の上書きしていたのを消せばいいんじゃないか?」):
-    //   ★絵(装飾)はすぐ描き替わるが、札(インレイヒント)は VS Code が少し待ってから訊きに来る= その間は新しい絵と古い札が並んでいた。
-    //   → 札のある本文が書き換わったら、絵の描き替えを**札を訊きに来た時まで待つ**(札と絵を同じ時に替える)。来なければ 0.4 秒で描く。
-    {
-      const _u90 = editor.document.uri.toString(), _v90 = editor.document.version;
-      const _h90 = _meosNudgeHints.get(_u90);
-      if (!fromHints && _h90 && _h90.length && _meosHintAskedVer.get(_u90) !== _v90) {
-        if (!_meosHintWaitTimer.has(_u90)) { meosDbg('[hintSync] 待つ 版=' + _v90); _meosHintWaitTimer.set(_u90, setTimeout(() => {
-          meosDbg('[hintSync] 来ない→描く 版=' + editor.document.version);
-          _meosHintWaitTimer.delete(_u90); _meosHintAskedVer.set(_u90, editor.document.version);
-          try { meosApplyTimerLineDecorations(editor, true); } catch (_) { }
-        }, 400)); }
-        return;
-      }
-    }   // ★v4.2.489: 🔔↔🔕 を消して入れる途中は描かない(途中の姿で並びが崩れて見えた)
+    // v4.2.493: 4.2.490 の「絵を札の問い合わせまで待たせる」は撤去(札の字が変わらなくなったので、絵はすぐ描く)
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
     const _badgeLent = new Set();   // v4.2.346: 最終日に貸したバッジ行(1膜1つ)   // v4.1.148 / v4.1.176
-    const gap3 = [], gap6 = [], gap9 = [], nudgeHints = [], hintSkins = [];   // ★v4.2.481 / v4.2.483 / v4.2.487
+    const gap3 = [], gap6 = [], gap9 = [], nudgeHints = [], hintSkins = [], hintMasks = [];   // ★v4.2.481 / v4.2.483 / v4.2.487
     // ★★★v4.2.487(俊克「他のボタンもインレイヒント上書き方式にしましょう。そして、今後追加するボタンも同様にすればいいよね」):
     //   ★⏰行のボタンは1つの作り= **札(インレイヒント)が押す物・上に重ねた絵が見える物**。札の上をどこで押しても、カーソルは札の桁 col に落ちる。
     //   ★札の字は空白 n 字(= n ch)。絵は札の直後(装飾の頭は差し込んだ字の右に立つ)に、幅 n ch の箱で置き、左へ n ch 戻す(字の並び= 基準線揃え)。
@@ -13425,8 +13410,13 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     //   ②札を跨ぐ型の範囲の端が絵文字の真ん中(サロゲートの間)に落ち、VS Code に切り詰められて札を跨がなかった= 灰色の地も手の形も効かなかった
     //   ③⚓(1.95em)を字の並びに置いたので行が高くなった → ⚓ だけは今までどおり浮かせる(absolute= 行の高さを変えない)
     //   絵を重ねる時(ov): rtl= 幅0の箱から左へはみ出させて札にぴったり重ねる(札と同じ字・同じ大きさの時) / abs= 浮かせて W だけ左へ戻す
+    // ★★★v4.2.493(俊克「札を変えない作りに」): 本文を書き換えてから VS Code が札を訊き直しに来るまで 0.1〜0.3 秒待つ([hintSync] で測定)=
+    //   札の字が変わる切替は、その間だけ崩れた。→ **札の字は状態によらず一定**(🔔 / 🔓 / 空白3字)にし、状態は上の絵だけで見せる(絵は書き換えの直後に描ける)。
+    //   札の字は見えない字(🔔🔕🔓🔐= 全角空白 U+3000 1字= 幅 1em= 絵文字と同じ幅 / 🚢💨⚓= 空白3字)で一定。状態は上の絵だけ。
+    const gapW = new Map();   // v4.2.493: '行:桁' -> 隙間の字の幅(px)(控え)
     const _hintBtn = (i, col, label, ov) => {
       nudgeHints.push({ line: i, col, label });
+
       const t = doc.lineAt(i).text || '';
       const hi = (k) => /[\ud800-\udbff]/.test(t[k] || ''), lo = (k) => /[\udc00-\udfff]/.test(t[k] || '');
       const a = Math.max(0, col - ((col >= 2 && lo(col - 1) && hi(col - 2)) ? 2 : 1));
@@ -13537,11 +13527,13 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                     const _l = (_e - _s >= 2 && /[\udc00-\udfff]/.test(txt[_e - 1]) && /[\ud800-\udbff]/.test(txt[_e - 2])) ? 2 : 1;
                     if (_e - _l > _s) badgeHide.push(new vscode.Range(i, _s, i, _e - _l));
                     // v4.2.483: [−1s] の札の前の字は 6px(札の上に重ねる絵の枠 3px ＋ 🔕 との隙間 3px)
-                    ((_e === _bh30.end && c.ufc && !c.done && meosClockNudgeSpot(txt, c) === _bh30.end) ? gap6 : gap3).push({ range: new vscode.Range(i, _e - _l, i, _e) });
+                    const _g6 = (_e === _bh30.end && c.ufc && !c.done && meosClockNudgeSpot(txt, c) === _bh30.end);
+                    (_g6 ? gap6 : gap3).push({ range: new vscode.Range(i, _e - _l, i, _e) });
+                    gapW.set(i + ':' + (_e - _l), _g6 ? 4 : 3);   // v4.2.493
                   }
                   if (!c.done) {
-                    _hintBtn(i, _bh30.b0 + 2, _bh30.mainOn ? '🔔' : '🔕');   // v4.2.487: 札(v4.2.488: 札の字が絵)
-                    if (_bh30.b1 >= 0) _hintBtn(i, _bh30.b1, _bh30.subOn ? '🔔' : '🔕');
+                    _hintBtn(i, _bh30.b0 + 2, '\u3000', { content: _bh30.mainOn ? '🔔' : '🔕' });   // v4.2.493: 札は全角空白で一定・状態は絵
+                    if (_bh30.b1 >= 0) _hintBtn(i, _bh30.b1, '\u3000', { content: _bh30.subOn ? '🔔' : '🔕' });
                   }
                 }
               } catch (_) { }
@@ -13713,7 +13705,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               // ★v4.2.339(俊克 質問1「なぜ、この2つ目の5分タイマーの並び順は1つ目と違うのか?」): 🔐は本文の字で⏰の直後、🔓は駒の右に描く= 順が入れ替わっていた。
               //   → 🔐も本文の字を隠して駒の右の区画へ描く= いつでも ⏰ [🚢💨/⚓] [🔓/🔐](外すのは今までどおり Opt+クリック)
               const _lmH = c.lock ? meosClockLockMarkAt(txt) : null;
-              if (_lmH) { badgeHide.push(new vscode.Range(i, _lmH.a, i, _lmH.b)); _hintBtn(i, _spA.p, '\ud83d\udd10'); }   // v4.2.487: 札＋絵   // v4.2.481: 🔐も駒の後ろ(p)に立つ1つのボタン
+              if (_lmH) { badgeHide.push(new vscode.Range(i, _lmH.a, i, _lmH.b)); _hintBtn(i, _spA.p, '\u3000', { content: '\ud83d\udd10' }); }   // v4.2.493: 札は全角空白で一定   // v4.2.487: 札＋絵   // v4.2.481: 🔐も駒の後ろ(p)に立つ1つのボタン
               const _withLock = !!_lmH || (!c.done && !c.lock);   // v4.2.318: 右の区画が立つか(🔓 か 🔐)
               // ★v4.2.325(俊克 改良2「⚓の上ではtipが出ないので、どっちでも共通のtipを出そうよ」):
               //   ⚓の絵の下は隠した本文の⚓の桁= 指はそこに落ちてtipの範囲の外だった。→ tipは⏰の後ろ〜駒の右端まで1つ(🚢💨/⚓と🔓を1枚で言う)
@@ -13724,7 +13716,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                   + (_lmH ? '\n\n\ud83d\udd10 Locked \u2014 Opt-click \ud83d\udd10 to unlock.' : (_withLock ? '\n\n\ud83d\udd13 Click \ud83d\udd13 to lock this clock with \ud83d\udd10 \u2014 it then cannot be stopped or dropped until it rings.' : '')) }); }
               // v4.2.487: 🚢💨/⚓ も札＋絵(札は駒の空白の前= p-1)。駒は 3px の隙間
               gap3.push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p) });
-              if (c.anchor) _hintBtn(i, _spA.p - 1, '\u00a0\u00a0', { abs: (2 / 1.95).toFixed(3) + 'ch', content: '\u2693\ufe0e', css: 'font-size: 1.95em; font-weight: 900; color: #ff3b30; -webkit-text-stroke: 0.35px #000; transform: translateY(0.14em) rotate(10deg); transform-origin: 50% 60%;' });
+              if (c.anchor) _hintBtn(i, _spA.p - 1, '\u00a0\u00a0\u00a0', { abs: (2.5 / 1.95).toFixed(3) + 'ch', content: '\u2693\ufe0e', css: 'font-size: 1.95em; font-weight: 900; color: #ff3b30; -webkit-text-stroke: 0.35px #000; transform: translateY(0.14em) rotate(10deg); transform-origin: 50% 60%;' });
               else _hintBtn(i, _spA.p - 1, '\u00a0\u00a0\u00a0', { content: '\ud83d\udea2\ud83d\udca8', css: 'font-size: 0.85em;' });
             }
           }
@@ -13740,7 +13732,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                 // ★★v4.2.236(俊克「まだポインタの形が変わらず、切り替えができない」): 🔓を**空白の上に浮かせた飾り**にしていたので、
                 //   隠した印(⏸6)と空白の桁が全部同じ位置に重なり、押すと⏰の頭(▶️の当たり)へ落ちていた(ログ caretCh=13)。
                 //   → 時刻の直前の**空白1字そのもの**を🔓の駒にする= 本物の字の箱なので手の形も当たりも効く(幅は字間で広げる)。
-                if (/[ \t]/.test(txt[_sp.p - 1] || '')) _hintBtn(i, _sp.p, '\ud83d\udd13', { content: '\ud83d\udd13', css: 'filter: brightness(0.6);' });   // 札と同じ字を暗くして重ねる(opacity だと下の札が透ける)   // v4.2.487: 札＋絵   // v4.2.481: 🔓は駒の後ろ(p)に立つ1つのボタン   // v4.2.325: tipは🚢💨/⚓と共通の1枚
+                if (/[ \t]/.test(txt[_sp.p - 1] || '')) _hintBtn(i, _sp.p, '\u3000', { content: '\ud83d\udd13', css: 'opacity: 0.65;' });   // v4.2.493: 札が見えない字なので薄くしてよい   // 札と同じ字を暗くして重ねる(opacity だと下の札が透ける)   // v4.2.487: 札＋絵   // v4.2.481: 🔓は駒の後ろ(p)に立つ1つのボタン   // v4.2.325: tipは🚢💨/⚓と共通の1枚
               }
               else items.push({ range: new vscode.Range(i, _sp.e, i, _sp.e),
                 renderOptions: { after: { contentText: '\ud83d\udd13', opacity: '0.42' } } });
@@ -14211,6 +14203,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (hintSkins.length && !meosClockHintSkinDeco) meosClockHintSkinDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(),
       textDecoration: 'none; background-color: transparent !important;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     if (meosClockHintSkinDeco) editor.setDecorations(meosClockHintSkinDeco, hintSkins);   // v4.2.487
+
     try {   // ★v4.2.483: ±1s の札の場所が変わった時だけ VS Code に描き直しを頼む
       const _sig83 = nudgeHints.map(h => h.line + ':' + h.col + ':' + h.label).join(',');
       _meosNudgeHintsVer.set(uri, doc.version);
@@ -20155,7 +20148,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           if (_lm && ((_s.active.character >= _lm.a && _s.active.character <= _lm.b) || (_spU && _s.active.character === _spU.p))) {
             editor.selections = [new vscode.Selection(_s.active, _s.active)];
             setRefNoRaw(editor.document, _s.active.line);
-            await meosClockUnlockAt(editor.document, _s.active.line, _s.active.character);
+            await meosClockUnlockAt(editor.document, _s.active.line, _s.active.character);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
             setRefNoRaw(editor.document, _s.active.line);
             meosParkCaretAfterPress(editor, _s.active.line);
             try { refresh(editor); } catch (_) { }
@@ -20187,7 +20180,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       if (_an) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
-        await meosClockAnchorToggle(editor.document, _an);
+        await meosClockAnchorToggle(editor.document, _an);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
         setRefNoRaw(editor.document, _ln);
         try { refresh(editor); } catch (_) { }
         return;
@@ -20196,7 +20189,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       if (_lk) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
-        await meosClockLockHere(editor, _lk);
+        await meosClockLockHere(editor, _lk);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
         setRefNoRaw(editor.document, _ln);
         try { refresh(editor); } catch (_) { }
         return;
@@ -20205,7 +20198,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
       if (_bm75) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
-        await meosClockBellModeToggle(editor.document, _bm75);
+        await meosClockBellModeToggle(editor.document, _bm75);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
         setRefNoRaw(editor.document, _ln);
         try { refresh(editor); } catch (_) { }
         return;
@@ -40035,7 +40028,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
               out.push(new vscode.InlayHint(new vscode.Position(ln, h.col), h.label));
             }
           }
-          if (_ed89 && !_meosHintHold.has(_u89) && _meosNudgeHintsVer.get(_u89) !== document.version) setTimeout(() => { try { meosApplyTimerLineDecorations(_ed89, true); } catch (_) { } }, 0);
+
         } catch (_) { }
         return out;
       }
