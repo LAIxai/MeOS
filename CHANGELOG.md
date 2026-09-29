@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.494 (2026-09-30)
+- Pressing a button on a ⏰ line no longer flashes the raw line for a moment: the line switches to raw only when the caret stays there.
+
 ### v4.2.493 (2026-09-30)
 - Switching 🔔/🔕, 🔓/🔐 or 🚢💨/⚓ changes only the drawing on top; the place you press stays the same, so the line does not jump while VS Code catches up.
 

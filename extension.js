@@ -13367,6 +13367,28 @@ function meosClockArrowAt(txt) {
 // ★★v4.2.492(俊克 画面収録 v4.2.491_0801: ⚓ を押すと約0.3秒、🔔 の札が消え、並びが崩れて行が折り返す): 札の問い合わせの中で
 //   描画全体(膜の対の数え上げ= 16万行)を回していた→ 問い合わせが遅い= VS Code は次から待つ時間を延ばす(遅い相手ほど間を空ける)。
 //   → 札は本文のその行だけから**すぐ**出す(下の関数)。絵の描き替えは札を渡した直後に回す。条件は描画側(meosApplyTimerLineDecorations)と同じ物差し。
+// ★★★v4.2.494(俊克 v4.2.493_0838 の画面収録を 0.05 秒ごとに見た): 押した瞬間(書き換えの前)にも崩れていた。
+//   ボタンを押すとカーソルがその行に乗る→ 一瞬「カーソルの行= 生データ」になり、札が全部外れる→ すぐ抑止(setRefNoRaw)が効いて戻る。
+//   絵は数ミリ秒で戻るが、札は VS Code が 0.1〜0.3 秒待ってから引き直す= その間だけ崩れて見えた(書き換えの後にもう一度同じ事が起きる)。
+//   → ⏰行の絵と札は、生データへの切り替えを 0.25 秒続いてから受け取る(一瞬の切り替えは無かった事にする)。
+const _meosRawSince = new Map();
+let _meosRawSettleTimer = null;
+function meosShowsRawLineStable(editor, line) {
+  const raw = meosShowsRawLine(editor, line);
+  try {
+    const k = editor.document.uri.toString() + ':' + line;
+    if (!raw) { _meosRawSince.delete(k); return false; }
+    const now = Date.now(), t0 = _meosRawSince.get(k);
+    if (t0 !== undefined && now - t0 >= 250) return true;
+    if (t0 === undefined) _meosRawSince.set(k, now);
+    if (!_meosRawSettleTimer) _meosRawSettleTimer = setTimeout(() => {
+      _meosRawSettleTimer = null;
+      try { for (const ed of (vscode.window.visibleTextEditors || [])) meosApplyTimerLineDecorations(ed); } catch (_) { }
+      try { _meosNudgeHintsEv.fire(); } catch (_) { }
+    }, 270);
+    return false;
+  } catch (_) { return raw; }
+}
 function meosClockLineHints(editor, doc, i) {
   const out = [];
   try {
@@ -13374,7 +13396,7 @@ function meosClockLineHints(editor, doc, i) {
     const c = meosClockFcParse(txt);
     if (!c || (!c.when && !(c.cycle && c.cycle.length))) return out;
     if (!meosClockLineIsLive(doc, i)) return out;
-    if (editor && meosShowsRawLine(editor, i)) return out;
+    if (editor && meosShowsRawLineStable(editor, i)) return out;
     let bad = false; try { const s = _meosClockUnreadable.get(doc.uri.toString()); bad = !!(s && s.has(i)); } catch (_) { }
     const bh = meosClockBellHead(txt);
     if (bh && !c.done) { out.push({ col: bh.b0 + 2, label: '\u3000' }); if (bh.b1 >= 0) out.push({ col: bh.b1, label: '\u3000' }); }   // v4.2.493: 札は状態によらず一定
@@ -13492,7 +13514,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //     「MeOSを無効化した時と同じ姿」と決めた以上、字を足せばその定義that崩れるから。
           //   ★失う物は無い= 残り時間は Me Dockの\u23f0ボタンとステータスバーにも出ている
           //     (\u23f0行を直している間も、同じ数字that画面に2つ在る)。
-          const _rawHere = meosShowsRawLine(editor, i);
+          const _rawHere = meosShowsRawLineStable(editor, i);   // v4.2.494: 一瞬の生データ切替は受け取らない
           // ★★★v4.1.149(俊克 9/6 am00:12「いっそのこと、2行目も『\u23f0\ud83d\udd12 2026-09-05(s) 20:05 \u21ba\u21bb3m/1m』
           //   **だけを見せかけ表示**しようよ。文字カーソルthat入った時に、生データthat見えればいいんだからさ。
           //   **これですべてthatすっきりする**よ」):
@@ -13504,7 +13526,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
           //   ★消し方は幅ごと畳む `opacity:0; font-size:0`(v0.9.479)= **文字は並びに残る**so、
           //     色も数字も今までどおり同じ桁に当たる(位置を数え直さない)。
           try {
-            if (!meosShowsRawLine(editor, i)) {
+            if (!_rawHere) {   // v4.2.494: 同じ物差し(一瞬の切替は受け取らない)
               const _p0 = txt.indexOf('\u23f0');
               if (_p0 > 0) badgeHide.push(new vscode.Range(i, 0, i, _p0));         // `<!-- Mew!UFC ` を消す
               const _c9 = txt.lastIndexOf('-->');

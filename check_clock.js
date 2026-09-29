@@ -1528,7 +1528,7 @@ console.log('\u246c \u23f0行も包みを消す(飾りの行は予定だけ)');
     '\u2605\u2605頭の包み(<!-- Mew!UFC )を消す', true);
  ok(/badgeHide\.push\(new vscode\.Range\(i, _k9, i, txt\.length\)\)/.test(S),
     '\u2605\u2605尾の包み( -->)を消す', true);
- ok(/if \(!meosShowsRawLine\(editor, i\)\) \{\s*\n\s*const _p0/.test(S),
+ ok(/if \(!(?:meosShowsRawLine\(editor, i\)|_rawHere)\) \{[^\n]*\n\s*const _p0/.test(S),   /* v4.2.494: _rawHere(一瞬の切替は受け取らない物差し)でもよい */
     '\u2605\u2605\u2605カーソルthat入った行では1文字も消さない(そこは直すための窓)', true);
  ok(/textDecoration: 'none; opacity: 0; font-size: 0;'/.test(S),
     '\u2605\u2605消し方は幅ごと畳む(文字は並びに残るso、色も数字も同じ桁に当たる)', true);
@@ -1596,7 +1596,7 @@ console.log('⑭ Rawでは字を1つも足さない(色は字ではないso残�
 {
  const S=fs.readFileSync(path.join(SRC,'extension.js'),'utf8');
  const F=S.slice(S.indexOf('function meosApplyTimerLineDecorations'), S.indexOf('function meosClockFaceMs'));
- ok(/const _rawHere = meosShowsRawLine\(editor, i\);/.test(F),
+ ok(/const _rawHere = meosShowsRawLine(?:Stable)?\(editor, i\);/.test(F),   /* v4.2.494 */
     '★生表示かどうかは行の頭で1回だけ訊く(枝ごとに写経しない)', true);
  ok(/if \(_rawHere\) continue;/.test(F),
     '★★★生の行には数字も ×N も出さない(昨日の「⏰の残り時間は例外」を取り消す)', true);
