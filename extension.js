@@ -13264,7 +13264,9 @@ const _meosNudgeHints = new Map();   // ★v4.2.483: uri -> [{line, col, label}]
 let meosClockHintSkinDeco = null;   // ★v4.2.487: 札の灰色の地を消し、手の形にする
 const _meosNudgeHintsSig = new Map();
 const _meosNudgeHintsVer = new Map();   // ★v4.2.489: 札の表を作った時の本文の版
-const _meosHintHold = new Set();   // ★v4.2.489: 2手で書き換えている最中の uri(途中の姿で描かない)
+const _meosHintHold = new Set();
+const _meosHintAskedVer = new Map();   // ★v4.2.490: VS Code が札を訊きに来た本文の版
+const _meosHintWaitTimer = new Map();   // ★v4.2.490: 訊きに来なかった時の控え   // ★v4.2.489: 2手で書き換えている最中の uri(途中の姿で描かない)
 const _meosNudgeHintsEv = new vscode.EventEmitter();   // ★v4.2.481: ボタンの間の隙間= 隠した字の最後の1字を 3px の幅で残す
 // ★★★v4.1.176(俊克 9/6 pm11:52「できれば、**分母を別々の色**にして、**分子だけを白色**にして下さい。
 //   こうすれば、**変化するのthat白色**だと分る」):
@@ -13361,10 +13363,25 @@ function meosClockArrowAt(txt) {
 //   からで、その前提の方を直した(v4.1.16=⏰行は畳まない物)。so顔は俊克の指したとおり ⏰ 行へ戻る。
 //   ★旧い予定(mMETAに書いてある物)には ⏰ 行that無いので、そちらだけ今までどおり閉じ膜のコメント欄に出す。
 //   ★走るのは見えている範囲だけ(14万行を毎秒なぞらない)。
-function meosApplyTimerLineDecorations(editor) {
+function meosApplyTimerLineDecorations(editor, fromHints) {
   try {
     if (!editor || !editor.document) return;
-    if (_meosHintHold.has(editor.document.uri.toString())) return;   // ★v4.2.489: 🔔↔🔕 を消して入れる途中は描かない(途中の姿で並びが崩れて見えた)
+    if (_meosHintHold.has(editor.document.uri.toString())) return;
+    // ★★v4.2.490(俊克 バグ1「ボタンをクリックすると、一旦そこが字詰めされ、左の方に元の絵が移動し、次に元の位置に切り替わったボタンが現れる。
+    //   ボタンを押した時に、新しいのを上書きし、その上で元の上書きしていたのを消せばいいんじゃないか?」):
+    //   ★絵(装飾)はすぐ描き替わるが、札(インレイヒント)は VS Code が少し待ってから訊きに来る= その間は新しい絵と古い札が並んでいた。
+    //   → 札のある本文が書き換わったら、絵の描き替えを**札を訊きに来た時まで待つ**(札と絵を同じ時に替える)。来なければ 0.4 秒で描く。
+    {
+      const _u90 = editor.document.uri.toString(), _v90 = editor.document.version;
+      const _h90 = _meosNudgeHints.get(_u90);
+      if (!fromHints && _h90 && _h90.length && _meosHintAskedVer.get(_u90) !== _v90) {
+        if (!_meosHintWaitTimer.has(_u90)) _meosHintWaitTimer.set(_u90, setTimeout(() => {
+          _meosHintWaitTimer.delete(_u90); _meosHintAskedVer.set(_u90, editor.document.version);
+          try { meosApplyTimerLineDecorations(editor, true); } catch (_) { }
+        }, 400));
+        return;
+      }
+    }   // ★v4.2.489: 🔔↔🔕 を消して入れる途中は描かない(途中の姿で並びが崩れて見えた)
     if (!meosTimerLineDeco) meosTimerLineDeco = vscode.window.createTextEditorDecorationType({ rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     const doc = editor.document;
     const items = [], dones = [], pausesOut = [], dirDown = [], dirUp = [], cycNow = [], rounds = [], badgeHide = [], reps = [];
@@ -39978,9 +39995,13 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
           //   ★本文を書き換えると VS Code はすぐ札を訊きに来る。表は前の本文で作った物= 古い桁に札が立ち、次の描画で正しい桁へ飛んでいた。
           //   → 表が今の本文の版より古ければ、ここで描き直してから答える(書き換えの途中= _meosHintHold の間は前の表のまま)
           const _u89 = document.uri.toString();
-          if (!_meosHintHold.has(_u89) && _meosNudgeHintsVer.get(_u89) !== document.version) {
-            const _ed89 = (vscode.window.visibleTextEditors || []).find(e => e.document === document);
-            if (_ed89) meosApplyTimerLineDecorations(_ed89);
+          if (!_meosHintHold.has(_u89)) {
+            _meosHintAskedVer.set(_u89, document.version);   // v4.2.490: 札を訊きに来た= 絵もこの版で描いてよい
+            { const _t90 = _meosHintWaitTimer.get(_u89); if (_t90) { clearTimeout(_t90); _meosHintWaitTimer.delete(_u89); } }
+            if (_meosNudgeHintsVer.get(_u89) !== document.version) {
+              const _ed89 = (vscode.window.visibleTextEditors || []).find(e => e.document === document);
+              if (_ed89) meosApplyTimerLineDecorations(_ed89, true);
+            }
           }
           for (const h of (_meosNudgeHints.get(document.uri.toString()) || [])) {
             if (h.line < range.start.line || h.line > range.end.line) continue;

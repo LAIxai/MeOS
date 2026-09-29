@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.490 (2026-09-30)
+- A switched button changes in place: the drawing waits until VS Code asks for the new buttons, so the old and the new never show side by side.
+
 ### v4.2.489 (2026-09-28)
 - Switching 🔔/🔕, 🔓/🔐 or 🚢💨/⚓ no longer makes the buttons jump before they settle.
 
