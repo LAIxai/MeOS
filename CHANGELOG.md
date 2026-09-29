@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.492 (2026-09-30)
+- The buttons of a ⏰ line are worked out from that line alone, so VS Code gets them at once after a switch and the line no longer jumps for a moment.
+
 ### v4.2.490 (2026-09-30)
 - A switched button changes in place: the drawing waits until VS Code asks for the new buttons, so the old and the new never show side by side.
 
