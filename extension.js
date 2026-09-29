@@ -13375,10 +13375,11 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
       const _u90 = editor.document.uri.toString(), _v90 = editor.document.version;
       const _h90 = _meosNudgeHints.get(_u90);
       if (!fromHints && _h90 && _h90.length && _meosHintAskedVer.get(_u90) !== _v90) {
-        if (!_meosHintWaitTimer.has(_u90)) _meosHintWaitTimer.set(_u90, setTimeout(() => {
+        if (!_meosHintWaitTimer.has(_u90)) { meosDbg('[hintSync] 待つ 版=' + _v90); _meosHintWaitTimer.set(_u90, setTimeout(() => {
+          meosDbg('[hintSync] 来ない→描く 版=' + editor.document.version);
           _meosHintWaitTimer.delete(_u90); _meosHintAskedVer.set(_u90, editor.document.version);
           try { meosApplyTimerLineDecorations(editor, true); } catch (_) { }
-        }, 400));
+        }, 400)); }
         return;
       }
     }   // ★v4.2.489: 🔔↔🔕 を消して入れる途中は描かない(途中の姿で並びが崩れて見えた)
@@ -39996,6 +39997,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
           //   → 表が今の本文の版より古ければ、ここで描き直してから答える(書き換えの途中= _meosHintHold の間は前の表のまま)
           const _u89 = document.uri.toString();
           if (!_meosHintHold.has(_u89)) {
+            meosDbg('[hintSync] 札を訊かれた 版=' + document.version + ' 表の版=' + _meosNudgeHintsVer.get(_u89) + ' 待ち=' + _meosHintWaitTimer.has(_u89));   // v4.2.491
             _meosHintAskedVer.set(_u89, document.version);   // v4.2.490: 札を訊きに来た= 絵もこの版で描いてよい
             { const _t90 = _meosHintWaitTimer.get(_u89); if (_t90) { clearTimeout(_t90); _meosHintWaitTimer.delete(_u89); } }
             if (_meosNudgeHintsVer.get(_u89) !== document.version) {
