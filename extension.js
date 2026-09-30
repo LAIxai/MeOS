@@ -2776,6 +2776,7 @@ function meosSoundResolve(name) {
   const n = String(name || '');
   if (n === 'Mew') return meosMewPath() || '';
   if (n === 'Gong') return meosGongPath() || '';   // v4.2.441
+  if (n === 'Soft') return meosNoChangeSoundPath() || '';   // v4.2.515(俊克「🔔ボタンメニューに Soft が入ってないよ」): MeOS の柔らかい2音も1つの音に
   if (meosSoundIsPath(n)) return n;
   return process.platform === 'darwin' && n ? ('/System/Library/Sounds/' + n + '.aiff') : '';
 }
@@ -2787,6 +2788,7 @@ function meosSoundList() {
   }
   out.push('Mew');   // v4.2.399: 作った猫の声(どの OS でも)
   out.push('Gong');  // v4.2.441: 作ったゴング(どの OS でも)
+  out.push('Soft');  // v4.2.515: 作った柔らかい2音(保存済みの Cmd+S の旧音)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
   if (cur && out.indexOf(cur) < 0 && (process.platform === 'darwin' || meosSoundIsPath(cur))) out.push(cur);   // 手で書いた音のファイル(フルパス)も一覧に残す
@@ -2799,6 +2801,7 @@ function meosSoundSpawn(name) {
   const cp = require('child_process');
   if (name === 'Mew') name = meosMewPath() || '';   // v4.2.399
   if (name === 'Gong') name = meosGongPath() || '';   // v4.2.441
+  if (name === 'Soft') name = meosNoChangeSoundPath() || '';   // v4.2.515
   if (!name) return null;
   if (process.platform === 'darwin') {
     const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
@@ -13075,6 +13078,7 @@ function meosHelperSound() {
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
     if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
+    if (name === 'Soft' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
@@ -14862,7 +14866,7 @@ function meosPlayChime(gain) {
       const f = meosSoundResolve(name);   // v4.2.399: Mew も
       const g = (name === 'Mew' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
       exec('afplay -v ' + (Math.round(vol * g * 100) / 100) + ' ' + q(f), () => { });
-    } else if (meosSoundIsPath(name) || name === 'Mew' || name === 'Gong') {
+    } else if (meosSoundIsPath(name) || name === 'Mew' || name === 'Gong' || name === 'Soft') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
@@ -14956,8 +14960,9 @@ function meosNoChangeSoundPath() {
 //   今までは MeOS が作った「ホワン、ホワン」(下がる2音)。→ 設定 laiMembrane.noChangeSound(既定 Gong)。Soft= 今までの音・空= 鳴らさない
 function meosPlayNoChange() {
   try {
-    let nm = 'Gong'; try { nm = String(vscode.workspace.getConfiguration('laiMembrane').get('noChangeSound', 'Gong') ?? 'Gong').trim(); } catch (_) { }
-    if (!nm) return;
+    // v4.2.515(俊克 改良1「保存済のときの音は、タイマ音設定ボタンで設定してある音を使用する」): 既定(空)= Me Dock の 🔔 で選んだ ⏰ の音。None= 鳴らさない
+    let nm = ''; try { const c = vscode.workspace.getConfiguration('laiMembrane'); nm = String(c.get('noChangeSound', '') || '').trim(); if (!nm) nm = String(c.get('clockSound', 'Mew') || '').trim(); } catch (_) { }
+    if (!nm || nm === 'None') return;
     let f = null;
     if (nm !== 'Soft') { try { const p = meosSoundResolve(nm); if (p && require('fs').existsSync(p)) f = p; } catch (_) { } }
     if (!f) f = meosNoChangeSoundPath(); if (!f) return;
