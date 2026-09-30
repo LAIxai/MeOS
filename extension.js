@@ -31325,7 +31325,9 @@ for(const e of chain){const par=e.parentElement;if(!par)continue;for(const sib o
 function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttribute('data-ch')).join('');}
 function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);
 const enc=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);shut(lk?[row]:(cr?[row].concat(enc):[]));row.classList.toggle('md-home',o===HOME);}
-apply();let press=null,suppress=false;
+apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
+  最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
+if(document.readyState!=='complete')window.addEventListener('load',apply);setTimeout(apply,300);setTimeout(apply,1500);let press=null,suppress=false;
 /* 物差し= H-TOC のタブと同じ(マウスの物差しと四角の物差しの比 k を、押した時に掴んだ字の幅で測る・v4.2.140) */
 function measure(ev,t){const r=t.getBoundingClientRect();const leftU=ev.clientX-(ev.offsetX||0);let k=1;
 try{const y=ev.clientY;const on=u=>{const e=document.elementFromPoint(leftU+u,y);return !!(e&&e.closest&&e.closest('.md-tile')===t);};
