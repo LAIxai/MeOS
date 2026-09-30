@@ -26443,7 +26443,9 @@ function meosDockTilesHtml() {
   return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
-  const initial = meDockModeForEditor(vscode.window.activeTextEditor);
+  // ★v4.2.539(俊克 バグ1「パズルロックを解除すると表示が崩れる・みみみ2回で直る」): 解除は Me Dock の中で文字タイルを動かした時= フォーカスは Me Dock にあり
+  //   activeTextEditor は空→ 描き直した面が「エディタ無し」の姿で出ていた(みみみはエディタで唱えるので空にならない)。→ Me Dock が相手にしているエディタから作る
+  const initial = meDockModeForEditor(getMeDockTargetEditor());
   const _mtxCfg = vscode.workspace.getConfiguration('laiMembrane'); // v3.6.1: MeTeX %メニューの初期値を設定から(保存値の反映)
   const mtxSup = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSuperScale', 100)) || 100));
   const mtxSub = Math.max(30, Math.min(200, Number(_mtxCfg.get('metexSubScale', 100)) || 100));
@@ -31988,6 +31990,7 @@ function meosMeDockWidthRestore() {
 function meosMeDockRedraw() {
   if (!meDockPanel) return;
   _meosPasteLagShown = null;
+  try { const _te = getMeDockTargetEditor(); meosDbg('[mdRedraw] target=' + (_te && _te.document ? _te.document.uri.fsPath.split('/').pop() : '-') + ' active=' + (vscode.window.activeTextEditor ? 'yes' : 'no')); } catch (_) { }   // v4.2.539
   meDockPanel.webview.html = meDockHtml().replace('<body>', '<body data-phase="' + MEOS_RELEASE_PHASE + '">');
   setTimeout(() => postFixedWorkingTocSnapshot(), 80);
   setTimeout(() => { updateMeDockMode(); updateMeDockCurrentLineMarker(); }, 80);
