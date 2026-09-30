@@ -2771,41 +2771,44 @@ function meosGongPath() {
     fs.writeFileSync(f, buf); _meosGongFile = f; return f;
   } catch (_) { return null; }
 }
-// ★★v4.2.518(俊克「ここまで来たら、ゴロゴロの強烈なのを合成するしかない。😸PURR(大文字で)/ 😺Purr」):
-//   猫のゴロゴロ= 喉の奥で1秒に25回ほど弾ける低いうなり。吸う時(27回/秒・やや弱い)と吐く時(24回/秒・強い)を2往復。
-//   ★作り方= 低い帯の雑音(約35〜550Hz)を、25回/秒の「弾ける」包絡で刻む＋息の山なりの包絡。最後に軽く歪ませて太くする(強烈さ)。
+// ★★v4.2.518(俊克「ここまで来たら、ゴロゴロの強烈なのを合成するしかない。😸PURR(大文字で)/ 😺Purr」)
+// ★★v4.2.520(俊克「PURR は別の意味で強烈過ぎる(= 雑音を歪ませたザラザラ)。サンプル音を探して周波数解析をして作り替えよう」＋「一鳴きでいい」):
+//   文献の数字で作り直す(録音は使わない)= 基本の震え 20〜30 回/秒(吐く 約22回・吸う 約23.5回)・吐く方が長く強い・「強い倍音」。
+//   ★作り方= 喉の弾け(鋭いパルス)を 1 息ぶん並べ、揺れ(±4%)と強さのむら(±15%)を入れ、共鳴(約90/180/450Hz)に通す。雑音も歪みも使わない。
+//   ★1鳴き= 吸って(0.70秒)・一拍(0.06秒)・吐く(1.00秒)。
 let _meosPurrFile = null;
 function meosPurrPath() {
   if (_meosPurrFile) { try { if (require('fs').existsSync(_meosPurrFile)) return _meosPurrFile; } catch (_) { } }
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
     const rate = 22050;
-    const segs = [[0.00, 0.75, 27, 0.80], [0.83, 0.95, 24, 1.00], [1.88, 0.75, 27, 0.80], [2.71, 0.95, 24, 1.00]];   // [始まり秒, 長さ秒, 弾ける回数/秒, 強さ]
-    const dur = 3.75, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    const segs = [[0.05, 0.70, 23.5, 0.62], [0.81, 1.00, 22.0, 1.00]];   // [始まり秒, 長さ秒, 弾ける回数/秒, 強さ]
+    const dur = 1.95, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), x = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
-    let seed = 12345; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff * 2 - 1; };
-    let lpA = 0, lpB = 0, ph = 0, peak = 0;
-    for (let i = 0; i < n; i++) {
-      const t = i / rate; const w = rnd();
-      lpA += 0.15 * (w - lpA); lpB += 0.01 * (w - lpB);          // 約550Hz と 約35Hz の低い帯
-      const band = lpA - lpB;
-      let v = 0;
-      for (const [t0, len, hz, g] of segs) {
-        const u = t - t0; if (u < 0 || u > len) continue;
-        ph += hz / rate; const fr = ph - Math.floor(ph);
-        const click = fr < 0.05 ? fr / 0.05 : Math.exp(-(fr - 0.05) * 6);   // 弾けて、すぐ引く
-        const breath = Math.pow(Math.sin(Math.PI * u / len), 0.6);
-        v = band * click * breath * g;
+    let seed = 20260930; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    // 喉の弾け= 鋭い正のパルスと、すぐ後の小さな負の戻り(直流を残さない)
+    for (const [t0, len, hz, g] of segs) {
+      let t = t0;
+      while (t < t0 + len) {
+        const u = (t - t0) / len, breath = Math.pow(Math.sin(Math.PI * u), 0.7);
+        const a = g * breath * (0.85 + 0.3 * rnd());
+        const k = Math.floor(t * rate); if (k + 12 < n) { x[k] += a; x[k + 1] += 0.6 * a; x[k + 10] -= 0.8 * a; x[k + 12] -= 0.8 * a; }
+        t += (1 / hz) * (0.96 + 0.08 * rnd());
       }
-      smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
     }
-    // 強烈さ= 一番高い1点でなく、上から2%の所を満タンにして、はみ出す山を丸める(平らに太い音)
-    const mags = Array.from(smp, Math.abs).sort((x, y) => y - x); const ref = mags[Math.floor(n * 0.02)] || peak || 1;
-    for (let i = 0; i < n; i++) { const x = Math.tanh(1.8 * smp[i] / ref) / Math.tanh(1.8); buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, x)) * 0.92 * 32767), 44 + i * 2); }
-    const f = path.join(os.tmpdir(), 'meos-purr-v2.wav');
+    // 共鳴(2次の共振)を並べて通す= 胸と喉の響き
+    const res = (f, bw, gain) => { const r = Math.exp(-Math.PI * bw / rate), a1 = 2 * r * Math.cos(2 * Math.PI * f / rate), a2 = -r * r, out = new Float64Array(n); let y1 = 0, y2 = 0;
+      for (let i = 0; i < n; i++) { const y = (1 - r) * x[i] + a1 * y1 + a2 * y2; out[i] = y * gain; y2 = y1; y1 = y; } return out; };
+    const R = [res(90, 22, 1.0), res(180, 35, 0.8), res(450, 90, 0.35)];   // 帯域を狭く= 弾けの間も響きが残る(ブツブツでなくゴロゴロ)
+    let peak = 0; const smp = new Float64Array(n);
+    for (let i = 0; i < n; i++) { const v = R[0][i] + R[1][i] + R[2][i]; smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v); }
+    // 音量= 上から0.5%の所を満タンに、はみ出す弾けの頭だけを軽く丸める(歪ませない程度)
+    const mags = Array.from(smp, Math.abs).sort((p, q) => q - p); const ref = mags[Math.floor(n * 0.005)] || peak || 1;
+    for (let i = 0; i < n; i++) { const t = i / rate, fade = Math.min(1, t / 0.02) * Math.min(1, (dur - t) / 0.05); const v = Math.tanh(1.2 * smp[i] / ref) / Math.tanh(1.2); buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.9 * fade * 32767), 44 + i * 2); }
+    const f = path.join(os.tmpdir(), 'meos-purr-v3.wav');
     fs.writeFileSync(f, buf); _meosPurrFile = f; return f;
   } catch (_) { return null; }
 }
@@ -13120,7 +13123,7 @@ function meosHelperSound() {
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
     if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
-    if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
+    if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'Soft' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
@@ -14942,6 +14945,8 @@ function meosRingSeconds() {
   //   積み上がるだけで、音は大きくならない)。
   // ★v4.2.407(俊克「Mewを鳴らす時に間隔を指定できないのか? 今は続けざまに鳴いて不自然。音源の長さが0.7sなので1〜1.5秒間隔で」):
   //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
+  // ★v4.2.520(俊克「😸PURR は3鳴きはしつこいので一鳴きでいい。😺Purr も一鳴きに」): ゴロゴロ2種は鳴り続けず1回だけ(V-helper も同じ値を受け取る)
+  try { const _nm20 = String(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr' || _nm20 === 'PURR') return 0; } catch (_) { }
   try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return ((_meosBellOverride || meosSoundNow()) === 'Mew') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
 }
 function meosStopRinging() {
@@ -15144,7 +15149,7 @@ function meosClockSetGong(title, cycleSrc, cycle, rounds) {
 function meosPlayCountBell(cb) {
   try {
     if (!cb || !cb.sound) return;
-    const gap = Math.round(((cb.sound === 'Mew') ? 1.35 : (cb.sound === 'Gong' ? 0.8 : (cb.sound === 'PURR' ? 3.9 : 1.0))) * 1000);   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
+    const gap = Math.round(((cb.sound === 'Mew') ? 1.35 : (cb.sound === 'Gong' ? 0.8 : (cb.sound === 'PURR' ? 2.1 : 1.0))) * 1000);   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
     meosMewGainReset();
     for (let k = 0; k < cb.count; k++) setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, k * gap);
     meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
