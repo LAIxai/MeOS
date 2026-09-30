@@ -13130,8 +13130,9 @@ function meosHelperEnsure() {
       if (fs.existsSync(oldP)) { cp.execFile('launchctl', ['bootout', dom + '/' + MEOS_HELPER_LABEL_OLD], () => { try { fs.unlinkSync(oldP); } catch (_) { } meosDbg('[helper] 旧い1人だけの係を降ろした'); }); } } catch (_) { }
     // 先に「降りろ」の印を消す(前にオフにした時の quit が残っていると、起きた途端に降りる)
     try { const stf = path.join(dir, 'state.json'); const cur = JSON.parse(fs.readFileSync(stf, 'utf8')); if (cur && cur.quit) fs.unlinkSync(stf); } catch (_) { }
+    const _force10 = !!_meosHelper.forceRestart; _meosHelper.forceRestart = false;   // v4.2.510: 居ない係を起こし直す
     cp.execFile('launchctl', ['print', dom + '/' + meosHelperLabel()], (err) => {
-      if (err || oldP !== body) {
+      if (err || oldP !== body || _force10) {
         cp.execFile('launchctl', ['bootout', dom + '/' + meosHelperLabel()], () => {
           cp.execFile('launchctl', ['bootstrap', dom, plist], (e2) => { meosDbg('[helper] bootstrap ' + (e2 ? ('失敗 ' + e2.message) : 'ok')); });
         });
@@ -32218,6 +32219,12 @@ function toggleMeDock(editorOverride) {
       return;
     }
     if (message && message.type === 'toggleHelper') {   // v4.2.363: ⏰パネルの [V-helper]= 常駐の係を起こす/降ろす
+      // ★v4.2.510(俊克 バグ1「メニューバー表示がオフになる。V-helper ボタンは橙で表示され、1回目は駄目で再度押すと表示された」):
+      //   設定は入なのに係が居ない時、1回目の押下は「切る」になっていた。→ 設定が入で係が走っていなければ、切らずに起こし直す
+      if (meosVHelperOn() && meosHelperOn()) {
+        const running = await new Promise(res => { try { require('child_process').execFile('launchctl', ['print', 'gui/' + process.getuid() + '/' + meosHelperLabel()], (e, out) => res(!e && /state = running/.test(String(out || '')))); } catch (_) { res(false); } });
+        if (!running) { meosDbg('[helper] 設定は入なのに居ない→ 起こし直す'); _meosHelper.ensured = false; _meosHelper.last = null; _meosHelper.forceRestart = true; meosHelperEnsure(); try { meosMenuBarSet(null); } catch (_) { } return; }
+      }
       try { await meosVHelperSet(!meosVHelperOn(), true); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
       return;
     }

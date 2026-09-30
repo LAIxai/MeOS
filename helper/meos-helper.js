@@ -18,6 +18,10 @@ function run(argv) {
   const sharedDir = dir.replace(/\/[^\/]+\/?$/, '');
   const myLabel = 'com.laixai.meos.helper' + (/^(vscode|vscodium|[A-Za-z0-9_-]+)$/.test(myScheme) && sharedDir !== dir ? '.' + myScheme : '');
   const bornAt = Date.now();
+  // ★v4.2.510(俊克 バグ1「メニューバー表示がオフになってしまう。V-helper ボタンは橙のまま」): 降りた理由を自分の置き場所に残す(events.log・最後の40行)
+  const hlog = (msg) => { try { const f = dir + '/events.log'; let t = ''; try { const x = $.NSString.stringWithContentsOfFileEncodingError(f, $.NSUTF8StringEncoding, null); if (x && !x.isNil()) t = ObjC.unwrap(x); } catch (e) {}
+    const lines = (t ? t.split('\n').filter(Boolean) : []).concat([new Date().toISOString() + ' ' + msg]).slice(-40);
+    $(lines.join('\n') + '\n').writeToFileAtomicallyEncodingError(f, true, $.NSUTF8StringEncoding, null); } catch (e) {} };
   const app = $.NSApplication.sharedApplication;
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   const bar = $.NSStatusBar.systemStatusBar;
@@ -80,7 +84,7 @@ function run(argv) {
         try { $('1').writeToFileAtomicallyEncodingError(dir + '/off-by-user', true, $.NSUTF8StringEncoding, null); } catch (e) {}
         try { $(JSON.stringify({ t: Date.now(), pid: 0, app: 'V-helper' })).writeToFileAtomicallyEncodingError(sharedDir + '/vhelper-off.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}   // v4.2.371/372: 両方のアプリと、もう1人の係へ
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/' + myLabel + '.plist'), null); } catch (e) {}
-        stopBell(); quitNow = true; return;
+        hlog('quit: メニューの Quit V-helper'); stopBell(); quitNow = true; return;
       }
       // ★v4.2.459(俊克「アプリを閉じている時でも、パスすることで次の予定に移れるように」): 鳴った時と同じ「次へ進める」を音なしで。
       //   記録は passed.json= 次にアプリを開いた時、拡張が床として引き継ぐ。戻すのは飛ばした回がまだ先の時だけ。
@@ -264,13 +268,13 @@ function run(argv) {
   function step() {
     let st = null;
     try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}
-    if (st && st.quit) { quitNow = true; return; }
+    if (st && st.quit) { hlog('quit: state.json に quit'); quitNow = true; return; }
     // v4.2.372: もう1人(か、どちらかのアプリ)が「両方止める」を押した= 自分が生まれた後の知らせなら、自分も降りる
     try { const sg = $.NSString.stringWithContentsOfFileEncodingError(sharedDir + '/vhelper-off.json', $.NSUTF8StringEncoding, null);
       if (sg && !sg.isNil()) { const m = JSON.parse(ObjC.unwrap(sg)); if ((Number(m.t) || 0) > bornAt) {
         try { $('1').writeToFileAtomicallyEncodingError(dir + '/off-by-user', true, $.NSUTF8StringEncoding, null); } catch (e) {}
         try { $.NSFileManager.defaultManager.removeItemAtPathError($(ObjC.unwrap($.NSHomeDirectory()) + '/Library/LaunchAgents/' + myLabel + '.plist'), null); } catch (e) {}
-        stopBell(); quitNow = true; return; } } } catch (e) {}                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
+        hlog('quit: vhelper-off.json (' + (m.app || '?') + ')'); stopBell(); quitNow = true; return; } } } catch (e) {}                            // 設定で止めた= 自分から降りる(LaunchAgent も外される)
     if (st) {
       if (st.app) appPath = st.app;
       if (st.appName) appName = st.appName;   // v4.2.363
@@ -376,6 +380,7 @@ function run(argv) {
   const ticker = $.MeOSTickH.alloc.init;
   const timer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.5, ticker, 'tick:', $(), true);
   $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSRunLoopCommonModes);
+  hlog('born pid=' + $.NSProcessInfo.processInfo.processIdentifier);
   try { step(); } catch (e) {}
   while (!quitNow) $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
   timer.invalidate;

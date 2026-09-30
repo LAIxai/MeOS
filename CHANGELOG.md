@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.510 (2026-09-30)
+- If the V-helper button is orange but nothing is in the menu bar, one click brings V-helper back instead of switching it off. V-helper now notes why it quit, to find what took it away.
+
 ### v4.2.505 (2026-09-30)
 - In a very narrow Me Dock, Paste lag, Re-install VSIX and the Navigate Me line field stay inside their frames.
 
