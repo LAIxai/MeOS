@@ -20203,6 +20203,10 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           if (_lm && ((_s.active.character >= _lm.a && _s.active.character <= _lm.b) || (_spU && _s.active.character === _spU.p))) {
             editor.selections = [new vscode.Selection(_s.active, _s.active)];
             setRefNoRaw(editor.document, _s.active.line);
+            // ★v4.2.497(俊克 バグ1「Optクリックで🔐を🔓に戻す時だけ、1秒くらい固まる」): 録画= 0.7秒、⚓が⏰に被り「…」が出た。
+            //   VS Code は書き換えの直後0.8秒、カーソルより左の札を前の長さに切り詰める(打っている間に字が動かないように)=
+            //   ここだけカーソルを行頭へ寄せる前に書き換えていたので、左の🚢💨/⚓の札が「…」になった。→ 他のボタンと同じく先に行頭へ
+            meosParkCaretAfterPress(editor, _s.active.line);
             meosClockPreviewSet(editor, _s.active.line, { lock: false });   // v4.2.495
             await meosBtnEdit(() => meosClockUnlockAt(editor.document, _s.active.line, _s.active.character));   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
             setRefNoRaw(editor.document, _s.active.line);

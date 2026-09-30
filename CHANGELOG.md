@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.497 (2026-09-30)
+- Opt-click on 🔐 no longer squeezes 🚢💨/⚓ into "…" for a moment.
+
 ### v4.2.496 (2026-09-30)
 - Pressing a button on a ⏰ line redraws only that line at once; the full redraw of the note waits 1.5 seconds, so it no longer holds the switch up.
 
