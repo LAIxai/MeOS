@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.495 (2026-09-30)
+- A switched button shows its new face first, before the line is rewritten; 🔔/🔕 writes the new bell before removing the old one.
+
 ### v4.2.494 (2026-09-30)
 - Pressing a button on a ⏰ line no longer flashes the raw line for a moment: the line switches to raw only when the caret stays there.
 
