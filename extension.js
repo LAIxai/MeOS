@@ -26357,6 +26357,7 @@ function meosExtVersion() {
 //   ★並びは globalState 'meDockTiles'(閉じても保つ)。MockeD の時だけ鍵= ほかの並びは見た目が変わるだけ。
 //   ★鍵の間も動く物= 文字タイルの並べ替え(唯一の開け方)・呪文・エディタ。Me Dock のほかの部品は押せず、中身はぼかす(Mock= 見せかけの Dock)。
 const MEOS_DOCK_HOME = 'MeDock', MEOS_DOCK_LOCK = 'MockeD';
+const MEOS_DOCK_LOCKS = ['MockeD', 'MokecD'];   // v4.2.507(俊克「スクショ6枚目(MokecD= Moke)が mock 以上に笑える。ここでもロックしちゃっていい」)
 function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 6 && o.split('').sort().join('') === MEOS_DOCK_HOME.split('').sort().join(''); }
 function meosDockTiles() { try { const o = extensionContext.globalState.get('meDockTiles'); return meosDockTilesValid(o) ? o : MEOS_DOCK_HOME; } catch (_) { return MEOS_DOCK_HOME; } }
 function meosDockTilesHtml() {
@@ -31310,9 +31311,9 @@ function chk(){const w=ac.offsetTop>tl.offsetTop+6;hd.classList.toggle('hdr-wrap
 try{new ResizeObserver(chk).observe(hd);}catch(_){}window.addEventListener('resize',chk);chk();})();
 // {* ▲mCN=dock_js_hdrwrap *}
 // {* ▼mCN=dock_js_tiles // v4.2.500 パズルロック(文字タイルの並べ替え) *}
-(function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCK='MockeD',HOME='MeDock';
+(function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCKS=['MockeD','MokecD'],HOME='MeDock';
 function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttribute('data-ch')).join('');}
-function apply(){const o=order();document.body.classList.toggle('md-mocked',o===LOCK);row.classList.toggle('md-home',o===HOME);}
+function apply(){const o=order();document.body.classList.toggle('md-mocked',LOCKS.indexOf(o)>=0);row.classList.toggle('md-home',o===HOME);}
 apply();let press=null,suppress=false;
 /* 物差し= H-TOC のタブと同じ(マウスの物差しと四角の物差しの比 k を、押した時に掴んだ字の幅で測る・v4.2.140) */
 function measure(ev,t){const r=t.getBoundingClientRect();const leftU=ev.clientX-(ev.offsetX||0);let k=1;
@@ -31822,7 +31823,7 @@ function toggleMeDock(editorOverride) {
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
     if (message && message.type === 'mdTiles') { const o = String(message.order || ''); if (meosDockTilesValid(o)) { try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o); } return; }
-    if (meosDockTiles() === MEOS_DOCK_LOCK) return;
+    if (MEOS_DOCK_LOCKS.indexOf(meosDockTiles()) >= 0) return;
     // v3.1.16(俊克): Me Dock全体ズームの永続化＋「本文も同期」トグルでエディタのフォントズームも連動。
     if (message && message.type === 'htocOpen') { try { extensionContext.globalState.update('htocOpen', !!message.open); } catch (_) {} return; }   // v4.2.250
     if (message && message.type === 'fmtTipSeen') { try { const m = Object.assign({}, extensionContext.globalState.get('fmtTipSeen') || {}); m[String(message.key || '')] = String(message.day || ''); extensionContext.globalState.update('fmtTipSeen', m); } catch (_) {} return; }   // v4.2.239
