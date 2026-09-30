@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.528 (2026-09-30)
+- With the OS hand, the orange grab mark is also a long crosshair, as long as the red one — the OS open hand and grip hide the point they grab with, so two long lines are the only way to line them up.
+
 ### v4.2.527 (2026-09-30)
 - The red hotspot mark is now measured the same way as the orange grab mark, so the two agree. After switching hands, the orange + and the shape of the red mark (× or long crosshair) follow the new hand straight away.
 

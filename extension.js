@@ -26566,6 +26566,11 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::before{left:3px;top:0;width:1px;height:7px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
 .hp-redbox{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:7px;z-index:60}
+.hp-aim-long{position:absolute;left:0;top:0;width:0;height:0;display:none}
+.hp-aim-long.on{display:block}
+.hp-aim-long::before,.hp-aim-long::after{content:'';position:absolute;background:#ff9500}
+.hp-aim-long::before{left:-.5px;top:-40px;width:1px;height:80px}
+.hp-aim-long::after{left:-40px;top:-.5px;width:80px;height:1px}
 .hp-red{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;display:none}
 .hp-red.on{display:block}
 .hp-red::before,.hp-red::after{content:'';position:absolute;background:#ff2a2a}
@@ -31468,7 +31473,9 @@ function mk(cls){const w=document.createElement('div');w.className='hp-float';co
 /* v4.2.527(俊克 👍1「赤×が直角から少し下」・改良1「22.5°の橙と赤×が少し違う」・バグ1「↖の先端に無い」): 赤×を body(マウスの物差し)から、
    橙の+と同じヘッダーの中の物差しへ移す。ログで押した点と橙の+が 0.4px で一致した= この出し方(部品の位置＋offsetX÷zoom)は確か。
    大きさもヘッダーの zoom がそのまま掛かる。線はヘッダーの縁で切る(ヘッダーの中だけ) */
-const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=document.createElement('div');redC.className='hp-red';rbox.appendChild(redC);hdr.appendChild(rbox);
+const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=document.createElement('div');redC.className='hp-red';
+/* v4.2.528(俊克「OSの移動手と握りは握る点が手に隠れる。橙+も赤+と同じ長さにしないと正確な位置決めができない」): OSの時だけ、橙の目印も同じ長さの十字線(ヘッダーの縁で切る) */
+const aimL=document.createElement('div');aimL.className='hp-aim-long';rbox.appendChild(aimL);rbox.appendChild(redC);hdr.appendChild(rbox);
 function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');}
 function hdrPt(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
 while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)return null;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return e===hdr?{x:x,y:y}:null;}
@@ -31486,7 +31493,8 @@ function hideBal(){bal.w.classList.remove('on');}
 const AIMF={btron:[1/96,1/80],macos22:[11/80,13/96],macos:[0.2,0.1]};
 function placeAim(){try{const aim=hp.querySelector('.hp-aim');const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!aim||!pic)return;const im=pic.querySelector('img');let x,y;
 if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.offsetTop+im.offsetHeight*f[1];}else{x=pic.offsetLeft+pic.offsetWidth*0.27;y=pic.offsetTop+pic.offsetHeight*0.52;}
-aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);}catch(_){}}
+aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);
+try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',cur()==='system');}}catch(_){}}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false;
 function moveRed(ev){const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
