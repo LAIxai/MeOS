@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.530 (2026-09-30)
+- The BTRON pointing hand now points exactly at its right-angle corner. Its hotspot had been one pixel inside the corner, about 2 screen pixels to the lower right.
+
 ### v4.2.529 (2026-09-30)
 - The red hotspot mark now lands in the same place over every part of the header — the ⊕/⊖ badges, the ↻ rings, the file name's corner button, the puzzle letters, and emoji inside buttons such as 🎨 and 😸 — because it is worked out from the pointer alone, not from the part underneath.
 
