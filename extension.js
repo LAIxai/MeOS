@@ -26475,7 +26475,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-left{display:flex;align-items:center;gap:8px;min-width:0}
 /* v4.2.500 パズルロック: 文字タイル= macOS の Dock 風。上では手・押すと手の平・動かすと握り(H-TOC のタブと同じ手) */
 .md-tiles{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto}
-.md-tile{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.08);cursor:var(--meos-hand);user-select:none;transition:transform .12s ease}
+.md-tile{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.08);cursor:var(--meos-palm);user-select:none;transition:transform .12s ease}   /* v4.2.538(俊克「並べ替えパズルの上にポインターが入った時、すぐに移動手に。そうしないと握れることが分からない」): 掴める物の上は手の平= H-TOCのタブ(v4.2.132)と同じ */
 .md-tile:hover{transform:translateY(-2px) scale(1.08)}
 .md-tiles.md-home .md-tile:nth-child(3){margin-left:.4em}
 .md-tile.dragging{transform:translateY(-4px) scale(1.18);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:2;position:relative}
