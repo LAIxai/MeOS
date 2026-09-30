@@ -26567,16 +26567,13 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
 .hp-plus-red::before,.hp-plus-red::after{background:#ff2a2a}
 .hand-pick .hp-aim{position:absolute;left:10.5px;top:3.5px;width:0;height:0;pointer-events:none}
-.hand-pick.is-macos22 .hp-aim{left:11.7px;top:5.2px}
-.hand-pick.is-system .hp-aim,.hand-pick.is-macos .hp-aim{left:14.2px;top:11px}
 .hand-pick .hp-aim::before,.hand-pick .hp-aim::after{content:'';position:absolute;background:#ff9500}
 .hand-pick .hp-aim::before{left:-.5px;top:-3.5px;width:1px;height:7px}
 .hand-pick .hp-aim::after{left:-3.5px;top:-.5px;width:7px;height:1px}
 .hp-float{position:fixed;left:0;top:0;width:0;height:0;z-index:10001;pointer-events:none}
 .hp-float.hp-hide,.hp-float:not(.on)>.hp-plus-red{display:none}
-.hp-balloon{position:absolute;z-index:61;pointer-events:none;transform:translateX(-50%);padding:3px 10px;border-radius:7px;background:rgba(38,38,38,.93);color:#fff;font:600 12px/1.25 -apple-system,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35);display:none}
-.hp-balloon::before{content:'';position:absolute;left:50%;top:-5px;margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom-color:rgba(38,38,38,.93)}
-.hp-balloon.on{display:block}
+.hp-balloon{position:absolute;left:0;top:0;padding:3px 10px;border-radius:7px;background:rgba(38,38,38,.93);color:#fff;font:600 12px/1.25 -apple-system,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.hp-float:not(.on)>.hp-balloon{display:none}
 .hp-ghost{position:absolute;left:0;top:0;opacity:.85;transform-origin:50% 50%;transition:transform .25s ease-in,opacity .25s ease-in}
 .hp-ghost.poof{transform:scale(1.8);opacity:0}
 .paste-lag-btn{flex:0 0 auto;border:1px solid rgba(224,128,58,.75);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:#e0803a;font-weight:800;font-size:12px;line-height:1.2;padding:3px 9px;cursor:var(--meos-hand)}
@@ -31461,35 +31458,48 @@ function nxt(){const i=ORDER.indexOf(cur());return ORDER[(i+1)%ORDER.length];}
 function Z(){const z=parseFloat(hdr.style.zoom||getComputedStyle(hdr).zoom||'1');return (z>0.2&&z<5)?z:1;}
 function mk(cls){const w=document.createElement('div');w.className='hp-float';const c=document.createElement('div');c.className=cls;w.appendChild(c);document.body.appendChild(w);return {w:w,c:c};}
 const red=mk('hp-plus hp-plus-red');
-const bal=document.createElement('div');bal.className='hp-balloon';hdr.appendChild(bal);
+const bal=mk('hp-balloon');
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
 function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)break;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return {x:x,y:y,w:el.offsetWidth,h:el.offsetHeight};}
-function showBal(t){const b=boxOf(hp);bal.textContent=t;bal.style.left=(b.x+b.w/2)+'px';bal.style.top=(b.y+b.h+7)+'px';bal.classList.add('on');}
-function hideBal(){bal.classList.remove('on');}
+/* v4.2.525(俊克 改良1「見出しがポインターに隠れる→tipとしてポインターに追従」): 名前は家の tip と同じ袖口の下へ= 当たりから今の手の絵の丈(DROP)だけ下。
+   値は meosPlaceTipAtPointer の _SLV と同じ(BTRON 指差し12/握り15・22.5° 15/9・OS 18/14) */
+const DROP={btron:{hand:12,grip:15},macos22:{hand:15,grip:10},macos:{hand:18,grip:9},system:{hand:18,grip:14}};
+function showBal(t,ev){if(!ev)return;const d=(DROP[cur()]||DROP.btron)[press&&press.moved?'grip':'hand'];bal.c.textContent=t;at(bal,ev.clientX,ev.clientY+d);bal.w.classList.add('on');}
+function hideBal(){bal.w.classList.remove('on');}
+/* v4.2.525(俊克 改良3「橙の+の位置が少し違う」): ボタンの中の絵の位置を推し量らず、今出ている絵の offsetLeft/Top(ボタンの中の物差し)から出す。
+   絵の中の当たり= BTRON は直角の角(96×80 の 1,1)・22.5° は指先(80×96 の 11,13)・OS は O の真ん中 */
+const AIMF={btron:[1/96,1/80],macos22:[11/80,13/96],macos:[0.2,0.1]};
+function placeAim(){try{const aim=hp.querySelector('.hp-aim');const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!aim||!pic)return;const im=pic.querySelector('img');let x,y;
+if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.offsetTop+im.offsetHeight*f[1];}else{x=pic.offsetLeft+pic.offsetWidth*0.27;y=pic.offsetTop+pic.offsetHeight*0.52;}
+aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);}catch(_){}}
+placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false;
 function moveRed(ev){const u=under(ev);const on=!!(u&&hdr.contains(u));red.w.classList.toggle('on',on);if(on)at(red,ev.clientX,ev.clientY);}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
 hdr.addEventListener('pointerleave',()=>{if(!press)red.w.classList.remove('on');});
-hp.addEventListener('pointerenter',()=>{if(!press)showBal(NAME[cur()]);});
+hp.addEventListener('pointermove',ev=>{if(!press)showBal(NAME[cur()],ev);});
 hp.addEventListener('pointerleave',()=>{if(!press)hideBal();});
 function outside(ev){const u=under(ev);return !(u&&hp.contains(u));}
 function inHp(el){let x=0,y=0,e=el;while(e&&e!==hp){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return e===hp?{x:x,y:y}:{x:0,y:0};}
 function end(ev,commit){if(!press)return;const P=press;press=null;try{hp.releasePointerCapture&&hp.releasePointerCapture(P.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');if(!P.moved){P.g.w.remove();return;}suppress=true;
-if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');showBal(NAME[to]);setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
-else{P.g.w.remove();showBal(NAME[cur()]);}}
+if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');showBal(NAME[to],ev);setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
+else{P.g.w.remove();showBal(NAME[cur()],ev);}}
 hp.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!pic)return;ev.preventDefault();
 /* 掴んだ絵(幽霊): v4.2.523 は絵の大きさの規則(.hand-pick .hp-img)がボタンの外で外れ、96px の原寸で出ていた(俊克 バグ1「巨大なポインター」)→ 今の大きさを写して付ける */
 const g=mk('hp-ghost');const cl=pic.cloneNode(true);const src=pic.querySelectorAll('img'),dst=cl.querySelectorAll('img');src.forEach((im,i)=>{if(dst[i]){dst[i].style.width=im.offsetWidth+'px';dst[i].style.height=im.offsetHeight+'px';dst[i].style.display='block';}});
 cl.style.display='inline-block';g.c.appendChild(cl);g.w.style.visibility='hidden';
 const z=Z(),tp=inHp(ev.target),pp=inHp(pic);const dx=(ev.offsetX||0)+(tp.x-pp.x)*z,dy=(ev.offsetY||0)+(tp.y-pp.y)*z;
-press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
+press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};
+/* v4.2.525(俊克「真のホットスポットで橙をクリックした。座標データは?」): 押した点と橙の+の差をボタンの中の物差しで書き出す(0,0 ならぴったり) */
+try{const aim=hp.querySelector('.hp-aim');const px=(tp.x+(ev.offsetX||0)/z),py=(tp.y+(ev.offsetY||0)/z);const ax=parseFloat(aim&&aim.dataset.x),ay=parseFloat(aim&&aim.dataset.y);
+vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
 try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}});
 hp.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const P=press;
 if(!P.moved){if(Math.abs(ev.clientX-P.x0)+Math.abs(ev.clientY-P.y0)<3)return;P.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}
 at(P.g,ev.clientX-P.dx,ev.clientY-P.dy);P.g.w.style.visibility='visible';try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}
-showBal(NAME[outside(ev)?nxt():cur()]);});
+showBal(NAME[outside(ev)?nxt():cur()],ev);});
 hp.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;end(ev,true);});
 hp.addEventListener('pointercancel',()=>{end(null,false);});hp.addEventListener('lostpointercapture',()=>{if(press)end(null,false);});
 hp.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();

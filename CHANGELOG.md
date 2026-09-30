@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.525 (2026-09-30)
+- The hand's name now follows the pointer like the other tips, just below the hand picture, so the pointer never hides it.
+- The orange + is placed from where the picture really is inside the button.
+
 ### v4.2.524 (2026-09-30)
 - The red + now follows the pointer's real hotspot (it had jumped far to the lower right), and the hand you drag is shown at the button's size instead of a giant one.
 - The grab mark is now an orange + drawn where the hand picture itself points — the right-angle corner for BTRON, the fingertip for 22.5°Mickey, the middle of the O for OS. The red and orange marks are the same small plus.
