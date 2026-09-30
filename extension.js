@@ -31329,8 +31329,10 @@ row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)retu
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
 /* 指が隣の字の真ん中を越えたら、その向こうへ入れ替える(macOS の Dock のように並びがその場で動く) */
 for(let g=0;g<6;g++){const nx=p.t.nextElementSibling,pv=p.t.previousElementSibling;
-if(nx){const r=nx.getBoundingClientRect();if(x>r.left+r.width/2){row.insertBefore(p.t,nx.nextElementSibling);continue;}}
-if(pv){const r=pv.getBoundingClientRect();if(x<r.left+r.width/2){row.insertBefore(p.t,pv);continue;}}break;}apply();});
+/* v4.2.506(俊克 バグ1「パズルのドラッグが1文字分ずつしか移動できない」): 掴んだ字そのものを並びの中で動かすと、掴み(pointer capture)が外れてドラッグが終わっていた。
+   → 掴んだ字は動かさず、隣の字の方を掴んだ字の反対側へ回す(見た目は同じ入れ替え) */
+if(nx){const r=nx.getBoundingClientRect();if(x>r.left+r.width/2){row.insertBefore(nx,p.t);continue;}}
+if(pv){const r=pv.getBoundingClientRect();if(x<r.left+r.width/2){row.insertBefore(pv,p.t.nextSibling);continue;}}break;}apply();});
 row.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;end(true);});
 row.addEventListener('pointercancel',()=>{end(true);});row.addEventListener('lostpointercapture',()=>{if(press)end(true);});
 row.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();
