@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.502 (2026-09-30)
+- The version number moves to the bottom-right corner of Me Dock's header, and the file name starts closer to the left edge, so a narrow Me Dock keeps its buttons whole.
+
 ### v4.2.501 (2026-09-30)
 - **Me Dock's header, redrawn.** The last-saved time sits on its own line under the file name, so the file button keeps its width when Me Dock is narrow.
 
