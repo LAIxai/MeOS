@@ -14952,9 +14952,15 @@ function meosNoChangeSoundPath() {
 }
 // ★v4.2.351(俊克「なぜ音はmacOSだけなのか?」): 私が afplay だけで書いていた。鐘(meosPlayChime)と同じく3つのOSに道を持つ。
 //   作った wav は同じ1つ= mac=afplay / win=PowerShell の SoundPlayer / linux=paplay→aplay(無ければ端末のベル)。
+// ★v4.2.514(俊克「保存済のときに Cmd+S を押すと鳴らしているのは何の音? それを Gong などの設定音にすればいい」):
+//   今までは MeOS が作った「ホワン、ホワン」(下がる2音)。→ 設定 laiMembrane.noChangeSound(既定 Gong)。Soft= 今までの音・空= 鳴らさない
 function meosPlayNoChange() {
   try {
-    const f = meosNoChangeSoundPath(); if (!f) return;
+    let nm = 'Gong'; try { nm = String(vscode.workspace.getConfiguration('laiMembrane').get('noChangeSound', 'Gong') ?? 'Gong').trim(); } catch (_) { }
+    if (!nm) return;
+    let f = null;
+    if (nm !== 'Soft') { try { const p = meosSoundResolve(nm); if (p && require('fs').existsSync(p)) f = p; } catch (_) { } }
+    if (!f) f = meosNoChangeSoundPath(); if (!f) return;
     const { exec } = require('child_process');
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') exec('/usr/bin/afplay -v 1.5 ' + q(f), () => { });
@@ -26409,6 +26415,9 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .md-tile.dragging{transform:translateY(-4px) scale(1.18);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:2;position:relative}
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
 .md-dim{filter:grayscale(1) blur(2px);opacity:.45;user-select:none}.md-dim,.md-dim *{pointer-events:none!important}
+/* v4.2.514(俊克 改良1「青い仕切り線は見えないようにしよう」): Deco/eMcoD の間は Current Me の箱の枠と Encrypt Me の段の仕切りを消す */
+body.md-crypt #cur-box,body.md-crypt .cur-box{border-color:transparent!important;box-shadow:none!important;background:transparent!important}
+body.md-crypt .encrypt-me-row{border-top-color:transparent!important}
 /* ★v4.0.366(俊克 改良2「Me Dockの一番上の領域が混み合って、横幅の調整がしにくいので、ファイルメニューと
    日付を1段下げようよ。**小さい文字なので、できるだけ高さを抑えて**ね。v4.0.xxxの左に合わせたくらいに
    インデントしてね」): 1段目=名前と版と操作／2段目=どのファイルか・いつ保存したか。
@@ -31323,7 +31332,7 @@ function shut(keeps){document.querySelectorAll('.md-dim').forEach(e=>e.classList
 const chain=new Set();for(const k of keeps){let e=k;while(e&&e!==dock){chain.add(e);e=e.parentElement;}}
 for(const e of chain){const par=e.parentElement;if(!par)continue;for(const sib of par.children){if(!chain.has(sib))sib.classList.add('md-dim');}}}
 function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttribute('data-ch')).join('');}
-function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);
+function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);document.body.classList.toggle('md-crypt',cr);
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));
 row.classList.toggle('md-home',o===HOME);}
