@@ -13769,6 +13769,12 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
                   + (_lmH ? '\n\n\ud83d\udd10 Locked \u2014 Opt-click \ud83d\udd10 to unlock.' : (_withLock ? '\n\n\ud83d\udd13 Click \ud83d\udd13 to lock this clock with \ud83d\udd10 \u2014 it then cannot be stopped or dropped until it rings.' : '')) }); }
               // v4.2.487: 🚢💨/⚓ も札＋絵(札は駒の空白の前= p-1)。駒は 3px の隙間
               gap3.push({ range: new vscode.Range(i, _spA.p - 1, i, _spA.p) });
+              // ★v4.2.498(俊克「🔐から🔓に変わる時は最も奇麗に切り替わっている。これが全てでそうなると良いんだけど」):
+              //   奇麗なのは「隠した字を消すだけ」の切替(🔐→🔓・⚓→🚢💨)。🔐/⚓ を**足す**切替は、足した字が隠されるまで一瞬見えた(と見立てる)。
+              //   → 字を足す場所(⏰の直後・🔐の直後)に**幅0の空の隠し**を先に置く= 足した字はその場で隠れる(隠しは足した字を飲み込んで広がる)。
+              //     駒の隙間(gap3)は端で広がらない(OpenOpen)= 足した字に 3px の字間が付かない
+              badgeHide.push(new vscode.Range(i, _spA.e, i, _spA.e));
+              { const _lmE = meosClockLockMarkAt(txt); if (_lmE) badgeHide.push(new vscode.Range(i, _lmE.b, i, _lmE.b)); }
               const _pvA = meosClockPreviewAt(doc, i), _anc = (_pvA && typeof _pvA.anchor === 'boolean') ? _pvA.anchor : c.anchor;   // v4.2.495
               if (_anc) _hintBtn(i, _spA.p - 1, '\u00a0\u00a0\u00a0', { abs: (2.5 / 1.95).toFixed(3) + 'ch', content: '\u2693\ufe0e', css: 'font-size: 1.95em; font-weight: 900; color: #ff3b30; -webkit-text-stroke: 0.35px #000; transform: translateY(0.14em) rotate(10deg); transform-origin: 50% 60%;' });
               else _hintBtn(i, _spA.p - 1, '\u00a0\u00a0\u00a0', { content: '\ud83d\udea2\ud83d\udca8', css: 'font-size: 0.85em;' });
@@ -14248,7 +14254,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (meosClockRepDeco) editor.setDecorations(meosClockRepDeco, reps);   // v4.1.176
     if (meosClockBadgeHideDeco) editor.setDecorations(meosClockBadgeHideDeco, badgeHide);
     if (gap3.length && !meosClockGap3Deco) meosClockGap3Deco = vscode.window.createTextEditorDecorationType({
-      textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
+      textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 3px;', rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen });   // v4.2.498: 端で広がらない
     if (meosClockGap3Deco) editor.setDecorations(meosClockGap3Deco, gap3);   // v4.2.481
     if ((gap6.length || gap9.length) && !meosClockGapNDeco) meosClockGapNDeco = {
       6: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; opacity: 0; font-size: 0; letter-spacing: 4px;', rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }),

@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.498 (2026-09-30)
+- Locking with 🔐 and mooring with ⚓ switch as cleanly as unlocking: the mark they write is hidden the moment it is written.
+
 ### v4.2.497 (2026-09-30)
 - Opt-click on 🔐 no longer squeezes 🚢💨/⚓ into "…" for a moment.
 
