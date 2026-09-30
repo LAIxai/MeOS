@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.537 (2026-10-01)
+- The hand's name appears only while you are pointing at the button, not over the picture (open hand) or while you drag it (grip).
+
 ### v4.2.536 (2026-10-01)
 - The three BTRON hands sit one pixel lower in their pointer images, so the hotspot lands right on the index-finger corner (it had been about a pixel below it).
 

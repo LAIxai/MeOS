@@ -31515,20 +31515,21 @@ hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');}
 redKind();try{new MutationObserver(()=>{placeAim();redKind();}).observe(hp,{attributes:true,attributeFilter:['class']});}catch(_){}
 /* v4.2.533(俊克 バグ1「Me Dockの幅を変えると大きな+が移動してしまう」): 橙の長い十字はヘッダーの中の位置で置く→ 幅が変わってボタンが動いたら置き直す */
 try{new ResizeObserver(()=>placeAim()).observe(hdr);}catch(_){}
-hp.addEventListener('pointermove',ev=>{if(!press)showBal(NAME[cur()],ev);});
+/* v4.2.537(俊克「説明は選択指だけにしよう。移動手、握りに付ける必要はない。過剰だよね」): 名前は指差しの時だけ= 絵の上(移動手)・押している間(握り)は出さない */
+hp.addEventListener('pointermove',ev=>{if(press)return;const onPic=ev.target&&ev.target.closest&&ev.target.closest('.hand-pick>span');if(onPic)hideBal();else showBal(NAME[cur()],ev);});
 hp.addEventListener('pointerleave',()=>{if(!press)hideBal();});
 function outside(ev){const u=under(ev);return !(u&&hp.contains(u));}
 function inHp(el){let x=0,y=0,e=el;while(e&&e!==hp){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return e===hp?{x:x,y:y}:{x:0,y:0};}
 function end(ev,commit){if(!press)return;const P=press;press=null;try{hp.releasePointerCapture&&hp.releasePointerCapture(P.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');if(!P.moved){P.g.w.remove();return;}suppress=true;
-if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');showBal(NAME[to],ev);setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
-else{P.g.w.remove();showBal(NAME[cur()],ev);}}
+if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
+else{P.g.w.remove();}}
 hp.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!pic)return;ev.preventDefault();
 /* 掴んだ絵(幽霊): v4.2.523 は絵の大きさの規則(.hand-pick .hp-img)がボタンの外で外れ、96px の原寸で出ていた(俊克 バグ1「巨大なポインター」)→ 今の大きさを写して付ける */
 const g=mk('hp-ghost');const cl=pic.cloneNode(true);const src=pic.querySelectorAll('img'),dst=cl.querySelectorAll('img');src.forEach((im,i)=>{if(dst[i]){dst[i].style.width=im.offsetWidth+'px';dst[i].style.height=im.offsetHeight+'px';dst[i].style.display='block';}});
 cl.style.display='inline-block';g.c.appendChild(cl);g.w.style.visibility='hidden';
 const z=Z(),tp=inHp(ev.target),pp=inHp(pic);const dx=(ev.offsetX||0)+(tp.x-pp.x)*z,dy=(ev.offsetY||0)+(tp.y-pp.y)*z;
-press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};
+hideBal();press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};
 /* v4.2.525(俊克「真のホットスポットで橙をクリックした。座標データは?」): 押した点と橙の+の差をボタンの中の物差しで書き出す(0,0 ならぴったり) */
 try{const aim=hp.querySelector('.hp-aim');const px=(tp.x+(ev.offsetX||0)/z),py=(tp.y+(ev.offsetY||0)/z);const ax=parseFloat(aim&&aim.dataset.x),ay=parseFloat(aim&&aim.dataset.y);
 vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)+' red='+redC.style.left+','+redC.style.top+(()=>{const q=hdrPt(ev),b=boxOf(hp);return q?' press1='+(q.x-b.x-(hp.clientLeft||0)).toFixed(1)+','+(q.y-b.y-(hp.clientTop||0)).toFixed(1)+' org='+(org?org.x.toFixed(1)+','+org.y.toFixed(1):'-'):'';})()});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
@@ -31536,7 +31537,7 @@ try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}});
 hp.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const P=press;
 if(!P.moved){if(Math.abs(ev.clientX-P.x0)+Math.abs(ev.clientY-P.y0)<3)return;P.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}
 at(P.g,ev.clientX-P.dx,ev.clientY-P.dy);P.g.w.style.visibility='visible';try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}
-showBal(NAME[outside(ev)?nxt():cur()],ev);});
+});
 hp.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;end(ev,true);});
 hp.addEventListener('pointercancel',()=>{end(null,false);});hp.addEventListener('lostpointercapture',()=>{if(press)end(null,false);});
 hp.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();
