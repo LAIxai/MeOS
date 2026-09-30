@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.523 (2026-09-30)
+- The red cross now sits exactly on the pointer's hotspot (it was drawn up and to the left of it). Both crosses are small plus signs of the same size, the white one sits in the button's lower-left corner, and you can grab the button from anywhere on it.
+
 ### v4.2.522 (2026-09-30)
 - The pointer-hand button in the Me Dock header can now be **thrown away like a Dock icon**: grab the hand picture (the pointer turns into the open hand, then the grip), drag it out of the button and let go — it vanishes and the next hand appears (BTRON → 22.5°Mickey → OS). A balloon under the button names the hand, and the hand you will get once you are outside. A plain click still switches as before.
 - A small white cross on the hand picture marks where to grab; inside the header a red cross marks the pointer's real hotspot, so you can see where each hand actually points — also while solving the letter puzzle.

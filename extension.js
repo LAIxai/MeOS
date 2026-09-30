@@ -26560,20 +26560,19 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 /* v4.2.522(俊克「最後の最後の付録」): 手の絵を掴んでボタンの外へ捨てると次の手が出る(macOS の Dock から捨てる動き)。絵の上= 移動手・押す= 握り。
    白い十字= 掴む時の目標(絵の左下)。赤い十字= ポインタの当たり(ヘッダーの中だけ)= 手ごとの当たりの違いをパズルでも試せる */
 .hand-pick>span{cursor:var(--meos-palm)}
-.hand-pick .hp-aim{position:absolute;left:11px;top:12px;width:7px;height:7px;pointer-events:none}
+.hand-pick .hp-aim{position:absolute;left:2px;bottom:2px;width:7px;height:7px;pointer-events:none}
 .hand-pick .hp-aim::before,.hand-pick .hp-aim::after{content:'';position:absolute;background:#fff;box-shadow:0 0 0 .6px rgba(0,0,0,.6)}
 .hand-pick .hp-aim::before{left:3px;top:0;width:1px;height:7px}
 .hand-pick .hp-aim::after{left:0;top:3px;width:7px;height:1px}
-.hp-crossbox{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:7px;z-index:60}
-.hp-cross{position:absolute;width:31px;height:31px;margin:-15px 0 0 -15px;display:none}
-.hp-cross.on{display:block}
-.hp-cross::before,.hp-cross::after{content:'';position:absolute;background:#ff2a2a}
-.hp-cross::before{left:15px;top:0;width:1px;height:31px}
-.hp-cross::after{left:0;top:15px;width:31px;height:1px}
+.hp-cross{position:fixed;left:0;top:0;z-index:10001;width:7px;height:7px;pointer-events:none;visibility:hidden}
+.hp-cross.on{visibility:visible}
+.hp-cross::before,.hp-cross::after{content:'';position:absolute;background:#ff2a2a;box-shadow:0 0 0 .6px rgba(255,255,255,.7)}
+.hp-cross::before{left:3px;top:0;width:1px;height:7px}
+.hp-cross::after{left:0;top:3px;width:7px;height:1px}
 .hp-balloon{position:absolute;z-index:61;pointer-events:none;transform:translateX(-50%);padding:3px 10px;border-radius:7px;background:rgba(38,38,38,.93);color:#fff;font:600 12px/1.25 -apple-system,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35);display:none}
 .hp-balloon::before{content:'';position:absolute;left:50%;top:-5px;margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom-color:rgba(38,38,38,.93)}
 .hp-balloon.on{display:block}
-.hp-ghost{position:absolute;z-index:59;pointer-events:none;opacity:.85;transition:transform .25s ease-in,opacity .25s ease-in}
+.hp-ghost{position:fixed;left:0;top:0;z-index:10000;pointer-events:none;opacity:.85;transition:transform .25s ease-in,opacity .25s ease-in}
 .hp-ghost img{display:block}
 .hp-ghost.poof{transform:scale(1.8);opacity:0}
 .paste-lag-btn{flex:0 0 auto;border:1px solid rgba(224,128,58,.75);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:#e0803a;font-weight:800;font-size:12px;line-height:1.2;padding:3px 9px;cursor:var(--meos-hand)}
@@ -31452,34 +31451,40 @@ row.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.
 const ORDER=['btron','macos22','system'],NAME={btron:'BTRON',macos22:'22.5°Mickey',system:'OS',macos:'macOS'};
 function cur(){for(const n of ['system','macos22','macos'])if(hp.classList.contains('is-'+n))return n;return 'btron';}
 function nxt(){const i=ORDER.indexOf(cur());return ORDER[(i+1)%ORDER.length];}
-const box=document.createElement('div');box.className='hp-crossbox';const cross=document.createElement('div');cross.className='hp-cross';box.appendChild(cross);hdr.appendChild(box);
+const cross=document.createElement('div');cross.className='hp-cross';document.body.appendChild(cross);
 const bal=document.createElement('div');bal.className='hp-balloon';hdr.appendChild(bal);
-/* 位置はヘッダーの中の物差しで出す= 当たった部品の offsetX に、ヘッダーまでの offsetLeft を足す。ヘッダーは zoom されているが、中の値は全部同じ物差し(四角とマウスの別物差しに触らない) */
-function rel(ev){let e=ev.target;if(!e||!(e instanceof HTMLElement))return null;let x=(ev.offsetX||0)+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)+(e!==hdr?(e.clientTop||0):0);
-while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const p=e.offsetParent;if(!p)return null;if(p!==hdr){x+=p.clientLeft||0;y+=p.clientTop||0;}e=p;}return e===hdr?{x:x,y:y}:null;}
-function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const p=e.offsetParent;if(!p)break;if(p!==hdr){x+=p.clientLeft||0;y+=p.clientTop||0;}e=p;}return {x:x,y:y,w:el.offsetWidth,h:el.offsetHeight};}
+/* v4.2.523(俊克のスクショ: 赤い十字が3つの手とも同じだけ左上にずれた= 手ごとの当たりの差でなく、私の物差しの誤り):
+   ヘッダーの中の offsetLeft を足す出し方をやめ、tip で当たりに接すると確かめ済みの出し方に揃える= 当たった部品の四角＋offsetX(部品の倍率で換算)。
+   静的(static)な部品は四角が別の物差しで返る(v3.1.27)→ 測る一瞬だけ relative にする。置く側は fixed の箱で、箱自身の倍率で割る */
+function pt(ev){const t=ev.target;if(!t||!t.getBoundingClientRect)return null;let st=null;try{if(t instanceof HTMLElement&&getComputedStyle(t).position==='static'){st=t.style.position;t.style.position='relative';}}catch(_){}
+const r=t.getBoundingClientRect();if(st!==null)t.style.position=st;const sx=t.offsetWidth?r.width/t.offsetWidth:1,sy=t.offsetHeight?r.height/t.offsetHeight:1;
+return {x:r.left+((ev.offsetX||0)+(t.clientLeft||0))*sx,y:r.top+((ev.offsetY||0)+(t.clientTop||0))*sy};}
+function place(el,x,y,cx,cy){const r=el.getBoundingClientRect();const k=el.offsetWidth?r.width/el.offsetWidth:1;el.style.left=(x/k-cx)+'px';el.style.top=(y/k-cy)+'px';}
+function inRect(p,r){return p.x>=r.left&&p.y>=r.top&&p.x<=r.right&&p.y<=r.bottom;}
+function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)break;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return {x:x,y:y,w:el.offsetWidth,h:el.offsetHeight};}
 function showBal(t){const b=boxOf(hp);bal.textContent=t;bal.style.left=(b.x+b.w/2)+'px';bal.style.top=(b.y+b.h+7)+'px';bal.classList.add('on');}
 function hideBal(){bal.classList.remove('on');}
-let lastPt=null;
-function moveCross(ev){const p=rel(ev);if(!p)return;lastPt=p;const inHdr=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;
-cross.classList.toggle('on',inHdr);if(inHdr){cross.style.left=p.x+'px';cross.style.top=p.y+'px';}}
+let lastPt=null,press=null,suppress=false,dbgN=0;
+function moveCross(ev){const p=pt(ev);if(!p)return;lastPt=p;const on=inRect(p,hdr.getBoundingClientRect());cross.classList.toggle('on',on);if(on)place(cross,p.x,p.y,3,3);}
 hdr.addEventListener('pointermove',moveCross);hdr.addEventListener('pointerdown',moveCross);
 hdr.addEventListener('pointerleave',()=>{if(!press)cross.classList.remove('on');});
-let press=null,suppress=false;
 hp.addEventListener('pointerenter',()=>{if(!press)showBal(NAME[cur()]);});
 hp.addEventListener('pointerleave',()=>{if(!press)hideBal();});
-function outside(p){const b=boxOf(hp);return p.x<b.x||p.y<b.y||p.x>b.x+b.w||p.y>b.y+b.h;}
-function end(ev,commit){if(!press)return;const p=press;press=null;try{hp.releasePointerCapture&&hp.releasePointerCapture(p.pid);}catch(_){}
-document.body.classList.remove('meos-palming','meos-gripping');if(!p.moved){if(p.g)p.g.remove();return;}suppress=true;
-const q=(ev&&rel(ev))||lastPt;if(commit&&q&&outside(q)){const to=nxt();p.g.classList.add('poof');showBal(NAME[to]);setTimeout(()=>{p.g.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
-else{p.g.remove();showBal(NAME[cur()]);}}
-hp.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const pic=ev.target&&ev.target.closest&&ev.target.closest('.hand-pick>span');if(!pic)return;const p0=rel(ev);if(!p0)return;
-ev.preventDefault();const b=boxOf(pic);const g=document.createElement('div');g.className='hp-ghost';g.appendChild(pic.cloneNode(true));g.style.display='none';hdr.appendChild(g);
-press={pid:ev.pointerId,x0:p0.x,y0:p0.y,dx:p0.x-b.x,dy:p0.y-b.y,g:g,moved:false};try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
-try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}});
-hp.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=rel(ev);if(!p)return;const P=press;
-if(!P.moved){if(Math.abs(p.x-P.x0)+Math.abs(p.y-P.y0)<4)return;P.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');P.g.style.display='block';}
-P.g.style.left=(p.x-P.dx)+'px';P.g.style.top=(p.y-P.dy)+'px';try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}
+function outside(p){return !inRect(p,hp.getBoundingClientRect());}
+function end(ev,commit){if(!press)return;const P=press;press=null;try{hp.releasePointerCapture&&hp.releasePointerCapture(P.pid);}catch(_){}
+document.body.classList.remove('meos-palming','meos-gripping');if(!P.moved){P.g.remove();return;}suppress=true;
+const q=(ev&&pt(ev))||lastPt;if(commit&&q&&outside(q)){const to=nxt();P.g.classList.add('poof');showBal(NAME[to]);setTimeout(()=>{P.g.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
+else{P.g.remove();showBal(NAME[cur()]);}}
+/* v4.2.523(俊克 改良3「白い+はもっと左角に近く」): 目標が絵の外に出たので、掴むのはボタンのどこからでも(動かさずに離せば今までどおりのクリック) */
+hp.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const p0=pt(ev);if(!p0)return;
+const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!pic)return;
+ev.preventDefault();const pr=pic.getBoundingClientRect();const g=document.createElement('div');g.className='hp-ghost';g.appendChild(pic.cloneNode(true));try{g.style.zoom=getComputedStyle(hdr).zoom||'';}catch(_){}g.style.visibility='hidden';document.body.appendChild(g);
+press={pid:ev.pointerId,x0:p0.x,y0:p0.y,dx:p0.x-pr.left,dy:p0.y-pr.top,g:g,moved:false};try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
+try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}
+if(dbgN++<6){try{const cr=cross.getBoundingClientRect();vscode.postMessage({type:'dockDbg',text:'handdrag pt='+Math.round(p0.x)+','+Math.round(p0.y)+' client='+ev.clientX+','+ev.clientY+' off='+ev.offsetX+','+ev.offsetY+' tgt='+(ev.target.className||ev.target.tagName)+' cross='+Math.round(cr.left+cr.width/2)+','+Math.round(cr.top+cr.height/2)+' hp='+Math.round(hp.getBoundingClientRect().left)+','+Math.round(hp.getBoundingClientRect().top)});}catch(_){}}});
+hp.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=pt(ev);if(!p)return;const P=press;
+if(!P.moved){if(Math.abs(p.x-P.x0)+Math.abs(p.y-P.y0)<4)return;P.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}
+place(P.g,p.x-P.dx,p.y-P.dy,0,0);P.g.style.visibility='visible';try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}
 showBal(NAME[outside(p)?nxt():cur()]);});
 hp.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;end(ev,true);});
 hp.addEventListener('pointercancel',()=>{end(null,false);});hp.addEventListener('lostpointercapture',()=>{if(press)end(null,true);});
