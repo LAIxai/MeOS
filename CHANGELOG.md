@@ -4,8 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
-### v4.2.514 – v4.2.515 (2026-09-30)
+### v4.2.514 – v4.2.516 (2026-09-30)
 - Cmd+S with nothing new to save now rings **the ⏰ sound you picked with 🔔 in Me Dock**. **Soft**, MeOS's own soft double tone, joins the 🔔 list. `laiMembrane.noChangeSound` can still name another sound (`None` for silence).
+- The 🔔 button in Me Dock is now described as what it has become: **MeOS's standard sound** — for ⏰ lines that name no bell of their own, for V-helper, and for Cmd+S with nothing to save.
 
 ### v4.2.510 (2026-09-30)
 - If the V-helper button is orange but nothing is in the menu bar, one click brings V-helper back instead of switching it off. V-helper now notes why it quit, to find what took it away.

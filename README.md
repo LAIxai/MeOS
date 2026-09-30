@@ -152,8 +152,10 @@ on by itself, and VSCodium picks the pass up the next time it opens, so the skip
 
 **Two editors, two lives.** VS Code and VSCodium each get their own V-helper — **purple for VS Code, orange for
 VSCodium** — and each keeps only the clocks of the files open in its own editor. So you can run work clocks in
-one and private clocks in the other, side by side in the menu bar. Give them different bells too: press **🔔** beside the 🎨 Theme button in each editor's Me Dock, move with ↑/↓ to
-hear every sound, and press Enter to keep one (it is saved as `laiMembrane.clockSound`, per editor). Then you know whose clock rang before you even look.
+one and private clocks in the other, side by side in the menu bar. Give them different sounds too: press **🔔** beside the 🎨 Theme button in each editor's Me Dock, move with ↑/↓ to
+hear every sound, and press Enter to keep one (it is saved as `laiMembrane.clockSound`, per editor). It is that editor's standard sound —
+for ⏰ lines that name no bell of their own, for V-helper while the editor is closed, and for Cmd+S when there is nothing new to save —
+so you know whose clock rang before you even look.
 Keep the two lives in separate files — the same file open in both editors shows its clocks in both.
 
 <p align="center">
