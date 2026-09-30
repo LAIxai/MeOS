@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.536 (2026-10-01)
+- The three BTRON hands sit one pixel lower in their pointer images, so the hotspot lands right on the index-finger corner (it had been about a pixel below it).
+
 ### v4.2.535 (2026-10-01)
 - New BTRON hand pictures (pointing, open hand, grip) drawn on one shared registration, so the index-finger corner — the hotspot — sits in exactly the same place in all three.
 
