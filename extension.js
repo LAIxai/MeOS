@@ -26442,6 +26442,9 @@ body.md-mocked .dock-stick>:not(header),body.md-mocked .dock-stick>:not(header) 
 header.title.hdr-wrap .title-row2{margin-top:12px}
 header.title.hdr-wrap .title-row2>.title-filecol{top:0}
 header.title.hdr-wrap .row2-right{margin-top:8px}
+/* v4.2.505(俊克 改良1「🐢とRe-install VSIXが少しはみ出ている」): 右の群は中身の幅で固まっていた(flex:0 0 auto)= 縮めて中で折り返す */
+.row2-right{flex:0 1 auto;min-width:0;max-width:100%}
+.row2-right>*{max-width:100%}
 /* v4.2.502(改良2「パズルボタンをもう少し左角に近づけて」) */
 .title-row1 .md-tiles{margin:-5px 0 0 -5px}
 /* v4.2.501(俊克「Me Dockの更新日を次の行に移動しよう。Me Dockの幅を狭めた時に、ファイル選択ボタンが短くなってしまうのを防ぐため」):
@@ -26860,7 +26863,8 @@ body.meos-gripping,body.meos-gripping *{cursor:var(--meos-grip)!important}   /* 
 .nav-jump-label{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground)}
 .nav-center-label{font-size:12px;font-weight:800;color:var(--vscode-descriptionForeground)}
 .nav-center-divider{font-size:12px;font-weight:900;color:var(--vscode-descriptionForeground);opacity:.7}
-.nav-center .line-input{flex:1}
+.nav-center .line-input{flex:1;min-width:0}   /* v4.2.505(俊克 改良2「Navigate Meも外にはみ出ている」): 入力欄の既定の最小幅(約20字)で押し出していた */
+.nav-center-row.toc-nav-row{flex-wrap:wrap;row-gap:4px}
 .nav-center-btn{min-height:25px;font-weight:800}
 .nav-center-btn.disabled{opacity:.35;cursor:default;filter:grayscale(.4)}
 .toc-create-btn{color:#d18400;font-weight:900}

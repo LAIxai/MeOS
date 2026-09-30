@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.505 (2026-09-30)
+- In a very narrow Me Dock, Paste lag, Re-install VSIX and the Navigate Me line field stay inside their frames.
+
 ### v4.2.504 (2026-09-30)
 - A narrow Me Dock header leaves room between the wrapped rows, and **Re-install VSIX** no longer makes Me Dock jump wide (nor keeps that width after the reload).
 
