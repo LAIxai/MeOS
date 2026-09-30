@@ -13016,6 +13016,7 @@ let _meosVHOff = false;
 //   ★知らせ= 共有の置き場所の vhelper-off.json(時刻と誰か)。開いているアプリは見張って即座に、閉じていたアプリは次に開いた時に読む。
 function meosVHelperOffSignalPath() { return require('path').join(meosHelperShared(), 'vhelper-off.json'); }   // v4.2.372: 2人の係が共に読む所
 function meosVHelperBroadcastOff() {
+  if (!meosRealHost()) return;   // v4.2.519
   try { const fs = require('fs'); fs.mkdirSync(meosHelperShared(), { recursive: true }); const t = Date.now();
     fs.writeFileSync(meosVHelperOffSignalPath(), JSON.stringify({ t, pid: process.pid, app: meosAppName() }));
     if (extensionContext) extensionContext.globalState.update('meosVHelperOffSeen', t); } catch (_) { }
@@ -13130,6 +13131,7 @@ function meosHelperSound() {
   } catch (_) { return { file: meosSoundResolve('Mew') || '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }   // v4.2.406
 }
 function meosHelperWrite(text, menu, owner, anchor) {
+  if (!meosRealHost()) return;   // v4.2.519
   if (_meosHelper.handedOff) return;   // v4.2.330: 渡した後は書かない
   try {
     const fs = require('fs'), path = require('path'), dir = meosHelperDir();
@@ -13151,7 +13153,13 @@ function meosHelperWrite(text, menu, owner, anchor) {
   } catch (_) { }
 }
 // 載せる/降ろす(launchctl)。本体(meos-helper.js)は vsix の中の物を写し、違っていれば入れ替えて起こし直す。
+// ★★★v4.2.519(俊克「pm04:11 の数十秒前、あなたの作業中にメニューバーから消えたよ」＋「だいぶ前から、メニューバー表示がオフになる」):
+//   macOS のログ= 「bootout initiated by: launchctl <- node <- zsh <- claude」= **私の検査(check_activate.js)が犯人**。
+//   検査は本物の Node で extension.js を起こす(activate)→ 設定は既定(常駐=切)→ 本物の launchctl で V-helper を降ろし、state.json に quit を書いていた。
+//   → VS Code の中(Electron)で動いている時だけ、launchd と V-helper の置き場所に触る。検査からは触らない。
+function meosRealHost() { try { return !!(process.versions && process.versions.electron); } catch (_) { return false; } }
 function meosHelperEnsure() {
+  if (!meosRealHost()) return;   // v4.2.519
   if (_meosHelper.ensured) return;
   _meosHelper.ensured = true;
   try {
@@ -13191,6 +13199,7 @@ function meosHelperEnsure() {
   } catch (e) { meosDbg('[helper] ensure 失敗 ' + (e && e.message)); }
 }
 function meosHelperRemove() {
+  if (!meosRealHost()) return;   // v4.2.519: 検査から本物の V-helper を降ろさない
   _meosHelper.ensured = false; _meosHelper.last = null;
   try {
     const fs = require('fs'), path = require('path'), cp = require('child_process'), dir = meosHelperDir();
@@ -13208,6 +13217,7 @@ function meosHelperHandOff() { if (meosHelperOn()) { meosHelperWrite(null, [], 0
 function meosMenuBarSet(text, menu, opts) {
   try {
     if (process.platform !== 'darwin') return;
+    if (!meosRealHost()) return;   // v4.2.519: 検査から本物のメニューバーに触らない
     if (_meosVHOff) { try { if (_meosMb && _meosMb.proc) require('fs').writeFileSync(_meosMb.state, JSON.stringify({ quit: true })); if (_meosMb) _meosMb.last = null; } catch (_) { } return; }   // v4.2.364
     if (meosHelperOn()) {   // v4.2.310: 持ち主はヘルパー= 写しを書くだけ
       meosHelperEnsure();
