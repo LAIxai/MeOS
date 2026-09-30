@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.501 (2026-09-30)
+- **Me Dock's header, redrawn.** The last-saved time sits on its own line under the file name, so the file button keeps its width when Me Dock is narrow.
+
 ### v4.2.499 (2026-09-30)
 - **The clocks inside the menu-bar menu count down live** while the menu is open, like the one on the menu bar itself.
 
