@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.532 (2026-10-01)
+- The BTRON open hand and grip now take hold at the corner of the index finger. The browser reads a pointer's hotspot in page pixels rather than in the picture's own pixels, so the numbers are now divided by the picture's 1.2× scale.
+
 ### v4.2.531 (2026-09-30)
 - The BTRON open hand and grip now take hold exactly at the right-angle corner of the leftmost finger.
 
