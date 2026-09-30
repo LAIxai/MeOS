@@ -31324,7 +31324,10 @@ const chain=new Set();for(const k of keeps){let e=k;while(e&&e!==dock){chain.add
 for(const e of chain){const par=e.parentElement;if(!par)continue;for(const sib of par.children){if(!chain.has(sib))sib.classList.add('md-dim');}}}
 function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttribute('data-ch')).join('');}
 function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);
-const enc=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);shut(lk?[row]:(cr?[row].concat(enc):[]));row.classList.toggle('md-home',o===HOME);}
+const enc=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);shut(lk?[row]:(cr?[row].concat(enc):[]));
+/* v4.2.512: 測る(俊克「eMcoDk なのに Encrypt Me が出てこない」2回目)= 残す段とその祖先の姿を拡張のログへ */
+if(cr){try{const e0=document.getElementById('encrypt-me-row');const up=[];let e=e0;while(e&&e!==document.body){up.push((e.id||e.tagName.toLowerCase())+'.'+String(e.className||'').split(' ').filter(Boolean).join('.')+'|f='+getComputedStyle(e).filter+'|o='+getComputedStyle(e).opacity);e=e.parentElement;}
+vscode.postMessage({type:'mdDbg',info:'enc='+(!!e0)+' pass='+(!!document.querySelector('.enc-pass-row'))+' dims='+document.querySelectorAll('.md-dim').length+' up='+up.join(' < ')});}catch(x){}}row.classList.toggle('md-home',o===HOME);}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
 if(document.readyState!=='complete')window.addEventListener('load',apply);setTimeout(apply,300);setTimeout(apply,1500);let press=null,suppress=false;
@@ -31844,6 +31847,7 @@ function toggleMeDock(editorOverride) {
 
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
+    if (message && message.type === 'mdDbg') { meosDbg('[mdDbg] ' + String(message.info || '').slice(0, 1500)); return; }   // v4.2.512
     if (message && message.type === 'mdTiles') { const o = String(message.order || ''); if (meosDockTilesValid(o)) {
         const was = meosDockTiles(), wasShut = meosDockLocked(was) || meosDockCrypt(was);
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
