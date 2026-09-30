@@ -2782,8 +2782,8 @@ function meosPurrPath() {
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
     const rate = 22050;
-    const segs = [[0.05, 0.70, 23.5, 0.62], [0.81, 1.00, 22.0, 1.00]];   // [始まり秒, 長さ秒, 弾ける回数/秒, 強さ]
-    const dur = 1.95, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), x = new Float64Array(n);
+    const segs = [[0.04, 1.00, 22.0, 1.00]];   // [始まり秒, 長さ秒, 弾ける回数/秒, 強さ]   v4.2.521(俊克 バグ1「音ボタンの PURR が二鳴き」): 吐く1息だけ
+    const dur = 1.12, n = Math.floor(rate * dur), buf = Buffer.alloc(44 + n * 2), x = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
@@ -2808,16 +2808,19 @@ function meosPurrPath() {
     // 音量= 上から0.5%の所を満タンに、はみ出す弾けの頭だけを軽く丸める(歪ませない程度)
     const mags = Array.from(smp, Math.abs).sort((p, q) => q - p); const ref = mags[Math.floor(n * 0.005)] || peak || 1;
     for (let i = 0; i < n; i++) { const t = i / rate, fade = Math.min(1, t / 0.02) * Math.min(1, (dur - t) / 0.05); const v = Math.tanh(1.2 * smp[i] / ref) / Math.tanh(1.2); buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.9 * fade * 32767), 44 + i * 2); }
-    const f = path.join(os.tmpdir(), 'meos-purr-v3.wav');
+    const f = path.join(os.tmpdir(), 'meos-purr-v4.wav');
     fs.writeFileSync(f, buf); _meosPurrFile = f; return f;
   } catch (_) { return null; }
 }
 // 音の名前 → 鳴らすファイル(Mew= 作った猫の声 / フルパス= そのまま / mac= システムの音)
+// ★v4.2.521(俊克 改良2「合成した名称を全て大文字にしようか。区別しやすいように」): MeOS が作った音= MEW / GONG / SOFT / PURR。
+//   前の名前(Mew / Gong / Soft)も、設定や ⏰ の行に残っていれば同じ音として読む。mac の Purr とは大文字の PURR で分ける。
+function meosSoundCanon(n) { const x = String(n || '').trim(); return x === 'Mew' ? 'MEW' : (x === 'Gong' ? 'GONG' : (x === 'Soft' ? 'SOFT' : x)); }
 function meosSoundResolve(name) {
-  const n = String(name || '');
-  if (n === 'Mew') return meosMewPath() || '';
-  if (n === 'Gong') return meosGongPath() || '';   // v4.2.441
-  if (n === 'Soft') return meosNoChangeSoundPath() || '';
+  const n = meosSoundCanon(name);
+  if (n === 'MEW') return meosMewPath() || '';
+  if (n === 'GONG') return meosGongPath() || '';   // v4.2.441
+  if (n === 'SOFT') return meosNoChangeSoundPath() || '';
   if (n === 'PURR') return meosPurrPath() || '';   // v4.2.518: 作った強烈なゴロゴロ(mac の Purr とは大文字で分ける)   // v4.2.515(俊克「🔔ボタンメニューに Soft が入ってないよ」): MeOS の柔らかい2音も1つの音に
   if (meosSoundIsPath(n)) return n;
   return process.platform === 'darwin' && n ? ('/System/Library/Sounds/' + n + '.aiff') : '';
@@ -2828,23 +2831,24 @@ function meosSoundList() {
   for (const d of meosSoundDirs()) {
     try { for (const f of fs.readdirSync(d.dir)) { const m = d.re.exec(f); if (m) out.push(d.byName ? m[1] : path.join(d.dir, f)); } } catch (_) { }
   }
-  out.push('Mew');   // v4.2.399: 作った猫の声(どの OS でも)
-  out.push('Gong');  // v4.2.441: 作ったゴング(どの OS でも)
-  out.push('Soft');  // v4.2.515: 作った柔らかい2音(保存済みの Cmd+S の旧音)
+  out.push('MEW');   // v4.2.399: 作った猫の声(どの OS でも)
+  out.push('GONG');  // v4.2.441: 作ったゴング(どの OS でも)
+  out.push('SOFT');  // v4.2.515: 作った柔らかい2音(保存済みの Cmd+S の旧音)
   out.push('PURR');  // v4.2.518: 作った強烈なゴロゴロ
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
   if (cur && out.indexOf(cur) < 0 && (process.platform === 'darwin' || meosSoundIsPath(cur))) out.push(cur);   // 手で書いた音のファイル(フルパス)も一覧に残す
   return out;
 }
-function meosSoundNow() { try { return String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'Mew') || '').trim(); } catch (_) { return 'Sosumi'; } }
-function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && cur !== 'Mew' && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
+function meosSoundNow() { try { return meosSoundCanon(String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'MEW') || '').trim()); } catch (_) { return 'Sosumi'; } }
+function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && cur !== 'MEW' && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
 // 1つの音を鳴らす(試聴も鐘も同じ口)。返り値= 走らせた子(止めるため)。
 function meosSoundSpawn(name) {
   const cp = require('child_process');
-  if (name === 'Mew') name = meosMewPath() || '';   // v4.2.399
-  if (name === 'Gong') name = meosGongPath() || '';   // v4.2.441
-  if (name === 'Soft') name = meosNoChangeSoundPath() || '';   // v4.2.515
+  name = meosSoundCanon(name);   // v4.2.521
+  if (name === 'MEW') name = meosMewPath() || '';   // v4.2.399
+  if (name === 'GONG') name = meosGongPath() || '';   // v4.2.441
+  if (name === 'SOFT') name = meosNoChangeSoundPath() || '';   // v4.2.515
   if (name === 'PURR') name = meosPurrPath() || '';   // v4.2.518
   if (!name) return null;
   if (process.platform === 'darwin') {
@@ -13118,20 +13122,20 @@ function meosHelperAlarms() {
 function meosHelperSound() {
   try {
     const cfg = vscode.workspace.getConfiguration('laiMembrane');
-    const name = String(cfg.get('clockSound', 'Mew') || '').trim();
+    const name = meosSoundCanon(String(cfg.get('clockSound', 'MEW') || '').trim());   // v4.2.521
     const v = Number(cfg.get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     let file = !name ? '' : meosSoundResolve(name);
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
-    if (name === 'Mew' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
-    if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
-    if (name === 'Soft' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
-    if (name === 'Gong' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
+    if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
+    if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
+    if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
+    if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
     try { if (name) { const fs = require('fs'), path = require('path'); const src = meosWhistlePath(1760, 3); const dst = path.join(meosHelperDir(), 'whistle.wav');
       if (src && !fs.existsSync(dst)) { fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.copyFileSync(src, dst); } if (fs.existsSync(dst)) whistle = dst; } } catch (_) { }
-    return { file, vol, every: meosRingSeconds(), whistle, fluct: name === 'Mew' };   // v4.2.408: fluct= 1/fゆらぎ
-  } catch (_) { return { file: meosSoundResolve('Mew') || '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }   // v4.2.406
+    return { file, vol, every: meosRingSeconds(), whistle, fluct: name === 'MEW' };   // v4.2.408: fluct= 1/fゆらぎ
+  } catch (_) { return { file: meosSoundResolve('MEW') || '/System/Library/Sounds/Sosumi.aiff', vol: 2, every: 1 }; }   // v4.2.406
 }
 function meosHelperWrite(text, menu, owner, anchor) {
   if (!meosRealHost()) return;   // v4.2.519
@@ -14911,7 +14915,7 @@ function meosPlayChime(gain) {
     let name = 'Sosumi', vol = 2;
     try {
       const cfg = vscode.workspace.getConfiguration('laiMembrane');
-      name = _meosBellOverride || String(cfg.get('clockSound', 'Mew') || '').trim();   // v4.2.436: その⏰の 🔔
+      name = meosSoundCanon(_meosBellOverride || String(cfg.get('clockSound', 'MEW') || '').trim());   // v4.2.521   // v4.2.436: その⏰の 🔔
       const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     } catch (_) { }
     if (!name || name === MEOS_BELL_MUTE) return;        // 空= 鳴らさない / v4.2.437: 🔕
@@ -14919,9 +14923,9 @@ function meosPlayChime(gain) {
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') {
       const f = meosSoundResolve(name);   // v4.2.399: Mew も
-      const g = (name === 'Mew' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
+      const g = (name === 'MEW' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
       exec('afplay -v ' + (Math.round(vol * g * 100) / 100) + ' ' + q(f), () => { });
-    } else if (meosSoundIsPath(name) || name === 'Mew' || name === 'Gong' || name === 'Soft' || name === 'PURR') {
+    } else if (meosSoundIsPath(name) || name === 'MEW' || name === 'GONG' || name === 'SOFT' || name === 'PURR') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
@@ -14946,8 +14950,8 @@ function meosRingSeconds() {
   // ★v4.2.407(俊克「Mewを鳴らす時に間隔を指定できないのか? 今は続けざまに鳴いて不自然。音源の長さが0.7sなので1〜1.5秒間隔で」):
   //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
   // ★v4.2.520(俊克「😸PURR は3鳴きはしつこいので一鳴きでいい。😺Purr も一鳴きに」): ゴロゴロ2種は鳴り続けず1回だけ(V-helper も同じ値を受け取る)
-  try { const _nm20 = String(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr' || _nm20 === 'PURR') return 0; } catch (_) { }
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return ((_meosBellOverride || meosSoundNow()) === 'Mew') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
+  try { const _nm20 = meosSoundCanon(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr' || _nm20 === 'PURR') return 0; } catch (_) { }
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return (meosSoundCanon(_meosBellOverride || meosSoundNow()) === 'MEW') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
@@ -15018,10 +15022,10 @@ function meosNoChangeSoundPath() {
 function meosPlayNoChange() {
   try {
     // v4.2.515(俊克 改良1「保存済のときの音は、タイマ音設定ボタンで設定してある音を使用する」): 既定(空)= Me Dock の 🔔 で選んだ ⏰ の音。None= 鳴らさない
-    let nm = ''; try { const c = vscode.workspace.getConfiguration('laiMembrane'); nm = String(c.get('noChangeSound', '') || '').trim(); if (!nm) nm = String(c.get('clockSound', 'Mew') || '').trim(); } catch (_) { }
+    let nm = ''; try { const c = vscode.workspace.getConfiguration('laiMembrane'); nm = String(c.get('noChangeSound', '') || '').trim(); if (!nm) nm = String(c.get('clockSound', 'MEW') || '').trim(); nm = meosSoundCanon(nm); } catch (_) { }
     if (!nm || nm === 'None') return;
     let f = null;
-    if (nm !== 'Soft') { try { const p = meosSoundResolve(nm); if (p && require('fs').existsSync(p)) f = p; } catch (_) { } }
+    if (nm !== 'SOFT') { try { const p = meosSoundResolve(nm); if (p && require('fs').existsSync(p)) f = p; } catch (_) { } }
     if (!f) f = meosNoChangeSoundPath(); if (!f) return;
     const { exec } = require('child_process');
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
@@ -15036,7 +15040,7 @@ function meosPlayWhistle(ov) {
     let name = 'Sosumi', vol = 2;
     try {
       const cfg = vscode.workspace.getConfiguration('laiMembrane');
-      name = String(cfg.get('clockSound', 'Mew') || '').trim();
+      name = meosSoundCanon(String(cfg.get('clockSound', 'MEW') || '').trim());   // v4.2.521
       const v = Number(cfg.get('clockVolume', 2)); vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
     } catch (_) { }
     if (!name) return;                                   // 空= 鳴らさない(人の意思)
@@ -15149,7 +15153,7 @@ function meosClockSetGong(title, cycleSrc, cycle, rounds) {
 function meosPlayCountBell(cb) {
   try {
     if (!cb || !cb.sound) return;
-    const gap = Math.round(((cb.sound === 'Mew') ? 1.35 : (cb.sound === 'Gong' ? 0.8 : (cb.sound === 'PURR' ? 2.1 : 1.0))) * 1000);   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
+    const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 1.3 : 1.0))) * 1000);   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
     meosMewGainReset();
     for (let k = 0; k < cb.count; k++) setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, k * gap);
     meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
@@ -29554,7 +29558,7 @@ function clkPick(el){if(!el)return null;var s=el.querySelector('.sel');return s?
    旗を持つのは日付だけ(空にできる唯一の所)。→ v4.1.2 の clkFixT は廃止。 */
 var clkFixD=false;                                     /* 旗= 日付を**自分で指定したか**(時刻は常に橙) */
 var clkDirty=false;   /* v4.1.142: 何か1つでも指定したか(未設定では Set を押せない) */
-var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'\ud83d\udd14Gong/\ud83d\udd15Mew ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
+var clkTagViewLast=null;var clkTagMRU=[];var clkLastSet=0;var clkTagSel='';var clkTagFilter='';var clkTagMode=false;var vmTagItems=[];var clkDir=false;var clkRep=false;var clkPresets=[{cyc:'(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\\n(10m)\u00d71 // \u2615Break',anchor:false,noOrigin:true},{cyc:'8h // \ud83d\udca7Time for eye drops\\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.',anchor:false,anchors:[false,true]},{cyc:'\ud83d\udd14GONG/\ud83d\udd15MEW ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.',anchor:false}];   /* v4.2.414: 絵文字でひと目 */var clkPresetSlot=0;   /* v4.2.315 */
 function clkPaintPreset(){var b=document.getElementById('clk-pring');var pr=clkPresets[clkPresetSlot]||{};var _w=b?b.parentNode:null;if(_w&&_w.classList){_w.classList.remove('s0','s1','s2');_w.classList.add('s'+(clkPresetSlot%3));}if(b){b.setAttribute('data-tip','Preset '+(clkPresetSlot+1)+'/3 \u2014 '+(pr.cyc||'')+(pr.anchor?' \u2693':'')+' | \u21bb puts a preset into the Repeat box, and the next one each time you press it. Then press Set. Opt-click keeps what the box and \ud83d\udea2\ud83d\udca8/\u2693 say now as this preset.');}}   /* v4.2.409: 面は箱そのもの= ↻だけが残る */
 function clkFlash(t){try{var h=document.getElementById('clk-hint-rep');if(!h)return;var o=h.getAttribute('data-orig');if(o==null){o=h.textContent;h.setAttribute('data-orig',o);}h.textContent=t;clearTimeout(clkFlash._t);clkFlash._t=setTimeout(function(){h.textContent=o;},2600);}catch(e){}}
 var clkLock=false;var clkAnchor=false;   /* v4.2.312: ⚓停泊= 鳴っても膜へ飛ばない */                                     /* v4.1.5: 次に掛ける時計の錠(開く度に外れる) */
@@ -30465,9 +30469,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,9).join('');};
-const sdLabel=(n)=>(n==='Mew'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='Gong'?'\ud83e\udd4a ':(n==='Soft'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
+const sdLabel=(n)=>(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='Mew'||m.current==='Purr'||m.current==='PURR'||m.current==='Gong'||m.current==='Soft')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
@@ -32477,7 +32481,7 @@ function toggleMeDock(editorOverride) {
       try {
         // v4.2.410(俊克): 既定= ①ポモドーロ(×Nでトマトを数える・海外向け)/②目薬の2行(⚓)/③24h×10(毎日忘れない)。覚えの名を改めて新しい既定から始める
         const def = [{ cyc: '(25m 5m)\u00d74 // \ud83c\udf45Pomodoro 1.\n(10m)\u00d71 // \u2615Break', anchor: false, noOrigin: true },   // v4.2.427(俊克「3プリセットの1つを従属連動の例に。🍅で10分の休みを入れて繰り返す」)= 起点なしの受け渡し
-                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '\ud83d\udd14Gong/\ud83d\udd15Mew ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
+                   { cyc: '8h // \ud83d\udca7Time for eye drops\n(5m)\u00d72 // \ud83d\udca7Eye drop # 1.', anchor: false, anchors: [false, true] }   /* v4.2.431(俊克「目薬の1行目は⚓️ではなく🚢💨に」)= 8h は膜へ連れて行く・5分は⚓ */, { cyc: '\ud83d\udd14GONG/\ud83d\udd15MEW ((3m 1m)\u00d75)\u00d73 // \ud83d\udc93HIIT-Box 1. // \ud83d\udc93break 1.', anchor: false }   /* v4.2.432(俊克「HIITのプリセットに個別メッセージ・ボクサーの1時間練習に」)= 3分×5ラウンドを3セット= 60分 */];   // v4.2.414(俊克): 🍅/💧/💓   // v4.2.412: ③= HIIT(☑Repeat の初期値と同じ)
         let list = extensionContext.globalState.get('meosClockPresets15', null); if (!Array.isArray(list) || list.length !== 3) list = def;
         let slot = 0;   // v4.2.412(俊克「最初に表示するのは、トマトだよ」): 開くたびに①から
         if (message.type === 'clockPresetSlot') { slot = Math.max(0, Math.min(2, Number(message.slot) || 0)); }

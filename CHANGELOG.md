@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.521 (2026-09-30)
+- The sounds MeOS makes itself are written in capitals — **MEW, GONG, SOFT, PURR** — so they stand apart from the system sounds (and PURR from macOS's Purr). The old names Mew, Gong and Soft still work in settings and on ⏰ lines. PURR is now a single breath.
+
 ### v4.2.517 – v4.2.520 (2026-09-30)
 - **😸 PURR** — a cat purr made by MeOS itself: one breath in and out, about 22–24 throat pulses a second with the throat's resonance, next to 🐱 Mew, 🥊 Gong and 🍦 Soft in the 🔔 list. macOS's own Purr is now shown as 😺 Purr. Both purrs sound once instead of repeating.
 
