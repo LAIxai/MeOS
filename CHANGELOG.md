@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.527 (2026-09-30)
+- The red hotspot mark is now measured the same way as the orange grab mark, so the two agree. After switching hands, the orange + and the shape of the red mark (× or long crosshair) follow the new hand straight away.
+
 ### v4.2.526 (2026-09-30)
 - The hotspot mark in the header is now a red × twice as long (BTRON, 22.5°Mickey). With the OS hand, whose hotspot sits under the hand itself, it is a red crosshair longer than the pointer is wide and tall — the crossing point is left to your imagination.
 

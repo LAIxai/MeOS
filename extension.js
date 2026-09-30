@@ -26565,7 +26565,9 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::before,.hp-plus::after{content:'';position:absolute}
 .hp-plus::before{left:3px;top:0;width:1px;height:7px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
-.hp-red{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.hp-redbox{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:7px;z-index:60}
+.hp-red{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;display:none}
+.hp-red.on{display:block}
 .hp-red::before,.hp-red::after{content:'';position:absolute;background:#ff2a2a}
 .hp-red-x::before,.hp-red-x::after{left:-.5px;top:-7px;width:1px;height:14px}
 .hp-red-x::before{transform:rotate(45deg)}
@@ -26577,8 +26579,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hand-pick .hp-aim::before{left:-.5px;top:-3.5px;width:1px;height:7px}
 .hand-pick .hp-aim::after{left:-3.5px;top:-.5px;width:7px;height:1px}
 .hp-float{position:fixed;left:0;top:0;width:0;height:0;z-index:10001;pointer-events:none}
-.hp-float.hp-hide,.hp-float:not(.on)>.hp-red{display:none}
-.hp-balloon{position:absolute;left:0;top:0;padding:3px 10px;border-radius:7px;background:rgba(38,38,38,.93);color:#fff;font:600 12px/1.25 -apple-system,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.hp-float.hp-hide,.hp-balloon{position:absolute;left:0;top:0;padding:3px 10px;border-radius:7px;background:rgba(38,38,38,.93);color:#fff;font:600 12px/1.25 -apple-system,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .hp-float:not(.on)>.hp-balloon{display:none}
 .hp-ghost{position:absolute;left:0;top:0;opacity:.85;transform-origin:50% 50%;transition:transform .25s ease-in,opacity .25s ease-in}
 .hp-ghost.poof{transform:scale(1.8);opacity:0}
@@ -31464,7 +31465,13 @@ function nxt(){const i=ORDER.indexOf(cur());return ORDER[(i+1)%ORDER.length];}
 function Z(){const z=parseFloat(hdr.style.zoom||getComputedStyle(hdr).zoom||'1');return (z>0.2&&z<5)?z:1;}
 function mk(cls){const w=document.createElement('div');w.className='hp-float';const c=document.createElement('div');c.className=cls;w.appendChild(c);document.body.appendChild(w);return {w:w,c:c};}
 /* v4.2.526(俊克「倍の長さの赤い×を当たりに。OSは当たりが手に隠れるので、ポインタの幅と高さより長い十字線を描き、交点は想像力で」) */
-const red=mk('hp-red');red.c.classList.add(cur()==='system'?'hp-red-long':'hp-red-x');
+/* v4.2.527(俊克 👍1「赤×が直角から少し下」・改良1「22.5°の橙と赤×が少し違う」・バグ1「↖の先端に無い」): 赤×を body(マウスの物差し)から、
+   橙の+と同じヘッダーの中の物差しへ移す。ログで押した点と橙の+が 0.4px で一致した= この出し方(部品の位置＋offsetX÷zoom)は確か。
+   大きさもヘッダーの zoom がそのまま掛かる。線はヘッダーの縁で切る(ヘッダーの中だけ) */
+const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=document.createElement('div');redC.className='hp-red';rbox.appendChild(redC);hdr.appendChild(rbox);
+function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');}
+function hdrPt(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
+while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)return null;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return e===hdr?{x:x,y:y}:null;}
 const bal=mk('hp-balloon');
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
@@ -31482,9 +31489,12 @@ if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.
 aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false;
-function moveRed(ev){const u=under(ev);const on=!!(u&&hdr.contains(u));red.w.classList.toggle('on',on);if(on)at(red,ev.clientX,ev.clientY);}
+function moveRed(ev){const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
-hdr.addEventListener('pointerleave',()=>{if(!press)red.w.classList.remove('on');});
+hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');});
+/* v4.2.527(俊克 バグ2「OSの橙がOの中心から大きく外れる」・改良2「OSの長い赤い+が見えない」): 手を替えてもページは読み直されず、ボタンの印(class)だけが替わる。
+   橙の位置と赤の形を最初の1回しか決めていなかった(ログ= 3つの手とも aim=9.2,2.2)→ ボタンの class が替わるたびに決め直す */
+redKind();try{new MutationObserver(()=>{placeAim();redKind();}).observe(hp,{attributes:true,attributeFilter:['class']});}catch(_){}
 hp.addEventListener('pointermove',ev=>{if(!press)showBal(NAME[cur()],ev);});
 hp.addEventListener('pointerleave',()=>{if(!press)hideBal();});
 function outside(ev){const u=under(ev);return !(u&&hp.contains(u));}
@@ -31501,7 +31511,7 @@ const z=Z(),tp=inHp(ev.target),pp=inHp(pic);const dx=(ev.offsetX||0)+(tp.x-pp.x)
 press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};
 /* v4.2.525(俊克「真のホットスポットで橙をクリックした。座標データは?」): 押した点と橙の+の差をボタンの中の物差しで書き出す(0,0 ならぴったり) */
 try{const aim=hp.querySelector('.hp-aim');const px=(tp.x+(ev.offsetX||0)/z),py=(tp.y+(ev.offsetY||0)/z);const ax=parseFloat(aim&&aim.dataset.x),ay=parseFloat(aim&&aim.dataset.y);
-vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
+vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)+' red='+redC.style.left+','+redC.style.top});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
 try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}});
 hp.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const P=press;
 if(!P.moved){if(Math.abs(ev.clientX-P.x0)+Math.abs(ev.clientY-P.y0)<3)return;P.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}
