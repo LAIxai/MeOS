@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.531 (2026-09-30)
+- The BTRON open hand and grip now take hold exactly at the right-angle corner of the leftmost finger.
+
 ### v4.2.530 (2026-09-30)
 - The BTRON pointing hand now points exactly at its right-angle corner. Its hotspot had been one pixel inside the corner, about 2 screen pixels to the lower right.
 
