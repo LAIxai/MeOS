@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.499 (2026-09-30)
+- **The clocks inside the menu-bar menu count down live** while the menu is open, like the one on the menu bar itself.
+
 ### v4.2.498 (2026-09-30)
 - Locking with 🔐 and mooring with ⚓ switch as cleanly as unlocking: the mark they write is hidden the moment it is written.
 

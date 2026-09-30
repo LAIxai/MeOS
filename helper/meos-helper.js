@@ -117,15 +117,27 @@ function run(argv) {
   } } } });
   const mdel = $.MeOSMenuDelH.alloc.init;   // 強く持つ
   const tgt = $.MeOSHelperTarget.alloc.init;   // 強く持つ(弱い参照だと消されてクリックが届かない= v4.2.205の穴)
-  function build(entries) {
+  // ★v4.2.499(俊克「メニューバーからプルダウンした中に表示されるタイマーたちもリアルタイムに残時間を表示するように」):
+  //   メニューを開いている間は作り替えない(v4.2.333)ので、中の行は開いた瞬間の値で止まっていた。
+  //   → 並び(区切り・id・子メニュー)が同じなら、開いたままで**行の字だけ差し替える**。字の飾り(☐/⚓/赤い札)は styleItem 1つで付ける。
+  let lastItems = [], lastEntries = [];
+  function build(entries, top) {
     const m = $.NSMenu.alloc.init; m.autoenablesItems = false;
+    const its = [];
     for (const e of entries) {
-      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); continue; }
+      if (e.sep) { m.addItem($.NSMenuItem.separatorItem); its.push(null); continue; }
       const mi = m.addItemWithTitleActionKeyEquivalent($(e.title), e.sub ? null : 'pick:', $(''));
       if (e.sub) mi.submenu = build(e.sub); else { mi.target = tgt; mi.representedObject = $(e.id || ''); }
       if (e.indent) mi.indentationLevel = e.indent;
       if (e.off) mi.enabled = false;
       if (e.check) mi.state = 1;   // v4.2.311: ✓
+      styleItem(mi, e);
+      its.push(mi);
+    }
+    if (top) { lastItems = its; lastEntries = entries; }
+    return m;
+  }
+  function styleItem(mi, e) {
       // v4.2.331(俊克「常駐メニューは、□ を表示して、設定できることを分かり易くしようよ。□は大きめにね」): 箱付きの項目= ☐/☑ を大きく前に置く(✓は付いた時しか見えない)
       if (e.box !== undefined) { try { const mf = $.NSFont.menuFontOfSize(0); const a = $.NSMutableAttributedString.alloc.init;
         const b = $.NSMutableAttributedString.alloc.init; b.mutableString.setString($(e.box ? '\u2611' : '\u2610')); const rb = $.NSMakeRange(0, b.length);
@@ -159,8 +171,6 @@ function run(argv) {
           mi.attributedTitle = all;
         } catch (x) {}
       }
-    }
-    return m;
   }
   // 残り時間の書き方= 拡張と同じ H:MM.SS(1日を越えたら Nd を前に)
   const face = (ms) => {
@@ -196,7 +206,16 @@ function run(argv) {
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
-    if (mj !== lastMenu && !tracking()) { lastMenu = mj; const mm = build(menu || []); mm.delegate = mdel; item.menu = mm; }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
+    if (mj !== lastMenu && !tracking()) { lastMenu = mj; const mm = build(menu || [], true); mm.delegate = mdel; item.menu = mm; }
+    else if (mj !== lastMenu) {   // v4.2.499: 開いている間= 並びが同じなら字だけ差し替える
+      const nw = menu || [], sk = (a) => a.map(e => e.sep ? '-' : ((e.id || '') + (e.sub ? '>' : ''))).join('|');
+      if (nw.length === lastEntries.length && sk(nw) === sk(lastEntries)) {
+        for (let i = 0; i < nw.length; i++) { const e = nw[i], o = lastEntries[i], mi = lastItems[i];
+          if (!mi || e.sep || e.sub || (e.title === o.title && e.pill === o.pill && e.box === o.box)) continue;
+          try { mi.title = $(e.title); styleItem(mi, e); } catch (x) {} }
+        lastEntries = nw; lastMenu = mj;
+      }
+    }   // v4.2.333: 開いているメニューは作り替えない(札の数字だけ動かす)
     if (text !== lastText || !!anchor !== lastAnchor || idle !== lastIdle) {
       lastIdle = idle;
       lastText = text; lastAnchor = !!anchor;
