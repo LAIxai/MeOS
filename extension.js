@@ -31995,6 +31995,11 @@ function meosMeDockRedraw() {
   setTimeout(() => postFixedWorkingTocSnapshot(), 80);
   setTimeout(() => { updateMeDockMode(); updateMeDockCurrentLineMarker(); }, 80);
   setTimeout(() => meosPostViewMode(), 80);
+  // ★v4.2.540(俊克「解除後、ファイル名が消えたまま・他のウィンドウから戻ってエディタを押すと完全復活」): ファイル名の口(postMeDockFile)は
+  //   「同じ面・同じファイルなら送らない」。描き直しは面(パネル)を作り直さず中身だけ替えるので、同じ面と見なされ、新しい中身へ名前が届かなかった。
+  //   みみみは面ごと作り直すので届く。→ 描き直したら覚えを捨てて、今の姿を送り直す
+  _meosLastDock = { panel: null, path: null };
+  setTimeout(() => { try { postMeDockFile(getMeDockTargetEditor(), true, true); } catch (_) { } }, 80);
 }
 function toggleMeDock(editorOverride) {
   setMeDockTargetEditor(editorOverride || vscode.window.activeTextEditor);
