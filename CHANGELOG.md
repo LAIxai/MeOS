@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.524 (2026-09-30)
+- The red + now follows the pointer's real hotspot (it had jumped far to the lower right), and the hand you drag is shown at the button's size instead of a giant one.
+- The grab mark is now an orange + drawn where the hand picture itself points — the right-angle corner for BTRON, the fingertip for 22.5°Mickey, the middle of the O for OS. The red and orange marks are the same small plus.
+
 ### v4.2.523 (2026-09-30)
 - The red cross now sits exactly on the pointer's hotspot (it was drawn up and to the left of it). Both crosses are small plus signs of the same size, the white one sits in the button's lower-left corner, and you can grab the button from anywhere on it.
 
