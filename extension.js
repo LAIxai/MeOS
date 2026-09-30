@@ -13374,8 +13374,24 @@ function meosClockArrowAt(txt) {
 //   → ⏰行の絵と札は、生データへの切り替えを 0.25 秒続いてから受け取る(一瞬の切り替えは無かった事にする)。
 // ★★v4.2.495(俊克「新しいボタンを足した後に、古いボタンを即座に消せばいいよ」): 押したら**先に新しい姿の絵を描き**、その後で本文を書き換える。
 //   _meosClockPreview= その行の「押した後の状態」を、本文が書き換わるまでの間だけ絵に使う(本文の版が同じ間・1秒まで)。
+// ★★★v4.2.496(俊克 v4.2.495_0932「録画の最後のほうで、🔔の切替だけは問題ないように見える。最初の方で押した時は以前と同じ」):
+//   ログ: 崩れた回は「書き換えを頼んでから本文に入るまで」約0.2秒、崩れない回は0.03〜0.06秒。
+//   = 押した後の**重い描き直し(refresh= 16万行の飾り一式)**が画面側を塞ぎ、書き換えと絵の替わりが何コマにも分かれて見えていた。
+//   → ⏰行のボタンでは重い描き直しをしない(書き換えの間は門 deferRefreshCount を閉じる・クリックの後の描き直しも止める)。
+//     ⏰行の絵(meosApplyTimerLineDecorations)だけを描き、全体の描き直しは1.5秒後に静かに1回。
+let _meosBtnPressAt = 0, _meosCalmTimer = null;
+async function meosBtnEdit(fn) {
+  _meosBtnPressAt = Date.now();
+  deferRefreshCount++; _deferRaisedAt = Date.now();
+  try { return await fn(); } finally { deferRefreshCount = Math.max(0, deferRefreshCount - 1); }
+}
+function meosCalmRefresh(ed) {
+  if (_meosCalmTimer) clearTimeout(_meosCalmTimer);
+  _meosCalmTimer = setTimeout(() => { _meosCalmTimer = null; try { if (ed === vscode.window.activeTextEditor) refresh(ed); } catch (_) { } }, 1500);
+}
 let _meosClockPreview = null;   // { uri, line, ver, until, anchor?, lock?, main?, sub? }
 function meosClockPreviewSet(editor, line, st) {
+  _meosBtnPressAt = Date.now();   // v4.2.496: クリックの後の重い描き直しを止める合図(同じ流れの中で立てる)
   try { _meosClockPreview = Object.assign({ uri: editor.document.uri.toString(), line, ver: editor.document.version, until: Date.now() + 1000 }, st);
     meosDbg('[tl] 先に描く 行=' + (line + 1) + ' ' + JSON.stringify(st)); meosApplyTimerLineDecorations(editor); } catch (_) { }
 }
@@ -20188,10 +20204,10 @@ async function handleMembraneNameSelection(editor, selectionKind) {
             editor.selections = [new vscode.Selection(_s.active, _s.active)];
             setRefNoRaw(editor.document, _s.active.line);
             meosClockPreviewSet(editor, _s.active.line, { lock: false });   // v4.2.495
-            await meosClockUnlockAt(editor.document, _s.active.line, _s.active.character);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
+            await meosBtnEdit(() => meosClockUnlockAt(editor.document, _s.active.line, _s.active.character));   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
             setRefNoRaw(editor.document, _s.active.line);
             meosParkCaretAfterPress(editor, _s.active.line);
-            try { refresh(editor); } catch (_) { }
+            meosCalmRefresh(editor);   // v4.2.496: 重い描き直しは後で静かに
             return;
           } }
         if (_s.isEmpty && meosClockNudgeHitAt(editor.document, _s.active.line, _s.active.character)) { _optSel92 = _s; break; }   // v4.2.470: Opt+[±1s] = ±10s
@@ -20221,9 +20237,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
         meosClockPreviewSet(editor, _ln, { anchor: !(_an.c && _an.c.anchor) });   // v4.2.495: 先に新しい絵
-        await meosClockAnchorToggle(editor.document, _an);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
+        await meosBtnEdit(() => meosClockAnchorToggle(editor.document, _an));   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
         setRefNoRaw(editor.document, _ln);
-        try { refresh(editor); } catch (_) { }
+        meosCalmRefresh(editor);   // v4.2.496: 重い描き直しは後で静かに
         return;
       }
       const _lk = meosClockLockHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.233: 🔓を押した= 🔐を掛けるか訊く
@@ -20231,9 +20247,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
         meosClockPreviewSet(editor, _ln, { lock: true });   // v4.2.495
-        await meosClockLockHere(editor, _lk);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
+        await meosBtnEdit(() => meosClockLockHere(editor, _lk));   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
         setRefNoRaw(editor.document, _ln);
-        try { refresh(editor); } catch (_) { }
+        meosCalmRefresh(editor);   // v4.2.496: 重い描き直しは後で静かに
         return;
       }
       const _bm75 = meosClockBellModeHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.475: [🔔]/[🥊]
@@ -20241,9 +20257,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         setRefNoRaw(editor.document, _ln);
         meosParkCaretAfterPress(editor, _ln);
         meosClockPreviewSet(editor, _ln, _bm75.which === 'main' ? { main: !_bm75.h.mainOn } : { sub: !_bm75.h.subOn });   // v4.2.495
-        await meosClockBellModeToggle(editor.document, _bm75);   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
+        await meosBtnEdit(() => meosClockBellModeToggle(editor.document, _bm75));   try { meosApplyTimerLineDecorations(editor); } catch (_) { }   // v4.2.493: 絵は書き換えの直後に描く
         setRefNoRaw(editor.document, _ln);
-        try { refresh(editor); } catch (_) { }
+        meosCalmRefresh(editor);   // v4.2.496: 重い描き直しは後で静かに
         return;
       }
       const _nd70 = meosClockNudgeHitAt(editor.document, _ln, editor.selection.active.character);   // ★v4.2.470: [−1s]/[+1s]
@@ -40240,6 +40256,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       // and stall everything queued behind it. Debounced so a burst of clicks/pastes coalesces
       // into one repaint instead of N synchronous refreshes.
       if (mouseSelectionRefreshTimer) clearTimeout(mouseSelectionRefreshTimer);
+      if (Date.now() - _meosBtnPressAt < 200) { mouseSelectionRefreshTimer = null; return; }   // v4.2.496: ⏰行のボタンを押したクリック= 重い描き直しはしない
       {
         const _ed = e.textEditor;
         mouseSelectionRefreshTimer = setTimeout(() => {

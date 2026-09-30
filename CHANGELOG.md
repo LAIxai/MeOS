@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.496 (2026-09-30)
+- Pressing a button on a ⏰ line redraws only that line at once; the full redraw of the note waits 1.5 seconds, so it no longer holds the switch up.
+
 ### v4.2.495 (2026-09-30)
 - A switched button shows its new face first, before the line is rewritten; 🔔/🔕 writes the new bell before removing the old one.
 
