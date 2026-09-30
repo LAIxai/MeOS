@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.534 (2026-10-01)
+- The BTRON open hand and grip hotspot goes back to its closest whole-pixel setting.
+
 ### v4.2.533 (2026-10-01)
 - The OS hand's long orange crosshair no longer runs over the buttons to its right and below, and it stays on the button when you change the Me Dock's width. The hand's name sits at the same distance below the pointer whether you point, hover or grab. The BTRON open hand and grip hotspot is tuned once more.
 
