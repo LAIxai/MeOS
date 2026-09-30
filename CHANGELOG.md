@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.526 (2026-09-30)
+- The hotspot mark in the header is now a red × twice as long (BTRON, 22.5°Mickey). With the OS hand, whose hotspot sits under the hand itself, it is a red crosshair longer than the pointer is wide and tall — the crossing point is left to your imagination.
+
 ### v4.2.525 (2026-09-30)
 - The hand's name now follows the pointer like the other tips, just below the hand picture, so the pointer never hides it.
 - The orange + is placed from where the picture really is inside the button.

@@ -26565,13 +26565,19 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::before,.hp-plus::after{content:'';position:absolute}
 .hp-plus::before{left:3px;top:0;width:1px;height:7px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
-.hp-plus-red::before,.hp-plus-red::after{background:#ff2a2a}
+.hp-red{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.hp-red::before,.hp-red::after{content:'';position:absolute;background:#ff2a2a}
+.hp-red-x::before,.hp-red-x::after{left:-.5px;top:-7px;width:1px;height:14px}
+.hp-red-x::before{transform:rotate(45deg)}
+.hp-red-x::after{transform:rotate(-45deg)}
+.hp-red-long::before{left:-.5px;top:-40px;width:1px;height:80px}
+.hp-red-long::after{left:-40px;top:-.5px;width:80px;height:1px}
 .hand-pick .hp-aim{position:absolute;left:10.5px;top:3.5px;width:0;height:0;pointer-events:none}
 .hand-pick .hp-aim::before,.hand-pick .hp-aim::after{content:'';position:absolute;background:#ff9500}
 .hand-pick .hp-aim::before{left:-.5px;top:-3.5px;width:1px;height:7px}
 .hand-pick .hp-aim::after{left:-3.5px;top:-.5px;width:7px;height:1px}
 .hp-float{position:fixed;left:0;top:0;width:0;height:0;z-index:10001;pointer-events:none}
-.hp-float.hp-hide,.hp-float:not(.on)>.hp-plus-red{display:none}
+.hp-float.hp-hide,.hp-float:not(.on)>.hp-red{display:none}
 .hp-balloon{position:absolute;left:0;top:0;padding:3px 10px;border-radius:7px;background:rgba(38,38,38,.93);color:#fff;font:600 12px/1.25 -apple-system,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .hp-float:not(.on)>.hp-balloon{display:none}
 .hp-ghost{position:absolute;left:0;top:0;opacity:.85;transform-origin:50% 50%;transition:transform .25s ease-in,opacity .25s ease-in}
@@ -31457,7 +31463,8 @@ function nxt(){const i=ORDER.indexOf(cur());return ORDER[(i+1)%ORDER.length];}
    → 赤い+も掴んだ絵も body に置き、位置は clientX/clientY そのまま。大きさだけヘッダーと同じ zoom の中身で揃える(白い+と同じ見た目) */
 function Z(){const z=parseFloat(hdr.style.zoom||getComputedStyle(hdr).zoom||'1');return (z>0.2&&z<5)?z:1;}
 function mk(cls){const w=document.createElement('div');w.className='hp-float';const c=document.createElement('div');c.className=cls;w.appendChild(c);document.body.appendChild(w);return {w:w,c:c};}
-const red=mk('hp-plus hp-plus-red');
+/* v4.2.526(俊克「倍の長さの赤い×を当たりに。OSは当たりが手に隠れるので、ポインタの幅と高さより長い十字線を描き、交点は想像力で」) */
+const red=mk('hp-red');red.c.classList.add(cur()==='system'?'hp-red-long':'hp-red-x');
 const bal=mk('hp-balloon');
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
