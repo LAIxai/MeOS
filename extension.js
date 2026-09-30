@@ -26428,6 +26428,15 @@ body.md-mocked .dock-stick>:not(header),body.md-mocked .dock-stick>:not(header) 
 .title-row2>.title-filecol{position:relative;top:-3px}   /* v4.2.502(俊克 改良2): タイルとの間に隙間(-12px → -3px) */
 /* ★v4.2.502(俊克 改良1「ボタンがつぶれる原因はバージョンの文字。ヘッダーの右下角に描く」): 版は枠の右下角に浮かせる= 横幅を取らない */
 .title-ver-corner{position:absolute;right:9px;bottom:3px;pointer-events:none}
+/* ★v4.2.503(俊克 改良1「最小幅にしたときに、部品が被るのはヘッダーだけ。ヘッダーも他と同様に折り返すように」):
+   1段目(タイル｜右のボタン群)と2段目(ファイル名｜右のボタン群)を折り返す。ファイル名の札は縮めない= 入らなければ右のボタン群が下の段へ回る。
+   版(右下角)の分だけ枠の下に余白 */
+.title-row1{flex-wrap:wrap;row-gap:6px}
+.title-actions{flex-wrap:wrap;justify-content:flex-end;margin-left:auto;row-gap:6px}
+.title-row2{flex-wrap:wrap;row-gap:6px}
+.title-row2>.title-filecol{flex:0 0 auto}
+.row2-vsix{flex-wrap:wrap;justify-content:flex-end;row-gap:6px}
+.title{padding-bottom:16px}
 /* v4.2.502(改良2「パズルボタンをもう少し左角に近づけて」) */
 .title-row1 .md-tiles{margin:-5px 0 0 -5px}
 /* v4.2.501(俊克「Me Dockの更新日を次の行に移動しよう。Me Dockの幅を狭めた時に、ファイル選択ボタンが短くなってしまうのを防ぐため」):

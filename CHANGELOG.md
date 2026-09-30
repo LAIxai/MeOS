@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.503 (2026-09-30)
+- Me Dock's header wraps like the rest of Me Dock when it is narrow, instead of letting its buttons overlap.
+
 ### v4.2.502 (2026-09-30)
 - The version number moves to the bottom-right corner of Me Dock's header, and the file name starts closer to the left edge, so a narrow Me Dock keeps its buttons whole.
 
