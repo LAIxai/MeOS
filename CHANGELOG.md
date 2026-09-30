@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.504 (2026-09-30)
+- A narrow Me Dock header leaves room between the wrapped rows, and **Re-install VSIX** no longer makes Me Dock jump wide (nor keeps that width after the reload).
+
 ### v4.2.503 (2026-09-30)
 - Me Dock's header wraps like the rest of Me Dock when it is narrow, instead of letting its buttons overlap.
 

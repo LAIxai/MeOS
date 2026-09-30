@@ -26437,6 +26437,11 @@ body.md-mocked .dock-stick>:not(header),body.md-mocked .dock-stick>:not(header) 
 .title-row2>.title-filecol{flex:0 0 auto}
 .row2-vsix{flex-wrap:wrap;justify-content:flex-end;row-gap:6px}
 .title{padding-bottom:16px}
+/* ★v4.2.504(俊克 改良1「逃がし方がもう一歩」= スクショ: 折り返した Standards の下にファイル名の札の 📌 が食い込み、段の間が詰まっていた):
+   右のボタン群がタイルの下へ回った時(hdr-wrap)だけ、段の間を空ける。ボタン群は1段で右寄せ、入らない時だけ折り返す */
+header.title.hdr-wrap .title-row2{margin-top:12px}
+header.title.hdr-wrap .title-row2>.title-filecol{top:0}
+header.title.hdr-wrap .row2-right{margin-top:8px}
 /* v4.2.502(改良2「パズルボタンをもう少し左角に近づけて」) */
 .title-row1 .md-tiles{margin:-5px 0 0 -5px}
 /* v4.2.501(俊克「Me Dockの更新日を次の行に移動しよう。Me Dockの幅を狭めた時に、ファイル選択ボタンが短くなってしまうのを防ぐため」):
@@ -31295,6 +31300,11 @@ NIN.focus();}});if(NST)NST.addEventListener('click',function(){if(NIN)vscode.pos
 NIN.blur();}});window.__imgViewerStamp=function(v){if(NIN&&typeof v==='string')NIN.value=v;};if(STAGE)STAGE.addEventListener('wheel',function(ev){if(!ev.ctrlKey&&!ev.metaKey)return;
 ev.preventDefault();zoomAt(ev.clientX,ev.clientY,ev.deltaY<0?1.12:0.9);},{passive:false});})();
 // {* ▲mCN=dock_js_message *}
+// {* ▼mCN=dock_js_hdrwrap // v4.2.504 ヘッダーの折り返しを見張る *}
+(function(){const hd=document.querySelector('header.title');const tl=document.querySelector('.title-left');const ac=document.querySelector('.title-actions');if(!hd||!tl||!ac)return;
+function chk(){const w=ac.offsetTop>tl.offsetTop+6;hd.classList.toggle('hdr-wrap',w);}
+try{new ResizeObserver(chk).observe(hd);}catch(_){}window.addEventListener('resize',chk);chk();})();
+// {* ▲mCN=dock_js_hdrwrap *}
 // {* ▼mCN=dock_js_tiles // v4.2.500 パズルロック(文字タイルの並べ替え) *}
 (function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCK='MockeD',HOME='MeDock';
 function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttribute('data-ch')).join('');}
@@ -32133,7 +32143,9 @@ function toggleMeDock(editorOverride) {
       try { if (meDockPanel) meDockPanel.webview.postMessage(_r); } catch (_) { }
       return;
     }
-    if (message && message.type === 'installVsix') { await meosInstallVsix(); return; }   // v4.2.67
+    // ★v4.2.504(俊克 改良2「縮めた状態で Re-install VSIX を押すと、一気に幅が極端に広くなる」): ログ= 押した直後に Me Dock が 0.789 に広がり、
+    //   2秒おきの見張りがそれを覚えて、再読込みの後にも戻していた。→ 入れている間は幅を覚えない。選ばずに閉じたら、覚えていた幅へ戻す
+    if (message && message.type === 'installVsix') { _meDockWidthHoldUntil = Date.now() + 120000; const ok = await meosInstallVsix(); if (!ok) { _meDockWidthHoldUntil = 0; meosMeDockWidthRestore(); } return; }   // v4.2.67
     if (message && /^theme(List|Preview|Commit|Revert|ToggleDL)$/.test(String(message.type || ''))) { meosThemeMessage(message); return; }   // v4.2.243
     if (message && /^sound(List|Preview|Commit)$/.test(String(message.type || ''))) { meosSoundMessage(message); return; }   // v4.2.375
     if (message && (message.type === 'requestWrapColumn' || message.type === 'setWrapColumn' || message.type === 'cycleWrapPreset')) {
