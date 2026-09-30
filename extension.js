@@ -31477,7 +31477,15 @@ const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=d
 /* v4.2.528(俊克「OSの移動手と握りは握る点が手に隠れる。橙+も赤+と同じ長さにしないと正確な位置決めができない」): OSの時だけ、橙の目印も同じ長さの十字線(ヘッダーの縁で切る) */
 const aimL=document.createElement('div');aimL.className='hp-aim-long';rbox.appendChild(aimL);rbox.appendChild(redC);hdr.appendChild(rbox);
 function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');}
-function hdrPt(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
+/* v4.2.529(俊克「ヘッダー内のボタンで赤+がズレるものがある。なぜ一律に動作しないのか?」): 部品の offsetLeft を足す出し方は、
+   ①transform で置いた部品(⊕/⊖・↻・ファイル名の右肩・パズルの字)を知らない ②字の中の絵文字(🎨/😸)のような inline の部品で offsetX の起点が食い違う ③段ごとに整数へ丸める(BTRONの角)。
+   → 部品を見ない。ヘッダーの原点をマウスの物差しで1度掴み(ヘッダー自身かこの駒の上を通った時)、以後は (clientX−原点)÷zoom の1本で出す= どの部品の上でも同じ */
+let org=null;
+function calib(ev){const t=ev.target,z=Z();if(t===hdr){org={x:ev.clientX-(ev.offsetX||0),y:ev.clientY-(ev.offsetY||0)};}
+else if(t===hp){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(hp.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(hp.clientTop||0))*z};}}
+window.addEventListener('scroll',()=>{org=null;},true);window.addEventListener('resize',()=>{org=null;});
+function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,y:(ev.clientY-org.y)/z};}return hdrPtOld(ev);}
+function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
 while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)return null;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return e===hdr?{x:x,y:y}:null;}
 const bal=mk('hp-balloon');
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
@@ -31519,7 +31527,7 @@ const z=Z(),tp=inHp(ev.target),pp=inHp(pic);const dx=(ev.offsetX||0)+(tp.x-pp.x)
 press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};
 /* v4.2.525(俊克「真のホットスポットで橙をクリックした。座標データは?」): 押した点と橙の+の差をボタンの中の物差しで書き出す(0,0 ならぴったり) */
 try{const aim=hp.querySelector('.hp-aim');const px=(tp.x+(ev.offsetX||0)/z),py=(tp.y+(ev.offsetY||0)/z);const ax=parseFloat(aim&&aim.dataset.x),ay=parseFloat(aim&&aim.dataset.y);
-vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)+' red='+redC.style.left+','+redC.style.top});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
+vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)+' red='+redC.style.left+','+redC.style.top+(()=>{const q=hdrPt(ev),b=boxOf(hp);return q?' press1='+(q.x-b.x-(hp.clientLeft||0)).toFixed(1)+','+(q.y-b.y-(hp.clientTop||0)).toFixed(1)+' org='+(org?org.x.toFixed(1)+','+org.y.toFixed(1):'-'):'';})()});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
 try{if(tocTooltip)tocTooltip.style.display='none';}catch(_){}});
 hp.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const P=press;
 if(!P.moved){if(Math.abs(ev.clientX-P.x0)+Math.abs(ev.clientY-P.y0)<3)return;P.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}

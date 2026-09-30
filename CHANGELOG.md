@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.529 (2026-09-30)
+- The red hotspot mark now lands in the same place over every part of the header — the ⊕/⊖ badges, the ↻ rings, the file name's corner button, the puzzle letters, and emoji inside buttons such as 🎨 and 😸 — because it is worked out from the pointer alone, not from the part underneath.
+
 ### v4.2.528 (2026-09-30)
 - With the OS hand, the orange grab mark is also a long crosshair, as long as the red one — the OS open hand and grip hide the point they grab with, so two long lines are the only way to line them up.
 
