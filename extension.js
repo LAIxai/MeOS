@@ -28100,7 +28100,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
-<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
+<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span>
 <span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so two timers under one name break both.</div><div>One timer under a repeated name is fine \u2014 nothing is competing for the key.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them. Press again for the next membrane with that name - shift-click steps back. The count reads name / how many names - which copy. Nothing is written, and the panel stays open.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no timer, before deciding whether it was deliberate. Press again for the next - shift-click steps back. Nothing is written.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
@@ -34152,9 +34152,48 @@ function meosTableBlockRange(doc, line) {
   while (end + 1 < doc.lineCount && meosIsTableLine(doc.lineAt(end + 1).text)) end++;
   return { start, end };
 }
+// ★v4.2.544(俊克「空白、あるいはタブ区切りのデータを選択して、テーブルボタンを押すと、作表できるように。Webページで表のように見えて、
+//   コピペしても表にならないことが多い。Joplinはコピペすると表になっていた」): 選んだ行を表にする。
+//   区切り= タブが1つでもあればタブ(空のセルも保つ) / 無ければ2つ以上の空白(全角空白も)= 「New York」のような1つの空白は字の内 /
+//   それでも全行1列なら1つの空白でも切る。1行目を見出しにする。セルの中の | は \| にする。既に | で始まる行(表)を含む選択は今までどおり整形へ。
+function meosTableRowsFromText(lines) {
+  const ls = lines.map(l => l.replace(/\s+$/, '')).filter(l => l.trim() !== '');
+  if (ls.length < 2) return null;
+  if (ls.some(l => /^\s*\|/.test(l))) return null;
+  let rows;
+  if (ls.some(l => l.indexOf('\t') >= 0)) rows = ls.map(l => l.replace(/^[ 　]+/, '').split('\t'));
+  else {
+    rows = ls.map(l => l.trim().split(/(?: |　){2,}|　/));
+    if (rows.every(r => r.length < 2)) rows = ls.map(l => l.trim().split(/[ 　]+/));
+  }
+  const n = Math.max(...rows.map(r => r.length));
+  if (n < 2) return null;
+  return rows.map(r => { const c = r.map(x => x.trim().replace(/\|/g, '\\|')); while (c.length < n) c.push(''); return c; });
+}
+async function meosTableFromSelection(editor) {
+  const sel = editor.selection; if (!sel || sel.isEmpty) return false;
+  const doc = editor.document;
+  const s0 = sel.start.line, e0 = (sel.end.character === 0 && sel.end.line > s0) ? sel.end.line - 1 : sel.end.line;
+  const raw = []; for (let i = s0; i <= e0; i++) raw.push(doc.lineAt(i).text);
+  const rows = meosTableRowsFromText(raw);
+  if (!rows) return false;
+  const indent = (raw.find(l => l.trim() !== '').match(/^[ ]*/) || [''])[0];
+  const md = rows.map(r => '| ' + r.join(' | ') + ' |');
+  md.splice(1, 0, '|' + rows[0].map(() => '-').join('|') + '|');
+  const out = (meosFormatTableLines(md) || md).map(l => indent + l);
+  const we = new vscode.WorkspaceEdit();
+  we.replace(doc.uri, new vscode.Range(s0, 0, e0, doc.lineAt(e0).text.length), out.join('\n'));
+  await vscode.workspace.applyEdit(we);
+  const pos = new vscode.Position(s0, 0);
+  editor.selection = new vscode.Selection(pos, pos);
+  try { await meosFocusBack(editor, editor.selection); } catch (_) { }
+  vscode.window.setStatusBarMessage('MeOS: ' + rows.length + ' rows × ' + rows[0].length + ' columns → table ▦', 2200);
+  return true;
+}
 async function meosFormatTableAtCursor(editor) {
   if (!editor) { vscode.window.setStatusBarMessage('MeOS: アクティブなエディタがありません', 2000); return; }
   const doc = editor.document;
+  if (await meosTableFromSelection(editor)) return;   // ★v4.2.544
   const cur = editor.selection.active.line;
   const blk = meosTableBlockRange(doc, cur);
   if (!blk) {

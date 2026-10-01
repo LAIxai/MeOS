@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.544 (2026-10-01)
+- ▦ makes a table from plain text: select lines separated by tabs or spaces — such as a table copied from a web page that pasted as plain text — and press ▦. The first line becomes the header. Tabs keep empty cells; with spaces, two or more spaces separate the cells, so "New York" stays in one cell.
+
 ### v4.2.537 (2026-10-01)
 - The hand's name appears only while you are pointing at the button, not over the picture (open hand) or while you drag it (grip).
 
