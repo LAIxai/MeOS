@@ -31526,7 +31526,7 @@ redKind();try{new MutationObserver(()=>{placeAim();redKind();}).observe(hp,{attr
 /* v4.2.533(俊克 バグ1「Me Dockの幅を変えると大きな+が移動してしまう」): 橙の長い十字はヘッダーの中の位置で置く→ 幅が変わってボタンが動いたら置き直す */
 try{new ResizeObserver(()=>placeAim()).observe(hdr);}catch(_){}
 /* v4.2.537(俊克「説明は選択指だけにしよう。移動手、握りに付ける必要はない。過剰だよね」): 名前は指差しの時だけ= 絵の上(移動手)・押している間(握り)は出さない */
-hp.addEventListener('pointermove',ev=>{if(press)return;const onPic=ev.target&&ev.target.closest&&ev.target.closest('.hand-pick>span');if(onPic)hideBal();else showBal(NAME[cur()],ev);});
+hp.addEventListener('pointermove',ev=>{if(press)return;const onPic=ev.target&&ev.target.closest&&ev.target.closest('.hand-pick>span');if(onPic||cur()==='system')hideBal();else showBal(NAME[cur()],ev);});/* v4.2.547(俊克「そうしましょう」): OSの手の時は家の tip(Pointer hand | …)が説明するので、名前の黒い札は出さない(2つ重なっていた) */
 hp.addEventListener('pointerleave',()=>{if(!press)hideBal();});
 function outside(ev){const u=under(ev);return !(u&&hp.contains(u));}
 function inHp(el){let x=0,y=0,e=el;while(e&&e!==hp){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return e===hp?{x:x,y:y}:{x:0,y:0};}
