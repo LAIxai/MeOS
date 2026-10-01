@@ -31502,7 +31502,10 @@ function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offse
 /* v4.2.525(俊克 改良1「見出しがポインターに隠れる→tipとしてポインターに追従」): 名前は家の tip と同じ袖口の下へ= 当たりから今の手の絵の丈(DROP)だけ下。
    値は meosPlaceTipAtPointer の _SLV と同じ(BTRON 指差し12/握り15・22.5° 15/9・OS 18/14) */
 /* v4.2.533(俊克「説明の位置は握りが理想。他の2つも同様に」): 指差し・移動手・握りとも、握りの時の下げ幅に揃える */
-const DROP={btron:{hand:15,grip:15},macos22:{hand:10,grip:10},macos:{hand:9,grip:9},system:{hand:14,grip:14}};
+/* v4.2.546(俊克「22.5°ミッキーとOSミッキーのtipの位置が駄目」): 名前は指差しの時だけ(v4.2.537)なので、下げ幅は指差しの絵の丈で決める。
+   測った= 当たりから絵の下端まで BTRON 16.2 / 22.5° 17.5 / OS 18.5(macos27 の pointinghand.pdf・当たり 12,8)。
+   BTRON は右下の黒い袖が tip の右上角に被るのが狙い(15のまま)。22.5° と OS は手の平が当たりの真下に来て字に被る→ 下端より少し下へ */
+const DROP={btron:{hand:15,grip:15},macos22:{hand:19,grip:19},macos:{hand:9,grip:9},system:{hand:20,grip:20}};
 function showBal(t,ev){if(!ev)return;const d=(DROP[cur()]||DROP.btron)[press&&press.moved?'grip':'hand'];bal.c.textContent=t;at(bal,ev.clientX,ev.clientY+d);bal.w.classList.add('on');}
 function hideBal(){bal.w.classList.remove('on');}
 /* v4.2.525(俊克 改良3「橙の+の位置が少し違う」): ボタンの中の絵の位置を推し量らず、今出ている絵の offsetLeft/Top(ボタンの中の物差し)から出す。
