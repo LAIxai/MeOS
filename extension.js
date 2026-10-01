@@ -26433,7 +26433,11 @@ const MEOS_DOCK_HOME = 'MeDock', MEOS_DOCK_LOCK = 'MockeD';
 const MEOS_DOCK_LOCKS = ['Mock', 'Moke'];   // v4.2.508: 頭の4字で見る(俊克「MokeDc で解除されちゃった。間抜けのままなのに」)
 function meosDockLocked(o) { return MEOS_DOCK_LOCKS.some(w => String(o || '').indexOf(w) === 0); }
 // ★v4.2.509(俊克 改良1「DecokM と eMcoDk のときは、Encrypt Me だけ実行できるようにしよう。シャレオツとして」): decode / encode の並び
-const MEOS_DOCK_CRYPTS = ['Deco', 'eMcoD'];
+// ★v4.2.541(俊克「DecoMk のときは Encrypt Me を見せる。eMcoDk のときは Encrypt Me だけをかすませる」): decode=見せる / encode=隠す の対
+//   Deco = Encrypt Me だけ動く(ほかは閉ざす) / eMcoD = Encrypt Me だけ閉ざす(ほかは動く)
+const MEOS_DOCK_CRYPTS = ['Deco'];
+const MEOS_DOCK_HIDES = ['eMcoD'];
+function meosDockHideEnc(o) { return MEOS_DOCK_HIDES.some(w => String(o || '').indexOf(w) === 0); }
 function meosDockCrypt(o) { return MEOS_DOCK_CRYPTS.some(w => String(o || '').indexOf(w) === 0); }
 const MEOS_DOCK_CRYPT_MSGS = ['encOp', 'encryptMembrane', 'copySecretAutoWipe'];   // v4.2.507(俊克「スクショ6枚目(MokecD= Moke)が mock 以上に笑える。ここでもロックしちゃっていい」)
 function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 6 && o.split('').sort().join('') === MEOS_DOCK_HOME.split('').sort().join(''); }
@@ -31426,15 +31430,15 @@ function chk(){const w=ac.offsetTop>tl.offsetTop+6;hd.classList.toggle('hdr-wrap
 try{new ResizeObserver(chk).observe(hd);}catch(_){}window.addEventListener('resize',chk);chk();})();
 // {* ▲mCN=dock_js_hdrwrap *}
 // {* ▼mCN=dock_js_tiles // v4.2.500 パズルロック(文字タイルの並べ替え) *}
-(function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCKS=['Mock','Moke'],CRYPTS=['Deco','eMcoD'],HOME='MeDock';
+(function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCKS=['Mock','Moke'],CRYPTS=['Deco'],HIDES=['eMcoD'],HOME='MeDock';/* v4.2.541: Deco=Encrypt Meだけ見せる / eMcoD=Encrypt Meだけ閉ざす */
 /* v4.2.509: 残す物(keep)の祖先の兄弟を全部閉ざす= Mock/Moke は文字タイルだけ、Deco/eMcoD は文字タイルと Encrypt Me だけ残す */
 function shut(keeps){document.querySelectorAll('.md-dim').forEach(e=>e.classList.remove('md-dim'));if(!keeps.length)return;const dock=document.querySelector('.dock');if(!dock)return;
 const chain=new Set();for(const k of keeps){let e=k;while(e&&e!==dock){chain.add(e);e=e.parentElement;}}
 for(const e of chain){const par=e.parentElement;if(!par)continue;for(const sib of par.children){if(!chain.has(sib))sib.classList.add('md-dim');}}}
 function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttribute('data-ch')).join('');}
-function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);document.body.classList.toggle('md-crypt',cr);
+function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0),hd=!lk&&!cr&&HIDES.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);document.body.classList.toggle('md-crypt',cr);
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
-const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));
+const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
 row.classList.toggle('md-home',o===HOME);}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
@@ -32045,13 +32049,13 @@ function toggleMeDock(editorOverride) {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
     if (message && message.type === 'mdDbg') { meosDbg('[mdDbg] ' + String(message.info || '').slice(0, 1500)); return; }   // v4.2.512
     if (message && message.type === 'mdTiles') { const o = String(message.order || ''); if (meosDockTilesValid(o)) {
-        const was = meosDockTiles(), wasShut = meosDockLocked(was) || meosDockCrypt(was);
+        const was = meosDockTiles(), wasShut = meosDockLocked(was) || meosDockCrypt(was) || meosDockHideEnc(was);
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
-        if (wasShut && !meosDockLocked(o) && !meosDockCrypt(o)) setTimeout(() => { try { meosMeDockRedraw(); } catch (_) { } }, 50);
+        if (wasShut && !meosDockLocked(o) && !meosDockCrypt(o) && !meosDockHideEnc(o)) setTimeout(() => { try { meosMeDockRedraw(); } catch (_) { } }, 50);
       } return; }
-    { const _o09 = meosDockTiles(); if (meosDockLocked(_o09)) return; if (meosDockCrypt(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) < 0) return; }
+    { const _o09 = meosDockTiles(); if (meosDockLocked(_o09)) return; if (meosDockCrypt(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) < 0) return; if (meosDockHideEnc(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) >= 0) return; }
     // v3.1.16(俊克): Me Dock全体ズームの永続化＋「本文も同期」トグルでエディタのフォントズームも連動。
     if (message && message.type === 'htocOpen') { try { extensionContext.globalState.update('htocOpen', !!message.open); } catch (_) {} return; }   // v4.2.250
     if (message && message.type === 'fmtTipSeen') { try { const m = Object.assign({}, extensionContext.globalState.get('fmtTipSeen') || {}); m[String(message.key || '')] = String(message.day || ''); extensionContext.globalState.update('fmtTipSeen', m); } catch (_) {} return; }   // v4.2.239
