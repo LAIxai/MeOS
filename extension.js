@@ -26435,7 +26435,8 @@ function meosDockLocked(o) { return MEOS_DOCK_LOCKS.some(w => String(o || '').in
 // ★v4.2.509(俊克 改良1「DecokM と eMcoDk のときは、Encrypt Me だけ実行できるようにしよう。シャレオツとして」): decode / encode の並び
 // ★v4.2.541(俊克「DecoMk のときは Encrypt Me を見せる。eMcoDk のときは Encrypt Me だけをかすませる」): decode=見せる / encode=隠す の対
 //   Deco = Encrypt Me だけ動く(ほかは閉ざす) / eMcoD = Encrypt Me だけ閉ざす(ほかは動く)
-const MEOS_DOCK_CRYPTS = ['Deco'];
+// ★v4.2.542(俊克「Deco のときも他の部品は普通に使えるように。全部使えなくするのは間抜けのときだけ」): Deco は閉ざさない= 普段どおり(Encrypt Me も見える)
+const MEOS_DOCK_CRYPTS = [];
 const MEOS_DOCK_HIDES = ['eMcoD'];
 function meosDockHideEnc(o) { return MEOS_DOCK_HIDES.some(w => String(o || '').indexOf(w) === 0); }
 function meosDockCrypt(o) { return MEOS_DOCK_CRYPTS.some(w => String(o || '').indexOf(w) === 0); }
@@ -31430,7 +31431,7 @@ function chk(){const w=ac.offsetTop>tl.offsetTop+6;hd.classList.toggle('hdr-wrap
 try{new ResizeObserver(chk).observe(hd);}catch(_){}window.addEventListener('resize',chk);chk();})();
 // {* ▲mCN=dock_js_hdrwrap *}
 // {* ▼mCN=dock_js_tiles // v4.2.500 パズルロック(文字タイルの並べ替え) *}
-(function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCKS=['Mock','Moke'],CRYPTS=['Deco'],HIDES=['eMcoD'],HOME='MeDock';/* v4.2.541: Deco=Encrypt Meだけ見せる / eMcoD=Encrypt Meだけ閉ざす */
+(function(){const row=document.getElementById('md-tiles');if(!row)return;const LOCKS=['Mock','Moke'],CRYPTS=[],HIDES=['eMcoD'],HOME='MeDock';/* v4.2.541: Deco=Encrypt Meだけ見せる / eMcoD=Encrypt Meだけ閉ざす */
 /* v4.2.509: 残す物(keep)の祖先の兄弟を全部閉ざす= Mock/Moke は文字タイルだけ、Deco/eMcoD は文字タイルと Encrypt Me だけ残す */
 function shut(keeps){document.querySelectorAll('.md-dim').forEach(e=>e.classList.remove('md-dim'));if(!keeps.length)return;const dock=document.querySelector('.dock');if(!dock)return;
 const chain=new Set();for(const k of keeps){let e=k;while(e&&e!==dock){chain.add(e);e=e.parentElement;}}
