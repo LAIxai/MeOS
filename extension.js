@@ -34171,11 +34171,12 @@ function meosTableRowsFromText(lines) {
   return rows.map(r => { const c = r.map(x => x.trim().replace(/\|/g, '\\|')); while (c.length < n) c.push(''); return c; });
 }
 async function meosTableFromSelection(editor) {
-  const sel = editor.selection; if (!sel || sel.isEmpty) return false;
+  const sel = editor.selection; if (!sel || sel.isEmpty) { try { meosDbg('[tblSel] 選択なし'); } catch (_) { } return false; }
   const doc = editor.document;
   const s0 = sel.start.line, e0 = (sel.end.character === 0 && sel.end.line > s0) ? sel.end.line - 1 : sel.end.line;
   const raw = []; for (let i = s0; i <= e0; i++) raw.push(doc.lineAt(i).text);
   const rows = meosTableRowsFromText(raw);
+  try { meosDbg('[tblSel] 行=' + s0 + '〜' + e0 + ' タブ行=' + raw.filter(l => l.indexOf('\t') >= 0).length + '/' + raw.length + ' → ' + (rows ? rows.length + '×' + rows[0].length : '表にしない')); } catch (_) { }   // v4.2.545
   if (!rows) return false;
   const indent = (raw.find(l => l.trim() !== '').match(/^[ ]*/) || [''])[0];
   const md = rows.map(r => '| ' + r.join(' | ') + ' |');
