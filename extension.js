@@ -13096,10 +13096,13 @@ function meosMenuBarClockItems() {
     const rows = [];
     for (const [k, until] of _meosPseudoUntil) rows.push({ until, sc: _meosPseudoScopes.get(k) });
     rows.sort((a, b) => a.until - b.until);
+    // ★v4.2.556(俊克「メニューバーのメニューは、次のだけを秒まで動かして、それ以外は分以上に。全部が動くのは目障り。1分経てば分は全てのリストで更新される」):
+    //   秒は「動いている」を言う桁(v4.1.48)= 次の1本が言えば足りる。2本目から先は .SS を落とす
     for (const r of rows) {
       if (!r.sc) continue;
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
-      out.push({ id: 'go:' + go.length, title: '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '') + ' ' + meosMmSs(meosClockFaceMs(r.until, r.sc)) + '   ' + nm });   // v4.2.316: ⚓も一覧に
+      const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
+      out.push({ id: 'go:' + go.length, title: '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '') + ' ' + _f2 + '   ' + nm });   // v4.2.316: ⚓も一覧に
       go.push(r.sc);
     }
   } catch (_) { }
