@@ -11516,7 +11516,8 @@ async function meosClockSetMore(message, first) {
 }
 let _meosClkPanelOpen = false, _meosClkTargetTimer = null;
 function meosPostClkTarget() {
-  try { const r = meosClockSetTarget(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clkTarget', ok: !!(r && !r.refused), mode: r ? (r.refused ? 'refuse' : (typeof r.atLine === 'number' ? 'change' : 'add')) : '' }); } catch (_) { }
+  // ★v4.2.551(俊克 バグ1「膜でないところで、3プリセットでSetが押せない」): v4.2.550 から膜の外は「膜ごと作る」所= 押せる(断るのは書く相手のエディタが無い時だけ)
+  try { const r = meosClockSetTarget(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'clkTarget', ok: !!r, mode: r ? (r.refused ? 'create' : (typeof r.atLine === 'number' ? 'change' : 'add')) : '' }); } catch (_) { }
 }
 function meosClockAtLine(doc, key, line) { for (const c of meosClockFcScan(doc)) if ((key == null || c.key === key) && c.line === line) return c; return null; }   // v4.2.389: key=null= 膜を問わず、その行の時計
 function meosClockOriginOf(c) {
