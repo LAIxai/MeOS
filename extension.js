@@ -30530,7 +30530,7 @@ try{const mo=new MutationObserver(()=>hPaint());const tr=document.getElementById
 hPaint();}
 /* v4.2.550: ⏰の右肩の①= 1時間後に一度だけ(パネルの Set と同じ道= 膜の外なら膜ごと作る) */
 const c1=document.getElementById('clk-one');if(c1)c1.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(Date.now()+3600000),p=x=>(x<10?'0':'')+x;
-vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),rep:false,up:false,dual:true,cycle:'',title:'',tags:null,lock:false,anchor:false});});
+vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),rep:false,up:false,dual:true,cycle:'',title:'One-shot timer 1h',tags:null,lock:false,anchor:false});});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});
 {const tb=document.getElementById('th-btn'),tp=document.getElementById('th-pop'),tr=document.getElementById('th-ring'),tv=document.getElementById('th-btn-val');let thPicked=false,thTimer=null;
 const thAct=(r,scroll)=>{tp.querySelectorAll('.th-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<tp.scrollTop)tp.scrollTop=top-4;else if(bot>tp.scrollTop+tp.clientHeight)tp.scrollTop=bot-tp.clientHeight+4;}};
@@ -32560,8 +32560,12 @@ function toggleMeDock(editorOverride) {
       if (Array.isArray(message.more) && message.more.length && typeof _opts.atLine === 'number') {
         try { const _e0 = meosCurrentEditor(); const _g0 = _e0 ? meosClockFcScan(_e0.document).filter(c => c.key === _opts.atKey).sort((a, b) => a.line - b.line) : []; if (_g0.length) _opts.atLine = _g0[0].line; } catch (_) { }
       }
-      if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); await meosClockCaretBeforeClose(_opts.atKey); return; }
-      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); await meosClockSetMore(message, _opts); await meosClockCaretBeforeClose(_opts.atKey); return; }   // v4.2.395: 起点なし
+      // ★v4.2.552(俊克 改良1「マニュアルで設定する時も、UFCにコメントを自動付加しよう。自分で書いた場合は除いて。
+      //   そこに書いたものがメニューバーに表示されると自然に学習できる」): 足す時(⏰行の書き直しでない時)だけ・タイトルが空の時だけ
+      const _autoT = (t) => { if (!String(_opts.title || '').trim() && typeof _opts.atLine !== 'number') _opts.title = t; };
+      const _cyTxt = () => String(_opts.cycleSrc || (_opts.cycle || []).join(' ')).trim();
+      if (message.minutes) { _autoT('One-shot timer ' + Number(message.minutes) + 'm'); await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); await meosClockCaretBeforeClose(_opts.atKey); return; }
+      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; _autoT('Repeat timer ' + _cyTxt()); await meosStartPseudoTimer(0, 0, null, _opts); meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); await meosClockSetMore(message, _opts); await meosClockCaretBeforeClose(_opts.atKey); return; }   // v4.2.395: 起点なし
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
       // ★★v4.2.89(俊克 バグ2): **一度きりも過去を受ける**= ドラムの日付が過去なら、そこから数えるストップウォッチ
@@ -32571,6 +32575,8 @@ function toggleMeDock(editorOverride) {
       if (_past89) { _opts.up = true; _opts.dual = false; }   // 過去に向かって逆算は無いso、↻ だけ
       const _org = w ? w.at : ((_opts.cycle && _opts.cycle.length) ? _loose89 : (_past89 ? _loose89 : null));
       if (!_org) { vscode.window.setStatusBarMessage('MeOS: 18:30 / 9/1 18:30 / 2026-09-01 18:30', 3000); return; }
+      { const _p2 = (x) => (x < 10 ? '0' : '') + x, _hm = _p2(_org.getHours()) + ':' + _p2(_org.getMinutes());
+        _autoT((_opts.cycle && _opts.cycle.length) ? 'Repeat timer ' + _cyTxt() : (_past89 ? 'Stopwatch' : 'One-shot timer at ' + _hm)); }
       await meosStartPseudoTimer(0, w ? w.ms : 0, _org, _opts);
       try { if (_org && _org.getTime() <= Date.now() + 1000) meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); } catch (_) { }   // v4.2.440: 最初のゴング
       await meosClockSetMore(message, _opts);   // v4.2.410: 箱の2行目から先
