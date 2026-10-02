@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.557) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.558) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -182,7 +182,10 @@ function run(argv) {
         if (/\u2693/.test(e.title) && mi.attributedTitle && mi.attributedTitle.length > 0) a = $.NSMutableAttributedString.alloc.initWithAttributedString(mi.attributedTitle);
         else { a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(e.title)); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), $.NSMakeRange(0, a.length)); }
         const i = ObjC.unwrap(a.string).search(/\.\d{2}(?=\s{3})/);
-        if (i >= 0) { a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemOrangeColor, $.NSMakeRange(i, 3)); mi.attributedTitle = a; }
+        if (i >= 0) { const rs = $.NSMakeRange(i, 3); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemOrangeColor, rs);
+          // v4.2.558(俊克「少し見難いので、黒いアウトラインを1～2ピクセル」): 字の縁= 負の値で「塗り＋縁」。大きさは字の大きさに対する%(メニューの14pt で -5 ≈ 0.7pt = 網膜で約1.5px)
+          a.addAttributeValueRange($.NSStrokeWidthAttributeName, $(-5), rs); a.addAttributeValueRange($.NSStrokeColorAttributeName, $.NSColor.blackColor, rs);
+          mi.attributedTitle = a; }
       } catch (x) {} }
   }
   // 残り時間の書き方= 拡張と同じ H:MM.SS(1日を越えたら Nd を前に)
