@@ -15019,10 +15019,11 @@ function meosNoChangeSoundPath() {
 //   作った wav は同じ1つ= mac=afplay / win=PowerShell の SoundPlayer / linux=paplay→aplay(無ければ端末のベル)。
 // ★v4.2.514(俊克「保存済のときに Cmd+S を押すと鳴らしているのは何の音? それを Gong などの設定音にすればいい」):
 //   今までは MeOS が作った「ホワン、ホワン」(下がる2音)。→ 設定 laiMembrane.noChangeSound(既定 Gong)。Soft= 今までの音・空= 鳴らさない
-function meosPlayNoChange() {
+// v4.2.548: clockOnly= Cmd+S 用の上書き(noChangeSound)を見ず、🔔 で選んだ ⏰ の音だけを鳴らす(手の駒を捨てた時)
+function meosPlayNoChange(clockOnly) {
   try {
     // v4.2.515(俊克 改良1「保存済のときの音は、タイマ音設定ボタンで設定してある音を使用する」): 既定(空)= Me Dock の 🔔 で選んだ ⏰ の音。None= 鳴らさない
-    let nm = ''; try { const c = vscode.workspace.getConfiguration('laiMembrane'); nm = String(c.get('noChangeSound', '') || '').trim(); if (!nm) nm = String(c.get('clockSound', 'MEW') || '').trim(); nm = meosSoundCanon(nm); } catch (_) { }
+    let nm = ''; try { const c = vscode.workspace.getConfiguration('laiMembrane'); nm = clockOnly ? '' : String(c.get('noChangeSound', '') || '').trim(); if (!nm) nm = String(c.get('clockSound', 'MEW') || '').trim(); nm = meosSoundCanon(nm); } catch (_) { }
     if (!nm || nm === 'None') return;
     let f = null;
     if (nm !== 'SOFT') { try { const p = meosSoundResolve(nm); if (p && require('fs').existsSync(p)) f = p; } catch (_) { } }
@@ -31532,7 +31533,7 @@ function outside(ev){const u=under(ev);return !(u&&hp.contains(u));}
 function inHp(el){let x=0,y=0,e=el;while(e&&e!==hp){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return e===hp?{x:x,y:y}:{x:0,y:0};}
 function end(ev,commit){if(!press)return;const P=press;press=null;try{hp.releasePointerCapture&&hp.releasePointerCapture(P.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');if(!P.moved){P.g.w.remove();return;}suppress=true;
-if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
+if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');vscode.postMessage({type:'handPoof'});/* v4.2.548(俊克「ドラッグしてリリースした時、macのDock削除のように効果音。設定した音を鳴らせばいい」) */setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
 else{P.g.w.remove();}}
 hp.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!pic)return;ev.preventDefault();
 /* 掴んだ絵(幽霊): v4.2.523 は絵の大きさの規則(.hand-pick .hp-img)がボタンの外で外れ、96px の原寸で出ていた(俊克 バグ1「巨大なポインター」)→ 今の大きさを写して付ける */
@@ -32438,6 +32439,7 @@ function toggleMeDock(editorOverride) {
       try { await meosVHelperSet(!meosVHelperOn(), true); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
       return;
     }
+    if (message && message.type === 'handPoof') { meosPlayNoChange(true); return; }   // v4.2.548: 手の駒を捨てた音= 🔔 で選んだ音
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
       try { const v = (message.value === 'macos' || message.value === 'macos22' || message.value === 'system') ? message.value : 'btron'; await vscode.workspace.getConfiguration('laiMembrane').update('pointerHand', v, vscode.ConfigurationTarget.Global); } catch (_) { }
       return;
