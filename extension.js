@@ -6894,24 +6894,88 @@ async function meosPuzzleTag(ch) {
   try {
     const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
-    const doc = ed.document, hits = [];
-    const L = meosDocLines(doc);
-    for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = MEOS_PUZZLE_TAG_RE.exec(t); if (m && +m[1] === n) hits.push(i); }
+    const doc = ed.document;
+    const hits = meosPuzzleTagsOf(doc, n);
     if (!hits.length) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
       const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' *}') + '\n';
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag));
+      try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
       meosDbg('[puzzleTag] ' + ch + '=P' + n + ' を書いた 行=' + (ln + 1));
       vscode.window.setStatusBarMessage('MeOS: ' + ch + ' \u2192 here (P' + n + ')', 3000);
       return;
     }
-    const cur = ed.selection.active.line, to = hits.find(h => h > cur);
-    const line = (to !== undefined) ? to : hits[0];
+    // ★v4.2.563(俊克「参照グループとは違って唯一に。最初に設定したものが最前線Fをまとう。複製してもFは複製できない。
+    //   何度Optクリックしても最前線Fにしか飛ばない」「生成順が優先順とは限らない。最初に掴んだものを最前線にする。Fボタンが無いからこそ」):
+    //   ★F= 覚えた名前(複製は meosPuzzleDupFollow が名前を打ち直すので F にならない)。1本しか無ければそれが F。
+    //   ★F が消えて候補が2本以上= F は無い→ 押すたびに次の候補へ巡り、**カーソルを動かした所**(掴んだ1本)が F になる(meosPuzzleCrownAtCaret)
+    let f = hits.find(h => h.name === meosPuzzleFGet(doc, n));
+    if (!f && hits.length === 1) { f = hits[0]; meosPuzzleFSet(doc, n, f.name); }
+    let line;
+    if (f) line = f.line;
+    else { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur); line = (nx || hits[0]).line; _meosPuzzleJumpAt = { uri: doc.uri.toString(), line };
+      vscode.window.setStatusBarMessage('MeOS: ' + ch + ' has ' + hits.length + ' marks \u2014 move the caret in the one to keep; it becomes the front.', 5000); }
     const pos = new vscode.Position(line, 0);
     const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
     try { shown.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
-    meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ 行=' + (line + 1) + ' (' + hits.length + '本)');
+    meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ' + (f ? '(F)' : '(F無し・候補)') + ' 行=' + (line + 1) + ' (' + hits.length + '本)');
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
+}
+// 1つの字の印を全部= {line, n, name}
+const MEOS_PUZZLE_TAG_NAME_RE = /\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=[ \t]*([^\s*]+)/;
+function meosPuzzleTagsOf(doc, n) {
+  const out = [], L = meosDocLines(doc);
+  for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = MEOS_PUZZLE_TAG_NAME_RE.exec(t); if (m && (!n || +m[1] === n)) out.push({ line: i, n: +m[1], name: m[2] }); }
+  return out;
+}
+// F の覚え= ファイル+字 → 名前(この Mac の覚え)
+function meosPuzzleFGet(doc, n) { try { return (extensionContext.globalState.get('meosPuzzleF', {}) || {})[doc.uri.toString() + '|' + n] || ''; } catch (_) { return ''; } }
+function meosPuzzleFSet(doc, n, name) { try { const m = Object.assign({}, extensionContext.globalState.get('meosPuzzleF', {}) || {}); m[doc.uri.toString() + '|' + n] = name; extensionContext.globalState.update('meosPuzzleF', m); } catch (_) { } }
+// F の居ない字の印にカーソルが入ったら、それを F と認める(Opt+クリックで着地しただけの1回は数えない)
+let _meosPuzzleJumpAt = null;
+function meosPuzzleCrownAtCaret(e) {
+  try {
+    const ed = e && e.textEditor; if (!ed) return; const doc = ed.document, ln = ed.selection.active.line;
+    if (ln >= doc.lineCount) return; const t = doc.lineAt(ln).text; if (t.indexOf('mP') < 0) return;
+    const m = MEOS_PUZZLE_TAG_NAME_RE.exec(t); if (!m) return;
+    if (_meosPuzzleJumpAt && _meosPuzzleJumpAt.uri === doc.uri.toString() && _meosPuzzleJumpAt.line === ln) { _meosPuzzleJumpAt = null; return; }
+    const n = +m[1], cur = meosPuzzleFGet(doc, n);
+    if (cur && meosPuzzleTagsOf(doc, n).some(h => h.name === cur)) return;   // F が居る間は動かない
+    meosPuzzleFSet(doc, n, m[2]); meosDbg('[puzzleTag] F を認めた P' + n + ' ' + m[2] + ' 行=' + (ln + 1));
+  } catch (_) { }
+}
+// ★v4.2.563: 複製は F をまとえない= 貼られた/写された印の名前が、他の所に既に在れば、その印は「今生まれた」と打ち直す(時刻を今に)。
+//   切り取って貼る(移動)は元が消えているので打ち直さない= F のまま動ける
+let _meosPuzzleDupBusy = false;
+function meosPuzzleDupFollow(e) {
+  if (_meosPuzzleDupBusy || !e || !e.contentChanges || !e.contentChanges.length) return;
+  const doc = e.document;
+  if (!e.contentChanges.some(c => String(c.text || '').indexOf('mP') >= 0 && String(c.text || '').indexOf('\u25b6\u25c0') >= 0)) return;
+  const ed = vscode.window.visibleTextEditors.find(x => x.document === doc); if (!ed) return;
+  const fresh = new Set();
+  for (const c of e.contentChanges) { const t = String(c.text || ''); if (t.indexOf('mP') < 0) continue; const a = c.range.start.line, k = (t.match(/\n/g) || []).length; for (let i = a; i <= a + k; i++) fresh.add(i); }
+  const all = meosPuzzleTagsOf(doc, 0), fix = [];
+  for (const h of all) {
+    if (!fresh.has(h.line)) continue;
+    if (!all.some(o => o.line !== h.line && o.n === h.n && o.name === h.name)) continue;   // 同じ名前が他に無い= 複製ではない(移動か新規)
+    fix.push(h);
+  }
+  if (!fix.length) return;
+  _meosPuzzleDupBusy = true;
+  (async () => {
+    try {
+      const used = new Set(all.map(h => h.name));
+      await ed.edit(eb => {
+        let k = 0;
+        for (const h of fix) {
+          const t = doc.lineAt(h.line).text, i = t.indexOf(h.name); if (i < 0) continue;
+          let nm; do { nm = h.name.replace(/_[^_]*$/, '') + '_' + meosMembraneStamp(new Date(Date.now() + 1000 * k++)); } while (used.has(nm)); used.add(nm);
+          eb.replace(new vscode.Range(h.line, i, h.line, i + h.name.length), nm);
+        }
+      }, { undoStopBefore: false, undoStopAfter: false });
+      meosDbg('[puzzleTag] 複製を打ち直した ' + fix.length + '本');
+    } catch (_) { } finally { _meosPuzzleDupBusy = false; }
+  })();
 }
 const REF_MARK_DISABLED = '\u25b7\u25c1'; // ▷◁
 function lineHasRefMark(t) { return t.indexOf(REF_MARK_ACTIVE) >= 0 || t.indexOf(REF_MARK_DISABLED) >= 0; }
@@ -39802,6 +39866,7 @@ function activate(context) {
   //     拡張パネルに在るので空振りしていた。★**焦点は奪わない**(読んでいる所から勝手に飛ばすのは行儀が悪い)。
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try { meosPuzzleCrownAtCaret(e); } catch (_) { } }));   // v4.2.563
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     // ★v4.0.396: ここは v4.0.141 の「入れ直した直後、人が最初にクリックした時に1回だけ畳む」ための道。
     //   **まだ畳んでいないファイルの時だけ**呼ぶ(steady stateの打鍵では一切呼ばない)。
@@ -40804,6 +40869,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
       if (deferRefreshCount === 0) { try { meosLinkUlFollow(e); } catch (_) { } }     // v4.0.298: FC行の(N)を手で直したら、それが最後に決めた下線の種類
       if (deferRefreshCount === 0) { try { meosFmtKindFollow(e); } catch (_) { } }    // v4.0.302: FC行の記号を打ち替えたら、本文の印も従う
       if (deferRefreshCount === 0) { try { meosOrphanFcFollow(e); } catch (_) { } }   // v4.0.324: 本文を消したら、その指定行も消える
+      try { meosPuzzleDupFollow(e); } catch (_) { }   // v4.2.563: パズルタグの複製は F をまとえない
 
       // v4.0.441: Rawでも編集driven refreshは止めない(v0.9.928でtype横取りを撤去済so、入力は両モードとも100%ネイティブ)。
       // v0.9.651: the v0.9.648 [cc] per-contentChange diagnostic (and its v0.9.649
