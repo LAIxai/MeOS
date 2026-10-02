@@ -11423,7 +11423,9 @@ function meosClockSetTarget() {
     const pairs = collectPairs(doc, { excludeIndex: false });
     const closeKey = (l) => { const p = pairs.find(q => q.end === l); return p ? String(p.id || '') : ''; };
     const badgeKey = (l) => (l >= 1 && meosIsPairBadgeSpec(doc.lineAt(l).text)) ? closeKey(l - 1) : '';
-    let k = closeKey(ln) || badgeKey(ln);
+    // ★v4.2.550(俊克「開始膜、折り畳んだ膜の上でもSetできるように」): 畳んだ膜のカーソルは開始膜の行に居る
+    const openKey = (l) => { const p = pairs.find(q => q.start === l); return p ? String(p.id || '') : ''; };
+    let k = closeKey(ln) || badgeKey(ln) || openKey(ln);
     if (k) return { atKey: k };
     if (!doc.lineAt(ln).text.trim() && ln >= 1) {
       const up = meosClockAtLine(doc, null, ln - 1); if (up) return { atKey: String(up.key || '') };
@@ -11431,6 +11433,35 @@ function meosClockSetTarget() {
     }
     return { refused: '\u23f0 To add a clock, put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines, then press Set. To change a clock, put the caret on its \u23f0 line.' };
   } catch (_) { return null; }
+}
+// ★★v4.2.550(俊克「タイマー付きの膜を1クリックで即行で作れるように。すぐに作って起動できることが命」):
+//   今まで断っていた場所(膜の外・膜の中の普通の行)では、**その場に膜を作って**その膜に⏰を付ける= チェックで選ばない・カーソルの場所が決める。
+//   膜は Edit Me の Create と同じ道(addMembraneWithName)で作る。名前は ⏰_TS(後から Rename Me で変えればいい)。
+async function meosClockSetTargetOrCreate() {
+  let t = meosClockSetTarget() || {};
+  if (!t.refused) return t;
+  try {
+    await addMembraneWithName('\u23f0_' + meosMembraneStamp(new Date()));
+    const e = getMeDockTargetEditor() || meosCurrentEditor(); if (!e) return t;
+    const ln = e.selection.active.line;
+    const p = collectPairs(e.document, { excludeIndex: false }).find(q => q.start === ln);
+    if (p) return { atKey: String(p.id || '') };
+  } catch (_) { }
+  return t;
+}
+// ★v4.2.550(俊克「作成したり、Setした後、閉じ膜の1つ手前の行に移動しよう。直ぐに動作を確認できるし、修正するのも楽」)
+async function meosClockCaretBeforeClose(key) {
+  try {
+    if (!key) return;
+    const e = getMeDockTargetEditor() || meosCurrentEditor(); if (!e) return;
+    const p = collectPairs(e.document, { excludeIndex: false }).find(q => String(q.id || '') === String(key));
+    if (!p) return;
+    const ln = (p.end - 1 > p.start) ? p.end - 1 : p.end;
+    const pos = new vscode.Position(ln, e.document.lineAt(ln).text.length);
+    e.selection = new vscode.Selection(pos, pos);
+    e.revealRange(new vscode.Range(ln, 0, Math.min(e.document.lineCount - 1, p.end + 3), 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    try { await vscode.window.showTextDocument(e.document, { viewColumn: e.viewColumn, preserveFocus: false, selection: e.selection }); } catch (_) { }
+  } catch (_) { }
 }
 // ★★v4.2.410(俊克「2番目は、二行パターンで、目薬の例」): Repeat の箱の**1行=⏰の1行**。1行目は今までどおり起点つきで書き、
 //   2行目から先は起点なし(前の⏰から受け継ぐ)で、同じ膜の⏰群の後ろへ足す。
@@ -28112,7 +28143,7 @@ color:#ffffff;z-index:4;padding:0}
 <div class="bm-pop" id="table-pop"><button class="bm-pop-item" id="table-autocalc-toggle" data-tip="Auto-calc: live + save — checkbox | Checked (default) = auto: totals update live on screen as you switch cells (the file is not touched), and are committed into the file on save (Cmd+S). Unchecked = manual: totals show the last value and recompute only when you press ▦ (Excel manual calc + F9). Changed cells flash green either way (auto = on cell-switch / save, manual = on ▦)."><span class="tw-check meos-chk">□</span>Auto-calc: live + save</button><button class="bm-pop-item" id="table-recalc-all" data-tip="Re-calculate all | Recompute and bake every table inside the membrane the cursor is in (or the whole document if not inside one). One click bakes all results into the file at once and flashes what changed — useful in both modes (e.g. commit every table now without saving, or refresh several tables in manual mode). A notification shows how many cells changed.">Re-calculate all</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="table-dup-row" data-tip="Duplicate the current row → (rows run across; a copy is inserted below — edit either the original or the copy).">⧉ Duplicate row→</button><button class="bm-pop-item" id="table-del-row" data-tip="Delete the current row → (rows run across).">✕ Delete row→</button><button class="bm-pop-item" id="table-dup-col" data-tip="Duplicate the column at the cursor ↓ (columns run down; a copy is inserted to its right). On a merge anchor (🤝→N cell — even declared in another row) the whole merged unit is duplicated; on a column to its right, only that one column.">⧉ Duplicate column↓</button><button class="bm-pop-item" id="table-del-col" data-tip="Delete the column at the cursor ↓ (columns run down). On a merge anchor (🤝→N cell — even declared in another row) the whole merged unit is deleted; on a column to its right, only that one column.">✕ Delete column↓</button><div style="border-top:1px solid var(--vscode-panel-border);margin:2px 0"></div><button class="bm-pop-item" id="table-wrap-toggle" data-tip="Membrane this table | Wrap the table the cursor is in as a MeOS membrane, so its range is explicit and Current Me can jump to its tail (great for very long tables). Checked = wrapped; click to toggle."><span class="tw-check meos-chk">□</span>Membrane this table</button></div>
 <!-- {* ▲mCN=dock_tablemenu *} --></div><!-- v4.0.198: row format-tools を閉じる。v4.0.197でメニューを消した時に、この1つを巻き込んでいた -->
 <!-- v4.2.464(俊克「Hyper IDXを分離して、Format Meの下に枠を作って、そこに入れよう。右端の2つのボタンはH-TOC用なので、H-TOCを開いたところに移動しよう。これで、Hyper IDXも、スクロール固定にできる」) -->
-<div class="hidx-box" id="hidx-box"><div class="toc-tools hidx-row" id="hidx-row"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><button class="cancel clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</button></span>
+<div class="hidx-box" id="hidx-box"><div class="toc-tools hidx-row" id="hidx-row"><span class="hidx-title" title="Hyper Index — four sisters that warp you home: Today (a lifelong-diary day) · Reference group · Bookmark · Home. Today is the classic Home — the fastest jump back to today.">Hyper IDX</span><span class="tt-split dw-split"><button class="cancel dw-half dw-todaynow" id="dw-todaynow" title="Jump straight to today's diary entry"><span class="dw-tglyph">Ⓣ</span></button><button class="cancel dw-half dw-scope" id="dw-scope">Today</button><span class="tt-badge tt-dial" id="dw-dial" title="Cycle scope: Today → Week → Month → Year (Shift-click = reverse). The button color/label shows the current scope; click it to open that dial.">↻</span><span class="tt-badge tt-name" id="dw-name" title="Life Diary title rule — register how MeOS reads the date from a diary membrane name (e.g. M/D(W) YYYY / YYYY-MM-DD).">N</span></span><span class="bm-split bm-pending-split"><button class="cancel bm-pending-btn" id="bm-pending-btn" data-tip="Reference | The symbol shows your working reference group (💤 = a pending group). One click jumps to its F mark; click again to cycle the group. ⌘/Ctrl+click → jump to the note (Annotated) or straight back to the Front (Marks / Pending). Pick the group from ▾.">💤</button><button class="cancel bm-pending-menu-btn" id="bm-pending-menu-btn" data-tip="Reference menu | Pick the working group (💤 pending is kept apart) · new / delete groups · jump to note">▾</button><span class="bm-f-badge" id="ref-f-badge" data-tip="Switch Front Reference | On a reference mark: make it the F (front). Elsewhere: drop a mark of the working group here as the new F.">F</span></span><span class="bm-split"><button class="cancel bm-cycle zero" id="bm-cycle" data-tip="Bookmark | One click jumps straight to your 🚩 Front Anchor (the writing frontline). Click again to cycle the other 🔖.">🔖</button><button class="cancel bm-menu-btn zero" id="bm-menu-btn" data-tip="Bookmark menu | Remove a 🔖 / Clear all">▾</button><span class="bm-f-badge" id="bm-f-badge" data-tip="Switch Front bookmark | Make the cursor line the 🚩 Front Anchor (the 🔖 button always jumps here). With no 🔖 here, it adds one.">F</span></span><span class="bm-split home-split"><button class="cancel home-btn zero" id="home-btn" data-tip="Home | The ribbon bookmark sewn into a book — there is only one. One click returns to the single place you most want to come back to (e.g. the diary line you write today). No Home yet? Click to set it here.">🏠</button><span class="bm-f-badge bm-h-badge" id="home-h-badge" data-tip="Switch Home | Move Home — the single ribbon bookmark of this file — to the cursor line (green H in the gutter).">H</span></span><span class="clk-wrap"><button class="warn-btn raw-timer" id="raw-timer" data-tip="Hold this membrane in Pseudo👁 for a while | Turn one membrane into a test paper: nothing raw, nothing crossed out, and no way out until the time is up. The rest of the file stays writable. Your 👻 answers stay where you wrote them, so the moment it ends you can mark your own work.">&#9200;<span class="raw-t" id="raw-t"></span></button><button class="cancel clk-caret" id="raw-timer-caret" data-tip="Pick a time or a date | Scroll the columns, or type it in. Leave the date empty and the time means today \u2014 or tomorrow if it has passed.">&#9662;</button><span class="ww-ring clk-one" id="clk-one" data-tip="One shot \u2014 in one hour | Rings once an hour from now and warps you here. Off a membrane, it makes a new membrane for it.">1</span></span>
 <div class="bm-pop clk-pop" id="clk-pop">
 ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vhelper' + (meosVHelperOn() ? ' on' : '') + '" id="clk-vhelper" data-tip="V-helper | The \u23f0 in the menu bar. Orange = it is there and stays resident: it keeps your \u23f0 ringing while ' + esc(meosAppName()) + ' is closed, and starts or quits ' + esc(meosAppName()) + ' from there, like the Dock. Grey = nothing in the menu bar. Click to switch.">V-helper</button></div>' : ''}
   <div class="clk-tip" id="clk-tip"></div>
@@ -30496,6 +30527,9 @@ const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.act
 if(hb&&ft)hb.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const closed=!ft.classList.contains('htoc-closed');ft.classList.toggle('htoc-closed',closed);hPaint();vscode.postMessage({type:'htocOpen',open:!closed});if(typeof hideTocTip==='function')hideTocTip();});
 try{const mo=new MutationObserver(()=>hPaint());const tr=document.getElementById('toc-tab-row'),bd=document.getElementById('fixed-toc-body');if(tr)mo.observe(tr,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});if(bd)mo.observe(bd,{childList:true,subtree:true});document.addEventListener('change',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('toc-check'))hPaint();},true);}catch(e){}
 hPaint();}
+/* v4.2.550: ⏰の右肩の①= 1時間後に一度だけ(パネルの Set と同じ道= 膜の外なら膜ごと作る) */
+const c1=document.getElementById('clk-one');if(c1)c1.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(Date.now()+3600000),p=x=>(x<10?'0':'')+x;
+vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),rep:false,up:false,dual:true,cycle:'',title:'',tags:null,lock:false,anchor:false});});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});
 {const tb=document.getElementById('th-btn'),tp=document.getElementById('th-pop'),tr=document.getElementById('th-ring'),tv=document.getElementById('th-btn-val');let thPicked=false,thTimer=null;
 const thAct=(r,scroll)=>{tp.querySelectorAll('.th-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<tp.scrollTop)tp.scrollTop=top-4;else if(bot>tp.scrollTop+tp.clientHeight)tp.scrollTop=bot-tp.clientHeight+4;}};
@@ -32516,7 +32550,7 @@ function toggleMeDock(editorOverride) {
         //   ★どこへ書くかは **Set を押した瞬間のカーソル**が決める(read は値をパネルへ持って来るだけ・覚えを持たない)。
         //     カーソルが⏰FC の行の上= その行を書き直す(その⏰の膜として) / それ以外(開始膜・閉じ膜・膜の中)= その膜の⏰FC群の最後に足す。
         //   ★v4.2.391: ⏰FC群のすぐ下の行もその群の膜 / ★v4.2.392: 足せる場所を限る(下の meosClockSetTarget)。
-        ...(meosClockSetTarget() || {}) };
+        ...(await meosClockSetTargetOrCreate()) };
       // ★★v4.2.392(俊克 改良1「ものすごい長い膜だと、間違って⏰を付けたことに気づかないことがある。
       //   タイマーの追加は、閉じ膜あるいは⏰FC群の直後の空行に限定しないか?」):
       //   ★場所が違えば書かずに断り、パネルを開き直して札を出す(値はそのまま= 置き直して押し直すだけ)。
@@ -32525,8 +32559,8 @@ function toggleMeDock(editorOverride) {
       if (Array.isArray(message.more) && message.more.length && typeof _opts.atLine === 'number') {
         try { const _e0 = meosCurrentEditor(); const _g0 = _e0 ? meosClockFcScan(_e0.document).filter(c => c.key === _opts.atKey).sort((a, b) => a.line - b.line) : []; if (_g0.length) _opts.atLine = _g0[0].line; } catch (_) { }
       }
-      if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); return; }
-      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); await meosClockSetMore(message, _opts); return; }   // v4.2.395: 起点なし
+      if (message.minutes) { await meosStartPseudoTimer(Number(message.minutes), 0, null, _opts); await meosClockCaretBeforeClose(_opts.atKey); return; }
+      if (String(message.when || '') === '' && _opts.cycle && _opts.cycle.length) { _opts.noOrigin = true; await meosStartPseudoTimer(0, 0, null, _opts); meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); await meosClockSetMore(message, _opts); await meosClockCaretBeforeClose(_opts.atKey); return; }   // v4.2.395: 起点なし
       const w = meosParseWhen(message.when);
       // ★繰返しthat在るなら、起点は過去でもよい(俊克 改良2)。
       // ★★v4.2.89(俊克 バグ2): **一度きりも過去を受ける**= ドラムの日付が過去なら、そこから数えるストップウォッチ
@@ -32539,6 +32573,7 @@ function toggleMeDock(editorOverride) {
       await meosStartPseudoTimer(0, w ? w.ms : 0, _org, _opts);
       try { if (_org && _org.getTime() <= Date.now() + 1000) meosClockSetGong(_opts.title, _opts.cycleSrc, _opts.cycle, _opts.rounds); } catch (_) { }   // v4.2.440: 最初のゴング
       await meosClockSetMore(message, _opts);   // v4.2.410: 箱の2行目から先
+      await meosClockCaretBeforeClose(_opts.atKey);   // v4.2.550
       return;
     }           // v4.0.442/448: ⏰=テスト用紙
     // v4.1.65: ▾を開いた時だけ訊かれる= カーソルthat動く度に14万行を読まない。

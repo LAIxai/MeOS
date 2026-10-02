@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.550 (2026-10-02)
+- **A timed membrane in one click.** Press ⏰ **Set** anywhere — off a membrane, it makes a new membrane right there (named ⏰_ plus the time) and puts the clock in it. The presets 🍅 / 💧 / 💓 work the same way.
+- **① on the ⏰ button** — one shot: rings once an hour from now and warps you back.
+- **Set works on the opening ▼ line too**, so a folded membrane can get its clock without unfolding it first.
+- After Set, the caret moves to the line just above the closing ▲, so you can see the clock run and change it straight away.
+
 ### v4.2.544 (2026-10-01)
 - ▦ makes a table from plain text: select lines separated by tabs or spaces — such as a table copied from a web page that pasted as plain text — and press ▦. The first line becomes the header. Tabs keep empty cells; with spaces, two or more spaces separate the cells, so "New York" stays in one cell.
 
