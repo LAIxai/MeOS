@@ -6884,6 +6884,35 @@ function wrapRefMark(doc, core) {
   return core;
 }
 const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
+// ★★v4.2.562(俊克「パズルの1つの文字をOptクリックすると、どこか特別な場所にワープ」「P1〜P6」「何も無い最初のとき、MをOptクリックすると、
+//   現在のLine位置にパズルタグが書き込まれる。消す時は、直接消す」「間抜けのときは制限。並べ直せば飛べる」):
+//   ★印= 点膜 {* ▶◀mP1=M_TS *}(参照符 mRn と同じ形の別の族)。字に結ぶ= M e D o c k → P1〜P6(並べ替えても行き先は字と一緒)。
+//   ★印が無い字= カーソルの行(の上)に印を書く / 有る字= そこへ飛ぶ(2つ以上なら、カーソルの次の印へ巡る)。間抜け/Deco の間は拡張が知らせを受けない(v4.2.500 の門)。
+const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=/;
+const MEOS_PUZZLE_LETTERS = 'MeDock';
+async function meosPuzzleTag(ch) {
+  try {
+    const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
+    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
+    const doc = ed.document, hits = [];
+    const L = meosDocLines(doc);
+    for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = MEOS_PUZZLE_TAG_RE.exec(t); if (m && +m[1] === n) hits.push(i); }
+    if (!hits.length) {
+      const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
+      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' *}') + '\n';
+      await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag));
+      meosDbg('[puzzleTag] ' + ch + '=P' + n + ' を書いた 行=' + (ln + 1));
+      vscode.window.setStatusBarMessage('MeOS: ' + ch + ' \u2192 here (P' + n + ')', 3000);
+      return;
+    }
+    const cur = ed.selection.active.line, to = hits.find(h => h > cur);
+    const line = (to !== undefined) ? to : hits[0];
+    const pos = new vscode.Position(line, 0);
+    const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
+    try { shown.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
+    meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ 行=' + (line + 1) + ' (' + hits.length + '本)');
+  } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
+}
 const REF_MARK_DISABLED = '\u25b7\u25c1'; // ▷◁
 function lineHasRefMark(t) { return t.indexOf(REF_MARK_ACTIVE) >= 0 || t.indexOf(REF_MARK_DISABLED) >= 0; }
 // v4.0.215(俊克 8/15「①表の整形が凸凹に見える」の道中で見つけた): ★参照符も**バッククォートの中は文字そのもの**
@@ -31502,6 +31531,7 @@ function end(commit){if(!press)return;const p=press;press=null;try{p.t.releasePo
 document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.remove('dragging');
 if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});}}
 row.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const t=ev.target&&ev.target.closest&&ev.target.closest('.md-tile');if(!t)return;
+if(ev.altKey){ev.preventDefault();vscode.postMessage({type:'mdTileJump',ch:t.getAttribute('data-ch')});return;}/* v4.2.562: Opt+クリック= その字の行き先へ(無ければ印を書く) */
 ev.preventDefault();press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
 row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=press;const x=px(ev);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
@@ -32111,7 +32141,7 @@ function toggleMeDock(editorOverride) {
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
         if (wasShut && !meosDockLocked(o) && !meosDockCrypt(o) && !meosDockHideEnc(o)) setTimeout(() => { try { meosMeDockRedraw(); } catch (_) { } }, 50);
       } return; }
-    { const _o09 = meosDockTiles(); if (meosDockLocked(_o09)) return; if (meosDockCrypt(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) < 0) return; if (meosDockHideEnc(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) >= 0) return; }
+    { const _o09 = meosDockTiles(); if (meosDockLocked(_o09)) return; if (meosDockCrypt(_o09) && message && message.type === 'mdTileJump') return; if (meosDockCrypt(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) < 0) return; if (meosDockHideEnc(_o09) && MEOS_DOCK_CRYPT_MSGS.indexOf(message && message.type) >= 0) return; }
     // v3.1.16(俊克): Me Dock全体ズームの永続化＋「本文も同期」トグルでエディタのフォントズームも連動。
     if (message && message.type === 'htocOpen') { try { extensionContext.globalState.update('htocOpen', !!message.open); } catch (_) {} return; }   // v4.2.250
     if (message && message.type === 'fmtTipSeen') { try { const m = Object.assign({}, extensionContext.globalState.get('fmtTipSeen') || {}); m[String(message.key || '')] = String(message.day || ''); extensionContext.globalState.update('fmtTipSeen', m); } catch (_) {} return; }   // v4.2.239
@@ -32490,6 +32520,7 @@ function toggleMeDock(editorOverride) {
       try { await meosVHelperSet(!meosVHelperOn(), true); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
       return;
     }
+    if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
     if (message && message.type === 'handPoof') { meosPlayNoChange(true); return; }   // v4.2.548: 手の駒を捨てた音= 🔔 で選んだ音
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
       try { const v = (message.value === 'macos' || message.value === 'macos22' || message.value === 'system') ? message.value : 'btron'; await vscode.workspace.getConfiguration('laiMembrane').update('pointerHand', v, vscode.ConfigurationTarget.Global); } catch (_) { }
