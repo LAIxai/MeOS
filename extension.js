@@ -15020,7 +15020,8 @@ function meosNoChangeSoundPath() {
 // ★v4.2.514(俊克「保存済のときに Cmd+S を押すと鳴らしているのは何の音? それを Gong などの設定音にすればいい」):
 //   今までは MeOS が作った「ホワン、ホワン」(下がる2音)。→ 設定 laiMembrane.noChangeSound(既定 Gong)。Soft= 今までの音・空= 鳴らさない
 // v4.2.548: clockOnly= Cmd+S 用の上書き(noChangeSound)を見ず、🔔 で選んだ ⏰ の音だけを鳴らす(手の駒を捨てた時)
-function meosPlayNoChange(clockOnly) {
+// v4.2.549: twice= 2回(「まぬけ、まぬけ!!」)。1回目は頭の0.7秒だけで切って、すぐ2回目へ(Gong の長い余韻を待たない)
+function meosPlayNoChange(clockOnly, twice) {
   try {
     // v4.2.515(俊克 改良1「保存済のときの音は、タイマ音設定ボタンで設定してある音を使用する」): 既定(空)= Me Dock の 🔔 で選んだ ⏰ の音。None= 鳴らさない
     let nm = ''; try { const c = vscode.workspace.getConfiguration('laiMembrane'); nm = clockOnly ? '' : String(c.get('noChangeSound', '') || '').trim(); if (!nm) nm = String(c.get('clockSound', 'MEW') || '').trim(); nm = meosSoundCanon(nm); } catch (_) { }
@@ -15030,7 +15031,8 @@ function meosPlayNoChange(clockOnly) {
     if (!f) f = meosNoChangeSoundPath(); if (!f) return;
     const { exec } = require('child_process');
     const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
-    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 1.5 ' + q(f), () => { });
+    if (process.platform === 'darwin') exec((twice ? '/usr/bin/afplay -v 1.5 -t 0.7 ' + q(f) + '; ' : '') + '/usr/bin/afplay -v 1.5 ' + q(f), () => { });
+    else if (twice) { meosPlayNoChange(clockOnly, false); setTimeout(() => meosPlayNoChange(clockOnly, false), 800); }
     else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
     else exec('paplay ' + q(f) + ' || aplay -q ' + q(f) + ' || printf "\\a"', () => { });
   } catch (_) { }
@@ -32055,6 +32057,10 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'mdDbg') { meosDbg('[mdDbg] ' + String(message.info || '').slice(0, 1500)); return; }   // v4.2.512
     if (message && message.type === 'mdTiles') { const o = String(message.order || ''); if (meosDockTilesValid(o)) {
         const was = meosDockTiles(), wasShut = meosDockLocked(was) || meosDockCrypt(was) || meosDockHideEnc(was);
+        // ★v4.2.549(俊克「間抜けになった時などの特別な並びのときに、効果音を2回。まぬけ、まぬけ!!と言っている感じ。ピンポーンと真逆」):
+        //   特別な並び(間抜け/Deco/eMcoD)に**入った**時だけ、🔔 で選んだ音を2回。同じ種類の中で並べ替えても鳴らさない
+        const _kind = (x) => meosDockLocked(x) ? 'lock' : meosDockCrypt(x) ? 'crypt' : meosDockHideEnc(x) ? 'hide' : '';
+        if (_kind(o) && _kind(o) !== _kind(was)) { try { meosPlayNoChange(true, true); } catch (_) { } }
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
