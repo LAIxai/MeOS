@@ -6923,9 +6923,16 @@ async function meosPuzzleTag(ch) {
 }
 // 1つの字の印を全部= {line, n, name}
 const MEOS_PUZZLE_TAG_NAME_RE = /\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=[ \t]*([^\s*]+)/;
+// ★v4.2.564(俊克 改良2「MをOptクリックしたら、貴方がコードブロックに書いた所に飛んでしまった」): 引用した記法は本物にならない
+//   ([[feedback_quoted_notation_must_be_inert]])= 囲い(```)の中の行と、`…` の中は数えない(参照符と同じ meosFenceLines / meosRefScanText)
+function meosPuzzleTagLine(doc, i, raw) {
+  if (raw.indexOf('mP') < 0) return null;
+  try { if (meosFenceLines(doc).has(i)) return null; } catch (_) { }
+  return MEOS_PUZZLE_TAG_NAME_RE.exec(meosRefScanText(raw));
+}
 function meosPuzzleTagsOf(doc, n) {
   const out = [], L = meosDocLines(doc);
-  for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = MEOS_PUZZLE_TAG_NAME_RE.exec(t); if (m && (!n || +m[1] === n)) out.push({ line: i, n: +m[1], name: m[2] }); }
+  for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = meosPuzzleTagLine(doc, i, t); if (m && (!n || +m[1] === n)) out.push({ line: i, n: +m[1], name: m[2] }); }
   return out;
 }
 // F の覚え= ファイル+字 → 名前(この Mac の覚え)
@@ -6937,7 +6944,7 @@ function meosPuzzleCrownAtCaret(e) {
   try {
     const ed = e && e.textEditor; if (!ed) return; const doc = ed.document, ln = ed.selection.active.line;
     if (ln >= doc.lineCount) return; const t = doc.lineAt(ln).text; if (t.indexOf('mP') < 0) return;
-    const m = MEOS_PUZZLE_TAG_NAME_RE.exec(t); if (!m) return;
+    const m = meosPuzzleTagLine(doc, ln, t); if (!m) return;
     if (_meosPuzzleJumpAt && _meosPuzzleJumpAt.uri === doc.uri.toString() && _meosPuzzleJumpAt.line === ln) { _meosPuzzleJumpAt = null; return; }
     const n = +m[1], cur = meosPuzzleFGet(doc, n);
     if (cur && meosPuzzleTagsOf(doc, n).some(h => h.name === cur)) return;   // F が居る間は動かない
@@ -26723,6 +26730,9 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-red-x::after{transform:rotate(-45deg)}
 .hp-red-long::before{left:-.5px;top:-40px;width:1px;height:80px}
 .hp-red-long::after{left:-40px;top:-.5px;width:80px;height:1px}
+/* v4.2.564(俊克 改良1「Optを押したとき、ホットスポットの×あるいはデカイ十字を赤から緑に。パズルの中に入っても移動手に切り替わらない= クリックするのだから選択指のまま」) */
+body.meos-opt .hp-red::before,body.meos-opt .hp-red::after{background:#18c94a}
+body.meos-opt .md-tile{cursor:var(--meos-hand)}
 .hand-pick .hp-aim{position:absolute;left:10.5px;top:3.5px;width:0;height:0;pointer-events:none}
 .hand-pick .hp-aim::before,.hand-pick .hp-aim::after{content:'';position:absolute;background:#ff9500}
 .hand-pick .hp-aim::before{left:-.5px;top:-3.5px;width:1px;height:7px}
@@ -31659,7 +31669,9 @@ aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.datase
 try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',cur()==='system');}}catch(_){}}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false;
-function moveRed(ev){const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
+function optOn(v){document.body.classList.toggle('meos-opt',!!v);}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
+window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
+function moveRed(ev){optOn(ev.altKey);const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
 hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');});
 /* v4.2.527(俊克 バグ2「OSの橙がOの中心から大きく外れる」・改良2「OSの長い赤い+が見えない」): 手を替えてもページは読み直されず、ボタンの印(class)だけが替わる。
