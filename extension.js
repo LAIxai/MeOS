@@ -29178,9 +29178,15 @@ let fmtPopKind='highlight',fmtPopCh=null,fmtPopBottom=0,fmtPopCenterX=0;
 const fmtChLabel=(kind,ch)=>ch==='fg'?(kind==='strike'?'Line color':'Text color'):'Background color';
 // {* ▲mCN=dock_js_zoomme *}
 // {* ▼mCN=dock_js_format // Format(色ポップ・↻リング・🐱旧記法・太字/斜体の組合せ) *}
-function placeFmtPop(){if(!fmtPop||!fmtPop.classList.contains('on'))return;requestAnimationFrame(()=>{const h=fmtPop.offsetHeight||70,
-w=fmtPop.offsetWidth||130;const left=Math.min(Math.max(6,fmtPopCenterX-w/2),window.innerWidth-w-6);fmtPop.style.left=left+'px';
-fmtPop.style.top=Math.max(6,fmtPopBottom-h)+'px';});}
+/* ★v4.2.568(俊克 バグ1「Me Dockの並びを変えた後から、ハイライトの▼の色パネルがとんでもない所に出て、サイズがちっちゃくなっている」):
+   真因= v4.2.461 で色の窓に Me Dock の縮尺(zoom)を掛けた。縮めた部品は left/top も同じ倍率で縮む= ボタンの真上の数を入れても左上へ寄る。
+   → 見た目の大きさ(w×z)で置き場所を決め、left/top は z で割って入れる(画面の幅も四角の物差し= v4.2.153) */
+function placeFmtPop(){if(!fmtPop||!fmtPop.classList.contains('on'))return;requestAnimationFrame(()=>{
+const z=parseFloat(fmtPop.style.zoom)||1,h=(fmtPop.offsetHeight||70)*z,w=(fmtPop.offsetWidth||130)*z;
+const vw=(document.body.getBoundingClientRect().width)||window.innerWidth;
+const left=Math.min(Math.max(6,fmtPopCenterX-w/2),vw-w-6),top=Math.max(6,fmtPopBottom-h);
+fmtPop.style.left=(left/z)+'px';fmtPop.style.top=(top/z)+'px';
+try{const pr=fmtPop.getBoundingClientRect();vscode.postMessage({type:'dockDbg',text:'fmtpop z='+z.toFixed(3)+' want='+Math.round(left)+','+Math.round(top)+' got='+Math.round(pr.left)+','+Math.round(pr.top)+' size='+Math.round(pr.width)+'x'+Math.round(pr.height)+' cx='+Math.round(fmtPopCenterX)+' bottom='+Math.round(fmtPopBottom)});}catch(_){}});}
 /* v0.9.999143(俊克): 色ピッカー/リング適用のスロット不一致を解消。actionable時は「今ボタンが表示している幅wのスロット」を返し、ピッカーの編集先とリングの適用先を一致させる(見出しで色が適用されない真因)。 */function fmtCurSpec(kind){if(kind==='metex')return fmtSpec.metex;
 if(window.__fmtActionable&&window.__fmtActionable[kind]){const r=(window.__fmtRing&&window.__fmtRing[kind])||0;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;
 const w=(r===0)?baseW:(((baseW-1+r)%3)+1);return (kind==='heading')?fmtHeadingColors[w]:(kind==='highlight')?fmtHlSlots[w-1]:fmtStSlots[w-1];
@@ -31707,7 +31713,8 @@ let press=null,suppress=false;
 /* ★v4.2.567(俊克 改良1「ポインターボタンの上では緑の×は消す。正確に実装するなら、Optクリックが動作する場合のみ緑の×付きの選択指にするべき」):
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
 const OPT_SEL='.md-tile,#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
-function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{hit=!!v&&!!lastPt&&!!(lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL));}catch(_){}
+function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;
+/* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
 function moveRed(ev){optOn(ev.altKey);const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
