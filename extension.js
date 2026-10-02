@@ -11437,8 +11437,13 @@ function meosClockSetTarget() {
 // ★★v4.2.550(俊克「タイマー付きの膜を1クリックで即行で作れるように。すぐに作って起動できることが命」):
 //   今まで断っていた場所(膜の外・膜の中の普通の行)では、**その場に膜を作って**その膜に⏰を付ける= チェックで選ばない・カーソルの場所が決める。
 //   膜は Edit Me の Create と同じ道(addMembraneWithName)で作る。名前は ⏰_TS(後から Rename Me で変えればいい)。
-async function meosClockSetTargetOrCreate() {
+// ★v4.2.553(俊克「追加するか上書きするかが曖昧なので、SetとCreateの2つのボタンを。Setは、Resetの意味」):
+//   add===true(Create・①)= 常に足す(⏰行の上でもその膜の群の後ろへ) / add===false(Set)= ⏰行の上だけ・その行を書き直す /
+//   add 無し(Enter など古い道)= 今までどおりカーソルの場所が決める
+async function meosClockSetTargetOrCreate(add) {
   let t = meosClockSetTarget() || {};
+  if (add === false && typeof t.atLine !== 'number') return { refused: 'Set \u23f0 | Put the caret on a \u23f0 line to change it. To add a new one, press Create \u23f0.' };
+  if (add === true && typeof t.atLine === 'number') { t = { atKey: t.atKey }; }
   if (!t.refused) return t;
   try {
     await addMembraneWithName('\u23f0_' + meosMembraneStamp(new Date()));
@@ -27847,6 +27852,7 @@ color:#ffffff;z-index:4;padding:0}
 .clk-set{margin-left:auto;font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(224,128,58,.35);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);opacity:.45;pointer-events:none;cursor:default}
 .clk-set.on{border-color:rgba(224,128,58,.85);background:rgba(224,128,58,.30);opacity:1;pointer-events:auto;cursor:var(--meos-hand)}
 .clk-set.on:hover{background:rgba(224,128,58,.42)}
+.clk-foot #clk-set{margin-left:6px!important}   /* v4.2.553: Create ⏰ の右に並べる */
 /* ★v4.1.133(俊克 9/5 pm03:12「これは、既存の膜の直下にペーストするのが目的so、膜の同時生成は不要」):
    ★copy は Set と同じ駒の形で、**色は控えめ**= 掛ける(Set)が主役、写す(copy)は脇役。 */
 .clk-copy{font-size:11px;font-weight:800;padding:2px 7px;margin-right:4px;border:1px solid rgba(224,128,58,.45);border-radius:6px;background:transparent;color:var(--vscode-editor-foreground);cursor:var(--meos-hand);opacity:.9}
@@ -28170,7 +28176,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="clk-cols clk-ncols" id="clk-ncols"><div class="clk-col clk-ncol" id="clk-nd"></div></div>
   <div class="clk-row clk-ufcrow"><span class="clk-lab">UFC</span><span class="clk-hint" id="clk-hint-rep">one line = one \u23f0 \u00b7 00 ends the list</span></div>
   <div class="clk-rawline" id="clk-rawline"></div>
-  <div class="clk-foot"><span class="clk-modes"><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-set">Set \u23f0</button></div>
+  <div class="clk-foot"><span class="clk-modes"><button class="clk-copy" id="clk-read" data-tip="Read this membrane's clock into the panel \u2014 the time, the repeat and the tags. Change what you want and press Set.">read \u23f0</button><button class="clk-copy" id="clk-copy" data-tip="copy \u23f0 | The \u23f0 lines of this membrane, and only those. Paste under another membrane\u2019s closing line.">copy \u23f0</button></span><button class="clk-set" id="clk-create" data-tip="Create \u23f0 | Add a new clock to this membrane. Off a membrane, it makes a new membrane for it.">Create \u23f0</button><button class="clk-set" id="clk-set">Set \u23f0</button></div>
 </div><button class="cancel idx-goto-image" id="idx-goto-image" style="margin-left:auto;font-size:15px" data-tip="Go to this membrane's image | Jump to where the image/attachment is written (the viewer opens there). A second way besides the 🖼 popup on the folded header — handy in a long membrane. Use Back to return.">🖼</button></div></div>
 </div><div class="img-viewer" id="img-viewer"><div class="iv-bar"><span class="iv-split" title="Previous / next image"><button class="iv-btn" id="iv-prev" title="Previous image (⇦)">⇦</button><span class="iv-badge iv-badge-tr" id="iv-next" title="Next image (⇨)">⇨</span></span><span class="iv-split" title="Zoom in · ⊖ out · ⊙ fit to width"><button class="iv-btn" id="iv-zin" title="Zoom in (＋)">＋</button><span class="iv-badge iv-badge-tr" id="iv-zout" title="Zoom out (⊖)">⊖</span><span class="iv-badge iv-badge-br" id="iv-zfit" title="Fit to width (⊙ · or Cmd/Ctrl+click the image)">⊙</span></span><span class="iv-count" id="iv-count"></span><span class="iv-spacer"></span><button class="iv-btn iv-close" id="iv-close" title="Close viewer (back to Me Dock)">×</button></div><div class="iv-name-row"><span class="iv-name-label">Edit Me</span><input class="iv-name-input" id="iv-name" spellcheck="false" title="Rename this image membrane (Enter = Set). A unique name lets you warp here from anywhere — e.g. a list of figures in a manual."/><button class="iv-name-btn" id="iv-name-stamp" title="Time Stamp — refresh the trailing _HHMMSS.mmm so the name stays unique (warp target)">↻</button><button class="iv-name-btn" id="iv-name-reset" title="Reset the field back to the current name">Reset</button><button class="iv-name-go" id="iv-name-go" title="Set — apply the new name (Enter)">Set</button></div><div class="iv-stage" id="iv-stage"><img class="iv-img" id="iv-img" alt=""/></div></div><main class="body">
 
@@ -30071,7 +30077,7 @@ if(clkCaret&&clkPop){
      ★★★**当たりthat見えている物より小さかった**= □ は子の span so、id で見ていた私の枝を素通りしていた。
      ★→ **押した物の上をたどって、どのボタンの中かを訊く**= 見えている箱の中は、どこでも当たり
      ([[project_direct_manipulation_mark]] 印は押せる大きさ／当たりthat表示と一致する)。 */
-  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-anchor,#clk-pring,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set'):null;
+  var _hit=(ev.target&&ev.target.closest)?ev.target.closest('#clk-lock,#clk-unlock,#clk-anchor,#clk-pring,#clk-rep,#clk-dir,#clk-cyc,#clk-tagin,#clk-copy,#clk-read,#clk-now,#clk-set,#clk-create'):null;
   var _id=_hit?_hit.id:'';
   if(_id==='clk-lock'||_id==='clk-unlock'){clkLock=(_id==='clk-lock');clkPaintLock();clkTouch();return;}if(_id==='clk-anchor'){clkAnchor=!clkAnchor;clkPaintLock();clkTouch();return;}   /* v4.2.315: 振り分けの一覧に #clk-anchor が無く、押しても届いていなかった */
   /* ★★v4.2.315(俊克 pm03:28「⏰▼の設定のプリセット3つを↻ボタンを付けて、設定できるようにしようよ。例えば、24h繰返し。忘れないように、1日一回鳴らす」):
@@ -30107,7 +30113,7 @@ if(clkCaret&&clkPop){
   if(_id==='clk-dir'){clkDir=!clkDir;clkPaintDir();return;}
   if(_id==='clk-cyc'||_id==='clk-tagin'||_id==='clk-tagnew')return;   /* 箱は押しても閉じない */
   if(_id==='clk-copy'){vscode.postMessage({type:'clockCopy'});return;}   /* v4.1.133 */
-  if(_id==='clk-set'){clkFire();return;}
+  if(_id==='clk-set'){clkFire(false);return;}if(_id==='clk-create'){clkFire(true);return;}   /* v4.2.553 */
  });
  /* ★★v4.1.2: 合体行を押す→同じ場所に箱が出る→ Enter で掛ける / Esc でやめる。
     出て行く時(blur)は書いた物を拾う= 押した先が Set でも値が生きる。 */
@@ -30122,9 +30128,10 @@ if(clkCaret&&clkPop){
  function clkPaintSet(){var b=document.getElementById('clk-set');if(!b)return;
   var cy=document.getElementById('clk-cyc');
   var need=(clkRep&&(!cy||!String(cy.value||'').trim()));   /* ✓なのに長さthat空= まだ言い切っていない */
-  b.classList.toggle('on',clkDirty&&!need&&window.__clkTargetOk!==false);
+  b.classList.toggle('on',clkDirty&&!need&&window.__clkTargetOk!==false&&window.__clkTargetMode==='change');   /* v4.2.553: Set= ⏰行の上だけ(書き直す) */
+  var bc=document.getElementById('clk-create');if(bc)bc.classList.toggle('on',clkDirty&&!need&&window.__clkTargetOk!==false);
   /* ★v4.2.393: 置き場所が違う間は押せず、tip が置き場所を言う(カーソルを動かすたびに拡張が判定し直す) */
-  if(window.__clkTargetOk===false)b.setAttribute('data-tip','Set | Put the caret on the closing \u25b2 line or on the empty line just below the \u23f0 lines to add a clock, or on a \u23f0 line to change it.');else b.removeAttribute('data-tip');}
+  b.setAttribute('data-tip',window.__clkTargetMode==='change'?'Set \u23f0 | Change the \u23f0 line under the caret to what the panel shows.':'Set \u23f0 | Put the caret on a \u23f0 line to change it. To add a new one, press Create \u23f0.');}
  function clkPaintLock(){var u=document.getElementById('clk-lockunit');if(u)u.classList.toggle('on',clkLock);var an=document.getElementById('clk-anchor');if(an){an.classList.toggle('on',clkAnchor);an.textContent=clkAnchor?'\u2693\ufe0e':'\ud83d\udea2\ud83d\udca8';}try{if(window.__clkPaintPrev)window.__clkPaintPrev();}catch(e){}}   /* v4.2.313(俊克 改良1「⚓ボタンを押すと、🚢💨という二文字のボタンに切り替える」): 今の姿を形で出す= 🚢💨 飛んで行く / ⚓ 停泊 */
  /* v4.1.66: \u2610 だけ大きく出せるように、箱と字を別の子にする。 */
  /* ★★v4.1.170(俊克 改良2「\u21ba\u21bb は、緑/水に色を付けて下さい。Repeatチェックボックスの方もね」):
@@ -30186,7 +30193,7 @@ if(clkCaret&&clkPop){
   clkBox(b,clkRep,'Repeat \u21ba\u21bb');}
   try{clkPop.classList.toggle('norepeat',!clkRep);}catch(e){}
   var cy=document.getElementById('clk-cyc');if(cy)cy.disabled=!clkRep;clkPaintDir();}
- function clkFire(){var v=clkText();if(!v)return;var cy=document.getElementById('clk-cyc');
+ function clkFire(add){var v=clkText();if(!v)return;var cy=document.getElementById('clk-cyc');
   var tg=document.getElementById('clk-tagin');
   /* v4.1.65: 面that言い切る= rep:false なら**繰返しを外す**(空欄=触らない、はもう無い)。 */
   clkLastSet=Date.now();                                      /* v4.1.86: 続けて立てる人のために、さっきを覚える */
@@ -30194,7 +30201,7 @@ if(clkCaret&&clkPop){
   var _ls=(clkRep&&cy)?String(cy.value||'').split(/\\n/).map(function(x){var k=x.indexOf('//');return {cycle:(k>=0?x.slice(0,k):x).trim(),title:(k>=0?x.slice(k+2):'').trim()};}).filter(function(o){return o.cycle;}):[];
   var _multi=_ls.length>1;var _l0=_ls[0]||{cycle:'',title:''};
   var _fx=window.__clkLineFx?window.__clkLineFx():[];var _more=_multi?_ls.slice(1).map(function(o,j){var f=_fx[j+1];return {cycle:o.cycle,title:o.title,listNo:'1.',anchor:f?!!f.a:clkAnchor,lock:f?!!f.l:false};}):[];   /* v4.2.424: 行ごとの🚢💨/🔓 */
-  vscode.postMessage({type:'pseudoTimerSet',more:_more,title:_l0.title||window.__clkReadTitle||'',listNo:window.__clkReadListNo||(_multi?'1.':''),when:(window.__clkNoOrigin&&clkRep)?'':v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:_l0.cycle,tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
+  vscode.postMessage({type:'pseudoTimerSet',add:(add===true||add===false)?add:undefined,more:_more,title:_l0.title||window.__clkReadTitle||'',listNo:window.__clkReadListNo||(_multi?'1.':''),when:(window.__clkNoOrigin&&clkRep)?'':v,lock:clkLock,anchor:clkAnchor,rep:clkRep,up:clkDir,dual:true,cycle:_l0.cycle,tags:(tg&&window.__clkTagTouched)?tg.value:null});   /* ★v4.2.394(俊克「別の膜で Set したら開始膜のタグが上書きされた」): 触っていない空欄で膜の札を消さない */   /* v4.2.390: どこへ書くかは Set の時のカーソルが決める(拡張の側) */   /* v4.1.142: \u21ba\u21bb を既定にする */closeClkPop();}
  function clkTagEl0(){return document.getElementById('clk-tagin');}   /* v4.1.142 */
  var clkWhenEl=document.getElementById('clk-when'),clkEditEl=document.getElementById('clk-edit');
  var clkCycEl=document.getElementById('clk-cyc');
@@ -30530,7 +30537,7 @@ try{const mo=new MutationObserver(()=>hPaint());const tr=document.getElementById
 hPaint();}
 /* v4.2.550: ⏰の右肩の①= 1時間後に一度だけ(パネルの Set と同じ道= 膜の外なら膜ごと作る) */
 const c1=document.getElementById('clk-one');if(c1)c1.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(Date.now()+3600000),p=x=>(x<10?'0':'')+x;
-vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),rep:false,up:false,dual:true,cycle:'',title:'One-shot timer 1h',tags:null,lock:false,anchor:false});});
+vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),add:true,rep:false,up:false,dual:true,cycle:'',title:'One-shot timer 1h',tags:null,lock:false,anchor:false});});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});
 {const tb=document.getElementById('th-btn'),tp=document.getElementById('th-pop'),tr=document.getElementById('th-ring'),tv=document.getElementById('th-btn-val');let thPicked=false,thTimer=null;
 const thAct=(r,scroll)=>{tp.querySelectorAll('.th-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<tp.scrollTop)tp.scrollTop=top-4;else if(bot>tp.scrollTop+tp.clientHeight)tp.scrollTop=bot-tp.clientHeight+4;}};
@@ -31310,7 +31317,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
-if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
+if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
   clkRep=!!(m.cycle&&m.cycle.length);clkDir=!!m.up;
@@ -32551,7 +32558,7 @@ function toggleMeDock(editorOverride) {
         //   ★どこへ書くかは **Set を押した瞬間のカーソル**が決める(read は値をパネルへ持って来るだけ・覚えを持たない)。
         //     カーソルが⏰FC の行の上= その行を書き直す(その⏰の膜として) / それ以外(開始膜・閉じ膜・膜の中)= その膜の⏰FC群の最後に足す。
         //   ★v4.2.391: ⏰FC群のすぐ下の行もその群の膜 / ★v4.2.392: 足せる場所を限る(下の meosClockSetTarget)。
-        ...(await meosClockSetTargetOrCreate()) };
+        ...(await meosClockSetTargetOrCreate(message.add)) };
       // ★★v4.2.392(俊克 改良1「ものすごい長い膜だと、間違って⏰を付けたことに気づかないことがある。
       //   タイマーの追加は、閉じ膜あるいは⏰FC群の直後の空行に限定しないか?」):
       //   ★場所が違えば書かずに断り、パネルを開き直して札を出す(値はそのまま= 置き直して押し直すだけ)。

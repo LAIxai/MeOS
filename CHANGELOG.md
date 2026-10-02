@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.553 (2026-10-02)
+- **Create ⏰ and Set ⏰** in the ⏰ panel, like Create / Set in Edit Me. **Create** always adds a new clock (off a membrane, it makes the membrane too); **Set** changes the ⏰ line under the caret. ① adds, like Create.
+- A clock with no title gets one: *One-shot timer 1h*, *One-shot timer at 18:30*, *Repeat timer 8h* or *Stopwatch*. That is the text the menu bar shows — write your own after `//` to change it.
+
 ### v4.2.550 (2026-10-02)
 - **A timed membrane in one click.** Press ⏰ **Set** anywhere — off a membrane, it makes a new membrane right there (named ⏰_ plus the time) and puts the clock in it. The presets 🍅 / 💧 / 💓 work the same way.
 - **① on the ⏰ button** — one shot: rings once an hour from now and warps you back.
