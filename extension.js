@@ -37697,6 +37697,10 @@ function meosOrphanFcFollow(e) {
     const m = meosFcMate(doc, P);
     if (m && !m.onFc && m.nBody === 1 && m.mate >= 0) plan = { del: { from: m.fc0, to: m.b.end } };
   }
+  // ★v4.2.555(俊克 バグ1「1つのUFCを選択して削除キーを押すと、タイマー全部が消える」・ログ [fcRepair] 相手を失った指定行を消した 150380..150381):
+  //   この修復は**本文行に付いた FC**(表/箇条書きの1行ごとの指定)のための物。⏰ の UFC は**膜の持ち物**(閉じ膜の下に並ぶ)で、どの本文行の相手でもない。
+  //   1本目の⏰行を空にすると、その空行を「本文行」と読み、下の⏰行を「相手を失った FC」として消していた。→ Mew!UFC の行だけの群は消さない
+  if (plan && plan.del) { try { let allUfc = true; for (let i = plan.del.from; i <= plan.del.to; i++) { if (i >= doc.lineCount || doc.lineAt(i).text.indexOf('Mew!UFC') < 0) { allUfc = false; break; } } if (allUfc) plan = null; } catch (_) { } }
   if (!plan) return false;
   _meosOrphanFcBusy = true; deferRefreshCount++;
   (async () => {
