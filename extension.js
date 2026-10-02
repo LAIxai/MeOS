@@ -26758,10 +26758,9 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-red-long::before{left:-.5px;top:-40px;width:1px;height:80px}
 .hp-red-long::after{left:-40px;top:-.5px;width:80px;height:1px}
 /* v4.2.564(俊克 改良1「Optを押したとき、ホットスポットの×あるいはデカイ十字を赤から緑に。パズルの中に入っても移動手に切り替わらない= クリックするのだから選択指のまま」) */
-body.meos-opt .hp-red::before,body.meos-opt .hp-red::after{background:#18c94a}
 /* v4.2.566(俊克「従来のOptクリック(Me Dock内の、ハイライトをリンク付きにする時など)も、Optを押している時に緑の×。OSポインターの時はデカイ十字架ではなく緑の小さい×」):
    Opt の間は Me Dock のどこでも当たりに緑の小さな ×(body 直下= マウスの物差しで置く・大きさはヘッダーと同じ zoom)。ヘッダーの赤い印はその間は隠す(二重に出さない) */
-body.meos-opt .hp-red{display:none!important}
+body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出している間だけ */
 .hp-optx{position:absolute;left:0;top:0;width:0;height:0}
 .hp-float:not(.on)>.hp-optx{display:none}
 .hp-optx::before,.hp-optx::after{content:'';position:absolute;left:-.5px;top:-7px;width:1px;height:14px;background:#18c94a;box-shadow:0 0 0 .5px rgba(0,0,0,.55)}
@@ -31683,7 +31682,7 @@ function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,
 function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
 while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)return null;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return e===hdr?{x:x,y:y}:null;}
 const bal=mk('hp-balloon');const optx=mk('hp-optx');let lastPt=null;/* v4.2.566: Opt の間の緑の × */
-window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY};optOn(ev.altKey);},true);
+window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY,t:ev.target};optOn(ev.altKey);},true);
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
 function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)break;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return {x:x,y:y,w:el.offsetWidth,h:el.offsetHeight};}
@@ -31705,7 +31704,11 @@ aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.datase
 try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',cur()==='system');}}catch(_){}}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false;
-function optOn(v){document.body.classList.toggle('meos-opt',!!v);try{optx.w.classList.toggle('on',!!v&&!!lastPt);if(v&&lastPt)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
+/* ★v4.2.567(俊克 改良1「ポインターボタンの上では緑の×は消す。正確に実装するなら、Optクリックが動作する場合のみ緑の×付きの選択指にするべき」):
+   緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
+const OPT_SEL='.md-tile,#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
+function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{hit=!!v&&!!lastPt&&!!(lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL));}catch(_){}
+document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
 function moveRed(ev){optOn(ev.altKey);const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
