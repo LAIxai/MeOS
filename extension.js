@@ -2989,6 +2989,7 @@ let highlightFgByColor = null;      // v0.9.661: Map<色キー, decorationType> 
 // 実装はインライン装飾パイプライン(=={}==と同経路)=行膜機構ではない(俊克決定 2026.07.03 pm02:08)。
 let refPointHideDecoration;
 let refPointLabelDecoration;
+let puzzleFrontGutterDecoration;   // v4.2.565: パズルタグの F(紫の F)
 let refFrontGutterDecoration; // v0.9.99969: F参照符だけガターにアイコン。v99972: 青F(ref-front.svg)=栞の赤Fと区別(俊克バグ1)
 let refFrontPendingGutterDecoration; // v0.9.99972/99995: 保留参照のF=明るい灰の栞F(ref-front-pending.svg・赤止め)
 let refFrontPlainGutterDecoration; // v0.9.99981: 膜なしグループのF=薄い水色F(ref-front-plain.svg・俊克改良2)
@@ -4122,6 +4123,12 @@ function makeDecorations() {
   try { if (extensionContext && extensionContext.extensionUri) _refFrontOpts.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'ref-front.svg'); } catch (_) {}
   if (!_refFrontOpts.gutterIconPath) _refFrontOpts.before = { contentText: '🔷', margin: '0 3px 0 0' };
   refFrontGutterDecoration = vscode.window.createTextEditorDecorationType(_refFrontOpts);
+  // ★v4.2.565(俊克「最前線マークFは、常時ガターに表示」): パズルタグの F= 紫の F(参照の青F・栞の赤Fと区別)
+  { const _pzO = { rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed, overviewRulerColor: 'rgba(124, 58, 237, 0.95)', overviewRulerLane: vscode.OverviewRulerLane.Left, gutterIconSize: 'contain' };
+    try { if (extensionContext && extensionContext.extensionUri) _pzO.gutterIconPath = vscode.Uri.joinPath(extensionContext.extensionUri, 'puzzle-front.svg'); } catch (_) {}
+    if (!_pzO.gutterIconPath) _pzO.before = { contentText: '\ud83d\udfea', margin: '0 3px 0 0' };
+    if (puzzleFrontGutterDecoration) { try { puzzleFrontGutterDecoration.dispose(); } catch (_) { } }
+    puzzleFrontGutterDecoration = vscode.window.createTextEditorDecorationType(_pzO); }
   const _refFrontPendOpts = {
     rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     overviewRulerColor: 'rgba(203, 213, 225, 0.95)', // v0.9.99995: F保留=明るい灰(赤止め・俊克改良1)
@@ -6890,6 +6897,7 @@ const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
 //   ★印が無い字= カーソルの行(の上)に印を書く / 有る字= そこへ飛ぶ(2つ以上なら、カーソルの次の印へ巡る)。間抜け/Deco の間は拡張が知らせを受けない(v4.2.500 の門)。
 const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=/;
 const MEOS_PUZZLE_LETTERS = 'MeDock';
+const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
 async function meosPuzzleTag(ch) {
   try {
     const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
@@ -7661,6 +7669,7 @@ function applyPrettyLabels(editor) {
   const refPointLabelItems = [];
   const refPointCounts = {};
   const refPtAll = []; // v0.9.99969: F参照符ガター判定用(カーソル行の符も含む全収集)
+  const puzzlePtAll = []; // v4.2.565: パズルタグ(カーソル行も含む全部)= F のガター用
   // v1.0.10(俊克 バグ1): グループごとの注釈(desc符=参照膜)の個数を先に計算=符ホバーに「Jump to note」リンクを出す判定用。
   const refNoteCount = new Map(); try { for (const _p of collectRefPoints(editor.document)) { if (_p.desc && !_p.disabled) refNoteCount.set(_p.name, (refNoteCount.get(_p.name) || 0) + 1); } } catch (_) {}
   // v0.9.658: 取消線 ~~text~~(日時) の本体範囲（赤線）とマーカー範囲（~~・(日時)を隠す）。
@@ -7783,6 +7792,18 @@ function applyPrettyLabels(editor) {
     if (_inFence) continue;
     // v0.9.99967: 参照符(点膜▶◀)。カーソル行でも採番だけは進める(他の符の番号が揺れないように)。
     // v0.9.99981: ▷◁=無効化符は灰色チップ(番号なし)・採番/Fガターから除外(俊克改良3)。
+    // ★v4.2.565(俊克「P1タグは、文字カーソルがその外に出れば、参照グループのように、P1のような記号のみに」): 生データを隠して「P1」のチップ
+    if (text.indexOf('mP') >= 0 && lineHasRefMark(text)) {
+      const _pzText = meosRefScanText(text); MEOS_PUZZLE_TAG_FULL_RE.lastIndex = 0; let mPz;
+      while ((mPz = MEOS_PUZZLE_TAG_FULL_RE.exec(_pzText)) !== null) {
+        puzzlePtAll.push({ line, start: mPz.index, n: +mPz[1], name: mPz[2] });
+        if (_isRawLine(line)) continue;
+        const _letter = MEOS_PUZZLE_LETTERS.charAt(+mPz[1] - 1);
+        refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length), hoverMessage: new vscode.MarkdownString('P' + mPz[1] + ' \u2014 ' + _letter) });
+        refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
+          renderOptions: { before: { contentText: 'P' + mPz[1], color: 'rgba(124, 58, 237, 0.95)', backgroundColor: 'rgba(124, 58, 237, 0.14)', margin: '0 2px 0 2px', fontWeight: '600' } } });
+      }
+    }
     if (lineHasRefMark(text)) {
       const _refText = meosRefScanText(text); // v4.0.215: コードスパンの中は符として描かない/数えない
       REF_POINT_RE.lastIndex = 0;
@@ -8742,6 +8763,12 @@ function applyPrettyLabels(editor) {
       }
     } catch (_) {}
     setDecoCached(editor, refFrontGutterDecoration, 'refFront', refFrontItems);
+    // v4.2.565: パズルタグの F= 覚えた名前の1本(覚えが無く1本だけならそれ)
+    if (puzzleFrontGutterDecoration) { const _pf = [];
+      try { for (let n = 1; n <= 6; n++) { const g = puzzlePtAll.filter(q => q.n === n); if (!g.length) continue;
+        const fn = meosPuzzleFGet(editor.document, n); const f = g.find(q => q.name === fn) || (g.length === 1 ? g[0] : null);
+        if (f) _pf.push({ range: new vscode.Range(f.line, f.start, f.line, f.start) }); } } catch (_) { }
+      setDecoCached(editor, puzzleFrontGutterDecoration, 'puzzleFront', _pf); }
     setDecoCached(editor, refFrontPlainGutterDecoration, 'refFrontPlain', refFrontPlainItems);
     setDecoCached(editor, refFrontPendingGutterDecoration, 'refFrontPend', refFrontPendItems);
     setDecoCached(editor, refSatPlainGutterDecoration, 'refSatPlain', refSatPlainItems);
