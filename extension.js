@@ -6933,9 +6933,11 @@ async function meosPuzzleTag(ch) {
     if (f) line = f.line;
     else { const cur = ed.selection.active.line, nx = hits.find(h => h.line > cur); line = (nx || hits[0]).line; _meosPuzzleJumpAt = { uri: doc.uri.toString(), line };
       vscode.window.setStatusBarMessage('MeOS: ' + ch + ' has ' + hits.length + ' marks \u2014 move the caret in the one to keep; it becomes the front.', 5000); }
-    const pos = new vscode.Position(line, 0);
+    // ★v4.2.589(俊克「パズルワープでは、P1〜6の行の次の行に着陸しよう。紫のP1〜6を見せるため」): 印の行に立つと生データに戻って紫のチップが消える→ 1行下へ
+    const land = Math.min(line + 1, doc.lineCount - 1);
+    const pos = new vscode.Position(land, 0);
     const shown = await vscode.window.showTextDocument(doc, { viewColumn: ed.viewColumn, preserveFocus: false, selection: new vscode.Selection(pos, pos) });
-    try { shown.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
+    try { shown.revealRange(new vscode.Range(line, 0, land, 0), vscode.TextEditorRevealType.InCenter); } catch (_) { }
     meosDbg('[puzzleTag] ' + ch + '=P' + n + ' へ飛んだ' + (f ? '(F)' : '(F無し・候補)') + ' 行=' + (line + 1) + ' (' + hits.length + '本)');
   } catch (e) { meosDbg('[puzzleTag] ' + (e && e.message)); }
 }
