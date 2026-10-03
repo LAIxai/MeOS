@@ -32248,14 +32248,10 @@ async function meosMeDockWidthSave() {
     //   古い覚え(0.784= 入れ替わった後の値)へ2秒ごとに戻し続け、VSCodium と取り合いになっていた(ログ: 入れ替わりを戻した 0.216→0.784 が連続)。
     //   ★真因= VSCodium は**最小の幅まで縮んだグループに焦点が移ると広げる**(0.216 は最小)。→ 入れ替わりを見たら、元の幅を最小から2%離した所へ置き直して覚える
     //     (最小ぴったりでなければ焦点が移っても広げない= 入れ替わり自体が起きない)。戻し続けない= 1回だけ
-    if (old > 0.08 && Math.abs(old - 0.5) > 0.05 && Math.abs(r - (1 - old)) < 0.006) {
-      const fixd = (old < 0.5) ? Math.min(0.5, old + 0.02) : Math.max(0.5, old - 0.02);
-      _meDockWidthHoldUntil = Date.now() + 1500;
-      extensionContext.globalState.update('meDockWidthRatio', fixd);
-      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - fixd }, { size: fixd }] });
-      meosDbg('[dockWidth] 最小の枠が広げられた→ 最小から離して置き直した ' + old.toFixed(3) + ' → ' + fixd.toFixed(3) + ' (見えた ' + r.toFixed(3) + ')');
-      return;
-    }
+    // ★v4.2.598(俊克 バグ1「⊖を押したら最大化して、広げるとファイルのタブが消えていた」): 592/595 で MeOS が配置を作り直すと、
+    //   VSCodium の自動の拡大・人のドラッグと取り合いになり、グループの幅が潰れた(2回直して2回とも)。→ **入れ替わりには手を出さない**(覚えもしない)。
+    //   配置を触るのは Me Dock を開き直した時の1回(meosMeDockWidthRestore)だけ。予防は「最小ぴったりにしない」(VSCodium は最小のグループだけを広げる)
+    if (old > 0.08 && Math.abs(old - 0.5) > 0.05 && Math.abs(r - (1 - old)) < 0.006) { meosDbg('[dockWidth] 入れ替わり(VSCodium の拡大)= 触らない ' + old.toFixed(3) + ' / ' + r.toFixed(3)); return; }
     if (Math.abs(old - r) > 0.004) { extensionContext.globalState.update('meDockWidthRatio', r); meosDbg('[dockWidth] 覚えた ' + r.toFixed(3)); }
   } catch (_) { }
 }
