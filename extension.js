@@ -31708,7 +31708,7 @@ function showBal(t,ev){if(!ev)return;const d=(DROP[cur()]||DROP.btron)[press&&pr
 function hideBal(){bal.w.classList.remove('on');}
 /* v4.2.525(俊克 改良3「橙の+の位置が少し違う」): ボタンの中の絵の位置を推し量らず、今出ている絵の offsetLeft/Top(ボタンの中の物差し)から出す。
    絵の中の当たり= BTRON は直角の角(96×80 の 1,1)・22.5° は指先(80×96 の 11,13)・OS は O の真ん中 */
-const AIMF={btron:[1/96,1/80],macos22:[15.64/84,13/96],macos:[0.2,0.1]};/* v4.2.573: 当たりを (2,3) に戻したので橙の+も元へ */
+const AIMF={btron:[1/96,1/80],macos22:[13.6/80,13/96],macos:[0.2,0.1]};/* v4.2.573: 当たりを (2,3) に戻したので橙の+も元へ */
 function placeAim(){try{const aim=hp.querySelector('.hp-aim');const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!aim||!pic)return;const im=pic.querySelector('img');let x,y;
 if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.offsetTop+im.offsetHeight*f[1];}else{x=pic.offsetLeft+pic.offsetWidth*0.27;y=pic.offsetTop+pic.offsetHeight*0.52;}
 aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);
