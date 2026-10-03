@@ -6911,6 +6911,7 @@ const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*\u25b6\u25c
 async function meosPuzzleTag(ch) {
   try {
     const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
+    _meosPuzzleLastCh = String(ch);   // v4.2.594
     const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
     const doc = ed.document;
     const hits = meosPuzzleTagsOf(doc, n);
@@ -6958,7 +6959,7 @@ function meosPuzzleTagsOf(doc, n) {
   return out;
 }
 // ★v4.2.593(俊克「パズルをクリックしてワープした時、そのパズルの下に白い点を」= mac の Dock の「起動中」の点): 印の在る字の下に白い点
-let _meosPuzzleDotsTimer = null, _meosPuzzleDotsLast = null;
+let _meosPuzzleDotsTimer = null, _meosPuzzleDotsLast = null, _meosPuzzleLastCh = '';   // v4.2.594(俊克「白い点は、最後にクリックした所だけに」)
 function meosPostPuzzleDots(soon) {
   if (_meosPuzzleDotsTimer) clearTimeout(_meosPuzzleDotsTimer);
   _meosPuzzleDotsTimer = setTimeout(() => {
@@ -6966,7 +6967,7 @@ function meosPostPuzzleDots(soon) {
     try {
       if (!meDockPanel) return; const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
       const ns = new Set(meosPuzzleTagsOf(ed.document, 0).map(h => h.n));
-      const letters = MEOS_PUZZLE_LETTERS.split('').filter((c, i) => ns.has(i + 1)).join('');
+      const _ln = MEOS_PUZZLE_LETTERS.indexOf(_meosPuzzleLastCh) + 1, letters = (_ln > 0 && ns.has(_ln)) ? _meosPuzzleLastCh : '';   // v4.2.594: 最後にクリックした字だけ(その印が消えたら点も消える)
       const key = ed.document.uri.toString() + '|' + letters;
       if (key === _meosPuzzleDotsLast && !soon) return; _meosPuzzleDotsLast = key;
       meDockPanel.webview.postMessage({ type: 'mdDots', letters });
@@ -27327,7 +27328,10 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .cur-box .encrypt-me-row{margin:0;padding:6px 10px;border-top:1px solid rgba(56,148,255,.25)}
 .dock-stick > .gh-wizard,.dock-stick > .inline-panel,.dock-stick > .nav-box{margin-top:6px}
 .nav-box .hint{margin:4px 2px 0}
-.mepy-box{display:flex;justify-content:center;margin:0 0 8px}
+.nav-box .hint{display:none}   /* v4.2.594(俊克「Mepyの上にある説明文を削除。復活できるようにコードは残す」): この1行を消せば戻る */
+.mepy-box{display:flex;justify-content:center;margin:0 0 3px}   /* v4.2.594(俊克「MepyとTimed Meの間の空白を狭く」): 8→3 */
+/* v4.2.594(俊克「Mepyと四角枠の隙間/Timed Meの枠と外の枠の隙間を狭く」): 下の枠(Mepy と Timed Me を包む本文)の内側の余白 10→4・間 8→4 */
+main.body{padding:4px;gap:4px}
 .dock-stick.unstick{position:static}
 /* ★v4.2.466(俊克「スクロールすると、固定位置のはずの部分が少し上に移動してしまう。これを動かないようにできないか?」):
    top:0 だったので、上の余白(body の padding＋枠の線)の分だけ上へ動いていた→ 止まっている時と同じ高さ(--stick-top= 起動時に測る)で貼り付く。
@@ -27335,7 +27339,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .dock-stick::before{content:'';position:absolute;left:-15px;right:-15px;top:calc(-1 * var(--stick-top,0px));height:var(--stick-top,0px);background:var(--vscode-editor-background);pointer-events:none}
 .dock-stick.unstick::before{display:none}
 /* v4.2.467: Timed Me-System ／ Hyper TOC の行= 固定の箱の真下に貼り付く(--tms-top は JS が測る)。その下の⏰パネルと H-TOC の中身だけが流れる */
-.tms-box{position:sticky;top:var(--tms-top,0px);z-index:29;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:linear-gradient(rgba(255,213,92,.08),rgba(255,213,92,.08)),var(--vscode-sideBar-background);margin:0 0 6px;overflow:hidden}
+.tms-box{position:sticky;top:var(--tms-top,0px);z-index:29;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:linear-gradient(rgba(255,213,92,.08),rgba(255,213,92,.08)),var(--vscode-sideBar-background);margin:0 0 2px;overflow:hidden}   /* v4.2.594: 下の隙間 6→2 */
 .tms-box .dock-lead{border-top:0}
 .tms-box.unstick{position:static}
 .fixed-toc.htoc-closed:not(:has(.clk-pop.on)){border-color:transparent;background:transparent}
