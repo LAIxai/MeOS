@@ -28256,7 +28256,7 @@ color:#ffffff;z-index:4;padding:0}
 .toc-pin-emoji{flex:none;font-size:12px}
 .toc-pin-title{flex:none;font-size:10px;font-weight:900;letter-spacing:.3px;color:#fff;background:#3794ff;border-radius:4px;padding:1px 5px}
 .toc-pin-name{overflow:hidden;text-overflow:ellipsis;min-width:0}
-.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:none}
+.toc-pin-ln{opacity:.7;font-weight:400;font-size:11px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}   /* v4.2.591(俊克「Current Meの右端が切れる(前も指摘していた)」): 幅が足りない時は名前の次に行番号が縮む(…)= 📊N と ▼⇄▼▲ は必ず見える */
 .toc-pin-access{flex:none;font-weight:700;font-size:11px;opacity:.85;margin-left:3px}
 .toc-pin-mode{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;opacity:.9;cursor:var(--meos-hand);white-space:nowrap}
 .toc-pin-mode.dim{opacity:.35;cursor:default}
