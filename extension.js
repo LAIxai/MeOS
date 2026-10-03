@@ -26672,7 +26672,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform:none}
 .md-tile.md-noscale{transform:none;transition:none}   /* 押した瞬間は元の大きさに戻す= 並べ替えの物差し(v4.2.140)は元の大きさで測る(macのDockも掴むと元に戻る) */
 .md-tiles.md-home .md-tile:nth-child(3){margin-left:.4em}
-.md-tile.dragging{transform:translateY(-4px) scale(1.18);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:2;position:relative}
+.md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
 .md-dim{filter:grayscale(1) blur(2px);opacity:.45;user-select:none}.md-dim,.md-dim *{pointer-events:none!important}
 /* v4.2.514(俊克 改良1「青い仕切り線は見えないようにしよう」): Deco/eMcoD の間は Current Me の箱の枠と Encrypt Me の段の仕切りを消す */
@@ -26759,7 +26759,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::before,.hp-plus::after{content:'';position:absolute}
 .hp-plus::before{left:3px;top:0;width:1px;height:7px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
-.hp-redbox{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:7px;z-index:60}
+.hp-redbox{position:absolute;inset:0;overflow:visible;/* v4.2.583(俊克「Dockが枠を食み出せるなら、長い赤十字の縦線も食み出せるのでは」): ヘッダーの縁で切らない(v4.2.527 の切り取りを外す) */pointer-events:none;border-radius:7px;z-index:60}
 .hp-aim-long{position:absolute;left:0;top:0;width:0;height:0;display:none}
 .hp-aim-long.on{display:block}
 .hp-aim-long::before,.hp-aim-long::after{content:'';position:absolute;background:#ff9500}
@@ -31669,7 +31669,7 @@ document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.rem
 if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});}}
 row.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const t=ev.target&&ev.target.closest&&ev.target.closest('.md-tile');if(!t)return;
 if(ev.altKey){ev.preventDefault();vscode.postMessage({type:'mdTileJump',ch:t.getAttribute('data-ch')});return;}/* v4.2.562: Opt+クリック= その字の行き先へ(無ければ印を書く) */
-ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
+ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};t.classList.remove('md-noscale');/* v4.2.583: 元の大きさで測ったら、すぐ倍に戻す */press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
 row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=press;const x=px(ev);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
 /* 指が隣の字の真ん中を越えたら、その向こうへ入れ替える(macOS の Dock のように並びがその場で動く) */
