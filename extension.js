@@ -26662,7 +26662,7 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 .title-left{display:flex;align-items:center;gap:8px;min-width:0}
 /* v4.2.500 パズルロック: 文字タイル= macOS の Dock 風。上では手・押すと手の平・動かすと握り(H-TOC のタブと同じ手) */
 .md-tiles{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto}
-.md-tile{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.08);cursor:var(--meos-palm);user-select:none;transition:transform .12s ease}   /* v4.2.538(俊克「並べ替えパズルの上にポインターが入った時、すぐに移動手に。そうしないと握れることが分からない」): 掴める物の上は手の平= H-TOCのタブ(v4.2.132)と同じ */
+.md-tile{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.08);cursor:var(--meos-hand);user-select:none;transition:transform .12s ease}   /* v4.2.588(俊克「基本は選択指。clickで書き込み/ワープ。clickドラッグすると握りにして並べ替え。移動手の出番はここではない」— macのDockが↖なのも、クリックとドラッグの2役だから) / v4.2.538(俊克「並べ替えパズルの上にポインターが入った時、すぐに移動手に。そうしないと握れることが分からない」): 掴める物の上は手の平= H-TOCのタブ(v4.2.132)と同じ */
 .md-tile:hover{transform:scale(2);z-index:6;position:relative}
 /* v4.2.582(俊克「最後の課題。パズルとポインターボタンの動きをmacのDockと似せよう。ポインターを入れるとサイズを倍にし、上に飛び出る。赤×や緑×がより見やすくなる」):
    Me Dock の一番上の段なので、上の余白で切れないよう、伸びる中心を下寄り(75%)に置く= 上へ 3/4・下へ 1/4 */
@@ -31669,7 +31669,7 @@ document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.rem
 if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});}}
 row.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const t=ev.target&&ev.target.closest&&ev.target.closest('.md-tile');if(!t)return;
 
-ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};t.classList.remove('md-noscale');/* v4.2.583: 元の大きさで測ったら、すぐ倍に戻す */press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
+ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};t.classList.remove('md-noscale');/* v4.2.583: 元の大きさで測ったら、すぐ倍に戻す */press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}/* v4.2.588: 押しただけでは選択指のまま(手の平にしない)= 動かした時に握りへ */});
 row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=press;const x=px(ev);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
 /* 指が隣の字の真ん中を越えたら、その向こうへ入れ替える(macOS の Dock のように並びがその場で動く) */
@@ -31749,7 +31749,7 @@ document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on'
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
-const t=ev&&ev.target;if(t&&t.closest&&(t.closest('.hand-pick>span')||t.closest('.md-tile')))return 'palm';return 'hand';}
+const t=ev&&ev.target;if(t&&t.closest&&(t.closest('.hand-pick>span')))return 'palm';return 'hand';}
 const HPT={hand:'17.5deg',palm:'15.5deg',grip:'6.5deg'};
 function moveRed(ev){optOn(ev.altKey);try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
