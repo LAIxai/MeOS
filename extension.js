@@ -31736,7 +31736,7 @@ const AIMF={btron:[1/96,1/80],macos22:[12.6/80,11/96],macos:[0.2,0.1]};/* v4.2.5
 function placeAim(){try{const aim=hp.querySelector('.hp-aim');const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!aim||!pic)return;const im=pic.querySelector('img');let x,y;
 if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.offsetTop+im.offsetHeight*f[1];}else{x=pic.offsetLeft+pic.offsetWidth*0.27;y=pic.offsetTop+pic.offsetHeight*0.52;}
 aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);
-try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',cur()==='system');}}catch(_){}}catch(_){}}
+try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',false);/* v4.2.585(俊克「橙+が直ってない。ここは普通の長さ」): OS の手も橙は小さな + (BTRON・22.5° と同じ)= 手のボタンが倍に膨らむので長い十字は要らない */}}catch(_){}}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false;
 /* ★v4.2.567(俊克 改良1「ポインターボタンの上では緑の×は消す。正確に実装するなら、Optクリックが動作する場合のみ緑の×付きの選択指にするべき」):
