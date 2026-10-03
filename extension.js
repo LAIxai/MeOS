@@ -26752,7 +26752,8 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .title-ver-dock{margin-left:auto;align-self:flex-end}
 .title:has(.title-row-dock){padding-bottom:9px}
 .title-row-btns{padding-left:0}
-.title-row-file{margin-top:2px}
+.title-row-file{margin-top:9px}   /* v4.2.600(俊克「↩ボタンが1つ上のGONGに被る。行間を少し空けて」): 2→9 */
+#new-rename-panel{padding-top:4px;padding-bottom:4px;gap:6px}   /* v4.2.600: その分 Edit Me の上下を詰める(8→4) */
 .title-row-file .dw-split{margin-left:auto;align-self:flex-end;font-size:11px;font-weight:400}   /* v4.2.599: H-IDX にいた時と同じ大きさ(.toc-tools button の 11px を写す) */
 .title-row-file .dw-split .dw-scope{font-size:11px}
 /* v4.2.501(俊克「Me Dockの更新日を次の行に移動しよう。Me Dockの幅を狭めた時に、ファイル選択ボタンが短くなってしまうのを防ぐため」):
@@ -27385,8 +27386,9 @@ main.body{padding:4px;gap:4px}
    タイマーボタンは今より大きく、でもH-TOCと同じにはしない。コンパクトなのが良い所」): 先頭の行= ⏰(Hyper IDXの行から移す)＋📑。
    ★行の型は .toc-tools を併せ持つ= ⏰の見た目の規則(.toc-tools .warn-btn.raw-timer 等)をそのまま効かせる(家の中の同じ部品を真似る)。 */
 .dock-lead{border-top:0;padding:7px 8px;flex-wrap:nowrap;gap:9px}
+.lead-grp{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;flex:0 0 auto}   /* v4.2.600: 名札+ボタン= 1組で折り返す */
 .dock-lead .clk-wrap{margin:0;flex:0 0 auto}
-.dock-lead .tms-title{margin-right:5px}   /* v4.2.597(俊克「Timed Meとボタンの間を少し空けて」): -3→5 */   /* v4.2.252(俊克「タイマーボタンの最初に『Timed Me-System: ⏰ 26.01 ▼』と表示すると、MeOSの根本思想が分かる」): Hyper IDX と同じ名札 */
+.dock-lead .tms-title{margin-right:0}   /* v4.2.597(俊克「Timed Meとボタンの間を少し空けて」): -3→5 */   /* v4.2.252(俊克「タイマーボタンの最初に『Timed Me-System: ⏰ 26.01 ▼』と表示すると、MeOSの根本思想が分かる」): Hyper IDX と同じ名札 */
 .dock-lead .warn-btn.raw-timer{font-size:17px;line-height:19px;padding:5px 11px}
 .dock-lead .clk-caret{font-size:13px;padding:0 7px}
 .htoc-btn{flex:0 1 auto;min-width:0;max-width:210px;display:flex;align-items:center;gap:6px;border:1px solid #cbb98c;border-radius:5px;background:#f3e6c4;color:#3b3020;font-size:13px;font-weight:800;line-height:1.2;padding:5px 9px;cursor:var(--meos-hand);text-align:left}
@@ -30720,6 +30722,9 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
   _mn.insertBefore(_mb,_ft);
   /* ★v4.2.599(俊克「[Ⓣ|Ⓣday]をパズルの1つ上に移動。最も使うボタンが集中する。H-IDXはほとんど使わない初期型の立ち位置」): 出来上がった部品をヘッダーのファイル名の行の右へ(動きはそのまま) */
   try{const _dw=document.querySelector('#hidx-row .dw-split'),_fr=document.querySelector('.title-row-file');if(_dw&&_fr)_fr.appendChild(_dw);}catch(e){}
+  /* ★v4.2.600(俊克「Hyper TOCが改行していない」= 名札だけ上の行に残り、ボタンが下の行へ): 名札とボタンを1組にして、折り返す時は組ごと */
+  try{const _grp=(a,b)=>{if(!a||!b||a.parentNode!==b.parentNode)return;const g=document.createElement('span');g.className='lead-grp';a.parentNode.insertBefore(g,a);g.appendChild(a);g.appendChild(b);};
+   const _ld0=document.getElementById('dock-lead');if(_ld0){_grp(_ld0.querySelector('.tms-title'),_ld0.querySelector('.clk-wrap'));_grp(_ld0.querySelector('.htoc-title'),_ld0.querySelector('#htoc-btn'));}}catch(e){}
   /* ★v4.2.467(俊克「Timed MeとH-TOCという部分も固定にして、その下に表示されるパネルだけをスクロールするように。Timed Meが常に同じ位置に確認できる」):
      TMS の行を H-TOC の枠(overflow:hidden= その中では sticky が効かない)から出し、自前の枠で固定。⏰の箱(#dock-clk)と H-TOC の中身は枠に残って流れる。 */
   const _ld=document.getElementById('dock-lead');
