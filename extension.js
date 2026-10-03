@@ -26663,7 +26663,14 @@ body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 /* v4.2.500 パズルロック: 文字タイル= macOS の Dock 風。上では手・押すと手の平・動かすと握り(H-TOC のタブと同じ手) */
 .md-tiles{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto}
 .md-tile{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.08);cursor:var(--meos-palm);user-select:none;transition:transform .12s ease}   /* v4.2.538(俊克「並べ替えパズルの上にポインターが入った時、すぐに移動手に。そうしないと握れることが分からない」): 掴める物の上は手の平= H-TOCのタブ(v4.2.132)と同じ */
-.md-tile:hover{transform:translateY(-2px) scale(1.08)}
+.md-tile:hover{transform:scale(2);z-index:6;position:relative}
+/* v4.2.582(俊克「最後の課題。パズルとポインターボタンの動きをmacのDockと似せよう。ポインターを入れるとサイズを倍にし、上に飛び出る。赤×や緑×がより見やすくなる」):
+   Me Dock の一番上の段なので、上の余白で切れないよう、伸びる中心を下寄り(75%)に置く= 上へ 3/4・下へ 1/4 */
+.md-tile{transform-origin:50% 75%;transition:transform .15s ease}
+.hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
+.hand-pick:hover{transform:scale(2);z-index:6}
+body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform:none}
+.md-tile.md-noscale{transform:none;transition:none}   /* 押した瞬間は元の大きさに戻す= 並べ替えの物差し(v4.2.140)は元の大きさで測る(macのDockも掴むと元に戻る) */
 .md-tiles.md-home .md-tile:nth-child(3){margin-left:.4em}
 .md-tile.dragging{transform:translateY(-4px) scale(1.18);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:2;position:relative}
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
@@ -31658,11 +31665,11 @@ let lo=Math.max(0,ev.offsetX||0),hi=lo+2;let g=0;while(on(hi)&&g++<12)hi*=2;if(o
 const wU=(lo+hi)/2;if(wU>2){const kk=r.width/wU;if(kk>0.3&&kk<4)k=kk;}}}catch(_){}return {k:k,leftU:leftU,left0:r.left};}
 function px(ev){const p=press;return p.m.left0+(ev.clientX-p.m.leftU)*p.m.k;}
 function end(commit){if(!press)return;const p=press;press=null;try{p.t.releasePointerCapture&&p.t.releasePointerCapture(p.pid);}catch(_){}
-document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.remove('dragging');
+document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.remove('dragging','md-noscale');
 if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});}}
 row.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const t=ev.target&&ev.target.closest&&ev.target.closest('.md-tile');if(!t)return;
 if(ev.altKey){ev.preventDefault();vscode.postMessage({type:'mdTileJump',ch:t.getAttribute('data-ch')});return;}/* v4.2.562: Opt+クリック= その字の行き先へ(無ければ印を書く) */
-ev.preventDefault();press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
+ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
 row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=press;const x=px(ev);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
 /* 指が隣の字の真ん中を越えたら、その向こうへ入れ替える(macOS の Dock のように並びがその場で動く) */
@@ -31698,7 +31705,7 @@ function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.cl
    → 部品を見ない。ヘッダーの原点をマウスの物差しで1度掴み(ヘッダー自身かこの駒の上を通った時)、以後は (clientX−原点)÷zoom の1本で出す= どの部品の上でも同じ */
 let org=null;
 function calib(ev){const t=ev.target,z=Z();if(t===hdr){org={x:ev.clientX-(ev.offsetX||0),y:ev.clientY-(ev.offsetY||0)};}
-else if(t===hp){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(hp.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(hp.clientTop||0))*z};}
+else if(t===hp&&calibOk(hp)){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(hp.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(hp.clientTop||0))*z};}
 /* ★v4.2.579(俊克 改良1「入れ替えた直後、戻るボタンにポインターを入れると赤×が大きく左下に離れる。切替ボタンの上に持ってくると戻る」・改良2「文字タイルの上で大きく左上にズレる」):
    真因= 原点を覚え直すのはヘッダーの地と手のボタンの上だけ= 入れ替え直後とスクロールの後(原点を忘れる)は昔の出し方(部品の位置の足し算)に頼り、
    ずらして置いた部品(↩= translate・文字タイル= 浮き上がり)で外れた。→ ずらして描かれていない塊の部品なら、どの部品の上でも原点を覚え直す */
