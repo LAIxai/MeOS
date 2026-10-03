@@ -26763,7 +26763,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出している間だけ */
 .hp-optx{position:absolute;left:0;top:0;width:0;height:0}
 .hp-float:not(.on)>.hp-optx{display:none}
-.hp-optx::before,.hp-optx::after{content:'';position:absolute;left:-.5px;top:-7px;width:1px;height:14px;background:#18c94a;box-shadow:0 0 0 .5px rgba(0,0,0,.55)}
+.hp-optx::before,.hp-optx::after{content:'';position:absolute;left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;background:#18c94a;box-shadow:0 0 0 .5px rgba(0,0,0,.55)}   /* v4.2.570(俊克「緑の×の太さを2倍、あるいは3倍」): 1px→2.5px */
 .hp-optx::before{transform:rotate(45deg)}
 .hp-optx::after{transform:rotate(-45deg)}
 body.meos-opt .md-tile{cursor:var(--meos-hand)}
