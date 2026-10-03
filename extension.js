@@ -32209,6 +32209,15 @@ async function meosMeDockWidthSave() {
     const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0; if (!(a > 0 && b > 0)) return;
     const r = b / (a + b); if (!(r > 0.08 && r < 0.92)) return;
     const old = Number(extensionContext.globalState.get('meDockWidthRatio')) || 0;
+    // ★v4.2.592(俊克「Me Dockの幅を最小化している時に、何かのボタン操作をすると、幅が最大化してしまう。防げないか?」):
+    //   ログ= 0.216 ⇄ 0.784 を行き来= **左右がちょうど入れ替わった値**(手のドラッグなら毎回少し違う)= VSCodium のグループの拡大
+    //   (タブのダブルクリック等)の状態で、Me Dock をクリックすると焦点の移ったグループが拡大される。→ 入れ替わりは覚えずに、覚えた幅へ戻す
+    if (old > 0.08 && Math.abs(old - 0.5) > 0.05 && Math.abs(r - (1 - old)) < 0.006) {
+      _meDockWidthHoldUntil = Date.now() + 1500;
+      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - old }, { size: old }] });
+      meosDbg('[dockWidth] 入れ替わりを戻した ' + r.toFixed(3) + ' → ' + old.toFixed(3));
+      return;
+    }
     if (Math.abs(old - r) > 0.004) { extensionContext.globalState.update('meDockWidthRatio', r); meosDbg('[dockWidth] 覚えた ' + r.toFixed(3)); }
   } catch (_) { }
 }
