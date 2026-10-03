@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.590 (2026-10-04)
+- The **wrap width** knob has moved from the title row into **Format Me**, right beside the table button — it is there to help tables, and it is formatting too.
+
 ### v4.2.553 (2026-10-02)
 - **Create ⏰ and Set ⏰** in the ⏰ panel, like Create / Set in Edit Me. **Create** always adds a new clock (off a membrane, it makes the membrane too); **Set** changes the ⏰ line under the caret. ① adds, like Create.
 - A clock with no title gets one: *One-shot timer 1h*, *One-shot timer at 18:30*, *Repeat timer 8h* or *Stopwatch*. That is the text the menu bar shows — write your own after `//` to change it.

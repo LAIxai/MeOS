@@ -164,7 +164,7 @@ Keep the two lives in separate files — the same file open in both editors show
 </p>
 
 **Wide tables stay tables — wrap width in three presets.** You line a table up with the table button, and the
-editor wraps it at 80 columns and breaks it apart again. Beside the pointer button in Me Dock there is now a
+editor wraps it at 80 columns and breaks it apart again. Right beside the table button in **Format Me** sits a
 **wrap width** knob: drag it, or type the number, and the text re-wraps as you move. Keep three widths — say
 80 for prose, 140 for a wide table, 200 for the widest — and **↻** steps through them (red, blue, green), so a
 table that did not fit a moment ago opens out in one click. A thin vertical line stands at the wrap width and
