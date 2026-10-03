@@ -26676,7 +26676,7 @@ function meDockHtml() {
 /* {* ▼mCN=dock_css // Me Dock のCSS(見た目) *} */
 
 :root{color-scheme:light dark}
-body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--vscode-editor-background);color:var(--vscode-editor-foreground);--meos-frame:color-mix(in srgb,var(--vscode-foreground) 50%,transparent)}
+body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--vscode-editor-background);color:var(--vscode-editor-foreground);--meos-frame:color-mix(in srgb,var(--vscode-foreground) 50%,transparent)}   /* v4.2.596(俊克「全体の四角枠の上端か下端の外に無駄な空間がある。そこを削ればスクロール無しになる」): 上下 14→4(左右は14のまま) */
 .dock{border:1px solid var(--vscode-panel-border);border-radius:10px;overflow:visible;box-shadow:0 8px 24px rgba(0,0,0,.20);background:var(--vscode-sideBar-background)}
 .dock-stick{position:sticky;top:var(--stick-top,0px);z-index:30;background:var(--vscode-sideBar-background);border-radius:10px 10px 0 0}   /* v4.2.460: タイトル＋Format Me= スクロールしても上に残る(ポップアップは fixed なので位置はずれない) */
 .title{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:9px 11px;font-size:14px;font-weight:800;letter-spacing:.02em;border:1.5px solid color-mix(in srgb,var(--vscode-foreground) 50%,transparent);border-radius:8px}
