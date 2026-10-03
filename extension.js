@@ -26790,7 +26790,6 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .hp-optx::before,.hp-optx::after{content:'';position:absolute;left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;background:#18c94a;box-shadow:0 0 0 .5px rgba(0,0,0,.55)}   /* v4.2.570(俊克「緑の×の太さを2倍、あるいは3倍」): 1px→2.5px */
 .hp-optx::before{transform:rotate(45deg)}
 .hp-optx::after{transform:rotate(-45deg)}
-body.meos-opt .md-tile{cursor:var(--meos-hand)}
 .hand-pick .hp-aim{position:absolute;left:10.5px;top:3.5px;width:0;height:0;pointer-events:none}
 .hand-pick .hp-aim::before,.hand-pick .hp-aim::after{content:'';position:absolute;background:#ff9500}
 .hand-pick .hp-aim::before{left:-.5px;top:-3.5px;width:1px;height:7px}
@@ -31669,7 +31668,7 @@ function end(commit){if(!press)return;const p=press;press=null;try{p.t.releasePo
 document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.remove('dragging','md-noscale');
 if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});}}
 row.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const t=ev.target&&ev.target.closest&&ev.target.closest('.md-tile');if(!t)return;
-if(ev.altKey){ev.preventDefault();vscode.postMessage({type:'mdTileJump',ch:t.getAttribute('data-ch')});return;}/* v4.2.562: Opt+クリック= その字の行き先へ(無ければ印を書く) */
+
 ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};t.classList.remove('md-noscale');/* v4.2.583: 元の大きさで測ったら、すぐ倍に戻す */press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
 row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=press;const x=px(ev);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
@@ -31679,7 +31678,9 @@ for(let g=0;g<6;g++){const nx=p.t.nextElementSibling,pv=p.t.previousElementSibli
    → 掴んだ字は動かさず、隣の字の方を掴んだ字の反対側へ回す(見た目は同じ入れ替え) */
 if(nx){const r=nx.getBoundingClientRect();if(x>r.left+r.width/2){row.insertBefore(nx,p.t);continue;}}
 if(pv){const r=pv.getBoundingClientRect();if(x<r.left+r.width/2){row.insertBefore(pv,p.t.nextSibling);continue;}}break;}apply();});
-row.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;end(true);});
+/* ★v4.2.587(俊克「パズルでは、Optクリックは廃止でいいよ。clickだけ」「知らずにクリックして紫のP1が出てきても、何かと興味を持つ。もう一度押すとワープすると理解できる」):
+   押して動かさずに放した= クリック= その字の行き先へ(無ければ印を書く)。動かした= 並べ替え(今までどおり) */
+row.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;const _click=!press.moved,_t=press.t;end(true);if(_click&&_t)vscode.postMessage({type:'mdTileJump',ch:_t.getAttribute('data-ch')});});
 row.addEventListener('pointercancel',()=>{end(true);});row.addEventListener('lostpointercapture',()=>{if(press)end(true);});
 row.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();
 // {* ▲mCN=dock_js_tiles *}
@@ -31741,14 +31742,14 @@ placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.a
 let press=null,suppress=false;
 /* ★v4.2.567(俊克 改良1「ポインターボタンの上では緑の×は消す。正確に実装するなら、Optクリックが動作する場合のみ緑の×付きの選択指にするべき」):
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
-const OPT_SEL='.md-tile,#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
+const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
-const t=ev&&ev.target;if(t&&t.closest&&(t.closest('.hand-pick>span')||(!ev.altKey&&t.closest('.md-tile'))))return 'palm';return 'hand';}
+const t=ev&&ev.target;if(t&&t.closest&&(t.closest('.hand-pick>span')||t.closest('.md-tile')))return 'palm';return 'hand';}
 const HPT={hand:'17.5deg',palm:'15.5deg',grip:'6.5deg'};
 function moveRed(ev){optOn(ev.altKey);try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
