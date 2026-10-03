@@ -27070,7 +27070,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .zoom-me-status{display:none}
 .zoom-me-status .loaded-label{color:#d18400;font-weight:900}
 .zoom-me-status .loaded-range{color:var(--vscode-editor-foreground);font-weight:900}
-.top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:8px}
+.top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:0}   /* v4.2.597(俊克「Edit Meの段の下の空白を詰める」): 8→0(枠の内側の余白8は残る) */
 .top-buttons.hidden{display:none}
 .membrane-panel{display:flex;align-items:stretch;justify-content:center;gap:8px;margin-top:4px}
 .membrane-panel.hidden{display:none}
@@ -27384,7 +27384,7 @@ main.body{padding:4px;gap:4px}
    ★行の型は .toc-tools を併せ持つ= ⏰の見た目の規則(.toc-tools .warn-btn.raw-timer 等)をそのまま効かせる(家の中の同じ部品を真似る)。 */
 .dock-lead{border-top:0;padding:7px 8px;flex-wrap:nowrap;gap:9px}
 .dock-lead .clk-wrap{margin:0;flex:0 0 auto}
-.dock-lead .tms-title{margin-right:-3px}   /* v4.2.252(俊克「タイマーボタンの最初に『Timed Me-System: ⏰ 26.01 ▼』と表示すると、MeOSの根本思想が分かる」): Hyper IDX と同じ名札 */
+.dock-lead .tms-title{margin-right:5px}   /* v4.2.597(俊克「Timed Meとボタンの間を少し空けて」): -3→5 */   /* v4.2.252(俊克「タイマーボタンの最初に『Timed Me-System: ⏰ 26.01 ▼』と表示すると、MeOSの根本思想が分かる」): Hyper IDX と同じ名札 */
 .dock-lead .warn-btn.raw-timer{font-size:17px;line-height:19px;padding:5px 11px}
 .dock-lead .clk-caret{font-size:13px;padding:0 7px}
 .htoc-btn{flex:0 1 auto;min-width:0;max-width:210px;display:flex;align-items:center;gap:6px;border:1px solid #cbb98c;border-radius:5px;background:#f3e6c4;color:#3b3020;font-size:13px;font-weight:800;line-height:1.2;padding:5px 9px;cursor:var(--meos-hand);text-align:left}
