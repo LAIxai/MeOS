@@ -26753,6 +26753,8 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .title:has(.title-row-dock){padding-bottom:9px}
 .title-row-btns{padding-left:0}
 .title-row-file{margin-top:2px}
+.title-row-file .dw-split{margin-left:auto;align-self:flex-end;font-size:11px;font-weight:400}   /* v4.2.599: H-IDX にいた時と同じ大きさ(.toc-tools button の 11px を写す) */
+.title-row-file .dw-split .dw-scope{font-size:11px}
 /* v4.2.501(俊克「Me Dockの更新日を次の行に移動しよう。Me Dockの幅を狭めた時に、ファイル選択ボタンが短くなってしまうのを防ぐため」):
    ファイル名の札と更新日を縦に積む= 更新日が横幅を取らない。更新日は札の下に少し字下げ */
 .title-filecol{display:flex;flex-direction:column;align-items:flex-start;min-width:0;flex:0 1 auto}
@@ -30716,6 +30718,8 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
   const _mb=document.createElement('div');_mb.className='mepy-box';_mb.id='mepy-box';_mb.appendChild(_mp);
   _hx.after(_cur);_cur.after(_gh);_gh.after(_nrp);_nrp.after(_nb);
   _mn.insertBefore(_mb,_ft);
+  /* ★v4.2.599(俊克「[Ⓣ|Ⓣday]をパズルの1つ上に移動。最も使うボタンが集中する。H-IDXはほとんど使わない初期型の立ち位置」): 出来上がった部品をヘッダーのファイル名の行の右へ(動きはそのまま) */
+  try{const _dw=document.querySelector('#hidx-row .dw-split'),_fr=document.querySelector('.title-row-file');if(_dw&&_fr)_fr.appendChild(_dw);}catch(e){}
   /* ★v4.2.467(俊克「Timed MeとH-TOCという部分も固定にして、その下に表示されるパネルだけをスクロールするように。Timed Meが常に同じ位置に確認できる」):
      TMS の行を H-TOC の枠(overflow:hidden= その中では sticky が効かない)から出し、自前の枠で固定。⏰の箱(#dock-clk)と H-TOC の中身は枠に残って流れる。 */
   const _ld=document.getElementById('dock-lead');
