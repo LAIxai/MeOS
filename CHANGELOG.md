@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.593 (2026-10-04)
+- The title box of Me Dock is rearranged for a narrow Me Dock: the buttons come first, then the file name and its last-update time, and the **Me Dock** name sits at the bottom with the version — so the file name stays in view when you scroll down a little.
+
 ### v4.2.590 (2026-10-04)
 - The **wrap width** knob has moved from the title row into **Format Me**, right beside the table button — it is there to help tables, and it is formatting too.
 
