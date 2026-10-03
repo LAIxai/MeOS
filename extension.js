@@ -26759,6 +26759,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::before,.hp-plus::after{content:'';position:absolute}
 .hp-plus::before{left:3px;top:0;width:1px;height:7px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
+.hp-redbox.hp-aimbox{overflow:hidden}
 .hp-redbox{position:absolute;inset:0;overflow:visible;/* v4.2.583(俊克「Dockが枠を食み出せるなら、長い赤十字の縦線も食み出せるのでは」): ヘッダーの縁で切らない(v4.2.527 の切り取りを外す) */pointer-events:none;border-radius:7px;z-index:60}
 .hp-aim-long{position:absolute;left:0;top:0;width:0;height:0;display:none}
 .hp-aim-long.on{display:block}
@@ -31698,7 +31699,7 @@ function mk(cls){const w=document.createElement('div');w.className='hp-float';co
    大きさもヘッダーの zoom がそのまま掛かる。線はヘッダーの縁で切る(ヘッダーの中だけ) */
 const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=document.createElement('div');redC.className='hp-red';
 /* v4.2.528(俊克「OSの移動手と握りは握る点が手に隠れる。橙+も赤+と同じ長さにしないと正確な位置決めができない」): OSの時だけ、橙の目印も同じ長さの十字線(ヘッダーの縁で切る) */
-const aimL=document.createElement('div');aimL.className='hp-aim-long';rbox.appendChild(aimL);rbox.appendChild(redC);hdr.appendChild(rbox);
+const aimL=document.createElement('div');aimL.className='hp-aim-long';/* v4.2.584(俊克 バグ1「橙+が長く出てしまっている。ここは普通の長さ」): 赤だけ縁の外へ出す(v4.2.583)。橙は今までどおりヘッダーの縁で切る= 別の箱 */const abox=document.createElement('div');abox.className='hp-redbox hp-aimbox';abox.appendChild(aimL);hdr.appendChild(abox);rbox.appendChild(redC);hdr.appendChild(rbox);
 function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');redC.classList.toggle('hp-tilt',cur()==='macos22');document.body.classList.toggle('meos-hand-m22',cur()==='macos22');}
 /* v4.2.529(俊克「ヘッダー内のボタンで赤+がズレるものがある。なぜ一律に動作しないのか?」): 部品の offsetLeft を足す出し方は、
    ①transform で置いた部品(⊕/⊖・↻・ファイル名の右肩・パズルの字)を知らない ②字の中の絵文字(🎨/😸)のような inline の部品で offsetX の起点が食い違う ③段ごとに整数へ丸める(BTRONの角)。
