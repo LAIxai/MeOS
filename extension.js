@@ -26760,6 +26760,9 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-red-x::before,.hp-red-x::after{left:-.5px;top:-7px;width:1px;height:14px}
 .hp-red-x::before{transform:rotate(45deg)}
 .hp-red-x::after{transform:rotate(-45deg)}
+/* v4.2.577(俊克「ちょっと隠れて分かり難いので、赤×を22.5°傾けよう」): 22.5° の手の時は × を 22.5° 回す= 指の向き(右下へ 67.5°)から両腕が 45° ずつ離れる(指に隠れない)。緑の×も同じ */
+.hp-red-x.hp-tilt::before,body.meos-hand-m22 .hp-optx::before{transform:rotate(22.5deg)}
+.hp-red-x.hp-tilt::after,body.meos-hand-m22 .hp-optx::after{transform:rotate(-67.5deg)}
 .hp-red-long::before{left:-.5px;top:-40px;width:1px;height:80px}
 .hp-red-long::after{left:-40px;top:-.5px;width:80px;height:1px}
 /* v4.2.564(俊克 改良1「Optを押したとき、ホットスポットの×あるいはデカイ十字を赤から緑に。パズルの中に入っても移動手に切り替わらない= クリックするのだから選択指のまま」) */
@@ -31681,7 +31684,7 @@ function mk(cls){const w=document.createElement('div');w.className='hp-float';co
 const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=document.createElement('div');redC.className='hp-red';
 /* v4.2.528(俊克「OSの移動手と握りは握る点が手に隠れる。橙+も赤+と同じ長さにしないと正確な位置決めができない」): OSの時だけ、橙の目印も同じ長さの十字線(ヘッダーの縁で切る) */
 const aimL=document.createElement('div');aimL.className='hp-aim-long';rbox.appendChild(aimL);rbox.appendChild(redC);hdr.appendChild(rbox);
-function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');}
+function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');redC.classList.toggle('hp-tilt',cur()==='macos22');document.body.classList.toggle('meos-hand-m22',cur()==='macos22');}
 /* v4.2.529(俊克「ヘッダー内のボタンで赤+がズレるものがある。なぜ一律に動作しないのか?」): 部品の offsetLeft を足す出し方は、
    ①transform で置いた部品(⊕/⊖・↻・ファイル名の右肩・パズルの字)を知らない ②字の中の絵文字(🎨/😸)のような inline の部品で offsetX の起点が食い違う ③段ごとに整数へ丸める(BTRONの角)。
    → 部品を見ない。ヘッダーの原点をマウスの物差しで1度掴み(ヘッダー自身かこの駒の上を通った時)、以後は (clientX−原点)÷zoom の1本で出す= どの部品の上でも同じ */
