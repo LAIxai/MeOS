@@ -26766,8 +26766,11 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-red-x::before{transform:rotate(45deg)}
 .hp-red-x::after{transform:rotate(-45deg)}
 /* v4.2.577(俊克「ちょっと隠れて分かり難いので、赤×を22.5°傾けよう」): 22.5° の手の時は × を 22.5° 回す= 指の向き(右下へ 67.5°)から両腕が 45° ずつ離れる(指に隠れない)。緑の×も同じ */
-.hp-red-x.hp-tilt::before,body.meos-hand-m22 .hp-optx::before{transform:rotate(22.5deg)}
-.hp-red-x.hp-tilt::after,body.meos-hand-m22 .hp-optx::after{transform:rotate(-67.5deg)}
+/* v4.2.581(俊克 affinityで黄色い×を重ねて最適な傾きを見つけた= 選択指 17.5°・移動手 15.5°・握り 6.5°): 傾きは手の形ごと(--hpt)。緑の×は選択指の時だけ出るので 17.5° */
+.hp-red-x.hp-tilt::before{transform:rotate(calc(45deg - var(--hpt,17.5deg)))}
+.hp-red-x.hp-tilt::after{transform:rotate(calc(-45deg - var(--hpt,17.5deg)))}
+body.meos-hand-m22 .hp-optx::before{transform:rotate(27.5deg)}
+body.meos-hand-m22 .hp-optx::after{transform:rotate(-62.5deg)}
 .hp-red-long::before{left:-.5px;top:-40px;width:1px;height:80px}
 .hp-red-long::after{left:-40px;top:-.5px;width:80px;height:1px}
 /* v4.2.564(俊克 改良1「Optを押したとき、ホットスポットの×あるいはデカイ十字を赤から緑に。パズルの中に入っても移動手に切り替わらない= クリックするのだから選択指のまま」) */
@@ -31735,7 +31738,11 @@ function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;t
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
-function moveRed(ev){optOn(ev.altKey);const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
+/* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
+function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
+const t=ev&&ev.target;if(t&&t.closest&&(t.closest('.hand-pick>span')||(!ev.altKey&&t.closest('.md-tile'))))return 'palm';return 'hand';}
+const HPT={hand:'17.5deg',palm:'15.5deg',grip:'6.5deg'};
+function moveRed(ev){optOn(ev.altKey);try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
 hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');});
 /* v4.2.527(俊克 バグ2「OSの橙がOの中心から大きく外れる」・改良2「OSの長い赤い+が見えない」): 手を替えてもページは読み直されず、ボタンの印(class)だけが替わる。
