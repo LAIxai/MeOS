@@ -6967,7 +6967,7 @@ function meosPostPuzzleDots(soon) {
     try {
       if (!meDockPanel) return; const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
       const ns = new Set(meosPuzzleTagsOf(ed.document, 0).map(h => h.n));
-      const _ln = MEOS_PUZZLE_LETTERS.indexOf(_meosPuzzleLastCh) + 1, letters = (_ln > 0 && ns.has(_ln)) ? _meosPuzzleLastCh : '';   // v4.2.594: 最後にクリックした字だけ(その印が消えたら点も消える)
+      const letters = MEOS_PUZZLE_LETTERS.split('').filter((c, i) => ns.has(i + 1)).join('');   // v4.2.595(俊克「もとい。設定済みの所に白い点に戻そう」): 印の在る字ぜんぶ
       const key = ed.document.uri.toString() + '|' + letters;
       if (key === _meosPuzzleDotsLast && !soon) return; _meosPuzzleDotsLast = key;
       meDockPanel.webview.postMessage({ type: 'mdDots', letters });
@@ -32244,10 +32244,16 @@ async function meosMeDockWidthSave() {
     // ★v4.2.592(俊克「Me Dockの幅を最小化している時に、何かのボタン操作をすると、幅が最大化してしまう。防げないか?」):
     //   ログ= 0.216 ⇄ 0.784 を行き来= **左右がちょうど入れ替わった値**(手のドラッグなら毎回少し違う)= VSCodium のグループの拡大
     //   (タブのダブルクリック等)の状態で、Me Dock をクリックすると焦点の移ったグループが拡大される。→ 入れ替わりは覚えずに、覚えた幅へ戻す
+    // ★v4.2.595(俊克 バグ1「表ボタン/↻を押すとMe Dockが最大幅に。終いにはファイルのタブが見えなくなった」): 592 の「覚えた幅へ戻す」が、
+    //   古い覚え(0.784= 入れ替わった後の値)へ2秒ごとに戻し続け、VSCodium と取り合いになっていた(ログ: 入れ替わりを戻した 0.216→0.784 が連続)。
+    //   ★真因= VSCodium は**最小の幅まで縮んだグループに焦点が移ると広げる**(0.216 は最小)。→ 入れ替わりを見たら、元の幅を最小から2%離した所へ置き直して覚える
+    //     (最小ぴったりでなければ焦点が移っても広げない= 入れ替わり自体が起きない)。戻し続けない= 1回だけ
     if (old > 0.08 && Math.abs(old - 0.5) > 0.05 && Math.abs(r - (1 - old)) < 0.006) {
+      const fixd = (old < 0.5) ? Math.min(0.5, old + 0.02) : Math.max(0.5, old - 0.02);
       _meDockWidthHoldUntil = Date.now() + 1500;
-      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - old }, { size: old }] });
-      meosDbg('[dockWidth] 入れ替わりを戻した ' + r.toFixed(3) + ' → ' + old.toFixed(3));
+      extensionContext.globalState.update('meDockWidthRatio', fixd);
+      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - fixd }, { size: fixd }] });
+      meosDbg('[dockWidth] 最小の枠が広げられた→ 最小から離して置き直した ' + old.toFixed(3) + ' → ' + fixd.toFixed(3) + ' (見えた ' + r.toFixed(3) + ')');
       return;
     }
     if (Math.abs(old - r) > 0.004) { extensionContext.globalState.update('meDockWidthRatio', r); meosDbg('[dockWidth] 覚えた ' + r.toFixed(3)); }
