@@ -31692,7 +31692,12 @@ function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.cl
    → 部品を見ない。ヘッダーの原点をマウスの物差しで1度掴み(ヘッダー自身かこの駒の上を通った時)、以後は (clientX−原点)÷zoom の1本で出す= どの部品の上でも同じ */
 let org=null;
 function calib(ev){const t=ev.target,z=Z();if(t===hdr){org={x:ev.clientX-(ev.offsetX||0),y:ev.clientY-(ev.offsetY||0)};}
-else if(t===hp){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(hp.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(hp.clientTop||0))*z};}}
+else if(t===hp){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(hp.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(hp.clientTop||0))*z};}
+/* ★v4.2.579(俊克 改良1「入れ替えた直後、戻るボタンにポインターを入れると赤×が大きく左下に離れる。切替ボタンの上に持ってくると戻る」・改良2「文字タイルの上で大きく左上にズレる」):
+   真因= 原点を覚え直すのはヘッダーの地と手のボタンの上だけ= 入れ替え直後とスクロールの後(原点を忘れる)は昔の出し方(部品の位置の足し算)に頼り、
+   ずらして置いた部品(↩= translate・文字タイル= 浮き上がり)で外れた。→ ずらして描かれていない塊の部品なら、どの部品の上でも原点を覚え直す */
+else if(t instanceof HTMLElement&&t!==redC&&hdr.contains(t)&&t.offsetParent&&calibOk(t)){const b=boxOf(t);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(t.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(t.clientTop||0))*z};}}
+function calibOk(t){try{if(getComputedStyle(t).display==='inline')return false;/* v4.2.529: 字の中の部品は offsetX の起点が食い違う */for(let e=t;e&&e!==hdr;e=e.parentElement){const x=getComputedStyle(e).transform;if(x&&x!=='none')return false;}return true;}catch(_){return false;}}
 window.addEventListener('scroll',()=>{org=null;},true);window.addEventListener('resize',()=>{org=null;});
 function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,y:(ev.clientY-org.y)/z};}return hdrPtOld(ev);}
 function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
