@@ -13334,7 +13334,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
-    if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
+    if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
@@ -15206,7 +15206,7 @@ function meosPinponPath() {
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
-    const notes = [{ t0: 0, hz: 1318.51, dec: 5.5, amp: 0.9 }, { t0: 0.30, hz: 1046.50, dec: 1.7, amp: 1.0 }];   // ピン / ポーーン
+    const notes = [{ t0: 0, hz: 1318.51, dec: 4.5, amp: 0.9 }, { t0: 0.30, hz: 1046.50, dec: 1.25, amp: 1.0 }];   // ピン / ポーーン   v4.2.620: 消え方をゆっくりに(5.5/1.7→4.5/1.25)
     const parts = [[1, 1], [2, 0.22], [2.76, 0.12], [3, 0.06]];
     let peak = 0;
     for (let i = 0; i < n; i++) {
@@ -15216,9 +15216,11 @@ function meosPinponPath() {
         for (const [m, a] of parts) v += a * Math.sin(2 * Math.PI * no.hz * m * u) * env * Math.exp(-u * (m - 1) * 1.2) * no.amp; }
       smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
     }
-    const k = peak > 0 ? 0.8 / peak : 1;
-    for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767 * Math.min(1, (n - i) / (rate * 0.05))), 44 + i * 2);
-    const f = path.join(os.tmpdir(), 'meos-pinpon-v1.wav');
+    // ★v4.2.620(俊克「afplay の音量を倍にしても上がらない。本当の音量を上げるしかない」): afplay -v は元の音を超えてほとんど大きくならない→ 音そのものを大きく=
+    //   山を上限近くまで・なだらかな圧縮(GONG と同じ tanh)で平均の大きさを持ち上げる(耳は平均で大きさを感じる)
+    const k = peak > 0 ? 1 / peak : 1, drive = 2.4, nrm = Math.tanh(drive);
+    for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.97 * 32767 * Math.min(1, (n - i) / (rate * 0.05))), 44 + i * 2); }
+    const f = path.join(os.tmpdir(), 'meos-pinpon-v2.wav');
     fs.writeFileSync(f, buf); _meosPinponFile = f; return f;
   } catch (_) { return null; }
 }
