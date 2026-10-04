@@ -6923,9 +6923,13 @@ async function meosPuzzleTag(ch) {
     const hits = meosPuzzleTagsOf(doc, n);
     if (!hits.length) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
-      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' //  *}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
+      // ★v4.2.631(俊克「初めてクリックしたパズルボタンには、tipとして「Welcome to Puzzle Dock!!」と入れよう。これで tip の使い方を理解できるはず」):
+      //   生涯で最初に書く1本だけ、説明(// の後ろ)に入れておく= 字に白い点が付き、触れると tip に出る→ ここに書けば tip になると分かる
+      let _welcome = false; try { _welcome = !extensionContext.globalState.get('meosPuzzleWelcomed', false); } catch (_) { }
+      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' // ' + (_welcome ? 'Welcome to Puzzle Dock!! ' : ' ') + '*}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag));
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
+      if (_welcome) { try { extensionContext.globalState.update('meosPuzzleWelcomed', true); } catch (_) { } }
       meosPostPuzzleDots(true);
       meosDbg('[puzzleTag] ' + ch + '=P' + n + ' を書いた 行=' + (ln + 1));
       vscode.window.setStatusBarMessage('MeOS: ' + ch + ' \u2192 here (P' + n + ')', 3000);
