@@ -32279,8 +32279,9 @@ function meosMeDockWidthRestore() {
       if (!lo || lo.orientation !== 0 || !Array.isArray(lo.groups) || lo.groups.length !== 2) return;
       const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
       if (a > 0 && b > 0 && Math.abs(b / (a + b) - r) < 0.004) return;   // もう覚えた幅
-      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - r }, { size: r }] });
-      meosDbg('[dockWidth] 戻した ' + r.toFixed(3));
+      const T = a + b, bpx = Math.round(T * r);   // v4.2.605: 割合では効かない→ ピクセルで
+      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - bpx }, { size: bpx }] });
+      meosDbg('[dockWidth] 戻した ' + r.toFixed(3) + ' (' + bpx + 'px)');
     } catch (_) { }
   };
   setTimeout(put, 150); setTimeout(put, 900);
@@ -32744,8 +32745,10 @@ function toggleMeDock(editorOverride) {
       if (atMin && meDockPanel && meDockPanel.viewColumn === vscode.ViewColumn.Two && Date.now() > (_meDockWidthHoldUntil || 0)) {
         const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
         if (lo && lo.orientation === 0 && Array.isArray(lo.groups) && lo.groups.length === 2) { const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
-          if (a > 0 && b > 0) { const r = Math.min(0.5, b / (a + b) + 0.05);   /* v4.2.604(俊克「5%に」)。603 の3%も効かなかった */ _meDockWidthHoldUntil = Date.now() + 2500;
-            await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - r }, { size: r }] });
+          if (a > 0 && b > 0) { const T = a + b, r = Math.min(0.5, b / T + 0.05);   /* v4.2.604(俊克「5%に」) */ _meDockWidthHoldUntil = Date.now() + 2500;
+            // ★v4.2.605(測った= 604 のログ: 置いた後も {797},{220} のまま= 割合の命令が効いていない。getEditorLayout はピクセルを返す)→ 置く時もピクセルで
+            const bpx = Math.round(T * r);
+            await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - bpx }, { size: bpx }] });
             try { extensionContext.globalState.update('meDockWidthRatio', r); } catch (_) { }
             meosDbg('[dockWidth] 最小幅 ' + w + 'px → +5% ' + r.toFixed(3));
             // v4.2.604: 測る= 置いた直後と1秒後に、本当にその幅になったかを読む(603 では置いた後に幅の知らせが来ず、置いても変わっていない疑い)
