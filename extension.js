@@ -15161,7 +15161,7 @@ function meosRingSeconds() {
   //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
   // ★v4.2.520(俊克「😸PURR は3鳴きはしつこいので一鳴きでいい。😺Purr も一鳴きに」): ゴロゴロ2種は鳴り続けず1回だけ(V-helper も同じ値を受け取る)
   try { const _nm20 = meosSoundCanon(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr' || _nm20 === 'PURR') return 0; } catch (_) { }
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; return (meosSoundCanon(_meosBellOverride || meosSoundNow()) === 'MEW') ? Math.max(1.35, b) : b; } catch (_) { return 1; }
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; const _c = meosSoundCanon(_meosBellOverride || meosSoundNow()); return (_c === 'MEW') ? Math.max(1.35, b) : (_c === 'GROWL' ? Math.max(2.5, b) : b); } catch (_) { return 1; }   /* v4.2.626(俊克「🍙を鳴らす時は、この長さ+間で。せわし過ぎてそれらしく聞こえない」): GROWL は音の長さ1.45秒＋間1秒強= 2.5秒ごと */
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
@@ -15452,7 +15452,7 @@ function meosClockSetGong(title, cycleSrc, cycle, rounds) {
 function meosPlayCountBell(cb) {
   try {
     if (!cb || !cb.sound) return;
-    const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 1.3 : 1.0))) * 1000);   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
+    const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 1.3 : (_cs21 === 'GROWL' ? 2.5 : 1.0)))) * 1000);   // v4.2.626: 🍙GROWL も長さ＋間   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
     meosMewGainReset();
     for (let k = 0; k < cb.count; k++) setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, k * gap);
     meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
