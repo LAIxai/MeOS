@@ -31992,6 +31992,11 @@ hp.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;
 hp.addEventListener('pointercancel',()=>{end(null,false);});hp.addEventListener('lostpointercapture',()=>{if(press)end(null,false);});
 hp.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();
 // {* ▲mCN=dock_js_handdrag *}
+/* v4.2.638: 開いているリスト(⏰▾/⏰一覧/H-TOC)を拡張へ知らせる= 拡張がそのリストの覚えた幅へ広げ、閉じたら戻す */
+(function(){let last=null,tm=0;const ft=document.getElementById('fixed-toc'),cp=document.getElementById('clk-pop');
+function key(){try{if(cp&&cp.classList.contains('on'))return cp.classList.contains('hist-only')?'tmsHist':'tmsSet';if(ft&&!ft.classList.contains('htoc-closed'))return 'htoc';}catch(_){}return '';}
+function tell(){clearTimeout(tm);tm=setTimeout(()=>{const k=key();if(k===last)return;last=k;try{vscode.postMessage({type:'dockListOpen',key:k});}catch(_){}},150);}
+try{const mo=new MutationObserver(tell);if(ft)mo.observe(ft,{attributes:true,attributeFilter:['class']});if(cp)mo.observe(cp,{attributes:true,attributeFilter:['class']});}catch(_){}tell();})();
 // {* ▲mCN=dock_js *}
 </script></body></html>`;
 }
@@ -32404,6 +32409,33 @@ function closeAllMeDockTabs() {
 //   → 左右2つのグループで Me Dock が右に居る間だけ、幅の割合を覚える(2秒おきに今の姿を見る= ドラッグした結果を拾う)。
 //     作り直した直後は覚えた割合に戻す(戻している間は覚えない= 既定の幅で上書きしない)。
 let _meDockWidthTimer = null, _meDockWidthHoldUntil = 0;
+// ★v4.2.638(俊克「Me Dockの幅を最小化している時に、Timed MeあるいはH-TOCボタンをクリックすると、リストが食み出る。自動で幅を広げて、
+//   リストが奇麗に出るように。内容によって幅が異なるので、それぞれを表示した時にドラッグで幅を最後に決めた時の値を記憶しておけばいい」):
+//   開いているリスト(tmsSet= ⏰▾の設定 / tmsHist= ⏰の一覧 / htoc= H-TOC)を webview が知らせる。開いた時、覚えた幅より狭ければ広げ、
+//   閉じたら開く前の幅へ戻す(広げた時だけ)。開いている間の幅は 2秒ごとの見回り(meosMeDockWidthSave)がそのリストの幅として覚える
+let _meDockListKey = '', _meDockListBase = 0, _meDockRestoreUntil = 0;
+async function meosDockListOpen(key) {
+  try {
+    key = String(key || '');
+    if (Date.now() < _meDockRestoreUntil) { setTimeout(() => meosDockListOpen(key), _meDockRestoreUntil - Date.now() + 60); return; }   // Me Dock を開き直した時の幅の戻し(0.15/0.9秒)が済んでから
+    if (key === _meDockListKey) return;
+    _meDockListKey = key;
+    if (!meDockPanel || meDockPanel.viewColumn !== vscode.ViewColumn.Two) return;
+    const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
+    if (!lo || lo.orientation !== 0 || !Array.isArray(lo.groups) || lo.groups.length !== 2) return;
+    const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0, T = a + b; if (!(a > 0 && b > 0)) return;
+    if (key) {
+      const want = Number((extensionContext.globalState.get('meDockListPx', {}) || {})[key]) || 0;
+      if (want > b + 4 && want < T * 0.92) { if (!_meDockListBase) _meDockListBase = Math.round(b); _meDockWidthHoldUntil = Date.now() + 2500;
+        await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - want }, { size: want }] });
+        meosDbg('[dockWidth] リスト ' + key + ' を開いた→ ' + Math.round(b) + '→' + want + 'px'); }
+    } else if (_meDockListBase) {
+      const base = _meDockListBase; _meDockListBase = 0; _meDockWidthHoldUntil = Date.now() + 2500;
+      await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - base }, { size: base }] });
+      meosDbg('[dockWidth] リストを閉じた→ ' + Math.round(b) + '→' + base + 'px');
+    }
+  } catch (_) { }
+}
 async function meosMeDockWidthSave() {
   try {
     if (!meDockPanel || Date.now() < _meDockWidthHoldUntil) return;
@@ -32424,12 +32456,15 @@ async function meosMeDockWidthSave() {
     //   VSCodium の自動の拡大・人のドラッグと取り合いになり、グループの幅が潰れた(2回直して2回とも)。→ **入れ替わりには手を出さない**(覚えもしない)。
     //   配置を触るのは Me Dock を開き直した時の1回(meosMeDockWidthRestore)だけ。予防は「最小ぴったりにしない」(VSCodium は最小のグループだけを広げる)
     if (old > 0.08 && Math.abs(old - 0.5) > 0.05 && Math.abs(r - (1 - old)) < 0.006) { meosDbg('[dockWidth] 入れ替わり(VSCodium の拡大)= 触らない ' + old.toFixed(3) + ' / ' + r.toFixed(3)); return; }
+    // v4.2.638: リスト(⏰/H-TOC)を開いている間の幅は、そのリストの幅として覚える(普段の幅は覚え直さない)
+    if (_meDockListKey) { const m = Object.assign({}, extensionContext.globalState.get('meDockListPx', {}) || {}); if (Math.abs((Number(m[_meDockListKey]) || 0) - b) > 3) { m[_meDockListKey] = Math.round(b); extensionContext.globalState.update('meDockListPx', m); meosDbg('[dockWidth] リスト ' + _meDockListKey + ' の幅を覚えた ' + Math.round(b) + 'px'); } return; }
     if (Math.abs(old - r) > 0.004) { extensionContext.globalState.update('meDockWidthRatio', r); meosDbg('[dockWidth] 覚えた ' + r.toFixed(3)); }
   } catch (_) { }
 }
 function meosMeDockWidthRestore() {
   const r = Number(extensionContext && extensionContext.globalState.get('meDockWidthRatio')) || 0;
   if (!_meDockWidthTimer) _meDockWidthTimer = setInterval(() => { meosMeDockWidthSave(); }, 2000);
+  _meDockListKey = ''; _meDockListBase = 0; _meDockRestoreUntil = Date.now() + 1100;   // v4.2.638: 開き直し= 普段の幅に戻してから、開いているリストの幅を当て直す
   if (!(r > 0.08 && r < 0.92)) return;
   _meDockWidthHoldUntil = Date.now() + 3000;
   const put = async () => {
@@ -32898,6 +32933,7 @@ function toggleMeDock(editorOverride) {
       return;
     }
     // ★v4.2.601: Me Dock が VSCodium の最小幅(約220)まで縮んだら、1回だけ少し広げる(最小ぴったりのグループは焦点が移ると VSCodium が最大へ広げるので)
+    if (message && message.type === 'dockListOpen') { await meosDockListOpen(message.key); return; }   // v4.2.638
     if (message && message.type === 'dockWidthPx') { try { const w = Number(message.w) || 0; meosDbg('[dockWidth] 幅 ' + w + 'px (最小 ' + (Number(extensionContext.globalState.get('meDockMinPx')) || '-') + ')');
       // 物差し= Me Dock の中の幅(VSCodium のピクセルとほぼ同じ= 最小220が211に見える)。決め打ちせず「今までで一番狭い幅」を最小と見なす
       const minPx = Number(extensionContext.globalState.get('meDockMinPx')) || 0;
