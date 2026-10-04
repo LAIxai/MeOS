@@ -32744,10 +32744,13 @@ function toggleMeDock(editorOverride) {
       if (atMin && meDockPanel && meDockPanel.viewColumn === vscode.ViewColumn.Two && Date.now() > (_meDockWidthHoldUntil || 0)) {
         const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
         if (lo && lo.orientation === 0 && Array.isArray(lo.groups) && lo.groups.length === 2) { const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
-          if (a > 0 && b > 0) { const r = Math.min(0.5, b / (a + b) + 0.03);   /* v4.2.603(俊克「先ずは3%」): 2% は約4秒後に最小へ吸い寄せられた(ログ 0.236→0.216 が2回) */ _meDockWidthHoldUntil = Date.now() + 2500;
+          if (a > 0 && b > 0) { const r = Math.min(0.5, b / (a + b) + 0.05);   /* v4.2.604(俊克「5%に」)。603 の3%も効かなかった */ _meDockWidthHoldUntil = Date.now() + 2500;
             await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - r }, { size: r }] });
             try { extensionContext.globalState.update('meDockWidthRatio', r); } catch (_) { }
-            meosDbg('[dockWidth] 最小幅 ' + w + 'px → +3% ' + r.toFixed(3)); } } } } catch (_) { } return; }
+            meosDbg('[dockWidth] 最小幅 ' + w + 'px → +5% ' + r.toFixed(3));
+            // v4.2.604: 測る= 置いた直後と1秒後に、本当にその幅になったかを読む(603 では置いた後に幅の知らせが来ず、置いても変わっていない疑い)
+            const _rd = async (tag) => { try { const l2 = await vscode.commands.executeCommand('vscode.getEditorLayout'); meosDbg('[dockWidth] ' + tag + ' ' + JSON.stringify(l2)); } catch (_) { } };
+            await _rd('置いた直後'); setTimeout(() => _rd('1秒後'), 1000); } } } } catch (_) { } return; }
     if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
     if (message && message.type === 'handPoof') { meosPlayNoChange(true); return; }   // v4.2.548: 手の駒を捨てた音= 🔔 で選んだ音
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
