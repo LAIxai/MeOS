@@ -2821,6 +2821,7 @@ function meosSoundResolve(name) {
   if (n === 'MEW') return meosMewPath() || '';
   if (n === 'GONG') return meosGongPath() || '';   // v4.2.441
   if (n === 'SOFT') return meosNoChangeSoundPath() || '';
+  if (n === 'GROWL') return meosGrowlPath() || '';   // v4.2.621: 🍙GROWL
   if (n === 'DING-DONG!') return meosPinponPath() || '';   // v4.2.618: 賞品(Docke™ で鳴らした人だけ)
   if (n === 'PURR') return meosPurrPath() || '';   // v4.2.518: 作った強烈なゴロゴロ(mac の Purr とは大文字で分ける)   // v4.2.515(俊克「🔔ボタンメニューに Soft が入ってないよ」): MeOS の柔らかい2音も1つの音に
   if (meosSoundIsPath(n)) return n;
@@ -2836,6 +2837,7 @@ function meosSoundList() {
   out.push('GONG');  // v4.2.441: 作ったゴング(どの OS でも)
   out.push('SOFT');  // v4.2.515: 作った柔らかい2音(保存済みの Cmd+S の旧音)
   out.push('PURR');  // v4.2.518: 作った強烈なゴロゴロ
+  out.push('GROWL'); // v4.2.621: 作ったお腹の虫
   try { if (extensionContext && extensionContext.globalState.get('meosDingDongWon')) out.push('DING-DONG!'); } catch (_) { }   // ★v4.2.618(俊克「鳴らした人だけ、賞品として、音ボタンのリストに🛎️DING-DONG!」)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
@@ -2853,6 +2855,7 @@ function meosSoundSpawn(name) {
   if (name === 'SOFT') name = meosNoChangeSoundPath() || '';   // v4.2.515
   if (name === 'PURR') name = meosPurrPath() || '';   // v4.2.518
   if (name === 'DING-DONG!') name = meosPinponPath() || '';   // v4.2.618
+  if (name === 'GROWL') name = meosGrowlPath() || '';   // v4.2.621
   if (!name) return null;
   if (process.platform === 'darwin') {
     const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
@@ -13334,6 +13337,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
+    if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'growl-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.621
     if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
@@ -15131,7 +15135,7 @@ function meosPlayChime(gain) {
       const f = meosSoundResolve(name);   // v4.2.399: Mew も
       const g = (name === 'MEW' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
       exec('afplay -v ' + (Math.round(vol * g * 100) / 100) + ' ' + q(f), () => { });
-    } else if (meosSoundIsPath(name) || name === 'MEW' || name === 'GONG' || name === 'SOFT' || name === 'PURR' || name === 'DING-DONG!') {
+    } else if (meosSoundIsPath(name) || name === 'MEW' || name === 'GONG' || name === 'SOFT' || name === 'PURR' || name === 'DING-DONG!' || name === 'GROWL') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
@@ -15222,6 +15226,49 @@ function meosPinponPath() {
     for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.97 * 32767 * Math.min(1, (n - i) / (rate * 0.05))), 44 + i * 2); }
     const f = path.join(os.tmpdir(), 'meos-pinpon-v2.wav');
     fs.writeFileSync(f, buf); _meosPinponFile = f; return f;
+  } catch (_) { return null; }
+}
+// ★v4.2.621(俊克「お腹の鳴る音を追加しよう。日本語のグーと似ているから GROWL」): 🍙GROWL= お腹の虫。
+//   低い声が「グーー」と持ち上がって下がり(110→260→140Hz)、最後に短い「ギュルル」(300→190Hz)。
+//   ざらつき= 倍音の多い波＋高さの小さな揺れ(乱歩)・泡= 18〜30Hz の不規則な強弱・低いこもった雑音。乱数は種付き(毎回同じ音)
+let _meosGrowlFile = null;
+function meosGrowlPath() {
+  if (_meosGrowlFile) return _meosGrowlFile;
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 44100, secs = 2.3, n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    let seed = 20261004; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const curve = (t) => {   // 高さの道筋(秒→Hz)
+      if (t < 1.6) { const u = t / 1.6; return (u < 0.45) ? 110 + 150 * Math.sin(Math.PI / 2 * u / 0.45) : 260 - 120 * Math.sin(Math.PI / 2 * (u - 0.45) / 0.55); }   // グー: 110→260→140
+      const u = (t - 1.72) / 0.45; return 300 - 110 * Math.max(0, Math.min(1, u));
+    };
+    const env = (t) => {
+      const a = (t < 1.6) ? Math.min(1, t / 0.15) * Math.min(1, (1.6 - t) / 0.35) : 0;
+      const b = (t >= 1.72 && t < 2.2) ? Math.min(1, (t - 1.72) / 0.04) * Math.min(1, (2.2 - t) / 0.18) * 0.75 : 0;
+      return a + b;
+    };
+    let ph = 0, jit = 0, am = 1, amT = 0, amHz = 24, lp = 0;
+    let peak = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      jit += (rnd() - 0.5) * 0.004; jit *= 0.9995;                       // 高さの小さな揺れ
+      const hz = curve(t) * (1 + jit);
+      ph += 2 * Math.PI * hz / rate;
+      let w = 0; for (let h = 1; h <= 9; h++) w += Math.sin(h * ph) / (h * 1.15);   // 倍音の多い(ざらついた)声
+      amT += amHz / rate; if (amT >= 1) { amT -= 1; amHz = 18 + rnd() * 12; am = 0.35 + rnd() * 0.65; }   // 泡の不規則な強弱
+      const bub = 0.55 + 0.45 * am * (0.5 + 0.5 * Math.sin(2 * Math.PI * amT));
+      lp += 0.06 * ((rnd() * 2 - 1) - lp);                                 // こもった雑音
+      const v = (w * 0.55 * bub + lp * 0.9) * env(t);
+      smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    const k = peak > 0 ? 1 / peak : 1, drive = 2.2, nrm = Math.tanh(drive);   // ピンポーン v2 と同じ「音そのものを大きく」
+    for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.95 * 32767 * Math.min(1, (n - i) / (rate * 0.05))), 44 + i * 2); }
+    const f = path.join(os.tmpdir(), 'meos-growl-v1.wav');
+    fs.writeFileSync(f, buf); _meosGrowlFile = f; return f;
   } catch (_) { return null; }
 }
 function meosPlayPinpon() {
@@ -30828,9 +30875,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,10).join('');};
-const sdLabel=(n)=>(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':'')+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
+const sdLabel=(n)=>(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
