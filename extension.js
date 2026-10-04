@@ -2821,6 +2821,7 @@ function meosSoundResolve(name) {
   if (n === 'MEW') return meosMewPath() || '';
   if (n === 'GONG') return meosGongPath() || '';   // v4.2.441
   if (n === 'SOFT') return meosNoChangeSoundPath() || '';
+  if (n === 'DING-DONG!') return meosPinponPath() || '';   // v4.2.618: 賞品(Docke™ で鳴らした人だけ)
   if (n === 'PURR') return meosPurrPath() || '';   // v4.2.518: 作った強烈なゴロゴロ(mac の Purr とは大文字で分ける)   // v4.2.515(俊克「🔔ボタンメニューに Soft が入ってないよ」): MeOS の柔らかい2音も1つの音に
   if (meosSoundIsPath(n)) return n;
   return process.platform === 'darwin' && n ? ('/System/Library/Sounds/' + n + '.aiff') : '';
@@ -2835,6 +2836,7 @@ function meosSoundList() {
   out.push('GONG');  // v4.2.441: 作ったゴング(どの OS でも)
   out.push('SOFT');  // v4.2.515: 作った柔らかい2音(保存済みの Cmd+S の旧音)
   out.push('PURR');  // v4.2.518: 作った強烈なゴロゴロ
+  try { if (extensionContext && extensionContext.globalState.get('meosDingDongWon')) out.push('DING-DONG!'); } catch (_) { }   // ★v4.2.618(俊克「鳴らした人だけ、賞品として、音ボタンのリストに🛎️DING-DONG!」)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
   if (cur && out.indexOf(cur) < 0 && (process.platform === 'darwin' || meosSoundIsPath(cur))) out.push(cur);   // 手で書いた音のファイル(フルパス)も一覧に残す
@@ -2850,6 +2852,7 @@ function meosSoundSpawn(name) {
   if (name === 'GONG') name = meosGongPath() || '';   // v4.2.441
   if (name === 'SOFT') name = meosNoChangeSoundPath() || '';   // v4.2.515
   if (name === 'PURR') name = meosPurrPath() || '';   // v4.2.518
+  if (name === 'DING-DONG!') name = meosPinponPath() || '';   // v4.2.618
   if (!name) return null;
   if (process.platform === 'darwin') {
     const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
@@ -13331,6 +13334,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
+    if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
     let whistle = '';
@@ -15127,7 +15131,7 @@ function meosPlayChime(gain) {
       const f = meosSoundResolve(name);   // v4.2.399: Mew も
       const g = (name === 'MEW' && gain) ? gain : 1;       // v4.2.408: 1/fゆらぎ(鳴き続けの時だけ渡される)
       exec('afplay -v ' + (Math.round(vol * g * 100) / 100) + ' ' + q(f), () => { });
-    } else if (meosSoundIsPath(name) || name === 'MEW' || name === 'GONG' || name === 'SOFT' || name === 'PURR') {
+    } else if (meosSoundIsPath(name) || name === 'MEW' || name === 'GONG' || name === 'SOFT' || name === 'PURR' || name === 'DING-DONG!') {
       meosSoundSpawn(name);                               // v4.2.377: 🔔 で選んだ音(Windows/Linux・未確認)
     } else if (process.platform === 'win32') {
       exec('powershell -NoProfile -c "[console]::beep(880,220);[console]::beep(660,260)"', () => { });
@@ -15220,7 +15224,7 @@ function meosPinponPath() {
 }
 function meosPlayPinpon() {
   try { const f = meosPinponPath(); if (!f) return; const { exec } = require('child_process'); const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
-    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 1.2 ' + q(f), () => { });
+    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 2.4 ' + q(f), () => { });   // v4.2.618(俊克「音量を倍に」): 1.2→2.4
     else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
     else exec('paplay ' + q(f) + ' || aplay -q ' + q(f), () => { });
   } catch (_) { }
@@ -26747,7 +26751,8 @@ body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform
 .md-tile.md-ttile.md-tm{color:#2e9d3a!important}
 .md-tile.md-tm .tt-glyph{display:none}.md-tile.md-tm .tt-plain{display:inline}
 .md-tile.md-tm.md-dot::after{display:none}
-.md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
+.md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}
+.md-tiles.md-extreme .md-tile,.md-tiles.md-extreme .md-tile.md-tm,.md-tiles.md-extreme .md-tile.md-ttile.md-tm{color:#d4a017!important;text-shadow:0 0 1px rgba(120,80,0,.6)}   /* v4.2.618: Docke™ の時は字が金色 */   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
 .md-dim{filter:grayscale(1) blur(2px);opacity:.45;user-select:none}.md-dim,.md-dim *{pointer-events:none!important}
@@ -27430,6 +27435,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split.s2 .ww-btn{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#3fa85c 34%);border-color:#2f7f45}
 .ww-split.s2 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#3fa85c 46%)}
 .ww-split.s2 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}
+.ww-val{display:inline-block;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}   /* v4.2.618(俊克「折り返しボタンの横幅を3桁の数字が入った時に固定。↻を連打しやすく」) */
 .ww-btn{border:1px solid var(--meos-frame);border-radius:6px;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#e8c46a 16%);color:var(--vscode-foreground);font-size:11px;font-weight:800;line-height:1;padding:4px 8px;cursor:var(--meos-hand);white-space:nowrap}   /* v4.2.159(俊克「半透明になっちゃった。薄めのパステル色で」): 透かさない= 地の色に金を混ぜた不透明の色 */   /* v4.2.158(俊克「両方とも薄めの背景色を付けて区別しやすく」) */
 .ww-btn.on{border-bottom-left-radius:0;border-bottom-right-radius:0;background:color-mix(in srgb,var(--vscode-editor-background) 72%,#e8c46a 28%)}
 .ww-btn:hover{filter:brightness(1.15)}
@@ -28397,7 +28403,7 @@ color:#ffffff;z-index:4;padding:0}
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-strike" data-tip="Strikethrough | ~~{ text (line/bg)//tip }~~ — ▾ picks color · ↻ cycles 3 saved colors · cursor inside → 🚫 removes it (tip included) — plain ~~text~~ too &#10;Opt → 👻 comment out — hidden, not deleted. Caret on the line brings it back.">~~</button><button class="fmt-caret" data-kind="strike" data-tip="Pick line / background color">▾</button><span class="fmt-lvl" id="fmt-st-cycle" data-tip="Cycle 3 saved strikethrough colors (set each with ▾)">↻</span></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-metex" data-tip="MeTeX super / subscript&#10;Click = B↑2 · &#8997;Option+Click = B↓3 (on ä: the lower limit of Σ/∫) · ↻ = A² / not / ä · ▾ = height % · 🚫 = remove&#10;&#10;not — keep the arrow as a plain arrow (do not raise it)&#10;ä — click → ä (write a↑👒(^) by hand and it becomes â as you type)&#10;names draw the shape: (..) (.) (--) (^) (o) (v) (~) (&#39;)&#10;subscript — write ↓ yourself: A↑2 → A↓2">A<sup>2</sup></button><span class="fmt-lvl" id="fmt-mtx-cycle" data-tip="A² → A₃ → not&#10;not writes ↑not / ↓not below — that arrow stays a plain arrow">↻</span><button class="fmt-caret" id="fmt-mtx-caret" data-tip="Set super / subscript height %">▾</button></span>
 <span class="fmt-cell fmt-cell-head"><button class="fmt-btn" id="fmt-heading" data-tip="Heading | ##{ text (text/bg)//tip }## — ▾ picks color · ↻ cycles ## → # → ### · cursor inside → 🚫 removes it (tip included) — plain ## text too &#10;Opt → bullet list: # gives -, ## gives 1.">##</button><button class="fmt-caret" data-kind="heading" data-tip="Pick text / background color">▾</button><span class="fmt-lvl" id="fmt-head-cycle" data-tip="Cycle heading level: ## → # → ### (each level keeps its own color)">↻</span></span></span>
-<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) -->
+<span class="fmt-cell fmt-table-cell"><button class="fmt-btn" id="fmt-table" data-tip="Format Table | Select lines separated by tabs or spaces (e.g. a table copied from a web page) → turns them into a table. Otherwise: align the Markdown table at the cursor. CJK &amp; emoji width aware (漢字=2, ★→ / emoji=1). Same as command: MeOS: Format Table."><svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.2" style="vertical-align:middle"><rect x="0.7" y="0.7" width="16.6" height="12.6" rx="1.6"/><path d="M4.75 0.7V13.3M9 0.7V13.3M13.25 0.7V13.3M0.7 4.87H17.3M0.7 9.13H17.3"/></svg></button><button class="fmt-caret" id="fmt-table-caret" data-tip="Table membrane | Toggle ✓ Membrane this table to wrap the table the cursor is in as a membrane (range explicit; Current Me can jump to the tail of even a long table) or unwrap. Never wraps on its own — you choose.">▾</button></span><span class="fmt-cell ww-cell"><span class="ww-split"><span class="ww-ring" id="ww-ring" data-tip="Wrap presets | Three widths you keep: click to cycle. Drag the bar to change the one you are on — it is remembered in that slot.">↻</span><button class="ww-btn" id="ww-btn" data-tip="Wrap width | Drag the bar or type a number. Columns, so a full-width character is 2."><span id="ww-btn-val" class="ww-val">80</span>↩️</button><div class="ww-pop" id="ww-pop"><span class="ww-bar"><span class="ww-track" id="ww-track"></span><input type="range" class="ww-slider" id="ww-slider" min="40" max="200" step="1"/></span><input class="ww-num" id="ww-num" inputmode="numeric" spellcheck="false"/></div></span></span><!-- v4.2.590(俊克「折り返しボタンをFormat MeのTableボタンの右に。テーブル機能の助けになり、フォーマットという意味でも」) -->
 <span class="fmt-cell fmt-cell-head mew-cell"><button class="fmt-btn mew-btn" id="mew-btn" data-tip="Mew! | Converts the old-notation lines to the new one - only the ones visible on screen. The number is how many are here; press the arrow to see where they are for 5 seconds.">🐱<span class="mew-n" id="mew-n"></span></button><span class="fmt-lvl mew-cycle" id="mew-cycle" data-tip="Show the cat marks for 5 seconds - gutter cats and squiggles on the lines that still use the old notation. They fade on their own, so they never pile up on your text.">&#8635;</span><button class="fmt-caret" id="mew-menu-btn" data-tip="Membrane menu | Jobs that take a deliberate second and reach the whole file - unlike the cat itself, which only converts what you can see.">&#9662;</button><div class="bm-pop mew-pop" id="mew-pop"><button class="bm-pop-item" id="mew-dupfix" data-tip="Check the whole file for names used by more than one membrane, and show what it found before anything is written. A clock is stored under its membrane name, so a duplicate name breaks the clock - those are the ones that need repair. Every other repeated name may be deliberate: that is how the H-TOC finds every place on one topic.">Check &amp; repair duplicate names</button></div><div class="mew-dup" id="mew-dup"><button class="mew-dup-x" id="mew-dup-x" data-tip="Close | Nothing is written. Esc does the same.">&#10005;</button><div class="mew-dup-title" id="mew-dup-title"></div><div class="mew-dup-body"><div>A clock is stored under its membrane&#8217;s name, so two timers under one name break both.</div><div>One timer under a repeated name is fine \u2014 nothing is competing for the key.</div><div>Renaming keeps every other membrane exactly as it is.</div></div><div class="mew-dup-line" id="mew-dup-row-clock"><span class="mew-dup-lbl" id="mew-dup-lbl-clock"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-clock" data-tip="Go and look at one of them. Press again for the next membrane with that name - shift-click steps back. The count reads name / how many names - which copy. Nothing is written, and the panel stays open.">&#128065; See one</button><button class="mew-dup-btn mew-dup-main" id="mew-dup-clock" data-tip="Rename only the membranes that carry a timer. Every other repeated name is left exactly as it is."></button></div><div class="mew-dup-line" id="mew-dup-row-all"><span class="mew-dup-lbl" id="mew-dup-lbl-all"></span><button class="mew-dup-btn mew-dup-see" id="mew-dup-see-all" data-tip="Go and look at one of the repeated names that has no timer, before deciding whether it was deliberate. Press again for the next - shift-click steps back. Nothing is written.">&#128065; See one</button><button class="mew-dup-btn" id="mew-dup-all" data-tip="Make every duplicate name unique, including the ones with no timer. A repeated name is also how the H-TOC finds every place on one topic, so this may undo something deliberate."></button></div></div></span>
 <!-- {* ▲mCN=dock_format *} -->
 <div class="color-pop fmt-pop" id="fmt-pop"></div>
@@ -30819,10 +30825,10 @@ if(tr)tr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();
 const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),sv=document.getElementById('sd-btn-val');let sdTimer=null;
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
-const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,9).join('');};
-const sdLabel=(n)=>(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
+const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,10).join('');};
+const sdLabel=(n)=>(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':'')+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
@@ -31754,6 +31760,7 @@ function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRY
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
 row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));
+row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
 /* v4.2.615: 最後が TM= ™ に成り済ます */const _tm=/TM$/.test(o);row.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-tm',_tm&&(c==='T'||c==='M'));});}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
@@ -32408,7 +32415,7 @@ function toggleMeDock(editorOverride) {
         //   特別な並び(間抜け/Deco/eMcoD)に**入った**時だけ、🔔 で選んだ音を2回。同じ種類の中で並べ替えても鳴らさない
         const _kind = (x) => meosDockLocked(x) ? 'lock' : meosDockCrypt(x) ? 'crypt' : meosDockHideEnc(x) ? 'hide' : '';
         if (_kind(o) && _kind(o) !== _kind(was)) { try { meosPlayNoChange(true, true); } catch (_) { } }
-        if (o === 'DockeTM' && was !== o) { try { meosPlayPinpon(); } catch (_) { } }   // v4.2.617: Docke™(Dock Extreme)= ピンポーン
+        if (o === 'DockeTM' && was !== o) { try { meosPlayPinpon(); if (!extensionContext.globalState.get('meosDingDongWon')) { extensionContext.globalState.update('meosDingDongWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.618: 鳴らした人だけ 🛎️DING-DONG! が音の一覧に   // v4.2.617: Docke™(Dock Extreme)= ピンポーン
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
