@@ -26655,7 +26655,7 @@ function meosDockTilesHtml() {
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
-    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">T</span></span>'
+    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span></span>'
     : '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
@@ -26699,7 +26699,7 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
    Me Dock の一番上の段なので、上の余白で切れないよう、伸びる中心を下寄り(75%)に置く= 上へ 3/4・下へ 1/4 */
 .md-tile{transform-origin:50% 75%;transition:transform .15s ease}
 .md-tile.md-ttile{background:#2e9d3a;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.12)}   /* v4.2.610: Ⓣのタイル= 緑の地に白抜き */
-.md-ttile .tt-glyph{display:inline-block;box-sizing:border-box;width:1.02em;height:1.02em;margin:.04em 0;border:.085em solid #fff;border-radius:50%;font-family:"Arial Black","Helvetica Neue",Arial,sans-serif;font-weight:900;font-size:1em;line-height:.86em;text-align:center;vertical-align:middle}   /* v4.2.610(俊克「Ⓣの字をボタン枠ギリギリに」「エッジのあるフォント」): 丸は枠いっぱい・T は角のある太字 */
+.md-ttile .tt-glyph{display:inline-block;font-weight:400;font-size:1.12em;line-height:1;vertical-align:middle}   /* v4.2.611(俊克「太字でなくノーマルで。Ⓣという文字をそのまま出した方が良い」): 字の Ⓣ をそのまま・枠いっぱいの大きさ */
 .title-row-dock .title-left{gap:0}
 .hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
 .hand-pick:hover{transform:scale(2);z-index:6}
