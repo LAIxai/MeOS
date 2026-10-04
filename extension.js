@@ -26829,6 +26829,7 @@ body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform
 .md-tile.md-tm.md-dot::after{display:none}
 .md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}
 .md-tiles.md-extreme .md-tile,.md-tiles.md-extreme .md-tile.md-tm,.md-tiles.md-extreme .md-tile.md-ttile.md-tm{color:#d4a017!important;text-shadow:0 0 1px rgba(120,80,0,.6)}   /* v4.2.618: Docke™ の時は字が金色 */   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
+.md-tile.md-tile.md-rest{transform:none}   /* v4.2.632(俊克「ドラッグで手を離しても小さくならない。離すと一瞬移動手、0.5秒くらいで選択指に。移動手になると同時にピースを小さく」): 放した字はポインターが出るまで元の大きさ */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
 .md-dim{filter:grayscale(1) blur(2px);opacity:.45;user-select:none}.md-dim,.md-dim *{pointer-events:none!important}
@@ -31840,7 +31841,7 @@ row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.618(俊克「文字を�
 /* v4.2.615: 最後が TM= ™ に成り済ます */const _tm=/TM$/.test(o);row.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-tm',_tm&&(c==='T'||c==='M'));});}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
-if(document.readyState!=='complete')window.addEventListener('load',apply);setTimeout(apply,300);setTimeout(apply,1500);let press=null,suppress=false;
+if(document.readyState!=='complete')window.addEventListener('load',apply);setTimeout(apply,300);setTimeout(apply,1500);let press=null,suppress=false,restTm=0;
 /* 物差し= H-TOC のタブと同じ(マウスの物差しと四角の物差しの比 k を、押した時に掴んだ字の幅で測る・v4.2.140) */
 function measure(ev,t){const r=t.getBoundingClientRect();const leftU=ev.clientX-(ev.offsetX||0);let k=1;
 try{const y=ev.clientY;const on=u=>{const e=document.elementFromPoint(leftU+u,y);return !!(e&&e.closest&&e.closest('.md-tile')===t);};
@@ -31849,10 +31850,10 @@ const wU=(lo+hi)/2;if(wU>2){const kk=r.width/wU;if(kk>0.3&&kk<4)k=kk;}}}catch(_)
 function px(ev){const p=press;return p.m.left0+(ev.clientX-p.m.leftU)*p.m.k;}
 function end(commit){if(!press)return;const p=press;press=null;try{p.t.releasePointerCapture&&p.t.releasePointerCapture(p.pid);}catch(_){}
 document.body.classList.remove('meos-palming','meos-gripping');p.t.classList.remove('dragging','md-noscale');
-if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});}}
+if(p.moved){suppress=true;apply();if(commit)vscode.postMessage({type:'mdTiles',order:order()});/* v4.2.632: 放した= 移動手＋元の大きさ→ 0.5秒で選択指 */const _t=p.t;_t.classList.add('md-rest');_t.addEventListener('pointerleave',()=>_t.classList.remove('md-rest'),{once:true});document.body.classList.add('meos-palming');clearTimeout(restTm);restTm=setTimeout(()=>{if(!press)document.body.classList.remove('meos-palming');},500);}}
 row.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const t=ev.target&&ev.target.closest&&ev.target.closest('.md-tile');if(!t)return;
 
-ev.preventDefault();t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};t.classList.remove('md-noscale');/* v4.2.583: 元の大きさで測ったら、すぐ倍に戻す */press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}/* v4.2.588: 押しただけでは選択指のまま(手の平にしない)= 動かした時に握りへ */});
+ev.preventDefault();t.classList.remove('md-rest');t.classList.add('md-noscale');press={t:t,pid:ev.pointerId,m:measure(ev,t),moved:false};t.classList.remove('md-noscale');/* v4.2.583: 元の大きさで測ったら、すぐ倍に戻す */press.x0=px(ev);try{t.setPointerCapture(ev.pointerId);}catch(_){}/* v4.2.588: 押しただけでは選択指のまま(手の平にしない)= 動かした時に握りへ */});
 row.addEventListener('pointermove',ev=>{if(!press||ev.pointerId!==press.pid)return;const p=press;const x=px(ev);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.t.classList.add('dragging');}
 /* 指が隣の字の真ん中を越えたら、その向こうへ入れ替える(macOS の Dock のように並びがその場で動く) */
