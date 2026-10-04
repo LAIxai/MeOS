@@ -6917,7 +6917,7 @@ async function meosPuzzleTag(ch) {
     const hits = meosPuzzleTagsOf(doc, n);
     if (!hits.length) {
       const ln = ed.selection.active.line, ind = (doc.lineAt(ln).text.match(/^[ \t]*/) || [''])[0];
-      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' *}') + '\n';
+      const tag = ind + wrapRefMark(doc, '{* \u25b6\u25c0mP' + n + '=' + ch + '_' + meosMembraneStamp(new Date()) + ' //  *}') + '\n';   // v4.2.607: 説明を書く場所(// の後ろ)を最初から
       await ed.edit(eb => eb.insert(new vscode.Position(ln, 0), tag));
       try { const _nm = (MEOS_PUZZLE_TAG_NAME_RE.exec(tag) || [])[2]; if (_nm) meosPuzzleFSet(doc, n, _nm); } catch (_) { }   // v4.2.563: 最初に書いた1本が F
       meosPostPuzzleDots(true);
@@ -6955,7 +6955,7 @@ function meosPuzzleTagLine(doc, i, raw) {
 }
 function meosPuzzleTagsOf(doc, n) {
   const out = [], L = meosDocLines(doc);
-  for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = meosPuzzleTagLine(doc, i, t); if (m && (!n || +m[1] === n)) out.push({ line: i, n: +m[1], name: m[2] }); }
+  for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.indexOf('mP') < 0) continue; const m = meosPuzzleTagLine(doc, i, t); if (m && (!n || +m[1] === n)) { const dm = /\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(t.slice(m.index || 0)); out.push({ line: i, n: +m[1], name: m[2], desc: dm ? dm[1].trim() : '' }); } }   // v4.2.607: `// 説明` も読む
   return out;
 }
 // ★v4.2.593(俊克「パズルをクリックしてワープした時、そのパズルの下に白い点を」= mac の Dock の「起動中」の点): 印の在る字の下に白い点
@@ -6968,9 +6968,12 @@ function meosPostPuzzleDots(soon) {
       if (!meDockPanel) return; const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor; if (!ed) return;
       const ns = new Set(meosPuzzleTagsOf(ed.document, 0).map(h => h.n));
       const letters = MEOS_PUZZLE_LETTERS.split('').filter((c, i) => ns.has(i + 1)).join('');   // v4.2.595(俊克「もとい。設定済みの所に白い点に戻そう」): 印の在る字ぜんぶ
-      const key = ed.document.uri.toString() + '|' + letters;
+      // ★v4.2.607(俊克「コメント文にtipを書き込めるように。パズルボタンでそれをtipとして表示。ワープ前に分かるので誤爆がなくなる」): 字ごとに F の印の説明
+      const _all = meosPuzzleTagsOf(ed.document, 0), tips = {};
+      for (let n = 1; n <= 6; n++) { const g = _all.filter(h => h.n === n); if (!g.length) continue; const fn = meosPuzzleFGet(ed.document, n); const f = g.find(h => h.name === fn) || g[0]; if (f.desc) tips[MEOS_PUZZLE_LETTERS.charAt(n - 1)] = f.desc; }
+      const key = ed.document.uri.toString() + '|' + letters + '|' + JSON.stringify(tips);
       if (key === _meosPuzzleDotsLast && !soon) return; _meosPuzzleDotsLast = key;
-      meDockPanel.webview.postMessage({ type: 'mdDots', letters });
+      meDockPanel.webview.postMessage({ type: 'mdDots', letters, tips });
     } catch (_) { }
   }, soon ? 60 : 1200);
 }
@@ -7830,7 +7833,8 @@ function applyPrettyLabels(editor) {
         puzzlePtAll.push({ line, start: mPz.index, n: +mPz[1], name: mPz[2] });
         if (_isRawLine(line)) continue;
         const _letter = MEOS_PUZZLE_LETTERS.charAt(+mPz[1] - 1);
-        refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length), hoverMessage: new vscode.MarkdownString('P' + mPz[1] + ' \u2014 ' + _letter) });
+        const _pzd = (/\/\/[ \t]*(.*?)[ \t]*\*\}/.exec(mPz[0]) || [])[1] || '';   // v4.2.607: 説明もホバーに
+        refPointHideItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index + mPz[0].length), hoverMessage: new vscode.MarkdownString('P' + mPz[1] + ' \u2014 ' + _letter + (_pzd ? ' : ' + _pzd : '')) });
         refPointLabelItems.push({ range: new vscode.Range(line, mPz.index, line, mPz.index),
           renderOptions: { before: { contentText: 'P' + mPz[1], color: 'rgba(124, 58, 237, 0.95)', backgroundColor: 'rgba(124, 58, 237, 0.14)', margin: '0 2px 0 2px', fontWeight: '600' } } });
       }
@@ -31529,7 +31533,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
-if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');document.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-dot',L.indexOf(t.getAttribute('data-ch'))>=0));}catch(e){}return;}
+if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip','P'+('MeDock'.indexOf(c)+1)+' | '+T[c]);else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
 if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
