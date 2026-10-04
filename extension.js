@@ -15224,7 +15224,7 @@ function meosPinponPath() {
 }
 function meosPlayPinpon() {
   try { const f = meosPinponPath(); if (!f) return; const { exec } = require('child_process'); const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
-    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 2.4 ' + q(f), () => { });   // v4.2.618(俊克「音量を倍に」): 1.2→2.4
+    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 4.8 ' + q(f), () => { });   // v4.2.618(俊克「音量を倍に」): 1.2→2.4 / v4.2.619(「さらに倍に」): →4.8
     else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
     else exec('paplay ' + q(f) + ' || aplay -q ' + q(f), () => { });
   } catch (_) { }
