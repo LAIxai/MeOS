@@ -26735,9 +26735,9 @@ function meosDockHideEnc(o) { return MEOS_DOCK_HIDES.some(w => String(o || '').i
 function meosDockCrypt(o) { return MEOS_DOCK_CRYPTS.some(w => String(o || '').indexOf(w) === 0); }
 const MEOS_DOCK_CRYPT_MSGS = ['encOp', 'encryptMembrane', 'copySecretAutoWipe'];   // v4.2.507(俊克「スクショ6枚目(MokecD= Moke)が mock 以上に笑える。ここでもロックしちゃっていい」)
 // ★v4.2.610(俊克「パズルⓉボタンも並べ替えられるように。作れる単語も増える」): Ⓣ(字は T)も7枚目のタイル。並びは7字(旧6字の覚えは頭に T を足して読む)
-const MEOS_DOCK_ALL = 'T' + MEOS_DOCK_HOME;
+const MEOS_DOCK_ALL = MEOS_DOCK_HOME + 'T';   // v4.2.622(俊克「パズルのデフォルトは Me DockⓉ。直ぐ近くに長く一緒にいたⓉdayボタンがある」): 既定は Ⓣ を最後に
 function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 7 && o.split('').sort().join('') === MEOS_DOCK_ALL.split('').sort().join(''); }
-function meosDockTiles() { try { let o = extensionContext.globalState.get('meDockTiles'); if (typeof o === 'string' && o.length === 6) o = 'T' + o; return meosDockTilesValid(o) ? o : MEOS_DOCK_ALL; } catch (_) { return MEOS_DOCK_ALL; } }
+function meosDockTiles() { try { let o = extensionContext.globalState.get('meDockTiles'); if (typeof o === 'string' && o.length === 6) o = o + 'T';   /* v4.2.622: 旧6字の覚えも Ⓣ は最後へ */ return meosDockTilesValid(o) ? o : MEOS_DOCK_ALL; } catch (_) { return MEOS_DOCK_ALL; } }
 function meosDockTilesHtml() {
   const col = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
