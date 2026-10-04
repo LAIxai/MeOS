@@ -26699,7 +26699,7 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
    Me Dock の一番上の段なので、上の余白で切れないよう、伸びる中心を下寄り(75%)に置く= 上へ 3/4・下へ 1/4 */
 .md-tile{transform-origin:50% 75%;transition:transform .15s ease}
 .md-tile.md-ttile{background:#2e9d3a;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.12)}   /* v4.2.610: Ⓣのタイル= 緑の地に白抜き */
-.md-ttile .tt-glyph{display:inline-block;font-weight:400;font-size:1.12em;line-height:1;vertical-align:middle}   /* v4.2.611(俊克「太字でなくノーマルで。Ⓣという文字をそのまま出した方が良い」): 字の Ⓣ をそのまま・枠いっぱいの大きさ */
+.md-ttile .tt-glyph{display:inline-block;font-weight:400;font-size:1.3em;line-height:.86;vertical-align:middle;position:relative;top:-.08em}   /* v4.2.612(俊克「Ⓣの字をもっと大きく、少し上付きに。上の隙間が大きい」): 1.12→1.3em・上へ0.08em(行の高さは .86 にしてタイルの背丈は変えない) */   /* v4.2.611(俊克「太字でなくノーマルで。Ⓣという文字をそのまま出した方が良い」): 字の Ⓣ をそのまま・枠いっぱいの大きさ */
 .title-row-dock .title-left{gap:0}
 .hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
 .hand-pick:hover{transform:scale(2);z-index:6}
