@@ -26655,7 +26655,7 @@ function meosDockTilesHtml() {
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
-    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span></span>'
+    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span></span>'
     : '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
@@ -26705,7 +26705,13 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .hand-pick:hover{transform:scale(2);z-index:6}
 body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform:none}
 .md-tile.md-noscale{transform:none;transition:none}   /* 押した瞬間は元の大きさに戻す= 並べ替えの物差し(v4.2.140)は元の大きさで測る(macのDockも掴むと元に戻る) */
-.md-tile.md-gap{margin-left:.4em}   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
+.md-tile.md-gap{margin-left:.4em}
+/* ★v4.2.615(俊克「TMを最後に付けると、上付きの小さい文字にする。完全に™に成り済ます」): 並びの最後が T・M = 小さな上付きの文字(地も影も点も消す) */
+.md-ttile .tt-plain{display:none}
+.md-tile.md-tm{background:transparent!important;box-shadow:none!important;color:var(--vscode-foreground)!important;font-size:.58em;min-width:0;padding:0 .03em;position:relative;top:-.62em}
+.md-tile.md-tm .tt-glyph{display:none}.md-tile.md-tm .tt-plain{display:inline}
+.md-tile.md-tm.md-dot::after{display:none}
+.md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
 .md-dim{filter:grayscale(1) blur(2px);opacity:.45;user-select:none}.md-dim,.md-dim *{pointer-events:none!important}
@@ -31711,7 +31717,8 @@ function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttrib
 function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0),hd=!lk&&!cr&&HIDES.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);document.body.classList.toggle('md-crypt',cr);
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
-row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));}
+row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));
+/* v4.2.615: 最後が TM= ™ に成り済ます */const _tm=/TM$/.test(o);row.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-tm',_tm&&(c==='T'||c==='M'));});}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
 if(document.readyState!=='complete')window.addEventListener('load',apply);setTimeout(apply,300);setTimeout(apply,1500);let press=null,suppress=false;
