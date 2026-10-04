@@ -27075,7 +27075,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .zoom-me-status .loaded-range{color:var(--vscode-editor-foreground);font-weight:900}
 .top-buttons{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;margin-bottom:0}   /* v4.2.597(俊克「Edit Meの段の下の空白を詰める」): 8→0(枠の内側の余白8は残る) */
 .top-buttons.hidden{display:none}
-.membrane-panel{display:flex;align-items:stretch;justify-content:center;gap:8px;margin-top:4px}
+.membrane-panel{display:flex;align-items:stretch;justify-content:center;gap:8px;margin-top:0}   /* v4.2.601(俊克「Navigate Meの上下の隙間を削ろう。Mepyの上下も」): Navigate Me 7→4・間6→4/Mepy の上 4→0 */
 .membrane-panel.hidden{display:none}
 .membrane-visual{position:relative;isolation:isolate;max-width:210px;border:1.5px solid currentColor;border-radius:8px;background:color-mix(in srgb, currentColor 14%, transparent);overflow:hidden}
 .me-choice{display:flex;align-items:center;gap:6px;font-weight:900;font-size:14px;line-height:1;margin:0;padding:5px 8px}
@@ -27172,7 +27172,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .time-machine-pre{font-weight:800}
 .time-machine-clear{font-weight:800;color:#b45309;grid-column:1 / span 2;grid-row:3;justify-self:center;align-self:end}
 .time-machine-clear.disabled{opacity:.45}
-.nav-center{position:relative;display:grid;gap:6px;padding:7px 22px 7px 7px;border:1px solid var(--meos-frame);border-radius:8px;background:rgba(128,128,128,.06);margin-top:2px}
+.nav-center{position:relative;display:grid;gap:4px;padding:4px 22px 4px 7px;border:1px solid var(--meos-frame);border-radius:8px;background:rgba(128,128,128,.06);margin-top:2px}
 .nav-scroll{position:absolute;right:6px;top:6px;bottom:6px;width:7px;border-radius:4px;background:#f1f1f1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);z-index:6}
 .nav-ticks{position:absolute;top:0;bottom:0;pointer-events:none;z-index:2}
 .nav-ticks-head{left:0;width:50%}
@@ -27330,6 +27330,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .cur-box .toc-pin-bar .toc-pin{border-top:0}
 .cur-box .encrypt-me-row{margin:0;padding:6px 10px;border-top:1px solid rgba(56,148,255,.25)}
 .dock-stick > .gh-wizard,.dock-stick > .inline-panel,.dock-stick > .nav-box{margin-top:6px}
+.dock-stick > .nav-box{margin-top:4px}
 .nav-box .hint{margin:4px 2px 0}
 .nav-box .hint{display:none}   /* v4.2.594(俊克「Mepyの上にある説明文を削除。復活できるようにコードは残す」): この1行を消せば戻る */
 .mepy-box{display:flex;justify-content:center;margin:0 0 3px}   /* v4.2.594(俊克「MepyとTimed Meの間の空白を狭く」): 8→3 */
@@ -31785,6 +31786,8 @@ placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.a
 let press=null,suppress=false;
 /* ★v4.2.567(俊克 改良1「ポインターボタンの上では緑の×は消す。正確に実装するなら、Optクリックが動作する場合のみ緑の×付きの選択指にするべき」):
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
+/* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
+let __mdWT=null;window.addEventListener('resize',()=>{clearTimeout(__mdWT);__mdWT=setTimeout(()=>{try{vscode.postMessage({type:'dockWidthPx',w:Math.round(document.documentElement.getBoundingClientRect().width)});}catch(_){}},700);});
 const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
@@ -32732,6 +32735,19 @@ function toggleMeDock(editorOverride) {
       try { await meosVHelperSet(!meosVHelperOn(), true); } catch (_) { }   // v4.2.364: メニューバーの ⏰ ごと入/切 / ★v4.2.374(俊克 バグ1「[V-helper]をオン/オフすると2つとも消える。自分自身のhelperだけに」): パネルは自分の分だけ(知らせは出さない)
       return;
     }
+    // ★v4.2.601: Me Dock が VSCodium の最小幅(約220)まで縮んだら、1回だけ少し広げる(最小ぴったりのグループは焦点が移ると VSCodium が最大へ広げるので)
+    if (message && message.type === 'dockWidthPx') { try { const w = Number(message.w) || 0; meosDbg('[dockWidth] 幅 ' + w + 'px (最小 ' + (Number(extensionContext.globalState.get('meDockMinPx')) || '-') + ')');
+      // 物差しは Me Dock の中の四角(VSCodium の約1.67倍)= 最小の220は約367に見える→ 決め打ちせず「今までで一番狭い幅」を最小と見なす
+      const minPx = Number(extensionContext.globalState.get('meDockMinPx')) || 0;
+      if (w > 0 && (!minPx || w < minPx)) { try { extensionContext.globalState.update('meDockMinPx', w); } catch (_) { } }
+      const atMin = w > 0 && w <= 420 && (!minPx || w <= minPx + 2);
+      if (atMin && meDockPanel && meDockPanel.viewColumn === vscode.ViewColumn.Two && Date.now() > (_meDockWidthHoldUntil || 0)) {
+        const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
+        if (lo && lo.orientation === 0 && Array.isArray(lo.groups) && lo.groups.length === 2) { const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
+          if (a > 0 && b > 0) { const r = Math.min(0.5, b / (a + b) + 0.02); _meDockWidthHoldUntil = Date.now() + 2500;
+            await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: 1 - r }, { size: r }] });
+            try { extensionContext.globalState.update('meDockWidthRatio', r); } catch (_) { }
+            meosDbg('[dockWidth] 最小幅 ' + w + 'px → +2% ' + r.toFixed(3)); } } } } catch (_) { } return; }
     if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
     if (message && message.type === 'handPoof') { meosPlayNoChange(true); return; }   // v4.2.548: 手の駒を捨てた音= 🔔 で選んだ音
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
