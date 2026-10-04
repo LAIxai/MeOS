@@ -13337,7 +13337,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
-    if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'growl-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.621
+    if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'growl-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.621
     if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
@@ -15232,42 +15232,37 @@ function meosPinponPath() {
 //   低い声が「グーー」と持ち上がって下がり(110→260→140Hz)、最後に短い「ギュルル」(300→190Hz)。
 //   ざらつき= 倍音の多い波＋高さの小さな揺れ(乱歩)・泡= 18〜30Hz の不規則な強弱・低いこもった雑音。乱数は種付き(毎回同じ音)
 let _meosGrowlFile = null;
+// ★★v4.2.623(俊克「🍙はオナラに聞こえる。添付したフリーデータの前半部分が良い感じ。少し高音を強調すると良い」):
+//   参考の前半(0〜1.4秒)を測った= 声の高さ 140〜150Hz でほぼ一定(周期がはっきり)・音の中心 約600Hz(200〜800Hz に集中)・100Hz 以下はほぼ無い。
+//   v1 がオナラに聞こえた元= こもった低い雑音と 100Hz 以下。→ 低い雑音を外し、145Hz の声の倍音のうち 450Hz あたりを強く・800〜1600Hz を参考より約9dB 上げる。泡は控えめに。
+//   参考のファイルは入れない(配る物に丸ごと入れない= GONG と同じく測った数字から作る)
 function meosGrowlPath() {
   if (_meosGrowlFile) return _meosGrowlFile;
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
-    const rate = 44100, secs = 2.3, n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    const rate = 44100, secs = 1.45, n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
     buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
     let seed = 20261004; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    const curve = (t) => {   // 高さの道筋(秒→Hz)
-      if (t < 1.6) { const u = t / 1.6; return (u < 0.45) ? 110 + 150 * Math.sin(Math.PI / 2 * u / 0.45) : 260 - 120 * Math.sin(Math.PI / 2 * (u - 0.45) / 0.55); }   // グー: 110→260→140
-      const u = (t - 1.72) / 0.45; return 300 - 110 * Math.max(0, Math.min(1, u));
-    };
-    const env = (t) => {
-      const a = (t < 1.6) ? Math.min(1, t / 0.15) * Math.min(1, (1.6 - t) / 0.35) : 0;
-      const b = (t >= 1.72 && t < 2.2) ? Math.min(1, (t - 1.72) / 0.04) * Math.min(1, (2.2 - t) / 0.18) * 0.75 : 0;
-      return a + b;
-    };
-    let ph = 0, jit = 0, am = 1, amT = 0, amHz = 24, lp = 0;
-    let peak = 0;
+    const formant = (hz) => Math.exp(-Math.pow((hz - 450) / 280, 2)) + 0.22 * Math.exp(-Math.pow((hz - 1000) / 300, 2));   // 参考に合わせ、800〜1600Hz だけ約 +9dB(少し高音を強調)= 測って3通りから選んだ
+    let ph = 0, jit = 0, am = 1, amT = 0, amHz = 11, peak = 0;
     for (let i = 0; i < n; i++) {
       const t = i / rate;
-      jit += (rnd() - 0.5) * 0.004; jit *= 0.9995;                       // 高さの小さな揺れ
-      const hz = curve(t) * (1 + jit);
-      ph += 2 * Math.PI * hz / rate;
-      let w = 0; for (let h = 1; h <= 9; h++) w += Math.sin(h * ph) / (h * 1.15);   // 倍音の多い(ざらついた)声
-      amT += amHz / rate; if (amT >= 1) { amT -= 1; amHz = 18 + rnd() * 12; am = 0.35 + rnd() * 0.65; }   // 泡の不規則な強弱
-      const bub = 0.55 + 0.45 * am * (0.5 + 0.5 * Math.sin(2 * Math.PI * amT));
-      lp += 0.06 * ((rnd() * 2 - 1) - lp);                                 // こもった雑音
-      const v = (w * 0.55 * bub + lp * 0.9) * env(t);
+      jit += (rnd() - 0.5) * 0.0025; jit *= 0.9993;
+      const f0 = (152 - 10 * (t / secs)) * (1 + 0.025 * Math.sin(2 * Math.PI * 5.5 * t) + jit);   // 約150→142Hz・ゆっくり揺れる
+      ph += 2 * Math.PI * f0 / rate;
+      let w = 0; for (let h = 1; h <= 14; h++) { const hz = h * f0; if (hz < 110) continue; w += formant(hz) * Math.sin(h * ph); }
+      amT += amHz / rate; if (amT >= 1) { amT -= 1; amHz = 8 + rnd() * 7; am = 0.6 + rnd() * 0.4; }   // 泡は控えめ
+      const bub = 0.8 + 0.2 * am * Math.sin(2 * Math.PI * amT);
+      const env = Math.min(1, t / 0.08) * Math.min(1, (secs - t) / 0.3) * (0.85 + 0.15 * Math.sin(2 * Math.PI * 1.6 * t + 1));
+      const v = w * bub * env;
       smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
     }
-    const k = peak > 0 ? 1 / peak : 1, drive = 2.2, nrm = Math.tanh(drive);   // ピンポーン v2 と同じ「音そのものを大きく」
-    for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.95 * 32767 * Math.min(1, (n - i) / (rate * 0.05))), 44 + i * 2); }
-    const f = path.join(os.tmpdir(), 'meos-growl-v1.wav');
+    const k = peak > 0 ? 1 / peak : 1, drive = 1.6, nrm = Math.tanh(drive);
+    for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.95 * 32767), 44 + i * 2); }
+    const f = path.join(os.tmpdir(), 'meos-growl-v2.wav');
     fs.writeFileSync(f, buf); _meosGrowlFile = f; return f;
   } catch (_) { return null; }
 }
