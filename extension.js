@@ -27333,9 +27333,9 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .dock-stick > .nav-box{margin-top:4px}
 .nav-box .hint{margin:4px 2px 0}
 .nav-box .hint{display:none}   /* v4.2.594(俊克「Mepyの上にある説明文を削除。復活できるようにコードは残す」): この1行を消せば戻る */
-.mepy-box{display:flex;justify-content:center;margin:0 0 3px}   /* v4.2.594(俊克「MepyとTimed Meの間の空白を狭く」): 8→3 */
+.mepy-box{display:flex;justify-content:center;margin:0}   /* v4.2.594(俊克「MepyとTimed Meの間の空白を狭く」): 8→3 */
 /* v4.2.594(俊克「Mepyと四角枠の隙間/Timed Meの枠と外の枠の隙間を狭く」): 下の枠(Mepy と Timed Me を包む本文)の内側の余白 10→4・間 8→4 */
-main.body{padding:4px;gap:4px}
+main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角枠とMepyの間を縮めれば、サイズ2/10でも完全にすべてを表示できる」): Mepy の下 3→0・間 4→3・Timed Me の枠の内側の上下 7→4 */
 .dock-stick.unstick{position:static}
 /* ★v4.2.466(俊克「スクロールすると、固定位置のはずの部分が少し上に移動してしまう。これを動かないようにできないか?」):
    top:0 だったので、上の余白(body の padding＋枠の線)の分だけ上へ動いていた→ 止まっている時と同じ高さ(--stick-top= 起動時に測る)で貼り付く。
@@ -27386,7 +27386,7 @@ main.body{padding:4px;gap:4px}
    H-TOCをボタン化して2つを並べ、その下にCurrent Me。タイマーを左・H-TOCを右(主役はタイマー、TMSだしね)。A案(その場で開く)一択。
    タイマーボタンは今より大きく、でもH-TOCと同じにはしない。コンパクトなのが良い所」): 先頭の行= ⏰(Hyper IDXの行から移す)＋📑。
    ★行の型は .toc-tools を併せ持つ= ⏰の見た目の規則(.toc-tools .warn-btn.raw-timer 等)をそのまま効かせる(家の中の同じ部品を真似る)。 */
-.dock-lead{border-top:0;padding:7px 8px;flex-wrap:nowrap;gap:9px}
+.dock-lead{border-top:0;padding:4px 8px;flex-wrap:nowrap;gap:9px}
 .lead-grp{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;flex:0 0 auto}   /* v4.2.600: 名札+ボタン= 1組で折り返す */
 .dock-lead .clk-wrap{margin:0;flex:0 0 auto}
 .dock-lead .tms-title{margin-right:0}   /* v4.2.597(俊克「Timed Meとボタンの間を少し空けて」): -3→5 */   /* v4.2.252(俊克「タイマーボタンの最初に『Timed Me-System: ⏰ 26.01 ▼』と表示すると、MeOSの根本思想が分かる」): Hyper IDX と同じ名札 */
