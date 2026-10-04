@@ -26818,7 +26818,7 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .title-row-dock .title-left{gap:0}
 .hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
 .hand-pick:hover{transform:scale(2);z-index:6}
-body.meos-gripping .hand-pick:hover{transform:none}   /* v4.2.635: 押した瞬間の手の平では縮めない(握って絵を持ち出した時だけ) */
+/* v4.2.637(俊克 改良2「握りになるとボタンが小さくなり、ボタンの上でリリースし難い。パズルは握っても大きいまま」): 握っても縮めない(v4.2.582〜635 の縮めを外す) */
 .md-tile.md-noscale{transform:none;transition:none}   /* 押した瞬間は元の大きさに戻す= 並べ替えの物差し(v4.2.140)は元の大きさで測る(macのDockも掴むと元に戻る) */
 .md-tile.md-gap{margin-left:.4em}
 /* ★v4.2.615(俊克「TMを最後に付けると、上付きの小さい文字にする。完全に™に成り済ます」): 並びの最後が T・M = 小さな上付きの文字(地も影も点も消す) */
@@ -26928,14 +26928,14 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-plus::before,.hp-plus::after{content:'';position:absolute}
 .hp-plus::before{left:3px;top:0;width:1px;height:7px}
 .hp-plus::after{left:0;top:3px;width:7px;height:1px}
-.hp-redbox.hp-aimbox{overflow:hidden}
+.hp-redbox.hp-aimbox{overflow:visible}   /* v4.2.637: 橙の長い十字も縁で切らない(赤より長く) */
 .hp-redbox{position:absolute;inset:0;overflow:visible;/* v4.2.583(俊克「Dockが枠を食み出せるなら、長い赤十字の縦線も食み出せるのでは」): ヘッダーの縁で切らない(v4.2.527 の切り取りを外す) */pointer-events:none;border-radius:7px;z-index:60}
 .hp-aim-long{position:absolute;left:0;top:0;width:0;height:0;display:none}
 .hp-aim-long.on{display:block}
 .hp-aim-long::before,.hp-aim-long::after{content:'';position:absolute;background:#ff9500}
 /* v4.2.533(俊克「右と下のボタンに被るので、その方向を短く」): 左と上は40・右は24(ボタンの右端の少し先)・下は14(ボタンの下端の少し先) */
-.hp-aim-long::before{left:-.5px;top:-40px;width:1px;height:54px}
-.hp-aim-long::after{left:-40px;top:-.5px;width:64px;height:1px}
+.hp-aim-long::before{left:-.5px;top:-60px;width:1px;height:120px}   /* v4.2.637(俊克 改良1「移動手と特に握りの時は、橙+も長く。赤(80)よりも長く」): 120 */
+.hp-aim-long::after{left:-60px;top:-.5px;width:120px;height:1px}
 .hp-red{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;display:none}
 .hp-red.on{display:block}
 .hp-red::before,.hp-red::after{content:'';position:absolute;background:#ff2a2a}
@@ -31936,7 +31936,7 @@ const AIMF={btron:[1/96,1/80],macos22:[12.6/80,11/96],macos:[0.2,0.1]};/* v4.2.5
 function placeAim(){try{const aim=hp.querySelector('.hp-aim');const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!aim||!pic)return;const im=pic.querySelector('img');let x,y;
 if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.offsetTop+im.offsetHeight*f[1];}else{x=pic.offsetLeft+pic.offsetWidth*0.27;y=pic.offsetTop+pic.offsetHeight*0.52;}
 aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);
-try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',false);/* v4.2.585(俊克「橙+が直ってない。ここは普通の長さ」): OS の手も橙は小さな + (BTRON・22.5° と同じ)= 手のボタンが倍に膨らむので長い十字は要らない */}}catch(_){}}catch(_){}}
+try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);let k=1;try{const tf=getComputedStyle(hp).transform;if(tf&&tf!=='none')k=new DOMMatrix(tf).a||1;}catch(_){}const ox=hp.offsetWidth*0.5,oy=hp.offsetHeight*0.75,cx=(hp.clientLeft||0)+x,cy=(hp.clientTop||0)+y;L.style.left=(b.x+ox+(cx-ox)*k)+'px';L.style.top=(b.y+oy+(cy-oy)*k)+'px';/* v4.2.637: 膨らんだボタン(transform-origin 50% 75%)の中の当たりへ */const B=document.body.classList;L.classList.toggle('on',cur()==='system'&&(B.contains('meos-palming')||B.contains('meos-gripping'))&&(!!press||hp.matches(':hover')));/* v4.2.585(俊克「橙+が直ってない。ここは普通の長さ」): OS の手も橙は小さな + (BTRON・22.5° と同じ)= 手のボタンが倍に膨らむので長い十字は要らない */}}catch(_){}}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
 let press=null,suppress=false,gripTm=0,relXY=null,poofTm=0;
 /* ★v4.2.635(俊克「ポインターボタンも同様に修正しよう。基本は選択指で、クリックドラッグのときに、過渡的に手の平(移動手)が出る。
@@ -31962,6 +31962,7 @@ hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');}
 /* v4.2.527(俊克 バグ2「OSの橙がOの中心から大きく外れる」・改良2「OSの長い赤い+が見えない」): 手を替えてもページは読み直されず、ボタンの印(class)だけが替わる。
    橙の位置と赤の形を最初の1回しか決めていなかった(ログ= 3つの手とも aim=9.2,2.2)→ ボタンの class が替わるたびに決め直す */
 redKind();try{new MutationObserver(()=>{placeAim();redKind();}).observe(hp,{attributes:true,attributeFilter:['class']});}catch(_){}
+try{new MutationObserver(()=>{placeAim();}).observe(document.body,{attributes:true,attributeFilter:['class']});}catch(_){}   /* v4.2.637: 手の平/握りになった・戻った時に橙の長い十字を出し入れ */
 /* v4.2.533(俊克 バグ1「Me Dockの幅を変えると大きな+が移動してしまう」): 橙の長い十字はヘッダーの中の位置で置く→ 幅が変わってボタンが動いたら置き直す */
 try{new ResizeObserver(()=>placeAim()).observe(hdr);}catch(_){}
 /* v4.2.537(俊克「説明は選択指だけにしよう。移動手、握りに付ける必要はない。過剰だよね」): 名前は指差しの時だけ= 絵の上(移動手)・押している間(握り)は出さない */
