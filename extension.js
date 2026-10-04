@@ -26818,7 +26818,7 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .title-row-dock .title-left{gap:0}
 .hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
 .hand-pick:hover{transform:scale(2);z-index:6}
-body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform:none}
+body.meos-gripping .hand-pick:hover{transform:none}   /* v4.2.635: 押した瞬間の手の平では縮めない(握って絵を持ち出した時だけ) */
 .md-tile.md-noscale{transform:none;transition:none}   /* 押した瞬間は元の大きさに戻す= 並べ替えの物差し(v4.2.140)は元の大きさで測る(macのDockも掴むと元に戻る) */
 .md-tile.md-gap{margin-left:.4em}
 /* ★v4.2.615(俊克「TMを最後に付けると、上付きの小さい文字にする。完全に™に成り済ます」): 並びの最後が T・M = 小さな上付きの文字(地も影も点も消す) */
@@ -26922,7 +26922,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hand-pick .hp-img-mac22{width:13px;height:16px}
 /* v4.2.522(俊克「最後の最後の付録」): 手の絵を掴んでボタンの外へ捨てると次の手が出る(macOS の Dock から捨てる動き)。絵の上= 移動手・押す= 握り。
    白い十字= 掴む時の目標(絵の左下)。赤い十字= ポインタの当たり(ヘッダーの中だけ)= 手ごとの当たりの違いをパズルでも試せる */
-.hand-pick>span{cursor:var(--meos-palm)}
+.hand-pick>span{cursor:var(--meos-hand)}   /* v4.2.635(俊克「ポインターボタンも同様に。基本は選択指で、クリックドラッグのときに過渡的に手の平」): 絵の上も選択指 */
 /* v4.2.524(俊克 改良1): 目印は橙の+、選択指の絵の当たり(BTRON=直角の角・22.5°=指先・OS=Oの真ん中)に描く。赤い+(当たり)も同じ形・同じ大きさ */
 .hp-plus{position:absolute;left:-3px;top:-3px;width:7px;height:7px;pointer-events:none}
 .hp-plus::before,.hp-plus::after{content:'';position:absolute}
@@ -31938,7 +31938,11 @@ if(im){const f=AIMF[cur()]||AIMF.btron;x=im.offsetLeft+im.offsetWidth*f[0];y=im.
 aim.style.left=x+'px';aim.style.top=y+'px';aim.dataset.x=x.toFixed(2);aim.dataset.y=y.toFixed(2);
 try{const L=document.querySelector('.hp-aim-long');if(L){const b=boxOf(hp);L.style.left=(b.x+(hp.clientLeft||0)+x)+'px';L.style.top=(b.y+(hp.clientTop||0)+y)+'px';L.classList.toggle('on',false);/* v4.2.585(俊克「橙+が直ってない。ここは普通の長さ」): OS の手も橙は小さな + (BTRON・22.5° と同じ)= 手のボタンが倍に膨らむので長い十字は要らない */}}catch(_){}}catch(_){}}
 placeAim();setTimeout(placeAim,300);if(document.readyState!=='complete')window.addEventListener('load',placeAim);
-let press=null,suppress=false;
+let press=null,suppress=false,gripTm=0,relXY=null,poofTm=0;
+/* ★v4.2.635(俊克「ポインターボタンも同様に修正しよう。基本は選択指で、クリックドラッグのときに、過渡的に手の平(移動手)が出る。
+   外にドラッグアウトして、手を離すと、0.5秒だけ手の平(移動手)になり、その後、↖ポインターになる」):
+   押した= 手の平→ 0.5秒(または動かした)で握り / 外で放した(捨てた)= 0.5秒だけ手の平→ その場の形(地の上なら↖) / 中で放した= 手の平のまま→ 動いた瞬間に選択指(タブ・パズルと同じ) */
+document.addEventListener('pointermove',ev=>{if(press||!relXY)return;if(Math.abs(ev.clientX-relXY[0])+Math.abs(ev.clientY-relXY[1])<3)return;relXY=null;document.body.classList.remove('meos-palming');},true);
 /* ★v4.2.567(俊克 改良1「ポインターボタンの上では緑の×は消す。正確に実装するなら、Optクリックが動作する場合のみ緑の×付きの選択指にするべき」):
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
 /* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
@@ -31950,7 +31954,7 @@ document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on'
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);});
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
-const t=ev&&ev.target;if(t&&t.closest&&(t.closest('.hand-pick>span')))return 'palm';return 'hand';}
+return 'hand';}   /* v4.2.635: 手の駒の絵の上も選択指 */
 const HPT={hand:'17.5deg',palm:'15.5deg',grip:'6.5deg'};
 function moveRed(ev){optOn(ev.altKey);try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
@@ -31961,20 +31965,20 @@ redKind();try{new MutationObserver(()=>{placeAim();redKind();}).observe(hp,{attr
 /* v4.2.533(俊克 バグ1「Me Dockの幅を変えると大きな+が移動してしまう」): 橙の長い十字はヘッダーの中の位置で置く→ 幅が変わってボタンが動いたら置き直す */
 try{new ResizeObserver(()=>placeAim()).observe(hdr);}catch(_){}
 /* v4.2.537(俊克「説明は選択指だけにしよう。移動手、握りに付ける必要はない。過剰だよね」): 名前は指差しの時だけ= 絵の上(移動手)・押している間(握り)は出さない */
-hp.addEventListener('pointermove',ev=>{if(press)return;const onPic=ev.target&&ev.target.closest&&ev.target.closest('.hand-pick>span');if(onPic||cur()==='system')hideBal();else showBal(NAME[cur()],ev);});/* v4.2.547(俊克「そうしましょう」): OSの手の時は家の tip(Pointer hand | …)が説明するので、名前の黒い札は出さない(2つ重なっていた) */
+hp.addEventListener('pointermove',ev=>{if(press)return;const onPic=ev.target&&ev.target.closest&&ev.target.closest('.hand-pick>span');if(cur()==='system')hideBal();else showBal(NAME[cur()],ev);});   /* v4.2.635: 絵の上も選択指= 名前を出す *//* v4.2.547(俊克「そうしましょう」): OSの手の時は家の tip(Pointer hand | …)が説明するので、名前の黒い札は出さない(2つ重なっていた) */
 hp.addEventListener('pointerleave',()=>{if(!press)hideBal();});
 function outside(ev){const u=under(ev);return !(u&&hp.contains(u));}
 function inHp(el){let x=0,y=0,e=el;while(e&&e!==hp){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return e===hp?{x:x,y:y}:{x:0,y:0};}
 function end(ev,commit){if(!press)return;const P=press;press=null;try{hp.releasePointerCapture&&hp.releasePointerCapture(P.pid);}catch(_){}
-document.body.classList.remove('meos-palming','meos-gripping');if(!P.moved){P.g.w.remove();return;}suppress=true;
-if(commit&&ev&&outside(ev)){const to=nxt();P.g.c.classList.add('poof');vscode.postMessage({type:'handPoof'});/* v4.2.548(俊克「ドラッグしてリリースした時、macのDock削除のように効果音。設定した音を鳴らせばいい」) */setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
-else{P.g.w.remove();}}
+document.body.classList.remove('meos-palming','meos-gripping');clearTimeout(gripTm);clearTimeout(poofTm);relXY=null;if(!P.moved){P.g.w.remove();if(P.gripped){document.body.classList.add('meos-palming');relXY=ev?[ev.clientX,ev.clientY]:[-1e6,-1e6];}return;}suppress=true;
+if(commit&&ev&&outside(ev)){document.body.classList.add('meos-palming');poofTm=setTimeout(()=>{if(!press)document.body.classList.remove('meos-palming');},500);/* v4.2.635: 捨てた= 0.5秒だけ手の平 */const to=nxt();P.g.c.classList.add('poof');vscode.postMessage({type:'handPoof'});/* v4.2.548(俊克「ドラッグしてリリースした時、macのDock削除のように効果音。設定した音を鳴らせばいい」) */setTimeout(()=>{P.g.w.remove();hideBal();vscode.postMessage({type:'setPointerHand',value:to});},260);}
+else{P.g.w.remove();document.body.classList.add('meos-palming');relXY=ev?[ev.clientX,ev.clientY]:[-1e6,-1e6];}}
 hp.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const pic=[...hp.children].find(c=>c.tagName==='SPAN'&&c.offsetWidth>0);if(!pic)return;ev.preventDefault();
 /* 掴んだ絵(幽霊): v4.2.523 は絵の大きさの規則(.hand-pick .hp-img)がボタンの外で外れ、96px の原寸で出ていた(俊克 バグ1「巨大なポインター」)→ 今の大きさを写して付ける */
 const g=mk('hp-ghost');const cl=pic.cloneNode(true);const src=pic.querySelectorAll('img'),dst=cl.querySelectorAll('img');src.forEach((im,i)=>{if(dst[i]){dst[i].style.width=im.offsetWidth+'px';dst[i].style.height=im.offsetHeight+'px';dst[i].style.display='block';}});
 cl.style.display='inline-block';g.c.appendChild(cl);g.w.style.visibility='hidden';
 const z=Z(),tp=inHp(ev.target),pp=inHp(pic);const dx=(ev.offsetX||0)+(tp.x-pp.x)*z,dy=(ev.offsetY||0)+(tp.y-pp.y)*z;
-hideBal();press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};
+hideBal();press={pid:ev.pointerId,x0:ev.clientX,y0:ev.clientY,dx:dx,dy:dy,g:g,moved:false};relXY=null;clearTimeout(poofTm);document.body.classList.remove('meos-gripping');document.body.classList.add('meos-palming');clearTimeout(gripTm);gripTm=setTimeout(()=>{if(press&&!press.moved){press.gripped=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}},500);/* v4.2.635: 押した= 手の平→ 0.5秒で握り */
 /* v4.2.525(俊克「真のホットスポットで橙をクリックした。座標データは?」): 押した点と橙の+の差をボタンの中の物差しで書き出す(0,0 ならぴったり) */
 try{const aim=hp.querySelector('.hp-aim');const px=(tp.x+(ev.offsetX||0)/z),py=(tp.y+(ev.offsetY||0)/z);const ax=parseFloat(aim&&aim.dataset.x),ay=parseFloat(aim&&aim.dataset.y);
 vscode.postMessage({type:'dockDbg',text:'handaim hand='+cur()+' press='+px.toFixed(1)+','+py.toFixed(1)+' aim='+ax+','+ay+' diff='+(px-ax).toFixed(1)+','+(py-ay).toFixed(1)+' z='+z.toFixed(3)+' client='+ev.clientX.toFixed(1)+','+ev.clientY.toFixed(1)+' off='+(ev.offsetX||0).toFixed(1)+','+(ev.offsetY||0).toFixed(1)+' tgt='+(ev.target.className||ev.target.tagName)+' red='+redC.style.left+','+redC.style.top+(()=>{const q=hdrPt(ev),b=boxOf(hp);return q?' press1='+(q.x-b.x-(hp.clientLeft||0)).toFixed(1)+','+(q.y-b.y-(hp.clientTop||0)).toFixed(1)+' org='+(org?org.x.toFixed(1)+','+org.y.toFixed(1):'-'):'';})()});}catch(_){}try{hp.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');
