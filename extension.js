@@ -26646,12 +26646,17 @@ const MEOS_DOCK_HIDES = ['eMcoD'];
 function meosDockHideEnc(o) { return MEOS_DOCK_HIDES.some(w => String(o || '').indexOf(w) === 0); }
 function meosDockCrypt(o) { return MEOS_DOCK_CRYPTS.some(w => String(o || '').indexOf(w) === 0); }
 const MEOS_DOCK_CRYPT_MSGS = ['encOp', 'encryptMembrane', 'copySecretAutoWipe'];   // v4.2.507(俊克「スクショ6枚目(MokecD= Moke)が mock 以上に笑える。ここでもロックしちゃっていい」)
-function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 6 && o.split('').sort().join('') === MEOS_DOCK_HOME.split('').sort().join(''); }
-function meosDockTiles() { try { const o = extensionContext.globalState.get('meDockTiles'); return meosDockTilesValid(o) ? o : MEOS_DOCK_HOME; } catch (_) { return MEOS_DOCK_HOME; } }
+// ★v4.2.610(俊克「パズルⓉボタンも並べ替えられるように。作れる単語も増える」): Ⓣ(字は T)も7枚目のタイル。並びは7字(旧6字の覚えは頭に T を足して読む)
+const MEOS_DOCK_ALL = 'T' + MEOS_DOCK_HOME;
+function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 7 && o.split('').sort().join('') === MEOS_DOCK_ALL.split('').sort().join(''); }
+function meosDockTiles() { try { let o = extensionContext.globalState.get('meDockTiles'); if (typeof o === 'string' && o.length === 6) o = 'T' + o; return meosDockTilesValid(o) ? o : MEOS_DOCK_ALL; } catch (_) { return MEOS_DOCK_ALL; } }
 function meosDockTilesHtml() {
   const col = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
-  return '<span class="md-today" id="md-today" data-tip="Today">\u24c9</span><span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
+  //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
+  return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
+    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">T</span></span>'
+    : '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
   // ★v4.2.539(俊克 バグ1「パズルロックを解除すると表示が崩れる・みみみ2回で直る」): 解除は Me Dock の中で文字タイルを動かした時= フォーカスは Me Dock にあり
@@ -26693,15 +26698,14 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 /* v4.2.582(俊克「最後の課題。パズルとポインターボタンの動きをmacのDockと似せよう。ポインターを入れるとサイズを倍にし、上に飛び出る。赤×や緑×がより見やすくなる」):
    Me Dock の一番上の段なので、上の余白で切れないよう、伸びる中心を下寄り(75%)に置く= 上へ 3/4・下へ 1/4 */
 .md-tile{transform-origin:50% 75%;transition:transform .15s ease}
-.md-today{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#2e9d3a;color:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.12);cursor:var(--meos-hand);user-select:none;transform-origin:50% 75%;transition:transform .15s ease;margin:0 3px -2px -5px;position:relative}
-.md-today + .md-tiles{margin-left:0!important}
-.md-today:hover{transform:scale(2);z-index:6}
+.md-tile.md-ttile{background:#2e9d3a;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.12)}   /* v4.2.610: Ⓣのタイル= 緑の地に白抜き */
+.md-ttile .tt-glyph{display:inline-block;box-sizing:border-box;width:1.02em;height:1.02em;margin:.04em 0;border:.085em solid #fff;border-radius:50%;font-family:"Arial Black","Helvetica Neue",Arial,sans-serif;font-weight:900;font-size:1em;line-height:.86em;text-align:center;vertical-align:middle}   /* v4.2.610(俊克「Ⓣの字をボタン枠ギリギリに」「エッジのあるフォント」): 丸は枠いっぱい・T は角のある太字 */
 .title-row-dock .title-left{gap:0}
 .hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
 .hand-pick:hover{transform:scale(2);z-index:6}
 body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform:none}
 .md-tile.md-noscale{transform:none;transition:none}   /* 押した瞬間は元の大きさに戻す= 並べ替えの物差し(v4.2.140)は元の大きさで測る(macのDockも掴むと元に戻る) */
-.md-tiles.md-home .md-tile:nth-child(3){margin-left:.4em}
+.md-tile.md-gap{margin-left:.4em}   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
 .md-dim{filter:grayscale(1) blur(2px);opacity:.45;user-select:none}.md-dim,.md-dim *{pointer-events:none!important}
@@ -27534,9 +27538,9 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .dw-split{margin-left:4px}
 .dw-today{font-weight:700}
 .dw-split .dw-half{border:none;padding:0;font-weight:700;color:#fff}
-.dw-split .dw-todaynow{padding:0 8px;border-radius:6px 0 0 6px;border-right:1px solid rgba(0,0,0,.28);font-size:22px;line-height:1;background:#0d9488}
+.dw-split .dw-todaynow{display:none!important;padding:0 8px;border-radius:6px 0 0 6px;border-right:1px solid rgba(0,0,0,.28);font-size:22px;line-height:1;background:#0d9488}
 .dw-split .dw-todaynow .dw-tglyph{position:relative;top:1.5px;display:inline-block;line-height:1}
-.dw-split .dw-scope{padding:0 15px 0 9px;border-radius:0 6px 6px 0;max-width:186px;white-space:nowrap}
+.dw-split .dw-scope{padding:0 15px 0 9px;border-radius:6px;max-width:186px;white-space:nowrap}
 /* v2.0.31(俊克): 右Today=多態の基準点入力。編集可能(day/Today)は白抜きの囲み枠+Iビーム。検索中は↻を無効(グレー)。ダブルクリックで下のinlineフィールド。 */
 .dw-split .dw-scope.dw-editable{box-shadow:inset 0 0 0 2px rgba(255,255,255,.72)}
 .dw-split .dw-scope .dw-tg2{font-size:1.4em;line-height:1;position:relative;top:1.5px;margin-right:0.5px}
@@ -29046,7 +29050,6 @@ ev.stopPropagation();if(_dwClickT){clearTimeout(_dwClickT);_dwClickT=null;}_dwOp
 var _dwTodayNow=document.getElementById('dw-todaynow');if(_dwTodayNow)_dwTodayNow.addEventListener('click',function(ev){/* 左Ⓣ=基準を今日へリセット+今日へ帰還。 */ev.stopPropagation();
 window.__dwBaseDate=null;window.__dwSearch=null;window.__dwScope=0;_dwRelock();var n=new Date();vscode.postMessage({type:'warpToDate',
 mode:'abs',y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate(),orBefore:true});});
-/* v4.2.609: パズルの段の Ⓣ= 同じ働き(ファイル名の行の Ⓣ を押すのと同じ) */var _mdToday=document.getElementById('md-today');if(_mdToday)_mdToday.addEventListener('click',function(ev){ev.stopPropagation();if(_dwTodayNow)_dwTodayNow.click();});
 var _dwDial=document.getElementById('dw-dial');if(_dwDial)_dwDial.addEventListener('click',function(ev){/* ↻=スコープ切替。検索中は無効。 */ev.preventDefault();
 ev.stopPropagation();if(window.__dwSearch!=null)return;window.__dwScope=(window.__dwScope+(ev.shiftKey?-1:1)+4)%4;window.__dwRenderScope();
 });
@@ -31539,7 +31542,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
-if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
+if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T')return;/* v4.2.610: Ⓣ は常に点・tip は Today のまま */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
 if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
  try{if(clkPop&&clkPop.classList.contains('on')&&clkPop.classList.contains('set-only')){
@@ -31708,7 +31711,7 @@ function order(){return [...row.querySelectorAll('.md-tile')].map(t=>t.getAttrib
 function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRYPTS.some(w=>o.indexOf(w)===0),hd=!lk&&!cr&&HIDES.some(w=>o.indexOf(w)===0);document.body.classList.toggle('md-mocked',lk);document.body.classList.toggle('md-crypt',cr);
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
-row.classList.toggle('md-home',o===HOME);}
+row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
 if(document.readyState!=='complete')window.addEventListener('load',apply);setTimeout(apply,300);setTimeout(apply,1500);let press=null,suppress=false;
@@ -31734,7 +31737,7 @@ if(nx){const r=nx.getBoundingClientRect();if(x>r.left+r.width/2){row.insertBefor
 if(pv){const r=pv.getBoundingClientRect();if(x<r.left+r.width/2){row.insertBefore(pv,p.t.nextSibling);continue;}}break;}apply();});
 /* ★v4.2.587(俊克「パズルでは、Optクリックは廃止でいいよ。clickだけ」「知らずにクリックして紫のP1が出てきても、何かと興味を持つ。もう一度押すとワープすると理解できる」):
    押して動かさずに放した= クリック= その字の行き先へ(無ければ印を書く)。動かした= 並べ替え(今までどおり) */
-row.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;const _click=!press.moved,_t=press.t;end(true);if(_click&&_t)vscode.postMessage({type:'mdTileJump',ch:_t.getAttribute('data-ch')});});
+row.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return;const _click=!press.moved,_t=press.t;end(true);if(_click&&_t){if(_t.getAttribute('data-ch')==='T'){const _tn=document.getElementById('dw-todaynow');if(_tn)_tn.click();}else vscode.postMessage({type:'mdTileJump',ch:_t.getAttribute('data-ch')});}});/* v4.2.610: Ⓣ のタイル= 今日へ */
 row.addEventListener('pointercancel',()=>{end(true);});row.addEventListener('lostpointercapture',()=>{if(press)end(true);});
 row.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();
 // {* ▲mCN=dock_js_tiles *}
