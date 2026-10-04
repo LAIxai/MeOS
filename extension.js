@@ -15190,6 +15190,41 @@ function meosWhistlePath(hz, secs) {
 // ★★v4.2.350(俊克 改良2「Cmd+Sで保存した時、変化がなければ、affinityなどでもそうだけど、警告音を出そうよ。ホワン、ホワンという感じの柔らかい音」):
 //   ★変化の無い保存は何も起きない= 押した手に「もう保存してある」と返す物が無い。音で返す(画面は何も覆わない)。
 //   ★音は作る= 下がりながら消える柔らかい音(520→390Hz)を2つ。鐘(Sosumi)や笛とは別物と分かる形。
+// ★★v4.2.617(俊克「Docke™ のときだけ鳴る『ピンポーーン』を合成しよう」): 正解の合図= 高い「ピン」(E6)のすぐ後に、低い「ポーーン」(C6)が長く響く。
+//   鐘のような響き= 基音＋2倍(弱)＋3倍(ごく弱)＋2.76倍(金物の倍音・弱)。ピンは短く(すぐ減る)・ポーンは長く(約2秒で消える)
+let _meosPinponFile = null;
+function meosPinponPath() {
+  if (_meosPinponFile) return _meosPinponFile;
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 44100, secs = 2.6, n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    const notes = [{ t0: 0, hz: 1318.51, dec: 5.5, amp: 0.9 }, { t0: 0.30, hz: 1046.50, dec: 1.7, amp: 1.0 }];   // ピン / ポーーン
+    const parts = [[1, 1], [2, 0.22], [2.76, 0.12], [3, 0.06]];
+    let peak = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / rate; let v = 0;
+      for (const no of notes) { const u = t - no.t0; if (u < 0) continue;
+        const env = Math.min(1, u / 0.004) * Math.exp(-u * no.dec);
+        for (const [m, a] of parts) v += a * Math.sin(2 * Math.PI * no.hz * m * u) * env * Math.exp(-u * (m - 1) * 1.2) * no.amp; }
+      smp[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    const k = peak > 0 ? 0.8 / peak : 1;
+    for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(smp[i] * k * 32767 * Math.min(1, (n - i) / (rate * 0.05))), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-pinpon-v1.wav');
+    fs.writeFileSync(f, buf); _meosPinponFile = f; return f;
+  } catch (_) { return null; }
+}
+function meosPlayPinpon() {
+  try { const f = meosPinponPath(); if (!f) return; const { exec } = require('child_process'); const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+    if (process.platform === 'darwin') exec('/usr/bin/afplay -v 1.2 ' + q(f), () => { });
+    else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
+    else exec('paplay ' + q(f) + ' || aplay -q ' + q(f), () => { });
+  } catch (_) { }
+}
 let _meosNoChangeFile = null;
 function meosNoChangeSoundPath() {
   if (_meosNoChangeFile) return _meosNoChangeFile;
@@ -32373,6 +32408,7 @@ function toggleMeDock(editorOverride) {
         //   特別な並び(間抜け/Deco/eMcoD)に**入った**時だけ、🔔 で選んだ音を2回。同じ種類の中で並べ替えても鳴らさない
         const _kind = (x) => meosDockLocked(x) ? 'lock' : meosDockCrypt(x) ? 'crypt' : meosDockHideEnc(x) ? 'hide' : '';
         if (_kind(o) && _kind(o) !== _kind(was)) { try { meosPlayNoChange(true, true); } catch (_) { } }
+        if (o === 'DockeTM' && was !== o) { try { meosPlayPinpon(); } catch (_) { } }   // v4.2.617: Docke™(Dock Extreme)= ピンポーン
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
