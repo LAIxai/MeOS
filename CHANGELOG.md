@@ -4,6 +4,16 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.634 (2026-10-04)
+- **Double-click a Hyper TOC tab to rename it.** The name box now appears only then (Enter or click away to keep the name, Esc to leave it as it was).
+- **The hand on a tab tells you what comes next.** The pointing finger before you press; the open hand the moment you press; the closed hand after half a second or as soon as you move. Let go after a drag and the open hand stays, ready to pick the tab up again — move the mouse and the finger is back.
+
+### v4.2.630 (2026-10-04)
+- **😸 PURR** keeps purring while a clock rings, like 🍙 GROWL: each purr, then a pause that drifts by 1/f fluctuation between 0.5 and 1.5 seconds.
+
+### v4.2.629 (2026-10-04)
+- **🍙 GROWL** — a new bell: a hungry stomach. Each growl lasts 0.5–1.0 seconds and the pauses 0.5–1.5 seconds, both drifting by 1/f fluctuation, so it never sounds like a loop.
+
 ### v4.2.609 (2026-10-04)
 - A green **Ⓣ** now sits in the bottom row of the title box, beside the name of Me Dock — one click to today. (It replaces the Ⓣ that sat left of Ⓣday.)
 - **Ⓣ no longer stops at a new month.** When today has no diary entry yet, it goes to the most recent day before today — on the 1st, that is the last day of last month.

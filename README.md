@@ -188,6 +188,10 @@ change the wrap width this directly.
 
 - **Three pointing hands** — the BTRON hand, a slim 22.5° classic macOS hand, or your OS's own. The tip of the
   finger is where you point, and it does not jump when the hand changes shape.
+- **The hand tells you what comes next** — on a Hyper TOC tab: the pointing finger before you press (a click, a
+  double-click or a drag could follow); the open hand the moment you press; the closed hand after half a second, or as
+  soon as you move. Let go after a drag and the open hand stays, ready to pick the tab up again — move the mouse and
+  the finger is back. **Double-click a tab to rename it.**
 - **Code blocks and inline code on a sheet of paper** — a code block is drawn as one sheet, and `inline code`
   as a small cream plate, so notation you quote in a note stays text and is never run.
 - **🎨 Theme button** in Me Dock — ↑/↓ to try colour themes on, Enter to keep one.

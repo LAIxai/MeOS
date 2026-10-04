@@ -27490,9 +27490,10 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .htoc-ops .toc-add{font-size:22px;line-height:1;color:#d18400;padding:0 8px}
 .toc-name-row{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,213,92,.13);border-bottom:1px solid rgba(210,140,0,.25)}
 .toc-title{font-size:12px;font-weight:900;color:#d18400}
+.toc-name-row .toc-name:not(.on){display:none}   /* v4.2.634: 名前の入力枠は、タブをWクリックした時だけ出す */
 .toc-name{flex:1;min-width:0;font-size:12px;padding:3px 5px;border:1px solid rgba(210,140,0,.35);border-radius:5px;background:var(--vscode-input-background);color:var(--vscode-input-foreground)}
 .toc-tab-row{position:relative;display:flex;align-items:stretch;gap:2px;padding:4px 4px 0;background:rgba(255,213,92,.07);border-bottom:1px solid rgba(210,140,0,.18);overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-palm);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}   /* v4.2.132(俊克「タブの上に来たら、手の平に変えなきゃ駄目だよ」): 掴める物の上は手の平 */
+.toc-tab{display:inline-flex;align-items:center;font-size:11px;line-height:1;padding:5px 9px;border:1px solid rgba(210,140,0,.35);border-bottom:0;border-radius:5px 5px 0 0;background:rgba(255,213,92,.06);color:var(--vscode-foreground);cursor:var(--meos-hand);max-width:160px;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;user-select:none;touch-action:none}   /* v4.2.634(俊克「H-TOCのタブもパズルと同じ手に。Wクリックで名前を変更」): 乗せる= 選択指(クリック/Wクリック/ドラッグの3つがあり得る)。押す= 移動手→0.5秒で握り / v4.2.132(俊克「タブの上に来たら、手の平に変えなきゃ駄目だよ」): 掴める物の上は手の平 */
 .toc-tab.dragging{opacity:.4}
 .toc-tab.drop-left{background:rgba(210,132,0,.18)}
 .toc-tab.drop-right{background:rgba(210,132,0,.18)}
@@ -31442,6 +31443,7 @@ if(tocDelItem)tocDelItem.addEventListener('click',()=>{
 });
 // v0.9.549 Phase C-1: Hyper TOC tab bar interactions (delegated via tocTabRow because
 // inner content is re-rendered every snapshot).
+let _tabLastClick=null;   /* v4.2.634: Wクリックを数える(番号と時刻) */
 if(tocTabRow){
   tocTabRow.addEventListener('click',ev=>{
     const target=ev.target;
@@ -31454,7 +31456,10 @@ tocTabConfirmMsg.textContent='Delete tab "'+((activeTab?activeTab.textContent:''
       return;
     }
     const tab=target.closest&&target.closest('.toc-tab');
-    if(tab){const idx=Number(tab.getAttribute('data-tab-idx'));if(!isNaN(idx))vscode.postMessage({type:'switchHyperTocTab',
+    if(tab){const idx=Number(tab.getAttribute('data-tab-idx'));
+/* v4.2.634: 同じタブを続けて2回(0.45秒以内)= 名前の変更。1回目で描き直されても数えられるよう、dblclick でなく番号と時刻で見る */
+const _now=Date.now();if(_tabLastClick&&_tabLastClick.idx===idx&&_now-_tabLastClick.at<450){_tabLastClick=null;_openTabRename(tab);return;}_tabLastClick={idx:idx,at:_now};
+if(!isNaN(idx))vscode.postMessage({type:'switchHyperTocTab',
 idx});}
   });
   // v0.9.768: タブのドラッグ並べ替え(HTML5 DnD・イベント委譲。innerHTML再生成されてもtocTabRowは残る)。
@@ -31469,7 +31474,10 @@ from:_dragTabIdx,to:_pendingTo});}}
      HTML5 DnD はドラッグ中の手をブラウザ/OSが握る(CSS cursor が効かない)→ pointer 系に作り替え(Bird-EV のノブと同じ)。
      乗せる=手の平(v4.2.132) / 押す=手の平 / 4px 動かす=握り(body に印を付けて、どこの上でも同じ手)。
      ★位置は clientX でなく**掴んだタブの四角+offsetX**から(Me Dock では clientX と四角が別の物差し= v4.2.129 の実測)。 */
-  let _tabPress=null;let _tabSuppressClick=false;
+  let _tabPress=null;let _tabSuppressClick=false;let _tabGripTm=0,_tabRelXY=null;
+  /* ★v4.2.634(俊克「H-TOCのタブでWクリックで名前を変更と言う仕様に。そうすれば、ドラッグするときはクリックドラッグで握りになるので一貫性がある」):
+     パズル(v4.2.633)と同じ手の規則= 押す前は選択指 / 押した瞬間は移動手→ 0.5秒(または動かした)で握り / 握りを放した= 移動手のまま→ マウスが動いた瞬間に選択指 */
+  document.addEventListener('pointermove',ev=>{if(_tabPress||!_tabRelXY)return;if(Math.abs(ev.clientX-_tabRelXY[0])+Math.abs(ev.clientY-_tabRelXY[1])<3)return;_tabRelXY=null;document.body.classList.remove('meos-palming');},true);
   /* v4.2.134: 挿入位置の白い縦線= タブとタブの隙間の真ん中に重ねる。位置は offsetLeft(行の中の物差し)= clientX も四角も使わない */
   function _tabCaret(tab,right){let c=tocTabRow.querySelector('.toc-tab-caret');if(!tab){if(c)c.remove();return;}
 if(!c){c=document.createElement('div');c.className='toc-tab-caret';tocTabRow.appendChild(c);}
@@ -31485,12 +31493,12 @@ try{const y=ev.clientY;const on=u=>{const e=document.elementFromPoint(leftU+u,y)
 let lo=Math.max(0,ev.offsetX||0),hi=lo+2;let g=0;while(on(hi)&&g++<12)hi*=2;if(on(lo)&&!on(hi)){for(let i=0;i<16;i++){const m=(lo+hi)/2;if(on(m))lo=m;else hi=m;}const wU=(lo+hi)/2;if(wU>2){const kk=r.width/wU;if(kk>0.3&&kk<4)k=kk;}}}catch(_){}
 return {k:k,leftU:leftU,left0:r.left};}
   function _tabPointX(ev,tab){const p=_tabPress;if(p&&p.m)return p.m.left0+(ev.clientX-p.m.leftU)*p.m.k;const r=tab.getBoundingClientRect();return r.left+(ev.offsetX||0);}
-  function _tabEndPress(commit){if(!_tabPress)return;const p=_tabPress;_tabPress=null;window.__tabPressing=false;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
-document.body.classList.remove('meos-palming','meos-gripping');if(p.moved){if(commit)_commitTabReorder();_tabSuppressClick=true;}
+  function _tabEndPress(commit,xy){if(!_tabPress)return;const p=_tabPress;_tabPress=null;window.__tabPressing=false;try{p.tab.releasePointerCapture&&p.tab.releasePointerCapture(p.pid);}catch(_){}
+document.body.classList.remove('meos-palming','meos-gripping');clearTimeout(_tabGripTm);if(p.moved||p.gripped){document.body.classList.add('meos-palming');_tabRelXY=xy||[-1e6,-1e6];}if(p.moved){if(commit)_commitTabReorder();_tabSuppressClick=true;}
 _dragTabIdx=null;_pendingTo=null;_clearDropMarks();if(window.__tabPendingToc){const t=window.__tabPendingToc;window.__tabPendingToc=null;try{renderHyperTocTabs(t);}catch(_){}}}
   tocTabRow.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;_tabSuppressClick=false;const tab=ev.target&&ev.target.closest&&ev.target.closest('.toc-tab');if(!tab)return;
 _tabPress={tab:tab,pid:ev.pointerId,m:_tabMeasure(ev,tab),moved:false};_tabPress.x0=_tabPointX(ev,tab);window.__tabPressing=true;_dragTabIdx=Number(tab.getAttribute('data-tab-idx'));_pendingTo=null;
-try{tab.setPointerCapture(ev.pointerId);}catch(_){}document.body.classList.add('meos-palming');});
+try{tab.setPointerCapture(ev.pointerId);}catch(_){}_tabRelXY=null;document.body.classList.remove('meos-gripping');document.body.classList.add('meos-palming');clearTimeout(_tabGripTm);_tabGripTm=setTimeout(()=>{if(_tabPress&&!_tabPress.moved){_tabPress.gripped=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');}},500);});
   tocTabRow.addEventListener('pointermove',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;const p=_tabPress;const x=_tabPointX(ev,p.tab);
 if(!p.moved){if(Math.abs(x-p.x0)<4)return;p.moved=true;document.body.classList.remove('meos-palming');document.body.classList.add('meos-gripping');p.tab.classList.add('dragging');
 if(typeof hideTocTip==='function')hideTocTip();}
@@ -31513,7 +31521,7 @@ return p.tab;}
   function _tabTrack(x){const tab=_tabLeadTab(x);if(!tab)return;tocTabRow.querySelectorAll('.toc-tab.drop-left,.toc-tab.drop-right').forEach(el=>el.classList.remove('drop-left','drop-right'));
 const overIdx=Number(tab.getAttribute('data-tab-idx'));/* v0.9.769: 右へ移動なら対象の右側、左へ移動なら左側に太線(実際の挿入位置と一致)。 */if(overIdx!==_dragTabIdx){tab.classList.add(overIdx>_dragTabIdx?'drop-right':'drop-left');_tabCaret(tab,overIdx>_dragTabIdx);
 _pendingTo=overIdx;}else{_pendingTo=null;_tabCaret(null);}}
-  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved){_tabTrack(_tabPointX(ev,_tabPress.tab));}/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true);});
+  tocTabRow.addEventListener('pointerup',ev=>{if(!_tabPress||ev.pointerId!==_tabPress.pid)return;if(_tabPress.moved){_tabTrack(_tabPointX(ev,_tabPress.tab));}/* v4.2.134: 離した所で決め直す(最後の move が離す所まで届かないことがある) */_tabEndPress(true,[ev.clientX,ev.clientY]);});
   tocTabRow.addEventListener('pointercancel',()=>{_tabEndPress(false);});
   /* ★v4.2.138: v4.2.135 の window blur で片付ける仕掛けは外した= Me Dock は押した直後に焦点を本文へ返すことがあり、そのたびにドラッグを打ち切っていた(俊克「縦線が出ないことが何度もある」) */
   tocTabRow.addEventListener('lostpointercapture',()=>{if(_tabPress)_tabEndPress(true);});
@@ -31527,7 +31535,10 @@ if(tocOnsite)tocOnsite.addEventListener('click',()=>{tocOnsite.classList.toggle(
 });
 // v0.9.550: IME-safe Enter for the tab-name input. See history comment in mCN=0000.
 let _tabNameRenameViaEnter=false;
+function _openTabRename(tab){if(!fixedTocName)return;fixedTocName.classList.add('on');if(tab&&tab.textContent)fixedTocName.value=tab.textContent;fixedTocName.focus();try{fixedTocName.select();}catch(_){}}   /* v4.2.634 */
 if(fixedTocName){
+  fixedTocName.addEventListener('keydown',ev=>{if(ev.key!=='Escape'||ev.isComposing||_tabNameComposing)return;ev.preventDefault();_tabNameRenameViaEnter=true;fixedTocName.classList.remove('on');fixedTocName.blur();});   /* v4.2.634: Esc= 変えずに閉じる */
+  fixedTocName.addEventListener('blur',()=>{fixedTocName.classList.remove('on');});   /* v4.2.634: 抜けたら隠す(名前は下の blur が渡す) */
   fixedTocName.addEventListener('compositionstart',()=>{_tabNameComposing=true;});
   fixedTocName.addEventListener('compositionend',()=>{setTimeout(()=>{_tabNameComposing=false;},0);});
   fixedTocName.addEventListener('keydown',ev=>{
