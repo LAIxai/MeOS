@@ -13337,7 +13337,7 @@ function meosHelperSound() {
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
-    if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'growl-v5.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.621
+    if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
     if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
@@ -15121,6 +15121,10 @@ function meosMewGain() {
 // ★v4.2.628(俊克「間を1/fゆらぎにしよう。基本の間も1秒で」): 🍙GROWL の「間」= 1秒を中心に 0.5〜1.5秒を 1/f ゆらぎで(Mew の大きさと同じ作り)
 let _meosGapRows = [0.5, 0.5, 0.5, 0.5], _meosGapN = 0;
 function meosGrowlGap() { _meosGapN++; let k = 0, n = _meosGapN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } _meosGapRows[k] = Math.random(); return 0.5 + _meosGapRows.reduce((a, b) => a + b, 0) / _meosGapRows.length; }
+// ★v4.2.629(俊克「鳴る長さも1/f揺らぎにしよう。最大1秒，最小0.5秒」): 🍙GROWL の音の長さ= 0.5〜1.0秒(0.1秒刻みの6本)を 1/f ゆらぎで選ぶ(間とは別の乱数の列)
+let _meosLenRows = [0.5, 0.5, 0.5, 0.5], _meosLenN = 0, _meosGrowlLen = 1.0;
+function meosGrowlLen() { _meosLenN++; let k = 0, n = _meosLenN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } _meosLenRows[k] = Math.random(); const x = _meosLenRows.reduce((a, b) => a + b, 0) / _meosLenRows.length; return Math.round((0.5 + 0.5 * Math.min(1, Math.max(0, (x - 0.5) * 2.4 + 0.5))) * 10) / 10; }
+function meosGrowlNext() { _meosGrowlLen = meosGrowlLen(); return _meosGrowlLen; }   // 次の一鳴きの長さを決めて返す(鳴らす直前に呼ぶ)
 function meosIsGrowl() { try { return meosSoundCanon(_meosBellOverride || meosSoundNow()) === 'GROWL'; } catch (_) { return false; } }
 function meosPlayChime(gain) {
   try {
@@ -15235,21 +15239,22 @@ function meosPinponPath() {
 // ★v4.2.621(俊克「お腹の鳴る音を追加しよう。日本語のグーと似ているから GROWL」): 🍙GROWL= お腹の虫。
 //   低い声が「グーー」と持ち上がって下がり(110→260→140Hz)、最後に短い「ギュルル」(300→190Hz)。
 //   ざらつき= 倍音の多い波＋高さの小さな揺れ(乱歩)・泡= 18〜30Hz の不規則な強弱・低いこもった雑音。乱数は種付き(毎回同じ音)
-let _meosGrowlFile = null;
+let _meosGrowlFile = {};   // v4.2.629: 長さ(ms)ごと
 // ★★v4.2.623(俊克「🍙はオナラに聞こえる。添付したフリーデータの前半部分が良い感じ。少し高音を強調すると良い」):
 //   参考の前半(0〜1.4秒)を測った= 声の高さ 140〜150Hz でほぼ一定(周期がはっきり)・音の中心 約600Hz(200〜800Hz に集中)・100Hz 以下はほぼ無い。
 //   v1 がオナラに聞こえた元= こもった低い雑音と 100Hz 以下。→ 低い雑音を外し、145Hz の声の倍音のうち 450Hz あたりを強く・800〜1600Hz を参考より約9dB 上げる。泡は控えめに。
 //   参考のファイルは入れない(配る物に丸ごと入れない= GONG と同じく測った数字から作る)
-function meosGrowlPath() {
+function meosGrowlPath(len) {
   // ★★v4.2.624(俊克「平坦過ぎる。サンプルデータとまるで違う」): v2 は帯域の配分だけ合わせ、時間の動きを見ていなかった。
   //   参考の前半を 20ms ごとに測った筋書き= 高さ(GF)・声らしさ(GP= 周期の強さ)・大きさ(GA)。0〜0.6秒「グーー」(約145Hz・周期が強い)/
   //   0.6〜1.4秒「ギュルルル」(周期が崩れ、不規則な「プチッ」が中で響く・1.0秒で前半の約2.5倍の大きさ)。
   //   作り方= 声の部分(倍音・450Hz 中心＋1000Hz 少し)× 声らしさ ＋ 泡の部分(不規則な間隔の打撃で 450Hz/1000Hz の共鳴を叩く)×(1−声らしさ)、全体に大きさの筋書き
-  if (_meosGrowlFile) return _meosGrowlFile;
+  const L = Math.max(0.5, Math.min(1.0, Math.round((Number(len) || _meosGrowlLen || 1.0) * 10) / 10)), ms = Math.round(L * 1000);   // v4.2.629
+  if (_meosGrowlFile[ms]) return _meosGrowlFile[ms];
   try {
     const os = require('os'), fs = require('fs'), path = require('path');
     const GF = [104,276,96,177,164,155,150,153,164,174,154,147,137,140,141,139,140,140,140,142,142,143,146,146,147,149,143,145,156,145,138,122,138,76,227,261,101,86,84,93,217,217,191,290,176,91,241,193,135,119,139,99,83,108,86,215,93,188,103,176,147,148,105,87,167,196,182,193,201,184], GP = [0.23,0.24,0.25,0.56,0.79,0.59,0.75,0.68,0.4,0.8,0.41,0.76,0.34,0.78,0.81,0.8,0.78,0.8,0.8,0.81,0.81,0.81,0.79,0.73,0.77,0.79,0.79,0.76,0.77,0.63,0.67,0.49,0.38,0.24,0.53,0.4,0.31,0.3,0.34,0.22,0.32,0.45,0.18,0.15,0.18,0.25,0.24,0.19,0.21,0.23,0.32,0.37,0.36,0.35,0.34,0.52,0.41,0.35,0.2,0.47,0.36,0.29,0.27,0.36,0.31,0.24,0.19,0.35,0.41,0.31], GA = [0.002,0.0243,0.0376,0.0363,0.0315,0.0295,0.0286,0.0297,0.0378,0.0385,0.0293,0.0281,0.0277,0.0265,0.0248,0.0248,0.0272,0.0281,0.0299,0.0315,0.0322,0.0321,0.0322,0.0317,0.0273,0.0227,0.0196,0.0201,0.0261,0.0342,0.0368,0.0397,0.0428,0.0401,0.0348,0.0392,0.0455,0.0409,0.0366,0.0362,0.0346,0.0328,0.0277,0.0222,0.0217,0.0246,0.0357,0.042,0.0549,0.0766,0.0792,0.0674,0.0638,0.0581,0.0529,0.0626,0.0644,0.0485,0.0406,0.0455,0.0432,0.0414,0.0422,0.0373,0.0301,0.0235,0.0181,0.0234,0.0203,0.0074];
-    const rate = 44100, hop = 1.0 / GF.length, secs = GF.length * hop + 0.04,   /* v4.2.627(俊克「1秒に圧縮してみよう。1秒鳴らして0.5秒の間」): 筋書きを1秒に縮める(高さは変えず、時間だけ詰める) */ n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
+    const rate = 44100, hop = L / GF.length, secs = GF.length * hop + 0.04,   /* v4.2.627(俊克「1秒に圧縮してみよう。1秒鳴らして0.5秒の間」): 筋書きを1秒に縮める(高さは変えず、時間だけ詰める) */ n = Math.floor(rate * secs), buf = Buffer.alloc(44 + n * 2), smp = new Float64Array(n);
     buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
     buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
     buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
@@ -15277,8 +15282,8 @@ function meosGrowlPath() {
     }
     const k = peak > 0 ? 1 / peak : 1, drive = 1.2, nrm = Math.tanh(drive);   // 圧縮は弱め= 参考の強弱(1.0秒の山)を残す
     for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.95 * 32767 * Math.min(1, (n - i) / (rate * 0.04))), 44 + i * 2); }
-    const f = path.join(os.tmpdir(), 'meos-growl-v5.wav');
-    fs.writeFileSync(f, buf); _meosGrowlFile = f; return f;
+    const f = path.join(os.tmpdir(), 'meos-growl-v6-' + ms + '.wav');
+    fs.writeFileSync(f, buf); _meosGrowlFile[ms] = f; return f;
   } catch (_) { return null; }
 }
 function meosPlayPinpon() {
@@ -15459,7 +15464,7 @@ function meosPlayCountBell(cb) {
     const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 1.3 : (_cs21 === 'GROWL' ? 1.5 : 1.0)))) * 1000);   // v4.2.626: 🍙GROWL も長さ＋間   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
     meosMewGainReset();
     let _at = 0;   // v4.2.628: 🍙GROWL の回数鳴きも 1秒＋1/f の間
-    for (let k = 0; k < cb.count; k++) { setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, _at); _at += (_cs21 === 'GROWL') ? Math.round((1.0 + meosGrowlGap()) * 1000) : gap; }
+    for (let k = 0; k < cb.count; k++) { const _L = (_cs21 === 'GROWL') ? meosGrowlLen() : 0; setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; if (_L) _meosGrowlLen = _L; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, _at); _at += (_cs21 === 'GROWL') ? Math.round((_L + meosGrowlGap()) * 1000) : gap; }   // v4.2.629: 長さも 1/f
     meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
   } catch (_) { }
 }
@@ -15473,13 +15478,14 @@ function meosClockSayName(sc, final) {
 function meosStartRinging(name) {
   const every = meosRingSeconds();
   meosMewGainReset();
+  if (meosIsGrowl()) meosGrowlNext();   // v4.2.629
   meosPlayChime(meosMewGain());
   if (!every) return;                                    // 0= 1回だけ
   _meosRingName = name || '';
   _meosRingUntil = Date.now() + 5 * 60000;               // 上限5分= 席を外していても止まる
   if (_meosRingTimer) clearInterval(_meosRingTimer);
   if (meosIsGrowl()) {   // v4.2.628: 🍙GROWL= 1秒の音＋1/f ゆらぎの間(0.5〜1.5秒)= 毎回つぎの時刻を決め直す
-    const next = () => { _meosRingTimer = setTimeout(() => { if (!_meosRingTimer) return; if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; } meosPlayChime(1); next(); }, Math.round((1.0 + meosGrowlGap()) * 1000)); };
+    const next = () => { _meosRingTimer = setTimeout(() => { if (!_meosRingTimer) return; if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; } meosGrowlNext(); meosPlayChime(1); next(); }, Math.round((_meosGrowlLen + meosGrowlGap()) * 1000)); };   // v4.2.629: いま鳴らした一鳴きの長さ＋間
     next();
   } else
   _meosRingTimer = setInterval(() => {

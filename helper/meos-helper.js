@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.628) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.629) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -198,8 +198,12 @@ function run(argv) {
   // v4.2.628: 🍙GROWL は 1秒の音＋1/f ゆらぎの間(0.5〜1.5秒)= 一回ごとに次の時刻を決め直す(繰り返しのタイマーを使わない)
   let gapRows = [0.5, 0.5, 0.5, 0.5], gapN = 0;
   const growlGap = () => { gapN++; let k = 0, n = gapN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } gapRows[k] = Math.random(); return 0.5 + gapRows.reduce((a, b) => a + b, 0) / gapRows.length; };
+  // v4.2.629: 音の長さも 1/f ゆらぎ(0.5〜1.0秒・0.1秒刻み= growl-v6-500〜1000.wav から選ぶ)
+  let lenRows = [0.5, 0.5, 0.5, 0.5], lenN = 0, growlLast = 1.0;
+  const growlLen = () => { lenN++; let k = 0, n = lenN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } lenRows[k] = Math.random(); const x = lenRows.reduce((a, b) => a + b, 0) / lenRows.length; return Math.round((0.5 + 0.5 * Math.min(1, Math.max(0, (x - 0.5) * 2.4 + 0.5))) * 10) / 10; };
+  const growlFile = () => { const f = String(sound.file || ''); if (!/growl-v6-\d+\.wav$/i.test(f)) { growlLast = 1.0; return f; } const L = growlLen(), g = f.replace(/growl-v6-\d+\.wav$/i, 'growl-v6-' + Math.round(L * 1000) + '.wav'); try { if ($.NSFileManager.defaultManager.fileExistsAtPath(g)) { growlLast = L; return g; } } catch (e) {} growlLast = 1.0; return f; };
   const isGrowl = () => /growl/i.test(String(sound.file || ''));
-  const armGrowl = () => { try { if (bellTimer) bellTimer.invalidate; bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(1.0 + growlGap(), ticker, 'bell:', $(), false); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); } catch (e) {} };
+  const armGrowl = () => { try { if (bellTimer) bellTimer.invalidate; bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(growlLast + growlGap(), ticker, 'bell:', $(), false); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); } catch (e) {} };
   // v4.2.408: Mew の鳴き続けは一鳴き毎に大きさを1/fゆらぎ(拡張の meosMewGain と同じ作り・0.55〜1.15倍)
   let mewRows = [0.5, 0.5, 0.5, 0.5], mewN = 0;
   const mewGain = () => {
@@ -211,7 +215,7 @@ function run(argv) {
     try {
       if (!sound.file) return;
       const g = sound.fluct ? mewGain() : 1;
-      $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(Math.round((sound.vol || 2) * g * 100) / 100), sound.file]));
+      $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(Math.round((sound.vol || 2) * g * 100) / 100), isGrowl() ? growlFile() : sound.file]));
     } catch (e) {}
   };
   let lastMenu = null, lastText = null;
