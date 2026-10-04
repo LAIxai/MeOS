@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.609 (2026-10-04)
+- A green **Ⓣ** now sits at the left end of the bottom row of the title box — one click to today, beside the name of Me Dock.
+- **Ⓣ no longer stops at a new month.** When today has no diary entry yet, it goes to the most recent day before today — on the 1st, that is the last day of last month.
+
 ### v4.2.599 (2026-10-04)
 - **Ⓣ | Ⓣday** has moved up from Hyper IDX into the title box, beside the file name — the button you use most now sits with the others you use most.
 

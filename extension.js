@@ -26650,7 +26650,8 @@ function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 6 
 function meosDockTiles() { try { const o = extensionContext.globalState.get('meDockTiles'); return meosDockTilesValid(o) ? o : MEOS_DOCK_HOME; } catch (_) { return MEOS_DOCK_HOME; } }
 function meosDockTilesHtml() {
   const col = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };
-  return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
+  // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
+  return '<span class="md-today" id="md-today" data-tip="Today">\u24c9</span><span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
   // ★v4.2.539(俊克 バグ1「パズルロックを解除すると表示が崩れる・みみみ2回で直る」): 解除は Me Dock の中で文字タイルを動かした時= フォーカスは Me Dock にあり
@@ -26692,6 +26693,10 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 /* v4.2.582(俊克「最後の課題。パズルとポインターボタンの動きをmacのDockと似せよう。ポインターを入れるとサイズを倍にし、上に飛び出る。赤×や緑×がより見やすくなる」):
    Me Dock の一番上の段なので、上の余白で切れないよう、伸びる中心を下寄り(75%)に置く= 上へ 3/4・下へ 1/4 */
 .md-tile{transform-origin:50% 75%;transition:transform .15s ease}
+.md-today{display:inline-block;min-width:1.05em;text-align:center;padding:0 .14em;border-radius:6px;background:#2e9d3a;color:#fff;font-weight:800;font-size:1.25em;line-height:1.12;box-shadow:0 1px 3px rgba(0,0,0,.55),inset 0 -2px 0 rgba(0,0,0,.12);cursor:var(--meos-hand);user-select:none;transform-origin:50% 75%;transition:transform .15s ease;margin:0 3px -2px -5px;position:relative}
+.md-today + .md-tiles{margin-left:0!important}
+.md-today:hover{transform:scale(2);z-index:6}
+.title-row-dock .title-left{gap:0}
 .hand-pick{transform-origin:50% 75%;transition:transform .15s ease}
 .hand-pick:hover{transform:scale(2);z-index:6}
 body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform:none}
@@ -29040,7 +29045,8 @@ _dwClickT=null;}_dwClickT=setTimeout(function(){_dwClickT=null;_dwOpenDial();},2
 ev.stopPropagation();if(_dwClickT){clearTimeout(_dwClickT);_dwClickT=null;}_dwOpenEdit();});}
 var _dwTodayNow=document.getElementById('dw-todaynow');if(_dwTodayNow)_dwTodayNow.addEventListener('click',function(ev){/* 左Ⓣ=基準を今日へリセット+今日へ帰還。 */ev.stopPropagation();
 window.__dwBaseDate=null;window.__dwSearch=null;window.__dwScope=0;_dwRelock();var n=new Date();vscode.postMessage({type:'warpToDate',
-mode:'abs',y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate()});});
+mode:'abs',y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate(),orBefore:true});});
+/* v4.2.609: パズルの段の Ⓣ= 同じ働き(ファイル名の行の Ⓣ を押すのと同じ) */var _mdToday=document.getElementById('md-today');if(_mdToday)_mdToday.addEventListener('click',function(ev){ev.stopPropagation();if(_dwTodayNow)_dwTodayNow.click();});
 var _dwDial=document.getElementById('dw-dial');if(_dwDial)_dwDial.addEventListener('click',function(ev){/* ↻=スコープ切替。検索中は無効。 */ev.preventDefault();
 ev.stopPropagation();if(window.__dwSearch!=null)return;window.__dwScope=(window.__dwScope+(ev.shiftKey?-1:1)+4)%4;window.__dwRenderScope();
 });
@@ -33241,6 +33247,9 @@ function toggleMeDock(editorOverride) {
       for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (dt && dt.y === ty && dt.mo === tmo && dt.d === td) { if (!hit || o.start < hit.start) hit = o; } }
       // v2.0.6(俊克): 素のjumpLineは膜が畳まれたまま・カーソル復元なし→H-TOCと同じ jumpToWorkingTocItem を再利用。
       // 膜名で着地=最後にいた行(savedMeCursorLine)へ復元+revealRangeで自動展開(栞3兄弟と同じ「開いて表示」)。
+      // ★v4.2.609(俊克「月が変わると、Ⓣボタンが効かなくなる。その時は先月の最終日を」): Ⓣ(orBefore)は今日の膜が無ければ、今日より前で一番新しい日の膜へ
+      if (!hit && message.orBefore) { const tk = ty * 10000 + tmo * 100 + td; let bk = -1;
+        for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (!dt) continue; const k = dt.y * 10000 + dt.mo * 100 + dt.d; if (k <= tk && (k > bk || (k === bk && o.start < hit.start))) { bk = k; hit = o; } } }
       if (hit) { jumpToWorkingTocItem(hit.id); }
       else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
       return;
