@@ -32738,7 +32738,7 @@ function toggleMeDock(editorOverride) {
     }
     // ★v4.2.601: Me Dock が VSCodium の最小幅(約220)まで縮んだら、1回だけ少し広げる(最小ぴったりのグループは焦点が移ると VSCodium が最大へ広げるので)
     if (message && message.type === 'dockWidthPx') { try { const w = Number(message.w) || 0; meosDbg('[dockWidth] 幅 ' + w + 'px (最小 ' + (Number(extensionContext.globalState.get('meDockMinPx')) || '-') + ')');
-      // 物差しは Me Dock の中の四角(VSCodium の約1.67倍)= 最小の220は約367に見える→ 決め打ちせず「今までで一番狭い幅」を最小と見なす
+      // 物差し= Me Dock の中の幅(VSCodium のピクセルとほぼ同じ= 最小220が211に見える)。決め打ちせず「今までで一番狭い幅」を最小と見なす
       const minPx = Number(extensionContext.globalState.get('meDockMinPx')) || 0;
       if (w > 0 && (!minPx || w < minPx)) { try { extensionContext.globalState.update('meDockMinPx', w); } catch (_) { } }
       const atMin = w > 0 && w <= 420 && (!minPx || w <= minPx + 2);
@@ -32747,10 +32747,10 @@ function toggleMeDock(editorOverride) {
         if (lo && lo.orientation === 0 && Array.isArray(lo.groups) && lo.groups.length === 2) { const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
           if (a > 0 && b > 0) { const T = a + b, r = Math.min(0.5, b / T + 0.05);   /* v4.2.604(俊克「5%に」) */ _meDockWidthHoldUntil = Date.now() + 2500;
             // ★v4.2.605(測った= 604 のログ: 置いた後も {797},{220} のまま= 割合の命令が効いていない。getEditorLayout はピクセルを返す)→ 置く時もピクセルで
-            const bpx = Math.round(T * r);
+            const bpx = Math.round(b) + 12;   // ★v4.2.606(俊克「かなり幅が跳ね上がった。もっと小さく」): 5%(約51px)→ 最小から 12px だけ
             await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - bpx }, { size: bpx }] });
             try { extensionContext.globalState.update('meDockWidthRatio', r); } catch (_) { }
-            meosDbg('[dockWidth] 最小幅 ' + w + 'px → +5% ' + r.toFixed(3));
+            meosDbg('[dockWidth] 最小幅 ' + w + 'px → +12px');
             // v4.2.604: 測る= 置いた直後と1秒後に、本当にその幅になったかを読む(603 では置いた後に幅の知らせが来ず、置いても変わっていない疑い)
             const _rd = async (tag) => { try { const l2 = await vscode.commands.executeCommand('vscode.getEditorLayout'); meosDbg('[dockWidth] ' + tag + ' ' + JSON.stringify(l2)); } catch (_) { } };
             await _rd('置いた直後'); setTimeout(() => _rd('1秒後'), 1000); } } } } catch (_) { } return; }
