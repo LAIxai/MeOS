@@ -15118,6 +15118,10 @@ function meosMewGain() {
   const x = _meosMewRows.reduce((a, b) => a + b, 0) / _meosMewRows.length;
   return 0.55 + 0.6 * x;
 }
+// ★v4.2.628(俊克「間を1/fゆらぎにしよう。基本の間も1秒で」): 🍙GROWL の「間」= 1秒を中心に 0.5〜1.5秒を 1/f ゆらぎで(Mew の大きさと同じ作り)
+let _meosGapRows = [0.5, 0.5, 0.5, 0.5], _meosGapN = 0;
+function meosGrowlGap() { _meosGapN++; let k = 0, n = _meosGapN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } _meosGapRows[k] = Math.random(); return 0.5 + _meosGapRows.reduce((a, b) => a + b, 0) / _meosGapRows.length; }
+function meosIsGrowl() { try { return meosSoundCanon(_meosBellOverride || meosSoundNow()) === 'GROWL'; } catch (_) { return false; } }
 function meosPlayChime(gain) {
   try {
     // ★v4.0.471(俊克「やさしすぎる音だね。**寝ていたら気づかない**」): 目覚ましは**起こす**物so、
@@ -15161,7 +15165,7 @@ function meosRingSeconds() {
   //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
   // ★v4.2.520(俊克「😸PURR は3鳴きはしつこいので一鳴きでいい。😺Purr も一鳴きに」): ゴロゴロ2種は鳴り続けず1回だけ(V-helper も同じ値を受け取る)
   try { const _nm20 = meosSoundCanon(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr' || _nm20 === 'PURR') return 0; } catch (_) { }
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; const _c = meosSoundCanon(_meosBellOverride || meosSoundNow()); return (_c === 'MEW') ? Math.max(1.35, b) : (_c === 'GROWL' ? Math.max(1.5, b) : b); } catch (_) { return 1; }   /* v4.2.626(俊克「🍙を鳴らす時は、この長さ+間で。せわし過ぎてそれらしく聞こえない」): GROWL は音の長さ＋間 / v4.2.627: 1秒の音＋0.5秒の間= 1.5秒ごと */
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; const _c = meosSoundCanon(_meosBellOverride || meosSoundNow()); return (_c === 'MEW') ? Math.max(1.35, b) : (_c === 'GROWL' ? Math.max(2.0, b) : b); } catch (_) { return 1; }   /* v4.2.626(俊克「🍙を鳴らす時は、この長さ+間で。せわし過ぎてそれらしく聞こえない」): GROWL は音の長さ＋間 / v4.2.627: 1秒の音＋0.5秒の間= 1.5秒ごと */
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
@@ -15454,7 +15458,8 @@ function meosPlayCountBell(cb) {
     if (!cb || !cb.sound) return;
     const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 1.3 : (_cs21 === 'GROWL' ? 1.5 : 1.0)))) * 1000);   // v4.2.626: 🍙GROWL も長さ＋間   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
     meosMewGainReset();
-    for (let k = 0; k < cb.count; k++) setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, k * gap);
+    let _at = 0;   // v4.2.628: 🍙GROWL の回数鳴きも 1秒＋1/f の間
+    for (let k = 0; k < cb.count; k++) { setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, _at); _at += (_cs21 === 'GROWL') ? Math.round((1.0 + meosGrowlGap()) * 1000) : gap; }
     meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
   } catch (_) { }
 }
@@ -15473,6 +15478,10 @@ function meosStartRinging(name) {
   _meosRingName = name || '';
   _meosRingUntil = Date.now() + 5 * 60000;               // 上限5分= 席を外していても止まる
   if (_meosRingTimer) clearInterval(_meosRingTimer);
+  if (meosIsGrowl()) {   // v4.2.628: 🍙GROWL= 1秒の音＋1/f ゆらぎの間(0.5〜1.5秒)= 毎回つぎの時刻を決め直す
+    const next = () => { _meosRingTimer = setTimeout(() => { if (!_meosRingTimer) return; if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; } meosPlayChime(1); next(); }, Math.round((1.0 + meosGrowlGap()) * 1000)); };
+    next();
+  } else
   _meosRingTimer = setInterval(() => {
     if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; }
     meosPlayChime(meosMewGain());
