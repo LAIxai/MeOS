@@ -26708,7 +26708,8 @@ body.meos-gripping .hand-pick:hover,body.meos-palming .hand-pick:hover{transform
 .md-tile.md-gap{margin-left:.4em}
 /* ★v4.2.615(俊克「TMを最後に付けると、上付きの小さい文字にする。完全に™に成り済ます」): 並びの最後が T・M = 小さな上付きの文字(地も影も点も消す) */
 .md-ttile .tt-plain{display:none}
-.md-tile.md-tm{background:transparent!important;box-shadow:none!important;color:var(--vscode-foreground)!important;font-size:.58em;min-width:0;padding:0 .03em;position:relative;top:-.62em}
+.md-tile.md-tm{background:transparent!important;box-shadow:none!important;color:var(--vscode-foreground)!important;font-size:.72em;min-width:0;padding:0 .03em;position:relative;top:-.5em}   /* v4.2.616(俊克「TMはもう少し大きく。Tは緑色の文字に」): .58→.72em */
+.md-tile.md-ttile.md-tm{color:#2e9d3a!important}
 .md-tile.md-tm .tt-glyph{display:none}.md-tile.md-tm .tt-plain{display:inline}
 .md-tile.md-tm.md-dot::after{display:none}
 .md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
