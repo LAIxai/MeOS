@@ -27519,7 +27519,8 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* v4.2.464: Hyper IDX の枠= H-TOC の枠と同じ見た目で、固定の箱(dock-stick)の中・Format Me の下 */
 .hidx-box{border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden;margin:6px 0 8px}   /* v4.2.680(改良4「H-IDXの枠とFormat Meの枠を少し離す」): 下に 8px / 上は JS がヘッダーにくっつける(改良3) */
 .hidx-box.hidx-closed{display:none}   /* v4.2.679: 普段は閉じる(パズルの右の▾で開く) */
-.hidx-toggle{flex:0 0 auto;align-self:center;margin-left:6px;line-height:0;padding:4px 6px;border:1px solid rgba(210,140,0,.55);border-radius:5px 5px 0 0;background:color-mix(in srgb,var(--vscode-sideBar-background) 92%,#ffd55c 8%);color:#d9a521;cursor:var(--meos-hand);position:relative;z-index:2}.hidx-toggle:hover{background:color-mix(in srgb,var(--vscode-sideBar-background) 80%,#ffd55c 20%)}.hidx-toggle .hx-tri{fill:currentColor;display:block}   /* ★v4.2.680(俊克 改良1「▼の地をH-IDXの地の色と同じに」改良2「ヘッダーの枠にぴったりくっつける」): H-IDX と同じ地・下は枠線に乗せる(位置は JS が測って合わせる) */
+.hidx-toggle{flex:0 0 auto;align-self:center;margin-left:6px;line-height:0;padding:4px 6px;border:1px solid rgba(210,140,0,.55);border-radius:5px 5px 0 0;background:color-mix(in srgb,var(--vscode-sideBar-background) 92%,#ffd55c 8%);color:#d9a521;cursor:var(--meos-hand);position:relative;z-index:2}.hidx-toggle .hx-tri{fill:#fff!important}   /* v4.2.681(俊克「▲/▼を白色に」) */
+.hidx-toggle:hover{background:color-mix(in srgb,var(--vscode-sideBar-background) 80%,#ffd55c 20%)}.hidx-toggle .hx-tri{fill:currentColor;display:block}   /* ★v4.2.680(俊克 改良1「▼の地をH-IDXの地の色と同じに」改良2「ヘッダーの枠にぴったりくっつける」): H-IDX と同じ地・下は枠線に乗せる(位置は JS が測って合わせる) */
 .hidx-box .toc-tools.hidx-row{border-top:0;padding:6px 8px}
 /* v4.2.465: 並べ替え= Current Me＋Encrypt Me の枠 / 🐙 / Edit Me / Navigate Me を固定の箱へ・Mepy は H-TOC の上 */
 .cur-box{border:1px solid rgba(56,148,255,.45);border-radius:8px;overflow:hidden;margin:6px 0 0;background:var(--vscode-sideBar-background)}
