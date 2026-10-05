@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.670 (2026-10-05)
+- **🐢 Paste lag now also lifts the large-file limit.** VS Code turns off folding (and more) in any file that is over 300,000 lines or 20 MB when it is opened — a one-file diary gets there. One click on 🐢 turns off *Large file optimizations*, so membranes keep folding; close and reopen the file to apply.
+
 ### v4.2.639 (2026-10-05)
 - ▦ from plain text now decides line by line: a line with tabs is split at the tabs, a line without them at two or more spaces — so a line typed with spaces in the middle of a pasted tab table no longer stays in one cell.
 
