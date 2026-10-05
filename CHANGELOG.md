@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.685 (2026-10-06)
+- **📂 Reopen folder.** Sometimes a window comes back with no folder open: the Explorer says "You have not yet opened a folder" and Source Control (Git) is empty, though your files are still in the tabs. MeOS remembers the folders you work in, and in that case a blinking **📂 Reopen folder** appears in Me Dock — one click brings the folder back.
+- **Me Dock stays narrow.** Drag Me Dock to its narrowest and it now always settles 12 px wider than the minimum. At the exact minimum, VSCodium widens the panel as soon as you click a button in it.
+- **Hyper IDX folds away** under the title box: open and close it with the small ▾ tab right of the letter tiles. It starts closed.
+- **The pointer-hand button grows around its hot spot**, so the point of the hand stays where it was while the button doubles in size.
+
 ### v4.2.678 (2026-10-05)
 - **↻ on the table button.** The table button now has its own ↻, the same as ↻ on the wrap button: cycle the wrap width without leaving the table. Both ↻ glow in the colour of the width you are on (red / blue / green).
 - New default wrap widths: **50 / 90 / 160** (were 48 / 80 / 100). Widths you have already set are kept.

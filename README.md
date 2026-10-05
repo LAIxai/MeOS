@@ -183,6 +183,8 @@ change the wrap width this directly.
 - **📦 Re-install VSIX for everyone** — pick any `.vsix` (the newest, or an older one to compare) and MeOS installs
   it and reloads. It opens where you picked last time, or your Downloads folder.
 - **Reveal in Finder** — right-click a file in Me Dock's recent-files list.
+- **📂 Reopen folder** — if a window comes back with no folder open (the Explorer and Git are empty, though your files
+  are still in the tabs), a blinking button in Me Dock brings back the folder you usually work in.
 - **Two editors, two ⏰** — if MeOS runs in both VS Code and VSCodium, each menu-bar ⏰ says which one it is, and
   **Quit V-helper for VSCs** at the bottom stops it for both.
 
