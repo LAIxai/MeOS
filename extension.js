@@ -26828,6 +26828,7 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .md-tile.md-tm .tt-glyph{display:none}.md-tile.md-tm .tt-plain{display:inline}
 .md-tile.md-tm.md-dot::after{display:none}
 .md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}
+.md-tile.md-ttile.md-comet{background:#5ac8fa}.md-ttile.md-comet .tt-glyph,.md-ttile.md-comet .tt-plain{display:none}.md-ttile.md-comet::before{content:'☄︎';display:inline-block;font-weight:400;font-size:1.1em;line-height:1;color:#fff;text-shadow:0 0 1px rgba(0,60,100,.6)}   /* v4.2.640: koMeTcD= Ⓣが彗星☄に変身(地は水色) */
 .md-tiles.md-extreme .md-tile,.md-tiles.md-extreme .md-tile.md-tm,.md-tiles.md-extreme .md-tile.md-ttile.md-tm{color:#d4a017!important;text-shadow:0 0 1px rgba(120,80,0,.6)}   /* v4.2.618: Docke™ の時は字が金色 */   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
@@ -31847,7 +31848,7 @@ function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRY
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
 row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));
-row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
+row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.640(俊克「koMeⓉcD に並べると、Ⓣが彗星ボタン(地を水色)に変身」): Komet(独)= 彗星 */try{const _tt=row.querySelector('.md-ttile');if(_tt)_tt.classList.toggle('md-comet',o==='koMeTcD');}catch(_){}/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
 /* v4.2.615: 最後が TM= ™ に成り済ます */const _tm=/TM$/.test(o);row.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-tm',_tm&&(c==='T'||c==='M'));});}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
