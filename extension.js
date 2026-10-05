@@ -27043,6 +27043,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .title-file-ud .ud-copy.ud-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}
 .title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file:hover .title-file-caret{opacity:1}
+.title-file-caret{background:#fff;color:#333;opacity:1;padding:1px 3px}.title-file-caret:hover{background:#ffe9c7}   /* v4.2.662: ファイル名の▾も白地 */
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
@@ -27700,6 +27701,7 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .fmt-cell .fmt-btn{border-radius:6px 0 0 6px;border-right:none}
 .fmt-caret{font-size:9px;font-weight:900;min-width:15px;padding:0 3px;cursor:var(--meos-hand);border:1px solid rgba(210,140,0,.40);border-radius:0 6px 6px 0;background:var(--vscode-button-secondaryBackground,rgba(127,127,127,.12));color:var(--vscode-foreground);display:flex;align-items:center;justify-content:center}
 .fmt-caret:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
+.fmt-caret{background:#fff;color:#333}.fmt-caret:hover{background:#ffe9c7;color:#333}   /* ★v4.2.662(俊克 改良2「Format Me系の▼ボタンだけ白地になっていないのも地味。ファイル名ボタンのところも」): ▾は白地に黒 */
 .fmt-cell-head{position:relative}
 .fmt-lvl{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand);box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:4;line-height:1}
 /* v1.0.0 段階リリース門番: テーブル(≥3)=升目ボタンを隠す。★v1.0.1(俊克): ↻(fmt-lvl)は「3プリセット巡回」=昔からの機能なので全フェーズで表示。動的リング/🚫(カーソルを装飾内に置いた時の挙動)だけがv4.0解禁=JS側でactionableをphase>=4限定にして抑止。 */
@@ -27736,6 +27738,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 #fmt-metex .mtx-face{display:inline-block;width:22px;text-align:center}/* v4.0.269(俊克 改良1「少し過剰に長い」): 26px= .fmt-btn の min-width(32px)の内側に収まるso、ボタンの幅は他の兄弟と同じになる(中身thatが変わっても動かない、は据え置き) */
 .fmt-table-cell{margin-left:16px}
 #fmt-table svg{opacity:.9}
+#fmt-table{background:#217346;border-color:#17552f;color:#fff}#fmt-table:hover{background:#2a8a55}#fmt-table svg{opacity:1}   /* ★v4.2.662(俊克 改良1「テーブルボタンの格子縞に色を…ボタンの地を色付けして、格子を白に。少し目立たない」): 表計算の緑の地に白い格子 */
 #fmt-table:hover svg{opacity:1}
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
@@ -31355,7 +31358,7 @@ if(_tt&&_cc&&_cc!=='none'&&_cc!=='normal'&&_n(_tt).length>3&&_n(_cc)===_n(_tt)){
 const el=(ev.target&&ev.target.closest)?ev.target.closest('[data-tip],[title]'):null;
 /* v0.9.712: native title を data-tip に遅延移行(ネイティブtipを抑止し共通の左伸ばしtipに一本化)。JSが.titleを再設定しても次のhoverで反映。 */if(el&&el.hasAttribute('title')){const tt=el.getAttribute('title');
 if(tt)el.setAttribute('data-tip',tt);el.removeAttribute('title');}const t=el?el.getAttribute('data-tip'):'';if(!t){hideTocTip();
-return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));
+return;}/* v0.9.691: split the " | " separated parts (Created/Checked/Cite) onto separate lines for readability (俊克 am11:38). 改行は String.fromCharCode(10) で安全に(テンプレートリテラル回避)。CSSは white-space:pre-line。 */tocTooltip.textContent=String(t).split(' | ').join(String.fromCharCode(10));try{const _th=el&&el.getAttribute&&el.getAttribute('data-tip-html');if(_th)tocTooltip.innerHTML=_th;}catch(_){}/* v4.2.662(俊克 改良3「tipの文字に色を付けれるの? MercuryのMecに色を」): 拡張が書いた data-tip-html があれば、それを描く(人の書いた文は入れない) */
 /* v0.9.686: grow the tip LEFT from the cursor (Me Dock sits at the screen's right edge, so a right-growing tip clips); wrap to 2+ lines. Anchor the tip's RIGHT edge ~12px left of the cursor. */tocTooltip.style.display='block';
 tocTooltip.style.maxWidth='';tocTooltip.style.width='';/* v1.0.7: 既定幅(CSS 260px)に戻す。bm-pop.on分岐だけが左逃がし用に一時的に幅を詰める。v1.0.23: widthも毎回リセット(バッジ分岐が固定widthを置くため)。 *//* v0.9.99981(改良1 俊克): 開いているプルダウン(.bm-pop.on)内の項目tipは、マウスX追従をやめて ポップアップ左端に接した固定位置に出す(メニューを隠さない)。縦は項目に合わせる。 *//* ★★★v4.2.177(俊克「4箇所が直ってない」): v4.2.176 でヘッダの道を作ったが、**その手前に専用の分岐(.mz-split など)が居て**届いていなかった。★最上端は1つの道だけを通る= 判定を**どの専用分岐よりも前**へ移した。(CSSの ::after で出していた UD と ↩ は、同じvでCSS側を止めてこの道へ合流させる) */var _hdrEl=el.closest&&el.closest('header.title');if(_hdrEl){return;}   /* v4.2.213: 位置は showTocTip の出口(meosPlaceTipAtPointer)で */{const _popEl=el.closest&&el.closest('.bm-pop');
 if(_popEl&&_popEl.classList.contains('on')){const pr=_popEl.getBoundingClientRect();/* v1.0.7(俊克 改良2): 大ポップアップ(参照メニュー等)のtipは下に落ちてボタンを隠しがち→左に余地(≥120px)があれば幅をその余地に詰めて左へ逃がす。Me Dockが狭く左に余地が無い時だけ従来の上/下フォールバック。 */const avail=pr.left-6;
@@ -31855,7 +31858,7 @@ function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRY
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
 row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));
-row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.640(俊克「koMeⓉcD に並べると、Ⓣが彗星ボタン(地を水色)に変身」): Komet(独)= 彗星 */try{const _tt=row.querySelector('.md-ttile');if(_tt)_tt.classList.toggle('md-comet',/^(?:[ck]oMeT|Mec)/.test(o));_tt.classList.toggle('md-comet-k',/^[ck]oMeT/.test(o));_tt.setAttribute('data-tip',/^[ck]oMeT/.test(o)?'\u24c9-Comet':(/^Mec/.test(o)?'\u24c9-Mercury\u2019s Sodium Tail':'Today'));/* v4.2.661(俊克「Ⓣ-Mercury's Sodium Tail」= APOD 2022.05.03 の水星のナトリウムの尾) *//* v4.2.660(俊克「そうだった、Ⓣ-MercuryとⓉ-Cometにしよう」) / v4.2.659: Mercury2Day/Comet2Day *//* v4.2.646(俊克「coMeⓉ…とkoMeⓉ…には、☄を赤文字にして出そう」): 彗星の並び= ☄(赤)/ Mec…= ☿ *//* v4.2.645(俊克「Mec××××でも、Mercuryと見なして☿マークを出そう」): 頭が Mec なら残り4字の順は問わない *//* v4.2.644(俊克「comeⓉDkでも同様に。ドイツ語のケースでも」): 頭が coMeT / koMeT なら、残り2字の順は問わない *//* v4.2.643(俊克「comeⓉkDでも良いよ。ドイツ語でも英語でも」): Komet / comet */}catch(_){}/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
+row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.640(俊克「koMeⓉcD に並べると、Ⓣが彗星ボタン(地を水色)に変身」): Komet(独)= 彗星 */try{const _tt=row.querySelector('.md-ttile');if(_tt)_tt.classList.toggle('md-comet',/^(?:[ck]oMeT|Mec)/.test(o));_tt.classList.toggle('md-comet-k',/^[ck]oMeT/.test(o));if(/^Mec/.test(o))_tt.setAttribute('data-tip-html','\u24c9-<span style="color:#e53935;font-weight:800">M</span><span style="color:#e86a00;font-weight:800">e</span><span style="color:#8e24aa;font-weight:800">c</span>ury\u2019s Sodium Tail');else _tt.removeAttribute('data-tip-html');/* v4.2.662: Mec の3字をタイルの色で(tip は薄い灰の地) */_tt.setAttribute('data-tip',/^[ck]oMeT/.test(o)?'\u24c9-Comet':(/^Mec/.test(o)?'\u24c9-Mercury\u2019s Sodium Tail':'Today'));/* v4.2.661(俊克「Ⓣ-Mercury's Sodium Tail」= APOD 2022.05.03 の水星のナトリウムの尾) *//* v4.2.660(俊克「そうだった、Ⓣ-MercuryとⓉ-Cometにしよう」) / v4.2.659: Mercury2Day/Comet2Day *//* v4.2.646(俊克「coMeⓉ…とkoMeⓉ…には、☄を赤文字にして出そう」): 彗星の並び= ☄(赤)/ Mec…= ☿ *//* v4.2.645(俊克「Mec××××でも、Mercuryと見なして☿マークを出そう」): 頭が Mec なら残り4字の順は問わない *//* v4.2.644(俊克「comeⓉDkでも同様に。ドイツ語のケースでも」): 頭が coMeT / koMeT なら、残り2字の順は問わない *//* v4.2.643(俊克「comeⓉkDでも良いよ。ドイツ語でも英語でも」): Komet / comet */}catch(_){}/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
 /* v4.2.615: 最後が TM= ™ に成り済ます */const _tm=/TM$/.test(o);row.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-tm',_tm&&(c==='T'||c==='M'));});}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
