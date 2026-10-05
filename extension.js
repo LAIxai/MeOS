@@ -27538,7 +27538,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .fixed-toc{display:none;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden}
 .fixed-toc.on{display:block}
 /* v4.2.464: Hyper IDX の枠= H-TOC の枠と同じ見た目で、固定の箱(dock-stick)の中・Format Me の下 */
-.hidx-box{border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden;margin:6px 0 8px}   /* v4.2.680(改良4「H-IDXの枠とFormat Meの枠を少し離す」): 下に 8px / 上は JS がヘッダーにくっつける(改良3) */
+.hidx-box{border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:visible;margin:6px 0 8px}   /* v4.2.680(改良4「H-IDXの枠とFormat Meの枠を少し離す」): 下に 8px / 上は JS がヘッダーにくっつける(改良3) */
 .hidx-box.hidx-closed{display:none}   /* v4.2.679: 普段は閉じる(パズルの右の▾で開く) */
 .hidx-toggle{flex:0 0 auto;align-self:center;margin-left:6px;line-height:0;padding:4px 6px;border:1px solid rgba(210,140,0,.55);border-radius:5px 5px 0 0;background:color-mix(in srgb,var(--vscode-sideBar-background) 92%,#ffd55c 8%);color:#d9a521;cursor:var(--meos-hand);position:relative;z-index:2}.hidx-toggle .hx-tri{fill:#fff!important}   /* v4.2.681(俊克「▲/▼を白色に」) */
 .hidx-toggle:hover{background:color-mix(in srgb,var(--vscode-sideBar-background) 80%,#ffd55c 20%)}.hidx-toggle .hx-tri{fill:currentColor;display:block}   /* ★v4.2.680(俊克 改良1「▼の地をH-IDXの地の色と同じに」改良2「ヘッダーの枠にぴったりくっつける」): H-IDX と同じ地・下は枠線に乗せる(位置は JS が測って合わせる) */
@@ -27584,6 +27584,10 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split{position:relative;display:inline-block;margin-right:6px}
 .ww-ring{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#a8730e;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:var(--meos-hand);box-shadow:0 1px 2px rgba(0,0,0,.45);z-index:4;line-height:1}   /* ★v4.2.166(俊克「折り返しボタンにも↻ボタンを付けて、3種類のプリセットを切替」): Format の↻(fmt-lvl)と同じ形・同じ場所 */
 .ww-ring:hover{background:#c98a1a}
+/* ★v4.2.687(俊克「小さい↻ボタンなども拡大するように。優しさをアピール。パズルの拡大を体験すると、拡大するのが当たり前に思えてきた」):
+   小さな丸い札(↻・⊕/⊖・↩・F/H・錠・Ⓝ 等)は、乗せると倍に。transform を使う札(↩ 等)を壊さないよう、別の口の scale で膨らませる */
+.fmt-lvl,.ww-ring,.th-ring,.tt-badge,.title-file-jump,.mz-badge,.clk-pring,.clk-lockbadge,.enc-badge,.bm-f-badge,.iv-badge,.eof-badge{transition:scale .15s ease}
+.fmt-lvl:hover,.ww-ring:hover,.th-ring:hover,.tt-badge:hover,.title-file-jump:hover,.mz-badge:hover,.clk-pring:hover,.clk-lockbadge:hover,.enc-badge:hover,.bm-f-badge:hover,.iv-badge:hover,.eof-badge:hover{scale:2;z-index:50}
 /* ★v4.2.167(俊克「折り返しボタンの背景色を赤、青、緑にすれば、数字を見なくても分るでしょ」): 1つ目=赤 / 2つ目=青 / 3つ目=緑。パネルも同じ色で続ける */
 .ww-split.s0 .ww-btn{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#e0564a 34%);border-color:#a8453c}
 .ww-split.s0 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#e0564a 46%)}
@@ -32009,7 +32013,7 @@ else if(t===hp&&calibOk(hp)){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)
    真因= 原点を覚え直すのはヘッダーの地と手のボタンの上だけ= 入れ替え直後とスクロールの後(原点を忘れる)は昔の出し方(部品の位置の足し算)に頼り、
    ずらして置いた部品(↩= translate・文字タイル= 浮き上がり)で外れた。→ ずらして描かれていない塊の部品なら、どの部品の上でも原点を覚え直す */
 else if(t instanceof HTMLElement&&t!==redC&&hdr.contains(t)&&t.offsetParent&&calibOk(t)){const b=boxOf(t);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(t.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(t.clientTop||0))*z};}}
-function calibOk(t){try{if(getComputedStyle(t).display==='inline')return false;/* v4.2.529: 字の中の部品は offsetX の起点が食い違う */for(let e=t;e&&e!==hdr;e=e.parentElement){const x=getComputedStyle(e).transform;if(x&&x!=='none')return false;}return true;}catch(_){return false;}}
+function calibOk(t){try{if(getComputedStyle(t).display==='inline')return false;/* v4.2.529: 字の中の部品は offsetX の起点が食い違う */for(let e=t;e&&e!==hdr;e=e.parentElement){const _cs=getComputedStyle(e),x=_cs.transform;if(x&&x!=='none')return false;if(_cs.scale&&_cs.scale!=='none'&&_cs.scale!=='1')return false;}/* v4.2.687: scale で膨らんだ札の上でも原点を覚え直さない */return true;}catch(_){return false;}}
 window.addEventListener('scroll',()=>{org=null;},true);window.addEventListener('resize',()=>{org=null;});
 function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,y:(ev.clientY-org.y)/z};}return hdrPtOld(ev);}
 function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
