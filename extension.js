@@ -26770,7 +26770,7 @@ function meosDockTilesHtml() {
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
-    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span></span>'
+    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span><span class="tt-comet"><span class="cm-g">\u263f</span></span></span>'
     : '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
@@ -26828,7 +26828,12 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .md-tile.md-tm .tt-glyph{display:none}.md-tile.md-tm .tt-plain{display:inline}
 .md-tile.md-tm.md-dot::after{display:none}
 .md-tile.md-tm + .md-tile.md-tm{margin-left:-3px}
-.md-tile.md-ttile.md-comet{background:#5ac8fa}.md-ttile.md-comet .tt-glyph,.md-ttile.md-comet .tt-plain{display:none}.md-ttile.md-comet::before{content:'☄︎';display:inline-block;font-weight:400;font-size:1.1em;line-height:1;color:#fff;text-shadow:0 0 1px rgba(0,60,100,.6)}   /* v4.2.640: koMeTcD= Ⓣが彗星☄に変身(地は水色) */
+.md-ttile .tt-comet{display:none}
+.md-tile.md-ttile.md-comet{background:#f3e6c4;color:#b4540f}.md-ttile.md-comet .tt-glyph,.md-ttile.md-comet .tt-plain{display:none}   /* ★v4.2.641(俊克「地を黄色(🐢ボタンくらい)に・☿の文字・左に10°傾け・右にほうき星のように線を何本か=ガスの噴出」): koMeTcD= Ⓣが彗星に変身 */
+.md-ttile.md-comet .tt-comet{display:inline-block;position:relative;padding-right:.62em}
+.md-ttile.md-comet .tt-comet .cm-g{display:inline-block;font-weight:400;transform:rotate(-10deg)}
+.md-ttile.md-comet .tt-comet::after{content:'';position:absolute;right:0;top:50%;width:.66em;height:.62em;transform:translateY(-50%) rotate(-10deg);transform-origin:0 50%;
+background:linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 8%/80% 1.5px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 36%/100% 1.5px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 64%/92% 1.5px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 92%/70% 1.5px no-repeat}   /* 尾= 4本の線(長さを違えて)が右へ薄れる */
 .md-tiles.md-extreme .md-tile,.md-tiles.md-extreme .md-tile.md-tm,.md-tiles.md-extreme .md-tile.md-ttile.md-tm{color:#d4a017!important;text-shadow:0 0 1px rgba(120,80,0,.6)}   /* v4.2.618: Docke™ の時は字が金色 */   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
