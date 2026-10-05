@@ -27045,6 +27045,9 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .hp-ghost.poof{transform:scale(1.8);opacity:0}
 .paste-lag-btn{flex:0 0 auto;border:1px solid rgba(224,128,58,.75);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:#e0803a;font-weight:800;font-size:12px;line-height:1.2;padding:3px 9px;cursor:var(--meos-hand)}
 .paste-lag-btn:hover{border-color:#e0803a;background:rgba(224,128,58,.18)}
+/* ★v4.2.685(俊克「Reopenボタンに気づくように、地の色を2色で点滅」): 出ている間(=フォルダー無しの窓)だけ、橙とクリームを1秒ごとに */
+@keyframes meosReopenBlink{0%,45%{background:#e0803a;color:#fff;border-color:#b4540f}55%,100%{background:#f3e6c4;color:#b4540f;border-color:#e0803a}}
+#reopen-folder.reopen-folder-btn{animation:meosReopenBlink 1.2s steps(1,end) infinite}#reopen-folder.reopen-folder-btn:hover{animation:none;background:#e0803a;color:#fff}
 /* ★v4.2.103(俊克「常に表示しておくようにしようよ。そうしないと、そういう設定があることを忘れてしまう。一旦設定したら、薄い色で表示」): 無効にした後は薄く。押せば同じ所へ連れて行く(戻して試せる)。 */
 .paste-lag-btn.off{opacity:.45}
 .paste-lag-btn.off:hover{opacity:.8}
