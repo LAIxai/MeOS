@@ -27043,7 +27043,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .title-file-ud .ud-copy.ud-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}
 .title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-file:hover .title-file-caret{opacity:1}
-.title-file-caret{background:#fff;color:#333;opacity:1;padding:1px 3px}.title-file-caret:hover{background:#ffe9c7}   /* v4.2.662: ファイル名の▾も白地 */
+.title-file-caret{background:#fff;color:#333;opacity:1;padding:1px 4px;border-radius:0 5px 5px 0;margin:-1px -4px -1px 0;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--meos-frame)}   /* v4.2.666(俊克「ファイル名の▼ボタンの左端の角が直角になってない」): Format Me の ▾ と同じ割りボタン= 左は直角・右端に貼り付く */.title-file-caret:hover{background:#ffe9c7}   /* v4.2.662: ファイル名の▾も白地 */
 /* v4.0.306(俊克「▼ボタンを押したとき、**メニュー自体は、大きい文字に**しようよ」): 一覧は読む物なので大きく。 */
 .title-file-pop{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:260px;max-width:420px;padding:4px;border:1px solid var(--meos-frame);border-radius:6px;background:var(--vscode-editorWidget-background,var(--vscode-editor-background));box-shadow:0 3px 10px rgba(0,0,0,.35)}
 .title-file-pop.on{display:block}
