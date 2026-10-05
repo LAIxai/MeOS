@@ -27782,7 +27782,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
    何を描いてもボタンの幅that1pxも動かない(↻の連打で位置thatズレない)。 */
 #fmt-metex{min-width:0}/* v4.0.270(俊克「まだ長いので、もう少し短く」): 兄弟と同じ min-width(32px)を外して、面の箱の幅だけで決める */
 #fmt-metex .mtx-face{display:inline-block;width:22px;text-align:center}/* v4.0.269(俊克 改良1「少し過剰に長い」): 26px= .fmt-btn の min-width(32px)の内側に収まるso、ボタンの幅は他の兄弟と同じになる(中身thatが変わっても動かない、は据え置き) */
-.fmt-table-cell{margin-left:16px}
+.fmt-table-cell{margin-left:16px;position:relative}   /* v4.2.672: 右肩の↻(fmt-lvl)の置き場の基準(v4.2.671 は基準が無く↻が外へ飛んでいた) */
 #fmt-table svg{opacity:.9}
 #fmt-table{background:#217346;border-color:#17552f;color:#fff}#fmt-table:hover{background:#2a8a55}#fmt-table svg{opacity:1}   /* ★v4.2.662(俊克 改良1「テーブルボタンの格子縞に色を…ボタンの地を色付けして、格子を白に。少し目立たない」): 表計算の緑の地に白い格子 */
 #fmt-table:hover svg{opacity:1}
