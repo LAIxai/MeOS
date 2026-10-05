@@ -13345,7 +13345,7 @@ function meosHelperSound() {
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
-    if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.667
+    if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.667
     if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
@@ -15296,8 +15296,41 @@ function meosGrowlPath(len) {
     fs.writeFileSync(f, buf); _meosGrowlFile[ms] = f; return f;
   } catch (_) { return null; }
 }
-// ★v4.2.667: 🚀ROCKET= 俊克が χrono8 用に用意した RocketLaunch000.mp3 の最初の3秒(終わり0.4秒で消す)を同梱(media/sound/rocket-v1.wav)
-function meosRocketPath() { try { const f = require('path').join(extensionContext.extensionPath, 'media', 'sound', 'rocket-v1.wav'); return require('fs').existsSync(f) ? f : null; } catch (_) { return null; } }
+// ★v4.2.667: 🚀ROCKET= 俊克がアラームアプリの試作用に用意したフリー素材(On-Jin ～音人～「ロケット発射」)の最初の3秒を同梱していた
+// ★★v4.2.669(俊克「周波数解析して、合成してはどうか?」「1個目を」): 素材のファイルを配らない= 元の0〜3秒を 25ms×20帯域(40〜12000Hz・対数)で測った
+//   強さの表(2dB刻み・0〜-90dB)だけを持ち、毎回でたらめな位相の雑音をその形に整えて FFT 逆変換で作る(元の波形は1サンプルも使わない)。
+//   全帯域で元と ±2dB。「ばりばり」(0〜1秒の高い破裂)を足した版は俊克「パリパリと変な音」→ 足さない
+const MEOS_ROCKET_TBL = 'jjjjjjjjjjjjjjjjjjjjRRRRRSTVWXZcehjjjjjj9BD789AADHGHKLORUWYa976445569BBCFGILOSUW7625345789BBEGIKOQTW9521345889BCEGJLPRTW7402345979ADFGILNQSV731335577ABCFGIKMORU244544568ABCFGIKNPSV4454555789BCFGHJNQSV34244578ABCEGHILORTW36423778ABCEGHJLNQTW443448699BCDFGIKMPSV4444466689BEEGHKMPSW54575657AABFEGIKMQTW24336556ABBDFGJLNQTX4455444799ADEGIKLORW556944378AACFGHJLPRV689825656AACEGHJMPSV336725576A9BEFGJLOSV1253336579ABEFHJLPSV3564365599BCFFHJLPSU57566677AABCGIILNRUW754455589BBDFHILOSTX542456679ABDEHJLNPSV853376699BCEGHJKMORV933576888BCEGHJLNPSW853553879ACDEHILNQUW8734547598BCDGHKMQTV4543657699BDEIJLORTW5764868AADCFGJKNQSVY68557678ABBEGJKNQSUX55347788BCDFGJLNQUUYB5457879CDDGGJLNQTVY35656679ACEFHIKMORTW46556989ABEFGIKMPRUX676479679AEEFIJLOQUY6746AB7889EEFHILNQSW3623775779ADFGIKORSV534246689AAEEGILPRUX24145678A9BDFHJMOSUX54155587AABDFIJMOSUW64434765AABDFHJLNRTV345377678BBEGHKLNRTW255294579CAEFHJLNRTW643364668BADFHJLNQTW2324356889BCFHJMOQUW3424355899CDFHJLOQTW6724745598BEEGILNQTV334346769AADFGILNRTW435438669BADEHJLNQTW3625566699CDFHJLNQTV5726566599BDEGIKNRTV7956664588BCDGIKMQTVC769564578BCDGIKNQSU5568255568BCEGHKNQSU798525778AADFHILOQTV687347779A9DEHHKNPSV375235789ABDFHIKMPRV789334579ACDFHJLNQTV978733578BBDFGJMOQTV764614568BBDEHJMPRUW334635559CBEFHJMOSTW94484555ABBEFGJLNRTV92495577ABCEFGJLORUX224855487BBDFGJLORUW236746588BBEFIKMPRUW647456659ACDFIJNPRUX437466659ADDFHJLNQUX245354679BCDFGJLOSUX547543579AADFHJLOSUX676556578BBEFIJLOSTWA67875579CBEGIKMPSUX465583469ABEGHKMORUX584553569ABDGHLOPSVYA91355578BCDGILNPSWX760365578ACEHJMORTWY7436344789DGILOQTUXa76353558AADGJNORTWZbB7257479CDEGJNPSTWac88647698ACEHJMPRTWZc97427557ABDHJLOQSWYb84334557ABEGJMORTWXa942343689CDHJMORTWYaA5174567ACEHKNPRTXac62256677ACFHKMPRTWZb44335577ADEGJLORTXZb53145558ACDGJMPRUXZbA4387559BAEHJNQSVXac66677569ABEHJNPRUWYb92267668ABCHJMOQUWYbA4175568BCDHKMPRTWYb97564468CBDHKMPRTWZb652764779CEGJMORTWYb381595768BEFJLORUWZc341757779BEFJLPRTWYb442644779BDGKMQRUWZb82555577ABEGKMPRUWZb33456679ACEGLMPRUWZb25358589BDFHKNQSUXad58338698DDFIKNPSUYac27359A89ACFHKNQSVXad284576789CDGJMPSUWad365655699CDHJMPRUXZc4938755A9DDFILOQTWYa221898589CCFIKOQSVXa44179748BACFIKNPSVXaA3377649AADEHJMOSUWa6545636A9BDFIKNPSVYb253564799BEGIMNQTWZb4505766B9CFGJNPRUXZb74125569DDFGJMPRUWZcA641566ACCEFJLORTWYc6741478AADDGILOQUVYc77325668AADFILOQTVYb56533478ABEFILPRUWZc34534579CDEHJNPRVWac47456578BDEHKNQSVXad578545689DFILNQSVYae34855558ADGHKOQSUWXY6486767BBEGIKNOQRSUV';
+let _meosRocketFile = null;
+function meosRocketPath() {
+  if (_meosRocketFile) { try { if (require('fs').existsSync(_meosRocketFile)) return _meosRocketFile; } catch (_) { } }
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const AL = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij', T = MEOS_ROCKET_TBL;
+    const rate = 44100, NB = 20, NF = T.length / NB, n = Math.floor(rate * 3.0), N = 2048, H = N / 4, hopT = 0.025;
+    const lc = []; for (let b = 0; b < NB; b++) lc.push(Math.log(40 * Math.pow(12000 / 40, (b + 0.5) / NB)));
+    const dB = (f, b) => -2 * AL.indexOf(T[f * NB + b]);
+    let seed = 20261005; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const fft = (re, im) => { const m = re.length; for (let i = 1, j = 0; i < m; i++) { let bit = m >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+      for (let len = 2; len <= m; len <<= 1) { const ang = 2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang); for (let i = 0; i < m; i += len) { let cr = 1, ci = 0; for (let k = 0; k < len / 2; k++) { const a = i + k, b = a + len / 2, tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr; re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti; const nc = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nc; } } } };
+    const win = new Float64Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+    const y = new Float64Array(n);
+    for (let st = -N / 2; st < n; st += H) {
+      const fp = Math.max(0, Math.min(NF - 1.001, ((st + N / 2) / rate) / hopT)), f0 = Math.floor(fp), u = fp - f0;
+      const g = []; for (let b = 0; b < NB; b++) g.push(dB(f0, b) * (1 - u) + dB(f0 + 1, b) * u);
+      const re = new Float64Array(N), im = new Float64Array(N);
+      for (let k = 1; k < N / 2; k++) { const fr = k * rate / N; if (fr < 25) continue; const lf = Math.log(fr); let d;
+        if (lf <= lc[0]) d = g[0] - (lc[0] - lf) * 20; else if (lf >= lc[NB - 1]) d = g[NB - 1] - (lf - lc[NB - 1]) * 30; else { let b = 0; while (lc[b + 1] < lf) b++; const v = (lf - lc[b]) / (lc[b + 1] - lc[b]); d = g[b] * (1 - v) + g[b + 1] * v; }
+        const a = Math.pow(10, d / 20), ph = rnd() * 2 * Math.PI; re[k] = a * Math.cos(ph); im[k] = a * Math.sin(ph); re[N - k] = re[k]; im[N - k] = -im[k]; }
+      fft(re, im); for (let i = 0; i < N; i++) { const p = st + i; if (p >= 0 && p < n) y[p] += re[i] * win[i]; }
+    }
+    let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(y[i]));
+    const buf = Buffer.alloc(44 + n * 2); buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8); buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    const fo = rate * 0.4; for (let i = 0; i < n; i++) { const e = Math.min(1, (n - i) / fo) * Math.min(1, i / (rate * 0.01)); buf.writeInt16LE(Math.round(y[i] / (pk || 1) * 0.9 * 32767 * e), 44 + i * 2); }
+    const f = path.join(os.tmpdir(), 'meos-rocket-v2.wav'); fs.writeFileSync(f, buf); _meosRocketFile = f; return f;
+  } catch (_) { return null; }
+}
 function meosPlayRocket() {
   try { const f = meosRocketPath(); if (!f) return; const { exec } = require('child_process'); const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
     if (process.platform === 'darwin') exec('/usr/bin/afplay -v 2 ' + q(f), () => { });
