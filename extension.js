@@ -2822,7 +2822,7 @@ function meosSoundResolve(name) {
   if (n === 'GONG') return meosGongPath() || '';   // v4.2.441
   if (n === 'SOFT') return meosNoChangeSoundPath() || '';
   if (n === 'GROWL') return meosGrowlPath() || '';   // v4.2.621: 🍙GROWL
-  if (n === 'ROCKET') { const _fd = _meosRocketFadeNext; _meosRocketFadeNext = false; return meosRocketPath(_fd) || ''; }   // v4.2.667: 賞品(MecoDTk で☿を出した人だけ)
+  if (n === 'ROCKET') return meosRocketPath(true) || '';   // v4.2.676(俊克「毎回フェードアウトして、その90%で次を」): いつもフェード版   // v4.2.667: 賞品(MecoDTk で☿を出した人だけ)
   if (n === 'DING-DONG!') return meosPinponPath() || '';   // v4.2.618: 賞品(Docke™ で鳴らした人だけ)
   if (n === 'PURR') return meosPurrPath() || '';   // v4.2.518: 作った強烈なゴロゴロ(mac の Purr とは大文字で分ける)   // v4.2.515(俊克「🔔ボタンメニューに Soft が入ってないよ」): MeOS の柔らかい2音も1つの音に
   if (meosSoundIsPath(n)) return n;
@@ -2857,7 +2857,7 @@ function meosSoundSpawn(name) {
   if (name === 'SOFT') name = meosNoChangeSoundPath() || '';   // v4.2.515
   if (name === 'PURR') name = meosPurrPath() || '';   // v4.2.518
   if (name === 'DING-DONG!') name = meosPinponPath() || '';   // v4.2.618
-  if (name === 'ROCKET') { const _fd = _meosRocketFadeNext; _meosRocketFadeNext = false; name = meosRocketPath(_fd) || ''; }   // v4.2.667 / v4.2.675: 最後の1回はフェード版
+  if (name === 'ROCKET') name = meosRocketPath(true) || '';   // v4.2.667 / v4.2.676: いつもフェード版
   if (name === 'GROWL') name = meosGrowlPath() || '';   // v4.2.621
   if (!name) return null;
   if (process.platform === 'darwin') {
@@ -14892,7 +14892,6 @@ function meosBellMarksFor(cycleStep) {
   return (cycleStep > 0) ? MEOS_BELL_MARKS.filter(m => m[0] < cycleStep) : MEOS_BELL_MARKS.slice();
 }
 function meosRingFor(name, ms) {
-  _meosRingEndAt = ms > 0 ? Date.now() + ms : 0;   // v4.2.675: 止まる時刻が分かる時だけ(最後の1回のフェードに使う)
   meosStartRinging(name);
   if (_meosMarkStop) { clearTimeout(_meosMarkStop); _meosMarkStop = null; }
   if (ms > 0) _meosMarkStop = setTimeout(() => { _meosMarkStop = null; try { meosStopRinging(); } catch (_) { } }, ms);
@@ -15170,9 +15169,7 @@ function meosPlayChime(gain) {
 //   ★止める口は**⏰そのもの**＝ 鳴っている時に押せば止まる(メニューは開かない)。
 //     知らせるUIと直すUIを別に作らない([[feedback_fix_signal_at_fix_place]])。
 //   ★ただし**永久には鳴らさない**= 席を外している人の機械thatが鳴り続けるのは事故。上限を置く(既定5分)。
-let _meosRingTimer = null, _meosRingUntil = 0, _meosRingName = '', _meosRingEndAt = 0;
-// ★v4.2.675(俊克「最後の1回は、フェードアウトしよう。だんだん小さくする」): 🚀ROCKET の鳴り続けで、次に鳴る時刻が止まる時刻を越えるなら今回が最後= フェード版
-function meosRocketLastNow(every) { try { if (meosSoundCanon(_meosBellOverride || meosSoundNow()) !== 'ROCKET') return false; const end = Math.min(_meosRingUntil || Infinity, _meosRingEndAt || Infinity); return isFinite(end) && Date.now() + every * 1000 >= end - 50; } catch (_) { return false; } }
+let _meosRingTimer = null, _meosRingUntil = 0, _meosRingName = '';
 let _meosRingAnchor = false;   // ★v4.2.325(俊克 改良3「⚓のタイマーが鳴っているときに、橙色の地になっているので、そっちも青色に」)
 function meosRingSeconds() {
   // ★v4.0.473(俊克「⏰音は、間を置かずに、**連続的に**鳴らせないかな?」): 小数を受ける=
@@ -15182,11 +15179,11 @@ function meosRingSeconds() {
   //   Mew の時だけ最低1.35秒(v4.2.408 俊克「1.35s間隔にしよう」)= 鳴き終わってから一息おいて次が鳴く(V-helper も同じ値を受け取る)。
   // ★v4.2.520(俊克「😸PURR は3鳴きはしつこいので一鳴きでいい。😺Purr も一鳴きに」): ゴロゴロ2種は鳴り続けず1回だけ(V-helper も同じ値を受け取る)
   try { const _nm20 = meosSoundCanon(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr') return 0; } catch (_) { }   /* v4.2.630(俊克「😸PURRも🍙方式にしよう。長さは今のまま」): 😸PURR は鳴り続けに戻す(1.12秒の音＋1/f の間)・😺Purr は1回のまま */
-  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; const _c = meosSoundCanon(_meosBellOverride || meosSoundNow()); return (_c === 'MEW') ? Math.max(1.35, b) : ((_c === 'GROWL' || _c === 'PURR') ? Math.max(2.0, b) : (_c === 'ROCKET' ? 2.8 : b)); } catch (_) { return 1; }   /* v4.2.667: 🚀ROCKET= 3秒の音＋1秒の間 / v4.2.674(俊克「最後が切れた感じなので、間を空けずに90〜95%の長さで次を」): 3秒の約93%= 2.8秒ごと(終わりの消える所に次の点火を重ねる) */   /* v4.2.626(俊克「🍙を鳴らす時は、この長さ+間で。せわし過ぎてそれらしく聞こえない」): GROWL は音の長さ＋間 / v4.2.627: 1秒の音＋0.5秒の間= 1.5秒ごと */
+  try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; const _c = meosSoundCanon(_meosBellOverride || meosSoundNow()); return (_c === 'MEW') ? Math.max(1.35, b) : ((_c === 'GROWL' || _c === 'PURR') ? Math.max(2.0, b) : (_c === 'ROCKET' ? 2.7 : b)); } catch (_) { return 1; }   /* v4.2.667: 🚀ROCKET= 3秒の音＋1秒の間 / v4.2.674: 2.8秒ごと / v4.2.676(俊克「毎回フェードアウトして、その90%で次を」): フェード版の90%= 2.7秒ごと */   /* v4.2.626(俊克「🍙を鳴らす時は、この長さ+間で。せわし過ぎてそれらしく聞こえない」): GROWL は音の長さ＋間 / v4.2.627: 1秒の音＋0.5秒の間= 1.5秒ごと */
 }
 function meosStopRinging() {
   if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
-  _meosRingUntil = 0; _meosRingName = ''; _meosRingAnchor = false; _meosBellOverride = ''; _meosRingEndAt = 0;   // v4.2.436 / v4.2.675
+  _meosRingUntil = 0; _meosRingName = ''; _meosRingAnchor = false; _meosBellOverride = '';   // v4.2.436
   meosUpdateTimerBar(); meosPostViewMode();
 }
 // ★★★v4.1.57(俊克「もう少し**高音で3秒間、ピーって**鳴らそうよ」):
@@ -15304,7 +15301,7 @@ function meosGrowlPath(len) {
 //   強さの表(2dB刻み・0〜-90dB)だけを持ち、毎回でたらめな位相の雑音をその形に整えて FFT 逆変換で作る(元の波形は1サンプルも使わない)。
 //   全帯域で元と ±2dB。「ばりばり」(0〜1秒の高い破裂)を足した版は俊克「パリパリと変な音」→ 足さない
 const MEOS_ROCKET_TBL = 'jjjjjjjjjjjjjjjjjjjjRRRRRSTVWXZcehjjjjjj9BD789AADHGHKLORUWYa976445569BBCFGILOSUW7625345789BBEGIKOQTW9521345889BCEGJLPRTW7402345979ADFGILNQSV731335577ABCFGIKMORU244544568ABCFGIKNPSV4454555789BCFGHJNQSV34244578ABCEGHILORTW36423778ABCEGHJLNQTW443448699BCDFGIKMPSV4444466689BEEGHKMPSW54575657AABFEGIKMQTW24336556ABBDFGJLNQTX4455444799ADEGIKLORW556944378AACFGHJLPRV689825656AACEGHJMPSV336725576A9BEFGJLOSV1253336579ABEFHJLPSV3564365599BCFFHJLPSU57566677AABCGIILNRUW754455589BBDFHILOSTX542456679ABDEHJLNPSV853376699BCEGHJKMORV933576888BCEGHJLNPSW853553879ACDEHILNQUW8734547598BCDGHKMQTV4543657699BDEIJLORTW5764868AADCFGJKNQSVY68557678ABBEGJKNQSUX55347788BCDFGJLNQUUYB5457879CDDGGJLNQTVY35656679ACEFHIKMORTW46556989ABEFGIKMPRUX676479679AEEFIJLOQUY6746AB7889EEFHILNQSW3623775779ADFGIKORSV534246689AAEEGILPRUX24145678A9BDFHJMOSUX54155587AABDFIJMOSUW64434765AABDFHJLNRTV345377678BBEGHKLNRTW255294579CAEFHJLNRTW643364668BADFHJLNQTW2324356889BCFHJMOQUW3424355899CDFHJLOQTW6724745598BEEGILNQTV334346769AADFGILNRTW435438669BADEHJLNQTW3625566699CDFHJLNQTV5726566599BDEGIKNRTV7956664588BCDGIKMQTVC769564578BCDGIKNQSU5568255568BCEGHKNQSU798525778AADFHILOQTV687347779A9DEHHKNPSV375235789ABDFHIKMPRV789334579ACDFHJLNQTV978733578BBDFGJMOQTV764614568BBDEHJMPRUW334635559CBEFHJMOSTW94484555ABBEFGJLNRTV92495577ABCEFGJLORUX224855487BBDFGJLORUW236746588BBEFIKMPRUW647456659ACDFIJNPRUX437466659ADDFHJLNQUX245354679BCDFGJLOSUX547543579AADFHJLOSUX676556578BBEFIJLOSTWA67875579CBEGIKMPSUX465583469ABEGHKMORUX584553569ABDGHLOPSVYA91355578BCDGILNPSWX760365578ACEHJMORTWY7436344789DGILOQTUXa76353558AADGJNORTWZbB7257479CDEGJNPSTWac88647698ACEHJMPRTWZc97427557ABDHJLOQSWYb84334557ABEGJMORTWXa942343689CDHJMORTWYaA5174567ACEHKNPRTXac62256677ACFHKMPRTWZb44335577ADEGJLORTXZb53145558ACDGJMPRUXZbA4387559BAEHJNQSVXac66677569ABEHJNPRUWYb92267668ABCHJMOQUWYbA4175568BCDHKMPRTWYb97564468CBDHKMPRTWZb652764779CEGJMORTWYb381595768BEFJLORUWZc341757779BEFJLPRTWYb442644779BDGKMQRUWZb82555577ABEGKMPRUWZb33456679ACEGLMPRUWZb25358589BDFHKNQSUXad58338698DDFIKNPSUYac27359A89ACFHKNQSVXad284576789CDGJMPSUWad365655699CDHJMPRUXZc4938755A9DDFILOQTWYa221898589CCFIKOQSVXa44179748BACFIKNPSVXaA3377649AADEHJMOSUWa6545636A9BDFIKNPSVYb253564799BEGIMNQTWZb4505766B9CFGJNPRUXZb74125569DDFGJMPRUWZcA641566ACCEFJLORTWYc6741478AADDGILOQUVYc77325668AADFILOQTVYb56533478ABEFILPRUWZc34534579CDEHJNPRVWac47456578BDEHKNQSVXad578545689DFILNQSVYae34855558ADGHKOQSUWXY6486767BBEGIKNOQRSUV';
-let _meosRocketFile = {}, _meosRocketFadeNext = false;   // v4.2.675: fade= 最後の1回用(3秒かけてだんだん小さく)
+let _meosRocketFile = {};   // v4.2.675: fade= 3秒かけてだんだん小さく / v4.2.676: 鳴らすのはいつもフェード版
 function meosRocketPath(fade) {
   const _k = fade ? 'fade' : 'plain';
   if (_meosRocketFile[_k]) { try { if (require('fs').existsSync(_meosRocketFile[_k])) return _meosRocketFile[_k]; } catch (_) { } }
@@ -15517,10 +15514,10 @@ function meosClockSetGong(title, cycleSrc, cycle, rounds) {
 function meosPlayCountBell(cb) {
   try {
     if (!cb || !cb.sound) return;
-    const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 2.12 : (_cs21 === 'GROWL' ? 1.5 : (_cs21 === 'ROCKET' ? 2.8 : 1.0))))) * 1000);   // v4.2.626: 🍙GROWL も長さ＋間   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
+    const _cs21 = meosSoundCanon(cb.sound); const gap = Math.round(((_cs21 === 'MEW') ? 1.35 : (_cs21 === 'GONG' ? 0.8 : (_cs21 === 'PURR' ? 2.12 : (_cs21 === 'GROWL' ? 1.5 : (_cs21 === 'ROCKET' ? 2.7 : 1.0))))) * 1000);   // v4.2.626: 🍙GROWL も長さ＋間   // v4.2.444: ゴングは「カン、カン」と詰めて打つ
     meosMewGainReset();
     let _at = 0;   // v4.2.628: 🍙GROWL の回数鳴きも 1秒＋1/f の間
-    for (let k = 0; k < cb.count; k++) { const _L = (_cs21 === 'GROWL') ? meosGrowlLen() : 0; const _last = (k === cb.count - 1 && _cs21 === 'ROCKET'); setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; if (_L) _meosGrowlLen = _L; if (_last) _meosRocketFadeNext = true; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, _at); _at += (_cs21 === 'GROWL') ? Math.round((_L + meosGrowlGap()) * 1000) : (_cs21 === 'PURR' ? Math.round((MEOS_PURR_LEN + meosGrowlGap()) * 1000) : gap); }   /* v4.2.630: 😸PURR も 1/f の間 */   // v4.2.629: 長さも 1/f
+    for (let k = 0; k < cb.count; k++) { const _L = (_cs21 === 'GROWL') ? meosGrowlLen() : 0; setTimeout(() => { const _k = _meosBellOverride; _meosBellOverride = cb.sound; if (_L) _meosGrowlLen = _L; try { meosPlayChime(meosMewGain()); } finally { _meosBellOverride = _k; } }, _at); _at += (_cs21 === 'GROWL') ? Math.round((_L + meosGrowlGap()) * 1000) : (_cs21 === 'PURR' ? Math.round((MEOS_PURR_LEN + meosGrowlGap()) * 1000) : gap); }   /* v4.2.630: 😸PURR も 1/f の間 */   // v4.2.629: 長さも 1/f
     meosDbg('[countBell] ' + cb.sound + ' ×' + cb.count);
   } catch (_) { }
 }
@@ -15535,7 +15532,6 @@ function meosStartRinging(name) {
   const every = meosRingSeconds();
   meosMewGainReset();
   if (meosIsGrowl()) meosGrowlNext();   // v4.2.629
-  if (every && meosRocketLastNow(every)) _meosRocketFadeNext = true;   // v4.2.675: 1回で終わる鳴り(1分前の3秒など)も最後= フェード
   meosPlayChime(meosMewGain());
   if (!every) return;                                    // 0= 1回だけ
   _meosRingName = name || '';
@@ -15547,7 +15543,6 @@ function meosStartRinging(name) {
   } else
   _meosRingTimer = setInterval(() => {
     if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; }
-    if (meosRocketLastNow(every)) _meosRocketFadeNext = true;   // v4.2.675
     meosPlayChime(meosMewGain());
   }, Math.round(every * 1000));
   meosUpdateTimerBar(); meosPostViewMode();

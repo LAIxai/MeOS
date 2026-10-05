@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.675) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.676) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -212,8 +212,8 @@ function run(argv) {
     mewRows[k] = Math.random();
     return 0.55 + 0.6 * (mewRows.reduce((a, b) => a + b, 0) / mewRows.length);
   };
-  // v4.2.675: 🚀ROCKET の最後の1回(次に鳴る時刻が止まる時刻を越える)はフェード版(rocket-v2-fade.wav)
-  const rocketFile = () => { const f = String(sound.file || ''); if (!/rocket-v2\.wav$/i.test(f) || !ringing || !(sound.every > 0)) return f; if (Date.now() + sound.every * 1000 < ringing.until - 50) return f; const g = f.replace(/rocket-v2\.wav$/i, 'rocket-v2-fade.wav'); try { if ($.NSFileManager.defaultManager.fileExistsAtPath(g)) return g; } catch (e) {} return f; };
+  // v4.2.676: 🚀ROCKET はいつもフェード版(rocket-v2-fade.wav)
+  const rocketFile = () => { const f = String(sound.file || ''); if (!/rocket-v2\.wav$/i.test(f)) return f; const g = f.replace(/rocket-v2\.wav$/i, 'rocket-v2-fade.wav'); try { if ($.NSFileManager.defaultManager.fileExistsAtPath(g)) return g; } catch (e) {} return f; };
   const playBell = () => {
     try {
       if (!sound.file) return;
