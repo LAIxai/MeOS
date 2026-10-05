@@ -27565,6 +27565,9 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .ww-split.s1 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#4a86e0 46%)}
 .ww-split.s1 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#4a86e0 28%);border-color:#3a69ad}
 .ww-split.s2 .ww-btn{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#3fa85c 34%);border-color:#2f7f45}
+/* ★v4.2.673(俊克「↻ボタンの色をこの2つだけ変えよう」): 折り返しの↻と表ボタンの↻= 今の枠の色(赤/青/緑)= 折り返しの仲間と分かる */
+.ww-split.s0 .ww-ring,#fmt-table-wwcycle.s0{background:#c24a3e}.ww-split.s1 .ww-ring,#fmt-table-wwcycle.s1{background:#3a74c8}.ww-split.s2 .ww-ring,#fmt-table-wwcycle.s2{background:#2f8f4c}
+.ww-split.s0 .ww-ring:hover,#fmt-table-wwcycle.s0:hover{background:#d8604f}.ww-split.s1 .ww-ring:hover,#fmt-table-wwcycle.s1:hover{background:#5089da}.ww-split.s2 .ww-ring:hover,#fmt-table-wwcycle.s2:hover{background:#3fa85c}
 .ww-split.s2 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#3fa85c 46%)}
 .ww-split.s2 .ww-pop{background:color-mix(in srgb,var(--vscode-editor-background) 72%,#3fa85c 28%);border-color:#2f7f45}
 .ww-val{display:inline-block;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}   /* v4.2.618(俊克「折り返しボタンの横幅を3桁の数字が入った時に固定。↻を連打しやすく」) */
@@ -30946,7 +30949,7 @@ hPaint();}
 const c1=document.getElementById('clk-one');if(c1)c1.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(Date.now()+3600000),p=x=>(x<10?'0':'')+x;
 vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),add:true,rep:false,up:false,dual:true,cycle:'',title:'One-shot timer 1h',tags:null,lock:false,anchor:false});});
 const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});
-{const tw=document.getElementById('fmt-table-wwcycle');if(tw)tw.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});}   /* ★v4.2.671(俊克「テーブルボタンの右肩に、折り返しボタンと同じ機能の↻を。折り返しボタンの位置を探すことなく、テーブルボタンの中で作業ができる」): 折り返しの↻と同じ知らせを送る */
+{const tw=document.getElementById('fmt-table-wwcycle'),sp=document.querySelector('.ww-split');const sync=()=>{if(!tw||!sp)return;['s0','s1','s2'].forEach(c=>tw.classList.toggle(c,sp.classList.contains(c)));};sync();try{if(sp)new MutationObserver(sync).observe(sp,{attributes:true,attributeFilter:['class']});}catch(_){}/* v4.2.673: 枠の色を写す */if(tw)tw.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});}   /* ★v4.2.671(俊克「テーブルボタンの右肩に、折り返しボタンと同じ機能の↻を。折り返しボタンの位置を探すことなく、テーブルボタンの中で作業ができる」): 折り返しの↻と同じ知らせを送る */
 {const tb=document.getElementById('th-btn'),tp=document.getElementById('th-pop'),tr=document.getElementById('th-ring'),tv=document.getElementById('th-btn-val');let thPicked=false,thTimer=null;
 const thAct=(r,scroll)=>{tp.querySelectorAll('.th-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<tp.scrollTop)tp.scrollTop=top-4;else if(bot>tp.scrollTop+tp.clientHeight)tp.scrollTop=bot-tp.clientHeight+4;}};
 const thClose=(commit)=>{if(!tp.classList.contains('on'))return;tp.classList.remove('on');tb.classList.remove('on');clearTimeout(thTimer);if(!commit&&!thPicked)vscode.postMessage({type:'themeRevert'});thPicked=false;};
