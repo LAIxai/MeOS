@@ -26833,7 +26833,7 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .md-ttile.md-comet .tt-comet{display:inline-block;position:relative;padding-right:.62em}
 .md-ttile.md-comet .tt-comet .cm-g{display:inline-block;font-weight:400;transform:rotate(-10deg)}
 .md-ttile.md-comet .tt-comet::after{content:'';position:absolute;right:0;top:50%;width:.66em;height:.62em;transform:translateY(-50%) rotate(-10deg);transform-origin:0 50%;
-background:linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 8%/80% 1.5px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 36%/100% 1.5px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 64%/92% 1.5px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 92%/70% 1.5px no-repeat}   /* 尾= 4本の線(長さを違えて)が右へ薄れる */
+background:linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 8%/80% 1px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 36%/100% 1px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 64%/92% 1px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 92%/70% 1px no-repeat}   /* v4.2.642(俊克「右側の線を少し細く」): 1.5→1px / 尾= 4本の線(長さを違えて)が右へ薄れる */
 .md-tiles.md-extreme .md-tile,.md-tiles.md-extreme .md-tile.md-tm,.md-tiles.md-extreme .md-tile.md-ttile.md-tm{color:#d4a017!important;text-shadow:0 0 1px rgba(120,80,0,.6)}   /* v4.2.618: Docke™ の時は字が金色 */   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
 .md-tile.dragging{transform:scale(2);box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:6;position:relative}   /* v4.2.583(俊克「パズルを握ってドラッグする時に、パズルが大きくならない」): 握っている間も倍のまま */
 /* v4.2.509: 閉ざした部品(md-dim)= 並びの印に応じて JS が付ける(残す物の祖先の兄弟を全部閉ざす)。ぼかして押せない */
