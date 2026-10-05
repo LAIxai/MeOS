@@ -27588,6 +27588,9 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
    小さな丸い札(↻・⊕/⊖・↩・F/H・錠・Ⓝ 等)は、乗せると倍に。transform を使う札(↩ 等)を壊さないよう、別の口の scale で膨らませる */
 .fmt-lvl,.ww-ring,.th-ring,.tt-badge,.title-file-jump,.mz-badge,.clk-pring,.clk-lockbadge,.enc-badge,.bm-f-badge,.iv-badge,.eof-badge{transition:scale .15s ease}
 .fmt-lvl:hover,.ww-ring:hover,.th-ring:hover,.tt-badge:hover,.title-file-jump:hover,.mz-badge:hover,.clk-pring:hover,.clk-lockbadge:hover,.enc-badge:hover,.bm-f-badge:hover,.iv-badge:hover,.eof-badge:hover{scale:2;z-index:50}
+/* v4.2.688(俊克「Aの⊕/⊖と↩だけ、ホットスポットから逃げて行く」): この3つは transform で角へずらしていた= 膨らみ(scale)がずらした後の物にかかり外へ逃げる。
+   → ずらしを translate の口へ移す(順番が 膨らむ→ずらす になり、中心を保ったまま膨らむ) */
+.mz-tr{transform:none;translate:50% -50%}.mz-br{transform:none;translate:50% 50%}.title-file-jump{transform:none;translate:50% calc(-50% - 5px)}
 /* ★v4.2.167(俊克「折り返しボタンの背景色を赤、青、緑にすれば、数字を見なくても分るでしょ」): 1つ目=赤 / 2つ目=青 / 3つ目=緑。パネルも同じ色で続ける */
 .ww-split.s0 .ww-btn{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#e0564a 34%);border-color:#a8453c}
 .ww-split.s0 .ww-btn.on{background:color-mix(in srgb,var(--vscode-editor-background) 54%,#e0564a 46%)}
@@ -32013,7 +32016,7 @@ else if(t===hp&&calibOk(hp)){const b=boxOf(hp);org={x:ev.clientX-(ev.offsetX||0)
    真因= 原点を覚え直すのはヘッダーの地と手のボタンの上だけ= 入れ替え直後とスクロールの後(原点を忘れる)は昔の出し方(部品の位置の足し算)に頼り、
    ずらして置いた部品(↩= translate・文字タイル= 浮き上がり)で外れた。→ ずらして描かれていない塊の部品なら、どの部品の上でも原点を覚え直す */
 else if(t instanceof HTMLElement&&t!==redC&&hdr.contains(t)&&t.offsetParent&&calibOk(t)){const b=boxOf(t);org={x:ev.clientX-(ev.offsetX||0)-(b.x+(t.clientLeft||0))*z,y:ev.clientY-(ev.offsetY||0)-(b.y+(t.clientTop||0))*z};}}
-function calibOk(t){try{if(getComputedStyle(t).display==='inline')return false;/* v4.2.529: 字の中の部品は offsetX の起点が食い違う */for(let e=t;e&&e!==hdr;e=e.parentElement){const _cs=getComputedStyle(e),x=_cs.transform;if(x&&x!=='none')return false;if(_cs.scale&&_cs.scale!=='none'&&_cs.scale!=='1')return false;}/* v4.2.687: scale で膨らんだ札の上でも原点を覚え直さない */return true;}catch(_){return false;}}
+function calibOk(t){try{if(getComputedStyle(t).display==='inline')return false;/* v4.2.529: 字の中の部品は offsetX の起点が食い違う */for(let e=t;e&&e!==hdr;e=e.parentElement){const _cs=getComputedStyle(e),x=_cs.transform;if(x&&x!=='none')return false;if(_cs.scale&&_cs.scale!=='none'&&_cs.scale!=='1')return false;if(_cs.translate&&_cs.translate!=='none'&&_cs.translate!=='0px')return false;}/* v4.2.687: scale で膨らんだ札の上でも原点を覚え直さない */return true;}catch(_){return false;}}
 window.addEventListener('scroll',()=>{org=null;},true);window.addEventListener('resize',()=>{org=null;});
 function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,y:(ev.clientY-org.y)/z};}return hdrPtOld(ev);}
 function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
