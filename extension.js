@@ -34689,7 +34689,9 @@ function meosTableRowsFromText(lines) {
   if (ls.length < 2) return null;
   if (ls.some(l => /^\s*\|/.test(l))) return null;
   let rows;
-  if (ls.some(l => l.indexOf('\t') >= 0)) rows = ls.map(l => l.replace(/^[ 　]+/, '').split('\t'));
+  // ★v4.2.639(俊克 バグ1「2つ以上の空白で2つの列に分けると書いてあるが、そうならない」): タブの判定を選んだ範囲で1回だけしていた= タブの行が混じると、
+  //   タブの無い行(山田  次郎)は1つのセルのまま。→ 行ごとに見る= タブの有る行はタブで・無い行は2つ以上の空白(全角空白も)で切る
+  if (ls.some(l => l.indexOf('\t') >= 0)) rows = ls.map(l => l.indexOf('\t') >= 0 ? l.replace(/^[ 　]+/, '').split('\t') : l.trim().split(/(?: |　){2,}|　/));
   else {
     rows = ls.map(l => l.trim().split(/(?: |　){2,}|　/));
     if (rows.every(r => r.length < 2)) rows = ls.map(l => l.trim().split(/[ 　]+/));
