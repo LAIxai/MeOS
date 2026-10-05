@@ -32485,6 +32485,7 @@ function closeAllMeDockTabs() {
 //   → 左右2つのグループで Me Dock が右に居る間だけ、幅の割合を覚える(2秒おきに今の姿を見る= ドラッグした結果を拾う)。
 //     作り直した直後は覚えた割合に戻す(戻している間は覚えない= 既定の幅で上書きしない)。
 let _meDockWidthTimer = null, _meDockWidthHoldUntil = 0;
+const MEOS_GROUP_MIN_PX = 220;   // v4.2.683: VSCodium の編集グループの最小幅(実測= getEditorLayout がこれより下を返さない)
 // ★v4.2.638(俊克「Me Dockの幅を最小化している時に、Timed MeあるいはH-TOCボタンをクリックすると、リストが食み出る。自動で幅を広げて、
 //   リストが奇麗に出るように。内容によって幅が異なるので、それぞれを表示した時にドラッグで幅を最後に決めた時の値を記憶しておけばいい」):
 //   開いているリスト(tmsSet= ⏰▾の設定 / tmsHist= ⏰の一覧 / htoc= H-TOC)を webview が知らせる。開いた時、覚えた幅より狭ければ広げ、
@@ -32520,6 +32521,7 @@ async function meosMeDockWidthSave() {
     if (!lo || lo.orientation !== 0 || !Array.isArray(lo.groups) || lo.groups.length !== 2) return;
     const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0; if (!(a > 0 && b > 0)) return;
     const r = b / (a + b); if (!(r > 0.08 && r < 0.92)) return;
+    if (b <= MEOS_GROUP_MIN_PX + 4) return;   // v4.2.683: 最小の幅は覚えない(+12 へ置き直されるのを待つ)
     const old = Number(extensionContext.globalState.get('meDockWidthRatio')) || 0;
     // ★v4.2.592(俊克「Me Dockの幅を最小化している時に、何かのボタン操作をすると、幅が最大化してしまう。防げないか?」):
     //   ログ= 0.216 ⇄ 0.784 を行き来= **左右がちょうど入れ替わった値**(手のドラッグなら毎回少し違う)= VSCodium のグループの拡大
@@ -32550,7 +32552,7 @@ function meosMeDockWidthRestore() {
       if (!lo || lo.orientation !== 0 || !Array.isArray(lo.groups) || lo.groups.length !== 2) return;
       const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
       if (a > 0 && b > 0 && Math.abs(b / (a + b) - r) < 0.004) return;   // もう覚えた幅
-      const T = a + b, bpx = Math.round(T * r);   // v4.2.605: 割合では効かない→ ピクセルで
+      const T = a + b, bpx = Math.max(MEOS_GROUP_MIN_PX + 12, Math.round(T * r));   // v4.2.605: 割合では効かない→ ピクセルで / v4.2.683: 最小ぴったりには戻さない
       await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - bpx }, { size: bpx }] });
       meosDbg('[dockWidth] 戻した ' + r.toFixed(3) + ' (' + bpx + 'px)');
     } catch (_) { }
@@ -33012,23 +33014,19 @@ function toggleMeDock(editorOverride) {
     }
     // ★v4.2.601: Me Dock が VSCodium の最小幅(約220)まで縮んだら、1回だけ少し広げる(最小ぴったりのグループは焦点が移ると VSCodium が最大へ広げるので)
     if (message && message.type === 'dockListOpen') { await meosDockListOpen(message.key); return; }   // v4.2.638
-    if (message && message.type === 'dockWidthPx') { try { const w = Number(message.w) || 0; meosDbg('[dockWidth] 幅 ' + w + 'px (最小 ' + (Number(extensionContext.globalState.get('meDockMinPx')) || '-') + ')');
-      // 物差し= Me Dock の中の幅(VSCodium のピクセルとほぼ同じ= 最小220が211に見える)。決め打ちせず「今までで一番狭い幅」を最小と見なす
-      const minPx = Number(extensionContext.globalState.get('meDockMinPx')) || 0;
-      if (w > 0 && (!minPx || w < minPx)) { try { extensionContext.globalState.update('meDockMinPx', w); } catch (_) { } }
-      const atMin = w > 0 && w <= 420 && (!minPx || w <= minPx + 2);
-      if (atMin && meDockPanel && meDockPanel.viewColumn === vscode.ViewColumn.Two && Date.now() > (_meDockWidthHoldUntil || 0)) {
+    if (message && message.type === 'dockWidthPx') { try { const w = Number(message.w) || 0;
+      // ★★v4.2.683(俊克「表ボタンと↻を押すと連続して最大化。ドラッグで最小にすると、わずかに広がる動きをしないので分かり難い。常にこの動きを」):
+      //   真因= 最小かどうかを Me Dock の中の幅(webview)で見ていた。同じ最小でも 211px の時と 220px の時がある(ログ)→ 220 は「最小でない」と見なして広げず、
+      //   最小のまま覚えた= ボタンを押す度に VSCodium が「最小まで縮んだ枠に焦点が来たら広げる」。→ **VSCodium の枠の幅(getEditorLayout)で見る**:
+      //   枠の最小は 220px(実測)。それ以下〜+4px なら、いつも +12px(232px)へ= 最小ぴったりにしない
+      if (meDockPanel && meDockPanel.viewColumn === vscode.ViewColumn.Two && Date.now() > (_meDockWidthHoldUntil || 0)) {
         const lo = await vscode.commands.executeCommand('vscode.getEditorLayout');
         if (lo && lo.orientation === 0 && Array.isArray(lo.groups) && lo.groups.length === 2) { const a = Number(lo.groups[0].size) || 0, b = Number(lo.groups[1].size) || 0;
-          if (a > 0 && b > 0) { const T = a + b, r = Math.min(0.5, b / T + 0.05);   /* v4.2.604(俊克「5%に」) */ _meDockWidthHoldUntil = Date.now() + 2500;
-            // ★v4.2.605(測った= 604 のログ: 置いた後も {797},{220} のまま= 割合の命令が効いていない。getEditorLayout はピクセルを返す)→ 置く時もピクセルで
-            const bpx = Math.round(b) + 12;   // ★v4.2.606(俊克「かなり幅が跳ね上がった。もっと小さく」): 5%(約51px)→ 最小から 12px だけ
+          meosDbg('[dockWidth] 幅 ' + w + 'px 枠 ' + Math.round(b) + 'px');
+          if (a > 0 && b > 0 && b <= MEOS_GROUP_MIN_PX + 4) { const T = a + b, bpx = MEOS_GROUP_MIN_PX + 12; _meDockWidthHoldUntil = Date.now() + 2500;
             await vscode.commands.executeCommand('vscode.setEditorLayout', { orientation: 0, groups: [{ size: T - bpx }, { size: bpx }] });
-            try { extensionContext.globalState.update('meDockWidthRatio', r); } catch (_) { }
-            meosDbg('[dockWidth] 最小幅 ' + w + 'px → +12px');
-            // v4.2.604: 測る= 置いた直後と1秒後に、本当にその幅になったかを読む(603 では置いた後に幅の知らせが来ず、置いても変わっていない疑い)
-            const _rd = async (tag) => { try { const l2 = await vscode.commands.executeCommand('vscode.getEditorLayout'); meosDbg('[dockWidth] ' + tag + ' ' + JSON.stringify(l2)); } catch (_) { } };
-            await _rd('置いた直後'); setTimeout(() => _rd('1秒後'), 1000); } } } } catch (_) { } return; }
+            try { extensionContext.globalState.update('meDockWidthRatio', bpx / T); } catch (_) { }
+            meosDbg('[dockWidth] 枠が最小 ' + Math.round(b) + 'px → ' + bpx + 'px'); } } } } catch (_) { } return; }
     if (message && message.type === 'mdTileJump') { await meosPuzzleTag(message.ch); return; }   // v4.2.562
     if (message && message.type === 'handPoof') { meosPlayNoChange(true); return; }   // v4.2.548: 手の駒を捨てた音= 🔔 で選んだ音
     if (message && message.type === 'setPointerHand') {   // ★v4.2.109: Me Dock の駒で手を選ぶ= 設定に書く(切替は設定の変化が引き受ける)
