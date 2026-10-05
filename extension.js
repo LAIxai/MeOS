@@ -26770,7 +26770,7 @@ function meosDockTilesHtml() {
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
-    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span><span class="tt-comet"><span class="cm-g">\u263f</span></span></span>'
+    ? '<span class="md-tile md-ttile md-dot" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span><span class="tt-comet"><span class="cm-g">\u263f</span><span class="cm-c">\u2604\ufe0e</span></span></span>'
     : '<span class="md-tile" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
@@ -26831,7 +26831,8 @@ body{margin:0;padding:4px 14px;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .md-ttile .tt-comet{display:none}
 .md-tile.md-ttile.md-comet{background:#f3e6c4;color:#b4540f}.md-ttile.md-comet .tt-glyph,.md-ttile.md-comet .tt-plain{display:none}   /* ★v4.2.641(俊克「地を黄色(🐢ボタンくらい)に・☿の文字・左に10°傾け・右にほうき星のように線を何本か=ガスの噴出」): koMeTcD= Ⓣが彗星に変身 */
 .md-ttile.md-comet .tt-comet{display:inline-block;position:relative;padding-right:.62em}
-.md-ttile.md-comet .tt-comet .cm-g{display:inline-block;font-weight:400;transform:rotate(-10deg)}
+.md-ttile.md-comet .tt-comet .cm-g,.md-ttile.md-comet .tt-comet .cm-c{display:inline-block;font-weight:400;transform:rotate(-10deg)}
+.md-ttile .tt-comet .cm-c,.md-ttile.md-comet-k .tt-comet .cm-g{display:none!important}.md-ttile.md-comet-k .tt-comet .cm-c{display:inline-block!important;color:#e0302a}   /* v4.2.646: 彗星の並びは赤い☄ */
 .md-ttile.md-comet .tt-comet::after{content:'';position:absolute;right:0;top:50%;width:.66em;height:.62em;transform:translateY(-50%) rotate(-10deg);transform-origin:0 50%;
 background:linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 8%/80% 1px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 36%/100% 1px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 64%/92% 1px no-repeat,linear-gradient(to right,rgba(180,84,15,.85),rgba(180,84,15,0)) 0 92%/70% 1px no-repeat}   /* v4.2.642(俊克「右側の線を少し細く」): 1.5→1px / 尾= 4本の線(長さを違えて)が右へ薄れる */
 .md-tiles.md-extreme .md-tile,.md-tiles.md-extreme .md-tile.md-tm,.md-tiles.md-extreme .md-tile.md-ttile.md-tm{color:#d4a017!important;text-shadow:0 0 1px rgba(120,80,0,.6)}   /* v4.2.618: Docke™ の時は字が金色 */   /* v4.2.610: Me と Dock の間(Ⓣ がどこに居ても D の前) */
@@ -31853,7 +31854,7 @@ function apply(){const o=order();const lk=LOCKS.some(w=>o.indexOf(w)===0),cr=CRY
 /* v4.2.513(測った [mdDbg]: 段も祖先もぼけていない= 合言葉の欄が段の中に在り、それを別に残すと、その兄弟= 段の中身を閉ざしていた) → 他に含まれる物は残す物から外す */
 const enc0=[document.getElementById('encrypt-me-row'),document.querySelector('.enc-pass-row')].filter(Boolean);const enc=enc0.filter(k=>!enc0.some(o=>o!==k&&o.contains(k)));shut(lk?[row]:(cr?[row].concat(enc):[]));if(hd)enc.forEach(e=>e.classList.add('md-dim'));
 row.classList.toggle('md-home',o.replace('T','')===HOME);row.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-gap',o.replace('T','')===HOME&&t.getAttribute('data-ch')==='D'));
-row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.640(俊克「koMeⓉcD に並べると、Ⓣが彗星ボタン(地を水色)に変身」): Komet(独)= 彗星 */try{const _tt=row.querySelector('.md-ttile');if(_tt)_tt.classList.toggle('md-comet',/^(?:[ck]oMeT|Mec)/.test(o));/* v4.2.645(俊克「Mec××××でも、Mercuryと見なして☿マークを出そう」): 頭が Mec なら残り4字の順は問わない *//* v4.2.644(俊克「comeⓉDkでも同様に。ドイツ語のケースでも」): 頭が coMeT / koMeT なら、残り2字の順は問わない *//* v4.2.643(俊克「comeⓉkDでも良いよ。ドイツ語でも英語でも」): Komet / comet */}catch(_){}/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
+row.classList.toggle('md-extreme',o==='DockeTM');/* v4.2.640(俊克「koMeⓉcD に並べると、Ⓣが彗星ボタン(地を水色)に変身」): Komet(独)= 彗星 */try{const _tt=row.querySelector('.md-ttile');if(_tt)_tt.classList.toggle('md-comet',/^(?:[ck]oMeT|Mec)/.test(o));_tt.classList.toggle('md-comet-k',/^[ck]oMeT/.test(o));/* v4.2.646(俊克「coMeⓉ…とkoMeⓉ…には、☄を赤文字にして出そう」): 彗星の並び= ☄(赤)/ Mec…= ☿ *//* v4.2.645(俊克「Mec××××でも、Mercuryと見なして☿マークを出そう」): 頭が Mec なら残り4字の順は問わない *//* v4.2.644(俊克「comeⓉDkでも同様に。ドイツ語のケースでも」): 頭が coMeT / koMeT なら、残り2字の順は問わない *//* v4.2.643(俊克「comeⓉkDでも良いよ。ドイツ語でも英語でも」): Komet / comet */}catch(_){}/* v4.2.618(俊克「文字を金色に」): Docke™= Dock Extreme */
 /* v4.2.615: 最後が TM= ™ に成り済ます */const _tm=/TM$/.test(o);row.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');t.classList.toggle('md-tm',_tm&&(c==='T'||c==='M'));});}
 apply();/* v4.2.511(俊克 バグ1「eMcoDk なのに Encrypt Me が出てこない」): Encrypt Me の段は、後から Current Me の箱(cur-box)へ移される。
   最初の1回はその前に数えていた→ 並びが落ち着いた後にもう一度数える */
