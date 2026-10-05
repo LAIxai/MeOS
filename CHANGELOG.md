@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.678 (2026-10-05)
+- **↻ on the table button.** The table button now has its own ↻, the same as ↻ on the wrap button: cycle the wrap width without leaving the table. Both ↻ glow in the colour of the width you are on (red / blue / green).
+- New default wrap widths: **50 / 90 / 160** (were 48 / 80 / 100). Widths you have already set are kept.
+
 ### v4.2.670 (2026-10-05)
 - **🐢 Paste lag now also lifts the large-file limit.** VS Code turns off folding (and more) in any file that is over 300,000 lines or 20 MB when it is opened — a one-file diary gets there. One click on 🐢 turns off *Large file optimizations*, so membranes keep folding; close and reopen the file to apply.
 
