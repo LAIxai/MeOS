@@ -27101,7 +27101,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
      どんな box-sizing でも丸は丸のまま。 */
 .title-file-jump .jf{display:block;line-height:1}
 .title-file-jump.back .jf{position:relative;top:1px}   /* v4.1.102: 6→3→0 と降りて、素の位置から**1px だけ**下(俊克の目盛りで決めた最終値) */
-.title-file-jump:not(.here):hover{filter:brightness(1.06);box-shadow:0 0 0 2px rgba(255,255,255,.28)}
+.title-file-jump:not(.here):hover{filter:brightness(1.06)}   /* v4.2.689(俊克「↩ボタンだけ回りに後光のように光っている。無しに」): 白い輪(box-shadow)を外す= 膨らむだけ */
 .title-file-ud{margin-left:10px;font-size:10px;font-family:ui-monospace,Menlo,monospace;opacity:.9;white-space:nowrap}/* v4.0.363: ●/× と最終更新 */
 .title-file-ud .ud-dot{font-weight:800;margin-right:3px}
 .title-file-ud [data-tip]::after{bottom:calc(100% + 3px);right:auto;left:0;font-size:12px}/* v4.0.365/367: 詰める＋読める大きさに */
