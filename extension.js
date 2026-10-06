@@ -29296,7 +29296,7 @@ var top=r.bottom+6;if(top+hh>window.innerHeight-4)top=r.top-hh-6;if(top<4)top=4;
 if(_dwEdit){_dwEdit.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();_dwCommitEdit();}else if(ev.key==='Escape'){ev.preventDefault();
 _dwCancelEdit();}});_dwEdit.addEventListener('input',function(){_dwHideHint();});_dwEdit.addEventListener('blur',function(){_dwCommitEdit();
 });_dwEdit.addEventListener('click',function(ev){ev.stopPropagation();});}
-document.addEventListener('pointerdown',function(e){try{if(e.target&&e.target.closest&&e.target.closest('.dw-split'))window.__dwLastPt={x:e.clientX,y:e.clientY,t:Date.now()};}catch(_){}},true);/* v4.2.714(俊克「全く直らない」= Ⓣの方を押していた): Ⓣday のどこを押しても、押した所を覚える */
+document.addEventListener('pointerdown',function(e){try{var t=e.target;if(t&&t.closest&&t.closest('.dw-split')&&t.getBoundingClientRect){var r=t.getBoundingClientRect(),kx=r.width/(t.offsetWidth||1)||1,ky=r.height/(t.offsetHeight||1)||1;window.__dwLastPt={x:r.left+(e.offsetX||0)*kx,y:r.top+(e.offsetY||0)*ky,t:Date.now()};}}catch(_){}},true);/* ★v4.2.716(俊克「クリックした位置に表示すればいいだけ。スコープを勘違いしているだけじゃないのか」): 押した所は**部品の四角＋部品の中の位置**で出す(Me Dock は clientX と四角が別の物差し= reference_medock_clientx_vs_rect)。713/714 は clientX をそのまま置き場所に使い、縮尺の分ずれていた *//* v4.2.714(俊克「全く直らない」= Ⓣの方を押していた): Ⓣday のどこを押しても、押した所を覚える */
 var _dwClickT=null;if(_dwScope){_dwScope.addEventListener('click',function(ev){ev.stopPropagation();window.__dwLastPt={x:ev.clientX,y:ev.clientY,t:Date.now()};if(_dwClickT){clearTimeout(_dwClickT);
 _dwClickT=null;}_dwClickT=setTimeout(function(){_dwClickT=null;_dwOpenDial();},220);});_dwScope.addEventListener('dblclick',function(ev){ev.preventDefault();
 ev.stopPropagation();if(_dwClickT){clearTimeout(_dwClickT);_dwClickT=null;}_dwOpenEdit();});}
