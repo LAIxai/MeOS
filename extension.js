@@ -29686,8 +29686,8 @@ window.__fmtRing.heading=0;window.__fmtWasDeco.heading=true;window.__fmtCyclingK
 window.__renderFmtRing('heading');}});
 /* v0.9.99936: ↻で挿入レベルを ## → # → ### 循環＋各レベルの記憶色をロード */
 const fmtHeadCycle=document.getElementById('fmt-head-cycle');if(fmtHeadCycle)fmtHeadCycle.addEventListener('click',ev=>{ev.preventDefault();
-ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.heading){window.__fmtRing.heading=((window.__fmtRing.heading||0)+1)%3;
-window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('heading');return;}fmtHeadingLevel=(fmtHeadingLevel%3)+1;
+ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.heading){window.__fmtRing.heading=((window.__fmtRing.heading||0)+(ev&&ev.shiftKey?2:1))%3;
+window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('heading');return;}fmtHeadingLevel=(ev&&ev.shiftKey)?(((fmtHeadingLevel+1)%3)+1):((fmtHeadingLevel%3)+1);
 fmtSpec.heading=fmtHeadingColors[fmtHeadingLevel];const hh='#'.repeat(fmtHeadingLevel);if(fmtHeading){fmtHeading.textContent=hh;
 fmtHeading.setAttribute('data-tip',fmtHeadTip());   /* v4.0.421: tipを作る所は1つ */
 }renderFmtBtnColors();pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='heading')renderFmtPop();});
@@ -29830,13 +29830,13 @@ if(fmtStrike)stBaseTip=fmtStrike.getAttribute('data-tip')||'';
 stAltW=fmtAltWatch(fmtStrike,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');if(!stAltOn()&&typeof renderFmtBtnColors==='function')renderFmtBtnColors();});
 hdAltW=fmtAltWatch(fmtHeading,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('heading');if(!hdAltOn()&&typeof renderFmtBtnColors==='function')renderFmtBtnColors();});
 fmtHlCycle.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
-if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%3;window.__fmtCyclingKind='highlight';
-window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+1)%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];
+if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+(ev&&ev.shiftKey?2:1))%3;/* v4.2.701: Shift=逆回り */window.__fmtCyclingKind='highlight';
+window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+(ev&&ev.shiftKey?2:1))%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];
 if(fmtHighlight){const f=fmtHlFace();fmtSetHlFace(fmtHighlight,f);}renderFmtBtnColors();pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='highlight')renderFmtPop();
 });
 const fmtStCycle=document.getElementById('fmt-st-cycle');if(fmtStCycle)fmtStCycle.addEventListener('click',ev=>{ev.preventDefault();
-ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.strike){window.__fmtRing.strike=((window.__fmtRing.strike||0)+1)%3;
-window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('strike');return;}fmtStIdx=(fmtStIdx+1)%3;
+ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.strike){window.__fmtRing.strike=((window.__fmtRing.strike||0)+(ev&&ev.shiftKey?2:1))%3;
+window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('strike');return;}fmtStIdx=(fmtStIdx+(ev&&ev.shiftKey?2:1))%3;
 fmtSpec.strike=fmtStSlots[fmtStIdx];renderFmtBtnColors();/* ★v4.2.114(俊克 バグ1「取消線の↻ボタンで切り替えると、👻がボタンのところに出なくなる」): 面を ~~ で直に書いていた= 👻を描く口(__renderFmtRing)を通していなかった。面は1つの口から描く。 */if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');
 pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='strike')renderFmtPop();});var fmtToolsEl=document.getElementById('format-tools');
 if(fmtToolsEl)fmtToolsEl.addEventListener('mouseleave',function(){window.__fmtTipSuppress=false;});
@@ -30887,7 +30887,7 @@ return Math.round((sub?(mid*(p-50)/50):(mid+(top-mid)*(p-100)/50))*1000)/1000;}
 /* v4.0.287: ちょうど100%はブラウザの super/sub に任せる(nodeと同じ判断)。 */
 function mtxValign(sub,p,neg){return (Math.round(p)===100)?(sub?'sub':'super'):((mtxVa(sub,p)*(neg?-1:1))+'em');}
 function mtxHex(list,name){if(!name)return '';
-for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}function mtxFace(){if(!fmtMetex)return;/* v4.0.0(俊克): カーソルが既存の上付/下付の中なら🚫(再クリックで解除) */if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){fmtMetex.classList.add('fmt-remove');
+for(var j=0;j<list.length;j++)if(list[j][0]===name)return list[j][1];return '';}function mtxFace(){if(!fmtMetex)return;/* v4.0.0(俊克): カーソルが既存の上付/下付の中なら🚫(再クリックで解除) */if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex&&!window.__mtxTouched){fmtMetex.classList.add('fmt-remove');
 fmtMetex.textContent='';return;}fmtMetex.classList.remove('fmt-remove');/* v3.1.75(俊克): ネイティブsup/subだとAのベースが揺れ+%が反映されない→▾プレビューと同じ校正式(font-size0.68em+vertical-align計算em+line-height0)で描く。Aは動かず設定%が外ボタンにも反映。 */var _fsub=mtxSub||(mtxAltOn()&&!mtxHat),neg=_fsub,
 p=mtxClamp(_fsub?mtxSubVal:mtxSupVal),/* v4.0.38: 入力欄は開いている時しか無いので保持値から描く */v=mtxValign(mtxSub,p,neg);
 /* v4.0.6(俊克): ツールバーのA²/A₃ボタンに肩数字だけ色チップ=復活(v4.0.5で誤って無色化。俊克「肩/腰文字だけ色付けするボタンは見たことない=褒め言葉の"何これ!"」)。肩数字だけ着色は他に類を見ないMeOS独自の見せ場。 */var _fgH=mtxHex(FMT_FG,mtxFg),
@@ -30895,9 +30895,12 @@ _bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでい�
 }mtxFace();
 /* v4.0.291→295: Optionの見張りは共通の fmtAltWatch へ(ボタンごとに持つのは「上に居るか」だけ)。 */
 mtxAltW=fmtAltWatch(fmtMetex,mtxFace);
-function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(ev){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex&&!(ev&&ev.altKey)){/* v4.2.700(俊克 バグ2「上付きを付けた後、Optでの下付きを追加できない」): 中に居てもOptの時は外さず、下付きを足す(A↑2→A↑2↓3) */vscode.postMessage({type:'fmtCycle',
+function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(ev){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex&&!window.__mtxTouched&&!(ev&&ev.altKey)){/* v4.2.700(俊克 バグ2「上付きを付けた後、Optでの下付きを追加できない」): 中に居てもOptの時は外さず、下付きを足す(A↑2→A↑2↓3) */vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub||(!!(ev&&ev.altKey)&&!mtxNot),fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
-ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
+ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 *//* ★v4.2.701(俊克「2。今まで通り= 上付きと下付きを同時に入れたい時や、äのようなのをさらに足すこともある」・Shift=逆回り): 中に居る時は 🚫 → A² → not → â → 🚫 と巡り、🚫 以外ならこれから足す形(押すと足す) */
+var _rev=!!(ev&&ev.shiftKey),_act=(Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex;
+var _st=window.__mtxTouched||!_act?(mtxHat?3:(mtxNot?2:1)):0;var _n=_act?4:3;_st=_act?_st:_st-1;_st=(_st+(_rev?-1:1)+_n)%_n;if(!_act)_st=_st+1;
+if(_st===0){window.__mtxTouched=false;}else{window.__mtxTouched=!!_act;mtxSub=false;mtxNot=(_st===2);mtxHat=(_st===3);}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();if(typeof hideTocTip==='function')hideTocTip();window.__fmtTipSuppress=true;if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='metex'){closeFmtPop();
 return;}openFmtPop('metex',fmtMtxCaret);});}/* v4.0.38(俊克): 入力欄は共有パネルの中に描かれ、開くたび作り直される→**参照は都度取得**(キャッシュすると古い要素を掴む)。現在値は mtxSupVal/mtxSubVal に保持し、パネルを開いた時の初期値に使う。 */var mtxSupVal=${mtxSup},
 mtxSubVal=${mtxSub};function mtxSupIn_(){return document.getElementById('mtx-sup-input');}function mtxSubIn_(){return document.getElementById('mtx-sub-input');
@@ -31023,8 +31026,8 @@ hPaint();}
 /* v4.2.550: ⏰の右肩の①= 1時間後に一度だけ(パネルの Set と同じ道= 膜の外なら膜ごと作る) */
 const c1=document.getElementById('clk-one');if(c1)c1.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();const d=new Date(Date.now()+3600000),p=x=>(x<10?'0':'')+x;
 vscode.postMessage({type:'pseudoTimerSet',when:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),add:true,rep:false,up:false,dual:true,cycle:'',title:'One-shot timer 1h',tags:null,lock:false,anchor:false});});
-const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});
-{const tw=document.getElementById('fmt-table-wwcycle'),sp=document.querySelector('.ww-split');const sync=()=>{if(!tw||!sp)return;['s0','s1','s2'].forEach(c=>tw.classList.toggle(c,sp.classList.contains(c)));};sync();try{if(sp)new MutationObserver(sync).observe(sp,{attributes:true,attributeFilter:['class']});}catch(_){}/* v4.2.673: 枠の色を写す */if(tw)tw.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset'});});}   /* ★v4.2.671(俊克「テーブルボタンの右肩に、折り返しボタンと同じ機能の↻を。折り返しボタンの位置を探すことなく、テーブルボタンの中で作業ができる」): 折り返しの↻と同じ知らせを送る */
+const wr=document.getElementById('ww-ring');if(wr)wr.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset',dir:ev.shiftKey?-1:1});});
+{const tw=document.getElementById('fmt-table-wwcycle'),sp=document.querySelector('.ww-split');const sync=()=>{if(!tw||!sp)return;['s0','s1','s2'].forEach(c=>tw.classList.toggle(c,sp.classList.contains(c)));};sync();try{if(sp)new MutationObserver(sync).observe(sp,{attributes:true,attributeFilter:['class']});}catch(_){}/* v4.2.673: 枠の色を写す */if(tw)tw.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'cycleWrapPreset',dir:ev.shiftKey?-1:1});});}   /* ★v4.2.671(俊克「テーブルボタンの右肩に、折り返しボタンと同じ機能の↻を。折り返しボタンの位置を探すことなく、テーブルボタンの中で作業ができる」): 折り返しの↻と同じ知らせを送る */
 {const tb=document.getElementById('th-btn'),tp=document.getElementById('th-pop'),tr=document.getElementById('th-ring'),tv=document.getElementById('th-btn-val');let thPicked=false,thTimer=null;
 const thAct=(r,scroll)=>{tp.querySelectorAll('.th-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<tp.scrollTop)tp.scrollTop=top-4;else if(bot>tp.scrollTop+tp.clientHeight)tp.scrollTop=bot-tp.clientHeight+4;}};
 const thClose=(commit)=>{if(!tp.classList.contains('on'))return;tp.classList.remove('on');tb.classList.remove('on');clearTimeout(thTimer);if(!commit&&!thPicked)vscode.postMessage({type:'themeRevert'});thPicked=false;};
@@ -31857,7 +31860,7 @@ if(typeof window.__renderWarn==='function')window.__renderWarn(m.warn);   /* v4.
 const _nowDeco=(_c==='deco');if(_nowDeco){if(!window.__fmtActionable[_k]){window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=meosFmtBaseFromCur(_k,m.fmtCur&&m.fmtCur[_k]);
 }window.__fmtActionable[_k]=true;}else{window.__fmtActionable[_k]=false;window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
 }if(typeof window.__renderFmtRing==='function')window.__renderFmtRing(_k);}}/* v4.0.0(俊克): 太字/斜体・上付/下付もfmtCtxで🚫化(3兄弟と同じ流儀) */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){window.__fmtActionable.bold=(m.fmtCtx.bold==='deco');
-window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
+{var _wasM=window.__fmtActionable.metex;window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(_wasM!==window.__fmtActionable.metex)window.__mtxTouched=false;}/* v4.2.701: 入った/出た時は 🚫 から */if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
 }window.__navOnly=null;if(window.__editTsRefresh){window.__editTsRefresh=false;if(input){input.focus();const v=input.value;
 const i=v.lastIndexOf('_');if(i>=0)input.setSelectionRange(i+1,v.length);else input.select();}}}if(m&&m.type==='setLineValue'&&lineInput){lineInput.value=String(m.value||'');
 currentLine=lineInput.value;}if(m&&m.type==='fixedToc')renderFixedToc(m.toc);if(m&&m.type==='tocChildren'){if(typeof window.renderTocChildPop==='function')window.renderTocChildPop(m.children||[],m.centerIndex);
@@ -33063,7 +33066,7 @@ function toggleMeDock(editorOverride) {
         const cfg = vscode.workspace.getConfiguration('editor', scope);
         if (message.type === 'cycleWrapPreset') {
           // ★v4.2.166: 3つの幅を持ち、↻で巡る。バーで変えた値は**今いるスロット**に覚える(Format の↻と同じ流儀)
-          const pre = meosWrapPresets(); const slot = (Number(extensionContext.globalState.get('meosWrapSlot', 0)) + 1) % 3;
+          const pre = meosWrapPresets(); const slot = (Number(extensionContext.globalState.get('meosWrapSlot', 0)) + (Number(message.dir) < 0 ? 2 : 1)) % 3;   // v4.2.701: Shift=逆回り
           extensionContext.globalState.update('meosWrapSlot', slot);
           const v = Math.max(40, Math.min(200, Number(pre[slot]) || 80));
           meosWriteWrapColumn(cfg, doc, v);
