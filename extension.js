@@ -26546,7 +26546,7 @@ function updateMeDockMode() {
         else fmtCtx[_k] = 'none';
       }
       // v4.0.22(俊克 8/6 🚫統合): 統一ボタン(=ハイライト)は太字/斜体の中でも🚫になる(太字ボタンを畳んだ後もB/Iを解除できる)。
-      if (fmtCtx.highlight !== 'deco' && (meLinkSpanAtCursor(editor) || boldSpanAtCursor(editor))) fmtCtx.highlight = 'deco'; // v4.0.26: リンクの中でも🚫
+      if (fmtCtx.highlight !== 'deco' && (meLinkSpanAtCursor(editor) || boldSpanAtCursor(editor))) { fmtCtx.highlight = 'deco'; try { fmtCtx.__cur.highlight = meosFmtCurOf(editor, 'highlight'); } catch (_) { } }   // v4.2.698(俊克 バグ1「紫を設定した後に↻を1回押すと同じ紫が出る」): 太字/斜体で🚫になった時も今の色を送る(送らないと2番目を今の色と見なしていた) // v4.0.26: リンクの中でも🚫
       // v4.0.0(俊克): 太字/斜体・上付/下付にも🚫解除。カーソルが既存装飾の中なら'deco'(ボタンが🚫に化ける)。
       if (boldSpanAtCursor(editor)) fmtCtx.bold = 'deco'; else if (!_empty) fmtCtx.bold = 'sel';
       if (metexSpanAtCursor(editor)) fmtCtx.metex = 'deco'; else if (!_empty) fmtCtx.metex = 'sel';
