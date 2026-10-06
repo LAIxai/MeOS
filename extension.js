@@ -24637,6 +24637,25 @@ function meosSpecLineCommentRange(specText, idx) {
   return { start: spans[idx][0], end: spans[idx][1], count: spans.length };
 }
 // 表の中の印を消す時、指定行の相手も一緒に落とす。we に足すだけ(1回の編集で終わる)。
+// ★v4.2.696(俊克「⛔は緑なら緑の成り代わった姿。↻で巡るのは残り2つと⛔の3つ」): カーソルの装飾の**今の色**を読む= ⛔ の正体。
+//   見出し= 行頭の # の数(=レベル=プリセット)。ハイライト/取消線= ①旧形 =={本文 (字/地)}== ②後置き <!-- (字/地)//tip --> ③FC行の何番目か(meosDeleteSpecForMark と同じ数え方)
+function meosFmtCurOf(editor, kind) {
+  try {
+    const span = formatSpanAtCursor(editor, kind); if (!span) return null;
+    const doc = editor.document, ln = span.range.start.line, text = doc.lineAt(ln).text;
+    if (kind === 'heading') { const m = /^[ \t]*(?:[-*+][ \t]+)?(#{1,3})(?=[ \t{\[-])/.exec(text); return m ? m[1].length : null; }
+    const pair = (t) => { const m = /\(([^()\/]+)\/([^()]*)\)/.exec(String(t || '')); return m ? { fg: m[1].trim(), bg: m[2].trim() } : null; };
+    const seg = text.slice(span.range.start.character, span.range.end.character);
+    let c = pair(seg); if (c) return c;
+    const lines = meosDocLines(doc), blk = meosTableBlockFor(lines, ln), fcLn = (blk ? blk.end : ln) + 1;
+    if (fcLn >= doc.lineCount || !meosIsSpecLine(doc.lineAt(fcLn).text)) return null;
+    let idx = 0;
+    if (blk) for (let i = blk.start; i < ln; i++) idx += meosRowMarksInOrder(String(lines[i] == null ? '' : lines[i])).length;
+    for (const mk of meosRowMarksInOrder(text)) if (mk.end <= span.range.end.character) idx++;
+    const fcT = doc.lineAt(fcLn).text, r = meosSpecLineCommentRange(fcT, idx - 1);
+    return r ? pair(fcT.slice(r.start, r.end)) : null;
+  } catch (_) { return null; }
+}
 function meosDeleteSpecForMark(we, editor, range) {
   try {
     const doc = editor.document, ln = range.start.line, lines = meosDocLines(doc);
@@ -26519,8 +26538,9 @@ function updateMeDockMode() {
     if (editor) {
       fmtCtx = { highlight: 'none', strike: 'none', heading: 'none', bold: 'none', metex: 'none' };
       const _empty = editor.selection.isEmpty;
+      fmtCtx.__cur = {};
       for (const _k of ['highlight', 'strike', 'heading']) {
-        if (formatSpanAtCursor(editor, _k)) fmtCtx[_k] = 'deco';
+        if (formatSpanAtCursor(editor, _k)) { fmtCtx[_k] = 'deco'; try { fmtCtx.__cur[_k] = meosFmtCurOf(editor, _k); } catch (_) { } }
         else if (!_empty) fmtCtx[_k] = 'sel';
         else fmtCtx[_k] = 'none';
       }
@@ -26531,7 +26551,7 @@ function updateMeDockMode() {
       if (metexSpanAtCursor(editor)) fmtCtx.metex = 'deco'; else if (!_empty) fmtCtx.metex = 'sel';
     }
   } catch (_) {}
-  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, warn: (editor ? meosWarningEnds(editor.document) : []), tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
+  meDockPanel.webview.postMessage({ type: 'mode', mode: state.mode, label: state.label, value: state.value, line: state.line, markerOn: meDockCurrentLineMarkerActive, color: state.color || '', flipMinusColor: state.flipMinusColor || '', flipPlusColor: state.flipPlusColor || '', navDepth: state.navDepth || 0, history: meDockLineHistoryState(editor), anchor: activeGreenMeState(editor), standardsOn: currentStandardsOn(), headNav: headNavStateForEditor(editor), markNav: markNavStateForEditor(editor), inMembrane: !!findCurrentPair(editor), refEdit, fmtCtx, fmtCur: fmtCtx ? fmtCtx.__cur : null, warn: (editor ? meosWarningEnds(editor.document) : []), tableWrap: meosTableWrapStateAtCursor(editor), tableAutoCalc: meosTableAutoCalc() });
   try { meosPostMewState(Math.max(0, meosMewLastCount), true); } catch (_) {} // v4.0.68: Me Dockが開き直した時に🐱の現状を必ず同期(件数の計算はしない=キャッシュを送るだけ)
   try { postMeDockImageMembrane(editor); } catch (_) {} // v3.2.0: 画像膜にカーソルが来たらMe Dockに画像ビューアをオーバーレイ(離れたら閉じる)
   meDockPanel.webview.postMessage({ type: 'encState', onMembrane: state.mode === 'rename', encrypted: isCurrentMembraneEncrypted(editor) }); // v0.9.9994: Create/Set(rename=膜の上)に同期。膜の上=平文→🔐橙/暗号→🔓白/それ以外=灰
@@ -29665,7 +29685,7 @@ window.__fmtRing.heading=0;window.__fmtWasDeco.heading=true;window.__fmtCyclingK
 window.__renderFmtRing('heading');}});
 /* v0.9.99936: ↻で挿入レベルを ## → # → ### 循環＋各レベルの記憶色をロード */
 const fmtHeadCycle=document.getElementById('fmt-head-cycle');if(fmtHeadCycle)fmtHeadCycle.addEventListener('click',ev=>{ev.preventDefault();
-ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.heading){window.__fmtRing.heading=((window.__fmtRing.heading||0)+1)%4;
+ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.heading){window.__fmtRing.heading=((window.__fmtRing.heading||0)+1)%3;
 window.__fmtCyclingKind='heading';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('heading');return;}fmtHeadingLevel=(fmtHeadingLevel%3)+1;
 fmtSpec.heading=fmtHeadingColors[fmtHeadingLevel];const hh='#'.repeat(fmtHeadingLevel);if(fmtHeading){fmtHeading.textContent=hh;
 fmtHeading.setAttribute('data-tip',fmtHeadTip());   /* v4.0.421: tipを作る所は1つ */
@@ -29694,7 +29714,9 @@ el.style.backgroundImage=fmtUlWave(col,u===3?2:1);el.style.backgroundRepeat='rep
 return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.textUnderlineOffset='3px';}function fmtUlCssStr(u,col){return (u===2||u===3)?('text-decoration:none;background-image:'+fmtUlWave(col,u===3?2:1)+';background-repeat:repeat-x;background-position:left calc(100% - 3px);'):('text-decoration:'+(u===1?'underline double':'underline')+';text-underline-offset:3px;');
 }function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?fmtHlUl():null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる / v4.0.297→298: 面の下線も**書かれる種類**で描く(名乗っていないプリセットは、最後に自分で決めた値) *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
-}return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;try{if(kind==='highlight'&&window.__fmtActionable&&window.__fmtActionable.highlight)vscode.postMessage({type:'dockDbg',text:'fmtPaint ring r='+(window.__fmtRing.highlight)+' base='+(window.__fmtBaseW&&window.__fmtBaseW.highlight)+' from='+String(new Error().stack||'').split(String.fromCharCode(10)).slice(2,4).map(function(x){return x.trim().slice(0,90);}).join(' | ')});}catch(_){}/* v4.2.695 測る */
+}return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= *//* v4.2.696: 装飾の中に入った時、今の色が何番目のプリセットか(見出しは # の数)= ⛔ の正体。分からなければ2番目 */
+function meosFmtBaseFromCur(k,cur){try{if(k==='heading'){var lv=Number(cur)||0;return (lv>=1&&lv<=3)?lv:2;}if(!cur)return 2;var slots=(k==='highlight')?fmtHlSlots:fmtStSlots;var cf=fmtHexFg(cur.fg),cb=cur.bg?fmtHexBg(cur.bg):'';for(var i=0;i<3;i++){var sp=slots[i]||{};var sb=sp.bg?fmtHexBg(sp.bg):'';if(sb===cb&&fmtHexFg(sp.fg)===cf)return i+1;}for(var j=0;j<3;j++){var sp2=slots[j]||{};if((sp2.bg?fmtHexBg(sp2.bg):'')===cb)return j+1;}}catch(_){}return 2;}
+window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
 /* v4.0.432: 取消線の面は**これから書く物**を見せる= 既定は👻。🚫(解除)の時は今までどおりリングに任せる。 */
 if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';btn.classList.add('ghost-face');
@@ -29721,7 +29743,7 @@ btn.setAttribute('data-tip',fmtHeadAltTip());return;}
 if(kind==='heading')btn.setAttribute('data-tip',fmtHeadTip());   /* v4.0.421: 戻ったらtipも戻る(面の一部) */const ch=(kind==='highlight')?'=':(kind==='strike')?'~':'#';if((Number(document.body.dataset.phase||1))<4){/* v1.0.0: Format↻/🚫 未解禁フェーズでは常に素のボタン表示(リング/解除表示なし) */if(kind==='heading'){const _h=fmtHeadingColors[fmtHeadingLevel]||{};
 btn.textContent=(_h.bullet?((_h.blt||'-')+' '):'')+((_h.head===false)?'':'#'.repeat(fmtHeadingLevel));}/* v4.0.47: 面に箇条書き/見出しの合成を出す(押した結果がそのまま見える) */else if(kind==='highlight'){const f=fmtHlFace();
 fmtSetHlFace(btn,f);}else{btn.textContent='~'.repeat([1,2,3][fmtStIdx]);}btn.classList.remove('fmt-remove');return;}if(window.__fmtActionable[kind]){let r=window.__fmtRing[kind]||0;
-r=((r%4)+4)%4;const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;const w=(r===0)?baseW:(((baseW-1+r)%3)+1);const isRemove=(r===0);
+r=((r%3)+3)%3;/* ★v4.2.696(俊克「⛔は今の色の成り代わった姿。↻で巡るのは残り2つと⛔の3つ」): 4→3状態 */const baseW=(window.__fmtBaseW&&window.__fmtBaseW[kind])||2;const w=(r===0)?baseW:(((baseW-1+r)%3)+1);const isRemove=(r===0);
 btn.textContent=isRemove?'':ch.repeat(w);btn.classList.toggle('fmt-remove',isRemove);if(isRemove){btn.style.color='';btn.style.backgroundColor='';
 btn.style.borderColor='';}else if(kind==='heading'){const hc=fmtHeadingColors[w];if(hc){btn.style.color=fmtHexFg(hc.fg);
 const bg=hc.bg?fmtHexBg(hc.bg):'';btn.style.backgroundColor=bg;btn.style.borderColor=bg||'';}}else{const slots=(kind==='highlight')?fmtHlSlots:fmtStSlots;
@@ -29807,17 +29829,17 @@ if(fmtStrike)stBaseTip=fmtStrike.getAttribute('data-tip')||'';
 stAltW=fmtAltWatch(fmtStrike,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');if(!stAltOn()&&typeof renderFmtBtnColors==='function')renderFmtBtnColors();});
 hdAltW=fmtAltWatch(fmtHeading,function(){if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('heading');if(!hdAltOn()&&typeof renderFmtBtnColors==='function')renderFmtBtnColors();});
 fmtHlCycle.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();
-if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%4;window.__fmtCyclingKind='highlight';
+if(window.__fmtActionable.highlight){window.__fmtRing.highlight=((window.__fmtRing.highlight||0)+1)%3;window.__fmtCyclingKind='highlight';
 window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('highlight');return;}fmtHlIdx=(fmtHlIdx+1)%3;fmtSpec.highlight=fmtHlSlots[fmtHlIdx];
 if(fmtHighlight){const f=fmtHlFace();fmtSetHlFace(fmtHighlight,f);}renderFmtBtnColors();pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='highlight')renderFmtPop();
 });
 const fmtStCycle=document.getElementById('fmt-st-cycle');if(fmtStCycle)fmtStCycle.addEventListener('click',ev=>{ev.preventDefault();
-ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.strike){window.__fmtRing.strike=((window.__fmtRing.strike||0)+1)%4;
+ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(window.__fmtActionable.strike){window.__fmtRing.strike=((window.__fmtRing.strike||0)+1)%3;
 window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;window.__renderFmtRing('strike');return;}fmtStIdx=(fmtStIdx+1)%3;
 fmtSpec.strike=fmtStSlots[fmtStIdx];renderFmtBtnColors();/* ★v4.2.114(俊克 バグ1「取消線の↻ボタンで切り替えると、👻がボタンのところに出なくなる」): 面を ~~ で直に書いていた= 👻を描く口(__renderFmtRing)を通していなかった。面は1つの口から描く。 */if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');
 pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='strike')renderFmtPop();});var fmtToolsEl=document.getElementById('format-tools');
 if(fmtToolsEl)fmtToolsEl.addEventListener('mouseleave',function(){window.__fmtTipSuppress=false;});
-/* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){try{if(window.__fmtActionable&&window.__fmtActionable.highlight)vscode.postMessage({type:'dockDbg',text:'fmtPaint renderFmtBtnColors ring='+(window.__fmtRing&&window.__fmtRing.highlight)+' from='+String(new Error().stack||'').split(String.fromCharCode(10)).slice(2,5).map(function(x){return x.trim().slice(0,90);}).join(' | ')});}catch(_){}/* v4.2.695 測る(ハイライトの↻の後にホバーで青へ戻る) */const ap=(btn,k)=>{if(!btn)return;
+/* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){const ap=(btn,k)=>{if(!btn)return;if(window.__fmtActionable&&window.__fmtActionable[k])return;/* ★v4.2.696(俊克 バグ1「青のハイライトで↻→緑にしても、ボタンに乗せると青に戻る」・ログで実測= 取消線/見出しのホバーの描き直しがこの口を呼び、3つのボタンを全部プリセットの色で塗り直していた): ↻で選んでいる間(装飾の中)は、色はリングの口が塗る */
 const sp=fmtSpec[k];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.bg):'';btn.style.backgroundColor=bg;btn.style.borderColor=bg||'';
 };ap(fmtHighlight,'highlight');ap(fmtStrike,'strike');ap(fmtHeading,'heading');}renderFmtBtnColors();
 /* ★★v4.0.426(俊克): 壊れた膜の警告ボタン。押せる状態＝どこかで膜が壊れている。押す毎に両端を交互に行く。
@@ -31831,7 +31853,7 @@ if(typeof m.standardsOn==='boolean'&&m.standardsOn!==standardsOn){standardsOn=m.
 if(m.markNav)renderMarkNav(m.markNav);/* v0.9.999106(俊克): カーソルが参照符上→編集モード自動オープン/外れたら復帰 */if(m.refEdit){if(typeof window.__refEnterEdit==='function')window.__refEnterEdit(m.refEdit);
 }else if(window.__refEditMode){if(typeof window.__refExitEdit==='function')window.__refExitEdit();}
 if(typeof window.__renderWarn==='function')window.__renderWarn(m.warn);   /* v4.0.426 *//* v0.9.999132(俊克): 3兄弟すべて↻リングの文脈(fmtCtx)で表示 */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){for(const _k of ['highlight','strike','heading']){const _c=m.fmtCtx[_k];
-const _nowDeco=(_c==='deco');if(_nowDeco){if(!window.__fmtActionable[_k]){window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
+const _nowDeco=(_c==='deco');if(_nowDeco){if(!window.__fmtActionable[_k]){window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=meosFmtBaseFromCur(_k,m.fmtCur&&m.fmtCur[_k]);
 }window.__fmtActionable[_k]=true;}else{window.__fmtActionable[_k]=false;window.__fmtRing[_k]=0;if(window.__fmtBaseW)window.__fmtBaseW[_k]=2;
 }if(typeof window.__renderFmtRing==='function')window.__renderFmtRing(_k);}}/* v4.0.0(俊克): 太字/斜体・上付/下付もfmtCtxで🚫化(3兄弟と同じ流儀) */if((Number(document.body.dataset.phase||1))>=4&&m.fmtCtx){window.__fmtActionable.bold=(m.fmtCtx.bold==='deco');
 window.__fmtActionable.metex=(m.fmtCtx.metex==='deco');if(typeof mbFace==='function')mbFace();if(typeof mtxFace==='function')mtxFace();
