@@ -29123,8 +29123,18 @@ return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'"'+(c.key
       let at=window.__tocChildAt||{x:120,y:160};
       /* ★v4.2.717(俊克「なにやってんのかな?」・スクショ= 一覧が左半分に出てポインターに届かない): 一覧は縮尺のかかった入れ物の中= style の1pxと画面の1pxが違う。
          → 一覧を 0 と 100 に置いて画面上の動きを実測し、押した所(画面の位置)を入れ物の位置へ換算してから置く(縮尺がいくつでも合う) */
-      if(at.under&&!at.conv){try{pop.style.left='0px';pop.style.top='0px';const _a=pop.getBoundingClientRect();pop.style.left='100px';pop.style.top='100px';const _b=pop.getBoundingClientRect();
-        const fx=((_b.left-_a.left)/100)||1,fy=((_b.top-_a.top)/100)||1;at={x:(at.x-_a.left)/fx,y:(at.y-_a.top)/fy,under:true,conv:true,maxR:(document.documentElement.getBoundingClientRect().right-_a.left)/fx,maxB:(document.documentElement.getBoundingClientRect().bottom-_a.top)/fy};window.__tocChildAt=at;}catch(_){}}
+      /* ★★v4.2.718(俊克「笑えない。全く変わらない。ポインター位置が一番上の項目の範囲に来るように、右端はMe Dockの右端を超えない。それだけでしょ?」):
+         ★真の物差しは**マウス**(clientX/Y)。一覧の style の1pxが画面で何マウスpxになるかを、elementFromPoint(マウスの物差し)で一覧の角を探して実測する。
+           四角(getBoundingClientRect)は入れ物ごとの物差しで、ここでは当てにならなかった(ログ: 換算比が1のまま=同じ嘘の物差しで測っていた) */
+      if(at.under&&!at.conv&&at.mx!=null){try{
+        const inP=function(x,y){var e=document.elementFromPoint(x,y);return !!(e&&pop.contains(e));};
+        const corner=function(){var x0=-1,y0=-1;for(var y=1;y<140&&x0<0;y+=3)for(var x=1;x<140;x+=3){if(inP(x,y)){x0=x;y0=y;break;}}if(x0<0)return null;
+          var lo=0,hi=x0;for(var k=0;k<14;k++){var m=(lo+hi)/2;if(inP(m,y0))hi=m;else lo=m;}var L=hi;lo=0;hi=y0;for(var k2=0;k2<14;k2++){var m2=(lo+hi)/2;if(inP(x0,m2))hi=m2;else lo=m2;}return {x:L,y:hi};};
+        pop.style.left='0px';pop.style.top='0px';const c0=corner();pop.style.left='100px';pop.style.top='100px';const c1=corner();
+        if(c0&&c1){const sx=((c1.x-c0.x)/100)||1,sy=((c1.y-c0.y)/100)||1;
+          at={x:(at.mx-c0.x)/sx,y:(at.my-c0.y)/sy,under:true,conv:true,maxR:(window.innerWidth-c0.x)/sx,maxB:(window.innerHeight-c0.y)/sy};window.__tocChildAt=at;
+          try{vscode.postMessage({type:'dockDbg',text:'dwList calib c0='+JSON.stringify(c0)+' c1='+JSON.stringify(c1)+' sx='+sx.toFixed(3)+' at='+JSON.stringify(at)});}catch(_){}}
+      }catch(_){}}
       const rows=pop.querySelectorAll('.toc-child-row');
       const rowH=rows.length?rows[0].offsetHeight:24;window.__tocRowH=rowH;pop.style.maxHeight=wheel?((10*rowH+8)+'px'):'';
 /* v0.9.999120(俊克): 副メニューは最大10行分の高さに限定 */
@@ -29275,7 +29285,7 @@ return {kind:'date',y:y,mo:mo,d:d};}}}return {kind:'search',q:s};}
 var _dwScope=document.getElementById('dw-scope');var _dwEdit=document.getElementById('dw-base-input');
 function _dwOpenDial(){if(!_dwScope)return;var _bd=fixedTocBody||document.getElementById('fixed-toc-body');var _bdr=_bd?_bd.getBoundingClientRect():_dwScope.getBoundingClientRect();
 var _tf=_bd?_bd.querySelector('.toc-field'):null;var _fl=_tf?_tf.getBoundingClientRect().left:_bdr.left;var _r=_dwScope.getBoundingClientRect();
-var _pt=window.__dwLastPt;window.__tocChildAt=(_pt&&Date.now()-_pt.t<3000)?{x:_pt.x,y:_pt.y,under:true}:((_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true});/* ★v4.2.713(俊克「なぜメニューをポインターの下に表示しないのか? 100mm移動しないと操作できないのは嘘の宣伝」): 押した時のポインターの位置(マウスの物差し)をそのまま使う= 今日の行がポインターの真下 */window.__tocChildOpen=true;window.__tocChildDial=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
+var _pt=window.__dwLastPt;window.__tocChildAt=(_pt&&Date.now()-_pt.t<3000)?{x:_pt.x,y:_pt.y,mx:_pt.mx,my:_pt.my,under:true}:((_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true});/* ★v4.2.713(俊克「なぜメニューをポインターの下に表示しないのか? 100mm移動しないと操作できないのは嘘の宣伝」): 押した時のポインターの位置(マウスの物差し)をそのまま使う= 今日の行がポインターの真下 */window.__tocChildOpen=true;window.__tocChildDial=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
 if(typeof hideTocTip==='function')hideTocTip();if(window.__dwSearch!=null){vscode.postMessage({type:'requestDiarySearch',
 q:window.__dwSearch});}else{vscode.postMessage({type:'requestDateDial',scope:_dwScopes[window.__dwScope],anchor:(window.__dwBaseDate||_dwToday())});
 }}
@@ -29300,7 +29310,7 @@ var top=r.bottom+6;if(top+hh>window.innerHeight-4)top=r.top-hh-6;if(top<4)top=4;
 if(_dwEdit){_dwEdit.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();_dwCommitEdit();}else if(ev.key==='Escape'){ev.preventDefault();
 _dwCancelEdit();}});_dwEdit.addEventListener('input',function(){_dwHideHint();});_dwEdit.addEventListener('blur',function(){_dwCommitEdit();
 });_dwEdit.addEventListener('click',function(ev){ev.stopPropagation();});}
-document.addEventListener('pointerdown',function(e){try{var t=e.target;if(t&&t.closest&&t.closest('.dw-split')&&t.getBoundingClientRect){var r=t.getBoundingClientRect(),kx=r.width/(t.offsetWidth||1)||1,ky=r.height/(t.offsetHeight||1)||1;window.__dwLastPt={x:r.left+(e.offsetX||0)*kx,y:r.top+(e.offsetY||0)*ky,t:Date.now()};}}catch(_){}},true);/* ★v4.2.716(俊克「クリックした位置に表示すればいいだけ。スコープを勘違いしているだけじゃないのか」): 押した所は**部品の四角＋部品の中の位置**で出す(Me Dock は clientX と四角が別の物差し= reference_medock_clientx_vs_rect)。713/714 は clientX をそのまま置き場所に使い、縮尺の分ずれていた *//* v4.2.714(俊克「全く直らない」= Ⓣの方を押していた): Ⓣday のどこを押しても、押した所を覚える */
+document.addEventListener('pointerdown',function(e){try{var t=e.target;if(t&&t.closest&&t.closest('.dw-split')&&t.getBoundingClientRect){var r=t.getBoundingClientRect(),kx=r.width/(t.offsetWidth||1)||1,ky=r.height/(t.offsetHeight||1)||1;window.__dwLastPt={x:r.left+(e.offsetX||0)*kx,y:r.top+(e.offsetY||0)*ky,mx:e.clientX,my:e.clientY,t:Date.now()};}}catch(_){}},true);/* ★v4.2.716(俊克「クリックした位置に表示すればいいだけ。スコープを勘違いしているだけじゃないのか」): 押した所は**部品の四角＋部品の中の位置**で出す(Me Dock は clientX と四角が別の物差し= reference_medock_clientx_vs_rect)。713/714 は clientX をそのまま置き場所に使い、縮尺の分ずれていた *//* v4.2.714(俊克「全く直らない」= Ⓣの方を押していた): Ⓣday のどこを押しても、押した所を覚える */
 var _dwClickT=null;if(_dwScope){_dwScope.addEventListener('click',function(ev){ev.stopPropagation();window.__dwLastPt={x:ev.clientX,y:ev.clientY,t:Date.now()};if(_dwClickT){clearTimeout(_dwClickT);
 _dwClickT=null;}_dwClickT=setTimeout(function(){_dwClickT=null;_dwOpenDial();},220);});_dwScope.addEventListener('dblclick',function(ev){ev.preventDefault();
 ev.stopPropagation();if(_dwClickT){clearTimeout(_dwClickT);_dwClickT=null;}_dwOpenEdit();});}
