@@ -27384,7 +27384,8 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .nav-btn:disabled{opacity:.35;cursor:default}
 .nav-center .toc-nav-row .warn-btn{margin-left:0;padding:1px 4px}.nav-center .toc-nav-row .fmt-btn.raw-toggle{margin-left:0;padding-left:6px;padding-right:6px}   /* v4.2.691: ⚠️ と 👁🥩 の左の余白(8px ずつ)を詰める= Warp の段に収まる */
 .nav-warp-grp{display:inline-flex;align-items:center;flex-wrap:nowrap;gap:2px}.nav-center .toc-nav-row .warn-btn{padding:1px 2px}.nav-center .toc-nav-row .warn-btn .warn-n:empty{display:none}.nav-center .toc-nav-row .fmt-btn.raw-toggle{padding-left:4px;padding-right:4px;min-width:0}   /* v4.2.692(俊克 疑問1「⚠️とRawの間にまだ大きなスペース。Pseudoの時に右が切れる。左に寄せれば切れない」): 間を2px・⚠️の空の数札を消す・Rawの左右の余白を詰める */
-.nav-center .line-row .mark-nav{margin-left:auto!important}.nav-center .toc-nav-row .mark-nav{margin-left:auto}.nav-wr-grp{margin-left:auto;display:inline-flex;align-items:center;gap:2px;flex:0 0 auto}.nav-center .line-row .warn-btn{margin-left:0;padding:1px 2px}.nav-center .line-row .warn-btn .warn-n:empty{display:none}.nav-center .line-row .fmt-btn.raw-toggle{margin-left:0;padding-left:4px;padding-right:4px;min-width:0}   /* v4.2.708: 💬は2段目の右・⚠️と👁🥩は右下の角 */   /* v4.2.692(改良1「💬ボタンを右寄せにして、#ボタンと上下で揃う」) */
+.nav-center .line-row .mark-nav{margin-left:auto!important}.nav-center .toc-nav-row .mark-nav{margin-left:auto}.time-machine-trigger .lm-p{color:#b8b8c8;font-weight:700}.time-machine-trigger .lm-n{color:#d6f53a}   /* v4.2.709: 紫(約263°)の補色= 黄緑(約83°) */
+.nav-wr-grp{margin-left:auto;display:inline-flex;align-items:center;gap:2px;flex:0 0 auto}.nav-center .line-row .warn-btn{margin-left:0;padding:1px 2px}.nav-center .line-row .warn-btn .warn-n:empty{display:none}.nav-center .line-row .fmt-btn.raw-toggle{margin-left:0;padding-left:4px;padding-right:4px;min-width:0}   /* v4.2.708: 💬は2段目の右・⚠️と👁🥩は右下の角 */   /* v4.2.692(改良1「💬ボタンを右寄せにして、#ボタンと上下で揃う」) */
 @keyframes meosEyeBlink{0%,49%{opacity:1}50%,100%{opacity:0}}.fmt-btn.raw-toggle.read-on .vm-eye{display:inline-block;animation:meosEyeBlink 2.5s steps(1,end) infinite;font-size:1.8em;line-height:0;vertical-align:-0.12em;margin:0 -0.1em 0 0.05em;position:relative;z-index:2;filter:drop-shadow(0 0 1px rgba(0,0,0,.6))}.fmt-btn.raw-toggle.read-on{overflow:visible}   /* v4.2.704(俊克「Pseudoの👁の点滅の時、👁を食み出すくらい大きく。まだ目立たない」): 1.8倍・ボタンの背丈は変えずに上下へはみ出す */   /* v4.2.693: 暗い間は👁あり・明るい間は👁なし */
 @keyframes meosPseudoBreath{0%,100%{background:#1e4f8a;border-color:#16396b}50%{background:#3f7fd0;border-color:#2c63ad}}.fmt-btn.raw-toggle.read-on{animation:meosPseudoBreath 2.5s ease-in-out infinite}   /* v4.2.692(改良2「Pseudoモードの時、生にならないのを壊れたと勘違いする。Pseudoボタンをゆっくり点滅。2、3秒で1回」) */   /* v4.2.691: Warp〜↑↓・⚠️・👁🥩 は1つの塊= 段の途中で切れない(👁🥩 が3段目へ降りない) */
 .nav-row-break{flex-basis:100%;height:0}   /* v4.2.691(俊克「Warpの右に⚠️とRawを出す十分なスペースがあるのに、なぜRawが逃げてくるのか? 逃げなければ Line/枠/↑#↓ で固定できる」): 改行は 👁🥩 の後= 👁🥩 は Warp の段に残り、3段目は Line・枠・↑#↓ / v4.2.690 は前で改行して逆だった */
@@ -28984,7 +28985,7 @@ renderAnchorButton(nextAnchor);const r=currentMode==='rename';if(meTitleWord){me
 meTitleWord.style.color=r?colorHex(draftColor||currentColor||'G'):'';}if(membranePanel)membranePanel.classList.toggle('hidden',!r&&!inMembraneState);
 if(colorRow)colorRow.classList.toggle('hidden',!r&&!inMembraneState);renderMembraneTargetPanel();if(setBtn)setBtn.textContent=r?'Set':'Create';
 lineBtn.classList.toggle('on',markerOn);const n=historyState&&typeof historyState.index==='number'?historyState.index:0;
-const total=historyState&&typeof historyState.total==='number'?historyState.total:0;if(lineMeter){lineMeter.textContent='('+n+'/'+total+')';
+const total=historyState&&typeof historyState.total==='number'?historyState.total:0;if(lineMeter){lineMeter.innerHTML='<span class="lm-p">(</span><span class="lm-n">'+n+'</span><span class="lm-p">/</span>'+total+'<span class="lm-p">)</span>';/* v4.2.709(俊克「(68/70)の(/)を灰色、現在値68を紫の補色に」) */
 lineMeter.title='Time Machine Me: Line history '+n+' / '+total;}renderTimeMachineWorldLines();if(timeMachineIndex){timeMachineIndex.max=String(Math.max(total,1));
 timeMachineIndex.value=String(Math.max(n,1));timeMachineIndex.disabled=total<=0;}if(timeMachineTotal){timeMachineTotal.textContent='/ '+total;
 }if(timeMachineClear){timeMachineClear.disabled=total<=0;timeMachineClear.classList.toggle('disabled',timeMachineClear.disabled);
@@ -32142,7 +32143,11 @@ var br=function(){var b=document.createElement('span');b.className='nav-row-brea
 if(meax&&hg){meax.after(hg);hg.after(br());}
 if(grp&&mk){grp.after(mk);mk.after(br());}
 if(ob)ob.remove();
-var wr=document.createElement('span');wr.className='nav-wr-grp';if(warn)wr.appendChild(warn);if(raw)wr.appendChild(raw);lr.appendChild(wr);}catch(e){}})();
+var wr=document.createElement('span');wr.className='nav-wr-grp';if(warn)wr.appendChild(warn);if(raw)wr.appendChild(raw);lr.appendChild(wr);
+/* ★v4.2.709(俊克「[← (70/70) →]の紫の角丸の左端を、Lineの青い角丸の左端と一致する位置にインデント」): 描かれた位置を測って、← の束を右へずらす(物差し= 四角÷offsetWidth) */
+var hist=lr.querySelector('.line-hist'),pill=document.getElementById('time-machine-trigger'),li=document.getElementById('line-input');
+var alignH=function(){try{if(!hist||!pill||!li)return;hist.style.marginLeft='0px';var a=li.getBoundingClientRect(),b=pill.getBoundingClientRect(),k=b.width/(pill.offsetWidth||1)||1;var d=(a.left-b.left)/k;if(d>0)hist.style.marginLeft=d+'px';}catch(e){}};
+setTimeout(alignH,0);setTimeout(alignH,500);setTimeout(alignH,1500);try{new ResizeObserver(alignH).observe(row);}catch(e){}}catch(e){}})();
 /* v4.2.638: 開いているリスト(⏰▾/⏰一覧/H-TOC)を拡張へ知らせる= 拡張がそのリストの覚えた幅へ広げ、閉じたら戻す */
 (function(){let last=null,tm=0;const ft=document.getElementById('fixed-toc'),cp=document.getElementById('clk-pop');
 function key(){try{if(cp&&cp.classList.contains('on'))return cp.classList.contains('hist-only')?'tmsHist':'tmsSet';if(ft&&!ft.classList.contains('htoc-closed'))return 'htoc';}catch(_){}return '';}
