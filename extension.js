@@ -29120,18 +29120,22 @@ return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'"'+(c.key
     pop.classList.toggle('wheel',wheel);
     pop.classList.add('on');
     requestAnimationFrame(function(){
-      const at=window.__tocChildAt||{x:120,y:160};
+      let at=window.__tocChildAt||{x:120,y:160};
+      /* ★v4.2.717(俊克「なにやってんのかな?」・スクショ= 一覧が左半分に出てポインターに届かない): 一覧は縮尺のかかった入れ物の中= style の1pxと画面の1pxが違う。
+         → 一覧を 0 と 100 に置いて画面上の動きを実測し、押した所(画面の位置)を入れ物の位置へ換算してから置く(縮尺がいくつでも合う) */
+      if(at.under&&!at.conv){try{pop.style.left='0px';pop.style.top='0px';const _a=pop.getBoundingClientRect();pop.style.left='100px';pop.style.top='100px';const _b=pop.getBoundingClientRect();
+        const fx=((_b.left-_a.left)/100)||1,fy=((_b.top-_a.top)/100)||1;at={x:(at.x-_a.left)/fx,y:(at.y-_a.top)/fy,under:true,conv:true,maxR:(document.documentElement.getBoundingClientRect().right-_a.left)/fx,maxB:(document.documentElement.getBoundingClientRect().bottom-_a.top)/fy};window.__tocChildAt=at;}catch(_){}}
       const rows=pop.querySelectorAll('.toc-child-row');
       const rowH=rows.length?rows[0].offsetHeight:24;window.__tocRowH=rowH;pop.style.maxHeight=wheel?((10*rowH+8)+'px'):'';
 /* v0.9.999120(俊克): 副メニューは最大10行分の高さに限定 */
       /* v2.0.15(俊克 改良1): 副メニューはH-TOC項目と同じ幅にしてコメントを広く表示。他(ダイヤル等)はCSS既定(max-width340)に戻す。 */pop.style.width='';pop.style.maxWidth='';
 if(at.boxWidth){pop.style.width=at.boxWidth+'px';pop.style.maxWidth=at.boxWidth+'px';}
       const popH=pop.offsetHeight,popW=pop.offsetWidth;
-      let top=at.y-popH/2;if(top<2)top=2;if(top+popH>window.innerHeight-2)top=window.innerHeight-popH-2;pop.style.top=top+'px';
+      const _vh=(at.conv&&at.maxB)?at.maxB:window.innerHeight,_vw=(at.conv&&at.maxR)?at.maxR:window.innerWidth;let top=at.y-popH/2;if(top<2)top=2;if(top+popH>_vh-2)top=_vh-popH-2;pop.style.top=top+'px';
 pop.__baseTop=top;pop.__shift=0;
       /* v2.0.13(俊克 改良1): ↻ダイヤルは副メニュー全体を↻に少し被るくらい左に出す=マウスを右に動かさず選べる(openLeft)。それ以外は従来通り右に開く。 */
       let left;if(at.under){left=at.x-28;/* v4.2.713: ポインターが行の頭(日付)の上に来る */}else if(at.boxLeft!=null){left=at.boxLeft;/* v2.0.15: 副メニュー=H-TOC項目と同じ左端(チェックボックス位置) */}else if(at.openLeft){left=at.x-popW+10;
-}else{left=at.x+6;if(left+popW>window.innerWidth-2)left=at.x-popW-6;}if(left+popW>window.innerWidth-2)left=window.innerWidth-popW-2;
+}else{left=at.x+6;if(left+popW>_vw-2)left=at.x-popW-6;}if(left+popW>_vw-2)left=_vw-popW-2;
 if(left<2)left=2;pop.style.left=left+'px';
 try{vscode.postMessage({type:'dockDbg',text:'dwList at='+JSON.stringify(at)+' left='+Math.round(left)+' top='+pop.style.top+' popW='+popW+' popH='+popH+' innerW='+window.innerWidth+' wheel='+wheel+' dial='+!!window.__tocChildDial+' lastPt='+JSON.stringify(window.__dwLastPt||null)+' now='+Date.now()});}catch(_){}/* v4.2.715 測る */
       if(!rows.length)return;
