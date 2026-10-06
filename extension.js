@@ -29133,7 +29133,7 @@ return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'"'+(c.key
         pop.style.left='0px';pop.style.top='0px';const c0=corner();pop.style.left='100px';pop.style.top='100px';const c1=corner();
         if(c0&&c1){const sx=((c1.x-c0.x)/100)||1,sy=((c1.y-c0.y)/100)||1;
           at={x:(at.mx-c0.x)/sx,y:(at.my-c0.y)/sy,under:true,conv:true,maxR:(window.innerWidth-c0.x)/sx,maxB:(window.innerHeight-c0.y)/sy};window.__tocChildAt=at;
-          try{vscode.postMessage({type:'dockDbg',text:'dwList calib c0='+JSON.stringify(c0)+' c1='+JSON.stringify(c1)+' sx='+sx.toFixed(3)+' at='+JSON.stringify(at)});}catch(_){}}
+          }
       }catch(_){}}
       const rows=pop.querySelectorAll('.toc-child-row');
       const rowH=rows.length?rows[0].offsetHeight:24;window.__tocRowH=rowH;pop.style.maxHeight=wheel?((10*rowH+8)+'px'):'';
@@ -29147,7 +29147,7 @@ pop.__baseTop=top;pop.__shift=0;
       let left;if(at.under){left=at.x-28;/* v4.2.713: ポインターが行の頭(日付)の上に来る */}else if(at.boxLeft!=null){left=at.boxLeft;/* v2.0.15: 副メニュー=H-TOC項目と同じ左端(チェックボックス位置) */}else if(at.openLeft){left=at.x-popW+10;
 }else{left=at.x+6;if(left+popW>_vw-2)left=at.x-popW-6;}if(left+popW>_vw-2)left=_vw-popW-2;
 if(left<2)left=2;pop.style.left=left+'px';
-try{vscode.postMessage({type:'dockDbg',text:'dwList at='+JSON.stringify(at)+' left='+Math.round(left)+' top='+pop.style.top+' popW='+popW+' popH='+popH+' innerW='+window.innerWidth+' wheel='+wheel+' dial='+!!window.__tocChildDial+' lastPt='+JSON.stringify(window.__dwLastPt||null)+' now='+Date.now()});}catch(_){}/* v4.2.715 測る */
+/* v4.2.715 測る */
       if(!rows.length)return;
       const ci=(Number.isFinite(centerIndex)&&centerIndex>=0&&centerIndex<rows.length)?centerIndex:Math.floor(rows.length/2),
 center=rows[ci];
