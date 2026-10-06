@@ -29642,7 +29642,7 @@ if(fmtHighlight)fmtHighlight.addEventListener('click',()=>{if(window.__fmtAction
 window.__fmtCyclingKind='highlight';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',
 kind:'highlight',ring:0});}else{const baseW=window.__fmtBaseW.highlight||2;const w=((baseW-1+r)%3)+1;const sp=fmtHlSlots[w-1];
 window.__fmtBaseW.highlight=w;window.__fmtRing.highlight=0;window.__fmtWasDeco.highlight=true;vscode.postMessage({type:'fmtCycle',
-kind:'highlight',ring:w,fg:sp.fg,bg:sp.bg});window.__renderFmtRing('highlight');}return;}/* v4.0.17(俊克): 現ハイライトプリセットが太字/斜体フラグを持てば太字/斜体記法を出す(統一ボタン) */const _hs=fmtHlSlots[fmtHlIdx];
+kind:'highlight',ring:w,fg:sp.fg,bg:sp.bg,bold:!!sp.bold,italic:!!sp.italic});/* v4.2.699: プリセットの太字/斜体も渡す(外して付け直す) */window.__renderFmtRing('highlight');}return;}/* v4.0.17(俊克): 現ハイライトプリセットが太字/斜体フラグを持てば太字/斜体記法を出す(統一ボタン) */const _hs=fmtHlSlots[fmtHlIdx];
 /* v4.0.295: 🔗かどうかは fmtHlLinkOn() 1つから引く(面と同じ物差し=面に下線が出ていればリンクが付く) */
 /* ★v4.0.297(俊克 8/20 pm00:22 改良1「下線を0〜3のどれにするか? 0でいいんじゃないか?」):
    ★**下線の種類は、プリセットthat🔗を名乗っている時だけ、そのプリセットのもの**。
@@ -32855,12 +32855,24 @@ function toggleMeDock(editorOverride) {
       }
       let body, range;
       let span = formatSpanAtCursor(ed, kind);
+      // ★★v4.2.699(俊克 バグ1「⛔をしないで切り替えると ** が増殖する。個数の解釈が破綻する」= `*************ハイライト*************` と FC が4枚):
+      //   ↻での塗り替えは、元の印を外さずに外へもう1枚包んでいた。→ 俊克が手でしていた「⛔で外す→付け直す」を1回の中で行う
+      //   (外してから、本文を選び、プリセットどおりに書く= 新しく付ける時と同じ口)。何度切り替えても印は1枚
+      if (kind === 'highlight' && ring > 0) {
+        const cur = span || boldSpanAtCursor(ed);
+        if (cur) {
+          const ln = cur.range.start.line, st = cur.range.start.character, b0 = String(cur.body || '').trim();
+          await removeFormatAtCursor(ed, cur);
+          const ed2 = getMeDockTargetEditor() || vscode.window.activeTextEditor || ed;
+          try { const lt = ed2.document.lineAt(ln).text; const k0 = lt.indexOf(b0, Math.max(0, st - 3)); if (b0 && k0 >= 0) ed2.selection = new vscode.Selection(ln, k0, ln, k0 + b0.length); } catch (_) { }
+          meosDbg('[fmtRecolor] 外して付け直す body="' + b0.slice(0, 30) + '" bold=' + !!message.bold + ' italic=' + !!message.italic + ' (' + message.fg + '/' + message.bg + ')');
+          if (message.bold || message.italic) await insertBoldItalic(ed2, !!message.bold, !!message.italic, message.fg, message.bg);
+          else await insertFormatTemplate('highlight', ed2, message.fg, message.bg);
+          return;
+        }
+      }
       // v4.0.22(俊克 8/6 🚫統合): 統一ボタン(=ハイライト)の🚫は太字/斜体(正式膜/従来記法/素の _text_)も1発で解除する。
       if (!span && kind === 'highlight' && ring === 0) { const bs = meLinkSpanAtCursor(ed) || boldSpanAtCursor(ed); if (bs) { await removeFormatAtCursor(ed, bs); return; } } // v4.0.26: リンクも表示文字だけ残して解除
-      // ★v4.2.697(俊克 バグ1「黄→紫までは正常、そのあと青にならない。他のに切り替えられなくなった」): 黄のプリセットは ***太字斜体***。
-      //   1回目は書いた直後で本文が選ばれていたので割れたが、塗り替えの後は選択が無く、==…== しか探さないので何もせず帰っていた(ログに2回目の記録なし)。
-      //   → 太字/斜体の包みの中なら、その本文を選んでから同じ「割る」口へ渡す
-      try { if (kind === 'highlight' && !span && ring > 0 && ed.selection.isEmpty) { const bs = boldSpanAtCursor(ed); if (bs && bs.body) { const lt = ed.document.lineAt(bs.range.start.line).text; const k0 = lt.indexOf(String(bs.body).trim(), bs.range.start.character); if (k0 >= 0) { const b0 = String(bs.body).trim(); ed.selection = new vscode.Selection(bs.range.start.line, k0, bs.range.start.line, k0 + b0.length); } } } } catch (_) { }
       if (span) { body = span.body; range = span.range; }
       else if (!ed.selection.isEmpty) { body = ed.document.getText(ed.selection); range = ed.selection; }
       else return;
