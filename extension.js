@@ -29111,7 +29111,7 @@ best=r;bi=i;}});
   };
   window.renderTocChildPop=function(children,centerIndex){
     const arr=Array.isArray(children)?children:[];
-    const wheel=arr.length>=9; /* 9件以上=ダイヤル式(月の日付など)。少数はそのまま一覧 */
+    const wheel=arr.length>=9||(!!window.__tocChildDial&&arr.length>=2); /* 9件以上=ダイヤル式(月の日付など)。少数はそのまま一覧 / ★v4.2.712(俊克「ポインターの位置に今日が来て、1mmも動かさずに一番下の10/1までスクロールできていた。今はできない」): 月初めは日記が9件に届かず一覧になっていた→ Ⓣdayから開いた時は件数に関係なくダイヤル式 */
     var bodyHtml=arr.length?arr.map(function(c){/* v2.0.1: 副メニューにもコメント(膜名後の // メモ)を本体H-TOCと同じ体裁で表示。v2.0.3(俊克): 表示はTS除去のdispName(見た目だけ)・data-nameにフル膜名(TS付き)を保持=ワープ用識別子。長文は.toc-child-pop max-width(340px)+ellipsisで省略。 */var _nm=escText(c.dispName||c.name||'');
 var _cm=escText(c.comment||'');var _full=escText(c.name||'');var _h=_cm?(_nm+'<span class="toc-sep"> // </span><span class="toc-comment">'+_cm+'</span>'):_nm;
 return '<button class="bm-pop-item toc-child-row" data-line="'+c.line+'"'+(c.key?(' data-key="'+escText(c.key)+'"'):'')+' data-name="'+_full+'">'+_h+'</button>';
@@ -29160,7 +29160,7 @@ window.__setWheelActive((pop.__wheelIdx||0)+steps);}});
 if(!it)return;if((Number(document.body.dataset.phase||1))<2)return;/* v1.0.0: H-TOC副メニュー未解禁フェーズでは開かない */ev.preventDefault();
 const inEl=it.querySelector('.toc-value');let key=(typeof tocKeyFromInputValue==='function'&&inEl)?tocKeyFromInputValue(inEl.value):'';
 if(!key)key=it.getAttribute('data-key')||'';if(!key)return;var _ir=it.getBoundingClientRect();var _tf=it.querySelector('.toc-field');
-var _fl=_tf?_tf.getBoundingClientRect().left:_ir.left;window.__tocChildAt={x:ev.clientX,y:ev.clientY,boxLeft:_fl,boxWidth:_ir.right-_fl};
+var _fl=_tf?_tf.getBoundingClientRect().left:_ir.left;window.__tocChildAt={x:ev.clientX,y:ev.clientY,boxLeft:_fl,boxWidth:_ir.right-_fl};window.__tocChildDial=false;/* v4.2.712: H-TOC の副メニューは今まで通り(9件以上だけダイヤル) */
 /* v2.0.16(俊克): 副メニュー左端=H-TOCの値フィールド(.toc-field)の左=チェックボックスの右=チェックボックスが見える/窮屈解消。幅は値列(項目右端まで)。 */window.__tocChildOpen=true;
 if(typeof hideTocTip==='function')hideTocTip();vscode.postMessage({type:'requestTocChildren',key:key});});
   pop.addEventListener('click',function(ev){const r=ev.target&&ev.target.closest?ev.target.closest('.toc-child-row'):null;
@@ -29270,7 +29270,7 @@ return {kind:'date',y:y,mo:mo,d:d};}}}return {kind:'search',q:s};}
 var _dwScope=document.getElementById('dw-scope');var _dwEdit=document.getElementById('dw-base-input');
 function _dwOpenDial(){if(!_dwScope)return;var _bd=fixedTocBody||document.getElementById('fixed-toc-body');var _bdr=_bd?_bd.getBoundingClientRect():_dwScope.getBoundingClientRect();
 var _tf=_bd?_bd.querySelector('.toc-field'):null;var _fl=_tf?_tf.getBoundingClientRect().left:_bdr.left;var _r=_dwScope.getBoundingClientRect();
-window.__tocChildAt=(_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true};window.__tocChildOpen=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
+window.__tocChildAt=(_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true};window.__tocChildOpen=true;window.__tocChildDial=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
 if(typeof hideTocTip==='function')hideTocTip();if(window.__dwSearch!=null){vscode.postMessage({type:'requestDiarySearch',
 q:window.__dwSearch});}else{vscode.postMessage({type:'requestDateDial',scope:_dwScopes[window.__dwScope],anchor:(window.__dwBaseDate||_dwToday())});
 }}
