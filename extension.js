@@ -29130,7 +29130,7 @@ if(at.boxWidth){pop.style.width=at.boxWidth+'px';pop.style.maxWidth=at.boxWidth+
       let top=at.y-popH/2;if(top<2)top=2;if(top+popH>window.innerHeight-2)top=window.innerHeight-popH-2;pop.style.top=top+'px';
 pop.__baseTop=top;pop.__shift=0;
       /* v2.0.13(俊克 改良1): ↻ダイヤルは副メニュー全体を↻に少し被るくらい左に出す=マウスを右に動かさず選べる(openLeft)。それ以外は従来通り右に開く。 */
-      let left;if(at.boxLeft!=null){left=at.boxLeft;/* v2.0.15: 副メニュー=H-TOC項目と同じ左端(チェックボックス位置) */}else if(at.openLeft){left=at.x-popW+10;
+      let left;if(at.under){left=at.x-28;/* v4.2.713: ポインターが行の頭(日付)の上に来る */}else if(at.boxLeft!=null){left=at.boxLeft;/* v2.0.15: 副メニュー=H-TOC項目と同じ左端(チェックボックス位置) */}else if(at.openLeft){left=at.x-popW+10;
 }else{left=at.x+6;if(left+popW>window.innerWidth-2)left=at.x-popW-6;}if(left+popW>window.innerWidth-2)left=window.innerWidth-popW-2;
 if(left<2)left=2;pop.style.left=left+'px';
       if(!rows.length)return;
@@ -29270,7 +29270,7 @@ return {kind:'date',y:y,mo:mo,d:d};}}}return {kind:'search',q:s};}
 var _dwScope=document.getElementById('dw-scope');var _dwEdit=document.getElementById('dw-base-input');
 function _dwOpenDial(){if(!_dwScope)return;var _bd=fixedTocBody||document.getElementById('fixed-toc-body');var _bdr=_bd?_bd.getBoundingClientRect():_dwScope.getBoundingClientRect();
 var _tf=_bd?_bd.querySelector('.toc-field'):null;var _fl=_tf?_tf.getBoundingClientRect().left:_bdr.left;var _r=_dwScope.getBoundingClientRect();
-window.__tocChildAt=(_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true};window.__tocChildOpen=true;window.__tocChildDial=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
+var _pt=window.__dwLastPt;window.__tocChildAt=(_pt&&Date.now()-_pt.t<3000)?{x:_pt.x,y:_pt.y,under:true}:((_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true});/* ★v4.2.713(俊克「なぜメニューをポインターの下に表示しないのか? 100mm移動しないと操作できないのは嘘の宣伝」): 押した時のポインターの位置(マウスの物差し)をそのまま使う= 今日の行がポインターの真下 */window.__tocChildOpen=true;window.__tocChildDial=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
 if(typeof hideTocTip==='function')hideTocTip();if(window.__dwSearch!=null){vscode.postMessage({type:'requestDiarySearch',
 q:window.__dwSearch});}else{vscode.postMessage({type:'requestDateDial',scope:_dwScopes[window.__dwScope],anchor:(window.__dwBaseDate||_dwToday())});
 }}
@@ -29295,7 +29295,7 @@ var top=r.bottom+6;if(top+hh>window.innerHeight-4)top=r.top-hh-6;if(top<4)top=4;
 if(_dwEdit){_dwEdit.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();_dwCommitEdit();}else if(ev.key==='Escape'){ev.preventDefault();
 _dwCancelEdit();}});_dwEdit.addEventListener('input',function(){_dwHideHint();});_dwEdit.addEventListener('blur',function(){_dwCommitEdit();
 });_dwEdit.addEventListener('click',function(ev){ev.stopPropagation();});}
-var _dwClickT=null;if(_dwScope){_dwScope.addEventListener('click',function(ev){ev.stopPropagation();if(_dwClickT){clearTimeout(_dwClickT);
+var _dwClickT=null;if(_dwScope){_dwScope.addEventListener('click',function(ev){ev.stopPropagation();window.__dwLastPt={x:ev.clientX,y:ev.clientY,t:Date.now()};if(_dwClickT){clearTimeout(_dwClickT);
 _dwClickT=null;}_dwClickT=setTimeout(function(){_dwClickT=null;_dwOpenDial();},220);});_dwScope.addEventListener('dblclick',function(ev){ev.preventDefault();
 ev.stopPropagation();if(_dwClickT){clearTimeout(_dwClickT);_dwClickT=null;}_dwOpenEdit();});}
 var _dwTodayNow=document.getElementById('dw-todaynow');if(_dwTodayNow)_dwTodayNow.addEventListener('click',function(ev){/* 左Ⓣ=基準を今日へリセット+今日へ帰還。 */ev.stopPropagation();
