@@ -27362,6 +27362,7 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .nav-center .toc-nav-row .warn-btn{margin-left:0;padding:1px 4px}.nav-center .toc-nav-row .fmt-btn.raw-toggle{margin-left:0;padding-left:6px;padding-right:6px}   /* v4.2.691: ⚠️ と 👁🥩 の左の余白(8px ずつ)を詰める= Warp の段に収まる */
 .nav-warp-grp{display:inline-flex;align-items:center;flex-wrap:nowrap;gap:2px}.nav-center .toc-nav-row .warn-btn{padding:1px 2px}.nav-center .toc-nav-row .warn-btn .warn-n:empty{display:none}.nav-center .toc-nav-row .fmt-btn.raw-toggle{padding-left:4px;padding-right:4px;min-width:0}   /* v4.2.692(俊克 疑問1「⚠️とRawの間にまだ大きなスペース。Pseudoの時に右が切れる。左に寄せれば切れない」): 間を2px・⚠️の空の数札を消す・Rawの左右の余白を詰める */
 .nav-center .line-row .mark-nav{margin-left:auto!important}   /* v4.2.692(改良1「💬ボタンを右寄せにして、#ボタンと上下で揃う」) */
+@keyframes meosEyeBlink{0%,49%{opacity:1}50%,100%{opacity:0}}.fmt-btn.raw-toggle.read-on .vm-eye{display:inline-block;animation:meosEyeBlink 2.5s steps(1,end) infinite}   /* v4.2.693: 暗い間は👁あり・明るい間は👁なし */
 @keyframes meosPseudoBreath{0%,100%{background:#1e4f8a;border-color:#16396b}50%{background:#3f7fd0;border-color:#2c63ad}}.fmt-btn.raw-toggle.read-on{animation:meosPseudoBreath 2.5s ease-in-out infinite}   /* v4.2.692(改良2「Pseudoモードの時、生にならないのを壊れたと勘違いする。Pseudoボタンをゆっくり点滅。2、3秒で1回」) */   /* v4.2.691: Warp〜↑↓・⚠️・👁🥩 は1つの塊= 段の途中で切れない(👁🥩 が3段目へ降りない) */
 .nav-row-break{flex-basis:100%;height:0}   /* v4.2.691(俊克「Warpの右に⚠️とRawを出す十分なスペースがあるのに、なぜRawが逃げてくるのか? 逃げなければ Line/枠/↑#↓ で固定できる」): 改行は 👁🥩 の後= 👁🥩 は Warp の段に残り、3段目は Line・枠・↑#↓ / v4.2.690 は前で改行して逆だった */
 .line-unit{display:inline-flex;align-items:center;gap:4px;margin-left:8px;flex:0 0 auto}.nav-center .line-unit .line-input{flex:none;width:72px}   /* ★v4.2.690(俊克「Line数の表示枠を1つ上の段へ。幅を最小にすると小さくなり過ぎる。Rawボタンは逃げてこないように」): Raw の右・#の左へ。枠は72px で固定 */
@@ -27544,7 +27545,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 .fixed-toc{display:none;border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:hidden}
 .fixed-toc.on{display:block}
 /* v4.2.464: Hyper IDX の枠= H-TOC の枠と同じ見た目で、固定の箱(dock-stick)の中・Format Me の下 */
-.hidx-box{border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:visible;margin:6px 0 8px}   /* v4.2.680(改良4「H-IDXの枠とFormat Meの枠を少し離す」): 下に 8px / 上は JS がヘッダーにくっつける(改良3) */
+.hidx-box{border:1px solid rgba(210,140,0,.55);border-radius:8px;background:rgba(255,213,92,.08);overflow:visible;margin:6px 0 4px}   /* v4.2.693: Format Me との間 8→4px */   /* v4.2.680(改良4「H-IDXの枠とFormat Meの枠を少し離す」): 下に 8px / 上は JS がヘッダーにくっつける(改良3) */
 .hidx-box.hidx-closed{display:none}   /* v4.2.679: 普段は閉じる(パズルの右の▾で開く) */
 .hidx-toggle{flex:0 0 auto;align-self:center;margin-left:6px;line-height:0;padding:4px 6px;border:1px solid rgba(210,140,0,.55);border-radius:5px 5px 0 0;background:color-mix(in srgb,var(--vscode-sideBar-background) 92%,#ffd55c 8%);color:#d9a521;cursor:var(--meos-hand);position:relative;z-index:2}.hidx-toggle .hx-tri{fill:#fff!important}   /* v4.2.681(俊克「▲/▼を白色に」) */
 .hidx-toggle:hover{background:color-mix(in srgb,var(--vscode-sideBar-background) 80%,#ffd55c 20%)}.hidx-toggle .hx-tri{fill:currentColor;display:block}   /* ★v4.2.680(俊克 改良1「▼の地をH-IDXの地の色と同じに」改良2「ヘッダーの枠にぴったりくっつける」): H-IDX と同じ地・下は枠線に乗せる(位置は JS が測って合わせる) */
@@ -27552,7 +27553,7 @@ button{border:1px solid color-mix(in srgb,var(--vscode-foreground) 28%,transpare
 /* v4.2.465: 並べ替え= Current Me＋Encrypt Me の枠 / 🐙 / Edit Me / Navigate Me を固定の箱へ・Mepy は H-TOC の上 */
 .cur-box{border:1px solid rgba(56,148,255,.45);border-radius:8px;overflow:hidden;margin:6px 0 0;background:var(--vscode-sideBar-background)}
 .cur-box .toc-pin-bar .toc-pin{border-top:0}
-.cur-box .encrypt-me-row{margin:0;padding:6px 10px;border-top:1px solid rgba(56,148,255,.25)}
+.cur-box .encrypt-me-row{margin:0;padding:6px 10px 3px;border-top:1px solid rgba(56,148,255,.25)}
 .dock-stick > .gh-wizard,.dock-stick > .inline-panel,.dock-stick > .nav-box{margin-top:6px}
 .dock-stick > .nav-box{margin-top:4px}
 .nav-box .hint{margin:4px 2px 0}
@@ -27596,6 +27597,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .fmt-lvl:hover,.ww-ring:hover,.th-ring:hover,.tt-badge:hover,.title-file-jump:hover,.mz-badge:hover,.clk-pring:hover,.clk-lockbadge:hover,.enc-badge:hover,.bm-f-badge:hover,.iv-badge:hover,.eof-badge:hover{scale:2;z-index:50}
 /* v4.2.688(俊克「Aの⊕/⊖と↩だけ、ホットスポットから逃げて行く」): この3つは transform で角へずらしていた= 膨らみ(scale)がずらした後の物にかかり外へ逃げる。
    → ずらしを translate の口へ移す(順番が 膨らむ→ずらす になり、中心を保ったまま膨らむ) */
+.mz-split .mz-badge:hover{z-index:60}   /* v4.2.693(俊克 改良3「⊕/⊖の拡大が数値の下に食い込む。数値の上に被るように」): 数値の箱(z50)より上 */
 .mz-tr{transform:none;translate:50% -50%}.mz-br{transform:none;translate:50% 50%}.title-file-jump{transform:none;translate:50% calc(-50% - 5px)}
 /* ★v4.2.167(俊克「折り返しボタンの背景色を赤、青、緑にすれば、数字を見なくても分るでしょ」): 1つ目=赤 / 2つ目=青 / 3つ目=緑。パネルも同じ色で続ける */
 .ww-split.s0 .ww-btn{background:color-mix(in srgb,var(--vscode-editor-background) 66%,#e0564a 34%);border-color:#a8453c}
@@ -27831,7 +27833,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 #fmt-table:hover svg{opacity:1}
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
-.row.format-tools{justify-content:flex-start;flex-wrap:wrap}
+.row.format-tools{justify-content:flex-start;flex-wrap:wrap;padding-top:3px;padding-bottom:3px;row-gap:3px}   /* v4.2.693(俊克 改良2「H-IDXが開いているとH-TOCの下が少し切れる。Format Meの上下がかなり空いている。Encrypt Meの下も詰めよう」) */
 .fmt-btn.raw-toggle{font-family:inherit;font-weight:700;font-size:12px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-foreground)}/* v4.0.441(俊克): 通常も3つのうちの1つ= 薄くしない(消灯ではなく、素の面) */
 /* ★★v4.0.455(俊克「⚠️の右にしよう」): ★★**Format Me の中で、この駒だけ1文字も書かなかった**＝
    ==/👻/A²/##/▦/🐱 は全部「何を書くか」so、書かない物thatそこに居たのthat違和感の正体。
@@ -29872,7 +29874,7 @@ var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
 var fwd=VM_ORDER[(i+1)%3],back=VM_ORDER[(i+2)%3];
 var left=vmLeft(),held=(left>0&&viewMode==='pseudo');
 /* v4.0.456: 面はモードだけを言う。残り時間は ⏰ の持ち物(1つの駒は1つのことを言う)。 */
-rawToggle.textContent=VM_FACE[viewMode];
+rawToggle.textContent=VM_FACE[viewMode];if(viewMode==='pseudo'){var _f=String(VM_FACE.pseudo||''),_k=_f.indexOf('\ud83d\udc41');if(_k>=0){rawToggle.textContent=_f.slice(0,_k);var _e=document.createElement('span');_e.className='vm-eye';_e.textContent=_f.slice(_k);rawToggle.appendChild(_e);}}/* v4.2.693(俊克 改良1「Pseudoボタンが明滅する時、👁️を表示/非表示に」) */
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
