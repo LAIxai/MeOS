@@ -29967,7 +29967,7 @@ _rt.setAttribute('data-tip',(viewMode==='pseudo')
 :('Ring here at a time \u23f0 | Nothing about this membrane changes. When the time comes MeOS brings you back to it \u2014 so write the next job inside, and it will find you.'+String.fromCharCode(10)+'Pick minutes, or a clock time such as 18:30. Set it while in Pseudo\u{1F441} instead and it also locks the way out.'));}
 rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCode(10)+(held
 ?('\u23f0 Held for another '+vmMmSs(left)+'. Press \u23f0 to stop early.')
-:('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'Opt-click \u2192 '+VM_NAME[back]
+:('Click \u2192 '+VM_NAME[fwd]+String.fromCharCode(10)+'Shift-click \u2192 '+VM_NAME[back]
 +String.fromCharCode(10)+(vmOwn
 ?'Saved in this membrane (mMETA).'
 :'Follows the enclosing membrane. Click to give this one its own.'))));
@@ -29985,7 +29985,7 @@ rawToggle.setAttribute('data-tip',vmWho()+' '+VM_TIP[viewMode]+String.fromCharCo
 if(vmTick){clearTimeout(vmTick);vmTick=null;}
 if(_nl>0){var _d=(((vmNextUntil-Date.now())%1000)+1000)%1000+8;
  vmTick=setTimeout(function(){vmTick=null;window.__renderRaw();},_d);}};
-if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.altKey)?-1:1});});
+if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.shiftKey)?-1:1});});/* ★v4.2.703(俊克「なぜ👁🥩はOptにしていたのか? Shiftでやると2つ飛ぶ。シフトキーに統一」): 逆回りは全部 Shift(v4.0.445 の Opt から替える) */
 {const dv=document.getElementById('dev-vsix');if(dv)dv.addEventListener('click',()=>{vscode.postMessage({type:'installVsix'});});}   /* v4.2.67 */
 {const vh=document.getElementById('clk-vhelper');if(vh)vh.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'toggleHelper'});});}   /* v4.2.363: [V-helper] */
 {const hp=document.getElementById('hand-pick');if(hp)hp.addEventListener('click',()=>{vscode.postMessage({type:'setPointerHand',value:hp.classList.contains('is-btron')?'macos22':(hp.classList.contains('is-macos22')?'system':'btron')});   /* v4.2.113: 3つを巡る → v4.2.306(俊克「4種類は多過ぎ」): BTRON→macOS 22.5°→OS の3つ(元のmacOSの手は源として残す) */});}   /* v4.2.110: 1つのボタンで入れ替え */
