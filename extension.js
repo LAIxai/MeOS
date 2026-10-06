@@ -29694,7 +29694,7 @@ el.style.backgroundImage=fmtUlWave(col,u===3?2:1);el.style.backgroundRepeat='rep
 return;}el.style.textDecoration=(u===1?'underline double':'underline');el.style.textUnderlineOffset='3px';}function fmtUlCssStr(u,col){return (u===2||u===3)?('text-decoration:none;background-image:'+fmtUlWave(col,u===3?2:1)+';background-repeat:repeat-x;background-position:left calc(100% - 3px);'):('text-decoration:'+(u===1?'underline double':'underline')+';text-underline-offset:3px;');
 }function fmtHlFace(){const sp=fmtHlSlots[fmtHlIdx]||{};const u=fmtHlLinkOn()?fmtHlUl():null;/* v4.0.295: Optionを押している間は裏の顔(🔗)を見せる / v4.0.297→298: 面の下線も**書かれる種類**で描く(名乗っていないプリセットは、最後に自分で決めた値) *//* v4.0.28(俊克 改良1): 面に🔗は出さない。B/I/== の面はそのままで**下線**を引いてリンクを示す=押した結果がそのまま面に見える。 */let t,
 b=0,i=0;if(sp.bold&&sp.italic){t='BI';b=1;i=1;}else if(sp.bold){t='B';b=1;}else if(sp.italic){t='I';i=1;}else{t='='.repeat([1,2,3][fmtHlIdx]);
-}return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;
+}return{t:t,b:b,i:i,u:u};}/* v4.0.19(俊克): 統一ボタン面=プリセットがbold/italicなら B/I/BI・両オフなら ==/===/= */window.__renderFmtRing=function(kind){const btn=(kind==='highlight')?fmtHighlight:(kind==='strike')?fmtStrike:fmtHeading;try{if(kind==='highlight'&&window.__fmtActionable&&window.__fmtActionable.highlight)vscode.postMessage({type:'dockDbg',text:'fmtPaint ring r='+(window.__fmtRing.highlight)+' base='+(window.__fmtBaseW&&window.__fmtBaseW.highlight)+' from='+String(new Error().stack||'').split(String.fromCharCode(10)).slice(2,4).map(function(x){return x.trim().slice(0,90);}).join(' | ')});}catch(_){}/* v4.2.695 測る */
 if(!btn)return;/* v4.0.417: Optionを押している間は裏の顔(👻)を見せる= 押す前に、押した結果が分かる */
 /* v4.0.432: 取消線の面は**これから書く物**を見せる= 既定は👻。🚫(解除)の時は今までどおりリングに任せる。 */
 if(kind==='strike'&&!window.__fmtActionable.strike&&fmtStGhostOn()){btn.textContent='👻';btn.classList.add('ghost-face');
@@ -29817,7 +29817,7 @@ window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;window.
 fmtSpec.strike=fmtStSlots[fmtStIdx];renderFmtBtnColors();/* ★v4.2.114(俊克 バグ1「取消線の↻ボタンで切り替えると、👻がボタンのところに出なくなる」): 面を ~~ で直に書いていた= 👻を描く口(__renderFmtRing)を通していなかった。面は1つの口から描く。 */if(typeof window.__renderFmtRing==='function')window.__renderFmtRing('strike');
 pushFmt();if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='strike')renderFmtPop();});var fmtToolsEl=document.getElementById('format-tools');
 if(fmtToolsEl)fmtToolsEl.addEventListener('mouseleave',function(){window.__fmtTipSuppress=false;});
-/* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){const ap=(btn,k)=>{if(!btn)return;
+/* v0.9.911: Formatボタンを設定色のプレビューに(俊克 6/17 am03:21)。背景=背景色・文字=文字色。 */function renderFmtBtnColors(){try{if(window.__fmtActionable&&window.__fmtActionable.highlight)vscode.postMessage({type:'dockDbg',text:'fmtPaint renderFmtBtnColors ring='+(window.__fmtRing&&window.__fmtRing.highlight)+' from='+String(new Error().stack||'').split(String.fromCharCode(10)).slice(2,5).map(function(x){return x.trim().slice(0,90);}).join(' | ')});}catch(_){}/* v4.2.695 測る(ハイライトの↻の後にホバーで青へ戻る) */const ap=(btn,k)=>{if(!btn)return;
 const sp=fmtSpec[k];btn.style.color=fmtHexFg(sp.fg);const bg=sp.bg?fmtHexBg(sp.bg):'';btn.style.backgroundColor=bg;btn.style.borderColor=bg||'';
 };ap(fmtHighlight,'highlight');ap(fmtStrike,'strike');ap(fmtHeading,'heading');}renderFmtBtnColors();
 /* ★★v4.0.426(俊克): 壊れた膜の警告ボタン。押せる状態＝どこかで膜が壊れている。押す毎に両端を交互に行く。
