@@ -27857,7 +27857,7 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 #fmt-table:hover svg{opacity:1}
 .fmt-btn:hover{border-color:#d18400;background:rgba(210,132,0,.16)}
 .fmt-btn:active{background:rgba(210,132,0,.30)}
-.row.format-tools{justify-content:flex-start;flex-wrap:wrap;padding-top:3px;padding-bottom:3px;row-gap:3px}   /* v4.2.693(俊克 改良2「H-IDXが開いているとH-TOCの下が少し切れる。Format Meの上下がかなり空いている。Encrypt Meの下も詰めよう」) */
+.row.format-tools{justify-content:flex-start;flex-wrap:wrap;padding-top:3px;padding-bottom:3px;row-gap:3px}.row.format-tools .fmt-label{margin-bottom:6px}   /* v4.2.710(俊克「Format Meの見出しとボタンの間を少し空けよう。小さい↻が被っている」) */   /* v4.2.693(俊克 改良2「H-IDXが開いているとH-TOCの下が少し切れる。Format Meの上下がかなり空いている。Encrypt Meの下も詰めよう」) */
 .fmt-btn.raw-toggle{font-family:inherit;font-weight:700;font-size:12px;background:rgba(127,127,127,.07);border-color:rgba(210,140,0,.20);color:var(--vscode-foreground)}/* v4.0.441(俊克): 通常も3つのうちの1つ= 薄くしない(消灯ではなく、素の面) */
 /* ★★v4.0.455(俊克「⚠️の右にしよう」): ★★**Format Me の中で、この駒だけ1文字も書かなかった**＝
    ==/👻/A²/##/▦/🐱 は全部「何を書くか」so、書かない物thatそこに居たのthat違和感の正体。
