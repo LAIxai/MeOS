@@ -29874,7 +29874,7 @@ var i=VM_ORDER.indexOf(viewMode);if(i<0){viewMode='normal';i=0;}
 var fwd=VM_ORDER[(i+1)%3],back=VM_ORDER[(i+2)%3];
 var left=vmLeft(),held=(left>0&&viewMode==='pseudo');
 /* v4.0.456: 面はモードだけを言う。残り時間は ⏰ の持ち物(1つの駒は1つのことを言う)。 */
-rawToggle.textContent=VM_FACE[viewMode];if(viewMode==='pseudo'){var _f=String(VM_FACE.pseudo||''),_k=_f.indexOf('\ud83d\udc41');if(_k>=0){rawToggle.textContent=_f.slice(0,_k);var _e=document.createElement('span');_e.className='vm-eye';_e.textContent=_f.slice(_k);rawToggle.appendChild(_e);}}/* v4.2.693(俊克 改良1「Pseudoボタンが明滅する時、👁️を表示/非表示に」) */
+if(!(viewMode==='pseudo'&&rawToggle.querySelector('.vm-eye'))){/* v4.2.694(俊克 バグ1「👁は最初に1回だけ閉じるけど、そのあとは開きっぱなし」): 何度も書き直す度に👁を作り直し、明滅が毎回頭から= 消える番まで届かない→ もう👁が居れば触らない */rawToggle.textContent=VM_FACE[viewMode];if(viewMode==='pseudo'){var _f=String(VM_FACE.pseudo||''),_k=_f.indexOf('\ud83d\udc41');if(_k>=0){rawToggle.textContent=_f.slice(0,_k);var _e=document.createElement('span');_e.className='vm-eye';_e.textContent=_f.slice(_k);rawToggle.appendChild(_e);}}/* v4.2.693(俊克 改良1「Pseudoボタンが明滅する時、👁️を表示/非表示に」) */}
 rawToggle.classList.toggle('on',viewMode==='raw');
 rawToggle.classList.toggle('read-on',viewMode==='pseudo');
 rawToggle.classList.toggle('held',held);
