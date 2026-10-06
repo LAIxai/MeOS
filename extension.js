@@ -24641,7 +24641,8 @@ function meosSpecLineCommentRange(specText, idx) {
 //   見出し= 行頭の # の数(=レベル=プリセット)。ハイライト/取消線= ①旧形 =={本文 (字/地)}== ②後置き <!-- (字/地)//tip --> ③FC行の何番目か(meosDeleteSpecForMark と同じ数え方)
 function meosFmtCurOf(editor, kind) {
   try {
-    const span = formatSpanAtCursor(editor, kind); if (!span) return null;
+    let span = formatSpanAtCursor(editor, kind); if (!span && kind === 'highlight') span = boldSpanAtCursor(editor);   // v4.2.697: 太字/斜体のプリセット(***…***)も今の色を読む
+    if (!span) return null;
     const doc = editor.document, ln = span.range.start.line, text = doc.lineAt(ln).text;
     if (kind === 'heading') { const m = /^[ \t]*(?:[-*+][ \t]+)?(#{1,3})(?=[ \t{\[-])/.exec(text); return m ? m[1].length : null; }
     const pair = (t) => { const m = /\(([^()\/]+)\/([^()]*)\)/.exec(String(t || '')); return m ? { fg: m[1].trim(), bg: m[2].trim() } : null; };
@@ -32856,6 +32857,10 @@ function toggleMeDock(editorOverride) {
       let span = formatSpanAtCursor(ed, kind);
       // v4.0.22(俊克 8/6 🚫統合): 統一ボタン(=ハイライト)の🚫は太字/斜体(正式膜/従来記法/素の _text_)も1発で解除する。
       if (!span && kind === 'highlight' && ring === 0) { const bs = meLinkSpanAtCursor(ed) || boldSpanAtCursor(ed); if (bs) { await removeFormatAtCursor(ed, bs); return; } } // v4.0.26: リンクも表示文字だけ残して解除
+      // ★v4.2.697(俊克 バグ1「黄→紫までは正常、そのあと青にならない。他のに切り替えられなくなった」): 黄のプリセットは ***太字斜体***。
+      //   1回目は書いた直後で本文が選ばれていたので割れたが、塗り替えの後は選択が無く、==…== しか探さないので何もせず帰っていた(ログに2回目の記録なし)。
+      //   → 太字/斜体の包みの中なら、その本文を選んでから同じ「割る」口へ渡す
+      try { if (kind === 'highlight' && !span && ring > 0 && ed.selection.isEmpty) { const bs = boldSpanAtCursor(ed); if (bs && bs.body) { const lt = ed.document.lineAt(bs.range.start.line).text; const k0 = lt.indexOf(String(bs.body).trim(), bs.range.start.character); if (k0 >= 0) { const b0 = String(bs.body).trim(); ed.selection = new vscode.Selection(bs.range.start.line, k0, bs.range.start.line, k0 + b0.length); } } } } catch (_) { }
       if (span) { body = span.body; range = span.range; }
       else if (!ed.selection.isEmpty) { body = ed.document.getText(ed.selection); range = ed.selection; }
       else return;
