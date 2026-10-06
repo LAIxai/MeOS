@@ -27275,7 +27275,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .ref-sym[data-fam="4"]{font-size:26px}
 .ref-sym[data-fam="5"]{font-size:12px}
 .ref-sym[data-fam="1"]{font-size:13px}
-.toc-child-pop{max-height:70vh;overflow-y:auto;min-width:120px;max-width:340px;outline:none}
+.toc-child-pop{max-height:70vh;overflow-y:auto;overscroll-behavior:contain;min-width:120px;max-width:340px;outline:none}
 .toc-child-pop.wheel{max-height:60vh}
 .toc-child-spacer{flex:0 0 auto}
 .toc-child-row{display:block;flex:0 0 auto;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -29151,7 +29151,7 @@ pop.style.top=_nt+'px';pop.__baseTop=_nt;
       }
     });
   };
-  pop.addEventListener('scroll',function(){if(pop.classList.contains('wheel'))window.__tocChildActive();});/* v0.9.999122(俊克): 内部スクロールが端に達したら、その先はポップアップ全体を上下スライドさせ、端の項目をマウス位置(固定)に寄せる=空白を出さずに全項目をカーソルで選べる。 */pop.addEventListener('wheel',function(ev){if(!pop.classList.contains('wheel'))return;
+  pop.addEventListener('scroll',function(){if(pop.classList.contains('wheel'))window.__tocChildActive();});/* v0.9.999122(俊克): 内部スクロールが端に達したら、その先はポップアップ全体を上下スライドさせ、端の項目をマウス位置(固定)に寄せる=空白を出さずに全項目をカーソルで選べる。 */pop.addEventListener('wheel',function(ev){if(!pop.classList.contains('wheel')){/* v4.2.711(俊克 バグ1「Ⓣdayのリストがその場スクロールできない」): 一覧の上のホイールは一覧だけを動かす(端まで来ても後ろのMe Dockを動かさない) */var _d=ev.deltaY;if((_d<0&&pop.scrollTop<=0)||(_d>0&&pop.scrollTop+pop.clientHeight>=pop.scrollHeight-1))ev.preventDefault();return;}
 ev.preventDefault();/* v2.0.13(俊克): 行index方式=deltaYを溜めて1行分ごとにindexを増減→__setWheelActiveで厳密配置。上端も下端も確実にポインタへ来る(Gmax綱渡り廃止)。 */pop.__wheelAccum=(pop.__wheelAccum||0)+ev.deltaY;
 const rowH=window.__tocRowH||24;const th=Math.max(8,rowH*0.5);const steps=Math.trunc(pop.__wheelAccum/th);if(steps!==0){pop.__wheelAccum-=steps*th;
 window.__setWheelActive((pop.__wheelIdx||0)+steps);}});
@@ -29270,7 +29270,7 @@ return {kind:'date',y:y,mo:mo,d:d};}}}return {kind:'search',q:s};}
 var _dwScope=document.getElementById('dw-scope');var _dwEdit=document.getElementById('dw-base-input');
 function _dwOpenDial(){if(!_dwScope)return;var _bd=fixedTocBody||document.getElementById('fixed-toc-body');var _bdr=_bd?_bd.getBoundingClientRect():_dwScope.getBoundingClientRect();
 var _tf=_bd?_bd.querySelector('.toc-field'):null;var _fl=_tf?_tf.getBoundingClientRect().left:_bdr.left;var _r=_dwScope.getBoundingClientRect();
-window.__tocChildAt={x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl};window.__tocChildOpen=true;
+window.__tocChildAt=(_bdr.width>0&&!_dwScope.closest('header'))?{x:_r.left+_r.width/2,y:_r.top+_r.height/2,boxLeft:_fl,boxWidth:_bdr.right-_fl}:{x:_r.right,y:_r.top+_r.height/2,openLeft:true};window.__tocChildOpen=true;/* ★v4.2.711(俊克 バグ2「Me Dockの幅を広げるとリストが遠くに出る」): H-TOC(ふだん閉)の枠を基準にしていた= 閉じていると左端0。Ⓣdayはヘッダーへ移った(v4.2.599)ので、ボタンの左隣に右端をそろえて出す */
 if(typeof hideTocTip==='function')hideTocTip();if(window.__dwSearch!=null){vscode.postMessage({type:'requestDiarySearch',
 q:window.__dwSearch});}else{vscode.postMessage({type:'requestDateDial',scope:_dwScopes[window.__dwScope],anchor:(window.__dwBaseDate||_dwToday())});
 }}
