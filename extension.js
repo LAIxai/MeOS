@@ -29133,6 +29133,7 @@ pop.__baseTop=top;pop.__shift=0;
       let left;if(at.under){left=at.x-28;/* v4.2.713: ポインターが行の頭(日付)の上に来る */}else if(at.boxLeft!=null){left=at.boxLeft;/* v2.0.15: 副メニュー=H-TOC項目と同じ左端(チェックボックス位置) */}else if(at.openLeft){left=at.x-popW+10;
 }else{left=at.x+6;if(left+popW>window.innerWidth-2)left=at.x-popW-6;}if(left+popW>window.innerWidth-2)left=window.innerWidth-popW-2;
 if(left<2)left=2;pop.style.left=left+'px';
+try{vscode.postMessage({type:'dockDbg',text:'dwList at='+JSON.stringify(at)+' left='+Math.round(left)+' top='+pop.style.top+' popW='+popW+' popH='+popH+' innerW='+window.innerWidth+' wheel='+wheel+' dial='+!!window.__tocChildDial+' lastPt='+JSON.stringify(window.__dwLastPt||null)+' now='+Date.now()});}catch(_){}/* v4.2.715 測る */
       if(!rows.length)return;
       const ci=(Number.isFinite(centerIndex)&&centerIndex>=0&&centerIndex<rows.length)?centerIndex:Math.floor(rows.length/2),
 center=rows[ci];
