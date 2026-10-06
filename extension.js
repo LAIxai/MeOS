@@ -27360,7 +27360,9 @@ input:focus{outline:2px solid var(--vscode-focusBorder,#3794ff)}
 .nav-btn{min-width:28px;padding-left:7px;padding-right:7px}
 .nav-btn:disabled{opacity:.35;cursor:default}
 .nav-center .toc-nav-row .warn-btn{margin-left:0;padding:1px 4px}.nav-center .toc-nav-row .fmt-btn.raw-toggle{margin-left:0;padding-left:6px;padding-right:6px}   /* v4.2.691: ⚠️ と 👁🥩 の左の余白(8px ずつ)を詰める= Warp の段に収まる */
-.nav-warp-grp{display:inline-flex;align-items:center;flex-wrap:nowrap;gap:5px}   /* v4.2.691: Warp〜↑↓・⚠️・👁🥩 は1つの塊= 段の途中で切れない(👁🥩 が3段目へ降りない) */
+.nav-warp-grp{display:inline-flex;align-items:center;flex-wrap:nowrap;gap:2px}.nav-center .toc-nav-row .warn-btn{padding:1px 2px}.nav-center .toc-nav-row .warn-btn .warn-n:empty{display:none}.nav-center .toc-nav-row .fmt-btn.raw-toggle{padding-left:4px;padding-right:4px;min-width:0}   /* v4.2.692(俊克 疑問1「⚠️とRawの間にまだ大きなスペース。Pseudoの時に右が切れる。左に寄せれば切れない」): 間を2px・⚠️の空の数札を消す・Rawの左右の余白を詰める */
+.nav-center .line-row .mark-nav{margin-left:auto!important}   /* v4.2.692(改良1「💬ボタンを右寄せにして、#ボタンと上下で揃う」) */
+@keyframes meosPseudoBreath{0%,100%{background:#1e4f8a;border-color:#16396b}50%{background:#3f7fd0;border-color:#2c63ad}}.fmt-btn.raw-toggle.read-on{animation:meosPseudoBreath 2.5s ease-in-out infinite}   /* v4.2.692(改良2「Pseudoモードの時、生にならないのを壊れたと勘違いする。Pseudoボタンをゆっくり点滅。2、3秒で1回」) */   /* v4.2.691: Warp〜↑↓・⚠️・👁🥩 は1つの塊= 段の途中で切れない(👁🥩 が3段目へ降りない) */
 .nav-row-break{flex-basis:100%;height:0}   /* v4.2.691(俊克「Warpの右に⚠️とRawを出す十分なスペースがあるのに、なぜRawが逃げてくるのか? 逃げなければ Line/枠/↑#↓ で固定できる」): 改行は 👁🥩 の後= 👁🥩 は Warp の段に残り、3段目は Line・枠・↑#↓ / v4.2.690 は前で改行して逆だった */
 .line-unit{display:inline-flex;align-items:center;gap:4px;margin-left:8px;flex:0 0 auto}.nav-center .line-unit .line-input{flex:none;width:72px}   /* ★v4.2.690(俊克「Line数の表示枠を1つ上の段へ。幅を最小にすると小さくなり過ぎる。Rawボタンは逃げてこないように」): Raw の右・#の左へ。枠は72px で固定 */
 .line-btn{min-width:44px}
