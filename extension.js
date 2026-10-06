@@ -7324,7 +7324,8 @@ async function referenceIssue(editor) {
 // 1クリック=グローバルF(最後に置いた/Switchした参照符)へ着地→符の上で再クリック=同名グループ
 // (参照膜名_TS完全一致)を巡回(末尾→先頭)。bookmarkCycle(v761)と同アルゴリズム。
 // F指定=mMETA随伴(ref.front={name,ord})・ordはグループ内文書順=行ズレに強い。
-async function referenceCycle(editor) {
+async function referenceCycle(editor, dir) { dir = dir < 0 ? -1 : 1;   // v4.2.702: Shift=前の符へ
+ 
   if (!editor) return;
   const doc = editor.document;
   const points = collectRefPoints(doc).filter(p => !p.disabled); // v0.9.99981: 無効化(▷◁)は巡回対象外
@@ -7350,7 +7351,7 @@ async function referenceCycle(editor) {
   if (!onPt) onPt = g2.find(p => p.line === curLine + 1);
   let target;
   if (onPt) {
-    target = g2[(g2.indexOf(onPt) + 1) % g2.length]; // 符の上(または直上行)→同グループの次へ巡回(末尾→先頭)
+    target = g2[(g2.indexOf(onPt) + dir + g2.length) % g2.length]; // 符の上(または直上行)→同グループの次へ巡回(末尾→先頭)
   } else {
     target = frontPt;                                 // 執筆中(符以外)→必ずFへ直行
   }
@@ -25208,7 +25209,8 @@ async function bookmarkSetFront(editor, line) {
   reapplyGutterLanesAfterBookmarkChange(editor); // setFront can add/evict a mark line
   vscode.window.setStatusBarMessage('🚩 Front Anchor set (Ln ' + (ln + 1) + ')', 1500);
 }
-async function bookmarkCycle(editor) { // v0.9.760: 1クリックで必ず最前線(Front Anchor)へ。既に最前線にいれば次の栞へ巡回。
+async function bookmarkCycle(editor, dir) { dir = dir < 0 ? -1 : 1;   // ★v4.2.702(俊克「基本的には、全てに逆回りを入れよう」): Shift=前の栞へ
+  // v0.9.760: 1クリックで必ず最前線(Front Anchor)へ。既に最前線にいれば次の栞へ巡回。
   if (!editor) return;
   const doc = editor.document, data = getBookmarks(doc);
   if (!data.marks.length) { await bookmarkSetFront(editor); return; } // v0.9.848: 未設定なら栞ボタンでその場にF栞を貼る(💤ボタンと操作の一貫性・俊克)
@@ -25219,13 +25221,13 @@ async function bookmarkCycle(editor) { // v0.9.760: 1クリックで必ず最前
   const frontIdx = (data.front >= 0) ? data.marks.indexOf(data.front) : -1;
   if (onMarkIdx >= 0) {
     // いずれかの栞の上に居る → 現在位置の次の栞へ巡回(末尾→先頭)。
-    data.cycleIdx = (onMarkIdx + 1) % data.marks.length;
+    data.cycleIdx = (onMarkIdx + dir + data.marks.length) % data.marks.length;
   } else if (frontIdx >= 0) {
     // 栞以外(執筆中)に居る → 必ず最前線へ直行。
     data.cycleIdx = frontIdx;
   } else {
     // 最前線未設定 かつ 栞以外 → 従来の巡回。
-    data.cycleIdx = (data.cycleIdx + 1) % data.marks.length;
+    data.cycleIdx = (data.cycleIdx + dir + data.marks.length) % data.marks.length;
   }
   // v0.9.853: 栞は"置いた位置ぴったり"に飛ぶだけに戻す(俊克自己訂正・私も指摘すべきだった)。v851/852で栞に
   // 膜の最終カーソル復元を入れたのは誤り: 2栞のうちF栞へ飛ぶと、そこが最終カーソルとして記録され、再クリックで
@@ -30563,7 +30565,7 @@ if(clkCaret&&clkPop){
     var _nl2=_v2.split(/\\n/).length,_fx2=window.__clkLineFx?window.__clkLineFx():[],_an2=[!!clkAnchor];for(var _bi=1;_bi<_nl2;_bi++)_an2.push(_fx2[_bi]?!!_fx2[_bi].a:!!clkAnchor);
     clkPresets[clkPresetSlot]={cyc:_v2,anchor:!!clkAnchor,noOrigin:!!window.__clkNoOrigin,anchors:_an2};clkPaintPreset();vscode.postMessage({type:'clockPresetSave',slot:clkPresetSlot,cyc:_v2,anchor:!!clkAnchor,noOrigin:!!window.__clkNoOrigin,anchors:_an2});clkFlash('Kept in preset '+(clkPresetSlot+1)+': '+_v2+(clkAnchor?' \u2693':''));return;}
    var _cur=clkPresets[clkPresetSlot]||{};
-   if(_cy3&&String(_cy3.value||'').trim()===String(_cur.cyc||'')&&clkRep){clkPresetSlot=(clkPresetSlot+1)%3;vscode.postMessage({type:'clockPresetSlot',slot:clkPresetSlot});}
+   if(_cy3&&String(_cy3.value||'').trim()===String(_cur.cyc||'')&&clkRep){clkPresetSlot=(clkPresetSlot+(ev.shiftKey?2:1))%3;/* v4.2.702: Shift=逆回り */vscode.postMessage({type:'clockPresetSlot',slot:clkPresetSlot});}
    clkApplyPreset();
    return;}
   if(_id==='clk-rep'){clkRep=!clkRep;clkPaintRep();clkTouch();clkPaintSet();
@@ -31191,12 +31193,12 @@ bmPendingBtn=document.getElementById('bm-pending-btn'),bmPendingMenuBtn=document
 refGroupList=document.getElementById('ref-group-list'),refModeToggleBtn=document.getElementById('ref-mode-toggle'),refSwitchFrontBtn=document.getElementById('ref-switch-front'),
 homeBtn=document.getElementById('home-btn'),homeMenuBtn=document.getElementById('home-menu-btn'),homePop=document.getElementById('home-pop'),
 homeSwitchBtn=document.getElementById('home-switch');
-if(bmPendingBtn)bmPendingBtn.addEventListener('click',(ev)=>{vscode.postMessage({type:(ev&&(ev.metaKey||ev.ctrlKey))?'referenceCmdJump':'referenceCycle'});
+if(bmPendingBtn)bmPendingBtn.addEventListener('click',(ev)=>{vscode.postMessage({type:(ev&&(ev.metaKey||ev.ctrlKey))?'referenceCmdJump':'referenceCycle',dir:(ev&&ev.shiftKey)?-1:1});/* v4.2.702: Shift=前の符へ */
 if(typeof hideTocTip==='function')hideTocTip();}); /* v0.9.99972(改良2 俊克): 統合参照ボタン=作業グループの巡回(読む)。v1.0.11: ⌘/Ctrl+クリック=Annotatedは注釈へ/Marks・Pendingは最前線Fへ即ジャンプ。表示記号はreferenceStateが更新・発行/選択は▾メニュー */
 // {* ▲mCN=dock_js_github *}
 // {* ▼mCN=dock_js_bookmark // 栞(🔖)と参照グループ(F)のボタン・プルアップ *}
 function closeBmPop(){if(bmPop)bmPop.classList.remove('on');}
-if(bmCycle)bmCycle.addEventListener('click',()=>{vscode.postMessage({type:'bookmarkCycle'});}); /* v0.9.849: 旧.zeroガードを撤去=栞未設定でもクリックを通し、バックエンドのbookmarkCycleが空時にF栞を貼る(俊克バグ報告) */
+if(bmCycle)bmCycle.addEventListener('click',(ev)=>{vscode.postMessage({type:'bookmarkCycle',dir:(ev&&ev.shiftKey)?-1:1});});/* v4.2.702: Shift=前の栞へ */ /* v0.9.849: 旧.zeroガードを撤去=栞未設定でもクリックを通し、バックエンドのbookmarkCycleが空時にF栞を貼る(俊克バグ報告) */
 if(bmMenuBtn)bmMenuBtn.addEventListener('click',ev=>{ev.preventDefault();const willOpen=!bmPop.classList.contains('on');
 bmPop.classList.toggle('on',willOpen);if(typeof hideTocTip==='function')hideTocTip();/* v1.0.26: メニュー開時にtip即消し */if(!willOpen)return;
 const r=bmMenuBtn.getBoundingClientRect();requestAnimationFrame(()=>{const h=bmPop.offsetHeight||60,w=bmPop.offsetWidth||140;
@@ -32966,10 +32968,10 @@ function toggleMeDock(editorOverride) {
       return;
     }
     // v0.9.715: 🔖 ブックマーク。cycle=巡回ジャンプ / insert=カーソル行に追加 / remove=カーソル行を削除。
-    if (message && message.type === 'bookmarkCycle') { await bookmarkCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }
+    if (message && message.type === 'bookmarkCycle') { await bookmarkCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor, Number(message.dir) < 0 ? -1 : 1); return; }
     if (message && message.type === 'homeJump') { await homeJump(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99975: Home栞
     if (message && message.type === 'homeSwitch') { await homeSwitch(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99975: Switch Home
-    if (message && message.type === 'referenceCycle') { await referenceCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99969: 参照ボタン=読む(巡回)
+    if (message && message.type === 'referenceCycle') { await referenceCycle(getMeDockTargetEditor() || vscode.window.activeTextEditor, Number(message.dir) < 0 ? -1 : 1); return; } // v0.9.99969: 参照ボタン=読む(巡回)
     if (message && message.type === 'referenceIssue') { await referenceIssue(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99972: ▾メニューの➕発行
     if (message && message.type === 'referenceSelectGroup') { await referenceSelectGroup(getMeDockTargetEditor() || vscode.window.activeTextEditor, message.name, !!message.pending); return; } // v0.9.99972: 作業グループ切替
     if (message && message.type === 'referenceSwitchFront') { await referenceSwitchFront(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; } // v0.9.99972: ▾メニューのSwitch Front
