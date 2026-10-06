@@ -29663,7 +29663,7 @@ if(window.__fmtActionable.strike){const r=window.__fmtRing.strike||0;
 window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;if(r===0){vscode.postMessage({type:'fmtCycle',kind:'strike',
 ring:0});}else{const baseW=window.__fmtBaseW.strike||2;const w=((baseW-1+r)%3)+1;const sp=fmtStSlots[w-1];window.__fmtBaseW.strike=w;
 window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;vscode.postMessage({type:'fmtCycle',kind:'strike',ring:w,fg:sp.fg,
-bg:sp.bg});window.__renderFmtRing('strike');}return;}vscode.postMessage({type:'insertFormat',kind:'strike',fg:fmtSpec.strike.fg,
+bg:sp.bg,ghost:(typeof fmtStGhostOn==='function')?fmtStGhostOn():false});/* v4.2.700: 外して付け直す時に👻かどうかも渡す */window.__renderFmtRing('strike');}return;}vscode.postMessage({type:'insertFormat',kind:'strike',fg:fmtSpec.strike.fg,
 bg:fmtSpec.strike.bg,ghost:fmtStGhostOn()});if((Number(document.body.dataset.phase||1))>=4){const _w=[1,2,3][fmtStIdx];window.__fmtActionable.strike=true;
 window.__fmtBaseW.strike=_w;window.__fmtRing.strike=0;window.__fmtWasDeco.strike=true;window.__fmtCyclingKind='strike';window.__fmtCyclingUntil=Date.now()+500;
 window.__renderFmtRing('strike');}});
@@ -30895,7 +30895,7 @@ _bgH=mtxHex(FMT_BG,mtxBg);/* v4.0.269(俊克 改良2): 文字色を選んでい�
 }mtxFace();
 /* v4.0.291→295: Optionの見張りは共通の fmtAltWatch へ(ボタンごとに持つのは「上に居るか」だけ)。 */
 mtxAltW=fmtAltWatch(fmtMetex,mtxFace);
-function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(ev){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex){vscode.postMessage({type:'fmtCycle',
+function closeMetexPop(){if(metexPop)metexPop.classList.remove('on');}if(fmtMetex)fmtMetex.addEventListener('click',function(ev){if((Number(document.body.dataset.phase||1))>=4&&window.__fmtActionable&&window.__fmtActionable.metex&&!(ev&&ev.altKey)){/* v4.2.700(俊克 バグ2「上付きを付けた後、Optでの下付きを追加できない」): 中に居てもOptの時は外さず、下付きを足す(A↑2→A↑2↓3) */vscode.postMessage({type:'fmtCycle',
 kind:'metex',ring:0});return;}vscode.postMessage({type:'insertMetex',sub:mtxSub||(!!(ev&&ev.altKey)&&!mtxNot),fg:mtxFg,bg:mtxBg,not:mtxNot,hat:mtxHat});});if(fmtMtxCycle)fmtMtxCycle.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();/* v4.0.266(俊克 8/19「Aの横でA↑ボタンを押せばA↑2になる。あとは、インライン編集で↓に直せばいいんだよ。これはまったく知らない人のためだね」): ↻は3つ巡り= A↑2 → not → â(帽子)。**A↓3はボタンから外した**=向きは書いた字が名乗る(↑を↓に直すのは1文字の編集)。 */if(mtxHat){mtxHat=false;mtxNot=false;mtxSub=false;}else if(mtxNot){mtxNot=false;mtxHat=true;}else{mtxNot=true;}mtxFace();if(typeof hideTocTip==='function')hideTocTip();});/* v4.0.38(俊克): 上付/下付の▾も他の兄弟と同じ共有パネル(fmt-pop)を開く。旧 #metex-pop は撤去。 */if(fmtMtxCaret){fmtMtxCaret.addEventListener('click',function(ev){ev.preventDefault();
 ev.stopPropagation();if(typeof hideTocTip==='function')hideTocTip();window.__fmtTipSuppress=true;if(fmtPop&&fmtPop.classList.contains('on')&&fmtPopKind==='metex'){closeFmtPop();
@@ -32858,6 +32858,16 @@ function toggleMeDock(editorOverride) {
       // ★★v4.2.699(俊克 バグ1「⛔をしないで切り替えると ** が増殖する。個数の解釈が破綻する」= `*************ハイライト*************` と FC が4枚):
       //   ↻での塗り替えは、元の印を外さずに外へもう1枚包んでいた。→ 俊克が手でしていた「⛔で外す→付け直す」を1回の中で行う
       //   (外してから、本文を選び、プリセットどおりに書く= 新しく付ける時と同じ口)。何度切り替えても印は1枚
+      // ★v4.2.700(俊克 バグ1「取消線は何度か繰り返すとFCが2つに増殖。今まで時々経験していた」): 取消線も同じ= 外してから付け直す
+      if (kind === 'strike' && ring > 0 && span) {
+        const ln = span.range.start.line, st = span.range.start.character, b0 = String(span.body || '').trim();
+        await removeFormatAtCursor(ed, span);
+        const ed2 = getMeDockTargetEditor() || vscode.window.activeTextEditor || ed;
+        try { const lt = ed2.document.lineAt(ln).text; const k0 = lt.indexOf(b0, Math.max(0, st - 3)); if (b0 && k0 >= 0) ed2.selection = new vscode.Selection(ln, k0, ln, k0 + b0.length); } catch (_) { }
+        meosDbg('[fmtRecolor] 取消線 外して付け直す body="' + b0.slice(0, 30) + '" (' + message.fg + '/' + message.bg + ') ghost=' + !!message.ghost);
+        await insertFormatTemplate('strike', ed2, message.fg, message.bg, undefined, { ghost: !!message.ghost });
+        return;
+      }
       if (kind === 'highlight' && ring > 0) {
         const cur = span || boldSpanAtCursor(ed);
         if (cur) {
