@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.676) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.690) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -179,7 +179,7 @@ function run(argv) {
       //   「:58」でなく「.58」のカワシマ式だから、分までの行と並べても桁が崩れず、色の付いた所だけが動く
       if (!e.pill && !e.sub && e.title && /^\u23f0/.test(e.title)) { try {
         let a;
-        if (/\u2693/.test(e.title) && mi.attributedTitle && mi.attributedTitle.length > 0) a = $.NSMutableAttributedString.alloc.initWithAttributedString(mi.attributedTitle);
+        if (/\u2693/.test(e.title) && mi.attributedTitle && mi.attributedTitle.length > 0) a = mi.attributedTitle.mutableCopy;   /* v4.2.690(俊克 バグ1「⚓指定のものが秒が赤くならない」): initWithAttributedString は JXA で使えず毎回エラー(握りつぶし)= ⚓ の行だけ色が付かなかった→ mutableCopy */
         else { a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(e.title)); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), $.NSMakeRange(0, a.length)); }
         const i = ObjC.unwrap(a.string).search(/\.\d{2}(?=\s{3})/);
         if (i >= 0) { const rs = $.NSMakeRange(i, 3); a.addAttributeValueRange($.NSForegroundColorAttributeName, $.NSColor.systemRedColor, rs);   /* v4.2.561(俊克「橙は文字色としては少し色が飛んでいる。赤色に」): ⚓ と同じ赤 */
