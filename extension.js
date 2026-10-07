@@ -32145,9 +32145,11 @@ document.addEventListener('pointermove',ev=>{if(press||!relXY)return;if(Math.abs
 /* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
 let __mdWT=null;window.addEventListener('resize',()=>{clearTimeout(__mdWT);__mdWT=setTimeout(()=>{try{vscode.postMessage({type:'dockWidthPx',w:Math.round(document.documentElement.getBoundingClientRect().width)});}catch(_){}},700);});
 const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
-function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;
+/* ★v4.2.735(俊克「どこでもOptを押すと緑×を出して、効かないボタンの上に移動すると無印に」): 地の上= 緑(キー配列の確かめにも)・Opt が効く部品= 緑・効かない部品(ボタン/tip の在る物/文字タイル)= 何も出さない(赤も隠す) */
+const BTN_SEL='button,a,input,select,textarea,[data-tip],[data-tip-html],.md-tile,.fmt-lvl,.fmt-caret,.meos-logo,[role=button]';
+function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false,btn=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;btn=!!v&&!!lastPt&&!!lastPt.t&&!!lastPt.t.closest&&!!lastPt.t.closest(BTN_SEL);
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
-document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
+const show=!!v&&!!lastPt&&(hit||!btn);document.body.classList.toggle('meos-optx',!!v);try{optx.w.classList.toggle('on',show);if(show)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);if(e.key==='Shift'||e.key==='Control'||e.key==='Meta')shiftOn(true,e.key);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);if(e.key==='Shift'||e.key==='Control'||e.key==='Meta')shiftOn(false,e.key);});window.addEventListener('blur',()=>{MODS.Shift=MODS.Control=MODS.Meta=false;modsShow();});
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
