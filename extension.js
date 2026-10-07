@@ -13401,6 +13401,19 @@ function meosHelperWrite(text, menu, owner, anchor) {
 //   macOS のログ= 「bootout initiated by: launchctl <- node <- zsh <- claude」= **私の検査(check_activate.js)が犯人**。
 //   検査は本物の Node で extension.js を起こす(activate)→ 設定は既定(常駐=切)→ 本物の launchctl で V-helper を降ろし、state.json に quit を書いていた。
 //   → VS Code の中(Electron)で動いている時だけ、launchd と V-helper の置き場所に触る。検査からは触らない。
+// ★v4.2.738(俊克 ②): ポインターが Me Dock の上に在る間だけ mods-want を置く→ V-helper が修飾キーを見て mods.json に書く→ Me Dock へ渡す
+let _meosModsWatch = null;
+function meosModsWant(on) {
+  if (!meosRealHost()) return;
+  try {
+    const fs = require('fs'), path = require('path'), dir = meosHelperDir(), want = path.join(dir, 'mods-want');
+    if (on) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(want, '1'); } else { try { fs.unlinkSync(want); } catch (_) { } }
+    if (on && !_meosModsWatch) {
+      _meosModsWatch = fs.watch(dir, (ev, name) => { if (name !== 'mods.json') return;
+        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m }); } catch (_) { } });
+    }
+  } catch (_) { }
+}
 function meosRealHost() { try { return !!(process.versions && process.versions.electron); } catch (_) { return false; } }
 function meosHelperEnsure() {
   if (!meosRealHost()) return;   // v4.2.519
@@ -32114,6 +32127,10 @@ const bal=mk('hp-balloon');const optx=mk('hp-optx');const shx=mk('hp-shiftx');le
 window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY,t:ev.target};optOn(ev.altKey);modsFrom(ev);},true);
 const BTN_SEL='button,a,input,select,textarea,[data-tip],[data-tip-html],.md-tile,.fmt-lvl,.fmt-caret,.meos-logo,[role=button],#iv-img';
 const MODS={Shift:false,Control:false,Meta:false};function shiftOn(v,k){MODS[k||'Shift']=!!v;modsShow();}
+/* ★v4.2.738(俊克 ②「V-helper に Mac のキーを見張らせる」): ポインターが Me Dock の上に在る間だけ見張りを頼む・知らせが来たら、動かさなくても色を替える */
+let __hov=false;function hoverSet(v){if(v===__hov)return;__hov=v;try{vscode.postMessage({type:'dockHover',on:v});}catch(_){}}
+document.addEventListener('pointermove',()=>hoverSet(true),true);document.documentElement.addEventListener('mouseleave',()=>hoverSet(false));
+window.addEventListener('message',ev=>{const m=ev.data;if(!m||m.type!=='mods'||!__hov)return;MODS.Shift=!!m.s;MODS.Control=!!m.c;MODS.Meta=!!m.m;modsShow();try{optOn(!!m.o);}catch(_){}});
 function modsFrom(ev){MODS.Shift=!!ev.shiftKey;MODS.Control=!!ev.ctrlKey;MODS.Meta=!!ev.metaKey;modsShow();}
 /* ★v4.2.736(俊克 改良2「Shiftで逆回りになるボタンでは青×のまま・そういう機能のないボタンでは無印」): Opt と同じ規則= 地の上と効く部品= 色の× / 効かない部品= 何も出さない */
 const MOD_SEL={shift:'#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img',ctrl:'#bm-pending-btn,#iv-img',cmd:'#bm-pending-btn,#iv-img'};
@@ -33162,6 +33179,7 @@ function toggleMeDock(editorOverride) {
       } catch (_) { }
       return;
     }
+    if (message && message.type === 'dockHover') { meosModsWant(!!message.on); return; }   // v4.2.738
     if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
     if (message && message.type === 'clkPanelOpen') {   // v4.2.393: ⏰▾ の設定の窓が開いている間だけ、カーソルの場所を判定して送る
       _meosClkPanelOpen = !!message.on; if (_meosClkPanelOpen) meosPostClkTarget(); return;
@@ -33893,6 +33911,7 @@ function toggleMeDock(editorOverride) {
   });
 
   meDockPanel.onDidDispose(() => {
+    try { meosModsWant(false); } catch (_) { }   // v4.2.738: Me Dock を閉じたら見張りも止める
     meDockPanel = undefined;
     // v0.9.376: manual close should not permanently block auto-show for this URI.
     meDockAutoLastUri = '';

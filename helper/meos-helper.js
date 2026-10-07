@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.690) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.738) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -400,14 +400,28 @@ function run(argv) {
   // ★v4.2.333(俊克 改良2「メニューを出しているとき、メニューバーの残時間が止まってしまう」): メニューを開いている間は macOS が
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
   ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} } },
+    'mods:': { types: ['void', ['id']], implementation: function (t) { try { modsTick(); } catch (e) {} } },
     'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) { playBell(); if (isGrowl() || isPurrF()) armGrowl(); } } catch (e) {} } } } });
   const ticker = $.MeOSTickH.alloc.init;
+  // ★v4.2.738(俊克「ポインターを動かさなくても、Shift などを押した瞬間に Me Dock の×の色を変えたい」= ②):
+  //   焦点が編集画面に在ると、キーは Me Dock に届かない。→ 拡張が mods-want を置いている間(ポインターが Me Dock の上)だけ、
+  //   0.1秒ごとに Mac の修飾キーの状態を見て、変わった時だけ mods.json に書く(拡張がそれを Me Dock へ渡す)。
+  let modsLast = -1;
+  const modsTick = () => {
+    if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
+    const f = Number($.NSEvent.modifierFlags) || 0;
+    const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0);
+    if (k === modsLast) return; modsLast = k;
+    try { $(JSON.stringify({ s: !!(k & 1), c: !!(k & 2), o: !!(k & 4), m: !!(k & 8), t: Date.now() })).writeToFileAtomicallyEncodingError(dir + '/mods.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+  };
+  const modsTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.1, ticker, 'mods:', $(), true);
+  $.NSRunLoop.currentRunLoop.addTimerForMode(modsTimer, $.NSRunLoopCommonModes);
   const timer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.5, ticker, 'tick:', $(), true);
   $.NSRunLoop.currentRunLoop.addTimerForMode(timer, $.NSRunLoopCommonModes);
   hlog('born pid=' + $.NSProcessInfo.processInfo.processIdentifier);
   try { step(); } catch (e) {}
   while (!quitNow) $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.5));
-  timer.invalidate;
+  timer.invalidate; modsTimer.invalidate;
   bar.removeStatusItem(item);
   return 'bye';
 }
