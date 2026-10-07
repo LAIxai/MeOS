@@ -27048,7 +27048,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .hp-red{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;display:none}
 .hp-red.on{display:block}
 .hp-red::before,.hp-red::after{content:'';position:absolute;background:#ff2a2a}
-.hp-red-x::before,.hp-red-x::after{left:-.5px;top:-7px;width:1px;height:14px}
+.hp-red-x::before,.hp-red-x::after{left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;box-shadow:0 0 0 .5px rgba(0,0,0,.55)}   /* v4.2.732: 緑の×と同じ太さ(1→2.5px) */
 .hp-red-x::before{transform:rotate(45deg)}
 .hp-red-x::after{transform:rotate(-45deg)}
 /* v4.2.577(俊克「ちょっと隠れて分かり難いので、赤×を22.5°傾けよう」): 22.5° の手の時は × を 22.5° 回す= 指の向き(右下へ 67.5°)から両腕が 45° ずつ離れる(指に隠れない)。緑の×も同じ */
@@ -27062,7 +27062,14 @@ body.meos-hand-m22 .hp-optx::after{transform:rotate(-62.5deg)}
 /* v4.2.564(俊克 改良1「Optを押したとき、ホットスポットの×あるいはデカイ十字を赤から緑に。パズルの中に入っても移動手に切り替わらない= クリックするのだから選択指のまま」) */
 /* v4.2.566(俊克「従来のOptクリック(Me Dock内の、ハイライトをリンク付きにする時など)も、Optを押している時に緑の×。OSポインターの時はデカイ十字架ではなく緑の小さい×」):
    Opt の間は Me Dock のどこでも当たりに緑の小さな ×(body 直下= マウスの物差しで置く・大きさはヘッダーと同じ zoom)。ヘッダーの赤い印はその間は隠す(二重に出さない) */
-body.meos-shift .hp-red::before,body.meos-shift .hp-red::after{background:#2a7bff}   /* v4.2.722(俊克「Shiftを押した時、赤×を青×に」) */
+/* v4.2.732(俊克「Shiftの青×をMe Dock全域に・見えにくいので黒い縁を・赤と青も緑の太さに」): Shift の間は Me Dock のどこでも青の太い×(緑の×と同じ作り)・ヘッダーの赤は隠す。Opt も押していれば緑が勝つ */
+body.meos-shift .hp-red{display:none!important}
+.hp-shiftx{position:absolute;left:0;top:0;width:0;height:0}
+.hp-float:not(.on)>.hp-shiftx{display:none}
+body.meos-optx .hp-shiftx{display:none}
+.hp-shiftx::before,.hp-shiftx::after{content:'';position:absolute;left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;background:#2f86ff;box-shadow:0 0 0 1px rgba(0,0,0,.85)}
+.hp-shiftx::before{transform:rotate(45deg)}.hp-shiftx::after{transform:rotate(-45deg)}
+body.meos-hand-m22 .hp-shiftx::before{transform:rotate(27.5deg)}body.meos-hand-m22 .hp-shiftx::after{transform:rotate(-62.5deg)}
 body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出している間だけ */
 .hp-optx{position:absolute;left:0;top:0;width:0;height:0}
 .hp-float:not(.on)>.hp-optx{display:none}
@@ -32098,8 +32105,9 @@ window.addEventListener('scroll',()=>{org=null;},true);window.addEventListener('
 function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,y:(ev.clientY-org.y)/z};}return hdrPtOld(ev);}
 function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
 while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)return null;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return e===hdr?{x:x,y:y}:null;}
-const bal=mk('hp-balloon');const optx=mk('hp-optx');let lastPt=null;/* v4.2.566: Opt の間の緑の × */
-window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY,t:ev.target};optOn(ev.altKey);},true);
+const bal=mk('hp-balloon');const optx=mk('hp-optx');const shx=mk('hp-shiftx');let lastPt=null;/* v4.2.566: Opt の間の緑の × */
+window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY,t:ev.target};optOn(ev.altKey);shiftOn(ev.shiftKey);},true);
+function shiftOn(v){v=!!v&&!!lastPt;document.body.classList.toggle('meos-shift',v);try{shx.w.classList.toggle('on',v);if(v)at(shx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.732: Shift の間= Me Dock のどこでも青の× */
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
 function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)break;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return {x:x,y:y,w:el.offsetWidth,h:el.offsetHeight};}
@@ -32133,12 +32141,12 @@ const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#r
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
-window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);if(e.key==='Shift')document.body.classList.add('meos-shift');});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);if(e.key==='Shift')document.body.classList.remove('meos-shift');});window.addEventListener('blur',()=>document.body.classList.remove('meos-shift'));
+window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);if(e.key==='Shift')shiftOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);if(e.key==='Shift')shiftOn(false);});window.addEventListener('blur',()=>shiftOn(false));
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
 return 'hand';}   /* v4.2.635: 手の駒の絵の上も選択指 */
 const HPT={hand:'17.5deg',palm:'15.5deg',grip:'6.5deg'};
-function moveRed(ev){optOn(ev.altKey);document.body.classList.toggle('meos-shift',!!ev.shiftKey);try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
+function moveRed(ev){optOn(ev.altKey);try{redC.style.setProperty('--hpt',HPT[handShape(ev)]);}catch(_){}const p=hdrPt(ev);if(!p)return;const on=p.x>=0&&p.y>=0&&p.x<=hdr.clientWidth&&p.y<=hdr.clientHeight;redC.classList.toggle('on',on);if(on){redC.style.left=p.x+'px';redC.style.top=p.y+'px';}}
 hdr.addEventListener('pointermove',moveRed);hdr.addEventListener('pointerdown',moveRed);
 hdr.addEventListener('pointerleave',()=>{if(!press)redC.classList.remove('on');});
 /* v4.2.527(俊克 バグ2「OSの橙がOの中心から大きく外れる」・改良2「OSの長い赤い+が見えない」): 手を替えてもページは読み直されず、ボタンの印(class)だけが替わる。
