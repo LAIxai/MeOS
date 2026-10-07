@@ -27084,7 +27084,7 @@ body.meos-optx .hp-shiftx{display:none}
 /* v4.2.734(俊克「Ctrlは何色?」「今、実装しよう。キー配列の確認用としてだけでも使い道はある」): Ctrl=紫・Cmd=黄(黒い縁)= 同じ札の色だけ替える。重なったら Ctrl > Cmd > Shift */
 .hp-shiftx.mx-ctrl{--mx:#c03cff}.hp-shiftx.mx-cmd{--mx:#ffd21f}
 /* v4.2.741(俊克 改良1「TRON配列用に左右Shiftで色を変えよう。水色と濃紺」): 左 Shift= 水色・右 Shift= 濃紺(暗い地で沈まないよう白い縁)。左右が分からない時(ポインタの知らせだけ)は前に分かった側 */
-.hp-shiftx{--mx:#4cc9ff}.hp-shiftx.mx-shr{--mx:#2b63e6}/* v4.2.746(俊克「右シフトの濃紺をもう少し明るい青に」): #1f3fa8→#2b63e6 *//* v4.2.747(俊克 改良1「明るい青なら、左シフトと同じ形に」): 太さ・黒い縁を左と同じに戻す(色だけ違う) */
+.hp-shiftx{--mx:#4cc9ff}.hp-shiftx.mx-shr{--mx:#3d85ff}/* v4.2.748(「もう少し明るい青に」): #2b63e6→#3d85ff *//* v4.2.746(俊克「右シフトの濃紺をもう少し明るい青に」): #1f3fa8→#2b63e6 *//* v4.2.747(俊克 改良1「明るい青なら、左シフトと同じ形に」): 太さ・黒い縁を左と同じに戻す(色だけ違う) */
 .hp-shiftx::before{transform:rotate(45deg)}.hp-shiftx::after{transform:rotate(-45deg)}
 body.meos-hand-m22 .hp-shiftx::before{transform:rotate(27.5deg)}body.meos-hand-m22 .hp-shiftx::after{transform:rotate(-62.5deg)}
 /* v4.2.733(俊克 改良1「OSのときの長い十字のときだけ、青色の長い十字に」): OS のポインタの時は赤い長い十字と同じ形(80)で青 */
