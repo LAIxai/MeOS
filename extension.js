@@ -27070,6 +27070,9 @@ body.meos-optx .hp-shiftx{display:none}
 .hp-shiftx::before,.hp-shiftx::after{content:'';position:absolute;left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;background:#2f86ff;box-shadow:0 0 0 1px rgba(0,0,0,.85)}
 .hp-shiftx::before{transform:rotate(45deg)}.hp-shiftx::after{transform:rotate(-45deg)}
 body.meos-hand-m22 .hp-shiftx::before{transform:rotate(27.5deg)}body.meos-hand-m22 .hp-shiftx::after{transform:rotate(-62.5deg)}
+/* v4.2.733(俊克 改良1「OSのときの長い十字のときだけ、青色の長い十字に」): OS のポインタの時は赤い長い十字と同じ形(80)で青 */
+body.meos-hand-sys .hp-shiftx::before{transform:none;left:-.75px;top:-40px;width:1.5px;height:80px;border-radius:0;box-shadow:0 0 0 .5px rgba(0,0,0,.8)}
+body.meos-hand-sys .hp-shiftx::after{transform:none;left:-40px;top:-.75px;width:80px;height:1.5px;border-radius:0;box-shadow:0 0 0 .5px rgba(0,0,0,.8)}
 body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出している間だけ */
 .hp-optx{position:absolute;left:0;top:0;width:0;height:0}
 .hp-float:not(.on)>.hp-optx{display:none}
@@ -32089,7 +32092,7 @@ function mk(cls){const w=document.createElement('div');w.className='hp-float';co
 const rbox=document.createElement('div');rbox.className='hp-redbox';const redC=document.createElement('div');redC.className='hp-red';
 /* v4.2.528(俊克「OSの移動手と握りは握る点が手に隠れる。橙+も赤+と同じ長さにしないと正確な位置決めができない」): OSの時だけ、橙の目印も同じ長さの十字線(ヘッダーの縁で切る) */
 const aimL=document.createElement('div');aimL.className='hp-aim-long';/* v4.2.584(俊克 バグ1「橙+が長く出てしまっている。ここは普通の長さ」): 赤だけ縁の外へ出す(v4.2.583)。橙は今までどおりヘッダーの縁で切る= 別の箱 */const abox=document.createElement('div');abox.className='hp-redbox hp-aimbox';abox.appendChild(aimL);hdr.appendChild(abox);rbox.appendChild(redC);hdr.appendChild(rbox);
-function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');redC.classList.toggle('hp-tilt',cur()==='macos22');document.body.classList.toggle('meos-hand-m22',cur()==='macos22');}
+function redKind(){redC.classList.toggle('hp-red-long',cur()==='system');redC.classList.toggle('hp-red-x',cur()!=='system');redC.classList.toggle('hp-tilt',cur()==='macos22');document.body.classList.toggle('meos-hand-m22',cur()==='macos22');document.body.classList.toggle('meos-hand-sys',cur()==='system');}
 /* v4.2.529(俊克「ヘッダー内のボタンで赤+がズレるものがある。なぜ一律に動作しないのか?」): 部品の offsetLeft を足す出し方は、
    ①transform で置いた部品(⊕/⊖・↻・ファイル名の右肩・パズルの字)を知らない ②字の中の絵文字(🎨/😸)のような inline の部品で offsetX の起点が食い違う ③段ごとに整数へ丸める(BTRONの角)。
    → 部品を見ない。ヘッダーの原点をマウスの物差しで1度掴み(ヘッダー自身かこの駒の上を通った時)、以後は (clientX−原点)÷zoom の1本で出す= どの部品の上でも同じ */
