@@ -2899,8 +2899,8 @@ function meosHandCursor() {
 // ★v4.2.118(俊克 2026.09.15 am10:52「tipを数行に縮めよう。そして、OSのところだけに表示することにしよう」):
 //   ★BTRON と macOS の時は、ボタンの絵が手そのもの= 読む物が無い。今の OS の手(字「OS」)の時だけ、何の手かを言う。
 const MEOS_HAND_TIP = 'Pointer hand | The hand of your OS, shown over things you can press. Click to switch: BTRON, macOS 22.5°, OS.';
-// ★v4.2.749(俊克「ポインターボタンのtipに ⌘Y-⌥G-⌃P(V) と書こう・tipの中の文字も色を・OSのtipだけでいい」): 修飾キーの色の覚え方を1行、その色で
-const MEOS_HAND_TIP_HTML = 'Pointer hand<br>The hand of your OS, shown over things you can press. Click to switch: BTRON, macOS 22.5°, OS.<br><span style="font-weight:800"><span style="color:#ffd21f">\u2318Y</span>-<span style="color:#18c94a">\u2325G</span>-<span style="color:#c03cff">\u2303P(V)</span></span>';
+// ★v4.2.749(俊克「ポインターボタンのtipに ⌘Y-⌥G-⌃P(V) と書こう・tipの中の文字も色を・OSのtipだけでいい」): 修飾キーの色の覚え方を1行、その色で(v4.2.750: tip の地は薄い灰= 黄が沈まないよう、ヒーロー画像と同じ細い黒の縁)
+const MEOS_HAND_TIP_HTML = 'Pointer hand<br>The hand of your OS, shown over things you can press. Click to switch: BTRON, macOS 22.5°, OS.<br><span style="font-weight:800;font-size:1.15em;-webkit-text-stroke:.5px #000"><span style="color:#ffd21f">\u2318Y</span>-<span style="color:#18c94a">\u2325G</span>-<span style="color:#c03cff">\u2303P(V)</span></span>';
 // ★★v4.2.131(俊克 2026.09.15 pm03:13「H-TOCをOSの手の平と握りで動くようにする。それをベースに、私がこの後描く、BTRON用、macOS用の手の絵を入れて、対応する」):
 //   ★実測(NSCursor・macOS 26.6.2): OSの手の平/握りの当たりは (16,17)=**手の平の真ん中**= 掴む物の真上に手が乗って隠す(指差しは人差指の先 13,8)。
 //   ★CSS の grab/grabbing は当たりを動かせない→ OS の手は「OSのまま」の見本に残す。BTRON/macOS は俊克の絵で当たりを人差指の先(手の平)・第二関節(握り)に置く。
