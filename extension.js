@@ -27086,6 +27086,9 @@ body.meos-optx .hp-shiftx{display:none}
 .hp-shiftx::before{transform:rotate(45deg)}.hp-shiftx::after{transform:rotate(-45deg)}
 body.meos-hand-m22 .hp-shiftx::before{transform:rotate(27.5deg)}body.meos-hand-m22 .hp-shiftx::after{transform:rotate(-62.5deg)}
 /* v4.2.733(俊克 改良1「OSのときの長い十字のときだけ、青色の長い十字に」): OS のポインタの時は赤い長い十字と同じ形(80)で青 */
+/* v4.2.740(俊克 バグ1「OS指定のとき、Opt押下時だけ緑×になっている。長い十字に」): v4.2.566 の「OS の時は緑の小さい×」を改め、緑も長い十字(青と同じ形) */
+body.meos-hand-sys .hp-optx::before{transform:none;left:-.75px;top:-40px;width:1.5px;height:80px;border-radius:0;box-shadow:0 0 0 .5px rgba(0,0,0,.8)}
+body.meos-hand-sys .hp-optx::after{transform:none;left:-40px;top:-.75px;width:80px;height:1.5px;border-radius:0;box-shadow:0 0 0 .5px rgba(0,0,0,.8)}
 body.meos-hand-sys .hp-shiftx::before{transform:none;left:-.75px;top:-40px;width:1.5px;height:80px;border-radius:0;box-shadow:0 0 0 .5px rgba(0,0,0,.8)}
 body.meos-hand-sys .hp-shiftx::after{transform:none;left:-40px;top:-.75px;width:80px;height:1.5px;border-radius:0;box-shadow:0 0 0 .5px rgba(0,0,0,.8)}
 body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出している間だけ */
