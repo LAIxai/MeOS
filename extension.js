@@ -13410,7 +13410,7 @@ function meosModsWant(on) {
     if (on) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(want, '1'); } else { try { fs.unlinkSync(want); } catch (_) { } }
     if (on && !_meosModsWatch) {
       _meosModsWatch = fs.watch(dir, (ev, name) => { if (name !== 'mods.json') return;
-        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m, sl: m.sl, sr: m.sr }); } catch (_) { } });
+        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); meosDbg('[mods] raw=' + m.raw + ' s=' + m.s + ' sl=' + m.sl + ' sr=' + m.sr); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m, sl: m.sl, sr: m.sr }); } catch (_) { } });
     }
   } catch (_) { }
 }

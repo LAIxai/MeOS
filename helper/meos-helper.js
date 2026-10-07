@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.741) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v4.2.742) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -10,6 +10,7 @@
 //   ★メニューバーの持ち主はこれ1つ= VSCodium が開いていても⏰は2つ並ばない。
 ObjC.import('Cocoa');
 ObjC.bindFunction('kill', ['int', ['int', 'int']]);
+ObjC.bindFunction('CGEventSourceFlagsState', ['unsigned long long', ['int']]);   // v4.2.742: 左右の区別まで入った修飾キーの状態(機械の状態= 1)
 function run(argv) {
   const dir = argv[0];
   const statePath = dir + '/state.json', clickPath = dir + '/click.json';
@@ -409,10 +410,10 @@ function run(argv) {
   let modsLast = -1;
   const modsTick = () => {
     if (!$.NSFileManager.defaultManager.fileExistsAtPath(dir + '/mods-want')) { modsLast = -1; return; }
-    const f = Number($.NSEvent.modifierFlags) || 0;
+    let f = 0; try { f = Number($.CGEventSourceFlagsState(1)) || 0; } catch (e) {} if (!f) f = Number($.NSEvent.modifierFlags) || 0;   // v4.2.742(俊克「エディタから入ると左右どちらも濃紺」): NSEvent は左右を返さない→ CG の機械の状態を先に
     const k = (f & 0x20000 ? 1 : 0) | (f & 0x40000 ? 2 : 0) | (f & 0x80000 ? 4 : 0) | (f & 0x100000 ? 8 : 0) | (f & 0x2 ? 16 : 0) | (f & 0x4 ? 32 : 0);   // v4.2.741: 左右の Shift(機械の左=0x2・右=0x4)
     if (k === modsLast) return; modsLast = k;
-    try { $(JSON.stringify({ s: !!(k & 1), c: !!(k & 2), o: !!(k & 4), m: !!(k & 8), sl: !!(k & 16), sr: !!(k & 32), t: Date.now() })).writeToFileAtomicallyEncodingError(dir + '/mods.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}
+    try { $(JSON.stringify({ s: !!(k & 1), c: !!(k & 2), o: !!(k & 4), m: !!(k & 8), sl: !!(k & 16), sr: !!(k & 32), raw: f.toString(16), t: Date.now() })).writeToFileAtomicallyEncodingError(dir + '/mods.json', true, $.NSUTF8StringEncoding, null); } catch (e) {}
   };
   const modsTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(0.1, ticker, 'mods:', $(), true);
   $.NSRunLoop.currentRunLoop.addTimerForMode(modsTimer, $.NSRunLoopCommonModes);
