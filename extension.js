@@ -27067,7 +27067,9 @@ body.meos-shift .hp-red{display:none!important}
 .hp-shiftx{position:absolute;left:0;top:0;width:0;height:0}
 .hp-float:not(.on)>.hp-shiftx{display:none}
 body.meos-optx .hp-shiftx{display:none}
-.hp-shiftx::before,.hp-shiftx::after{content:'';position:absolute;left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;background:#2f86ff;box-shadow:0 0 0 1px rgba(0,0,0,.85)}
+.hp-shiftx::before,.hp-shiftx::after{content:'';position:absolute;left:-1.25px;top:-7px;width:2.5px;height:14px;border-radius:1px;background:var(--mx,#2f86ff);box-shadow:0 0 0 1px rgba(0,0,0,.85)}
+/* v4.2.734(俊克「Ctrlは何色?」「今、実装しよう。キー配列の確認用としてだけでも使い道はある」): Ctrl=紫・Cmd=黄(黒い縁)= 同じ札の色だけ替える。重なったら Ctrl > Cmd > Shift */
+.hp-shiftx.mx-ctrl{--mx:#c03cff}.hp-shiftx.mx-cmd{--mx:#ffd21f}
 .hp-shiftx::before{transform:rotate(45deg)}.hp-shiftx::after{transform:rotate(-45deg)}
 body.meos-hand-m22 .hp-shiftx::before{transform:rotate(27.5deg)}body.meos-hand-m22 .hp-shiftx::after{transform:rotate(-62.5deg)}
 /* v4.2.733(俊克 改良1「OSのときの長い十字のときだけ、青色の長い十字に」): OS のポインタの時は赤い長い十字と同じ形(80)で青 */
@@ -32109,8 +32111,10 @@ function hdrPt(ev){calib(ev);if(org){const z=Z();return {x:(ev.clientX-org.x)/z,
 function hdrPtOld(ev){let e=ev.target;if(!(e instanceof HTMLElement))return null;const z=Z();let x=(ev.offsetX||0)/z+(e!==hdr?(e.clientLeft||0):0),y=(ev.offsetY||0)/z+(e!==hdr?(e.clientTop||0):0);
 while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)return null;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return e===hdr?{x:x,y:y}:null;}
 const bal=mk('hp-balloon');const optx=mk('hp-optx');const shx=mk('hp-shiftx');let lastPt=null;/* v4.2.566: Opt の間の緑の × */
-window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY,t:ev.target};optOn(ev.altKey);shiftOn(ev.shiftKey);},true);
-function shiftOn(v){v=!!v&&!!lastPt;document.body.classList.toggle('meos-shift',v);try{shx.w.classList.toggle('on',v);if(v)at(shx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.732: Shift の間= Me Dock のどこでも青の× */
+window.addEventListener('pointermove',ev=>{lastPt={x:ev.clientX,y:ev.clientY,t:ev.target};optOn(ev.altKey);modsFrom(ev);},true);
+const MODS={Shift:false,Control:false,Meta:false};function shiftOn(v,k){MODS[k||'Shift']=!!v;modsShow();}
+function modsFrom(ev){MODS.Shift=!!ev.shiftKey;MODS.Control=!!ev.ctrlKey;MODS.Meta=!!ev.metaKey;modsShow();}
+function modsShow(){const k=MODS.Control?'ctrl':(MODS.Meta?'cmd':(MODS.Shift?'shift':''));const v=!!k&&!!lastPt;document.body.classList.toggle('meos-shift',v);try{shx.c.classList.toggle('mx-ctrl',k==='ctrl');shx.c.classList.toggle('mx-cmd',k==='cmd');shx.w.classList.toggle('on',v);if(v)at(shx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.732: Shift の間= Me Dock のどこでも青の× */
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
 function boxOf(el){let x=0,y=0,e=el;while(e&&e!==hdr){x+=e.offsetLeft;y+=e.offsetTop;const q=e.offsetParent;if(!q)break;if(q!==hdr){x+=q.clientLeft||0;y+=q.clientTop||0;}e=q;}return {x:x,y:y,w:el.offsetWidth,h:el.offsetHeight};}
@@ -32144,7 +32148,7 @@ const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#r
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 document.body.classList.toggle('meos-optx',hit);try{optx.w.classList.toggle('on',hit);if(hit)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
-window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);if(e.key==='Shift')shiftOn(true);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);if(e.key==='Shift')shiftOn(false);});window.addEventListener('blur',()=>shiftOn(false));
+window.addEventListener('keydown',e=>{if(e.key==='Alt')optOn(true);if(e.key==='Shift'||e.key==='Control'||e.key==='Meta')shiftOn(true,e.key);});window.addEventListener('keyup',e=>{if(e.key==='Alt')optOn(false);if(e.key==='Shift'||e.key==='Control'||e.key==='Meta')shiftOn(false,e.key);});window.addEventListener('blur',()=>{MODS.Shift=MODS.Control=MODS.Meta=false;modsShow();});
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
 return 'hand';}   /* v4.2.635: 手の駒の絵の上も選択指 */
