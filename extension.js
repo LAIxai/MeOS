@@ -13410,7 +13410,7 @@ function meosModsWant(on) {
     if (on) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(want, '1'); } else { try { fs.unlinkSync(want); } catch (_) { } }
     if (on && !_meosModsWatch) {
       _meosModsWatch = fs.watch(dir, (ev, name) => { if (name !== 'mods.json') return;
-        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); meosDbg('[mods] raw=' + m.raw + ' s=' + m.s + ' sl=' + m.sl + ' sr=' + m.sr); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m, sl: m.sl, sr: m.sr }); } catch (_) { } });
+        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m, sl: m.sl, sr: m.sr }); } catch (_) { } });
     }
   } catch (_) { }
 }
@@ -32138,9 +32138,7 @@ function modsSet(st){for(const k of ['Shift','Control','Meta','Alt']){const on=!
 /* ★v4.2.738(俊克 ②「V-helper に Mac のキーを見張らせる」): ポインターが Me Dock の上に在る間だけ見張りを頼む・知らせが来たら、動かさなくても色を替える */
 let __hov=false;function hoverSet(v){if(v===__hov)return;__hov=v;try{vscode.postMessage({type:'dockHover',on:v});}catch(_){}}
 document.addEventListener('pointermove',()=>hoverSet(true),true);document.documentElement.addEventListener('mouseleave',()=>hoverSet(false));
-function mdbg(t){try{vscode.postMessage({type:'dockDbg',text:'modsW '+t+' hov='+__hov+' MORD='+MORD.join('+')+' side='+SSIDE+' shown='+shx.w.classList.contains('on')+' under='+(lastPt&&lastPt.t?(lastPt.t.id||String(lastPt.t.className||lastPt.t.tagName).slice(0,30)):'none')});}catch(_){}}/* v4.2.743 測る(俊克「左+右→右だけにしても赤のまま」) */
-document.documentElement.addEventListener('mouseleave',()=>mdbg('leave'));
-window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='mods')setTimeout(()=>mdbg('msg s='+m.s+' sl='+m.sl+' sr='+m.sr+' c='+m.c),0);if(!m||m.type!=='mods'||!__hov)return;if(m.sl!==undefined){sideSet(!!m.sl,!!m.sr,__sl,__sr);__sl=!!m.sl;__sr=!!m.sr;}modsSet({Shift:m.s,Control:m.c,Meta:m.m,Alt:m.o});});
+window.addEventListener('message',ev=>{const m=ev.data;if(!m||m.type!=='mods'||!__hov)return;if(m.sl!==undefined){sideSet(!!m.sl,!!m.sr,__sl,__sr);__sl=!!m.sl;__sr=!!m.sr;}modsSet({Shift:m.s,Control:m.c,Meta:m.m,Alt:m.o});});
 function modsFrom(ev){modsSet({Shift:ev.shiftKey,Control:ev.ctrlKey,Meta:ev.metaKey,Alt:ev.altKey});}
 /* ★v4.2.736(俊克 改良2「Shiftで逆回りになるボタンでは青×のまま・そういう機能のないボタンでは無印」): Opt と同じ規則= 地の上と効く部品= 色の× / 効かない部品= 何も出さない */
 const MOD_SEL={shift:'#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img',ctrl:'#bm-pending-btn,#iv-img',cmd:'#bm-pending-btn,#iv-img'};
@@ -32180,7 +32178,7 @@ function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false,b
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
 const show=!!v&&!!lastPt&&(hit||!btn);document.body.classList.toggle('meos-optx',!!v);try{optx.w.classList.toggle('on',show);if(show)at(optx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.564: Opt を押している間= 緑の当たり・選択指 */
 /* v4.2.736(俊克 改良1「ポインターを動かさなくても、cmdを押せば直ぐに黄色に」): キーは先取り(capture)で聞く= 途中で止められても届く・押したキーの名前でなく、その時の修飾キーの状態全体から決める */
-const MODK=['Shift','Control','Meta','Alt'];function modsKey(e,down){if(MODK.indexOf(e.key)<0)return;setTimeout(()=>mdbg('key '+(down?'down ':'up ')+e.code),0);if(e.key==='Shift'){if(e.code==='ShiftRight'){if(down)SSIDE='R';__sr=down;}else{if(down)SSIDE='L';__sl=down;}if(!down){if(__sr&&!__sl)SSIDE='R';else if(__sl&&!__sr)SSIDE='L';}}const st={Shift:e.shiftKey,Control:e.ctrlKey,Meta:e.metaKey,Alt:e.altKey};st[e.key]=down;modsSet(st);}
+const MODK=['Shift','Control','Meta','Alt'];function modsKey(e,down){if(MODK.indexOf(e.key)<0)return;if(e.key==='Shift'){if(e.code==='ShiftRight'){if(down)SSIDE='R';__sr=down;}else{if(down)SSIDE='L';__sl=down;}if(!down){if(__sr&&!__sl)SSIDE='R';else if(__sl&&!__sr)SSIDE='L';}}const st={Shift:e.shiftKey,Control:e.ctrlKey,Meta:e.metaKey,Alt:e.altKey};st[e.key]=down;modsSet(st);}
 window.addEventListener('keydown',e=>modsKey(e,true),true);window.addEventListener('keyup',e=>modsKey(e,false),true);window.addEventListener('blur',()=>modsSet({}));
 /* v4.2.581: 今出ている手の形= 握っている間は握り / 押している間か、手の平の部品(文字タイル・手の駒の絵)の上は移動手(Opt の間のタイルは選択指) / ほかは選択指 */
 function handShape(ev){const b=document.body.classList;if(b.contains('meos-gripping'))return 'grip';if(b.contains('meos-palming'))return 'palm';
