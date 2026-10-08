@@ -83,9 +83,10 @@ function makeEditor(visibleRanges, curLine) {
       for (const r of ranges) {
         const ro = r && r.renderOptions;
         const b = ro && ro.before && ro.before.contentText;
-        if (typeof b === 'string' && /[▼▲]/.test(b)) ed.__labels.push({ line: r.range.start.line, ch: r.range.start.character, text: b });
         const a = ro && ro.after && ro.after.contentText;
-        if (typeof a === 'string' && a.trim()) ed.__after.push({ line: r.range.start.line, text: a.trim() });
+        // v4.2.763: 畳んだ頭は1つの飾りの before(▼)+after(▲)= 画面では ▼▲
+        if (typeof b === 'string' && /[▼▲]/.test(b)) ed.__labels.push({ line: r.range.start.line, ch: r.range.start.character, text: b + ((b === '▼' && a === '▲') ? '▲' : '') });
+        if (typeof a === 'string' && a.trim() && !(b === '▼' && a === '▲')) ed.__after.push({ line: r.range.start.line, text: a.trim() });
       }
     },
   };
@@ -96,7 +97,6 @@ function openGlyphAt(ed, line) {
   ed.__labels.length = 0; ed.__after.length = 0;
   T.applyPrettyLabels(ed);
   const hit = ed.__labels.filter(l => l.line === line).map(l => l.text);
-  if (hit.length === 2 && hit[0] === '▼' && hit[1] === '▲') return '▼▲';   // v4.2.762: 畳んだ頭は ▼ と ▲ の2つの飾り(隣り合う桁)= 画面では ▼▲
   return hit.length ? hit.join('|') : '(無し)';
 }
 function afterAt(ed, line) {

@@ -8644,11 +8644,13 @@ function applyPrettyLabels(editor) {
       const _swapNow = !!_twoTone && meosFoldSwapIs(editor.document, line);   // v4.2.758: ▼ の上に止まっている間は入れ替え
       // ★★v4.2.762(俊克 761テスト 改良1「右の▲の範囲は膜名の1文字目になっているよ」): ▼▲を1つの飾りにすると、tipを訊く場所は絵のどこでも同じ1か所(桁 idStart-1)。
       //   → ▼ と ▲ を別の桁に立てた2つの飾りにする(▼= idStart-1 / ▲= idStart)。訊かれる桁が分かれ、色も飾りごとに付く(塗り分けの仕掛けは要らない)。
-      if (_twoTone && parts.idStart >= 1) {
-        openLabels.push({ range: new vscode.Range(line, parts.idStart - 1, line, parts.idStart - 1),
-          renderOptions: { before: { contentText: '\u25bc', color: _swapNow ? _twoTone : labelColor, fontWeight: labelWeight } } });
+      // ★★v4.2.763(俊克 762テスト バグ1「▲ボタンしか見えなくなってしまった」): idStart-1 は殻を隠す範囲の内側= そこに立てた ▼ も一緒に隠れた。
+      //   → 同じ桁(idStart= 隠す範囲の外)に、1つの飾りの before(▼)と after(▲)で立てる。順は before→after で決まる(2つの飾りを同じ桁に置くと順が決まらない)。
+      if (_twoTone) {
         openLabels.push({ range: new vscode.Range(line, parts.idStart, line, parts.idStart),
-          renderOptions: { before: { contentText: '\u25b2', color: _swapNow ? labelColor : _twoTone, fontWeight: labelWeight, margin: '0 3px 0 0' } } });
+          renderOptions: {
+            before: { contentText: '\u25bc', color: _swapNow ? _twoTone : labelColor, fontWeight: labelWeight },
+            after: { contentText: '\u25b2', color: _swapNow ? labelColor : _twoTone, fontWeight: labelWeight, margin: '0 3px 0 0' } } });
       } else
       openLabels.push({
         range: new vscode.Range(line, parts.idStart, line, parts.idStart),
@@ -20255,7 +20257,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
   try {
     const _ch = editor.selection.active.character;
     // v4.2.762: ▼(idStart-1)と▲(idStart)は別の飾り= 左半分は1字前へ丸まる。▼の右半分と▲の左半分は同じ桁 idStart-1 に落ちる→ そこだけは最後に止まった側で決める
-    const _half = (_ch >= info.idStart) ? '\u25b2' : (_ch <= info.idStart - 2 ? '\u25bc' : (meosFoldHalfGet(editor.document, info.line) || '\u25bc'));
+    const _half = (_ch >= info.idStart) ? '\u25b2' : '\u25bc';   // v4.2.763: 1つの飾り(▼=before/▲=after)に戻した= 761 と同じ規則(実測: ▼=idStart-1 / ▲=idStart)
     _byClose = _wasFolded ? (info.kind === 'open' && _half === '\u25b2') : (info.kind === 'close');
     const _vr = editor.visibleRanges || [];
     if (_vr.length) _topBefore = _vr[0].start.line;
@@ -34438,8 +34440,8 @@ function membraneArrowHoverMessageInner(editor, position, swapAt) {
     const _folded = (info.kind === 'open' && _pair) ? isPairFolded(editor, _pair) : false;
     const _isToc = !!(_pair && isWorkingTocMembranePair(_pair, editor.document));
     if (info.kind === 'open' && _folded && !_isToc) {   // v4.2.758: 畳んだ ▼▲ は tip を出さず、▼ の上なら色を入れ替える
-      swapAt(info.line, position.character < info.idStart - 1 ? '\u25bc' : '\u25b2');   // v4.2.762: ▼の飾りは idStart-1 に立つ= 訊かれるのは idStart-2 以下
-      meosDbg('[foldHover] line=' + info.line + ' ch=' + position.character + ' idStart=' + info.idStart + ' half=' + (position.character < info.idStart - 1 ? '\u25bc' : '\u25b2'));   // v4.2.760: ▼と▲で訊かれる桁が分かれているかを測る
+      swapAt(info.line, position.character < info.idStart ? '\u25bc' : '\u25b2');   // v4.2.763: ▼(before)は idStart-1 で、▲(after)は idStart で訊かれる見込み
+      meosDbg('[foldHover] line=' + info.line + ' ch=' + position.character + ' idStart=' + info.idStart + ' half=' + (position.character < info.idStart ? '\u25bc' : '\u25b2'));   // v4.2.760: ▼と▲で訊かれる桁が分かれているかを測る
       return '';   // 空= ここで打ち切る(下の画像tipを出させない)
     }
     return 'Toggle ' + meosMembraneGlyph(info.kind, _folded, _isToc) + '-Button!';
