@@ -8649,7 +8649,8 @@ function applyPrettyLabels(editor) {
       if (_twoTone) {
         openLabels.push({ range: new vscode.Range(line, parts.idStart, line, parts.idStart),
           renderOptions: {
-            before: { contentText: '\u25bc', color: _swapNow ? _twoTone : labelColor, fontWeight: labelWeight },
+            // v4.2.764(俊克 763テスト 改良1「▼▲の中間地点がお互いに被っているように見えて、左右のポインター移動が近過ぎる…半角スペース1つでは離れ過ぎ・わずかに離す= 緩衝地帯」): ▼の右に 0.25ch
+            before: { contentText: '\u25bc', color: _swapNow ? _twoTone : labelColor, fontWeight: labelWeight, margin: '0 0.25ch 0 0' },
             after: { contentText: '\u25b2', color: _swapNow ? labelColor : _twoTone, fontWeight: labelWeight, margin: '0 3px 0 0' } } });
       } else
       openLabels.push({
