@@ -44,7 +44,7 @@ const origLoad = Module._load;
 Module._load = function (r) { if (r === 'vscode') return stub; return origLoad.apply(this, arguments); };
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_fold_' + process.pid + '.js');
-fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, meosArrowPressBlocked, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles, meosReadableInkFor, membraneCssColorForCode };\n', 'utf8');
+fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + '\nmodule.exports.__t = { __clearNoRaw: () => { _refNoRawLine = -1; _refNoRawUri = String(); _refNoRawPrevLine = -1; _refNoRawPrevUri = String(); }, applyPrettyLabels, makeDecorations, collectPairs, isPairFolded, meosViewportFoldFactAt, meosMembraneNameEditFor, membraneNameRangeForRenameOnLine, meosCaretEscapeLineForFolds, meosPairBadgeAt, desiredMstatForFoldState, meosArrowHitAt, meosArrowPressBlocked, membraneArrowHoverMessage, meosMembraneGlyph, setRefNoRaw, meosStampSegments, meosApplyNameStampDecorations, meosVisStampSegments, meosRangesExcludingStamps, meosRawLineRoles, meosReadableInkFor, membraneCssColorForCode };\n', 'utf8');
 let T; try { T = require(TMP).__t; } finally { try { fs.unlinkSync(TMP); } catch (_) { } }
 try { T.makeDecorations(); } catch (_) { }
 
@@ -403,6 +403,7 @@ console.log('\u246f コメント化した膜の ▼ はボタンではない');
   ok(!!T.meosArrowHitAt(doc, OPEN_LINE, idStart), '\u2605桁の当たりは ▼ 〜膜名の直前(v4.0.359の広い当たり)', !!T.meosArrowHitAt(doc, OPEN_LINE, idStart));
   ok(!!T.meosArrowHitAt(doc, OPEN_LINE, glyph), '\u2605 ▼ の字の上も当たり', !!T.meosArrowHitAt(doc, OPEN_LINE, glyph));
   ok(T.meosArrowPressBlocked(on, OPEN_LINE, 9) === false, '\u2605\u2605\u2605外からの1回目のクリックは押せる(飾りの上に落ちた)', T.meosArrowPressBlocked(on, OPEN_LINE, 9));
+  T.__clearNoRaw();   // v4.2.759: 前の項目で張った「押した直後の抑止」とその控えを消してから訊く(人が字を直しに来た場面)
   ok(T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE) === true, '\u2605\u2605\u2605既にその行に居た2回目は押せない(字を直しに来た)', T.meosArrowPressBlocked(on, OPEN_LINE, OPEN_LINE));
   ok(T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)) === null, '\u2605\u2605生データの行に tip を出さない(押せない物に「押せ」と言わない)', T.membraneArrowHoverMessage(on, new stub.Position(OPEN_LINE, glyph)));
   ok(!!T.membraneArrowHoverMessage(away, new stub.Position(OPEN_LINE, idStart)), '\u2605飾りの行には tip を出す', !!T.membraneArrowHoverMessage(away, new stub.Position(OPEN_LINE, idStart)));
