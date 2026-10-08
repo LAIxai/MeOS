@@ -31206,11 +31206,15 @@ const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.act
      (箱は次にポインターが動いた時に data-tip を読み直す)。→ 出ている箱そのものを Copied(緑)にする。出ていなければ、押した物の上に出す。 */
 function meosTipCopied(el){try{var tt=document.getElementById('toc-tooltip');if(!tt||!el)return;
 tt.textContent='Copied';tt.classList.add('tip-copied');
-if(tt.style.display!=='block'){tt.style.display='block';
+/* ★v4.2.768(俊克 767テスト「直ってないよ。なぜ?」＋ [dock] tip2 の実測= 版の tip は出ていた(L=86 tw=256)):
+   ★真因= 箱はポインターから左へ伸びる= 長い文(幅256)の時の左端(86)のまま字だけ Copied に縮めた→ 遠く左に残った。出ていない時の控えは通っていなかった。
+   ★→ 字を替えたら、出ていても出ていなくても、必ず普段の口で置き直す(幅は今の字で測り直される) */
+{tt.style.display='block';
 /* v4.2.767(俊克 766テスト バグ1「verの方のCopiedがとんでもなく離れた位置に表示される」): Me Dock は zoom で拡大= 部品の四角(getBoundingClientRect)と箱を置く物差しが違う
    (→ reference_medock_clientx_vs_rect)。普段の tip と同じ口(meosPlaceTipAtPointer)に、最後のポインターの動きを渡して置く。 */
 var lp=window.__meosLastPtr;if(lp&&typeof meosPlaceTipAtPointer==='function'){meosPlaceTipAtPointer(lp);}
 else{var r=el.getBoundingClientRect();tt.style.left='auto';tt.style.right=Math.max(2,window.innerWidth-r.right)+'px';tt.style.top=Math.max(2,r.top-26)+'px';}}
+try{vscode.postMessage({type:'dockDbg',text:'copied '+(el.id||el.className)+' lp='+(lp?(lp.clientX+','+lp.clientY):'none')+' L='+tt.style.left+' R='+tt.style.right+' T='+tt.style.top+' tw='+tt.offsetWidth});}catch(_){}
 clearTimeout(window.__meosCopiedTm);window.__meosCopiedTm=setTimeout(function(){tt.classList.remove('tip-copied');if(tt.textContent==='Copied')tt.style.display='none';},1500);}catch(_){}}
 window.meosTipCopied=meosTipCopied;document.addEventListener('pointermove',function(e){window.__meosLastPtr=e;},true);
 {const _vc=document.getElementById('title-ver-copy');if(_vc)_vc.addEventListener('click',function(){try{vscode.postMessage({type:'copyVersion'});}catch(_e){}});}/* v4.2.765: 版をクリック= 版とキーワードを写す */
