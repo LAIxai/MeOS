@@ -27301,6 +27301,7 @@ body.meos-optx .hp-red{display:none!important}   /* v4.2.567: 緑の × を出�
 .title-file-ud .ud-copy:hover{background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
 .title-ver.ver-copy{cursor:var(--meos-hand);border-radius:3px;padding:0 2px}
 .title-ver.ver-copy:hover{opacity:.9;background:var(--vscode-toolbar-hoverBackground,rgba(128,128,128,.18))}
+.toc-tooltip.tip-copied{background:#3fb950!important;color:#0b0f0c!important;border-color:#3fb950!important;font-weight:800}
 .title-ver.ver-copy.ver-copied::after{background:#3fb950;color:#0b0f0c;border-color:#3fb950;font-weight:800}
 .title-file:hover .title-file-caret{opacity:1}
 .title-file-caret{background:#fff;color:#333;opacity:1;padding:1px 4px;border-radius:0 5px 5px 0;margin:-1px -4px -1px 0;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--meos-frame)}   /* v4.2.666(俊克「ファイル名の▼ボタンの左端の角が直角になってない」): Format Me の ▾ と同じ割りボタン= 左は直角・右端に貼り付く */.title-file-caret:hover{background:#ffe9c7}   /* v4.2.662: ファイル名の▾も白地 */
@@ -31200,6 +31201,14 @@ try{/* ★★v4.2.465(俊克「Navigate Meも固定したい。MepyによるAdd 
 const hLab=document.getElementById('htoc-lab'),hN=document.getElementById('htoc-n'),hAr=document.getElementById('htoc-arrow');
 const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.active');const nm=at?String(at.textContent||'').replace(/[\u25be\u25b4]/g,'').trim():'';if(hLab)hLab.textContent=nm||'Hyper TOC';const n=document.querySelectorAll('#fixed-toc-body .toc-check:not(:checked)').length;if(hN)hN.textContent=n?String(n):'';if(hAr&&ft)hAr.textContent=ft.classList.contains('htoc-closed')?'\u25be':'\u25b4';}catch(e){}};
 {/* ★v4.2.680(改良2・3): 描かれた位置を測ってくっつける(Me Dock は縮尺があり、CSS の数字では合わない)。物差し= その部品の四角÷その部品の CSS の高さ */
+/* ★v4.2.766(俊克 765テスト バグ1「copiedと言う表示が出ない。更新日のところをコピーするほうも出なくなっている」):
+   ★真因= tip は今 JS の箱(#toc-tooltip)が出している(CSS の ::after ではない)。data-tip を Copied に替えても、出ている箱の字は替わらない
+     (箱は次にポインターが動いた時に data-tip を読み直す)。→ 出ている箱そのものを Copied(緑)にする。出ていなければ、押した物の上に出す。 */
+function meosTipCopied(el){try{var tt=document.getElementById('toc-tooltip');if(!tt||!el)return;
+tt.textContent='Copied';tt.classList.add('tip-copied');
+if(tt.style.display!=='block'){var r=el.getBoundingClientRect();tt.style.display='block';tt.style.left='auto';tt.style.right=Math.max(2,window.innerWidth-r.right)+'px';tt.style.top=Math.max(2,r.top-26)+'px';}
+clearTimeout(window.__meosCopiedTm);window.__meosCopiedTm=setTimeout(function(){tt.classList.remove('tip-copied');if(tt.textContent==='Copied')tt.style.display='none';},1500);}catch(_){}}
+window.meosTipCopied=meosTipCopied;
 {const _vc=document.getElementById('title-ver-copy');if(_vc)_vc.addEventListener('click',function(){try{vscode.postMessage({type:'copyVersion'});}catch(_e){}});}/* v4.2.765: 版をクリック= 版とキーワードを写す */
 const hd=document.querySelector('header.title'),tg0=document.getElementById('hidx-toggle'),hx0=document.getElementById('hidx-box');
 window.__hxPlace=function(){try{if(!hd||!tg0)return;/* ★v4.2.706(俊克「ボタン位置が外枠の角丸四角から離れてしまった」): 測った四角からずらす方式をやめ、ヘッダーの下の枠に直接置く(縦= CSS の bottom・横= 文字タイルの右端+6px を offset の物差しで)。測り違いが入らない */
@@ -32086,14 +32095,14 @@ if(_fc)_fc.style.display=(window.__meosRecent.length>1)?'':'none';
 if(typeof window.__meosRenderRecent==='function')window.__meosRenderRecent();
 return;}if(m&&m.type==='copiedVer'){/* v4.2.765: UD と同じ= 出ている tip に Copied を被せる */
 var _vc2=document.getElementById('title-ver-copy');
-if(_vc2){var _o2=_vc2.getAttribute('data-tip')||'';_vc2.setAttribute('data-tip','Copied');_vc2.classList.add('ver-copied');
+if(_vc2){var _o2=_vc2.getAttribute('data-tip')||'';_vc2.setAttribute('data-tip','Copied');_vc2.classList.add('ver-copied');meosTipCopied(_vc2);
 setTimeout(function(){ if(_vc2){_vc2.setAttribute('data-tip',_o2);_vc2.classList.remove('ver-copied');} },1500);}
 return;}if(m&&m.type==='copiedUd'){/* ★v4.0.369(俊克「tipを表示したままなら、**tipにCopiedを被せる**ように
    したほうが、**それがコピーされた**と理解しやすくなるでしょ」): 押した時、tipは出たまま=
    **その出ている物がコピーされた**と言えばよい。横に別の合図を出すのは、口を2つ作ること。 */
 var _udc=document.querySelector('.title-file-ud .ud-copy');
 if(_udc){var _orig=_udc.getAttribute('data-tip')||'';
-_udc.setAttribute('data-tip','Copied');_udc.classList.add('ud-copied');
+_udc.setAttribute('data-tip','Copied');_udc.classList.add('ud-copied');meosTipCopied(_udc);
 setTimeout(function(){ if(_udc){_udc.setAttribute('data-tip',_orig);_udc.classList.remove('ud-copied');} },1500);}
 return;}if(m&&m.type==='stampChips'){/* v4.0.367: Edit Me の入力枠の中をモザイクに見せる(下に敷いた字) */
 if(m.text!=null&&input&&String(m.text)!==input.value)return;/* v4.0.388: 今の値の写しでなければ塗らない */
