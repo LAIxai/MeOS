@@ -3888,6 +3888,38 @@ function normalizeMembraneColorCode(code) {
 }
 // ★v4.2.756: 畳んだ膜の ▲ の色= 膜の色の補色(色相を180°回す)。灰・黒のように色相の無い色は、補色も灰になって見分けられないので、
 //   ダークテーマなら白・ライトテーマなら黒にする(俊克の2案目= 白/黒の縁と同じ考え)
+// ★v4.2.757(俊克 756テスト 改良2「展開した後も、▲ボタンは補色にしよう」): 閉じ膜の ▲ も、畳んだ時の ▲ と同じ色(膜の色の補色)
+function meosCloseGlyphColor(doc, startLine, openText, fallbackColor) {
+  const c = meosMembraneColorForOpen(doc, startLine, openText, fallbackColor);
+  return meosComplementCss(c) || c;
+}
+// ★v4.2.757(俊克 756テスト 改良3「▲を押した時、とてつもなく変な動きをする。素直に一瞬で展開できないのか?」):
+//   画面の段(折り返した行の段)は拡張から読めない= 押した行が一番上に来るまで送って数える。v4.2.756 は1段ずつ・待ち12msで、32段なら見える程の動きになった。
+//   ★1行は必ず1段以上ある= 「残りの見えている行の数」だけまとめて送っても、行き過ぎない。数回で着く。待つのは画面の知らせ(見えている範囲が替わった)が届くまで。
+function meosWaitVisibleRangesChange(editor, ms) {
+  return new Promise(res => {
+    let done = false; let sub = null;
+    const fin = () => { if (done) return; done = true; try { if (sub) sub.dispose(); } catch (_) { } res(); };
+    try { sub = vscode.window.onDidChangeTextEditorVisibleRanges(e => { if (e.textEditor === editor) fin(); }); } catch (_) { }
+    setTimeout(fin, ms);
+  });
+}
+async function meosScrollLineToTopCountingRows(editor, target) {
+  let rows = 0;
+  for (let it = 0; it < 60; it++) {
+    const v = editor.visibleRanges || [];
+    if (!v.length) return -1;
+    if (v[0].start.line >= target) return rows;
+    let n = 0;
+    for (const r of v) { for (let ln = r.start.line; ln <= r.end.line && ln < target; ln++) n++; }
+    if (n < 1) n = 1;
+    const w = meosWaitVisibleRangesChange(editor, 60);
+    await vscode.commands.executeCommand('editorScroll', { to: 'down', by: 'wrappedLine', value: n, revealCursor: false });
+    await w;
+    rows += n;
+  }
+  return -1;
+}
 function meosComplementCss(css) {
   try {
     const m = String(css || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?/i);
@@ -8634,7 +8666,7 @@ function applyPrettyLabels(editor) {
         arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // ★v4.2.75
         closeLabels.push({
           range: new vscode.Range(line, parts.idStart, line, parts.idStart),
-          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosMembraneColorForOpen(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
+          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosCloseGlyphColor(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
         });
       }
     } else {
@@ -20215,23 +20247,31 @@ async function toggleMembraneFromArrowHit(editor, info) {
       // ★v4.2.756(俊克 755テスト 改良2「▲をクリックした時、FCなどが有るためか、▲の行が3行くらい上に移動した」):
       //   ★真因= 数えたのは論理行。FC の殻のように隠した字も折り返しの幅に数えられるので、1行が画面で何段にもなる。
       //   ★画面の段は拡張から読めない→ 1段ずつ送って、押した行が一番上に来るまでの段数を数える(この膜を開けば画面は替わるので、送ったままでよい)
-      if (_openBy === 'close' && _rowsAbove > 0) {
-        let _k = 0;
-        for (; _k < 400; _k++) {
-          const _v = editor.visibleRanges || [];
-          if (_v.length && _v[0].start.line >= matched.pair.start) break;
-          await vscode.commands.executeCommand('editorScroll', { to: 'down', by: 'wrappedLine', value: 1, revealCursor: false });
-          await new Promise(r => setTimeout(r, 12));
-        }
-        if (_k < 400) _rowsWrapped = _k;
-      }
+      if (_openBy === 'close' && _rowsAbove > 0) _rowsWrapped = await meosScrollLineToTopCountingRows(editor, matched.pair.start);
       meosDbg('[arrowOpen] wrapped=' + _rowsWrapped + ' by=' + _openBy + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' rowsAbove=' + _rowsAbove + ' top=' + _topBefore + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
+    } catch (_) { }
+  }
+  // ★v4.2.757(俊克 756テスト 改良3「▲ボタンを押して折り畳む時は、逆に折り畳まれた膜▼▲の行が3つくらい下に移動してしまう」):
+  //   開いた膜の ▲(閉じ膜)を押して畳む時は、畳んだ ▼▲ の行を、押した ▲ の位置に置く(展開の逆)
+  let _foldRows = -1;
+  if (!_wasFolded && info.kind === 'close') {
+    try {
+      const _vr = editor.visibleRanges || [];
+      const _inView = _vr.some(r => matched.pair.end >= r.start.line && matched.pair.end <= r.end.line);
+      if (_inView) _foldRows = await meosScrollLineToTopCountingRows(editor, matched.pair.end);
+      meosDbg('[arrowFold] by=close rows=' + _foldRows + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
     } catch (_) { }
   }
   setRefNoRaw(editor.document, matched.pair.start);
   _meosArrowToggling = true;
   try {
     await setPairFoldStateAndMstat(editor, matched.pair, !_wasFolded);
+    if (_foldRows >= 0) {
+      try {
+        editor.revealRange(new vscode.Range(matched.pair.start, 0, matched.pair.start, 0), vscode.TextEditorRevealType.AtTop);
+        if (_foldRows > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _foldRows, revealCursor: false });
+      } catch (_) { }
+    }
     meosParkCaretAfterPress(editor, matched.pair.start);   // ★v4.2.76: 次のクリックが必ず届く所へ
     if (_wasFolded && _rowsAbove >= 0) {
       try {
