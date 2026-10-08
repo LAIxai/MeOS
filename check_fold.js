@@ -96,6 +96,7 @@ function openGlyphAt(ed, line) {
   ed.__labels.length = 0; ed.__after.length = 0;
   T.applyPrettyLabels(ed);
   const hit = ed.__labels.filter(l => l.line === line).map(l => l.text);
+  if (hit.length === 2 && hit[0] === '▼' && hit[1] === '▲') return '▼▲';   // v4.2.762: 畳んだ頭は ▼ と ▲ の2つの飾り(隣り合う桁)= 画面では ▼▲
   return hit.length ? hit.join('|') : '(無し)';
 }
 function afterAt(ed, line) {
