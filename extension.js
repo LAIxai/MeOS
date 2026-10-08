@@ -3886,6 +3886,25 @@ function normalizeMembraneColorCode(code) {
   const c = String(code || '').trim().toUpperCase();
   return Object.prototype.hasOwnProperty.call(MEMBRANE_BADGE_COLOR_MAP, c) ? c : '';
 }
+// ★v4.2.756: 畳んだ膜の ▲ の色= 膜の色の補色(色相を180°回す)。灰・黒のように色相の無い色は、補色も灰になって見分けられないので、
+//   ダークテーマなら白・ライトテーマなら黒にする(俊克の2案目= 白/黒の縁と同じ考え)
+function meosComplementCss(css) {
+  try {
+    const m = String(css || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?/i);
+    if (!m) return '';
+    const r = +m[1] / 255, g = +m[2] / 255, b = +m[3] / 255, a = m[4] !== undefined ? +m[4] : 1;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    if (sat < 0.15 || d < 0.08) {
+      let dark = true; try { const k = vscode.window.activeColorTheme.kind; dark = !(k === vscode.ColorThemeKind.Light || k === vscode.ColorThemeKind.HighContrastLight); } catch (_) { }
+      return dark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.9)';
+    }
+    let h = 0;
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h = (h * 60 + 360 + 180) % 360;
+    return 'hsla(' + h.toFixed(0) + ', ' + (sat * 100).toFixed(0) + '%, ' + (l * 100).toFixed(0) + '%, ' + a + ')';
+  } catch (_) { return ''; }
+}
 function membraneCssColorForCode(code) {
   return MEMBRANE_BADGE_COLOR_MAP[normalizeMembraneColorCode(code)] || '';
 }
@@ -8580,9 +8599,15 @@ function applyPrettyLabels(editor) {
         ? (baseOpenGlyph + '📒' + aliasInLabel)
         : (baseOpenGlyph + aliasInLabel);
       arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // ★v4.2.75
+      // ★v4.2.756(俊克 755テスト 改良1「▼を膜の色のままにし、▲をその色の補色にしよう…見た目で、違いがあると分かる」):
+      //   ▼▲は1つの装飾のまま(押した桁で左右を見分ける仕掛けを崩さない)・字の左半分と右半分を塗り分ける(地の模様を字の形で切り抜く)
+      const _twoTone = (openGlyph === '\u25bc\u25b2') ? meosComplementCss(labelColor) : '';
       openLabels.push({
         range: new vscode.Range(line, parts.idStart, line, parts.idStart),
-        renderOptions: { before: { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
+        renderOptions: { before: _twoTone
+          ? { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0',
+              textDecoration: 'none; background-image: linear-gradient(90deg, ' + labelColor + ' 0 50%, ' + _twoTone + ' 50% 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;' }
+          : { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
       });
     } else if (close) {
       const parts = membraneLineParts(text, 'close');
@@ -20175,6 +20200,7 @@ async function toggleMembraneFromArrowHit(editor, info) {
   //   ★「その位置」= 押した行が画面の上から何行目にあったか。▼= 開始行をそこに残す / ▲= 閉じ行をそこへ持って来る。
   const _wasFolded = isPairFolded(editor, matched.pair);
   let _openBy = null, _rowsAbove = -1, _topBefore = -1;
+  let _rowsWrapped = -1;
   if (_wasFolded) {
     try {
       const _ch = editor.selection.active.character;
@@ -20186,7 +20212,20 @@ async function toggleMembraneFromArrowHit(editor, info) {
         for (const r of _vr) { for (let ln = r.start.line; ln <= r.end.line; ln++) { if (ln === matched.pair.start) { _found = true; break; } _n++; } if (_found) break; }
         if (_found) _rowsAbove = _n;
       }
-      meosDbg('[arrowOpen] by=' + _openBy + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' rowsAbove=' + _rowsAbove + ' top=' + _topBefore + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
+      // ★v4.2.756(俊克 755テスト 改良2「▲をクリックした時、FCなどが有るためか、▲の行が3行くらい上に移動した」):
+      //   ★真因= 数えたのは論理行。FC の殻のように隠した字も折り返しの幅に数えられるので、1行が画面で何段にもなる。
+      //   ★画面の段は拡張から読めない→ 1段ずつ送って、押した行が一番上に来るまでの段数を数える(この膜を開けば画面は替わるので、送ったままでよい)
+      if (_openBy === 'close' && _rowsAbove > 0) {
+        let _k = 0;
+        for (; _k < 400; _k++) {
+          const _v = editor.visibleRanges || [];
+          if (_v.length && _v[0].start.line >= matched.pair.start) break;
+          await vscode.commands.executeCommand('editorScroll', { to: 'down', by: 'wrappedLine', value: 1, revealCursor: false });
+          await new Promise(r => setTimeout(r, 12));
+        }
+        if (_k < 400) _rowsWrapped = _k;
+      }
+      meosDbg('[arrowOpen] wrapped=' + _rowsWrapped + ' by=' + _openBy + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' rowsAbove=' + _rowsAbove + ' top=' + _topBefore + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
     } catch (_) { }
   }
   setRefNoRaw(editor.document, matched.pair.start);
@@ -20199,7 +20238,8 @@ async function toggleMembraneFromArrowHit(editor, info) {
         if (_openBy === 'close') {
           // 閉じ行を一番上に出してから、押した行の高さまで下げる(editorScroll は畳まれた行を数えない)
           editor.revealRange(new vscode.Range(matched.pair.end, 0, matched.pair.end, 0), vscode.TextEditorRevealType.AtTop);
-          if (_rowsAbove > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'line', value: _rowsAbove, revealCursor: false });
+          if (_rowsWrapped > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _rowsWrapped, revealCursor: false });
+          else if (_rowsAbove > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'line', value: _rowsAbove, revealCursor: false });
         } else if (_topBefore >= 0) {
           editor.revealRange(new vscode.Range(_topBefore, 0, _topBefore, 0), vscode.TextEditorRevealType.AtTop);   // 開始行は押した所のまま
         }
