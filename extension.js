@@ -3893,6 +3893,27 @@ function meosCloseGlyphColor(doc, startLine, openText, fallbackColor) {
   const c = meosMembraneColorForOpen(doc, startLine, openText, fallbackColor);
   return meosComplementCss(c) || c;
 }
+// ★★v4.2.759(俊克 758テスト 改良2「▼▲の▲をクリックした1回目では、ワープした行がポインターの位置と大きくズレる。これは制御できないのか?」):
+//   ★画面の段(折り返した段)は拡張から読めない。v4.2.756/757 は画面を送って数えた= 動きが見えた。
+//   ★今度は**文字カーソルで数える**= 画面の一番上の段へ置き、1段ずつ下ろして、押した行に着くまでの段数を数える。
+//     押した行は画面の中に在るので、カーソルは画面の外へ出ない= 画面は1ミリも動かない。数える間は、カーソルの見張り(履歴・Me Dockの追従など)を休ませる。
+let _meosCaretProbing = false;
+async function meosRowsAboveByCaret(editor, target) {
+  let rows = -1;
+  _meosCaretProbing = true;
+  try {
+    await vscode.commands.executeCommand('cursorMove', { to: 'viewPortTop' });
+    let k = 0;
+    for (; k < 300; k++) {
+      const ln = editor.selection.active.line;
+      if (ln >= target) break;
+      await vscode.commands.executeCommand('cursorMove', { to: 'down', by: 'wrappedLine', value: 1 });
+    }
+    if (k < 300 && editor.selection.active.line === target) rows = k;
+  } catch (_) { rows = -1; }
+  finally { _meosCaretProbing = false; }
+  return rows;
+}
 function meosComplementCss(css) {
   try {
     const m = String(css || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?/i);
@@ -7082,6 +7103,15 @@ const REF_PENDING_FAM = 'P';
 let _refNoRawUri = '';
 let _refNoRawLine = -1;
 function setRefNoRaw(doc, line) { try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
+// ★v4.2.759: 抑止を解いた時の控え(押す直前にまだ効いていたかを、押した後から訊くため)
+let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
+function meosRefNoRawWasOn(doc, line) {
+  try {
+    const u = doc.uri.toString();
+    if (_refNoRawLine >= 0 && _refNoRawUri === u && _refNoRawLine === line) return true;
+    return _refNoRawPrevLine === line && _refNoRawPrevUri === u && (Date.now() - _refNoRawPrevAt) < 1500;
+  } catch (_) { return false; }
+}
 // ★★v4.1.109: 「今その行は生データを見せているか」を訊く口を1つにする。
 //   描画は `meosRawLines(editor, docCursorLine < 0)` で、**着地の一時抑止(setRefNoRaw)thatが効いている間は
 //   カーソル行の特例を外す**(v1.0.11/12)。クリックの当たりも**同じ答え**を見なければ、
@@ -7115,7 +7145,11 @@ function meosShowsRawLine(editor, line) {
 //     同じ `meosRawLines` に「いつの話か」を渡すだけ(枝を写経しない)。
 function meosArrowPressBlocked(editor, line, prevLine) {
   try { if (meosRawLines(editor, true).has(line)) return true; }  catch (_) { }   // ①Rawの膜= 印は最初から居ない
-  try { if (!meosRawSuppressedAt(editor) && meosRawLines(editor, false, prevLine).has(line)) return true; } catch (_) { }  // ②押す直前に生だった
+  // ★★v4.2.759(俊克 758テスト 改良1「閉じ膜の▲をクリックした時に、なぜか、1回目で折り畳まない」＋ログ= 1回目は [arrow] hit=true なのに [arrowToggle] が無い):
+  //   ★真因= 膜は ▼・▲・バッジの3行でひと組(v4.0.332)= カーソルが ▼ の行に居ると ▲ の行も生と数える。▲で開いた後、カーソルは ▼ の行に置いてあり、
+  //     画面は「押した後の抑止(setRefNoRaw)」で ▲ をボタンとして見せていた。ところが押した瞬間の判定は、抑止を外した姿で「押す直前は生だった」と答えた= 1回目を捨てた。
+  //   ★直し= 押す直前のカーソル行に抑止が効いていたなら、画面と同じく生ではない(描画と同じ答えを見る)
+  try { if (!meosRawSuppressedAt(editor) && !meosRefNoRawWasOn(editor.document, prevLine) && meosRawLines(editor, false, prevLine).has(line)) return true; } catch (_) { }  // ②押す直前に生だった
   return false;
 }
 function isPendingFam(fam) { return fam === 'P'; }
@@ -7773,7 +7807,7 @@ function applyPrettyLabels(editor) {
   let docCursorLine = editor.selection ? editor.selection.active.line : -1;
   // v1.0.11/12(俊克 改良1/2): 着地の一時raw抑止=カーソルがその行を離れたら解除。乗っている間は「カーソル行扱い」を外し、
   // その行を全Format(見出し##/💬注釈=ハイライト・取消線/参照符)で一括してチップ描画のまま維持=読む用(インライン編集にしない)。
-  if (_refNoRawLine >= 0 && (_refNoRawUri !== editor.document.uri.toString() || docCursorLine !== _refNoRawLine)) { _refNoRawLine = -1; _refNoRawUri = ''; }
+  if (_refNoRawLine >= 0 && (_refNoRawUri !== editor.document.uri.toString() || docCursorLine !== _refNoRawLine)) { _refNoRawPrevUri = _refNoRawUri; _refNoRawPrevLine = _refNoRawLine; _refNoRawPrevAt = Date.now(); _refNoRawLine = -1; _refNoRawUri = ''; }
   if (_refNoRawLine >= 0 && _refNoRawUri === editor.document.uri.toString() && docCursorLine === _refNoRawLine) docCursorLine = -1;
   // ★★v4.0.338(俊克 pm11:05 バグ1「見出しで、**FC膜に文字カーソルがあるとき、見出しが生データで表示され
   //   なくなった**よ。なぜ?」):
@@ -15625,6 +15659,7 @@ function meosWatchCaretAfterBell(uri, line) {
     const t0 = Date.now(), KIND = { 1: 'Keyboard', 2: 'Mouse', 3: 'Command' };
     meosBellDbg('[bellCaret] jumped to line=' + (line + 1));
     const d = vscode.window.onDidChangeTextEditorSelection((e) => {
+      if (_meosCaretProbing) return; 
       try {
         if (!e || !e.textEditor || !e.textEditor.document) return;
         if (e.textEditor.document.uri.toString() !== uri) return;
@@ -20208,13 +20243,15 @@ async function toggleMembraneFromArrowHit(editor, info) {
   //   ★v4.2.755〜757 の「閉じ行を押した段へ持って来る」は、画面の段を数えるために画面を送る= 目に見える変な動きになった。数えるのをやめる。
   //   ★▲も▼と同じに開く(開始行は押した所のまま)→ すぐ閉じ行へワープ(見えていなければ真ん中へ)。開いた膜の▲で畳む時も同じ形(畳む→ ▼▲の行へ)。
   const _wasFolded = isPairFolded(editor, matched.pair);
-  let _byClose = false, _topBefore = -1;
+  let _byClose = false, _topBefore = -1, _rowsAt = -1;
   try {
     const _ch = editor.selection.active.character;
     _byClose = _wasFolded ? (info.kind === 'open' && _ch >= info.idStart) : (info.kind === 'close');
     const _vr = editor.visibleRanges || [];
     if (_vr.length) _topBefore = _vr[0].start.line;
-    meosDbg('[arrowToggle] ' + (_wasFolded ? 'open' : 'fold') + ' by=' + (_byClose ? 'close' : 'open') + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
+    // v4.2.759: ▲で押した時だけ、押した行が画面の上から何段目かを数える(開く= ▼▲の行 / 畳む= ▲の行)
+    if (_byClose) _rowsAt = await meosRowsAboveByCaret(editor, _wasFolded ? matched.pair.start : matched.pair.end);
+    meosDbg('[arrowToggle] rows=' + _rowsAt + ' ' + (_wasFolded ? 'open' : 'fold') + ' by=' + (_byClose ? 'close' : 'open') + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
   } catch (_) { }
   setRefNoRaw(editor.document, matched.pair.start);
   _meosArrowToggling = true;
@@ -20225,7 +20262,10 @@ async function toggleMembraneFromArrowHit(editor, info) {
       if (_wasFolded && _topBefore >= 0) editor.revealRange(new vscode.Range(_topBefore, 0, _topBefore, 0), vscode.TextEditorRevealType.AtTop);   // 開始行は押した所のまま
       if (_byClose) {
         const _to = _wasFolded ? matched.pair.end : matched.pair.start;   // 開いた= ▲の行へ / 畳んだ= ▼▲の行へ
-        editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        if (_rowsAt >= 0) {   // v4.2.759: 押した段へ置く= 一番上に出してから、その段数だけ上げる(1回で着く)
+          editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.AtTop);
+          if (_rowsAt > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _rowsAt, revealCursor: false });
+        } else editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
       }
     } catch (_) { }
   } finally { _meosArrowToggling = false; }
@@ -40596,8 +40636,9 @@ function activate(context) {
   //     拡張パネルに在るので空振りしていた。★**焦点は奪わない**(読んでいる所から勝手に飛ばすのは行儀が悪い)。
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
-  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { try { meosPuzzleCrownAtCaret(e); } catch (_) { } }));   // v4.2.563
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (_meosCaretProbing) return; try { meosPuzzleCrownAtCaret(e); } catch (_) { } }));   // v4.2.563
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+    if (_meosCaretProbing) return; 
     // ★v4.0.396: ここは v4.0.141 の「入れ直した直後、人が最初にクリックした時に1回だけ畳む」ための道。
     //   **まだ畳んでいないファイルの時だけ**呼ぶ(steady stateの打鍵では一切呼ばない)。
     // ★★★v4.2.38(俊克 バグ1「膜の外や、内部に文字カーソルが入っても折り畳まれない。しかし、スクロールすると、折り畳まれる」):
@@ -40635,7 +40676,7 @@ function activate(context) {
   } catch (_) { }
   // v4.2.393: ⏰▾ が開いている間だけ、カーソルが動いたら(止まって150ms後に)置き場所を判定し直す
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => {
-    if (!_meosClkPanelOpen) return;
+    if (_meosCaretProbing) return; if (!_meosClkPanelOpen) return;
     if (_meosClkTargetTimer) clearTimeout(_meosClkTargetTimer);
     _meosClkTargetTimer = setTimeout(() => { _meosClkTargetTimer = null; meosPostClkTarget(); }, 150);
   }));
@@ -40969,6 +41010,7 @@ function activate(context) {
   //   ★橙はカーソルの答えなので、**カーソルが動いた所で塗る**。中身はカーソルの周りしか見ないので軽い
   //     (実測0.1ms未満)＝ 打鍵の道に置いても v4.0.393 の轍は踏まない。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+    if (_meosCaretProbing) return; 
     meosUpdateInTableContext(e.textEditor);
     try { meosApplyFcRowDecorations(e.textEditor); } catch (_) { }
     try { meosOpenByBadgeOnEnter(e.textEditor); } catch (_) { }   // v4.1.153: 入った膜はバッジのとおりに開く
@@ -41426,6 +41468,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
     //   既に laiMembrane.enterAtCloseRightEdge キーバインドが処理済みで、本横取りの改行分岐はキーボードでは
     //   実質死んでいた。撤去により通常/Raw とも入力が100%ネイティブに(文字喰い解消・IME軽量化)。
     vscode.window.onDidChangeTextEditorSelection(e => {
+      if (_meosCaretProbing) return; 
       // ★★v4.0.357: 焦点が Me Dock に在る間 activeEditor が空になることがあり、その間**クリックが
       //   ここで全部捨てられていた**(俊克「ガターメニューが反応しない」/ [arrow] のログが0件)。
       //   → 空なら、**見えているエディタからのイベントは受けて、そのまま相手にする**。
@@ -41817,7 +41860,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
   const addToWorkingTocCommand = vscode.commands.registerCommand('laiMembrane.addToWorkingToc', addCurrentMembraneToWorkingToc);
 context.subscriptions.push(controlMeCommand, addToWorkingTocCommand, ...disposables, lineDecoration, openLineHideDecoration, openLineLabelDecoration, closeLineHideDecoration, closeLineLabelDecoration, membraneArrowHandDecoration, warningArrowDecoration, jumpActiveDecoration, jumpNameHoverDecoration, redJumpDecoration, redJumpHoverDecoration, workingTocLineDecoration, workingTocItemDecoration, fixedTocHideDecoration, rightEdgeSpaceDecoration, nameRightVirtualSpaceDecoration, sourceRjfButtonDecoration, activeRedTargetButtonDecoration, activeGreenButtonDecoration, membraneButtonTipDecoration, stealthShellHideDecoration, stealthContentHideDecoration, stealthOpenLabelDecoration, stealthCloseLabelDecoration, stealthContainerOpenDecoration, stealthContainerCloseDecoration, stealthFullHideDecoration,
     // v4.0.393: 膜の位置を訊く3つ(Me Dock/ステータスバー/カーソル記憶)は連打を1回に畳む。軽い2つは今までどおり即座。
-    vscode.window.onDidChangeTextEditorSelection((e) => { setMeDockTargetEditor(e.textEditor); scheduleCursorFollow(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
+    vscode.window.onDidChangeTextEditorSelection((e) => { if (_meosCaretProbing) return; setMeDockTargetEditor(e.textEditor); scheduleCursorFollow(e.textEditor); meosNoteLastLine(e.textEditor); meosCheckStampWatch(e.textEditor); }), // v0.9.850: 膜ごとの最後のカーソル行を記録 / v4.0.305: ファイルごとの最後の行も(書き出しは手が止まってから)
     vscode.window.onDidChangeActiveTextEditor((e) => { meosDropDecoSigCache(); setMeDockTargetEditor(e); updateMeDockMode(); autoShowMeDockForEditor(e);
       // ★★v4.0.326(俊克 8/21 am09:33 バグ4「全て削除して(履歴なし)の状態で、**現在表示されているタブを
       //   クリックしても取り込まれない**。別のタブを選択すると、それは取り込まれる。なぜ?」):
