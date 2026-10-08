@@ -3893,33 +3893,6 @@ function meosCloseGlyphColor(doc, startLine, openText, fallbackColor) {
   const c = meosMembraneColorForOpen(doc, startLine, openText, fallbackColor);
   return meosComplementCss(c) || c;
 }
-// ★v4.2.757(俊克 756テスト 改良3「▲を押した時、とてつもなく変な動きをする。素直に一瞬で展開できないのか?」):
-//   画面の段(折り返した行の段)は拡張から読めない= 押した行が一番上に来るまで送って数える。v4.2.756 は1段ずつ・待ち12msで、32段なら見える程の動きになった。
-//   ★1行は必ず1段以上ある= 「残りの見えている行の数」だけまとめて送っても、行き過ぎない。数回で着く。待つのは画面の知らせ(見えている範囲が替わった)が届くまで。
-function meosWaitVisibleRangesChange(editor, ms) {
-  return new Promise(res => {
-    let done = false; let sub = null;
-    const fin = () => { if (done) return; done = true; try { if (sub) sub.dispose(); } catch (_) { } res(); };
-    try { sub = vscode.window.onDidChangeTextEditorVisibleRanges(e => { if (e.textEditor === editor) fin(); }); } catch (_) { }
-    setTimeout(fin, ms);
-  });
-}
-async function meosScrollLineToTopCountingRows(editor, target) {
-  let rows = 0;
-  for (let it = 0; it < 60; it++) {
-    const v = editor.visibleRanges || [];
-    if (!v.length) return -1;
-    if (v[0].start.line >= target) return rows;
-    let n = 0;
-    for (const r of v) { for (let ln = r.start.line; ln <= r.end.line && ln < target; ln++) n++; }
-    if (n < 1) n = 1;
-    const w = meosWaitVisibleRangesChange(editor, 60);
-    await vscode.commands.executeCommand('editorScroll', { to: 'down', by: 'wrappedLine', value: n, revealCursor: false });
-    await w;
-    rows += n;
-  }
-  return -1;
-}
 function meosComplementCss(css) {
   try {
     const m = String(css || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?/i);
@@ -8634,11 +8607,12 @@ function applyPrettyLabels(editor) {
       // ★v4.2.756(俊克 755テスト 改良1「▼を膜の色のままにし、▲をその色の補色にしよう…見た目で、違いがあると分かる」):
       //   ▼▲は1つの装飾のまま(押した桁で左右を見分ける仕掛けを崩さない)・字の左半分と右半分を塗り分ける(地の模様を字の形で切り抜く)
       const _twoTone = (openGlyph === '\u25bc\u25b2') ? meosComplementCss(labelColor) : '';
+      const _swapNow = !!_twoTone && meosFoldSwapIs(editor.document, line);   // v4.2.758: ▼ の上に止まっている間は入れ替え
       openLabels.push({
         range: new vscode.Range(line, parts.idStart, line, parts.idStart),
         renderOptions: { before: _twoTone
           ? { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0',
-              textDecoration: 'none; background-image: linear-gradient(90deg, ' + labelColor + ' 0 50%, ' + _twoTone + ' 50% 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;' }
+              textDecoration: 'none; background-image: linear-gradient(90deg, ' + (_swapNow ? _twoTone : labelColor) + ' 0 50%, ' + (_swapNow ? labelColor : _twoTone) + ' 50% 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;' }
           : { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
       });
     } else if (close) {
@@ -20230,61 +20204,30 @@ async function toggleMembraneFromArrowHit(editor, info) {
   //   ★▼▲は1つの装飾(idStart の before)= 押した桁で半分を見分ける。左半分(▼)はカーソルが1字前へ丸められて idStart より左、
   //     右半分(▲)は idStart 以上に落ちる(→ [[feedback_buttons_are_inlay_hints]] の測定)。
   //   ★「その位置」= 押した行が画面の上から何行目にあったか。▼= 開始行をそこに残す / ▲= 閉じ行をそこへ持って来る。
+  // ★★v4.2.758(俊克 757テスト 改良1「▼による開閉は完璧です。▲をクリックした時は、▼を押した時と同じ処理をする。その後、間髪を入れず、▲のある行にワープする」):
+  //   ★v4.2.755〜757 の「閉じ行を押した段へ持って来る」は、画面の段を数えるために画面を送る= 目に見える変な動きになった。数えるのをやめる。
+  //   ★▲も▼と同じに開く(開始行は押した所のまま)→ すぐ閉じ行へワープ(見えていなければ真ん中へ)。開いた膜の▲で畳む時も同じ形(畳む→ ▼▲の行へ)。
   const _wasFolded = isPairFolded(editor, matched.pair);
-  let _openBy = null, _rowsAbove = -1, _topBefore = -1;
-  let _rowsWrapped = -1;
-  if (_wasFolded) {
-    try {
-      const _ch = editor.selection.active.character;
-      _openBy = (info.kind === 'open' && _ch >= info.idStart) ? 'close' : 'open';
-      const _vr = editor.visibleRanges || [];
-      if (_vr.length) {
-        _topBefore = _vr[0].start.line;
-        let _n = 0, _found = false;
-        for (const r of _vr) { for (let ln = r.start.line; ln <= r.end.line; ln++) { if (ln === matched.pair.start) { _found = true; break; } _n++; } if (_found) break; }
-        if (_found) _rowsAbove = _n;
-      }
-      // ★v4.2.756(俊克 755テスト 改良2「▲をクリックした時、FCなどが有るためか、▲の行が3行くらい上に移動した」):
-      //   ★真因= 数えたのは論理行。FC の殻のように隠した字も折り返しの幅に数えられるので、1行が画面で何段にもなる。
-      //   ★画面の段は拡張から読めない→ 1段ずつ送って、押した行が一番上に来るまでの段数を数える(この膜を開けば画面は替わるので、送ったままでよい)
-      if (_openBy === 'close' && _rowsAbove > 0) _rowsWrapped = await meosScrollLineToTopCountingRows(editor, matched.pair.start);
-      meosDbg('[arrowOpen] wrapped=' + _rowsWrapped + ' by=' + _openBy + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' rowsAbove=' + _rowsAbove + ' top=' + _topBefore + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
-    } catch (_) { }
-  }
-  // ★v4.2.757(俊克 756テスト 改良3「▲ボタンを押して折り畳む時は、逆に折り畳まれた膜▼▲の行が3つくらい下に移動してしまう」):
-  //   開いた膜の ▲(閉じ膜)を押して畳む時は、畳んだ ▼▲ の行を、押した ▲ の位置に置く(展開の逆)
-  let _foldRows = -1;
-  if (!_wasFolded && info.kind === 'close') {
-    try {
-      const _vr = editor.visibleRanges || [];
-      const _inView = _vr.some(r => matched.pair.end >= r.start.line && matched.pair.end <= r.end.line);
-      if (_inView) _foldRows = await meosScrollLineToTopCountingRows(editor, matched.pair.end);
-      meosDbg('[arrowFold] by=close rows=' + _foldRows + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
-    } catch (_) { }
-  }
+  let _byClose = false, _topBefore = -1;
+  try {
+    const _ch = editor.selection.active.character;
+    _byClose = _wasFolded ? (info.kind === 'open' && _ch >= info.idStart) : (info.kind === 'close');
+    const _vr = editor.visibleRanges || [];
+    if (_vr.length) _topBefore = _vr[0].start.line;
+    meosDbg('[arrowToggle] ' + (_wasFolded ? 'open' : 'fold') + ' by=' + (_byClose ? 'close' : 'open') + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
+  } catch (_) { }
   setRefNoRaw(editor.document, matched.pair.start);
   _meosArrowToggling = true;
   try {
     await setPairFoldStateAndMstat(editor, matched.pair, !_wasFolded);
-    if (_foldRows >= 0) {
-      try {
-        editor.revealRange(new vscode.Range(matched.pair.start, 0, matched.pair.start, 0), vscode.TextEditorRevealType.AtTop);
-        if (_foldRows > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _foldRows, revealCursor: false });
-      } catch (_) { }
-    }
     meosParkCaretAfterPress(editor, matched.pair.start);   // ★v4.2.76: 次のクリックが必ず届く所へ
-    if (_wasFolded && _rowsAbove >= 0) {
-      try {
-        if (_openBy === 'close') {
-          // 閉じ行を一番上に出してから、押した行の高さまで下げる(editorScroll は畳まれた行を数えない)
-          editor.revealRange(new vscode.Range(matched.pair.end, 0, matched.pair.end, 0), vscode.TextEditorRevealType.AtTop);
-          if (_rowsWrapped > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _rowsWrapped, revealCursor: false });
-          else if (_rowsAbove > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'line', value: _rowsAbove, revealCursor: false });
-        } else if (_topBefore >= 0) {
-          editor.revealRange(new vscode.Range(_topBefore, 0, _topBefore, 0), vscode.TextEditorRevealType.AtTop);   // 開始行は押した所のまま
-        }
-      } catch (_) { }
-    }
+    try {
+      if (_wasFolded && _topBefore >= 0) editor.revealRange(new vscode.Range(_topBefore, 0, _topBefore, 0), vscode.TextEditorRevealType.AtTop);   // 開始行は押した所のまま
+      if (_byClose) {
+        const _to = _wasFolded ? matched.pair.end : matched.pair.start;   // 開いた= ▲の行へ / 畳んだ= ▼▲の行へ
+        editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+      }
+    } catch (_) { }
   } finally { _meosArrowToggling = false; }
   setRefNoRaw(editor.document, matched.pair.start);   // トグル中の refresh で解けていても張り直す
   refresh(editor);
@@ -34386,7 +34329,26 @@ function meosArrowHitAt(document, line, character) {
 //   ★v4.2.64 で私は「tipは押す物を名指しする」(条件③)を守ったつもりthatった。それは
 //     **名指しする値打ちthat在る印**の話= ▼(押すと何that起きるか読めない)には要る。
 //     ▶️/⏸️ は**形thatもう言っている** → [[project_direct_manipulation_mark]]
+// ★v4.2.758(俊克 757テスト 改良2「色の変化は、tipを出すタイミングで切り替えて、tipは出さない…わざわざtipが出るのは目障りなので」):
+//   VS Code はマウスの居場所を拡張に教えない。教えるのは「止まった所」(tipを訊きに来る時)だけ= そこで ▼ の上なら色を入れ替える(▲は補色→膜の色、▼は膜の色→補色)。
+//   ▲ の上・別の所でtipを訊かれたら元へ戻す。外へ出た時は知らせが無いので、4秒で戻す。
+let _meosFoldSwap = null, _meosFoldSwapTm = null;
+function meosFoldSwapIs(doc, line) { return !!(_meosFoldSwap && _meosFoldSwap.uri === doc.uri.toString() && _meosFoldSwap.line === line); }
+function meosFoldSwapSet(editor, line) {
+  const next = (line >= 0) ? { uri: editor.document.uri.toString(), line } : null;
+  const same = (!next && !_meosFoldSwap) || (next && _meosFoldSwap && next.uri === _meosFoldSwap.uri && next.line === _meosFoldSwap.line);
+  if (_meosFoldSwapTm) { clearTimeout(_meosFoldSwapTm); _meosFoldSwapTm = null; }
+  if (next) _meosFoldSwapTm = setTimeout(() => { _meosFoldSwapTm = null; if (_meosFoldSwap) { _meosFoldSwap = null; try { refresh(editor); } catch (_) { } } }, 4000);
+  if (same) return;
+  _meosFoldSwap = next;
+  try { refresh(editor); } catch (_) { }
+}
 function membraneArrowHoverMessage(editor, position) {
+  let _swapLine = -1;
+  try { return membraneArrowHoverMessageInner(editor, position, (l) => { _swapLine = l; }); }
+  finally { try { if (editor) meosFoldSwapSet(editor, _swapLine); } catch (_) { } }
+}
+function membraneArrowHoverMessageInner(editor, position, swapAt) {
   if (!editor || !position) return null;
   const info = membraneLineInfo(editor.document, position.line);
   if (!info) return null;
@@ -34421,6 +34383,10 @@ function membraneArrowHoverMessage(editor, position) {
     try { _pair = collectPairs(editor.document, { excludeIndex: false }).find(p => p.start === info.line || p.end === info.line) || null; } catch (_) { }
     const _folded = (info.kind === 'open' && _pair) ? isPairFolded(editor, _pair) : false;
     const _isToc = !!(_pair && isWorkingTocMembranePair(_pair, editor.document));
+    if (info.kind === 'open' && _folded && !_isToc) {   // v4.2.758: 畳んだ ▼▲ は tip を出さず、▼ の上なら色を入れ替える
+      if (position.character < info.idStart) swapAt(info.line);
+      return '';   // 空= ここで打ち切る(下の画像tipを出させない)
+    }
     return 'Toggle ' + meosMembraneGlyph(info.kind, _folded, _isToc) + '-Button!';
   }
   return null;
@@ -41423,6 +41389,7 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         const mstatMsg = mstatBadgeIconHoverMessage(document, position);
         if (mstatMsg) return new vscode.Hover(mstatMsg);
         const arrowMsg = membraneArrowHoverMessage(editor, position);
+        if (arrowMsg === '') return null;   // v4.2.758: 畳んだ ▼▲ の上= tip は出さない
         if (arrowMsg) return new vscode.Hover(arrowMsg);
         // v3.1.0(俊克): 画像膜=見出し行/画像リンク行にホバーで実画像をポップ表示(グリフ固有ホバーが外れた領域のフォールバック)。
         const imgMsg = imageMembraneHoverMessage(document, position);

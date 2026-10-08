@@ -246,7 +246,8 @@ console.log('⑫ tip は「どれを押すのか」を名指しする(v4.0.360)'
   // v4.0.361(俊克「折り畳んだ膜は、`Toggle ▼▲-Button!`だよ」)
   const edF = makeEditor([R(0, OPEN_LINE), R(8, 10)]);   // 畳んである画面
   const PF = (line, ch) => T.membraneArrowHoverMessage(edF, new stub.Position(line, ch));
-  ok(PF(OPEN_LINE, 13) === 'Toggle ▼▲-Button!', '★★畳んであれば ▼▲ と言う(印が変われば言葉も変わる)', PF(OPEN_LINE, 13));
+  // v4.2.758(俊克「色の変化は、tipを出すタイミングで切り替えて、tipは出さない」): 畳んだ ▼▲ は tip を出さない(▼の上なら色を入れ替える)
+  ok(PF(OPEN_LINE, 13) === '', '★★畳んだ ▼▲ は tip を出さない(色の入れ替えで ▼/▲ を語る・下の画像tipにも渡さない)', PF(OPEN_LINE, 13));
   ok(T.meosMembraneGlyph('open', false, false) === '▼' && T.meosMembraneGlyph('open', true, false) === '▼▲'
      && T.meosMembraneGlyph('close', false, false) === '▲', '字を決める場所は1つ(描画もtipもここから引く)',
      [T.meosMembraneGlyph('open', false, false), T.meosMembraneGlyph('open', true, false), T.meosMembraneGlyph('close', false, false)]);
