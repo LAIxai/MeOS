@@ -31206,9 +31206,13 @@ const hPaint=()=>{try{const at=document.querySelector('#toc-tab-row .toc-tab.act
      (箱は次にポインターが動いた時に data-tip を読み直す)。→ 出ている箱そのものを Copied(緑)にする。出ていなければ、押した物の上に出す。 */
 function meosTipCopied(el){try{var tt=document.getElementById('toc-tooltip');if(!tt||!el)return;
 tt.textContent='Copied';tt.classList.add('tip-copied');
-if(tt.style.display!=='block'){var r=el.getBoundingClientRect();tt.style.display='block';tt.style.left='auto';tt.style.right=Math.max(2,window.innerWidth-r.right)+'px';tt.style.top=Math.max(2,r.top-26)+'px';}
+if(tt.style.display!=='block'){tt.style.display='block';
+/* v4.2.767(俊克 766テスト バグ1「verの方のCopiedがとんでもなく離れた位置に表示される」): Me Dock は zoom で拡大= 部品の四角(getBoundingClientRect)と箱を置く物差しが違う
+   (→ reference_medock_clientx_vs_rect)。普段の tip と同じ口(meosPlaceTipAtPointer)に、最後のポインターの動きを渡して置く。 */
+var lp=window.__meosLastPtr;if(lp&&typeof meosPlaceTipAtPointer==='function'){meosPlaceTipAtPointer(lp);}
+else{var r=el.getBoundingClientRect();tt.style.left='auto';tt.style.right=Math.max(2,window.innerWidth-r.right)+'px';tt.style.top=Math.max(2,r.top-26)+'px';}}
 clearTimeout(window.__meosCopiedTm);window.__meosCopiedTm=setTimeout(function(){tt.classList.remove('tip-copied');if(tt.textContent==='Copied')tt.style.display='none';},1500);}catch(_){}}
-window.meosTipCopied=meosTipCopied;
+window.meosTipCopied=meosTipCopied;document.addEventListener('pointermove',function(e){window.__meosLastPtr=e;},true);
 {const _vc=document.getElementById('title-ver-copy');if(_vc)_vc.addEventListener('click',function(){try{vscode.postMessage({type:'copyVersion'});}catch(_e){}});}/* v4.2.765: 版をクリック= 版とキーワードを写す */
 const hd=document.querySelector('header.title'),tg0=document.getElementById('hidx-toggle'),hx0=document.getElementById('hidx-box');
 window.__hxPlace=function(){try{if(!hd||!tg0)return;/* ★v4.2.706(俊克「ボタン位置が外枠の角丸四角から離れてしまった」): 測った四角からずらす方式をやめ、ヘッダーの下の枠に直接置く(縦= CSS の bottom・横= 文字タイルの右端+6px を offset の物差しで)。測り違いが入らない */
