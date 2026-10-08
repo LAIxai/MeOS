@@ -34372,22 +34372,23 @@ function meosArrowHitAt(document, line, character) {
 // ★v4.2.758(俊克 757テスト 改良2「色の変化は、tipを出すタイミングで切り替えて、tipは出さない…わざわざtipが出るのは目障りなので」):
 //   VS Code はマウスの居場所を拡張に教えない。教えるのは「止まった所」(tipを訊きに来る時)だけ= そこで ▼ の上なら色を入れ替える(▲は補色→膜の色、▼は膜の色→補色)。
 //   ▲ の上・別の所でtipを訊かれたら元へ戻す。外へ出た時は知らせが無いので、4秒で戻す。
-let _meosFoldSwap = null, _meosFoldSwapTm = null;
-function meosFoldSwapIs(doc, line) { return !!(_meosFoldSwap && _meosFoldSwap.uri === doc.uri.toString() && _meosFoldSwap.line === line); }
-function meosFoldSwapSet(editor, line) {
-  const next = (line >= 0) ? { uri: editor.document.uri.toString(), line } : null;
-  const same = (!next && !_meosFoldSwap) || (next && _meosFoldSwap && next.uri === _meosFoldSwap.uri && next.line === _meosFoldSwap.line);
-  if (_meosFoldSwapTm) { clearTimeout(_meosFoldSwapTm); _meosFoldSwapTm = null; }
-  if (next) _meosFoldSwapTm = setTimeout(() => { _meosFoldSwapTm = null; if (_meosFoldSwap) { _meosFoldSwap = null; try { refresh(editor); } catch (_) { } } }, 4000);
-  if (same) return;
-  _meosFoldSwap = next;
-  try { refresh(editor); } catch (_) { }
+// ★★v4.2.761(俊克 760テスト 改良1「▼が膜の色と言う考えを捨てて、▼と▲のどちらかが膜の色と規定しよう。どっちにホーバーしているかを認識していて、もう1つの方に移ったら、反転する」):
+//   ★[foldHover] の実測= ▼ に止まると桁 idStart-1、▲ に止まると桁 idStart= 左右は見分けられていた。
+//   ★規則は1つ= **止まった側が補色、もう一方が膜の色**。覚えるのは「最後に止まった側」だけ。外へ出ても戻さない(戻す合図は VS Code から来ない)。
+//     何もしていない時は ▲ に止まっているのと同じ(▼=膜の色・▲=補色)。
+const _meosFoldHalf = new Map();   // 'uri#line' -> '▼' | '▲'
+function meosFoldSwapIs(doc, line) { try { return _meosFoldHalf.get(doc.uri.toString() + '#' + line) === '\u25bc'; } catch (_) { return false; } }
+function meosFoldHalfSet(editor, line, half) {
+  try {
+    const k = editor.document.uri.toString() + '#' + line;
+    if ((_meosFoldHalf.get(k) || '\u25b2') === half) return;
+    if (half === '\u25b2') _meosFoldHalf.delete(k); else _meosFoldHalf.set(k, half);
+    if (_meosFoldHalf.size > 200) _meosFoldHalf.clear();
+    refresh(editor);
+  } catch (_) { }
 }
 function membraneArrowHoverMessage(editor, position) {
-  try { if (_meosFoldSwap && editor && position) meosDbg('[foldHover] asked line=' + position.line + ' ch=' + position.character); } catch (_) { }   // v4.2.760: 入れ替え中に、どこで訊かれたか
-  let _swapLine = -1;
-  try { return membraneArrowHoverMessageInner(editor, position, (l) => { _swapLine = l; }); }
-  finally { try { if (editor) meosFoldSwapSet(editor, _swapLine); } catch (_) { } }
+  return membraneArrowHoverMessageInner(editor, position, (line, half) => { try { if (editor) meosFoldHalfSet(editor, line, half); } catch (_) { } });
 }
 function membraneArrowHoverMessageInner(editor, position, swapAt) {
   if (!editor || !position) return null;
@@ -34425,7 +34426,7 @@ function membraneArrowHoverMessageInner(editor, position, swapAt) {
     const _folded = (info.kind === 'open' && _pair) ? isPairFolded(editor, _pair) : false;
     const _isToc = !!(_pair && isWorkingTocMembranePair(_pair, editor.document));
     if (info.kind === 'open' && _folded && !_isToc) {   // v4.2.758: 畳んだ ▼▲ は tip を出さず、▼ の上なら色を入れ替える
-      if (position.character < info.idStart) swapAt(info.line);
+      swapAt(info.line, position.character < info.idStart ? '\u25bc' : '\u25b2');
       meosDbg('[foldHover] line=' + info.line + ' ch=' + position.character + ' idStart=' + info.idStart + ' half=' + (position.character < info.idStart ? '\u25bc' : '\u25b2'));   // v4.2.760: ▼と▲で訊かれる桁が分かれているかを測る
       return '';   // 空= ここで打ち切る(下の画像tipを出させない)
     }
