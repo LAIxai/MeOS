@@ -32143,7 +32143,7 @@ document.addEventListener('pointermove',()=>hoverSet(true),true);document.docume
 window.addEventListener('message',ev=>{const m=ev.data;if(!m||m.type!=='mods'||!__hov)return;if(m.sl!==undefined){sideSet(!!m.sl,!!m.sr,__sl,__sr);__sl=!!m.sl;__sr=!!m.sr;}modsSet({Shift:m.s,Control:m.c,Meta:m.m,Alt:m.o});});
 function modsFrom(ev){modsSet({Shift:ev.shiftKey,Control:ev.ctrlKey,Meta:ev.metaKey,Alt:ev.altKey});}
 /* ★v4.2.736(俊克 改良2「Shiftで逆回りになるボタンでは青×のまま・そういう機能のないボタンでは無印」): Opt と同じ規則= 地の上と効く部品= 色の× / 効かない部品= 何も出さない */
-const MOD_SEL={shift:'#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img',ctrl:'#bm-pending-btn,#iv-img',cmd:'#bm-pending-btn,#iv-img'};
+const MOD_SEL={shift:'#fmt-hl-cycle,#fmt-st-cycle,#fmt-head-cycle,#fmt-mtx-cycle,#ww-ring,#fmt-table-wwcycle,#raw-toggle,#dw-scope,#bm-cycle,#bm-pending-btn,#mew-dup-see-clock,#mew-dup-see-all,#clk-pring,#meos-logo,#iv-img,#hand-pick',ctrl:'#bm-pending-btn,#iv-img,#hand-pick',cmd:'#bm-pending-btn,#iv-img,#hand-pick'};/* ★v4.2.753(俊克「このポインターボタンの上では、仕様に反して、G⌥Y⌘P⌃ のシミュレーションとして色を変えよう」): ポインターボタン(#hand-pick)だけは効かなくても色の×を出す= tip の G⌥Y⌘P⌃sum の見本 */
 function modsShow(){const top=MORD[MORD.length-1]||'';const k=top==='Control'?'ctrl':(top==='Meta'?'cmd':(top==='Shift'?'shift':''));let v=!!k&&!!lastPt;if(v){try{const t=lastPt.t;if(t&&t.closest&&t.closest(BTN_SEL)&&!t.closest(MOD_SEL[k]))v=false;}catch(_){}}document.body.classList.toggle('meos-shift',v);try{shx.c.classList.toggle('mx-ctrl',k==='ctrl');shx.c.classList.toggle('mx-cmd',k==='cmd');shx.c.classList.toggle('mx-shr',k==='shift'&&SSIDE==='R');shx.w.classList.toggle('on',v);if(v)at(shx,lastPt.x,lastPt.y);}catch(_){}}/* v4.2.732: Shift の間= Me Dock のどこでも青の× */
 function at(o,x,y){o.w.style.left=x+'px';o.w.style.top=y+'px';o.c.style.zoom=String(Z());}
 function under(ev){try{return document.elementFromPoint(ev.clientX,ev.clientY);}catch(_){return null;}}
@@ -32174,7 +32174,7 @@ document.addEventListener('pointermove',ev=>{if(press||!relXY)return;if(Math.abs
    緑の × は Opt+クリックが効く部品の上だけ= 文字タイル・==/~~/##・上付下付・Raw・⏰ボタン・⏰一覧の錠・⏰パネルの↻ */
 /* ★v4.2.601(俊克「最小幅にドラッグした時に、自動で+δの幅を追加しよう」): 自分の幅(四角の物差し)を拡張へ知らせる= 動きが止まって0.7秒後に1回 */
 let __mdWT=null;window.addEventListener('resize',()=>{clearTimeout(__mdWT);__mdWT=setTimeout(()=>{try{vscode.postMessage({type:'dockWidthPx',w:Math.round(document.documentElement.getBoundingClientRect().width)});}catch(_){}},700);});
-const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring';
+const OPT_SEL='#fmt-highlight,#fmt-strike,#fmt-heading,#fmt-metex,#raw-toggle,#raw-timer,.ci-lock,#clk-pring,#hand-pick';/* v4.2.753: ポインターボタンは G⌥Y⌘P⌃ の見本= Opt でも緑(v4.2.567 の「緑は消す」をここだけ破る) */
 /* ★v4.2.735(俊克「どこでもOptを押すと緑×を出して、効かないボタンの上に移動すると無印に」): 地の上= 緑(キー配列の確かめにも)・Opt が効く部品= 緑・効かない部品(ボタン/tip の在る物/文字タイル)= 何も出さない(赤も隠す) */
 function optOn(v){document.body.classList.toggle('meos-opt',!!v);let hit=false,btn=false;try{const el=!!v&&!!lastPt&&lastPt.t&&lastPt.t.closest&&lastPt.t.closest(OPT_SEL);hit=!!el;btn=!!v&&!!lastPt&&!!lastPt.t&&!!lastPt.t.closest&&!!lastPt.t.closest(BTN_SEL);
 /* v4.2.568(俊克 バグ2): 見出しの Opt は H3 では予約(何もしない= hdAltMode が null)= その時は緑の × も出さない */if(el&&el.id==='fmt-heading'&&typeof hdAltMode==='function'&&!hdAltMode())hit=false;}catch(_){}
