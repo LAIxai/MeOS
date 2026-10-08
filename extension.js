@@ -34384,6 +34384,7 @@ function meosFoldSwapSet(editor, line) {
   try { refresh(editor); } catch (_) { }
 }
 function membraneArrowHoverMessage(editor, position) {
+  try { if (_meosFoldSwap && editor && position) meosDbg('[foldHover] asked line=' + position.line + ' ch=' + position.character); } catch (_) { }   // v4.2.760: 入れ替え中に、どこで訊かれたか
   let _swapLine = -1;
   try { return membraneArrowHoverMessageInner(editor, position, (l) => { _swapLine = l; }); }
   finally { try { if (editor) meosFoldSwapSet(editor, _swapLine); } catch (_) { } }
@@ -34425,6 +34426,7 @@ function membraneArrowHoverMessageInner(editor, position, swapAt) {
     const _isToc = !!(_pair && isWorkingTocMembranePair(_pair, editor.document));
     if (info.kind === 'open' && _folded && !_isToc) {   // v4.2.758: 畳んだ ▼▲ は tip を出さず、▼ の上なら色を入れ替える
       if (position.character < info.idStart) swapAt(info.line);
+      meosDbg('[foldHover] line=' + info.line + ' ch=' + position.character + ' idStart=' + info.idStart + ' half=' + (position.character < info.idStart ? '\u25bc' : '\u25b2'));   // v4.2.760: ▼と▲で訊かれる桁が分かれているかを測る
       return '';   // 空= ここで打ち切る(下の画像tipを出させない)
     }
     return 'Toggle ' + meosMembraneGlyph(info.kind, _folded, _isToc) + '-Button!';
