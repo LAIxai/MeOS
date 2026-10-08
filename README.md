@@ -190,6 +190,9 @@ change the wrap width this directly.
 
 - **Three pointing hands** — the BTRON hand, a slim 22.5° classic macOS hand, or your OS's own. The tip of the
   finger is where you point, and it does not jump when the hand changes shape.
+- **G⌥Y⌘P⌃S⇧um sets the colors** — hold a modifier key over Me Dock and the hotspot × takes its colour: Opt green,
+  Cmd yellow, Ctrl purple, left Shift sky blue, right Shift blue. Read the initials in that order — **G**reen,
+  **Y**ellow, **P**urple, **S**ky — and you get *gypsum*, the plaster that sets. Try it on the pointer-hand button.
 - **The hand tells you what comes next** — on a Hyper TOC tab: the pointing finger before you press (a click, a
   double-click or a drag could follow); the open hand the moment you press; the closed hand after half a second, or as
   soon as you move. Let go after a drag and the open hand stays, ready to pick the tab up again — move the mouse and
@@ -208,6 +211,11 @@ change the wrap width this directly.
   [Issue](https://github.com/LAIxai/MeOS/issues) — that is how it gets fixed.
 - **Slow pasting in a very large diary?** Me Dock points you to switching off VSCodium's built-in
   *Markdown Language Features* for that workspace, which was the cause we measured.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-pharaoh-gypsum.png" alt="Pharaoh GYPSum - the modifier-key colours: left and right Shift, Ctrl, Cmd and Opt, and the name G⌥Y⌘P⌃S⇧um in a cartouche" width="58%"><br>
+  <sub><b>Pharaoh GYPSum.</b> Each modifier key paints the hotspot × its own colour, and the colours spell their own name: <b>G⌥Y⌘P⌃S⇧um</b> — gypsum, the plaster that sets. L and R are the eyes, the line is the nose, the cartouche is the mouth.</sub>
+</p>
 
 ### NEW in v4.1 — hang a clock on a membrane, and it comes to find you
 
