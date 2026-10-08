@@ -214,7 +214,7 @@ change the wrap width this directly.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-pharaoh-gypsum.png" alt="Pharaoh GYPSum - the modifier-key colours: left and right Shift, Ctrl, Cmd and Opt, and the name G⌥Y⌘P⌃S⇧um in a cartouche" width="58%"><br>
-  <sub><b>Pharaoh GYPSum.</b> Each modifier key paints the hotspot × its own colour, and the colours spell their own name: <b>G⌥Y⌘P⌃S⇧um</b> — gypsum, the plaster that sets. L and R are the eyes, the line is the nose, the cartouche is the mouth.</sub>
+  <sub><b>Pharaoh GYPSum.</b> Each modifier key paints the hotspot × its own colour, and the colours spell their own name: <b>G⌥Y⌘P⌃S⇧um</b> — gypsum, the plaster that sets. L and R are the eyes, the line is the nose, the cartouche is the mouth — and the hand is putting eye drops in the right eye, just like the v4.2 clocks above.</sub>
 </p>
 
 ### NEW in v4.1 — hang a clock on a membrane, and it comes to find you
