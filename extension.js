@@ -20168,11 +20168,43 @@ async function toggleMembraneFromArrowHit(editor, info) {
   //     乗っている間はカーソル行扱いを外し、**その行を離れたら解除**するので、
   //     印は出たまま何度でも押せて、編集したい時は一度離れて戻ればよい(生データはそこで出る)。
   //   ★畳むとカーソルは開始行へ退避する(v0.9.905)ので、抑止するのは常に開始行。
+  // ★★v4.2.755(俊克 2026.10.08 pm06:19「閉じた膜の▼▲ボタンをクリックして展開する時、▼をクリックすると、開始膜をその位置にして展開する。
+  //   ▲をクリックすると、終了膜をその位置にして展開する」):
+  //   ★▼▲は1つの装飾(idStart の before)= 押した桁で半分を見分ける。左半分(▼)はカーソルが1字前へ丸められて idStart より左、
+  //     右半分(▲)は idStart 以上に落ちる(→ [[feedback_buttons_are_inlay_hints]] の測定)。
+  //   ★「その位置」= 押した行が画面の上から何行目にあったか。▼= 開始行をそこに残す / ▲= 閉じ行をそこへ持って来る。
+  const _wasFolded = isPairFolded(editor, matched.pair);
+  let _openBy = null, _rowsAbove = -1, _topBefore = -1;
+  if (_wasFolded) {
+    try {
+      const _ch = editor.selection.active.character;
+      _openBy = (info.kind === 'open' && _ch >= info.idStart) ? 'close' : 'open';
+      const _vr = editor.visibleRanges || [];
+      if (_vr.length) {
+        _topBefore = _vr[0].start.line;
+        let _n = 0, _found = false;
+        for (const r of _vr) { for (let ln = r.start.line; ln <= r.end.line; ln++) { if (ln === matched.pair.start) { _found = true; break; } _n++; } if (_found) break; }
+        if (_found) _rowsAbove = _n;
+      }
+      meosDbg('[arrowOpen] by=' + _openBy + ' caretCh=' + _ch + ' idStart=' + info.idStart + ' rowsAbove=' + _rowsAbove + ' top=' + _topBefore + ' start=' + matched.pair.start + ' end=' + matched.pair.end);
+    } catch (_) { }
+  }
   setRefNoRaw(editor.document, matched.pair.start);
   _meosArrowToggling = true;
   try {
-    await setPairFoldStateAndMstat(editor, matched.pair, !isPairFolded(editor, matched.pair));
+    await setPairFoldStateAndMstat(editor, matched.pair, !_wasFolded);
     meosParkCaretAfterPress(editor, matched.pair.start);   // ★v4.2.76: 次のクリックが必ず届く所へ
+    if (_wasFolded && _rowsAbove >= 0) {
+      try {
+        if (_openBy === 'close') {
+          // 閉じ行を一番上に出してから、押した行の高さまで下げる(editorScroll は畳まれた行を数えない)
+          editor.revealRange(new vscode.Range(matched.pair.end, 0, matched.pair.end, 0), vscode.TextEditorRevealType.AtTop);
+          if (_rowsAbove > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'line', value: _rowsAbove, revealCursor: false });
+        } else if (_topBefore >= 0) {
+          editor.revealRange(new vscode.Range(_topBefore, 0, _topBefore, 0), vscode.TextEditorRevealType.AtTop);   // 開始行は押した所のまま
+        }
+      } catch (_) { }
+    }
   } finally { _meosArrowToggling = false; }
   setRefNoRaw(editor.document, matched.pair.start);   // トグル中の refresh で解けていても張り直す
   refresh(editor);
