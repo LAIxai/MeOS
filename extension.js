@@ -34873,7 +34873,21 @@ function meosColorChipWidth(text) {
   const m = t.match(MEOS_HEX_COLOR_RE);
   return m ? m.length * MEOS_COLOR_CHIP_W : 0;
 }
-function meosStrWidth(s) { let w = 0; const t = meosStripHiddenForWidth(s); for (const ch of t) w += meosCharWidth(ch.codePointAt(0)); return w + meosColorChipWidth(t); } // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す
+// ★v4.2.776-5(俊克 2026.10.10 am02:08「整形しても縦線が少しがたつくのは直るのかな?」): 絵文字を半角1で数えていた(v4.0 のメモ「✅💥はほぼ半角」)。
+//   測った(emoji-width-test・am02:21 のスクショ)= ⏰✅💥🤝 は**漢字と同じ幅**(半角 26.7px・漢字 45.0・絵文字 45.3)/ ★(字の形の記号)は半角。
+//   → 絵文字の形で描かれる字(Emoji_Presentation、または後ろに FE0F が付く絵文字)は漢字の幅。FE0F・ZWJ の後ろの字・肌色は幅 0(1つの絵にまとまる)。
+const MEOS_EMOJI_PRES_RE = /\p{Emoji_Presentation}/u, MEOS_EXT_PICT_RE = /\p{Extended_Pictographic}/u;
+function meosStrWidth(s) {
+  let w = 0; const t = meosStripHiddenForWidth(s); const a = Array.from(t);
+  for (let i = 0; i < a.length; i++) {
+    const cp = a[i].codePointAt(0);
+    if (cp === 0xFE0F || cp === 0xFE0E || cp === 0x200D || (cp >= 0x1F3FB && cp <= 0x1F3FF) || (cp >= 0xE0020 && cp <= 0xE007F)) continue;
+    if (i > 0 && a[i - 1].codePointAt(0) === 0x200D) continue;
+    const emo = (cp > 0xFF && MEOS_EMOJI_PRES_RE.test(a[i])) || (a[i + 1] === '\uFE0F' && MEOS_EXT_PICT_RE.test(a[i]));
+    w += emo ? _meosTableCjkW : meosCharWidth(cp);
+  }
+  return w + meosColorChipWidth(t);
+} // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す / v4.2.776-5: 絵文字は漢字の幅 // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す
 function meosPadCell(s, width, align) {
   const pad = Math.max(0, Math.round(width - meosStrWidth(s))); // 全角が小数幅なので整数スペースに丸める
   if (align === 'right') return ' '.repeat(pad) + s;
