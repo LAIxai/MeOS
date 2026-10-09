@@ -214,7 +214,7 @@ change the wrap width this directly.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo with the BTRON hand, the Me Dock title tiles, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
-  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And when the Me Dock you installed has no 🚀 ROCKET — what will you think?</sub>
+  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And the Me Dock you installed has no 🚀 ROCKET? <b>Find the secret way to bring it in</b> — if you dare. Who blinks first?</sub>
 </p>
 
 <p align="center">

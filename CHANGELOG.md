@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.769 (2026-10-09)
+- **A 45° arrow in Me Dock, with the BTRON hand.** The BTRON finger points at exactly 45°, so the ↖ arrow in Me Dock now does too: the macOS arrow turned 22.5° about its tip. With the 22.5° hand or your OS hand, the arrow is the usual one.
+- **Click the version in the Me Dock header** to copy it together with the keywords of its era (v4.2.765–768).
+
 ### v4.2.685 (2026-10-06)
 - **📂 Reopen folder.** Sometimes a window comes back with no folder open: the Explorer says "You have not yet opened a folder" and Source Control (Git) is empty, though your files are still in the tabs. MeOS remembers the folders you work in, and in that case a blinking **📂 Reopen folder** appears in Me Dock — one click brings the folder back.
 - **Me Dock stays narrow.** Drag Me Dock to its narrowest and it now always settles 12 px wider than the minimum. At the exact minimum, VSCodium widens the panel as soon as you click a button in it.
