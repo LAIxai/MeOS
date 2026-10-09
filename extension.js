@@ -34908,11 +34908,11 @@ function meosIsTableLine(text) { return text.indexOf('|') >= 0 && text.trim() !=
 // v0.9.999161(俊克): 結合マーカーをコメント形式 <!--🤝N--> に。HTMLコメント=GitHub含め全ビューアで不可視=生データを汚さない(MeOSのモットー)。MeOSはコメントを読んで結合装飾+コメント自体をエディタ上でゼロ幅に隠す。旧・素の🤝Nも後方互換で認識。
 // v0.9.999163(俊克): 結合の方向記法。🤝→N=横結合(colspan)/🤝↓N=縦結合(rowspan・下のセルと結合)/素の🤝N=→(後方互換)。コメント形式で生データを汚さない。
 function meosCellSpan(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|↓)?\s*(\d+)\s*-->/u.exec(t) || /^\s*🤝\s*(→|↓)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); if (!m || m[1] === '↓') return 1; return Math.max(1, parseInt(m[2], 10)); } // 横結合(colspan)のみ返す。縦(↓)や非結合は1。
-function meosMergeMarker(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?\s*-->/u.exec(t) || /^\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?(?=\s|$)/u.exec(t.trim()); return m ? ('<!--🤝' + (m[1] || '→') + (m[2] || '') + '-->') : ''; } // v3.1.15: →←↓↑＋番号任意(膜は無番号)。元マーカーをコメント形式で保持(素の🤝N→<!--🤝→N-->)。
-function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*(?:→|←|↓|↑)?\s*\d*\s*-->/gu, '').replace(/^\s*🤝\s*(?:→|←|↓|↑)?\s*\d*\s*/u, '').trim(); }
+function meosMergeMarker(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?\s*-->/u.exec(t) || /^\s*🤝\s*(→|←|↓|↑)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); return m ? ('<!--🤝' + (m[1] || '→') + (m[2] || '') + '-->') : ''; } // v3.1.15: →←↓↑＋番号任意(膜は無番号)。元マーカーをコメント形式で保持(素の🤝N→<!--🤝→N-->)。
+function meosStripMergeMarker(cellText) { return String(cellText || '').replace(/<!--\s*🤝\s*(?:→|←|↓|↑)?\s*\d*\s*-->/gu, '').replace(/^\s*🤝\s*(?:→|←|↓|↑)?\s*\d+(?=\s|$)\s*/u, '').trim(); }   // ★v4.2.776-6(俊克「整形する度に🤝が1つずつ消える」): 素の印は数字つき(🤝N)だけ。数字の無い🤝は字(\d* だと『🤝🤝🤝』の頭を印として剥がしていた)
 // v3.1.15(俊克「結合膜 →…←」・計算膜 Σ→…Σ← と同型): 番地もカウントも書かず、始点(→/↓)と終点(←/↑)のマーカーで結合範囲を囲む。列/行を挿しても数字を直さない(insertion-stable)。素の🤝N(カウント)は後方互換で残す。
 const MEOS_MERGE_OPP = { '→': '←', '←': '→', '↓': '↑', '↑': '↓' };
-function meosMergeAt(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?\s*-->/u.exec(t) || /^\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?(?=\s|$)/u.exec(t.trim()); if (!m) return null; return { dir: m[1] || '→', n: m[2] ? Math.max(1, parseInt(m[2], 10)) : 0 }; } // n=0=膜(相方を探す)
+function meosMergeAt(cellText) { const t = String(cellText || ''); const m = /<!--\s*🤝\s*(→|←|↓|↑)?\s*(\d+)?\s*-->/u.exec(t) || /^\s*🤝\s*(→|←|↓|↑)?\s*(\d+)(?=\s|$)/u.exec(t.trim()); if (!m) return null; return { dir: m[1] || '→', n: m[2] ? Math.max(1, parseInt(m[2], 10)) : 0 }; } // n=0=膜(相方を探す)
 // 横colspanの実効値(cells配列とcol): 🤝→N=N(カウント) / 🤝→(膜・無番号)=相方🤝←までの距離 / それ以外(←/↓/↑/非結合)=1。
 function meosColspanInCells(cells, c) { const mk = meosMergeAt(cells[c]); if (!mk || mk.dir !== '→') return 1; if (mk.n > 0) return mk.n; for (let j = c + 1; j < cells.length; j++) { const m2 = meosMergeAt(cells[j]); if (m2 && m2.dir === '←' && m2.n === 0) return j - c + 1; } return 1; }
 // 縦rowspanの実効値(rows/sepIdx/r/c): 🤝↓N=N / 🤝↓(膜)=相方🤝↑までの距離 / それ以外=1。
