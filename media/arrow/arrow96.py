@@ -9,10 +9,12 @@ for x in range(8):
     if px[x, 0][3] <= 120: px[x, 0] = (0, 0, 0, 0)
 for y in range(8):
     if px[0, y][3] <= 120: px[0, y] = (0, 0, 0, 0)
-c4 = Image.new('RGBA', (96, 104), (0, 0, 0, 0)); c4.paste(a, (0, 6))
-c1 = c4.resize((24, 26), Image.LANCZOS)
+# ★v4.2.771(俊克「赤×が少しズレている」): ライトでは×は黒い縁の先端に乗っていた。ダークでは黒い縁が地に溶けて**白い先端**(約2画素内側)が先端に見える
+#   → 当たりを白い先端へ= 当たりを右へ1(=4.8画素)・絵を右へ3画素(差1.8)/絵を上へ2画素(上に透明4行・下に4行)。絵の形は触らない
+c4 = Image.new('RGBA', (100, 104), (0, 0, 0, 0)); c4.paste(a, (3, 4))
+c1 = c4.resize((25, 26), Image.LANCZOS)
 c4.save(os.path.join(HERE, 'meos_arrow45v_4x.png')); c1.save(os.path.join(HERE, 'meos_arrow45v_1x.png'))
 def b64(im):
     bio = io.BytesIO(); im.save(bio, 'PNG'); return base64.b64encode(bio.getvalue()).decode()
 json.dump({'arrow': (b64(c1), b64(c4))}, open(os.path.join(HERE, 'arrow96_b64.json'), 'w'))
-print('tip col0 first y (4x)=', [y for y in range(104) if c4.getpixel((0, y))[3] > 100][:1])
+print('tip col3 first y (4x)=', [y for y in range(104) if c4.getpixel((3, y))[3] > 100][:1])
