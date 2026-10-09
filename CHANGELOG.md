@@ -4,6 +4,9 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.770 (2026-10-09)
+- **A new 45° arrow, drawn for MeOS.** v4.2.769 only turned the macOS arrow — and the macOS arrow's tail has been bent to 26.57° since the low-resolution days, so the bend turned with it. The new arrow is symmetric about 45°, with a white body and a thin black edge like the BTRON hand, the same size (20 px) and the same hotspot. Shown with the BTRON hand only.
+
 ### v4.2.769 (2026-10-09)
 - **A 45° arrow in Me Dock, with the BTRON hand.** The BTRON finger points at exactly 45°, so the ↖ arrow in Me Dock now does too: the macOS arrow turned 22.5° about its tip. With the 22.5° hand or your OS hand, the arrow is the usual one.
 - **Click the version in the Me Dock header** to copy it together with the keywords of its era (v4.2.765–768).

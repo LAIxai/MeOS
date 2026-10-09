@@ -15,3 +15,8 @@ webview_out*.js
 CHANGELOG_phase5.md
 package_phase5_config.json.txt
 media/hand/**
+media/arrow/os_arrow_*
+media/arrow/meos_arrow45_*
+media/arrow/reg96/**
+media/arrow/*.py
+media/arrow/*.json
