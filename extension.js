@@ -34756,6 +34756,12 @@ function meosCharWidth(cp) {
 // ★これは方針転換ではなく**既存の設計の続き**=結合マーカー(🤝)と計算マーカー(Σ)は前から
 //   剥がしてから測っていた(meosStripMergeMarker/meosStripCalcMarker)。隠すものが増えたので、そこに足すだけ。
 // ★バッククォートの中は「文字そのもの」so手を付けない(v4.0.58の約束)。記法を説明する表が崩れない。
+// ★v4.2.776-8(俊克 2026.10.10 am03:18「リンクが正しく書かれていなくても、このままの文字として見た時、他の行の長さに整わないのか?」):
+//   印 `[表示]()` は、表の直後の FC群(<!-- Mew!FC … -->)と対で初めてリンクになり、括弧が隠れる。FC群が無い表では括弧は見えたまま。
+//   なのに幅は「いつも隠れる」と数えていた→ 括弧4文字分はみ出した。→ 整形する表の直後に FC群が無い間は、括弧も数える。
+let _meosTableLinksBare = false;
+function meosTableHasFcGroup(doc, endLine) { try { const n = endLine + 1; return n < doc.lineCount && /^\s*<!--\s*Mew!FC\b/.test(doc.lineAt(n).text); } catch (_) { return true; } }
+function meosFormatTableAt(doc, blk, raw, funcMap) { _meosTableLinksBare = !meosTableHasFcGroup(doc, blk.end); try { return meosFormatTableLines(raw, funcMap); } finally { _meosTableLinksBare = false; } }
 function meosStripHiddenForWidth(s) {
   let t = String(s == null ? '' : s);
   // ★v4.0.278: 縦結合の印(🤝↓N)は**この後で剥がされる**so、余地の有無は**生のセル**で先に見ておく。
@@ -34774,7 +34780,7 @@ function meosStripHiddenForWidth(s) {
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
   if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
   // v4.0.94: 行末一括コメント方式。指定コメントは①で消えるので、ここでは印 `[表示]()` を表示文字に戻すだけ。
-  if (t.indexOf(']()') >= 0) t = t.replace(/(?<!\!)\[([^\]\n]*)\]\(\)/g, (m, label) => label);
+  if (t.indexOf(']()') >= 0 && !_meosTableLinksBare) t = t.replace(/(?<!\!)\[([^\]\n]*)\]\(\)/g, (m, label) => label);   // v4.2.776-8: 表の後に FC群が無ければ印は描かれない= 括弧も見えている
   // v4.0.93: 参照形式 `[表示][ref]` も表示文字だけ。ここには定義表が無いので、定義の有無は見ない
   //   (表の中で未定義の参照を書くのは病的so、定義済みに寄せる方が実害が小さい)。
   if (t.indexOf('][') >= 0) t = t.replace(MEOS_MD_REFLINK_RE, (m, label) => label);
@@ -35249,7 +35255,7 @@ async function meosFormatTableAtCursor(editor) {
   for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
   const indent = (raw[0].match(/^\s*/) || [''])[0];
   let funcMap = null; try { if (MEOS_METEX) funcMap = meosFuncRegistry(doc); } catch (_) {} // v3.1.40: 関数電卓セルを結果幅で整形する為、定義(表の外)を集めたレジストリを渡す
-  const formatted = meosFormatTableLines(raw, funcMap);
+  const formatted = meosFormatTableAt(doc, blk, raw, funcMap);
   if (!formatted) { vscode.window.setStatusBarMessage('MeOS: 区切り行 |---| が見つかりません(GFMテーブルではない)', 2800); return; }
   const withIndent = formatted.map(l => indent + l);
   const we = new vscode.WorkspaceEdit();
@@ -35297,7 +35303,7 @@ async function meosRecalcAllInScope(editor) {
   for (const blk of blocks) {
     const raw = []; for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
     const indent = (raw[0].match(/^\s*/) || [''])[0];
-    const formatted = meosFormatTableLines(raw, funcMap); if (!formatted) continue;
+    const formatted = meosFormatTableAt(doc, blk, raw, funcMap); if (!formatted) continue;
     const withIndent = formatted.map(l => indent + l);
     const changed = (MEOS_TABLE_CALC && MEOS_RELEASE_PHASE >= 3) ? meosCalcChangedCells(raw, withIndent) : [];
     if (changed.length) { tablesChanged++; cellsChanged += changed.length; }
@@ -35339,7 +35345,7 @@ function meosComputeTableBakeEdits(doc) {
       const blk = meosTableBlockRange(doc, ln); if (!blk) continue;
       const raw = []; for (let i = blk.start; i <= blk.end; i++) raw.push(doc.lineAt(i).text);
       const indent = (raw[0].match(/^\s*/) || [''])[0];
-      const formatted = meosFormatTableLines(raw, funcMap);
+      const formatted = meosFormatTableAt(doc, blk, raw, funcMap);
       if (formatted) {
         const withIndent = formatted.map(l => indent + l), newText = withIndent.join('\n'), oldText = raw.join('\n');
         if (newText !== oldText) edits.push(vscode.TextEdit.replace(new vscode.Range(blk.start, 0, blk.end, doc.lineAt(blk.end).text.length), newText));
