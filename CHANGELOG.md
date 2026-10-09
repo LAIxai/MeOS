@@ -4,8 +4,11 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.774 (2026-10-09)
+- The 🎨 Theme button shortens a four-digit year in a theme name: **Light 2026** shows as **Light 26**.
+
 ### v4.2.771 (2026-10-09)
-- The 45° arrow now clicks at the tip of its **white** body (fine-tuned in v4.2.772–773), where the tip appears on a dark Me Dock (the thin black edge melts into a dark background).
+- The 45° arrow now clicks at the tip of its **white** body — and from v4.2.774 at the tip of its thin **black** edge, the tip you actually see, where the tip appears on a dark Me Dock (the thin black edge melts into a dark background).
 
 ### v4.2.770 (2026-10-09)
 - **A new 45° arrow, drawn for MeOS.** v4.2.769 only turned the macOS arrow — and the macOS arrow's tail has been bent to 26.57° since the low-resolution days, so the bend turned with it. The new arrow is symmetric about 45°, with a white body and a thin black edge like the BTRON hand, the same size (20 px) and the same hotspot. Shown with the BTRON hand only.

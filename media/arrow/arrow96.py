@@ -14,10 +14,12 @@ for y in range(8):
 # ★v4.2.772(俊克「まだ右斜めの線の中心からズレている」): 771のスクショで×の2本の線を当てはめた交点に対し、白い先端は右1・下1.5(770は右3・下2.5)→ 絵を左1・上2画素
 # ★v4.2.773(俊克 バグ1「逆に離れた。赤×を左上へ」): 772は行き過ぎ= 先端が×の交点の左上へ約1.3(スクショ画素)。771の白い先端の測り(min x+y)は×の縁に混ざって誤っていた
 #   → 772の拡大図で目で先端を読み直し、771と772の間= 絵を(3,3)(771より上1・772より右1下1)
-c4 = Image.new('RGBA', (100, 104), (0, 0, 0, 0)); c4.paste(a, (3, 3))
+# ★v4.2.774(俊克「だいぶ近づいたけど、まだ。一発で決めて」): 4版のダークのスクショで ×の交点 と 先端(↖の2辺に直線を当てはめた交点)を測った= 白い先端は 770(+2.3,+2.0) 771(+0.8,+0.5) 772(-1.1,-1.0) 773(-0.2,-0.2)
+#   = 773で白い先端はもう×に乗っていた。俊克が見る先端は**黒い縁の先端**(白い先端の左上 約2.5画素)→ 当たりを黒い縁の先端へ= 絵を右下へ2画素(5,5)
+c4 = Image.new('RGBA', (100, 104), (0, 0, 0, 0)); c4.paste(a, (5, 5))
 c1 = c4.resize((25, 26), Image.LANCZOS)
 c4.save(os.path.join(HERE, 'meos_arrow45v_4x.png')); c1.save(os.path.join(HERE, 'meos_arrow45v_1x.png'))
 def b64(im):
     bio = io.BytesIO(); im.save(bio, 'PNG'); return base64.b64encode(bio.getvalue()).decode()
 json.dump({'arrow': (b64(c1), b64(c4))}, open(os.path.join(HERE, 'arrow96_b64.json'), 'w'))
-print('tip col3 first y (4x)=', [y for y in range(104) if c4.getpixel((3, y))[3] > 100][:1])
+print('tip col5 first y (4x)=', [y for y in range(104) if c4.getpixel((5, y))[3] > 100][:1])
