@@ -5,7 +5,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 ## v4.2 era — highlights (2026-09 →)
 
 ### v4.2.776 (2026-10-09)
-- **🤝→ beside the table button.** Click it and the cell at the cursor joins the cell on its right (`<!--🤝→2-->`); click again for 3, 4… cells. Hold Shift and it becomes **🤝↓** — the cell joins the one below. The ↻ and 🤝 now stand one above the other, right of the ▾.
+- **🤝→ beside the table button.** Click it and the cell at the cursor joins the cell on its right (`<!--🤝→2-->`); click again for 3, 4… cells. Hold Shift and it becomes **🤝↓** — the cell joins the one below. The ↻ and 🤝 now stand one above the other, right of the ▾. **Cmd+Click** (Cmd+Shift+Click for 🤝↓) makes it one cell fewer; at 1 the mark goes. Hold Shift or Cmd over 🤝 and the hotspot × takes that key's colour.
 
 ### v4.2.774 (2026-10-09)
 - The 🎨 Theme button shows the same name as its list (it showed the internal id, e.g. *Default H* for Dark High Contrast), with **High Contrast** as **HC** and a four-digit year shortened: **Light 2026** shows as **Light 26** (v4.2.774–775).
