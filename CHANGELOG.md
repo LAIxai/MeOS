@@ -6,6 +6,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ### v4.2.776 (2026-10-09)
 - **🤝 in a table cell is no longer eaten by ▦.** Each format took one 🤝 off the front of a cell like 🤝🤝🤝 — only 🤝 with a number (the old 🤝2 form) is a merge mark now.
+- **Bold and italic Japanese in a table count about 10 % narrower** — that is how wide they are drawn (measured: 1.46 against 1.61 for plain), so a styled cell no longer pulls its | to the left.
 - **Emoji in a table now count as wide as a kanji** when ▦ lines up the columns (⏰ ✅ 💥 🤝 measured at the same width as 漢). They were counted as one half-width letter, so a row with ⏰ pushed its | out. Text-style symbols such as ★ stay half-width.
 - **🤝→ beside the table button.** Click it and the cell at the cursor joins the cell on its right (`<!--🤝→2-->`); click again for 3, 4… cells. Hold Shift and it becomes **🤝↓** — the cell joins the one below. The ↻ and 🤝 now stand one above the other, right of the ▾. **Cmd+Click** (Cmd+Shift+Click for 🤝↓) makes it one cell fewer; at 1 the mark goes. Hold Shift or Cmd over 🤝 and the hotspot × takes that key's colour. The button says what a click will do: a green **+** adds, a yellow **−** ( — the macOS colours, and Cmd's colour in G⌥Y⌘P⌃S⇧um) takes away, and the arrow turns to ↓ while Shift is held.
 

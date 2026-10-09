@@ -34886,8 +34886,19 @@ function meosStrWidth(s) {
     const emo = (cp > 0xFF && MEOS_EMOJI_PRES_RE.test(a[i])) || (a[i + 1] === '\uFE0F' && MEOS_EXT_PICT_RE.test(a[i]));
     w += emo ? _meosTableCjkW : meosCharWidth(cp);
   }
-  return w + meosColorChipWidth(t);
-} // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す / v4.2.776-5: 絵文字は漢字の幅 // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す
+  return w - meosStyledCjkShrink(s) + meosColorChipWidth(t);
+} // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す / v4.2.776-5: 絵文字は漢字の幅 / v4.2.776-7: 太字・斜体の中の漢字は1割狭い
+// ★v4.2.776-7(俊克 2026.10.10 am02:54「右端の縦線がかなりがたついている」): italic-width-test のスクショで測った(半角 27px)=
+//   日本語1文字 素 43.5px(1.61)/ 太字 39.3(1.46)/ 斜体 39.3(1.46)/ 太字斜体 39.7(1.47)。飾りの付いた日本語は細身の字形で描かれ、約1割狭い(比 0.905)。
+//   → 太字・斜体(**…** / *…* / ***…*** / __…__ / _…_ と {} 付きの形)の中の漢字・かなを、その分だけ狭く数える。コードスパンの中は字そのもの= 数えない。
+const MEOS_STYLED_CJK_RATIO = 0.905;
+function meosStyledCjkShrink(s) {
+  let t = String(s == null ? '' : s); if (t.indexOf('*') < 0 && t.indexOf('_') < 0) return 0;
+  t = t.replace(/(`+)[^\n]*?\1/g, '');
+  let n = 0;
+  t.replace(/(\*\*\*|\*\*|\*|___|__|_)\{?(?=\S)([^*_\n]*?\S)\}?\1/g, (m, mk, body) => { for (const ch of body) { const cp = ch.codePointAt(0); if (meosCharWidth(cp) > 1) n++; } return m; });
+  return n * _meosTableCjkW * (1 - MEOS_STYLED_CJK_RATIO);
+} // v4.0.74: 隠れるマーカーを外した「見えている幅」/ v4.0.378: 色の四角は足す
 function meosPadCell(s, width, align) {
   const pad = Math.max(0, Math.round(width - meosStrWidth(s))); // 全角が小数幅なので整数スペースに丸める
   if (align === 'right') return ' '.repeat(pad) + s;
