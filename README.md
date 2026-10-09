@@ -213,6 +213,11 @@ change the wrap width this directly.
   *Markdown Language Features* for that workspace, which was the cause we measured.
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo with the BTRON hand, the Me Dock title tiles, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
+  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And when the Me Dock you installed has no 🚀 ROCKET — what will you think?</sub>
+</p>
+
+<p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-pharaoh-gypsum.png" alt="Pharaoh GYPSum - the modifier-key colours: left and right Shift, Ctrl, Cmd and Opt, and the name G⌥Y⌘P⌃S⇧um in a cartouche" width="33%">&nbsp;<img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-gypsum-king-relief.png" alt="King Gips - an ancient Egyptian relief of a pharaoh, with the cartouche G⌥Y⌘P⌃S⇧um carved beside him" width="59%"><br>
   <sub><b>Pharaoh GYPSum.</b> Each modifier key paints the hotspot × its own colour, and the colours spell their own name: <b>G⌥Y⌘P⌃S⇧um</b> — gypsum, the plaster that sets. L and R are the eyebrows, the two Shift × are the eyes, the line is the nose, the cartouche is the mouth — and the hand is putting eye drops in the right eye, just like the v4.2 clocks above. Thousands of years after Khufu and Khafre, King Gips (German for gypsum) returns — relief generated with ChatGPT.</sub>
 </p>
