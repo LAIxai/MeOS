@@ -26997,12 +26997,32 @@ const MEOS_DOCK_CRYPT_MSGS = ['encOp', 'encryptMembrane', 'copySecretAutoWipe'];
 const MEOS_DOCK_ALL = MEOS_DOCK_HOME + 'T';   // v4.2.622(俊克「パズルのデフォルトは Me DockⓉ。直ぐ近くに長く一緒にいたⓉdayボタンがある」): 既定は Ⓣ を最後に
 function meosDockTilesValid(o) { return typeof o === 'string' && o.length === 7 && o.split('').sort().join('') === MEOS_DOCK_ALL.split('').sort().join(''); }
 function meosDockTiles() { try { let o = extensionContext.globalState.get('meDockTiles'); if (typeof o === 'string' && o.length === 6) o = o + 'T';   /* v4.2.622: 旧6字の覚えも Ⓣ は最後へ */ return meosDockTilesValid(o) ? o : MEOS_DOCK_ALL; } catch (_) { return MEOS_DOCK_ALL; } }
+// ★v4.2.776-11(俊克「puzzleをコンプリートしたら赤が金色に。一度金色になったら、そのまま。黄金騎士ガロは死ぬまで黄金」):
+//   仕掛けのある並びを全種類見つけたら、最後にクリックした字の点が金色= 以後は並びに関わらず金のまま(globalState meosPuzzleGold)
+//   見つけた種類は meosPuzzleFound に貯める。種類を後から足しても、もう金の人は金のまま
+const MEOS_PUZZLE_KINDS = [
+  ['lock', o => meosDockLocked(o)], ['crypt', o => meosDockCrypt(o)], ['hide', o => meosDockHideEnc(o)],
+  ['extreme', o => o === 'DockeTM'], ['tm', o => /TM$/.test(o) && o !== 'DockeTM'], ['comet', o => /^[ck]oMeT/.test(o)],
+  ['mercury', o => o === 'MecoDTk'], ['mecoS', o => /^MecoT/.test(o)], ['meckGoat', o => /^MeckD/.test(o)],
+  ['meckAngry', o => /^Mecko/.test(o)], ['meckCapricorn', o => /^MeckT/.test(o)], ['mec', o => /^Mec/.test(o) && !/^Mec(oDTk|oT|kD|ko|kT)/.test(o)]];
+function meosPuzzleGold() { try { return !!extensionContext.globalState.get('meosPuzzleGold'); } catch (_) { return false; } }
+function meosPuzzleNote(o) {   // 戻り値 true= 今、金色になった
+  try {
+    if (meosPuzzleGold()) return false;
+    const gs = extensionContext.globalState, f = Object.assign({}, gs.get('meosPuzzleFound') || {});
+    if (gs.get('meosDingDongWon')) f.extreme = 1; if (gs.get('meosRocketWon')) f.mercury = 1;   // 前の版で見つけた分
+    MEOS_PUZZLE_KINDS.forEach(([k, t]) => { if (t(o)) f[k] = 1; });
+    gs.update('meosPuzzleFound', f);
+    if (MEOS_PUZZLE_KINDS.every(([k]) => f[k])) { gs.update('meosPuzzleGold', true); return true; }
+  } catch (_) { }
+  return false;
+}
 function meosDockTilesHtml() {
   const col = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };
   // ★v4.2.609(俊克「Ⓣボタンをパズルの中に追加。これだけを緑色背景の白抜き。すべての入口をパズルに集約」): 並べ替えの6字の外に置く(並びと鍵の判定を崩さない)
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   let _last = ''; try { _last = String(extensionContext.globalState.get('meosPuzzleLast') || ''); } catch (_) { }   // v4.2.776-10: 最後にクリックした字= 点が赤
-  return '<span class="md-tiles" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
+  return '<span class="md-tiles' + (meosPuzzleGold() ? ' md-gold' : '') + '" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
     ? '<span class="md-tile md-ttile md-dot' + (_last === 'T' ? ' md-last' : '') + '" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span><span class="tt-emo"></span><span class="tt-s"><img alt="" draggable="false" src="data:image/png;base64,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"></span><span class="tt-comet"><span class="cm-g">\u263f</span><span class="cm-c"><svg class="cm-svg" viewBox="-16.4 -12.8 20.2 17.0" width="1.19em" height="1.00em"><defs><linearGradient id="cmHead" gradientUnits="userSpaceOnUse" x1="-2.84" y1="-1.89" x2="2.84" y2="1.89"><stop offset="0" stop-color="#c8150c"/><stop offset=".46" stop-color="#e0200e"/><stop offset=".56" stop-color="#ff7a14"/><stop offset="1" stop-color="#ffa030"/></linearGradient></defs><circle cx="-5.2" cy="-2.3" r="1.00" fill="#c8281a" opacity="0.95"/><circle cx="-7.8" cy="-3.4" r="0.88" fill="#c8281a" opacity="0.78"/><circle cx="-10.4" cy="-4.6" r="0.76" fill="#c8281a" opacity="0.61"/><circle cx="-12.9" cy="-5.7" r="0.64" fill="#c8281a" opacity="0.44"/><circle cx="-15.5" cy="-6.8" r="0.52" fill="#c8281a" opacity="0.27"/><circle cx="-1.5" cy="-5.8" r="0.92" fill="#c8281a" opacity="0.78"/><circle cx="-3.7" cy="-7.8" r="0.79" fill="#c8281a" opacity="0.61"/><circle cx="-5.8" cy="-9.8" r="0.66" fill="#c8281a" opacity="0.44"/><circle cx="-8.0" cy="-11.8" r="0.53" fill="#c8281a" opacity="0.27"/><circle cx="-5.3" cy="2.9" r="0.92" fill="#c8281a" opacity="0.78"/><circle cx="-8.2" cy="2.6" r="0.79" fill="#c8281a" opacity="0.61"/><circle cx="-11.2" cy="2.4" r="0.66" fill="#c8281a" opacity="0.44"/><circle cx="-14.1" cy="2.1" r="0.53" fill="#c8281a" opacity="0.27"/><circle cx="0.0" cy="0.0" r="3.41" fill="url(#cmHead)"/></svg></span></span></span>'
     : '<span class="md-tile' + (_last === ch ? ' md-last' : '') + '" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
@@ -27139,7 +27159,8 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .title-row-dock{align-items:flex-end;margin-top:4px}
 .md-tile{position:relative}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
-.md-tile.md-dot.md-last::after{background:#e53935}   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
+.md-tile.md-dot.md-last::after{background:#e53935}
+.md-tiles.md-gold .md-tile.md-dot.md-last::after{background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
 .title-ver-dock{margin-left:auto;align-self:flex-end}
 .title:has(.title-row-dock){padding-bottom:9px}
@@ -32037,6 +32058,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
+if(m&&m.type==='mdGold'){const _r=document.getElementById('md-tiles');if(_r)_r.classList.add('md-gold');return;}/* v4.2.776-11 */
 if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T')return;/* v4.2.610: Ⓣ は常に点・tip は Today のまま */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
 if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
 if(m&&m.type==='clockCurrent'){/* v4.1.65: 開いた面に、今この膜that持っている繰返しを写す */
@@ -32957,6 +32979,7 @@ function toggleMeDock(editorOverride) {
         if (o === 'MecoDTk' && was !== o) { try { meosPlayRocket(); if (!extensionContext.globalState.get('meosRocketWon')) { extensionContext.globalState.update('meosRocketWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.667: ☿を出した瞬間に🚀・その人だけ音の一覧に 🚀ROCKET
         if (o === 'DockeTM' && was !== o) { try { meosPlayPinpon(); if (!extensionContext.globalState.get('meosDingDongWon')) { extensionContext.globalState.update('meosDingDongWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.618: 鳴らした人だけ 🛎️DING-DONG! が音の一覧に   // v4.2.617: Docke™(Dock Extreme)= ピンポーン
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
+        if (meosPuzzleNote(o)) { try { meDockPanel.webview.postMessage({ type: 'mdGold' }); } catch (_) { } }   // v4.2.776-11
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
         if (wasShut && !meosDockLocked(o) && !meosDockCrypt(o) && !meosDockHideEnc(o)) setTimeout(() => { try { meosMeDockRedraw(); } catch (_) { } }, 50);
