@@ -64,7 +64,7 @@ Module._load = function (request) { if (request === 'vscode') return stub; retur
 const SRC = path.join(__dirname, 'extension.js');
 const TMP = path.join(require('os').tmpdir(), 'meos_check_rulers_' + process.pid + '.js');
 fs.writeFileSync(TMP, fs.readFileSync(SRC, 'utf8') + `
-module.exports.__t = { meosStrWidth, meosCharWidth, meosSplitTableRow, meosIsTableSeparator, meosIsTableLine, meosColorChipWidth, meosFormatTableLines,
+module.exports.__t = { meosStrWidth, meosCharWidth, meosStyledCjkShrink, meosSplitTableRow, meosIsTableSeparator, meosIsTableLine, meosColorChipWidth, meosFormatTableLines,
   makeDecorations, applyPrettyLabels, meosApplyBoldDecorations, meosApplyMeLinkDecorations, meosApplyMeTexDecorations,
   meosApplyTableMergeDecorations, meosApplyTableCalcDecorations, meosApplyFuncDecorations };
 `, 'utf8');
@@ -170,7 +170,7 @@ for (const [a, b] of blocks) {
       const raw = text.slice(s, e); if (!raw.trim()) continue;
       cells++;
       const lead = raw.length - raw.replace(/^\s+/, '').length, trail = raw.length - raw.replace(/\s+$/, '').length;
-      const A = T.meosStrWidth(raw.trim()), B = visibleWidth(text, s + lead, e - trail, hide, add);
+      const A = T.meosStrWidth(raw.trim()), B = visibleWidth(text, s + lead, e - trail, hide, add) - T.meosStyledCjkShrink(raw.trim());   // v4.2.776-7: 太字・斜体の日本語の細さは字形の幅(隠す/隠さないの話ではない)= 両方から同じだけ引く
       if (Math.abs(A - B) > 1e-9) bad.push({ line: ln + 1, A, B, raw: raw.trim() });
     }
   }
