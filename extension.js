@@ -34778,7 +34778,7 @@ function meosStripHiddenForWidth(s) {
   //    まるごと表示文字に置き換えてから数える。★ここでも鉄則=**リンクは常に先に判定/先にマスク**(4度目)。
   //    (後ろのコメントは `}==` で終わるので①の spec 判定に当たらない=個別に外す必要がある。)
   if (t.indexOf('-->[') >= 0) t = t.replace(MEOS_MELINK_RE, (m, label) => label);
-  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label) => label); // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
+  if (t.indexOf('](') >= 0) t = t.replace(MEOS_MD_LINK_RE, (m, label, cmt, url) => (_meosTableLinksBare && !cmt && !String(url || '').trim()) ? m : label);   // v4.2.776-9: 行先の空の印 [表示]() は FC群が無ければ括弧も見えている(776-8 はこの手前で外されて効かなかった) // v4.0.78: 素のMarkdownリンクも表示文字だけ(第1群=ラベル)
   // v4.0.94: 行末一括コメント方式。指定コメントは①で消えるので、ここでは印 `[表示]()` を表示文字に戻すだけ。
   if (t.indexOf(']()') >= 0 && !_meosTableLinksBare) t = t.replace(/(?<!\!)\[([^\]\n]*)\]\(\)/g, (m, label) => label);   // v4.2.776-8: 表の後に FC群が無ければ印は描かれない= 括弧も見えている
   // v4.0.93: 参照形式 `[表示][ref]` も表示文字だけ。ここには定義表が無いので、定義の有無は見ない
