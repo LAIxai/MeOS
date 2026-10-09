@@ -5,7 +5,7 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 ## v4.2 era — highlights (2026-09 →)
 
 ### v4.2.774 (2026-10-09)
-- The 🎨 Theme button shortens a four-digit year in a theme name: **Light 2026** shows as **Light 26**.
+- The 🎨 Theme button shows the same name as its list (it showed the internal id, e.g. *Default H* for Dark High Contrast), with **High Contrast** as **HC** and a four-digit year shortened: **Light 2026** shows as **Light 26** (v4.2.774–775).
 
 ### v4.2.771 (2026-10-09)
 - The 45° arrow now clicks at the tip of its **white** body — and from v4.2.774 at the tip of its thin **black** edge, the tip you actually see, where the tip appears on a dark Me Dock (the thin black edge melts into a dark background).
