@@ -720,6 +720,48 @@
         "command": "laiMembrane.puzzleWarpNth",
         "args": { "n": 7 },
         "when": "meos.puzzleArmed && !inQuickOpen"
+      },
+      {
+        "key": "1",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 1 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
+      },
+      {
+        "key": "2",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 2 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
+      },
+      {
+        "key": "3",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 3 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
+      },
+      {
+        "key": "4",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 4 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
+      },
+      {
+        "key": "5",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 5 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
+      },
+      {
+        "key": "6",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 6 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
+      },
+      {
+        "key": "7",
+        "command": "laiMembrane.puzzleWarpNth",
+        "args": { "n": 7 },
+        "when": "meos.puzzleArmed && !inQuickOpen && !findWidgetVisible && !suggestWidgetVisible && !renameInputVisible"
       }
     ]
   },

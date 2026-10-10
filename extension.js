@@ -13511,7 +13511,8 @@ function meosModsWant(on, why) {
 }
 // ★v4.2.776-26(俊克「Shift長押しで🔴点を拡大・離してから0.5秒だけ拡大を続け、その間のEscでワープ」「その0.5秒の間にCmd+1〜7で左から何番目を選ぶ」「今でしょ」):
 //   ヘルパーの修飾キーの見張り(0.1秒ごと)を使う= エディタで打っている最中でも Shift だけの長押し(0.4秒)で構える。
-//   構えている間と、離してから 0.5秒は context meos.puzzleArmed= Esc/Cmd+1〜7 が MeOS のものになる(それ以外の時は VS Code の働きのまま)。
+//   v4.2.776-27(俊克 改良2「キー配列を変えているので Cmd+1〜7 は使えない。数字キー1〜7だけでワープ」): 素の数字1〜7も同じ
+//   構えている間と、離してから 0.5秒は context meos.puzzleArmed= Esc/1〜7/Cmd+1〜7 が MeOS のものになる(それ以外の時は VS Code の働きのまま)。
 //   Shift と一緒に他の修飾キーを押したら構えない(Shift+Cmd など)。ヘルパーの無い人は Shift+Esc のまま
 const MEOS_ARM_HOLD = 0.4, MEOS_ARM_GRACE = 0.5;
 let _meosArm = { down: 0, holdT: null, offT: null, on: false };
@@ -27303,7 +27304,8 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}   /* v4.2.776-26: Shift 長押しの間(と離して0.5秒)= 赤い点の字を拡大 */
-.md-tiles.md-armed .md-tile::before{content:attr(data-n);position:absolute;left:50%;top:-1.05em;transform:translateX(-50%);font-size:.5em;font-weight:800;color:var(--vscode-foreground);opacity:.85;pointer-events:none}   /* 左から何番目(Cmd+1〜7) */
+.md-tiles.md-armed .md-tile::before{content:attr(data-n);position:absolute;left:50%;top:-1.05em;transform:translateX(-50%);font-size:.5em;font-weight:800;color:var(--vscode-foreground);opacity:.85;pointer-events:none}   /* 左から何番目(1〜7 / Cmd+1〜7) */
+.md-tiles.md-armed .md-tile.md-last::before{color:#e53935;opacity:1;-webkit-text-stroke:.6px #000;paint-order:stroke fill;text-shadow:0 0 1px #000}   /* v4.2.776-27(俊克 改良1「ファイル名ボタンの文字に被って見難いので、拡大したものの数字だけ赤点と同じ黒縁の赤に」) */
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
 .title-ver-dock{margin-left:auto;align-self:flex-end}
