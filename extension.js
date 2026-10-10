@@ -27186,7 +27186,7 @@ body.md-crypt .encrypt-me-row{border-top-color:transparent!important}
    ★v4.2.70(俊克「Mepyの黄色と同じくらい明るくてもいいかもよ」)= 新しい値を作らず、
      **MeOSthat既に持っている黄**(ハイライトの rgba(255,232,40,.95) = 黄身色)を使う。
      色を1つ足すたびに「MeOSの黄」that増える → [[feedback_one_source_for_mark_count_action]] */
-.dev-vsix-btn.prize-watch-btn{margin-left:4px;padding:1px 4px}   /* v4.2.776-15 */
+.dev-vsix-btn.prize-watch-btn{margin-left:4px;padding:1px 5px;background:linear-gradient(#ffe066,#e0a800 55%,#b8860b);border-color:#8a6400;color:#5a3d00;box-shadow:0 0 4px rgba(255,200,40,.55)}   /* v4.2.776-15 / v4.2.776-16(俊克 改良1「⚜️ボタンの下地をもっと目立つ色に」): 金の下地 */
 .dev-vsix-btn{margin-left:auto;flex:0 0 auto;border:1px solid color-mix(in srgb,rgba(255,232,40,.95) 55%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:rgba(255,232,40,.95);font-weight:800;font-size:12px;line-height:1.2;padding:1px 7px;cursor:var(--meos-hand);opacity:.9}
 .dev-vsix-btn:hover{opacity:1;border-color:rgba(255,232,40,.95)}
 /* ★v4.2.102(俊克「1ファイル、20万行超〜30万行でのペースト遅延原因」): Standards の下・Re-install VSIX の上に1行。出すのは大きなファイルでMarkdown拡張が動いている時だけ。 */
