@@ -15471,7 +15471,9 @@ const MEOS_GOLD_PRIZE_P1 = 'https://github.com/LAIxai/MeOS/releases/download/med
 const MEOS_GOLD_PRIZE_P2 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p2.wav';
 const MEOS_GOLD_PRIZE_MARK = 'MEOS-P1';   // 仮の札の中身(頭)
 const MEOS_GOLD_PRIZE_NAME = 'GOLDEN KNIGHT';
-function meosGoldPrizePath() { try { if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
+// v4.2.776-18(俊克「私は初代GAROとして、音リストに召喚してくれるよね?」): 作者の机は Release から取らず(数を1にしない)、devVsixDir の golden-knight.wav を使う
+function meosGoldPrizeAuthorFile() { try { if (!meosIsAuthorDesk()) return ''; const f = require('path').join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
+function meosGoldPrizePath() { try { const _af = meosGoldPrizeAuthorFile(); if (_af) return _af; if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
 let _meosGoldPrizeBusy = false, _meosGoldPrizeLast = 0;
 function meosGoldPrizeFetch(url, done) {   // done(status, buffer|null)= 404/200 など・つながらない時は status 0
   const https = require('https');
