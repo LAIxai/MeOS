@@ -32180,6 +32180,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
+if(m&&m.type==='mdTodayClick'){const _tn=document.getElementById('dw-todaynow');if(_tn)_tn.click();return;}/* v4.2.776-24: Shift+Esc の赤い点がⓉ */
 if(m&&m.type==='mdGold'){const _r=document.getElementById('md-tiles');if(_r)_r.classList.add('md-gold');return;}/* v4.2.776-11 */
 if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T')return;/* v4.2.610: Ⓣ は常に点・tip は Today のまま */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
 if(m&&m.type==='clkTarget'){/* v4.2.393: カーソルが動いた時の判定= 置ける所なら押せる・札を消す */try{window.__clkTargetOk=!!m.ok;window.__clkTargetMode=m.mode||'';clkPaintSet();if(m.ok)clkWarnOff();}catch(e){}return;}
@@ -40974,6 +40975,18 @@ function activate(context) {
     _meosClkTargetTimer = setTimeout(() => { _meosClkTargetTimer = null; meosPostClkTarget(); }, 150);
   }));
   // v4.2.350: 変化の無い Cmd+S= 柔らかい音を返し、保存そのものは今まで通り呼ぶ(保存に掛けている他の仕掛けを止めない)。
+  // ★v4.2.776-24(俊克「🔴の付いたpuzzleピースをクリックする代わりに、Shift+Escを叩くとワープ。Escは終了の意味なので、Shiftケースでは起動」):
+  //   最後にクリックした字(赤い点)へ飛ぶ= 字なら その F の印へ(クリックと同じ meosPuzzleTag)・Ⓣなら今日へ(Me Dock のⓉを押す)。
+  //   VS Code も検索窓などを閉じるのに Shift+Esc を使う= それらが出ていない時だけ効く(package.json の when)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpRed', async () => {
+    try {
+      const ch = String(extensionContext.globalState.get('meosPuzzleLast') || '');
+      if (!ch) { vscode.window.setStatusBarMessage('MeOS: no red dot yet \u2014 click a puzzle letter in Me Dock first.', 3000); return; }
+      const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return;   // 間抜け・Deco の間は動かない(クリックと同じ門)
+      if (ch === 'T') { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdTodayClick' }); return; }
+      await meosPuzzleTag(ch);
+    } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.saveUnchanged', async () => {
     meosPlayNoChange();
     try { await vscode.commands.executeCommand('workbench.action.files.save'); } catch (_) { }

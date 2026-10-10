@@ -245,6 +245,10 @@
         "command": "laiMembrane.listSpecsToBlock",
         "title": "MeOS: Group list FCs below the block",
         "category": "MeOS"
+      },
+      {
+        "command": "laiMembrane.puzzleWarpRed",
+        "title": "MeOS: Warp to the red-dot letter (Shift+Esc)"
       }
     ],
     "configuration": {
@@ -657,6 +661,11 @@
         "key": "ctrl+k ctrl+j",
         "mac": "cmd+k cmd+j",
         "when": "editorTextFocus"
+      },
+      {
+        "key": "shift+escape",
+        "command": "laiMembrane.puzzleWarpRed",
+        "when": "editorTextFocus && !findWidgetVisible && !referenceSearchVisible && !suggestWidgetVisible && !markersNavigationVisible && !parameterHintsVisible && !inSnippetMode && !renameInputVisible && !inlineSuggestionVisible && !accessibilityHelpWidgetVisible && !inReferenceSearchEditor && !notificationToastsVisible"
       }
     ]
   },
