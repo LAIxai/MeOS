@@ -2823,6 +2823,7 @@ function meosSoundResolve(name) {
   if (n === 'SOFT') return meosNoChangeSoundPath() || '';
   if (n === 'GROWL') return meosGrowlPath() || '';   // v4.2.621: 🍙GROWL
   if (n === 'ROCKET') return meosRocketPath(true) || '';   // v4.2.676(俊克「毎回フェードアウトして、その90%で次を」): いつもフェード版   // v4.2.667: 賞品(MecoDTk で☿を出した人だけ)
+  if (n === MEOS_GOLD_PRIZE_NAME) return meosGoldPrizePath();   // v4.2.776-13: 栄誉の音(最初の達成者だけ)
   if (n === 'DING-DONG!') return meosPinponPath() || '';   // v4.2.618: 賞品(Docke™ で鳴らした人だけ)
   if (n === 'PURR') return meosPurrPath() || '';   // v4.2.518: 作った強烈なゴロゴロ(mac の Purr とは大文字で分ける)   // v4.2.515(俊克「🔔ボタンメニューに Soft が入ってないよ」): MeOS の柔らかい2音も1つの音に
   if (meosSoundIsPath(n)) return n;
@@ -2840,6 +2841,7 @@ function meosSoundList() {
   out.push('PURR');  // v4.2.518: 作った強烈なゴロゴロ
   out.push('GROWL'); // v4.2.621: 作ったお腹の虫
   try { if (extensionContext && extensionContext.globalState.get('meosDingDongWon')) out.push('DING-DONG!'); } catch (_) { }
+  try { if (meosGoldPrizePath()) out.push(MEOS_GOLD_PRIZE_NAME); } catch (_) { }   // v4.2.776-13
   try { if (extensionContext && extensionContext.globalState.get('meosRocketWon')) out.push('ROCKET'); } catch (_) { }   // ★v4.2.667(俊克「🚀ROCKETという名前に。この強烈なアラーム音を手に入れることができるのは何人かな?」): MecoDTk の賞品   // ★v4.2.618(俊克「鳴らした人だけ、賞品として、音ボタンのリストに🛎️DING-DONG!」)
   out.sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
   const cur = meosSoundNow();
@@ -2857,6 +2859,7 @@ function meosSoundSpawn(name) {
   if (name === 'SOFT') name = meosNoChangeSoundPath() || '';   // v4.2.515
   if (name === 'PURR') name = meosPurrPath() || '';   // v4.2.518
   if (name === 'DING-DONG!') name = meosPinponPath() || '';   // v4.2.618
+  if (name === MEOS_GOLD_PRIZE_NAME) name = meosGoldPrizePath();   // v4.2.776-13
   if (name === 'ROCKET') name = meosRocketPath(true) || '';   // v4.2.667 / v4.2.676: いつもフェード版
   if (name === 'GROWL') name = meosGrowlPath() || '';   // v4.2.621
   if (!name) return null;
@@ -15457,6 +15460,34 @@ function meosPlayRocket() {
     else if (process.platform === 'win32') exec('powershell -NoProfile -c "(New-Object Media.SoundPlayer \'' + String(f).replace(/'/g, "''") + '\').PlaySync()"', () => { });
     else exec('paplay ' + q(f) + ' || aplay -q ' + q(f), () => { });
   } catch (_) { }
+}
+// ★v4.2.776-13(俊克「最初の達成者には栄誉の音をプレゼント。ダウンロードされたらファイルを消す=二人目以降は取れない」):
+//   金になった時/金の人がパズルを押した時に、栄誉の音を1回だけ取りに行く。状態 meosGoldPrize= 無し(まだ)/'won'(取れた)/'gone'(無かった)。
+//   取れた・無かった(404)のどちらかになったら二度と取りに行かない。つながらない時だけ、次にパズルを押した時にもう一度
+const MEOS_GOLD_PRIZE_URL = 'https://github.com/LAIxai/MeOS/releases/download/golden-knight/golden-knight.wav';
+const MEOS_GOLD_PRIZE_NAME = 'GOLDEN KNIGHT';
+function meosGoldPrizePath() { try { if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
+let _meosGoldPrizeBusy = false;
+function meosGoldPrizeTry() {
+  try {
+    if (_meosGoldPrizeBusy || !meosPuzzleGold() || extensionContext.globalState.get('meosGoldPrize')) return;
+    _meosGoldPrizeBusy = true;
+    const https = require('https'), fs = require('fs'), path = require('path');
+    const get = (url, hop) => https.get(url, { headers: { 'User-Agent': 'MeOS' }, timeout: 15000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hop < 5) { res.resume(); get(res.headers.location, hop + 1); return; }
+      if (res.statusCode === 404) { res.resume(); extensionContext.globalState.update('meosGoldPrize', 'gone'); _meosGoldPrizeBusy = false; meosDbg('[goldPrize] gone'); return; }
+      if (res.statusCode !== 200) { res.resume(); _meosGoldPrizeBusy = false; return; }   // 404 以外の失敗= 次にもう一度
+      const parts = []; res.on('data', (c) => parts.push(c));
+      res.on('end', () => { try {
+        const b = Buffer.concat(parts); if (b.length < 44 || b.toString('ascii', 0, 4) !== 'RIFF') { _meosGoldPrizeBusy = false; return; }
+        const d = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'golden-knight.wav'), b);
+        extensionContext.globalState.update('meosGoldPrize', 'won'); meosDbg('[goldPrize] won ' + b.length);
+        try { meosSoundSpawn(MEOS_GOLD_PRIZE_NAME); } catch (_) { } setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300);
+      } catch (_) { } _meosGoldPrizeBusy = false; });
+      res.on('error', () => { _meosGoldPrizeBusy = false; });
+    }).on('error', () => { _meosGoldPrizeBusy = false; }).on('timeout', function () { this.destroy(); });
+    get(MEOS_GOLD_PRIZE_URL, 0);
+  } catch (_) { _meosGoldPrizeBusy = false; }
 }
 function meosPlayPinpon() {
   try { const f = meosPinponPath(); if (!f) return; const { exec } = require('child_process'); const q = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
@@ -32973,7 +33004,7 @@ function toggleMeDock(editorOverride) {
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
     if (message && message.type === 'mdDbg') { meosDbg('[mdDbg] ' + String(message.info || '').slice(0, 1500)); return; }   // v4.2.512
-    if (message && message.type === 'mdTileLast') { try { extensionContext.globalState.update('meosPuzzleLast', String(message.ch || '').slice(0, 1)); } catch (_) { } return; }   // v4.2.776-10
+    if (message && message.type === 'mdTileLast') { try { extensionContext.globalState.update('meosPuzzleLast', String(message.ch || '').slice(0, 1)); } catch (_) { } meosGoldPrizeTry(); return; }   // v4.2.776-13: 金の人がパズルを押した時も栄誉の音を取りに行く   // v4.2.776-10
     if (message && message.type === 'mdTiles') { const o = String(message.order || ''); if (meosDockTilesValid(o)) {
         const was = meosDockTiles(), wasShut = meosDockLocked(was) || meosDockCrypt(was) || meosDockHideEnc(was);
         // ★v4.2.549(俊克「間抜けになった時などの特別な並びのときに、効果音を2回。まぬけ、まぬけ!!と言っている感じ。ピンポーンと真逆」):
@@ -32983,7 +33014,7 @@ function toggleMeDock(editorOverride) {
         if (o === 'MecoDTk' && was !== o) { try { meosPlayRocket(); if (!extensionContext.globalState.get('meosRocketWon')) { extensionContext.globalState.update('meosRocketWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.667: ☿を出した瞬間に🚀・その人だけ音の一覧に 🚀ROCKET
         if (o === 'DockeTM' && was !== o) { try { meosPlayPinpon(); if (!extensionContext.globalState.get('meosDingDongWon')) { extensionContext.globalState.update('meosDingDongWon', true); setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300); } } catch (_) { } }   // v4.2.618: 鳴らした人だけ 🛎️DING-DONG! が音の一覧に   // v4.2.617: Docke™(Dock Extreme)= ピンポーン
         try { extensionContext.globalState.update('meDockTiles', o); } catch (_) { } meosDbg('[mdTiles] ' + o);
-        if (meosPuzzleNote(o)) { try { meDockPanel.webview.postMessage({ type: 'mdGold' }); } catch (_) { } }   // v4.2.776-11
+        if (meosPuzzleNote(o)) { try { meDockPanel.webview.postMessage({ type: 'mdGold' }); } catch (_) { } meosGoldPrizeTry(); }   // v4.2.776-13   // v4.2.776-11
         // ★v4.2.509(俊克「折り返しボタンの色も消えていた。ボタンを押すと復旧した。本当にロックで壊れかけたって感じ」): 閉じている間は Me Dock の問い合わせにも
         //   答えなかった= 開いた後も、テーマ/鐘の名前・折り返しの色が空のまま。→ 開いた時は Me Dock を描き直す(問い合わせをやり直させる)
         if (wasShut && !meosDockLocked(o) && !meosDockCrypt(o) && !meosDockHideEnc(o)) setTimeout(() => { try { meosMeDockRedraw(); } catch (_) { } }, 50);
