@@ -15521,6 +15521,8 @@ function meosGoldPrizeTry() {
       if (code === 200 && b && b.length >= 44 && b.toString('ascii', 0, 4) === 'RIFF') {
         const fs = require('fs'), path = require('path'), d = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'golden-knight.wav'), b);
         gs.update('meosGoldPrize', 'won'); meosDbg('[goldPrize] won ' + b.length);
+        // v4.2.776-20(俊克「⚜️を獲得した人には注意事項を。このアラーム音を聞いて何が起きても、当局は一切関知しない」)
+        vscode.window.showInformationMessage('\u269c\ufe0f GLD-KNIGHT is now yours \u2014 find it in the \ud83d\udd14 list. Caution: it is very loud, even at half volume. Whatever happens when you hear this alarm, the authorities will disavow any knowledge of it.');
         try { meosSoundSpawn(MEOS_GOLD_PRIZE_NAME); } catch (_) { } setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300);
       }
     } catch (_) { } _meosGoldPrizeBusy = false; });
