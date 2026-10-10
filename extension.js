@@ -13515,7 +13515,7 @@ function meosModsWant(on, why) {
 //   v4.2.776-28: Esc は廃止・素の数字は同じ数字の2連打で飛ぶ
 //   構えている間と、離してから 0.5秒は context meos.puzzleArmed= Esc/1〜7/Cmd+1〜7 が MeOS のものになる(それ以外の時は VS Code の働きのまま)。
 //   Shift と一緒に他の修飾キーを押したら構えない(Shift+Cmd など)。ヘルパーの無い人は Shift+Esc のまま
-const MEOS_ARM_HOLD = 0.4, MEOS_ARM_GRACE = 0.5;
+const MEOS_ARM_HOLD = 0.4, MEOS_ARM_GRACE = 0.8;   // v4.2.776-29(俊克「0.8秒にしてみよう」): 離してからの構え 0.5→0.8秒(時々数字が入っていた)
 let _meosArm = { down: 0, holdT: null, offT: null, on: false };
 function meosPuzzleArmSet(on) {
   if (_meosArm.on === on) return; _meosArm.on = on;
