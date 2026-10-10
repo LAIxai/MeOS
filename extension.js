@@ -13496,15 +13496,43 @@ function meosHelperWrite(text, menu, owner, anchor) {
 //   → VS Code の中(Electron)で動いている時だけ、launchd と V-helper の置き場所に触る。検査からは触らない。
 // ★v4.2.738(俊克 ②): ポインターが Me Dock の上に在る間だけ mods-want を置く→ V-helper が修飾キーを見て mods.json に書く→ Me Dock へ渡す
 let _meosModsWatch = null;
-function meosModsWant(on) {
+const _meosModsWhy = { hover: false, puzzle: false };   // v4.2.776-26: 見張る理由は2つ(どちらかが在れば mods-want を置く)
+function meosModsWant(on, why) {
   if (!meosRealHost()) return;
   try {
+    _meosModsWhy[why || 'hover'] = !!on; on = _meosModsWhy.hover || _meosModsWhy.puzzle;
     const fs = require('fs'), path = require('path'), dir = meosHelperDir(), want = path.join(dir, 'mods-want');
     if (on) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(want, '1'); } else { try { fs.unlinkSync(want); } catch (_) { } }
     if (on && !_meosModsWatch) {
       _meosModsWatch = fs.watch(dir, (ev, name) => { if (name !== 'mods.json') return;
-        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m, sl: m.sl, sr: m.sr }); } catch (_) { } });
+        try { const m = JSON.parse(fs.readFileSync(path.join(dir, 'mods.json'), 'utf8')); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mods', s: !!m.s, c: !!m.c, o: !!m.o, m: !!m.m, sl: m.sl, sr: m.sr }); meosPuzzleArmMods(m); } catch (_) { } });
     }
+  } catch (_) { }
+}
+// ★v4.2.776-26(俊克「Shift長押しで🔴点を拡大・離してから0.5秒だけ拡大を続け、その間のEscでワープ」「その0.5秒の間にCmd+1〜7で左から何番目を選ぶ」「今でしょ」):
+//   ヘルパーの修飾キーの見張り(0.1秒ごと)を使う= エディタで打っている最中でも Shift だけの長押し(0.4秒)で構える。
+//   構えている間と、離してから 0.5秒は context meos.puzzleArmed= Esc/Cmd+1〜7 が MeOS のものになる(それ以外の時は VS Code の働きのまま)。
+//   Shift と一緒に他の修飾キーを押したら構えない(Shift+Cmd など)。ヘルパーの無い人は Shift+Esc のまま
+const MEOS_ARM_HOLD = 0.4, MEOS_ARM_GRACE = 0.5;
+let _meosArm = { down: 0, holdT: null, offT: null, on: false };
+function meosPuzzleArmSet(on) {
+  if (_meosArm.on === on) return; _meosArm.on = on;
+  try { vscode.commands.executeCommand('setContext', 'meos.puzzleArmed', on); } catch (_) { }
+  try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdArm', on }); } catch (_) { }
+}
+function meosPuzzleArmMods(m) {
+  try {
+    if (!meDockPanel) return;
+    const shiftOnly = !!m.s && !m.c && !m.o && !m.m;
+    if (shiftOnly) {
+      if (_meosArm.offT) { clearTimeout(_meosArm.offT); _meosArm.offT = null; }
+      if (!_meosArm.down) { _meosArm.down = Date.now(); clearTimeout(_meosArm.holdT); _meosArm.holdT = setTimeout(() => { if (_meosArm.down) meosPuzzleArmSet(true); }, MEOS_ARM_HOLD * 1000); }
+      return;
+    }
+    clearTimeout(_meosArm.holdT); _meosArm.holdT = null;
+    const wasHolding = !!_meosArm.down; _meosArm.down = 0;
+    if (m.s || m.o || m.c) { meosPuzzleArmSet(false); return; }   // 他の修飾キーと一緒= 構えない(Cmd だけは次の Cmd+数字のために通す)
+    if (wasHolding && _meosArm.on && !_meosArm.offT) _meosArm.offT = setTimeout(() => { _meosArm.offT = null; meosPuzzleArmSet(false); }, MEOS_ARM_GRACE * 1000);
   } catch (_) { }
 }
 function meosRealHost() { try { return !!(process.versions && process.versions.electron); } catch (_) { return false; } }
@@ -27274,6 +27302,8 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile{position:relative}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
+.md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}   /* v4.2.776-26: Shift 長押しの間(と離して0.5秒)= 赤い点の字を拡大 */
+.md-tiles.md-armed .md-tile::before{content:attr(data-n);position:absolute;left:50%;top:-1.05em;transform:translateX(-50%);font-size:.5em;font-weight:800;color:var(--vscode-foreground);opacity:.85;pointer-events:none}   /* 左から何番目(Cmd+1〜7) */
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
 .title-ver-dock{margin-left:auto;align-self:flex-end}
@@ -32180,6 +32210,8 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
+if(m&&m.type==='mdArm'){const _r=document.getElementById('md-tiles');if(_r){_r.querySelectorAll('.md-tile').forEach((t,i)=>t.setAttribute('data-n',String(i+1)));_r.classList.toggle('md-armed',!!m.on);}return;}/* v4.2.776-26 */
+if(m&&m.type==='mdLast'){const _r=document.getElementById('md-tiles');if(_r)_r.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-last',t.getAttribute('data-ch')===m.ch));return;}
 if(m&&m.type==='mdTodayClick'){const _tn=document.getElementById('dw-todaynow');if(_tn)_tn.click();return;}/* v4.2.776-24: Shift+Esc の赤い点がⓉ */
 if(m&&m.type==='mdGold'){const _r=document.getElementById('md-tiles');if(_r)_r.classList.add('md-gold');return;}/* v4.2.776-11 */
 if(m&&m.type==='mdDots'){/* v4.2.593: 印の在る字の下に白い点 */try{const L=String(m.letters||'');const T=m.tips||{};document.querySelectorAll('.md-tile').forEach(t=>{const c=t.getAttribute('data-ch');if(c==='T')return;/* v4.2.610: Ⓣ は常に点・tip は Today のまま */t.classList.toggle('md-dot',L.indexOf(c)>=0);if(T[c])t.setAttribute('data-tip',T[c]);/* v4.2.608(俊克「tipにP1〜6は要らない。パズルの順番を明らかにしているようなもの」) */else t.removeAttribute('data-tip');});/* v4.2.607: 説明が在る字だけ tip */}catch(e){}return;}
@@ -33088,6 +33120,7 @@ function toggleMeDock(editorOverride) {
   setTimeout(() => { updateMeDockMode(); updateMeDockCurrentLineMarker(); }, 80);
   setTimeout(() => meosPostViewMode(), 80);   // v4.0.441: 開いた時にも今のモードを名乗らせる(ボタンの面と中身をずらさない)
   _meosPuzzleDotsLast = null; setTimeout(() => meosPostPuzzleDots(true), 300);   // v4.2.593
+  try { meosModsWant(true, 'puzzle'); } catch (_) { }   // v4.2.776-26: Shift 長押しの見張り
 
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
@@ -33497,7 +33530,7 @@ function toggleMeDock(editorOverride) {
       } catch (_) { }
       return;
     }
-    if (message && message.type === 'dockHover') { meosModsWant(!!message.on); return; }   // v4.2.738
+    if (message && message.type === 'dockHover') { meosModsWant(!!message.on, 'hover'); return; }   // v4.2.738
     if (message && message.type === 'dockDbg') { try { meosDbg('[dock] ' + String(message.text || '')); } catch (_) { } return; }   // ★v4.2.128: Me Dock の座標を実物で測る(俊克「OSボタンのtipが完全に被っている」)
     if (message && message.type === 'clkPanelOpen') {   // v4.2.393: ⏰▾ の設定の窓が開いている間だけ、カーソルの場所を判定して送る
       _meosClkPanelOpen = !!message.on; if (_meosClkPanelOpen) meosPostClkTarget(); return;
@@ -34237,7 +34270,7 @@ function toggleMeDock(editorOverride) {
   });
 
   meDockPanel.onDidDispose(() => {
-    try { meosModsWant(false); } catch (_) { }   // v4.2.738: Me Dock を閉じたら見張りも止める
+    try { meosModsWant(false); meosModsWant(false, 'puzzle'); meosPuzzleArmSet(false); } catch (_) { }   // v4.2.738: Me Dock を閉じたら見張りも止める / v4.2.776-26
     meDockPanel = undefined;
     // v0.9.376: manual close should not permanently block auto-show for this URI.
     meDockAutoLastUri = '';
@@ -40978,9 +41011,19 @@ function activate(context) {
   // ★v4.2.776-24(俊克「🔴の付いたpuzzleピースをクリックする代わりに、Shift+Escを叩くとワープ。Escは終了の意味なので、Shiftケースでは起動」):
   //   最後にクリックした字(赤い点)へ飛ぶ= 字なら その F の印へ(クリックと同じ meosPuzzleTag)・Ⓣなら今日へ(Me Dock のⓉを押す)。
   //   VS Code も検索窓などを閉じるのに Shift+Esc を使う= それらが出ていない時だけ効く(package.json の when)
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
+    try {
+      const n = Number(arg && arg.n) || 0, o = meosDockTiles(), ch = o.charAt(n - 1); meosDbg('[puzzleWarpNth] n=' + n + ' 字=' + ch + ' 並び=' + o);
+      if (!ch) return;
+      extensionContext.globalState.update('meosPuzzleLast', ch);
+      try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { }
+      await vscode.commands.executeCommand('laiMembrane.puzzleWarpRed');
+    } catch (_) { }
+  }));
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpRed', async () => {
     try {
       const ch = String(extensionContext.globalState.get('meosPuzzleLast') || '');
+      meosPuzzleArmSet(false);   // v4.2.776-26: 飛んだら構えを解く
       meosDbg('[puzzleWarpRed] 呼ばれた 赤=' + (ch || '無し') + ' 並び=' + meosDockTiles() + ' 編集中=' + !!vscode.window.activeTextEditor);   // v4.2.776-25: 効かない真因を取りに行く
       if (!ch) { vscode.window.setStatusBarMessage('MeOS: no red dot yet \u2014 click a puzzle letter in Me Dock first.', 3000); return; }
       const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) { meosDbg('[puzzleWarpRed] 錠の並びなので動かない'); return; }   // 間抜け・Deco の間は動かない(クリックと同じ門)
