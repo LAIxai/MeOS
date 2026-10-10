@@ -28134,7 +28134,10 @@ body[data-phase="1"] .tt-mv,body[data-phase="2"] .tt-mv,body[data-phase="3"] .tt
 /* v4.2.776-21(俊克「テーブルボタンの↻と🤝にホーバーした時、2つとも一緒に拡大。別のほうに移りたい時に、ほとんど被って選択し難い」):
    片方に乗ったら2つとも倍に。↻は下の左角を、🤝は上の左角を軸にして、互いに離れる向き(↻は上へ・🤝は下へ・どちらも右へ)に膨らむ= 間は縮まず被らない */
 #fmt-table-wwcycle{transform-origin:0 100%}#fmt-table-merge{transform-origin:0 0}
-.fmt-table-cell:has(#fmt-table-wwcycle:hover,#fmt-table-merge:hover) #fmt-table-wwcycle,.fmt-table-cell:has(#fmt-table-wwcycle:hover,#fmt-table-merge:hover) #fmt-table-merge{scale:2;z-index:50}
+/* v4.2.776-22(俊克 改良1「斜めに移動するとメニューが消えるのはよくあるストレス。0.5秒くらい表示し続けよう」): 離れても 0.5秒は倍のまま(戻る時だけ遅らせる・乗った時はすぐ) */
+#fmt-table-wwcycle,#fmt-table-merge{transition:scale .15s ease .5s,z-index 0s linear .65s}
+.fmt-table-cell:has(#fmt-table-wwcycle:hover,#fmt-table-merge:hover) #fmt-table-wwcycle{scale:2;z-index:50;transition:scale .15s ease 0s,z-index 0s}
+.fmt-table-cell:has(#fmt-table-wwcycle:hover,#fmt-table-merge:hover) #fmt-table-merge{scale:2;z-index:50;transition:scale .15s ease 0s,z-index 0s}
 #fmt-table-merge{padding-left:17px}#fmt-table-merge .mg-pm{position:absolute;left:0;top:0;width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.45);font-size:0}#fmt-table-merge .mg-pm::before,#fmt-table-merge .mg-pm.mg-plus::after{content:'';position:absolute;left:50%;top:50%;width:9px;height:2.2px;margin:-1.1px 0 0 -4.5px;border-radius:1px;background:currentColor}#fmt-table-merge .mg-pm.mg-plus::after{width:2.2px;height:9px;margin:-4.5px 0 0 -1.1px}#fmt-table-merge .mg-plus{background:#28c840;color:#fff}#fmt-table-merge .mg-minus{background:#febc2e;color:#5a3d00}   /* v4.2.776-4(俊克 改良1「丸が角丸四角の左端にぴったりはまっていない」改良2「＋と−が中心からズレている」): 丸は角丸四角の左端に重ねる(同じ15px)・＋−は字でなく線で描く= 字の上下の余白に左右されない */   /* v4.2.776-3(俊克「⊖/⊕を角丸四角にぴったりはまるくらい大きく・macOSのOptコピーのように目立たせる」): 塗った丸に白い＋(Finder の Opt コピーの印)/黄の丸に−(信号の黄) */   /* v4.2.776-2: macOS の信号に倣う= ⊕緑(拡大)・⊖黄(しまう)。⊖の黄は ⌘ の色(G⌥Y⌘P⌃S⇧um)とも同じ */   /* v4.2.672: 右肩の↻(fmt-lvl)の置き場の基準(v4.2.671 は基準が無く↻が外へ飛んでいた) */
 #fmt-table svg{opacity:.9}
 #fmt-table{background:#217346;border-color:#17552f;color:#fff}#fmt-table:hover{background:#2a8a55}#fmt-table svg{opacity:1}   /* ★v4.2.662(俊克 改良1「テーブルボタンの格子縞に色を…ボタンの地を色付けして、格子を白に。少し目立たない」): 表計算の緑の地に白い格子 */
