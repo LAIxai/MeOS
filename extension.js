@@ -15502,7 +15502,7 @@ function meosPrizeWatch() {
 }
 function meosGoldPrizeTry() {
   try {
-    if (_meosGoldPrizeBusy || !meosPuzzleGold()) return;
+    if (_meosGoldPrizeBusy || !meosPuzzleGold() || meosGoldPrizeAuthorFile()) return;   // v4.2.776-18: 作者の机は取りに行かない(数を1にしない)
     const gs = extensionContext.globalState, st = gs.get('meosGoldPrize');
     if (st === 'won' || st === 'gone') return;
     if (st === 'pending' && Date.now() - _meosGoldPrizeLast < 10 * 60 * 1000) return;
