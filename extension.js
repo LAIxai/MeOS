@@ -15462,31 +15462,49 @@ function meosPlayRocket() {
   } catch (_) { }
 }
 // ★v4.2.776-13(俊克「最初の達成者には栄誉の音をプレゼント。ダウンロードされたらファイルを消す=二人目以降は取れない」):
-//   金になった時/金の人がパズルを押した時に、栄誉の音を1回だけ取りに行く。状態 meosGoldPrize= 無し(まだ)/'won'(取れた)/'gone'(無かった)。
-//   取れた・無かった(404)のどちらかになったら二度と取りに行かない。つながらない時だけ、次にパズルを押した時にもう一度
-const MEOS_GOLD_PRIZE_URL = 'https://github.com/LAIxai/MeOS/releases/download/golden-knight/golden-knight.wav';
+// ★v4.2.776-14(俊克「仮のファイルを置き、取れたら『音を作成中』と出す。正規の音をセットしたら、仮のファイルを持つ人だけがパズルクリックで正規の音を取れる」):
+//   2段。①金になった時/金の人がパズルを押した時、仮の札(P1)を1回だけ取りに行く→ 取れたら 'pending' と知らせ / 404 なら 'gone'(二度と行かない)
+//   ②'pending' の人がパズルを押した時(10分に1回まで)、正規の音(P2)を取りに行く→ 取れたら 'won'・鳴らす / 404 は 'pending' のまま
+//   つながらない時は何も決めない(次に押した時にもう一度)。名前は目立たない物に(Releases ページで仕掛けが知られないように)
+const MEOS_GOLD_PRIZE_P1 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p1.dat';
+const MEOS_GOLD_PRIZE_P2 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p2.wav';
+const MEOS_GOLD_PRIZE_MARK = 'MEOS-P1';   // 仮の札の中身(頭)
 const MEOS_GOLD_PRIZE_NAME = 'GOLDEN KNIGHT';
 function meosGoldPrizePath() { try { if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
-let _meosGoldPrizeBusy = false;
+let _meosGoldPrizeBusy = false, _meosGoldPrizeLast = 0;
+function meosGoldPrizeFetch(url, done) {   // done(status, buffer|null)= 404/200 など・つながらない時は status 0
+  const https = require('https');
+  const get = (u, hop) => https.get(u, { headers: { 'User-Agent': 'MeOS' }, timeout: 15000 }, (res) => {
+    if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hop < 5) { res.resume(); get(res.headers.location, hop + 1); return; }
+    if (res.statusCode !== 200) { res.resume(); done(res.statusCode, null); return; }
+    const parts = []; res.on('data', (c) => parts.push(c)); res.on('end', () => done(200, Buffer.concat(parts))); res.on('error', () => done(0, null));
+  }).on('error', () => done(0, null)).on('timeout', function () { this.destroy(); });
+  get(url, 0);
+}
 function meosGoldPrizeTry() {
   try {
-    if (_meosGoldPrizeBusy || !meosPuzzleGold() || extensionContext.globalState.get('meosGoldPrize')) return;
-    _meosGoldPrizeBusy = true;
-    const https = require('https'), fs = require('fs'), path = require('path');
-    const get = (url, hop) => https.get(url, { headers: { 'User-Agent': 'MeOS' }, timeout: 15000 }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hop < 5) { res.resume(); get(res.headers.location, hop + 1); return; }
-      if (res.statusCode === 404) { res.resume(); extensionContext.globalState.update('meosGoldPrize', 'gone'); _meosGoldPrizeBusy = false; meosDbg('[goldPrize] gone'); return; }
-      if (res.statusCode !== 200) { res.resume(); _meosGoldPrizeBusy = false; return; }   // 404 以外の失敗= 次にもう一度
-      const parts = []; res.on('data', (c) => parts.push(c));
-      res.on('end', () => { try {
-        const b = Buffer.concat(parts); if (b.length < 44 || b.toString('ascii', 0, 4) !== 'RIFF') { _meosGoldPrizeBusy = false; return; }
-        const d = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'golden-knight.wav'), b);
-        extensionContext.globalState.update('meosGoldPrize', 'won'); meosDbg('[goldPrize] won ' + b.length);
-        try { meosSoundSpawn(MEOS_GOLD_PRIZE_NAME); } catch (_) { } setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300);
+    if (_meosGoldPrizeBusy || !meosPuzzleGold()) return;
+    const gs = extensionContext.globalState, st = gs.get('meosGoldPrize');
+    if (st === 'won' || st === 'gone') return;
+    if (st === 'pending' && Date.now() - _meosGoldPrizeLast < 10 * 60 * 1000) return;
+    _meosGoldPrizeBusy = true; _meosGoldPrizeLast = Date.now();
+    if (st !== 'pending') {
+      meosGoldPrizeFetch(MEOS_GOLD_PRIZE_P1, (code, b) => { try {
+        if (code === 404) { gs.update('meosGoldPrize', 'gone'); meosDbg('[goldPrize] gone'); }
+        else if (code === 200 && b && b.toString('utf8', 0, MEOS_GOLD_PRIZE_MARK.length) === MEOS_GOLD_PRIZE_MARK) {
+          gs.update('meosGoldPrize', 'pending'); meosDbg('[goldPrize] pending');
+          vscode.window.showInformationMessage('\u269c\ufe0f Congratulations! A sound for you alone is being crafted. Please wait a little while \u2014 it will arrive when you click the puzzle.');
+        }
       } catch (_) { } _meosGoldPrizeBusy = false; });
-      res.on('error', () => { _meosGoldPrizeBusy = false; });
-    }).on('error', () => { _meosGoldPrizeBusy = false; }).on('timeout', function () { this.destroy(); });
-    get(MEOS_GOLD_PRIZE_URL, 0);
+      return;
+    }
+    meosGoldPrizeFetch(MEOS_GOLD_PRIZE_P2, (code, b) => { try {
+      if (code === 200 && b && b.length >= 44 && b.toString('ascii', 0, 4) === 'RIFF') {
+        const fs = require('fs'), path = require('path'), d = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'golden-knight.wav'), b);
+        gs.update('meosGoldPrize', 'won'); meosDbg('[goldPrize] won ' + b.length);
+        try { meosSoundSpawn(MEOS_GOLD_PRIZE_NAME); } catch (_) { } setTimeout(() => { try { meosSoundPost(); } catch (_) { } }, 300);
+      }
+    } catch (_) { } _meosGoldPrizeBusy = false; });
   } catch (_) { _meosGoldPrizeBusy = false; }
 }
 function meosPlayPinpon() {
