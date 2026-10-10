@@ -13512,6 +13512,7 @@ function meosModsWant(on, why) {
 // ★v4.2.776-26(俊克「Shift長押しで🔴点を拡大・離してから0.5秒だけ拡大を続け、その間のEscでワープ」「その0.5秒の間にCmd+1〜7で左から何番目を選ぶ」「今でしょ」):
 //   ヘルパーの修飾キーの見張り(0.1秒ごと)を使う= エディタで打っている最中でも Shift だけの長押し(0.4秒)で構える。
 //   v4.2.776-27(俊克 改良2「キー配列を変えているので Cmd+1〜7 は使えない。数字キー1〜7だけでワープ」): 素の数字1〜7も同じ
+//   v4.2.776-28: Esc は廃止・素の数字は同じ数字の2連打で飛ぶ
 //   構えている間と、離してから 0.5秒は context meos.puzzleArmed= Esc/1〜7/Cmd+1〜7 が MeOS のものになる(それ以外の時は VS Code の働きのまま)。
 //   Shift と一緒に他の修飾キーを押したら構えない(Shift+Cmd など)。ヘルパーの無い人は Shift+Esc のまま
 const MEOS_ARM_HOLD = 0.4, MEOS_ARM_GRACE = 0.5;
@@ -13521,6 +13522,7 @@ function meosPuzzleArmSet(on) {
   try { vscode.commands.executeCommand('setContext', 'meos.puzzleArmed', on); } catch (_) { }
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdArm', on }); } catch (_) { }
 }
+function meosPuzzleArmHold() { if (_meosArm.offT) { clearTimeout(_meosArm.offT); _meosArm.offT = null; } }   // v4.2.776-28: 1打目を預かっている間は構えを解かない
 function meosPuzzleArmMods(m) {
   try {
     if (!meDockPanel) return;
@@ -41013,9 +41015,24 @@ function activate(context) {
   // ★v4.2.776-24(俊克「🔴の付いたpuzzleピースをクリックする代わりに、Shift+Escを叩くとワープ。Escは終了の意味なので、Shiftケースでは起動」):
   //   最後にクリックした字(赤い点)へ飛ぶ= 字なら その F の印へ(クリックと同じ meosPuzzleTag)・Ⓣなら今日へ(Me Dock のⓉを押す)。
   //   VS Code も検索窓などを閉じるのに Shift+Esc を使う= それらが出ていない時だけ効く(package.json の when)
+  // ★v4.2.776-28(俊克「Escは廃止。拡大している間は 1、1 と二回連打した時にワープ。これなら通常の文字入力の邪魔をしないでしょ」):
+  //   素の数字は1打目を預かる(構えを延ばす)→ 0.6秒以内に同じ数字= ワープ / 違う数字か時間切れ= 預かった数字を打ち込む(字は失くさない)。Cmd+数字は1打で飛ぶ
+  const _meosNthPend = { n: 0, t: null };
+  const meosNthType = (d) => { try { if (vscode.window.activeTextEditor) vscode.commands.executeCommand('type', { text: String(d) }); } catch (_) { } };
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
-      const n = Number(arg && arg.n) || 0, o = meosDockTiles(), ch = o.charAt(n - 1); meosDbg('[puzzleWarpNth] n=' + n + ' 字=' + ch + ' 並び=' + o);
+      const n = Number(arg && arg.n) || 0;
+      if (!(arg && arg.cmd)) {
+        clearTimeout(_meosNthPend.t); _meosNthPend.t = null;
+        if (_meosNthPend.n !== n) {
+          if (_meosNthPend.n) meosNthType(_meosNthPend.n);
+          _meosNthPend.n = n; meosPuzzleArmHold();
+          _meosNthPend.t = setTimeout(() => { const d = _meosNthPend.n; _meosNthPend.n = 0; _meosNthPend.t = null; meosNthType(d); meosPuzzleArmSet(false); }, 600);
+          return;
+        }
+        _meosNthPend.n = 0;
+      }
+      const o = meosDockTiles(), ch = o.charAt(n - 1); meosDbg('[puzzleWarpNth] n=' + n + ' 字=' + ch + ' 並び=' + o);
       if (!ch) return;
       extensionContext.globalState.update('meosPuzzleLast', ch);
       try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdLast', ch }); } catch (_) { }
