@@ -15481,6 +15481,22 @@ function meosGoldPrizeFetch(url, done) {   // done(status, buffer|null)= 404/200
   }).on('error', () => done(0, null)).on('timeout', function () { this.destroy(); });
   get(url, 0);
 }
+// ★v4.2.776-15(俊克「コンプリート確認ボタンを私のMe Dockだけに。気が向いた時に押す。ダウンロード数が1以上ならGitページを自動で開く」):
+//   出すのは作者の机だけ= 設定 devVsixDir の場所に MeOS のソース(src/extension.js)が在る時(ふつうの利用者の Me Dock には1文字も増えない)
+function meosIsAuthorDesk() { try { const d = String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '') || '').trim(); return !!d && require('fs').existsSync(require('path').join(d, 'src', 'extension.js')); } catch (_) { return false; } }
+function meosPrizeWatch() {
+  const https = require('https');
+  https.get('https://api.github.com/repos/LAIxai/MeOS/releases/tags/media-p1', { headers: { 'User-Agent': 'MeOS', 'Accept': 'application/vnd.github+json' }, timeout: 15000 }, (res) => {
+    const parts = []; res.on('data', (c) => parts.push(c));
+    res.on('end', () => { try {
+      const j = JSON.parse(Buffer.concat(parts).toString('utf8')), as = (j && j.assets) || [];
+      const line = as.map(a => a.name + ' ' + a.download_count).join(' / ') || 'no assets';
+      meosDbg('[prizeWatch] ' + line);
+      if (as.some(a => a.download_count >= 1)) { vscode.env.openExternal(vscode.Uri.parse(j.html_url || 'https://github.com/LAIxai/MeOS/releases/tag/media-p1')); vscode.window.showInformationMessage('\u269c\ufe0f ' + line); }
+      else vscode.window.showInformationMessage('\u269c\ufe0f No one yet \u2014 ' + line);
+    } catch (_) { vscode.window.showWarningMessage('\u269c\ufe0f Could not read the release (HTTP ' + res.statusCode + ').'); } });
+  }).on('error', () => { vscode.window.showWarningMessage('\u269c\ufe0f Offline \u2014 could not check.'); }).on('timeout', function () { this.destroy(); });
+}
 function meosGoldPrizeTry() {
   try {
     if (_meosGoldPrizeBusy || !meosPuzzleGold()) return;
@@ -27100,7 +27116,7 @@ function meDockHtml() {
   //   ★作るのは作る人の道具so、既定では存在しない([[project_phased_release]] と同じ門番の考え)。
   // ★★v4.2.349(俊克「この機能は、1つの売りなので、どっちでも動くようにしておきましょう」): v4.2.67 の「置き場所を教えた人にだけ」をやめ、誰にでも出す。
   //   開く場所= devVsixDir が在ればそこ / 無ければ前に選んだフォルダ / それも無ければ ダウンロード(GitHub Release の vsix が落ちる所)。
-  const _devVsixBtn = '<button class="dev-vsix-btn" id="dev-vsix" title="Pick a .vsix and install it \u2014 any build, not just the newest.">\ud83d\udce6 Re-install VSIX</button><button class="paste-lag-btn reopen-folder-btn" id="reopen-folder" style="display:none" data-tip="Reopen folder | This window has no folder open, so Source Control (Git) and the Explorer are empty. Click to reopen the folder you usually work in.">\ud83d\udcc2 Reopen folder</button>';
+  const _devVsixBtn = '<button class="dev-vsix-btn" id="dev-vsix" title="Pick a .vsix and install it \u2014 any build, not just the newest.">\ud83d\udce6 Re-install VSIX</button>' + (meosIsAuthorDesk() ? '<button class="dev-vsix-btn prize-watch-btn" id="prize-watch" data-tip="Prize watch | Opens the release page if anyone has downloaded.">\u269c\ufe0f</button>' : '') + '<button class="paste-lag-btn reopen-folder-btn" id="reopen-folder" style="display:none" data-tip="Reopen folder | This window has no folder open, so Source Control (Git) and the Explorer are empty. Click to reopen the folder you usually work in.">\ud83d\udcc2 Reopen folder</button>';
   const mdSync = !!(extensionContext && extensionContext.globalState.get('meDockSync')); // ノート本文(エディタ)もズームに同期するか
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
@@ -27170,6 +27186,7 @@ body.md-crypt .encrypt-me-row{border-top-color:transparent!important}
    ★v4.2.70(俊克「Mepyの黄色と同じくらい明るくてもいいかもよ」)= 新しい値を作らず、
      **MeOSthat既に持っている黄**(ハイライトの rgba(255,232,40,.95) = 黄身色)を使う。
      色を1つ足すたびに「MeOSの黄」that増える → [[feedback_one_source_for_mark_count_action]] */
+.dev-vsix-btn.prize-watch-btn{margin-left:4px;padding:1px 4px}   /* v4.2.776-15 */
 .dev-vsix-btn{margin-left:auto;flex:0 0 auto;border:1px solid color-mix(in srgb,rgba(255,232,40,.95) 55%,transparent);border-radius:7px;background:var(--vscode-button-secondaryBackground);color:rgba(255,232,40,.95);font-weight:800;font-size:12px;line-height:1.2;padding:1px 7px;cursor:var(--meos-hand);opacity:.9}
 .dev-vsix-btn:hover{opacity:1;border-color:rgba(255,232,40,.95)}
 /* ★v4.2.102(俊克「1ファイル、20万行超〜30万行でのペースト遅延原因」): Standards の下・Re-install VSIX の上に1行。出すのは大きなファイルでMarkdown拡張が動いている時だけ。 */
@@ -30261,7 +30278,8 @@ if(vmTick){clearTimeout(vmTick);vmTick=null;}
 if(_nl>0){var _d=(((vmNextUntil-Date.now())%1000)+1000)%1000+8;
  vmTick=setTimeout(function(){vmTick=null;window.__renderRaw();},_d);}};
 if(rawToggle)rawToggle.addEventListener('click',(ev)=>{vscode.postMessage({type:'viewMode',step:(ev&&ev.shiftKey)?-1:1});});/* ★v4.2.703(俊克「なぜ👁🥩はOptにしていたのか? Shiftでやると2つ飛ぶ。シフトキーに統一」): 逆回りは全部 Shift(v4.0.445 の Opt から替える) */
-{const dv=document.getElementById('dev-vsix');if(dv)dv.addEventListener('click',()=>{vscode.postMessage({type:'installVsix'});});}   /* v4.2.67 */
+{const dv=document.getElementById('dev-vsix');if(dv)dv.addEventListener('click',()=>{vscode.postMessage({type:'installVsix'});});}
+{const pw=document.getElementById('prize-watch');if(pw)pw.addEventListener('click',()=>{vscode.postMessage({type:'prizeWatch'});});}   /* v4.2.776-15 */   /* v4.2.67 */
 {const vh=document.getElementById('clk-vhelper');if(vh)vh.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();vscode.postMessage({type:'toggleHelper'});});}   /* v4.2.363: [V-helper] */
 {const hp=document.getElementById('hand-pick');if(hp)hp.addEventListener('click',()=>{vscode.postMessage({type:'setPointerHand',value:hp.classList.contains('is-btron')?'macos22':(hp.classList.contains('is-macos22')?'system':'btron')});   /* v4.2.113: 3つを巡る → v4.2.306(俊克「4種類は多過ぎ」): BTRON→macOS 22.5°→OS の3つ(元のmacOSの手は源として残す) */});}   /* v4.2.110: 1つのボタンで入れ替え */
 {const pl=document.getElementById('paste-lag');if(pl)pl.addEventListener('click',()=>{vscode.postMessage({type:'openMdLangFeatures'});});}
@@ -33394,6 +33412,7 @@ function toggleMeDock(editorOverride) {
     }
     // ★v4.2.504(俊克 改良2「縮めた状態で Re-install VSIX を押すと、一気に幅が極端に広くなる」): ログ= 押した直後に Me Dock が 0.789 に広がり、
     //   2秒おきの見張りがそれを覚えて、再読込みの後にも戻していた。→ 入れている間は幅を覚えない。選ばずに閉じたら、覚えていた幅へ戻す
+    if (message && message.type === 'prizeWatch') { if (meosIsAuthorDesk()) meosPrizeWatch(); return; }   // v4.2.776-15
     if (message && message.type === 'installVsix') { _meDockWidthHoldUntil = Date.now() + 120000; const ok = await meosInstallVsix(); if (!ok) { _meDockWidthHoldUntil = 0; meosMeDockWidthRestore(); } return; }   // v4.2.67
     if (message && /^theme(List|Preview|Commit|Revert|ToggleDL)$/.test(String(message.type || ''))) { meosThemeMessage(message); return; }   // v4.2.243
     if (message && /^sound(List|Preview|Commit)$/.test(String(message.type || ''))) { meosSoundMessage(message); return; }   // v4.2.375
