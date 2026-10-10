@@ -13455,7 +13455,9 @@ function meosHelperSound() {
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
     if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); const _fsrc = meosRocketPath(true), _fdst = path.join(meosHelperDir(), 'rocket-v2-fade.wav'); if (_fsrc && !fs.existsSync(_fdst)) fs.copyFileSync(_fsrc, _fdst); file = dst; } catch (_) { } }   // v4.2.667
-    if (name === MEOS_GOLD_PRIZE_NAME && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'golden-knight.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.776-17: ⚜️GOLDEN KNIGHT もヘルパーへ
+    if (name === MEOS_GOLD_PRIZE_NAME && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); const P = meosGkParts();
+      if (P) { for (const k of ['full', 'gao', 'kakiin']) fs.copyFileSync(P[k], path.join(meosHelperDir(), 'gk3-' + k + '.wav')); file = path.join(meosHelperDir(), 'gk3-full.wav'); }
+      else { const dst = path.join(meosHelperDir(), 'golden-knight.wav'); fs.copyFileSync(file, dst); file = dst; } } catch (_) { } }   // v4.2.776-18 / v4.2.776-23: 3本を渡す(ヘルパーが選ぶ)   // v4.2.776-17: ⚜️GOLDEN KNIGHT もヘルパーへ
     if (name === 'DING-DONG!' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'pinpon-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.618
     if (name === 'GONG' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'gong-v3.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.441: 🥊Gong も同じ
     // ★v4.2.336(俊克「最後の、ピーーーーーだけ出ないよ」): 周期の時刻ちょうどの笛(1760Hz・3秒)もヘルパーへ。作った笛をヘルパーの部屋へ写して渡す
@@ -15304,8 +15306,10 @@ function meosRingSeconds() {
   try { const _nm20 = meosSoundCanon(_meosBellOverride || meosSoundNow() || ''); if (_nm20 === 'Purr') return 0; } catch (_) { }   /* v4.2.630(俊克「😸PURRも🍙方式にしよう。長さは今のまま」): 😸PURR は鳴り続けに戻す(1.12秒の音＋1/f の間)・😺Purr は1回のまま */
   try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); if (n === 0) return 0; const b = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; const _c = meosSoundCanon(_meosBellOverride || meosSoundNow()); return (_c === 'MEW') ? Math.max(1.35, b) : ((_c === 'GROWL' || _c === 'PURR') ? Math.max(2.0, b) : (_c === 'ROCKET' ? 2.4 : b)); } catch (_) { return 1; }   /* v4.2.667: 🚀ROCKET= 3秒の音＋1秒の間 / v4.2.674: 2.8秒ごと / v4.2.676: フェード版の90%= 2.7秒ごと / v4.2.677(俊克「80%くらいで良いかも」): 2.4秒ごと */   /* v4.2.626(俊克「🍙を鳴らす時は、この長さ+間で。せわし過ぎてそれらしく聞こえない」): GROWL は音の長さ＋間 / v4.2.627: 1秒の音＋0.5秒の間= 1.5秒ごと */
 }
+function meosStopGkPart() { _meosGkPart = ''; }
 function meosStopRinging() {
-  if (_meosRingTimer) { clearInterval(_meosRingTimer); _meosRingTimer = null; }
+  if (_meosRingTimer) { clearInterval(_meosRingTimer); clearTimeout(_meosRingTimer); _meosRingTimer = null; }
+  meosStopGkPart();   // v4.2.776-23
   _meosRingUntil = 0; _meosRingName = ''; _meosRingAnchor = false; _meosBellOverride = '';   // v4.2.436
   meosUpdateTimerBar(); meosPostViewMode();
 }
@@ -15473,7 +15477,37 @@ const MEOS_GOLD_PRIZE_MARK = 'MEOS-P1';   // 仮の札の中身(頭)
 const MEOS_GOLD_PRIZE_NAME = 'GLD-KNIGHT';   // v4.2.776-19(俊克 改良1「字が切れるので GLD-KNIGHT に」): 前の名前 GOLDEN KNIGHT も同じ音として読む
 // v4.2.776-18(俊克「私は初代GAROとして、音リストに召喚してくれるよね?」): 作者の机は Release から取らず(数を1にしない)、devVsixDir の golden-knight.wav を使う
 function meosGoldPrizeAuthorFile() { try { if (!meosIsAuthorDesk()) return ''; const f = require('path').join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
-function meosGoldPrizePath() { try { const _af = meosGoldPrizeAuthorFile(); if (_af) return _af; if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
+// ★v4.2.776-23(俊克「黄金騎士が鳴った時、カキーンの連続になった。なぜ?」→「3つのパターンをアットランダムに鳴らす。これだよ」):
+//   真因= 鐘は既定1秒ごとに頭から鳴らし直す(前の音は止めない)。3.3秒の音の1秒目にカキーンがある= 毎回の頭のガオー(最初2割は弱い)に前の回のカキーンが被って勝つ。
+//   → 鳴らす度に ①ガオーだけ ②カキーンだけ ③ガオー→カキーン を等しい確率で選び、選んだ長さの85%で次へ(🍙GROWL と同じ一回ごとに決め直す道)。
+//   分け目= 1.0秒(GOLDEN-KNIGHT_v1= Z5 の上に H2 を 1.0秒から重ねた作り)。3本は globalStorage の gk3/ に作る(元の音が替わったら作り直す)
+const MEOS_GK_CUT = 1.0;
+function meosGkParts() {
+  try {
+    const src = meosGoldPrizeRaw(); if (!src) return null;
+    const fs = require('fs'), path = require('path'), dir = path.join(extensionContext.globalStorageUri.fsPath, 'gk3');
+    const out = { full: path.join(dir, 'gk3-full.wav'), gao: path.join(dir, 'gk3-gao.wav'), kakiin: path.join(dir, 'gk3-kakiin.wav') };
+    const st = fs.statSync(src);
+    if (!(fs.existsSync(out.kakiin) && fs.statSync(out.kakiin).mtimeMs >= st.mtimeMs)) {
+      const b = fs.readFileSync(src); let i = 12, sr = 44100, ch = 1, data = null;
+      while (i + 8 <= b.length) { const id = b.toString('ascii', i, i + 4), sz = b.readUInt32LE(i + 4); if (id === 'fmt ') { ch = b.readUInt16LE(i + 10); sr = b.readUInt32LE(i + 12); } if (id === 'data') { data = b.subarray(i + 8, i + 8 + sz); break; } i += 8 + sz + (sz & 1); }
+      if (!data || ch !== 1) return null;
+      const n = data.length >> 1, x = new Int16Array(n); for (let k = 0; k < n; k++) x[k] = data.readInt16LE(k * 2);
+      const cut = Math.min(n, Math.round(MEOS_GK_CUT * sr));
+      const wav = (arr, fin, fout) => { const m = arr.length, h = Buffer.alloc(44 + m * 2); h.write('RIFF', 0); h.writeUInt32LE(36 + m * 2, 4); h.write('WAVEfmt ', 8); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(sr, 24); h.writeUInt32LE(sr * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(m * 2, 40);
+        const fi = Math.round(fin * sr), fo = Math.round(fout * sr); for (let k = 0; k < m; k++) { let g = 1; if (k < fi) g = k / fi; if (k > m - fo) g = Math.min(g, (m - k) / fo); h.writeInt16LE(Math.round(arr[k] * g), 44 + k * 2); } return h; };
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(out.full, b); fs.writeFileSync(out.gao, wav(x.subarray(0, cut), 0, 0.04)); fs.writeFileSync(out.kakiin, wav(x.subarray(cut), 0.003, 0.02));
+    }
+    out.len = { full: (fs.statSync(out.full).size - 44) / 88200, gao: (fs.statSync(out.gao).size - 44) / 88200, kakiin: (fs.statSync(out.kakiin).size - 44) / 88200 };
+    return out;
+  } catch (_) { return null; }
+}
+let _meosGkPart = '';   // 鳴っている間だけ 'full'/'gao'/'kakiin'(試聴などは全部)
+function meosIsGk() { try { return meosSoundCanon(_meosBellOverride || meosSoundNow()) === MEOS_GOLD_PRIZE_NAME; } catch (_) { return false; } }
+function meosGkNext() { const P = meosGkParts(); if (!P) { _meosGkPart = ''; return 0; } _meosGkPart = ['full', 'gao', 'kakiin'][Math.floor(Math.random() * 3)]; return P.len[_meosGkPart] * 0.85; }
+function meosGoldPrizePath() { try { if (_meosGkPart) { const P = meosGkParts(); if (P && P[_meosGkPart]) return P[_meosGkPart]; } } catch (_) { } return meosGoldPrizeRaw(); }
+function meosGoldPrizeRaw() { try { const _af = meosGoldPrizeAuthorFile(); if (_af) return _af; if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
 let _meosGoldPrizeBusy = false, _meosGoldPrizeLast = 0;
 function meosGoldPrizeFetch(url, done) {   // done(status, buffer|null)= 404/200 など・つながらない時は status 0
   const https = require('https');
@@ -15726,6 +15760,11 @@ function meosStartRinging(name) {
   _meosRingName = name || '';
   _meosRingUntil = Date.now() + 5 * 60000;               // 上限5分= 席を外していても止まる
   if (_meosRingTimer) clearInterval(_meosRingTimer);
+  if (meosIsGk() && meosGkParts()) {   // v4.2.776-23: ⚜️ は3つのパターンを等しい確率で・選んだ長さの85%で次へ
+    meosStopGkPart();
+    const step = () => { if (!_meosRingTimer) return; if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; } const d = meosGkNext(); meosPlayChime(1); _meosRingTimer = setTimeout(step, Math.round(Math.max(0.5, d) * 1000)); };
+    _meosRingTimer = setTimeout(step, Math.round(Math.max(0.5, (meosGkParts().len.full) * 0.85) * 1000));   // 最初の1回は全部(上で鳴らした)
+  } else
   if (meosFluctLen()) {   // v4.2.630: 😸PURR も同じ / v4.2.628: 🍙GROWL= 1秒の音＋1/f ゆらぎの間(0.5〜1.5秒)= 毎回つぎの時刻を決め直す
     const next = () => { _meosRingTimer = setTimeout(() => { if (!_meosRingTimer) return; if (Date.now() >= _meosRingUntil) { meosStopRinging(); return; } if (meosIsGrowl()) meosGrowlNext(); meosPlayChime(1); next(); }, Math.round((meosFluctLen() + meosGrowlGap()) * 1000)); };   // v4.2.629: いま鳴らした一鳴きの長さ＋間
     next();

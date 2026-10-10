@@ -204,6 +204,12 @@ function run(argv) {
   const growlLen = () => { lenN++; let k = 0, n = lenN; while (k < 3 && !(n & 1)) { n >>= 1; k++; } lenRows[k] = Math.random(); const x = lenRows.reduce((a, b) => a + b, 0) / lenRows.length; return Math.round((0.5 + 0.5 * Math.min(1, Math.max(0, (x - 0.5) * 2.4 + 0.5))) * 10) / 10; };
   const growlFile = () => { const f = String(sound.file || ''); if (!/growl-v6-\d+\.wav$/i.test(f)) { growlLast = 1.0; return f; } const L = growlLen(), g = f.replace(/growl-v6-\d+\.wav$/i, 'growl-v6-' + Math.round(L * 1000) + '.wav'); try { if ($.NSFileManager.defaultManager.fileExistsAtPath(g)) { growlLast = L; return g; } } catch (e) {} growlLast = 1.0; return f; };
   const isGrowl = () => /growl/i.test(String(sound.file || ''));
+  // v4.2.776-23(俊克「⚜️は3つのパターンをアットランダムに鳴らす」): gk3-full/gao/kakiin を等しい確率で選び、選んだ長さの85%で次へ(長さはファイルの大きさから)
+  const isGk = () => /gk3-full\.wav$/i.test(String(sound.file || ''));
+  let gkLast = 0;
+  const gkFile = () => { const f = String(sound.file || ''); const k = ['full', 'gao', 'kakiin'][Math.floor(Math.random() * 3)], g = f.replace(/gk3-full\.wav$/i, 'gk3-' + k + '.wav');
+    try { const fm = $.NSFileManager.defaultManager; if (fm.fileExistsAtPath(g)) { const a = fm.attributesOfItemAtPathError(g, $()); gkLast = (Number(ObjC.unwrap(a.objectForKey('NSFileSize'))) - 44) / 88200; return g; } } catch (e) {} gkLast = 3.3; return f; };
+  const armGk = () => { try { if (bellTimer) bellTimer.invalidate; bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(Math.max(0.5, (gkLast || 3.3) * 0.85), ticker, 'bell:', $(), false); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); } catch (e) {} };
   const isPurrF = () => /purr-v\d+\.wav$/i.test(String(sound.file || ''));   // v4.2.630: 😸PURR も🍙方式(1.12秒の音＋1/f の間)
   const armGrowl = () => { try { if (bellTimer) bellTimer.invalidate; bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats((isPurrF() ? 1.12 : growlLast) + growlGap(), ticker, 'bell:', $(), false); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); } catch (e) {} };
   // v4.2.408: Mew の鳴き続けは一鳴き毎に大きさを1/fゆらぎ(拡張の meosMewGain と同じ作り・0.55〜1.15倍)
@@ -219,7 +225,7 @@ function run(argv) {
     try {
       if (!sound.file) return;
       const g = sound.fluct ? mewGain() : 1;
-      $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(Math.round((sound.vol || 2) * g * 100) / 100), isGrowl() ? growlFile() : rocketFile()]));
+      $.NSTask.launchedTaskWithLaunchPathArguments('/usr/bin/afplay', $(['-v', String(Math.round((sound.vol || 2) * g * 100) / 100), isGrowl() ? growlFile() : (isGk() ? gkFile() : rocketFile())]));
     } catch (e) {}
   };
   let lastMenu = null, lastText = null;
@@ -355,7 +361,7 @@ function run(argv) {
       if (ringing && !ringing.whistle && !bellTimer) {
         mewRows = mewRows.map(() => Math.random()); mewN = 0;   // v4.2.408: 鳴り始めは振り出しから
         playBell();
-        if (sound.every > 0) { if (isGrowl() || isPurrF()) armGrowl(); else { bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(Math.max(0.3, sound.every), ticker, 'bell:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); } }
+        if (sound.every > 0) { if (isGk()) armGk(); else if (isGrowl() || isPurrF()) armGrowl(); else { bellTimer = $.NSTimer.timerWithTimeIntervalTargetSelectorUserInfoRepeats(Math.max(0.3, sound.every), ticker, 'bell:', $(), true); $.NSRunLoop.currentRunLoop.addTimerForMode(bellTimer, $.NSRunLoopCommonModes); } }
       }
       if ((!ringing || ringing.whistle) && bellTimer) { bellTimer.invalidate; bellTimer = null; }
       alarms = alarms.map(a => (adv[a.id] ? Object.assign({}, a, adv[a.id]) : a));
@@ -402,7 +408,7 @@ function run(argv) {
   //   runUntilDate を返さない(メニューの追跡の間は別の走り方)。→ 描く仕事を『どの走り方でも鳴る』タイマー(CommonModes)に載せる。
   ObjC.registerSubclass({ name: 'MeOSTickH', methods: { 'tick:': { types: ['void', ['id']], implementation: function (t) { try { step(); } catch (e) {} } },
     'mods:': { types: ['void', ['id']], implementation: function (t) { try { modsTick(); } catch (e) {} } },
-    'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) { playBell(); if (isGrowl() || isPurrF()) armGrowl(); } } catch (e) {} } } } });
+    'bell:': { types: ['void', ['id']], implementation: function (t) { try { if (ringing && Date.now() < ringing.until) { playBell(); if (isGk()) armGk(); else if (isGrowl() || isPurrF()) armGrowl(); } } catch (e) {} } } } });
   const ticker = $.MeOSTickH.alloc.init;
   // ★v4.2.738(俊克「ポインターを動かさなくても、Shift などを押した瞬間に Me Dock の×の色を変えたい」= ②):
   //   焦点が編集画面に在ると、キーは Me Dock に届かない。→ 拡張が mods-want を置いている間(ポインターが Me Dock の上)だけ、
