@@ -2815,7 +2815,7 @@ function meosPurrPath() {
 // 音の名前 → 鳴らすファイル(Mew= 作った猫の声 / フルパス= そのまま / mac= システムの音)
 // ★v4.2.521(俊克 改良2「合成した名称を全て大文字にしようか。区別しやすいように」): MeOS が作った音= MEW / GONG / SOFT / PURR。
 //   前の名前(Mew / Gong / Soft)も、設定や ⏰ の行に残っていれば同じ音として読む。mac の Purr とは大文字の PURR で分ける。
-function meosSoundCanon(n) { const x = String(n || '').trim(); return x === 'Mew' ? 'MEW' : (x === 'Gong' ? 'GONG' : (x === 'Soft' ? 'SOFT' : x)); }
+function meosSoundCanon(n) { const x = String(n || '').trim(); if (x === 'GOLDEN KNIGHT') return 'GLD-KNIGHT'; return x === 'Mew' ? 'MEW' : (x === 'Gong' ? 'GONG' : (x === 'Soft' ? 'SOFT' : x)); }
 function meosSoundResolve(name) {
   const n = meosSoundCanon(name);
   if (n === 'MEW') return meosMewPath() || '';
@@ -15470,7 +15470,7 @@ function meosPlayRocket() {
 const MEOS_GOLD_PRIZE_P1 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p1.dat';
 const MEOS_GOLD_PRIZE_P2 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p2.wav';
 const MEOS_GOLD_PRIZE_MARK = 'MEOS-P1';   // 仮の札の中身(頭)
-const MEOS_GOLD_PRIZE_NAME = 'GOLDEN KNIGHT';
+const MEOS_GOLD_PRIZE_NAME = 'GLD-KNIGHT';   // v4.2.776-19(俊克 改良1「字が切れるので GLD-KNIGHT に」): 前の名前 GOLDEN KNIGHT も同じ音として読む
 // v4.2.776-18(俊克「私は初代GAROとして、音リストに召喚してくれるよね?」): 作者の机は Release から取らず(数を1にしない)、devVsixDir の golden-knight.wav を使う
 function meosGoldPrizeAuthorFile() { try { if (!meosIsAuthorDesk()) return ''; const f = require('path').join(String(vscode.workspace.getConfiguration('laiMembrane').get('devVsixDir', '')).trim(), 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
 function meosGoldPrizePath() { try { const _af = meosGoldPrizeAuthorFile(); if (_af) return _af; if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
@@ -31358,9 +31358,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,10).join('');};
-const sdLabel=(n)=>(n==='GOLDEN KNIGHT'?'\u269c\ufe0f ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
+const sdLabel=(n)=>(n==='GLD-KNIGHT'?'\u269c\ufe0f ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GOLDEN KNIGHT')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
