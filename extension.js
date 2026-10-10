@@ -32215,7 +32215,7 @@ if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}retu
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
 if(m&&m.type==='mdArm'){const _r=document.getElementById('md-tiles');if(_r){_r.classList.toggle('md-armed',!!m.on);
 /* v4.2.776-31(俊克 改良1「登録したtipも表示しよう」): 構えている間、赤い点の字の説明(F の印の // の後ろ= data-tip)を、その字の下に Me Dock の tip と同じ姿で出す */
-let _at=document.getElementById('md-armtip');const _lt=_r.querySelector('.md-tile.md-last'),_tx=_lt&&_lt.getAttribute('data-ch')!=='T'?(_lt.getAttribute('data-tip')||''):'';
+let _at=document.getElementById('md-armtip');const _lt=_r.querySelector('.md-tile.md-last'),_tx=_lt?(_lt.getAttribute('data-tip')||''):'';/* v4.2.776-35(俊克 バグ1「Ⓣだけtipが出てこない」): Ⓣも出す(Today / Ⓣ-Comet など化けた名前) */
 if(m.on&&_tx){if(!_at){_at=document.createElement('span');_at.id='md-armtip';_at.className='md-armtip';_r.appendChild(_at);}_at.textContent=_tx;_at.style.display='block';_at.style.left=Math.max(0,_lt.offsetLeft-4)+'px';/* v4.2.776-33(俊克 改良1「被りすぎ。位置はさっきのまま」): 左はv4.2.776-31に戻す */}else if(_at)_at.style.display='none';}return;}/* v4.2.776-26 */
 if(m&&m.type==='mdLast'){const _r=document.getElementById('md-tiles');if(_r)_r.querySelectorAll('.md-tile').forEach(t=>t.classList.toggle('md-last',t.getAttribute('data-ch')===m.ch));return;}
 if(m&&m.type==='mdTodayClick'){const _tn=document.getElementById('dw-todaynow');if(_tn)_tn.click();return;}/* v4.2.776-24: Shift+Esc の赤い点がⓉ */
