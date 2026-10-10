@@ -665,7 +665,7 @@
       {
         "key": "shift+escape",
         "command": "laiMembrane.puzzleWarpRed",
-        "when": "editorTextFocus && !findWidgetVisible && !referenceSearchVisible && !suggestWidgetVisible && !markersNavigationVisible && !parameterHintsVisible && !inSnippetMode && !renameInputVisible && !inlineSuggestionVisible && !accessibilityHelpWidgetVisible && !inReferenceSearchEditor && !notificationToastsVisible"
+        "when": "(editorTextFocus || activeWebviewPanelId == 'meDock') && !findWidgetVisible && !referenceSearchVisible && !suggestWidgetVisible && !markersNavigationVisible && !parameterHintsVisible && !inSnippetMode && !renameInputVisible && !inlineSuggestionVisible && !accessibilityHelpWidgetVisible && !inReferenceSearchEditor && !notificationToastsVisible"
       }
     ]
   },

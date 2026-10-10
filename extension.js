@@ -40981,8 +40981,9 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpRed', async () => {
     try {
       const ch = String(extensionContext.globalState.get('meosPuzzleLast') || '');
+      meosDbg('[puzzleWarpRed] 呼ばれた 赤=' + (ch || '無し') + ' 並び=' + meosDockTiles() + ' 編集中=' + !!vscode.window.activeTextEditor);   // v4.2.776-25: 効かない真因を取りに行く
       if (!ch) { vscode.window.setStatusBarMessage('MeOS: no red dot yet \u2014 click a puzzle letter in Me Dock first.', 3000); return; }
-      const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) return;   // 間抜け・Deco の間は動かない(クリックと同じ門)
+      const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) { meosDbg('[puzzleWarpRed] 錠の並びなので動かない'); return; }   // 間抜け・Deco の間は動かない(クリックと同じ門)
       if (ch === 'T') { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdTodayClick' }); return; }
       await meosPuzzleTag(ch);
     } catch (_) { }
