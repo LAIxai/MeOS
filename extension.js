@@ -27307,8 +27307,6 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile.md-dot.md-last::after{background:#e53935}
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}
 .md-tiles{position:relative}.md-armtip{position:absolute;top:calc(100% + 12px);z-index:5;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400;white-space:pre-line;max-width:260px;width:max-content;line-height:1.4;box-shadow:0 2px 8px rgba(0,0,0,.2)}   /* v4.2.776-31: 構えの間の説明= .toc-tooltip と同じ姿 / v4.2.776-32(俊克 改良1「🔴をtipの上に被るように」): 字(z6)より下(z5)に置き、点が tip の上の縁に被る */   /* v4.2.776-26: Shift 長押しの間(と離して0.5秒)= 赤い点の字を拡大 */
-.md-tiles.md-armed .md-tile::before{content:attr(data-n);position:absolute;left:50%;top:-1.05em;transform:translateX(-50%);font-size:.5em;font-weight:800;color:var(--vscode-foreground);opacity:.85;pointer-events:none}   /* 左から何番目(1〜7 / Cmd+1〜7) */
-.md-tiles.md-armed .md-tile.md-last::before{color:#e53935;opacity:1;-webkit-text-stroke:.6px #000;paint-order:stroke fill;text-shadow:0 0 1px #000}   /* v4.2.776-27(俊克 改良1「ファイル名ボタンの文字に被って見難いので、拡大したものの数字だけ赤点と同じ黒縁の赤に」) */
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
 .title-ver-dock{margin-left:auto;align-self:flex-end}
@@ -32215,7 +32213,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
-if(m&&m.type==='mdArm'){const _r=document.getElementById('md-tiles');if(_r){_r.querySelectorAll('.md-tile').forEach((t,i)=>t.setAttribute('data-n',String(i+1)));_r.classList.toggle('md-armed',!!m.on);
+if(m&&m.type==='mdArm'){const _r=document.getElementById('md-tiles');if(_r){_r.classList.toggle('md-armed',!!m.on);
 /* v4.2.776-31(俊克 改良1「登録したtipも表示しよう」): 構えている間、赤い点の字の説明(F の印の // の後ろ= data-tip)を、その字の下に Me Dock の tip と同じ姿で出す */
 let _at=document.getElementById('md-armtip');const _lt=_r.querySelector('.md-tile.md-last'),_tx=_lt&&_lt.getAttribute('data-ch')!=='T'?(_lt.getAttribute('data-tip')||''):'';
 if(m.on&&_tx){if(!_at){_at=document.createElement('span');_at.id='md-armtip';_at.className='md-armtip';_r.appendChild(_at);}_at.textContent=_tx;_at.style.display='block';_at.style.left=Math.max(0,_lt.offsetLeft-4)+'px';/* v4.2.776-33(俊克 改良1「被りすぎ。位置はさっきのまま」): 左はv4.2.776-31に戻す */}else if(_at)_at.style.display='none';}return;}/* v4.2.776-26 */
