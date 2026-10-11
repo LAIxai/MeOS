@@ -15690,7 +15690,7 @@ function meosPlayRocket() {
 //   ②'pending' の人がパズルを押した時(10分に1回まで)、正規の音(P2)を取りに行く→ 取れたら 'won'・鳴らす / 404 は 'pending' のまま
 //   つながらない時は何も決めない(次に押した時にもう一度)。名前は目立たない物に(Releases ページで仕掛けが知られないように)
 const MEOS_GOLD_PRIZE_P1 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p1.dat';
-const MEOS_GOLD_PRIZE_P2 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p2.wav';
+const MEOS_GOLD_PRIZE_P2 = 'https://github.com/LAIxai/MeOS/releases/download/media-p1/p3.wav';   // v4.2.777-12: p2.wav(GLD-KNIGHT)は同梱になった→ コンプリートの賞品は p3.wav(まだ置いていない= 達成者には「作成中」が出たまま)
 const MEOS_GOLD_PRIZE_MARK = 'MEOS-P1';   // 仮の札の中身(頭)
 const MEOS_GOLD_PRIZE_NAME = 'GLD-KNIGHT';   // v4.2.776-19(俊克 改良1「字が切れるので GLD-KNIGHT に」): 前の名前 GOLDEN KNIGHT も同じ音として読む
 // v4.2.776-18(俊克「私は初代GAROとして、音リストに召喚してくれるよね?」): 作者の机は Release から取らず(数を1にしない)、devVsixDir の golden-knight.wav を使う
@@ -15725,7 +15725,8 @@ let _meosGkPart = '';   // 鳴っている間だけ 'full'/'gao'/'kakiin'(試聴
 function meosIsGk() { try { return meosSoundCanon(_meosBellOverride || meosSoundNow()) === MEOS_GOLD_PRIZE_NAME; } catch (_) { return false; } }
 function meosGkNext() { const P = meosGkParts(); if (!P) { _meosGkPart = ''; return 0; } _meosGkPart = ['full', 'gao', 'kakiin'][Math.floor(Math.random() * 3)]; return P.len[_meosGkPart] * 0.85; }
 function meosGoldPrizePath() { try { if (_meosGkPart) { const P = meosGkParts(); if (P && P[_meosGkPart]) return P[_meosGkPart]; } } catch (_) { } return meosGoldPrizeRaw(); }
-function meosGoldPrizeRaw() { try { const _af = meosGoldPrizeAuthorFile(); if (_af) return _af; if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
+// ★v4.2.777-12(俊克「黄金騎士の音は v4.2 の目玉として誰でも使えるように。コンプリートした人の音はゆっくり決める」): vsix に同梱(media/sound)= 誰の一覧にも出る
+function meosGoldPrizeRaw() { try { const _af = meosGoldPrizeAuthorFile(); if (_af) return _af; const _bf = require('path').join(extensionContext.extensionPath, 'media', 'sound', 'golden-knight.wav'); if (require('fs').existsSync(_bf)) return _bf; if (extensionContext.globalState.get('meosGoldPrize') !== 'won') return ''; const f = require('path').join(extensionContext.globalStorageUri.fsPath, 'golden-knight.wav'); return require('fs').existsSync(f) ? f : ''; } catch (_) { return ''; } }
 let _meosGoldPrizeBusy = false, _meosGoldPrizeLast = 0;
 function meosGoldPrizeFetch(url, done) {   // done(status, buffer|null)= 404/200 など・つながらない時は status 0
   const https = require('https');
