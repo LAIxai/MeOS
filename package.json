@@ -249,6 +249,10 @@
       {
         "command": "laiMembrane.puzzleWarpRed",
         "title": "MeOS: Warp to the red-dot letter (Shift+Esc)"
+      },
+      {
+        "command": "laiMembrane.diaryTplRegister",
+        "title": "MeOS: Register the membrane at the cursor as a diary template (up to 3)"
       }
     ],
     "configuration": {

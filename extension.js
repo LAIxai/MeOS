@@ -6997,10 +6997,100 @@ function meosWarpToDate(message) {
       // v2.0.6(俊克): 素のjumpLineは膜が畳まれたまま・カーソル復元なし→H-TOCと同じ jumpToWorkingTocItem を再利用。
       // 膜名で着地=最後にいた行(savedMeCursorLine)へ復元+revealRangeで自動展開(栞3兄弟と同じ「開いて表示」)。
       // ★v4.2.609(俊克「月が変わると、Ⓣボタンが効かなくなる。その時は先月の最終日を」): Ⓣ(orBefore)は今日の膜が無ければ、今日より前で一番新しい日の膜へ
+      let _exact = !!hit;
       if (!hit && message.orBefore) { const tk = ty * 10000 + tmo * 100 + td; let bk = -1;
         for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (!dt) continue; const k = dt.y * 10000 + dt.mo * 100 + dt.d; if (k <= tk && (k > bk || (k === bk && o.start < hit.start))) { bk = k; hit = o; } } }
+      // ★v4.2.777-2: 今日の膜が無い時の Ⓣ= 新しい日を作るか選ぶ(前日の複製 / 原型1〜3 / 一番新しい日へ)
+      const _nw = new Date();
+      if (hit && !_exact && message.orBefore && ty === _nw.getFullYear() && tmo === _nw.getMonth() + 1 && td === _nw.getDate()) { meosDiaryNewDay(ed, hit, { y: ty, mo: tmo, d: td }); return; }
       if (hit) { jumpToWorkingTocItem(hit.id); }
       else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
+}
+// ★v4.2.777-2(俊克「マウス操作が難しい人でも1ファイル生涯日記を。次の日の日記を自動作成」「新しいものが先頭に近い方」
+//   「前日の日記の複製(膜名にcopiedを付ける)/原型を登録しておく」「原型は最大3つまで登録して、どれかを選択」):
+//   Ⓣ(クリックでも T T でも)で今日の膜が無い時だけ選ばせる。作る場所= 一番新しい日の膜の真上(新しい日ほど先頭)。
+//   膜名の日付は日記の題の規則(Ⓝ)どおりに今日へ書き替え、TS は Duplicate Me と同じく打ち直す。原型は globalState meosDiaryTpls(最大3)
+const MEOS_DIARY_TPL_MAX = 3;
+function meosDiaryFormatDate(dt) {
+  let tpl = ''; try { tpl = (extensionContext && extensionContext.globalState.get('meDiaryTitleTemplate')) || ''; } catch (_) { }
+  const s = String(tpl || DIARY_DEFAULT_TPL), W = 'SMTWtFs'.charAt(new Date(dt.y, dt.mo - 1, dt.d).getDay()), p2 = (n) => String(n).padStart(2, '0');
+  let out = '', i = 0;
+  while (i < s.length) {
+    if (s[i] === '?') { i++; continue; }
+    if (s.startsWith('YYYY', i)) { out += dt.y; i += 4; }
+    else if (s.startsWith('MM', i)) { out += p2(dt.mo); i += 2; }
+    else if (s[i] === 'M') { out += dt.mo; i++; }
+    else if (s.startsWith('DD', i)) { out += p2(dt.d); i += 2; }
+    else if (s[i] === 'D') { out += dt.d; i++; }
+    else if (s[i] === 'W') { out += W; i++; }
+    else { out += s[i]; i++; }
+  }
+  return out;
+}
+// 膜名の中の日付だけを今日へ(日付が無い名前は、名前ごと今日の日付に)。copied は日付の直後に付ける
+function meosDiaryRename(name, dt, copied) {
+  const str = String(name || ''), cp = currentDiaryPatternRe(), today = meosDiaryFormatDate(dt) + (copied ? ' copied' : '');
+  const m = cp.re ? str.match(cp.re) : null;
+  if (!m) return today;
+  let core = null; try { let tpl = ''; try { tpl = extensionContext.globalState.get('meDiaryTitleTemplate') || ''; } catch (_) { } core = new RegExp('^(?:' + diaryPatternFromTemplate(tpl || DIARY_DEFAULT_TPL).re + ')(?![0-9])'); } catch (_) { }
+  const lead = (core && core.test(str.slice(m.index))) ? 0 : 1;
+  return str.slice(0, m.index + lead) + today + str.slice(m.index + m[0].length).replace(/^ copied\b/, '');
+}
+function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meosDiaryTpls'); return Array.isArray(a) ? a.slice(0, MEOS_DIARY_TPL_MAX) : []; } catch (_) { return []; } }
+// 膜の開き行〜運ぶ範囲の終わりを切り出し、一番上の膜の名前だけ書き替えて、TS を打ち直す
+function meosDiaryBlockFrom(lines, oldId, newId) {
+  const out = lines.slice();
+  for (let i = 0; i < out.length; i++) {
+    const t = out[i]; if (t.indexOf(oldId) < 0) continue;
+    const o = parseOpenLine(t), c = o ? null : parseCloseLine(t);
+    if ((o && o.id === oldId) || (c && c.id === oldId)) out[i] = t.replace(oldId, newId);
+  }
+  return meosRestampMembraneBlock(out);
+}
+async function meosDiaryNewDay(ed, latest, dt) {
+  try {
+    const doc = ed.document, tpls = meosDiaryTpls();
+    const items = [{ label: '$(copy) Copy ' + latest.id, description: 'the newest day, renamed to today + copied', act: 'copy' }];
+    tpls.forEach((t, i) => items.push({ label: '$(file) Template ' + (i + 1) + ': ' + t.id, description: t.lines.length + ' lines', act: 'tpl', i }));
+    items.push({ label: '$(arrow-right) Go to ' + latest.id, description: 'make nothing', act: 'go' });
+    items.push({ label: '$(add) Register the membrane at the cursor as a template', description: 'up to ' + MEOS_DIARY_TPL_MAX, act: 'reg' });
+    const pick = await vscode.window.showQuickPick(items, { placeHolder: 'No diary for today (' + meosDiaryFormatDate(dt) + ') — make one?' });
+    if (!pick) return;
+    if (pick.act === 'go') { jumpToWorkingTocItem(latest.id); return; }
+    if (pick.act === 'reg') { await meosDiaryTplRegister(ed); return; }
+    let src, oldId;
+    if (pick.act === 'copy') {
+      const e = Math.min(meosBlockEndForCarry(doc, latest), doc.lineCount - 1); src = [];
+      for (let i = latest.start; i <= e; i++) src.push(doc.lineAt(i).text);
+      oldId = latest.id;
+    } else { const t = tpls[pick.i]; src = t.lines.slice(); oldId = t.id; }
+    const newId = meosDiaryRename(oldId, dt, pick.act === 'copy');
+    const block = meosDiaryBlockFrom(src, oldId, newId);
+    const at = new vscode.Position(latest.start, 0);
+    await ed.edit(eb => eb.insert(at, block.join('\n') + '\n'));
+    const first = (parseOpenLine(block[0]) || {}).id;
+    meosDbg('[diaryNewDay] ' + pick.act + ' ' + oldId + ' → ' + (first || newId) + ' 行=' + (latest.start + 1));
+    ed.selection = new vscode.Selection(latest.start, 0, latest.start, 0);
+    ed.revealRange(new vscode.Range(latest.start, 0, latest.start, 0), vscode.TextEditorRevealType.AtTop);
+    vscode.window.setStatusBarMessage('MeOS: today’s diary made (' + (pick.act === 'copy' ? 'copied from ' + oldId : 'template ' + (pick.i + 1)) + ')', 4000);
+  } catch (e) { meosDbg('[diaryNewDay] 失敗 ' + (e && e.message)); }
+}
+async function meosDiaryTplRegister(ed) {
+  ed = ed || vscode.window.activeTextEditor; if (!ed) return;
+  const doc = ed.document, cur = ed.selection.active.line;
+  const inside = collectAllOpenMembranes(doc).filter(o => o.start <= cur && cur <= o.end).sort((a, b) => (a.end - a.start) - (b.end - b.start));
+  const pair = inside.find(o => parseDiaryDateFromName(o.id)) || inside[0];
+  if (!pair) { vscode.window.showInformationMessage('MeOS: put the cursor inside the membrane to use as a diary template.'); return; }
+  const e = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1), lines = [];
+  for (let i = pair.start; i <= e; i++) lines.push(doc.lineAt(i).text);
+  const tpls = meosDiaryTpls(); let slot = tpls.length;
+  if (slot >= MEOS_DIARY_TPL_MAX) {
+    const pk = await vscode.window.showQuickPick(tpls.map((t, i) => ({ label: 'Replace template ' + (i + 1) + ': ' + t.id, i })), { placeHolder: 'Three templates already — which one to replace?' });
+    if (!pk) return; slot = pk.i;
+  }
+  tpls[slot] = { id: pair.id, lines };
+  try { await extensionContext.globalState.update('meosDiaryTpls', tpls); } catch (_) { }
+  vscode.window.setStatusBarMessage('MeOS: template ' + (slot + 1) + ' = ' + pair.id + ' (' + lines.length + ' lines)', 4000);
 }
 async function meosPuzzleTag(ch) {
   try {
@@ -41026,6 +41116,7 @@ function activate(context) {
   const meosNthType = (d) => { try { if (vscode.window.activeTextEditor) vscode.commands.executeCommand('type', { text: String(d) }); } catch (_) { } };
   // ★v4.2.777-1: Shift の構えの見張りは Me Dock を開かなくても置く。窓に焦点が戻るたびに置き直す(別の窓・別の版が消していても戻る)
   try { meosModsWant(true, 'puzzle'); context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st.focused) meosModsWant(true, 'puzzle'); else meosPuzzleArmSet(false); })); } catch (_) { }
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.diaryTplRegister', () => meosDiaryTplRegister(vscode.window.activeTextEditor)));   // v4.2.777-2
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
       // ★v4.2.776-32(俊克 改良2「数字だけでなく、アルファベットキーを連打してもいいことに。ホームポジションでも打てる」):
