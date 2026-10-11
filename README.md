@@ -172,6 +172,14 @@ moves with it, so you can see where a line will break. The number counts half-wi
 Japanese breaks at the same line, with about one character for every 1.7 half-width ones. We know of no other Markdown editor that lets you
 change the wrap width this directly.
 
+**Me DockⓉ Warp — mark a spot, warp back.** Click it or type it — same mark, same warp.
+*(Like Vim marks, without modes or memorizing.)*
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock-warp.png" alt="Me DockⓉ Warp - hold and release Shift, Ⓣ magnifies for 1.2 seconds, then type M twice to warp to the M mark, or E twice to put a new mark there" width="60%"><br>
+  <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and Ⓣ grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks, and your fingers hardly leave the home position.</sub>
+</p>
+
 **Also in v4.2**
 
 - **The top of Me Dock stays put** — the title row and **Format Me** stay at the top while you scroll, and
