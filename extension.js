@@ -7036,7 +7036,10 @@ function meosDiaryRename(name, dt, copied) {
   const lead = (core && core.test(str.slice(m.index))) ? 0 : 1;
   return str.slice(0, m.index + lead) + today + str.slice(m.index + m[0].length).replace(/^ copied\b/, '');
 }
-function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meosDiaryTpls'); return Array.isArray(a) ? a.slice(0, MEOS_DIARY_TPL_MAX) : []; } catch (_) { return []; } }
+function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meosDiaryTpls'); const o = [null, null, null]; if (Array.isArray(a)) a.slice(0, MEOS_DIARY_TPL_MAX).forEach((t, i) => { if (t && t.id && Array.isArray(t.lines)) o[i] = t; }); return o; } catch (_) { return [null, null, null]; } }
+// ★v4.2.777-3(俊克 改良1「Ⓣの右肩に⓪〜③・右に▼で原型膜を登録・日によって使い分ける・見出しボタンと同じパターン」): 作り方は選んである番号で黙って作る(一覧は出さない)
+function meosDiaryMode() { let m = 0; try { m = Number(extensionContext.globalState.get('meosDiaryMode')) || 0; } catch (_) { } if (m > 0 && !meosDiaryTpls()[m - 1]) m = 0; return m; }
+function meosPostDiaryMode() { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'diaryMode', mode: meosDiaryMode(), have: meosDiaryTpls().map(Boolean) }); } catch (_) { } }
 // 膜の開き行〜運ぶ範囲の終わりを切り出し、一番上の膜の名前だけ書き替えて、TS を打ち直す
 function meosDiaryBlockFrom(lines, oldId, newId) {
   const out = lines.slice();
@@ -7049,48 +7052,45 @@ function meosDiaryBlockFrom(lines, oldId, newId) {
 }
 async function meosDiaryNewDay(ed, latest, dt) {
   try {
-    const doc = ed.document, tpls = meosDiaryTpls();
-    const items = [{ label: '$(copy) Copy ' + latest.id, description: 'the newest day, renamed to today + copied', act: 'copy' }];
-    tpls.forEach((t, i) => items.push({ label: '$(file) Template ' + (i + 1) + ': ' + t.id, description: t.lines.length + ' lines', act: 'tpl', i }));
-    items.push({ label: '$(arrow-right) Go to ' + latest.id, description: 'make nothing', act: 'go' });
-    items.push({ label: '$(add) Register the membrane at the cursor as a template', description: 'up to ' + MEOS_DIARY_TPL_MAX, act: 'reg' });
-    const pick = await vscode.window.showQuickPick(items, { placeHolder: 'No diary for today (' + meosDiaryFormatDate(dt) + ') — make one?' });
-    if (!pick) return;
-    if (pick.act === 'go') { jumpToWorkingTocItem(latest.id); return; }
-    if (pick.act === 'reg') { await meosDiaryTplRegister(ed); return; }
+    const doc = ed.document, mode = meosDiaryMode(), tpl = mode ? meosDiaryTpls()[mode - 1] : null;
     let src, oldId;
-    if (pick.act === 'copy') {
+    if (!tpl) {
       const e = Math.min(meosBlockEndForCarry(doc, latest), doc.lineCount - 1); src = [];
       for (let i = latest.start; i <= e; i++) src.push(doc.lineAt(i).text);
       oldId = latest.id;
-    } else { const t = tpls[pick.i]; src = t.lines.slice(); oldId = t.id; }
-    const newId = meosDiaryRename(oldId, dt, pick.act === 'copy');
+    } else { src = tpl.lines.slice(); oldId = tpl.id; }
+    const newId = meosDiaryRename(oldId, dt, !tpl);
     const block = meosDiaryBlockFrom(src, oldId, newId);
-    const at = new vscode.Position(latest.start, 0);
-    await ed.edit(eb => eb.insert(at, block.join('\n') + '\n'));
-    const first = (parseOpenLine(block[0]) || {}).id;
-    meosDbg('[diaryNewDay] ' + pick.act + ' ' + oldId + ' → ' + (first || newId) + ' 行=' + (latest.start + 1));
+    await ed.edit(eb => eb.insert(new vscode.Position(latest.start, 0), block.join('\n') + '\n'));
+    meosDbg('[diaryNewDay] ' + (tpl ? '原型' + mode : '複製') + ' ' + oldId + ' → ' + newId + ' 行=' + (latest.start + 1));
     ed.selection = new vscode.Selection(latest.start, 0, latest.start, 0);
     ed.revealRange(new vscode.Range(latest.start, 0, latest.start, 0), vscode.TextEditorRevealType.AtTop);
-    vscode.window.setStatusBarMessage('MeOS: today’s diary made (' + (pick.act === 'copy' ? 'copied from ' + oldId : 'template ' + (pick.i + 1)) + ')', 4000);
+    vscode.window.setStatusBarMessage('MeOS: today’s diary made (' + (tpl ? 'template ' + '①②③'.charAt(mode - 1) : '⓪ copied from ' + oldId) + ')', 4000);
   } catch (e) { meosDbg('[diaryNewDay] 失敗 ' + (e && e.message)); }
 }
-async function meosDiaryTplRegister(ed) {
-  ed = ed || vscode.window.activeTextEditor; if (!ed) return;
-  const doc = ed.document, cur = ed.selection.active.line;
-  const inside = collectAllOpenMembranes(doc).filter(o => o.start <= cur && cur <= o.end).sort((a, b) => (a.end - a.start) - (b.end - b.start));
-  const pair = inside.find(o => parseDiaryDateFromName(o.id)) || inside[0];
-  if (!pair) { vscode.window.showInformationMessage('MeOS: put the cursor inside the membrane to use as a diary template.'); return; }
-  const e = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1), lines = [];
-  for (let i = pair.start; i <= e; i++) lines.push(doc.lineAt(i).text);
-  const tpls = meosDiaryTpls(); let slot = tpls.length;
-  if (slot >= MEOS_DIARY_TPL_MAX) {
-    const pk = await vscode.window.showQuickPick(tpls.map((t, i) => ({ label: 'Replace template ' + (i + 1) + ': ' + t.id, i })), { placeHolder: 'Three templates already — which one to replace?' });
-    if (!pk) return; slot = pk.i;
-  }
-  tpls[slot] = { id: pair.id, lines };
+// ▾= 原型の登録/消去。登録はカーソルのある膜(日付の名前の膜を優先)を、選んだ番号へ
+async function meosDiaryTplMenu(ed) {
+  ed = ed || vscode.window.activeTextEditor;
+  const tpls = meosDiaryTpls(), G = '①②③';
+  let pair = null;
+  if (ed) { const doc = ed.document, cur = ed.selection.active.line;
+    const inside = collectAllOpenMembranes(doc).filter(o => o.start <= cur && cur <= o.end).sort((a, b) => (a.end - a.start) - (b.end - b.start));
+    pair = inside.find(o => parseDiaryDateFromName(o.id)) || inside[0] || null; }
+  const items = [];
+  if (pair) for (let i = 0; i < MEOS_DIARY_TPL_MAX; i++) items.push({ label: G.charAt(i) + ' Register ' + pair.id, description: tpls[i] ? 'replaces ' + tpls[i].id : 'empty', act: 'reg', i });
+  else items.push({ label: 'Put the cursor in a membrane to register it', act: 'none' });
+  for (let i = 0; i < MEOS_DIARY_TPL_MAX; i++) if (tpls[i]) items.push({ label: G.charAt(i) + ' Clear', description: tpls[i].id + ' (' + tpls[i].lines.length + ' lines)', act: 'clr', i });
+  const pk = await vscode.window.showQuickPick(items, { placeHolder: 'Diary templates — ⓪ copies the newest day; ①–③ use these' });
+  if (!pk || pk.act === 'none') return;
+  if (pk.act === 'reg') {
+    const doc = ed.document, e = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1), lines = [];
+    for (let i = pair.start; i <= e; i++) lines.push(doc.lineAt(i).text);
+    tpls[pk.i] = { id: pair.id, lines };
+  } else tpls[pk.i] = null;
   try { await extensionContext.globalState.update('meosDiaryTpls', tpls); } catch (_) { }
-  vscode.window.setStatusBarMessage('MeOS: template ' + (slot + 1) + ' = ' + pair.id + ' (' + lines.length + ' lines)', 4000);
+  if (pk.act === 'reg') { try { await extensionContext.globalState.update('meosDiaryMode', pk.i + 1); } catch (_) { } }   // 登録したらその番号を選んでおく
+  meosPostDiaryMode();
+  vscode.window.setStatusBarMessage('MeOS: template ' + G.charAt(pk.i) + (pk.act === 'reg' ? ' = ' + pair.id : ' cleared'), 4000);
 }
 async function meosPuzzleTag(ch) {
   try {
@@ -27285,7 +27285,7 @@ function meosDockTilesHtml() {
   //   v4.2.610: 6字の外に置いた Ⓣ をやめ、7枚目のタイル(data-ch="T")に= 並べ替えられる・緑の地に白抜き・常に白い点
   let _last = ''; try { _last = String(extensionContext.globalState.get('meosPuzzleLast') || ''); } catch (_) { }   // v4.2.776-10: 最後にクリックした字= 点が赤
   return '<span class="md-tiles' + (meosPuzzleGold() ? ' md-gold' : meosGoldPreviewNow() ? ' md-gold md-gold-try' : '') + '" id="md-tiles">' + meosDockTiles().split('').map(ch => ch === 'T'
-    ? '<span class="md-tile md-ttile md-dot' + (_last === 'T' ? ' md-last' : '') + '" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span><span class="tt-emo"></span><span class="tt-s"><img alt="" draggable="false" src="data:image/png;base64,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"></span><span class="tt-comet"><span class="cm-g">\u263f</span><span class="cm-c"><svg class="cm-svg" viewBox="-16.4 -12.8 20.2 17.0" width="1.19em" height="1.00em"><defs><linearGradient id="cmHead" gradientUnits="userSpaceOnUse" x1="-2.84" y1="-1.89" x2="2.84" y2="1.89"><stop offset="0" stop-color="#c8150c"/><stop offset=".46" stop-color="#e0200e"/><stop offset=".56" stop-color="#ff7a14"/><stop offset="1" stop-color="#ffa030"/></linearGradient></defs><circle cx="-5.2" cy="-2.3" r="1.00" fill="#c8281a" opacity="0.95"/><circle cx="-7.8" cy="-3.4" r="0.88" fill="#c8281a" opacity="0.78"/><circle cx="-10.4" cy="-4.6" r="0.76" fill="#c8281a" opacity="0.61"/><circle cx="-12.9" cy="-5.7" r="0.64" fill="#c8281a" opacity="0.44"/><circle cx="-15.5" cy="-6.8" r="0.52" fill="#c8281a" opacity="0.27"/><circle cx="-1.5" cy="-5.8" r="0.92" fill="#c8281a" opacity="0.78"/><circle cx="-3.7" cy="-7.8" r="0.79" fill="#c8281a" opacity="0.61"/><circle cx="-5.8" cy="-9.8" r="0.66" fill="#c8281a" opacity="0.44"/><circle cx="-8.0" cy="-11.8" r="0.53" fill="#c8281a" opacity="0.27"/><circle cx="-5.3" cy="2.9" r="0.92" fill="#c8281a" opacity="0.78"/><circle cx="-8.2" cy="2.6" r="0.79" fill="#c8281a" opacity="0.61"/><circle cx="-11.2" cy="2.4" r="0.66" fill="#c8281a" opacity="0.44"/><circle cx="-14.1" cy="2.1" r="0.53" fill="#c8281a" opacity="0.27"/><circle cx="0.0" cy="0.0" r="3.41" fill="url(#cmHead)"/></svg></span></span></span>'
+    ? '<span class="md-tile md-ttile md-dot' + (_last === 'T' ? ' md-last' : '') + '" data-ch="T" data-tip="Today"><span class="tt-glyph">\u24c9</span><span class="tt-plain">T</span><span class="tt-emo"></span><span class="tt-mode" id="tt-mode" data-tip="New day | When today has no diary, Ⓣ makes one this way. ⓪ copies the newest day (renamed to today + copied) · ①–③ use your templates. Click to cycle, Shift+Click backwards.">\u24ea</span><span class="tt-caret" id="tt-caret" data-tip="Diary templates | Register the membrane at the cursor as ①, ② or ③ — or clear one.">\u25be</span><span class="tt-s"><img alt="" draggable="false" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAACACAYAAAD3Yvf+AAAKDElEQVR4nO3da4xcZR3H8e9sp0JZFiqXFqxSaWuxWFurCOUmYjEagnhBYzAafWEikmCpCbzQqLzRFyZchMQYYvQFJBBtvCWGF1gjvWlFpQXJ0iqU5SbYcum23dJ2t2P+8D9yOJ2zc59z5nl+n+TpmTMzO/vMbM9vnvOc5zyngoTqOGAWcExOObaJx2ZO8/qVFu/vxWPtvl4jY8A9wEtErpMPUfprGDgVmFNneUpqPbnPwqFItQH+f2p13wPcBPyIiCkgyuMEYDFwFjDfl+8CTveN3gJC+u/6mENCAdF/i3zjt+WSVBi8M/Uc/V3KYyzzt4mK/iP21lJgFfBeYLkHgvUNGH32g2MYmCBC1aIrEJjzgIs8CD4OzCu6QtIVsxQQ0o5LPRQsEK4ETkw9phZCOKpEKto33oGVwFXAF7wDUUEQvhlESgHRHOtQvBr4rPcnGAVDPKpEKto33mTH1DXA5b4rYRQKcZpBpBQQR7NBR98GVvu6QkGqRCraN16HHX68EVgDjCgYJCXa7STaN55S8VC4ATit6MpIKc0gUrEHxDeAa30ko0ieKpGK9Y3b2Yr3AxdqV0Ik3xDxORPY4CMeFQ4i04gtID4I3AecU3RFRAZBTAFxGfA79TeINC+WPogrgF9H9H5FuiKGFsRJwF0KB5HWxRAQNwOzi66EyCAaiqBT8stFV0JkUIUeELfoUKZ0YQLb3URqKPBRkjYQSqQT+4BniFTIAWFzN6j1IJ26lYhVAp5C3q5rINKuvR4O3yNi1YA7J6Xzfe9JYKpBOZIptcyyk/vaeX62fpP+WHo9+3j2Z2yq+7VF/wHKINSAWEHckqtajQMvpMqLwHPAf/0b0vav93vJ3p7o8tWxZACFGhA2y3QsngJGgSd9uQN4DPgP8GrRlZPBFmpAhHolpCk/TX09sBl4MNbrNUh/hBoQIdkCrPNA+ANwsOgKSTwUEOX1U+B24JGiKyLxUkCUywG/kvRt3qkoUqiQB0oNonE/0vBy0RURCdk6P0Q3iMWO2T8NfBc4u+gPUiREgxwQ2bD4C/At4PyiP1SJj/ogyj8U3q4efq6v2yCmTcCfgYf8tu2SiPREJeAWxEcIWzLKcauPhxj1IcKPA//W+AjphmrARwNiCfcVOUPLn/Kg2Ak84cOrd2XKK32uswyYUAPCmuKxO8PLdA6ngmM8dS7GhJdk/UDqpKaaH/1qp1RabB3V6txu5TGr8yEfXJa3POjnnuzNlFqLn3eQQg0I+4NLYzOBeV7kdUkwTKTCYtxnldrl60/XaY09F+IXU6gBoeHI0q6klTPspZULOu/yk+Z2eufxqO/e7fT7B65fKNSA0ChEKcKpXvLmI7E+oYeBbX7blo9SYqEGhPXmi5TNIi+fSe3O7E0FhbU4fu9Hokoh1MOcIz7lXKjvT8Lu/xgFHvDlWp/boxAhb0A/Bq4J/D1KHP7mF53+BfDPfv7ikE/WsvQVCcE5wHf81P+NwI3AnH784tC/XW2w0DuKroRIj9gFqf/k84b0RMgtCHN30RUQ6aFP+dwh24E1vfgFobcgzvIJXEVisAP4STcv9hN6QJhf+lW2RGKx3YPCWhcdiSEgRvy4sg1gEYnJZuCLPpKzLaH3QeADUb5WdCVECnAB8A/gunZfIIYWROJO4KuRvWeRZACWHR5d5WfwNi2mjaXiTa7zInvfIklI2GH/LwEbaFJsG8pbfAirQkJitQe4ymddayiGPog0myTkw361Kk0IIjE60Yds23bQUGwBkcwVcYlP+KqQkBi9FbgXuLjRE2MMiKQlYR/ODX5bJCYVYK6HxAWNnhg764+4y8/T1+chMan5GIkP5E1gHGsLIm2Lzwqt8zYkNhXgTOCW6Z4gb1gJ/BC4SJ+NRNaSON+/LN9EG0F91/mgqmVFV0SkT/4FLO7XLwvF9T7J6BEvRV+rU0Wl1sPyg+wGoBZE8y2KZd6qEAl5CMBC4NnkDgVEa+Z6SFwNvKfoyoh0mbUibvbD/69RQLTvMuBzwOXA24uujEiXPA+cnqwoILrjXD9T7lIPjoQ+XxnEVsRq4A5b0X/g3kxQ8xVgiY/WXFp0hURaDAibjepaW1FA9N5sH4i13ENjua/bmaUiZWXXJZ1QQBR3ycMVPjDLQuMMYIEv7Q8jUrRv2uS3oV6bs+wmgQe9ZJ0MzPewsPJuvy9Zf1sB9ZX42BeXdjEGkIX6SX5e/wkNliOp5ZCXSmqZvp33WDP7rIc99A5nyuQ061N1np88Z9JfN20mcAwwCzg2p6QfO94nKrZlI9oOjrbepkXQByOhm+WXqcuW+R4ec/ywng0QOs5/RtsF7LaA1Qch8oZFfrGlxX70aSVwNnGyFtxCBYTI9E7zoLjQL3VnLY1YtptPaD4IkcYjC3/jM0LfD+xPndwUuvk6iiFS31Lgo96b/2k/kkRErQczooAQgXnA+/0EvPd5KCwrulJloICQWJzs/QcL/QjGIp9ubaGPL4mpZdA0BYSEYDjnMOaCVCicohBonQJCyuZ4H+iVlNk+4Cm98WfXNTy9RxQQ0o6ZPgCp2TKc2uBHMgGQXU9GcUqJAsKGsK7xjprXxmA3oTbNslay53Tz9ZrRr+fmDZNuZih1sz9TrbPB64slElUPh80eDtLcBqtvOIkmIJKWg7xOG7+IG2phl0JE4jI55IeCRESyDiedUSIidVsQCggRqeeAAkJE8owpIEQk73D/NgWEiNTzqE07pwljRKSeLfaPWhAikteCUECISN3+h7vthgJCRLJ+DuyyGwoIEcn6WXJDp+2KSHrX4gFgU3KHWhAikvar9IoCQkQSG4E7/r+mgBAR9zLwSTIUECJSA27ykHgTjaQUkU3A7fUesKMYakGIxNty+CtwSd4TtIshEq9tdgVv4EjeExQQInHaDnw+GTGZRwEhEt9uxd+95bCj0ZM1klIkrnDYBKwCDjXzA2pBiISv5uX7wMXNhoPRUQyRsNWA54GvA79t9YcVECJhh8NG4GM2Q3U7L6BdDJEwg2EMWA18qN1wMOqkFAnrotPP+KjIW4GpTl9UuxgiYXjWg+E2u2Ret15ULQiRcILhULdfXAEhMpi7EzuBOz0YDvbqFykgRAbLWmBD3tmX3aaAECl3p6P5I3CfTyZ71JwNvaSAEClnMGz1+SHvAR4vqjIKCJFytBL2+e7DqLcY7ISqwikgRIoJhSkPgvU+2tGmmy8dBYRI/651uRV4BHgYWNeLw5K9CIjHgMVFV0QkANY6eMEnY9nuuws2a9NDwCsMoKq/iSuLrojIgOwavOhjEJ4Edvv280TqvgkCYsOs5wKbgQVFV0akwI1/n2/86bLHA2DMN34LgXEikpyHYSGxBrgCWJI5P0PnakiZHfKzFfPKfuClOht/9r7S9wcUodLE45XM7W6s6zXDec1mTPnMyUdSt7PL6R57dZoA6PiMRSHX/wAduGf/aVZPaAAAAABJRU5ErkJggg=="></span><span class="tt-comet"><span class="cm-g">\u263f</span><span class="cm-c"><svg class="cm-svg" viewBox="-16.4 -12.8 20.2 17.0" width="1.19em" height="1.00em"><defs><linearGradient id="cmHead" gradientUnits="userSpaceOnUse" x1="-2.84" y1="-1.89" x2="2.84" y2="1.89"><stop offset="0" stop-color="#c8150c"/><stop offset=".46" stop-color="#e0200e"/><stop offset=".56" stop-color="#ff7a14"/><stop offset="1" stop-color="#ffa030"/></linearGradient></defs><circle cx="-5.2" cy="-2.3" r="1.00" fill="#c8281a" opacity="0.95"/><circle cx="-7.8" cy="-3.4" r="0.88" fill="#c8281a" opacity="0.78"/><circle cx="-10.4" cy="-4.6" r="0.76" fill="#c8281a" opacity="0.61"/><circle cx="-12.9" cy="-5.7" r="0.64" fill="#c8281a" opacity="0.44"/><circle cx="-15.5" cy="-6.8" r="0.52" fill="#c8281a" opacity="0.27"/><circle cx="-1.5" cy="-5.8" r="0.92" fill="#c8281a" opacity="0.78"/><circle cx="-3.7" cy="-7.8" r="0.79" fill="#c8281a" opacity="0.61"/><circle cx="-5.8" cy="-9.8" r="0.66" fill="#c8281a" opacity="0.44"/><circle cx="-8.0" cy="-11.8" r="0.53" fill="#c8281a" opacity="0.27"/><circle cx="-5.3" cy="2.9" r="0.92" fill="#c8281a" opacity="0.78"/><circle cx="-8.2" cy="2.6" r="0.79" fill="#c8281a" opacity="0.61"/><circle cx="-11.2" cy="2.4" r="0.66" fill="#c8281a" opacity="0.44"/><circle cx="-14.1" cy="2.1" r="0.53" fill="#c8281a" opacity="0.27"/><circle cx="0.0" cy="0.0" r="3.41" fill="url(#cmHead)"/></svg></span></span></span>'
     : '<span class="md-tile' + (_last === ch ? ' md-last' : '') + '" data-ch="' + ch + '" style="color:' + col[ch] + '">' + ch + '</span>').join('') + '</span>';
 }
 function meDockHtml() {
@@ -27424,6 +27424,10 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-tile.md-dot::after{content:'';position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.5)}
 .md-tile.md-dot.md-last::after{background:#e53935}
 .md-tiles.md-armed .md-tile.md-last{transform:scale(2);z-index:6;position:relative}
+.md-ttile .tt-mode{position:absolute;top:-.42em;right:-.42em;font-size:.48em;line-height:1;padding:0 .05em;border-radius:50%;background:#fff;color:#2e9d3a;font-weight:800;box-shadow:0 0 0 1px #2e9d3a;z-index:2;cursor:var(--meos-hand-point,pointer)}   /* v4.2.777-3(俊克「puzzleのⓉの右肩に⓪〜③(常に)・▼はホーバーの時だけ」): タイルの中に置く= 並べ替えで一緒に動き、幅は取らない */
+.md-ttile .tt-caret{position:absolute;left:100%;top:50%;transform:translate(2px,-50%);font-size:.5em;line-height:1;padding:.1em .15em;border:1px solid #2e9d3a;border-radius:4px;background:var(--vscode-editor-background);color:#2e9d3a;z-index:2;opacity:0;visibility:hidden;transition:opacity .12s ease .5s,visibility 0s linear .62s;cursor:var(--meos-hand-point,pointer)}
+.md-ttile:hover .tt-caret{opacity:1;visibility:visible;transition:opacity .12s ease 0s,visibility 0s}   /* 離れても0.5秒保つ(表の↻🤝と同じ保ち方) */
+.md-tile.md-tm .tt-mode,.md-tile.md-tm .tt-caret,.md-tile.dragging .tt-caret{display:none}
 .md-tiles{position:relative}.md-armtip{position:absolute;top:calc(100% + 12px);z-index:5;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400;white-space:pre-line;max-width:260px;width:max-content;line-height:1.4;box-shadow:0 2px 8px rgba(0,0,0,.2)}   /* v4.2.776-31: 構えの間の説明= .toc-tooltip と同じ姿 / v4.2.776-32(俊克 改良1「🔴をtipの上に被るように」): 字(z6)より下(z5)に置き、点が tip の上の縁に被る */   /* v4.2.776-26: Shift 長押しの間(と離して0.5秒)= 赤い点の字を拡大 */
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
 .title-row-dock .md-tiles{margin:0 0 -2px -5px}
@@ -32548,6 +32552,18 @@ row.addEventListener('pointerup',ev=>{if(!press||ev.pointerId!==press.pid)return
 row.addEventListener('pointercancel',()=>{end(true);});row.addEventListener('lostpointercapture',()=>{if(press)end(true);});
 row.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.preventDefault();suppress=false;}},true);})();
 // {* ▲mCN=dock_js_tiles *}
+// {* ▼mCN=dock_js_ttctl // v4.2.777-3 Ⓣのタイルの⓪〜③(新しい日の作り方)と▾(原型の登録) *}
+(function(){const md=document.getElementById('tt-mode'),cr=document.getElementById('tt-caret');if(!md||!cr)return;
+const G=['⓪','①','②','③'];let mode=0,have=[false,false,false];
+function show(){md.textContent=G[mode]||G[0];}
+function cyc(back){const ok=[0].concat([1,2,3].filter(i=>have[i-1]));let k=ok.indexOf(mode);if(k<0)k=0;mode=ok[(k+(back?ok.length-1:1))%ok.length];show();vscode.postMessage({type:'diaryMode',mode:mode});}
+/* タイルの押す・掴むに渡さない(並びの pointerdown は親で受けている) */
+[md,cr].forEach(el=>{el.addEventListener('pointerdown',ev=>{ev.stopPropagation();ev.preventDefault();});el.addEventListener('pointerup',ev=>{ev.stopPropagation();});});
+md.addEventListener('click',ev=>{ev.stopPropagation();cyc(ev.shiftKey);});
+cr.addEventListener('click',ev=>{ev.stopPropagation();vscode.postMessage({type:'diaryTplMenu'});});
+window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryMode'){mode=Number(m.mode)||0;if(Array.isArray(m.have))have=m.have.map(Boolean);show();}});
+show();})();
+// {* ▲mCN=dock_js_ttctl *}
 // {* ▼mCN=dock_js_logo // v4.2.721 MeOSロゴ= クリックでVSX(Shift=Git)・クリックドラッグで🔤 Jumble の出入り *}
 (function(){const lg=document.getElementById('meos-logo');if(!lg)return;let p=null;window.__mdJumble=false;
 /* v4.2.722(俊克「拡大した時、1回だけtipを出そう」): 飛び先の tip は Me Dock を開いて最初の1回だけ= 一度出て離れたら外す */let tipT=0;lg.addEventListener('pointerenter',()=>{clearTimeout(tipT);tipT=setTimeout(()=>{lg.__tipSeen=true;},900);});lg.addEventListener('pointerleave',()=>{clearTimeout(tipT);if(lg.__tipSeen&&!window.__mdJumble)lg.removeAttribute('data-tip');});
@@ -33245,6 +33261,7 @@ function toggleMeDock(editorOverride) {
   setTimeout(() => meosPostViewMode(), 80);   // v4.0.441: 開いた時にも今のモードを名乗らせる(ボタンの面と中身をずらさない)
   _meosPuzzleDotsLast = null; setTimeout(() => meosPostPuzzleDots(true), 300);   // v4.2.593
   try { meosModsWant(true, 'puzzle'); } catch (_) { }   // v4.2.776-26: Shift 長押しの見張り
+  setTimeout(() => meosPostDiaryMode(), 300);   // v4.2.777-3: Ⓣの右肩の⓪〜③
 
   meDockPanel.webview.onDidReceiveMessage(async (message) => {
     // ★v4.2.500 パズルロック: 並びを覚える。MockeD の間は、並べ替えのほかは何も受け付けない(Me Dock だけ操作できない)
@@ -34168,6 +34185,8 @@ function toggleMeDock(editorOverride) {
       jumpMeDockTargetLine(message.line);
       return;
     }
+    if (message && message.type === 'diaryMode') { try { await extensionContext.globalState.update('meosDiaryMode', Math.max(0, Math.min(3, Number(message.mode) || 0))); } catch (_) { } meosPostDiaryMode(); return; }   // v4.2.777-3
+    if (message && message.type === 'diaryTplMenu') { await meosDiaryTplMenu(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }   // v4.2.777-3
     if (message && message.type === 'warpToDate') { meosWarpToDate(message); return; }   // v4.2.777-1: 中身は meosWarpToDate へ(Me Dock が無い時の Ⓣ も使う)
     if (message && message.type === 'requestDateDial') { // v2.0.9(俊克): Date Warp ↻ダイヤル=スコープ単位で刻んだ日記の実在日付をホイールで見せ、回して選ぶ。改良1=day(全日付)。
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
@@ -41116,7 +41135,7 @@ function activate(context) {
   const meosNthType = (d) => { try { if (vscode.window.activeTextEditor) vscode.commands.executeCommand('type', { text: String(d) }); } catch (_) { } };
   // ★v4.2.777-1: Shift の構えの見張りは Me Dock を開かなくても置く。窓に焦点が戻るたびに置き直す(別の窓・別の版が消していても戻る)
   try { meosModsWant(true, 'puzzle'); context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st.focused) meosModsWant(true, 'puzzle'); else meosPuzzleArmSet(false); })); } catch (_) { }
-  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.diaryTplRegister', () => meosDiaryTplRegister(vscode.window.activeTextEditor)));   // v4.2.777-2
+  context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.diaryTplRegister', () => meosDiaryTplMenu(vscode.window.activeTextEditor)));   // v4.2.777-2 / -3: ▾ と同じ口
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
       // ★v4.2.776-32(俊克 改良2「数字だけでなく、アルファベットキーを連打してもいいことに。ホームポジションでも打てる」):
