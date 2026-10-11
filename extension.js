@@ -7004,6 +7004,7 @@ function meosWarpToDate(message) {
       const _nw = new Date();
       if (hit && !_exact && message.orBefore && ty === _nw.getFullYear() && tmo === _nw.getMonth() + 1 && td === _nw.getDate()) { meosDiaryNewDay(ed, hit, { y: ty, mo: tmo, d: td }); return; }
       if (hit) { jumpToWorkingTocItem(hit.id); }
+      else if (message.orBefore && ty === _nw.getFullYear() && tmo === _nw.getMonth() + 1 && td === _nw.getDate()) { meosDiaryNewDay(ed, null, { y: ty, mo: tmo, d: td }); }   // v4.2.777-6: 日記が1つも無い= 新しい人。原型(無ければ内蔵の原型)で今日を作る
       else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
 }
 // ★v4.2.777-2(俊克「マウス操作が難しい人でも1ファイル生涯日記を。次の日の日記を自動作成」「新しいものが先頭に近い方」
@@ -7050,10 +7051,22 @@ function meosDiaryBlockFrom(lines, oldId, newId) {
   }
   return meosRestampMembraneBlock(out);
 }
+// ★v4.2.777-6(俊克 改良1「emptyをクリックすると新規の空の膜をEOFの手前に作ってワープ」「全くの新規ユーザには自動で日記の原型」):
+//   原型は**名前で本文を引く**= 膜を書き直せば原型も変わる(覚えた行は、膜が見つからない時の控え)
+function meosDiaryPairById(doc, id) { try { return collectAllOpenMembranes(doc).find(o => o.id === id) || null; } catch (_) { return null; } }
+function meosDiaryLinesOf(doc, pair) { const e = Math.min(meosBlockEndForCarry(doc, pair), doc.lineCount - 1), out = []; for (let i = pair.start; i <= e; i++) out.push(doc.lineAt(i).text); return out; }
+function meosDiaryTplLive(doc, t) { if (!t) return null; const p = meosDiaryPairById(doc, t.id); return p ? { id: t.id, lines: meosDiaryLinesOf(doc, p) } : t; }
+const MEOS_DIARY_DEFAULT_BODY = ['Today: ', 'Done: ', 'Tomorrow: '];
+function meosDiaryDefaultTpl(doc) {
+  const id = 'Diary template';
+  return { id, lines: [buildMembraneOpenLine(doc, '', id, '')].concat(MEOS_DIARY_DEFAULT_BODY, meosNewMembraneCloseBlock(doc, '', id, '').split('\n')) };
+}
 async function meosDiaryNewDay(ed, latest, dt) {
   try {
-    const doc = ed.document, mode = meosDiaryMode(), tpl = mode ? meosDiaryTpls()[mode - 1] : null;
-    if (mode && !tpl) vscode.window.showInformationMessage('MeOS: template ' + '\u2460\u2461\u2462'.charAt(mode - 1) + ' is empty \u2014 copied the newest day instead. Register one with \u25be beside \u24c9.');   // v4.2.777-4
+    const doc = ed.document, mode = meosDiaryMode();
+    let tpl = mode ? meosDiaryTplLive(doc, meosDiaryTpls()[mode - 1]) : null;
+    if (!latest && !tpl) tpl = meosDiaryDefaultTpl(doc);   // 前の日が無い= 複製できない→ 内蔵の原型
+    if (mode && !tpl && latest) vscode.window.showInformationMessage('MeOS: template ' + '\u2460\u2461\u2462'.charAt(mode - 1) + ' is empty \u2014 copied the newest day instead. Register one with \u25be beside \u24c9.');   // v4.2.777-4
     let src, oldId;
     if (!tpl) {
       const e = Math.min(meosBlockEndForCarry(doc, latest), doc.lineCount - 1); src = [];
@@ -7062,10 +7075,11 @@ async function meosDiaryNewDay(ed, latest, dt) {
     } else { src = tpl.lines.slice(); oldId = tpl.id; }
     const newId = meosDiaryRename(oldId, dt, !tpl);
     const block = meosDiaryBlockFrom(src, oldId, newId);
-    await ed.edit(eb => eb.insert(new vscode.Position(latest.start, 0), block.join('\n') + '\n'));
-    meosDbg('[diaryNewDay] ' + (tpl ? '原型' + mode : '複製') + ' ' + oldId + ' → ' + newId + ' 行=' + (latest.start + 1));
-    ed.selection = new vscode.Selection(latest.start, 0, latest.start, 0);
-    ed.revealRange(new vscode.Range(latest.start, 0, latest.start, 0), vscode.TextEditorRevealType.AtTop);
+    const at = latest ? latest.start : ed.selection.active.line;   // 日記が無ければカーソルの行に
+    await ed.edit(eb => eb.insert(new vscode.Position(at, 0), block.join('\n') + '\n'));
+    meosDbg('[diaryNewDay] ' + (tpl ? '原型' + mode : '複製') + ' ' + oldId + ' → ' + newId + ' 行=' + (at + 1));
+    ed.selection = new vscode.Selection(at, 0, at, 0);
+    ed.revealRange(new vscode.Range(at, 0, at, 0), vscode.TextEditorRevealType.AtTop);
     vscode.window.setStatusBarMessage('MeOS: today’s diary made (' + (tpl ? 'template ' + '①②③'.charAt(mode - 1) : '⓪ copied from ' + oldId) + ')', 4000);
   } catch (e) { meosDbg('[diaryNewDay] 失敗 ' + (e && e.message)); }
 }
@@ -7085,8 +7099,15 @@ function meosDiaryTplHist() { try { const a = extensionContext.globalState.get('
 function meosPostDiaryTplState() {
   try {
     if (!meDockPanel) return;
-    const mode = meosDiaryMode(), t = mode ? meosDiaryTpls()[mode - 1] : null, here = meosDiaryHereMembrane();
-    meDockPanel.webview.postMessage({ type: 'diaryTplState', mode, cur: t ? t.id : null, here: here ? here.id : null, hist: meosDiaryTplHist().map(x => x.id) });
+    const mode = meosDiaryMode(), t = mode ? meosDiaryTpls()[mode - 1] : null;
+    // v4.2.777-6(俊克「例は昨日から1週間分の曜日が一通り・同じ曜日の過去4週分が実用的」): 日記の膜から候補を出す
+    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor, same = [], week = [];
+    if (ed) { const byKey = new Map();
+      for (const o of collectAllOpenMembranes(ed.document)) { const d = parseDiaryDateFromName(o.id); if (!d) continue; const k = d.y * 10000 + d.mo * 100 + d.d; if (!byKey.has(k)) byKey.set(k, o.id); }
+      const now = new Date(), key = (n) => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() - n); return x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate(); };
+      for (let w = 1; w <= 4; w++) { const id = byKey.get(key(7 * w)); if (id) same.push(id); }
+      for (let n = 1; n <= 6; n++) { const id = byKey.get(key(n)); if (id) week.push(id); } }
+    meDockPanel.webview.postMessage({ type: 'diaryTplState', mode, cur: t ? t.id : null, same, week, hist: meosDiaryTplHist().map(x => x.id) });
   } catch (_) { }
 }
 async function meosDiaryTplSet(msg) {
@@ -7094,8 +7115,19 @@ async function meosDiaryTplSet(msg) {
   const tpls = meosDiaryTpls(); let hist = meosDiaryTplHist(), t = null;
   if (msg.act === 'clr') { if (tpls[mode - 1]) hist = [tpls[mode - 1]].concat(hist.filter(h => h.id !== tpls[mode - 1].id)); tpls[mode - 1] = null; }
   else {
+    const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
     if (msg.act === 'here') t = meosDiaryHereMembrane();
     else if (msg.act === 'hist') t = hist[Number(msg.i) || 0] || null;
+    else if (msg.act === 'cand' && ed) { const p = meosDiaryPairById(ed.document, String(msg.id || '')); if (p) t = { id: p.id, lines: meosDiaryLinesOf(ed.document, p) }; }
+    else if (msg.act === 'new' && ed) {   // 空の原型の膜をファイルの終わりに作り、そこへ飛ぶ
+      const doc = ed.document, id = 'Diary template ' + '①②③'.charAt(mode - 1) + '_' + meosMembraneStamp(new Date());
+      const open = buildMembraneOpenLine(doc, '', id, ''), close = meosNewMembraneCloseBlock(doc, '', id, '');
+      const last = doc.lineAt(doc.lineCount - 1), pre = last.text.length ? '\n\n' : '\n';
+      await ed.edit(eb => eb.insert(last.range.end, pre + open + '\n\n' + close + '\n'));
+      const line = meosFindMembraneLineByName(ed.document, id) + 1;
+      if (line > 0) { await vscode.window.showTextDocument(ed.document, ed.viewColumn); ed.selection = new vscode.Selection(line, 0, line, 0); ed.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter); }
+      t = { id, lines: [open, '', ...close.split('\n')] };
+    }
     if (!t) return;
     const old = tpls[mode - 1];
     tpls[mode - 1] = t;
@@ -32604,12 +32636,14 @@ const pop=document.getElementById('tt-pop');const esc=t=>String(t).split('&').jo
 function render(st){if(!pop)return;const N=['0','①','②','③'][st.mode]||'0';let h='';
 if(!st.mode){h='<div class="tt-pop-head">0 — Ⓣ copies the newest day (+ copied). Pick ①–③ with the number on Ⓣ to use a template.</div>';}
 else{h+='<div class="tt-pop-head">'+N+' — when today has no diary, Ⓣ makes this:</div>';
-h+='<div class="title-file-row cur"><span class="title-file-item">'+(st.cur?esc(st.cur):'(empty)')+'</span>'+(st.cur?'<button class="title-file-x" data-act="clr"></button>':'')+'</div>';
-h+=st.here?'<div class="title-file-row"><button class="title-file-item tt-pop-reg" data-act="here">+ '+esc(st.here)+'</button></div>':'<div class="tt-pop-head">Put the cursor in a membrane to register it.</div>';
+h+=st.cur?'<div class="title-file-row cur"><span class="title-file-item">'+esc(st.cur)+'</span><button class="title-file-x" data-act="clr"></button></div>':'<div class="title-file-row"><button class="title-file-item tt-pop-reg" data-act="new">(empty) \u2192 make a new template at the end of the file</button></div>';
+/* v4.2.777-6: 候補= 同じ曜日の過去4週・昨日から6日(押すとこの番号へ) */
+const cand=(title,a)=>{if(a&&a.length){h+='<div class="tt-pop-head">'+title+'</div>';a.forEach(x=>{h+='<div class="title-file-row"><button class="title-file-item" data-act="cand" data-id="'+esc(x)+'">'+esc(x)+'</button></div>';});}};
+cand('Same weekday, past 4 weeks:',st.same);cand('This past week:',st.week);
 if(st.hist&&st.hist.length){h+='<div class="tt-pop-head">Before:</div>';st.hist.forEach((x,i)=>{h+='<div class="title-file-row"><button class="title-file-item" data-act="hist" data-i="'+i+'">'+esc(x)+'</button></div>';});}}
 pop.innerHTML=h;}
-cr.addEventListener('click',ev=>{ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(!pop)return;if(pop.classList.contains('on')){pop.classList.remove('on');return;}pop.classList.add('on');render({mode:mode,cur:null,here:null,hist:[]});vscode.postMessage({type:'diaryTplAsk'});});
-if(pop){pop.addEventListener('pointerdown',ev=>ev.stopPropagation());pop.addEventListener('click',ev=>{ev.stopPropagation();const b=ev.target.closest&&ev.target.closest('[data-act]');if(!b)return;vscode.postMessage({type:'diaryTplSet',act:b.getAttribute('data-act'),i:Number(b.getAttribute('data-i'))||0,mode:mode});pop.classList.remove('on');});
+cr.addEventListener('click',ev=>{ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(!pop)return;if(pop.classList.contains('on')){pop.classList.remove('on');return;}pop.classList.add('on');render({mode:mode,cur:null,same:[],week:[],hist:[]});vscode.postMessage({type:'diaryTplAsk'});});
+if(pop){pop.addEventListener('pointerdown',ev=>ev.stopPropagation());pop.addEventListener('click',ev=>{ev.stopPropagation();const b=ev.target.closest&&ev.target.closest('[data-act]');if(!b)return;vscode.postMessage({type:'diaryTplSet',act:b.getAttribute('data-act'),i:Number(b.getAttribute('data-i'))||0,id:b.getAttribute('data-id')||'',mode:mode});pop.classList.remove('on');});
 document.addEventListener('click',ev=>{if(pop.classList.contains('on')&&!(ev.target.closest&&ev.target.closest('#tt-pop,#tt-caret')))pop.classList.remove('on');});}
 window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryTplState'&&pop&&pop.classList.contains('on'))render(m);});
 window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryMode'){mode=Number(m.mode)||0;if(Array.isArray(m.have))have=m.have.map(Boolean);show();}});
