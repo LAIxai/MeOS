@@ -6976,6 +6976,32 @@ const REF_MARK_ACTIVE = '\u25b6\u25c0';   // ▶◀
 const MEOS_PUZZLE_TAG_RE = /\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=/;
 const MEOS_PUZZLE_LETTERS = 'MeDock';
 const MEOS_PUZZLE_TAG_FULL_RE = /(?:<!--[ \t]*|\/\*[ \t]*)?\{\*[ \t]*\u25b6\u25c0[ \t]*mP([1-6])[ \t]*=[ \t]*([^\s*]+)[^\r\n]*?\*\}(?:[ \t]*-->|[ \t]*\*\/)?/g;   // v4.2.565: 飾り用(殻ごと)
+// v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。v4.2.777-1: Me Dock の受け口から関数へ出した
+function meosWarpToDate(message) {
+      const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
+      if (!ed) return;
+      const opens = collectAllOpenMembranes(ed.document);
+      const cur = ed.selection.active.line;
+      let anchor = null;
+      const inside = opens.filter(o => o.start <= cur && cur <= o.end).sort((a, b) => (a.end - a.start) - (b.end - b.start));
+      for (const o of inside) { const dt = parseDiaryDateFromName(o.id); if (dt) { anchor = dt; break; } }
+      let ty, tmo, td;
+      if (message.mode === 'abs') { ty = message.y; tmo = message.mo; td = message.d; }
+      else {
+        const base = anchor ? new Date(anchor.y, anchor.mo - 1, anchor.d) : new Date();
+        if (message.mode === 'day') { base.setDate(base.getDate() + (message.step || 0)); ty = base.getFullYear(); tmo = base.getMonth() + 1; td = base.getDate(); }
+        else { ty = base.getFullYear() + (message.step || 0); tmo = base.getMonth() + 1; td = base.getDate(); } // year
+      }
+      let hit = null;
+      for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (dt && dt.y === ty && dt.mo === tmo && dt.d === td) { if (!hit || o.start < hit.start) hit = o; } }
+      // v2.0.6(俊克): 素のjumpLineは膜が畳まれたまま・カーソル復元なし→H-TOCと同じ jumpToWorkingTocItem を再利用。
+      // 膜名で着地=最後にいた行(savedMeCursorLine)へ復元+revealRangeで自動展開(栞3兄弟と同じ「開いて表示」)。
+      // ★v4.2.609(俊克「月が変わると、Ⓣボタンが効かなくなる。その時は先月の最終日を」): Ⓣ(orBefore)は今日の膜が無ければ、今日より前で一番新しい日の膜へ
+      if (!hit && message.orBefore) { const tk = ty * 10000 + tmo * 100 + td; let bk = -1;
+        for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (!dt) continue; const k = dt.y * 10000 + dt.mo * 100 + dt.d; if (k <= tk && (k > bk || (k === bk && o.start < hit.start))) { bk = k; hit = o; } } }
+      if (hit) { jumpToWorkingTocItem(hit.id); }
+      else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
+}
 async function meosPuzzleTag(ch) {
   try {
     const n = MEOS_PUZZLE_LETTERS.indexOf(String(ch || '')) + 1; if (n < 1) return;
@@ -13523,9 +13549,11 @@ function meosPuzzleArmSet(on) {
   try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdArm', on }); } catch (_) { }
 }
 function meosPuzzleArmHold() { if (_meosArm.offT) { clearTimeout(_meosArm.offT); _meosArm.offT = null; } }   // v4.2.776-28: 1打目を預かっている間は構えを解かない
+// ★v4.2.777-1(俊克「Me Dockを閉じていても、キーボードだけでワープできる。しばらくすると動かなくなる。常態化できないか? マウス操作が難しい人のためにも」):
+//   構えは Me Dock の有無に関わらず、焦点のある窓だけ(Me Dock が在れば拡大の絵も出す)。見張りは窓に焦点が来るたびに置き直す
 function meosPuzzleArmMods(m) {
   try {
-    if (!meDockPanel) return;
+    if (!(vscode.window.state && vscode.window.state.focused)) { if (_meosArm.on) meosPuzzleArmSet(false); _meosArm.down = 0; return; }
     const shiftOnly = !!m.s && !m.c && !m.o && !m.m;
     if (shiftOnly) {
       if (_meosArm.offT) { clearTimeout(_meosArm.offT); _meosArm.offT = null; }
@@ -34050,32 +34078,7 @@ function toggleMeDock(editorOverride) {
       jumpMeDockTargetLine(message.line);
       return;
     }
-    if (message && message.type === 'warpToDate') { // v2.0.4(俊克): Date Warp=暦の軸で日記膜へ相対/絶対ジャンプ。基準=今いる日付膜(無ければ今日)/完全一致のみ。
-      const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
-      if (!ed) return;
-      const opens = collectAllOpenMembranes(ed.document);
-      const cur = ed.selection.active.line;
-      let anchor = null;
-      const inside = opens.filter(o => o.start <= cur && cur <= o.end).sort((a, b) => (a.end - a.start) - (b.end - b.start));
-      for (const o of inside) { const dt = parseDiaryDateFromName(o.id); if (dt) { anchor = dt; break; } }
-      let ty, tmo, td;
-      if (message.mode === 'abs') { ty = message.y; tmo = message.mo; td = message.d; }
-      else {
-        const base = anchor ? new Date(anchor.y, anchor.mo - 1, anchor.d) : new Date();
-        if (message.mode === 'day') { base.setDate(base.getDate() + (message.step || 0)); ty = base.getFullYear(); tmo = base.getMonth() + 1; td = base.getDate(); }
-        else { ty = base.getFullYear() + (message.step || 0); tmo = base.getMonth() + 1; td = base.getDate(); } // year
-      }
-      let hit = null;
-      for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (dt && dt.y === ty && dt.mo === tmo && dt.d === td) { if (!hit || o.start < hit.start) hit = o; } }
-      // v2.0.6(俊克): 素のjumpLineは膜が畳まれたまま・カーソル復元なし→H-TOCと同じ jumpToWorkingTocItem を再利用。
-      // 膜名で着地=最後にいた行(savedMeCursorLine)へ復元+revealRangeで自動展開(栞3兄弟と同じ「開いて表示」)。
-      // ★v4.2.609(俊克「月が変わると、Ⓣボタンが効かなくなる。その時は先月の最終日を」): Ⓣ(orBefore)は今日の膜が無ければ、今日より前で一番新しい日の膜へ
-      if (!hit && message.orBefore) { const tk = ty * 10000 + tmo * 100 + td; let bk = -1;
-        for (const o of opens) { const dt = parseDiaryDateFromName(o.id); if (!dt) continue; const k = dt.y * 10000 + dt.mo * 100 + dt.d; if (k <= tk && (k > bk || (k === bk && o.start < hit.start))) { bk = k; hit = o; } } }
-      if (hit) { jumpToWorkingTocItem(hit.id); }
-      else { vscode.window.showInformationMessage('Date Warp: no diary entry for ' + tmo + '/' + td + ' ' + ty + ' (exact match only).'); }
-      return;
-    }
+    if (message && message.type === 'warpToDate') { meosWarpToDate(message); return; }   // v4.2.777-1: 中身は meosWarpToDate へ(Me Dock が無い時の Ⓣ も使う)
     if (message && message.type === 'requestDateDial') { // v2.0.9(俊克): Date Warp ↻ダイヤル=スコープ単位で刻んだ日記の実在日付をホイールで見せ、回して選ぶ。改良1=day(全日付)。
       const ed = getMeDockTargetEditor() || vscode.window.activeTextEditor;
       if (!ed) return;
@@ -34276,7 +34279,7 @@ function toggleMeDock(editorOverride) {
   });
 
   meDockPanel.onDidDispose(() => {
-    try { meosModsWant(false); meosModsWant(false, 'puzzle'); meosPuzzleArmSet(false); } catch (_) { }   // v4.2.738: Me Dock を閉じたら見張りも止める / v4.2.776-26
+    try { meosModsWant(false); meosPuzzleArmSet(false); } catch (_) { }   // v4.2.738: Me Dock を閉じたらホバーの見張りは止める / v4.2.777-1: Shift の構えの見張り(puzzle)は残す= 閉じていてもワープ
     meDockPanel = undefined;
     // v0.9.376: manual close should not permanently block auto-show for this URI.
     meDockAutoLastUri = '';
@@ -41021,6 +41024,8 @@ function activate(context) {
   //   素の数字は1打目を預かる(構えを延ばす)→ 0.6秒以内に同じ数字= ワープ / 違う数字か時間切れ= 預かった数字を打ち込む(字は失くさない)。Cmd+数字は1打で飛ぶ
   const _meosNthPend = { n: 0, t: null };
   const meosNthType = (d) => { try { if (vscode.window.activeTextEditor) vscode.commands.executeCommand('type', { text: String(d) }); } catch (_) { } };
+  // ★v4.2.777-1: Shift の構えの見張りは Me Dock を開かなくても置く。窓に焦点が戻るたびに置き直す(別の窓・別の版が消していても戻る)
+  try { meosModsWant(true, 'puzzle'); context.subscriptions.push(vscode.window.onDidChangeWindowState(st => { if (st.focused) meosModsWant(true, 'puzzle'); else meosPuzzleArmSet(false); })); } catch (_) { }
   context.subscriptions.push(vscode.commands.registerCommand('laiMembrane.puzzleWarpNth', async (arg) => {   // v4.2.776-26: 構えている間の Cmd+1〜7= 今の並びの左から n 番目
     try {
       // ★v4.2.776-32(俊克 改良2「数字だけでなく、アルファベットキーを連打してもいいことに。ホームポジションでも打てる」):
@@ -41054,7 +41059,8 @@ function activate(context) {
       meosDbg('[puzzleWarpRed] 呼ばれた 赤=' + (ch || '無し') + ' 並び=' + meosDockTiles() + ' 編集中=' + !!vscode.window.activeTextEditor);   // v4.2.776-25: 効かない真因を取りに行く
       if (!ch) { vscode.window.setStatusBarMessage('MeOS: no red dot yet \u2014 click a puzzle letter in Me Dock first.', 3000); return; }
       const o = meosDockTiles(); if (meosDockLocked(o) || meosDockCrypt(o)) { meosDbg('[puzzleWarpRed] 錠の並びなので動かない'); return; }   // 間抜け・Deco の間は動かない(クリックと同じ門)
-      if (ch === 'T') { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdTodayClick' }); return; }
+      if (!meDockPanel && vscode.window.activeTextEditor) setMeDockTargetEditor(vscode.window.activeTextEditor);   // v4.2.777-1: Me Dock が無い時は、打っている編集画面へ
+      if (ch === 'T') { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'mdTodayClick' }); else { const n = new Date(); meosWarpToDate({ mode: 'abs', y: n.getFullYear(), mo: n.getMonth() + 1, d: n.getDate(), orBefore: true }); } return; }   // v4.2.777-1: Me Dock が無くても Ⓣ
       await meosPuzzleTag(ch);
     } catch (_) { }
   }));
