@@ -211,6 +211,8 @@ change the wrap width this directly.
 - **🐱 Mew, the new default bell** — a kitten's call that MeOS makes itself, from a real kitten's pitch and
   harmonics measured to the millisecond. It calls every 1.35 s, each call a little louder or softer by
   **1/f fluctuation**, so it never sounds like a loop. Pick another sound any time with **🔔** beside the 🎨 Theme button.
+  **Our advice:** leave the ⏰ lines without a 🔔 number and choose the sound with the **🔔** button — ↑/↓ play each one
+  as you go, and one pick changes every ⏰ at once. Write a 🔔 on a ⏰ line only when that one clock needs its own sound.
 - **A soft "no change" sound** — press Cmd+S (Ctrl+S) when there is nothing new to save and MeOS answers with
   two soft falling tones, so your hand knows the file was already saved.
 - **Sounds are tested on macOS.** The ⏰ bell, the 🔔 picker (Windows: the `.wav` files in `C:\Windows\Media`;
