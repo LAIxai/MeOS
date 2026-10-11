@@ -32637,7 +32637,7 @@ row.addEventListener('click',ev=>{if(suppress){ev.stopImmediatePropagation();ev.
 // {* ▼mCN=dock_js_ttctl // v4.2.777-3 Ⓣのタイルの⓪〜③(新しい日の作り方)と▾(原型の登録) *}
 (function(){const md=document.getElementById('tt-mode'),cr=document.getElementById('tt-caret');if(!md||!cr)return;
 let mode=0,have=[false,false,false];
-function show(){md.textContent=String(mode);md.classList.toggle('tt-empty',mode>0&&!have[mode-1]);}
+function show(){md.textContent=String(mode);md.classList.toggle('tt-empty',mode>0&&!have[mode-1]);/* v4.2.777-24(俊克「⓪の時は tip だけで、設定は無いと説明すればいい」): 0 の▾は箱を開かず、tip で言うだけ */cr.setAttribute('data-tip',mode?'Diary templates | Pick the template for this number — a past day, or (empty) to make a new one.':'Nothing to set for 0 | Ⓣ copies the newest day (renamed to today + copied). Turn the number to 1–3 to use a template.');}
 /* v4.2.777-4(俊克 改良4「空だとしても巡回しよう。そこで▼を起動して設定する」): 0→1→2→3 を空でも回る */
 function cyc(back){mode=(mode+(back?3:1))%4;show();vscode.postMessage({type:'diaryMode',mode:mode});}
 /* タイルの押す・掴むに渡さない(並びの pointerdown は親で受けている) */
@@ -32654,7 +32654,7 @@ h+=st.cur?'<div class="title-file-row cur"><span class="title-file-item">'+lb(st
 const drum=(key,title,a,act)=>{if(!a||!a.length)return;h+='<div class="title-file-row tt-drum" data-key="'+key+'" data-n="'+a.length+'"><span class="tt-drum-t">'+title+'</span><button class="title-file-item" data-act="'+act+'" data-i="0"'+(act==='cand'?' data-id="'+esc(a[0].id)+'"':'')+'>'+lb(a[0])+'</button><span class="tt-drum-n">1/'+a.length+'</span></div>';};
 drum('same','Same weekday',st.same,'cand');drum('week','This past week',st.week,'cand');drum('hist','Before',st.hist,'hist');}
 window.__ttPopSt=st;pop.innerHTML=h;}
-cr.addEventListener('click',ev=>{ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(!pop)return;if(pop.classList.contains('on')){pop.classList.remove('on');return;}pop.classList.add('on');render({mode:mode,cur:null,same:[],week:[],hist:[]});vscode.postMessage({type:'diaryTplAsk'});});
+cr.addEventListener('click',ev=>{ev.stopPropagation();if(!mode)return;window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(!pop)return;if(pop.classList.contains('on')){pop.classList.remove('on');return;}pop.classList.add('on');render({mode:mode,cur:null,same:[],week:[],hist:[]});vscode.postMessage({type:'diaryTplAsk'});});
 if(pop){pop.addEventListener('pointerdown',ev=>ev.stopPropagation());pop.addEventListener('click',ev=>{ev.stopPropagation();const b=ev.target.closest&&ev.target.closest('[data-act]');if(!b)return;vscode.postMessage({type:'diaryTplSet',act:b.getAttribute('data-act'),i:Number(b.getAttribute('data-i'))||0,id:b.getAttribute('data-id')||'',mode:mode});pop.classList.remove('on');});
 document.addEventListener('click',ev=>{if(pop.classList.contains('on')&&!(ev.target.closest&&ev.target.closest('#tt-pop,#tt-caret')))pop.classList.remove('on');});}
 window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryTplState'&&pop&&pop.classList.contains('on'))render(m);});
