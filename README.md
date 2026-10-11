@@ -172,6 +172,8 @@ moves with it, so you can see where a line will break. The number counts half-wi
 Japanese breaks at the same line, with about one character for every 1.7 half-width ones. We know of no other Markdown editor that lets you
 change the wrap width this directly.
 
+*A 300,000-line universe. Seven stars. One Shift away.*
+
 **Me DockⓉ Warp — mark a spot, warp back.** Click it or type it — same mark, same warp.
 *(Like Vim marks, without modes or memorizing.)*
 
