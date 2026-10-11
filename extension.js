@@ -7041,9 +7041,9 @@ function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meo
 // ★v4.2.777-3(俊克 改良1「Ⓣの右肩に⓪〜③・右に▼で原型膜を登録・日によって使い分ける・見出しボタンと同じパターン」): 作り方は選んである番号で黙って作る(一覧は出さない)
 function meosDiaryMode() { let m = 0; try { m = Number(extensionContext.globalState.get('meosDiaryMode')) || 0; } catch (_) { } return Math.max(0, Math.min(3, m)); }   // v4.2.777-4: 空の番号も選べる(作る時に⓪へ回す)
 function meosPostDiaryMode() { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'diaryMode', mode: meosDiaryMode(), have: meosDiaryTpls().map(Boolean) }); } catch (_) { } }
-// v5.0.1: 今日の色→過去の色(赤系統の茶)。他の色は今は替えない(決まったら足す)
+// v5.0.0-1: 今日の色→過去の色(赤系統の茶)。他の色は今は替えない(決まったら足す)
 function meosDiaryPastColor(code) { return ({ R: 'N' })[normalizeMembraneColorCode(code)] || ''; }
-// v5.0.1: 開き行のコメントの末尾に (copied)。前の (copied) は外してから付ける(複製の複製で重ねない)
+// v5.0.0-1: 開き行のコメントの末尾に (copied)。前の (copied) は外してから付ける(複製の複製で重ねない)
 function meosDiaryMarkCopied(line) {
   let t = String(line).split(' (copied)').join('');
   const end = t.lastIndexOf(' *}');
@@ -7084,12 +7084,12 @@ async function meosDiaryNewDay(ed, latest, dt) {
       for (let i = latest.start; i <= e; i++) src.push(doc.lineAt(i).text);
       oldId = latest.id;
     } else { src = tpl.lines.slice(); oldId = tpl.id; }
-    // ★v5.0.1(俊克 改良1「copiedはタイムスタンプの後ろでなく、コメントの一部として色付きの(copied)に」): 名前には付けず、開き行のコメントの末尾へ
+    // ★v5.0.0-1(俊克 改良1「copiedはタイムスタンプの後ろでなく、コメントの一部として色付きの(copied)に」): 名前には付けず、開き行のコメントの末尾へ
     const newId = meosDiaryRename(oldId, dt, false);
     const block = meosDiaryBlockFrom(src, oldId, newId);
     if (!tpl && block.length) block[0] = meosDiaryMarkCopied(block[0]);
     const at = latest ? latest.start : ed.selection.active.line;   // 日記が無ければカーソルの行に
-    // ★v5.0.1(俊克 改良2「1日前になった膜の色を赤から茶色に。今日が赤、過去は茶色。何色にするかはプログラムが決める」): 前の日の膜の色を過去の色へ(同じ1回の編集で)
+    // ★v5.0.0-1(俊克 改良2「1日前になった膜の色を赤から茶色に。今日が赤、過去は茶色。何色にするかはプログラムが決める」): 前の日の膜の色を過去の色へ(同じ1回の編集で)
     let past = null; try { if (latest) { const bd = meosPairBadgeAt(doc, latest), to = bd ? meosDiaryPastColor(bd.badge.colorCode) : ''; if (to) past = { line: bd.line, text: setMstatBadgeColorInText(bd.text, to) }; } } catch (_) { }
     await ed.edit(eb => { eb.insert(new vscode.Position(at, 0), block.join('\n') + '\n'); if (past) eb.replace(doc.lineAt(past.line).range, past.text); });
     meosDbg('[diaryNewDay] ' + (tpl ? '原型' + mode : '複製') + ' ' + oldId + ' → ' + newId + ' 行=' + (at + 1));
@@ -19445,7 +19445,7 @@ function computeMembraneBadgeColorRanges(editor) {
       if (slashBeforeBadge) {
         pushMembraneColorRange(byCode, code, new vscode.Range(line, commentSlash, line, commentSlash + 2));
       }
-      // v5.0.1: 新しい日の複製の印 (copied) は橙(膜の色の部品を借りる)
+      // v5.0.0-1: 新しい日の複製の印 (copied) は橙(膜の色の部品を借りる)
       if (open && commentSlash >= 0) { const cp = text.indexOf('(copied)', commentSlash); if (cp >= 0) pushMembraneColorRange(byCode, 'O', new vscode.Range(line, cp, line, cp + 8)); }
     }
 
