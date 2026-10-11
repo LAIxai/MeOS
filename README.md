@@ -37,9 +37,9 @@ MeOS speaks **Markdown⊕**: plain Markdown, extended with **membranes** (the �
 >
 > ## **You(AI) & I(LAI) 🐔**
 
-### NEW in v4.2 — clocks that hand over to each other, and keep ringing after you close the editor
+### NEW in v5.0 — clocks that hand over to each other, and keep ringing after you close the editor
 
-v4.1 put one clock on a membrane. **v4.2 lets a membrane carry a whole routine** — several clocks, one after
+v4.1 put one clock on a membrane. **v5.0 lets a membrane carry a whole routine** — several clocks, one after
 another — and it keeps that routine running on the Mac menu bar even when VSCodium is closed.
 
 ```md
@@ -160,7 +160,7 @@ Keep the two lives in separate files — the same file open in both editors show
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-chained-clocks.png" alt="Chained clocks - every eight hours, two eye drops five minutes apart; each line has its own play and pause button" width="92%"><br>
-  <sub><b>NEW in v4.2 — independent yet linked.</b> This is the main editor, not a preview. Every eight hours, two eye drops five minutes apart: two lines under one membrane, counting down on the line, in the status bar and on the menu bar of both VS Code (purple) and VSCodium (orange). Each line has its own &#9654;&#65039; / &#9208;&#65039;, &#128674;&#128168; / &#9875; and &#128272; / &#128274; buttons, two bell buttons (main / sub) and [&minus;1s][+1s], and <b>Opt+click</b> starts the five-minute clock again from zero at any time. The pink strip is the raw line behind the buttons.</sub>
+  <sub><b>NEW in v5.0 — independent yet linked.</b> This is the main editor, not a preview. Every eight hours, two eye drops five minutes apart: two lines under one membrane, counting down on the line, in the status bar and on the menu bar of both VS Code (purple) and VSCodium (orange). Each line has its own &#9654;&#65039; / &#9208;&#65039;, &#128674;&#128168; / &#9875; and &#128272; / &#128274; buttons, two bell buttons (main / sub) and [&minus;1s][+1s], and <b>Opt+click</b> starts the five-minute clock again from zero at any time. The pink strip is the raw line behind the buttons.</sub>
 </p>
 
 **Wide tables stay tables — wrap width in three presets.** You line a table up with the table button, and the
@@ -180,7 +180,7 @@ change the wrap width this directly.
   <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and Ⓣ grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks — six you set yourself, and Ⓣ, which moves to today's diary on its own — and your fingers hardly leave the home position. Marks live in your text, as a comment like <code>&lt;!-- {* ▶◀mP4=o_20261011S105212JST //  *} --&gt;</code> — they travel with it, and you delete one like any other line.</sub>
 </p>
 
-**Also in v4.2**
+**Also in v5.0**
 
 - **The top of Me Dock stays put** — the title row and **Format Me** stay at the top while you scroll, and
   Format Me now sits above the ⏰ row, so opening the ⏰ panel no longer pushes the buttons you use most out of
@@ -227,7 +227,7 @@ change the wrap width this directly.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-pharaoh-gypsum.png" alt="Pharaoh GYPSum - the modifier-key colours: left and right Shift, Ctrl, Cmd and Opt, and the name G⌥Y⌘P⌃S⇧um in a cartouche" width="33%">&nbsp;<img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-gypsum-king-relief.png" alt="King Gips - an ancient Egyptian relief of a pharaoh, with the cartouche G⌥Y⌘P⌃S⇧um carved beside him" width="59%"><br>
-  <sub><b>Pharaoh GYPSum.</b> Each modifier key paints the hotspot × its own colour, and the colours spell their own name: <b>G⌥Y⌘P⌃S⇧um</b> — gypsum, the plaster that sets. L and R are the eyebrows, the two Shift × are the eyes, the line is the nose, the cartouche is the mouth — and the hand is putting eye drops in the right eye, just like the v4.2 clocks above. Thousands of years after Khufu and Khafre, King Gips (German for gypsum) returns — relief generated with ChatGPT.</sub>
+  <sub><b>Pharaoh GYPSum.</b> Each modifier key paints the hotspot × its own colour, and the colours spell their own name: <b>G⌥Y⌘P⌃S⇧um</b> — gypsum, the plaster that sets. L and R are the eyebrows, the two Shift × are the eyes, the line is the nose, the cartouche is the mouth — and the hand is putting eye drops in the right eye, just like the v5.0 clocks above. Thousands of years after Khufu and Khafre, King Gips (German for gypsum) returns — relief generated with ChatGPT.</sub>
 </p>
 
 ### NEW in v4.1 — hang a clock on a membrane, and it comes to find you
