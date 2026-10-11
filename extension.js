@@ -27347,7 +27347,7 @@ function meosPuzzleNote(o) {   // 戻り値 true= 今、金色になった
 }
 // v4.2.776-12(俊克「バージョンアップした時、試しに5秒間だけ黄金騎士を見せて」): この版を入れて最初に Me Dock を開いた時だけ 5秒 金色(試し見せ)。
 //   MEOS_GOLD_PREVIEW を空にすれば出ない(リリース前に空にする= 教えない)
-const MEOS_GOLD_PREVIEW = '4.2.776-12';
+const MEOS_GOLD_PREVIEW = '';   // v5.0.0: リリースなので空(試し見せは作者の机だけの物だった)
 function meosGoldPreviewNow() { try { if (!MEOS_GOLD_PREVIEW || meosPuzzleGold() || extensionContext.globalState.get('meosGoldPreviewDone') === MEOS_GOLD_PREVIEW) return false; extensionContext.globalState.update('meosGoldPreviewDone', MEOS_GOLD_PREVIEW); return true; } catch (_) { return false; } }
 function meosDockTilesHtml() {
   const col = { M: '#e53935', e: '#f57c00', D: '#2e9d3a', o: '#1e7fd6', c: '#8e24aa', k: '#c2185b' };

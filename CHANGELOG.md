@@ -2,6 +2,18 @@
 
 _Detailed per-version development notes. Moved here from README to keep the README compact._
 
+## v5.0 era (2026-10 →)
+
+### v5.0.0 (2026-10-11)
+v4.2 grew far beyond "the rest of ⏰", so it ships as **v5.0**.
+- **Chained clocks** — several ⏰ under one membrane hand over to each other; ▶️/⏸️, 🚢💨/⚓, 🔓/🔐 and two bells on every line. **V-helper** keeps ringing on the macOS menu bar after the editor is closed.
+- **Tables** — ▦ turns a pasted "table-ish" text into a table, 🤝→ / 🤝↓ merge cells, three wrap widths on ↻, and table links to ⏰ membranes.
+- **The new Me Dock** — the letter tiles M e D o c k Ⓣ as bookmarks (white dot = has a mark, red dot = the last one you pressed), three pointing hands (BTRON, 22.5° classic, your OS), and **G⌥Y⌘P⌃S⇧um** modifier colours.
+- **Me DockⓉ Warp** — hold and release Shift, then type a letter twice to warp to its mark or to put a new one. Works with Me Dock closed too.
+- **New day** — when today has no diary, Ⓣ makes one: 0 copies the newest day, 1–3 use your templates (▾ beside Ⓣ).
+- **Today at a glance** — the Today button shows the day and weekday, e.g. **11 (S)**; hover for the year and month.
+- **⚜️ GLD-KNIGHT** — a new alarm sound in the 🔔 list. It is loud.
+
 ## v4.2 era — highlights (2026-09 →)
 
 ### v4.2.777 (2026-10-11) — the last of v4.2
