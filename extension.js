@@ -28334,6 +28334,10 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 .dw-split .dw-scope{padding:0 15px 0 9px;border-radius:6px;max-width:186px;white-space:nowrap}
 /* v2.0.31(俊克): 右Today=多態の基準点入力。編集可能(day/Today)は白抜きの囲み枠+Iビーム。検索中は↻を無効(グレー)。ダブルクリックで下のinlineフィールド。 */
 .dw-split .dw-scope.dw-editable{box-shadow:inset 0 0 0 2px rgba(255,255,255,.72)}
+/* ★v4.2.777-15(俊克「Ⓣdayの代わりに [11][(S)]。日と曜日を明確に大きく。近づけると [2026][10] も出る。ホーバーした物が拡大」= 予告版・外見だけ): 年月は箱の左に浮かせる= 幅は日と曜日だけ */
+.dw-split .dw-scope{position:relative}.dw-scope .dw-dd,.dw-scope .dw-wd,.dw-scope .dw-ym>span{display:inline-block;transition:transform .12s ease}.dw-scope .dw-dd{font-size:1.45em;font-weight:900;line-height:1;position:relative;top:1px}.dw-scope .dw-wd{font-size:1.1em;font-weight:800;margin-left:3px}
+.dw-scope .dw-ym{position:absolute;right:calc(100% - 4px);top:50%;transform:translateY(-50%);display:flex;gap:3px;z-index:6;opacity:0;visibility:hidden;transition:opacity .12s ease .5s,visibility 0s linear .62s}.dw-scope .dw-ym>span{background:#2e9d3a;color:#fff;border-radius:5px;padding:2px 5px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.dw-scope:hover .dw-ym{opacity:1;visibility:visible;transition:opacity .12s ease 0s,visibility 0s}.dw-scope .dw-dd:hover,.dw-scope .dw-wd:hover,.dw-scope .dw-ym>span:hover{transform:scale(1.35)}
 .dw-split .dw-scope .dw-tg2{font-size:1.4em;line-height:1;position:relative;top:1.5px;margin-right:0.5px}
 /* v4.2.86(俊克「H-IDXのTodayの部分にBTRON手が出ないよ」): v2.0.31 はダブルクリックで日付を打てる印に I ビームを出していた。押す物(1回=ダイヤル)の上は手= 打てる印は白抜きの枠が既に言っている。 */.dw-split .dw-scope.dw-editable:hover{cursor:var(--meos-hand)}
 .tt-badge.dw-dial-off{opacity:.35;pointer-events:none;filter:grayscale(1)}
@@ -29809,20 +29813,20 @@ _dwLabels=['Today','Week','Month','Year'],_dwColors=['#16a34a','#2563eb','#d9770
 // {* ▲mCN=dock_js_htoc *}
 // {* ▼mCN=dock_js_datewarp // Date Warp(日付ダイヤル・基準日の編集) *}
 function _dwToday(){var n=new Date();return {y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate()};}
+/* v4.2.777-15: 日と曜日(S-M-T-W-t-F-s)を大きく・年月は近づけた時だけ */function _dwDayHtml(dt){var w='SMTWtFs'.charAt(new Date(dt.y,dt.mo-1,dt.d).getDay());return '<span class="dw-ym"><span>'+dt.y+'</span><span>'+dt.mo+'</span></span><span class="dw-dd">'+dt.d+'</span><span class="dw-wd">('+w+')</span>';}
 /* v2.0.31(俊克): 右Today=多態の「基準点」入力。ダブルクリックでinline編集→ 空/T/Today/今日の日付=今日, M/D=日付基準, それ以外=テキスト検索(膜名/コメント部分一致→副メニュー・Week/Month/Year無効)。基準点はday/date/searchで共有・編集はTodayのみ・↻スコープはその基準から刻む・左Ⓣ=今日へリセット+帰還。見せ方=編集可(day)は白抜き囲み枠、検索中は↻グレー。 */
 window.__dwRenderScope=function(){var b=document.getElementById('dw-scope');if(!b)return;b.style.minWidth=(window.__dwScopeMinW>0?(window.__dwScopeMinW+'px'):'');
 /* v2.0.44(俊克): 毎レンダーで固定幅を再適用(refresh等で消えても付け直す)。 */var dial=document.getElementById('dw-dial');var i=window.__dwScope;b.classList.remove('dw-editable');
 if(dial)dial.classList.remove('dw-dial-off');if(window.__dwSearch!=null){var q=window.__dwSearch;b.textContent=(q.length>14?(q.slice(0,14)+'…'):q);
 b.style.background='#0f766e';b.title='Diary search: '+q+' — matches show in the sub-menu. Double-click to change; Left Ⓣ (or "T") clears. Week/Month/Year are off while searching.';
-b.classList.add('dw-editable');if(dial)dial.classList.add('dw-dial-off');return;}if(i===0){var bd=window.__dwBaseDate;if(bd){b.textContent=bd.mo+'/'+bd.d+((bd.y&&bd.y!==_dwToday().y)?(' '+bd.y):'');
-/* v2.0.41(俊克): 基準年が今年と違う時はラベルに年を出す(6/19 2025)=年が保存されている事を可視化。 */}else{b.innerHTML='<span class="dw-tg2">Ⓣ</span>day';/* v2.0.40(俊克): Ⓣday。丸Ⓣの○が"o"を兼ねる=Ⓣ=To=to-dayの語源→Ⓣ+day=Today。「分るかなー分んねーだろうーな」の粋。 */}b.style.background=_dwColors[0];
+b.classList.add('dw-editable');if(dial)dial.classList.add('dw-dial-off');return;}if(i===0){var bd=window.__dwBaseDate;if(bd){b.innerHTML=_dwDayHtml({y:bd.y||_dwToday().y,mo:bd.mo,d:bd.d});
+/* v2.0.41(俊克): 基準年が今年と違う時はラベルに年を出す(6/19 2025)=年が保存されている事を可視化。 */}else{b.innerHTML=_dwDayHtml(_dwToday());/* v2.0.40(俊克): Ⓣday。丸Ⓣの○が"o"を兼ねる=Ⓣ=To=to-dayの語源→Ⓣ+day=Today。「分るかなー分んねーだろうーな」の粋。 */}b.style.background=_dwColors[0];
 b.title=_dwTips[0];b.classList.add('dw-editable');}else{b.textContent=_dwLabels[i];b.style.background=_dwColors[i];b.title=_dwTips[i];
 }};window.__dwRenderScope();
 /* v2.0.45(俊克): 固定幅=スコープ名(Ⓣday/Week/Month/Year)に加え、現在の基準ラベル(日付「6/26 2025」/検索語)の幅も含めた最大に。基準を変えた瞬間に測り直し(_dwRelock)→長い日付基準でも↻巡回で不動。__dwRenderScopeが毎回__dwScopeMinWを再適用(v2.0.44)。 */
 function _dwRelock(){var b=document.getElementById('dw-scope');if(!b)return;var save=b.innerHTML;window.__dwScopeMinW=0;
-b.style.minWidth='';var mw=0,htmls=['<span class="dw-tg2">Ⓣ</span>day','Week','Month','Year'];for(var k=0;k<htmls.length;k++){b.innerHTML=htmls[k];
+b.style.minWidth='';var mw=0,htmls=[_dwDayHtml({y:2026,mo:12,d:28}),'Week','Month','Year'];for(var k=0;k<htmls.length;k++){b.innerHTML=htmls[k];
 var w=b.getBoundingClientRect().width;if(w>mw)mw=w;}var extra=null;if(window.__dwSearch!=null){var q=window.__dwSearch;extra=(q.length>14?(q.slice(0,14)+'…'):q);
-}else if(window.__dwBaseDate){var bd=window.__dwBaseDate;extra=bd.mo+'/'+bd.d+((bd.y&&bd.y!==_dwToday().y)?(' '+bd.y):'');
 }if(extra!=null){b.textContent=extra;var we=b.getBoundingClientRect().width;if(we>mw)mw=we;}b.innerHTML=save;if(mw>=40)window.__dwScopeMinW=Math.ceil(mw);
 window.__dwRenderScope();}
 requestAnimationFrame(function(){requestAnimationFrame(_dwRelock);});if(document.fonts&&document.fonts.ready&&document.fonts.ready.then)document.fonts.ready.then(_dwRelock);
