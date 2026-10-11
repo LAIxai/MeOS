@@ -7107,7 +7107,8 @@ function meosPostDiaryTplState() {
       const now = new Date(), key = (n) => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() - n); return x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate(); };
       for (let w = 1; w <= 4; w++) { const id = byKey.get(key(7 * w)); if (id) same.push(id); }
       for (let n = 1; n <= 6; n++) { const id = byKey.get(key(n)); if (id) week.push(id); } }
-    meDockPanel.webview.postMessage({ type: 'diaryTplState', mode, cur: t ? t.id : null, same, week, hist: meosDiaryTplHist().map(x => x.id) });
+    const L = (id) => ({ id, label: String(id).replace(MEOS_STAMP_SPLIT_RE, '') });   // v4.2.777-7(俊克 改良1「タイムスタンプ部分は表示しなくて良い」)
+    meDockPanel.webview.postMessage({ type: 'diaryTplState', mode, cur: t ? L(t.id) : null, same: same.map(L), week: week.map(L), hist: meosDiaryTplHist().map(x => L(x.id)) });
   } catch (_) { }
 }
 async function meosDiaryTplSet(msg) {
@@ -27496,7 +27497,7 @@ header.title.hdr-wrap .row2-right{margin-top:8px}
 .md-ttile .tt-mode.tt-empty{background:#c9b48a;color:#5b4a26}   /* v4.2.777-4: 原型が未登録の番号= 薄く(▾で登録する) */
 .md-ttile .tt-caret{position:absolute;left:100%;top:50%;transform:translate(-1px,-50%);font-size:.5em;line-height:1;padding:.1em .15em;border:1px solid #888;border-radius:4px;background:#fff;color:#000;z-index:2;opacity:0;visibility:hidden;transition:opacity .12s ease .5s,visibility 0s linear .62s;cursor:var(--meos-hand-point,pointer)}   /* v4.2.777-4(俊克 改良1「拡大した時の隙間で縮小してしまう。くっつけて」改良2「▼は黒、地を白」): Ⓣに1px重ねる= 隙間を通らずに▾へ乗れる */
 .md-ttile:hover .tt-caret{opacity:1;visibility:visible;transition:opacity .12s ease 0s,visibility 0s}   /* 離れても0.5秒保つ(表の↻🤝と同じ保ち方) */
-.title-row-dock .title-left{position:relative}.tt-pop{top:calc(100% + 6px);max-height:calc(7 * 30px);overflow-y:auto}.tt-pop .tt-pop-head{padding:4px 8px 2px;font-size:11px;opacity:.7;white-space:nowrap}.tt-pop .tt-pop-reg{color:#a8730e;font-weight:700;opacity:1}   /* v4.2.777-5(俊克 改良1「▼のパネルは他のボタンのように Me Dock 内に・指定した膜名だけ・過去の履歴5つくらいをスクロール」): 最近のファイル(▾)と同じ箱 */
+.title-row-dock .title-left{position:relative}.tt-pop{top:calc(100% + 6px);max-height:calc(7 * 30px);overflow-y:auto}.tt-pop .tt-pop-head{padding:4px 8px 2px;font-size:11px;opacity:.7;white-space:nowrap}.tt-pop .tt-pop-reg{color:#a8730e;font-weight:700;opacity:1}.tt-pop .tt-drum-t{flex:0 0 auto;padding-left:8px;font-size:11px;opacity:.7;white-space:nowrap}.tt-pop .tt-drum-n{flex:0 0 auto;padding:0 6px;font-size:11px;opacity:.6}.tt-pop .tt-drum .title-file-item{cursor:ns-resize}   /* v4.2.777-5(俊克 改良1「▼のパネルは他のボタンのように Me Dock 内に・指定した膜名だけ・過去の履歴5つくらいをスクロール」): 最近のファイル(▾)と同じ箱 */
 .md-tile.md-tm .tt-mode,.md-tile.md-tm .tt-caret,.md-tile.dragging .tt-caret{display:none}
 .md-tiles{position:relative}.md-armtip{position:absolute;top:calc(100% + 12px);z-index:5;display:none;pointer-events:none;background:color-mix(in srgb,var(--vscode-editor-foreground) 84%,var(--vscode-editor-background));color:var(--vscode-editor-background);border:1px solid var(--vscode-editor-background);border-radius:3px;padding:3px 6px;font-size:11px;font-weight:400;white-space:pre-line;max-width:260px;width:max-content;line-height:1.4;box-shadow:0 2px 8px rgba(0,0,0,.2)}   /* v4.2.776-31: 構えの間の説明= .toc-tooltip と同じ姿 / v4.2.776-32(俊克 改良1「🔴をtipの上に被るように」): 字(z6)より下(z5)に置き、点が tip の上の縁に被る */   /* v4.2.776-26: Shift 長押しの間(と離して0.5秒)= 赤い点の字を拡大 */
 .md-tiles.md-gold .md-tile.md-dot.md-last::after{width:6px;height:6px;margin-left:-3px;bottom:-7px;background:#ffc400;box-shadow:0 0 0 .5px rgba(120,80,0,.8),0 0 3px #ffd54f}   /* v4.2.776-12(俊克「一回り大きく。金メダルのように重く価値がある」): 4px→6px */   /* v4.2.776-11: コンプリートしたら金(以後ずっと) */   /* v4.2.776-10(俊克「最後にクリックしたピースの白い点を赤色に」) */   /* v4.2.593: mac の Dock の「起動中」の点= その字に印が在る */
@@ -32636,16 +32637,19 @@ const pop=document.getElementById('tt-pop');const esc=t=>String(t).split('&').jo
 function render(st){if(!pop)return;const N=['0','①','②','③'][st.mode]||'0';let h='';
 if(!st.mode){h='<div class="tt-pop-head">0 — Ⓣ copies the newest day (+ copied). Pick ①–③ with the number on Ⓣ to use a template.</div>';}
 else{h+='<div class="tt-pop-head">'+N+' — when today has no diary, Ⓣ makes this:</div>';
-h+=st.cur?'<div class="title-file-row cur"><span class="title-file-item">'+esc(st.cur)+'</span><button class="title-file-x" data-act="clr"></button></div>':'<div class="title-file-row"><button class="title-file-item tt-pop-reg" data-act="new">(empty) \u2192 make a new template at the end of the file</button></div>';
-/* v4.2.777-6: 候補= 同じ曜日の過去4週・昨日から6日(押すとこの番号へ) */
-const cand=(title,a)=>{if(a&&a.length){h+='<div class="tt-pop-head">'+title+'</div>';a.forEach(x=>{h+='<div class="title-file-row"><button class="title-file-item" data-act="cand" data-id="'+esc(x)+'">'+esc(x)+'</button></div>';});}};
-cand('Same weekday, past 4 weeks:',st.same);cand('This past week:',st.week);
-if(st.hist&&st.hist.length){h+='<div class="tt-pop-head">Before:</div>';st.hist.forEach((x,i)=>{h+='<div class="title-file-row"><button class="title-file-item" data-act="hist" data-i="'+i+'">'+esc(x)+'</button></div>';});}}
-pop.innerHTML=h;}
+const lb=x=>esc(x&&x.label!=null?x.label:x);
+h+=st.cur?'<div class="title-file-row cur"><span class="title-file-item">'+lb(st.cur)+'</span><button class="title-file-x" data-act="clr"></button></div>':'<div class="title-file-row"><button class="title-file-item tt-pop-reg" data-act="new">(empty) → make a new template at the end of the file</button></div>';
+/* v4.2.777-7(俊克 改良2「Same weekday / This past week / Before は1行ずつ・マウスを1mmも動かさずにホイールで回す」): 1行のドラム。押すとその膜をこの番号へ */
+const drum=(key,title,a,act)=>{if(!a||!a.length)return;h+='<div class="title-file-row tt-drum" data-key="'+key+'" data-n="'+a.length+'"><span class="tt-drum-t">'+title+'</span><button class="title-file-item" data-act="'+act+'" data-i="0"'+(act==='cand'?' data-id="'+esc(a[0].id)+'"':'')+'>'+lb(a[0])+'</button><span class="tt-drum-n">1/'+a.length+'</span></div>';};
+drum('same','Same weekday',st.same,'cand');drum('week','This past week',st.week,'cand');drum('hist','Before',st.hist,'hist');}
+window.__ttPopSt=st;pop.innerHTML=h;}
 cr.addEventListener('click',ev=>{ev.stopPropagation();window.__fmtTipSuppress=true;if(typeof hideTocTip==='function')hideTocTip();if(!pop)return;if(pop.classList.contains('on')){pop.classList.remove('on');return;}pop.classList.add('on');render({mode:mode,cur:null,same:[],week:[],hist:[]});vscode.postMessage({type:'diaryTplAsk'});});
 if(pop){pop.addEventListener('pointerdown',ev=>ev.stopPropagation());pop.addEventListener('click',ev=>{ev.stopPropagation();const b=ev.target.closest&&ev.target.closest('[data-act]');if(!b)return;vscode.postMessage({type:'diaryTplSet',act:b.getAttribute('data-act'),i:Number(b.getAttribute('data-i'))||0,id:b.getAttribute('data-id')||'',mode:mode});pop.classList.remove('on');});
 document.addEventListener('click',ev=>{if(pop.classList.contains('on')&&!(ev.target.closest&&ev.target.closest('#tt-pop,#tt-caret')))pop.classList.remove('on');});}
 window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryTplState'&&pop&&pop.classList.contains('on'))render(m);});
+if(pop)pop.addEventListener('wheel',ev=>{const r=ev.target.closest&&ev.target.closest('.tt-drum');if(!r)return;ev.preventDefault();const st=window.__ttPopSt||{},a=st[r.getAttribute('data-key')]||[];if(a.length<2)return;
+const b=r.querySelector('.title-file-item');let i=Number(b.getAttribute('data-i'))||0;i=Math.max(0,Math.min(a.length-1,i+(ev.deltaY>0?1:-1)));b.setAttribute('data-i',String(i));
+const x=a[i];b.textContent=(x&&x.label!=null)?x.label:String(x);if(x&&x.id!=null)b.setAttribute('data-id',x.id);r.querySelector('.tt-drum-n').textContent=(i+1)+'/'+a.length;},{passive:false});
 window.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='diaryMode'){mode=Number(m.mode)||0;if(Array.isArray(m.have))have=m.have.map(Boolean);show();}});
 show();})();
 // {* ▲mCN=dock_js_ttctl *}
