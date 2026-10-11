@@ -28341,7 +28341,7 @@ body.meos-pinching,body.meos-pinching *{cursor:var(--meos-pinched)!important}
 /* ★v4.2.777-18(俊克 改良1「拡大した時、その他の位置もずらして全部が見えるように」バグ1「Weekなども拡大」):
    伸びる向きを片側に決め、伸びた分だけ隣を押し出す= 日は左へ伸び年月を左へ押す・曜日は右へ伸びる(右は空き)・月は左へ伸び年を左へ押す・年は左へ伸びる。押す量は字の幅(--dd-w/--mo-w を描く時に測る) */
 .dw-scope .dw-dd{transform-origin:100% 90%}.dw-scope .dw-wd{transform-origin:0% 90%}.dw-scope .dw-ym>span{transform-origin:100% 90%}.dw-scope .dw-par{color:rgba(0,0,0,.55);font-weight:700}   /* v4.2.777-20(俊克 改良1「(S)の括弧は黒か灰色に」) */
-.dw-split{transition:transform .12s ease;transform-origin:50% 90%}.dw-split:hover{transform:scale(2);position:relative;z-index:7}   /* v4.2.777-21(俊克「日あるいは曜日のときも箱ごと、↻やNを一緒に」): どの姿でも箱ごと */   /* v4.2.777-20(俊克 バグ1「Weekなどを拡大しても元のが残るのは違和感。↻とNも一緒に」): Week/Month/Year の時は箱ごと(↻・N も)2倍 */
+.dw-split{transition:transform .12s ease;transform-origin:calc(100% + 8px) 90%}   /* v4.2.777-22(俊克「拡大した右端がヘッダーの外枠から食み出ないように」): 軸を右肩の↻の右端に= 左と上へ伸びる */.dw-split:hover{transform:scale(2);position:relative;z-index:7}   /* v4.2.777-21(俊克「日あるいは曜日のときも箱ごと、↻やNを一緒に」): どの姿でも箱ごと */   /* v4.2.777-20(俊克 バグ1「Weekなどを拡大しても元のが残るのは違和感。↻とNも一緒に」): Week/Month/Year の時は箱ごと(↻・N も)2倍 */
 /* v4.2.777-21: 字ごとの押し出しは箱ごとの拡大で要らなくなった */
 .dw-split .dw-scope .dw-tg2{font-size:1.4em;line-height:1;position:relative;top:1.5px;margin-right:0.5px}
 /* v4.2.86(俊克「H-IDXのTodayの部分にBTRON手が出ないよ」): v2.0.31 はダブルクリックで日付を打てる印に I ビームを出していた。押す物(1回=ダイヤル)の上は手= 打てる印は白抜きの枠が既に言っている。 */.dw-split .dw-scope.dw-editable:hover{cursor:var(--meos-hand)}
