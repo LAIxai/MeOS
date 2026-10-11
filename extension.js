@@ -7041,8 +7041,8 @@ function meosDiaryTpls() { try { const a = extensionContext.globalState.get('meo
 // ★v4.2.777-3(俊克 改良1「Ⓣの右肩に⓪〜③・右に▼で原型膜を登録・日によって使い分ける・見出しボタンと同じパターン」): 作り方は選んである番号で黙って作る(一覧は出さない)
 function meosDiaryMode() { let m = 0; try { m = Number(extensionContext.globalState.get('meosDiaryMode')) || 0; } catch (_) { } return Math.max(0, Math.min(3, m)); }   // v4.2.777-4: 空の番号も選べる(作る時に⓪へ回す)
 function meosPostDiaryMode() { try { if (meDockPanel) meDockPanel.webview.postMessage({ type: 'diaryMode', mode: meosDiaryMode(), have: meosDiaryTpls().map(Boolean) }); } catch (_) { } }
-// v5.0.0-1: 今日の色→過去の色(赤系統の茶)。他の色は今は替えない(決まったら足す)
-function meosDiaryPastColor(code) { return ({ R: 'N' })[normalizeMembraneColorCode(code)] || ''; }
+// v5.0.0-1: 今日の色→過去の色(赤系統の茶) / v5.0.0-2(俊克「原型から作る時は、その膜の色が毎日の基準。橙〜紫の場合は白に」): 橙・黄・緑・青・紫→白(W)
+function meosDiaryPastColor(code) { return ({ R: 'N', O: 'W', Y: 'W', G: 'W', B: 'W', P: 'W' })[normalizeMembraneColorCode(code)] || ''; }
 // v5.0.0-1: 開き行のコメントの末尾に (copied)。前の (copied) は外してから付ける(複製の複製で重ねない)
 function meosDiaryMarkCopied(line) {
   let t = String(line).split(' (copied)').join('');
