@@ -4,6 +4,10 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v4.2 era — highlights (2026-09 →)
 
+### v4.2.777 (2026-10-11) — the last of v4.2
+- **The last v4.2, kept as a monument.** The next release is **v5.0** — v4.2 grew far beyond "the rest of ⏰": chained clocks, ▦ and 🤝 for tables, the new Me Dock, three pointing hands, G⌥Y⌘P⌃S⇧um and Me DockⓉ Warp.
+- **Me DockⓉ Warp** — hold and release Shift, and Ⓣ grows for 1.2 seconds; type a Me Dock letter twice to warp to its mark, or to put a new mark at the cursor (v4.2.776-26 to -35).
+
 ### v4.2.776 (2026-10-09)
 - **🤝 in a table cell is no longer eaten by ▦.** Each format took one 🤝 off the front of a cell like 🤝🤝🤝 — only 🤝 with a number (the old 🤝2 form) is a merge mark now.
 - **`[text]()` with no FC lines under the table counts its brackets.** The brackets are only hidden when the FC group after the table makes it a link; without one they are on screen, and the row stuck out by four letters.
