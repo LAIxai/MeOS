@@ -214,8 +214,8 @@ change the wrap width this directly.
   the finger is back. **Double-click a tab to rename it.**
 - **Code blocks and inline code on a sheet of paper** — a code block is drawn as one sheet, and `inline code`
   as a small cream plate, so notation you quote in a note stays text and is never run.
-- **🎨 Theme button** in Me Dock — ↑/↓ to try colour themes on, Enter to keep one. Keep **two** at the top of the list —
-  a light and a dark, or two darks, as you like — and **↻** swaps between them in one click.
+- **🎨 Theme button** in Me Dock — ↑/↓ to try colour themes on, Enter to keep one. **↻** swaps between a light set and a dark set
+  in one click, and each set keeps **two** themes, picked at the top of the list — four in all, and a dark one may sit in the light set if you like.
 - **🐱 Mew, the new default bell** — a kitten's call that MeOS makes itself, from a real kitten's pitch and
   harmonics measured to the millisecond. It calls every 1.35 s, each call a little louder or softer by
   **1/f fluctuation**, so it never sounds like a loop. Pick another sound any time with **🔔** beside the 🎨 Theme button.
