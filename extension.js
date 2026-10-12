@@ -2849,7 +2849,7 @@ function meosSoundList() {
   return out;
 }
 function meosSoundNow() { try { return meosSoundCanon(String(vscode.workspace.getConfiguration('laiMembrane').get('clockSound', 'MEW') || '').trim()); } catch (_) { return 'Sosumi'; } }
-function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && cur !== 'MEW' && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
+function meosSoundPost() { try { const cur = meosSoundNow(); if (meDockPanel) meDockPanel.webview.postMessage({ type: 'soundState', x3: meosPreviewX3(), current: cur, list: meosSoundList(), label: (process.platform !== 'darwin' && cur && cur !== 'MEW' && !meosSoundIsPath(cur)) ? 'beep' : '' }); } catch (_) { } }   // v4.2.377: mac 以外で名前のままなら既定のビープ
 // 1つの音を鳴らす(試聴も鐘も同じ口)。返り値= 走らせた子(止めるため)。
 function meosSoundSpawn(name) {
   const cp = require('child_process');
@@ -2874,11 +2874,23 @@ function meosSoundSpawn(name) {
   }
   return cp.execFile('sh', ['-c', 'paplay "$1" 2>/dev/null || aplay -q "$1"', 'meos', name], () => { });   // ★未確認: PulseAudio/PipeWire の paplay(.oga 可)→ 無ければ aplay(.wav)
 }
+// ★v5.0.0-11(俊克「単打と連打は違う。アラームの方が大きく聞こえる」→「音リストの一番上にチェックボックス・3回連打のオン/オフ」「デフォルトをオンに」):
+//   ×3 の時は、アラームと同じく前の音を止めずに重ねて3回(間合いはアラームと同じ値)。次の試聴が来たら、続きは全部止める
+function meosPreviewX3() { try { return extensionContext.globalState.get('meosPreviewX3', true) !== false; } catch (_) { return true; } }
+let _meosSoundProcs = [], _meosSoundTimers = [];
+function meosSoundStopAll() {
+  for (const t of _meosSoundTimers) clearTimeout(t); _meosSoundTimers = [];
+  for (const p of _meosSoundProcs) { try { p.kill(); } catch (_) { } } _meosSoundProcs = [];
+  if (_meosSoundProc) { try { _meosSoundProc.kill(); } catch (_) { } } _meosSoundProc = null;
+}
 function meosSoundPlay(name) {
   try {
     if (!name) return;
-    if (_meosSoundProc) { try { _meosSoundProc.kill(); } catch (_) { } }   // 前の試聴は止める= ↑↓を速く押しても音が重ならない
-    _meosSoundProc = meosSoundSpawn(name);
+    meosSoundStopAll();   // 前の試聴は止める= ↑↓を速く押しても音が重ならない
+    if (!meosPreviewX3()) { _meosSoundProc = meosSoundSpawn(name); return; }
+    let gap = 1; try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); gap = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; } catch (_) { }
+    if (meosSoundCanon(name) === 'MEW') gap = Math.max(gap, 1.35);   // 鐘と同じ(Mew は一息おいて鳴く)
+    for (let i = 0; i < 3; i++) _meosSoundTimers.push(setTimeout(() => { try { const p = meosSoundSpawn(name); if (p) _meosSoundProcs.push(p); } catch (_) { } }, Math.round(i * gap * 1000)));
   } catch (_) { }
 }
 let _meosSoundProc = null;
@@ -2886,6 +2898,7 @@ async function meosSoundMessage(m) {
   const t = m.type;
   if (t === 'soundList') { meosSoundPost(); return; }
   if (t === 'soundPreview') { meosSoundPlay(String(m.name || '')); return; }
+  if (t === 'soundX3') { try { await extensionContext.globalState.update('meosPreviewX3', !!m.on); } catch (_) { } meosSoundPost(); return; }   // v5.0.0-11
   if (t === 'soundCommit') { const n = String(m.name || ''); try { await vscode.workspace.getConfiguration('laiMembrane').update('clockSound', n, vscode.ConfigurationTarget.Global); } catch (_) { }
     meosDbg('[sound] 決めた ' + (n || '(鳴らさない)')); meosSoundPost(); return; }
 }
@@ -28237,6 +28250,7 @@ main.body{padding:4px;gap:3px}   /* v4.2.602(俊克「Timed Meの回りの四角
 .sd-btn:hover{filter:brightness(1.15)}
 .sd-pop{position:absolute;top:100%;right:0;margin-top:-1px;display:none;flex-direction:column;min-width:160px;max-height:340px;overflow:auto;padding:5px 0;background:color-mix(in srgb,var(--vscode-editor-background) 84%,#d18400 16%);border:1px solid var(--meos-frame);border-radius:9px 0 9px 9px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:60}
 .sd-pop.on{display:flex}
+.sd-x3{display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px 5px;border-bottom:1px solid var(--meos-frame);opacity:.9;white-space:nowrap;cursor:var(--meos-hand)}.sd-x3 input{margin:0;cursor:var(--meos-hand)}   /* v5.0.0-11 */
 .sd-row{font-size:12px;padding:3px 11px 3px 22px;cursor:var(--meos-hand);white-space:nowrap;position:relative}
 .sd-row:hover,.sd-row.act{background:color-mix(in srgb,var(--vscode-editor-background) 60%,#d18400 40%)}
 .sd-row.cur::before{content:'●';position:absolute;left:9px;font-size:9px;top:5px;color:#e0803a}
@@ -31668,6 +31682,7 @@ const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-
 const sdLabel=(n)=>(n==='GLD-KNIGHT'?'\u269c\ufe0f ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
 window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+ /* v5.0.0-11: 一番上に ×3(アラームと同じ連打で試聴・既定オン) */const _x3=document.createElement('label');_x3.className='sd-x3';_x3.innerHTML='<input type="checkbox"'+(m.x3!==false?' checked':'')+'> Preview ×3 — as the alarm rings';_x3.addEventListener('click',ev=>ev.stopPropagation());_x3.querySelector('input').addEventListener('change',ev=>{vscode.postMessage({type:'soundX3',on:!!ev.target.checked});});sp.appendChild(_x3);
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
   r.addEventListener('dblclick',ev=>{ev.stopPropagation();clearTimeout(sdTimer);vscode.postMessage({type:'soundCommit',name:x.name});sdClose();});
