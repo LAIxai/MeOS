@@ -33779,7 +33779,7 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'prizeWatch') { if (meosIsAuthorDesk()) meosPrizeWatch(); return; }   // v4.2.776-15
     if (message && message.type === 'installVsix') { _meDockWidthHoldUntil = Date.now() + 120000; const ok = await meosInstallVsix(); if (!ok) { _meDockWidthHoldUntil = 0; meosMeDockWidthRestore(); } return; }   // v4.2.67
     if (message && /^theme(List|Preview|Commit|Revert|ToggleDL)$/.test(String(message.type || ''))) { meosThemeMessage(message); return; }   // v4.2.243
-    if (message && /^sound(List|Preview|Commit)$/.test(String(message.type || ''))) { meosSoundMessage(message); return; }   // v4.2.375
+    if (message && /^sound(List|Preview|Commit|X3)$/.test(String(message.type || ''))) { meosSoundMessage(message); return; }   // v4.2.375 / v5.0.0-13: X3 を通し忘れていた(チェックが届かず、描き直しでオンに戻っていた)
     if (message && (message.type === 'requestWrapColumn' || message.type === 'setWrapColumn' || message.type === 'cycleWrapPreset')) {
       // ★★v4.2.154(俊克 pm00:12 バグ1「値が変化するけど、実際の折り返しが変化したように見えない。なぜ?」):
       //   ★★真因= 俊克の設定には **`[markdown]` の言語別の折り返し幅(80)** が在り、Markdown ではそちらが勝つ。
