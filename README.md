@@ -182,6 +182,11 @@ change the wrap width this directly.
   <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and Ⓣ grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks — six you set yourself, and Ⓣ, which moves to today's diary on its own — and your fingers hardly leave the home position. Marks live in your text, as a comment like <code>&lt;!-- {* ▶◀mP4=o_20261011S105212JST //  *} --&gt;</code> — they travel with it, and you delete one like any other line.</sub>
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-open-top-bottom.png" alt="Open from the top, or from the bottom - a folded membrane shows ▼ and ▲; ▼ opens it at the start, ▲ opens it at the end with the caret on the closing line" width="80%"><br>
+  <sub><b>Open from the top, or from the bottom.</b> A folded membrane shows ▼ and ▲ side by side. ▼ opens it at the start; ▲ opens it at the end, with the caret on the closing line — right where you add today's next lines. The side you rest on takes the membrane's colour; the other turns to its complement. We know of no other editor that lets you choose which end to open a fold from.</sub>
+</p>
+
 **Also in v5.0**
 
 - **The top of Me Dock stays put** — the title row and **Format Me** stay at the top while you scroll, and
