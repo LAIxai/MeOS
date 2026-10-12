@@ -20633,13 +20633,13 @@ async function toggleMembraneFromArrowHit(editor, info) {
           editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.AtTop);
           if (_rowsAt > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _rowsAt, revealCursor: false });
         } else editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-        // ★v5.0.0-9(俊克「▲で開いた時は、文字カーソルも末尾へ移動すべき」): 閉じ膜の1行上(中身の最後の行)の行末へ= すぐ書き足せる。
-        //   閉じ膜の行そのものに置くと、その行が生の殻を見せてしまうので、1行上に置く(画面は上で決めたまま動かさない)
-        if (_wasFolded && matched.pair.end - 1 > matched.pair.start) { const _ln = matched.pair.end - 1, _ce = editor.document.lineAt(_ln).text.length; editor.selection = new vscode.Selection(_ln, _ce, _ln, _ce); }
+        // ★v5.0.0-9(俊克「▲で開いた時は、文字カーソルも末尾へ移動すべき」) / v5.0.0-10(俊克「▼の時は殻を見せず▼の左で点滅する。▲も同じに」):
+        //   ▼と同じ= 閉じ膜の行の頭(▲の左)へ置き、その行の生の殻は着地の抑止(setRefNoRaw)で見せない(画面は上で決めたまま)
+        if (_wasFolded) editor.selection = new vscode.Selection(matched.pair.end, 0, matched.pair.end, 0);
       }
     } catch (_) { }
   } finally { _meosArrowToggling = false; }
-  setRefNoRaw(editor.document, matched.pair.start);   // トグル中の refresh で解けていても張り直す
+  setRefNoRaw(editor.document, (_wasFolded && _byClose) ? matched.pair.end : matched.pair.start);   // トグル中の refresh で解けていても張り直す(v5.0.0-10: ▲で開いた時は閉じ膜の行)
   refresh(editor);
   nameJumpSuppressUntil = Date.now() + 250;
   return true;
