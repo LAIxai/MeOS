@@ -214,12 +214,15 @@ change the wrap width this directly.
   the finger is back. **Double-click a tab to rename it.**
 - **Code blocks and inline code on a sheet of paper** — a code block is drawn as one sheet, and `inline code`
   as a small cream plate, so notation you quote in a note stays text and is never run.
-- **🎨 Theme button** in Me Dock — ↑/↓ to try colour themes on, Enter to keep one.
+- **🎨 Theme button** in Me Dock — ↑/↓ to try colour themes on, Enter to keep one. Keep **two** at the top of the list —
+  a light and a dark, or two darks, as you like — and **↻** swaps between them in one click.
 - **🐱 Mew, the new default bell** — a kitten's call that MeOS makes itself, from a real kitten's pitch and
   harmonics measured to the millisecond. It calls every 1.35 s, each call a little louder or softer by
   **1/f fluctuation**, so it never sounds like a loop. Pick another sound any time with **🔔** beside the 🎨 Theme button.
   **Our advice:** leave the ⏰ lines without a 🔔 number and choose the sound with the **🔔** button — ↑/↓ play each one
   as you go, and one pick changes every ⏰ at once. Write a 🔔 on a ⏰ line only when that one clock needs its own sound.
+  **Preview ×3** (on by default) plays each sound three times, overlapping just as the alarm does — one ring and three
+  rings sound surprisingly different.
 - **A soft "no change" sound** — press Cmd+S (Ctrl+S) when there is nothing new to save and MeOS answers with
   two soft falling tones, so your hand knows the file was already saved.
 - **Sounds are tested on macOS.** The ⏰ bell, the 🔔 picker (Windows: the `.wav` files in `C:\Windows\Media`;
