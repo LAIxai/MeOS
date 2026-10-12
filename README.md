@@ -233,8 +233,8 @@ change the wrap width this directly.
   *Markdown Language Features* for that workspace, which was the cause we measured.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo with the BTRON hand, the Me Dock title tiles, the Today button showing 12M with a rabbit, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
-  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And top right, <b>12M🐇</b>: today is the 12th, a Monday — the weekday on its Five Elements colour, with its guardian, the Moon Rabbit.</sub>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo with the BTRON hand, the Me Dock title tiles, the Today button showing 13T with a fire bird, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
+  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And top right, <b>13T🐦‍🔥</b>: today is the 13th, a Tuesday — the weekday on its Five Elements colour (red, for fire), with its guardian, the Vermilion Bird.</sub>
 </p>
 
 <p align="center">
