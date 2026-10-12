@@ -178,8 +178,8 @@ change the wrap width this directly.
 *(Like Vim marks, without modes or memorizing.)*
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock-warp.png" alt="Me DockⓉ Warp - hold and release Shift, Ⓣ magnifies for 1.2 seconds, then type M twice to warp to the M mark, or E twice to put a new mark there" width="60%"><br>
-  <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and Ⓣ grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks — six you set yourself, and Ⓣ, which moves to today's diary on its own — and your fingers hardly leave the home position. Marks live in your text, as a comment like <code>&lt;!-- {* ▶◀mP4=o_20261011S105212JST //  *} --&gt;</code> — they travel with it, and you delete one like any other line.</sub>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock-warp.png" alt="Me DockⓉ Warp - hold and release Shift, the tile with the red dot magnifies for 1.2 seconds, then type M twice to warp to the M mark, or E twice to put a new mark there" width="60%"><br>
+  <sub><b>Me DockⓉ Warp.</b> Hold and release Shift, and the tile with the red dot (the last one you used) grows for 1.2 seconds. Type a Me Dock letter twice: <b>M M</b> warps to the M mark, <b>E E</b> puts a new mark at the cursor. Seven marks — six you set yourself, and Ⓣ, which moves to today's diary on its own — and your fingers hardly leave the home position. Marks live in your text, as a comment like <code>&lt;!-- {* ▶◀mP4=o_20261011S105212JST //  *} --&gt;</code> — they travel with it, and you delete one like any other line.</sub>
 </p>
 
 <p align="center">
