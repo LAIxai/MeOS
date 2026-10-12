@@ -20633,6 +20633,9 @@ async function toggleMembraneFromArrowHit(editor, info) {
           editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.AtTop);
           if (_rowsAt > 0) await vscode.commands.executeCommand('editorScroll', { to: 'up', by: 'wrappedLine', value: _rowsAt, revealCursor: false });
         } else editor.revealRange(new vscode.Range(_to, 0, _to, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        // ★v5.0.0-9(俊克「▲で開いた時は、文字カーソルも末尾へ移動すべき」): 閉じ膜の1行上(中身の最後の行)の行末へ= すぐ書き足せる。
+        //   閉じ膜の行そのものに置くと、その行が生の殻を見せてしまうので、1行上に置く(画面は上で決めたまま動かさない)
+        if (_wasFolded && matched.pair.end - 1 > matched.pair.start) { const _ln = matched.pair.end - 1, _ce = editor.document.lineAt(_ln).text.length; editor.selection = new vscode.Selection(_ln, _ce, _ln, _ce); }
       }
     } catch (_) { }
   } finally { _meosArrowToggling = false; }
