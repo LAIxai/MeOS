@@ -2888,8 +2888,9 @@ function meosSoundPlay(name) {
     if (!name) return;
     meosSoundStopAll();   // 前の試聴は止める= ↑↓を速く押しても音が重ならない
     if (!meosPreviewX3()) { _meosSoundProc = meosSoundSpawn(name); return; }
-    let gap = 1; try { const n = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockRepeatSeconds', 1)); gap = (isFinite(n) && n > 0) ? Math.max(0.3, n) : 1; } catch (_) { }
-    if (meosSoundCanon(name) === 'MEW') gap = Math.max(gap, 1.35);   // 鐘と同じ(Mew は一息おいて鳴く)
+    // v5.0.0-12(俊克「🚀だけおかしな鳴り。鐘の時の周期に」): 間合いは鐘と同じ1つの口(meosRingSeconds)から= 🚀2.4秒・Mew1.35秒・🍙/😸2秒…
+    let gap = 1; const _ko = _meosBellOverride; try { _meosBellOverride = name; gap = meosRingSeconds(); } catch (_) { } finally { _meosBellOverride = _ko; }
+    if (!(gap > 0)) { _meosSoundProc = meosSoundSpawn(name); return; }   // 1回だけの音(Purr など)は1回
     for (let i = 0; i < 3; i++) _meosSoundTimers.push(setTimeout(() => { try { const p = meosSoundSpawn(name); if (p) _meosSoundProcs.push(p); } catch (_) { } }, Math.round(i * gap * 1000)));
   } catch (_) { }
 }
