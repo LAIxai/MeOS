@@ -200,8 +200,9 @@ change the wrap width this directly.
   same place. Open either list and Me Dock widens to the width you last dragged it to for that list; close it, and
   Me Dock goes back to its own width.
 - **Me Dock in ten sizes** — ⊕ / ⊖ beside **A** step through 60–80 % in eight fine steps, then 90 % and 100 %.
-  A small box opens right there and says where you are (`4/10`); ↑ / ↓ keep stepping while you drag the panel
-  wider, so you can settle the size in one go.
+  A small box opens right there and says where you are (`4/10`), and ↑ / ↓ keep stepping. A larger size needs a
+  wider Me Dock — at its narrowest it no longer fits — so drag it wider yourself; afterwards, press the Hyper TOC
+  button twice and Me Dock comes back to the width you dragged.
 - **📦 Re-install VSIX for everyone** — pick any `.vsix` (the newest, or an older one to compare) and MeOS installs
   it and reloads. It opens where you picked last time, or your Downloads folder.
 - **Reveal in Finder** — right-click a file in Me Dock's recent-files list.
