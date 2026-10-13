@@ -41277,6 +41277,38 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (_meosCaretProbing) return; try { meosPuzzleCrownAtCaret(e); } catch (_) { } }));   // v4.2.563
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
+  // ★v5.0.0-27(俊克 バグ1「閉じた膜の右端の⋯にホーバーすると選択指・クリックすると展開される。開閉は▼▲だけが担うべき」):
+  //   ⋯は VS Code 自身の畳みの印で、押すと VS Code が開く(拡張からは消せない・押させない事もできない)。
+  //   → 見分けて畳み直す: マウスで膜の頭の行の行末に着地し、その直前は畳まれていて、直後に開いていたら= ⋯を押した。▼▲は行頭なので当たらない
+  {
+    let _vrPrev = null, _vrCur = null, _vrAt = 0;
+    const _snap = (ed) => (ed.visibleRanges || []).map(r => [r.start.line, r.end.line]);
+    const _hidden = (sn, ln) => { if (!sn || !sn.length) return false; if (ln < sn[0][0] || ln > sn[sn.length - 1][1]) return false; return !sn.some(r => r[0] <= ln && ln <= r[1]); };
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+      try {
+        if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
+        const ed = e.textEditor, sel = e.selections && e.selections[0];
+        if (!ed || !sel || !sel.isEmpty || ed !== vscode.window.activeTextEditor || ed.document.languageId !== 'markdown') return;
+        const L = sel.active.line;
+        if (sel.active.character < ed.document.lineAt(L).text.length) return;   // 行末だけ(⋯は行末の後ろ)
+        const pair = collectMembraneStructure(ed.document).pairs.find(p => p.start === L && p.end > L);
+        if (!pair) return;
+        if (!_vrCur) _vrCur = _snap(ed);
+        const before = (_vrPrev && Date.now() - _vrAt < 150) ? _vrPrev : _vrCur;   // 開いた知らせが先に来ていたら、その1つ前の姿
+        const wasFolded = _hidden(before, L + 1);
+        meosDbg('[dotsUnfold] 頭の行末をクリック 行=' + (L + 1) + ' 直前=' + (wasFolded ? '畳み' : '開き'));
+        if (!wasFolded) return;
+        setTimeout(async () => {
+          try {
+            const now = _snap(ed), opened = !_hidden(now, L + 1);
+            meosDbg('[dotsUnfold] 0.2秒後=' + (opened ? '開いた→畳み直す' : '畳みのまま'));
+            if (opened && ed === vscode.window.activeTextEditor) await vscode.commands.executeCommand('editor.fold', { selectionLines: [L] });
+          } catch (_) { }
+        }, 200);
+      } catch (_) { }
+    }));
+  }
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     if (_meosCaretProbing) return; 
     // ★v4.0.396: ここは v4.0.141 の「入れ直した直後、人が最初にクリックした時に1回だけ畳む」ための道。
