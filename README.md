@@ -212,10 +212,10 @@ change the wrap width this directly.
 
 - **Three pointing hands** — the BTRON hand, a slim 22.5° classic macOS hand, or your OS's own. The tip of the
   finger is where you point, and it does not jump when the hand changes shape.
-- **G⌥Y⌘P⌃S⇧um sets the colors** — hold a modifier key over Me Dock and the hotspot × takes its colour: Opt green,
+- **G⌥Y⌘P⌃S⇧um sets the colors** — hold a modifier key over a Me Dock button that answers to it, and the hotspot × takes its colour (a button the key does nothing to shows none): Opt green,
   Cmd yellow, Ctrl purple, left Shift sky blue, right Shift blue. Read the initials in that order — **G**reen,
   **Y**ellow, **P**urple, **S**ky — and you get *gypsum*, the plaster that sets. Try it on the pointer-hand button.
-- **The hand tells you what comes next** — on a Hyper TOC tab: the pointing finger before you press (a click, a
+- **The hand tells you what comes next** — on a Hyper TOC tab (and on Me Dock's letter tiles and the pointer-hand button): the pointing finger before you press (a click, a
   double-click or a drag could follow); the open hand the moment you press; the closed hand after half a second, or as
   soon as you move. Let go after a drag and the open hand stays, ready to pick the tab up again — move the mouse and
   the finger is back. **Double-click a tab to rename it.**
