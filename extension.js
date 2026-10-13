@@ -41284,6 +41284,21 @@ function activate(context) {
     let _vrPrev = null, _vrCur = null, _vrAt = 0;
     const _snap = (ed) => (ed.visibleRanges || []).map(r => [r.start.line, r.end.line]);
     const _hidden = (sn, ln) => { if (!sn || !sn.length) return false; if (ln < sn[0][0] || ln > sn[sn.length - 1][1]) return false; return !sn.some(r => r[0] <= ln && ln <= r[1]); };
+    // ★v5.0.0-28(俊克「⋯の上にフタを・⋯のアンチテーゼの意味で進入禁止⛔️に」): 畳んだ膜の頭の行末に⛔を重ねる(押しても VS Code の⋯には届かない)
+    //   畳まれているかは見えている範囲の切れ目で知る= 切れ目の直前の行が膜の頭なら畳まれている
+    const _noEntry = vscode.window.createTextEditorDecorationType({ after: { contentText: '⛔', textDecoration: 'none; position: absolute; z-index: 20; width: 1.5em; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
+    context.subscriptions.push(_noEntry);
+    let _neT = null;
+    const _paintNoEntry = (ed) => {
+      try {
+        if (!ed || ed.document.languageId !== 'markdown') return;
+        const sn = _snap(ed), starts = new Set(collectMembraneStructure(ed.document).pairs.filter(p => p.end > p.start).map(p => p.start)), rs = [];
+        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h); rs.push(new vscode.Range(ln.range.end, ln.range.end)); } }
+        ed.setDecorations(_noEntry, rs);
+      } catch (_) { }
+    };
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { clearTimeout(_neT); _neT = setTimeout(() => _paintNoEntry(e.textEditor), 80); }));
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => _paintNoEntry(ed)));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
       try {
