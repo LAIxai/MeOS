@@ -41293,7 +41293,7 @@ function activate(context) {
       try {
         if (!ed || ed.document.languageId !== 'markdown') return;
         const sn = _snap(ed), starts = new Set(collectMembraneStructure(ed.document).pairs.filter(p => p.end > p.start).map(p => p.start)), rs = [];
-        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h); rs.push(new vscode.Range(ln.range.end, ln.range.end)); } }
+        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h), at = ln.range.end.translate(0, ln.text.length ? -1 : 0); rs.push(new vscode.Range(at, at)); } }   // v5.0.0-30(俊克「⛔をクリックした時に座標をすりかえられないか」): ⛔を行末の1字手前に差す= 押すと行末でなく1字手前に着く(VS Code は行末を押された時だけ⋯として開く)。閉じ膜の --> の > は隠れているので見た目の位置は同じ
         ed.setDecorations(_noEntry, rs);
       } catch (_) { }
     };
