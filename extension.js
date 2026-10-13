@@ -8910,7 +8910,7 @@ function applyPrettyLabels(editor) {
       const openGlyph = isMnt
         ? (baseOpenGlyph + '📒' + aliasInLabel)
         : (baseOpenGlyph + aliasInLabel);
-      arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // ★v4.2.75
+      arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart) });   // v5.0.0-34: 手も膜名の字に掛けない / ★v4.2.75
       // ★v4.2.756(俊克 755テスト 改良1「▼を膜の色のままにし、▲をその色の補色にしよう…見た目で、違いがあると分かる」):
       //   ▼▲は1つの装飾のまま(押した桁で左右を見分ける仕掛けを崩さない)・字の左半分と右半分を塗り分ける(地の模様を字の形で切り抜く)
       const _twoTone = (openGlyph === '\u25bc\u25b2') ? meosComplementCss(labelColor) : '';
@@ -8955,7 +8955,7 @@ function applyPrettyLabels(editor) {
         const isMntClose = !!(pair && pair.isMnt);
         const baseCloseGlyph = meosMembraneGlyph('close', false, isToc);  // v4.0.361: 字は1か所で決める
         const closeGlyph = isMntClose ? (baseCloseGlyph + '📒') : baseCloseGlyph;
-        arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // ★v4.2.75
+        arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart) });   // v5.0.0-34: 手も膜名の字に掛けない / ★v4.2.75
         closeLabels.push({
           range: new vscode.Range(line, parts.idStart, line, parts.idStart),
           renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosCloseGlyphColor(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
@@ -34921,7 +34921,7 @@ function meosArrowHitAt(document, line, character) {
   //   0〜idStart+1(差し込まれた駒をまたぐにはそこまで要る)。当たりが idStart までだと、
   //   **膜名の1文字目の右半分は、手なのに効かない**= v4.0.358 と同じ穴を、形で作っていた。
   if (glyph < 0 && info.idStart <= 0) return null;
-  if (character >= 0 && character <= info.idStart + 1) return info;
+  if (character >= 0 && character <= info.idStart) return info;   // v5.0.0-34(俊克 バグ1「▼▲の右側1文字も展開ボタン化している」・ログ= 膜名の1文字目の右半分(caretCh=idStart+1)で開いていた): 膜名の字の右半分は当たりから外す
   return null;
 }
 // ★★★v4.2.74(俊克 2026.09.13 am00:29「そのボタンを押す意味は、tipを出す必要that無いので、
