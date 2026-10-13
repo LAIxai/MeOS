@@ -189,6 +189,12 @@ change the wrap width this directly.
 
 **Also in v5.0**
 
+- **Ⓣ makes today's diary** — press Ⓣ in the morning, and if today's diary is not there yet, MeOS makes it:
+  **0** copies yesterday's (marked `(copied)`), **1–3** start from templates you registered — for days of the week
+  that differ — and ▾ lets you pick a template from the same weekday over the last four weeks, or from this week.
+  Yesterday's membrane steps back from red to brown; only today is red. *Writing past midnight? Just write
+  wherever Ⓣ takes you — today's diary starts as a copy of yesterday's, so anything you meant for yesterday can be
+  pasted back later.*
 - **The top of Me Dock stays put** — the title row and **Format Me** stay at the top while you scroll, and
   Format Me now sits above the ⏰ row, so opening the ⏰ panel no longer pushes the buttons you use most out of
   reach. They follow Me Dock's size like everything else.
