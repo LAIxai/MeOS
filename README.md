@@ -159,6 +159,11 @@ so you know whose clock rang before you even look.
 Keep the two lives in separate files — the same file open in both editors shows its clocks in both.
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the V-helper menu with Pass the next, every clock counting down, Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
+  <sub><b>NEW in v5.0 — this is what the menu bar looks like.</b> Your clocks keep counting in the menu bar — orange for VSCodium, purple for VS Code — and one click opens every one of them, from seven minutes to 131 days away. When a bell rings, MeOS warps you to the membrane you set it on; pick any clock from here and you warp there yourself; or let it just ring, at anchor ⚓. <b>Boarding pass: Passenger YOU — Destination Anywhere-When — Seat NOW — Fare 0.</b></sub>
+</p>
+
+<p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-chained-clocks.png" alt="Chained clocks - every eight hours, two eye drops five minutes apart; each line has its own play and pause button" width="92%"><br>
   <sub><b>NEW in v5.0 — independent yet linked.</b> <i>(Born in the v4.2 builds — the stamp says so.)</i> This is the main editor, not a preview. Every eight hours, two eye drops five minutes apart: two lines under one membrane, counting down on the line, in the status bar and on the menu bar of both VS Code (purple) and VSCodium (orange). Each line has its own &#9654;&#65039; / &#9208;&#65039;, &#128674;&#128168; / &#9875; and &#128272; / &#128274; buttons, two bell buttons (main / sub) and [&minus;1s][+1s], and <b>Opt+click</b> starts the five-minute clock again from zero at any time. The pink strip is the raw line behind the buttons.</sub>
 </p>
