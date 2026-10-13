@@ -7374,7 +7374,8 @@ const REF_PENDING_FAM = 'P';
 // v1.0.11(俊克 改良1): ジャンプ着地の一時raw抑止。この行はカーソルが乗っていても参照符をraw化せずチップ描画のまま(脚注/巡回で飛んだ直後は読む用=インライン編集にしない)。カーソルがこの行を離れたら解除→再クリックで通常のraw編集。
 let _refNoRawUri = '';
 let _refNoRawLine = -1;
-function setRefNoRaw(doc, line) { try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
+let _refNoRawAt = 0;   // v5.0.0-32: 抑止を張った時刻
+function setRefNoRaw(doc, line) { _refNoRawAt = Date.now(); try { _refNoRawUri = doc.uri.toString(); _refNoRawLine = Number(line); } catch (_) { _refNoRawUri = ''; _refNoRawLine = -1; } }
 // ★v4.2.759: 抑止を解いた時の控え(押す直前にまだ効いていたかを、押した後から訊くため)
 let _refNoRawPrevUri = '', _refNoRawPrevLine = -1, _refNoRawPrevAt = 0;
 function meosRefNoRawWasOn(doc, line) {
@@ -41304,6 +41305,15 @@ function activate(context) {
       try {
         if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
         const ed = e.textEditor, sel = e.selections && e.selections[0];
+        // v5.0.0-32(俊克 バグ1「膜をクリックしても全体がRaw表示にならない。最初の1回だけRawになった」): ▼で畳むと、頭の行に着地の抑止(setRefNoRaw)が張られ、
+        //   カーソルがその行を出るまで生にならない= 同じ行を何度押しても生にならなかった。人がマウスで押し直したら抑止を解く(張った直後の0.4秒は▼自身の着地なので解かない)
+        try {
+          if (ed && sel && _refNoRawLine === sel.active.line && _refNoRawUri === ed.document.uri.toString() && Date.now() - _refNoRawAt > 400) {
+            meosDbg('[noRaw] マウスで同じ行を押し直した 行=' + (sel.active.line + 1) + ' → 着地の抑止を解く');
+            _refNoRawLine = -1; _refNoRawUri = '';
+            setTimeout(() => { try { refresh(ed); } catch (_) { } }, 0);
+          }
+        } catch (_) { }
         if (!ed || !sel || !sel.isEmpty || ed !== vscode.window.activeTextEditor || ed.document.languageId !== 'markdown') return;
         const L = sel.active.line;
         if (sel.active.character < ed.document.lineAt(L).text.length) return;   // 行末だけ(⋯は行末の後ろ)
