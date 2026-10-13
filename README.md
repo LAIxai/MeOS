@@ -195,9 +195,10 @@ change the wrap width this directly.
   Yesterday's membrane steps back from red to brown; only today is red. *Writing past midnight? Just write
   wherever Ⓣ takes you — today's diary starts as a copy of yesterday's, so anything you meant for yesterday can be
   pasted back later.*
-- **The top of Me Dock stays put** — the title row and **Format Me** stay at the top while you scroll, and
-  Format Me now sits above the ⏰ row, so opening the ⏰ panel no longer pushes the buttons you use most out of
-  reach. They follow Me Dock's size like everything else.
+- **Only the panels scroll** — the title row, **Format Me** and the **Timed Me-System** / **Hyper TOC** row stay
+  put while you scroll; only the ⏰ box and the Hyper TOC list underneath move, so your clocks are always in the
+  same place. Open either list and Me Dock widens to the width you last dragged it to for that list; close it, and
+  Me Dock goes back to its own width.
 - **Me Dock in ten sizes** — ⊕ / ⊖ beside **A** step through 60–80 % in eight fine steps, then 90 % and 100 %.
   A small box opens right there and says where you are (`4/10`); ↑ / ↓ keep stepping while you drag the panel
   wider, so you can settle the size in one go.
