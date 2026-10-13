@@ -7149,7 +7149,8 @@ function meosDiaryDayAtCaret(ed) {
     const st = collectMembraneStructure(ed.document), cur = ed.selection.active.line, last = ed.document.lineCount - 1;
     let best = null, bestLen = Infinity;
     const look = (id, a, b) => { if (a <= cur && cur <= b && (b - a) < bestLen) { const d = parseDiaryDateFromName(id); if (d) { best = d; bestLen = b - a; } } };
-    for (const p of st.pairs) look(p.id, p.start, p.end);
+    // v5.0.0-25(俊克 バグ1「閉じ膜のバッジFC行(945)に入ると、次の日(14W)と判定される」): 閉じ膜の後ろのバッジ行・時計のFC行も膜の持ち物= 閉じのすぐ後ろだけ膜の端を測り直す
+    for (const p of st.pairs) look(p.id, p.start, (cur > p.end && cur <= p.end + 8) ? meosBlockEndForCarry(ed.document, p) : p.end);
     for (const o of st.unclosedOpens) look(o.id, o.start, last);
     return best ? { y: best.y, mo: best.mo, d: best.d } : null;
   } catch (_) { return null; }
