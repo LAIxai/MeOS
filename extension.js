@@ -41289,17 +41289,22 @@ function activate(context) {
     //   畳まれているかは見えている範囲の切れ目で知る= 切れ目の直前の行が膜の頭なら畳まれている
     const _noEntry = vscode.window.createTextEditorDecorationType({ after: { contentText: '⛔', textDecoration: 'none; position: absolute; z-index: 20; width: 1.5em; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
     context.subscriptions.push(_noEntry);
+    // v5.0.0-33(俊克 改良1「その行だけRawにすると⋯の位置が変わるので、そこにも⛔でフタを」): 生の行では尻尾 ` * } -->` が見えている= ⋯は本当の行末の後ろ。
+    //   ⛔は最後の字(>)の手前に差し、1字分だけ右へずらして⋯の上に置く(押しても行末の1字手前= VS Code は開かない)
+    const _noEntryRaw = vscode.window.createTextEditorDecorationType({ after: { contentText: '\u26d4', textDecoration: 'none; position: absolute; z-index: 20; width: 1.5em; margin-left: 1ch; text-align: center; cursor: default; pointer-events: auto', backgroundColor: new vscode.ThemeColor('editor.background') } });
+    context.subscriptions.push(_noEntryRaw);
     let _neT = null;
     const _paintNoEntry = (ed) => {
       try {
         if (!ed || ed.document.languageId !== 'markdown') return;
-        const sn = _snap(ed), starts = new Set(collectMembraneStructure(ed.document).pairs.filter(p => p.end > p.start).map(p => p.start)), rs = [];
-        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h), tm = /\s*\*\s*\}\s*-->\s*$/.exec(ln.text), at = tm ? new vscode.Position(h, tm.index) : ln.range.end; rs.push(new vscode.Range(at, at)); } }   // v5.0.0-31(俊克 バグ1「⛔が表示されなくなった」): 1字手前は隠した ` * } -->` の中= ⛔ごと隠れた。隠した尻尾の頭(見えている字の直後)に差す= 押しても行末ではない / v5.0.0-30(俊克「⛔をクリックした時に座標をすりかえられないか」): ⛔を行末の1字手前に差す= 押すと行末でなく1字手前に着く(VS Code は行末を押された時だけ⋯として開く)。閉じ膜の --> の > は隠れているので見た目の位置は同じ
-        ed.setDecorations(_noEntry, rs);
+        const sn = _snap(ed), starts = new Set(collectMembraneStructure(ed.document).pairs.filter(p => p.end > p.start).map(p => p.start)), rs = [], rr = [];
+        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h); if (meosShowsRawLine(ed, h) && ln.text.length) { const at = ln.range.end.translate(0, -1); rr.push(new vscode.Range(at, at)); continue; } const tm = /\s*\*\s*\}\s*-->\s*$/.exec(ln.text), at = tm ? new vscode.Position(h, tm.index) : ln.range.end; rs.push(new vscode.Range(at, at)); } }   // v5.0.0-33: 生の行は rr(1字手前+1字右)/ v5.0.0-31: 隠した尻尾の頭 / v5.0.0-30
+        ed.setDecorations(_noEntry, rs); ed.setDecorations(_noEntryRaw, rr);
       } catch (_) { }
     };
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { clearTimeout(_neT); _neT = setTimeout(() => _paintNoEntry(e.textEditor), 80); }));
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => _paintNoEntry(ed)));
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { clearTimeout(_neT); _neT = setTimeout(() => _paintNoEntry(e.textEditor), 80); }));   // v5.0.0-33: 生になる/戻るのはカーソルの出入り
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
       try {
