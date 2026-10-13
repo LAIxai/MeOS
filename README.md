@@ -172,6 +172,11 @@ moves with it, so you can see where a line will break. The number counts half-wi
 Japanese breaks at the same line, with about one character for every 1.7 half-width ones. We know of no other Markdown editor that lets you
 change the wrap width this directly.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-table.png" alt="One-stop table - the table button turns tab-separated text into a GFM table, a blank line into an empty table, and lines up a GFM table; the ↻ on it then steps the wrap width 50, 90, 126 until the table stands straight, and Shift+click goes the other way" width="80%"><br>
+  <sub><b>NEW in v5.0 — one-stop tables.</b> One button, three jobs: select tab-separated text and it becomes a GFM table; on a blank line you get an empty one; inside a table it lines the columns up. Lined up at 50, the table still falls apart — so press the <b>↻</b> on the table button: 90, then 126, and every row stands on one line. <b>Shift+click</b> goes the other way, from 50 straight to the widest. Here the widest is 126, just wide enough for this table — set your own.</sub>
+</p>
+
 *A 300,000-line universe. Seven stars. One Shift away. Today the M-galaxy, tomorrow star c…*
 
 **Me DockⓉ Warp — mark a spot, warp back.** Click it or type it — same mark, same warp.
