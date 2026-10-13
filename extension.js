@@ -41314,13 +41314,21 @@ function activate(context) {
         const wasFolded = _hidden(before, L + 1);
         meosDbg('[dotsUnfold] 頭の行末をクリック 行=' + (L + 1) + ' 直前=' + (wasFolded ? '畳み' : '開き'));
         if (!wasFolded) return;
-        setTimeout(async () => {
+        // v5.0.0-29(俊克 バグ3「2回目のクリックでは完全に展開され、MeOSが閉じない」): ログ= 0.2秒後はまだ畳みのまま(開くのが遅れた)。
+        //   一度きりの0.2秒で見るのをやめ、1.5秒の間「開いたら畳む」を見張る(開いた知らせが来た時に見る)
+        const t0 = Date.now(); let done = false;
+        const check = async (why) => {
+          if (done) return;
           try {
-            const now = _snap(ed), opened = !_hidden(now, L + 1);
-            meosDbg('[dotsUnfold] 0.2秒後=' + (opened ? '開いた→畳み直す' : '畳みのまま'));
-            if (opened && ed === vscode.window.activeTextEditor) await vscode.commands.executeCommand('editor.fold', { selectionLines: [L] });
+            if (Date.now() - t0 > 1500) { done = true; w.dispose(); meosDbg('[dotsUnfold] 1.5秒= 開かなかった'); return; }
+            if (ed !== vscode.window.activeTextEditor || _hidden(_snap(ed), L + 1)) return;
+            done = true; w.dispose();
+            meosDbg('[dotsUnfold] ' + why + ' +' + (Date.now() - t0) + 'ms 開いた→畳み直す');
+            await vscode.commands.executeCommand('editor.fold', { selectionLines: [L] });
           } catch (_) { }
-        }, 200);
+        };
+        const w = vscode.window.onDidChangeTextEditorVisibleRanges(ev => { if (ev.textEditor === ed) check('知らせ'); });
+        setTimeout(() => check('0.2秒'), 200); setTimeout(() => check('1.6秒'), 1600);
       } catch (_) { }
     }));
   }
