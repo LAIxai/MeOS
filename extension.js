@@ -37727,7 +37727,10 @@ function meosFcFoldShape(document, caretLine) {
     //     時計の行を含む塊だけ開けたまま、メッセージだけの塊は今までどおり畳む。
     for (const b of meosDefBlocks(document)) {
       const open = meosFcWantsOpen(document, b, caretLine);   // 訊くのは1回だけ(塊の数だけ走る道なので)
-      const shift = open && (b.open != null);
+      // ★v5.0.0-26(俊克 バグ1「畳んだのにバッジが消えない・943行目をクリックすると膜が開く」「v4.1.104〜105はタイマー表示のため。タイマーの無い膜は範囲外で、閉じるべき」):
+      //   バッジ行を畳みの外へ出すのは、⏰の在る膜(バッジ行が動く数字の置き場)だけ。⏰の無い膜は、カーソルがどこでもバッジ行まで畳む
+      //   = 畳みの形がカーソルで変わらない(形が変わると VS Code は別の畳みと見なして開いてしまう)
+      const shift = open && (b.open != null) && meosClockBadgeRow(document, { end: b.start }) >= 0;
       const head = shift ? b.start + 1 : b.start;
       // ★★★v4.1.147: 畳みを止めた行は、**塊の側でも畳まない**= 膜の範囲だけ縮めても、
       //   FCの塊thatその行を畳んでしまえば同じこと(2つの物差しthat食い違う=今日6回踏んだ形)。
