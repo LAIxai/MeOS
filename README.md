@@ -175,7 +175,7 @@ change the wrap width this directly.
 *A 300,000-line universe. Seven stars. One Shift away. Today the M-galaxy, tomorrow star c…*
 
 **Me DockⓉ Warp — mark a spot, warp back.** Click it or type it — same mark, same warp.
-*(Like Vim marks, without modes or memorizing.)*
+*(Like Vim marks, without modes or memorizing. In Don Norman's terms, it is an SS — a Signifier Shift: press Shift, and the places you can go speak up for themselves.)*
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v4.2-medock-warp.png" alt="Me DockⓉ Warp - hold and release Shift, the tile with the red dot magnifies for 1.2 seconds, then type M twice to warp to the M mark, or E twice to put a new mark there" width="60%"><br>
