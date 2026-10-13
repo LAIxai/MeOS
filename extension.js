@@ -7140,6 +7140,35 @@ function meosDiaryHereMembrane(ed) {
   for (let i = pair.start; i <= e; i++) lines.push(doc.lineAt(i).text);
   return { id: pair.id, lines };
 }
+// ★v5.0.0-24(俊克 改良1「Ⓣdayの日と曜日は、日記の膜の中にいる時はその日付と曜日を表示。中に含まれる膜の中にいても何日の膜か分かるように」):
+//   カーソルを含む膜のうち、日付の名前を持つ一番内側の膜の日付を Me Dock へ(変わった時だけ・選択は150ms待って1回)。外なら null= 今日を出す
+let _meosCaretDayKey = null, _meosCaretDayT = null, _meosCaretDayPanel = null;
+function meosDiaryDayAtCaret(ed) {
+  try {
+    if (!ed || !ed.document || ed.document.languageId !== 'markdown') return null;
+    const st = collectMembraneStructure(ed.document), cur = ed.selection.active.line, last = ed.document.lineCount - 1;
+    let best = null, bestLen = Infinity;
+    const look = (id, a, b) => { if (a <= cur && cur <= b && (b - a) < bestLen) { const d = parseDiaryDateFromName(id); if (d) { best = d; bestLen = b - a; } } };
+    for (const p of st.pairs) look(p.id, p.start, p.end);
+    for (const o of st.unclosedOpens) look(o.id, o.start, last);
+    return best ? { y: best.y, mo: best.mo, d: best.d } : null;
+  } catch (_) { return null; }
+}
+function meosPostCaretDay(now) {
+  clearTimeout(_meosCaretDayT);
+  const go = () => {
+    try {
+      if (!meDockPanel) return;
+      const ed = vscode.window.activeTextEditor;
+      if (!ed) return;   // Me Dock に焦点がある間は前の日付のまま
+      const d = meosDiaryDayAtCaret(ed), key = d ? (d.y * 10000 + d.mo * 100 + d.d) : 0;
+      if (key === _meosCaretDayKey && _meosCaretDayPanel === meDockPanel) return;
+      _meosCaretDayKey = key; _meosCaretDayPanel = meDockPanel;
+      meDockPanel.webview.postMessage({ type: 'dwCaretDay', d });
+    } catch (_) { }
+  };
+  if (now) go(); else _meosCaretDayT = setTimeout(go, 150);
+}
 function meosDiaryTplHist() { try { const a = extensionContext.globalState.get('meosDiaryTplHist'); return Array.isArray(a) ? a.filter(t => t && t.id && Array.isArray(t.lines)).slice(0, 5) : []; } catch (_) { return []; } }
 function meosPostDiaryTplState() {
   try {
@@ -29881,9 +29910,9 @@ window.__dwRenderScope=function(){var b=document.getElementById('dw-scope');if(!
 if(dial)dial.classList.remove('dw-dial-off');if(window.__dwSearch!=null){var q=window.__dwSearch;b.textContent=(q.length>14?(q.slice(0,14)+'…'):q);
 b.style.background='#0f766e';b.removeAttribute('title');
 b.classList.add('dw-editable');if(dial)dial.classList.add('dw-dial-off');return;}if(i===0){var bd=window.__dwBaseDate;if(bd){b.innerHTML=_dwDayHtml({y:bd.y||_dwToday().y,mo:bd.mo,d:bd.d});
-/* v2.0.41(俊克): 基準年が今年と違う時はラベルに年を出す(6/19 2025)=年が保存されている事を可視化。 */}else{b.innerHTML=_dwDayHtml(_dwToday());/* v2.0.40(俊克): Ⓣday。丸Ⓣの○が"o"を兼ねる=Ⓣ=To=to-dayの語源→Ⓣ+day=Today。「分るかなー分んねーだろうーな」の粋。 */}b.style.background=_dwColors[0];
+/* v2.0.41(俊克): 基準年が今年と違う時はラベルに年を出す(6/19 2025)=年が保存されている事を可視化。 */}else{b.innerHTML=_dwDayHtml(window.__dwCaretDay||_dwToday());/* v5.0.0-24: 日記の膜の中にいる時はその日 *//* v2.0.40(俊克): Ⓣday。丸Ⓣの○が"o"を兼ねる=Ⓣ=To=to-dayの語源→Ⓣ+day=Today。「分るかなー分んねーだろうーな」の粋。 */}b.style.background=_dwColors[0];
 b.removeAttribute('title');/* v4.2.777-19(俊克「tipは年のところだけ。うっとうしい」) / v4.2.777-23(俊克「拡大した↻のtipが箱を覆って邪魔」): ↻とNの tip も外した(箱の中の tip は年の札だけ) */b.classList.add('dw-editable');_dwVars(b);}else{b.innerHTML='<span class="dw-lbl">'+_dwLabels[i]+'</span>';b.style.background=_dwColors[i];b.removeAttribute('title');
-}_dwVars(b);};window.__dwRenderScope();
+}_dwVars(b);};window.__dwRenderScope();try{vscode.postMessage({type:'dwCaretDayAsk'});}catch(e){}/* v5.0.0-24: 開き直した Me Dock にも日記の膜の日付を */
 /* v2.0.45(俊克): 固定幅=スコープ名(Ⓣday/Week/Month/Year)に加え、現在の基準ラベル(日付「6/26 2025」/検索語)の幅も含めた最大に。基準を変えた瞬間に測り直し(_dwRelock)→長い日付基準でも↻巡回で不動。__dwRenderScopeが毎回__dwScopeMinWを再適用(v2.0.44)。 */
 function _dwRelock(){var b=document.getElementById('dw-scope');if(!b)return;var save=b.innerHTML;window.__dwScopeMinW=0;
 b.style.minWidth='';var mw=0,htmls=[_dwDayHtml({y:2026,mo:12,d:28}),'Week','Month','Year'];for(var k=0;k<htmls.length;k++){b.innerHTML=htmls[k];
@@ -32473,6 +32502,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
+if(m&&m.type==='dwCaretDay'){/* v5.0.0-24: 日記の膜の中= その日付・外= 今日 */window.__dwCaretDay=(m.d&&m.d.mo)?m.d:null;try{window.__dwRenderScope();}catch(e){}return;}
 if(m&&m.type==='mdArm'){const _r=document.getElementById('md-tiles');if(_r){_r.classList.toggle('md-armed',!!m.on);
 /* v4.2.776-31(俊克 改良1「登録したtipも表示しよう」): 構えている間、赤い点の字の説明(F の印の // の後ろ= data-tip)を、その字の下に Me Dock の tip と同じ姿で出す */
 let _at=document.getElementById('md-armtip');const _lt=_r.querySelector('.md-tile.md-last'),_tx=_lt?(_lt.getAttribute('data-tip')||''):'';/* v4.2.776-35(俊克 バグ1「Ⓣだけtipが出てこない」): Ⓣも出す(Today / Ⓣ-Comet など化けた名前) */
@@ -34343,6 +34373,7 @@ function toggleMeDock(editorOverride) {
     }
     if (message && message.type === 'diaryMode') { try { await extensionContext.globalState.update('meosDiaryMode', Math.max(0, Math.min(3, Number(message.mode) || 0))); } catch (_) { } meosPostDiaryMode(); return; }   // v4.2.777-3
     if (message && message.type === 'diaryTplAsk') { meosPostDiaryTplState(); return; }   // v4.2.777-5
+    if (message && message.type === 'dwCaretDayAsk') { _meosCaretDayKey = null; meosPostCaretDay(true); return; }   // v5.0.0-24
     if (message && message.type === 'diaryTplSet') { await meosDiaryTplSet(message); return; }   // v4.2.777-5
     if (message && message.type === 'diaryTplMenu') { await meosDiaryTplMenu(getMeDockTargetEditor() || vscode.window.activeTextEditor); return; }   // v4.2.777-3
     if (message && message.type === 'warpToDate') { meosWarpToDate(message); return; }   // v4.2.777-1: 中身は meosWarpToDate へ(Me Dock が無い時の Ⓣ も使う)
@@ -41240,6 +41271,8 @@ function activate(context) {
   //     代わりに**クリック(=カーソルが動いた時)にも初回の自動折り畳みを試す**= 俊克が実際にやった操作をそのまま合図にする。
   //     済んでいれば即returnするso何度呼ばれても無駄は無い。
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { if (_meosCaretProbing) return; try { meosPuzzleCrownAtCaret(e); } catch (_) { } }));   // v4.2.563
+  context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(() => { if (_meosCaretProbing) return; meosPostCaretDay(false); }));   // v5.0.0-24: Ⓣdayに日記の膜の日付
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => meosPostCaretDay(false)));
   context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
     if (_meosCaretProbing) return; 
     // ★v4.0.396: ここは v4.0.141 の「入れ直した直後、人が最初にクリックした時に1回だけ畳む」ための道。
