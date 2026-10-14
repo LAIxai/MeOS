@@ -13658,7 +13658,7 @@ function meosMenuBarClockItems() {
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
       const _ld = meosIsLaunchDKey(r.sc.key);   // v5.0.0-62(俊克「Wakeタイマーも、通常のタイマーと同じようにメニューバーの中に順番通りに・残り時間も」): 頭は🌅・名前は Wake
-      out.push({ id: 'go:' + go.length, title: (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosChainFillSlot(r.sc.title, 0, r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
+      out.push({ id: 'go:' + go.length, title: (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosChainFillSlot(r.sc.title, 0, r.sc).split(MEOS_APPLE).join(r.until - Date.now() <= MEOS_APPLE_RIPE_MS ? MEOS_APPLE_RIPE : MEOS_APPLE) : '') : nm) });   // v4.2.316: ⚓も一覧に
       go.push(r.sc);
     }
   } catch (_) { }
@@ -13951,7 +13951,7 @@ async function meosGoBackFromAlarm() {
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosClockShipDeco = null, meosClockMoorDeco = null, meosClockLockedDeco = null;   // ★v4.2.314: 🚢💨/⚓ の区画
 let meosClockLockDeco = null, meosClockNoPressDeco = null;   // ★v4.2.236: 🔓の駒
-let meosClockSunDeco = null;   // v5.0.0-58: 🌅LaunchD の⏰を🌅に見せる
+let meosClockSunDeco = null, meosClockRipeDeco = null;   // v5.0.0-64: 🍏→🍎   // v5.0.0-58: 🌅LaunchD の⏰を🌅に見せる
 let meosClockPlayDeco = null;   // ★v4.2.74: 運転ボタンの当たり= 手の形(cursor:pointer)
 let meosClockTitleDeco = null;  // ★v4.2.173: 走っている1本のタイトル(待っている⏰のタイトルは畳む)
 let meosTimerLineDeco = null;
@@ -14194,6 +14194,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     };
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
     const suns = [];   // ★v5.0.0-58: 🌅LaunchD の⏰を🌅に見せる(字は⏰のまま)
+    const ripes = [];   // ★v5.0.0-64: 起動の12時間前から🍏を🍎に見せる
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
     const shipBtns = [], moorBtns = [], shipLBtns = [], moorLBtns = [], lockedBtns = [];   // v4.2.339: 🔐も駒の右へ   // ★v4.2.314: 同じ空白1字の左の区画= 🚢💨(飛ぶ) / ⚓(停泊)。v4.2.318: 🔓と並ぶ時(L)と1人の時で幅を変える
     const noPress = [];   // ★v4.2.237: 錠の間の運転ボタン= ↖
@@ -14650,6 +14651,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _run65 = meosClockLineRunning(doc, owner ? owner.id : '', i);
               // ★★★v4.2.74: 駒そのものto、その当たり(0桁〜⏰)の両方に**手の形**を当てる=
               //   押せる所の上でだけ形that変わる。吹き出しは出さない(何も覆わない)。
+              if (owner && meosIsLaunchDKey(owner.id)) { const _ap = txt.indexOf(MEOS_APPLE), _u64 = _meosPseudoUntil.get(uri + ' ' + owner.id);
+                if (_ap >= 0 && _u64 && _u64 - Date.now() <= MEOS_APPLE_RIPE_MS) ripes.push({ range: new vscode.Range(i, _ap, i, _ap + 2) }); }
               if (owner && meosIsLaunchDKey(owner.id)) suns.push({ range: new vscode.Range(i, _a65, i, _a65 + 1 + ((txt.charCodeAt(_a65 + 1) === 0xfe0f) ? 1 : 0)) });   // v5.0.0-58
               plays.push({ range: new vscode.Range(i, _a65, i, _a65),
                 renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
@@ -14993,6 +14996,9 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     if (!meosClockSunDeco) { const _fs58 = Number(vscode.workspace.getConfiguration('editor').get('fontSize')) || 14;
       meosClockSunDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0px;', before: { contentText: '\ud83c\udf05', textDecoration: 'none; font-size: ' + _fs58 + 'px;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); }
     editor.setDecorations(meosClockSunDeco, suns);
+    if (!meosClockRipeDeco) { const _fs64 = Number(vscode.workspace.getConfiguration('editor').get('fontSize')) || 14;
+      meosClockRipeDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0px;', before: { contentText: MEOS_APPLE_RIPE, textDecoration: 'none; font-size: ' + _fs64 + 'px;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); }
+    editor.setDecorations(meosClockRipeDeco, ripes);
     // ★v4.2.314: 駒の幅は左の区画(🚢💨/⚓)が持つ。🔓は右の区画へ after で置く(駒の右端から戻す)。
     // ★★v4.2.318(俊克 改良1「なぜか🚢💨の後ろが大きく空間が空く」): 幅を1つ(8ch)にしていた= 🔐で🔓が立たない行でも、⚓でも同じ広さが残った。
     //   → 駒の幅は**中に入る物で決める**4通り。左右の区画の境(字の箱の真ん中)は、🚢💨/⚓と🔓の間に来るように置く。
@@ -20941,10 +20947,12 @@ async function meosLaunchDOpen() {
 // ★v5.0.0-63(俊克 pm09:22 改良1「パスワードを設定した時に、その印を…タイマーFCのコメントの最後に印を入れよう。最初気づかずに、テストして、自動起動しなくて、再テストした」):
 //   🍎= この1本が macOS の起動の予定に入っている。時計の行の `//` の末尾(タイトルの欄= 書き直しでも運ばれる・一覧にも出る)。
 //   ★印は覚えでなく突き合わせ: macOS(pmset)を読むたびに、走っている1本が macOS と同じなら付け、違えば外す(ターミナルで消しても嘘にならない)。
-const MEOS_APPLE = '🍎';
+// ★v5.0.0-64(俊克 pm09:37「🍏と🍎を使い分けると面白い…それ以前は🍏」→ pm09:44「12時間サイクル」): 本文に書くのは🍏(macOS に入っている事実)だけ。
+//   起動の12時間前からは画面とメニューで🍎に熟して見せる(見せかけ= 本文を時刻で書き替えない・保存していない印を毎日付けない)。
+const MEOS_APPLE = '🍏', MEOS_APPLE_RIPE = '🍎', MEOS_APPLE_RIPE_MS = 12 * 3600000;
 function meosLaunchDMarkText(t, on) {
   const m = /^(.*?)(\s*-->)\s*$/.exec(String(t || '')); if (!m || m[1].indexOf('<!--') < 0) return t;
-  let body = m[1].replace(/\s*🍎/g, '');
+  let body = m[1].replace(/\s*(?:🍎|🍏)/g, '');   // -63 の🍎も🍏も外してから
   if (/\/\/\s*$/.test(body)) body = body.replace(/\s*\/\/\s*$/, '');
   if (on) body += (body.indexOf('//') >= 0 ? ' ' : ' // ') + MEOS_APPLE;
   return body + m[2];
