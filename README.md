@@ -213,6 +213,10 @@ change the wrap width this directly.
   Yesterday's membrane steps back from red to brown; only today is red. *Writing past midnight? Just write
   wherever Ⓣ takes you — today's diary starts as a copy of yesterday's, so anything you meant for yesterday can be
   pasted back later.*
+- **The day button shows the day you are in** — Ⓣday, now the day button, shows the date and weekday of the
+  diary your caret is in. Reading back through October 11th, it says **11S**; inside nested membranes, the
+  innermost diary wins; step outside every diary and it is today again. A small thing — and the one we glance at
+  most while scrolling back through a lifelong diary.
 - **Only the panels scroll** — the title row, **Format Me** and the **Timed Me-System** / **Hyper TOC** row stay
   put while you scroll; only the ⏰ box and the Hyper TOC list underneath move, so your clocks are always in the
   same place. Open either list and Me Dock widens to the width you last dragged it to for that list; close it, and
@@ -259,7 +263,7 @@ change the wrap width this directly.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo, the pointer switched to the 22.5° Mickey hand, the bell button set to GLD-KNIGHT, the Me Dock title tiles, the Today button opened to 2026 10 11S with the three-legged crow, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
-  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And top right, <b>11S</b> with its guardian: the 11th, a Sunday — the day of the sun, guarded by <b>Yatagarasu</b>, the three-legged crow of the sun. The crow emoji has only two legs, so this one is drawn for MeOS: its third leg is a hand, pointing up at the sky. The other six days keep their emoji guardians — the Jade Rabbit of the moon, and the Vermilion Bird, Black Tortoise, Azure Dragon, White Tiger and Yellow Dragon of the Five Elements.</sub>
+  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And top right, <b>11S</b> with its guardian: the caret sits in the diary of the 11th, so the day button says the 11th, a Sunday — the day of the sun, guarded by <b>Yatagarasu</b>, the three-legged crow of the sun. The crow emoji has only two legs, so this one is drawn for MeOS: its third leg is a hand, pointing up at the sky. The other six days keep their emoji guardians — the Jade Rabbit of the moon, and the Vermilion Bird, Black Tortoise, Azure Dragon, White Tiger and Yellow Dragon of the Five Elements.</sub>
 </p>
 
 <p align="center">
