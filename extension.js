@@ -24111,7 +24111,15 @@ function updateMeDockCurrentLineMarker() {
     editor.setDecorations(hov, []);
   } else {
     editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
-    if (md) editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, 0, pos.line, Math.max(1, eol)), hoverMessage: md }]);
+    // ★v5.0.0-37(俊克 -35テスト 改良2「tipが以前から邪魔臭い…折り返された行のときは、その行を塞がないように」→ 09:11「膜名の最初の文字の上だけに出すようにしよう。
+    //   そうすれば、当初のガター用のtipの意味でも整合性が取れ、その行を塞ぐこともない」): v0.9.950 の「行全体」をやめ、1文字だけに載せる。
+    //   膜の行= 膜名の1文字目(idStart)/ それ以外の行= 行の1文字目。絵文字(サロゲート対)は1字ぶん(2桁)取る。
+    let _hs = 0;
+    try { const _mi = membraneLineInfo(editor.document, pos.line); if (_mi) _hs = _mi.idStart; } catch (_) { }
+    const _ltx = editor.document.lineAt(pos.line).text;
+    const _cp = _ltx.codePointAt(_hs);
+    const _he = Math.min(eol, _hs + ((_cp !== undefined && _cp > 0xffff) ? 2 : 1));
+    if (md) editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, _hs, pos.line, Math.max(_hs + 1, _he)), hoverMessage: md }]);
     else editor.setDecorations(hov, []);
   }
 }
