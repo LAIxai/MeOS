@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-58) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-59) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -218,11 +218,7 @@ function run(argv) {
   };
   // ★v5.0.0-58(俊克 pm07:23〜08:00「これもテキストデータにしよう… 膜名 🌅LaunchD_TS」): 起動の予定を決めるのは本文の 🌅LaunchD の膜(▶️で入る)。
   //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
-  const wakeEntries = () => {
-    const sub = [{ title: 'Now: ' + (wake ? (wake.days ? 'start up at ' + wake.hm + ', ' + dayLabel(wake.days) : wake.raw) : 'not set'), off: true }, { sep: true },
-      { title: 'Set it in a 🌅LaunchD membrane — press ▶️ on a line', off: true }];
-    return [{ title: '🌅 Wake   ' + wakeLabel(), sub }, { sep: true }];
-  };
+  const wakeEntries = () => [{ id: 'launchd', title: '\ud83c\udf05 Wake   ' + wakeLabel() }, { sep: true }];   // v5.0.0-59: 押すと 🌅LaunchD の膜へ(他の時計の行と同じ)
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける

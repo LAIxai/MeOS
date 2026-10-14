@@ -13553,6 +13553,7 @@ function meosMenuBarPick(id) {
     if (id === 'list') { vscode.commands.executeCommand('lai-membrane.pseudoTimer'); return; }
     if (id === 'helper') { const c = vscode.workspace.getConfiguration('laiMembrane'); c.update('menuBarHelper', !c.get('menuBarHelper', false), vscode.ConfigurationTarget.Global); return; }   // v4.2.311 改良2
     if (id === 'tags') { meosOpenTagGo(); return; }
+    if (id === 'launchd') { meosLaunchDOpen(); return; }   // v5.0.0-59: メニューバーの 🌅 Wake
     if (id === 'quitvhelper' || id === 'quithelper') { meosVHelperSet(false); return; }   // v4.2.364
     if (id === 'quitapp') { vscode.commands.executeCommand('workbench.action.quit'); return; }   // v4.2.363: Dock の「終了」と同じ(ヘルパーは残る)
     if (id === 'quitbar') {   // v4.2.348: このアプリのメニューバーの⏰を降ろす(設定 menuBarClock を切る= 次に開いても出ない)
@@ -20902,6 +20903,37 @@ function meosLaunchDReadMac() {
     res(null);
   }); } catch (_) { res(undefined); } });
 }
+function meosLaunchDSample(id) {
+  return ['<!-- {* \u25bcmCN=' + id + ' // Mac start-up \u2014 press \u25b6\ufe0f on one line below (macOS asks for your password) *} -->',
+    'Only one line runs at a time. Edit the days and the time, then press \u25b6\ufe0f again.',
+    'Days: S M T W t F s = Sun Mon Tue Wed Thu Fri Sat.',
+    '<!-- {* \u25b2mCN=' + id + ' *} -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baMTWtF 06:30 // weekdays -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21basS 08:00 // weekends -->',
+    '<!-- Mew!UFC \u23f0\u23f8 \u21baSMTWtFs 07:00 // every day -->', ''].join('\n');
+}
+function meosLaunchDNewest() {
+  let newest = null;
+  for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
+    try { for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!newest || ts > newest.ts) newest = { doc: d, id: p.id, ts }; } } catch (_) { } }
+  return newest;
+}
+// ★v5.0.0-59(俊克 pm08:14 改良1「他のタイマー設定と同様に、メニューをクリックすると、設定している膜にワープ。初期膜は、メタ膜の近くに配置」):
+//   メニューバーの 🌅 Wake を押した= 効いている(TS が一番新しい)🌅LaunchD へ。無ければ、今の md のメタ膜の直後(指定行の下)に見本を置いてから行く。
+async function meosLaunchDOpen() {
+  try {
+    const nw = meosLaunchDNewest();
+    if (nw) { await meosJumpToScope({ uri: nw.doc.uri.toString(), key: nw.id }); return; }
+    const ed = vscode.window.activeTextEditor;
+    if (!ed || !isMarkdownDocument(ed.document)) { vscode.window.showInformationMessage('\ud83c\udf05 Open a Markdown file (your diary) first \u2014 the \ud83c\udf05LaunchD membrane is placed there.'); return; }
+    const doc = ed.document, id = '\ud83c\udf05LaunchD_' + meosMembraneStamp(new Date());
+    let at = 0;
+    try { const mp = collectPairs(doc, { excludeIndex: false }).find(p => isMetaMembraneId(p.id));
+      if (mp) { at = mp.end + 1; while (at < doc.lineCount && meosIsSpecLine(doc.lineAt(at).text || '')) at++; } } catch (_) { }
+    await ed.edit(b => b.insert(new vscode.Position(at, 0), (at > 0 ? '\n' : '') + meosLaunchDSample(id)));
+    await meosJumpToScope({ uri: doc.uri.toString(), key: id });
+  } catch (e) { meosDbg('[launchd] open ' + e); }
+}
 let _meosLaunchDT = null, _meosLaunchDBusy = false;
 // ▶️/⏸ を人が押した後だけ呼ぶ(時刻が来て時計が回る時には呼ばない= 勝手にパスワード欄を出さない)
 function meosLaunchDKick(doc, key) { if (!meosIsLaunchDKey(key)) return; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { meosLaunchDReconcile(doc, key); }, 400); }
@@ -20911,8 +20943,7 @@ async function meosLaunchDReconcile(doc, key) {
   if (_meosLaunchDBusy) return;
   // 一番新しい 🌅LaunchD(開いている md の中で)
   let newest = null;
-  for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
-    try { for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!newest || ts > newest.ts) newest = { doc: d, id: p.id, ts }; } } catch (_) { } }
+  newest = meosLaunchDNewest();
   if (newest && (newest.id !== key || newest.doc !== doc)) { say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
   const run = meosClockFcScan(doc).filter(x => x.key === key && x.ufc && !x.off && !x.done)[0] || null;
   const want = run ? meosLaunchDSpec(run) : null;
@@ -41934,14 +41965,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.newLaunchD', async () => {
     const ed = vscode.window.activeTextEditor; if (!ed) { vscode.window.showInformationMessage('MeOS: open a Markdown file first.'); return; }
     const id = '🌅LaunchD_' + meosMembraneStamp(new Date());
-    const t = [
-      '<!-- {* ▼mCN=' + id + ' // Mac start-up — press ▶️ on one line below (macOS asks for your password) *} -->',
-      'Only one line runs at a time. Edit the days and the time, then press ▶️ again.',
-      'Days: S M T W t F s = Sun Mon Tue Wed Thu Fri Sat.',
-      '<!-- {* ▲mCN=' + id + ' *} -->',
-      '<!-- Mew!UFC ⏰⏸ ↺MTWtF 06:30 // weekdays -->',
-      '<!-- Mew!UFC ⏰⏸ ↺sS 08:00 // weekends -->',
-      '<!-- Mew!UFC ⏰⏸ ↺SMTWtFs 07:00 // every day -->', ''].join('\n');
+    const t = meosLaunchDSample(id);
     const ln = ed.selection.active.line;
     await ed.edit(b => b.insert(new vscode.Position(ln, 0), t));
   }));
