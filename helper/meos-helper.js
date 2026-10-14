@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-49) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-50) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -103,7 +103,7 @@ function run(argv) {
     }
     return w;
   };
-  const readWake = () => { if (wakeRead) return; wakeReadAt = Date.now(); try { wakeRead = task(['pmset', '-g', 'sched']); } catch (e) { wakeRead = null; } };
+  const readWake = () => { if (wakeRead) return; wakeReadAt = Date.now(); try { loadPresets(); } catch (e) {} try { wakeRead = task(['pmset', '-g', 'sched']); } catch (e) { wakeRead = null; } };
   const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (WAKE_DAYS[wake.days] || wake.raw));
   const asq = (x) => String(x).replace(/["\\]/g, '');   // AppleScript の "…" に入れる字(決まった字しか来ないが念のため)
   const setWake = (days, hm) => {
@@ -113,33 +113,51 @@ function run(argv) {
   };
   const offWake = () => { if (wakeJob) return;
     wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat cancel" with administrator privileges with prompt "MeOS V-helper will turn off the daily start-up of your Mac."']), { kind: 'off' }); };
-  const askWakeTime = (days) => { if (wakeJob || !WAKE_DAYS[days]) return;
-    wakeJob = Object.assign(task(['osascript', '-e', 'text returned of (display dialog "Start-up time, ' + WAKE_DAYS[days] + ' (24-hour, HH:MM)" default answer "' + asq((wake && wake.hm) || '06:30')
+  const askWakeTime = (days) => { if (wakeJob || !WAKE_DAYS[days]) return;   // v5.0.0-50: 既定値はその種類の覚えた時刻
+    wakeJob = Object.assign(task(['osascript', '-e', 'text returned of (display dialog "Start-up time, ' + WAKE_DAYS[days] + ' (24-hour, HH:MM)" default answer "' + asq(presets[days] || '06:30')
       + '" buttons {"Cancel", "Set"} default button "Set" with title "MeOS - Wake")']), { kind: 'ask', days }); };
   // 0.5秒の見回りで、終わった仕事を片付ける(待たない)
   const wakePoll = () => {
-    if (wakeRead && !wakeRead.t.isRunning) { const o = taskOut(wakeRead); wakeRead = null; const w = parseWake(o); if (JSON.stringify(w) !== JSON.stringify(wake)) { wake = w; lastMenu = null; } }
+    if (wakeRead && !wakeRead.t.isRunning) { const o = taskOut(wakeRead); wakeRead = null; const w = parseWake(o); if (JSON.stringify(w) !== JSON.stringify(wake)) { wake = w; lastMenu = null; }
+      if (w && WAKE_DAYS[w.days] && w.hm && presets[w.days] !== w.hm) { presets[w.days] = w.hm; savePresets(); lastMenu = null; } }   // v5.0.0-50: 効いている物は macOS が正
     if (wakeJob && !wakeJob.t.isRunning) { const j = wakeJob; wakeJob = null; const rc = j.t.terminationStatus, o = taskOut(j);
-      if (j.kind === 'ask') { const t = String(o).trim().replace(/^(\d):/, '0$1:'); if (rc === 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) setWake(j.days, t); else if (rc === 0) hlog('wake: 時刻の形が違う ' + t); }
+      if (j.kind === 'ask') { const t = String(o).trim().replace(/^(\d):/, '0$1:'); if (rc === 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) presetTime(j.days, t); else if (rc === 0) hlog('wake: 時刻の形が違う ' + t); }
       else { hlog('wake: ' + j.kind + (j.days ? ' ' + j.days + ' ' + j.hm : '') + (rc === 0 ? ' ok' : ' 取りやめ/失敗 rc=' + rc)); readWake(); } }
     if (!wakeRead && (!wakeReadAt || Date.now() - wakeReadAt > 30000)) readWake();
   };
+  // ★v5.0.0-50(俊克 -49テスト 改良1「切り替える時、一々時刻を選び直すのが面倒。設定値を3つ予め設定しておき、どれかに切り替えた時にpasswordを要求」):
+  //   3つの時刻(毎日/平日/週末)は V-helper が覚える(wake-presets.json・VSCodium と本家の2人で共有)。macOS に入るのは選んだ1つだけ。
+  //   ★時刻を変えるだけならパスワード不要(覚え直すだけ)。今効いている物の時刻を変えた時と、切り替えた時だけ macOS へ入れる(パスワード)。
+  //   ★今効いている物の時刻は macOS の答えが正= 読むたびに覚えの方を合わせる(突き合わせ)。
+  const presetPath = sharedDir + '/wake-presets.json';
+  let presets = { MTWRFSU: '06:30', MTWRF: '06:30', SU: '08:00' };
+  const loadPresets = () => { try { const x = $.NSString.stringWithContentsOfFileEncodingError(presetPath, $.NSUTF8StringEncoding, null);
+    if (x && !x.isNil()) { const o = JSON.parse(ObjC.unwrap(x)); for (const k in WAKE_DAYS) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(o[k] || '') && presets[k] !== o[k]) { presets[k] = o[k]; try { lastMenu = null; } catch (e2) {} } } } catch (e) {} };   // 起動の最初は lastMenu がまだ無い(let の手前)
+  loadPresets();   // 30秒ごとの読み直しでも呼ぶ= もう1人(VSCodium/本家)が覚え直した時刻も揃う
+  const savePresets = () => { try { $(JSON.stringify(presets)).writeToFileAtomicallyEncodingError(presetPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} };
+  const presetTime = (days, hm) => {   // 時刻を覚え直す。今効いている物なら macOS にも入れる
+    if (!WAKE_DAYS[days] || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;
+    presets[days] = hm; savePresets(); lastMenu = null;
+    if (wake && wake.days === days && wake.hm !== hm) setWake(days, hm);
+  };
   const wakeEntries = () => {
-    const cur = wake ? wake.days + ' ' + wake.hm : '';
-    const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:' + days + ':' + t, title: t, check: cur === days + ' ' + t }))
-      .concat([{ sep: true }, { id: 'h:wk:' + days + ':ask', title: 'Other time\u2026' }]);
+    const _pad = (t) => t + '  ';
+    const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:t:' + days + ':' + t, title: t, check: presets[days] === t }))
+      .concat([{ sep: true }, { id: 'h:wk:t:' + days + ':ask', title: 'Other time…' }]);
+    const use = (days, name) => ({ id: 'h:wk:use:' + days, title: _pad(name) + presets[days], check: !!(wake && wake.days === days) });
     const sub = [{ title: 'Now: ' + (wake ? wake.raw : 'not set'), off: true }, { sep: true },
-      { title: 'Every day at', sub: times('MTWRFSU') }, { title: 'Weekdays at', sub: times('MTWRF') }, { title: 'Weekends at', sub: times('SU') },
-      { title: '(one schedule at a time \u2014 a new choice replaces the old)', off: true }];   // pmset の毎週の起動は1つだけ
+      use('MTWRFSU', 'Every day'), use('MTWRF', 'Weekdays'), use('SU', 'Weekends'),
+      { title: '(one at a time — switching asks for your password)', off: true }, { sep: true },
+      { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: times('MTWRF') }, { title: 'Weekends', sub: times('SU') }] }];
     if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
-    return [{ title: '\ud83c\udf05 Wake   ' + wakeLabel(), sub }, { sep: true }];
+    return [{ title: '🌅 Wake   ' + wakeLabel(), sub }, { sep: true }];
   };
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
-      if (id.indexOf('h:wk:') === 0) { const q = /^h:wk:([A-Z]+)(?::(.+))?$/.exec(id) || [];   // v5.0.0-47: 🌅 Wake / v5.0.0-48(俊克 バグ「7:00をクリックしても変更できない」): ':' で切ると 07:00 の中の ':' でも切れて時刻が「07」になっていた→ 曜日の後ろは丸ごと時刻
-        if (id === 'h:wk:off') offWake(); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) setWake(q[1], q[2]); lastMenu = null; return; }
+      if (id.indexOf('h:wk:') === 0) { const u = /^h:wk:use:([A-Z]+)$/.exec(id), q = /^h:wk:t:([A-Z]+):(.+)$/.exec(id) || [];   // v5.0.0-50: use= 切り替え / t= 時刻を覚える   // v5.0.0-47: 🌅 Wake / v5.0.0-48(俊克 バグ「7:00をクリックしても変更できない」): ':' で切ると 07:00 の中の ':' でも切れて時刻が「07」になっていた→ 曜日の後ろは丸ごと時刻
+        if (id === 'h:wk:off') offWake(); else if (u) setWake(u[1], presets[u[1]]); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) presetTime(q[1], q[2]); lastMenu = null; return; }
       if (id === 'h:open') { openApp(); return; }
       // ★v4.2.363(俊克「helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする」): 閉じている間に降ろす口。
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
