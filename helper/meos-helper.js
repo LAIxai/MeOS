@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-47) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-48) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -80,7 +80,7 @@ function run(argv) {
   //   ★読むのはパスワード不要。決める/外す時だけ macOS 本物の管理者パスワード欄(do shell script … with administrator privileges)= MeOS はパスワードに触れない。
   //   ★起動だけ(切る/眠らせるは出さない= 保存していない作業ごと切れるため。要る人が出たら pmset repeat の2つ目の枠として足す)
   const sa = Application.currentApplication(); sa.includeStandardAdditions = true;
-  const WAKE_DAYS = { MTWRFSU: 'every day', MTWRF: 'weekdays' };
+  const WAKE_DAYS = { MTWRFSU: 'every day', MTWRF: 'weekdays', SU: 'weekends' };   // v5.0.0-48(俊克「Weekdayがあるなら、Weekendがあって当然」): pmset の S=土 U=日
   const WAKE_TIMES = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00'];
   let wake = null, wakeReadAt = 0;   // {days:'MTWRFSU'|'MTWRF'|'', hm:'06:30'|'', raw:'…'} / null= 予定なし
   const readWake = () => {
@@ -95,7 +95,7 @@ function run(argv) {
         const raw = ln.trim(), m = /at\s+(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(raw);
         let hm = '';
         if (m) { let h = parseInt(m[1], 10); if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } hm = (h < 10 ? '0' : '') + h + ':' + m[2]; }
-        const days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : '');
+        const days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : (/weekends/i.test(raw) ? 'SU' : ''));
         wake = { days, hm, raw }; break;
       }
     } catch (e) { hlog('wake: pmset -g sched を読めない ' + e); }
@@ -130,7 +130,8 @@ function run(argv) {
     const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:' + days + ':' + t, title: t, check: cur === days + ' ' + t }))
       .concat([{ sep: true }, { id: 'h:wk:' + days + ':ask', title: 'Other time\u2026' }]);
     const sub = [{ title: 'Now: ' + (wake ? wake.raw : 'not set'), off: true }, { sep: true },
-      { title: 'Every day at', sub: times('MTWRFSU') }, { title: 'Weekdays at', sub: times('MTWRF') }];
+      { title: 'Every day at', sub: times('MTWRFSU') }, { title: 'Weekdays at', sub: times('MTWRF') }, { title: 'Weekends at', sub: times('SU') },
+      { title: '(one schedule at a time \u2014 a new choice replaces the old)', off: true }];   // pmset の毎週の起動は1つだけ
     if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
     return [{ title: '\ud83c\udf05 Wake   ' + wakeLabel(), sub }, { sep: true }];
   };
@@ -138,8 +139,8 @@ function run(argv) {
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
-      if (id.indexOf('h:wk:') === 0) { const q = id.slice(5).split(':');   // v5.0.0-47: 🌅 Wake
-        if (q[0] === 'off') offWake(); else if (q[1] === 'ask') askWakeTime(q[0]); else setWake(q[0], q[1]); lastMenu = null; return; }
+      if (id.indexOf('h:wk:') === 0) { const q = /^h:wk:([A-Z]+)(?::(.+))?$/.exec(id) || [];   // v5.0.0-47: 🌅 Wake / v5.0.0-48(俊克 バグ「7:00をクリックしても変更できない」): ':' で切ると 07:00 の中の ':' でも切れて時刻が「07」になっていた→ 曜日の後ろは丸ごと時刻
+        if (id === 'h:wk:off') offWake(); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) setWake(q[1], q[2]); lastMenu = null; return; }
       if (id === 'h:open') { openApp(); return; }
       // ★v4.2.363(俊克「helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする」): 閉じている間に降ろす口。
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
