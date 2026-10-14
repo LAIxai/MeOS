@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-59) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-62) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -326,7 +326,7 @@ function run(argv) {
       }
       // ★v4.2.557(俊克 改良1「秒の部分だけ色を付けようか? スクショを見ても違いがよく分る」): 秒まで動くのは次の1本だけ(v4.2.556)= その .SS を橙に。
       //   「:58」でなく「.58」のカワシマ式だから、分までの行と並べても桁が崩れず、色の付いた所だけが動く
-      if (!e.pill && !e.sub && e.title && /^\u23f0/.test(e.title)) { try {
+      if (!e.pill && !e.sub && e.title && /^(\u23f0|\ud83c\udf05)/.test(e.title)) { try {   // v5.0.0-62: 🌅 の行も秒を赤く
         let a;
         if (/\u2693/.test(e.title) && mi.attributedTitle && mi.attributedTitle.length > 0) a = mi.attributedTitle.mutableCopy;   /* v4.2.690(俊克 バグ1「⚓指定のものが秒が赤くならない」): initWithAttributedString は JXA で使えず毎回エラー(握りつぶし)= ⚓ の行だけ色が付かなかった→ mutableCopy */
         else { a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(e.title)); a.addAttributeValueRange($.NSFontAttributeName, $.NSFont.menuFontOfSize(0), $.NSMakeRange(0, a.length)); }
@@ -387,7 +387,8 @@ function run(argv) {
   function show(text, menu, anchor) {
     const idle = !text;
     // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
-    try { menu = (menu || []).slice(); let qi = menu.findIndex(e => e && (e.id === 'quitapp' || e.id === 'h:open')); if (qi < 0) qi = menu.length; else if (qi > 0 && menu[qi - 1] && menu[qi - 1].sep) qi--; menu.splice(qi, 0, ...(qi > 0 ? [{ sep: true }] : []), ...wakeEntries().slice(0, 1)); } catch (e) {}
+    try { menu = (menu || []).slice(); if (menu.some(e => e && !e.sep && /^\ud83c\udf05 /.test(e.title || ''))) throw 0;   // v5.0.0-62: 🌅 の時計が一覧に居れば、別の行は出さない
+      let qi = menu.findIndex(e => e && (e.id === 'quitapp' || e.id === 'h:open')); if (qi < 0) qi = menu.length; else if (qi > 0 && menu[qi - 1] && menu[qi - 1].sep) qi--; menu.splice(qi, 0, ...(qi > 0 ? [{ sep: true }] : []), ...wakeEntries().slice(0, 1)); } catch (e) {}
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
@@ -523,7 +524,7 @@ function run(argv) {
       if (ringing) menu.push({ id: 'h:stop', title: 'Stop the bell' }, { sep: true });
       const _p2 = (d) => (d < 10 ? '0' : '') + d, _lab = (t) => { const d = new Date(t); return _p2(d.getMonth() + 1) + '-' + _p2(d.getDate()) + '(' + 'SMTWtFs'[d.getDay()] + ') ' + _p2(d.getHours()) + ':' + _p2(d.getMinutes()); };   // 拡張の meosClockLastLabel と同じ形(年は省く)
       if (next.length) menu.push({ id: 'h:pass', title: '\u23ed\ufe0f Pass the next   ' + (next[0].name || next[0].key || '') + '   ' + _lab(next[0].at) }, { sep: true });   // v4.2.459
-      next.forEach((a, i) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: '⏰' + (a.anchor ? '⚓️' : '') + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
+      next.forEach((a, i) => { menu.push({ id: 'h:' + alarms.indexOf(a), title: (a.mute ? '\ud83c\udf05' : '⏰' + (a.anchor ? '⚓️' : '')) + ' ' + (i ? face(a.at - now).replace(/\.\d{2}$/, '') : face(a.at - now)) + '   ' + (a.name || a.key || '') }); });   // v4.2.556: 秒は次の1本だけ
       if (next.length) menu.push({ sep: true });
       // ★v4.2.342(俊克「VSCmが閉じている時は、その時のリストをメニューバーのメニューのTag&Goの下に表示する」):
       //   最後に見ていた部屋の姿(選んだ札・打った字・札の並び)で、札ごとに並べる(v4.2.309の形)。押せば VSCodium を起こして膜へ
@@ -553,7 +554,7 @@ function run(argv) {
       const ra = ringing ? next.find(a => (a.name || '') === ringing.name) : null;
       optTarget = ra || (next.length ? next[0] : null);   // v4.2.337: 札に出ている時計
       const note = (Math.floor(now / 800) % 2) ? '\u266c' : '\u266a';
-      const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + note + ' ' + (ra ? face(ra.at - now) + ' ' : '') + (ringing.name || 'time is up')) : (next.length ? ('⏰' + (next[0].anchor ? '⚓️' : '') + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
+      const text = ringing ? ('⏰' + (ringing.anchor ? '⚓️' : '') + ' ' + note + ' ' + (ra ? face(ra.at - now) + ' ' : '') + (ringing.name || 'time is up')) : (next.length ? ((next[0].mute ? '\ud83c\udf05' : '⏰' + (next[0].anchor ? '⚓️' : '')) + ' ' + face(next[0].at - now) + (next[0].name ? ' ' + next[0].name : '') + (next.length > 1 ? ' +' + (next.length - 1) : '')) : null);
       show(text, menu, ringing ? !!ringing.anchor : (next.length > 0 && !!next[0].anchor));
     }
   }

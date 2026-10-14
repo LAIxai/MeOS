@@ -13657,7 +13657,8 @@ function meosMenuBarClockItems() {
       if (!r.sc) continue;
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
-      out.push({ id: 'go:' + go.length, title: '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '') + ' ' + _f2 + '   ' + nm });   // v4.2.316: ⚓も一覧に
+      const _ld = meosIsLaunchDKey(r.sc.key);   // v5.0.0-62(俊克「Wakeタイマーも、通常のタイマーと同じようにメニューバーの中に順番通りに・残り時間も」): 頭は🌅・名前は Wake
+      out.push({ id: 'go:' + go.length, title: (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosChainFillSlot(r.sc.title, 0, r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
       go.push(r.sc);
     }
   } catch (_) { }
@@ -13709,7 +13710,7 @@ function meosHelperAlarms() {
               name: r.title ? meosChainFillSlot(r.title, 1) : (sc.name || sc.key), title: r.title || '' }; });   // v4.2.341: 器(1.)に回数を入れるための元の字
           idx = Math.max(0, rows.findIndex(r => r.line === sc.line)); done = Math.max(0, (typeof sc.round === 'number' ? sc.round : 1) - 1);
         } } catch (_) { chain = null; }
-      out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), mute: meosIsLaunchDKey(sc.key), steps, chain, idx, done });   // v5.0.0-58: mute= V-helper も鳴らさない   // v4.2.312: ⚓= 鳴らすだけ
+      out.push({ id: k + ' ' + until, at: until, name: meosIsLaunchDKey(sc.key) ? 'Wake' : (meosClockSayName(sc) || sc.name || sc.key), uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), mute: meosIsLaunchDKey(sc.key), steps, chain, idx, done });   // v5.0.0-58: mute= V-helper も鳴らさない   // v4.2.312: ⚓= 鳴らすだけ
     }
   } catch (_) { }
   return out.sort((a, b) => a.at - b.at);
@@ -15159,7 +15160,8 @@ function meosUpdateTimerBar() {
     _meosTimerBar.text = '⏰ ' + (sc && (sc.up || sc.openFrom) ? '\u21bb ' : '') + meosMmSs(meosClockFaceMs(best.until, sc));
     // ★v4.2.316(俊克 改良1「⚓をメニューバーに出そうよ。⚓の有る時は、橙色でなくて、別の背景色にすれば、分かりやすい」): 次に鳴る1本が⚓なら ⏰⚓ と青の地
     const _anc316 = !!(sc && meosClockAnchoredNow(sc));
-    meosMenuBarSet((_anc316 ? _meosTimerBar.text.replace('\u23f0', '\u23f0\u2693\ufe0f') : _meosTimerBar.text) + (_ttl ? ' ' + _ttl : '') + (n > 1 ? ' +' + (n - 1) : ''), meosMenuBarClockItems(), { anchor: _anc316 });   // v4.2.205: 最下段と同じ中身 / v4.2.207: 全部の⏰をメニューに
+    const _ld62 = !!(sc && meosIsLaunchDKey(sc.key));   // v5.0.0-62: 次が🌅なら札も🌅 Wake
+    meosMenuBarSet((_ld62 ? _meosTimerBar.text.replace('\u23f0', '\ud83c\udf05') : _anc316 ? _meosTimerBar.text.replace('\u23f0', '\u23f0\u2693\ufe0f') : _meosTimerBar.text) + (_ld62 ? ' Wake' : (_ttl ? ' ' + _ttl : '')) + (n > 1 ? ' +' + (n - 1) : ''), meosMenuBarClockItems(), { anchor: _anc316 });   // v4.2.205: 最下段と同じ中身 / v4.2.207: 全部の⏰をメニューに
     if (!_ttl && _meosTimerTitle) { try { _meosTimerTitle.hide(); } catch (_) { } }
     if (!(n > 1) && _meosTimerMore) { try { _meosTimerMore.hide(); } catch (_) { } }
     if (_ttl) {
