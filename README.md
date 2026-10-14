@@ -194,7 +194,7 @@ change the wrap width this directly.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-open-top-bottom.png" alt="Open from the top, or from the bottom - a folded membrane shows ▼ and ▲; ▼ opens it at the start, ▲ opens it at the end with the caret on the closing line" width="80%"><br>
-  <sub><b>Open from the top, or from the bottom.</b> A folded membrane shows ▼ and ▲ side by side. ▼ opens it at the start; ▲ opens it at the end, with the caret on the closing line — right where you add today's next lines. The side you rest on takes the membrane's colour; the other turns to its complement. We know of no other editor that lets you choose which end to open a fold from.</sub>
+  <sub><b>Open from the top, or from the bottom.</b> A folded membrane shows ▼ and ▲ side by side. ▼ opens it at the start; ▲ opens it at the end, with the caret on the closing line — right where you add today's next lines. The side you rest on takes the membrane's colour; the other turns to its complement. We know of no other editor that lets you choose which end to open a fold from. And let ▼ and ▲ be the only way in: switch <b>Standards</b> off in Me Dock, and the editor's own fold arrows leave the gutter, while the ⋯ at the end of a folded membrane gets a ⛔ seal — clicking it no longer opens anything. Switch Standards back on for the editor's usual behaviour.</sub>
 </p>
 
 **Also in v5.0**
