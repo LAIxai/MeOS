@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-53) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-54) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -135,7 +135,7 @@ function run(argv) {
       if (w && !w.days && /some days/i.test(w.raw) && presets.applied && presets.applied.hm === w.hm) w.days = presets.applied.days;
       if (JSON.stringify(w) !== JSON.stringify(wake)) { wake = w; lastMenu = null; }
       const wk = w ? kindOf(w.days) : '';   // v5.0.0-51: 平日の席は曜日の組も macOS の答えに合わせる
-      if (wk && w.hm && (presets[wk] !== w.hm || (wk === 'MTWRF' && presets.wd !== w.days))) { presets[wk] = w.hm; if (wk === 'MTWRF') presets.wd = w.days; savePresets(); lastMenu = null; } }   // v5.0.0-50: 効いている物は macOS が正
+      if (wk && w.hm && presets[wk] !== w.hm) { presets[wk] = w.hm; savePresets(); lastMenu = null; } }   // v5.0.0-54(俊克 バグ1「火曜にチェックを入れてパスワードを入れたのに変わらない」): □の曜日は「次に入れる下書き」= macOS に合わせて上書きしない(30秒ごとに月水木金へ戻していた)   // v5.0.0-50: 効いている物は macOS が正
     if (wakeJob && !wakeJob.t.isRunning) { const j = wakeJob; wakeJob = null; const rc = j.t.terminationStatus, o = taskOut(j);
       if (j.kind === 'ask') { const t = String(o).trim().replace(/^(\d):/, '0$1:'); if (rc === 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) presetTime(j.days, t); else if (rc === 0) hlog('wake: 時刻の形が違う ' + t); }
       else { hlog('wake: ' + j.kind + (j.days ? ' ' + j.days + ' ' + j.hm : '') + (rc === 0 ? ' ok' : ' 取りやめ/失敗 rc=' + rc));
@@ -175,7 +175,8 @@ function run(argv) {
   const wdActive = () => !!(wake && kindOf(wake.days) === 'MTWRF');
   // ★v5.0.0-53(俊克 -52テスト 改良1「✓に色を付けよう」): □は SF Symbols の四角＋チェックに V-helper の色(VSCodium=橙/VS Code=紫)を塗る(窓の状態で灰色にならない)。
   //   文字の左端は上下の行に揃える= 実測(-52のスクショ): チェックの列が無い時 15.5pt / 有る時 30.5pt(無枠ボタンは字が+1pt)
-  const wdRowTitle = () => 'Weekdays   ' + presets.MTWRF + (wdActive() && wake.days !== presets.wd ? '   ← click to apply' : '');
+  const wdPending = () => wdActive() && wake.days !== presets.wd;   // v5.0.0-54: □が macOS と違う= 押せば入る
+  const wdRowTitle = () => 'Weekdays   ' + presets.MTWRF + (wdPending() ? '  ↵' : '');
   let wdRowLab = null, wdRowBoxes = [];
   const rowColor = () => myScheme === 'vscode' ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x7c / 255, 0x3a / 255, 0xed / 255, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
   const atext = (t, font, col) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(t)); const r = $.NSMakeRange(0, a.length);
@@ -184,20 +185,23 @@ function run(argv) {
     b.contentTintColor = on ? rowColor() : $.NSColor.secondaryLabelColor; } catch (e) {} };
   ObjC.registerSubclass({ name: 'MeOSDayRowT', methods: {
     'day:': { types: ['void', ['id']], implementation: function (b) { try { toggleDay('MTWRF'.charAt(Number(b.tag))); } catch (e) {}
-      try { wdRowBoxes.forEach((x, i) => paintBox(x, presets.wd.indexOf('MTWRF'.charAt(i)) >= 0)); if (wdRowLab) wdRowLab.attributedTitle = atext(wdRowTitle(), $.NSFont.menuFontOfSize(0), $.NSColor.labelColor); } catch (e) {} } },
+      try { wdRowBoxes.forEach((x, i) => paintBox(x, presets.wd.indexOf('MTWRF'.charAt(i)) >= 0)); if (wdRowLab) wdRowLab.attributedTitle = atext(wdRowTitle(), $.NSFont.menuFontOfSize(0), wdPending() ? rowColor() : $.NSColor.labelColor); } catch (e) {} } },
     'use:': { types: ['void', ['id']], implementation: function (b) { try { item.menu.cancelTracking; } catch (e) {} try { setWake('MTWRF', presets.MTWRF); lastMenu = null; } catch (e) {} } } } });
   const wdRowT = $.MeOSDayRowT.alloc.init;   // 強く持つ
+  // ★v5.0.0-54(俊克 改良1「Fが端ギリギリ」改良2「□ M□ のように右の□に近過ぎ、どっちの設定か分かり難い」):
+  //   □と字を1組に詰め(□M)、組と組の間を空ける。行の幅も詰める(字の札は 150pt・組は 42pt おき・台で描いて確認)。□が macOS と違う間は札を V-helper の色＋↵
   const makeDayRow = () => {
-    const font = $.NSFont.menuFontOfSize(0), H = 22, v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 440, H));
+    const font = $.NSFont.menuFontOfSize(0), H = 22, LW = 150, STEP = 42, v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 0, H));
     const col = !!(wake && !wdActive());   // 他の行に✓が付いている= チェックの列が有る
     const TX = col ? 30.5 : 15.5;
-    if (wdActive()) { const ck = $.NSTextField.labelWithString($('✓')); ck.font = font; ck.textColor = $.NSColor.labelColor; ck.frame = $.NSMakeRect(1, 2, 14, H - 4); v.addSubview(ck); }
-    const lab = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX - 1, 0, 250, H));
-    lab.bordered = false; lab.alignment = 0; lab.attributedTitle = atext(wdRowTitle(), font, $.NSColor.labelColor); lab.target = wdRowT; lab.action = 'use:'; v.addSubview(lab);
+    if (wdActive()) { const ck = $.NSTextField.labelWithString($('✓')); ck.font = font; ck.textColor = $.NSColor.labelColor; ck.frame = $.NSMakeRect(0, 2, 14, H - 4); v.addSubview(ck); }
+    const lab = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX - 1, 0, LW, H));
+    lab.bordered = false; lab.alignment = 0; lab.attributedTitle = atext(wdRowTitle(), font, wdPending() ? rowColor() : $.NSColor.labelColor); lab.target = wdRowT; lab.action = 'use:'; v.addSubview(lab);
     wdRowBoxes = [];
-    'MTWtF'.split('').forEach((c, i) => { const cb = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX + 250 + i * 36, 0, 36, H));
-      cb.bordered = false; cb.imagePosition = 2; cb.attributedTitle = atext(' ' + c, font, $.NSColor.labelColor); cb.tag = i;
+    'MTWtF'.split('').forEach((c, i) => { const cb = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX + LW + 4 + i * STEP, 0, STEP - 4, H));
+      cb.bordered = false; cb.imagePosition = 2; cb.alignment = 0; cb.attributedTitle = atext(' ' + c, font, $.NSColor.labelColor); cb.tag = i;
       paintBox(cb, presets.wd.indexOf('MTWRF'.charAt(i)) >= 0); cb.target = wdRowT; cb.action = 'day:'; v.addSubview(cb); wdRowBoxes.push(cb); });
+    v.setFrameSize($.NSMakeSize(TX + LW + 4 + 5 * STEP + 16, H));   // 右に余白 16pt
     wdRowLab = lab; return v;
   };
   const wakeEntries = () => {
