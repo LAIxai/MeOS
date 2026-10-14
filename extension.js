@@ -24050,7 +24050,7 @@ function ensureMeDockCurrentLineDecoration() {
 
 function ensureMeDockCurrentLineHoverDecoration() {
   if (meDockCurrentLineHoverDecoration) return meDockCurrentLineHoverDecoration;
-  meDockCurrentLineHoverDecoration = vscode.window.createTextEditorDecorationType({ isWholeLine: true }); // v0.9.947: 視覚なし・行全体でホバー可(空行/短行でもメニューが出る)
+  meDockCurrentLineHoverDecoration = vscode.window.createTextEditorDecorationType({}); // v5.0.0-38(俊克 -37テスト バグ1「Raw表示のケースの処理を忘れている」): isWholeLine を外す= これが付いていると範囲を1字にしても行全体でtipが出ていた(-37が効かなかった真因) / v0.9.947: 視覚なし・行全体でホバー可(空行/短行でもメニューが出る)
   return meDockCurrentLineHoverDecoration;
 }
 // v0.9.946: H-TOCジャンプの飛び先keyを帰還リングへ(最新先頭・重複排除・最大2・URI付き)。
@@ -42196,6 +42196,10 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         if (greenMsg) return new vscode.Hover(greenMsg);
         const mstatMsg = mstatBadgeIconHoverMessage(document, position);
         if (mstatMsg) return new vscode.Hover(mstatMsg);
+        try {   // v5.0.0-38: 測る口= ▼▲/膜名1文字目のどこに置くと何桁で訊かれるか(▲と「最」の左4割が同じ桁かを切り分ける)
+          const _ti = membraneLineInfo(document, position.line);
+          if (_ti && Math.abs(position.character - _ti.idStart) <= 2) meosDbg('[tipAt] line=' + position.line + ' ch=' + position.character + ' idStart=' + _ti.idStart + ' raw=' + (editor ? meosShowsRawLine(editor, position.line) : '?') + ' cur=' + (editor && editor.selection ? editor.selection.active.line : -1));
+        } catch (_) { }
         const arrowMsg = membraneArrowHoverMessage(editor, position);
         if (arrowMsg === '') return null;   // v4.2.758: 畳んだ ▼▲ の上= tip は出さない
         if (arrowMsg) return new vscode.Hover(arrowMsg);
