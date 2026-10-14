@@ -41318,7 +41318,7 @@ function activate(context) {
       try {
         if (!ed || ed.document.languageId !== 'markdown') return;
         const sn = _snap(ed), starts = new Set(collectMembraneStructure(ed.document).pairs.filter(p => p.end > p.start).map(p => p.start)), rs = [], rr = [];
-        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h); if (meosShowsRawLine(ed, h) && ln.text.length) { const at = ln.range.end.translate(0, -1); rr.push(new vscode.Range(at, at)); continue; } const tm = /\s*\*\s*\}\s*-->\s*$/.exec(ln.text), at = tm ? new vscode.Position(h, tm.index) : ln.range.end; rs.push(new vscode.Range(at, at)); } }   // v5.0.0-33: 生の行は rr(1字手前+1字右)/ v5.0.0-31: 隠した尻尾の頭 / v5.0.0-30
+        for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h); if (meosShowsRawLine(ed, h) && ln.text.length) { const at = ln.range.end.translate(0, -1); rr.push(new vscode.Range(at, at)); continue; } const tm = /(\s?)\*\s*\}\s*-->\s*$/.exec(ln.text), at = tm ? new vscode.Position(h, tm.index) : ln.range.end;   /* v5.0.0-43(俊克 -42テスト バグ1「950行目以降の2つの膜の3点ボタンを隠しそびれている」): 尻尾の前の空白が2つ以上(`25.2℃↘   *} -->`)だと、隠すのは * からなので残りの空白が見えて⋯がその分右へずれ、空白の先頭に差した⛔からはみ出した→ * の直前の空白1つに差す */ rs.push(new vscode.Range(at, at)); } }   // v5.0.0-33: 生の行は rr(1字手前+1字右)/ v5.0.0-31: 隠した尻尾の頭 / v5.0.0-30
         ed.setDecorations(_noEntry, rs); ed.setDecorations(_noEntryRaw, rr);
       } catch (_) { }
     };
