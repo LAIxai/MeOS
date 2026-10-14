@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-54) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-55) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -113,12 +113,12 @@ function run(argv) {
   // ★v5.0.0-51(俊克「平日の設定のオプションとして、チェックボックスで月曜～金曜を選択できるように。これで昔のmacOS並になる」):
   //   「Weekdays」の席は曜日の組(presets.wd・月〜金の中から1つ以上)を持つ。種類(kind)は3つのまま= 毎日 MTWRFSU / 平日の席 MTWRF / 週末 SU
   const DAY_NAME = { M: 'Mon', T: 'Tue', W: 'Wed', R: 'Thu', F: 'Fri', S: 'Sat', U: 'Sun' };
-  const kindOf = (d) => !d ? '' : (d === 'MTWRFSU' ? 'MTWRFSU' : (d === 'SU' ? 'SU' : (/^[MTWRF]+$/.test(d) ? 'MTWRF' : '')));
+  const kindOf = (d) => !d ? '' : (d === 'MTWRFSU' ? 'MTWRFSU' : (/^[SU]+$/.test(d) ? 'SU' : (/^[MTWRF]+$/.test(d) ? 'MTWRF' : '')));   // v5.0.0-55: 週末の席も土/日の片方を持てる
   const dayLabel = (d) => WAKE_DAYS[d] || d.split('').map(c => DAY_NAME[c]).join(' ');
   const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (wake.days ? dayLabel(wake.days) : wake.raw));
   const asq = (x) => String(x).replace(/["\\]/g, '');   // AppleScript の "…" に入れる字(決まった字しか来ないが念のため)
   const setWake = (kind, hm) => {
-    const days = kind === 'MTWRF' ? presets.wd : kind;   // v5.0.0-51: 平日の席は選んだ曜日
+    const days = kind === 'MTWRF' ? presets.wd : (kind === 'SU' ? presets.we : kind);   // v5.0.0-51: 平日の席は選んだ曜日 / v5.0.0-55: 週末の席も
     if (wakeJob || !WAKE_DAYS[kind] || !/^[MTWRFSU]+$/.test(days) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
     wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat wakeorpoweron ' + days + ' ' + hm + ':00" with administrator privileges with prompt "'
       + asq('MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + dayLabel(days) + '.') + '"']), { kind: 'set', days, hm });
@@ -148,10 +148,11 @@ function run(argv) {
   //   ★時刻を変えるだけならパスワード不要(覚え直すだけ)。今効いている物の時刻を変えた時と、切り替えた時だけ macOS へ入れる(パスワード)。
   //   ★今効いている物の時刻は macOS の答えが正= 読むたびに覚えの方を合わせる(突き合わせ)。
   const presetPath = sharedDir + '/wake-presets.json';
-  let presets = { MTWRFSU: '06:30', MTWRF: '06:30', SU: '08:00', wd: 'MTWRF' };
+  let presets = { MTWRFSU: '06:30', MTWRF: '06:30', SU: '08:00', wd: 'MTWRF', we: 'SU' };
   const loadPresets = () => { try { const x = $.NSString.stringWithContentsOfFileEncodingError(presetPath, $.NSUTF8StringEncoding, null);
     if (x && !x.isNil()) { const o = JSON.parse(ObjC.unwrap(x)); for (const k in WAKE_DAYS) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(o[k] || '') && presets[k] !== o[k]) { presets[k] = o[k]; try { lastMenu = null; } catch (e2) {} }
       if (/^[MTWRF]+$/.test(o.wd || '') && presets.wd !== o.wd) { presets.wd = o.wd; try { lastMenu = null; } catch (e2) {} }
+      if (/^[SU]+$/.test(o.we || '') && presets.we !== o.we) { presets.we = o.we; try { lastMenu = null; } catch (e2) {} }
       if (o.applied && /^[MTWRFSU]+$/.test(o.applied.days || '') && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.applied.hm || '')) presets.applied = { days: o.applied.days, hm: o.applied.hm }; } } catch (e) {} };   // 起動の最初は lastMenu がまだ無い(let の手前)
   loadPresets();   // 30秒ごとの読み直しでも呼ぶ= もう1人(VSCodium/本家)が覚え直した時刻も揃う
   const savePresets = () => { try { $(JSON.stringify(presets)).writeToFileAtomicallyEncodingError(presetPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} };
@@ -160,49 +161,54 @@ function run(argv) {
     presets[days] = hm; savePresets(); lastMenu = null;
     if (wake && kindOf(wake.days) === days && wake.hm !== hm) setWake(days, hm);
   };
-  const toggleDay = (c) => {   // v5.0.0-51: 平日の席の曜日を入れ外し(最後の1つは外さない)。効いている時は macOS にも入れ直す
-    if ('MTWRF'.indexOf(c) < 0) return;
-    let d = presets.wd.indexOf(c) >= 0 ? presets.wd.replace(c, '') : presets.wd + c;
-    d = 'MTWRF'.split('').filter(x => d.indexOf(x) >= 0).join('');
+  // ★v5.0.0-55(俊克 -54テスト 改良1「週末も2つから選択できるようにしようか?」): □の行を平日/週末の2つに一般化。
+  //   席ごとに: 曜日の字(pmset)・見せる字(MeOS の S-M-T-W-t-F-s= 土は s・日は S)・覚え場所(presets.wd / presets.we)
+  const ROWS = { MTWRF: { name: 'Weekdays', letters: 'MTWRF', shown: 'MTWtF', key: 'wd' }, SU: { name: 'Weekends', letters: 'SU', shown: 'sS', key: 'we' } };
+  const ROW_KINDS = ['MTWRF', 'SU'];
+  const toggleDay = (kind, c) => {   // v5.0.0-51: 席の曜日を入れ外し(最後の1つは外さない)。覚えるだけ= macOS へは席の札を押した時(パスワード)
+    const R = ROWS[kind]; if (!R || R.letters.indexOf(c) < 0) return;
+    let d = presets[R.key].indexOf(c) >= 0 ? presets[R.key].replace(c, '') : presets[R.key] + c;
+    d = R.letters.split('').filter(x => d.indexOf(x) >= 0).join('');
     if (!d) return;
-    presets.wd = d; savePresets(); lastMenu = null;
-    // v5.0.0-52: 入れ外しは覚えるだけ= macOS へは行の「Weekdays」を押した時に入れる(パスワード)
+    presets[R.key] = d; savePresets(); lastMenu = null;
   };
-  // ★v5.0.0-52(俊克 -51テスト 改良1「子メニューに ✓ Weekdays 06:30 □M □T □W □t □F と表示しよう。孫メニューで記憶するほどの事ではなく、
-  //   流動的に変えて、そこでパスワード入力に行くのが自然。縦長のメニューは見苦しい」):
-  //   ★1行に部品を並べる= メニュー項目に自前の板(NSView)を載せる。□は押してもメニューが閉じない(続けて選べる)。「Weekdays 06:30」を押すと閉じて macOS へ入れる。
-  //   ★曜日の字は MeOS の1文字記法(S-M-T-W-t-F-s)。
-  const wdActive = () => !!(wake && kindOf(wake.days) === 'MTWRF');
-  // ★v5.0.0-53(俊克 -52テスト 改良1「✓に色を付けよう」): □は SF Symbols の四角＋チェックに V-helper の色(VSCodium=橙/VS Code=紫)を塗る(窓の状態で灰色にならない)。
-  //   文字の左端は上下の行に揃える= 実測(-52のスクショ): チェックの列が無い時 15.5pt / 有る時 30.5pt(無枠ボタンは字が+1pt)
-  const wdPending = () => wdActive() && wake.days !== presets.wd;   // v5.0.0-54: □が macOS と違う= 押せば入る
-  const wdRowTitle = () => 'Weekdays   ' + presets.MTWRF + (wdPending() ? '  ↵' : '');
-  let wdRowLab = null, wdRowBoxes = [];
+  // ★v5.0.0-52: 1行に部品を並べる= メニュー項目に自前の板(NSView)。□は押してもメニューが閉じない(続けて選べる)。札を押すと閉じて macOS へ入れる。
+  // ★v5.0.0-53: □は SF Symbols の四角＋チェックに V-helper の色(VSCodium=橙/VS Code=紫)。字の左端は上下の行に揃える(実測: チェックの列が無い時 15.5pt / 有る時 30.5pt)
+  // ★v5.0.0-54: □と字を1組に詰め組の間を空ける(札 150pt・組 42pt おき・台で描いて確認)。□が macOS と違う間は札を V-helper の色＋↵
+  const rowActive = (kind) => !!(wake && kindOf(wake.days) === kind);
+  const rowPending = (kind) => rowActive(kind) && wake.days !== presets[ROWS[kind].key];
+  const rowTitle = (kind) => ROWS[kind].name + '   ' + presets[kind] + (rowPending(kind) ? '  ↵' : '');
+  const rowParts = {};   // kind → { lab, boxes }
   const rowColor = () => myScheme === 'vscode' ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x7c / 255, 0x3a / 255, 0xed / 255, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
   const atext = (t, font, col) => { const a = $.NSMutableAttributedString.alloc.init; a.mutableString.setString($(t)); const r = $.NSMakeRange(0, a.length);
     a.addAttributeValueRange($.NSFontAttributeName, font, r); a.addAttributeValueRange($.NSForegroundColorAttributeName, col, r); return a; };
   const paintBox = (b, on) => { try { b.image = $.NSImage.imageWithSystemSymbolNameAccessibilityDescription($(on ? 'checkmark.square.fill' : 'square'), $(''));
     b.contentTintColor = on ? rowColor() : $.NSColor.secondaryLabelColor; } catch (e) {} };
+  const repaintRow = (kind) => { const P = rowParts[kind], R = ROWS[kind]; if (!P) return;
+    P.boxes.forEach((x, i) => paintBox(x, presets[R.key].indexOf(R.letters.charAt(i)) >= 0));
+    P.lab.attributedTitle = atext(rowTitle(kind), $.NSFont.menuFontOfSize(0), rowPending(kind) ? rowColor() : $.NSColor.labelColor); };
+  // tag = 席の番号×10 + □の番号(札は □の番号 9)
   ObjC.registerSubclass({ name: 'MeOSDayRowT', methods: {
-    'day:': { types: ['void', ['id']], implementation: function (b) { try { toggleDay('MTWRF'.charAt(Number(b.tag))); } catch (e) {}
-      try { wdRowBoxes.forEach((x, i) => paintBox(x, presets.wd.indexOf('MTWRF'.charAt(i)) >= 0)); if (wdRowLab) wdRowLab.attributedTitle = atext(wdRowTitle(), $.NSFont.menuFontOfSize(0), wdPending() ? rowColor() : $.NSColor.labelColor); } catch (e) {} } },
-    'use:': { types: ['void', ['id']], implementation: function (b) { try { item.menu.cancelTracking; } catch (e) {} try { setWake('MTWRF', presets.MTWRF); lastMenu = null; } catch (e) {} } } } });
+    'day:': { types: ['void', ['id']], implementation: function (b) { try { const t = Number(b.tag), kind = ROW_KINDS[Math.floor(t / 10)];
+      toggleDay(kind, ROWS[kind].letters.charAt(t % 10)); repaintRow(kind); } catch (e) {} } },
+    'use:': { types: ['void', ['id']], implementation: function (b) { try { item.menu.cancelTracking; } catch (e) {}
+      try { const kind = ROW_KINDS[Math.floor(Number(b.tag) / 10)]; setWake(kind, presets[kind]); lastMenu = null; } catch (e) {} } } } });
   const wdRowT = $.MeOSDayRowT.alloc.init;   // 強く持つ
-  // ★v5.0.0-54(俊克 改良1「Fが端ギリギリ」改良2「□ M□ のように右の□に近過ぎ、どっちの設定か分かり難い」):
-  //   □と字を1組に詰め(□M)、組と組の間を空ける。行の幅も詰める(字の札は 150pt・組は 42pt おき・台で描いて確認)。□が macOS と違う間は札を V-helper の色＋↵
-  const makeDayRow = () => {
+  const makeDayRow = (kind) => {
+    const R = ROWS[kind], ki = ROW_KINDS.indexOf(kind);
     const font = $.NSFont.menuFontOfSize(0), H = 22, LW = 150, STEP = 42, v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 0, H));
-    const col = !!(wake && !wdActive());   // 他の行に✓が付いている= チェックの列が有る
+    const col = !!(wake && kindOf(wake.days) === 'MTWRFSU');   // 普通の行(Every day)に✓が付いている= チェックの列が有る
     const TX = col ? 30.5 : 15.5;
-    if (wdActive()) { const ck = $.NSTextField.labelWithString($('✓')); ck.font = font; ck.textColor = $.NSColor.labelColor; ck.frame = $.NSMakeRect(0, 2, 14, H - 4); v.addSubview(ck); }
-    const lab = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX - 1, 0, LW, H));
-    lab.bordered = false; lab.alignment = 0; lab.attributedTitle = atext(wdRowTitle(), font, wdPending() ? rowColor() : $.NSColor.labelColor); lab.target = wdRowT; lab.action = 'use:'; v.addSubview(lab);
-    wdRowBoxes = [];
-    'MTWtF'.split('').forEach((c, i) => { const cb = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX + LW + 4 + i * STEP, 0, STEP - 4, H));
-      cb.bordered = false; cb.imagePosition = 2; cb.alignment = 0; cb.attributedTitle = atext(' ' + c, font, $.NSColor.labelColor); cb.tag = i;
-      paintBox(cb, presets.wd.indexOf('MTWRF'.charAt(i)) >= 0); cb.target = wdRowT; cb.action = 'day:'; v.addSubview(cb); wdRowBoxes.push(cb); });
-    v.setFrameSize($.NSMakeSize(TX + LW + 4 + 5 * STEP + 16, H));   // 右に余白 16pt
-    wdRowLab = lab; return v;
+    if (rowActive(kind)) { const ck = $.NSTextField.labelWithString($('✓')); ck.font = font; ck.textColor = $.NSColor.labelColor; ck.frame = $.NSMakeRect(0, 2, 14, H - 4); v.addSubview(ck); }
+    const lab = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX - 1, 0, LW, H)); lab.tag = ki * 10 + 9;
+    lab.bordered = false; lab.alignment = 0; lab.target = wdRowT; lab.action = 'use:'; v.addSubview(lab);
+    const boxes = [];
+    R.shown.split('').forEach((c, i) => { const cb = $.NSButton.alloc.initWithFrame($.NSMakeRect(TX + LW + 4 + i * STEP, 0, STEP - 4, H));
+      cb.bordered = false; cb.imagePosition = 2; cb.alignment = 0; cb.attributedTitle = atext(' ' + c, font, $.NSColor.labelColor); cb.tag = ki * 10 + i;
+      cb.target = wdRowT; cb.action = 'day:'; v.addSubview(cb); boxes.push(cb); });
+    rowParts[kind] = { lab, boxes }; repaintRow(kind);
+    v.setFrameSize($.NSMakeSize(TX + LW + 4 + 5 * STEP + 16, H));   // 右に余白 16pt(週末も平日と同じ幅= 札の位置が揃う)
+    return v;
   };
   const wakeEntries = () => {
     const _pad = (t) => t + '  ';
@@ -210,7 +216,7 @@ function run(argv) {
       .concat([{ sep: true }, { id: 'h:wk:t:' + days + ':ask', title: 'Other time…' }]);
     const use = (days, name) => ({ id: 'h:wk:use:' + days, title: _pad(name) + presets[days] + (days === 'MTWRF' && presets.wd !== 'MTWRF' ? '   (' + dayLabel(presets.wd) + ')' : ''), check: !!(wake && kindOf(wake.days) === days) });
     const sub = [{ title: 'Now: ' + (wake ? (wake.days ? 'start up at ' + wake.hm + ', ' + dayLabel(wake.days) : wake.raw) : 'not set'), off: true }, { sep: true },
-      use('MTWRFSU', 'Every day'), { dayRow: true, title: wdRowTitle() + ' ' + presets.wd + ' ' + (wake ? wake.days : '') }, use('SU', 'Weekends'),
+      use('MTWRFSU', 'Every day'), { dayRow: 'MTWRF', title: rowTitle('MTWRF') + ' ' + presets.wd + ' ' + (wake ? wake.days : '') }, { dayRow: 'SU', title: rowTitle('SU') + ' ' + presets.we + ' ' + (wake ? wake.days : '') },
       { title: '(one at a time — switching asks for your password)', off: true }, { sep: true },
       { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: times('MTWRF') }, { title: 'Weekends', sub: times('SU') }] }];
     if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
@@ -221,8 +227,7 @@ function run(argv) {
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
       if (id.indexOf('h:wk:') === 0) { const u = /^h:wk:use:([A-Z]+)$/.exec(id), q = /^h:wk:t:([A-Z]+):(.+)$/.exec(id) || [];   // v5.0.0-50: use= 切り替え / t= 時刻を覚える   // v5.0.0-47: 🌅 Wake / v5.0.0-48(俊克 バグ「7:00をクリックしても変更できない」): ':' で切ると 07:00 の中の ':' でも切れて時刻が「07」になっていた→ 曜日の後ろは丸ごと時刻
-        const dc = /^h:wk:d:([MTWRF])$/.exec(id);
-        if (dc) toggleDay(dc[1]); else if (id === 'h:wk:off') offWake(); else if (u) setWake(u[1], presets[u[1]]); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) presetTime(q[1], q[2]); lastMenu = null; return; }
+        if (id === 'h:wk:off') offWake(); else if (u) setWake(u[1], presets[u[1]]); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) presetTime(q[1], q[2]); lastMenu = null; return; }
       if (id === 'h:open') { openApp(); return; }
       // ★v4.2.363(俊克「helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする」): 閉じている間に降ろす口。
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
@@ -281,7 +286,7 @@ function run(argv) {
       if (e.indent) mi.indentationLevel = e.indent;
       if (e.off) mi.enabled = false;
       if (e.check) mi.state = 1;   // v4.2.311: ✓
-      if (e.dayRow) { try { mi.view = makeDayRow(); } catch (x) {} its.push(mi); continue; }   // v5.0.0-52
+      if (e.dayRow) { try { mi.view = makeDayRow(e.dayRow); } catch (x) {} its.push(mi); continue; }   // v5.0.0-52
       styleItem(mi, e);
       its.push(mi);
     }
