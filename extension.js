@@ -34890,6 +34890,17 @@ function imageMembraneHoverMessage(document, position) {
 //   これまで tip は `idStart` と `idStart-1` の2桁で出るのに、トグルは `idStart` の1桁だけだった＝
 //   **「Toggle Me!」と出ているのに押しても効かない桁が在った**(俊克「tipは出るが、クリックしても
 //   反応しない」)。印と動作は同じ物差しで決める → [[feedback_one_source_for_mark_count_action]]
+// v5.0.0-40: idStart の桁に ▲ の飾り(畳んだ開始膜の ▼▲ の after)が立っているか= 開始膜・畳み
+function meosIdStartIsFoldedTriangle(document, info) {
+  try {
+    if (!info || info.kind !== 'open') return false;
+    const ed = vscode.window.visibleTextEditors.find(e => e.document === document) || vscode.window.activeTextEditor;
+    if (!ed || ed.document !== document) return false;
+    // 生(Raw)かは訊かない= 押した瞬間はカーソルが乗って必ず生と答える(v4.1.110の穴)。生の扱いは meosArrowPressBlocked / tip側の口が持つ
+    const pr = collectPairs(document, { excludeIndex: false }).find(p => p.start === info.line);
+    return !!(pr && isPairFolded(ed, pr));
+  } catch (_) { return true; }   // 分からない時は今まで通り(当たりを狭めない)
+}
 function meosArrowHitAt(document, line, character) {
   const info = membraneLineInfo(document, line);
   if (!info) return null;
@@ -34932,6 +34943,10 @@ function meosArrowHitAt(document, line, character) {
   //   0〜idStart+1(差し込まれた駒をまたぐにはそこまで要る)。当たりが idStart までだと、
   //   **膜名の1文字目の右半分は、手なのに効かない**= v4.0.358 と同じ穴を、形で作っていた。
   if (glyph < 0 && info.idStart <= 0) return null;
+  // ★v5.0.0-40(俊克 -39テスト バグ1「閉じ膜のケースでは、1文字目の上でも、Toggle tipが出てしまう」＋ログ[tipAt]):
+  //   idStart の桁に印が居るのは「畳んだ開始膜の飾りの ▲(after)」だけ。閉じ膜の ▲・開いた膜の ▼ は before = idStart-1 に落ちる(ログ caretCh=12)。
+  //   so それ以外の行では idStart は膜名の1文字目の左側だけ= 当たりから外す(tipも押すのも同じこの口)。
+  if (character === info.idStart && !meosIdStartIsFoldedTriangle(document, info)) return null;
   if (character >= 0 && character <= info.idStart) return info;   // v5.0.0-34(俊克 バグ1「▼▲の右側1文字も展開ボタン化している」・ログ= 膜名の1文字目の右半分(caretCh=idStart+1)で開いていた): 膜名の字の右半分は当たりから外す
   return null;
 }
