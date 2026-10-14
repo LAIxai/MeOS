@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-50) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-51) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -98,18 +98,30 @@ function run(argv) {
       const raw = ln.trim(), m = /at\s+(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(raw);
       let hm = '';
       if (m) { let h = parseInt(m[1], 10); if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } hm = (h < 10 ? '0' : '') + h + ':' + m[2]; }
-      const days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : (/weekends/i.test(raw) ? 'SU' : ''));
+      let days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : (/weekends/i.test(raw) ? 'SU' : ''));
+      if (!days) {   // v5.0.0-51: 曜日を選んだ予定(月水金など)= 曜日の名前か MTWRFSU の字で書かれている所を拾う(書き方は実測待ち)
+        const tail = raw.replace(/^.*?\bat\s+\d{1,2}:\d{2}\s*([AP]M)?/i, ''), N = { mon: 'M', tue: 'T', wed: 'W', thu: 'R', fri: 'F', sat: 'S', sun: 'U' };
+        let got = ''; (tail.match(/\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*/gi) || []).forEach(x => { got += N[x.slice(0, 3).toLowerCase()]; });
+        if (!got) { const m2 = /\b([MTWRFSU]{1,7})\b/.exec(tail); if (m2) got = m2[1]; }
+        days = 'MTWRFSU'.split('').filter(c => got.indexOf(c) >= 0).join('');
+      }
       w = { days, hm, raw }; break;
     }
     return w;
   };
   const readWake = () => { if (wakeRead) return; wakeReadAt = Date.now(); try { loadPresets(); } catch (e) {} try { wakeRead = task(['pmset', '-g', 'sched']); } catch (e) { wakeRead = null; } };
-  const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (WAKE_DAYS[wake.days] || wake.raw));
+  // ★v5.0.0-51(俊克「平日の設定のオプションとして、チェックボックスで月曜～金曜を選択できるように。これで昔のmacOS並になる」):
+  //   「Weekdays」の席は曜日の組(presets.wd・月〜金の中から1つ以上)を持つ。種類(kind)は3つのまま= 毎日 MTWRFSU / 平日の席 MTWRF / 週末 SU
+  const DAY_NAME = { M: 'Mon', T: 'Tue', W: 'Wed', R: 'Thu', F: 'Fri', S: 'Sat', U: 'Sun' };
+  const kindOf = (d) => !d ? '' : (d === 'MTWRFSU' ? 'MTWRFSU' : (d === 'SU' ? 'SU' : (/^[MTWRF]+$/.test(d) ? 'MTWRF' : '')));
+  const dayLabel = (d) => WAKE_DAYS[d] || d.split('').map(c => DAY_NAME[c]).join(' ');
+  const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (wake.days ? dayLabel(wake.days) : wake.raw));
   const asq = (x) => String(x).replace(/["\\]/g, '');   // AppleScript の "…" に入れる字(決まった字しか来ないが念のため)
-  const setWake = (days, hm) => {
-    if (wakeJob || !WAKE_DAYS[days] || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
+  const setWake = (kind, hm) => {
+    const days = kind === 'MTWRF' ? presets.wd : kind;   // v5.0.0-51: 平日の席は選んだ曜日
+    if (wakeJob || !WAKE_DAYS[kind] || !/^[MTWRFSU]+$/.test(days) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
     wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat wakeorpoweron ' + days + ' ' + hm + ':00" with administrator privileges with prompt "'
-      + asq('MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + WAKE_DAYS[days] + '.') + '"']), { kind: 'set', days, hm });
+      + asq('MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + dayLabel(days) + '.') + '"']), { kind: 'set', days, hm });
   };
   const offWake = () => { if (wakeJob) return;
     wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat cancel" with administrator privileges with prompt "MeOS V-helper will turn off the daily start-up of your Mac."']), { kind: 'off' }); };
@@ -119,7 +131,8 @@ function run(argv) {
   // 0.5秒の見回りで、終わった仕事を片付ける(待たない)
   const wakePoll = () => {
     if (wakeRead && !wakeRead.t.isRunning) { const o = taskOut(wakeRead); wakeRead = null; const w = parseWake(o); if (JSON.stringify(w) !== JSON.stringify(wake)) { wake = w; lastMenu = null; }
-      if (w && WAKE_DAYS[w.days] && w.hm && presets[w.days] !== w.hm) { presets[w.days] = w.hm; savePresets(); lastMenu = null; } }   // v5.0.0-50: 効いている物は macOS が正
+      const wk = w ? kindOf(w.days) : '';   // v5.0.0-51: 平日の席は曜日の組も macOS の答えに合わせる
+      if (wk && w.hm && (presets[wk] !== w.hm || (wk === 'MTWRF' && presets.wd !== w.days))) { presets[wk] = w.hm; if (wk === 'MTWRF') presets.wd = w.days; savePresets(); lastMenu = null; } }   // v5.0.0-50: 効いている物は macOS が正
     if (wakeJob && !wakeJob.t.isRunning) { const j = wakeJob; wakeJob = null; const rc = j.t.terminationStatus, o = taskOut(j);
       if (j.kind === 'ask') { const t = String(o).trim().replace(/^(\d):/, '0$1:'); if (rc === 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) presetTime(j.days, t); else if (rc === 0) hlog('wake: 時刻の形が違う ' + t); }
       else { hlog('wake: ' + j.kind + (j.days ? ' ' + j.days + ' ' + j.hm : '') + (rc === 0 ? ' ok' : ' 取りやめ/失敗 rc=' + rc)); readWake(); } }
@@ -130,25 +143,35 @@ function run(argv) {
   //   ★時刻を変えるだけならパスワード不要(覚え直すだけ)。今効いている物の時刻を変えた時と、切り替えた時だけ macOS へ入れる(パスワード)。
   //   ★今効いている物の時刻は macOS の答えが正= 読むたびに覚えの方を合わせる(突き合わせ)。
   const presetPath = sharedDir + '/wake-presets.json';
-  let presets = { MTWRFSU: '06:30', MTWRF: '06:30', SU: '08:00' };
+  let presets = { MTWRFSU: '06:30', MTWRF: '06:30', SU: '08:00', wd: 'MTWRF' };
   const loadPresets = () => { try { const x = $.NSString.stringWithContentsOfFileEncodingError(presetPath, $.NSUTF8StringEncoding, null);
-    if (x && !x.isNil()) { const o = JSON.parse(ObjC.unwrap(x)); for (const k in WAKE_DAYS) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(o[k] || '') && presets[k] !== o[k]) { presets[k] = o[k]; try { lastMenu = null; } catch (e2) {} } } } catch (e) {} };   // 起動の最初は lastMenu がまだ無い(let の手前)
+    if (x && !x.isNil()) { const o = JSON.parse(ObjC.unwrap(x)); for (const k in WAKE_DAYS) if (/^([01]\d|2[0-3]):[0-5]\d$/.test(o[k] || '') && presets[k] !== o[k]) { presets[k] = o[k]; try { lastMenu = null; } catch (e2) {} }
+      if (/^[MTWRF]+$/.test(o.wd || '') && presets.wd !== o.wd) { presets.wd = o.wd; try { lastMenu = null; } catch (e2) {} } } } catch (e) {} };   // 起動の最初は lastMenu がまだ無い(let の手前)
   loadPresets();   // 30秒ごとの読み直しでも呼ぶ= もう1人(VSCodium/本家)が覚え直した時刻も揃う
   const savePresets = () => { try { $(JSON.stringify(presets)).writeToFileAtomicallyEncodingError(presetPath, true, $.NSUTF8StringEncoding, null); } catch (e) {} };
   const presetTime = (days, hm) => {   // 時刻を覚え直す。今効いている物なら macOS にも入れる
     if (!WAKE_DAYS[days] || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;
     presets[days] = hm; savePresets(); lastMenu = null;
-    if (wake && wake.days === days && wake.hm !== hm) setWake(days, hm);
+    if (wake && kindOf(wake.days) === days && wake.hm !== hm) setWake(days, hm);
+  };
+  const toggleDay = (c) => {   // v5.0.0-51: 平日の席の曜日を入れ外し(最後の1つは外さない)。効いている時は macOS にも入れ直す
+    if ('MTWRF'.indexOf(c) < 0) return;
+    let d = presets.wd.indexOf(c) >= 0 ? presets.wd.replace(c, '') : presets.wd + c;
+    d = 'MTWRF'.split('').filter(x => d.indexOf(x) >= 0).join('');
+    if (!d) return;
+    presets.wd = d; savePresets(); lastMenu = null;
+    if (wake && kindOf(wake.days) === 'MTWRF' && wake.days !== d) setWake('MTWRF', presets.MTWRF);
   };
   const wakeEntries = () => {
     const _pad = (t) => t + '  ';
     const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:t:' + days + ':' + t, title: t, check: presets[days] === t }))
       .concat([{ sep: true }, { id: 'h:wk:t:' + days + ':ask', title: 'Other time…' }]);
-    const use = (days, name) => ({ id: 'h:wk:use:' + days, title: _pad(name) + presets[days], check: !!(wake && wake.days === days) });
+    const use = (days, name) => ({ id: 'h:wk:use:' + days, title: _pad(name) + presets[days] + (days === 'MTWRF' && presets.wd !== 'MTWRF' ? '   (' + dayLabel(presets.wd) + ')' : ''), check: !!(wake && kindOf(wake.days) === days) });
+    const dayBoxes = 'MTWRF'.split('').map(c => ({ id: 'h:wk:d:' + c, title: { M: 'Monday', T: 'Tuesday', W: 'Wednesday', R: 'Thursday', F: 'Friday' }[c], box: presets.wd.indexOf(c) >= 0 }));
     const sub = [{ title: 'Now: ' + (wake ? wake.raw : 'not set'), off: true }, { sep: true },
       use('MTWRFSU', 'Every day'), use('MTWRF', 'Weekdays'), use('SU', 'Weekends'),
       { title: '(one at a time — switching asks for your password)', off: true }, { sep: true },
-      { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: times('MTWRF') }, { title: 'Weekends', sub: times('SU') }] }];
+      { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: dayBoxes.concat([{ sep: true }], times('MTWRF')) }, { title: 'Weekends', sub: times('SU') }] }];
     if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
     return [{ title: '🌅 Wake   ' + wakeLabel(), sub }, { sep: true }];
   };
@@ -157,7 +180,8 @@ function run(argv) {
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
       if (id.indexOf('h:wk:') === 0) { const u = /^h:wk:use:([A-Z]+)$/.exec(id), q = /^h:wk:t:([A-Z]+):(.+)$/.exec(id) || [];   // v5.0.0-50: use= 切り替え / t= 時刻を覚える   // v5.0.0-47: 🌅 Wake / v5.0.0-48(俊克 バグ「7:00をクリックしても変更できない」): ':' で切ると 07:00 の中の ':' でも切れて時刻が「07」になっていた→ 曜日の後ろは丸ごと時刻
-        if (id === 'h:wk:off') offWake(); else if (u) setWake(u[1], presets[u[1]]); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) presetTime(q[1], q[2]); lastMenu = null; return; }
+        const dc = /^h:wk:d:([MTWRF])$/.exec(id);
+        if (dc) toggleDay(dc[1]); else if (id === 'h:wk:off') offWake(); else if (u) setWake(u[1], presets[u[1]]); else if (q[2] === 'ask') askWakeTime(q[1]); else if (q[1] && q[2]) presetTime(q[1], q[2]); lastMenu = null; return; }
       if (id === 'h:open') { openApp(); return; }
       // ★v4.2.363(俊克「helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする」): 閉じている間に降ろす口。
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
