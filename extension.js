@@ -35023,7 +35023,9 @@ function membraneArrowHoverMessageInner(editor, position, swapAt) {
       meosDbg('[foldHover] line=' + info.line + ' ch=' + position.character + ' idStart=' + info.idStart + ' half=' + (position.character < info.idStart ? '\u25bc' : '\u25b2'));   // v4.2.760: ▼と▲で訊かれる桁が分かれているかを測る
       return '';   // 空= ここで打ち切る(下の画像tipを出させない)
     }
-    return 'Toggle ' + meosMembraneGlyph(info.kind, _folded, _isToc) + '-Button!';
+    // ★v5.0.0-41(俊克 10:17「いっそのこと、▼、▲に対するToggle tipは廃止しよう。ポインターの形がそれを示しているからね。一度触れば分るしね」):
+    //   tip は出さない(空= ここで打ち切り・下の画像tipも出させない)。畳んだ ▼▲ の色の入れ替え(上の swapAt)はそのまま
+    return '';
   }
   return null;
 }
