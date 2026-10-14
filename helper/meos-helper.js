@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v4.2.742) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-47) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -74,10 +74,72 @@ function run(argv) {
   const stopBell = () => { ringing = null; ringNext = 0; if (bellTimer) { bellTimer.invalidate; bellTimer = null; } };
   const ownerAlive = (pid) => pid > 0 && $.kill(pid, 0) === 0;
   let owner = 0;
+  // ★v5.0.0-47(俊克 2026.10.14 pm01:55「システムの自動起動タイマーを組み込もう。何世代前から設定できなくなった。今は毎朝手で電源ボタンを押している」
+  //   → pm02:09 iMac M3 で `pmset schedule wakeorpoweron` によりシステム終了から自動起動できた(実測)):
+  //   ★🌅 Wake = Mac の毎日の起動(または起こす)時刻。住まいは macOS(pmset)= ここは覚えず、毎回 `pmset -g sched` を読んで出す(突き合わせ)。
+  //   ★読むのはパスワード不要。決める/外す時だけ macOS 本物の管理者パスワード欄(do shell script … with administrator privileges)= MeOS はパスワードに触れない。
+  //   ★起動だけ(切る/眠らせるは出さない= 保存していない作業ごと切れるため。要る人が出たら pmset repeat の2つ目の枠として足す)
+  const sa = Application.currentApplication(); sa.includeStandardAdditions = true;
+  const WAKE_DAYS = { MTWRFSU: 'every day', MTWRF: 'weekdays' };
+  const WAKE_TIMES = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00'];
+  let wake = null, wakeReadAt = 0;   // {days:'MTWRFSU'|'MTWRF'|'', hm:'06:30'|'', raw:'…'} / null= 予定なし
+  const readWake = () => {
+    wakeReadAt = Date.now();
+    try {
+      const out = String(sa.doShellScript('/usr/bin/pmset -g sched')).split(/[\r\n]+/);
+      let inRep = false; wake = null;
+      for (const ln of out) {
+        if (/^Repeating power events/i.test(ln)) { inRep = true; continue; }
+        if (/power events/i.test(ln)) { inRep = false; continue; }
+        if (!inRep || !/(wake|poweron)/i.test(ln)) continue;
+        const raw = ln.trim(), m = /at\s+(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(raw);
+        let hm = '';
+        if (m) { let h = parseInt(m[1], 10); if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } hm = (h < 10 ? '0' : '') + h + ':' + m[2]; }
+        const days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : '');
+        wake = { days, hm, raw }; break;
+      }
+    } catch (e) { hlog('wake: pmset -g sched を読めない ' + e); }
+  };
+  const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (WAKE_DAYS[wake.days] || wake.raw));
+  const setWake = (days, hm) => {
+    if (!WAKE_DAYS[days] || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
+    try {
+      app.activateIgnoringOtherApps(true);
+      sa.doShellScript('/usr/bin/pmset repeat wakeorpoweron ' + days + ' ' + hm + ':00', { administratorPrivileges: true,
+        withPrompt: 'MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + WAKE_DAYS[days] + '.' });
+      hlog('wake: set ' + days + ' ' + hm);
+    } catch (e) { hlog('wake: 取りやめ/失敗 ' + e); }
+    readWake();
+  };
+  const offWake = () => {
+    try { app.activateIgnoringOtherApps(true);
+      sa.doShellScript('/usr/bin/pmset repeat cancel', { administratorPrivileges: true, withPrompt: 'MeOS V-helper will turn off the daily start-up of your Mac.' });
+      hlog('wake: off'); } catch (e) { hlog('wake: 取りやめ/失敗 ' + e); }
+    readWake();
+  };
+  const askWakeTime = (days) => {
+    try { app.activateIgnoringOtherApps(true);
+      const r = sa.displayDialog('Start-up time, ' + WAKE_DAYS[days] + ' (24-hour, HH:MM)', { defaultAnswer: (wake && wake.hm) || '06:30', buttons: ['Cancel', 'Set'], defaultButton: 'Set', withTitle: 'MeOS — Wake' });
+      let t = String(r.textReturned || '').trim().replace(/^(\d):/, '0$1:');
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) setWake(days, t); else sa.displayDialog('Please write the time like 06:30.', { buttons: ['OK'], withTitle: 'MeOS — Wake' });
+    } catch (e) {}
+  };
+  const wakeEntries = () => {
+    if (!wakeReadAt || Date.now() - wakeReadAt > 30000) readWake();
+    const cur = wake ? wake.days + ' ' + wake.hm : '';
+    const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:' + days + ':' + t, title: t, check: cur === days + ' ' + t }))
+      .concat([{ sep: true }, { id: 'h:wk:' + days + ':ask', title: 'Other time\u2026' }]);
+    const sub = [{ title: 'Now: ' + (wake ? wake.raw : 'not set'), off: true }, { sep: true },
+      { title: 'Every day at', sub: times('MTWRFSU') }, { title: 'Weekdays at', sub: times('MTWRF') }];
+    if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
+    return [{ title: '\ud83c\udf05 Wake   ' + wakeLabel(), sub }, { sep: true }];
+  };
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {
     let id = ''; try { id = ObjC.unwrap(s.representedObject) || ''; } catch (e) {}
     if (id.indexOf('h:') === 0) {                         // 拡張が居ない時のメニュー= ここで片付ける
       if (id === 'h:stop') { stopBell(); return; }
+      if (id.indexOf('h:wk:') === 0) { const q = id.slice(5).split(':');   // v5.0.0-47: 🌅 Wake
+        if (q[0] === 'off') offWake(); else if (q[1] === 'ask') askWakeTime(q[0]); else setWake(q[0], q[1]); lastMenu = null; return; }
       if (id === 'h:open') { openApp(); return; }
       // ★v4.2.363(俊克「helperは常駐なので、アプリの終了、起動を行える。Dockの代わりにする」): 閉じている間に降ろす口。
       //   印(off-by-user)を置いて降りる= 次にアプリを開いた時、拡張がそれを見て設定を切る。ログイン時に起きないよう LaunchAgent の plist も外す。
@@ -238,6 +300,8 @@ function run(argv) {
   const gray = $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x6b / 255, 0x72 / 255, 0x80 / 255, 1);
   function show(text, menu, anchor) {
     const idle = !text;
+    // v5.0.0-47: 🌅 Wake を「アプリの起動/終了」の段の上へ(拡張が居る時の並びにも、居ない時の並びにも同じ所へ)
+    try { menu = (menu || []).slice(); let qi = menu.findIndex(e => e && (e.id === 'quitapp' || e.id === 'h:open')); if (qi < 0) qi = menu.length; else if (qi > 0 && menu[qi - 1] && menu[qi - 1].sep) qi--; menu.splice(qi, 0, ...(qi > 0 ? [{ sep: true }] : []), ...wakeEntries().slice(0, 1)); } catch (e) {}
     if (idle) text = '\u23f0';
     item.visible = true;
     const mj = JSON.stringify(menu || []);
