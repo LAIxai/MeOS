@@ -250,8 +250,8 @@ change the wrap width this directly.
   *Markdown Language Features* for that workspace, which was the cause we measured.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo with the BTRON hand, the Me Dock title tiles, the Today button showing 13T with a fire bird, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
-  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And top right, <b>13T🐦‍🔥</b>: today is the 13th, a Tuesday — the weekday on its Five Elements colour (red, for fire), with its guardian, the Vermilion Bird.</sub>
+  <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-medock.png" alt="The new Me Dock at its narrowest width - the MeOS logo with the BTRON hand, the Me Dock title tiles, the Today button opened to 2026 10 11S with the three-legged crow, Format Me, Current Me, Encrypt Me, Navigate Me!, the Contents switch, Timed Me-System and Hyper TOC" width="40%"><br>
+  <sub><b>The new Me Dock.</b> Nothing like the one you knew — and still neatly in line at its narrowest width. Look closer: the angle of the pointer, the red × on its hotspot, the creases of the hand. And top right, <b>11S</b> with its guardian: the 11th, a Sunday — the day of the sun, guarded by <b>Yatagarasu</b>, the three-legged crow of the sun. The crow emoji has only two legs, so this one is drawn for MeOS: its third leg is a hand, pointing up at the sky. The other six days keep their emoji guardians — the Jade Rabbit of the moon, and the Vermilion Bird, Black Tortoise, Azure Dragon, White Tiger and Yellow Dragon of the Five Elements.</sub>
 </p>
 
 <p align="center">
