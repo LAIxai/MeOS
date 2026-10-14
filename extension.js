@@ -24111,18 +24111,10 @@ function updateMeDockCurrentLineMarker() {
     editor.setDecorations(hov, []);
   } else {
     editor.setDecorations(ensureMeDockCurrentLineDecoration(), [range]);
-    // ★v5.0.0-37(俊克 -35テスト 改良2「tipが以前から邪魔臭い…折り返された行のときは、その行を塞がないように」→ 09:11「膜名の最初の文字の上だけに出すようにしよう。
-    //   そうすれば、当初のガター用のtipの意味でも整合性が取れ、その行を塞ぐこともない」): v0.9.950 の「行全体」をやめ、1文字だけに載せる。
-    //   膜の行= 膜名の1文字目(idStart)/ それ以外の行= 行の1文字目。絵文字(サロゲート対)は1字ぶん(2桁)取る。
-    let _hs = 0, _isMem = false;
-    try { _isMem = !!membraneLineInfo(editor.document, pos.line); } catch (_) { }
-    const _ltx = editor.document.lineAt(pos.line).text;
-    const _cp = _ltx.codePointAt(_hs);
-    const _he = Math.min(eol, _hs + ((_cp !== undefined && _cp > 0xffff) ? 2 : 1));
-    // ★v5.0.0-39(俊克 09:53「13桁目ではなく、14桁目にガターtipを出すようにすればいいんだよ。13桁目にこだわる必要はない」):
-    //   膜の行では飾りに載せない→ hover provider が桁で決める(▼=12/▲=13= Toggle、14= 帰還tip)。Toggle と同じ物差し(provider の桁)で住み分ける。
-    if (md && !_isMem) editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, _hs, pos.line, Math.max(_hs + 1, _he)), hoverMessage: md }]);
-    else if (md) editor.setDecorations(hov, []);
+    // ★v5.0.0-42(俊克 10:21「Raw表示になっているので、13文字目なんて関係ない。1～3文字目くらいのところだけで出すようにすればいい。
+    //   ガターに近いところに出ると言う発想で言えば、それが自然」): どの行も行頭の3字だけ(ガターの橙矢印のすぐ右)。膜の行も同じ(カーソル行は生なので桁は本物の字)。
+    //   (-37〜39 の「膜名の1文字目/idStart+1」は撤去。-37: 行全体をやめた理由= 折り返した行を塞がない)
+    if (md) editor.setDecorations(hov, [{ range: new vscode.Range(pos.line, 0, pos.line, Math.min(eol, 3)), hoverMessage: md }]);
     else editor.setDecorations(hov, []);
   }
 }
@@ -42219,12 +42211,6 @@ vscode.languages.registerInlayHintsProvider(foldingSelector, {
         try {   // v5.0.0-38: 測る口= ▼▲/膜名1文字目のどこに置くと何桁で訊かれるか(▲と「最」の左4割が同じ桁かを切り分ける)
           const _ti = membraneLineInfo(document, position.line);
           if (_ti && Math.abs(position.character - _ti.idStart) <= 2) meosDbg('[tipAt] line=' + position.line + ' ch=' + position.character + ' idStart=' + _ti.idStart + ' raw=' + (editor ? meosShowsRawLine(editor, position.line) : '?') + ' cur=' + (editor && editor.selection ? editor.selection.active.line : -1));
-        } catch (_) { }
-        try {   // ★v5.0.0-39: 膜の行の帰還tip= カーソル行で、膜名の idStart+1 桁(「最」の右側〜2文字目の左側)。13桁は▲と同じ桁なので使わない
-          if (editor && meDockPanel && meDockCurrentLineMarkerActive && editor.selection && editor.selection.active.line === position.line) {
-            const _ri = membraneLineInfo(document, position.line);
-            if (_ri && position.character === _ri.idStart + 1) { const _rm = buildHtocReturnMenu(editor); if (_rm) return new vscode.Hover(_rm); }
-          }
         } catch (_) { }
         const arrowMsg = membraneArrowHoverMessage(editor, position);
         if (arrowMsg === '') return null;   // v4.2.758: 畳んだ ▼▲ の上= tip は出さない
