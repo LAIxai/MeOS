@@ -13086,7 +13086,7 @@ function meosArmClockFcFor(doc) {
       }
       // v4.1.60: 向きと間隔を**掛けた時に**控える= 面は毎秒描く物so、その度に14万行をなぞらない
       //   ([[project_meos_freeze_pattern]] 固着の正体= 連続発火の上の同期重処理)。
-      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, anchor: !!c.anchor, fc: true,
+      const scope = { doc, uri, key: c.key, name: c.name, hold: !!c.hold, lock: !!c.lock, anchor: !!c.anchor || meosIsLaunchDKey(c.key), fc: true,
         sig: String(c.when) + '|' + (Array.isArray(c.cycle) ? c.cycle.join('/') : '') + '|' + (c.up ? '1' : '') + '|' + (c.rounds || 0),   // v4.1.82
         when: String(c.when || ''),                    // v4.1.1110: 掛かっているのは**どの行か**(待機中の行には数字を出さない)
         line: c.line,                                  // ★v4.1.1118: 同じ時刻の2本thatが在り得るso、行でも見分ける
@@ -13707,7 +13707,7 @@ function meosHelperAlarms() {
               name: r.title ? meosChainFillSlot(r.title, 1) : (sc.name || sc.key), title: r.title || '' }; });   // v4.2.341: 器(1.)に回数を入れるための元の字
           idx = Math.max(0, rows.findIndex(r => r.line === sc.line)); done = Math.max(0, (typeof sc.round === 'number' ? sc.round : 1) - 1);
         } } catch (_) { chain = null; }
-      out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), steps, chain, idx, done });   // v4.2.312: ⚓= 鳴らすだけ
+      out.push({ id: k + ' ' + until, at: until, name: meosClockSayName(sc) || sc.name || sc.key, uri: sc.uri, key: sc.key, anchor: !!meosClockAnchoredNow(sc), mute: meosIsLaunchDKey(sc.key), steps, chain, idx, done });   // v5.0.0-58: mute= V-helper も鳴らさない   // v4.2.312: ⚓= 鳴らすだけ
     }
   } catch (_) { }
   return out.sort((a, b) => a.at - b.at);
@@ -13948,6 +13948,7 @@ async function meosGoBackFromAlarm() {
 //   ★行は**名前から引き直す**(掛けた時の行番号は、書いている内にずれる)。
 let meosClockShipDeco = null, meosClockMoorDeco = null, meosClockLockedDeco = null;   // ★v4.2.314: 🚢💨/⚓ の区画
 let meosClockLockDeco = null, meosClockNoPressDeco = null;   // ★v4.2.236: 🔓の駒
+let meosClockSunDeco = null;   // v5.0.0-58: 🌅LaunchD の⏰を🌅に見せる
 let meosClockPlayDeco = null;   // ★v4.2.74: 運転ボタンの当たり= 手の形(cursor:pointer)
 let meosClockTitleDeco = null;  // ★v4.2.173: 走っている1本のタイトル(待っている⏰のタイトルは畳む)
 let meosTimerLineDeco = null;
@@ -14189,6 +14190,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
       items.push({ range: new vscode.Range(i, col, i, col), renderOptions: { before: { contentText: ov.abs ? ov.content : ('\u200e' + ov.content + '\u200e'), textDecoration: base + (ov.css || '') } } });
     };
     const plays = [];   // ★v4.2.74: 運転ボタン(▶️/⏸️)= 手の形を持つ専用の駒
+    const suns = [];   // ★v5.0.0-58: 🌅LaunchD の⏰を🌅に見せる(字は⏰のまま)
     const lockBtns = [];   // ★v4.2.236: 🔓の駒(時刻の直前の空白1字)
     const shipBtns = [], moorBtns = [], shipLBtns = [], moorLBtns = [], lockedBtns = [];   // v4.2.339: 🔐も駒の右へ   // ★v4.2.314: 同じ空白1字の左の区画= 🚢💨(飛ぶ) / ⚓(停泊)。v4.2.318: 🔓と並ぶ時(L)と1人の時で幅を変える
     const noPress = [];   // ★v4.2.237: 錠の間の運転ボタン= ↖
@@ -14645,6 +14647,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _run65 = meosClockLineRunning(doc, owner ? owner.id : '', i);
               // ★★★v4.2.74: 駒そのものto、その当たり(0桁〜⏰)の両方に**手の形**を当てる=
               //   押せる所の上でだけ形that変わる。吹き出しは出さない(何も覆わない)。
+              if (owner && meosIsLaunchDKey(owner.id)) suns.push({ range: new vscode.Range(i, _a65, i, _a65 + 1 + ((txt.charCodeAt(_a65 + 1) === 0xfe0f) ? 1 : 0)) });   // v5.0.0-58
               plays.push({ range: new vscode.Range(i, _a65, i, _a65),
                 renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
               // ★v4.2.237(俊克 質問1「ロック中は⏸️を押しても止まらないので、ポインタを↖に」/ バグ3「🔐の上でポインタが変化しない」):
@@ -14983,6 +14986,10 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
     //   ★駒(▶️/⏸️)と当たり(0桁〜⏰)を同じ型に入れる= 見えている物と押せる所thatずれない。
     if (!meosClockPlayDeco) meosClockPlayDeco = vscode.window.createTextEditorDecorationType({ cursor: meosHandCursor(), rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed });
     editor.setDecorations(meosClockPlayDeco, plays);
+    // ★v5.0.0-58: ⏰の字を幅ごと隠し、その場所に🌅を描く(字の大きさは隠した字から継がないよう、エディタの字の大きさを直に書く)
+    if (!meosClockSunDeco) { const _fs58 = Number(vscode.workspace.getConfiguration('editor').get('fontSize')) || 14;
+      meosClockSunDeco = vscode.window.createTextEditorDecorationType({ textDecoration: 'none; font-size: 0px;', before: { contentText: '\ud83c\udf05', textDecoration: 'none; font-size: ' + _fs58 + 'px;' }, rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed }); }
+    editor.setDecorations(meosClockSunDeco, suns);
     // ★v4.2.314: 駒の幅は左の区画(🚢💨/⚓)が持つ。🔓は右の区画へ after で置く(駒の右端から戻す)。
     // ★★v4.2.318(俊克 改良1「なぜか🚢💨の後ろが大きく空間が空く」): 幅を1つ(8ch)にしていた= 🔐で🔓が立たない行でも、⚓でも同じ広さが残った。
     //   → 駒の幅は**中に入る物で決める**4通り。左右の区画の境(字の箱の真ん中)は、🚢💨/⚓と🔓の間に来るように置く。
@@ -15979,7 +15986,7 @@ function meosClockBellRows(sc) {
   } catch (_) { return null; }
 }
 function meosClockBellPick(main, isMain) {
-  const on = isMain ? (main.bellMainOn !== false) : (main.bellSubOn !== false);
+  const on = (isMain ? (main.bellMainOn !== false) : (main.bellSubOn !== false)) && !meosIsLaunchDKey(main.key);   // v5.0.0-58: 🌅LaunchD は🔕
   const nm = isMain ? main.bellMain : main.bellSub;
   return { on, sound: nm ? (meosSoundByName(nm) || '') : '' };   // '' = Me Dock の 🔔 で選んだ音
 }
@@ -16169,7 +16176,8 @@ async function meosPseudoTimeUp(key) {
   try { _meosRingAnchor = !!(_sc0 && meosClockAnchoredNow(_sc0)); } catch (_) { _meosRingAnchor = false; }   // v4.2.325
   const _fin436 = meosClockIsFinalStep(_sc0 || {});                                   // v4.2.436: 最後の1歩= 終了用のメッセージと音
   const _ov436 = meosClockSoundFor(_sc0, _fin436);
-  if (!_pre && !(_cyc > 0)) { _meosBellOverride = (_ov436 === MEOS_BELL_MUTE ? '' : _ov436); meosStartRinging(meosClockSayName(_sc0, _fin436)); }   // v4.2.477: 鳴り続けるのは一度きりの⏰だけ(🔕 でも鳴る)。周期は始まる時間の音を1回(下)   // v4.2.445: 🔕 は鳴動しない   // 先に鳴らす= 飛ぶ前に「来た」と分かる
+  const _ld58 = !!(_sc0 && meosIsLaunchDKey(_sc0.key));   // v5.0.0-58: 🌅LaunchD は時刻が来ても鳴らさない(Mac が起きるだけ)
+  if (!_ld58 && !_pre && !(_cyc > 0)) { _meosBellOverride = (_ov436 === MEOS_BELL_MUTE ? '' : _ov436); meosStartRinging(meosClockSayName(_sc0, _fin436)); }   // v4.2.477: 鳴り続けるのは一度きりの⏰だけ(🔕 でも鳴る)。周期は始まる時間の音を1回(下)   // v4.2.445: 🔕 は鳴動しない   // 先に鳴らす= 飛ぶ前に「来た」と分かる
   // ★★v4.1.54: **繰返しの鐘は、ここで止める**= 先鐘から時刻ちょうどまでthat鳴る時間。以後は黙る時間。
   //   止めなければ次の先鐘まで鳴り続け、減り張りthat消える(1分周期では鳴りっぱなしになる)。
   // ★★★v4.1.56(俊克「アーチェリーでタイムアップのときは、警告音というか、**ホイッスル**を鳴らしていたね」):
@@ -16177,7 +16185,7 @@ async function meosPseudoTimeUp(key) {
   //     **黙ることでは「今だ」を伝えられない**。しかも飛ぶ瞬間that無音so、何も起きていないように見える。
   //   → 0秒は**短く1回**鳴らして止める= 秒読み(続く音)と、合図(切れる音)that別の形になる。
   const _ns43 = (_cyc > 0 && _sc0) ? meosClockNextStart(_sc0) : null;                   // v4.2.477: 次に始まる時間の音(数え鳴きは廃止)
-  if (_cyc > 0) { try { meosStopRinging(); if (_ns43) meosPlayOnce(_ns43.sound); else meosPlayWhistle(''); } catch (_) { } }   // v4.2.477: 始まる時間の音を1回(🔕 でも)・全部終わったら笛   // v4.2.476(俊克「🥊指定のときに、3mの終了時点で、ピーーーが鳴らない。それは鳴らさないと駄目でしょ」): 🔕 は先鐘だけ= 終わりの笛は鳴らす   // v4.1.57: 秒読みを止め、3秒の高音1つ
+  if (_cyc > 0 && !_ld58) { try { meosStopRinging(); if (_ns43) meosPlayOnce(_ns43.sound); else meosPlayWhistle(''); } catch (_) { } }   // v4.2.477: 始まる時間の音を1回(🔕 でも)・全部終わったら笛   // v4.2.476(俊克「🥊指定のときに、3mの終了時点で、ピーーーが鳴らない。それは鳴らさないと駄目でしょ」): 🔕 は先鐘だけ= 終わりの笛は鳴らす   // v4.1.57: 秒読みを止め、3秒の高音1つ
   const scope = await meosEndPseudoTimer(key);
   if (!scope) return;
   // ★★v4.2.312(俊克 改良3「20分サイクリックタイマーを使っていて、膜に飛ばない指定もできるといいね」→ pm02:33「⚓ でもいいけど」):
@@ -20851,6 +20859,78 @@ async function meosClockAnchorToggle(document, hit) {
   } catch (_) { return false; }
 }
 // 鳴った時に本文を見直す= 走っている間に⚓を付け外ししても、鳴る瞬間の本文が正しい
+// ★★★v5.0.0-58(俊克 2026.10.14 pm07:23〜08:00「これもテキストデータにしよう。特別な名前の膜を規定して、そこに⏰の形式で記述する」
+//   → 「⏰と🌅を同格に…🌅を使うと⚓固定・🔕固定・起点なし・繰返しのみ・⏸️は1つだけ動作…膜名 🌅LaunchD_TS・TSが最新の物を使う」
+//   → pm08:00「🌅は見た目だけにしましょう。膜名を🌅LaunchD_TSとし、その場合だけ⏰FCの表示を🌅に見せかける」):
+//   ★本文は普通の⏰(閉じ膜の下の UFC)。膜名が 🌅LaunchD なら: ⚓(飛ばない)・🔕(鳴らさない)は膜が決める/⏰は🌅に描く(飾りだけ)。
+//   ★▶️で走らせた1本 = Mac の起動の予定(pmset repeat wakeorpoweron)。⏸で止めたら外す。入れる/外す時だけ macOS のパスワード欄。
+//   ★1つの膜で走るのは1本だけ(⏰の今の作り)= macOS の予定も1つだけ(pmset の都合)と同じ形。
+//   ★🌅LaunchD の膜が幾つ在っても、効くのは膜名の TS が一番新しい物(古い物を使う時は Me Dock の ↻ で TS を今にする)。
+const MEOS_LAUNCHD_RE = /^\ud83c\udf05LaunchD(?:_|$)/;
+function meosIsLaunchDKey(key) { return MEOS_LAUNCHD_RE.test(String(key || '')); }
+function meosLaunchDTs(key) { const m = /_(\d{8})[SMTWtFs]?(\d{6})/.exec(String(key || '')); return m ? Number(m[1] + m[2]) : 0; }
+// ⏰の1行 → pmset の {days, hm}。曜日の字は家の物(S-M-T-W-t-F-s)→ pmset(MTWRFSU)。書けない物は {err}
+function meosLaunchDSpec(x) {
+  const cyc = Array.isArray(x && x.cycle) ? x.cycle : [];
+  if (cyc.length !== 1 || !/^[SMTWtFs]+$/.test(String(cyc[0]))) return { err: '\ud83c\udf05 A start-up can only repeat on days of the week \u2014 like \u21baMTWtF (weekdays), \u21basS (weekends) or \u21baSMTWtFs (every day). \u21bat1,3 or intervals cannot go to macOS.' };
+  const MAP = { S: 'U', M: 'M', T: 'T', W: 'W', t: 'R', F: 'F', s: 'S' };
+  const got = String(cyc[0]).split('').map(c => MAP[c]).join('');
+  const days = 'MTWRFSU'.split('').filter(c => got.indexOf(c) >= 0).join('');
+  const m = /(\d{1,2}):(\d{2})(?!.*\d{1,2}:\d{2})/.exec(String(x.whenSrc || x.when || ''));
+  if (!m || Number(m[1]) > 23) return { err: '\ud83c\udf05 Write the start-up time on the line, like \u21baMTWtF 06:30.' };
+  return { days, hm: String(m[1]).padStart(2, '0') + ':' + m[2] };
+}
+const MEOS_LAUNCHD_DAYNAME = { M: 'Mon', T: 'Tue', W: 'Wed', R: 'Thu', F: 'Fri', S: 'Sat', U: 'Sun' };
+function meosLaunchDDaysLabel(d) { return d === 'MTWRFSU' ? 'every day' : d === 'MTWRF' ? 'weekdays' : d === 'SU' ? 'weekends' : d.split('').map(c => MEOS_LAUNCHD_DAYNAME[c]).join(' '); }
+function meosLaunchDPresetsPath() { try { return require('path').join(require('path').dirname(meosHelperDir()), 'wake-presets.json'); } catch (_) { return ''; } }
+function meosLaunchDApplied() { try { const o = JSON.parse(require('fs').readFileSync(meosLaunchDPresetsPath(), 'utf8')); return (o && o.applied) || null; } catch (_) { return null; } }
+function meosLaunchDSetApplied(v) { try { const f = meosLaunchDPresetsPath(), fs = require('fs'); let o = {}; try { o = JSON.parse(fs.readFileSync(f, 'utf8')) || {}; } catch (_) { } o.applied = v; fs.writeFileSync(f, JSON.stringify(o)); } catch (_) { } }   // V-helper の 🌅 Wake と同じ控え(「Some days」の曜日)
+function meosLaunchDReadMac() {
+  return new Promise(res => { try { require('child_process').execFile('/usr/bin/pmset', ['-g', 'sched'], { timeout: 5000 }, (e, out) => {
+    if (e) return res(undefined);
+    let inRep = false;
+    for (const ln of String(out || '').split(/[\r\n]+/)) {
+      if (/^Repeating power events/i.test(ln)) { inRep = true; continue; }
+      if (/power events/i.test(ln)) { inRep = false; continue; }
+      if (!inRep || !/(wake|poweron)/i.test(ln)) continue;
+      const m = /at\s+(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(ln); let hm = '';
+      if (m) { let h = parseInt(m[1], 10); if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } hm = String(h).padStart(2, '0') + ':' + m[2]; }
+      let days = /every day/i.test(ln) ? 'MTWRFSU' : /weekdays/i.test(ln) ? 'MTWRF' : /weekends/i.test(ln) ? 'SU' : '';
+      if (!days && /some days/i.test(ln)) { const ap = meosLaunchDApplied(); if (ap && ap.hm === hm) days = ap.days; }
+      return res({ days, hm, raw: ln.trim() });
+    }
+    res(null);
+  }); } catch (_) { res(undefined); } });
+}
+let _meosLaunchDT = null, _meosLaunchDBusy = false;
+// ▶️/⏸ を人が押した後だけ呼ぶ(時刻が来て時計が回る時には呼ばない= 勝手にパスワード欄を出さない)
+function meosLaunchDKick(doc, key) { if (!meosIsLaunchDKey(key)) return; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { meosLaunchDReconcile(doc, key); }, 400); }
+async function meosLaunchDReconcile(doc, key) {
+  const say = (t) => { try { vscode.window.showInformationMessage(t); } catch (_) { } meosDbg('[launchd] ' + t); };
+  if (process.platform !== 'darwin') { say('\ud83c\udf05 LaunchD sets the start-up of a Mac \u2014 it does nothing here.'); return; }
+  if (_meosLaunchDBusy) return;
+  // 一番新しい 🌅LaunchD(開いている md の中で)
+  let newest = null;
+  for (const d of vscode.workspace.textDocuments) { if (!isMarkdownDocument(d)) continue;
+    try { for (const p of collectPairs(d, { excludeIndex: false })) if (meosIsLaunchDKey(p.id)) { const ts = meosLaunchDTs(p.id); if (!newest || ts > newest.ts) newest = { doc: d, id: p.id, ts }; } } catch (_) { } }
+  if (newest && (newest.id !== key || newest.doc !== doc)) { say('\ud83c\udf05 This LaunchD is not the newest one (' + newest.id + ' is) \u2014 press \u21bb on its name in Me Dock to make it current.'); return; }
+  const run = meosClockFcScan(doc).filter(x => x.key === key && x.ufc && !x.off && !x.done)[0] || null;
+  const want = run ? meosLaunchDSpec(run) : null;
+  if (want && want.err) { say(want.err); return; }
+  const cur = await meosLaunchDReadMac();
+  if (cur === undefined) { say('\ud83c\udf05 Could not read the start-up schedule of this Mac (pmset).'); return; }
+  if (want && cur && cur.hm === want.hm && cur.days === want.days) { meosDbg('[launchd] 既に同じ ' + want.days + ' ' + want.hm); return; }
+  if (!want && !cur) return;
+  const sh = want ? ('/usr/bin/pmset repeat wakeorpoweron ' + want.days + ' ' + want.hm + ':00') : '/usr/bin/pmset repeat cancel';
+  const prompt = want ? ('MeOS will start up (or wake) your Mac at ' + want.hm + ', ' + meosLaunchDDaysLabel(want.days) + '.') : 'MeOS will turn off the daily start-up of your Mac.';
+  _meosLaunchDBusy = true;
+  require('child_process').execFile('/usr/bin/osascript', ['-e', 'do shell script "' + sh + '" with administrator privileges with prompt "' + prompt.replace(/["\\]/g, '') + '"'], (e) => {
+    _meosLaunchDBusy = false;
+    if (e) { say('\ud83c\udf05 Not changed \u2014 the start-up of your Mac stays as it was.'); return; }
+    meosLaunchDSetApplied(want ? { days: want.days, hm: want.hm } : null);
+    say(want ? ('\ud83c\udf05 Your Mac will start up at ' + want.hm + ', ' + meosLaunchDDaysLabel(want.days) + '.') : '\ud83c\udf05 The daily start-up of your Mac is off.');
+  });
+}
 function meosClockAnchoredNow(scope) {
   try {
     const doc = scope && (scope.doc || vscode.workspace.textDocuments.find(d => d.uri.toString() === scope.uri));
@@ -20859,9 +20939,9 @@ function meosClockAnchoredNow(scope) {
     //   1つの膜に⏰行が2本(8h と 5m⚓)。膜名で最初に見つかる行(8h)を読んでいた→ 走っている行を読む(掛けた行 → 無ければ今走っている1本)
     const rows = meosClockFcScan(doc).filter(x => x.key === scope.key);
     const hit = (typeof scope.line === 'number' ? rows.find(x => x.line === scope.line) : null) || meosLiveClockFor(doc, scope.key);
-    if (hit) return !!hit.anchor;
+    if (hit) return !!hit.anchor || meosIsLaunchDKey(hit.key);   // v5.0.0-58: 🌅LaunchD は⚓(飛ばない)
   } catch (_) { }
-  return !!(scope && scope.anchor);
+  return !!(scope && (scope.anchor || meosIsLaunchDKey(scope.key)));
 }
 function meosClockLockMarkAt(txt) {   // ★v4.2.235: 本文の🔐(旧🔒)の位置= ⏰の後ろ・時刻の頭より前
   const sp = meosClockLockSpot(txt); if (!sp) return null;
@@ -21313,6 +21393,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
               if (_hd68) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Going on \u2014 the schedule moved back by ' + meosMmSs(Math.max(0, Date.now() - Number(_hd68.at))) + '.');
             }
             setRefNoRaw(editor.document, _ln);
+            try { meosLaunchDKick(editor.document, _own92); } catch (_) { }   // v5.0.0-58
             meosParkCaretAfterPress(editor, _ln);
             try { refresh(editor); } catch (_) { }
             try { meosTickTimerLines(); } catch (_) { }
@@ -21322,6 +21403,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
         if (_own92) {
           setRefNoRaw(editor.document, _ln);
           const _ok94 = await meosClockRestartHere(editor.document, _own92, _ln);
+          try { meosLaunchDKick(editor.document, _own92); } catch (_) { }   // v5.0.0-58
           setRefNoRaw(editor.document, _ln);
           meosParkCaretAfterPress(editor, _ln);
           if (_ok94) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Started again from zero.');   // ★v4.2.94
@@ -21343,6 +21425,7 @@ async function handleMembraneNameSelection(editor, selectionKind) {
           setRefNoRaw(editor.document, _ln);
           if (_run) await meosClockStopHere(editor.document, _own, _ln);   // \u23f8\ufe0f \u3092\u62bc\u3057\u305f= \u6b62\u3081\u308b
           else { const _hd68b = meosClockHoldOf(editor.document.uri.toString() + ' ' + _own); await meosChainStartHere(editor.document, _own, _ln); if (_hd68b) meosShowPlayTip(editor, _ln, '\u25b6\ufe0f Going on \u2014 the schedule moved back by ' + meosMmSs(Math.max(0, Date.now() - Number(_hd68b.at))) + '.'); }   // \u25b6\ufe0f \u3092\u62bc\u3057\u305f= \u8d70\u3089\u305b\u308b / v4.2.468: \u3057\u305f\u5206\u3060\u3051\u305a\u3089\u3059
+          try { meosLaunchDKick(editor.document, _own); } catch (_) { }   // v5.0.0-58: 🌅LaunchD= 走らせた1本を Mac の起動の予定へ/止めたら外す
           setRefNoRaw(editor.document, _ln);   // 途中の refresh で解けていても張り直す(v4.0.362と同じ)
           meosParkCaretAfterPress(editor, _ln);   // ★v4.2.76: ▼と同じ= 次のクリックが必ず届く所へ
           // ★v4.2.94: 押した後に、次に何ができるかを言う。Opt で最初から、は起点を持たない1本だけの話。
@@ -41847,6 +41930,21 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.toggleReadMode', () => toggleReadMode())); // v4.0.438: 読書モード切替(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.cycleViewMode', () => meosCycleViewMode(1))); // v4.0.441: 3モードを順に(ショートカット割当可)
   context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.pseudoTimer', () => meosPseudoTimerMenu()));
+  // ★v5.0.0-58: 🌅LaunchD の見本を書く(俊克「標準的な例をデフォルトで用意しておけば、わずかな修正で使える」)。カーソルの行の上に置く。
+  context.subscriptions.push(vscode.commands.registerCommand('lai-membrane.newLaunchD', async () => {
+    const ed = vscode.window.activeTextEditor; if (!ed) { vscode.window.showInformationMessage('MeOS: open a Markdown file first.'); return; }
+    const id = '🌅LaunchD_' + meosMembraneStamp(new Date());
+    const t = [
+      '<!-- {* ▼mCN=' + id + ' // Mac start-up — press ▶️ on one line below (macOS asks for your password) *} -->',
+      'Only one line runs at a time. Edit the days and the time, then press ▶️ again.',
+      'Days: S M T W t F s = Sun Mon Tue Wed Thu Fri Sat.',
+      '<!-- {* ▲mCN=' + id + ' *} -->',
+      '<!-- Mew!UFC ⏰⏸ ↺MTWtF 06:30 // weekdays -->',
+      '<!-- Mew!UFC ⏰⏸ ↺sS 08:00 // weekends -->',
+      '<!-- Mew!UFC ⏰⏸ ↺SMTWtFs 07:00 // every day -->', ''].join('\n');
+    const ln = ed.selection.active.line;
+    await ed.edit(b => b.insert(new vscode.Position(ln, 0), t));
+  }));
   // ★v4.2.310: ヘルパーが開く vscodium://lai.lai-membrane/warp?uri=…&key=…&name=…&bell=1 = 膜へ飛び、鐘を引き継ぐ
   try {
     context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: async (u) => {

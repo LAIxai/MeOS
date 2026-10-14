@@ -127,6 +127,11 @@
         "category": "MeOS"
       },
       {
+        "command": "lai-membrane.newLaunchD",
+        "title": "MeOS: New 🌅LaunchD (the start-up time of this Mac)",
+        "category": "MeOS"
+      },
+      {
         "command": "lai-membrane.pseudoTimer",
         "title": "MeOS: Set a Clock on This Membrane (test paper, or a bell that brings you back)",
         "category": "MeOS"

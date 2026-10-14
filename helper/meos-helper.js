@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-57) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-58) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -216,16 +216,11 @@ function run(argv) {
     v.setFrameSize($.NSMakeSize(TX + LW + 4 + 5 * STEP + 16, H));   // 右に余白 16pt(週末も平日と同じ幅= 札の位置が揃う)
     return v;
   };
+  // ★v5.0.0-58(俊克 pm07:23〜08:00「これもテキストデータにしよう… 膜名 🌅LaunchD_TS」): 起動の予定を決めるのは本文の 🌅LaunchD の膜(▶️で入る)。
+  //   メニューは今の姿を見せるだけ(ここでも決められると、本文と macOS の2つの道が食い違う)。-50〜57 の □/時刻の仕掛けは使わない。
   const wakeEntries = () => {
-    const _pad = (t) => t + '  ';
-    const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:t:' + days + ':' + t, title: t, check: presets[days] === t }))
-      .concat([{ sep: true }, { id: 'h:wk:t:' + days + ':ask', title: 'Other time…' }]);
-    const use = (days, name) => ({ id: 'h:wk:use:' + days, title: _pad(name) + presets[days] + (days === 'MTWRF' && presets.wd !== 'MTWRF' ? '   (' + dayLabel(presets.wd) + ')' : ''), check: !!(wake && kindOf(wake.days) === days) });
     const sub = [{ title: 'Now: ' + (wake ? (wake.days ? 'start up at ' + wake.hm + ', ' + dayLabel(wake.days) : wake.raw) : 'not set'), off: true }, { sep: true },
-      use('MTWRFSU', 'Every day'), { dayRow: 'MTWRF', title: rowTitle('MTWRF') + ' ' + presets.wd + ' ' + (wake ? wake.days : '') }, { dayRow: 'SU', title: rowTitle('SU') + ' ' + presets.we + ' ' + (wake ? wake.days : '') },
-      { title: '(one at a time — switching asks for your password)', off: true }, { sep: true },
-      { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: times('MTWRF') }, { title: 'Weekends', sub: times('SU') }] }];
-    if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
+      { title: 'Set it in a 🌅LaunchD membrane — press ▶️ on a line', off: true }];
     return [{ title: '🌅 Wake   ' + wakeLabel(), sub }, { sep: true }];
   };
   ObjC.registerSubclass({ name: 'MeOSHelperTarget', methods: { 'pick:': { types: ['void', ['id']], implementation: function (s) {
@@ -486,6 +481,7 @@ function run(argv) {
       //   拡張と同じ先鐘= 1分前に3秒・30秒前に5秒・10秒前から時刻まで鳴り続ける。周期より遠い印は出さない(1分周期に1分前は無い)。
       for (const a of alarms) {
         if (fired[a.id + '@' + a.at] || a.at <= now) continue;
+        if (a.mute) continue;   // v5.0.0-58: 🌅LaunchD= 鳴らさない(Mac が起きるだけ)
         const n = (Array.isArray(a.steps) && a.steps.length) ? a.steps.length : 0;
         let cyc = n ? a.steps[Math.max(0, (a.si || 0) - 1) % n] : 0;
         if (Array.isArray(a.chain) && a.chain[a.idx || 0]) { const r0 = a.chain[a.idx || 0]; cyc = (r0.steps && r0.steps.length) ? r0.steps[(a.done || 0) % r0.steps.length] : 0; }   // v4.2.340
@@ -502,6 +498,7 @@ function run(argv) {
         // v4.2.332: 周期の時計は、並びに沿って次の時刻へ進める(過ぎた分は飛ばして、今より先の最初の区切りへ)
         else if (Array.isArray(a.steps) && a.steps.length) { let at2 = a.at, si = a.si || 0; do { at2 += a.steps[si % a.steps.length]; si++; } while (at2 <= now); adv[a.id] = { at: at2, si }; }
         if (now - a.at > MISSED_MS) continue;
+        if (a.mute) continue;   // v5.0.0-58: 🌅LaunchD= 鳴らさない・飛ばない
         const cyc0 = (Array.isArray(a.chain) && a.chain.length) || (Array.isArray(a.steps) && a.steps.length);   // v4.2.340: 連動も周期と同じく笛
         // ★v4.2.342(俊克「二本目がタイムアップした直後に「⏰⚓♬目薬2本目」が数秒表示された後、次に切り替わった。VSCmが起動している時は無い」):
         //   拡張は時刻ちょうどに鐘を止めて笛を1回鳴らすだけ(鳴っている扱いにしない)。こちらは笛の3秒を「鳴っている」にしていた→ 同じく鳴らすだけ
