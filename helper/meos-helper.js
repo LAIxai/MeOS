@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-51) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-52) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -160,18 +160,39 @@ function run(argv) {
     d = 'MTWRF'.split('').filter(x => d.indexOf(x) >= 0).join('');
     if (!d) return;
     presets.wd = d; savePresets(); lastMenu = null;
-    if (wake && kindOf(wake.days) === 'MTWRF' && wake.days !== d) setWake('MTWRF', presets.MTWRF);
+    // v5.0.0-52: 入れ外しは覚えるだけ= macOS へは行の「Weekdays」を押した時に入れる(パスワード)
+  };
+  // ★v5.0.0-52(俊克 -51テスト 改良1「子メニューに ✓ Weekdays 06:30 □M □T □W □t □F と表示しよう。孫メニューで記憶するほどの事ではなく、
+  //   流動的に変えて、そこでパスワード入力に行くのが自然。縦長のメニューは見苦しい」):
+  //   ★1行に部品を並べる= メニュー項目に自前の板(NSView)を載せる。□は押してもメニューが閉じない(続けて選べる)。「Weekdays 06:30」を押すと閉じて macOS へ入れる。
+  //   ★曜日の字は MeOS の1文字記法(S-M-T-W-t-F-s)。
+  const wdActive = () => !!(wake && kindOf(wake.days) === 'MTWRF');
+  const wdRowTitle = () => (wdActive() ? '\u2713 ' : '    ') + 'Weekdays   ' + presets.MTWRF + (wdActive() && wake.days !== presets.wd ? '   \u2190 click to apply' : '');
+  let wdRowLab = null, wdRowBoxes = [];
+  ObjC.registerSubclass({ name: 'MeOSDayRowT', methods: {
+    'day:': { types: ['void', ['id']], implementation: function (b) { try { toggleDay('MTWRF'.charAt(Number(b.tag))); } catch (e) {}
+      try { wdRowBoxes.forEach((x, i) => { x.state = presets.wd.indexOf('MTWRF'.charAt(i)) >= 0 ? 1 : 0; }); if (wdRowLab) wdRowLab.title = $(wdRowTitle()); } catch (e) {} } },
+    'use:': { types: ['void', ['id']], implementation: function (b) { try { item.menu.cancelTracking; } catch (e) {} try { setWake('MTWRF', presets.MTWRF); lastMenu = null; } catch (e) {} } } } });
+  const wdRowT = $.MeOSDayRowT.alloc.init;   // 強く持つ
+  const makeDayRow = () => {
+    const font = $.NSFont.menuFontOfSize(0), H = 24, v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 420, H));
+    const lab = $.NSButton.alloc.initWithFrame($.NSMakeRect(10, 0, 230, H));
+    lab.bordered = false; lab.font = font; lab.alignment = 0; lab.title = $(wdRowTitle()); lab.target = wdRowT; lab.action = 'use:'; v.addSubview(lab);
+    wdRowBoxes = [];
+    'MTWtF'.split('').forEach((c, i) => { const cb = $.NSButton.alloc.initWithFrame($.NSMakeRect(240 + i * 36, 0, 36, H));
+      cb.setButtonType(3); cb.title = $(c); cb.font = font; cb.tag = i; cb.state = presets.wd.indexOf('MTWRF'.charAt(i)) >= 0 ? 1 : 0;
+      cb.target = wdRowT; cb.action = 'day:'; v.addSubview(cb); wdRowBoxes.push(cb); });
+    wdRowLab = lab; return v;
   };
   const wakeEntries = () => {
     const _pad = (t) => t + '  ';
     const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:t:' + days + ':' + t, title: t, check: presets[days] === t }))
       .concat([{ sep: true }, { id: 'h:wk:t:' + days + ':ask', title: 'Other time…' }]);
     const use = (days, name) => ({ id: 'h:wk:use:' + days, title: _pad(name) + presets[days] + (days === 'MTWRF' && presets.wd !== 'MTWRF' ? '   (' + dayLabel(presets.wd) + ')' : ''), check: !!(wake && kindOf(wake.days) === days) });
-    const dayBoxes = 'MTWRF'.split('').map(c => ({ id: 'h:wk:d:' + c, title: { M: 'Monday', T: 'Tuesday', W: 'Wednesday', R: 'Thursday', F: 'Friday' }[c], box: presets.wd.indexOf(c) >= 0 }));
     const sub = [{ title: 'Now: ' + (wake ? wake.raw : 'not set'), off: true }, { sep: true },
-      use('MTWRFSU', 'Every day'), use('MTWRF', 'Weekdays'), use('SU', 'Weekends'),
+      use('MTWRFSU', 'Every day'), { dayRow: true, title: wdRowTitle() + ' ' + presets.wd }, use('SU', 'Weekends'),
       { title: '(one at a time — switching asks for your password)', off: true }, { sep: true },
-      { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: dayBoxes.concat([{ sep: true }], times('MTWRF')) }, { title: 'Weekends', sub: times('SU') }] }];
+      { title: 'Set the times', sub: [{ title: 'Every day', sub: times('MTWRFSU') }, { title: 'Weekdays', sub: times('MTWRF') }, { title: 'Weekends', sub: times('SU') }] }];
     if (wake) sub.push({ sep: true }, { id: 'h:wk:off', title: 'Turn off' });
     return [{ title: '🌅 Wake   ' + wakeLabel(), sub }, { sep: true }];
   };
@@ -240,6 +261,7 @@ function run(argv) {
       if (e.indent) mi.indentationLevel = e.indent;
       if (e.off) mi.enabled = false;
       if (e.check) mi.state = 1;   // v4.2.311: ✓
+      if (e.dayRow) { try { mi.view = makeDayRow(); } catch (x) {} its.push(mi); continue; }   // v5.0.0-52
       styleItem(mi, e);
       its.push(mi);
     }
