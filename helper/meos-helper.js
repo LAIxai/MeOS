@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-56) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-57) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -170,7 +170,8 @@ function run(argv) {
     let d = presets[R.key].indexOf(c) >= 0 ? presets[R.key].replace(c, '') : presets[R.key] + c;
     d = R.letters.split('').filter(x => d.indexOf(x) >= 0).join('');
     if (!d) return;
-    presets[R.key] = d; savePresets(); lastMenu = null; rowTouched[kind] = true;
+    if (rowTouched[kind] === undefined) rowTouched[kind] = presets[R.key];   // 触る前の姿を控える
+    presets[R.key] = d; savePresets(); lastMenu = null;
   };
   // ★v5.0.0-52: 1行に部品を並べる= メニュー項目に自前の板(NSView)。□は押してもメニューが閉じない(続けて選べる)。札を押すと閉じて macOS へ入れる。
   // ★v5.0.0-53: □は SF Symbols の四角＋チェックに V-helper の色(VSCodium=橙/VS Code=紫)。字の左端は上下の行に揃える(実測: チェックの列が無い時 15.5pt / 有る時 30.5pt)
@@ -178,8 +179,10 @@ function run(argv) {
   const rowActive = (kind) => !!(wake && kindOf(wake.days) === kind);
   // v5.0.0-56(俊克 -55テスト 改良1「週末の✓を変えたのに、ここをクリックしろという表示が出ない。二回目以降は出る。1回目が出ないので戸惑う」):
   //   効いていない席は「□を触ったか」で出す(入れたら消える)。効いている席は macOS と違うか。
+  // v5.0.0-57(俊克 -56テスト バグ1「週末は✓を入れて外すと橙が消える。平日ではそうならない」): 効いていない席も「触る前の姿と違うか」で判断(元に戻せば消える)。
+  //   rowTouched= 席ごとの触る前の曜日(初めて触った時に控え、macOS へ入れたら捨てる)
   const rowTouched = {};
-  const rowPending = (kind) => rowActive(kind) ? wake.days !== presets[ROWS[kind].key] : !!rowTouched[kind];
+  const rowPending = (kind) => rowActive(kind) ? wake.days !== presets[ROWS[kind].key] : (rowTouched[kind] !== undefined && rowTouched[kind] !== presets[ROWS[kind].key]);
   const rowTitle = (kind) => ROWS[kind].name + '   ' + presets[kind] + (rowPending(kind) ? '  ↵' : '');
   const rowParts = {};   // kind → { lab, boxes }
   const rowColor = () => myScheme === 'vscode' ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x7c / 255, 0x3a / 255, 0xed / 255, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
