@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-48) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-49) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -79,53 +79,52 @@ function run(argv) {
   //   ★🌅 Wake = Mac の毎日の起動(または起こす)時刻。住まいは macOS(pmset)= ここは覚えず、毎回 `pmset -g sched` を読んで出す(突き合わせ)。
   //   ★読むのはパスワード不要。決める/外す時だけ macOS 本物の管理者パスワード欄(do shell script … with administrator privileges)= MeOS はパスワードに触れない。
   //   ★起動だけ(切る/眠らせるは出さない= 保存していない作業ごと切れるため。要る人が出たら pmset repeat の2つ目の枠として足す)
-  const sa = Application.currentApplication(); sa.includeStandardAdditions = true;
+  // ★v5.0.0-49(俊克 -48テスト バグ1「メニューバーをクリックすると直ぐにメニューが閉じる」バグ2「1回目が開かない」):
+  //   -47/48 は読む(do shell script)も書く(管理者のパスワード欄)も V-helper の中で待っていた＋パスワード欄のために V-helper を前へ出していた
+  //   → クリックとぶつかるとメニューを取りこぼす。読むのも書くのも別の仕事(NSTask)に任せ、V-helper は待たない・前へ出ない。
   const WAKE_DAYS = { MTWRFSU: 'every day', MTWRF: 'weekdays', SU: 'weekends' };   // v5.0.0-48(俊克「Weekdayがあるなら、Weekendがあって当然」): pmset の S=土 U=日
   const WAKE_TIMES = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00'];
-  let wake = null, wakeReadAt = 0;   // {days:'MTWRFSU'|'MTWRF'|'', hm:'06:30'|'', raw:'…'} / null= 予定なし
-  const readWake = () => {
-    wakeReadAt = Date.now();
-    try {
-      const out = String(sa.doShellScript('/usr/bin/pmset -g sched')).split(/[\r\n]+/);
-      let inRep = false; wake = null;
-      for (const ln of out) {
-        if (/^Repeating power events/i.test(ln)) { inRep = true; continue; }
-        if (/power events/i.test(ln)) { inRep = false; continue; }
-        if (!inRep || !/(wake|poweron)/i.test(ln)) continue;
-        const raw = ln.trim(), m = /at\s+(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(raw);
-        let hm = '';
-        if (m) { let h = parseInt(m[1], 10); if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } hm = (h < 10 ? '0' : '') + h + ':' + m[2]; }
-        const days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : (/weekends/i.test(raw) ? 'SU' : ''));
-        wake = { days, hm, raw }; break;
-      }
-    } catch (e) { hlog('wake: pmset -g sched を読めない ' + e); }
+  let wake = null, wakeReadAt = 0;   // {days:'MTWRFSU'|'MTWRF'|'SU'|'', hm:'06:30'|'', raw:'…'} / null= 予定なし
+  let wakeRead = null, wakeJob = null;   // 走っている読む仕事 / 書く・訊く仕事 {t, p, kind, days}
+  const task = (args) => { const t = $.NSTask.alloc.init; t.launchPath = $('/usr/bin/' + args[0]); t.arguments = $(args.slice(1));
+    const p = $.NSPipe.pipe; t.standardOutput = p; t.standardError = $.NSFileHandle.fileHandleWithNullDevice; t.launch; return { t, p }; };
+  const taskOut = (j) => { try { const d = j.p.fileHandleForReading.readDataToEndOfFile; return ObjC.unwrap($.NSString.alloc.initWithDataEncoding(d, $.NSUTF8StringEncoding)) || ''; } catch (e) { return ''; } };
+  const parseWake = (txt) => {
+    let inRep = false, w = null;
+    for (const ln of String(txt).split(/[\r\n]+/)) {
+      if (/^Repeating power events/i.test(ln)) { inRep = true; continue; }
+      if (/power events/i.test(ln)) { inRep = false; continue; }
+      if (!inRep || !/(wake|poweron)/i.test(ln)) continue;
+      const raw = ln.trim(), m = /at\s+(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(raw);
+      let hm = '';
+      if (m) { let h = parseInt(m[1], 10); if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } hm = (h < 10 ? '0' : '') + h + ':' + m[2]; }
+      const days = /every day/i.test(raw) ? 'MTWRFSU' : (/weekdays/i.test(raw) ? 'MTWRF' : (/weekends/i.test(raw) ? 'SU' : ''));
+      w = { days, hm, raw }; break;
+    }
+    return w;
   };
+  const readWake = () => { if (wakeRead) return; wakeReadAt = Date.now(); try { wakeRead = task(['pmset', '-g', 'sched']); } catch (e) { wakeRead = null; } };
   const wakeLabel = () => !wake ? 'off' : ((wake.hm || '?') + ' ' + (WAKE_DAYS[wake.days] || wake.raw));
+  const asq = (x) => String(x).replace(/["\\]/g, '');   // AppleScript の "…" に入れる字(決まった字しか来ないが念のため)
   const setWake = (days, hm) => {
-    if (!WAKE_DAYS[days] || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
-    try {
-      app.activateIgnoringOtherApps(true);
-      sa.doShellScript('/usr/bin/pmset repeat wakeorpoweron ' + days + ' ' + hm + ':00', { administratorPrivileges: true,
-        withPrompt: 'MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + WAKE_DAYS[days] + '.' });
-      hlog('wake: set ' + days + ' ' + hm);
-    } catch (e) { hlog('wake: 取りやめ/失敗 ' + e); }
-    readWake();
+    if (wakeJob || !WAKE_DAYS[days] || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hm)) return;   // 決まった字だけを命令に入れる
+    wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat wakeorpoweron ' + days + ' ' + hm + ':00" with administrator privileges with prompt "'
+      + asq('MeOS V-helper will start up (or wake) your Mac at ' + hm + ' ' + WAKE_DAYS[days] + '.') + '"']), { kind: 'set', days, hm });
   };
-  const offWake = () => {
-    try { app.activateIgnoringOtherApps(true);
-      sa.doShellScript('/usr/bin/pmset repeat cancel', { administratorPrivileges: true, withPrompt: 'MeOS V-helper will turn off the daily start-up of your Mac.' });
-      hlog('wake: off'); } catch (e) { hlog('wake: 取りやめ/失敗 ' + e); }
-    readWake();
-  };
-  const askWakeTime = (days) => {
-    try { app.activateIgnoringOtherApps(true);
-      const r = sa.displayDialog('Start-up time, ' + WAKE_DAYS[days] + ' (24-hour, HH:MM)', { defaultAnswer: (wake && wake.hm) || '06:30', buttons: ['Cancel', 'Set'], defaultButton: 'Set', withTitle: 'MeOS — Wake' });
-      let t = String(r.textReturned || '').trim().replace(/^(\d):/, '0$1:');
-      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) setWake(days, t); else sa.displayDialog('Please write the time like 06:30.', { buttons: ['OK'], withTitle: 'MeOS — Wake' });
-    } catch (e) {}
+  const offWake = () => { if (wakeJob) return;
+    wakeJob = Object.assign(task(['osascript', '-e', 'do shell script "/usr/bin/pmset repeat cancel" with administrator privileges with prompt "MeOS V-helper will turn off the daily start-up of your Mac."']), { kind: 'off' }); };
+  const askWakeTime = (days) => { if (wakeJob || !WAKE_DAYS[days]) return;
+    wakeJob = Object.assign(task(['osascript', '-e', 'text returned of (display dialog "Start-up time, ' + WAKE_DAYS[days] + ' (24-hour, HH:MM)" default answer "' + asq((wake && wake.hm) || '06:30')
+      + '" buttons {"Cancel", "Set"} default button "Set" with title "MeOS - Wake")']), { kind: 'ask', days }); };
+  // 0.5秒の見回りで、終わった仕事を片付ける(待たない)
+  const wakePoll = () => {
+    if (wakeRead && !wakeRead.t.isRunning) { const o = taskOut(wakeRead); wakeRead = null; const w = parseWake(o); if (JSON.stringify(w) !== JSON.stringify(wake)) { wake = w; lastMenu = null; } }
+    if (wakeJob && !wakeJob.t.isRunning) { const j = wakeJob; wakeJob = null; const rc = j.t.terminationStatus, o = taskOut(j);
+      if (j.kind === 'ask') { const t = String(o).trim().replace(/^(\d):/, '0$1:'); if (rc === 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) setWake(j.days, t); else if (rc === 0) hlog('wake: 時刻の形が違う ' + t); }
+      else { hlog('wake: ' + j.kind + (j.days ? ' ' + j.days + ' ' + j.hm : '') + (rc === 0 ? ' ok' : ' 取りやめ/失敗 rc=' + rc)); readWake(); } }
+    if (!wakeRead && (!wakeReadAt || Date.now() - wakeReadAt > 30000)) readWake();
   };
   const wakeEntries = () => {
-    if (!wakeReadAt || Date.now() - wakeReadAt > 30000) readWake();
     const cur = wake ? wake.days + ' ' + wake.hm : '';
     const times = (days) => WAKE_TIMES.map(t => ({ id: 'h:wk:' + days + ':' + t, title: t, check: cur === days + ' ' + t }))
       .concat([{ sep: true }, { id: 'h:wk:' + days + ':ask', title: 'Other time\u2026' }]);
@@ -362,6 +361,7 @@ function run(argv) {
   let quitNow = false;
   const tracking = () => { try { return ObjC.unwrap($.NSRunLoop.currentRunLoop.currentMode) === 'NSEventTrackingRunLoopMode'; } catch (e) { return false; } };
   function step() {
+    try { wakePoll(); } catch (e) {}   // v5.0.0-49
     let st = null;
     try { const s = $.NSString.stringWithContentsOfFileEncodingError(statePath, $.NSUTF8StringEncoding, null); if (s && !s.isNil()) st = JSON.parse(ObjC.unwrap(s)); } catch (e) {}
     if (st && st.quit) { hlog('quit: state.json に quit'); quitNow = true; return; }
