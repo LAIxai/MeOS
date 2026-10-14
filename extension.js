@@ -12427,6 +12427,7 @@ function meosParseStampLoose(txt) {
 async function meosClockFcSet(doc, key, spec, atLine) {
   try {
     if (!doc || !doc.uri) return false;
+    try { if (meosIsLaunchDKey(key)) meosLaunchDKick(doc, key, true); } catch (_) { }   // v5.0.0-60(俊克「Me Dockでタイマーを付けて修正したが、メニューバーが更新されない」): 書く口の全部から(違う時だけ macOS へ)
     spec = meosClockAdjustV(doc, key, spec, atLine);   // ★v4.2.77: 仮想の起点を消す/経過に変える
     // ★v4.2.91: タイトルは呼び手が運ばなくても残る= 名指しの行に書いてある物を、そのまま書き戻す。
     try {
@@ -20872,7 +20873,8 @@ function meosIsLaunchDKey(key) { return MEOS_LAUNCHD_RE.test(String(key || ''));
 function meosLaunchDTs(key) { const m = /_(\d{8})[SMTWtFs]?(\d{6})/.exec(String(key || '')); return m ? Number(m[1] + m[2]) : 0; }
 // ⏰の1行 → pmset の {days, hm}。曜日の字は家の物(S-M-T-W-t-F-s)→ pmset(MTWRFSU)。書けない物は {err}
 function meosLaunchDSpec(x) {
-  const cyc = Array.isArray(x && x.cycle) ? x.cycle : [];
+  let cyc = Array.isArray(x && x.cycle) ? x.cycle : [];
+  if (cyc.length === 1 && /^(24h|1d|1440m?)$/i.test(String(cyc[0]))) cyc = ['SMTWtFs'];   // v5.0.0-60: 24時間ごと= 毎日(Me Dock のパネルで付けると ↺24h になる)
   if (cyc.length !== 1 || !/^[SMTWtFs]+$/.test(String(cyc[0]))) return { err: '\ud83c\udf05 A start-up can only repeat on days of the week \u2014 like \u21baMTWtF (weekdays), \u21basS (weekends) or \u21baSMTWtFs (every day). \u21bat1,3 or intervals cannot go to macOS.' };
   const MAP = { S: 'U', M: 'M', T: 'T', W: 'W', t: 'R', F: 'F', s: 'S' };
   const got = String(cyc[0]).split('').map(c => MAP[c]).join('');
@@ -20936,9 +20938,10 @@ async function meosLaunchDOpen() {
 }
 let _meosLaunchDT = null, _meosLaunchDBusy = false;
 // ▶️/⏸ を人が押した後だけ呼ぶ(時刻が来て時計が回る時には呼ばない= 勝手にパスワード欄を出さない)
-function meosLaunchDKick(doc, key) { if (!meosIsLaunchDKey(key)) return; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { meosLaunchDReconcile(doc, key); }, 400); }
-async function meosLaunchDReconcile(doc, key) {
-  const say = (t) => { try { vscode.window.showInformationMessage(t); } catch (_) { } meosDbg('[launchd] ' + t); };
+let _meosLaunchDLoud = false;
+function meosLaunchDKick(doc, key, quiet) { if (!meosIsLaunchDKey(key)) return; if (!quiet) _meosLaunchDLoud = true; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { const loud = _meosLaunchDLoud; _meosLaunchDLoud = false; meosLaunchDReconcile(doc, key, !loud); }, 600); }
+async function meosLaunchDReconcile(doc, key, quiet) {
+  const say = (t) => { try { if (!quiet) vscode.window.showInformationMessage(t); } catch (_) { } meosDbg('[launchd] ' + t); };   // quiet= 人が押していない書き換え(知らせは出さず、違う時だけパスワード)
   if (process.platform !== 'darwin') { say('\ud83c\udf05 LaunchD sets the start-up of a Mac \u2014 it does nothing here.'); return; }
   if (_meosLaunchDBusy) return;
   // 一番新しい 🌅LaunchD(開いている md の中で)

@@ -18,6 +18,7 @@ let s=sp('<!-- Mew!UFC ⏰⏸ ↺MTWtF 06:30 // weekdays -->'); ok(s && s.days==
 s=sp('<!-- Mew!UFC ⏰ ↺sS 08:00 // weekends -->'); ok(s && s.days==='SU' && s.hm==='08:00', '週末(s=土 S=日) → SU 08:00', s);
 s=sp('<!-- Mew!UFC ⏰ ↺SMTWtFs 07:00 // every day -->'); ok(s && s.days==='MTWRFSU' && s.hm==='07:00', '毎日 → MTWRFSU 07:00', s);
 s=sp('<!-- Mew!UFC ⏰ ↺MWtF 6:30 -->'); ok(s && s.days==='MWRF' && s.hm==='06:30', '月水木金・1桁の時 → MWRF 06:30', s);
+s=sp('<!-- Mew!UFC ⏰ ↺↻24h 2026-10-14(W) 07:00p -->'); ok(s && s.days==='MTWRFSU' && s.hm==='07:00', 'Me Dock で付けた ↺↻24h(起点 07:00p) → 毎日 07:00', s);
 console.log('② 書けない物は断る');
 s=sp('<!-- Mew!UFC ⏰ ↺t1,3 06:30 -->'); ok(s && s.err, '第1第3木曜は macOS に入らない', s);
 s=sp('<!-- Mew!UFC ⏰ ↺8h 06:30 -->'); ok(s && s.err, '間隔は macOS に入らない', s);
