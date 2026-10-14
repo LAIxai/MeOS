@@ -158,6 +158,14 @@ for ⏰ lines that name no bell of their own, for V-helper while the editor is c
 so you know whose clock rang before you even look.
 Keep the two lives in separate files — the same file open in both editors shows its clocks in both.
 
+**🌅 Wake — your Mac starts up on its own (macOS).** Somewhere along the way, macOS dropped the start-up schedule
+from its settings, and for about three years we pressed the power button every morning. The schedule itself is still
+there, deep in the system (`pmset`), so V-helper brings it back: **🌅 Wake** in the menu-bar ⏰ keeps three start-up
+times — every day, weekdays, weekends — and one of them is on. Switching asks for your administrator password in
+macOS's own dialog (MeOS never sees it); changing the time of one that is not on asks nothing. The schedule lives in
+macOS, not in MeOS, so it stays through quitting V-helper and restarting the Mac, and it starts the Mac from shut down,
+not only from sleep (tested on an iMac with M3). Start-up only — nothing here shuts your Mac down.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the V-helper menu with Pass the next, every clock counting down, Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
   <sub><b>NEW in v5.0 — this is what the menu bar looks like.</b> Your clocks keep counting in the menu bar — orange for VSCodium, purple for VS Code — and one click opens every one of them, from seven minutes to 131 days away. When a bell rings, MeOS warps you to the membrane you set it on; pick any clock from here and you warp there yourself; or let it just ring, at anchor ⚓. <b>Boarding pass: Passenger YOU — Destination Anywhere-When — Seat NOW — Fare 0.</b></sub>
