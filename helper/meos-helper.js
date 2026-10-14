@@ -1,4 +1,4 @@
-// MeOS menu-bar helper (v5.0.0-55) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
+// MeOS menu-bar helper (v5.0.0-56) — runs as a LaunchAgent via `osascript -l JavaScript`, so it lives on
 // when VSCodium is closed.
 // ★★★v4.2.310(俊克 2026.09.23 pm01:58「最大の修正を忘れていた。メニューバーの常駐化だよ。VSCmを起動してなくても、
 //   タイマー機能を動かして、タイムアップしたら、VSCmを起動し、膜にワープする。いわゆる、よくあるHelper機能だね」):
@@ -139,7 +139,7 @@ function run(argv) {
     if (wakeJob && !wakeJob.t.isRunning) { const j = wakeJob; wakeJob = null; const rc = j.t.terminationStatus, o = taskOut(j);
       if (j.kind === 'ask') { const t = String(o).trim().replace(/^(\d):/, '0$1:'); if (rc === 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) presetTime(j.days, t); else if (rc === 0) hlog('wake: 時刻の形が違う ' + t); }
       else { hlog('wake: ' + j.kind + (j.days ? ' ' + j.days + ' ' + j.hm : '') + (rc === 0 ? ' ok' : ' 取りやめ/失敗 rc=' + rc));
-        if (rc === 0) { presets.applied = j.kind === 'set' ? { days: j.days, hm: j.hm } : null; savePresets(); }   // v5.0.0-53: 曜日を選んだ予定は macOS が「Some days」としか答えない→ 入れた曜日は自分で覚える
+        if (rc === 0) { presets.applied = j.kind === 'set' ? { days: j.days, hm: j.hm } : null; savePresets(); for (const k in rowTouched) delete rowTouched[k]; }   // v5.0.0-56: 入れたら↵は消える   // v5.0.0-53: 曜日を選んだ予定は macOS が「Some days」としか答えない→ 入れた曜日は自分で覚える
         readWake(); } }
     if (!wakeRead && (!wakeReadAt || Date.now() - wakeReadAt > 30000)) readWake();
   };
@@ -170,13 +170,16 @@ function run(argv) {
     let d = presets[R.key].indexOf(c) >= 0 ? presets[R.key].replace(c, '') : presets[R.key] + c;
     d = R.letters.split('').filter(x => d.indexOf(x) >= 0).join('');
     if (!d) return;
-    presets[R.key] = d; savePresets(); lastMenu = null;
+    presets[R.key] = d; savePresets(); lastMenu = null; rowTouched[kind] = true;
   };
   // ★v5.0.0-52: 1行に部品を並べる= メニュー項目に自前の板(NSView)。□は押してもメニューが閉じない(続けて選べる)。札を押すと閉じて macOS へ入れる。
   // ★v5.0.0-53: □は SF Symbols の四角＋チェックに V-helper の色(VSCodium=橙/VS Code=紫)。字の左端は上下の行に揃える(実測: チェックの列が無い時 15.5pt / 有る時 30.5pt)
   // ★v5.0.0-54: □と字を1組に詰め組の間を空ける(札 150pt・組 42pt おき・台で描いて確認)。□が macOS と違う間は札を V-helper の色＋↵
   const rowActive = (kind) => !!(wake && kindOf(wake.days) === kind);
-  const rowPending = (kind) => rowActive(kind) && wake.days !== presets[ROWS[kind].key];
+  // v5.0.0-56(俊克 -55テスト 改良1「週末の✓を変えたのに、ここをクリックしろという表示が出ない。二回目以降は出る。1回目が出ないので戸惑う」):
+  //   効いていない席は「□を触ったか」で出す(入れたら消える)。効いている席は macOS と違うか。
+  const rowTouched = {};
+  const rowPending = (kind) => rowActive(kind) ? wake.days !== presets[ROWS[kind].key] : !!rowTouched[kind];
   const rowTitle = (kind) => ROWS[kind].name + '   ' + presets[kind] + (rowPending(kind) ? '  ↵' : '');
   const rowParts = {};   // kind → { lab, boxes }
   const rowColor = () => myScheme === 'vscode' ? $.NSColor.colorWithSRGBRedGreenBlueAlpha(0x7c / 255, 0x3a / 255, 0xed / 255, 1) : $.NSColor.colorWithSRGBRedGreenBlueAlpha(0xe0 / 255, 0x80 / 255, 0x3a / 255, 1);
