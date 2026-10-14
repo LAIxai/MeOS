@@ -20936,14 +20936,14 @@ async function meosLaunchDOpen() {
     await meosJumpToScope({ uri: doc.uri.toString(), key: id });
   } catch (e) { meosDbg('[launchd] open ' + e); }
 }
-let _meosLaunchDT = null, _meosLaunchDBusy = false;
+let _meosLaunchDT = null, _meosLaunchDBusy = false, _meosLaunchDAgain = null;
 // ▶️/⏸ を人が押した後だけ呼ぶ(時刻が来て時計が回る時には呼ばない= 勝手にパスワード欄を出さない)
 let _meosLaunchDLoud = false;
-function meosLaunchDKick(doc, key, quiet) { if (!meosIsLaunchDKey(key)) return; if (!quiet) _meosLaunchDLoud = true; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { const loud = _meosLaunchDLoud; _meosLaunchDLoud = false; meosLaunchDReconcile(doc, key, !loud); }, 600); }
+function meosLaunchDKick(doc, key, quiet) { if (!meosIsLaunchDKey(key)) return; if (!quiet) _meosLaunchDLoud = true; clearTimeout(_meosLaunchDT); _meosLaunchDT = setTimeout(() => { const loud = _meosLaunchDLoud; _meosLaunchDLoud = false; meosLaunchDReconcile(doc, key, !loud); }, 2000); }   // v5.0.0-61: ⏸→▶️ の続け押しは2秒まとめて1回で比べる(同じなら何もしない)
 async function meosLaunchDReconcile(doc, key, quiet) {
   const say = (t) => { try { if (!quiet) vscode.window.showInformationMessage(t); } catch (_) { } meosDbg('[launchd] ' + t); };   // quiet= 人が押していない書き換え(知らせは出さず、違う時だけパスワード)
   if (process.platform !== 'darwin') { say('\ud83c\udf05 LaunchD sets the start-up of a Mac \u2014 it does nothing here.'); return; }
-  if (_meosLaunchDBusy) return;
+  if (_meosLaunchDBusy) { _meosLaunchDAgain = { doc, key, quiet }; return; }   // v5.0.0-61(俊克「▶️/⏸を押すとパスワードを訊かれ、設定したのに OFF した」): 捨てずに、終わった後でもう一度突き合わせる
   // 一番新しい 🌅LaunchD(開いている md の中で)
   let newest = null;
   newest = meosLaunchDNewest();
@@ -20960,8 +20960,11 @@ async function meosLaunchDReconcile(doc, key, quiet) {
   _meosLaunchDBusy = true;
   require('child_process').execFile('/usr/bin/osascript', ['-e', 'do shell script "' + sh + '" with administrator privileges with prompt "' + prompt.replace(/["\\]/g, '') + '"'], (e) => {
     _meosLaunchDBusy = false;
+    const _ag = _meosLaunchDAgain; _meosLaunchDAgain = null;
+    if (_ag) setTimeout(() => meosLaunchDReconcile(_ag.doc, _ag.key, _ag.quiet), 300);   // 待っている間に押された分(⏸の直後の▶️など)= 今の本文で、もう一度
     if (e) { say('\ud83c\udf05 Not changed \u2014 the start-up of your Mac stays as it was.'); return; }
     meosLaunchDSetApplied(want ? { days: want.days, hm: want.hm } : null);
+    if (_ag) return;   // 続きがある= 途中の知らせは出さない
     say(want ? ('\ud83c\udf05 Your Mac will start up at ' + want.hm + ', ' + meosLaunchDDaysLabel(want.days) + '.') : '\ud83c\udf05 The daily start-up of your Mac is off.');
   });
 }
