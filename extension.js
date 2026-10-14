@@ -13658,7 +13658,7 @@ function meosMenuBarClockItems() {
       const nm = meosClockSayName(r.sc) || '(outside every membrane)';
       const _face = meosMmSs(meosClockFaceMs(r.until, r.sc)), _f2 = go.length ? _face.replace(/\.\d{2}$/, '') : _face;
       const _ld = meosIsLaunchDKey(r.sc.key);   // v5.0.0-62(俊克「Wakeタイマーも、通常のタイマーと同じようにメニューバーの中に順番通りに・残り時間も」): 頭は🌅・名前は Wake
-      out.push({ id: 'go:' + go.length, title: (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosChainFillSlot(r.sc.title, 0, r.sc).split(MEOS_APPLE).join(r.until - Date.now() <= MEOS_APPLE_RIPE_MS ? MEOS_APPLE_RIPE : MEOS_APPLE) : '') : nm) });   // v4.2.316: ⚓も一覧に
+      out.push({ id: 'go:' + go.length, title: (_ld ? '\ud83c\udf05' : '\u23f0' + (meosClockAnchoredNow(r.sc) ? '\u2693\ufe0f' : '')) + ' ' + _f2 + '   ' + (_ld ? 'Wake' + (r.sc.title ? '  ' + meosLaunchDRipeTitle(meosChainFillSlot(r.sc.title, 0, r.sc), r.sc) : '') : nm) });   // v4.2.316: ⚓も一覧に
       go.push(r.sc);
     }
   } catch (_) { }
@@ -14651,8 +14651,8 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _run65 = meosClockLineRunning(doc, owner ? owner.id : '', i);
               // ★★★v4.2.74: 駒そのものto、その当たり(0桁〜⏰)の両方に**手の形**を当てる=
               //   押せる所の上でだけ形that変わる。吹き出しは出さない(何も覆わない)。
-              if (owner && meosIsLaunchDKey(owner.id)) { const _ap = txt.indexOf(MEOS_APPLE), _u64 = _meosPseudoUntil.get(uri + ' ' + owner.id);
-                if (_ap >= 0 && _u64 && _u64 - Date.now() <= MEOS_APPLE_RIPE_MS) ripes.push({ range: new vscode.Range(i, _ap, i, _ap + 2) }); }
+              if (owner && meosIsLaunchDKey(owner.id)) { const _ap = txt.indexOf(MEOS_APPLE);
+                if (_ap >= 0 && meosLaunchDRipe({ uri, key: owner.id })) ripes.push({ range: new vscode.Range(i, _ap, i, _ap + 2) }); }
               if (owner && meosIsLaunchDKey(owner.id)) suns.push({ range: new vscode.Range(i, _a65, i, _a65 + 1 + ((txt.charCodeAt(_a65 + 1) === 0xfe0f) ? 1 : 0)) });   // v5.0.0-58
               plays.push({ range: new vscode.Range(i, _a65, i, _a65),
                 renderOptions: { before: { contentText: _run65 ? '\u23f8\ufe0f' : '\u25b6\ufe0f', margin: '0 1px 0 0' } } });
@@ -14809,7 +14809,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
             }
             if (_ta73 != null && c.title) titles.push({
               range: new vscode.Range(i, _ta73, i, _ta73),
-              renderOptions: { after: { contentText: '\u00a0' + meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
+              renderOptions: { after: { contentText: '\u00a0' + meosLaunchDRipeTitle(meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7) + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', margin: '0 0 0 1.2ch', textDecoration: 'none; border-radius: 3px', fontStyle: 'normal' /* ★v4.2.203(俊克「⏰メッセージは、現在動いているのが白色表示なので、コメントも白色にしよう。但し、その他の基本の文字も白いので、橙色のハイライトを入れよう」): 白字＋橙(#e0803a)の地。前の空白は地に含めず margin で空ける。 */ /* ★v4.2.187(俊克「⏰のメッセージは、灰色文字だけど、色を付けようよ。目立たないと、メッセージとは言えないでしょ」): #9aa0a6(灰)→ **⏰の家の色**= 残り時間と同じ #e0803a。1つの時計の言葉so、同じ色を着る。 */ } }
             });
           } catch (_) { }
           // ★★★v4.1.139(俊克 バグ2「開始すると、数秒ごとに、交互に入れ替って見苦しい」):
@@ -20950,6 +20950,9 @@ async function meosLaunchDOpen() {
 // ★v5.0.0-64(俊克 pm09:37「🍏と🍎を使い分けると面白い…それ以前は🍏」→ pm09:44「12時間サイクル」): 本文に書くのは🍏(macOS に入っている事実)だけ。
 //   起動の12時間前からは画面とメニューで🍎に熟して見せる(見せかけ= 本文を時刻で書き替えない・保存していない印を毎日付けない)。
 const MEOS_APPLE = '🍏', MEOS_APPLE_RIPE = '🍎', MEOS_APPLE_RIPE_MS = 12 * 3600000;
+// v5.0.0-65(俊克「メニューバーには赤い🍎なのに、本文の橙の箱は🍏」): 熟すかどうかを言う口は1つ= 箱・メニューバーの一覧・行の飾りが同じ答えを引く
+function meosLaunchDRipe(sc) { try { if (!sc || !meosIsLaunchDKey(sc.key)) return false; const u = _meosPseudoUntil.get(sc.uri + ' ' + sc.key); return !!(u && u - Date.now() <= MEOS_APPLE_RIPE_MS); } catch (_) { return false; } }
+function meosLaunchDRipeTitle(t, sc) { return meosLaunchDRipe(sc) ? String(t || '').split(MEOS_APPLE).join(MEOS_APPLE_RIPE) : t; }
 function meosLaunchDMarkText(t, on) {
   const m = /^(.*?)(\s*-->)\s*$/.exec(String(t || '')); if (!m || m[1].indexOf('<!--') < 0) return t;
   let body = m[1].replace(/\s*(?:🍎|🍏)/g, '');   // -63 の🍎も🍏も外してから
