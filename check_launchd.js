@@ -7,7 +7,7 @@ const stubSrc=H.slice(H.indexOf('const stub = {'), H.indexOf('const origLoad'));
 const stub=eval('('+stubSrc.replace(/^const stub = /,'').trim().replace(/;$/,'')+')');
 const o=Module._load; Module._load=function(r){if(r==='vscode')return stub;return o.apply(this,arguments);};
 const T='/tmp/ld_'+process.pid+'.js';
-fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosLaunchDSpec,meosIsLaunchDKey,meosLaunchDTs,meosCycleSeriesNext};');
+fs.writeFileSync(T, fs.readFileSync(path.join(SRC,'extension.js'),'utf8')+'\nmodule.exports.__t={meosClockFcParse,meosLaunchDSpec,meosIsLaunchDKey,meosLaunchDTs,meosCycleSeriesNext,meosLaunchDMarkText};');
 let X; try{X=require(T).__t;}finally{try{fs.unlinkSync(T);}catch(_){}}
 let ng=0; const ok=(c,l,g)=>{console.log((c?'  ok  ':' NG   ')+l+(c?'':'   <- '+JSON.stringify(g)));if(!c)ng++;};
 const sp=(line)=>{const c=X.meosClockFcParse(line); return c && X.meosLaunchDSpec(c);};
@@ -25,4 +25,12 @@ s=sp('<!-- Mew!UFC ⏰ ↺8h 06:30 -->'); ok(s && s.err, '間隔は macOS に入
 console.log('③ 膜名');
 ok(X.meosIsLaunchDKey('🌅LaunchD_20261014W195043JST') && !X.meosIsLaunchDKey('LaunchD_x') && !X.meosIsLaunchDKey('🌅LaunchDX'), '🌅LaunchD_ だけ');
 ok(X.meosLaunchDTs('🌅LaunchD_20261014W195043JST')===20261014195043, 'TS を数に');
+console.log('④ 🍎の付け外し(時計の行の // の末尾)');
+const MK=X.meosLaunchDMarkText;
+ok(MK('<!-- Mew!UFC ⏰ ↺↻24h 2026-10-14(W) 21:15p -->',true)==='<!-- Mew!UFC ⏰ ↺↻24h 2026-10-14(W) 21:15p // 🍎 -->', 'タイトル無し→ // 🍎 を足す', MK('<!-- Mew!UFC ⏰ ↺↻24h 2026-10-14(W) 21:15p -->',true));
+ok(MK('<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays -->',true)==='<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays 🍎 -->', 'タイトル有り→末尾に 🍎');
+ok(MK('<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays 🍎 -->',true)==='<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays 🍎 -->', '付いていれば同じ(2つにしない)');
+ok(MK('<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays 🍎 -->',false)==='<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays -->', '外す→タイトルは残す');
+ok(MK('<!-- Mew!UFC ⏰ ↺↻24h 2026-10-14(W) 21:15p // 🍎 -->',false)==='<!-- Mew!UFC ⏰ ↺↻24h 2026-10-14(W) 21:15p -->', '🍎だけのタイトル→ // ごと外す');
+let c2=X.meosClockFcParse('<!-- Mew!UFC ⏰ ↺MTWtF 06:30 // weekdays 🍎 -->'); ok(c2 && c2.cycle.join('|')==='MTWtF' && X.meosLaunchDSpec(c2).hm==='06:30', '🍎付きでも時計の読みは変わらない', c2&&{cycle:c2.cycle,title:c2.title});
 console.log(ng?('NG '+ng):'全項目 PASS'); process.exit(ng?1:0);
