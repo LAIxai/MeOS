@@ -14936,7 +14936,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               const _nu = (_s2 > 0) ? _rnd.slice(0, _s2) : _rnd;
               const _de = (_s2 > 0) ? _rnd.slice(_s2) : '';
               // ★v4.2.477: 回数はメッセージの札で出す= [R2]/12(俊克「⏰⚓︎ 2.53 0.07 | [R2]/12」)。メッセージが無ければ今までどおり ×2
-              let _lb30 = ''; try { if (c.title) _lb30 = meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null); } catch (_) { }
+              let _lb30 = ''; try { if (c.title) _lb30 = meosLaunchDRipeTitle(meosChainFillSlot(c.title, (_sc7 && _sc7.round) || 0, _sc7 || null), _sc7); } catch (_) { }   // v5.0.0-66(俊克 バグ1「バッジ部分はまだ青いリンゴ」): バッジ行の札も同じ口から
               if (_lb30) return { before: { contentText: (_rndAfter ? '  ' : '') + '\u00a0' + _lb30 + '\u00a0', color: '#ffffff', backgroundColor: '#e0803a', fontWeight: '800', textDecoration: 'none; border-radius: 3px' },
                 after: { contentText: _de + (_rndAfter ? '' : ' '), color: '#e0803a', fontWeight: '800' } };
               return { before: { contentText: (_rndAfter ? '  ' : '') + _nu, color: new vscode.ThemeColor('editor.foreground'), fontWeight: '800' },
