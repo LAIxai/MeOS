@@ -8910,7 +8910,7 @@ function applyPrettyLabels(editor) {
       const openGlyph = isMnt
         ? (baseOpenGlyph + '📒' + aliasInLabel)
         : (baseOpenGlyph + aliasInLabel);
-      arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // v5.0.0-35(俊克 バグ1「▼▲にホーバーしても選択指に変わらなくなった」): -34 で手の範囲を縮めたのが誤り(▼▲の駒は idStart の字に差してあるので、その字まで範囲に入れないと駒に手が付かない)→ 元へ戻す / ★v4.2.75
+      arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart) });   // v5.0.0-36(俊克 -35テスト 改良1「最初の文字「最」の上で選択指を出さないように」): 手は▼▲の絵そのもの(before/after の cursor)に載せ、字の範囲は膜名の手前まで= 膜名の1文字目は文字カーソル / v5.0.0-35(俊克 バグ1「▼▲にホーバーしても選択指に変わらなくなった」): -34 で手の範囲を縮めたのが誤り(▼▲の駒は idStart の字に差してあるので、その字まで範囲に入れないと駒に手が付かない)→ 元へ戻す / ★v4.2.75
       // ★v4.2.756(俊克 755テスト 改良1「▼を膜の色のままにし、▲をその色の補色にしよう…見た目で、違いがあると分かる」):
       //   ▼▲は1つの装飾のまま(押した桁で左右を見分ける仕掛けを崩さない)・字の左半分と右半分を塗り分ける(地の模様を字の形で切り抜く)
       const _twoTone = (openGlyph === '\u25bc\u25b2') ? meosComplementCss(labelColor) : '';
@@ -8923,15 +8923,15 @@ function applyPrettyLabels(editor) {
         openLabels.push({ range: new vscode.Range(line, parts.idStart, line, parts.idStart),
           renderOptions: {
             // v4.2.764(俊克 763テスト 改良1「▼▲の中間地点がお互いに被っているように見えて、左右のポインター移動が近過ぎる…半角スペース1つでは離れ過ぎ・わずかに離す= 緩衝地帯」): ▼の右に 0.25ch
-            before: { contentText: '\u25bc', color: _swapNow ? _twoTone : labelColor, fontWeight: labelWeight, margin: '0 0.25ch 0 0' },
-            after: { contentText: '\u25b2', color: _swapNow ? labelColor : _twoTone, fontWeight: labelWeight, margin: '0 3px 0 0' } } });
+            before: { contentText: '\u25bc', color: _swapNow ? _twoTone : labelColor, fontWeight: labelWeight, margin: '0 0.25ch 0 0', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' },   // v5.0.0-36: 手は絵そのものに
+            after: { contentText: '\u25b2', color: _swapNow ? labelColor : _twoTone, fontWeight: labelWeight, margin: '0 3px 0 0', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } } });
       } else
       openLabels.push({
         range: new vscode.Range(line, parts.idStart, line, parts.idStart),
         renderOptions: { before: _twoTone
           ? { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0',
-              textDecoration: 'none; background-image: linear-gradient(90deg, ' + (_swapNow ? _twoTone : labelColor) + ' 0 50%, ' + (_swapNow ? labelColor : _twoTone) + ' 50% 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;' }
-          : { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0' } }
+              textDecoration: 'none; background-image: linear-gradient(90deg, ' + (_swapNow ? _twoTone : labelColor) + ' 0 50%, ' + (_swapNow ? labelColor : _twoTone) + ' 50% 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; cursor: ' + meosHandCursor() + ';' }
+          : { contentText: openGlyph, color: labelColor, fontWeight: labelWeight, margin: '0 3px 0 0', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } }
       });
     } else if (close) {
       const parts = membraneLineParts(text, 'close');
@@ -8955,10 +8955,10 @@ function applyPrettyLabels(editor) {
         const isMntClose = !!(pair && pair.isMnt);
         const baseCloseGlyph = meosMembraneGlyph('close', false, isToc);  // v4.0.361: 字は1か所で決める
         const closeGlyph = isMntClose ? (baseCloseGlyph + '📒') : baseCloseGlyph;
-        arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart + 1) });   // v5.0.0-35(俊克 バグ1「▼▲にホーバーしても選択指に変わらなくなった」): -34 で手の範囲を縮めたのが誤り(▼▲の駒は idStart の字に差してあるので、その字まで範囲に入れないと駒に手が付かない)→ 元へ戻す / ★v4.2.75
+        arrowHands.push({ range: new vscode.Range(line, 0, line, parts.idStart) });   // v5.0.0-36(俊克 -35テスト 改良1「最初の文字「最」の上で選択指を出さないように」): 手は▼▲の絵そのもの(before/after の cursor)に載せ、字の範囲は膜名の手前まで= 膜名の1文字目は文字カーソル / v5.0.0-35(俊克 バグ1「▼▲にホーバーしても選択指に変わらなくなった」): -34 で手の範囲を縮めたのが誤り(▼▲の駒は idStart の字に差してあるので、その字まで範囲に入れないと駒に手が付かない)→ 元へ戻す / ★v4.2.75
         closeLabels.push({
           range: new vscode.Range(line, parts.idStart, line, parts.idStart),
-          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosCloseGlyphColor(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0' } }
+          renderOptions: { before: { contentText: closeGlyph, color: isToc ? 'rgba(210, 140, 0, 0.98)' : meosCloseGlyphColor(editor.document, (pair ? pair.start : line), null, colorForDepth(pair ? (pair.depth || 0) : 0, vscode.workspace.getConfiguration('laiMembrane'))), fontWeight: isToc ? '900' : '700', margin: '0 3px 0 0', textDecoration: 'none; cursor: ' + meosHandCursor() + ';' } }   // v5.0.0-36: 手は絵そのものに
         });
       }
     } else {
