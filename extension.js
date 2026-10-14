@@ -29851,7 +29851,7 @@ line:ln});}window.closeTocChildPop();}}
 })();
 let standardsOn=true;
 function renderStandardsToggle(){if(!standardsToggle)return;standardsToggle.classList.toggle('on',standardsOn);standardsToggle.classList.toggle('off',!standardsOn);
-const lab=standardsToggle.querySelector('.standards-label');if(lab)lab.textContent='Standards > v';standardsToggle.title=standardsOn?'Standards ON (default): native > / v folding controls are visible. Recommended OFF for cleaner MeOS membrane control.':'Standards OFF: native > / v folding controls are hidden. MeOS membrane controls are prioritized.';
+const lab=standardsToggle.querySelector('.standards-label');if(lab)lab.textContent='Standards > v';standardsToggle.title=standardsOn?'Standards ON (default): native > / v folding controls are visible, and the ⋯ of a folded membrane opens it as usual. Recommended OFF for cleaner MeOS membrane control.':'Standards OFF: native > / v folding controls are hidden, and the ⋯ of a folded membrane is sealed with ⛔. Only ▼▲ open and fold.';
 }
 if(standardsToggle)standardsToggle.addEventListener('click',()=>{standardsOn=!standardsOn;renderStandardsToggle();vscode.postMessage({type:'toggleStandards',
 enabled:standardsOn});});
@@ -41317,6 +41317,9 @@ function activate(context) {
     const _paintNoEntry = (ed) => {
       try {
         if (!ed || ed.document.languageId !== 'markdown') return;
+        // ★v5.0.0-44(俊克 11:04 改良1「⛔シールを、Standardsボタンに組み込もう。ガターの折畳みボタンを隠すのと同時に、⋯に⛔を貼って、完全防御体制」):
+        //   Standards ON(素のVS Code)= ⛔を貼らない・⋯は VS Code の本来の動き / OFF = ガターの > v を隠す＋⛔＋⋯の見張り。状態は同じ1つの口 currentStandardsOn()
+        if (currentStandardsOn()) { ed.setDecorations(_noEntry, []); ed.setDecorations(_noEntryRaw, []); return; }
         const sn = _snap(ed), starts = new Set(collectMembraneStructure(ed.document).pairs.filter(p => p.end > p.start).map(p => p.start)), rs = [], rr = [];
         for (let i = 0; i + 1 < sn.length; i++) { const h = sn[i][1]; if (sn[i + 1][0] > h + 1 && starts.has(h)) { const ln = ed.document.lineAt(h); if (meosShowsRawLine(ed, h) && ln.text.length) { const at = ln.range.end.translate(0, -1); rr.push(new vscode.Range(at, at)); continue; } const tm = /(\s?)\*\s*\}\s*-->\s*$/.exec(ln.text), at = tm ? new vscode.Position(h, tm.index) : ln.range.end;   /* v5.0.0-43(俊克 -42テスト バグ1「950行目以降の2つの膜の3点ボタンを隠しそびれている」): 尻尾の前の空白が2つ以上(`25.2℃↘   *} -->`)だと、隠すのは * からなので残りの空白が見えて⋯がその分右へずれ、空白の先頭に差した⛔からはみ出した→ * の直前の空白1つに差す */ rs.push(new vscode.Range(at, at)); } }   // v5.0.0-33: 生の行は rr(1字手前+1字右)/ v5.0.0-31: 隠した尻尾の頭 / v5.0.0-30
         ed.setDecorations(_noEntry, rs); ed.setDecorations(_noEntryRaw, rr);
@@ -41324,6 +41327,7 @@ function activate(context) {
     };
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { clearTimeout(_neT); _neT = setTimeout(() => _paintNoEntry(e.textEditor), 80); }));
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(ed => _paintNoEntry(ed)));
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => { try { if (e.affectsConfiguration('editor.showFoldingControls')) for (const ed of vscode.window.visibleTextEditors) _paintNoEntry(ed); } catch (_) { } }));   // v5.0.0-44: Standards を押したら貼る/剥がす
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => { clearTimeout(_neT); _neT = setTimeout(() => _paintNoEntry(e.textEditor), 80); }));   // v5.0.0-33: 生になる/戻るのはカーソルの出入り
     context.subscriptions.push(vscode.window.onDidChangeTextEditorVisibleRanges(e => { try { if (e.textEditor !== vscode.window.activeTextEditor) return; _vrPrev = _vrCur; _vrCur = _snap(e.textEditor); _vrAt = Date.now(); } catch (_) { } }));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
@@ -41340,6 +41344,7 @@ function activate(context) {
           }
         } catch (_) { }
         if (!ed || !sel || !sel.isEmpty || ed !== vscode.window.activeTextEditor || ed.document.languageId !== 'markdown') return;
+        if (currentStandardsOn()) return;   // v5.0.0-44: Standards ON では⋯で開くのが本来の動き= 畳み直さない
         const L = sel.active.line;
         if (sel.active.character < ed.document.lineAt(L).text.length) return;   // 行末だけ(⋯は行末の後ろ)
         const pair = collectMembraneStructure(ed.document).pairs.find(p => p.start === L && p.end > L);
