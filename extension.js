@@ -2858,6 +2858,8 @@ function meosSoundResolve(name) {
   if (n === 'GONG') return meosGongPath() || '';   // v4.2.441
   if (n === 'SOFT') return meosNoChangeSoundPath() || '';
   if (n === 'GROWL') return meosGrowlPath() || '';   // v4.2.621: 🍙GROWL
+  if (n === 'THUMP') return meosThumpPath() || '';   // v5.0.18: 🐇THUMP(足ダン)
+  if (n === MEOS_CROW_PRIZE_NAME) return meosCrowPath();   // v5.0.18: 鐘でも八咫烏の一鳴き
   if (n === 'ROCKET') return meosRocketPath(true) || '';   // v4.2.676(俊克「毎回フェードアウトして、その90%で次を」): いつもフェード版   // v4.2.667: 賞品(MecoDTk で☿を出した人だけ)
   if (n === MEOS_GOLD_PRIZE_NAME) return meosGoldPrizePath();   // v4.2.776-13: 栄誉の音(最初の達成者だけ)
   if (n === 'DING-DONG!') return meosPinponPath() || '';   // v4.2.618: 賞品(Docke™ で鳴らした人だけ)
@@ -2876,6 +2878,7 @@ function meosSoundList() {
   out.push('SOFT');  // v4.2.515: 作った柔らかい2音(保存済みの Cmd+S の旧音)
   out.push('PURR');  // v4.2.518: 作った強烈なゴロゴロ
   out.push('GROWL'); // v4.2.621: 作ったお腹の虫
+  out.push('THUMP'); // v5.0.18: 作った兎の足ダン
   try { if (extensionContext && extensionContext.globalState.get('meosDingDongWon')) out.push('DING-DONG!'); } catch (_) { }
   try { if (meosGoldPrizePath()) out.push(MEOS_GOLD_PRIZE_NAME); } catch (_) { }   // v4.2.776-13
   try { if (meosCrowPath()) out.push(MEOS_CROW_PRIZE_NAME); } catch (_) { }   // v5.0.9: コンプリートの賞品
@@ -2900,9 +2903,10 @@ function meosSoundSpawn(name) {
   if (name === MEOS_CROW_PRIZE_NAME) name = meosCrowPath();   // v5.0.9: 八咫烏の一鳴き(コンプリートの賞品)
   if (name === 'ROCKET') name = meosRocketPath(true) || '';   // v4.2.667 / v4.2.676: いつもフェード版
   if (name === 'GROWL') name = meosGrowlPath() || '';   // v4.2.621
+  let _volMul = 1; if (name === 'THUMP') { name = meosThumpPath() || ''; _volMul = 2; }   // v5.0.18: 🐇足ダン(俊克「音量を上げて鳴らそう」= 鳴らす音量も2倍)
   if (!name) return null;
   if (process.platform === 'darwin') {
-    const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = (isFinite(v) && v > 0) ? Math.min(20, v) : 2;
+    const v = Number(vscode.workspace.getConfiguration('laiMembrane').get('clockVolume', 2)), vol = Math.min(20, ((isFinite(v) && v > 0) ? v : 2) * _volMul);
     const f = meosSoundResolve(name);
     return cp.execFile('/usr/bin/afplay', ['-v', String(vol), f], () => { });
   }
@@ -2923,7 +2927,7 @@ function meosSoundStopAll() {
 }
 // ★v5.0.5(俊克 改良1「音の選択リストで黄金騎士を鳴らした時、神獣ボタンを一時的に白虎に切り替えて、鳴く度に、今作ったタイミングで表示」):
 //   試聴で GLD-KNIGHT を1回鳴らすたびに Me Dock へ「吠えろ」を1回送る(×3なら3回)。白虎への切替と戻しは Me Dock の側。
-function meosRoarSignal(name, single) { try { const c = meosSoundCanon(name); const who = c === 'GLD-KNIGHT' ? 'tora' : (c === MEOS_CROW_PRIZE_NAME ? 'karasu' : ''); if (who && meDockPanel) meDockPanel.webview.postMessage({ type: 'dwRoarOnce', who, single: !!single }); } catch (_) { } }   // v5.0.13: single= ×3でない一鳴き   // v5.0.9: 八咫烏の一鳴き(コンプリートの賞品)は八咫烏が鳴く
+function meosRoarSignal(name, single) { try { const c = meosSoundCanon(name); const who = c === 'GLD-KNIGHT' ? 'tora' : (c === MEOS_CROW_PRIZE_NAME ? 'karasu' : (c === 'THUMP' ? 'usagi' : '')); if (who && meDockPanel) meDockPanel.webview.postMessage({ type: 'dwRoarOnce', who, single: !!single }); } catch (_) { } }   // v5.0.13: single= ×3でない一鳴き   // v5.0.9: 八咫烏の一鳴き(コンプリートの賞品)は八咫烏が鳴く
 function meosSoundPlay(name) {
   try {
     if (!name) return;
@@ -13741,6 +13745,7 @@ function meosHelperSound() {
     // v4.2.399: 作った猫の声は、ヘルパーの部屋へ写して渡す(一時フォルダは消えることがある)
     if (name === 'MEW' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'mew-v7.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }
     if (name === 'PURR' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'purr-v4.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.518
+    if (name === 'THUMP' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'thump-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v5.0.18: 閉じていても V-helper が足ダン
     if (name === 'SOFT' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'soft-v1.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); file = dst; } catch (_) { } }   // v4.2.515
     if (name === 'GROWL' && file) { try { const fs = require('fs'), path = require('path'); fs.mkdirSync(meosHelperDir(), { recursive: true }); for (let ms = 500; ms <= 1000; ms += 100) { const src = meosGrowlPath(ms / 1000), dst = path.join(meosHelperDir(), 'growl-v6-' + ms + '.wav'); if (src && !fs.existsSync(dst)) fs.copyFileSync(src, dst); } file = path.join(meosHelperDir(), 'growl-v6-1000.wav'); } catch (_) { } }   // v4.2.621 / v4.2.629: 長さ6本を全部渡す(ヘルパーが選ぶ)
     if (name === 'ROCKET' && file) { try { const fs = require('fs'), path = require('path'); const dst = path.join(meosHelperDir(), 'rocket-v2.wav'); fs.mkdirSync(meosHelperDir(), { recursive: true }); if (!fs.existsSync(dst)) fs.copyFileSync(file, dst); const _fsrc = meosRocketPath(true), _fdst = path.join(meosHelperDir(), 'rocket-v2-fade.wav'); if (_fsrc && !fs.existsSync(_fdst)) fs.copyFileSync(_fsrc, _fdst); file = dst; } catch (_) { } }   // v4.2.667
@@ -15757,6 +15762,41 @@ function meosGrowlPath(len) {
     for (let i = 0; i < n; i++) { const v = Math.tanh(drive * smp[i] * k) / nrm; buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 0.95 * 32767 * Math.min(1, (n - i) / (rate * 0.04))), 44 + i * 2); }
     const f = path.join(os.tmpdir(), 'meos-growl-v6-' + ms + '.wav');
     fs.writeFileSync(f, buf); _meosGrowlFile[ms] = f; return f;
+  } catch (_) { return null; }
+}
+// ★v5.0.18(俊克 2026.10.15 pm08:25「音リストの中に兎に関係する音はないのか?」→ 兎は鳴かない・兎らしい音は「足ダン」(後ろ足で床を踏む警戒の合図)
+//   → pm08:36「thumpで検索しても大した音は無い。適当に生成して。強烈な音を」→ pm08:40「ashidan_v2_heavy がいい。音量を上げて鳴らそう。🐇THUMP に」):
+//   ★一から計算で作る(素材なし= 配っても権利の心配が無い・vsix も増えない)。v2_heavy= ドスンの芯(110→36Hz へ 35ms で下がるサイン・減衰0.16秒)
+//     ＋踏んだ瞬間の打撃(雑音・6ms)＋木の床の鳴り(210/330/520Hz)＋部屋の響き(0.18秒)。音量を上げる= 歪ませる強さを 3.5→6(音圧が上がる)
+let _meosThumpFile = '';
+function meosThumpPath() {
+  if (_meosThumpFile) return _meosThumpFile;
+  try {
+    const os = require('os'), fs = require('fs'), path = require('path');
+    const rate = 44100, L = 0.7, n = Math.round(L * rate), f0 = 110, f1 = 36, tau = 0.16, click = 0.7, wood = 0.25, room = 0.25, drive = 6;
+    let seed = 20261015; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const gauss = () => { const u = Math.max(1e-9, rnd()), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    const nz = new Float64Array(n); for (let i = 0; i < n; i++) nz[i] = gauss();
+    const ma = (k) => { const o = new Float64Array(n); let acc = 0; const h = k >> 1; for (let i = 0; i < n + h; i++) { if (i < n) acc += nz[i]; if (i - k >= 0) acc -= nz[i - k]; const j = i - h; if (j >= 0 && j < n) o[j] = acc / k; } return o; };
+    const n6 = ma(6), n40 = ma(40), smp = new Float64Array(n); let ph = 0, peak = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / rate, f = f1 + (f0 - f1) * Math.exp(-t / 0.035); ph += 2 * Math.PI * f / rate;
+      const body = Math.sin(ph) * Math.exp(-t / tau) * (1 - Math.exp(-t / 0.002));
+      const clk = n6[i] * Math.exp(-t / 0.006) * click;
+      const wd = (Math.sin(2 * Math.PI * 210 * t) * Math.exp(-t / 0.05) + Math.sin(2 * Math.PI * 330 * t + 1) * Math.exp(-t / 0.035) + Math.sin(2 * Math.PI * 520 * t + 2) * Math.exp(-t / 0.025)) * wood / 3;
+      const rm = t > 0.01 ? n40[i] * Math.exp(-t / 0.18) * room : 0;
+      let y = Math.tanh(drive * (body + clk + wd + rm)) / Math.tanh(drive);
+      const fo = Math.round(0.05 * rate); if (i > n - fo) y *= (n - i) / fo;
+      smp[i] = y; if (Math.abs(y) > peak) peak = Math.abs(y);
+    }
+    const buf = Buffer.alloc(44 + n * 2);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+    buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+    buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+    buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+    const k = peak > 0 ? 0.98 / peak : 1; for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, smp[i] * k)) * 32767), 44 + i * 2);
+    const f = path.join(os.tmpdir(), 'meos-thump-v1.wav');
+    fs.writeFileSync(f, buf); _meosThumpFile = f; return f;
   } catch (_) { return null; }
 }
 // ★v4.2.667: 🚀ROCKET= 俊克がアラームアプリの試作用に用意したフリー素材(On-Jin ～音人～「ロケット発射」)の最初の3秒を同梱していた
@@ -31947,9 +31987,9 @@ const sb=document.getElementById('sd-btn'),sp=document.getElementById('sd-pop'),
 const sdAct=(r,scroll)=>{sp.querySelectorAll('.sd-row.act').forEach(x=>x.classList.remove('act'));if(!r)return;r.classList.add('act');if(scroll){const top=r.offsetTop,bot=top+r.offsetHeight;if(top<sp.scrollTop)sp.scrollTop=top-4;else if(bot>sp.scrollTop+sp.clientHeight)sp.scrollTop=bot-sp.clientHeight+4;}};
 const sdClose=()=>{if(!sp||!sp.classList.contains('on'))return;sp.classList.remove('on');sb.classList.remove('on');clearTimeout(sdTimer);};
 const sdShort=(n)=>{const b=String(n||'').split('/').pop().replace(/\\.[A-Za-z0-9]+$/,'');return Array.from(b).slice(0,10).join('');};
-const sdLabel=(n)=>(n==='GLD-KNIGHT'?'\u269c\ufe0f ':'')+(n==='YATAGARASU'?'\ud83d\udc26\u200d\u2b1b ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
+const sdLabel=(n)=>(n==='GLD-KNIGHT'?'\u269c\ufe0f ':'')+(n==='THUMP'?'\ud83d\udc07 ':'')+(n==='YATAGARASU'?'\ud83d\udc26\u200d\u2b1b ':'')+(n==='ROCKET'?'\ud83d\ude80 ':'')+(n==='DING-DONG!'?'\ud83d\udece\ufe0f ':(n==='GROWL'?'\ud83c\udf59 ':''))+(n==='MEW'?'\ud83d\udc31 ':(n==='PURR'?'\ud83d\ude38 ':(n==='Purr'?'\ud83d\ude3a ':(n==='GONG'?'\ud83e\udd4a ':(n==='SOFT'?'\ud83c\udf66 ':'')))))+sdShort(n);   /* v4.2.518: 😸PURR(作った強烈なゴロゴロ)/ 😺Purr(mac の音) */   /* v4.2.441: 🥊Gong */   /* v4.2.517(俊克「Softを表わす絵文字があれば、メニューに入れたいね。🍦、これだね」): 🍦Soft */
 const sdNumLabel=(n,i)=>(i>0?(String(i).padStart(2,'\u2007')+'  '):'\ud83d\udd15  ')+(n?sdLabel(n):'(no sound)');   /* v4.2.437: ⏰行に 🔔3 と書ける番号(1から)・🔕= 鳴らさない */   /* v4.2.405(俊克「Purrは😽か😸に」): Purr= 😸(目を細めて満足= ゴロゴロ)。Mew= 🐱 */   /* v4.2.399: 猫の音には🐱(Purr=ゴロゴロと分からない人のために) */
-window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT'||m.current==='YATAGARASU')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
+window.__renderSound=function(m){try{if(sv){sv.textContent=(m.current?((m.current==='MEW'||m.current==='Purr'||m.current==='PURR'||m.current==='GONG'||m.current==='SOFT'||m.current==='DING-DONG!'||m.current==='GROWL'||m.current==='ROCKET'||m.current==='GLD-KNIGHT'||m.current==='YATAGARASU'||m.current==='THUMP')?'':'\ud83d\udd14 '):'\ud83d\udd15 ')+(m.label?m.label:(m.current?sdLabel(m.current):'off'));}if(!sp)return;sp.innerHTML='';
  /* v5.0.0-11: 一番上に ×3(アラームと同じ連打で試聴・既定オン) */const _x3=document.createElement('label');_x3.className='sd-x3';_x3.innerHTML='<input type="checkbox"'+(m.x3!==false?' checked':'')+'> Preview ×3 — as the alarm rings';_x3.addEventListener('click',ev=>ev.stopPropagation());_x3.querySelector('input').addEventListener('change',ev=>{vscode.postMessage({type:'soundX3',on:!!ev.target.checked});});sp.appendChild(_x3);
  const rows=[{name:'',label:sdNumLabel('',0)}].concat((m.list||[]).map((n,i)=>({name:n,label:sdNumLabel(n,i+1)})));
  for(const x of rows){const r=document.createElement('div');r.className='sd-row'+(x.name===(m.current||'')?' cur':'')+(x.name?'':' off');r.textContent=x.label;r.dataset.name=x.name;
@@ -32722,7 +32762,7 @@ if(m&&m.type==='clockPresets'){/* v4.2.315 */try{if(Array.isArray(m.list)&&m.lis
  }catch(e){}return;}
 if(m&&m.type==='clockRefused'){try{clkWarn(m.text||'',m.key||'');}catch(e){}return;}   /* v4.1.68 */
 if(m&&m.type==='clkSetRefused'){/* v4.2.392: 場所が違う= 設定の窓を開き直し(値は1分以内なら残る)、押した所に断りを出す */try{if(!(clkPop&&clkPop.classList.contains('on')))window.__clkOpen('set');window.__clkTargetOk=false;/* v4.2.393(俊克「設定場所を間違えたあと Set が押せなくなる」): 入れた値は指定済みのまま */clkDirty=true;clkPaintSet();clkWarn(m.text||'','');}catch(e){}return;}
-if(m&&m.type==='dwRoarOnce'){/* v5.0.5: 黄金騎士の試聴1回= 神獣を一時的に白虎にして1拍吠える(拡大→閉0.2→咆哮0.7→閉0.1→縮小)・最後の1拍の後で元の神獣へ */try{var rb=document.getElementById('dw-scope');var rs=rb&&rb.closest('.dw-split');var who=(m.who==='karasu')?'karasu':'tora',i1=(who==='karasu')?_dwKarasu1:_dwTora1,i2=(who==='karasu')?_dwKarasu2:_dwTora2;/* v5.0.9: 誰が鳴くか(白虎=GLD-KNIGHT・八咫烏=YATAGARASU) */if(rb&&rs&&rb.querySelector('.dw-dd')&&i1&&i2){var cur=rb.querySelector('.dw-tora');if(!cur||cur.getAttribute('data-who')!==who){var tg='<span class="dw-gd dw-tora" data-who="'+who+'"><img class="dw-gdi dw-tora1" src="'+i1+'" alt=""><img class="dw-gdi dw-tora2" src="'+i2+'" alt=""></span>';var og=rb.querySelector('.dw-gd');if(og)og.outerHTML=tg;else rb.insertAdjacentHTML('beforeend',tg);}/* v5.0.7(俊克 改良1「1回だけ拡大して、その中で3回吠えて(3回指定のとき)、閉じる」): 最初の1回で拡大し、鳴るたびに口だけ(閉0.2→咆哮0.7→閉0.1)・最後の1回の1.1秒後に縮小 */rs.classList.remove('dw-blink');rs.classList.remove('dw-pulse');rs.classList.remove('dw-roar');rs.classList.add('dw-roarbig');clearTimeout(window.__dwBlinkT);var sdp=document.getElementById('sd-pop');if(sdp)sdp.classList.add('sd-hide');/* v5.0.6(俊克「そのケースだけ音リストを一時的に消そう・被って白虎が見えない」): 吠える間だけ隠す(開いたまま= ↑↓←→Enter はそのまま効く) */clearTimeout(window.__dwMouthOn);clearTimeout(window.__dwMouthOff);rs.classList.remove('dw-roaring');var mo=(who==='karasu'&&m.single)?[100,450]:[200,1000];/* v5.0.8: 閉0.1→咆哮0.8→閉0.1 / v5.0.13(俊克「5.0.10は正常。烏の一鳴きだけを修正」= カーが短いので前半だけ口を開き後半は閉じる): 八咫烏の一鳴き(×3でない時)だけ 0.1〜0.45秒。3鳴きと白虎は5.0.10のまま */window.__dwMouthOn=setTimeout(function(){rs.classList.add('dw-roaring');},mo[0]);window.__dwMouthOff=setTimeout(function(){rs.classList.remove('dw-roaring');},mo[1]);clearTimeout(window.__dwRoarT);window.__dwRoarT=setTimeout(function(){rs.classList.remove('dw-roarbig');rs.classList.remove('dw-roaring');if(sdp)sdp.classList.remove('sd-hide');setTimeout(function(){try{window.__dwRenderScope();}catch(e){}},150);},(who==='karasu'&&m.single)?1750:1100);/* v5.0.14(俊克「後ろを1秒音を延ばす・延ばしている間は口をすぼめた絵も表示」): 八咫烏の一鳴きは余韻つき1.67秒= 口は0.45秒で閉じ、余韻の間も拡大したまま */}}catch(e){}return;}if(m&&m.type==='dwCaretDay'){/* v5.0.0-24: 日記の膜の中= その日付・外= 今日 */window.__dwCaretDay=(m.d&&m.d.mo)?m.d:null;window.__dwCaretSeen=true;try{window.__dwRenderScope();}catch(e){}return;}
+if(m&&m.type==='dwRoarOnce'){/* v5.0.5: 黄金騎士の試聴1回= 神獣を一時的に白虎にして1拍吠える(拡大→閉0.2→咆哮0.7→閉0.1→縮小)・最後の1拍の後で元の神獣へ */try{var rb=document.getElementById('dw-scope');var rs=rb&&rb.closest('.dw-split');var who=(m.who==='karasu'||m.who==='usagi')?m.who:'tora',i1=(who==='karasu')?_dwKarasu1:(who==='usagi')?_dwUsagi1:_dwTora1,i2=(who==='karasu')?_dwKarasu2:(who==='usagi')?_dwUsagi2:_dwTora2;/* v5.0.18: 🐇THUMP= 玉兎 *//* v5.0.9: 誰が鳴くか(白虎=GLD-KNIGHT・八咫烏=YATAGARASU) */if(rb&&rs&&rb.querySelector('.dw-dd')&&i1&&i2){var cur=rb.querySelector('.dw-tora');if(!cur||cur.getAttribute('data-who')!==who){var tg='<span class="dw-gd dw-tora" data-who="'+who+'"><img class="dw-gdi dw-tora1" src="'+i1+'" alt=""><img class="dw-gdi dw-tora2" src="'+i2+'" alt=""></span>';var og=rb.querySelector('.dw-gd');if(og)og.outerHTML=tg;else rb.insertAdjacentHTML('beforeend',tg);}/* v5.0.7(俊克 改良1「1回だけ拡大して、その中で3回吠えて(3回指定のとき)、閉じる」): 最初の1回で拡大し、鳴るたびに口だけ(閉0.2→咆哮0.7→閉0.1)・最後の1回の1.1秒後に縮小 */rs.classList.remove('dw-blink');rs.classList.remove('dw-pulse');rs.classList.remove('dw-roar');rs.classList.add('dw-roarbig');clearTimeout(window.__dwBlinkT);var sdp=document.getElementById('sd-pop');if(sdp)sdp.classList.add('sd-hide');/* v5.0.6(俊克「そのケースだけ音リストを一時的に消そう・被って白虎が見えない」): 吠える間だけ隠す(開いたまま= ↑↓←→Enter はそのまま効く) */clearTimeout(window.__dwMouthOn);clearTimeout(window.__dwMouthOff);rs.classList.remove('dw-roaring');var mo=(who==='usagi')?[40,640]:(who==='karasu'&&m.single)?[100,450]:[200,1000];/* v5.0.18: 玉兎= ドスンと同時に耳を伏せ0.6秒→立てる *//* v5.0.8: 閉0.1→咆哮0.8→閉0.1 / v5.0.13(俊克「5.0.10は正常。烏の一鳴きだけを修正」= カーが短いので前半だけ口を開き後半は閉じる): 八咫烏の一鳴き(×3でない時)だけ 0.1〜0.45秒。3鳴きと白虎は5.0.10のまま */window.__dwMouthOn=setTimeout(function(){rs.classList.add('dw-roaring');},mo[0]);window.__dwMouthOff=setTimeout(function(){rs.classList.remove('dw-roaring');},mo[1]);clearTimeout(window.__dwRoarT);window.__dwRoarT=setTimeout(function(){rs.classList.remove('dw-roarbig');rs.classList.remove('dw-roaring');if(sdp)sdp.classList.remove('sd-hide');setTimeout(function(){try{window.__dwRenderScope();}catch(e){}},150);},(who==='karasu'&&m.single)?1750:1100);/* v5.0.14(俊克「後ろを1秒音を延ばす・延ばしている間は口をすぼめた絵も表示」): 八咫烏の一鳴きは余韻つき1.67秒= 口は0.45秒で閉じ、余韻の間も拡大したまま */}}catch(e){}return;}if(m&&m.type==='dwCaretDay'){/* v5.0.0-24: 日記の膜の中= その日付・外= 今日 */window.__dwCaretDay=(m.d&&m.d.mo)?m.d:null;window.__dwCaretSeen=true;try{window.__dwRenderScope();}catch(e){}return;}
 if(m&&m.type==='mdArm'){const _r=document.getElementById('md-tiles');if(_r){_r.classList.toggle('md-armed',!!m.on);
 /* v4.2.776-31(俊克 改良1「登録したtipも表示しよう」): 構えている間、赤い点の字の説明(F の印の // の後ろ= data-tip)を、その字の下に Me Dock の tip と同じ姿で出す */
 let _at=document.getElementById('md-armtip');const _lt=_r.querySelector('.md-tile.md-last'),_tx=_lt?(_lt.getAttribute('data-tip')||''):'';/* v4.2.776-35(俊克 バグ1「Ⓣだけtipが出てこない」): Ⓣも出す(Today / Ⓣ-Comet など化けた名前) */
