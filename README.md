@@ -176,7 +176,7 @@ so it stays through quitting VSCodium and restarting the Mac, and it starts the 
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the V-helper menu with Pass the next, every clock counting down (🌅 Wake among them), Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
-  <sub><b>NEW in v5.0 — this is what the menu bar looks like.</b> Your clocks keep counting in the menu bar — orange for VSCodium, purple for VS Code — and one click opens every one of them, from five hours to 115 days away — and 🌅 Wake, the next time your Mac starts up on its own, counts down among them. When a bell rings, MeOS warps you to the membrane you set it on; pick any clock from here and you warp there yourself; or let it just ring, at anchor ⚓. <b>Boarding pass: Passenger YOU — Destination Anywhere-When — Seat NOW — Fare 0.</b></sub>
+  <sub><b>NEW in v5.0 — this is what the menu bar looks like.</b> Your clocks keep counting in the menu bar — orange for VSCodium, purple for VS Code — and one click opens every one of them, from five hours to 115 days away — only the next one counts its seconds, in red: 4:51<b>.25</b> — and 🌅 Wake, the next time your Mac starts up on its own, counts down among them. When a bell rings, MeOS warps you to the membrane you set it on; pick any clock from here and you warp there yourself; or let it just ring, at anchor ⚓. <b>Boarding pass: Passenger YOU — Destination Anywhere-When — Seat NOW — Fare 0.</b></sub>
 </p>
 
 <p align="center">
