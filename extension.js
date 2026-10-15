@@ -19995,6 +19995,16 @@ function _strikeStrippedLen(text, st) {
   if (open >= 0) { st.on = true; s = s.slice(0, open); } // opens a multi-line strike
   return s.length;
 }
+// v5.0.10: HTML コメント(<!-- … -->)を1行から取り除く。cm = { on } が複数行のコメントの途中かを運ぶ。
+function _commentStripped(text, cm) {
+  let out = '', s = text;
+  while (s.length) {
+    if (cm.on) { const c = s.indexOf('-->'); if (c < 0) return out; cm.on = false; s = s.slice(c + 3); continue; }
+    const o = s.indexOf('<!--'); if (o < 0) { out += s; break; }
+    out += s.slice(0, o); cm.on = true; s = s.slice(o + 4);
+  }
+  return out;
+}
 function countMembraneChars(document, pair) {
   if (!document || !pair) return 0;
   const uri = document.uri.toString();
@@ -20008,12 +20018,20 @@ function countMembraneChars(document, pair) {
   const tagLines = new Set();
   try { for (const p of collectPairs(document, { excludeIndex: false })) { tagLines.add(p.start); tagLines.add(p.end); } } catch (_) {}
   let count = 0;
-  const st = { on: false };
+  const st = { on: false }, cm = { on: false };
   const to = Math.min(pair.end - 1, document.lineCount - 1);
   for (let ln = pair.start + 1; ln <= to; ln++) {
     if (tagLines.has(ln)) continue;
-    const text = document.lineAt(ln).text || '';
+    let text = document.lineAt(ln).text || '';
     if (HTOC_MARKER_RE.test(text)) continue;
+    // ★v5.0.10(俊克 バグ1「👻取消線は、FCコメントの文字数をカウントしてしまっている」):
+    //   v0.9.807 の数え方は本文の ~~…~~ だけを引いていた。v4.0 からの FC 方式では、取消線(👻も)の命令は
+    //   **コメント**(真下の `<!-- Mew!FC ~~👻 -->` 行・行末の仕様コメント)に住む= そのコメントの字まで本文として数えていた。
+    //   → コメント(<!-- … -->・複数行も)は数えない。コメントだけの行は改行も数えない(読者には無い行)。その後で取消線を引く。
+    const raw = text;
+    text = _commentStripped(text, cm);
+    if (raw.trim() && !text.trim() && (raw !== text)) continue;
+    if (raw !== text) text = text.replace(/[ \t]+$/, '');   // 行末コメントの前の空白も本文ではない
     const wasOn = st.on;
     const len = _strikeStrippedLen(text, st);
     if (wasOn && st.on) continue; // whole line inside a multi-line strike (newline struck too)
