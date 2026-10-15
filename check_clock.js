@@ -562,7 +562,11 @@ ok(String(X.meosCycleSeriesNext(Date.parse('2026-09-02T09:00:00'),['50','10'],Da
 const w1=X.meosParseWhen('2099-01-01 09:30:15');
 ok(!!w1 && w1.at.getSeconds()===15, '\u2605秒まで読む', w1 && w1.at.toString());
 ok(X.meosClockFcStamp2(new Date(2026,7,30,1,40,0))==='2026-08-30 01:40', '秒が0なら今までと同じ姿', X.meosClockFcStamp2(new Date(2026,7,30,1,40,0)));
-ok(X.meosClockFcStamp2(new Date(2026,7,30,1,40,15))==='2026-08-30 01:40:15', '秒が在る時だけ足す', X.meosClockFcStamp2(new Date(2026,7,30,1,40,15)));
+ok(X.meosClockFcStamp2(new Date(2026,7,30,1,40,15))==='2026-08-30 01:40.15', '秒が在る時だけ足す(v5.0.0-69: 分と秒は `.`)', X.meosClockFcStamp2(new Date(2026,7,30,1,40,15)));
+{ const _t=new Date(2026,8,28,16,59,30).getTime(); const _a=X.meosParseWhen('2026-09-28 16:59.30',true), _b=X.meosParseWhen('2026-09-28 16:59:30',true), _c=X.meosParseStampLoose('2026-09-28 16:59.30'), _d=X.meosParseWhen('16:59.30');
+  ok(_a&&_a.at.getTime()===_t && _b&&_b.at.getTime()===_t && _c&&_c.getTime()===_t && _d&&_d.at.getSeconds()===30, '★v5.0.0-69 起点の秒は `.` でも `:` でも読む(今までの本文もそのまま)', [_a&&_a.at, _b&&_b.at, _c, _d&&_d.at]);
+  const _l='<!-- Mew!UFC \u23f0 \u21ba\u21bb8h 2026-09-28 16:59.30p // x -->'; const _p=X.meosClockFcParse(_l);
+  ok(!!(_p&&(_p.when||_p.whenSrc)&&!_p.err), '★v5.0.0-69 ⏰行の起点 16:59.30p を読める', _p&&{when:_p.when,whenSrc:_p.whenSrc,err:_p.err}); }
 
 // v4.1.24(俊克「⏰のリストの左端に、選択用のチェックボックスを付けて、どのタイマーを使用できるかを選べるように」)
 console.log('\u246f \u23f8 休み(\u2611/\u2610)');
@@ -1730,8 +1734,8 @@ console.log('⑰ Now / read ⏰ = 0from打ち直させない');
  /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat 15:30 の**分**を落としていた
     (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeatだけthat入ったように見えた。 */
  /* ★★★v4.1.173: webviewの正規表現は**二重エスケープ**で書く(テンプレートリテラルthat単一を食べる)。 */
- ok(/replace\(\/\^\(\\\\d\{4\}\\\\D\\\\d\{1,2\}\\\\D\\\\d\{1,2\}\\\\s\+\\\\d\{1,2\}:\\\\d\{2\}\):\\\\d\{2\}\$\/, '\$1'\)/.test(S),
-    '★★★秒を落とすのは「時:分:秒」の形の時だけ(分を巻き込まない)', true);
+ ok(/replace\(\/\^\(\\\\d\{4\}\\\\D\\\\d\{1,2\}\\\\D\\\\d\{1,2\}\\\\s\+\\\\d\{1,2\}:\\\\d\{2\}\)\[:\.\]\\\\d\{2\}\$\/, '\$1'\)/.test(S),
+    '★★★秒を落とすのは「時:分:秒/時:分.秒」の形の時だけ(分を巻き込まない)', true);
  /* ★単一エスケープの見張りは check_webview.js(評価後のスクリプトを見る方)に置いた=
     そちらはわざと壊して落ちることを確かめてある。同じ見張りを2つ持たない。 */
 

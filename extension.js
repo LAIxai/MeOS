@@ -12152,7 +12152,7 @@ function meosClockOriginShiftText(txt, ms) {
     // ★v4.2.477: 起点は周期の後ろ(// の前)。~日付 の日付と仮の起点(v…)は起点ではない。古い並び(起点が矢印の前)も同じ探し方で見つかる。
     const tEnd = (function () { const a = txt.search(/[\u21ba\u21bb]/); const k = txt.indexOf('//', a >= 0 ? a : 0); const c = txt.lastIndexOf('-->'); return k >= 0 ? k : (c >= 0 ? c : txt.length); })();
     const zone = txt.slice(0, tEnd);
-    const re = /(?<![~\u301c\uff5ev\d])(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?::\d{2})?)([pf])?/g;
+    const re = /(?<![~\u301c\uff5ev\d])(\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2})(\s*\([SMTWtFs]\))?(\s+\d{1,2}:\d{2}(?:[:.]\d{2})?)([pf])?/g;
     let m = null, x; while ((x = re.exec(zone))) { const pre = zone.slice(Math.max(0, x.index - 2), x.index); if (/[~\u301c\uff5e]\s*$/.test(pre)) continue; m = x; break; }
     if (!m) return null;
     if (m.index > 0 && /v$/i.test(zone.slice(0, m.index))) return null;
@@ -12348,7 +12348,7 @@ function meosClockLastAnswer0(msg) {
 // ★★★v4.2.77: 仮想の起点 `v…` の読み書き。字の形はここ1か所で決める。
 //   `1. v2026-09-13 09:40:12` → {pre:'1.', at} / `v2m25s` → {pre:'', elapsed}
 function meosClockSplitV(src) {
-  const m = /^((?:\d{1,3}[.)])?)[ \t]*v(\d[^\s]*(?:[ \t]+\d{1,2}:\d{2}(?::\d{2})?)?)$/.exec(String(src == null ? '' : src).trim());
+  const m = /^((?:\d{1,3}[.)])?)[ \t]*v(\d[^\s]*(?:[ \t]+\d{1,2}:\d{2}(?:[:.]\d{2})?)?)$/.exec(String(src == null ? '' : src).trim());
   return m ? { pre: m[1], rest: m[2] } : null;
 }
 // ★★v4.2.428(俊克「起点のあるタイマーの次の行に起点のないタイマーを書くのは、1本目は独立して動くしかない。
@@ -12404,12 +12404,12 @@ function meosClockFcStamp(at) {
   const p = (x) => (x < 10 ? '0' : '') + x;
   const sec = d.getSeconds();
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())
-    + (sec ? (':' + p(sec)) : '');            // v4.1.23: 秒は在る時だけ書く(いつもは今までと同じ姿)
+    + (sec ? ('.' + p(sec)) : '');            // v4.1.23: 秒は在る時だけ書く(いつもは今までと同じ姿) / ★v5.0.0-69(俊克「`16:59.30`だよ」「私の記法を知っているのだから自主的に直すべきだった」): 秒は `.`= v4.1.37 の決まり「`:` は時と分の間だけ・分と秒は必ず `.`」を本文の起点にも(読む口は `:` も `.` も読む= 今までの本文もそのまま動く)
 }
 // 過ぎた時刻でも読む。**輪を次へ進める時にだけ**使う(普段の読みは meosParseWhen 1つ=過ぎた指定は誤り)。
 function meosParseStampLoose(txt) {
   // v4.1.77: 手で `2026-09-03(t) 09:00` と書いても読む(曜日は見ない= 日付that真実)。
-  const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s*\([SMTWtFs]\))?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(txt || '').trim());
+  const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s*\([SMTWtFs]\))?\s+(\d{1,2}):(\d{2})(?:[:.](\d{2}))?$/.exec(String(txt || '').trim());
   if (!m) return null;
   const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] == null ? 0 : +m[6], 0);
   return isNaN(d.getTime()) ? null : d;
@@ -14337,7 +14337,7 @@ function meosApplyTimerLineDecorations(editor, fromHints) {
               //   対が在るのは f(目標)がまだ未来の間だけ(過去になれば MeOS が `…p` 1つに畳む・v4.2.54)so、
               //   見せるべきは「どこへ向かっているか」= f。p(数え始め)は生データの行で読める。消し方は幅ごと畳む。
               try {
-                const _fp92 = /[fF][ \t]*(\/[ \t]*\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}(?:\([SMTWtFs]\))?[ \t]+\d{1,2}:\d{2}(?::\d{2})?[ \t]*[pP])/.exec(txt);
+                const _fp92 = /[fF][ \t]*(\/[ \t]*\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}(?:\([SMTWtFs]\))?[ \t]+\d{1,2}:\d{2}(?:[:.]\d{2})?[ \t]*[pP])/.exec(txt);
                 if (_fp92) {
                   const _h92 = _fp92.index + _fp92[0].indexOf('/');
                   badgeHide.push(new vscode.Range(i, _h92, i, _fp92.index + _fp92[0].length));
@@ -16521,13 +16521,13 @@ function meosParseWhen(txt, allowPast) {   // allowPast: v4.2.451 ~日付(締切
   //   そう言うためには、秒指定もできると良い」): ★**秒まで読む**= 分より短い合図が要る場面が在る。
   //   書き方は今までの後ろに `:ss` を足すだけ(読める形を増やす)。
   let ss = 0;
-  if ((m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2})(?::(\d{2}))?)?$/.exec(raw))) {
+  if ((m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2})(?:[:.](\d{2}))?)?$/.exec(raw))) {
     y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5]; ss = m[6] == null ? 0 : +m[6];
-  } else if ((m = /^(\d{4})(\d{2})(\d{2})(?:\s+(\d{1,2}):?(\d{2})(?::(\d{2}))?)?$/.exec(raw))) {
+  } else if ((m = /^(\d{4})(\d{2})(\d{2})(?:\s+(\d{1,2}):?(\d{2})(?:[:.](\d{2}))?)?$/.exec(raw))) {
     y = +m[1]; mo = +m[2]; d = +m[3]; hh = m[4] == null ? 0 : +m[4]; mi = m[5] == null ? 0 : +m[5]; ss = m[6] == null ? 0 : +m[6];
-  } else if ((m = /^(\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2})(?::(\d{2}))?)?$/.exec(raw))) {
+  } else if ((m = /^(\d{1,2})[\/\-.](\d{1,2})(?:\s+(\d{1,2}):?(\d{2})(?:[:.](\d{2}))?)?$/.exec(raw))) {
     mo = +m[1]; d = +m[2]; hh = m[3] == null ? 0 : +m[3]; mi = m[4] == null ? 0 : +m[4]; ss = m[5] == null ? 0 : +m[5];
-  } else if ((m = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(raw))) {
+  } else if ((m = /^(\d{1,2}):(\d{2})[:.](\d{2})$/.exec(raw))) {
     hh = +m[1]; mi = +m[2]; ss = +m[3];
   } else if ((m = /^(\d{1,2}):(\d{2})$/.exec(raw)) || (m = /^(\d{1,2})(\d{2})$/.exec(raw))) {
     hh = +m[1]; mi = +m[2];
@@ -31038,7 +31038,7 @@ function clkTakeIn(d){try{
  /* ★★v4.1.170(俊克 改良2の真因): 秒だけを落とすつもりthat、15:30 の**分**を落としていた
     (2026-09-06 15:30 → 2026-09-06 15)so日付の読みthat丸ごと失敗し、Repeat だけthat入ったように見えた。
     → **時:分:秒 の形の時だけ**末尾の秒を落とす。 */
- var _w=String(d.when||'').replace(/^(\\d{4}\\D\\d{1,2}\\D\\d{1,2}\\s+\\d{1,2}:\\d{2}):\\d{2}$/, '$1');
+ var _w=String(d.when||'').replace(/^(\\d{4}\\D\\d{1,2}\\D\\d{1,2}\\s+\\d{1,2}:\\d{2})[:.]\\d{2}$/, '$1');
  var _md=/^(\\d{4})\\D(\\d{1,2})\\D(\\d{1,2})(?:\\s+(\\d{1,2}):(\\d{2}))?$/.exec(_w);
  if(_md){clkFixD=true;clkPutYMDHM(+_md[1],+_md[2],+_md[3],(_md[4]!=null?+_md[4]:null),(_md[5]!=null?+_md[5]:null));
   if(e)e.value=_w;}
@@ -33981,9 +33981,9 @@ function toggleMeDock(editorOverride) {
             raw: (function () { try { return ed.document.lineAt(hit.line).text; } catch (_) { return ''; } })(), title: String(hit.title || ''), listNo: String(hit.listNo || ''), anchor: !!hit.anchor,   // v4.2.396: 行そのもの・タイトル・連番・⚓も運ぶ   // v4.2.389: その⏰の膜の名前も運ぶ(Set が外側の膜に書かない)
             when: (function () {   // v4.2.389: f/p の印はパネルの起点の欄が読めない(ack matched:false)= 未来の f があればその日時、無ければ p の日時を素の形で渡す
               const w0 = String(hit.whenSrc || hit.when || '').trim();
-              const mf = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)f\b/.exec(w0);
+              const mf = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?:[:.]\d{2})?)?)f\b/.exec(w0);
               if (mf) return mf[1];
-              const mp = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)p\b/.exec(w0);
+              const mp = /^(?:\d{1,3}[.)]\s*)?(\d{4}-\d{1,2}-\d{1,2}(?:\s+\d{1,2}:\d{2}(?:[:.]\d{2})?)?)p\b/.exec(w0);
               if (mp) return mp[1];
               // ★v4.2.395(俊克「時間指定なしの5mタイマーをreadしたのに、setするときに時間もセットされてしまう」):
               //   起点を持たない⏰(連なりの2本目の仮の起点 v… / 番号だけ)は、起点なしとして渡す= パネルも起点を書かない

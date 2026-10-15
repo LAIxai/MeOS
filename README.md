@@ -68,11 +68,15 @@ Four tomatoes with a short break after each, then a longer rest, round and round
 the cycle, then the origin — which may run off the edge of a narrow window without hiding anything you need.
 
 ```md
-<!-- Mew!UFC ⏰⚓️ 🔔Gong/🔕Mew ↺↻(3m 1m)×12 2026-09-28 03:30:00p // R 1. // break 1. -->
+<!-- Mew!UFC ⏰⚓️ 🔔Gong/🔕Mew ↺↻(3m 1m)×12 2026-09-28 03:30p // R 1. // break 1. -->
 ```
 
-On screen that line reads `⏸️⏰⚓️🔓🔔🔕[−1s][+1s] ↺↻(3m/1m)×12 2026-09-28(M) 03:30:00p`, and the badge line above it
+On screen that line reads `⏸️⏰⚓️🔓🔔🔕[−1s][+1s] ↺↻(3m/1m)×12 2026-09-28(M) 03:30p`, and the badge line above it
 shows the countdown and the round — `⏰ 2.53 0.07 | [R2]/12`.
+
+**To the second.** An alarm clock stops at the minute. A ⏰ origin takes seconds — `16:59.30`, thirty seconds
+before five (the colon sits only between hours and minutes; seconds always follow a dot) — and **[−1s] / [+1s]** on the
+line nudge it one second at a time; Opt+click moves ten. Want the bell thirty seconds early? Opt+click [−1s] three times.
 
 **Two bells: main and sub.** The first time of the line with an origin (or of the first line) is the **main** time;
 every other time is **sub**. `🔔Gong/🔕Mew` right after the ⏰ gives each its sound — main Gong, sub Mew — and says
@@ -172,7 +176,7 @@ down with your other clocks. Click **🌅 Wake** in the V-helper menu and you wa
 a sample is placed just below the meta membrane of the file you are in (or run *MeOS: New 🌅LaunchD*). If you have
 more than one 🌅LaunchD, the one with the newest timestamp in its name wins. The schedule lives in macOS, not in MeOS,
 so it stays through quitting VSCodium and restarting the Mac, and it starts the Mac from shut down, not only from sleep
-(tested on an iMac with M3: it started at 07:00:06 on the first morning). Start-up only — nothing here shuts your Mac down.
+(tested on an iMac with M3: it started at 07:00.06 on the first morning). Start-up only — nothing here shuts your Mac down.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the V-helper menu with Pass the next, every clock counting down (🌅 Wake among them), Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
