@@ -160,11 +160,18 @@ Keep the two lives in separate files — the same file open in both editors show
 
 **🌅 Wake — your Mac starts up on its own (macOS).** Somewhere along the way, macOS dropped the start-up schedule
 from its settings, and for about three years we pressed the power button every morning. The schedule itself is still
-there, deep in the system (`pmset`), so V-helper brings it back: **🌅 Wake** in the menu-bar ⏰ keeps three start-up
-times — every day, weekdays, weekends — and one of them is on. Switching asks for your administrator password in
-macOS's own dialog (MeOS never sees it); changing the time of one that is not on asks nothing. The schedule lives in
-macOS, not in MeOS, so it stays through quitting V-helper and restarting the Mac, and it starts the Mac from shut down,
-not only from sleep (tested on an iMac with M3). Start-up only — nothing here shuts your Mac down.
+there, deep in the system (`pmset`), so MeOS brings it back — as text, like every other clock. Name a membrane
+**🌅LaunchD** and write ⏰ lines under it, one per day pattern: `↺MTWtF 06:30` for weekdays, `↺sS 08:00` for weekends,
+`↺SMTWtFs 07:00` for every day. Press ▶️ on one of them and macOS asks for your administrator password in its own
+dialog (MeOS never sees it); that line becomes the start-up time of your Mac. Press ⏸ and it is taken out again.
+Only one line runs at a time — macOS keeps only one start-up schedule. Under 🌅LaunchD the ⏰ is drawn as 🌅, it does
+not ring 🔕, and it does not warp you anywhere ⚓; it only wakes the Mac. When macOS has the line, **🍏** appears at the
+end of it; from twelve hours before start-up it ripens into **🍎** on screen and in the menu bar, where 🌅 Wake counts
+down with your other clocks. Click **🌅 Wake** in the V-helper menu and you warp to the membrane — or, the first time,
+a sample is placed just below the meta membrane of the file you are in (or run *MeOS: New 🌅LaunchD*). If you have
+more than one 🌅LaunchD, the one with the newest timestamp in its name wins. The schedule lives in macOS, not in MeOS,
+so it stays through quitting VSCodium and restarting the Mac, and it starts the Mac from shut down, not only from sleep
+(tested on an iMac with M3: it started at 07:00:06 on the first morning). Start-up only — nothing here shuts your Mac down.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/LAIxai/MeOS/main/media/hero/v5.0-iwarpship-poster.png" alt="iWarpShip poster - Membrane OS ver5.0: the menu-bar clocks of VSCodium (orange) and VS Code (purple), the V-helper menu with Pass the next, every clock counting down, Tag&amp;Go and Spells, a spaceship over the Earth, and a boarding pass to Anywhere - When" width="92%"><br>
