@@ -142,7 +142,8 @@ the line itself. Pick a preset and press Set; the rest you learn from the clock 
 set in VSCodium running even when VSCodium is not: it counts, rings, moves a row of clocks on to the next one, and
 when a bell is due it wakes VSCodium and brings you to the membrane. Like the Dock, it starts and quits VSCodium,
 and while VSCodium is closed it lists your Tag & Go rooms — pick one and you are there. Turn it on or off with
-**[V-helper]** at the top right of the ⏰ panel (orange = in the menu bar, grey = nothing there).
+**[V-helper]** at the top right of the ⏰ panel (orange = in the menu bar, grey = nothing there). Every clock counts down in
+its menu, but only the next one shows its seconds, in red — $\textsf{4:51}\color{red}{\textsf{.25}}$ — so your eye finds it at once.
 
 **Pass the next.** Not taking this dose? **⏭️ Pass the next** at the top of the menu-bar ⏰ skips the next bell of
 the nearest clock without a sound: a repeat moves on to its next turn, the last turn of a `×N` or a one-off clock
