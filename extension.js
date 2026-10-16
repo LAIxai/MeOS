@@ -28380,6 +28380,9 @@ body.meos-gripping,body.meos-gripping *{cursor:var(--meos-grip)!important}   /* 
 @keyframes headSpin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 .head-nav .head-nav-btn:disabled{opacity:.35;cursor:var(--meos-arrow)}
 .head-nav .head-nav-btn.wrap-edge{border-width:2.5px;background:rgba(210,132,0,.18)}
+/* v5.0.23(俊克 2026.10.16 am11:20「戻る/進むボタンを色付きに・#の↑/↓も多用するので目立たせよう」): よく使う4つ(←→・#↑↓)だけ橙で塗る(💬↑↓とMe↑↓は縁取りのまま) */#hist-back,#hist-forward,#nav-head-prev,#nav-head-next{background:#d18400;color:#fff;border-color:#d18400}
+#hist-back:hover,#hist-forward:hover,#nav-head-prev:hover,#nav-head-next:hover{background:#b06f00;border-color:#b06f00}
+#hist-back.wrap-edge,#hist-forward.wrap-edge,#nav-head-prev.wrap-edge,#nav-head-next.wrap-edge{background:#d18400;border-color:#7a4c00}
 .head-nav .head-nav-center{box-sizing:border-box;background:rgba(128,128,128,.12);border:1px solid var(--meos-frame);border-radius:6px;padding:2px 6px;min-height:0;font-size:11px;font-weight:900;color:var(--vscode-descriptionForeground);font-variant-numeric:tabular-nums;cursor:var(--meos-hand)}
 .head-nav .head-nav-center:hover{background:rgba(128,128,128,.22)}
 .head-nav.line-hist{margin-left:0}
