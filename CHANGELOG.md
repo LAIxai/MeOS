@@ -4,6 +4,12 @@ _Detailed per-version development notes. Moved here from README to keep the READ
 
 ## v5.0 era (2026-10 →)
 
+### v5.0.26 (2026-10-16) — the first public v5.0
+- **← → and # ↑ ↓ stand out.** The four buttons you press most in Navigate Me are now orange balls with black arrows, and a white gloss lights up on their top left when the pointer is on them. 💬 ↑↓ and Me ↑↓ keep their outline (v5.0.23–26).
+- **🐇 THUMP** — a new alarm sound in the 🔔 list: a rabbit's warning stamp on a wooden floor. It plays twice as loud as the others (v5.0.18).
+- **ΔChar no longer counts FC comments.** The character count of a membrane counted the `<!-- Mew!FC … -->` lines and the spec comments at the end of a line (v5.0.10).
+- The day button stays enlarged for 2 seconds when you enter a diary (v5.0.1).
+
 ### v5.0.0 (2026-10-11)
 v4.2 grew far beyond "the rest of ⏰", so it ships as **v5.0**.
 - **Chained clocks** — several ⏰ under one membrane hand over to each other; ▶️/⏸️, 🚢💨/⚓, 🔓/🔐 and two bells on every line. **V-helper** keeps ringing on the macOS menu bar after the editor is closed.
