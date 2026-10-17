@@ -29646,6 +29646,7 @@ color:#ffffff;z-index:4;padding:0}
 .enc-pass-go{background:#1a7f37;border-color:#116329;color:#fff}
 .enc-pass-go:hover{background:#2da44e}
 .enc-pass-eye:hover,.enc-pass-x:hover{filter:brightness(1.1)}
+/* v5.1.15(俊克「👁の形が変わらないので、変えるように」): 伏せ字の間は目に斜線(上部の欄の閉じた目と同じ読み方)=今の姿 */.enc-pass-eye{position:relative}.enc-pass-eye.enc-eye-off::after{content:'';position:absolute;left:18%;right:18%;top:50%;height:2px;margin-top:-1px;background:#e05a4f;transform:rotate(-40deg);border-radius:1px;pointer-events:none}
 .fmt-btn.enc-btn{font-family:inherit;min-width:auto;padding:1px 8px;font-size:18px;line-height:1;background:rgba(127,127,127,.16);border-color:rgba(127,127,127,.32);color:var(--vscode-foreground);opacity:.5}
 #enc-copy{opacity:1;background:#2f80b8;border-color:#1f5f8f;color:#fff}
 #enc-copy:hover{background:#3a93d0;border-color:#1f5f8f}
@@ -29935,7 +29936,7 @@ ${process.platform === 'darwin' ? '<div class="clk-vh-row"><button class="clk-vh
   <div class="zoom-me-panel hidden" id="zoom-me-panel"><div class="zoom-me-row" id="zoom-me-row" title="Zoom Me! / Me Lens Editor 2-way zoom"><span class="zoom-me-title">Zoom Me!</span><input class="zoom-me-input" id="zoom-me-start" value="${esc(zoomMeMode==='me'?zoomMeLastMeName:zoomMeLastStartValue)}" inputmode="numeric" tabindex="0"/><span class="zoom-me-sep" id="zoom-me-sep">〜</span><input class="zoom-me-input" id="zoom-me-end" value="${esc(zoomMeMode==='me'?zoomMeLastMeCount:zoomMeLastEndValue)}" tabindex="0"/><button class="zoom-me-mode" id="zoom-me-mode" title="Toggle Zoom Me! mode: Line ⇄ Me" tabindex="0">${zoomMeMode==='me'?'Me':'Line'}</button><button class="zoom-me-load" id="zoom-me-load" title="Load selected range into Me Lens Editor" tabindex="0">Load Me</button></div><div class="zoom-me-status" id="zoom-me-status"></div></div>
   <div class="ref-create-panel hidden" id="ref-create-panel"><div class="ref-sym-row" id="ref-sym-row"><button class="ref-sym" data-fam="1" title="R1 ※ — built-in reference mark">※</button><button class="ref-sym" data-fam="2" title="R2 † — built-in reference mark (dagger)">†</button><button class="ref-sym" data-fam="3" title="R3 ‡ — built-in reference mark (double dagger)">‡</button><button class="ref-sym" data-fam="4" title="R4 ∗ — built-in reference mark (asterisk)">∗</button><button class="ref-sym" data-fam="5" title="R5 § — built-in reference mark (section)">§</button><button class="ref-sym" data-fam="6" title="R6 ‖ — built-in reference mark (parallels)">‖</button><button class="ref-sym" data-fam="7" title="R7 ¶ — built-in reference mark (pilcrow)">¶</button><span class="ref-sym-sep">|</span><button class="ref-sym ref-custom-slot" data-fam="8" title="R8 — custom slot: set any symbol or emoji">R8</button><button class="ref-sym ref-custom-slot" data-fam="9" title="R9 — custom slot: set any symbol or emoji">R9</button></div><div class="ref-custom-row hidden" id="ref-custom-row"><span class="ref-lbl">Custom</span><input class="ref-input ref-custom-input" id="ref-custom-input" maxlength="2" placeholder="★ 🚩"/></div><div class="ref-field-row"><span class="ref-lbl">Name</span><input class="ref-input" id="ref-name-input" value="new"/><button class="cancel ref-ts-btn" id="ref-ts-btn" title="Time Stamp">↻</button></div><div class="ref-field-row"><span class="ref-lbl">Description</span><input class="ref-input" id="ref-desc-input" placeholder="(optional)"/></div><div class="ref-create-btnrow"><button class="set" id="ref-create-btn">Create</button></div></div>
   <div class="top-buttons" id="top-buttons"><button class="cancel" id="refresh-btn" title="Time Stamp">↻</button><button class="cancel" id="reset-btn">Reset</button><button class="set" id="set-btn">${initial.mode==='rename'?'Set':'Create'}</button></div>
-  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye" id="enc-pass-eye" data-tip="Show / hide passphrase">👁</button><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
+  <div class="encrypt-me-row" id="encrypt-me-row"><span class="encrypt-me-label">Encrypt Me</span><span class="enc-btns"><span class="enc-lockunit"><button class="fmt-btn enc-btn" id="enc-lock" data-tip="Encrypt Me 🔐 | Lock this whole membrane with a passphrase (AES-256). Put the cursor inside the membrane first. ⚠ No recovery if you forget the passphrase.">🔐</button><button class="enc-badge" id="enc-unlock" style="display:none" data-tip="Unlock Me 🔓 | Decrypt an encrypted membrane with its passphrase. (Bright on the shoulder when the membrane is encrypted.)">🔓</button></span><button class="fmt-btn enc-btn" id="enc-copy" data-tip="📋 Copy a password safely | The clipboard self-clears ~5s after you paste.">📋</button></span><div class="enc-pass-row" id="enc-pass-row" style="display:none"><span class="enc-pass-label" id="enc-pass-label">🔐</span><input class="enc-pass-input" id="enc-pass-input" type="password" placeholder="passphrase — Enter" spellcheck="false"/><button class="enc-pass-eye enc-eye-off" id="enc-pass-eye" data-tip="Hidden — click to show (lets you type kana/kanji)">👁</button><button class="enc-pass-go" id="enc-pass-go">Go</button><button class="enc-pass-x" id="enc-pass-x" data-tip="Cancel (Esc)">✕</button></div></div>
   <div class="nav-center" id="nav-center">
     <div class="head-wrap-overlay" id="head-wrap-overlay">↻</div>
     <div class="nav-center-title nav-center-titlebar"><span class="nav-title-main">Navigate <span class="nav-me-word" id="nav-me-word">Me!</span></span><span class="bird-ev-label" data-tip="Bird-EV ToDo (bird's-eye view) — left ticks = every heading, right ticks = every unresolved review note. When the right side clears, the project is done. A control room for big projects."><span class="bird-ev-icon">🦅<svg class="bird-ev-gaze" viewBox="0 0 70 50" aria-hidden="true"><line x1="67" y1="8" x2="6" y2="46"/><line x1="67" y1="8" x2="59" y2="46"/></svg></span> Bird-EV ToDo</span></div>
@@ -32381,31 +32382,28 @@ encPassEye=document.getElementById('enc-pass-eye'),encPassGo=document.getElement
 let _encPendingOp='';
 // {* ▲mCN=dock_js_format *}
 // {* ▼mCN=dock_js_encrypt // Encrypt Me(合言葉の入力欄と3経路) *}
-function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':'🔓';if(encPassInput){encPassInput.type='password';
+function showEncPass(op){_encPendingOp=op;if(encPassLabel)encPassLabel.textContent=(op==='encrypt')?'🔐':'🔓';if(encPassInput){encPassInput.type='password';_encEyeSync();
 encPassInput.value='';encPassInput.placeholder=(op==='encrypt')?'new passphrase — click Go to lock':'passphrase — click Go to unlock';
 }if(encPassRow)encPassRow.style.display='flex';setTimeout(()=>{try{encPassInput&&encPassInput.focus();}catch(_){}},0);}
 let _encAskBody=false; /* v5.1.12: 本文の🔓から開いた欄= カーソルが膜の行に居なくても閉じない */
-let _encOpenedBy='menu'; /* TEMP v5.1.14: 欄の開き方(menu=Me Dockのボタンをクリック/body=本文の🔓から知らせ) */
-function _encKLog(t,ev){try{vscode.postMessage({type:'encKeyLog',line:'['+_encOpenedBy+'] '+t+(ev?(' key='+ev.key+' code='+ev.code+' kc='+ev.keyCode+' comp='+ev.isComposing):'')+' type='+(encPassInput?encPassInput.type:'?')+' len='+(encPassInput?encPassInput.value.length:-1)+' docFocus='+document.hasFocus()+' active='+(document.activeElement?document.activeElement.id:'')});}catch(_){}}
-function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';
+function hideEncPass(){_encAskBody=false;if(encPassRow)encPassRow.style.display='none';if(encPassInput){encPassInput.value='';encPassInput.type='password';_encEyeSync();
 }_encPendingOp='';}
 function submitEncPass(){const v=encPassInput?encPassInput.value:'';if(!v){hideEncPass();return;}vscode.postMessage({type:'encOp',
 op:_encPendingOp,pass:v});hideEncPass();}
 let _encVaultUnlocked=false; /* v5.1.1: 入口で解錠中の膜= 🔐は合言葉なしで、すぐ施錠 */
 const encLock=document.getElementById('enc-lock');if(encLock)encLock.addEventListener('click',()=>{if(!encLock.classList.contains('enc-active'))return;
-if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'});return;}showEncPass('encrypt');_encOpenedBy='menu';_encKLog('open');
+if(_encVaultUnlocked){hideEncPass();vscode.postMessage({type:'encryptMembrane'});return;}showEncPass('encrypt');
 }); /* v0.9.99915: アクティブ(平文膜の上)の時だけ入力枠を出す */
 const encUnlock=document.getElementById('enc-unlock');if(encUnlock)encUnlock.addEventListener('click',()=>{if(encUnlock.classList.contains('enc-active'))showEncPass('unlock');
 }); /* v0.9.99915: アクティブ(暗号膜の上)の時だけ */
-if(encPassGo)encPassGo.addEventListener('click',()=>{_encKLog('goClick');submitEncPass();});
+if(encPassGo)encPassGo.addEventListener('click',submitEncPass);
 if(encPassX)encPassX.addEventListener('click',hideEncPass);
+function _encEyeSync(){if(!encPassEye||!encPassInput)return;const off=encPassInput.type==='password';encPassEye.classList.toggle('enc-eye-off',off);
+encPassEye.setAttribute('data-tip',off?'Hidden — click to show (lets you type kana/kanji)':'Shown — click to hide');} /* v5.1.15: 目の形=今の姿 */
 if(encPassEye)encPassEye.addEventListener('click',()=>{if(encPassInput){encPassInput.type=(encPassInput.type==='password')?'text':'password';
-encPassInput.focus();}});
+_encEyeSync();encPassInput.focus();}});
 if(encPassInput)encPassInput.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!ev.isComposing){ev.preventDefault();
-hideEncPass();}});
-if(encPassInput){encPassInput.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.keyCode===229||ev.isComposing)_encKLog('keydown',ev);});
-encPassInput.addEventListener('keyup',ev=>{if(ev.key==='Enter')_encKLog('keyup',ev);});
-encPassInput.addEventListener('compositionstart',()=>_encKLog('compStart'));encPassInput.addEventListener('compositionend',()=>_encKLog('compEnd'));} /* TEMP v5.1.14 */ /* v5.1.13(俊克「変換の確定でGoが実行されてしまうので、Goはクリックのみに」): Enterでは送らない(かな漢字の確定もEnter) */
+hideEncPass();}}); /* v5.1.13(俊克「変換の確定でGoが実行されてしまうので、Goはクリックのみに」): Enterでは送らない(かな漢字の確定もEnter) */
 const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventListener('click',()=>vscode.postMessage({type:'copySecretAutoWipe'}));
  /* v0.9.99910: 📋 Copy & auto-clear */
 // {* ▲mCN=dock_js_encrypt *}
@@ -32413,7 +32411,7 @@ const encCopy=document.getElementById('enc-copy');if(encCopy)encCopy.addEventLis
 window.addEventListener('message',ev=>{const m=ev.data;if(m&&m.type==='encState'){const L=document.getElementById('enc-lock'),
 U=document.getElementById('enc-unlock');_encVaultUnlocked=!!m.vaultUnlocked;if(L)L.classList.toggle('enc-active',!!m.onMembrane&&!m.encrypted);if(U)U.classList.toggle('enc-active',!!m.onMembrane&&!!m.encrypted);
 if(!m.onMembrane&&!_encAskBody&&typeof hideEncPass==='function')hideEncPass();}
-if(m&&m.type==='encAskPass'){showEncPass(m.op||'unlock');_encAskBody=true;_encOpenedBy='body';_encKLog('open');}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
+if(m&&m.type==='encAskPass'){showEncPass(m.op||'unlock');_encAskBody=true;}}); /* v0.9.9994: 膜の上で平文=🔐橙/暗号=🔓白/それ以外=灰。v0.9.99915: 膜外へカーソルが出たら入力枠を消す */
 const ghWizard=document.getElementById('gh-wizard'),ghWizardHead=document.getElementById('gh-wizard-head'),ghWizardToggle=document.getElementById('gh-wizard-toggle'),
 ghWizardStatus=document.getElementById('gh-wizard-status'),ghProfileUrl=document.getElementById('gh-profile-url'),ghPatInput=document.getElementById('gh-pat-input'),
 ghPatLink=document.getElementById('gh-pat-link'),ghConnectBtn=document.getElementById('gh-connect-btn'),ghFolderName2=document.getElementById('gh-folder-name2'),
@@ -34770,13 +34768,6 @@ function toggleMeDock(editorOverride) {
     if (message && message.type === 'mewSignVisible') { await meosMewSignVisible(); try { updateMeDockMode(); } catch (_) {} return; } // v4.0.67: Me Dockの🐱
     if (message && message.type === 'encryptMembrane') { await encryptCurrentMembrane(); return; }
     if (message && message.type === 'unlockMembrane') { await unlockCurrentMembrane(); return; }
-    // ★★TEMP v5.1.14(俊克 pm02:15「👁に切り替えて漢字変換でGoにならなかった。今回なぜ変わったのか」): 合言葉欄に届いたキーを測る。
-    //   書くのはキーの種類・変換中か・欄の字数だけ(合言葉の中身は書かない)。書き先= globalStorage/enc-keylog.txt。★理由が分かったら撤去する。
-    if (message && message.type === 'encKeyLog') {
-      try { const fs = require('fs'), path = require('path'); const dir = extensionContext.globalStorageUri.fsPath; fs.mkdirSync(dir, { recursive: true });
-        fs.appendFileSync(path.join(dir, 'enc-keylog.txt'), new Date().toISOString() + ' ' + String(message.line || '').slice(0, 300) + '\n'); } catch (_) { }
-      return;
-    }
     if (message && message.type === 'encOp') { if (message.op === 'encrypt') { await encryptCurrentMembrane(message.pass || ''); } else if (message.op === 'unlock') { await unlockCurrentMembrane(message.pass || ''); } return; } // v0.9.99914: Me Dockパス入力からの施錠/解錠
     if (message && message.type === 'copySecretAutoWipe') { await copySelectionAutoWipe(); return; }
     if (message && message.type === 'githubCommitPush') { await githubCommitPush(); return; }
