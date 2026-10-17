@@ -17850,8 +17850,9 @@ function meosVaultFlashSaved(doc) {
     try { ed.setDecorations(_vaultFlashDeco, on ? labels : []); } catch (_) { }
     for (const t of _vaultFlashGutterPool.values()) { try { ed.setDecorations(t, on && gut.has(t) ? gut.get(t) : []); } catch (_) { } }
   };
-  const seq = [1, 0, 1, 0, 1, 0]; let i = 0;
-  const tick = () => { paint(!!seq[i]); i++; if (i < seq.length) _vaultFlashTimer = setTimeout(tick, seq[i - 1] ? 220 : 140); else _vaultFlashTimer = null; };
+  // ★v5.1.31(俊克「3回点滅したあとに、2秒だけ白い縦線とauto-savedを静止してから消そう。点滅が速すぎて読み難い」): 点・消を3回(各0.3秒)→ 点けたまま2秒 → 消す
+  const seq = [[1, 300], [0, 300], [1, 300], [0, 300], [1, 2300], [0, 0]]; let i = 0;
+  const tick = () => { const st = seq[i]; paint(!!st[0]); i++; if (i < seq.length) _vaultFlashTimer = setTimeout(tick, st[1]); else _vaultFlashTimer = null; };
   tick();
 }
 let _vaultRedirectBusy = false;
@@ -21961,9 +21962,9 @@ async function handleMembraneNameSelection(editor, selectionKind) {
     try {
       const _ln = editor.selection.active.line;
       { const _vb = meosVaultLineHints(editor.document, _ln, editor) && meosVaultBtnSpot(editor.document, _ln);   // v5.1.5: 前から生の字だった行(カーソルが居た)は押せない= 文字としてのクリック   // ★v5.1.1: 本文の🔐(解錠)/🔓(施錠)
-        if (_vb && editor.selection.active.character === _vb.col) { await meosVaultBtnPress(editor, _vb, _ln); return; }
+        if (_vb && editor.selection.active.character === _vb.col) { if (!_vb.head && _vb.kind === 'lock') { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); } await meosVaultBtnPress(editor, _vb, _ln); return; }   // v5.1.31: 解錠中の🔐も⏰のボタンと同じく、押した行を生の字にしない
         const _ch = meosAwayChairSpot(editor.document, _ln, editor);   // v5.1.19: 🪑を押した= 🪑→🛋️→💺 を巡る(全体で1つの設定)
-        if (_ch && editor.selection.active.character === _ch.col) { await meosAwaySetSlot(meosAwaySlot() % 3 + 1); return; } }
+        if (_ch && editor.selection.active.character === _ch.col) { setRefNoRaw(editor.document, _ln); meosParkCaretAfterPress(editor, _ln); await meosAwaySetSlot(meosAwaySlot() % 3 + 1); setRefNoRaw(editor.document, _ln); meosCalmRefresh(editor); return; } }   // ★v5.1.31(俊克「🪑をクリックするとRawに切り替わってしまう」): ⏰のボタンと同じ= 抑止を掛けて行頭へ寄せる
       // ★v4.2.480(俊克 バグ1「🔔🔕の左の🔔をクリックすると、なぜか🔓が反応して🔐になる」): 推測で直さず、押した時にカーソルが落ちた桁を残す
       //   → [[feedback_go_get_the_measurement]]。⏰の行をマウスで押した時だけ。
       try {
